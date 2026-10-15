@@ -1057,10 +1057,11 @@ Kit:AddBorderKind({ kind = "personal", key = "personalBarBorder", default = "fra
 	values = PERSONAL_LOOKS, preview = "bar",
 	desc = "The frame round the Personal Display's bars and its shield column (the bars under your character): the Ornate bracket the unit frames wear (the default), the cast bar's, a thin rim, the Single rail, the Stone rail, the Backdrop or none. The game's own personal resource display, while the Personal Display is off and the unit frames wear their Painted Skin, takes one frame round its bars: a thin rim or one of the library's styles." }, "castbar")
 -- (0.20.1, the user: "our swing timers, also need to be able to change their borders to the library selection") the
--- swing timers' frame a choice of its own (their Framed look; Modules/SwingTimers.lua lays it, on this kind's change)
+-- swing timers' frame a choice of its own (their Framed look). (one look, stage B: the swing timers wear the round
+-- rim and a flat bar, no frame, so nothing reads this any more: a removal candidate for the options audit, stage H)
 Kit:AddBorderKind({ kind = "swing", key = "swingTimerBorder", default = "castbar", name = "Swing Timer Border",
 	values = CastLooks(), preview = "bar",
-	desc = "The frame round your swing timers (their Framed look): the Cast bar bracket (today's), a thin rim, the Single rail, the Stone rail or the Backdrop. A frame laid round a bar leaves it its whole width." }, "personal")
+	desc = "No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing." }, "personal")
 
 -- (0.20.1, /abdump xp in game: the experience bar's bracket caps back at alpha 1 under its library border -- the
 -- ornate bracket over the Stone rail -- something writing our pieces after the library hid them) the caps kept

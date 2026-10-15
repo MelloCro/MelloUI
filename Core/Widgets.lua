@@ -2512,7 +2512,9 @@ end
 --                        reaches for it), the plain look for nil or false; the
 --                        kit's rim is made the first time. Set the button's
 --                        own scripts BEFORE the first kit look: the kit's rim
---                        hooks them, and SetScript drops hooks
+--                        hooks them, and SetScript drops hooks. A button
+--                        whose mouse its maker turned off (a picture in a
+--                        rim) keeps it off through the rim's hooks
 --   b.icon, b.mask, b.plainRim, b.kitRim (nil until the first kit look),
 --   b.size, b.kitLaid (true while the kit's rim shows)
 -- It sets no script and holds no colour; nothing is made per call after.
@@ -2575,7 +2577,17 @@ do
 		if on then
 			local rim = b.kitRim
 			if not rim then
+				-- (0.25.0) the mouse as the button's maker left it: the rim's
+				-- hooks (Kit:Slot's OnEnter, OnMouseDown ...) turn a button's
+				-- mouse on, and the kit keeps that for a button (its hover is
+				-- the point). A RoundIcon made click-through (a picture in a
+				-- rim: a shell's emblem, a whisper face, a fold icon) stays so,
+				-- whenever its first kit look comes
+				local okM, mouse = pcall(b.IsMouseEnabled, b)
 				rim = Kit:Slot(b, { kind = "roundslot" })
+				if okM and not Secret(mouse) and mouse == false then
+					b:EnableMouse(false)
+				end
 				if Kit.RegisterTexture then
 					Kit:RegisterTexture(rim)   -- Dark Mode's shade
 				end

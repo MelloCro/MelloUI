@@ -604,8 +604,26 @@ local function Window()
 		mover = { key = "roadRecorder", plainDrag = "always", label = "Road recorder" } })
 	f.shell = shell
 	local body = W.Panel(f)
-	body:SetPoint("TOPLEFT", f, "TOPLEFT", EDGE, TOP)
-	body:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -EDGE, EDGE)
+	local buttonRows = {}   -- (the button rows: each { top = y, buttons }, laid across the body by Lay)
+	-- (on the look's inset: onelook's modern shell under its strip on the one
+	-- inset, the painted one under the corner ring; again at every switch, the
+	-- button rows across the body's width with it)
+	local function Lay(sh)
+		local edge, top = sh:Inset(EDGE, TOP)
+		body:SetPoint("TOPLEFT", f, "TOPLEFT", edge, top)
+		body:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -edge, edge)
+		local inner = WIN_W - 2 * edge - 28
+		for _, row in ipairs(buttonRows) do
+			local bw = (inner - (#row - 1) * BUTTON_GAP) / #row
+			for i, b in ipairs(row) do
+				b:SetWidth(bw)
+				b:ClearAllPoints()
+				b:SetPoint("TOPLEFT", body, "TOPLEFT", 14 + (i - 1) * (bw + BUTTON_GAP), -row.top)
+			end
+		end
+	end
+	Lay(shell)
+	shell:OnKit(Lay)
 	W.Header(body, 4, "Cities  (the switch: done)", { inset = 4 })
 	f.rows = {}
 	for i, c in ipairs(CITIES) do
@@ -646,15 +664,13 @@ local function Window()
 	f.status2:SetPoint("TOPLEFT", f.status, "BOTTOMLEFT", 0, -6)
 	f.status2:SetPoint("RIGHT", body, "RIGHT", -14, 0)
 	y = y + 50
-	local inner = WIN_W - 2 * EDGE - 28
+	-- (made here, laid by Lay: across the body as the look has it)
 	local function Row(list, top)
-		local bw = (inner - (#list - 1) * BUTTON_GAP) / #list
-		local made = {}
+		local made = { top = top }
 		for i, entry in ipairs(list) do
-			local b = W.Button(body, entry[1], bw, shell, { height = BUTTON_H, gold = entry.gold, onClick = entry[2] })
-			b:SetPoint("TOPLEFT", body, "TOPLEFT", 14 + (i - 1) * (bw + BUTTON_GAP), -top)
-			made[i] = b
+			made[i] = W.Button(body, entry[1], nil, shell, { height = BUTTON_H, gold = entry.gold, onClick = entry[2] })
 		end
+		buttonRows[#buttonRows + 1] = made
 		return made
 	end
 	f.start = Row({
@@ -670,6 +686,7 @@ local function Window()
 	end
 	Row(marks, y + BUTTON_H + BUTTON_GAP)
 	Row({ { "Clear city", Clear } }, y + 2 * (BUTTON_H + BUTTON_GAP))
+	Lay(shell)
 	R.window = f
 	return f
 end

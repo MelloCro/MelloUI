@@ -706,7 +706,7 @@ local function LayActions()
 	if not acts then
 		return
 	end
-	local Kit = View.Covered() and MelloUI.Kit or false
+	local Kit = View.RimKit()   -- (the kit's roundslot rim, for everyone)
 	local x = -8
 	local parts = P()
 	for i = #parts.ACTIONS, 1, -1 do
@@ -832,7 +832,7 @@ local function Build()
 	title:SetPoint("LEFT", f, "TOPLEFT", 10, -TITLE_H / 2)
 	title:SetText(TEXT.title)
 	if MelloUI.Kit and MelloUI.Kit.TitleFont then
-		MelloUI.Kit:TitleFont(title, View.Covered())
+		MelloUI.Kit:TitleFont(title, true)   -- (the title face for everyone: one look, the user's pick 9, 2026-10-15)
 	end
 	WV.title = title
 	local close = W.CloseButton(f)
@@ -1018,7 +1018,7 @@ function WV.Restyle()
 	Shadow(WV.hint)
 	View.FieldColour(WV.boxHint, "mutedText")   -- (in the box's dark field)
 	View.FieldColour(WV.box, "text")
-	local Kit = View.Covered() and MelloUI.Kit or false
+	local Kit = View.RimKit()
 	for _, row in ipairs(WV.rows) do
 		row.face:SetKit(Kit)
 	end

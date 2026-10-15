@@ -205,14 +205,20 @@ function View.Font(fs, scale, from)
 	end
 end
 
--- the chat wears the kit (its round rims then the kit's)
+-- the chat wears the painted kit (the chat cover: Oldschool's; the paper follows it, Chat.lua's ChatInked)
 function View.Covered()
 	local Kit = MelloUI.Kit
 	return (Kit and Kit.IsCovered and Kit:IsCovered("chat")) and true or false
 end
 
+-- the round rims' kit (one look, the user's pick 9, 2026-10-15): the kit's roundslot rim for everyone, as the Quest
+-- Tracker's marks and the Quest List's markers wear it, whatever the chat cover (until then only while it covered)
+function View.RimKit()
+	return MelloUI.Kit or false
+end
+
 function View.KitRim(b)
-	b:SetKit(View.Covered() and MelloUI.Kit or false)
+	b:SetKit(View.RimKit())
 end
 
 --------------------------------------------------------------------------------
@@ -1640,9 +1646,9 @@ local function PlaceButtons()
 	end
 end
 
--- every round button's rim: the kit's while the chat wears it, the plain one else
+-- every round button's rim: the kit's roundslot rim (View.RimKit)
 function View.Rims()
-	local Kit = View.Covered() and MelloUI.Kit or false
+	local Kit = View.RimKit()
 	for _, t in pairs(View.tabs) do
 		t.button:SetKit(Kit)
 	end

@@ -11,13 +11,17 @@
 --   the shell           Kit:OwnWindow (Modules/KitWindow.lua): the emblem as a
 --                       crest on the top rail, the short "MelloUI" plate under
 --                       it, the drag strip, the fit, Escape, the sounds, the
---                       look switch (the kit or the plain palette look), and
---                       the calm ground (one flat mainWindow ground inside a
---                       band of the stone)
+--                       look switch (the kit or the modern look), and the
+--                       calm ground (one flat mainWindow ground inside a band
+--                       of the stone); the modern look (onelook, the user's
+--                       pick C "the brand column", 2026-10-15): no title bar,
+--                       the emblem and "MelloUI" head the side list
 --   top bar             Install..., Edit Layout (while it is there) and
 --                       close, on the right (Edit Layout, Core/EditLayout.lua,
 --                       took the old Layout group's place in 0.15.0: the one
---                       place to move things)
+--                       place to move things); the modern look: Preview, Edit
+--                       Layout, Install... and close on one line over the
+--                       pages, a hairline under them (RefreshBar)
 --   side list           the pages in groups that fold (W.NavRail), from
 --                       Core/ConfigLayout.lua's `groups`; the search box on it
 --   page                header (icon, title, flavour, the page's switch,
@@ -113,7 +117,6 @@ local SLIDER_ROW_HEIGHT = W.SLIDER_ROW_HEIGHT   -- (40)
 -- told apart from the labels by its size; muted text only marks what is
 -- switched off (the palette's muted is 3.2:1, too faint for small text).
 local C = {
-	band    = "innerPanel",
 	line    = "border",
 	accent  = "selectedTrim",
 	accent2 = "trim",
@@ -141,6 +144,9 @@ local CHANGELOG = {
 		"Unit frames: party levels on the name line, soft name bands, Level Up and XP Gain without the painted skin.",
 		"Minimap: MelloUI's minimap for everyone -- size, the square Chat panel and Services merged under it, its own switch.",
 		"Quest log and Quest List: headings, difficulty gems and icon rims for everyone.",
+		"Windows: the logo heads the configurator's side list, smaller windows get a slim title strip, Fight History the new look.",
+		"Swing Timers: your weapon in a round rim beside a flat bar. Race bar: a slim line with class pins (new Race Bar Thickness).",
+		"Quest Tracker: a ring marks the quest you follow, items sit on a small tray. The flight map marks your route with a bead.",
 	} },
 	{ version = "0.24.0", lines = {
 		"Quest Tracker: the chat's look -- a clean panel or parchment, round quest marks, a difficulty gem, counts on the right.",
@@ -4859,8 +4865,14 @@ end   -- (the Profiles block)
 -- (0.15.0, Background A: the stone only as a band round one flat ground)
 -- (its mover is a "tool" of Edit Layout's: never a plate there, never in its
 -- Reset all; dragged by its strip at any time, its place kept at once)
+-- The modern look (onelook stage B, the user's pick C "the brand column",
+-- 2026-10-15): no title bar; the emblem and "MelloUI" head the side list
+-- (brand "block", laid on the rail's box: shell:Brand), the actions on one
+-- line over the pages with a hairline under them at 48, the drag band the
+-- window's top 48 (brand.grab; RefreshBar lays the rest from it)
 local SHELL_OPTS = { area = "config", ring = { at = "top", texture = LOGO, scale = CREST_SCALE }, plate = "crest",
 	title = "MelloUI", plateWidth = 200, escape = true, grabBottom = BAR_TOP, fit = true, sounds = true, calm = true,
+	brand = { shape = "block", grab = -48 },
 	mover = { key = "MelloUIConfigFrame", plainDrag = "always", group = "tool" } }
 
 -- The side list's groups (0.15.0: Core/ConfigLayout.lua's `groups`, the
@@ -5563,17 +5575,63 @@ local EditLayoutClick = Shared("OnClick on the configurator's Edit Layout", func
 		MelloUI:StartEditLayout("configurator")
 	end
 end, "script")
+-- The top bar's buttons as what is there (Edit Layout, Install…), and the
+-- window's top where the look puts it (on every show and look switch; the
+-- shell lays its own parts): the painted shell's bar under the crest, Preview
+-- at its left, the rest at its right, the side list and the pages from
+-- BODY_TOP; the modern shell's (pick C, SHELL_OPTS.brand): one line of
+-- actions over the pages, right-aligned (Preview, Edit Layout, Install…,
+-- the close), its hairline (the bar's line) on the drag band's foot, the
+-- pages 10 under it; the side list from the window's margin, its search box
+-- and rows under the brand (the room shell:Brand answered), where they stood
 local function RefreshBar()
 	local parts = window.parts
-	local edit, install = parts.edit, parts.install
+	local edit, install, preview, close, bar = parts.edit, parts.install, parts.preview, parts.close, parts.topBar
 	local there = type(MelloUI.StartEditLayout) == "function"
+	local installer = type(MelloUI.OpenInstaller) == "function"
 	edit:SetShown(there)
 	local E = MelloUI.EditLayout
 	local text = type(E) == "table" and type(E.TEXT) == "table" and E.TEXT.desc
 	edit.melloTipBody = type(text) == "string" and text or EDIT_LAYOUT.desc
+	install:SetShown(installer)
+	local painted = shell.kit
+	local foot = SHELL_OPTS.brand.grab   -- (the modern look's line: the drag band's foot)
+	bar:ClearAllPoints()
+	close:ClearAllPoints()
+	edit:ClearAllPoints()
 	install:ClearAllPoints()
-	install:SetPoint("RIGHT", there and edit or parts.close, "LEFT", -8, 0)
-	install:SetShown(type(MelloUI.OpenInstaller) == "function")
+	preview:ClearAllPoints()
+	if painted then
+		bar:SetPoint("TOPLEFT", window, "TOPLEFT", EDGE, BAR_TOP)
+		bar:SetPoint("TOPRIGHT", window, "TOPRIGHT", -EDGE, BAR_TOP)
+		bar:SetHeight(BAR_HEIGHT)
+		close:SetPoint("RIGHT", bar, "RIGHT", -8, 0)
+		edit:SetPoint("RIGHT", close, "LEFT", -8, 0)
+		install:SetPoint("RIGHT", there and edit or close, "LEFT", -8, 0)
+		preview:SetPoint("LEFT", bar, "LEFT", 8, 0)
+	else
+		bar:SetPoint("TOPLEFT", window, "TOPLEFT", PAGE_LEFT, -4)
+		bar:SetPoint("TOPRIGHT", window, "TOPRIGHT", -EDGE, -4)
+		bar:SetHeight(-foot - 4)
+		close:SetPoint("RIGHT", bar, "RIGHT", -4, 0)
+		install:SetPoint("RIGHT", close, "LEFT", -8, 0)
+		local left = installer and install or close
+		edit:SetPoint("RIGHT", left, "LEFT", -8, 0)
+		preview:SetPoint("RIGHT", there and edit or left, "LEFT", -8, 0)
+	end
+	local rail = window.rail
+	if not rail then
+		return
+	end
+	local inset = rail.spec.inset
+	local head = painted and inset or (window.brandRoom or inset)
+	rail.box:SetPoint("TOPLEFT", window, "TOPLEFT", EDGE, painted and BODY_TOP or -EDGE)
+	rail.head:SetPoint("TOPLEFT", rail.box, "TOPLEFT", inset, -head)
+	rail.head:SetPoint("TOPRIGHT", rail.box, "TOPRIGHT", -inset, -head)
+	rail.scroll:SetPoint("TOPLEFT", rail.box, "TOPLEFT", inset, -(head + rail.spec.head))
+	if window.scroll then
+		window.scroll:SetPoint("TOPLEFT", window, "TOPLEFT", PAGE_LEFT, painted and BODY_TOP or foot - 10)
+	end
 end
 
 -- Preview (0.17.0; the user, 2026-10-01: "preview opens the preview menu
@@ -5633,14 +5691,16 @@ local function LookPage()
 end
 
 -- The look switched (the shell's OnKit, after its own parts): the pages'
--- look, the top bar's dark panel, and the other look's set of pages, the
--- page on show taken up in it (at once when that set has it, else LookPage)
+-- look, the top bar's dark panel, the window's top where the look puts it
+-- (RefreshBar), and the other look's set of pages, the page on show taken up
+-- in it (at once when that set has it, else LookPage)
 local function Config_OnKit(s, on)
 	KIT = on and MelloUI.Kit or nil
 	SKIN = on and s or nil
 	if window.barDim then
 		window.barDim:SetShown(on)
 	end
+	RefreshBar()
 	pages, building = pagesBy[on], buildingBy[on]
 	if window.glowing then
 		window.glowing:SetGlow(false)
@@ -5790,14 +5850,14 @@ end
 -- the one place to move things, so the Layout group that stood on the left
 -- -- Unlock the Windows, Auto Snapping, Reset positions -- is gone; its
 -- snapping is the Snap switch on Edit Layout's own bar, its reset that
--- bar's Reset all.)
+-- bar's Reset all.) The modern look (pick C): no band, the bar's line the
+-- hairline under the actions; where the bar and its buttons stand is
+-- RefreshBar's.
 local function TopBar()
 	local bar = CreateFrame("Frame", nil, window)
 	bar:SetPoint("TOPLEFT", window, "TOPLEFT", EDGE, BAR_TOP)
 	bar:SetPoint("TOPRIGHT", window, "TOPRIGHT", -EDGE, BAR_TOP)
 	bar:SetHeight(BAR_HEIGHT)
-	local barFill = shell:Plain(Solid(bar, "BACKGROUND", C.band, 1))
-	barFill:SetAllPoints(bar)
 	local barLine = shell:Plain(Solid(bar, "BORDER", C.line, 1))
 	barLine:SetHeight(1)
 	barLine:SetPoint("BOTTOMLEFT")
@@ -5868,6 +5928,9 @@ local function CreateWindow()
 	rail.box:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", EDGE, EDGE)
 	window.rail = rail
 	window.parts.nav = rail.box
+	-- (the modern look: the emblem and the title at the box's head, the search
+	-- box and the rows under them where they stood; RefreshBar lays it)
+	window.brandRoom = shell:Brand(rail.box)
 	-- the search box on its strip (nothing else of the search now)
 	Search.MakeBox(rail, shell)
 	local groups, anyNew = RailGroups()
@@ -5905,6 +5968,8 @@ local function CreateWindow()
 		window.scroll.ScrollBar:SetPoint("BOTTOMLEFT", window.scroll, "BOTTOMRIGHT", 2, 16)
 	end
 	window.pageWidth = WINDOW_WIDTH - PAGE_LEFT + PAGE_RIGHT
+	-- (the top as the look puts it, before the first show too)
+	RefreshBar()
 
 	-- the pages' rows still to make, a few a frame while the window is open
 	worker = CreateFrame("Frame", nil, window)

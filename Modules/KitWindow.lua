@@ -57,6 +57,24 @@
 --                            (its name, the page "All options >" opens, "tool"
 --                            for a window never on a plate), as Core takes them
 --     grabBottom = -70,      the drag strip, from the top edge down to this y
+--                            (the painted look's; the modern look's: the
+--                            strip's, or brand.grab)
+--     brand = "block" | "row" | { shape = "block" | "row", grab = -48,
+--             close = { x, y } },
+--                            the modern look's header is a brand at the head
+--                            of the window's side column, not the strip:
+--                            "block" (the configurator) the emblem's rim
+--                            centred in the column, the title under it;
+--                            "row" (Fight History) the rim at the column's
+--                            left, the title beside it, a hairline under
+--                            them. The column is handed later
+--                            (shell:Brand). grab: the drag band's bottom in
+--                            the modern look (default the strip's); close:
+--                            the close's right edge and middle from the
+--                            window's top right (default the strip's place)
+--     inset = 8,             the modern look's content inset (default FLAT.IN,
+--                            the small windows' one inset): the strip's ends
+--                            sit on it, shell:Inset answers it
 --     fit = true,            scaled down to fit the screen (never up, not
 --                            while the mover holds the user's scale), on
 --                            every show and UI scale change
@@ -77,7 +95,12 @@
 -- made with the kit), shell.mover (Core's entry),
 -- shell.reps, shell.replace (fn(region, opts) for Kit helpers that take a
 -- replace function), shell.skin ({ reps, followers } for Kit helpers),
--- shell.bounds (what is kept on the screen with the frame).
+-- shell.bounds (what is kept on the screen with the frame); the modern look's
+-- (made the first time it shows): shell.ground, shell.groundEdges,
+-- shell.shade (the band: UI Shade's Windows area and strength, ShadeWindow),
+-- shell.rim (the emblem's), shell.brandLine (a row's hairline, on
+-- shell.brandHolder), shell.brandShape ("block" / "row" / nil: the strip),
+-- shell.brandColumn, shell.inset, shell.paintedOnly (the kit's anchors).
 -- Methods:
 --   shell:Replace(region, opts)  Kit:Replace, the rep recorded for the switch
 --   shell:Anchor(parent, layer)  THE invisible region to hand to Replace where
@@ -103,18 +126,42 @@
 --                                kept, its name back a frame after
 --   Kit:ShellOf(frame)           the shell a window has (nil: none; nothing
 --                                made)
+--   shell:Inset(edge, top)       -> edge, top: the content's side inset and
+--                                top (a negative y) in the look on show: the
+--                                caller's own (`edge`, `top`: its painted
+--                                look's, under the corner ring and the plate)
+--                                while the kit dresses the window, else the
+--                                modern look's (opts.inset; under the strip,
+--                                or the inset itself with a brand column).
+--                                Lay the content with it at build and in an
+--                                OnKit
+--   shell:Brand(column)          -> room: the brand (opts.brand) laid at the
+--                                head of `column` (a region of the window: the
+--                                side list's box) in the modern look; room:
+--                                how far below the column's top its own
+--                                content starts there. The brand stands over
+--                                the column's level (a column in a body panel
+--                                hides nothing of it)
 -- The switch: the plain look is the window's own regions, which the kit's
 -- replacements fade while they are enabled; switched off, every recorded rep
 -- is disabled and they come back. Colours are palette keys (Kit:Paint), so a
 -- new palette paints them again. Sounds only through MelloUI:PlayUISound.
--- The plain look is the GAME's window (docs/plans/game-look.md wave 4: the
--- own windows' areas follow the reskin, so the plain look shows with it
--- off): ButtonFrameTemplate's metal NineSlice (PortraitFrameTemplate's with
--- the corner ring, ButtonFrameTemplateNoPortrait's without), its rock in its
--- own colours under the title bar with the top streaks, no palette tint and
--- no calm ground (the panels on it are the game's insets: W.Panel), the
--- title in the game's gold on the bar, the game's close button at its place
--- (UIPanelCloseButton's art, TOPRIGHT -2, 1, 24 px: this client's own).
+-- The look while the kit does not dress the window is MelloUI's own, the
+-- modern shell (onelook stage B, the user's pick C "the brand column",
+-- 2026-10-15; docs/plans/onelook-b-sketches/shell.md): no title bar -- one
+-- flat `mainWindow` ground in a 1 px `border` edge, a soft shade round it
+-- (MelloUI.Shade:Band), the emblem in the kit's round rim on its dark disc
+-- (W.GlyphButton: W.RoundIcon's roundslot rim, its round shade), the title
+-- in the title face (Kit:TitleFont) in the palette's gold, the close
+-- (W.CloseButton). A window with a side column wears the brand at the
+-- column's head (opts.brand, shell:Brand); one without wears the strip: a
+-- band FLAT.STRIP high, the rim at its left end, the title beside it, the
+-- close at its right end, both ends on the content inset, the content from
+-- FLAT.TOP. The drag band runs full width from the top; nothing pokes out
+-- of the window (no overhang). The kit's anchors (the rock, the tint, the
+-- calm ground, the plate's box, the crest) hide in it (shell.paintedOnly);
+-- the game's window of wave 4 (BuildPlain, below) is reached no more (stage
+-- E deletes it).
 --
 -- And, for the own windows' widgets and questions (the end of the file):
 --   Kit:ChoicePicture(tile, kind, choice)   a look choice's picture (the
@@ -148,10 +195,31 @@ local PLAIN_CORNER = 62      -- ... in the corner: a game window's portrait
 local CORNER_X, CORNER_Y = 26, -24   -- a game window's portrait centre from its top left (PortraitFrameTemplate: 62 px at -5, 7)
 -- the game's window (ButtonFrameTemplate on this client): its rock from under
 -- the title bar (2 in with the portrait, 7 without, 21 down, 2 in at the
--- bottom), the streaks under the bar, the close button's size and place
+-- bottom), the streaks under the bar (its close button's size and place went
+-- with the modern shell)
 local GAME_BG_TOP, GAME_BG_IN, GAME_BG_IN_NOPORTRAIT, GAME_BG_EDGE = 21, 2, 7, 2
 local GAME_STREAKS = "_UI-Frame-TopTileStreaks"
-local GAME_CLOSE, GAME_CLOSE_X, GAME_CLOSE_Y = 24, -2, 1
+-- The modern look (onelook stage B, the user's pick C "the brand column", 2026-10-15; the round-3 build notes of
+-- docs/plans/onelook-b-sketches/shell.md), in UI units from the window's top left:
+--   IN      the small windows' one content inset: the body, the question's panel, the strip's two ends
+--   STRIP   the strip (a window without a side column): the rim, the title and the close on its middle line
+--   RIM     the strip's rim; GAP the rim to the title (the title at IN + RIM + GAP: 37)
+--   TOP     the content's top under the strip (its body panel's edge is the one rule: no hairline)
+--   SHADE   the window's soft shade (MelloUI.Shade:Band): a rectangle round the rectangular window; its alpha at
+--           UI Shade's default strength, in the Windows area (Shell:ShadeWindow)
+--   block   the configurator's brand: a rim `rim` across, its middle `rimY` under the column's top, the title's
+--           middle `titleY` under it; the column's own content from `room` (the search box at 126, the rows at 154
+--           as before, the column from 16)
+--   row     Fight History's brand row: a rim `rim` across at the column's left, its middle `rimY` under the
+--           column's top, the title `gap` past it, a hairline `line` under the column's top; its content from `room`
+local FLAT = {
+	IN = 8, STRIP = 28, RIM = 22, GAP = 7, TOP = 30,
+	SHADE = { colour = "innerPanel", alpha = 0.6, feather = 18, featherY = 18, sublevel = -8 },
+	GROUND = -7,   -- (the ground's BACKGROUND sublevel: over the shade's, under every region of the window's own)
+	block = { rim = 56, rimY = 40, titleY = 86, room = 106 },
+	row = { rim = 32, rimY = 17, gap = 8, line = 40, room = 48 },
+	RIM_OPTS = { shade = "windows" },   -- (W.GlyphButton's: the rim's round shade partner, in the windows' shade)
+}
 local PLATE_FIT = 20         -- the plate's fit height (a game window's title container); its painted part 1.5 x that
 local PLATE_OVERLAP = 8      -- the short plate reaches this far up over the crest's bottom (the approved sketch)
 local GRAB_BOTTOM = -40      -- the drag strip's bottom edge when none is given
@@ -192,6 +260,8 @@ local Shell_OnShow = Shared("OnShow on a kit own window", function(frame)
 		local reshown = shell.parentHidden
 		shell.parentHidden = false
 		shell:Showing(not reshown)
+		-- (UI Shade's settings read again: a profile loaded while it was hidden)
+		shell:ShadeWindow()
 	end
 end, "script")
 
@@ -233,6 +303,20 @@ local function Shells_OnScale(reason)
 	for frame, shell in pairs(shells) do
 		if shell.fit and frame:IsShown() then
 			shell:Fit()
+		end
+	end
+end
+
+-- UI Shade's Windows area switched or its strength moved: every modern
+-- window's soft shade with it (one listener, taken with the first shade)
+local shadeListening = false
+local function Shells_OnShade(area)
+	if area ~= "windows" then
+		return
+	end
+	for _, shell in pairs(shells) do
+		if shell.shade then
+			shell:ShadeWindow()
 		end
 	end
 end
@@ -372,7 +456,8 @@ end
 
 -- the plain look's own extras, made the first time it is shown: the metal
 -- frame (the game's own nine-slice, else a plain edge) and the trim line
--- inside it
+-- inside it (the game's window of wave 4: reached no more since the modern
+-- shell, onelook stage B; stage E deletes it with the game look)
 function Shell:BuildPlain()
 	if self.plainBuilt then
 		return
@@ -418,7 +503,9 @@ function Shell:BuildPlain()
 end
 
 -- the close button as the look has it: the kit's on the plate's line, the
--- plate's height; the game's (the plain look) at its own size and place
+-- plate's height; the modern look's at its own size on the header's middle
+-- line, its right edge on the content inset (a brand row: where opts.brand
+-- puts it)
 function Shell:LayClose()
 	local close = self.close
 	if not close then
@@ -435,17 +522,230 @@ function Shell:LayClose()
 			rep:Refit()
 		end
 	else
-		close:SetSize(GAME_CLOSE, GAME_CLOSE)
-		close:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", GAME_CLOSE_X, GAME_CLOSE_Y)
+		close:SetSize(self.closeSize, self.closeSize)
+		local at = self.brandClose
+		local x = at and tonumber(at[1]) or -self.inset
+		local y = at and tonumber(at[2]) or -FLAT.STRIP / 2
+		close:SetPoint("RIGHT", self.frame, "TOPRIGHT", x, y)
 	end
+end
+
+-- a painted-look-only region (the kit's anchors: the rock its page stone
+-- stands in for, the tint, the calm ground, the plate's box, the crest):
+-- shown only while the kit dresses the window (Look.Show: a region the game
+-- look also hides keeps one record of what is asked)
+function Shell:Painted(region)
+	if region then
+		self.paintedOnly[#self.paintedOnly + 1] = region
+		MelloUI.Look.Show(region, self.kit)
+	end
+	return region
+end
+
+-- The modern look's own parts, made the first time it shows (a window opened
+-- in the painted look makes none until a switch): the flat ground in its
+-- edge, the soft shade round the window, the emblem in the kit's round rim on
+-- its dark disc (mouse off: it never lights or takes a drag), a brand row's
+-- hairline. Each is a plain-look region (shell:Plain): hidden with the kit;
+-- the shade also with UI Shade's Windows area (ShadeWindow).
+function Shell:BuildModern()
+	if self.modernBuilt then
+		return
+	end
+	self.modernBuilt = true
+	local frame = self.frame
+	local ground = W.Solid(frame, "BACKGROUND", "mainWindow", 1)
+	ground:SetDrawLayer("BACKGROUND", FLAT.GROUND)
+	ground:SetAllPoints(frame)
+	self.ground = self:Plain(ground)
+	self.groundEdges = W.Edges(frame, "border", "BORDER")
+	for i = 1, #self.groundEdges do
+		self:Plain(self.groundEdges[i])
+	end
+	local shade = MelloUI.Shade and MelloUI.Shade:Band(frame, FLAT.SHADE)
+	if shade then
+		shade:Anchor(frame)
+		self.shade = shade
+		self:ShadeWindow()
+		if not shadeListening then
+			shadeListening = true
+			MelloUI:On("shade", Shells_OnShade, "Kit own windows")
+		end
+	end
+	if self.emblemTexture then
+		local spec = self.brandShape and FLAT[self.brandShape]
+		local rim = W.GlyphButton(frame, spec and spec.rim or FLAT.RIM, nil, FLAT.RIM_OPTS)
+		rim:SetFrameLevel(frame:GetFrameLevel() + LEVEL_CREST)
+		rim:EnableMouse(false)
+		rim:SetIcon(self.emblemTexture)
+		rim.icon:SetTexCoord(0, 1, 0, 1)   -- (the whole emblem: a round picture, not a spell icon's trimmed square)
+		local C = self.bagPortrait ~= nil and rawget(_G, "C_Container")
+		if type(C) == "table" and C.SetBagPortraitTexture then
+			-- (ring.bag: the bag's own portrait, as the game's bag window draws it)
+			pcall(C.SetBagPortraitTexture, rim.icon, self.bagPortrait)
+		end
+		rim:SetKit(Kit)
+		self.rim = self:Plain(rim)
+	end
+	if self.brandShape == "row" then
+		-- (on a holder of its own over the column, LevelBrand: a region of the
+		-- window itself would lie under the column's body, a child frame)
+		local holder = CreateFrame("Frame", nil, frame)
+		holder:SetFrameLevel(frame:GetFrameLevel() + LEVEL_CREST)
+		holder:EnableMouse(false)
+		local line = W.Solid(holder, "ARTWORK", "border", 1)
+		line:SetHeight(1)
+		self.brandHolder = holder
+		self.brandLine = self:Plain(line)
+	end
+end
+
+-- the window's soft shade as UI Shade has it, as the rim's round shade
+-- partner: shown in the modern look while the Windows area's shade is on
+-- (Kit:ShadeOn), at FLAT.SHADE's alpha scaled by the shade's strength (that
+-- alpha at the default strength)
+function Shell:ShadeWindow()
+	local shade = self.shade
+	if not shade then
+		return
+	end
+	local on = not self.kit and not (Kit.ShadeOn and not Kit:ShadeOn("windows"))
+	shade:SetShown(on)
+	local settings = Kit.shadeSettings
+	local default = settings and Num(settings.default)
+	if on and default and default > 0 and Kit.ShadeStrength then
+		local alpha = FLAT.SHADE.alpha * Kit:ShadeStrength() / default
+		if shade.alpha ~= alpha then
+			shade:SetStrength(alpha)
+		end
+	end
+end
+
+-- the brand's parts over its column: a column in the window's body (a child
+-- frame, or deeper) stands over the window's own regions and its low
+-- children, so the rim and a row's hairline go one level over it, the title's
+-- plate and the close kept over them (raised only, never lowered)
+function Shell:LevelBrand(column)
+	local base = Num(self.frame:GetFrameLevel()) or 0
+	local owner = column.GetFrameLevel and column or (column.GetParent and column:GetParent())
+	local level = math.max(base + LEVEL_CREST, (owner and Num(owner:GetFrameLevel()) or base) + 1)
+	if self.rim then
+		self.rim:SetFrameLevel(level)
+	end
+	if self.brandHolder then
+		self.brandHolder:SetFrameLevel(level)
+	end
+	local plate, close = self.plate, self.close
+	local top = level
+	if plate then
+		top = Num(plate:GetFrameLevel()) or level
+		if top <= level then
+			top = level + 1
+			plate:SetFrameLevel(top)
+		end
+	end
+	if close and (Num(close:GetFrameLevel()) or 0) <= top then
+		close:SetFrameLevel(top + 1)
+	end
+end
+
+-- The modern look laid: the emblem's rim and the title on the strip, or at
+-- the head of the brand's column (none yet: left where they are, until
+-- shell:Brand hands it), the title in the title face
+function Shell:LayModern()
+	local frame, rim, title = self.frame, self.rim, self.title
+	local shape = self.brandShape
+	local column = self.brandColumn
+	local spec = shape and FLAT[shape]
+	if spec and not column then
+		return
+	end
+	if spec then
+		self:LevelBrand(column)
+	end
+	if rim then
+		rim:ClearAllPoints()
+	end
+	if title then
+		title:ClearAllPoints()
+		Kit:TitleFont(title, true)
+	end
+	if shape == "block" then
+		if rim then
+			rim:SetPoint("CENTER", column, "TOP", 0, -spec.rimY)
+		end
+		if title then
+			title:SetJustifyH("CENTER")
+			title:SetPoint("CENTER", column, "TOP", 0, -spec.titleY)
+		end
+	elseif shape == "row" then
+		if rim then
+			rim:SetPoint("CENTER", column, "TOPLEFT", spec.rim / 2, -spec.rimY)
+		end
+		if title then
+			title:SetJustifyH("LEFT")
+			title:SetPoint("LEFT", column, "TOPLEFT", (rim and spec.rim + spec.gap or 0), -spec.rimY)
+			title:SetPoint("RIGHT", column, "TOPRIGHT", 0, -spec.rimY)
+		end
+		local holder, line = self.brandHolder, self.brandLine
+		if holder then
+			holder:ClearAllPoints()
+			holder:SetAllPoints(column)
+		end
+		if line then
+			line:ClearAllPoints()
+			line:SetPoint("TOPLEFT", column, "TOPLEFT", 0, -spec.line)
+			line:SetPoint("TOPRIGHT", column, "TOPRIGHT", 0, -spec.line)
+		end
+	else
+		local inset, mid = self.inset, -FLAT.STRIP / 2
+		if rim then
+			rim:SetPoint("LEFT", frame, "TOPLEFT", inset, mid)
+		end
+		if title then
+			title:SetJustifyH("LEFT")
+			title:SetPoint("LEFT", frame, "TOPLEFT", inset + (rim and FLAT.RIM + FLAT.GAP or 0), mid)
+			title:SetPoint("RIGHT", frame, "TOPRIGHT", -(inset + (self.close and self.closeSize + FLAT.GAP or 0)), mid)
+		end
+	end
+end
+
+-- the drag band: full width from the top, down to the look's grab line (the
+-- painted look's opts.grabBottom; the strip's foot, or opts.brand's grab)
+function Shell:LayGrab()
+	local grab = self.grab
+	grab:ClearAllPoints()
+	grab:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 0, 0)
+	grab:SetPoint("BOTTOMRIGHT", self.frame, "TOPRIGHT", 0, self.kit and self.grabBottom or self.flatGrab)
+end
+
+function Shell:Inset(edge, top)
+	if self.kit then
+		return edge, top
+	end
+	return self.inset, self.brandShape and -self.inset or -FLAT.TOP
+end
+
+function Shell:Brand(column)
+	self.brandColumn = column
+	if not self.kit then
+		self:LayModern()
+		self:LayClose()
+	end
+	local spec = self.brandShape and FLAT[self.brandShape]
+	return spec and spec.room or 0
 end
 
 -- the look switched (the shell's own state, then its listeners)
 function Shell:Switch(on)
 	self.kit = on
 	self:Lay()
-	local reps = self.reps
+	local reps, painted = self.reps, self.paintedOnly
 	if on then
+		-- (the kit's anchors shown first: its reps and its dressing stand on them)
+		for i = 1, #painted do
+			MelloUI.Look.Show(painted[i], true)
+		end
 		for i = 1, #reps do
 			reps[i]:Enable()
 		end
@@ -459,13 +759,19 @@ function Shell:Switch(on)
 		for i = 1, #reps do
 			reps[i]:Disable()
 		end
-		self:BuildPlain()
+		for i = 1, #painted do
+			MelloUI.Look.Show(painted[i], false)
+		end
+		self:BuildModern()
+		-- (after the plates' own switch -- off, the title and the close back where they found them: 0.20.1)
+		self:LayModern()
 	end
-	-- (0.20.1: after the plate's own switch -- off, it puts the close back where it found it)
+	self:LayGrab()
 	self:LayClose()
 	for i = 1, #self.plains do
 		self.plains[i]:SetShown(not on)
 	end
+	self:ShadeWindow()
 	for i = 1, #self.onKit do
 		local ok, err = pcall(self.onKit[i], self, on)
 		if not ok then
@@ -528,9 +834,13 @@ end
 
 -- how far the window's dressing reaches past its edges (left, right, top,
 -- bottom, in its own units): the outer rail with the kit, the crest or the
--- corner ring, the plate riding the rail
+-- corner ring, the plate riding the rail; nothing in the modern look (its
+-- shade is no part to keep on the screen)
 function Shell:Overhang()
-	local out = self.kit and Kit:OuterRailOutset() or 0
+	if not self.kit then
+		return 0, 0, 0, 0
+	end
+	local out = Kit:OuterRailOutset()
 	local l, r, t, b = out, out, out, out
 	if self.crest then
 		t = math.max(t, self.crestTop or 0)
@@ -748,10 +1058,20 @@ function Kit:OwnWindow(frame, opts)
 	opts = opts or {}
 	local shell = setmetatable({
 		frame = frame, area = opts.area, kit = self:IsOn(opts.area) and true or false,
-		reps = {}, queue = {}, plains = {}, onKit = {}, bounds = {},
+		reps = {}, queue = {}, plains = {}, onKit = {}, bounds = {}, paintedOnly = {},
 		fit = opts.fit and true or false, sounds = opts.sounds and true or false,
 		background = opts.background,
+		-- (the modern look's: its content inset, the drag band of each look)
+		inset = tonumber(opts.inset) or FLAT.IN, grabBottom = opts.grabBottom or GRAB_BOTTOM, flatGrab = -FLAT.STRIP,
 	}, Shell)
+	local brand = opts.brand
+	if brand then
+		local spec = type(brand) == "table" and brand or {}
+		local shape = type(brand) == "table" and brand.shape or brand
+		shell.brandShape = shape == "row" and "row" or "block"
+		shell.flatGrab = tonumber(spec.grab) or shell.flatGrab
+		shell.brandClose = type(spec.close) == "table" and spec.close or nil
+	end
 	shell.skin = { reps = shell.reps, followers = {} }
 	shell.replace = function(region, ropts)
 		return shell:Replace(region, ropts)
@@ -774,37 +1094,38 @@ function Kit:OwnWindow(frame, opts)
 	tint:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -PAGE_INSET, PAGE_INSET)
 	self:Paint(tint, "mainWindow", "fill", 0.45)
 	MelloUI.Look.Hide(tint)
-	shell.bg, shell.tint = bg, tint
+	shell.bg, shell.tint = shell:Painted(bg), shell:Painted(tint)
 	-- the calm ground over them both (sublevel 3: over the kit's stone too,
 	-- a region in the rock's layer and sublevel), laid by the look (Lay);
-	-- the painted look's only (the game's windows show their rock)
+	-- the painted look's only (the modern look's ground is its own)
 	if opts.calm then
 		local calm = frame:CreateTexture(nil, "BACKGROUND", nil, 3)
 		self:Paint(calm, "mainWindow", "fill", 1)
 		MelloUI.Look.Hide(calm)
-		shell.calm = calm
+		shell.calm = shell:Painted(calm)
 	end
 
 	-- the drag strip across the top (under the crest and the plate, which
-	-- take no mouse)
+	-- take no mouse), down to the look's grab line (LayGrab)
 	local grab = CreateFrame("Frame", nil, frame)
-	grab:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-	grab:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", 0, opts.grabBottom or GRAB_BOTTOM)
 	grab:SetFrameLevel(base + LEVEL_GRAB)
 	grab:EnableMouse(true)
 	shell.grab = grab
+	shell:LayGrab()
 
 	-- the crest (or the corner ring) and the plain look's emblem in it
 	local ring = opts.ring
 	if ring then
 		shell.ringAt = ring.at == "tl" and "tl" or "top"
 		-- ring.game (a window standing in for a game window: the bag window): the game's own portrait corner, its
-		-- art, its portrait's size and place, in both looks -- no ring of ours (the user, 2026-10-10: the game
-		-- windows' top-left portraits stay the game's; "you did not make that change on the backpack")
+		-- art, its portrait's size and place, with the painted look -- no ring of ours (the user, 2026-10-10: the game
+		-- windows' top-left portraits stay the game's; "you did not make that change on the backpack"); the modern
+		-- look's strip wears its portrait in the kit's rim (onelook stage B; waiting for the user's yes)
 		shell.gameCorner = (ring.game and shell.ringAt == "tl") and true or nil
 		shell.ringSize = (self:Size("window/portrait_ring")) * (ring.scale or 1)
 		shell.ringX, shell.ringY = tonumber(ring.x), tonumber(ring.y)
 		shell.emblemTexture = ring.texture or LOGO
+		shell.bagPortrait = ring.bag   -- (the modern look's rim wears the bag's portrait too)
 		local crest = CreateFrame("Frame", nil, frame)
 		crest:SetFrameLevel(base + (shell.gameCorner and LEVEL_GAME_PORTRAIT or LEVEL_CREST))
 		crest:EnableMouse(false)
@@ -824,7 +1145,7 @@ function Kit:OwnWindow(frame, opts)
 			mask:SetPoint("BOTTOMRIGHT", emblem, "BOTTOMRIGHT", -GAME_MASK_IN, GAME_MASK_UP)
 			emblem:AddMaskTexture(mask)
 		end
-		shell.crest, shell.plainEmblem = crest, emblem
+		shell.crest, shell.plainEmblem = shell:Painted(crest), emblem
 		shell.bounds[#shell.bounds + 1] = crest
 	end
 
@@ -846,10 +1167,13 @@ function Kit:OwnWindow(frame, opts)
 		fill:SetAllPoints(plate)
 		self:Paint(fill, "raisedPanel", "fill", 1)
 		shell.plateFill, shell.plateEdges = fill, W.Edges(plate, "trim")   -- (four 1 px lines, the widget set's)
-		-- (the game's look: the title alone on the bar, no box)
+		-- (the game's look: the title alone on the bar, no box; the modern
+		-- look: no box either, the title on its strip or brand)
 		MelloUI.Look.Hide(fill)
+		shell:Painted(fill)
 		for i = 1, #shell.plateEdges do
 			MelloUI.Look.Hide(shell.plateEdges[i])
+			shell:Painted(shell.plateEdges[i])
 		end
 		local title = plate:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		title:SetPoint("CENTER", plate, "CENTER", 0, 0)
@@ -867,6 +1191,7 @@ function Kit:OwnWindow(frame, opts)
 		close:SetFrameLevel(base + LEVEL_CLOSE)
 		Perf.SetScript(close, "OnClick", Close_OnClick)
 		shell.close = close
+		shell.closeSize = Num(close:GetWidth()) or PLATE_FIT   -- (the widget's own size: the modern look's)
 		Kit.ownClose[frame] = close
 		shell:LayClose()
 	end
@@ -910,7 +1235,8 @@ function Kit:OwnWindow(frame, opts)
 		shell:Kit(DressPlate, shell)
 	end
 	if not shell.kit then
-		shell:BuildPlain()
+		shell:BuildModern()
+		shell:LayModern()
 	end
 	return shell
 end
@@ -1417,7 +1743,9 @@ end
 -- One dialog for all of MelloUI's questions (one system per job): an own
 -- window on the shell above -- the corner ring with the emblem, "MelloUI"
 -- on the plate on the rail, Escape (which cancels), the fit, the sounds, the
--- calm ground (0.15.0) -- a UIParent child at DIALOG strata, the question on
+-- calm ground (0.15.0); in the modern look the strip (it has no side column:
+-- the emblem's rim, "MelloUI", no close) and the panel on the one inset
+-- (ConfirmLay) -- a UIParent child at DIALOG strata, the question on
 -- the dark inner panel (W.Panel, 2e) in the palette's text colour, the two
 -- buttons the widget set's flat ones (the accept one the main action's
 -- gold). Made on its first question, never at login (2f). One question at a
@@ -1442,6 +1770,9 @@ local CONFIRM_BODY = 64        -- the panel's least height
 local CONFIRM_FOOT = 66        -- the band of the buttons under the panel
 local CONFIRM_BUTTON_W, CONFIRM_BUTTON_H, CONFIRM_BUTTON_Y = 120, 24, 28
 local CONFIRM_GAP = 12         -- between the two buttons
+-- (the modern look, pick C: no side column, so the strip; the panel on the one inset from FLAT.TOP, the same 14
+-- from the panel to the buttons: a 64 high question stands 150 high, 194 painted)
+local CONFIRM_FLAT_FOOT = 56
 
 -- the dialog's parts (made on the first question) and the question shown
 local confirm = { frame = nil, shell = nil, body = nil, text = nil, accept = nil, cancel = nil, opts = nil }
@@ -1525,6 +1856,30 @@ local function Label(button, text)
 	button:SetWidth(math.max(CONFIRM_BUTTON_W, (w or 0) + 2 * CONFIRM_PAD))
 end
 
+-- The dialog laid for the look on show and the question in it (at every
+-- question, and the shell's OnKit): the panel under the corner ring and the
+-- rail's plate (painted), or under the strip on the one inset (the modern
+-- look); the question's width in it, the panel as tall as the question, the
+-- buttons the same 14 under it, the window round them
+local function ConfirmLay(sh)
+	local f, body, text = confirm.frame, confirm.body, confirm.text
+	local edge, top = sh:Inset(CONFIRM_EDGE, CONFIRM_TOP)
+	local foot = sh.kit and CONFIRM_FOOT or CONFIRM_FLAT_FOOT
+	body:ClearAllPoints()
+	body:SetPoint("TOPLEFT", f, "TOPLEFT", edge, top)
+	body:SetPoint("TOPRIGHT", f, "TOPRIGHT", -edge, top)
+	text:SetWidth(CONFIRM_W - 2 * (edge + CONFIRM_PAD))
+	local h = Num(text:GetStringHeight()) or 0
+	local height = math.max(CONFIRM_BODY, h + 2 * CONFIRM_PAD)
+	body:SetHeight(height)
+	local y = foot - CONFIRM_FOOT + CONFIRM_BUTTON_Y
+	confirm.accept:ClearAllPoints()
+	confirm.accept:SetPoint("BOTTOMRIGHT", f, "BOTTOM", -CONFIRM_GAP / 2, y)
+	confirm.cancel:ClearAllPoints()
+	confirm.cancel:SetPoint("BOTTOMLEFT", f, "BOTTOM", CONFIRM_GAP / 2, y)
+	f:SetHeight(-top + height + foot)
+end
+
 local function BuildConfirm()
 	local f = CreateFrame("Frame", "MelloUIConfirmDialog", UIParent)
 	f:SetFrameStrata("DIALOG")
@@ -1541,22 +1896,19 @@ local function BuildConfirm()
 	-- the question on the dark inner panel on the calm ground (the eye strain
 	-- rule; one surface, one panel)
 	local body = W.Panel(f)
-	body:SetPoint("TOPLEFT", f, "TOPLEFT", CONFIRM_EDGE, CONFIRM_TOP)
-	body:SetPoint("TOPRIGHT", f, "TOPRIGHT", -CONFIRM_EDGE, CONFIRM_TOP)
-	body:SetHeight(CONFIRM_BODY)
 	local text = W.Text(body, "GameFontHighlight", nil, "text")
 	text:SetJustifyH("CENTER")
 	text:SetJustifyV("MIDDLE")
-	text:SetWidth(CONFIRM_W - 2 * (CONFIRM_EDGE + CONFIRM_PAD))
 	text:SetPoint("CENTER", body, "CENTER", 0, 0)
 	-- accept on the left, cancel on the right (as the game's dialogs); the
 	-- accept one the main action
 	local accept = W.Button(f, "", CONFIRM_BUTTON_W, shell, { height = CONFIRM_BUTTON_H, onClick = Accept_OnClick, gold = true })
-	accept:SetPoint("BOTTOMRIGHT", f, "BOTTOM", -CONFIRM_GAP / 2, CONFIRM_BUTTON_Y)
 	local cancel = W.Button(f, "", CONFIRM_BUTTON_W, shell, { height = CONFIRM_BUTTON_H, onClick = Cancel_OnClick })
-	cancel:SetPoint("BOTTOMLEFT", f, "BOTTOM", CONFIRM_GAP / 2, CONFIRM_BUTTON_Y)
 	confirm.frame, confirm.shell, confirm.body, confirm.text = f, shell, body, text
 	confirm.accept, confirm.cancel = accept, cancel
+	ConfirmLay(shell)
+	-- (a look switched while a question shows, or at its show)
+	shell:OnKit(ConfirmLay)
 end
 
 function MelloUI:Confirm(opts)
@@ -1574,10 +1926,7 @@ function MelloUI:Confirm(opts)
 	Label(confirm.accept, opts.accept or "OK")
 	Label(confirm.cancel, opts.cancel or "Cancel")
 	-- the panel as tall as the question
-	local h = Num(confirm.text:GetStringHeight()) or 0
-	local body = math.max(CONFIRM_BODY, h + 2 * CONFIRM_PAD)
-	confirm.body:SetHeight(body)
-	f:SetHeight(-CONFIRM_TOP + body + CONFIRM_FOOT)
+	ConfirmLay(confirm.shell)
 	if f:IsShown() then
 		confirm.shell:Fit()
 	else

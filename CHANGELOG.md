@@ -14,6 +14,15 @@
 - Minimap: Painted Skin now only paints the minimap. Without it the round map wears the game's own ring, sized with the map, and a painted square border shows as the Chat panel.
 - Quest log and Quest List: the section headings, the difficulty gem before each quest and the round icon rims show for everyone, not only with the painted quest log skin. Switching the skin off takes away only the dark parchment ink.
 - Quest log with the Gamepad UI and without the painted skin: no difficulty gems on the game's own rows, so the map stays smooth with a controller.
+- MelloUI's windows have a new look without the painted reskin. The configurator has no title bar: the logo and MelloUI head its side list, and its buttons sit on one line above the pages.
+- The question dialog, the copy window, the Restock List, the installer and the bag window have a slim title strip: the emblem in a round rim, the title and the close. The soft shade round the windows follows UI Shade's Windows switch and strength.
+- Swing Timers: your weapon's icon in a round rim beside a flat dark bar, the seconds just past its end. The shot bar shows your bow, the melee bar your weapon, or your wand while it shoots; the icon turns red out of range. The Framed and Hairline looks are gone, Label And Time is now Seconds, and the Swing Timer Border no longer frames them.
+- Damage meter: the race bar is a slim line. Round class pins ride on it, your share is filled in your class colour, and the whole bar sits on a soft shade; its line stays where the old bar's was. The list when you point at it uses MelloUI's flat panel.
+- Damage meter: new Race Bar Thickness (Bars & Meters > Damage Meter, and in Edit Layout) sets how thick your share is. It replaces Race Bar Height.
+- Fight History: the title and your class's face head the fight list, the fight's name and the close share one line, and the window drags by its top. Each player's face sits in a round rim, their share a thin rail in their class colour; your spells use the same rail.
+- Quest Tracker: the quest you follow has a thin gold ring round its mark (dark on the parchment). A quest's item shows its whole picture on a small dark tray with a soft shadow; its edge turns gold under the pointer.
+- Route: the flight map marks the flight point your route flies to with a bead of the route's trail instead of the gem.
+- Chat View: its tabs, its round buttons and the whisper window wear the round rims and the title font with or without the painted reskin.
 
 ## 0.24.0
 

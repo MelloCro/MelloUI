@@ -154,7 +154,10 @@ local M = MelloUI:RegisterModule("Meter", {
 		metric = "auto",
 		pins = T.PINS,
 		barWidth = 260,
-		barHeight = 10,
+		-- (onelook B "Rail", 2026-10-15: Race Bar Thickness, your share's height
+		-- on the rail, took Race Bar Height's place -- a new key, since every
+		-- player has barHeight = 10 saved; that saved value is not read)
+		railHeight = 4,
 		summary = true,
 		history = true,
 		historySize = T.HISTORY,
@@ -168,7 +171,7 @@ local M = MelloUI:RegisterModule("Meter", {
 		{ type = "toggle", key = "raid", name = "On Raid-Style Frames",
 		  desc = "A small DPS or healing number on the right of each raid-style or raid frame, beside the health. In a fight, players MelloUI cannot tell apart stay empty until it ends. Point at a frame for all three numbers." },
 		{ type = "toggle", key = "bar", name = "Race Bar",
-		  desc = "In a fight, one bar for the group: the top player at its right end with their value, everyone else a class icon at their share of the top, you the gold pin with the bar filled up to you. It fades in when the fight starts and out when it ends. The pointer on it lists everyone. Move it in Edit Layout." },
+		  desc = "In a fight, one line for the group: the top player at its right end with their value, everyone else a class icon at their share of the top, you the bigger icon with the line filled up to you in your class colour. It fades in when the fight starts and out when it ends. The pointer on it lists everyone. Move it in Edit Layout." },
 		{ type = "dropdown", key = "metric", name = "Race Bar Shows",
 		  values = { { value = "auto", label = "Auto" }, { value = "dps", label = "Damage" }, { value = "hps", label = "Healing" } },
 		  desc = "What the race bar races. Auto: healing while your group role is healer, else damage." },
@@ -176,8 +179,8 @@ local M = MelloUI:RegisterModule("Meter", {
 		  desc = "The most players on the race bar: the best ones, and always you." },
 		{ type = "slider", key = "barWidth", name = "Race Bar Width", min = 150, max = 600, step = 10,
 		  desc = "How wide the race bar is. Also in Edit Layout: right-click the race bar." },
-		{ type = "slider", key = "barHeight", name = "Race Bar Height", min = 4, max = 24, step = 1,
-		  desc = "How tall the race bar is (its pins and labels keep their size). Also in Edit Layout: right-click the race bar." },
+		{ type = "slider", key = "railHeight", name = "Race Bar Thickness", min = 2, max = 8, step = 1, new = "0.25.0",
+		  desc = "How thick your share is on the race bar's line (its pins and labels keep their size). Also in Edit Layout: right-click the race bar." },
 		{ type = "toggle", key = "summary", name = "Fight Summary",
 		  desc = "After a fight, for a few seconds in the widget column (longer while you point at it): won or lost and its length, your damage, DPS and rank, the ring your share of the group. The pointer on it shows the top five; a click opens the fight in the Fight History." },
 		{ type = "toggle", key = "history", name = "Fight History",
@@ -1798,7 +1801,7 @@ function M:OnSettingChanged(key, value, db)
 		end
 		wipe(runCache)
 		MelloUI:Fire("meter", "clear")
-	elseif key == "bar" or key == "metric" or key == "pins" or key == "barWidth" or key == "barHeight" then
+	elseif key == "bar" or key == "metric" or key == "pins" or key == "barWidth" or key == "railHeight" then
 		if Meter.Bar and Meter.Bar.Apply then
 			Meter.Bar.Apply()
 		end

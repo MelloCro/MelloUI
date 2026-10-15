@@ -3179,9 +3179,7 @@ local function CopyFrame()
 		close = true, escape = true, fit = true, sounds = true, calm = true,
 		mover = { key = "copy", plainDrag = "always", label = "Copy window" } })
 	f.shell, f.title = shell, shell.title
-	local body = W.Panel(f)
-	body:SetPoint("TOPLEFT", f, "TOPLEFT", COPY_EDGE, COPY_TOP)
-	body:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -COPY_EDGE, COPY_FOOT)
+	local body = W.Panel(f)   -- (placed by the look: Lay, below)
 	f.body = body
 	-- (the scroll bar inside the panel, on its right)
 	local scroll = CreateFrame("ScrollFrame", "MelloUICopyScroll", body, "UIPanelScrollFrameTemplate")
@@ -3193,7 +3191,6 @@ local function CopyFrame()
 	edit:SetAutoFocus(false)
 	edit:SetFontObject(ChatFontNormal)
 	W.Paint(edit, "text", "text")
-	edit:SetWidth(COPY_W - 2 * COPY_EDGE - 44)
 	edit:SetScript("OnEscapePressed", function() f:Hide() end)
 	edit:SetScript("OnEditFocusGained", function(self)
 		if not f.onAccept then
@@ -3212,14 +3209,25 @@ local function CopyFrame()
 	-- the band under the panel: what the keys do (full-size text: no small
 	-- text on the window's ground), and Import while pasting
 	f.hint = W.Text(f, "GameFontHighlight", nil, "text")
-	f.hint:SetPoint("LEFT", f, "BOTTOMLEFT", COPY_EDGE + 4, COPY_FOOT / 2)
 	f.accept = W.Button(f, "Import", COPY_BUTTON_W, shell, { height = COPY_BUTTON_H, gold = true, onClick = function()
 		local fn = f.onAccept
 		if fn and fn(f.edit:GetText()) then
 			f:Hide()
 		end
 	end })
-	f.accept:SetPoint("RIGHT", f, "BOTTOMRIGHT", -COPY_EDGE, COPY_FOOT / 2)
+	-- the panel, the text's width and the band under it on the look's inset
+	-- (onelook, the modern shell: under its strip on the one inset; the
+	-- painted one: under the corner ring), again at every look switch
+	local function Lay(sh)
+		local edge, top = sh:Inset(COPY_EDGE, COPY_TOP)
+		body:SetPoint("TOPLEFT", f, "TOPLEFT", edge, top)
+		body:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -edge, COPY_FOOT)
+		edit:SetWidth(COPY_W - 2 * edge - 44)
+		f.hint:SetPoint("LEFT", f, "BOTTOMLEFT", edge + 4, COPY_FOOT / 2)
+		f.accept:SetPoint("RIGHT", f, "BOTTOMRIGHT", -edge, COPY_FOOT / 2)
+	end
+	Lay(shell)
+	shell:OnKit(Lay)
 	copyFrame = f
 	return f
 end

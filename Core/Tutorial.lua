@@ -76,7 +76,7 @@ end
 local STEPS = {
 	{ page = "Home", point = "BottomEdgeCenter",
 	  target = function(c) return c.part("title") end,
-	  text = "Welcome to MelloUI. This is its settings window: /mello opens it, or the MelloUI button in the game menu (Escape); its emblem and its name sit on top. Every part of your interface has its page here. This tour shows where things live; close the window to stop it." },
+	  text = "Welcome to MelloUI. This is its settings window: /mello opens it, or the MelloUI button in the game menu (Escape). Every part of your interface has its page here. This tour shows where things live; close the window to stop it." },
 	{ page = "Home", point = "RightEdgeTop",
 	  target = function(c) return c.part("nav") end,
 	  text = "The side list: the pages by group (The look, Frames and bars, Chat and text, Quests and travel, Sound), gold for the page you are on. Click a group's name to fold it. The box over it searches every setting: each result shows where it lives (page, tab and section), and a click takes you there." },
@@ -102,7 +102,7 @@ local STEPS = {
 	  text = "Edit Layout: move and resize everything. Drag an element, wheel to resize, right-click for its size, position and snapping, Ctrl+right-click to reset it. Nothing is kept until you choose Save. Action bars and unit frames open the game's Edit Mode from there." },
 	-- (the top bar's Install… is there while the installer is)
 	{ page = "Windows", point = "BottomEdgeCenter", target = BarTarget, part = "install",
-	  text = "Install…, in the top bar: the installer. It sets MelloUI up in a few steps, fitted to your screen: Full experience, No reskin, Reskin only or Fresh start. You have 15 seconds to keep the new setup, and Revert on Home's Your setup goes back later." },
+	  text = "Install…, at the top right: the installer. It sets MelloUI up in a few steps, fitted to your screen: Full experience, No reskin, Reskin only or Fresh start. You have 15 seconds to keep the new setup, and Revert on Home's Your setup goes back later." },
 	{ page = "VoiceOver", point = "RightEdgeCenter", target = NavTarget,
 	  text = "Voice Over: every quest giver and greeting read aloud, in a voice matched to the NPC's race and gender. With the voice pack installed the recorded lines play; without it the text-to-speech voices do. The overlay shows who is speaking. In chat: /vo stop, /vo packs. The quest log gets a Read button." },
 	{ page = "QuestList", point = "RightEdgeCenter", target = NavTarget,

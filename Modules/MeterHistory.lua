@@ -11,25 +11,39 @@
 --           scrolls it (only the rows in view are laid)
 --   right   the fight's head line (name, length, won or lost, time); tabs
 --           Damage / Healing / Your spells (W.FlatTab); the ledger: each
---           player's class medallion, rank and name, the share line of the
---           top, per second and the total; under Damage, your top spells
+--           player's class face, rank and name, the share of the top on a
+--           rail, per second and the total; under Damage, your top spells
 -- Its shell is Kit:OwnWindow (the own windows' look, "config"; its mover
 -- "MelloUIFightHistory", right above the chat by default); the body is the
--- dark inner panel, or the meter's parchment with its painted edge while the
--- damage meter's Parchment is on (Kit:ParchmentSheet / Kit:StoneDim, area
--- "meter"), its text then in dark ink (MelloUI.QuestInk surface "meter").
--- Built on its first open (WINDOW-RULES 2f).
+-- own windows' panel (W.Panel), with the meter's parchment and its painted
+-- edge on it while the damage meter's Parchment is on (Kit:ParchmentSheet,
+-- area "meter"), its text then in dark ink (MelloUI.QuestInk surface
+-- "meter"; the modern look's title too, on the paper there) and the panel's
+-- edge hidden under the paper's own. Built on its first open (WINDOW-RULES
+-- 2f).
+-- The look (onelook stage B, the user's picks, 2026-10-15): the shell's C,
+-- "the brand column" (docs/plans/onelook-b-sketches/shell.md,
+-- shell_small.jpg): no title bar; a brand row heads the list column (your
+-- class's face in the kit's round rim, "Fight History" in the title face,
+-- a hairline under them: shell:Brand), the fight's name and the close on
+-- that row's line, the window dragged by its top band (0-56: the brand row
+-- and the fight's head, no controls); the painted look (Oldschool) keeps its
+-- corner ring and rail plate and lays the body as before (shell:Inset). The
+-- meter's B, "the rail" (onelook-b-sketches/meter.md, meter_looks.jpg), as
+-- the race bar: each ledger row's face a W.RoundIcon in the kit's rim, the
+-- share 3 tall in the class colour on a hairline rail, your spells the same
+-- in trim, "Your spells" a W.Header. These are its only look: the game's
+-- meter bars and round class icons are reached no more (stage E deletes
+-- them), and Oldschool does not dress the rows.
 -- The chat button: a small rising bar chart in the chat's left button
 -- column, under the channels' "#" (and the voice buttons when they show),
 -- dressed as the column's own (ChatPanel's pick C: the glyph on a dark
 -- disc). A child of the column, so Chat Buttons off hides it with the rest.
 -- Tooltip "Fight History / Every fight of this session"; a click toggles the
 -- window. Made after the login's frames while Fight History is on.
--- With the reskin off (docs/plans/game-look.md, wave 2) its contents
--- take the game's look through MelloUI.Look: the game's fonts and colours,
--- the settings list's marks on the rows, the game's meter bars for the share
--- lines and the spells, its round class icons; the chat button the game's
--- own column button (the chat's look, as its neighbours).
+-- Its texts, the rows' marks and the chat button still go through
+-- MelloUI.Look (docs/plans/game-look.md, wave 2), whose game half no longer
+-- shows (onelook stage C: Look:On answers true; stage E deletes it).
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -42,19 +56,35 @@ local Kit = MelloUI.Kit
 local Look = MelloUI.Look
 local Meter = ns.Meter
 local M = Meter.M
+local Num, Text = MelloUI.Safe.Number, MelloUI.Safe.Text
 local ipairs, pairs, type, max, min, floor = ipairs, pairs, type, math.max, math.min, math.floor
 
-local WHITE = "Interface\\Buttons\\WHITE8x8"
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+local UNKNOWN_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local AREA = "meter"   -- (the parchment's and the ink's area: the damage meter's)
 
+-- TOP, PAD: the painted look's body (under its corner ring and rail plate);
+-- IN: the two columns inside the body; GRAB, CLOSE_X / CLOSE_Y: the modern
+-- look's drag band (from the top) and the close's right edge and middle
+-- (from the top right: on the brand row's line, over the ledger's numbers);
+-- BRAND_MID: the brand row's middle line under the column's top (the shell's
+-- row rim, Kit:OwnWindow), where the fight's name sits too. The ledger (the
+-- meter's pick B, "Rail"): FACE the class's face in the kit's rim at FACE_X,
+-- FACE_IN its own bronze ring cut off; the texts TEXT_UP over the row's
+-- middle, GAP from the face and the row's end; the rail RAIL_DOWN under the
+-- middle, 1 tall, the share SHARE tall on it; the spells' rail SPELL_W long
+-- at SPELL_X (in both looks: no width read from the inset)
 local H = {
-	WIDTH = 660, HEIGHT = 430, TOP = 34, PAD = 14, FOOT = 40,
+	WIDTH = 660, HEIGHT = 430, TOP = 34, PAD = 14, FOOT = 40, IN = 8,
 	LIST_W = 236, ROW = 34, HEAD = 22, RUN_ROW = 40,
-	LEDGER_ROW = 28, LEDGER_MAX = 8, MEDAL = 20, SPELL_ROW = 17, SPELLS_SHORT = 4,
+	LEDGER_ROW = 28, LEDGER_MAX = 8, SPELL_ROW = 17, SPELLS_SHORT = 4,
+	FACE = 24, FACE_X = 2, FACE_IN = 0.09, TEXT_UP = 4, GAP = 6, RAIL_DOWN = 7.5, SHARE = 3, SPELL_X = 160, SPELL_W = 110,
 	TAB_W = 96, BUTTON = 32, DISC = 22, GLYPH = 14,
-	BAR_GAME = 5,   -- (the share lines' and the spells' bars in the game's look)
+	GRAB = 56, CLOSE_X = 20, CLOSE_Y = 33, BRAND_MID = 17,
+	BAR_GAME = 5,   -- (the game's look's bars: reached no more, stage E deletes it)
 }
+-- (the ledger's faces: the kit rim's whole-UI shade partner, the windows' area)
+local FACE_OPTS = { shade = "windows" }
 
 local TEXT = {
 	title = "Fight History",
@@ -70,7 +100,7 @@ local TEXT = {
 	damage = "Damage",
 	healing = "Healing",
 	spells = "Your spells",
-	spellsHead = "YOUR SPELLS",
+	spellsHead = "Your spells",
 	won = "fight won",
 	lost = "you died",
 	noSpells = "No spells of yours in this fight.",
@@ -107,15 +137,28 @@ local function ClassColour(class)
 	return nil
 end
 
--- a texture in a class's colour (else the palette's key)
-local function Tint(tex, class, key)
+-- a share in its player's class colour, out of the palette's repaint (else
+-- the palette's gold)
+local function ShareColour(tex, class)
 	local r, g, b = ClassColour(class)
 	if r then
-		Look.Unpaint(tex)
+		Kit:Unpaint(tex, "vertex")
 		tex:SetVertexColor(r, g, b)
 	else
-		Look.Paint(tex, key or "trim", "vertex")
+		W.Paint(tex, "selectedTrim", "vertex")
 	end
+end
+
+-- a class's face: its plain medallion (no diamonds; the kit's rim takes the
+-- place of its own bronze ring, cut off with FACE_IN), else the question mark
+local function FaceOf(class)
+	local path = class and MelloUI.ClassIconPath and MelloUI:ClassIconPath(class, "plain")
+	return path or UNKNOWN_ICON
+end
+
+-- a face's picture cut to the medallion inside its own ring
+local function CutFace(icon)
+	icon:SetTexCoord(H.FACE_IN, 1 - H.FACE_IN, H.FACE_IN, 1 - H.FACE_IN)
 end
 
 -- a player's name as the window says it: "You" in gold
@@ -137,6 +180,32 @@ local function InkRoots()
 	return win.left, win.right
 end
 
+-- what the paper changes past the ink's walk (the surface's onRefresh: the
+-- parchment switched, a lay; and Lay, a look switched): the body's edge
+-- hidden under the paper's own torn edge (both looks); the shell's title, on
+-- the paper in the modern look (the brand row heads the list column), in
+-- dark ink as the rest (the painted look's title on its plate: plain)
+local function Sheet(on)
+	local body, sh = win.body, win.shell
+	if not (body and sh) then
+		return
+	end
+	local edges = body.panelEdges
+	for i = 1, #edges do
+		edges[i]:SetShown(not on)
+	end
+	local QI, title = MelloUI.QuestInk, sh.title
+	if not (QI and QI.InkText and title) then
+		return
+	end
+	if on and not sh.kit then
+		QI.onSheet[title] = true
+		QI.InkText(title)
+	else
+		QI.PlainText(title)
+	end
+end
+
 local function Ink()
 	local QI = MelloUI.QuestInk
 	if not (QI and QI.Surface) then
@@ -144,7 +213,7 @@ local function Ink()
 	end
 	if not surfaceMade then
 		surfaceMade = true
-		QI.Surface(AREA, { on = InkOn, sheet = true, roots = InkRoots })
+		QI.Surface(AREA, { on = InkOn, sheet = true, roots = InkRoots, onRefresh = Sheet })
 	else
 		QI.RefreshSurface(AREA)
 	end
@@ -383,37 +452,36 @@ local function LedgerRow(i)
 	row:SetHeight(H.LEDGER_ROW)
 	row:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, -(i - 1) * H.LEDGER_ROW)
 	row:SetPoint("RIGHT", pane, "RIGHT", 0, 0)
-	local disc = row:CreateTexture(nil, "ARTWORK", nil, 1)
-	disc:SetTexture(ROUND_MASK)
-	disc:SetSize(H.MEDAL + 2, H.MEDAL + 2)
-	disc:SetPoint("LEFT", row, "LEFT", 2, 0)
-	Look.Paint(disc, "border", "vertex")
-	Look.Hide(disc)   -- (the game's round class icon has its own rim)
-	row.disc = disc
-	local medal = row:CreateTexture(nil, "ARTWORK", nil, 2)
-	medal:SetSize(H.MEDAL, H.MEDAL)
-	medal:SetPoint("CENTER", disc, "CENTER")
-	row.medal = medal
+	-- the class's face in the kit's round rim (no lit state: yours is told by
+	-- its gold "You"); its picture set by LayLedger when the class changes
+	local face = W.RoundIcon(row, H.FACE, UNKNOWN_ICON, FACE_OPTS)
+	face:SetKit(Kit)
+	-- (click-through: W.RoundIcon's SetKit keeps a mouse turned off through
+	-- the kit rim's mouse hooks, in either order)
+	face:EnableMouse(false)
+	CutFace(face.icon)
+	face:SetPoint("LEFT", row, "LEFT", H.FACE_X, 0)
+	row.face = face
+	-- the texts on one line over the row's middle
 	row.name = Font(row, 13, "text")
-	row.name:SetPoint("LEFT", disc, "RIGHT", 6, 3)
-	row.name:SetPoint("RIGHT", row, "RIGHT", -130, 0)
+	row.name:SetPoint("LEFT", face, "RIGHT", H.GAP, H.TEXT_UP)
+	row.name:SetPoint("RIGHT", row, "RIGHT", -130, H.TEXT_UP)
 	row.total = Font(row, 13, "text", "RIGHT")
-	row.total:SetPoint("RIGHT", row, "RIGHT", -6, 3)
+	row.total:SetPoint("RIGHT", row, "RIGHT", -H.GAP, H.TEXT_UP)
 	row.rate = Font(row, 11, "note", "RIGHT")
 	row.rate:SetPoint("RIGHT", row.total, "LEFT", -10, 0)
 	row.rate:SetAlpha(0.8)
-	-- the share line: the top's whole width, this one's share of it (the
-	-- game's meter bar in its look, a little taller so its art reads)
-	local track = Look.Solid(row, "BORDER", "border", 0.6)
-	track:SetHeight(2)
-	track:SetPoint("BOTTOMLEFT", disc, "BOTTOMRIGHT", 6, 1)
-	track:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+	-- the rail under them: a hairline the top's whole width, this one's share
+	-- of it on it (the status bars' Bar Texture, its class's colour)
+	local track = W.Solid(row, "BACKGROUND", "border", 1)
+	track:SetHeight(1)
+	track:SetPoint("LEFT", face, "RIGHT", H.GAP, -H.RAIL_DOWN)
+	track:SetPoint("RIGHT", row, "RIGHT", -H.GAP, -H.RAIL_DOWN)
 	row.track = track
 	local share = row:CreateTexture(nil, "ARTWORK")
-	share:SetTexture(WHITE)
-	share:SetHeight(2)
+	share:SetTexture(W.BarFill())
+	share:SetHeight(H.SHARE)
 	share:SetPoint("LEFT", track, "LEFT", 0, 0)
-	Look.Bar(share, { track = track, height = H.BAR_GAME })
 	row.share = share
 	win.ledger[i] = row
 	return row
@@ -433,21 +501,20 @@ local function SpellRow(i)
 	row.name:SetPoint("LEFT", row, "LEFT", 4, 0)
 	row.name:SetWidth(150)
 	row.value = Font(row, 12, "text", "RIGHT")
-	row.value:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+	row.value:SetPoint("RIGHT", row, "RIGHT", -H.GAP, 0)
+	-- the ledger's rail (the user's pick B: its dark outline of 2026-10-01
+	-- went): the hairline as long as the best spell's, this one's share of it
+	-- on it in trim
+	local rail = W.Solid(row, "BACKGROUND", "border", 1)
+	rail:SetHeight(1)
+	rail:SetPoint("LEFT", row, "LEFT", H.SPELL_X, 0)
+	row.rail = rail
 	local bar = row:CreateTexture(nil, "ARTWORK")
-	bar:SetTexture(WHITE)
-	bar:SetHeight(3)
-	bar:SetPoint("LEFT", row, "LEFT", 160, 0)
-	Look.Paint(bar, "trim", "vertex")
+	bar:SetTexture(W.BarFill())
+	bar:SetHeight(H.SHARE)
+	bar:SetPoint("LEFT", rail, "LEFT", 0, 0)
+	W.Paint(bar, "trim", "vertex")
 	row.bar = bar
-	-- its dark outline, 1 px round it (the user's test, 2026-10-01: the bare
-	-- trim line hardly showed on the parchment); the game's meter bar and its
-	-- own shadowed edge in the game's look
-	local outline = Look.Solid(row, "BORDER", "mainWindow", 0.9)
-	outline:SetPoint("TOPLEFT", bar, "TOPLEFT", -1, 1)
-	outline:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 1, -1)
-	row.outline = outline
-	Look.Bar(bar, { outline = outline, height = H.BAR_GAME })
 	win.spellRows[i] = row
 	return row
 end
@@ -467,14 +534,17 @@ local function LaySpells(fight, count, top)
 	pane:SetHeight(18 + max(1, n) * H.SPELL_ROW)
 	pane:SetShown(fight ~= nil)
 	win.spellsEmpty:SetShown(fight ~= nil and n == 0)
-	local width = (win.board:GetWidth() or 300) - 160 - 90
+	local width = H.SPELL_W
 	local best = spells[1] and spells[1].a or 1
 	for i = 1, n do
 		local sp, row = spells[i], SpellRow(i)
 		row.name:SetText(sp.n)
 		local pct = total > 0 and floor(sp.a / total * 100 + 0.5) or 0
 		row.value:SetText(Meter.Big(sp.a) .. "  " .. pct .. "%")
-		row.bar:SetWidth(max(1, width * sp.a / max(best, 1)))
+		local share = min(1, sp.a / max(best, 1))
+		row.rail:SetWidth(width)
+		row.bar:SetWidth(max(1, width * share))
+		row.bar:SetTexCoord(0, share, 0, 1)   -- (the fill cut as a status bar's, not squeezed)
 		row:Show()
 	end
 	for i = n + 1, #win.spellRows do
@@ -503,7 +573,8 @@ local function LayLedger()
 	end
 	local list = LedgerRows(sel, win.tab)
 	local n = min(#list, H.LEDGER_MAX)
-	local width = (win.board:GetWidth() or 300) - (H.MEDAL + 14) - 6
+	-- (the rail: from the face's right GAP on to GAP short of the row's end)
+	local width = max(1, (win.board:GetWidth() or 300) - (H.FACE_X + H.FACE + H.GAP) - H.GAP)
 	local top = list[1] and list[1].value or 1
 	for i = 1, n do
 		local e, row = list[i], LedgerRow(i)
@@ -511,9 +582,16 @@ local function LayLedger()
 		Look.Tint(row.name, e.me and "gold" or nil)   -- (you in gold)
 		row.total:SetText(Meter.Big(e.value))
 		row.rate:SetText(TEXT.perSecond:format(Meter.Plain(e.rate)))
-		Look.ClassIcon(row.medal, e.c, Meter.ClassIcon(e.c))
-		row.share:SetWidth(max(1, width * e.value / max(top, 1)))
-		Tint(row.share, e.c, e.me and "selectedTrim" or "trim")
+		-- (the picture set only when the row's class changes)
+		local class = e.c or false
+		if row.class ~= class then
+			row.class = class
+			row.face:SetIcon(FaceOf(e.c))
+		end
+		local share = min(1, e.value / max(top, 1))
+		row.share:SetWidth(max(1, width * share))
+		row.share:SetTexCoord(0, share, 0, 1)   -- (the fill cut as a status bar's, not squeezed)
+		ShareColour(row.share, e.c)
 		row:Show()
 	end
 	if n == 0 then
@@ -651,9 +729,79 @@ local function Home(frame)
 	end
 end
 
-local function MyEmblem()
+-- your class (nil while it cannot be read)
+local function MyClass()
 	local ok, _, class = pcall(_G.UnitClass, "player")
-	return ok and Meter.ClassIcon(class) or nil
+	return ok and Text(class) or nil
+end
+
+-- the brand row's rim (the modern look's, made the first time it shows)
+-- wears your class's face as the ledger's faces do: the plain medallion, its
+-- own bronze ring cut off (the painted look's corner ring keeps the whole
+-- medallion); without one, the shell's emblem stays (tried again at the
+-- next lay: your class not read yet)
+local function BrandFace(sh)
+	local rim = sh.rim
+	if not rim or win.brandFace == rim then
+		return
+	end
+	local class = MyClass()
+	local path = class and MelloUI.ClassIconPath and MelloUI:ClassIconPath(class, "plain")
+	if path then
+		win.brandFace = rim
+		rim:SetIcon(path)
+		CutFace(rim.icon)
+	end
+end
+
+-- the window's parts where the look puts them, at the build and at every
+-- switch (shell:OnKit): the body on the shell's inset (the painted look's
+-- own numbers under its corner ring and rail plate, the modern look's round
+-- its brand column), the list under the brand row (the room shell:Brand
+-- gave), the fight's name on the brand row's line, clear of the close; the
+-- paper's parts (Sheet); then, while it shows, what is counted from the
+-- inset's sizes laid again (the list's rows in view, the ledger's shares and
+-- its room for your spells)
+local function Lay(sh)
+	local body, right, name = win.body, win.right, win.headName
+	local edge, top = sh:Inset(H.PAD, -H.TOP)
+	body:ClearAllPoints()
+	body:SetPoint("TOPLEFT", win.frame, "TOPLEFT", edge, top)
+	body:SetPoint("BOTTOMRIGHT", win.frame, "BOTTOMRIGHT", -edge, edge)
+	local modern = not sh.kit
+	local runRow = win.runRow
+	runRow:ClearAllPoints()
+	runRow:SetPoint("TOPLEFT", win.left, "TOPLEFT", 0, modern and -win.room or 0)
+	runRow:SetPoint("RIGHT", win.left, "RIGHT", 0, 0)
+	name:ClearAllPoints()
+	if modern then
+		-- (the close's right edge CLOSE_X in from the window's, the right
+		-- column's IN in from the body's)
+		local close = sh.close and Num(sh.close:GetWidth()) or 0
+		local clear = max(4, H.CLOSE_X + close + H.GAP - (edge + H.IN))
+		name:SetPoint("LEFT", right, "TOPLEFT", 2, -H.BRAND_MID)
+		name:SetPoint("RIGHT", right, "TOPRIGHT", -clear, -H.BRAND_MID)
+		BrandFace(sh)
+	else
+		name:SetPoint("TOPLEFT", right, "TOPLEFT", 2, -2)
+		name:SetPoint("RIGHT", right, "RIGHT", -4, 0)
+	end
+	Sheet(InkOn())
+	if win.frame:IsShown() then
+		LayAll()
+	end
+end
+
+-- the status bars' Bar Texture set or switched (W.BarFill): the shares and
+-- the spells' bars take it
+local function BarTexture()
+	local fill = W.BarFill()
+	for _, row in ipairs(win.ledger) do
+		row.share:SetTexture(fill)
+	end
+	for _, row in ipairs(win.spellRows) do
+		row.bar:SetTexture(fill)
+	end
 end
 
 local function Build()
@@ -666,34 +814,32 @@ local function Build()
 	f:Hide()
 	Perf.SetScript(f, "OnShow", Shown)
 	win.frame = f
+	local class = MyClass()
 	win.shell = Kit:OwnWindow(f, {
-		area = "config", ring = { at = "tl", texture = MyEmblem() }, plate = "rail", title = TEXT.title,
-		close = true, escape = true, fit = true, sounds = true,
+		area = "config", ring = { at = "tl", texture = class and Meter.ClassIcon(class) or nil }, plate = "rail",
+		title = TEXT.title, close = true, escape = true, fit = true, sounds = true,
 		mover = { key = "MelloUIFightHistory", label = TEXT.title, page = "BarsMeters", default = Home },
+		-- (the modern look: the brand row at the list column's head, the drag
+		-- band the top GRAB, the close on the brand row's line)
+		brand = { shape = "row", grab = -H.GRAB, close = { -H.CLOSE_X, -H.CLOSE_Y } },
 	})
-	-- the body: the dark inner panel, or the meter's parchment
-	local body = CreateFrame("Frame", nil, f)
-	body:SetPoint("TOPLEFT", f, "TOPLEFT", H.PAD, -H.TOP)
-	body:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -H.PAD, H.PAD)
+	-- the body: the own windows' panel, the meter's parchment on it while
+	-- that is on (laid by Lay)
+	local body = W.Panel(f)
 	win.body = body
-	local dim = Kit.StoneDim and Kit:StoneDim(body, { rect = body, area = AREA, alpha = 0.85 })
-	if not dim then
-		local fill = Look.Solid(body, "BACKGROUND", "innerPanel", 0.85)
-		fill:SetAllPoints(body)
-	end
 	if Kit.ParchmentSheet then
 		Kit:ParchmentSheet(body, body, { rect = body, margin = 0, area = AREA, fine = true })
 	end
-	-- the left side
+	-- the left side: the list column, the brand row at its head (the modern
+	-- look's; its room under the column's top)
 	local left = CreateFrame("Frame", nil, body)
-	left:SetPoint("TOPLEFT", body, "TOPLEFT", 8, -8)
-	left:SetPoint("BOTTOMLEFT", body, "BOTTOMLEFT", 8, 8)
+	left:SetPoint("TOPLEFT", body, "TOPLEFT", H.IN, -H.IN)
+	left:SetPoint("BOTTOMLEFT", body, "BOTTOMLEFT", H.IN, H.IN)
 	left:SetWidth(H.LIST_W)
 	win.left = left
+	win.room = win.shell:Brand(left)
 	local runRow = NewSlot(left)
 	runRow:SetHeight(H.RUN_ROW)
-	runRow:SetPoint("TOPLEFT", left, "TOPLEFT", 0, 0)
-	runRow:SetPoint("RIGHT", left, "RIGHT", 0, 0)
 	runRow.head:Hide()
 	runRow.line:Hide()
 	runRow.name:SetText(TEXT.thisRun)
@@ -727,11 +873,9 @@ local function Build()
 	-- the right side
 	local right = CreateFrame("Frame", nil, body)
 	right:SetPoint("TOPLEFT", left, "TOPRIGHT", 18, 0)
-	right:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -8, 8)
+	right:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -H.IN, H.IN)
 	win.right = right
-	win.headName = Font(right, 15, "gold")
-	win.headName:SetPoint("TOPLEFT", right, "TOPLEFT", 2, -2)
-	win.headName:SetPoint("RIGHT", right, "RIGHT", -4, 0)
+	win.headName = Font(right, 15, "gold")   -- (laid by Lay)
 	win.headSub = Font(right, 11, "note")
 	win.headSub:SetPoint("TOPLEFT", win.headName, "BOTTOMLEFT", 0, -3)
 	win.tabs = {}
@@ -765,13 +909,16 @@ local function Build()
 	local spellPane = CreateFrame("Frame", nil, board)
 	spellPane:Hide()
 	win.spellPane = spellPane
-	local spellsHead = Font(spellPane, 11, "gold")
-	spellsHead:SetPoint("TOPLEFT", spellPane, "TOPLEFT", 4, 0)
-	spellsHead:SetText(TEXT.spellsHead)
+	-- (the own windows' section heading: its title's middle 7 under the
+	-- pane's top, where the old heading sat, so the rows keep their place)
+	win.spellsHead = W.Header(spellPane, -7, TEXT.spellsHead, { x = 4 })
 	win.spellsEmpty = Font(board, 12, "text")
 	win.spellsEmpty:SetPoint("TOPLEFT", spellPane, "TOPLEFT", 4, -18)
 	win.spellsEmpty:SetText(TEXT.noSpells)
 	win.spellsEmpty:Hide()
+	Lay(win.shell)
+	win.shell:OnKit(Lay)
+	W.OnBarTexture("statusbars", BarTexture, "Fight History bars")
 	W.Dress(f, win.shell)
 	return f
 end

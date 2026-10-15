@@ -2207,12 +2207,16 @@ local function Build()
 	win.frame = f
 	-- the game's own backpack corner (the user, 2026-10-10: the game windows' top-left portrait and its border stay
 	-- the game's; "you did not make that change on the backpack"): the shell's ring.game -- the game's corner art,
-	-- the backpack icon round at the game's portrait size and place, in both looks
+	-- the backpack icon round at the game's portrait size and place, with the painted look; the modern shell (onelook
+	-- stage B: the strip of a window without a side column) wears the backpack's portrait in its rim, the strip's
+	-- ends on the search row's (G.SIDE). NOT the user's pick yet: the portrait in the kit's rim instead of the game's
+	-- corner waits for the user's yes (the window-portraits rule counts this window a game window)
 	win.shell = Kit:OwnWindow(f, {
 		area = AREA, plate = "rail",
 		ring = { at = "tl", texture = "Interface\\Buttons\\Button-Backpack-Up", game = true, bag = 0 },   -- (the backpack's portrait)
 		title = TEXT.title, close = true, escape = true, fit = true, background = WindowBackground,
 		mover = { key = "MelloUIBagWindow", label = TEXT.title, page = "Windows", default = M.Home },
+		inset = G.SIDE,
 	})
 	MelloUI:On("setting", BackgroundChanged, "Bag window background")
 	-- the items, on the own windows' dark panel (user, 2026-10-04: "this part should have a darker background for

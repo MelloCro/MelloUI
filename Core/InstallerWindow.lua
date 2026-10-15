@@ -3183,9 +3183,12 @@ local function Build()
 	-- the shell: the corner ring with the emblem, the plate on the rail,
 	-- close, Escape, the fit, the sounds; its one mover keeps no place; the
 	-- calm ground (0.15.0: one flat ground, the stone only as a band inside
-	-- the rail)
+	-- the rail); the modern look (onelook, the user's pick C): the strip (the
+	-- step titles are too long for a brand row in the steps rail), its ends on
+	-- the window's margin
 	win.shell = Kit:OwnWindow(frame, { area = "installer", ring = { at = "tl", texture = LOGO }, plate = "rail",
-		title = STEPS.choose.title, close = true, escape = true, fit = true, sounds = true, mover = MOVER, calm = true })
+		title = STEPS.choose.title, close = true, escape = true, fit = true, sounds = true, mover = MOVER, calm = true,
+		inset = EDGE })
 	state.escape = true
 	-- the steps rail
 	win.rail = W.NavRail(frame, { width = RAIL_W, rowHeight = 32, iconSize = 0, numbered = true, scroll = false,
@@ -3213,6 +3216,16 @@ local function Build()
 	local scroll = win.pager.scroll
 	scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", BODY_X - LOOK_BLEED, TOP)
 	scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -EDGE + LOOK_BLEED, BODY_BOTTOM)
+	-- (the rail's and the body's top where the shell's look has it: under the
+	-- corner ring, or under the modern shell's strip; again at every switch)
+	local function ShellLay(sh)
+		local _, top = sh:Inset(EDGE, TOP)
+		win.rail.box:SetPoint("TOPLEFT", frame, "TOPLEFT", EDGE, top)
+		body:SetPoint("TOPLEFT", frame, "TOPLEFT", BODY_X, top)
+		scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", BODY_X - LOOK_BLEED, top)
+	end
+	ShellLay(win.shell)
+	win.shell:OnKit(ShellLay)
 	-- the footer: the screen line (or why Install waits), Back, Continue or
 	-- Install (the way forward is the main action: gold, as Install)
 	local f = win.foot

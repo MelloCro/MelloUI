@@ -116,7 +116,10 @@ FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPan
              # Regular's own 1.1 makes Full's Size Text 1, the default)
              "Fonts.scaleTitle", "Fonts.scaleText", "Fonts.scaleDamage",
              # (0.19.4, the options audit: Class Icons' PvP Flag Icon removed; MelloUI:MergeSettings drops it)
-             "ClassIcons.pvpFlag"]
+             "ClassIcons.pvpFlag",
+             # (0.25.0, the race bar's rail: Race Bar Height removed, Race Bar Thickness (Meter.railHeight) in its
+             # place, a new key; a saved height is simply not read)
+             "Meter.barHeight"]
 EDIT_MODE_FRAMES = ["MinimapCluster", "DamageMeter", "ChatFrame1", "ObjectiveTrackerFrame"]
 # the installer's additions to the keep lists and the one-time flag name rule
 # (the installer build's test_options.py name check)

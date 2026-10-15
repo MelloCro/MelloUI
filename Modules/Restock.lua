@@ -1580,6 +1580,7 @@ end
 --------------------------------------------------------------------------------
 
 local LIST_W, LIST_TOP, INTRO_H, LIST_FOOT = 480, 66, 44, 56
+local LIST_EDGE = 14   -- the panel's margin in the painted look (the modern shell's: its one inset, shell:Inset)
 local ROW_STEP = W.SLIDER_ROW_HEIGHT or 40
 local win = { frame = nil, body = nil, rows = {}, pools = { stack = {}, ammo = {}, item = {} }, addValues = {}, shell = nil }
 local ListLayout   -- (below)
@@ -1828,7 +1829,9 @@ ListLayout = function()
 	if win.add and win.add.Refresh then
 		win.add:Refresh()
 	end
-	f:SetHeight(LIST_TOP + INTRO_H + max(1, list.n) * ROW_STEP + LIST_FOOT + 16)
+	-- (the panel's top as the shell's look has it: shell:Inset)
+	local _, top = win.shell:Inset(LIST_EDGE, -LIST_TOP)
+	f:SetHeight(-top + INTRO_H + max(1, list.n) * ROW_STEP + LIST_FOOT + 16)
 end
 
 -- a count while the window is open: the hints
@@ -1907,10 +1910,9 @@ local function BuildList()
 		close = true, escape = true, fit = true, sounds = true,
 		mover = { key = "MelloUIRestockList", label = "Restock list", page = "Restock" },
 	})
-	-- the text sits on the dark inner panel (the eye strain rule)
+	-- the text sits on the dark inner panel (the eye strain rule), placed by
+	-- the look (Lay, below)
 	local body = CreateFrame("Frame", nil, f)
-	body:SetPoint("TOPLEFT", f, "TOPLEFT", 14, -LIST_TOP)
-	body:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -14, LIST_FOOT)
 	local fill = W.Solid(body, "BACKGROUND", "innerPanel", 0.85)
 	fill:SetAllPoints(body)
 	body:EnableMouse(true)
@@ -1925,9 +1927,22 @@ local function BuildList()
 		"fontText", _G.GameFontHighlight)
 	win.empty:SetPoint("TOPLEFT", body, "TOPLEFT", 22, -(INTRO_H + 12))
 	win.add = W.Dropdown(f, 200, AddGet, AddSet, win.addValues, { default = "Add a line", tooltip = "Drink, food, ammunition or your class's reagents." })
-	win.add:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 18, 18)
 	win.reset = W.Button(f, "Suggested", 100, win.shell, { onClick = ResetClick })
-	win.reset:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -18, 18)
+	-- the panel and the controls under it on the look's inset (onelook, the
+	-- modern shell: under its strip on the one inset; the painted one: under
+	-- the corner ring), the window's height with them, at every look switch
+	local function Lay(sh)
+		local edge, top = sh:Inset(LIST_EDGE, -LIST_TOP)
+		body:SetPoint("TOPLEFT", f, "TOPLEFT", edge, top)
+		body:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -edge, LIST_FOOT)
+		win.add:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", edge + 4, 18)
+		win.reset:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -(edge + 4), 18)
+		if f:IsShown() then
+			ListLayout()
+		end
+	end
+	Lay(win.shell)
+	win.shell:OnKit(Lay)
 	W.Dress(f, win.shell)
 	return f
 end

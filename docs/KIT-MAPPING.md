@@ -678,7 +678,7 @@ round buttons wear the kit's round rim; off, the minimap's tracking rim.
 | the Restock List window | `Kit:OwnWindow` (the standard corner ring and the plate on the rail), its rows on the dark body, B1 / D1 / SL1 as the configurator's |
 | the Services' Errands group | a sixth cell of the row of groups (SV1 box, SR2 rims), its tray a list like the other groups' |
 | the Quest Tracker's nearest-first switch | `buttons/arrow_up_normal` / `_hover` on the title plate's left gem, dimmed while off |
-| the flight map's wanted flight point | `deco/gem_small`, 10 units on the point's 16-unit button, pulsing through `Anim:Pulse`; shown only while the map shows that button |
+| the flight map's wanted flight point | no kit piece since the one look (stage B, the user's pick B): one bead of the route's own trail (Route.lua's painter `Dot`, style `M.flight.BEAD`), 10 units on the point's 16-unit button, pulsing through `Anim:Pulse`; shown only while the map shows that button (was `deco/gem_small`) |
 | the palette pickers (the configurator's Look > General, the installer's Look step) | `W.PaletteSwatch` (a strip of a palette's colours) beside a D1 dropdown; the installer's `W.Card`s in the palette look; Home's Your setup names the palette in use (`W.PaletteName`) with Change… to its row on Look |
 
 ## MelloUI's own services bar (Modules/Services.lua, 2026-09-22)

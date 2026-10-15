@@ -20,23 +20,34 @@
 --           ("Moving"), standing still starts it again.
 --   melee   the main hand's swings (PLAYER_SWING MainHand), pale; the off
 --           hand's on a thinner bar under it (60 % of its height, shown with
---           an off-hand weapon only); a wand's shots ("Shoot (wand)") on the
---           main hand's bar, as the user asked.
+--           an off-hand weapon only); a wand's shots on the main hand's bar
+--           (the wand's icon in its rim meanwhile), as the user asked.
 -- Each fill is a StatusBar the ENGINE counts down (MelloUI.Anim:Timer, the
 -- Center fill style) with its seconds written by the engine too
 -- (Anim:TimerText): no Lua each frame, and the bars hidden while nothing
 -- runs (Show: In Combat), or idle at rest (Show: Always). Out of range (the
 -- game's own check, PLAYER_SWING_RANGE_UPDATE) a bar is at 0.4, as the
--- game's.
--- The looks (Kit:IsOn("castbar"), the cast bars' painted look):
---   castbar   A: the cast bar's own bracket (Kit:Replace "ui-castingbar-frame"),
---             the bar's name above it on the left, its seconds on the right
---   hairline  B: the same piece as the thin rim (bar = "rimhair"), no text
---   the cast bars' look off: the game's own swing timer bar (its ground,
---   frame and the hand's fill: MelloUI.Look.GameSwing), the labels in the
---   game's font and white (docs/plans/game-look.md wave 3); the bars still
---   empty from both ends to the middle, as ours
--- Both stand on the UI Shade's Cast Bars area (Kit:ShadeElement).
+-- game's, and its weapon's icon red.
+-- The look (one look, the user's pick C "Round rim", 2026-10-15:
+-- docs/plans/onelook-b-sketches/swing.md, swing_looks.jpg), the same for
+-- everyone, the painted reskin on or off (the user's decision 8: MelloUI's
+-- own HUD parts have no painted branch):
+--   the weapon's icon in the kit's round rim (W.RoundIcon through SetKit,
+--   its own round shade, the UI Shade's Cast Bars area; click-through) hung
+--   outside the bar's left end: the ranged slot's on the shot bar, the main
+--   hand's on the melee bar, the wand's while a wand shoots; red-tinted out
+--   of range (Meaning.actionRange, as the action buttons)
+--   the bar: a flat dark track (W.Panel: innerPanel in a 1 px border edge),
+--   the Width wide and the Height tall, the fill 1 inside its edge; the off
+--   hand's 60 % tall, 3 under it, the pair centred on the rim (the main
+--   track alone without an off-hand weapon)
+--   the seconds (and Hold / Moving) outside the bar's right end, 10 past it
+--   as the game's cast bar hangs its time, in a 40 wide column, the numbers
+--   face at 12 in the palette's text; no name
+--   one soft band (MelloUI.Shade:Band) behind the bar and the seconds only,
+--   never over the round rim
+-- The rim grows with the Height (never smaller than the main and off-hand
+-- pair, 26 at least); the bar stays centred over the player's cast bar.
 -- The game's swing timers are switched off while this is on (its own CVar,
 -- showSwingTimer, held by MelloUI:HoldCVar; the player's value comes back
 -- when this is off), out of combat only -- and held off: switched on again
@@ -72,7 +83,7 @@ local W = MelloUI.Widgets
 
 local M = MelloUI:RegisterModule("SwingTimers", {
 	title = "Swing Timers",
-	desc = "A shot bar and a melee bar in MelloUI's look in place of the game's swing timers: each swing and shot counted down, the off hand under the main hand, a wand's shots on the melee bar. The game's own swing timers are switched off while this is on, and come back as you had them when it is off. While the Personal Display shows your swing on its rails (Swing On The Rails), these bars step aside.",
+	desc = "A shot bar and a melee bar in MelloUI's look in place of the game's swing timers: each swing and shot counted down beside your weapon's icon, the off hand under the main hand, a wand's shots on the melee bar. The game's own swing timers are switched off while this is on, and come back as you had them when it is off. While the Personal Display shows your swing on its rails (Swing On The Rails), these bars step aside.",
 	icon = "Interface\\Icons\\Ability_Marksmanship",
 	flavour = "Every swing and shot at a glance.",
 	role = "replaces",
@@ -83,7 +94,9 @@ local M = MelloUI:RegisterModule("SwingTimers", {
 	installer = false,
 	-- the player's own game setting, given back when off: never in a profile
 	keep = { "savedSwing" },
-	defaults = { shot = true, melee = true, offhand = true, look = "castbar", text = true, show = "combat", width = 200,
+	-- (one look, 2026-10-15: `look` "rim", the Round rim, its only value; a saved "castbar" / "hairline" -- Framed and
+	-- Hairline, the painted looks -- is ignored and set to it at each enable)
+	defaults = { shot = true, melee = true, offhand = true, look = "rim", text = true, show = "combat", width = 200,
 		height = 10 },
 	options = {
 		{ type = "toggle", key = "shot", name = "Shot Bar",
@@ -93,14 +106,14 @@ local M = MelloUI:RegisterModule("SwingTimers", {
 		{ type = "toggle", key = "offhand", name = "Off Hand Bar",
 		  desc = "A thinner bar under the melee bar for your off-hand weapon's swings, while you carry one." },
 		{ type = "dropdown", key = "look", name = "Look",
-		  values = { { value = "castbar", label = "Framed" }, { value = "hairline", label = "Hairline" } },
-		  desc = "Framed: the frame you pick in Swing Timer Border (the cast bar's by default), with the bar's name and the seconds left. Hairline: a thin rim on a soft shade, nothing else. With the cast bars' painted look off, both are a plain bar." },
-		{ type = "toggle", key = "text", name = "Label And Time",
-		  desc = "The bar's name above it on the left (Auto Shot, Main Hand, Shoot (wand)) and the seconds left on the right." },
+		  values = { { value = "rim", label = "Round rim" } },
+		  desc = "Round rim: your weapon's icon in a round rim left of a flat dark bar (the bow on the shot bar, the main hand's weapon on the melee bar, the wand's while a wand shoots), the seconds past the bar's right end. Out of range the icon turns red and the bar dims." },
+		{ type = "toggle", key = "text", name = "Seconds",
+		  desc = "The seconds left, past the bar's right end; on the shot bar Hold and Moving there while you aim. Off: the bars alone." },
 		{ type = "slider", key = "width", name = "Width", min = 100, max = 400, step = 5,
-		  desc = "How wide the bars are. Also in Edit Layout (right-click a bar there)." },
+		  desc = "How wide the bars are; the weapon's rim hangs left of them and the seconds right of them. Also in Edit Layout (right-click a bar there)." },
 		{ type = "slider", key = "height", name = "Height", min = 6, max = 24, step = 1,
-		  desc = "How tall the bars are; the off hand's is 60 % of it. Also in Edit Layout." },
+		  desc = "How tall the bars are; the off hand's is 60 % of it, and the weapon's rim grows with them from 15 on. Also in Edit Layout." },
 		{ type = "dropdown", key = "show", name = "Show",
 		  values = { { value = "combat", label = "In Combat" }, { value = "always", label = "Always" } },
 		  desc = "In Combat: a bar shows in a fight once it swings or shoots, and fades out when the fight ends (the shot bar also when Auto Shot stops). Always: each bar shows while you carry a weapon for it, at rest between swings." },
@@ -111,16 +124,23 @@ local M = MelloUI:RegisterModule("SwingTimers", {
 -- The bars
 --------------------------------------------------------------------------------
 
--- sizes in UI units: the label row above a bar, the off hand's bar under the
--- main hand's (OFF of its height, GAP between), the label's size, the
--- dimming out of range (the game's OUT_OF_RANGE_ALPHA), the fades
-local B = { ABOVE = 14, GAP = 5, OFF = 0.6, LABEL = 11, OUT = 0.4, FADE_IN = 0.15, FADE_OUT = 0.6, CAST_GAP = 30,
-	BAR_GAP = 8,
+-- sizes in UI units: the off hand's bar under the main hand's (OFF of its
+-- height, PAIR between), the dimming out of range (the game's
+-- OUT_OF_RANGE_ALPHA), the fades, the melee bar over the cast bar and the
+-- shot bar over the melee bar; the Round rim (one look, 2026-10-15): the rim
+-- (RIM at least) RIM_GAP left of the bar, the seconds T_GAP past its right
+-- end in a T_COL column (Moving, the widest word, 38.9 at 12) at TIME, the
+-- track's fill alpha, the band behind the bar and the seconds; the sliders'
+-- range, read back as the bounds of a saved size (Size)
+local B = { OFF = 0.6, PAIR = 3, OUT = 0.4, FADE_IN = 0.15, FADE_OUT = 0.6, CAST_GAP = 30, BAR_GAP = 8,
+	RIM = 26, RIM_GAP = 6, T_GAP = 10, T_COL = 40, TIME = 12, TRACK = 0.85,
+	BAND = { colour = "innerPanel", alpha = 0.55, feather = 14 }, BAND_X = 4, BAND_Y = 6,
+	MIN_W = 100, MAX_W = 400, MIN_H = 6, MAX_H = 24,
+	PLAIN = { 1, 1, 1 },   -- an icon's own colours (its vertex colour untinted)
 	AIM = 0.5 }   -- the shot's aim at the cycle's end (Classic's Auto Shot; the user's log: 0.36-0.58 s after stopping)
 local CVAR = "showSwingTimer"
 local TYPE = { main = 0, off = 1, ranged = 2 }
-local TEXT = { shot = "Auto Shot", main = "Main Hand", wand = "Shoot (wand)", off = "Off Hand",
-	shotMover = "Shot Timer", meleeMover = "Swing Timer", hold = "Hold", moving = "Moving" }
+local TEXT = { shotMover = "Shot Timer", meleeMover = "Swing Timer", hold = "Hold", moving = "Moving" }
 local MOVER = { shot = "swingshot", melee = "swingmelee" }
 local KINDS = { "shot", "melee" }
 
@@ -131,33 +151,56 @@ local S = { bars = {}, fight = false, autoShot = false, ran = {}, wand = false, 
 	looking = false, hasRanged = nil, hasOff = nil,
 	-- the shot's stage ("reload", "aim", "wait"; nil: none), when its aim is
 	-- due, and the player moving
-	shotStage = nil, aimAt = 0, moving = false }
+	shotStage = nil, aimAt = 0, moving = false,
+	-- the weapons' icons as last read plainly ([key] = the texture; false: an empty slot): the rims' (Rim.Read)
+	icon = {} }
 local Shot = {}   -- the shot bar's two stages (below)
+local Rim = {}    -- the weapon's icon in its round rim, and the Round rim's sizes (below)
 
 local function On()
 	return M.isEnabled and true or false
 end
 
+-- the Width (the bar) and the Height, whole, inside the sliders' range (a
+-- saved size from elsewhere never makes a bar too small to read)
 local function Size()
 	local db = M.db
 	local w = Num(db and db.width) or 200
 	local h = Num(db and db.height) or 10
-	return math.floor(w + 0.5), math.floor(h + 0.5)
+	w = math.min(B.MAX_W, math.max(B.MIN_W, math.floor(w + 0.5)))
+	h = math.min(B.MAX_H, math.max(B.MIN_H, math.floor(h + 0.5)))
+	return w, h
 end
 
--- a label: MelloUI's text font and the palette while the cast bars wear the
--- kit, the game's small white font in its look (MelloUI.Look)
-local function StyleText(fs, size)
-	MelloUI.Look.Text(fs, "text", size, { area = "castbar" })
+-- the Round rim's sizes from the Height: the off hand's bar (60 % of it) and
+-- the rim (never smaller than the main and off-hand pair, RIM at least: 26
+-- up to Height 14); the holder's width and height (the rim, its gap, the
+-- bar, the seconds' column) and how far its middle stands right of the
+-- bar's (Home: the bar centred over the cast bar; 9 at the rim's 26)
+function Rim.Sizes()
+	local w, h = Size()
+	local offH = math.max(3, math.floor(h * B.OFF + 0.5))
+	local r = math.max(B.RIM, h + B.PAIR + offH)
+	local holderW = r + B.RIM_GAP + w + B.T_GAP + B.T_COL
+	return w, h, offH, r, holderW, (B.T_GAP + B.T_COL - r - B.RIM_GAP) / 2
+end
+
+-- a text past the bar: the numbers face (Fonts' Chat & numbers) at TIME in
+-- the palette's text, a soft drop shadow (MelloUI.Look's text roles)
+local function StyleText(fs)
+	MelloUI.Look.Text(fs, "number", B.TIME, { key = "text", object = "GameFontHighlight" })
 	fs:SetShadowOffset(1, -1)
 end
 
--- one track: a frame and the fill (a StatusBar the engine counts down, from
--- both ends to the middle); `hand` the game's fill for it in its look
-local function NewTrack(holder, colour, hand)
+-- one track: a flat dark bar (W.Panel: innerPanel in a 1 px border edge) and
+-- the fill 1 inside its edge (a StatusBar the engine counts down, from both
+-- ends to the middle, in the Cast Bars' Bar Texture)
+local function NewTrack(holder, colour)
 	local track = CreateFrame("Frame", nil, holder)
+	W.Panel(track, { on = true, alpha = B.TRACK })
 	local fill = CreateFrame("StatusBar", nil, track)
-	fill:SetAllPoints(track)
+	fill:SetPoint("TOPLEFT", track, "TOPLEFT", 1, -1)
+	fill:SetPoint("BOTTOMRIGHT", track, "BOTTOMRIGHT", -1, 1)
 	fill:SetStatusBarTexture(W.BarFill("castbars"))
 	local style = _G.Enum and _G.Enum.StatusBarFillStyle
 	if style and style.Center and fill.SetFillStyle then
@@ -166,21 +209,22 @@ local function NewTrack(holder, colour, hand)
 	fill:SetStatusBarColor(colour[1], colour[2], colour[3])
 	fill:SetMinMaxValues(0, 1)
 	fill:SetValue(0)
-	return { frame = track, fill = fill, colour = colour, hand = hand }
+	return { frame = track, fill = fill, colour = colour }
 end
 
--- the default place: just above the player's cast bar (the shot bar above
--- the melee bar), else above the screen's bottom middle
+-- the default place: the bar centred just above the player's cast bar (the
+-- shot bar BAR_GAP above the melee bar's holder), else above the screen's
+-- bottom middle
 local function Home(kind)
 	return function(holder)
 		holder:ClearAllPoints()
 		local cast = _G.PlayerCastingBarFrame
-		local _, h = Size()
-		local up = B.CAST_GAP + (kind == "shot" and (B.ABOVE + h + B.GAP + h * B.OFF + B.BAR_GAP) or 0)
+		local _, _, _, r, _, x = Rim.Sizes()
+		local up = B.CAST_GAP + (kind == "shot" and (r + B.BAR_GAP) or 0)
 		if type(cast) == "table" and cast.GetObjectType then
-			holder:SetPoint("BOTTOM", cast, "TOP", 0, up)
+			holder:SetPoint("BOTTOM", cast, "TOP", x, up)
 		else
-			holder:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 220 + up)
+			holder:SetPoint("BOTTOM", UIParent, "BOTTOM", x, 220 + up)
 		end
 		return true
 	end
@@ -201,28 +245,31 @@ local function Build(kind)
 	ui = { kind = kind, holder = holder, shown = false }
 	S.bars[kind] = ui
 	local Meaning = MelloUI.Meaning
-	ui.main = NewTrack(holder, kind == "shot" and Meaning.swingShot or Meaning.swingMelee,
-		kind == "shot" and "ranged" or "main")
+	ui.main = NewTrack(holder, kind == "shot" and Meaning.swingShot or Meaning.swingMelee)
 	ui.tracks = { ui.main }
 	if kind == "melee" then
-		ui.off = NewTrack(holder, Meaning.swingMelee, "off")
+		ui.off = NewTrack(holder, Meaning.swingMelee)
 		ui.tracks[2] = ui.off
 	end
-	local label = holder:CreateFontString(nil, "OVERLAY")
-	StyleText(label, B.LABEL)
-	label:SetPoint("BOTTOMLEFT", ui.main.frame, "TOPLEFT", 2, 2)
-	label:SetText(kind == "shot" and TEXT.shot or TEXT.main)
-	ui.label = label
+	-- the weapon's round rim (its kit rim and icon laid by Look; click-through: a HUD bar never catches the pointer)
+	local _, _, _, r = Rim.Sizes()
+	ui.rim = W.RoundIcon(holder, r, nil, Rim.OPTS)
+	ui.rim:EnableMouse(false)
+	-- one soft band behind the bar and the seconds, never over the rim: laid on a span of anchors only (Lay)
+	ui.span = CreateFrame("Frame", nil, holder)
+	ui.band = MelloUI.Shade:Band(holder, B.BAND)   -- look-ok: the one look's band (onelook B2; no game twin since stage C)
+	ui.band:Anchor(ui.span, B.BAND_X, B.BAND_Y)
+	-- the seconds past the bar's right end (no name: the rim's icon names the weapon)
 	local time = holder:CreateFontString(nil, "OVERLAY")
-	StyleText(time, B.LABEL)
-	time:SetPoint("BOTTOMRIGHT", ui.main.frame, "TOPRIGHT", -2, 2)
+	StyleText(time)
+	time:SetPoint("LEFT", ui.main.frame, "RIGHT", B.T_GAP, 0)
 	ui.time = time
 	ui.timed = MelloUI.Anim:TimerText(time, ui.main.fill)
 	if kind == "shot" then
 		-- (the aim's word in the seconds' place: "Hold", "Moving")
 		local state = holder:CreateFontString(nil, "OVERLAY")
-		StyleText(state, B.LABEL)
-		state:SetPoint("BOTTOMRIGHT", ui.main.frame, "TOPRIGHT", -2, 2)
+		StyleText(state)
+		state:SetPoint("LEFT", ui.main.frame, "RIGHT", B.T_GAP, 0)
 		state:Hide()
 		ui.state = state
 	end
@@ -238,91 +285,60 @@ local function Build(kind)
 	return ui
 end
 
--- the sizes: the label row, the main bar, the off hand's under it
+-- the sizes (Rim.Sizes): the rim at the holder's left, the bar RIM_GAP right
+-- of it, the main track alone centred on the rim or, with an off-hand weapon,
+-- the main and off-hand pair centred on it (laid again when the off hand's
+-- bar shows or hides: an equipment change, never per frame); the band's span
+-- over the bar (and the off hand's) and the seconds' column
 Lay = function(ui)
-	local w, h = Size()
-	local offH = math.max(3, math.floor(h * B.OFF + 0.5))
-	local main, off = ui.main.frame, ui.off and ui.off.frame
+	local w, h, offH, r, holderW = Rim.Sizes()
+	local offOn = ui.off ~= nil and Rim.OffWanted() or false
+	ui.offOn = offOn
+	ui.holder:SetSize(holderW, r)
+	local rim = ui.rim
+	rim:ClearAllPoints()
+	rim:SetPoint("LEFT", ui.holder, "LEFT", 0, 0)
+	if rim.size ~= r then
+		-- (the Height changed: the rim at its new size, its kit rim's icon fitted into the opening again)
+		rim.size = r
+		rim:SetSize(r, r)
+		Rim.Dress(ui)
+	end
+	local main = ui.main.frame
 	main:ClearAllPoints()
-	main:SetPoint("TOPLEFT", ui.holder, "TOPLEFT", 0, -B.ABOVE)
-	main:SetPoint("TOPRIGHT", ui.holder, "TOPRIGHT", 0, -B.ABOVE)
-	main:SetHeight(h)
-	local height = B.ABOVE + h
-	if off then
-		off:ClearAllPoints()
-		off:SetPoint("TOPLEFT", main, "BOTTOMLEFT", 0, -B.GAP)
-		off:SetPoint("TOPRIGHT", main, "BOTTOMRIGHT", 0, -B.GAP)
-		off:SetHeight(offH)
-		height = height + B.GAP + offH
-	end
-	ui.holder:SetSize(w, height)
-	for _, t in pairs(ui.tracks) do
-		if t.rep and t.rep.Refit then
-			pcall(t.rep.Refit, t.rep)
-		end
-		if t.game then
-			MelloUI.Look.GameSwing(t.frame, t.fill, t.hand, true, t == ui.off and offH or h)   -- (its inset by its height)
-		end
-	end
-end
-
--- the look of one track: the cast bar's bracket (A) or its hairline (B)
--- while the cast bars wear the kit, else the game's own swing timer bar
-local function LookTrack(t, kit, bar, height)
-	MelloUI.Look.GameSwing(t.frame, t.fill, t.hand, false)
-	t.fill:SetStatusBarTexture(W.BarFill("castbars"))
-	t.fill:SetStatusBarColor(t.colour[1], t.colour[2], t.colour[3])
-	local Kit = MelloUI.Kit
-	if kit and t.rep == nil and Kit and Kit.Replace then
-		local layer, sublevel, troughLayer, troughSub = Kit:BracketLayers(t.fill)
-		-- (0.20.1: the cast bar's bracket, its border the Swing Timer Border's -- ownBorder: not the Cast Bar Border's)
-		local ok, rep = pcall(Kit.Replace, Kit, t.fill, { as = "ui-castingbar-frame", parent = t.fill, rect = t.fill,
-			noFade = true, bar = bar, ownBorder = true, layer = layer, sublevel = sublevel, troughLayer = troughLayer,
-			troughSub = troughSub })
-		t.rep = ok and rep or false
-		if t.rep and Kit.ShadeElement then
-			-- (the UI Shade's Cast Bars area, as the cast bars' own)
-			pcall(function()
-				Kit:ShadeElement(t.frame, "castbars", { anchor = rawget(t.rep, "trough") }):Add(t.rep)
-			end)
-		end
-	end
-	local rep = t.rep
-	if rep then
-		if kit then
-			if rep.SetBar then
-				rep:SetBar(bar)
-			end
-			rep:Enable()
-			pcall(rep.Refit, rep)
-		else
-			rep:Disable()
-		end
-	end
-	t.game = not (kit and rep)
-	if t.game then
-		MelloUI.Look.GameSwing(t.frame, t.fill, t.hand, true, height)
-	end
-end
-
-Look = function(ui)
-	local Kit = MelloUI.Kit
-	local kit = Kit and Kit.IsOn and Kit:IsOn("castbar") and true or false
-	local db = M.db
-	local hairline = db and db.look == "hairline"
-	-- (0.20.1) Framed: the Swing Timer Border (Look > Borders: the cast bar's bracket by default, or any of the
-	-- library's); Hairline: its thin rim
-	local bar = hairline and "rimhair" or (kit and Kit.BorderValue and Kit:BorderValue("swing")) or "castbar"
-	local _, h = Size()
-	LookTrack(ui.main, kit, bar, h)
+	main:SetSize(w, h)
+	main:SetPoint("TOPLEFT", ui.holder, "LEFT", r + B.RIM_GAP, (offOn and (h + B.PAIR + offH) or h) / 2)
+	local low = main
 	if ui.off then
-		LookTrack(ui.off, kit, bar, math.max(3, math.floor(h * B.OFF + 0.5)))
+		local off = ui.off.frame
+		off:ClearAllPoints()
+		off:SetPoint("TOPLEFT", main, "BOTTOMLEFT", 0, -B.PAIR)
+		off:SetPoint("TOPRIGHT", main, "BOTTOMRIGHT", 0, -B.PAIR)
+		off:SetHeight(offH)
+		off:SetShown(offOn)
+		if offOn then
+			low = off
+		end
 	end
-	-- A's label and seconds (B: the bar alone)
-	local text = not hairline and not (db and db.text == false)
+	local span = ui.span
+	span:ClearAllPoints()
+	span:SetPoint("TOPLEFT", main, "TOPLEFT", 0, 0)
+	span:SetPoint("BOTTOMRIGHT", low, "BOTTOMRIGHT", B.T_GAP + B.T_COL, 0)
+end
+
+-- the look, laid on build, a setting and the Bar Texture's change: each
+-- fill in the Cast Bars' Bar Texture and its colour, the weapon in the kit's
+-- round rim, the seconds on or off (Seconds)
+Look = function(ui)
+	for _, t in ipairs(ui.tracks) do
+		t.fill:SetStatusBarTexture(W.BarFill("castbars"))
+		t.fill:SetStatusBarColor(t.colour[1], t.colour[2], t.colour[3])
+	end
+	Rim.Dress(ui)
+	local db = M.db
+	local text = not (db and db.text == false)
 	ui.textOn = text
-	ui.label:SetShown(text)
-	ui.time:SetShown(text and ui.timed)
+	ui.time:SetShown(text and ui.timed and true or false)
 	if ui.kind == "shot" then
 		Shot.Paint(ui)
 	end
@@ -378,6 +394,90 @@ end
 -- the ranged slot's weapon a wand (its swings on the melee bar): the shared read (MelloUI.Safe.RangedIsWand, 0.21.0)
 local function ReadWand()
 	S.wand = MelloUI.Safe.RangedIsWand() == true
+end
+
+-- The Round rim (one look, the user's pick C, 2026-10-15): the weapon's icon
+-- in the kit's round rim left of each bar.
+--   the icons: the main hand's slot and the ranged slot's
+--   (GetInventoryItemTexture), read with the weapons -- the world, a weapon
+--   changed, a fight's end --: a secret answer keeps what was known, an empty
+--   slot reads false, a stand-in shows for one not known (the module's own
+--   icons: the shot, a melee swing, a wand's shot); never compared while
+--   secret, and set on a rim only when it changes
+--   the shade: the rim's own, the UI Shade's Cast Bars area (W.RoundIcon's
+--   opts.shade, made with its first kit look)
+Rim.SLOT = { main = 16, ranged = 18 }   -- (INVSLOT_MAINHAND, INVSLOT_RANGED)
+Rim.FALLBACK = { shot = "Interface\\Icons\\Ability_Marksmanship", melee = "Interface\\Icons\\Ability_MeleeDamage",
+	wand = "Interface\\Icons\\Ability_ShootWand" }
+Rim.OPTS = { shade = "castbars" }
+
+-- the off hand's bar wanted: its switch and an off-hand weapon
+function Rim.OffWanted()
+	return M.db ~= nil and M.db.offhand ~= false and HasOffHand()
+end
+
+-- the icon a bar's rim shows: the ranged slot's on the shot bar; on the melee
+-- bar the main hand's, or the wand's while a wand shoots (its last swing a
+-- wand's shot, as the label read "Shoot (wand)" before)
+function Rim.Icon(ui)
+	local icon, tex = S.icon
+	if ui.kind == "shot" then
+		tex = icon.ranged or Rim.FALLBACK.shot
+	elseif ui.wandShot and S.wand then
+		tex = icon.ranged or Rim.FALLBACK.wand
+	else
+		tex = icon.main or Rim.FALLBACK.melee
+	end
+	if ui.iconTex ~= tex then
+		ui.iconTex = tex
+		ui.rim:SetIcon(tex)
+	end
+end
+
+-- out of range the icon red-tinted (Meaning.actionRange, as the action
+-- buttons'), else in its own colours
+function Rim.Tint(ui)
+	local c = ui.rimOut and MelloUI.Meaning.actionRange or B.PLAIN
+	ui.rim.icon:SetVertexColor(c[1], c[2], c[3])
+end
+
+-- the rim's look: the kit's round rim (handed MelloUI.Kit, as the chat's
+-- rims; the plain rim in a world without it), the pointer kept off it once
+-- the kit rim's hooks are on, the icon and its tint
+function Rim.Dress(ui)
+	local rim = ui.rim
+	rim:SetKit(MelloUI.Kit)
+	rim:EnableMouse(false)
+	Rim.Icon(ui)
+	Rim.Tint(ui)
+end
+
+function Rim.Read()
+	local get = _G.GetInventoryItemTexture
+	if type(get) ~= "function" then
+		return
+	end
+	for key, slot in pairs(Rim.SLOT) do
+		local ok, tex = pcall(get, "player", slot)
+		if ok and not Secret(tex) then
+			if tex == nil then
+				S.icon[key] = false
+			elseif type(tex) == "number" or type(tex) == "string" then
+				S.icon[key] = tex
+			end
+		end
+	end
+	for _, ui in pairs(S.bars) do
+		Rim.Icon(ui)
+	end
+end
+
+-- (one look) the Look's saved value from before (Framed "castbar", Hairline "hairline": the painted looks, gone) read
+-- as its one value; at each start, as a profile may bring an old one
+function Rim.OneLook(db)
+	if type(db) == "table" and db.look ~= "rim" then
+		db.look = "rim"
+	end
 end
 
 local function InFight()
@@ -446,8 +546,8 @@ local function Update()
 		end
 		if ui then
 			SetShown(ui, want)
-			if ui.off then
-				ui.off.frame:SetShown(M.db and M.db.offhand ~= false and HasOffHand() or false)
+			if ui.off and Rim.OffWanted() ~= ui.offOn then
+				Lay(ui)   -- (the off hand's bar shown or hidden: the pair centred on the rim again)
 			end
 		end
 	end
@@ -473,14 +573,13 @@ end
 -- a later shot's reload moves aimAt, and an earlier call finds it not due).
 
 -- the shot bar in its stage: the fill's colour (cream reloading, the aim's
--- red; the game's own fill in its own white in its look) and the text in the
--- seconds' place (the seconds, "Hold", "Moving")
+-- red) and the text in the seconds' place (the seconds, "Hold", "Moving")
 function Shot.Paint(ui)
 	local stage = S.shotStage or "reload"
 	local t = ui.main
 	local c = MelloUI.Meaning.swingAim
 	if stage == "reload" then
-		c = t.game and MelloUI.Look.Palette("castbar").text or t.colour
+		c = t.colour
 	end
 	t.fill:SetStatusBarColor(c[1], c[2], c[3])
 	local text = ui.textOn and true or false
@@ -573,7 +672,12 @@ local function Swing(duration, swingType)
 		return   -- (switched off, or no weapon for it: nothing made)
 	end
 	if part == "main" and kind == "melee" then
-		ui.label:SetText(swingType == TYPE.ranged and TEXT.wand or TEXT.main)
+		-- (a wand's shot or the main hand's swing: the rim's icon swapped only when the swing type changes)
+		local wandShot = swingType == TYPE.ranged
+		if ui.wandShot ~= wandShot then
+			ui.wandShot = wandShot
+			Rim.Icon(ui)
+		end
 	end
 	if kind == "shot" then
 		Shot.Start(ui, duration)
@@ -591,6 +695,12 @@ local function Range(swingType, out)
 	local track = ui and ui[part]
 	if track then
 		track.frame:SetAlpha(out and B.OUT or 1)
+		-- (the main hand's or the shot's: its weapon's icon red-tinted too, on a change only)
+		out = out and true or false
+		if part == "main" and ui.rimOut ~= out then
+			ui.rimOut = out
+			Rim.Tint(ui)
+		end
 	end
 end
 
@@ -677,6 +787,7 @@ local OnEvent = Shared("OnEvent of the swing timers", function(_, event, a1, a2,
 		S.fight = false
 		S.ran.shot, S.ran.melee = false, false
 		ReadWeapons()   -- (plain again out of the fight)
+		Rim.Read()
 		if S.cvarDue then
 			Switches()
 		end
@@ -685,9 +796,12 @@ local OnEvent = Shared("OnEvent of the swing timers", function(_, event, a1, a2,
 			return
 		end
 		Update()
-	elseif event == "WEAPON_SLOT_CHANGED" or event == "PLAYER_ENTERING_WORLD" then
+	elseif event == "WEAPON_SLOT_CHANGED" or event == "PLAYER_ENTERING_WORLD"
+		or (event == "PLAYER_EQUIPMENT_CHANGED" and not Secret(a1) and (a1 == 16 or a1 == 17 or a1 == 18)) then
+		-- (PLAYER_EQUIPMENT_CHANGED: the main hand, the off hand or the ranged slot -- the rims' icons)
 		ReadWand()
 		ReadWeapons()
+		Rim.Read()
 		if event == "PLAYER_ENTERING_WORLD" then
 			RangeChecks(true)
 		end
@@ -697,7 +811,7 @@ end)
 
 local EVENTS = { "PLAYER_SWING", "PLAYER_SWING_RANGE_UPDATE", "PLAYER_TARGET_CHANGED", "START_AUTOREPEAT_SPELL",
 	"STOP_AUTOREPEAT_SPELL", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "WEAPON_SLOT_CHANGED",
-	"PLAYER_ENTERING_WORLD", "PLAYER_STARTED_MOVING", "PLAYER_STOPPED_MOVING", "CVAR_UPDATE" }
+	"PLAYER_ENTERING_WORLD", "PLAYER_STARTED_MOVING", "PLAYER_STOPPED_MOVING", "CVAR_UPDATE", "PLAYER_EQUIPMENT_CHANGED" }
 
 local function Events(on)
 	if not S.frame then
@@ -732,12 +846,14 @@ end
 
 function M:OnInit(db)
 	self.db = db
+	Rim.OneLook(db)
 	MelloUI:AddMoverSource(MoverSource)
 end
 
 -- (the saved variables arriving after the login: the table they hold)
 function M:OnAddonLoaded(db)
 	self.db = db
+	Rim.OneLook(db)
 end
 
 -- (0.19.8) switched on after the login's PLAYER_ENTERING_WORLD (Core's
@@ -748,18 +864,14 @@ end
 
 function M:OnEnable(db)
 	self.db = db or self.db
+	Rim.OneLook(self.db)
 	Events(true)
 	if not S.looking then
 		S.looking = true
-		MelloUI:On("look:castbar", LookAll, "Swing timers")
-		-- (0.20.1) the Swing Timer Border picked: the bars in it
-		local Kit = MelloUI.Kit
-		if Kit and Kit.OnBorderChanged then
-			Kit:OnBorderChanged("swing", LookAll)
-		end
+		-- (one look, 2026-10-15: no 'look:castbar' or Swing Timer Border listener -- the bars wear MelloUI's look for
+		-- everyone, the cast bars' painted skin on or off, the user's decision 8)
 		-- the cast bars' Bar Texture set or switched (W.BarFill "castbars",
-		-- 0.19.4: the swing timers wear the cast bar bracket, so the Cast Bars
-		-- area's fill too): the fill again
+		-- 0.19.4: the swing timers' fill the Cast Bars area's): the fill again
 		W.OnBarTexture("castbars", LookAll, "Swing timers")
 		-- (0.21.0) the Personal Display's rails switched, or the display itself: the bars stand down or come back
 		MelloUI:On("setting", function(module, key)
@@ -775,6 +887,7 @@ function M:OnEnable(db)
 	end
 	ReadWand()
 	ReadWeapons()
+	Rim.Read()
 	S.fight = MelloUI.InCombat()
 	local okM, moving = pcall(_G.IsPlayerMoving)
 	S.moving = okM and not Secret(moving) and moving == true or false
@@ -815,8 +928,12 @@ end
 function M:OnSettingChanged(key, _, db)
 	self.db = db or self.db
 	if key == "width" or key == "height" then
+		-- (the rim follows the Height, and a bar never moved keeps its default place: Home's offsets come from it)
 		for _, ui in pairs(S.bars) do
 			Lay(ui)
+			if not MelloUI:GetPosition(MOVER[ui.kind]) then
+				Home(ui.kind)(ui.holder)
+			end
 		end
 	elseif key == "look" or key == "text" then
 		LookAll()
