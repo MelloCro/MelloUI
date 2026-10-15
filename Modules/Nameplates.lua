@@ -905,16 +905,24 @@ function Plate.Cover(uf, again, form)
 	end
 	Plate.formOf[uf] = form
 	MelloUI.Shade:CoverText(fs, form)
+	-- (the game's colour read BEFORE its glyphs are hidden, its alpha never
+	-- taken: on a font string SetAlpha is the vertex colour's alpha, so a
+	-- hidden name reads a = 0 -- the user's probe, 2026-10-15: the cover drew
+	-- "Spider" at alpha 0. The cover is shown and hidden, never faded)
+	local first = not Plate.coverOn[name]
+	local okC, r, g, b
+	if first then
+		okC, r, g, b = pcall(name.GetVertexColor, name)
+	end
 	if again or not Plate.hidden[name] then
 		Plate.hidden[name] = Plate.Hide(name) or nil
 	end
 	if Plate.hidden[name] then
-		if not Plate.coverOn[name] then
+		if first then
 			Plate.coverOn[name] = fs
-			-- (the game's colour as it is now, handed on untouched: a secret too)
-			local ok, r, g, b, a = pcall(name.GetVertexColor, name)
-			if ok then
-				MelloUI.Shade:CoverColour(fs, r, g, b, a)
+			-- (the game's colour as it was, handed on untouched: a secret too)
+			if okC then
+				MelloUI.Shade:CoverColour(fs, r, g, b, 1)
 			end
 		end
 	else
@@ -965,10 +973,11 @@ end
 
 -- the game's colour on a covered name (every health update, on names that
 -- ever had a cover): handed to the cover, set there only on a change
-Plate.OnColour = Perf.Shared("SetVertexColor on a covered nameplate name", function(name, r, g, b, a)
+Plate.OnColour = Perf.Shared("SetVertexColor on a covered nameplate name", function(name, r, g, b)
 	local fs = Plate.coverOn[name]
 	if fs then
-		MelloUI.Shade:CoverColour(fs, r, g, b, a)
+		-- (the colour only: the cover stays opaque, as in Plate.Cover)
+		MelloUI.Shade:CoverColour(fs, r, g, b, 1)
 	end
 end)
 
