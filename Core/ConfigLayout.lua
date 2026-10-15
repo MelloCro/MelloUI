@@ -123,9 +123,9 @@ L.pages = {
 		flavour = "The game's windows in the painted look, one at a time: pick a window.",
 		tabs = { "Windows" },
 		picker = { label = "Window", noun = "window", from = "windows" } },
-	-- (0.17.0) which parts fade away, and when they come back (its header
-	-- switch: the Fader module's, off by default)
-	Fader = { title = "Fader", icon = "module:Fader", module = "Fader",
+	-- (0.17.0) which parts fade away, and when they come back (one look: no
+	-- header switch -- the Fader runs while any element fades)
+	Fader = { title = "Fader", icon = "module:Fader",
 		tabs = { "Fader", "Frames", "Bars", "Chat & Map" } },
 	UnitFrames = { title = "Unit Frames", icon = "module:UnitFrames",
 		flavour = "The player, target, focus, pet, party and raid frames, the cast bars and the personal resource display: pick a frame.",

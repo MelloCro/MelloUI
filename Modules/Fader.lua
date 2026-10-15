@@ -86,7 +86,10 @@ local SHOW_TIP = " Always: never faded. In Combat: faded out of combat, back in 
 local SHOW_NO_MOUSE = { SHOW[1], SHOW[2] }
 local SHOW_NO_MOUSE_TIP = " Always: never faded. In Combat: faded out of combat, back in a fight."
 
-local defaults = { alpha = 0, after = Fader.T.AFTER, speed = Fader.T.SPEED, target = true, mouse = true, petToo = true }
+-- (switchGone: one look's merge of the old switch done -- Core.lua's MERGES;
+-- a new player's table is born with it)
+local defaults = { alpha = 0, after = Fader.T.AFTER, speed = Fader.T.SPEED, target = true, mouse = true, petToo = true,
+	switchGone = true }
 local options = {}
 for _, e in ipairs(LIST) do
 	defaults["show_" .. e[1]] = "always"
@@ -94,6 +97,22 @@ end
 
 local M   -- (the module, below)
 local bulk = false   -- (SetAll at work: the engine syncs once at its end)
+
+-- (one look, the user 2026-10-15: the Fader has no switch of its own) the
+-- engine runs while any element is set to fade: a player with nothing set
+-- pays nothing (no events, no listeners)
+local function AnyFade(db)
+	if type(db) ~= "table" then
+		return false
+	end
+	for _, e in ipairs(LIST) do
+		local v = db["show_" .. e[1]]
+		if v ~= nil and v ~= "always" then
+			return true
+		end
+	end
+	return false
+end
 
 local function SetEach(value)
 	for _, e in ipairs(LIST) do
@@ -105,7 +124,7 @@ local function SetAllNow(value)
 	bulk = true
 	local ok, err = pcall(SetEach, value)
 	bulk = false
-	Fader:Changed("show")
+	M.Run(M.db)
 	if not ok then
 		error(err, 0)
 	end
@@ -157,10 +176,11 @@ M = MelloUI:RegisterModule("Fader", {
 	desc = "Fade parts of the interface away while you do not need them: out of combat, or until you point at them. Pick for each frame, bar, the chat, the minimap and the trackers.",
 	icon = "Interface\\Icons\\Spell_Magic_LesserInvisibilty",
 	flavour = "Your interface, only when you need it.",
-	-- (a look: how the interface shows, off by default; the installer's
-	-- setups leave it as it is, no Features row of its own)
+	-- (a look: how the interface shows; the installer's setups leave it as
+	-- it is, no Features row of its own. One look: on for everyone, no switch
+	-- of its own -- its engine runs while any element fades, AnyFade)
 	role = "look",
-	enabledByDefault = false,
+	enabledByDefault = true,
 	defaults = defaults,
 	options = options,
 })
@@ -662,13 +682,24 @@ function M:OnLoginWorld(...)
 	MelloUI:ReplayWorld(P.events, ...)
 end
 
+-- the engine on (synced) while anything fades, off otherwise; the elements
+-- registered the first time something fades (nothing made at login for a
+-- player who fades nothing)
+function M.Run(db)
+	if AnyFade(db) then
+		if not registered then
+			registered = true
+			Register()
+		end
+		Fader:Start(db)
+	else
+		Fader:Stop()
+	end
+end
+
 function M:OnEnable(db)
 	self.db = db
-	if not registered then
-		registered = true
-		Register()
-	end
-	Fader:Start(db)
+	M.Run(db)
 end
 
 function M:OnDisable()
@@ -677,7 +708,12 @@ end
 
 function M:OnSettingChanged(key, _, db)
 	self.db = db
-	if not bulk then
+	if bulk then
+		return
+	end
+	if key:sub(1, 5) == "show_" then
+		M.Run(db)   -- (Start syncs the choices; the last fade gone: off)
+	else
 		Fader:Changed(key)
 	end
 end

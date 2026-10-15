@@ -4381,6 +4381,35 @@ do
 				ui.questTrackerKit = nil
 			end
 		end,
+		-- one look (the user, 2026-10-15): the Fader's switch is gone, its
+		-- engine runs while any element fades. A player whose Fader was off
+		-- (off was its default) saw nothing fade, so the fades they stored go
+		-- back to Always; then it stays on. Once per saved Fader table:
+		-- Fader.switchGone (true in its defaults, so a new player's table is
+		-- born migrated and nothing is written for it; a table saved before
+		-- the update lacks it here, before the defaults are laid). The old
+		-- switch's own flag is dropped either way (on is the default now)
+		function(self)
+			local enabled = self.db.enabled
+			local was
+			if type(enabled) == "table" then
+				was = enabled.Fader   -- (true, false or nil: the old switch)
+			end
+			local fd = Raw(self, "Fader")
+			if fd and fd.switchGone ~= true then
+				if was ~= true then
+					for k, v in pairs(fd) do
+						if type(k) == "string" and k:sub(1, 5) == "show_" and v ~= "always" then
+							fd[k] = nil
+						end
+					end
+				end
+				fd.switchGone = true
+			end
+			if was ~= nil then
+				enabled.Fader = nil
+			end
+		end,
 	}
 
 	function MelloUI:MergeSettings()
