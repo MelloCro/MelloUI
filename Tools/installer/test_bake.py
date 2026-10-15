@@ -225,8 +225,9 @@ def main():
     if strip_extra(after) != text:
         for c in F.diff(text, strip_extra(after)):
             print("      ", c)
+    # (one look, stage E, the user 2026-10-15: the Quest Tracker's Painted Skin is removed, its one-time step with it)
     ex = lua.eval("MelloUI.db.modules.UIModifications.questTrackerKit")
-    check(ex is True, "the Quest Tracker's kit switch after that login is on, as in the user's setup")
+    check(ex is None, "the login leaves no questTrackerKit (stage E: the Painted Skin removed)")
 
     # over the user's own setup: same text; the player's personal keys stay
     lua2, errs, ns, _ = B.make_world_retry(5, 60)

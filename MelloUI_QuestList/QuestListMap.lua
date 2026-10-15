@@ -600,7 +600,7 @@ function QL.DressMark(self, kind, data)
 		-- the count, the count in its gold; once all are done, in its text
 		-- colour a step down (QL.DONE_ALPHA, as the list's done quests:
 		-- small text is never muted text)
-		local palette = MelloUI.Look.Palette("questList")   -- (the Quest List's look: the game's colours while it is off)
+		local palette = MelloUI.Look.Palette()
 		local ground = palette.innerPanel
 		local done = data.done >= data.total
 		local ink = done and palette.text or palette.selectedTrim
@@ -1044,11 +1044,10 @@ local function ZoneRing()
 	f:SetFrameLevel(layer:GetFrameLevel() + 20)
 	f:EnableMouse(false)
 	f:SetSize(320, ZP.SIZE + 2 * ZP.PAD)
-	-- on the soft shade, as the widget column's lines (Look.Plate: the painted
-	-- look's band, the game's tooltip frame in its look; the user, 2026-10-09:
-	-- the solid panel read as a black box on the map)
-	f.plate = Look.Plate(f, { alpha = 0.7, feather = 18, featherY = 14, region = f, padX = -6, padY = -10,
-		area = "questList" })
+	-- on the soft shade, as the widget column's lines (Look.Plate: the soft
+	-- band; the user, 2026-10-09: the solid panel read as a black box on the
+	-- map)
+	f.plate = Look.Plate(f, { alpha = 0.7, feather = 18, featherY = 14, region = f, padX = -6, padY = -10 })
 	-- the face: a dark disc, the share's number on it; the ring round it
 	local face = W.RoundIcon(f, ZP.SIZE, ZP.FLAT)
 	face:EnableMouse(false)
@@ -1065,7 +1064,7 @@ local function ZoneRing()
 	track:SetTexture(ZP.TEX)
 	track:SetAllPoints(ring)
 	Look.Paint(track, "innerPanel", "vertex", 0.85)
-	Look.Ring(ring, { texture = ZP.TEX, face = face, size = ZP.SIZE * ZP.FRAME, track = track, area = "questList" })
+	Look.Ring(ring, { texture = ZP.TEX, face = face, size = ZP.SIZE * ZP.FRAME, track = track })
 	Look.RingState(ring, "share", true)
 	local pct = ring:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	pct:SetPoint("CENTER", face, "CENTER", 0, 0)
@@ -1662,7 +1661,7 @@ function QL.CreateProvider()
 			ZP.frame:Hide()
 			ZP.shown = nil
 		end
-		self.palette = MelloUI.Look.Palette("questList")   -- the palette the pins are laid in (as the look shows it)
+		self.palette = MelloUI.Look.Palette()   -- the palette the pins are laid in
 		if not (M.isEnabled and QL.byZone) then
 			return
 		end
@@ -1725,13 +1724,7 @@ function QL.CreateProvider()
 	-- lays them on its next show). Only a new palette TABLE: 'palette' goes
 	-- out for a Kit Colours change too, the palette unchanged
 	MelloUI:On("palette", function()
-		if QL.Provider.palette ~= MelloUI.Look.Palette("questList") then
-			QL.RefreshPins()
-		end
-	end, "Quest List pins")
-	-- its look switched (the Quest Log's, game-look wave 5): the pins in the game's colours or the palette's
-	MelloUI:On("look:questList", function()
-		if QL.Provider.palette ~= MelloUI.Look.Palette("questList") then
+		if QL.Provider.palette ~= MelloUI.Look.Palette() then
 			QL.RefreshPins()
 		end
 	end, "Quest List pins")

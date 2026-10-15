@@ -41,9 +41,9 @@
 -- disc). A child of the column, so Chat Buttons off hides it with the rest.
 -- Tooltip "Fight History / Every fight of this session"; a click toggles the
 -- window. Made after the login's frames while Fight History is on.
--- Its texts, the rows' marks and the chat button still go through
--- MelloUI.Look (docs/plans/game-look.md, wave 2), whose game half no longer
--- shows (onelook stage C: Look:On answers true; stage E deletes it).
+-- Its texts, the rows' marks and the chat button are painted through
+-- MelloUI.Look (docs/plans/game-look.md, wave 2): the palette's, one look
+-- whatever the reskin (onelook stages C and E).
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -81,7 +81,6 @@ local H = {
 	FACE = 24, FACE_X = 2, FACE_IN = 0.09, TEXT_UP = 4, GAP = 6, RAIL_DOWN = 7.5, SHARE = 3, SPELL_X = 160, SPELL_W = 110,
 	TAB_W = 96, BUTTON = 32, DISC = 22, GLYPH = 14,
 	GRAB = 56, CLOSE_X = 20, CLOSE_Y = 33, BRAND_MID = 17,
-	BAR_GAME = 5,   -- (the game's look's bars: reached no more, stage E deletes it)
 }
 -- (the ledger's faces: the kit rim's whole-UI shade partner, the windows' area)
 local FACE_OPTS = { shade = "windows" }
@@ -120,7 +119,7 @@ local function On()
 end
 
 -- a string in its role (MelloUI.Look: "text", "gold", "note"): MelloUI's
--- font and the palette painted, the game's font object and colour in its look
+-- font and the palette painted
 local function Font(parent, size, role, justify)
 	local fs = parent:CreateFontString(nil, "OVERLAY")
 	Look.Text(fs, role or "text", size)
@@ -999,7 +998,7 @@ local function MakeButton()
 	disc:SetTexture(ROUND_MASK)
 	disc:SetSize(H.DISC, H.DISC)
 	disc:SetPoint("CENTER")
-	Look.Paint(disc, "innerPanel", "vertex", 0.95, "chat")
+	Look.Paint(disc, "innerPanel", "vertex", 0.95)
 	local glyph = button:CreateTexture(nil, "ARTWORK", nil, 2)
 	W.Glyph(glyph, "chart")
 	glyph:SetSize(H.GLYPH, H.GLYPH)
@@ -1008,8 +1007,8 @@ local function MakeButton()
 	hover:SetTexture(ROUND_MASK)
 	hover:SetSize(H.DISC, H.DISC)
 	hover:SetPoint("CENTER")
-	Look.Paint(hover, "hover", "vertex", 0.5, "chat")
-	Look.ColumnButton(button, glyph, { disc, hover })
+	Look.Paint(hover, "hover", "vertex", 0.5)
+	Look.Paint(glyph, "text", "vertex")   -- (the chart in the text colour)
 	Perf.SetScript(button, "OnClick", ButtonClick)
 	Perf.SetScript(button, "OnEnter", ButtonEnter)
 	Perf.SetScript(button, "OnLeave", ButtonLeave)

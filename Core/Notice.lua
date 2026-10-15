@@ -51,9 +51,8 @@
 -- Route arrow's default place), on MelloUI's one mover and position store
 -- (key "notice", "Centre notices"): while Edit Layout shows, a sample line
 -- stands there on its plate to drag, its Reset puts it back, and it is kept
--- on the screen. With the reskin off (MelloUI.Look, docs/plans/game-look.md
--- wave 3) the game's floating text instead: the game's gold or white, its
--- black shadow, outlined, no band (the zone text section keeps Text Shade's
+-- on the screen. One look whatever the reskin (onelook stage E): the band,
+-- the palette's colours and shadow (the zone text section keeps Text Shade's
 -- own switch: a dressing of the game's texts, not a part of MelloUI's).
 --
 -- Nothing is made at login: the frame, the shade and the mover entry come
@@ -74,7 +73,7 @@ local Secret = MelloUI.Safe.IsSecret
 local Num = MelloUI.Safe.Number
 local Call = MelloUI.Safe.Call
 local Anim = MelloUI.Anim
-local GameLook = MelloUI.Look   -- (the reskin off: the game's floating text)
+local GameLook = MelloUI.Look   -- (the palette's colours, outline and shadow)
 
 local OWNER = "Notice"
 local KEY = "notice"            -- its place in the store
@@ -154,7 +153,7 @@ local function Place()
 end
 
 -- the text's colour (its kind's) and its shadow, from the palette as it is
--- now (the reskin off: the game's gold or white, its black shadow)
+-- now
 local function Paint()
 	if not text then
 		return
@@ -165,7 +164,6 @@ local function Paint()
 end
 
 -- the font: the interface face at SIZE, outlined only with Outlined Text
--- (the reskin off: outlined, as the game's floating texts)
 local function Style()
 	if text and font and MelloUI.StyleFont then
 		MelloUI:StyleFont(text, "fontText", font, SIZE, "", GameLook.Outline(Setting("noticeOutline")))
@@ -214,13 +212,10 @@ local function Build()
 	text:SetShadowOffset(TEXT.shadowX, TEXT.shadowY)
 	frame.shade = MelloUI.Shade:Band(frame, TEXT)
 	frame.shade:Anchor(text, PAD_X, PAD_Y)
-	GameLook.Hide(frame.shade)   -- (no band in the game's look)
 	Home(frame)
-	-- styled and painted now, and again at a switch of the reskin
-	GameLook.Watch(frame, function()
-		Restyle()
-		Paint()
-	end)
+	-- styled and painted now (again at 'palette' and 'fonts', below)
+	Restyle()
+	Paint()
 	MelloUI:On("palette", Paint, OWNER)
 	MelloUI:On("fonts", Measure, OWNER)
 	-- one mover entry: moved in Edit Layout, its place in the store, put back

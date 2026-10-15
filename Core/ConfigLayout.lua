@@ -420,8 +420,9 @@ function L.Define(R, Link)
 
 	-- Windows (the picker: the registry's windows). A kit panel's row here is
 	-- live on the CURRENT pick's Painted Skin, not on the panel owning the
-	-- key: the Bank wears the Bags' keys, and Quality Gems stays live on the
-	-- Bank with the Bags' skin off
+	-- key: the Bank wears the Bags' keys. Quality Gems and Grey Out Junk are
+	-- Tweaks' (one look, D3): live on every pick, the painted skin on or off
+	-- (asleep only with UI Modifications off, as Tweaks and the gems are)
 	-- (0.19.0) the bag window by kind, MelloUI's own (either look; works with UI Modifications off)
 	R("Windows", "Windows", "General", { BackpackPanel = "BagWindow.!enabled" }, { name = "Bags by Kind", free = true })
 	-- (its kinds, the user's picks of 2026-10-04 -- since 0.20.4 one list, Kinds, their order, lines and groups; since
@@ -908,11 +909,11 @@ function L.Define(R, Link)
 	Link("PersonalDisplay", "Personal Display", "Look", "UIModifications.personalBarBorder", "Border")
 	Link("PersonalDisplay", "Personal Display", "Behaviour", "Fader.show_personal", "Fade (Fader)")
 
-	-- Quest Tracker (header: its module's switch)
-	R("QuestTracker", "Quest Tracker", "Look", "UIModifications.questTrackerKit", { name = "Painted Skin" })
+	-- Quest Tracker (header: its module's switch; one look, stage E, the user 2026-10-15: its Painted Skin row is
+	-- removed -- the tracker always wears MelloUI's look)
 	-- (one look; the user, 2026-10-15: "the quest tracker the same as the chat does, needs to have the option to
 	-- enable or disable parchment and not be depending on the reskin on/off": its own row here, as the chat's
-	-- Background on the Chat page, live whatever the reskin -- Kit.ownParchments; asleep with the tracker off, as
+	-- Parchment on the Chat page, live whatever the reskin -- Kit.ownParchments; asleep with the tracker off, as
 	-- the page's other rows)
 	R("QuestTracker", "Quest Tracker", "Look", "UIModifications.parchment_questTracker", { name = "Parchment", free = true,
 		when = { key = "QuestTracker.!enabled", value = true, line = "Only with MelloUI's Quest Tracker on" } })

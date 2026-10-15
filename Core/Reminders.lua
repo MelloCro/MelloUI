@@ -166,7 +166,7 @@ local Num = MelloUI.Safe.Number
 local Anim = MelloUI.Anim
 local W = MelloUI.Widgets
 -- (0.17.1, docs/plans/game-look.md) the look of MelloUI's own parts: the
--- painted one with the reskin, the game's own without (the "own" area)
+-- palette's (one look since onelook stage E)
 local Look = MelloUI.Look
 
 local Rem = {}
@@ -277,9 +277,6 @@ local function HoldTime()
 end
 
 local function GlowMode()
-	if not Look:On() then
-		return "off"   -- (0.17.1: the game's look has no glow)
-	end
 	local g = Setting("glow")
 	return (not Secret(g) and GLOWS[g]) and g or "pulse"
 end
@@ -970,7 +967,7 @@ Build = function()
 	ui.button = b
 	ui.glow = MelloUI.Shade:Glow(b, { region = b, size = SIZE })   -- look-ok: ApplyGlows, none in the game's look (GlowMode)
 	-- the count: a number on a small dark disc at the button's lower right
-	-- (the game's look: its corner number, no disc; Look.Count)
+	-- (Look.Count)
 	local disc = b:CreateTexture(nil, "OVERLAY", nil, 6)
 	disc:SetTexture(ROUND)
 	disc:SetSize(17, 17)
@@ -991,7 +988,7 @@ Build = function()
 	Look.Text(label, "text", LABEL_SIZE)
 	label:SetWordWrap(false)
 	ui.label = label
-	-- (its plate: the soft band painted, the game's tooltip frame in its look)
+	-- (its plate: the soft band)
 	ui.band = Look.Plate(lf, { alpha = 0.7, feather = 16 })
 	ui.band:Anchor(label, 8, 4)
 	AnchorLabel()
@@ -1011,8 +1008,6 @@ Build = function()
 		Perf.HookScript(pf, "OnHide", placeLater)
 	end
 	MelloUI:On("look:unitframes", OnLook, OWNER)
-	-- (0.17.1: the glow is the painted look's own: none in the game's)
-	MelloUI:On("look:own", ApplyGlows, OWNER .. " (its glow)")
 	MelloUI:On("editmode", PlaceLater, OWNER)
 	MelloUI:On("where", OnWhere, OWNER)
 	Place()
@@ -1297,7 +1292,7 @@ Tip = function(self)
 	end
 	-- (the title in gold, the lines and the hints in the body text: small
 	-- text is never mutedText, the palette rule)
-	local P = MelloUI.Look.Palette()   -- (the reskin off: the game's gold and white)
+	local P = MelloUI.Look.Palette()
 	local gold, text = P.selectedTrim, P.text
 	GameTooltip:SetOwner(self, PLACES[ui.place].tip)
 	if not key then
@@ -2157,13 +2152,6 @@ local function Column()
 		holder:EnableMouse(false)
 		MelloUI:RestorePosition(COL_KEY, holder)
 		MelloUI:On("look:unitframes", OnLookCol, OWNER .. " column")
-		-- (0.17.1: the glow is the painted look's own; the rest of a row's look
-		-- follows the own look by itself: MelloUI.Look)
-		MelloUI:On("look:own", function()
-			for i = 1, #col.rows do
-				ApplyGlow(col.rows[i].glow)
-			end
-		end, OWNER .. " column (its glows)")
 		return col
 	end
 
@@ -2219,8 +2207,7 @@ local function Column()
 		ground:SetAllPoints(face.icon)
 		model:SetAllPoints(face.icon)
 		row.glow = MelloUI.Shade:Glow(face, { region = face, size = FACE, strength = GLOW_LOW })   -- look-ok: ApplyGlows (GlowMode)
-		-- the ring: a dark track, the gold swipe over it (the game's look:
-		-- the cooldown's own dark sweep over the face; Look.Ring)
+		-- the ring: a dark track, the gold swipe over it (Look.Ring)
 		local ring = CreateFrame("Cooldown", nil, face)
 		ring:SetFrameLevel(face:GetFrameLevel() + 2)
 		ring:EnableMouse(false)
@@ -2306,7 +2293,7 @@ local function Column()
 		row.box = box
 		-- (featherY: a fixed top and bottom fade, so the name and the last
 		-- subtitle line sit on the band's full strength however tall it is)
-		-- (the painted look's soft band; the game's tooltip frame in its look: Look.Plate)
+		-- (the soft band: Look.Plate)
 		row.band = Look.Plate(row, { alpha = 0.7, feather = 18, featherY = 14, region = box, padX = 2, padY = 0 })
 		col.rows[#col.rows + 1] = row
 		return row
@@ -2999,7 +2986,7 @@ local function Column()
 		f.label = label
 		local box = f:CreateTexture(nil, "BACKGROUND")
 		box:SetAllPoints(f)
-		-- (its plate as the rows': the band painted, the game's tooltip frame)
+		-- (its plate as the rows': the soft band)
 		f.band = Look.Plate(f, { alpha = 0.7, feather = 18, region = box, padX = 2, padY = 0 })
 		col.fold = f
 		return f
@@ -3198,7 +3185,7 @@ local function Column()
 		if not spec then
 			return
 		end
-		local P = MelloUI.Look.Palette()   -- (the reskin off: the game's gold and white)
+		local P = MelloUI.Look.Palette()
 		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(owner, "ANCHOR_TOP")
 		GameTooltip:SetText(Rem:Label(key), gold[1], gold[2], gold[3])
@@ -3229,7 +3216,7 @@ local function Column()
 		if not a then
 			return
 		end
-		local P = MelloUI.Look.Palette()   -- (the reskin off: the game's gold and white)
+		local P = MelloUI.Look.Palette()
 		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(owner or b, "ANCHOR_BOTTOMRIGHT")
 		GameTooltip:SetText(Value(a.tip, b.row.key) or "", gold[1], gold[2], gold[3])
@@ -3406,7 +3393,7 @@ local function Column()
 
 	-- the fold row: what waits in it, a click its list
 	FoldEnter = Shared("OnEnter on the widget column's fold row", function(self)
-		local P = MelloUI.Look.Palette()   -- (the reskin off: the game's gold and white)
+		local P = MelloUI.Look.Palette()
 		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
 		GameTooltip:SetText(TEXT.foldTitle, gold[1], gold[2], gold[3])

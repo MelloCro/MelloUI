@@ -394,7 +394,7 @@ function O.Add(map, mapID)
 		return
 	end
 	canvas = O.Layer(canvas)   -- (the areas drawn on their layer, the same size as the canvas)
-	local palette = MelloUI.Look.Palette("questList")
+	local palette = MelloUI.Look.Palette()
 	local trim, under = palette.trim, palette.mainWindow
 	wipe(placed)
 	for _, m in ipairs(QL.MarkList()) do
@@ -445,7 +445,7 @@ end
 -- the mark's look: its kind on the palette's dark disc in its gold ring (the
 -- goal's mark of Route: one look), its progress under it
 function O.Dress(b, data)
-	local palette = MelloUI.Look.Palette("questList")
+	local palette = MelloUI.Look.Palette()
 	local ground, ink, gold = palette.innerPanel, palette.text, palette.selectedTrim
 	b:SetSize(20, 20)
 	local ring = b.Ring

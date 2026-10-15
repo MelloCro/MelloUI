@@ -78,30 +78,26 @@ local GW = MelloUI.EditLayoutWindows
 -- beside the configurator's icons, and had drifted from the modules). Each
 -- kit panel gives its row as `window` in its RegisterModule, each folded
 -- feature as `tweak` (Core's header):
---   window  { label, desc, tab = "Windows" | "HUD", order, switch, addon,
+--   window  { label, desc, tab = "Windows" | "HUD", order, addon,
 --             firstOpen, include } (its frames that move in Edit Layout:
 --             Core/EditLayoutWindows.lua's list since onelook D2)
 --   tweak   { label, desc, order, off, always }
 --   order   rows with one lead their list (their tab), lowest first; the
 --           rest follow in the TOC's order
---   switch  the row is not a kit module's but the look switch of one of
---           MelloUI's own windows: that setting of this module (the Quest
---           Tracker's questTrackerKit; audit, 2026-09-24, rank 1 -- Kit:IsOn
---           no longer reads it since onelook stage C: the tracker is always
---           in MelloUI's look; the row goes in stage E)
 --   include (not read here since 0.15.0: Core/ConfigLayout.lua places every
 --           option of a panel, on its element's page)
+-- (one look, stage E, the user 2026-10-15: a window row's `switch` -- the
+-- look switch of one of MelloUI's own windows, the Quest Tracker's
+-- questTrackerKit alone -- went with that switch)
 -- Made into the lists the code below reads, in the registry's order:
---   PANELS  { module name (or the switch), label, description, tab =,
---           setting = true for a switch: no module goes by that name, and
---           the module paths below pass it by }
+--   PANELS  { module name, label, description, tab = }
 --   TWEAKS  { module name, label, description, off =, always = }, each
 --           switched by `qol_<name>` here (`off`: off until switched on, as
 --           the module was before it moved here; `always`: no switch, its
 --           rows each switch one thing)
---   AREA_OF [switch key] = { name = the module it switches (nil for a
---           setting switch), tweak = its TWEAKS row (a feature's) }: every
---           area's and feature's switch (M:SetAreas writes only these)
+--   AREA_OF [switch key] = { name = the module it switches, tweak = its
+--           TWEAKS row (a feature's) }: every area's and feature's switch
+--           (M:SetAreas writes only these)
 -- This file loads before those modules (see the TOC), so the lists, the
 -- switches' defaults and their definitions are made once every module is
 -- in: at the addon's own ADDON_LOADED, before the saved settings are read
@@ -378,7 +374,9 @@ local M = MelloUI:RegisterModule("UIModifications", {
 	-- about this machine and character (the version it last showed, the
 	-- layout questions asked, the screen the layout was fitted for): never
 	-- in a profile; and Dark Mode's switch, the player's own preference
-	-- (user, 2026-09-26: no profile carries it)
+	-- (user, 2026-09-26: no profile carries it). (questTrackerKitMigrated:
+	-- the removed Painted Skin's one-time flag, one look stage E 2026-10-15 --
+	-- old saves, snapshots and share strings carry it: it must never travel)
 	keep = { "savedSurnameOwn", "layoutApplied", "welcomeAsked", "bordersMigrated", "featuresFolded", "questTrackerKitMigrated",
 		"seenVersion", "^layoutAsked_", "layoutFitFor", "layoutFitRev", "qol_DarkMode" },
 	defaults = defaults,
@@ -444,7 +442,7 @@ local function Lists()
 			local w, t = module.window, module.tweak
 			if w and w.label then
 				local e = { at = at, tab = TAB_RANK[w.tab] or 3, order = type(w.order) == "number" and w.order or math.huge,
-					row = { w.switch or module.name, w.label, w.desc or "", tab = w.tab, setting = w.switch and true or nil } }
+					row = { module.name, w.label, w.desc or "", tab = w.tab } }
 				panelEntries[#panelEntries + 1] = e
 				new = new or {}
 				new[e.row] = true
@@ -482,7 +480,7 @@ local function Lists()
 	-- part's switch, PanelRequires), a feature's works with it on or off
 	for _, area in ipairs(PANELS) do
 		if new[area] then
-			AREA_OF[area[1]] = { name = not area.setting and area[1] or nil }
+			AREA_OF[area[1]] = { name = area[1] }
 			Add({ type = "toggle", key = area[1], name = area[2], desc = area[3], requires = PanelRequires() })
 		end
 	end
@@ -627,12 +625,11 @@ end
 -- Apply to all, Reset this page) and Switch every area on. One page action
 -- could switch up to 43 painted skins, each an art load and a skin, in one
 -- frame. M:SetAreas(values), values = { [switch key] = true | false } over
--- the areas' and features' switches (AREA_OF: a panel's, the Quest Tracker's
--- own look switch, a feature's qol_ key; any other key is not its to write
--- and is passed by):
+-- the areas' and features' switches (AREA_OF: a panel's, a feature's qol_
+-- key; any other key is not its to write and is passed by):
 --   nothing would change: true, 0 (nothing written)
---   in combat, when a painted skin would switch (a panel's switch, the
---     Quest Tracker's own look): false, and NOTHING is written (the caller
+--   in combat, when a painted skin would switch (a panel's switch): false,
+--     and NOTHING is written (the caller
 --     prints M.areasRefused): the skins' apply paths were never checked
 --     there, and nothing half-done is left waiting behind the player's back.
 --     Features only (qol_ keys): as out of combat; their own rows switch
@@ -1357,21 +1354,9 @@ function part.Migrate(db)
 		end
 		db.bordersMigrated = true
 	end
-	-- MelloUI's Quest Tracker has a kit switch of its own now (audit,
-	-- 2026-09-24, rank 1); it wore the kit with the Objective tracker's until
-	-- then, so it starts as that one is set, once, and no look changes. The
-	-- flag is this player's own one-time step (in `keep`): profiles, share
-	-- strings and the installer's setups never carry it, and loading one
-	-- leaves it as it is (the macro backup keeps it). A profile saved since
-	-- carries questTrackerKit itself when it is off; loading one saved
-	-- before, which has no such key, leaves the switch at its default (on).
-	-- (onelook stage C: the look no longer reads questTrackerKit -- the
-	-- tracker is always in MelloUI's look; the key, this step and its row go
-	-- together in stage E)
-	if not db.questTrackerKitMigrated then
-		db.questTrackerKit = db.TrackerPanel ~= false
-		db.questTrackerKitMigrated = true
-	end
+	-- (one look, stage E, the user 2026-10-15: the Quest Tracker's Painted
+	-- Skin, questTrackerKit, is removed with its one-time step; a saved key is
+	-- dropped at the login by Core's MERGES, the flag stays in `keep`)
 end
 
 -- last in OnEnable, the areas switched: every area off is a real choice,
@@ -1392,11 +1377,7 @@ end
 -- a setting of the part's (true: applied here, UI Modifications' own branches
 -- are passed by)
 function part.Setting(key, value, db)
-	if key == "questTrackerKit" or key == "questTrackerKitMigrated" then
-		-- (nothing to apply: Kit:IsOn("questTracker") read it until onelook
-		-- stage C; the area is always on now, the key goes in stage E)
-		return true
-	elseif key == "parchmentStyle" then
+	if key == "parchmentStyle" then
 		if MelloUI.Kit and MelloUI.Kit.SetParchmentStyle then
 			MelloUI.Kit:SetParchmentStyle()
 		end

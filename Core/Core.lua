@@ -65,9 +65,7 @@
 --                    New while that update runs (its options carry their own)
 --   window           a window (or HUD part) the reskin dresses: { label, desc,
 --                    tab = "Windows" | "HUD", order = n (rows with one lead
---                    their tab, lowest first), switch = "<UI Modifications
---                    setting>" (the row is that setting, not a module switch:
---                    the Quest Tracker's questTrackerKit), addon =
+--                    their tab, lowest first), addon =
 --                    "Blizzard_..." (loaded on demand),
 --                    firstOpen = true (dressed on its first show),
 --                    include = true | { keys } (its own options laid out
@@ -4411,6 +4409,17 @@ do
 						t.greyJunk = false
 					end
 				end
+			end
+		end,
+		-- one look, stage E (the user, 2026-10-15): the Quest Tracker's Painted
+		-- Skin, UI Modifications' questTrackerKit, is removed -- the tracker
+		-- always wears MelloUI's look. A saved key is dropped here, UI
+		-- Modifications on or off (its own one-time flag, questTrackerKitMigrated,
+		-- stays the player's: `keep`), so no new profile or share string carries it
+		function(self)
+			local ui = Raw(self, "UIModifications")
+			if ui then
+				ui.questTrackerKit = nil
 			end
 		end,
 	}

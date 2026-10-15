@@ -1876,9 +1876,7 @@ end
 local function ShadeLines(frame)
 	local lines = frame and frame.visibleLines
 	local want = shadeWanted[frame]
-	-- (docs/plans/game-look.md wave 5, the user's pick: none with the reskin
-	-- off -- the game's look has no soft bands -- MelloUI.Look)
-	local on = type(lines) == "table" and want and want() and Active("nameShade") ~= false and MelloUI.Look:On()
+	local on = type(lines) == "table" and want and want() and Active("nameShade") ~= false
 	local used = {}
 	if on then
 		for i, line in ipairs(lines) do
@@ -1931,13 +1929,6 @@ local function WatchShade(frame, wanted)
 		return
 	end
 	shadeWanted[frame] = wanted
-	-- the reskin switched: every watched frame's shades laid again (one
-	-- listener for them all: the same owner's is replaced)
-	MelloUI:On("look:own", function()
-		for f in pairs(shadeWanted) do
-			ShadeLines(f)
-		end
-	end, "Chat name shade")
 	local function AfterRedraw(f)
 		pcall(FitLineFonts, f)
 		InkVisible(f)
@@ -3466,7 +3457,7 @@ local function CreatePopup(key, kind, target, title)
 
 	PlacePopup(f)
 	popups[key] = f
-	f.palette = MelloUI.Look.Palette()   -- the palette its header and lines are written in (as the look shows it)
+	f.palette = MelloUI.Look.Palette()   -- the palette its header and lines are written in
 	-- the one mover (registered once its own scripts are set: the mover
 	-- hooks its hide); and from the first window on, every window follows
 	-- the chat's look and the palette (the same listeners for all, told
@@ -3474,7 +3465,6 @@ local function CreatePopup(key, kind, target, title)
 	MelloUI:RegisterMover(f, head, POPUP_MOVER)
 	MelloUI:On("look:whisper", PopupsFollowLook, "Chat whisper popups")
 	MelloUI:On("palette", PopupsFollowPalette, "Chat whisper palette")
-	MelloUI:On("look:own", PopupsFollowPalette, "Chat whisper palette")   -- (the reskin switched: the game's colours)
 	return f
 end
 
@@ -3633,7 +3623,7 @@ end
 -- registry by themselves). Only a window written in another palette table:
 -- 'palette' goes out for a Kit Colours change too, the palette unchanged.
 PopupsFollowPalette = function()
-	local palette = MelloUI.Look.Palette()   -- (the reskin off: the game's colours, its own table)
+	local palette = MelloUI.Look.Palette()
 	for _, f in pairs(popups) do
 		if f.palette ~= palette then
 			f.palette = palette

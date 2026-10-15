@@ -180,7 +180,7 @@ local function Rows(kind)
 end
 
 local function StyleText(fs, size)
-	MelloUI.Look.Text(fs, "text", size, { area = "unitframes" })
+	MelloUI.Look.Text(fs, "text", size)
 	fs:SetShadowOffset(1, -1)
 end
 

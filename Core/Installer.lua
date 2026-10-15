@@ -163,7 +163,8 @@ local ROLE = {
 -- The palette (0.14.0) is a look: Full experience and Reskin only put
 -- Full's in (Mello's own look), No reskin keeps the player's, Fresh start
 -- takes the Look step's card (the draft); the Review step names it.
-local U_LOOK = { reskin = true, questTrackerKit = true, preloadArt = true, fadeWindows = true, positions = true, autoSnap = true,
+-- (one look, stage E, 2026-10-15: questTrackerKit, the Quest Tracker's removed Painted Skin, is no look key any more)
+local U_LOOK = { reskin = true, preloadArt = true, fadeWindows = true, positions = true, autoSnap = true,
 	palette = true }
 local U_PREFERENCE = { nameFormat = true }
 

@@ -375,8 +375,8 @@ local function Row(i)
 	return row
 end
 
--- a person's class picture on a round icon's texture (the painted medallion in the kit, the game's round icon in
--- its look: MelloUI.Look's one class picture)
+-- a person's class picture on a round icon's texture: the class medallion always (MelloUI.Look's one class
+-- picture)
 local function Picture(tex, c)
 	local Look = MelloUI.Look
 	local class = c and Text(c.classFile)

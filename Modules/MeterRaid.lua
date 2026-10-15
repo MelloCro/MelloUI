@@ -51,7 +51,7 @@ local Secret = MelloUI.Safe.IsSecret
 local Num = MelloUI.Safe.Number
 local Text = MelloUI.Safe.Text
 local W = MelloUI.Widgets
-local Look = MelloUI.Look   -- (0.17.1: the game's look with the reskin off)
+local Look = MelloUI.Look   -- (0.17.1: the palette's paint, one look since onelook stage E)
 local Meter = ns.Meter
 local M = Meter.M
 

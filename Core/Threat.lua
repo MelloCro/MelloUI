@@ -139,7 +139,7 @@ function Threat.Colour(state)
 	elseif state == "close" then
 		c = MelloUI.Meaning.threatClose
 	else
-		return MelloUI.Look.RoleColour("gold")   -- (the palette's gold; the reskin off, the game's)
+		return MelloUI.Look.RoleColour("gold")   -- (the palette's gold)
 	end
 	return c[1], c[2], c[3]
 end

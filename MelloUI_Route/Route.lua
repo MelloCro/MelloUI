@@ -5566,9 +5566,6 @@ local TextShade = {
 -- the option: Tweaks' Text Shade (0.16.0: one with the zone text's and the
 -- centre texts'), as saved; on unless switched off
 function TextShade.On()
-	if not MelloUI.Look:On() then
-		return false   -- (the reskin off: the game's look, no band; its text shade comes back with the reskin)
-	end
 	local mods = MelloUI.db and MelloUI.db.modules
 	local tweaks = type(mods) == "table" and mods.Tweaks
 	return not (type(tweaks) == "table" and tweaks.textShade == false)
@@ -6149,52 +6146,20 @@ function Travel.PlayerArrow(tex)
 	tex:SetTexture("Interface/Minimap/MinimapArrow")
 end
 
--- The marker's gem and edge arrow in the look (docs/plans/game-look.md wave
--- 3, the user's pick: the game's art): the kit's gem and the player arrow
--- painted; with the reskin off the game's own navigation art, as its
--- super-tracked frame draws it (Navigation-Tracked-Icon at its size, its
--- edge arrow) -- the beam, its light and the text shade off
--- (the game's icon on a texture of its own, marker.gameGem, as the game's
--- SuperTrackedFrame draws it on its Icon: the user's screenshot 2026-10-02,
--- the icon set on the kit's gem texture showed a solid gold block -- what
--- the kit's piece left on it was not all undone by SetAtlas. The gem stays
--- the marker's anchor, empty, at the icon's size: the texts stand under it)
+-- The marker's mark and edge arrow (one look since onelook stage E; the
+-- game's navigation art of docs/plans/game-look.md wave 3 went with the
+-- reskin's off half): the flag mark at TextShade.GEM, the player arrow at the
+-- screen's edge
 function Beacon.Art()
 	if not (marker and marker.gem) then
 		return
 	end
-	local gem, edge, game = marker.gem, marker.edge, marker.gameGem
-	if Beacon.painted ~= false then
-		gem:SetSize(TextShade.GEM, TextShade.GEM)
-		Beacon.FlagMark()
-		if game then
-			game:Hide()
-		end
-		if edge then
-			edge:SetSize(40, 40)
-			Travel.PlayerArrow(edge)
-		end
-		return
-	end
-	local Kit = MelloUI.Kit
-	if Kit and Kit.pieceOf then
-		Kit.pieceOf[gem], Kit.pieceNameOf[gem] = nil, nil   -- (no kit piece now: the kit's shadow partner lets it go)
-	end
-	gem:SetTexture(nil)
-	Beacon.FollowGem()   -- (the flag mark's disc and flag go with the painted look)
-	if not game then
-		-- (made the first time the game's look needs it, set once)
-		game = gem:GetParent():CreateTexture(nil, "ARTWORK")
-		game:SetPoint("CENTER", gem, "CENTER")
-		game:SetAtlas((select(2, MelloUI.Look.Art("navIcon"))), true)
-		marker.gameGem = game
-	end
-	if game then
-		gem:SetSize(game:GetSize())
-		game:SetShown(gem:IsShown())
-	end
+	local gem, edge = marker.gem, marker.edge
+	gem:SetSize(TextShade.GEM, TextShade.GEM)
+	Beacon.FlagMark()
 	if edge then
-		edge:SetAtlas((select(2, MelloUI.Look.Art("navArrow"))), true, nil, true)   -- (resetTexCoords: no crop kept)
+		edge:SetSize(40, 40)
+		Travel.PlayerArrow(edge)
 	end
 end
 
@@ -6242,7 +6207,7 @@ end
 function Beacon.FollowGem()
 	local disc, flag = marker and marker.goalDisc, marker and marker.goalFlag
 	if disc then
-		local shown = Beacon.painted ~= false and marker.gem:IsShown() and true or false
+		local shown = marker.gem:IsShown() and true or false
 		disc:SetShown(shown)
 		flag:SetShown(shown)
 	end
@@ -6275,22 +6240,6 @@ end
 -- palette's gold with the line and the dashes
 function Beacon.Light()
 	return M.TrailLook() == "beads" and MelloUI.Meaning.routeBeam or MelloUI.Look.Palette().selectedTrim
-end
-
--- The reskin switched (MelloUI.Look; now, and at each switch): the marks in
--- their look -- the gold, the gem and the edge arrow, the beam (none in the
--- game's look) and the text shade
-function Beacon.OnLook(_, painted)
-	Beacon.painted = painted and true or false
-	Beacon.Art()
-	Travel.Paint()
-	TextShade.Apply()
-	if marker then
-		marker.lastX = nil   -- (its next tick lays it again: the beam back in the painted look)
-		if not painted and marker.beam then
-			marker.beam:Hide()
-		end
-	end
 end
 
 function Beacon.Foot(beam)
@@ -6341,7 +6290,7 @@ end
 function Beacon.WayIn(f, landed)
 	if landed or not f.pin then
 		Beacon.Play(f.pop)
-		if f.goalPops and Beacon.painted ~= false then
+		if f.goalPops then
 			Beacon.Play(f.goalPops[1])
 			Beacon.Play(f.goalPops[2])
 		end
@@ -7344,9 +7293,6 @@ local function MarkerTick(self, elapsed)
 	if off ~= self.off then
 		self.off = off
 		self.gem:SetShown(not off)
-		if self.gameGem then
-			self.gameGem:SetShown(not off and Beacon.painted == false)
-		end
 		self.distance:SetShown(not off)
 		self.label:SetShown(not off)
 		self.edge:SetShown(off)
@@ -7362,7 +7308,7 @@ local function MarkerTick(self, elapsed)
 	if d then
 		Beacon.BeamFade(beam, d)
 	end
-	local lit = Beacon.painted ~= false and not off and not pin and M.db.routeBeam and beam.fade > 0 or false
+	local lit = not off and not pin and M.db.routeBeam and beam.fade > 0 or false
 	if lit ~= beam:IsShown() then
 		if lit then
 			Beacon.Foot(beam)
@@ -7487,7 +7433,7 @@ local function EnsureMarker()
 	marker.gem = core:CreateTexture(nil, "ARTWORK")
 	marker.gem:SetSize(26, 26)
 	marker.gem:SetPoint("CENTER")
-	-- (its art: Beacon.Art, below -- the flag mark in the painted look)
+	-- (its art: Beacon.Art, below -- the flag mark)
 	-- the texts (0.18.4): they change sides of the gem near the place
 	-- (Beacon.LayWords), fading as one with their shade bands: `front` is
 	-- their frame (`words`), the edge arrow on it too, shown only off screen,
@@ -7504,7 +7450,7 @@ local function EnsureMarker()
 	marker.edge:SetSize(40, 40)
 	marker.edge:SetPoint("CENTER")
 	Travel.PlayerArrow(marker.edge)
-	Beacon.Art()   -- (the flag mark; the reskin off: the game's own destination icon and edge arrow)
+	Beacon.Art()   -- (the flag mark and the edge arrow)
 	Travel.Paint()   -- the distance and the edge arrow in the palette's gold
 	Beacon.Tint()   -- the beam's light in the trail's look
 	marker.edge:Hide()
@@ -7626,7 +7572,7 @@ UpdateMarker = function()
 		-- (0.18.4) the near look or the beacon's as the place is now: near, the
 		-- mark rises from the place into its hover (the near look's way in)
 		Beacon.Turn(marker, marker.pin, 0)
-		local lit = Beacon.painted ~= false and M.db.routeBeam and not marker.pin and beam.fade > 0 or false
+		local lit = M.db.routeBeam and not marker.pin and beam.fade > 0 or false
 		if lit then
 			Beacon.Foot(beam)
 		end
@@ -7809,7 +7755,7 @@ end
 -- the palette's gold (the nearest to the gold they had), again whenever the
 -- palette changes
 function Travel.Paint()
-	-- (the reskin off, MelloUI.Look: the game's gold, the arrows in their own colours)
+	-- (MelloUI.Look: the palette's gold, the arrows' pictures in their own colours)
 	local r, g, b = MelloUI.Look.RoleColour("gold")
 	local ir, ig, ib = MelloUI.Look.RoleColour("picture")
 	-- (each part only once it exists: a frame half made, by an error part way
@@ -8987,7 +8933,7 @@ do
 		if not (secs or slot == F.wanted) then
 			return
 		end
-		local P = MelloUI.Look.Palette()   -- (the reskin off: the game's white and gold)
+		local P = MelloUI.Look.Palette()
 		if secs then
 			local c = P.text
 			tip:AddLine("Flight time: about " .. Clock(secs), c[1], c[2], c[3])
@@ -9989,7 +9935,13 @@ function M:OnEnable(db)
 	-- (a profile brought in: the Text Shade as it says; nothing at login)
 	TextShade.Apply()
 	MelloUI:On("setting", TextShade.OnSetting, "Route text shade")
-	MelloUI.Look.Watch(M, Beacon.OnLook)   -- (the reskin off: the game's art for the marks)
+	-- (switched on again: the marks laid for the settings and the palette as they are now -- the text shade just
+	-- above -- and the marker laid again at its next tick)
+	Beacon.Art()
+	Travel.Paint()
+	if marker then
+		marker.lastX = nil
+	end
 	-- (user, 2026-09-24: nothing runs while nothing is routed) the minimap
 	-- tick sleeps with its frame: mm is made hidden and shown by Redraw only
 	-- while there is a destination, and a hidden frame's OnUpdate never runs.

@@ -119,7 +119,10 @@ FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPan
              "ClassIcons.pvpFlag",
              # (0.25.0, the race bar's rail: Race Bar Height removed, Race Bar Thickness (Meter.railHeight) in its
              # place, a new key; a saved height is simply not read)
-             "Meter.barHeight"]
+             "Meter.barHeight",
+             # (one look, stage E, the user 2026-10-15: the Quest Tracker's Painted Skin removed; the login's
+             # MelloUI:MergeSettings drops a saved key, its one-time flag stays personal: EXTRA_PERSONAL)
+             "UIModifications.questTrackerKit"]
 EDIT_MODE_FRAMES = ["MinimapCluster", "DamageMeter", "ChatFrame1", "ObjectiveTrackerFrame"]
 # the installer's additions to the keep lists and the one-time flag name rule
 # (the installer build's test_options.py name check)
@@ -360,7 +363,7 @@ def entry_line(text):
 # what a login's one-time steps may change besides the moves (anything else
 # stops the bake): a personal key or one-time flag, a FULL_DROP key, or a
 # documented step
-LOGIN_STEPS = {"UIModifications.questTrackerKit",   # set once from TrackerPanel (UIModifications' OnEnable)
+LOGIN_STEPS = {"UIModifications.questTrackerKit",   # dropped at the login: Core's MERGES (one look, stage E)
                # 0.16.0: the merged settings (Core/Core.lua MelloUI:MergeSettings, before the modules come up) and the
                # Voice Over widget's (VoiceOver's OnInit: its padlock is Reminders' widgetLock; its old place, the
                # store's voiceOverlay, and its scale are gone)

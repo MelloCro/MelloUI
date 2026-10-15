@@ -1099,7 +1099,7 @@ local function Heading(key, name)
 	h:SetHeight(G.HEAD)
 	h.key, h.name = key, name
 	h.text = h:CreateFontString(nil, "OVERLAY")
-	Look.Text(h.text, "gold", 12, { area = AREA })
+	Look.Text(h.text, "gold", 12)
 	h.text:SetText(name)
 	h.plus = h:CreateTexture(nil, "OVERLAY")
 	h.plus:SetTexture("Interface\\Buttons\\UI-PlusButton-Up")
@@ -1107,7 +1107,7 @@ local function Heading(key, name)
 	h.plus:SetPoint("LEFT", h, "LEFT", 0, 0)
 	if key == "junk" then
 		h.worth = h:CreateFontString(nil, "OVERLAY")
-		Look.Text(h.worth, "text", 11, { area = AREA })
+		Look.Text(h.worth, "text", 11)
 		h.worth:SetPoint("RIGHT", h, "RIGHT", -1, 0)
 	end
 	Perf.SetScript(h, "OnClick", HeadingClick)
@@ -1115,7 +1115,7 @@ local function Heading(key, name)
 	Perf.SetScript(h, "OnLeave", W.TipLeave)
 	S.headings[key] = h
 	local fold = S.content:CreateFontString(nil, "OVERLAY")
-	Look.Text(fold, "number", 12, { area = AREA })
+	Look.Text(fold, "number", 12)
 	S.folds[key] = fold
 	return h
 end
@@ -1171,11 +1171,11 @@ local function GroupHead(name)
 	h.caret:SetSize(12, 12)
 	h.caret:SetPoint("LEFT", h, "LEFT", 1, 0)
 	h.text = h:CreateFontString(nil, "OVERLAY")
-	Look.Text(h.text, "gold", 14, { area = AREA })
+	Look.Text(h.text, "gold", 14)
 	h.text:SetPoint("LEFT", h.caret, "RIGHT", 6, 0)
 	h.text:SetText(name)
 	h.count = h:CreateFontString(nil, "OVERLAY")
-	Look.Text(h.count, "text", 11, { area = AREA })
+	Look.Text(h.count, "text", 11)
 	h.count:SetPoint("LEFT", h.text, "RIGHT", 8, 0)
 	Perf.SetScript(h, "OnClick", GroupClick)
 	Perf.SetScript(h, "OnEnter", GroupEnter)
@@ -2275,11 +2275,9 @@ local function Build()
 	end
 	-- the Settings button (user, 2026-10-04: "a button in the backpack like a shortcut to that window"; pick A of
 	-- bag_view_sketch/bag_settings_looks.jpg): Discard's button with the game's options gear, the settings opened on
-	-- Windows > Bags; 0.19.9 (the user, 2026-10-09: "why arent the cogwheel ... changed"): the NewUI2 cog plate, the
-	-- gear in the game's look only
-	local settings, gear = W.PlateButton(f, 28, G.ROW_H, 16, AREA, SETTINGS_SCRIPTS, "cog")
-	gear:SetAtlas((select(2, Look.Art("optionsGear"))))
-	gear:SetDesaturated(true)   -- (in the text colour, as Discard's bin)
+	-- Windows > Bags; 0.19.9 (the user, 2026-10-09: "why arent the cogwheel ... changed"): the NewUI2 cog plate, which
+	-- draws its own cog (onelook stage E: no game gear)
+	local settings = W.PlateButton(f, 28, G.ROW_H, 16, AREA, SETTINGS_SCRIPTS, "cog")
 	win.settings = settings
 	-- the money
 	local money = CreateFrame("Frame", "MelloUIBagWindowMoney", f, "SmallMoneyFrameTemplate")
@@ -3599,7 +3597,7 @@ function Move.Tint(up)
 	end
 	local r, g, b
 	if up then
-		r, g, b = MelloUI.Look.RoleColour("gold", AREA)
+		r, g, b = MelloUI.Look.RoleColour("gold")
 	else
 		local c = rawget(_G, "RED_FONT_COLOR")   -- (the game's red: money going)
 		if not (c and c.GetRGB) then

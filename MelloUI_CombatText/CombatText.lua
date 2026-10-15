@@ -39,10 +39,8 @@
 -- combatResource; the notices in the palette's gold (selectedTrim), the
 -- words and names in its text colour, by key (painted again on the
 -- palette). Crits are 1.35 times as big and held a little longer.
--- With the reskin off (MelloUI.Look, docs/plans/game-look.md wave 3) the
--- game's floating text: no band, the game's black shadow, outlined, the
--- words white and the notices gold in the game's colours (the meaning
--- colours stay: they say what a number is).
+-- One look whatever the reskin (onelook stage E): the band, the palette's
+-- soft shadow, outlined only with Outlined Text on.
 --
 -- One source: COMBAT_TEXT_UPDATE (C_CombatText.GetCurrentEventInfo: data,
 -- arg3, arg4 -- SecretReturns, so any of them may be secret) and the fight's
@@ -146,7 +144,7 @@
 local _, ns = ...
 local MelloUI = (ns and ns.MelloUI) or _G.MelloUI
 local Perf = MelloUI.Perf:Scope("MelloUI_CombatText (Combat Text)")
-local GameLook = MelloUI.Look   -- (the reskin off: the game's floating text)
+local GameLook = MelloUI.Look   -- (the palette's paint, outline and shadow)
 local hooksecurefunc = Perf.hooksecurefunc
 
 local Secret = MelloUI.Safe.IsSecret
@@ -668,14 +666,13 @@ end
 local TEXT_LOOK = MelloUI.Shade.TEXT
 local PAD_X, FEATHER = TEXT_LOOK.padX, TEXT_LOOK.feather
 
--- the notice's Outlined Text (Tweaks noticeOutline, off by default); the
--- reskin off: outlined, as the game's floating texts
+-- the notice's Outlined Text (Tweaks noticeOutline, off by default)
 local function Outline()
 	local Look = MelloUI.CentreLook
 	return GameLook.Outline(Look and Look.Setting and Look.Setting("noticeOutline"))
 end
 
--- the soft shadow (the reskin off: the game's black one)
+-- the soft shadow, in the palette
 local function Shadow(fs)
 	GameLook.Shadow(fs, TEXT_LOOK.shadow)
 end
@@ -756,7 +753,6 @@ local function Build(row, glyph)
 		row.glyph = g
 	end
 	row.band = MelloUI.Shade:Band(row, TEXT_LOOK)
-	GameLook.Hide(row.band)   -- (no band in the game's look)
 end
 
 -- the colour of a number: the kind's meaning colour
@@ -853,10 +849,10 @@ local function Lay(row, align, main, hasTail, hasSign, size)
 	-- far taller than its digits); 0% no band
 	local band = row.band
 	if share <= 0 then
-		GameLook.Show(band, false)
+		band:SetShown(false)
 		return
 	end
-	GameLook.Show(band, true)
+	band:SetShown(true)
 	band:SetFeather(math.max(4, FEATHER * share))
 	local left = (glyph and align == "LEFT") and glyph or (hasSign and sign or m)
 	local right = hasTail and tail or m
@@ -1931,13 +1927,6 @@ local function Repaint()
 	EachLine(ShadowRow)
 end
 
--- the reskin switched: the lines there are styled again at their next fill,
--- their shadows now
-local function OnLook()
-	EachLine(Restyle)
-	EachLine(ShadowRow)
-end
-
 -- the state the settings ask for: a style of ours on (the game's text kept
 -- coming and faded), or the game's own back
 Apply = function()
@@ -2004,7 +1993,10 @@ function M:OnEnable(db)
 	MelloUI:On("restart", OnRestart, OWNER)
 	MelloUI:On("palette", Repaint, OWNER)
 	MelloUI:On("preview", OnPreview, OWNER)
-	GameLook.Watch(M, OnLook)   -- (the reskin switched: the lines shown restyled)
+	-- (switched on again: the lines kept from before -- the pool, the lanes, Your Damage's -- in the fonts and the
+	-- palette as they are now; nothing at the login, when none is made yet)
+	EachLine(Restyle)
+	Repaint()
 	-- Game: nothing more (no frame, no event, no CVar)
 	if Style() ~= "game" or Dealt() ~= "game" or (db and (db.savedGameText ~= nil or db.savedDealt ~= nil)) then
 		MelloUI:AfterLogin(Start)

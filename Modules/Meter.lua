@@ -76,7 +76,7 @@ local Safe = MelloUI.Safe
 local Secret, Num, Text, Finite = Safe.IsSecret, Safe.Number, Safe.Text, Safe.Finite
 local W = MelloUI.Widgets
 -- (0.17.1, docs/plans/game-look.md) the look of MelloUI's own parts: the
--- painted one with the reskin, the game's own without
+-- palette's (one look since onelook stage E)
 local Look = MelloUI.Look
 local pcall, type, pairs, ipairs, tostring = pcall, type, pairs, ipairs, tostring
 local floor, max, min, abs = math.floor, math.max, math.min, math.abs
@@ -793,8 +793,7 @@ Meter.Lines = Lines
 local PARTS = { "sword", "hourglass", "heal" }
 
 -- a part's colours: the sword gold, the hourglass the text colour, the
--- cross healing's green (the meaning colour Combat Text's heals wear; the
--- game's gold, white and green in its look: MelloUI.Look)
+-- cross healing's green (the meaning colour Combat Text's heals wear)
 local TINT = { sword = "gold", hourglass = "text", heal = "heal" }
 local function PaintPart(p)
 	local tint = TINT[p.kind] or "text"
@@ -851,7 +850,6 @@ local function NewLine(parent, align)
 	local band = MelloUI.Shade:Band(f, BAND)
 	if band then
 		band:Anchor(line.parts[1].glyph, line.parts[#line.parts].text, 6, MelloUI.Shade:LinePadY(T.SIZE))
-		Look.Hide(band)   -- (the soft band is the painted look's: none in the game's)
 	end
 	line.band = band
 	return line
@@ -1346,7 +1344,7 @@ local SUMMARY = {
 	end,
 	tooltip = function(_, tip)
 		local QI = MelloUI.QuestInk
-		local tr, tg, tb = Look.RoleColour("text")   -- (the palette's text, the game's white)
+		local tr, tg, tb = Look.RoleColour("text")   -- (the palette's text)
 		for i, s in ipairs(TopFive(S.summary)) do
 			local r, g, b = tr, tg, tb
 			local cr, cg, cb

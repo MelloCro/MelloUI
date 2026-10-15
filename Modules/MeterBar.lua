@@ -46,7 +46,7 @@ local Safe = MelloUI.Safe
 local Num, Text, Secret = Safe.Number, Safe.Text, Safe.IsSecret
 local W = MelloUI.Widgets
 -- (0.17.1, docs/plans/game-look.md) the look of MelloUI's own parts: the
--- painted one with the reskin, the game's own without
+-- palette's (one look since onelook stage E)
 local Look = MelloUI.Look
 local Meter = ns.Meter
 local M = Meter.M
@@ -128,8 +128,7 @@ local function Home(holder)
 end
 
 -- a string in its class's colour (its role's own colour without one): one
--- colour table a string, set again in place (Look.Colour keeps it over a
--- look switch)
+-- colour table a string, set again in place (Look.Colour)
 local classColours = setmetatable({}, { __mode = "k" })
 local function ClassColour(fs, class)
 	local QI = MelloUI.QuestInk
@@ -232,7 +231,7 @@ local function Medallion(pin, class)
 	pin.face:SetIcon(path or UNKNOWN_ICON)
 end
 
-local ListShow, ListHide, LookBar   -- (below)
+local ListShow, ListHide   -- (below)
 
 local function Build()
 	if Bar.ui then
@@ -265,7 +264,7 @@ local function Build()
 	top:SetPoint("BOTTOMRIGHT", unit, "BOTTOMLEFT", -3, 0)
 	ui.top = top
 	-- the track: on the rail's middle line, as tall as your share (Race Bar
-	-- Thickness); the rail across it, your share over the rail (LookBar)
+	-- Thickness); the rail across it, your share over the rail (Bar.Look)
 	local track = CreateFrame("Frame", nil, holder)
 	track:SetPoint("LEFT", holder, "TOPLEFT", 0, -B.ABOVE)
 	track:SetPoint("RIGHT", holder, "TOPRIGHT", 0, -B.ABOVE)
@@ -331,61 +330,34 @@ end
 -- the reskin; Oldschool does not dress it): your share in the status bars'
 -- Bar Texture, in your class colour (the palette's selectedTrim while your
 -- class cannot be read); every text's soft shadow. Laid at the build, at a
--- new Bar Texture and at a new palette. (The game's half after it is no
--- longer reached: it goes in stage E.) The value's and the unit's shadows
--- hold until then: only a 'look:own' pass lays their font objects again (the
--- font's own shadow with them), and none comes, the own area being always on
--- since stage C; a pin's label is laid again by its class colour, so Lay
--- shades it again there.
-LookBar = function(ui, painted)
-	local fill, Kit = ui.fill, MelloUI.Kit
-	local tex = fill:GetStatusBarTexture()
-	if painted then
-		fill:SetStatusBarTexture(FillTexture())
-		tex = fill:GetStatusBarTexture()
-		if tex then
-			local r, g, b = PlayerColour()
-			if r then
-				if Kit and Kit.Unpaint then
-					Kit:Unpaint(tex, "vertex")   -- (out of the palette's repaint: a meaning colour)
-				end
-				tex:SetVertexColor(r, g, b, 1)
-			else
-				W.Paint(tex, "selectedTrim", "vertex")
-			end
-		end
-		TextShadow(ui.caption)
-		TextShadow(ui.unit)
-		TextShadow(ui.top)
-		for _, pin in ipairs(ui.pins) do
-			TextShadow(pin.label)
-		end
-		TextShadow(ui.me.label)
-		return
-	end
-	if tex and Kit and Kit.Unpaint then
-		Kit:Unpaint(tex, "vertex")
-	end
-	Look.GameBar(fill, nil, true)   -- (the game's fill, its ground and edge)
-	ui.back, ui.edge = Look.GameBarParts(fill)
-	tex = fill:GetStatusBarTexture()
-	if tex then
-		local QI = MelloUI.QuestInk
-		local okC, _, class = pcall(_G.UnitClass, "player")
-		local r, g, b
-		if okC and QI and QI.ClassColour and not Secret(class) then
-			r, g, b = QI.ClassColour(class)
-		end
-		tex:SetVertexColor(r or 1, g or 0.82, b or 0, 1)
-	end
-end
-
--- the look again: a Bar Texture or the palette changed
+-- new Bar Texture and at a new palette; a pin's label is laid again by its
+-- class colour, so Lay shades it again there.
 function Bar.Look()
 	local ui = Bar.ui
-	if ui then
-		LookBar(ui, Look:On())
+	if not ui then
+		return
 	end
+	local fill, Kit = ui.fill, MelloUI.Kit
+	fill:SetStatusBarTexture(FillTexture())
+	local tex = fill:GetStatusBarTexture()
+	if tex then
+		local r, g, b = PlayerColour()
+		if r then
+			if Kit and Kit.Unpaint then
+				Kit:Unpaint(tex, "vertex")   -- (out of the palette's repaint: a meaning colour)
+			end
+			tex:SetVertexColor(r, g, b, 1)
+		else
+			W.Paint(tex, "selectedTrim", "vertex")
+		end
+	end
+	TextShadow(ui.caption)
+	TextShadow(ui.unit)
+	TextShadow(ui.top)
+	for _, pin in ipairs(ui.pins) do
+		TextShadow(pin.label)
+	end
+	TextShadow(ui.me.label)
 end
 
 --------------------------------------------------------------------------------

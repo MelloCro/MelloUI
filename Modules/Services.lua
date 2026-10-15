@@ -1564,7 +1564,7 @@ local Pick = { group = { key = "pick", label = "Profession Trainer", kinds = {} 
 	HINT_ANY = "Click to route to the nearest profession trainer by road." }
 
 -- a palette key's colour role for a menu string (MelloUI.Look's Tint): the
--- palette's key painted, the game's gold, white or grey with the reskin off
+-- palette's key painted
 local TINT = { text = "text", selectedTrim = "gold", mutedText = "muted" }
 local function Tint(fs, key)
 	MelloUI.Look.Tint(fs, TINT[key] or "text")
@@ -1579,7 +1579,7 @@ end
 
 -- the menu's box: the kit's L1 box while the painted minimap is on (SV1, as
 -- the bar), else the tooltip's backdrop in the palette's inner panel and trim
--- (the reskin off: in the tooltip's own colours, MelloUI.Look)
+-- (MelloUI.Look)
 local function MenuBox(kit)
 	if not menu or SetKitBox(menu, kit) or not menu.SetBackdrop then
 		return
@@ -2363,7 +2363,7 @@ end
 -- button's below -- the service's name and the nearest one in the gold, the
 -- hints in the text colour (0.14.0: the palettes; greys of its own before)
 local function BarTooltip(self)
-	local P = MelloUI.Look.Palette()   -- (the reskin off: the game's gold and white)
+	local P = MelloUI.Look.Palette()
 	local gold, text = P.selectedTrim, P.text
 	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 	GameTooltip:SetText(self.kind.label, gold[1], gold[2], gold[3])
@@ -2628,7 +2628,7 @@ local function PlainBarBox(plain)
 		tile = true, tileSize = 16, edgeSize = 12,
 		insets = { left = 3, right = 3, top = 3, bottom = 3 },
 	})
-	MelloUI.Look.Paint(barPaint, "innerPanel", "backdrop", 0.85)   -- (the reskin off: the tooltip's own colours)
+	MelloUI.Look.Paint(barPaint, "innerPanel", "backdrop", 0.85)
 	MelloUI.Look.Paint(barPaint, "trim", "border", 1)
 end
 

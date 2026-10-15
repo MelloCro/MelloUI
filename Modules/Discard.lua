@@ -344,13 +344,11 @@ end
 
 --------------------------------------------------------------------------------
 -- The buttons (made with their window's first show). The look (the user's
--- pick A of BuildData/output/discard_sketch, 2026-10-03): the bin glyph on
--- the Sort button's plate -- the kit's cog plate while the window wears the
--- kit (the area "backpack" / "loot"), the game's own round column button
--- (chatframe-button-up) without it (Look.ColumnButton). The places: on the
--- bag window left of Sort, the search box shorter by the button's room
--- while it shows (pick 1); on the loot window under the loot list, at its
--- bottom right.
+-- pick A of BuildData/output/discard_sketch, 2026-10-03; onelook stage E):
+-- the bin glyph on the controls' icon plate (W.PlateButton: W.FlatOver's
+-- 'button'), whatever the window wears. The places: on the bag window left
+-- of Sort, the search box shorter by the button's room while it shows
+-- (pick 1); on the loot window under the loot list, at its bottom right.
 --------------------------------------------------------------------------------
 
 local buttons = {}   -- [source] = the button
@@ -390,8 +388,8 @@ local BUTTON_SCRIPTS = {
 
 local function MakeButton(source, parent)
 	local W = MelloUI.Widgets
-	-- the kit's cog plate, as the Sort button's, its opening black under the
-	-- bin (W.PlateButton: the bag window's Settings is the same button)
+	-- the controls' icon plate under the bin, whatever the window wears
+	-- (W.PlateButton: the bag window's Settings is the same button)
 	local b, glyph = W.PlateButton(parent, SIZE_W, SIZE_H, GLYPH, AREA[source], BUTTON_SCRIPTS)
 	b.source = source
 	W.Glyph(glyph, "bin")

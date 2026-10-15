@@ -699,8 +699,7 @@ local function RemClick()
 end
 
 -- the tooltip's lines (built on hover only): each line of the list with
--- what the bags hold, the low ones in the palette's gold (the reskin off,
--- the game's)
+-- what the bags hold, the low ones in the palette's gold
 local function RemTooltip(_, tip)
 	if type(tip) ~= "table" or type(tip.AddDoubleLine) ~= "function" then
 		return
@@ -1194,8 +1193,7 @@ local function ShopRow(f, i)
 	row:SetPoint("TOPLEFT", f, "TOPLEFT", PAD, -(HEAD + (i - 1) * ROW_H))
 	row:SetPoint("RIGHT", f, "RIGHT", -PAD, 0)
 	if i % 2 == 1 then
-		-- a neutral stripe under every other row (WINDOW-RULES 2e; the reskin
-		-- off, black: MelloUI.Look)
+		-- a neutral stripe under every other row (WINDOW-RULES 2e; MelloUI.Look)
 		row.band = MelloUI.Look.Solid(row, "BACKGROUND", "mainWindow", 0.85)
 		row.band:SetAllPoints(row)
 	end

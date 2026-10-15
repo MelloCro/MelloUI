@@ -2002,21 +2002,20 @@ QL.MEANING = {
 	horde = { 1, 0.3, 0.3 },      -- a transport of the Horde (meaning colour)
 }
 
--- (the palette as the Quest List's look shows it -- the Quest Log's switch, the
--- user's pick 2026-10-02: the game's colours while that look is off)
+-- (the palette, MelloUI's one look since onelook stage E)
 function QL.TipColour(name)
-	local c = QL.MEANING[name] or MelloUI.Look.Palette("questList")[name]
+	local c = QL.MEANING[name] or MelloUI.Look.Palette()[name]
 	return c[1], c[2], c[3]
 end
 
 function QL.TipLine(tip, text, name, wrap)
-	local c = QL.MEANING[name] or MelloUI.Look.Palette("questList")[name]
+	local c = QL.MEANING[name] or MelloUI.Look.Palette()[name]
 	tip:AddLine(text, c[1], c[2], c[3], wrap)
 end
 
 function QL.TipTitle(tip, text, name)
 	name = name or "selectedTrim"
-	local c = QL.MEANING[name] or MelloUI.Look.Palette("questList")[name]
+	local c = QL.MEANING[name] or MelloUI.Look.Palette()[name]
 	tip:SetText(text, c[1], c[2], c[3])
 end
 

@@ -568,8 +568,8 @@ Lint workflow) fails when a copy is added and names the system to use.
   one row of Kit.Areas' list (Kit.lua): `{ name, cover = true }` (a HUD
   group), `follows = "<area>"` (the whisper popups follow `chat`, the Services
   bar `minimap`), `module = "<Module>"` (the Quest List follows QuestLogPanel)
-  or `reskin = true` (+ `switch = "<UI Modifications key>"`, the Quest
-  Tracker's `questTrackerKit`). The window asks `Kit:IsOn(area)` when it
+  or `reskin = true` (one look, stage E: the Quest Tracker's own switch,
+  `questTrackerKit`, is removed). The window asks `Kit:IsOn(area)` when it
   builds or shows (live, no table made) and switches an already built look on
   the bus's `look:<area>` (`MelloUI:On("look:<area>", fn, owner)`, told on the
   frame after a change, only when the answer really changed). It never reads
@@ -859,13 +859,13 @@ Lint workflow) fails when a copy is added and names the system to use.
   listed by hand anywhere else (UI Modifications makes its PANELS and TWEAKS
   from it, and the configurator's old MODULE_META is gone; Core.lua's header
   has the shape):
-  - `window = { label, desc, tab = "Windows" | "HUD", order, switch, addon,
+  - `window = { label, desc, tab = "Windows" | "HUD", order, addon,
     firstOpen, include }` makes it a kit panel with nothing
     edited in UI Modifications or Config: UI Modifications defines its
     Painted Skin switch (its name, `UIModifications.<Name>`; `order` sorts
-    the definitions); `switch` makes that a setting of UI Modifications (an
-    own window's look switch, the Quest Tracker's `questTrackerKit`) instead
-    of a module's switch; a `tab = "Windows"` panel without one is a pick of
+    the definitions; the old `switch` field, an own window's look switch,
+    went with the Quest Tracker's `questTrackerKit` at one look stage E); a
+    `tab = "Windows"` panel is a pick of
     the configurator's Windows page by its `label` (its `desc` found by the
     search), and every other panel's Painted Skin row has its `R` line in
     Core/ConfigLayout.lua (the page of what it dresses); `frames` and

@@ -15,9 +15,8 @@
 -- the stacked lines' padding, Shade:LinePadY, so two bands that meet read as
 -- one), the notice's soft text shadow (MelloUI.CentreLook.Shadow), no
 -- outline unless the notice's Outlined Text is on (Tweaks noticeOutline),
--- Font Style applying (MelloUI:StyleFont, the interface text role). With the
--- reskin off (MelloUI.Look, docs/plans/game-look.md wave 3) the game's
--- floating text: no band, its black shadow, outlined, its gold and white.
+-- Font Style applying (MelloUI:StyleFont, the interface text role); one look
+-- whatever the reskin (onelook stage E).
 --   a skill   "+1  Defense  57 / 80": the "+1" in the palette's gold
 --             (selectedTrim), the name in its text colour, the value and the
 --             cap after it quiet (Show Skill Values): smaller, in the text
@@ -152,7 +151,7 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Gains")
-local GameLook = MelloUI.Look   -- (the reskin off: the game's floating text)
+local GameLook = MelloUI.Look   -- (the palette's paint, outline and shadow)
 
 local Secret = MelloUI.Safe.IsSecret
 local Num = MelloUI.Safe.Number
@@ -374,8 +373,7 @@ local function Hold()
 	return v
 end
 
--- the notice's Outlined Text (Tweaks noticeOutline, off by default); the
--- reskin off: outlined, as the game's floating texts
+-- the notice's Outlined Text (Tweaks noticeOutline, off by default)
 local function Outline()
 	local Look = MelloUI.CentreLook
 	return GameLook.Outline(Look and Look.Setting and Look.Setting("noticeOutline"))
@@ -391,7 +389,7 @@ local function StyleText(fs, size, outline)
 	end
 end
 
--- the notice's soft shadow (the reskin off: the game's black one)
+-- the notice's soft shadow, in the palette
 local function Shadow(fs)
 	GameLook.Shadow(fs, TEXT.shadow)
 end
@@ -455,7 +453,6 @@ local function NewRow(row)
 	-- texts by its anchors, whatever their length
 	row.band = MelloUI.Shade:Band(row, TEXT)
 	row.band:Anchor(plus, tail, PAD_X, PAD_Y)
-	GameLook.Hide(row.band)   -- (no band in the game's look)
 end
 
 -- the money a line says, in the game's own string with its coins
@@ -479,7 +476,7 @@ end
 
 -- the name's colour: an item's quality colour with Item Names In Quality
 -- Colour on, else the palette's text colour (a sample as the kind it stands
--- for; the reskin off: the game's white)
+-- for)
 local function NameColour(row)
 	local kind = row.kind
 	if kind == "sample" then
@@ -641,12 +638,6 @@ end
 local function Repaint()
 	feed:Each(ShadowRow)
 	feed:Each(NameColour)
-end
-
--- the reskin switched: the lines there styled and painted again
-local function OnLook()
-	feed:Each(Restyle)
-	Repaint()
 end
 
 -- (Edit Layout open while the first line comes: the samples come first, so
@@ -1495,7 +1486,10 @@ function M:OnEnable(db)
 	MelloUI:On("restart", OnRestart, OWNER)
 	MelloUI:On("palette", Repaint, OWNER)
 	MelloUI:On("preview", OnPreview, OWNER)
-	GameLook.Watch(M, OnLook)
+	-- (switched on again: the feed's lines kept from before -- shown or spare -- in the fonts and the palette as
+	-- they are now; nothing at the login, when the feed is not made yet)
+	feed:Each(Restyle)
+	Repaint()
 	MelloUI:AfterLogin(Start)
 end
 

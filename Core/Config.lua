@@ -1160,13 +1160,12 @@ do
 	end
 
 	-- the Windows page's picks: the registry's kit panels on its Windows tab,
-	-- not the look switch of one of MelloUI's own windows (the Quest
-	-- Tracker's), by label; a pick's key is the panel module's name
+	-- by label; a pick's key is the panel module's name
 	local function WindowPicks()
 		local out = {}
 		for _, m in ipairs(MelloUI:ModulesInOrder()) do
 			local w = m.window
-			if type(w) == "table" and type(w.label) == "string" and w.tab == "Windows" and not w.switch then
+			if type(w) == "table" and type(w.label) == "string" and w.tab == "Windows" then
 				out[#out + 1] = { key = m.name, label = w.label, desc = w.desc }
 			end
 		end
@@ -1577,7 +1576,7 @@ do
 	function Lay.HomeOf(lay, name)
 		local m = MelloUI.modules[name]
 		local w = m and m.window
-		if type(w) == "table" and w.tab == "Windows" and not w.switch and lay.pages.Windows then
+		if type(w) == "table" and w.tab == "Windows" and lay.pages.Windows then
 			return "Windows", nil, name
 		end
 		local c = Count(lay)
@@ -1824,14 +1823,12 @@ local function LabelsOf(p, picks)
 end
 
 -- a module driven by UI Modifications: UI Modifications itself, a kit
--- panel (its registry `window`, not the look switch of an own window) or a
--- folded feature (its `tweak`)
+-- panel (its registry `window`) or a folded feature (its `tweak`)
 local drivenOf = {}
 local function Driven(m)
 	local d = drivenOf[m]
 	if d == nil then
-		local w = m.window
-		d = m.name == "UIModifications" or (type(w) == "table" and not w.switch) or type(m.tweak) == "table"
+		d = m.name == "UIModifications" or type(m.window) == "table" or type(m.tweak) == "table"
 		drivenOf[m] = d
 	end
 	return d
@@ -2034,25 +2031,6 @@ local function Off(page, row, id, fallback)
 	return false, why, SwitchLine(why, where), id, pick
 end
 
--- the module whose own look switch a UI Modifications setting is (its
--- registry `window.switch`: the Quest Tracker's questTrackerKit), else nil
-local lookOwner = nil   -- [UI Modifications key] = that module (made once)
-local function LookOwner(b)
-	if b.mod.name ~= "UIModifications" or b.key == nil then
-		return nil
-	end
-	if not lookOwner then
-		lookOwner = {}
-		for _, m in ipairs(MelloUI:ModulesInOrder()) do
-			local w = m.window
-			if type(w) == "table" and type(w.switch) == "string" then
-				lookOwner[w.switch] = m
-			end
-		end
-	end
-	return lookOwner[b.key]
-end
-
 -- a bound `when` (BindWhen): one setting has (or has not) its value, any
 -- part holds, every part holds
 local function WhenHolds(w)
@@ -2116,10 +2094,8 @@ local function Gate(page, r)
 	if driven and not r.free and not MelloUI:IsModuleEnabled("UIModifications") then
 		return false, TEXT.uim, SwitchLine(TEXT.uim, PageTitle("Look")), "!page:Look"
 	end
-	-- 3: the module's own switch (a feature with one); a look switch UI
-	-- Modifications keeps for one module (the Quest Tracker's Painted Skin)
-	-- on that module's, as the module's other rows
-	local own = (not driven and b.kind ~= "module" and gm) or LookOwner(b)
+	-- 3: the module's own switch (a feature with one)
+	local own = not driven and b.kind ~= "module" and gm or nil
 	if own and not MelloUI:IsModuleEnabled(own.name) then
 		local sw = Lay.Get().switchOf[own.name]
 		if sw and sw.id then
@@ -2131,7 +2107,7 @@ local function Gate(page, r)
 	-- 4: its area: a kit panel's Painted Skin (the Windows page: the pick's)
 	-- and the reskin; a folded feature's switch
 	local w, tweak = gm.window, gm.tweak
-	if type(w) == "table" and not w.switch then
+	if type(w) == "table" then
 		local um = MelloUI.modules.UIModifications
 		local panel = page.fromWindows and page.pick or gm.name
 		if um and Setting(um, "reskin") == false then
@@ -2335,9 +2311,8 @@ end
 -- says why). `writes`: a list of { binding, value }, in order.
 --------------------------------------------------------------------------------
 
--- [UI Modifications key] = "skin" (a painted skin's switch: a panel's, the
--- Quest Tracker's own look) or "feature" (a folded feature's qol_ switch);
--- IsArea(key) -> that, or nil
+-- [UI Modifications key] = "skin" (a painted skin's switch: a panel's) or
+-- "feature" (a folded feature's qol_ switch); IsArea(key) -> that, or nil
 local areaKeys = nil
 local function IsArea(key)
 	if not areaKeys then
@@ -2345,7 +2320,7 @@ local function IsArea(key)
 		for _, m in ipairs(MelloUI:ModulesInOrder()) do
 			local w, t = m.window, m.tweak
 			if type(w) == "table" and w.label then
-				areaKeys[w.switch or m.name] = "skin"
+				areaKeys[m.name] = "skin"
 			end
 			if type(t) == "table" and not t.always then
 				areaKeys["qol_" .. m.name] = "feature"
