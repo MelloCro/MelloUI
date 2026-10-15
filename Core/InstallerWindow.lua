@@ -2493,7 +2493,8 @@ local function WizardSteps()
 
 	--------------------------------------------------------------------------------
 	-- Parchment and dark mode: a switch per parchment area (the kit's sheets:
-	-- asleep with the reskin off; the chat's also with Chat tweaks off), Dark
+	-- asleep with the reskin off, but the Quest Tracker's (Kit.ownParchments)
+	-- live whatever the reskin; the chat's also with Chat tweaks off), Dark
 	-- mode and its brightness
 	--------------------------------------------------------------------------------
 
@@ -2501,7 +2502,9 @@ local function WizardSteps()
 	-- `values`: the character window's, 0.19.4) its dropdown, an older
 	-- switch's true read as the area's `on`
 	local function SheetRow(key, label, zebra, area)
-		local gate = CHAT_SHEETS[key] and ChatSheetGate or ReskinGate
+		-- (one look) a part of MelloUI's own (Kit.ownParchments: the Quest Tracker's) is live whatever the reskin
+		local own = MelloUI.Kit and MelloUI.Kit.ownParchments and MelloUI.Kit.ownParchments[key:sub(11)]
+		local gate = CHAT_SHEETS[key] and ChatSheetGate or (not own and ReskinGate) or nil
 		local draftKey = "UIModifications." .. key
 		if type(area) == "table" and type(area.values) == "table" then
 			local function Get()

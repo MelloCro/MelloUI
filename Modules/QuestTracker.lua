@@ -687,8 +687,9 @@ end
 -- the user's pick 2026-10-02: the game's art with the reskin off): the kit's
 -- pieces while MelloUI's own parts are painted, the game's art they always
 -- fell back to otherwise -- the game's plus / minus buttons and quest arrow,
--- no kit slot round a quest item, the map pin's chat icon for the followed
--- quest. (One table: the file's locals.)
+-- the map pin's chat icon for the followed quest. (onelook stage B: the
+-- followed quest's ring and the quest item's tray took the places of the
+-- kit's gem and slot.) (One table: the file's locals.)
 local Art = {}
 -- the tracker's look area: always on since onelook stage C (Kit.Areas), so
 -- the tracker wears MelloUI's look whatever the reskin and its own switch;
@@ -739,32 +740,121 @@ function Art.Flat(button, kind, lit)
 	return painted
 end
 
--- the followed quest's mark: the kit's small gem (a gold dot without the
--- kit), or the game's map pin's chat icon (MelloUI.Look.Watch: now and at
--- every switch)
+-- the followed quest's mark (MelloUI.Look.Watch: now and at every switch).
+-- MelloUI's look (onelook stage B, the user's pick C of
+-- docs/plans/onelook-b-sketches/tracker.md, 2026-10-15; it took the kit's
+-- small gem's place, which never showed on this client): a thin ring round
+-- the quest's rim -- the widgets' ring (Look.Ring's texture, the Quest
+-- List's zone ring) at 21, its band half a unit clear of the rim's art and
+-- inside the washed row, no light; the block's own texture, so it lies under
+-- the mark's button (its band is outside the rim: nothing covers it). Its
+-- colour by the ground: Art.RingPaint. The game's look: the map pin's chat
+-- icon (goes with the game's look in stage E).
+Art.RING = "Interface\\AddOns\\MelloUI\\Media\\Textures\\ProgressRing"   -- look-ok: the widgets' ring (Look.Ring's texture), MelloUI's look only
+Art.RING_SIZE = 21
+Art.PIN_SIZE = 10   -- the game's look: its map pin icon (NewBlock's size)
+
 function Art.Followed(tex, painted)
 	local Kit = MelloUI.Kit
 	if painted then
-		if not (Kit and Kit.Apply and Kit:Apply(tex, "deco/gem_small")) and Kit and Kit.Paint then   -- look-ok: the painted look's branch
-			Kit:Paint(tex, "selectedTrim", "fill", 1)
-		end
+		tex.melloRing = true
+		tex:SetTexture(Art.RING)
+		tex:SetTexCoord(0, 1, 0, 1)
+		tex:SetSize(Art.RING_SIZE, Art.RING_SIZE)
+		Art.RingPaint(tex)
 		return
 	end
+	tex.melloRing = nil
 	if Kit and Kit.Unpaint then
 		Kit:Unpaint(tex, "fill")
 	end
 	if Kit and Kit.pieceOf then
 		Kit.pieceOf[tex], Kit.pieceNameOf[tex] = nil, nil
 	end
-	-- (resetTexCoords: the kit gem's crop must not crop the pin too)
+	-- (resetTexCoords: the kit gem's crop must not crop the pin too; the
+	-- ring's size and its painted colour, which Unpaint leaves, back to the pin's)
 	tex:SetAtlas((select(2, MelloUI.Look.Art("mapPinChat"))), false, nil, true)
+	tex:SetSize(Art.PIN_SIZE, Art.PIN_SIZE)
+	tex:SetVertexColor(1, 1, 1)   -- (untinted: the game's own pin)
 end
 
--- the quest item's border: the kit's slot painted (none without the kit),
--- none in the game's look (the item button as the game's tracker shows it)
-function Art.ItemBorder(tex, painted)
+-- the ring's colour by the tracker's ground, read at every fill (the
+-- parchment switched rebuilds): the palette's selected gold on the dark
+-- panel, its border on the paper (the tracker's own hairlines there); by
+-- palette key through the one registry, painted again on 'palette'
+function Art.RingPaint(tex)
 	local Kit = MelloUI.Kit
-	tex:SetShown(painted and Kit and Kit.Apply and Kit:Apply(tex, "buttons/slot_normal") and true or false)   -- look-ok: painted only
+	if Kit and Kit.Paint then
+		Kit:Paint(tex, Art.Paper() and "border" or "selectedTrim", "vertex", 1)
+	end
+end
+
+-- The quest item's tray (onelook stage B, the user's pick C, 2026-10-15; it
+-- took the kit's square slot's place, buttons/slot_normal): W.TrayBox's
+-- plain look -- the palette's inner panel in a 1 px trim edge -- laid 2 past
+-- the 26 button (30: where the slot stood), one frame level under it so the
+-- picture lies on it, the UI shade's soft square drawn by the tray itself
+-- (under its fill: the tray is above the panel and the paper, so the shade
+-- shows over both). Made at the item's first show, once per block (a pooled
+-- block keeps it); never tray:SetKit (its kit box is the painted look).
+-- False where the widget set is missing. Its fill's alpha: Art.TRAY_ALPHA,
+-- handed to the box and kept by Art.ItemLit's repaints.
+Art.TRAY_ALPHA = 0.95
+
+function Art.ItemTray(item)
+	local tray = item.tray
+	if tray ~= nil then
+		return tray
+	end
+	item.tray = false
+	local W = MelloUI.Widgets
+	if not (type(W) == "table" and W.TrayBox) then
+		return false
+	end
+	local block = item:GetParent()
+	tray = W.TrayBox(block, { alpha = Art.TRAY_ALPHA })
+	tray:EnableMouse(false)
+	tray:SetFrameLevel(block:GetFrameLevel() + 1)
+	item:SetFrameLevel(block:GetFrameLevel() + 2)
+	if item.cooldown then
+		item.cooldown:SetFrameLevel(item:GetFrameLevel() + 1)   -- (its swipe stays over the picture)
+	end
+	tray:SetPoint("TOPLEFT", item, "TOPLEFT", -2, 2)
+	tray:SetPoint("BOTTOMRIGHT", item, "BOTTOMRIGHT", 2, -2)
+	-- the square light (an action button's), the button's highlight: the
+	-- engine's under the pointer in a fight, locked by Art.ItemLit out of one
+	if W.HoverLight then
+		W.HoverLight(item, "square")
+	end
+	local Kit = MelloUI.Kit
+	if Kit and Kit.ShadeElement then
+		Kit:ShadeElement(frame, "tracker"):Add(tray, { shape = "shade/square", host = tray })
+	end
+	item.tray = tray
+	return tray
+end
+
+-- the item under the pointer: its tray's edge in the selected gold on the
+-- hover fill, the square light held. Told by the secure button laid over the
+-- item out of a fight (it takes the mouse there), by the item itself in one;
+-- nothing set when nothing changes
+function Art.ItemLit(item, lit)
+	lit = lit and true or false
+	local tray = item and item.tray
+	if not tray or (item.trayLit or false) == lit then
+		return
+	end
+	item.trayLit = lit
+	local W = MelloUI.Widgets
+	W.Paint(tray.fill, lit and "hover" or "innerPanel", "vertex", Art.TRAY_ALPHA)
+	for i = 1, #tray.edges do
+		W.Paint(tray.edges[i], lit and "selectedTrim" or "trim", "fill", 1)
+	end
+	if lit then
+		item:LockHighlight()
+	else
+		item:UnlockHighlight()
+	end
 end
 
 -- The kit's look for this tracker: its own look area, Kit:IsOn, read live
@@ -1238,7 +1328,9 @@ function Motion.PreviewDone()
 	Motion.preview = nil
 end
 
--- (0.24.0) the tracker on its parchment sheet: the kit's look with its parchment on (the text in ink)
+-- (0.24.0) the tracker on its parchment sheet: the kit's look with its parchment on (the text in ink). Since the one
+-- look its Parchment (UI Modifications' parchment_questTracker, a row on the tracker's page) is its own switch, live
+-- and read whatever the reskin and with UI Modifications off (Kit.ownParchments)
 function Art.Paper()
 	local Kit = MelloUI.Kit
 	return MelloUI.QuestInk ~= nil and KitCovers() and Kit and Kit.ParchmentOn and Kit:ParchmentOn("questTracker") or false
@@ -1321,6 +1413,7 @@ local itemOverlay
 
 local function DetachOverlay()
 	if itemOverlay and not InCombatLockdown() then
+		Art.ItemLit(itemOverlay.over, false)
 		itemOverlay:ClearAllPoints()
 		itemOverlay:Hide()
 		itemOverlay.over = nil
@@ -1337,11 +1430,14 @@ local function AttachOverlay(button)
 		itemOverlay:RegisterForClicks("AnyUp", "AnyDown")
 		Perf.SetScript(itemOverlay, "OnLeave", function(self)
 			GameTooltip:Hide()
+			Art.ItemLit(self.over, false)
 			if not self:IsMouseOver() then
 				DetachOverlay()
 			end
 		end)
 		Perf.SetScript(itemOverlay, "OnEnter", function(self)
+			-- (the item's hover look: this button takes the mouse over it out of a fight)
+			Art.ItemLit(self.over, true)
 			if self.over and self.over.itemLink then
 				GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 				pcall(GameTooltip.SetHyperlink, GameTooltip, self.over.itemLink)
@@ -1884,14 +1980,14 @@ local function NewBlock()
 		block.edge:Hide()
 	end
 	block.followed = block:CreateTexture(nil, "ARTWORK")
-	block.followed:SetSize(10, 10)
-	MelloUI.Look.Watch(block.followed, Art.Followed, Art.AREA)   -- (the kit's gem, or the game's map pin icon)
+	block.followed:SetSize(Art.PIN_SIZE, Art.PIN_SIZE)
+	MelloUI.Look.Watch(block.followed, Art.Followed, Art.AREA)   -- (the ring round the rim, or the game's map pin icon)
 	-- the quest's map button, the game's own (POIButtonTemplate, as on the
 	-- game's tracker: "..." in progress, "?" ready to turn in, lit while
 	-- followed) in the game's look -- the kit's look has its mark (Act.Mark).
 	-- Its click is the mark's (follow / stop following, Act.MarkClick), never
 	-- the template's own, so no MelloUI value runs through the game's code.
-	-- A client without the template keeps the small gem for the followed one.
+	-- A client without the template keeps the ring (Art.Followed) for the followed one.
 	local okP, poi = pcall(CreateFrame, "Button", nil, block, "POIButtonTemplate")
 	if okP and poi and poi.SetQuestID then
 		poi:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -1909,17 +2005,16 @@ local function NewBlock()
 	block.title:SetJustifyH("LEFT")
 	block.title:SetWordWrap(true)
 	block.lines = {}
+	-- the quest's item: its whole picture on its tray (Art.ItemTray, made at
+	-- its first show), the secure button laid over it out of a fight
 	local item = CreateFrame("Button", nil, block)
 	item:SetSize(ITEM_SIZE, ITEM_SIZE)
 	item.icon = item:CreateTexture(nil, "ARTWORK")
 	item.icon:SetAllPoints(item)
-	item.border = item:CreateTexture(nil, "OVERLAY")
-	item.border:SetPoint("TOPLEFT", -2, 2)
-	item.border:SetPoint("BOTTOMRIGHT", 2, -2)
-	MelloUI.Look.Watch(item.border, Art.ItemBorder, Art.AREA)   -- (the kit's slot, or none: the game's own button)
 	item.cooldown = CreateFrame("Cooldown", nil, item, "CooldownFrameTemplate")
 	item.cooldown:SetAllPoints(item)
 	Perf.SetScript(item, "OnEnter", function(self)
+		Art.ItemLit(self, true)
 		AttachOverlay(self)
 		if InCombatLockdown() then
 			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
@@ -1929,8 +2024,12 @@ local function NewBlock()
 			GameTooltip:Show()
 		end
 	end)
-	Perf.SetScript(item, "OnLeave", function()
+	Perf.SetScript(item, "OnLeave", function(self)
 		GameTooltip:Hide()
+		-- (out of a fight the secure button laid over it takes the mouse: its own OnLeave says when the pointer goes)
+		if not (itemOverlay and itemOverlay.over == self and itemOverlay:IsShown()) then
+			Art.ItemLit(self, false)
+		end
 	end)
 	item:EnableMouseWheel(true)
 	Perf.SetScript(item, "OnMouseWheel", function(_, delta) Scroll(delta) end)
@@ -1941,6 +2040,7 @@ end
 local function ReleaseBlock(block)
 	block:Hide()
 	block:ClearAllPoints()
+	Art.ItemLit(block.item, false)
 	block.questID, block.recipeID, block.recraft = nil, nil, nil
 	if itemOverlay and itemOverlay.over == block.item then
 		DetachOverlay()
@@ -2877,19 +2977,30 @@ local function FillBlock(block, questID, width, followedID)
 	if link and icon then
 		item.itemLink = link
 		item.icon:SetTexture(icon)
+		item.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)   -- (the picture without its baked edge: the tray is its frame)
 		item:ClearAllPoints()
-		item:SetPoint("TOPRIGHT", block, "TOPRIGHT", 0, -2)
+		-- 2 in from the block's right: its tray, 2 past it, ends on the
+		-- block's edge, which is the list's clip (a tray at 0 lost its right edge)
+		item:SetPoint("TOPRIGHT", block, "TOPRIGHT", -2, -2)
 		item:Show()
+		local tray = Art.ItemTray(item)
+		if tray then
+			tray:Show()
+		end
 		if GetQuestLogSpecialItemCooldown then
 			local ok, start, duration, enable = pcall(GetQuestLogSpecialItemCooldown, logIndex)
 			if ok and Plain(start) and Plain(duration) then
 				pcall(item.cooldown.SetCooldown, item.cooldown, start, duration, enable)
 			end
 		end
-		textWidth = width - ITEM_SIZE - 6
+		textWidth = width - ITEM_SIZE - 8   -- (the text and the distance 4 clear of the tray)
 	else
 		item.itemLink = nil
 		item:Hide()
+		if item.tray then
+			item.tray:Hide()
+			Art.ItemLit(item, false)
+		end
 	end
 
 	local followed = followedID == questID
@@ -2939,7 +3050,13 @@ local function FillBlock(block, questID, width, followedID)
 		poi:Show()
 	end
 	Act.Washed(block, followed)
-	block.followed:SetShown(followed and not poi and not mark)
+	-- the followed quest's ring round its mark, at the mark's centre, in its colour for the ground now (the game's
+	-- look: its map pin icon, only where neither a mark nor the game's map button shows)
+	local ring = block.followed.melloRing
+	block.followed:SetShown((followed and not poi and (ring or not mark)) and true or false)
+	if ring and followed then
+		Art.RingPaint(block.followed)
+	end
 	block.followed:ClearAllPoints()
 	block.followed:SetPoint("CENTER", block, "TOPLEFT", TEXT_X / 2 - 1, -TitleSize() / 2 - 1)
 
@@ -3164,6 +3281,10 @@ local function FillRecipeBlock(block, entry, width)
 	block.questID, block.recipeID, block.recraft = nil, entry.id, entry.recraft
 	block.item.itemLink = nil
 	block.item:Hide()
+	if block.item.tray then
+		block.item.tray:Hide()
+		Art.ItemLit(block.item, false)
+	end
 	block.followed:Hide()
 	block.kit, block.tier = KitCovers(), nil
 	if block.mark then

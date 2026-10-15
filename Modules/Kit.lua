@@ -497,6 +497,12 @@ Kit.parchmentSheets = {}   -- [area] = { { sheet, alive }, ... }
 -- past UI Modifications' OnSettingChanged, so the bus's 'restart' compares
 -- (below, with the Kit Colours' recheck)
 Kit.parchmentShown = {}
+-- (one look; the user, 2026-10-15: "the quest tracker the same as the chat does, needs to have the option to enable or
+-- disable parchment and not be depending on the reskin on/off") the areas whose sheet lies on a part of MelloUI's
+-- own, its switch live whatever the reskin: UI Modifications' option for one needs neither the reskin nor its own
+-- switch (PARCHMENTS: `free`), its bus listener switches the sheet while it is off, and Kit:ParchmentOn reads it as
+-- saved while its db is not bound (off since the login)
+Kit.ownParchments = { questTracker = true }
 
 -- an area's saved parchment value as on / off: a switch, or a choice whose
 -- "off" is off (the character window's, 0.19.4: "pane" / "window", UI
@@ -511,6 +517,12 @@ function Kit:ParchmentOn(area)
 	end
 	local um = MelloUI:GetModule("UIModifications")
 	local db = um and um.db
+	if db == nil and Kit.ownParchments[area] then
+		-- (one look) MelloUI's own part's paper with UI Modifications off since the login: as saved
+		local modules = MelloUI.db and MelloUI.db.modules
+		local saved = type(modules) == "table" and modules.UIModifications
+		db = type(saved) == "table" and saved or nil
+	end
 	return Kit.ParchmentValueOn(db and db["parchment_" .. area])
 end
 

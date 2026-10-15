@@ -24,6 +24,7 @@
 - Quest Tracker: the quest you follow has a thin gold ring round its mark (dark on the parchment). A quest's item shows its whole picture on a small dark tray with a soft shadow; its edge turns gold under the pointer.
 - Route: the flight map marks the flight point your route flies to with a bead of the route's trail instead of the gem.
 - Chat View: its tabs, its round buttons and the whisper window wear the round rims and the title font with or without the painted reskin.
+- Quest Tracker: Parchment is its own switch on the Quest Tracker page (Look) and in the setup's Parchment step, on or off with the painted reskin on or off.
 
 ## 0.24.0
 

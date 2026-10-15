@@ -282,7 +282,7 @@ local PARCHMENTS = {
 MelloUI.ParchmentAreas = PARCHMENTS
 local PARCHMENT_DESC = {
 	parchment_tracker = "The game's objective tracker on a parchment sheet, its text in dark ink.",
-	parchment_questTracker = "MelloUI's Quest Tracker on a parchment sheet, its text in dark ink.",
+	parchment_questTracker = "MelloUI's Quest Tracker on a parchment sheet, its text in dark ink. Works with the reskin on or off.",
 	parchment_chat = "The chat windows on a parchment sheet, their text in dark ink.",
 	parchment_whisper = "The whisper popup on a parchment sheet, its text in dark ink.",
 	parchment_meter = "The damage meter on a parchment sheet, its text in dark ink.",
@@ -291,8 +291,11 @@ local PARCHMENT_DESC = {
 	parchment_dialog = "The popup dialogs, the colour picker, ready checks and split stack on a parchment sheet, their text in dark ink.",
 }
 for _, entry in ipairs(PARCHMENTS) do
+	-- (one look, Kit.ownParchments: the paper of a part of MelloUI's own -- the Quest Tracker's -- is live whatever the
+	-- reskin, and with this module off: `free`, applied from the bus's 'setting' below)
+	local own = Kit and Kit.ownParchments and Kit.ownParchments[entry[1]:sub(11)] or nil
 	Add({ type = entry.values and "dropdown" or "toggle", key = entry[1], name = "Parchment: " .. entry[2], values = entry.values,
-		requires = "reskin", new = entry.new, desc = PARCHMENT_DESC[entry[1]] })
+		requires = not own and "reskin" or nil, free = own, new = entry.new, desc = PARCHMENT_DESC[entry[1]] })
 end
 -- The parchment's look (0.20.3; the user, 2026-10-11: "the new one is the default but some people liked how the old
 -- one looked aswell"): every sheet and page, live (Kit:SetParchmentStyle)
@@ -967,6 +970,13 @@ MelloUI:On("setting", Perf.Shared("'setting' on the bus", function(name, key, va
 		MelloUI:SetPalette(value)
 	elseif key == "kitColours" and M.isEnabled then
 		Tint.KitColours()
+	elseif key:sub(1, 10) == "parchment_" and not M.isEnabled then
+		-- (one look) the paper of a part of MelloUI's own (Kit.ownParchments: the Quest Tracker's), live with this
+		-- module off too; OnSettingChanged switches every area while it is on
+		local area = key:sub(11)
+		if Kit and Kit.ownParchments and Kit.ownParchments[area] and Kit.SetParchment then
+			Kit:SetParchment(area, Kit.ParchmentValueOn(value))
+		end
 	end
 end), M)
 -- The Kit Colours set inside a Batch (the installer's Install or Revert)

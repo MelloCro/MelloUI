@@ -393,7 +393,7 @@ function L.Define(R, Link)
 	R("Look", "Bar Texture", "Look", "BarTextures.executeBelow")
 	R("Look", "Parchment", "Look", "UIModifications.parchmentStyle")   -- (0.20.3: the look of every sheet and page)
 	R("Look", "Parchment", "Look", "UIModifications.parchment_tracker", { when = GAME_TRACKER })
-	R("Look", "Parchment", "Look", "UIModifications.parchment_questTracker")
+	-- (the Quest Tracker's paper: its row on its own page since the one look, a link here -- the Link rows below)
 	-- (0.19.1, the user 2026-10-04: "any Parchment Enable/Disable into the Parchment tab": the chat's and the
 	-- tooltips', live while their painted skin is on -- their Background dropdowns show it too)
 	R("Look", "Parchment", "Look", "UIModifications.parchment_chat", { gate = "UIModifications.ChatPanel" })
@@ -881,6 +881,12 @@ function L.Define(R, Link)
 
 	-- Quest Tracker (header: its module's switch)
 	R("QuestTracker", "Quest Tracker", "Look", "UIModifications.questTrackerKit", { name = "Painted Skin" })
+	-- (one look; the user, 2026-10-15: "the quest tracker the same as the chat does, needs to have the option to
+	-- enable or disable parchment and not be depending on the reskin on/off": its own row here, as the chat's
+	-- Background on the Chat page, live whatever the reskin -- Kit.ownParchments; asleep with the tracker off, as
+	-- the page's other rows)
+	R("QuestTracker", "Quest Tracker", "Look", "UIModifications.parchment_questTracker", { name = "Parchment", free = true,
+		when = { key = "QuestTracker.!enabled", value = true, line = "Only with MelloUI's Quest Tracker on" } })
 	R("QuestTracker", "Quest Tracker", "Look", "QuestTracker.progressMotion")
 	-- (0.19.4: Match Minimap needs MelloUI's minimap -- onelook D7: the core
 	-- module MinimapPanel, painted or not; Width is live while it is off)
@@ -1152,7 +1158,9 @@ function L.Define(R, Link)
 	Link("Tooltip", "Tooltip", "Look", "BarTextures.texture", "Bar Texture (Look)", { when = HEALTH_BAR })
 	Link("Tooltip", "Tooltip", "Look", "UIModifications.barBorder", "Progress Bar Border", { when = HEALTH_BAR })
 	Link("ScreenText", "Combat Text", "Text", "Fonts.style", "Font")
-	Link("QuestTracker", "Quest Tracker", "Look", "UIModifications.parchment_questTracker", "Parchment")
+	-- (one look: the Quest Tracker's paper on its own page; the Parchment tab keeps it in its list, the user's
+	-- 0.19.1 "any Parchment Enable/Disable into the Parchment tab")
+	Link("Look", "Parchment", "Look", "UIModifications.parchment_questTracker", "Parchment: Quest Tracker")
 	Link("QuestTracker", "Quest Tracker", "Look", "UIModifications.shade_tracker", "UI Shade")
 	Link("QuestTracker", "Quest Tracker", "Text", "Fonts.style", "Font")
 	Link("QuestTracker", "Quest Tracker", "Layout", "MinimapPanel.width", "Map Width")
