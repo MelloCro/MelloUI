@@ -3982,7 +3982,7 @@ end
 -- window (the popups off, or none opened this session)
 function M:OpenWhisper(key)
 	if M.View and M.View.on and M.Whispers then
-		return M.Whispers.Open(key)   -- (0.23.0: the minimal chat's whisper window)
+		return M.Whispers.Open(key, true)   -- (0.23.0: the minimal chat's whisper window, its box out to answer)
 	end
 	local f = popups[key]
 	if not f then

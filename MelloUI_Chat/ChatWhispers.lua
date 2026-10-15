@@ -231,9 +231,7 @@ local RowClick = Perf.Shared("OnClick on a whisper window person", function(row)
 		MelloUI:PlayUISound("tab")
 		WV.Select(row.conv)
 	end
-	if WV.box then
-		WV.box:SetFocus()
-	end
+	WV.Answer()
 end, "script")
 
 local RowEnter = Perf.Shared("OnEnter on a whisper window person", function(row)
@@ -341,6 +339,7 @@ function WV.LayList()
 	height = okH and Num(height) or 200
 	local fits = math.max(1, math.floor(height / ROW_H))
 	WV.listOffset = math.max(0, math.min(WV.listOffset, #WV.order - fits))
+	WV.Bar(WV.listBar, #WV.order - fits, WV.listOffset, fits / math.max(1, #WV.order))
 	local shown = 0
 	for i = 1, #WV.order do
 		local c = WV.order[i]
@@ -436,6 +435,7 @@ function WV.LayTalk()
 		for i = 1, #WV.bubbles do
 			HideBubble(WV.bubbles[i])
 		end
+		WV.Bar(WV.talkBar, 0)
 		return
 	end
 	local okW, width = pcall(talk.GetWidth, talk)
@@ -545,9 +545,42 @@ function WV.LayTalk()
 	if k == 0 then
 		WV.firstH = nil
 	end
+	-- (the top stop's: the topmost laid bubble's ceiling, and whether it is the oldest kept)
+	WV.topRegion, WV.oldestLaid = prev, k > 0 and Nth(c, j) == nil
 	for i = k + 1, #WV.bubbles do
 		HideBubble(WV.bubbles[i])
 	end
+	-- past the window: the topmost laid bubble over the talk's top, or lines not laid (a secret one unread: guessed
+	-- from the window's height)
+	local okT, talkTop = pcall(talk.GetTop, talk)
+	local okP, prevTop = pcall(prev and prev.GetTop or talk.GetTop, prev or talk)
+	talkTop, prevTop = okT and Num(talkTop), okP and Num(prevTop)
+	local okH, talkH = pcall(talk.GetHeight, talk)
+	local inView = math.max(1, (okH and Num(talkH) or 120) / WV.scroller.estimate())
+	local past = k < c.count or (talkTop and prevTop and prevTop > talkTop) or (not (talkTop and prevTop) and c.count > inView)
+	local top = past and math.max(1, math.ceil(c.count - inView)) or 0
+	WV.Bar(WV.talkBar, top, top - WV.offset, inView / math.max(1, c.count))
+end
+
+-- a bar of the window's (MelloUI's thin one): its range 0 .. top (none: hidden), at `value`, its thumb `share` of it
+function WV.Bar(bar, top, value, share)
+	if not bar then
+		return
+	end
+	top = math.max(0, top or 0)
+	local okD, dragging = pcall(bar.IsDraggingThumb, bar)
+	bar.laying = true
+	bar:SetMinMaxValues(0, top)
+	if not (okD and dragging == true) then
+		bar:SetValue(math.max(0, math.min(top, value or 0)))   -- (dragged: the thumb is the mouse's)
+	end
+	bar.laying = false
+	if top > 0 then
+		local okB, bh = pcall(bar.GetHeight, bar)
+		bh = okB and Num(bh) or 100
+		bar.thumb:SetHeight(math.max(12, bh * math.min(1, share or 1)))
+	end
+	bar:SetShown(top > 0)
 end
 
 -- the talk glides as the chat does (View.Glide: the chat's Smooth Scrolling)
@@ -573,6 +606,9 @@ WV.scroller = {
 	estimate = function()
 		local ok, _, size = pcall(ChatFrame1.GetFont, ChatFrame1)
 		return ((ok and Num(size)) or 14) * 1.25 + 2 * PADY + GAP_IN
+	end,
+	room = function()
+		return View.Room(WV, WV.talk)
 	end,
 }
 
@@ -646,11 +682,33 @@ function WV.Head()
 	Shadow(WV.info)
 	local who = Secret(c.title) and "" or tostring(c.title)
 	WV.hint:SetText(TEXT.reply:format(who))
+	WV.boxHint:SetText(TEXT.reply:format(who))
+end
+
+-- Input Box Only While Typing (Chat's, the game's chat style): the answer box shows while you type; else a "Reply
+-- to ..." line on the window stands in its place (the user, 2026-10-15: "the edit box on the whisper window remains
+-- visible even when not typing, and the text inside it is almost not visible" -- its hint was inked on its dark field)
+local function TypingOnly()
+	return not (M.db and M.db.editBoxWhileTyping == false)
 end
 
 local function Placeholder()
-	local box = WV.box
-	WV.hint:SetShown(WV.current ~= nil and box:GetText() == "" and not box:HasFocus())
+	local box, c = WV.box, WV.current
+	local typing = box:HasFocus() or box:GetText() ~= ""
+	local only = TypingOnly()
+	box:SetShown(c ~= nil and (typing or not only))
+	WV.reply:SetShown(c ~= nil and only and not typing)
+	WV.boxHint:SetShown(c ~= nil and not only and not typing)
+end
+
+-- the answer box out and taking the keys (a click on the reply line, on a person; the widget's Reply)
+function WV.Answer()
+	if not (WV.box and WV.current) then
+		return
+	end
+	WV.box:Show()
+	WV.box:SetFocus()
+	Placeholder()
 end
 
 -- a conversation open in the window: read, its talk from the newest, its header, the answer box's target
@@ -665,7 +723,6 @@ function WV.Select(c)
 	WV.LayList()
 	WV.LayTalk()
 	if WV.box then
-		WV.box:SetShown(c ~= nil)
 		Placeholder()
 	end
 	if View.WhisperCount then
@@ -721,6 +778,20 @@ local function Build()
 	end)
 
 	WV.list = list
+	-- its bar (shown while the people do not all fit): dragged, the list follows
+	local listBar = W.ThinScrollBar(f, 3)
+	listBar:SetPoint("TOPRIGHT", list, "TOPRIGHT", 0, 0)
+	listBar:SetPoint("BOTTOMRIGHT", list, "BOTTOMRIGHT", 0, 0)
+	listBar:SetFrameLevel(list:GetFrameLevel() + 10)
+	listBar:Hide()
+	listBar:SetScript("OnValueChanged", function(self, value)
+		if self.laying then
+			return
+		end
+		WV.listOffset = math.floor((Num(value) or 0) + 0.5)
+		WV.LayList()
+	end)
+	WV.listBar = listBar
 	local divider = W.Solid(f, "ARTWORK", "border")
 	divider:SetWidth(1)
 	divider:SetPoint("TOPLEFT", f, "TOPLEFT", LIST_W + 2, -(TITLE_H + 6))
@@ -750,7 +821,7 @@ local function Build()
 	-- the talk: clipped, the wheel scrolls it by bubble, links click as in the chat
 	local talk = CreateFrame("Frame", nil, f)
 	talk:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 6, -4)
-	talk:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -6, BOX_H + 12)
+	talk:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, BOX_H + 12)
 	talk:SetClipsChildren(true)
 	talk:EnableMouseWheel(true)
 	talk:SetScript("OnMouseWheel", function(_, delta)
@@ -763,6 +834,22 @@ local function Build()
 		end
 	end)
 	WV.talk = talk
+	-- its bar (shown while the talk runs past the window; the newest at its foot): dragged, the talk follows
+	local talkBar = W.ThinScrollBar(f, 3)
+	talkBar:SetPoint("TOPLEFT", talk, "TOPRIGHT", 1, 0)
+	talkBar:SetPoint("BOTTOMLEFT", talk, "BOTTOMRIGHT", 1, 0)
+	talkBar:Hide()
+	talkBar:SetScript("OnValueChanged", function(self, value)
+		if self.laying or not WV.current then
+			return
+		end
+		local _, top = self:GetMinMaxValues()
+		View.Settle(WV.scroller)
+		WV.offset = math.max(0, math.min(WV.current.count - 1, math.floor((Num(top) or 0) - (Num(value) or 0) + 0.5)))
+		WV.LayTalk()
+		View.TopStop(WV.scroller)   -- (at its top: the oldest bubble's top at the window's top)
+	end)
+	WV.talkBar = talkBar
 	WV.none = talk:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	WV.none:SetPoint("CENTER", talk, "CENTER", 0, 0)
 	WV.none:SetWidth(220)
@@ -796,8 +883,29 @@ local function Build()
 	Perf.SetScript(box, "OnEditFocusLost", Placeholder)
 	Perf.SetScript(box, "OnTextChanged", Placeholder)
 	WV.box = box
-	WV.hint = box:CreateFontString(nil, "ARTWORK", "GameFontDisable")
-	WV.hint:SetPoint("LEFT", box, "LEFT", 7, 0)
+	-- its hint inside it (the box always shown: its field's light colours, never ink)
+	WV.boxHint = box:CreateFontString(nil, "ARTWORK", "GameFontDisable")
+	WV.boxHint:SetPoint("LEFT", box, "LEFT", 7, 0)
+	-- the reply line in its place while you do not type (on the window: in ink on the paper); a click opens the box
+	local reply = CreateFrame("Button", nil, f)
+	reply:SetAllPoints(box)
+	reply:RegisterForClicks("LeftButtonUp")
+	WV.hint = reply:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+	WV.hint:SetPoint("LEFT", reply, "LEFT", 7, 0)
+	WV.hint:SetPoint("RIGHT", reply, "RIGHT", -7, 0)
+	WV.hint:SetJustifyH("LEFT")
+	WV.hint:SetWordWrap(false)
+	Perf.SetScript(reply, "OnClick", function()
+		WV.Answer()
+	end)
+	Perf.SetScript(reply, "OnEnter", function()
+		Colour(WV.hint, "text")
+	end)
+	Perf.SetScript(reply, "OnLeave", function()
+		Colour(WV.hint, "mutedText")
+	end)
+	reply:Hide()
+	WV.reply = reply
 	-- Escape closes it (at once; the game's walk hides it): UISpecialFrames, as the own windows' shell does
 	if type(UISpecialFrames) == "table" then
 		tinsert(UISpecialFrames, "MelloUIWhispers")
@@ -829,6 +937,9 @@ function WV.Restyle()
 	Colour(WV.title, "selectedTrim")
 	Shadow(WV.title)
 	Colour(WV.hint, "mutedText")
+	Shadow(WV.hint)
+	View.FieldColour(WV.boxHint, "mutedText")   -- (in the box's dark field)
+	View.FieldColour(WV.box, "text")
 	local Kit = View.Covered() and MelloUI.Kit or false
 	for _, row in ipairs(WV.rows) do
 		row.face:SetKit(Kit)
@@ -851,8 +962,9 @@ function WV.Fonts()
 	end
 end
 
--- open (the conversation `key`, else the one open last, else the newest); false while the minimal chat is off
-function WV.Open(key)
+-- open (the conversation `key`, else the one open last, else the newest); `answer`: the box out to answer in (the
+-- widget's Reply); false while the minimal chat is off
+function WV.Open(key, answer)
 	if not (View.on and View.frame) then
 		return false
 	end
@@ -877,6 +989,9 @@ function WV.Open(key)
 	end
 	if View.Lit then
 		View.Lit()
+	end
+	if answer then
+		WV.Answer()
 	end
 	return true
 end

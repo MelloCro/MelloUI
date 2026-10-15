@@ -137,6 +137,11 @@ local function Pal(key)
 	return c[1], c[2], c[3]
 end
 
+-- a palette key on a string in a field of its own (an input box: dark whatever lies round it), never inked
+function View.FieldColour(fs, key)
+	fs:SetTextColor(Pal(key))
+end
+
 -- a palette key on a string (set here, not through the kit's paint: its colour turns to ink on the paper)
 function View.Colour(fs, key)
 	local r, g, b = Pal(key)
@@ -524,6 +529,8 @@ function View.Lay()
 	if k == 0 then
 		View.firstH = nil
 	end
+	-- (the top stop's: the topmost laid line, and whether it is the oldest kept)
+	View.topRegion, View.oldestLaid = prev, k > 0 and Nth(buf, j) == nil
 	for i = k + 1, #View.rows do
 		HideRow(View.rows[i])
 	end
@@ -544,9 +551,14 @@ end
 -- by pixels: its newest laid line pushed down past the foot, the next older line taken on (its offset one more) once
 -- that line has gone by its own height (read while it is plain; a SECRET line's guessed from the font: the list then
 -- settles a little at that line). Off (Smooth Scrolling off, Reduce Motion): line by line, as before.
---   scroller = { owner, count(), lay(), shift(), estimate() }; owner.offset (lines from the newest), owner.pixel
---   (how far down), owner.firstH (its lay's newest line's height with its gap, nil when unknown)
+--   scroller = { owner, count(), lay(), shift(), estimate(), room() }; owner.offset (lines from the newest),
+--   owner.pixel (how far down), owner.firstH (its lay's newest line's height with its gap, nil when unknown),
+--   owner.topRegion / owner.oldestLaid (its lay's topmost region; true when that is the oldest line kept)
 --   View.Glide(scroller, lines)   lines older (+) or newer (-)
+--   View.TopStop(scroller)        the top stop (below), after a jump (a bar dragged)
+-- The top stop: scrolled to the oldest line, it stops with that line's top at the list's top -- no empty room over
+-- it (the user, 2026-10-15: "make sure that we also have a scroll bar here on the whisper window, to not miss chats":
+-- dragged to its top, the window showed the oldest line alone at its foot). Read only while the tops are plain.
 --------------------------------------------------------------------------------
 
 local GLIDE_TIME = 0.2
@@ -584,11 +596,57 @@ local function Rebase(s)
 	end
 end
 
+-- the empty room over a list's oldest line (px), while its oldest line is laid and the tops can be read; nil else
+function View.Room(o, holder)
+	if not (o.oldestLaid and o.topRegion) then
+		return nil
+	end
+	local okH, ht = pcall(holder.GetTop, holder)
+	local okR, rt = pcall(o.topRegion.GetTop, o.topRegion)
+	ht, rt = okH and Num(ht), okR and Num(rt)
+	if not (ht and rt) then
+		return nil
+	end
+	return ht - rt
+end
+
+-- room over the oldest line: the list pulled up -- its push taken back, else a newer line taken on at the foot --
+-- until the oldest line's top is at the list's top (pushed down by what then runs over), or all of it fits
+local function TopStop(s)
+	local o = s.owner
+	for _ = 1, 60 do
+		local room = s.room()
+		if not room or room <= 0.5 then
+			return
+		end
+		if o.pixel > 0 then
+			local cut = math.min(o.pixel, room)
+			o.pixel = o.pixel - cut
+			s.target, s.from = math.min(s.target, o.pixel), math.min(s.from, o.pixel)
+			s.shift()
+		elseif o.offset > 0 then
+			o.offset = o.offset - 1
+			s.lay()
+			local after = s.room()
+			if after and after < 0 then
+				o.pixel = -after
+				s.target, s.from = o.pixel, o.pixel
+				s.shift()
+				return
+			end
+		else
+			return   -- (all of it fits: the newest at the foot)
+		end
+	end
+end
+View.TopStop = TopStop
+
 local GlideStep = function(s, u)
 	local q = 1 - u
 	s.owner.pixel = s.from + (s.target - s.from) * (1 - q * q * q)
 	Rebase(s)
 	s.shift()
+	TopStop(s)
 end
 
 function View.Glide(s, lines)
@@ -599,6 +657,7 @@ function View.Glide(s, lines)
 		o.pixel, s.target, s.from = 0, 0, 0
 		o.offset = math.max(0, math.min(o.offset + lines, math.max(0, s.count() - 1)))
 		s.lay()
+		TopStop(s)
 		return
 	end
 	s.from = o.pixel
@@ -635,6 +694,9 @@ View.scroller = {
 		local src = (type(View.tab) == "table" and View.tab) or ChatFrame1
 		local ok, _, size = pcall(src.GetFont, src)
 		return ((ok and Num(size)) or 14) * 1.25 + GAP_LINE
+	end,
+	room = function()
+		return View.Room(View, View.area)
 	end,
 }
 
