@@ -4334,6 +4334,57 @@ do
 				end
 			end
 		end,
+		-- one look (2026-10-15): the chat's Background no longer stands for
+		-- the painted chat (UIModifications.ChatPanel, Oldschool's Painted
+		-- Skin row) nor its paper (parchment_chat, the Chat page's Parchment,
+		-- as the Quest Tracker's); its values are Dark, Game and None, and
+		-- Chat.background -- the dropdown's own copy -- is the player's pick
+		-- (MelloUI_Chat/Chat.lua's Background: Dark's plates and the Minimal
+		-- Chat View's clear panel by it). Carried once -- the save's own mark,
+		-- MelloUIDB.merged.chatBackground, outside the Chat table and set on
+		-- the first run whatever is there: a new save has no Chat table at
+		-- its first login and makes one with no pick later, which must never
+		-- read as an old save at the next (a ChatPanel turned off meanwhile
+		-- would make up a pick) -- from what the old reading made of the
+		-- keys, whatever its copy held (the old dropdown read the keys alone):
+		-- the painted chat or its paper (ChatPanel not saved off) is no pick
+		-- (false) -- their own keys keep both, and the Background shows no
+		-- Dark plates and no clear panel, as before; else the None, Dark or
+		-- Game it read (Hide Background and Dark Mode's chat at their
+		-- defaults, on, where not saved: the running modules' tables held
+		-- them). A save with no Chat table then (a new player) has nothing to
+		-- carry. On every run after, an old value ("painted", "parchment": a
+		-- backup from before brought back) is no pick
+		function(self)
+			local db = self.db
+			if type(db) ~= "table" then
+				return
+			end
+			local chat = Raw(self, "Chat")
+			local done = type(db.merged) == "table" and db.merged.chatBackground == true
+			if done then
+				if chat and (chat.background == "painted" or chat.background == "parchment") then
+					chat.background = false
+				end
+				return
+			end
+			if type(db.merged) ~= "table" then
+				db.merged = {}
+			end
+			db.merged.chatBackground = true
+			if not chat then
+				return
+			end
+			local ui = Raw(self, "UIModifications")
+			if not (ui and ui.ChatPanel == false) then
+				chat.background = false
+			elseif chat.hideBackground ~= false then
+				chat.background = "none"
+			else
+				local dm = Raw(self, "DarkMode")
+				chat.background = (dm == nil or dm.chat ~= false) and "dark" or "game"
+			end
+		end,
 	}
 
 	function MelloUI:MergeSettings()

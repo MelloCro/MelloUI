@@ -501,8 +501,12 @@ Kit.parchmentShown = {}
 -- disable parchment and not be depending on the reskin on/off") the areas whose sheet lies on a part of MelloUI's
 -- own, its switch live whatever the reskin: UI Modifications' option for one needs neither the reskin nor its own
 -- switch (PARCHMENTS: `free`), its bus listener switches the sheet while it is off, and Kit:ParchmentOn reads it as
--- saved while its db is not bound (off since the login)
-Kit.ownParchments = { questTracker = true }
+-- saved while its db is not bound (off since the login). The chat's too (the user, 2026-10-15: "for those 2, chat
+-- and objective tracker, i want them to have the option for either normal look, and parchment even with the reskin
+-- off"): its paper is the Minimal Chat View's and its whisper window's sheet (MelloUI_Chat/ChatView.lua), and the
+-- painted chat's (Oldschool's ChatPanel) while that covers the game's windows. The whisper popups' paper
+-- (parchment_whisper) stays the painted popup's: its sheet lies on the painted body only
+Kit.ownParchments = { questTracker = true, chat = true }
 
 -- an area's saved parchment value as on / off: a switch, or a choice whose
 -- "off" is off (the character window's, 0.19.4: "pane" / "window", UI

@@ -146,7 +146,7 @@ local CHANGELOG = {
 		"Quest log and Quest List: headings, difficulty gems and icon rims for everyone.",
 		"Windows: the logo heads the configurator's side list, smaller windows get a slim title strip, Fight History the new look.",
 		"Edit Layout: more game windows move without the painted reskin -- the auction house, trainers, guild bank, calendar and more.",
-		"Quest Tracker: Parchment is its own switch on its page, whatever the reskin.",
+		"Quest Tracker and Chat: Parchment is each one's own switch on its page, whatever the reskin.",
 		"Route: the Direction Arrow row is gone -- the World Marker shows the way.",
 		"Action bars: Hide Bar Art -- Action Bar 1 without the game's frame and dividers, like the other bars.",
 		"Swing Timers: your weapon in a round rim beside a flat bar. Race bar: a slim line with class pins (new Race Bar Thickness).",

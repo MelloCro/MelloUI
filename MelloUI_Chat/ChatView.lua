@@ -27,9 +27,11 @@
 --     line you type in shown on its own over the lines' foot, the lines rising over it while it shows; the row's
 --     S P R I G Y W E open it on that chat type the game's way (ChatFrameUtil.OpenChat: the edit box runs secure
 --     commands before it reads the chat type -- a /use typed after still casts, checked in game 2026-10-14)
---   * the chat's Background: Parchment lays the kit's parchment sheet under the view and the whisper window, every
---     colour in the chat's inks (Chat.lua ChatInk for a line's kind, QuestInk for names, links and tags), no shadow
---     on the paper; None leaves the panel clear; Background Opacity is the panel's
+--   * the chat's Parchment (its own switch, UI Modifications' parchment_chat: Kit.ownParchments, the reskin on or off;
+--     the one look, 2026-10-15) lays the kit's parchment sheet under the view and the whisper window, every colour in
+--     the chat's inks (Chat.lua ChatInk for a line's kind, QuestInk for names, links and tags), the chat's parchment
+--     face without outline or shadow on the paper; the Background's None (your pick) leaves the panel clear;
+--     Background Opacity is the panel's
 -- Nothing is made while the view is off; the rows and their records are made once and used again (no table per line).
 --------------------------------------------------------------------------------
 
@@ -196,20 +198,31 @@ function View.Shadow(fs)
 end
 
 -- the chat's font (the open tab's window's -- each window has its size in the game's tab menu -- or `from`'s: its
--- face, size and flags), at a share of its size
+-- face, size and flags), at a share of its size. On the paper the chat's parchment face and size (the Fonts module's
+-- Chat On Parchment, as the painted chat's windows wear it there) without an outline (the parchment ink rule): the
+-- same with the reskin on or off -- without the painted cover the game's windows are not on paper (one look)
 function View.Font(fs, scale, from)
 	local src = from or (type(View.tab) == "table" and View.tab) or ChatFrame1   -- (a channel's tab: General's)
 	local ok, face, size, flags = pcall(src.GetFont, src)
-	if ok and Plain(face) and Num(size) then
-		fs:SetFont(face, size * (scale or 1), Plain(flags) or "")
+	if not (ok and Plain(face) and Num(size)) then
+		return
 	end
+	flags = Plain(flags) or ""
+	if View.paper then
+		flags = ""
+		local fonts = MelloUI:GetModule("Fonts")
+		if fonts and fonts.isEnabled and fonts.ChatWindowFont then
+			local okP, pface, psize = pcall(fonts.ChatWindowFont, fonts, src, true)
+			if okP and Plain(pface) and Num(psize) then
+				face, size = pface, psize
+			end
+		end
+	end
+	fs:SetFont(face, size * (scale or 1), flags)
 end
 
--- the chat wears the painted kit (the chat cover: Oldschool's; the paper follows it, Chat.lua's ChatInked)
-function View.Covered()
-	local Kit = MelloUI.Kit
-	return (Kit and Kit.IsCovered and Kit:IsCovered("chat")) and true or false
-end
+-- (one look: nothing of the view follows the chat cover -- the painted kit, Oldschool's -- any more: the rims and
+-- the title face are everyone's, the paper is the chat's Parchment alone, Chat.lua's M.ChatInked)
 
 -- the round rims' kit (one look, the user's pick 9, 2026-10-15): the kit's roundslot rim for everyone, as the Quest
 -- Tracker's marks and the Quest List's markers wear it, whatever the chat cover (until then only while it covered)
@@ -1851,7 +1864,9 @@ function View.Style()
 	if not frame then
 		return
 	end
+	-- (the chat's Parchment, the reskin on or off: Chat.lua's M.ChatInked)
 	local paper = M.ChatInked and M.ChatInked() or false
+	local turned = (View.paper and true or false) ~= paper
 	View.paper = paper
 	local Kit = MelloUI.Kit
 	if paper and not View.sheet and Kit and Kit.ParchmentSheet then
@@ -1862,6 +1877,11 @@ function View.Style()
 	end
 	if frame.panelFill then
 		W.Paint(frame.panelFill, "innerPanel", "fill", PanelAlpha())
+	end
+	-- the paper switched: the fonts again (its face, no outline; View.Font) -- the painted chat's windows tell it by
+	-- their own font's change, the view on its own paper by nobody else
+	if turned then
+		View.Fonts()
 	end
 	View.Rims()
 	View.Lit()

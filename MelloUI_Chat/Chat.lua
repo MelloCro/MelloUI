@@ -44,9 +44,11 @@ local M = MelloUI:RegisterModule("Chat", {
 		-- (0.23.0) the Chat View rail's order: window numbers are a character's
 		"viewOrder",
 		-- (0.17.0) the Background dropdown's own copy: what it shows is read
-		-- back from the keys it sets (Background) -- the reskin's, the
-		-- parchment's, Dark Mode's (personal), hideBackground -- which carry the
-		-- look; in a profile its set would write Dark Mode's personal key
+		-- back from the keys it sets (Background) -- Dark Mode's (personal),
+		-- hideBackground -- which carry the look; in a profile its set would
+		-- write Dark Mode's personal key. (one look) It is the player's pick
+		-- too: Dark's plates and the Minimal Chat View's clear panel need it
+		-- (false: no pick, Core's MergeSettings)
 		"background" },
 	defaults = {
 		hideBackground = true,
@@ -74,33 +76,33 @@ local M = MelloUI:RegisterModule("Chat", {
 			{ value = "game", label = "Game Windows" },
 			{ value = "minimal", label = "Minimal" },
 		  },
-		  desc = "How the chat is shown. Game Windows: the game's chat windows and tabs. Minimal: one panel with a rail of round tabs on its left (one per chat window, a count of the lines you have not seen; Whispers last), each line under its sender's name, channel and time, and a row of round buttons under the lines: Say, Party, Raid, Instance, Guild, Yell, Whisper and Emote open the line you type in on that chat, then Channels, Friends, the fight history and these settings. A whisper puts a count on the Whispers tab and shows the Whispers widget; either opens one whisper window above the chat with every conversation in it, theirs left and yours right. The Background's Parchment puts both on the parchment sheet." },
-		-- (0.16.0: the chat windows' look in one: the painted skin, its
-		-- parchment, Dark Mode's, the game's or none; the settings it sets
-		-- keep their own keys -- UI Modifications' ChatPanel and
-		-- parchment_chat, Dark Mode's chat, hideBackground -- read by
-		-- `get`, written by OnSettingChanged)
+		  desc = "How the chat is shown. Game Windows: the game's chat windows and tabs. Minimal: one panel with a rail of round tabs on its left (one per chat window, a count of the lines you have not seen; Whispers last), each line under its sender's name, channel and time, and a row of round buttons under the lines: Say, Party, Raid, Instance, Guild, Yell, Whisper and Emote open the line you type in on that chat, then Channels, Friends, the fight history and these settings. A whisper puts a count on the Whispers tab and shows the Whispers widget; either opens one whisper window above the chat with every conversation in it, theirs left and yours right. Parchment (its own switch) puts both on the parchment sheet." },
+		-- (0.16.0: the chat windows' look in one: Dark Mode's, the game's or
+		-- none; the settings it sets keep their own keys -- Dark Mode's chat,
+		-- hideBackground -- read by `get`, written by OnSettingChanged. One
+		-- look, 2026-10-15: no longer the painted skin -- UI Modifications'
+		-- ChatPanel, Oldschool's Painted Skin row -- nor its parchment --
+		-- parchment_chat, the page's Parchment switch, as the Quest Tracker's;
+		-- an old pick of either carried by Core's MergeSettings)
 		{ type = "dropdown", key = "background", name = "Background", values = {
-			{ value = "painted", label = "Painted" },
-			{ value = "parchment", label = "Parchment" },
 			{ value = "dark", label = "Dark" },
 			{ value = "game", label = "Game" },
 			{ value = "none", label = "None" },
 		  }, get = function(db) return Background(db) end,
-		  desc = "The chat windows' background: the painted kit (Painted), the kit with a parchment sheet whose text is dark ink (Parchment), a dark panel of the palette behind the window, its tabs and its input box (Dark), the game's own, or none at all. Painted and Parchment need the reskin on (Look). With the Minimal Chat View: Parchment puts its lines and its whisper window on the parchment sheet in dark ink, None leaves its panel clear, the others keep its dark panel." },
+		  desc = "The chat windows' background: a dark panel of the palette behind the window, its tabs and its input box (Dark), the game's own (Game), or none at all (None). Under the painted chat (its Painted Skin, the reskin on) its stone instead. With the Minimal Chat View: None leaves its panel clear, Dark and Game keep its dark panel; Parchment lays the parchment sheet over it." },
 		{ type = "toggle", key = "windowAlphaOn", name = "Set The Background Opacity",
 		  desc = "Give every chat window the same background opacity, kept in your profile. Off, each window keeps the opacity set in its tab's menu." },
 		{ type = "slider", key = "windowAlpha", parent = "windowAlphaOn", name = "Background Opacity", min = 0, max = 1, step = 0.05, percent = true,
 		  desc = "How solid the chat windows' background is. Moving the Background slider in a chat tab's menu changes this too." },
 		-- (user, 2026-10-04: "can we also make a Border opacity aswell?" -- the painted rails: Modules/ChatPanel.lua)
 		{ type = "slider", key = "borderAlpha", name = "Border Opacity", min = 0, max = 1, step = 0.05, percent = true,
-		  desc = "How solid the painted border round the chat windows and their button column is, and its shade (the Painted and Parchment backgrounds)." },
+		  desc = "How solid the painted border round the chat windows and their button column is, and its shade (the painted chat: its Painted Skin, the reskin on)." },
 		{ type = "toggle", key = "hideEditBox", name = "Hide Input Box Art",
 		  desc = "Hide the border and background art of the chat input box." },
 		{ type = "toggle", key = "hideTabs", name = "Hide Tab Background",
 		  desc = "Hide the background art behind the chat tabs. The tab text stays." },
 		{ type = "toggle", key = "tabsOnMouseover", name = "Tabs Only On Mouseover",
-		  desc = "Chat tab names are invisible until the mouse is over the chat. Tabs flashing with new whispers stay visible. It adds to the Fader's Chat fade: both fade the tabs, so with both on the two fades multiply. Does nothing under the painted chat (the Painted and Parchment backgrounds), which keeps its tabs shown." },
+		  desc = "Chat tab names are invisible until the mouse is over the chat. Tabs flashing with new whispers stay visible. It adds to the Fader's Chat fade: both fade the tabs, so with both on the two fades multiply. Does nothing under the painted chat (its Painted Skin, the reskin on), which keeps its tabs shown." },
 		{ type = "toggle", key = "editBoxTop", name = "Input Box On Top",
 		  desc = "Move the chat input box above the chat window and its tabs instead of below it." },
 		-- (0.20.4, the user 2026-10-11: "the Chat editbox is always shown, it needs to be hidden and as soon as you
@@ -1289,13 +1291,22 @@ local function Number(v)
 	return type(v) == "number" and not Secret(v)
 end
 
+-- the game's chat windows' lines in ink: on the painted chat's sheet (Oldschool's cover, Kit:IsCovered -- the sheet
+-- lies on its skin) with the chat's parchment on; without the cover they have no sheet, so no ink
 local function ChatInked()
 	local Kit = MelloUI.Kit
 	return (MelloUI.QuestInk ~= nil and Kit and Kit.IsCovered and Kit:IsCovered("chat")
 		and Kit.ParchmentOn and Kit:ParchmentOn("chat")) and true or false
 end
--- (0.23.0) the minimal chat and its whisper window on the same paper, in the same inks (ChatView.lua)
-M.ChatInk, M.ChatInked = ChatInk, ChatInked
+M.ChatInk = ChatInk
+-- (0.23.0) the minimal chat and its whisper window on the same paper, in the same inks (ChatView.lua). One look (the
+-- user, 2026-10-15: "for those 2, chat and objective tracker, i want them to have the option for either normal look,
+-- and parchment even with the reskin off"): the chat's Parchment alone -- its own switch, Kit.ownParchments -- with
+-- or without the painted cover, the reskin on or off (their sheets are their own, made by ChatView.lua)
+function M.ChatInked()
+	local Kit = MelloUI.Kit
+	return (MelloUI.QuestInk ~= nil and Kit and Kit.ParchmentOn and Kit:ParchmentOn("chat")) and true or false
+end
 
 -- Where a text's first character's name begins: its player link, or a
 -- community channel's (|HplayerCommunity:, the game's link for a community
@@ -3924,9 +3935,17 @@ function M:OnInit(db)
 end
 
 -- The Background dropdown (0.16.0): what the settings it stands for say now,
--- and setting them. The painted skin is UI Modifications' ChatPanel (on
--- while not saved off), its parchment parchment_chat, the dark look Dark
--- Mode's chat, none this module's hideBackground.
+-- and setting them. None is this module's hideBackground, Dark Dark Mode's
+-- chat (and this module's own plates, M.Dark). One look (2026-10-15): the
+-- painted skin (UI Modifications' ChatPanel, Oldschool's Painted Skin row)
+-- and its parchment (parchment_chat, the page's Parchment switch) are no
+-- longer its to read or to set. Their default (the painted skin on) stood
+-- over two defaults that would now read as a choice -- Hide Background on,
+-- Dark Mode's chat on -- so Dark, and None in the Minimal Chat View (its
+-- panel clear), are the player's own pick (db.background, the dropdown's
+-- copy; false: no pick -- Core's MergeSettings carried an old reading once);
+-- for the game's windows the keys are the truth: Hide Background on is None
+-- there, whoever set it.
 local function Saved(module)
 	local mods = MelloUI.db and MelloUI.db.modules
 	local t = type(mods) == "table" and mods[module]
@@ -3934,15 +3953,16 @@ local function Saved(module)
 end
 
 Background = function(db)
-	local ui = Saved("UIModifications")
-	if not (ui and ui.ChatPanel == false) then
-		return (ui and ui.parchment_chat == true) and "parchment" or "painted"
-	end
+	local pick = db and db.background
 	if db and db.hideBackground then
-		return "none"
+		-- (the game's windows' art hidden; the Minimal Chat View's panel clear by your pick alone)
+		if db.view ~= "minimal" or pick == "none" then
+			return "none"
+		end
+		return "game"
 	end
 	local dm = Saved("DarkMode")
-	if dm and dm.chat == true then
+	if pick == "dark" and dm and dm.chat == true then
 		return "dark"
 	end
 	return "game"
@@ -3960,14 +3980,16 @@ local function Put(module, key, value)
 end
 
 function M.SetBackground(value)
-	local painted = value == "painted" or value == "parchment"
-	Put("UIModifications", "ChatPanel", painted)
-	if painted then
-		Put("UIModifications", "parchment_chat", value == "parchment")
+	-- (one look: Dark, Game or None; the painted skin and its paper are switches of their own)
+	if value ~= "dark" and value ~= "game" and value ~= "none" then
+		return
 	end
 	Put("DarkMode", "chat", value == "dark")
 	if M.db and (M.db.hideBackground and true or false) ~= (value == "none") then
 		M.db.hideBackground = value == "none"
+	end
+	if M.db then
+		M.db.background = value   -- (the player's pick: Background reads Dark and the view's None by it)
 	end
 	if M.isEnabled then
 		ApplyArt()

@@ -255,9 +255,11 @@ L.words = {
 -- (0.16.0: the chat windows' and the tooltips' painted skins and the chat's
 -- Dark Mode are set through each page's one Background dropdown, which reads
 -- and writes them: no row of their own. Their parchment has its switch on
--- Look > Parchment since 0.19.1, the dropdown showing it all the same)
+-- Look > Parchment since 0.19.1, the dropdown showing it all the same. One
+-- look, 2026-10-15: the chat's painted skin is a Painted Skin row on the Chat
+-- page and its parchment a Parchment row there -- the Background no longer
+-- sets either)
 L.unplaced = {
-	["UIModifications.ChatPanel"] = "Chat > Chat Frame > Background",
 	["UIModifications.TooltipPanel"] = "Tooltip > Background",
 	["DarkMode.chat"] = "Chat > Chat Frame > Background",
 }
@@ -279,6 +281,15 @@ function L.Define(R, Link)
 	-- the game's objective tracker: hidden while MelloUI's Quest Tracker is on
 	local GAME_TRACKER = { key = "QuestTracker.!enabled", value = false,
 		line = "Only for the game's tracker (MelloUI's Quest Tracker off)" }
+	-- (one look, 2026-10-15) the painted chat covers the game's chat windows: the reskin and its Painted Skin both on
+	local CHAT_PAINTED = { all = { { key = "UIModifications.reskin", value = true },
+		{ key = "UIModifications.ChatPanel", value = true } } }
+	-- the chat's paper: the Minimal Chat View's and its whisper window's sheet, the reskin on or off (the Chat
+	-- module's: asleep with it off, as the page's other rows), or the painted chat's on the game's windows (its own
+	-- sheet, the Chat module on or off: a paper on there can always be switched off)
+	local CHAT_PAPER = { any = { { all = { { key = "Chat.!enabled", value = true }, { key = "Chat.view", value = "minimal" } } },
+		CHAT_PAINTED },
+		line = "Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)" }
 	-- Look: the global look, only here (every element's page links to it)
 	R("Look", "General", "General", "UIModifications.reskin")
 	R("Look", "General", "General", "UIModifications.preloadArt")
@@ -393,10 +404,10 @@ function L.Define(R, Link)
 	R("Look", "Bar Texture", "Look", "BarTextures.executeBelow")
 	R("Look", "Parchment", "Look", "UIModifications.parchmentStyle")   -- (0.20.3: the look of every sheet and page)
 	R("Look", "Parchment", "Look", "UIModifications.parchment_tracker", { when = GAME_TRACKER })
-	-- (the Quest Tracker's paper: its row on its own page since the one look, a link here -- the Link rows below)
-	-- (0.19.1, the user 2026-10-04: "any Parchment Enable/Disable into the Parchment tab": the chat's and the
-	-- tooltips', live while their painted skin is on -- their Background dropdowns show it too)
-	R("Look", "Parchment", "Look", "UIModifications.parchment_chat", { gate = "UIModifications.ChatPanel" })
+	-- (the Quest Tracker's paper and the chat's: their rows on their own pages since the one look, links here -- the
+	-- Link rows below)
+	-- (0.19.1, the user 2026-10-04: "any Parchment Enable/Disable into the Parchment tab": the whisper popups' and the
+	-- tooltips', live while their painted skin is on -- the tooltips' Background dropdown shows it too)
 	R("Look", "Parchment", "Look", "UIModifications.parchment_whisper", { gate = "UIModifications.ChatPanel" })
 	R("Look", "Parchment", "Look", "UIModifications.parchment_meter")
 	R("Look", "Parchment", "Look", "UIModifications.parchment_character")
@@ -664,8 +675,20 @@ function L.Define(R, Link)
 	-- Chat
 	R("Chat", "Chat Frame", "General", "UIModifications.qol_Chat")
 	R("Chat", "Chat Frame", "Look", "Chat.view")
-	R("Chat", "Chat Frame", "Look", "Chat.background")
-	local NOT_NONE = { key = "Chat.background", notValue = "none", line = "Not with the None background" }
+	-- (one look, 2026-10-15: the painted chat -- Oldschool's -- a switch of its own, as every painted skin's; the
+	-- Background set it until then)
+	R("Chat", "Chat Frame", "Look", "UIModifications.ChatPanel", { name = "Painted Skin" })
+	-- (one look; the user, 2026-10-15: "for those 2, chat and objective tracker, i want them to have the option for
+	-- either normal look, and parchment even with the reskin off": the chat's paper its own switch, as the Quest
+	-- Tracker's (Kit.ownParchments); the Background's Parchment until then; Look > Parchment links to it)
+	R("Chat", "Chat Frame", "Look", "UIModifications.parchment_chat", { name = "Parchment", free = true, when = CHAT_PAPER })
+	-- (the game's windows' ground, asleep under the painted chat, which lays its own; the Minimal Chat View's panel)
+	R("Chat", "Chat Frame", "Look", "Chat.background", { when = { any = { { key = "UIModifications.reskin", value = false },
+		{ key = "UIModifications.ChatPanel", value = false }, { key = "Chat.view", value = "minimal" } },
+		line = "Only without the painted chat, or with the Minimal Chat View" } })
+	-- (the opacity is the painted chat's stone's too: live under it whatever the Background reads)
+	local NOT_NONE = { any = { { key = "Chat.background", notValue = "none" }, CHAT_PAINTED },
+		line = "Not with the None background" }
 	R("Chat", "Chat Frame", "Look", "Chat.windowAlphaOn", { when = NOT_NONE })
 	R("Chat", "Chat Frame", "Look", "Chat.windowAlpha", { when = NOT_NONE })
 	-- (0.19.4: the painted chat holds the input box and the tabs itself)
@@ -1160,6 +1183,8 @@ function L.Define(R, Link)
 	-- (one look: the Quest Tracker's paper on its own page; the Parchment tab keeps it in its list, the user's
 	-- 0.19.1 "any Parchment Enable/Disable into the Parchment tab")
 	Link("Look", "Parchment", "Look", "UIModifications.parchment_questTracker", "Parchment: Quest Tracker")
+	-- (one look, 2026-10-15: the chat's paper on the Chat page the same way)
+	Link("Look", "Parchment", "Look", "UIModifications.parchment_chat", "Parchment: Chat", { when = CHAT_PAPER })
 	Link("QuestTracker", "Quest Tracker", "Look", "UIModifications.shade_tracker", "UI Shade")
 	Link("QuestTracker", "Quest Tracker", "Text", "Fonts.style", "Font")
 	Link("QuestTracker", "Quest Tracker", "Layout", "MinimapPanel.width", "Map Width")

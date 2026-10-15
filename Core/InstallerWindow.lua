@@ -1633,7 +1633,10 @@ local function WizardSteps()
 	-- any of them is
 	local UMBRELLA = { RESKIN, ICONS_ON, DARK_ON, FONTS_ON, CHAT_ON }
 	-- the parchment sheets whose dark ink is Chat's (the engine's ink guard,
-	-- I.INK, for the chat windows; the whisper popups are Chat's own)
+	-- I.INK, for the chat windows; the whisper popups are Chat's own). One
+	-- look: the chat's is Kit.ownParchments' (the Minimal Chat View's paper,
+	-- the reskin on or off), so Chat tweaks alone gate it (ChatGate; the
+	-- whisper popups' ChatSheetGate)
 	local CHAT_SHEETS = { parchment_chat = true, parchment_whisper = true }
 	local KEEP_FACE = "default"   -- a Fonts role on "Keep the game's"
 	local GATE_INDENT = 22        -- a row that sleeps under a switch on its own page
@@ -1736,7 +1739,8 @@ local function WizardSteps()
 		return false, TEXT.chatTweaks
 	end
 
-	-- a chat sheet: the kit's, its ink Chat tweaks'
+	-- a chat sheet: the kit's, its ink Chat tweaks' (the whisper popups'; the
+	-- chat's own, Kit.ownParchments, is ChatGate's alone: SheetRow)
 	local function ChatSheetGate()
 		if not On(RESKIN) then
 			return false, TEXT.reskin
@@ -2493,18 +2497,19 @@ local function WizardSteps()
 
 	--------------------------------------------------------------------------------
 	-- Parchment and dark mode: a switch per parchment area (the kit's sheets:
-	-- asleep with the reskin off, but the Quest Tracker's (Kit.ownParchments)
-	-- live whatever the reskin; the chat's also with Chat tweaks off), Dark
-	-- mode and its brightness
+	-- asleep with the reskin off, but the Quest Tracker's and the chat's
+	-- (Kit.ownParchments) live whatever the reskin; the chat's and the whisper
+	-- popups' also with Chat tweaks off), Dark mode and its brightness
 	--------------------------------------------------------------------------------
 
 	-- an area's sheet switch; an area with a choice (MelloUI.ParchmentAreas'
 	-- `values`: the character window's, 0.19.4) its dropdown, an older
 	-- switch's true read as the area's `on`
 	local function SheetRow(key, label, zebra, area)
-		-- (one look) a part of MelloUI's own (Kit.ownParchments: the Quest Tracker's) is live whatever the reskin
+		-- (one look) a part of MelloUI's own (Kit.ownParchments: the Quest Tracker's, the chat's) is live whatever the
+		-- reskin; the chat's still sleeps with Chat tweaks off (its ink, and its Minimal Chat View, are theirs)
 		local own = MelloUI.Kit and MelloUI.Kit.ownParchments and MelloUI.Kit.ownParchments[key:sub(11)]
-		local gate = CHAT_SHEETS[key] and ChatSheetGate or (not own and ReskinGate) or nil
+		local gate = CHAT_SHEETS[key] and (own and ChatGate or ChatSheetGate) or (not own and ReskinGate) or nil
 		local draftKey = "UIModifications." .. key
 		if type(area) == "table" and type(area.values) == "table" then
 			local function Get()
