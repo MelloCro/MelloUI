@@ -1205,20 +1205,64 @@ local function BandArt(hide, ...)
 	end
 end
 
+-- (onelook D7) The zone row over the Chat panel's fill without the painted skin. The game keeps the row's frames
+-- (MinimapCluster's children: the band, the zone name's button, the tracking button, the indicators, the calendar)
+-- one level under the map, which stands in its container: the fill's own level, where two frames are drawn in no
+-- order the client promises (the zone name went under the fill: the user, 2026-10-15). 0.24.0's painted ring lifted
+-- them over the map whatever the border (MinimapKit's Build, `raised`); without it they are lifted here by the same
+-- rule, the map's level + max(2, the game's offset), and put back by BandUnpanel before the painted skin takes them.
+-- The game's offsets from the map's level (a click in the toplevel cluster lifts the whole tree) kept in
+-- skin.zoneLevels, nothing on the game's frames; their levels only.
+local ZONE_ROW = { "BorderTop", "ZoneTextButton", "Tracking", "IndicatorFrame", "GameTimeFrame" }
+local function ZoneRow(lift)
+	local cluster, map, kept = MinimapCluster, Minimap, skin.zoneLevels
+	if not (cluster and map and (lift or kept)) then
+		return
+	end
+	if not kept then
+		kept = {}
+		skin.zoneLevels = kept
+	end
+	local base = map:GetFrameLevel()
+	for i, key in ipairs(ZONE_ROW) do
+		local row
+		if key == "GameTimeFrame" then
+			row = _G.GameTimeFrame   -- (the calendar: the cluster's child, no key of its)
+		else
+			row = cluster[key]
+		end
+		if row then
+			if lift then
+				if kept[i] == nil then
+					kept[i] = row:GetFrameLevel() - base
+				end
+				row:SetFrameLevel(base + math.max(2, kept[i]))
+			elseif kept[i] then
+				row:SetFrameLevel(math.max(0, base + kept[i]))
+			end
+		end
+	end
+	if not lift then
+		skin.zoneLevels = nil
+	end
+end
+
 -- The Chat panel's zone row: the band across the panel's top, its plate
 -- hidden (the game's art faded under it as ever), the tracking button at its
 -- left, the zone name after it in the title face and the game's colour, the
 -- calendar at its right and the clock beside it -- on the Services rail's
 -- right end while that rail shows with Services' two rows, as the frames'.
 -- (onelook D7) Without the painted skin the game's band art is hidden here
--- (BandArt) and the zone name's place as the game had it kept once
--- (skin.zoneHome, put back by BandUnpanel), the name in the title face.
+-- (BandArt), the row lifted over the panel's fill (ZoneRow) and the zone
+-- name's place as the game had it kept once (skin.zoneHome; both put back by
+-- BandUnpanel), the name in the title face.
 local function PanelBand(f, band, groups)
 	local text = MinimapZoneText
 	if Dress.on then
 		dresser:PlateShown(false)
 	else
 		BandArt(true, band:GetRegions())
+		ZoneRow(true)
 		if text and not skin.zoneHome then
 			local home = { justify = text:GetJustifyH(), width = PlainWidth(text, nil) }
 			for i = 1, text:GetNumPoints() do
@@ -1281,7 +1325,8 @@ end
 
 -- another style after the Chat panel: with the painted skin its plate shown
 -- again, the zone name centred on it as the band's dressing laid it (its
--- onEnable); without it the game's band art and the zone name's place back
+-- onEnable); without it the game's band art, the row's levels and the zone
+-- name's place back
 local function BandUnpanel()
 	if not (skin and skin.bandPanel) then
 		return
@@ -1295,6 +1340,7 @@ local function BandUnpanel()
 	if band then
 		BandArt(false, band:GetRegions())
 	end
+	ZoneRow(false)
 	local text, home = MinimapZoneText, skin.zoneHome
 	skin.zoneHome = nil
 	if text then
