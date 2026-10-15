@@ -38,7 +38,7 @@ local M = MelloUI:RegisterModule("SpellBookPanel", {
 	icon = "Interface\\Icons\\INV_Misc_Book_09",
 	flavour = "The spell book in the painted kit, on the game's own layout.",
 	window = { label = "Spell book", desc = "The spell book and its tabs in the kit.", tab = "Windows", order = 2,
-		frames = { "PlayerSpellsFrame" }, plainGrab = true, addon = "Blizzard_PlayerSpells" },
+		addon = "Blizzard_PlayerSpells" },
 	enabledByDefault = true,
 	defaults = {},
 	-- (the spells' rim is UI Modifications' Button Border, the category tabs'

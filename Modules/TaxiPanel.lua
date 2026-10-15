@@ -54,7 +54,7 @@ local M = MelloUI:RegisterModule("TaxiPanel", {
 	title = "Flight Map Kit",
 	desc = "The flight map window in the kit.",
 	window = { label = "Flight map", desc = "The flight map window in the kit.", tab = "Windows",
-		frames = { "TaxiFrame" }, plainGrab = true, firstOpen = true },
+		firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

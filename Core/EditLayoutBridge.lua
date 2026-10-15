@@ -985,7 +985,8 @@ end
 -- D. Edit Mode's systems moved by Edit Layout (0.20.2, see the header and
 -- docs/plans/edit-layout-systems.md). Registered as movers when Edit Layout
 -- opens (a mover source: nothing at login) -- every system in Edit Mode's
--- list (read only) that no mover holds yet (UI Modifications' four keep
+-- list (read only) that no mover holds yet (the four of
+-- Core/EditLayoutWindows.lua, live while UI Modifications is on, keep
 -- theirs): key "EditMode.<system>.<index>", group "hud", `follow` (Core's
 -- store holds the place and puts it back after the game lays the frame out:
 -- a saved Edit Mode layout shows from the next reload only), resize false
@@ -1099,9 +1100,9 @@ local function SysNote()
 	return TEXT.sysNote
 end
 
--- systems another MelloUI mover lays (never registered here): UI Modifications' four (their own movers and store,
--- registered when that module is on; with it off, A's plate as before), and the game's party and raid frames while
--- Group Frames is on (its "Party Frames" / "Raid Frames" plates lay them)
+-- systems another MelloUI mover lays (never registered here): the four of Core/EditLayoutWindows.lua (their own
+-- movers and store, registered while UI Modifications is on; with it off, A's plate as before), and the game's party
+-- and raid frames while Group Frames is on (its "Party Frames" / "Raid Frames" plates lay them)
 local OTHERS = { Minimap = true, ChatFrame = true, ObjectiveTracker = true, DamageMeter = true }
 local GROUP_INDEX = { [4] = true, [5] = true }   -- (UnitFrame: Party, Raid -- LABELS)
 
@@ -1346,6 +1347,6 @@ MelloUI:On("editmode", function(entering)
 	end
 end, OWNER)
 
--- the media data files load next (MelloUI.toc): their time is counted from
--- here, under one name (/melloperf load; none of them opens a scope of its own)
-MelloUI.Perf:Scope("Media data files")
+-- (the media data files' load time is counted from the end of the next file,
+-- Core/EditLayoutWindows.lua: the last Core file before them in MelloUI.toc
+-- since onelook D2)

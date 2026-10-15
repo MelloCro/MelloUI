@@ -78,7 +78,7 @@ local M = MelloUI:RegisterModule("MailPanel", {
 	title = "Mailbox Kit",
 	desc = "The mailbox (inbox, reading a letter, send mail) in the kit.",
 	window = { label = "Mailbox", desc = "The mailbox (inbox, reading a letter, send mail) in the kit.", tab = "Windows",
-		frames = { "MailFrame", "OpenMailFrame" }, plainGrab = true, firstOpen = true },
+		firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

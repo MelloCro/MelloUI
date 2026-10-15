@@ -62,7 +62,7 @@ local M = MelloUI:RegisterModule("MacroPanel", {
 	title = "Macros Kit",
 	desc = "The macro window (general and character macros, the icon picker) in the kit.",
 	window = { label = "Macros", desc = "The macro window (general and character macros, the icon picker) in the kit.", tab = "Windows",
-		frames = { "MacroFrame" }, plainGrab = true, addon = "Blizzard_MacroUI", firstOpen = true },
+		addon = "Blizzard_MacroUI", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

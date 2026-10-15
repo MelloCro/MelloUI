@@ -95,7 +95,7 @@ local M = MelloUI:RegisterModule("BankPanel", {
 	title = "Bank Kit",
 	desc = "The bank window (the bank's slots, bag slots, purchase) in the kit, in the bags' looks.",
 	window = { label = "Bank", desc = "The bank window (the bank's slots, bag slots, purchase) in the kit, in the bags' looks.", tab = "Windows",
-		frames = { "BankFrame" }, plainGrab = true, firstOpen = true },
+		firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

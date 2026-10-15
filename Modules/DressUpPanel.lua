@@ -76,7 +76,7 @@ local M = MelloUI:RegisterModule("DressUpPanel", {
 	title = "Dressing Room Kit",
 	desc = "The dressing room in the kit.",
 	window = { label = "Dressing room", desc = "The dressing room in the kit.", tab = "Windows",
-		frames = { "DressUpFrame" }, plainGrab = true, firstOpen = true },
+		firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

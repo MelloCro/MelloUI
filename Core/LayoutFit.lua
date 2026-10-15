@@ -380,7 +380,7 @@ LayoutFit.RETRY = {
 	  later = { boss = { focus = true, extra = true, doll = true, tooltip = true } }, centre = { extra = true } },
 }
 
--- Frames Edit Mode places that UI Modifications' movers can also keep a place for
+-- Frames Edit Mode places that Edit Layout's movers (Core/EditLayoutWindows.lua) can also keep a place for
 local EDIT_MODE_FRAMES = { "MinimapCluster", "DamageMeter", "ChatFrame1", "ObjectiveTrackerFrame" }
 LayoutFit.EDIT_MODE_FRAMES = EDIT_MODE_FRAMES   -- (read only: the installer keeps the player's own places of these)
 

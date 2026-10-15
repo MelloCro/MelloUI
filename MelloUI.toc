@@ -45,6 +45,7 @@ Core\EditLayoutSnap.lua
 Core\EditLayout.lua
 Core\EditLayoutMovers.lua
 Core\EditLayoutBridge.lua
+Core\EditLayoutWindows.lua
 
 Media\CustomFonts.lua
 Media\CustomTextures.lua

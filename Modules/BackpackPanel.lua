@@ -58,8 +58,7 @@ end
 local M = MelloUI:RegisterModule("BackpackPanel", {
 	title = "Backpack Kit",
 	desc = "The bag windows dressed in the painted kit on the game's own layout.",
-	window = { label = "Bags", desc = "The backpack and bag windows in the kit.", tab = "Windows", order = 11,
-		frames = { "ContainerFrameCombinedBags" }, plainGrab = true },
+	window = { label = "Bags", desc = "The backpack and bag windows in the kit.", tab = "Windows", order = 11 },
 	enabledByDefault = true,
 	defaults = { itemBackground = "stone", windowBackground = "concrete", qualityGems = true, greyJunk = true },
 	options = {

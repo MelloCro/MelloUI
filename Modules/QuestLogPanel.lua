@@ -44,8 +44,7 @@ local stateIconsOf = MelloUI.Kept.stateIconsOf
 local M = MelloUI:RegisterModule("QuestLogPanel", {
 	title = "Quest Log Panel",
 	desc = "The quest log and its window dressed in the painted kit on the game's own layout.",
-	window = { label = "Quest log", desc = "The quest log in the world map window and MelloUI's quest list in the kit.", tab = "Windows", order = 5,
-		frames = { "WorldMapFrame" }, plainGrab = true },
+	window = { label = "Quest log", desc = "The quest log in the world map window and MelloUI's quest list in the kit.", tab = "Windows", order = 5 },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

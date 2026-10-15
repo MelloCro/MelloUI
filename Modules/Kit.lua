@@ -6159,7 +6159,7 @@ Kit.covers = {}
 
 -- Every window dressed by Kit:SkinWindowShell: [frame] = { outer = rep,
 -- title = rep, ring = rep, crest = rep, plate = rep }, and each new one told
--- on the bus's 'shell' topic (frame, shell): UI Modifications registers a
+-- on the bus's 'shell' topic (frame, shell): Core/EditLayoutWindows.lua registers a
 -- dressed window's stored place with the mover, the shade system lays every
 -- window's shade (Modules/KitShade.lua). Kit.shells holds the ones already
 -- there for a listener that comes later.
@@ -10236,7 +10236,7 @@ function Kit:Replace(region, opts)
 		rep.holderShown = false
 	end
 	-- every window's outer rail and title plate are known to the window
-	-- mover (UI Modifications), whichever panel dressed the window: the
+	-- mover (Core/EditLayoutWindows.lua), whichever panel dressed the window: the
 	-- older panels replace these two by hand, not through SkinWindowShell
 	-- (the window: WindowOf)
 	if key == "TitleBar" and parent and parent.GetParent then

@@ -38,7 +38,7 @@ local M = MelloUI:RegisterModule("GroupFinderPanel", {
 	title = "Group Finder Panel",
 	desc = "The looking-for-group window dressed in the painted kit on the game's own layout.",
 	window = { label = "Looking for group", desc = "Listing, browse and who in the kit.", tab = "Windows", order = 8,
-		frames = { "PVEFrame" }, plainGrab = true, addon = "Blizzard_GroupFinder_VanillaStyle", firstOpen = true },
+		addon = "Blizzard_GroupFinder_VanillaStyle", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

@@ -86,7 +86,7 @@ local M = MelloUI:RegisterModule("TradePanel", {
 	title = "Trade Kit",
 	desc = "The trade window in the kit.",
 	window = { label = "Trade", desc = "The trade window in the kit.", tab = "Windows",
-		frames = { "TradeFrame" }, plainGrab = true, firstOpen = true },
+		firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

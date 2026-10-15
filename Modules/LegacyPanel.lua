@@ -35,7 +35,7 @@ local M = MelloUI:RegisterModule("LegacyPanel", {
 	title = "Legacy Panel",
 	desc = "The Legacy window dressed in the painted kit on the game's own layout.",
 	window = { label = "Legacy window", desc = "Rewards, challenges and the tree in the kit.", tab = "Windows", order = 4,
-		frames = { "LegacySystemFrame" }, plainGrab = true, addon = "Blizzard_LegacySystem", firstOpen = true },
+		addon = "Blizzard_LegacySystem", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

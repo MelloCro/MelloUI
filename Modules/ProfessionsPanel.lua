@@ -54,7 +54,7 @@ local M = MelloUI:RegisterModule("ProfessionsPanel", {
 	icon = "Interface\\Icons\\Trade_BlackSmithing",
 	flavour = "The professions window in the painted kit, on the game's own layout.",
 	window = { label = "Professions", desc = "The profession book and crafting window in the kit.", tab = "Windows", order = 3,
-		frames = { "ProfessionsFrame", "ProfessionsBookFrame" }, plainGrab = true, addon = "Blizzard_Professions", firstOpen = true },
+		addon = "Blizzard_Professions", firstOpen = true },
 	enabledByDefault = true,
 	defaults = { pageBackground = "concrete", listBackground = "list", bookBackground = "concrete" },
 	options = {

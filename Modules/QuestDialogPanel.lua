@@ -50,7 +50,7 @@ local M = MelloUI:RegisterModule("QuestDialogPanel", {
 	title = "Quest Dialogs Kit",
 	desc = "The quest giver's dialogs (offer, progress, reward) and the gossip window in the kit.",
 	window = { label = "Quest dialogs", desc = "The quest giver's dialogs (offer, progress, reward) and the gossip window in the kit.", tab = "Windows",
-		frames = { "GossipFrame", "QuestFrame" }, plainGrab = true, firstOpen = true },
+		firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

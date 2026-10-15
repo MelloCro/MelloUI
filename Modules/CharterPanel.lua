@@ -55,7 +55,7 @@ local M = MelloUI:RegisterModule("CharterPanel", {
 	title = "Guild Charter Kit",
 	desc = "The guild charter (petition) and the guild registrar in the kit.",
 	window = { label = "Guild charter", desc = "The guild charter (petition) and the guild registrar in the kit.", tab = "Windows",
-		frames = { "PetitionFrame", "GuildRegistrarFrame" }, plainGrab = true, firstOpen = true },
+		firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

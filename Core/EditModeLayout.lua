@@ -71,7 +71,7 @@
 --       active layout is a preset (its place is the game's own), the system
 --       is not in it, or anything reads secret. Edit Layout's "Back to Edit
 --       Mode's place" for the minimap, the chat, the objective tracker and
---       the damage meter (UI Modifications' candidates). Each value checked
+--       the damage meter (Core/EditLayoutWindows.lua's four). Each value checked
 --       plainly, as the Quest Tracker's own read of the tracker's place.
 --
 --   MelloUI:EditModeSystemSettings(system, index) -> values, preset, name

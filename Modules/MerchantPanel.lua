@@ -76,7 +76,7 @@ local M = MelloUI:RegisterModule("MerchantPanel", {
 	title = "Merchant Kit",
 	desc = "The merchant window (items, buyback, repair) in the kit.",
 	window = { label = "Merchants", desc = "The merchant window (items, buyback, repair) in the kit.", tab = "Windows",
-		frames = { "MerchantFrame" }, plainGrab = true, firstOpen = true },
+		firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

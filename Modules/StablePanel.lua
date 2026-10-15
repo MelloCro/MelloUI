@@ -81,7 +81,7 @@ local M = MelloUI:RegisterModule("StablePanel", {
 	title = "Pet Stable Kit",
 	desc = "The hunter's pet stable in the kit.",
 	window = { label = "Pet stable", desc = "The hunter's pet stable in the kit.", tab = "Windows",
-		frames = { "PetStableFrame", "StableFrame" }, plainGrab = true, addon = "Blizzard_StableUI", firstOpen = true },
+		addon = "Blizzard_StableUI", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -714,10 +714,8 @@ end
 -- skin already built is switched on (and off), else only a window open right
 -- now (a /reload with it open) is dressed at once; its first show dresses it
 -- (the OnShow hook below), in that same frame, so it never draws undressed.
--- The window's mover (UI Modifications) comes with the kit's shell, so it too
--- first exists on that show (its saved place put back there); a stable the
--- kit was switched off for before it ever opened has none, as with the kit
--- off at login (the stable has no plain grab of its own).
+-- The window's mover is not the kit's: Core/EditLayoutWindows.lua's list
+-- names the stable (onelook D2), so it moves in Edit Layout dressed or not.
 local function Sync()
 	local f = Window()
 	if M.isEnabled and f and ((skin and skin.built) or f:IsShown()) then

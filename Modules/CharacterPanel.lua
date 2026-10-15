@@ -56,8 +56,7 @@ local M = MelloUI:RegisterModule("CharacterPanel", {
 	desc = "The character window dressed in the painted kit: stone frame, slot rims, framed panes and stats, all on the game's own layout.",
 	icon = "Interface\\Icons\\INV_Chest_Plate04",
 	flavour = "Stone, iron and a window on the world. Your character, framed the way it deserves.",
-	window = { label = "Character window", desc = "Equipment, stats, reputation and skills in the kit.", tab = "Windows", order = 1,
-		frames = { "CharacterFrame" }, plainGrab = true },
+	window = { label = "Character window", desc = "Equipment, stats, reputation and skills in the kit.", tab = "Windows", order = 1 },
 	enabledByDefault = true,
 	defaults = {
 		statRows = true,

@@ -42,11 +42,13 @@
 -- The registry's own fields (audit, 2026-09-24, rank 4: one place that says
 -- what a module is, for the configurator, the installer and UI
 -- Modifications). All optional, kept on the module as given. UI
--- Modifications builds its rows, the movable game windows and the switches'
--- defaults from `window` and `tweak` (UIModifications.lua's header); the
--- configurator reads `icon` and `flavour` (its tiles) and `group` and
--- `navOrder` (its side list); the installer reads `role`; `area` and the
--- window's `addon` and `firstOpen` are facts nothing reads yet:
+-- Modifications builds its rows and the switches' defaults from `window` and
+-- `tweak` (UIModifications.lua's header); the configurator reads `icon` and
+-- `flavour` (its tiles) and `group` and `navOrder` (its side list); the
+-- installer reads `role`; `area` and the window's `addon` and `firstOpen` are
+-- facts nothing reads yet. (The game windows Edit Layout moves are no
+-- registry field: Core/EditLayoutWindows.lua's one list, since onelook D2;
+-- the window's `frames` and `plainGrab = true`, which named them, are gone.)
 --   icon             texture path (or file id) of its tile
 --   flavour          one line under its title
 --   group            the side-list group its entry sits in: "The look",
@@ -65,9 +67,8 @@
 --                    tab = "Windows" | "HUD", order = n (rows with one lead
 --                    their tab, lowest first), switch = "<UI Modifications
 --                    setting>" (the row is that setting, not a module switch:
---                    the Quest Tracker's questTrackerKit), frames = { frame
---                    names }, addon = "Blizzard_..." (loaded on demand),
---                    plainGrab = true (its frames move in Edit Layout),
+--                    the Quest Tracker's questTrackerKit), addon =
+--                    "Blizzard_..." (loaded on demand),
 --                    firstOpen = true (dressed on its first show),
 --                    include = true | { keys } (its own options laid out
 --                    under its row, indented and live only while it is on;

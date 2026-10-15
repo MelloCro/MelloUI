@@ -58,7 +58,7 @@ local M = MelloUI:RegisterModule("ItemTextPanel", {
 	title = "Books & Letters Kit",
 	desc = "Books, plaques and letters you read (the item text window) in the kit, on parchment.",
 	window = { label = "Books and letters", desc = "Books, plaques and letters you read (the item text window) in the kit, on parchment.", tab = "Windows",
-		frames = { "ItemTextFrame" }, plainGrab = true, firstOpen = true },
+		firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

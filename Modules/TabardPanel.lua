@@ -65,7 +65,7 @@ local M = MelloUI:RegisterModule("TabardPanel", {
 	title = "Tabard Kit",
 	desc = "The guild tabard designer in the kit.",
 	window = { label = "Guild tabard vendor", desc = "The guild tabard designer in the kit.", tab = "Windows",
-		frames = { "TabardFrame" }, plainGrab = true, firstOpen = true },
+		firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

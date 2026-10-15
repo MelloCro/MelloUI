@@ -32,7 +32,7 @@ local M = MelloUI:RegisterModule("CollectionsPanel", {
 	title = "Collections Panel",
 	desc = "The collections window dressed in the painted kit on the game's own layout.",
 	window = { label = "Appearances", desc = "The wardrobe in the kit.", tab = "Windows", order = 9,
-		frames = { "CollectionsJournal" }, plainGrab = true, addon = "Blizzard_Collections", firstOpen = true },
+		addon = "Blizzard_Collections", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

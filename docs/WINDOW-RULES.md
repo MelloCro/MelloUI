@@ -223,13 +223,15 @@ the login frame (the addon profiler's peak 140 % of a frame). So:
 - Hooks may be installed early if they do nothing until the skin is built;
   border / colour / scale callbacks and the /xxdump commands must cope with a
   window that is not dressed yet ("not dressed yet").
-- A game window that should move in Edit Layout names its frames in its
-  module's registry entry, `window = { frames = { "FrameName" }, plainGrab =
-  true }` (UI Modifications makes its Edit Layout candidates from the
-  registry; nothing is added there by hand). Nothing is made for it at
-  login: a window with a stored place registers with Core's mover after the
-  login (no frame made, its place put back), every other one when Edit
-  Layout opens (a mover source, `MelloUI:AddMoverSource`).
+- A game window that should move in Edit Layout is a row of
+  Core/EditLayoutWindows.lua's `WINDOWS` (`{ page, label, frames }`: its
+  module's page, its plate's name, its frames' names): the one list, in the
+  core, so it moves with every *Panel module off and without the kit
+  (onelook D2; the registry's `frames` and `plainGrab = true` that named
+  them until then are gone). Nothing is made for it at login: a window
+  with a stored place registers with Core's mover after the login (no
+  frame made, its place put back), every other one when Edit Layout opens
+  (a mover source, `MelloUI:AddMoverSource`).
 - Check with /melloperf: a new window adds no kit pieces at login
   (`/run print(#MelloUI.Kit.repList)` before and after), and no handler of it
   runs while it is closed.
@@ -854,11 +856,11 @@ Lint workflow) fails when a copy is added and names the system to use.
   each, a page before a tab or a pick, those before a row.
 - **Its registry entry.** Its module's `MelloUI:RegisterModule` carries what
   the configurator, UI Modifications and the installer show; nothing is
-  listed by hand anywhere else (UI Modifications makes its PANELS, TWEAKS
-  and PLAIN_WINDOWS from it, and the configurator's old MODULE_META is gone;
-  Core.lua's header has the shape):
-  - `window = { label, desc, tab = "Windows" | "HUD", order, switch, frames,
-    plainGrab, addon, firstOpen, include }` makes it a kit panel with nothing
+  listed by hand anywhere else (UI Modifications makes its PANELS and TWEAKS
+  from it, and the configurator's old MODULE_META is gone; Core.lua's header
+  has the shape):
+  - `window = { label, desc, tab = "Windows" | "HUD", order, switch, addon,
+    firstOpen, include }` makes it a kit panel with nothing
     edited in UI Modifications or Config: UI Modifications defines its
     Painted Skin switch (its name, `UIModifications.<Name>`; `order` sorts
     the definitions); `switch` makes that a setting of UI Modifications (an
@@ -866,10 +868,11 @@ Lint workflow) fails when a copy is added and names the system to use.
     of a module's switch; a `tab = "Windows"` panel without one is a pick of
     the configurator's Windows page by its `label` (its `desc` found by the
     search), and every other panel's Painted Skin row has its `R` line in
-    Core/ConfigLayout.lua (the page of what it dresses); `frames` +
-    `plainGrab = true`: the named frames move in Edit Layout; `include` is
-    the old pages' structure, no longer read (the layout places the panel's
-    own options).
+    Core/ConfigLayout.lua (the page of what it dresses); `frames` and
+    `plainGrab` are gone (onelook D2): the game windows Edit Layout moves are
+    no registry field but the rows of Core/EditLayoutWindows.lua's
+    `WINDOWS`, the one list; `include` is the old pages' structure, no
+    longer read (the layout places the panel's own options).
   - `group` and `navOrder` are no longer read (0.15.0: the side list is
     Core/ConfigLayout.lua's `L.groups`, the pages its `L.pages`); Core still
     checks their types.
