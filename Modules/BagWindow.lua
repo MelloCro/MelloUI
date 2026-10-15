@@ -160,7 +160,8 @@ local G = {
 	SLOT = 37, GAP = 5, COLS = 10,
 	SIDE = 12,       -- the content's inset from the window's sides
 	TOP = 74,        -- the content's top below the window's top (the title rail, the search row, the ring's foot)
-	SEARCH_X = 70,   -- the search box's left, past the ring
+	SEARCH_X = 70,   -- the search box's left, past the ring (the painted look's: the game's portrait corner; FitSearch)
+	FIELD_IN = 5,    -- the search field's own edge this far left of its box (W.FlatField's span: the game's box art's)
 	-- (0.20.1, the window pass: the search field on its buttons' line, as tall as their plates -- the user's pick E,
 	-- THE text field)
 	ROW_Y = -32,     -- the search row's top below the window's top (the sort / bin / settings buttons and the box)
@@ -1421,16 +1422,20 @@ local function RecentEnded()
 end
 
 -- the row's buttons from the right: Sort, Discard while it shows, Settings;
--- the search box up to the last of them
+-- the search box up to the last of them, from the look's left: the painted look's past the game's portrait corner
+-- (G.SEARCH_X); the modern look's (onelook; the user, 2026-10-15, twice: "the modern frame" -- no corner, the backpack
+-- in the strip's rim) its field's edge on the window's inset, under the rim's left edge as the sort's right edge stands
+-- under the close's (shell:Inset: the look's one answer; laid again at a switch, the shell's OnKit's layout)
 local function FitSearch()
 	local d = win.discard
 	local to = (d and d:IsShown()) and d or win.sort
-	if win.searchTo ~= to then
-		win.searchTo = to
+	local x = win.shell:Inset(G.SEARCH_X - G.FIELD_IN) + G.FIELD_IN
+	if win.searchTo ~= to or win.searchX ~= x then
+		win.searchTo, win.searchX = to, x
 		win.settings:ClearAllPoints()
 		win.settings:SetPoint("RIGHT", to, "LEFT", -2, 0)
 		win.search:ClearAllPoints()
-		win.search:SetPoint("TOPLEFT", win.frame, "TOPLEFT", G.SEARCH_X, G.ROW_Y)
+		win.search:SetPoint("TOPLEFT", win.frame, "TOPLEFT", x, G.ROW_Y)
 		win.search:SetPoint("RIGHT", win.settings, "LEFT", -8, 0)
 	end
 end
@@ -2208,9 +2213,9 @@ local function Build()
 	-- the game's own backpack corner (the user, 2026-10-10: the game windows' top-left portrait and its border stay
 	-- the game's; "you did not make that change on the backpack"): the shell's ring.game -- the game's corner art,
 	-- the backpack icon round at the game's portrait size and place, with the painted look; the modern shell (onelook
-	-- stage B: the strip of a window without a side column) wears the backpack's portrait in its rim, the strip's
-	-- ends on the search row's (G.SIDE). NOT the user's pick yet: the portrait in the kit's rim instead of the game's
-	-- corner waits for the user's yes (the window-portraits rule counts this window a game window)
+	-- stage B: the strip of a window without a side column; the user's pick, 2026-10-15, twice: "the modern frame")
+	-- wears the backpack's portrait in its rim, the strip's ends on the search row's (G.SIDE: the row's field from the
+	-- rim's left edge, the sort's right edge under the close's; FitSearch)
 	win.shell = Kit:OwnWindow(f, {
 		area = AREA, plate = "rail",
 		ring = { at = "tl", texture = "Interface\\Buttons\\Button-Backpack-Up", game = true, bag = 0 },   -- (the backpack's portrait)
