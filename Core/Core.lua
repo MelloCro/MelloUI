@@ -4477,6 +4477,15 @@ function MelloUI:UnitNameAs(unit, mode)
 	if not unit then
 		return nil
 	end
+	-- (one look, the user 2026-10-15: only players' names are shortened; an
+	-- NPC's second word is no surname -- "Forest Spider" stays whole. A
+	-- secret or refused answer keeps the chosen form)
+	if mode ~= "both" then
+		local okP, isPlayer = pcall(UnitIsPlayer, unit)
+		if okP and not Safe.IsSecret(isPlayer) and not isPlayer then
+			mode = "both"
+		end
+	end
 	local util = NameUtil
 	local full, first
 	if type(util) == "table" and util.FormatUnitNameForDisplay then
