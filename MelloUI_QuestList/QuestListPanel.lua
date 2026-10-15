@@ -478,7 +478,6 @@ local function InitHeader(button, entry)
 	end
 	button.plus:SetAtlas(entry.collapsed and "common-button-list-plus" or "common-button-list-minus", true)
 	button.label:SetText(entry.name)
-	KeyColour(button.label, "text")
 	local bar = button.progress
 	if entry.sub then
 		-- (0.19.9) a group's Done section: its count in its name, no bar
@@ -494,9 +493,14 @@ local function InitHeader(button, entry)
 		bar:SetShown(entry.total > 0)
 	end
 	-- (0.24.0, the chat's look) the chat's heading on the header (the core's:
-	-- the plate faded, the name in the title face, the hairline where no bar runs)
-	if QP then
-		QP.Header(button, button.plateArea)
+	-- the plate faded, the name in the title face, the hairline where no bar
+	-- runs). The label is then only the heading's text, faded under it: no
+	-- colour of the panel's on it -- on this client a text colour's alpha is
+	-- the string's alpha (SetTextColor's Alpha aspect), and the colour laid on
+	-- every Init put the faded label back under the heading: two names (in
+	-- game, 2026-10-15). The panel's own colour only where no heading covers it
+	if not (QP and QP.Header(button, button.plateArea)) then
+		KeyColour(button.label, "text")
 	end
 end
 

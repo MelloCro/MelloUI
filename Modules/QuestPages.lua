@@ -25,11 +25,15 @@
 -- own page) calls QP.Header and QP.Row as it lays a button.
 --
 -- Hard rule 1 (checked against the client's source, ui_src): the game never
--- writes the alpha of a header's plate, its highlight or its name
--- (ListHeaderVisualTemplate / ListHeaderMixin touch only the name's colour
--- and the collapse button; QuestMapFrame.lua's one SetAlpha is its bottom
--- shadow; the header pool's reset is Hide and ClearAllPoints), so Kit:Fade's
--- write-back never runs per frame or per update here.
+-- calls SetAlpha on a header's plate, its highlight or its name
+-- (QuestMapFrame.lua's one SetAlpha is its bottom shadow; the header pool's
+-- reset is Hide and ClearAllPoints). It does recolour the log's name:
+-- ListHeaderVisualMixin:CheckHighlightTitle, SetTextColor(r, g, b) from the
+-- header's OnLoad, OnEnter and OnLeave (a quest log update only sets its
+-- text), and a text colour sets the string's alpha back to 1 on this client,
+-- a write Kit:Fade's hooks (SetAlpha, SetVertexColor) never see. The name is
+-- faded again from its SetTextColor (GameName_OnSetTextColor): on a hover,
+-- never per frame or per update, counted (MelloUI.Perf.WriteBack).
 -- The Gamepad UI (0.15.0's freeze fix: the game's navigation walks every frame
 -- in the open world map): while it is on and no painted page is, the game's
 -- quest log gets no MelloUI frame (no gem frames on its rows; the headings are
@@ -53,6 +57,9 @@ local MelloUI = ns.MelloUI
 local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("QuestPages")
 local hooksecurefunc = Perf.hooksecurefunc
+local Shared = Perf.Shared
+-- a write back onto a game region, counted for /melloperf
+local WriteBack = MelloUI.Perf.WriteBack or function() end
 local Kit = MelloUI.Kit
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
@@ -139,6 +146,15 @@ local function CopyShadow(cover, src)
 	cover:SetShadowOffset(1, -1)
 end
 
+-- the log's name recoloured by the game (its hover: hard rule 1, above):
+-- faded again while it is faded. One handler for every header
+local GameName_OnSetTextColor = Shared("QuestPages: the log's name recoloured", function(fs)
+	if Kit.faded[fs] then
+		WriteBack("QuestPages: the log's faded name's alpha put back to 0")
+		fs:SetAlpha(0)
+	end
+end)
+
 local function Heading(button, rect)
 	local h = headingOf[button]
 	if h then
@@ -180,9 +196,13 @@ local function Heading(button, rect)
 	h.cover = cover
 	headingOf[button] = h
 	-- (the log's name comes with the header's SetText, QuestLogQuests_
-	-- SetupStandardHeaderButton's caller; the panel's as it lays the header)
+	-- SetupStandardHeaderButton's caller; the panel's as it lays the header.
+	-- The log's name's colour comes with its hover: faded again, above)
 	if not button.label and button.SetText then
 		hooksecurefunc(button, "SetText", HeadingLook)
+		if src.SetTextColor then
+			hooksecurefunc(src, "SetTextColor", GameName_OnSetTextColor)
+		end
 	end
 	return h
 end
@@ -236,7 +256,10 @@ end
 -- or the Quests panel's (`rect`: its plate's place, as far right of its rows
 -- as the log's): the chat's heading over it; its plate, the plate's additive
 -- highlight and the game's name faded (nothing stands in: the heading is the
--- look). A pooled panel button laid as a header drops its rim.
+-- look). A pooled panel button laid as a header drops its rim. The name's
+-- owner colours it no more once it is faded (the panel: its label): a text
+-- colour with an alpha sets the string's alpha on this client, which no hook
+-- of Kit:Fade sees. Returns the heading (nil: none made, the name stays).
 function QP.Header(button, rect)
 	local normal = button.GetNormalTexture and button:GetNormalTexture()
 	if not normal then
