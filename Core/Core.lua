@@ -4758,7 +4758,7 @@ function MelloUI:ApplySettingsText(text, withPersonal)
 	for name in pairs(self.db.enabled) do
 		self.db.enabled[name] = nil
 	end
-	local applied = self:DeserializeSettings(withPersonal and text or StripPersonal(self, text))
+	local applied = self:DeserializeSettings(withPersonal and text or StripPersonal(self, text), nil, hold)
 	if self.initialized then
 		-- the loaded palette's table before any module is switched on or off
 		-- (they start in it); the kit's one walk in RestartModules, below
