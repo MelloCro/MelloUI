@@ -549,138 +549,28 @@ function Kit:SetParchment(area, on)
 end
 
 -- Palette colours on the kit's own regions ("Palette-ready", user
--- 2026-09-25: more palettes are planned). Every region the kit colours
--- from MelloUI.Palette -- the eye-strain panels (Kit:StoneDim), a frame
--- rule's `dim` fill (the L1 boxes), a ring's disc given a palette key, the
--- own-window shell's plain parts (Kit:OwnWindow) -- is painted by its KEY,
--- looked up when painted, and kept in a weak list; the bus's 'palette'
--- paints them all again from the table MelloUI.Palette holds then.
---   Kit:Paint(region, key, how, alpha)
---     key    a MelloUI.Palette role ("innerPanel", "selectedTrim", ...)
---     how    "fill" (SetColorTexture, the default), "vertex"
---            (SetVertexColor), "text" (SetTextColor), "backdrop"
---            (SetBackdropColor) or "border" (SetBackdropBorderColor); a
---            backdrop and its border are kept apart, so one frame has both
---     alpha  the colour's alpha (1)
---   Kit:PaletteKeyOf(colour) -> the role a palette colour table is, or nil
---   Kit:Unpaint(region[, how])   the region out of the lists again (a flat
---     fill that gave way to a kit piece: a new palette leaves the piece)
--- 'palette' also goes out for a Kit Colours change (the topic's contract,
--- Core.lua: after both are in place; a new palette is always a NEW table):
--- while MelloUI.Palette is the table last painted from, nothing is painted.
--- The listener is taken on the first Paint, never at load; a Paint of a
--- region painted before reuses its entry (no garbage).
--- The colours are the palette as MelloUI.Look shows it (Look.Palette):
--- MelloUI.Palette whatever the reskin since the one look (Look:On is always
--- true); the 'look:own' repaint below is no longer told (stage E removes it
--- with the game's colours).
-do
-	local weak = { __mode = "k" }
-	local lists = {
-		main = setmetatable({}, weak),       -- [region] = { key, how, alpha }: fill, vertex, text
-		backdrop = setmetatable({}, weak),   -- [frame] = { key, how, alpha }
-		border = setmetatable({}, weak),
-	}
-	local paintedFrom, listening = nil, false
-
-	-- the palette as the look shows it now (MelloUI.Look; without it, the palette)
-	local function Colours()
-		local Look = MelloUI.Look
-		return type(Look) == "table" and type(Look.Palette) == "function" and Look.Palette() or MelloUI.Palette
+-- 2026-09-25): the one registry is Core/Widgets.lua's MelloUI.Painter (one
+-- look D1, out of this file); Kit:Paint(region, key, how, alpha),
+-- Kit:Unpaint(region[, how]) and Kit:PaletteKeyOf(colour) are its old names,
+-- looked up when called. Without the widget set the kit paints nothing, as
+-- W.Paint paints nothing without the kit.
+function Kit:Paint(region, key, how, alpha)
+	local P = MelloUI.Painter
+	if P then
+		P.Paint(region, key, how, alpha)
 	end
+end
 
-	local function Apply(region, key, how, alpha)
-		local c = Colours()[key]
-		if not c then
-			return
-		end
-		alpha = alpha or 1
-		if how == "fill" then
-			-- the region's own alpha kept (a plain part the kit faded, a dim
-			-- a caller set): a colour set again must not bring it back
-			local was = region:GetAlpha()
-			region:SetColorTexture(c[1], c[2], c[3], alpha)
-			if not Secret(was) then
-				local now = region:GetAlpha()
-				if not Secret(now) and now ~= was then
-					region:SetAlpha(was)
-				end
-			end
-		elseif how == "vertex" then
-			region:SetVertexColor(c[1], c[2], c[3], alpha)
-		elseif how == "text" then
-			region:SetTextColor(c[1], c[2], c[3], alpha)
-		elseif how == "backdrop" then
-			region:SetBackdropColor(c[1], c[2], c[3], alpha)
-		elseif how == "border" then
-			region:SetBackdropBorderColor(c[1], c[2], c[3], alpha)
-		elseif how == "swipe" then
-			region:SetSwipeColor(c[1], c[2], c[3], alpha)   -- (a Cooldown's swipe: the widget column's ring)
-		end
+function Kit:Unpaint(region, how)
+	local P = MelloUI.Painter
+	if P then
+		P.Unpaint(region, how)
 	end
+end
 
-	local function RepaintAll()
-		for _, list in pairs(lists) do
-			for region, e in pairs(list) do
-				Apply(region, e.key, e.how, e.alpha)
-			end
-		end
-	end
-
-	local function OnPalette()
-		local palette = MelloUI.Palette
-		if palette == paintedFrom then
-			return
-		end
-		paintedFrom = palette
-		RepaintAll()
-	end
-
-	function Kit:Paint(region, key, how, alpha)
-		if not (region and key) then
-			return
-		end
-		how = how or "fill"
-		local list = lists[how] or lists.main
-		local e = list[region]
-		if e then
-			e.key, e.how, e.alpha = key, how, alpha
-		else
-			list[region] = { key = key, how = how, alpha = alpha }
-		end
-		Apply(region, key, how, alpha)
-		if not listening and MelloUI.On then
-			listening = true
-			paintedFrom = MelloUI.Palette
-			MelloUI:On("palette", OnPalette, "Kit palette")
-			MelloUI:On("look:own", RepaintAll, "Kit palette")   -- (the reskin switched: the game's colours or the palette)
-		end
-	end
-
-	-- a region that no longer shows a palette fill (a kit piece put on it
-	-- again): out of the lists, so a new palette leaves it as it is
-	function Kit:Unpaint(region, how)
-		if region == nil then
-			return
-		end
-		local list = lists[how or "fill"] or lists.main
-		list[region] = nil
-	end
-
-	function Kit:PaletteKeyOf(colour)
-		if type(colour) == "string" then
-			return MelloUI.Palette[colour] and colour or nil
-		end
-		if type(colour) ~= "table" then
-			return nil
-		end
-		for key, c in pairs(MelloUI.Palette) do
-			if c == colour then
-				return key
-			end
-		end
-		return nil
-	end
+function Kit:PaletteKeyOf(colour)
+	local P = MelloUI.Painter
+	return P and P.KeyOf(colour) or nil
 end
 
 -- The eye-strain panel of a HUD frame (user, 2026-09-24: "too much small text
@@ -2535,202 +2425,26 @@ do
 	end
 end
 
--- Kit:SetFrameScale(frame, scale, setScale): the frame's scale set (through
--- setScale(frame, scale) when given: a caller's own unhooked SetScale) and
--- the backgrounds in it laid again -- only those, and only when the frame's
--- scale on the screen really changed (audit, 2026-09-24: six places set a
--- scale and then laid every background in the UI again, the Quest Tracker
--- on each of its settings, a header's collapse too). A scale that reads
--- secret counts as changed. Returns true when it changed, and how many were
--- laid. A protected frame's scale is the caller's to keep out of combat.
--- A background that only hangs off the frame by its anchors (its holder
--- parented elsewhere) changes size, not scale: the holder's OnSizeChanged
--- lays it, as it always has.
-function Kit:SetFrameScale(frame, scale, setScale)
-	if not frame then
-		return false, 0
-	end
-	local okB, before = pcall(frame.GetEffectiveScale, frame)
-	if setScale then
-		setScale(frame, scale)
-	else
-		frame:SetScale(scale)
-	end
-	local okA, after = pcall(frame.GetEffectiveScale, frame)
-	if okB and okA and not Secret(before) and not Secret(after) and before == after then
-		return false, 0
-	end
-	-- (a shadow partner drawn by another frame than its piece's reaches in
-	-- that frame's units: fitted again on the next frame, once for a burst --
-	-- a mouse wheel's turns, the saved frames' scales at login -- and only
-	-- where the scales changed)
-	self:ShadowRefit(true)
-	return true, (self:RetileBackgroundsIn(frame))
-end
-
---------------------------------------------------------------------------------
--- The UI scale watcher (user, 2026-09-24: "UI Scaling Break the UI"). One
--- place that answers a change of the game's UI Scale (the uiScale /
--- useUiScale settings), of the window's resolution, and of an Edit Mode
--- setting (a system's Size): every background laid again at the screen's
--- one density, then every panel that measured something on the screen told
--- through Kit:OnUIScaleChanged(fn), fn(reason) with reason "uiscale" (the UI
--- Scale or the resolution) or "editmode" (a setting in Edit Mode): the bus's
--- 'scale' topic (Core.lua), this watcher its one source.
--- The work waits a moment and runs once for a burst of changes: when the
--- event comes the game has not yet re-laid everything for the new scale
--- (Edit Mode re-scales and re-places the right-hand action bars and the
--- panel manager moves its windows in their own handlers of the same events),
--- and the settings' slider sends several changes in a row. What a listener
--- does to a protected frame it puts through Kit:WhenOutOfCombat itself.
--- Bars, rails, caps and pieces in general need nothing: they are sized in
--- their frame's own units and follow any scale with it; only the
--- backgrounds (measured on the screen) and what a panel laid out from
--- screen positions (the action bar backdrops, the saved window places, the
--- drag grid) go stale.
---------------------------------------------------------------------------------
-Kit.scaleListenerCount = 0   -- how many came through Kit:OnUIScaleChanged, for /uiscaledump
-Kit.lastScaleRefit = nil   -- what the last refit did, for /uiscaledump
-
--- (an alias of the bus's 'scale' topic, audit 2026-09-24 rank 5: a listener
--- that raises goes to the error handler, the others still run)
-function Kit:OnUIScaleChanged(fn)
-	if type(fn) == "function" then
-		MelloUI:On("scale", fn)
-		self.scaleListenerCount = self.scaleListenerCount + 1
-	end
-end
-
--- The refit itself, at once (the watcher calls it a moment after a change;
--- /uiscaledump refit calls it by hand)
-function Kit:RefitForScale(reason)
-	reason = reason or "uiscale"
-	local laid, left = self:RetileBackgrounds()
-	MelloUI:Fire("scale", reason)
-	local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
-	self.lastScaleRefit = {
-		reason = reason, when = GetTime and GetTime() or 0,
-		backgrounds = laid, skipped = left,
-		effectiveScale = (okU and not Secret(us)) and us or nil,
-	}
-	return laid
-end
-
-do
-	local pending, pendingReason = nil, nil
-	local function Run()
-		pending = nil
-		local reason = pendingReason
-		pendingReason = nil
-		Kit:RefitForScale(reason)
-	end
-	-- a change of the UI Scale outranks an Edit Mode one: its listeners do more
-	local function Schedule(reason)
-		if pendingReason ~= "uiscale" then
-			pendingReason = reason
-		end
-		if pending then
-			pending:Cancel()
-		end
-		pending = C_Timer.NewTimer(0.15, Run)
-	end
-	Kit.ScheduleScaleRefit = function(_, reason)
-		Schedule(reason or "uiscale")
-	end
-	local ev = CreateFrame("Frame")
-	ev:RegisterEvent("UI_SCALE_CHANGED")
-	ev:RegisterEvent("DISPLAY_SIZE_CHANGED")
-	Perf.SetScript(ev, "OnEvent", function()
-		Schedule("uiscale")
-	end)
-	-- the settings themselves, for a client that changes the scale without
-	-- the event (it costs nothing twice: the timer runs once)
-	if CVarCallbackRegistry and CVarCallbackRegistry.RegisterCallback then
-		for _, cvar in ipairs({ "uiScale", "useUiScale" }) do
-			CVarCallbackRegistry:RegisterCallback(cvar, function() Schedule("uiscale") end, Kit)
-		end
-	end
-	-- Edit Mode opened and closed: the addon's ONE registration (audit,
-	-- 2026-09-24, rank 5: six files each had their own), told on the bus as
-	-- 'editmode' (entering) from inside the game's event, as theirs were;
-	-- a close also lays the backgrounds again, here
-	if EventRegistry and EventRegistry.RegisterCallback then
-		EventRegistry:RegisterCallback("EditMode.Enter", function()
-			MelloUI:Fire("editmode", true)
-		end, Kit)
-		EventRegistry:RegisterCallback("EditMode.Exit", function()
-			MelloUI:Fire("editmode", false)
-			Schedule("editmode")
-		end, Kit)
-	end
-	-- a system's Size (or any setting) changed in Edit Mode: laid again while
-	-- the window is still open, not only when it closes (a post-hook: Edit
-	-- Mode's own code runs untouched)
-	local manager = EditModeManagerFrame
-	if manager and type(manager.OnSystemSettingChange) == "function" then
-		hooksecurefunc(manager, "OnSystemSettingChange", function()
-			Schedule("editmode")
-		end)
-	end
-end
-
--- /uiscaledump [refit]: the UI scale as the game and the kit see it, and what
--- the last refit did (user, 2026-09-24: to check the UI Scale fix in game).
--- "refit" runs a refit now first. Opens the copy window.
-SLASH_MELLOUISCALEDUMP1 = "/uiscaledump"
-SlashCmdList.MELLOUISCALEDUMP = function(msg)
-	msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
-	if msg == "refit" then
-		Kit:RefitForScale("uiscale")
-	end
-	MelloUI:ClearLog()
-	local function Num(v, fmt)
-		if type(v) ~= "number" or Secret(v) then
-			return tostring(v)
-		end
-		return string.format(fmt or "%.4f", v)
-	end
-	local GetCVarFn = (C_CVar and C_CVar.GetCVar) or GetCVar
-	local okC, uiScale = pcall(GetCVarFn, "uiScale")
-	local okU, useUiScale = pcall(GetCVarFn, "useUiScale")
-	MelloUI:Print("cvar uiScale = %s, useUiScale = %s", okC and tostring(uiScale) or "?", okU and tostring(useUiScale) or "?")
-	local okS, s = pcall(UIParent.GetScale, UIParent)
-	local okE, es = pcall(UIParent.GetEffectiveScale, UIParent)
-	local okW, w, h = pcall(UIParent.GetSize, UIParent)
-	MelloUI:Print("UIParent scale = %s, effective = %s, size = %s x %s UI units", okS and Num(s) or "?", okE and Num(es) or "?",
-		okW and Num(w, "%.1f") or "?", okW and Num(h, "%.1f") or "?")
-	if GetPhysicalScreenSize then
-		local okP, pw, ph = pcall(GetPhysicalScreenSize)
-		if okP and type(ph) == "number" and not Secret(ph) and ph > 0 then
-			MelloUI:Print("physical screen = %s x %s px; a pixel-exact UI scale here would be %s", Num(pw, "%d"), Num(ph, "%d"), Num(768 / ph))
-			if okE and type(es) == "number" and not Secret(es) and es > 0 then
-				MelloUI:Print("one UI unit = %s screen px", Num(es * ph / 768, "%.3f"))
-			end
-		end
-	end
-	local backgrounds = 0
+-- How many background tiles are registered now (/uiscaledump, Core/Schedule.lua)
+function Kit:BackgroundCount()
+	local n = 0
 	for tex in pairs(BACKGROUNDS) do
 		if Kit.backgroundOf[tex] then
-			backgrounds = backgrounds + 1
+			n = n + 1
 		end
 	end
-	-- (the listeners are the bus's 'scale' topic: one that raises goes to the
-	-- error handler when it runs)
-	MelloUI:Print("Kit.scale = %s UI units per piece px; backgrounds registered = %d; scale listeners through the kit = %d",
-		Num(Kit.scale, "%.3f"), backgrounds, Kit.scaleListenerCount)
-	local last = Kit.lastScaleRefit
-	if last then
-		local ago = GetTime and (GetTime() - (last.when or 0)) or 0
-		MelloUI:Print("last refit (%s, %.0f s ago, UIParent effective %s): %d backgrounds laid again, %d left (size unreadable), the 'scale' listeners told",
-			tostring(last.reason), ago, Num(last.effectiveScale), last.backgrounds or 0, last.skipped or 0)
-		if last.effectiveScale and okE and type(es) == "number" and not Secret(es) and math.abs(last.effectiveScale - es) > 0.0001 then
-			MelloUI:Print("the UI scale changed since the last refit and none ran: /uiscaledump refit")
-		end
-	else
-		MelloUI:Print("no refit since the last reload (the UI scale has not changed); /uiscaledump refit runs one")
-	end
-	MelloUI:ShowLog("uiscaledump")
+	return n
 end
+
+-- Kit:SetFrameScale(frame, scale, setScale): the frame's scale set and the backgrounds in it laid again when its scale
+-- on the screen changed: Core/Schedule.lua's since one look D1 (the same function; the kit's part looked up there).
+Kit.SetFrameScale = MelloUI.Schedule.SetFrameScale
+
+--------------------------------------------------------------------------------
+-- The UI scale watcher: Core/Schedule.lua since one look D1, the one source of
+-- the bus's 'scale' and 'editmode'; these are its old names, the same functions.
+--------------------------------------------------------------------------------
+Kit.OnUIScaleChanged, Kit.RefitForScale, Kit.ScheduleScaleRefit = MelloUI.Schedule.OnUIScaleChanged, MelloUI.Schedule.RefitForScale, MelloUI.Schedule.ScheduleScaleRefit
 
 -- A new texture showing a piece at its natural size.
 function Kit:Texture(parent, name, layer, sublevel, scale)
@@ -5510,54 +5224,8 @@ function Kit:RefitLater(rim)
 end
 
 -- Kit:NextFrame(key, fn): fn(key) once on the next frame, however often it
--- was asked for before then (audit, 2026-09-24: panels kept a pending flag
--- each and made a new closure for C_Timer.After(0) on every ask). One timer
--- a frame for every key. A key asked for again before it ran runs once, in
--- the place it was first asked for, with the fn given last. `fn` is made
--- once by the caller -- a file's own function, handed the key (the skin or
--- frame it works on) -- so an ask makes no closure. An error in one is
--- reported and the rest still run. A key asked for while they run (from
--- inside one of them) waits for the frame after once it has run; one still
--- waiting further on in the same run runs there only, with the fn given last
--- (review, 2026-09-24: it ran twice, then and on the next frame).
-do
-	local nextKeys, nextFns = {}, {}   -- the keys in the order asked, [key] = its fn
-	local runKeys, runFns = {}, {}     -- the same two, emptied as they run
-	local nextQueued = false
-
-	local function RunNextFrame()
-		nextQueued = false
-		local keys, fns = nextKeys, nextFns
-		nextKeys, nextFns, runKeys, runFns = runKeys, runFns, keys, fns
-		for i = 1, #keys do
-			local key = keys[i]
-			local fn = fns[key]
-			keys[i], fns[key] = nil, nil
-			local ok, err = pcall(fn, key)
-			if not ok then
-				geterrorhandler()(err)
-			end
-		end
-	end
-
-	function Kit:NextFrame(key, fn)
-		if key == nil or type(fn) ~= "function" then
-			return
-		end
-		if runFns[key] ~= nil then
-			runFns[key] = fn   -- (still waiting in the run under way)
-			return
-		end
-		if nextFns[key] == nil then
-			nextKeys[#nextKeys + 1] = key
-		end
-		nextFns[key] = fn
-		if not nextQueued then
-			nextQueued = true
-			C_Timer.After(0, RunNextFrame)
-		end
-	end
-end
+-- was asked for before then: Core/Schedule.lua's since one look D1 (the same function).
+Kit.NextFrame = MelloUI.Schedule.NextFrame
 
 -- Anchor the rim's icon into the rim's opening (insets as fractions of the
 -- rim, so any button size works). Callers restore the icon's own points to undo.
@@ -6494,176 +6162,11 @@ end
 
 --------------------------------------------------------------------------------
 -- Combat: geometry on a protected frame's children is refused while the
--- player is in combat; the HUD modules queue it here and it runs at
--- PLAYER_REGEN_ENABLED (at once when out of combat). A refit hook on the
--- game's own layout method goes through the same queue.
--- A fight can leave a lot queued (/melloperf 2026-09-24: 16.8 ms in the
--- frame the fight ended): it runs in order, a few ms of it per frame, and
--- stops if a new fight starts before it is through (the rest waits for that
--- one to end). The same work queued twice in a row runs once. Anything asked
--- for out of combat while some is still waiting goes in behind it, in the
--- same slices, so the order is kept and no frame pays for the lot; what a
--- queued piece asks for runs at once, as it did.
--- A caller can name its work: Kit:WhenOutOfCombat(fn, key), the key being
--- the frame or rep it refits. Asked for again under the same key while the
--- first is still waiting, the waiting one is dropped and the new one goes in
--- at the end: a fight's many asks for one refit (a hook on every target
--- change makes a new closure each time) run once, last, as the last of them
--- did. Only for work that just re-reads the frame: an on / off pair must not
--- share a key.
+-- player is in combat: the combat queue is Core/Schedule.lua's since one look
+-- D1 (MelloUI.Schedule); Kit:WhenOutOfCombat(fn, key), Kit:WhenQueueIdle(fn)
+-- and Kit:IsQueueBusy() are its old names, the same functions.
 --------------------------------------------------------------------------------
-local combatQueue, queueAt = {}, 1   -- the queued work and the next piece to run
-local queueKeys = {}                 -- [index] = the key its piece was queued under
-local waitingKeys = {}               -- [key] = the index of that key's piece still waiting
-local QUEUE_BUDGET = 3               -- ms of queued work per frame after a fight
-local runningQueued = false
-local combatFrame = CreateFrame("Frame")
-combatFrame:Hide()
-
--- Kit:WhenQueueIdle(fn): fn() once the queue is through, for work that can
--- wait and must not add to the frames the queue works in (the windows built
--- ahead in idle turns). On the next frame when out of combat with nothing
--- waiting; else on the frame after the last queued piece ran, after the
--- fight's end (a new fight before then keeps it waiting). Never at once, so
--- an fn that asks again goes on a frame later, not inside itself. The same
--- fn asked for again while it waits runs once (still waiting further on in
--- a run under way: there only). An error in one is reported and the rest
--- still run. Kit:IsQueueBusy(): in combat, or queued work still waiting.
--- QueueIdleWaiters(): the queue's end hands on to them.
-local QueueIdleWaiters
-do
-	local idleWaiters, idleRunning = {}, {}   -- the fns in the order asked; the same, being run
-	local idleQueued = false
-	local runFrom, runTo = 1, 0               -- idleRunning[runFrom..runTo]: yet to run in this one
-
-	local function QueueBusy()
-		return InCombatLockdown() or queueAt <= #combatQueue
-	end
-
-	local function RunIdleWaiters()
-		idleQueued = false
-		if QueueBusy() then
-			return   -- a new fight or new work since: they wait for that to be through
-		end
-		local list = idleWaiters
-		idleWaiters, idleRunning = idleRunning, list
-		runTo = #list
-		for i = 1, runTo do
-			runFrom = i + 1
-			local fn = list[i]
-			list[i] = nil
-			local ok, err = pcall(fn)
-			if not ok then
-				geterrorhandler()(err)
-			end
-		end
-		runFrom, runTo = 1, 0
-	end
-
-	function QueueIdleWaiters()
-		if not idleQueued and idleWaiters[1] ~= nil then
-			idleQueued = true
-			C_Timer.After(0, RunIdleWaiters)
-		end
-	end
-
-	function Kit:WhenQueueIdle(fn)
-		if type(fn) ~= "function" then
-			return
-		end
-		for i = runFrom, runTo do
-			if idleRunning[i] == fn then
-				return
-			end
-		end
-		for i = 1, #idleWaiters do
-			if idleWaiters[i] == fn then
-				return
-			end
-		end
-		idleWaiters[#idleWaiters + 1] = fn
-		if not QueueBusy() then
-			QueueIdleWaiters()
-		end
-	end
-
-	function Kit:IsQueueBusy()
-		return QueueBusy()
-	end
-end
-
--- Runs what waits, in order; with a budget only until that many ms have
--- gone (the frame's OnUpdate goes on with the rest). An error in one piece
--- is reported and the rest still run. A dropped piece is a false.
-local function RunQueued(budget)
-	local t0 = budget and debugprofilestop()
-	while queueAt <= #combatQueue do
-		if InCombatLockdown() then
-			combatFrame:Hide()
-			return
-		end
-		local at = queueAt
-		local fn, key = combatQueue[at], queueKeys[at]
-		queueAt = at + 1
-		if key ~= nil and waitingKeys[key] == at then
-			waitingKeys[key] = nil
-		end
-		if fn then
-			runningQueued = true
-			local ok, err = pcall(fn)
-			runningQueued = false
-			if not ok then
-				geterrorhandler()(err)
-			end
-		end
-		if budget and queueAt <= #combatQueue and debugprofilestop() - t0 >= budget then
-			combatFrame:Show()
-			return
-		end
-	end
-	if queueAt > 1 then
-		combatQueue, queueKeys, queueAt = {}, {}, 1
-	end
-	combatFrame:Hide()
-	-- through: what waited for that goes on, on the next frame
-	QueueIdleWaiters()
-end
-
-local function Enqueue(fn, key)
-	if key ~= nil then
-		local at = waitingKeys[key]
-		if at then
-			combatQueue[at] = false
-		end
-	elseif queueAt <= #combatQueue and combatQueue[#combatQueue] == fn then
-		return
-	end
-	local n = #combatQueue + 1
-	combatQueue[n], queueKeys[n] = fn, key
-	if key ~= nil then
-		waitingKeys[key] = n
-	end
-end
-
-combatFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-Perf.SetScript(combatFrame, "OnEvent", function()
-	RunQueued(QUEUE_BUDGET)
-end)
-Perf.SetScript(combatFrame, "OnUpdate", function()
-	RunQueued(QUEUE_BUDGET)
-end)
-
-function Kit:WhenOutOfCombat(fn, key)
-	if InCombatLockdown() then
-		Enqueue(fn, key)
-	elseif not runningQueued and queueAt <= #combatQueue then
-		-- a fight's work is still being worked through: behind it
-		Enqueue(fn, key)
-		combatFrame:Show()
-	else
-		fn()
-	end
-end
+Kit.WhenOutOfCombat, Kit.WhenQueueIdle, Kit.IsQueueBusy = MelloUI.Schedule.WhenOutOfCombat, MelloUI.Schedule.WhenQueueIdle, MelloUI.Schedule.IsQueueBusy
 
 -- An action-style button's hooks, one handler each for every button (user,
 -- 2026-09-24: the bags' first open, 16 hooks per slot, each with closures of

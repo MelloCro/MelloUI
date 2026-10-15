@@ -877,7 +877,7 @@ end
 --   "parchment"    area, on                Kit:SetParchment
 --   "border"       kind                    a Button / window Border changed
 --   "fonts"        -                       the Font Style or a face changed
---   "scale"        reason                  "uiscale" | "editmode" (Kit's watcher)
+--   "scale"        reason                  "uiscale" | "editmode" (Core/Schedule.lua's watcher)
 --   "editmode"     entering                Edit Mode entered (true) / left
 --   "shell"        window                  a kit window shell was built
 --   "palette"      -                       MelloUI.Palette or the Kit Colours changed
@@ -1741,7 +1741,8 @@ do
 	end
 
 	-- the scale set with its plain SetScale (Raw), its backgrounds laid
-	-- again only when its scale really changed (Kit:SetFrameScale; the kit
+	-- again only when its scale really changed (Kit:SetFrameScale, the old
+	-- name of Core/Schedule.lua's SetFrameScale since one look D1; the kit
 	-- looked up now: it loads after this file)
 	local function SetFrameScale(frame, scale)
 		local Kit = MelloUI.Kit

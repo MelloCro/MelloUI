@@ -1418,6 +1418,8 @@ def write_layout(layout, path, uvmap=None, resized=None, header=None):
 
 KIT_LUA = os.path.join(ROOT, "Modules", "Kit.lua")
 KIT_TUNING_LUA = os.path.join(ROOT, "Core", "KitTuning.lua")
+# (one look D1: the next-frame and combat queues and the UI scale watcher, which Kit.lua's old names point at)
+SCHEDULE_LUA = os.path.join(ROOT, "Core", "Schedule.lua")
 
 # Just enough of the client for Core/KitTuning.lua and Modules/Kit.lua to
 # load, and for Kit:ApplyTuning to run, in Lua 5.1: a frame method not
@@ -1534,7 +1536,11 @@ def kit_tuning_session(layout_path, kit_path=None, tuning_path=None):
         lua.execute(KIT_STUBS_LUA)
         lua.execute(open(layout_path, encoding="utf-8").read())
         load = lua.eval("function(src, name) return assert(loadstring(src, name)) end")
-        for path, chunk in ((tuning_path or KIT_TUNING_LUA, "=Core/KitTuning.lua"), (kit_path or KIT_LUA, "=Modules/Kit.lua")):
+        files = [(tuning_path or KIT_TUNING_LUA, "=Core/KitTuning.lua"), (kit_path or KIT_LUA, "=Modules/Kit.lua")]
+        # (a Kit.lua of one look D1 or later binds Core/Schedule.lua's services at load: that file first)
+        if "MelloUI.Schedule" in open(kit_path or KIT_LUA, encoding="utf-8").read():
+            files.insert(0, (SCHEDULE_LUA, "=Core/Schedule.lua"))
+        for path, chunk in files:
             load(open(path, encoding="utf-8").read(), chunk)("MelloUI", lua.globals().KitStubNS)
         return lua, lua.eval(KIT_SESSION_LUA)()
     except lupa.LuaError as e:

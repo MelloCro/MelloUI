@@ -147,8 +147,11 @@ local Flyout = {}
 -- own window draws is a palette KEY, looked up when it is painted (never an
 -- { r, g, b } held from load: a palette switch puts a new table in
 -- MelloUI.Palette) and remembered per region, so the bus's 'palette' paints
--- them all again. ONE registry for the addon: the kit's (Kit:Paint, Kit.lua),
--- looked up when a region is painted.
+-- them all again. ONE registry for the addon: MelloUI.Painter, the block
+-- below (one look D1, out of Kit.lua; Kit:Paint / Kit:Unpaint /
+-- Kit:PaletteKeyOf are its old names). W.Paint still hands a paint to the
+-- kit's Kit:Paint while a kit is loaded (that routing goes when the kit is
+-- the core's, stages E / I).
 --   W.Paint(region, key, how, alpha)
 --     how    "fill" (SetColorTexture, the default), "vertex" (SetVertexColor),
 --            "text" (SetTextColor), "swipe" (a Cooldown's SetSwipeColor),
@@ -159,7 +162,8 @@ local Flyout = {}
 --   W.Repaint()   the palette topic fired: every painted region from the
 --                 palette as it is now (a palette change is a NEW table, so
 --                 the same table repaints nothing: the kit's contract)
--- Without the kit (a world that never loaded Kit.lua) nothing is painted.
+-- Without the kit (a world that never loaded Kit.lua) nothing is painted, as
+-- before.
 --------------------------------------------------------------------------------
 
 -- The kit as it is now, looked up in this one place when a colour is painted
@@ -179,6 +183,151 @@ local function KitRep(control, rep)
 		Kept.repOf[control] = rep
 	end
 end
+
+-- (the palette's registry, MelloUI.Painter: begin -- one look D1, out of
+-- Modules/Kit.lua; self-contained, it reads only MelloUI and Secret)
+-- Palette colours by key ("Palette-ready", user 2026-09-25: more palettes
+-- are planned). Every region coloured from MelloUI.Palette -- the kit's
+-- eye-strain panels (Kit:StoneDim), a frame rule's `dim` fill (the L1
+-- boxes), a ring's disc given a palette key, the own-window shell's plain
+-- parts (Kit:OwnWindow), the own windows' controls (W.Paint) -- is painted by
+-- its KEY, looked up when painted, and kept in a weak list; the bus's
+-- 'palette' paints them all again from the table MelloUI.Palette holds then.
+--   MelloUI.Painter.Paint(region, key, how, alpha)
+--     key    a MelloUI.Palette role ("innerPanel", "selectedTrim", ...)
+--     how    "fill" (SetColorTexture, the default), "vertex"
+--            (SetVertexColor), "text" (SetTextColor), "backdrop"
+--            (SetBackdropColor), "border" (SetBackdropBorderColor) or
+--            "swipe" (SetSwipeColor); a backdrop and its border are kept
+--            apart, so one frame has both
+--     alpha  the colour's alpha (1)
+--   MelloUI.Painter.KeyOf(colour) -> the role a palette colour table is, or nil
+--   MelloUI.Painter.Unpaint(region[, how])   the region out of the lists
+--     again (a flat fill that gave way to a kit piece: a new palette leaves
+--     the piece)
+--   MelloUI.Painter.Colours() -> the palette as the look shows it now
+-- 'palette' also goes out for a Kit Colours change (the topic's contract,
+-- Core.lua: after both are in place; a new palette is always a NEW table):
+-- while MelloUI.Palette is the table last painted from, nothing is painted.
+-- The listener is taken on the first Paint, never at load; a Paint of a
+-- region painted before reuses its entry (no garbage).
+-- The colours are the palette as MelloUI.Look shows it (Look.Palette):
+-- MelloUI.Palette whatever the reskin since the one look (Look:On is always
+-- true); the 'look:own' repaint below is no longer told (stage E removes it
+-- with the game's colours).
+do
+	local P = {}
+	local weak = { __mode = "k" }
+	local lists = {
+		main = setmetatable({}, weak),       -- [region] = { key, how, alpha }: fill, vertex, text
+		backdrop = setmetatable({}, weak),   -- [frame] = { key, how, alpha }
+		border = setmetatable({}, weak),
+	}
+	local paintedFrom, listening = nil, false
+
+	-- the palette as the look shows it now (MelloUI.Look; without it, the palette)
+	local function Colours()
+		local Look = MelloUI.Look
+		return type(Look) == "table" and type(Look.Palette) == "function" and Look.Palette() or MelloUI.Palette
+	end
+
+	local function Apply(region, key, how, alpha)
+		local c = Colours()[key]
+		if not c then
+			return
+		end
+		alpha = alpha or 1
+		if how == "fill" then
+			-- the region's own alpha kept (a plain part the kit faded, a dim
+			-- a caller set): a colour set again must not bring it back
+			local was = region:GetAlpha()
+			region:SetColorTexture(c[1], c[2], c[3], alpha)
+			if not Secret(was) then
+				local now = region:GetAlpha()
+				if not Secret(now) and now ~= was then
+					region:SetAlpha(was)
+				end
+			end
+		elseif how == "vertex" then
+			region:SetVertexColor(c[1], c[2], c[3], alpha)
+		elseif how == "text" then
+			region:SetTextColor(c[1], c[2], c[3], alpha)
+		elseif how == "backdrop" then
+			region:SetBackdropColor(c[1], c[2], c[3], alpha)
+		elseif how == "border" then
+			region:SetBackdropBorderColor(c[1], c[2], c[3], alpha)
+		elseif how == "swipe" then
+			region:SetSwipeColor(c[1], c[2], c[3], alpha)   -- (a Cooldown's swipe: the widget column's ring)
+		end
+	end
+
+	local function RepaintAll()
+		for _, list in pairs(lists) do
+			for region, e in pairs(list) do
+				Apply(region, e.key, e.how, e.alpha)
+			end
+		end
+	end
+
+	local function OnPalette()
+		local palette = MelloUI.Palette
+		if palette == paintedFrom then
+			return
+		end
+		paintedFrom = palette
+		RepaintAll()
+	end
+
+	function P.Paint(region, key, how, alpha)
+		if not (region and key) then
+			return
+		end
+		how = how or "fill"
+		local list = lists[how] or lists.main
+		local e = list[region]
+		if e then
+			e.key, e.how, e.alpha = key, how, alpha
+		else
+			list[region] = { key = key, how = how, alpha = alpha }
+		end
+		Apply(region, key, how, alpha)
+		if not listening and MelloUI.On then
+			listening = true
+			paintedFrom = MelloUI.Palette
+			MelloUI:On("palette", OnPalette, "Kit palette")
+			MelloUI:On("look:own", RepaintAll, "Kit palette")   -- (the reskin switched: the game's colours or the palette)
+		end
+	end
+
+	-- a region that no longer shows a palette fill (a kit piece put on it
+	-- again): out of the lists, so a new palette leaves it as it is
+	function P.Unpaint(region, how)
+		if region == nil then
+			return
+		end
+		local list = lists[how or "fill"] or lists.main
+		list[region] = nil
+	end
+
+	function P.KeyOf(colour)
+		if type(colour) == "string" then
+			return MelloUI.Palette[colour] and colour or nil
+		end
+		if type(colour) ~= "table" then
+			return nil
+		end
+		for key, c in pairs(MelloUI.Palette) do
+			if c == colour then
+				return key
+			end
+		end
+		return nil
+	end
+
+	P.Colours = Colours
+	MelloUI.Painter = P
+end
+-- (the palette's registry: end)
 
 function W.Paint(region, key, how, alpha)
 	local Kit = KitNow()
