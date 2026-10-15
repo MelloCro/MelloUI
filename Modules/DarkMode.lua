@@ -14,12 +14,20 @@
 --
 -- Frame keys were taken from the World of Warcraft: Forever (Camelot) UI source,
 -- which uses the retail (Dragonflight style) HUD with Camelot specific overrides.
+--
+-- (onelook D9) Dark Mode is core: it darkens the game's own art. The painted
+-- reskin's brightness under it (Reskin Brightness, kitShade, Kit:SetShade) is
+-- a part of this module's settings (M:AddPart, UI Modifications' one contract
+-- MelloUI.ModuleParts: the same key and option id), the OLDSCHOOL block at
+-- the end of this file (MelloUI_Oldschool at stage I); its hooks Enabled,
+-- Disabled and Setting are asked where ShadeKit ran.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("DarkMode")
 local hooksecurefunc = Perf.hooksecurefunc
+-- ONELOOK HEADER END (an OLDSCHOOL block below may use only the locals above and public tables)
 
 local M = MelloUI:RegisterModule("DarkMode", {
 	title = "Dark Mode",
@@ -37,7 +45,7 @@ local M = MelloUI:RegisterModule("DarkMode", {
 	keep = { "^." },
 	defaults = {
 		shade = 0.25,        -- brightness of the darkened art (0 = black, 1 = untouched)
-		kitShade = 0.6,      -- brightness of the painted reskin's pieces (Kit:SetShade)
+		-- (kitShade, the painted reskin's brightness: its part's, the end of this file)
 		desaturate = true,   -- remove the gold / bronze tint
 		unitframes = true,
 		castbar = true,
@@ -59,8 +67,7 @@ local M = MelloUI:RegisterModule("DarkMode", {
 		  desc = "How bright the game's own artwork is where Dark Mode darkens it (the parts the reskin does not cover, or everything with the reskin off). Lower values are darker. The reskin's own art has Reskin Brightness below." },
 		{ type = "toggle", key = "desaturate", name = "Desaturate",
 		  desc = "Remove the gold and bronze colours so the art becomes grey before it is darkened." },
-		{ type = "slider", key = "kitShade", name = "Reskin Brightness", min = 0.2, max = 1, step = 0.05, percent = true,
-		  desc = "How bright the painted reskin is while Dark Mode is on: every kit piece (stone, iron, plates, brackets) is darkened by this much; the red gems keep their colour. The default art above is darkened where the reskin is off." },
+		-- (Reskin Brightness: the painted reskin's part puts it here, after Desaturate)
 		{ type = "header", name = "Components" },
 		{ type = "toggle", key = "unitframes", name = "Unit Frames",
 		  desc = "Player, target, focus, pet, party, boss and target-of-target frames." },
@@ -897,18 +904,22 @@ function M:OnInit(db)
 	self.db = db
 end
 
-local function ShadeKit(db)
-	local kit = MelloUI.Kit
-	if kit and kit.SetShade then
-		kit:SetShade((M.isEnabled and db) and db.kitShade or 1)
-	end
+-- (onelook D9) the parts extending these settings (the painted reskin's
+-- Reskin Brightness: the end of this file): UI Modifications' one contract,
+-- MelloUI.ModuleParts (Modules/UIModifications.lua, loaded before this
+-- file). Enabled where the kit's shade was set, Disabled as the module goes,
+-- Setting first (true: the part applied it)
+local Parts = MelloUI.ModuleParts
+M.AddPart = Parts and Parts.Add
+local function RunParts(hook, ...)
+	return Parts ~= nil and Parts.Run(M, hook, ...)
 end
 
 function M:OnEnable(db)
 	self.db = db
 	InstallHooks()
 	WatchCovers()
-	ShadeKit(db)
+	RunParts("Enabled", db)
 	for _, component in ipairs(COMPONENTS) do
 		if db[component] and not Covered(component) then
 			appliers[component]()
@@ -925,21 +936,18 @@ function M:Reapply(component)
 	end
 end
 
-function M:OnDisable()
+function M:OnDisable(db)
 	eventFrame:UnregisterEvent("NAME_PLATE_UNIT_ADDED")
 	for _, component in ipairs(COMPONENTS) do
 		RestoreGroup(component)
 	end
-	local kit = MelloUI.Kit
-	if kit and kit.SetShade then
-		kit:SetShade(1)
-	end
+	RunParts("Disabled", db)
 end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
-	if key == "kitShade" then
-		ShadeKit(db)
+	-- (synchronous, inside a Batch too: never through the bus)
+	if RunParts("Setting", key, value, db) then
 		return
 	end
 	if appliers[key] then
@@ -969,3 +977,40 @@ end
 MelloUI:Profile("DarkMode", "nameplate events", eventFrame)
 MelloUI:Profile("DarkMode", "nameplate relayout", StyleNamePlateUnitFrame)
 MelloUI:Profile("DarkMode", "shading", ShadeAll)
+
+-- OLDSCHOOL BEGIN: the painted reskin's brightness under Dark Mode, a part of Dark Mode's settings (M:AddPart: the same
+-- key and option id, DarkMode.kitShade). Moves to MelloUI_Oldschool at stage I; it uses only the header's locals and
+-- public tables.
+do
+local Dark = MelloUI:GetModule("DarkMode")
+-- the kit darkened as one (Kit:SetShade, its hue kept: the gems stay red) by
+-- Reskin Brightness while Dark Mode is on, at full brightness when it is off
+local function ShadeKit(db)
+	local kit = MelloUI.Kit
+	if kit and kit.SetShade then
+		kit:SetShade((Dark.isEnabled and db) and db.kitShade or 1)
+	end
+end
+if Dark and Dark.AddPart then
+	Dark:AddPart({
+		defaults = { kitShade = 0.6 },   -- brightness of the painted reskin's pieces (Kit:SetShade)
+		options = {
+			{ type = "slider", key = "kitShade", name = "Reskin Brightness", min = 0.2, max = 1, step = 0.05, percent = true,
+			  after = "desaturate",
+			  desc = "How bright the painted reskin is while Dark Mode is on: every kit piece (stone, iron, plates, brackets) is darkened by this much; the red gems keep their colour. The default art above is darkened where the reskin is off." },
+		},
+		Enabled = ShadeKit,
+		Disabled = function()
+			ShadeKit(nil)
+		end,
+		Setting = function(key, _, db)
+			if key == "kitShade" then
+				ShadeKit(db)
+				return true
+			end
+			return false
+		end,
+	})
+end
+end
+-- OLDSCHOOL END

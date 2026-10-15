@@ -40,6 +40,24 @@
 -- ADDON_LOADED to that file. The moving itself is Edit Layout's
 -- (Core/EditLayout.lua and its files); the old Unlock the Windows mode, its
 -- grab strips and its provider of Core's mover are gone.
+--
+-- (onelook D9) The settings in two parts of the one module, every saved key
+-- and option id ("UIModifications.<key>") as it was, so profiles, share
+-- strings, the macro backup and the installer read them as before:
+--   the core: the palette, the UI shade and its areas, the parchment of
+--     MelloUI's own parts (the Quest Tracker, the chat, the whisper popup,
+--     the damage meter), Windows Fade In, Reduce Motion, Show Names As,
+--     Class Coloured Names, Edit Layout's snap and the store of places, the
+--     core border kinds (Cooldown Manager Border), the one switching engine
+--     of the areas and features (Lists, M:SetAreas, Apply), and the contract
+--     a part extends a core module's settings by (MelloUI.ModuleParts,
+--     M:AddPart: Dark Mode's Reskin Brightness takes the same)
+--   the painted reskin's part, the OLDSCHOOL block at the end of this file
+--     (MelloUI_Oldschool at stage I): its switch and Preload Artwork, Switch
+--     every area on, the Kit Colours and the other border kinds, Raid Border
+--     Placement, the game windows' parchment sheets and Parchment Style; the
+--     panel switches' gate (PanelsOff) and their rows' `requires`, the
+--     preload, the layout put in with the reskin, and its one-time steps.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -50,6 +68,7 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("UIModifications")
 -- the kit (Modules/Kit.lua, loaded before this file: see the TOC)
 local Kit = MelloUI.Kit
+-- ONELOOK HEADER END (an OLDSCHOOL block below may use only the locals above and public tables)
 -- the game's elements Edit Layout moves (Core/EditLayoutWindows.lua, loaded
 -- before this file; onelook D2): each use nil-guarded
 local GW = MelloUI.EditLayoutWindows
@@ -96,23 +115,15 @@ local PANELS, TWEAKS, AREA_OF = {}, {}, {}
 -- installer answered for it; layoutFitFor, layoutFitRev and
 -- layoutAsked_<character>, the installer's own facts. The switching
 -- functions are defined further down, next to the rest of the switching;
--- declared here so the button's definition can reach them.
-local Apply, RestoreAreas, NothingWanted, TweakWanted
-
--- The look's own state (below): the Kit Colours set inside a Batch applied
--- at its end (Tint.KitColours), the preloaded art held for the look now
--- drawn (Tint.preloaded, Tint.preloadedColours, Tint.LookMoved,
--- Tint.PreloadAgain)
-local Tint = {}
+-- declared here so the code above them can reach them.
+local Apply, TweakWanted
 
 -- A bulk switch of painted skins refused in combat (M:SetAreas): the line
 -- its callers print
 local AREAS_REFUSED = "Not in combat: this would switch painted skins."
 
-local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true, reduceMotion = false,
-	parchment_tracker = false, parchment_questTracker = false, parchment_chat = false,
-	parchment_whisper = false, parchment_meter = false, parchment_character = "off", parchment_tooltip = false, parchment_dialog = false,
-	parchmentStyle = "paper",
+local defaults, options = { fadeWindows = true, reduceMotion = false,
+	parchment_questTracker = false, parchment_chat = false, parchment_whisper = false, parchment_meter = false,
 	autoSnap = true, snapGap = 0, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both", classNames = true,
 	-- the palette (0.14.0): an id of MelloUI.Palettes, applied by Core
 	-- (MelloUI:SetPalette; this module on or off); a choice, not personal
@@ -122,28 +133,90 @@ local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true
 -- kept between elements snapped side by side, 0 - 10); `snapTargets` ({ [key] = "screen" |
 -- "grid" | "off" | another element's key }, nil: the nearest element) is
 -- no default (read as {}): profiles carry it, the installer never sets it
+-- (the core border kinds, `core`: the Cooldown Manager Border; the painted
+-- reskin's part brings the others' defaults)
 for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
-	defaults[k.key] = k.default
+	if k.core then
+		defaults[k.key] = k.default
+	end
 end
-defaults.raidBorderPlace = "both"   -- (0.19.8: Raid Frame Border on each frame and round the group, as today)
 -- the UI shade (0.14.0, Modules/KitShade.lua, which loads before this file
 -- and switches it from the bus's 'setting'): on at 70 %, every area on
--- (user, 2026-09-26)
+-- (user, 2026-09-26; each area's default with its switch, ShadeRow below)
 do
-	local shade, areas = Kit and Kit.shadeSettings, Kit and Kit.shadeAreas
-	if type(shade) == "table" and type(areas) == "table" and type(shade.master) == "string" then
+	local shade = Kit and Kit.shadeSettings
+	if type(shade) == "table" and type(shade.master) == "string" then
 		defaults[shade.master], defaults[shade.strength] = true, shade.default
-		for _, a in ipairs(areas) do
-			if type(a.key) ~= "string" then
-				break
-			end
-			if not a.noSwitch then
-				defaults[a.key] = true
-			end
-		end
 	end
 end
 -- (each area's and feature's switch is added to these by Lists, below)
+
+--------------------------------------------------------------------------------
+-- Parts (onelook D9): the one way a part of MelloUI that is not a module of
+-- its own -- the painted reskin's settings, MelloUI_Oldschool from stage I --
+-- extends a core module's settings: the same module, its saved keys and its
+-- option ids ("<Module>.<key>"), so profiles, share strings, the backup and
+-- the installer read them as before. One contract for every core module that
+-- takes one (UI Modifications, Dark Mode):
+--   module:AddPart(part) -> part   (= MelloUI.ModuleParts.Add(module, part))
+--       part.defaults copied into the module's defaults; part.options put
+--       into its options: an option with `after` / `before` (another
+--       option's key) right after / before it, the ones after it following
+--       on; with neither, at the end (the fields are taken off the option).
+--       The part is kept, in order, on module.parts
+--   MelloUI.ModuleParts.Run(module, hook, ...) -> true when a part's
+--       part[hook](...) answered true (the rest not asked), else false
+-- The hooks are the module's to ask (its OnEnable, OnSettingChanged ...); a
+-- part's bus listeners have an owner of their own (the part), never the
+-- module: Core's MelloUI:On replaces a listener of the same owner and topic.
+--------------------------------------------------------------------------------
+local Parts = {}
+MelloUI.ModuleParts = Parts
+
+function Parts.Add(module, part)
+	if type(module) ~= "table" or type(part) ~= "table" then
+		return nil
+	end
+	local list = rawget(module, "parts")
+	if not list then
+		list = {}
+		module.parts = list
+	end
+	list[#list + 1] = part
+	local into, opts = module.defaults, module.options
+	for k, v in pairs(type(part.defaults) == "table" and part.defaults or {}) do
+		into[k] = v
+	end
+	local at = nil
+	for _, opt in ipairs(type(part.options) == "table" and part.options or {}) do
+		local after, before = opt.after, opt.before
+		opt.after, opt.before = nil, nil
+		if after ~= nil or before ~= nil then
+			at = nil
+			for i, o in ipairs(opts) do
+				if o.key ~= nil and o.key == (after or before) then
+					at = after ~= nil and i + 1 or i
+					break
+				end
+			end
+		end
+		at = at or #opts + 1
+		table.insert(opts, at, opt)
+		at = at + 1
+	end
+	return part
+end
+
+function Parts.Run(module, hook, ...)
+	local list = type(module) == "table" and rawget(module, "parts")
+	for i = 1, list and #list or 0 do
+		local fn = list[i][hook]
+		if type(fn) == "function" and fn(...) then
+			return true
+		end
+	end
+	return false
+end
 
 --------------------------------------------------------------------------------
 -- The option definitions (0.15.0): the module's own settings, the look's and,
@@ -166,28 +239,8 @@ local function Add(opt)
 	return opt
 end
 
-Add({ type = "toggle", key = "reskin", name = "Painted Kit Reskin", important = true,
-	desc = "The game's windows and HUD dressed in the painted kit, and the frame of MelloUI's own windows. Off: the game's windows and HUD keep the game's own art; MelloUI's own parts (the Quest Tracker, the widget column, the reminders, the race bar ...) keep MelloUI's look either way, and every feature keeps working. Switching it on also switches Custom Sounds on, and the first time puts in the Edit Mode layout the reskin is drawn for, fitted to your screen. Switching it off leaves Custom Sounds on." })
-Add({ type = "toggle", key = "preloadArt", name = "Preload Artwork", requires = "reskin",
-	desc = "Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 13 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it." })
-Add({ type = "button", name = "Switch every area on", hint = "when nothing is reskinned any more",
-	text = "Switch on", requires = "reskin",
-	desc = "Every window and HUD area of the reskin back on, and every feature of UI Modifications that is on by default.",
-	onClick = function(_, db)
-		local ok, count = RestoreAreas(db)
-		if not ok then
-			MelloUI:Print(AREAS_REFUSED)
-			return
-		end
-		if count == 0 then
-			MelloUI:Print("Every area is on already.")
-			return
-		end
-		MelloUI:Print("%d area%s switched back on.", count, count == 1 and "" or "s")
-		if MelloUI.RefreshConfig then
-			MelloUI:RefreshConfig()
-		end
-	end })
+-- (the painted reskin's switch, Preload Artwork and Switch every area on
+-- lead the list: its part puts them before the palette)
 
 -- The palette (0.14.0): Core applies it (MelloUI:SetPalette), this module on
 -- or off; its choices are the widget set's one list, every palette by its
@@ -201,34 +254,17 @@ do
 		desc = "The colours of MelloUI's look: its own windows and parts and all of the reskin's art. Your choice applies at once." })
 end
 
--- The borders, one choice per kind for every window, and the Kit Colours
--- (Kit.borderKinds; the kit applies a choice: OnSettingChanged below). The
--- Kit Colours' choices are the palette in use's (Kit.colourLooks, the same
--- table filled again on a switch), and the one shown is the one the kit
--- draws: a Bronze kept from Ember shows, under another palette, as that
--- palette's own kit (Kit:ColourLookShown, the kit's one answer)
-local function ColoursShown(db)
-	local K = MelloUI.Kit   -- (looked up now: the kit a world has when it is asked)
-	local look = K and K.ColourLookShown and K:ColourLookShown()
-	if look then
-		return look.value
-	end
-	return db and db.kitColours
-end
+-- The borders, one choice per kind for every window (Kit.borderKinds; the
+-- kit applies a choice: OnSettingChanged below): the core kinds' (`core`,
+-- the Cooldown Manager Border) here; the Kit Colours and the painted
+-- reskin's other kinds are its part's, put in where each kind stands
+-- (stages C / E / H: the core rows' `requires = "reskin"` goes)
 for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
-	local opt = Add({ type = "dropdown", key = k.key, name = k.name, values = k.values, desc = k.desc,
-		requires = "reskin", new = k.new })
-	if k.kind == "colours" then
-		opt.get, opt.relist = ColoursShown, "palette"
+	if k.core then
+		Add({ type = "dropdown", key = k.key, name = k.name, values = k.values, desc = k.desc,
+			requires = "reskin", new = k.new })
 	end
 end
--- (0.19.8, the border library's stage 3, the plan's decision 7: one Raid
--- Frame Border, laid on each frame, round each group, or both;
--- Modules/KitBorders.lua)
-Add({ type = "dropdown", key = "raidBorderPlace", name = "Raid Border Placement", requires = "reskin",
-	values = { { value = "both", label = "On each frame and round the group" }, { value = "frame", label = "On each frame" },
-		{ value = "group", label = "Round the group" } },
-	desc = "Where Raid Frame Border goes: on each raid frame, round each raid group, or both. A group's border shows while Edit Mode's Display Border is on for the raid frames." })
 
 -- The UI shade (0.14.0, Modules/KitShade.lua): its switch, its strength and a
 -- switch per area (Kit.shadeAreas' order), each area's live while the shade
@@ -241,67 +277,66 @@ do
 		Add({ type = "slider", key = shade.strength, name = "Shade Strength", parent = shade.master, free = true,
 			min = shade.min, max = shade.max, step = shade.step, percent = true,
 			desc = "How dark the UI Shade round the kit's outlines is, the nameplates' Whole plate shade too. The bands behind unit frame and nameplate names keep their own." })
-		-- (the nameplates' area has no switch here: Nameplates > Name Shade's
-		-- Whole plate is it, 0.16.0)
-		for _, a in ipairs(type(Kit.shadeAreas) == "table" and Kit.shadeAreas or {}) do
-			if type(a.key) ~= "string" then
-				break
-			end
-			if not a.noSwitch then
-				Add({ type = "toggle", key = a.key, name = "Shade: " .. a.label, requires = shade.master, free = true, new = a.new,
-					desc = "The UI Shade round the " .. a.label:lower() .. ". Off: no shade there; the other areas keep theirs." })
-			end
-		end
 	end
 end
+-- An area's default (on) and its switch, once per area (Kit:AddShadeArea,
+-- onelook D11: an area the painted reskin, or a later file, registers after
+-- this file loaded gets its row at the next listing, Lists below). The
+-- nameplates' area has no switch here: Nameplates > Name Shade's Whole plate
+-- is it (0.16.0)
+local shadeRowOf = {}   -- [area key] = true: its default and switch made
+local function ShadeRow(a)
+	local shade = Kit and Kit.shadeSettings
+	if type(a) ~= "table" or type(a.key) ~= "string" or shadeRowOf[a.key] or type(shade) ~= "table"
+		or type(shade.master) ~= "string" then
+		return
+	end
+	shadeRowOf[a.key] = true
+	if a.noSwitch then
+		return
+	end
+	defaults[a.key] = true
+	if type(shade.strength) == "string" then
+		Add({ type = "toggle", key = a.key, name = "Shade: " .. a.label, requires = shade.master, free = true, new = a.new,
+			desc = "The UI Shade round the " .. a.label:lower() .. ". Off: no shade there; the other areas keep theirs." })
+	end
+end
+local function ShadeRows()
+	for _, a in ipairs(Kit and type(Kit.shadeAreas) == "table" and Kit.shadeAreas or {}) do
+		ShadeRow(a)
+	end
+end
+ShadeRows()
 
 -- The parchment sheets (the kit's, Kit:SetParchment; the text on them in
--- dark ink): one switch per area, live with the reskin. The list is the
--- installer's too (its Fresh start lists the same areas, one list: read
--- only). An area with `values` is a choice instead, its "off" the switch's
--- off (Kit:ParchmentOn reads either), `on` the choice an older switch's true
--- stands for: the character window's (0.19.4, the options audit: Window
--- Background's Parchment folded in, one control) is its right pane's sheet
--- or the whole window's (Modules/CharacterPanel.lua; an older save carried
--- by MelloUI:MergeSettings)
-local CHARACTER_PARCHMENT = {
-	{ value = "off", label = "Off" },
-	{ value = "pane", label = "Right pane" },
-	{ value = "window", label = "Whole window" },
-}
+-- dark ink): one switch per area. The list is the installer's too (its
+-- Fresh start lists the same areas, one list: read only). An area with
+-- `values` is a choice instead, its "off" the switch's off (Kit:ParchmentOn
+-- reads either), `on` the choice an older switch's true stands for. The
+-- core's are the sheets of MelloUI's own parts; the painted reskin's part
+-- puts the game windows' in (the objective tracker first, the character
+-- window, the tooltips and the dialogs after these), so the list keeps its
+-- order.
 local PARCHMENTS = {
-	{ "parchment_tracker", "Objective Tracker" },
 	{ "parchment_questTracker", "Quest Tracker" },
 	{ "parchment_chat", "Chat" },
 	{ "parchment_whisper", "Whisper Popup" },
 	{ "parchment_meter", "Damage Meter" },
-	{ "parchment_character", "Character Window", values = CHARACTER_PARCHMENT, on = "pane" },
-	{ "parchment_tooltip", "Tooltips" },
-	{ "parchment_dialog", "Dialogs" },     -- (user, 2026-09-24: the popup dialogs, "add a parchment to it")
 }
 MelloUI.ParchmentAreas = PARCHMENTS
 local PARCHMENT_DESC = {
-	parchment_tracker = "The game's objective tracker on a parchment sheet, its text in dark ink.",
 	parchment_questTracker = "MelloUI's Quest Tracker on a parchment sheet, its text in dark ink. Works with the reskin on or off.",
 	parchment_chat = "The chat on a parchment sheet, its text in dark ink: the Minimal Chat View and its whisper window with the reskin on or off; the game's chat windows with the painted chat (its Painted Skin, the reskin on).",
 	parchment_whisper = "The whisper popup on a parchment sheet, its text in dark ink.",
 	parchment_meter = "The damage meter on a parchment sheet, its text in dark ink.",
-	parchment_character = "The character window on a parchment sheet, its text in dark ink: Right pane lays it under the right pane (the stats, reputation, skills and the other lists); Whole window over the whole window inside its frame, the window's own stone round its edge. Off: no parchment; the window shows its Window Background (Windows > Character window).",
-	parchment_tooltip = "The tooltips on a parchment sheet, their text in dark ink.",
-	parchment_dialog = "The popup dialogs, the colour picker, ready checks and split stack on a parchment sheet, their text in dark ink.",
 }
 for _, entry in ipairs(PARCHMENTS) do
 	-- (one look, Kit.ownParchments: the paper of a part of MelloUI's own -- the Quest Tracker's, the chat's -- is live
 	-- whatever the reskin, and with this module off: `free`, applied from the bus's 'setting' below)
-	local own = Kit and Kit.ownParchments and Kit.ownParchments[entry[1]:sub(11)] or nil
+	local own = Kit and type(Kit.ownParchments) == "table" and Kit.ownParchments[entry[1]:sub(11)] or nil
 	Add({ type = entry.values and "dropdown" or "toggle", key = entry[1], name = "Parchment: " .. entry[2], values = entry.values,
 		requires = not own and "reskin" or nil, free = own, new = entry.new, desc = PARCHMENT_DESC[entry[1]] })
 end
--- The parchment's look (0.20.3; the user, 2026-10-11: "the new one is the default but some people liked how the old
--- one looked aswell"): every sheet and page, live (Kit:SetParchmentStyle)
-Add({ type = "dropdown", key = "parchmentStyle", name = "Parchment Style", requires = "reskin",
-	values = { { value = "paper", label = "Burnt paper" }, { value = "classic", label = "Classic vellum" } },
-	desc = "How the parchment looks wherever it shows: the sheets switched on below, and the quest log, quest and spell book pages. Burnt paper: warm paper with burnt edges, big pages with curled corners. Classic vellum: the vellum with painted brush-stroke edges from before 0.20.1." })
 
 Add({ type = "toggle", key = "fadeWindows", name = "Windows Fade In",
 	desc = "Every window fades in over a fifth of a second when it opens, instead of appearing at once: the character window, talents and spells, professions, the bags, social, guild, group finder, collections, the map, the game menu and the rest. Works with the reskin on or off. Reduce Motion: at once." })
@@ -356,6 +391,20 @@ local M = MelloUI:RegisterModule("UIModifications", {
 
 -- the line a caller of M:SetAreas prints when it is refused in combat
 M.areasRefused = AREAS_REFUSED
+-- (onelook D9) the parts extending these settings (Parts above: the painted
+-- reskin's, the OLDSCHOOL block at the end of this file)
+M.AddPart = Parts.Add
+
+-- the panel rows' requirement: the first part's that names one (the painted
+-- reskin's switch); none without a part
+local function PanelRequires()
+	for _, part in ipairs(rawget(M, "parts") or {}) do
+		if part.panelRequires ~= nil then
+			return part.panelRequires
+		end
+	end
+	return nil
+end
 
 -- The lists made from the registry (PANELS, TWEAKS and AREA_OF: see the
 -- top), the switches' defaults and their definitions: at the addon's own
@@ -387,6 +436,7 @@ local function InOrder(entries, into)
 end
 
 local function Lists()
+	ShadeRows()   -- (an area registered since: its default and its switch)
 	local new = nil   -- [row] = true: the rows of modules listed in this call
 	for at, module in ipairs(MelloUI:ModulesInOrder()) do
 		if not listedModule[module] then
@@ -428,12 +478,12 @@ local function Lists()
 		end
 	end
 	-- each area's and feature's switch, defined after the module's own (the
-	-- same table the configurator was given): a panel's needs the reskin, a
-	-- feature's works with it on or off
+	-- same table the configurator was given): a panel's needs the reskin (its
+	-- part's switch, PanelRequires), a feature's works with it on or off
 	for _, area in ipairs(PANELS) do
 		if new[area] then
 			AREA_OF[area[1]] = { name = not area.setting and area[1] or nil }
-			Add({ type = "toggle", key = area[1], name = area[2], desc = area[3], requires = "reskin" })
+			Add({ type = "toggle", key = area[1], name = area[2], desc = area[3], requires = PanelRequires() })
 		end
 	end
 	for _, tweak in ipairs(TWEAKS) do
@@ -522,8 +572,10 @@ fadeWatcher:RegisterEvent("PLAYER_LOGIN")
 fadeWatcher:RegisterEvent("ADDON_LOADED")
 Perf.SetScript(fadeWatcher, "OnEvent", SweepFade)
 
+-- a panel (a painted skin) wanted: its switch on, and no part holding the
+-- panels off (the painted reskin's part: its switch off)
 local function PanelWanted(db, name)
-	return db.reskin ~= false and db[name] ~= false
+	return not Parts.Run(M, "PanelsOff", db) and db[name] ~= false
 end
 
 -- During Core's start-up pass the driven modules must come up in TOC order
@@ -554,8 +606,9 @@ end
 -- Is there anything at all for the umbrella to do? Every area and every
 -- tweak switched off is a real choice (the window mover and the name format
 -- work without the reskin), so it is never undone behind your back -- but it
--- is worth saying, because the switch then looks like it does nothing.
-function NothingWanted(db)
+-- is worth saying, because the switch then looks like it does nothing (the
+-- painted reskin's part says it as the module comes on).
+function M.NothingWanted(db)
 	for _, area in ipairs(PANELS) do
 		if db[area[1]] ~= false then
 			return false
@@ -727,8 +780,9 @@ end
 -- Every area and feature back on that is off (a feature off until switched
 -- on stays as it is), for the Switch every area on button: through
 -- M:SetAreas. Returns its answer: false in combat while a painted skin is
--- off, else true and how many were off.
-function RestoreAreas(db)
+-- off, else true and how many were off. (the button is the painted reskin's
+-- part's)
+function M.RestoreAreas(db)
 	local values = {}
 	for _, area in ipairs(PANELS) do
 		if db[area[1]] == false then
@@ -766,6 +820,8 @@ function Apply(db, on)
 		end
 	end
 end
+-- (the painted reskin's part switches every area again as its switch moves)
+M.ApplyAreas = Apply
 
 -- qol_Tweaks has no default any more (Tweaks has no switch, see Lists): a
 -- saved one is dead data (the old default put `true` in every player's
@@ -856,6 +912,178 @@ local function ApplyNameFormat(db, on)
 	end
 end
 
+-- Reduce Motion: the animation engine finishes every tween and group at once.
+-- An accessibility switch for the whole addon, not part of the reskin: it
+-- follows the saved setting with this module on or off (Chat's smooth scroll
+-- reads it, and the Fresh start profile turns this module off; audit,
+-- 2026-09-24). Read at start-up (OnEnable, or OnDisable for a module that is
+-- off), on a change and after a profile load; its switch is on the Look page.
+local function ApplyMotion(db)
+	if MelloUI.Anim and db then
+		MelloUI.Anim:SetReduceMotion(db.reduceMotion)
+	end
+end
+
+-- a change reaches OnSettingChanged, and a profile load OnEnable, only while
+-- the module is on: the bus's 'setting' and 'restart' (fired at the end of
+-- NotifySettingChanged and RestartModules, where the hooks on them ran;
+-- audit, 2026-09-24, rank 5) reach it with the module off as well
+MelloUI:On("setting", Perf.Shared("'setting' on the bus", function(name, key, value)
+	if name ~= "UIModifications" then
+		return
+	elseif key == "reduceMotion" then
+		ApplyMotion(MelloUI:GetModuleDB("UIModifications"))
+	elseif key == "palette" then
+		-- (Core swaps the palette, the kit's art follows: 'border', then
+		-- the one 'palette')
+		MelloUI:SetPalette(value)
+	elseif key:sub(1, 10) == "parchment_" and not M.isEnabled then
+		-- (one look) the paper of a part of MelloUI's own (Kit.ownParchments: the Quest Tracker's, the chat's), live
+		-- with this module off too; OnSettingChanged switches every area while it is on
+		local area = key:sub(11)
+		if Kit and type(Kit.ownParchments) == "table" and Kit.ownParchments[area] and Kit.SetParchment then
+			Kit:SetParchment(area, Kit.ParchmentValueOn(value))
+		end
+	end
+end), M)
+MelloUI:On("restart", Perf.Shared("'restart' on the bus", function()
+	local db = MelloUI:GetModuleDB("UIModifications")
+	ApplyMotion(db)
+	DropTweaksSwitch(db)
+	DropUnlock(db)
+end), M)
+
+-- (0.21.3; the user, 2026-10-13: "dont we have the option to "Preload" the UI
+-- assets on the loading screen?") the files asked for in the login's own
+-- frame, while the loading screen is up -- since the start-up pass (0.19.8)
+-- this module comes on after it; OnEnable asks again for the same files (the
+-- painted reskin's part's preload: its LoginFrame)
+function M:OnLoginFrame(db)
+	self.db = db   -- (Kit:BorderValue reads it, and keeps its first answer)
+	Parts.Run(M, "LoginFrame", db)
+end
+
+-- (onelook D9) the parts asked as the module comes on: Migrate first (their
+-- one-time steps), Enabled last (the painted reskin's: the 'every area is
+-- off' notice, its preload, the layout put in with it); Disabled as it goes
+function M:OnEnable(db)
+	self.db = db
+	Parts.Run(M, "Migrate", db)
+	-- Buffs & Debuffs and Error Messages moved here from pages of their own,
+	-- and Tweaks lost its switch (its rows each switch one thing; user,
+	-- 2026-09-24): each keeps the state it had, once
+	KeepDarkMode(db)   -- (before: a fold done now writes a new player's)
+	if not db.featuresFolded then
+		for _, tweak in ipairs(TWEAKS) do
+			local key = "qol_" .. tweak[1]
+			if tweak.off and db[key] == nil then
+				db[key] = MelloUI.db.enabled[tweak[1]] == true
+			end
+		end
+		if db.qol_Tweaks == false then
+			local tw = MelloUI:GetModuleDB("Tweaks")
+			if tw then
+				tw.hideMicroMenu, tw.hideBagBar, tw.hideMinimapCoords, tw.chatNotices = false, false, false, false
+				tw.worldTextScale = 1
+			end
+		end
+		db.qol_Tweaks = nil
+		db.featuresFolded = true
+	end
+	ApplyMotion(db)
+	Apply(db, true)
+	-- the game's elements Edit Layout moves (Core/EditLayoutWindows.lua): the
+	-- registered ones placed from the store, the stored ones registered (the
+	-- four and the chat windows now, the rest after the login)
+	if GW and GW.OnEnable then
+		GW.OnEnable(db)
+	end
+	ApplyNameFormat(db, true)
+	Parts.Run(M, "Enabled", db)
+end
+
+function M:OnDisable(db)
+	db = db or self.db or {}
+	ApplyMotion(db)   -- kept: Reduce Motion is not the module's
+	Apply(db, false)
+	-- the game's elements Edit Layout moves are not live any more (their
+	-- `when`): an Edit Layout session lets go of each it holds
+	-- (Core/EditLayoutWindows.lua)
+	if GW and GW.OnDisable then
+		GW.OnDisable()
+	end
+	ApplyNameFormat(db, false)
+	Parts.Run(M, "Disabled", db)
+end
+
+-- (onelook D9) a part's settings first (its Setting answers true for a key it
+-- applied: the painted reskin's switch, Preload Artwork, the Kit Colours and
+-- its border kinds, Raid Border Placement, Parchment Style, the Quest
+-- Tracker's old look switch); the core's below
+function M:OnSettingChanged(key, value, db)
+	self.db = db
+	if Areas.holding and AREA_OF[key] then
+		return   -- (M:SetAreas: switched a few a frame once its Batch is over)
+	elseif Parts.Run(M, "Setting", key, value, db) then
+		return
+	elseif key == "reduceMotion" then
+		return   -- applied from the bus's 'setting', module on or off
+	elseif key == "palette" then
+		return   -- applied from the bus's 'setting', module on or off (MelloUI:SetPalette)
+	elseif key == "uiShade" or key == "uiShadeStrength" or key:sub(1, 6) == "shade_" then
+		return   -- the UI shade: applied from the bus's 'setting', module on or off (Modules/KitShade.lua)
+	elseif key:sub(1, 10) == "parchment_" then
+		-- (a switch, or a choice whose "off" is off: the character window's,
+		-- 0.19.4, read by Kit.ParchmentValueOn)
+		local kit = MelloUI.Kit
+		if kit and kit.SetParchment then
+			kit:SetParchment(key:sub(11), kit.ParchmentValueOn and kit.ParchmentValueOn(value) or value == true)
+		end
+		return
+	elseif MelloUI.Kit and MelloUI.Kit.borderKinds then
+		-- (the core kinds: the Cooldown Manager Border)
+		for _, k in ipairs(MelloUI.Kit.borderKinds) do
+			if key == k.key and k.core then
+				MelloUI.Kit:ApplyBorder(k.kind)
+				return
+			end
+		end
+	end
+	-- (autoSnap, snapGap and snapTargets: Edit Layout's, read when it snaps;
+	-- positions: Core's store, the bus's 'setting' in Core/EditLayoutWindows.lua)
+	if key == "autoSnap" or key == "snapGap" or key == "snapTargets" or key == "positions" or key == "layoutApplied" or key == "welcomeAsked"
+		or key == "savedSurnameOwn" or key == "featuresFolded" then
+		return
+	elseif key == "nameFormat" then
+		ApplyNameFormat(db, true)
+		return
+	elseif key:sub(1, 4) == "qol_" then
+		local name = key:sub(5)
+		if MelloUI:GetModule(name) then
+			MelloUI:SetModuleEnabled(name, value and true or false)
+		end
+	elseif MelloUI:GetModule(key) then
+		MelloUI:SetModuleEnabled(key, PanelWanted(db, key))
+	end
+end
+
+-- OLDSCHOOL BEGIN: the painted reskin's settings -- its switch, Preload Artwork, Switch every area on, the Kit Colours
+-- and its border kinds, Raid Border Placement, the game windows' parchment sheets and Parchment Style -- a part of UI
+-- Modifications' (M:AddPart: the same module, keys and option ids). Moves to MelloUI_Oldschool at stage I; it uses only
+-- the header's locals and public tables.
+do
+local UM = MelloUI:GetModule("UIModifications")
+-- the part (filled below), and the owner of its bus listeners: never the
+-- module, whose own 'setting' listener a second one of the same owner would
+-- replace (Core's MelloUI:On: Reduce Motion and the palette would be lost)
+local part = {}
+
+-- The look's own state (below): the Kit Colours set inside a Batch applied
+-- at its end (Tint.KitColours), the preloaded art held for the look now
+-- drawn (Tint.preloaded, Tint.preloadedColours, Tint.LookMoved,
+-- Tint.PreloadAgain)
+local Tint = {}
+
 -- Preload Artwork (Kit:Preload): the kit's files while the reskin is on, the
 -- class medallions with them; all let go when either is off or the module is.
 local function ApplyPreload(db, on)
@@ -901,7 +1129,7 @@ local function ReskinLayoutDone(ok, _, report)
 	end
 	local failed = type(report) == "table" and report.pass == false and (report.cause == "size" or report.cause == "settings")
 	if ok or failed then
-		MelloUI:NotifySettingChanged(M.name, "layoutApplied", true)
+		MelloUI:NotifySettingChanged(UM.name, "layoutApplied", true)
 	end
 end
 
@@ -943,53 +1171,17 @@ local function ReskinOn(db)
 	end
 end
 
--- Reduce Motion: the animation engine finishes every tween and group at once.
--- An accessibility switch for the whole addon, not part of the reskin: it
--- follows the saved setting with this module on or off (Chat's smooth scroll
--- reads it, and the Fresh start profile turns this module off; audit,
--- 2026-09-24). Read at start-up (OnEnable, or OnDisable for a module that is
--- off), on a change and after a profile load; its switch is on the Look page.
-local function ApplyMotion(db)
-	if MelloUI.Anim and db then
-		MelloUI.Anim:SetReduceMotion(db.reduceMotion)
-	end
-end
-
--- a change reaches OnSettingChanged, and a profile load OnEnable, only while
--- the module is on: the bus's 'setting' and 'restart' (fired at the end of
--- NotifySettingChanged and RestartModules, where the hooks on them ran;
--- audit, 2026-09-24, rank 5) reach it with the module off as well
-MelloUI:On("setting", Perf.Shared("'setting' on the bus", function(name, key, value)
-	if name ~= "UIModifications" then
-		return
-	elseif key == "reduceMotion" then
-		ApplyMotion(MelloUI:GetModuleDB("UIModifications"))
-	elseif key == "palette" then
-		-- (Core swaps the palette, the kit's art follows: 'border', then
-		-- the one 'palette')
-		MelloUI:SetPalette(value)
-	elseif key == "kitColours" and M.isEnabled then
-		Tint.KitColours()
-	elseif key:sub(1, 10) == "parchment_" and not M.isEnabled then
-		-- (one look) the paper of a part of MelloUI's own (Kit.ownParchments: the Quest Tracker's, the chat's), live
-		-- with this module off too; OnSettingChanged switches every area while it is on
-		local area = key:sub(11)
-		if Kit and Kit.ownParchments and Kit.ownParchments[area] and Kit.SetParchment then
-			Kit:SetParchment(area, Kit.ParchmentValueOn(value))
-		end
-	end
-end), M)
 -- The Kit Colours set inside a Batch (the installer's Install or Revert)
--- are applied here, once its held 'setting' goes out (OnSettingChanged
+-- are applied here, once its held 'setting' goes out (the part's Setting
 -- leaves them while it runs): with a palette held in the same Batch the
 -- one switch takes both (MelloUI:SetPalette: one walk over the kit's
 -- textures, one 'palette'), whichever of the two was set first. Outside a
--- Batch OnSettingChanged has applied them already: nothing is left here.
+-- Batch the part's Setting has applied them already: nothing is left here.
 function Tint.KitColours()
 	if not (Kit and Kit.ApplyBorder and Kit.BorderValue) then
 		return
 	end
-	local stored = MelloUI:KnownPalette(M.db and M.db.palette)
+	local stored = MelloUI:KnownPalette(UM.db and UM.db.palette)
 	if stored ~= MelloUI:PaletteId() then
 		MelloUI:SetPalette(stored)   -- (its walk reads the new Kit Colours as well)
 		return
@@ -1007,39 +1199,150 @@ end
 -- switch's frame; asked again then, as a restart in between -- a profile
 -- load's, whose OnEnable preloads -- may have made it for this look)
 function Tint.LookMoved()
-	if not (M.isEnabled and M.db and Tint.preloaded and Kit and Kit.BorderValue) then
+	if not (UM.isEnabled and UM.db and Tint.preloaded and Kit and Kit.BorderValue) then
 		return false
 	end
 	return MelloUI:PaletteId() ~= Tint.preloaded or Kit:BorderValue("colours") ~= Tint.preloadedColours
 end
 function Tint.PreloadAgain()
 	if Tint.LookMoved() then
-		ApplyPreload(M.db, true)
+		ApplyPreload(UM.db, true)
 	end
 end
-MelloUI:On("palette", Perf.Shared("'palette' on the bus", function()
-	if Tint.LookMoved() then
-		Kit:NextFrame("UIModifications preload", Tint.PreloadAgain)
-	end
-end), M)
-MelloUI:On("restart", Perf.Shared("'restart' on the bus", function()
-	local db = MelloUI:GetModuleDB("UIModifications")
-	ApplyMotion(db)
-	DropTweaksSwitch(db)
-	DropUnlock(db)
-end), M)
 
--- (0.21.3; the user, 2026-10-13: "dont we have the option to "Preload" the UI
--- assets on the loading screen?") the files asked for in the login's own
--- frame, while the loading screen is up -- since the start-up pass (0.19.8)
--- this module comes on after it; OnEnable asks again for the same files
-function M:OnLoginFrame(db)
-	self.db = db   -- (Kit:BorderValue reads it, and keeps its first answer)
+-- The Kit Colours' shown choice: the Kit Colours' choices are the palette in
+-- use's (Kit.colourLooks, the same table filled again on a switch), and the
+-- one shown is the one the kit draws: a Bronze kept from Ember shows, under
+-- another palette, as that palette's own kit (Kit:ColourLookShown, the kit's
+-- one answer)
+local function ColoursShown(db)
+	local K = MelloUI.Kit   -- (looked up now: the kit a world has when it is asked)
+	local look = K and K.ColourLookShown and K:ColourLookShown()
+	if look then
+		return look.value
+	end
+	return db and db.kitColours
+end
+
+-- The game windows' parchment sheets (the list's other half: the core's are
+-- MelloUI's own parts'). The character window's (0.19.4, the options audit:
+-- Window Background's Parchment folded in, one control) is a choice, its
+-- right pane's sheet or the whole window's (Modules/CharacterPanel.lua; an
+-- older save carried by MelloUI:MergeSettings), `on` the choice an older
+-- switch's true stands for
+local CHARACTER_PARCHMENT = {
+	{ value = "off", label = "Off" },
+	{ value = "pane", label = "Right pane" },
+	{ value = "window", label = "Whole window" },
+}
+local SHEET_FIRST = { "parchment_tracker", "Objective Tracker" }
+local SHEETS_AFTER = {
+	{ "parchment_character", "Character Window", values = CHARACTER_PARCHMENT, on = "pane" },
+	{ "parchment_tooltip", "Tooltips" },
+	{ "parchment_dialog", "Dialogs" },     -- (user, 2026-09-24: the popup dialogs, "add a parchment to it")
+}
+local SHEET_DESC = {
+	parchment_tracker = "The game's objective tracker on a parchment sheet, its text in dark ink.",
+	parchment_character = "The character window on a parchment sheet, its text in dark ink: Right pane lays it under the right pane (the stats, reputation, skills and the other lists); Whole window over the whole window inside its frame, the window's own stone round its edge. Off: no parchment; the window shows its Window Background (Windows > Character window).",
+	parchment_tooltip = "The tooltips on a parchment sheet, their text in dark ink.",
+	parchment_dialog = "The popup dialogs, the colour picker, ready checks and split stack on a parchment sheet, their text in dark ink.",
+}
+do
+	local list = MelloUI.ParchmentAreas
+	if type(list) == "table" then
+		table.insert(list, 1, SHEET_FIRST)
+		for _, entry in ipairs(SHEETS_AFTER) do
+			list[#list + 1] = entry
+		end
+	end
+end
+local function SheetOption(entry, where)
+	local opt = { type = entry.values and "dropdown" or "toggle", key = entry[1], name = "Parchment: " .. entry[2],
+		values = entry.values, requires = "reskin", new = entry.new, desc = SHEET_DESC[entry[1]] }
+	for k, v in pairs(where or {}) do
+		opt[k] = v
+	end
+	return opt
+end
+
+-- The settings: the defaults, and the options where each stood in the list
+-- (`after` / `before`: M:AddPart's anchors)
+part.defaults = { reskin = true, preloadArt = true, raidBorderPlace = "both", parchment_tracker = false,
+	parchment_character = "off", parchment_tooltip = false, parchment_dialog = false, parchmentStyle = "paper" }
+local opts = {}
+opts[#opts + 1] = { type = "toggle", key = "reskin", name = "Painted Kit Reskin", important = true, before = "palette",
+	desc = "The game's windows and HUD dressed in the painted kit, and the frame of MelloUI's own windows. Off: the game's windows and HUD keep the game's own art; MelloUI's own parts (the Quest Tracker, the widget column, the reminders, the race bar ...) keep MelloUI's look either way, and every feature keeps working. Switching it on also switches Custom Sounds on, and the first time puts in the Edit Mode layout the reskin is drawn for, fitted to your screen. Switching it off leaves Custom Sounds on." }
+opts[#opts + 1] = { type = "toggle", key = "preloadArt", name = "Preload Artwork", requires = "reskin",
+	desc = "Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 13 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it." }
+opts[#opts + 1] = { type = "button", name = "Switch every area on", hint = "when nothing is reskinned any more",
+	text = "Switch on", requires = "reskin",
+	desc = "Every window and HUD area of the reskin back on, and every feature of UI Modifications that is on by default.",
+	onClick = function(_, db)
+		local ok, count = UM.RestoreAreas(db)
+		if not ok then
+			MelloUI:Print(UM.areasRefused)
+			return
+		end
+		if count == 0 then
+			MelloUI:Print("Every area is on already.")
+			return
+		end
+		MelloUI:Print("%d area%s switched back on.", count, count == 1 and "" or "s")
+		if MelloUI.RefreshConfig then
+			MelloUI:RefreshConfig()
+		end
+	end }
+-- the borders, one choice per kind for every window, and the Kit Colours
+-- (Kit.borderKinds, the core kinds' rows the core's): each where its kind
+-- stands, after the kind before it (the first after the palette)
+do
+	local prev = "palette"
+	for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
+		if not k.core then
+			part.defaults[k.key] = k.default
+			local opt = { type = "dropdown", key = k.key, name = k.name, values = k.values, desc = k.desc,
+				requires = "reskin", new = k.new, after = prev }
+			if k.kind == "colours" then
+				opt.get, opt.relist = ColoursShown, "palette"
+			end
+			opts[#opts + 1] = opt
+		end
+		prev = k.key
+	end
+end
+-- (0.19.8, the border library's stage 3, the plan's decision 7: one Raid
+-- Frame Border, laid on each frame, round each group, or both;
+-- Modules/KitBorders.lua)
+opts[#opts + 1] = { type = "dropdown", key = "raidBorderPlace", name = "Raid Border Placement", requires = "reskin",
+	values = { { value = "both", label = "On each frame and round the group" }, { value = "frame", label = "On each frame" },
+		{ value = "group", label = "Round the group" } },
+	desc = "Where Raid Frame Border goes: on each raid frame, round each raid group, or both. A group's border shows while Edit Mode's Display Border is on for the raid frames." }
+-- the game windows' sheets round the core's own
+opts[#opts + 1] = SheetOption(SHEET_FIRST, { before = "parchment_questTracker" })
+for i, entry in ipairs(SHEETS_AFTER) do
+	opts[#opts + 1] = SheetOption(entry, i == 1 and { after = "parchment_meter" } or nil)
+end
+-- The parchment's look (0.20.3; the user, 2026-10-11: "the new one is the default but some people liked how the old
+-- one looked aswell"): every sheet and page, live (Kit:SetParchmentStyle)
+opts[#opts + 1] = { type = "dropdown", key = "parchmentStyle", name = "Parchment Style", requires = "reskin",
+	values = { { value = "paper", label = "Burnt paper" }, { value = "classic", label = "Classic vellum" } },
+	desc = "How the parchment looks wherever it shows: the sheets switched on below, and the quest log, quest and spell book pages. Burnt paper: warm paper with burnt edges, big pages with curled corners. Classic vellum: the vellum with painted brush-stroke edges from before 0.20.1." }
+part.options = opts
+
+-- the panel switches: their rows need the reskin, and with it off no panel
+-- comes on (UI Modifications' PanelWanted)
+part.panelRequires = "reskin"
+function part.PanelsOff(db)
+	return db.reskin == false
+end
+
+-- the login's own frame (UI Modifications' OnLoginFrame): the preload
+function part.LoginFrame(db)
 	ApplyPreload(db, true)
 end
 
-function M:OnEnable(db)
-	self.db = db
+-- the one-time steps, first in OnEnable
+function part.Migrate(db)
 	-- the borders moved here from the panels (one choice per kind for every
 	-- window, 2026-09-23): the action bars' Button Border and the character
 	-- window's progress bar look carry over, once
@@ -1053,27 +1356,6 @@ function M:OnEnable(db)
 			db.barBorder = cp.repBarBorder
 		end
 		db.bordersMigrated = true
-	end
-	-- Buffs & Debuffs and Error Messages moved here from pages of their own,
-	-- and Tweaks lost its switch (its rows each switch one thing; user,
-	-- 2026-09-24): each keeps the state it had, once
-	KeepDarkMode(db)   -- (before: a fold done now writes a new player's)
-	if not db.featuresFolded then
-		for _, tweak in ipairs(TWEAKS) do
-			local key = "qol_" .. tweak[1]
-			if tweak.off and db[key] == nil then
-				db[key] = MelloUI.db.enabled[tweak[1]] == true
-			end
-		end
-		if db.qol_Tweaks == false then
-			local tw = MelloUI:GetModuleDB("Tweaks")
-			if tw then
-				tw.hideMicroMenu, tw.hideBagBar, tw.hideMinimapCoords, tw.chatNotices = false, false, false, false
-				tw.worldTextScale = 1
-			end
-		end
-		db.qol_Tweaks = nil
-		db.featuresFolded = true
 	end
 	-- MelloUI's Quest Tracker has a kit switch of its own now (audit,
 	-- 2026-09-24, rank 1); it wore the kit with the Objective tracker's until
@@ -1090,103 +1372,77 @@ function M:OnEnable(db)
 		db.questTrackerKit = db.TrackerPanel ~= false
 		db.questTrackerKitMigrated = true
 	end
-	ApplyMotion(db)
-	if db.reskin ~= false and NothingWanted(db) then
+end
+
+-- last in OnEnable, the areas switched: every area off is a real choice,
+-- never undone behind the player's back, but said (the switch then looks
+-- like it does nothing); the preload; the layout put in with the reskin
+function part.Enabled(db)
+	if db.reskin ~= false and UM.NothingWanted(db) then
 		MelloUI:Notice("UI Modifications is on, but every area of the reskin is switched off, so the game's own art is what you see. The Configurator's Look page has a \"Switch every area on\" button.")
 	end
-	Apply(db, true)
-	-- the game's elements Edit Layout moves (Core/EditLayoutWindows.lua): the
-	-- registered ones placed from the store, the stored ones registered (the
-	-- four and the chat windows now, the rest after the login)
-	if GW and GW.OnEnable then
-		GW.OnEnable(db)
-	end
-	ApplyNameFormat(db, true)
 	ApplyPreload(db, true)
 	ReskinOn(db)
 end
 
-function M:OnDisable(db)
-	db = db or self.db or {}
-	ApplyMotion(db)   -- kept: Reduce Motion is not the module's
-	Apply(db, false)
-	-- the game's elements Edit Layout moves are not live any more (their
-	-- `when`): an Edit Layout session lets go of each it holds
-	-- (Core/EditLayoutWindows.lua)
-	if GW and GW.OnDisable then
-		GW.OnDisable()
-	end
-	ApplyNameFormat(db, false)
+function part.Disabled(db)
 	ApplyPreload(db, false)
 end
 
-function M:OnSettingChanged(key, value, db)
-	self.db = db
-	if Areas.holding and AREA_OF[key] then
-		return   -- (M:SetAreas: switched a few a frame once its Batch is over)
-	elseif key == "reduceMotion" then
-		return   -- applied from the bus's 'setting', module on or off
-	elseif key == "questTrackerKit" or key == "questTrackerKitMigrated" then
+-- a setting of the part's (true: applied here, UI Modifications' own branches
+-- are passed by)
+function part.Setting(key, value, db)
+	if key == "questTrackerKit" or key == "questTrackerKitMigrated" then
 		-- (nothing to apply: Kit:IsOn("questTracker") read it until onelook
 		-- stage C; the area is always on now, the key goes in stage E)
-		return
-	elseif key == "palette" then
-		return   -- applied from the bus's 'setting', module on or off (MelloUI:SetPalette)
-	elseif key == "uiShade" or key == "uiShadeStrength" or key:sub(1, 6) == "shade_" then
-		return   -- the UI shade: applied from the bus's 'setting', module on or off (Modules/KitShade.lua)
-	elseif key:sub(1, 10) == "parchment_" then
-		-- (a switch, or a choice whose "off" is off: the character window's,
-		-- 0.19.4, read by Kit.ParchmentValueOn)
-		local kit = MelloUI.Kit
-		if kit and kit.SetParchment then
-			kit:SetParchment(key:sub(11), kit.ParchmentValueOn and kit.ParchmentValueOn(value) or value == true)
-		end
-		return
+		return true
 	elseif key == "parchmentStyle" then
 		if MelloUI.Kit and MelloUI.Kit.SetParchmentStyle then
 			MelloUI.Kit:SetParchmentStyle()
 		end
-		return
+		return true
 	elseif key == "raidBorderPlace" then
 		if MelloUI.Kit and MelloUI.Kit.ApplyBorder then
 			MelloUI.Kit:ApplyBorder("raid")   -- (0.19.8: where Raid Frame Border goes)
 		end
-		return
-	elseif MelloUI.Kit and MelloUI.Kit.borderKinds then
-		for _, k in ipairs(MelloUI.Kit.borderKinds) do
-			if key == k.key then
-				-- (the Kit Colours in a Batch: at its end, with a palette
-				-- set in it, Tint.KitColours)
-				if not (k.kind == "colours" and MelloUI.InBatch and MelloUI:InBatch()) then
-					MelloUI.Kit:ApplyBorder(k.kind)
-				end
-				return
-			end
-		end
-	end
-	-- (autoSnap, snapGap and snapTargets: Edit Layout's, read when it snaps;
-	-- positions: Core's store, the bus's 'setting' in Core/EditLayoutWindows.lua)
-	if key == "autoSnap" or key == "snapGap" or key == "snapTargets" or key == "positions" or key == "layoutApplied" or key == "welcomeAsked"
-		or key == "savedSurnameOwn" or key == "featuresFolded" then
-		return
-	elseif key == "nameFormat" then
-		ApplyNameFormat(db, true)
-		return
+		return true
 	elseif key == "preloadArt" then
 		ApplyPreload(db, true)
-		return
+		return true
 	elseif key == "reskin" then
-		Apply(db, true)
+		UM.ApplyAreas(db, true)
 		ApplyPreload(db, true)
 		if value then
 			ReskinOn(db)
 		end
-	elseif key:sub(1, 4) == "qol_" then
-		local name = key:sub(5)
-		if MelloUI:GetModule(name) then
-			MelloUI:SetModuleEnabled(name, value and true or false)
-		end
-	elseif MelloUI:GetModule(key) then
-		MelloUI:SetModuleEnabled(key, PanelWanted(db, key))
+		return true
 	end
+	for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
+		if key == k.key and not k.core then
+			-- (the Kit Colours in a Batch: at its end, with a palette
+			-- set in it, Tint.KitColours)
+			if not (k.kind == "colours" and MelloUI.InBatch and MelloUI:InBatch()) then
+				MelloUI.Kit:ApplyBorder(k.kind)
+			end
+			return true
+		end
+	end
+	return false
 end
+
+-- the Kit Colours set in a Batch, at its end (Tint.KitColours above); and
+-- the preload again for a look moved (Tint.LookMoved)
+MelloUI:On("setting", Perf.Shared("'setting' on the bus: the Kit Colours", function(name, key)
+	if name == "UIModifications" and key == "kitColours" and UM.isEnabled then
+		Tint.KitColours()
+	end
+end), part)   -- (its own owner: the core 'setting' listener stays)
+MelloUI:On("palette", Perf.Shared("'palette' on the bus", function()
+	if Tint.LookMoved() then
+		Kit:NextFrame("UIModifications preload", Tint.PreloadAgain)
+	end
+end), part)
+
+UM:AddPart(part)
+end
+-- OLDSCHOOL END

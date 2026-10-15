@@ -42,6 +42,19 @@
 -- Nothing is made at login: a border's parts on its first Lay, its glow on
 -- its first hover. A new Kit Colours look reaches the parts by themselves
 -- (Kit:Apply registers them).
+--
+-- (onelook D12) The core keeps the library itself -- the styles and weights,
+-- Kit:NewBorder and its Border (W.Field, Auras, the Personal Display and the
+-- minimap wear it), Kit.BorderBandRail and Kit:TuckTrough -- and the Cooldown
+-- Manager Border (its kind `core = true`: UI Modifications' core settings
+-- make its row). The painted reskin's borders are two OLDSCHOOL blocks that
+-- use only the header's locals (above ONELOOK HEADER END) and public tables,
+-- cut into MelloUI_Oldschool at stage I: (A) the configurator's pictures, the
+-- Button Border library, Raid Frame Border and the bar library (Unit Frame,
+-- Cast Bar, Personal Display, Swing Timer); (B) the bars' fit, the personal
+-- resource display's frame, the bar pictures, the rings and the Portrait
+-- Ring / Level Orb. Their kinds register where they stand, so
+-- Kit.borderKinds keeps its order.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -49,7 +62,6 @@ local MelloUI = ns.MelloUI
 local Kit = MelloUI.Kit
 -- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
 local pieceNameOf = MelloUI.Kept.pieceNameOf
-local repOf = MelloUI.Kept.repOf
 local tintBaseOf = MelloUI.Kept.tintBaseOf
 local W = MelloUI.Widgets
 
@@ -94,6 +106,7 @@ Kit.BorderWeights = {
 -- a darken as the engine's vertex colour (a brightness, every channel alike)
 local DARK = { pressed = 0.72, disabled = 0.55 }
 local GLOW_ALPHA = 0.6   -- the shared glow under the mouse: the rails added again as light
+-- ONELOOK HEADER END (an OLDSCHOOL block below may use only the locals above and public tables)
 
 -- The square rows' choices, the configurator's pictures included (`style`
 -- the library's id; `piece` the picture's master where there is one)
@@ -734,6 +747,11 @@ function Border:SetLit(hover, pressed, disabled)
 	ShowParts(self.glow, self.shown and state == "hover")
 end
 
+-- OLDSCHOOL BEGIN (A): the pictures, the Button Border library, Raid Frame Border and the bar library (moves to
+-- MelloUI_Oldschool at stage I; it uses only the header's locals and public tables)
+do
+local repOf = MelloUI.Kept.repOf
+
 --------------------------------------------------------------------------------
 -- The configurator's picture of a library style (Kit:ChoicePicture's "rim":
 -- KitWindow.lua asks here for a choice with a `style`): the style round the
@@ -1167,12 +1185,14 @@ function Kit:BarLibraryBorder(rep, style)
 	rep:Refit()
 	return true
 end
+end
+-- OLDSCHOOL END
 
 -- (0.20.1) A bar's library border fitted to the bar as the bracket is (Kit.lua's bar Refit asks again on every
 -- refit): its band the bracket's share of the bar's height, centred; its rails a quarter of that band at most, never
 -- deeper than the weight's (a thin bar -- a nameplate's, an XP bar -- a thin rail); its art at the panel's artScale
-local BAND_RAIL = 0.25
-Kit.BorderBandRail = BAND_RAIL   -- (0.21.0: the Personal Display's bars, the same rule)
+-- (Kit:BarLibraryFit, block B; 0.21.0: the Personal Display's bars, the same rule)
+Kit.BorderBandRail = 0.25
 
 -- (0.20.5, the user: the Stone rail apart from the bar, "there is the background, but not attached") a bar's trough
 -- run half a rail under a library border on each railed side: the rail's inner edge, its art drawn far smaller than
@@ -1192,6 +1212,13 @@ function Kit:TuckTrough(trough, rect, border, l, r, t, b)
 	trough:SetPoint("BOTTOMRIGHT", rect, "BOTTOMRIGHT", -(r - (open == "r" and 0 or x)), b - y)
 	Kit:Retile(trough)
 end
+
+-- OLDSCHOOL BEGIN (B): the bars' fit, the personal resource display's frame, the bar pictures, the rings, the Portrait
+-- Ring and the Level Orb (moves to MelloUI_Oldschool at stage I; it uses only the header's locals and public tables)
+do
+local Secret = MelloUI.Safe.IsSecret
+local Perf = MelloUI.Perf:Scope("KitBorders")
+
 function Kit:BarLibraryFit(rep, h)
 	local b = rep and rep.libraryBorder
 	if not (b and rep.libBand) then
@@ -1207,7 +1234,7 @@ function Kit:BarLibraryFit(rep, h)
 	local share = rep:LibraryShare()
 	local band = h * share
 	rep.libBand:SetHeight(band)
-	b:SetFit(band * BAND_RAIL, rep:ArtScale())
+	b:SetFit(band * Kit.BorderBandRail, rep:ArtScale())
 	-- (0.20.5, the user: the Stone rail apart from the bar, "there is the background, but not attached") the bar's
 	-- trough run half a rail under the border on each railed side: the rail's inner edge, its art drawn far smaller
 	-- than painted, is soft, and with no style background on a bar (noBg) the world showed through it. Every style's
@@ -1565,6 +1592,8 @@ function Kit:ApplyPortraitRings()
 		self:LayPortraitRing(rep)
 	end
 end
+end
+-- OLDSCHOOL END
 
 --------------------------------------------------------------------------------
 -- Cooldown Manager Border (0.19.8; the addon study's item 7, "all as
@@ -1578,8 +1607,10 @@ Kit.cooldownLooks = { { value = "game", label = "The game's bevel" } }
 for _, look in ipairs(Kit.squareLooks) do
 	Kit.cooldownLooks[#Kit.cooldownLooks + 1] = look
 end
+-- (onelook D12: `core`, the one kind UI Modifications' core settings make a row for; the others are the painted
+-- reskin's, their rows its part's)
 Kit:AddBorderKind({ kind = "cooldown", key = "cooldownBorder", default = "game", name = "Cooldown Manager Border",
-	values = Kit.cooldownLooks, preview = "rim",
+	values = Kit.cooldownLooks, preview = "rim", core = true,
 	desc = "The rim round the icons of the game's Cooldown Manager: the game's own bevel, or one of the border styles "
 		.. "the buttons wear." }, "raid")
 

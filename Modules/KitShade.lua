@@ -13,7 +13,11 @@
 --                      actionbars, castbars, unitframes, chat (and the
 --                      whisper popups), bags, minimap (and the Services bar),
 --                      tracker (the objective tracker and the Quest Tracker),
---                      buffs, widgets (the event widgets), nameplates
+--                      buffs, widgets (the event widgets), nameplates.
+--                      (onelook D11) Registered by Kit:AddShadeArea, in
+--                      order: the core's windows, minimap, tracker and buffs
+--                      here, the painted reskin's others in its OLDSCHOOL
+--                      block at the end of this file
 --   Kit:ShadeOn(area) -> the area's shade wanted: UI Shade on and the area's
 --                      switch on (false for a name not in the list)
 --   Kit:ShadeStrength() -> 0.3 .. 0.9 (0.7 by default): the areas' shade
@@ -65,7 +69,8 @@
 -- read again on the frame after a 'restart' (a profile load writes them past
 -- the setting's Fire, as the parchment). Each area's change goes out on the
 -- bus's 'shade' (area, on, strength) once its partners follow.
--- Windows need no module's call: every window's shell (Kit:RegisterShell,
+-- Windows need no module's call (the painted reskin's windows: its OLDSCHOOL
+-- block, onelook D11): every window's shell (Kit:RegisterShell,
 -- the bus's 'shell': the outer rail, title plate, portrait ring or crest of
 -- SkinWindowShell's windows, the hand-made shells and Kit:OwnWindow, whose
 -- crest and short plate come too) is shaded here -- each rail on its first
@@ -107,38 +112,50 @@ local MASTER_KEY, STRENGTH_KEY = "uiShade", "uiShadeStrength"
 local DEFAULT, MIN, MAX = 0.7, 0.3, 0.9
 local OWNER = "Kit shade"                  -- the bus owner
 local PUMP_KEY = "Kit shade: partners"     -- (Kit:NextFrame's keys; the pump's for Kit:WhenOutOfCombat too)
-local WINDOW_KEY = "Kit shade: windows"
 local RESTART_KEY = "Kit shade after a restart"
 -- partner textures made in one frame (the nameplates' crowd rule,
 -- NameplatePanel's MAKE_PER_FRAME, for every area): the rest on the next
 -- frames; the first part a frame is always made, however many it needs
 local MAKE_PER_FRAME = 24
-local OUTER_KEY = "NineSlicePanelTemplate" -- a window's outer rail (Kit.Replacements)
 local CORNERS = { "tl", "tr", "bl", "br" }
 local WEAK = { __mode = "k" }
+-- ONELOOK HEADER END (an OLDSCHOOL block below may use only the locals above and public tables)
 
--- The areas, in the settings' order (Dynamic UI lists them so)
-local AREAS = {
-	{ "windows", "Windows" },
-	{ "actionbars", "Action Bars" },
-	{ "castbars", "Cast Bars" },
-	{ "unitframes", "Unit Frames" },
-	{ "chat", "Chat" },
-	{ "bags", "Bags" },
-	{ "minimap", "Minimap" },
-	{ "tracker", "Tracker" },
-	{ "buffs", "Buffs" },
-	{ "widgets", "Event Widgets" },
-	-- (no switch of its own, 0.16.0: the nameplates' Name Shade = Whole
-	-- plate is its switch, NameplatePanel asks it with the UI Shade on)
-	{ "nameplates", "Nameplates", noSwitch = true },
-}
-local AREA, BY_KEY = {}, {}
-for _, a in ipairs(AREAS) do
-	a.name, a.label, a.key = a[1], a[2], "shade_" .. a[1]
-	a.noSwitch = a.noSwitch or nil
-	AREA[a.name], BY_KEY[a.key] = a, a
+-- The areas, in the settings' order (UI Modifications lists them so; its
+-- rows are made from this list, an area registered later at its next listing).
+--   Kit:AddShadeArea(name, label, opts) -> the area { [1] = name, [2] = label,
+--       name, label, key = "shade_<name>", noSwitch, new, order }: put in by
+--       opts.order (lowest first; one of the same order after those there),
+--       nothing applied or told (the areas are read as they are needed); a
+--       name already there returns its area as it is. opts: order, noSwitch
+--       (no switch of its own), new (the switch's New tag)
+-- (onelook D11) The core's areas: windows, the minimap, the tracker and the
+-- buffs; the painted reskin's (its OLDSCHOOL block at the end of this file)
+-- put theirs in between, so the list keeps its order.
+local AREAS, AREA, BY_KEY = {}, {}, {}
+function Kit:AddShadeArea(name, label, opts)
+	local a = AREA[name]
+	if a then
+		return a
+	end
+	opts = type(opts) == "table" and opts or {}
+	a = { name, label, name = name, label = label, key = "shade_" .. name, noSwitch = opts.noSwitch and true or nil,
+		new = opts.new, order = tonumber(opts.order) or math.huge }
+	local at = #AREAS + 1
+	for i = 1, #AREAS do
+		if AREAS[i].order > a.order then
+			at = i
+			break
+		end
+	end
+	table.insert(AREAS, at, a)
+	AREA[name], BY_KEY[a.key] = a, a
+	return a
 end
+Kit:AddShadeArea("windows", "Windows", { order = 1 })
+Kit:AddShadeArea("minimap", "Minimap", { order = 7 })
+Kit:AddShadeArea("tracker", "Tracker", { order = 8 })
+Kit:AddShadeArea("buffs", "Buffs", { order = 9 })
 Kit.shadeAreas = AREAS
 Kit.shadeSettings = { master = MASTER_KEY, strength = STRENGTH_KEY, default = DEFAULT, min = MIN, max = MAX, step = 0.05 }
 
@@ -656,6 +673,23 @@ function Kit:ShadeElement(root, area, opts)
 	return el
 end
 
+-- OLDSCHOOL BEGIN: the painted reskin's HUD areas and its windows' rail shade (moves to MelloUI_Oldschool at stage I;
+-- it uses only the header's locals and public tables)
+do
+-- the areas of the reskin's HUD and bags, between the core's (Kit:AddShadeArea's order)
+Kit:AddShadeArea("actionbars", "Action Bars", { order = 2 })
+Kit:AddShadeArea("castbars", "Cast Bars", { order = 3 })
+Kit:AddShadeArea("unitframes", "Unit Frames", { order = 4 })
+Kit:AddShadeArea("chat", "Chat", { order = 5 })
+Kit:AddShadeArea("bags", "Bags", { order = 6 })
+Kit:AddShadeArea("widgets", "Event Widgets", { order = 10 })
+-- (no switch of its own, 0.16.0: the nameplates' Name Shade = Whole plate is
+-- its switch, NameplatePanel asks it with the UI Shade on)
+Kit:AddShadeArea("nameplates", "Nameplates", { order = 11, noSwitch = true })
+
+local WINDOW_KEY = "Kit shade: windows"      -- (Kit:NextFrame's key)
+local OUTER_KEY = "NineSlicePanelTemplate"   -- a window's outer rail (Kit.Replacements)
+
 --------------------------------------------------------------------------------
 -- Windows: every kit window's rail (the bus's 'shell'), shaded on its first
 -- show. One record per rail, on the frame the rail was dressed on (rep
@@ -884,3 +918,5 @@ MelloUI:On("shell", Shared("'shell' on the bus: the windows' shade", function(fr
 end), OWNER)
 
 Kit.shadeWindows = windows
+end
+-- OLDSCHOOL END
