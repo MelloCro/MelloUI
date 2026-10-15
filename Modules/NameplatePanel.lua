@@ -25,13 +25,13 @@
 --   faded meanwhile.
 -- Every size under a nameplate reads secret on this client: the brackets
 -- are fitted from NamePlateSetupOptions, never from the frames.
--- Name Shade (0.13.7): a soft dark band behind the name (MelloUI.Shade), as
--- long as the name itself, or on "Whole plate" also a shadow partner under
--- each piece (Kit:Shadow) while the UI Shade's Nameplates area is on
--- (0.14.0: Kit:ShadeOn("nameplates"), Dynamic UI Modification). The band is
--- a readability band, as the notice's (0.19.4, the options audit): at the
--- soft text look's strength (MelloUI.Shade.TEXT), never the UI Shade's; the
--- partners are the UI Shade's, at its Shade Strength.
+-- Name Shade (0.13.7): the soft band behind the name is the Nameplates
+-- module's since one-look D6 (its plate names, under Nameplate Tweaks; the
+-- key stays this module's until stage G). This file keeps three things: the
+-- Whole plate partners (a shadow partner under each piece, Kit:Shadow, while
+-- the UI Shade's Nameplates area is on: Kit:ShadeOn("nameplates"), at its
+-- Shade Strength), the name's place on the bracket (registered as the core's
+-- placer, M:PlaceName) and the marks, on the core's name watch (FollowName).
 -- Covers the group "nameplates". /npdump [frames|reps] (the target's plate).
 --------------------------------------------------------------------------------
 
@@ -58,7 +58,7 @@ local M = MelloUI:RegisterModule("NameplatePanel", {
 			{ value = "name", label = "Name" },
 			{ value = "plate", label = "Whole plate" },
 			{ value = "off", label = "Off" },
-		}, desc = "A soft dark shade behind each nameplate's name, so it reads on bright ground. Whole plate: the UI Shade also follows the plate's own shape, round the level circle, the end gems and along the bar (it needs the UI Shade on, Look; how dark that is: its Shade Strength). Off: no shade." },
+		}, desc = "A soft dark shade behind each nameplate's name, as long as the name, so it reads on bright ground (enemies and NPCs, not friendly players' name-only plates; part of Nameplate Tweaks). Whole plate (the Nameplate Kit): the UI Shade also follows the plate's own shape, round the level circle, the end gems and along the bar (it needs the UI Shade on, Look; how dark that is: its Shade Strength). Off: no shade." },
 		{ type = "toggle", key = "marks", name = "Elite and Rare Marks",
 		  desc = "Elites, rares, rare elites and bosses stand out: a metal line over the name with a crest on it. Gold with a crown and wings for an elite, silver with a star for a rare, silver with a gold star and wings for a rare elite, and red-bronze scrollwork with a skull, winged at both ends, for a boss. The plate itself keeps its look." },
 	},
@@ -485,39 +485,22 @@ local function FitLevelOrb(uf)
 end
 
 --------------------------------------------------------------------------------
--- The name shade (user, 2026-09-25, sketches A and B): the shared soft band
--- (MelloUI.Shade) behind each plate's name and, on "Whole plate", a shadow
+-- The name shade (user, 2026-09-25, sketches A and B): the band behind each
+-- plate's name is the Nameplates module's since one-look D6 (its plate names:
+-- one band as long as the name, on the core's measure, in both looks, under
+-- Nameplate Tweaks). This file keeps the Whole plate partners: a shadow
 -- partner (Kit:Shadow) under each of the plate's own pieces -- the bracket's
--- caps and rail, the level orb -- so the shade follows the plate's shape:
--- round the orb, a diamond round each end gem, a soft rim along the rail.
--- Made once per plate frame when the kit first dresses it (or when the
--- setting first asks for them; a crowd's a few plates a frame) and kept as
--- the plates recycle. Anchors only:
--- every size under a plate reads secret. The band hugs the name's own text
--- (user, 2026-09-25: "cant it scale according to the name length?"): it
--- hangs on the name's MEASURE, an unseen copy of the name's text with no
--- width of its own, so the engine sizes it to the text. The name's text is
--- handed on as it is (a secret one too: nothing is read or compared), and
--- the name's own anchors, justify and truncation stay the game's. Where the
--- measure cannot take a name, the band lies on the name's whole span as
--- before (CentreName: the left cap to the level orb's outer edge). The band
--- follows the name's own show and hide (hooked); the partners follow their
--- pieces. No script, no per-frame work: the partners' strength (the UI
--- Shade's) is one pass over the dressed plates, on the bus's 'shade'; the
--- band keeps the soft text look's (0.19.4: a readability band, as the
--- notice's, never the UI Shade's).
+-- caps and rail, the level orb, a mark's pieces -- so the UI Shade follows
+-- the plate's shape: round the orb, a diamond round each end gem, a soft rim
+-- along the rail. Made once per plate frame when the setting first asks for
+-- them (a crowd's a few plates a frame: the core's one budget and hold queue)
+-- and kept as the plates recycle. Anchors only: every size under a plate
+-- reads secret. The partners follow their pieces. No script, no per-frame
+-- work: their strength (the UI Shade's) is one pass over the dressed plates,
+-- on the bus's 'shade'.
 --------------------------------------------------------------------------------
 
 local SHADE_MODES = { name = true, plate = true, off = true }
--- the band on the name's line, in plate units: its full middle 4 past the
--- text's own ends (never inside them, so a band is never narrower than its
--- two soft ends), its soft ends 20 long, 5 above and below the text (the
--- band's own top and bottom fade: the text's edges at about 80 %); under all
--- that the name's frame draws (BACKGROUND -8). SPAN_PAD_X: on the name's
--- whole span (the measure refused a name), its middle 10 inside the span's
--- ends, so the soft ends reach 10 past the gem and the orb
-local BAND = { colour = "innerPanel", feather = 20, layer = "BACKGROUND", sublevel = -8 }
-local BAND_PAD_X, BAND_PAD_Y, SPAN_PAD_X = 4, 5, -10
 local PARTNER = { colour = "innerPanel" }   -- Kit:Shadow's options (read once: one table for all)
 
 local function ShadeMode()
@@ -534,22 +517,6 @@ local function ShadeStrength()
 		return SHADE_STRENGTH
 	end
 	return v < 0 and 0 or v > 1 and 1 or v
-end
-
-local nameShown = setmetatable({}, { __mode = "k" })   -- [name] = shown as last seen
-local nameShadeOf = setmetatable({}, { __mode = "k" })   -- [unit frame] = its name's shade band
--- the band shows while the kit is on, the shade wanted, the name on the
--- bracket (centred by us: not inside the bar) and shown by the game
-local function SyncBand(uf)
-	local band = nameShadeOf[uf]
-	if not band then
-		return
-	end
-	local name = uf.name
-	local want = (active and ShadeMode() ~= "off" and centredStyle[name] ~= nil and nameShown[name]) and true or false
-	if band:IsShown() ~= want then
-		band:SetShown(want)
-	end
 end
 
 --------------------------------------------------------------------------------
@@ -669,13 +636,17 @@ end
 
 local markOf = setmetatable({}, { __mode = "k" })   -- [unit frame] = the kit's mark it wears
 -- the mark shows while the kit and the option are on, the plate's unit is
--- marked and the game shows the name (the beads with a boss's line only)
+-- marked and the game shows the name (the beads with a boss's line only).
+-- Run on the name's show and hide changes (the Nameplates module's name
+-- watch, FollowName) and the mark's changes only, never per update; without
+-- that module the marks stay hidden
 local function SyncTop(uf)
 	local top = topOf[uf]
 	if not top then
 		return
 	end
-	local want = (MarksOn() and markOf[uf] ~= nil and top.pieces ~= nil and nameShown[uf.name]) and true or false
+	local np = MelloUI:GetModule("Nameplates")
+	local want = (MarksOn() and markOf[uf] ~= nil and top.pieces ~= nil and (np and np:NameShownOn(uf))) and true or false
 	local beads = want and top.pieces.bead ~= nil
 	for _, key in ipairs(TOP_PARTS) do
 		local tex = top.parts[key]
@@ -710,130 +681,6 @@ local function WatchGameMark(uf)
 	end
 end
 
-local shadeOwner = setmetatable({}, { __mode = "k" })   -- [name] = the unit frame whose shade it has
-local function NameShown(name, shown)
-	nameShown[name] = shown
-	local uf = shadeOwner[name]
-	if uf then
-		SyncBand(uf)
-		SyncTop(uf)
-	end
-end
-local OnNameShow = Perf.Shared("Show on a nameplate's name (its shade)", function(name)
-	NameShown(name, true)
-end)
-local OnNameHide = Perf.Shared("Hide on a nameplate's name (its shade)", function(name)
-	NameShown(name, false)
-end)
-local OnNameSetShown = Perf.Shared("SetShown on a nameplate's name (its shade)", function(name, shown)
-	-- (asked for secret first: a secret answer counts as shown)
-	NameShown(name, Secret(shown) or (shown and true or false))
-end)
-
--- The name's measure is the shared one (MelloUI.Shade:Measure, Core/Shade.lua:
--- the centre texts' too; 0.14.0): an unseen font string in the name's font
--- (its font object, face, size, flags and text scale, each handed on as it
--- comes; a secret or refused one left as it was), again after each of the
--- game's layouts (FitShade) and, one frame after a new font (Font Style, the
--- faces), for every measure at once (Shade's one 'fonts' listener)
-local Shade = MelloUI.Shade
-
-local nameMeasureOf = setmetatable({}, { __mode = "k" })   -- [unit frame] = its name's measure (Shade:Measure)
-local bandMeasured = setmetatable({}, { __mode = "k" })   -- [unit frame] = its name band laid on a measured name
-local nameMeasured = setmetatable({}, { __mode = "k" })   -- [unit frame] = true: its name measured
--- the band on the measure (measured: it holds the name's text) or on the
--- name's whole span (it refused the name), and the mark over the name;
--- each re-anchored on a change only
-local function Hang(uf)
-	local measured = nameMeasured[uf] == true
-	local band = nameShadeOf[uf]
-	if band and bandMeasured[uf] ~= measured then
-		bandMeasured[uf] = measured
-		if measured then
-			band:Anchor(nameMeasureOf[uf], BAND_PAD_X, BAND_PAD_Y)
-		else
-			band:Anchor(uf.name, SPAN_PAD_X, BAND_PAD_Y)
-		end
-	end
-	HangTop(uf)
-end
-
-local function Measured(uf, measured)
-	nameMeasured[uf] = measured and true or false
-	Hang(uf)
-end
-
--- the name's text handed on to its measure, untouched (the call answers
--- whether the measure took it: a client that refuses a secret text there
--- leaves that plate's band on the span)
-local OnNameText = Perf.Shared("SetText on a nameplate's name (its shade's measure)", function(name, text)
-	local uf = shadeOwner[name]
-	local measure = uf and nameMeasureOf[uf]
-	if measure then
-		Measured(uf, Shade:MeasureText(measure, text))
-	end
-end)
-local OnNameFormatted = Perf.Shared("SetFormattedText on a nameplate's name (its shade's measure)", function(name, ...)
-	local uf = shadeOwner[name]
-	local measure = uf and nameMeasureOf[uf]
-	if measure then
-		Measured(uf, Shade:MeasureFormatted(measure, ...))
-	end
-end)
-
--- the frame that draws the name: the band lies under the name (over the
--- world, under the bar), the mark over it
-local function NameHost(uf)
-	local name = uf.name
-	local okP, host = pcall(name.GetParent, name)
-	if not okP or type(host) ~= "table" or not host.CreateTexture then
-		host = uf
-	end
-	return host
-end
-
--- The name's measure and the name's hooks, made once per plate by whichever
--- wants them first: the band, or a mark (hung over the name). The
--- measure: no width of its own, on one point at the name's centre (the name
--- is centred on the span while the band shows), sized by the engine to the
--- text (none where the name's frame makes no text: the band then lies on the
--- span)
-local function WatchName(uf)
-	local name = uf.name
-	if shadeOwner[name] then
-		return
-	end
-	local measure = Shade:Measure(NameHost(uf), name, "CENTER")
-	nameMeasureOf[uf] = measure
-	local okT, text = pcall(name.GetText, name)
-	nameMeasured[uf] = (measure and okT and Shade:MeasureText(measure, text)) and true or false
-	local okS, shown = pcall(name.IsShown, name)
-	nameShown[name] = not okS or Secret(shown) or (shown and true or false)
-	shadeOwner[name] = uf
-	hooksecurefunc(name, "Show", OnNameShow)
-	hooksecurefunc(name, "Hide", OnNameHide)
-	hooksecurefunc(name, "SetShown", OnNameSetShown)
-	hooksecurefunc(name, "SetText", OnNameText)
-	hooksecurefunc(name, "SetFormattedText", OnNameFormatted)
-end
-
-local function MakeBand(uf)
-	if not uf.name then
-		return nil
-	end
-	-- (a readability band: the soft text look's strength, the notice's and the
-	-- unit frames' name bands' too; 0.19.4)
-	BAND.alpha = Shade.TEXT.alpha
-	local band = Shade:Band(NameHost(uf), BAND)
-	if not band then
-		return nil
-	end
-	nameShadeOf[uf] = band
-	WatchName(uf)
-	Hang(uf)
-	return band
-end
-
 -- the plate's pieces that get a partner: the bracket's caps and rail, the
 -- orb, a mark's pieces (once the plate has them: its `top`)
 local function PlatePieces(uf)
@@ -845,14 +692,11 @@ local function PlatePieces(uf)
 	return nil, nil, nil, orb, topOf[uf]
 end
 
--- does the plate still lack a part its mode wants (the band; on Whole plate
--- a partner)?
+-- does the plate still lack a part its mode wants (partners only: on Whole
+-- plate, a partner; the band is the Nameplates module's)?
 local function Lacks(uf, mode)
 	if mode == "off" then
 		return false
-	end
-	if uf.name and not nameShadeOf[uf] then
-		return true
 	end
 	if mode ~= "plate" or not Kit:ShadeOn("nameplates") then
 		return false
@@ -874,37 +718,11 @@ end
 
 -- A crowd's shades are made a few plates a frame (review, 2026-09-25: the
 -- first Whole plate, or a reload among many plates, made every plate's band
--- and partners -- up to 7 textures and 19 hooks a plate -- in one frame): at
--- most MAKE_PER_FRAME plates get theirs made in one frame (GetTime: the
--- frame's time), the rest by a sweep over the dressed plates on the next
--- frames (Kit:NextFrame), each plate tried once a sweep. Showing, hiding and
--- the strength of what is there already are never held back.
-local MAKE_PER_FRAME = 6
-local madeAt, madeCount = nil, 0
-local sweepFrom = nil   -- the first dressed plate (its index) the sweep takes up
-local ShadeSweep        -- (below)
-
-local function MayMake()
-	local now = GetTime()
-	if now ~= madeAt then
-		madeAt, madeCount = now, 0
-	end
-	if madeCount >= MAKE_PER_FRAME then
-		return false
-	end
-	madeCount = madeCount + 1
-	return true
-end
-
-local shadeAt = setmetatable({}, { __mode = "k" })   -- [unit frame] = its place in skin.plates
-local function Hold(uf)
-	local at = shadeAt[uf]
-	if at and (not sweepFrom or at < sweepFrom) then
-		sweepFrom = at
-	end
-	Kit:NextFrame(skin, ShadeSweep)
-end
-
+-- and partners -- up to 7 textures and 19 hooks a plate -- in one frame):
+-- through the core's one budget and hold queue (one-look D6: the Nameplates
+-- module's MayMakeOnPlate / HoldPlate, shared with its name bands), a held
+-- plate's partners made in a later frame's sweep. Showing, hiding and the
+-- strength of what is there already are never held back.
 local function ShadePiece(tex, plate, strength, make, scale)
 	if not tex then
 		return
@@ -917,21 +735,20 @@ local function ShadePiece(tex, plate, strength, make, scale)
 	end
 end
 
--- The plate's shade as the setting has it: the band made when first wanted,
--- the partners when Whole plate is first chosen (this frame, or held for the
--- sweep). `strength`: the UI Shade's, set on the partners already there too
--- (the bus's 'shade'); nil leaves it. The band keeps its own (MakeBand)
+local Held   -- (below: a held plate's partners)
+
+-- The plate's shade as the setting has it: the partners when Whole plate is
+-- first chosen (this frame, or held for the core's sweep). `strength`: the UI
+-- Shade's, set on the partners already there too (the bus's 'shade'); nil
+-- leaves it. The name band is the Nameplates module's
 local function ShadePlate(uf, strength)
 	local mode = ShadeMode()
 	local make = true
-	if Lacks(uf, mode) and not MayMake() then
+	local np = MelloUI:GetModule("Nameplates")
+	if Lacks(uf, mode) and np and not np:MayMakeOnPlate(uf) then
 		make = false
-		Hold(uf)
+		np:HoldPlate(uf, Held)
 	end
-	if not nameShadeOf[uf] and make and mode ~= "off" then
-		MakeBand(uf)
-	end
-	SyncBand(uf)
 	-- the partners: Whole plate, and the UI Shade's Nameplates area on
 	local plate = mode == "plate" and Kit:ShadeOn("nameplates")
 	local capL, mid, capR, orb, top = PlatePieces(uf)
@@ -950,30 +767,18 @@ local function ShadePlate(uf, strength)
 	end
 end
 
--- the held plates, from the first one on, until this frame's making is spent
--- again (a plate still lacking after its try -- no sheet before the restart
--- -- is not tried again by this sweep)
-function ShadeSweep(key)
-	local from = sweepFrom
-	sweepFrom = nil
-	if key ~= skin or not from or not active then
-		return   -- (off: Activate goes over every plate again)
-	end
-	local plates, mode, strength = skin.plates, ShadeMode(), ShadeStrength()
-	for n = from, #plates do
-		local uf = plates[n]
-		if Lacks(uf, mode) then
-			ShadePlate(uf, strength)
-			if sweepFrom then
-				return   -- (held again: on from there the next frame)
-			end
-		end
+-- a held plate's partners, in the core's sweep (which took the plate's slot
+-- for it); with the kit off meanwhile, nothing (Activate goes over every
+-- plate again)
+function Held(uf)
+	if active and Lacks(uf, ShadeMode()) then
+		ShadePlate(uf, ShadeStrength())
 	end
 end
 
 -- after the game laid the plate out: the partners' reach at the bracket's
--- new scale (the orb's: FitLevelOrb), the measure in the name's font (the
--- game sets it with the layout), the band shown or not
+-- new scale (the orb's: FitLevelOrb; the name band's measure is the
+-- Nameplates module's, re-fonted by its own layout hook)
 local function FitShade(uf)
 	local capL, mid, capR = PlatePieces(uf)
 	if capL and capL.kitShadow then
@@ -981,11 +786,6 @@ local function FitShade(uf)
 		Kit:ShadowFit(mid)
 		Kit:ShadowFit(capR)
 	end
-	local measure = nameMeasureOf[uf]
-	if measure then
-		Shade:MeasureFont(measure)
-	end
-	SyncBand(uf)
 end
 
 local function ShadeAll(strength)
@@ -1062,8 +862,12 @@ local function MarkPlate(uf, unit)
 	local top = topOf[uf]
 	local made = false
 	if kind and not top and uf.name then
-		WatchName(uf)
-		local host = NameHost(uf)
+		-- (the marks need only the name's watch: the Nameplates module's)
+		local np = MelloUI:GetModule("Nameplates")
+		if np then
+			np:WatchName(uf)
+		end
+		local host = (np and np:NameHost(uf)) or uf
 		top = { parts = {} }
 		for _, key in ipairs(TOP_PARTS) do
 			local tex = host:CreateTexture(nil, "ARTWORK", nil, TOP_SUB[key])
@@ -1272,7 +1076,6 @@ local function SkinUnitFrame(uf)
 				bracketLeftOf[uf] = nil
 				CastFit.Unlay(uf)
 				UncentreName(uf)
-				SyncBand(uf)
 				HangTop(uf)
 				-- the game's anchors back (its own layout, no arms, no margin)
 				if Inset.done[hb] and container then
@@ -1323,10 +1126,9 @@ local function SkinUnitFrame(uf)
 			Replace(lf.selectedBorder, { as = "ui-hud-nameplates-levelindicator-selected" })
 		end
 	end
-	-- the name shade, made with the dress (or a frame or so later in a
-	-- crowd: ShadePlate) and kept as the plate recycles
+	-- the Whole plate partners, made with the dress (or a frame or so later
+	-- in a crowd: ShadePlate) and kept as the plate recycles
 	skin.plates[#skin.plates + 1] = uf
-	shadeAt[uf] = #skin.plates
 	ShadePlate(uf)
 	-- (the dressed plate on the game's one pixel grid)
 	if active then
@@ -1351,10 +1153,23 @@ end
 -- UI Shade switched or its strength moved: the bus's 'shade' for the
 -- Nameplates area (Modules/KitShade.lua; the area has no switch of its own
 -- since 0.16.0). The Whole plate partners follow it and its strength; the
--- name bands keep their own (0.19.4: readability bands, MakeBand)
+-- name bands keep their own (the Nameplates module's)
 local function OnShade(area)
 	if area == "nameplates" and active then
 		ShadeAll(ShadeStrength())
+	end
+end
+
+-- (one-look D6, at load: the Nameplates module loads first, MelloUI.toc) the
+-- name's place on the bracket is the core's placer, and the marks follow the
+-- core's name watch
+do
+	local np = MelloUI:GetModule("Nameplates")
+	if np and np.SetNamePlacer then
+		np:SetNamePlacer(function(uf)
+			return M:PlaceName(uf)
+		end)
+		np:FollowName(SyncTop)
 	end
 end
 
@@ -1470,9 +1285,23 @@ SlashCmdList.MELLONPDUMP = function(msg)
 				(okT and not Secret(text)) and string.format("%q", tostring(text)) or "(secret)", Centre(name), n,
 				tostring(okP and not Secret(point) and point or "?"), relName,
 				hb and Centre(hb) or "?", tostring(okJ and not Secret(justify) and justify or "?"), tostring(centredStyle[name] ~= nil))
-			if nameShadeOf[uf] then
-				MelloUI:Print("name shade: %s, %s", nameShadeOf[uf]:IsShown() and "shown" or "hidden",
-					nameMeasured[uf] and "as long as the name" or "along the whole bracket")
+			-- (one-look D6: the band and the cover are the Nameplates module's)
+			local np = MelloUI:GetModule("Nameplates")
+			local k = np and np.kept
+			local band = k and k.nameBandOf and k.nameBandOf[uf]
+			if band then
+				MelloUI:Print("name shade: %s, %s", band:IsShown() and "shown" or "hidden",
+					k.nameMeasured[uf] and "as long as the name" or "no text measured: no band")
+			end
+			if k and k.nameCoverOf then
+				local cover = k.nameCoverOn[name]
+				local okC, ctext = false, nil
+				if cover then
+					okC, ctext = pcall(cover.GetText, cover)
+				end
+				MelloUI:Print("name cover: %s%s (hide: %s)", cover and "covered" or "not covered",
+					cover and (okC and not Secret(ctext) and string.format(", %q", tostring(ctext)) or ", (secret)") or "",
+					tostring(k.nameHide))
 			end
 			local strip = bracketRepOf[uf] and bracketRepOf[uf].strip
 			local top = topOf[uf]
@@ -1497,9 +1326,15 @@ SlashCmdList.MELLONPDUMP = function(msg)
 end
 
 -- What this module keeps beside the game's frames (hard rule 1: weak-keyed
--- tables, never keys on the frames), for the dumps and the tests: read only
-M.kept = { bandMeasured = bandMeasured, bracketRepOf = bracketRepOf, centredStyle = centredStyle,
-	levelOrbOf = levelOrbOf, markFaded = markFaded, markOf = markOf, markPlateOf = markPlateOf,
-	nameMeasureOf = nameMeasureOf, nameMeasured = nameMeasured, nameShadeOf = nameShadeOf, nameShown = nameShown,
-	nameSpanOf = nameSpanOf, orbScaleOf = orbScaleOf, plateDressed = plateDressed, shadeAt = shadeAt,
-	shadeOwner = shadeOwner, topOf = topOf }
+-- tables, never keys on the frames), for the dumps and the tests: read only.
+-- (one-look D6: the name band's tables are the Nameplates module's, aliased
+-- here under their old names)
+do
+	local np = MelloUI:GetModule("Nameplates")
+	local k = np and np.kept
+	M.kept = { bracketRepOf = bracketRepOf, centredStyle = centredStyle,
+		levelOrbOf = levelOrbOf, markFaded = markFaded, markOf = markOf, markPlateOf = markPlateOf,
+		nameMeasureOf = k and k.nameMeasureOf, nameMeasured = k and k.nameMeasured, nameShadeOf = k and k.nameBandOf,
+		nameShown = k and k.nameShown, nameSpanOf = nameSpanOf, orbScaleOf = orbScaleOf, plateDressed = plateDressed,
+		topOf = topOf }
+end

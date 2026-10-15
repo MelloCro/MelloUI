@@ -62,6 +62,10 @@
 --                      by Core itself with Tweaks off (Core/Notice.lua,
 --                      Core/CentreText.lua, MelloUI:Notice)
 --          gate        "Module.key": live only while that switch is on
+--          owner       "Module": while the key's own module is off, the row
+--                      sleeps with THAT module's switches instead (any-of:
+--                      a setting a core module reads from a kit panel's key
+--                      until the key moves; one-look D6)
 --          when        { key, value, line }: live only while that setting
 --                      has that value; `line` is the hint while it has not.
 --                      { key, notValue, line } (0.17.0): live while it has
@@ -541,7 +545,8 @@ function L.Define(R, Link)
 	R("Nameplates", "Plates", "Look", "DarkMode.nameplates", { name = "Dark Mode", when = Uncovered("NameplatePanel", "nameplates") })
 	R("Nameplates", "Plates", "Look", "BarTextures.nameplates", { name = "Bar Texture" })
 	R("Nameplates", "Plates", "Look", "NameplatePanel.marks")
-	R("Nameplates", "Plates", "Text", "NameplatePanel.nameShade")
+	-- (one-look D6: the name band is the Nameplates module's, its key still the kit's: live with either)
+	R("Nameplates", "Plates", "Text", "NameplatePanel.nameShade", { owner = "Nameplates" })
 	R("Nameplates", "Auras & Icons", "General", "UIModifications.qol_Nameplates")
 	R("Nameplates", "Auras & Icons", "General", "Nameplates.bigCC")
 	R("Nameplates", "Auras & Icons", "General", "Nameplates.questIcon")
@@ -1124,9 +1129,11 @@ function L.Define(R, Link)
 	Link("Route", "Route", "General", "Tweaks.noticeOnScreen", "On-screen Notices")
 	Link("Route", "Route", "Sound", "Tweaks.noticeSounds", "Notice Sounds")
 	-- (0.19.4, the options audit: the name band keeps its own strength; the UI Shade reaches the plates on Whole plate only)
+	-- (one-look D6: Whole plate is the Nameplate Kit's, so these two links need the kit too)
 	Link("Nameplates", "Plates", "Look", "UIModifications.uiShadeStrength", "Shade Strength", { when = { all = {
-		{ key = "NameplatePanel.nameShade", value = "plate" }, { key = "UIModifications.uiShade", value = true } },
-		line = "Only with Name Shade: Whole plate and the UI Shade on (the name band keeps its own)" } })
+		{ key = "NameplatePanel.nameShade", value = "plate" }, { key = "UIModifications.uiShade", value = true },
+		{ key = "UIModifications.reskin", notValue = false }, { key = "UIModifications.NameplatePanel", notValue = false } },
+		line = "Only with Name Shade: Whole plate on the Nameplate Kit and the UI Shade on (the name band keeps its own)" } })
 	Link("UnitFrames", "Frame", "Look", { player = "UIModifications.shade_unitframes", target = "UIModifications.shade_unitframes", focus = "UIModifications.shade_unitframes", pet = "UIModifications.shade_unitframes", party = "UIModifications.shade_unitframes", castbars = "UIModifications.shade_castbars" }, "UI Shade")
 	Link("UnitFrames", "Frame", "Text", "UIModifications.nameFormat", "Names")
 	Link("UnitFrames", "Bars", "Look", "BarTextures.texture", "Bar Texture (Look)")
@@ -1158,8 +1165,10 @@ function L.Define(R, Link)
 		{ key = "UIModifications.qol_Auras", value = true },
 		{ any = { { key = "Auras.player", value = true }, { key = "Auras.target", value = true } } } },
 		line = "Only on MelloUI's own buff rows (Buffs & Debuffs on)" } })
-	Link("Nameplates", "Plates", "Look", "UIModifications.uiShade", "UI Shade", { when = { key = "NameplatePanel.nameShade", value = "plate",
-		line = "Only with Name Shade: Whole plate (the name band keeps its own)" } })
+	Link("Nameplates", "Plates", "Look", "UIModifications.uiShade", "UI Shade", { when = { all = {
+		{ key = "NameplatePanel.nameShade", value = "plate" },
+		{ key = "UIModifications.reskin", notValue = false }, { key = "UIModifications.NameplatePanel", notValue = false } },
+		line = "Only with Name Shade: Whole plate on the Nameplate Kit (the name band keeps its own)" } })
 	Link("Nameplates", "Plates", "Look", "BarTextures.healthColor", "Health Bar Colour")
 	Link("Nameplates", "Plates", "Text", "UIModifications.nameFormat", "Names")
 	Link("Nameplates", "Auras & Icons", "Look", "UIModifications.auraBorder", "Aura Border", { when = { all = {

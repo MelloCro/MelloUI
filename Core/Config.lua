@@ -1377,6 +1377,14 @@ do
 			end
 			r.wide, r.picture, r.swatch, r.also = extra.wide, extra.picture, extra.swatch, extra.also
 			r.free = (extra.free or (first.opt and first.opt.free)) and true or nil
+			-- (one-look D6) the module whose switches the row sleeps with while
+			-- its key's own module is off (any-of: Gate)
+			if extra.owner then
+				r.owner = MelloUI:GetModule(extra.owner)
+				if not r.owner then
+					Problem("%s > %s: no module %s", p.key, t.name, tostring(extra.owner))
+				end
+			end
 			if extra.gate then
 				r.gate = Bind(extra.gate)
 				if not r.gate then
@@ -2095,7 +2103,15 @@ local function Gate(page, r)
 		return false, nil, NotFor(label)
 	end
 	local m = b.mod
-	local driven = Driven(m)
+	-- (one-look D6) a row whose key a core module reads from another module's
+	-- table sleeps with that module's switches while its own module is off
+	-- (any-of: the layout's `owner`; Name Shade, NameplatePanel's key that the
+	-- Nameplates module reads)
+	local gm = m
+	if r.owner and not MelloUI:IsModuleEnabled(m.name) then
+		gm = r.owner
+	end
+	local driven = Driven(gm)
 	-- 2: UI Modifications (its switch is the Look page's header's)
 	if driven and not r.free and not MelloUI:IsModuleEnabled("UIModifications") then
 		return false, TEXT.uim, SwitchLine(TEXT.uim, PageTitle("Look")), "!page:Look"
@@ -2103,7 +2119,7 @@ local function Gate(page, r)
 	-- 3: the module's own switch (a feature with one); a look switch UI
 	-- Modifications keeps for one module (the Quest Tracker's Painted Skin)
 	-- on that module's, as the module's other rows
-	local own = (not driven and b.kind ~= "module" and m) or LookOwner(b)
+	local own = (not driven and b.kind ~= "module" and gm) or LookOwner(b)
 	if own and not MelloUI:IsModuleEnabled(own.name) then
 		local sw = Lay.Get().switchOf[own.name]
 		if sw and sw.id then
@@ -2114,10 +2130,10 @@ local function Gate(page, r)
 	end
 	-- 4: its area: a kit panel's Painted Skin (the Windows page: the pick's)
 	-- and the reskin; a folded feature's switch
-	local w, tweak = m.window, m.tweak
+	local w, tweak = gm.window, gm.tweak
 	if type(w) == "table" and not w.switch then
 		local um = MelloUI.modules.UIModifications
-		local panel = page.fromWindows and page.pick or m.name
+		local panel = page.fromWindows and page.pick or gm.name
 		if um and Setting(um, "reskin") == false then
 			return Off(page, r, "UIModifications.reskin", "Painted Kit Reskin")
 		elseif um and Setting(um, panel) == false then
@@ -2125,9 +2141,9 @@ local function Gate(page, r)
 		end
 	elseif type(tweak) == "table" and not tweak.always then
 		local um = MelloUI.modules.UIModifications
-		local v = um and Setting(um, "qol_" .. m.name)
+		local v = um and Setting(um, "qol_" .. gm.name)
 		if (tweak.off and v ~= true) or (not tweak.off and v == false) then
-			return Off(page, r, "UIModifications.qol_" .. m.name, tweak.label or m.title)
+			return Off(page, r, "UIModifications.qol_" .. gm.name, tweak.label or gm.title)
 		end
 	end
 	-- 5: the schema's own parent / requires (the same module's switches)

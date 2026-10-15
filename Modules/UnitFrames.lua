@@ -141,19 +141,15 @@ local function CopyNameLook(name)
 	if not c then
 		return
 	end
-	local okF, file, size, flags = pcall(name.GetFont, name)
-	if okF and type(file) == "string" and type(size) == "number" then
-		pcall(c.fs.SetFont, c.fs, file, size, flags)
-	end
+	-- (one-look D6: the shared cover's copy, Core/Shade.lua -- the font, the
+	-- justify (the raid frames' Legacy layout justifies the name left, the
+	-- others centre it: the game sets it in its frame setup only), the
+	-- shadow, its last colour handed back -- then the name's colour, kept by
+	-- the cover so a Font Style copy hands it back too)
+	MelloUI.Shade:CoverFont(c.fs)
 	local okC, r, g, b, a = pcall(name.GetTextColor, name)
 	if okC and type(r) == "number" and type(g) == "number" and type(b) == "number" then
-		c.fs:SetTextColor(r, g, b, type(a) == "number" and a or 1)
-	end
-	-- (the raid frames' Legacy layout justifies the name left, the others
-	-- centre it: the game sets it in its frame setup only)
-	local okJ, justify = pcall(name.GetJustifyH, name)
-	if okJ and not Secret(justify) and type(justify) == "string" then
-		c.fs:SetJustifyH(justify)
+		MelloUI.Shade:CoverColour(c.fs, r, g, b, type(a) == "number" and a or 1)
 	end
 end
 
@@ -167,23 +163,14 @@ local function NameCover(frame)
 	-- holder of ours)
 	local compact = Compact.Is(frame)
 	local parent = compact and frame or (name.GetParent and name:GetParent() or frame)
-	local okL, layer = pcall(name.GetDrawLayer, name)
-	local fs = parent:CreateFontString(nil, okL and type(layer) == "string" and layer or "OVERLAY")
-	if compact then
-		-- (shown only once the game's name is parked: Compact.Park -- never
-		-- the form over a full name still seen)
-		fs:Hide()
-	end
-	local okO, object = pcall(name.GetFontObject, name)
-	if okO and type(object) == "table" then
-		fs:SetFontObject(object)
-	end
-	fs:SetAllPoints(name)
-	fs:SetJustifyH("LEFT")   -- (the name's own, CopyNameLook)
-	fs:SetWordWrap(false)
-	local okS, shadowX, shadowY = pcall(name.GetShadowOffset, name)
-	if okS and type(shadowX) == "number" and type(shadowY) == "number" then
-		fs:SetShadowOffset(shadowX, shadowY)
+	-- (one-look D6: the one cover maker, Shade:Cover -- the name's rect, draw
+	-- layer and sublevel, font, justify and shadow, no wrap; its colour set
+	-- with SetTextColor, the unit frames' names'. A compact frame's is made
+	-- hidden: shown only once the game's name is parked, Compact.Park --
+	-- never the form over a full name still seen)
+	local fs = MelloUI.Shade:Cover(parent, name, { hidden = compact, textColour = true })
+	if not fs then
+		return nil
 	end
 	c = { fs = fs, text = nil }
 	nameCovers[frame] = c
@@ -201,6 +188,9 @@ end
 -- the form on a per-frame name's cover (text set only when it changed)
 local function CoverName(frame, unit, mode)
 	local c = NameCover(frame)
+	if not c then
+		return
+	end
 	local text = MelloUI:UnitNameAs(unit, mode)
 	-- (asked for secret first: a secret text cannot be compared, set as it is)
 	local secret = Secret(text)
@@ -710,7 +700,12 @@ end
 -- Settings panel's preview frame, the arena's and the nameplates' are left to
 -- the game). Back to the full name, or the module off: unparked, the cover
 -- hidden. One cover and one holder per frame, ever; nothing made while the
--- form is the full name.
+-- form is the full name. (one-look D6, 2026-10-15: the user's probe B found a
+-- plate NAME's SetAlpha(0) held while the mob was hit -- the game's per-update
+-- SetText / SetVertexColor / Show never put it back -- so the nameplates' cover
+-- hides the game's glyphs by alpha, Modules/Nameplates.lua; the alpha reset
+-- noted here was seen on other regions and is not re-checked for these names:
+-- they stay parked. Both covers come from MelloUI.Shade:Cover.)
 --------------------------------------------------------------------------------
 
 Compact.KEY = "Unit Frames: compact names"
@@ -812,12 +807,14 @@ function Compact.Sweep()
 	for frame in pairs(Compact.seen) do
 		local c = nameCovers[frame]
 		if mode and Compact.Is(frame) and type(rawget(frame, "unit")) == "string" then
+			-- (none where the frame makes no font string, Shade:Cover: that
+			-- frame skipped, the game's full name stays)
 			c = c or NameCover(frame)
-			if Compact.Text(frame, c, mode) then
+			if c and Compact.Text(frame, c, mode) then
 				if not c.parked then
 					Compact.Park(frame, c)
 				end
-			elseif c.parked then
+			elseif c and c.parked then
 				Compact.Unpark(frame, c)
 			end
 		elseif c and c.parked then

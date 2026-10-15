@@ -31,6 +31,10 @@
 --                   are laid at featherY above and below the middle, and the
 --                   middle is the texture's flat part: full strength over the
 --                   whole region, as band:Anchor says
+--         pixel     (one-look D6) true: every slice on the pixel grid when
+--                   made (Shade:RoundToPixel): for parts added to a nameplate
+--                   after the game rounded the plate at its OnLoad
+--                   (Blizzard_NamePlateUnitFrame.lua:104)
 --   band:Anchor(region[, padX, padY])
 --       Its full-strength middle covers the region grown by padX on each
 --       side and padY above and below; the soft ends reach `feather` further
@@ -67,6 +71,28 @@
 --   MelloUI.Shade:Outline(...)    the band's soft look round any snapped
 --                                 shape (the action bars' backdrops; "The
 --                                 soft outline")
+-- onelook D6 adds, each made on first use only, nothing at load:
+--   MelloUI.Shade:RoundToPixel(region)   a region of ours on the pixel grid
+--                                 (Band's `pixel`, the measure's and the
+--                                 cover's)
+--   MelloUI.Shade:Measure(parent, source, point, opts)   opts { pixel,
+--                                 smooth }, read once ("The measure")
+--   MelloUI.Shade:Cover(parent, source[, opts]) -> fs, with :CoverText,
+--                                 :CoverColour and :CoverFont: a string of
+--                                 ours on a game line's rect in its look,
+--                                 showing another text over it ("The
+--                                 cover"; the nameplates' Show Names As and
+--                                 Unit Frames' name covers). opts: layer,
+--                                 sublevel, pixel, hidden, textColour (true:
+--                                 its colour set with SetTextColor; else
+--                                 SetVertexColor, the plates' game's), refont
+--                                 (fn(fs, source), run after a Font Style
+--                                 copy). The covers share the measures' one
+--                                 'fonts' listener (owner "Shade measures"),
+--                                 and after every font copy a cover gets its
+--                                 last colour back (a font object puts its
+--                                 own colour on a string: Notice.lua,
+--                                 QuestInk.lua)
 -- The one 'palette' listener (owner "Shade") repaints the bands, the glows
 -- and the outlines.
 --------------------------------------------------------------------------------
@@ -190,6 +216,34 @@ function Band:Anchor(a, b, c, d)
 	mid:SetPoint("BOTTOMRIGHT", right, "BOTTOMRIGHT", padX, -padY)
 end
 
+-- (one-look D6) a region of ours on the game's pixel grid: the game rounds a
+-- nameplate's every part to the nearest pixel once, at its making
+-- (Blizzard_NamePlateUnitFrame.lua OnLoad), and a part added later keeps its
+-- own sub-pixel layout and slides against the rounded ones as the plate
+-- moves. A frame that is forbidden or protected (or answers so secret, or
+-- raises) is left alone; only a plain false is set (NameplatePanel's Round)
+function Shade:RoundToPixel(region)
+	if type(region) ~= "table" or type(region.GetRoundLayoutToNearestPixel) ~= "function" then
+		return
+	end
+	if region.IsForbidden then
+		local okF, forbidden = pcall(region.IsForbidden, region)
+		if not okF or Secret(forbidden) or forbidden then
+			return
+		end
+	end
+	if region.IsProtected then
+		local okP, protected = pcall(region.IsProtected, region)
+		if not okP or Secret(protected) or protected then
+			return
+		end
+	end
+	local ok, on = pcall(region.GetRoundLayoutToNearestPixel, region)
+	if ok and not Secret(on) and on == false then
+		pcall(region.SetRoundLayoutToNearestPixel, region, true)
+	end
+end
+
 local function Repaint()
 	for band in pairs(bands) do
 		band:Paint()
@@ -266,6 +320,11 @@ function Shade:Band(parent, opts)
 	if featherY and featherY > 0 then
 		Edges(band, parent, layer, sublevel, featherY)
 	end
+	if opts.pixel then
+		for i = 1, #band.slices do
+			Shade:RoundToPixel(band.slices[i])
+		end
+	end
 	band:Paint()
 	if opts.region then
 		band:Anchor(opts.region, opts.padX, opts.padY)
@@ -317,7 +376,10 @@ end
 --------------------------------------------------------------------------------
 -- The measure (lifted from the nameplates' name shade, 0.13.7, for any line
 -- a band must hug without reading its size: the centre texts, 0.14.0)
---   local m = MelloUI.Shade:Measure(parent, source[, point])
+--   local m = MelloUI.Shade:Measure(parent, source[, point[, opts]])
+--       (one-look D6: opts, read once, not kept: pixel -- the holder and the
+--       measure on the pixel grid, Shade:RoundToPixel; smooth -- the
+--       source's smooth scaling copied with its font, as a nameplate name's)
 --       An unseen font string made on `parent` (BACKGROUND, no width of its
 --       own, no wrap) -- on parent's unseen child frame (alpha 0, one per
 --       parent, on parent's rect, out of layouts, no mouse): its own alpha
@@ -349,6 +411,32 @@ end
 -- Nothing is written onto the source, and no size is read anywhere. (The
 -- nameplates' name shade uses these calls too, since 0.14.0: one measure,
 -- one 'fonts' listener.)
+--
+-- The cover (one-look D6: the nameplates' Show Names As, written on the
+-- game's name on every health update before -- hard rule 1 -- and Unit
+-- Frames' name covers, one maker for both)
+--   local fs = MelloUI.Shade:Cover(parent, source[, opts])
+--       A font string of ours made on `parent` at the source's draw layer
+--       and sublevel (opts.layer / opts.sublevel win), on the source's rect
+--       (SetAllPoints), no wrap, in the source's look: its font (as a
+--       measure's, with smooth scaling), justify (H and V) and shadow. opts,
+--       read once: pixel (on the pixel grid), hidden (made hidden),
+--       textColour (true: its colour set with SetTextColor; else
+--       SetVertexColor), refont (fn(fs, source), run after each Font Style
+--       copy of it). nil when parent cannot make font strings.
+--   MelloUI.Shade:CoverText(fs, text) -> taken
+--       a secret text handed on each time, never compared; a plain one set
+--       only when it differs from the last
+--   MelloUI.Shade:CoverColour(fs, r, g, b, a)
+--       kept as it comes and set with the cover's setter: a secret part
+--       handed on every call, never compared; a plain colour skipped when
+--       it is the one on already
+--   MelloUI.Shade:CoverFont(fs[, source])
+--       its look copied again (from `source`, which it then follows)
+-- After every copy of the look the cover's last colour is handed back, raw
+-- (a font object puts its own colour on a string): only a plain flag is
+-- tested, never the values. Every cover is copied again with the measures
+-- when the fonts change (the same one 'fonts' listener), then its refont.
 --------------------------------------------------------------------------------
 
 do
@@ -357,6 +445,14 @@ do
 		TOPRIGHT = true, BOTTOMLEFT = true, BOTTOMRIGHT = true }
 	local fontsHeard = false
 	local holders = setmetatable({}, { __mode = "k" })   -- [parent] = its unseen frame for measures
+	-- (one-look D6) the strings whose font copy takes the source's smooth
+	-- scaling too (a nameplate name's: Blizzard_NamePlates.xml, smoothScaling)
+	local smooth = setmetatable({}, { __mode = "k" })   -- [font string] = true
+	-- the covers: [cover] = the line it covers; [cover] = its record (made
+	-- once at Cover: text, textSet, r, g, b, a, colourSet, colourSecret,
+	-- setter, refont)
+	local covers = setmetatable({}, { __mode = "k" })
+	local rec = setmetatable({}, { __mode = "k" })
 
 	-- the frame a parent's measures are drawn on: alpha 0 (a frame's alpha no
 	-- font object changes), on the parent's rect so it is laid out, out of
@@ -388,12 +484,58 @@ do
 		if okS and not Secret(scale) and type(scale) == "number" then
 			pcall(m.SetTextScale, m, scale)
 		end
-		m:SetAlpha(0)   -- (the font object set it back; its holder keeps it unseen anyway)
+		if smooth[m] then
+			local okM, on = pcall(source.GetSmoothScaling, source)
+			if okM and not Secret(on) and type(on) == "boolean" then
+				pcall(m.SetSmoothScaling, m, on)
+			end
+		end
+		-- (one-look D6: a measure's alpha 0 is set by each caller right after
+		-- this -- the font object set it back; a cover keeps its own)
+	end
+
+	-- a cover's look (one-look D6): the font, the justify and the shadow, each
+	-- handed on as it comes (a secret or refused one leaves that part); then
+	-- its last colour back, the values raw and never compared -- a font
+	-- object puts its own colour on a string (only the plain flag is tested)
+	local function CopyLook(source, fs)
+		CopyFont(source, fs)
+		local okH, h = pcall(source.GetJustifyH, source)
+		if okH and not Secret(h) and type(h) == "string" then
+			pcall(fs.SetJustifyH, fs, h)
+		end
+		local okV, v = pcall(source.GetJustifyV, source)
+		if okV and not Secret(v) and type(v) == "string" then
+			pcall(fs.SetJustifyV, fs, v)
+		end
+		local okO, x, y = pcall(source.GetShadowOffset, source)
+		if okO and Num(x) and Num(y) then
+			pcall(fs.SetShadowOffset, fs, x, y)
+		end
+		local okC, r, g, b, a = pcall(source.GetShadowColor, source)
+		if okC and Num(r) and Num(g) and Num(b) and not Secret(a) then
+			pcall(fs.SetShadowColor, fs, r, g, b, a)
+		end
+		local c = rec[fs]
+		if c and c.colourSet then
+			pcall(fs[c.setter], fs, c.r, c.g, c.b, c.a)
+		end
 	end
 
 	local function RefontAll()
 		for m, source in pairs(measures) do
 			CopyFont(source, m)
+			m:SetAlpha(0)   -- (the font object set it back; its holder keeps it unseen anyway)
+		end
+		for fs, source in pairs(covers) do
+			CopyLook(source, fs)
+			local c = rec[fs]
+			if c and c.refont then
+				local ok, err = pcall(c.refont, fs, source)
+				if not ok then
+					geterrorhandler()(err)
+				end
+			end
 		end
 	end
 
@@ -406,21 +548,38 @@ do
 		end
 	end
 
-	function Shade:Measure(parent, source, point)
-		if type(parent) ~= "table" or type(parent.CreateFontString) ~= "function" or type(source) ~= "table" then
-			return nil
-		end
-		point = type(point) == "string" and POINTS[point] and point or "TOP"
-		local m = Holder(parent):CreateFontString(nil, "BACKGROUND")
-		m:SetAlpha(0)   -- (and its own alpha 0 too, for what it is worth)
-		m:SetWordWrap(false)
-		m:SetPoint(point, source, point, 0, 0)
-		CopyFont(source, m)
-		measures[m] = source
+	-- the one 'fonts' listener, taken with the first measure or cover
+	local function HearFonts()
 		if not fontsHeard then
 			fontsHeard = true
 			MelloUI:On("fonts", OnFonts, "Shade measures")
 		end
+	end
+
+	function Shade:Measure(parent, source, point, opts)
+		if type(parent) ~= "table" or type(parent.CreateFontString) ~= "function" or type(source) ~= "table" then
+			return nil
+		end
+		point = type(point) == "string" and POINTS[point] and point or "TOP"
+		local pixel = type(opts) == "table" and opts.pixel
+		local holder = Holder(parent)
+		if pixel then
+			Shade:RoundToPixel(holder)
+		end
+		local m = holder:CreateFontString(nil, "BACKGROUND")
+		m:SetAlpha(0)   -- (and its own alpha 0 too, for what it is worth)
+		m:SetWordWrap(false)
+		m:SetPoint(point, source, point, 0, 0)
+		if type(opts) == "table" and opts.smooth then
+			smooth[m] = true
+		end
+		CopyFont(source, m)
+		m:SetAlpha(0)   -- (the font object set it back; its holder keeps it unseen anyway)
+		if pixel then
+			Shade:RoundToPixel(m)
+		end
+		measures[m] = source
+		HearFonts()
 		return m
 	end
 
@@ -446,6 +605,7 @@ do
 			measures[m] = source
 		end
 		CopyFont(measures[m], m)
+		m:SetAlpha(0)   -- (the font object set it back; its holder keeps it unseen anyway)
 	end
 
 	function Shade:ClearMeasure(m)
@@ -457,6 +617,98 @@ do
 		else
 			pcall(m.SetText, m, "")
 		end
+	end
+
+	-- The cover (one-look D6; the section's head above)
+	function Shade:Cover(parent, source, opts)
+		if type(parent) ~= "table" or type(parent.CreateFontString) ~= "function" or type(source) ~= "table" then
+			return nil
+		end
+		if type(opts) ~= "table" then
+			opts = NO_OPTIONS
+		end
+		-- the source's draw layer and sublevel (asked for secret first), the
+		-- options' where given
+		local okL, layer, sublevel = pcall(source.GetDrawLayer, source)
+		if not okL or Secret(layer) or type(layer) ~= "string" or not LAYERS[layer] then
+			layer = "OVERLAY"
+		end
+		if not okL or Secret(sublevel) or type(sublevel) ~= "number" then
+			sublevel = 0
+		end
+		if type(opts.layer) == "string" and LAYERS[opts.layer] then
+			layer = opts.layer
+		end
+		sublevel = math.floor(Num(opts.sublevel) or sublevel)
+		if sublevel < -8 then
+			sublevel = -8
+		elseif sublevel > 7 then
+			sublevel = 7
+		end
+		local fs = parent:CreateFontString(nil, layer)
+		pcall(fs.SetDrawLayer, fs, layer, sublevel)
+		fs:SetAllPoints(source)
+		fs:SetWordWrap(false)
+		smooth[fs] = true
+		rec[fs] = { setter = opts.textColour and "SetTextColor" or "SetVertexColor",
+			refont = type(opts.refont) == "function" and opts.refont or nil, textSet = false, colourSet = false }
+		CopyLook(source, fs)
+		if opts.pixel then
+			Shade:RoundToPixel(fs)
+		end
+		if opts.hidden then
+			fs:Hide()
+		end
+		covers[fs] = source
+		HearFonts()
+		return fs
+	end
+
+	function Shade:CoverText(fs, text)
+		local c = type(fs) == "table" and rec[fs]
+		if not c then
+			return false
+		end
+		-- (asked for secret first: a secret is handed on each time, never compared)
+		if Secret(text) then
+			c.text, c.textSet = nil, false
+			return (pcall(fs.SetText, fs, text))
+		end
+		if c.textSet and c.text == text then
+			return true
+		end
+		local ok = pcall(fs.SetText, fs, text)
+		c.text, c.textSet = text, ok
+		return ok
+	end
+
+	function Shade:CoverColour(fs, r, g, b, a)
+		local c = type(fs) == "table" and rec[fs]
+		if not c then
+			return
+		end
+		if Secret(r) or Secret(g) or Secret(b) or Secret(a) then
+			c.r, c.g, c.b, c.a = r, g, b, a
+			c.colourSet, c.colourSecret = true, true
+			pcall(fs[c.setter], fs, r, g, b, a)
+			return
+		end
+		if c.colourSet and not c.colourSecret and c.r == r and c.g == g and c.b == b and c.a == a then
+			return
+		end
+		c.r, c.g, c.b, c.a = r, g, b, a
+		c.colourSet, c.colourSecret = true, false
+		pcall(fs[c.setter], fs, r, g, b, a)
+	end
+
+	function Shade:CoverFont(fs, source)
+		if type(fs) ~= "table" or not covers[fs] then
+			return
+		end
+		if type(source) == "table" then
+			covers[fs] = source
+		end
+		CopyLook(covers[fs], fs)
 	end
 end
 

@@ -12,6 +12,14 @@
 --
 -- Blizzard must be showing crowd control on nameplates for this to have any
 -- effect: Options > Nameplates > enemy NPC auras > Crowd Control.
+--
+-- The plate names (one-look D6; the Plate section below RestoreAll): the
+-- soft band behind each name above its bar, as long as the name (Name Shade,
+-- moved from the Nameplate Kit: the user's 2026-09-25 plate band; bar plates
+-- only and part of Nameplate Tweaks since 2026-10-15); Show Names As as a
+-- cover of ours, never a write on the game's name; one name watch and one
+-- crowd budget for everything made on a plate. The Nameplate Kit (Oldschool)
+-- plugs in with SetNamePlacer, WatchName and FollowName.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -32,7 +40,7 @@ local M = MelloUI:RegisterModule("Nameplates", {
 	flavour = "Know who is stunned, who is your quest target, and who is about to be a problem.",
 	group = "Frames and bars", navOrder = 2,
 	role = "adds",
-	tweak = { label = "Nameplate Tweaks", desc = "On the game's nameplates: the large crowd-control icon above the name, the quest marker on enemies you still need, the threat line, the combo points on your target's plate and the names' form (Show Names As). Off: all five go. Works with or without the reskin.", order = 4 },
+	tweak = { label = "Nameplate Tweaks", desc = "On the game's nameplates: the large crowd-control icon above the name, the quest marker on enemies you still need, the threat line, the combo points on your target's plate, the names' form (Show Names As) and the soft shade behind the names (Name Shade). Off: all six go. Works with or without the reskin.", order = 4 },
 	defaults = {
 		nameFormat = "both",   -- set by UI Modifications' "Show Names As" (one setting for every name)
 		bigCC = true,
@@ -79,55 +87,18 @@ end
 -- the combo points on the target's plate (their section below; the name's
 -- lift is read by the crowd-control icon's offset before it)
 local Combo = {}
+-- the plate names' one table (one-look D6: the band behind the names, Show
+-- Names As's cover, the names' watch and the crowd budget; its section below
+-- RestoreAll)
+local Plate = {}
 
 --------------------------------------------------------------------------------
--- The name's form on nameplates (user, 2026-09-22): after the game has set
--- a plate's name (CompactUnitFrame_UpdateName, the plates' compact frames
--- only), the text is set again in the chosen form. A post-hook; a secret
--- name is left as the game shows it. The unit frames are Unit Frames'.
+-- The names' form on nameplates (user, 2026-09-22) is drawn by a cover of
+-- ours since one-look D6 (the Plate section below): the game's name text is
+-- never written (it was set again after every CompactUnitFrame_UpdateName,
+-- that is on every health update of every plate: hard rule 1). The unit
+-- frames are Unit Frames'.
 --------------------------------------------------------------------------------
-
-local function IsNamePlateFrame(frame)
-	local options = frame.optionTable
-	if options and (options == NamePlateEnemyFrameOptions or options == NamePlateFriendlyFrameOptions or options == NamePlatePlayerFrameOptions) then
-		return true
-	end
-	local parent = frame.GetParent and frame:GetParent()
-	local name = parent and parent.GetName and parent:GetName()
-	return type(name) == "string" and name:sub(1, 9) == "NamePlate"
-end
-
-local function ApplyPlateName(frame, mode)
-	if not (frame and frame.name and frame.unit) then
-		return
-	end
-	local text = MelloUI:UnitNameAs(frame.unit, mode)
-	if text ~= nil then
-		pcall(frame.name.SetText, frame.name, text)
-	end
-end
-
-local function OnCompactName(frame)
-	if not (M.isEnabled and M.db) or not frame or not frame.name then
-		return
-	end
-	local mode = M.db.nameFormat or "both"
-	if mode == "both" or not IsNamePlateFrame(frame) then
-		return
-	end
-	ApplyPlateName(frame, mode)
-end
-
-local plateNameHooked = false
-local function InstallPlateNameHook()
-	if plateNameHooked then
-		return
-	end
-	plateNameHooked = true
-	if type(CompactUnitFrame_UpdateName) == "function" then
-		hooksecurefunc("CompactUnitFrame_UpdateName", OnCompactName)
-	end
-end
 
 -- a plate setup option (NamePlateSetupOptions: plain numbers), else fallback
 local function SetupOption(key, fallback)
@@ -136,12 +107,14 @@ local function SetupOption(key, fallback)
 end
 
 -- The game's own anchors for a plate's name, `lift` units higher: as the
--- game's UpdateAnchors lays them for its setup style
--- (Blizzard_NamePlateUnitFrame.lua; the name's own anchors read secret here,
--- so they are laid again from the plain options, never read). The one place
--- for them: NameplatePanel puts the name back here when its kit look comes
--- off, and the combo points lift it here (Combo, below). A name inside the
--- bar is left to the game.
+-- game's UpdateAnchors lays them for its setup style and the plate's
+-- name-only state (Blizzard_NamePlateUnitFrame.lua:741-790; the name's own
+-- anchors read secret here, so they are laid again from the plain options,
+-- never read). Everything is decided before the name's anchors are cleared.
+-- A name inside the bar (a name-only one too: the game lays it LEFT/RIGHT
+-- inside the container) is left to the game, and so is a name-only answer
+-- read secret. The look that holds the name registers with SetNamePlacer;
+-- M:PlaceName below is the one seam (the combo points lift the name there).
 function M:LayGameName(uf, lift)
 	local name = uf and uf.name
 	local container = uf and uf.HealthBarsContainer
@@ -153,36 +126,63 @@ function M:LayGameName(uf, lift)
 	if style == styles.InsideHealthBar then
 		return
 	end
-	local y = SetupOption("healthBarToNameAboveSpacing", 2) + (lift or 0)
+	lift = lift or 0
+	-- a name-only plate (a friendly player's): the game's :742, :748-749
+	if type(uf.IsShowOnlyName) == "function" then
+		local ok, only = pcall(uf.IsShowOnlyName, uf)
+		if not ok or Secret(only) then
+			return
+		end
+		if only == true then
+			name:ClearAllPoints()
+			name:SetJustifyH("CENTER")
+			name:SetPoint("BOTTOMLEFT", container, "TOPLEFT", 4, 2 + lift)
+			name:SetPoint("BOTTOMRIGHT", container, "TOPRIGHT", -4, 2 + lift)
+			return
+		end
+	end
+	local y = SetupOption("healthBarToNameAboveSpacing", 2) + lift
 	name:ClearAllPoints()
 	if style == styles.CenteredAboveHealthBar then
 		name:SetJustifyH("CENTER")
 		name:SetPoint("BOTTOM", container, "TOP", 0, y)
 		return
 	end
-	name:SetJustifyH(NamePlateSetupOptions and NamePlateSetupOptions.nameJustificationWhenAboveHealthBar or "LEFT")
+	local opts = NamePlateSetupOptions
+	name:SetJustifyH(opts and opts.nameJustificationWhenAboveHealthBar or "LEFT")
 	name:SetPoint("BOTTOMLEFT", container, "TOPLEFT", 0, y)
+	-- the right end (the game's :772-788): on the level frame while it shows
+	-- (it stands in for the game's displayLevelFrame and 'RIGHT' test, whose
+	-- anchor reads secret), else on the container's right with the health
+	-- text inside the bar (Camelot's setting), else left of the health text
 	local lf = uf.PlayerLevelDiffFrame
 	local hbText = container.healthBar and container.healthBar.Text
+	local inside = opts and opts.healthTextInsideBarWhenNameAboveHealthBar
 	if lf and MelloUI.Safe.Call(lf, "IsShown") then
 		name:SetPoint("RIGHT", lf, "RIGHT", 0, 0)
+	elseif not Secret(inside) and inside == true then
+		name:SetPoint("RIGHT", container, "RIGHT", 0, 0)
 	elseif hbText then
 		name:SetPoint("RIGHT", hbText, "LEFT", -2, 0)
 	end
 end
 
--- Every plate again, in the given form (a setting changed, the module off).
-local function RefreshPlateNames(mode)
-	local ok, plates = pcall(C_NamePlate.GetNamePlates)
-	if not (ok and type(plates) == "table") then
-		return
+-- A plate's name laid again with its lift (the combo points): where the look
+-- that holds the name lays it (its placer answers true), else on the game's
+-- own anchors. true while that look holds it.
+function M:PlaceName(uf)
+	local placer = Plate.placer
+	if placer and placer(uf) then
+		return true
 	end
-	for _, plate in ipairs(plates) do
-		local frame = plate.UnitFrame
-		if frame and not (frame.IsForbidden and frame:IsForbidden()) then
-			ApplyPlateName(frame, mode)
-		end
-	end
+	M:LayGameName(uf, M:NameLift(uf))
+	return false
+end
+
+-- the look that holds the plates' names (the Nameplate Kit's CentreName):
+-- fn(uf) lays the name and answers true while it holds it; nil: none
+function M:SetNamePlacer(fn)
+	Plate.placer = type(fn) == "function" and fn or nil
 end
 
 --------------------------------------------------------------------------------
@@ -329,14 +329,29 @@ local function HookUnitFrame(unitFrame)
 		return
 	end
 	hookedUnitFrames[unitFrame] = true
+	-- (UpdateAnchors runs on an add, an option or style change, a name-only
+	-- flip and the debuff-padding CVar -- Blizzard_NamePlateUnitFrame.lua:246,
+	-- :585, :137 -- never per frame)
 	if type(unitFrame.UpdateAnchors) == "function" then
 		hooksecurefunc(unitFrame, "UpdateAnchors", function(self)
-			-- (the game laid the name again: lifted again over the combo points)
+			-- (the game laid the name again: lifted again over the combo points,
+			-- then the plate names' parts on it -- after the lift, so a cover's
+			-- justify is read back after the name's last layout)
 			Combo.Relaid(self)
+			Plate.Relaid(self)
 			if Active() then
 				AnchorCC(self)
 			end
 		end)
+	end
+	-- (the plate names: the realm display -- a unit set, a friend or player
+	-- change, the realm-name CVar, :140 :164 :275 :315 :630-644, never per
+	-- update -- and the unit cleared on a removal, ClearUnit: never per update)
+	if type(unitFrame.UpdateNameRealmDisplay) == "function" then
+		hooksecurefunc(unitFrame, "UpdateNameRealmDisplay", Plate.OnRealm)
+	end
+	if type(unitFrame.OnUnitCleared) == "function" then
+		hooksecurefunc(unitFrame, "OnUnitCleared", Plate.Cleared)
 	end
 end
 
@@ -419,6 +434,824 @@ local function RestoreAll()
 			end
 		end
 	end
+end
+
+--------------------------------------------------------------------------------
+-- The plate names (one-look D6): the soft band behind each name above its
+-- bar, as long as the name (the user's 2026-09-25 plate band; 2026-10-15: bar
+-- plates only, none on friendly players' name-only plates, part of Nameplate
+-- Tweaks), and Show Names As as a cover, never a write on the game's name.
+-- The game sets a plate's name on every health update (CompactUnitFrame.lua
+-- :737, :827-891: UpdateName -- SetText :858, its SetVertexColor, Show :890 /
+-- Hide :842); UNIT_NAME_UPDATE only marks the health dirty (:125-127). Each
+-- add runs the name's SetFontObject (Blizzard_NamePlateUnitFrame.lua:225) and
+-- UpdateAnchors (:246), then SetUpFrame's UpdateAll (Blizzard_NamePlateBase.lua
+-- :29-35, :62-70; Blizzard_NamePlateUnitFrame.lua:213-247); a name-only plate
+-- is laid at :561-587; the hit test hangs on the name's TOPLEFT (:589-612); the
+-- health text follows the name's IsShown (Blizzard_NamePlateHealthBar.lua
+-- :46-73). So the game's name is never shown, hidden or written here: only
+-- its glyphs are hidden (Plate.HIDE) while a cover of ours shows the form.
+--   The band: MelloUI.Shade's soft band (the 09-25 look), anchored once on an
+--   unseen measure of the name (Shade:Measure: the engine sizes it to the
+--   text, nothing is read), fed on events only -- our NAME_PLATE_UNIT_ADDED,
+--   UNIT_NAME_UPDATE then the game's next Show, the plate's
+--   UpdateNameRealmDisplay. No SetText hook.
+--   The watch: Show, Hide and SetShown on the name, the only Lua run per game
+--   update (a table read or two when nothing changed).
+--   The cover: Shade:Cover on the name's rect in its look; the game's glyphs
+--   hidden on an add, after its UpdateAnchors and after a Font Style change,
+--   never per update; undone when the plate's unit is cleared
+--   (OnUnitCleared, a removal), so a pooled frame never carries a hidden name
+--   to its next unit, nor to the Settings' preview plate (which takes a frame
+--   from the same pool without our add).
+--   The crowd: one budget, MAKE_PER_FRAME plates a frame, and one hold queue
+--   (the next-frame queue), shared with the Nameplate Kit's Whole plate partners.
+-- Nothing is made at login or per event; every part is Core/Shade.lua's; no
+-- size or position is read here.
+--------------------------------------------------------------------------------
+
+Plate.MAKE_PER_FRAME = 6
+-- the band's middle 4 past the text's ends and 5 above and below
+Plate.PAD_X, Plate.PAD_Y = 4, 5
+-- The measure stands on the name's BOTTOM, whose bottom edge every layout sets
+-- (Above's BOTTOMLEFT :770, Classic's BOTTOM :767, name-only :748-749, the
+-- kit's CentreName): with the name's own font height its box is the name's
+-- line. Its middle is the glyphs' middle while the name is centred (justify
+-- CENTER: Camelot's Overrides L3 for Above, the name-only and Classic layouts
+-- and every placer), the assumption here (the base game's Above default is
+-- LEFT). 'CENTER' is the one-constant fallback.
+Plate.POINT = "BOTTOM"
+Plate.OWNER = "Nameplates names"
+Plate.KEY = "Nameplates plate parts"
+Plate.MODES = { name = true, plate = true, off = true }
+-- the band's look (Shade:Band's options, read once a band; alpha set to the
+-- soft text look's at each making: a readability band, as the notice's)
+Plate.LOOK = { colour = "innerPanel", feather = 20, layer = "BACKGROUND", sublevel = -8, pixel = true }
+Plate.MEASURE = { pixel = true, smooth = true }
+Plate.COVER = { pixel = true }
+-- How the game's glyphs are hidden under a cover: "alpha" -- the user's probe
+-- B, 2026-10-15: SetAlpha(0) on a plate's name holds while the mob is hit, the
+-- game's per-update SetText / SetVertexColor / Show never set it back;
+-- "gradient" (SetAlphaGradient); false: no cover (Show Names As then stays
+-- off the plates)
+Plate.HIDE = "alpha"
+Plate.GRADIENT_START, Plate.GRADIENT_LENGTH = 0, 1
+-- by unit frame (weak keys: nothing written on the game's frames)
+Plate.bandOf = setmetatable({}, { __mode = "k" })      -- its band
+Plate.measureOf = setmetatable({}, { __mode = "k" })   -- its name's measure
+Plate.measured = setmetatable({}, { __mode = "k" })    -- true: the measure holds the name's text
+Plate.textOf = setmetatable({}, { __mode = "k" })      -- the last plain text fed
+Plate.formOf = setmetatable({}, { __mode = "k" })      -- the cover's form (plain or secret)
+Plate.at = setmetatable({}, { __mode = "k" })          -- true: met (in Plate.plates)
+Plate.live = setmetatable({}, { __mode = "k" })        -- true: holds a unit, seen while on
+Plate.slotAt = setmetatable({}, { __mode = "k" })      -- the frame's time its making slot was taken
+Plate.jobs = setmetatable({}, { __mode = "k" })        -- its held jobs (one small array, made once)
+Plate.queued = setmetatable({}, { __mode = "k" })      -- true: in the hold queue
+-- by name region
+Plate.watched = setmetatable({}, { __mode = "k" })     -- true: its 3 watch hooks are on
+Plate.ownerOf = setmetatable({}, { __mode = "k" })     -- its unit frame
+Plate.shown = setmetatable({}, { __mode = "k" })       -- shown by the game as last seen
+Plate.stale = setmetatable({}, { __mode = "k" })       -- true: fed again at the game's next Show
+Plate.coverOf = setmetatable({}, { __mode = "k" })     -- its cover (made once)
+Plate.coverOn = setmetatable({}, { __mode = "k" })     -- its cover while it covers the name
+Plate.coverShown = setmetatable({}, { __mode = "k" })  -- true: its cover shown (ours, never read back)
+Plate.hidden = setmetatable({}, { __mode = "k" })      -- true: its glyphs hidden by us
+Plate.tinted = setmetatable({}, { __mode = "k" })      -- true: its SetVertexColor hook is on
+Plate.plates = {}      -- every plate frame met, once
+Plate.followers = {}   -- FollowName's functions
+Plate.queue, Plate.queueN, Plate.queueFrom = {}, 0, 1
+Plate.madeCount = 0
+Plate.listening = false
+
+-- the names' part runs while the module does
+function Plate.On()
+	return (M.isEnabled and M.db ~= nil) and true or false
+end
+
+-- Name Shade's mode: NameplatePanel's key until it moves (stage G). Read raw
+-- first (MelloUI.db.modules.NameplatePanel: the table GetModuleDB hands that
+-- module, Core.lua), then that module's own db (the test worlds).
+function Plate.Mode()
+	local db = MelloUI.db
+	local all = type(db) == "table" and db.modules
+	local own = type(all) == "table" and all.NameplatePanel
+	local mode = type(own) == "table" and own.nameShade or nil
+	if mode == nil then
+		local panel = MelloUI:GetModule("NameplatePanel")
+		local pdb = panel and panel.db
+		mode = type(pdb) == "table" and pdb.nameShade or nil
+	end
+	return Plate.MODES[mode] and mode or "name"
+end
+
+-- the names stand above the bars (not inside them)
+function Plate.Above()
+	local styles = NamePlateConstants and NamePlateConstants.NAME_ANCHOR_STYLES
+	if type(styles) ~= "table" or styles.InsideHealthBar == nil then
+		return false
+	end
+	return SetupOption("unitNameAnchorStyle", styles.InsideHealthBar) ~= styles.InsideHealthBar
+end
+
+-- a name-only plate (an answer read secret or refused counts as one: no band)
+function Plate.NameOnly(uf)
+	local fn = uf.IsShowOnlyName
+	if type(fn) ~= "function" then
+		return false
+	end
+	local ok, only = pcall(fn, uf)
+	if not ok or Secret(only) then
+		return true
+	end
+	return only == true
+end
+
+-- the band is wanted on this plate: the module on, Name Shade not Off, the
+-- name above a bar
+function Plate.Want(uf)
+	return Plate.On() and Plate.Mode() ~= "off" and Plate.Above() and not Plate.NameOnly(uf)
+end
+
+-- a form other than the full name is chosen (Show Names As)
+function Plate.FormWanted()
+	if not Plate.On() then
+		return false
+	end
+	local f = M.db.nameFormat
+	return f ~= nil and f ~= "both"
+end
+
+-- the frame that draws the name: the band lies under it, the cover beside it
+function Plate.Host(uf)
+	local name = uf.name
+	local ok, host = pcall(name.GetParent, name)
+	if ok and type(host) == "table" and host.CreateTexture then
+		return host
+	end
+	return uf
+end
+
+-- The watch: the name's show and hide (once per name, kept as the plates
+-- recycle). Made by Make, Cover and M:WatchName only.
+function Plate.Watch(uf)
+	local name = uf and uf.name
+	if not name or Plate.watched[name] then
+		return
+	end
+	Plate.watched[name] = true
+	Plate.ownerOf[name] = uf
+	-- (asked for secret first: a secret or refused answer counts as shown)
+	local ok, v = pcall(name.IsShown, name)
+	Plate.shown[name] = (not ok or Secret(v) or v) and true or false
+	hooksecurefunc(name, "Show", Plate.OnShow)
+	hooksecurefunc(name, "Hide", Plate.OnHide)
+	hooksecurefunc(name, "SetShown", Plate.OnSetShown)
+end
+
+-- every function FollowName gave, with the plate (no garbage)
+function Plate.Follow(uf)
+	local list = Plate.followers
+	for i = 1, #list do
+		list[i](uf)
+	end
+end
+
+-- the name shown or hidden by the game: the band, the cover and the
+-- followers on a change only (every health update Shows the name again)
+function Plate.Shown(name, v)
+	if Plate.shown[name] == v then
+		return
+	end
+	Plate.shown[name] = v
+	local uf = Plate.ownerOf[name]
+	if not uf then
+		return
+	end
+	if Plate.On() then
+		Plate.Sync(uf)
+		Plate.CoverShow(uf)
+	end
+	-- (the kit's marks follow the name with the module off too)
+	Plate.Follow(uf)
+end
+
+Plate.OnShow = Perf.Shared("Show on a nameplate's name (the names' watch)", function(name)
+	if Plate.stale[name] then
+		Plate.stale[name] = nil
+		Plate.Renamed(Plate.ownerOf[name])
+	end
+	Plate.Shown(name, true)
+end)
+Plate.OnHide = Perf.Shared("Hide on a nameplate's name (the names' watch)", function(name)
+	Plate.Shown(name, false)
+end)
+Plate.OnSetShown = Perf.Shared("SetShown on a nameplate's name (the names' watch)", function(name, v)
+	-- (asked for secret first: a secret answer counts as shown)
+	Plate.Shown(name, Secret(v) or (v and true or false))
+end)
+
+-- The name's text to its measure (the form while the cover shows it): a
+-- secret handed on, never compared; a plain one only when it changed
+function Plate.Feed(uf)
+	local m = Plate.measureOf[uf]
+	if not m then
+		return
+	end
+	local name = uf.name
+	local text
+	if Plate.coverOn[name] then
+		text = Plate.formOf[uf]
+	else
+		local ok, t = pcall(name.GetText, name)
+		if not ok then
+			Plate.measured[uf] = false
+			Plate.Sync(uf)
+			return
+		end
+		text = t
+	end
+	if not Secret(text) then
+		if text == nil or text == "" then
+			Plate.measured[uf], Plate.textOf[uf] = false, nil
+			Plate.Sync(uf)
+			return
+		end
+		if Plate.measured[uf] and Plate.textOf[uf] == text then
+			Plate.Sync(uf)
+			return
+		end
+	end
+	local taken = MelloUI.Shade:MeasureText(m, text)
+	Plate.measured[uf] = taken
+	Plate.textOf[uf] = (taken and not Secret(text)) and text or nil
+	Plate.Sync(uf)
+end
+
+-- a name changed (UNIT_NAME_UPDATE, then the game's Show): its form and text
+function Plate.Renamed(uf)
+	if uf and Plate.On() and Plate.live[uf] then
+		Plate.Cover(uf)
+		Plate.Feed(uf)
+	end
+end
+
+-- The crowd's budget (review, 2026-09-25: a reload among many plates made
+-- every plate's parts in one frame): MAKE_PER_FRAME plates a frame (GetTime:
+-- the frame's time) get their parts made; one plate takes one slot however
+-- many of its parts are made in that frame. The rest wait in one queue, swept
+-- on the next frames (Plate.Later). Showing, hiding and feeding what is
+-- there already are never held back.
+function Plate.MayMake(uf)
+	local now = GetTime()
+	if Plate.slotAt[uf] == now then
+		return true
+	end
+	if Plate.madeAt ~= now then
+		Plate.madeAt, Plate.madeCount = now, 0
+	end
+	if Plate.madeCount >= Plate.MAKE_PER_FRAME then
+		return false
+	end
+	Plate.madeCount = Plate.madeCount + 1
+	Plate.slotAt[uf] = now
+	return true
+end
+
+-- fn(uf) run once in a later frame's sweep (the plate queued once, the job
+-- once; no table made per hold)
+function Plate.Hold(uf, fn)
+	local list = Plate.jobs[uf]
+	if not list then
+		list = {}
+		Plate.jobs[uf] = list
+	end
+	local have = false
+	for i = 1, #list do
+		if list[i] == fn then
+			have = true
+			break
+		end
+	end
+	if not have then
+		list[#list + 1] = fn
+	end
+	if not Plate.queued[uf] then
+		Plate.queued[uf] = true
+		Plate.queueN = Plate.queueN + 1
+		Plate.queue[Plate.queueN] = uf
+	end
+	Plate.Later()
+end
+
+-- the sweep on the next frame: the core's next-frame queue (Core/Schedule.lua
+-- since one look D1; the kit's old name where that is not loaded)
+function Plate.Later()
+	local queue = MelloUI.Schedule or MelloUI.Kit
+	queue:NextFrame(Plate.KEY, Plate.Sweep)
+end
+
+-- the held plates in order, up to the ones queued when it started, until
+-- this frame's slots are spent (then on from there the next frame); a plate's
+-- jobs run once each in order (one held again is queued anew); drained, the
+-- queue starts again at its first place
+function Plate.Sweep(key)
+	if key ~= Plate.KEY then
+		return
+	end
+	local last, i = Plate.queueN, Plate.queueFrom
+	while i <= last do
+		local uf = Plate.queue[i]
+		if uf then
+			if not Plate.MayMake(uf) then
+				Plate.queueFrom = i
+				Plate.Later()
+				return
+			end
+			Plate.queue[i], Plate.queued[uf] = nil, nil
+			local list = Plate.jobs[uf]
+			for _ = 1, list and #list or 0 do
+				local fn = table.remove(list, 1)
+				fn(uf)
+			end
+		end
+		i = i + 1
+	end
+	Plate.queueFrom = i
+	if Plate.queueFrom > Plate.queueN then
+		Plate.queueN, Plate.queueFrom = 0, 1
+	end
+end
+
+-- a held plate seen again, while it still holds its unit
+function Plate.Retry(uf)
+	if Plate.live[uf] then
+		Plate.Seen(uf)
+	end
+end
+
+-- The band and the name's measure, made once per plate frame (with a slot)
+-- and kept as the plates recycle; the band anchored once on the measure
+function Plate.Make(uf)
+	Plate.Watch(uf)
+	local Shade = MelloUI.Shade
+	local host = Plate.Host(uf)
+	local m = Plate.measureOf[uf] or Shade:Measure(host, uf.name, Plate.POINT, Plate.MEASURE)
+	Plate.measureOf[uf] = m
+	Plate.LOOK.alpha = Shade.TEXT.alpha
+	local band = Shade:Band(host, Plate.LOOK)
+	if not band then
+		return
+	end
+	Plate.bandOf[uf] = band
+	band:SetShown(false)
+	if m then
+		band:Anchor(m, Plate.PAD_X, Plate.PAD_Y)
+	end
+	Plate.measured[uf] = false
+end
+
+-- the band shown while the plate holds a unit, the band is wanted, the
+-- measure holds the name's text and the game shows the name (on a change only)
+function Plate.Sync(uf)
+	local band = Plate.bandOf[uf]
+	if not band then
+		return
+	end
+	local want = (Plate.live[uf] and Plate.measured[uf] == true and Plate.shown[uf.name] == true
+		and Plate.Want(uf)) and true or false
+	if band:IsShown() ~= want then
+		band:SetShown(want)
+	end
+end
+
+-- The form on this plate (Show Names As), or nil while the game's full name
+-- stands: a secret returned as it is; the full name (no surname) gives nil.
+-- (Each asked for secret first: the form and the full name come from two
+-- calls, NameUtil's, and their secrecy can differ.)
+function Plate.Form(uf)
+	if not Plate.FormWanted() then
+		return nil
+	end
+	local unit = uf.unit
+	if Secret(unit) or type(unit) ~= "string" then
+		return nil
+	end
+	local text = MelloUI:UnitNameAs(unit, M.db.nameFormat)
+	if not Secret(text) and text == nil then
+		return nil
+	end
+	local full = MelloUI:UnitNameAs(unit, "both")
+	if Secret(text) or Secret(full) or text ~= full then
+		return text
+	end
+	return nil
+end
+
+-- the game's glyphs hidden under the cover (true when it took) and back
+function Plate.Hide(name)
+	local how = Plate.HIDE
+	if how == "alpha" then
+		return (pcall(name.SetAlpha, name, 0))
+	elseif how == "gradient" then
+		return (pcall(name.SetAlphaGradient, name, Plate.GRADIENT_START, Plate.GRADIENT_LENGTH))
+	end
+	return false
+end
+
+function Plate.Reveal(name)
+	local how = Plate.HIDE
+	if how == "alpha" then
+		pcall(name.SetAlpha, name, 1)
+	elseif how == "gradient" then
+		if type(name.ClearAlphaGradient) == "function" then
+			pcall(name.ClearAlphaGradient, name)
+		else
+			pcall(name.SetAlphaGradient, name, 1024, 1)
+		end
+	end
+end
+
+-- The cover on a plate's name with its form (`form` given, or asked now);
+-- `again`: the glyphs hidden again (an add, a layout). No form, or no way to
+-- hide the glyphs: uncovered. The cover is made once per name (with a slot:
+-- else held), its colour copied from the name when it first covers it and
+-- then at each of the game's SetVertexColor (hooked once per name)
+function Plate.Cover(uf, again, form)
+	local name = uf.name
+	if not Secret(form) and form == nil then
+		form = Plate.Form(uf)
+	end
+	if (not Secret(form) and form == nil) or not Plate.HIDE then
+		Plate.Uncover(uf)
+		return
+	end
+	local fs = Plate.coverOf[name]
+	if not fs then
+		if not Plate.MayMake(uf) then
+			Plate.Hold(uf, Plate.Recover)
+			return
+		end
+		fs = MelloUI.Shade:Cover(Plate.Host(uf), name, Plate.COVER)
+		if not fs then
+			return
+		end
+		Plate.coverOf[name] = fs
+		Plate.coverShown[name] = true
+		Plate.Watch(uf)
+		if not Plate.tinted[name] then
+			Plate.tinted[name] = true
+			hooksecurefunc(name, "SetVertexColor", Plate.OnColour)
+		end
+	end
+	Plate.formOf[uf] = form
+	MelloUI.Shade:CoverText(fs, form)
+	if again or not Plate.hidden[name] then
+		Plate.hidden[name] = Plate.Hide(name) or nil
+	end
+	if Plate.hidden[name] then
+		if not Plate.coverOn[name] then
+			Plate.coverOn[name] = fs
+			-- (the game's colour as it is now, handed on untouched: a secret too)
+			local ok, r, g, b, a = pcall(name.GetVertexColor, name)
+			if ok then
+				MelloUI.Shade:CoverColour(fs, r, g, b, a)
+			end
+		end
+	else
+		-- (refused: the game's name stays as it is, uncovered)
+		Plate.coverOn[name] = nil
+	end
+	Plate.CoverShow(uf)
+end
+
+-- a held cover made, then the measure on its form
+function Plate.Recover(uf)
+	if Plate.live[uf] and Plate.On() then
+		Plate.Cover(uf, true)
+		Plate.Feed(uf)
+	end
+end
+
+-- the cover away and the game's glyphs back (the band then on the full name)
+function Plate.Uncover(uf)
+	local name = uf.name
+	local was = Plate.coverOn[name]
+	Plate.coverOn[name] = nil
+	Plate.formOf[uf] = nil
+	Plate.CoverShow(uf)
+	if Plate.hidden[name] then
+		Plate.Reveal(name)
+		Plate.hidden[name] = nil
+	end
+	if was then
+		Plate.Feed(uf)
+	end
+end
+
+-- the cover shown while it covers the name and the game shows the name (on a
+-- change only; our own state, never read back)
+function Plate.CoverShow(uf)
+	local name = uf.name
+	local fs = name and Plate.coverOf[name]
+	if not fs then
+		return
+	end
+	local want = (Plate.coverOn[name] ~= nil and Plate.shown[name] == true) and true or false
+	if Plate.coverShown[name] ~= want then
+		Plate.coverShown[name] = want
+		fs:SetShown(want)
+	end
+end
+
+-- the game's colour on a covered name (every health update, on names that
+-- ever had a cover): handed to the cover, set there only on a change
+Plate.OnColour = Perf.Shared("SetVertexColor on a covered nameplate name", function(name, r, g, b, a)
+	local fs = Plate.coverOn[name]
+	if fs then
+		MelloUI.Shade:CoverColour(fs, r, g, b, a)
+	end
+end)
+
+-- after a Font Style copy of a cover (Shade's RefontAll, a frame after the
+-- change; never per update): the glyphs hidden again, or uncovered where
+-- that is refused
+function Plate.Refont(_, name)
+	if Plate.coverOn[name] and Plate.On() then
+		Plate.hidden[name] = Plate.Hide(name) or nil
+		local uf = Plate.ownerOf[name]
+		if not Plate.hidden[name] then
+			-- (refused now after an earlier hide: the glyphs back here, since
+			-- Uncover reveals only what it knows is hidden)
+			Plate.Reveal(name)
+			if uf then
+				Plate.Uncover(uf)
+			end
+		end
+	end
+end
+Plate.COVER.refont = Plate.Refont
+
+-- The plate pass: a plate's parts as the settings want them, made with a
+-- slot (else held), the measure fed now or at the name's next Show
+function Plate.Seen(uf)
+	local name = uf and uf.name
+	if not name then
+		return
+	end
+	if uf.IsForbidden then
+		local okF, forbidden = pcall(uf.IsForbidden, uf)
+		if not okF or Secret(forbidden) or forbidden then
+			return
+		end
+	end
+	if not Plate.at[uf] then
+		Plate.at[uf] = true
+		Plate.plates[#Plate.plates + 1] = uf
+	end
+	if not Plate.On() then
+		Plate.Off(uf)
+		return
+	end
+	Plate.live[uf] = true
+	-- (every plate's layout hook, first: a style change or a name-only flip
+	-- makes the band on its UpdateAnchors)
+	HookUnitFrame(uf)
+	local want = Plate.Want(uf)
+	local form = Plate.Form(uf)
+	local formOn = Secret(form) or form ~= nil
+	if not (want or formOn or Plate.bandOf[uf] or Plate.coverOf[name]) then
+		return
+	end
+	local needBand = want and not Plate.bandOf[uf]
+	local needCover = Plate.HIDE and formOn and not Plate.coverOf[name]
+	if (needBand or needCover) and not Plate.MayMake(uf) then
+		-- (a cover made already goes on now, only the band waits: a pooled
+		-- frame never shows the full name until the sweep)
+		if not needCover then
+			Plate.Cover(uf, true, form)
+		end
+		-- (a band there already is fed now: it never shows the last unit's text)
+		Plate.Feed(uf)
+		Plate.Hold(uf, Plate.Retry)
+		Plate.Sync(uf)
+		Plate.CoverShow(uf)
+		return
+	end
+	if needBand then
+		Plate.Make(uf)
+	end
+	Plate.Cover(uf, true, form)
+	if Plate.bandOf[uf] or Plate.coverOn[name] then
+		if Plate.shown[name] then
+			Plate.Feed(uf)
+		else
+			Plate.stale[name] = true
+		end
+	end
+	Plate.Sync(uf)
+end
+
+-- a plate's band hidden and its cover off (the module off, the unit cleared)
+function Plate.Off(uf)
+	local band = Plate.bandOf[uf]
+	if band and band:IsShown() then
+		band:SetShown(false)
+	end
+	Plate.Uncover(uf)
+end
+
+-- the plate's unit cleared (the game's ClearUnit on a removal,
+-- Blizzard_NamePlateBase.lua:42-47 -> OnUnitCleared; never per update): the
+-- cover off and the glyphs back, the band hidden, the text forgotten
+Plate.Cleared = Perf.Shared("OnUnitCleared on a nameplate (the names' undo)", function(uf)
+	if not (uf and Plate.at[uf]) then
+		return
+	end
+	Plate.live[uf] = nil
+	if uf.name then
+		Plate.stale[uf.name] = nil
+	end
+	Plate.Off(uf)
+	Plate.measured[uf], Plate.textOf[uf] = false, nil
+end)
+
+-- our NAME_PLATE_UNIT_ADDED (after the game's driver and its post-hooks): the
+-- one core plate-add path
+function Plate.Added(plate)
+	local uf = type(plate) == "table" and plate.UnitFrame
+	if type(uf) == "table" then
+		Plate.Seen(uf)
+	end
+end
+
+-- every plate shown now, the ones put away hidden, the event as wanted
+function Plate.All()
+	local ok, list = pcall(C_NamePlate.GetNamePlates)
+	if ok and type(list) == "table" then
+		for _, base in ipairs(list) do
+			if type(base) == "table" and base.UnitFrame then
+				Plate.Seen(base.UnitFrame)
+			end
+		end
+	end
+	local plates = Plate.plates
+	for i = 1, #plates do
+		Plate.Sync(plates[i])
+		Plate.CoverShow(plates[i])
+	end
+	Plate.Listen()
+end
+
+-- the module off (or restarting: OnDisable runs with isEnabled still true,
+-- Core's RestartEach): every plate's parts away
+function Plate.Stop()
+	local plates = Plate.plates
+	for i = 1, #plates do
+		Plate.live[plates[i]] = nil
+		Plate.Off(plates[i])
+	end
+	Plate.Listen()
+end
+
+-- after the game laid a plate out (UpdateAnchors only): the measure in the
+-- name's new font; a covered name's cover too, its glyphs hidden again (the
+-- layout's SetFontObject may have put them back); a band now wanted made (a
+-- style change, a name-only flip). An existing band is not fed here: during
+-- an add the text is still the last unit's (Seen feeds after the game's
+-- UpdateAll)
+function Plate.Relaid(uf)
+	if not Plate.at[uf] then
+		return
+	end
+	local m = Plate.measureOf[uf]
+	if m then
+		MelloUI.Shade:MeasureFont(m)
+	end
+	if not (Plate.On() and Plate.live[uf]) then
+		return
+	end
+	local name = uf.name
+	local fs = Plate.coverOn[name]
+	if fs then
+		MelloUI.Shade:CoverFont(fs)
+		Plate.hidden[name] = Plate.Hide(name) or nil
+		if not Plate.hidden[name] then
+			-- (refused now after an earlier hide: the glyphs back, as in Refont)
+			Plate.Reveal(name)
+			Plate.Uncover(uf)
+		end
+	end
+	if Plate.Want(uf) and not Plate.bandOf[uf] then
+		if Plate.MayMake(uf) then
+			Plate.Make(uf)
+			if Plate.shown[name] then
+				Plate.Feed(uf)
+			else
+				Plate.stale[name] = true
+			end
+		else
+			Plate.Hold(uf, Plate.Retry)
+		end
+	end
+	Plate.Sync(uf)
+end
+
+-- the realm display changed (the game's UpdateNameRealmDisplay, whose own
+-- UpdateName has set the text): the measure fed
+Plate.OnRealm = Perf.Shared("UpdateNameRealmDisplay on a nameplate (the names' text)", function(uf)
+	local name = uf and uf.name
+	if not (name and Plate.On() and Plate.live[uf] and (Plate.bandOf[uf] or Plate.coverOn[name])) then
+		return
+	end
+	if Plate.shown[name] then
+		Plate.Feed(uf)
+	else
+		Plate.stale[name] = true
+	end
+end)
+
+-- UNIT_NAME_UPDATE on a plate's unit: the game sets the text at its next
+-- UpdateName and Shows the name; that Show feeds it (OnShow)
+function Plate.OnNameUpdate(unit)
+	if Secret(unit) or type(unit) ~= "string" or unit:sub(1, 9) ~= "nameplate" then
+		return
+	end
+	local ok, base = pcall(C_NamePlate.GetNamePlateForUnit, unit)
+	local uf = ok and type(base) == "table" and base.UnitFrame
+	if type(uf) == "table" and Plate.live[uf] and uf.name then
+		Plate.stale[uf.name] = true
+	end
+end
+
+-- Name Shade changed (the bus's 'setting': its key is NameplatePanel's)
+function Plate.OnSetting(module, key)
+	if module == "NameplatePanel" and key == "nameShade" and Plate.On() then
+		Plate.All()
+	end
+end
+
+-- UNIT_NAME_UPDATE while a band or a form is wanted (on a change only)
+function Plate.Listen()
+	local want = (Plate.On() and (Plate.Mode() ~= "off" or Plate.FormWanted())) and true or false
+	if want == Plate.listening or not Plate.frame then
+		return
+	end
+	Plate.listening = want
+	if want then
+		Plate.frame:RegisterEvent("UNIT_NAME_UPDATE")
+	else
+		Plate.frame:UnregisterEvent("UNIT_NAME_UPDATE")
+	end
+end
+
+-- the bus's 'setting', once
+function Plate.Start()
+	if not Plate.started then
+		Plate.started = true
+		MelloUI:On("setting", Plate.OnSetting, Plate.OWNER)
+	end
+end
+
+-- For the look that holds the names (the Nameplate Kit) and the dumps: the
+-- name's watch (works with the module off), the frame that draws the name,
+-- whether the game shows it, a function told of each show or hide change
+-- (fn(uf), appended once), the crowd's budget and hold queue, and whether a
+-- cover is on
+function M:WatchName(uf)
+	Plate.Watch(uf)
+end
+
+function M:NameHost(uf)
+	return Plate.Host(uf)
+end
+
+function M:NameShownOn(uf)
+	return (uf and uf.name and Plate.shown[uf.name]) or false
+end
+
+function M:FollowName(fn)
+	if type(fn) ~= "function" then
+		return
+	end
+	local list = Plate.followers
+	for i = 1, #list do
+		if list[i] == fn then
+			return
+		end
+	end
+	list[#list + 1] = fn
+end
+
+function M:MayMakeOnPlate(uf)
+	return Plate.MayMake(uf)
+end
+
+function M:HoldPlate(uf, fn)
+	Plate.Hold(uf, fn)
+end
+
+function M:IsNameCovered(uf)
+	return uf ~= nil and uf.name ~= nil and Plate.coverOn[uf.name] ~= nil
 end
 
 --------------------------------------------------------------------------------
@@ -770,8 +1603,8 @@ local QUEST_EVENTS = {
 -- i), the glow (4, 5) -- handed the count with SetValue, so the engine shows
 -- the bar empty or full. One row, made on the first target that needs it and
 -- moved between plates, kept in this table (nothing written on the game's
--- frames). The plate's name rises to clear it (M:NameLift: NameplatePanel's
--- CentreName in the kit look, M:LayGameName otherwise), the crowd-control icon
+-- frames). The plate's name rises to clear it (M:NameLift: the look that
+-- holds the name, SetNamePlacer, else M:LayGameName), the crowd-control icon
 -- with it (ComputeOffset); the debuff rows and the raid mark hang on the name
 -- (the game's UpdateAnchors) and rise too. The game's own combo bars for
 -- plates (ClassNameplateBarRogue / Druid) are not loaded in this client
@@ -910,15 +1743,11 @@ function Combo.Lay(row, s)
 	end
 end
 
--- the name of a plate laid again with its lift: where the kit lays it
--- (NameplatePanel:PlaceName, true while the kit holds the name), else on the
--- game's own anchors
+-- the name of a plate laid again with its lift: the one seam, M:PlaceName
+-- (the look that holds the name through its placer, else the game's own
+-- anchors with the lift)
 function Combo.PlaceName(uf)
-	local panel = MelloUI:GetModule("NameplatePanel")
-	if panel and panel.PlaceName and panel:PlaceName(uf) then
-		return
-	end
-	M:LayGameName(uf, Combo.lifted[uf] or 0)
+	M:PlaceName(uf)
 end
 
 -- a plate's name lifted by `lift` (0: back down), the crowd-control icon
@@ -1015,7 +1844,7 @@ function Combo.Update()
 end
 
 -- the name's lift on a plate (0 where the row is not): for the crowd-control
--- icon's offset and NameplatePanel's CentreName
+-- icon's offset and the look that holds the name (SetNamePlacer)
 function M:NameLift(uf)
 	return Combo.lifted[uf] or 0
 end
@@ -1025,6 +1854,8 @@ end
 --------------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
+-- (the plate names' UNIT_NAME_UPDATE is registered on it while wanted: Plate.Listen)
+Plate.frame = eventFrame
 Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit, power)
 	if event == "NAME_PLATE_UNIT_ADDED" then
 		local plate = C_NamePlate.GetNamePlateForUnit(unit)
@@ -1040,6 +1871,9 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit, power)
 		if Combo.on then
 			Combo.Update()   -- (the target's plate may come after the target)
 		end
+		-- (the plate names: the one core plate-add path, after the game's driver
+		-- and its post-hooks; last, so nothing above waits on it)
+		Plate.Added(plate)
 	elseif event == "NAME_PLATE_UNIT_REMOVED" then
 		local plate = C_NamePlate.GetNamePlateForUnit(unit)
 		if plate and plate.UnitFrame and questIcons[plate.UnitFrame] then
@@ -1050,6 +1884,9 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit, power)
 			if plate.UnitFrame == Combo.at then
 				Combo.Detach()
 			end
+			-- (the plate names undone: its OnUnitCleared hook does it too, when
+			-- the game's driver ran first and the frame is already put away)
+			Plate.Cleared(plate.UnitFrame)
 		end
 	elseif event == "UNIT_POWER_FREQUENT" then
 		-- (the player's; only a combo point change: energy ticks pass by)
@@ -1068,6 +1905,8 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit, power)
 		ThreatAll()
 	elseif event == "PLAYER_REGEN_ENABLED" then
 		HideAllThreat()
+	elseif event == "UNIT_NAME_UPDATE" then
+		Plate.OnNameUpdate(unit)
 	else
 		ScheduleQuestRescan()
 		if event == "PLAYER_ENTERING_WORLD" and Combo.on then
@@ -1155,10 +1994,10 @@ function M:OnEnable(db)
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 	RegisterQuestEvents(true)
 	RegisterThreatEvents(ThreatOn())
-	InstallPlateNameHook()
-	if db.nameFormat and db.nameFormat ~= "both" then
-		RefreshPlateNames(db.nameFormat)
-	end
+	-- (the plate names: the bus's 'setting' once, every plate shown now through
+	-- the budget, UNIT_NAME_UPDATE as wanted)
+	Plate.Start()
+	Plate.All()
 	if db.bigCC then
 		ApplyAll()
 	end
@@ -1178,6 +2017,8 @@ local function OutOfCombat(fn)
 end
 
 function M:OnDisable()
+	-- (the names first: an error below must never leave a name hidden)
+	Plate.Stop()
 	eventFrame:UnregisterEvent("NAME_PLATE_UNIT_ADDED")
 	eventFrame:UnregisterEvent("NAME_PLATE_UNIT_REMOVED")
 	RegisterQuestEvents(false)
@@ -1185,13 +2026,12 @@ function M:OnDisable()
 	Combo.Register(false)
 	OutOfCombat(RestoreAll)
 	HideAllQuestIcons()
-	RefreshPlateNames("both")
 end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if key == "nameFormat" then
-		RefreshPlateNames(value or "both")
+		Plate.All()
 		return
 	end
 	if key == "threatLine" then
@@ -1224,3 +2064,10 @@ end
 MelloUI:Profile("Nameplates", "events", eventFrame)
 MelloUI:Profile("Nameplates", "quest icon rescan", UpdateAllQuestIcons)
 MelloUI:Profile("Nameplates", "cc anchoring", AnchorCC)
+MelloUI:Profile("Nameplates", "plate names", Plate.Seen)
+
+-- What the plate names keep beside the game's frames (weak-keyed tables,
+-- never keys on the frames), for the dumps (/npdump) and the tests: read only
+M.kept = { nameBandOf = Plate.bandOf, nameMeasureOf = Plate.measureOf, nameMeasured = Plate.measured,
+	nameShown = Plate.shown, nameCoverOf = Plate.coverOf, nameCoverOn = Plate.coverOn, nameHidden = Plate.hidden,
+	plateSlotAt = Plate.slotAt, nameHide = Plate.HIDE }
