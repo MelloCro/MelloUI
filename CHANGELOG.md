@@ -25,6 +25,7 @@
 - Route: the flight map marks the flight point your route flies to with a bead of the route's trail instead of the gem.
 - Chat View: its tabs, its round buttons and the whisper window wear the round rims and the title font with or without the painted reskin.
 - Quest Tracker: Parchment is its own switch on the Quest Tracker page (Look) and in the setup's Parchment step, on or off with the painted reskin on or off.
+- Route: the Direction Arrow row in the widget column is gone, with its Landing Countdown: the World Marker shows the way. The flight map marks your route's flight point with a bead of your trail.
 
 ## 0.24.0
 

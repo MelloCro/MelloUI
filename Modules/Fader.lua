@@ -76,7 +76,7 @@ local LIST = {
 	{ "tracker", "Quest Tracker", "Chat & Map", "MelloUI's Quest Tracker." },
 	{ "objectives", "Objective Tracker", "Chat & Map", "The game's own objective tracker." },
 	{ "widgets", "Widget Column", "Chat & Map", "The column of widgets: loot rolls, summons, Voice Over, whispers and the rest. A new one does not bring the column back: In Combat keeps a loot roll, a summons or a whisper faded out of combat, On Mouseover until you point at the column." },
-	{ "route", "World Marker", "Chat & Map", "Route's World Marker over the destination (the Direction Arrow is a row of the Widget Column: it fades with the column)." },
+	{ "route", "World Marker", "Chat & Map", "Route's World Marker over the destination." },
 }
 
 local SHOW = { { value = "always", label = "Always" }, { value = "combat", label = "In Combat" },

@@ -1888,12 +1888,8 @@ end
 --               `model` (fn(key) -> a creature id): its 3D face in the
 --               rim's opening, the camera on the face, talking while
 --               `talking` (fn(key) -> true) says so; or `portrait` (fn(key)
---               -> a unit token: its 2D portrait, SetPortraitTexture); or
---               `turn` = true: an arrow in the opening over the dark ground
---               (Route's Navigation arrow, user 2026-10-03: nav_widget_looks
---               pick A), `turnArt` fn(texture, key) handed it at each fill:
---               its owner dresses and turns it (the column runs nothing per
---               frame); a low glow round it
+--               -> a unit token: its 2D portrait, SetPortraitTexture); a low
+--               glow round it
 --   the band    a soft shade (Shade:Band) behind two lines: `title` (fn(key)
 --               -> text[, r, g, b]: an item's quality, a class colour; the
 --               label in the palette's gold when left out) and `text`, the
@@ -2023,7 +2019,7 @@ local function Column()
 	local up = { n = 0 }         -- the keys shown, bottom first (reused)
 	local folded = { n = 0 }     -- the keys up but folded, in the column's order (reused)
 	local cand = { n = 0 }       -- the keys up, in the column's order (reused)
-	local CS = { queued = false, serial = 0, ticking = false, hovered = nil, secureFor = nil, finish = {} }
+	local CS = { queued = false, serial = 0, ticking = false, hovered = nil, secureFor = nil }
 	local col = nil              -- the column, made with the first row up
 	local trayRows = { n = 0 }   -- a tray's rows as its spec fills them (reused)
 	local EXP = { count = 0 }    -- Anim:Expand's options for a row's buttons (one table)
@@ -2641,49 +2637,6 @@ local function Column()
 		return m.anim ~= 0
 	end
 
-	-- the turning arrow (spec.turn): its texture in the face over the dark
-	-- ground, made at its first use and handed to the spec's turnArt; the
-	-- owner turns it (Route, every frame while its row is wanted: the column
-	-- runs nothing per frame) and tells its line changes through
-	-- Rem:SetLines. (One table: Column's locals.)
-	local TURN = { SHARE = 0.5 }
-
-	function TURN.Set(row, spec, on)
-		local tex = row.turnTex
-		if not on then
-			if tex then
-				tex:Hide()
-			end
-			return
-		end
-		if not tex then
-			tex = row.face:CreateTexture(nil, "ARTWORK", nil, 3)
-			tex:SetSize(FACE * TURN.SHARE, FACE * TURN.SHARE)
-			tex:SetPoint("CENTER", row.face.icon, "CENTER", 0, 0)
-			row.turnTex = tex
-		end
-		tex:Show()
-		if type(spec.turnArt) == "function" then
-			local ok, err = pcall(spec.turnArt, tex, row.key)
-			if not ok then
-				Report(err)
-			end
-		end
-	end
-
-	-- a shown row's ring held at a share (a pet's happiness, the way done)
-	function TURN.Share(row, share)
-		row.liveShare = share
-		share = share < 0 and 0 or (share > FULL and FULL or share)
-		local ring = row.ring
-		ring:SetCooldown(GetTime() - share * SHARE_SPAN, SHARE_SPAN)
-		if ring.Pause then
-			ring:Pause()
-		end
-		Look.RingState(ring, "share", true)
-		ring:Show()
-	end
-
 	local function Fill(row, key)
 		local spec = specs[key]
 		row.key = key
@@ -2694,7 +2647,6 @@ local function Column()
 			title = Rem:Label(key)
 		end
 		row.title:SetText(title)
-		row.liveTitle = title
 		if type(r) == "number" and type(g) == "number" and type(b) == "number" and not (Secret(r) or Secret(g) or Secret(b)) then
 			local c = row.titleColour or {}
 			c[1], c[2], c[3] = r, g, b
@@ -2705,17 +2657,9 @@ local function Column()
 		end
 		local text = Value(spec.text, key)
 		row.text:SetText((Secret(text) or type(text) == "string") and text or "")
-		row.liveText, row.liveShare = text, nil
-		-- the face: the turning arrow, a 3D face, a unit's portrait (a pet's)
-		-- or the icon
-		local turning = spec.turn ~= nil
-		TURN.Set(row, spec, turning)
-		local id = not turning and Num(Value(spec.model, key)) or nil
-		if turning then
-			row.model:Hide()
-			row.face:SetIcon(nil)
-			row.ground:Show()
-		elseif id and id > 0 then
+		-- the face: a 3D face, a unit's portrait (a pet's) or the icon
+		local id = Num(Value(spec.model, key))
+		if id and id > 0 then
 			row.face:SetIcon(nil)
 			row.ground:Show()
 			SetModel(row, id)
@@ -2770,7 +2714,6 @@ local function Column()
 			row.pStart, row.pDur, row.pPaused = nil, nil, nil
 			-- a share with no time (a pet's happiness): the ring held there
 			local share = spec.fraction ~= nil and Num(Value(spec.fraction, key)) or nil
-			row.liveShare = share
 			if share then
 				share = share < 0 and 0 or (share > FULL and FULL or share)
 				local ring = row.ring
@@ -3013,10 +2956,6 @@ local function Column()
 		row.key, row.face.key = nil, nil
 		row.model:Hide()
 		row:Hide()
-		row.faded = nil   -- (its alpha set afresh at its next show)
-		if row.finishLight then
-			row.finishLight:Hide()
-		end
 	end
 
 	--------------------------------------------------------------------------
@@ -3199,10 +3138,6 @@ local function Column()
 				else
 					row:Show()
 				end
-			elseif row.faded and not CS.finish[key] then
-				-- (finished, Rem:Finish, and wanted still: back in)
-				row.faded = nil
-				Anim:FadeIn(row, ROW_FADE)
 			end
 		end
 		for i = n + 1, #col.rows do
@@ -3539,8 +3474,7 @@ local function Column()
 		for i = 1, #colOrder do
 			local key = colOrder[i]
 			local why = colDirty[key]
-			-- (a row finishing, Rem:Finish: checked when it is over)
-			if why and not CS.finish[key] then
+			if why then
 				local raise = colRaise[key]
 				colDirty[key], colRaise[key] = false, false
 				local st = states[key]
@@ -3743,123 +3677,6 @@ local function Column()
 				return
 			end
 		end
-	end
-
-	-- a shown row's title, line and ring share set now, each when it is
-	-- given and changed (the Navigation arrow's distance as the player
-	-- walks: a Refresh would lay the whole row again); nothing for a row not
-	-- up (its next fill reads the spec)
-	function Rem:SetLines(key, title, text, share)
-		if not (col and key) then
-			return
-		end
-		for i = 1, up.n do
-			local row = col.rows[i]
-			if row.key == key and row:IsShown() then
-				if type(title) == "string" and title ~= row.liveTitle then
-					row.liveTitle = title
-					row.title:SetText(title)
-				end
-				if type(text) == "string" and text ~= row.liveText then
-					row.liveText = text
-					row.text:SetText(text)
-				end
-				if type(share) == "number" and share ~= row.liveShare and not row.pDur then
-					TURN.Share(row, share)
-				end
-				return
-			end
-		end
-	end
-
-	-- (0.21.3, the animations: BuildData/output/animation_previews, Arriving)
-	-- a row's work done -- Route's way at its end: its ring fills, a light
-	-- runs round it once, the row fades out; then the column takes it down,
-	-- or fades it back in when it is wanted still (its checks wait for the
-	-- end: Run). Played by the motion engine (Anim:Drive), nothing made but
-	-- the light, at a row's first finish. True when it plays; false with no
-	-- such row shown, the column hidden or under Reduce Motion (the end at
-	-- once: the owner takes it down as before)
-	TURN.FINISH = { FILL = 0.35, LIGHT_AT = 0.38, LIGHT_TO = 0.85, FADE_AT = 0.95, TIME = 1.25, LIGHT = 16,
-		RADIUS = FACE * RING_FRAME / 2 * 0.93 }   -- (the ring's band: Media/Textures/ProgressRing)
-
-	function TURN.FinishRow(key)
-		for i = 1, up.n do
-			local row = col.rows[i]
-			if row.key == key and row:IsShown() then
-				return row
-			end
-		end
-		return nil
-	end
-
-	function TURN.FinishStep(job, u)
-		local row = TURN.FinishRow(job.key)
-		if not row then
-			return
-		end
-		local F = TURN.FINISH
-		local t = u * F.TIME
-		local fill = t >= F.FILL and 1 or t / F.FILL
-		local share = job.from + (1 - job.from) * fill
-		if share ~= row.liveShare and not row.pDur then
-			TURN.Share(row, share)
-		end
-		local light = row.finishLight
-		if not light then
-			light = row.face:CreateTexture(nil, "OVERLAY", nil, 7)
-			light:SetTexture(MEDIA .. "SoftGlowRound")   -- look-ok: a moment's light, in both looks
-			light:SetBlendMode("ADD")
-			light:SetSize(F.LIGHT, F.LIGHT)
-			Look.Paint(light, "selectedTrim", "vertex")
-			row.finishLight = light
-		end
-		local l = (t - F.LIGHT_AT) / (F.LIGHT_TO - F.LIGHT_AT)
-		if l > 0 and l < 1 then
-			-- (from the top, the way the ring fills)
-			local a = math.pi / 2 - l * 2 * math.pi
-			light:ClearAllPoints()
-			light:SetPoint("CENTER", row.face, "CENTER", math.cos(a) * F.RADIUS, math.sin(a) * F.RADIUS)
-			light:SetAlpha(0.95 * math.sin(l * math.pi) ^ 0.5)
-			light:Show()
-		else
-			light:Hide()
-		end
-		if t >= F.FADE_AT then
-			if not row.faded then
-				row.faded = true
-				Anim:Stop(row, "alpha")
-			end
-			local f = (t - F.FADE_AT) / (F.TIME - F.FADE_AT)
-			row:SetAlpha(f >= 1 and 0 or 1 - f)
-		end
-	end
-
-	function TURN.FinishDone(job)
-		CS.finish[job.key] = nil
-		local row = TURN.FinishRow(job.key)
-		if row and row.finishLight then
-			row.finishLight:Hide()
-		end
-		ColQueue(job.key, "refresh")
-	end
-
-	function Rem:Finish(key)
-		if not (col and key and col.holder:IsShown()) or Anim.reduceMotion then
-			return false
-		end
-		if CS.finish[key] then
-			return true
-		end
-		local row = TURN.FinishRow(key)
-		if not row then
-			return false
-		end
-		local job = { key = key, from = (type(row.liveShare) == "number" and not row.pDur) and row.liveShare or 0 }
-		job.from = job.from < 0 and 0 or (job.from > 1 and 1 or job.from)
-		CS.finish[key] = job
-		Anim:Drive(job, TURN.FinishStep, TURN.FINISH.TIME, "linear", TURN.FinishDone)
-		return true
 	end
 
 	-- a subtitle's page fits the rows' subtitle lines whole (Voice Over's

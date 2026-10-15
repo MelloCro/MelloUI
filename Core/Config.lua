@@ -147,6 +147,7 @@ local CHANGELOG = {
 		"Windows: the logo heads the configurator's side list, smaller windows get a slim title strip, Fight History the new look.",
 		"Edit Layout: more game windows move without the painted reskin -- the auction house, trainers, guild bank, calendar and more.",
 		"Quest Tracker: Parchment is its own switch on its page, whatever the reskin.",
+		"Route: the Direction Arrow row is gone -- the World Marker shows the way.",
 		"Swing Timers: your weapon in a round rim beside a flat bar. Race bar: a slim line with class pins (new Race Bar Thickness).",
 		"Quest Tracker: a ring marks the quest you follow, items sit on a small tray. The flight map marks your route with a bead.",
 	} },

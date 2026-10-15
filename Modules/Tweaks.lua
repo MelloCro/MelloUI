@@ -83,7 +83,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		{ type = "toggle", key = "noticeSounds", parent = "noticeOnScreen", name = "Notice Sounds",
 		  desc = "A short chime with each notice: the map's tracking sound for a new destination (left out while the World Marker's own sound plays for it), a softer one when you arrive." },
 		{ type = "toggle", key = "textShade", name = "Text Shade",
-		  desc = "A soft dark shade behind the text MelloUI shows on the world, so it reads on bright ground: the zone name when you enter a new area (with its subzone and PvP lines), the game's messages in the middle of the screen (red errors, yellow quest progress, raid warnings and boss emotes) and the Route's Direction Arrow and World Marker. No outline on the first two (Outlined Text adds it back); the game's colours stay. Off: the game's own look, and no shade behind the arrow and the marker." },
+		  desc = "A soft dark shade behind the text MelloUI shows on the world, so it reads on bright ground: the zone name when you enter a new area (with its subzone and PvP lines), the game's messages in the middle of the screen (red errors, yellow quest progress, raid warnings and boss emotes) and the Route's World Marker. No outline on the first two (Outlined Text adds it back); the game's colours stay. Off: the game's own look, and no shade behind the marker." },
 		-- (not under On-screen Notices: it sets the zone text's and the
 		-- centre texts' outline too, which show with the notices off)
 		{ type = "toggle", key = "noticeOutline", name = "Outlined Text",

@@ -33,9 +33,6 @@
 --                                             a looping glow; with a hold it
 --                                             pulses that long, then stays
 --                                             still (below)
---   MelloUI.Anim:Spin(region[, period]) -> group
---                                             a slow turn round and round
---                                             (below)
 --   MelloUI.Anim:Ripple(regions[, period][, travel][, stagger]) /
 --   MelloUI.Anim:StopRipple(regions)         a column rippling down, one
 --                                             after another (below)
@@ -960,29 +957,6 @@ function Anim:Pulse(region, from, to, period, still, hold)
 		self:StopGroup(breath)
 	end
 	self:PlayGroup(group, PulseStill)
-	return group
-end
-
--- A slow turn, round and round (0.15.0, Route's Direction Arrow while the
--- roads go in: "working"): a REPEAT Rotation group on `region`, a full turn
--- clockwise every `period` seconds (2.4), made here once per region, played
--- through PlayGroup: under Reduce Motion a still picture, unturned. Asked
--- again, it plays the region's group again with the period given. Returns
--- the group: StopGroup it as any other (the region back to its own turn).
---   MelloUI.Anim:Spin(region[, period])
-local spinOf = setmetatable({}, { __mode = "k" })   -- [region] = group
-
-function Anim:Spin(region, period)
-	local group = spinOf[region]
-	if not group then
-		group = region:CreateAnimationGroup()
-		group:SetLooping("REPEAT")
-		local turn = group:CreateAnimation("Rotation")
-		turn:SetDegrees(-360)
-		spinOf[region] = group
-	end
-	group:GetAnimations():SetDuration(Positive(period, 2.4))
-	self:PlayGroup(group)
 	return group
 end
 
