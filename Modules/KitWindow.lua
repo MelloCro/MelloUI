@@ -28,11 +28,10 @@
 --                            (MelloUI-TitlePlate); "rail": the standard plate
 --                            riding the outer rail (TitleBar, 2c)
 --     calm = true,           the cleaner look (0.15.0, Background A): ONE flat
---                            `mainWindow` ground over the page, the stone (the
---                            kit's, or the plain look's tinted rock) left only
---                            as a band CALM_BAND wide inside the rail
---                            (shell.calm); the window's panels (W.Panel) lie
---                            on that ground
+--                            `mainWindow` ground over the page, the kit's
+--                            stone left only as a band CALM_BAND wide inside
+--                            the rail (shell.calm); the window's panels
+--                            (W.Panel) lie on that ground
 --     background = fn | value,  the page stone's piece in the kit look (0.19.4,
 --                            the options audit: the bags' Window Background
 --                            on the bag window): a Window Background value
@@ -42,8 +41,7 @@
 --                            when the kit dresses the page, at every switch
 --                            on and show, and on shell:SetBackground(). It
 --                            stands in for the stone on the stone's own
---                            texture (one surface); nil: the kit's own stone.
---                            The plain look keeps the game's rock
+--                            texture (one surface); nil: the kit's own stone
 --     close = true,          a close button on the top right corner
 --     escape = true,         Escape closes it (UISpecialFrames: the frame
 --                            must be named); held while a question of
@@ -87,9 +85,11 @@
 -- shell's show hook runs after the frame's own OnShow script.
 --
 -- Fields: shell.frame, shell.kit (true while the kit look is on), shell.area,
--- shell.crest (the crest's / corner ring's square, both looks), shell.emblem
--- (the kit's, on the ring's disc; made with the kit), shell.plainEmblem,
--- shell.disc, shell.ring (the ring's rep), shell.plate (the plate's frame),
+-- shell.crest (the crest's / corner ring's square, both looks; hidden in the
+-- modern one), shell.emblem (the kit's, on the ring's disc; made with the
+-- kit), shell.plainEmblem (the crest's emblem: the region the kit's ring
+-- replaces, DressRing; under ring.game the bag's portrait), shell.disc,
+-- shell.ring (the ring's rep), shell.plate (the plate's frame),
 -- shell.plateRep, shell.title (FontString), shell.grab, shell.close,
 -- shell.rail (the outer rail's rep), shell.page (the page stone's rep; both
 -- made with the kit), shell.mover (Core's entry),
@@ -159,9 +159,7 @@
 -- close at its right end, both ends on the content inset, the content from
 -- FLAT.TOP. The drag band runs full width from the top; nothing pokes out
 -- of the window (no overhang). The kit's anchors (the rock, the tint, the
--- calm ground, the plate's box, the crest) hide in it (shell.paintedOnly);
--- the game's window of wave 4 (BuildPlain, below) is reached no more (stage
--- E deletes it).
+-- calm ground, the plate's box, the crest) hide in it (shell.paintedOnly).
 --
 -- And, for the own windows' widgets and questions (the end of the file):
 --   Kit:ChoicePicture(tile, kind, choice)   a look choice's picture (the
@@ -184,21 +182,16 @@ local W = MelloUI.Widgets   -- (Core/Widgets.lua loads before this file)
 
 local TEXTURE_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"
 local LOGO = TEXTURE_PATH .. "LogoIcon.tga"                    -- the round emblem of the logo
-local ROCK = "Interface\\FrameGeneral\\UI-Background-Rock"      -- the plain look's page (the kit's stone stands in for it)
-local WHITE = "Interface\\Buttons\\WHITE8x8"
+local ROCK = "Interface\\FrameGeneral\\UI-Background-Rock"      -- the page stone's region (the kit's stone replaces it)
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
-local PAGE_INSET = 6         -- the plain look's page (the rock and its tint) inside the frame's edge
+local PAGE_INSET = 6         -- the tint inside the frame's edge (the calm ground's rect too while the kit is off: hidden then)
 local CALM_BAND = 14         -- the stone left round the calm ground, inside the rail (opts.calm)
-local PLAIN_CREST = 88       -- the emblem alone on the top edge, without the kit
-local PLAIN_CORNER = 62      -- ... in the corner: a game window's portrait
+local PLAIN_CORNER = 62      -- a game window's portrait (ring.game: the bag window's)
 local CORNER_X, CORNER_Y = 26, -24   -- a game window's portrait centre from its top left (PortraitFrameTemplate: 62 px at -5, 7)
--- the game's window (ButtonFrameTemplate on this client): its rock from under
--- the title bar (2 in with the portrait, 7 without, 21 down, 2 in at the
--- bottom), the streaks under the bar (its close button's size and place went
--- with the modern shell)
+-- the rock's rect (the region the kit's page stone replaces; it shows only if the stone is missing): from under the
+-- game window's title bar (2 in with the portrait, 7 without, 21 down, 2 in at the bottom)
 local GAME_BG_TOP, GAME_BG_IN, GAME_BG_IN_NOPORTRAIT, GAME_BG_EDGE = 21, 2, 7, 2
-local GAME_STREAKS = "_UI-Frame-TopTileStreaks"
 -- The modern look (onelook stage B, the user's pick C "the brand column", 2026-10-15; the round-3 build notes of
 -- docs/plans/onelook-b-sketches/shell.md), in UI units from the window's top left:
 --   IN      the small windows' one content inset: the body, the question's panel, the strip's two ends
@@ -234,8 +227,6 @@ local LEVEL_GAME_CORNER, LEVEL_GAME_PORTRAIT = 10, 9
 local GAME_MASK_IN, GAME_MASK_UP = 2, 4
 local GAME_CORNER_ATLAS = "UI-Frame-PortraitMetal-CornerTopLeft"
 local GAME_CORNER_X, GAME_CORNER_Y = -13, 16   -- NineSliceLayouts' PortraitFrameTemplate TopLeftCorner
-
-local EDGE_WIDE = { edgeFile = WHITE, edgeSize = 2 }
 
 local shells = setmetatable({}, { __mode = "k" })   -- [frame] = its shell
 -- the confirm dialog's shell while its question holds the other shells'
@@ -415,20 +406,22 @@ function Shell:RunQueue()
 	end
 end
 
--- the crest (or corner ring) and the plate where the look puts them
+-- the crest (or corner ring) and the plate where the look puts them (laid in
+-- the modern look too, the crest hidden there: the plate's frame holds the
+-- title)
 function Shell:Lay()
 	local frame, crest = self.frame, self.crest
 	if crest then
 		local size, x, y, point
 		if self.ringAt == "top" then
-			size = self.kit and self.ringSize or PLAIN_CREST
+			size = self.ringSize
 			x, y, point = 0, self.kit and Kit:RailMiddle() or 0, "TOP"
 		elseif self.gameCorner then
 			-- (a window standing in for a game window: the game's portrait, its size and place, in both looks)
 			size, x, y, point = PLAIN_CORNER, CORNER_X, CORNER_Y, "TOPLEFT"
 		else
-			size = self.kit and self.ringSize or PLAIN_CORNER
-			x, y, point = self.kit and self.ringX or CORNER_X, self.kit and self.ringY or CORNER_Y, "TOPLEFT"
+			size = self.ringSize
+			x, y, point = self.ringX or CORNER_X, self.ringY or CORNER_Y, "TOPLEFT"
 		end
 		crest:SetSize(size, size)
 		crest:ClearAllPoints()
@@ -439,8 +432,8 @@ function Shell:Lay()
 			self.plate:SetPoint("TOP", frame, "TOP", 0, y - size / 2 + PLATE_OVERLAP)
 		end
 	end
-	-- the calm ground: the page stone's rect (inside the kit's outer rail,
-	-- or the plain look's rock) less the band
+	-- the calm ground: the page stone's rect (inside the kit's outer rail)
+	-- less the band
 	local calm = self.calm
 	if calm then
 		local l, r, t, b = PAGE_INSET, PAGE_INSET, PAGE_INSET, PAGE_INSET
@@ -451,54 +444,6 @@ function Shell:Lay()
 		calm:ClearAllPoints()
 		calm:SetPoint("TOPLEFT", frame, "TOPLEFT", l + CALM_BAND, -(t + CALM_BAND))
 		calm:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -(r + CALM_BAND), b + CALM_BAND)
-	end
-end
-
--- the plain look's own extras, made the first time it is shown: the metal
--- frame (the game's own nine-slice, else a plain edge) and the trim line
--- inside it (the game's window of wave 4: reached no more since the modern
--- shell, onelook stage B; stage E deletes it with the game look)
-function Shell:BuildPlain()
-	if self.plainBuilt then
-		return
-	end
-	self.plainBuilt = true
-	local frame = self.frame
-	local framed = false
-	if NineSliceUtil and NineSliceUtil.ApplyLayoutByName then
-		-- the game's own window frame (this client's metal, its Camelot
-		-- offsets in the layouts): over the window's content as the game's
-		-- (its NineSlice stands over the window), under the corner ring's
-		-- emblem's metal opening only where the layout has one; under a
-		-- crest on the top edge
-		local nine = CreateFrame("Frame", nil, frame, "NineSlicePanelTemplate")
-		nine:SetAllPoints(frame)
-		nine:SetFrameLevel(frame:GetFrameLevel() + (self.ringAt == "top" and LEVEL_CREST - 1 or LEVEL_CREST + 1))
-		nine:EnableMouse(false)
-		framed = pcall(NineSliceUtil.ApplyLayoutByName, nine,
-			self.ringAt == "tl" and "PortraitFrameTemplate" or "ButtonFrameTemplateNoPortrait")
-		if framed then
-			self:Plain(nine)
-		else
-			nine:Hide()
-		end
-	end
-	if not framed then
-		local edge = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-		edge:SetAllPoints(frame)
-		edge:SetBackdrop(EDGE_WIDE)
-		Kit:Paint(edge, "border", "border")
-		self:Plain(edge)
-	end
-	-- the streaks under the title bar (the template's TopTileStreaks)
-	local streaks = frame:CreateTexture(nil, "BACKGROUND", nil, 2)
-	if pcall(streaks.SetAtlas, streaks, GAME_STREAKS, true) then
-		streaks:SetHorizTile(true)
-		streaks:SetPoint("TOPLEFT", self.bg, "TOPLEFT", 4, 0)
-		streaks:SetPoint("TOPRIGHT", self.bg, "TOPRIGHT", 0, 0)
-		self:Plain(streaks)
-	else
-		streaks:Hide()
 	end
 end
 
@@ -531,13 +476,12 @@ function Shell:LayClose()
 end
 
 -- a painted-look-only region (the kit's anchors: the rock its page stone
--- stands in for, the tint, the calm ground, the plate's box, the crest):
--- shown only while the kit dresses the window (Look.Show: a region the game
--- look also hides keeps one record of what is asked)
+-- replaces, the tint, the calm ground, the plate's box, the crest): shown
+-- only while the kit dresses the window
 function Shell:Painted(region)
 	if region then
 		self.paintedOnly[#self.paintedOnly + 1] = region
-		MelloUI.Look.Show(region, self.kit)
+		region:SetShown(self.kit)
 	end
 	return region
 end
@@ -744,7 +688,7 @@ function Shell:Switch(on)
 	if on then
 		-- (the kit's anchors shown first: its reps and its dressing stand on them)
 		for i = 1, #painted do
-			MelloUI.Look.Show(painted[i], true)
+			painted[i]:SetShown(true)
 		end
 		for i = 1, #reps do
 			reps[i]:Enable()
@@ -760,7 +704,7 @@ function Shell:Switch(on)
 			reps[i]:Disable()
 		end
 		for i = 1, #painted do
-			MelloUI.Look.Show(painted[i], false)
+			painted[i]:SetShown(false)
 		end
 		self:BuildModern()
 		-- (after the plates' own switch -- off, the title and the close back where they found them: 0.20.1)
@@ -937,7 +881,7 @@ end
 -- The kit's dressing (through shell:Kit: now, or at the first switch on)
 --------------------------------------------------------------------------------
 
--- the page stone for the plain look's rock, the outer double rail (its
+-- the page stone in the rock's place, the outer double rail (its
 -- shell registration: the rail Edit Layout lights while the window is
 -- dragged, Kit.shells[frame].outer, and its shade)
 local function DressFrame(K, shell)
@@ -961,8 +905,8 @@ end
 -- panel, the emblem on the disc (sized by the kit: no size of its own)
 local function DressRing(K, shell)
 	if shell.gameCorner then
-		-- (ring.game: the game's own corner art where the game puts it, shown with the painted look: the plain
-		-- look's own frame layout draws it there already; the emblem is the plain one, the game's portrait)
+		-- (ring.game: the game's own corner art where the game puts it, shown with the painted look; the emblem is
+		-- the crest's own, the game's portrait: shell.plainEmblem)
 		local holder = CreateFrame("Frame", nil, shell.frame)
 		holder:SetFrameLevel(shell.frame:GetFrameLevel() + LEVEL_GAME_CORNER)
 		holder:EnableMouse(false)
@@ -1079,8 +1023,8 @@ function Kit:OwnWindow(frame, opts)
 	shells[frame] = shell
 	local base = frame:GetFrameLevel()
 
-	-- the plain look's page: the game's rock, in its own colours, from under
-	-- the title bar (the kit's stone stands in for it)
+	-- the page: the game's rock, the region the kit's page stone replaces
+	-- (DressFrame; it shows only if the stone is missing)
 	local bg = frame:CreateTexture(nil, "BACKGROUND", nil, 0)
 	bg:SetTexture(ROCK, "REPEAT", "REPEAT")
 	bg:SetHorizTile(true)
@@ -1088,12 +1032,11 @@ function Kit:OwnWindow(frame, opts)
 	local bgIn = (opts.ring and opts.ring.at == "tl") and GAME_BG_IN or GAME_BG_IN_NOPORTRAIT
 	bg:SetPoint("TOPLEFT", frame, "TOPLEFT", bgIn, -GAME_BG_TOP)
 	bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -GAME_BG_EDGE, GAME_BG_EDGE)
-	-- (its palette tint, the painted look's only: none in the game's)
+	-- (its palette tint, the painted look's only)
 	local tint = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
 	tint:SetPoint("TOPLEFT", frame, "TOPLEFT", PAGE_INSET, -PAGE_INSET)
 	tint:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -PAGE_INSET, PAGE_INSET)
 	self:Paint(tint, "mainWindow", "fill", 0.45)
-	MelloUI.Look.Hide(tint)
 	shell.bg, shell.tint = shell:Painted(bg), shell:Painted(tint)
 	-- the calm ground over them both (sublevel 3: over the kit's stone too,
 	-- a region in the rock's layer and sublevel), laid by the look (Lay);
@@ -1101,7 +1044,6 @@ function Kit:OwnWindow(frame, opts)
 	if opts.calm then
 		local calm = frame:CreateTexture(nil, "BACKGROUND", nil, 3)
 		self:Paint(calm, "mainWindow", "fill", 1)
-		MelloUI.Look.Hide(calm)
 		shell.calm = shell:Painted(calm)
 	end
 
@@ -1113,7 +1055,8 @@ function Kit:OwnWindow(frame, opts)
 	shell.grab = grab
 	shell:LayGrab()
 
-	-- the crest (or the corner ring) and the plain look's emblem in it
+	-- the crest (or the corner ring) and its emblem (the region the kit's ring replaces; under ring.game the bag's
+	-- portrait)
 	local ring = opts.ring
 	if ring then
 		shell.ringAt = ring.at == "tl" and "tl" or "top"
@@ -1149,7 +1092,7 @@ function Kit:OwnWindow(frame, opts)
 		shell.bounds[#shell.bounds + 1] = crest
 	end
 
-	-- the plate and the title on it; plain: a palette box
+	-- the plate and the title on it; its palette box the region the kit's plate replaces (DressPlate)
 	if opts.plate then
 		shell.plateKind = opts.plate == "rail" and "rail" or "crest"
 		local plate = CreateFrame("Frame", nil, frame)
@@ -1167,12 +1110,9 @@ function Kit:OwnWindow(frame, opts)
 		fill:SetAllPoints(plate)
 		self:Paint(fill, "raisedPanel", "fill", 1)
 		shell.plateFill, shell.plateEdges = fill, W.Edges(plate, "trim")   -- (four 1 px lines, the widget set's)
-		-- (the game's look: the title alone on the bar, no box; the modern
-		-- look: no box either, the title on its strip or brand)
-		MelloUI.Look.Hide(fill)
+		-- (the modern look: no box, the title on its strip or brand)
 		shell:Painted(fill)
 		for i = 1, #shell.plateEdges do
-			MelloUI.Look.Hide(shell.plateEdges[i])
 			shell:Painted(shell.plateEdges[i])
 		end
 		local title = plate:CreateFontString(nil, "OVERLAY", "GameFontNormal")

@@ -289,14 +289,9 @@ W.Edges = Edges
 -- another panel. The kit's list box stays the game windows'.
 --   W.Panel(parent, opts) -> panel   a Frame, sized and placed by the caller
 --     opts: on (true: the look laid on `parent` itself, which is returned --
---           a section that is its own panel), alpha (the fill's, 1), game
---           ("tooltip": a popup's -- the flyout -- the game's tooltip frame in
---           the game's look, not its inset)
+--           a section that is its own panel), alpha (the fill's, 1)
 --   panel.panelFill, panel.panelEdges   (painted by key: a new palette
 --                                       paints them again)
--- The game's look (wave 4): the game's inset in its place (InsetFrameTemplate:
--- its thin inner border and marble ground, MelloUI.Look.GameFrame), made the
--- first time it shows.
 --------------------------------------------------------------------------------
 
 -- the panel's regions on a frame: its fill under everything the frame
@@ -316,9 +311,6 @@ function W.Panel(parent, opts)
 		alpha = 1
 	end
 	panel.panelFill, panel.panelEdges = PanelLook(panel, alpha)
-	panel.melloGameKind = opts.game == "tooltip" and "tooltip" or "inset"
-	W.FollowGame(panel, W.PanelLook)
-	W.PanelLook(panel)
 	return panel
 end
 
@@ -417,7 +409,7 @@ end
 --------------------------------------------------------------------------------
 
 function W.ShowTooltip(owner, title, body, line, anchor)
-	local P = MelloUI.Look.Palette()   -- (the reskin off: the game's gold and white)
+	local P = MelloUI.Look.Palette()   -- (the palette's gold and text colour)
 	local gold, text = P.selectedTrim, P.text
 	GameTooltip:SetOwner(owner, anchor or "ANCHOR_RIGHT")
 	GameTooltip:SetText(title, gold[1], gold[2], gold[3])
@@ -580,90 +572,6 @@ local FlatState = Shared("OnEnable / OnDisable / OnShow on MelloUI's flat contro
 	c.melloLook(c, true)
 end, "script")
 
---------------------------------------------------------------------------------
--- The game's look (docs/plans/game-look.md wave 4): with the reskin off
--- every flat control wears the game's own art in place of its flat plate --
--- the template's own pieces where it was made from one (a panel button, a
--- tab, a search box or a text field: shown again, the template's scripts
--- swapping them as in the game's windows), the game's art laid on it where
--- it was made by hand (a check box, a dropdown, a slider, the close button;
--- made at its first need). Its behaviour stays ours. The switch is MelloUI's
--- own parts' (MelloUI.Look, "own": the reskin): each flat control's look is
--- laid again at 'look:own'.
---   GA.Game() -> true while the controls show the game's look
---------------------------------------------------------------------------------
-
--- (one table for the game look's helpers and art names: this file's main
--- chunk is near Lua 5.1's limit of 200 locals)
-local GA = { flats = setmetatable({}, weakKeys), listening = false }   -- flats: [control] = true (its melloLook)
-
-function GA.Game()
-	local Look = MelloUI.Look   -- (Core/GameLook.lua loads after this file)
-	return Look ~= nil and not Look:On()
-end
-W.Game = GA.Game
-
-function GA.OnLook()
-	for c in pairs(GA.flats) do
-		c.melloLook(c, true)
-	end
-end
-
--- a game colour role's three numbers (MelloUI.Look's: the game's colour in
--- its look)
-function GA.RoleRGB(role)
-	return MelloUI.Look.RoleColour(role)
-end
-
--- a text's colour by a game role in the game's look: out of the palette's
--- lists (a new palette leaves it), the role's colour on it
-function GA.Text(fs, role)
-	local Kit = KitNow()
-	if Kit and Kit.Unpaint then
-		Kit:Unpaint(fs, "text")
-	end
-	fs:SetTextColor(GA.RoleRGB(role))
-end
-
--- regions of one look: each shown in the look it belongs to
-function GA.ShowAll(list, on)
-	if list then
-		for i = 1, #list do
-			list[i]:SetShown(on)
-		end
-	end
-end
-
--- a control whose look is laid again at the switch (its melloLook(c, true))
-function GA.Follow(c, look)
-	c.melloLook = look
-	GA.flats[c] = true
-	if not GA.listening then
-		GA.listening = true
-		MelloUI:On("look:own", GA.OnLook, "Widgets game look")
-	end
-end
-
-W.FollowGame = GA.Follow
-
--- (0.20.1) an own text field with no art of its own (a number box): THE field in MelloUI's look, its plain fill and
--- edge in the game's (W.Field's `plain`)
-function GA.PlainField(box)
-	box.field:SetPlain(GA.Game())
-end
-
--- a panel in the look: the game's inset, or our fill and edge (W.Panel)
-function W.PanelLook(panel)
-	local game = GA.Game()
-	if panel.melloGame == game then
-		return
-	end
-	panel.melloGame = game
-	MelloUI.Look.GameFrameShown(panel, panel.melloGameKind or "inset", game)
-	panel.panelFill:SetShown(not game)
-	GA.ShowAll(panel.panelEdges, not game)
-end
-
 -- `shows`: its look laid again on every show too (a button's own fonts
 -- change its label's colour while it is hidden)
 local function FlatHooks(c, look, shows)
@@ -675,7 +583,6 @@ local function FlatHooks(c, look, shows)
 	if shows then
 		Perf.HookScript(c, "OnShow", FlatState)
 	end
-	GA.Follow(c, look)
 	look(c, true)
 end
 
@@ -784,26 +691,15 @@ end
 -- takes get() again. A refresh that changes nothing leaves the box alone (a
 -- tab's refresh set every box on it again -- user, 2026-09-24).
 --   W.Switch(parent, get, set, opts) -> switch   (opts.skin: kept for the callers)
---   switch.melloPlate (the kit's plate); switch.melloTick (the game look's mark)
--- The game's look (wave 4): the game's own check box (the Settings panel's,
--- checkbox-minimal, lit under the pointer as MinimalCheckboxTemplate) and
--- its check marks (checkmark-minimal, -disabled) on the same button, made
--- the first time it shows; at half while disabled.
+--   switch.melloPlate (the kit's plate)
 --------------------------------------------------------------------------------
 
 local SWITCH = 26
-GA.CHECK_BOX, GA.CHECK_MARK, GA.CHECK_MARK_OFF = "checkbox-minimal", "checkmark-minimal", "checkmark-minimal-disabled"
 
 -- the plate as the switch is: ticked or not, lit under the pointer, at half
 -- while disabled
 local function SwitchLook(cb)
 	local on = cb:IsEnabled() and true or false
-	if GA.Game() then
-		GA.SwitchArt(cb, true)
-		cb.melloBox:SetAlpha(on and 1 or FLAT_OFF)
-		return
-	end
-	GA.SwitchArt(cb, false)
 	KC.Lay(cb.melloPlate, SWITCH, SWITCH, "check", nil,
 		KC.State("check", flatHover[cb], false, cb:GetChecked(), not on), on and 1 or FLAT_OFF)
 end
@@ -811,52 +707,6 @@ end
 local SwitchChecked = Shared("SetChecked on MelloUI's switches", function(cb)
 	SwitchLook(cb)
 end, "hook")
-
--- the game's check mark on a tick: over the whole button, in its own colours
-function GA.Tick(tick, atlas)
-	tick:SetAtlas(atlas, false, nil, true)   -- (resetTexCoords: no earlier crop kept on the tick)
-	tick:SetVertexColor(GA.RoleRGB("picture"))
-	tick:SetAllPoints(tick:GetParent())
-end
-
--- the switch's art in a look: the game's box and marks (the button's checked
--- textures, made the first time the game's look shows), or our plate (each
--- only when the look changed)
-function GA.SwitchArt(cb, game)
-	if cb.melloGame == game then
-		return
-	end
-	cb.melloGame = game
-	if game and not cb.melloBox then
-		local box = cb:CreateTexture(nil, "BACKGROUND")
-		box:SetAtlas(GA.CHECK_BOX)
-		box:SetAllPoints(cb)
-		local lit = cb:CreateTexture(nil, "HIGHLIGHT")
-		lit:SetAtlas(GA.CHECK_BOX)
-		lit:SetBlendMode("ADD")
-		lit:SetAllPoints(cb)
-		cb.melloBox, cb.melloBoxLit = box, lit
-		local tick = cb:CreateTexture(nil, "ARTWORK")
-		cb:SetCheckedTexture(tick)
-		GA.Tick(tick, GA.CHECK_MARK)
-		cb.melloTick = tick
-		if cb.SetDisabledCheckedTexture then
-			local off = cb:CreateTexture(nil, "ARTWORK")
-			cb:SetDisabledCheckedTexture(off)
-			GA.Tick(off, GA.CHECK_MARK_OFF)
-			cb.melloTickOff = off
-		end
-	end
-	if cb.melloBox then
-		cb.melloBox:SetShown(game)
-		cb.melloBoxLit:SetShown(game)
-		cb.melloTick:SetAlpha(game and 1 or 0)
-		if cb.melloTickOff then
-			cb.melloTickOff:SetAlpha(game and 1 or 0)
-		end
-	end
-	cb.melloPlate:SetShown(not game)
-end
 
 local function SwitchSetValue(self, on, silent)
 	on = on and true or false
@@ -972,50 +822,10 @@ local DD_TEXT_X = 8            -- the choice's left in the box
 local CARET = 11               -- the caret: the kit's arrow glyph in a square this big (0.19.9, KC; it was four 1 px lines)
 local CARET_X = 9              -- its right end from the box's right
 
--- The game's look (wave 4): WowStyle1DropdownTemplate's own art on the box
--- -- its text holder round it (common-dropdown-textholder, -8 / +7 to +8 /
--- -9) and its arrow at the right (common-dropdown-a-button, its hover and
--- disabled states), the choice white (grey while disabled) -- made the first
--- time it shows; our fill, edge and caret hidden
-GA.DD_HOLDER, GA.DD_ARROW = "common-dropdown-textholder", "common-dropdown-a-button"
-GA.DD_ARROW_LIT, GA.DD_ARROW_OFF = "common-dropdown-a-button-hover", "common-dropdown-a-button-disabled"
-
-function GA.DropdownArt(dd, game)
-	if dd.melloGame == game then
-		return
-	end
-	dd.melloGame = game
-	if game and not dd.melloHolder then
-		local holder = dd:CreateTexture(nil, "BACKGROUND")
-		holder:SetAtlas(GA.DD_HOLDER)
-		holder:SetPoint("TOPLEFT", dd, "TOPLEFT", -8, 7)
-		holder:SetPoint("BOTTOMRIGHT", dd, "BOTTOMRIGHT", 8, -9)
-		local arrow = dd:CreateTexture(nil, "OVERLAY")
-		arrow:SetAtlas(GA.DD_ARROW, true)
-		arrow:SetPoint("RIGHT", dd, "RIGHT", 1, -3)
-		dd.melloHolder, dd.melloArrow = holder, arrow
-	end
-	if dd.melloHolder then
-		dd.melloHolder:SetShown(game)
-		dd.melloArrow:SetShown(game)
-	end
-	dd.melloField:SetShown(not game)
-	dd.melloCaret:SetShown(not game)
-end
-
 -- the box as it is: its fill and caret (the hover) always; `whole`, its
 -- state (enabled or not) too -- the edge, the choice's colour
 local function DropdownLook(dd, whole)
 	local on = dd:IsEnabled() and true or false
-	if GA.Game() then
-		GA.DropdownArt(dd, true)
-		dd.melloArrow:SetAtlas((not on and GA.DD_ARROW_OFF) or (flatHover[dd] and GA.DD_ARROW_LIT) or GA.DD_ARROW, true)
-		if whole then
-			GA.Text(dd.Text, on and "text" or "muted")
-		end
-		return
-	end
-	GA.DropdownArt(dd, false)
 	local alpha = on and 1 or FLAT_OFF
 	-- (THE text field's look, lit while hovered: W.Field)
 	dd.melloField:SetState(on and flatHover[dd], not on, alpha)
@@ -1385,73 +1195,6 @@ do
 		return box
 	end
 
-	-- The game's look (wave 4): MinimalSliderTemplate's own art on the track
-	-- (Minimal_SliderBar_Left / _Middle / _Right, at their size, the thumb
-	-- Minimal_SliderBar_Button) and the value box in the game's input box
-	-- border (InputBoxTemplate: common-search-border-left / -middle /
-	-- -right), its number white; made the first time it shows. Our track,
-	-- value part, knob and box plate hidden.
-	local function Piece(parent, layer, atlas, size)
-		local tex = parent:CreateTexture(nil, layer)
-		tex:SetAtlas(atlas, size)
-		return tex
-	end
-
-	local function SliderGameArt(slider)
-		local track, box = slider.Slider, slider.box
-		local left = Piece(track, "ARTWORK", "Minimal_SliderBar_Left", true)
-		left:SetPoint("LEFT", track, "LEFT", 0, 0)
-		local right = Piece(track, "ARTWORK", "Minimal_SliderBar_Right", true)
-		right:SetPoint("RIGHT", track, "RIGHT", 0, 0)
-		local middle = Piece(track, "ARTWORK", "_Minimal_SliderBar_Middle", true)
-		middle:SetPoint("TOPLEFT", left, "TOPRIGHT", 0, 0)
-		middle:SetPoint("TOPRIGHT", right, "TOPLEFT", 0, 0)
-		local thumb = Piece(track, "OVERLAY", "Minimal_SliderBar_Button", true)
-		local bl = Piece(box, "BACKGROUND", "common-search-border-left")
-		bl:SetSize(8, 20)
-		bl:SetPoint("LEFT", box, "LEFT", -5, 0)
-		local br = Piece(box, "BACKGROUND", "common-search-border-right")
-		br:SetSize(8, 20)
-		br:SetPoint("RIGHT", box, "RIGHT", 0, 0)
-		local bm = Piece(box, "BACKGROUND", "common-search-border-middle")
-		bm:SetHeight(20)
-		bm:SetPoint("LEFT", bl, "RIGHT", 0, 0)
-		bm:SetPoint("RIGHT", br, "LEFT", 0, 0)
-		slider.melloGameArt, slider.melloThumb = { left, right, middle, bl, br, bm }, thumb
-	end
-
-	-- the slider in the look of the moment (laid again at the switch)
-	local function SliderLook(slider)
-		local game = GA.Game()
-		if slider.melloGame == game then
-			return
-		end
-		slider.melloGame = game
-		local track, box = slider.Slider, slider.box
-		if game and not slider.melloGameArt then
-			SliderGameArt(slider)
-		end
-		GA.ShowAll(slider.melloGameArt, game)
-		local flat = not game
-		track.edge:SetShown(flat)
-		track.fill:SetShown(flat)
-		track.part:SetShown(flat)
-		track.knob:SetShown(flat)
-		track.ring:SetShown(flat)
-		box.field:SetShown(flat)
-		if game then
-			slider.melloThumb:Show()
-			track:SetThumbTexture(slider.melloThumb)
-			GA.Text(box, "text")
-		else
-			if slider.melloThumb then
-				slider.melloThumb:Hide()
-			end
-			track:SetThumbTexture(track.ring)
-			W.Paint(box, "text", "text")
-		end
-	end
-
 	function W.Slider(parent, width, get, set, opts)
 		opts = opts or NO_OPTS
 		local min, max, step = opts.min or 0, opts.max or 1, opts.step or 0.05
@@ -1473,8 +1216,6 @@ do
 		slider.refreshing = false
 		FitBox(slider)
 		slider.Refresh, slider.SetRange = SliderRefresh, SliderSetRange
-		GA.Follow(slider, SliderLook)
-		SliderLook(slider)
 		slider:Refresh()
 		return slider
 	end
@@ -1520,61 +1261,31 @@ do
 	local CLOSE = 22                               -- the close button
 	local closeDown = setmetatable({}, weakKeys)   -- [close button] = true while the mouse is down on it
 
+	-- the template's own plate hidden, once at build (UIPanelButtonTemplate's
+	-- scripts only set its textures: SecureUIPanelTemplates.lua)
+	local function HidePlate(b)
+		for _, key in ipairs(PLATE_PARTS) do
+			local part = rawget(b, key)
+			if part then
+				part:SetAlpha(0)
+				part:Hide()
+			end
+		end
+		for _, getter in ipairs(PLATE_TEXTURES) do
+			local tex = b[getter] and b[getter](b)
+			if tex then
+				tex:SetAlpha(0)
+			end
+		end
+	end
+
 	-- The look as the button is (`edges`: its edge too -- it changes only
 	-- with the button's state, not its hover). The label is painted every time:
 	-- the button's own font changes (normal / highlight / disabled) take its
 	-- colour. A gold label on the hover fill would be too faint (the
 	-- palette's rule: only `text` on `hover`), so under the pointer the main
 	-- action's label is `text`, its edge still gold.
-	-- the template's own plate (the game's look: its pieces shown again, the
-	-- template's scripts swapping them by state) or our flat one; a button
-	-- made by hand (the close button) has its own art (b.melloFlatArt: the
-	-- kit's plate) in our look, the game's state textures in its
-	local function Plate(b, game)
-		if b.melloGame == game then
-			return
-		end
-		b.melloGame = game
-		for _, key in ipairs(PLATE_PARTS) do
-			local part = rawget(b, key)
-			if part then
-				part:SetAlpha(game and 1 or 0)
-				part:SetShown(game)
-			end
-		end
-		for _, getter in ipairs(PLATE_TEXTURES) do
-			local tex = b[getter] and b[getter](b)
-			if tex then
-				tex:SetAlpha(game and 1 or 0)
-			end
-		end
-		if b.melloFill then
-			b.melloFill:SetShown(not game)
-		end
-		GA.ShowAll(b.melloEdges, not game)
-		GA.ShowAll(b.melloFlatArt, not game)
-	end
-
-	-- the game's look: the template's plate and its fonts' colours -- gold,
-	-- white under the pointer, grey while disabled (UIPanelButtonTemplate's
-	-- normal, highlight and disabled font objects)
-	local function GameLook(b)
-		Plate(b, true)
-		if b.melloGameLook then
-			b.melloGameLook(b)   -- (the close button's own art by state)
-		end
-		local fs = b:GetFontString()
-		if fs then
-			local on = b:IsEnabled() and true or false
-			GA.Text(fs, (not on and "muted") or (flatHover[b] and "text") or "gold")
-		end
-	end
-
 	local function FlatLook(b, edges)
-		if GA.Game() then
-			return GameLook(b)
-		end
-		Plate(b, false)
 		local on = b:IsEnabled() and true or false
 		local alpha = on and 1 or FLAT_OFF
 		local gold = flatGold[b]
@@ -1607,6 +1318,7 @@ do
 		if b.SetPushedTextOffset then
 			b:SetPushedTextOffset(0, -1)
 		end
+		HidePlate(b)
 		FlatHooks(b, FlatLook, true)
 		return b
 	end
@@ -1621,37 +1333,8 @@ do
 		return W.FlatButton(b, opts and opts.gold)
 	end
 
-	-- the game's close button art (UIPanelCloseButton: RedButton-Exit and its
-	-- pressed, highlight and disabled states, the button's own state
-	-- textures), set the first time the game's look shows (wave 4)
-	local CLOSE_ART = { { "SetNormalTexture", "RedButton-Exit" }, { "SetPushedTexture", "RedButton-exit-pressed" },
-		{ "SetDisabledTexture", "RedButton-Exit-Disabled" }, { "SetHighlightTexture", "RedButton-Highlight", "ADD" } }
-	local function CloseGameArt(b)
-		if b.melloGameSet then
-			return
-		end
-		b.melloGameSet = true
-		for i = 1, #CLOSE_ART do
-			local art = CLOSE_ART[i]
-			local tex = b:CreateTexture()
-			tex:SetAtlas(art[2])
-			if art[3] then
-				tex:SetBlendMode(art[3])
-			end
-			local set = b[art[1]]
-			if set then
-				set(b, tex)
-			end
-		end
-	end
-
-	-- the close button as it is: the game's art in its look; our plate in
-	-- the state's piece
+	-- the close button as it is: our plate in the state's piece
 	local function CloseLook(b)
-		if GA.Game() then
-			return GameLook(b)
-		end
-		Plate(b, false)
 		local on = b:IsEnabled() and true or false
 		KC.Lay(b.melloPlate, CLOSE, CLOSE, "close", nil, KC.State("close", flatHover[b], closeDown[b], nil, not on),
 			on and 1 or FLAT_OFF)
@@ -1672,7 +1355,7 @@ do
 		KitRep(close, false)   -- (the kit's sweep passes it by)
 		local plate = close:CreateTexture(nil, "ARTWORK")
 		plate.melloOn = close
-		close.melloPlate, close.melloFlatArt, close.melloGameLook = plate, { plate }, CloseGameArt
+		close.melloPlate = plate
 		Perf.HookScript(close, "OnMouseDown", CloseDown)
 		Perf.HookScript(close, "OnMouseUp", CloseUp)
 		FlatHooks(close, CloseLook)
@@ -1682,7 +1365,7 @@ end
 
 --------------------------------------------------------------------------------
 -- Tabs (0.15.0, flat: user, 2026-09-29 "all flat"; they were the kit's tab
--- art, TB6, and the game's own in the plain look): a page's tab -- the
+-- art, TB6): a page's tab -- the
 -- game's top tab (PanelTopTabButtonTemplate), made by the caller (the
 -- configurator's pages) -- its art hidden, the tab TAB_H high and a flat
 -- plate on it, TAB_IN inside its sides (tabs laid 6 px over each other stand
@@ -1711,41 +1394,30 @@ do
 
 	-- the template's own art (PanelTopTabButtonTemplate: Left / Middle /
 	-- Right at rest, the *Active three while selected, the *Highlight three
-	-- under the pointer) in the game's look, none of it in ours; the open
-	-- tab's middle as tall as the template made it in the game's look, as the
-	-- plate in ours (the owner lays the tab row by it)
-	local function TabArt(tab, game, on)
+	-- under the pointer) at alpha 0 and hidden, again at every lay: the
+	-- game's select (PanelTemplates_SelectTab) shows the *Active three again
+	-- after its Disable, so their alpha keeps them unseen; the open tab's
+	-- middle as tall as the plate (the owner lays the tab row by it)
+	local function TabArt(tab)
 		for _, key in ipairs(TAB_ART) do
 			local art = rawget(tab, key)
 			if art then
-				local show = game and (key:find("Highlight", 1, true) ~= nil or (key:find("Active", 1, true) ~= nil) == on)
-				art:SetAlpha(show and 1 or 0)
-				art:SetShown(show)
+				art:SetAlpha(0)
+				art:Hide()
 			end
 		end
 		local open = rawget(tab, "MiddleActive")
 		if open then
-			open:SetHeight(game and (tab.melloOpenH or TAB_H) or TAB_H)
+			open:SetHeight(TAB_H)
 		end
-		tab.melloFill:SetShown(not game)
-		GA.ShowAll(tab.melloEdges, not game)
 	end
 
 	-- the whole look, every time (a tab has few parts): its fill by state and
 	-- hover, the edge gold on the selected tab unless the ring lies on it, the
-	-- label painted again (the button's own fonts change its colour). The
-	-- game's look: its own art by state, the label gold at rest and white on
-	-- the selected tab (the template's GameFontNormalSmall / -HighlightSmall)
+	-- label painted again (the button's own fonts change its colour)
 	local function TabLook(tab)
 		local on = tabOn[tab] == true
-		if GA.Game() then
-			TabArt(tab, true, on)
-			if tab.Text then
-				GA.Text(tab.Text, on and "text" or "gold")
-			end
-			return
-		end
-		TabArt(tab, false, on)
+		TabArt(tab)
 		local lit = flatHover[tab] and not on
 		W.Paint(tab.melloFill, (on and "selectedTab") or (lit and "hover") or "raisedPanel", "fill", 1)
 		local skin = tab.melloSkin
@@ -1783,13 +1455,8 @@ do
 		KitRep(tab, false)   -- (the kit's sweep passes it by: no TB6)
 		-- (the tab as tall as its plate, and its hidden open-tab art too: the
 		-- height its owner lays the tab row by; a New badge on its top edge
-		-- then lies on the plate's. The open tab's own height kept for the
-		-- game's look: TabArt)
+		-- then lies on the plate's)
 		tab:SetHeight(TAB_H)
-		local open = rawget(tab, "MiddleActive")
-		if open then
-			tab.melloOpenH = Num(open:GetHeight())
-		end
 		local fill = tab:CreateTexture(nil, "BACKGROUND", nil, 2)
 		fill:SetPoint("TOPLEFT", tab, "TOPLEFT", TAB_IN, 0)
 		fill:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -TAB_IN, 0)
@@ -1821,10 +1488,9 @@ end
 -- MelloUI-BuildData/output/dropdown_sketch: the flat box "too modern"), lit while hovered. The border library's Stone rail at its light weight on the field (Kit:NewBorder, style "rpg"), its own
 -- dark trough under the text; the library's glow while the field has the keyboard, its darken disabled. The rail is
 -- made at the field's first show (a field never seen makes none). Without the library (a world without the kit),
--- or `plain` (an own control in the game's look, with no art of its own), the `innerPanel` fill in a 1 px edge it
--- stands in for (`trim` with the keyboard).
+-- the `innerPanel` fill in a 1 px edge it stands in for (`trim` with the keyboard).
 --   W.Field(host, rect) -> field   its parts regions of `host`, on `rect` (host itself, or a region of host's)
---   field:SetState(focus, disabled, alpha)   field:SetShown(on)   field:SetPlain(on)
+--   field:SetState(focus, disabled, alpha)   field:SetShown(on)
 --------------------------------------------------------------------------------
 do
 	local STYLE, WEIGHT = "rpg", "light"
@@ -1851,10 +1517,10 @@ do
 	local FieldSeen   -- (its OnShow: below)
 
 	local function Lay(f)
-		-- (the rail made only while the field is on the screen: a field seen once in the other look and hidden now --
-		-- a configurator page built with the reskin off, the look switched back while it is closed -- makes it at its
-		-- next show, drawing nothing till then; the test world's hard3/ownlook G3 counted one such dropdown's 18)
-		local want = f.seen and f.shown and not f.plain
+		-- (the rail made only while the field is on the screen: a field seen while it was hidden (SetShown(false))
+		-- and shown again while its host is off the screen makes it at its next show, drawing nothing till then; the
+		-- test world's hard3/ownlook G3 counted one such dropdown's 18)
+		local want = f.seen and f.shown
 		local stone = false
 		f.pending = nil
 		if want and f.border == nil and not f.host:IsVisible() then
@@ -1872,7 +1538,7 @@ do
 				f.border:SetLit(f.focus, nil, f.disabled)
 			end
 		end
-		local plain = f.shown and not stone and not f.pending and (f.plain or f.seen) and true or false
+		local plain = f.shown and not stone and not f.pending and f.seen and true or false
 		if plain and not f.fill then
 			local fill = f.host:CreateTexture(nil, "BACKGROUND", nil, 2)
 			fill:SetAllPoints(f.rect)
@@ -1880,7 +1546,9 @@ do
 		end
 		if f.fill then
 			f.fill:SetShown(plain)
-			GA.ShowAll(f.edges, plain)
+			for i = 1, 4 do
+				f.edges[i]:SetShown(plain)
+			end
 			if plain then
 				W.Paint(f.fill, "innerPanel", "fill", f.alpha)
 				for i = 1, 4 do
@@ -1897,11 +1565,6 @@ do
 
 	function Field:SetShown(on)
 		self.shown = on and true or false
-		Lay(self)
-	end
-
-	function Field:SetPlain(on)
-		self.plain = on and true or false
 		Lay(self)
 	end
 
@@ -1930,7 +1593,7 @@ end
 
 --------------------------------------------------------------------------------
 -- The search box (0.15.0, flat: user, 2026-09-29 "all flat"; it was the
--- kit's S1 in the kit's look, the game's own in the plain one): the game's
+-- kit's S1 in the kit's look): the game's
 -- search box (SearchBoxTemplate), made by the caller (the configurator's
 -- side list), in THE text field's look (W.Field, 0.20.1: the Stone rail and
 -- its trough, lit while it has the keyboard) -- its Left / Middle / Right
@@ -1955,70 +1618,42 @@ do
 	local SEARCH_ART = { "Left", "Middle", "Right" }
 
 	-- the glass in use (the keyboard in the box, or a text in it) or idle:
-	-- after the game's own scripts, which tint it themselves (in the game's
-	-- look: white in use, grey idle, as its own)
+	-- after the game's own scripts, which tint it themselves
 	local function Glass(box)
 		local glass = box.searchIcon
 		if glass then
 			local text = box:GetText()
 			local used = box:HasFocus() or (text and text ~= "")
-			if GA.Game() then
-				local Kit = KitNow()
-				if Kit and Kit.Unpaint then
-					Kit:Unpaint(glass, "vertex")
-				end
-				glass:SetVertexColor(GA.RoleRGB(used and "text" or "muted"))
-			else
-				W.Paint(glass, used and "text" or "mutedText", "vertex")
-			end
+			W.Paint(glass, used and "text" or "mutedText", "vertex")
 		end
 	end
 
-	-- the field as the look is: the template's own border (Left / Middle /
-	-- Right) and its prompt's grey in the game's look, our fill and edge
-	-- otherwise (laid again at the switch)
+	-- the field's look, laid once: the template's own border (Left / Middle /
+	-- Right) unseen, a plain field's text padded off the rail, the prompt and
+	-- the clear button's cross painted
 	local SearchFocus
 	local function FieldLook(box)
-		local game = GA.Game()
 		for _, key in ipairs(SEARCH_ART) do
 			local art = rawget(box, key)
 			if art then
-				art:SetAlpha(game and 1 or 0)
+				art:SetAlpha(0)
 			end
 		end
-		box.melloField:SetShown(not game)
 		local pad = rawget(box, "melloInsets")
 		if pad then
-			box:SetTextInsets(pad[1] + (game and 0 or FIELD_PAD), pad[2] + (game and 0 or FIELD_PAD), pad[3], pad[4])
+			box:SetTextInsets(pad[1] + FIELD_PAD, pad[2] + FIELD_PAD, pad[3], pad[4])
 		end
 		local clear = box.clearButton
-		if game then
-			if box.Instructions then
-				GA.Text(box.Instructions, "muted")
-			end
-			if clear and clear.Icon then
-				local Kit = KitNow()
-				if Kit and Kit.Unpaint then
-					Kit:Unpaint(clear.Icon, "vertex")
-				end
-				clear.Icon:SetVertexColor(GA.RoleRGB("picture"))
-			end
-		else
-			if box.Instructions then
-				W.Paint(box.Instructions, "mutedText", "text")
-			end
-			if clear and clear.Icon then
-				W.Paint(clear.Icon, "text", "vertex")
-			end
+		if box.Instructions then
+			W.Paint(box.Instructions, "mutedText", "text")
+		end
+		if clear and clear.Icon then
+			W.Paint(clear.Icon, "text", "vertex")
 		end
 		SearchFocus(box)
 	end
 
 	SearchFocus = Shared("OnEditFocusGained / OnEditFocusLost on MelloUI's text fields", function(box)
-		if GA.Game() then
-			Glass(box)
-			return
-		end
 		box.melloField:SetState(box:HasFocus())
 		Glass(box)
 	end, "script")
@@ -2045,7 +1680,6 @@ do
 		if box.searchIcon then
 			Perf.HookScript(box, "OnTextChanged", SearchText)
 		end
-		GA.Follow(box, FieldLook)
 		FieldLook(box)
 		return box
 	end
@@ -2208,7 +1842,11 @@ do
 				region:SetShown(on)
 			end
 		end
-		GA.ShowAll(p.edges, on)
+		if p.edges then
+			for i = 1, #p.edges do
+				p.edges[i]:SetShown(on)
+			end
+		end
 		if p.field then
 			p.field:SetShown(on)
 		end
@@ -2766,15 +2404,15 @@ end
 -- cog plate with a black opening): a small square button with a glyph on the
 -- controls' icon plate (W.FlatOver's "button": 0.19.9 the NewUI2 icon plate,
 -- steel, gold under the pointer -- the user's pick A 2026-10-09; it was the
--- flat `raisedPanel` plate); the game's round column button in the game's
--- look (Look.ColumnButton: the glyph in the text colour, the plate hidden).
+-- flat `raisedPanel` plate), the glyph in the text colour.
 -- The Discard buttons and the bag window's Settings. `kind` "cog" (the
 -- bag window's Settings): the NewUI2 cog plate, its own cog in place of the
--- caller's glyph, which shows only in the game's look.
+-- caller's glyph, which stays hidden.
 --   W.PlateButton(parent, w, h, glyphSize, area, scripts, kind) -> b, glyph
 --     scripts: { OnClick = fn, OnEnter = fn, OnLeave = fn }, set first (the
 --     plate's own hover is hooked after them); the caller puts its art on
---     `glyph` (W.Glyph, or a picture of the game's)
+--     `glyph` (W.Glyph, or a picture of the game's); `area` kept for the
+--     callers
 --   b.plate (its plate)
 --------------------------------------------------------------------------------
 do
@@ -2793,7 +2431,6 @@ do
 	end, "script")
 
 	function W.PlateButton(parent, w, h, glyphSize, area, scripts, kind)
-		local Look = MelloUI.Look
 		local b = CreateFrame("Button", nil, parent)
 		b:SetSize(w, h)
 		for script, fn in pairs(scripts or NO_OPTS) do
@@ -2807,9 +2444,9 @@ do
 		local glyph = b:CreateTexture(nil, "ARTWORK", nil, 2)
 		glyph:SetSize(glyphSize, glyphSize)
 		glyph:SetPoint("CENTER")
-		Look.ColumnButton(b, glyph, { p.piece }, area)
+		W.Paint(glyph, "text", "vertex")
 		if kind == "cog" then
-			Look.Only(glyph, "game", area)   -- (the cog plate has its own cog)
+			glyph:Hide()   -- (the cog plate has its own cog)
 		end
 		b.plate = p.piece
 		return b, glyph
@@ -2833,25 +2470,10 @@ end
 --       fill's, 0.95)
 --   box:SetKit(Kit) -> true while the kit's box shows (made the first time)
 --   box.fill, box.edges   the plain look's regions
--- The game's look (wave 4): with the reskin off the plain look is the game's
--- tooltip frame (MelloUI.Look.GameFrame, "tooltip": the Panel block of
--- docs/plans/game-look.md -- a tray, a popup), made the first time it shows.
 --------------------------------------------------------------------------------
 
 do
 	local NONE = {}
-
-	-- the plain look as the reskin is: our fill and edge, or the game's tooltip frame
-	local function TrayLook(box)
-		local game = GA.Game() and not box.kitOn
-		if box.melloGame == game then
-			return
-		end
-		box.melloGame = game
-		MelloUI.Look.GameFrameShown(box, "tooltip", game)
-		box.fill:SetShown(not game)   -- (shown, not its alpha: the kit's box fades them by their alpha)
-		GA.ShowAll(box.edges, not game)
-	end
 
 	local function SetKit(box, Kit)
 		local rep = box.kitBox
@@ -2863,15 +2485,11 @@ do
 		end
 		if on and rep then
 			rep:Enable()
-			box.kitOn = true
-			TrayLook(box)
 			return true
 		end
 		if rep then
 			rep:Disable()
 		end
-		box.kitOn = false
-		TrayLook(box)
 		return false
 	end
 
@@ -2890,8 +2508,6 @@ do
 		box.edges = Edges(box, "trim", "BORDER")
 		box.kitDim = opts.dim   -- (nil: the rule's panel; false: none)
 		box.SetKit = SetKit
-		GA.Follow(box, TrayLook)
-		TrayLook(box)
 		return box
 	end
 end
@@ -3082,9 +2698,7 @@ end, "script")
 
 -- the palette's wash on a row (under its texts), resting at alpha 0, and its
 -- 2 px gold edge unless `edge` is false: the plain hover look (and a
--- flash's, W.Flash)
--- (wave 4: with the reskin off the game's own list hover, Options_List_Hover,
--- MelloUI.Look.Mark; its gold edge none)
+-- flash's, W.Flash; the wash through MelloUI.Look.Mark, the palette's hover)
 local function Wash(row, strength, edge)
 	local region = row:CreateTexture(nil, "BACKGROUND", nil, 1)
 	region:SetAllPoints()
@@ -3099,7 +2713,6 @@ local function Wash(row, strength, edge)
 		e:SetPoint("BOTTOMLEFT")
 		W.Paint(e, "selectedTrim", "vertex", 1)
 		e:SetAlpha(0)
-		MelloUI.Look.Hide(e)
 		edgeOf[row] = e
 	end
 	return region
@@ -3271,7 +2884,7 @@ function W.Tag(parent, text, snug)
 	local plate = parent:CreateTexture(nil, "ARTWORK")
 	plate:SetPoint("TOPLEFT", tag, "TOPLEFT", -pad, TAG_PAD_Y)
 	plate:SetPoint("BOTTOMRIGHT", tag, "BOTTOMRIGHT", pad, -TAG_PAD_Y)
-	MelloUI.Look.Paint(plate, "badge", "fill", 1)   -- (the reskin off: a dark plate under the game's gold)
+	MelloUI.Look.Paint(plate, "badge", "fill", 1)
 	tag.plate, tag.padX = plate, pad
 	return tag
 end
@@ -3948,7 +3561,7 @@ do
 			return menu
 		end
 		local name = (host:GetName() or "MelloUIWindow") .. "ColourMenu"
-		menu = W.Panel(CreateFrame("Frame", name, host), { on = true, game = "tooltip" })
+		menu = W.Panel(CreateFrame("Frame", name, host), { on = true })
 		menu:SetSize(WHEEL_SIZE + W.WHEEL_GAP + W.WHEEL_BAR + 2 * PAD + 6, WHEEL_SIZE + 2 * PAD + 30)
 		menu:SetFrameStrata("FULLSCREEN_DIALOG")
 		menu:EnableMouse(true)
@@ -4311,7 +3924,7 @@ do
 			own = unnamed == 1 and "MelloUIWindow" or ("MelloUIWindow" .. unnamed)
 		end
 		local name = own .. "PictureMenu"
-		menu = W.Panel(CreateFrame("Frame", name, host), { on = true, game = "tooltip" })
+		menu = W.Panel(CreateFrame("Frame", name, host), { on = true })
 		menu:EnableMouse(true)
 		menu:SetClampedToScreen(true)   -- (a window by the screen's edge: the screen holds it)
 		menu:Hide()
@@ -4457,8 +4070,7 @@ do
 		row:SetHeight(LIST_ROW_H)
 		row.fill = row:CreateTexture(nil, "BACKGROUND")
 		row.fill:SetAllPoints(row)
-		-- (the palette's hover; with the reskin off the game's own list hover,
-		-- as Wash: the neutral "hover" is white, a white bar under white text)
+		-- (the palette's hover through MelloUI.Look.Mark, as Wash)
 		MelloUI.Look.Mark(row.fill, "hover", "hover", 1)
 		row.fill:Hide()
 		row.mark = row:CreateTexture(nil, "ARTWORK")
@@ -4769,8 +4381,7 @@ do
 	end
 
 	-- (its hover a mark of its own over the ground: the palette's hover
-	-- painted, the game's list hover with the reskin off -- review
-	-- 2026-10-02: the ground painted "hover" was a white box in the game's look)
+	-- painted)
 	local PictureBoxEnter = Shared("OnEnter on a picture row's box (hover)", function(box)
 		box.lit:Show()
 	end, "script")
@@ -5326,7 +4937,7 @@ local RailTipEnter = Shared("OnEnter on a NavRail entry (tooltip)", function(row
 	if not (clippedName or tip) then
 		return
 	end
-	local P = MelloUI.Look.Palette()   -- (the reskin off: the game's gold and white)
+	local P = MelloUI.Look.Palette()   -- (the palette's gold and text colour)
 	local gold, text = P.selectedTrim, P.text
 	GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
 	if clippedName then
@@ -5374,7 +4985,7 @@ local function MarkerLook(rail)
 	end
 	local on = (rail.activeMarker or rail.resultsShown) and true or false
 	WidgetActive(shell, rail.marker, on)
-	MelloUI.Look.Show(rail.marker.edge, not (on and shell.kit))   -- (none in the game's look: Look.Hide)
+	rail.marker.edge:SetShown(not (on and shell.kit))
 end
 
 -- the rails of each shell, their glyphs and states put back at its switches
@@ -5495,8 +5106,6 @@ function W.NavRail(parent, spec)
 	marker:SetFrameLevel(rail.content:GetFrameLevel())
 	marker:SetHeight(spec.rowHeight)
 	rail.markerHeight = spec.rowHeight
-	-- (wave 4: with the reskin off the game's own selected list row,
-	-- Options_List_Active -- the game's settings list's -- its gold edge none)
 	marker.fill = marker:CreateTexture(nil, "BACKGROUND")
 	marker.fill:SetAllPoints(marker)
 	MelloUI.Look.Mark(marker.fill, "selected", "raisedPanel", 1)
@@ -5505,7 +5114,6 @@ function W.NavRail(parent, spec)
 	marker.edge:SetPoint("TOPLEFT")
 	marker.edge:SetPoint("BOTTOMLEFT")
 	W.Paint(marker.edge, "selectedTrim", "fill", 1)
-	MelloUI.Look.Hide(marker.edge)
 	marker:SetPoint("TOPLEFT", rail.content, "TOPLEFT", 0, 0)
 	marker:SetWidth(rail.width)
 	marker:Hide()
@@ -6289,7 +5897,7 @@ end
 --   box:Refresh()   get() again (left alone while it has the focus)
 --   box.melloNext   an edit box Tab moves to after taking the number (the
 --     caller's: Edit Layout's X -> Y -> Size)
---   box.melloGet / melloSet, box.field (THE text field, W.Field: plain in the game's look)
+--   box.melloGet / melloSet, box.field (THE text field, W.Field)
 -- Its handlers are shared (no closure per box); nothing runs while it is
 -- left alone.
 --------------------------------------------------------------------------------
@@ -6405,8 +6013,6 @@ do
 		box:EnableMouseWheel(false)
 		W.Paint(box, "text", "text")
 		box.field = W.Field(box)   -- (0.20.1)
-		GA.Follow(box, GA.PlainField)
-		GA.PlainField(box)
 		box.melloGet, box.melloSet = get, set
 		box.melloMin, box.melloMax = Num(opts.min), Num(opts.max)
 		box.melloStep = Num(opts.step) or 1
