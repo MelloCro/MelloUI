@@ -516,6 +516,9 @@ end
 --   QI.RowHeight(titleSize, lineSize)   a row of one title and one line
 --   QI.RowPips(pips, slot)        the pips in their column, just left of the
 --                                 row's right slot
+--   QI.RowGem(row, title, size, tier)   (0.24.0) the difficulty as one gem
+--                                 before the title, the lists' since the
+--                                 chat's look (below)
 --   QI.RowBullet(line)            the mark before the line under a title: a
 --                                 small round bullet, as the quest log shows
 --                                 before its objectives (user, 2026-09-29,
@@ -599,6 +602,37 @@ end
 function QI.RowPips(pips, slot)
 	pips:ClearAllPoints()
 	pips:SetPoint("RIGHT", slot, "LEFT", -ROW.pipsGap, 0)
+end
+
+-- (0.24.0, the chat's look: the user's pick 2A / 2B of BuildData/output/column_questlist_sketch, 2026-10-15) a row's
+-- difficulty as ONE gem before its title, as the Quest Tracker's and the chat's: QI.Gem (the pips' art) in the tier's
+-- colour (QI.TIER_COLOUR), as big as the chat's inline gem for the title's size (GemMetrics), its right end 1 px
+-- left of the title, on the title's first line where the lower-case letters' middle is (GEM_MIDDLE); a frame over
+-- the row, so the log's map button (a frame of its own beside the title) never covers it. Made at the row's first
+-- tier; nil hides it. Where the five pips stood (they cut the Quests panel's titles short).
+--   QI.RowGem(row, title, titleSize, tier) -> gem (nil: none made yet)
+QI.rowGemOf = setmetatable({}, { __mode = "k" })   -- [row] = its gem (QI.RowGem; read by the dumps and the tests)
+local rowGemOf = QI.rowGemOf
+function QI.RowGem(row, title, titleSize, tier)
+	local c = tier and QI.TIER_COLOUR[tier]
+	local g = rowGemOf[row]
+	if not c then
+		if g then
+			g:Hide()
+		end
+		return g
+	end
+	if not g then
+		g = QI.Gem(row)
+		rowGemOf[row] = g
+	end
+	g:SetFrameLevel(row:GetFrameLevel() + 6)
+	local _, size = GemMetrics(titleSize)
+	g:SetGemSize(size)
+	g:ClearAllPoints()
+	g:SetPoint("RIGHT", title, "TOPLEFT", -1, -(tonumber(titleSize) or 12) * GEM_MIDDLE)
+	g:SetColour(c[1], c[2], c[3])
+	return g
 end
 
 -- (U+2022 and a space. MelloUI's own faces and the game's Friz Quadrata,

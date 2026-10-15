@@ -4,6 +4,8 @@
 
 - Quest Tracker: the chat's look. In the painted look the tracker drops its stone frame and title plate for the chat's dark panel, or its parchment sheet with Parchment on: "Objectives" and the Quests and Professions headings sit on thin lines (Quests with how many you watch), each quest's mark sits in a round rim, a gem before a quest's title shows its difficulty on parchment (in place of the five pips, so titles keep their line; point at the quest for its name), objective counts stand at the right of their lines, and the quest you follow is highlighted like the open conversation in the whisper window. With the reskin off it keeps the game's look.
 - Quest Tracker: the game's clicks. Click a quest's mark to follow it, its way shown, and click it again to stop following; click the quest to open it on the map; Shift-click it to link it into the chat line you are typing, or, when you are not typing, to stop watching it; right-click it for the game's quest menu: follow, quest log, map, stop tracking, share with your group, link in chat and abandon (asked first).
+- Quest log and Quest List: the chat's look. Their headers are small headings on a thin line, the Quest List's markers sit in round rims, and on the parchment a quest's difficulty is one gem before its title, in place of the five pips, so the titles keep their whole width.
+- Minimap: Square Border has a new Chat panel. The square map on the dark panel the chat and the Quest Tracker wear: the zone name at the top left on a thin line, the clock and calendar at the right, a thin line round the map, and Services as a small heading over its buttons.
 
 ## 0.23.1
 

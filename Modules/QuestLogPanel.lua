@@ -186,14 +186,111 @@ local function SkinTitle(button)
 	end
 end
 
+-- (0.24.0, the chat's look: the user's pick 2A / 2B of BuildData/output/
+-- column_questlist_sketch, 2026-10-15) a section header of the log and of
+-- the Quests panel as the chat's heading, one dresser for both: its plate
+-- faded (QuestHeadingChat: nothing stands in), its name in the title face
+-- (small caps) -- MelloUI's own string over the game's, which the header
+-- button puts back in its own font on hover (hard rule 1: cover, never
+-- overwrite) -- in the title ink on the parchment, the palette's gold off it,
+-- a hairline under it; its +/- the kit's as before. Shown with the skin.
+local headingOf = setmetatable({}, { __mode = "k" })   -- [header button] = { src, cover, hair, rect }
+local IsSecret = MelloUI.Safe.IsSecret
+
+local function HeadingLook(button)
+	local h = headingOf[button]
+	if not h then
+		return
+	end
+	-- (the Quests panel's done / total bar along the foot is the line there)
+	local bar = button.progress
+	h.hair:SetShown(active and not (bar and bar:IsShown()))
+	h.cover:SetShown(active)
+	if not active then
+		return
+	end
+	local text = h.src:GetText()
+	h.cover:SetText((type(text) == "string" and not IsSecret(text)) and text or "")
+	local QI = MelloUI.QuestInk
+	local paper = QI and QI.onParchment
+	if paper then
+		QI.Ink(h.cover, "title")
+	else
+		if QI then
+			QI.Plain(h.cover)
+		end
+		MelloUI.Widgets.Paint(h.cover, "selectedTrim", "text")
+	end
+	-- the Quests panel's done / total on the paper in the faded ink (its
+	-- palette colour off it: the panel's own, set as it lays the header)
+	local count = button.count
+	if count and QI then
+		if paper then
+			QI.Ink(count, "faded")
+		else
+			QI.Plain(count)
+		end
+	end
+end
+
+local function Heading(button, rect)
+	local h = headingOf[button]
+	if h then
+		return h
+	end
+	-- the name: the panel's own label, the log's ButtonText
+	local src = button.label or button.ButtonText or (button.GetFontString and button:GetFontString())
+	local W = MelloUI.Widgets
+	if not (src and W and W.Solid) then
+		return nil
+	end
+	h = { src = src, rect = rect or button }
+	local cover = button:CreateFontString(nil, "OVERLAY")
+	local ok, path, size, flags = pcall(src.GetFont, src)
+	if ok and path and size and not (IsSecret(path) or IsSecret(size)) then
+		cover:SetFont(path, size, flags or "")
+	else
+		cover:SetFontObject(GameFontNormal)
+	end
+	cover:SetShadowColor(0, 0, 0, 1)
+	cover:SetShadowOffset(1, -1)
+	cover:SetJustifyH("LEFT")
+	cover:SetWordWrap(false)
+	cover:SetPoint("LEFT", src, "LEFT", 0, 0)
+	cover:SetPoint("RIGHT", src, "RIGHT", 0, 0)
+	Kit:TitleFont(cover, true)
+	local QI = MelloUI.QuestInk
+	if QI and QI.WatchColour then
+		QI.WatchColour(cover)   -- (a palette switch's gold inked over at once on the paper)
+	end
+	h.cover = cover
+	h.hair = W.Solid(button, "ARTWORK", "border")
+	h.hair:SetHeight(1)
+	h.hair:SetPoint("BOTTOMLEFT", h.rect, "BOTTOMLEFT", 0, 1)
+	h.hair:SetPoint("BOTTOMRIGHT", h.rect, "BOTTOMRIGHT", 0, 1)
+	headingOf[button] = h
+	-- (the log's name comes with the header's SetText, QuestLogQuests_
+	-- SetupStandardHeaderButton's caller; the panel's as it lays the header)
+	if not button.label and button.SetText then
+		hooksecurefunc(button, "SetText", HeadingLook)
+	end
+	return h
+end
+
 -- A section header's plate, one dresser for the log's headers and the Quests
--- panel's (QuestInk's Quest rows: one header for both lists): the category
--- plate on the header's normal texture, over the whole header (or `rect`:
--- the panel's plate place, as far right of its rows as the log's), its
--- additive highlight faded with it
+-- panel's (QuestInk's Quest rows: one header for both lists): the chat's
+-- heading (above) on the header, over the whole header (or `rect`: the
+-- panel's plate place, as far right of its rows as the log's), the plate,
+-- its additive highlight and the game's name faded
 local function HeaderPlate(button, normal, highlight, rect)
-	return Replace(normal, { as = "common-button-list-collapseExpand", rect = rect or button, button = button,
-		alsoFade = highlight and { highlight } or nil }) or false
+	local rep = Replace(normal, { as = "QuestHeadingChat", rect = rect or button, button = button,
+		alsoFade = highlight and { highlight } or nil })
+	local h = rep and Heading(button, rect)
+	if h then
+		KeepFaded(rep, h.src)
+		HeadingLook(button)
+	end
+	return rep or false
 end
 
 -- A header (QuestLogHeaderTemplate = ListHeaderVisualTemplate): the category
@@ -215,6 +312,7 @@ local function SkinHeader(button)
 		end
 	end
 	Kit:SkinCollapseButton(button.CollapseButton, Replace)
+	HeadingLook(button)   -- (its name again: a pooled header comes back with another)
 end
 
 -- On the reskin's parchment the quest titles and objectives are dark ink,
@@ -247,18 +345,17 @@ local function ObjectiveRole(r)
 	return (r and r < 0.8) and "faded" or "text"
 end
 
-local pipsOf = setmetatable({}, { __mode = "k" })   -- [title] = its pips (QI.Pips)
-local PIPS_RIGHT = 3   -- the pips' right end in from the row's: under the tracking box's (QuestLogTrackCheckBoxTemplate)
--- One title's ink and pips, one objective's ink (the game's look back while
--- the skin is off). The log's rows are the one quest row the Quests panel
--- lays too (QuestInk's Quest rows): the same fonts on the title and the line
--- under it (QI.RowFonts: the game's own, taken again as the Fonts module
--- changes them). The pips under the tracking box, on the first line under
--- the title (the user, 2026-10-09: beside the box they sat over a long title
--- and over the game's Dungeon / Raid tag): the game lays the title as wide
--- as the row up to the box and sizes the row from it before this runs, so
--- the title's line has no room to make; the lines under it are 205 wide
--- (QuestLogObjectiveTemplate), the room right of them is free
+local inkedOf = setmetatable({}, { __mode = "k" })   -- [title] = true once its title was inked (the rows out of view)
+-- One title's ink and difficulty, one objective's ink (the game's look back
+-- while the skin is off). The log's rows are the one quest row the Quests
+-- panel lays too (QuestInk's Quest rows): the same fonts on the title and the
+-- line under it (QI.RowFonts: the game's own, taken again as the Fonts
+-- module changes them). The difficulty (0.24.0, the chat's look: the user's
+-- pick 2A, 2026-10-15) one gem before the title, as the Quests panel's and
+-- the Quest Tracker's (QI.RowGem), in the slot the game keeps left of its
+-- title for its own task icon (QuestLogTitleTemplate's TaskIcon); until
+-- 0.24.0 five pips under the tracking box (the user, 2026-10-09: beside the
+-- box they sat over a long title and the game's Dungeon / Raid tag)
 local function InkTitle(QI, title)
 	local fs = title.Text
 	if not fs then
@@ -266,22 +363,16 @@ local function InkTitle(QI, title)
 	end
 	if active then
 		local tier = QI.TierForQuest(title.questID, QuestLevel(title.questID))
-		QI.RowFonts(fs, nil)
+		local ts = QI.RowFonts(fs, nil)
 		QI.Ink(fs, tier == 1 and "faded" or "title")
-		local pips = pipsOf[title] or QI.Pips(title, QI.ROW.pipsSize)
-		pipsOf[title] = pips
-		local h = MelloUI.Safe.Number(fs:GetHeight()) or 12
-		pips:ClearAllPoints()
-		pips:SetPoint("TOPRIGHT", title, "TOPRIGHT", -PIPS_RIGHT, -(QI.ROW.top + h + QI.ROW.gap + 1))
-		pips:SetTier(tier)
+		QI.RowGem(title, fs, ts, tier)
+		inkedOf[title] = true
 	else
 		QI.Plain(fs)
 		if QI.colourWatched[fs] then
 			fs:SetTextColor(QI.GameColour(fs))
 		end
-		if pipsOf[title] then
-			pipsOf[title]:SetTier(nil)
-		end
+		QI.RowGem(title, fs, nil, nil)
 	end
 end
 
@@ -478,7 +569,7 @@ local function SkinList()
 	end
 	local QI = MelloUI.QuestInk
 	for title in sf.titleFramePool:EnumerateActive() do
-		if top ~= true and (repOf[title] == nil or (title.Text and not pipsOf[title])) and not InView(title, top, bottom) then
+		if top ~= true and (repOf[title] == nil or (title.Text and not inkedOf[title])) and not InView(title, top, bottom) then
 			Wait(title, "title")
 		else
 			waitingKind[title] = nil
@@ -728,6 +819,49 @@ local KeepLockLit = Perf.Shared("Quests panel: a revealed header kept lit", func
 	end
 end, "script")
 
+-- (0.24.0, the chat's look: the user's pick 2B, 2026-10-15) a Quests panel
+-- row's icon (the !, the ?, a tick, what a quest begins from) in the kit's
+-- round rim on a dark disc, as the Quest Tracker's marks and the chat's tabs:
+-- the rim (Kit:Slot, every window's Round Border) on a small frame where the
+-- panel lays its icon (QI.ROW's icon column, on the title's line), the icon
+-- in its opening, the disc under it. The log's own rows keep the game's map
+-- buttons (the game's pooled buttons, its own art). With the skin.
+local rimOf = setmetatable({}, { __mode = "k" })   -- [Quests panel row] = { holder, rim, disc }
+local RIM = 20   -- the rim: the log's map button's size (POIButtonTemplate)
+local DISC = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- (a round white: W.GlyphButton's disc)
+
+local function RowRim(button, isRow)
+	local r = rimOf[button]
+	local icon = button.check
+	if not (active and isRow and icon and icon:IsShown()) then
+		if r then
+			r.holder:Hide()
+			r.disc:Hide()
+		end
+		return
+	end
+	if not r then
+		local holder = CreateFrame("Frame", nil, button)
+		holder:SetSize(RIM, RIM)
+		holder:EnableMouse(false)
+		local disc = button:CreateTexture(nil, "BORDER", nil, 6)
+		disc:SetTexture(DISC)
+		MelloUI.Widgets.Paint(disc, "innerPanel", "vertex", 0.95)
+		r = { holder = holder, disc = disc, rim = Kit:Slot(holder, { kind = "roundslot", icon = icon }) }
+		rimOf[button] = r
+	end
+	local ROW = MelloUI.QuestInk and MelloUI.QuestInk.ROW
+	local ok, _, ts = pcall(button.title.GetFont, button.title)
+	ts = ok and MelloUI.Safe.Number(ts) or 12
+	r.holder:ClearAllPoints()
+	r.holder:SetPoint("CENTER", button, "TOPLEFT", ROW and ROW.iconX or 16, -((ROW and ROW.top or 8) + ts / 2))
+	r.holder:Show()
+	Kit:SlotPlaceIcon(r.rim)
+	r.disc:ClearAllPoints()
+	r.disc:SetAllPoints(icon)
+	r.disc:Show()
+end
+
 local lockHooked = setmetatable({}, { __mode = "k" })   -- [row button] = true: LockHighlight hooked
 local function SkinQuestListEntry(button)
 	-- a header or a row: told apart after its Init by the normal texture
@@ -777,6 +911,14 @@ local function SkinQuestListEntry(button)
 	isHeaderRow[button] = isHeader
 	if headerPlateOf[button] then
 		headerPlateOf[button]:SetShown(isHeader and true or false)
+	end
+	-- (0.24.0) a row's icon in the round rim; a header the chat's heading
+	RowRim(button, not isHeader)
+	if isHeader then
+		HeadingLook(button)
+	elseif headingOf[button] then
+		headingOf[button].hair:Hide()
+		headingOf[button].cover:Hide()
 	end
 	-- a row re-used under the mouse keeps its plate (fitted to its new
 	-- height), a row re-used elsewhere drops it
@@ -980,6 +1122,9 @@ local function Activate()
 	end
 	M:RefreshFollowers()
 	SkinList()
+	for button in pairs(headingOf) do
+		HeadingLook(button)
+	end
 	SkinExistingPins()
 	RefreshPins()
 	InkQuestListWindow()
@@ -995,6 +1140,13 @@ local function Deactivate()
 	skin:Hide()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
+	end
+	-- (0.24.0) the chat's headings and the rims off with it
+	for button in pairs(headingOf) do
+		HeadingLook(button)
+	end
+	for button in pairs(rimOf) do
+		RowRim(button, false)
 	end
 	Kit:UnfitPortrait(Portrait())
 	RefreshPins()
@@ -1130,4 +1282,5 @@ end
 -- What this module keeps beside the game's frames (hard rule 1: weak-keyed
 -- tables, never keys on the frames), for the dumps and the tests: read only
 M.kept = { isHeaderRow = isHeaderRow, lockHooked = lockHooked, locked = locked, pinApply = pinApply,
-	pinAtlas = pinAtlas, pinHooked = pinHooked, pipsOf = pipsOf, rowPlateOf = rowPlateOf }
+	pinAtlas = pinAtlas, pinHooked = pinHooked, inkedOf = inkedOf, rowPlateOf = rowPlateOf,
+	headingOf = headingOf, rimOf = rimOf }

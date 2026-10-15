@@ -2797,8 +2797,12 @@ local function BarStone(on)
 		bar.stone:SetAllPoints(bar)
 	end
 	if bar.stone then
+		local mp = MelloUI:GetModule("MinimapPanel")
+		-- (0.24.0: false, the minimap's Chat panel: it shows through, no stone)
+		if on and mp and mp.BodyPiece and mp:BodyPiece() == false then
+			on = false
+		end
 		if on then
-			local mp = MelloUI:GetModule("MinimapPanel")
 			local piece = mp and mp.BodyPiece and mp:BodyPiece() or "window/frame_body"
 			if MelloUI.Kept.pieceNameOf[bar.stone] ~= piece then
 				MelloUI.Kit:Apply(bar.stone, piece)   -- look-ok: the merged frame's stone, only with the kit (Merged)

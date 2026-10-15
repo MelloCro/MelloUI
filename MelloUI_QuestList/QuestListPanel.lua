@@ -299,7 +299,8 @@ end
 -- Quest rows): a header by QI.RowHeader, a row's title and the line under it
 -- in the log's two fonts at their own sizes as the Fonts module sets them
 -- (QI.RowFonts, on every row, so a Fonts change reaches it), 8 under the
--- row's top and 3 apart, the icon, pips and stamp in their columns.
+-- row's top and 3 apart, the icon in its column, the difficulty gem before
+-- the title (0.24.0; pips and a stamp before).
 local function EnsureWidgets(button)
 	if button.title then
 		return
@@ -346,8 +347,8 @@ local function EnsureWidgets(button)
 	button.where:SetPoint("TOPLEFT", button.title, "BOTTOMLEFT", 0, -ROW.gap)
 	button.where:SetJustifyH("LEFT")
 	button.where:SetWordWrap(false)
-	-- the right slot, at the row's right edge: a region the pips and the
-	-- lines are laid by, never drawn (the Classic / Forever stamp that stood
+	-- the right slot, at the row's right edge: a region the lines are laid
+	-- by, never drawn (the pips' too until 0.24.0) (the Classic / Forever stamp that stood
 	-- in it went: the user, 2026-10-09)
 	button.slot = button:CreateTexture(nil, "BACKGROUND")
 	button.slot:Hide()
@@ -432,8 +433,8 @@ local revealKey = nil     -- group header to pulse when it is laid out
 local revealUntil = 0
 
 local function InitHeader(button, entry)
-	if button.pips then
-		button.pips:SetTier(nil)
+	if button.title then
+		QI.RowGem(button, button.title, nil, nil)   -- (a row's gem hidden on a header)
 	end
 	EnsureWidgets(button)
 	button.entry = entry
@@ -516,10 +517,10 @@ local function InitRow(button, entry)
 	-- the icon in the icon column, on the title's line
 	button.check:ClearAllPoints()
 	button.check:SetPoint("CENTER", button, "TOPLEFT", ROW.iconX, -(ROW.top + titleSize / 2))
-	-- the right slot on the title's line at the row's right edge: the pips
-	-- just left of it, level with the gem at the end of the hover plate,
-	-- inside its band (user, 2026-09-23 / 2026-09-27); the same column on
-	-- every row (user, 2026-09-27: "fixed columns")
+	-- the right slot on the title's line at the row's right edge, the lines'
+	-- right end (the pips stood just left of it until 0.24.0: user,
+	-- 2026-09-23 / 2026-09-27); the same column on every row (user,
+	-- 2026-09-27: "fixed columns")
 	button.slot:SetSize(1, titleSize)
 	button.slot:ClearAllPoints()
 	button.slot:SetPoint("TOPRIGHT", button, "TOPRIGHT", -ROW.edge, -ROW.top)
@@ -597,8 +598,10 @@ local function InitRow(button, entry)
 	-- in the text colour; a step down once done
 	button.where:SetText(QI.RowBullet(button.where) .. where)
 	KeyColour(button.where, "text", entry.completed and QL.DONE_ALPHA or 1)
-	-- on the reskin's parchment the difficulty in pips (QuestInk; user,
-	-- 2026-09-23); a done quest has none
+	-- on the reskin's parchment the difficulty (QuestInk; user, 2026-09-23):
+	-- since 0.24.0 one gem before the title (the chat's look, the user's pick
+	-- 2B: QI.RowGem, as the log's and the Quest Tracker's), five pips at the
+	-- row's right before (they cut the titles short); a done quest has none
 	local tier = nil
 	if QI.onParchment then
 		local level = QL.ColourLevel(row)
@@ -606,28 +609,21 @@ local function InitRow(button, entry)
 			tier = QI.TierForQuest(row[QL.F_ID], level) or QI.TierOfColour(QL.DifficultyColor(level))
 		end
 	end
-	-- the title stops short of the pips' column on a row with pips, else of
-	-- the slot, as off parchment (a done quest keeps its room: the columns
-	-- stay where they are); the line under it short of the slot (both edges
-	-- from the title's own)
-	local pipsRoom = tier and (QI.PipsWidth(ROW.pipsSize) + ROW.pipsGap + 4) or 6
-	button.title:SetPoint("TOPRIGHT", button.slot, "TOPLEFT", -pipsRoom, 0)
-	button.where:SetPoint("TOPRIGHT", button.title, "BOTTOMRIGHT", pipsRoom - 6, -ROW.gap)
-	-- on the reskin's parchment: both lines in ink, the pips in their column;
-	-- a done quest faded
+	-- the title and the line under it short of the slot, on every row (the
+	-- gem stands before the title: the title keeps the whole width)
+	button.title:SetPoint("TOPRIGHT", button.slot, "TOPLEFT", -6, 0)
+	button.where:SetPoint("TOPRIGHT", button.title, "BOTTOMRIGHT", 0, -ROW.gap)
+	-- on the reskin's parchment: both lines in ink, the gem before the
+	-- title; a done quest faded
 	if QI.onParchment then
-		button.pips = button.pips or QI.Pips(button, ROW.pipsSize)
-		QI.RowPips(button.pips, button.slot)
-		button.pips:SetTier(tier)
+		QI.RowGem(button, button.title, titleSize, tier)
 		local faded = entry.completed or tier == 1
 		QI.Ink(button.title, faded and "faded" or "title")
 		QI.Ink(button.where, faded and "faded" or "text")
 	else
 		QI.Plain(button.title)
 		QI.Plain(button.where)
-		if button.pips then
-			button.pips:SetTier(nil)
-		end
+		QI.RowGem(button, button.title, nil, nil)
 	end
 end
 

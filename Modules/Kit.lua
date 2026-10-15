@@ -5764,6 +5764,7 @@ Kit.Replacements = {
 	["UI-Character-Info-Line-Bounce"]         = { kind = "strip", base = "lists/plate", state = "plain" },   -- a plain line in the game: the gemless plate
 	["UI-Character-Info-Line-Bounce2"]        = { kind = "strip", base = "lists/plate", state = "plain" },
 	["common-button-list-collapseExpand"]     = { kind = "strip", base = "lists/catplate", state = "closed" },   -- the plain category plate: one texture, no chevron (the game's +/- glyph stays)
+	["QuestHeadingChat"]                      = { kind = "fade" },   -- (0.24.0, the chat's look: the user's pick 2A / 2B, 2026-10-15) a quest header's plate in the quest log and the Quests panel (as = this; the atlas common-button-list-collapseExpand): faded, the chat's heading drawn by QuestLogPanel (its name in the title face, a hairline under it)
 	["charactercreate-customize-dropdown-linemouseover-middle"] = { kind = "strip", base = "lists/plate", state = "plain" },   -- the gemless plate: the gemmed row's gems overshoot a list row
 	-- backdrop pictures with no frame of their own
 	["ModelSceneBackground"]                  = { kind = "fade" },   -- the race landscape behind the character: faded, the window's stone runs on behind the model (one stone per surface)

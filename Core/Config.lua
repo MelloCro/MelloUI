@@ -138,6 +138,8 @@ local CHANGELOG = {
 	{ version = "0.24.0", lines = {
 		"Quest Tracker: the chat's look -- a clean panel or parchment, round quest marks, a difficulty gem, counts on the right.",
 		"Quest Tracker: the game's clicks -- the mark follows a quest, a click opens the map, Shift-click links it, right-click opens the quest menu.",
+		"Quest log and Quest List: small headings on thin lines, round marker rims, one difficulty gem before each title.",
+		"Minimap: Square Border's new Chat panel -- the map on the chat's dark panel, the zone name and Services as small headings.",
 	} },
 	{ version = "0.23.1", lines = {
 		"Chat View: the chat and the whisper window keep their history over a /reload and a new login.",

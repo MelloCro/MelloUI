@@ -75,6 +75,10 @@ local pieceOf = MelloUI.Kept.pieceOf
 local BORDERS = {
 	{ value = "window", label = "Window frame", prefix = "window/frame", scale = 1, gem = true, piece = "window/frame_gem_tl" },
 	{ value = "single", label = "Single rail", prefix = "window/single", scale = 1.6, piece = "window/single_tl" },
+	-- (0.24.0, the chat's look: the user's pick 1C of BuildData/output/column_questlist_sketch, 2026-10-15: "the 1c
+	-- is good ... minimap does not need one" -- no parchment) the palette's dark panel round the map, its zone row
+	-- and Services, a thin line round the map, the zone name and Services as the chat's headings (LaySquare)
+	{ value = "panel", label = "Chat panel", panel = true, piece = "borders/rimhair" },
 	{ value = "red", label = "Heavy, red gems", piece = "deco/barframe_red" },
 	{ value = "iron", label = "Heavy, iron gems", piece = "deco/barframe_iron" },
 	{ value = "thin", label = "Thin iron", style = "thin", piece = "borders/rim" },
@@ -1067,8 +1071,8 @@ function M:WantsServices()
 		return false
 	end
 	local b = BORDER[M.db.squareBorder or "window"]
-	-- (a rail family, or 0.20.1: a style of the border library's, laid as one -- LaySquare)
-	return b and (b.prefix ~= nil or (b.style ~= nil and Kit.BorderStyles ~= nil and Kit.BorderStyles[b.style] ~= nil)) or false
+	-- (a rail family, or 0.20.1: a style of the border library's, laid as one -- LaySquare; 0.24.0: the Chat panel)
+	return b and (b.panel or b.prefix ~= nil or (b.style ~= nil and Kit.BorderStyles ~= nil and Kit.BorderStyles[b.style] ~= nil)) or false
 end
 
 -- What Services says of its row under the map (the contract Services fills,
@@ -1104,7 +1108,11 @@ local function BodyOf(b)
 	return (b and b.prefix or "window/frame") .. "_body"
 end
 function M:BodyPiece()
-	return BodyOf(BORDER[M.db and M.db.squareBorder or "window"])
+	local b = BORDER[M.db and M.db.squareBorder or "window"]
+	if b and b.panel then
+		return false   -- (0.24.0: the Chat panel shows through, no stone)
+	end
+	return BodyOf(b)
 end
 
 local function ServicesBar()
@@ -1163,13 +1171,30 @@ local function LayoutDivider(f, b, groups)
 	d:SetPoint("TOPLEFT", map, "BOTTOMLEFT", 0, 0)
 	d:SetPoint("TOPRIGHT", map, "BOTTOMRIGHT", 0, 0)
 	d:SetHeight(DIVIDER_H)
-	local piece = BodyOf(b)
-	if pieceNameOf[d.stone] ~= piece then
-		Kit:Apply(d.stone, piece)
+	-- (0.24.0) on the Chat panel the chat's heading: no stone, no plate, the
+	-- name at the left on a hairline (the panel shows through)
+	local panel = b and b.panel and true or false
+	d.panel = panel
+	d.stone:SetShown(not panel)
+	if not panel then
+		local piece = BodyOf(b)
+		if pieceNameOf[d.stone] ~= piece then
+			Kit:Apply(d.stone, piece)
+		end
+		Kit:Retile(d.stone)
 	end
-	Kit:Retile(d.stone)
+	if panel and not d.hair and MelloUI.Widgets then
+		d.hair = MelloUI.Widgets.Solid(d, "ARTWORK", "border")
+		d.hair:SetHeight(1)
+		d.hair:SetPoint("BOTTOMLEFT", d, "BOTTOMLEFT", 0, 3)
+		d.hair:SetPoint("BOTTOMRIGHT", d, "BOTTOMRIGHT", 0, 3)
+	end
+	if d.hair then
+		d.hair:SetShown(panel)
+	end
 	local plate = d.plate
 	if plate then
+		plate:SetAlpha(panel and 0 or 1)
 		local h = DIVIDER_H - 4
 		local yoff = plate.FitBox and plate:FitBox(h) or 0
 		plate:ClearAllPoints()
@@ -1187,7 +1212,7 @@ local function LayoutDivider(f, b, groups)
 	-- text on top of it called Services"); over Services' row of groups it
 	-- shares the rail with Route's distance line (M.RailName)
 	d.shares = groups and true or false
-	d.nameLeft = nil
+	d.nameLeft = nil   -- (laid again: M.RailName)
 	d.text:Show()
 	Kit:TitleFont(d.text, true)
 	M.RailName()
@@ -1205,15 +1230,143 @@ function M.RailName()
 	end
 	local route = MelloUI:GetModule("Route")
 	local left = (d.shares and route and route.DistanceLineShown and route:DistanceLineShown()) and true or false
-	if d.nameLeft == left then
+	-- (0.24.0) on the Chat panel always at the left, as the chat's headings, in
+	-- line with the map's edge (Route's line at the right end still)
+	local where = d.panel and "panel" or left
+	if d.nameLeft == where then
 		return
 	end
-	d.nameLeft = left
+	d.nameLeft = where
 	d.text:ClearAllPoints()
-	if left then
+	if d.panel then
+		d.text:SetPoint("LEFT", d, "LEFT", 0, 0)
+	elseif left then
 		d.text:SetPoint("LEFT", d, "LEFT", RAIL_PAD, 0)
 	else
 		d.text:SetPoint("CENTER", d, "CENTER", 0, 0)
+	end
+end
+
+-- (0.24.0) the Chat panel: the map's margin in the panel, the zone row's
+-- height over the map and the gap under it (UI units)
+local PANEL = { pad = 6, title = 22, gap = 4 }
+
+-- its parts, made at its first lay: the palette's panel on a frame of its own
+-- one level UNDER the map (the border frame is a level over it: the ring's
+-- place), the panel's square shade; a thin line round the map and the zone
+-- row's hairline as the border frame's own regions
+local function PanelParts(f)
+	local p = f.panelParts
+	if p then
+		return p
+	end
+	local W = MelloUI.Widgets
+	p = { lines = {} }
+	local bg = CreateFrame("Frame", nil, Minimap:GetParent() or MinimapCluster)
+	bg:SetFrameLevel(math.max(0, Minimap:GetFrameLevel() - 1))
+	bg:EnableMouse(false)
+	bg:SetAllPoints(f)
+	W.Panel(bg, { on = true, alpha = 0.94 })
+	Shade.Add(bg, { shape = "shade/square" })
+	p.bg = bg
+	for i = 1, 4 do
+		p.lines[i] = W.Solid(f, "ARTWORK", "border")
+	end
+	p.hair = W.Solid(f, "ARTWORK", "border")
+	p.hair:SetHeight(1)
+	f.panelParts = p
+	return p
+end
+
+local function PanelShown(f, on)
+	local p = f.panelParts
+	if not p then
+		return
+	end
+	p.bg:SetShown(on)
+	p.hair:SetShown(on)
+	for _, t in ipairs(p.lines) do
+		t:SetShown(on)
+	end
+end
+
+-- The Chat panel's zone row: the band across the panel's top, its plate
+-- hidden (the game's art faded under it as ever), the tracking button at its
+-- left, the zone name after it in the title face and the game's colour, the
+-- calendar at its right and the clock beside it -- on the Services rail's
+-- right end while that rail shows with Services' two rows, as the frames'.
+local function PanelBand(f, band, rep, groups)
+	local plate = rep and rep.strip
+	if plate then
+		plate:SetAlpha(0)
+	end
+	local okW, fw = pcall(f.GetWidth, f)
+	if not (okW and fw and not (issecretvalue and issecretvalue(fw)) and fw > 0) then
+		return
+	end
+	local w = fw - 2 * PANEL.pad
+	band:ClearAllPoints()
+	band:SetPoint("CENTER", f, "TOP", 0, -PANEL.title / 2)
+	band:SetWidth(w)
+	local cluster = MinimapCluster
+	local tracking, clock, timeButton = cluster.Tracking, _G.GameTimeFrame, _G.TimeManagerClockButton
+	if tracking then
+		tracking:ClearAllPoints()
+		tracking:SetPoint("LEFT", band, "LEFT", 0, 0)
+	end
+	if clock then
+		clock:ClearAllPoints()
+		clock:SetPoint("RIGHT", band, "RIGHT", 0, 0)
+	end
+	local d = skin.divider
+	local onRail = not groups and d and d:IsShown()
+	if timeButton then
+		timeButton:ClearAllPoints()
+		if onRail then
+			timeButton:SetPoint("RIGHT", d, "RIGHT", 0, 0)
+			timeButton:SetFrameLevel(d:GetFrameLevel() + 6)
+		else
+			if clock then
+				timeButton:SetPoint("RIGHT", clock, "LEFT", -2, 0)
+			else
+				timeButton:SetPoint("RIGHT", band, "RIGHT", 0, 0)
+			end
+			timeButton:SetFrameLevel(band:GetFrameLevel() + 2)
+		end
+	end
+	local text = MinimapZoneText
+	if text then
+		text:ClearAllPoints()
+		if tracking then
+			text:SetPoint("LEFT", tracking, "RIGHT", 4, 0)
+		else
+			text:SetPoint("LEFT", band, "LEFT", 0, 0)
+		end
+		text:SetJustifyH("LEFT")
+		local used = (tracking and PlainWidth(tracking, 20) + 4 or 0) + (clock and PlainWidth(clock, 19) + 4 or 0)
+			+ ((timeButton and not onRail) and PlainWidth(timeButton, 40) + 2 or 0)
+		text:SetWidth(math.max(40, w - used))
+	end
+	skin.bandPanel = true
+end
+
+-- another style after the Chat panel: the plate shown again, the zone name
+-- centred on it as the band's dressing laid it (its onEnable)
+local function BandUnpanel(rep)
+	if not skin.bandPanel then
+		return
+	end
+	skin.bandPanel = nil
+	local plate = rep and rep.strip
+	if plate then
+		plate:SetAlpha(1)
+	end
+	local text = MinimapZoneText
+	local band = MinimapCluster and MinimapCluster.BorderTop
+	if text and band then
+		text:ClearAllPoints()
+		text:SetPoint("CENTER", band, "CENTER", 0, 0)
+		text:SetJustifyH("CENTER")
 	end
 end
 
@@ -1263,6 +1416,13 @@ local function PlaceBand(onFrame, f, b, groups)
 				end
 			end
 		end
+		-- (0.24.0) the Chat panel's zone row
+		if b.panel then
+			PanelBand(f, band, rep, groups)
+			skin.bandMerged = true
+			return
+		end
+		BandUnpanel(rep)
 		local sc = Kit.scale * (b.scale or 1)
 		local rail = b.prefix and Kit:Piece(b.prefix .. "_t")
 		local middle = rail and rail.box and (rail.box[2] + rail.box[4]) / 2 * sc or 9
@@ -1336,6 +1496,7 @@ local function PlaceBand(onFrame, f, b, groups)
 		end
 		skin.bandMerged = true
 	elseif skin.bandMerged then
+		BandUnpanel(rep)
 		local saved = skin.bandSaved or {}
 		local base = Minimap:GetFrameLevel()
 		for i, frame in ipairs(movers) do
@@ -1397,6 +1558,7 @@ local function LaySquare()
 	end
 	-- (no border: the map's own edge takes the shade, Shade.Bare)
 	Shade.Bare(square and b.value == "none")
+	PanelShown(f, false)   -- (the Chat panel's parts: shown again by its own branch, below)
 	if not square or b.value == "none" then
 		PlaceBand(false)   -- (no frame: the band on the game's place)
 		f:Hide()
@@ -1414,6 +1576,49 @@ local function LaySquare()
 	end
 	local over = 1   -- UI px: the rail's inner edge just over the map's, no line of world between
 	f:ClearAllPoints()
+	-- (0.24.0, the chat's look: the user's pick 1C) the Chat panel: the
+	-- palette's dark panel PANEL.pad round the map, its zone row PANEL.title
+	-- over it (the band laid there: PlaceBand), a thin line round the map; with
+	-- Services merged, the divider as the chat's heading and the bar under it,
+	-- inside the panel. No parchment (the user: "minimap does not need one").
+	if b.panel then
+		local p = PanelParts(f)
+		f:SetPoint("TOPLEFT", map, "TOPLEFT", -PANEL.pad, PANEL.title + PANEL.gap)
+		if merged then
+			f:SetPoint("BOTTOMRIGHT", ServicesBar(), "BOTTOMRIGHT", PANEL.pad, -PANEL.pad)
+		else
+			f:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT", PANEL.pad, -PANEL.pad)
+		end
+		f.gemReach = 0
+		local top, bottom, left, right = p.lines[1], p.lines[2], p.lines[3], p.lines[4]
+		top:ClearAllPoints()
+		top:SetPoint("BOTTOMLEFT", map, "TOPLEFT", -1, 0)
+		top:SetPoint("BOTTOMRIGHT", map, "TOPRIGHT", 1, 0)
+		top:SetHeight(1)
+		bottom:ClearAllPoints()
+		bottom:SetPoint("TOPLEFT", map, "BOTTOMLEFT", -1, 0)
+		bottom:SetPoint("TOPRIGHT", map, "BOTTOMRIGHT", 1, 0)
+		bottom:SetHeight(1)
+		left:ClearAllPoints()
+		left:SetPoint("TOPRIGHT", map, "TOPLEFT", 0, 0)
+		left:SetPoint("BOTTOMRIGHT", map, "BOTTOMLEFT", 0, 0)
+		left:SetWidth(1)
+		right:ClearAllPoints()
+		right:SetPoint("TOPLEFT", map, "TOPRIGHT", 0, 0)
+		right:SetPoint("BOTTOMLEFT", map, "BOTTOMRIGHT", 0, 0)
+		right:SetWidth(1)
+		p.hair:ClearAllPoints()
+		p.hair:SetPoint("TOPLEFT", f, "TOPLEFT", PANEL.pad, -PANEL.title)
+		p.hair:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PANEL.pad, -PANEL.title)
+		PanelShown(f, true)
+		local groups = merged and ServicesRow() or nil
+		if merged then
+			LayoutDivider(f, b, groups)
+		end
+		f:Show()
+		PlaceBand(true, f, b, groups)
+		return
+	end
 	-- (0.19.8) a style of the border library's (the thin rims, the NewUI2 rims, 0.20.1's Stone rail) at the heavy
 	-- weight (the style's range kept, its studs on), as regions of this frame, its own shade; (0.20.1, the user: "the
 	-- header up there should be normally on top of the map and fit its width, the services cant connect to it") laid

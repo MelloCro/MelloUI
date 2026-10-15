@@ -1018,6 +1018,8 @@ new quests (giver and zone only, Wowhead has no coordinates for them). Positions
 collector records when you talk to an NPC fill in the coordinates of those givers, so re-run
 the build now and then.
 
+In the painted look (0.24.0) the list and the quest log beside it wear the chat's look: each header a small heading on a thin line (the list's with its done / total and its bar), each list row's marker in the kit's round rim, and on the parchment a quest's difficulty one gem before its title in the difficulty's colour, where five pips stood (the titles keep their whole width). The quest log's own ? buttons stay the game's.
+
 The data keeps the vanilla givers' *world* coordinates and lets the client place them on its
 own maps at login (`C_Map.GetMapPosFromWorldPos`, the continent map's hit test and the zone's
 rectangle on it), so Forever's redrawn maps such as Stormwind with its harbour are right and
@@ -1817,6 +1819,8 @@ game puts it). The game still lays the cluster round the plate's own place (Edit
 back there before it lays the cluster), so Edit Mode's box and the day / night dial stay where
 they were; the plate goes back onto the rail right after. A picture frame or no border: the
 game's place.
+
+Square Border's **Chat panel** (0.24.0, the chat's look) puts the square map on the palette's dark panel instead of a frame: the zone name at the top left in the title face on a thin line, the tracking button before it, the clock and the calendar at the right, a thin line round the map, and with Merge With Services "Services" as a small heading over the buttons, all inside the panel. No parchment there, whatever the Quest Tracker's sheet does.
 
 What stands under the map follows it: the Services row of groups, and MelloUI's Quest Tracker
 with "Match The Minimap's Width" (Quest Tracker), which also hangs right under the map and moves
