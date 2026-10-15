@@ -3,6 +3,17 @@
 ## 0.25.0
 
 - One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off: the Quest Tracker, the quest log and Quest List touches, and the rest of MelloUI's own windows and bars.
+- Action bars: Backdrops work without the painted skin. Switch a bar's backdrop on (Action Bars > Backdrops) and the bars you snap together share one soft dark shade that fades out at its edges, with no frame line. With the painted skin on, the gems and border styles stay as they were. Your backdrop switches carry over.
+- Action bars: Hide Page Arrows is on for everyone by default, painted skin or not (Action Bars > Bars).
+- Party frames: each member's level shows at the end of its name line, every number in one column.
+- Unit frames: a soft dark band sits behind the player's, pet's, target of target's and party members' names, the same length on every frame.
+- Unit frames: Level Up and XP Gain work without the painted skin and follow Unit Frame Tweaks. Without the skin, Level Up is the experience bar's light and the level-up notice.
+- Party and raid frames: names shown in a short form (Show Names As) are no longer written again on every health update, which is lighter in big fights.
+- Minimap: MelloUI's minimap for everyone: Width and Height, the square shape on the Chat panel and the Services bar merged under it, with or without the painted reskin.
+- Minimap: the Minimap page has its own switch, MelloUI Minimap. Off gives you the game's own minimap, and Edit Mode's Size works on it again.
+- Minimap: Painted Skin now only paints the minimap. Without it the round map wears the game's own ring, sized with the map, and a painted square border shows as the Chat panel.
+- Quest log and Quest List: the section headings, the difficulty gem before each quest and the round icon rims show for everyone, not only with the painted quest log skin. Switching the skin off takes away only the dark parchment ink.
+- Quest log with the Gamepad UI and without the painted skin: no difficulty gems on the game's own rows, so the map stays smooth with a controller.
 
 ## 0.24.0
 

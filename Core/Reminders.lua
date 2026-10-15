@@ -130,7 +130,7 @@
 -- Motion stills the glow and lands
 -- every move at once (MelloUI.Anim, MelloUI.Shade:Glow).
 --
--- Where it sits: on the player's portrait ring, UnitFramePanel:ReminderAnchor()
+-- Where it sits: on the player's portrait ring, Unit Frames' M:ReminderAnchor()
 -- -> region, side, reach, far (the ring with the kit or the game's portrait,
 -- its free side, how far its art stands past the region, the frame's other
 -- end), by anchors only (it follows the player frame with no code): left of
@@ -472,13 +472,14 @@ end
 -- Where it sits
 --------------------------------------------------------------------------------
 
--- the player's ring (UnitFramePanel's contract): region (the ring, or the
+-- the player's ring (the Unit Frames module's contract, core since one-look
+-- D5; the painted skin's ring handed to it): region (the ring, or the
 -- game's portrait), side (its free side), reach (how far its art stands past
 -- region: added to the gap), far (the frame's other end: the "right" place
 -- goes past it, not onto the name band); nil while the player frame is
--- hidden or there is no such panel
+-- hidden or there is no such module
 local function Anchor()
-	local panel = MelloUI.GetModule and MelloUI:GetModule("UnitFramePanel")
+	local panel = MelloUI.GetModule and MelloUI:GetModule("UnitFrames")
 	local fn = type(panel) == "table" and panel.ReminderAnchor
 	if type(fn) ~= "function" then
 		return nil

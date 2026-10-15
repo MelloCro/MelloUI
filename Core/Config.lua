@@ -137,6 +137,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "0.25.0", lines = {
 		"One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off.",
+		"Action bars: snapped bars share a soft dark backdrop shade, no painted skin needed; Hide Page Arrows on by default.",
+		"Unit frames: party levels on the name line, soft name bands, Level Up and XP Gain without the painted skin.",
+		"Minimap: MelloUI's minimap for everyone -- size, the square Chat panel and Services merged under it, its own switch.",
+		"Quest log and Quest List: headings, difficulty gems and icon rims for everyone.",
 	} },
 	{ version = "0.24.0", lines = {
 		"Quest Tracker: the chat's look -- a clean panel or parchment, round quest marks, a difficulty gem, counts on the right.",
@@ -193,7 +197,7 @@ local COMMANDS = {
 	{ "/mello tracker progress", "the tracker's count roll, tick and quest-done light" },
 	{ "/mello bags loot <kind>", "a Loot Flight: poor .. legendary, or all" },
 	{ "/mello bags coins", "a quest's money flying into the bag window" },
-	{ "/mello player level", "the level-up on your level circle and XP bar" },
+	{ "/mello player level", "the level-up: your XP bar's light and the notice" },
 	{ "/mello player xp", "XP Gain's light on your experience bar" },
 	{ "/mello bags money", "the bag window's money rolling up (bags open)" },
 	{ "/mello bags full", "the Bags Full Warning on the Empty slot or bag button" },
@@ -2965,6 +2969,10 @@ local function Header(page, pl)
 		switch:SetPoint("TOPRIGHT", page, "TOPRIGHT", -PAD, -PAD)
 		lbl:SetPoint("RIGHT", switch, "LEFT", -4, 0)
 		PageTip(switch, name, def.switchDesc or module.desc)
+		-- (onelook D7) a page's switch new in an update (its page def's `new`: the Minimap page's, MelloUI's minimap)
+		if def.new then
+			W.Badge(switch, def.new)
+		end
 		page.switch, page.switchLabel = switch, lbl
 		page.refreshers[#page.refreshers + 1] = function()
 			switch:Refresh()

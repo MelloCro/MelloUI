@@ -111,7 +111,7 @@ local SAMPLES = {
 	party = { layout = "unit", area = "unitframes", plate = true,
 		first = "Lina", last = "Brightwater", class = "PRIEST", reaction = 5, display = 147599,
 		health = 7900, max = 8800, power = 4100, powerMax = 7000, token = "MANA",
-		level = 24,   -- (0.21.3: the party members' level circle, UnitFramePanel's PartyLevel)
+		level = 24,   -- (the party members' level: Unit Frames' on the name line, one-look D5; the painted skin's circle)
 		label = "A party member's frame" },
 	raid = { layout = "raid", area = "raidframes",
 		first = "Tobin", last = "Hale", class = "WARRIOR", reaction = 5, health = 6600, max = 12000,
@@ -603,7 +603,7 @@ end
 -- 46,-6; the health bar 70 x 10 at 45,-19 in its container, its fill masked
 -- by the health mask at -29,3; the mana bar 74 x 7 at 41,-30, its fill masked
 -- at 14,-26 of the frame), with the same keys, so the unit frame skin dresses
--- it as it dresses a member (UnitFramePanel:DressStandIn) -- never a secure
+-- it as it dresses a member (Unit Frames' M:DressStandIn) -- never a secure
 -- template of the game's: no unit, no events, no scripts of the game's.
 -- Painted from a sample as the configurator's preview is: the bars wear what
 -- the settings put on the real ones (Bar Textures' preview exports), the name

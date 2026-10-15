@@ -168,8 +168,9 @@ end
 -- group, and an addon may not show them -- so the made-up group is drawn as
 -- replicas of the game's party member frame (MelloUI.ConfigPreview: MakeParty,
 -- PaintParty; the user: "not a 1-1 replica on how they actually look ingame"),
--- dressed by the unit frame skin as the members are (UnitFramePanel:
--- DressStandIn), on your party frames' own slots and scale, in one holder
+-- dressed as the members are (Unit Frames' M:DressStandIn: their level and
+-- name band, the painted skin's dressing while it is on), on your party
+-- frames' own slots and scale, in one holder
 -- (MelloUIPreviewParty) the Fader fades with the party frames
 -- (Modules/Fader.lua). Their health falls on the hits and is healed back by
 -- the end, the healer's mana goes down. Made with the first party scene.
@@ -252,7 +253,7 @@ local function StandShow()
 		stand.holder:SetAllPoints(UIParent)
 		stand.holder:EnableMouse(false)
 	end
-	local ufp = MelloUI:GetModule("UnitFramePanel")
+	local ufp = MelloUI:GetModule("UnitFrames")
 	local x, y, k
 	for i, member in ipairs(Preview.PARTY) do
 		local f = stand.frames[i]
@@ -270,7 +271,7 @@ local function StandShow()
 		end
 		PlaceStand(f, i, x, y, k)
 		f:Show()
-		-- (dressed as a member while the unit frame skin is on)
+		-- (dressed as a member: its level and band; the painted skin's too while on)
 		if ufp and ufp.DressStandIn then
 			ufp:DressStandIn(f)
 		end

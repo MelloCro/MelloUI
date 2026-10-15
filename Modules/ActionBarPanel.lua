@@ -19,7 +19,12 @@
 -- "actionbars", "micromenu", "bagbar" and "statusbars". The UI shade's Action
 -- Bars area (0.14.0): the backdrops' outline, the end caps, the status bars'
 -- brackets, and the rims where no backdrop covers a bar (below Replace).
--- /abdump [bar|micro|bags|xp|icons] [frames|reps].
+-- (onelook stage D4) The backdrops themselves and Hide Page Arrows are the
+-- core's (Modules/ActionBars.lua: the switches, the members, the fits, the
+-- layout); this skin is their painted dressing (DRESSING: the gems' drawer,
+-- Modules/KitBackdrop.lua, in its looks per group, the holders' shade, the
+-- micro spacing before each layout and the rims' shade after it).
+-- /abdump [bar|micro|bags|xp|icons|backdrops|states] [frames|reps].
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -28,6 +33,9 @@ local Perf = MelloUI.Perf:Scope("ActionBarPanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- the core's action bars (Modules/ActionBars.lua, loaded just before this
+-- file): the backdrops and the page arrows, dressed from here
+local Bars = MelloUI:GetModule("ActionBars")
 -- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
 local bracketOf = MelloUI.Kept.bracketOf
 local glyphStoneOf = MelloUI.Kept.glyphStoneOf
@@ -37,7 +45,8 @@ local slotStoneOf = MelloUI.Kept.slotStoneOf
 
 -- The looks a group of buttons can take (action bars, micro menu, bag bar;
 -- the rims are UI Modifications' Button Border, every window's). No "None"
--- since 0.18.5: each element's backdrop has its own switch (ELEMENTS).
+-- since 0.18.5: each element's backdrop has its own switch (the core's
+-- ELEMENTS, Modules/ActionBars.lua).
 local BACKDROP_VALUES = {
 	{ value = "red", label = "Red gems" },
 	{ value = "iron", label = "Iron gems" },
@@ -61,44 +70,10 @@ local GROUPS = {
 	{ id = "bags", title = "Bag Bar", keys = { backdrop = "bagBackdrop", background = "bagBackground", buttonBackground = "bagButtonBackground" } },
 }
 
--- The elements that can wear a backdrop (user, 2026-10-04: "Everything
--- should have the option to have a backdrop, but not on by Default"), each
--- by its own switch, in the order that makes a joined backdrop's leader
--- (whose look it takes: Action Bar 1, then the other bars, the micro menu,
--- the bag bar; the experience and reputation bars wear the action bars'
--- look). `frame`: the element's frame; `group`: whose look it wears.
-local ELEMENTS = {
-	{ key = "backdropBar1", frame = "MainActionBar", name = "Action Bar 1", what = "Action Bar 1", group = "bars" },
-	{ key = "backdropBar2", frame = "MultiBarBottomLeft", name = "Action Bar 2", what = "Action Bar 2", group = "bars" },
-	{ key = "backdropBar3", frame = "MultiBarBottomRight", name = "Action Bar 3", what = "Action Bar 3", group = "bars" },
-	{ key = "backdropBar4", frame = "MultiBarRight", name = "Action Bar 4", what = "Action Bar 4", group = "bars" },
-	{ key = "backdropBar5", frame = "MultiBarLeft", name = "Action Bar 5", what = "Action Bar 5", group = "bars" },
-	{ key = "backdropBar6", frame = "MultiBar5", name = "Action Bar 6", what = "Action Bar 6", group = "bars" },
-	{ key = "backdropBar7", frame = "MultiBar6", name = "Action Bar 7", what = "Action Bar 7", group = "bars" },
-	{ key = "backdropBar8", frame = "MultiBar7", name = "Action Bar 8", what = "Action Bar 8", group = "bars" },
-	{ key = "backdropStance", frame = "StanceBar", name = "Stance Bar", what = "the stance bar", group = "bars" },
-	{ key = "backdropPet", frame = "PetActionBar", name = "Pet Bar", what = "the pet bar", group = "bars" },
-	{ key = "backdropPossess", frame = "PossessActionBar", name = "Possess Bar", what = "the possess bar", group = "bars" },
-	-- (0.20.2, the user: "The Totem Bar is missing from the Checkbox menus") the shaman's totem bar
-	-- (Blizzard_ActionBar/Shared/MultiCastActionBarFrame.xml, Edit Mode's Totem Bar): no bar of the kit's, so its
-	-- rect is its shown buttons' -- the summon button, the four slots (the page's action buttons lie on them) and
-	-- the recall button
-	{ key = "backdropTotem", frame = "MultiCastActionBarFrame", name = "Totem Bar", what = "the totem bar", group = "bars",
-	  buttons = { "MultiCastSummonSpellButton", "MultiCastSlotButton1", "MultiCastSlotButton2",
-		"MultiCastSlotButton3", "MultiCastSlotButton4", "MultiCastRecallSpellButton" } },
-	{ key = "backdropMicro", frame = "MicroMenu", name = "Micro Menu", what = "the micro menu", group = "micro" },
-	{ key = "backdropBags", frame = "BagsBar", name = "Bag Bar", what = "the bag bar", group = "bags" },
-	{ key = "backdropXP", frame = "MainStatusTrackingBarContainer", name = "Experience Bar", status = true, group = "bars",
-	  what = "the experience bar (the reputation bar in its place at the top level)" },
-	{ key = "backdropXP2", frame = "SecondaryStatusTrackingBarContainer", name = "Reputation Bar", status = true, group = "bars",
-	  what = "the second status bar (a watched reputation while you level)" },
-}
-
-local defaults = { hidePageArrows = true }
-local options = {
-	{ type = "toggle", key = "hidePageArrows", name = "Hide Page Arrows",
-	  desc = "Hide the main bar's page number and its up / down arrows (the bar still pages with the keybinds)." },
-}
+-- (the elements that can wear a backdrop, their switches and Hide Page
+-- Arrows: the core's since onelook stage D4, Modules/ActionBars.lua)
+local defaults = {}
+local options = {}
 for _, g in ipairs(GROUPS) do
 	defaults[g.keys.backdrop] = "red"
 	defaults[g.keys.background], defaults[g.keys.buttonBackground] = "stone", "stone"
@@ -118,16 +93,6 @@ for _, g in ipairs(GROUPS) do
 	options[#options + 1] = { type = "dropdown", key = g.keys.buttonBackground, name = "Button Background", values = BACKGROUND_VALUES,
 		desc = "What a button shows inside its rim where it has no icon." }
 end
-options[#options + 1] = { type = "subheader", name = "Backdrops" }
-for _, e in ipairs(ELEMENTS) do
-	defaults[e.key] = false
-	-- (0.20.2, the user: "Checkbox on, the Bar gets its backdrop and merges seamlessly, Checkbox off, no backdrop and
-	-- no merging")
-	options[#options + 1] = { type = "toggle", key = e.key, name = e.name, new = e.new,
-		desc = "A backdrop round " .. e.what .. ", merged into one with the other switched-on elements placed next to it"
-			.. (e.status and " (this bar then takes their width, within a limit)" or "") .. ". Off: no backdrop, and it "
-			.. "joins none." }
-end
 
 local M = MelloUI:RegisterModule("ActionBarPanel", {
 	title = "Action Bars Kit",
@@ -136,9 +101,6 @@ local M = MelloUI:RegisterModule("ActionBarPanel", {
 	enabledByDefault = true,
 	defaults = defaults,
 	options = options,
-	-- the per-element switches taken over once (MigrateBackdrops): this
-	-- machine's step, never in a profile
-	keep = { "backdropsMigrated" },
 })
 
 local skin = nil
@@ -152,7 +114,6 @@ local BAG_BUTTONS = { "MainMenuBarBackpackButton", "CharacterBag0Slot", "Charact
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
-local SafeScreenRect = MelloUI.Safe.ScreenRect
 local Finite = MelloUI.Safe.Finite
 
 local function Replace(region, opts)
@@ -237,8 +198,8 @@ local function KeepShadesLow()
 end
 
 -- [root] = true while a shown backdrop covers that element (every member of
--- a drawn backdrop): filled by each layout
-local covered = {}
+-- a drawn backdrop): the core's, filled by each layout (Modules/ActionBars.lua)
+local covered = Bars.kept.covered
 
 -- A rim drawn at another size than its partner was made at (a micro
 -- button's, sized to the bag slots; an action button's at Edit Mode's new
@@ -269,7 +230,7 @@ end
 -- shadows on a frame of the bar's own at BACKGROUND level 0, shown while no
 -- backdrop covers it (and hidden with the bar, its child); made the first
 -- time the bar is shown or wanted in a fight, out of combat (a bar can be
--- protected: a layout in a fight is run again after it, LayoutAll), its
+-- protected: a layout in a fight is run again after it, the core's Layout), its
 -- rims' partners with it
 local function ShadeRims(root, buttons)
 	local rs = skin.rims[root]
@@ -327,21 +288,7 @@ local function BarPitch(bar, button)
 	return { w + pad, h + pad }
 end
 
-local function BarButtons(bar)
-	if type(bar.actionButtons) == "table" and #bar.actionButtons > 0 then
-		return bar.actionButtons
-	end
-	local list = {}
-	local prefix = bar:GetName()
-	prefix = prefix and prefix:gsub("ActionBar$", "") or ""
-	for i = 1, 12 do
-		local button = _G[prefix .. "Button" .. i]
-		if button then
-			list[#list + 1] = button
-		end
-	end
-	return list
-end
+local BarButtons = Bars.BarButtons   -- (a bar's buttons: the core's one reader)
 
 local function RefitBar(bar)
 	local entry = skin.bars[bar]
@@ -361,18 +308,12 @@ local function RefitBar(bar)
 	end
 end
 
-local WatchForBackdrop   -- below: the backdrop round Action Bar 1 follows every bar's layout
-
 -- (Bar / Button Background -> the tile behind the buttons or in an empty
 -- button: Kit.buttonLooks.backgroundPiece, read where it is drawn --
 -- Modules/KitBackdrop.lua and Kit:SetButtonBackground)
 
 local GROUP = {}          -- id -> group
 local KEY_GROUP = {}      -- setting key -> group, role
-local ELEMENT_KEY = {}    -- an element's backdrop switch -> the element
-for _, e in ipairs(ELEMENTS) do
-	ELEMENT_KEY[e.key] = e
-end
 for _, g in ipairs(GROUPS) do
 	GROUP[g.id] = g
 	for role, key in pairs(g.keys) do
@@ -427,7 +368,6 @@ local function SkinBar(bar)
 			Kit:WhenOutOfCombat(function() RefitBar(bar) end)
 		end)
 	end
-	WatchForBackdrop(bar)
 	-- the bar's own art (the main bar's frame, the gryphons, the page arrows,
 	-- the pooled dividers between its buttons)
 	if bar.BorderArt then
@@ -530,9 +470,9 @@ local function SkinBar(bar)
 			el:Add(entry.rep, CAP_OPTS)
 		end
 	end
+	-- the page arrows' art (hidden or shown: the core's Hide Page Arrows)
 	local page = bar.ActionBarPageNumber
 	if page then
-		skin.page = page
 		for key, art in pairs({ UpButton = "ui-hud-actionbar-pageuparrow-up", DownButton = "ui-hud-actionbar-pagedownarrow-up" }) do
 			local button = page[key]
 			if button and button.GetNormalTexture and button:GetNormalTexture() then
@@ -544,24 +484,17 @@ local function SkinBar(bar)
 end
 
 --------------------------------------------------------------------------------
--- The backdrops (user, 2026-09-23, sketched on the bars: "make a backdrop
--- border behind the action bar ... the whole action bar only has 4 gems and
--- they are on the backdrop ... a concrete texture which stands behind the
--- actionbar buttons"; 2026-10-04, docs/plans/dynamic-backdrops.md: "give the
--- users more freedom to snap more random Elements together and form a
--- unified backdrop"). Every element in ELEMENTS can wear one, by its own
--- switch (off on a new install). Elements that stand together share ONE
--- backdrop: their pads (the buttons' rect grown by the rim and the gap,
--- PadOf) that touch or overlap make a group, drawn when one of them is
--- switched on (the others join it all the same) in its leader's look (the
--- first in ELEMENTS). Its outline is MelloUI.Outline's (Core/Outline.lua):
--- the nine's rails along each side, a gem on each outer corner, the L joint
--- (deco/barjoin) in each inner one, the background through the whole shape
--- from the screen's origin. A status bar in a group with others is fitted
--- to their width (SetFit) and its bracket gives way to the rails. Drawn on a
--- holder of the leader's (its moves, scale and hiding followed), from pools:
--- the same counts again make nothing new. Laid out out of combat after a
--- change (ScheduleBackdrop).
+-- The backdrops' painted dressing (user, 2026-09-23, sketched on the bars:
+-- "make a backdrop border behind the action bar ... the whole action bar
+-- only has 4 gems and they are on the backdrop ... a concrete texture which
+-- stands behind the actionbar buttons"). The backdrops themselves -- each
+-- element's switch, the groups, the status bars' fit, the holders and the
+-- layout -- are the core's since onelook stage D4 (Modules/ActionBars.lua);
+-- with the skin on, the core draws them through the gems' drawer
+-- (Modules/KitBackdrop.lua: the nine's rails along each side, a gem on each
+-- outer corner, the L joint in each inner one, the background through the
+-- whole shape from the screen's origin) in each group's looks picked here,
+-- its rails' and gems' shadows on the leader's shade frame (DRESSING).
 --------------------------------------------------------------------------------
 
 -- Backdrop -> the border piece: the slot rim with heavier top and bottom rails
@@ -587,446 +520,30 @@ for _, look in ipairs(Kit.squareLooks or {}) do
 end
 -- the buttons' own backing: the same textures
 M.choices.buttonBackground = M.choices.barBackground
-local FRAME_GAP = 0.12       -- of a button's size: stone between the buttons' rims and the frame's inner edge
-local Outline = MelloUI.Outline
-
--- A frame's rect in screen px (l, b, r, t), nil while it has no size: the
--- addon's one reader (MelloUI.Safe.ScreenRect, Core.lua: secret-safe) with
--- the size the backdrops need. Four numbers, no table.
-local function ScreenRect(f)
-	local l, b, r, t = SafeScreenRect(f)
-	if l and r > l and t > b then
-		return l, b, r, t
-	end
-	return nil
+-- The look a group's backdrop takes (Kit:DrawBackdrop's gems' frame or
+-- border library style, and its background), for the core's drawer: one
+-- table per group, made at load and filled again each time it is asked
+local LOOK = {}
+for _, g in ipairs(GROUPS) do
+	LOOK[g.id] = {}
+end
+local function LookOf(id)
+	local g = GROUP[id] or GROUP.bars
+	local look = LOOK[g.id]
+	-- (the gems' frame, or a border library style: its outline the frame's
+	-- all the same, DrawLibrary)
+	local value = Setting(g, "backdrop")
+	look.piece = FRAME_PIECES[value] or FRAME_PIECE
+	look.styleId = not FRAME_PIECES[value] and value or nil
+	look.background = Setting(g, "background") or "stone"
+	return look
 end
 
--- The buttons' rect of a bar (the ones its layout shows, in screen px), and
--- one button's size.
-local function ButtonsRect(bar)
-	local entry = skin.bars[bar]
-	if not entry then
-		return nil
-	end
-	local count = tonumber(bar.numButtonsShowable) or #entry.buttons
-	-- the stance / pet / possess bars keep buttons for forms and spells the
-	-- character does not have, hidden: only the shown ones count there (an
-	-- action bar's empty buttons hide too, so its layout's count is used)
-	local shownOnly = bar == _G.StanceBar or bar == _G.PetActionBar or bar == _G.PossessActionBar
-	local rl, rb, rr, rt, size
-	for i, button in ipairs(entry.buttons) do
-		if i <= count and (not shownOnly or button:IsShown()) then
-			local l, b, r, t = ScreenRect(button)
-			if l then
-				size = size or (r - l)
-				if rl then
-					rl, rb, rr, rt = math.min(rl, l), math.min(rb, b), math.max(rr, r), math.max(rt, t)
-				else
-					rl, rb, rr, rt = l, b, r, t
-				end
-			end
-		end
-	end
-	if not rl then
-		return nil, size
-	end
-	return { rl, rb, rr, rt }, size
-end
-
--- The rect of a set of buttons (the shown ones, screen px) and the size of
--- the smallest one's shorter side.
-local function ShownRect(buttons)
-	local rl, rb, rr, rt, size
-	for _, button in ipairs(buttons) do
-		if button:IsShown() then
-			-- the rim's rect where it has one (a micro button's rim is a
-			-- square on a taller button: the backdrop keeps the same distance
-			-- to the rims on every bar)
-			local rim = repOf[button] and repOf[button].object
-			local l, b, r, t
-			if rim and rim.IsShown and rim:IsShown() then
-				l, b, r, t = ScreenRect(rim)
-			end
-			if not l then
-				l, b, r, t = ScreenRect(button)
-			end
-			if l then
-				local side = math.min(r - l, t - b)
-				size = size and math.min(size, side) or side
-				if rl then
-					rl, rb, rr, rt = math.min(rl, l), math.min(rb, b), math.max(rr, r), math.max(rt, t)
-				else
-					rl, rb, rr, rt = l, b, r, t
-				end
-			end
-		end
-	end
-	if not rl then
-		return nil, size
-	end
-	return { rl, rb, rr, rt }, size
-end
-
--- Where each group's own buttons hang
-local ANCHORS = {
-	bars = function() return _G.MainActionBar or _G.MainMenuBar end,
-	micro = function() return _G.MicroMenu end,
-	bags = function() return _G.BagsBar end,
-}
-
--- The rails' scale for every backdrop (screen px per piece px): the rim as
--- the slot rims were drawn (97 px of the slot = one pitch) on Action Bar 1's
--- buttons, so the rails match wherever two elements meet (user, 2026-09-23:
--- the bag bar's rails, on its larger buttons, came out thicker than the
--- micro menu's where the two joined). Nil without Action Bar 1.
-local function RailScale()
-	local main = ANCHORS.bars()
-	if skin and main and skin.bars[main] then
-		local _, size = ButtonsRect(main)
-		if size and size > 0 then
-			return size / 97
-		end
-	end
-	return nil
-end
-
---------------------------------------------------------------------------------
--- The experience and reputation bars fitted (user, 2026-10-04: they "should
--- follow and adjust their width to fit the border and not strech it too
--- much"). A status bar in a drawn backdrop with other elements takes the
--- width of their buttons above or below it, by its scale: the container's
--- plain SetScale (Edit Mode's *Base). Its width is Edit Mode's Size, which
--- the bars inside follow only through the game's own layout functions,
--- never run from here. Within 0.85 - 1.25 only; past that it keeps its own
--- size and the outline takes it as it is. A change keeps its anchor where
--- it stands on the screen by the game's own rule (EditModeSystemMixin:
--- SetScaleOverride: the offsets times old / new). The game's later anchors
--- carry the scale themselves (ApplySystemAnchor: offset / scale), except the
--- bottom stack's for a bar in its default place (EditModeManagerFrame:
--- UpdateBottomActionBarPositions: plain offsets), which KeepFitPlaces puts on
--- the scale again. Never in a fight; the bar's own scale back when it
--- leaves its backdrop, the backdrop goes, or the reskin goes off.
---------------------------------------------------------------------------------
-
-local FIT_MIN, FIT_MAX = 0.85, 1.25
-local fits = {}      -- [container] = { base = its scale before, k = the factor on it, x, y = its first point's offsets as set here }
-local fitSeen = {}   -- [container] = true: fitted by this layout (filled by each)
-
+-- a frame the game protects (the micro menu and its container in a fight:
+-- the spacing waits for the fight's end)
 local function Protected(f)
 	local ok, v = pcall(f.IsProtected, f)
 	return ok and not Secret(v) and v and true or false
-end
-
--- the container's anchors, their offsets times `by` (Edit Mode's *Base),
--- and its first point's offsets remembered; false when one cannot be read
-local function ScaleAnchors(container, by, fit)
-	local n = MelloUI.Safe.Call(container, "GetNumPoints")
-	if type(n) ~= "number" or n < 1 then
-		return false
-	end
-	local points = {}
-	for i = 1, n do
-		local ok, point, rel, relPoint, x, y = pcall(container.GetPoint, container, i)
-		x, y = ok and MelloUI.Safe.Finite(x), ok and MelloUI.Safe.Finite(y)
-		if not (x and y) then
-			return false
-		end
-		points[i] = { point, rel, relPoint, x * by, y * by }
-	end
-	local setPoint = container.SetPointBase or container.SetPoint
-	for _, pt in ipairs(points) do
-		setPoint(container, pt[1], pt[2], pt[3], pt[4], pt[5])
-	end
-	if fit then
-		fit.x, fit.y = points[1][4], points[1][5]
-	end
-	return true
-end
-
--- The fit `k` on a status bar's container (1: its own scale back); true when
--- its scale changed. Never in a fight.
-local function SetFit(container, k)
-	local fit = fits[container]
-	local have = fit and fit.k or 1
-	if math.abs(have - k) < 0.001 or InCombatLockdown() then
-		return false
-	end
-	local base = fit and fit.base
-	if not base then
-		local ok, v = pcall(container.GetScale, container)
-		base = ok and MelloUI.Safe.Finite(v) or 1
-		if base <= 0 then
-			base = 1
-		end
-	end
-	local setScale = container.SetScaleBase or container.SetScale
-	setScale(container, base * k)
-	if k == 1 then
-		fits[container] = nil
-		ScaleAnchors(container, have / k)
-	else
-		fit = fit or { base = base }
-		fit.k = k
-		fits[container] = fit
-		ScaleAnchors(container, have / k, fit)
-	end
-	return true
-end
-
--- After the game's bottom stack laid a fitted bar in its default place (its
--- offsets plain, for the bar's own scale; their change from the ones set
--- here tells it did): its offsets on the fit again, at once. Counted
--- (MelloUI.Perf.WriteBack): the stack is laid when a bar shows, hides or
--- moves, never per frame. A protected one in a fight waits for the next
--- layout (LayoutAll runs this first).
-local function KeepFitPlaces()
-	for container, fit in pairs(fits) do
-		local okD, default = pcall(container.IsInDefaultPosition, container)
-		local ok, _, _, _, x, y = pcall(container.GetPoint, container, 1)
-		x, y = ok and MelloUI.Safe.Finite(x), ok and MelloUI.Safe.Finite(y)
-		if okD and default == true and x and y and (math.abs(x - (fit.x or 0)) > 1e-4 or math.abs(y - (fit.y or 0)) > 1e-4)
-			and not (InCombatLockdown() and Protected(container)) then
-			ScaleAnchors(container, 1 / fit.k, fit)
-			MelloUI.Perf.WriteBack("ActionBarPanel: a fitted status bar's place")
-		end
-	end
-end
-
--- Every fit taken off (the reskin off): out of combat
-local function RestoreFits()
-	for container in pairs(fits) do
-		SetFit(container, 1)
-	end
-end
-
---------------------------------------------------------------------------------
--- The members and their groups
---------------------------------------------------------------------------------
-
--- an element shown on the screen (a micro menu parked by Tweaks' Hide Micro
--- Menu reads shown under its hidden holder: left out)
-local function OnScreen(f)
-	local ok, v = pcall(f.IsVisible, f)
-	return ok and not Secret(v) and v == true
-end
-
--- An element's rect (its buttons', screen px) and a button's size; a status
--- bar's is its container's as it stands (fitted or not), with no size
-local function MemberRect(e, root)
-	if e.buttons then
-		local list = {}
-		for _, name in ipairs(e.buttons) do
-			local button = rawget(_G, name)
-			if type(button) == "table" and button.IsShown then
-				list[#list + 1] = button
-			end
-		end
-		return ShownRect(list)
-	end
-	if e.status then
-		if not skin.status[root] then
-			return nil
-		end
-		local l, b, r, t = ScreenRect(root)
-		if not l then
-			return nil
-		end
-		return { l, b, r, t }
-	elseif e.group == "bars" then
-		if not skin.bars[root] then
-			return nil
-		end
-		return ButtonsRect(root)
-	end
-	local rect, size = ShownRect(GroupButtons(GROUP[e.group]))
-	-- the bag bar's fold arrow (Tweaks' Collapse Arrow) inside it while it
-	-- shows: in the rect, never the size (the gap is a button's share)
-	local toggle = e.group == "bags" and rawget(_G, "BagBarExpandToggle")
-	if rect and toggle and toggle:IsShown() then
-		local l, b, r, t = ScreenRect(toggle)
-		if l then
-			rect[1], rect[2] = math.min(rect[1], l), math.min(rect[2], b)
-			rect[3], rect[4] = math.max(rect[3], r), math.max(rect[4], t)
-		end
-	end
-	return rect, size
-end
-
--- A member's pad: its rect grown by the rim (the piece's, at ks screen px
--- per piece px) and the gap (a share of its button, else of `size`, Action
--- Bar 1's), kept in m.pad
-local function PadOf(m, ks, size)
-	m.pad = Kit:BackdropPad(m.rect, ks, FRAME_GAP * (m.size or size), m.pad)   -- (the kit's one pad rule)
-	return m.pad
-end
-
--- The elements on the screen now, in ELEMENTS' order: { e, root, rect,
--- size, on, pad } (the entries kept and filled again by each layout)
-local members = {}
-local function Members()
-	local n = 0
-	for _, e in ipairs(ELEMENTS) do
-		local root = _G[e.frame]
-		if type(root) == "table" and root.GetObjectType and OnScreen(root) then
-			local rect, size = MemberRect(e, root)
-			if rect then
-				n = n + 1
-				local m = members[n] or {}
-				members[n] = m
-				m.e, m.root, m.rect = e, root, rect
-				m.size = size and size > 0 and size or nil
-				m.on = M.db ~= nil and M.db[e.key] == true
-			end
-		end
-	end
-	for i = #members, n + 1, -1 do
-		members[i] = nil
-	end
-	return members, n
-end
-
--- The factor that fits status bar m to the buttons of the others of its
--- group above or below it (at least half of one across the other: a bar
--- that only meets its end, the micro menu snapped beside, is not one); 1
--- when there are none or it falls outside the limits
-local function FitFor(m, group, list)
-	local l, r
-	for _, i in ipairs(group) do
-		local o = list[i]
-		if not o.e.status then
-			local ox0, ox1 = o.rect[1], o.rect[3]
-			local over = math.min(ox1, m.rect[3]) - math.max(ox0, m.rect[1])
-			if over > 0.5 * math.min(ox1 - ox0, m.rect[3] - m.rect[1]) then
-				l = l and math.min(l, ox0) or ox0
-				r = r and math.max(r, ox1) or ox1
-			end
-		end
-	end
-	local fit = fits[m.root]
-	local natural = (m.rect[3] - m.rect[1]) / (fit and fit.k or 1)
-	if not l or natural <= 0 then
-		return 1
-	end
-	local k = (r - l) / natural
-	if k < FIT_MIN or k > FIT_MAX then
-		return 1
-	end
-	return math.floor(k * 1000 + 0.5) / 1000
-end
-
---------------------------------------------------------------------------------
--- The drawing: a holder per leader, its pieces from pools
---------------------------------------------------------------------------------
-
-local holders = {}   -- [element key] = the holder of the backdrop that element leads (made the first time it leads one)
-local inShape = {}   -- [root] = true: in a drawn backdrop (filled by each layout; a status bar's bracket gives way)
-local holderUsed = {}   -- [holder] = true: drawn by this layout
-
--- (0.19.8: the holder and its drawing are the kit's, Modules/KitBackdrop.lua,
--- one system for every backdrop: the unit frames' too) its rails' and gems'
--- shadows on the root's shade frame, the bars' area
-local function NewHolder(root)
-	local f = Kit:BackdropHolder(root)
-	f.shade = Shade(root, true, f)
-	return f
-end
-
-local padList = {}   -- (the members' pads in their order: Outline.Clusters' input, kept)
-local onList = {}    -- (the switched-on members, padList's order: kept)
-
--- Every backdrop laid out: the members, their groups, the status bars'
--- fits, each drawn group on its leader's holder; the holders no group
--- needs hidden
-local function LayoutBackdrops()
-	wipe(fitSeen)
-	wipe(holderUsed)
-	local list, n = Members()
-	local ks = RailScale()
-	for i = 1, n do
-		if ks then
-			break
-		end
-		ks = list[i].size and list[i].size / 97
-	end
-	if ks and n > 0 then
-		local size = ks * 97
-		-- (0.20.2, the user: "Checkbox on, the Bar gets its backdrop and merges seamlessly, Checkbox off, no
-		-- backdrop and no merging") only the switched-on elements make backdrops and join them: a bar switched off
-		-- beside one switched on stays out of its backdrop (it took the whole group's before)
-		local on = 0
-		for i = 1, n do
-			if list[i].on then
-				on = on + 1
-				onList[on] = list[i]
-				padList[on] = PadOf(list[i], ks, size)
-			end
-		end
-		for i = #padList, on + 1, -1 do
-			padList[i], onList[i] = nil, nil
-		end
-		list = onList
-		local groups = Outline.Clusters(padList, 0)
-		for _, group in ipairs(groups) do
-			group.drawn = true
-			-- the status bars of a drawn group fitted first: their pads again
-			for _, i in ipairs(group) do
-				local m = list[i]
-				if m.e.status then
-					local k = group.drawn and FitFor(m, group, list) or 1
-					if k ~= 1 then
-						fitSeen[m.root] = true
-					end
-					if SetFit(m.root, k) then
-						local l, b, r, t = ScreenRect(m.root)
-						if l then
-							m.rect[1], m.rect[2], m.rect[3], m.rect[4] = l, b, r, t
-							PadOf(m, ks, size)
-						end
-					end
-				end
-			end
-		end
-		for _, group in ipairs(groups) do
-			if group.drawn then
-				local leader = list[group[1]]
-				local g = GROUP[leader.e.group]
-				local f = holders[leader.e.key]
-				if not f and not InCombatLockdown() then
-					-- (never made in a fight: the leader can be protected; the
-					-- layout after it makes it)
-					f = NewHolder(leader.root)
-					holders[leader.e.key] = f
-				end
-				local pads = f and {}
-				for k, i in ipairs(pads and group or {}) do
-					pads[k] = list[i].pad
-				end
-				-- (the gems' frame, or a border library style: its outline the
-				-- frame's all the same, DrawLibrary)
-				local value = Setting(g, "backdrop")
-				local piece = FRAME_PIECES[value] or FRAME_PIECE
-				local styleId = not FRAME_PIECES[value] and value or nil
-				if f and Kit:DrawBackdrop(f, pads, piece, Setting(g, "background") or "stone", ks, styleId) then
-					holderUsed[f] = true
-					for _, i in ipairs(group) do
-						covered[list[i].root] = true
-						inShape[list[i].root] = true
-					end
-				end
-			end
-		end
-	end
-	-- a fitted bar no longer in a drawn group: its own size back
-	for container in pairs(fits) do
-		if not fitSeen[container] then
-			SetFit(container, 1)
-		end
-	end
-	for _, f in pairs(holders) do
-		if not holderUsed[f] then
-			f:Hide()
-		end
-	end
 end
 
 --------------------------------------------------------------------------------
@@ -1292,93 +809,43 @@ local function SyncRims()
 		ShadeRims(bar, entry.buttons)
 	end
 	for _, id in ipairs(RIM_GROUPS) do
-		local root = ANCHORS[id]()
+		local root = Bars.Anchor(id)
 		if root and skin[id] then
 			ShadeRims(root, GroupButtons(GROUP[id]))
 		end
 	end
 end
 
-local LAYOUT_KEY = "Action bars: layout"   -- (Kit:WhenOutOfCombat's key: one layout waits at a time)
-local function LayoutAll()
-	if not (active and skin) then
-		return
-	end
-	wipe(covered)
-	wipe(inShape)
-	MatchMicroToBags()
-	KeepFitPlaces()
-	LayoutBackdrops()
-	SyncRims()
-	KeepShadesLow()
-	-- in a fight (a setting changed): laid out again after it, for what a
-	-- protected bar could not get now (a holder, a rim frame, a status bar's
-	-- fit) and the shade frames' level
-	if InCombatLockdown() then
-		Kit:WhenOutOfCombat(LayoutAll, LAYOUT_KEY)
-	end
-end
-
-local function HideAll()
+-- the rims' shade put away (the skin off)
+local function HideRims()
 	if not skin then
 		return
-	end
-	for _, f in pairs(holders) do
-		f:Hide()
 	end
 	for _, rs in pairs(skin.rims) do
 		rs.host:Hide()
 	end
-	if next(fits) then
-		Kit:WhenOutOfCombat(RestoreFits)
+end
+
+-- a backdrop's holder (the core's): its rails' and gems' shadows on the
+-- root's shade frame, the bars' area (made once per holder)
+local function ShadeHolder(f, root)
+	if not f.shade then
+		f.shade = Shade(root, true, f)
 	end
 end
 
--- Laid out again a moment after a change, out of combat (the bars' rects
--- settle after Edit Mode's layout).
-local backdropPending = false
-local function ScheduleBackdrop()
-	if backdropPending or not active then
-		return
-	end
-	backdropPending = true
-	C_Timer.After(0.1, function()
-		backdropPending = false
-		Kit:WhenOutOfCombat(LayoutAll, LAYOUT_KEY)
-	end)
+-- behind each of the core's layouts: every bar's rims shaded where no
+-- backdrop covers it, the shade frames back at level 0
+local function AfterLayout()
+	SyncRims()
+	KeepShadesLow()
 end
 
--- What moves a backdrop: an element re-laid, shown or hidden, resized,
--- dragged in Edit Mode, Edit Mode closed. (The watched ones in a table of
--- ours: never a key on the game's frames.)
-local watched = setmetatable({}, { __mode = "k" })
-WatchForBackdrop = function(bar)
-	if not bar or watched[bar] then
-		return
-	end
-	watched[bar] = true
-	Perf.HookScript(bar, "OnShow", ScheduleBackdrop)
-	Perf.HookScript(bar, "OnHide", ScheduleBackdrop)
-	Perf.HookScript(bar, "OnSizeChanged", ScheduleBackdrop)
-	for _, method in ipairs({ "UpdateGridLayout", "Layout", "OnDragStop", "OnSystemPositionChange" }) do
-		if type(bar[method]) == "function" then
-			hooksecurefunc(bar, method, ScheduleBackdrop)
-		end
-	end
-end
-
--- (0.20.2) the totem bar (no bar of the kit's, never dressed): watched as a bar, and its slots shown or hidden as the
--- shaman's totems change (MultiCastActionBarFrame_Update, a post-hook)
-local function WatchTotemBar()
-	local bar = rawget(_G, "MultiCastActionBarFrame")
-	if type(bar) ~= "table" or watched[bar] then
-		return
-	end
-	WatchForBackdrop(bar)
-	if type(rawget(_G, "MultiCastActionBarFrame_Update")) == "function" then
-		hooksecurefunc("MultiCastActionBarFrame_Update", ScheduleBackdrop)
-	end
-end
+-- The skin's dressing of the core's backdrops (Modules/ActionBars.lua,
+-- M.SetDressing): the gems' drawer in each group's looks, the holders'
+-- shade, the micro menu matched to the bag bar before the measure, the rims'
+-- shade after the drawing. Made once at load.
+local DRESSING = { drawer = "gems", Look = LookOf, Holder = ShadeHolder, Before = MatchMicroToBags, After = AfterLayout }
 
 -- A micro button's glyph follow-ups while it cannot be seen (Tweaks' Hide
 -- Micro Menu parks the menu under a hidden frame, where IsShown() stays
@@ -1683,9 +1150,8 @@ local function SkinMicroMenu()
 			end
 		end
 	end
-	-- the backdrop following the bar (the rims follow every window's Button
-	-- Border: registered as they are made)
-	WatchForBackdrop(menu)
+	-- (the backdrop follows the bar: the core watches it, Modules/ActionBars.lua;
+	-- the rims follow every window's Button Border: registered as they are made)
 	-- the spacing kept through the game's own layouts (MatchMicroToBags)
 	if type(menu.Layout) == "function" then
 		hooksecurefunc(menu, "Layout", OnMicroLayout)
@@ -1730,7 +1196,6 @@ local function SkinBagBar()
 		Replace(normal, { as = "bag-arrow", button = toggle, rect = toggle,
 			alsoFade = { toggle:GetPushedTexture(), toggle:GetHighlightTexture() } })
 	end
-	WatchForBackdrop(bar)
 end
 
 --------------------------------------------------------------------------------
@@ -1799,8 +1264,8 @@ local function SkinStatusContainer(container)
 			Replace(bar.StatusBar.Background, { as = "UI-HUD-ExperienceBar-Background" })
 		end
 	end
-	-- a member of the backdrops (its own switch; fitted to the others)
-	WatchForBackdrop(container)
+	-- (a member of the backdrops, its own switch, fitted to the others: the
+	-- core's, which watches it)
 end
 
 -- The container's pooled segment dividers → ticks (re-acquired on every
@@ -1938,30 +1403,10 @@ local function Build()
 	Try("micro menu", SkinMicroMenu)
 	Try("bag bar", SkinBagBar)
 	Try("status bars", SkinStatusBars)
-	Try("totem bar", WatchTotemBar)
 	Try("extra and vehicle buttons", SkinActiveOnly)
 end
 
--- The main bar's page number and arrows hidden (user, 2026-09-21): faded
--- and their mouse off, put back on disable or when the option goes off.
-local function ApplyPageArrows()
-	local page = skin and skin.page
-	if not page then
-		return
-	end
-	local hide = active and M.db and M.db.hidePageArrows
-	if hide then
-		Kit:Fade(page)
-	else
-		Kit:Unfade(page)
-	end
-	for _, key in ipairs({ "UpButton", "DownButton" }) do
-		local button = page[key]
-		if button and button.EnableMouse then
-			button:EnableMouse(not hide)
-		end
-	end
-end
+-- (Hide Page Arrows: the core's, Modules/ActionBars.lua, whatever the look)
 
 local function Activate()
 	if active then
@@ -1969,7 +1414,6 @@ local function Activate()
 	end
 	active = true
 	Build()
-	ApplyPageArrows()
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end
@@ -1979,7 +1423,9 @@ local function Activate()
 	for _, sync in ipairs(skin.capSync) do
 		sync()
 	end
-	LayoutAll()
+	-- the core's backdrops in the painted look, laid out now (the micro
+	-- spacing, the backdrops, the rims' shade)
+	Bars.SetDressing(DRESSING)
 	for _, g in ipairs(GROUPS) do
 		local value = Setting(g, "buttonBackground")
 		if value and value ~= "stone" then
@@ -1999,27 +1445,18 @@ local function Deactivate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
 	end
-	HideAll()
+	HideRims()
 	RestoreMicroSpacing()
 	for _, group in ipairs({ "actionbars", "micromenu", "bagbar", "statusbars" }) do
 		Kit:Uncover(group)
 	end
-	ApplyPageArrows()
+	-- the core's backdrops back in MelloUI's own look (laid out a moment
+	-- later, on the same holders)
+	Bars.SetDressing(nil)
 end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
-	if key == "hidePageArrows" then
-		ApplyPageArrows()
-		return
-	end
-	-- an element's backdrop switched on or off: the backdrops again
-	if ELEMENT_KEY[key] then
-		if active then
-			LayoutAll()
-		end
-		return
-	end
 	-- a group's choice, live
 	local owner = KEY_GROUP[key]
 	if not owner then
@@ -2029,7 +1466,7 @@ function M:OnSettingChanged(key, value, db)
 	if role == "buttonBackground" then
 		ApplyButtonBackground(g, value)
 	elseif active then
-		LayoutAll()               -- its gems or its background (on every backdrop it leads)
+		Bars.Layout()             -- its gems or its background (on every backdrop it leads)
 	end
 end
 
@@ -2053,45 +1490,16 @@ local function Hook()
 		return
 	end
 	hooked = true
-	-- Edit Mode closed: the bars may have been snapped together or apart.
 	-- Edit Mode opened: Tweaks brings a hidden micro menu back for it; its
 	-- buttons' glyphs fitted once, a frame later (after that move). Told
 	-- through the kit's one Edit Mode registration (the bus's 'editmode',
-	-- audit 2026-09-24)
+	-- audit 2026-09-24). (Edit Mode closed, the bag bar folded, the UI scale
+	-- changed: the backdrops laid out again by the core, Modules/ActionBars.lua)
 	MelloUI:On("editmode", function(entering)
-		if not entering then
-			ScheduleBackdrop()
-		elseif active and next(microStale) then
+		if entering and active and next(microStale) then
 			C_Timer.After(0, RefitStaleMicros)
 		end
 	end, M)
-	-- the bag bar folded or opened (Tweaks' Collapse Arrow): its backdrop
-	-- round what shows
-	MelloUI:On("bagbar", ScheduleBackdrop, M)
-	-- the UI Scale changed, or a bar's Size in Edit Mode (user, 2026-09-24:
-	-- "UI Scaling Break the UI"): the backdrops are measured from the
-	-- buttons' rects ON THE SCREEN, and a new UI scale moves the bars that
-	-- hang from different edges of the screen against each other (Edit Mode
-	-- also re-scales and re-places the right-hand bars to fit the new
-	-- height) without re-laying or re-sizing any bar, so none of the hooks
-	-- above fires: the backdrops, their tabs and joins stayed where the old
-	-- scale had put them. Laid out again, out of combat, like any change.
-	if Kit.OnUIScaleChanged then
-		Kit:OnUIScaleChanged(function()
-			if active then
-				ScheduleBackdrop()
-			end
-		end)
-	end
-	-- the game's bottom stack laid its bars in their default places: a
-	-- fitted status bar's offsets on its fit again (KeepFitPlaces)
-	if EditModeManagerFrame and type(EditModeManagerFrame.UpdateBottomActionBarPositions) == "function" then
-		hooksecurefunc(EditModeManagerFrame, "UpdateBottomActionBarPositions", function()
-			if next(fits) then
-				KeepFitPlaces()
-			end
-		end)
-	end
 	-- the status bars appear and stack at runtime (a reputation watched, a
 	-- level gained): skin whatever the manager lays out
 	if StatusTrackingBarManager then
@@ -2117,30 +1525,6 @@ local function Hook()
 	end
 end
 
--- (0.18.5) a Backdrop switch per element took over from Backdrop None: a
--- player who had a group's backdrop keeps it (Action Bar 1's, the micro
--- menu's, the bag bar's switch on); None became off, the gems back on red
--- for when it is switched on again. Once (`backdropsMigrated`: this
--- machine's, never in a profile). A new player (no earlier login: UI
--- Modifications' welcomeAsked and seenVersion unset) starts with none.
-local MIGRATE_ON = { bars = "backdropBar1", micro = "backdropMicro", bags = "backdropBags" }
-local function MigrateBackdrops(db)
-	if db.backdropsMigrated then
-		return
-	end
-	db.backdropsMigrated = true
-	local um = MelloUI.GetModuleDB and MelloUI:GetModuleDB("UIModifications")
-	local existing = type(um) == "table" and (um.welcomeAsked == true or um.seenVersion ~= nil)
-	for _, g in ipairs(GROUPS) do
-		local key = g.keys.backdrop
-		if db[key] == "none" then
-			db[key] = "red"
-		elseif existing then
-			db[MIGRATE_ON[g.id]] = true
-		end
-	end
-end
-
 function M:OnEnable(db)
 	self.db = db
 	-- the one Action Bar Border choice of earlier the same day, split in two
@@ -2149,7 +1533,14 @@ function M:OnEnable(db)
 		db.barBackdrop = (old == "backdrop" and "red") or (old == "backdrop_iron" and "iron") or "none"
 		db.border = nil
 	end
-	MigrateBackdrops(db)
+	-- (0.18.5) Backdrop None became each element's switch off (the core's
+	-- MigrateBackdrops, Modules/ActionBars.lua, reads it first): the gems back
+	-- on red for when one is switched on again
+	for _, g in ipairs(GROUPS) do
+		if db[g.keys.backdrop] == "none" then
+			db[g.keys.backdrop] = "red"
+		end
+	end
 	-- the groups' own button borders gave way to UI Modifications' Button
 	-- Border, every window's (read from here once by its migration, which
 	-- runs first): the old keys go
@@ -2206,8 +1597,8 @@ SlashCmdList.MELLOABDUMP = function(msg)
 				end
 			end
 		end
-		for _, e in ipairs(ELEMENTS) do
-			local f = holders[e.key]
+		for _, e in ipairs(Bars.ELEMENTS) do
+			local f = Bars.kept.holders[e.key]
 			if f then
 				MelloUI:Print("backdrop %s: shown=%s %s L%d", e.key, tostring(f:IsShown()), f:GetFrameStrata(), f:GetFrameLevel())
 				-- its shade frame: under every backdrop
@@ -2225,31 +1616,8 @@ SlashCmdList.MELLOABDUMP = function(msg)
 	end
 	if which == "backdrops" then
 		-- the members (screen rects, switches), their groups and leaders, the
-		-- pieces each holder draws, the status bars' fits
-		local list, n = Members()
-		local ks = RailScale()
-		MelloUI:Print("rail scale %s (screen px per piece px), %d members", tostring(ks), n)
-		for i = 1, n do
-			local m = list[i]
-			local r = m.rect
-			MelloUI:Print("%d %s: %s  %.0f,%.0f - %.0f,%.0f  size %s  in a backdrop %s", i, m.e.name, m.on and "on" or "off",
-				r[1], r[2], r[3], r[4], m.size and string.format("%.1f", m.size) or "-", tostring(inShape[m.root] == true))
-		end
-		for _, e in ipairs(ELEMENTS) do
-			local f = holders[e.key]
-			if f then
-				local counts = {}
-				for kind, pool in pairs(f.pools) do
-					counts[#counts + 1] = kind .. " " .. pool.used
-				end
-				table.sort(counts)
-				MelloUI:Print("holder of %s: shown=%s  %s", e.name, tostring(f:IsShown()), table.concat(counts, ", "))
-			end
-		end
-		for container, fit in pairs(fits) do
-			MelloUI:Print("fit %s: x%.3f on %.3f, default place %s", container:GetName() or "?", fit.k, fit.base,
-				tostring(select(2, pcall(container.IsInDefaultPosition, container))))
-		end
+		-- pieces each holder draws, the status bars' fits: the core's
+		Bars.DumpBackdrops()
 		MelloUI:ShowLog("abdump backdrops")
 		return
 	end

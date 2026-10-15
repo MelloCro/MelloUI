@@ -1,39 +1,34 @@
 --------------------------------------------------------------------------------
--- MelloUI - Minimap Panel
+-- MelloUI - Minimap (the module keeps its old name, MinimapPanel: its settings)
 --
--- The minimap cluster dressed in the painted kit (Modules/Kit.lua) on the
--- game's own layout. This client (Blizzard_Minimap/Camelot/Skin.lua) draws a
--- round frame (UI-HUD-Minimap-Frame, 215 x 226) around the 198 px map, the
--- zone band (BorderTop, 175 x 16) above it with the tracking button on its
--- left. User's picks (kit_raw/minimap_catalog.png, 2026-09-21): R1 Z2.
---   R1  the frame → the portrait ring sized from the map's opening x 0.75
---       (user: a quarter smaller, the map untouched), its rim over the map's
---       edge, on a holder one level above the map; the band, its text, the
---       tracking button and the indicators raised above the ring
---   Z2  the zone band → the title plate, as the band's own regions (under
---       its text), standing on the ring's top rim as a title on a rail
---   the tracking button's round plate → the round rim; zoom in / out → the
---   kit's plus / minus. The calendar, mail, crafting-order, landing-page and
---   day / night dial pictures, the compass letters and MelloUI's Services bar
---   stay the game's.
+-- (onelook D7) MelloUI's minimap, for everyone: its Width and Height, the
+-- square mask, the Chat panel round it, the Services merge, the column under
+-- it and its lifecycle. The painted kit's half (the R1 ring, the Z2 zone
+-- plate, the tracking rim and zoom glyphs, the rail families and heavy frames
+-- round the square map, the zone band on the frame's top rail) is the module
+-- MinimapKit (Modules/MinimapKit.lua, Oldschool's), which dresses this map
+-- through the one dresser it registers here (M:SetDresser; Dress, below):
+-- while it is on, the map is handed to it. Without it the round map wears
+-- the game's own ring (UI-HUD-Minimap-Frame, 215 x 226 round the 198 px map:
+-- Blizzard_Minimap/Camelot/Skin.lua), sized with the map (Size.RingFit), and
+-- a painted Square Border falls back to the Chat panel (Border).
 -- Shape (user, 2026-09-23: "Square Minimap with a Square Border of my
--- choosing"): Round (the ring above) or Square: the map's mask a plain
--- square, the ring hidden and a square border of the kit round the map, its
--- inner edge on the map's edge (Square Border: the window frame with its gem
--- corners, the single rail, the heavy backdrop frame with red or iron gems,
--- or none). GetMinimapShape answers "SQUARE" meanwhile, for other addons'
--- minimap buttons.
+-- choosing"): Round or Square: the map's mask a plain square, the ring
+-- hidden and a square border round the map, its inner edge on the map's edge
+-- (Square Border: the Chat panel, none, and with the painted skin the window
+-- frame with its gem corners, the single rail, the heavy backdrop frame with
+-- red or iron gems or the border library's rims). GetMinimapShape answers
+-- "SQUARE" meanwhile, for other addons' minimap buttons.
 -- Merge With Services (user, 2026-09-23: "merge the Header, Minimap and the
 -- Services window into 1 thing, but there needs to be a border separating the
--- Minimap from the Services Window", example D): with the square shape and a
--- rail border (the window frame or the single rail), one frame runs round the
--- map and MelloUI's Services bar under it; a header plate named "Services"
--- lies between the two, on the frame's stone (with Services' one row of
--- groups the same rail, gem caps and name); the zone band rides
--- the frame's top rail as every window's title plate does (the red plate,
--- its caps' gems on the frame's top corners, which give way), the tracking
--- button and the calendar on its two caps. The game's anchors come back when
--- it is off.
+-- Minimap from the Services Window", example D): with the square shape and
+-- the Chat panel or a rail border, one frame runs round the map and
+-- MelloUI's Services bar under it; a heading named "Services" lies between
+-- the two (on the painted frames: a header plate on the frame's stone, with
+-- Services' one row of groups the same rail, gem caps and name; the zone band
+-- on the frame's top rail, MinimapKit's). The game's anchors come back when
+-- it is off. The merge follows this module and its border, never the kit's
+-- cover (Column.Merged; Services' Merged).
 -- The column under the minimap (the map, the Services bar, Route's distance
 -- line; the Quest Tracker glued under it where nobody placed it) is one
 -- contract kept here, on or off: M:ColumnSlot, M:ColumnRect, M:ColumnPart,
@@ -53,8 +48,8 @@
 -- takes the game's margins round the shown map and the cluster is laid
 -- round it as the game lays it (Size, below), so Edit Mode's selection box
 -- stays on the map. The Quest Tracker (Match The Minimap's Width) and
--- Services' row follow the map's width (M:ColumnWidth). Covers the Dark Mode
--- group "minimap". /mmdump [frames|reps].
+-- Services' row follow the map's width (M:ColumnWidth). MinimapKit covers
+-- the Dark Mode group "minimap". /mmdump [frames|reps].
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -62,13 +57,15 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("MinimapPanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
+-- (Core's maker: a frame made inside a window the Gamepad UI has open is not walked by its navigation)
+local CreateFrame = MelloUI.Safe.CreateFrame
 -- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
 local pieceNameOf = MelloUI.Kept.pieceNameOf
 local pieceOf = MelloUI.Kept.pieceOf
 
 -- Square Border: `prefix` a kit rail family laid as a nine-slice at `scale`
 -- (x Kit.scale), `piece` one frame picture cut into nine (the action bars'
--- backdrop frame: its corner CORNER piece px); `style` (0.19.8) a style of
+-- backdrop frame: MinimapKit cuts it at its corner); `style` (0.19.8) a style of
 -- the border library's (Modules/KitBorders.lua): its master cut at its own
 -- corner, at the heavy weight (the minimap's size class); `preview` for the
 -- picker
@@ -102,7 +99,6 @@ local SHAPES = {
 	{ value = "round", label = "Round", piece = "window/portrait_ring" },
 	{ value = "square", label = "Square", piece = "deco/barframe_iron" },
 }
-local CORNER = 40            -- piece px: a backdrop frame's corner square (as ActionBarPanel's)
 local ROUND_MASK = "ui-hud-minimap-frame-generic-mask"   -- the game's (Blizzard_Minimap/Camelot/Skin.lua)
 local SQUARE_MASK = "Interface\\Buttons\\WHITE8X8"
 local HYBRID_ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
@@ -116,10 +112,13 @@ local function MapSizeText(v)
 	return tostring(math.floor(v + 0.5))
 end
 
+-- (onelook D7) no `window`: no longer a panel UI Modifications switches with the reskin (its painted half is
+-- MinimapKit's, which is), but MelloUI's minimap with a switch of its own (the Minimap page's header); `role` look:
+-- the installer's Full and Reskin only take it, as they took the panel
 local M = MelloUI:RegisterModule("MinimapPanel", {
-	title = "Minimap Kit",
-	desc = "The minimap cluster dressed in the painted kit on the game's own layout.",
-	window = { label = "Minimap", desc = "The minimap ring (or a square map in a border of your choosing), zone band and buttons in the kit.", tab = "HUD" },
+	title = "Minimap",
+	desc = "MelloUI's minimap: its size, the square shape in the Chat panel, the Services bar merged under it and the column under it the Quest Tracker follows. Off: the game's own minimap.",
+	role = "look",
 	enabledByDefault = true,
 	defaults = { shape = "round", squareBorder = "window", servicesMerge = true, width = MAP_BASE, height = MAP_BASE },
 	-- the old Size taken over once (Size.Migrate): this machine's step, never
@@ -141,8 +140,34 @@ local M = MelloUI:RegisterModule("MinimapPanel", {
 	},
 })
 
-local skin = nil
+local skin = nil   -- this module's own frames and state, made at its first switch-on (Activate)
 local active = false
+
+-- (onelook D7) The painted skin (MinimapKit's dresser, M:SetDresser) and whether it dresses the map now (Dress.on:
+-- it is on and so is this module, Dress.Sync below). Every painted step of the lay asks it; without it the map is
+-- MelloUI's plain one (the game's ring, the Chat panel).
+local dresser = nil
+local Dress = { on = false }
+
+-- the painted skin about to dress the map in Core's start-up pass (MinimapKit's OnEnable comes right after this
+-- module's): the look waits for it, one lay at login (the Lua budget), MelloUI:WhenModulesOn settling it else
+function Dress.Pending()
+	return dresser ~= nil and not dresser.on and MelloUI.ModulesStarting ~= nil and MelloUI:ModulesStarting()
+		and MelloUI:IsModuleEnabled(dresser.module) and true or false
+end
+
+-- The Square Border laid: the saved one while the core draws it (the Chat panel, None) or the painted skin dresses
+-- the map, else the Chat panel (the user's pick 1C: a painted border needs the painted skin)
+local function Border()
+	local b = BORDER[M.db and M.db.squareBorder or "window"] or BORDER.window
+	if b.panel or b.value == "none" then
+		return b
+	end
+	if dresser and (Dress.on or Dress.Pending()) and dresser:Owns(b) then
+		return b
+	end
+	return BORDER.panel
+end
 
 -- The column's shade (0.14.0, the UI shade's minimap area: Kit:ShadeElement,
 -- Modules/KitShade.lua; user, 2026-09-26: outline pieces only). ONE element
@@ -181,23 +206,7 @@ function Shade.Add(obj, opts)
 	end
 end
 
--- a heavy frame's eight parts (Kit:CutNine's), each with the same cut of the
--- frame's shadow (piece px; its reach past the picture's outer sides only),
--- once: CutNine cuts them again at every lay. `corner`: the piece's cut (a
--- border library style's own, 0.19.8; the backdrop frames' CORNER else)
-function Shade.Cut(parts, piece, corner)
-	local p = Kit:Piece(piece)
-	if Shade.cut or not (p and p.w and p.h) then
-		return
-	end
-	Shade.cut = true
-	local c, w, h = corner or CORNER, p.w, p.h
-	local cuts = { tl = { 0, c, 0, c }, tr = { w - c, w, 0, c }, bl = { 0, c, h - c, h }, br = { w - c, w, h - c, h },
-		t = { c, w - c, 0, c }, b = { c, w - c, h - c, h }, l = { 0, c, c, h - c }, r = { w - c, w, c, h - c } }
-	for key, cut in pairs(cuts) do
-		Shade.Add(parts[key], { cut = cut })
-	end
-end
+-- (a heavy frame's eight parts, each with its cut of the frame's shadow: MinimapKit's, with the heavy frames)
 
 -- the square map with no border ("None"): the map's own edge shaded, KitShade's
 -- synthetic square on a plain frame over the map (in the map's container, as
@@ -234,146 +243,6 @@ end
 function Shade.Refit()
 	if Shade.el and Kit.ShadowRefit then
 		Kit:ShadowRefit(true)
-	end
-end
-
-local function Replace(region, opts)
-	if not region then
-		return nil
-	end
-	local rep, key = Kit:Replace(region, opts)
-	if not rep then
-		if key then
-			MelloUI:Notice("Minimap: no kit piece mapped for %s", tostring(key))
-		end
-		return nil
-	end
-	skin.reps[#skin.reps + 1] = rep
-	if active then
-		rep:Enable()
-	end
-	return rep
-end
-
-local function Build()
-	if skin then
-		return
-	end
-	skin = { reps = {} }
-	local cluster = MinimapCluster
-	local map = Minimap
-	if not (cluster and map) then
-		return
-	end
-	-- the ring (R1): the frame and its rotated-mode pointer / underlay faded,
-	-- the ring on a holder at the cluster's level with its opening on the map
-	-- the ring one level above the map (its rim lies over the map's edge at
-	-- 0.75); the band, its text, the tracking button and the indicators are
-	-- raised one level above the ring (they overlap its top), their game
-	-- levels put back on disable. Every level here is kept as an OFFSET from
-	-- the map's (user, 2026-09-26: the column and the Quest Tracker took
-	-- turns on top): the cluster is toplevel, a click in it lifts the whole
-	-- tree, and a level saved as a number put the band and its buttons back
-	-- under the lifted map on the next re-skin.
-	local ringLevel = map:GetFrameLevel() + 1
-	if MinimapCompassTexture then
-		local rep = Replace(MinimapCompassTexture, { as = "UI-HUD-Minimap-Frame", parent = cluster, rect = map, level = ringLevel - cluster:GetFrameLevel(),
-			alsoFade = { MinimapCompassTextureUnderlay } })
-		skin.ring = rep
-		Shade.Add(rep, Shade.DRAWN)   -- (hidden with its holder: the square shape)
-		if rep then
-			local raised = {}
-			for _, key in ipairs({ "BorderTop", "ZoneTextButton", "Tracking", "IndicatorFrame" }) do
-				local f = cluster[key]
-				if f then
-					raised[#raised + 1] = { frame = f, offset = f:GetFrameLevel() - map:GetFrameLevel() }
-				end
-			end
-			if GameTimeFrame then
-				raised[#raised + 1] = { frame = GameTimeFrame, offset = GameTimeFrame:GetFrameLevel() - map:GetFrameLevel() }
-			end
-			rep.onEnable = function()
-				local base = map:GetFrameLevel()
-				for _, entry in ipairs(raised) do
-					entry.frame:SetFrameLevel(base + math.max(2, entry.offset))
-				end
-			end
-			rep.onDisable = function()
-				local base = map:GetFrameLevel()
-				for _, entry in ipairs(raised) do
-					entry.frame:SetFrameLevel(math.max(0, base + entry.offset))
-				end
-			end
-			if active then
-				rep.onEnable()
-			end
-		end
-	end
-	-- the zone band (Z2): the nine-slice's textures faded, the plate as regions
-	local band = cluster.BorderTop
-	if band then
-		local first, extra = nil, {}
-		for _, region in ipairs({ band:GetRegions() }) do
-			if region:GetObjectType() == "Texture" and not pieceOf[region] then
-				if first then
-					extra[#extra + 1] = region
-				else
-					first = region
-				end
-			end
-		end
-		if first then
-			local rep = Replace(first, { as = "MinimapZoneBand", rect = band, alsoFade = extra })
-			skin.band = rep
-			Shade.Add(rep)
-			-- (no drag handle of its own: the minimap cluster is moved on its
-			-- plate in Edit Layout, which covers the whole cluster)
-			-- the zone text centred on the plate (user, 2026-09-21); the game's
-			-- anchor (LEFT-justified in its button) put back on disable
-			local text = MinimapZoneText
-			if rep and text then
-				local saved = { justify = text:GetJustifyH() }
-				for i = 1, text:GetNumPoints() do
-					saved[i] = { text:GetPoint(i) }
-				end
-				local enable = rep.onEnable
-				rep.onEnable = function(...)
-					if enable then
-						enable(...)
-					end
-					text:ClearAllPoints()
-					text:SetPoint("CENTER", band, "CENTER", 0, 0)
-					text:SetJustifyH("CENTER")
-					Kit:TitleFont(text, true)
-				end
-				rep.onDisable = function()
-					Kit:TitleFont(text, false)
-					text:ClearAllPoints()
-					for _, pt in ipairs(saved) do
-						if type(pt) == "table" then
-							text:SetPoint(unpack(pt))
-						end
-					end
-					text:SetJustifyH(saved.justify or "LEFT")
-				end
-				if active then
-					rep.onEnable()
-				end
-			end
-		end
-	end
-	-- the tracking button's plate, the zoom buttons
-	local tracking = cluster.Tracking
-	if tracking and tracking.Background then
-		-- (its rim drawn square to the button's plate, not at its kitScale)
-		Shade.Add(Replace(tracking.Background, { as = "ui-hud-minimap-button" }), Shade.DRAWN)
-	end
-	for _, entry in ipairs({ { map.ZoomIn, "ui-hud-minimap-zoom-in" }, { map.ZoomOut, "ui-hud-minimap-zoom-out" } }) do
-		local button, key = entry[1], entry[2]
-		if button and button.GetNormalTexture and button:GetNormalTexture() then
-			Replace(button:GetNormalTexture(), { as = key, button = button,
-				alsoFade = { button:GetPushedTexture(), button:GetHighlightTexture(), button:GetDisabledTexture() } })
-		end
 	end
 end
 
@@ -704,14 +573,74 @@ function Size.Place(home, cw, ch, s, force)
 			coords.frame:ClearAllPoints()
 			coords.frame:SetPoint("BOTTOM", cut and Size.Proxy() or map, "BOTTOM", coords.x, coords.y)
 		end
-		local ring = skin and skin.ring
-		local p = ring and ring.tex and ring.rule and Kit:Piece(ring.rule.piece)
-		if p and p.w and p.open and p.open[3] > p.open[1] then
-			local size = math.min(cw, ch) * p.w / (p.open[3] - p.open[1]) * (ring.rule.openingScale or 1)
-			ring.tex:SetSize(size, size)
+		-- (the painted ring: MinimapKit's, sized from the shown part)
+		if Dress.on then
+			dresser:RingSize(cw, ch)
 		end
 	end
+	-- (onelook D7) the game's own ring without the painted skin, on every lay (it writes only what changed)
+	if not (Dress.on or Dress.Pending()) then
+		Size.RingFit(cw / home.mapW)
+	end
 	Size.Dial(home, cw, ch)
+end
+
+-- (onelook D7) Round = the game's own ring while the painted skin is off: MinimapCompassTexture and its underlay (the
+-- rotated mode's) sized with the shown map, k x the size the game gave them (215 x 226 round its 198 px map); faded
+-- on the square map (Kit:Fade: the kit's one registry of faded game art). A size is written only when it is not
+-- the one read back now; a size read back that is not the one written last is the game's own again (Camelot/
+-- Skin.lua's UpdateMinimapConfig, run only at load and on a rotateMinimap switch: never per frame or update), taken
+-- as the new base. A size that cannot be read plainly is left as the game has it. Never Show() on the underlay: the
+-- game hides it in the fixed mode.
+Size.ring = { base = {}, wrote = {} }
+
+function Size.RingOne(tex, k, square)
+	if not tex then
+		return
+	end
+	if square then
+		Kit:Fade(tex)
+		return
+	end
+	Kit:Unfade(tex)
+	local w, h = PlainSize(tex)
+	if not (w and h and w > 0 and h > 0) then
+		return
+	end
+	local r = Size.ring
+	local base, wrote = r.base[tex], r.wrote[tex]
+	if not (base and wrote and Same(w, wrote[1]) and Same(h, wrote[2])) then
+		base = { w, h }
+		r.base[tex] = base
+	end
+	local tw, th = base[1] * k, base[2] * k
+	if Same(w, tw) and Same(h, th) then
+		return
+	end
+	tex:SetSize(tw, th)
+	r.wrote[tex] = { tw, th }
+end
+
+function Size.RingFit(k)
+	local square = M.db and M.db.shape == "square" and true or false
+	Size.RingOne(MinimapCompassTexture, k, square)
+	Size.RingOne(MinimapCompassTextureUnderlay, k, square)
+end
+
+-- the game's ring as the game had it (this module off, or the painted skin taking the map): its size where it is
+-- still the one written here, its alpha
+function Size.RingRelease()
+	local r = Size.ring
+	for tex, wrote in pairs(r.wrote) do
+		local base = r.base[tex]
+		local w, h = PlainSize(tex)
+		if base and w and h and Same(w, wrote[1]) and Same(h, wrote[2]) then
+			tex:SetSize(base[1], base[2])
+		end
+		r.wrote[tex] = nil
+	end
+	Kit:Unfade(MinimapCompassTexture)
+	Kit:Unfade(MinimapCompassTextureUnderlay)
 end
 
 -- The dial (the game's day / night cycle, MinimapCluster.DielFrame): the game's own while the round map is at its own
@@ -765,7 +694,7 @@ function Size.Drop(p, f)
 	end
 	local low = top
 	local band = MinimapCluster and MinimapCluster.BorderTop
-	local plate = skin and skin.band and skin.band.strip
+	local plate = Dress.on and dresser:BandPlate() or nil
 	for _, over in ipairs({ band or false, plate or false }) do
 		if over and over.IsShown and over:IsShown() then
 			local _, bottom = MelloUI.Safe.ScreenRect(over)
@@ -822,6 +751,7 @@ end
 
 -- The game's own back (this module switched off)
 function Size.Release()
+	Size.RingRelease()
 	local map = Minimap
 	local c = map and map:GetParent()
 	local home = Size.home
@@ -1022,57 +952,26 @@ local function BorderFrame()
 	return f
 end
 
--- How far a rail family's rails reach inward from their outer edge (the
--- opaque part's inner edge), per side (l, r, t, b), at `sc`
-local function RailDepths(prefix, sc)
-	local function Depth(name, inner)
-		local p = Kit:Piece(name)
-		if not (p and p.box) then
-			return 0
-		end
-		local d = inner == "r" and p.box[3] or inner == "l" and (p.w - p.box[1]) or inner == "b" and p.box[4] or (p.h - p.box[2])
-		return d * sc
-	end
-	return Depth(prefix .. "_l", "r"), Depth(prefix .. "_r", "l"), Depth(prefix .. "_t", "b"), Depth(prefix .. "_b", "t")
-end
-
--- How far a rail family's bottom gem corners paint below the frame, in the
--- frame's units at `sc` (Kit:NineSlice sets each gem's canvas its overhang
--- past the frame's corner; the clear rows under its box give some of it
--- back): 0 without gem corners
-local function GemReach(prefix, sc)
-	local reach = 0
-	for i = 1, 2 do
-		local p = Kit:Piece(prefix .. (i == 1 and "_gem_bl" or "_gem_br"))
-		if p and p.overhang and p.box and p.h then
-			reach = math.max(reach, p.overhang - (p.h - p.box[4]))
-		end
-	end
-	return reach * sc
-end
-
--- (a frame picture cut into nine on the square frame: the kit's one cutter,
--- Kit:CutNine, since 0.14.0 -- this file and the action bars had a copy each;
--- it also cuts the parts' shade partners)
+-- (a rail family's depths and gem reach, and a frame picture cut into nine on the square frame -- the kit's one
+-- cutter, Kit:CutNine: MinimapKit's, with the painted borders)
 
 -- the merge's measures: the divider band's height (UI px: the header rail
 -- stands in it, its opaque part 4 less, its gem caps a hair over the map's
--- edge; the bar under it, with either Button Layout); the cap gem, as
--- Kit:TitleOnRail's (tabs/top caps: the gem's centre from the outer end)
+-- edge; the bar under it, with either Button Layout)
 local DIVIDER_H = 26
-local CAP_GEM_X = 48
 -- the rail's ends kept clear of its gem caps: where the clock stood on the
 -- Services plate, and where the name and Route's line stand on the rail
 local RAIL_PAD = DIVIDER_H * 1.6
 
--- Whether the Services bar joins the square map's frame (Services asks too)
+-- Whether the Services bar joins the square map's frame (Services asks too): this module on, the square map, Merge
+-- With Services, and a border it merges with (the Chat panel; with the painted skin a rail family or, 0.20.1, a
+-- style of the border library's, laid as one -- LaySquare). (onelook D7: never the kit's cover)
 function M:WantsServices()
 	if not (active and M.db and M.db.shape == "square" and M.db.servicesMerge ~= false) then
 		return false
 	end
-	local b = BORDER[M.db.squareBorder or "window"]
-	-- (a rail family, or 0.20.1: a style of the border library's, laid as one -- LaySquare; 0.24.0: the Chat panel)
-	return b and (b.panel or b.prefix ~= nil or (b.style ~= nil and Kit.BorderStyles ~= nil and Kit.BorderStyles[b.style] ~= nil)) or false
+	local b = Border()
+	return b.panel or b.prefix ~= nil or (b.style ~= nil and Kit.BorderStyles ~= nil and Kit.BorderStyles[b.style] ~= nil) or false
 end
 
 -- What Services says of its row under the map (the contract Services fills,
@@ -1108,9 +1007,9 @@ local function BodyOf(b)
 	return (b and b.prefix or "window/frame") .. "_body"
 end
 function M:BodyPiece()
-	local b = BORDER[M.db and M.db.squareBorder or "window"]
-	if b and b.panel then
-		return false   -- (0.24.0: the Chat panel shows through, no stone)
+	local b = Border()
+	if b.panel then
+		return false   -- (0.24.0: the Chat panel shows through, no stone; onelook D7: so does a painted border's fallback)
 	end
 	return BodyOf(b)
 end
@@ -1290,16 +1189,48 @@ local function PanelShown(f, on)
 	end
 end
 
+-- (onelook D7) the game's art of the zone band (BorderTop's textures among `...`, its GetRegions) hidden under the
+-- Chat panel's zone row, or shown again: Kit:Fade / Kit:Unfade, the kit's one registry of faded game art (the game
+-- never writes their alpha per frame). Never the kit's own regions on the band (the painted plate's).
+local function BandArt(hide, ...)
+	for i = 1, select("#", ...) do
+		local region = select(i, ...)
+		if region and region.GetObjectType and region:GetObjectType() == "Texture" and not pieceOf[region] then
+			if hide then
+				Kit:Fade(region)
+			else
+				Kit:Unfade(region)
+			end
+		end
+	end
+end
+
 -- The Chat panel's zone row: the band across the panel's top, its plate
 -- hidden (the game's art faded under it as ever), the tracking button at its
 -- left, the zone name after it in the title face and the game's colour, the
 -- calendar at its right and the clock beside it -- on the Services rail's
 -- right end while that rail shows with Services' two rows, as the frames'.
-local function PanelBand(f, band, rep, groups)
-	local plate = rep and rep.strip
-	if plate then
-		plate:SetAlpha(0)
+-- (onelook D7) Without the painted skin the game's band art is hidden here
+-- (BandArt) and the zone name's place as the game had it kept once
+-- (skin.zoneHome, put back by BandUnpanel), the name in the title face.
+local function PanelBand(f, band, groups)
+	local text = MinimapZoneText
+	if Dress.on then
+		dresser:PlateShown(false)
+	else
+		BandArt(true, band:GetRegions())
+		if text and not skin.zoneHome then
+			local home = { justify = text:GetJustifyH(), width = PlainWidth(text, nil) }
+			for i = 1, text:GetNumPoints() do
+				home[i] = { text:GetPoint(i) }
+			end
+			skin.zoneHome = home
+		end
+		if text then
+			Kit:TitleFont(text, true)
+		end
 	end
+	skin.bandPanel = true
 	local okW, fw = pcall(f.GetWidth, f)
 	if not (okW and fw and not (issecretvalue and issecretvalue(fw)) and fw > 0) then
 		return
@@ -1334,7 +1265,6 @@ local function PanelBand(f, band, rep, groups)
 			timeButton:SetFrameLevel(band:GetFrameLevel() + 2)
 		end
 	end
-	local text = MinimapZoneText
 	if text then
 		text:ClearAllPoints()
 		if tracking then
@@ -1347,26 +1277,38 @@ local function PanelBand(f, band, rep, groups)
 			+ ((timeButton and not onRail) and PlainWidth(timeButton, 40) + 2 or 0)
 		text:SetWidth(math.max(40, w - used))
 	end
-	skin.bandPanel = true
 end
 
--- another style after the Chat panel: the plate shown again, the zone name
--- centred on it as the band's dressing laid it (its onEnable)
-local function BandUnpanel(rep)
-	if not skin.bandPanel then
+-- another style after the Chat panel: with the painted skin its plate shown
+-- again, the zone name centred on it as the band's dressing laid it (its
+-- onEnable); without it the game's band art and the zone name's place back
+local function BandUnpanel()
+	if not (skin and skin.bandPanel) then
 		return
 	end
 	skin.bandPanel = nil
-	local plate = rep and rep.strip
-	if plate then
-		plate:SetAlpha(1)
+	if Dress.on then
+		dresser:BandUnpanel()
+		return
 	end
-	local text = MinimapZoneText
 	local band = MinimapCluster and MinimapCluster.BorderTop
-	if text and band then
+	if band then
+		BandArt(false, band:GetRegions())
+	end
+	local text, home = MinimapZoneText, skin.zoneHome
+	skin.zoneHome = nil
+	if text then
+		Kit:TitleFont(text, false)
+	end
+	if text and home then
 		text:ClearAllPoints()
-		text:SetPoint("CENTER", band, "CENTER", 0, 0)
-		text:SetJustifyH("CENTER")
+		for _, pt in ipairs(home) do
+			text:SetPoint(unpack(pt))
+		end
+		text:SetJustifyH(home.justify or "LEFT")
+		if home.width then
+			text:SetWidth(home.width)
+		end
 	end
 end
 
@@ -1382,7 +1324,6 @@ end
 local function PlaceBand(onFrame, f, b, groups)
 	local cluster = MinimapCluster
 	local band = cluster and cluster.BorderTop
-	local rep = skin.band
 	if not band then
 		return
 	end
@@ -1418,85 +1359,19 @@ local function PlaceBand(onFrame, f, b, groups)
 		end
 		-- (0.24.0) the Chat panel's zone row
 		if b.panel then
-			PanelBand(f, band, rep, groups)
+			PanelBand(f, band, groups)
 			skin.bandMerged = true
 			return
 		end
-		BandUnpanel(rep)
-		local sc = Kit.scale * (b.scale or 1)
-		local rail = b.prefix and Kit:Piece(b.prefix .. "_t")
-		local middle = rail and rail.box and (rail.box[2] + rail.box[4]) / 2 * sc or 9
-		local side = 20 * sc   -- (the side rail's depth the plate's caps reach past)
-		-- (0.20.1) a library style's rails inside the frame: the top rail's middle and the side rail's depth its own
-		local lib = not b.prefix and f.library
-		if lib then
-			local ix, iy = lib:Inset()
-			middle, side = iy / 2, ix
-		end
-		-- the plate is 1.4 x the band (MinimapZoneBand): the band sized so the
-		-- plate spans the frame, its caps' gems on the frame's top corners
-		local strip = rep and rep.strip
-		local ss = strip and strip.scale or Kit.scale
-		local okW, fw = pcall(f.GetWidth, f)
-		if not (okW and fw and not (issecretvalue and issecretvalue(fw)) and fw > 0) then
+		BandUnpanel()
+		-- (a rail family's or the border library's frame: the zone band on its top rail, the tracking button and the
+		-- calendar on the plate's caps -- the painted skin's, which alone draws those borders: Border)
+		if not (Dress.on and dresser:BandOnRail(f, b, groups)) then
 			return
-		end
-		local reach = CAP_GEM_X * ss - side
-		local plateW = fw + 2 * reach
-		local bandW = plateW / 1.4
-		band:ClearAllPoints()
-		band:SetPoint("CENTER", f, "TOP", 0, -middle)
-		band:SetWidth(bandW)
-		if strip and strip.SetState then
-			strip:SetState("open")
-		end
-		if rep and rep.Refit then
-			rep:Refit()
-		end
-		-- the tracking button and the calendar on the caps' gems
-		local over = bandW * 0.2
-		local tracking, clock = cluster.Tracking, _G.GameTimeFrame
-		if tracking then
-			tracking:ClearAllPoints()
-			tracking:SetPoint("CENTER", band, "LEFT", -over + CAP_GEM_X * ss, 0)
-		end
-		if clock then
-			clock:ClearAllPoints()
-			clock:SetPoint("CENTER", band, "RIGHT", over - CAP_GEM_X * ss, 0)
-		end
-		-- the clock on the Services plate's right end, clear of the header;
-		-- with Services' one row of groups (layout E) on the zone band's
-		-- right end, just inside the calendar, the zone name kept
-		-- as far clear of it at both ends
-		local timeButton = _G.TimeManagerClockButton
-		local d = skin.divider
-		-- (the clock on the Services rail only while that rail shows: merged
-		-- with Services' two rows; else on the band, beside the calendar)
-		local onRail = not groups and d and d:IsShown()
-		if MinimapZoneText then
-			if timeButton and not onRail then
-				local margin = CAP_GEM_X * ss + PlainWidth(clock, 19) / 2 + 2 + PlainWidth(timeButton, 40) + 4
-				MinimapZoneText:SetWidth(math.max(40, plateW - 2 * math.max(70 * ss, margin)))
-			else
-				MinimapZoneText:SetWidth(math.max(40, plateW - 2 * 70 * ss))
-			end
-		end
-		if timeButton and not onRail then
-			timeButton:ClearAllPoints()
-			if clock then
-				timeButton:SetPoint("RIGHT", clock, "LEFT", -2, 0)
-			else
-				timeButton:SetPoint("RIGHT", band, "RIGHT", over - CAP_GEM_X * ss, 0)
-			end
-			timeButton:SetFrameLevel(band:GetFrameLevel() + 2)
-		elseif timeButton then
-			timeButton:ClearAllPoints()
-			timeButton:SetPoint("RIGHT", d, "RIGHT", -DIVIDER_H * 1.6, 0)
-			timeButton:SetFrameLevel(d:GetFrameLevel() + 6)
 		end
 		skin.bandMerged = true
 	elseif skin.bandMerged then
-		BandUnpanel(rep)
+		BandUnpanel()
 		local saved = skin.bandSaved or {}
 		local base = Minimap:GetFrameLevel()
 		for i, frame in ipairs(movers) do
@@ -1520,12 +1395,9 @@ local function PlaceBand(onFrame, f, b, groups)
 		if MinimapZoneText and saved.textWidth then
 			MinimapZoneText:SetWidth(saved.textWidth)
 		end
-		local strip = rep and rep.strip
-		if strip and strip.SetState then
-			strip:SetState("title")
-		end
-		if rep and rep.Refit then
-			rep:Refit()
+		-- (the painted plate a title again)
+		if Dress.on then
+			dresser:BandHome()
 		end
 		skin.bandMerged = nil
 		skin.bandSaved = nil
@@ -1543,15 +1415,15 @@ local function LaySquare()
 	-- game's size back
 	Size.Lay()
 	SetMask(square)
-	if not skin then
+	-- (onelook D7: not while the painted skin is about to dress the map in the start-up pass -- its lay follows)
+	if not skin or Dress.Pending() then
 		return
 	end
-	local ring = skin.ring
-	if ring and ring.object then
-		ring.object:SetShown(active and not square)
+	if Dress.on then
+		dresser:RingShown(active and not square)
 	end
 	local f = BorderFrame()
-	local b = BORDER[M.db and M.db.squareBorder or "window"] or BORDER.window
+	local b = Border()
 	local merged = square and M:WantsServices() and ServicesBar() ~= nil
 	if not merged and skin.divider then
 		skin.divider:Hide()
@@ -1623,31 +1495,15 @@ local function LaySquare()
 	-- weight (the style's range kept, its studs on), as regions of this frame, its own shade; (0.20.1, the user: "the
 	-- header up there should be normally on top of the map and fit its width, the services cant connect to it") laid
 	-- as a rail family is: ON the frame, its rails inside it with their inner edge just over the map's, the zone band
-	-- on its top rail, Services merged down inside it
+	-- on its top rail, Services merged down inside it. (onelook D7) These, the rail families and the heavy frames are
+	-- the painted skin's borders: Border() hands them out only while it dresses the map (MinimapKit: LayRails,
+	-- LayPicture, the band on the top rail), the library's border itself stays here (Kit:NewBorder, core)
 	local st = not b.prefix and b.style and Kit.BorderStyles and Kit.BorderStyles[b.style]
 	if b.prefix or st then
 		if b.prefix then
-			local sc = Kit.scale * b.scale
-			local l, r, t, bo = RailDepths(b.prefix, sc)
-			f:SetPoint("TOPLEFT", map, "TOPLEFT", -(l - over), t - over)
-			if merged then
-				-- down round the Services bar (as wide as the map, under it)
-				f:SetPoint("BOTTOMRIGHT", ServicesBar(), "BOTTOMRIGHT", r - over, -(bo - over))
-			else
-				f:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT", r - over, -(bo - over))
-			end
-			local nine = f.nine[b.prefix]
-			if not nine then
-				nine = Kit:NineSlice(f, { prefix = b.prefix, scale = sc, gems = false, body = false, corners = b.gem and "gem" or nil })
-				f.nine[b.prefix] = nine
-				Shade.Add(nine)   -- (its rails' nine and gem corners; hidden with it)
-			end
-			nine:Show()
-			f.gemReach = b.gem and GemReach(b.prefix, sc) or 0
-			-- the zone band on the top rail: its caps take the top corners
-			if nine.SetTopGems then
-				nine:SetTopGems(false)
-			end
+			-- a rail family (the window frame with its gem corners, the single rail): its nine round the map, down
+			-- round the Services bar merged
+			dresser:LayRails(f, b, map, merged and ServicesBar() or nil, over)
 		else
 			if not f.library then
 				f.library = Kit:NewBorder({ rect = f, owner = f, place = "on", layer = "ARTWORK", sub = 0, noBg = true,
@@ -1678,18 +1534,11 @@ local function LaySquare()
 		return
 	else
 		PlaceBand(false)   -- (a picture frame has no rail for it: the game's place)
-		local p = Kit:Piece(b.piece)
-		local k = Kit.scale
-		local open = (p and p.open) or { 29, 34, 106, 97 }
-		local w, h = p and p.w or 135, p and p.h or 130
-		f:SetPoint("TOPLEFT", map, "TOPLEFT", -(open[1] * k - over), open[2] * k - over)
-		f:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT", (w - open[3]) * k - over, -((h - open[4]) * k - over))
-		f.gemReach = 0   -- (the picture fills the frame)
-		if not p or Kit:CutNine(f, f.parts, b.piece, k, CORNER, true) == false then
+		-- a heavy frame picture (red or iron gems), cut into the frame's eight parts: the painted skin's
+		if not dresser:LayPicture(f, b, map, over) then
 			f:Hide()
 			return
 		end
-		Shade.Cut(f.parts, b.piece)
 	end
 	f:Show()
 end
@@ -1715,18 +1564,25 @@ local function Activate()
 		return
 	end
 	active = true
-	Build()
-	for _, rep in ipairs(skin.reps) do
-		rep:Enable()
-	end
+	skin = skin or {}
 	-- (the old Size taken over, once, before the size is held)
 	Size.Start()
+	-- the painted skin's pieces on (MinimapKit, while it is on), then the lay and its cover
+	Dress.Sync()
 	LayoutSquare()
-	Kit:Cover("minimap")
+	if Dress.on then
+		dresser:Covered(true)
+	end
 	-- the map's size and shape set: Services' row as wide as the map, its
 	-- minimap button onto the map's edge (Services loads first and laid them
-	-- on the game's round map at login)
-	ServicesLayout()
+	-- on the game's round map at login). (onelook D7) While the painted skin is
+	-- about to dress the map at login, its own lay does it (M:DresserChanged);
+	-- should it never come, the look is laid once the start-up pass is done
+	if Dress.Pending() then
+		MelloUI:WhenModulesOn(Dress.Settle)
+	else
+		ServicesLayout()
+	end
 end
 
 
@@ -1735,11 +1591,11 @@ local function Deactivate()
 		return
 	end
 	active = false
-	for _, rep in ipairs(skin.reps) do
-		rep:Disable()
-	end
+	Dress.Sync()   -- (the painted skin's pieces off: the game's art back)
 	LayoutSquare()   -- the round mask, the game's size and shape answer back
-	Kit:Uncover("minimap")
+	if dresser then
+		dresser:Covered(false)
+	end
 	ServicesLayout()   -- (the row and the minimap button back on the game's map)
 end
 
@@ -1873,6 +1729,87 @@ function M:Relayout()
 end
 
 --------------------------------------------------------------------------------
+-- (onelook D7) The painted skin's dresser (MinimapKit.lua: Oldschool's). It registers here at its file's load, before
+-- any module comes up (M:SetDresser), and tells its switch (M:DresserChanged). The map is dressed while this module
+-- and the skin are both on (Dress.Sync). What one look laid on the game's regions is handed back before the other
+-- takes them (the zone band home and its art and name, the game's ring as the game had it), so each starts from the
+-- game's own: never two fades of one region. Only this table, the module's fields and the dresser's methods: nothing
+-- on a game frame.
+--   dresser.module, dresser.on      its module's name, its switch
+--   dresser:Dress(on)               its pieces built (once) and put on, or taken off
+--   dresser:Covered(on)             Kit:Cover / Uncover("minimap") (Services' kit rims, Dark Mode's gate)
+--   dresser:Owns(b)                 the Square Borders it draws (every painted one)
+--   dresser:RingSize(cw, ch), :RingShown(show), :RingRect()      its ring (Size.Place, LaySquare, Column.Frame)
+--   dresser:BandPlate(), :PlateShown(on), :BandUnpanel(), :BandOnRail(f, b, groups), :BandHome()   the zone plate
+--   dresser:LayRails(f, b, map, bar, over), :LayPicture(f, b, map, over)    its square borders (LaySquare)
+--   dresser:Dump(msg)               /mmdump's painted part
+-- M.Lay: what the dresser borrows (the column's shade, the divider, the measures)
+--------------------------------------------------------------------------------
+function Dress.Sync()
+	local want = (active and dresser and dresser.on) and true or false
+	if want == Dress.on then
+		return
+	end
+	-- what the look leaving laid handed back first: the band home (its movers, the plate a title again), the
+	-- Chat panel's zone row undone; then the game's ring as the game had it before the painted one takes it
+	if skin and skin.bandMerged then
+		PlaceBand(false)
+	end
+	BandUnpanel()
+	if want then
+		Size.RingRelease()
+		Dress.on = true
+		dresser:Dress(true)
+	else
+		dresser:Dress(false)
+		Dress.on = false
+	end
+	Size.cw = nil   -- (the next lay places the ring for the new look: Size.Place's force)
+end
+
+-- the skin switched (or the start-up pass done without it): dressed or not, laid again, its cover with it
+function Dress.Changed()
+	Dress.Sync()
+	if active then
+		LayoutWithServices()
+	end
+	if dresser then
+		dresser:Covered(Dress.on)
+	end
+end
+
+-- (the start-up pass is done: the look laid if the painted skin never came up)
+function Dress.Settle()
+	if active and not Dress.on then
+		Dress.Changed()
+	end
+end
+
+function M:SetDresser(d)
+	dresser = d
+	Size.cw = nil
+end
+
+-- MinimapKit switched on or off. A profile load's restart switches it off and on again (UI Modifications' and its
+-- own OnDisable / OnEnable, Core's RestartEach): one lay on the next frame for all of it
+function M:DresserChanged()
+	if MelloUI.restartingModules and active and Kit.NextFrame then
+		Kit:NextFrame("Minimap dresser", Dress.Changed)
+		return
+	end
+	Dress.Changed()
+end
+
+M.Lay = {
+	Shade = Shade,
+	PlainWidth = PlainWidth,
+	DIVIDER_H = DIVIDER_H,
+	Divider = function()
+		return skin and skin.divider or nil
+	end,
+}
+
+--------------------------------------------------------------------------------
 -- The column under the minimap (audit, 2026-09-24, rank 18; user, 2026-09-25:
 -- "everything should be lined up and working flawlessly with one another").
 -- One contract for what stands under the map, top to bottom: the map's block
@@ -1961,9 +1898,10 @@ end
 local Column = {}
 
 -- the Services bar merged into the square map's frame (Services asks the
--- very same: the minimap's cover, this module on, and its WantsServices)
+-- very same: this module on, and its WantsServices; onelook D7: never the
+-- painted minimap's cover -- the Chat panel merges without it)
 function Column.Merged()
-	return Kit:IsCovered("minimap") and M.isEnabled and M:WantsServices() and true or false
+	return M.isEnabled and M:WantsServices() and true or false
 end
 
 -- the map's block: the square border's frame while it shows round the map
@@ -2069,7 +2007,8 @@ function Column.Painted(block, l, b, r, t)
 		end
 	else
 		local fl, fb, fr, ft = Column.Frame()
-		if not active and MinimapCompassTexture then
+		-- (the game's ring wherever it shows: this module off, or the round map without the painted ring; onelook D7)
+		if not Dress.on and not (active and M.db and M.db.shape == "square") and MinimapCompassTexture then
 			local ok, shown = pcall(MinimapCompassTexture.IsVisible, MinimapCompassTexture)
 			if ok and not MelloUI.Safe.IsSecret(shown) and shown then
 				fl, fb, fr, ft = ScreenRect(MinimapCompassTexture)
@@ -2146,17 +2085,10 @@ end
 M.COLUMN_PARTS = { "band", "map", "services", "route", "tracker" }
 
 -- the painted frame round the map: the kit ring's opaque part (its piece's
--- box on its canvas) while it shows, else the map's block
+-- box on its canvas: MinimapKit's RingRect) while it shows, else the map's block
 function Column.Frame()
-	local ring = active and skin and skin.ring
-	local tex = ring and ring.tex
-	if tex and ring.object and ring.object:IsShown() then
-		local l, b, r, t = ScreenRect(tex)
-		local p = l and ring.rule and Kit:Piece(ring.rule.piece)
-		if p and p.box and p.w and p.h and p.w > 0 and p.h > 0 then
-			local w, h = r - l, t - b
-			return l + p.box[1] / p.w * w, t - p.box[4] / p.h * h, l + p.box[3] / p.w * w, t - p.box[2] / p.h * h
-		end
+	if active and Dress.on then
+		local l, b, r, t = dresser:RingRect()
 		if l then
 			return l, b, r, t
 		end
@@ -2428,7 +2360,16 @@ SlashCmdList.MELLOMMDUMP = function(msg)
 		MelloUI:Print("== size  asked %s x %s; map %s square, shows %s x %s (%s); Edit Mode's Size %s, container %s",
 			tostring(w), tostring(h), tostring(mw), tostring(sw), tostring(sh), tostring(Size.file or "no crop"),
 			tostring(Size.editScale), tostring(Size.ContainerScale()))
-		Kit:DumpWindow(MinimapCluster, skin, msg ~= "" and msg or nil)
+		-- (onelook D7) the border laid, the merge, the painted skin
+		local f = skin and skin.square
+		MelloUI:Print("== look  border %s (saved %s); merged %s; painted skin %s; square frame %s",
+			tostring(Border().value), tostring(M.db and M.db.squareBorder), tostring(Column.Merged()), tostring(Dress.on),
+			tostring(f and f:IsShown() or false))
+		if Dress.on then
+			dresser:Dump(msg ~= "" and msg or nil)
+		else
+			Kit:DumpWindow(MinimapCluster, nil, msg ~= "" and msg or nil)
+		end
 	end
 	MelloUI:ShowLog("mmdump " .. msg)
 end

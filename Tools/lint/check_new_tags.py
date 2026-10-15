@@ -159,6 +159,23 @@ MOVED = dict.fromkeys(
      + ["shade_" + a for a in ("windows", "actionbars", "castbars", "unitframes", "chat", "bags", "minimap", "tracker",
                                "buffs", "widgets", "nameplates")]],
     _DUI_ROW)
+# one-look D5: Level Up and XP Gain moved from the Unit Frames Kit (UnitFramePanel) to Unit Frames (core), their keys,
+# names and rows kept (Core.lua's MERGES carries a saved "off"): existing options under a new id, never New-tagged
+MOVED.update(dict.fromkeys(["UnitFrames.levelUp", "UnitFrames.xpGain"],
+                           ((0, 25, 0), "UnitFramePanel's Level Up / XP Gain in the previous release; Unit Frames' "
+                                        "(core) since the one-look build")))
+# one-look D7: the minimap's Painted Skin, UI Modifications' switch of the painted minimap, moved with the painted half
+# into the module MinimapKit (UIModifications.MinimapPanel -> .MinimapKit; Core.lua's MERGES carries a saved "off")
+MOVED["UIModifications.MinimapKit"] = ((0, 25, 0), "UIModifications.MinimapPanel (the minimap's Painted Skin) in the "
+                                                   "previous release; the painted half's own module since the one-look "
+                                                   "build")
+# one-look D4: Hide Page Arrows and the sixteen backdrop switches moved from the action bars' painted skin
+# (ActionBarPanel) to the core's Action Bars (ActionBars), their keys, names and rows kept (Core.lua's MERGES carries
+# the saved values): existing options under a new id, never New-tagged
+MOVED.update(dict.fromkeys(["ActionBars.hidePageArrows"] + ["ActionBars.backdrop" + e for e in (
+    "Bar1", "Bar2", "Bar3", "Bar4", "Bar5", "Bar6", "Bar7", "Bar8", "Stance", "Pet", "Possess", "Totem", "Micro", "Bags",
+    "XP", "XP2")], ((0, 25, 0), "moved from ActionBarPanel (the painted skin) to ActionBars, the core action-bar "
+                                "enhancer (one look, stage D4)")))
 FOLDERS = ("Core", "Modules")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from features import feature_files  # noqa: E402  (0.19.9: the feature addons' files, read as Modules/)

@@ -466,7 +466,7 @@ local function FitRing(g)
 	if not (g.ring and g.area) then
 		return
 	end
-	local panel = MelloUI:GetModule("UnitFramePanel")
+	local panel = MelloUI:GetModule("UnitFrames")   -- (the painted ring through its skin hooks: one-look D5)
 	local ring = panel and panel.RingOf and panel:RingOf(g.portrait)
 	local region, w, share = ring
 	if ring then

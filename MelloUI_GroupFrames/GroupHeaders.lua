@@ -747,12 +747,12 @@ function H:Style()
 end
 
 -- a normal party frame's health bar, portrait and the painted ring over it
--- while the unit frame skin dresses it (UnitFramePanel:RingOf -- as Healer
+-- while the unit frame skin dresses it (Unit Frames' M:RingOf -- as Healer
 -- Frames' glow), else nil
 local function PartyParts(f)
 	local hc = rawget(f, "HealthBarContainer")
 	local portrait = rawget(f, "Portrait")
-	local panel = MelloUI:GetModule("UnitFramePanel")
+	local panel = MelloUI:GetModule("UnitFrames")
 	local okR, ring = false, nil
 	if portrait and panel and panel.RingOf then
 		okR, ring = pcall(panel.RingOf, panel, portrait)

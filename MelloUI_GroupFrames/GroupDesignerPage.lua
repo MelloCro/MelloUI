@@ -247,7 +247,7 @@ PartyReplica = function(parent, i, ready)
 	s.max, s.powerMax, s.token = 7000, 6000, m.powerToken or "MANA"
 	s.health, s.power = math.floor(7000 * (m.health or 1) + 0.5), 4200
 	pcall(CP.PaintParty, f, s)
-	local ufp = MelloUI:GetModule("UnitFramePanel")
+	local ufp = MelloUI:GetModule("UnitFrames")
 	if ufp and ufp.DressStandIn then
 		pcall(ufp.DressStandIn, ufp, f)
 	end

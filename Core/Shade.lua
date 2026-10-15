@@ -63,7 +63,12 @@
 --                                 without reading a size ("The measure")
 --   MelloUI.Shade:Glow(...)       the round soft glow in a palette colour
 --                                 (the Reminder widget's; "The round glow")
--- The one 'palette' listener (owner "Shade") repaints the bands and the glows.
+-- onelook stage D4 adds one more:
+--   MelloUI.Shade:Outline(...)    the band's soft look round any snapped
+--                                 shape (the action bars' backdrops; "The
+--                                 soft outline")
+-- The one 'palette' listener (owner "Shade") repaints the bands, the glows
+-- and the outlines.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -93,6 +98,7 @@ local Secret = MelloUI.Safe.IsSecret
 
 local bands = setmetatable({}, { __mode = "k" })   -- every band made, for the repaint
 local glows = setmetatable({}, { __mode = "k" })   -- every glow made, for the repaint
+local outlines = setmetatable({}, { __mode = "k" })   -- every soft outline made, for the repaint
 local listening = false
 local NO_OPTIONS = {}
 
@@ -191,9 +197,12 @@ local function Repaint()
 	for glow in pairs(glows) do
 		glow:Paint()
 	end
+	for outline in pairs(outlines) do
+		outline:Paint()
+	end
 end
 
--- the one 'palette' listener, taken with the first band or glow
+-- the one 'palette' listener, taken with the first band, glow or outline
 local function Listen()
 	if not listening then
 		listening = true
@@ -719,5 +728,312 @@ do
 			glow:SetShown(true)
 		end
 		return glow
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The soft outline (onelook stage D4; the user's pick B of the action bars'
+-- backdrops, docs/plans/onelook-b-sketches/backdrops.md: "a soft dark shade
+-- on the snapped outline, no edge line"): a band's own look round any shape
+-- MelloUI.Outline makes, so nothing else draws a soft outline. The band's
+-- file and slices: the flat middle over the shape's inside, each side's soft
+-- edge laid outward (a left or right side the file's end columns, a top or
+-- bottom side its edge rows), the file's own corner on each outer corner
+-- (its fall-off the two edges' product, as a band's corner), and in each
+-- inner corner the two sides' edges crossed over the corner's square, each
+-- cut to its half on the diagonal by Media\Textures\Masks\mitre
+-- (Tools\make_mitre_mask.py: a half and its twin add up to one): there the
+-- shade falls off from the nearer side, never doubled. Beside a run shorter
+-- than the feather (a step of a few units) that square reaches only along
+-- the run, its fall-off pressed into it, so it never lies over the next
+-- corner's. (A bay narrower than two feathers can still double at its
+-- walls; in an action bar backdrop the rails' insets alone make any bay
+-- about that wide at the bars' usual size.)
+--   local o = MelloUI.Shade:Outline(parent, opts)
+--       Nothing made until a shape needs it. opts as a band's, all optional,
+--       read once, not kept: colour (a palette key, default "innerPanel"),
+--       alpha (0.7), feather (the soft edges' width in parent units, 16),
+--       layer ("BACKGROUND"), sublevel (0). nil when parent cannot make
+--       textures.
+--   o:SetShape(shape, fill, s, ox, oy)
+--       shape: MelloUI.Outline.Shape's (screen px); fill: its inside as
+--       rects (left out: Outline.Fill(shape), made here); s: screen px per
+--       parent unit; ox, oy: the parent's bottom-left corner on the screen.
+--       Its textures come from its pools (the same counts again make
+--       nothing new), the ones this shape does not need hidden; nil shape:
+--       nothing drawn
+--   o:SetColour(key), o:SetStrength(alpha), o:SetShown(on), o:IsShown()
+--       as a band's
+--   o:SetFeather(width)    the soft edges' width, the shape laid again
+--   o.pools                its textures by kind, each { used = n, ... }:
+--                          fill, side, corner, mitre (read only)
+-- The one 'palette' listener repaints it. Laying a shape again allocates
+-- nothing once its pools hold enough.
+--------------------------------------------------------------------------------
+
+Shade.MITRE = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Masks\\mitre"
+
+do
+	local abs = math.abs
+	-- each side's soft edge, its slice of the file (u0, u1, v0, v1): full at
+	-- the shape, clear outward
+	local EDGE_UV = {
+		left = { 0, CAP, VCAP, 1 - VCAP }, right = { 1 - CAP, 1, VCAP, 1 - VCAP },
+		top = { CAP, 1 - CAP, 0, VCAP }, bottom = { CAP, 1 - CAP, 1 - VCAP, 1 },
+	}
+	local FLAT_UV = { CAP, 1 - CAP, VCAP, 1 - VCAP }
+	-- an outer corner by its turn (the shape on the loop's left), the file's
+	-- corner for it, and where its square lies from the corner (feathers)
+	local OUTER = { right = { up = "br" }, up = { left = "tr" }, left = { down = "tl" }, down = { right = "bl" } }
+	local CORNER_UV = { tl = { 0, CAP, 0, VCAP }, tr = { 1 - CAP, 1, 0, VCAP }, bl = { 0, CAP, 1 - VCAP, 1 },
+		br = { 1 - CAP, 1, 1 - VCAP, 1 } }
+	local CORNER_AT = { tl = { -1, 0 }, tr = { 0, 0 }, bl = { -1, -1 }, br = { 0, -1 } }
+	-- the mask turned to each half of a square (the file's own: the top
+	-- left one, cut from its top right corner to its bottom left), and the
+	-- half its twin covers
+	local MITRE_UV = { TL = { 0, 1, 0, 1 }, TR = { 1, 0, 0, 1 }, BL = { 0, 1, 1, 0 }, BR = { 1, 0, 1, 0 } }
+	local MITRE_TWIN = { TL = "BR", TR = "BL", BL = "TR", BR = "TL" }
+	local KINDS = { "fill", "side", "corner", "mitre" }
+
+	local Out = {}
+	local OutMeta = { __index = Out }
+
+	function Out:Paint()
+		local palette = MelloUI.Palette
+		local c = palette[self.colour] or palette[DEFAULT_COLOUR]
+		local a = self.alpha
+		for _, kind in ipairs(KINDS) do
+			local pool = self.pools[kind]
+			for i = 1, #pool do
+				pool[i]:SetVertexColor(c[1], c[2], c[3], a)
+			end
+		end
+	end
+
+	-- the next texture of a pool (made, and painted, the first time)
+	local function Take(o, kind)
+		local pool = o.pools[kind]
+		local i = pool.used + 1
+		pool.used = i
+		local tex = pool[i]
+		if not tex then
+			tex = o.parent:CreateTexture(nil, o.layer, nil, o.sublevel)
+			tex:SetTexture(Shade.FILE)
+			pool[i] = tex
+			local palette = MelloUI.Palette
+			local c = palette[o.colour] or palette[DEFAULT_COLOUR]
+			tex:SetVertexColor(c[1], c[2], c[3], o.alpha)
+		end
+		return tex, i
+	end
+
+	-- a texture over the screen rect x0, y0 - x1, y1, showing slice uv
+	local function Lay(o, tex, uv, x0, y0, x1, y1)
+		local s = o.s
+		tex:SetTexCoord(uv[1], uv[2], uv[3], uv[4])
+		tex:ClearAllPoints()
+		tex:SetPoint("BOTTOMLEFT", o.parent, "BOTTOMLEFT", (x0 - o.ox) / s, (y0 - o.oy) / s)
+		tex:SetSize((x1 - x0) / s, (y1 - y0) / s)
+	end
+
+	-- one side's edge over an inner corner's square (x0, y0, w wide, h
+	-- high), cut to its half by the mask
+	local function Mitre(o, side, half, x0, y0, w, h)
+		local tex, i = Take(o, "mitre")
+		Lay(o, tex, EDGE_UV[side], x0, y0, x0 + w, y0 + h)
+		local mask = o.masks[i]
+		if not mask then
+			mask = o.parent:CreateMaskTexture()
+			mask:SetTexture(Shade.MITRE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+			mask:SetAllPoints(tex)
+			tex:AddMaskTexture(mask)
+			o.masks[i] = mask
+		end
+		local m = MITRE_UV[half]
+		mask:SetTexCoord(m[1], m[2], m[3], m[4])
+	end
+
+	-- how far an inner corner's square reaches along a run `len` long whose
+	-- other end is `other`: the feather, or less where the run is shorter
+	-- (a step between two bars a little out of line): up to that end when
+	-- it is an outer corner (whose square lies past it), to the run's middle
+	-- when it is an inner one too (whose square takes the other half). So no
+	-- two squares lie over each other and the shade is never laid twice.
+	local function Reach(F, len, other)
+		local r = other.convex and len or len / 2
+		return r < F and r or F
+	end
+
+	-- the shape's textures (F: the feather in screen px)
+	local function Draw(o, shape, fill, F)
+		for _, r in ipairs(fill) do
+			Lay(o, Take(o, "fill"), FLAT_UV, r[1], r[2], r[3], r[4])
+		end
+		if F <= 0 then
+			return
+		end
+		-- (the side a run is on, where the shape is NOT: Outline's one rule,
+		-- read here -- Core/Outline.lua loads after this file)
+		local SideOf = MelloUI.Outline.SideOf
+		for _, loop in ipairs(shape.loops) do
+			local m = #loop
+			-- each side's edge from corner to corner, outward; short of an
+			-- inner corner by its square (the mitres' there)
+			for i = 1, m do
+				local a, b = loop[i], loop[i % m + 1]
+				local side = SideOf(a.dout)
+				local len = abs(b.x - a.x) + abs(b.y - a.y)
+				local ta = a.convex and 0 or Reach(F, len, b)
+				local tb = b.convex and 0 or Reach(F, len, a)
+				local x0, y0, x1, y1
+				if side == "top" or side == "bottom" then
+					if a.x < b.x then
+						x0, x1 = a.x + ta, b.x - tb
+					else
+						x0, x1 = b.x + tb, a.x - ta
+					end
+					if side == "top" then
+						y0, y1 = a.y, a.y + F
+					else
+						y0, y1 = a.y - F, a.y
+					end
+				else
+					if a.y < b.y then
+						y0, y1 = a.y + ta, b.y - tb
+					else
+						y0, y1 = b.y + tb, a.y - ta
+					end
+					if side == "right" then
+						x0, x1 = a.x, a.x + F
+					else
+						x0, x1 = a.x - F, a.x
+					end
+				end
+				if side and x1 > x0 and y1 > y0 then
+					Lay(o, Take(o, "side"), EDGE_UV[side], x0, y0, x1, y1)
+				end
+			end
+			-- the corners: the file's own on each outer one; on each inner
+			-- one the row's edge and the column's crossed, each on its half
+			for i = 1, m do
+				local c = loop[i]
+				if c.convex then
+					local which = OUTER[c.din] and OUTER[c.din][c.dout]
+					if which then
+						local at = CORNER_AT[which]
+						local x, y = c.x + at[1] * F, c.y + at[2] * F
+						Lay(o, Take(o, "corner"), CORNER_UV[which], x, y, x + F, y + F)
+					end
+				else
+					local across = (c.din == "left" or c.din == "right") and c.din or c.dout
+					local hs = SideOf(across)
+					local vs = SideOf(across == c.din and c.dout or c.din)
+					if hs and vs then
+						-- (its square along the run in, back towards the corner
+						-- before, and along the run out: the feather, or less
+						-- on a short run -- Reach)
+						local p, n = loop[(i - 2) % m + 1], loop[i % m + 1]
+						local rin = Reach(F, abs(c.x - p.x) + abs(c.y - p.y), p)
+						local rout = Reach(F, abs(n.x - c.x) + abs(n.y - c.y), n)
+						local w, h = rout, rin
+						if across == c.din then
+							w, h = rin, rout
+						end
+						local x0 = vs == "left" and c.x - w or c.x
+						local y0 = hs == "bottom" and c.y - h or c.y
+						-- (the row's edge keeps the half on the corner's row, the
+						-- column's the other)
+						local half = (hs == "bottom" and "T" or "B") .. (vs == "left" and "L" or "R")
+						Mitre(o, hs, half, x0, y0, w, h)
+						Mitre(o, vs, MITRE_TWIN[half], x0, y0, w, h)
+					end
+				end
+			end
+		end
+	end
+
+	-- the textures this shape uses shown (while the outline is), the rest hidden
+	local function Finish(o)
+		local shown = o.shown
+		for _, kind in ipairs(KINDS) do
+			local pool = o.pools[kind]
+			for i = 1, #pool do
+				pool[i]:SetShown(shown and i <= pool.used)
+			end
+		end
+	end
+
+	function Out:SetShape(shape, fill, s, ox, oy)
+		s, ox, oy = Num(s), Num(ox), Num(oy)
+		local pools = self.pools
+		for _, kind in ipairs(KINDS) do
+			pools[kind].used = 0
+		end
+		if type(shape) == "table" and type(shape.loops) == "table" and s and s > 0 and ox and oy then
+			if type(fill) ~= "table" then
+				fill = MelloUI.Outline.Fill(shape)
+			end
+			self.shape, self.fill, self.s, self.ox, self.oy = shape, fill, s, ox, oy
+			Draw(self, shape, fill, self.feather * s)
+		else
+			self.shape, self.fill = nil, nil
+		end
+		Finish(self)
+	end
+
+	function Out:SetShown(on)
+		self.shown = on and true or false
+		Finish(self)
+	end
+
+	function Out:IsShown()
+		return self.shown
+	end
+
+	function Out:SetColour(key)
+		self.colour = type(key) == "string" and key or DEFAULT_COLOUR
+		self:Paint()
+	end
+
+	function Out:SetStrength(alpha)
+		alpha = Num(alpha)
+		if not alpha then
+			return
+		end
+		self.alpha = alpha < 0 and 0 or (alpha > 1 and 1 or alpha)
+		self:Paint()
+	end
+
+	function Out:SetFeather(width)
+		width = Num(width)
+		if not width or width < 0 then
+			return
+		end
+		self.feather = width
+		if self.shape then
+			self:SetShape(self.shape, self.fill, self.s, self.ox, self.oy)
+		end
+	end
+
+	function Shade:Outline(parent, opts)
+		if type(parent) ~= "table" or not parent.CreateTexture then
+			return nil
+		end
+		if type(opts) ~= "table" then
+			opts = NO_OPTIONS
+		end
+		local layer, sublevel = Layer(opts, 0)
+		local o = setmetatable({
+			parent = parent, layer = layer, sublevel = sublevel,
+			colour = type(opts.colour) == "string" and opts.colour or DEFAULT_COLOUR,
+			alpha = Num(opts.alpha) or DEFAULT_ALPHA,
+			feather = Num(opts.feather) or DEFAULT_FEATHER,
+			shown = true,
+			pools = { fill = { used = 0 }, side = { used = 0 }, corner = { used = 0 }, mitre = { used = 0 } },
+			masks = {},   -- [i] = the mitre pool's i-th texture's mask
+		}, OutMeta)
+		outlines[o] = true
+		Listen()
+		return o
 	end
 end

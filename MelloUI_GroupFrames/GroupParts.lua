@@ -54,6 +54,17 @@ Parts.LIST = {
 Parts.PARTY = {
 	{ key = "party.name", label = "Name", short = "Name", region = "Name", text = true, keepWidth = true,
 	  home = { point = "TOPLEFT", x = 46, y = -6, size = 10 } },
+	-- (one-look D5, the user's pick 6C: the member's level on its name line is
+	-- the core's -- Modules/UnitFrames.lua, made while Unit Frame Tweaks are
+	-- on and the painted skin is off -- so its region comes through the
+	-- module's getter, `get`: the core writes no key on the game's frame;
+	-- home: the core's own place, its right edge 101 in, the name's line)
+	{ key = "party.level", label = "Level", short = "Level", text = true, keepWidth = true,
+	  get = function(frame)
+		local uf = MelloUI:GetModule("UnitFrames")
+		return uf and uf.PartyLevelText and uf:PartyLevelText(frame) or nil
+	  end,
+	  home = { point = "TOPRIGHT", x = -19, y = -6, size = 10 } },
 	{ key = "party.role", label = "Role Icon", short = "Role", region = "RoleIcon", under = "PartyMemberOverlay",
 	  home = { point = "TOPRIGHT", x = -5, y = -5, size = 12 } },
 	-- (the user, 2026-10-09: "i also need to be able to move the Leader Icon";
@@ -104,6 +115,11 @@ function Parts:Shown(key)
 end
 
 local function Region(frame, p, key)
+	if p.get and not key then
+		-- (a region of the core's, asked of it: never a key on the frame)
+		local r = p.get(frame)
+		return type(r) == "table" and r.SetPoint and r or nil
+	end
 	local holder = p.under and rawget(frame, p.under) or frame
 	local r = type(holder) == "table" and rawget(holder, key or p.region)
 	return type(r) == "table" and r.SetPoint and r or nil
@@ -165,6 +181,13 @@ function Parts:Lay(frame, kind, own)
 			if s then
 				pcall(LayOne, frame, p, s)
 			end
+		end
+		-- (the core's soft band behind the name runs on to the level: on the
+		-- name alone once the player has moved either; the level, a region of
+		-- the core's, put back by it once reset -- Modules/UnitFrames.lua)
+		local uf = MelloUI:GetModule("UnitFrames")
+		if uf and uf.PartyLine then
+			uf:PartyLine(frame, self:Of("party.name") ~= nil, self:Of("party.level") ~= nil)
 		end
 		return
 	end

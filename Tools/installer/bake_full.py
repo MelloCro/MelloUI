@@ -373,6 +373,12 @@ LOGIN_STEPS = {"UIModifications.questTrackerKit",   # set once from TrackerPanel
                # 0.18.5: the backdrops' switches taken over from the looks (ActionBarPanel's MigrateBackdrops: a player
                # from before keeps Action Bar 1's, the micro menu's and the bag bar's)
                "ActionBarPanel.backdropBar1", "ActionBarPanel.backdropMicro", "ActionBarPanel.backdropBags"}
+# (one look, stage D4: Hide Page Arrows and the backdrop switches moved from ActionBarPanel to ActionBars, the core's
+# action bars; the login's merge (Core/Core.lua MERGES) carries them, so both spellings may change, and the 0.18.5 step
+# now runs in ActionBars' OnEnable)
+LOGIN_STEPS |= {m + "." + k for m in ("ActionBarPanel", "ActionBars") for k in ["hidePageArrows"] + [
+    "backdrop" + e for e in ("Bar1", "Bar2", "Bar3", "Bar4", "Bar5", "Bar6", "Bar7", "Bar8", "Stance", "Pet", "Possess",
+                             "Totem", "Micro", "Bags", "XP", "XP2")]}
 # store entries the login takes out (0.16.0: VoiceOver's OnInit forgets the old overlay's place)
 LOGIN_DROPS = {"voiceOverlay"}
 

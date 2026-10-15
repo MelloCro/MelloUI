@@ -9,8 +9,8 @@
 -- that is the game's party member frame: the replica ConfigPreview.MakeParty
 -- builds (the game's template's keys and geometry, PartyFrameTemplates.xml),
 -- built on a secure unit button of ours for "player" (a click targets you, a
--- right click opens your menu), dressed by the unit frame skin as the members
--- are (UnitFramePanel:DressStandIn), its bars in the look the settings give
+-- right click opens your menu), dressed as the members are (Unit Frames'
+-- M:DressStandIn, with the painted skin's dressing while it is on), its bars in the look the settings give
 -- the members' (Bar Textures), filled with your health and power as the game
 -- hands them (a secret value goes to the bar as it is, never read), your
 -- portrait (or Class Icons' medallion), your name, and the members' aura row
@@ -335,7 +335,7 @@ end
 -- the skin's dressing, Healer Frames' heals and glow, the indicators, the
 -- parts (each idempotent: asked again when the look comes on later)
 local function Dress(f)
-	local ufp = MelloUI:GetModule("UnitFramePanel")
+	local ufp = MelloUI:GetModule("UnitFrames")
 	if ufp and ufp.DressStandIn then
 		pcall(ufp.DressStandIn, ufp, f)
 	end

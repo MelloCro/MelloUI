@@ -28,6 +28,9 @@ QL.Panel = {}
 local QI = MelloUI.QuestInk
 local ROW = QI.ROW
 local bandOf = QI.bandOf   -- [row] = its hover band (QI.RowBand)
+-- (onelook D8) the quest pages' headings, gems and rims: the core's (Modules/QuestPages.lua); nil only in a test
+-- world that does not load it
+local QP = MelloUI.QuestPages
 local LEVEL_SHORTCUT = 4   -- the gear menu's level check: hide quests more than 4 (so 5 or more) levels above
 local PIN_SIZE = 14        -- the map pin on the pinned quest's icon
 -- (0.19.9) a group's Done section's header; the header's progress bar's texture
@@ -233,9 +236,11 @@ end
 -- once, when a button is first set up (EnsureWidgets), and look at what it
 -- shows now (audit, 2026-09-24, rank 18: each Init set them again, which
 -- dropped every hook on the button, and the quest log's dresser hooked them
--- again after every Init). A dresser of the rows (QuestLogPanel, the kit) is
--- told of the hover instead: QL.Panel.OnRowHover(button, over), for headers
--- and rows alike, after the panel's own handling; nil while none listens.
+-- again after every Init). The painted skin's dresser of the rows
+-- (QuestLogPanel, the kit) is told of the hover instead:
+-- QL.Panel.OnRowHover(button, over), for headers and rows alike, after the
+-- panel's own handling; nil while none listens. (The core's headings and rims,
+-- MelloUI.QuestPages, are laid by the panel's own Init: QP.Header / QP.Row.)
 local function EntryClick(self)
 	local e = self.entry
 	if e and e.header then
@@ -462,7 +467,8 @@ local function InitHeader(button, entry)
 	if NewArt(button, "header") then
 		button:SetNormalAtlas("common-button-list-collapseExpand")
 		button:SetHighlightAtlas("common-button-list-collapseExpand", "ADD")
-		button:GetHighlightTexture():SetAlpha(0.4)
+		-- (no alpha of our own on it: the core keeps the plate and its lit copy
+		-- faded, QP.Header, and puts back any alpha written on them)
 		-- both on the plate's place (QI.RowHeader)
 		local normal, highlight = button:GetNormalTexture(), button:GetHighlightTexture()
 		normal:ClearAllPoints()
@@ -478,15 +484,20 @@ local function InitHeader(button, entry)
 		-- (0.19.9) a group's Done section: its count in its name, no bar
 		button.count:SetText("")
 		bar:Hide()
-		return
+	else
+		-- (0.19.9, the user's pick B) done / total, its share and a bar
+		local share = entry.total > 0 and entry.done / entry.total or 0
+		button.count:SetText(string.format("%d/%d  %d%%", entry.done, entry.total, math.floor(share * 100 + 0.5)))
+		KeyColour(button.count, "text", (entry.done == entry.total and entry.total > 0) and QL.DONE_ALPHA or 1)
+		bar:SetMinMaxValues(0, math.max(1, entry.total))
+		bar:SetValue(entry.done)
+		bar:SetShown(entry.total > 0)
 	end
-	-- (0.19.9, the user's pick B) done / total, its share and a bar
-	local share = entry.total > 0 and entry.done / entry.total or 0
-	button.count:SetText(string.format("%d/%d  %d%%", entry.done, entry.total, math.floor(share * 100 + 0.5)))
-	KeyColour(button.count, "text", (entry.done == entry.total and entry.total > 0) and QL.DONE_ALPHA or 1)
-	bar:SetMinMaxValues(0, math.max(1, entry.total))
-	bar:SetValue(entry.done)
-	bar:SetShown(entry.total > 0)
+	-- (0.24.0, the chat's look) the chat's heading on the header (the core's:
+	-- the plate faded, the name in the title face, the hairline where no bar runs)
+	if QP then
+		QP.Header(button, button.plateArea)
+	end
 end
 
 local function MouseOver(b)
@@ -598,32 +609,33 @@ local function InitRow(button, entry)
 	-- in the text colour; a step down once done
 	button.where:SetText(QI.RowBullet(button.where) .. where)
 	KeyColour(button.where, "text", entry.completed and QL.DONE_ALPHA or 1)
-	-- on the reskin's parchment the difficulty (QuestInk; user, 2026-09-23):
-	-- since 0.24.0 one gem before the title (the chat's look, the user's pick
-	-- 2B: QI.RowGem, as the log's and the Quest Tracker's), five pips at the
-	-- row's right before (they cut the titles short); a done quest has none
+	-- the difficulty (QuestInk; user, 2026-09-23): since 0.24.0 one gem before
+	-- the title (the chat's look, the user's pick 2B: QI.RowGem, as the log's
+	-- and the Quest Tracker's), five pips at the row's right before (they cut
+	-- the titles short); a done quest has none. On every row since onelook D8
+	-- (the parchment's only until then)
 	local tier = nil
-	if QI.onParchment then
-		local level = QL.ColourLevel(row)
-		if not entry.completed and level > 0 then
-			tier = QI.TierForQuest(row[QL.F_ID], level) or QI.TierOfColour(QL.DifficultyColor(level))
-		end
+	local level = QL.ColourLevel(row)
+	if not entry.completed and level > 0 then
+		tier = QI.TierForQuest(row[QL.F_ID], level) or QI.TierOfColour(QL.DifficultyColor(level))
 	end
 	-- the title and the line under it short of the slot, on every row (the
 	-- gem stands before the title: the title keeps the whole width)
 	button.title:SetPoint("TOPRIGHT", button.slot, "TOPLEFT", -6, 0)
 	button.where:SetPoint("TOPRIGHT", button.title, "BOTTOMRIGHT", 0, -ROW.gap)
-	-- on the reskin's parchment: both lines in ink, the gem before the
-	-- title; a done quest faded
+	QI.RowGem(button, button.title, titleSize, tier)
+	-- on the reskin's parchment: both lines in ink; a done quest faded
 	if QI.onParchment then
-		QI.RowGem(button, button.title, titleSize, tier)
 		local faded = entry.completed or tier == 1
 		QI.Ink(button.title, faded and "faded" or "title")
 		QI.Ink(button.where, faded and "faded" or "text")
 	else
 		QI.Plain(button.title)
 		QI.Plain(button.where)
-		QI.RowGem(button, button.title, nil, nil)
+	end
+	-- (0.24.0, the chat's look) the icon in the round rim, no heading (the core's)
+	if QP then
+		QP.Row(button)
 	end
 end
 

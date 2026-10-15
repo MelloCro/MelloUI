@@ -77,7 +77,10 @@
 --                    on), always = true (no switch: its rows each switch one
 --                    thing) }
 --   area             an own window's look switch: { key = "questTracker",
---                    follows = nil | "<module whose switch it follows>" }
+--                    follows = nil | "<module whose switch it follows>" };
+--                    without `follows` it may be always on (Kit.Areas'
+--                    `always`: the Quest Tracker's and the Quest List's since
+--                    onelook stage C)
 --   role             what the installer's setups do with it: "core" (UI
 --                    Modifications, the switchboard), "look" (restyles the
 --                    game's art, fonts or sounds), "feature" (MelloUI's own
@@ -4246,6 +4249,80 @@ do
 			end
 			if ui then
 				ui.personalBorder = nil
+			end
+		end,
+		-- one-look D5: Level Up and XP Gain moved from the Unit Frames Kit
+		-- (UnitFramePanel) to Unit Frames (core, following Unit Frame Tweaks).
+		-- A player's "off" is carried (ApplyDefaults may have written the new
+		-- keys' true first: a profile text, a backup); the old keys go, so it
+		-- runs once
+		function(self)
+			local ufp = Raw(self, "UnitFramePanel")
+			if not ufp or (ufp.levelUp == nil and ufp.xpGain == nil) then
+				return
+			end
+			local lu, xp = ufp.levelUp, ufp.xpGain
+			ufp.levelUp, ufp.xpGain = nil, nil
+			local uf = Own(self, "UnitFrames")
+			if uf and lu == false and uf.levelUp ~= false then
+				uf.levelUp = false
+			end
+			if uf and xp == false and uf.xpGain ~= false then
+				uf.xpGain = false
+			end
+		end,
+		-- one-look D7: the minimap's painted half is a module of its own,
+		-- MinimapKit (Modules/MinimapKit.lua, Oldschool's), and MinimapPanel
+		-- is MelloUI's minimap for everyone (the user, 2026-10-15: option b).
+		-- The Painted Skin's switch moved with the painted half:
+		-- UIModifications.MinimapPanel -> UIModifications.MinimapKit (a
+		-- player's "off" carried; the old key goes, so it runs once). The
+		-- core's own switch was UI Modifications' to set until now (on with
+		-- the painted minimap, off with the reskin or that switch off): that
+		-- derived "off" is cleared, so the modern minimap comes on -- unless
+		-- UI Modifications itself is off (Everything Off: the game's minimap)
+		function(self)
+			local ui = Raw(self, "UIModifications")
+			local old = ui and ui.MinimapPanel
+			if old == nil then
+				return
+			end
+			ui.MinimapPanel = nil
+			if old == false then
+				ui.MinimapKit = false
+			end
+			local enabled = self.db and self.db.enabled
+			if type(enabled) == "table" and enabled.MinimapPanel == false and enabled.UIModifications ~= false then
+				enabled.MinimapPanel = nil
+			end
+		end,
+		-- one-look D4: Hide Page Arrows and the backdrop switches moved from
+		-- the action bars' painted skin (ActionBarPanel) to the core's Action
+		-- Bars (ActionBars, Modules/ActionBars.lua), the 0.18.5 migration's
+		-- flag with them. A stored value is carried where the new key is still
+		-- unset or at its default (a profile text, a share string or a backup
+		-- from before: ApplyDefaults has written the default first); the old
+		-- keys go, so it runs once. The skin's own looks (barBackdrop ...) stay
+		function(self)
+			local old = Raw(self, "ActionBarPanel")
+			if not old then
+				return
+			end
+			local moved = { hidePageArrows = true, backdropsMigrated = "none" }   -- [key] = its default ("none": none)
+			for _, e in ipairs({ "Bar1", "Bar2", "Bar3", "Bar4", "Bar5", "Bar6", "Bar7", "Bar8", "Stance", "Pet", "Possess",
+				"Totem", "Micro", "Bags", "XP", "XP2" }) do
+				moved["backdrop" .. e] = false
+			end
+			local new
+			for key, default in pairs(moved) do
+				local v = old[key]
+				if v ~= nil then
+					old[key] = nil
+					new = new or Own(self, "ActionBars")
+					if new and (new[key] == nil or new[key] == default) then
+						new[key] = v
+					end
+				end
 			end
 		end,
 	}

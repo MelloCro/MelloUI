@@ -29,8 +29,13 @@
 -- Covers the Dark Mode group "unitframes" while on (Kit:Cover).
 -- The UI shade (0.14.0, Modules/KitShade.lua, its area "unitframes"): each
 -- unit frame is one element whose shade lies under the whole frame (below).
--- M:ReminderAnchor() -> region, side, reach, far | nil: where the Reminder
--- widget (Core/Reminders.lua) hangs, beside the player's portrait ring (below).
+-- (one-look D5) Level Up, XP Gain, the frames' parts (PartsOf / CoverOf /
+-- RingOf), the stand-ins' dressing and the Reminder widget's anchor are the
+-- Unit Frames module's (core, Modules/UnitFrames.lua); this skin fills its
+-- painted ring, orb, bracket, party circle and dressing in through
+-- UF:SetSkinHooks (below). Its own painted level circle (PartyLevel) and
+-- hugging name band (NameShade) stay its look; the core's level on the name
+-- line and its line band step aside while it covers the frames.
 -- /ufdump [player|target|focus|pet|tot|party|party1] [frames|reps] prints a frame's
 -- art into the copy window.
 --------------------------------------------------------------------------------
@@ -40,6 +45,9 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("UnitFramePanel")
 local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
+-- (one-look D5) the core's Unit Frames module (loaded before this file; nil
+-- in a test world without it): this skin's pieces handed to it, below
+local UF = MelloUI:GetModule("UnitFrames")
 -- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
 local bracketOf = MelloUI.Kept.bracketOf
 local kitRingOn = MelloUI.Kept.kitRingOn
@@ -61,13 +69,11 @@ end
 
 local M = MelloUI:RegisterModule("UnitFramePanel", {
 	title = "Unit Frames Kit",
-	slash = "player",   -- (0.21.3: /mello player level)
 	desc = "The player, target, focus and pet frames dressed in the painted kit on the game's own layout.",
 	-- (include: the option below sits under this row on UI Modifications' HUD tab)
 	window = { label = "Unit frames", desc = "Player, target, focus, pet and party frames in the kit.", tab = "HUD", include = true },
 	enabledByDefault = true,
-	defaults = { marks = true, barBackground = "kit", barBackgroundAlpha = 100, backdrop = "none", backdropBackground = "stone",
-		levelUp = true, xpGain = true },
+	defaults = { marks = true, barBackground = "kit", barBackgroundAlpha = 100, backdrop = "none", backdropBackground = "stone" },
 	options = {
 		{ type = "toggle", key = "marks", name = "Elite and Rare Marks",
 		  desc = "The target's and focus's portrait ring and level circle in gold for an elite, silver for a rare or rare elite and red-bronze for a boss, with a small crest on the ring's top gem: a crown, a silver star, a gold star or a skull. Their target's ring too." },
@@ -87,12 +93,7 @@ local M = MelloUI:RegisterModule("UnitFramePanel", {
 			.. "Borders (its inner corners mitred)." },
 		{ type = "dropdown", key = "backdropBackground", name = "Frame Backdrop Background", values = Kit.buttonLooks.backgrounds,
 		  desc = "What lies behind the player, target and focus frames inside their backdrop." },
-		-- (0.21.3; the user, 2026-10-13: "Yes to all" to the animation previews)
-		{ type = "toggle", key = "levelUp", name = "Level Up",
-		  desc = "When you gain a level, the number in your player frame's level circle turns over to the new level with a ring of light, a light runs along the experience bar, and the on-screen notice says your new level and, with the Quest List, how many quests it opened in your zone (their givers pop onto the world map the next time it shows them). Not with Reduce Motion: then only the notice." },
-		-- (0.22.1; the user, 2026-10-14: "build all 5" to the animation previews)
-		{ type = "toggle", key = "xpGain", name = "XP Gain",
-		  desc = "When you gain experience, the stretch of the experience bar just gained lights up while a light runs along it to the new end. Not with Reduce Motion." },
+		-- (Level Up and XP Gain: the Unit Frames module's since one-look D5)
 	},
 })
 
@@ -1811,15 +1812,12 @@ local function SkinPartyMember(frame)
 	end
 end
 
--- a party member's replica (Core/ConfigPreview.lua's, the preview's stand-ins:
--- the game's member frame's keys and geometry) dressed as a member while the
--- look is on (0.17.0; the user: "not a 1-1 replica"). Once per frame; the
--- skin's switch off and on takes it along with the members
-function M:DressStandIn(frame)
-	if active and skin then
-		SkinPartyMember(frame)
-	end
-end
+-- (a party member's replica -- Core/ConfigPreview.lua's, the preview's
+-- stand-ins: the game's member frame's keys and geometry -- dressed as a
+-- member while the look is on: 0.17.0, the user: "not a 1-1 replica". Once
+-- per frame; the skin's switch off and on takes it along with the members.
+-- One-look D5: the core's UF:DressStandIn asks it through the skin's hooks,
+-- at the end of this file)
 
 local function SkinParty()
 	local pf = PartyFrame
@@ -2090,358 +2088,100 @@ local function Hook()
 end
 
 --------------------------------------------------------------------------------
--- The Reminder widget's anchor (Core/Reminders.lua: its one round button
--- hangs beside the player's portrait ring; user, 2026-09-26: "left of the
--- player ring", Above and Right as options, its own mover when the player
--- frame is hidden).
---   M:ReminderAnchor() -> region, side, reach, far | nil
---     region  what to hang from: the kit's portrait ring while the unit
---             frames wear the kit (a texture whose rect is the ring's whole
---             outline, the compass gems on its edges), else the game's own
---             portrait (PlayerFrame.PlayerFrameContainer.PlayerPortrait)
---     side    the ring's free side, away from the frame's bars and name band
---             (the widget's default place, the approved sketch's): "LEFT",
---             the player frame's portrait standing at its left end
---     reach   how far the frame's art stands past `region`'s edges, in UI
---             units of region's scale: 0 on the kit ring (its rect is the
---             whole ring; 0.20.2: no PvP orb there, its icon rides the
---             level orb), 4 on
---             the game's portrait (its own ring round it), 13 there while
---             the game's PvP badge shows (its circle over the ring's left
---             rim); add it to the gap. Read at each call (ask again at each
---             raise)
---     far     the frame's other end, for the "Right" place (right of the
---             ring lie the name band and the bars): the health bar's kit
---             bracket while it is on (its rect reaches the far cap's gem),
---             else the game's health bar; nil when there is none
---   nil while the player frame is hidden (none, or not shown): the widget
---   takes its own mover then. The kit coming or going is told on the bus's
---   'cover' (area "unitframes", Kit:Cover / Kit:Uncover): anchor again then.
---   Reads no size and makes nothing (no garbage per call).
---------------------------------------------------------------------------------
-local GAME_RING_REACH = 4    -- the game's ring round its 60 px portrait, past the portrait's edges
-local GAME_BADGE_REACH = 13  -- the game's PvP badge circle (26 px, its top at the portrait's left edge) past it
-
--- the player frame's health bar, or the kit's bracket on it while shown
-local function FarEnd(main)
-	local bars = main and main.HealthBarsContainer
-	local health = bars and bars.HealthBar or nil
-	local rep = active and health and repOf[health]
-	local strip = rep and rawget(rep, "strip")
-	if strip and strip:IsShown() then
-		return strip
-	end
-	return health
-end
-
--- (0.19.0) the kit's ring texture round a portrait (a unit frame's, a party
--- member's, a stand-in's) while the look is on and the ring shows, else nil:
--- HealerFrames' debuff glow hugs its rim (Kit:RingRim)
-function M:RingOf(portrait)
-	local rep = active and portrait and ringOf[portrait]
-	local tex = rep and rep.tex
-	if not (tex and pieceOf[tex]) then
-		return nil
-	end
-	-- (a secret or refused answer counts as shown)
-	local ok, shown = pcall(tex.IsShown, tex)
-	if ok and not Secret(shown) and not shown then
-		return nil
-	end
-	return tex
-end
-
--- (0.20.0) a portrait-and-bars frame's parts -- the player frame's, a party
--- member's (the game's pool, or a stand-in built like one: ConfigPreview's
--- MakeParty, Group Frames' solo frame): its portrait, health bar, mana bar and
--- name, and its level badge's circle and number (the player frame's; the kit's
--- orb stands on the circle's rect), read from the game's own keys (the kit's
--- look on or off); nil for any other frame. MelloUI.FrameFX splits such a frame's effects (FX.Split: a
--- round form on the ring, the square one on the name and bars)
-function M:PartsOf(frame)
-	if type(frame) ~= "table" then
-		return nil
-	end
-	if frame == PlayerFrame then
-		local c = frame.PlayerFrameContainer
-		local content = frame.PlayerFrameContent
-		local main = content and content.PlayerFrameContentMain
-		local bars = main and main.HealthBarsContainer
-		local area = main and main.ManaBarArea
-		return c and c.PlayerPortrait, bars and bars.HealthBar, area and area.ManaBar, PlayerName,
-			main and main.LevelBackgroundCircle, _G.PlayerLevelText
-	end
-	-- (a party member's shape: no other frame has these three -- the compact
-	-- and Group Frames' buttons no portrait, the pets and target of target no
-	-- health bar container)
-	local bars = rawget(frame, "HealthBarContainer")
-	local health = type(bars) == "table" and rawget(bars, "HealthBar") or nil
-	local portrait, mana = rawget(frame, "Portrait"), rawget(frame, "ManaBar")
-	if not (portrait and health and mana) then
-		return nil
-	end
-	-- (0.21.3: its own level circle and number, PartyLevel -- the frame effects
-	-- laid under them as under the player's: the user's screenshot of
-	-- 2026-10-13, a heal's light over the party member's circle)
-	local made = PartyLevel.of[frame]
-	return portrait, health, mana, rawget(frame, "Name"), made and made.circle, made and made.number
-end
-
--- (0.20.0) what stands over a frame effect on a portrait-and-bars frame
--- (Core/FrameFX.lua draws copies of them over its light: the effect under them
--- -- the user, 2026-10-09: "dont cut anything, just place the effect under"):
--- the portrait's ring (the kit's, its gems and wings in it; with the kit off
--- the game's frame art, its ring drawn in it) and the level badge's orb (the
--- kit's, else the game's circle), its disc and its number (`circle` and
--- `number` from M:PartsOf). -> ring, orb, disc, number (nil where none)
-function M:CoverOf(frame, portrait, circle, number)
-	if type(frame) ~= "table" then
-		return nil
-	end
-	local ring = self:RingOf(portrait)
-	if not ring then
-		local c = rawget(frame, "PlayerFrameContainer")
-		ring = (type(c) == "table" and rawget(c, "FrameTexture")) or rawget(frame, "Texture")
-	end
-	local orb, disc = circle, nil
-	local rep = active and circle and orbOf[circle]
-	if rep and rep.tex then
-		orb = rep.tex
-		if Kit.OrbDisc then
-			local okP, host = pcall(circle.GetParent, circle)
-			disc = Kit:OrbDisc(rep, okP and host or nil, number)
-		end
-	end
-	return ring, orb, disc, number
-end
-
-function M:ReminderAnchor()
-	local pf = PlayerFrame
-	if not pf then
-		return nil
-	end
-	-- (a secret or refused answer counts as shown)
-	local ok, shown = pcall(pf.IsShown, pf)
-	if ok and not Secret(shown) and not shown then
-		return nil
-	end
-	local content = pf.PlayerFrameContent
-	local main = content and content.PlayerFrameContentMain
-	local ring = active and skin and skin.playerRing
-	local tex = ring and ring.tex
-	if tex and pieceOf[tex] and tex:IsShown() then
-		return tex, "LEFT", 0, FarEnd(main)
-	end
-	local container = pf.PlayerFrameContainer
-	local portrait = container and container.PlayerPortrait
-	if not portrait then
-		return nil
-	end
-	-- the game's PvP badge over the ring's left rim: the widget clears it
-	-- (a secret or refused answer: the ring's reach)
-	local reach = GAME_RING_REACH
-	local badge = main and main.PvpBackgroundCircle
-	if badge then
-		local okB, on = pcall(badge.IsShown, badge)
-		if okB and not Secret(on) and on then
-			reach = GAME_BADGE_REACH
-		end
-	end
-	return portrait, "LEFT", reach, FarEnd(main)
-end
-
---------------------------------------------------------------------------------
--- Level Up (0.21.3; the user, 2026-10-13: "Yes to all" to BuildData/output/
--- animation_previews, 5. Level up): the player frame's level badge turns over
--- to the new level with a ring of light (MelloUI.FrameFX: FX.LevelRoll on
--- the badge's copy, its "level" landings), a light runs along the game's XP
--- bar (its rect only: nothing of the bar's written), and NOTICE_AT seconds in
--- the notice says the level and, with the Quest List, the quests it opened in
--- the player's zone (its NewQuestsAt; their givers pop on the map there). The
--- motion not under Reduce Motion; the notice always while the option is on
+-- The skin's fills for Unit Frames (core, one-look D5): Modules/UnitFrames.lua
+-- owns the frames' parts (M:PartsOf / CoverOf / RingOf), the stand-ins'
+-- dressing and the Reminder widget's anchor; while this skin is on it hands
+-- its painted pieces in (each nil while the skin is off or the piece hidden):
+--   RingOf(portrait)       the kit's ring texture round a portrait (a unit
+--                          frame's, a party member's, a stand-in's):
+--                          HealerFrames' debuff glow hugs its rim, the frame
+--                          effects split on it (Kit:RingRim)
+--   OrbOf(circle, number)  the kit's orb on a level circle (L1) and its dark
+--                          disc (Kit:OrbDisc): what stands over a frame effect
+--   PlayerRing()           the player's kit ring (the Reminder widget hangs
+--                          beside it, reach 0: its rect is the whole ring)
+--   FarEnd(health)         the kit's bracket strip on the player's health bar
+--                          (its rect reaches the far cap's gem)
+--   PartyCircle(frame)     a party member's painted level circle and number
+--                          (PartyLevel: the frame effects laid under them)
+--   DressStandIn(frame)    a party stand-in dressed as a member
 --------------------------------------------------------------------------------
 
-local Level = { NOTICE_AT = 0.8, ORB_SPILL = { 70, 70 }, BAR_SPILL = { 8, 12 }, new = nil }
-
-function Level.Notice()
-	local new = Level.new
-	if not new then
-		return
-	end
-	local text = "Level " .. new
-	local ql = MelloUI:GetModule("QuestList")
-	if ql and ql.isEnabled and type(ql.NewQuestsAt) == "function" then
-		local ok, n = pcall(ql.NewQuestsAt, ql, new)
-		n = ok and Num(n) or nil
-		if n and n > 0 then
-			text = text .. " \194\183 " .. n .. (n == 1 and " new quest nearby" or " new quests nearby")
-		end
-	end
-	MelloUI:Announce(text)
-end
-
-function Level.Up(new)
-	new = Num(new)
-	if not (new and M.isEnabled and M.db and M.db.levelUp ~= false) then
-		return
-	end
-	Level.new = new
-	local FX, anim = MelloUI.FrameFX, MelloUI.Anim
-	local motion = FX and anim and not anim.reduceMotion
-	if motion then
-		local sp = active and FX.Split and FX.Split(PlayerFrame)
-		if sp then
-			FX.LevelRoll(sp, new - 1, new)
-			local badge = sp.orb or sp.disc
-			if badge then
-				FX.ShowOn(badge, "level", "orb", Level.ORB_SPILL)
+if UF and UF.SetSkinHooks then
+	UF:SetSkinHooks({
+		RingOf = function(portrait)
+			local rep = active and portrait and ringOf[portrait]
+			local tex = rep and rep.tex
+			if not (tex and pieceOf[tex]) then
+				return nil
 			end
-		end
-		local bar = rawget(_G, "MainStatusTrackingBarContainer")
-		if bar and bar:IsVisible() then
-			FX.ShowOn(bar, "level", "bar", Level.BAR_SPILL)
-		end
-	end
-	Perf.C_Timer.After(motion and Level.NOTICE_AT or 0, Level.Notice)
+			-- (a secret or refused answer counts as shown)
+			local ok, shown = pcall(tex.IsShown, tex)
+			if ok and not Secret(shown) and not shown then
+				return nil
+			end
+			return tex
+		end,
+		OrbOf = function(circle, number)
+			local rep = active and circle and orbOf[circle]
+			if not (rep and rep.tex) then
+				return nil
+			end
+			local disc
+			if Kit.OrbDisc then
+				local okP, host = pcall(circle.GetParent, circle)
+				disc = Kit:OrbDisc(rep, okP and host or nil, number)
+			end
+			return rep.tex, disc
+		end,
+		PlayerRing = function()
+			local ring = active and skin and skin.playerRing
+			local tex = ring and ring.tex
+			if tex and pieceOf[tex] and tex:IsShown() then
+				return tex
+			end
+			return nil
+		end,
+		FarEnd = function(health)
+			local rep = active and health and repOf[health]
+			local strip = rep and rawget(rep, "strip")
+			if strip and strip:IsShown() then
+				return strip
+			end
+			return nil
+		end,
+		PartyCircle = function(frame)
+			local made = active and PartyLevel.of[frame]
+			if made then
+				return made.circle, made.number
+			end
+			return nil
+		end,
+		DressStandIn = function(frame)
+			if active and skin then
+				SkinPartyMember(frame)
+			end
+		end,
+	})
 end
-M.Level = Level   -- (the tests)
-
---------------------------------------------------------------------------------
--- XP Gain (0.22.1; the user, 2026-10-14: "build all 5" to BuildData/output/animation_previews_2, 1. XP bar): the
--- stretch of the game's XP bar just gained lights up while a light runs along it to the new end (MelloUI.FrameFX, its
--- "xp" landing, on that stretch's rect: FX.ShowAt). Nothing of the game's bar is written or held back -- its fill
--- moves as it always has. Not a level gained (Level Up's), a bar not shown, XP that reads secret; not under Reduce
--- Motion
---------------------------------------------------------------------------------
-
-local XP = { SPILL = { 16, 8 }, MIN_W = 4, ROWS = { "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" },
-	EXPERIENCE = 4, PREVIEW = 0.08, at = nil, max = nil }
-
--- the game's XP bar shown now (the main or the second status bar row's Experience bar): its StatusBar
-function XP.Bar()
-	local info = rawget(_G, "StatusTrackingBarInfo")
-	local index = info and info.BarsEnum and info.BarsEnum.Experience or XP.EXPERIENCE
-	for _, name in ipairs(XP.ROWS) do
-		local row = rawget(_G, name)
-		local bar = type(row) == "table" and type(row.bars) == "table" and row.bars[index]
-		local sb = type(bar) == "table" and bar.StatusBar
-		if sb and sb:IsVisible() then
-			return sb
-		end
-	end
-	return nil
-end
-
--- the player's XP and the level's (nil: secret, none)
-function XP.Read()
-	local okX, x = pcall(UnitXP, "player")
-	local okM, m = pcall(UnitXPMax, "player")
-	x, m = okX and Num(x) or nil, okM and Num(m) or nil
-	if x and m and m > 0 then
-		return x, m
-	end
-	return nil
-end
-
--- the light from `old` to `now` (of `max`) on the bar
-function XP.Play(old, now, max)
-	local FX = MelloUI.FrameFX
-	local sb = XP.Bar()
-	if not (FX and FX.ShowAt and sb) or MelloUI.Anim.reduceMotion then
-		return
-	end
-	local l, b, r, t = FX.Rect(sb)
-	if not l then
-		return
-	end
-	local w = r - l
-	local x1 = l + w * math.min(1, now / max)
-	local x0 = math.min(l + w * math.max(0, old / max), x1 - XP.MIN_W)
-	FX.ShowAt(math.max(l, x0), b, x1, t, "xp", "gain", XP.SPILL)
-end
-
-function XP.Update()
-	local old, oldMax = XP.at, XP.max
-	local now, max = XP.Read()
-	XP.at, XP.max = now, max
-	if now and old and max == oldMax and now > old and M.isEnabled and M.db and M.db.xpGain ~= false then
-		XP.Play(old, now, max)
-	end
-end
-
-XP.OnEvent = Perf.Shared("OnEvent of XP Gain", function(_, event, unit)
-	if event == "PLAYER_ENTERING_WORLD" then
-		XP.at, XP.max = XP.Read()
-	elseif unit == "player" then
-		XP.Update()
-	end
-end, "event")
-
--- its events while the option is on (and the module)
-function XP.Listen()
-	local on = M.isEnabled and M.db ~= nil and M.db.xpGain ~= false
-	if not (on or XP.frame) then
-		return
-	end
-	if not XP.frame then
-		XP.frame = CreateFrame("Frame")
-		Perf.SetScript(XP.frame, "OnEvent", XP.OnEvent)
-	end
-	if on then
-		XP.frame:RegisterEvent("PLAYER_XP_UPDATE")
-		XP.frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-		XP.at, XP.max = XP.Read()
-	else
-		XP.frame:UnregisterAllEvents()
-		XP.at, XP.max = nil, nil
-	end
-end
-M.XP = XP   -- (the tests)
-
--- (/mello player level) the level-up played on the level you have, to see it
--- (the badge turning from the one before; the notice and the quests as at a
--- level gained)
-M.SlashWords = {
-	level = function()
-		local lv = Num(UnitLevel("player"))
-		if not (lv and M.isEnabled and M.db and M.db.levelUp ~= false) then
-			MelloUI:Print("Unit Frames: Level Up is off (Unit Frames > Frame > Look), or the Unit Frames Kit is.")
-			return
-		end
-		Level.Up(lv)
-	end,
-	-- (/mello player xp, 0.22.1) XP Gain's light on the bar as for a gain of PREVIEW of the level
-	xp = function()
-		local now, max = XP.Read()
-		if not (now and M.isEnabled and M.db and M.db.xpGain ~= false and XP.Bar()) then
-			MelloUI:Print("Unit Frames: XP Gain is off (Unit Frames > Frame > Look), the Unit Frames Kit is, or no experience bar shows.")
-			return
-		end
-		XP.Play(math.max(0, now - max * XP.PREVIEW), math.max(now, max * XP.PREVIEW), max)
-	end,
-}
 
 --------------------------------------------------------------------------------
 -- Module lifecycle
 --------------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
-Perf.SetScript(eventFrame, "OnEvent", function(self, event, arg1)
+Perf.SetScript(eventFrame, "OnEvent", function(self, event)
 	if event == "PLAYER_ENTERING_WORLD" then
 		self:UnregisterEvent(event)
 		if M.isEnabled then
 			Kit:WhenOutOfCombat(Activate)
 		end
-	elseif event == "PLAYER_LEVEL_UP" then
-		Level.Up(arg1)
 	end
 end)
 
 function M:OnEnable(db)
 	self.db = db
 	Hook()
-	eventFrame:RegisterEvent("PLAYER_LEVEL_UP")
-	XP.Listen()
 	-- the frames exist at load; their portraits and bars are laid out once
 	-- the player is in the world (a toggle from the options is already there)
 	local portrait = PlayerFrame and PlayerFrame.PlayerFrameContainer and PlayerFrame.PlayerFrameContainer.PlayerPortrait
@@ -2455,7 +2195,6 @@ end
 
 function M:OnDisable()
 	eventFrame:UnregisterAllEvents()
-	XP.Listen()
 	-- the bars are protected: their anchors go back out of combat
 	Kit:WhenOutOfCombat(Deactivate)
 end
@@ -2467,8 +2206,6 @@ function M:OnSettingChanged(key)
 		DressTroughs()
 	elseif key == "backdrop" or key == "backdropBackground" then
 		LayoutFrameBackdrops()
-	elseif key == "xpGain" then
-		XP.Listen()
 	end
 end
 

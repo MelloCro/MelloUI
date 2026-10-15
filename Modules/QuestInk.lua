@@ -29,7 +29,9 @@
 --   QI.WatchColour(fs)        remember the colours others (the game) give fs:
 --   QI.GameColour(fs)         the last of them (a done objective is grey)
 --   QI.onParchment            the quest log's reskin is on (its pages and the
---                             quest list are parchment); QuestLogPanel sets it
+--                             quest list are parchment); set only by
+--                             MelloUI.QuestPages.SetPaper (onelook D8), which
+--                             the painted quest log skin calls with its page
 --   QI.ROW, QI.RowFonts, ...  the one quest row the quest log and the quest
 --                             list share: its numbers, fonts, pips column,
 --                             hover band, the section header (Quest rows,

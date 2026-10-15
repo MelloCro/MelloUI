@@ -84,6 +84,9 @@ CEILINGS = {
     "colour:Modules/KitShade.lua": 0,
     "colour:Modules/KitWindow.lua": 0,
     "colour:Modules/ActionBarPanel.lua": 0,
+    # (one look, stage D4: the backdrops' core half and the core's action bars, new own files)
+    "colour:Core/Backdrop.lua": 0,
+    "colour:Modules/ActionBars.lua": 0,
     "colour:Modules/CastBarPanel.lua": 0,
     "colour:Core/Installer.lua": 0,
     "colour:Core/InstallerWindow.lua": 0,
@@ -92,6 +95,7 @@ CEILINGS = {
     "colour:MelloUI_QuestList/QuestListPanel.lua": 0,
     "colour:MelloUI_QuestList/QuestListTips.lua": 0,
     "colour:Modules/QuestTracker.lua": 0,
+    "colour:Modules/QuestPages.lua": 0,   # (onelook D8: the quest pages' headings, gems and rims, core's; palette only)
     "colour:Modules/Reminders.lua": 0,
     "colour:Modules/Restock.lua": 0,
     "colour:MelloUI_Route/Route.lua": 0,
@@ -245,7 +249,7 @@ CHECKS = {
     # file that binds Core's maker once is passed over; so is a HUD panel
     # (its registry entry's tab = "HUD": no window the navigation opens)
     "window-createframe": (r"\bCreateFrame\(",
-                           {"only": r"^(Modules|MelloUI_\w+)/(\w+Panel|Kit|KitShade|QuestInk|QuestListMap|Route"
+                           {"only": r"^(Modules|MelloUI_\w+)/(\w+Panel|Kit|KitShade|QuestInk|QuestPages|QuestListMap|Route"
                                     r"|VoiceOver|UIModifications)\.lua$",
                             "unless": [r"^local CreateFrame = MelloUI\.Safe\.CreateFrame\b", r'\btab = "HUD"']},
                            "the game's CreateFrame in a file that dresses a window: bind Core's maker once at the "

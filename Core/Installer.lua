@@ -282,7 +282,7 @@ I.WINDOW_GROUPS = {
 	{ key = "calendar", label = "Calendar, clock, help, channels", members = { "CalendarPanel", "ClockPanel", "HelpPanel",
 		"ChannelPanel" } },
 	{ key = "hud", label = "The HUD", members = { "UnitFramePanel", "CastBarPanel", "RaidFramePanel", "ActionBarPanel",
-		"MinimapPanel", "TrackerPanel", "ChatPanel", "DamageMeterPanel", "TooltipPanel", "NameplatePanel" } },
+		"MinimapKit", "TrackerPanel", "ChatPanel", "DamageMeterPanel", "TooltipPanel", "NameplatePanel" } },   -- (onelook D7: the painted minimap)
 }
 
 -- The Fresh start wizard's Features step: every feature, adds and replaces
@@ -661,7 +661,17 @@ function I:Draft(state, draft)
 			end
 		end
 	end
-	return Overlay(s, draft)
+	local t = Overlay(s, draft)
+	-- (onelook D7) MelloUI's minimap is a module of its own now (Everything Off, the Fresh start's base, holds it
+	-- off): in the wizard's setup it comes on with the painted minimap -- UI Modifications, its reskin and the HUD's
+	-- minimap switch on -- as it did before the split, unless the draft names it
+	if draft and draft["!MinimapPanel"] == nil and type(t.enabled) == "table" and type(t.modules) == "table" then
+		local um = t.modules[UMB] or EMPTY
+		if t.enabled[UMB] ~= false and um.reskin ~= false and um.MinimapKit ~= false then
+			t.enabled.MinimapPanel = true
+		end
+	end
+	return t
 end
 
 -- what pressing Continue through every wizard step gives: each control at
@@ -695,6 +705,7 @@ function I:DefaultDraft(full)
 	for _, k in ipairs(DRAFT_MAP) do
 		d["MinimapPanel." .. k] = DeepCopy(map[k])
 	end
+	-- ((onelook D7) MelloUI's minimap, a module of its own now: on with the painted minimap, I:Draft)
 	for _, group in ipairs(self.FEATURE_GROUPS) do
 		for _, name in ipairs(group.members) do
 			local key = SwitchKey(Module(name))

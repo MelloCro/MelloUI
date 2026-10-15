@@ -21,6 +21,7 @@ Core\Anim.lua
 Core\Widgets.lua
 Core\Shade.lua
 Core\Outline.lua
+Core\Backdrop.lua
 Core\GameLook.lua
 Core\Notice.lua
 Core\CentreText.lua
@@ -74,6 +75,7 @@ Modules\Tweaks.lua
 Modules\Stats.lua
 Modules\Vendor.lua
 Modules\QuestInk.lua
+Modules\QuestPages.lua
 Modules\Services.lua
 Modules\Reminders.lua
 Modules\Restock.lua
@@ -138,6 +140,7 @@ Modules\UnitFramePanel.lua
 Modules\CastBarPanel.lua
 Modules\RaidFramePanel.lua
 Modules\HealerFrames.lua
+Modules\ActionBars.lua
 Modules\ActionBarPanel.lua
 Modules\ActionButtons.lua
 Modules\CooldownTweaks.lua
@@ -147,6 +150,7 @@ Modules\HealProbe.lua
 Modules\BackpackPanel.lua
 Modules\BagWindow.lua
 Modules\MinimapPanel.lua
+Modules\MinimapKit.lua
 Modules\TrackerPanel.lua
 Modules\QuestTracker.lua
 Modules\ErrorFilter.lua

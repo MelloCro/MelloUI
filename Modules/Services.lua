@@ -42,7 +42,7 @@ local M = MelloUI:RegisterModule("Services", {
 	flavour = "Repair, mailbox, innkeeper, bank... the nearest one is a click under the minimap.",
 	group = "Quests and travel", navOrder = 3,
 	role = "feature",
-	area = { key = "services", follows = "MinimapPanel" },   -- the bar under the minimap: as the minimap
+	area = { key = "services", follows = "MinimapKit" },   -- the bar under the minimap: as the painted minimap (onelook D7)
 	enabledByDefault = true,
 	defaults = {
 		showBar = true,
@@ -2781,10 +2781,14 @@ end
 -- Merged into the square minimap's frame (MinimapPanel's Merge With
 -- Services; user, 2026-09-23: the header, the minimap and the services "into
 -- 1 thing", a header plate between map and services, "D"): the bar spans the
--- map's width under that plate, on the frame's stone instead of its own box.
+-- map's width under that plate, on the frame's stone instead of its own box
+-- (the Chat panel's: on the panel, no stone). (onelook D7) It follows
+-- MelloUI's minimap (MinimapPanel, the core) and its border, never the
+-- painted minimap's cover: the merge works without the painted skin. The kit
+-- rims and box still follow the cover (KitOn: the painted look's handshake).
 local function Merged()
 	local mp = MelloUI:GetModule("MinimapPanel")
-	return KitOn() and mp and mp.isEnabled and mp.WantsServices and mp:WantsServices() and true or false
+	return mp and mp.isEnabled and mp.WantsServices and mp:WantsServices() and true or false
 end
 
 -- the frame's stone under the merged bar

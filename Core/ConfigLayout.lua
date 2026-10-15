@@ -152,8 +152,13 @@ L.pages = {
 		picker = { label = "Bar", noun = "bar", picks = { { "bars", "Action Bars" }, { "micro", "Micro Menu" }, { "bag", "Bag Bar" } } },
 		-- (0.19.9) beside the picker: MelloUI's own Keybind Mode (its button: Core/Config.lua KEYBIND_MODE)
 		action = "keybind" },
-	Minimap = { title = "Minimap", icon = "module:MinimapPanel",
+	-- (onelook D7) its header switch: MelloUI's minimap (MinimapPanel, for everyone since the one-look build; its
+	-- painted half, MinimapKit, is the Painted Skin row); `new`: the switch's New tag (Core/Config.lua's Header)
+	Minimap = { title = "Minimap", icon = "module:MinimapPanel", module = "MinimapPanel",
 		flavour = "The minimap, its shape, size and border, and the Services bar under it.",
+		switchLabel = "MelloUI Minimap",
+		switchDesc = "MelloUI's minimap: its Width and Height, the square shape in the Chat panel, the Services bar merged under it, and the column under it that the Quest Tracker follows. Off: the game's own minimap, Edit Mode's Size sizes it again, and the Painted Skin is off with it.",
+		new = "0.25.0",
 		tabs = { "Minimap", "Services Bar" } },
 	-- (0.17.1) the shot bar and the melee bar (its header switch: the Swing
 	-- Timers module's, off by default)
@@ -231,6 +236,7 @@ L.words = {
 	cooldowntext = { "ActionBars", "Cooldown Timers" },
 	backdrops = { "ActionBars", "Backdrops" },
 	minimappanel = { "Minimap", "Minimap" },
+	minimapkit = { "Minimap", "Minimap" },   -- (onelook D7: the painted minimap, its Painted Skin row)
 	services = { "Minimap", "Services Bar" },
 	stats = { "BarsMeters", "FPS / Latency" },
 	damagemeterpanel = { "BarsMeters", "Damage Meter" },
@@ -461,8 +467,9 @@ function L.Define(R, Link)
 	R("UnitFrames", "Frame", "Look", "UnitFramePanel.backdrop", { only = { "player", "target", "focus" } })
 	R("UnitFrames", "Frame", "Look", "UnitFramePanel.backdropBackground", { only = { "player", "target", "focus" },
 		when = { key = "UnitFramePanel.backdrop", notValue = "none", line = "Only with a Frame Backdrop" } })
-	-- (0.21.3, the animations: the level badge turning over, the XP bar's light, the notice)
-	R("UnitFrames", "Frame", "Look", "UnitFramePanel.levelUp", { only = { "player" } })
+	-- (0.21.3, the animations: the level badge turning over, the XP bar's light, the notice;
+	-- one-look D5: the Unit Frames module's, Unit Frame Tweaks')
+	R("UnitFrames", "Frame", "Look", "UnitFrames.levelUp", { only = { "player" } })
 	R("UnitFrames", "Frame", "Text", "UnitFrames.centerNames", { only = { "player", "target", "focus" }, when = UF })
 	R("UnitFrames", "Bars", "General", "UIModifications.qol_BarText", { only = { "player", "target", "focus" } })
 	-- (0.19.0) incoming heals and the debuff glow: one setting each for every frame (HealerFrames)
@@ -548,7 +555,7 @@ function L.Define(R, Link)
 
 	-- Action Bars (the picker: Action Bars, Micro Menu, Bag Bar)
 	R("ActionBars", "Bars", "General", { micro = "Tweaks.hideMicroMenu", bag = "Tweaks.hideBagBar" }, { name = "Hide This Bar" })
-	R("ActionBars", "Bars", "General", "ActionBarPanel.hidePageArrows", { only = { "bars" } })
+	R("ActionBars", "Bars", "General", "ActionBars.hidePageArrows", { only = { "bars" } })
 	R("ActionBars", "Bars", "Look", "UIModifications.ActionBarPanel", { name = "Painted Skin", wide = "every bar" })
 	R("ActionBars", "Bars", "Look", { bars = "ActionBarPanel.barBackdrop", micro = "ActionBarPanel.microBackdrop", bag = "ActionBarPanel.bagBackdrop" }, { name = "Backdrop", picture = true })
 	R("ActionBars", "Bars", "Look", { bars = "ActionBarPanel.barBackground", micro = "ActionBarPanel.microBackground", bag = "ActionBarPanel.bagBackground" }, { name = "Backdrop Background", picture = true })
@@ -573,33 +580,36 @@ function L.Define(R, Link)
 		when = { key = "Tweaks.hideBagBar", value = false, line = "Only while the bag bar shows" } })
 	-- (0.18.5) each element's backdrop, one list whatever the pick (the user,
 	-- 2026-10-04: "a list on Action Bars"); the looks stay on Bars > Look
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar1")
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar2")
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar3")
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar4")
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar5")
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar6")
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar7")
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar8")
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropStance")
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropPet")
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropPossess")
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropTotem")   -- (0.20.2: the shaman's totem bar)
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropMicro")
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBags")
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropXP")
-	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropXP2")
+	-- (onelook stage D4: the core's, Modules/ActionBars.lua, whatever the look)
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar1")
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar2")
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar3")
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar4")
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar5")
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar6")
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar7")
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar8")
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropStance")
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropPet")
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropPossess")
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropTotem")   -- (0.20.2: the shaman's totem bar)
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropMicro")
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBags")
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropXP")
+	R("ActionBars", "Backdrops", "General", "ActionBars.backdropXP2")
 	R("ActionBars", "Cooldown Timers", "General", "UIModifications.qol_CooldownText", { only = { "bars" } })
 	R("ActionBars", "Cooldown Timers", "General", "CooldownText.actionBars", { only = { "bars" } })
 	R("ActionBars", "Cooldown Timers", "Text", "CooldownText.tenths", { only = { "bars" } })
 	R("ActionBars", "Cooldown Timers", "Text", "CooldownText.colorByTime", { only = { "bars" } })
 	R("ActionBars", "Cooldown Timers", "Behaviour", "CooldownText.minDuration", { only = { "bars" } })
 
-	-- Minimap (its Services bar a tab: Services has no header switch here)
+	-- Minimap (its header switch: MelloUI's minimap, MinimapPanel; its Services bar a tab: Services has no header
+	-- switch here). (onelook D7) Painted Skin: the painted half's own switch (MinimapKit), with MelloUI's minimap on
 	R("Minimap", "Minimap", "General", "Tweaks.hideMinimapCoords")
-	R("Minimap", "Minimap", "Look", "UIModifications.MinimapPanel", { name = "Painted Skin" })
+	R("Minimap", "Minimap", "Look", "UIModifications.MinimapKit", { name = "Painted Skin",
+		when = { key = "MinimapPanel.!enabled", value = true, line = "Only with MelloUI's minimap on" } })
 	R("Minimap", "Minimap", "Look", "MinimapPanel.shape", { picture = true })
-	R("Minimap", "Minimap", "Look", "DarkMode.minimap", { name = "Dark Mode", when = Uncovered("MinimapPanel", "minimap") })
+	R("Minimap", "Minimap", "Look", "DarkMode.minimap", { name = "Dark Mode", when = Uncovered("MinimapKit", "minimap") })
 	R("Minimap", "Minimap", "Layout", "MinimapPanel.width")
 	R("Minimap", "Minimap", "Layout", "MinimapPanel.height", { when = { key = "MinimapPanel.shape", value = "square", line = "Only for the square map (the round map takes Width)" } })
 	R("Minimap", "Services Bar", "General", "Services.!enabled", { name = "Services Bar" })
@@ -618,7 +628,7 @@ function L.Define(R, Link)
 	R("BarsMeters", "XP & Reputation", "Look", "BarTextures.statusbars", { name = "Bar Texture" })
 	R("BarsMeters", "XP & Reputation", "Look", "DarkMode.statusbars", { name = "Dark Mode", when = Uncovered("ActionBarPanel", "action bars") })
 	-- (0.22.1, the animations: the stretch of the XP bar just gained lit; Level Up's neighbour in the unit frames' file)
-	R("BarsMeters", "XP & Reputation", "Look", "UnitFramePanel.xpGain")
+	R("BarsMeters", "XP & Reputation", "Look", "UnitFrames.xpGain")
 	R("BarsMeters", "Cooldown Manager", "Look", "BarTextures.cooldowns", { name = "Bar Texture" })
 	R("BarsMeters", "Cooldown Manager", "Look", "DarkMode.cooldowns", { name = "Dark Mode" })
 	-- (0.19.8, Cooldown Tweaks: Modules/CooldownTweaks.lua -- the addon study's item 7)
@@ -872,15 +882,13 @@ function L.Define(R, Link)
 	-- Quest Tracker (header: its module's switch)
 	R("QuestTracker", "Quest Tracker", "Look", "UIModifications.questTrackerKit", { name = "Painted Skin" })
 	R("QuestTracker", "Quest Tracker", "Look", "QuestTracker.progressMotion")
-	-- (0.19.4: Match Minimap needs the Minimap Kit -- UI Modifications, the
-	-- reskin and the minimap's Painted Skin; Width is live while either is off)
-	R("QuestTracker", "Quest Tracker", "Layout", "QuestTracker.matchMinimap", { when = { all = {
-		{ key = "UIModifications.!enabled", value = true }, { key = "UIModifications.reskin", value = true },
-		{ key = "UIModifications.MinimapPanel", value = true } }, line = "Only with the painted minimap (the Minimap Kit)" } })
+	-- (0.19.4: Match Minimap needs MelloUI's minimap -- onelook D7: the core
+	-- module MinimapPanel, painted or not; Width is live while it is off)
+	R("QuestTracker", "Quest Tracker", "Layout", "QuestTracker.matchMinimap",
+		{ when = { key = "MinimapPanel.!enabled", value = true, line = "Only with MelloUI's minimap on" } })
 	R("QuestTracker", "Quest Tracker", "Layout", "QuestTracker.width", { when = { any = {
-		{ key = "QuestTracker.matchMinimap", value = false }, { key = "UIModifications.!enabled", value = false },
-		{ key = "UIModifications.reskin", value = false }, { key = "UIModifications.MinimapPanel", value = false } },
-		line = "Only while the tracker does not match the minimap (Match Minimap or the Minimap Kit off)" } })
+		{ key = "QuestTracker.matchMinimap", value = false }, { key = "MinimapPanel.!enabled", value = false } },
+		line = "Only while the tracker does not match the minimap (Match Minimap or MelloUI's minimap off)" } })
 	R("QuestTracker", "Quest Tracker", "Layout", "QuestTracker.maxHeight")
 	R("QuestTracker", "Quest Tracker", "Layout", "QuestTracker.#Reset Position")
 	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.itemButtons")

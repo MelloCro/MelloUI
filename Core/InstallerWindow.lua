@@ -2283,7 +2283,7 @@ local function WizardSteps()
 	--------------------------------------------------------------------------------
 
 	local MAP_SHAPE, MAP_BORDER, MAP_MERGE = "MinimapPanel.shape", "MinimapPanel.squareBorder", "MinimapPanel.servicesMerge"
-	local MAP_HUD = "UIModifications.MinimapPanel"
+	local MAP_HUD = "UIModifications.MinimapKit"   -- (onelook D7: the painted minimap's switch)
 	local MAP_H, MAP_PIC = 118, 64   -- a shape card; its picture's height
 
 	-- MinimapPanel's shapes (its picker's own list) and their heading
@@ -2977,7 +2977,7 @@ local function WizardSteps()
 	-- (read once: the Services bar's switch key; false: none)
 	local servicesKey = nil
 	local function MapLine(_, d)
-		if d[RESKIN] == false or d[MAP_HUD] == false or not MelloUI:GetModule("MinimapPanel") then
+		if d[RESKIN] == false or d[MAP_HUD] == false or d["!MinimapPanel"] == false or not MelloUI:GetModule("MinimapPanel") then
 			return TEXT.mapGame
 		end
 		local shape = d[MAP_SHAPE]

@@ -1,12 +1,17 @@
 --------------------------------------------------------------------------------
--- MelloUI - Kit backdrops: one backdrop round elements placed together
+-- MelloUI - Kit backdrops: the painted kit's backdrop drawer (Oldschool's)
 --
--- The drawing of the action bars' backdrops (0.18.5, Modules/ActionBarPanel.lua,
--- user 2026-10-04: "snap more random Elements together and form a unified
--- backdrop"), the kit's since 0.19.8 so every backdrop is drawn by one system
--- (the border library's stage 3: the unit frames' backdrop, UnitFramePanel):
---   Kit:BackdropHolder(root) -> f   a holder on the root (the caller gives it
---       f.shade, a shade element, and keeps it)
+-- The action bars' backdrops (0.18.5, user 2026-10-04: "snap more random
+-- Elements together and form a unified backdrop") in the painted kit, the
+-- kit's since 0.19.8 so every backdrop is drawn by one system (the border
+-- library's stage 3: the unit frames' backdrop, UnitFramePanel). Since
+-- onelook stage D4 the backdrops themselves are the core's (Modules/
+-- ActionBars.lua) and so are the holder, its pools, the kept shape and the
+-- drawers' registry (Core/Backdrop.lua, MelloUI.Backdrop); this file is the
+-- painted drawer, registered as "gems" (the skin's dressing names it):
+--   Kit:BackdropHolder(root) -> f   a holder on the root (MelloUI.Backdrop's,
+--       with this drawer's pools; the caller gives it f.shade, a shade
+--       element, and keeps it)
 --   Kit:DrawBackdrop(f, pads, piece, choice, ks, styleId) -> true | false
 --       the outline round `pads` (screen px rects; MelloUI.Outline's shape),
 --       the background `choice` (Kit.buttonLooks.backgrounds) through it, its
@@ -16,8 +21,12 @@
 --       Media/Textures/Masks/mitre), at ks screen px per piece px of the gems'
 --       frame (an action button 97 piece px). False when the root cannot be
 --       read on the screen.
--- Nothing at load: a holder and its pieces are made by the first drawing that
--- needs them, from pools (the same counts again make nothing new).
+--   Kit:BackdropPad(r, ks, gap, into)   a rect grown by the gems' frame's rails
+--   MelloUI.Backdrop.Drawer("gems")     the same as a drawer (unit = an action
+--       button's side in screen px: ks = unit / 97)
+-- Nothing at load but the drawer's registration: a holder and its pieces are
+-- made by the first drawing that needs them, from pools (the same counts
+-- again make nothing new).
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -26,20 +35,10 @@ local Kit = MelloUI.Kit
 -- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
 local pieceNameOf = MelloUI.Kept.pieceNameOf
 local pieceOf = MelloUI.Kept.pieceOf
-local Perf = MelloUI.Perf:Scope("KitBackdrop")
 local Outline = MelloUI.Outline
-
--- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local SafeScreenRect = MelloUI.Safe.ScreenRect
-
--- A frame's rect in screen px (l, b, r, t), nil while it has no size
-local function ScreenRect(f)
-	local l, b, r, t = SafeScreenRect(f)
-	if l and r > l and t > b then
-		return l, b, r, t
-	end
-	return nil
-end
+-- the backdrops' core half (Core/Backdrop.lua): the holder, the pools, the kept shape, the registry
+local Backdrop = MelloUI.Backdrop
+local Lay = Backdrop.Lay
 
 local BACKGROUND_PIECES = Kit.buttonLooks.backgroundPiece
 local FRAME_OPEN = { 29, 34, 106, 96 }   -- (the gems' frame's opening when the layout gives none: deco/barframe_red's)
@@ -117,71 +116,44 @@ local POOLS = { stone = { "BACKGROUND", 0 }, rail = { "ARTWORK", 0 }, gem = { "A
 -- the background tiled at one on-screen size and from the screen's origin
 -- (user, 2026-09-23: with the micro menu scaled up in Edit Mode its stone
 -- came out stretched next to the bag bar's sharper one), so the pieces of a
--- shape show one surface
+-- shape show one surface (the drawer's Resized: the holder's size changed)
 local function RetileStones(f)
 	local pool = f.pools.stone
+	if not pool then
+		return
+	end
 	for i = 1, pool.used do
 		Kit:Retile(pool[i])
 	end
 end
 
+-- this drawer's pools on a holder (every kind there from the start: the
+-- dumps and the tests read each one's count)
+local function EnsurePools(f)
+	for kind, layer in pairs(POOLS) do
+		Backdrop.Pool(f, kind, layer[1], layer[2])
+	end
+end
 
--- A backdrop's holder on `root`: hidden, never part of the root's layout,
--- in the BACKGROUND strata and kept there, its pools empty. The caller gives
--- it its shade (f.shade: a shade element its rails' and gems' shadows join,
--- ShadePiece) and keeps it.
+-- A backdrop's holder on `root` (MelloUI.Backdrop.Holder: hidden, never part
+-- of the root's layout, in the BACKGROUND strata and kept there) with this
+-- drawer's pools, empty. The caller gives it its shade (f.shade: a shade
+-- element its rails' and gems' shadows join, ShadePiece) and keeps it.
 function Kit:BackdropHolder(root)
-	local f = CreateFrame("Frame", nil, root)
-	-- not part of the bar's size: an action bar is a layout frame that grows
-	-- round its shown children, so a backdrop (a child reaching past the
-	-- buttons) made it grow, which grew the backdrop ... until a relog (user,
-	-- 2026-09-23, Edit Mode's Icon Size 100% -> 110%)
-	f.ignoreInLayout = true
-	f:EnableMouse(false)
-	f:SetFrameStrata("BACKGROUND")
-	-- and KEPT there: the game raises the action bars to TOOLTIP while a
-	-- spell is dragged from the spell book (above the window), and a child
-	-- follows its parent's strata -- the backdrop rose with its bar, one
-	-- level over the buttons, and its background covered their icons, their
-	-- own backgrounds and the stance bar (user, 2026-09-23, /abdump icons:
-	-- the buttons TOOLTIP L3, the backdrops TOOLTIP L3 / L4)
-	if f.SetFixedFrameStrata then
-		f:SetFixedFrameStrata(true)
-	end
-	f.root = root
-	f.pools = {}
-	for kind in pairs(POOLS) do
-		f.pools[kind] = { used = 0 }
-	end
-	Perf.SetScript(f, "OnSizeChanged", RetileStones)
-	f:Hide()
+	local f = Backdrop.Holder(root)
+	EnsurePools(f)
 	return f
 end
 
 -- the next texture of a pool (made the first time), showing `piece`
 local function Take(f, kind, piece)
-	local pool = f.pools[kind]
-	local i = pool.used + 1
-	pool.used = i
-	local tex = pool[i]
-	if not tex then
-		local layer = POOLS[kind]
-		tex = f:CreateTexture(nil, layer[1], nil, layer[2])
-		pool[i] = tex
-	end
+	local tex = Backdrop.Next(f, kind)
 	if piece and pieceNameOf[tex] ~= piece then
 		Kit:Apply(tex, piece)
 	end
 	tex:ClearAllPoints()
 	tex:Show()
 	return tex
-end
-
--- a texture over the screen rect x0, y0 - x1, y1 (in f's units from its corner)
-local function Lay(f, tex, x0, y0, x1, y1)
-	local s = f.s
-	tex:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", (x0 - f.ox) / s, (y0 - f.oy) / s)
-	tex:SetSize((x1 - x0) / s, (y1 - y0) / s)
 end
 
 -- Backdrop Background on a piece of the background: a tile, or the dark
@@ -230,43 +202,6 @@ end
 local GEM_AT = { tl = { 0, -1 }, tr = { -1, -1 }, bl = { 0, 0 }, br = { -1, 0 } }
 local STEP = { right = { 1, 0 }, up = { 0, 1 }, left = { -1, 0 }, down = { 0, -1 } }
 local STONE_INSET = { 0, 0, 0, 0 }   -- (left, bottom, right, top: filled per shape)
-
--- The outline a holder drew last, kept with its pads and its tolerance (the
--- rail scale's): the same pads again (a setting, a show, a size that moved
--- nothing) reuse it and its background's cut, so such a relayout makes no
--- new shape (Outline.Shape builds its grid afresh: some KB a call)
-local function KeptShape(f, pads, tol)
-	local key = f.shapeKey
-	if not (key and key[1] == tol and #key == 1 + 4 * #pads) then
-		return nil
-	end
-	local k = 1
-	for _, r in ipairs(pads) do
-		for c = 1, 4 do
-			k = k + 1
-			if key[k] ~= r[c] then
-				return nil
-			end
-		end
-	end
-	return f.shape
-end
-
-local function KeepShape(f, pads, tol, shape)
-	local key = f.shapeKey or {}
-	key[1] = tol
-	local k = 1
-	for _, r in ipairs(pads) do
-		for c = 1, 4 do
-			k = k + 1
-			key[k] = r[c]
-		end
-	end
-	for i = #key, k + 1, -1 do
-		key[i] = nil
-	end
-	f.shapeKey, f.shape, f.fill = key, shape, nil
-end
 
 -- Today's look: the gems' frame (deco/barframe_*) along the loops, a gem on
 -- each outer corner, the L joint in each inner one
@@ -382,7 +317,9 @@ end
 --------------------------------------------------------------------------------
 
 local BUTTON_UNITS = 45   -- an action button's side in UI units at Edit Mode's 100%
-local MITRE_MASK = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Masks\\mitre"
+-- (the one mask file: Core/Shade.lua's, which the TOC loads first and whose
+-- soft outline cuts its inner corners with it too)
+local MITRE_MASK = MelloUI.Shade and MelloUI.Shade.MITRE
 -- the mask turned to each half of the square (the file's own: top left), and
 -- the half its twin covers
 local MITRE_UV = { TL = { 0, 1, 0, 1 }, TR = { 1, 0, 0, 1 }, BL = { 0, 1, 1, 0 }, BR = { 1, 0, 1, 0 } }
@@ -595,35 +532,31 @@ end
 -- rails and gems of `piece` or the library style `styleId`, the background
 -- `choice`, at ks screen px per piece px. False when its leader cannot be
 -- read on the screen.
+local GEMS   -- (below: this drawer as the registry knows it)
 function Kit:DrawBackdrop(f, pads, piece, choice, ks, styleId)
-	local baseL, baseB = ScreenRect(f.root)
-	local s = MelloUI.Safe.Finite(MelloUI.Safe.Call(f.root, "GetEffectiveScale"))
+	EnsurePools(f)
+	local s, baseL, baseB = Backdrop.Origin(f)
 	local p, tc = Kit:Piece(piece), Kit:NineCoords(piece, FRAME_CORNER)
 	local jp = Kit:Piece(JOIN_PIECE)
 	local look = styleId and LibraryLook(styleId, ks) or nil
-	if not (baseL and s and s > 0 and p and tc and jp) then
+	if not (s and p and tc and jp) then
 		return false
 	end
 	local C = FRAME_CORNER * ks
 	-- (edges closer than half a rail lined up: no notch of a few px)
-	local shape = KeptShape(f, pads, C / 2)
+	local shape = Backdrop.KeptShape(f, pads, C / 2)
 	if not shape then
 		shape = Outline.Shape(pads, C / 2)
-		KeepShape(f, pads, C / 2, shape)
+		Backdrop.KeepShape(f, pads, C / 2, shape)
 	end
 	local X, Y = shape.X, shape.Y
 	if not (X and #X >= 2 and #Y >= 2) then
 		return false
 	end
-	f.s, f.k, f.ox, f.oy = s, ks / s, X[1], Y[1]
-	f:ClearAllPoints()
-	f:SetPoint("BOTTOMLEFT", f.root, "BOTTOMLEFT", (X[1] - baseL) / s, (Y[1] - baseB) / s)
-	f:SetSize((X[#X] - X[1]) / s, (Y[#Y] - Y[1]) / s)
-	f:SetFrameLevel(3)
-	f:Show()
-	for _, pool in pairs(f.pools) do
-		pool.used = 0
-	end
+	Backdrop.Claim(f, GEMS)
+	Backdrop.Place(f, X, Y, s, baseL, baseB)
+	f.k = ks / s
+	Backdrop.Begin(f)
 	-- the background, just under the rails' inner edges
 	if BACKGROUND_PIECES[choice] or choice == "dark" then
 		if look then
@@ -657,10 +590,33 @@ function Kit:DrawBackdrop(f, pads, piece, choice, ks, styleId)
 		DrawGems(f, shape, piece, p, tc, jp, C, ks)
 	end
 	-- the pools' textures this shape did not need put away
-	for _, pool in pairs(f.pools) do
-		for i = pool.used + 1, #pool do
-			pool[i]:Hide()
-		end
-	end
+	Backdrop.Finish(f)
 	return true
 end
+
+--------------------------------------------------------------------------------
+-- (onelook stage D4) The drawer, "gems": the action bars' backdrops in the
+-- painted kit, the skin's dressing (Modules/ActionBarPanel.lua) naming it.
+-- The core hands a unit (an action button's side in screen px, Action Bar
+-- 1's) and the dressing's look ({ piece, background, styleId }); the gems'
+-- frame is drawn at ks = unit / BUTTON_PX screen px per piece px (the slot
+-- rims' 97 px a button), so the pads and pieces are as they always were.
+--------------------------------------------------------------------------------
+
+local BUTTON_PX = 97   -- an action button's side in the gems' frame's piece px
+GEMS = {
+	Pad = function(r, unit, gap, into)
+		return Kit:BackdropPad(r, unit / BUTTON_PX, gap, into)
+	end,
+	Draw = function(f, pads, unit, look)
+		return Kit:DrawBackdrop(f, pads, look and look.piece or GEM_FRAME, look and look.background or "stone",
+			unit / BUTTON_PX, look and look.styleId)
+	end,
+	Resized = RetileStones,
+	-- another drawer took the holder over: every piece put away (their shadows follow them)
+	Clear = function(f)
+		Backdrop.Begin(f)
+		Backdrop.Finish(f)
+	end,
+}
+Backdrop.Register("gems", GEMS)

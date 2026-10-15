@@ -1424,7 +1424,8 @@ end
 -- UnitFramePanel's RingCover draws the ring over the bars' ends). A copy of
 -- each region: its texture or atlas, coords, colour, blend and alpha, on its
 -- rect; the badge's number its font, text and colour. Laid as a landing
--- starts. (UnitFramePanel:CoverOf names the regions.)
+-- starts. (Unit Frames' M:CoverOf names the regions: the core's, the painted
+-- skin's ring and orb handed in through its hooks.)
 local function NoneSecret(a, b, c, d, e, f, g, h)
 	return not (Secret(a) or Secret(b) or Secret(c) or Secret(d) or Secret(e) or Secret(f) or Secret(g) or Secret(h))
 end
@@ -2084,13 +2085,13 @@ function FX.FrameOf(unit)
 end
 
 -- A portrait-and-bars frame (the player's, a party member's of the game's;
--- UnitFramePanel:PartsOf, the kit's look on or off): its effects split, a
+-- Unit Frames' M:PartsOf, core since one-look D5, the kit's look on or off): its effects split, a
 -- round form on the portrait's ring and the square one on its bars (the user,
 -- 2026-10-09, C of the sketch; the bars only, the name clear: their drawing).
 -- The ring: the kit's (its rim, Kit:RingRim) while the unit frames wear the
 -- kit, else the game's ring round the portrait; the bars: the health and mana
 -- bars' rects together, BAR_PAD past them but on the ring's side (they start
--- under the ring). What stands over the light (UnitFramePanel:CoverOf): the
+-- under the ring). What stands over the light (Unit Frames' M:CoverOf): the
 -- ring over the square half, the level badge over the ring half. -> one table,
 -- reused (read it at once): the ring's square rl, rb, rr, rt; the bars' bl,
 -- bb, br, bt; the ring to draw over them, the badge's orb, disc and number;
@@ -2114,7 +2115,7 @@ function FX.Split(frame)
 	if type(frame) ~= "table" then
 		return nil
 	end
-	local panel = MelloUI:GetModule("UnitFramePanel")
+	local panel = MelloUI:GetModule("UnitFrames")
 	if not (panel and panel.PartsOf) then
 		return nil
 	end
