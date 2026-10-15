@@ -142,7 +142,7 @@ Close it without installing and nothing changes. Run it again any time: **Instal
 
 The game saves your settings like any addon's, so they're still there after a restart. Profiles let you save and load whole setups too.
 
-Want an extra copy? **Macro Backup** on the Profiles page (off unless you turn it on) keeps one in your account macros, which the game keeps for your whole account: handy for a new PC or a wiped `WTF` folder. The copy is only ever brought back when you ask: **Restore…** on the Profiles page, or `/mello backup restore`. Turn it off and its macros are removed. The `MelloUI1`, `MelloUI2`... macros earlier versions kept are removed by themselves once your settings have loaded normally, so their slots are free again.
+Earlier versions could keep a copy in your account macros (**Macro Backup**, from the time the game did not bring settings back after a restart). It is gone: the `MelloUI1`, `MelloUI2`... macros it kept are removed by themselves at your next login, so their slots are free again.
 
 ## 🐛 Good to know
 
@@ -185,7 +185,7 @@ later (*Set up in a minute* above). The installer adds two more: the shipped **M
 profile is its Full experience, and **Before install** is the setup you had before you last
 installed. Profiles are
 kept in the saved variables with the rest of the settings, so they stay from one session to the
-next. The Profiles page also holds **Macro Backup** (see *Your settings are safe* above). On a development copy, `Tools\bake_routes.py --watch` (the same watcher that bakes the
+next. On a development copy, `Tools\bake_routes.py --watch` (the same watcher that bakes the
 learned roads) also bakes your own into `Media\Profiles.lua` after each `/reload`. The
 watcher never writes the shipped **MelloUI** profile (the Full experience the installer applies,
 baked from a saved setup by `Tools\installer\bake_full.py --write`) or Everything Off, and
@@ -209,8 +209,7 @@ To share a profile, click **Share** on its row and copy the string; to use someo
 | `/mello enable <module>` | enable a module |
 | `/mello disable <module>` | disable a module |
 | `/mello dump [module]` | print the stored settings |
-| `/mello status` | whether the client loaded the saved variables, where the settings in use came from, and the state of Macro Backup |
-| `/mello backup ...` | Macro Backup: `on`, `off`, `restore` (asks first) or `delete` (at once); with no word it says how the copy stands |
+| `/mello status` | whether the client loaded the saved variables, and where the settings in use came from |
 | `/mello profile ...` | `save <name>`, `load <name>`, `delete <name>`, `default <name>` or `default none`, `export <name>` (a share string to copy), `import <name>` (paste someone's string in as that profile), `list` (see *Profiles*) |
 | `/mello cpu` | CPU time per handler and hook of every module since login (needs `/console scriptProfile 1` and a `/reload`); `/mello cpu reset` zeroes the counters |
 | `/mello preload` | How many artwork files Preload Artwork holds, and how many the game has loaded |
@@ -485,7 +484,7 @@ top corners (on the bar's top when the name sits inside the bar).
 - Hide the player coordinates the client writes under the minimap ("Hide Minimap
   Coordinates", on by default).
 - "Chat Notices" (on by default) covers the lines MelloUI writes to chat on its own: a
-  learned dungeon entrance, a note about the macro backup's copy, hints. Replies to slash
+  learned dungeon entrance, hints. Replies to slash
   commands always show.
 - "On-screen Notices" (on by default): MelloUI's one on-screen notice, the short line in the
   upper third of the screen that Route, the Services bar and the Quest List use (a route set
@@ -2065,8 +2064,7 @@ Advanced, and the checks name it).
   files only need a `/reload`.
 - Saved variables are saved and loaded as usual, but can arrive a few seconds after
   `PLAYER_LOGIN`: Core and Route keep checking for them for a while and adopt them when they
-  come. Macro Backup (`Core\Backup.lua`) is off unless the player turns it on, and its copy is
-  brought back only when the player asks (`/mello backup restore`), never by itself.
+  come. The old Macro Backup is gone (0.25.0): `Core\Backup.lua` only frees the macros it left.
 - Some maps have no continent above them (Zephras Isle, UiMap 2521, sits right under the world
   map): `C_Map` gives no continent for them, so Route's `ContinentOf` takes such a map as its own
   continent. A map kind or parent that reads secret gives no continent.

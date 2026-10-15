@@ -917,7 +917,7 @@ Lint workflow) fails when a copy is added and names the system to use.
   fn, owner)` / `MelloUI:Off(owner[, topic])` for "setting", "module",
   "restart", "look:<area>", "cover", "parchment", "border", "fonts",
   "scale", "editmode", "shell", "palette", "column", "installer",
-  "editmodelayout", "backup", "shade", "where", "reminder", "editlayout",
+  "editmodelayout", "shade", "where", "reminder", "editlayout",
   "mover", "meter", "configurator" (Core.lua lists what each carries). A window
   takes its listeners when it is built, never at file load, and each
   returns at once while the window is closed

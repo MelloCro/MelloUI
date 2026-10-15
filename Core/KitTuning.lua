@@ -335,9 +335,6 @@ end
 function KT:Changed()
 	self:Rebuild()
 	self:Apply()
-	if MelloUI.ScheduleBackup then
-		MelloUI:ScheduleBackup("kit tuning")
-	end
 end
 
 --------------------------------------------------------------------------------

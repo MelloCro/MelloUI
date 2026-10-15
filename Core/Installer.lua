@@ -2231,10 +2231,9 @@ end
 -- loads (it replaces the one the tour's old welcome popup had: the count
 -- stays the same). It takes PLAYER_ENTERING_WORLD once; 3 s later, one
 -- check:
---   - the settings not settled yet (Backup.lua: a player whose settings
---     have not appeared is not known to be new): checked again on
---     UPDATE_MACROS (taken only then) or 3 s later, at most 6 more times,
---     never past 20 s after the first check; then nothing this session;
+--   - the settings not settled (Backup.lua: settled once the saved
+--     variables are in or the world was entered, so by the check they are;
+--     not: the player is not known to be new, nothing this session);
 --   - an answer owed (an install made before a /reload or a restart, a
 --     failed one too: the saved settings keep it): the Keep page, its
 --     countdown again with its 15 s (IW:Open, I:ResumePending);
@@ -2275,17 +2274,16 @@ end
 --------------------------------------------------------------------------------
 
 local LOGIN_OWNER = "Installer login"   -- the bus owner while a login open waits
-local CHECK_DELAY, CHECK_AGAIN, CHECK_MORE, CHECK_GIVE_UP = 3, 3, 6, 20
+local CHECK_DELAY = 3
 
 -- started: PLAYER_ENTERING_WORLD came; done: the check decided (or gave
--- up); first: its first run's time; more: the checks run again; armed: a
--- check's timer is out; owed: what opens next frame, or once the fight or
+-- up); armed: the check's timer is out; owed: what opens next frame, or once the fight or
 -- Edit Mode ends ("choose", "keep", "open", "alt"); fresh: the open owed is
 -- a new player's; waited: it waited for a fight or Edit Mode (the settings
 -- are read again before it opens); user: the player opened the installer
 -- (or asked for it) this session; altKey: the character's layoutAsked_ key
 -- for the question
-local login = { started = false, done = false, first = nil, more = 0, armed = false, owed = nil, fresh = false,
+local login = { started = false, done = false, armed = false, owed = nil, fresh = false,
 	waited = false, user = false, altKey = nil }
 local loginFrame
 local Check, ShowOwed
@@ -2575,13 +2573,7 @@ local function Decide()
 	end
 end
 
-local function Finish()
-	login.done = true
-	loginFrame:UnregisterEvent("UPDATE_MACROS")
-end
-
--- the check's one timer (never two out: an early check on UPDATE_MACROS
--- leaves the one that is out, which then finds the check done)
+-- the check's one timer
 local function Due()
 	login.armed = false
 	Check()
@@ -2594,35 +2586,18 @@ local function ArmCheck(seconds)
 	end
 end
 
--- early: the check UPDATE_MACROS brought forward (it counts as none of the
--- 6; the timer that is out stays)
-Check = function(early)
+Check = function()
 	if login.done then
 		return
 	end
-	local now = Num(GetTime()) or 0
-	login.first = login.first or now
-	if Settled() then
-		Finish()
-		local ok, err = pcall(Decide)
-		if not ok then
-			Report(err)
-		end
-		return
+	login.done = true
+	if not Settled() then
+		return   -- (not known to be new: nothing this session)
 	end
-	if early ~= true then
-		if login.more >= CHECK_MORE or now - login.first >= CHECK_GIVE_UP then
-			Finish()   -- (not known to be new: nothing this session)
-			return
-		end
-		login.more = login.more + 1
-		ArmCheck(CHECK_AGAIN)
+	local ok, err = pcall(Decide)
+	if not ok then
+		Report(err)
 	end
-	loginFrame:RegisterEvent("UPDATE_MACROS")
-end
-
-local function Early()
-	Check(true)
 end
 
 local function OnLoginEvent(frame, event)
@@ -2632,11 +2607,6 @@ local function OnLoginEvent(frame, event)
 			login.started = true
 			ArmCheck(CHECK_DELAY)
 		end
-	elseif event == "UPDATE_MACROS" then
-		frame:UnregisterEvent("UPDATE_MACROS")
-		-- (a frame later: Backup.lua's own handler, which settles the
-		-- settings, has run by then)
-		C_Timer.After(0, Early)
 	elseif event == "PLAYER_REGEN_ENABLED" then
 		frame:UnregisterEvent("PLAYER_REGEN_ENABLED")
 		ShowOwed()

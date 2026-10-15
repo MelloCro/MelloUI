@@ -28,7 +28,12 @@
 - Route: the Direction Arrow row in the widget column is gone, with its Landing Countdown: the World Marker shows the way. The flight map marks your route's flight point with a bead of your trail.
 - Action bars: Hide Bar Art (Action Bars > Bars, on by default) ticks the game's own Edit Mode setting for Action Bar 1 on your own Edit Mode layouts, so every bar looks alike; untick it in Edit Mode and MelloUI leaves it. Shows after a /reload.
 - Chat: Parchment is its own switch on the Chat page (Chat Frame > Look), for the Chat View and the whisper window, with the painted reskin on or off. Background offers Dark, Game or None; the painted chat skin has its own Painted Skin row.
-- Fixed: Group Frames: profiles and share strings keep your indicators, and loading an older profile or restoring the macro backup no longer empties them.
+- Fixed: Group Frames: profiles and share strings keep your indicators, and loading an older profile no longer empties them.
+- Macro Backup is gone: the game keeps your settings. The account macros it kept (MelloUI1, MelloUI2 ...) are removed at your next login, so their slots are free again, and /mello backup goes with it.
+- Quest Tracker: the Painted Skin switch is gone; the tracker always wears MelloUI's look.
+- Nameplates: a soft shade behind the names of enemies and NPCs, as long as the name, with or without the painted reskin (Name Shade, part of Nameplate Tweaks).
+- Nameplates: Show Names As no longer rewrites every plate's name on each health update, which is lighter in big pulls. A name lifted over your combo points stays centred over its bar.
+- Show Names As shortens players' names only: NPCs keep their whole name.
 - Quality Gems show on every item in the game's own bags, bank and guild bank and in Bags by Kind, painted look or not; Grey Out Junk lays a grey copy over a junk item's picture, so the game's own grey for a locked item stays as the game sets it. Your choices carry over.
 
 ## 0.24.0

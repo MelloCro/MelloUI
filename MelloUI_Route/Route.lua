@@ -1262,9 +1262,6 @@ local function RememberFlights(ids)
 		end
 		table.sort(list)
 		M.db[key] = table.concat(list, ",")
-		if MelloUI.ScheduleBackup then
-			MelloUI:ScheduleBackup("flight points")
-		end
 		discoveredAt = 0
 	end
 end

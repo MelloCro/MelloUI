@@ -902,10 +902,6 @@ end
 --                                          name (put in, made active) /
 --                                          "active", name (a saved one made
 --                                          active)
---   "backup"       -                       the macro backup changed by itself
---                                          (Core/Backup.lua: a delayed or
---                                          held write or delete, the login's
---                                          look at the macros)
 --   "editlayout"   showing, state          Edit Layout shown or not (Core/EditLayout.lua):
 --                                          state "open" | "paused" | "closed"; on every
 --                                          change of showing and on its close
@@ -928,14 +924,9 @@ end
 --                                          put back (the restore point stays)
 --------------------------------------------------------------------------------
 
--- the settings backup through the bus's Batch: held there, scheduled once at
--- its end (set below)
-local Backup
-
 do
 	local topics = {}   -- [topic] = { fn = {}, owner = {}, n = 0, depth = 0, dirty = false }
 	local batch = 0     -- Batch depth
-	local backupWanted = false
 
 	-- the slots taken off during a Fire are false until it ends: then the
 	-- list closes up, in order
@@ -1086,12 +1077,6 @@ do
 		batch = batch - 1
 		if batch == 0 then
 			Flush()
-			if backupWanted then
-				backupWanted = false
-				if MelloUI.ScheduleBackup then
-					MelloUI:ScheduleBackup("batch")
-				end
-			end
 		end
 		if not ok then
 			error((...), 0)
@@ -1106,18 +1091,6 @@ do
 
 	function MelloUI:InBatch()
 		return batch > 0
-	end
-
-	-- NotifySettingChanged, SetModuleEnabled and the profile loads ask for
-	-- the backup here: "setting <key>" as before, or once for a whole Batch
-	Backup = function(self, reason, detail)
-		if batch > 0 then
-			backupWanted = true
-			return
-		end
-		if self.ScheduleBackup then
-			self:ScheduleBackup(detail ~= nil and (reason .. tostring(detail)) or reason)
-		end
 	end
 end
 
@@ -1365,8 +1338,8 @@ end
 -- entry) when a session lets go of an entry it held (Save, Discard,
 -- Abandon, Drop, Release): an owner that waited re-lays it then.
 -- The store is UI Modifications' `positions` setting, which is in its
--- settings whether the module is on or off, so profiles, share strings and
--- the macro backup (when on) carry every place. Nothing is made or hooked
+-- settings whether the module is on or off, so profiles and share strings
+-- carry every place. Nothing is made or hooked
 -- until an element registers (the 'scale' listener aside: one entry on the
 -- bus); the follow hooks' after-combat frame is made the first time a put-
 -- back waits for a fight's end.
@@ -1485,8 +1458,7 @@ do
 		return type(pos) == "table" and pos or nil
 	end
 
-	-- written through the setting path, as every setting (the macro backup,
-	-- when on, is written from there)
+	-- written through the setting path, as every setting
 	local function Written(positions)
 		MelloUI:NotifySettingChanged(POSITIONS_MODULE, "positions", positions)
 	end
@@ -3301,7 +3273,6 @@ function MelloUI:ShowMenuButtonTip()
 		return
 	end
 	tweaks.menuTipShown = true
-	Backup(self, "menu tip")
 	self:Notice("The settings have their own window now: the MelloUI button in the game menu (Escape), or /mello.")
 end
 
@@ -3363,7 +3334,7 @@ local ROLES = { core = true, look = true, feature = true, adds = true, replaces 
 -- module does and counts on a script budget of its own. MelloUI's own switch
 -- stays its one switch; one the player turned off in the game's AddOns list is
 -- not loaded: the configurator says so where its switch stands, and its saved
--- settings stay as they are (profiles and the backup carry them: Backup.lua).
+-- settings stay as they are (profiles carry them: Backup.lua).
 MelloUI.Features = {
 	Chat = { addon = "MelloUI_Chat", title = "Chat" },
 	CombatText = { addon = "MelloUI_CombatText", title = "Combat Text" },
@@ -3496,7 +3467,6 @@ function MelloUI:SetModuleEnabled(name, enabled)
 	if not self.initialized then
 		return
 	end
-	Backup(self, "module ", name)
 
 	if enabled and not module.isEnabled then
 		module.isEnabled = true
@@ -3519,7 +3489,6 @@ function MelloUI:NotifySettingChanged(name, key, value)
 	if module.isEnabled then
 		SafeCall(module, "OnSettingChanged", key, value, db)
 	end
-	Backup(self, "setting ", key)
 	-- last, after everything above (held until the end of a Batch)
 	self:Fire("setting", name, key, value)
 end
@@ -3792,8 +3761,6 @@ function MelloUI:AdoptSavedVariables(stage)
 		self.dbIsTemporary = false
 		self.savedVariablesStage = stage or "late"
 		-- Carry over anything changed while the temporary table was in use
-		-- (this includes values the player brought back from the macro
-		-- backup: RestoreMacroBackup, Core/Backup.lua).
 		for name, values in pairs(temp.modules or {}) do
 			local module = self.modules[name]
 			if module then
@@ -3834,14 +3801,6 @@ function MelloUI:AdoptSavedVariables(stage)
 		end
 		if self.db.activeProfile == nil then
 			self.db.activeProfile = temp.activeProfile
-		end
-		-- the macro backup's own state (Core/Backup.lua: top-level keys, in
-		-- no profile): switched on before these came in. A copy 'found'
-		-- meanwhile is not carried: the real settings came, so nothing was
-		-- found (the mark would keep the switch refused and the old macros
-		-- for good)
-		if temp.macroBackup == true then
-			self.db.macroBackup = true
 		end
 		-- The kit editor writes straight into the db rather than through a
 		-- module, so it was not on this list and every edit made before the
@@ -3994,7 +3953,7 @@ end
 -- that key still holds its default, then the old key goes, so every
 -- player keeps what they had. Run on the raw saved tables before the
 -- modules come up (MelloUI:OnInitialize's pass) and before they come up
--- again after a profile, a share string or the backup is taken in
+-- again after a profile or a share string is taken in
 -- (RestartModules): a settings text from before the merge is carried too.
 -- Reads and writes only MelloUI.db; makes nothing when there is nothing to
 -- carry. (The Voice Over widget's padlock and old place: Modules/VoiceOver
@@ -4447,7 +4406,7 @@ function MelloUI:RestartModules()
 		return
 	end
 	-- an Edit Layout session ends first, nothing of it put back over the
-	-- settings now in place (a profile load, the macro backup's restore):
+	-- settings now in place (a profile load):
 	-- every OnEnable below places from the store as it is
 	self.LayoutSession.Abandon("restart")
 	-- the palette the settings now name first (or a profile load's held
@@ -4542,8 +4501,8 @@ end
 
 -- Profiles
 --
--- A profile is the settings serialised the way the macro backup does it
--- (only values that differ from the defaults). Profiles live in
+-- A profile is the settings serialised (only values that differ from the
+-- defaults). Profiles live in
 -- MelloUIDB.profiles; Tools\bake_routes.py bakes them into Media\Profiles.lua
 -- (MelloUI_Profiles) so they ship with the addon,
 -- and the one marked default is applied on a fresh install, that is when no
@@ -4637,8 +4596,6 @@ end
 -- string held the sharer's character IDs, and a layoutApplied in it kept
 -- the importer's reskin from ever placing its layout. Loading a profile
 -- leaves them as they are: it used to wipe every character's flight points.
--- The macro backup, when it is switched on, still writes them, and a copy
--- brought back (/mello backup restore) brings them back with the rest.
 function MelloUI:IsPersonalKey(moduleName, key)
 	local module = self.modules[moduleName]
 	local keep = module and module.keep
@@ -4737,14 +4694,12 @@ local function SwitchForProfile(self)
 	self:RestartModules()
 end
 
--- withPersonal: the text's personal keys are taken in as well (the player's
--- own copy brought back: MelloUI:RestoreMacroBackup, Core/Backup.lua); a
--- personal key the text does not hold stays as it is either way.
--- A deep table setting the text does not carry readably (an older profile's
--- empty lists, or the macro backup, which leaves them out) stays as it is
--- too, with its companions (MelloUI:HoldDeep, Core/Backup.lua).
-function MelloUI:ApplySettingsText(text, withPersonal)
-	local hold = self.HoldDeep and self:HoldDeep(text, withPersonal) or nil
+-- The text's personal keys are left out (StripPersonal); a personal key
+-- stays as it is. A deep table setting the text does not carry readably (an
+-- older profile's empty lists) stays as it is too, with its companions
+-- (MelloUI:HoldDeep, Core/Backup.lua).
+function MelloUI:ApplySettingsText(text)
+	local hold = self.HoldDeep and self:HoldDeep(text) or nil
 	for name, module in self:IterateModules() do
 		local db = self:GetModuleDB(name)
 		local held = hold and hold[name]
@@ -4758,7 +4713,7 @@ function MelloUI:ApplySettingsText(text, withPersonal)
 	for name in pairs(self.db.enabled) do
 		self.db.enabled[name] = nil
 	end
-	local applied = self:DeserializeSettings(withPersonal and text or StripPersonal(self, text), nil, hold)
+	local applied = self:DeserializeSettings(StripPersonal(self, text), nil, hold)
 	if self.initialized then
 		-- the loaded palette's table before any module is switched on or off
 		-- (they start in it); the kit's one walk in RestartModules, below
@@ -4769,7 +4724,6 @@ function MelloUI:ApplySettingsText(text, withPersonal)
 		if self.RefreshConfig then
 			self:RefreshConfig()
 		end
-		Backup(self, "profile")
 	end
 	return applied
 end
@@ -4891,7 +4845,6 @@ function MelloUI:ImportProfile(name, str)
 		return false, known
 	end
 	self:Profiles()[name] = text
-	Backup(self, "profile import")
 	return true, known, total
 end
 
@@ -4905,9 +4858,8 @@ function MelloUI:LoadProfile(name)
 	return true
 end
 
--- Nothing configured at all (a fresh install, or the saved variables missing:
--- a copy in the macro backup is never read back by itself): apply the
--- default profile.
+-- Nothing configured at all (a fresh install, or the saved variables
+-- missing): apply the default profile.
 function MelloUI:ApplyDefaultProfileIfFresh()
 	if self:SerializeSettings() ~= "" then
 		return false
@@ -4959,9 +4911,7 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 		end
 		self:AdoptSavedVariables("PLAYER_LOGIN")
 		-- (saved variables still missing here: the settings are a new
-		-- player's. The macro backup is never read back by itself any more
-		-- (0.14.0): a copy found there is said once and brought back only
-		-- when the player asks, /mello backup restore; Core/Backup.lua)
+		-- player's)
 		-- (no line for it: a new player gets the installer a few seconds in,
 		-- Core/Installer.lua's one login check)
 		self:ApplyDefaultProfileIfFresh()
@@ -4994,11 +4944,8 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 		-- Whatever table we have been editing is the one that must be saved.
 		self:AdoptSavedVariables("PLAYER_LOGOUT")
 		MelloUIDB = self.db
-		if self.WriteBackup then
-			self:WriteBackup("logout")
-		end
 		if self.Perf and self.Perf.LogoutStep then
-			self.Perf.LogoutStep("Core: the settings handed over, the macro backup written", debugprofilestop() - began)
+			self.Perf.LogoutStep("Core: the settings handed over", debugprofilestop() - began)
 		end
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		-- (first: the login's frames end LOGIN_SETTLE s from now, whatever
@@ -5014,9 +4961,6 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 		end
 		if self:AdoptSavedVariables("PLAYER_ENTERING_WORLD") then
 			self:RestartModules()
-			if self.BackupAfterAdopt then
-				self:BackupAfterAdopt()
-			end
 		end
 		if not self.menuTipTimer then
 			-- a few seconds in, after the login spam and a possible late settings load
@@ -5037,17 +4981,11 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 					self:Notice("Settings loaded late by the client and applied.")
 					ticker:Cancel()
 					self.adoptTicker = nil
-					if self.BackupAfterAdopt then
-						self:BackupAfterAdopt()
-					end
 				elseif ticks >= 60 then
 					ticker:Cancel()
 					self.adoptTicker = nil
 					-- none came: a fresh start (/mello status says so)
 					self.savedVariablesNone = true
-					if self.BackupAfterAdopt then
-						self:BackupAfterAdopt()
-					end
 				end
 			end)
 		end
