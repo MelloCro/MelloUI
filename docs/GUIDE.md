@@ -345,6 +345,32 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
 
 ### Chat
 
+- Chat View (0.23.0; Chat > Chat Frame > Look: Game Windows or Minimal): Minimal is MelloUI's own chat over the
+  game's windows, which stay alive out of sight under it. One panel: a rail of round tabs on its left (one per chat
+  window by its name, a count of the lines you have not seen, the wheel scrolls it; Whispers last), each line under
+  its sender's name in their class colour, the channel's short tag and the time (a run from one person under one
+  name), and a row of twelve round buttons under the lines -- S P R I G Y W E open the line you type in on that
+  chat the game's own way (a /use typed after still casts), then Channels, Friends, the Fight History and the chat
+  settings. A right click on a tab is the game's own tab menu for that window (Rename, Create New Window on General,
+  Close, Lock, Font Size, Settings: which chat and channels it shows), through a secure stand-in so the game's code
+  runs it untainted; windows made, renamed or closed come and go on the rail, each with its own font size (in a fight
+  the rail does not scroll). The channels you make (/join) get a tab of their own, fed by the game's channel event
+  (right-click: speak in it, leave it -- asked first); drag any tab up or down to reorder the rail (kept per character,
+  Chat's viewOrder; a new tab comes in just above Whispers); a thin scroll bar (W.ThinScrollBar, the dropdown lists'
+  own) when the tabs do not fit; the names in the chat's font, so Chat Size scales them and the tabs' spacing. The
+  lines and the whisper window's bubbles glide with Smooth Scrolling (by pixels from the foot, a line taken on as the
+  newest goes by its height; Reduce Motion or the option off: line by line). Links click as in the game's chat, an item or a spell shows its tooltip under the pointer, the lines
+  rise above the line you type in while it shows. Secret lines (chat messaging lockdown) show as they are: nothing
+  of them is measured. The chat's Background works on it: Parchment (the sheet, every colour in the chat's inks),
+  None (the panel clear), Set The Background Opacity (the panel's). The Fader's chat fade fades it.
+- The whisper window (Chat View: Minimal): a whisper puts a count on the Whispers tab (its rim lights once) and
+  shows the Whispers widget; a click on either grows one window up out of the chat's top edge (Reduce Motion: at
+  once) with every conversation: the people on the left (class picture, unread count, a dot while a friend, guild
+  member or Battle.net friend is online, how long ago, the last line), the talk in bubbles (theirs left, yours
+  right, the name and time over the first of a run), the person's header (name, level, class and zone where the
+  game knows them; Add Friend, Invite To Group, Ignore and Report, the Whisper Popup Window's four) and the answer
+  box (Enter sends, Enter on an empty box or Escape lets go). The Whispers tab or the cross fold it down, Escape
+  closes it. While Minimal is on it takes the Whisper Popup Window's place, and whispers stay in the main chat.
 - Move the input box above the chat window.
 - Input Box Only While Typing (0.20.4, on; Chat > Chat Frame > Behaviour): the input box shows only
   while you type -- Enter (or /) brings it up, sending the line or Escape puts it away -- the game's

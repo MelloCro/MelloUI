@@ -1489,6 +1489,85 @@ function Anim:Drive(frame, step, duration, easing, onDone)
 	self:To(frame, "drive", 1, duration, easing or "linear", onDone)
 end
 
+--------------------------------------------------------------------------------
+-- The drawer (0.23.0; the Services trays' of 0.22.1, made one for every drawer: the trays and the whisper window,
+-- docs/plans/chat-redesign.md). A panel comes out of an edge like a drawer: shown from that edge outward -- a
+-- clipping holder of the caller's grows from it -- the panel itself a share of its size behind the edge, so its
+-- contents rise into view behind the edge; and back in. The holder is the panel's parent, UIParent's size and
+-- clipping nothing while no drawer moves.
+--   job (the caller's, kept: no table per move): holder, content (its child), p / rel / rp / x / y (the content's
+--       one resting point, p "LEFT" | "RIGHT" | "TOP" | "BOTTOM": the point on the edge it comes out of -- "BOTTOM"
+--       grows up, "RIGHT" grows left), w / h (the content's size), lag (the share it trails, 0.35), pad (room round
+--       it in the holder, 24)
+--   Anim:DrawerLay(job, e)        laid `e` out (0: in, 1: out)
+--   Anim:DrawerRest(job)          the holder back to UIParent's rect, clipping nothing; the content at its place
+--   Anim:Drawer(job, out, time[, onDone])   out (outCubic) or in (smoothstep), `time` long; onDone(job) after the
+--       rest. Reduce Motion: at once. A drawer under way is replaced.
+--   Anim:StopDrawer(job)          a move under way ended where it is (laid at rest, no onDone)
+--------------------------------------------------------------------------------
+
+function Anim:DrawerLay(job, e)
+	local h, c = job.holder, job.content
+	local pad, lag = job.pad or 24, job.lag or 0.35
+	local dx, dy = 0, 0
+	h:ClearAllPoints()
+	h:SetPoint(job.p, job.rel, job.rp, job.x, job.y)
+	if job.p == "LEFT" or job.p == "RIGHT" then
+		h:SetSize(math.max(1, (job.w + pad) * e), job.h + 2 * pad)
+		dx = (job.p == "RIGHT" and 1 or -1) * (1 - e) * job.w * lag
+	else
+		h:SetSize(job.w + 2 * pad, math.max(1, (job.h + pad) * e))
+		dy = (job.p == "TOP" and 1 or -1) * (1 - e) * job.h * lag
+	end
+	c:ClearAllPoints()
+	c:SetPoint(job.p, job.rel, job.rp, job.x + dx, job.y + dy)
+end
+
+function Anim:DrawerRest(job)
+	local h = job.holder
+	h:SetClipsChildren(false)
+	h:ClearAllPoints()
+	h:SetAllPoints(UIParent)
+	if job.p then
+		job.content:ClearAllPoints()
+		job.content:SetPoint(job.p, job.rel, job.rp, job.x, job.y)
+	end
+	job.moving = false
+end
+
+local function DrawerStep(job, u)
+	local e
+	if job.out then
+		local q = 1 - u
+		e = 1 - q * q * q
+	else
+		e = 1 - u * u * (3 - 2 * u)
+	end
+	Anim:DrawerLay(job, e)
+end
+
+local function DrawerDone(job)
+	Anim:DrawerRest(job)
+	if job.onDone then
+		job.onDone(job)
+	end
+end
+
+function Anim:Drawer(job, out, time, onDone)
+	self:StopDrawer(job)
+	job.out, job.onDone, job.moving = out and true or false, onDone, true
+	job.holder:SetClipsChildren(true)
+	DrawerStep(job, 0)
+	self:Drive(job, DrawerStep, time, "linear", DrawerDone)
+end
+
+function Anim:StopDrawer(job)
+	if job.moving then
+		self:Stop(job, "drive")
+		self:DrawerRest(job)
+	end
+end
+
 -- The Reduce Motion switch. The running tweens end on the driver's next
 -- frame; the groups here at once. The groups are listed first and acted on
 -- after (review, 2026-09-24): a settle, or a group's own OnPlay / OnFinished,

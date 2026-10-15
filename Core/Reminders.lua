@@ -561,6 +561,8 @@ local function OverlayPlace(o, target)
 	o:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
 	return true
 end
+-- (0.23.0) the one way a secure overlay is laid over a button of ours: the chat view's tabs' stand-ins too
+Rem.OverlayPlace = OverlayPlace
 
 -- laid: on the ring while it has one, else on its own place (home: its
 -- standard place, the store passed by -- the mover's default, Edit Layout's

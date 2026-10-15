@@ -9,3 +9,4 @@
 
 Chat.lua
 ChatView.lua
+ChatWhispers.lua

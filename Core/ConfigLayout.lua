@@ -660,8 +660,10 @@ function L.Define(R, Link)
 	-- (0.19.4: the painted chat holds the input box and the tabs itself)
 	R("Chat", "Chat Frame", "Look", "Chat.hideEditBox", { when = Uncovered("ChatPanel", "chat") })
 	R("Chat", "Chat Frame", "Look", "Chat.hideTabs", { when = Uncovered("ChatPanel", "chat") })
-	R("Chat", "Chat Frame", "Look", "Chat.chatButtons")
-	R("Chat", "Chat Frame", "Layout", "Chat.editBoxTop")
+	-- (0.23.0: the Minimal Chat View has its own row of buttons and places the line you type in itself)
+	local NOT_MINIMAL = { key = "Chat.view", notValue = "minimal", line = "Not with the Minimal Chat View" }
+	R("Chat", "Chat Frame", "Look", "Chat.chatButtons", { when = NOT_MINIMAL })
+	R("Chat", "Chat Frame", "Layout", "Chat.editBoxTop", { when = NOT_MINIMAL })
 	R("Chat", "Chat Frame", "Behaviour", "Chat.editBoxWhileTyping")   -- (0.20.4: the game's Classic chat style)
 	R("Chat", "Chat Frame", "Behaviour", "Chat.smoothScroll")
 	R("Chat", "Messages", "Text", "Chat.shortChannels")
@@ -669,7 +671,9 @@ function L.Define(R, Link)
 	R("Chat", "Messages", "Text", "Chat.nameShade")
 	-- (free: read by MelloUI:Notice with Tweaks, and UI Modifications, off)
 	R("Chat", "Messages", "Behaviour", "Tweaks.chatNotices", { free = true })
-	R("Chat", "Whispers", "General", "Chat.whisperPopup")
+	-- (0.23.0: the Minimal Chat View's whisper window takes the whispers while it is on)
+	R("Chat", "Whispers", "General", "Chat.whisperPopup", { when = { key = "Chat.view", notValue = "minimal",
+		line = "Not with the Minimal Chat View: its whisper window takes the whispers" } })
 
 	-- Tooltip
 	R("Tooltip", "Tooltip", "General", "UIModifications.qol_Tooltip")
@@ -966,9 +970,10 @@ function L.Define(R, Link)
 	for _, key in ipairs({ "loot", "corpse", "timed", "summon", "resurrect", "ready", "threat", "whisper", "pet", "auction",
 		"craft", "cooldown", "questItem", "healer", "rare", "rareSound",
 		"bags", "bagsAt", "talents", "wellfed", "weapon", "buffs", "groupBuffs" }) do
-		-- (0.19.4: the whisper row is raised by Chat's popup alone)
+		-- (0.19.4: the whisper row is raised by Chat's popup alone; 0.23.0: or the Minimal Chat View's whisper window)
 		R("Reminders", "Widgets", "General", "Widgets." .. key, key == "whisper"
-			and { when = { key = "Chat.whisperPopup", value = true, line = "Needs Chat's Whisper Popup Window" } } or nil)
+			and { when = { any = { { key = "Chat.whisperPopup", value = true }, { key = "Chat.view", value = "minimal" } },
+				line = "Needs Chat's Whisper Popup Window or the Minimal Chat View" } } or nil)
 	end
 	R("Reminders", "Widgets", "Layout", "Reminders.widgetLock")
 	R("Reminders", "Widgets", "Layout", "Reminders.widgetMax")

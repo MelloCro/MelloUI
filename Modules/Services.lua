@@ -1456,18 +1456,14 @@ function Tray.Read(job)
 	end
 	job.p, job.rel, job.rp, job.x, job.y, job.w, job.h = p, rel, rp, x, y, w, h
 	job.side = p == "RIGHT" and 1 or -1   -- (the column on its right: the box comes from the right)
+	job.holder, job.content, job.pad, job.lag = Tray.holder, menu, Tray.PAD, Tray.LAG
 	return true
 end
 
 -- the drawer `e` out (0: in, 1: out): the holder's clip from the tray's edge by the column, the box LAG of its
--- width behind
+-- width behind (0.23.0: the one drawer, Anim:DrawerLay)
 function Tray.Lay(job, e)
-	local h = Tray.holder
-	h:ClearAllPoints()
-	h:SetPoint(job.p, job.rel, job.rp, job.x, job.y)
-	h:SetSize(math.max(1, (job.w + Tray.PAD) * e), job.h + 2 * Tray.PAD)
-	menu:ClearAllPoints()
-	menu:SetPoint(job.p, job.rel, job.rp, job.x + job.side * (1 - e) * job.w * Tray.LAG, job.y)
+	MelloUI.Anim:DrawerLay(job, e)
 end
 
 function Tray.Step(job, u)
@@ -1487,18 +1483,12 @@ end
 
 -- the holder back to clipping nothing, the tray at its place, its rows whole
 function Tray.Rest()
-	local h = Tray.holder
-	if not h then
+	if not Tray.holder then
 		return
 	end
-	h:SetClipsChildren(false)
-	h:ClearAllPoints()
-	h:SetAllPoints(UIParent)
 	local job = Tray.job
-	if job.p then
-		menu:ClearAllPoints()
-		menu:SetPoint(job.p, job.rel, job.rp, job.x, job.y)
-	end
+	job.holder, job.content = Tray.holder, menu
+	MelloUI.Anim:DrawerRest(job)
 	for i = 1, job.rows or 0 do
 		menu.rows[i]:SetAlpha(1)
 	end

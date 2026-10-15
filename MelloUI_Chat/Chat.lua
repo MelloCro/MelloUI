@@ -41,6 +41,8 @@ local M = MelloUI:RegisterModule("Chat", {
 	tweak = { label = "Chat Tweaks", desc = "Short channel names, class-coloured names, the whisper popup, the chat buttons, smooth scrolling, the names' form (Show Names As), the Background dropdown and the art-hiding switches (which only apply while the chat reskin is off). Off: every one of them goes.", order = 9 },
 	area = { key = "whisper", follows = "ChatPanel" },   -- the whisper popups: as the chat windows
 	keep = { "savedWhisperMode", "savedClassColorCVar", "savedChatStyle",   -- the player's own game settings, given back when off: never in a profile
+		-- (0.23.0) the Chat View rail's order: window numbers are a character's
+		"viewOrder",
 		-- (0.17.0) the Background dropdown's own copy: what it shows is read
 		-- back from the keys it sets (Background) -- the reskin's, the
 		-- parchment's, Dark Mode's (personal), hideBackground -- which carry the
@@ -72,7 +74,7 @@ local M = MelloUI:RegisterModule("Chat", {
 			{ value = "game", label = "Game Windows" },
 			{ value = "minimal", label = "Minimal" },
 		  },
-		  desc = "How the chat is shown. Game Windows: the game's chat windows and tabs. Minimal: one dark panel with a rail of round tabs (one per chat window) on its left, each line under its sender's name, channel and time, and a row of round buttons under the lines: Say, Party, Raid, Instance, Guild, Yell, Whisper and Emote open the line you type in on that chat, then Channels, Friends, the fight history and these settings. Work in progress: its whisper window and parchment come next." },
+		  desc = "How the chat is shown. Game Windows: the game's chat windows and tabs. Minimal: one panel with a rail of round tabs on its left (one per chat window, a count of the lines you have not seen; Whispers last), each line under its sender's name, channel and time, and a row of round buttons under the lines: Say, Party, Raid, Instance, Guild, Yell, Whisper and Emote open the line you type in on that chat, then Channels, Friends, the fight history and these settings. A whisper puts a count on the Whispers tab and shows the Whispers widget; either opens one whisper window above the chat with every conversation in it, theirs left and yours right. The Background's Parchment puts both on the parchment sheet." },
 		-- (0.16.0: the chat windows' look in one: the painted skin, its
 		-- parchment, Dark Mode's, the game's or none; the settings it sets
 		-- keep their own keys -- UI Modifications' ChatPanel and
@@ -85,7 +87,7 @@ local M = MelloUI:RegisterModule("Chat", {
 			{ value = "game", label = "Game" },
 			{ value = "none", label = "None" },
 		  }, get = function(db) return Background(db) end,
-		  desc = "The chat windows' background: the painted kit (Painted), the kit with a parchment sheet whose text is dark ink (Parchment), a dark panel of the palette behind the window, its tabs and its input box (Dark), the game's own, or none at all. Painted and Parchment need the reskin on (Look)." },
+		  desc = "The chat windows' background: the painted kit (Painted), the kit with a parchment sheet whose text is dark ink (Parchment), a dark panel of the palette behind the window, its tabs and its input box (Dark), the game's own, or none at all. Painted and Parchment need the reskin on (Look). With the Minimal Chat View: Parchment puts its lines and its whisper window on the parchment sheet in dark ink, None leaves its panel clear, the others keep its dark panel." },
 		{ type = "toggle", key = "windowAlphaOn", name = "Set The Background Opacity",
 		  desc = "Give every chat window the same background opacity, kept in your profile. Off, each window keeps the opacity set in its tab's menu." },
 		{ type = "slider", key = "windowAlpha", parent = "windowAlphaOn", name = "Background Opacity", min = 0, max = 1, step = 0.05, percent = true,
@@ -1292,6 +1294,8 @@ local function ChatInked()
 	return (MelloUI.QuestInk ~= nil and Kit and Kit.IsCovered and Kit:IsCovered("chat")
 		and Kit.ParchmentOn and Kit:ParchmentOn("chat")) and true or false
 end
+-- (0.23.0) the minimal chat and its whisper window on the same paper, in the same inks (ChatView.lua)
+M.ChatInk, M.ChatInked = ChatInk, ChatInked
 
 -- Where a text's first character's name begins: its player link, or a
 -- community channel's (|HplayerCommunity:, the game's link for a community
@@ -3263,10 +3267,10 @@ local function LinkLeave(self)
 end
 
 -- the four, made with the window (a conversation's first whisper)
-local function MakeActions(f)
+local function MakeActions(f, size)
 	local acts = {}
 	for _, id in ipairs(ACTIONS) do
-		local b = W.GlyphButton(f.head, ACTION_SIZE, id)
+		local b = W.GlyphButton(f.head, size or ACTION_SIZE, id)   -- (size: the minimal chat's whisper window's, 0.23.0)
 		b.popup, b.id = f, id
 		b.wanted = f.kind ~= "BN_WHISPER" or id == "invite" or id == "report"
 		Perf.SetScript(b, "OnClick", ActionClick)
@@ -3636,8 +3640,8 @@ local function OnWhisper(_, event, text, sender, ...)
 		return
 	end
 	local how = WHISPER_EVENTS[event]
-	if not (how and popupOn) then
-		return
+	if not (how and popupOn) or (M.View and M.View.on) then
+		return   -- (0.23.0: the minimal chat's whisper window takes them, ChatWhispers.lua)
 	end
 	local key, target, title, classFile, level
 	if how.kind == "BN_WHISPER" then
@@ -3783,8 +3787,54 @@ local function SetWhisperPopup(on)
 			f:Hide()
 		end
 	end
-	SetWhisperMode(popupOn)
+	SetWhisperMode(popupOn or (M.View ~= nil and M.View.on))
 end
+
+-- (0.23.0) the minimal chat keeps whispers in the main chat as the popups do (its whisper window shows them):
+-- the game's whisper setting held while either is on, the player's own back when both are off
+function M.WhisperModeAgain()
+	SetWhisperMode(popupOn or (M.View ~= nil and M.View.on))
+end
+
+-- (0.23.0) what the minimal chat's whisper window (ChatWhispers.lua) shares with the popups, never copied: the
+-- events, the header's four buttons (made on a conversation table with the popups' fields: head, target, kind,
+-- guid, reportLine, titleText), the answer, who someone is
+M.Whisper = {
+	EVENTS = WHISPER_EVENTS, ACTIONS = ACTIONS, ACTION_TEXT = ACTION_TEXT,
+	MakeActions = MakeActions, RefreshActions = RefreshActions, SendWhisper = SendWhisper,
+	CharacterIdentity = CharacterIdentity, BattleNetIdentity = BattleNetIdentity, ClassHex = ClassHex,
+	Known = Known, PopupColor = PopupColor, ShortPerson = ShortPerson, NameStyle = NameStyle,
+	GuildStale = function()
+		guildRoster.stale = true
+	end,
+	-- a friend's, a guild member's or a Battle.net friend's zone and whether they are online (nil: not known)
+	Where = function(kind, target, guid)
+		if kind == "BN_WHISPER" then
+			local info = C_BattleNet and Ask(C_BattleNet.GetAccountInfoByID, target)
+			local game = type(info) == "table" and info.gameAccountInfo
+			if type(game) == "table" then
+				return MelloUI.Safe.Text(game.areaName), Known(game.isOnline) and game.isOnline or nil
+			end
+			return nil, nil
+		end
+		if C_FriendList and C_FriendList.GetFriendInfo then
+			local info = Ask(C_FriendList.GetFriendInfo, target)
+			if type(info) == "table" then
+				return MelloUI.Safe.Text(info.area), Known(info.connected) and info.connected or nil
+			end
+		end
+		if IsInGuild and Ask(IsInGuild) and GetGuildRosterInfo then
+			local row = GuildRow(target, guid)
+			if row then
+				local ok, _, _, _, _, _, zone, _, _, online = pcall(GetGuildRosterInfo, row)
+				if ok then
+					return MelloUI.Safe.Text(zone), Known(online) and online and true or nil
+				end
+			end
+		end
+		return nil, nil
+	end,
+}
 
 --------------------------------------------------------------------------------
 -- Module lifecycle
@@ -3931,6 +3981,9 @@ end
 -- widget column's Whispers row, its Reply); false when there is no such
 -- window (the popups off, or none opened this session)
 function M:OpenWhisper(key)
+	if M.View and M.View.on and M.Whispers then
+		return M.Whispers.Open(key)   -- (0.23.0: the minimal chat's whisper window)
+	end
 	local f = popups[key]
 	if not f then
 		return false
@@ -3992,6 +4045,9 @@ function M:OnSettingChanged(key, value, db)
 		HookLines()
 	elseif key == "background" then
 		M.SetBackground(value)
+		if M.View then
+			M.View.Apply()   -- (the minimal chat's paper and panel follow it)
+		end
 	elseif key == "nameShade" then
 		for frame in pairs(shadeWanted) do
 			pcall(ShadeLines, frame)

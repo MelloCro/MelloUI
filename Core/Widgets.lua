@@ -2627,6 +2627,32 @@ do
 end
 
 --------------------------------------------------------------------------------
+-- ThinScrollBar (0.23.0; lifted from the dropdown lists' own, for the chat
+-- view's rail too): MelloUI's thin scroll bar for its own lists -- a vertical
+-- Slider, a `border` track, a `trim` thumb, its value in rows (step 1). The
+-- caller places it, sets its range and its OnValueChanged, and may size the
+-- thumb (bar.thumb) to the share of the list in view.
+--   W.ThinScrollBar(parent, width) -> bar
+--------------------------------------------------------------------------------
+
+function W.ThinScrollBar(parent, width)
+	local bar = CreateFrame("Slider", nil, parent)
+	bar:SetOrientation("VERTICAL")
+	bar:SetWidth(width)
+	bar:EnableMouseWheel(false)
+	local track = W.Solid(bar, "BACKGROUND", "border", 1)
+	track:SetAllPoints(bar)
+	local thumb = bar:CreateTexture(nil, "ARTWORK")
+	thumb:SetWidth(width)
+	W.Paint(thumb, "trim", "fill", 1)
+	bar:SetThumbTexture(thumb)
+	bar:SetValueStep(1)
+	bar:SetObeyStepOnDrag(true)
+	bar.thumb = thumb
+	return bar
+end
+
+--------------------------------------------------------------------------------
 -- Glyph (0.16.0): the widget glyphs, one sheet (Media/Textures/WidgetGlyphs,
 -- 8 x 4 cells of 32 px, white: made by Tools/make_widget_art.py; 8 x 2 until
 -- 0.17.0) for the widget column's buttons, the whisper window's header
@@ -4483,28 +4509,17 @@ do
 		end
 	end, "script")
 
-	-- a long list's scroll bar: a thin `border` track, a `trim` thumb (made
-	-- with the first long list)
+	-- a long list's scroll bar: MelloUI's thin one (W.ThinScrollBar), made
+	-- with the first long list
 	local function ListBar(menu)
 		local bar = menu.listBar
 		if bar then
 			return bar
 		end
-		bar = CreateFrame("Slider", nil, menu)
-		bar:SetOrientation("VERTICAL")
-		bar:SetWidth(LIST_BAR)
+		bar = W.ThinScrollBar(menu, LIST_BAR)
 		bar:SetPoint("TOPRIGHT", menu, "TOPRIGHT", -LIST_PAD, -LIST_PAD)
 		bar:SetPoint("BOTTOMRIGHT", menu, "BOTTOMRIGHT", -LIST_PAD, LIST_PAD)
-		bar:EnableMouseWheel(false)
-		local track = W.Solid(bar, "BACKGROUND", "border", 1)
-		track:SetAllPoints(bar)
-		local thumb = bar:CreateTexture(nil, "ARTWORK")
-		thumb:SetWidth(LIST_BAR)
-		W.Paint(thumb, "trim", "fill", 1)
-		bar:SetThumbTexture(thumb)
-		bar:SetValueStep(1)
-		bar:SetObeyStepOnDrag(true)
-		bar.menu, bar.thumb = menu, thumb
+		bar.menu = menu
 		Perf.SetScript(bar, "OnValueChanged", ListBarMoved)
 		menu.listBar = bar
 		return bar
