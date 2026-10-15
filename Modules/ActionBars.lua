@@ -22,6 +22,11 @@
 --   Hide Page Arrows (user, 2026-09-21; on for everyone since onelook stage
 --   D4): the main bar's page number and its up / down arrows faded and
 --   their mouse off; the bar still pages with the keybinds.
+--   Hide Bar Art (0.25.0; user, 2026-10-15, on by default): Action Bar 1
+--   without the game's bar art, like the other bars, through the game's own
+--   Edit Mode setting saved into the player's own active layout
+--   (Core/EditModeLayout.lua; shows from the next reload; never a preset);
+--   off: the game's value back where MelloUI changed it. Its section below.
 -- Hidden and always on (no switch of its own: each row switches one thing);
 -- the installer's role "look" (Reskin only takes Full's backdrops, as it
 -- took the skin's). Nothing at login while every backdrop is off and no skin
@@ -89,10 +94,16 @@ local ELEMENTS = {
 	  what = "the second status bar (a watched reputation while you level)" },
 }
 
-local defaults = { hidePageArrows = true }
+local defaults = { hidePageArrows = true, hideBarArt = true }
 local options = {
 	{ type = "toggle", key = "hidePageArrows", name = "Hide Page Arrows",
 	  desc = "Hide the main bar's page number and its up / down arrows (the bar still pages with the keybinds)." },
+	-- (0.25.0; the user, 2026-10-15: "MelloUI hides it") the game's own Edit Mode setting (Hide Bar Art, below)
+	{ type = "toggle", key = "hideBarArt", name = "Hide Bar Art", new = "0.25.0",
+	  desc = "Action Bar 1 without the game's bar art (its frame, dividers and the art of empty slots), like "
+		.. "the other bars: MelloUI ticks Edit Mode's own Hide Bar Art for it. Only on your own Edit Mode layouts: a "
+		.. "preset such as Modern can't be changed. Shows after a /reload. Off: the art back on the layouts MelloUI "
+		.. "changed (or set it yourself in Edit Mode)." },
 }
 for _, e in ipairs(ELEMENTS) do
 	defaults[e.key] = false
@@ -107,7 +118,7 @@ end
 local M = MelloUI:RegisterModule("ActionBars", {
 	title = "Action Bars",
 	desc = "The backdrops round the action bars, the micro menu, the bag bar and the experience bars, and the main bar's "
-		.. "page arrows hidden, whatever their look.",
+		.. "page arrows and bar art hidden, whatever their look.",
 	-- (always on: no switch of its own, each of its rows switches one thing)
 	hidden = true,
 	role = "look",
@@ -115,8 +126,9 @@ local M = MelloUI:RegisterModule("ActionBars", {
 	defaults = defaults,
 	options = options,
 	-- the per-element switches taken over once (MigrateBackdrops): this
-	-- machine's step, never in a profile
-	keep = { "backdropsMigrated" },
+	-- machine's step, never in a profile; (0.25.0) Hide Bar Art's records:
+	-- the game's values MelloUI replaced, to give back
+	keep = { "backdropsMigrated", "barArtWas" },
 })
 M.ELEMENTS = ELEMENTS
 
@@ -847,6 +859,356 @@ local function ApplyPageArrows()
 end
 
 --------------------------------------------------------------------------------
+-- Hide Bar Art (0.25.0; the user, 2026-10-15: Action Bar 1 wore the game's bar
+-- art -- UI-HUD-ActionBar-Frame, the dividers, the winged empty slots -- and
+-- the other bars none; asked, "MelloUI hides it"). Not the gryphons: on this
+-- client they are a system of their own (MainActionBarEndCap, its own Hidden;
+-- Camelot's MAIN_ACTION_BAR_MANAGE_END_CAPS false), which Hide Bar Art reaches
+-- only through the bar's OnShow (gone after the bar is shown again, back at a
+-- reload): left to the game here (the user's look decision). Steered with
+-- the game's OWN Edit Mode setting, Hide Bar Art of the main bar
+-- (Enum.EditModeActionBarSetting.HideBarArt; the game draws it in
+-- EditModeActionBarSystemMixin:UpdateSystemSettingHideBarArt), saved into the
+-- player's active layout through Core/EditModeLayout.lua: C_EditMode only,
+-- never the manager's methods, never laid out from here (its synchronous
+-- re-layout ran on MelloUI's script budget, 0.19.9): the game shows it from the
+-- next reload. Only the player's own layouts: a preset cannot be changed, and
+-- nothing is copied or made active for it (the active layout is never
+-- switched). Never in a fight (the core's combat queue), never while Edit Mode
+-- is open (it would save its own copy over ours): its close runs it again.
+--   when     the start-up pass (once every module is on), the game's
+--            EDIT_MODE_LAYOUTS_UPDATED (the layouts loaded, another layout
+--            made active), a spec change, Edit Mode closed: a frame later, one
+--            pass at a time. Silent, but for a switch the player threw: the
+--            /reload line once a session, the preset's line
+--   records  barArtWas[owner][layout name] = the value MelloUI replaced, or
+--            false: the player unchecked it in Edit Mode since (the art hidden
+--            on the screen as Edit Mode opened, 0 saved on THAT layout as it
+--            closed, read by name: another may be active by then): left alone
+--            from then on. A save of Edit Mode's stale copy (MelloUI's value
+--            saved, the art still showing until a reload) is written over
+--            again. The owner: "account" for an account layout (every
+--            character sees it), the character's own key (its GUID) for one of
+--            its character layouts (no other character sees those; the saved
+--            settings are the account's). Personal (`keep`): a game setting
+--            borrowed, to give back
+--   off      the game's value back on every layout MelloUI changed that this
+--            character sees (the account's and its own, by name and type, in
+--            one save), those records gone; another character's kept for its
+--            own next pass. The module switched off (a restart) leaves the
+--            layouts as they are; enabled with the option off and records of
+--            its own kept (a profile loaded), they are given back
+--------------------------------------------------------------------------------
+
+local Art = {}   -- Start, Stop, Changed, EditMode (below)
+do
+	local InCombat, EditModeOpen = MelloUI.InCombat, MelloUI.EditModeOpen
+	local PASS_KEY = "Action bars: bar art"           -- (Kit:NextFrame's key)
+	local COMBAT_KEY = "Action bars: bar art, after the fight"   -- (Kit:WhenOutOfCombat's)
+	local TEXT = {
+		preset = "Hide Bar Art: your Edit Mode layout '%s' is one of the game's presets, which can't be changed; "
+			.. "pick or copy a layout of your own in Edit Mode.",
+	}
+	local pending = false   -- a pass asked for
+	local say = false       -- the player threw the switch: the lines, if something comes of it
+	local entered           -- { name, kind, owner, live }: the active layout and the art on the screen as Edit Mode opened
+	local events            -- the listener (made with the first wish, at the module's enable)
+	local ACCOUNT = "account"   -- (the owner of an account layout's records)
+
+	-- the main bar's system, its index and the setting (nil on a client without them)
+	local function Ids()
+		local E = rawget(_G, "Enum")
+		local sys = type(E) == "table" and type(E.EditModeSystem) == "table" and E.EditModeSystem.ActionBar
+		local bars = type(E) == "table" and E.EditModeActionBarSystemIndices
+		local settings = type(E) == "table" and E.EditModeActionBarSetting
+		local index = type(bars) == "table" and bars.MainBar
+		local setting = type(settings) == "table" and settings.HideBarArt
+		if type(sys) ~= "number" or type(index) ~= "number" or type(setting) ~= "number"
+			or not MelloUI.EditModeSystemSettings then
+			return nil
+		end
+		return sys, index, setting
+	end
+
+	local function ArtWanted()
+		return M.db ~= nil and M.db.hideBarArt == true
+	end
+
+	-- this character's own key (its GUID; nil while unreadable)
+	local function CharKey()
+		local ok, guid = pcall(UnitGUID, "player")
+		if not ok or Secret(guid) or type(guid) ~= "string" or guid == "" then
+			return nil
+		end
+		return "char_" .. (guid:gsub("[^%w]", ""))
+	end
+
+	-- whose records a layout's are (see the header): the account's or this
+	-- character's; nil for a type MelloUI leaves alone (none it knows) or
+	-- while the character is unreadable
+	local function Owner(kind)
+		local E = rawget(_G, "Enum")
+		local types = type(E) == "table" and E.EditModeLayoutType
+		if type(types) ~= "table" or kind == nil then
+			return nil
+		end
+		if kind == types.Account then
+			return ACCOUNT
+		elseif kind == types.Character then
+			return CharKey()
+		end
+		return nil
+	end
+
+	-- one owner's records (made when asked)
+	local function Records(owner, make)
+		local db = M.db
+		if not (db and owner) then
+			return nil
+		end
+		local all = db.barArtWas
+		local t = type(all) == "table" and all[owner] or nil
+		if type(t) ~= "table" then
+			if not make then
+				return nil
+			end
+			if type(all) ~= "table" then
+				all = {}
+				db.barArtWas = all
+			end
+			t = {}
+			all[owner] = t
+		end
+		return t
+	end
+
+	-- records this character can give back (the account's, its own)
+	local function Mine()
+		local rec, own = Records(ACCOUNT), Records(CharKey())
+		return (rec ~= nil and next(rec) ~= nil) or (own ~= nil and next(own) ~= nil)
+	end
+
+	-- the art hidden on the screen now: the game's own flag on its bar (read only)
+	local function LiveHidden()
+		local bar = rawget(_G, "MainActionBar")
+		local v = type(bar) == "table" and rawget(bar, "hideBarArt") or nil
+		if Secret(v) then
+			return false
+		end
+		return v == true
+	end
+
+	-- the active layout: its main bar's values, preset or not, its name and
+	-- type (nil while unread)
+	local function ActiveBar()
+		local sys, index = Ids()
+		if not sys then
+			return nil
+		end
+		local values, preset, name, kind = MelloUI:EditModeSystemSettings(sys, index)
+		if type(values) ~= "table" or type(name) ~= "string" then
+			return nil   -- (unread: the layouts not loaded yet -- their event comes)
+		end
+		return values, preset, name, kind
+	end
+
+	-- Edit Mode closed with the art hidden on the screen as it opened: the
+	-- layout active THEN, read by name (the player may have picked another
+	-- since, or saved and switched), 0 saved there: the player's own untick
+	local function Unticked(was)
+		local sys, index, setting = Ids()
+		local values = sys and MelloUI:EditModeLayoutSystemSettings(was.name, sys, index, was.kind)
+		local v = type(values) == "table" and values[setting] or nil
+		if type(v) == "number" and v ~= 1 then
+			Records(was.owner, true)[was.name] = false
+		end
+	end
+
+	local function Apply()
+		local values, preset, name, kind = ActiveBar()
+		local was = entered
+		entered = nil
+		if was and was.live then
+			Unticked(was)
+		end
+		if not values then
+			return
+		end
+		if preset then
+			if say then
+				MelloUI:Announce(TEXT.preset:format(name), "info")
+			end
+			return
+		end
+		local sys, index, setting = Ids()
+		local now = values[setting]
+		local owner = Owner(kind)
+		if type(now) ~= "number" or now == 1 or not owner then
+			return   -- (hidden already; or a layout of no type MelloUI knows: left alone)
+		end
+		local rec = Records(owner, true)
+		if rec[name] == false then
+			return   -- (the player's own: unchecked in Edit Mode since)
+		end
+		local ok, _, saved = MelloUI:SetEditModeSystemSettings(sys, index, { [setting] = 1 })
+		if ok and saved then
+			if rec[name] == nil then
+				rec[name] = now
+			end
+			if say then
+				MelloUI:SayEditModeReload()
+			end
+		end
+	end
+
+	-- the game's values back on the layouts this character sees (the
+	-- account's, its own), by name and type, in one save; those records
+	-- gone, another character's kept for its own pass
+	local function Restore()
+		local sys, index, setting = Ids()
+		local all = M.db and M.db.barArtWas
+		local E = rawget(_G, "Enum")
+		local types = type(E) == "table" and E.EditModeLayoutType
+		if not (sys and type(all) == "table" and type(types) == "table") then
+			return
+		end
+		local entries, owners = {}, {}
+		local function Add(owner, kind)
+			local rec = owner and all[owner]
+			if type(rec) ~= "table" then
+				return
+			end
+			owners[#owners + 1] = owner
+			for name, was in pairs(rec) do
+				if type(name) == "string" and type(was) == "number" and was ~= 1 then
+					entries[#entries + 1] = { layout = name, layoutType = kind, system = sys, index = index,
+						values = { [setting] = was } }
+				end
+			end
+		end
+		Add(ACCOUNT, types.Account)
+		Add(CharKey(), types.Character)
+		local ok, saved = true, false
+		if #entries > 0 then
+			local _
+			ok, _, saved = MelloUI:SetEditModeLayoutSettings(entries)
+		end
+		if ok then
+			for _, owner in ipairs(owners) do
+				all[owner] = nil
+			end
+			for owner, rec in pairs(all) do
+				if type(rec) ~= "table" or next(rec) == nil then
+					all[owner] = nil   -- (nothing kept there)
+				end
+			end
+			if next(all) == nil then
+				M.db.barArtWas = nil
+			end
+			if saved and say then
+				MelloUI:SayEditModeReload()
+			end
+		end
+	end
+
+	local Pass
+	Pass = function()
+		pending = false
+		if not on then
+			return
+		end
+		if InCombat() then
+			Kit:WhenOutOfCombat(Pass, COMBAT_KEY)
+			return
+		end
+		if EditModeOpen() then
+			return   -- (its close asks again)
+		end
+		if ArtWanted() then
+			Apply()
+		else
+			Restore()
+		end
+		say = false
+	end
+
+	local function Schedule()
+		if pending or not Ids() then
+			return   -- (asked already; or a client without Edit Mode's layouts: nothing to do)
+		end
+		pending = true
+		Kit:NextFrame(PASS_KEY, Pass)
+	end
+
+	local function OnEvent()
+		Schedule()
+	end
+
+	local function Listen(want)
+		if want and not events then
+			events = CreateFrame("Frame")
+			Perf.SetScript(events, "OnEvent", OnEvent)
+		end
+		if not events then
+			return
+		end
+		if want then
+			pcall(events.RegisterEvent, events, "EDIT_MODE_LAYOUTS_UPDATED")
+			pcall(events.RegisterUnitEvent, events, "PLAYER_SPECIALIZATION_CHANGED", "player")
+		else
+			events:UnregisterAllEvents()
+		end
+	end
+
+	-- the module on: listening while wanted; a pass once every module is on
+	-- (the start-up pass), when wanted or something is to be given back.
+	-- Nothing at all on a client without Edit Mode's layouts
+	function Art.Start()
+		if not Ids() then
+			return
+		end
+		Listen(ArtWanted())
+		if ArtWanted() or Mine() then
+			MelloUI:WhenModulesOn(Schedule)
+		end
+	end
+
+	-- the module off: nothing given back (a restart switches it off and on)
+	function Art.Stop()
+		Listen(false)
+		entered = nil
+	end
+
+	-- the player threw the switch
+	function Art.Changed()
+		Listen(ArtWanted() and Ids() ~= nil)
+		entered = nil
+		say = true
+		Schedule()
+	end
+
+	-- Edit Mode opened (the active layout and the art on the screen noted) or
+	-- closed (a pass)
+	function Art.EditMode(entering)
+		if not on then
+			return
+		end
+		if entering then
+			entered = nil
+			if ArtWanted() then
+				local values, preset, name, kind = ActiveBar()
+				local owner = values and not preset and Owner(kind)
+				if owner then
+					entered = { name = name, kind = kind, owner = owner, live = LiveHidden() }
+				end
+			end
+		elseif ArtWanted() or Mine() then
+			Schedule()
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
 -- The module
 --------------------------------------------------------------------------------
 
@@ -854,6 +1216,7 @@ local function OnEditMode(entering)
 	if not entering then
 		ScheduleBackdrop()
 	end
+	Art.EditMode(entering)
 end
 
 local hooked = false
@@ -927,10 +1290,13 @@ function M:OnEnable(db)
 	-- (the first layout once every module is up: the skin's dressing first,
 	-- so a player with the skin on never sees MelloUI's own look first)
 	MelloUI:WhenModulesOn(ScheduleBackdrop)
+	-- (0.25.0) Hide Bar Art: its listener, its first pass once every module is on
+	Art.Start()
 end
 
 function M:OnDisable()
 	on = false
+	Art.Stop()
 	for _, f in pairs(holders) do
 		f:Hide()
 	end
@@ -944,6 +1310,8 @@ function M:OnSettingChanged(key, _, db)
 	self.db = db
 	if key == "hidePageArrows" then
 		ApplyPageArrows()
+	elseif key == "hideBarArt" then
+		Art.Changed()
 	elseif ELEMENT_KEY[key] then
 		-- an element's backdrop switched on or off: the backdrops again
 		Count()
