@@ -357,15 +357,22 @@ end
 -- that change to every texture in the UI i really low the dimmed edges"): its fill's two ends dimmed to half over
 -- SOFT_END units (Media/Textures/Masks/BarEnd and its mirror BarEndR: half to full in a straight line, their far
 -- side clamped so the rest of the bar passes) and its top and bottom over a 16th of its height (the plain white
--- mask clamped to black up and down only) -- the party bars' dimmed edges at any length. Three masks a bar, made
--- once and kept (never per call), put on its fill (the one texture a bar keeps through SetStatusBarTexture) or on
--- `tex` (a cover of the bar's fill); `off` takes them off again. -> the masks (nil for no bar)
+-- mask clamped to black up and down only) -- the party bars' dimmed edges at any length. The client takes three
+-- masks a texture, no more (the user's error, 2026-10-16: "Texture already has the maximum number of mask textures
+-- (3)"; Blizzard_EncounterTimeline guards its own the same way), and a fill may wear the game's shape and Bar
+-- Textures' already: the soft ends take only the room left -- three: both ends and the top and bottom; two: both
+-- ends; one: the plain white mask clamped to black all round (the party bars' own look, its ends a 16th of the
+-- bar); none: nothing. The masks made once a bar and kept (never per call), put on its fill (the one texture a bar
+-- keeps through SetStatusBarTexture) or on `tex` (a cover of the bar's fill); `off` takes them off again. -> the
+-- masks worn (nil for none)
 do
 	local SOFT_END = 4.25   -- (the party bars' own: 68 wide, a 16th of it)
+	local MAX_MASKS = 3
 	local END_L = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Masks\\BarEnd"
 	local END_R = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Masks\\BarEndR"
-	local soft = setmetatable({}, { __mode = "k" })   -- [bar] = its three masks
-	local wearing = setmetatable({}, { __mode = "k" })   -- [texture] = true while it wears its bar's masks
+	local WHITE8 = "Interface\\Buttons\\WHITE8X8"
+	local soft = setmetatable({}, { __mode = "k" })   -- [bar] = its masks: l, r, v, one
+	local wearing = setmetatable({}, { __mode = "k" })   -- [texture] = the masks it wears of its bar's
 
 	local function Masks(bar)
 		local masks = soft[bar]
@@ -383,9 +390,12 @@ do
 		r:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
 		r:SetWidth(SOFT_END)
 		local v = bar:CreateMaskTexture()
-		v:SetTexture("Interface\\Buttons\\WHITE8X8", "CLAMP", "CLAMPTOBLACKADDITIVE")
+		v:SetTexture(WHITE8, "CLAMP", "CLAMPTOBLACKADDITIVE")
 		v:SetAllPoints(bar)
-		masks = { l, r, v }
+		local one = bar:CreateMaskTexture()
+		one:SetTexture(WHITE8, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		one:SetAllPoints(bar)
+		masks = { l = l, r = r, v = v, one = one, sets = { { l, r, v }, { l, r }, { one } } }
 		soft[bar] = masks
 		return masks
 	end
@@ -403,24 +413,33 @@ do
 			return nil
 		end
 		tex = tex or (type(bar.GetStatusBarTexture) == "function" and bar:GetStatusBarTexture()) or nil
+		if not tex then
+			return nil
+		end
+		local worn = wearing[tex]
 		if off then
-			local masks = soft[bar]
-			if tex and masks and wearing[tex] then
-				for _, m in ipairs(masks) do
+			if worn then
+				for _, m in ipairs(worn) do
 					pcall(tex.RemoveMaskTexture, tex, m)
 				end
 				wearing[tex] = nil
 			end
-			return masks
+			return nil
 		end
-		local masks = Masks(bar)
-		if tex and type(tex.AddMaskTexture) == "function" and not wearing[tex] then
-			for _, m in ipairs(masks) do
-				tex:AddMaskTexture(m)
-			end
-			wearing[tex] = true
+		if worn or type(tex.AddMaskTexture) ~= "function" then
+			return worn
 		end
-		return masks
+		local okN, n = pcall(tex.GetNumMaskTextures, tex)
+		local free = MAX_MASKS - ((okN and type(n) == "number") and n or MAX_MASKS)
+		if free < 1 then
+			return nil
+		end
+		local set = Masks(bar).sets[free >= 3 and 1 or free == 2 and 2 or 3]
+		for _, m in ipairs(set) do
+			tex:AddMaskTexture(m)
+		end
+		wearing[tex] = set
+		return set
 	end
 end
 
