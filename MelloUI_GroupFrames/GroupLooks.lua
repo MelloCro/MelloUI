@@ -58,7 +58,14 @@ local KIND_SAMPLE_TYPE = { group = "Magic", mine = "Magic", any = "Magic", Magic
 	Disease = "Disease", Poison = "Poison" }
 local UNKNOWN_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"   -- look-ok: a spell not known yet
 
+-- the indicators' time and stacks: their Font row's face (one look C11,
+-- GroupFrames.indicatorFont; RD.DB() so the stage's Try shows it), else the
+-- numbers' face as the Fonts module has it
 local function FontFile()
+	local face = MelloUI:FaceOf(RD.DB().indicatorFont)
+	if face then
+		return face
+	end
 	local f = rawget(_G, "NumberFontNormalSmall") or rawget(_G, "GameFontHighlightSmall")
 	local file = f and f.GetFont and f:GetFont()
 	return file or rawget(_G, "STANDARD_TEXT_FONT")

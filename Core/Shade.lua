@@ -402,6 +402,10 @@ end
 --   MelloUI.Shade:MeasureFont(m[, source])
 --       its font copied again, from `source` (which it then follows, font
 --       only: its anchor stays) or from its own: after the line's restyle
+--   MelloUI.Shade:SourceFont(source)
+--       every measure of `source` copies its font again: a line whose own
+--       font changed outside a 'fonts' Fire (one look C11: a unit frame
+--       name's face, Modules/UnitFrames.lua NameFace)
 --   MelloUI.Shade:ClearMeasure(m)
 --       empty, and its secret text aspect dropped (ClearText; SetText("")
 --       where there is none)
@@ -606,6 +610,15 @@ do
 		end
 		CopyFont(measures[m], m)
 		m:SetAlpha(0)   -- (the font object set it back; its holder keeps it unseen anyway)
+	end
+
+	function Shade:SourceFont(source)
+		for m, src in pairs(measures) do
+			if src == source then
+				CopyFont(source, m)
+				m:SetAlpha(0)   -- (the font object set it back; its holder keeps it unseen anyway)
+			end
+		end
 	end
 
 	function Shade:ClearMeasure(m)

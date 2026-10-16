@@ -126,6 +126,7 @@ local S = {
 	casting = false, hopping = false, hooked = false, preview = false, previewHealth = nil,
 	watching = false,
 	reads = { shield = nil, cast = nil, path = {} },   -- what was read plain or secret (/mello personal secrets)
+	texts = setmetatable({}, { __mode = "k" }),   -- [fs] = its size: the texts in Text Font's face (StyleText)
 }
 local Shield = {}
 
@@ -180,7 +181,9 @@ local function Rows(kind)
 end
 
 local function StyleText(fs, size)
-	MelloUI.Look.Text(fs, "text", size)
+	-- (one look C11: their own face, Text Font; Shared the Interface text's)
+	S.texts[fs] = size
+	MelloUI.Look.Text(fs, "text", size, { face = Db().textFont })
 	fs:SetShadowOffset(1, -1)
 end
 
@@ -2240,7 +2243,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 	-- profile
 	keep = { "savedGameDisplay", "zoomRef", "savedSwing" },
 	defaults = { width = 160, height = 10, shield = true, text = true, hop = true, zoom = true, hideCastBar = true,
-		healFrom = true, swing = true, cooldowns = true, cdSize = 16 },
+		healFrom = true, swing = true, cooldowns = true, cdSize = 16, textFont = "shared" },
 	options = {
 		{ type = "toggle", key = "shield", name = "Shield Column",
 		  desc = "An upright bar beside your character for every shield on you added up, as the game counts them: spells (Power Word: Shield, Ice Barrier, Mana Shield, the wards), talents and items, the ones against one kind of damage too. Each shield is its own part, in its school's colour (Power Word: Shield gold, Ice Barrier frost, Mana Shield arcane, a Fire Protection Potion fire), stacked in the order they went up, its icon beside the column. It fills when one goes up, drains as it takes the hits, turns amber when low and breaks when the last one is gone; one ending while another holds only takes its part away. Edit Layout places it." },
@@ -2254,6 +2257,8 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "The buffs you give yourself on a cooldown -- Shield Wall, Shield Block, Last Stand, Evasion, Ice Block, Recklessness, a trinket's -- as icons above the health bar, their time sweeping round them and their seconds on them, the most important first: an immunity, then damage taken down, more health, block, evasion, the rest. From the game's own spell data, for every class." },
 		{ type = "toggle", key = "text", name = "Percent And Spell Text",
 		  desc = "Your health and power in percent beside their bars, the spell and its seconds on the cast bar, and the shield's amount under its column." },
+		{ type = "dropdown", key = "textFont", name = "Text Font", values = MelloUI.FontFaces, new = "0.25.0",
+		  desc = "The face of the display's texts: the percents, the spell and its seconds, the shield's amount. Shared: the Interface text's face (Look > Fonts)." },
 		{ type = "toggle", key = "hop", name = "Hop When You Jump",
 		  desc = "The display hops with you when you jump, as Legion's did under your character. Reduce Motion keeps it still." },
 		{ type = "slider", key = "width", name = "Width", min = 100, max = 260, step = 5,
@@ -2497,6 +2502,10 @@ function M:OnSettingChanged(key, _, db)
 		end
 	elseif key == "cdSize" then
 		Cds.Icons()
+	elseif key == "textFont" then
+		for fs, size in pairs(S.texts) do
+			StyleText(fs, size)
+		end
 	end
 end
 

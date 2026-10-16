@@ -140,7 +140,7 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "0.25.0", lines = {
 		"One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off.",
-		"Configurator: Unit & Group Frames is one designer: pick a frame, then a part; drag the party's and raid's parts on their large frame.",
+		"Configurator: Unit & Group Frames is one designer: pick a frame, then a part (each text its own Font); drag the party's and raid's parts on their large frame.",
 		"Windows: a new frame -- the logo heads the configurator's side list, small windows get a slim strip.",
 		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, Hide Bar Art, a Bar Texture for each.",
 		"Action bars and minimap: backdrops and MelloUI's minimap for everyone, no painted skin needed.",

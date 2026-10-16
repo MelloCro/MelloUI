@@ -284,6 +284,10 @@ local M = MelloUI:RegisterModule(OWNER, {
 		nameLength = 0,
 		healthText = "percent",
 		statusText = true,
+		-- (one look C11) the texts' own faces: MelloUI.FontFaces' values
+		nameFont = "shared",
+		healthFont = "shared",
+		indicatorFont = "shared",
 		-- the indicators (the Designer)
 		indicators = true,
 		sets = {},
@@ -379,6 +383,12 @@ local M = MelloUI:RegisterModule(OWNER, {
 		  desc = "The health shown as text: its percent, the current health, or how much is missing." },
 		{ type = "toggle", key = "statusText", name = "Dead / Offline Text",
 		  desc = "Dead, Ghost or Offline written on a member's frame." },
+		{ type = "dropdown", key = "nameFont", name = "Name Font", values = MelloUI.FontFaces, new = "0.25.0",
+		  desc = "The face of the names on your party and raid frames. Shared: the Interface text's face (Look > Fonts)." },
+		{ type = "dropdown", key = "healthFont", name = "Health Text Font", values = MelloUI.FontFaces, new = "0.25.0",
+		  desc = "The face of the health text on your party and raid frames, and of the Dead, Ghost and Offline words. Shared: the Interface text's face (Look > Fonts)." },
+		{ type = "dropdown", key = "indicatorFont", name = "Indicator Numbers Font", values = MelloUI.FontFaces, new = "0.25.0",
+		  desc = "The face of every indicator's time and stacks. Shared: the Chat & numbers face (Look > Fonts)." },
 		-- the Designer
 		{ type = "toggle", key = "indicators", name = "Indicators On The Frames",
 		  desc = "Your aura indicators on the frames. Off: the frames show none." },
@@ -1078,6 +1088,13 @@ function M:OnSettingChanged(key, _, db)
 			ns.Indicators:Start()
 		else
 			ns.Indicators:Stop()
+		end
+	elseif key == "indicatorFont" and ns.Indicators then
+		-- (one look C11: the indicators' numbers laid again in their face; the
+		-- made-up members' with the paint below)
+		ns.Indicators:Apply()
+		if ns.Headers then
+			ns.Headers:Repaint()
 		end
 	elseif not ns.Headers then
 		return

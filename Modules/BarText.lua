@@ -35,6 +35,7 @@ local M = MelloUI:RegisterModule("BarText", {
 		offsetX = 0,
 		offsetY = 0,
 		fontSize = 0,
+		valueFont = "shared",
 	},
 	options = {
 		{ type = "header", name = "Frames" },
@@ -68,6 +69,8 @@ local M = MelloUI:RegisterModule("BarText", {
 		{ type = "slider", key = "fontSize", name = "Font Size", min = 0, max = 20, step = 1,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Default" or tostring(v) end,
 		  desc = "Text size. Default follows the status bar text font of the game (and the Fonts module)." },
+		{ type = "dropdown", key = "valueFont", name = "Values Font", values = MelloUI.FontFaces, new = "0.25.0",
+		  desc = "The face of the health and power values on the player, target and focus frames. Shared: the Interface text's face (Look > Fonts)." },
 	},
 })
 
@@ -191,13 +194,26 @@ end
 local function ApplyFont(fs)
 	local object = TextStatusBarText or GameFontHighlightSmall
 	local size = math.floor((tonumber(M.db.fontSize) or 0) + 0.5)
-	if size <= 0 or not object then
+	-- (one look C11: the values' own face, Values Font; Shared the object's)
+	local face = MelloUI:FaceOf(M.db.valueFont)
+	if (size <= 0 and not face) or not object then
 		if object then
 			fs:SetFontObject(object)
 		end
 		return
 	end
-	local path, _, flags = object:GetFont()
+	local path, own, flags = object:GetFont()
+	if size <= 0 then
+		-- (the object's own size; none readable: the object as it is)
+		size = MelloUI.Safe.Number(own)
+		if not size then
+			fs:SetFontObject(object)
+			return
+		end
+		-- (the picked face's own correction in place of the object's face's)
+		size = MelloUI:FaceSize(size, face, path)
+	end
+	path = face or path
 	if path then
 		fs:SetFont(path, size, flags or "")
 	end

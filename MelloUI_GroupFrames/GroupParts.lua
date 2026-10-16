@@ -10,7 +10,11 @@
 -- alone sits at its default place (`home`). Every frame of ours is laid the
 -- same way -- the secure ones and the Designer's preview -- so the preview is
 -- the frame.
---   Parts.LIST                   the parts: key, label, short, region, text?, home
+--   Parts.LIST                   the parts: key, label, short, region, text?, home;
+--                                `font`: a text's face key (one look C11:
+--                                GroupFrames.nameFont / healthFont); the
+--                                normal party frames' texts wear the unit
+--                                frames' names' face (UnitFrames.nameFont)
 --   Parts.LAYOUTS (one look C9)  each layout's parts and table: "raid" (our
 --                                raid frames: db.parts), "groupParty" (our
 --                                Group Frames party: db.partyParts, split off
@@ -40,6 +44,7 @@ local MelloUI = (ns and ns.MelloUI) or _G.MelloUI
 local Perf = MelloUI.Perf:Scope("MelloUI_GroupFrames (parts)")
 local hooksecurefunc = Perf.hooksecurefunc
 local Num = MelloUI.Safe.Number
+local Secret = MelloUI.Safe.IsSecret
 local RD = ns.RD
 
 local Parts = {}
@@ -48,9 +53,9 @@ ns.Parts = Parts
 -- the default places (the game's raid frame's: the role icon and the name
 -- on the top line, the health text in the middle, the marks over it)
 Parts.LIST = {
-	{ key = "name", label = "Name", short = "Name", region = "name", text = true,
+	{ key = "name", label = "Name", short = "Name", region = "name", text = true, font = "nameFont",
 	  home = { point = "TOPLEFT", x = 15, y = -3, size = 10 } },
-	{ key = "health", label = "Health Text", short = "Health", region = "statusText", text = true,
+	{ key = "health", label = "Health Text", short = "Health", region = "statusText", text = true, font = "healthFont",
 	  home = { point = "CENTER", x = 0, y = -4, size = 10 } },
 	{ key = "role", label = "Role Icon", short = "Role", region = "roleIcon",
 	  home = { point = "TOPLEFT", x = 3, y = -3, size = 11 } },
@@ -201,6 +206,46 @@ function Parts.RegionOf(frame, key)
 	return p and type(frame) == "table" and Region(frame, p) or nil
 end
 
+-- a text's width and justify (as wide as the frame leaves it from where it
+-- starts)
+local function LayWidth(frame, p, s, r, point)
+	local w = Num(frame:GetWidth())
+	if not p.keepWidth and w and w > 2 * TEXT_INSET then
+		r:SetWidth(math.max(1, w - 2 * TEXT_INSET - math.abs(s.x or 0)))
+	end
+	r:SetJustifyH(JUSTIFY[point] or "CENTER")
+end
+
+-- (one look C11, Q2) a text part's face: the font object its region was
+-- made with (read once, before the first SetFont; the game's party name's
+-- template object when the client hands none: PartyFrameTemplates.xml)
+local madeWith = setmetatable({}, { __mode = "k" })
+
+local function MadeWith(r, p)
+	local object = madeWith[r]
+	if object == nil then
+		local ok, o = pcall(r.GetFontObject, r)
+		object = ok and not Secret(o) and type(o) == "table" and o or false
+		madeWith[r] = object
+	end
+	return object or rawget(_G, p.font and "GameFontHighlightSmall" or "GameFontNormalSmall")
+end
+
+-- the normal party frames' name and level: the unit frames' names' face
+-- (UnitFrames.nameFont -- the core sets it on the game's names too,
+-- Modules/UnitFrames.lua NameFace), else the face of the object the region was
+-- made with as it is now (the Fonts module's: never a face picked before)
+local function PartyFace(r, p)
+	local uf = MelloUI:GetModule("UnitFrames")
+	local face = uf and uf.isEnabled and uf.db and MelloUI:FaceOf(uf.db.nameFont)
+	if face then
+		return face
+	end
+	local object = MadeWith(r, p)
+	local ok, file = pcall(object and object.GetFont, object)
+	return ok and not Secret(file) and type(file) == "string" and file or nil
+end
+
 local function LayRegion(frame, p, s, r)
 	if s.show == false then
 		r:SetAlpha(0)
@@ -216,17 +261,20 @@ local function LayRegion(frame, p, s, r)
 	if p.scale then
 		-- (a row the game lays out itself: the whole of it scaled)
 		r:SetScale(math.max(0.2, size / p.home.size))
+	elseif p.font then
+		-- (one look C11: our frames' texts through the core's one font engine,
+		-- MelloUI:StyleFont -- the face of their Font row, else the object's
+		-- as the Fonts module has it, again on its every change -- at the
+		-- part's size exactly; RD.DB() so the stage's Try shows a face)
+		MelloUI:StyleFont(r, nil, MadeWith(r, p), size, nil, nil, true, RD.DB()[p.font])
+		LayWidth(frame, p, s, r, point)
 	elseif p.text then
 		local file, _, flags = r:GetFont()
+		file = PartyFace(r, p) or file
 		if file then
 			r:SetFont(file, size, flags or "")
 		end
-		local w = Num(frame:GetWidth())
-		if not p.keepWidth and w and w > 2 * TEXT_INSET then
-			-- (as wide as the frame leaves it from where it starts)
-			r:SetWidth(math.max(1, w - 2 * TEXT_INSET - math.abs(s.x or 0)))
-		end
-		r:SetJustifyH(JUSTIFY[point] or "CENTER")
+		LayWidth(frame, p, s, r, point)
 	else
 		r:SetSize(size, size)
 	end

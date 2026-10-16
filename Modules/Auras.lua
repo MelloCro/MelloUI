@@ -57,6 +57,7 @@ local M = MelloUI:RegisterModule("Auras", {
 		targetOnlyMine = false,
 		nameplates = true,
 		nameplateSize = 20,
+		textFont = "shared",
 	},
 	options = {
 		{ type = "header", name = "Your Buffs" },
@@ -83,6 +84,8 @@ local M = MelloUI:RegisterModule("Auras", {
 		  desc = "Your debuffs on enemy nameplates, in place of the game's row. Crowd control stays with the game (and the Nameplates module)." },
 		{ type = "slider", key = "nameplateSize", parent = "nameplates", name = "Icon Size", min = 12, max = 32, step = 1,
 		  desc = "The size of your debuff icons on enemy nameplates, in pixels." },
+		{ type = "dropdown", key = "textFont", name = "Buff Numbers Font", values = MelloUI.FontFaces, new = "0.25.0",
+		  desc = "The face of the time and stacks on MelloUI's buffs and debuffs: yours, the target's and the nameplates'. Shared: the Chat & numbers face (Look > Fonts)." },
 	},
 })
 
@@ -113,7 +116,9 @@ local function SizeTexts(button, size)
 	if not t then
 		return
 	end
-	local face = NumberFontNormal and NumberFontNormal.GetFont and NumberFontNormal:GetFont() or "Fonts\\ARIALN.TTF"
+	-- (one look C11: their own face, Buff Numbers Font; Shared the game's number face)
+	local face = MelloUI:FaceOf(M.db.textFont)
+		or NumberFontNormal and NumberFontNormal.GetFont and NumberFontNormal:GetFont() or "Fonts\\ARIALN.TTF"
 	local below = t.below
 	Try(t.time.SetFont, t.time, face, math.max(8, math.floor((below and 11 or size * 0.46) + 0.5)), "OUTLINE")
 	Try(t.count.SetFont, t.count, face, math.max(8, math.floor(size * 0.4 + 0.5)), "OUTLINE")
@@ -1352,6 +1357,10 @@ function M:OnSettingChanged(key, value, db)
 	elseif key == "nameplateSize" then
 		for _, c in pairs(plateRows) do
 			Resize(c, db.nameplateSize)
+		end
+	elseif key == "textFont" then
+		for b, t in pairs(texts) do
+			SizeTexts(b, t.size)
 		end
 	elseif key == "targetOnlyMine" and targetRows then
 		Try(targetRows.SetAuraGroupFilterString, targetRows, "debuffs", TargetFilter())

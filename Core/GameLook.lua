@@ -294,7 +294,7 @@ end
 -- Text
 --------------------------------------------------------------------------------
 
-local texts = setmetatable({}, weak)   -- [fs] = { role, size, key, font, alpha, colour }
+local texts = setmetatable({}, weak)   -- [fs] = { role, size, key, font, alpha, colour, face }
 
 local function ApplyText(fs, painted)
 	local e = texts[fs]
@@ -309,10 +309,11 @@ local function ApplyText(fs, painted)
 		if object then
 			fs:SetFontObject(object)
 			if MelloUI.StyleFont then
+				-- (e.face: the text's own face, one look C11 -- a part's Font row)
 				if e.outline then
-					MelloUI:StyleFont(fs, e.font or role.font, object, e.size, "", true)
+					MelloUI:StyleFont(fs, e.font or role.font, object, e.size, "", true, nil, e.face)
 				else
-					MelloUI:StyleFont(fs, e.font or role.font, object, e.size)
+					MelloUI:StyleFont(fs, e.font or role.font, object, e.size, nil, nil, nil, e.face)
 				end
 			end
 		end
@@ -343,6 +344,10 @@ local function ApplyText(fs, painted)
 	local object = _G[name] or _G[role.normal] or _G.GameFontHighlight
 	if object then
 		fs:SetFontObject(object)
+		-- (a face of its own: the object's size and flags in it)
+		if e.face and MelloUI.FaceOf and MelloUI:FaceOf(e.face) then
+			MelloUI:StyleFont(fs, nil, object, nil, nil, nil, nil, e.face)
+		end
 	end
 	local r, g, b
 	if e.colour then
@@ -365,6 +370,7 @@ function Look.Text(fs, role, size, opts)
 	e.role, e.size = role or "text", size
 	if opts then
 		e.key, e.font, e.alpha, e.outline, e.object = opts.key, opts.font, opts.alpha, opts.outline, opts.object
+		e.face = opts.face
 		if opts.tint then
 			e.tint = opts.tint
 		end

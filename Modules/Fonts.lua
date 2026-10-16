@@ -73,6 +73,31 @@ local function BuildFontList()
 	return list
 end
 
+-- (one look C11, Q2) the faces a part of a frame picks for its own text:
+-- MelloUI.FontFaces, the one table every part's Font row hands its schema --
+-- "Shared" (the face the text wears without one: today's), then this list,
+-- made once, at load, as the roles' own lists (a LibSharedMedia font shows
+-- when the addon sharing it loads before MelloUI; every module with a Font row
+-- loads after this file); MelloUI:FaceOf(value) is the one resolver -- the face's path, nil for
+-- "shared", nothing, or a face no longer listed (a font file taken out of
+-- Media\Fonts: the text keeps its shared face). A part's face works with this
+-- module on or off: it is the part's own setting.
+do
+	local known = {}
+	local faces = { { value = "shared", label = "Shared" } }
+	MelloUI.FontFaces = faces
+	for _, entry in ipairs(BuildFontList()) do
+		faces[#faces + 1] = entry
+		known[entry.value] = true
+	end
+	function MelloUI:FaceOf(value)
+		if type(value) == "string" and known[value] then
+			return value
+		end
+		return nil
+	end
+end
+
 -- The game draws its text with four faces; every font object descends from
 -- one of them, and each role gets its own choice here (user, 2026-09-21):
 --   text    Friz Quadrata  interface text: windows, buttons, tooltips, quest
@@ -183,6 +208,19 @@ local function FaceFactor(roleKey, path)
 	return type(f) == "number" and f or 1
 end
 MelloUI.FontFaceFactor = FaceFactor
+
+-- (one look C11) a size made for the face `from`, for the face `face`: a text
+-- that takes its size from its font object (the role face's correction in it,
+-- as the Fonts module sets it) in a face of its own (MelloUI:FaceOf) -- that
+-- face's own correction in place of the object's face's (role: "fontText")
+function MelloUI:FaceSize(size, face, from, role)
+	role = role or "fontText"
+	local k = FaceFactor(role, face) / FaceFactor(role, from)
+	if math.abs(k - 1) < 0.001 then
+		return size
+	end
+	return math.max(6, math.floor(size * k + 0.5))
+end
 
 -- What a style sets: { key = value }. The sizes back to 100%: the faces
 -- bring their own correction (FaceFactor)
@@ -1196,6 +1234,9 @@ end
 --            correction times the role's size slider; true, nothing (its
 --            size is another setting's); "own", the face's correction
 --            alone (a text with a size slider of its own: 0.19.4)
+--   face     a part's own face (one look C11: its Font row's value, read by
+--            MelloUI:FaceOf): it takes the place of the role's, with this
+--            module on or off; nil or "shared", the role's as above
 -- The font is set at once and again at every 'fonts' Fire (a face, a size,
 -- the Outline, a Font Style, the module on or off). The listener is taken
 -- when this file loads, so it runs before every listener taken later (the
@@ -1207,7 +1248,7 @@ end
 --------------------------------------------------------------------------------
 
 do
-	local styled = setmetatable({}, { __mode = "k" })   -- [fs] = { role, object, size, flags, outline }
+	local styled = setmetatable({}, { __mode = "k" })   -- [fs] = { role, object, size, flags, outline, face }
 
 	-- flags without their outline words, and an outline word joined to what
 	-- is left: kept, so a Fire makes no string
@@ -1288,6 +1329,17 @@ do
 			local outline = db.outline
 			forced = (outline and outline ~= "NONE") and outline or nil
 		end
+		-- (a part's own face: its own correction in place of the role face's,
+		-- with this module on or off; a text sized by another setting --
+		-- faceOnly true -- keeps its size exactly)
+		local own = MelloUI:FaceOf(entry.face)
+		if own then
+			path = own
+			if entry.faceOnly ~= true then
+				local role = IS_ROLE[entry.role] and entry.role or RoleFor(basePath)
+				factor = factor * FaceFactor(role, own) / (db and FaceScale(role) or 1)
+			end
+		end
 		local flags
 		if entry.outline == nil then
 			flags = forced or baseFlags
@@ -1315,7 +1367,7 @@ do
 	end
 	MelloUI:On("fonts", Refresh, "Fonts own strings")
 
-	function MelloUI:StyleFont(fs, role, object, size, flags, outline, faceOnly)
+	function MelloUI:StyleFont(fs, role, object, size, flags, outline, faceOnly, face)
 		if not fs then
 			return
 		end
@@ -1330,6 +1382,7 @@ do
 		end
 		entry.role, entry.object, entry.size, entry.flags = role, object, SafeNumber(size), SafeText(flags)
 		entry.faceOnly = faceOnly == "own" and "own" or (faceOnly and true or nil)
+		entry.face = face
 		if outline == nil then
 			entry.outline = nil
 		else

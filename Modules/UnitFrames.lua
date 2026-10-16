@@ -51,10 +51,13 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		frameAlpha = 1,
 		levelUp = true,
 		xpGain = true,
+		nameFont = "shared",
 	},
 	options = {
 		{ type = "header", name = "Names" },
 		{ type = "toggle", key = "centerNames", name = "Centre Names", desc = "Centre the unit name above the health bar." },
+		{ type = "dropdown", key = "nameFont", name = "Name Font", values = MelloUI.FontFaces, new = "0.25.0",
+		  desc = "The face of the names on the player, target, focus and pet frames, their targets' and the party portraits' (their level follows). Shared: the Interface text's face (Look > Fonts)." },
 		{ type = "toggle", key = "hideReputationColor", name = "Transparent Name Band",
 		  desc = "Hide the reaction coloured strip behind target and focus names." },
 		{ type = "header", name = "Glows" },
@@ -1218,6 +1221,137 @@ function Party.Place(frame, made)
 	number:SetHeight(h)
 end
 
+--------------------------------------------------------------------------------
+-- The names' own face (one look C11, Q2: UnitFrames.nameFont, a face from
+-- MelloUI.FontFaces): the player's, the pet's, the target's and the focus's,
+-- their targets' (each cover copies it: NameCover's SetFont hook) and the
+-- party portraits' (their level follows: Party.Font; a level Group Frames
+-- moved, Party.Face). Only the face: a name keeps its size and flags -- its
+-- font object's as the Fonts module has them, a party name Group Frames moved
+-- its part's. Set on the setting change, on 'fonts' and as the party's members
+-- are swept; never per update: the game sets a name's text, never its font
+-- (ugf-audit.md section 12). Back to Shared: the face, size and flags of the
+-- name's own font object (kept before its first face, in a weak table) as the
+-- Fonts module has them now, a moved party name at its size -- by SetFont,
+-- never SetFontObject, which would put the object's alpha and colour back on a
+-- name MelloUI hides (a short name's cover, a part hidden in Group Frames);
+-- a name once given a face follows 'fonts' from then on. The module off: every
+-- name back. A picked face takes its own size correction (MelloUI:FaceSize);
+-- the painted skin's bands measure the name again (Shade:SourceFont).
+--------------------------------------------------------------------------------
+-- (on the module: Unit Frames' main chunk takes no new local -- onelook/partylevel2 F11; the tests
+-- reach it there too, onelook/partfont)
+M.NameFace = {
+	of = setmetatable({}, { __mode = "k" }),      -- [name] = the font object it had before a face
+	sized = setmetatable({}, { __mode = "k" }),   -- [party member] = its name moved in Group Frames (M:PartyLine)
+	KEY = "Unit Frames: the names' face",
+}
+
+-- a font's face, size and flags (nil for a secret or none)
+function M.NameFace.Read(font)
+	local ok, path, size, flags = pcall(font.GetFont, font)
+	size = ok and Num(size) or nil
+	if not (size and size > 0) or Secret(path) or type(path) ~= "string" then
+		return nil
+	end
+	if Secret(flags) or type(flags) ~= "string" then
+		flags = ""
+	end
+	return path, size, flags
+end
+
+-- one name in the face picked, or back to its own (`sized`: a party name
+-- Group Frames moved -- its size is its part's)
+function M.NameFace.Set(fs, sized)
+	if type(fs) ~= "table" or type(fs.SetFont) ~= "function" then
+		return
+	end
+	local face = M.isEnabled and M.db and MelloUI:FaceOf(M.db.nameFont) or nil
+	local object = M.NameFace.of[fs]
+	if not object then
+		if not face then
+			return   -- (never given a face: the game's own, untouched)
+		end
+		local ok, o = pcall(fs.GetFontObject, fs)
+		object = ok and not Secret(o) and type(o) == "table" and o or rawget(_G, "GameFontNormalSmall")
+		if type(object) ~= "table" then
+			return
+		end
+		M.NameFace.of[fs] = object
+	end
+	-- (its object's face, size and flags as they are now: the Interface text's
+	-- face and size and the Outline follow; a moved party name's own size)
+	local path, size, flags = M.NameFace.Read(object)
+	if sized then
+		local _, own, ownFlags = M.NameFace.Read(fs)
+		if own then
+			size, flags = own, ownFlags
+		end
+	end
+	if not (path and size) then
+		return
+	end
+	if face then
+		if not sized then
+			size = MelloUI:FaceSize(size, face, path)
+		end
+		path = face
+	end
+	pcall(fs.SetFont, fs, path, size, flags)
+	local Shade = MelloUI.Shade
+	if Shade and Shade.SourceFont then
+		Shade:SourceFont(fs)
+	end
+end
+
+-- a level Group Frames moved: its name's face at its own size and flags
+function Party.Face(frame, made)
+	local name = rawget(frame, "Name")
+	local face = type(name) == "table" and M.NameFace.Read(name)
+	local _, size, flags = M.NameFace.Read(made.number)
+	if face and size then
+		pcall(made.number.SetFont, made.number, face, size, flags)
+	end
+end
+
+-- every name as the setting is now (out of combat); 'fonts' followed once a
+-- face was picked
+function M.NameFace.All()
+	local face = M.isEnabled and M.db and MelloUI:FaceOf(M.db.nameFont)
+	if not face and next(M.NameFace.of) == nil then
+		return
+	end
+	M.NameFace.Set(_G.PlayerName)
+	local pet = PetFrame
+	if pet then
+		M.NameFace.Set(_G.PetName or pet.name)
+	end
+	for _, frame in ipairs(TargetLikeFrames()) do
+		local main = frame and frame.TargetFrameContent and frame.TargetFrameContent.TargetFrameContentMain
+		M.NameFace.Set(main and main.Name)
+		local tot = frame and frame.totFrame
+		M.NameFace.Set(tot and tot.Name)
+	end
+	for _, frame in ipairs(Party.Members()) do
+		M.NameFace.Set(rawget(frame, "Name"), M.NameFace.sized[frame])
+	end
+	for frame, made in pairs(Party.of) do
+		if made.moved then
+			Party.Face(frame, made)
+		else
+			Party.Font(frame, made)
+		end
+	end
+	if not M.NameFace.listening then
+		M.NameFace.listening = true
+		MelloUI:On("fonts", M.NameFace.Later, M.NameFace.KEY)
+	end
+end
+
+function M.NameFace.Later()
+	MelloUI.Kit:WhenOutOfCombat(M.NameFace.All, M.NameFace.KEY)
+end
+
 -- the name's font on the level as it is now (its font object's, the Fonts
 -- module's, a size Group Frames gave the name): face, size, flags and text
 -- scale; a secret or refused answer leaves the level's as it is. The colour
@@ -1338,6 +1472,11 @@ function Party.Sweep()
 			end
 		end
 	end
+	-- (one look C11: a member's name in the names' face, before its level
+	-- copies it)
+	for _, frame in ipairs(Party.Members()) do
+		M.NameFace.Set(rawget(frame, "Name"), M.NameFace.sized[frame])
+	end
 	for frame, made in pairs(Party.of) do
 		Party.Update(frame)
 		Party.Width(frame)
@@ -1437,6 +1576,7 @@ function M:PartyLine(frame, nameMoved, levelMoved)
 	end
 	local alone = (nameMoved or levelMoved) and true or nil
 	Party.alone[frame] = alone
+	M.NameFace.sized[frame] = nameMoved and true or nil   -- (laid in the names' face by Group Frames)
 	local made = Party.of[frame]
 	if made then
 		if not levelMoved then
@@ -1835,6 +1975,7 @@ M.SlashWords = {
 local function ApplyAll()
 	OutOfCombat(function()
 		ApplyNames()
+		M.NameFace.All()
 		ApplyReputationColor()
 		ApplyGlows()
 		ApplyFrameAlpha()
