@@ -391,3 +391,372 @@ function M.BarButtons(out)
 	end
 	return out
 end
+
+--------------------------------------------------------------------------------
+-- The configurator's stage (one look stage G, the Bars designer: the user's
+-- pick A of bars_looks.jpg, "strips beside"): the 'actionbar' wide kind of
+-- Core/ConfigPreview.lua, Bars > Action Bars. Every bar Bar Layout can set
+-- (Tweaks' Which Bar: Action Bars 1 to 8, the stance and pet bars) is a strip
+-- on the left; a click on one makes it the bar the Layout rows set (Which
+-- Bar is the strips now) and the large bar on the right shows it as the
+-- game lays it -- its rows, icons, icon size and padding from your Edit Mode
+-- layout, the game's own button art (the slot, the frame, the pressed frame;
+-- the end caps and the page arrows on Action Bar 1, faint while Hide Bar Art
+-- / Hide Page Arrows hide them) -- with MelloUI's parts on it from the saved
+-- settings: Cooldown Timers' countdown, Range And Resource Colours, Light
+-- While Pressed (states Cooldown | Out of range | Pressed). Every part is
+-- picked, never moved. Made with the page, never at login; no action is read
+-- (the icons, the keys and the countdown are made up).
+--------------------------------------------------------------------------------
+
+do
+	local CP = MelloUI.ConfigPreview
+	local Num = MelloUI.Safe.Number
+	local Fin = MelloUI.Safe.Finite
+	local Stage = {
+		BARS = { { 1, "Bar 1" }, { 2, "Bar 2" }, { 3, "Bar 3" }, { 4, "Bar 4" }, { 5, "Bar 5" }, { 6, "Bar 6" },
+			{ 7, "Bar 7" }, { 8, "Bar 8" }, { 11, "Stance" }, { 12, "Pet" } },
+		ICONS = { "Ability_Warrior_BattleShout", "Ability_CriticalStrike", "Ability_Warrior_Riposte", "Ability_Defend",
+			"Ability_Warrior_ShieldWall", "Spell_Holy_DevotionAura", "Ability_GhoulFrenzy", "Spell_Nature_Regeneration",
+			"Ability_Druid_ChallangingRoar", "Ability_Racial_BearForm", "Spell_Holy_SealOfProtection", "Spell_Fire_FlameBolt" },
+		KEYS = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=" },
+		-- the game's: a button 45, its pad 2; Camelot's end caps 154 x 95 (MainMenuBarEndCaps.xml), their paws 20
+		-- over the bar's ends and 8 under it; the page arrows 17 x 14
+		N = 12, SIZE = 45, CAP_W = 154, CAP_H = 95, CAP_IN = 20, CAP_DROP = 8, ARROW_W = 17, ARROW_H = 14,
+		PAD = 6, GHOST = 0.3, CD_AT = 5, CD_LEFT = "4", RANGE = { [2] = true, [3] = true, [8] = true },
+		STRIP_W = 124, STRIP_H = 13, STRIP_GAP = 1.5, STRIP_TOP = 28, ROOM_TOP = 34, ROOM_BOTTOM = 26,
+		STATES = { { key = "cooldown", label = "Cooldown" }, { key = "range", label = "Out of range" },
+			{ key = "pressed", label = "Pressed" } },
+		TEXT = { pick = "Click a strip to pick a bar; click a part of it for its settings.", bars = "Your bars" },
+		EMPTY = {},
+		shape = {},
+		parts = nil,
+	}
+
+	function Stage.DB(name)
+		return MelloUI:GetModuleDB(name) or Stage.EMPTY
+	end
+
+	function Stage.Running(name)
+		local m = MelloUI.modules and MelloUI.modules[name]
+		return m ~= nil and m.isEnabled and true or false
+	end
+
+	-- the bar Which Bar names (Tweaks' Bar Layout)
+	function Stage.Bar()
+		return Num(Stage.DB("Tweaks").barLayoutBar) or 1
+	end
+
+	-- the bar's shape from the Edit Mode layout (Tweaks' Layout.BarShape's
+	-- reading), the game's defaults where it says nothing
+	function Stage.Shape(bar)
+		local S = Enum and Enum.EditModeActionBarSetting
+		local system = Enum and Enum.EditModeSystem and Enum.EditModeSystem.ActionBar
+		local ok, values = false, nil
+		if S and system and MelloUI.EditModeSystemSettings then
+			ok, values = pcall(MelloUI.EditModeSystemSettings, MelloUI, system, bar)
+		end
+		values = ok and type(values) == "table" and values or Stage.EMPTY
+		local shape = Stage.shape
+		shape.rows = math.max(1, math.min(4, S and Num(values[S.NumRows]) or 1))
+		shape.icons = math.max(1, math.min(Stage.N, S and Num(values[S.NumIcons]) or (bar >= 11 and 10 or Stage.N)))
+		local size = S and Num(values[S.IconSize])
+		shape.size = size and (size * 10 + 50) or 100
+		shape.padding = S and Num(values[S.IconPadding]) or 2
+		local vertical = Enum.ActionBarOrientation and Enum.ActionBarOrientation.Vertical
+		shape.vertical = S ~= nil and vertical ~= nil and values[S.Orientation] == vertical
+		return shape
+	end
+
+	-- a strip clicked: its bar is Which Bar now (the Layout rows set it)
+	function Stage.Pick(strip)
+		if Stage.Bar() == strip.bar then
+			return
+		end
+		MelloUI:PlayUISound("tab")
+		MelloUI:NotifySettingChanged("Tweaks", "barLayoutBar", strip.bar)
+		if MelloUI.RefreshConfig then
+			MelloUI:RefreshConfig()
+		end
+	end
+	local OnStripClick = Shared("OnClick on a Bars stage strip", function(strip)
+		Stage.Pick(strip)
+	end, "script")
+
+	-- the strips: a bar's name and its buttons in small (made with the stage)
+	function Stage.Furnish(stage, holder)
+		local title = W.Text(holder, "GameFontHighlightSmall", Stage.TEXT.bars, "mutedText")
+		title:SetPoint("TOPLEFT", holder, "TOPLEFT", 10, -12)
+		local line = W.Solid(holder, "BORDER", "border", 1)
+		line:SetPoint("TOPLEFT", holder, "TOPLEFT", Stage.STRIP_W + 18, -10)
+		line:SetPoint("BOTTOMLEFT", holder, "BOTTOMLEFT", Stage.STRIP_W + 18, 10)
+		line:SetWidth(1)
+		stage.strips = {}
+		local sq = (Stage.STRIP_W - 50) / (Stage.N * 1.25)
+		for i, b in ipairs(Stage.BARS) do
+			local strip = CreateFrame("Button", nil, holder)
+			strip:SetSize(Stage.STRIP_W, Stage.STRIP_H)
+			strip:SetPoint("TOPLEFT", holder, "TOPLEFT", 8, -(Stage.STRIP_TOP + (i - 1) * (Stage.STRIP_H + Stage.STRIP_GAP)))
+			strip:SetFrameLevel(holder:GetFrameLevel() + 5)
+			strip.bar = b[1]
+			strip.ground = W.Solid(strip, "BACKGROUND", "raisedPanel", 1)
+			strip.ground:SetAllPoints(strip)
+			strip.edge = CreateFrame("Frame", nil, strip)
+			strip.edge:SetAllPoints(strip)
+			W.Edges(strip.edge, "selectedTrim", "BORDER")
+			strip.label = W.Text(strip, "GameFontHighlightSmall", b[2], "text")
+			strip.label:SetPoint("LEFT", strip, "LEFT", 5, 0)
+			strip.squares = {}
+			for k = 1, b[1] >= 11 and 10 or Stage.N do
+				local t = W.Solid(strip, "ARTWORK", "border", 1)
+				t:SetSize(sq, sq)
+				t:SetPoint("LEFT", strip, "LEFT", 46 + (k - 1) * sq * 1.25, 0)
+				strip.squares[k] = t
+			end
+			strip:SetScript("OnClick", OnStripClick)
+			stage.strips[i] = strip
+		end
+	end
+
+	-- the strips as Which Bar stands
+	function Stage.Refresh(stage)
+		local bar = Stage.Bar()
+		for _, strip in ipairs(stage.strips or Stage.EMPTY) do
+			local on = strip.bar == bar
+			strip.ground:SetShown(on)
+			strip.edge:SetShown(on)
+			W.Paint(strip.label, on and "selectedTrim" or "text", "text")
+			for _, t in ipairs(strip.squares) do
+				W.Paint(t, on and "trim" or "border", "vertex", 1)
+			end
+		end
+	end
+
+	-- the room right of the strips, under the state chips, over the caption
+	function Stage.Room(stage)
+		local w, h = Fin(stage:GetWidth()) or 0, Fin(stage:GetHeight()) or 0
+		local left = Stage.STRIP_W + 26
+		return left, Stage.ROOM_TOP, w - left - 8, h - Stage.ROOM_TOP - Stage.ROOM_BOTTOM
+	end
+
+	function Stage.Button(f, i)
+		local b = CreateFrame("Frame", nil, f)
+		b:SetSize(Stage.SIZE, Stage.SIZE)
+		b.slot = b:CreateTexture(nil, "BACKGROUND")
+		b.slot:SetAtlas("UI-HUD-ActionBar-IconFrame-Slot")
+		b.slot:SetAllPoints(b)
+		b.icon = b:CreateTexture(nil, "ARTWORK")
+		b.icon:SetTexture("Interface\\Icons\\" .. Stage.ICONS[i])
+		b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		b.icon:SetPoint("TOPLEFT", b, "TOPLEFT", 2, -2)
+		b.icon:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -2, 2)
+		-- (Range And Resource Colours' cover, as LayCover makes it)
+		b.cover = b:CreateTexture(nil, "BACKGROUND", nil, COVER_SUB)
+		b.cover:SetTexture(FLAT)
+		b.cover:SetAllPoints(b.icon)
+		b.cover:SetBlendMode("MOD")
+		b.cover:Hide()
+		b.frame = b:CreateTexture(nil, "OVERLAY")
+		b.frame:SetAtlas("UI-HUD-ActionBar-IconFrame")
+		b.frame:SetAllPoints(b)
+		b.pushed = b:CreateTexture(nil, "OVERLAY", nil, 1)
+		b.pushed:SetAtlas("UI-HUD-ActionBar-IconFrame-Down")
+		b.pushed:SetAllPoints(b)
+		b.pushed:Hide()
+		-- (Light While Pressed's light, as ShowLight makes it)
+		b.light = b:CreateTexture(nil, "OVERLAY", nil, LIGHT.SUB)
+		b.light:SetTexture(FLAT)
+		b.light:SetAllPoints(b)
+		b.light:SetBlendMode("ADD")
+		W.Paint(b.light, "selectedTrim", "vertex", LIGHT.ALPHA)
+		b.light:Hide()
+		b.hotkey = b:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmallGray")
+		b.hotkey:SetPoint("TOPRIGHT", b, "TOPRIGHT", -3, -3)
+		b.hotkey:SetJustifyH("RIGHT")
+		return b
+	end
+
+	function Stage.Main(stage)
+		local f = CreateFrame("Frame", nil, stage.holder)
+		f:SetSize(600, 100)
+		f:EnableMouse(false)
+		f.buttons = {}
+		for i = 1, Stage.N do
+			f.buttons[i] = Stage.Button(f, i)
+		end
+		-- the cooldown on one button: the game's swipe, held still (no countdown of the game's or of Cooldown
+		-- Timers' own hook: noCooldownCount), and Cooldown Timers' countdown drawn as its look would be
+		local cdb = f.buttons[Stage.CD_AT]
+		local ok, cd = pcall(CreateFrame, "Cooldown", nil, cdb, "CooldownFrameTemplate")
+		if ok and cd then
+			cd.noCooldownCount = true
+			cd:SetAllPoints(cdb.icon)
+			pcall(cd.SetHideCountdownNumbers, cd, true)
+			pcall(cd.SetCooldown, cd, GetTime() - 6, 10)
+			pcall(cd.Pause, cd)
+			cd:Hide()
+			f.cd = cd
+		end
+		f.timerHost = CreateFrame("Frame", nil, cdb)
+		f.timerHost:SetAllPoints(cdb)
+		f.timerHost:SetFrameLevel(cdb:GetFrameLevel() + 5)
+		f.timer = f.timerHost:CreateFontString(nil, "OVERLAY", "NumberFontNormalLarge")
+		f.timer:SetPoint("CENTER", cdb, "CENTER", 0, 0)
+		f.timer:SetText(Stage.CD_LEFT)
+		f.timer:Hide()
+		f.timerFace = f.timer:GetFont()
+		-- the end caps and the page arrows (Action Bar 1's)
+		f.capL = f:CreateTexture(nil, "OVERLAY", nil, 5)
+		f.capL:SetAtlas("ui-hud-actionbar-gryphon-left")
+		f.capL:SetSize(Stage.CAP_W, Stage.CAP_H)
+		f.capR = f:CreateTexture(nil, "OVERLAY", nil, 5)
+		f.capR:SetAtlas("ui-hud-actionbar-gryphon-right")
+		f.capR:SetSize(Stage.CAP_W, Stage.CAP_H)
+		f.arrows = CreateFrame("Frame", nil, f)
+		f.arrows:SetSize(Stage.ARROW_W + 14, Stage.SIZE)
+		f.arrows.up = f.arrows:CreateTexture(nil, "ARTWORK")
+		f.arrows.up:SetAtlas("ui-hud-actionbar-pageuparrow-up")
+		f.arrows.up:SetSize(Stage.ARROW_W, Stage.ARROW_H)
+		f.arrows.up:SetPoint("TOPLEFT", f.arrows, "TOPLEFT", 0, -2)
+		f.arrows.down = f.arrows:CreateTexture(nil, "ARTWORK")
+		f.arrows.down:SetAtlas("ui-hud-actionbar-pagedownarrow-up")
+		f.arrows.down:SetSize(Stage.ARROW_W, Stage.ARROW_H)
+		f.arrows.down:SetPoint("BOTTOMLEFT", f.arrows, "BOTTOMLEFT", 0, 2)
+		f.arrows.page = f.arrows:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+		f.arrows.page:SetPoint("LEFT", f.arrows, "LEFT", Stage.ARROW_W + 3, 0)
+		f.arrows.page:SetText("1")
+		return f
+	end
+
+	function Stage.Paint(f, _, _, ctx)
+		local state = ctx and ctx.state
+		local bar = Stage.Bar()
+		local shape = Stage.Shape(bar)
+		local size = Stage.SIZE * shape.size / 100
+		local pad = shape.padding
+		local icons, rows = shape.icons, shape.rows
+		local cols = math.ceil(icons / rows)
+		local main = bar == 1
+		local left = main and (Stage.CAP_W - Stage.CAP_IN) or Stage.PAD
+		local top = Stage.PAD
+		local gridW = (shape.vertical and rows or cols) * (size + pad) - pad
+		local gridH = (shape.vertical and cols or rows) * (size + pad) - pad
+		local ab = Stage.Running("ActionButtons") and Stage.DB("ActionButtons") or Stage.EMPTY
+		local range = ab.rangeColours ~= false and ab ~= Stage.EMPTY
+		local lit = ab.pressLight ~= false and ab ~= Stage.EMPTY
+		local m = MelloUI.Meaning
+		for i, b in ipairs(f.buttons) do
+			local on = i <= icons
+			b:SetShown(on)
+			if on then
+				local idx = i - 1
+				local r, c = math.floor(idx / cols), idx % cols
+				local x, y = c, r
+				if shape.vertical then
+					x, y = r, c
+				end
+				b:SetSize(size, size)
+				b:ClearAllPoints()
+				b:SetPoint("TOPLEFT", f, "TOPLEFT", left + x * (size + pad), -(top + y * (size + pad)))
+				b.hotkey:SetText(main and Stage.KEYS[i] or "")
+				local out = state == "range" and Stage.RANGE[i]
+				b.cover:SetShown(out and range or false)
+				if out and range then
+					b.cover:SetVertexColor(m.actionRange[1], m.actionRange[2], m.actionRange[3])
+				end
+				-- (the game's own sign of a key out of range: its hotkey red)
+				local hk = rawget(_G, out and "RED_FONT_COLOR" or "WHITE_FONT_COLOR")
+				if type(hk) == "table" and hk.r then
+					b.hotkey:SetVertexColor(hk.r, hk.g, hk.b)
+				end
+				local down = state == "pressed" and i == 1
+				b.pushed:SetShown(down)
+				b.frame:SetShown(not down)
+				b.light:SetShown(down and lit)
+			end
+		end
+		-- the cooldown and Cooldown Timers' countdown (its colour and size by the time left: under 5 s)
+		local cdOn = state == "cooldown" and icons >= Stage.CD_AT
+		if f.cd then
+			f.cd:SetShown(cdOn)
+		end
+		local ct = Stage.DB("CooldownText")
+		local timers = cdOn and Stage.Running("CooldownText") and ct.actionBars ~= false
+		f.timer:SetShown(timers)
+		if timers then
+			local byTime = ct.colorByTime ~= false
+			local px = math.max(6, size * (Num(ct.fontRatio) or 0.5) * (byTime and 1.3 or 1))
+			if f.timerFace then
+				f.timer:SetFont(f.timerFace, px, "OUTLINE")
+			end
+			-- (off: every timer white at the Text Size -- the game's white)
+			local white = rawget(_G, "WHITE_FONT_COLOR")
+			if byTime then
+				f.timer:SetTextColor(m.cooldownSoon[1], m.cooldownSoon[2], m.cooldownSoon[3])
+			elseif type(white) == "table" and white.r then
+				f.timer:SetTextColor(white.r, white.g, white.b)
+			end
+		end
+		-- Action Bar 1's end caps and page arrows: faint while MelloUI hides them (Hide Bar Art, Hide Page Arrows)
+		local bars = Stage.DB("ActionBars")
+		f.capL:SetShown(main)
+		f.capR:SetShown(main)
+		f.arrows:SetShown(main)
+		local right = Stage.PAD
+		if main then
+			local caps = (Stage.Running("ActionBars") and bars.hideBarArt ~= false) and Stage.GHOST or 1
+			local arrows = (Stage.Running("ActionBars") and bars.hidePageArrows ~= false) and Stage.GHOST or 1
+			f.capL:SetAlpha(caps)
+			f.capR:SetAlpha(caps)
+			f.arrows:SetAlpha(arrows)
+			f.capL:ClearAllPoints()
+			f.capL:SetPoint("BOTTOMRIGHT", f, "TOPLEFT", left + Stage.CAP_IN, -(top + gridH + Stage.CAP_DROP))
+			f.arrows:SetSize(Stage.ARROW_W + 14, math.min(size, gridH))
+			f.arrows:ClearAllPoints()
+			f.arrows:SetPoint("TOPLEFT", f, "TOPLEFT", left + gridW + 4, -top)
+			f.capR:ClearAllPoints()
+			f.capR:SetPoint("BOTTOMLEFT", f, "TOPLEFT", left + gridW + Stage.ARROW_W + 18, -(top + gridH + Stage.CAP_DROP))
+			right = Stage.ARROW_W + 18 + Stage.CAP_W
+		end
+		local h = main and math.max(gridH + top + Stage.CAP_DROP, Stage.CAP_H + Stage.PAD) or (gridH + top * 2)
+		f:SetSize(left + gridW + right, h + Stage.PAD)
+	end
+
+	-- the parts, each picked and never moved; one that does not show takes no click
+	function Stage.Part(key, label, region, extra)
+		local part = { key = key, label = label, drag = false, region = function(f)
+			local r = region(f)
+			return r and r:IsShown() and r or nil
+		end }
+		for k, v in pairs(extra or Stage.EMPTY) do
+			part[k] = v
+		end
+		return part
+	end
+
+	function Stage.Parts()
+		if not Stage.parts then
+			Stage.parts = {
+				Stage.Part("button", "Button", function(f) return f.buttons[1] end),
+				Stage.Part("cooldown", "Cooldown timer", function(f) return f.timer end, { text = true }),
+				Stage.Part("caps", "End caps", function(f) return f.capL end),
+				Stage.Part("arrows", "Page arrows", function(f) return f.arrows end),
+				Stage.Part("keybind", "Keybind text", function(f) return f.buttons[1].hotkey end,
+					{ text = true, locked = "Nothing to set yet: the game's text" }),
+			}
+		end
+		return Stage.parts
+	end
+
+	if CP and CP.Register then
+		CP.Register("actionbar", {
+			place = "wide", height = 236, maxScale = 1.5,
+			picks = { bars = true }, first = "bars",
+			watch = { Tweaks = true, ActionBars = true, ActionButtons = true, CooldownText = true },
+			states = Stage.STATES, pickText = Stage.TEXT.pick,
+			Furnish = Stage.Furnish, Main = Stage.Main, Paint = Stage.Paint, Refresh = Stage.Refresh, Room = Stage.Room,
+			parts = Stage.Parts,
+		})
+	end
+	M.Stage = Stage
+end

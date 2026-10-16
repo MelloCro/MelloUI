@@ -270,6 +270,12 @@ local function StartTimer(cooldown, start, duration, modRate)
 	if not M.isEnabled or (cooldown.IsForbidden and cooldown:IsForbidden()) then
 		return
 	end
+	-- (the countdown addons' convention: a cooldown that asks for none -- the
+	-- configurator's Bars stage sample, its own frame -- is never counted,
+	-- nor looked at again)
+	if cooldown.noCooldownCount then
+		return
+	end
 	-- cleared and set again in the same moment: the same cooldown is still
 	-- counting, nothing to write
 	if cleared[cooldown] then

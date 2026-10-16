@@ -315,6 +315,12 @@ are under the parts'. Keybind Mode is in the page's header. The painted action b
 and the cooldown timers' style (text size, tenths, colours, minimum duration) on Look > Icons, as it is the action
 bars' and the nameplates' alike. The damage meter and the FPS / latency readout are on **Meters**.
 
+On Action Bars, the stage lists your bars as strips (Bars 1 to 8, the stance and pet bars) beside the picked one, drawn
+large as the game lays it with your settings: a click on a strip makes it the bar the Layout rows set (Which Bar), a
+click on a part of the bar opens its settings. Cooldown, Out of range and Pressed show the cooldown timer, the range
+colours and the press light; Action Bar 1's end caps and page arrows show faint while Hide Bar Art and Hide Page
+Arrows hide them.
+
 ### Action Bars (backdrops)
 
 The reskin can put a painted backdrop round each bar: a frame with a gem on each outer

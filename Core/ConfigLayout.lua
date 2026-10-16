@@ -221,10 +221,14 @@ L.pages = {
 		-- (0.19.9) MelloUI's own Keybind Mode in the header (its button: Core/Config.lua KEYBIND_MODE)
 		action = "keybind",
 		elements = {
+			-- (`stage`: the bars' strips and the picked bar large, Modules/ActionButtons.lua's 'actionbar' kind --
+			-- the user's A; a strip is Which Bar, the bar the Layout rows set)
 			{ key = "actionbars", label = "Action Bars", line = "The eight action bars and the stance, pet, possess and totem bars",
-				parts = { { key = "button", label = "Button" }, { key = "cooldown", label = "Cooldown timer" },
-				{ key = "caps", label = "End caps" }, { key = "arrows", label = "Page arrows" },
-				{ key = "keybind", label = "Keybind text", locked = "Nothing to set yet: the game's text" } } },
+				stage = { kind = "actionbar", pick = "bars" },
+				parts = { { key = "button", label = "Button", stage = "button" },
+				{ key = "cooldown", label = "Cooldown timer", stage = "cooldown", showIn = "cooldown" },
+				{ key = "caps", label = "End caps", stage = "caps" }, { key = "arrows", label = "Page arrows", stage = "arrows" },
+				{ key = "keybind", label = "Keybind text", stage = "keybind", locked = "Nothing to set yet: the game's text" } } },
 			{ key = "menubags", label = "Menu & Bags", line = "The micro menu and the bag bar",
 				parts = { { key = "micro", label = "Micro menu" }, { key = "bags", label = "Bag bar" } } },
 			{ key = "castbar", label = "Cast Bar", line = "Your cast bar (its size and place: Edit Mode; the target's and focus' are on their frames)",
@@ -347,6 +351,8 @@ L.words = {
 L.unplaced = {
 	["UIModifications.TooltipPanel"] = "Tooltip > Background",
 	["DarkMode.chat"] = "Chat > Chat Frame > Background",
+	-- (one look stage G, the Bars designer: Which Bar is the Action Bars stage's strips)
+	["Tweaks.barLayoutBar"] = "Bars > Action Bars: the strips pick the bar",
 }
 
 function L.Define(R, Link)
@@ -706,8 +712,8 @@ function L.Define(R, Link)
 		line = "Only with the UI Shade on (Look)" } })
 
 	-- Bars (one look stage G, bars-audit.md, the user's yes): each element's rows, its parts' rows
-	-- Action Bars: every bar's (Dark Mode, the backdrops, the layout of the bar picked in Which Bar -- the stage's
-	-- strip will pick it), the parts shared by every bar
+	-- Action Bars: every bar's (Dark Mode, the backdrops, the layout of the bar picked on the stage's strips --
+	-- Which Bar), the parts shared by every bar
 	R("ActionBars", "actionbars:element", "Look", "DarkMode.actionbars", { name = "Dark Mode",
 		when = Uncovered("ActionBarPanel", "action bars") })
 	-- (0.18.5) each bar's backdrop (onelook stage D4: the core's, Modules/ActionBars.lua, whatever the look)
@@ -716,7 +722,6 @@ function L.Define(R, Link)
 	end
 	-- (0.19.9, L1: one bar's layout, written into the Edit Mode layout: Tweaks' Bar Layout; its shape drawn under
 	-- the sliders)
-	R("ActionBars", "actionbars:element", "Layout", "Tweaks.barLayoutBar")
 	R("ActionBars", "actionbars:element", "Layout", "Tweaks.barRows")
 	R("ActionBars", "actionbars:element", "Layout", "Tweaks.barIcons")
 	R("ActionBars", "actionbars:element", "Layout", "Tweaks.barIconSize")
