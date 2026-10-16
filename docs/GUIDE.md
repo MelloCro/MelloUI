@@ -618,7 +618,7 @@ frames stand, so your heals and indicators can be seen on it. Either way the par
   party's will stand); Frame Width and Height (the game's raid frame: 72 x 36); Spacing; Party Grows (down, up, right, left);
   Party Order (by role: tanks, healers, damage; group order; by name); Raid Grouping (by group, role or class, or
   one list); Raid Fills (down then across, or across then down); Frames Per Column / Row; the Gap between them;
-  Fade When Out Of Range and its opacity. Move the party and the raid in Edit Layout ("Party Frames", "Raid
+  Out Of Range Opacity (100%: no fade). Move the party and the raid in Edit Layout ("Party Frames", "Raid
   Frames"). Layout changes made in a fight wait for its end.
 - **Their Health bar, Power bar and Background:** the Health Bar Colour, one for every frame (Look > Bar Texture, a
   link on the Health bar: class colour, Class & Reaction -- the class colour here --, My Colour, By health with your
@@ -693,7 +693,7 @@ default; its settings on **Unit & Group Frames > All frames**, its switch **Cool
   breathes for as long as it lasts. **More health** (Last Stand): the frame beats red like a heart.
 - **An immunity** (Divine Shield, Divine Protection, Ice Block): a gold barrier on the frame's edge, breathing.
   **A dodge or parry** (Evasion, Deterrence): afterimages flicker either side of the frame.
-- **Your Own**: your frame when you use one. **Your Group's**: a group mate's frame when they use theirs.
+- **Whose**: yours (your frame when you use one), your group's (a group mate's frame when they use theirs), or both.
 - **Every Effect**: each kind on your own frame, one after another, its name on the screen.
 - **/mellofx** plays the previews on your own frame: `/mellofx` every heal kind, `/mellofx heal` a heal from your
   cast bar, `/mellofx fx` every Frame Effect, `/mellofx stop` clears them.

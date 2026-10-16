@@ -78,11 +78,13 @@ local function OnCast(unit, spellID)
 		return
 	end
 	local you = FX.Canon("player")
+	-- (one look C13d: Whose -- yours, your group's or both; the module off for neither)
+	local whose = M.db.whose
 	if unit == "player" or unit == you then
-		if M.db.mine then
+		if whose ~= "group" then
 			Play(you, kind, id)
 		end
-	elseif GroupUnit(unit) and M.db.group then
+	elseif GroupUnit(unit) and whose ~= "mine" then
 		Play(unit, kind, id)
 	end
 end
@@ -166,18 +168,17 @@ M = MelloUI:RegisterModule("FrameEffects", {
 	enabledByDefault = true,
 	installer = false,
 	defaults = {
-		mine = true,
-		group = true,
+		whose = "both",
 	},
 	options = {
 		{ type = "button", name = "Every Effect", text = "Play",
 		  hint = "each kind on your own frame",
 		  desc = "Plays each kind on your own frame, one after another, its name and an example on the screen: a roar (Challenging Shout), a taunt, damage taken down (Shield Wall), more health (Last Stand), an immunity, a dodge or parry (Evasion).",
 		  onClick = function() PreviewAll() end },
-		{ type = "toggle", key = "mine", name = "Your Own",
-		  desc = "When you use one (Challenging Shout, Shield Wall, Last Stand, Divine Shield, Evasion ...), your own frame in your party or raid frames plays its effect for as long as it lasts (a roar: 2 seconds)." },
-		{ type = "toggle", key = "group", name = "Your Group's",
-		  desc = "When someone of your party or raid uses one, their frame plays its effect: you see at a glance who just used Shield Wall or Divine Shield, and whose roar just pulled." },
+		{ type = "dropdown", key = "whose", name = "Whose", new = "0.25.0",
+		  values = { { value = "both", label = "Yours And Your Group's" }, { value = "mine", label = "Yours" },
+			{ value = "group", label = "Your Group's" } },
+		  desc = "Whose big moments play on the frames. Yours: when you use one (Challenging Shout, Shield Wall, Last Stand, Divine Shield, Evasion ...), your own frame in your party or raid frames plays its effect for as long as it lasts (a roar: 2 seconds). Your group's: when someone of your party or raid uses one, their frame plays it -- you see at a glance who just used Shield Wall or Divine Shield, and whose roar just pulled." },
 	},
 })
 

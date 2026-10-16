@@ -29,8 +29,7 @@ local M = MelloUI:RegisterModule("BarText", {
 		focus = true,
 		health = true,
 		power = true,
-		format = "short",
-		showMax = false,
+		format = "short",   -- (one look C13d: Show Maximum folded in -- shortmax / fullmax / bothmax)
 		position = "center",
 		offsetX = 0,
 		offsetY = 0,
@@ -52,8 +51,10 @@ local M = MelloUI:RegisterModule("BarText", {
 			{ value = "full", label = "Full (8,234)" },
 			{ value = "percent", label = "Percent (82%)" },
 			{ value = "both", label = "Short + Percent (8.2k | 82%)" },
+			{ value = "shortmax", label = "Short / Max (8.2k / 10k)" },
+			{ value = "fullmax", label = "Full / Max (8,234 / 10,000)" },
+			{ value = "bothmax", label = "Short / Max + Percent (8.2k / 10k | 82%)" },
 		  } },
-		{ type = "toggle", key = "showMax", name = "Show Maximum", desc = "Also show the maximum value (8.2k / 10k). Not used with the percent format." },
 		{ type = "dropdown", key = "position", name = "Position", desc = "Where the text sits on the bar.",
 		  values = {
 			{ value = "center", label = "Center" },
@@ -113,6 +114,11 @@ local function Percent(value, max)
 	return string.format("%d%%", math.ceil(value / max * 100))
 end
 
+-- the formats that show the maximum too, and those that add the percent (one
+-- look C13d: Show Maximum folded into Format)
+local FORMAT = { max = { shortmax = true, fullmax = true, bothmax = true }, pct = { both = true, bothmax = true },
+	full = { full = true, fullmax = true } }
+
 -- May raise for secret values; always called through pcall.
 local function FormatText(value, max)
 	local db = M.db
@@ -120,12 +126,12 @@ local function FormatText(value, max)
 	if fmt == "percent" then
 		return Percent(value, max)
 	end
-	local number = fmt == "full" and Full or Abbreviate
+	local number = FORMAT.full[fmt] and Full or Abbreviate
 	local text = number(value)
-	if db.showMax then
+	if FORMAT.max[fmt] then
 		text = text .. " / " .. number(max)
 	end
-	if fmt == "both" then
+	if FORMAT.pct[fmt] then
 		text = text .. " | " .. Percent(value, max)
 	end
 	return text
@@ -280,7 +286,7 @@ local function SecretPercent(bar)
 end
 
 local function SecretNumber(n)
-	if M.db.format == "full" then
+	if FORMAT.full[M.db.format] then
 		-- 8,234 where the client can group a secret, else 8234
 		local ok, text = pcall(BreakUpLargeNumbers, n)
 		if ok and (Secret(text) or text) then
@@ -303,10 +309,10 @@ local function SecretText(bar, value, max)
 		return AbbreviateNumbers(value)
 	end
 	local text = SecretNumber(value)
-	if M.db.showMax then
+	if FORMAT.max[fmt] then
 		text = text .. " / " .. SecretNumber(max)
 	end
-	if fmt == "both" then
+	if FORMAT.pct[fmt] then
 		local okP, pct = pcall(SecretPercent, bar)
 		if okP and (Secret(pct) or pct) then
 			text = text .. " | " .. pct

@@ -267,8 +267,7 @@ local M = MelloUI:RegisterModule(OWNER, {
 		raidFlow = "down",
 		raidPerLine = 5,
 		raidGap = 6,
-		rangeFade = true,
-		rangeAlpha = 0.45,
+		rangeAlpha = 0.45,   -- (one look C13d: 100% is no fade -- Fade When Out Of Range folded in)
 		-- the bars
 		healthAlpha = 1,
 		fillDirection = "RIGHT",
@@ -334,10 +333,8 @@ local M = MelloUI:RegisterModule(OWNER, {
 		  desc = "The room between two of the raid's frames in a column (or a row). Also on the raid's plate in Edit Layout (right-click it)." },
 		{ type = "slider", key = "raidGap", name = "Gap Between Columns / Rows", min = 0, max = 40, step = 1,
 		  desc = "The room between two columns (or rows) of the raid." },
-		{ type = "toggle", key = "rangeFade", name = "Fade When Out Of Range",
-		  desc = "A member too far away for your heals fades." },
 		{ type = "slider", key = "rangeAlpha", name = "Out Of Range Opacity", min = 0.1, max = 1, step = 0.05,
-		  percent = true, parent = "rangeFade", desc = "How far an out of range frame fades." },
+		  percent = true, desc = "How far a member too far away for your heals fades. 100%: no fade." },
 		-- the bars
 		-- (one look Q7: the health bar's colour is the one Health Colour, Bar
 		-- Textures' -- RD.Health -- its four colours with it)

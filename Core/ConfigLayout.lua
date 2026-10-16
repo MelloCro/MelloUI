@@ -588,7 +588,6 @@ function L.Define(R, Link)
 	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.health")
 	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.power")
 	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.format")
-	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.showMax")
 	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.valueFont", { name = "Font" })
 	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.position")
 	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.offsetX")
@@ -918,7 +917,6 @@ function L.Define(R, Link)
 		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.raidPerLine")
 		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.raidSpacing")
 		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.raidGap")
-		UGF({ "raid:element", "party:element" }, "Behaviour", "GroupFrames.rangeFade")
 		UGF({ "raid:element", "party:element" }, "Behaviour", "GroupFrames.rangeAlpha")
 		-- the bars: health, background, missing health, power
 		-- (one look Q7: the health bar's colour is the one Health Colour, Look > Bar Texture: a link below)
@@ -964,8 +962,7 @@ function L.Define(R, Link)
 	-- (0.20.0) Frame Effects, Cooldowns: its switch, whose, and every kind to see
 	R("UnitGroupFrames", "all", "General", "FrameEffects.!enabled", { name = "Cooldown Effects" })
 	R("UnitGroupFrames", "all", "General", "FrameEffects.#Every Effect")
-	R("UnitGroupFrames", "all", "General", "FrameEffects.mine")
-	R("UnitGroupFrames", "all", "General", "FrameEffects.group")
+	R("UnitGroupFrames", "all", "General", "FrameEffects.whose")   -- (one look C13d: Your Own + Your Group's)
 
 	-- (0.17.1) Swing Timers (header: its module's switch): which bars, their
 	-- look, their size, when they show

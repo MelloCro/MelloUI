@@ -678,7 +678,8 @@ end
 -- alpha chosen from it by the client)
 function Button.Range(f)
 	local db = DB()
-	if not db.rangeFade or f.sample or not f.unit or f.unit == "player" then
+	local alpha = db.rangeAlpha or 0.45   -- (one look C13d: 100% is no fade)
+	if alpha >= 1 or f.sample or not f.unit or f.unit == "player" then
 		f:SetAlpha(1)
 		return
 	end
@@ -691,7 +692,6 @@ function Button.Range(f)
 		f:SetAlpha(1)   -- (not checked: a unit the client cannot range)
 		return
 	end
-	local alpha = db.rangeAlpha or 0.45
 	if Secret(inRange) and f.SetAlphaFromBoolean then
 		pcall(f.SetAlphaFromBoolean, f, inRange, 1, alpha)
 	elseif not Secret(inRange) then

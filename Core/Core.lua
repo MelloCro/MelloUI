@@ -4560,6 +4560,40 @@ do
 		-- Raid and Hop When You Jump are MelloUI's choices now (the art at
 		-- full, the names centred, the band transparent, quiet in a raid, the
 		-- hop): their saved keys go, so no profile carries them
+		-- one look C13d (the user's yes to the audit's merges, 2026-10-15):
+		-- Show Maximum folded into Bar Text's Format (its "/ max" forms);
+		-- Fade When Out Of Range into the opacity (off = 100%); Cooldown
+		-- Effects' Your Own and Your Group's into one Whose (both off: the
+		-- module off). The old keys dropped; a table with none left alone (a
+		-- settings text's load lays the defaults first: its own keys only)
+		function(self)
+			local bt = Raw(self, "BarText")
+			if bt and bt.showMax ~= nil then
+				if bt.showMax == true then
+					local to = ({ short = "shortmax", full = "fullmax", both = "bothmax" })[bt.format or "short"]
+					if to then
+						bt.format = to
+					end
+				end
+				bt.showMax = nil
+			end
+			local gf = Raw(self, "GroupFrames")
+			if gf and gf.rangeFade ~= nil then
+				if gf.rangeFade == false then
+					gf.rangeAlpha = 1
+				end
+				gf.rangeFade = nil
+			end
+			local fe = Raw(self, "FrameEffects")
+			if fe and (fe.mine ~= nil or fe.group ~= nil) then
+				local mine, group = fe.mine ~= false, fe.group ~= false
+				fe.whose = (mine and group and "both") or (mine and "mine") or (group and "group") or "both"
+				if not (mine or group) and type(self.db.enabled) == "table" then
+					self.db.enabled.FrameEffects = false
+				end
+				fe.mine, fe.group = nil, nil
+			end
+		end,
 		function(self)
 			for name, keys in pairs({ UnitFrames = { "frameAlpha", "centerNames", "hideReputationColor" },
 				HealFlight = { "raidLanding" }, PersonalDisplay = { "hop" } }) do
