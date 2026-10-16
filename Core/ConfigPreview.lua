@@ -805,7 +805,9 @@ end
 --   label } }: chips), Tries(id) -> true, Empty(pick) -> a caption,
 --   Moved(pick) -> n, ResetAll(pick), mover(pick) -> a mover key, reset ({ {
 --   module, key } }: Wants), Panel(class, stage, parent, y) -> frame, height,
---   OnSelect(stage, key) (a part picked or let go: the kind's own followers)
+--   OnSelect(stage, key) (a part picked or let go: the kind's own followers),
+--   pickText (the caption while nothing is picked, or a picked part has no gesture: a kind whose parts are
+--   picked, never moved; TEXT.pick's "drag it" otherwise)
 -- The page sets stage.pinAbove (what it pins over the stage, px) for Stick.
 -- A part: key, label, class, region(sample) -> region | nil (none: no hit,
 --   no outline), box(sample) (the frame its place is on: the sample when
@@ -1206,7 +1208,11 @@ do
 		end
 		if not text then
 			local part = stage:Selected()
-			text = part and E.Gestures(stage, part) or TEXT.pick
+			text = part and E.Gestures(stage, part) or def.pickText or TEXT.pick
+			-- (a kind whose parts are picked, never moved: its own line, a picked part's none of its own)
+			if text == "" and def.pickText then
+				text = def.pickText
+			end
 		end
 		if stage.caption:GetText() ~= text then
 			stage.caption:SetText(text)

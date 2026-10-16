@@ -197,11 +197,16 @@ L.pages = {
 	Nameplates = { title = "Nameplates", icon = "module:Nameplates", designer = true,
 		flavour = "The game's nameplates: pick a kind, click a part of it, change it.",
 		elements = {
-			{ key = "enemies", label = "Enemies", line = "Enemies' and NPCs' plates", parts = {
-				{ key = "name", label = "Name" }, { key = "health", label = "Health bar" },
-				{ key = "threat", label = "Threat line" }, { key = "combo", label = "Combo points" },
-				{ key = "cc", label = "CC icon" }, { key = "quest", label = "Quest icon" },
-				{ key = "debuffs", label = "Your debuffs" }, { key = "auras", label = "The game's auras" } } },
+			-- (`stage`: the enemy plate's sample, Modules/Nameplates.lua's 'nameplate' kind -- its parts picked,
+			-- never moved; `showIn`: a part your target's plate shows, listed in every state, the stage put in it
+			-- when its tab opens)
+			{ key = "enemies", label = "Enemies", line = "Enemies' and NPCs' plates",
+				stage = { kind = "nameplate", pick = "enemy" }, parts = {
+				{ key = "name", label = "Name", stage = "name" }, { key = "health", label = "Health bar", stage = "health" },
+				{ key = "threat", label = "Threat line", stage = "threat", showIn = "target" },
+				{ key = "combo", label = "Combo points", stage = "combo", showIn = "target" },
+				{ key = "cc", label = "CC icon", stage = "cc" }, { key = "quest", label = "Quest icon", stage = "quest" },
+				{ key = "debuffs", label = "Your debuffs", stage = "debuffs" }, { key = "auras", label = "The game's auras" } } },
 			-- (`sample`: Party Markers' own medallion sample in the slot -- Modules/PartyMarkers.lua's corner kind)
 			{ key = "friendly", label = "Friendly players", line = "A class medallion over friendly players' names, in the open world",
 				sample = { kind = "partymarker", pick = "marker" },

@@ -1666,9 +1666,10 @@ function Combo.Bar(row, atlas, lo)
 	return bar
 end
 
-function Combo.Make()
-	local art = Combo.ART[Combo.Class()]
-	local row = CreateFrame("Frame", nil, UIParent)
+-- a row of five sockets in `art` on `parent`, hidden (the target's plate's,
+-- and the configurator's stage sample's: a rogue's)
+function Combo.Build(art, parent)
+	local row = CreateFrame("Frame", nil, parent)
 	row:EnableMouse(false)
 	row:Hide()
 	row.shadow, row.empty, row.lit, row.point, row.glow = {}, {}, {}, {}, {}
@@ -1682,6 +1683,11 @@ function Combo.Make()
 		row.glow[i] = Combo.Bar(row, art.glow, Combo.N - 1)
 	end
 	row.art = art
+	return row
+end
+
+function Combo.Make()
+	local row = Combo.Build(Combo.ART[Combo.Class()], UIParent)
 	Combo.row = row
 	return row
 end
@@ -2061,3 +2067,322 @@ MelloUI:Profile("Nameplates", "plate names", Plate.Seen)
 M.kept = { nameBandOf = Plate.bandOf, nameMeasureOf = Plate.measureOf, nameMeasured = Plate.measured,
 	nameShown = Plate.shown, nameCoverOf = Plate.coverOf, nameCoverOn = Plate.coverOn, nameHidden = Plate.hidden,
 	plateSlotAt = Plate.slotAt, nameHide = Plate.HIDE }
+
+--------------------------------------------------------------------------------
+-- The configurator's stage (one look stage G, the user's yes to np-audit.md,
+-- point 2: "an enemy-plate stage that picks but never drags", chips Normal |
+-- Your target; nameplates_looks.jpg's A, the flat stage): the 'nameplate'
+-- wide kind of Core/ConfigPreview.lua, the Nameplates designer's Enemies. A
+-- sample of the game's enemy plate laid as the game lays it (Blizzard_
+-- NamePlateUnitFrame.lua UpdateAnchors: the bar's ground -2, 3 / 6, -6 round
+-- the bar, the target's border -1, 1 / -3, 3 round the ground, the level
+-- badge 5 right of the bar, the CC list 5 right of it; the name above the bar
+-- in the setup's style) with MelloUI's parts on it as this module and Auras
+-- lay them, from the saved settings now: the CC icon above the name and the
+-- debuff row (ComputeOffset's sum), the quest icon left of the bar, the name's
+-- soft band, the threat line along the bar's bottom and the combo points on
+-- its top edge (your target), your debuffs over the name. The module off: the
+-- game's own plate (no part of ours, the CC icon small at the game's place).
+-- Every part is picked, never moved (`drag = false`: each place is the game's
+-- or a slider). Made with the page, never at login; no unit is read (the
+-- names, the level, the icons and the numbers are made up).
+--------------------------------------------------------------------------------
+
+do
+	local CP = MelloUI.ConfigPreview
+	local Fin = MelloUI.Safe.Finite
+	local Stage = {
+		NAME = "Defias Pillager", LEVEL = "17",
+		CC = "Interface\\Icons\\Ability_Sap",
+		DEBUFFS = { { "Interface\\Icons\\Ability_Rogue_Garrote", "12" }, { "Interface\\Icons\\Ability_Rogue_Rupture", "8" } },
+		-- the game's (NamePlateConstants; the fallbacks its values on this client)
+		PLATE_W = 190, INSET = 12, BAR_H = 12, AURA = 25, LEVEL_W = 15, LEVEL_GAP = 5, CC_GAP = 5,
+		BG = { -2, 3, 6, -6 }, BORDER = { -1, 1, -3, 3 },
+		FILL = 0.72, THREAT_FILL = 0.55, LIT = 3, SPACING = 2, PAD = 6, QUEST_GAP = 2,
+		HOSTILE = { reaction = 2, fraction = 0.72, area = "nameplates" },   -- (Bar Textures' sample: plain values)
+		STATES = { { key = "normal", label = "Normal" }, { key = "target", label = "Your target" } },
+		TEXT = { off = "Nameplate Tweaks is off: the game's own plate, none of MelloUI's parts on it.",
+			pick = "Click a part to pick it; its settings open below." },
+		parts = nil,   -- (the part list, made once)
+	}
+	Stage.ROOM_TOP = 34    -- the state chips' row
+	Stage.ROOM_BOTTOM = 22 -- the caption's
+
+	function Stage.Const(key, fallback)
+		local c = rawget(_G, "NamePlateConstants")
+		return (type(c) == "table" and Num(c[key])) or fallback
+	end
+
+	function Stage.Text(parent, font, layer)
+		local t = parent:CreateFontString(nil, layer or "OVERLAY")
+		local obj = rawget(_G, font)
+		t:SetFontObject(type(obj) == "table" and obj or GameFontHighlightSmall)
+		return t
+	end
+
+	function Stage.Icon(parent, file, layer)
+		local t = parent:CreateTexture(nil, layer or "ARTWORK")
+		t:SetTexture(file)
+		t:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		return t
+	end
+
+	function Stage.Main(stage)
+		local f = CreateFrame("Frame", nil, stage.holder)
+		f:SetSize(240, 120)
+		f:EnableMouse(false)
+		f.bar = CreateFrame("Frame", nil, f)
+		f.bar:SetFrameLevel(f:GetFrameLevel() + 2)
+		f.bg = f.bar:CreateTexture(nil, "BACKGROUND")
+		f.bg:SetAtlas("UI-HUD-CoolDownManager-Bar-BG")
+		f.fill = f.bar:CreateTexture(nil, "ARTWORK")
+		f.fill:SetPoint("TOPLEFT", f.bar, "TOPLEFT")
+		f.fill:SetPoint("BOTTOMLEFT", f.bar, "BOTTOMLEFT")
+		f.deselected = f.bar:CreateTexture(nil, "OVERLAY")
+		f.deselected:SetAtlas("ui-hud-nameplates-deselected-overlay")
+		f.deselected:SetPoint("TOPLEFT", f.bar, "TOPLEFT", 0, 1)
+		f.deselected:SetPoint("BOTTOMRIGHT", f.bar, "BOTTOMRIGHT", 0, -1)
+		f.border = f.bar:CreateTexture(nil, "OVERLAY", nil, 1)
+		f.border:SetAtlas("UI-HUD-Nameplates-Selected")
+		local b, o = Stage.BG, Stage.BORDER
+		f.bg:SetPoint("TOPLEFT", f.bar, "TOPLEFT", b[1], b[2])
+		f.bg:SetPoint("BOTTOMRIGHT", f.bar, "BOTTOMRIGHT", b[3], b[4])
+		f.border:SetPoint("TOPLEFT", f.bg, "TOPLEFT", o[1], o[2])
+		f.border:SetPoint("BOTTOMRIGHT", f.bg, "BOTTOMRIGHT", o[3], o[4])
+		local c = rawget(_G, "NAMEPLATE_BORDER_TARGET_COLOR")
+		if type(c) == "table" and c.r then
+			f.border:SetVertexColor(c.r, c.g, c.b)
+		end
+		f.level = f.bar:CreateTexture(nil, "ARTWORK")
+		f.level:SetAtlas("ui-hud-nameplates-levelindicator")
+		f.levelText = Stage.Text(f.bar, "SystemFont_NamePlateLevel")
+		f.levelText:SetPoint("CENTER", f.level, "CENTER")
+		f.levelText:SetText(Stage.LEVEL)
+		-- (the threat line: its look as ThreatLine makes it, gold while safe)
+		f.threat = CreateFrame("StatusBar", nil, f.bar)
+		f.threat:SetFrameLevel(f.bar:GetFrameLevel() + 5)
+		f.threat:SetStatusBarTexture(WHITE)
+		f.threat:SetMinMaxValues(0, 1)
+		f.threat:SetValue(Stage.THREAT_FILL)
+		f.threat:SetHeight(THREAT_H)
+		f.threat:SetPoint("BOTTOMLEFT", f.bar, "BOTTOMLEFT")
+		f.threat:SetPoint("BOTTOMRIGHT", f.bar, "BOTTOMRIGHT")
+		local tbg = f.threat:CreateTexture(nil, "BACKGROUND")
+		tbg:SetAllPoints(f.threat)
+		tbg:SetTexture(WHITE)
+		W.Paint(tbg, "innerPanel", "vertex", 0.85)
+		local edge = f.threat:CreateTexture(nil, "BORDER")
+		edge:SetTexture(WHITE)
+		edge:SetPoint("BOTTOMLEFT", f.threat, "TOPLEFT")
+		edge:SetPoint("BOTTOMRIGHT", f.threat, "TOPRIGHT")
+		edge:SetHeight(1)
+		W.Paint(edge, "mainWindow", "vertex", 1)
+		-- (the combo points: the rogue's sockets, three lit)
+		f.combo = Combo.Build(Combo.ART.ROGUE, f.bar)
+		f.combo:SetPoint("CENTER", f.bar, "TOP", 0, 0)
+		local level = f.bar:GetFrameLevel() + Combo.LEVEL
+		f.combo:SetFrameLevel(level)
+		for i = 1, Combo.N do
+			f.combo.lit[i]:SetFrameLevel(level + 1)
+			f.combo.point[i]:SetFrameLevel(level + 2)
+			f.combo.glow[i]:SetFrameLevel(level + 3)
+			f.combo.lit[i]:SetValue(Stage.LIT)
+			f.combo.point[i]:SetValue(Stage.LIT)
+			f.combo.glow[i]:SetValue(Stage.LIT)
+		end
+		-- (the parts over the bar: the quest icon's layer, as GetQuestIcon's)
+		f.top = CreateFrame("Frame", nil, f)
+		f.top:SetAllPoints(f)
+		f.top:SetFrameLevel(f.bar:GetFrameLevel() + 5)
+		f.quest = f.top:CreateTexture(nil, "OVERLAY")
+		f.quest:SetTexture(QUEST_ICON_TEXTURE)
+		f.quest:SetPoint("RIGHT", f.bar, "LEFT", -Stage.QUEST_GAP, 0)
+		f.name = Stage.Text(f.top, "SystemFont_NamePlate")
+		f.name:SetText(Stage.NAME)
+		Plate.LOOK.alpha = MelloUI.Shade.TEXT.alpha
+		f.band = MelloUI.Shade:Band(f.top, Plate.LOOK)
+		if f.band then
+			f.band:Anchor(f.name, Plate.PAD_X, Plate.PAD_Y)
+		end
+		f.debuffs = CreateFrame("Frame", nil, f.top)
+		f.debuffs.icons, f.debuffs.times = {}, {}
+		for i, d in ipairs(Stage.DEBUFFS) do
+			f.debuffs.icons[i] = Stage.Icon(f.debuffs, d[1])
+			local t = Stage.Text(f.debuffs, "NumberFontNormalSmall")
+			t:SetPoint("BOTTOMRIGHT", f.debuffs.icons[i], "BOTTOMRIGHT", 1, 0)
+			t:SetText(d[2])
+			f.debuffs.times[i] = t
+		end
+		f.cc = Stage.Icon(f.top, Stage.CC)
+		return f
+	end
+
+	-- the saved table the rows write (a module never switched on has no db)
+	function Stage.DB(name)
+		return MelloUI:GetModuleDB(name) or Stage.EMPTY
+	end
+	Stage.EMPTY = {}
+
+	-- a module running (its switch on and enabled)
+	function Stage.Running(name)
+		local m = MelloUI.modules and MelloUI.modules[name]
+		return m ~= nil and m.isEnabled and true or false
+	end
+
+	function Stage.Paint(f, _, _, ctx)
+		local db = Stage.DB("Nameplates")
+		local ours = Stage.Running("Nameplates")
+		local target = ctx and ctx.state == "target"
+		local barW = Stage.Const("NAME_PLATE_WIDTH", Stage.PLATE_W) - 2 * Stage.Const("HORIZONTAL_INSET", Stage.INSET)
+		local barH = SetupOption("healthBarHeight", Stage.BAR_H)
+		-- the health bar as Bar Textures answers for the plates (its fill and colour while it works on them; the
+		-- game's own atlas otherwise), a hostile NPC's reaction colour
+		local bt = MelloUI:GetModule("BarTextures")
+		local file, active
+		if bt and bt.PreviewTexture then
+			file, active = bt.PreviewTexture("nameplates")
+		end
+		if file then
+			f.fill:SetTexture(file)
+		else
+			f.fill:SetAtlas("UI-HUD-CoolDownManager-Bar")
+		end
+		local r, g, b
+		if active and bt.PreviewHealthColor then
+			r, g, b = bt.PreviewHealthColor(nil, Stage.HOSTILE)
+		end
+		if not r then
+			local c = rawget(_G, "FACTION_BAR_COLORS")
+			c = type(c) == "table" and c[Stage.HOSTILE.reaction]
+			if type(c) == "table" then
+				r, g, b = c.r, c.g, c.b
+			end
+		end
+		if r then
+			f.fill:SetVertexColor(r, g, b)
+		end
+		f.fill:SetWidth(barW * Stage.FILL)
+		f.border:SetShown(target)
+		f.deselected:SetShown(not target)
+		f.level:SetSize(Stage.LEVEL_W, Stage.LEVEL_W)
+		f.level:ClearAllPoints()
+		f.level:SetPoint("LEFT", f.bar, "RIGHT", Stage.LEVEL_GAP, 0)
+		-- the combo points (your target, the option on): the name lifted over them
+		local s = barH * (Num(db.comboSize) or 90) / 100
+		local combo = ours and target and db.comboPoints ~= false
+		if combo then
+			Combo.Lay(f.combo, s)
+		end
+		f.combo:SetShown(combo)
+		local lift = combo and Combo.NameLift(s) or 0
+		f.threat:SetShown(ours and target and db.threatLine ~= false)
+		-- the name, in the setup's style (LayGameName's), and its soft band
+		local styles = rawget(_G, "NamePlateConstants")
+		styles = type(styles) == "table" and styles.NAME_ANCHOR_STYLES
+		local y = SetupOption("healthBarToNameAboveSpacing", 2) + lift
+		f.name:ClearAllPoints()
+		if styles and SetupOption("unitNameAnchorStyle", -1) == styles.CenteredAboveHealthBar then
+			f.name:SetJustifyH("CENTER")
+			f.name:SetPoint("BOTTOM", f.bar, "TOP", 0, y)
+		else
+			local opts = rawget(_G, "NamePlateSetupOptions")
+			local j = type(opts) == "table" and opts.nameJustificationWhenAboveHealthBar
+			f.name:SetJustifyH((j == "CENTER" or j == "RIGHT") and j or "LEFT")
+			f.name:SetPoint("BOTTOMLEFT", f.bar, "TOPLEFT", 0, y)
+		end
+		if f.band then
+			f.band:SetShown(ours and db.nameShade ~= "off")
+		end
+		local nameH = Fin(f.name:GetStringHeight()) or 12
+		-- your debuffs (Auras' row: its size; the game's row: the game's) over the name, their numbers while a
+		-- timer draws them (Auras' own, or Cooldown Timers on the game's)
+		local auras = Stage.DB("Auras")
+		local mine = Stage.Running("Auras") and auras.nameplates ~= false
+		local size = mine and (Num(auras.nameplateSize) or 20) or Stage.AURA
+		local timers = mine or (Stage.Running("CooldownText") and Stage.DB("CooldownText").nameplates ~= false)
+		local row = f.debuffs
+		row:ClearAllPoints()
+		row:SetPoint("BOTTOMLEFT", f.bar, "TOPLEFT", 0, y + nameH + Stage.SPACING)
+		row:SetSize(#row.icons * (size + Stage.SPACING), size)
+		for i, icon in ipairs(row.icons) do
+			icon:SetSize(size, size)
+			icon:ClearAllPoints()
+			icon:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", (i - 1) * (size + Stage.SPACING), 0)
+			row.times[i]:SetShown(timers)
+		end
+		-- the CC icon: above the name and the debuff row (ComputeOffset's sum), else small at the game's place
+		local big = ours and db.bigCC ~= false
+		local cc = big and (Num(db.ccSize) or 45) or Stage.AURA
+		f.cc:SetSize(cc, cc)
+		f.cc:ClearAllPoints()
+		local above
+		if big then
+			above = nameH + 2 + Stage.AURA + 2 + (Num(db.ccGap) or 4) + lift
+			f.cc:SetPoint("BOTTOM", f.bar, "TOP", 0, above)
+			above = above + cc
+		else
+			f.cc:SetPoint("LEFT", f.bar, "RIGHT", Stage.LEVEL_GAP + Stage.LEVEL_W + Stage.CC_GAP, 0)
+			above = y + nameH + Stage.SPACING + size
+		end
+		-- the quest icon (the option on), left of the bar
+		local quest = ours and db.questIcon ~= false
+		local qs = Num(db.questIconSize) or 22
+		f.quest:SetSize(qs, qs)
+		f.quest:SetShown(quest)
+		-- the sample's own size round what shows (the stage fits it), the bar placed in it
+		local left = Stage.PAD + (quest and qs + Stage.QUEST_GAP or 0) + 2
+		local right = Stage.PAD + Stage.LEVEL_GAP + Stage.LEVEL_W + (big and 0 or Stage.CC_GAP + cc)
+		local bottom = Stage.PAD - Stage.BG[4] - Stage.BORDER[4]
+		local top = Stage.PAD + math.max(above, (barH / 2) + s / 2, (big or not quest) and 0 or qs / 2)
+		f.bar:SetSize(barW, barH)
+		f.bar:ClearAllPoints()
+		f.bar:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", left, bottom)
+		f:SetSize(left + barW + right, bottom + barH + top)
+	end
+
+	-- the room under the state chips, over the caption
+	function Stage.Room(stage)
+		local w, h = Fin(stage:GetWidth()) or 0, Fin(stage:GetHeight()) or 0
+		return 8, Stage.ROOM_TOP, w - 16, h - Stage.ROOM_TOP - Stage.ROOM_BOTTOM
+	end
+
+	-- the parts, each picked and never moved; one that does not show (its option off, the module off, your
+	-- target's in Normal) takes no click (a hidden region keeps its rect)
+	function Stage.Part(key, label, field, text)
+		return { key = key, label = label, drag = false, text = text,
+			region = function(f)
+				local r = f[field]
+				return r and r:IsShown() and r or nil
+			end }
+	end
+
+	function Stage.Parts()
+		if not Stage.parts then
+			Stage.parts = {
+				Stage.Part("name", "Name", "name", true),
+				Stage.Part("health", "Health bar", "bg"),
+				Stage.Part("threat", "Threat line", "threat"),
+				Stage.Part("combo", "Combo points", "combo"),
+				Stage.Part("cc", "CC icon", "cc"),
+				Stage.Part("quest", "Quest icon", "quest"),
+				Stage.Part("debuffs", "Your debuffs", "debuffs"),
+			}
+		end
+		return Stage.parts
+	end
+
+	function Stage.Empty()
+		return not Stage.Running("Nameplates") and Stage.TEXT.off or nil
+	end
+
+	if CP and CP.Register then
+		CP.Register("nameplate", {
+			place = "wide", height = 230, maxScale = 1.5,
+			picks = { enemy = true }, first = "enemy",
+			watch = { Nameplates = true, Auras = true, CooldownText = true, BarTextures = true, UIModifications = true },
+			states = Stage.STATES, pickText = Stage.TEXT.pick,
+			Main = Stage.Main, Paint = Stage.Paint, Room = Stage.Room, parts = Stage.Parts, Empty = Stage.Empty,
+		})
+	end
+	M.Stage = Stage
+end

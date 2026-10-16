@@ -3271,7 +3271,9 @@ do
 		return function()
 			page.dEl = nil
 			if page.current then
+				page.dChipState = true
 				DUI.Follow(page, page.current)
+				page.dChipState = nil
 			end
 		end
 	end
@@ -3889,7 +3891,9 @@ do
 			end
 			-- (a part shown only in a state -- the Status text -- opened: the stage in that state; its listener lays
 			-- the Parts line and comes back here)
-			local only = t.part and t.part.state
+			-- (a part with `showIn` -- the nameplate's combo points, your target's -- is listed in every state and
+			-- puts the stage in its own when opened; a chip picked while it is open is left as picked)
+			local only = t.part and (t.part.state or (not page.dChipState and t.part.showIn))
 			if only and stage.ctx.state ~= only then
 				stage:SetState(only)
 				return

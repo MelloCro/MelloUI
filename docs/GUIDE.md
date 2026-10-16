@@ -429,6 +429,11 @@ Control" nameplate aura option must be on. Also adds a yellow quest marker left 
 bar on enemies that still count for an unfinished quest objective (Forever's default
 nameplates have no quest icon), read from the unit tooltip data.
 
+In the configurator, Nameplates > Enemies shows a sample of an enemy's plate drawn with these settings (the
+name, level and icons made up): click a part of it (the name, the health bar, the CC icon, the quest icon, your
+debuffs) to open its settings. Normal | Your target switches the sample to your target's plate, with its
+border, the combo points and the threat line. Nothing on it moves: each place is the game's or a slider.
+
 **Threat Line** (on, 0.16.0; Nameplates > Enemies > Threat line): in a group fight, a thin bar along the bottom of
 an enemy's health bar -- in the groove of the Nameplate Kit's lower rail, the bracket its outline;
 without the kit along the bar's bottom edge with a thin dark edge -- fills toward the point
