@@ -1456,7 +1456,7 @@ local function HopDone()
 end
 
 local function HopCheck()
-	if S.hopping or not (On() and S.ui and Db().hop ~= false) then
+	if S.hopping or not (On() and S.ui) then
 		return
 	end
 	local ok, falling = pcall(IsFalling)
@@ -1467,7 +1467,9 @@ local function HopCheck()
 end
 
 local function OnJump()
-	if On() and Db().hop ~= false then
+	-- (one look C13: the hop is MelloUI's choice -- Hop When You Jump gone; Reduce
+	-- Motion keeps it still, Anim's)
+	if On() then
 		C_Timer.After(T.jumpCheck, HopCheck)
 	end
 end
@@ -2242,7 +2244,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 	-- the player's own game setting, given back when off, and the camera zoom the display was placed at: never in a
 	-- profile
 	keep = { "savedGameDisplay", "zoomRef", "savedSwing" },
-	defaults = { width = 160, height = 10, shield = true, text = true, hop = true, zoom = true, hideCastBar = true,
+	defaults = { width = 160, height = 10, shield = true, text = true, zoom = true, hideCastBar = true,
 		healFrom = true, swing = true, cooldowns = true, cdSize = 16, textFont = "shared" },
 	options = {
 		{ type = "toggle", key = "shield", name = "Shield Column",
@@ -2259,8 +2261,6 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "Your health and power in percent beside their bars, the spell and its seconds on the cast bar, and the shield's amount under its column." },
 		{ type = "dropdown", key = "textFont", name = "Text Font", values = MelloUI.FontFaces, new = "0.25.0",
 		  desc = "The face of the display's texts: the percents, the spell and its seconds, the shield's amount. Shared: the Interface text's face (Look > Fonts)." },
-		{ type = "toggle", key = "hop", name = "Hop When You Jump",
-		  desc = "The display hops with you when you jump, as Legion's did under your character. Reduce Motion keeps it still." },
 		{ type = "slider", key = "width", name = "Width", min = 100, max = 260, step = 5,
 		  desc = "How wide the health, power and cast bars are. Edit Layout sizes the whole display." },
 		{ type = "slider", key = "height", name = "Height", min = 5, max = 16, step = 1,

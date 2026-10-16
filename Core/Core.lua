@@ -4555,6 +4555,22 @@ do
 			end
 			gf.healthColour = nil
 		end,
+		-- one look C13 (the user's yes to the audit's five drops, 2026-10-15):
+		-- Frame Art Opacity, Centre Names, Transparent Name Band, Landing In A
+		-- Raid and Hop When You Jump are MelloUI's choices now (the art at
+		-- full, the names centred, the band transparent, quiet in a raid, the
+		-- hop): their saved keys go, so no profile carries them
+		function(self)
+			for name, keys in pairs({ UnitFrames = { "frameAlpha", "centerNames", "hideReputationColor" },
+				HealFlight = { "raidLanding" }, PersonalDisplay = { "hop" } }) do
+				local t = Raw(self, name)
+				if t then
+					for _, key in ipairs(keys) do
+						t[key] = nil
+					end
+				end
+			end
+		end,
 	}
 
 	function MelloUI:MergeSettings()

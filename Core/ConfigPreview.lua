@@ -462,7 +462,7 @@ local function PaintCorner(p)
 		-- is on (Unit Frames' Centre Names then leaves the names to it), else
 		-- by Centre Names where it reaches
 		local uf = Running("UnitFrames")
-		local centred = (s.plate and Running("UnitFramePanel")) or (s.centre and uf and uf.db.centerNames)
+		local centred = (s.plate and Running("UnitFramePanel")) or (s.centre and uf and uf.isEnabled)
 		p.name:SetJustifyH(centred and "CENTER" or "LEFT")
 		p.name:SetText(NameAs(s))
 	elseif s.layout == "raid" then

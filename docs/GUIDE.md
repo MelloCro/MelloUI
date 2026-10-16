@@ -554,10 +554,11 @@ from the corner, update interval.
 
 ### Unit Frames
 
-Layout tweaks for the player, target and focus frames: names centred above the health bar,
-transparent name band (the reaction coloured strip behind target / focus names), no red combat
-flash on player / target / focus / pet / party frames, no resting / combat status glow on the
-player frame, and a frame art opacity slider. Together with Dark Mode, Bar Textures set to the
+Layout tweaks for the player, target and focus frames: names centred above the health bar and a
+transparent name band (the reaction coloured strip behind target / focus names) -- both always, while
+Unit Frame Tweaks are on -- no red combat flash on player / target / focus / pet / party frames and no
+resting / combat status glow on the player frame. The frame art keeps its full opacity. Together with
+Dark Mode, Bar Textures set to the
 "Class (players) / reaction (NPCs)" health colour and Bar Text this gives the flat RougeUI look.
 
 Fading the player frame out of combat (0.14.0's Fade Out Of Combat) is the **Fader**'s since
@@ -676,8 +677,7 @@ whichever show.
 - **Heal Over Time Ticks** (on by default): while a heal over time of yours runs, each tick plays a small pulse on
   the frame (a ring and three motes, a leaf, a drop and a ripple, or the border's breath), timed from the game's
   spell data: Renew ticks five times in 15 seconds. A recast starts them again.
-- **Landing In A Raid:** **Quiet** (the border flares, so the frames round it stay readable; the default) or **The
-  Look's Own Burst**.
+- **In a raid** a heal always lands **Quiet** (the border flares), so the frames round it stay readable.
 - **Preview:** a made-up heal on you, from where your cast bar stands to your own frame. **Every Kind:** each
   kind's landing on your own frame, one after another, its name on the screen.
 - A harmful spell, or a heal on someone outside your group, shows nothing. Reduce Motion turns it off.
@@ -725,8 +725,8 @@ default; its settings on **Unit & Group Frames**' **Personal** frame):
 - **It stays by your character:** this client does not tell an addon where your character stands, so place the
   display once in **Edit Layout** (the bars and the shield column each have their own plate), at the zoom you play
   at. **Follow Camera Zoom** keeps it there as you zoom: closer under your feet when you zoom out, further down when
-  you zoom in, never over your character. Turning the camera up or down is not followed. **Hop When You Jump**: the
-  display hops with you.
+  you zoom in, never over your character. Turning the camera up or down is not followed. The display hops with you
+  when you jump (not with Reduce Motion).
 - **Swing On The Rails:** your swing timer with no bar of its own: in a fight two sparks run out from the middle of
   the health bar's top rail to its ends, and your swing lands as they reach them (a flash there); an off hand's run
   along the bottom of the power bar. Shots run on the seam between the health and power bars: cream sparks out while

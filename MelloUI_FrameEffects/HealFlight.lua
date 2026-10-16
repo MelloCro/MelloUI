@@ -69,10 +69,6 @@ local LOOK_VALUES = {
 }
 -- By Class (the user, 2026-10-09): each healing class its own; anyone else Holy
 local CLASS_LOOK = { PRIEST = "holy", PALADIN = "holy", DRUID = "nature", SHAMAN = "water" }
-local LANDING_VALUES = {
-	{ value = "quiet", label = "Quiet: the border flares" },
-	{ value = "same", label = "The look's own burst" },
-}
 
 local M   -- (the module, registered below)
 local P = {
@@ -290,8 +286,11 @@ local function BarPlace(S)
 	return true
 end
 
+-- (one look C13, the user's yes to the audit's drops: Landing In A Raid gone
+-- -- a heal lands quietly in a raid, where the frames sit close: MelloUI's
+-- choice, today's default)
 local function Quiet()
-	return M.db.raidLanding ~= "same" and Ask(IsInRaid) == true
+	return Ask(IsInRaid) == true
 end
 
 -- the look in use: the chosen one, or By Class's for your class
@@ -804,7 +803,6 @@ M = MelloUI:RegisterModule("HealFlight", {
 		look = "class",
 		flight = true,
 		hotTicks = true,
-		raidLanding = "quiet",
 	},
 	options = {
 		{ type = "dropdown", key = "look", name = "Look", values = LOOK_VALUES,
@@ -812,9 +810,7 @@ M = MelloUI:RegisterModule("HealFlight", {
 		{ type = "toggle", key = "flight", name = "Flying Light",
 		  desc = "The light that flies from your cast bar to the frame when a cast heal ends (Chain Heal's hops too). Off: the heal lands on the frame the moment the cast ends, as an instant one does; the glow on your cast bar while you cast and every effect on the frames stay." },
 		{ type = "toggle", key = "hotTicks", name = "Heal Over Time Ticks",
-		  desc = "While a heal over time of yours runs (Renew, Rejuvenation, Regrowth's), each of its ticks plays a small pulse on the frame: a ring and three motes (Holy), a leaf (Nature), a drop and a ripple (Water), the border's breath (Quiet, and in a raid with Landing In A Raid Quiet). Timed from the game's spell data: Renew ticks five times in 15 seconds." },
-		{ type = "dropdown", key = "raidLanding", name = "Landing In A Raid", values = LANDING_VALUES,
-		  desc = "How your heals land in a raid, where the frames sit close together. Quiet: the frame's border flares (a shield's twice, protection's with a small crest), so the frames round it stay readable. The look's own burst: the same as in a party (Holy's rays and Nature's leaves reach over the frames next to it for a moment)." },
+		  desc = "While a heal over time of yours runs (Renew, Rejuvenation, Regrowth's), each of its ticks plays a small pulse on the frame: a ring and three motes (Holy), a leaf (Nature), a drop and a ripple (Water), the border's breath (Quiet, and in a raid). Timed from the game's spell data: Renew ticks five times in 15 seconds." },
 		{ type = "button", name = "Preview", text = "Play",
 		  hint = "a made-up heal on you",
 		  desc = "Plays the chosen look once: the light gathers where your cast bar stands and flies to your own frame in your party or raid frames (or your player frame); with Flying Light off it lands there at once.",

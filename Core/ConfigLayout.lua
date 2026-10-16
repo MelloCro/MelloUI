@@ -550,8 +550,6 @@ function L.Define(R, Link)
 	-- (0.19.4, the options audit: the unit frame skin fades or replaces the
 	-- same art and puts the writes back)
 	local UF = Uncovered("UnitFramePanel", "unit frames")
-	UGF(GAME4, "Look", "UnitFrames.frameAlpha", { when = UF, plus = "Party portraits" })
-	UGF({ "target:name", "focus:name" }, "Look", "UnitFrames.hideReputationColor", { when = UF })
 	UGF({ "player:combat", "target:combat", "focus:combat", "pet:combat" }, "Look", "UnitFrames.hideCombatGlow", { when = UF, plus = "Party portraits" })
 	UGF({ "player:status", "pet:status" }, "Look", "UnitFrames.hideStatusGlow", { when = UF })
 	UGF({ "player:pvp", "target:pvp", "focus:pvp" }, "Look", "UnitFrames.hidePvPBadge", { when = UF })
@@ -564,7 +562,6 @@ function L.Define(R, Link)
 	-- (0.21.3, the animations: the level badge turning over, the XP bar's light, the notice;
 	-- one-look D5: the Unit Frames module's, Unit Frame Tweaks')
 	R("BarsMeters", "XP & Reputation", "Look", "UnitFrames.levelUp")
-	UGF({ "player:name", "target:name", "focus:name" }, "Text", "UnitFrames.centerNames", { when = UF })
 	-- (one look C11, Q2: each text part its own face -- MelloUI.FontFaces, "Shared" today's)
 	UGF({ "player:name", "target:name", "focus:name" }, "Text", "UnitFrames.nameFont", { name = "Font",
 		plus = "Pet, their targets, Party portraits" })
@@ -963,7 +960,6 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "all", "General", "HealFlight.flight")
 	R("UnitGroupFrames", "all", "General", "HealFlight.hotTicks")
 	R("UnitGroupFrames", "all", "Look", "HealFlight.look")
-	R("UnitGroupFrames", "all", "Look", "HealFlight.raidLanding")
 
 	-- (0.20.0) Frame Effects, Cooldowns: its switch, whose, and every kind to see
 	R("UnitGroupFrames", "all", "General", "FrameEffects.!enabled", { name = "Cooldown Effects" })
@@ -1000,7 +996,6 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "personal:element", "Layout", "PersonalDisplay.@scale:personalbars", { name = "Scale" })
 	R("UnitGroupFrames", "personal:shield", "Layout", "PersonalDisplay.@scale:personalshield", { name = "Scale" })
 	R("UnitGroupFrames", "personal:cooldowns", "Layout", "PersonalDisplay.cdSize", { when = { key = "PersonalDisplay.cooldowns", notValue = false, line = "Only with Big Cooldowns on" } })
-	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.hop")
 	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.zoom")
 	-- (0.21.0: its border on Look > Borders, its fade on the Fader's page)
 

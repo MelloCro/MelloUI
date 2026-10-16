@@ -41,25 +41,23 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 	group = "Frames and bars", navOrder = 1,
 	role = "replaces",
 	tweak = { label = "Unit Frame Tweaks", desc = "Name and glow tweaks on the unit frames, the party's levels and the names' soft bands (they step aside where the reskin covers them), Level Up and XP Gain.", order = 5 },
+	-- (one look C13, the user's yes to the audit's drops, 2026-10-15: the names
+	-- centred and the target's and focus's name band transparent while this
+	-- module is on, the frame art at its full opacity -- MelloUI's choices,
+	-- no rows; Core.lua's MERGES drops the old keys)
 	defaults = {
-		centerNames = true,
 		nameFormat = "both",   -- set by UI Modifications' "Show Names As" (one setting for every name)
-		hideReputationColor = true,
 		hideCombatGlow = true,
 		hideStatusGlow = true,
 		hidePvPBadge = true,
-		frameAlpha = 1,
 		levelUp = true,
 		xpGain = true,
 		nameFont = "shared",
 	},
 	options = {
 		{ type = "header", name = "Names" },
-		{ type = "toggle", key = "centerNames", name = "Centre Names", desc = "Centre the unit name above the health bar." },
 		{ type = "dropdown", key = "nameFont", name = "Name Font", values = MelloUI.FontFaces, new = "0.25.0",
 		  desc = "The face of the names on the player, target, focus and pet frames, their targets' and the party portraits' (their level follows). Shared: the Interface text's face (Look > Fonts)." },
-		{ type = "toggle", key = "hideReputationColor", name = "Transparent Name Band",
-		  desc = "Hide the reaction coloured strip behind target and focus names." },
 		{ type = "header", name = "Glows" },
 		{ type = "toggle", key = "hideCombatGlow", name = "Hide Combat Flash",
 		  desc = "Hide the red flash around the player, target, focus, pet and party frames while in combat or when a target attacks." },
@@ -71,8 +69,6 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		{ type = "toggle", key = "hidePvPBadge", name = "Hide PvP Badge",
 		  desc = "Hide the PvP badge beside the portrait of the player, target and focus frames: the diamond with your honour rank, or the faction icon, that shows while you or they are flagged for PvP." },
 		{ type = "header", name = "Frame Art" },
-		{ type = "slider", key = "frameAlpha", name = "Frame Art Opacity", min = 0.1, max = 1, step = 0.05, percent = true,
-		  desc = "Opacity of the frame art around the bars and portraits. The bars themselves stay solid." },
 		-- (one-look D5: the two below moved from the Unit Frames Kit, keys and
 		-- rows kept -- Core.lua's MERGES carries a saved "off"; no header row
 		-- of their own: in the schema they sit under Frame Art, on the page
@@ -401,7 +397,7 @@ local function ApplyNames()
 	if MelloUI.Kit and MelloUI.Kit:IsCovered("unitframes") then
 		return
 	end
-	local on = M.isEnabled and M.db.centerNames
+	local on = M.isEnabled
 	if PlayerName then
 		if on then
 			CenterName(PlayerName, PlayerNameContainer())
@@ -428,7 +424,7 @@ end
 local hookedBands = setmetatable({}, { __mode = "k" })
 
 local function ApplyReputationColor()
-	local hide = M.isEnabled and M.db.hideReputationColor
+	local hide = M.isEnabled
 	for _, frame in ipairs(TargetLikeFrames()) do
 		local main = frame and frame.TargetFrameContent and frame.TargetFrameContent.TargetFrameContentMain
 		local band = main and main.ReputationColor
@@ -439,7 +435,7 @@ local function ApplyReputationColor()
 				-- Blizzard recolours the band on every target change with
 				-- SetVertexColor(r, g, b, a), which also resets its alpha.
 				hooksecurefunc(band, "SetVertexColor", function(self)
-					if M.isEnabled and M.db.hideReputationColor then
+					if M.isEnabled then
 						self:SetAlpha(0)
 					end
 				end)
@@ -616,56 +612,6 @@ if MelloUI.Kit and MelloUI.Kit.OnCover then
 			M:HoldStatusGlows()
 		end
 	end)
-end
-
-local function FrameArtTextures()
-	local list = {}
-	local container = PlayerFrame and PlayerFrame.PlayerFrameContainer
-	if container then
-		list[#list + 1] = container.FrameTexture
-		list[#list + 1] = container.VehicleFrameTexture
-		list[#list + 1] = container.AlternatePowerFrameTexture
-	end
-	for _, frame in ipairs(TargetLikeFrames()) do
-		local c = frame and frame.TargetFrameContainer
-		if c then
-			list[#list + 1] = c.FrameTexture
-			list[#list + 1] = c.BossPortraitFrameTexture
-		end
-		if frame and frame.totFrame then
-			list[#list + 1] = frame.totFrame.FrameTexture
-		end
-	end
-	list[#list + 1] = PetFrameTexture
-	if PartyFrame then
-		for i = 1, 4 do
-			local member = PartyFrame["MemberFrame" .. i]
-			if member then
-				list[#list + 1] = member.Texture
-				list[#list + 1] = member.VehicleTexture
-				if member.PetFrame then
-					list[#list + 1] = member.PetFrame.Texture
-				end
-			end
-		end
-	end
-	return list
-end
-
--- (0.19.4, the options audit) The kit's unit frame skin fades this same art
--- and puts every write back to 0 (Kit:Fade): nothing is set while it covers
--- the frames. When it goes off, Kit:Unfade leaves 1 and the cover listener
--- (OnEnable) sets the chosen opacity again.
-local function ApplyFrameAlpha()
-	if MelloUI.Kit and MelloUI.Kit:IsCovered("unitframes") then
-		return
-	end
-	local alpha = M.isEnabled and (tonumber(M.db.frameAlpha) or 1) or 1
-	for _, tex in ipairs(FrameArtTextures()) do
-		if tex and tex.SetAlpha then
-			tex:SetAlpha(alpha)
-		end
-	end
 end
 
 --------------------------------------------------------------------------------
@@ -893,9 +839,9 @@ local function InstallHooks()
 	-- Blizzard re-anchors the player name when switching to / from vehicle art.
 	if type(PlayerFrame_UpdatePlayerNameTextAnchor) == "function" then
 		hooksecurefunc("PlayerFrame_UpdatePlayerNameTextAnchor", function()
-			if M.isEnabled and M.db.centerNames and PlayerName then
+			if M.isEnabled and PlayerName then
 				OutOfCombat(function()
-					if M.isEnabled and M.db.centerNames and PlayerName then
+					if M.isEnabled and PlayerName then
 						originalNameLayout[PlayerName] = nil
 						CenterName(PlayerName, PlayerNameContainer())
 					end
@@ -911,7 +857,6 @@ local function InstallHooks()
 					OutOfCombat(function()
 						if M.isEnabled then
 							ApplyGlows()
-							ApplyFrameAlpha()
 						end
 					end)
 				end
@@ -1978,7 +1923,6 @@ local function ApplyAll()
 		M.NameFace.All()
 		ApplyReputationColor()
 		ApplyGlows()
-		ApplyFrameAlpha()
 	end)
 	M:HoldStatusGlows()   -- textures: at once, in combat too
 end
@@ -2018,7 +1962,6 @@ function M:OnEnable(db)
 		MelloUI.Kit:OnCover(function(group, covered)
 			if group == "unitframes" and not covered and M.isEnabled then
 				ApplyNames()
-				ApplyFrameAlpha()   -- (after the skin's Unfade, which left the art at 1)
 			end
 		end)
 		-- (the party's members as the game makes them: a post-hook, the
