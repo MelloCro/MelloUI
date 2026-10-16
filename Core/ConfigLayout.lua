@@ -132,19 +132,25 @@ L.pages = {
 	-- options under the part's (docs/plans/onelook-designer/c7-lite.md, ugf-audit.md)
 	UnitGroupFrames = { title = "Unit & Group Frames", icon = "module:UnitFrames", designer = true, new = "0.25.0",
 		flavour = "You, your target and your group: pick a frame, click a part of it, change it.",
+		-- (one look, shell-plan 1 item 2) `sample`: a frame with no stage shows Config Preview's corner sample
+		-- in the stage's slot (the 'unitframe' kind's pick, 1.5x), pinned with the chips as the stage is
 		elements = {
-			{ key = "player", label = "Player", line = "Your own frame", parts = { { key = "name", label = "Name" },
+			{ key = "player", label = "Player", line = "Your own frame", sample = { kind = "unitframe", pick = "player" },
+				parts = { { key = "name", label = "Name" },
 				{ key = "health", label = "Health bar" }, { key = "values", label = "Values" }, { key = "pvp", label = "PvP badge" },
 				{ key = "status", label = "Status glow" }, { key = "combat", label = "Combat glow" },
 				{ key = "portrait", label = "Portrait" } } },
-			{ key = "target", label = "Target", line = "Your target's frame (and its target's)", parts = {
+			{ key = "target", label = "Target", line = "Your target's frame (and its target's)",
+				sample = { kind = "unitframe", pick = "target" }, parts = {
 				{ key = "name", label = "Name" }, { key = "health", label = "Health bar" }, { key = "values", label = "Values" },
 				{ key = "auras", label = "Buffs & Debuffs" }, { key = "pvp", label = "PvP badge" },
 				{ key = "combat", label = "Combat glow" }, { key = "portrait", label = "Portrait" } } },
-			{ key = "focus", label = "Focus", line = "Your focus's frame", parts = { { key = "name", label = "Name" },
+			{ key = "focus", label = "Focus", line = "Your focus's frame", sample = { kind = "unitframe", pick = "focus" },
+				parts = { { key = "name", label = "Name" },
 				{ key = "health", label = "Health bar" }, { key = "values", label = "Values" }, { key = "pvp", label = "PvP badge" },
 				{ key = "combat", label = "Combat glow" }, { key = "portrait", label = "Portrait" } } },
-			{ key = "pet", label = "Pet", line = "Your pet's frame", parts = { { key = "status", label = "Status glow" },
+			{ key = "pet", label = "Pet", line = "Your pet's frame", sample = { kind = "unitframe", pick = "pet" },
+				parts = { { key = "status", label = "Status glow" },
 				{ key = "combat", label = "Combat glow" } } },
 			{ key = "buffs", label = "Buffs", line = "Your buffs and debuffs" },
 			-- (one look C10) `stage`: the designer stage over the chips (MelloUI_GroupFrames' 'raidframe' kind, its

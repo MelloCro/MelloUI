@@ -619,7 +619,7 @@ local RowsInView = Shared("SetVerticalScroll on the configurator's pages", funct
 	local page = currentPage and pages[currentPage]
 	-- (one look C10: a designer's pinned head -- its chips and stage -- under
 	-- the view's top)
-	if page and page.dui and page.stage then
+	if page and page.dui and (page.stage or page.slot) then
 		page.dui.Pin(page, scroll)
 	end
 	local sec = page and page.current
@@ -3286,11 +3286,96 @@ do
 			scroll = window and window.scroll, onSelect = DUI.StageSelected(page), onPick = DUI.StagePicked(page),
 			onState = DUI.StageState(page) })
 		if page.stage then
-			-- (the chips' ground while the head is pinned: the rows pass under it)
+			DUI.StageHead(page)
+			page.stage:Hide()
+		end
+	end
+
+	-- the chips' ground while the head is pinned: the rows pass under it
+	-- (made once, for the stage or the slot)
+	function DUI.StageHead(page)
+		if not page.stageHead then
 			page.stageHead = CreateFrame("Frame", nil, page)
 			W.Solid(page.stageHead, "BACKGROUND", "mainWindow", 1):SetAllPoints(page.stageHead)
 			page.stageHead:Hide()
-			page.stage:Hide()
+		end
+	end
+
+	-- (shell-plan 1 item 2) the corner sample's slot: a frame with no stage
+	-- but a `sample` (Player, Target, Focus, Pet) shows the corner preview's
+	-- pick there at 1.5x, the stage's ground and edge round it; pinned with
+	-- the chips as the stage is. Made with the page (its first open)
+	DUI.SLOT_SCALE, DUI.SLOT_PAD = 1.5, 8
+	function DUI.MakeSlot(page, pl)
+		page.sampleEl = {}
+		local kind
+		for _, el in ipairs(pl.def.elements or EMPTY) do
+			local s = el.sample
+			if type(s) == "table" and s.kind and s.pick then
+				kind = kind or s.kind
+				page.sampleEl[el.key] = s.pick
+			end
+		end
+		local CP = MelloUI.ConfigPreview
+		if not (kind and CP and CP.Kind and CP.Kind(kind)) then
+			return
+		end
+		local slot = CreateFrame("Frame", nil, page)
+		slot:SetFrameLevel(page:GetFrameLevel() + 40)
+		W.Solid(slot, "BACKGROUND", "mainWindow", 1):SetAllPoints(slot)
+		W.Edges(slot, "border", "BORDER")
+		slot:EnableMouse(true)
+		local p = CP.Make(slot, kind, SKIN)
+		if not p then
+			slot:Hide()
+			return
+		end
+		p:SetScale(DUI.SLOT_SCALE)
+		p:SetPoint("CENTER", slot, "CENTER", 0, 0)
+		slot:SetSize(page.width - PAD * 2, p:GetHeight() * DUI.SLOT_SCALE + DUI.SLOT_PAD * 2)
+		slot.preview, slot.x0, slot.anchor, slot.Stick = p, PAD, page, DUI.SlotStick
+		slot:Hide()
+		page.slot = slot
+		DUI.StageHead(page)
+	end
+
+	-- pinned at the page's top as it scrolls: one SetPoint when the place
+	-- changes (the stage's Stick)
+	function DUI.SlotStick(slot, offset)
+		local y = math.max(slot.y0, Num(offset) or 0)
+		if y ~= slot.stuckY then
+			slot.stuckY = y
+			slot:ClearAllPoints()
+			slot:SetPoint("TOPLEFT", slot.anchor, "TOPLEFT", slot.x0, -y)
+		end
+	end
+
+	-- what the chips ride on: the stage or the slot on show (nil: none)
+	function DUI.Top(page)
+		local stage, slot = page.stage, page.slot
+		if stage and stage:IsShown() then
+			return stage
+		elseif slot and slot:IsShown() then
+			return slot
+		end
+		return nil
+	end
+
+	-- the slot follows the frame picked: shown on its pick for a frame with
+	-- a sample
+	function DUI.FollowSlot(page, el)
+		local slot = page.slot
+		if not slot then
+			return
+		end
+		local pick = el and page.sampleEl[el]
+		if pick and slot.preview.pick ~= pick then
+			slot.preview:SetPick(pick)
+		end
+		local want = pick ~= nil
+		if want ~= (slot:IsShown() and true or false) then
+			slot:SetShown(want)
+			page:LayTabs(true)
 		end
 	end
 
@@ -3671,11 +3756,12 @@ do
 		return list
 	end
 
-	-- the pinned head under the view's top (the stage carries the chips)
+	-- the pinned head under the view's top (the stage or the slot carries
+	-- the chips)
 	function DUI.Pin(page, scroll)
-		local stage = page.stage
-		if stage and stage:IsShown() then
-			stage:Stick((Num(scroll:GetVerticalScroll()) or 0) + (stage.pinAbove or 0))
+		local top = DUI.Top(page)
+		if top then
+			top:Stick((Num(scroll:GetVerticalScroll()) or 0) + (top.pinAbove or 0))
 		end
 	end
 
@@ -3715,15 +3801,17 @@ do
 		page.partsHint = Text(page, "GameFontDisable", TEXT.pickPart)
 		page.elChips:SetItems(ElementItems(pl))
 		DUI.MakeStage(page, pl)
+		DUI.MakeSlot(page, pl)
 	end
 
-	-- under the header: the element chips (on the stage while it shows: one
-	-- pinned head), then the Parts line; the y the sections start at
+	-- under the header: the element chips (on the stage or the slot while
+	-- one shows: one pinned head), then the Parts line; the y the sections
+	-- start at
 	function DUI.Lay(page, y)
-		local stage = page.stage
+		local stage = DUI.Top(page)
 		local chipsH = page.elChips:Height()
 		page.elChips:ClearAllPoints()
-		if stage and stage:IsShown() then
+		if stage then
 			local level = stage:GetFrameLevel()
 			stage.y0, stage.stuckY, stage.pinAbove = y + chipsH + DUI.HEAD_GAP, nil, chipsH + DUI.HEAD_GAP
 			stage:Stick((window and window.scroll and Num(window.scroll:GetVerticalScroll()) or 0) + stage.pinAbove)
@@ -3782,6 +3870,7 @@ do
 		page.partsLabel:SetShown(parts)
 		page.partChips:SetShown(parts)
 		page.partsHint:SetShown(el ~= nil and page.partChips.count == 0)
+		DUI.FollowSlot(page, el)
 		DUI.FollowStage(page, el, t)
 	end
 
