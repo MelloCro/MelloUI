@@ -3792,7 +3792,9 @@ function LayoutFit:Inputs(read)
 		-- key reads as the module's default through the live settings
 		-- (auras.fitRows is the caller's own: set it where places.auras is
 		-- written)
-		column = { kit = read("MinimapPanel") and true or false, shape = read("MinimapPanel", "shape"), border = read("MinimapPanel", "squareBorder"),
+		-- (one look: square without the painted Minimap skin -- MinimapPanel's Square)
+		column = { kit = read("MinimapPanel") and true or false,
+			shape = (read("MinimapKit") and read("MinimapPanel", "shape")) or "square", border = read("MinimapPanel", "squareBorder"),
 			merge = read("MinimapPanel", "servicesMerge") ~= false, bar = (read("Services") and read("Services", "showBar") ~= false) and true or false,
 			groups = read("Services", "buttonLayout") ~= "all", barOffset = tonumber(read("Services", "barOffset")),
 			roundIcons = read("Services", "roundIcons") ~= false,

@@ -140,10 +140,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "0.25.0", lines = {
 		"One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off.",
-		"Configurator: Unit & Group Frames, Nameplates and Bars are designers: pick a frame, a plate or a bar, then a part; drag the party's and raid's parts on their large frame.",
+		"Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, a plate, a bar or the map, then a part; drag the party's and raid's parts on their large frame.",
 		"Windows: a new frame -- the logo heads the configurator's side list, small windows get a slim strip.",
 		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, Hide Bar Art, a Bar Texture for each, one Health Colour for all.",
-		"Action bars and minimap: backdrops and MelloUI's minimap for everyone, no painted skin needed.",
+		"Action bars and minimap: backdrops and MelloUI's square minimap for everyone, no painted skin needed; the round painted map is Oldschool's.",
 		"Quests: one gem per title, a ring on the quest you follow, Parchment its own switch; the tracker's Painted Skin is gone.",
 		"Route: the World Marker shows the way (the arrow row is gone); a bead marks your flight point.",
 		"Edit Layout: more of the game's windows move without the painted reskin.",
@@ -6545,7 +6545,7 @@ end
 -- A page by a word (0.15.0, /mello <words>, SPEC 7.2): page, tab, pick. The
 -- whole text, lower case, spaces out: a page's key or title ("look",
 -- "screen text", "bars & meters"), "home", then the layout's own words
--- ("fonts" is Look > Fonts, "services" Minimap > Services Bar), then a
+-- ("fonts" is Look > Fonts, "services" the Minimap's Services), then a
 -- module's name or title, which opens the page holding most of its rows (a
 -- window panel's: Windows on its pick). Nil for none. Made on its first ask
 -- (the layout's tables only; never at login).

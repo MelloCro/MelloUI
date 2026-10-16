@@ -8,10 +8,10 @@
 -- round the square map, the zone band on the frame's top rail) is the module
 -- MinimapKit (Modules/MinimapKit.lua, Oldschool's), which dresses this map
 -- through the one dresser it registers here (M:SetDresser; Dress, below):
--- while it is on, the map is handed to it. Without it the round map wears
--- the game's own ring (UI-HUD-Minimap-Frame, 215 x 226 round the 198 px map:
--- Blizzard_Minimap/Camelot/Skin.lua), sized with the map (Size.RingFit), and
--- a painted Square Border falls back to the Chat panel (Border).
+-- while it is on, the map is handed to it. Without it the map is square
+-- (one look, the user, 2026-10-16: Square), the game's own ring faded
+-- (Size.RingFit), and a painted Square Border falls back to the Chat panel
+-- (Border).
 -- Shape (user, 2026-09-23: "Square Minimap with a Square Border of my
 -- choosing"): Round or Square: the map's mask a plain square, the ring
 -- hidden and a square border round the map, its inner edge on the map's edge
@@ -126,9 +126,9 @@ local M = MelloUI:RegisterModule("MinimapPanel", {
 	keep = { "sizeMigrated" },
 	options = {
 		{ type = "dropdown", key = "shape", name = "Shape", values = SHAPES,
-		  desc = "Round: the map in the painted ring. Square: the whole square map, in the border Square Border picks." },
+		  desc = "The painted Minimap skin's shape (Oldschool): Round, the map in the painted ring, or Square, the whole square map in the border Square Border picks. Without the painted skin the map is square." },
 		{ type = "dropdown", key = "squareBorder", name = "Square Border", values = BORDERS,
-		  desc = "The border round the square map: the windows' frame with its gem corners, a single iron rail, the action bars' heavy frame with red or iron gems, one of the thin rims the buttons wear (drawn heavier, at the map's size), or none. Both are chosen with pictures on Minimap > Minimap." },
+		  desc = "The border round the square map: the windows' frame with its gem corners, a single iron rail, the action bars' heavy frame with red or iron gems, one of the thin rims the buttons wear (drawn heavier, at the map's size), or none. Picked with pictures on the Minimap page, its Border part. The painted borders need the painted Minimap skin (Oldschool); without it the map wears the Chat panel." },
 		{ type = "toggle", key = "servicesMerge", name = "Merge With Services",
 		  desc = "The square map, its zone header and the Services bar in one frame: the zone name on the frame's top rail, and under the map a divider rail named Services over the Services bar (with the row of group buttons, the clock beside the zone name). For the square shape with the window frame or the single rail." },
 		{ type = "slider", key = "width", name = "Width", min = MAP_MIN, max = MAP_MAX, step = MAP_STEP,
@@ -167,6 +167,16 @@ local function Border()
 		return b
 	end
 	return BORDER.panel
+end
+
+-- The Shape laid (one look, the user, 2026-10-16: "the oldschool has its own look with the header, the minimap on
+-- the default modern look only needs square"): the saved one while the painted skin dresses the map (its round
+-- ring), else square
+local function Square()
+	if dresser and (Dress.on or Dress.Pending()) then
+		return M.db ~= nil and M.db.shape == "square"
+	end
+	return true
 end
 
 -- The column's shade (0.14.0, the UI shade's minimap area: Kit:ShadeElement,
@@ -319,7 +329,7 @@ function Size.Wanted()
 	local h = Num(db and db.height) or MAP_BASE
 	w = math.min(MAP_MAX, math.max(MAP_MIN, w))
 	h = math.min(MAP_MAX, math.max(MAP_MIN, h))
-	if not (db and db.shape == "square") then
+	if not Square() then
 		h = w
 	end
 	return w, h
@@ -578,67 +588,23 @@ function Size.Place(home, cw, ch, s, force)
 			dresser:RingSize(cw, ch)
 		end
 	end
-	-- (onelook D7) the game's own ring without the painted skin, on every lay (it writes only what changed)
+	-- (onelook D7) the game's own ring without the painted skin, on every lay
 	if not (Dress.on or Dress.Pending()) then
-		Size.RingFit(cw / home.mapW)
+		Size.RingFit()
 	end
 	Size.Dial(home, cw, ch)
 end
 
--- (onelook D7) Round = the game's own ring while the painted skin is off: MinimapCompassTexture and its underlay (the
--- rotated mode's) sized with the shown map, k x the size the game gave them (215 x 226 round its 198 px map); faded
--- on the square map (Kit:Fade: the kit's one registry of faded game art). A size is written only when it is not
--- the one read back now; a size read back that is not the one written last is the game's own again (Camelot/
--- Skin.lua's UpdateMinimapConfig, run only at load and on a rotateMinimap switch: never per frame or update), taken
--- as the new base. A size that cannot be read plainly is left as the game has it. Never Show() on the underlay: the
--- game hides it in the fixed mode.
-Size.ring = { base = {}, wrote = {} }
-
-function Size.RingOne(tex, k, square)
-	if not tex then
-		return
-	end
-	if square then
-		Kit:Fade(tex)
-		return
-	end
-	Kit:Unfade(tex)
-	local w, h = PlainSize(tex)
-	if not (w and h and w > 0 and h > 0) then
-		return
-	end
-	local r = Size.ring
-	local base, wrote = r.base[tex], r.wrote[tex]
-	if not (base and wrote and Same(w, wrote[1]) and Same(h, wrote[2])) then
-		base = { w, h }
-		r.base[tex] = base
-	end
-	local tw, th = base[1] * k, base[2] * k
-	if Same(w, tw) and Same(h, th) then
-		return
-	end
-	tex:SetSize(tw, th)
-	r.wrote[tex] = { tw, th }
+-- (onelook D7; one look, the user, 2026-10-16: the modern map is square) the game's own ring, MinimapCompassTexture
+-- and its underlay (the rotated mode's), faded while the painted skin is off (Kit:Fade: the kit's one registry of
+-- faded game art); never sized, never Show()n (the game hides the underlay in the fixed mode)
+function Size.RingFit()
+	Kit:Fade(MinimapCompassTexture)
+	Kit:Fade(MinimapCompassTextureUnderlay)
 end
 
-function Size.RingFit(k)
-	local square = M.db and M.db.shape == "square" and true or false
-	Size.RingOne(MinimapCompassTexture, k, square)
-	Size.RingOne(MinimapCompassTextureUnderlay, k, square)
-end
-
--- the game's ring as the game had it (this module off, or the painted skin taking the map): its size where it is
--- still the one written here, its alpha
+-- the game's ring as the game had it (this module off, or the painted skin taking the map)
 function Size.RingRelease()
-	local r = Size.ring
-	for tex, wrote in pairs(r.wrote) do
-		local base = r.base[tex]
-		local w, h = PlainSize(tex)
-		if base and w and h and Same(w, wrote[1]) and Same(h, wrote[2]) then
-			tex:SetSize(base[1], base[2])
-		end
-		r.wrote[tex] = nil
-	end
 	Kit:Unfade(MinimapCompassTexture)
 	Kit:Unfade(MinimapCompassTextureUnderlay)
 end
@@ -654,7 +620,7 @@ function Size.Dial(home, cw, ch)
 	if not (dial and cw and ch) then
 		return
 	end
-	local square = M.db and M.db.shape == "square"
+	local square = Square()
 	local ek = Size.editScale
 	if not (square or not (Same(cw, home.mapW) and Same(ch, home.mapH)) or (ek and math.abs(ek - 1) > 1e-6)) then
 		return
@@ -967,7 +933,7 @@ local RAIL_PAD = DIVIDER_H * 1.6
 -- With Services, and a border it merges with (the Chat panel; with the painted skin a rail family or, 0.20.1, a
 -- style of the border library's, laid as one -- LaySquare). (onelook D7: never the kit's cover)
 function M:WantsServices()
-	if not (active and M.db and M.db.shape == "square" and M.db.servicesMerge ~= false) then
+	if not (active and M.db and Square() and M.db.servicesMerge ~= false) then
 		return false
 	end
 	local b = Border()
@@ -1456,7 +1422,7 @@ local function PlaceBand(onFrame, f, b, groups)
 end
 
 local function LaySquare()
-	local square = active and M.db and M.db.shape == "square"
+	local square = active and Square()
 	-- the map's Width and Height first (its crop is the square mask), or the
 	-- game's size back
 	Size.Lay()
@@ -1817,7 +1783,10 @@ end
 function Dress.Changed()
 	Dress.Sync()
 	if active then
+		-- (the shape with it: square without the painted skin -- Square)
+		Size.Lay()
 		LayoutWithServices()
+		ServicesLayout()
 	end
 	if dresser then
 		dresser:Covered(Dress.on)
@@ -2054,7 +2023,7 @@ function Column.Painted(block, l, b, r, t)
 	else
 		local fl, fb, fr, ft = Column.Frame()
 		-- (the game's ring wherever it shows: this module off, or the round map without the painted ring; onelook D7)
-		if not Dress.on and not (active and M.db and M.db.shape == "square") and MinimapCompassTexture then
+		if not Dress.on and not (active and Square()) and MinimapCompassTexture then
 			local ok, shown = pcall(MinimapCompassTexture.IsVisible, MinimapCompassTexture)
 			if ok and not MelloUI.Safe.IsSecret(shown) and shown then
 				fl, fb, fr, ft = ScreenRect(MinimapCompassTexture)

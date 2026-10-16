@@ -249,12 +249,22 @@ L.pages = {
 		} },
 	-- (onelook D7) its header switch: MelloUI's minimap (MinimapPanel, for everyone since the one-look build; its
 	-- painted half, MinimapKit, is the Painted Skin row); `new`: the switch's New tag (Core/Config.lua's Header)
-	Minimap = { title = "Minimap", icon = "module:MinimapPanel", module = "MinimapPanel",
-		flavour = "The minimap, its shape, size and border, and the Services bar under it.",
+	-- (one look stage G, the user's answers to docs/plans/onelook-designer/minimap-audit.md: a designer, chips Minimap
+	-- and Services; no sample; the modern map square only -- Round with its header is the painted skin's, Oldschool's;
+	-- Route trail and Objective marks locked parts that say where their settings are)
+	Minimap = { title = "Minimap", icon = "module:MinimapPanel", module = "MinimapPanel", designer = true,
+		flavour = "The minimap and the Services bar under it: pick one, click a part, change it.",
 		switchLabel = "MelloUI Minimap",
 		switchDesc = "MelloUI's minimap: its Width and Height, the square shape in the Chat panel, the Services bar merged under it, and the column under it that the Quest Tracker follows. Off: the game's own minimap, Edit Mode's Size sizes it again, and the Painted Skin is off with it.",
 		new = "0.25.0",
-		tabs = { "Minimap", "Services Bar" } },
+		elements = {
+			{ key = "minimap", label = "Minimap", line = "The map, its size and its border",
+				parts = { { key = "coords", label = "Coordinates" }, { key = "border", label = "Border" },
+				{ key = "route", label = "Route trail", locked = "Its settings: Route (Quests and travel)" },
+				{ key = "marks", label = "Objective marks", locked = "Its settings: the World Map page" } } },
+			{ key = "services", label = "Services", module = "Services", line = "The Services bar under the map",
+				parts = { { key = "button", label = "Services button" }, { key = "tray", label = "Tray" } } },
+		} },
 	-- (0.21.0) health, power and the cast bar under the character, the shield column beside it (its header switch:
 	-- the Personal Display module's, off by default; MelloUI_PersonalDisplay)
 	-- (the Bars audit's point 5: the damage meter and the FPS / latency readout until stage H gives them homes;
@@ -326,9 +336,9 @@ L.words = {
 	actionbarpanel = { "Oldschool", "Painted Skins" },   -- (the Bars audit: the painted action bar skin)
 	cooldowntext = { "ActionBars", "actionbars:cooldown" },
 	backdrops = { "ActionBars", "actionbars:element" },
-	minimappanel = { "Minimap", "Minimap" },
-	minimapkit = { "Minimap", "Minimap" },   -- (onelook D7: the painted minimap, its Painted Skin row)
-	services = { "Minimap", "Services Bar" },
+	minimappanel = { "Minimap", "minimap:element" },
+	minimapkit = { "Oldschool", "Painted Skins" },   -- (onelook D7: the painted minimap; one look stage G: Oldschool's)
+	services = { "Minimap", "services:element" },
 	stats = { "BarsMeters", "FPS / Latency" },
 	damagemeterpanel = { "BarsMeters", "Damage Meter" },
 	chatpanel = { "Chat", "Chat Frame" },
@@ -438,8 +448,6 @@ function L.Define(R, Link)
 		{ when = { key = "UIModifications.RaidFramePanel", value = true, line = "Only with the raid frames' Painted Skin" } })
 	-- (0.19.8: the game's Cooldown Manager's icons, Cooldown Tweaks)
 	R("Look", "Borders", "Look", "UIModifications.cooldownBorder", { picture = true })
-	R("Look", "Borders", "Look", "MinimapPanel.squareBorder", { picture = true, name = "Minimap Square Border",
-		when = { key = "MinimapPanel.shape", value = "square", line = "Only for the square map" } })
 	R("Look", "Borders", "Look", "Tooltip.classBorder", { name = "Tooltip Class / Reaction Border",
 		when = Uncovered("TooltipPanel", "tooltip") })
 	R("Look", "Borders", "Look", "Chat.borderAlpha", { name = "Chat Border Opacity" })
@@ -789,26 +797,34 @@ function L.Define(R, Link)
 	R("Oldschool", "Frame Art", "Look", "UIModifications.shade_actionbars", { free = true, name = "UI Shade: Action Bars" })
 	R("Oldschool", "Frame Art", "Look", "UIModifications.shade_castbars", { free = true, name = "UI Shade: Cast Bars" })
 
-	-- Minimap (its header switch: MelloUI's minimap, MinimapPanel; its Services bar a tab: Services has no header
-	-- switch here). (onelook D7) Painted Skin: the painted half's own switch (MinimapKit), with MelloUI's minimap on
-	R("Minimap", "Minimap", "General", "Tweaks.hideMinimapCoords")
-	R("Minimap", "Minimap", "Look", "UIModifications.MinimapKit", { name = "Painted Skin",
-		when = { key = "MinimapPanel.!enabled", value = true, line = "Only with MelloUI's minimap on" } })
-	R("Minimap", "Minimap", "Look", "MinimapPanel.shape", { picture = true })
-	R("Minimap", "Minimap", "Look", "DarkMode.minimap", { name = "Dark Mode", when = Uncovered("MinimapKit", "minimap") })
-	R("Minimap", "Minimap", "Layout", "MinimapPanel.width")
-	R("Minimap", "Minimap", "Layout", "MinimapPanel.height", { when = { key = "MinimapPanel.shape", value = "square", line = "Only for the square map (the round map takes Width)" } })
-	R("Minimap", "Services Bar", "General", "Services.!enabled", { name = "Services Bar" })
-	R("Minimap", "Services Bar", "General", "Services.showBar")
-	R("Minimap", "Services Bar", "General", "Services.showButton")
+	-- Minimap (its header switch: MelloUI's minimap, MinimapPanel; its Services bar an element: Services has no
+	-- header switch here). (onelook D7) Painted Skin: the painted half's own switch (MinimapKit), with MelloUI's
+	-- minimap on. (one look stage G: the modern map is square; the round one -- the painted skin's ring and header --
+	-- is Oldschool's, so are the Shape and the Painted Skin. A square map: its shape Square, or the painted skin off;
+	-- the cover jumps to the first switch, the painted Minimap's beside its Shape, never the whole reskin)
+	local SQUARE = { any = { { key = "MinimapPanel.shape", value = "square" }, { key = "UIModifications.MinimapKit", value = false },
+		{ key = "UIModifications.reskin", value = false } }, line = "Only for the square map (Oldschool's painted Minimap is set to Round)" }
+	R("Minimap", "minimap:coords", "General", "Tweaks.hideMinimapCoords")
+	R("Minimap", "minimap:element", "Look", "DarkMode.minimap", { name = "Dark Mode", when = Uncovered("MinimapKit", "minimap") })
+	R("Minimap", "minimap:element", "Layout", "MinimapPanel.width")
+	R("Minimap", "minimap:element", "Layout", "MinimapPanel.height", { when = SQUARE })
+	-- (the frame round the square map: only the minimap wears it -- a link on Look > Borders)
+	R("Minimap", "minimap:border", "Look", "MinimapPanel.squareBorder", { picture = true, when = SQUARE })
+	R("Minimap", "services:element", "General", "Services.!enabled", { name = "Services Bar" })
+	R("Minimap", "services:element", "General", "Services.showBar")
+	R("Minimap", "services:element", "Layout", "Services.buttonLayout")
+	R("Minimap", "services:element", "Layout", "Services.barOffset")
+	R("Minimap", "services:element", "Layout", "MinimapPanel.servicesMerge", { when = SQUARE })
+	R("Minimap", "services:button", "General", "Services.showButton")
+	R("Minimap", "services:button", "Look", "Services.roundIcons")
 	-- (0.22.0, a player's request: the addons' minimap buttons gathered into the row's AddOns group)
-	R("Minimap", "Services Bar", "General", "Services.addonButtons")
-	R("Minimap", "Services Bar", "Look", "Services.roundIcons")
-	R("Minimap", "Services Bar", "Look", "Services.trayDrawer")   -- (0.22.1, the animations: the trays slide out)
-	R("Minimap", "Services Bar", "Layout", "Services.buttonLayout")
-	R("Minimap", "Services Bar", "Layout", "Services.barOffset")
-	R("Minimap", "Services Bar", "Layout", "MinimapPanel.servicesMerge",
-		{ when = { key = "MinimapPanel.shape", value = "square", line = "Only for the square map" } })
+	R("Minimap", "services:tray", "General", "Services.addonButtons")
+	R("Minimap", "services:tray", "Look", "Services.trayDrawer")   -- (0.22.1, the animations: the trays slide out)
+	-- the painted minimap (Oldschool: its switch -- with MelloUI's minimap on -- and its Shape, Round or Square)
+	R("Oldschool", "Painted Skins", "Look", "UIModifications.MinimapKit", { name = "Minimap",
+		when = { key = "MinimapPanel.!enabled", value = true, line = "Only with MelloUI's minimap on" } })
+	R("Oldschool", "Frame Art", "Look", "MinimapPanel.shape", { name = "Minimap Shape", picture = true,
+		when = { key = "UIModifications.MinimapKit", value = true, line = "Only with the painted Minimap skin" } })
 
 	-- Bars & Meters
 	-- (0.17.0: MelloUI's meter replaces the game's; its switch heads the tab)
@@ -948,7 +964,7 @@ function L.Define(R, Link)
 	-- (the frames' and the bars' Fade rows: each element's last Behaviour row, at the end of the rows -- one look Q5)
 	R("Fader", "Chat & Map", "General", "Fader.show_chat")
 	R("Fader", "Chat & Map", "General", "Chat.tabsOnMouseover", { when = Uncovered("ChatPanel", "chat") })
-	for _, key in ipairs({ "minimap", "tracker", "objectives", "widgets", "route" }) do
+	for _, key in ipairs({ "tracker", "objectives", "widgets", "route" }) do   -- (the minimap's: its own page, Q5)
 		R("Fader", "Chat & Map", "General", "Fader.show_" .. key, OWNED[key])
 	end
 
@@ -1260,6 +1276,7 @@ function L.Define(R, Link)
 		when = { key = "Tweaks.hideBagBar", value = false, line = "Hidden (Hide This Bar)" } })
 	R("ActionBars", "xprep:element", "Behaviour", "Fader.show_xp", { name = "Fade" })
 	R("Reminders", "Reminders", "Behaviour", "Fader.show_reminders", { name = "Fade" })
+	R("Minimap", "minimap:element", "Behaviour", "Fader.show_minimap", { name = "Fade" })
 
 	-- the link rows: a setting whose one place is another page (the global
 	-- look on Look; the map's width on Minimap; the quest log's skin on
@@ -1303,7 +1320,7 @@ function L.Define(R, Link)
 	Link("Nameplates", "enemies:health", "Look", "BarTextures.healthColor", "Health Bar Colour")
 	Link("Nameplates", "enemies:name", "Text", "UIModifications.nameFormat", "Names")
 	Link("Nameplates", "enemies:debuffs", "Text", "Auras.textFont", "Numbers Font")
-	Link("Minimap", "Minimap", "Look", "UIModifications.shade_minimap", "UI Shade")
+	Link("Minimap", "minimap:element", "Look", "UIModifications.shade_minimap", "UI Shade")
 	Link("ActionBars", "cooldowns:element", "Look", "DarkMode.keepDispelColor", "Keep Dispel Colours")
 	-- (the swing bars wear the cast bar's Bar Texture)
 	Link("ActionBars", "swing:element", "Look", "BarTextures.castbarsTexture", "Bar Texture (Cast Bar)")
@@ -1328,7 +1345,7 @@ function L.Define(R, Link)
 	Link("QuestList", "List", "Look", "UIModifications.QuestLogPanel", "Painted Skin (Quest Log)")
 	-- (0.19.1, the user 2026-10-04: the borders on Look > Borders, the text sizes and fonts on Look > Fonts, named
 	-- where they were)
-	Link("Minimap", "Minimap", "Look", "MinimapPanel.squareBorder", "Square Border")
+	Link("Look", "Borders", "Look", "MinimapPanel.squareBorder", "Minimap Square Border")
 	Link("Tooltip", "Tooltip", "Look", "Tooltip.classBorder", "Class / Reaction Border", { when = Uncovered("TooltipPanel", "tooltip") })
 	Link("Chat", "Chat Frame", "Look", "Chat.borderAlpha", "Border Opacity")
 	Link("Chat", "Chat Frame", "Text", "Fonts.fontChatText", "Chat Font")

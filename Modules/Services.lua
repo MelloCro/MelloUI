@@ -56,7 +56,7 @@ local M = MelloUI:RegisterModule("Services", {
 	},
 	options = {
 		{ type = "toggle", key = "showBar", name = "Icon Bar Under The Minimap",
-		  desc = "Service buttons under the minimap; they move with the minimap in Edit Mode. Groups: one row of group buttons as wide as the map; click one to open its services with their distances, then click a service to route to the nearest one by road. All Buttons: two rows with an icon for every service; click one to route there. Right-click stops the route. A grey button has none known on this continent yet. With the painted look, the square minimap in the Window frame or Single rail border, and \"Merge With Services\" on (Minimap > Services Bar), the buttons sit inside the minimap's frame." },
+		  desc = "Service buttons under the minimap; they move with the minimap in Edit Mode. Groups: one row of group buttons as wide as the map; click one to open its services with their distances, then click a service to route to the nearest one by road. All Buttons: two rows with an icon for every service; click one to route there. Right-click stops the route. A grey button has none known on this continent yet. With the square minimap and \"Merge With Services\" on (the Minimap page, Services), the buttons sit inside the minimap's frame." },
 		{ type = "dropdown", key = "buttonLayout", parent = "showBar", name = "Button Layout",
 		  values = {
 			{ value = "groups", label = "Groups" },

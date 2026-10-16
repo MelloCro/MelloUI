@@ -133,7 +133,7 @@ Close it without installing and nothing changes. Run it again any time: **Instal
 - **Pickers:** Action Bars (Action Bars, Micro Menu, Bag Bar) and Windows (every game window the reskin dresses, from the AddOn list to the Trainers) have a picker at the top: the page's settings are for the one picked. **Copy from…** gives it another one's settings; it asks first ("Copy the Micro Menu bar's settings to Action Bars?"). **All**, beside a setting, gives its value to every one that has it; it shows while their values differ. A setting that is one for several says **shared**, and its tooltip names them.
 - **Pictures:** the looks you choose by sight (the borders, the backdrops and backgrounds, the minimap's shape and square border) show the chosen one's picture. Click it and every choice opens as a picture under the row; a click on one puts it on at once. Not in a fight.
 - **Dimmed options:** an option that needs another switch, or that the one picked does not have, is dimmed and says why ("Switch on "UI Modifications" first (Look).", "Not for AddOn list"). When that switch is on another page or pick, a click on the dimmed option takes you to it.
-- **Search:** the box at the top of the side list finds any setting, page, tab or pick. Type two letters or more: the list shows what matches, best first (a name that matches, then its place, then what it does), each with its place over its name as a breadcrumb (Page > Tab > Section: "Minimap > Minimap > Layout") and the New tag if it is new; "Bank" finds "Windows > Bank". Point at a result for its whole place and what it does. Click one, or pick it with Up and Down and press Enter: its page opens on its tab and pick, at that setting, which lights up for a moment. Escape, the little X or an empty box brings the side list back. If a fight starts while you type, the keys go back to your character and your search stays.
+- **Search:** the box at the top of the side list finds any setting, page, tab or pick. Type two letters or more: the list shows what matches, best first (a name that matches, then its place, then what it does), each with its place over its name as a breadcrumb (Page > Tab > Section: "Look > Fonts > Text") and the New tag if it is new; "Bank" finds "Windows > Bank". Point at a result for its whole place and what it does. Click one, or pick it with Up and Down and press Enter: its page opens on its tab and pick, at that setting, which lights up for a moment. Escape, the little X or an empty box brings the side list back. If a fight starts while you type, the keys go back to your character and your search stays.
 - **Home:** the Tutorial, What's new (Earlier versions for the rest), Your setup (the profile in use, with a list to load another; the palette and your Kit Colours, each with Change… to its row on Look; your screen, with **Fit to this screen** when Mello's layout was fitted to another one; Install again) and Help with every command.
 - **New tags:** everything this update added (a switch, a slider, a dropdown, a button) has a small gold **New** tag right after its name. The tags also lead the way: on its page's entry in the side list (on a group's name while it is folded), on the tab that holds it, inside the **Edit Layout** button, and at the top of What's new. The next update's new options get the tags; this update's go away by themselves.
 - **Long lists:** a dropdown with many choices (the fonts, the Windows picker) shows 18 at a time, never more than half the screen, with a scroll bar; the mouse wheel scrolls it, and it opens at your current choice.
@@ -794,8 +794,8 @@ the interface away while you do not need them. Each element has one **Show** cho
 Every element also comes back while Edit Layout, Edit Mode or the configurator is open. Since
 0.25.0 each frame's and bar's **Fade** is the last Behaviour row of its own place: Unit & Group Frames' Player,
 Target (Pet: **Fades With The Player**), Buffs, Party, Raid and Personal; Bars' Action Bars (each bar), Menu &
-Bags (the micro menu and the bag bar) and XP & Rep; the Reminders page. The Fader page keeps how the fading works
-and the chat's and the map's rows. The elements: **Frames** (Player Frame and **Pet Frame Too**, Target Frame, Party Frames, Raid Frames,
+Bags (the micro menu and the bag bar) and XP & Rep; the Reminders page; the Minimap's Minimap. The Fader page keeps
+how the fading works and the rows of the chat, the trackers, the widgets and the route. The elements: **Frames** (Player Frame and **Pet Frame Too**, Target Frame, Party Frames, Raid Frames,
 Buffs & Debuffs, the Reminders by your portrait, the **Personal Display**: Always or In Combat, and In
 Combat it also comes back while you cast), **Bars** (Main Action Bar, Action Bar 2 to 8 each on its own,
 Stance & Pet Bar, Micro Menu, Bag Bar, Experience & Reputation Bars)
@@ -1825,13 +1825,20 @@ copy from `/mellolog`.
 
 ### Minimap Panel
 
+The **Minimap** page is a designer: pick **Minimap** or **Services**, then a part (Coordinates and Border; the
+Services button and the Tray) for its own settings, the element's under them. The page's switch is MelloUI's minimap.
+Square Border is the Border part's (Look > Borders links it), the map's Fade its last Behaviour row. **Route trail** and
+**Objective marks** are drawn on the map by Route and the World Map: their parts say where their settings are. The
+modern map is square; the painted Minimap skin (Oldschool > Painted Skins > Minimap) brings the round map with its
+painted ring and the zone plate, and its **Minimap Shape** (Oldschool > Frame Art) picks Round or Square.
+
 The minimap cluster in the kit (part of the reskin in UI Modifications): the iron ring
 around the map with the zone name on a title plate standing on it, the tracking button in a
 round rim, plus / minus zoom buttons. Edit Mode places the cluster; Edit Layout can move it too,
 and while it has a place there, that place wins (its Reset gives it back to Edit Mode). `/mmdump` prints the rects.
 
 **Width** and **Height** (98 to 400, 198 x 198 by default: the game's map at 100 %) size the
-map. The round map is as tall as it is wide, and its painted ring grows and shrinks with it;
+map. The painted skin's round map is as tall as it is wide, and its painted ring grows and shrinks with it;
 the square map can be up to twice as wide as tall or the other way round. The square map's
 border, the zoom and tracking buttons and the zone name keep their size, and so do the Services
 buttons under the map (spread across a wider map; smaller only on a map narrower than the

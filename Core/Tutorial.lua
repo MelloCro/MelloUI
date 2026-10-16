@@ -109,8 +109,9 @@ local STEPS = {
 	  text = "Quest List: on the world map, every quest of the zone you look at, with its giver, turn-in, chain and dungeon, plus docks, zeppelins and instance doors as pins. The filters are on this page. /qlmap explains the pins." },
 	{ page = "Route", point = "RightEdgeCenter", target = NavTarget,
 	  text = "Route: an arrow and a line on the map to the tracked quest or any map pin, along paths learned as you walk, flights and boats included. It keeps the route you are following and never sends you back for a corner you cut. /route shows what it knows, /route clear stops it." },
-	{ page = "Minimap", point = "BottomEdgeLeft", target = TabTarget, tab = "Services Bar",
-	  text = "Services Bar, a tab of the Minimap page: the bar under the minimap, in six groups, routes you to the nearest repair, mailbox, inn, flight master, auction house, bank or trainer, learning the ones it meets; Errands holds your reminders. /services <kind> does the same from chat." },
+	-- (one look stage G: the Minimap page is a designer -- its chips, Minimap and Services)
+	{ page = "Minimap", point = "BottomEdgeLeft", target = HeaderTarget, header = "elChips",
+	  text = "Minimap is a designer: the map (its size, coordinates and border) and Services, the bar under the minimap: in six groups it routes you to the nearest repair, mailbox, inn, flight master, auction house, bank or trainer, learning the ones it meets; Errands holds your reminders. /services <kind> does the same from chat." },
 	{ page = "QuestTracker", point = "RightEdgeCenter", target = NavTarget,
 	  text = "Quest Tracker: the quests you watch in a tracker under the minimap, as wide as the map above it, that scrolls when the list runs long. The nearest quest comes first (the arrow on its title switches it), each with its distance. With the reskin on, its Painted Skin switch dresses it in the kit." },
 	{ page = "Reminders", point = "RightEdgeCenter", target = NavTarget,
@@ -124,7 +125,7 @@ local STEPS = {
 	  text = "The Preview tab: every sound with a Play button and where the game uses it, so you can listen before switching a family on. /sfx log in chat prints what the game plays and what replaced it." },
 	{ page = "Profiles", point = "BottomEdgeLeft",
 	  target = function(_, page) return page.saveButton end,
-	  text = "Profiles: save every setting under a name, load one (it asks first) or delete one, and mark one as the default for a fresh install. Everything Off is built in and is that default out of the box. The game keeps your settings. Macro Backup on this page can also keep a copy in account macros, brought back only when you ask; /mello status shows both." },
+	  text = "Profiles: save every setting under a name, load one (it asks first) or delete one, and mark one as the default for a fresh install. Everything Off is built in and is that default out of the box. The game keeps your settings; /mello status shows where they came from." },
 	-- (the What's new card runs long: the tip at its top, where the view is)
 	{ page = "Home", point = "RightEdgeTop",
 	  target = function(_, page) return page.news end,
