@@ -275,8 +275,7 @@ local function Build(kind)
 	end
 	local key = MOVER[kind]
 	ui.entry = MelloUI:RegisterMover(holder, holder, { key = key, default = Home(kind), min = 0.5, max = 2, base = 1,
-		label = kind == "shot" and TEXT.shotMover or TEXT.meleeMover, page = "SwingTimers", when = On, placeholder = true,
-		settings = { "SwingTimers.width", "SwingTimers.height" } })
+		label = kind == "shot" and TEXT.shotMover or TEXT.meleeMover, page = "SwingTimers", when = On, placeholder = true })
 	if not MelloUI:RestorePosition(key, holder) then
 		Home(kind)(holder)
 	end

@@ -687,7 +687,7 @@ local function Build()
 
 	-- Edit Layout: each where it stands
 	ui.entry = MelloUI:RegisterMover(holder, holder, { key = "personalbars", default = Home("bars"), min = 0.5, max = 2,
-		base = 1, label = TEXT.bars, page = OWNER, when = On, placeholder = true, settings = { "PersonalDisplay.width" } })
+		base = 1, label = TEXT.bars, page = OWNER, when = On, placeholder = true })
 	if not MelloUI:RestorePosition("personalbars", holder) then
 		Home("bars")(holder)
 	end

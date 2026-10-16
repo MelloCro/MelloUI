@@ -302,10 +302,10 @@ local function Build()
 	holder:EnableMouse(true)
 	Perf.SetScript(holder, "OnEnter", ListShow)
 	Perf.SetScript(holder, "OnLeave", ListHide)
-	-- its place: the one mover (its box: Width and Thickness, the
-	-- configurator's own settings)
+	-- its place: the one mover (Width and Thickness are the configurator's,
+	-- its box's "Design >")
 	ui.entry = MelloUI:RegisterMover(holder, holder, { key = MOVER_KEY, default = Home, min = 0.5, max = 2, base = 1,
-		label = TEXT.label, page = "BarsMeters", when = On, settings = { "Meter.barWidth", "Meter.railHeight" } })
+		label = TEXT.label, page = "BarsMeters", when = On })
 	if not MelloUI:RestorePosition(MOVER_KEY, holder) then
 		Home(holder)
 	end

@@ -1244,12 +1244,6 @@ end
 --                    fight; its own scale noted as its 100 % (base) at the
 --                    registration and whenever someone else scales it
 --         resize     false: no size change in Edit Layout
---         settings   (0.17.0) { "Module.key", ... }: the element's own settings
---                    as sliders in its Edit Layout box -- shortcuts to the
---                    configurator's (the same setting: the module's schema
---                    gives the name and range, a change goes through
---                    NotifySettingChanged); a slider entry only (the race
---                    bar's Width and Height; user, 2026-10-01)
 --         locked     function(entry) -> reason | nil: shown, not movable
 --                    (in Edit Layout, and by its plain drag)
 --         note       function(entry) -> text | nil: a line in its box
@@ -2263,7 +2257,6 @@ do
 			visible = type(opts.visible) == "function" and opts.visible or nil,
 			follow = opts.follow and true or nil,
 			resize = opts.resize ~= false,
-			settings = type(opts.settings) == "table" and opts.settings or nil,
 			locked = type(opts.locked) == "function" and opts.locked or nil,
 			note = type(opts.note) == "function" and opts.note or nil,
 			resetLabel = type(opts.resetLabel) == "string" and opts.resetLabel or nil,
