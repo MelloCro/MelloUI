@@ -115,8 +115,9 @@ local STEPS = {
 	  text = "Quest Tracker: the quests you watch in a tracker under the minimap, as wide as the map above it, that scrolls when the list runs long. The nearest quest comes first (the arrow on its title switches it), each with its distance. With the reskin on, its Painted Skin switch dresses it in the kit." },
 	{ page = "Reminders", point = "RightEdgeCenter", target = NavTarget,
 	  text = "Reminders: a small round button beside your portrait for supplies running low, new mail, worn gear and new training. Click it to go there. The page's other tabs: Restock keeps your list and buys only when you click Buy; Vendor repairs your gear and sells your junk." },
-	{ page = "Nameplates", point = "BottomEdgeLeft", target = TabTarget, tab = "Party Markers",
-	  text = "Party Markers, a tab of the Nameplates page: a class medallion over every party member's head, ringed in their role's colour, on their friendly nameplate (turn those on in the game's options). In the open world; inside instances this game keeps friendly nameplates to itself." },
+	-- (one look stage G: the Nameplates page is a designer; Party Markers is its Friendly players)
+	{ page = "Nameplates", point = "BottomEdgeLeft", target = HeaderTarget, header = "elChips",
+	  text = "Nameplates is a designer too: Enemies (the name, the bar, the threat line, the combo points, the CC and quest icons and your debuffs on their plates), Friendly players (Party Markers: a class medallion over your party's heads, ringed in their role's colour, on their friendly nameplates, in the open world) and Objects (Loot Sparkles)." },
 	{ page = "CustomSounds", point = "RightEdgeCenter", target = NavTarget,
 	  text = "Custom Sounds: the interface's own sounds replaced by a recorded library, iron, leather, parchment and stone: clicks, windows, bags, gear, vendors, whispers, the group finder, targets, loot, the level up, the scroll wheel. Off until you switch it on here; each family has its own toggle." },
 	{ page = "CustomSounds", point = "BottomEdgeLeft", target = TabTarget, tab = "Preview",

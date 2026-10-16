@@ -191,9 +191,21 @@ L.pages = {
 	-- Flight's (your heals' light from the cast bar to the frame), and Cooldowns,
 	-- Frame Effects' (your group's big moments); each tab's first row its
 	-- module's switch
-	Nameplates = { title = "Nameplates", icon = "module:Nameplates",
-		flavour = "The nameplates over every unit, their icons and auras, the markers over your party, and the sparkles on what you can loot.",
-		tabs = { "Plates", "Auras & Icons", "Party Markers", "Sparkles" } },
+	-- (one look stage G, the user's yes of 2026-10-16 to docs/plans/onelook-designer/np-audit.md) the designer: the
+	-- enemies' plates (every part MelloUI puts on the game's plate), the friendly players' (Party Markers' class
+	-- medallion), the objects' (Loot Sparkles); no family block. The painted Nameplate Kit's rows are Oldschool's
+	Nameplates = { title = "Nameplates", icon = "module:Nameplates", designer = true,
+		flavour = "The game's nameplates: pick a kind, click a part of it, change it.",
+		elements = {
+			{ key = "enemies", label = "Enemies", line = "Enemies' and NPCs' plates", parts = {
+				{ key = "name", label = "Name" }, { key = "health", label = "Health bar" },
+				{ key = "threat", label = "Threat line" }, { key = "combo", label = "Combo points" },
+				{ key = "cc", label = "CC icon" }, { key = "quest", label = "Quest icon" },
+				{ key = "debuffs", label = "Your debuffs" }, { key = "auras", label = "The game's auras" } } },
+			{ key = "friendly", label = "Friendly players", line = "A class medallion over friendly players' names, in the open world",
+				parts = { { key = "medallion", label = "Medallion" }, { key = "role", label = "Role ring" } } },
+			{ key = "objects", label = "Objects", line = "The sparkle on quest items and the glints over veins, herbs and quest objects" },
+		} },
 	ActionBars = { title = "Action Bars", icon = "module:ActionBarPanel",
 		flavour = "The action bars, the micro menu and the bag bar: pick a bar.",
 		tabs = { "Bars", "Backdrops", "Cooldown Timers" },
@@ -275,10 +287,10 @@ L.words = {
 	bartext = { "UnitGroupFrames", "player:values" },
 	castbarpanel = { "Oldschool", "Painted Skins" },
 	raidframepanel = { "Oldschool", "Painted Skins" },
-	nameplatepanel = { "Nameplates", "Plates" },
-	partymarkers = { "Nameplates", "Party Markers" },
-	sparkles = { "Nameplates", "Sparkles" },
-	lootsparkles = { "Nameplates", "Sparkles" },
+	nameplatepanel = { "Oldschool", "Painted Skins" },   -- (one look stage G: the painted Nameplate Kit is Oldschool's)
+	partymarkers = { "Nameplates", "friendly:element" },
+	sparkles = { "Nameplates", "objects:element" },
+	lootsparkles = { "Nameplates", "objects:element" },
 	actionbarpanel = { "ActionBars", "Bars" },
 	cooldowntext = { "ActionBars", "Cooldown Timers" },
 	backdrops = { "ActionBars", "Backdrops" },
@@ -630,37 +642,40 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "target:auras", "Behaviour", "Auras.targetOnlyMine")
 	R("UnitGroupFrames", "all", "Behaviour", "HealerFrames.debuffGlowShows")
 
-	-- Nameplates (tabs: the parts differ)
-	R("Nameplates", "Plates", "General", "Nameplates.threatLine")
-	R("Nameplates", "Plates", "General", "Nameplates.comboPoints")
-	R("Nameplates", "Plates", "General", "Nameplates.comboSize")   -- (under its switch: the user, 2026-10-04)
-	R("Nameplates", "Plates", "Look", "UIModifications.NameplatePanel", { name = "Painted Skin" })
-	R("Nameplates", "Plates", "Look", "DarkMode.nameplates", { name = "Dark Mode", when = Uncovered("NameplatePanel", "nameplates") })
-	R("Nameplates", "Plates", "Look", "BarTextures.nameplatesTexture", { name = "Bar Texture" })
-	R("Nameplates", "Plates", "Look", "NameplatePanel.marks")
+	-- Nameplates (one look stage G: the designer; np-audit.md's table)
+	-- Enemies: Nameplate Tweaks (the Nameplates module's switch) first, Dark Mode; each part's own rows
+	R("Nameplates", "enemies:element", "General", "UIModifications.qol_Nameplates")
+	R("Nameplates", "enemies:element", "Look", "DarkMode.nameplates", { name = "Dark Mode", when = Uncovered("NameplatePanel", "nameplates") })
 	-- (one-look D6: the name band is the Nameplates module's, its key still the kit's: live with either)
-	R("Nameplates", "Plates", "Text", "NameplatePanel.nameShade", { owner = "Nameplates" })
-	R("Nameplates", "Auras & Icons", "General", "UIModifications.qol_Nameplates")
-	R("Nameplates", "Auras & Icons", "General", "Nameplates.bigCC")
-	R("Nameplates", "Auras & Icons", "General", "Nameplates.questIcon")
-	R("Nameplates", "Auras & Icons", "General", "Auras.nameplates")
-	R("Nameplates", "Auras & Icons", "Layout", "Nameplates.ccSize")
-	R("Nameplates", "Auras & Icons", "Layout", "Nameplates.ccGap")
-	R("Nameplates", "Auras & Icons", "Layout", "Nameplates.questIconSize")
-	R("Nameplates", "Auras & Icons", "Layout", "Auras.nameplateSize")
-	R("Nameplates", "Auras & Icons", "Behaviour", "CooldownText.nameplates")
-	R("Nameplates", "Party Markers", "General", "PartyMarkers.!enabled", { name = "Party Markers" })
-	R("Nameplates", "Party Markers", "General", "PartyMarkers.who")
-	R("Nameplates", "Party Markers", "Look", "PartyMarkers.roleRing")
-	R("Nameplates", "Party Markers", "Layout", "PartyMarkers.size")
-	R("Nameplates", "Party Markers", "Layout", "PartyMarkers.offset")
-	-- (0.20.1, the user: a quality of life addition) the quest items' sparkle and the gathering glints: the glints
-	-- hang on the game's nameplate of the object you walk up to (Modules/Sparkles.lua)
-	R("Nameplates", "Sparkles", "General", "Sparkles.!enabled", { name = "Loot Sparkles" })
-	R("Nameplates", "Sparkles", "General", "Sparkles.questItems")
-	R("Nameplates", "Sparkles", "General", "Sparkles.ore")
-	R("Nameplates", "Sparkles", "General", "Sparkles.herbs")
-	R("Nameplates", "Sparkles", "General", "Sparkles.questObjects")
+	R("Nameplates", "enemies:name", "Look", "NameplatePanel.nameShade", { owner = "Nameplates" })
+	R("Nameplates", "enemies:health", "Look", "BarTextures.nameplatesTexture", { name = "Bar Texture" })
+	R("Nameplates", "enemies:threat", "General", "Nameplates.threatLine")
+	R("Nameplates", "enemies:combo", "General", "Nameplates.comboPoints")
+	R("Nameplates", "enemies:combo", "Layout", "Nameplates.comboSize")   -- (under its switch: the user, 2026-10-04)
+	R("Nameplates", "enemies:cc", "General", "Nameplates.bigCC", { name = "Above The Name" })
+	R("Nameplates", "enemies:cc", "Layout", "Nameplates.ccSize", { name = "Size" })
+	R("Nameplates", "enemies:cc", "Layout", "Nameplates.ccGap")
+	R("Nameplates", "enemies:quest", "General", "Nameplates.questIcon")
+	R("Nameplates", "enemies:quest", "Layout", "Nameplates.questIconSize", { name = "Size" })
+	R("Nameplates", "enemies:debuffs", "General", "Auras.nameplates")
+	R("Nameplates", "enemies:debuffs", "Layout", "Auras.nameplateSize")
+	R("Nameplates", "enemies:auras", "Behaviour", "CooldownText.nameplates")
+	-- Friendly players: Party Markers' switch first
+	R("Nameplates", "friendly:element", "General", "PartyMarkers.!enabled", { name = "Party Markers" })
+	R("Nameplates", "friendly:element", "General", "PartyMarkers.who")
+	R("Nameplates", "friendly:medallion", "Layout", "PartyMarkers.size", { name = "Size" })
+	R("Nameplates", "friendly:medallion", "Layout", "PartyMarkers.offset")
+	R("Nameplates", "friendly:role", "General", "PartyMarkers.roleRing")
+	-- Objects (0.20.1, the user: a quality of life addition) the quest items' sparkle and the gathering glints: the
+	-- glints hang on the game's nameplate of the object you walk up to (Modules/Sparkles.lua)
+	R("Nameplates", "objects:element", "General", "Sparkles.!enabled", { name = "Loot Sparkles" })
+	R("Nameplates", "objects:element", "General", "Sparkles.questItems")
+	R("Nameplates", "objects:element", "General", "Sparkles.ore")
+	R("Nameplates", "objects:element", "General", "Sparkles.herbs")
+	R("Nameplates", "objects:element", "General", "Sparkles.questObjects")
+	-- (one look stage G: the painted Nameplate Kit's own rows, Oldschool's)
+	R("Oldschool", "Painted Skins", "Look", "UIModifications.NameplatePanel", { name = "Nameplates" })
+	R("Oldschool", "Frame Art", "Look", "NameplatePanel.marks")
 
 	-- Action Bars (the picker: Action Bars, Micro Menu, Bag Bar)
 	R("ActionBars", "Bars", "General", { micro = "Tweaks.hideMicroMenu", bag = "Tweaks.hideBagBar" }, { name = "Hide This Bar" })
@@ -1225,10 +1240,6 @@ function L.Define(R, Link)
 	Link("Route", "Route", "Sound", "Tweaks.noticeSounds", "Notice Sounds")
 	-- (0.19.4, the options audit: the name band keeps its own strength; the UI Shade reaches the plates on Whole plate only)
 	-- (one-look D6: Whole plate is the Nameplate Kit's, so these two links need the kit too)
-	Link("Nameplates", "Plates", "Look", "UIModifications.uiShadeStrength", "Shade Strength", { when = { all = {
-		{ key = "NameplatePanel.nameShade", value = "plate" }, { key = "UIModifications.uiShade", value = true },
-		{ key = "UIModifications.reskin", notValue = false }, { key = "UIModifications.NameplatePanel", notValue = false } },
-		line = "Only with Name Shade: Whole plate on the Nameplate Kit and the UI Shade on (the name band keeps its own)" } })
 	-- (0.19.8, rule 9: the unit frames, the cast bars and the personal display have borders of their own now)
 	-- (0.21.0, the user's picks: the level orb beside the portrait ring; the Personal Display's hold on the cast bar
 	-- where the cast bar is set)
@@ -1237,14 +1248,9 @@ function L.Define(R, Link)
 	Link("SwingTimers", "Swing Timers", "General", "PersonalDisplay.swing", "Swing On The Rails (Personal Display)",
 		{ when = { key = "PersonalDisplay.!enabled", value = true, line = "Only with the Personal Display on" } })
 	-- (0.19.4: the aura border is worn by MelloUI's own rows only)
-	Link("Nameplates", "Plates", "Look", "UIModifications.uiShade", "UI Shade", { when = { all = {
-		{ key = "NameplatePanel.nameShade", value = "plate" },
-		{ key = "UIModifications.reskin", notValue = false }, { key = "UIModifications.NameplatePanel", notValue = false } },
-		line = "Only with Name Shade: Whole plate on the Nameplate Kit (the name band keeps its own)" } })
-	Link("Nameplates", "Plates", "Look", "BarTextures.healthColor", "Health Bar Colour")
-	Link("Nameplates", "Plates", "Text", "UIModifications.nameFormat", "Names")
-	Link("Nameplates", "Auras & Icons", "Look", "UIModifications.auraBorder", "Aura Border", { when = {
-		key = "Auras.nameplates", value = true, line = "Only on MelloUI's own debuff rows (Enemy Nameplates on)" } })
+	Link("Nameplates", "enemies:health", "Look", "BarTextures.healthColor", "Health Bar Colour")
+	Link("Nameplates", "enemies:name", "Text", "UIModifications.nameFormat", "Names")
+	Link("Nameplates", "enemies:debuffs", "Text", "Auras.textFont", "Numbers Font")
 	Link("ActionBars", "Bars", "Look", "UIModifications.shade_actionbars", "UI Shade")
 	Link("ActionBars", "Bars", "Look", "UIModifications.buttonBorder", "Button Border")
 	Link("Minimap", "Minimap", "Look", "UIModifications.shade_minimap", "UI Shade")
@@ -1273,7 +1279,6 @@ function L.Define(R, Link)
 	Link("QuestList", "List", "Look", "UIModifications.QuestLogPanel", "Painted Skin (Quest Log)")
 	-- (0.19.1, the user 2026-10-04: the borders on Look > Borders, the text sizes and fonts on Look > Fonts, named
 	-- where they were)
-	Link("Nameplates", "Plates", "Look", "UIModifications.nameplateBorder", "Nameplate Border")
 	Link("Minimap", "Minimap", "Look", "MinimapPanel.squareBorder", "Square Border")
 	Link("Tooltip", "Tooltip", "Look", "Tooltip.classBorder", "Class / Reaction Border", { when = Uncovered("TooltipPanel", "tooltip") })
 	Link("Chat", "Chat Frame", "Look", "Chat.borderAlpha", "Border Opacity")

@@ -133,7 +133,7 @@ Close it without installing and nothing changes. Run it again any time: **Instal
 - **Pickers:** Action Bars (Action Bars, Micro Menu, Bag Bar) and Windows (every game window the reskin dresses, from the AddOn list to the Trainers) have a picker at the top: the page's settings are for the one picked. **Copy from…** gives it another one's settings; it asks first ("Copy the Micro Menu bar's settings to Action Bars?"). **All**, beside a setting, gives its value to every one that has it; it shows while their values differ. A setting that is one for several says **shared**, and its tooltip names them.
 - **Pictures:** the looks you choose by sight (the borders, the backdrops and backgrounds, the minimap's shape and square border) show the chosen one's picture. Click it and every choice opens as a picture under the row; a click on one puts it on at once. Not in a fight.
 - **Dimmed options:** an option that needs another switch, or that the one picked does not have, is dimmed and says why ("Switch on "UI Modifications" first (Look).", "Not for AddOn list"). When that switch is on another page or pick, a click on the dimmed option takes you to it.
-- **Search:** the box at the top of the side list finds any setting, page, tab or pick. Type two letters or more: the list shows what matches, best first (a name that matches, then its place, then what it does), each with its place over its name as a breadcrumb (Page > Tab > Section: "Nameplates > Auras & Icons > Layout") and the New tag if it is new; "Bank" finds "Windows > Bank". Point at a result for its whole place and what it does. Click one, or pick it with Up and Down and press Enter: its page opens on its tab and pick, at that setting, which lights up for a moment. Escape, the little X or an empty box brings the side list back. If a fight starts while you type, the keys go back to your character and your search stays.
+- **Search:** the box at the top of the side list finds any setting, page, tab or pick. Type two letters or more: the list shows what matches, best first (a name that matches, then its place, then what it does), each with its place over its name as a breadcrumb (Page > Tab > Section: "Minimap > Minimap > Layout") and the New tag if it is new; "Bank" finds "Windows > Bank". Point at a result for its whole place and what it does. Click one, or pick it with Up and Down and press Enter: its page opens on its tab and pick, at that setting, which lights up for a moment. Escape, the little X or an empty box brings the side list back. If a fight starts while you type, the keys go back to your character and your search stays.
 - **Home:** the Tutorial, What's new (Earlier versions for the rest), Your setup (the profile in use, with a list to load another; the palette and your Kit Colours, each with Change… to its row on Look; your screen, with **Fit to this screen** when Mello's layout was fitted to another one; Install again) and Help with every command.
 - **New tags:** everything this update added (a switch, a slider, a dropdown, a button) has a small gold **New** tag right after its name. The tags also lead the way: on its page's entry in the side list (on a group's name while it is folded), on the tab that holds it, inside the **Edit Layout** button, and at the top of What's new. The next update's new options get the tags; this update's go away by themselves.
 - **Long lists:** a dropdown with many choices (the fonts, the Windows picker) shows 18 at a time, never more than half the screen, with a scroll bar; the mouse wheel scrolls it, and it opens at your current choice.
@@ -429,7 +429,7 @@ Control" nameplate aura option must be on. Also adds a yellow quest marker left 
 bar on enemies that still count for an unfinished quest objective (Forever's default
 nameplates have no quest icon), read from the unit tooltip data.
 
-**Threat Line** (on, 0.16.0; Nameplates > Plates): in a group fight, a thin bar along the bottom of
+**Threat Line** (on, 0.16.0; Nameplates > Enemies > Threat line): in a group fight, a thin bar along the bottom of
 an enemy's health bar -- in the groove of the Nameplate Kit's lower rail, the bracket its outline;
 without the kit along the bar's bottom edge with a thin dark edge -- fills toward the point
 where the mob would turn on you: gold while safe, amber from 80 % of the pull, red once it is on
@@ -440,7 +440,7 @@ it, MelloUI never reads it, and its colour follows the threat state while that i
 that is secret too). Solo, out of a fight and on friendly plates it stays away. One reader with the
 Threat widget: Core/Threat.lua.
 
-**Combo Points** (on, 0.18.5; Nameplates > Plates): for a rogue, and a druid in Cat Form, five
+**Combo Points** (on, 0.18.5; Nameplates > Enemies > Combo points): for a rogue, and a druid in Cat Form, five
 combo points in a row centred on the top edge of your target's health bar, in the game's own art
 (the rogue's bronze sockets and red points, the druid's grey sockets): five empty sockets as soon
 as you target an enemy you can attack, so the plate never jumps, a point lit for each one you
@@ -458,9 +458,9 @@ as the name, that fades out at its ends (Name Shade: Name, the default). Whole p
 the plate's own shape: round the level circle, round each end gem and along the bar, in every
 Nameplate Border look; this needs the UI Shade on (Look > General), and its Shade Strength sets how
 dark that shadow is. Off: no shade. The band behind the name keeps one strength of its own, like the
-on-screen notice's (0.19.4). Name Shade sits on Nameplates > Plates, with the nameplates' Painted Skin.
+on-screen notice's (0.19.4). Name Shade sits on Nameplates > Enemies > Name; the nameplates' Painted Skin on Oldschool.
 
-**Elite and Rare Marks** (on; Nameplates > Plates, with the Nameplate Kit): a metal line over the
+**Elite and Rare Marks** (on; Oldschool > Frame Art, with the Nameplate Kit): a metal line over the
 name with a crest on its middle (since 0.19.4; before it a small crest before the name and the
 plate's end cap and level circle in the metal). Silver says rare, wings say elite: an elite's line
 is gold, its crest crowned and winged; a rare's silver with a star; a rare elite's silver line with
