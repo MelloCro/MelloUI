@@ -3025,6 +3025,8 @@ end
 local function ElementJob(sec, job)
 	if job.dhead then
 		Lay.DesignerUI.Head(sec, job)
+	elseif job.dspec then
+		Lay.DesignerUI.Spec(sec, job)
 	elseif job.isLink then
 		MakeLink(sec, job)
 	elseif job.rows then
@@ -3583,6 +3585,92 @@ do
 		Placed(sec, row, job.gap + ROW_HEIGHT)
 	end
 
+	----------------------------------------------------------------------
+	-- A part's own controls on the stage (shell-plan 4.4): a part's tab
+	-- holds its part's Show (General, first), Size (Text for a text part,
+	-- Layout for an icon; first) and Place (Layout, last) as rows -- the
+	-- stage engine's specs (stage:PartSpec) in configurator rows. They set
+	-- the part picked on the stage, which is the tab's own while it shows.
+	----------------------------------------------------------------------
+
+	-- the specs of tab `t` by section ({ [section] = { before, after },
+	-- part = the stage's part }), nil for none: a part of a frame with a
+	-- stage, never the indicators' (their own list)
+	function DUI.Specs(t)
+		local key, st = t.part and t.part.stage, t.el and t.el.stage
+		local CP = MelloUI.ConfigPreview
+		if not (key and type(st) == "table" and CP and CP.PartOf) or key:match(":$") then
+			return nil
+		end
+		local part = CP.PartOf(st.kind, st.pick, key)
+		if not part then
+			return nil
+		end
+		local specs = { part = part }
+		if part.hide then
+			DUI.AddSpec(specs, "General", "before", "show")
+		end
+		if part.size then
+			DUI.AddSpec(specs, part.text and "Text" or "Layout", "before", "size")
+		end
+		if part.drag ~= false and not part.locked then
+			DUI.AddSpec(specs, "Layout", "after", "place")
+		end
+		return specs
+	end
+	function DUI.AddSpec(specs, section, where, which)
+		local s = specs[section] or { before = {}, after = {} }
+		specs[section] = s
+		s[where][#s[where] + 1] = which
+	end
+
+	function DUI.SpecHeight(which)
+		return which == "size" and W.SLIDER_ROW_HEIGHT or ROW_HEIGHT
+	end
+
+	function DUI.QueueSpecs(sec, list, part)
+		for _, which in ipairs(list) do
+			Queue(sec, { dspec = which, part = part }, ElementJob, DUI.SpecHeight(which))
+		end
+	end
+
+	-- the engine's rows made as the configurator's (its plate, zebra and
+	-- inset; the control at the right)
+	DUI.SPEC_OPTS = { row = function(parent, y, label, which)
+		return W.Row(parent, y, DUI.SpecHeight(which), label, nil, nil, RowOpts(parent))
+	end }
+
+	function DUI.Spec(sec, job)
+		local stage = sec.page.stage
+		local build = stage and stage:PartSpec(job.part, job.dspec, DUI.SPEC_OPTS)
+		local h = DUI.SpecHeight(job.dspec)
+		if not build then
+			Placed(sec, nil, h)
+			return
+		end
+		local row = build(sec, sec.y)
+		-- (its controls follow the part picked and its writes: the
+		-- section's refresh, once a frame while it is on show)
+		local controls = DUI.Controls({}, row:GetChildren())
+		sec.refreshers[#sec.refreshers + 1] = function()
+			for _, c in ipairs(controls) do
+				c:Refresh()
+			end
+		end
+		job.row = row
+		Placed(sec, row, h)
+	end
+	-- a spec row's controls: its children with a Refresh
+	function DUI.Controls(list, ...)
+		for i = 1, select("#", ...) do
+			local c = select(i, ...)
+			if type(c.Refresh) == "function" then
+				list[#list + 1] = c
+			end
+		end
+		return list
+	end
+
 	-- the pinned head under the view's top (the stage carries the chips)
 	function DUI.Pin(page, scroll)
 		local stage = page.stage
@@ -3755,13 +3843,20 @@ function BuildElementPage(key, width)
 	for _, t in ipairs(pl.tabs) do
 		local sec = NewSection(page, t.name)
 		sec.hasNew = t.new
+		-- (a designer's part tab: its part's own controls on the stage --
+		-- Show, Size, Place -- in its sections, around its rows)
+		local specs = page.dui and page.dui.Specs(t)
 		for _, s in ipairs(t.sections) do
 			if page.dui then
 				page.dui.QueueHead(sec, t, s)
 			end
-			if #s.rows > 0 or #s.links > 0 then
+			local spec = specs and not s.element and specs[s.name]
+			if #s.rows > 0 or #s.links > 0 or spec then
 				s.gap = s == t.firstSection and 0 or SECTION_GAP
 				Queue(sec, s, ElementJob, s.gap + W.HEADER_HEIGHT)
+				if spec then
+					page.dui.QueueSpecs(sec, spec.before, specs.part)
+				end
 				for _, r in ipairs(s.rows) do
 					-- (a designer's element row stands on every tab of its
 					-- element: a jump to it opens its element's own, the first)
@@ -3772,6 +3867,9 @@ function BuildElementPage(key, width)
 				end
 				for _, lk in ipairs(s.links) do
 					Queue(sec, lk, ElementJob, ROW_HEIGHT)
+				end
+				if spec then
+					page.dui.QueueSpecs(sec, spec.after, specs.part)
 				end
 			end
 		end

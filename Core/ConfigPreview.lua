@@ -852,7 +852,7 @@ do
 		menu = " Right-click it for more.",
 		place = "%s %d, %d",
 		noKeys = " The arrow keys are not free now (a fight, or Edit Layout open).",
-		show = "Show", hide = "Hide", home = "Default place", x = "X", y = "Y",
+		show = "Show", hide = "Hide", home = "Default place", x = "X", y = "Y", placeRow = "Place",
 		resetAsk = "Put the %d moved parts back in their places?",
 		resetAccept = "Reset", cancel = "Cancel",
 		nothing = "Nothing to reset: every part is in its place.",
@@ -1981,15 +1981,22 @@ do
 
 	-- a part's settings block for the page: which = "show" | "size" | "place"
 	-- | "panel"; a builder(parent, y) -> frame, height, or nil when the part
-	-- has none of it. Its get and set read the part picked when they run
-	function M.PartSpec(stage, part, which)
+	-- has none of it. Its get and set read the part picked when they run.
+	-- opts.row(parent, y, label, which) -> a row: the host's own (the
+	-- designer's part tabs: a configurator row, its control at the right as
+	-- every row's)
+	function M.PartSpec(stage, part, which, opts)
 		if not part then
 			return nil
 		end
+		local typed = opts and opts.row
 		local function Picked()
 			return stage:Selected()
 		end
 		local function Row(parent, y, label)
+			if typed then
+				return typed(parent, y, label, which)
+			end
 			local row = CreateFrame("Frame", nil, parent)
 			row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -y)
 			row:SetPoint("RIGHT", parent, "RIGHT", 0, 0)
@@ -1997,6 +2004,18 @@ do
 			local fs = W.Text(row, "GameFontHighlight", label, "text")
 			fs:SetPoint("LEFT", row, "LEFT", 0, 0)
 			return row
+		end
+		-- the control: at the host row's right (`right` px in), else after
+		-- the label's room
+		local function Place(control, row, right)
+			if typed then
+				control:SetPoint("RIGHT", row, "RIGHT", -right, 0)
+			else
+				control:SetPoint("LEFT", row, "LEFT", K.LABEL_W, 0)
+			end
+		end
+		local function Height(row)
+			return typed and row:GetHeight() or K.ROW_H
 		end
 		if which == "show" and part.hide then
 			return function(parent, y)
@@ -2011,14 +2030,14 @@ do
 						E.Write(stage, p, E.With(p, { show = v and true or false }))
 					end
 				end)
-				sw:SetPoint("LEFT", row, "LEFT", K.LABEL_W, 0)
-				return row, K.ROW_H
+				Place(sw, row, 12)
+				return row, Height(row)
 			end
 		elseif which == "size" and part.size then
 			local sz = part.size
 			return function(parent, y)
 				local row = Row(parent, y, part.sizeLabel or "Size")
-				local sl = W.Slider(row, 180, function()
+				local sl = W.Slider(row, typed and 256 or 180, function()
 					local p = Picked()
 					local cur = p and E.Current(p)
 					return cur and Num(cur.size) or sz.min or 0
@@ -2028,12 +2047,12 @@ do
 						E.Write(stage, p, E.With(p, { size = v }))
 					end
 				end, { min = sz.min, max = sz.max, step = sz.step or 1 })
-				sl:SetPoint("LEFT", row, "LEFT", K.LABEL_W, 0)
-				return row, K.ROW_H
+				Place(sl, row, 14)
+				return row, Height(row)
 			end
 		elseif which == "place" and part.drag ~= false and not part.locked then
 			return function(parent, y)
-				local row = Row(parent, y, TEXT.x)
+				local row = Row(parent, y, typed and TEXT.placeRow or TEXT.x)
 				local function Get(axis)
 					return function()
 						local p = Picked()
@@ -2054,12 +2073,21 @@ do
 					end
 				end
 				local bx = W.NumberBox(row, 52, Get("x"), Set("x"))
-				bx:SetPoint("LEFT", row, "LEFT", K.LABEL_W, 0)
 				local ly = W.Text(row, "GameFontHighlight", TEXT.y, "text")
-				ly:SetPoint("LEFT", bx, "RIGHT", 16, 0)
 				local by = W.NumberBox(row, 52, Get("y"), Set("y"))
-				by:SetPoint("LEFT", ly, "RIGHT", 8, 0)
-				return row, K.ROW_H
+				if typed then
+					-- (X [ ]  Y [ ] at the row's right)
+					by:SetPoint("RIGHT", row, "RIGHT", -14, 0)
+					ly:SetPoint("RIGHT", by, "LEFT", -8, 0)
+					bx:SetPoint("RIGHT", ly, "LEFT", -16, 0)
+					local lx = W.Text(row, "GameFontHighlight", TEXT.x, "text")
+					lx:SetPoint("RIGHT", bx, "LEFT", -8, 0)
+				else
+					bx:SetPoint("LEFT", row, "LEFT", K.LABEL_W, 0)
+					ly:SetPoint("LEFT", bx, "RIGHT", 16, 0)
+					by:SetPoint("LEFT", ly, "RIGHT", 8, 0)
+				end
+				return row, Height(row)
 			end
 		elseif which == "panel" and stage.def.Panel then
 			local def = stage.def
@@ -2288,6 +2316,20 @@ do
 			return nil
 		end
 		return def.PartKeys(pick or def.first)
+	end
+
+	-- a part of the kind's pick by its key, without a stage (the def's
+	-- parts(pick) take no sample: the designer's part tabs, laid before a
+	-- stage shows)
+	function Preview.PartOf(kind, pick, key)
+		local def = Reg.kinds[kind]
+		local list = def and def.parts and def.parts(pick or def.first)
+		for i = 1, type(list) == "table" and #list or 0 do
+			if list[i].key == key then
+				return list[i]
+			end
+		end
+		return nil
 	end
 
 	function Preview.RowEnter(row)
