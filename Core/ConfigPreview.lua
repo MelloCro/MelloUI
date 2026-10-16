@@ -1079,9 +1079,7 @@ do
 			left, top, rw, rh = def.Room(stage)
 		end
 		if not (rw and rh) then
-			left, top = K.PAD, K.PAD
-			rw = (Fin(stage:GetWidth()) or 0) - 2 * K.PAD
-			rh = (Fin(stage:GetHeight()) or 0) - 2 * K.PAD
+			left, top, rw, rh = E.Room(stage)
 		end
 		local scale = math.max(0.25, math.min(def.maxScale or K.MAX_SCALE, rw / w, rh / h))
 		if scale ~= stage.fitScale or left ~= stage.fitLeft or top ~= stage.fitTop then
@@ -1090,6 +1088,21 @@ do
 			main:ClearAllPoints()
 			main:SetPoint("CENTER", stage, "TOPLEFT", (left + rw / 2) / scale, -(top + rh / 2) / scale)
 		end
+	end
+
+	-- (the user, 2026-10-16: the party's sample over its chips and the caption) a stage's own room: inside its edge,
+	-- under the chip rows at its top while they show (its state chips, a kind's own: stage.topRows), over its caption
+	function E.Room(stage)
+		local w, h = Fin(stage:GetWidth()) or 0, Fin(stage:GetHeight()) or 0
+		local band = 0
+		for _, row in ipairs(stage.topRows) do
+			if row:IsShown() then
+				band = math.max(band, Fin(row:Height()) or 0)
+			end
+		end
+		local top = K.PAD + (band > 0 and band + K.PAD / 2 or 0)
+		local bottom = K.PAD / 2 + K.H_TEXT + K.PAD / 2
+		return K.PAD, top, w - 2 * K.PAD, h - top - bottom
 	end
 
 	function E.HideFrom(list, from)
@@ -1316,10 +1329,13 @@ do
 				Preview.Dress(stage.kind, main, stage.pick)
 			end
 			Preview.Paint(stage.kind, main, stage.pick, nil, stage.ctx)
-			E.Fit(stage)
 		end
 		if def.Refresh then
 			def.Refresh(stage, stage.ctx)
+		end
+		-- (after Refresh: the chip rows it shows or hides for the pick make the room)
+		if main then
+			E.Fit(stage)
 		end
 		E.Sync(stage)
 		E.Caption(stage)
@@ -2287,6 +2303,7 @@ do
 			home = { value = K.MENU_HOME, label = def.homeLabel or TEXT.home } }
 		stage.holder = CreateFrame("Frame", nil, stage)
 		stage.holder:SetAllPoints(stage)
+		stage.topRows = {}   -- (the chip rows over the stage's top: its state chips, a kind's own -- E.Room)
 		stage.selBox = E.Edged(stage, "selectedTrim", stage.level + 28)
 		stage.hoverBox = E.Edged(stage, "hover", stage.level + 29)
 		stage.caption = W.Text(stage, "GameFontHighlightSmall", nil, "text")
@@ -2300,6 +2317,7 @@ do
 			chips:SetPoint("TOPRIGHT", stage, "TOPRIGHT", -K.PAD, -K.PAD)
 			chips:SetFrameLevel(stage.level + 32)
 			stage.chips = chips
+			stage.topRows[#stage.topRows + 1] = chips
 			stage.ctx.state = def.states[1].key
 		end
 		if def.Furnish then

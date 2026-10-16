@@ -947,6 +947,10 @@ function Stage.Furnish(stage, holder)
 	chips:SetItems(Stage.STYLES)
 	chips:SetPoint("TOPLEFT", holder, "TOPLEFT", 8, -8)
 	stage.styleChips = chips
+	-- (a chip row over the stage's top: the sample laid under it -- the engine's E.Room)
+	if stage.topRows then
+		stage.topRows[#stage.topRows + 1] = chips
+	end
 end
 
 function Stage.Refresh(stage)

@@ -1038,8 +1038,9 @@ end
 -- laid: M:PartyLine) and, for the font, on the bus's 'fonts' (a face, a size,
 -- the Outline: one listener, the next frame). A level the player moved or
 -- sized in Group Frames keeps what Group Frames gave it. Every member's name
--- box 15 shorter so the two never meet (57 -> 42; the vehicle art's 56 ->
--- 41), set again after the game sets its own (UpdateNameTextAnchors, which
+-- box 19 shorter so the two never meet, a two-digit level 3 px clear of a long
+-- name (57 -> 38 on client 70338, 55 -> 36 on 70425; the user's screenshot,
+-- 2026-10-16: "Fellaria24" at 15), set again after the game sets its own (UpdateNameTextAnchors, which
 -- every To*Art calls right after its Name:SetWidth -- a state change, never
 -- per frame), out of combat. The name's band runs on to the level. Made on
 -- the member's first show, out of combat; the level read on its show and on
@@ -1055,7 +1056,7 @@ end
 
 local Party = { of = setmetatable({}, { __mode = "k" }), hooked = setmetatable({}, { __mode = "k" }),
 	alone = setmetatable({}, { __mode = "k" }),   -- [member] = true: Group Frames parted its name and level
-	SHORTER = 15, X = 101, Y = -12, H = 12, KEY = "Unit Frames: party levels",
+	SHORTER = 19, X = 101, Y = -12, H = 12, KEY = "Unit Frames: party levels",
 	-- (Party.Place) an anchor point's side of the box, the member's edge the
 	-- level hangs from on that side, and where a box's middle lies from its
 	-- point on that side, in its heights
