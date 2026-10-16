@@ -1450,13 +1450,7 @@ local function Place(dst, l, b, r, t, a)
 	dst:Show()
 end
 
--- (kl, kb, kr, kt: a part of the region in UIParent's units, the copy cut to it -- a frame's whole art over the
--- light's ring end only, never its plates over the bars: 70425's art lays a dark plate under the bars, which a whole
--- copy laid over them -- the user's clip, 2026-10-16: "the health bar is acting wierd"; no copy when it cannot be cut).
--- The cut is made in the source's own part of its file: an atlas's from the client's atlas info -- after SetAtlas,
--- GetTexCoord answers the whole sheet's, and a cut of that laid a scrap of another piece over the portrait (the
--- user's clip, 2026-10-16: "there is something covering the portrait after the heal lands")
-local function CopyTexture(dst, src, kl, kb, kr, kt)
+local function CopyTexture(dst, src)
 	if not (src and FX.Visible(src)) then
 		return
 	end
@@ -1464,16 +1458,9 @@ local function CopyTexture(dst, src, kl, kb, kr, kt)
 	if not l then
 		return
 	end
-	local u0, u1, v0, v1   -- (the source's part of its file: left, right, top, bottom)
 	local okA, atlas = pcall(src.GetAtlas, src)
 	if okA and not Secret(atlas) and type(atlas) == "string" and atlas ~= "" then
 		dst:SetAtlas(atlas)
-		if kl and C_Texture and C_Texture.GetAtlasInfo then
-			local okI, info = pcall(C_Texture.GetAtlasInfo, atlas)
-			if okI and type(info) == "table" then
-				u0, u1, v0, v1 = info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord
-			end
-		end
 	else
 		local okT, file = pcall(src.GetTexture, src)
 		if not okT or Secret(file) or file == nil then
@@ -1483,10 +1470,8 @@ local function CopyTexture(dst, src, kl, kb, kr, kt)
 		local okC, c1, c2, c3, c4, c5, c6, c7, c8 = pcall(src.GetTexCoord, src)
 		if okC and c8 ~= nil and NoneSecret(c1, c2, c3, c4, c5, c6, c7, c8) then
 			dst:SetTexCoord(c1, c2, c3, c4, c5, c6, c7, c8)
-			u0, u1, v0, v1 = c1, c7, c2, c8   -- (unrotated: the upper left c1, c2, the lower right c7, c8)
 		else
 			dst:SetTexCoord(0, 1, 0, 1)
-			u0, u1, v0, v1 = 0, 1, 0, 1
 		end
 	end
 	local okV, cr, cg, cb, ca = pcall(src.GetVertexColor, src)
@@ -1499,18 +1484,6 @@ local function CopyTexture(dst, src, kl, kb, kr, kt)
 	dst:SetBlendMode((okB and not Secret(blend) and type(blend) == "string") and blend or "BLEND")
 	local okD, des = pcall(src.IsDesaturated, src)
 	dst:SetDesaturated(okD and not Secret(des) and des == true)
-	if kl then
-		kl, kb, kr, kt = max(kl, l), max(kb, b), min(kr, r), min(kt, t)
-		if kr <= kl or kt <= kb or not (type(u0) == "number" and type(u1) == "number" and type(v0) == "number"
-			and type(v1) == "number" and NoneSecret(u0, u1, v0, v1)) then
-			dst:Hide()
-			return
-		end
-		local w, h = r - l, t - b
-		dst:SetTexCoord(u0 + (kl - l) / w * (u1 - u0), u0 + (kr - l) / w * (u1 - u0),
-			v0 + (t - kt) / h * (v1 - v0), v0 + (t - kb) / h * (v1 - v0))
-		l, b, r, t = kl, kb, kr, kt
-	end
 	Place(dst, l, b, r, t, ShownAlpha(src))
 end
 
@@ -1650,11 +1623,7 @@ local function LayCover(layer, S)
 		covers[layer] = cv
 	end
 	for i, key in ipairs(COVER_PARTS) do
-		if key == "ring" and S.cropL then
-			CopyTexture(cv.tex[i], S[key], S.cropL, S.cropB, S.cropR, S.cropT)
-		else
-			CopyTexture(cv.tex[i], S[key])
-		end
+		CopyTexture(cv.tex[i], S[key])
 	end
 	CopyText(cv.text, S.number)
 	cv.frame:Show()
@@ -1799,14 +1768,8 @@ function Arrive(layer)
 		S.bars, S.cut = sp and true or false, sp and true or false
 		if sp then
 			S.fl, S.fb, S.fr, S.ft = sp.bl, sp.bb, sp.br, sp.bt
-			-- (the ring over it, and the badge that stands on the ring over that; the frame's whole art cut to the
-			-- ring's square)
+			-- (the ring over it, and the badge that stands on the ring over that)
 			S.ring, S.orb, S.disc, S.number = sp.ring, sp.orb, sp.disc, sp.number
-			if sp.crop then
-				S.cropL, S.cropB, S.cropR, S.cropT = sp.rl, sp.rb, sp.rr, sp.rt
-			else
-				S.cropL, S.cropB, S.cropR, S.cropT = nil, nil, nil, nil
-			end
 			Mate(layer, S, sp)
 		end
 	end
@@ -2182,12 +2145,12 @@ function FX.Split(frame)
 	local cx, cy, d = (pl + pr) / 2, (pb + pt) / 2, (pr - pl) * RING_GROW
 	local ring = panel.RingOf and panel:RingOf(portrait)
 	local Kit = MelloUI.Kit
-	split.crop = true   -- (the cover the frame's whole art: cut to the ring)
+	local kitRing = false
 	if ring and Kit and Kit.RingRim then
 		local l, b, r, t = FX.Rect(ring)
 		if l then
 			cx, cy, d = (l + r) / 2, (b + t) / 2, (r - l) * Kit:RingRim(ring)
-			split.crop = false   -- (the kit's own ring: drawn whole)
+			kitRing = true
 		end
 	end
 	bl, bb, br, bt = Union(bl, bb, br, bt, mana)
@@ -2196,6 +2159,13 @@ function FX.Split(frame)
 	split.ring, split.orb, split.disc, split.number = nil, nil, nil, nil
 	if panel.CoverOf then
 		split.ring, split.orb, split.disc, split.number = panel:CoverOf(frame, portrait, circle, number)
+	end
+	-- (the game's ring: 70425's frames start their bars clear of it -- the player's at 87, its ring to 87.4; the
+	-- party's at 47, its ring to 46.2 -- so nothing of the bars' light is under it, and no copy of the frame's whole
+	-- art is laid over the light: a copy laid its dark plates over the bars, a cut of it a scrap over the portrait --
+	-- the user's clips and screenshot, 2026-10-16. The kit's own ring is copied over it, as before)
+	if not kitRing then
+		split.ring = nil
 	end
 	return split
 end
