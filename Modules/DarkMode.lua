@@ -833,6 +833,19 @@ local function InstallHooks()
 		end
 	end
 
+	-- The party's members: the game's pool acquires them as the group forms -- after this module's apply (the user,
+	-- 2026-10-16: "the Party Unitframes dont follow the same Dark mode setting"); shaded as they come.
+	local pf = PartyFrame
+	if pf and type(pf.InitializePartyMemberFrames) == "function" then
+		hooksecurefunc(pf, "InitializePartyMemberFrames", function()
+			if Active("unitframes") and not Covered("partyframes") then
+				local list = {}
+				CollectPartyFrames(list)
+				ShadeAll("unitframes", list)
+			end
+		end)
+	end
+
 	-- Target style frames swap atlases for elite / rare / boss classifications.
 	for _, frame in ipairs(TargetLikeFrames()) do
 		if frame and type(frame.CheckClassification) == "function" then

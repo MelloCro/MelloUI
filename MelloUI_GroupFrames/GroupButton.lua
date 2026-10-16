@@ -295,6 +295,7 @@ function Button.Lay(f)
 	local file = W.BarFill("raidframes")
 	for _, b in ipairs({ hb, f.missingBar, pb }) do
 		b:SetStatusBarTexture(file)
+		W.SoftEnds(b)   -- (every bar's ends soft: the user, 2026-10-16)
 	end
 	local dir = db.fillDirection or "RIGHT"
 	Fill(hb, dir, REVERSE[dir] or false)

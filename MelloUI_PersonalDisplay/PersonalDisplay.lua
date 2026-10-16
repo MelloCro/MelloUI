@@ -206,6 +206,7 @@ local function NewBar(parent, h, area)
 	local bar = CreateFrame("StatusBar", nil, strip.fill)
 	bar:SetAllPoints(strip.fill)
 	bar:SetStatusBarTexture(W.BarFill(area))
+	W.SoftEnds(bar)   -- (every bar's ends soft: the user, 2026-10-16)
 	bar:SetMinMaxValues(0, 1)
 	bar:SetValue(1)
 	local b = { strip = strip, bar = bar, kind = "frame" }

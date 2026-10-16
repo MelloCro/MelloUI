@@ -353,6 +353,77 @@ function W.BarFill(area)
 	return type(texture) == "string" and texture or BAR_FILL
 end
 
+-- W.SoftEnds(bar[, off[, tex]]): a bar's soft ends (the user, 2026-10-16, of the party bars' look: "can you reflect
+-- that change to every texture in the UI i really low the dimmed edges"): its fill's two ends dimmed to half over
+-- SOFT_END units (Media/Textures/Masks/BarEnd and its mirror BarEndR: half to full in a straight line, their far
+-- side clamped so the rest of the bar passes) and its top and bottom over a 16th of its height (the plain white
+-- mask clamped to black up and down only) -- the party bars' dimmed edges at any length. Three masks a bar, made
+-- once and kept (never per call), put on its fill (the one texture a bar keeps through SetStatusBarTexture) or on
+-- `tex` (a cover of the bar's fill); `off` takes them off again. -> the masks (nil for no bar)
+do
+	local SOFT_END = 4.25   -- (the party bars' own: 68 wide, a 16th of it)
+	local END_L = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Masks\\BarEnd"
+	local END_R = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Masks\\BarEndR"
+	local soft = setmetatable({}, { __mode = "k" })   -- [bar] = its three masks
+	local wearing = setmetatable({}, { __mode = "k" })   -- [texture] = true while it wears its bar's masks
+
+	local function Masks(bar)
+		local masks = soft[bar]
+		if masks then
+			return masks
+		end
+		local l = bar:CreateMaskTexture()
+		l:SetTexture(END_L, "CLAMP", "CLAMP")
+		l:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
+		l:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
+		l:SetWidth(SOFT_END)
+		local r = bar:CreateMaskTexture()
+		r:SetTexture(END_R, "CLAMP", "CLAMP")
+		r:SetPoint("TOPRIGHT", bar, "TOPRIGHT", 0, 0)
+		r:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
+		r:SetWidth(SOFT_END)
+		local v = bar:CreateMaskTexture()
+		v:SetTexture("Interface\\Buttons\\WHITE8X8", "CLAMP", "CLAMPTOBLACKADDITIVE")
+		v:SetAllPoints(bar)
+		masks = { l, r, v }
+		soft[bar] = masks
+		return masks
+	end
+
+	function W.SoftEnds(bar, off, tex)
+		if type(bar) ~= "table" or type(bar.CreateMaskTexture) ~= "function" then
+			return nil
+		end
+		-- (a vertical bar's sides are no ends: passed by)
+		local okO, orientation = false, nil
+		if type(bar.GetOrientation) == "function" then
+			okO, orientation = pcall(bar.GetOrientation, bar)
+		end
+		if okO and orientation == "VERTICAL" then
+			return nil
+		end
+		tex = tex or (type(bar.GetStatusBarTexture) == "function" and bar:GetStatusBarTexture()) or nil
+		if off then
+			local masks = soft[bar]
+			if tex and masks and wearing[tex] then
+				for _, m in ipairs(masks) do
+					pcall(tex.RemoveMaskTexture, tex, m)
+				end
+				wearing[tex] = nil
+			end
+			return masks
+		end
+		local masks = Masks(bar)
+		if tex and type(tex.AddMaskTexture) == "function" and not wearing[tex] then
+			for _, m in ipairs(masks) do
+				tex:AddMaskTexture(m)
+			end
+			wearing[tex] = true
+		end
+		return masks
+	end
+end
+
 -- W.OnBarTexture(area, fn, owner): fn() once a Bar Textures fill for that
 -- area may read differently: the shared Bar Texture or the area's own (one
 -- look Q3: "<area>Texture"; an area of W.BarFill's; "tooltip", the tooltip's

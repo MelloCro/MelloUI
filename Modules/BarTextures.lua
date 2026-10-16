@@ -325,6 +325,8 @@ local function RemoveMask(bar)
 		end
 		maskedTextures[tex] = nil
 	end
+	-- (and its soft ends: the game's own art keeps its own look)
+	MelloUI.Widgets.SoftEnds(bar, true)
 end
 
 -- a bar the kit brackets (MelloUI.Kept.bracketOf, set by the bar panels while their
@@ -483,6 +485,11 @@ local function SetTexture(bar)
 	applying = true
 	bar:SetStatusBarTexture(file)
 	UpdateMask(bar)
+	-- (the user, 2026-10-16: every bar's ends soft, as the party bars' -- W.SoftEnds; none under a kit bracket,
+	-- whose rails cover the edges)
+	if not KitBracket(bar) then
+		MelloUI.Widgets.SoftEnds(bar)
+	end
 	applying = false
 	applied[bar] = true
 	if not (issecretvalue and (issecretvalue(r) or issecretvalue(g) or issecretvalue(b) or issecretvalue(a))) then
@@ -587,6 +594,7 @@ local function NewCover(bar)
 	crop:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
 	local c = { back = back, tex = tex, crop = crop, masks = {}, shown = true }
 	CoverMasks(c, crop)
+	MelloUI.Widgets.SoftEnds(bar, false, tex)   -- (the cover's ends soft as every bar's)
 	-- the fill's own masks (the game's bar shape where it has one)
 	local okN, n = pcall(fill.GetNumMaskTextures, fill)
 	for i = 1, (okN and type(n) == "number" and n) or 0 do

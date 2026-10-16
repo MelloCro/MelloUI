@@ -199,6 +199,7 @@ local function NewTrack(holder, colour)
 	fill:SetPoint("TOPLEFT", track, "TOPLEFT", 1, -1)
 	fill:SetPoint("BOTTOMRIGHT", track, "BOTTOMRIGHT", -1, 1)
 	fill:SetStatusBarTexture(W.BarFill("castbars"))
+	W.SoftEnds(fill)   -- (every bar's ends soft: the user, 2026-10-16)
 	local style = _G.Enum and _G.Enum.StatusBarFillStyle
 	if style and style.Center and fill.SetFillStyle then
 		pcall(fill.SetFillStyle, fill, style.Center)

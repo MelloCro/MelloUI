@@ -1229,11 +1229,12 @@ function Party.Lay(frame, style)
 	hc:SetPoint("TOPLEFT", frame, "TOPLEFT", HH.x, HH.y)
 	mana:SetSize(MH.w, MH.h)
 	mana:SetPoint("TOPLEFT", frame, "TOPLEFT", MH.x, MH.y)
-	-- (each mask the bar's own rect: the fill shows exactly in its hole)
+	-- (each mask the bar's own rect, clamped through: the fill shows exactly in its hole; its soft ends are
+	-- W.SoftEnds', as every bar's)
 	for _, pair in ipairs({ { hm, type(bar) == "table" and bar or hc }, { mm, mana } }) do
 		local mask, over = pair[1], pair[2]
 		if type(mask) == "table" then
-			mask:SetTexture(Party.HOLES.PASS, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+			mask:SetTexture(Party.HOLES.PASS, "CLAMP", "CLAMP")
 			mask:ClearAllPoints()
 			mask:SetAllPoints(over)
 		end

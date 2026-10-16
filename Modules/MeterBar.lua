@@ -339,6 +339,7 @@ function Bar.Look()
 	end
 	local fill, Kit = ui.fill, MelloUI.Kit
 	fill:SetStatusBarTexture(FillTexture())
+	MelloUI.Widgets.SoftEnds(fill)   -- (every bar's ends soft: the user, 2026-10-16)
 	local tex = fill:GetStatusBarTexture()
 	if tex then
 		local r, g, b = PlayerColour()
