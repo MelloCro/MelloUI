@@ -4410,6 +4410,29 @@ do
 				enabled.Fader = nil
 			end
 		end,
+		-- one look Q3 (the user, 2026-10-15): each Bar Textures area has a
+		-- Bar Texture of its own (Shared / The game's / a picture) in place of
+		-- its Apply To switch: a stored switch on -> "shared", off -> "game"
+		-- (an area's own key already set wins); the switch's key dropped. A
+		-- table with no old key is left alone (a profile or share string from
+		-- before the update is carried at its load too)
+		function(self)
+			local bt = Raw(self, "BarTextures")
+			if not bt then
+				return
+			end
+			for _, area in ipairs({ "unitframes", "raidframes", "nameplates", "personal", "statusbars", "castbars",
+				"cooldowns", "tooltip" }) do
+				local old = bt[area]
+				if type(old) == "boolean" then
+					local key = area .. "Texture"
+					if bt[key] == nil then
+						bt[key] = old and "shared" or "game"
+					end
+					bt[area] = nil
+				end
+			end
+		end,
 	}
 
 	function MelloUI:MergeSettings()

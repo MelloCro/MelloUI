@@ -354,15 +354,17 @@ function W.BarFill(area)
 end
 
 -- W.OnBarTexture(area, fn, owner): fn() once a Bar Textures fill for that
--- area may read differently: its Bar Texture or the area's Apply To switch
--- set (an area of W.BarFill's; "tooltip", the tooltip's health bar), or
--- the module switched on or off (0.19.4, the options audit: the race bar,
--- the swing timers and the tooltip's bar kept the old fill until a look
--- change or a /reload). The bus's 'setting' and 'module', one listener each
--- per owner (MelloUI:On keeps one per owner), made when asked, never per event.
+-- area may read differently: the shared Bar Texture or the area's own (one
+-- look Q3: "<area>Texture"; an area of W.BarFill's; "tooltip", the tooltip's
+-- health bar), or the module switched on or off (0.19.4, the options audit:
+-- the race bar, the swing timers and the tooltip's bar kept the old fill
+-- until a look change or a /reload). The bus's 'setting' and 'module', one
+-- listener each per owner (MelloUI:On keeps one per owner), made when asked,
+-- never per event.
 function W.OnBarTexture(area, fn, owner)
+	local own = tostring(area) .. "Texture"   -- (made once here, not per Fire)
 	MelloUI:On("setting", function(module, key)
-		if module == "BarTextures" and (key == "texture" or key == area) then
+		if module == "BarTextures" and (key == "texture" or key == own) then
 			fn()
 		end
 	end, owner)

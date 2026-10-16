@@ -292,13 +292,11 @@ local function ApplyHealthBar()
 		originalBarTexture = type(file) == "string" and file or false
 	end
 	local wanted = nil
-	-- (0.16.0: Bar Textures' Tooltip area, its Apply To switch)
-	local textures = MelloUI:IsModuleEnabled("BarTextures") and MelloUI:GetModuleDB("BarTextures")
-	if M.isEnabled and textures and textures.tooltip ~= false then
-		wanted = textures.texture
-		if wanted == "default" then
-			wanted = nil   -- Bar Textures' "Default (Blizzard)": the game's own bar
-		end
+	-- (0.16.0: Bar Textures' Tooltip area; one look Q3: its own Bar Texture,
+	-- nil on the game's own art or with Bar Textures off)
+	local bt = MelloUI:GetModule("BarTextures")
+	if M.isEnabled and bt and bt.PreviewTexture then
+		wanted = bt.PreviewTexture("tooltip")
 	end
 	if wanted then
 		bar:SetStatusBarTexture(wanted)

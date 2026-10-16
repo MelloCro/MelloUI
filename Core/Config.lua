@@ -141,7 +141,7 @@ local CHANGELOG = {
 	{ version = "0.25.0", lines = {
 		"One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off.",
 		"Windows: a new frame -- the logo heads the configurator's side list, small windows get a slim strip.",
-		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, Hide Bar Art.",
+		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, Hide Bar Art, a Bar Texture for each.",
 		"Action bars and minimap: backdrops and MelloUI's minimap for everyone, no painted skin needed.",
 		"Quests: one gem per title, a ring on the quest you follow, Parchment its own switch; the tracker's Painted Skin is gone.",
 		"Route: the World Marker shows the way (the arrow row is gone); a bead marks your flight point.",

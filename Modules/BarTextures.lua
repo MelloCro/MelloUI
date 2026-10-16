@@ -63,6 +63,22 @@ local function BuildTextureList()
 	return list
 end
 
+-- (one look Q3, the user 2026-10-15) each area's Bar Texture: "shared" (the
+-- Look page's picture, `texture`), "game" (the game's own art; on MelloUI's
+-- own bars, a plain fill: "Plain") or a picture of its own. The lists are
+-- made once, at load, from the one texture list
+local TEXTURES = BuildTextureList()
+local AREA_LISTS = {}
+for i, label in ipairs({ "The game's", "Plain" }) do
+	local list = { { value = "shared", label = "Shared (Look's Bar Texture)" }, { value = "game", label = label } }
+	for _, e in ipairs(TEXTURES) do
+		if e.value ~= "default" then
+			list[#list + 1] = e
+		end
+	end
+	AREA_LISTS[i] = list
+end
+
 local M = MelloUI:RegisterModule("BarTextures", {
 	title = "Bar Textures",
 	desc = "Change the fill texture of health, power, nameplate, experience, reputation, honor and cast bars.",
@@ -76,19 +92,22 @@ local M = MelloUI:RegisterModule("BarTextures", {
 		overrideThreat = true,   -- the health colour wins over the game's threat / aggro recolouring
 		executeRange = false,    -- a tint over an enemy's health bar below executeBelow percent
 		executeBelow = 20,
-		unitframes = true,
-		raidframes = true,
-		nameplates = true,
-		personal = true,
-		statusbars = true,
-		castbars = true,
-		cooldowns = true,
-		tooltip = true,   -- (0.16.0: the tooltip's health bar; its Use Bar Texture was the Tooltip's own)
+		-- (one look Q3: each area's Bar Texture, in place of its Apply To
+		-- switch; Core.lua's MERGES carries an old switch: on -> shared, off ->
+		-- game. tooltipTexture: the tooltip's health bar, 0.16.0)
+		unitframesTexture = "shared",
+		raidframesTexture = "shared",
+		nameplatesTexture = "shared",
+		personalTexture = "shared",
+		statusbarsTexture = "shared",
+		castbarsTexture = "shared",
+		cooldownsTexture = "shared",
+		tooltipTexture = "shared",
 	},
 	options = {
 		{ type = "header", name = "Texture" },
-		{ type = "dropdown", key = "texture", name = "Bar Texture", values = BuildTextureList(),
-		  desc = "Fill texture for every bar whose Bar Texture switch is on (each switch sits with its bars, on their own page). Custom files go into MelloUI\\Media\\Textures and are listed in Media\\CustomTextures.lua." },
+		{ type = "dropdown", key = "texture", name = "Bar Texture", values = TEXTURES,
+		  desc = "Fill texture for every bar whose own Bar Texture is Shared (each sits with its bars, on their own page). Custom files go into MelloUI\\Media\\Textures and are listed in Media\\CustomTextures.lua." },
 		{ type = "dropdown", key = "healthColor", name = "Health Bar Colour", values = {
 			{ value = "green", label = "Green (Blizzard)" },
 			{ value = "class", label = "Class colour for players" },
@@ -104,22 +123,22 @@ local M = MelloUI:RegisterModule("BarTextures", {
 		  format = function(v) return math.floor(v + 0.5) .. "%" end,
 		  desc = "The health percentage under which the bar turns purple (20% for most execute abilities, 35% for some)." },
 		{ type = "header", name = "Apply To" },
-		{ type = "toggle", key = "unitframes", name = "Unit Frames",
-		  desc = "Health and power bars of the player, target, focus, pet, party, boss and target-of-target frames." },
-		{ type = "toggle", key = "raidframes", name = "Raid Frames",
-		  desc = "Raid-style party frames, raid groups and their pet frames." },
-		{ type = "toggle", key = "nameplates", name = "Nameplates",
-		  desc = "Nameplate health and cast bars." },
-		{ type = "toggle", key = "personal", name = "Personal Display",
-		  desc = "The Personal Display's health, power and shield bars under your character (and the game's own personal resource display while the Personal Display is off)." },
-		{ type = "toggle", key = "statusbars", name = "Experience & Reputation Bars",
-		  desc = "Experience, reputation and honor bars, and the damage meter's race bar and Fight History's bars (Minimalist there while this is off or the texture is Default)." },
-		{ type = "toggle", key = "castbars", name = "Cast Bars",
-		  desc = "Player, pet, target, focus and boss cast bars, and MelloUI's swing timers (Minimalist there while this is off or the texture is Default)." },
-		{ type = "toggle", key = "cooldowns", name = "Cooldown Manager Bars",
-		  desc = "The bars of the Buff Bar cooldown viewer." },
-		{ type = "toggle", key = "tooltip", name = "Tooltip Health Bar",
-		  desc = "The health bar under a unit's tooltip (when Tooltip's Hide Health Bar is off)." },
+		{ type = "dropdown", key = "unitframesTexture", name = "Unit Frames", values = AREA_LISTS[1], new = "0.25.0",
+		  desc = "The fill of the health and power bars of the player, target, focus, pet, party, boss and target-of-target frames: Shared (the Look page's Bar Texture), the game's own art, or a picture of their own." },
+		{ type = "dropdown", key = "raidframesTexture", name = "Raid Frames", values = AREA_LISTS[2], new = "0.25.0",
+		  desc = "The fill of MelloUI's party and raid frames and the game's raid-style frames: Shared (the Look page's Bar Texture), Plain (a flat fill; the game's own art on the game's frames), or a picture of their own." },
+		{ type = "dropdown", key = "nameplatesTexture", name = "Nameplates", values = AREA_LISTS[1], new = "0.25.0",
+		  desc = "The fill of nameplate health and cast bars: Shared (the Look page's Bar Texture), the game's own art, or a picture of their own." },
+		{ type = "dropdown", key = "personalTexture", name = "Personal Display", values = AREA_LISTS[2], new = "0.25.0",
+		  desc = "The fill of the Personal Display's health, power and shield bars under your character (and the game's own personal resource display while the Personal Display is off): Shared, Plain, or a picture of their own." },
+		{ type = "dropdown", key = "statusbarsTexture", name = "Experience & Reputation Bars", values = AREA_LISTS[1], new = "0.25.0",
+		  desc = "The fill of the experience, reputation and honor bars, and the damage meter's race bar and Fight History's bars (Minimalist there on The game's): Shared, the game's own art, or a picture of their own." },
+		{ type = "dropdown", key = "castbarsTexture", name = "Cast Bars", values = AREA_LISTS[1], new = "0.25.0",
+		  desc = "The fill of the player, pet, target, focus and boss cast bars, and MelloUI's swing timers (Minimalist there on The game's): Shared, the game's own art, or a picture of their own." },
+		{ type = "dropdown", key = "cooldownsTexture", name = "Cooldown Manager Bars", values = AREA_LISTS[1], new = "0.25.0",
+		  desc = "The fill of the Buff Bar cooldown viewer's bars: Shared, the game's own art, or a picture of their own." },
+		{ type = "dropdown", key = "tooltipTexture", name = "Tooltip Health Bar", values = AREA_LISTS[1], new = "0.25.0",
+		  desc = "The fill of the health bar under a unit's tooltip (when Tooltip's Hide Health Bar is off): Shared, the game's own art, or a picture of its own." },
 	},
 })
 
@@ -192,8 +211,38 @@ local applied = setmetatable({}, { __mode = "k" })   -- [bar] = true once our te
 local applying = false
 local healthBars                                     -- [bar] = true for every health bar seen (filled below)
 
+-- an area's Bar Texture setting ("shared", "game" or a picture; nil areas and
+-- unset keys: "shared"), and the file its bars wear ("default": the game's art)
+local AREA_KEY = { unitframes = "unitframesTexture", raidframes = "raidframesTexture", nameplates = "nameplatesTexture",
+	personal = "personalTexture", statusbars = "statusbarsTexture", castbars = "castbarsTexture",
+	cooldowns = "cooldownsTexture", tooltip = "tooltipTexture" }
+local AREA_OF = {}   -- [its key] = the area
+for area, key in pairs(AREA_KEY) do
+	AREA_OF[key] = area
+end
+
+local function AreaValue(group)
+	local db = M.db
+	local key = group and AREA_KEY[group]
+	local v = db and key and db[key]
+	if type(v) ~= "string" then
+		return "shared"
+	end
+	return v
+end
+
+local function TextureOf(group)
+	local v = AreaValue(group)
+	if v == "shared" then
+		return M.db and M.db.texture or "default"
+	elseif v == "game" then
+		return "default"
+	end
+	return v
+end
+
 local function Active(group)
-	return M.isEnabled and M.db and M.db[group]
+	return (M.isEnabled and M.db and AreaValue(group) ~= "game") and true or false
 end
 
 -- What the game put on a bar, kept so disabling can restore it. The game
@@ -399,8 +448,10 @@ local function SetTexture(bar)
 	local r, g, b, a = bar:GetStatusBarColor()
 	-- "Default (Blizzard)": the game's own art stays (put back if a texture
 	-- was on the bar), the bar keeps its colour handling below (user,
-	-- 2026-09-21: the default textures as a choice)
-	if M.db.texture == "default" then
+	-- 2026-09-21: the default textures as a choice; one look: the bar's own
+	-- area's texture)
+	local file = TextureOf(tracked[bar])
+	if file == "default" then
 		-- the game's own re-sets land here too (dozens a second on some power
 		-- bars) with its art already on: a restore that would change nothing
 		-- is left out. A health bar is restored every time, as it always was
@@ -413,7 +464,7 @@ local function SetTexture(bar)
 	end
 	SetDesaturated(bar, false)
 	applying = true
-	bar:SetStatusBarTexture(M.db.texture)
+	bar:SetStatusBarTexture(file)
 	UpdateMask(bar)
 	applying = false
 	applied[bar] = true
@@ -445,7 +496,7 @@ local function HookBarTexture(bar)
 		if IsPlainString(newTexture) then
 			NoteOriginal(owner, newTexture)
 		end
-		if M.db.texture ~= "default" then
+		if TextureOf(grp) ~= "default" then
 			WriteBack("BarTextures: a bar fill's art put back after the game's")
 		end
 		SetTexture(owner)
@@ -541,7 +592,7 @@ end
 local function CoverBar(bar)
 	local c = coverOf[bar]
 	local group = tracked[bar]
-	if not (group and Active(group)) or M.db.texture == "default" then
+	if not (group and Active(group)) or TextureOf(group) == "default" then
 		CoverShown(c, false)
 		return
 	end
@@ -570,7 +621,7 @@ local function CoverBar(bar)
 			pcall(c.back.RemoveMaskTexture, c.back, mask)
 		end
 	end
-	local file = M.db.texture
+	local file = TextureOf(group)
 	if c.file ~= file then
 		c.file = file
 		c.tex:SetTexture(file)
@@ -632,7 +683,7 @@ local function ApplyToBar(bar, group)
 			if IsPlainString(newTexture) then
 				NoteOriginal(self, newTexture)
 			end
-			if M.db.texture ~= "default" then
+			if TextureOf(grp) ~= "default" then
 				WriteBack("BarTextures: a bar's texture put back after the game's")
 			end
 			SetTexture(self)
@@ -911,7 +962,7 @@ local function HealthColorFor(bar)
 	-- boss frames' health) stays white, as the game leaves it; 0, 1, 0 on it
 	-- tinted the art (0.19.4, the options audit). Any other bar: the green a
 	-- flat texture needs written.
-	if bar.lockColor and M.db.texture == "default" and M.db.healthColor == "green" then
+	if bar.lockColor and TextureOf(tracked[bar]) == "default" and M.db.healthColor == "green" then
 		return 1, 1, 1
 	end
 	return 0.0, 1.0, 0.0
@@ -1261,7 +1312,7 @@ local function RecolorManaBar(manaBar)
 		CoverBar(manaBar)
 		return
 	end
-	if M.db.texture == "default" then
+	if TextureOf("unitframes") == "default" then
 		return   -- the game's power atlas is coloured already; it expects white
 	end
 	local info = manaBar.overrideInfo or (PowerBarColor and manaBar.powerToken and PowerBarColor[manaBar.powerToken])
@@ -1558,7 +1609,7 @@ local appliers = {
 
 local function ApplyAll()
 	for group, apply in pairs(appliers) do
-		if M.db[group] then
+		if AreaValue(group) ~= "game" then
 			apply()
 		end
 	end
@@ -1619,11 +1670,11 @@ do
 
 	function M.PreviewTexture(area)
 		local db = M.db
-		local active = (area ~= nil and M.isEnabled and db and db[area]) and true or false
-		if not db or db.texture == "default" or (area ~= nil and not active) then
+		local active = (area ~= nil and M.isEnabled and db and AreaValue(area) ~= "game") and true or false
+		local texture = db and (area ~= nil and TextureOf(area) or db.texture)
+		if not db or texture == "default" or (area ~= nil and not active) then
 			return nil, active
 		end
-		local texture = db.texture
 		return IsPlainString(texture) and texture or nil, active
 	end
 
@@ -1667,7 +1718,7 @@ do
 		-- the tint is this module's, on the unit frames' and the nameplates'
 		-- bars only, while it works on them (UpdateExecute's test)
 		local area = IsPlainString(sample.area) and sample.area or "unitframes"
-		if sample.execute and db.executeRange and M.isEnabled and EXECUTE_AREAS[area] and db[area] then
+		if sample.execute and db.executeRange and M.isEnabled and EXECUTE_AREAS[area] and AreaValue(area) ~= "game" then
 			-- ExecuteCurve's line: on below it, off from it (and off at none
 			-- left: a dead unit)
 			local at = math.max(1, math.min(99, tonumber(db.executeBelow) or 20)) / 100
@@ -1770,9 +1821,15 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
-	if appliers[key] then
-		if value then
+	local area = AREA_OF[key]
+	if area == "tooltip" then
+		return   -- (the Tooltip module's bar: it follows through W.OnBarTexture)
+	end
+	if area and appliers[area] then
+		key = area
+		if value ~= "game" then
 			appliers[key]()
+			ReapplyGroup(key)   -- (bars already dressed: the new picture)
 			if key == "unitframes" then
 				local list = {}
 				CollectUnitFrameBars(list)
@@ -1790,7 +1847,7 @@ function M:OnSettingChanged(key, value, db)
 		end
 	elseif key == "texture" then
 		for group in pairs(appliers) do
-			if db[group] then
+			if AreaValue(group) == "shared" then
 				ReapplyGroup(group)
 			end
 		end
@@ -1800,7 +1857,7 @@ function M:OnSettingChanged(key, value, db)
 	elseif key == "healthColor" or key == "overrideThreat" then
 		-- under Default the art follows the colour: the white twin for a
 		-- colour, the game's green for green
-		if key == "healthColor" and db.texture == "default" and db.unitframes then
+		if key == "healthColor" and Active("unitframes") and TextureOf("unitframes") == "default" then
 			ReapplyGroup("unitframes")
 		end
 		RecolorAllHealthBars()
