@@ -733,6 +733,7 @@ local function RowOpts(sec, new)
 	ROW.look = KIT and "plate" or "palette"
 	ROW.gate, ROW.onCover = sec.gate, nil
 	ROW.labelKey, ROW.hintKey = nil, nil
+	ROW.shared = nil
 	return ROW
 end
 
@@ -889,6 +890,9 @@ local function NewPage(name, width)
 				tab:SetSelected(tab.section == sec)
 			end
 		end
+		if self.dui then
+			self.dui.Follow(self, sec)
+		end
 		sec:Refresh()
 		PageHeight(self, sec)
 		Kick()
@@ -926,6 +930,9 @@ local function NewPage(name, width)
 			line:ClearAllPoints()
 			line:SetPoint("TOPLEFT", self, "TOPLEFT", PAD + HEADER_ICON + 14, -self.pickerY)
 			line:SetPoint("RIGHT", self, "RIGHT", -PAD, 0)
+		end
+		if self.dui then
+			y = self.dui.Lay(self, y)
 		end
 		local tabs = self.tabs
 		if tabs then
@@ -968,7 +975,9 @@ local function NewPage(name, width)
 	-- out, and open the first tab.
 	function page:Finish()
 		self.baseHeight = self.headerHeight
-		if #self.sections > 1 then
+		if self.dui then
+			self.dui.Chips(self)   -- (one look, a designer: chips in the tab row's place)
+		elseif #self.sections > 1 then
 			self.tabs = {}
 			for _, sec in ipairs(self.sections) do
 				local tab = CreateFrame("Button", nil, self, "PanelTopTabButtonTemplate")
@@ -1193,6 +1202,69 @@ do
 		return nil
 	end
 
+	-- (one look, the designers: docs/plans/onelook-designer/c7-lite.md) a
+	-- designer page's tabs: per element "<el>:element", then "<el>:<part>"
+	-- per part; the family's key last. Each tab's info: its element, its part
+	-- (nil on the element's own) and its label ("Raid > Name"). An element of
+	-- a feature not loaded keeps its tabs (its rows are left out as any row
+	-- of a feature not loaded)
+	function Lay.Designer(def)
+		local out = { names = {}, tabs = {} }
+		local function Add(name, info)
+			out.names[#out.names + 1] = name
+			out.tabs[name] = info
+		end
+		for _, el in ipairs(type(def.elements) == "table" and def.elements or EMPTY) do
+			Add(el.key .. ":element", { el = el, label = el.label })
+			for _, part in ipairs(type(el.parts) == "table" and el.parts or EMPTY) do
+				Add(el.key .. ":" .. part.key, { el = el, part = part, label = el.label .. " > " .. part.label })
+			end
+		end
+		if type(def.family) == "table" then
+			Add(def.family.key, { family = def.family, label = def.family.label })
+		end
+		return out
+	end
+
+	-- a designer tab's sections: a part's tab its part's sections (headings
+	-- "<Part> · <Section>"), then its element's ("<Element> · <Section>");
+	-- an element's or the family's tab its own only. secOf names the sections
+	-- an R on this tab fills; elSecOf the element's, which an R on the
+	-- element's own tab fills too (Lay.Get's R)
+	function Lay.DesignerSections(t, info, SECTIONS)
+		t.label, t.el, t.part, t.family = info.label, info.el, info.part, info.family
+		t.elSecOf = {}
+		local own = info.part or info.family
+		if own then
+			for _, sname in ipairs(SECTIONS) do
+				local s = { name = sname, rows = {}, links = {}, heading = own.label .. " · " .. sname }
+				t.sections[#t.sections + 1] = s
+				t.secOf[sname] = s
+			end
+		end
+		if info.el then
+			for _, sname in ipairs(SECTIONS) do
+				local s = { name = sname, rows = {}, links = {}, heading = info.el.label .. " · " .. sname, element = true }
+				t.sections[#t.sections + 1] = s
+				t.elSecOf[sname] = s
+				if not info.part then
+					t.secOf[sname] = s
+				end
+			end
+		end
+	end
+
+	-- every element's own tab told its parts' tabs (the rows it mirrors)
+	function Lay.DesignerLink(p)
+		for _, t in ipairs(p.tabs) do
+			if t.part then
+				local home = p.tabOf[t.el.key .. ":element"]
+				home.elementRows = home.elementRows or {}
+				home.elementRows[#home.elementRows + 1] = t
+			end
+		end
+	end
+
 	function Lay.Get()
 		if resolved then
 			return resolved
@@ -1216,17 +1288,28 @@ do
 			-- (0.19.9) a page whose header switch is a feature's that is not
 			-- loaded: the note first on each of its tabs (MakeNote)
 			local feature = def.module and FeatureOf(def.module .. ".!enabled")
-			for i, name in ipairs(def.tabs or EMPTY) do
+			local designer = def.designer and Lay.Designer(def) or nil
+			for i, name in ipairs(designer and designer.names or def.tabs or EMPTY) do
 				local t = { name = name, index = i, sections = {}, secOf = {} }
-				for j, sname in ipairs(L.SECTIONS) do
-					local s = { name = sname, rows = {}, links = {} }
-					t.sections[j], t.secOf[sname] = s, s
+				if designer then
+					-- (one look, the designer: a part's tab holds its rows, then
+					-- its element's; an element's tab its element's only)
+					Lay.DesignerSections(t, designer.tabs[name], L.SECTIONS)
+				else
+					for j, sname in ipairs(L.SECTIONS) do
+						local s = { name = sname, rows = {}, links = {} }
+						t.sections[j], t.secOf[sname] = s, s
+					end
 				end
 				if feature and t.sections[1] then
 					local s = t.sections[1]
 					s.rows[1] = { page = key, tab = t, section = s, note = feature, name = feature.title }
 				end
 				p.tabs[i], p.tabOf[name] = t, t
+			end
+			if designer then
+				Lay.DesignerLink(p)
+				p.designer = true
 			end
 			local picker = def.picker
 			if type(picker) == "table" then
@@ -1386,6 +1469,7 @@ do
 				end
 			end
 			r.wide, r.picture, r.swatch, r.also = extra.wide, extra.picture, extra.swatch, extra.also
+			r.shared = extra.shared   -- (one look, the designers: the Shared mark, W.Row's opts.shared)
 			r.free = (extra.free or (first.opt and first.opt.free)) and true or nil
 			-- (one-look D6) the module whose switches the row sleeps with while
 			-- its key's own module is off (any-of: Gate)
@@ -1450,7 +1534,15 @@ do
 				end
 				return
 			end
-			AddRow(p, t, s, what, extra)
+			local r = AddRow(p, t, s, what, extra)
+			-- (one look, the designer) an element's row is on every tab of its
+			-- element, under that tab's part rows: the same row, one place
+			if r and t.elementRows then
+				for _, other in ipairs(t.elementRows) do
+					local os = other.elSecOf[section]
+					os.rows[#os.rows + 1] = r
+				end
+			end
 		end
 		local function Link(pageKey, tab, section, target, label, extra)
 			local p, t, s = Section(pageKey, tab, section)
@@ -1810,6 +1902,8 @@ local TEXT = {
 	pickTip = "The %s this page's settings are for. Rows it has no setting for are dimmed.",
 	nothing = "Nothing to set here yet.",
 	scaleBusy = "Edit Layout is open: size it there.",
+	parts = "Parts:",   -- (the designers' Parts line)
+	pickPart = "Nothing to pick on it: its options are below.",
 }
 local AREAS_REFUSED = "Not in combat: this would switch painted skins."   -- (UI Modifications' own line, areasRefused)
 
@@ -2705,6 +2799,7 @@ local function MakeRow(sec, r)
 	local opt = shape.opt
 	local e = { page = page, r = r, shape = shape }
 	local o = RowOpts(sec, r.new)
+	o.shared = r.shared
 	if opt and opt.important then
 		o.labelKey, o.hintKey = C.accent, C.accent
 	end
@@ -2885,7 +2980,7 @@ end
 -- a section's heading (8 px under the section before it)
 local function MakeHeading(sec, s)
 	local gap = s.gap
-	W.Header(sec, sec.y + gap, s.name, { inset = SEC_INSET })
+	W.Header(sec, sec.y + gap, s.heading or s.name, { inset = SEC_INSET })
 	Placed(sec, nil, gap + W.HEADER_HEIGHT)
 end
 
@@ -3065,6 +3160,96 @@ end
 -- The page
 --------------------------------------------------------------------------------
 
+-- (one look, the designers: docs/plans/onelook-designer/c7-lite.md) the
+-- element chips and the Parts line in the tab row's place: made at the
+-- page's Finish, laid by its LayTabs, following its Select (page.dui)
+Lay.DesignerUI = {}
+do
+	local DUI = Lay.DesignerUI
+	local PARTS_W = 54   -- the "Parts:" label's room
+
+	local function ElementItems(pl)
+		local items = {}
+		for _, el in ipairs(pl.def.elements or EMPTY) do
+			local m = el.module and MelloUI.modules[el.module]
+			items[#items + 1] = { key = el.key, label = el.label, tip = el.line,
+				state = (m and not MelloUI:IsModuleEnabled(m.name)) and "off" or nil }
+		end
+		local fam = pl.def.family
+		if type(fam) == "table" then
+			items[#items + 1] = { key = fam.key, label = fam.label, tip = fam.line }
+		end
+		return items
+	end
+
+	function DUI.Chips(page)
+		local pl = page.lay
+		page.secByName = {}
+		for _, sec in ipairs(page.sections) do
+			page.secByName[sec.name] = sec
+		end
+		page.elChips = W.Chips(page, { width = page.width - PAD * 2, onPick = function(_, key)
+			local sec = page.secByName[key .. ":element"] or page.secByName[key]
+			if sec and sec ~= page.current then
+				page:Select(sec, true)
+			end
+		end })
+		page.partsLabel = Text(page, "GameFontHighlight", TEXT.parts)
+		page.partChips = W.Chips(page, { width = page.width - PAD * 2 - PARTS_W, onPick = function(_, key)
+			local sec = page.dEl and page.secByName[page.dEl .. ":" .. key]
+			if sec and sec ~= page.current then
+				page:Select(sec, true)
+			end
+		end })
+		page.partsHint = Text(page, "GameFontDisable", TEXT.pickPart)
+		page.elChips:SetItems(ElementItems(pl))
+	end
+
+	-- under the header: the element chips, then the Parts line; the y the
+	-- sections start at
+	function DUI.Lay(page, y)
+		page.elChips:ClearAllPoints()
+		page.elChips:SetPoint("TOPLEFT", page, "TOPLEFT", PAD, -y)
+		y = y + page.elChips:Height() + 8
+		page.partsLabel:ClearAllPoints()
+		page.partsLabel:SetPoint("TOPLEFT", page, "TOPLEFT", PAD + 2, -(y + 4))
+		page.partChips:ClearAllPoints()
+		page.partChips:SetPoint("TOPLEFT", page, "TOPLEFT", PAD + PARTS_W, -y)
+		page.partsHint:ClearAllPoints()
+		page.partsHint:SetPoint("TOPLEFT", page, "TOPLEFT", PAD + PARTS_W + 2, -(y + 4))
+		return y + math.max(page.partChips:Height(), 22) + 12
+	end
+
+	-- a section selected: the chips follow it; the Parts line is its
+	-- element's (laid again when its rows change)
+	function DUI.Follow(page, sec)
+		local t = page.lay.tabOf[sec.name]
+		if not t then
+			return
+		end
+		local el = t.el and t.el.key or nil
+		page.elChips:Select(el or (t.family and t.family.key))
+		if el ~= page.dEl then
+			page.dEl = el
+			local items = {}
+			for _, part in ipairs(t.el and t.el.parts or EMPTY) do
+				items[#items + 1] = { key = part.key, label = part.label, tip = part.locked,
+					state = part.locked and "locked" or nil }
+			end
+			local before = page.partChips:Height()
+			page.partChips:SetItems(items)
+			if page.partChips:Height() ~= before then
+				page:LayTabs(true)
+			end
+		end
+		page.partChips:Select(t.part and t.part.key or nil)
+		local parts = el ~= nil and page.partChips.count > 0
+		page.partsLabel:SetShown(parts)
+		page.partChips:SetShown(parts)
+		page.partsHint:SetShown(el ~= nil and page.partChips.count == 0)
+	end
+end
+
 function BuildElementPage(key, width)
 	local pl = Lay.Get().pages[key]
 	if not pl or pl.def.own then
@@ -3072,6 +3257,7 @@ function BuildElementPage(key, width)
 	end
 	local page = NewPage(key, width)
 	page.lay = pl
+	page.dui = pl.designer and Lay.DesignerUI or nil
 	page.entries, page.built, page.rowSec, page.rowY, page.relist = {}, {}, {}, {}, {}
 	page.fromWindows = pl.def.picker and pl.def.picker.from == "windows" or nil
 	if pl.picks then
@@ -3092,7 +3278,11 @@ function BuildElementPage(key, width)
 				s.gap = s == t.firstSection and 0 or SECTION_GAP
 				Queue(sec, s, ElementJob, s.gap + W.HEADER_HEIGHT)
 				for _, r in ipairs(s.rows) do
-					page.rowSec[r], page.rowY[r] = sec, sec.plannedY or sec.y
+					-- (a designer's element row stands on every tab of its
+					-- element: a jump to it opens its element's own, the first)
+					if not page.rowSec[r] then
+						page.rowSec[r], page.rowY[r] = sec, sec.plannedY or sec.y
+					end
 					Queue(sec, r, ElementJob, RowH(r))
 				end
 				for _, lk in ipairs(s.links) do
