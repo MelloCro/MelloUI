@@ -387,3 +387,71 @@ SlashCmdList.MELLOPMDUMP = function()
 end
 
 MelloUI:Profile("PartyMarkers", "nameplate events", eventFrame)
+
+--------------------------------------------------------------------------------
+-- The configurator's sample (one look stage G, the user's yes to np-audit.md:
+-- the Friendly players chip shows the medallion in the designer's slot): a
+-- made-up party member's name with the marker over it, drawn as the plates'
+-- are -- the class medallion, the role ring, the size and the gap from these
+-- settings. A corner kind of Core/ConfigPreview.lua (made with the page,
+-- never at login); no unit is read.
+--------------------------------------------------------------------------------
+
+do
+	local CP = MelloUI.ConfigPreview
+	local W = MelloUI.Widgets
+	-- the sample's room in the corner: the medallion kept inside it (a large
+	-- Marker Size drawn at the room's height, its ring and gap as set)
+	local S = { W = 220, H = 96, NAME_Y = 16, MAX = 58, DIM = 0.4, CLASS = "PRIEST", ROLE = "HEALER",
+		NAME = "Lina Brightwater" }
+
+	local function Corner(p)
+		p.name = W.Text(p, "GameFontNormal", S.NAME, "text")
+		p.name:SetPoint("BOTTOM", p, "BOTTOM", 0, S.NAME_Y)
+		p.marker = CreateFrame("Frame", nil, p)
+		p.marker.icon = p.marker:CreateTexture(nil, "ARTWORK")
+		p.marker.icon:SetAllPoints()
+		p.marker.ring = p.marker:CreateTexture(nil, "BORDER")
+		p.marker.ring:SetColorTexture(1, 1, 1, 1)
+		p.marker.ringMask = p.marker:CreateMaskTexture()
+		p.marker.ringMask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		p.marker.ringMask:SetAllPoints(p.marker.ring)
+		p.marker.ring:AddMaskTexture(p.marker.ringMask)
+	end
+
+	local function Paint(p)
+		-- (the saved table the rows write, bound or not: a module never switched on has no M.db)
+		local db = MelloUI:GetModuleDB("PartyMarkers") or defaults
+		local size = math.min(tonumber(db.size) or defaults.size, S.MAX)
+		local gap = tonumber(db.offset) or defaults.offset
+		local marker = p.marker
+		marker:SetSize(size, size)
+		marker:ClearAllPoints()
+		marker:SetPoint("BOTTOM", p.name, "TOP", 0, gap)
+		local path = MelloUI.ClassIconPath and MelloUI:ClassIconPath(S.CLASS)
+		marker.icon:SetTexture(path)
+		local ringPad = math.max(2, math.floor(size * 0.08 + 0.5))
+		marker.ring:SetSize(size + ringPad * 2, size + ringPad * 2)
+		marker.ring:ClearAllPoints()
+		marker.ring:SetPoint("CENTER", marker, "CENTER")
+		local color = db.roleRing and ROLE_COLORS[S.ROLE]
+		if color then
+			marker.ring:SetVertexColor(color[1], color[2], color[3], 1)
+		end
+		marker.ring:SetShown(color and true or false)
+		-- (the module off: the sample dimmed, as a sleeping row)
+		marker:SetAlpha(M.isEnabled and 1 or S.DIM)
+	end
+
+	if CP and CP.Register then
+		CP.Register("partymarker", {
+			place = "corner", width = S.W, height = S.H, picks = { marker = true }, first = "marker",
+			watch = { PartyMarkers = true },
+			Corner = Corner,
+			Paint = Paint,
+			Tip = function()
+				return "A party member's marker, drawn with your settings as they are now. The name is made up."
+			end,
+		})
+	end
+end

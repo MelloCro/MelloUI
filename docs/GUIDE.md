@@ -824,6 +824,8 @@ of them to addons, so nothing can mark them there (`/pmdump` shows the plates th
 Options: party and raid members or every friendly player, size, height above the name, the role
 ring. A spec cannot be read for other players on this client without inspecting them, so the marker
 is the class.
+The options live on Nameplates > Friendly players, where a made-up party member's marker shows them
+as they are set.
 
 ### Custom Sounds
 

@@ -202,7 +202,9 @@ L.pages = {
 				{ key = "threat", label = "Threat line" }, { key = "combo", label = "Combo points" },
 				{ key = "cc", label = "CC icon" }, { key = "quest", label = "Quest icon" },
 				{ key = "debuffs", label = "Your debuffs" }, { key = "auras", label = "The game's auras" } } },
+			-- (`sample`: Party Markers' own medallion sample in the slot -- Modules/PartyMarkers.lua's corner kind)
 			{ key = "friendly", label = "Friendly players", line = "A class medallion over friendly players' names, in the open world",
+				sample = { kind = "partymarker", pick = "marker" },
 				parts = { { key = "medallion", label = "Medallion" }, { key = "role", label = "Role ring" } } },
 			{ key = "objects", label = "Objects", line = "The sparkle on quest items and the glints over veins, herbs and quest objects" },
 		} },
