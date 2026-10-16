@@ -3241,6 +3241,17 @@ do
 		end
 	end
 
+	-- the stage's state chip changed (Normal | Dead / Offline): the Parts line laid again -- a part with a `state`
+	-- shows only in it (the Status text)
+	function DUI.StageState(page)
+		return function()
+			page.dEl = nil
+			if page.current then
+				DUI.Follow(page, page.current)
+			end
+		end
+	end
+
 	function DUI.MakeStage(page, pl)
 		local kind = DUI.StageMaps(page, pl)
 		local CP = MelloUI.ConfigPreview
@@ -3248,7 +3259,8 @@ do
 			return
 		end
 		page.stage = CP.Make(page, kind, SKIN, { width = page.width - PAD * 2, x = PAD, anchor = page,
-			scroll = window and window.scroll, onSelect = DUI.StageSelected(page), onPick = DUI.StagePicked(page) })
+			scroll = window and window.scroll, onSelect = DUI.StageSelected(page), onPick = DUI.StagePicked(page),
+			onState = DUI.StageState(page) })
 		if page.stage then
 			-- (the chips' ground while the head is pinned: the rows pass under it)
 			page.stageHead = CreateFrame("Frame", nil, page)
@@ -3351,9 +3363,12 @@ do
 		if el ~= page.dEl then
 			page.dEl = el
 			local items = {}
+			local state = page.stage and page.stage.ctx and page.stage.ctx.state
 			for _, part in ipairs(t.el and t.el.parts or EMPTY) do
-				items[#items + 1] = { key = part.key, label = part.label, tip = part.locked,
-					state = part.locked and "locked" or nil }
+				if not part.state or part.state == state then
+					items[#items + 1] = { key = part.key, label = part.label, tip = part.locked,
+						state = part.locked and "locked" or nil }
+				end
 			end
 			local before = page.partChips:Height()
 			page.partChips:SetItems(items)
@@ -3381,6 +3396,13 @@ do
 		if pick then
 			if page.elOfPick[stage.pick] ~= el then
 				stage:SetPick(pick)
+			end
+			-- (a part shown only in a state -- the Status text -- opened: the stage in that state; its listener lays
+			-- the Parts line and comes back here)
+			local only = t.part and t.part.state
+			if only and stage.ctx.state ~= only then
+				stage:SetState(only)
+				return
 			end
 			local key = t.part and page.stageOfPart[el][t.part.key]
 			if key and not page.dFromStage and not key:match(":$") then

@@ -1904,6 +1904,10 @@ do
 			stage.chips:Select(state)
 		end
 		stage:Repaint()
+		-- (the host told: a part that shows only in a state -- the designer's Parts line)
+		if stage.opts.onState then
+			stage.opts.onState(stage, state)
+		end
 	end
 
 	function M.Moved(stage)

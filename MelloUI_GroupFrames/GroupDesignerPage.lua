@@ -892,9 +892,10 @@ local Stage = {
 	TEXT = { empty = "Switch on Group Frames first.", healthLocked = "It tints the health bar: nothing to move.",
 		home = "Default place", gameHome = "The game's place" },
 	TRY_TYPES = { dropdown = true, picture = true },
-	-- (F-v3's F5b) the state chips over your own frames' picks: the member as it is, dead or offline -- the health
-	-- text's Dead / Offline word and the grey, as a real member shows them (the Portraits pick: the game's, none)
-	STATES = { { key = "normal", label = "Normal" }, { key = "dead", label = "Dead" }, { key = "offline", label = "Offline" } },
+	-- (F-v3's F5b, shell-plan 6.1 item 5: "Normal | Dead / Offline") the state chips over your own frames' picks:
+	-- the member as it is, or fallen -- the health text's Dead word and the grey, as a real member shows them; the
+	-- Status text part (ConfigLayout's `state`) is picked only then (the Portraits pick: the game's, no chips)
+	STATES = { { key = "normal", label = "Normal" }, { key = "down", label = "Dead / Offline" } },
 	cache = {},   -- [pick] = { list = {}, frame = { [key] = part }, ind = { [ind] = part } (weak) }
 	EMPTY = {},
 }
@@ -926,7 +927,7 @@ function Stage.Paint(f, pick, _, ctx)
 	end
 	local s = f.sample
 	if s then
-		s.dead, s.offline = ctx.state == "dead", ctx.state == "offline"
+		s.dead, s.offline = ctx.state == "down", false
 	end
 	local try = ctx.try
 	local key = try and type(try.id) == "string" and try.id:match("^GroupFrames%.(.+)$")

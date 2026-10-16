@@ -154,7 +154,7 @@ L.pages = {
 				stage = { kind = "raidframe", pick = "groupParty", also = { "portrait" } },
 				parts = { { key = "name", label = "Name", stage = "name" },
 				{ key = "healthtext", label = "Health text", stage = "health" },
-				{ key = "status", label = "Status text", stage = "health" },
+				{ key = "status", label = "Status text", stage = "health", state = "down" },
 				{ key = "health", label = "Health bar", stage = "bar.health" },
 				{ key = "power", label = "Power bar", stage = "bar.power" },
 				{ key = "background", label = "Background", stage = "bar.background" },
@@ -163,7 +163,7 @@ L.pages = {
 				stage = { kind = "raidframe", pick = "raid" }, parts = {
 				{ key = "name", label = "Name", stage = "name" },
 				{ key = "healthtext", label = "Health text", stage = "health" },
-				{ key = "status", label = "Status text", stage = "health" },
+				{ key = "status", label = "Status text", stage = "health", state = "down" },
 				{ key = "health", label = "Health bar", stage = "bar.health" },
 				{ key = "power", label = "Power bar", stage = "bar.power" },
 				{ key = "background", label = "Background", stage = "bar.background" },
