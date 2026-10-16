@@ -1452,7 +1452,10 @@ end
 
 -- (kl, kb, kr, kt: a part of the region in UIParent's units, the copy cut to it -- a frame's whole art over the
 -- light's ring end only, never its plates over the bars: 70425's art lays a dark plate under the bars, which a whole
--- copy laid over them -- the user's clip, 2026-10-16: "the health bar is acting wierd"; no copy when it cannot be cut)
+-- copy laid over them -- the user's clip, 2026-10-16: "the health bar is acting wierd"; no copy when it cannot be cut).
+-- The cut is made in the source's own part of its file: an atlas's from the client's atlas info -- after SetAtlas,
+-- GetTexCoord answers the whole sheet's, and a cut of that laid a scrap of another piece over the portrait (the
+-- user's clip, 2026-10-16: "there is something covering the portrait after the heal lands")
 local function CopyTexture(dst, src, kl, kb, kr, kt)
 	if not (src and FX.Visible(src)) then
 		return
@@ -1461,9 +1464,16 @@ local function CopyTexture(dst, src, kl, kb, kr, kt)
 	if not l then
 		return
 	end
+	local u0, u1, v0, v1   -- (the source's part of its file: left, right, top, bottom)
 	local okA, atlas = pcall(src.GetAtlas, src)
 	if okA and not Secret(atlas) and type(atlas) == "string" and atlas ~= "" then
 		dst:SetAtlas(atlas)
+		if kl and C_Texture and C_Texture.GetAtlasInfo then
+			local okI, info = pcall(C_Texture.GetAtlasInfo, atlas)
+			if okI and type(info) == "table" then
+				u0, u1, v0, v1 = info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord
+			end
+		end
 	else
 		local okT, file = pcall(src.GetTexture, src)
 		if not okT or Secret(file) or file == nil then
@@ -1473,8 +1483,10 @@ local function CopyTexture(dst, src, kl, kb, kr, kt)
 		local okC, c1, c2, c3, c4, c5, c6, c7, c8 = pcall(src.GetTexCoord, src)
 		if okC and c8 ~= nil and NoneSecret(c1, c2, c3, c4, c5, c6, c7, c8) then
 			dst:SetTexCoord(c1, c2, c3, c4, c5, c6, c7, c8)
+			u0, u1, v0, v1 = c1, c7, c2, c8   -- (unrotated: the upper left c1, c2, the lower right c7, c8)
 		else
 			dst:SetTexCoord(0, 1, 0, 1)
+			u0, u1, v0, v1 = 0, 1, 0, 1
 		end
 	end
 	local okV, cr, cg, cb, ca = pcall(src.GetVertexColor, src)
@@ -1489,15 +1501,14 @@ local function CopyTexture(dst, src, kl, kb, kr, kt)
 	dst:SetDesaturated(okD and not Secret(des) and des == true)
 	if kl then
 		kl, kb, kr, kt = max(kl, l), max(kb, b), min(kr, r), min(kt, t)
-		-- (unrotated: the upper left c1, c2, the lower right c7, c8)
-		local okC, c1, c2, _, _, _, _, c7, c8 = pcall(dst.GetTexCoord, dst)
-		if kr <= kl or kt <= kb or not (okC and c8 ~= nil and NoneSecret(c1, c2, c7, c8)) then
+		if kr <= kl or kt <= kb or not (type(u0) == "number" and type(u1) == "number" and type(v0) == "number"
+			and type(v1) == "number" and NoneSecret(u0, u1, v0, v1)) then
 			dst:Hide()
 			return
 		end
 		local w, h = r - l, t - b
-		dst:SetTexCoord(c1 + (kl - l) / w * (c7 - c1), c1 + (kr - l) / w * (c7 - c1),
-			c2 + (t - kt) / h * (c8 - c2), c2 + (t - kb) / h * (c8 - c2))
+		dst:SetTexCoord(u0 + (kl - l) / w * (u1 - u0), u0 + (kr - l) / w * (u1 - u0),
+			v0 + (t - kt) / h * (v1 - v0), v0 + (t - kb) / h * (v1 - v0))
 		l, b, r, t = kl, kb, kr, kt
 	end
 	Place(dst, l, b, r, t, ShownAlpha(src))
@@ -2155,7 +2166,15 @@ function FX.Split(frame)
 	end
 	local bl, bb, br, bt
 	if health then
-		bl, bb, br, bt = FX.Rect(health)
+		-- (the box the game holds the bar in, where it has one: 70425's player health bar reaches 3 past it, up
+		-- under the name -- the user's clip, 2026-10-16)
+		local okP, box = pcall(health.GetParent, health)
+		if okP and type(box) == "table" and (rawget(box, "HealthBar") == health) then
+			bl, bb, br, bt = FX.Rect(box)
+		end
+		if not bl then
+			bl, bb, br, bt = FX.Rect(health)
+		end
 	end
 	if not (pl and bl) then
 		return nil
