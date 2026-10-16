@@ -745,11 +745,12 @@ function I:DefaultDraft(full)
 			d["Fonts." .. k] = DeepCopy(v)
 		end
 	end
-	local icons, chat = full.modules.ClassIcons or EMPTY, full.modules.Chat or EMPTY
+	local icons, tweaks = full.modules.ClassIcons or EMPTY, full.modules.Tweaks or EMPTY
 	d["ClassIcons.portraits"] = icons.portraits
-	-- (0.16.0: the name form is Show Names As, UI Modifications', for every name)
+	-- (0.16.0: the name form is Show Names As, UI Modifications', for every name; the shade behind text Text
+	-- Shade's, Tweaks' -- the chat's own switch went into it, the user, 2026-10-16)
 	local uiFull = full.modules.UIModifications or EMPTY
-	d["UIModifications.nameFormat"], d["Chat.nameShade"] = uiFull.nameFormat, chat.nameShade
+	d["UIModifications.nameFormat"], d["Tweaks.textShade"] = uiFull.nameFormat, tweaks.textShade
 	local map = full.modules.MinimapPanel or EMPTY
 	for _, k in ipairs(DRAFT_MAP) do
 		d["MinimapPanel." .. k] = DeepCopy(map[k])

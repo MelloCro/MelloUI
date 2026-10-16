@@ -185,7 +185,7 @@ end
 -- the modules whose settings the preview shows (the bus's 'setting' and
 -- 'module' for any other are passed over)
 local WATCH = { BarTextures = true, BarText = true, UnitFrames = true, ClassIcons = true, UnitFramePanel = true,
-	UIModifications = true }
+	UIModifications = true, Tweaks = true }   -- (Tweaks: Text Shade, the band behind the names -- 2026-10-16)
 
 local weakKeys = { __mode = "k" }
 
@@ -2679,7 +2679,7 @@ function Copy.Make(p, key)
 	f.crest:Hide()
 	-- (Unit Frames' soft band behind the name: its own, made here once)
 	local uf = d.band and Exports("UnitFrames", "PreviewNameBand")
-	f.band = uf and uf:PreviewNameBand(name, f) or nil
+	f.band = uf and uf:PreviewNameBand(name, f, key) or nil
 	Copy.made[p] = Copy.made[p] or {}
 	Copy.made[p][key] = f
 	return f

@@ -51,16 +51,10 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		threatLine = true,
 		comboPoints = true,
 		comboSize = 90,
-		-- (one look stage G, the user's yes to Q12: Name Shade is the Nameplates
-		-- module's -- the Nameplate Kit's key until then, its Whole plate the
-		-- kit's own switch on Oldschool now; Core.lua's MERGES carries it)
-		nameShade = "name",
+		-- (the band behind the names: Text Shade's, Look > General > Text -- the
+		-- user, 2026-10-16; Name Shade's key dropped by Core.lua's MERGES)
 	},
 	options = {
-		{ type = "dropdown", key = "nameShade", name = "Name Shade", values = {
-			{ value = "name", label = "Name" },
-			{ value = "off", label = "Off" },
-		}, desc = "A soft dark shade behind each nameplate's name, as long as the name, so it reads on bright ground (enemies and NPCs, not friendly players' name-only plates; part of Nameplate Tweaks). Off: no shade." },
 		{ type = "header", name = "Crowd Control" },
 		{ type = "toggle", key = "bigCC", name = "Large CC Icon Above Name",
 		  desc = "Move the crowd-control icon from the right side of the nameplate to above the name and enlarge it. Requires Blizzard's Crowd Control nameplate aura option to be on." },
@@ -490,7 +484,6 @@ Plate.PAD_X, Plate.PAD_Y = 4, 5
 -- LEFT). 'CENTER' is the one-constant fallback.
 Plate.POINT = "BOTTOM"
 Plate.KEY = "Nameplates plate parts"
-Plate.MODES = { name = true, off = true }
 -- the band's look (Shade:Band's options, read once a band; alpha set to the
 -- soft text look's at each making: a readability band, as the notice's)
 Plate.LOOK = { colour = "innerPanel", feather = 20, layer = "BACKGROUND", sublevel = -8, pixel = true }
@@ -535,10 +528,12 @@ function Plate.On()
 	return (M.isEnabled and M.db ~= nil) and true or false
 end
 
--- Name Shade's mode: the module's own key (one look stage G, Q12)
-function Plate.Mode()
-	local mode = M.db and M.db.nameShade
-	return Plate.MODES[mode] and mode or "name"
+-- the band behind the names: Text Shade's (Tweaks' textShade, Look > General
+-- > Text: the one switch of the shade behind MelloUI's text -- the user,
+-- 2026-10-16; Notice.lua's reader, on unless switched off)
+function Plate.Shade()
+	local look = MelloUI.CentreLook
+	return not look or look.Setting("textShade") and true or false
 end
 
 -- the names stand above the bars (not inside them)
@@ -563,10 +558,10 @@ function Plate.NameOnly(uf)
 	return only == true
 end
 
--- the band is wanted on this plate: the module on, Name Shade not Off, the
--- name above a bar
+-- the band is wanted on this plate: the module on, Text Shade on, the name
+-- above a bar
 function Plate.Want(uf)
-	return Plate.On() and Plate.Mode() ~= "off" and Plate.Above() and not Plate.NameOnly(uf)
+	return Plate.On() and Plate.Shade() and Plate.Above() and not Plate.NameOnly(uf)
 end
 
 -- a form other than the full name is chosen (Show Names As)
@@ -1108,6 +1103,17 @@ function Plate.All()
 	Plate.Listen()
 end
 
+-- Text Shade switched (Tweaks', the one switch of the shade behind MelloUI's
+-- text: another module's key, so the bus's): the bands as it wants them; a
+-- profile restarts the module (its OnEnable lays them). Nothing made or run on
+-- any other setting
+function Plate.OnSetting(module, key)
+	if module == "Tweaks" and key == "textShade" and Plate.On() then
+		Plate.All()
+	end
+end
+MelloUI:On("setting", Plate.OnSetting, "Nameplates names")
+
 -- the module off (or restarting: OnDisable runs with isEnabled still true,
 -- Core's RestartEach): every plate's parts away
 function Plate.Stop()
@@ -1191,7 +1197,7 @@ end
 
 -- UNIT_NAME_UPDATE while a band or a form is wanted (on a change only)
 function Plate.Listen()
-	local want = (Plate.On() and (Plate.Mode() ~= "off" or Plate.FormWanted())) and true or false
+	local want = (Plate.On() and (Plate.Shade() or Plate.FormWanted())) and true or false
 	if want == Plate.listening or not Plate.frame then
 		return
 	end
@@ -2026,7 +2032,7 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
-	if key == "nameFormat" or key == "nameShade" then
+	if key == "nameFormat" then
 		Plate.All()
 		return
 	end
@@ -2291,7 +2297,7 @@ do
 			f.name:SetPoint("BOTTOMLEFT", f.bar, "TOPLEFT", 0, y)
 		end
 		if f.band then
-			f.band:SetShown(ours and db.nameShade ~= "off")
+			f.band:SetShown(ours and Plate.Shade())
 		end
 		local nameH = Fin(f.name:GetStringHeight()) or 12
 		-- your debuffs (Auras' row: its size; the game's row: the game's) over the name, their numbers while a
@@ -2379,7 +2385,8 @@ do
 		CP.Register("nameplate", {
 			place = "wide", height = 230, maxScale = 1.5,
 			picks = { enemy = true }, first = "enemy",
-			watch = { Nameplates = true, Auras = true, CooldownText = true, BarTextures = true, UIModifications = true },
+			watch = { Nameplates = true, Auras = true, CooldownText = true, BarTextures = true, UIModifications = true,
+				Tweaks = true },   -- (Tweaks: Text Shade, the band behind the name -- 2026-10-16)
 			states = Stage.STATES, pickText = Stage.TEXT.pick,
 			Main = Stage.Main, Paint = Stage.Paint, Room = Stage.Room, parts = Stage.Parts, Empty = Stage.Empty,
 		})

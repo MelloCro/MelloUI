@@ -232,7 +232,7 @@ local TEXT = {
 	chatLead = "How names read in chat.",
 	chatTweaks = "Chat tweaks",
 	names = "Names in chat",
-	nameShade = "Shade behind tags and links",
+	textShade = "Shade behind text",
 	windowsLead = "Which windows wear the painted kit.",
 	windowsCount = "%d windows",
 	hudCount = "%d parts",
@@ -1629,7 +1629,7 @@ local function WizardSteps()
 	local DARK_ON, SHADE = "UIModifications.qol_DarkMode", "DarkMode.shade"
 	local FONTS_ON, FONT_STYLE = "UIModifications.qol_Fonts", "Fonts.style"
 	-- (0.16.0: the name form is Show Names As, UI Modifications', for every name)
-	local CHAT_ON, NAME_STYLE, NAME_SHADE = "UIModifications.qol_Chat", "UIModifications.nameFormat", "Chat.nameShade"
+	local CHAT_ON, NAME_STYLE, TEXT_SHADE = "UIModifications.qol_Chat", "UIModifications.nameFormat", "Tweaks.textShade"
 	-- the wizard's switches of what runs under UI Modifications: it is on while
 	-- any of them is
 	local UMBRELLA = { RESKIN, PORTRAITS, DARK_ON, FONTS_ON, CHAT_ON }
@@ -2893,9 +2893,10 @@ local function WizardSteps()
 		return KeyRow(page, TEXT.chatTweaks, nil, TweakDesc("Chat"), CHAT_ON, true, RowOpts(true))
 	end
 
-	local function NameShadeRow(page)
-		local shade = OptionOf("Chat", "nameShade")
-		return KeyRow(page, TEXT.nameShade, nil, shade and shade.desc, NAME_SHADE, true, RowOpts(true, ChatGate, GATE_INDENT))
+	-- (Text Shade: every shade behind MelloUI's text, the chat's tags and links among them -- not Chat tweaks')
+	local function TextShadeRow(page)
+		local shade = OptionOf("Tweaks", "textShade")
+		return KeyRow(page, TEXT.textShade, nil, shade and shade.desc, TEXT_SHADE, true, RowOpts(true))
 	end
 
 	local function BuildChat(page)
@@ -2914,7 +2915,7 @@ local function WizardSteps()
 			LaterRow(page, NameRow(entry.value, example or label, example and kind or nil, i % 2 == 1), W.ROW_HEIGHT, 0)
 		end
 		flow[#flow].gap = 8
-		LaterRow(page, NameShadeRow, W.ROW_HEIGHT, 0)
+		LaterRow(page, TextShadeRow, W.ROW_HEIGHT, 0)
 		return 1
 	end
 

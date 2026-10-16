@@ -4605,13 +4605,21 @@ do
 				return
 			end
 			kit.nameShade = nil
-			if old == "off" then
-				local np = Own(self, "Nameplates")
-				if np then
-					np.nameShade = "off"
-				end
-			elseif old == "plate" then
+			if old == "plate" then
 				kit.plateShade = true
+			end
+		end,
+		-- one look (the user, 2026-10-16: Text Shade the one switch of every
+		-- shade behind text): the nameplates' Name Shade and the chat's Shade
+		-- Behind Tags and Links are Text Shade's now. Their keys go; an Off of
+		-- theirs is not carried (Text Shade holds the zone text's and the
+		-- centre texts' shades too)
+		function(self)
+			for name, key in pairs({ Nameplates = "nameShade", Chat = "nameShade" }) do
+				local t = Raw(self, name)
+				if t then
+					t[key] = nil
+				end
 			end
 		end,
 		-- one look C13b (the audit's Q9): Level Up and XP Gain are Tweaks'

@@ -916,9 +916,20 @@ end
 -- party member's with its level.
 --------------------------------------------------------------------------------
 
+-- Each band inside its name's plate (the user, 2026-10-16: "make sure that
+-- the shade ... does not leave its designated place": the player's ran 8 past
+-- its plate's right end): its middle the name's box grown by its kind's pads,
+-- its soft ends (feather) and its whole height (the texture fades over it) on
+-- the plate's border at most. The plates measured on client 70425's art (c60,
+-- 2x), in the frame's units: the player's 87-212 x -26.5..-46.75 (its name
+-- 116 x 12 centred on 149, -37), the pet's and targets' targets' 46-116.5 x
+-- -3.5..-18.5 (their names 68 x 10 at 44, -6 and 44, -5), a party member's
+-- 47-116.5 x -5.5..-20.5 (its name from 46, -7, 12 high, on to its level at
+-- 101); the left ends under the portrait's ring.
 local NameBand = { of = setmetatable({}, { __mode = "k" }),
 	LOOK = { colour = "innerPanel", feather = 8, layer = "BACKGROUND", sublevel = -8 },
-	PAD = { x = 4, y = 5 } }
+	PADS = { player = { x = -5, y = 3.5 }, pet = { x = -3.5, y = 2.5 }, tot = { x = -3.5, y = 1.5 },
+		party = { x = 4, y = 1.5 } } }
 
 -- Text Shade (Tweaks' textShade, Notice.lua's reader: on unless switched off)
 function NameBand.TextShade()
@@ -959,9 +970,10 @@ NameBand.OnSetShown = Shared("SetShown on a unit frame's name: its band", functi
 end)
 
 -- the band behind the name `fs` on `host` (once per name), to `right` (the
--- line's other end: a party member's level) or the name's own box; `group`
--- the skin's cover group it steps aside for
-function NameBand.Make(fs, host, group, right)
+-- line's other end: a party member's level) or the name's own box, by `pad`
+-- (NameBand.PADS: its frame kind's); `group` the skin's cover group it steps
+-- aside for
+function NameBand.Make(fs, host, group, right, pad)
 	if type(fs) ~= "table" or type(fs.SetText) ~= "function" or type(host) ~= "table" then
 		return nil
 	end
@@ -978,10 +990,11 @@ function NameBand.Make(fs, host, group, right)
 	if not band then
 		return nil
 	end
+	pad = pad or NameBand.PADS.player
 	if right then
-		band:Anchor(fs, right, NameBand.PAD.x, NameBand.PAD.y)
+		band:Anchor(fs, right, pad.x, pad.y)
 	else
-		band:Anchor(fs, NameBand.PAD.x, NameBand.PAD.y)
+		band:Anchor(fs, pad.x, pad.y)
 	end
 	entry = { fs = fs, band = band, group = group or "unitframes" }
 	NameBand.of[fs] = entry
@@ -999,24 +1012,25 @@ function NameBand.Frames()
 	local pf = PlayerFrame
 	local container = pf and pf.PlayerFrameContainer
 	if PlayerName and container then
-		NameBand.Make(PlayerName, container)
+		NameBand.Make(PlayerName, container, nil, nil, NameBand.PADS.player)
 	end
 	local pet = PetFrame
 	if pet then
-		NameBand.Make(_G.PetName or pet.name, pet)
+		NameBand.Make(_G.PetName or pet.name, pet, nil, nil, NameBand.PADS.pet)
 	end
 	for _, frame in ipairs(TargetLikeFrames()) do
 		local tot = frame and frame.totFrame
 		if tot and tot.Name then
-			NameBand.Make(tot.Name, tot)
+			NameBand.Make(tot.Name, tot, nil, nil, NameBand.PADS.tot)
 		end
 	end
 end
 
 -- (the configurator's frame sample, Core/ConfigPreview.lua's copies of the
 -- game's frames: the same band behind its name, made once per name -- no
--- hooks, the sample shows and hides it -- and whether the frames show theirs)
-function M:PreviewNameBand(fs, host)
+-- hooks, the sample shows and hides it -- and whether the frames show theirs;
+-- `kind` the copy's frame, NameBand.PADS: "player", "pet")
+function M:PreviewNameBand(fs, host, kind)
 	local Soft = MelloUI.Shade
 	if type(fs) ~= "table" or type(host) ~= "table" or not (Soft and Soft.Band and Soft.TEXT) then
 		return nil
@@ -1024,7 +1038,8 @@ function M:PreviewNameBand(fs, host)
 	NameBand.LOOK.alpha = Soft.TEXT.alpha
 	local band = Soft:Band(host, NameBand.LOOK)
 	if band then
-		band:Anchor(fs, NameBand.PAD.x, NameBand.PAD.y)
+		local pad = NameBand.PADS[kind] or NameBand.PADS.player
+		band:Anchor(fs, pad.x, pad.y)
 	end
 	return band
 end
@@ -1306,7 +1321,7 @@ function Party.Band(frame, alone)
 		return
 	end
 	made.alone = alone
-	local P = NameBand.PAD
+	local P = NameBand.PADS.party
 	if alone then
 		made.entry.band:Anchor(name, P.x, P.y)
 	else
@@ -1554,7 +1569,7 @@ function Party.Make(frame)
 	made = { number = number }
 	Party.of[frame] = made
 	Party.Home(frame, made)
-	made.entry = NameBand.Make(name, frame, "partyframes", number)   -- (its band's entry)
+	made.entry = NameBand.Make(name, frame, "partyframes", number, NameBand.PADS.party)   -- (its band's entry)
 	-- (Group Frames may have parted the line before the member was made)
 	made.alone = false
 	Party.Band(frame, Party.alone[frame])

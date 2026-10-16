@@ -63,7 +63,6 @@ local M = MelloUI:RegisterModule("Chat", {
 		editBoxWhileTyping = true,
 		shortChannels = true,
 		hideBrackets = true,
-		nameShade = true,
 		whisperPopup = false,
 		smoothScroll = true,
 		view = "game",
@@ -119,8 +118,6 @@ local M = MelloUI:RegisterModule("Chat", {
 		  desc = "Replace [Guild], [Party], [1. General] and so on with short, saturated coloured tags." },
 		{ type = "toggle", key = "hideBrackets", parent = "shortChannels", name = "Hide Brackets",
 		  desc = "Also remove the square brackets around the short channel tags." },
-		{ type = "toggle", key = "nameShade", name = "Shade Behind Tags and Links",
-		  desc = "On the parchment sheet, a soft dark band behind a line's channel tag and its links, so their bright colours read without an outline. This switch sets the bands only: the dark ink of the rest of the line, and the small gem in the class colour before a player's name, come with the parchment either way." },
 		{ type = "header", name = "Whispers" },
 		{ type = "toggle", key = "whisperPopup", name = "Whisper Popup Window",
 		  desc = "A whisper opens a small window of its own, one per person, with the conversation and a box to answer in, instead of a new chat tab. Whispers still show in the main chat. Switching it off puts the game's own whisper setting back." },
@@ -1873,10 +1870,15 @@ local function PlaceBand(band, line, x0, x1, size, alpha)
 	end
 end
 
+-- (the bands behind a parchment line's tag and links: Text Shade's -- Tweaks' textShade, Look > General > Text: the one
+-- switch of the shade behind MelloUI's text, the user, 2026-10-16; Notice.lua's reader, on unless switched off. No
+-- local of its own: this file's main chunk is at the 200-locals limit)
 local function ShadeLines(frame)
 	local lines = frame and frame.visibleLines
 	local want = shadeWanted[frame]
-	local on = type(lines) == "table" and want and want() and Active("nameShade") ~= false
+	local look = MelloUI.CentreLook
+	local on = type(lines) == "table" and want and want() and M.isEnabled ~= false
+		and (not look or look.Setting("textShade") and true or false)
 	local used = {}
 	if on then
 		for i, line in ipairs(lines) do
@@ -1929,6 +1931,18 @@ local function WatchShade(frame, wanted)
 		return
 	end
 	shadeWanted[frame] = wanted
+	-- (Text Shade switched -- Tweaks' -- every watched frame's lines shaded again: the listener taken with the first
+	-- frame watched, once; M's field, as this file's main chunk is at the 200-locals limit)
+	if not M.textShadeHeard then
+		M.textShadeHeard = true
+		MelloUI:On("setting", function(module, key)
+			if module == "Tweaks" and key == "textShade" then
+				for f in pairs(shadeWanted) do
+					pcall(ShadeLines, f)
+				end
+			end
+		end, "Chat: tag and link shades")
+	end
 	local function AfterRedraw(f)
 		pcall(FitLineFonts, f)
 		InkVisible(f)
@@ -4059,10 +4073,6 @@ function M:OnSettingChanged(key, value, db)
 		M.SetBackground(value)
 		if M.View then
 			M.View.Apply()   -- (the minimal chat's paper and panel follow it)
-		end
-	elseif key == "nameShade" then
-		for frame in pairs(shadeWanted) do
-			pcall(ShadeLines, frame)
 		end
 	elseif key == "whisperPopup" then
 		SetWhisperPopup(value)
