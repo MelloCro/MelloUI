@@ -1474,6 +1474,20 @@ do
 		return b
 	end
 
+	-- (one look) a flat button's gold on or off: the picked one of a row of
+	-- chips (W.Chips) -- its edge and label `selectedTrim`; painted again
+	-- only when it changes
+	function W.FlatGold(b, on)
+		if not (b and b.melloFill) then
+			return
+		end
+		on = on and true or nil
+		if flatGold[b] ~= on then
+			flatGold[b] = on
+			FlatLook(b, true)
+		end
+	end
+
 	function W.Button(parent, text, width, skin, opts)
 		local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
 		b:SetSize(width or 110, opts and opts.height or 22)
@@ -3027,6 +3041,7 @@ local BUTTON_TAG_IN = 8             -- a button's tag plate inside its right sid
 local LABEL_SLACK = 2               -- a label narrowed to its text keeps this much more (never cut at an odd scale)
 W.TAG_PAD = TAG_PAD_X
 W.NEW = "New"
+W.SHARED = "Shared"   -- (one look: W.Row's opts.shared)
 
 function W.Tag(parent, text, snug)
 	local tag = W.Text(parent, "GameFontHighlightSmall", text, "selectedTrim")
@@ -3361,9 +3376,17 @@ function W.Row(parent, y, height, label, hint, desc, opts)
 	row.label:SetWordWrap(false)
 	-- (the option's New tag: made only while its update runs)
 	row.newTag = opts.new and W.NewTag(row, row.label, opts.new) or nil
+	-- (one look, the designers: a value other elements share -- "Shared",
+	-- or the text given -- after the label and its New tag)
+	if opts.shared then
+		row.sharedTag = W.Tag(row, type(opts.shared) == "string" and opts.shared or W.SHARED)
+		row.sharedTag:SetPoint("LEFT", row.newTag or row.label, "RIGHT",
+			TAG_GAP + TAG_PAD_X + (row.newTag and TAG_PAD_X or 0), 0)
+	end
+	local last = row.sharedTag or row.newTag
 	if hint and hint ~= "" then
 		row.hint = W.Text(row, "GameFontHighlightSmall", hint, opts.hintKey or "text")
-		row.hint:SetPoint("LEFT", row.newTag or row.label, "RIGHT", row.newTag and (10 + TAG_PAD_X) or 10, 0)
+		row.hint:SetPoint("LEFT", last or row.label, "RIGHT", last and (10 + TAG_PAD_X) or 10, 0)
 		row.hint:SetWordWrap(false)
 	end
 	if desc and desc ~= "" then
@@ -4972,6 +4995,161 @@ function W.PaletteSwatch(parent, spec)
 		swatch:SetPalette(spec.id)
 	end
 	return swatch
+end
+
+--------------------------------------------------------------------------------
+-- Chips (one look, the designers: the element chips, the Parts line, a plain
+-- page's anchors, the stage's state chips -- one system, rule 5): a row of
+-- small flat buttons, wrapping at `width`, the picked one gold (W.FlatGold).
+--   W.Chips(parent, spec) -> chips   spec: height (22), gap (4), width (the
+--     row's room; nil: one line), select (false: no pick kept, the anchors),
+--     onPick fn(chips, key, item)
+--   chips:SetItems(items)   items { key, label, state (nil, "off" or
+--     "locked": dimmed, still clickable), new (its New tag), tip }; the
+--     buttons come from the chips' own pool (a set again makes none after
+--     the first); a pick no longer among them is let go
+--   chips:Select(key)   chips:Selected()   chips:SetState(key, state)
+--   chips:Height()   the height the rows take
+--------------------------------------------------------------------------------
+
+do
+	local CHIP_PAD = 12     -- each side of a chip's label
+	local CHIP_MIN = 36     -- the narrowest chip
+	local CHIP_DIM = 0.5    -- an "off" or "locked" chip's alpha
+
+	local ChipEnter = Shared("OnEnter on a chip (tooltip)", function(b)
+		local item = b.melloItem
+		if item and item.tip then
+			W.ShowTooltip(b, item.label or tostring(item.key), item.tip)
+		end
+	end, "script")
+
+	local function Paint(chips)
+		for i = 1, chips.count do
+			local b = chips.buttons[i]
+			local item = b.melloItem
+			W.FlatGold(b, chips.picked ~= nil and item.key == chips.picked)
+			b:SetAlpha((item.state == "off" or item.state == "locked") and CHIP_DIM or 1)
+		end
+	end
+
+	local ChipClick = Shared("OnClick on a chip", function(b)
+		local chips, item = b.melloChips, b.melloItem
+		if not (chips and item) then
+			return
+		end
+		MelloUI:PlayUISound("tab")
+		if chips.spec.select ~= false then
+			chips.picked = item.key
+			Paint(chips)
+		end
+		local fn = chips.spec.onPick
+		if fn then
+			fn(chips, item.key, item)
+		end
+	end, "script")
+
+	local function Lay(chips)
+		local spec = chips.spec
+		local h, gap, room = spec.height or 22, spec.gap or 4, Num(spec.width)
+		local x, y, rows = 0, 0, 0
+		for i = 1, chips.count do
+			local b = chips.buttons[i]
+			local w = Num(b:GetWidth()) or CHIP_MIN
+			if room and x > 0 and x + w > room then
+				x, y = 0, y + h + gap
+			end
+			if x == 0 then
+				rows = rows + 1
+			end
+			b:ClearAllPoints()
+			b:SetPoint("TOPLEFT", chips, "TOPLEFT", x, -y)
+			x = x + w + gap
+		end
+		chips.rows = rows
+		chips:SetHeight(math.max(1, rows > 0 and (rows * h + (rows - 1) * gap) or 0))
+	end
+
+	-- a chip's width: its label and, while its update runs, its New tag
+	local function Fit(b, item)
+		local fs = b:GetFontString()
+		local w = math.max(CHIP_MIN, math.ceil((fs and TextWidth(fs) or 24) + 2 * CHIP_PAD))
+		local new = item.new ~= nil and MelloUI:IsNew(item.new)
+		if new and not b.melloNewTag then
+			b.melloNewTag = W.Tag(b, W.NEW)
+			b.melloNewTag:SetPoint("RIGHT", b, "RIGHT", -(CHIP_PAD - 4 + TAG_PAD_X), 0)
+		end
+		W.TagShown(b.melloNewTag, new)
+		if new then
+			w = w + (TagSpan(b.melloNewTag) or 0)
+		end
+		b:SetWidth(w)
+	end
+
+	local function SetItems(chips, items)
+		local h = chips.spec.height or 22
+		local found = false
+		chips.count = 0
+		for i, item in ipairs(type(items) == "table" and items or NO_OPTS) do
+			local b = chips.buttons[i]
+			if not b then
+				b = W.Button(chips, "", CHIP_MIN, nil, { height = h })
+				b.melloChips = chips
+				Perf.SetScript(b, "OnClick", ChipClick)
+				Perf.HookScript(b, "OnEnter", ChipEnter)
+				Perf.HookScript(b, "OnLeave", TipLeave)
+				chips.buttons[i] = b
+			end
+			b.melloItem = item
+			b:SetText(item.label or tostring(item.key))
+			Fit(b, item)
+			b:Show()
+			chips.count = i
+			found = found or (chips.picked ~= nil and item.key == chips.picked)
+		end
+		for i = chips.count + 1, #chips.buttons do
+			chips.buttons[i].melloItem = nil
+			chips.buttons[i]:Hide()
+		end
+		if not found then
+			chips.picked = nil
+		end
+		Lay(chips)
+		Paint(chips)
+	end
+
+	local function Select(chips, key)
+		chips.picked = key
+		Paint(chips)
+	end
+
+	local function Selected(chips)
+		return chips.picked
+	end
+
+	local function SetState(chips, key, state)
+		for i = 1, chips.count do
+			local item = chips.buttons[i].melloItem
+			if item.key == key then
+				item.state = state
+			end
+		end
+		Paint(chips)
+	end
+
+	local function Height(chips)
+		return Num(chips:GetHeight()) or 0
+	end
+
+	function W.Chips(parent, spec)
+		local chips = CreateFrame("Frame", nil, parent)
+		chips.spec = type(spec) == "table" and spec or {}
+		chips.buttons, chips.count, chips.rows = {}, 0, 0
+		chips.SetItems, chips.Select, chips.Selected, chips.SetState, chips.Height = SetItems, Select, Selected, SetState,
+			Height
+		chips:SetHeight(1)
+		return chips
+	end
 end
 
 --------------------------------------------------------------------------------
