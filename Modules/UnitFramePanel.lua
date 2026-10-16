@@ -955,9 +955,16 @@ end
 local NAME_BAND = { colour = "innerPanel", feather = 20, layer = "BACKGROUND", sublevel = -8 }
 local NAME_PAD = { x = 4, y = 5, lineX = -10 }
 
--- shown while the skin is on and the game shows the name
+-- Text Shade (Look > General > Text: the one switch of the shade behind MelloUI's text -- the user, 2026-10-16;
+-- Notice.lua's reader, on unless switched off)
+local function TextShadeOn()
+	local look = MelloUI.CentreLook
+	return not look or look.Setting("textShade") and true or false
+end
+
+-- shown while the skin is on, the game shows the name and Text Shade is on
 local function SyncNameShade(entry)
-	local want = (active and entry.shown) and true or false
+	local want = (active and entry.shown and TextShadeOn()) and true or false
 	if entry.band:IsShown() ~= want then
 		entry.band:SetShown(want)
 	end
@@ -1873,6 +1880,12 @@ local function Build()
 			nameShades = {}, backdrops = {}, pvpIcons = {}, skulls = {} }
 		-- (taken with the first dressing, once)
 		MelloUI:On("setting", OnBarSetting, "Unit Frames Kit bar background")
+		MelloUI:On("setting", function(module, key)
+			if module == "Tweaks" and key == "textShade" then
+				SyncNameShades()
+			end
+		end, "Unit Frames Kit name shades")
+		MelloUI:On("restart", SyncNameShades, "Unit Frames Kit name shades")
 	end
 	SkinPlayer()
 	SkinTargetLike(TargetFrame)

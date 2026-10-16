@@ -907,18 +907,27 @@ end
 -- the text, no SetText hook, no work per frame; shown and hidden with the
 -- name (post-hooks on its Show / Hide / SetShown). Under the frame's art
 -- (BACKGROUND -8 on the frame that holds it). None on the target and focus:
--- their reaction strip backs the name. Shown while the module is on and the
+-- their reaction strip backs the name. Shown while the module is on, the
 -- painted skin does not dress the frame (its own band then, UnitFramePanel's
--- NameShade). Made out of combat: the player's, pet's and targets' targets'
--- at the module's switch-on, a party member's with its level.
+-- NameShade) and Text Shade is on (Look > General > Text, the one switch of
+-- the shade behind MelloUI's text -- the user, 2026-10-16: "i switched it
+-- off, but the shade behind the names is still here"). Made out of combat:
+-- the player's, pet's and targets' targets' at the module's switch-on, a
+-- party member's with its level.
 --------------------------------------------------------------------------------
 
 local NameBand = { of = setmetatable({}, { __mode = "k" }),
 	LOOK = { colour = "innerPanel", feather = 8, layer = "BACKGROUND", sublevel = -8 },
 	PAD = { x = 4, y = 5 } }
 
+-- Text Shade (Tweaks' textShade, Notice.lua's reader: on unless switched off)
+function NameBand.TextShade()
+	local look = MelloUI.CentreLook
+	return not look or look.Setting("textShade") and true or false
+end
+
 function NameBand.Sync(entry)
-	local want = (M.isEnabled and entry.shown and not Covered(entry.group)) and true or false
+	local want = (M.isEnabled and entry.shown and not Covered(entry.group) and NameBand.TextShade()) and true or false
 	if entry.band:IsShown() ~= want then
 		entry.band:SetShown(want)
 	end
@@ -1021,7 +1030,7 @@ function M:PreviewNameBand(fs, host)
 end
 
 function M:NameBandShows()
-	return (self.isEnabled and not Covered("unitframes")) and true or false
+	return (self.isEnabled and not Covered("unitframes") and NameBand.TextShade()) and true or false
 end
 
 --------------------------------------------------------------------------------
@@ -1711,6 +1720,13 @@ MelloUI:On("cover", function(group)
 		Party.Due()
 	end
 end, "Unit Frames: name bands and party levels")
+-- (Text Shade switched, a profile loaded: the bands as it wants them)
+MelloUI:On("setting", function(module, key)
+	if module == "Tweaks" and key == "textShade" then
+		NameBand.All()
+	end
+end, "Unit Frames: name bands and Text Shade")
+MelloUI:On("restart", NameBand.All, "Unit Frames: name bands and Text Shade")
 
 --------------------------------------------------------------------------------
 -- The frames' parts (one-look D5: from the Unit Frames Kit, which fills in
