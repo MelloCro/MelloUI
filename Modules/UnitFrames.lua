@@ -1151,8 +1151,11 @@ end
 Party.art = setmetatable({}, { __mode = "k" })
 -- the art's holes, from the frame's top left (the art at the game's 1, -2): measured on client 70425's art
 -- (ui-hud-unitframe-characterframeonparty-portraiton-c60-2x, 240 x 98 px for its 120 x 49): the health hole's inner
--- edges 92-227 x 38-54 px, the mana hole's 92-227 x 61-70 px
-Party.HOLES = { health = { x = 47, y = -21, w = 68, h = 8.5 }, mana = { x = 47, y = -32.5, w = 68, h = 5 } }
+-- edges 92-227 x 38-54 px, the mana hole's 92-227 x 61-70 px; the portrait's ring hole 13-77 x 14-77 px (its centre
+-- 23.5, -24.5 on the frame): the game's portrait (37 at 7, -6, its centre 2 px right of it) on it at 5, -6 (the user,
+-- 2026-10-16: "that gap on the left side"), at 7, -6 again in the game's own art
+Party.HOLES = { health = { x = 47, y = -21, w = 68, h = 8.5 }, mana = { x = 47, y = -32.5, w = 68, h = 5 },
+	portrait = { x = 5, y = -6 }, gamePortrait = { x = 7, y = -6 } }
 Party.ART = {
 	Character = { frame = "UI-HUD-UnitFrame-CharacterFrameOnParty-PortraitOn",
 		flash = "UI-HUD-UnitFrame-CharacterFrameOnParty-PortraitOn-InCombat",
@@ -1195,6 +1198,13 @@ function Party.Lay(frame, style)
 	local pm = rawget(frame, "PortraitMask")
 	if type(pm) == "table" then
 		pm:SetAtlas(A.portrait)
+	end
+	-- (the portrait on the art's ring: its mask follows it, anchored on it)
+	local portrait = rawget(frame, "Portrait")
+	if type(portrait) == "table" then
+		local at = own and Party.HOLES.gamePortrait or Party.HOLES.portrait
+		portrait:ClearAllPoints()
+		portrait:SetPoint("TOPLEFT", frame, "TOPLEFT", at.x, at.y)
 	end
 	local bar = rawget(hc, "HealthBar")
 	local hm, mm = rawget(hc, "HealthBarMask"), rawget(mana, "ManaBarMask")
