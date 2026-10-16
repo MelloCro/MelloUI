@@ -1138,20 +1138,26 @@ end
 -- resolution even on 100% size, make them the same as we have on the Player Unitframe"). The member frame's own art
 -- (UI-HUD-UnitFrame-Party-PortraitOn) is 1x; client 70425 has the party frame in the player frame's style at 2x --
 -- its "Character" art (UI-HUD-UnitFrame-CharacterFrameOnParty-PortraitOn), which no game setting switches on. Laid
--- as the game's own PartyMemberFrameMixin:ToCharacterStyleArt lays it: the frame art, the combat flash and status
--- glow, the player's portrait mask, the health box and the mana bar where the game's ArtLayoutInfo.Character puts
--- them (read from the game's table) in their masks; the bars' fills stay as the game and Bar Textures have them.
+-- as the game's own PartyMemberFrameMixin:ToCharacterStyleArt lays it -- the frame art, the combat flash and status
+-- glow (ArtLayoutInfo.Character's offsets), the player's portrait mask -- but the bars in the art's own holes as
+-- measured on it (Party.HOLES: the game's unused Character numbers put them 2 px high and 3 px wide, and its health
+-- mask names an atlas the client has not -- the user's screenshot, 2026-10-16: "the HP and mana bar, they are
+-- misaligned"), each bar's mask its own rect (nothing cut, nothing past the hole); the bars' fills stay as the game
+-- and Bar Textures have them.
 -- While wanted (the module on, the painted skin not dressing the party), a member in its player art (never the
 -- vehicle's), out of combat; laid again after the game lays its art again (ToPlayerArt: a post-hook, the sweep
 -- out of combat); the game's own layout (ArtLayoutInfo.Player) back when no longer wanted. Kept per member here
 -- (Party.art), nothing written as a key on the game's frames. A preview's stand-in (ours) the same
 Party.art = setmetatable({}, { __mode = "k" })
+-- the art's holes, from the frame's top left (the art at the game's 1, -2): measured on client 70425's art
+-- (ui-hud-unitframe-characterframeonparty-portraiton-c60-2x, 240 x 98 px for its 120 x 49): the health hole's inner
+-- edges 92-227 x 38-54 px, the mana hole's 92-227 x 61-70 px
+Party.HOLES = { health = { x = 47, y = -21, w = 68, h = 8.5 }, mana = { x = 47, y = -32.5, w = 68, h = 5 },
+	PASS = "Interface\\Buttons\\WHITE8X8" }
 Party.ART = {
 	Character = { frame = "UI-HUD-UnitFrame-CharacterFrameOnParty-PortraitOn",
 		flash = "UI-HUD-UnitFrame-CharacterFrameOnParty-PortraitOn-InCombat",
-		status = "UI-HUD-UnitFrame-CharacterFrameOnParty-PortraitOn-Status", portrait = "UI-HUD-UnitFrame-Player-Portrait-Mask",
-		health = "UI-HUD-UnitFrame-CharacterFrameOnParty-PortraitOn-Bar-Health-Mask",
-		mana = "ui-hud-unitframe-playerframeonparty-portraiton-bar-mana-mask" },
+		status = "UI-HUD-UnitFrame-CharacterFrameOnParty-PortraitOn-Status", portrait = "UI-HUD-UnitFrame-Player-Portrait-Mask" },
 	Player = { frame = "UI-HUD-UnitFrame-Party-PortraitOn", flash = "ui-hud-unitframe-party-portraiton-incombat",
 		status = "ui-hud-unitframe-party-portraiton-status", portrait = "CircleMask",
 		health = "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Health-Mask", mana = "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Mana-Mask" },
@@ -1191,28 +1197,46 @@ function Party.Lay(frame, style)
 	if type(pm) == "table" then
 		pm:SetAtlas(A.portrait)
 	end
-	local H = L.Health
 	local bar = rawget(hc, "HealthBar")
-	if type(bar) == "table" then
-		bar:SetHeight(H.Height)
-	end
-	hc:SetWidth(H.Width)
-	hc:SetPoint("TOPLEFT", frame, "TOPLEFT", H.OffsetX, H.OffsetY)
-	local hm = rawget(hc, "HealthBarMask")
-	if type(hm) == "table" then
-		hm:SetAtlas(A.health, true)
-		hm:SetPoint("TOPLEFT", H.OffsetXMask, H.OffsetYMask)
-	end
-	local P = L.Mana
-	mana:SetWidth(P.Width)
-	mana:SetPoint("TOPLEFT", frame, "TOPLEFT", P.OffsetX, P.OffsetY)
-	local mm = rawget(mana, "ManaBarMask")
-	if type(mm) == "table" then
-		mm:SetAtlas(A.mana, own)
-		if not own then
-			mm:SetSize(P.WidthMask or 128, P.HeightMask or 9)
+	local hm, mm = rawget(hc, "HealthBarMask"), rawget(mana, "ManaBarMask")
+	if own then
+		-- (the game's own: its template's 70 x 10 bar and 74 x 7 mana bar, its masks at its offsets)
+		local H, P = L.Health, L.Mana
+		if type(bar) == "table" then
+			bar:SetSize(H.Width, H.Height)
 		end
-		mm:SetPoint("TOPLEFT", frame, "TOPLEFT", P.OffsetXMask, P.OffsetYMask)
+		hc:SetSize(H.Width, H.Height)
+		hc:SetPoint("TOPLEFT", frame, "TOPLEFT", H.OffsetX, H.OffsetY)
+		if type(hm) == "table" then
+			hm:SetAtlas(A.health, true)
+			hm:ClearAllPoints()
+			hm:SetPoint("TOPLEFT", H.OffsetXMask, H.OffsetYMask)
+		end
+		mana:SetSize(P.Width, 7)
+		mana:SetPoint("TOPLEFT", frame, "TOPLEFT", P.OffsetX, P.OffsetY)
+		if type(mm) == "table" then
+			mm:SetAtlas(A.mana, true)
+			mm:ClearAllPoints()
+			mm:SetPoint("TOPLEFT", frame, "TOPLEFT", P.OffsetXMask, P.OffsetYMask)
+		end
+		return true
+	end
+	local HH, MH = Party.HOLES.health, Party.HOLES.mana
+	if type(bar) == "table" then
+		bar:SetSize(HH.w, HH.h)
+	end
+	hc:SetSize(HH.w, HH.h)
+	hc:SetPoint("TOPLEFT", frame, "TOPLEFT", HH.x, HH.y)
+	mana:SetSize(MH.w, MH.h)
+	mana:SetPoint("TOPLEFT", frame, "TOPLEFT", MH.x, MH.y)
+	-- (each mask the bar's own rect: the fill shows exactly in its hole)
+	for _, pair in ipairs({ { hm, type(bar) == "table" and bar or hc }, { mm, mana } }) do
+		local mask, over = pair[1], pair[2]
+		if type(mask) == "table" then
+			mask:SetTexture(Party.HOLES.PASS, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+			mask:ClearAllPoints()
+			mask:SetAllPoints(over)
+		end
 	end
 	return true
 end
