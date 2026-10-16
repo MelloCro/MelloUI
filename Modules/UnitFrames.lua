@@ -1254,14 +1254,17 @@ function Party.Art(frame)
 	local want = Party.Wanted() and rawget(frame, "state") ~= "vehicle" and not rawget(_G, "UNIT_FRAME_SHOW_HEALTH_ONLY")
 		and Party.Layout("Character") ~= nil and C_Texture and C_Texture.GetAtlasInfo
 		and C_Texture.GetAtlasInfo(Party.ART.Character.frame) ~= nil
+	-- (each lay told on the bus: Dark Mode shades the art again)
 	if want then
 		if not Party.art[frame] and Party.Lay(frame, "Character") then
 			Party.art[frame] = true
+			MelloUI:Fire("partyart", frame)
 		end
 	elseif Party.art[frame] then
 		Party.art[frame] = nil
 		if rawget(frame, "state") ~= "vehicle" then
 			Party.Lay(frame, "Player")
+			MelloUI:Fire("partyart", frame)
 		end
 	end
 end

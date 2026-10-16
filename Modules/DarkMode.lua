@@ -262,6 +262,14 @@ local function CollectTargetLikeFrame(frame, list)
 	end
 end
 
+local function CollectMember(member, list)
+	list[#list + 1] = member.Texture
+	list[#list + 1] = member.VehicleTexture
+	if member.PetFrame then
+		list[#list + 1] = member.PetFrame.Texture
+	end
+end
+
 local function CollectPartyFrames(list)
 	if not PartyFrame then
 		return
@@ -269,10 +277,37 @@ local function CollectPartyFrames(list)
 	for i = 1, 4 do
 		local member = PartyFrame["MemberFrame" .. i]
 		if member then
-			list[#list + 1] = member.Texture
-			list[#list + 1] = member.VehicleTexture
-			if member.PetFrame then
-				list[#list + 1] = member.PetFrame.Texture
+			CollectMember(member, list)
+		end
+	end
+end
+
+-- A party member shaded again after its art is laid: the game's own (its ToPlayerArt / ToVehicleArt) and Unit
+-- Frames' sharp art (the bus's "partyart") set its frame's atlas anew, which lets the shade go (the user,
+-- 2026-10-16: the party frames "still dont follow the same dark mode"; the player frame's art swaps are hooked the
+-- same way below).
+local membersHooked = setmetatable({}, { __mode = "k" })
+
+local function ShadeMember(member)
+	if type(member) == "table" and Active("unitframes") and not Covered("partyframes") then
+		local list = {}
+		CollectMember(member, list)
+		ShadeAll("unitframes", list)
+	end
+end
+
+local function HookMembers()
+	if not PartyFrame then
+		return
+	end
+	for i = 1, 4 do
+		local member = PartyFrame["MemberFrame" .. i]
+		if member and not membersHooked[member] then
+			membersHooked[member] = true
+			for _, method in ipairs({ "ToPlayerArt", "ToVehicleArt" }) do
+				if type(member[method]) == "function" then
+					hooksecurefunc(member, method, ShadeMember)
+				end
 			end
 		end
 	end
@@ -296,6 +331,7 @@ local function ApplyUnitFrames()
 		list[#list + 1] = PetFrameTexture
 	end
 	if not Covered("partyframes") then
+		HookMembers()
 		CollectPartyFrames(list)
 	end
 	ShadeAll("unitframes", list)
@@ -838,6 +874,7 @@ local function InstallHooks()
 	local pf = PartyFrame
 	if pf and type(pf.InitializePartyMemberFrames) == "function" then
 		hooksecurefunc(pf, "InitializePartyMemberFrames", function()
+			HookMembers()
 			if Active("unitframes") and not Covered("partyframes") then
 				local list = {}
 				CollectPartyFrames(list)
@@ -845,6 +882,7 @@ local function InstallHooks()
 			end
 		end)
 	end
+	MelloUI:On("partyart", ShadeMember, "Dark Mode: the party's art")
 
 	-- Target style frames swap atlases for elite / rare / boss classifications.
 	for _, frame in ipairs(TargetLikeFrames()) do
