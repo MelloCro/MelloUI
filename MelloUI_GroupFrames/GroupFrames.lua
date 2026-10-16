@@ -448,7 +448,41 @@ end
 local function DB()
 	return M.db or MelloUI:GetModuleDB(OWNER)
 end
-RD.DB = DB
+-- (one look C10) the settings a frame's paint reads: a designer stage's try
+-- while it paints its samples (RD.WithTry), else the module's. GroupFrames'
+-- own code reads DB() itself
+RD.DB = function()
+	return RD.try or DB()
+end
+
+-- (one look C10) `fn(...)` run with the setting `key` read as `value` (a
+-- choice under the mouse in a list: the stage's samples painted with it,
+-- nothing written); one proxy kept, RD.try cleared even when fn fails
+do
+	local tried = { key = nil, value = nil }
+	local proxy = setmetatable({}, {
+		__index = function(_, k)
+			if k == tried.key then
+				return tried.value
+			end
+			return DB()[k]
+		end,
+		__newindex = function() end,
+	})
+	function RD.WithTry(key, value, fn, ...)
+		if key == nil then
+			return fn(...)
+		end
+		tried.key, tried.value = key, value
+		RD.try = proxy
+		local ok, err = pcall(fn, ...)
+		RD.try = nil
+		tried.key, tried.value = nil, nil
+		if not ok then
+			geterrorhandler()(err)
+		end
+	end
+end
 
 local function NextId()
 	local db = DB()
@@ -561,6 +595,16 @@ local function PartyPlace(t, n)
 		return n + 1
 	end
 	return n
+end
+
+-- (one look C10) an indicator's default place on its list's frames: the top
+-- right corner on ours, a starter's place on the normal party frame
+function RD:Home(ind, listKey)
+	local t = { look = ind.look, kind = ind.kind, point = "TOPRIGHT", x = 0, y = 0 }
+	if self:KindOf(listKey) == "party" then
+		PartyPlace(t, 0)
+	end
+	return t
 end
 
 function RD:Starter(class, key)

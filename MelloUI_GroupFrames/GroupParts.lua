@@ -195,6 +195,12 @@ local function Region(frame, p, key)
 	return type(r) == "table" and r.SetPoint and r or nil
 end
 
+-- (one look C10) a part's region on a frame (the designer stage's parts)
+function Parts.RegionOf(frame, key)
+	local p = Parts.BY[key]
+	return p and type(frame) == "table" and Region(frame, p) or nil
+end
+
 local function LayRegion(frame, p, s, r)
 	if s.show == false then
 		r:SetAlpha(0)

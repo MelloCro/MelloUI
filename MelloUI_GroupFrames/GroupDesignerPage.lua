@@ -206,11 +206,14 @@ local function Member(i)
 	return s
 end
 
-local function SampleFrame(parent, sample)
+-- (`layout`, one look C9: the parts layout it is laid by -- "groupParty" for
+-- our party's; nil the raid's)
+local function SampleFrame(parent, sample, layout)
 	local f = CreateFrame("Frame", nil, parent)
 	local db = RD.DB()
 	f:SetSize(db.width, db.height)
 	f.marks = {}   -- [i] = { b, p }
+	f.partsLayout = layout
 	Button.Sample(f, sample)
 	-- dressed as the frames are (the kit's rail and stone while the painted
 	-- skin is on), its bars laid again inside that border: the preview is the
@@ -1090,3 +1093,302 @@ function Page.Listen()
 		MelloUI:On("groupframes", FakePaint, "GroupFrames.fakepaint")
 	end
 end
+
+--------------------------------------------------------------------------------
+-- The designer stage (one look C10: F-v3's F5b, docs/plans/onelook-designer):
+-- the 'raidframe' kind of the configurator's stage (Core/ConfigPreview.lua's
+-- wide stage) -- our raid frames ("raid"), our Group Frames party
+-- ("groupParty") and the game's normal party frames ("portrait"), each laid by
+-- its own parts layout (GroupParts.lua) and showing its own indicator list.
+-- Registered at load (tables only); its samples made by the stage that shows
+-- them. Parts: the frame's (name, health text, icons: placed, sized, shown),
+-- the bars (picked for their colours, never moved), each indicator of the
+-- list (placed, sized, its look from its list; a bar by its edges, a health
+-- tint locked). Nothing reads a unit but the class (RD:Class: pcall).
+--------------------------------------------------------------------------------
+
+local Stage = {
+	LAYOUT = { raid = "raid", groupParty = "groupParty", portrait = "portrait" },
+	LIST = { raid = "group", groupParty = "groupParty", portrait = "party" },
+	MOVER = { raid = "GroupFramesRaid", groupParty = "GroupFramesParty", portrait = "GroupFramesParty" },
+	BAR_SPOTS = { "TOPLEFT", "TOP", "TOPRIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" },
+	SIDE_SPOTS = { "LEFT", "RIGHT" },
+	BAR_PLUS = { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" },
+	BARS = { { key = "bar.health", label = "Health bar", field = "healthBar" },
+		{ key = "bar.power", label = "Power bar", field = "powerBar" },
+		{ key = "bar.background", label = "Background", field = "background" } },
+	STYLES = { { key = "groupParty", label = "Group Frames" }, { key = "portrait", label = "Portraits" } },
+	TEXT = { empty = "Switch on Group Frames first.", healthLocked = "It tints the health bar: nothing to move.",
+		home = "Default place", gameHome = "The game's place" },
+	TRY_TYPES = { dropdown = true, picture = true },
+	cache = {},   -- [pick] = { list = {}, frame = { [key] = part }, ind = { [ind] = part } (weak) }
+	EMPTY = {},
+}
+
+function Stage.Main(stage, pick)
+	if pick == "portrait" then
+		return PartyReplica(stage.holder, 1, true)
+	end
+	-- (made-up states on the big one: ready, a mark, a role; your class)
+	local s = Member(1)
+	s.class = RD:Class()
+	s.health, s.frac, s.power = 0.85, 0.6, 0.7
+	s.mark, s.ready, s.role = 1, "ready", s.role or "HEALER"
+	return SampleFrame(stage.holder, s, pick == "groupParty" and "groupParty" or nil)
+end
+
+-- the sample as the frames are now (a try's choice painted on it only), its
+-- list's marks on it
+function Stage.Paint(f, pick, _, ctx)
+	ctx = ctx or Stage.EMPTY
+	if pick == "portrait" then
+		local CP = MelloUI.ConfigPreview
+		if CP and CP.Paint and f.sample then
+			pcall(CP.Paint, "unitframe", f, "party", f.sample)
+		end
+		Parts:Lay(f, "party", true)
+		SampleMarks(f, RD:List(nil, "party"), 0.6, ctx.only)
+		return
+	end
+	local try = ctx.try
+	local key = try and type(try.id) == "string" and try.id:match("^GroupFrames%.(.+)$")
+	if key then
+		RD.WithTry(key, try.value, Resample, f)
+	else
+		Resample(f)
+	end
+	SampleMarks(f, RD:List(nil, Stage.LIST[pick]), 0.6, ctx.only)
+end
+
+-- the party's two styles (Group Frames | Portraits) over the stage
+function Stage.Furnish(stage, holder)
+	local chips = W.Chips(holder, { width = 220, onPick = function(_, key)
+		stage:Pick(key)
+	end })
+	chips:SetItems(Stage.STYLES)
+	chips:SetPoint("TOPLEFT", holder, "TOPLEFT", 8, -8)
+	stage.styleChips = chips
+end
+
+function Stage.Refresh(stage)
+	local chips = stage.styleChips
+	if chips then
+		local party = stage.pick ~= "raid"
+		chips:SetShown(party)
+		if party and chips:Selected() ~= stage.pick then
+			chips:Select(stage.pick)
+		end
+	end
+end
+
+-- the Health Text part's list: its forms (one setting)
+function Stage.HealthContent()
+	if not Stage.health then
+		Stage.health = { values = RD.CHOICES.healthText, get = function()
+			return RD.DB().healthText
+		end, set = function(v)
+			MelloUI:NotifySettingChanged(RD.module.name, "healthText", v)
+		end }
+	end
+	return Stage.health
+end
+
+function Stage.FramePart(p, layout)
+	local text = p.text and true or nil
+	local sizes = Parts.SIZE
+	return {
+		key = p.key, label = p.label, class = "part", text = text,
+		region = function(f)
+			return Parts.RegionOf(f, p.key)
+		end,
+		store = { get = function()
+			return Parts:Of(p.key, layout)
+		end, set = function(_, t)
+			Parts:Place(layout, p.key, t)
+		end },
+		home = function()
+			return Parts:Shown(p.key, layout)
+		end,
+		size = { min = text and sizes.textMin or sizes.iconMin, max = text and sizes.textMax or sizes.iconMax, step = 1 },
+		hide = true,
+		homeLabel = layout == "portrait" and Stage.TEXT.gameHome or Stage.TEXT.home,
+		content = p.key == "health" and Stage.HealthContent() or nil,
+	}
+end
+
+-- an indicator's place written onto it (nil: its default place), its list
+-- told once
+function Stage.SetInd(part, t)
+	local ind = part.ind
+	if t == nil then
+		local h = RD:Home(ind, part.listKey)
+		ind.point, ind.x, ind.y = h.point, h.x, h.y
+	else
+		ind.point, ind.x, ind.y = t.point or ind.point, tonumber(t.x) or 0, tonumber(t.y) or 0
+		if tonumber(t.size) then
+			ind.size = tonumber(t.size)
+		end
+	end
+	RD:Changed(ind, part.listKey)
+end
+
+function Stage.LookValues()
+	if not Stage.looks then
+		Stage.looks = {}
+		for i, l in ipairs(RD.LOOKS) do
+			Stage.looks[i] = { value = l.value, label = l.label }
+		end
+	end
+	return Stage.looks
+end
+
+function Stage.IndPart(ind)
+	local part = { key = "ind:" .. tostring(ind.id), class = "indicator", ind = ind }
+	part.region = function(f)
+		for _, m in ipairs(f.marks or Stage.EMPTY) do
+			if m.ind == ind and m.b:IsShown() then
+				return m.b
+			end
+		end
+		return nil
+	end
+	part.store = { get = function()
+		return ind
+	end, set = Stage.SetInd }
+	part.content = { values = Stage.LookValues(), get = function()
+		return ind.look
+	end, set = function(v)
+		ind.look = v
+		RD:Changed(ind, part.listKey)
+	end }
+	return part
+end
+
+-- a bar indicator's drop: its edges (a drag keeps its direction); a '+'
+-- puts it on that spot (one at a side turns it upright, on purpose)
+function Stage.BarDrop(part, l, b, r, t, w, h, _, spot)
+	if spot then
+		return { point = spot, x = 0, y = 0 }
+	end
+	local point, x, y = Looks.BarDrop(l, b, r, t, w, h, part.ind, true)
+	return { point = point, x = x, y = y }
+end
+
+-- the fields an indicator's look decides
+function Stage.Shape(part, ind)
+	part.label = Name(ind)
+	part.locked, part.spots, part.plus, part.Drop = nil, nil, nil, nil
+	part.size = { min = RD.SIZE.min, max = RD.SIZE.max, step = 1 }
+	if ind.look == "health" then
+		part.locked, part.size = Stage.TEXT.healthLocked, nil
+	elseif ind.look == "bar" then
+		local upright = ind.point == "LEFT" or ind.point == "RIGHT"
+		part.spots = upright and Stage.SIDE_SPOTS or Stage.BAR_SPOTS
+		part.plus, part.Drop = Stage.BAR_PLUS, Stage.BarDrop
+	end
+end
+
+-- the pick's parts: its layout's frame parts, the bars (ours), its list's
+-- indicators; each part's table made once (the list's tables reused)
+function Stage.Parts(pick)
+	local c = Stage.cache[pick]
+	if not c then
+		c = { list = {}, frame = {}, ind = setmetatable({}, { __mode = "k" }) }
+		Stage.cache[pick] = c
+	end
+	local list = wipe(c.list)
+	local layout = Stage.LAYOUT[pick] or "raid"
+	for _, p in ipairs(Parts:ListOfLayout(layout)) do
+		local part = c.frame[p.key]
+		if not part then
+			part = Stage.FramePart(p, layout)
+			c.frame[p.key] = part
+		end
+		-- (a row the game lays itself, scaled whole: its offsets in its own units)
+		local shown = p.scale and Parts:Shown(p.key, layout)
+		part.scale = shown and math.max(0.2, (shown.size or p.home.size) / p.home.size) or nil
+		list[#list + 1] = part
+	end
+	if pick ~= "portrait" then
+		for _, bar in ipairs(Stage.BARS) do
+			local part = c.frame[bar.key]
+			if not part then
+				part = { key = bar.key, label = bar.label, class = "bar", drag = false, region = function(f)
+					return rawget(f, bar.field)
+				end }
+				c.frame[bar.key] = part
+			end
+			list[#list + 1] = part
+		end
+	end
+	local listKey = RD:KeyOf(nil, Stage.LIST[pick])
+	for _, ind in ipairs(RD:List(listKey)) do
+		local part = c.ind[ind]
+		if not part then
+			part = Stage.IndPart(ind)
+			c.ind[ind] = part
+		end
+		part.listKey = listKey
+		Stage.Shape(part, ind)
+		list[#list + 1] = part
+	end
+	return list
+end
+
+-- the pick's parts with no sample (the Parts line, the search)
+function Stage.PartKeys(pick)
+	local out = {}
+	for _, part in ipairs(Stage.Parts(pick or "groupParty")) do
+		out[#out + 1] = { key = part.key, label = part.label, class = part.class, size = part.size ~= nil,
+			hide = part.hide and true or false, drag = part.drag ~= false and not part.locked, locked = part.locked }
+	end
+	return out
+end
+
+-- the options a hover may try on the samples: Group Frames' lists and pictures
+function Stage.Tries(id)
+	local key = type(id) == "string" and id:match("^GroupFrames%.(.+)$")
+	if not key then
+		return false
+	end
+	for _, o in ipairs(RD.module.options or Stage.EMPTY) do
+		if o.key == key then
+			return Stage.TRY_TYPES[o.type] or false
+		end
+	end
+	return false
+end
+
+function Stage.Empty()
+	return not RD.module.isEnabled and Stage.TEXT.empty or nil
+end
+
+function Stage.Moved(pick)
+	return Parts:Moved(Stage.LAYOUT[pick] or "raid")
+end
+
+-- the shown layout's frame parts back (its indicators left alone)
+function Stage.ResetAll(pick)
+	Parts:ResetLayout(Stage.LAYOUT[pick] or "raid")
+end
+
+function Stage.Mover(pick)
+	return Stage.MOVER[pick]
+end
+
+do
+	local CP = MelloUI.ConfigPreview
+	if CP and CP.Register then
+		CP.Register("raidframe", {
+			place = "wide", height = 214, maxScale = 3,
+			picks = { raid = true, groupParty = true, portrait = true }, first = "groupParty",
+			watch = { GroupFrames = true, BarTextures = true, Fonts = true, UnitFrames = true },
+			topics = { "groupframes" },
+			reset = { { "GroupFrames", "parts" }, { "GroupFrames", "partyParts" } },
+			Furnish = Stage.Furnish, Main = Stage.Main, Refresh = Stage.Refresh, Paint = Stage.Paint,
+			parts = Stage.Parts, PartKeys = Stage.PartKeys, Tries = Stage.Tries, Empty = Stage.Empty,
+			Moved = Stage.Moved, ResetAll = Stage.ResetAll, mover = Stage.Mover,
+		})
+	end
+end
+Page.Stage = Stage
