@@ -541,6 +541,11 @@ function MelloUI:DeserializeSettings(text, into, hold)
 						local db = into and IntoDB(self, into, moduleName) or self:GetModuleDB(moduleName)
 						db[settingKey] = decoded
 						applied = applied + 1
+						-- (one look C12: what the live settings' text set itself, for
+						-- the next MergeSettings -- Core.lua's ApplySettingsText)
+						if not into and self.textKeys then
+							self.textKeys[key] = true
+						end
 					elseif moduleName and self.Features and self.Features[moduleName] then
 						-- (0.19.9) a feature not loaded: kept as it came,
 						-- its defaults laid on when its addon loads again

@@ -938,6 +938,13 @@ local function Listen()
 	MelloUI.Widgets.OnBarTexture("raidframes", function()
 		H:Repaint()
 	end, "GroupFrames.bars")
+	-- (one look Q7) the one Health Colour or one of its colours changed (Bar
+	-- Textures' keys): the bars again
+	MelloUI:On("setting", function(module, key)
+		if module == "BarTextures" and RD.HEALTH_KEYS[key] then
+			H:Repaint()
+		end
+	end, "GroupFrames.health")
 	-- the raid frames' border changed (Raid Frame Border, its placement): the
 	-- bars inside it again (Kit:RaidFrameInset; the kit lays borders out of a fight)
 	MelloUI:On("raidborder", function()

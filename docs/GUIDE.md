@@ -619,8 +619,9 @@ frames stand, so your heals and indicators can be seen on it. Either way the par
   one list); Raid Fills (down then across, or across then down); Frames Per Column / Row; the Gap between them;
   Fade When Out Of Range and its opacity. Move the party and the raid in Edit Layout ("Party Frames", "Raid
   Frames"). Layout changes made in a fight wait for its end.
-- **Their Health bar, Power bar and Background:** Health Colour (class colour, My Colour, By Health with your Full / Half / Low colours, or green),
-  the health bar's opacity, Background Colour (yours or the class colour) and its opacity, Missing Health (off,
+- **Their Health bar, Power bar and Background:** the Health Bar Colour, one for every frame (Look > Bar Texture, a
+  link on the Health bar: class colour, Class & Reaction -- the class colour here --, My Colour, By health with your
+  Full / Half / Low colours, or green), the health bar's opacity, Background Colour (yours or the class colour) and its opacity, Missing Health (off,
   yours, the class colour, by health) and its opacity, Fill Direction, Smooth Bars, the Power Bar (healers,
   everyone, off; yours while solo), its height and colour (the power's own, the class colour, yours). Incoming
   heals, shields and the debuff glow are Healer Frames' (the unit frames' Health bar, and All frames).

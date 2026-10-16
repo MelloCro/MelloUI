@@ -88,7 +88,15 @@ local M = MelloUI:RegisterModule("BarTextures", {
 	tweak = { label = "Bar Textures", desc = "The finish of health and mana bars (flat, smooth, glossy, minimalist) and their colours; the fill under the kit's brackets.", order = 7 },
 	defaults = {
 		texture = MEDIA .. "Flat",
-		healthColor = "green",
+		-- (one look Q7: ONE Health Colour for every frame -- the unit frames,
+		-- the nameplates and Group Frames' party and raid frames -- its four
+		-- colours with it, Group Frames' until then; Class & Reaction the
+		-- merged default, the user's; Core.lua's MERGES carries the old keys)
+		healthColor = "reaction",
+		healthCustom = "GREEN_FONT_COLOR",
+		healthHigh = "GREEN_FONT_COLOR",
+		healthMid = "YELLOW_FONT_COLOR",
+		healthLow = "RED_FONT_COLOR",
 		overrideThreat = true,   -- the health colour wins over the game's threat / aggro recolouring
 		executeRange = false,    -- a tint over an enemy's health bar below executeBelow percent
 		executeBelow = 20,
@@ -112,9 +120,18 @@ local M = MelloUI:RegisterModule("BarTextures", {
 			{ value = "green", label = "Green (Blizzard)" },
 			{ value = "class", label = "Class colour for players" },
 			{ value = "reaction", label = "Class (players) / reaction (NPCs)" },
-			{ value = "health", label = "By health (green, yellow, red)" },
+			{ value = "health", label = "By health (your three colours)" },
+			{ value = "custom", label = "My Colour" },
 		  },
-		  desc = "Colour of unit frame health bars. Blizzard bakes the green into its artwork, so the module has to colour flat textures itself. By health shades the bar from green at full health through yellow at half to red when low, and keeps doing so in combat." },
+		  desc = "Colour of the health bars: the unit frames', the nameplates' and your party and raid frames' (Group Frames). Blizzard bakes the green into its artwork, so the module has to colour flat textures itself. By health shades the bar from your full health colour through the half one to the low one, and keeps doing so in combat. My Colour is one colour of yours. An NPC's nameplate keeps the game's own colour (its reaction and threat) with every choice but By health. On the party and raid frames Class and Class / reaction are the class colour." },
+		{ type = "colour", key = "healthCustom", name = "My Health Colour", new = "0.25.0",
+		  desc = "The health bars' colour with My Colour." },
+		{ type = "colour", key = "healthHigh", name = "Full Health Colour", new = "0.25.0",
+		  desc = "By health: the colour at full health." },
+		{ type = "colour", key = "healthMid", name = "Half Health Colour", new = "0.25.0",
+		  desc = "By health: the colour at half health." },
+		{ type = "colour", key = "healthLow", name = "Low Health Colour", new = "0.25.0",
+		  desc = "By health: the colour near death." },
 		{ type = "toggle", key = "overrideThreat", name = "Colour Overrides Threat",
 		  desc = "The chosen health bar colour wins over the game's own recolouring of health bars (the aggro / threat display on nameplates and unit frames): whenever the game sets its colour, yours is put back. Off: the game's threat colours show." },
 		{ type = "toggle", key = "executeRange", name = "Execute Range",
@@ -857,34 +874,48 @@ end
 -- is secret in combat -- the colour comes back secret too and goes straight
 -- into the bar, which accepts it; nothing here reads or compares it
 -- (/mello secrets on this client, 2026-09-23).
--- its three stops, { at, r, g, b } (the Configurator's preview works them
--- out too, M.PreviewHealthColor below, where a client has no curve)
-local HEALTH_STOPS = {
-	{ 0, 0.85, 0.1, 0.08 },
-	{ 0.5, 0.95, 0.78, 0.1 },
-	{ 1, 0.1, 0.8, 0.1 },
-}
-local healthCurve   -- nil: not built yet; false: this client cannot
+-- its three stops, { at, r, g, b }: the player's three colours (one look
+-- Q7: low, half, full -- Group Frames' until then; the Configurator's preview
+-- works them out too, M.PreviewHealthColor below, where a client has no curve)
+local function HealthStops()
+	local db = M.db or {}
+	local CV = MelloUI.Widgets.ColourValue
+	local stops = {}
+	for i, stop in ipairs({ { 0, db.healthLow }, { 0.5, db.healthMid }, { 1, db.healthHigh } }) do
+		local r, g, b = CV(stop[2])
+		stops[i] = { stop[1], r, g, b }
+	end
+	return stops
+end
+-- the curve, made again when a colour changed (the three it was made from
+-- kept and compared: By health asks on every health update, so nothing is
+-- made per call; obj nil: this client cannot)
+local healthCurve = { built = false, low = nil, mid = nil, high = nil, obj = nil }
 local function HealthCurve()
-	if healthCurve == nil then
-		healthCurve = false
-		if C_CurveUtil and C_CurveUtil.CreateColorCurve and CreateColor then
-			local ok, curve = pcall(function()
-				local c = C_CurveUtil.CreateColorCurve()
-				if Enum and Enum.LuaCurveType then
-					c:SetType(Enum.LuaCurveType.Linear)
-				end
-				for _, stop in ipairs(HEALTH_STOPS) do
-					c:AddPoint(stop[1], CreateColor(stop[2], stop[3], stop[4], 1))
-				end
-				return c
-			end)
-			if ok and curve then
-				healthCurve = curve
+	local db, c = M.db, healthCurve
+	if not db then
+		return nil
+	end
+	if c.built and c.low == db.healthLow and c.mid == db.healthMid and c.high == db.healthHigh then
+		return c.obj
+	end
+	c.built, c.low, c.mid, c.high, c.obj = true, db.healthLow, db.healthMid, db.healthHigh, nil
+	if C_CurveUtil and C_CurveUtil.CreateColorCurve and CreateColor then
+		local ok, curve = pcall(function()
+			local made = C_CurveUtil.CreateColorCurve()
+			if Enum and Enum.LuaCurveType then
+				made:SetType(Enum.LuaCurveType.Linear)
 			end
+			for _, stop in ipairs(HealthStops()) do
+				made:AddPoint(stop[1], CreateColor(stop[2], stop[3], stop[4], 1))
+			end
+			return made
+		end)
+		if ok and curve then
+			c.obj = curve
 		end
 	end
-	return healthCurve or nil
+	return c.obj
 end
 
 -- A player's class colour, or (mode "reaction") an NPC's reaction colour;
@@ -946,6 +977,9 @@ local function HealthColorFor(bar)
 			end
 			return 0.0, 1.0, 0.0
 		end
+		if mode == "custom" then
+			return MelloUI.Widgets.ColourValue(M.db.healthCustom)
+		end
 		if mode == "class" or mode == "reaction" then
 			local ok2, r, g, b = pcall(ClassOrReactionColor, unit, mode)
 			if ok2 and IsPlainNumber(r) and IsPlainNumber(g) and IsPlainNumber(b) then
@@ -989,8 +1023,12 @@ local function SetHealthColour(bar, r, g, b)
 		local last = lastColour[bar]
 		if last and last[1] == r and last[2] == g and last[3] == b then
 			local ok, cr, cg, cb = pcall(bar.GetStatusBarColor, bar)
-			-- (still on the bar: the game did not recolour it since)
-			if ok and IsPlainNumber(cr) and IsPlainNumber(cg) and IsPlainNumber(cb) and cr == r and cg == g and cb == b then
+			-- (still on the bar: the game did not recolour it since -- within a
+			-- hair, as the bar stores it: a class colour reads back a little
+			-- off, and the target of target's update runs every frame; one
+			-- look C12, the review)
+			if ok and IsPlainNumber(cr) and IsPlainNumber(cg) and IsPlainNumber(cb)
+				and math.abs(cr - r) < 0.002 and math.abs(cg - g) < 0.002 and math.abs(cb - b) < 0.002 then
 				return
 			end
 		end
@@ -1012,13 +1050,16 @@ local function RecolorHealthBar(bar)
 	if not (group == "unitframes" or group == "nameplates") or not Active(group) then
 		return
 	end
-	-- the game's own nameplate colouring stands: under Green, and under Class
-	-- colour on an NPC's plate (its reaction red, yellow or green; 0.19.4,
-	-- the options audit: Class colour turned every NPC plate green). The unit
-	-- frames' NPC bars take the green, as under Green.
+	-- the game's own nameplate colouring stands: under Green, and on an NPC's
+	-- plate under every colour but By health (its reaction red, yellow or
+	-- green, and its threat colours; 0.19.4, the options audit: Class colour
+	-- turned every NPC plate green; one look C12, the review: Class & Reaction,
+	-- the default, put back over the game's colour on every threat update --
+	-- a write-back fight, hard rule 1 -- and hid the tanks' threat colours).
+	-- The unit frames' NPC bars take the green, as under Green.
 	if group == "nameplates" then
 		local mode = M.db.healthColor
-		if mode == "green" or (mode == "class" and not PlainPlayer(UnitOf(bar))) then
+		if mode == "green" or (mode ~= "health" and not PlainPlayer(UnitOf(bar))) then
 			return
 		end
 	end
@@ -1699,14 +1740,15 @@ do
 				end
 			end
 		end
-		for i = 2, #HEALTH_STOPS do
-			local a, b = HEALTH_STOPS[i - 1], HEALTH_STOPS[i]
+		local stops = HealthStops()
+		for i = 2, #stops do
+			local a, b = stops[i - 1], stops[i]
 			if fraction <= b[1] then
 				local t = (fraction - a[1]) / (b[1] - a[1])
 				return a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t, a[4] + (b[4] - a[4]) * t
 			end
 		end
-		local last = HEALTH_STOPS[#HEALTH_STOPS]
+		local last = stops[#stops]
 		return last[2], last[3], last[4]
 	end
 
@@ -1728,6 +1770,9 @@ do
 		end
 		if mode == "health" then
 			return ByHealth(fraction)
+		end
+		if mode == "custom" then
+			return MelloUI.Widgets.ColourValue(db.healthCustom)
 		end
 		if mode == "class" or mode == "reaction" then
 			local class = IsPlainString(sample.class) and sample.class or nil
@@ -1854,6 +1899,8 @@ function M:OnSettingChanged(key, value, db)
 		RecolorAllHealthBars()
 	elseif key == "executeRange" or key == "executeBelow" then
 		UpdateAllExecute()
+	elseif key == "healthCustom" or key == "healthHigh" or key == "healthMid" or key == "healthLow" then
+		RecolorAllHealthBars()   -- (By health's curve made again from the new colours)
 	elseif key == "healthColor" or key == "overrideThreat" then
 		-- under Default the art follows the colour: the white twin for a
 		-- colour, the game's green for green

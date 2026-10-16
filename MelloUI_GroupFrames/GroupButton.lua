@@ -130,15 +130,16 @@ end
 -- The health curve (By Health: the player's three colours, full / half / low)
 --------------------------------------------------------------------------------
 
-local curve = { key = nil, obj = nil }
+-- (the three colours it was made from kept and compared: asked on every
+-- health update, so nothing is made per call)
+local curve = { built = false, low = nil, mid = nil, high = nil, obj = nil }
 
 local function HealthCurve()
-	local db = DB()
-	local key = tostring(db.healthLow) .. "|" .. tostring(db.healthMid) .. "|" .. tostring(db.healthHigh)
-	if curve.key == key then
+	local db = RD.Health()   -- (one look Q7: the one Health Colour's colours, Bar Textures')
+	if curve.built and curve.low == db.healthLow and curve.mid == db.healthMid and curve.high == db.healthHigh then
 		return curve.obj
 	end
-	curve.key, curve.obj = key, nil
+	curve.built, curve.low, curve.mid, curve.high, curve.obj = true, db.healthLow, db.healthMid, db.healthHigh, nil
 	local CU = rawget(_G, "C_CurveUtil")
 	if type(CU) == "table" and type(CU.CreateColorCurve) == "function" and CreateColor then
 		local ok, c = pcall(function()
@@ -354,13 +355,24 @@ function Button.Paint(f)
 	if fill then
 		fill:SetAlpha(db.healthAlpha or 1)
 	end
-	if db.healthColour ~= "health" then
-		local r, g, b = ModeRGB(f, db.healthColour, "healthCustom")
+	-- (one look Q7: the one Health Colour, Bar Textures'; Class & Reaction is
+	-- the class's here -- every member a player -- and My Colour its colour)
+	local health = RD.Health()
+	local mode = health.healthColor
+	if mode ~= "health" then
+		local r, g, b
+		if mode == "reaction" then
+			r, g, b = ClassRGB(f)
+		elseif mode == "custom" then
+			r, g, b = W.ColourValue(health.healthCustom)
+		else
+			r, g, b = ModeRGB(f, mode)
+		end
 		if r then
 			f.healthBar:SetStatusBarColor(r, g, b)
 		end
 	end
-	local mode = db.missing or "off"
+	mode = db.missing or "off"
 	f.missingBar:SetShown(mode ~= "off")
 	if mode ~= "off" and mode ~= "health" then
 		local r, g, b = ModeRGB(f, mode, "missingCustom")
@@ -496,7 +508,7 @@ function Button.Health(f)
 	-- the colours that follow the health
 	if f.offline or f.dead then
 		hb:SetStatusBarColor(GREY[1], GREY[2], GREY[3])
-	elseif db.healthColour == "health" then
+	elseif RD.Health().healthColor == "health" then
 		local r, g, b = HealthRGB(f)
 		if r then
 			hb:SetStatusBarColor(r, g, b)

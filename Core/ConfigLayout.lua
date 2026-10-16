@@ -438,7 +438,17 @@ function L.Define(R, Link)
 	R("Look", "Bar Texture", "Look", "BarTextures.texture")
 	-- the health bars' colour reaches the unit frames AND the nameplates
 	-- (their descs; RecolorHealthBar): global
-	R("Look", "Bar Texture", "Look", "BarTextures.healthColor")
+	-- (one look Q7: ONE Health Colour, every frame's -- the party and raid
+	-- frames' too, so live while Bar Textures or Group Frames is on; its
+	-- colours with it, Group Frames' until then; a link on each frame's
+	-- Health bar in Unit & Group Frames)
+	R("Look", "Bar Texture", "Look", "BarTextures.healthColor", { owner = "GroupFrames" })
+	R("Look", "Bar Texture", "Look", "BarTextures.healthCustom", { owner = "GroupFrames",
+		when = { key = "BarTextures.healthColor", value = "custom", line = "Only with My Colour" } })
+	for _, key in ipairs({ "healthHigh", "healthMid", "healthLow" }) do
+		R("Look", "Bar Texture", "Look", "BarTextures." .. key, { owner = "GroupFrames",
+			when = { key = "BarTextures.healthColor", value = "health", line = "Only with By health" } })
+	end
 	R("Look", "Bar Texture", "Look", "BarTextures.overrideThreat",
 		{ when = { key = "BarTextures.healthColor", notValue = "green", line = "Not with the Green (Blizzard) colour" } })
 	R("Look", "Bar Texture", "Look", "BarTextures.executeRange")
@@ -914,11 +924,7 @@ function L.Define(R, Link)
 		UGF({ "raid:element", "party:element" }, "Behaviour", "GroupFrames.rangeFade")
 		UGF({ "raid:element", "party:element" }, "Behaviour", "GroupFrames.rangeAlpha")
 		-- the bars: health, background, missing health, power
-		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.healthColour")
-		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.healthCustom", When("healthColour", "custom", MINE))
-		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.healthHigh", When("healthColour", "health", "Only with By Health"))
-		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.healthMid", When("healthColour", "health", "Only with By Health"))
-		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.healthLow", When("healthColour", "health", "Only with By Health"))
+		-- (one look Q7: the health bar's colour is the one Health Colour, Look > Bar Texture: a link below)
 		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.healthAlpha")
 		UGF({ "raid:background", "party:background" }, "Look", "GroupFrames.backgroundTexture")
 		UGF({ "raid:background", "party:background" }, "Look", "GroupFrames.background", When("backgroundTexture", "flat", "Only with Flat colour"))
@@ -1197,6 +1203,10 @@ function L.Define(R, Link)
 	Link("Windows", "Windows", "Look", { ["*"] = "UIModifications.shade_windows", BackpackPanel = "UIModifications.shade_bags" }, "UI Shade")
 	Link("Windows", "Windows", "Look", { CharacterPanel = "UIModifications.parchment_character", DialogPanel = "UIModifications.parchment_dialog", ColorPickerPanel = "UIModifications.parchment_dialog", ReadyPanel = "UIModifications.parchment_dialog", StackSplitPanel = "UIModifications.parchment_dialog" }, "Parchment")
 	Link("Windows", "Windows", "Look", "UIModifications.buttonBorder", "Button Border")
+	-- (one look Q7: the one Health Colour on every frame's Health bar)
+	for _, tab in ipairs({ "player:health", "target:health", "focus:health", "party:health", "raid:health" }) do
+		Link("UnitGroupFrames", tab, "Look", "BarTextures.healthColor", "Health Bar Colour")
+	end
 	Link("Windows", "Windows", "Look", "UIModifications.sideTabBorder", "Side Tab Border")
 	Link("Windows", "Windows", "Look", "UIModifications.roundBorder", "Round Border")
 	-- (0.21.0, the settings audit, the user's picks: the windows' own frame and title too)

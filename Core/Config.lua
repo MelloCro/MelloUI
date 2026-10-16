@@ -142,7 +142,7 @@ local CHANGELOG = {
 		"One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off.",
 		"Configurator: Unit & Group Frames is one designer: pick a frame, then a part (each text its own Font); drag the party's and raid's parts on their large frame.",
 		"Windows: a new frame -- the logo heads the configurator's side list, small windows get a slim strip.",
-		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, Hide Bar Art, a Bar Texture for each.",
+		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, Hide Bar Art, a Bar Texture for each, one Health Colour for all.",
 		"Action bars and minimap: backdrops and MelloUI's minimap for everyone, no painted skin needed.",
 		"Quests: one gem per title, a ring on the quest you follow, Parchment its own switch; the tracker's Painted Skin is gone.",
 		"Route: the World Marker shows the way (the arrow row is gone); a bead marks your flight point.",
@@ -1481,7 +1481,9 @@ do
 			-- its key's own module is off (any-of: Gate)
 			if extra.owner then
 				r.owner = MelloUI:GetModule(extra.owner)
-				if not r.owner then
+				-- (one look C12: a feature addon the player turned off -- Group
+				-- Frames -- owns nothing: the row sleeps with its own module's)
+				if not r.owner and not MelloUI:FeatureNotLoaded(extra.owner) then
 					Problem("%s > %s: no module %s", p.key, t.name, tostring(extra.owner))
 				end
 			end

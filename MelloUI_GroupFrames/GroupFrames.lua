@@ -207,13 +207,25 @@ local function V(...)
 	end
 	return out
 end
+-- (one look Q7) the one Health Colour and its colours: Bar Textures' keys,
+-- read with Bar Textures on or off -- the store as it is (no defaults laid on
+-- each read: By Health asks it on every health update), else laid once
+RD.HEALTH_KEYS = { healthColor = true, healthCustom = true, healthHigh = true, healthMid = true, healthLow = true }
+function RD.Health()
+	local mods = MelloUI.db and MelloUI.db.modules
+	local t = type(mods) == "table" and mods.BarTextures
+	if type(t) == "table" and t.healthColor ~= nil then
+		return t
+	end
+	return MelloUI:GetModuleDB("BarTextures")
+end
+
 RD.CHOICES = {
 	partyStyle = V("group", "Group Frames", "party", "Party Frames (Portraits)"),
 	partyGrowth = V("DOWN", "Down", "UP", "Up", "RIGHT", "Right", "LEFT", "Left"),
 	partySort = V("role", "By Role (Tanks, Healers, Damage)", "group", "Group Order", "name", "By Name"),
 	raidGroupBy = V("group", "By Group", "role", "By Role", "class", "By Class", "none", "One List"),
 	raidFlow = V("down", "Down, Then Across", "across", "Across, Then Down"),
-	healthColour = V("class", "Class Colour", "custom", "My Colour", "health", "By Health", "green", "Green"),
 	fillDirection = V("RIGHT", "Left To Right", "LEFT", "Right To Left", "UP", "Bottom To Top", "DOWN", "Top To Bottom"),
 	background = V("custom", "My Colour", "class", "Class Colour"),
 	missing = V("off", "Off", "custom", "My Colour", "class", "Class Colour", "health", "By Health"),
@@ -258,11 +270,6 @@ local M = MelloUI:RegisterModule(OWNER, {
 		rangeFade = true,
 		rangeAlpha = 0.45,
 		-- the bars
-		healthColour = "class",
-		healthCustom = "GREEN_FONT_COLOR",
-		healthLow = "RED_FONT_COLOR",
-		healthMid = "YELLOW_FONT_COLOR",
-		healthHigh = "GREEN_FONT_COLOR",
 		healthAlpha = 1,
 		fillDirection = "RIGHT",
 		smooth = true,
@@ -332,16 +339,8 @@ local M = MelloUI:RegisterModule(OWNER, {
 		{ type = "slider", key = "rangeAlpha", name = "Out Of Range Opacity", min = 0.1, max = 1, step = 0.05,
 		  percent = true, parent = "rangeFade", desc = "How far an out of range frame fades." },
 		-- the bars
-		{ type = "dropdown", key = "healthColour", name = "Health Colour", values = C.healthColour,
-		  desc = "The health bar's colour: the member's class colour, one colour of yours, by health (your three colours from full to low), or green." },
-		{ type = "colour", key = "healthCustom", name = "My Health Colour",
-		  desc = "The health bar's colour with My Colour." },
-		{ type = "colour", key = "healthHigh", name = "Full Health Colour",
-		  desc = "By Health: the colour at full health." },
-		{ type = "colour", key = "healthMid", name = "Half Health Colour",
-		  desc = "By Health: the colour at half health." },
-		{ type = "colour", key = "healthLow", name = "Low Health Colour",
-		  desc = "By Health: the colour near death." },
+		-- (one look Q7: the health bar's colour is the one Health Colour, Bar
+		-- Textures' -- RD.Health -- its four colours with it)
 		{ type = "slider", key = "healthAlpha", name = "Health Bar Opacity", min = 0.1, max = 1, step = 0.05,
 		  percent = true, desc = "How solid the health bar is." },
 		{ type = "dropdown", key = "fillDirection", name = "Fill Direction", values = C.fillDirection,

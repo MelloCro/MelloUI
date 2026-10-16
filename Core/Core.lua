@@ -4502,17 +4502,58 @@ do
 			if not bt then
 				return
 			end
+			-- (a settings text's load: its defaults laid first, so a key the
+			-- text did not set holds the new default -- MelloUI.textKeys)
+			local loaded = self.textKeys
 			for _, area in ipairs({ "unitframes", "raidframes", "nameplates", "personal", "statusbars", "castbars",
 				"cooldowns", "tooltip" }) do
 				local old = bt[area]
 				if type(old) == "boolean" then
 					local key = area .. "Texture"
-					if bt[key] == nil then
+					if bt[key] == nil or (loaded and not loaded["BarTextures." .. key]) then
 						bt[key] = old and "shared" or "game"
 					end
 					bt[area] = nil
 				end
 			end
+		end,
+		-- one look Q7 (the user, 2026-10-15): ONE Health Colour for every
+		-- frame, Bar Textures' healthColor, its colours in the core
+		-- (healthCustom, healthHigh, healthMid, healthLow); Group Frames'
+		-- Health Colour and colours go. A saved table holds its defaults
+		-- (ApplyDefaults writes them), so a stored Green on the game's frames
+		-- or Class on the group frames counts as left alone: the game frames'
+		-- other choice wins, else the group frames' other choice is carried,
+		-- else the new default (Class & Reaction). The group colours are
+		-- carried where the core has none; the old keys dropped. A table with
+		-- none of them is left alone (a profile or share string from before
+		-- the update is carried at its load too)
+		function(self)
+			local gf = Raw(self, "GroupFrames")
+			if not gf or (gf.healthColour == nil and gf.healthCustom == nil and gf.healthHigh == nil
+				and gf.healthMid == nil and gf.healthLow == nil) then
+				return
+			end
+			local bt = Own(self, "BarTextures")
+			local old = gf.healthColour
+			-- (a settings text's load lays the defaults first: a key the text
+			-- did not set holds the new default, untouched -- MelloUI.textKeys)
+			local loaded = self.textKeys
+			if bt.healthColor == nil or bt.healthColor == "green"
+				or (loaded and not loaded["BarTextures.healthColor"]) then
+				if old ~= nil and old ~= "class" then
+					bt.healthColor = old
+				elseif bt.healthColor == nil or old ~= nil then
+					bt.healthColor = "reaction"
+				end
+			end
+			for _, key in ipairs({ "healthCustom", "healthHigh", "healthMid", "healthLow" }) do
+				if gf[key] ~= nil and (bt[key] == nil or (loaded and not loaded["BarTextures." .. key])) then
+					bt[key] = gf[key]
+				end
+				gf[key] = nil
+			end
+			gf.healthColour = nil
 		end,
 	}
 
@@ -4523,6 +4564,7 @@ do
 				geterrorhandler()(err)
 			end
 		end
+		self.textKeys = nil   -- (the last settings text's keys: read once, ApplySettingsText)
 	end
 end
 
@@ -4846,6 +4888,11 @@ function MelloUI:ApplySettingsText(text)
 	for name in pairs(self.db.enabled) do
 		self.db.enabled[name] = nil
 	end
+	-- (one look C12) the keys the text itself sets ("Module.key" = true), read
+	-- by the next MergeSettings (RestartModules below, else the login's), then
+	-- forgotten: the defaults are laid before the text, so a key it leaves out
+	-- holds the NEW default -- never a choice the profile made
+	self.textKeys = {}
 	local applied = self:DeserializeSettings(StripPersonal(self, text), nil, hold)
 	if self.initialized then
 		-- the loaded palette's table before any module is switched on or off
