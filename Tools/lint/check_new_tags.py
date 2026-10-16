@@ -153,6 +153,7 @@ PAGE_TOOLS = {
     # button as the picker line's, in 0.19.9; not a new control)
     "Core/Config.lua:Button(KEYBIND_MODE.name)#2": "Keybind Mode in a designer page's header (the Bars page: no "
                                                    "picker line)",
+    "Core/Config.lua:Button(hit)": "a designer sample's part in its slot (a click opens the part's tab: no setting)",
 }
 # a control builder's call whose label is the schema's own row: `opt.<field>` (the old pages' builders), a layout
 # row's `r.name` (the rebuild's element pages: Core/ConfigLayout.lua's rows, each a module's setting)

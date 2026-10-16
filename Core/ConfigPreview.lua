@@ -2521,6 +2521,12 @@ Preview.Register("unitframe", {
 	picks = SAMPLES, first = FIRST_PICK, watch = WATCH,
 	Corner = UnitCorner,
 	Lay = Lay,
+	-- (the designer's slot: which region is which part -- Core/Config.lua's DUI.SlotHits; the larger first)
+	PartRegions = function(p)
+		p.partRegions = p.partRegions or { { key = "portrait", region = p.portrait }, { key = "health", region = p.bar1 },
+			{ key = "name", region = p.name }, { key = "values", region = p.text1 } }
+		return p.partRegions
+	end,
 	-- (a show draws the portrait again: it may have changed)
 	OnShow = function(p)
 		p.portraitShows = nil

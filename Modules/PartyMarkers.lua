@@ -449,6 +449,11 @@ do
 			watch = { PartyMarkers = true },
 			Corner = Corner,
 			Paint = Paint,
+			-- (the designer's slot: the role ring round the medallion, the medallion on it -- DUI.SlotHits)
+			PartRegions = function(p)
+				p.partRegions = p.partRegions or { { key = "role", region = p.marker.ring }, { key = "medallion", region = p.marker } }
+				return p.partRegions
+			end,
 			Tip = function()
 				return "A party member's marker, drawn with your settings as they are now. The name is made up."
 			end,

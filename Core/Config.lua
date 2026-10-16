@@ -1899,6 +1899,7 @@ local TEXT = {
 	notFor = "Not for %s",
 	switchOn = "Switch on \"%s\" first.",
 	switchOnAt = "Switch on \"%s\" first (%s).",
+	slotPart = "Click to open its settings.",
 	tabWhere = "%s tab",
 	uim = "UI Modifications",
 	pickTip = "The %s this page's settings are for. Rows it has no setting for are dimmed.",
@@ -3344,6 +3345,7 @@ do
 		p:SetPoint("CENTER", slot, "CENTER", 0, 0)
 		slot:SetSize(page.width - PAD * 2, p:GetHeight() * DUI.SLOT_SCALE + DUI.SLOT_PAD * 2)
 		slot.preview, slot.x0, slot.anchor, slot.Stick = p, PAD, page, DUI.SlotStick
+		slot.def, slot.hits = CP.Kind(kind), {}
 		slot:Hide()
 		page.slot = slot
 		DUI.StageHead(page)
@@ -3373,7 +3375,7 @@ do
 
 	-- the slot follows the frame picked: shown on its pick for a frame with
 	-- a sample
-	function DUI.FollowSlot(page, el)
+	function DUI.FollowSlot(page, el, t)
 		local slot = page.slot
 		if not slot then
 			return
@@ -3387,6 +3389,80 @@ do
 			slot:SetShown(want)
 			page:LayTabs(true)
 		end
+		DUI.SlotHits(page, el, t)
+	end
+
+	-- (the user, 2026-10-16: "i cant click on anything to modify") the
+	-- sample's parts take clicks: its kind names which of its regions is
+	-- which part (def.PartRegions(preview) -> { { key, region }, ... }, the
+	-- larger first); a box over each the frame has as a part, shown, opens
+	-- that part's tab; the hovered one outlined, the open part's in gold
+	function DUI.SlotHits(page, el, t)
+		local slot = page.slot
+		local def = slot and slot.def
+		local hits, n = slot and slot.hits, 0
+		if not (hits and def and def.PartRegions) then
+			return
+		end
+		local labels = {}
+		for _, e in ipairs(page.lay.def.elements or EMPTY) do
+			if e.key == el then
+				for _, part in ipairs(e.parts or EMPTY) do
+					labels[part.key] = part.label
+				end
+			end
+		end
+		local open = t and t.part and t.part.key
+		if el and slot:IsShown() then
+			for _, pr in ipairs(def.PartRegions(slot.preview) or EMPTY) do
+				local r = pr.region
+				if labels[pr.key] and r and r:IsShown() then
+					n = n + 1
+					local hit = hits[n] or DUI.SlotHit(slot, n)
+					hit:ClearAllPoints()
+					hit:SetAllPoints(r)
+					hit.part, hit.el, hit.page = pr.key, el, page
+					hit.melloTipTitle, hit.melloTipBody = labels[pr.key], TEXT.slotPart
+					hit.sel:SetShown(open == pr.key)
+					hit:Show()
+				end
+			end
+		end
+		for i = n + 1, #hits do
+			hits[i]:Hide()
+		end
+	end
+	DUI.SlotClick = Shared("OnClick on a designer sample's part", function(hit)
+		local page = hit.page
+		local sec = page and page.secByName and page.secByName[hit.el .. ":" .. hit.part]
+		if sec and sec ~= page.current then
+			MelloUI:PlayUISound("tab")
+			page:Select(sec, true)
+		end
+	end, "script")
+	DUI.SlotEnter = Shared("OnEnter on a designer sample's part", function(hit)
+		hit.edge:Show()
+	end, "script")
+	DUI.SlotLeave = Shared("OnLeave on a designer sample's part", function(hit)
+		hit.edge:Hide()
+	end, "script")
+	function DUI.SlotHit(slot, n)
+		local hit = CreateFrame("Button", nil, slot)
+		hit:SetFrameLevel(slot:GetFrameLevel() + 20 + n)
+		hit.edge = CreateFrame("Frame", nil, hit)
+		hit.edge:SetAllPoints(hit)
+		W.Edges(hit.edge, "hover", "OVERLAY")
+		hit.edge:Hide()
+		hit.sel = CreateFrame("Frame", nil, hit)
+		hit.sel:SetAllPoints(hit)
+		W.Edges(hit.sel, "selectedTrim", "OVERLAY")
+		hit.sel:Hide()
+		hit:SetScript("OnClick", DUI.SlotClick)
+		hit:SetScript("OnEnter", DUI.SlotEnter)
+		hit:SetScript("OnLeave", DUI.SlotLeave)
+		PageTip(hit, "", TEXT.slotPart)
+		slot.hits[n] = hit
+		return hit
 	end
 
 	----------------------------------------------------------------------
@@ -3890,7 +3966,7 @@ do
 		page.partsLabel:SetShown(parts)
 		page.partChips:SetShown(parts)
 		page.partsHint:SetShown(el ~= nil and page.partChips.count == 0)
-		DUI.FollowSlot(page, el)
+		DUI.FollowSlot(page, el, t)
 		DUI.FollowStage(page, el, t)
 	end
 
