@@ -203,6 +203,12 @@ local function CollectButtonStateTextures(button, list)
 	if button.GetNormalTexture then list[#list + 1] = button:GetNormalTexture() end
 	if button.GetPushedTexture then list[#list + 1] = button:GetPushedTexture() end
 	if button.GetDisabledTexture then list[#list + 1] = button:GetDisabledTexture() end
+	-- (client 70425: the minimap header's buttons -- the zone button, the tracking button, the calendar -- draw one
+	-- state texture each, re-atlased as the mouse moves: its tint stays)
+	local state = rawget(button, "StateTexture")
+	if state then
+		list[#list + 1] = state
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -697,8 +703,11 @@ local function ApplyMinimap()
 
 	local cluster = MinimapCluster
 	if cluster then
-		-- Zone text header (nine-slice) and tracking button.
+		-- Zone text header (nine-slice; client 70425: the zone button's own art) and tracking button.
 		CollectNineSlice(cluster.BorderTop, list)
+		if not cluster.BorderTop then
+			CollectButtonStateTextures(cluster.ZoneTextButton, list)
+		end
 		if cluster.Tracking then
 			list[#list + 1] = cluster.Tracking.Background
 			CollectButtonStateTextures(cluster.Tracking.Button, list)

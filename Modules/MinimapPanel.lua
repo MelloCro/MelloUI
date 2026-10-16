@@ -149,6 +149,15 @@ local active = false
 local dresser = nil
 local Dress = { on = false }
 
+-- The zone band: the game's header over the map. Client 70338: MinimapCluster.BorderTop (a nine-slice, the zone
+-- button inside it); 70425 removed it -- the header is the zone button itself (ZoneTextButton, 152 x 23: its own
+-- art, StateTexture and AddTexture, the zone name and the clock in it; the tracking button left of it, the calendar
+-- right: Blizzard_Minimap's Camelot files). The painted skin borrows it (M.Lay.Band)
+local function Band()
+	local cluster = MinimapCluster
+	return cluster and (cluster.BorderTop or cluster.ZoneTextButton) or nil
+end
+
 -- the painted skin about to dress the map in Core's start-up pass (MinimapKit's OnEnable comes right after this
 -- module's): the look waits for it, one lay at login (the Lua budget), MelloUI:WhenModulesOn settling it else
 function Dress.Pending()
@@ -659,7 +668,7 @@ function Size.Drop(p, f)
 		return 0
 	end
 	local low = top
-	local band = MinimapCluster and MinimapCluster.BorderTop
+	local band = Band()
 	local plate = Dress.on and dresser:BandPlate() or nil
 	for _, over in ipairs({ band or false, plate or false }) do
 		if over and over.IsShown and over:IsShown() then
@@ -1155,7 +1164,7 @@ local function PanelShown(f, on)
 	end
 end
 
--- (onelook D7) the game's art of the zone band (BorderTop's textures among `...`, its GetRegions) hidden under the
+-- (onelook D7) the game's art of the zone band (Band's textures among `...`, its GetRegions) hidden under the
 -- Chat panel's zone row, or shown again: Kit:Fade / Kit:Unfade, the kit's one registry of faded game art (the game
 -- never writes their alpha per frame). Never the kit's own regions on the band (the painted plate's).
 local function BandArt(hide, ...)
@@ -1302,7 +1311,7 @@ local function BandUnpanel()
 		dresser:BandUnpanel()
 		return
 	end
-	local band = MinimapCluster and MinimapCluster.BorderTop
+	local band = Band()
 	if band then
 		BandArt(false, band:GetRegions())
 	end
@@ -1335,7 +1344,7 @@ end
 -- groups (layout E) under the map
 local function PlaceBand(onFrame, f, b, groups)
 	local cluster = MinimapCluster
-	local band = cluster and cluster.BorderTop
+	local band = Band()
 	if not band then
 		return
 	end
@@ -1816,6 +1825,7 @@ function M:DresserChanged()
 end
 
 M.Lay = {
+	Band = Band,
 	Shade = Shade,
 	PlainWidth = PlainWidth,
 	DIVIDER_H = DIVIDER_H,
@@ -2033,7 +2043,7 @@ function Column.Painted(block, l, b, r, t)
 			l, b, r, t = math.min(l, fl), math.min(b, fb), math.max(r, fr), math.max(t, ft)
 		end
 	end
-	local band = MinimapCluster and MinimapCluster.BorderTop
+	local band = Band()
 	if band and band:IsShown() then
 		local _, bb = ScreenRect(band)
 		if bb and bb < b then
@@ -2129,7 +2139,7 @@ function M:ColumnPart(part)
 	if part == "frame" then
 		return Column.Frame()
 	elseif part == "band" then
-		local band = MinimapCluster and MinimapCluster.BorderTop
+		local band = Band()
 		if band and band:IsShown() then
 			return ScreenRect(band)
 		end

@@ -13,6 +13,7 @@
 - Minimap: MelloUI's minimap for everyone: Width and Height, the square shape on the Chat panel and the Services bar merged under it, with or without the painted reskin.
 - Minimap: the Minimap page has its own switch, MelloUI Minimap. Off gives you the game's own minimap, and Edit Mode's Size works on it again.
 - Minimap: the painted Minimap skin is on Oldschool (Painted Skins > Minimap) and only paints the minimap; its Shape, Round with the painted ring and the zone plate or Square, is beside it. Without it the map is square, and a painted square border shows as the Chat panel.
+- Minimap: the zone name, tracking button, clock and calendar sit inside the Chat panel's top row again with the game's new minimap header (the game's update of 2026-10-16), and Dark Mode darkens the new header too.
 - Quest log and Quest List: the section headings, the difficulty gem before each quest and the round icon rims show for everyone, not only with the painted quest log skin. Switching the skin off takes away only the dark parchment ink.
 - Quest log with the Gamepad UI and without the painted skin: no difficulty gems on the game's own rows, so the map stays smooth with a controller.
 - MelloUI's windows have a new look without the painted reskin. The configurator has no title bar: the logo and MelloUI head its side list, and its buttons sit on one line above the pages.

@@ -147,8 +147,9 @@ local function Build()
 			end
 		end
 	end
-	-- the zone band (Z2): the nine-slice's textures faded, the plate as regions
-	local band = cluster.BorderTop
+	-- the zone band (Z2): the nine-slice's textures faded, the plate as regions (client 70425: the zone button's
+	-- own art -- the core's Band)
+	local band = Core.Lay.Band()
 	if band then
 		local first, extra = nil, {}
 		for _, region in ipairs({ band:GetRegions() }) do
@@ -338,7 +339,7 @@ end
 function Dresser:BandUnpanel()
 	self:PlateShown(true)
 	local text = MinimapZoneText
-	local band = MinimapCluster and MinimapCluster.BorderTop
+	local band = Core.Lay.Band()
 	if text and band then
 		text:ClearAllPoints()
 		text:SetPoint("CENTER", band, "CENTER", 0, 0)
@@ -351,7 +352,7 @@ end
 -- core's ServicesRow), the clock on the band. -> false when the frame's width cannot be read plainly (nothing laid)
 function Dresser:BandOnRail(f, b, groups)
 	local cluster = MinimapCluster
-	local band = cluster and cluster.BorderTop
+	local band = Core.Lay.Band()
 	local rep = skin and skin.band
 	if not band then
 		return false
