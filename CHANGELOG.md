@@ -56,6 +56,7 @@
 - Group Frames and the Personal Display: a Scale row on the Party, Raid and Personal frames and the Personal Display's Shield column, the same size as Edit Layout's Size. It waits while Edit Layout is open.
 - Edit Layout: an element's box keeps Size, Position and Snap to. Its own settings (spacing, width, thickness) are in the configurator, one click away with Design >.
 - Fader: no switch of its own any more. An element fades as soon as you set it to In Combat or On Mouseover. If your Fader was off, your saved choices go back to Always, so nothing changes on your screen.
+- Fader: each frame's and bar's Fade is on its own page now, the last Behaviour row of the Player, Target, Pet, Buffs, Party, Raid and Personal frames, the action bars, the micro menu, the bag bar, the XP bars and the Reminders. The Fader page keeps how the fading works and the chat's and the map's rows.
 - Quality Gems show on every item in the game's own bags, bank and guild bank and in Bags by Kind, painted look or not; Grey Out Junk lays a grey copy over a junk item's picture, so the game's own grey for a locked item stays as the game sets it. Your choices carry over.
 
 ## 0.24.0

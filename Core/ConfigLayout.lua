@@ -125,7 +125,9 @@ L.pages = {
 	-- (0.17.0) which parts fade away, and when they come back (one look: no
 	-- header switch -- the Fader runs while any element fades)
 	Fader = { title = "Fader", icon = "module:Fader",
-		tabs = { "Fader", "Frames", "Bars", "Chat & Map" } },
+		-- (one look, Q5: each frame's and bar's Fade is its own element's last Behaviour row now -- the designers'
+		-- and the Reminders page's; the chat's and the map's here until stage H)
+		tabs = { "Fader", "Chat & Map" } },
 	-- (one look C8, the user 2026-10-15: one designer per family) the player, target, focus, pet, your buffs, the
 	-- party and raid frames (MelloUI's own) and the Personal Display: pick a frame, then a part of it; its own
 	-- options under the part's (docs/plans/onelook-designer/c7-lite.md, ugf-audit.md)
@@ -943,17 +945,7 @@ function L.Define(R, Link)
 		widgets = { when = { key = "Widgets.!enabled", value = true, line = "Only with the Widgets on" } },
 		route = { when = { key = "Route.!enabled", value = true, line = "Only with Route on" } },
 	}
-	for _, key in ipairs({ "player", "petToo", "target", "party", "raid", "buffs", "reminders", "personal" }) do
-		R("Fader", "Frames", "General", key == "petToo" and "Fader.petToo" or ("Fader.show_" .. key), OWNED[key])
-	end
-	-- (0.19.4: a bar Hide This Bar parks has nothing to fade)
-	local PARKED = {
-		micro = { when = { key = "Tweaks.hideMicroMenu", value = false, line = "Hidden on Bars > Menu & Bags (Hide This Bar)" } },
-		bags = { when = { key = "Tweaks.hideBagBar", value = false, line = "Hidden on Bars > Menu & Bags (Hide This Bar)" } },
-	}
-	for _, key in ipairs({ "bar1", "bar2", "bar3", "bar4", "bar5", "bar6", "bar7", "bar8", "stance", "micro", "bags", "xp" }) do
-		R("Fader", "Bars", "General", "Fader.show_" .. key, PARKED[key])
-	end
+	-- (the frames' and the bars' Fade rows: each element's last Behaviour row, at the end of the rows -- one look Q5)
 	R("Fader", "Chat & Map", "General", "Fader.show_chat")
 	R("Fader", "Chat & Map", "General", "Chat.tabsOnMouseover", { when = Uncovered("ChatPanel", "chat") })
 	for _, key in ipairs({ "minimap", "tracker", "objectives", "widgets", "route" }) do
@@ -1244,6 +1236,30 @@ function L.Define(R, Link)
 	R("CustomSounds", "Sounds", "General", "CustomSounds.hover")
 	R("CustomSounds", "Sounds", "Sound", "CustomSounds.channel")
 	R("CustomSounds", "Preview", "Sound", { prefix = "CustomSounds.#" })   -- (the Play buttons, in the module's order)
+
+	-- (one look, Q5 -- ugf-audit.md section 14, bars-audit.md: the user's yes) each frame's and bar's Fade (the
+	-- Fader's Show: Always / In Combat / Mouseover ...) is its own element's last Behaviour row, here at the end so it
+	-- is the last; the Fader page keeps how it fades and the chat's and the map's rows (stage H's)
+	R("UnitGroupFrames", "player:element", "Behaviour", "Fader.show_player", { name = "Fade" })
+	R("UnitGroupFrames", "target:element", "Behaviour", "Fader.show_target", { name = "Fade" })
+	R("UnitGroupFrames", "pet:element", "Behaviour", "Fader.petToo", { name = "Fades With The Player", when = OWNED.petToo.when })
+	R("UnitGroupFrames", "buffs:element", "Behaviour", "Fader.show_buffs", { name = "Fade" })
+	R("UnitGroupFrames", "party:element", "Behaviour", "Fader.show_party", { name = "Fade" })
+	R("UnitGroupFrames", "raid:element", "Behaviour", "Fader.show_raid", { name = "Fade" })
+	R("UnitGroupFrames", "personal:element", "Behaviour", "Fader.show_personal", { name = "Fade", when = OWNED.personal.when })
+	-- (each bar's own Fade in the Action Bars' list until the stage's strip picks it: bars-audit "This bar")
+	R("ActionBars", "actionbars:element", "Behaviour", "Fader.show_bar1", { name = "Fade: Main Action Bar" })
+	for n = 2, 8 do
+		R("ActionBars", "actionbars:element", "Behaviour", "Fader.show_bar" .. n, { name = "Fade: Action Bar " .. n })
+	end
+	R("ActionBars", "actionbars:element", "Behaviour", "Fader.show_stance", { name = "Fade: Stance & Pet Bar" })
+	-- (0.19.4: a bar Hide This Bar parks has nothing to fade)
+	R("ActionBars", "menubags:micro", "Behaviour", "Fader.show_micro", { name = "Fade",
+		when = { key = "Tweaks.hideMicroMenu", value = false, line = "Hidden (Hide This Bar)" } })
+	R("ActionBars", "menubags:bags", "Behaviour", "Fader.show_bags", { name = "Fade",
+		when = { key = "Tweaks.hideBagBar", value = false, line = "Hidden (Hide This Bar)" } })
+	R("ActionBars", "xprep:element", "Behaviour", "Fader.show_xp", { name = "Fade" })
+	R("Reminders", "Reminders", "Behaviour", "Fader.show_reminders", { name = "Fade" })
 
 	-- the link rows: a setting whose one place is another page (the global
 	-- look on Look; the map's width on Minimap; the quest log's skin on

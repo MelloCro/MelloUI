@@ -2912,7 +2912,9 @@ local function MakeRow(sec, r)
 		RefreshEntry(e)
 	end
 	page.entries[#page.entries + 1] = e
-	page.built[r] = e
+	-- (by section: a designer's element row stands on every tab of its element, one copy each)
+	sec.built = sec.built or {}
+	sec.built[r] = e
 	Placed(sec, row, RowH(r))
 end
 
@@ -3536,9 +3538,12 @@ do
 		end
 		return own
 	end
+	-- (a frame's Fade -- the Fader's Show, each element's own row since Q5 -- is
+	-- when it fades, not how it looks: Copy from leaves it, so a Fade alone
+	-- never makes two elements copy sources)
 	function DUI.OwnRow(_, r, own, t, s)
 		local b = r.b
-		if b and b.kind == "option" and not r.shared then
+		if b and b.kind == "option" and not r.shared and not (b.mod and b.mod.name == "Fader") then
 			own[(t.part and t.part.key or "") .. "|" .. s.name .. "|" .. tostring(r.name)] = b
 		end
 	end
@@ -3934,7 +3939,7 @@ function BuildElementPage(key, width)
 	local page = NewPage(key, width)
 	page.lay = pl
 	page.dui = pl.designer and Lay.DesignerUI or nil
-	page.entries, page.built, page.rowSec, page.rowY, page.relist = {}, {}, {}, {}, {}
+	page.entries, page.rowSec, page.rowY, page.relist = {}, {}, {}, {}
 	page.fromWindows = pl.def.picker and pl.def.picker.from == "windows" or nil
 	if pl.picks then
 		local pick = pickOf[key]
@@ -4017,10 +4022,11 @@ function RevealRow(page, r, onShow)
 		return
 	end
 	page:RevealAt(sec, y, not onShow, onShow)
-	if sec.jobs and not page.built[r] then
+	if sec.jobs and not (sec.built and sec.built[r]) then
 		MakeRows(sec, y + 1, nil, y)
 	end
-	local e = page.built[r]
+	-- (the copy on the section shown: a designer's element row is made on each of its tabs)
+	local e = sec.built and sec.built[r]
 	W.Flash(e and e.row)
 end
 

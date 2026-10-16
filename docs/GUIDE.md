@@ -791,8 +791,11 @@ the interface away while you do not need them. Each element has one **Show** cho
   short grace when the pointer leaves, so moving from one button to the next does not flicker.
   Keys still work on a faded bar, and an On Mouseover bar at 0 % still shows when you point at it.
 
-Every element also comes back while Edit Layout, Edit Mode or the configurator is open. The
-elements: **Frames** (Player Frame and **Pet Frame Too**, Target Frame, Party Frames, Raid Frames,
+Every element also comes back while Edit Layout, Edit Mode or the configurator is open. Since
+0.25.0 each frame's and bar's **Fade** is the last Behaviour row of its own place: Unit & Group Frames' Player,
+Target (Pet: **Fades With The Player**), Buffs, Party, Raid and Personal; Bars' Action Bars (each bar), Menu &
+Bags (the micro menu and the bag bar) and XP & Rep; the Reminders page. The Fader page keeps how the fading works
+and the chat's and the map's rows. The elements: **Frames** (Player Frame and **Pet Frame Too**, Target Frame, Party Frames, Raid Frames,
 Buffs & Debuffs, the Reminders by your portrait, the **Personal Display**: Always or In Combat, and In
 Combat it also comes back while you cast), **Bars** (Main Action Bar, Action Bar 2 to 8 each on its own,
 Stance & Pet Bar, Micro Menu, Bag Bar, Experience & Reputation Bars)
