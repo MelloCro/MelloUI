@@ -1912,6 +1912,19 @@ local TEXT = {
 	scaleBusy = "Edit Layout is open: size it there.",
 	parts = "Parts:",   -- (the designers' Parts line)
 	pickPart = "Nothing to pick on it: its options are below.",
+	-- (the designers' block heads: shell-plan 4.6 / 4.8)
+	resetPart = "Reset part",
+	resetPartTip = "This part's settings back to their defaults, and its place on the frame. Switches of whole "
+		.. "modules and what belongs to your character stay as they are. It asks first.",
+	resetBlock = "Reset %s",
+	resetBlockTip = "Every setting of %s back to its default%s. Switches of whole modules and what belongs to your "
+		.. "character stay as they are. It asks first.",
+	resetElWhat = ": its own and its parts' (not All frames', not the places on the frame)",
+	blockAsk = "Put every setting of %s back to its default? It changes %s.",
+	blockPlace = "its place on the frame",
+	blockNone = "%s: %s is at its default already.",
+	copyElTip = "Every setting %s keeps for itself, copied from the one you choose; what they share is one setting "
+		.. "already. It asks first.",
 }
 local AREAS_REFUSED = "Not in combat: this would switch painted skins."   -- (UI Modifications' own line, areasRefused)
 
@@ -2523,13 +2536,21 @@ local function FightRefuses()
 	end
 	return false
 end
+-- a write wanted, once a binding (a row on several tabs -- a designer's
+-- element rows on its parts' tabs, its Shared rows -- is one setting): true
+-- when it was added
 local function Want(b, v)
+	if writeList[b] then
+		return false
+	end
+	writeList[b] = true
 	writeList[#writeList + 1] = b
 	writeList[#writeList + 1] = v
+	return true
 end
 local function Clear()
-	for i = #writeList, 1, -1 do
-		writeList[i] = nil
+	for k in pairs(writeList) do
+		writeList[k] = nil
 	end
 end
 
@@ -2583,8 +2604,7 @@ local function ResetRow(page, r, pick)
 		return
 	end
 	local v = DefaultOf(b)
-	if type(v) == "table" or Setting(b.mod, b.key) ~= v then
-		Want(b, v)
+	if (type(v) == "table" or Setting(b.mod, b.key) ~= v) and Want(b, v) then
 		-- (one setting for other picks too, as the row's "shared" hint says,
 		-- or for the whole page: the question counts it)
 		local picks = (r.keys and r.picksOf[b]) or (not r.keys and r.onlyList)
@@ -3003,7 +3023,9 @@ local function MakeNote(sec, r)
 end
 
 local function ElementJob(sec, job)
-	if job.isLink then
+	if job.dhead then
+		Lay.DesignerUI.Head(sec, job)
+	elseif job.isLink then
 		MakeLink(sec, job)
 	elseif job.rows then
 		MakeHeading(sec, job)
@@ -3270,6 +3292,297 @@ do
 		end
 	end
 
+	----------------------------------------------------------------------
+	-- The block heads (shell-plan 4.6 / 4.8): a part's tab opens with its
+	-- part's head ("<Part> · <Element>", Reset part), its element's block
+	-- with the element's ("<Element>", its line, Copy from…, Reset
+	-- <Element> (N)); the family's tab with the family's (Reset All frames
+	-- (N)). Every reset asks first (MelloUI:Confirm); nothing to change, or
+	-- a fight that would refuse it: the line at once.
+	----------------------------------------------------------------------
+
+	-- a head before `s` on tab `t`: the part's before the tab's first
+	-- section, the element's before its first element section with rows,
+	-- the family's before its first
+	function DUI.QueueHead(sec, t, s)
+		local kind
+		if s == t.sections[1] and (t.part or t.family) then
+			kind = t.part and "part" or "family"
+		elseif s.element and s == DUI.FirstOwn(t) then
+			kind = "element"
+		end
+		if kind then
+			local job = { dhead = kind, t = t, gap = sec.jobs and SECTION_GAP or 0 }
+			Queue(sec, job, ElementJob, job.gap + ROW_HEIGHT)
+		end
+	end
+
+	-- the tab's first element section with rows (the element's block has a
+	-- head only then)
+	function DUI.FirstOwn(t)
+		for _, s in ipairs(t.sections) do
+			if s.element and (#s.rows > 0 or #s.links > 0) then
+				return s
+			end
+		end
+		return nil
+	end
+
+	-- the rows a head's reset reaches, each with its tab and section: a
+	-- part's own (not its element's); an element's own and its parts' (not
+	-- the family's); the family's. fn(page, r, arg, t, s)
+	function DUI.EachIn(page, job, fn, arg)
+		local t = job.t
+		if job.dhead == "element" then
+			local el = t.el
+			DUI.TabRows(page, page.lay.tabOf[el.key .. ":element"], false, fn, arg)
+			for _, part in ipairs(el.parts or EMPTY) do
+				DUI.TabRows(page, page.lay.tabOf[el.key .. ":" .. part.key], true, fn, arg)
+			end
+		else
+			DUI.TabRows(page, t, job.dhead == "part", fn, arg)
+		end
+	end
+	function DUI.TabRows(page, t, own, fn, arg)
+		for _, s in ipairs(t and t.sections or EMPTY) do
+			if not (own and s.element) then
+				for _, r in ipairs(s.rows) do
+					if not r.note then
+						fn(page, r, arg, t, s)
+					end
+				end
+			end
+		end
+	end
+
+	-- a part head's place on the stage when it is moved there (the stage
+	-- showing its element; never an indicator's: Q10): the stage's key
+	function DUI.MovedPart(page, job)
+		local t, stage = job.t, page.stage
+		if job.dhead ~= "part" or not (stage and stage:IsShown() and page.elOfPick[stage.pick] == t.el.key) then
+			return nil
+		end
+		local key = page.stageOfPart[t.el.key] and page.stageOfPart[t.el.key][t.part.key]
+		return key and stage:PartMoved(key) and key or nil
+	end
+
+	-- the head's name in the lines: "Player's Name", "Player", "All frames"
+	function DUI.Name(job)
+		local t = job.t
+		if job.dhead == "part" then
+			return Owner(t.el.label) .. " " .. t.part.label
+		end
+		return (job.dhead == "family" and t.family or t.el).label
+	end
+
+	-- the writes a head's reset would make (writeList), counted; and its
+	-- stage part when moved
+	function DUI.Wants(page, job)
+		Clear()
+		DUI.EachIn(page, job, ResetRow)
+		return #writeList / 2, DUI.MovedPart(page, job)
+	end
+
+	function DUI.Reset(page, job)
+		local n, moved = DUI.Wants(page, job)
+		local title, name = page.lay.def.title, DUI.Name(job)
+		if n == 0 and not moved then
+			MelloUI:Print(TEXT.blockNone, title, name)
+		elseif n == 0 or Bulk() then
+			if moved then
+				page.stage:ResetPart(moved)
+			end
+			MelloUI:Print(TEXT.resetDone, title, name)
+		end
+		Clear()
+		MelloUI:RefreshConfig()
+	end
+
+	function DUI.AskReset(page, job)
+		local n, moved = DUI.Wants(page, job)
+		local refused = n > 0 and FightRefuses()
+		Clear()
+		local name = DUI.Name(job)
+		if n == 0 and not moved then
+			MelloUI:Print(TEXT.blockNone, page.lay.def.title, name)
+			return
+		elseif refused then
+			return
+		end
+		local changes = n > 0 and Settings(n) or nil
+		if moved then
+			changes = changes and (changes .. " and " .. TEXT.blockPlace) or TEXT.blockPlace
+		end
+		MelloUI:Confirm({
+			text = string.format(TEXT.blockAsk, name, changes),
+			accept = TEXT.resetAccept,
+			cancel = TEXT.cancel,
+			onAccept = function()
+				DUI.Reset(page, job)
+			end,
+		})
+	end
+
+	DUI.ResetClick = Shared("OnClick on the designers' block resets", function(self)
+		MelloUI:PlayUISound("tab")
+		DUI.AskReset(self.melloPage, self.melloHead)
+	end, "script")
+
+	-- an element's own settings, by where they stand (its part, section and
+	-- name): the binding; one the page's other elements share is not its own
+	-- (made on the first need, kept on the page)
+	function DUI.Own(page, el)
+		page.dOwn = page.dOwn or {}
+		local own = page.dOwn[el.key]
+		if not own then
+			own = {}
+			page.dOwn[el.key] = own
+			DUI.EachIn(page, { dhead = "element", t = { el = el } }, DUI.OwnRow, own)
+		end
+		return own
+	end
+	function DUI.OwnRow(_, r, own, t, s)
+		local b = r.b
+		if b and b.kind == "option" and not r.shared then
+			own[(t.part and t.part.key or "") .. "|" .. s.name .. "|" .. tostring(r.name)] = b
+		end
+	end
+
+	-- Copy from…'s values on an element's head: the other elements that keep
+	-- a setting where it keeps one of its own (none: no box)
+	function DUI.CopyValues(page, el)
+		local list = {}
+		local own = DUI.Own(page, el)
+		for _, other in ipairs(page.lay.def.elements or EMPTY) do
+			if other ~= el then
+				local theirs = DUI.Own(page, other)
+				for where, b in pairs(own) do
+					if theirs[where] and theirs[where] ~= b then
+						list[#list + 1] = { value = other.key, label = other.label }
+						break
+					end
+				end
+			end
+		end
+		return list
+	end
+
+	-- the writes a copy from element `source` to `el` would make (writeList),
+	-- counted
+	function DUI.CopyWants(page, source, el)
+		Clear()
+		local theirs = DUI.Own(page, source)
+		for where, to in pairs(DUI.Own(page, el)) do
+			local from = theirs[where]
+			if from and from ~= to then
+				local v = Fit(to, ValueOf(from))
+				if v ~= nil and v ~= ValueOf(to) then
+					Want(to, v)
+				end
+			end
+		end
+		return #writeList / 2
+	end
+
+	function DUI.ElementOf(page, key)
+		for _, el in ipairs(page.lay.def.elements or EMPTY) do
+			if el.key == key then
+				return el
+			end
+		end
+		return nil
+	end
+
+	-- Copy from… asks first, naming both; nothing to copy, or a fight that
+	-- would refuse it: the line at once
+	function DUI.AskCopy(page, el, key)
+		local source = DUI.ElementOf(page, key)
+		if not source or source == el then
+			return
+		end
+		local n = DUI.CopyWants(page, source, el)
+		local refused = n > 0 and FightRefuses()
+		Clear()
+		local title = page.lay.def.title
+		if n == 0 then
+			MelloUI:Print(TEXT.copiedNone, title, el.label, source.label)
+			return
+		elseif refused then
+			return
+		end
+		MelloUI:Confirm({
+			text = string.format(TEXT.copyAsk, Owner(source.label), el.label, Settings(n)),
+			accept = TEXT.copyAccept,
+			cancel = TEXT.cancel,
+			onAccept = function()
+				local m = DUI.CopyWants(page, source, el)
+				if m == 0 then
+					MelloUI:Print(TEXT.copiedNone, title, el.label, source.label)
+				elseif Bulk() then
+					MelloUI:Print(TEXT.copied, title, Settings(m), source.label, el.label)
+				end
+				Clear()
+				MelloUI:RefreshConfig()
+			end,
+		})
+	end
+
+	-- a head's Reset label: the count of what it would change, when any (not
+	-- while writes are under way: a reset's or a question's)
+	function DUI.Count(head)
+		if #writeList > 0 then
+			return
+		end
+		local n, moved = DUI.Wants(head.melloPage, head.melloHead)
+		Clear()
+		n = n + (moved and 1 or 0)
+		local text = string.format(TEXT.resetBlock, head.melloName)
+		if n > 0 then
+			text = text .. " (" .. n .. ")"
+		end
+		if head:GetText() ~= text then
+			head:SetText(text)
+		end
+	end
+
+	-- the head: a row's height, its title (and its line), the reset on the
+	-- right and, on an element, Copy from… left of it
+	function DUI.Head(sec, job)
+		local page, t, kind = sec.page, job.t, job.dhead
+		local own = (kind == "family" and t.family) or t.el
+		local title = kind == "part" and (t.part.label .. " · " .. t.el.label) or own.label
+		local row = W.Row(sec, sec.y + job.gap, ROW_HEIGHT, title, kind ~= "part" and own.line or nil, nil, RowOpts(sec))
+		local reset
+		if kind == "part" then
+			reset = W.Button(row, TEXT.resetPart, 110, SKIN, { onClick = DUI.ResetClick })
+			PageTip(reset, TEXT.resetPart, TEXT.resetPartTip)
+		else
+			reset = W.Button(row, string.format(TEXT.resetBlock, own.label), 160, SKIN, { onClick = DUI.ResetClick })
+			reset.melloName = own.label
+			PageTip(reset, string.format(TEXT.resetBlock, own.label), string.format(TEXT.resetBlockTip, own.label,
+				kind == "element" and TEXT.resetElWhat or ""))
+			sec.refreshers[#sec.refreshers + 1] = function()
+				DUI.Count(reset)
+			end
+		end
+		reset:SetPoint("RIGHT", row, "RIGHT", -10, 0)
+		reset.melloPage, reset.melloHead = page, job
+		row.reset = reset
+		local values = kind == "element" and DUI.CopyValues(page, own)
+		if values and #values > 0 then
+			local el = own
+			local copy
+			copy = W.Dropdown(row, COPY_W, NoValue, function(value)
+				DUI.AskCopy(page, el, value)
+				copy:Refresh()
+			end, values, { default = TEXT.copy, tooltip = string.format(TEXT.copyElTip, own.label) })
+			copy:SetPoint("RIGHT", reset, "LEFT", -10, 0)
+			row.copy = copy
+		end
+		job.row = row
+		Placed(sec, row, job.gap + ROW_HEIGHT)
+	end
+
 	-- the pinned head under the view's top (the stage carries the chips)
 	function DUI.Pin(page, scroll)
 		local stage = page.stage
@@ -3443,6 +3756,9 @@ function BuildElementPage(key, width)
 		local sec = NewSection(page, t.name)
 		sec.hasNew = t.new
 		for _, s in ipairs(t.sections) do
+			if page.dui then
+				page.dui.QueueHead(sec, t, s)
+			end
 			if #s.rows > 0 or #s.links > 0 then
 				s.gap = s == t.firstSection and 0 or SECTION_GAP
 				Queue(sec, s, ElementJob, s.gap + W.HEADER_HEIGHT)

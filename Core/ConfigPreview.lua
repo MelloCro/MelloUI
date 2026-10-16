@@ -1915,6 +1915,20 @@ do
 		return def.Moved and Num(def.Moved(stage.pick)) or 0
 	end
 
+	-- (the designers' Reset part) one part of the pick shown moved from its
+	-- home (its store holds a place; never an indicator: Q10), and put back
+	function M.PartMoved(stage, key)
+		local part = key and stage.byKey[key]
+		return part ~= nil and part.class ~= "indicator" and part.store ~= nil and part.store.get ~= nil
+			and part.store.get(part) ~= nil
+	end
+
+	function M.ResetPart(stage, key)
+		if stage:PartMoved(key) then
+			E.Write(stage, stage.byKey[key], nil)
+		end
+	end
+
 	-- every moved part back, after one question (none moved: the line at once)
 	function M.ResetAll(stage)
 		local def = stage.def

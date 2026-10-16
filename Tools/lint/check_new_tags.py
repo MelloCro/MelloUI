@@ -141,6 +141,14 @@ PAGE_TOOLS = {
     "Core/Config.lua:Button(Reset this page)": "Reset this page (puts the page's settings back to their defaults)",
     "Core/Config.lua:Button(Change…)#2": "Your setup's second Change… (Home's palette and Kit Colours rows jump "
                                           "to their one place on the Look page)",
+    # (one look, the designers' block heads: shell-plan 4.6 / 4.8)
+    "Core/Config.lua:Button(Reset part)": "a designer part's Reset part (the part's settings and its place on the "
+                                          "frame back to their defaults)",
+    "Core/Config.lua:Button(string.format(TEXT.resetBlock, own.label))": "a designer element's or family's Reset "
+                                                                         "<Element> (N) (its settings back to their "
+                                                                         "defaults)",
+    "Core/Config.lua:W.Dropdown(row)": "a designer element's Copy from… (an element's own settings copied from "
+                                       "another element)",
 }
 # a control builder's call whose label is the schema's own row: `opt.<field>` (the old pages' builders), a layout
 # row's `r.name` (the rebuild's element pages: Core/ConfigLayout.lua's rows, each a module's setting)
