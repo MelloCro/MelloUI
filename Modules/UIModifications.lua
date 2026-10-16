@@ -1056,7 +1056,11 @@ function M:OnSettingChanged(key, value, db)
 		return
 	elseif key:sub(1, 4) == "qol_" then
 		local name = key:sub(5)
-		if MelloUI:GetModule(name) then
+		local m = MelloUI:GetModule(name)
+		-- (an `always` tweak has no switch: a key left from before -- Buffs &
+		-- Debuffs' old master, in an older profile an apply clears -- switches
+		-- nothing)
+		if m and not (type(m.tweak) == "table" and m.tweak.always) then
 			MelloUI:SetModuleEnabled(name, value and true or false)
 		end
 	elseif MelloUI:GetModule(key) then

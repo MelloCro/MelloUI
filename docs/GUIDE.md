@@ -1918,10 +1918,13 @@ in Edit Layout, stays where you put it. The keep-clear only ever moves it down.
 
 ### Buffs & Debuffs
 
-MelloUI's own aura rows (off by default), drawn by the game's aura container so they keep working
-in combat: your buffs and debuffs beside the minimap or where the game's buff bar is (right-click
-cancels a buff; the game's bar comes back in Edit Mode), the target's debuffs and buffs under the
-target frame, and your debuffs on enemy nameplates. Each part has its own switch and icon size.
+MelloUI's own aura rows, drawn by the game's aura container so they keep working in combat: your
+buffs and debuffs beside the minimap or where the game's buff bar is (right-click cancels a buff;
+the game's bar comes back in Edit Mode), the target's debuffs and buffs under the target frame, and
+your debuffs on enemy nameplates. Each part has its own switch and icon size -- Your Buffs And
+Debuffs (Unit & Group Frames > Buffs), the target's (Target > Buffs & Debuffs) and Enemy Nameplates
+(Nameplates) -- and there is no switch over them: all three off, nothing of it is made. A setup from
+before 0.25.0 whose Buffs & Debuffs switch was off starts with the three off.
 
 "Attach To The Minimap Column" (on by default, needs the Minimap Kit) lines your buffs up level
 with the map's top, growing away from it, with your debuffs on the line under them; with the

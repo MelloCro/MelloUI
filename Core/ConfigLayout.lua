@@ -323,8 +323,8 @@ function L.Define(R, Link)
 	end
 	-- the game's own buff and debuff icons: shown unless MelloUI's rows
 	-- (Buffs & Debuffs with Your Buffs And Debuffs) stand in their place
-	local GAME_AURAS = { any = { { key = "UIModifications.qol_Auras", notValue = true },
-		{ key = "Auras.player", value = false } } }
+	-- (one look Q9: no Buffs & Debuffs master -- Your Buffs And Debuffs alone)
+	local GAME_AURAS = { any = { { key = "Auras.player", value = false } } }
 	-- the game's objective tracker: hidden while MelloUI's Quest Tracker is on
 	local GAME_TRACKER = { key = "QuestTracker.!enabled", value = false,
 		line = "Only for the game's tracker (MelloUI's Quest Tracker off)" }
@@ -600,7 +600,6 @@ function L.Define(R, Link)
 	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.position")
 	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.offsetX")
 	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.offsetY")
-	UGF({ "buffs:element", "target:auras" }, "General", "UIModifications.qol_Auras")
 	R("UnitGroupFrames", "buffs:element", "General", "Auras.player", { name = "Buffs & Debuffs On This Frame" })
 	R("UnitGroupFrames", "target:auras", "General", "Auras.target", { name = "Buffs & Debuffs On This Frame" })
 	UGF({ "buffs:element", "target:auras" }, "Text", "Auras.textFont", { name = "Numbers Font", plus = "the nameplates' debuffs" })
@@ -609,17 +608,17 @@ function L.Define(R, Link)
 	-- target's; with MelloUI's rows in their place it has nothing to darken.
 	-- Keep Dispel Colours also serves the Cooldown Manager's icons)
 	R("UnitGroupFrames", "buffs:element", "Look", "DarkMode.auras",
-		{ when = { any = GAME_AURAS.any, line = "Only on the game's own icons (Buffs & Debuffs or Your Buffs And Debuffs off)" } })
+		{ when = { any = GAME_AURAS.any, line = "Only on the game's own icons (Your Buffs And Debuffs off)" } })
 	R("UnitGroupFrames", "buffs:element", "Look", "DarkMode.keepDispelColor",
 		{ when = { any = { GAME_AURAS, { key = "DarkMode.cooldowns", value = true } },
-			line = "Only on the game's own icons (Buffs & Debuffs or Your Buffs And Debuffs off) or the Cooldown Manager's" } })
+			line = "Only on the game's own icons (Your Buffs And Debuffs off) or the Cooldown Manager's" } })
 	-- (0.19.9: one set of rows for your buffs -- MelloUI's own rows while
 	-- they show, else the game's buff and debuff bars in the Edit Mode
 	-- layout: Tweaks' Buff Layout; the size in pixels on both picks)
 	R("UnitGroupFrames", "buffs:element", "Layout", "Tweaks.buffSize", { name = "Icon Size" })
 	R("UnitGroupFrames", "target:auras", "Layout", "Auras.targetSize", { name = "Icon Size" })
 	-- (0.20.1) the rows' own layout sleeps while they hang under the player frame (the target rows' look there)
-	local NOT_FRAMED = { any = { GAME_AURAS.any[1], GAME_AURAS.any[2], { key = "Auras.playerFrame", value = false } },
+	local NOT_FRAMED = { any = { GAME_AURAS.any[1], { key = "Auras.playerFrame", value = false } },
 		line = "Not with Attach To The Player Frame" }
 	R("UnitGroupFrames", "buffs:element", "Layout", "Tweaks.buffSpacing", { when = NOT_FRAMED })
 	R("UnitGroupFrames", "buffs:element", "Layout", "Tweaks.buffPerRow", { when = NOT_FRAMED })
@@ -1246,9 +1245,8 @@ function L.Define(R, Link)
 		line = "Only with Name Shade: Whole plate on the Nameplate Kit (the name band keeps its own)" } })
 	Link("Nameplates", "Plates", "Look", "BarTextures.healthColor", "Health Bar Colour")
 	Link("Nameplates", "Plates", "Text", "UIModifications.nameFormat", "Names")
-	Link("Nameplates", "Auras & Icons", "Look", "UIModifications.auraBorder", "Aura Border", { when = { all = {
-		{ key = "UIModifications.qol_Auras", value = true }, { key = "Auras.nameplates", value = true } },
-		line = "Only on MelloUI's own debuff rows (Buffs & Debuffs and Enemy Nameplates on)" } })
+	Link("Nameplates", "Auras & Icons", "Look", "UIModifications.auraBorder", "Aura Border", { when = {
+		key = "Auras.nameplates", value = true, line = "Only on MelloUI's own debuff rows (Enemy Nameplates on)" } })
 	Link("ActionBars", "Bars", "Look", "UIModifications.shade_actionbars", "UI Shade")
 	Link("ActionBars", "Bars", "Look", "UIModifications.buttonBorder", "Button Border")
 	Link("Minimap", "Minimap", "Look", "UIModifications.shade_minimap", "UI Shade")

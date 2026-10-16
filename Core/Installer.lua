@@ -178,8 +178,10 @@ local U_PREFERENCE = { nameFormat = true }
 -- and the player's own Group Frames work (one look, the user's answer to
 -- F-v3's needs_user 8: Install leaves the indicator lists -- sets, started --
 -- and the frames' part places -- parts, partyParts -- alone, Revert too)
+-- (one look C13a: Buffs & Debuffs' fold mark, Auras.qolFolded -- in a
+-- profile's text so an older text is folded, never set by a setup)
 local NEVER = { [UMB] = { reduceMotion = true, unlock = true, qol_Tweaks = true },
-	GroupFrames = { sets = true, started = true, parts = true, partyParts = true } }
+	GroupFrames = { sets = true, started = true, parts = true, partyParts = true }, Auras = { qolFolded = true } }
 
 -- the installer's own facts about this machine and character, and a
 -- one-time flag: the player's own like the keep lists' keys (never carried
@@ -427,11 +429,16 @@ end
 
 -- "panel": a kit panel, switched by UI Modifications' key of its name;
 -- "tweak": a folded feature, qol_<name>, on unless false; "tweakOff": the
--- same, off unless true; "always": folded, no switch; "module": its own flag
+-- same, off unless true; "always": folded, no switch; "rows": folded, its
+-- rows its switches (`switches`: Buffs & Debuffs' three -- one look, the
+-- user's A: one switch here writes them together); "module": its own flag
 local function Kind(m)
 	local tweak = m and m.tweak
 	if type(tweak) == "table" then
-		return tweak.always and "always" or (tweak.off and "tweakOff") or "tweak"
+		if tweak.always then
+			return type(m.switches) == "table" and "rows" or "always"
+		end
+		return (tweak.off and "tweakOff") or "tweak"
 	elseif m and m.hidden and type(m.window) == "table" then
 		return "panel"
 	end
@@ -451,17 +458,44 @@ I.RoleOf = RoleOf
 local FEATURE_ROLES = { feature = true, adds = true, replaces = true }
 
 -- the draft key that switches a module: its own flag, or UI Modifications'
--- qol_<name> for a folded feature (nil: a kit panel, or one with no switch)
+-- qol_<name> for a folded feature, or <name>.@on for one whose rows are its
+-- switches (Overlay writes them all) (nil: a kit panel, or one with no
+-- switch)
 local function SwitchKey(m)
 	local kind = m and Kind(m)
 	if kind == "module" then
 		return "!" .. m.name
 	elseif kind == "tweak" or kind == "tweakOff" then
 		return UMB .. ".qol_" .. m.name
+	elseif kind == "rows" then
+		return m.name .. ".@on"
 	end
 	return nil
 end
 I.SwitchKey = SwitchKey
+
+-- a feature on under a state: running, and for one whose rows are its
+-- switches, one of them on (the state's, else its default)
+function I:FeatureOn(state, name)
+	if not self:EffectiveOn(state, name) then
+		return false
+	end
+	local m = MelloUI.modules[name]
+	if not (m and Kind(m) == "rows") then
+		return true
+	end
+	local own = state.modules[name] or EMPTY
+	for _, key in ipairs(m.switches) do
+		local v = own[key]
+		if v == nil then
+			v = m.defaults[key]
+		end
+		if v then
+			return true
+		end
+	end
+	return false
+end
 
 -- the Features step's members the draft switches on, in the step's order
 function I:FeaturesOn(draft)
@@ -563,7 +597,9 @@ function I:EffectiveOn(state, name)
 	local um = state.modules[UMB] or EMPTY
 	if kind == "panel" then
 		return um.reskin ~= false and um[name] ~= false
-	elseif kind == "always" then
+	elseif kind == "always" or kind == "rows" then
+		-- (one whose rows are its switches runs with UI Modifications: with
+		-- them all off it makes nothing -- I:FeatureOn reads the rows)
 		return true
 	elseif kind == "tweakOff" then
 		return um["qol_" .. name] == true
@@ -639,7 +675,14 @@ local function Overlay(state, set)
 				s.enabled[flag] = value and true or false
 			else
 				local name, key = spec:match("^([^.]+)%.(.+)$")
-				if name then
+				local m = key == "@on" and Module(name)
+				if m and type(m.switches) == "table" then
+					-- (a module whose rows are its switches: all of them)
+					s.modules[name] = s.modules[name] or {}
+					for _, row in ipairs(m.switches) do
+						s.modules[name][row] = value and true or false
+					end
+				elseif name then
 					s.modules[name] = s.modules[name] or {}
 					s.modules[name][key] = DeepCopy(value)
 				end
@@ -797,6 +840,15 @@ local function CopySwitch(t, from, m)
 		um["qol_" .. name] = DeepCopy(fum["qol_" .. name])
 	elseif kind == "module" then
 		t.enabled[name] = from.enabled[name]
+	elseif kind == "rows" then
+		local own, theirs = t.modules[name], from.modules[name] or EMPTY
+		if not own then
+			own = {}
+			t.modules[name] = own
+		end
+		for _, key in ipairs(m.switches) do
+			own[key] = DeepCopy(theirs[key])
+		end
 	end   -- always: no switch
 end
 
@@ -806,6 +858,11 @@ local function SwitchOff(t, m)
 		t.modules[UMB]["qol_" .. name] = false
 	elseif kind == "module" then
 		t.enabled[name] = false
+	elseif kind == "rows" then
+		t.modules[name] = t.modules[name] or {}
+		for _, key in ipairs(m.switches) do
+			t.modules[name][key] = false
+		end
 	end   -- panel: through the reskin (the setup's own set); always: untouched
 end
 

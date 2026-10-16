@@ -37,8 +37,18 @@ local M = MelloUI:RegisterModule("Auras", {
 	icon = "Interface\\Icons\\Spell_Holy_WordFortitude",
 	flavour = "Buffs and debuffs in rows of your own, drawn by the game itself, so they never go dark in a fight.",
 	role = "replaces",
-	tweak = { label = "Buffs & Debuffs", desc = "MelloUI's own rows of buffs and debuffs: yours in place of the game's buff bar, the target's under its frame, your debuffs on enemy nameplates.", order = 1, off = true },
-	enabledByDefault = false,
+	-- (one look Q9, the user 2026-10-15: no master switch -- the three rows'
+	-- own switches, Your Buffs And Debuffs, Target Frame and Enemy Nameplates,
+	-- are the switches; Core.lua's MERGES turns them off for a save whose
+	-- master was off, so nothing changes on screen for it)
+	tweak = { label = "Buffs & Debuffs", desc = "MelloUI's own rows of buffs and debuffs: yours in place of the game's buff bar, the target's under its frame, your debuffs on enemy nameplates.", order = 1, always = true },
+	-- (one look, the user's A, 2026-10-16) its switches: the installer's
+	-- Buffs & Debuffs switch writes the three together, a setup that turns the
+	-- feature off turns the three off, and Everything Off holds them off
+	-- (Core/Installer.lua's "rows" kind, Core.lua's FreshProfileText).
+	-- Auras.qolFolded: the master's fold done (MERGES; no default, so a
+	-- profile's text made since carries it, and one from before is folded)
+	switches = { "player", "target", "nameplates" },
 	defaults = {
 		player = true,
 		-- (your rows' layout: set by Unit Frames > Buffs & Debuffs > Layout's
@@ -97,9 +107,15 @@ end
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
 
+-- the client's aura container there to be made: asked once (its probe is a
+-- frame), and only once a row is wanted (one look Q9: the module is on for
+-- everyone, so with all three rows off nothing at all is made)
 local function Available()
-	return AnchorUtil and AnchorUtil.FlowLayoutAxis and AuraContainerSortMethod and AuraContainerSortDirection
-		and pcall(CreateFrame, "AuraContainer", nil, nil, "CustomAuraContainerTemplate")
+	if M.available == nil then
+		M.available = (AnchorUtil and AnchorUtil.FlowLayoutAxis and AuraContainerSortMethod and AuraContainerSortDirection
+			and pcall(CreateFrame, "AuraContainer", nil, nil, "CustomAuraContainerTemplate")) and true or false
+	end
+	return M.available
 end
 
 --------------------------------------------------------------------------------
@@ -1302,16 +1318,33 @@ local function ApplyAll()
 	SetNameplates(M.isEnabled and db.nameplates)
 end
 
+-- the events a kind of rows needs, only while its switch is on (one look Q9:
+-- with the three switches the only ones, all three off is nothing at all --
+-- no rows, no events)
+local function Events()
+	local db, on = M.db, M.isEnabled
+	if on and db.nameplates then
+		eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+		eventFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+	else
+		eventFrame:UnregisterEvent("NAME_PLATE_UNIT_ADDED")
+		eventFrame:UnregisterEvent("NAME_PLATE_UNIT_REMOVED")
+	end
+	if on and db.target then
+		eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+	else
+		eventFrame:UnregisterEvent("PLAYER_TARGET_CHANGED")
+	end
+end
+
 function M:OnEnable(db)
 	self.db = db
-	if not Available() then
+	if (db.player or db.target or db.nameplates) and not Available() then
 		MelloUI:Notice("Buffs & Debuffs: this client has no aura container, so the game's own rows stay.")
 		return
 	end
 	WatchEditMode()
-	eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
-	eventFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
-	eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+	Events()
 	ApplyAll()
 end
 
@@ -1338,8 +1371,10 @@ function M:OnSettingChanged(key, value, db)
 		end, FRAME_PLACE_KEY .. ": switched")
 	elseif key == "target" then
 		SetTarget(value)
+		Events()
 	elseif key == "nameplates" then
 		SetNameplates(value)
+		Events()
 	elseif key == "playerColumn" then
 		PlacePlayer()
 	elseif key == "playerSize" or key == "playerPerRow" then

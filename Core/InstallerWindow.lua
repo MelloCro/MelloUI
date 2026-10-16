@@ -1537,11 +1537,11 @@ ShowDone = function()
 		if option.base == "fresh" then
 			-- (read from the settings now, as the engine reads a state: kept
 			-- after a /reload, the draft is gone)
-			local now = { enabled = MelloUI.db.enabled, modules = { UIModifications = MelloUI:GetModuleDB("UIModifications") } }
+			local now = { enabled = MelloUI.db.enabled, modules = MelloUI.db.modules }
 			local any = false
 			for _, group in ipairs(I.FEATURE_GROUPS) do
 				for _, name in ipairs(group.members) do
-					any = any or I:EffectiveOn(now, name)
+					any = any or I:FeatureOn(now, name)
 				end
 			end
 			lines[#lines + 1] = any and TEXT.doneFeatures or TEXT.doneFresh
@@ -1670,10 +1670,13 @@ local function WizardSteps()
 			featureKeys, featureUM = {}, {}
 			for _, group in ipairs(I.FEATURE_GROUPS) do
 				for _, name in ipairs(group.members) do
-					local key = I.SwitchKey(MelloUI:GetModule(name))
+					local m = MelloUI:GetModule(name)
+					local key = I.SwitchKey(m)
 					if key then
 						featureKeys[#featureKeys + 1] = key
-						if key:sub(1, 16) == "UIModifications." then
+						-- (one whose rows are its switches runs under UI
+						-- Modifications too: Buffs & Debuffs)
+						if key:sub(1, 16) == "UIModifications." or I.Kind(m) == "rows" then
 							featureUM[#featureUM + 1] = key
 						end
 					end

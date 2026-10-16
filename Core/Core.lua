@@ -4605,6 +4605,34 @@ do
 				end
 			end
 		end,
+		-- one look Q9 (the user, 2026-10-15): Buffs & Debuffs' master switch
+		-- (UI Modifications' qol_Auras, off by default) folded into its three
+		-- rows' switches (Auras.player, target, nameplates). From before: a
+		-- save with no fold mark (Auras.qolFolded), or a settings text with
+		-- none in it (a text made since carries it: it has no default). Its
+		-- master not on: the three off, as it showed them -- a new player's
+		-- too (their first login: Everything Off holds them off anyway). The
+		-- master's key goes; the mark is set, once
+		function(self)
+			local ui, loaded = Raw(self, "UIModifications"), self.textKeys
+			local au = Own(self, "Auras")
+			if not au then
+				return
+			end
+			local old
+			if loaded then
+				old = not loaded["Auras.qolFolded"]
+			else
+				old = au.qolFolded ~= true
+			end
+			if old and not (ui and ui.qol_Auras == true) then
+				au.player, au.target, au.nameplates = false, false, false
+			end
+			if ui then
+				ui.qol_Auras = nil
+			end
+			au.qolFolded = true
+		end,
 	}
 
 	function MelloUI:MergeSettings()
@@ -4616,6 +4644,7 @@ do
 		end
 		self.textKeys = nil   -- (the last settings text's keys: read once, ApplySettingsText)
 	end
+
 end
 
 -- After a (late) adoption, modules that are already running must re-read
@@ -4762,6 +4791,13 @@ function MelloUI:FreshProfileText()
 		table.sort(keys)
 		for _, key in ipairs(keys) do
 			parts[#parts + 1] = name .. "." .. key .. "=b0"
+		end
+		-- (one look, the user's A: a module whose rows are its switches --
+		-- Buffs & Debuffs' -- has those off)
+		for _, key in ipairs(type(module.switches) == "table" and module.switches or {}) do
+			if module.defaults[key] == true then
+				parts[#parts + 1] = name .. "." .. key .. "=b0"
+			end
 		end
 	end
 	return table.concat(parts, ";")
