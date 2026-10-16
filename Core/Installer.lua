@@ -182,7 +182,7 @@ local U_PREFERENCE = { nameFormat = true }
 -- profile's text so an older text is folded, never set by a setup)
 local NEVER = { [UMB] = { reduceMotion = true, unlock = true, qol_Tweaks = true },
 	GroupFrames = { sets = true, started = true, parts = true, partyParts = true }, Auras = { qolFolded = true },
-	BarText = { qolFolded = true }, ClassIcons = { qolFolded = true } }
+	BarText = { qolFolded = true }, ClassIcons = { qolFolded = true }, CooldownText = { qolFolded = true } }
 
 -- the installer's own facts about this machine and character, and a
 -- one-time flag: the player's own like the keep lists' keys (never carried

@@ -58,7 +58,7 @@ local M = MelloUI:RegisterModule("ActionButtons", {
 	flavour = "See which button you press, and which spell cannot reach its target.",
 	role = "adds",
 	-- (not on the installer's Features step: its two columns are full, as for
-	-- the Swing Timers and Discard; on by default, its switches on Action Bars > Bars)
+	-- the Swing Timers and Discard; on by default, its switches on Bars > Action Bars > Button)
 	installer = false,
 	enabledByDefault = true,
 	defaults = {

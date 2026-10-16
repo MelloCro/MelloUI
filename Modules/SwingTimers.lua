@@ -94,9 +94,9 @@ local M = MelloUI:RegisterModule("SwingTimers", {
 	installer = false,
 	-- the player's own game setting, given back when off: never in a profile
 	keep = { "savedSwing" },
-	-- (one look, 2026-10-15: `look` "rim", the Round rim, its only value; a saved "castbar" / "hairline" -- Framed and
-	-- Hairline, the painted looks -- is ignored and set to it at each enable)
-	defaults = { shot = true, melee = true, offhand = true, look = "rim", text = true, show = "combat", width = 200,
+	-- (one look, the Bars audit's point 3, the user's yes: no Look -- the Round rim is the bars' one look; an old
+	-- save's `look` is dropped at each enable, Rim.OneLook)
+	defaults = { shot = true, melee = true, offhand = true, text = true, show = "combat", width = 200,
 		height = 10 },
 	options = {
 		{ type = "toggle", key = "shot", name = "Shot Bar",
@@ -105,9 +105,6 @@ local M = MelloUI:RegisterModule("SwingTimers", {
 		  desc = "The melee bar: each swing of your main hand counted down, shrinking to the middle. A wand's shots (Shoot) count down on it too." },
 		{ type = "toggle", key = "offhand", name = "Off Hand Bar",
 		  desc = "A thinner bar under the melee bar for your off-hand weapon's swings, while you carry one." },
-		{ type = "dropdown", key = "look", name = "Look",
-		  values = { { value = "rim", label = "Round rim" } },
-		  desc = "Round rim: your weapon's icon in a round rim left of a flat dark bar (the bow on the shot bar, the main hand's weapon on the melee bar, the wand's while a wand shoots), the seconds past the bar's right end. Out of range the icon turns red and the bar dims." },
 		{ type = "toggle", key = "text", name = "Seconds",
 		  desc = "The seconds left, past the bar's right end; on the shot bar Hold and Moving there while you aim. Off: the bars alone." },
 		{ type = "slider", key = "width", name = "Width", min = 100, max = 400, step = 5,
@@ -471,11 +468,11 @@ function Rim.Read()
 	end
 end
 
--- (one look) the Look's saved value from before (Framed "castbar", Hairline "hairline": the painted looks, gone) read
--- as its one value; at each start, as a profile may bring an old one
+-- (one look; the Bars audit's point 3) the Look's saved value from before (Round rim, or Framed "castbar" / Hairline
+-- "hairline", the painted looks) dropped: the Round rim is the one look; at each start, as a profile may bring one
 function Rim.OneLook(db)
-	if type(db) == "table" and db.look ~= "rim" then
-		db.look = "rim"
+	if type(db) == "table" and db.look ~= nil then
+		db.look = nil
 	end
 end
 

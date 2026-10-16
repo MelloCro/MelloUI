@@ -86,10 +86,10 @@ for _, g in ipairs(GROUPS) do
 	options[#options + 1] = { type = "dropdown", key = g.keys.backdrop, name = "Backdrop", values = BACKDROP_VALUES,
 		desc = "The border of the backdrop round " .. what .. ": the red or iron gems on its corners, or one of the border "
 			.. "styles of Look > Borders (drawn heavy, its inner corners mitred). Each element's backdrop is switched on "
-			.. "under Backdrops; switched-on elements placed together share one backdrop, in the look of the first of them: "
+			.. "on Bars (its Backdrop); switched-on elements placed together share one backdrop, in the look of the first of them: "
 			.. "Action Bar 1, the other bars, the micro menu, the bag bar." }
 	options[#options + 1] = { type = "dropdown", key = g.keys.background, name = "Backdrop Background", values = BACKGROUND_VALUES,
-		desc = "What lies behind the buttons inside the backdrop. All three are chosen with pictures on Action Bars > Bars." }
+		desc = "What lies behind the buttons inside the backdrop. All three are chosen with pictures on Oldschool > Frame Art." }
 	options[#options + 1] = { type = "dropdown", key = g.keys.buttonBackground, name = "Button Background", values = BACKGROUND_VALUES,
 		desc = "What a button shows inside its rim where it has no icon." }
 end

@@ -126,7 +126,7 @@ Close it without installing and nothing changes. Run it again any time: **Instal
 
 - **Top bar:** on the left, **Preview** (below); on the right, **Install…** (the installer), **Edit Layout** (move and resize the interface on the screen itself, as in Drag. Everything. above; it works with UI Modifications off too) and close.
 - **Preview:** see how your interface behaves in a fight before you are in one. The button opens a list: **Solo Fight** and **Party Fight** play everything, then one part at a time: **Fader**, **Reminders**, **Widget Column**, **Party Frames**, **Damage Meter**, **Combat Text**, **Gains** and **Personal Display**. A click plays a short scene (about 26 seconds) with made-up names and numbers: resting, the pull, a fight, the kill and after it. The settings window steps aside while it plays and comes back after; a strip at the top of the screen names what plays, the moment ("Resting", "In a fight", "After the fight") and has **Stop**. What you set shows as you set it: what you fade In Combat comes back in the fight and fades after it, the reminders hide in the fight, the widgets that wait for a fight's end fold away. Party Fight and Party Frames draw stand-ins where your party frames sit (the game shows its own only in a real group), their health falling and healed back; the meter's numbers and race bar show the made-up group, and the fight summary after the kill says it is made up (it is never in your Fight History). Your Damage shows at your target's nameplate while you have a target. A part whose module is off is dimmed in the list. Out of combat only: a real fight, or opening Edit Layout, stops it at once (the settings window then stays shut). `/mello preview solo`, `party` or a part's word (`fader`, `reminders`, `widgets`, `partyframes`, `meter`, `combattext`, `gains`, `personal`), and `/mello preview stop`.
-- **Side list:** Home, then the pages in five groups, then Profiles: **The look** (Look, Windows, Fader, Oldschool: the painted reskin's own settings), **Frames and bars** (Unit & Group Frames, Nameplates, Action Bars, Minimap, Bars & Meters, Swing Timers), **Chat and text** (Chat, Tooltip, Screen Text), **Quests and travel** (Quest Tracker, Quest List, Route, Reminders, Gains) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
+- **Side list:** Home, then the pages in five groups, then Profiles: **The look** (Look, Windows, Fader, Oldschool: the painted reskin's own settings), **Frames and bars** (Unit & Group Frames, Nameplates, Bars, Minimap, Meters), **Chat and text** (Chat, Tooltip, Screen Text), **Quests and travel** (Quest Tracker, Quest List, Route, Reminders, Gains) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
 - **Pages:** every page is laid out the same way. At the top its name and what it holds, its switch where the page is one module's (Look's is **UI Modifications**: the painted reskin and every feature that tunes the interface go with it; the palette, the UI Shade and Reduce Motion keep working without it) and **Reset this page** (every setting on the page back to its default, on every tab; on a page with a picker, for the one picked and the settings every pick shares; the switches of whole modules and what is your character's own stay; it asks first, saying how many settings change). Under it the tabs, and on every tab the same sections in the same order: General, Look, Text, Layout, Behaviour, Sound, Advanced (a section with nothing in it is left out). Pages and tabs slide and fade in, and the wheel glides the page and the list; Reduce Motion (Look > General) makes all of it instant.
 - **Every setting in one place:** each setting lives on one page only. What the whole interface shares (the palette, the Kit Colours, the borders, the Font Style and its sizes, the UI Shade and its areas, the parchment sheets, Dark Mode's brightness, the bar texture and the health bar colours) lives on **Look**. A page it touches shows a **link row**: the setting's value and a button naming the page it lives on (**Look >**, **Minimap >**, **Windows >**) that takes you to it.
 - **Designers:** Unit & Group Frames is a designer. Its frames stand in a row at the top: Player, Target, Focus, Pet, Buffs, Party, Raid, Personal, and **All frames** for what every frame shares (the heal light, the big moments, the debuff glow). Pick one, then one of its parts on the line under it (Name, Health bar, Portrait…): the part's options come first, the whole frame's under them, each heading saying whose it is ("Player · Look"). An option that is one setting for several frames is marked **Shared**, and its tooltip names the others. The **Party** and **Raid** frames show your frame large at the top (it stays there while the page scrolls): click a part on it to open that part's options, or a part on the line to pick it there. Each text part (a name, the values, the health text, the buff and indicator numbers, the Personal Display's text) has its own **Font** in its Text section: **Shared** keeps the face Look > Fonts gives it.
@@ -306,12 +306,21 @@ Dark Mode is a personal preference: its switch and every setting here stay out o
 shared strings and the shipped MelloUI profile, and no installer setup changes it (Fresh
 start's dark mode row sets it as you choose). A new character starts with it off.
 
+### Bars
+
+One designer page for your bars: pick **Action Bars**, **Menu & Bags**, **Cast Bar**, **Swing Timers**, **XP & Rep**
+or **Cooldowns** (the game's Cooldown Manager), then a part of it (a button, the cooldown timer, the end caps, the
+page arrows; the micro menu or the bag bar; a swing bar; the XP bar) for its own settings; the bar's own settings
+are under the parts'. Keybind Mode is in the page's header. The painted action bar skin's settings are on Oldschool,
+and the cooldown timers' style (text size, tenths, colours, minimum duration) on Look > Icons, as it is the action
+bars' and the nameplates' alike. The damage meter and the FPS / latency readout are on **Meters**.
+
 ### Action Bars (backdrops)
 
 The reskin can put a painted backdrop round each bar: a frame with a gem on each outer
-corner and stone behind the buttons. Each element has its own switch (Action Bars >
-Backdrops): Action Bars 1 to 8, the stance, pet and possess bars, the micro menu, the bag bar
-and the two experience / reputation bars. A new install starts with none; the installer's
+corner and stone behind the buttons. Each element has its own switch (Bars > Action Bars for
+Action Bars 1 to 8 and the stance, pet, possess and totem bars; Menu & Bags for the micro menu and the bag bar; XP &
+Rep for the two experience / reputation bars). A new install starts with none; the installer's
 MelloUI setup turns on Action Bar 1's, the micro menu's and the bag bar's, and a player from
 before 0.18.5 keeps the backdrops they had.
 
@@ -322,8 +331,8 @@ before 0.18.5 keeps the backdrops they had.
 - **One on is enough.** A shared backdrop shows when one of its elements has its switch on; the
   others join it as they are.
 - **Its look is its leader's:** Action Bar 1, then the other bars in order, then the micro menu,
-  then the bag bar. The gems and the backgrounds stay on Action Bars > Bars > Look, per pick
-  (Action Bars, Micro Menu, Bag Bar); the experience bars wear the action bars' look.
+  then the bag bar. The painted gems and backgrounds are on Oldschool > Frame Art, per bar (Action Bars, Micro
+  Menu, Bag Bar); the experience bars wear the action bars' look.
 - **The experience and reputation bars fit.** In a shared backdrop with bars above or below
   them they take those bars' width, by their scale, within 0.85 to 1.25 times their own; past
   that they keep their size and the outline goes round them as they are. Their bracket gives
@@ -482,7 +491,7 @@ top corners (on the bar's top when the name sits inside the bar).
   still be moved.
 - With the bag bar hidden, the bag slots dock under the open bag window (combined or separate
   bags) so bags can still be equipped and removed. Off switch: "Bag Slots On Bag Window".
-- "Collapse Arrow" (on by default; Action Bars > Bag Bar > Behaviour): an arrow between the
+- "Collapse Arrow" (on by default; Bars > Menu & Bags > Bag bar > Behaviour): an arrow between the
   backpack and the bags folds the bag slots (and the key ring) away so only the backpack shows;
   click it again to bring them back. While an item is on the cursor they come out by
   themselves, so a bag can be dropped into a slot. It is the game's own arrow and setting
@@ -551,6 +560,10 @@ hours). Blizzard's built-in numbers are hidden where the
 module draws its own; when the client hands over secret start or duration values (possible on
 enemy nameplate auras) the built-in numbers are left in place.
 
+Its two switches are where their timers are: Cooldown Timers on Bars > Action Bars > Cooldown timer, and
+Nameplate Auras on Nameplates > Enemies > The game's auras (no master switch since 0.25.0; what you had
+stays). The style is shared, on Look > Icons.
+
 ### FPS / Latency
 
 Small readout in the bottom right corner: frames per second and home latency (optionally
@@ -580,7 +593,7 @@ One choice for every unit frame: player, target, focus, pet, target of target an
 circle at the lower left of its portrait, the player's circle at the party portrait's size, in your Level Orb
 look (Look > Borders). The game's party frame has no level of its own; with the kit off there is none.
 
-**Level Up** (Bars & Meters > XP & Reputation, 0.21.3, on): when you gain a level, the number
+**Level Up** (Bars > XP & Rep > XP bar, 0.21.3, on): when you gain a level, the number
 in your player frame's level circle turns over to the new one (the old level rising out, the new one
 coming up) with a ring of light spreading from the circle, a light runs along the experience bar,
 and the on-screen notice says your new level and, with the Quest List, how many quests it opened in
@@ -1721,7 +1734,7 @@ On **Game**, the numbers over the enemies are drawn by the game: their font is *
 
 ### Damage Meter
 
-MelloUI's damage meter **in place of the game's** (Bars & Meters, Damage Meter). Its switch,
+MelloUI's damage meter **in place of the game's** (Meters, Damage Meter). Its switch,
 **Use MelloUI's Damage Meter (replaces the game's)**, is on by default: while it is on the game's
 own meter windows never show (MelloUI switches off the game's "Enable Damage Meter" setting out
 of combat and puts your own value back when you switch MelloUI's meter off). The numbers are the
@@ -1788,10 +1801,9 @@ own choice comes back when you switch MelloUI's off. While the Personal Display 
 - **Melee Bar**: each swing of your main hand, pale, shrinking to the middle; full again at the
   next swing. A wand's shots ("Shoot (wand)") count down on it too.
 - **Off Hand Bar**: a thinner bar under it for your off-hand weapon, while you carry one.
-- **Look**: Framed (the cast bar's frame, the bar's name above it on the left and the seconds
-  left on the right: **Label And Time**) or Hairline (a thin rim on a soft shade, nothing else).
-  With the cast bars' painted look off, both are a plain bar. In the painted look the fill wears the Cast
-  Bars' Bar Texture (Bars & Meters > Cast Bar > Bar Texture; Minimalist while that is off or Default).
+- **The look**: the Round rim, your weapon's icon in a round rim left of a flat dark bar, the seconds past its
+  right end (**Seconds**). The fill wears the cast bar's Bar Texture (Bars > Cast Bar > Bar Texture). The swing
+  timers' settings are on Bars > Swing Timers.
 - **Show**: In Combat (a bar shows in a fight once it swings or shoots, and fades out when the
   fight ends) or Always (each bar at rest while you carry a weapon for it).
 - **Width** and **Height**; out of range a bar dims, as the game's does. Move them in Edit Layout

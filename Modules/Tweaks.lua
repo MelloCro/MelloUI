@@ -1376,7 +1376,7 @@ M.XP = XP   -- (the tests)
 function M.SlashLevel()
 	local lv = Num(UnitLevel("player"))
 	if not (lv and M.isEnabled and M.db and M.db.levelUp ~= false) then
-		MelloUI:Print("Level Up is off (Bars & Meters > XP & Reputation).")
+		MelloUI:Print("Level Up is off (Bars > XP & Rep).")
 		return
 	end
 	Level.Up(lv)
@@ -1387,7 +1387,7 @@ end
 function M.SlashXP()
 	local now, max = XP.Read()
 	if not (now and M.isEnabled and M.db and M.db.xpGain ~= false and XP.Bar()) then
-		MelloUI:Print("XP Gain is off (Bars & Meters > XP & Reputation), or no experience bar shows.")
+		MelloUI:Print("XP Gain is off (Bars > XP & Rep), or no experience bar shows.")
 		return
 	end
 	XP.Play(math.max(0, now - max * XP.PREVIEW), math.max(now, max * XP.PREVIEW), max)

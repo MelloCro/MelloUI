@@ -50,7 +50,6 @@
 --          { from = "windows" }  UIModifications.<Panel>, one per window pick
 --          { prefix = "Module.#" }  every such button, in the module's order
 --   extra  name        the row's label (else the schema's name)
---          only        { picks }: live on those picks, dimmed on the others
 --          wide        the hint of a row that is one key for every pick
 --          picture     true: a picture row (its choices from Kit.borderKinds
 --                      by key, else the key owner's PickerGroups section)
@@ -102,7 +101,7 @@ L.groups = {
 	{ entries = { "Home" } },
 	{ title = "The look", entries = { "Look", "Windows", "Fader", "Oldschool" } },
 	{ title = "Frames and bars", entries = { "UnitGroupFrames", "Nameplates", "ActionBars", "Minimap",
-		"BarsMeters", "SwingTimers" } },
+		"BarsMeters" } },
 	{ title = "Chat and text", entries = { "Chat", "Tooltip", "ScreenText" } },
 	{ title = "Quests and travel", entries = { "QuestTracker", "QuestList", "Route", "Reminders", "Gains" } },
 	{ title = "Sound", entries = { "VoiceOver", "CustomSounds" } },
@@ -118,7 +117,7 @@ L.pages = {
 		flavour = "The look of the whole interface: the painted reskin, the palette, the soft shade, borders, fonts, Dark Mode, the bar texture and the parchment sheets. Every element's own page links here.",
 		switchLabel = "UI Modifications",
 		switchDesc = "The painted reskin AND every feature of UI Modifications: Vendor, Error Messages, Cooldown Timers, Nameplate Tweaks, Chat, Tooltip, Fonts, Dark Mode, Bar Textures, Buffs & Debuffs, Unit Frame Tweaks, FPS / Latency, Class Icons, Bar Values, the game windows' skins, hiding the micro menu, the bag bar and the minimap coordinates, and the world text scale. Off: all of them are off, Edit Layout lets go of the game's windows (they go back to the game's own places), Windows Fade In stops, names are shown in full and Class Coloured Names stops. The palette, the UI Shade, Reduce Motion and MelloUI's notices keep working.",
-		tabs = { "General", "Borders", "Fonts", "Dark Mode", "Bar Texture", "Parchment" } },
+		tabs = { "General", "Borders", "Fonts", "Icons", "Dark Mode", "Bar Texture", "Parchment" } },
 	Windows = { title = "Windows", icon = "module:CharacterPanel",
 		flavour = "The game's windows in the painted look, one at a time: pick a window.",
 		tabs = { "Windows" },
@@ -213,12 +212,35 @@ L.pages = {
 				parts = { { key = "medallion", label = "Medallion" }, { key = "role", label = "Role ring" } } },
 			{ key = "objects", label = "Objects", line = "The sparkle on quest items and the glints over veins, herbs and quest objects" },
 		} },
-	ActionBars = { title = "Action Bars", icon = "module:ActionBarPanel",
-		flavour = "The action bars, the micro menu and the bag bar: pick a bar.",
-		tabs = { "Bars", "Backdrops", "Cooldown Timers" },
-		picker = { label = "Bar", noun = "bar", picks = { { "bars", "Action Bars" }, { "micro", "Micro Menu" }, { "bag", "Bag Bar" } } },
-		-- (0.19.9) beside the picker: MelloUI's own Keybind Mode (its button: Core/Config.lua KEYBIND_MODE)
-		action = "keybind" },
+	-- (one look stage G, the user's yes of 2026-10-16 to docs/plans/onelook-designer/bars-audit.md: one designer
+	-- for the bars -- RECOMMENDED.md section 3) the action bars, the micro menu and the bag bar, your cast bar, the
+	-- swing timers, the XP and reputation bars and the game's Cooldown Manager; the painted action bar skin's rows
+	-- are Oldschool's. `locked`: a part with nothing to set yet (listed, not opened: Q11)
+	ActionBars = { title = "Bars", icon = "module:ActionBarPanel", designer = true,
+		flavour = "Your bars: pick one, click a part of it, change it.",
+		-- (0.19.9) MelloUI's own Keybind Mode in the header (its button: Core/Config.lua KEYBIND_MODE)
+		action = "keybind",
+		elements = {
+			{ key = "actionbars", label = "Action Bars", line = "The eight action bars and the stance, pet, possess and totem bars",
+				parts = { { key = "button", label = "Button" }, { key = "cooldown", label = "Cooldown timer" },
+				{ key = "caps", label = "End caps" }, { key = "arrows", label = "Page arrows" },
+				{ key = "keybind", label = "Keybind text", locked = "Nothing to set yet: the game's text" } } },
+			{ key = "menubags", label = "Menu & Bags", line = "The micro menu and the bag bar",
+				parts = { { key = "micro", label = "Micro menu" }, { key = "bags", label = "Bag bar" } } },
+			{ key = "castbar", label = "Cast Bar", line = "Your cast bar (its size and place: Edit Mode; the target's and focus' are on their frames)",
+				parts = { { key = "bar", label = "Bar", locked = "Nothing to set yet" },
+				{ key = "icon", label = "Icon", locked = "Nothing to set yet" },
+				{ key = "spell", label = "Spell text", locked = "Nothing to set yet (its size: Interface Text, Look > Fonts)" },
+				{ key = "timer", label = "Timer", locked = "Nothing to set yet" } } },
+			{ key = "swing", label = "Swing Timers", module = "SwingTimers", line = "Your shot, melee and off-hand swings",
+				parts = { { key = "shot", label = "Shot bar" }, { key = "melee", label = "Melee bar" },
+				{ key = "offhand", label = "Off-hand bar" }, { key = "seconds", label = "Seconds" } } },
+			{ key = "xprep", label = "XP & Rep", line = "The experience and reputation bars",
+				parts = { { key = "xp", label = "XP bar" }, { key = "rep", label = "Reputation bar" } } },
+			{ key = "cooldowns", label = "Cooldowns", line = "The game's Cooldown Manager",
+				parts = { { key = "icon", label = "Icon" }, { key = "keybind", label = "Keybind" },
+				{ key = "count", label = "Count" } } },
+		} },
 	-- (onelook D7) its header switch: MelloUI's minimap (MinimapPanel, for everyone since the one-look build; its
 	-- painted half, MinimapKit, is the Painted Skin row); `new`: the switch's New tag (Core/Config.lua's Header)
 	Minimap = { title = "Minimap", icon = "module:MinimapPanel", module = "MinimapPanel",
@@ -227,16 +249,13 @@ L.pages = {
 		switchDesc = "MelloUI's minimap: its Width and Height, the square shape in the Chat panel, the Services bar merged under it, and the column under it that the Quest Tracker follows. Off: the game's own minimap, Edit Mode's Size sizes it again, and the Painted Skin is off with it.",
 		new = "0.25.0",
 		tabs = { "Minimap", "Services Bar" } },
-	-- (0.17.1) the shot bar and the melee bar (its header switch: the Swing
-	-- Timers module's, off by default)
-	SwingTimers = { title = "Swing Timers", icon = "module:SwingTimers", module = "SwingTimers",
-		tabs = { "Swing Timers" } },
 	-- (0.21.0) health, power and the cast bar under the character, the shield column beside it (its header switch:
 	-- the Personal Display module's, off by default; MelloUI_PersonalDisplay)
-	BarsMeters = { title = "Bars & Meters", icon = "module:Stats",
-		flavour = "The experience and reputation bars, the cooldown manager, the damage meter, event widgets and the FPS / latency readout.",
-		-- (one look C8: "Cast Bar" interim, until the Bars designer -- the user's pick)
-		tabs = { "XP & Reputation", "Cast Bar", "Cooldown Manager", "Damage Meter", "Event Widgets", "FPS / Latency" } },
+	-- (the Bars audit's point 5: the damage meter and the FPS / latency readout until stage H gives them homes;
+	-- the bars went to Bars, the Event Widgets tab with its one painted link)
+	BarsMeters = { title = "Meters", icon = "module:Stats",
+		flavour = "The damage meter and the FPS / latency readout.",
+		tabs = { "Damage Meter", "FPS / Latency" } },
 	Chat = { title = "Chat", icon = "module:Chat",
 		flavour = "The chat windows, the lines in them and the whisper popup.",
 		tabs = { "Chat Frame", "Messages", "Whispers" } },
@@ -298,9 +317,9 @@ L.words = {
 	partymarkers = { "Nameplates", "friendly:element" },
 	sparkles = { "Nameplates", "objects:element" },
 	lootsparkles = { "Nameplates", "objects:element" },
-	actionbarpanel = { "ActionBars", "Bars" },
-	cooldowntext = { "ActionBars", "Cooldown Timers" },
-	backdrops = { "ActionBars", "Backdrops" },
+	actionbarpanel = { "Oldschool", "Painted Skins" },   -- (the Bars audit: the painted action bar skin)
+	cooldowntext = { "ActionBars", "actionbars:cooldown" },
+	backdrops = { "ActionBars", "actionbars:element" },
 	minimappanel = { "Minimap", "Minimap" },
 	minimapkit = { "Minimap", "Minimap" },   -- (onelook D7: the painted minimap, its Painted Skin row)
 	services = { "Minimap", "Services Bar" },
@@ -314,8 +333,8 @@ L.words = {
 	restock = { "Reminders", "Restock" },
 	vendor = { "Reminders", "Vendor" },
 	widgets = { "Reminders", "Widgets" },
-	wand = { "SwingTimers" },
-	autoshot = { "SwingTimers" },
+	wand = { "ActionBars", "swing:element" },
+	autoshot = { "ActionBars", "swing:element" },
 }
 
 -- (0.16.0: the chat windows' and the tooltips' painted skins and the chat's
@@ -366,8 +385,6 @@ function L.Define(R, Link)
 	R("Look", "General", "Look", "UIModifications.uiShade", { free = true })
 	R("Look", "General", "Look", "UIModifications.uiShadeStrength", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_windows", { free = true })
-	R("Look", "General", "Look", "UIModifications.shade_actionbars", { free = true })
-	R("Look", "General", "Look", "UIModifications.shade_castbars", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_chat", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_bags", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_minimap", { free = true })
@@ -428,7 +445,11 @@ function L.Define(R, Link)
 	-- this tab": each element's text size and font, named by its element; each of those pages links its own)
 	R("Look", "Fonts", "Text", "Fonts.scaleChatParchment", { gate = "UIModifications.parchment_chat" })
 	R("Look", "Fonts", "Text", "BarText.fontSize", { name = "Unit Frame Bars: Font Size" })
-	R("Look", "Fonts", "Text", "CooldownText.fontRatio", { name = "Cooldown Timers: Text Size" })
+	-- (the Bars audit's point 2: the cooldown timers' style, shared by the action bars and the nameplates)
+	R("Look", "Icons", "Text", "CooldownText.fontRatio", { name = "Timer Text Size" })
+	R("Look", "Icons", "Text", "CooldownText.tenths")
+	R("Look", "Icons", "Text", "CooldownText.colorByTime")
+	R("Look", "Icons", "Behaviour", "CooldownText.minDuration")
 	R("Look", "Fonts", "Text", "Stats.fontSize", { name = "FPS / Latency: Font Size" })
 	R("Look", "Fonts", "Text", "QuestTracker.textSize", { name = "Quest Tracker: Text Size" })
 	R("Look", "Fonts", "Text", "QuestTracker.headerSize", { name = "Quest Tracker: Header Text Size" })
@@ -569,7 +590,6 @@ function L.Define(R, Link)
 	R("Oldschool", "Painted Skins", "Look", "UIModifications.CastBarPanel", { name = "Cast Bars" })
 	UGF(GAME4, "Look", "DarkMode.unitframes", { name = "Dark Mode", also = { ["DarkMode.unitframes"] = "boss and target of target" },
 		when = Uncovered("UnitFramePanel", "unit frames"), plus = "Party portraits" })
-	R("BarsMeters", "Cast Bar", "Look", "DarkMode.castbar", { name = "Dark Mode", when = Uncovered("CastBarPanel", "cast bars") })
 	R("UnitGroupFrames", "personal:element", "Look", "DarkMode.personal", { name = "Dark Mode" })
 	-- (0.19.4, the options audit: the unit frame skin fades or replaces the
 	-- same art and puts the writes back)
@@ -587,7 +607,6 @@ function L.Define(R, Link)
 		{ when = { key = "UnitFramePanel.backdrop", notValue = "none", line = "Only with a Frame Backdrop" } })
 	-- (0.21.3, the animations: the level badge turning over, the XP bar's light, the notice;
 	-- one-look D5: the Unit Frames module's, Unit Frame Tweaks')
-	R("BarsMeters", "XP & Reputation", "Look", "Tweaks.levelUp")   -- (one look C13b: Tweaks', no switch over it)
 	-- (one look C11, Q2: each text part its own face -- MelloUI.FontFaces, "Shared" today's)
 	UGF({ "player:name", "target:name", "focus:name" }, "Text", "UnitFrames.nameFont", { name = "Font",
 		plus = "Pet, their targets, Party portraits" })
@@ -600,7 +619,6 @@ function L.Define(R, Link)
 	UGF(GAME4, "Look", "BarTextures.unitframesTexture", { name = "Bar Texture", plus = "Party portraits",
 		also = { ["BarTextures.unitframesTexture"] = "boss and target of target" } })
 	UGF({ "raid:element", "party:element" }, "Look", "BarTextures.raidframesTexture", { name = "Bar Texture" })
-	R("BarsMeters", "Cast Bar", "Look", "BarTextures.castbarsTexture", { name = "Bar Texture" })
 	R("UnitGroupFrames", "personal:element", "Look", "BarTextures.personalTexture", { name = "Bar Texture" })
 	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.barBackground",
 		{ also = { ["UnitFramePanel.barBackground"] = "target of target" } })
@@ -666,7 +684,7 @@ function L.Define(R, Link)
 	R("Nameplates", "enemies:quest", "Layout", "Nameplates.questIconSize", { name = "Size" })
 	R("Nameplates", "enemies:debuffs", "General", "Auras.nameplates")
 	R("Nameplates", "enemies:debuffs", "Layout", "Auras.nameplateSize")
-	R("Nameplates", "enemies:auras", "Behaviour", "CooldownText.nameplates")
+	R("Nameplates", "enemies:auras", "General", "CooldownText.nameplates")   -- (the Bars audit: Cooldown Timers' switch here)
 	-- Friendly players: Party Markers' switch first
 	R("Nameplates", "friendly:element", "General", "PartyMarkers.!enabled", { name = "Party Markers" })
 	R("Nameplates", "friendly:element", "General", "PartyMarkers.who")
@@ -687,56 +705,82 @@ function L.Define(R, Link)
 	R("Oldschool", "Frame Art", "Look", "NameplatePanel.plateShade", { when = { key = "UIModifications.uiShade", value = true,
 		line = "Only with the UI Shade on (Look)" } })
 
-	-- Action Bars (the picker: Action Bars, Micro Menu, Bag Bar)
-	R("ActionBars", "Bars", "General", { micro = "Tweaks.hideMicroMenu", bag = "Tweaks.hideBagBar" }, { name = "Hide This Bar" })
-	R("ActionBars", "Bars", "General", "ActionBars.hidePageArrows", { only = { "bars" } })
-	R("ActionBars", "Bars", "General", "ActionBars.hideBarArt", { only = { "bars" } })
-	R("ActionBars", "Bars", "Look", "UIModifications.ActionBarPanel", { name = "Painted Skin", wide = "every bar" })
-	R("ActionBars", "Bars", "Look", { bars = "ActionBarPanel.barBackdrop", micro = "ActionBarPanel.microBackdrop", bag = "ActionBarPanel.bagBackdrop" }, { name = "Backdrop", picture = true })
-	R("ActionBars", "Bars", "Look", { bars = "ActionBarPanel.barBackground", micro = "ActionBarPanel.microBackground", bag = "ActionBarPanel.bagBackground" }, { name = "Backdrop Background", picture = true })
-	R("ActionBars", "Bars", "Look", { bars = "ActionBarPanel.buttonBackground", micro = "ActionBarPanel.microButtonBackground", bag = "ActionBarPanel.bagButtonBackground" }, { name = "Button Background", picture = true })
-	-- (the action bar skin covers the bars, the micro menu, the bag bar and
-	-- the XP bars: ActionBarPanel)
-	R("ActionBars", "Bars", "Look", { bars = "DarkMode.actionbars", micro = "DarkMode.micromenu", bag = "DarkMode.micromenu" }, { name = "Dark Mode",
+	-- Bars (one look stage G, bars-audit.md, the user's yes): each element's rows, its parts' rows
+	-- Action Bars: every bar's (Dark Mode, the backdrops, the layout of the bar picked in Which Bar -- the stage's
+	-- strip will pick it), the parts shared by every bar
+	R("ActionBars", "actionbars:element", "Look", "DarkMode.actionbars", { name = "Dark Mode",
 		when = Uncovered("ActionBarPanel", "action bars") })
-	R("ActionBars", "Bars", "Look", "DarkMode.gryphons", { only = { "bars" }, when = Uncovered("ActionBarPanel", "action bars") })
+	-- (0.18.5) each bar's backdrop (onelook stage D4: the core's, Modules/ActionBars.lua, whatever the look)
+	for _, key in ipairs({ "Bar1", "Bar2", "Bar3", "Bar4", "Bar5", "Bar6", "Bar7", "Bar8", "Stance", "Pet", "Possess", "Totem" }) do
+		R("ActionBars", "actionbars:element", "Look", "ActionBars.backdrop" .. key)
+	end
+	-- (0.19.9, L1: one bar's layout, written into the Edit Mode layout: Tweaks' Bar Layout; its shape drawn under
+	-- the sliders)
+	R("ActionBars", "actionbars:element", "Layout", "Tweaks.barLayoutBar")
+	R("ActionBars", "actionbars:element", "Layout", "Tweaks.barRows")
+	R("ActionBars", "actionbars:element", "Layout", "Tweaks.barIcons")
+	R("ActionBars", "actionbars:element", "Layout", "Tweaks.barIconSize")
+	R("ActionBars", "actionbars:element", "Layout", "Tweaks.barPadding")
+	R("ActionBars", "actionbars:element", "Layout", "Tweaks.barShape")
 	-- (0.19.8, the user's picks of button_press_sketch: the key held, range and resources; skin on or off)
-	R("ActionBars", "Bars", "Look", "ActionButtons.pressLight", { only = { "bars" } })
-	R("ActionBars", "Bars", "Look", "ActionButtons.rangeColours", { only = { "bars" } })
-	-- (0.19.9, L1: one bar's layout, written into the Edit Mode layout:
-	-- Tweaks' Bar Layout; its shape drawn under the sliders)
-	R("ActionBars", "Bars", "Layout", "Tweaks.barLayoutBar", { only = { "bars" } })
-	R("ActionBars", "Bars", "Layout", "Tweaks.barRows", { only = { "bars" } })
-	R("ActionBars", "Bars", "Layout", "Tweaks.barIcons", { only = { "bars" } })
-	R("ActionBars", "Bars", "Layout", "Tweaks.barIconSize", { only = { "bars" } })
-	R("ActionBars", "Bars", "Layout", "Tweaks.barPadding", { only = { "bars" } })
-	R("ActionBars", "Bars", "Layout", "Tweaks.barShape", { only = { "bars" } })
-	R("ActionBars", "Bars", "Behaviour", "Tweaks.bagBarFold", { only = { "bag" },
-		when = { key = "Tweaks.hideBagBar", value = false, line = "Only while the bag bar shows" } })
-	-- (0.18.5) each element's backdrop, one list whatever the pick (the user,
-	-- 2026-10-04: "a list on Action Bars"); the looks stay on Bars > Look
-	-- (onelook stage D4: the core's, Modules/ActionBars.lua, whatever the look)
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar1")
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar2")
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar3")
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar4")
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar5")
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar6")
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar7")
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBar8")
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropStance")
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropPet")
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropPossess")
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropTotem")   -- (0.20.2: the shaman's totem bar)
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropMicro")
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropBags")
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropXP")
-	R("ActionBars", "Backdrops", "General", "ActionBars.backdropXP2")
-	R("ActionBars", "Cooldown Timers", "General", "UIModifications.qol_CooldownText", { only = { "bars" } })
-	R("ActionBars", "Cooldown Timers", "General", "CooldownText.actionBars", { only = { "bars" } })
-	R("ActionBars", "Cooldown Timers", "Text", "CooldownText.tenths", { only = { "bars" } })
-	R("ActionBars", "Cooldown Timers", "Text", "CooldownText.colorByTime", { only = { "bars" } })
-	R("ActionBars", "Cooldown Timers", "Behaviour", "CooldownText.minDuration", { only = { "bars" } })
+	R("ActionBars", "actionbars:button", "Look", "ActionButtons.pressLight")
+	R("ActionBars", "actionbars:button", "Look", "ActionButtons.rangeColours")
+	-- (the Bars audit's point 1: On Action Bars is Cooldown Timers' switch here)
+	R("ActionBars", "actionbars:cooldown", "General", "CooldownText.actionBars", { name = "Cooldown Timers" })
+	R("ActionBars", "actionbars:caps", "General", "ActionBars.hideBarArt")
+	R("ActionBars", "actionbars:caps", "Look", "DarkMode.gryphons", { name = "Dark Mode",
+		when = Uncovered("ActionBarPanel", "action bars") })
+	R("ActionBars", "actionbars:arrows", "General", "ActionBars.hidePageArrows")
+	-- Menu & Bags: each bar a part (Hide This Bar, its backdrop; the bag bar's fold), Dark Mode for both
+	R("ActionBars", "menubags:element", "Look", "DarkMode.micromenu", { name = "Dark Mode",
+		when = Uncovered("ActionBarPanel", "action bars") })
+	R("ActionBars", "menubags:micro", "General", "Tweaks.hideMicroMenu", { name = "Hide This Bar" })
+	R("ActionBars", "menubags:micro", "Look", "ActionBars.backdropMicro", { name = "Backdrop" })
+	R("ActionBars", "menubags:bags", "General", "Tweaks.hideBagBar", { name = "Hide This Bar" })
+	R("ActionBars", "menubags:bags", "Look", "ActionBars.backdropBags", { name = "Backdrop" })
+	R("ActionBars", "menubags:bags", "Behaviour", "Tweaks.bagBarFold",
+		{ when = { key = "Tweaks.hideBagBar", value = false, line = "Only while the bag bar shows" } })
+	-- Cast Bar: its look (its parts the game's: nothing to set yet)
+	R("ActionBars", "castbar:element", "Look", "BarTextures.castbarsTexture", { name = "Bar Texture" })
+	R("ActionBars", "castbar:element", "Look", "DarkMode.castbar", { name = "Dark Mode", when = Uncovered("CastBarPanel", "cast bars") })
+	-- (0.17.1) Swing Timers: its switch (the module's, off by default), each bar's, the seconds, the size, when
+	R("ActionBars", "swing:element", "General", "SwingTimers.!enabled", { name = "Swing Timers" })
+	R("ActionBars", "swing:element", "Layout", "SwingTimers.width")
+	R("ActionBars", "swing:element", "Layout", "SwingTimers.height")
+	R("ActionBars", "swing:element", "Behaviour", "SwingTimers.show")
+	R("ActionBars", "swing:shot", "General", "SwingTimers.shot")
+	R("ActionBars", "swing:melee", "General", "SwingTimers.melee")
+	R("ActionBars", "swing:offhand", "General", "SwingTimers.offhand")
+	R("ActionBars", "swing:seconds", "General", "SwingTimers.text")
+	-- XP & Rep: the bars' look; the XP bar's light and Level Up (one look C13b: Tweaks'), each bar's backdrop
+	R("ActionBars", "xprep:element", "Look", "BarTextures.statusbarsTexture", { name = "Bar Texture" })
+	R("ActionBars", "xprep:element", "Look", "DarkMode.statusbars", { name = "Dark Mode", when = Uncovered("ActionBarPanel", "action bars") })
+	-- (0.22.1, the animations: the stretch of the XP bar just gained lit)
+	R("ActionBars", "xprep:xp", "Look", "Tweaks.xpGain")
+	R("ActionBars", "xprep:xp", "Look", "Tweaks.levelUp")
+	R("ActionBars", "xprep:xp", "Look", "ActionBars.backdropXP", { name = "Backdrop" })
+	R("ActionBars", "xprep:rep", "Look", "ActionBars.backdropXP2", { name = "Backdrop" })
+	-- Cooldowns (0.19.8, Cooldown Tweaks: Modules/CooldownTweaks.lua -- the addon study's item 7)
+	R("ActionBars", "cooldowns:element", "Look", "BarTextures.cooldownsTexture", { name = "Bar Texture" })
+	R("ActionBars", "cooldowns:element", "Look", "DarkMode.cooldowns", { name = "Dark Mode" })
+	R("ActionBars", "cooldowns:element", "Layout", "CooldownTweaks.centreRows")
+	R("ActionBars", "cooldowns:icon", "Look", "CooldownTweaks.pressLight")
+	R("ActionBars", "cooldowns:keybind", "General", "CooldownTweaks.keybinds")
+	R("ActionBars", "cooldowns:count", "Text", "CooldownTweaks.countSize")
+	-- the painted action bar skin (Oldschool: the switch, each bar's pictures)
+	R("Oldschool", "Painted Skins", "Look", "UIModifications.ActionBarPanel", { name = "Action Bars" })
+	R("Oldschool", "Frame Art", "Look", "ActionBarPanel.barBackdrop", { name = "Action Bars: Backdrop", picture = true })
+	R("Oldschool", "Frame Art", "Look", "ActionBarPanel.barBackground", { name = "Action Bars: Backdrop Background", picture = true })
+	R("Oldschool", "Frame Art", "Look", "ActionBarPanel.buttonBackground", { name = "Action Bars: Button Background", picture = true })
+	R("Oldschool", "Frame Art", "Look", "ActionBarPanel.microBackdrop", { name = "Micro Menu: Backdrop", picture = true })
+	R("Oldschool", "Frame Art", "Look", "ActionBarPanel.microBackground", { name = "Micro Menu: Backdrop Background", picture = true })
+	R("Oldschool", "Frame Art", "Look", "ActionBarPanel.microButtonBackground", { name = "Micro Menu: Button Background", picture = true })
+	R("Oldschool", "Frame Art", "Look", "ActionBarPanel.bagBackdrop", { name = "Bag Bar: Backdrop", picture = true })
+	R("Oldschool", "Frame Art", "Look", "ActionBarPanel.bagBackground", { name = "Bag Bar: Backdrop Background", picture = true })
+	R("Oldschool", "Frame Art", "Look", "ActionBarPanel.bagButtonBackground", { name = "Bag Bar: Button Background", picture = true })
+	-- (the painted skins' rim shades: ActionBarPanel's and CastBarPanel's UI Shade areas)
+	R("Oldschool", "Frame Art", "Look", "UIModifications.shade_actionbars", { free = true, name = "UI Shade: Action Bars" })
+	R("Oldschool", "Frame Art", "Look", "UIModifications.shade_castbars", { free = true, name = "UI Shade: Cast Bars" })
 
 	-- Minimap (its header switch: MelloUI's minimap, MinimapPanel; its Services bar a tab: Services has no header
 	-- switch here). (onelook D7) Painted Skin: the painted half's own switch (MinimapKit), with MelloUI's minimap on
@@ -760,17 +804,6 @@ function L.Define(R, Link)
 		{ when = { key = "MinimapPanel.shape", value = "square", line = "Only for the square map" } })
 
 	-- Bars & Meters
-	R("BarsMeters", "XP & Reputation", "Look", "BarTextures.statusbarsTexture", { name = "Bar Texture" })
-	R("BarsMeters", "XP & Reputation", "Look", "DarkMode.statusbars", { name = "Dark Mode", when = Uncovered("ActionBarPanel", "action bars") })
-	-- (0.22.1, the animations: the stretch of the XP bar just gained lit; Level Up's neighbour in the unit frames' file)
-	R("BarsMeters", "XP & Reputation", "Look", "Tweaks.xpGain")
-	R("BarsMeters", "Cooldown Manager", "Look", "BarTextures.cooldownsTexture", { name = "Bar Texture" })
-	R("BarsMeters", "Cooldown Manager", "Look", "DarkMode.cooldowns", { name = "Dark Mode" })
-	-- (0.19.8, Cooldown Tweaks: Modules/CooldownTweaks.lua -- the addon study's item 7)
-	R("BarsMeters", "Cooldown Manager", "Look", "CooldownTweaks.keybinds")
-	R("BarsMeters", "Cooldown Manager", "Look", "CooldownTweaks.pressLight")
-	R("BarsMeters", "Cooldown Manager", "Text", "CooldownTweaks.countSize")
-	R("BarsMeters", "Cooldown Manager", "Layout", "CooldownTweaks.centreRows")
 	-- (0.17.0: MelloUI's meter replaces the game's; its switch heads the tab)
 	R("BarsMeters", "Damage Meter", "General", "Meter.!enabled", { name = "Use MelloUI's Damage Meter (replaces the game's)" })
 	R("BarsMeters", "Damage Meter", "General", "Meter.values")
@@ -910,8 +943,8 @@ function L.Define(R, Link)
 	end
 	-- (0.19.4: a bar Hide This Bar parks has nothing to fade)
 	local PARKED = {
-		micro = { when = { key = "Tweaks.hideMicroMenu", value = false, line = "Hidden on Action Bars (Hide This Bar)" } },
-		bags = { when = { key = "Tweaks.hideBagBar", value = false, line = "Hidden on Action Bars (Hide This Bar)" } },
+		micro = { when = { key = "Tweaks.hideMicroMenu", value = false, line = "Hidden on Bars > Menu & Bags (Hide This Bar)" } },
+		bags = { when = { key = "Tweaks.hideBagBar", value = false, line = "Hidden on Bars > Menu & Bags (Hide This Bar)" } },
 	}
 	for _, key in ipairs({ "bar1", "bar2", "bar3", "bar4", "bar5", "bar6", "bar7", "bar8", "stance", "micro", "bags", "xp" }) do
 		R("Fader", "Bars", "General", "Fader.show_" .. key, PARKED[key])
@@ -993,18 +1026,6 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "all", "General", "FrameEffects.!enabled", { name = "Cooldown Effects" })
 	R("UnitGroupFrames", "all", "General", "FrameEffects.#Every Effect")
 	R("UnitGroupFrames", "all", "General", "FrameEffects.whose")   -- (one look C13d: Your Own + Your Group's)
-
-	-- (0.17.1) Swing Timers (header: its module's switch): which bars, their
-	-- look, their size, when they show
-	R("SwingTimers", "Swing Timers", "General", "SwingTimers.shot")
-	R("SwingTimers", "Swing Timers", "General", "SwingTimers.melee")
-	R("SwingTimers", "Swing Timers", "General", "SwingTimers.offhand")
-	R("SwingTimers", "Swing Timers", "Look", "SwingTimers.look")
-	-- (one look, 2026-10-15: the seconds in the Round rim, the one look: no gate on the Look)
-	R("SwingTimers", "Swing Timers", "Text", "SwingTimers.text")
-	R("SwingTimers", "Swing Timers", "Layout", "SwingTimers.width")
-	R("SwingTimers", "Swing Timers", "Layout", "SwingTimers.height")
-	R("SwingTimers", "Swing Timers", "Behaviour", "SwingTimers.show")
 
 	-- (0.21.0) Personal Display (header: its module's switch): the shield column, the texts, the width, the hop, the preview
 	R("UnitGroupFrames", "personal:element", "General", "PersonalDisplay.!enabled", { name = "Personal Display" })
@@ -1255,20 +1276,17 @@ function L.Define(R, Link)
 	-- where the cast bar is set)
 	-- (the Group Frames wear the Raid Frames pick's skin, border and bar texture)
 	-- (Swing On The Rails makes the Swing Timers step aside)
-	Link("SwingTimers", "Swing Timers", "General", "PersonalDisplay.swing", "Swing On The Rails (Personal Display)",
+	Link("ActionBars", "swing:element", "General", "PersonalDisplay.swing", "Swing On The Rails (Personal Display)",
 		{ when = { key = "PersonalDisplay.!enabled", value = true, line = "Only with the Personal Display on" } })
 	-- (0.19.4: the aura border is worn by MelloUI's own rows only)
 	Link("Nameplates", "enemies:health", "Look", "BarTextures.healthColor", "Health Bar Colour")
 	Link("Nameplates", "enemies:name", "Text", "UIModifications.nameFormat", "Names")
 	Link("Nameplates", "enemies:debuffs", "Text", "Auras.textFont", "Numbers Font")
-	Link("ActionBars", "Bars", "Look", "UIModifications.shade_actionbars", "UI Shade")
-	Link("ActionBars", "Bars", "Look", "UIModifications.buttonBorder", "Button Border")
 	Link("Minimap", "Minimap", "Look", "UIModifications.shade_minimap", "UI Shade")
-	Link("BarsMeters", "XP & Reputation", "Look", "UIModifications.barBorder", "Progress Bar Border")
-	Link("BarsMeters", "Cooldown Manager", "Look", "DarkMode.keepDispelColor", "Keep Dispel Colours")
-	Link("BarsMeters", "Cooldown Manager", "Look", "UIModifications.cooldownBorder", "Icon Border")
+	Link("ActionBars", "cooldowns:element", "Look", "DarkMode.keepDispelColor", "Keep Dispel Colours")
+	-- (the swing bars wear the cast bar's Bar Texture)
+	Link("ActionBars", "swing:element", "Look", "BarTextures.castbarsTexture", "Bar Texture (Cast Bar)")
 	Link("BarsMeters", "Damage Meter", "Look", "UIModifications.parchment_meter", "Parchment")
-	Link("BarsMeters", "Event Widgets", "Look", "UIModifications.shade_widgets", "UI Shade")
 	Link("Chat", "Chat Frame", "Look", "UIModifications.shade_chat", "UI Shade")
 	Link("Chat", "Chat Frame", "Text", "Fonts.scaleChat", "Chat Size")
 	Link("Chat", "Whispers", "Look", "UIModifications.parchment_whisper", "Parchment",
@@ -1294,7 +1312,9 @@ function L.Define(R, Link)
 	Link("Chat", "Chat Frame", "Look", "Chat.borderAlpha", "Border Opacity")
 	Link("Chat", "Chat Frame", "Text", "Fonts.fontChatText", "Chat Font")
 	Link("Chat", "Chat Frame", "Text", "Fonts.scaleChatParchment", "Chat On Parchment Size")
-	Link("ActionBars", "Cooldown Timers", "Text", { bars = "CooldownText.fontRatio" }, "Text Size")
+	-- (the Bars audit's point 2: the timers' style on Look > Icons, linked from both of its places)
+	Link("ActionBars", "actionbars:cooldown", "Text", "CooldownText.fontRatio", "Timer Text Size")
+	Link("Nameplates", "enemies:auras", "Text", "CooldownText.fontRatio", "Timer Text Size")
 	-- (one look, 2026-10-15: no Swing Timer Border link here -- the swing timers' Round rim wears no painted frame,
 	-- the user's decision 8; the row on Look > Borders stays until stage E's option table)
 	Link("BarsMeters", "FPS / Latency", "Text", "Stats.fontSize", "Text Size")

@@ -24,7 +24,10 @@ local M = MelloUI:RegisterModule("CooldownText", {
 	icon = "Interface\\Icons\\Spell_Nature_TimeStop",
 	flavour = "Countdowns on every cooldown, coloured by how long you still have to wait.",
 	role = "adds",
-	tweak = { label = "Cooldown Timers", desc = "Countdown numbers on action bar cooldowns and nameplate auras, coloured by the time left.", order = 3 },
+	-- (one look, the Bars audit's point 1, the user's yes: Q9's fold -- no master; On Action Bars and Nameplate
+	-- Auras are its switches, each where its rows are; Core.lua's MERGES folds an older save's master into them)
+	tweak = { label = "Cooldown Timers", desc = "Countdown numbers on action bar cooldowns and nameplate auras, coloured by the time left.", order = 3, always = true },
+	switches = { "actionBars", "nameplates" },
 	defaults = {
 		actionBars = true,
 		nameplates = true,
@@ -397,13 +400,15 @@ local function InstallHooks()
 	if hooksInstalled then
 		return
 	end
+	-- (one probe, ever: a client whose cooldowns hand no method table gets
+	-- none of the hooks, and is not probed again)
+	hooksInstalled = true
 	local probe = CreateFrame("Cooldown", nil, UIParent, "CooldownFrameTemplate")
 	local meta = getmetatable(probe)
 	local index = meta and meta.__index
 	if type(index) ~= "table" then
 		return
 	end
-	hooksInstalled = true
 
 	hooksecurefunc(index, "SetCooldown", function(cooldown, start, duration, modRate)
 		StartTimer(cooldown, start, duration, modRate)
@@ -451,9 +456,17 @@ function M:OnInit(db)
 	self.db = db
 end
 
+-- a switch on: the hooks on every cooldown are wanted (none made while both
+-- are off -- they cannot be taken off again once made)
+local function Wanted(db)
+	return db ~= nil and (db.actionBars ~= false or db.nameplates ~= false)
+end
+
 function M:OnEnable(db)
 	self.db = db
-	InstallHooks()
+	if Wanted(db) then
+		InstallHooks()
+	end
 	Wake()
 end
 
@@ -467,6 +480,9 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
+	if (key == "actionBars" or key == "nameplates") and value then
+		InstallHooks()
+	end
 	-- Force fonts and styles to be re-evaluated on the next tick.
 	for cooldown, timer in pairs(timers) do
 		timer.styleName = nil

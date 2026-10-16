@@ -4652,7 +4652,9 @@ do
 		-- its own rows' switches (the module's `switches`): Buffs & Debuffs
 		-- (qol_Auras, off by default: Auras.player, target, nameplates), Bar
 		-- Values (qol_BarText, on: BarText.player, target, focus), Class Icons
-		-- (qol_ClassIcons, on: ClassIcons.portraits). From before: a save with
+		-- (qol_ClassIcons, on: ClassIcons.portraits), Cooldown Timers (the Bars
+		-- audit: qol_CooldownText, on: CooldownText.actionBars, nameplates).
+		-- From before: a save with
 		-- no fold mark (<name>.qolFolded), or a settings text with none in it
 		-- (a text made since carries it: it has no default). Its master not
 		-- on: its rows off, as it showed them -- a new player's too (their
@@ -4660,7 +4662,7 @@ do
 		-- goes; the mark is set, once
 		function(self)
 			local ui, loaded = Raw(self, "UIModifications"), self.textKeys
-			for name, wasOn in pairs({ Auras = false, BarText = true, ClassIcons = true }) do
+			for name, wasOn in pairs({ Auras = false, BarText = true, ClassIcons = true, CooldownText = true }) do
 				local m = self.modules and self.modules[name]
 				local t = m and type(m.switches) == "table" and Own(self, name)
 				if t then

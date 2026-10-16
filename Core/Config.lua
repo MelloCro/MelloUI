@@ -140,7 +140,7 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "0.25.0", lines = {
 		"One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off.",
-		"Configurator: Unit & Group Frames is one designer: pick a frame, then a part (each text its own Font); drag the party's and raid's parts on their large frame.",
+		"Configurator: Unit & Group Frames, Nameplates and Bars are designers: pick a frame, a plate or a bar, then a part; drag the party's and raid's parts on their large frame.",
 		"Windows: a new frame -- the logo heads the configurator's side list, small windows get a slim strip.",
 		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, Hide Bar Art, a Bar Texture for each, one Health Colour for all.",
 		"Action bars and minimap: backdrops and MelloUI's minimap for everyone, no painted skin needed.",
@@ -1099,7 +1099,7 @@ local EMPTY = {}
 --   A row r: page (key), tab, section, name, type ("toggle", "slider",
 --   "dropdown", "button", "picture"), and b (its one binding) or keys
 --   ([pick] = binding) with distinct (the bindings in pick order) and
---   picksOf ([binding] = its picks); only (a set) / onlyList, wide,
+--   picksOf ([binding] = its picks); wide,
 --   picture, swatch, free, gate (a binding), when ({ b, value, line }),
 --   also, new (the update its newest setting came with, while it runs).
 --   A link lk: page, tab, section, name, and target (a binding) or targets
@@ -1468,12 +1468,6 @@ do
 				end
 			end
 			r.name = extra.name or (first.kind == "module" and first.mod.title) or first.opt.name or first.id
-			if extra.only then
-				r.only, r.onlyList = {}, extra.only
-				for _, k in ipairs(extra.only) do
-					r.only[k] = true
-				end
-			end
 			r.wide, r.picture, r.swatch, r.also = extra.wide, extra.picture, extra.swatch, extra.also
 			r.shared = extra.shared   -- (one look, the designers: the Shared mark, W.Row's opts.shared)
 			r.free = (extra.free or (first.opt and first.opt.free)) and true or nil
@@ -1505,7 +1499,7 @@ do
 			end
 			for _, b in ipairs(r.distinct or { first }) do
 				r.new = r.new or NewOf(b)
-				Place(b.id, r, r.picksOf and r.picksOf[b] or r.onlyList)
+				Place(b.id, r, r.picksOf and r.picksOf[b] or nil)
 				if b.kind == "module" then
 					-- (its id kept: a row with a key per pick has no r.b --
 					-- the Windows page's switch row, Bags by Kind off, 0.19.4)
@@ -1862,7 +1856,7 @@ local PICKER_W, COPY_W, PICKER_LINE = 180, 150, 26
 -- (0.19.9) a page's own action beside its picker, as the page names it (Core/ConfigLayout.lua `action`): the Action
 -- Bars page's Keybind Mode (Modules/KeybindMode.lua: MelloUI's own, the game's never opened). It leaves the
 -- configurator while you bind and opens it again after
-local KEYBIND_MODE = { name = "Keybind Mode" }
+local KEYBIND_MODE = { name = "Keybind Mode", width = 140 }
 local KeybindModeClick = Shared("OnClick on the configurator's Keybind Mode", function()
 	local K = MelloUI.KeybindMode
 	if K then
@@ -2011,9 +2005,6 @@ local function Current(page, r, pick)
 	if keys then
 		return keys[pick]
 	end
-	if r.only and pick and not r.only[pick] then
-		return nil
-	end
 	return r.b
 end
 -- the setting whose schema a row's controls are made from: the pick's, else
@@ -2027,7 +2018,7 @@ function EntryLive(page, r, pick)
 	if r.keys then
 		return r.keys[pick] ~= nil
 	end
-	return not (r.only and pick and not r.only[pick])
+	return true
 end
 
 -- The choices of a picture row's setting: a border kind's (Kit.borderKinds,
@@ -2119,7 +2110,8 @@ end
 
 -- where a place is seen from this page: nil here (its tab), else the other
 -- page's title with the pick it is on when it is not on every pick there
--- ("Action Bars > Bag Bar": a row per pick is named by its shared label),
+-- ("Windows > Bags": a row per pick is named by its shared label; a
+-- designer's by its element and part, "Bars > Menu & Bags > Bag bar"),
 -- the pick it needs here (its label, and its key for the jump), or the
 -- other tab it is on ("Minimap tab")
 local farWhere, tabWhere = {}, {}   -- [place] / [tab name] = the text (made once each)
@@ -2131,7 +2123,10 @@ local function WhereOf(page, place, row)
 		if not where then
 			local other = pick and Lay.Get().pages[r.page]
 			local label = other and other.picks and #place.picks < #other.picks and other.pickLabel[pick]
-			where = label and (PageTitle(r.page) .. " > " .. label) or PageTitle(r.page)
+			-- (a designer's row: its element and part, "Bars > Menu & Bags > Bag bar" -- the tab's own label)
+			local t = r.tab
+			where = (label and (PageTitle(r.page) .. " > " .. label))
+				or (t and t.el and (PageTitle(r.page) .. " > " .. t.label)) or PageTitle(r.page)
 			farWhere[place] = where
 		end
 		return where, nil
@@ -2320,7 +2315,7 @@ local function Hint(page, r, b)
 	if r.wide then
 		return r.wide
 	end
-	local picks = (r.keys and b and r.picksOf[b]) or (not r.keys and r.onlyList)
+	local picks = r.keys and b and r.picksOf[b]
 	if picks and #picks >= 2 then
 		return TEXT.shared
 	end
@@ -2344,7 +2339,7 @@ local function Tip(page, r, b)
 		return tip
 	end
 	tip = (b.kind == "module" and b.mod.desc) or (b.opt and b.opt.desc) or ""
-	local picks = (r.keys and r.picksOf[b]) or (not r.keys and r.onlyList)
+	local picks = r.keys and r.picksOf[b]
 	if picks and #picks >= 2 then
 		local also = r.also and r.also[b.id]
 		local line = string.format(TEXT.sharedTip, Join(LabelsOf(page.lay, picks)), also and string.format(TEXT.also, also) or "")
@@ -2607,7 +2602,7 @@ local function ResetRow(page, r, pick)
 	if (type(v) == "table" or Setting(b.mod, b.key) ~= v) and Want(b, v) then
 		-- (one setting for other picks too, as the row's "shared" hint says,
 		-- or for the whole page: the question counts it)
-		local picks = (r.keys and r.picksOf[b]) or (not r.keys and r.onlyList)
+		local picks = r.keys and r.picksOf[b]
 		if pick and not (picks and #picks < 2) then
 			resetShared = resetShared + 1
 		end
@@ -3099,6 +3094,11 @@ local function Header(page, pl)
 	local preview = type(P) == "table" and type(P.Make) == "function"
 	local icon, flavour = PageMeta(page.name)
 	local right = module and SWITCH_ROOM or (preview and PREVIEW_W + 10) or RESET_W + 10
+	-- (a page with no picker line -- the Bars designer -- has its action in the header, left of Reset)
+	local headAction = def.action == "keybind" and not pl.picks
+	if headAction then
+		right = right + KEYBIND_MODE.width + 10
+	end
 	page.previewH = preview and PREVIEW_H or nil
 	page.pickerLineH = pl.picks and PICKER_LINE or nil
 	local own = Lay.ModuleOf(def)
@@ -3134,6 +3134,12 @@ local function Header(page, pl)
 	elseif not preview then
 		reset:SetPoint("TOPRIGHT", page, "TOPRIGHT", -PAD, -PAD)
 	end
+	if headAction then
+		local b = W.Button(page, KEYBIND_MODE.name, KEYBIND_MODE.width, nil, { gold = true, onClick = KeybindModeClick })
+		b:SetPoint("RIGHT", reset, "LEFT", -10, 0)
+		page.action = b
+		W.ButtonTag(b, KEYBIND_MODE.new)
+	end
 	if pl.picks then
 		-- the picker line: the pick, Copy from (placed by LayTabs, under the
 		-- header's texts)
@@ -3157,7 +3163,7 @@ local function Header(page, pl)
 		page.pickerLine, page.picker, page.copyBox = line, dd, copy
 		-- (0.19.9) the page's own action beside them (Action Bars: Keybind Mode)
 		if def.action == "keybind" then
-			local b = W.Button(line, KEYBIND_MODE.name, 140, nil, { gold = true, onClick = KeybindModeClick })
+			local b = W.Button(line, KEYBIND_MODE.name, KEYBIND_MODE.width, nil, { gold = true, onClick = KeybindModeClick })
 			b:SetPoint("LEFT", copy, "RIGHT", 12, 0)
 			page.action = b
 			W.ButtonTag(b, KEYBIND_MODE.new)
@@ -3640,9 +3646,16 @@ do
 		local page, t, kind = sec.page, job.t, job.dhead
 		local own = (kind == "family" and t.family) or t.el
 		local title = kind == "part" and (t.part.label .. " · " .. t.el.label) or own.label
-		local row = W.Row(sec, sec.y + job.gap, ROW_HEIGHT, title, kind ~= "part" and own.line or nil, nil, RowOpts(sec))
+		-- (Q11: a locked part -- nothing to set yet -- says why under its name, and has no Reset part)
+		local locked = kind == "part" and t.part.locked
+		local line = (kind ~= "part" and own.line) or (type(locked) == "string" and locked) or nil
+		local row = W.Row(sec, sec.y + job.gap, ROW_HEIGHT, title, line, nil, RowOpts(sec))
 		local reset
-		if kind == "part" then
+		if locked then
+			job.row = row
+			Placed(sec, row, job.gap + ROW_HEIGHT)
+			return
+		elseif kind == "part" then
 			reset = W.Button(row, TEXT.resetPart, 110, SKIN, { onClick = DUI.ResetClick })
 			PageTip(reset, TEXT.resetPart, TEXT.resetPartTip)
 		else

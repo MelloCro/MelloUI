@@ -149,6 +149,10 @@ PAGE_TOOLS = {
                                                                          "defaults)",
     "Core/Config.lua:W.Dropdown(row)": "a designer element's Copy from… (an element's own settings copied from "
                                        "another element)",
+    # (one look stage G, the Bars designer: a page with no picker line has Keybind Mode in its header -- the same
+    # button as the picker line's, in 0.19.9; not a new control)
+    "Core/Config.lua:Button(KEYBIND_MODE.name)#2": "Keybind Mode in a designer page's header (the Bars page: no "
+                                                   "picker line)",
 }
 # a control builder's call whose label is the schema's own row: `opt.<field>` (the old pages' builders), a layout
 # row's `r.name` (the rebuild's element pages: Core/ConfigLayout.lua's rows, each a module's setting)
