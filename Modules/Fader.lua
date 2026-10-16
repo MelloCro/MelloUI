@@ -181,6 +181,10 @@ M = MelloUI:RegisterModule("Fader", {
 	-- of its own -- its engine runs while any element fades, AnyFade)
 	role = "look",
 	enabledByDefault = true,
+	-- (no switch: never in a profile's switches -- Core's Everything Off left it
+	-- off for a new player, whose settings then never matched Everything Off,
+	-- so the installer never opened: the one look cleanup, 2026-10-16)
+	noSwitch = true,
 	defaults = defaults,
 	options = options,
 })

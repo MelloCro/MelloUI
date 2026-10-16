@@ -4744,7 +4744,9 @@ MelloUI.FRESH_PROFILE = "Everything Off"
 function MelloUI:FreshProfileText()
 	local parts = {}
 	for name, module in self:IterateModules() do
-		if module.enabledByDefault and not module.hidden then
+		-- (a module with no switch of its own -- noSwitch, the Fader -- has no
+		-- flag to turn off)
+		if module.enabledByDefault and not module.hidden and not module.noSwitch then
 			parts[#parts + 1] = "!" .. name .. "=b0"
 		end
 		-- the tweak modules folded under UI Modifications follow its qol_
