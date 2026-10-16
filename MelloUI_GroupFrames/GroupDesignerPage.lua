@@ -46,6 +46,8 @@ local TEXT = {
 	time = "Its time", stacks = "Its stacks", remove = "Remove",
 	show = "Show the fake raid on screen",
 	showTip = "Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only.",
+	showParty = "Show the fake party on screen",
+	showPartyTip = "Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only.",
 	removeTip = "Take this indicator off the list (this spec only).",
 	unnamed = "Spell %s",
 }
@@ -607,17 +609,28 @@ function Page.Build(canvas, width)
 	-- the made-up raid where your raid frames stand
 	local show = W.Button(canvas, TEXT.show, 220, nil, { height = 22 })
 	show:SetPoint("TOPLEFT", canvas, "TOPLEFT", G.pad, -(G.listH + G.gap + G.setH + G.gap))
+	-- (one look: on the Party frame too -- your Group Frames party's own made-up party, or the portraits' stand-ins)
+	local function ShowPart()
+		if inst.el == "raid" then
+			return "raid"
+		end
+		return inst.kind == "groupParty" and "groupparty" or "party"
+	end
 	show:HookScript("OnClick", function()
 		local Pv = MelloUI.Preview
 		if Pv and Pv.Start then
-			local ok, why = Pv:Start("party", "raid")
+			local ok, why = Pv:Start("party", ShowPart())
 			if not ok and why == "combat" then
 				MelloUI:Print(Pv.TEXT.inCombat)
 			end
 		end
 	end)
 	show:HookScript("OnEnter", function(self)
-		W.ShowTooltip(self, TEXT.show, TEXT.showTip)
+		if inst.el == "raid" then
+			W.ShowTooltip(self, TEXT.show, TEXT.showTip)
+		else
+			W.ShowTooltip(self, TEXT.showParty, TEXT.showPartyTip)
+		end
 	end)
 	show:HookScript("OnLeave", W.TipLeave)
 
@@ -639,7 +652,8 @@ function Page.Build(canvas, width)
 			inst.ind = list[1]
 		end
 		title:SetText(string.format(TEXT.lists[inst.kind] or TEXT.list, specLabel))
-		show:SetShown(inst.el == "raid")
+		show:SetShown(inst.el == "raid" or inst.el == "party")
+		show:SetText(inst.el == "raid" and TEXT.show or TEXT.showParty)
 		for i, r in ipairs(rows) do
 			local ind = list[i]
 			r.ind = ind
@@ -739,11 +753,57 @@ local function FakeShow()
 	h:Show()
 end
 
+-- (one look, F-v3's needs_user 7, the user's yes) the made-up Group Frames party (the Preview's part
+-- "groupparty", played alone): five samples where your party stands, laid in your party's own places
+-- ("groupParty") and growth, its own list's indicators on them
+local fakeParty = { holder = nil, frames = {} }
+local FAKE_PARTY = 5
+local GROW = { DOWN = { 0, -1, "TOPLEFT" }, UP = { 0, 1, "BOTTOMLEFT" }, RIGHT = { 1, 0, "TOPLEFT" },
+	LEFT = { -1, 0, "TOPRIGHT" } }
+
+local function FakePartyShow()
+	if not fakeParty.holder then
+		fakeParty.holder = CreateFrame("Frame", "MelloUIGroupFramesFakeParty", UIParent)
+		fakeParty.holder:SetFrameStrata("MEDIUM")
+	end
+	local h = fakeParty.holder
+	local db = RD.DB()
+	local g = GROW[db.partyGrowth or "DOWN"] or GROW.DOWN
+	h:ClearAllPoints()
+	local party = ns.Headers and ns.Headers.containers and ns.Headers.containers.party
+	if party then
+		h:SetPoint(g[3], party, g[3], 0, 0)
+	elseif ns.Headers and ns.Headers.Home then
+		ns.Headers.Home("party")(h)
+	end
+	h:SetSize(1, 1)
+	local list = RD:List(RD:KeyOf(nil, "groupParty"))
+	local sp = ns.Headers and ns.Headers.Spacing and ns.Headers.Spacing("party") or db.spacing or 0
+	for n = 1, FAKE_PARTY do
+		local f = fakeParty.frames[n]
+		if not f then
+			f = SampleFrame(h, Member(n), "groupParty")
+			f.base = f.sample.health
+			fakeParty.frames[n] = f
+		else
+			Resample(f)
+		end
+		f:ClearAllPoints()
+		f:SetPoint(g[3], h, g[3], g[1] * (n - 1) * (db.width + sp), g[2] * (n - 1) * (db.height + sp))
+		SampleMarks(f, list, f.sample.frac, function(j, e)
+			return e.kind == "buff" and (n + j) % 2 == 0 or (e.kind == "debuff" and n % 4 == 2)
+		end)
+	end
+	h:Show()
+end
+
 local function FakeHit(n)
-	for i, f in ipairs(fake.frames) do
-		local wave = (n or 0) <= 8 and (n or 0) / 8 or math.max(0, (12 - n) / 4)
-		f.sample.health = math.max(0.05, (f.base or 1) - 0.35 * wave * ((i % 3) + 1) / 3)
-		Button.Health(f)
+	for _, set in ipairs({ fake.frames, fakeParty.frames }) do
+		for i, f in ipairs(set) do
+			local wave = (n or 0) <= 8 and (n or 0) / 8 or math.max(0, (12 - n) / 4)
+			f.sample.health = math.max(0.05, (f.base or 1) - 0.35 * wave * ((i % 3) + 1) / 3)
+			Button.Health(f)
+		end
 	end
 end
 
@@ -756,13 +816,24 @@ local PreviewBeat = function(beat, _, n)
 		if fake.holder then
 			fake.holder:Hide()
 		end
+		if fakeParty.holder then
+			fakeParty.holder:Hide()
+		end
 		return
 	end
-	if not (RD.module.isEnabled and Pv and Pv:Plays("raid")) then
+	-- (the fake party only while its part plays alone: the whole Party Fight has its stand-ins)
+	local raid = Pv and Pv:Plays("raid")
+	local party = Pv and Pv.Part and Pv:Part() == "groupparty"
+	if not (RD.module.isEnabled and (raid or party)) then
 		return
 	end
 	if beat == "start" then
-		FakeShow()
+		if raid then
+			FakeShow()
+		end
+		if party then
+			FakePartyShow()
+		end
 	elseif beat == "hit" then
 		FakeHit(n)
 	end
@@ -771,8 +842,16 @@ end
 -- (0.20.1, the user: "the Group frames background should also switch the background of the group frames") a look
 -- setting changed while the fake raid shows: its members painted again
 local FakePaint = function(what)
-	if what == "paint" and fake.holder and fake.holder:IsShown() then
+	if what ~= "paint" then
+		return
+	end
+	if fake.holder and fake.holder:IsShown() then
 		for _, f in ipairs(fake.frames) do
+			Resample(f)
+		end
+	end
+	if fakeParty.holder and fakeParty.holder:IsShown() then
+		for _, f in ipairs(fakeParty.frames) do
 			Resample(f)
 		end
 	end

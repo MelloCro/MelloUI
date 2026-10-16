@@ -648,7 +648,9 @@ frames stand, so your heals and indicators can be seen on it. Either way the par
   class starts with a set of its own, shown until you change it. The game draws the indicators with its own aura
   widget, so they keep working in a fight while the auras are secret.
 - **See it:** "Show the fake raid on screen" under the Raid frame's Your Indicators, or Preview > Raid Frames: a made-up raid where your
-  raid frames stand, laid out as they are.
+  raid frames stand, laid out as they are. On the Party frame, "Show the fake party on screen" (or Preview > Group
+  Frames Party) puts a made-up party where your Group Frames party stands, with the party's own indicators; with the
+  Portraits style it shows the Preview's stand-in party.
 
 ### Heal Effects
 

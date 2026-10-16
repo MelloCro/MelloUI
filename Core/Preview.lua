@@ -98,6 +98,10 @@ Preview.ITEMS = {
 	-- (0.20.0) the Group Frames's fake raid (MelloUI_GroupFrames): its own samples
 	{ key = "raidframes", part = "raid", mode = "party", name = "Raid Frames", module = "GroupFrames",
 		desc = "A made-up raid where your raid frames stand, with your indicators on it." },
+	-- (one look, F-v3's needs_user 7, the user's yes: the Group Frames party's own made-up party -- this part played
+	-- alone only; the whole Party Fight keeps its stand-ins)
+	{ key = "groupparty", part = "groupparty", mode = "party", name = "Group Frames Party", module = "GroupFrames",
+		desc = "A made-up party where your Group Frames party stands, with its own indicators on it." },
 	{ key = "meter", part = "meter", mode = "party", name = "Damage Meter", module = "Meter",
 		desc = "Your numbers, the group's race bar, the summary." },
 	{ key = "combattext", part = "combattext", mode = "solo", name = "Combat Text", module = "CombatText",
