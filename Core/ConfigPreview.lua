@@ -47,8 +47,10 @@
 -- Corner(p, skin) (its parts, made once), Lay(p, pick), OnShow(p), Tip(pick).
 --
 -- The 'unitframe' kind (at the end of this file, until stage G moves it to
--- its module): the Unit Frames page's corner preview -- picks "player",
--- "target", "focus", "pet", "party", "raid", "castbars", "personal"; its
+-- its module): the designer's corner sample (the Player, Target, Focus and
+-- Pet frames' stage slot) -- picks "player", "target", "focus", "pet",
+-- "party", "castbars", "personal" (one look C14: the raid frame is the
+-- designer stage's, MelloUI_GroupFrames' 'raidframe' kind); its
 -- portrait wears the shell's round kit rim while the shell's look is on --
 -- and the party pick's sample, a replica of the game's party member frame
 -- (Preview's stand-ins, Group Frames' solo frame, the Designer's party).
@@ -108,7 +110,6 @@ local CREST = 20              -- the Elite mark on the portrait's top
 local DIM = 0.4               -- a part whose setting is off (a gated row's alpha)
 local NAME_TOP, BAR1_TOP, BAR2_TOP = -22, -40, -60   -- the unit layout's lines, below the top
 local BAR1_H, BAR2_H = 16, 10
-local RAID_W, RAID_H = 120, 52   -- the raid cell (its bar), the name inside its top-left corner
 
 -- the game's own bar art, where the settings leave it on the frame (an atlas
 -- where the client has it; else the game's plain bar in the game's colour)
@@ -118,7 +119,6 @@ local GAME_HEALTH = "UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health"
 -- Textures' ColouredDefault: the colour on the green art came out grey-green)
 local GAME_HEALTH_WHITE = GAME_HEALTH .. "-Status"
 local GAME_CAST = "ui-castingbar-filling-standard"
-local GAME_RAID = "Interface\\RaidFrame\\Raid-Bar-Hp-Fill"
 local NO_PORTRAIT = "Interface\\Icons\\INV_Misc_QuestionMark"   -- (a client without the creature portrait)
 local CAST_ICON = "Interface\\Icons\\Spell_Holy_Renew"
 
@@ -156,9 +156,6 @@ local SAMPLES = {
 		health = 7900, max = 8800, power = 4100, powerMax = 7000, token = "MANA",
 		level = 24,   -- (the party members' level: Unit Frames' on the name line, one-look D5; the painted skin's circle)
 		label = "A party member's frame" },
-	raid = { layout = "raid", area = "raidframes",
-		first = "Tobin", last = "Hale", class = "WARRIOR", reaction = 5, health = 6600, max = 12000,
-		label = "A raid frame" },
 	castbars = { layout = "cast", area = "castbars", spell = "Renew", fraction = 0.62, time = "0.9",
 		label = "Your cast bar" },
 	personal = { layout = "personal", area = "personal", reaction = 5,
@@ -257,15 +254,10 @@ local function Fill(bar, value, max)
 	bar:SetValue(value)
 end
 
--- the health bar of a unit, a raid frame or the personal display
+-- the health bar of a unit or the personal display
 local function PaintHealth(bar, s, BT)
 	local texture, active = BT.PreviewTexture(s.area)
-	if s.layout == "raid" then
-		-- the game's raid frames colour a member by class (their default);
-		-- Bar Textures changes their fill only
-		Picture(bar, texture, nil, GAME_RAID)
-		bar:SetStatusBarColor(BT.PreviewHealthColor("class", s))
-	elseif s.layout == "personal" then
+	if s.layout == "personal" then
 		Picture(bar, texture)
 		bar:SetStatusBarColor(BT.PreviewHealthColor("green", s))
 	else
@@ -406,7 +398,6 @@ local function Lay(p)
 	portrait:SetShown(layout == "unit")
 	crest:Hide()
 	name:SetShown(layout == "unit")
-	p.cellName:SetShown(layout == "raid")
 	bar2:SetShown(layout == "unit" or layout == "personal")
 	p.icon:SetShown(layout == "cast")
 	p.castText:SetShown(layout == "cast")
@@ -431,9 +422,6 @@ local function Lay(p)
 		bar1:SetPoint("TOPLEFT", p, "TOPLEFT", x, BAR1_TOP)
 		bar2:SetSize(w, BAR2_H)
 		bar2:SetPoint("TOPLEFT", p, "TOPLEFT", x, BAR2_TOP)
-	elseif layout == "raid" then
-		bar1:SetSize(RAID_W, RAID_H)
-		bar1:SetPoint("CENTER", p, "CENTER", 0, 0)
 	elseif layout == "cast" then
 		p.icon:ClearAllPoints()
 		p.icon:SetPoint("LEFT", p, "LEFT", 16, 0)
@@ -465,8 +453,6 @@ local function PaintCorner(p)
 		local centred = (s.plate and Running("UnitFramePanel")) or (s.centre and uf and uf.isEnabled)
 		p.name:SetJustifyH(centred and "CENTER" or "LEFT")
 		p.name:SetText(NameAs(s))
-	elseif s.layout == "raid" then
-		p.cellName:SetText(NameAs(s))
 	end
 	if BT then
 		if s.layout == "cast" then
@@ -2495,12 +2481,6 @@ local function UnitCorner(p, skin)
 	p.name = W.Text(p, "GameFontNormal", nil, "text")
 	p.name:SetWordWrap(false)
 	p.bar1, p.bar2 = Bar(p), Bar(p)
-	-- the raid cell's name: a region of its bar (one of the preview's own
-	-- would draw under the bar's fill, a child frame's)
-	p.cellName = W.Text(p.bar1, "GameFontNormal", nil, "text")
-	p.cellName:SetWordWrap(false)
-	p.cellName:SetPoint("TOPLEFT", p.bar1, "TOPLEFT", 4, -4)
-	p.cellName:SetWidth(RAID_W - 8)
 	p.text1 = p.bar1:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
 	p.text2 = p.bar2:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
 	p.icon = p:CreateTexture(nil, "ARTWORK")
