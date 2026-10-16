@@ -129,7 +129,7 @@ Close it without installing and nothing changes. Run it again any time: **Instal
 - **Side list:** Home, then the pages in five groups, then Profiles: **The look** (Look, Windows, Fader, Oldschool: the painted reskin's own settings), **Frames and bars** (Unit & Group Frames, Nameplates, Action Bars, Minimap, Bars & Meters, Swing Timers), **Chat and text** (Chat, Tooltip, Screen Text), **Quests and travel** (Quest Tracker, Quest List, Route, Reminders, Gains) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
 - **Pages:** every page is laid out the same way. At the top its name and what it holds, its switch where the page is one module's (Look's is **UI Modifications**: the painted reskin and every feature that tunes the interface go with it; the palette, the UI Shade and Reduce Motion keep working without it) and **Reset this page** (every setting on the page back to its default, on every tab; on a page with a picker, for the one picked and the settings every pick shares; the switches of whole modules and what is your character's own stay; it asks first, saying how many settings change). Under it the tabs, and on every tab the same sections in the same order: General, Look, Text, Layout, Behaviour, Sound, Advanced (a section with nothing in it is left out). Pages and tabs slide and fade in, and the wheel glides the page and the list; Reduce Motion (Look > General) makes all of it instant.
 - **Every setting in one place:** each setting lives on one page only. What the whole interface shares (the palette, the Kit Colours, the borders, the Font Style and its sizes, the UI Shade and its areas, the parchment sheets, Dark Mode's brightness, the bar texture and the health bar colours) lives on **Look**. A page it touches shows a **link row**: the setting's value and a button naming the page it lives on (**Look >**, **Minimap >**, **Windows >**) that takes you to it.
-- **Designers:** Unit & Group Frames is a designer. Its frames stand in a row at the top: Player, Target, Focus, Pet, Buffs, Party, Raid, Personal, and **All frames** for what every frame shares (the heal light, the big moments, the debuff glow). Pick one, then one of its parts on the line under it (Name, Health bar, Portrait…): the part's options come first, the whole frame's under them, each heading saying whose it is ("Player · Look"). An option that is one setting for several frames is marked **Shared**, and its tooltip names the others.
+- **Designers:** Unit & Group Frames is a designer. Its frames stand in a row at the top: Player, Target, Focus, Pet, Buffs, Party, Raid, Personal, and **All frames** for what every frame shares (the heal light, the big moments, the debuff glow). Pick one, then one of its parts on the line under it (Name, Health bar, Portrait…): the part's options come first, the whole frame's under them, each heading saying whose it is ("Player · Look"). An option that is one setting for several frames is marked **Shared**, and its tooltip names the others. The **Party** and **Raid** frames show your frame large at the top (it stays there while the page scrolls): click a part on it to open that part's options, or a part on the line to pick it there.
 - **Pickers:** Action Bars (Action Bars, Micro Menu, Bag Bar) and Windows (every game window the reskin dresses, from the AddOn list to the Trainers) have a picker at the top: the page's settings are for the one picked. **Copy from…** gives it another one's settings; it asks first ("Copy the Micro Menu bar's settings to Action Bars?"). **All**, beside a setting, gives its value to every one that has it; it shows while their values differ. A setting that is one for several says **shared**, and its tooltip names them.
 - **Pictures:** the looks you choose by sight (the borders, the backdrops and backgrounds, the minimap's shape and square border) show the chosen one's picture. Click it and every choice opens as a picture under the row; a click on one puts it on at once. Not in a fight.
 - **Dimmed options:** an option that needs another switch, or that the one picked does not have, is dimmed and says why ("Switch on "UI Modifications" first (Look).", "Not for AddOn list"). When that switch is on another page or pick, a click on the dimmed option takes you to it.
@@ -610,7 +610,7 @@ What a healer reads off the frames (0.19.0; on by default, both looks):
 MelloUI's own party and raid frames (0.20.0; an addon of its own, MelloUI Group Frames; its settings on Unit &
 Group Frames' Party and Raid frames). The game's party and raid frames give way to them; switch **Group Frames** off and the game's come back. **In A
 Party** (the Party frame): these frames, or the normal party frames with portraits (the game's, in the painted look),
-with indicators of their own, their parts (buffs, name, role icon, leader icon, ready check) moved in the Designer's Party Frames, and sharp round role badges; with those, you show as a normal party frame while solo too, where the game's party
+with indicators of their own, their parts (buffs, name, role icon, leader icon, ready check) moved on the Party frame's large frame in its **Portraits** style, and sharp round role badges; with those, you show as a normal party frame while solo too, where the game's party
 frames stand, so your heals and indicators can be seen on it. Either way the party moves in Edit Layout ("Party Frames"), never in Edit Mode.
 
 - **The Party and Raid frames:** In A Party; Show Yourself In Your Party; Show Yourself While Solo (your own frame where your
@@ -627,19 +627,25 @@ frames stand, so your heals and indicators can be seen on it. Either way the par
 - **Their Name, Health text and Status text:** Name Colour (white, class colour, yours), Name Length, Health Text (percent, current, missing,
   none), Dead / Offline Text.
 - **Colours:** a colour of yours is a swatch; click it for the colour wheel.
-- **The Raid frame's Indicators:** your aura indicators -- a buff picked by its spell (type its name or spell ID: every rank of it
+- **The large frame** (the Party and Raid frames' top): your frame as it looks, its parts and indicators on it. Drag one
+  to move it (it takes the nearest spot, and stays there until another is clearly nearer), click a **+** to put it on a
+  spot, scroll over it to size it, the arrow keys move it by 1 px (Shift: 10); right-click it for what it shows,
+  **Show** / **Hide** and its default place. Point at a list's choice (a colour, a texture) and the large frame tries it
+  before you pick it. The Party frame switches between **Group Frames** and **Portraits** there; your Group Frames
+  party and your raid frames each keep their own places, and their own indicators.
+- **Your Indicators** (the Party and Raid frames' Indicators): your aura indicators -- a buff picked by its spell (type its name or spell ID: every rank of it
   counts; yours only, or anyone's), or a debuff on your group picked by its kind (dispellable by you or by your
   group, any dispellable, Magic, Curse, Disease, Poison, a boss debuff, crowd control; the game never lets a
   friend's debuff be picked by its spell). Looks: **Icon** (its time as a sweep), **Draining Icon**, **Square** (in
   your colour on its own dark shade, draining from the top), **Bar** along an edge, or **Health Colour** (the health
   bar takes your colour while the aura is on). One of nine spots with an offset, a size, your colour (a debuff can
   take its type's colour), its time and stacks as text with their own size, spot and offset, Show Always or In a
-  fight. Your frame shows as large as it fits, exactly as the frames look: drag an indicator to move it, scroll
-  over it to size it. **Frame parts** move, size or hide the name, the health text, the role icon, the raid mark,
-  the ready check and the centre icon. Each spec keeps its own list (**Copy from a spec** takes another's); each
+  fight. A pick in the list picks it on the large frame (and the other way round), where it is moved and sized. The
+  name, the health text, the role icon, the raid mark, the ready check and the centre icon move, size or hide on the
+  large frame. Each spec keeps its own list (**Copy from** takes another's, a party's or a raid's); each
   class starts with a set of its own, shown until you change it. The game draws the indicators with its own aura
   widget, so they keep working in a fight while the auras are secret.
-- **See it:** "Show the fake raid on screen" in the Designer, or Preview > Raid Frames: a made-up raid where your
+- **See it:** "Show the fake raid on screen" under the Raid frame's Your Indicators, or Preview > Raid Frames: a made-up raid where your
   raid frames stand, laid out as they are.
 
 ### Heal Effects

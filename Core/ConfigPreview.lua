@@ -818,7 +818,9 @@ end
 --   parts(pick, sample) -> { part, ... }, PartKeys(pick), states ({ { key,
 --   label } }: chips), Tries(id) -> true, Empty(pick) -> a caption,
 --   Moved(pick) -> n, ResetAll(pick), mover(pick) -> a mover key, reset ({ {
---   module, key } }: Wants), Panel(class, stage, parent, y) -> frame, height
+--   module, key } }: Wants), Panel(class, stage, parent, y) -> frame, height,
+--   OnSelect(stage, key) (a part picked or let go: the kind's own followers)
+-- The page sets stage.pinAbove (what it pins over the stage, px) for Stick.
 -- A part: key, label, class, region(sample) -> region | nil (none: no hit,
 --   no outline), box(sample) (the frame its place is on: the sample when
 --   absent), text (a font string: its string on its justify side is what
@@ -1764,8 +1766,14 @@ do
 		E.Outlines(stage)
 		E.Marks(stage)
 		E.Caption(stage)
-		if was ~= key and stage.opts.onSelect then
-			stage.opts.onSelect(stage, key)
+		if was ~= key then
+			if stage.opts.onSelect then
+				stage.opts.onSelect(stage, key)
+			end
+			-- (the kind's own: its lists following the pick -- one look C10)
+			if stage.def.OnSelect then
+				stage.def.OnSelect(stage, key)
+			end
 		end
 	end
 
@@ -2145,7 +2153,8 @@ do
 		end
 		E.Listen(stage)
 		local scroll = stage.opts.scroll
-		stage:Stick(scroll and Num(Safe.Call(scroll, "GetVerticalScroll")) or 0)
+		-- (pinned under what the page lays over it: its chips -- stage.pinAbove)
+		stage:Stick((scroll and Num(Safe.Call(scroll, "GetVerticalScroll")) or 0) + (stage.pinAbove or 0))
 		E.RepaintNow(stage)
 	end, "script")
 

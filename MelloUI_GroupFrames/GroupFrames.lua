@@ -382,9 +382,11 @@ local M = MelloUI:RegisterModule(OWNER, {
 		-- the Designer
 		{ type = "toggle", key = "indicators", name = "Indicators On The Frames",
 		  desc = "Your aura indicators on the frames. Off: the frames show none." },
-		{ type = "canvas", key = "designer", name = "Designer", height = 760,
-		  search = "indicators icons squares bars hots shields buffs debuffs dispel colour wheel parts",
-		  desc = "Your frame as large as it fits, your indicators for the spec you play, the frame's parts, and the one you picked: its look, place, size, colour and text.",
+		-- (one look C10: the list and the picked one's settings; the frame and its
+		-- parts are the designer stage's -- GroupDesignerPage.lua's Page.HEIGHT)
+		{ type = "canvas", key = "designer", name = "Your Indicators", height = 616,
+		  search = "indicators icons squares bars hots shields buffs debuffs dispel colour wheel designer",
+		  desc = "Your indicators for the spec you play, and the one you picked: its look, place, size, colour and text. Drag it on the frame above to move it.",
 		  build = function(canvas, width)
 			if ns.Page and ns.Page.Build then
 				ns.Page.Build(canvas, width)

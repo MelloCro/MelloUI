@@ -147,15 +147,27 @@ L.pages = {
 			{ key = "pet", label = "Pet", line = "Your pet's frame", parts = { { key = "status", label = "Status glow" },
 				{ key = "combat", label = "Combat glow" } } },
 			{ key = "buffs", label = "Buffs", line = "Your buffs and debuffs" },
+			-- (one look C10) `stage`: the designer stage over the chips (MelloUI_GroupFrames' 'raidframe' kind, its
+			-- pick; `also`: its other picks of this frame); a part's `stage`: its part's key there ("ind:" any
+			-- indicator) -- picked on the stage, its tab opens; its tab opened, picked on the stage
 			{ key = "party", label = "Party", module = "GroupFrames", line = "Your party: MelloUI's Group Frames or the game's",
-				parts = { { key = "name", label = "Name" }, { key = "healthtext", label = "Health text" },
-				{ key = "status", label = "Status text" }, { key = "health", label = "Health bar" },
-				{ key = "power", label = "Power bar" }, { key = "background", label = "Background" } } },
-			{ key = "raid", label = "Raid", module = "GroupFrames", line = "MelloUI's raid frames", parts = {
-				{ key = "name", label = "Name" }, { key = "healthtext", label = "Health text" },
-				{ key = "status", label = "Status text" }, { key = "health", label = "Health bar" },
-				{ key = "power", label = "Power bar" }, { key = "background", label = "Background" },
-				{ key = "indicators", label = "Indicators" } } },
+				stage = { kind = "raidframe", pick = "groupParty", also = { "portrait" } },
+				parts = { { key = "name", label = "Name", stage = "name" },
+				{ key = "healthtext", label = "Health text", stage = "health" },
+				{ key = "status", label = "Status text", stage = "health" },
+				{ key = "health", label = "Health bar", stage = "bar.health" },
+				{ key = "power", label = "Power bar", stage = "bar.power" },
+				{ key = "background", label = "Background", stage = "bar.background" },
+				{ key = "indicators", label = "Indicators", stage = "ind:" } } },
+			{ key = "raid", label = "Raid", module = "GroupFrames", line = "MelloUI's raid frames",
+				stage = { kind = "raidframe", pick = "raid" }, parts = {
+				{ key = "name", label = "Name", stage = "name" },
+				{ key = "healthtext", label = "Health text", stage = "health" },
+				{ key = "status", label = "Status text", stage = "health" },
+				{ key = "health", label = "Health bar", stage = "bar.health" },
+				{ key = "power", label = "Power bar", stage = "bar.power" },
+				{ key = "background", label = "Background", stage = "bar.background" },
+				{ key = "indicators", label = "Indicators", stage = "ind:" } } },
 			{ key = "personal", label = "Personal", module = "PersonalDisplay", line = "The bars under your character",
 				parts = { { key = "shield", label = "Shield column" }, { key = "cast", label = "Cast" },
 				{ key = "swing", label = "Swing rails" }, { key = "text", label = "Text" },
@@ -924,8 +936,9 @@ function L.Define(R, Link)
 		UGF({ "raid:healthtext", "party:healthtext" }, "Text", "GroupFrames.healthText")
 		UGF({ "raid:status", "party:status" }, "Text", "GroupFrames.statusText")
 		-- the Designer: the indicators and the frame's parts on one canvas
-		R("UnitGroupFrames", "raid:indicators", "General", "GroupFrames.indicators")
-		R("UnitGroupFrames", "raid:indicators", "General", "GroupFrames.designer")
+		-- (one look C9b / C10: party and raid each their own list -- one switch, the canvas on both)
+		UGF({ "raid:indicators", "party:indicators" }, "General", "GroupFrames.indicators")
+		UGF({ "raid:indicators", "party:indicators" }, "General", "GroupFrames.designer")
 	end
 
 	-- (0.20.0) Frame Effects, Heals: Heal Flight's switch, the look, the landing

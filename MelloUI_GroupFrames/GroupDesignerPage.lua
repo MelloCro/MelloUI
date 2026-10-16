@@ -1,33 +1,26 @@
 --------------------------------------------------------------------------------
--- MelloUI - Group Frames: the Designer (the Configurator's canvas row
--- on the Group Frames page; the picked sketch raid_designer_page.jpg,
--- picks 1A 2A 3C 4B)
+-- MelloUI - Group Frames: your indicators and the designer stage (one look
+-- C10; it was the Designer, the picked sketch raid_designer_page.jpg)
 --
---   top left     your frame four times its size: every indicator on it as a
---                sample (made-up values: nothing read). Drag one to move it
---                (it takes the nearest of the nine spots and the offset from
---                it), the mouse wheel over it sizes it, a click picks it.
---   top right    the indicators of the spec you play: a row each (its
---                picture, its name, its look); a buff added by its spell's
---                name or ID, a debuff by its kind; Copy from another spec.
---   middle       the picked one: its look, its spot (3 x 3) and offset, its
---                size (a bar: thickness and length), whose / which, when, its
---                colour on a colour wheel (the user: "there should be a color
---                wheel for people to self decide the colour of it"), and its
---                time and stacks as text -- each with its size, spot and
---                offset (the user: "font sizes and positions is also very
---                important").
---   bottom       a made-up group at the game's size, and "Show the fake raid
---                on screen": the Preview's part "raid" (MelloUI.Preview), the
---                same samples where your raid frames stand.
+--   Your Indicators   the canvas row on the Unit & Group Frames designer's
+--                Party and Raid frames (their Indicators part): the list of
+--                the spec you play -- a buff added by its spell's name or ID,
+--                a debuff by its kind, Copy from another list -- and the
+--                picked one's look, spot and offset, size (a bar: thickness
+--                and length), whose / which, when, its colour on a colour
+--                wheel (the user: "there should be a color wheel for people
+--                to self decide the colour of it"), and its time and stacks as
+--                text (the user: "font sizes and positions is also very
+--                important"); "Show the fake raid on screen" on the raid's.
+--   the stage    the 'raidframe' kind of the configurator's designer stage
+--                (below): your frame large, its parts and indicators dragged,
+--                sized and picked there.
 -- Made with the page (the Configurator's first open of it), never at login.
---   Page.Build(canvas, width)   the canvas's content (its Refresh set)
+--   Page.Build(canvas, width)   a canvas's content (its Refresh set)
 --------------------------------------------------------------------------------
 
 local _, ns = ...
 local MelloUI = (ns and ns.MelloUI) or _G.MelloUI
-local Perf = MelloUI.Perf:Scope("MelloUI_GroupFrames (the Designer)")
-local Shared = Perf.Shared
 local W = MelloUI.Widgets
 local RD = ns.RD
 local Looks = ns.Looks
@@ -35,11 +28,13 @@ local Looks = ns.Looks
 local Page = {}
 ns.Page = Page
 
-local PartyReplica, PARTY_SIZE   -- (below: the normal party member's replica)
+local PartyReplica   -- (below: the normal party member's replica)
 
 local TEXT = {
-	frame = "Your frame, as large as it fits: drag an indicator to move it, the mouse wheel over it to size it",
 	list = "Indicators for %s",
+	-- (one look C9b: each frame its own list)
+	lists = { group = "Raid Frames: indicators for %s", groupParty = "Group Frames Party: indicators for %s",
+		party = "Party Frames (Portraits): indicators for %s" },
 	buffs = "BUFFS by spell (yours and your group's)",
 	spellHint = "Spell name or ID",
 	addBuff = "+ Buff",
@@ -49,36 +44,23 @@ local TEXT = {
 	look = "Look", spot = "Spot", offset = "X / Y", size = "Size", length = "Length", whose = "Whose",
 	kind = "Which", when = "Show", colour = "Colour", colourBy = "Colour from", strength = "Strength",
 	time = "Its time", stacks = "Its stacks", remove = "Remove",
-	group = "A made-up group at the game's size",
 	show = "Show the fake raid on screen",
 	showTip = "Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only.",
 	removeTip = "Take this indicator off the list (this spec only).",
 	unnamed = "Spell %s",
-	parts = "Frame parts:",
-	designing = "Designing:",
-	kinds = { group = "Group Frames", party = "Party Frames" },
-	partyList = "Indicators for %s (Party Frames)",
-	partyGroup = "Your party at the frames' size (the normal party frames)",
-	partShow = "Show",
-	partSize = "Size",
-	partReset = "The Game's",
-	partResetTip = "Back to the game's own place and size (the frames take it on their next update: a /reload, or someone joining).",
-	partNote = "One of the game's own parts of every party and raid frame (and of your frame while solo).",
 }
 local WHOSE = { { value = "mine", label = "Mine" }, { value = "any", label = "Anyone's" } }
 local WHEN = { { value = "always", label = "Always" }, { value = "combat", label = "In a fight" } }
 local COLOUR_BY = { { value = "type", label = "Its type's colour" }, { value = "mine", label = "My colour" } }
 local SHORT_LOOK = { icon = "Icon", drain = "Draining", square = "Square", bar = "Bar", health = "Health" }
 
--- the canvas's measures (the frame at the game's native 72 x 36, shown 4x)
-local G = { pad = 10, gap = 8, scale = 4, fw = 72, topH = 276, rowH = 20, rows = 8, chips = 26,
-	setY = 288, setH = 318, raidY = 616, labelW = 78, wheel = 96, spot = 13, spotGap = 3, groupH = 100 }
-Page.HEIGHT = G.raidY + 100
+-- the canvas's measures: the list over the picked one's settings, the fake
+-- raid's button under them
+local G = { pad = 10, gap = 8, listH = 252, rowH = 20, rows = 8, setH = 318, labelW = 78, wheel = 96, spot = 13,
+	spotGap = 3 }
+Page.HEIGHT = G.listH + G.gap + G.setH + G.gap + 30
 
-local P = { ind = nil, part = nil, spec = nil, kind = "group" }   -- the picked indicator (or frame part), the spec shown, the frame kind designed
 local Parts = ns.Parts
-
-Page.P = P
 
 --------------------------------------------------------------------------------
 -- Small helpers
@@ -94,12 +76,6 @@ local function Box(parent, x, y, w, h)
 	f:SetSize(w, h)
 	W.Panel(f, { on = true })
 	return f
-end
-
-local function Changed()
-	if P.ind then
-		RD:Changed(P.ind)
-	end
 end
 
 local function Name(ind)
@@ -189,11 +165,6 @@ local SAMPLE_MEMBERS = {
 	{ class = "ROGUE", health = 0.3, frac = 0.2, role = "DAMAGER", power = 0.9, powerToken = "ENERGY" },
 }
 
--- the list designed now: the spec's, of the frame kind on show
-local function Key()
-	return RD:KeyOf(P.spec, P.kind)
-end
-
 -- a member's sample (its name from the Preview's made-up group)
 local function Member(i)
 	local m = SAMPLE_MEMBERS[(i - 1) % #SAMPLE_MEMBERS + 1]
@@ -230,7 +201,6 @@ end
 -- frame's keys and geometry, the Preview's stand-ins), painted as a made-up
 -- member, dressed by the unit frame skin as the members are, with the parts it
 -- lacks at the game's own places (its role, its ready check, its aura row)
-PARTY_SIZE = { w = 120, h = 53 }   -- (the game's party member frame)
 
 local SAMPLE_AURAS = { "Interface\\Icons\\Spell_Holy_Renew", "Interface\\Icons\\Spell_Holy_WordFortitude",   -- look-ok: a sample's auras
 	"Interface\\Icons\\Spell_Shadow_ShadowWordPain" }   -- look-ok: a sample's auras
@@ -315,16 +285,13 @@ local function Resample(f)
 end
 
 -- the marks on a sample: one per indicator (`only`: which to show)
-local function SampleMarks(f, inds, frac, only, mouse)
+local function SampleMarks(f, inds, frac, only)
 	for i, ind in ipairs(inds) do
 		local m = f.marks[i]
 		if not m then
 			local b = CreateFrame("Frame", nil, f)
 			m = { b = b, p = Looks.Make(b) }
 			f.marks[i] = m
-			if mouse then
-				mouse(b, m)
-			end
 		end
 		m.ind = ind
 		local health = ind.look == "health"
@@ -345,111 +312,29 @@ local function SampleMarks(f, inds, frac, only, mouse)
 end
 
 --------------------------------------------------------------------------------
--- The big frame: drag, wheel, click
+-- Your Indicators (one look C10: the canvas row on the Unit & Group Frames
+-- designer's Party and Raid frames, Indicators): the list of the spec you
+-- play -- the raid's, or your party's (its Portraits style's own while the
+-- stage shows that) -- and the picked one's settings. Its place and size are
+-- the designer stage's too (drag it there); a pick here picks it there.
 --------------------------------------------------------------------------------
 
-local big = nil
-local drag = { m = nil }
+-- every canvas on show (one per frame's Indicators part), by its canvas
+Page.canvases = setmetatable({}, { __mode = "k" })   -- [canvas] = { canvas, el, kind, spec, ind, Pick }
 
--- the cursor in the big frame's own units
-local function CursorIn(f)
-	local x, y = GetCursorPosition()
-	local s = f:GetEffectiveScale()
-	local l, b = f:GetLeft(), f:GetBottom()
-	if not (l and b) then
-		return nil
+-- the list a canvas shows: the raid's, or the party's in the style the
+-- stage shows (the portraits' own list while it shows them)
+local function KindOf(inst)
+	if inst.el == "raid" then
+		return "group"
 	end
-	return x / s - l, y / s - b
+	local CP = MelloUI.ConfigPreview
+	local stage = CP and CP.Shown and CP.Shown("raidframe")
+	return (stage and stage.pick == "portrait") and "party" or "groupParty"
 end
+Page.KindOf = KindOf
 
--- the spot nearest a point of the frame, and the offset from it
-local SPOT_AT = {
-	TOPLEFT = { 0, 1 }, TOP = { 0.5, 1 }, TOPRIGHT = { 1, 1 }, LEFT = { 0, 0.5 }, CENTER = { 0.5, 0.5 },
-	RIGHT = { 1, 0.5 }, BOTTOMLEFT = { 0, 0 }, BOTTOM = { 0.5, 0 }, BOTTOMRIGHT = { 1, 0 },
-}
-local function Nearest(x, y)
-	local best, bd, bx, by = "CENTER", math.huge, 0, 0
-	local fw, fh = big:GetWidth(), big:GetHeight()
-	for _, point in ipairs(RD.POINTS) do
-		local at = SPOT_AT[point]
-		local px, py = at[1] * fw, at[2] * fh
-		local d = (x - px) ^ 2 + (y - py) ^ 2
-		if d < bd then
-			best, bd, bx, by = point, d, px, py
-		end
-	end
-	return best, math.floor(x - bx + 0.5), math.floor(y - by + 0.5)
-end
-
-local DragTick = Shared("OnUpdate on the Designer's drag", function()
-	local m = drag.m
-	if not (m and big) then
-		return
-	end
-	local x, y = CursorIn(big)
-	if x then
-		m.b:ClearAllPoints()
-		m.b:SetPoint("CENTER", big, "BOTTOMLEFT", x, y)
-	end
-end, "script")
-
-local function Pick(ind)
-	P.ind, P.part = ind, nil
-	if Page.canvas then
-		Page.canvas:Refresh()
-	end
-end
-
-local function MarkMouse(b, m)
-	b:EnableMouse(true)
-	b:EnableMouseWheel(true)
-	b:SetScript("OnMouseDown", function()
-		if not m.ind then
-			return
-		end
-		Pick(m.ind)
-		drag.m = m
-		big.dragger:SetScript("OnUpdate", DragTick)
-		big.dragger:Show()
-	end)
-	b:SetScript("OnMouseUp", function()
-		if drag.m ~= m then
-			return
-		end
-		drag.m = nil
-		big.dragger:SetScript("OnUpdate", nil)
-		big.dragger:Hide()
-		local ind = m.ind
-		local x, y = CursorIn(big)
-		if ind and x and ind.look ~= "health" then
-			local point, dx, dy = Nearest(x, y)
-			-- (the indicator's own point sits on the spot: its middle under the
-			-- cursor means half its size off a corner)
-			local half = (ind.look == "bar") and 0 or (ind.size or 12) / 2
-			local at = SPOT_AT[point]
-			dx = dx + (at[1] == 0 and -half or at[1] == 1 and half or 0)
-			dy = dy + (at[2] == 0 and -half or at[2] == 1 and half or 0)
-			ind.point, ind.x, ind.y = point, math.floor(dx + 0.5), math.floor(dy + 0.5)
-		end
-		Changed()
-	end)
-	b:SetScript("OnMouseWheel", function(_, delta)
-		local ind = m.ind
-		if not ind then
-			return
-		end
-		Pick(ind)
-		local key = "size"
-		ind[key] = math.max(RD.SIZE.min, math.min(RD.SIZE.max, (ind[key] or 12) + delta))
-		Changed()
-	end)
-end
-
---------------------------------------------------------------------------------
--- The list
---------------------------------------------------------------------------------
-
-local function ListRow(parent, i)
+local function ListRow(parent, i, inst)
 	local r = CreateFrame("Button", nil, parent)
 	r:SetHeight(G.rowH)
 	r.hover = W.Solid(r, "BACKGROUND", "hover", 0.6)
@@ -471,7 +356,7 @@ local function ListRow(parent, i)
 	r:SetScript("OnLeave", function(self) self.hover:Hide() end)
 	r:SetScript("OnClick", function(self)
 		MelloUI:PlayUISound("tab")
-		Pick(self.ind)
+		inst.Pick(self.ind)
 	end)
 	r.index = i
 	return r
@@ -479,93 +364,51 @@ end
 
 local KIND_ICON = "Interface\\Icons\\Spell_Holy_DispelMagic"   -- look-ok: a debuff row's picture
 
---------------------------------------------------------------------------------
--- Build
---------------------------------------------------------------------------------
-
 function Page.Build(canvas, width)
-	Page.canvas = canvas
-	P.spec = RD:Spec()
-	local inds = RD:List(Key())
-	P.ind = inds[1]
+	-- (the frame it is for: its section's, "party:indicators" or "raid:indicators")
+	local row = canvas:GetParent()
+	local sec = row and row:GetParent()
+	local tab = type(sec) == "table" and rawget(sec, "name")
+	local inst = { canvas = canvas, el = (type(tab) == "string" and tab:match("^party:")) and "party" or "raid",
+		spec = RD:Spec() }
+	inst.kind = KindOf(inst)
+	Page.canvases[canvas] = inst
+	local function Key()
+		return RD:KeyOf(inst.spec, inst.kind)
+	end
+	local function Changed()
+		if inst.ind then
+			RD:Changed(inst.ind, Key())
+		end
+	end
+	-- a pick: its settings here, and the stage picks it too
+	function inst.Pick(ind)
+		inst.ind = ind
+		canvas:Refresh()
+		local CP = MelloUI.ConfigPreview
+		local stage = CP and CP.Shown and CP.Shown("raidframe")
+		if stage and ind and Page.ListKind(stage.pick) == inst.kind and not Page.syncing then
+			Page.syncing = true
+			stage:Select("ind:" .. tostring(ind.id))
+			Page.syncing = nil
+		end
+	end
+	inst.ind = RD:List(Key())[1]
 	local controls = {}   -- every control with a Refresh
 
-	-- top left: the big frame -- your frame at its own size, scaled to fit
-	local bigW = G.fw * G.scale + 2 * G.pad
-	local frameBox = Box(canvas, 0, 0, bigW, G.topH)
-	local cap = Label(frameBox, TEXT.frame, "text")
-	cap:SetPoint("TOPLEFT", frameBox, "TOPLEFT", G.pad, -G.pad)
-	cap:SetWidth(bigW - 2 * G.pad)
-	local _, class = UnitClass("player")
-	local okR, role = pcall(UnitGroupRolesAssigned, "player")
-	local bigGroup = SampleFrame(frameBox, { class = class, name = UnitName("player"), health = 0.85, power = 0.7,
-		role = (okR and type(role) == "string" and role ~= "NONE") and role or "HEALER", mark = 1, ready = "ready" })
-	local bigParty = PartyReplica(frameBox, 1, true)
-	big = bigGroup
-	local TOP = G.pad + 58   -- (under the caption and the kind switch)
-	local function FitBig()
-		local w, h = big:GetWidth(), big:GetHeight()
-		local roomW, roomH = bigW - 2 * G.pad, G.topH - TOP - G.pad
-		local scale = math.min(G.scale, roomW / w, roomH / h)
-		big:SetScale(scale)
-		big:ClearAllPoints()
-		big:SetPoint("TOPLEFT", frameBox, "TOPLEFT", (G.pad + (roomW - w * scale) / 2) / scale, -TOP / scale)
-	end
-	-- (a clear frame over the box while a mark is dragged: the mark follows)
-	local dragger = CreateFrame("Frame", nil, frameBox)
-	dragger:Hide()
-	bigGroup.dragger = dragger
-	if bigParty then
-		bigParty.dragger = dragger
-	end
-	-- the kind designed: our group frames, or the normal party frames
-	local kindLabel = Label(frameBox, TEXT.designing, "text")
-	kindLabel:SetPoint("TOPLEFT", frameBox, "TOPLEFT", G.pad, -(G.pad + 32))
-	controls.kind = Choices(frameBox, G.pad + 70, G.pad + 28, {
-		{ value = "group", label = TEXT.kinds.group }, { value = "party", label = TEXT.kinds.party },
-	}, 98, function() return P.kind end, function(v)
-		if v ~= P.kind and (v == "group" or bigParty) then
-			P.kind, P.ind, P.part = v, nil, nil
-			canvas:Refresh()
-		end
-	end)
-
-	-- top right: the list
-	local listX = bigW + G.gap
-	local listW = width - listX
-	local listBox = Box(canvas, listX, 0, listW, G.topH)
+	-- the list
+	local listBox = Box(canvas, 0, 0, width, G.listH)
 	local title = Label(listBox, "", "selectedTrim", "GameFontNormal")
 	title:SetPoint("TOPLEFT", listBox, "TOPLEFT", G.pad, -G.pad)
-	-- the frame's own parts, a button each (picked: their settings below)
-	local chipsLabel = Label(listBox, TEXT.parts, "text")
-	chipsLabel:SetPoint("TOPLEFT", listBox, "TOPLEFT", G.pad, -(G.pad + 22))
-	local chips = {}
-	for _, kind in ipairs(RD.KINDS_OF_FRAME) do
-		local cx = G.pad + 66
-		for _, part in ipairs(Parts:ListOf(kind)) do
-			local w = 46
-			local b = W.Button(listBox, part.short, w, nil, { height = 18 })
-			b:SetPoint("TOPLEFT", listBox, "TOPLEFT", cx, -(G.pad + 18))
-			b.mark = W.Edges(b, "selectedTrim", "OVERLAY")
-			b.key, b.kind = part.key, kind
-			b:HookScript("OnClick", function()
-				MelloUI:PlayUISound("tab")
-				P.ind, P.part = nil, part.key
-				canvas:Refresh()
-			end)
-			chips[#chips + 1] = b
-			cx = cx + w + 4
-		end
-	end
 	local rows = {}
 	for i = 1, G.rows do
-		local r = ListRow(listBox, i)
-		r:SetPoint("TOPLEFT", listBox, "TOPLEFT", 4, -(G.pad + 18 + G.chips + (i - 1) * G.rowH))
+		local r = ListRow(listBox, i, inst)
+		r:SetPoint("TOPLEFT", listBox, "TOPLEFT", 4, -(G.pad + 22 + (i - 1) * G.rowH))
 		r:SetPoint("RIGHT", listBox, "RIGHT", -4, 0)
 		rows[i] = r
 	end
 	-- the adds, under the rows
-	local addY = G.pad + 18 + G.chips + G.rows * G.rowH + 6
+	local addY = G.pad + 22 + G.rows * G.rowH + 6
 	local typed = CreateFrame("EditBox", nil, listBox)
 	typed:SetSize(140, 20)
 	typed:SetPoint("TOPLEFT", listBox, "TOPLEFT", G.pad + 6, -addY)
@@ -591,7 +434,7 @@ function Page.Build(canvas, width)
 		typed:SetText("")
 		typed:ClearFocus()
 		MelloUI:Print(RD.TEXT.added, Name(ind))
-		Pick(ind)
+		inst.Pick(ind)
 	end
 	typed:SetScript("OnEnterPressed", AddBuff)
 	local addBuff = W.Button(listBox, TEXT.addBuff, 64, nil, { height = 20 })
@@ -599,21 +442,21 @@ function Page.Build(canvas, width)
 	addBuff:HookScript("OnClick", AddBuff)
 	local addDebuff = W.Dropdown(listBox, 150, function() return nil end, function(value)
 		local ind = RD:Add({ kind = "debuff", what = value, look = "bar", point = "BOTTOM", colourBy = "type" }, Key())
-		Pick(ind)
+		inst.Pick(ind)
 	end, RD.KINDS, { default = TEXT.addDebuff })
 	addDebuff:SetPoint("LEFT", addBuff, "RIGHT", 6, 0)
 	local copy = W.Dropdown(listBox, 150, function() return nil end, function(value)
-		if value ~= P.spec then
+		if value ~= Key() then
 			RD:CopyFrom(value, Key())
-			P.ind = RD:List(P.spec)[1]
+			inst.ind = RD:List(Key())[1]
 			Changed()
 			canvas:Refresh()
 		end
 	end, RD:SpecValues(), { default = TEXT.copy })
-	copy:SetPoint("TOPLEFT", typed, "BOTTOMLEFT", 0, -6)
+	copy:SetPoint("LEFT", addDebuff, "RIGHT", 6, 0)
 
-	-- middle: the picked one's settings
-	local set = Box(canvas, 0, G.setY, width, G.setH)
+	-- the picked one's settings
+	local set = Box(canvas, 0, G.listH + G.gap, width, G.setH)
 	local none = Label(set, TEXT.none, "text", "GameFontHighlight")
 	none:SetPoint("CENTER", set, "CENTER", 0, 0)
 	local body = CreateFrame("Frame", nil, set)
@@ -630,11 +473,11 @@ function Page.Build(canvas, width)
 		return l
 	end
 	local function Ind()
-		return P.ind or {}
+		return inst.ind or {}
 	end
 	local function Setter(key, sub)
 		return function(v)
-			local ind = P.ind
+			local ind = inst.ind
 			if not ind then
 				return
 			end
@@ -665,7 +508,7 @@ function Page.Build(canvas, width)
 	y = y + 28
 	Line(x1, y, TEXT.spot)
 	controls.spot = Spots(body, cx1, y, Getter("point"), function(point)
-		local ind = P.ind
+		local ind = inst.ind
 		if ind then
 			ind.point, ind.x, ind.y = point, 0, 0
 			Changed()
@@ -699,10 +542,10 @@ function Page.Build(canvas, width)
 	local remove = W.Button(body, TEXT.remove, 90, nil, { height = 22 })
 	remove:SetPoint("TOPLEFT", body, "TOPLEFT", x1, -y)
 	remove:HookScript("OnClick", function()
-		local ind = P.ind
+		local ind = inst.ind
 		if ind then
 			RD:Remove(ind, Key())
-			P.ind = RD:List(P.spec)[1]
+			inst.ind = RD:List(Key())[1]
 			canvas:Refresh()
 		end
 	end)
@@ -711,66 +554,6 @@ function Page.Build(canvas, width)
 	end)
 	remove:HookScript("OnLeave", W.TipLeave)
 
-	-- a frame part's settings (in place of an indicator's)
-	local partBody = CreateFrame("Frame", nil, set)
-	partBody:SetAllPoints(set)
-	local partHeading = Label(partBody, "", "selectedTrim", "GameFontNormalLarge")
-	partHeading:SetPoint("TOPLEFT", partBody, "TOPLEFT", G.pad, -G.pad)
-	local partNote = Label(partBody, TEXT.partNote, "text")
-	partNote:SetPoint("TOPLEFT", partHeading, "BOTTOMLEFT", 0, -4)
-	local function PartLine(yy, text)
-		local l = Label(partBody, text, "text", "GameFontHighlight")
-		l:SetPoint("TOPLEFT", partBody, "TOPLEFT", x1, -(yy + 3))
-	end
-	local function PartGet(field)
-		return function()
-			return P.part and Parts:Shown(P.part)[field]
-		end
-	end
-	local function PartSet(field)
-		return function(v)
-			if P.part then
-				Parts:Set(P.part, field, v)
-			end
-		end
-	end
-	local py = G.pad + 48
-	local partControls = {}
-	PartLine(py, TEXT.partShow)
-	partControls.show = W.Switch(partBody, function() return PartGet("show")() ~= false end, PartSet("show"))
-	partControls.show:SetPoint("TOPLEFT", partBody, "TOPLEFT", cx1, -py)
-	py = py + 28
-	PartLine(py, TEXT.spot)
-	partControls.spot = Spots(partBody, cx1, py, PartGet("point"), function(point)
-		if P.part then
-			Parts:SetSpot(P.part, point)
-		end
-	end)
-	partControls.x = W.NumberBox(partBody, 44, PartGet("x"), PartSet("x"), { min = -60, max = 60, step = 1 })
-	partControls.x:SetPoint("TOPLEFT", partBody, "TOPLEFT", cx1 + 3 * (G.spot + G.spotGap) + 64, -py)
-	partControls.y = W.NumberBox(partBody, 44, PartGet("y"), PartSet("y"), { min = -60, max = 60, step = 1 })
-	partControls.y:SetPoint("LEFT", partControls.x, "RIGHT", 6, 0)
-	partControls.x.melloNext = partControls.y
-	local offLabel = Label(partBody, TEXT.offset, "text", "GameFontHighlight")
-	offLabel:SetPoint("TOPLEFT", partBody, "TOPLEFT", cx1 + 3 * (G.spot + G.spotGap) + 12, -(py + 3))
-	py = py + 3 * (G.spot + G.spotGap) + 8
-	PartLine(py, TEXT.partSize)
-	partControls.size = W.Slider(partBody, 200, PartGet("size"), PartSet("size"),
-		{ min = Parts.SIZE.textMin, max = Parts.SIZE.iconMax, step = 1 })
-	partControls.size:SetPoint("TOPLEFT", partBody, "TOPLEFT", cx1, -py)
-	py = py + 34
-	local partReset = W.Button(partBody, TEXT.partReset, 110, nil, { height = 22 })
-	partReset:SetPoint("TOPLEFT", partBody, "TOPLEFT", x1, -py)
-	partReset:HookScript("OnClick", function()
-		if P.part then
-			Parts:Reset(P.part)
-		end
-	end)
-	partReset:HookScript("OnEnter", function(self)
-		W.ShowTooltip(self, TEXT.partReset, TEXT.partResetTip)
-	end)
-	partReset:HookScript("OnLeave", W.TipLeave)
-
 	-- column 2: colour, then the time and the stacks as text
 	local y2 = G.pad + 28
 	Line(x2, y2, TEXT.colour)
@@ -778,7 +561,7 @@ function Page.Build(canvas, width)
 		local ind = Ind()
 		return ind.r or 1, ind.g or 1, ind.b or 1
 	end, function(r, g, b)
-		local ind = P.ind
+		local ind = inst.ind
 		if ind then
 			ind.r, ind.g, ind.b = r, g, b
 			Changed()
@@ -803,7 +586,7 @@ function Page.Build(canvas, width)
 			{ min = RD.SIZE.textMin, max = RD.SIZE.textMax, step = 1 })
 		sl:SetPoint("TOPLEFT", body, "TOPLEFT", cx2 + 34, -yy)
 		local grid = Spots(body, cx2, yy + 28, Getter("point", sub), function(point)
-			local ind = P.ind
+			local ind = inst.ind
 			if ind then
 				ind[sub].point, ind[sub].x, ind[sub].y = point, 0, 0
 				Changed()
@@ -821,49 +604,9 @@ function Page.Build(canvas, width)
 	y2 = TextBlock("text", TEXT.time, y2)
 	TextBlock("count", TEXT.stacks, y2)
 
-	-- bottom: the made-up group, and the on-screen fake raid
-	local raidLabel = Label(canvas, TEXT.group, "text", "GameFontHighlight")
-	raidLabel:SetPoint("TOPLEFT", canvas, "TOPLEFT", G.pad, -G.raidY)
-	local group, row = {}, CreateFrame("Frame", nil, canvas)
-	row:SetSize(1, 1)
-	for i = 1, #SAMPLE_MEMBERS do
-		group[i] = SampleFrame(row, Member(i))
-	end
-	local function FitGroup()
-		local db = RD.DB()
-		local need = #group * db.width + (#group - 1) * 8
-		local scale = math.min(1, (width - 2 * G.pad) / need, G.groupH / db.height)
-		row:SetScale(scale)
-		-- (its place in its own scaled units: under the label and the button)
-		row:ClearAllPoints()
-		row:SetPoint("TOPLEFT", canvas, "TOPLEFT", G.pad / scale, -(G.raidY + 30) / scale)
-		for i, f in ipairs(group) do
-			f:ClearAllPoints()
-			f:SetPoint("TOPLEFT", row, "TOPLEFT", (i - 1) * (db.width + 8), 0)
-		end
-	end
-	FitGroup()
-	-- (designing the normal party frames: their replicas in place of the group)
-	local partyRow = CreateFrame("Frame", nil, canvas)
-	partyRow:SetSize(1, 1)
-	local party = {}
-	for i = 1, 4 do
-		party[i] = PartyReplica(partyRow, i + 1)
-	end
-	local function FitParty()
-		local scale = math.min(1, (width - 2 * G.pad) / (4 * PARTY_SIZE.w + 3 * 8), G.groupH / PARTY_SIZE.h)
-		partyRow:SetScale(scale)
-		partyRow:ClearAllPoints()
-		partyRow:SetPoint("TOPLEFT", canvas, "TOPLEFT", G.pad / scale, -(G.raidY + 30) / scale)
-		for i, f in ipairs(party) do
-			if f then
-				f:ClearAllPoints()
-				f:SetPoint("TOPLEFT", partyRow, "TOPLEFT", (i - 1) * (PARTY_SIZE.w + 8), 0)
-			end
-		end
-	end
+	-- the made-up raid where your raid frames stand
 	local show = W.Button(canvas, TEXT.show, 220, nil, { height = 22 })
-	show:SetPoint("LEFT", raidLabel, "RIGHT", 16, 0)
+	show:SetPoint("TOPLEFT", canvas, "TOPLEFT", G.pad, -(G.listH + G.gap + G.setH + G.gap))
 	show:HookScript("OnClick", function()
 		local Pv = MelloUI.Preview
 		if Pv and Pv.Start then
@@ -878,25 +621,25 @@ function Page.Build(canvas, width)
 	end)
 	show:HookScript("OnLeave", W.TipLeave)
 
-	-- the canvas's refresh: the list, the picked one's controls, the samples
+	-- the canvas's refresh: the list, the picked one's controls
 	function canvas.Refresh()
 		local spec, specLabel = RD:Spec()
-		if spec ~= P.spec then
-			P.spec, P.ind = spec, nil
+		local kind = KindOf(inst)
+		if spec ~= inst.spec or kind ~= inst.kind then
+			inst.spec, inst.kind, inst.ind = spec, kind, nil
 		end
 		local list = RD:List(Key())
 		local found = false
 		for _, ind in ipairs(list) do
-			if ind == P.ind then
+			if ind == inst.ind then
 				found = true
 			end
 		end
-		if not found and not P.part then
-			P.ind = list[1]
+		if not found then
+			inst.ind = list[1]
 		end
-		title:SetText(string.format(P.kind == "party" and TEXT.partyList or TEXT.list, specLabel))
-		raidLabel:SetText(P.kind == "party" and TEXT.partyGroup or TEXT.group)
-		controls.kind:Refresh()
+		title:SetText(string.format(TEXT.lists[inst.kind] or TEXT.list, specLabel))
+		show:SetShown(inst.el == "raid")
 		for i, r in ipairs(rows) do
 			local ind = list[i]
 			r.ind = ind
@@ -904,31 +647,16 @@ function Page.Build(canvas, width)
 				r.icon:SetTexture(ind.kind == "buff" and (RD:SpellIcon(ind) or "Interface\\Icons\\INV_Misc_QuestionMark") or KIND_ICON)   -- look-ok: a spell not known yet
 				r.name:SetText(Name(ind))
 				r.look:SetText((RD.LOOK[ind.look] or RD.LOOKS[1]).label)
-				r.sel:SetShown(ind == P.ind)
+				r.sel:SetShown(ind == inst.ind)
 				r:Show()
 			else
 				r:Hide()
 			end
 		end
 		copy:SetValues(RD:SpecValues())
-		for _, b in ipairs(chips) do
-			b:SetShown(b.kind == P.kind)
-			for _, e in ipairs(b.mark) do
-				e:SetShown(b.key == P.part)
-			end
-		end
-		local ind = P.ind
-		none:SetShown(ind == nil and P.part == nil)
+		local ind = inst.ind
+		none:SetShown(ind == nil)
 		body:SetShown(ind ~= nil)
-		partBody:SetShown(P.part ~= nil)
-		if P.part then
-			partHeading:SetText(Parts.BY[P.part].label)
-			for _, c in pairs(partControls) do
-				if c.Refresh then
-					c:Refresh()
-				end
-			end
-		end
 		if ind then
 			heading:SetText(Name(ind) .. (ind.kind == "buff" and "" or "  (debuff)"))
 			for _, c in pairs(controls) do
@@ -947,51 +675,15 @@ function Page.Build(canvas, width)
 			strengthLabel:SetShown(isHealth)
 			controls.alpha:SetShown(isHealth)
 		end
-		-- the samples: your frame and the group (or the party's replicas) as the
-		-- frames are now (their size, colours, parts), everything on the big
-		-- one, a mix on the others
-		local partyKind = P.kind == "party" and bigParty ~= nil
-		bigGroup:SetShown(not partyKind)
-		if bigParty then
-			bigParty:SetShown(partyKind)
-		end
-		row:SetShown(not partyKind)
-		partyRow:SetShown(partyKind)
-		if partyKind then
-			big = bigParty
-			Parts:Lay(bigParty, "party", true)
-			FitBig()
-			SampleMarks(bigParty, list, 0.6, nil, MarkMouse)
-			FitParty()
-			for i, f in ipairs(party) do
-				if f then
-					Parts:Lay(f, "party", true)
-					SampleMarks(f, list, SAMPLE_MEMBERS[(i % #SAMPLE_MEMBERS) + 1].frac, function(j, e)
-						return e.kind == "buff" and (i + j) % 2 == 0 or (e.kind == "debuff" and i == 2)
-					end)
-				end
-			end
-		else
-			big = bigGroup
-			Resample(bigGroup)
-			FitBig()
-			SampleMarks(bigGroup, list, 0.6, nil, MarkMouse)
-			FitGroup()
-			for i, f in ipairs(group) do
-				Resample(f)
-				SampleMarks(f, list, SAMPLE_MEMBERS[i].frac, function(j, e)
-					return e.kind == "buff" and (i + j) % 2 == 0 or (e.kind == "debuff" and (i == 2 or i == 5))
-				end)
-			end
-		end
 	end
 	canvas:Refresh()
-	-- the list changed elsewhere (another spec, the ranks found): drawn again
+	-- the list changed elsewhere (another spec, the ranks found, the stage):
+	-- drawn again (one listener a canvas)
 	MelloUI:On("groupframes", function(what)
-		if canvas:IsVisible() and (what == "spec" or what == "ids" or what == "part" or what == "paint") then
+		if canvas:IsVisible() and (what == "spec" or what == "ids" or what == "list" or what == "paint") then
 			canvas:Refresh()
 		end
-	end, "GroupFrames.page")
+	end, canvas)
 end
 
 --------------------------------------------------------------------------------
@@ -1177,6 +869,37 @@ function Stage.Refresh(stage)
 		chips:SetShown(party)
 		if party and chips:Selected() ~= stage.pick then
 			chips:Select(stage.pick)
+		end
+	end
+	-- (the party's style switched: its canvases show that style's list)
+	for canvas, inst in pairs(Page.canvases) do
+		if inst.kind ~= Page.KindOf(inst) then
+			canvas:Refresh()
+		end
+	end
+end
+
+function Page.ListKind(pick)
+	return Stage.LIST[pick]
+end
+
+-- a part picked on the stage: an indicator picked in the canvases of its list
+function Stage.OnSelect(stage, key)
+	local id = type(key) == "string" and key:match("^ind:(.+)$")
+	if not id or Page.syncing then
+		return
+	end
+	local kind = Stage.LIST[stage.pick]
+	for canvas, inst in pairs(Page.canvases) do
+		if Page.KindOf(inst) == kind then
+			for _, ind in ipairs(RD:List(RD:KeyOf(inst.spec, kind))) do
+				if tostring(ind.id) == id then
+					inst.ind = ind
+					Page.syncing = true
+					canvas:Refresh()
+					Page.syncing = nil
+				end
+			end
 		end
 	end
 end
@@ -1387,7 +1110,7 @@ do
 			reset = { { "GroupFrames", "parts" }, { "GroupFrames", "partyParts" } },
 			Furnish = Stage.Furnish, Main = Stage.Main, Refresh = Stage.Refresh, Paint = Stage.Paint,
 			parts = Stage.Parts, PartKeys = Stage.PartKeys, Tries = Stage.Tries, Empty = Stage.Empty,
-			Moved = Stage.Moved, ResetAll = Stage.ResetAll, mover = Stage.Mover,
+			Moved = Stage.Moved, ResetAll = Stage.ResetAll, mover = Stage.Mover, OnSelect = Stage.OnSelect,
 		})
 	end
 end

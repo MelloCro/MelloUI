@@ -140,7 +140,7 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "0.25.0", lines = {
 		"One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off.",
-		"Configurator: Unit & Group Frames is one designer: pick a frame, then a part; its options first, the frame's below.",
+		"Configurator: Unit & Group Frames is one designer: pick a frame, then a part; drag the party's and raid's parts on their large frame.",
 		"Windows: a new frame -- the logo heads the configurator's side list, small windows get a slim strip.",
 		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, Hide Bar Art, a Bar Texture for each.",
 		"Action bars and minimap: backdrops and MelloUI's minimap for everyone, no painted skin needed.",
@@ -150,7 +150,7 @@ local CHANGELOG = {
 		"Bags: quality gems and grey junk on every bag, bank and guild bank slot, painted look or not.",
 		"Nameplates: a soft band behind enemy and NPC names; Show Names As is lighter in big pulls and for players only.",
 		"Macro Backup is gone: the game keeps your settings, and its account macros are freed.",
-		"Fixed: Group Frames: profiles and share strings keep your indicators.",
+		"Group Frames: party and raid keep their own places and indicators; profiles and share strings keep them.",
 	} },
 	{ version = "0.24.0", lines = {
 		"Quest Tracker: the chat's look -- a clean panel or parchment, round quest marks, a difficulty gem, counts on the right.",
@@ -617,6 +617,11 @@ local RowsInView = Shared("SetVerticalScroll on the configurator's pages", funct
 		return
 	end
 	local page = currentPage and pages[currentPage]
+	-- (one look C10: a designer's pinned head -- its chips and stage -- under
+	-- the view's top)
+	if page and page.dui and page.stage then
+		page.dui.Pin(page, scroll)
+	end
 	local sec = page and page.current
 	if not (sec and sec.jobs and page.pager:Current() == page) then
 		return
@@ -3163,11 +3168,101 @@ end
 
 -- (one look, the designers: docs/plans/onelook-designer/c7-lite.md) the
 -- element chips and the Parts line in the tab row's place: made at the
--- page's Finish, laid by its LayTabs, following its Select (page.dui)
+-- page's Finish, laid by its LayTabs, following its Select (page.dui).
+-- (One look C10) an element with a `stage` shows the designer stage under
+-- the chips (Core/ConfigPreview.lua's wide stage, its kind registered by its
+-- module): the chips ride on it and both stay under the view's top as the
+-- page scrolls (Pin, from the page scroll's hook: one SetPoint when the
+-- place changes); the element picks its pick; a part picked on the stage
+-- opens its part's tab and a part's tab picks it there (a part's `stage`)
 Lay.DesignerUI = {}
 do
 	local DUI = Lay.DesignerUI
 	local PARTS_W = 54   -- the "Parts:" label's room
+	DUI.HEAD_GAP = 6   -- the chips to the stage, the stage to the Parts line (fields: the main chunk's locals)
+
+	-- the stage's picks and parts against the page's elements and parts
+	function DUI.StageMaps(page, pl)
+		local kind
+		page.stageEl, page.elOfPick, page.partOfStage, page.stageOfPart = {}, {}, {}, {}
+		for _, el in ipairs(pl.def.elements or EMPTY) do
+			local st = el.stage
+			if type(st) == "table" and st.kind and st.pick then
+				kind = kind or st.kind
+				page.stageEl[el.key] = st.pick
+				page.elOfPick[st.pick] = el.key
+				for _, other in ipairs(st.also or EMPTY) do
+					page.elOfPick[other] = el.key
+				end
+				local map, back = {}, {}
+				for _, part in ipairs(el.parts or EMPTY) do
+					if part.stage then
+						back[part.key] = part.stage
+						if map[part.stage] == nil then
+							map[part.stage] = part.key
+						end
+					end
+				end
+				page.partOfStage[el.key], page.stageOfPart[el.key] = map, back
+			end
+		end
+		return kind
+	end
+
+	-- a part picked on the stage: its part's tab (an indicator: the
+	-- Indicators part's; a part with none: the frame's own tab)
+	function DUI.StageSelected(page)
+		return function(_, key)
+			local el = page.dEl
+			if page.dStaging or not el then
+				return
+			end
+			local map = page.partOfStage[el]
+			local part = key and map and (map[key] or (key:match("^ind:") and map["ind:"]))
+			local sec = (part and page.secByName[el .. ":" .. part]) or page.secByName[el .. ":element"]
+			if sec and sec ~= page.current then
+				page.dFromStage = true
+				page:Select(sec, true)
+				page.dFromStage = nil
+			end
+		end
+	end
+
+	-- the stage's own pick (the party's style chips): its frame's tab
+	function DUI.StagePicked(page)
+		return function(_, pick)
+			local el = page.elOfPick[pick]
+			local sec = el and el ~= page.dEl and page.secByName[el .. ":element"]
+			if sec then
+				page:Select(sec, true)
+			end
+		end
+	end
+
+	function DUI.MakeStage(page, pl)
+		local kind = DUI.StageMaps(page, pl)
+		local CP = MelloUI.ConfigPreview
+		if not (kind and CP and CP.Kind and CP.Kind(kind)) then
+			return
+		end
+		page.stage = CP.Make(page, kind, SKIN, { width = page.width - PAD * 2, x = PAD, anchor = page,
+			scroll = window and window.scroll, onSelect = DUI.StageSelected(page), onPick = DUI.StagePicked(page) })
+		if page.stage then
+			-- (the chips' ground while the head is pinned: the rows pass under it)
+			page.stageHead = CreateFrame("Frame", nil, page)
+			W.Solid(page.stageHead, "BACKGROUND", "mainWindow", 1):SetAllPoints(page.stageHead)
+			page.stageHead:Hide()
+			page.stage:Hide()
+		end
+	end
+
+	-- the pinned head under the view's top (the stage carries the chips)
+	function DUI.Pin(page, scroll)
+		local stage = page.stage
+		if stage and stage:IsShown() then
+			stage:Stick((Num(scroll:GetVerticalScroll()) or 0) + (stage.pinAbove or 0))
+		end
+	end
 
 	local function ElementItems(pl)
 		local items = {}
@@ -3204,14 +3299,35 @@ do
 		end })
 		page.partsHint = Text(page, "GameFontDisable", TEXT.pickPart)
 		page.elChips:SetItems(ElementItems(pl))
+		DUI.MakeStage(page, pl)
 	end
 
-	-- under the header: the element chips, then the Parts line; the y the
-	-- sections start at
+	-- under the header: the element chips (on the stage while it shows: one
+	-- pinned head), then the Parts line; the y the sections start at
 	function DUI.Lay(page, y)
+		local stage = page.stage
+		local chipsH = page.elChips:Height()
 		page.elChips:ClearAllPoints()
-		page.elChips:SetPoint("TOPLEFT", page, "TOPLEFT", PAD, -y)
-		y = y + page.elChips:Height() + 8
+		if stage and stage:IsShown() then
+			local level = stage:GetFrameLevel()
+			stage.y0, stage.stuckY, stage.pinAbove = y + chipsH + DUI.HEAD_GAP, nil, chipsH + DUI.HEAD_GAP
+			stage:Stick((window and window.scroll and Num(window.scroll:GetVerticalScroll()) or 0) + stage.pinAbove)
+			page.stageHead:ClearAllPoints()
+			page.stageHead:SetPoint("BOTTOMLEFT", stage, "TOPLEFT", -PAD, 0)
+			page.stageHead:SetPoint("BOTTOMRIGHT", stage, "TOPRIGHT", PAD, 0)
+			page.stageHead:SetHeight(chipsH + DUI.HEAD_GAP + 2)
+			page.stageHead:SetFrameLevel(level)
+			page.stageHead:Show()
+			page.elChips:SetPoint("BOTTOMLEFT", stage, "TOPLEFT", 0, DUI.HEAD_GAP)
+			page.elChips:SetFrameLevel(level + 2)
+			y = stage.y0 + stage:GetHeight() + DUI.HEAD_GAP
+		else
+			if page.stageHead then
+				page.stageHead:Hide()
+			end
+			page.elChips:SetPoint("TOPLEFT", page, "TOPLEFT", PAD, -y)
+			y = y + chipsH + 8
+		end
 		page.partsLabel:ClearAllPoints()
 		page.partsLabel:SetPoint("TOPLEFT", page, "TOPLEFT", PAD + 2, -(y + 4))
 		page.partChips:ClearAllPoints()
@@ -3248,6 +3364,34 @@ do
 		page.partsLabel:SetShown(parts)
 		page.partChips:SetShown(parts)
 		page.partsHint:SetShown(el ~= nil and page.partChips.count == 0)
+		DUI.FollowStage(page, el, t)
+	end
+
+	-- the stage follows the tab: shown for a frame with one (its pick, unless
+	-- the stage shows one of this frame's already -- the party's style), the
+	-- tab's part picked on it (not when the stage picked it)
+	function DUI.FollowStage(page, el, t)
+		local stage = page.stage
+		if not stage then
+			return
+		end
+		local pick = el and page.stageEl[el]
+		if pick then
+			if page.elOfPick[stage.pick] ~= el then
+				stage:SetPick(pick)
+			end
+			local key = t.part and page.stageOfPart[el][t.part.key]
+			if key and not page.dFromStage and not key:match(":$") then
+				page.dStaging = true
+				stage:Select(key)
+				page.dStaging = nil
+			end
+		end
+		local want = pick ~= nil
+		if want ~= (stage:IsShown() and true or false) then
+			stage:SetShown(want)
+			page:LayTabs(true)
+		end
 	end
 end
 
