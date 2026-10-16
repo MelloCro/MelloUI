@@ -3282,7 +3282,10 @@ function W.Gate(row, gate, opts)
 		cover.note = true
 		if not row.hint then
 			row.hint = W.Text(row, "GameFontHighlightSmall", nil, "text")
-			row.hint:SetPoint("LEFT", row.newTag or row.label, "RIGHT", row.newTag and (10 + TAG_PAD_X) or 10, 0)
+			-- (after the row's last tag, as W.Row lays its hint: the Shared / "also ..." mark too -- the user's
+			-- screenshot, 2026-10-16: the gate's line over the "also Target, Focus ..." mark)
+			local last = row.sharedTag or row.newTag
+			row.hint:SetPoint("LEFT", last or row.label, "RIGHT", last and (10 + TAG_PAD_X) or 10, 0)
 			row.hint:SetWordWrap(false)
 			local at = clipped[row] and clipAt[row]
 			if at then
@@ -5080,7 +5083,7 @@ do
 	local function Lay(chips)
 		local spec = chips.spec
 		local h, gap, room = spec.height or 22, spec.gap or 4, Num(spec.width)
-		local x, y, rows = 0, 0, 0
+		local x, y, rows, widest = 0, 0, 0, 1
 		for i = 1, chips.count do
 			local b = chips.buttons[i]
 			local w = Num(b:GetWidth()) or CHIP_MIN
@@ -5093,9 +5096,12 @@ do
 			b:ClearAllPoints()
 			b:SetPoint("TOPLEFT", chips, "TOPLEFT", x, -y)
 			x = x + w + gap
+			widest = math.max(widest, x - gap)
 		end
 		chips.rows = rows
-		chips:SetHeight(math.max(1, rows > 0 and (rows * h + (rows - 1) * gap) or 0))
+		-- (a width of its own, never only a height: a frame with one point and no width has no rect in the game, and
+		-- nothing anchored to it is drawn -- the user, 2026-10-16: no chips on any designer page)
+		chips:SetSize(widest, math.max(1, rows > 0 and (rows * h + (rows - 1) * gap) or 0))
 	end
 
 	-- a chip's width: its label and, while its update runs, its New tag
@@ -5175,7 +5181,7 @@ do
 		chips.buttons, chips.count, chips.rows = {}, 0, 0
 		chips.SetItems, chips.Select, chips.Selected, chips.SetState, chips.Height = SetItems, Select, Selected, SetState,
 			Height
-		chips:SetHeight(1)
+		chips:SetSize(1, 1)   -- (a rect from the start: Lay)
 		return chips
 	end
 end
