@@ -22,7 +22,11 @@ local M = MelloUI:RegisterModule("BarText", {
 	icon = "Interface\\Icons\\INV_Misc_Note_02",
 	flavour = "Numbers where they belong. Health and power values, always in view.",
 	role = "adds",
-	tweak = { label = "Bar Values", desc = "Health and power values always shown on the player, target and focus frames.", order = 6 },
+	-- (one look Q9 and the user's A, 2026-10-16: no master switch -- the
+	-- three frames' own switches are; all three off, nothing of it runs.
+	-- Core.lua's MERGES turns them off for a save whose Bar Values was off)
+	tweak = { label = "Bar Values", desc = "Health and power values always shown on the player, target and focus frames.", order = 6, always = true },
+	switches = { "player", "target", "focus" },
 	defaults = {
 		player = true,
 		target = true,
@@ -513,13 +517,29 @@ function M:OnLoginWorld(...)
 	MelloUI:ReplayWorld(frame, ...)
 end
 
+-- (one look Q9: the three frames' switches are its switches) its events
+-- and its texts only while one of them is on: all three off, nothing at all
+local function AnyFrame()
+	local db = M.db
+	return M.isEnabled and db and (db.player or db.target or db.focus) and true or false
+end
+
+local function Follow()
+	if AnyFrame() then
+		frame:RegisterEvent("PLAYER_TARGET_CHANGED")
+		frame:RegisterEvent("PLAYER_FOCUS_CHANGED")
+		frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+		frame:RegisterEvent("UNIT_DISPLAYPOWER")
+		ApplyAll()
+	else
+		frame:UnregisterAllEvents()
+		RemoveAll()
+	end
+end
+
 function M:OnEnable(db)
 	self.db = db
-	frame:RegisterEvent("PLAYER_TARGET_CHANGED")
-	frame:RegisterEvent("PLAYER_FOCUS_CHANGED")
-	frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-	frame:RegisterEvent("UNIT_DISPLAYPOWER")
-	ApplyAll()
+	Follow()
 end
 
 function M:OnDisable()
@@ -529,7 +549,7 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
-	ApplyAll()
+	Follow()
 end
 
 MelloUI:Profile("BarText", "bar value updates", UpdateBar)

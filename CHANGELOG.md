@@ -44,6 +44,7 @@
 - Your Indicators: Show the fake party on screen on the Party frame -- a made-up party where your Group Frames party stands, with its own indicators (also Preview > Group Frames Party).
 - The installer leaves your Group Frames indicators and the places of your frames' parts as they are, on install and on Revert.
 - Buffs & Debuffs has no master switch any more: Your Buffs And Debuffs, the target's (Target Frame) and Enemy Nameplates are its switches, each where its rows are; the installer's Buffs & Debuffs switch sets the three. What you saw stays: with the old switch off, the three start off.
+- Bar Values and Class Icons have no master switch either: each frame's Values On This Frame and Player Portraits are their switches. What you saw stays.
 - One Health Bar Colour for every frame (Look > Bar Texture): the unit frames, the nameplates and your party and raid frames, with My Colour and your Full / Half / Low colours for By health (Group Frames' until now). Class & Reaction is the new default; a colour you had picked is kept (the unit frames' first). An NPC's nameplate keeps the game's own colours, threat too, unless By health. Each frame's Health bar in Unit & Group Frames links to it.
 - Group Frames: your Group Frames party and your raid frames each keep their own places for the name, the health text and the icons, and their own indicators; what you had is carried over to both.
 - Group Frames: Your Indicators (the Party and Raid frames' Indicators) is the list and the picked one's look, colour and text; a pick there picks it on the large frame.

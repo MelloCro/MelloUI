@@ -543,8 +543,8 @@ function L.Define(R, Link)
 	end
 	local GAME4 = { "player:element", "target:element", "focus:element", "pet:element" }
 	UGF(GAME4, "General", "UIModifications.qol_UnitFrames", { plus = "Party portraits" })
-	UGF({ "player:portrait", "target:portrait", "focus:portrait" }, "General", "UIModifications.qol_ClassIcons",
-		{ plus = "Party portraits" })
+	-- (one look Q9: Class Icons' master folded -- Player Portraits is its switch, first in General)
+	UGF({ "player:portrait", "target:portrait", "focus:portrait" }, "General", "ClassIcons.portraits", { plus = "Party portraits" })
 	R("Oldschool", "Painted Skins", "Look", "UIModifications.UnitFramePanel", { name = "Unit Frames" })
 	R("Oldschool", "Painted Skins", "Look", "UIModifications.RaidFramePanel", { name = "Raid Frames" })
 	R("Oldschool", "Painted Skins", "Look", "UIModifications.CastBarPanel", { name = "Cast Bars" })
@@ -558,7 +558,6 @@ function L.Define(R, Link)
 	UGF({ "player:combat", "target:combat", "focus:combat", "pet:combat" }, "Look", "UnitFrames.hideCombatGlow", { when = UF, plus = "Party portraits" })
 	UGF({ "player:status", "pet:status" }, "Look", "UnitFrames.hideStatusGlow", { when = UF })
 	UGF({ "player:pvp", "target:pvp", "focus:pvp" }, "Look", "UnitFrames.hidePvPBadge", { when = UF })
-	UGF({ "player:portrait", "target:portrait", "focus:portrait" }, "Look", "ClassIcons.portraits", { plus = "Party portraits" })
 	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.marks")
 	-- (0.19.8, the border library's stage 3: a backdrop round the frame, the kit's one backdrop system)
 	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.backdrop")
@@ -573,7 +572,6 @@ function L.Define(R, Link)
 	-- (one look C11, Q2: each text part its own face -- MelloUI.FontFaces, "Shared" today's)
 	UGF({ "player:name", "target:name", "focus:name" }, "Text", "UnitFrames.nameFont", { name = "Font",
 		plus = "Pet, their targets, Party portraits" })
-	UGF({ "player:values", "target:values", "focus:values" }, "General", "UIModifications.qol_BarText")
 	-- (0.19.0) incoming heals and the debuff glow: one setting each for every frame (HealerFrames)
 	-- (0.19.4: incoming heals on MelloUI's three frames only, the bar
 	-- background on the unit frames the skin draws -- not the raid frames,

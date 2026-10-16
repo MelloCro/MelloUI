@@ -33,7 +33,11 @@ local M = MelloUI:RegisterModule("ClassIcons", {
 	icon = "Interface\\Icons\\INV_Misc_Rune_01",
 	flavour = "Painted medallions for every class, on the character sheet and on every portrait.",
 	role = "look",
-	tweak = { label = "Class Icons", desc = "The painted class medallions in place of the game's class icons and on player portraits.", order = 8 },
+	-- (one look Q9 and the user's A, 2026-10-16: no master switch -- Player
+	-- Portraits is the switch; off, nothing of it runs. Core.lua's MERGES
+	-- turns it off for a save whose Class Icons was off)
+	tweak = { label = "Class Icons", desc = "The painted class medallions in place of the game's class icons and on player portraits.", order = 8, always = true },
+	switches = { "portraits" },
 	enabledByDefault = true,
 	defaults = {
 		portraits = true,
@@ -473,6 +477,10 @@ end
 
 function M:OnEnable(db)
 	self.db = db
+	-- (one look Q9: Player Portraits off, nothing at all -- no hook)
+	if not (db and db.portraits) then
+		return
+	end
 	ClassOf("player")   -- (yours read now, while it reads plainly)
 	InstallHooks()
 	-- the unit frames' portraits covered at once: on again after an
@@ -503,6 +511,8 @@ function M:OnSettingChanged(key, value, db)
 			Uncover(texture)
 		end
 	elseif key == "portraits" then
+		ClassOf("player")
+		InstallHooks()
 		CoverUnitPortraits()
 	end
 end

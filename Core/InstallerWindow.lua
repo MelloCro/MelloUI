@@ -1624,14 +1624,15 @@ local function WizardSteps()
 	local RESKIN = "UIModifications.reskin"
 	local COLOURS_KEY, BORDER_KEY = "UIModifications.kitColours", "UIModifications.buttonBorder"
 	local PALETTE_KEY = "UIModifications.palette"
-	local ICONS_ON, PORTRAITS = "UIModifications.qol_ClassIcons", "ClassIcons.portraits"
+	-- (one look Q9: Class Icons' Player Portraits is its switch)
+	local PORTRAITS = "ClassIcons.portraits"
 	local DARK_ON, SHADE = "UIModifications.qol_DarkMode", "DarkMode.shade"
 	local FONTS_ON, FONT_STYLE = "UIModifications.qol_Fonts", "Fonts.style"
 	-- (0.16.0: the name form is Show Names As, UI Modifications', for every name)
 	local CHAT_ON, NAME_STYLE, NAME_SHADE = "UIModifications.qol_Chat", "UIModifications.nameFormat", "Chat.nameShade"
 	-- the wizard's switches of what runs under UI Modifications: it is on while
 	-- any of them is
-	local UMBRELLA = { RESKIN, ICONS_ON, DARK_ON, FONTS_ON, CHAT_ON }
+	local UMBRELLA = { RESKIN, PORTRAITS, DARK_ON, FONTS_ON, CHAT_ON }
 	-- the parchment sheets whose dark ink is Chat's (the engine's ink guard,
 	-- I.INK, for the chat windows; the whisper popups are Chat's own). One
 	-- look: the chat's is Kit.ownParchments' (the Minimal Chat View's paper,
@@ -2159,14 +2160,11 @@ local function WizardSteps()
 	end
 
 	local function IconsGet()
-		return On(ICONS_ON) and On(PORTRAITS)
+		return On(PORTRAITS)
 	end
 
 	local function IconsSet(on)
-		if on then
-			Wizard()[PORTRAITS] = true
-		end
-		Put(ICONS_ON, on and true or false)
+		Put(PORTRAITS, on and true or false)
 	end
 
 	local function ReskinRow(page)

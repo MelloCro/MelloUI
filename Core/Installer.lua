@@ -178,10 +178,11 @@ local U_PREFERENCE = { nameFormat = true }
 -- and the player's own Group Frames work (one look, the user's answer to
 -- F-v3's needs_user 8: Install leaves the indicator lists -- sets, started --
 -- and the frames' part places -- parts, partyParts -- alone, Revert too)
--- (one look C13a: Buffs & Debuffs' fold mark, Auras.qolFolded -- in a
+-- (one look C13a: the folded masters' marks, <name>.qolFolded -- in a
 -- profile's text so an older text is folded, never set by a setup)
 local NEVER = { [UMB] = { reduceMotion = true, unlock = true, qol_Tweaks = true },
-	GroupFrames = { sets = true, started = true, parts = true, partyParts = true }, Auras = { qolFolded = true } }
+	GroupFrames = { sets = true, started = true, parts = true, partyParts = true }, Auras = { qolFolded = true },
+	BarText = { qolFolded = true }, ClassIcons = { qolFolded = true } }
 
 -- the installer's own facts about this machine and character, and a
 -- one-time flag: the player's own like the keep lists' keys (never carried
@@ -727,7 +728,7 @@ end
 -- steps), every feature off (the Features step), and Dark Mode as the
 -- player has it now (their own preference: no profile carries it; off for a
 -- new player)
-local DRAFT_UM = { reskin = true, palette = true, kitColours = true, buttonBorder = true, qol_ClassIcons = true,
+local DRAFT_UM = { reskin = true, palette = true, kitColours = true, buttonBorder = true,
 	qol_Fonts = true, qol_Chat = true }
 local DRAFT_MAP = { "shape", "squareBorder", "servicesMerge" }
 function I:DefaultDraft(full)

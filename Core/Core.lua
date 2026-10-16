@@ -4605,33 +4605,42 @@ do
 				end
 			end
 		end,
-		-- one look Q9 (the user, 2026-10-15): Buffs & Debuffs' master switch
-		-- (UI Modifications' qol_Auras, off by default) folded into its three
-		-- rows' switches (Auras.player, target, nameplates). From before: a
-		-- save with no fold mark (Auras.qolFolded), or a settings text with
-		-- none in it (a text made since carries it: it has no default). Its
-		-- master not on: the three off, as it showed them -- a new player's
-		-- too (their first login: Everything Off holds them off anyway). The
-		-- master's key goes; the mark is set, once
+		-- one look Q9 (the user, 2026-10-15; the installer's A, 2026-10-16): a
+		-- feature's master switch (UI Modifications' qol_<name>) folded into
+		-- its own rows' switches (the module's `switches`): Buffs & Debuffs
+		-- (qol_Auras, off by default: Auras.player, target, nameplates), Bar
+		-- Values (qol_BarText, on: BarText.player, target, focus), Class Icons
+		-- (qol_ClassIcons, on: ClassIcons.portraits). From before: a save with
+		-- no fold mark (<name>.qolFolded), or a settings text with none in it
+		-- (a text made since carries it: it has no default). Its master not
+		-- on: its rows off, as it showed them -- a new player's too (their
+		-- first login: Everything Off holds them off anyway). The master's key
+		-- goes; the mark is set, once
 		function(self)
 			local ui, loaded = Raw(self, "UIModifications"), self.textKeys
-			local au = Own(self, "Auras")
-			if not au then
-				return
+			for name, wasOn in pairs({ Auras = false, BarText = true, ClassIcons = true }) do
+				local m = self.modules and self.modules[name]
+				local t = m and type(m.switches) == "table" and Own(self, name)
+				if t then
+					local old
+					if loaded then
+						old = not loaded[name .. ".qolFolded"]
+					else
+						old = t.qolFolded ~= true
+					end
+					local master = ui and ui["qol_" .. name]
+					local on = (wasOn and master ~= false) or (not wasOn and master == true)
+					if old and not on then
+						for _, key in ipairs(m.switches) do
+							t[key] = false
+						end
+					end
+					if ui then
+						ui["qol_" .. name] = nil
+					end
+					t.qolFolded = true
+				end
 			end
-			local old
-			if loaded then
-				old = not loaded["Auras.qolFolded"]
-			else
-				old = au.qolFolded ~= true
-			end
-			if old and not (ui and ui.qol_Auras == true) then
-				au.player, au.target, au.nameplates = false, false, false
-			end
-			if ui then
-				ui.qol_Auras = nil
-			end
-			au.qolFolded = true
 		end,
 	}
 
