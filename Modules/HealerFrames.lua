@@ -382,7 +382,8 @@ end
 -- The debuff glow
 --------------------------------------------------------------------------------
 
-local RING_GROW = 1.34       -- the game's ring round a portrait, as a share of the portrait's width (the kit's: its rim, FitRing)
+local RING_GROW = 1.12       -- the game's ring round a portrait, as a share of the portrait's width: client 70425's art,
+                             -- measured (Core/FrameFX.lua's RING_GROW; the kit's: its rim, FitRing)
 local RIM_TUCK = 4           -- piece px: the glow's edge this far under the kit ring's rim (no gap between them)
 local BAR_PAD = 3            -- UI units: the bars' outline round the health and mana bars (their bracket's rails)
 local GLOW_ALPHA = 0.9

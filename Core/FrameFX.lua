@@ -1450,7 +1450,10 @@ local function Place(dst, l, b, r, t, a)
 	dst:Show()
 end
 
-local function CopyTexture(dst, src)
+-- (kl, kb, kr, kt: a part of the region in UIParent's units, the copy cut to it -- a frame's whole art over the
+-- light's ring end only, never its plates over the bars: 70425's art lays a dark plate under the bars, which a whole
+-- copy laid over them -- the user's clip, 2026-10-16: "the health bar is acting wierd"; no copy when it cannot be cut)
+local function CopyTexture(dst, src, kl, kb, kr, kt)
 	if not (src and FX.Visible(src)) then
 		return
 	end
@@ -1484,6 +1487,19 @@ local function CopyTexture(dst, src)
 	dst:SetBlendMode((okB and not Secret(blend) and type(blend) == "string") and blend or "BLEND")
 	local okD, des = pcall(src.IsDesaturated, src)
 	dst:SetDesaturated(okD and not Secret(des) and des == true)
+	if kl then
+		kl, kb, kr, kt = max(kl, l), max(kb, b), min(kr, r), min(kt, t)
+		-- (unrotated: the upper left c1, c2, the lower right c7, c8)
+		local okC, c1, c2, _, _, _, _, c7, c8 = pcall(dst.GetTexCoord, dst)
+		if kr <= kl or kt <= kb or not (okC and c8 ~= nil and NoneSecret(c1, c2, c7, c8)) then
+			dst:Hide()
+			return
+		end
+		local w, h = r - l, t - b
+		dst:SetTexCoord(c1 + (kl - l) / w * (c7 - c1), c1 + (kr - l) / w * (c7 - c1),
+			c2 + (t - kt) / h * (c8 - c2), c2 + (t - kb) / h * (c8 - c2))
+		l, b, r, t = kl, kb, kr, kt
+	end
 	Place(dst, l, b, r, t, ShownAlpha(src))
 end
 
@@ -1623,7 +1639,11 @@ local function LayCover(layer, S)
 		covers[layer] = cv
 	end
 	for i, key in ipairs(COVER_PARTS) do
-		CopyTexture(cv.tex[i], S[key])
+		if key == "ring" and S.cropL then
+			CopyTexture(cv.tex[i], S[key], S.cropL, S.cropB, S.cropR, S.cropT)
+		else
+			CopyTexture(cv.tex[i], S[key])
+		end
 	end
 	CopyText(cv.text, S.number)
 	cv.frame:Show()
@@ -1768,8 +1788,14 @@ function Arrive(layer)
 		S.bars, S.cut = sp and true or false, sp and true or false
 		if sp then
 			S.fl, S.fb, S.fr, S.ft = sp.bl, sp.bb, sp.br, sp.bt
-			-- (the ring over it, and the badge that stands on the ring over that)
+			-- (the ring over it, and the badge that stands on the ring over that; the frame's whole art cut to the
+			-- ring's square)
 			S.ring, S.orb, S.disc, S.number = sp.ring, sp.orb, sp.disc, sp.number
+			if sp.crop then
+				S.cropL, S.cropB, S.cropR, S.cropT = sp.rl, sp.rb, sp.rr, sp.rt
+			else
+				S.cropL, S.cropB, S.cropR, S.cropT = nil, nil, nil, nil
+			end
 			Mate(layer, S, sp)
 		end
 	end
@@ -2096,7 +2122,10 @@ end
 -- reused (read it at once): the ring's square rl, rb, rr, rt; the bars' bl,
 -- bb, br, bt; the ring to draw over them, the badge's orb, disc and number;
 -- nil for any other frame (the whole frame then)
-local RING_GROW = 1.34   -- the game's ring round a portrait, of its width
+-- the game's ring round a portrait, of its width: client 70425's art (its c60 set), measured -- the player's 66.8
+-- round its 60 portrait, the party's sharp art's 41.8 round its 37 (the user's clip, 2026-10-16: "the animations dont
+-- fit their borders" with the old frames' 1.34)
+local RING_GROW = 1.12
 local BAR_PAD = 3        -- UI units past the bars
 
 local function Union(l, b, r, t, region)
@@ -2134,10 +2163,12 @@ function FX.Split(frame)
 	local cx, cy, d = (pl + pr) / 2, (pb + pt) / 2, (pr - pl) * RING_GROW
 	local ring = panel.RingOf and panel:RingOf(portrait)
 	local Kit = MelloUI.Kit
+	split.crop = true   -- (the cover the frame's whole art: cut to the ring)
 	if ring and Kit and Kit.RingRim then
 		local l, b, r, t = FX.Rect(ring)
 		if l then
 			cx, cy, d = (l + r) / 2, (b + t) / 2, (r - l) * Kit:RingRim(ring)
+			split.crop = false   -- (the kit's own ring: drawn whole)
 		end
 	end
 	bl, bb, br, bt = Union(bl, bb, br, bt, mana)

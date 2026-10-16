@@ -59,7 +59,8 @@
 - One Health Bar Colour for every frame (Look > Bar Texture): the unit frames, the nameplates and your party and raid frames, with My Colour and your Full / Half / Low colours for By health (Group Frames' until now). Class & Reaction is the new default; a colour you had picked is kept (the unit frames' first). An NPC's nameplate keeps the game's own colours, threat too, unless By health. Each frame's Health bar in Unit & Group Frames links to it.
 - Party frames: the game's party frames wear the game's own sharp art in the player frame's style (its ring and plates, at double resolution) instead of the blurry party art, with Unit Frame Tweaks on.
 - Bars: every bar MelloUI textures has soft, dimmed ends and a soft top and bottom edge: the unit frames, the party and raid frames, the nameplates, the cast bars, the experience bars, the Personal Display, the swing timers and the damage meter.
-- Dark Mode darkens party frames that appear after login too (a group joined later).
+- Dark Mode darkens party frames that appear after login too (a group joined later), and keeps them dark when their art changes.
+- Heal Flight, Frame Effects and the debuff glow fit the game's new player and party frames: the light round the portrait sits on its ring, and the health and mana bars no longer turn grey while an effect plays.
 - Group Frames: your Group Frames party and your raid frames each keep their own places for the name, the health text and the icons, and their own indicators; what you had is carried over to both.
 - Group Frames: Your Indicators (the Party and Raid frames' Indicators) is the list and the picked one's look, colour and text; a pick there picks it on the large frame.
 - Group Frames and the Personal Display: a Scale row on the Party, Raid and Personal frames and the Personal Display's Shield column, the same size as Edit Layout's Size. It waits while Edit Layout is open.
