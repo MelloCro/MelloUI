@@ -296,7 +296,8 @@ local function Ensure(frame, unit)
 end
 
 -- a frame as a host (its containers come with its first unit): kind "group"
--- (ours) or "party" (the game's normal party member)
+-- (our raid frames), "groupParty" (our Group Frames party: its own list, one
+-- look C9b) or "party" (the game's normal party member)
 function I:Host(frame, unit, health, kind)
 	hosts[frame] = { health = health, kind = kind or "group" }
 	Ensure(frame, unit)

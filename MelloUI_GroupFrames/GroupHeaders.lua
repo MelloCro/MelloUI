@@ -153,7 +153,8 @@ local function Dress(b, kind)
 		pcall(hf.Glow, hf, b)
 	end
 	if ns.Indicators then
-		ns.Indicators:Host(b, nil, Looks.Fill(b.healthBar))
+		-- (one look C9b: our party's buttons show the party's own list)
+		ns.Indicators:Host(b, nil, Looks.Fill(b.healthBar), b.partsLayout == "groupParty" and "groupParty" or nil)
 	end
 	SetUnit(b, b:GetAttribute("unit"))
 end

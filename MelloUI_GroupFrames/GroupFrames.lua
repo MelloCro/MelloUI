@@ -515,17 +515,35 @@ end
 -- is "party@<specKey>".
 RD.KINDS_OF_FRAME = { "group", "party" }
 local PARTY_KEY = "party@"
+-- (one look C9b, the user: the indicator lists separate for party and raid)
+-- our Group Frames party keeps its own list per spec too: "gparty@<specKey>"
+-- ("group" and a bare spec key are our raid frames' from then on)
+local GPARTY_KEY = "gparty@"
 
 function RD:KeyOf(key, kind)
 	key = key or self:Spec()
 	if kind == "party" and key:sub(1, #PARTY_KEY) ~= PARTY_KEY then
 		return PARTY_KEY .. key
 	end
+	if kind == "groupParty" and key:sub(1, #GPARTY_KEY) ~= GPARTY_KEY then
+		return GPARTY_KEY .. key
+	end
 	return key
 end
 
 function RD:KindOf(key)
-	return type(key) == "string" and key:sub(1, #PARTY_KEY) == PARTY_KEY and "party" or "group"
+	if type(key) ~= "string" then
+		return "group"
+	end
+	if key:sub(1, #PARTY_KEY) == PARTY_KEY then
+		return "party"
+	end
+	return key:sub(1, #GPARTY_KEY) == GPARTY_KEY and "groupParty" or "group"
+end
+
+-- a list key's spec (its kind's prefix off)
+local function SpecOf(key)
+	return (key:gsub("^" .. PARTY_KEY, ""):gsub("^" .. GPARTY_KEY, ""))
 end
 
 -- a starter's place on the normal party frame: icons and squares in a row
@@ -580,7 +598,7 @@ function RD:List(key, kind)
 	end
 	list = unsaved[key]
 	if not list then
-		local class = key:gsub("^" .. PARTY_KEY, ""):match("^([^:]+)") or self:Class()
+		local class = SpecOf(key):match("^([^:]+)") or self:Class()
 		list = self:Starter(class, key)
 		unsaved[key] = list
 	end
@@ -666,17 +684,45 @@ function RD:CopyFrom(from, to)
 	self:Changed()
 end
 
+-- (one look C9b) our Group Frames party's own lists, from the raid's: each
+-- spec's list the raid keeps copied whole (new ids) where the party has none
+-- of its own yet -- at the module's first start and after every profile load
+-- (OnEnable); an emptied list of the party's is its own and stays empty
+function RD:SplitLists(db)
+	db = db or DB()
+	if type(db.sets) ~= "table" or type(db.started) ~= "table" then
+		return 0
+	end
+	local todo = {}
+	for key, list in pairs(db.sets) do
+		local gkey = GPARTY_KEY .. key
+		if self:KindOf(key) == "group" and type(list) == "table" and db.sets[gkey] == nil and not db.started[gkey] then
+			todo[#todo + 1] = key
+		end
+	end
+	for _, key in ipairs(todo) do
+		local copy = {}
+		for _, e in ipairs(db.sets[key]) do
+			local t = Copy(e)
+			t.id = nil
+			copy[#copy + 1] = self:Fill(t)
+		end
+		db.sets[GPARTY_KEY .. key] = copy
+		db.started[GPARTY_KEY .. key] = true
+	end
+	return #todo
+end
+
 -- the lists to copy from (the Designer's Copy from), as dropdown values: every
--- spec's of either kind ("Party Frames: PRIEST:1")
+-- spec's of every kind ("Party Frames: PRIEST:1")
+local LIST_LABEL = { group = "Raid Frames: ", groupParty = "Group Frames Party: ", party = "Party Frames: " }
 function RD:SpecValues()
 	local out, seen = {}, {}
 	for _, t in ipairs({ DB().sets, unsaved }) do
 		for key in pairs(t) do
 			if not seen[key] then
 				seen[key] = true
-				local party = self:KindOf(key) == "party"
-				out[#out + 1] = { value = key, label = (party and "Party Frames: " or "Group Frames: ")
-					.. key:gsub("^" .. PARTY_KEY, "") }
+				out[#out + 1] = { value = key, label = LIST_LABEL[self:KindOf(key)] .. SpecOf(key) }
 			end
 		end
 	end
@@ -875,10 +921,12 @@ end, "script")
 
 function M:OnInit(db)
 	self.db = db
-	-- (one look C9) the Group Frames party's own places, from the raid's once
+	-- (one look C9) the Group Frames party's own places, from the raid's once;
+	-- (C9b) and its own indicator lists
 	if ns.Parts then
 		ns.Parts:Split(db)
 	end
+	RD:SplitLists(db)
 	-- (0.20.2: the raid's spacing of its own) a player from before keeps the one spacing party and raid shared; once
 	if not db.raidSpacingMigrated then
 		db.raidSpacingMigrated = true
@@ -915,10 +963,11 @@ end
 function M:OnEnable(db)
 	self.db = db
 	-- (again on every enable: a profile loaded from before the split -- no
-	-- marker -- gives our party that profile's places too)
+	-- marker -- gives our party that profile's places and lists too)
 	if ns.Parts then
 		ns.Parts:Split(db)
 	end
+	RD:SplitLists(db)
 	if not specEvents then
 		specEvents = CreateFrame("Frame")
 		for _, e in ipairs({ "PLAYER_SPECIALIZATION_CHANGED", "ACTIVE_TALENT_GROUP_CHANGED", "PLAYER_TALENT_UPDATE" }) do
