@@ -174,8 +174,12 @@ local U_PREFERENCE = { nameFormat = true }
 -- keys no setup ever sets: the player's accessibility choice, and two
 -- dropped keys a profile or share string from before may still bring:
 -- `unlock` (the old Unlock the Windows mode, gone with Edit Layout, 0.15.0)
--- and the switch Tweaks lost (its one-time fold resets rows reading false)
-local NEVER = { [UMB] = { reduceMotion = true, unlock = true, qol_Tweaks = true } }
+-- and the switch Tweaks lost (its one-time fold resets rows reading false);
+-- and the player's own Group Frames work (one look, the user's answer to
+-- F-v3's needs_user 8: Install leaves the indicator lists -- sets, started --
+-- and the frames' part places -- parts, partyParts -- alone, Revert too)
+local NEVER = { [UMB] = { reduceMotion = true, unlock = true, qol_Tweaks = true },
+	GroupFrames = { sets = true, started = true, parts = true, partyParts = true } }
 
 -- the installer's own facts about this machine and character, and a
 -- one-time flag: the player's own like the keep lists' keys (never carried
