@@ -524,7 +524,7 @@ local function AnyFrame()
 	return M.isEnabled and db and (db.player or db.target or db.focus) and true or false
 end
 
-local function Follow()
+local function Listen()
 	if AnyFrame() then
 		frame:RegisterEvent("PLAYER_TARGET_CHANGED")
 		frame:RegisterEvent("PLAYER_FOCUS_CHANGED")
@@ -539,7 +539,7 @@ end
 
 function M:OnEnable(db)
 	self.db = db
-	Follow()
+	Listen()
 end
 
 function M:OnDisable()
@@ -549,7 +549,7 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
-	Follow()
+	Listen()
 end
 
 MelloUI:Profile("BarText", "bar value updates", UpdateBar)
