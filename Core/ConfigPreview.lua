@@ -50,10 +50,15 @@
 -- its module): the designer's corner sample (the Player, Target, Focus and
 -- Pet frames' stage slot) -- picks "player", "target", "focus", "pet",
 -- "party", "castbars", "personal" (one look C14: the raid frame is the
--- designer stage's, MelloUI_GroupFrames' 'raidframe' kind); its
--- portrait wears the shell's round kit rim while the shell's look is on --
--- and the party pick's sample, a replica of the game's party member frame
--- (Preview's stand-ins, Group Frames' solo frame, the Designer's party).
+-- designer stage's, MelloUI_GroupFrames' 'raidframe' kind) -- and the party
+-- pick's sample, a replica of the game's party member frame (Preview's
+-- stand-ins, Group Frames' solo frame, the Designer's party). The Player,
+-- Target, Focus and Pet picks are copies of the game's own frames (the user,
+-- 2026-10-16: "why does the preview look like this" -- "1 yes"; client
+-- 70425's Camelot frames: Copy, below), drawn at the game's scale however
+-- large the slot shows the corner, so they are as sharp as the real ones;
+-- the other picks a plain drawing whose portrait wears the shell's round kit
+-- rim while the shell's look is on.
 --
 -- SAMPLE values only: no unit value is read at all. The player's own
 -- health, class and name may be secret even out of combat on this client
@@ -136,18 +141,22 @@ local CAST_ICON = "Interface\\Icons\\Spell_Holy_Renew"
 -- execute are what BarTextures.PreviewHealthColor reads.
 local SAMPLES = {
 	player = { layout = "unit", area = "unitframes", frame = "player", centre = true, plate = true, you = true,
+		copy = "player", level = 25,
 		first = "Aldric", last = "Vale", class = "PALADIN", reaction = 5,
 		health = 8640, max = 12000, power = 5200, powerMax = 6400, token = "MANA",
 		label = "Your player frame" },
 	target = { layout = "unit", area = "unitframes", frame = "target", centre = true, plate = true, right = true, elite = true,
+		copy = "target", level = 27, difficulty = "difficult", healthAtlas = "UI-HUD-UnitFrame-Target-PortraitOn-Bar-Health",
 		first = "Garra", last = "Blackthorn", reaction = 2, execute = true, display = 146966,
 		health = 1740, max = 12000, power = 35, powerMax = 100, token = "RAGE",
 		label = "The target frame, an elite enemy low on health" },
 	focus = { layout = "unit", area = "unitframes", frame = "focus", centre = true, plate = true, right = true,
+		copy = "target", level = 25, difficulty = "standard", healthAtlas = "UI-HUD-UnitFrame-Target-PortraitOn-Bar-Health",
 		first = "Seren", last = "Ashby", class = "ROGUE", reaction = 2, execute = true, display = 147598,
 		health = 6200, max = 9800, power = 80, powerMax = 100, token = "ENERGY",
 		label = "The focus frame, an enemy player" },
 	pet = { layout = "unit", area = "unitframes",
+		copy = "pet", healthAtlas = "UI-HUD-UnitFrame-TargetofTarget-PortraitOn-Bar-Health",
 		first = "Ember", last = "Ashpaw", reaction = 5, display = 145568,
 		health = 3100, max = 4200, power = 60, powerMax = 100, token = "FOCUS",
 		label = "Your pet's frame" },
@@ -163,6 +172,9 @@ local SAMPLES = {
 		label = "The personal resource display" },
 }
 local FIRST_PICK = "player"
+-- the game's frames copied, one per kind (player, target -- the focus too --
+-- and pet), made on a pick's first need: below, "The game's frames copied"
+local Copy = { made = setmetatable({}, { __mode = "k" }) }
 -- a health sample's fraction, for the colour (the cast's is its progress)
 for _, s in pairs(SAMPLES) do
 	if s.health then
@@ -328,7 +340,7 @@ end
 
 -- the kit's round rim on the portrait (a shell's dressing: handed the kit)
 local function KitRim(Kit, p)
-	p.portrait:SetKit(Kit)
+	p.round:SetKit(Kit)
 end
 
 local previews = setmetatable({}, weakKeys)   -- [preview] = true
@@ -340,7 +352,7 @@ local function OnShellKit(shell, on)
 			if on then
 				shell:Kit(KitRim, p)
 			else
-				p.portrait:SetKit(false)
+				p.round:SetKit(false)
 			end
 		end
 	end
@@ -393,11 +405,17 @@ end
 
 local function Lay(p)
 	local s = SAMPLES[p.pick]
+	-- (a copy of the game's frame: its parts are the preview's parts while it shows -- p.portrait, p.bar1 ... --
+	-- and the plain drawing's hidden; else the plain parts back)
+	if Copy.Lay(p, s) then
+		return
+	end
 	local portrait, crest, name, bar1, bar2 = p.portrait, p.crest, p.name, p.bar1, p.bar2
 	local layout = s.layout
 	portrait:SetShown(layout == "unit")
 	crest:Hide()
 	name:SetShown(layout == "unit")
+	bar1:Show()   -- (hidden while a copy showed)
 	bar2:SetShown(layout == "unit" or layout == "personal")
 	p.icon:SetShown(layout == "cast")
 	p.castText:SetShown(layout == "cast")
@@ -451,7 +469,8 @@ local function PaintCorner(p)
 		-- by Centre Names where it reaches
 		local uf = Running("UnitFrames")
 		local centred = (s.plate and Running("UnitFramePanel")) or (s.centre and uf and uf.isEnabled)
-		p.name:SetJustifyH(centred and "CENTER" or "LEFT")
+		-- (a copy: the game centres these names itself -- Camelot's PlayerFrame / TargetFrame / PetFrame OnLoad)
+		p.name:SetJustifyH((centred or s.copy) and "CENTER" or "LEFT")
 		p.name:SetText(NameAs(s))
 	end
 	if BT then
@@ -467,6 +486,9 @@ local function PaintCorner(p)
 	if s.frame then
 		PaintValue(p.text1, p.bar1, s.frame, false, s.health, s.max)
 		PaintValue(p.text2, p.bar2, s.frame, true, s.power, s.powerMax)
+	end
+	if s.copy then
+		Copy.Paint(p, s)
 	end
 end
 
@@ -2401,27 +2423,29 @@ local function MakeParty(parent, onto)
 	f.Texture:SetAtlas(PARTY_ART, true)
 	f.Texture:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -2)
 	f.Flash = f:CreateTexture(nil, "ARTWORK")
+	-- (client 70425: Camelot's PartyMemberFrame.lua lays the member frame's name, bars and masks a pixel or two from
+	-- Mainline's -- its ArtLayoutInfo.Player and UpdateNameTextAnchors; the numbers here are those)
 	f.Flash:SetAtlas("UI-HUD-UnitFrame-Party-PortraitOn-InCombat", true)
-	f.Flash:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -2)
+	f.Flash:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -1)
 	f.Flash:Hide()
 	f.Name = f:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-	f.Name:SetSize(57, 12)
+	f.Name:SetSize(55, 12)
 	f.Name:SetJustifyH("LEFT")
-	f.Name:SetPoint("TOPLEFT", f, "TOPLEFT", 46, -6)
+	f.Name:SetPoint("TOPLEFT", f, "TOPLEFT", 48, -7)
 	local hc = CreateFrame("Frame", nil, f)
 	hc:SetSize(70, 10)
-	hc:SetPoint("TOPLEFT", f, "TOPLEFT", 45, -19)
+	hc:SetPoint("TOPLEFT", f, "TOPLEFT", 47, -20)
 	local health = Bar(hc)
 	health:SetSize(70, 10)
 	health:SetPoint("TOPLEFT", hc, "TOPLEFT", 0, 0)
 	health:SetStatusBarTexture(PARTY_HEALTH)
 	hc.HealthBar = health
-	Masked(health:GetStatusBarTexture(), hc, PARTY_HEALTH .. "-Mask", hc, -29, 3)
+	Masked(health:GetStatusBarTexture(), hc, PARTY_HEALTH .. "-Mask", hc, -28, 3)
 	f.HealthBarContainer = hc
 	local mana = Bar(f)
 	mana:SetSize(74, 7)
-	mana:SetPoint("TOPLEFT", f, "TOPLEFT", 41, -30)
-	Masked(mana:GetStatusBarTexture(), mana, "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Mana-Mask", f, 14, -26)
+	mana:SetPoint("TOPLEFT", f, "TOPLEFT", 44, -31)
+	Masked(mana:GetStatusBarTexture(), mana, "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Mana-Mask", f, 16, -26)
 	f.ManaBar = mana
 	f.PartyMemberOverlay = CreateFrame("Frame", nil, f)
 	f.PartyMemberOverlay:SetAllPoints(f)
@@ -2467,6 +2491,284 @@ local function PaintParty(f, s)
 end
 
 --------------------------------------------------------------------------------
+-- The game's frames copied (the user, 2026-10-16: "why does the preview look
+-- like this" -- "1 yes": the sample as the game draws its frames). Client
+-- 70425's own (Blizzard_UnitFrame: Mainline's PlayerFrame.xml, TargetFrame.xml
+-- and PetFrame.xml as Camelot's PlayerFrame.lua, TargetFrame.lua and
+-- PetFrame.lua lay them): the frame art, the portrait under it in its mask,
+-- the bars over it in their masks, the name, the level in its circle; the
+-- focus wears the target's frame. Dressed as the real frames are: the bars,
+-- names, values, portraits and the Elite mark by the same paint as the plain
+-- drawing (PaintCorner, through the modules' preview exports); Unit Frames'
+-- soft band behind the player's and the pet's name and its transparent
+-- reaction strip on the target's (M:PreviewNameBand, M:NameBandShows), its
+-- names' face (M.NameFace.Set); the game's gold frame on an elite while no
+-- painted mark stands there. Each copy is made on its pick's first need and
+-- drawn at the game's own scale (UIParent's: the frames' at Edit Mode's
+-- 100 %), however large the slot shows the corner -- so it is as sharp as
+-- the real frames -- or smaller where the corner is too small for it.
+-- Its parts are the preview's (p.portrait, p.bar1 ...) while it shows (p.copy: the copy
+-- on show, nil on a plain pick).
+--------------------------------------------------------------------------------
+
+Copy.Num = MelloUI.Safe.Number
+
+Copy.FRAMES = {
+	player = { w = 232, h = 100, art = "UI-HUD-UnitFrame-Player-PortraitOn",
+		portrait = { size = 60, point = { "TOPLEFT", 24, -19 }, mask = "UI-HUD-UnitFrame-Player-Portrait-Mask" },
+		name = { w = 116, h = 12, point = { "CENTER", "TOPLEFT", 149, -37 } }, band = true,
+		circle = { "BOTTOMLEFT", 13, 7 },
+		health = { box = { 124, 15, "TOPLEFT", "TOPLEFT", 87, -46 }, h = 20,
+			mask = { "UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health-Mask", -2, 6, h = 32 } },
+		mana = { w = 124, h = 10, point = { "TOPLEFT", "frame", "TOPLEFT", 87, -61 },
+			mask = { "UI-HUD-UnitFrame-Player-PortraitOn-Bar-Mana-Mask", -2, 2 } } },
+	target = { w = 232, h = 100, art = "UI-HUD-UnitFrame-Target-PortraitOn",
+		portrait = { size = 58, point = { "TOPRIGHT", -26, -19 } },
+		boss = { "UI-HUD-UnitFrame-Target-PortraitOn-Boss-Gold", "TOPRIGHT", -11, -8 },
+		strip = { "UI-HUD-UnitFrame-Target-PortraitOn-Type", "TOPRIGHT", -82, -26 },
+		name = { w = 117, h = 12, point = { "TOPLEFT", "TOPRIGHT", -126, -4 }, onStrip = true },
+		circle = { "BOTTOMRIGHT", -13, 7 },
+		health = { box = { 126, 15, "BOTTOMRIGHT", "LEFT", 147, -9 }, h = 20,
+			mask = { "UI-HUD-UnitFrame-Target-PortraitOn-Bar-Health-Mask", -1, 9 } },
+		mana = { w = 134, h = 10, point = { "TOPRIGHT", "box", "BOTTOMRIGHT", 4, -1 },
+			mask = { "UI-HUD-UnitFrame-Target-PortraitOn-Bar-Mana-Mask", -61, 3 } } },
+	pet = { w = 120, h = 49, art = "UI-HUD-UnitFrame-TargetofTarget-PortraitOn",
+		portrait = { size = 37, point = { "TOPLEFT", 5, -5 }, full = true },
+		name = { w = 68, h = 10, point = { "TOPLEFT", "TOPRIGHT", 2, -1 }, onPortrait = true }, band = true,
+		health = { bar = { 70, 10, "BOTTOMLEFT", "RIGHT", 3, -4 },
+			mask = { "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Health-Mask", -26, 3 } },
+		mana = { w = 74, h = 7, point = { "TOPLEFT", "health", "BOTTOMLEFT", -2, -2 },
+			mask = { "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Mana-Mask", -27, 4 } } },
+}
+
+-- a bar's fill in the game's mask (the mask's atlas at its size, `h` taller where the game sets it)
+function Copy.Mask(bar, m)
+	local mask = bar:CreateMaskTexture()
+	if Atlas(m[1]) then
+		mask:SetAtlas(m[1], true)
+	end
+	if m.h then
+		mask:SetHeight(m.h)
+	end
+	mask:SetPoint("TOPLEFT", bar, "TOPLEFT", m[2], m[3])
+	local fill = bar.GetStatusBarTexture and bar:GetStatusBarTexture()
+	if fill and fill.AddMaskTexture then
+		fill:AddMaskTexture(mask)
+	end
+end
+
+-- one frame copied (its kind's): the portrait and the art on it, the bars on a
+-- level over them, the name, the strip and the level's circle over those
+function Copy.Make(p, key)
+	local d = Copy.FRAMES[key]
+	local f = CreateFrame("Frame", nil, p)
+	f:SetSize(d.w, d.h)
+	f:SetPoint("CENTER", p, "CENTER", 0, 0)
+	local pd = d.portrait
+	local portrait = f:CreateTexture(nil, "BACKGROUND", nil, 1)
+	portrait:SetSize(pd.size, pd.size)
+	portrait:SetPoint(pd.point[1], f, pd.point[1], pd.point[2], pd.point[3])
+	portrait.icon = portrait   -- (the preview paints p.portrait.icon: here the picture itself)
+	local round = f:CreateMaskTexture()
+	if pd.mask and Atlas(pd.mask) then
+		round:SetAtlas(pd.mask)
+		round:SetAllPoints(portrait)
+	else
+		round:SetAtlas("CircleMask")
+		if pd.full then
+			round:SetAllPoints(portrait)
+		else   -- (the target's: a pixel in at the top and the right)
+			round:SetPoint("TOPLEFT", portrait, "TOPLEFT", 0, -1)
+			round:SetPoint("BOTTOMRIGHT", portrait, "BOTTOMRIGHT", -1, 0)
+		end
+	end
+	portrait:AddMaskTexture(round)
+	f.portrait = portrait
+	local art = f:CreateTexture(nil, "BACKGROUND", nil, 2)
+	if Atlas(d.art) then
+		art:SetAtlas(d.art, true)
+	end
+	art:SetPoint("CENTER", f, "CENTER", 0, 0)
+	f.art = art
+	if d.boss then
+		f.boss = f:CreateTexture(nil, "ARTWORK", nil, 2)
+		if Atlas(d.boss[1]) then
+			f.boss:SetAtlas(d.boss[1], true)
+		end
+		f.boss:SetPoint(d.boss[2], f, d.boss[2], d.boss[3], d.boss[4])
+		f.boss:Hide()
+	end
+	-- the bars (over the art, as the game's content frame)
+	local hd = d.health
+	local health
+	if hd.box then
+		local box = CreateFrame("Frame", nil, f)
+		box:SetSize(hd.box[1], hd.box[2])
+		box:SetPoint(hd.box[3], f, hd.box[4], hd.box[5], hd.box[6])
+		health = Bar(box)
+		health:SetSize(hd.box[1], hd.h)
+		health:SetPoint("TOPLEFT", box, "TOPLEFT", 0, 3)
+		f.box = box
+	else
+		health = Bar(f)
+		health:SetSize(hd.bar[1], hd.bar[2])
+		health:SetPoint(hd.bar[3], portrait, hd.bar[4], hd.bar[5], hd.bar[6])
+	end
+	Copy.Mask(health, hd.mask)
+	f.health = health
+	local md = d.mana
+	local mana = Bar(f)
+	mana:SetSize(md.w, md.h)
+	local rel = (md.point[2] == "box" and f.box) or (md.point[2] == "health" and health) or f
+	mana:SetPoint(md.point[1], rel, md.point[3], md.point[4], md.point[5])
+	Copy.Mask(mana, md.mask)
+	f.mana = mana
+	f.text1 = health:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
+	f.text2 = mana:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
+	-- the name, the strip, the level (over the bars)
+	local top = CreateFrame("Frame", nil, f)
+	top:SetAllPoints(f)
+	top:SetFrameLevel(health:GetFrameLevel() + 2)
+	if d.strip then
+		f.strip = top:CreateTexture(nil, "BACKGROUND")
+		if Atlas(d.strip[1]) then
+			f.strip:SetAtlas(d.strip[1], true)
+		end
+		f.strip:SetPoint(d.strip[2], f, d.strip[2], d.strip[3], d.strip[4])
+	end
+	local nd = d.name
+	local name = top:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	name:SetSize(nd.w, nd.h)
+	name:SetWordWrap(false)
+	name:SetJustifyH("CENTER")
+	local on = (nd.onStrip and f.strip) or (nd.onPortrait and portrait) or f
+	name:SetPoint(nd.point[1], on, nd.point[2], nd.point[3], nd.point[4])
+	f.name = name
+	if d.circle then
+		f.circle = top:CreateTexture(nil, "OVERLAY", nil, 3)
+		if Atlas("UI-HUD-UnitFrame-SmallCircle") then
+			f.circle:SetAtlas("UI-HUD-UnitFrame-SmallCircle", true)
+		end
+		f.circle:SetPoint(d.circle[1], f, d.circle[1], d.circle[2], d.circle[3])
+		f.level = top:CreateFontString(nil, "OVERLAY", "WhiteLargeNumberFont")
+		f.level:SetDrawLayer("OVERLAY", 4)
+		f.level:SetPoint("CENTER", f.circle, "CENTER", 0, -0.5)
+	end
+	f.crest = top:CreateTexture(nil, "OVERLAY", nil, 7)
+	f.crest:SetSize(CREST, CREST)
+	f.crest:SetPoint("CENTER", portrait, "TOP", 0, -2)
+	f.crest:Hide()
+	-- (Unit Frames' soft band behind the name: its own, made here once)
+	local uf = d.band and Exports("UnitFrames", "PreviewNameBand")
+	f.band = uf and uf:PreviewNameBand(name, f) or nil
+	Copy.made[p] = Copy.made[p] or {}
+	Copy.made[p][key] = f
+	return f
+end
+
+-- the pick laid: a copy shown and its parts made the preview's (true), or the
+-- plain drawing's parts back (false: Lay lays them)
+function Copy.Lay(p, s)
+	local made = Copy.made[p]
+	local key = s and s.copy
+	for k, f in pairs(made or Reg.NONE) do
+		if k ~= key then
+			f:Hide()
+		end
+	end
+	if key ~= p.copyKey then
+		p.portraitShows = nil   -- (another picture: drawn again)
+	end
+	p.copyKey = key
+	p.copy = key and made and made[key] or nil
+	local plain = p.plain
+	if not key then
+		for field, region in pairs(plain) do
+			p[field] = region
+		end
+		return false
+	end
+	for _, region in pairs(plain) do
+		region:Hide()
+	end
+	p.icon:Hide()
+	p.castText:Hide()
+	p.castTime:Hide()
+	local f = made and made[key] or Copy.Make(p, key)
+	p.copy = f
+	f:Show()
+	f.text1:Hide()   -- (the values: PaintValue shows them where the frame has them)
+	f.text2:Hide()
+	p.portrait, p.crest, p.name, p.bar1, p.bar2, p.text1, p.text2 = f.portrait, f.crest, f.name, f.health, f.mana,
+		f.text1, f.text2
+	return true
+end
+
+-- the copy's own (after PaintCorner's bars, name, values, portrait and mark):
+-- its scale, the level, the target's strip and gold frame, the name's band and
+-- face
+function Copy.Paint(p, s)
+	local f = Copy.made[p] and Copy.made[p][s.copy]
+	if not f then
+		return
+	end
+	Copy.Fit(p, f)
+	if f.level then
+		f.level:SetText(s.level and tostring(s.level) or "")
+		local c = s.difficulty and rawget(_G, "QuestDifficultyColors")
+		c = (type(c) == "table" and c[s.difficulty]) or rawget(_G, "WHITE_FONT_COLOR")
+		if c then
+			f.level:SetTextColor(c.r, c.g, c.b)
+		end
+	end
+	local uf = Running("UnitFrames")
+	if f.strip then
+		-- (the reaction strip: the game's reaction colour; Unit Frames on makes it clear, as on the target's frame)
+		local c = rawget(_G, "FACTION_BAR_COLORS")
+		c = type(c) == "table" and c[s.reaction or 4]
+		if c then
+			f.strip:SetVertexColor(c.r, c.g, c.b)
+		end
+		f.strip:SetAlpha(uf and 0 or 1)
+	end
+	if f.boss then
+		-- (the game's gold frame on an elite, where no painted mark stands)
+		f.boss:SetShown((s.elite and not f.crest:IsShown()) and true or false)
+	end
+	if f.band then
+		f.band:SetShown((uf and uf.NameBandShows and uf:NameBandShows()) and true or false)
+	end
+	local face = Exports("UnitFrames", "PreviewNameBand")
+	if face and face.NameFace and face.NameFace.Set then
+		face.NameFace.Set(f.name)
+	end
+end
+
+-- the game's own scale (UIParent's effective one), or smaller where the corner
+-- is too small for the frame
+function Copy.Fit(p, f)
+	local up = rawget(_G, "UIParent")
+	local d = Copy.FRAMES[p.copyKey]
+	if not (up and d and up.GetEffectiveScale) then
+		return
+	end
+	local ok, pe = pcall(p.GetEffectiveScale, p)
+	local ok2, ue = pcall(up.GetEffectiveScale, up)
+	if not (ok and ok2) then
+		return
+	end
+	pe, ue = Copy.Num(pe), Copy.Num(ue)
+	if not (pe and ue and pe > 0 and ue > 0) then
+		return
+	end
+	local fit = math.min(p:GetWidth() / d.w, p:GetHeight() / d.h)
+	local scale = math.min(ue / pe, fit)
+	if math.abs((f:GetScale() or 1) - scale) > 1e-4 then
+		f:SetScale(scale)
+	end
+end
+
+--------------------------------------------------------------------------------
 -- The 'unitframe' kind (here until stage G moves it to its module): the Unit
 -- Frames page's corner preview, and the party pick's sample (the replica
 -- above) for Preview's stand-ins, Group Frames' solo frame and the Designer's
@@ -2480,7 +2782,7 @@ end
 local function UnitCorner(p, skin)
 	local portrait = W.RoundIcon(p, PORTRAIT)
 	portrait:EnableMouse(false)   -- (a picture: no hover light, the preview's tooltip stands)
-	p.portrait = portrait
+	p.portrait, p.round = portrait, portrait
 	p.crest = portrait:CreateTexture(nil, "OVERLAY", nil, 7)
 	p.crest:SetSize(CREST, CREST)
 	p.crest:SetPoint("CENTER", portrait, "TOP", 0, -2)
@@ -2498,6 +2800,9 @@ local function UnitCorner(p, skin)
 	p.castTime = p.bar1:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
 	p.castTime:SetPoint("RIGHT", p.bar1, "RIGHT", -4, 0)
 	p.castTime:SetText(SAMPLES.castbars.time)
+	-- (the plain drawing's parts: the preview's own again on a pick that is no copy -- Copy.Lay)
+	p.plain = { portrait = portrait, crest = p.crest, name = p.name, bar1 = p.bar1, bar2 = p.bar2, text1 = p.text1,
+		text2 = p.text2 }
 
 	previews[p] = true
 	if skin and skin.OnKit then
@@ -2523,9 +2828,16 @@ Preview.Register("unitframe", {
 	Lay = Lay,
 	-- (the designer's slot: which region is which part -- Core/Config.lua's DUI.SlotHits; the larger first)
 	PartRegions = function(p)
-		p.partRegions = p.partRegions or { { key = "portrait", region = p.portrait, round = true }, { key = "health", region = p.bar1 },
-			{ key = "name", region = p.name }, { key = "values", region = p.text1 } }
-		return p.partRegions
+		-- (the parts on show: a copy's or the plain drawing's -- one list each, made once)
+		p.partRegions = p.partRegions or {}
+		local key = p.copyKey or "plain"
+		local list = p.partRegions[key]
+		if not list then
+			list = { { key = "portrait", region = p.portrait, round = true }, { key = "health", region = p.bar1 },
+				{ key = "name", region = p.name }, { key = "values", region = p.text1 } }
+			p.partRegions[key] = list
+		end
+		return list
 	end,
 	-- (a show draws the portrait again: it may have changed)
 	OnShow = function(p)

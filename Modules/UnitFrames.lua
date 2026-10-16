@@ -1004,6 +1004,26 @@ function NameBand.Frames()
 	end
 end
 
+-- (the configurator's frame sample, Core/ConfigPreview.lua's copies of the
+-- game's frames: the same band behind its name, made once per name -- no
+-- hooks, the sample shows and hides it -- and whether the frames show theirs)
+function M:PreviewNameBand(fs, host)
+	local Soft = MelloUI.Shade
+	if type(fs) ~= "table" or type(host) ~= "table" or not (Soft and Soft.Band and Soft.TEXT) then
+		return nil
+	end
+	NameBand.LOOK.alpha = Soft.TEXT.alpha
+	local band = Soft:Band(host, NameBand.LOOK)
+	if band then
+		band:Anchor(fs, NameBand.PAD.x, NameBand.PAD.y)
+	end
+	return band
+end
+
+function M:NameBandShows()
+	return (self.isEnabled and not Covered("unitframes")) and true or false
+end
+
 --------------------------------------------------------------------------------
 -- The party members' level on the name line (one-look D5; the user's pick
 -- 6C, "On the name line": ufparts.md). No circle: the member's level at the
