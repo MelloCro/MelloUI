@@ -451,7 +451,8 @@ do
 			Paint = Paint,
 			-- (the designer's slot: the role ring round the medallion, the medallion on it -- DUI.SlotHits)
 			PartRegions = function(p)
-				p.partRegions = p.partRegions or { { key = "role", region = p.marker.ring }, { key = "medallion", region = p.marker } }
+				p.partRegions = p.partRegions or { { key = "role", region = p.marker.ring, round = true },
+					{ key = "medallion", region = p.marker, round = true } }
 				return p.partRegions
 			end,
 			Tip = function()

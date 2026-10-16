@@ -3421,9 +3421,10 @@ do
 					local hit = hits[n] or DUI.SlotHit(slot, n)
 					hit:ClearAllPoints()
 					hit:SetAllPoints(r)
-					hit.part, hit.el, hit.page = pr.key, el, page
+					-- (a round part -- the portrait in its ring -- gets no square outline: its tooltip says what it is)
+					hit.part, hit.el, hit.page, hit.round = pr.key, el, page, pr.round
 					hit.melloTipTitle, hit.melloTipBody = labels[pr.key], TEXT.slotPart
-					hit.sel:SetShown(open == pr.key)
+					hit.sel:SetShown(open == pr.key and not pr.round)
 					hit:Show()
 				end
 			end
@@ -3441,7 +3442,7 @@ do
 		end
 	end, "script")
 	DUI.SlotEnter = Shared("OnEnter on a designer sample's part", function(hit)
-		hit.edge:Show()
+		hit.edge:SetShown(not hit.round)
 	end, "script")
 	DUI.SlotLeave = Shared("OnLeave on a designer sample's part", function(hit)
 		hit.edge:Hide()
