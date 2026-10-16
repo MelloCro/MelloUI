@@ -1152,8 +1152,7 @@ Party.art = setmetatable({}, { __mode = "k" })
 -- the art's holes, from the frame's top left (the art at the game's 1, -2): measured on client 70425's art
 -- (ui-hud-unitframe-characterframeonparty-portraiton-c60-2x, 240 x 98 px for its 120 x 49): the health hole's inner
 -- edges 92-227 x 38-54 px, the mana hole's 92-227 x 61-70 px
-Party.HOLES = { health = { x = 47, y = -21, w = 68, h = 8.5 }, mana = { x = 47, y = -32.5, w = 68, h = 5 },
-	PASS = "Interface\\Buttons\\WHITE8X8" }
+Party.HOLES = { health = { x = 47, y = -21, w = 68, h = 8.5 }, mana = { x = 47, y = -32.5, w = 68, h = 5 } }
 Party.ART = {
 	Character = { frame = "UI-HUD-UnitFrame-CharacterFrameOnParty-PortraitOn",
 		flash = "UI-HUD-UnitFrame-CharacterFrameOnParty-PortraitOn-InCombat",
@@ -1199,6 +1198,16 @@ function Party.Lay(frame, style)
 	end
 	local bar = rawget(hc, "HealthBar")
 	local hm, mm = rawget(hc, "HealthBarMask"), rawget(mana, "ManaBarMask")
+	-- (the fills its masks dress: the health bar's, its max-health-loss bar's, the mana bar's)
+	local fills = {}
+	for _, b in ipairs({ bar, rawget(hc, "TempMaxHealthLoss"), mana }) do
+		if type(b) == "table" and type(b.GetStatusBarTexture) == "function" then
+			fills[#fills + 1] = b:GetStatusBarTexture()
+		end
+	end
+	for _, t in ipairs(fills) do
+		MelloUI.Widgets.SoftEndsOwn(t, not own)
+	end
 	if own then
 		-- (the game's own: its template's 70 x 10 bar and 74 x 7 mana bar, its masks at its offsets)
 		local H, P = L.Health, L.Mana
@@ -1229,14 +1238,12 @@ function Party.Lay(frame, style)
 	hc:SetPoint("TOPLEFT", frame, "TOPLEFT", HH.x, HH.y)
 	mana:SetSize(MH.w, MH.h)
 	mana:SetPoint("TOPLEFT", frame, "TOPLEFT", MH.x, MH.y)
-	-- (each mask the bar's own rect, clamped through: the fill shows exactly in its hole; its soft ends are
-	-- W.SoftEnds', as every bar's)
+	-- (each mask the bar's own rect and every bar's soft ends -- W.SoftMask, the same mask as every bar's: the
+	-- fill shows exactly in its hole, its edges dimmed, in the game's own mask slot)
 	for _, pair in ipairs({ { hm, type(bar) == "table" and bar or hc }, { mm, mana } }) do
 		local mask, over = pair[1], pair[2]
 		if type(mask) == "table" then
-			mask:SetTexture(Party.HOLES.PASS, "CLAMP", "CLAMP")
-			mask:ClearAllPoints()
-			mask:SetAllPoints(over)
+			MelloUI.Widgets.SoftMask(mask, over)
 		end
 	end
 	return true

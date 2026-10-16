@@ -646,7 +646,7 @@ local function CoverBar(bar)
 			pcall(c.back.RemoveMaskTexture, c.back, mask)
 		end
 	end
-	-- (the cover's ends soft as every bar's, once, in the room its shape leaves: W.SoftEnds)
+	-- (the cover's ends soft as every bar's, once: W.SoftEnds)
 	if not c.soft then
 		c.soft = true
 		pcall(MelloUI.Widgets.SoftEnds, bar, false, c.tex)
