@@ -3307,7 +3307,9 @@ do
 	function DUI.StageHead(page)
 		if not page.stageHead then
 			page.stageHead = CreateFrame("Frame", nil, page)
-			W.Solid(page.stageHead, "BACKGROUND", "mainWindow", 1):SetAllPoints(page.stageHead)
+			-- (every designer preview on one dark ground, its head row too -- the user, 2026-10-16: "we want visual
+			-- consistency, and not that every preview window looks different")
+			W.Solid(page.stageHead, "BACKGROUND", "innerPanel", 1):SetAllPoints(page.stageHead)
 			page.stageHead:Hide()
 		end
 	end
@@ -3333,10 +3335,11 @@ do
 		end
 		local slot = CreateFrame("Frame", nil, page)
 		slot:SetFrameLevel(page:GetFrameLevel() + 40)
-		W.Solid(slot, "BACKGROUND", "mainWindow", 1):SetAllPoints(slot)
+		-- (the stages' one dark ground over the whole slot; the sample bare on it, no box of its own)
+		W.Solid(slot, "BACKGROUND", "innerPanel", 1):SetAllPoints(slot)
 		W.Edges(slot, "border", "BORDER")
 		slot:EnableMouse(true)
-		local p = CP.Make(slot, kind, SKIN)
+		local p = CP.Make(slot, kind, SKIN, { bare = true })
 		if not p then
 			slot:Hide()
 			return

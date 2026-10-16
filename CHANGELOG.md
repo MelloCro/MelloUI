@@ -63,6 +63,7 @@
 - Heal Flight, Frame Effects and the debuff glow fit the game's new player and party frames: the light round the portrait sits on its ring, and the health and mana bars no longer turn grey while an effect plays.
 - Text Shade (Look > General > Text) is the one switch for every soft shade behind MelloUI's text: the zone name, the messages in the middle of the screen, the World Marker, the names on the unit frames (yours, your pet's, your targets' targets' and the party's) and on the nameplates, and the tags and links on the chat's parchment. The nameplates' Name Shade and the chat's Shade Behind Tags and Links are gone; their pages link to Text Shade.
 - The soft band behind a unit frame's name stays inside its name plate.
+- The configurator: every designer's preview stands on the same dark ground, across the whole preview area.
 - Group Frames: your Group Frames party and your raid frames each keep their own places for the name, the health text and the icons, and their own indicators; what you had is carried over to both.
 - Group Frames: Your Indicators (the Party and Raid frames' Indicators) is the list and the picked one's look, colour and text; a pick there picks it on the large frame.
 - Group Frames and the Personal Display: a Scale row on the Party, Raid and Personal frames and the Personal Display's Shield column, the same size as Edit Layout's Size. It waits while Edit Layout is open.

@@ -768,11 +768,14 @@ local function Bar(parent)
 	return bar
 end
 
--- a corner preview: its frame on a flat inner panel, its def's parts on it
-local function MakeCorner(parent, kind, def, skin)
+-- a corner preview: its frame on a flat inner panel, its def's parts on it;
+-- `bare`: no panel of its own (a designer's slot, whose ground is the stages')
+local function MakeCorner(parent, kind, def, skin, bare)
 	local p = CreateFrame("Frame", nil, parent)
 	p:SetSize(def.width or WIDTH, def.height or HEIGHT)
-	W.Panel(p, { on = true })
+	if not bare then
+		W.Panel(p, { on = true })
+	end
 	p.kind, p.skin = kind, skin
 	p.SetPick, p.Refresh = SetPick, Refresh
 	def.Corner(p, skin)
@@ -795,7 +798,7 @@ end
 function Preview.Make(parent, kind, skin, opts)
 	local def = parent and Reg.kinds[kind]
 	if def and def.place == "corner" and def.Corner then
-		return MakeCorner(parent, kind, def, skin)
+		return MakeCorner(parent, kind, def, skin, type(opts) == "table" and opts.bare)
 	end
 	if def and def.place == "wide" and Reg.MakeStage then
 		return Reg.MakeStage(parent, kind, def, skin, opts)
@@ -2287,7 +2290,7 @@ do
 		stage.level = (Num(Safe.Call(parent, "GetFrameLevel")) or 0) + K.LIFT
 		stage:SetFrameLevel(stage.level)
 		stage:EnableMouse(true)
-		W.Solid(stage, "BACKGROUND", "mainWindow", 1):SetAllPoints(stage)
+		W.Solid(stage, "BACKGROUND", "innerPanel", 1):SetAllPoints(stage)   -- (every preview's one dark ground: 2026-10-16)
 		W.Edges(stage, "border", "BORDER")
 		stage.x0, stage.y0, stage.anchor = Num(opts.x) or 0, Num(opts.y0) or 0, opts.anchor or parent
 		stage.stuckY = stage.y0
