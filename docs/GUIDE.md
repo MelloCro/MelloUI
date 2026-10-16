@@ -17,7 +17,7 @@ One switch and every window, every bar, the minimap, the nameplates, the chat, t
 Ember, the warm brown and bronze MelloUI started with, now has company: **Obsidian** (black glass and pewter), **Royal Azure** (deep navy and gold) and **Fel Ember** (charred black, fel green and void purple), each with a brighter **Vibrant** version, as Ember has one too. Every palette comes with its own painted kit, so the rails, gems and plates change colour with it, and every MelloUI window, text and highlight follows.
 
 - Pick one on Look > General (Home's Your setup names yours, with Change… to it), or on the installer's Look step in Fresh start. Kit Colours then offers that palette's kit or the Original (under Ember and Ember Vibrant: Warm iron, Bronze or the Original).
-- A soft dark shade follows the outline of every painted piece, so the interface stands out from the world: windows, bars, unit frames, chat, bags, the minimap, the trackers, buffs, event widgets and nameplates. It is on at 70 %. UI Shade, Shade Strength and a switch per area are on Look > General; each area's own page links to its switch.
+- A soft dark shade follows the outline of every painted piece, so the interface stands out from the world: windows, bars, unit frames, chat, bags, the minimap, the trackers, buffs, event widgets and nameplates. It is on at 70 %. UI Shade, Shade Strength and a switch per area are on Look > General (the painted unit frames' on Oldschool > Frame Art); each area's own page links to its switch.
 - Items you can't use and spells you can't learn stay on dark red in every palette.
 
 ## 🖱️ Drag. Everything.

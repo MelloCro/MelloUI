@@ -343,7 +343,6 @@ function L.Define(R, Link)
 	R("Look", "General", "Look", "UIModifications.shade_windows", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_actionbars", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_castbars", { free = true })
-	R("Look", "General", "Look", "UIModifications.shade_unitframes", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_chat", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_bags", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_minimap", { free = true })
@@ -557,6 +556,9 @@ function L.Define(R, Link)
 	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.marks")
 	-- (0.19.8, the border library's stage 3: a backdrop round the frame, the kit's one backdrop system)
 	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.backdrop")
+	-- (one look C13e, the user's yes to the audit's correction: UI Shade's Unit Frames area is the painted unit
+	-- frames' -- KitShade.lua's OLDSCHOOL block, UnitFramePanel's SHADE_AREA -- so its switch is Oldschool's)
+	R("Oldschool", "Frame Art", "Look", "UIModifications.shade_unitframes", { free = true, name = "UI Shade" })
 	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.backdropBackground",
 		{ when = { key = "UnitFramePanel.backdrop", notValue = "none", line = "Only with a Frame Backdrop" } })
 	-- (0.21.3, the animations: the level badge turning over, the XP bar's light, the notice;
