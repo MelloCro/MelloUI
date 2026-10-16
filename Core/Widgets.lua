@@ -3954,17 +3954,28 @@ do
 		end
 	end
 
+	-- (one look C6) a box with a melloTry (a designer stage's TryFor) tries the
+	-- choice under the mouse on its stage only; nil when it leaves or the
+	-- flyout closes
 	local TileEnter = Shared("OnEnter on a picture flyout's tile", function(tile)
 		OutlineShown(tile.hover, true)
 		local choice = tile.choice
 		if choice then
 			W.ShowTooltip(tile, choice.label or tostring(choice.value), nil, nil, "ANCHOR_TOP")
+			local box = tile.menu and tile.menu.box
+			if box and box.melloTry then
+				box.melloTry(choice.value)
+			end
 		end
 	end, "script")
 
 	local TileLeave = Shared("OnLeave on a picture flyout's tile", function(tile)
 		OutlineShown(tile.hover, false)
 		GameTooltip:Hide()
+		local box = tile.menu and tile.menu.box
+		if box and box.melloTry then
+			box.melloTry(nil)
+		end
 	end, "script")
 
 	-- a tile picked: the flyout closed, the choice set (the live UI changes),
@@ -4213,6 +4224,10 @@ do
 		if entry and entry.tooltip then
 			W.ShowTooltip(row, EntryText(entry), entry.tooltip)
 		end
+		local box = row.menu and row.menu.box
+		if entry and box and box.melloTry then
+			box.melloTry(entry.value)
+		end
 	end, "script")
 
 	local ListRowLeave = Shared("OnLeave on a dropdown list's row", function(row)
@@ -4220,6 +4235,10 @@ do
 		RowLook(row)
 		if GameTooltip:GetOwner() == row then
 			GameTooltip:Hide()
+		end
+		local box = row.menu and row.menu.box
+		if box and box.melloTry then
+			box.melloTry(nil)
 		end
 	end, "script")
 
@@ -4476,6 +4495,7 @@ do
 			return
 		end
 		openMenus[menu] = nil
+		local box = menu.box
 		menu.box = nil
 		menu:UnregisterEvent("PLAYER_REGEN_DISABLED")
 		-- (a tile's tooltip goes with it: the pointer may still be on it)
@@ -4488,6 +4508,10 @@ do
 		local skin = menu.skin
 		if skin and skin.HoldEscape then
 			skin:HoldEscape(false)
+		end
+		-- (the box's try ended last, guarded: the list closed whatever it does)
+		if box and box.melloTry then
+			pcall(box.melloTry, nil)
 		end
 	end
 
@@ -4553,6 +4577,10 @@ do
 			Menu.Open(menu, box)
 		end
 	end
+	-- (one look C6) the list of any box carrying melloList / melloValues /
+	-- melloGet / melloSet / Refresh, opened or closed as a dropdown's (a
+	-- designer stage's right-click list)
+	W.OpenList = Flyout.Toggle
 
 	-- (its hover a mark of its own over the ground: the palette's hover
 	-- painted)

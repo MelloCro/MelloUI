@@ -96,6 +96,9 @@ CONTROL_TYPES = ("Button", "CheckButton", "EditBox", "Slider", "DropdownButton")
 # the other files that build controls with the widget set, and why theirs are not the configurator's options
 NOT_CONFIGURATOR = {
     "Core/Widgets.lua": "the builders themselves",
+    "Core/ConfigPreview.lua": "the designer stage's part controls (stage:PartSpec: a part's Show, Size and X / Y): "
+                              "they edit a part's place in its kind's store (the frames' parts layouts), not "
+                              "options",
     "MelloUI_GroupFrames/GroupDesignerPage.lua": "the Group Frames's canvas: one schema option "
                                                  "(GroupFrames.designer, tagged); its controls edit the indicator "
                                                  "list and the frame parts, not options",

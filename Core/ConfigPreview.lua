@@ -31,8 +31,9 @@
 --       def.Paint; never a dress or a build
 --   CP.Sample(kind, parent, pick[, onto, values, ctx]) -> sample | nil
 --       Build, its values (`values`, else CP.Values), Dress, then Paint
---   CP.Make(parent, kind, skin) -> preview | nil   nil for a kind that is not
---       registered (nothing made). A 'corner' kind: a Frame def.width x
+--   CP.Make(parent, kind, skin[, opts]) -> preview | nil   nil for a kind that
+--       is not registered (nothing made). A 'wide' kind: a designer's stage
+--       (the section "The wide stage" below). A 'corner' kind: a Frame def.width x
 --       def.height on a flat inner panel, placed by the caller, made on its
 --       page's first build, never at login, with
 --         preview:SetPick(pick)  one of def.picks (any other: def.first)
@@ -40,8 +41,8 @@
 --       skin: the window's shell (Kit:OwnWindow), handed to def.Corner
 --   CP.PartLabel(kind, key) -> a part's label (def.PartLabel, or def.keys'
 --       string for it), or nil
---   CP.Shown(kind) -> a preview of that kind on show, or nil
--- A def: place ('corner'), width, height, picks (a set), first, watch (a set
+--   CP.Shown(kind) -> a preview (or a stage) of that kind on show, or nil
+-- A def: place ('corner' or 'wide'), width, height, picks (a set), first, watch (a set
 -- of module names), Build, Values, Dress, Paint, Update; a corner's also
 -- Corner(p, skin) (its parts, made once), Lay(p, pick), OnShow(p), Tip(pick).
 --
@@ -738,14 +739,14 @@ local OnEnter = Shared("OnEnter on the Configurator's preview (tooltip)", functi
 	end
 end, "script")
 
--- a preview of the kind on show (nil: none)
+-- a preview of the kind on show, else a stage of it (nil: none)
 function Preview.Shown(kind)
 	for p in pairs(shown) do
 		if p.kind == kind then
 			return p
 		end
 	end
-	return nil
+	return Reg.ShownStage and Reg.ShownStage(kind) or nil
 end
 
 --------------------------------------------------------------------------------
@@ -782,13 +783,1505 @@ local function MakeCorner(parent, kind, def, skin)
 	return p
 end
 
--- (a wide stage comes with stage F2: none yet)
-function Preview.Make(parent, kind, skin)
+-- (a wide stage: below, "The wide stage")
+function Preview.Make(parent, kind, skin, opts)
 	local def = parent and Reg.kinds[kind]
 	if def and def.place == "corner" and def.Corner then
 		return MakeCorner(parent, kind, def, skin)
 	end
+	if def and def.place == "wide" and Reg.MakeStage then
+		return Reg.MakeStage(parent, kind, def, skin, opts)
+	end
 	return nil
+end
+
+--------------------------------------------------------------------------------
+-- The wide stage (one look C6: F-v3's F2 and the shell plan's 6.1): a
+-- designer's one interactive sample -- its parts picked, dragged, put on a
+-- spot with a '+', sized with the wheel, nudged with the arrow keys and
+-- right-clicked for what they show. One engine for every wide kind (C10's
+-- raid frames the first); proven on a test kind until a page hosts one.
+--   CP.Make(parent, kind, skin, opts) -> stage   a def with place 'wide':
+--       opts = { width, x, y0 (its place on `anchor`, `parent` when nil,
+--       pinned from y0 down: Stick), anchor, scroll (the page's ScrollFrame),
+--       onSelect(stage, key | nil), onPick(stage, pick), dim(stage) -> nil |
+--       the reason it sleeps }
+--   CP.PartKeys(kind[, pick]) -> the def's PartKeys(pick): the parts with no
+--       sample and no stage (the Parts line, the search index)
+--   CP.RowEnter(row) / CP.RowLeave(row)   row.melloOutline = { kind = ...,
+--       key = ... }: that part outlined on the kind's stage on show
+-- A wide def: height, picks, first, watch, topics (bus topics that repaint),
+--   maxScale (3), Furnish(stage, holder, w, h) (its furniture, laid once),
+--   Main(stage, pick) -> the sample (built once per pick), Room(stage) ->
+--   left, top, w, h (the sample's room; the stage less PAD when absent),
+--   Refresh(stage, ctx) (the furniture painted after the sample),
+--   parts(pick, sample) -> { part, ... }, PartKeys(pick), states ({ { key,
+--   label } }: chips), Tries(id) -> true, Empty(pick) -> a caption,
+--   Moved(pick) -> n, ResetAll(pick), mover(pick) -> a mover key, reset ({ {
+--   module, key } }: Wants), Panel(class, stage, parent, y) -> frame, height
+-- A part: key, label, class, region(sample) -> region | nil (none: no hit,
+--   no outline), box(sample) (the frame its place is on: the sample when
+--   absent), text (a font string: its string on its justify side is what
+--   shows), justify, spots and plus (the spots it may take and the '+' marks
+--   it shows: the nine when absent), scale (1: its offsets in its own units),
+--   range (60), hysteresis (a text's columns: max(12, box width / 5)),
+--   store = { get(part) -> place | nil, set(part, place | nil) } (nil: back
+--   to its default), home(part) -> place, homeLabel, size = { min, max, step
+--   }, hide (Show / Hide offered), locked (the reason: picked, never moved),
+--   drag (false: picked, never moved), content = { values = { { value,
+--   label } }, get(), set(value) }, Drop(part, l, b, r, t, w, h, place,
+--   spot) -> place (the box's units; `spot`: the place for that '+').
+-- A place: { point, x, y, size, show } -- exactly ONE store write a gesture,
+-- inside one MelloUI:Batch, seeded from home when the part has none yet.
+-- The def's Paint lays every part from its store on every paint (a drag moves
+-- the region and puts it back); a store that moves secure frames waits for
+-- the fight's end itself. stage:PartSpec's builders make their frames on each
+-- call: the page builds each part's block once and keeps it.
+-- No unit is read; the keys are borrowed (MelloUI:LendKeyboard), never taken.
+--------------------------------------------------------------------------------
+
+do
+	local K = { HEIGHT = 214, PAD = 8, CLICK = 3, H_TEXT = 12, H = 4, RANGE = 60, MAGNET = 2, GHOST = 0.35,
+		DIM = 0.4, LIFT = 40, PLUS = 14, MAX_SCALE = 3, ROW_H = 26, LABEL_W = 110 }
+	local TEXT = {
+		pick = "Click a part to pick it; drag it to move it.",
+		gestures = "Drag to move it, click a + for a spot, the arrow keys move it 1 px (Shift: 10).",
+		size = " The wheel sizes it (%s).",
+		menu = " Right-click it for more.",
+		place = "%s %d, %d",
+		noKeys = " The arrow keys are not free now (a fight, or Edit Layout open).",
+		show = "Show", hide = "Hide", home = "Default place", x = "X", y = "Y",
+		resetAsk = "Put the %d moved parts back in their places?",
+		resetAccept = "Reset", cancel = "Cancel",
+		nothing = "Nothing to reset: every part is in its place.",
+	}
+	K.NINE = { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }
+	K.COL = { TOPLEFT = "LEFT", LEFT = "LEFT", BOTTOMLEFT = "LEFT", TOP = "CENTER", CENTER = "CENTER",
+		BOTTOM = "CENTER", TOPRIGHT = "RIGHT", RIGHT = "RIGHT", BOTTOMRIGHT = "RIGHT" }
+	K.ROW = { TOPLEFT = "TOP", TOP = "TOP", TOPRIGHT = "TOP", LEFT = "MIDDLE", CENTER = "MIDDLE", RIGHT = "MIDDLE",
+		BOTTOMLEFT = "BOTTOM", BOTTOM = "BOTTOM", BOTTOMRIGHT = "BOTTOM" }
+	K.FX = { LEFT = 0, CENTER = 0.5, RIGHT = 1 }
+	K.FY = { BOTTOM = 0, MIDDLE = 0.5, TOP = 1 }
+	K.ARROW = { UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 0 } }
+	K.MENU_SHOW, K.MENU_HIDE, K.MENU_HOME = "\001show", "\001hide", "\001home"
+	local Safe = MelloUI.Safe
+	local Num, Fin = Safe.Number, Safe.Finite
+	-- (the engine's functions, one table: the file's main chunk keeps its locals)
+	local E = {}
+
+	-- the engine's own: the stages on show, the drag under way (one at a
+	-- time), the stage the keys are lent to, the one to lend them back to
+	-- after a fight, the one event frame and the topic listeners (each made
+	-- once)
+	local ST = { shown = setmetatable({}, weakKeys), nShown = 0, drag = nil, lent = nil, relend = nil,
+		dragger = nil, events = nil, topicFns = {}, EMPTY = {} }
+
+	-- (MelloUI.Schedule where there is one, else the Kit's: looked up at each call)
+	function E.Sched()
+		return MelloUI.Schedule or MelloUI.Kit
+	end
+
+	function E.SpotOf(col, row)
+		if row == "MIDDLE" then
+			return col == "CENTER" and "CENTER" or col
+		end
+		return col == "CENTER" and row or row .. col
+	end
+
+	function E.Round(v)
+		return math.floor(v + 0.5)
+	end
+
+	function E.Has(list, v)
+		for i = 1, #list do
+			if list[i] == v then
+				return true
+			end
+		end
+		return false
+	end
+
+	-- a part's place now: its store's, else its home (nil: none)
+	function E.Current(part)
+		local t = part.store and part.store.get and part.store.get(part)
+		if t == nil and part.home then
+			t = part.home(part)
+		end
+		return type(t) == "table" and t or nil
+	end
+
+	-- the place a write gives: the current one (its home's when it has none)
+	-- with `changes` over it
+	function E.With(part, changes)
+		local t = {}
+		for k, v in pairs(E.Current(part) or ST.EMPTY) do
+			t[k] = v
+		end
+		for k, v in pairs(changes) do
+			t[k] = v
+		end
+		return t
+	end
+
+	-- `region`'s edges on the screen, a text part's narrowed to its string on
+	-- its justify side (nil: not readable)
+	function E.Visible(part, region)
+		local l, b, r, t = Safe.ScreenRect(region)
+		if not l then
+			return nil
+		end
+		if part.text then
+			local sw = Fin(Safe.Call(region, "GetStringWidth"))
+			local s = Num(Safe.Call(region, "GetEffectiveScale"))
+			if sw and s and sw * s < r - l then
+				sw = sw * s
+				local j = part.justify or Safe.Call(region, "GetJustifyH") or "LEFT"
+				if j == "RIGHT" then
+					l = r - sw
+				elseif j == "CENTER" then
+					local m = (l + r) / 2
+					l, r = m - sw / 2, m + sw / 2
+				else
+					r = l + sw
+				end
+			end
+		end
+		return l, b, r, t
+	end
+
+	-- screen edges in `box`'s units, from its bottom left; and the box's size
+	function E.InBox(box, l, b, r, t)
+		local bl, bb, br, bt = Safe.ScreenRect(box)
+		local s = Num(Safe.Call(box, "GetEffectiveScale"))
+		if not (bl and s and s > 0) then
+			return nil
+		end
+		return (l - bl) / s, (b - bb) / s, (r - bl) / s, (t - bb) / s, (br - bl) / s, (bt - bb) / s
+	end
+
+	-- the column or row nearest, the current one kept until another is nearer
+	-- by more than `h`
+	function E.Nearest(options, current, offsetOf, h)
+		local best, bestD
+		for i = 1, #options do
+			local d = math.abs(offsetOf(options[i]))
+			if not bestD or d < bestD then
+				best, bestD = options[i], d
+			end
+		end
+		if current and best ~= current then
+			local ok = false
+			for i = 1, #options do
+				ok = ok or options[i] == current
+			end
+			if ok and bestD >= math.abs(offsetOf(current)) - h then
+				return current
+			end
+		end
+		return best
+	end
+
+	-- the place a part dropped at l, b, r, t (its box's units; the box w x h)
+	-- takes: the column and the row each nearest on their own (F-v3's rule),
+	-- the offset in the part's units, rounded, in its range, 0 within the
+	-- magnet; `keep`: the current spot kept (Shift), only the offset changed
+	do
+		local cols, rows = {}, {}
+		local dl, db, dr, dt, dw, dh   -- (the rect the offsets read, set per drop)
+		local function DX(col)
+			local f = K.FX[col]
+			return dl + f * (dr - dl) - f * dw
+		end
+		local function DY(row)
+			local f = K.FY[row]
+			return db + f * (dt - db) - f * dh
+		end
+		local function Clamp(v, range)
+			v = E.Round(v)
+			if math.abs(v) <= K.MAGNET then
+				return 0
+			end
+			return math.max(-range, math.min(range, v))
+		end
+		function E.Drop(part, l, b, r, t, w, h, cur, keep)
+			dl, db, dr, dt, dw, dh = l, b, r, t, w, h
+			local spots = part.spots or K.NINE
+			local at = cur and cur.point
+			local col, row
+			if keep and at and K.COL[at] then
+				col, row = K.COL[at], K.ROW[at]
+			else
+				wipe(cols)
+				for i = 1, #spots do
+					local c = K.COL[spots[i]]
+					if c and not E.Has(cols, c) then
+						cols[#cols + 1] = c
+					end
+				end
+				local hc = part.hysteresis or (part.text and math.max(K.H_TEXT, math.floor(w / 5))) or K.H
+				col = E.Nearest(cols, at and K.COL[at], DX, hc)
+				wipe(rows)
+				for i = 1, #spots do
+					if K.COL[spots[i]] == col and not E.Has(rows, K.ROW[spots[i]]) then
+						rows[#rows + 1] = K.ROW[spots[i]]
+					end
+				end
+				row = E.Nearest(rows, at and K.COL[at] == col and K.ROW[at] or nil, DY, K.H)
+			end
+			if not (col and row) then
+				return nil
+			end
+			local s, range = part.scale or 1, part.range or K.RANGE
+			return E.SpotOf(col, row), Clamp(DX(col) / s, range), Clamp(DY(row) / s, range)
+		end
+	end
+
+	-- one write a gesture: the store's set inside one Batch; the stage
+	-- painted again on the next frame
+	function E.Write(stage, part, t)
+		if not (part.store and part.store.set) then
+			return
+		end
+		MelloUI:Batch(part.store.set, part, t)
+		stage:Repaint()
+	end
+
+	----------------------------------------------------------------------
+	-- Painting and the parts' hit frames (after each paint, never per frame)
+	----------------------------------------------------------------------
+
+	function E.BoxOf(part, sample)
+		return part.box and part.box(sample) or sample
+	end
+
+	-- the sample in its room, as big as fits (to maxScale), again when its
+	-- size changed
+	function E.Fit(stage)
+		local main, def = stage.main, stage.def
+		local w, h = Fin(Safe.Call(main, "GetWidth")), Fin(Safe.Call(main, "GetHeight"))
+		if not (w and h and w > 0 and h > 0) then
+			return
+		end
+		local left, top, rw, rh
+		if def.Room then
+			left, top, rw, rh = def.Room(stage)
+		end
+		if not (rw and rh) then
+			left, top = K.PAD, K.PAD
+			rw = (Fin(stage:GetWidth()) or 0) - 2 * K.PAD
+			rh = (Fin(stage:GetHeight()) or 0) - 2 * K.PAD
+		end
+		local scale = math.max(0.25, math.min(def.maxScale or K.MAX_SCALE, rw / w, rh / h))
+		if scale ~= stage.fitScale or left ~= stage.fitLeft or top ~= stage.fitTop then
+			stage.fitScale, stage.fitLeft, stage.fitTop = scale, left, top
+			main:SetScale(scale)
+			main:ClearAllPoints()
+			main:SetPoint("CENTER", stage, "TOPLEFT", (left + rw / 2) / scale, -(top + rh / 2) / scale)
+		end
+	end
+
+	function E.HideFrom(list, from)
+		for i = from, #list do
+			list[i]:Hide()
+		end
+	end
+
+	-- the screen edges l, b, r, t on `frame` (TOPLEFT at its bottom left + x, y)
+	function E.PlaceOn(frame, stage, l, b, r, t)
+		local sl, sb = Safe.ScreenRect(stage)
+		local s = Num(stage:GetEffectiveScale())
+		if not (sl and s and s > 0) then
+			return false
+		end
+		frame:ClearAllPoints()
+		frame:SetPoint("TOPLEFT", stage, "BOTTOMLEFT", (l - sl) / s, (t - sb) / s)
+		frame:SetSize(math.max(1, (r - l) / s), math.max(1, (t - b) / s))
+		return true
+	end
+
+	function E.NewHit(stage, i)
+		local hit = CreateFrame("Button", nil, stage)
+		hit.stage = stage
+		hit:SetScript("OnMouseDown", E.HitDown)
+		hit:SetScript("OnMouseUp", E.HitUp)
+		hit:SetScript("OnEnter", E.HitEnter)
+		hit:SetScript("OnLeave", E.HitLeave)
+		hit:SetScript("OnMouseWheel", E.HitWheel)
+		stage.hits[i] = hit
+		return hit
+	end
+
+	function E.NewMark(stage, i)
+		local mark = CreateFrame("Button", nil, stage)
+		mark.stage = stage
+		mark:SetSize(K.PLUS, K.PLUS)
+		mark.tex = mark:CreateTexture(nil, "OVERLAY")
+		mark.tex:SetAllPoints(mark)
+		W.PlusMark(mark.tex, K.PLUS, false)
+		mark:SetScript("OnClick", E.MarkClick)
+		mark:SetScript("OnEnter", E.MarkEnter)
+		mark:SetScript("OnLeave", E.MarkLeave)
+		stage.marks[i] = mark
+		return mark
+	end
+
+	-- the '+' marks of the picked part on its box: its free spots, or while
+	-- it is dragged the spots it may take (dots: not clicked)
+	function E.Marks(stage)
+		local part = stage:Selected()
+		local n = 0
+		if part and not part.locked and part.drag ~= false and stage.main and not stage.dim then
+			local box = E.BoxOf(part, stage.main)
+			local bl, bb, br, bt = Safe.ScreenRect(box)
+			local cur = E.Current(part)
+			local list = stage.dragging and (part.spots or K.NINE) or (part.plus or part.spots or K.NINE)
+			for i = 1, bl and #list or 0 do
+				local spot = list[i]
+				if K.FX[K.COL[spot]] and (stage.dragging or not (cur and cur.point == spot)) then
+					n = n + 1
+					local mark = stage.marks[n] or E.NewMark(stage, n)
+					local x, y = bl + K.FX[K.COL[spot]] * (br - bl), bb + K.FY[K.ROW[spot]] * (bt - bb)
+					local s = Num(stage:GetEffectiveScale()) or 1
+					local half = K.PLUS / 2 * s
+					E.PlaceOn(mark, stage, x - half, y - half, x + half, y + half)
+					mark.spot = spot
+					mark:SetFrameLevel(stage.level + 30)
+					mark:EnableMouse(not stage.dragging)
+					mark:Show()
+				end
+			end
+		end
+		E.HideFrom(stage.marks, n + 1)
+	end
+
+	function E.ByArea(a, b)
+		return a.area > b.area
+	end
+
+	function E.Outline(stage, box, hit)
+		if hit and hit:IsShown() then
+			box:ClearAllPoints()
+			box:SetAllPoints(hit)
+			box:Show()
+		else
+			box:Hide()
+		end
+	end
+
+	function E.HitOf(stage, key)
+		for i = 1, key and #stage.hits or 0 do
+			local hit = stage.hits[i]
+			if hit.key == key and hit:IsShown() then
+				return hit
+			end
+		end
+		return nil
+	end
+
+	function E.Outlines(stage)
+		E.Outline(stage, stage.selBox, E.HitOf(stage, stage.selected))
+		E.Outline(stage, stage.hoverBox, E.HitOf(stage, stage.hovered or stage.outlined))
+	end
+
+	-- what the caption and a part's tooltip say: the gestures with the
+	-- part's place and size now
+	function E.Gestures(stage, part)
+		if part.locked then
+			return part.locked
+		end
+		local cur = E.Current(part)
+		local out = ""
+		if part.drag ~= false then
+			out = TEXT.gestures
+			if cur and cur.point then
+				out = string.format(TEXT.place, cur.point, Num(cur.x) or 0, Num(cur.y) or 0) .. ". " .. out
+			end
+		end
+		if part.size then
+			out = out .. string.format(TEXT.size, tostring(cur and cur.size or part.size.min))
+		end
+		if part.content or part.hide or part.store then
+			out = out .. TEXT.menu
+		end
+		if stage.noKeys and stage.selected == part.key then
+			out = out .. TEXT.noKeys
+		end
+		return out
+	end
+
+	function E.Caption(stage)
+		local def, text = stage.def, nil
+		if stage.dim then
+			text = type(stage.dim) == "string" and stage.dim or nil
+		elseif def.Empty then
+			text = def.Empty(stage.pick)
+		end
+		if not text then
+			local part = stage:Selected()
+			text = part and E.Gestures(stage, part) or TEXT.pick
+		end
+		if stage.caption:GetText() ~= text then
+			stage.caption:SetText(text)
+		end
+	end
+
+	-- the hit frames laid over the parts' visible rects, the smaller on top;
+	-- a ghost (a hidden part) drawn faint on the sample, a locked one dimmed
+	function E.Sync(stage)
+		local def, main = stage.def, stage.main
+		local parts = main and def.parts and def.parts(stage.pick, main) or ST.EMPTY
+		stage.parts = parts
+		wipe(stage.byKey)
+		local order, n = stage.order, 0
+		wipe(order)
+		for i = 1, #parts do
+			local part = parts[i]
+			stage.byKey[part.key] = part
+			local region = part.region and part.region(main)
+			if region then
+				local cur = E.Current(part)
+				local ghost = cur and cur.show == false
+				if ghost or part.locked then
+					region:Show()
+					region:SetAlpha(ghost and K.GHOST or K.DIM)
+					stage.faded[region] = true
+				elseif stage.faded[region] then
+					region:SetAlpha(1)
+					stage.faded[region] = nil
+				end
+				local l, b, r, t = E.Visible(part, region)
+				if l and r > l and t > b then
+					n = n + 1
+					local hit = stage.hits[n] or E.NewHit(stage, n)
+					E.PlaceOn(hit, stage, l, b, r, t)
+					hit.key, hit.area = part.key, (r - l) * (t - b)
+					order[n] = hit
+				end
+			end
+		end
+		E.HideFrom(stage.hits, n + 1)
+		table.sort(order, E.ByArea)
+		local mouse = not stage.dim
+		for i = 1, n do
+			local hit = order[i]
+			local part = stage.byKey[hit.key]
+			hit:SetFrameLevel(stage.level + 10 + math.min(i, 15))
+			hit:EnableMouse(mouse)
+			hit:EnableMouseWheel(mouse and stage.selected == hit.key and part.size ~= nil and not part.locked
+				and part.drag ~= false)
+			hit:Show()
+		end
+		if stage.selected and not stage.byKey[stage.selected] then
+			stage:Select(nil)
+		end
+		E.Outlines(stage)
+		E.Marks(stage)
+	end
+
+	-- the stage painted from the settings now (frozen while a part is
+	-- dragged: once after the drop)
+	function E.RepaintNow(stage)
+		if stage.dragging or not stage:IsVisible() then
+			stage.stale = true
+			return
+		end
+		stage.stale = nil
+		local def = stage.def
+		local reason = stage.opts.dim and stage.opts.dim(stage) or nil
+		stage.dim = reason
+		if reason and stage.selected then
+			stage:Select(nil)
+		end
+		stage:SetAlpha(reason and K.DIM or 1)
+		local main = stage.main
+		if main then
+			if stage.redress then
+				stage.redress = nil
+				Preview.Dress(stage.kind, main, stage.pick)
+			end
+			Preview.Paint(stage.kind, main, stage.pick, nil, stage.ctx)
+			E.Fit(stage)
+		end
+		if def.Refresh then
+			def.Refresh(stage, stage.ctx)
+		end
+		E.Sync(stage)
+		E.Caption(stage)
+	end
+
+	----------------------------------------------------------------------
+	-- The keys: borrowed while a part is picked, out of a fight
+	----------------------------------------------------------------------
+
+	function E.WriteNudge(key)
+		local stage = key.stage
+		local dx, dy = stage.nudgeX or 0, stage.nudgeY or 0
+		stage.nudgeX, stage.nudgeY = nil, nil
+		local part = stage:Selected()
+		if not part or (dx == 0 and dy == 0) or part.locked or part.drag == false then
+			return
+		end
+		local cur = E.Current(part) or ST.EMPTY
+		local range = part.range or K.RANGE
+		local x = math.max(-range, math.min(range, (Num(cur.x) or 0) + dx))
+		local y = math.max(-range, math.min(range, (Num(cur.y) or 0) + dy))
+		E.Write(stage, part, E.With(part, { point = cur.point or "CENTER", x = x, y = y }))
+	end
+
+	-- the borrowed keys (Edit Layout's key frame calls it out of a fight
+	-- only): Escape closes an open list first, then lets the part go; an
+	-- arrow nudges it (one write a frame); any other key is the game's
+	function E.KeyHandler(key)
+		local stage = ST.lent
+		local part = stage and stage:Selected()
+		if not part or stage.dim then
+			return false
+		end
+		if key == "ESCAPE" then
+			-- (a question or the game menu on top: the Escape is theirs)
+			local ask, menu = rawget(_G, "MelloUIConfirmDialog"), rawget(_G, "GameMenuFrame")
+			if (ask and ask:IsShown()) or (menu and menu:IsShown()) then
+				return false
+			end
+			if W.CloseFlyouts() then
+				return true
+			end
+			local d = ST.drag
+			if d and d.moved and d.stage == stage then
+				E.StopDrag(true)   -- (a drag under way: back where it was, the part still picked)
+				return true
+			end
+			stage:Select(nil)
+			return true
+		end
+		local dir = K.ARROW[key]
+		if not dir or part.locked or part.drag == false or IsControlKeyDown() or IsAltKeyDown() then
+			return false
+		end
+		local n = IsShiftKeyDown() and 10 or 1
+		stage.nudgeX = (stage.nudgeX or 0) + dir[1] * n
+		stage.nudgeY = (stage.nudgeY or 0) + dir[2] * n
+		E.Sched():NextFrame(stage.nudgeKey, E.WriteNudge)
+		return true
+	end
+
+	function E.Events()
+		if not ST.events then
+			ST.events = CreateFrame("Frame")
+			ST.events:SetScript("OnEvent", E.OnEvent)
+		end
+		return ST.events
+	end
+
+	-- the keys taken over by another borrower (Keybind Mode): this stage's
+	-- arrows not free, its fight's events off
+	function E.KeysLost()
+		local stage = ST.lent
+		ST.lent = nil
+		if ST.events then
+			ST.events:UnregisterEvent("PLAYER_REGEN_DISABLED")
+		end
+		if stage then
+			stage.noKeys = true
+			E.Caption(stage)
+		end
+	end
+	ST.lendOpts = { polite = true, onLost = E.KeysLost }
+
+	function E.Lend(stage)
+		if ST.lent == stage and MelloUI.KeyboardLentTo and MelloUI:KeyboardLentTo() == E.KeyHandler then
+			return true
+		end
+		if MelloUI:LendKeyboard(E.KeyHandler, ST.lendOpts) then
+			ST.lent, stage.noKeys = stage, nil
+			local ev = E.Events()
+			ev:RegisterEvent("PLAYER_REGEN_DISABLED")
+			if ST.relend == stage then
+				ST.relend = nil
+				ev:UnregisterEvent("PLAYER_REGEN_ENABLED")
+			end
+			return true
+		end
+		stage.noKeys = true
+		if InCombatLockdown() and stage:IsVisible() then
+			ST.relend = stage
+			E.Events():RegisterEvent("PLAYER_REGEN_ENABLED")
+		end
+		return false
+	end
+
+	-- the keys given back (`stage`: only if they are its); nothing left to
+	-- wait for, no event kept
+	function E.TakeBack(stage)
+		if ST.lent == stage then
+			ST.lent = nil
+			MelloUI:TakeBackKeyboard(E.KeyHandler)
+		end
+		if ST.relend == stage then
+			ST.relend = nil
+		end
+		stage.nudgeX, stage.nudgeY = nil, nil
+		if ST.events and not ST.lent then
+			ST.events:UnregisterEvent("PLAYER_REGEN_DISABLED")
+			if not ST.relend then
+				ST.events:UnregisterEvent("PLAYER_REGEN_ENABLED")
+			end
+		end
+	end
+
+	-- a fight starts: the keys go back to the game at once; after it they are
+	-- lent again while the stage shows with a part still picked
+	E.OnEvent = Shared("OnEvent on the designer stage's keys (a fight's edges)", function(self, event)
+		if event == "PLAYER_REGEN_DISABLED" then
+			local stage = ST.lent
+			if stage then
+				E.TakeBack(stage)
+				if stage:IsVisible() and stage.selected then
+					ST.relend = stage
+					self:RegisterEvent("PLAYER_REGEN_ENABLED")
+				end
+				stage.noKeys = true
+				E.Caption(stage)
+			end
+		elseif event == "PLAYER_REGEN_ENABLED" then
+			local stage = ST.relend
+			ST.relend = nil
+			self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+			if stage and stage:IsVisible() and stage.selected then
+				E.Lend(stage)
+				E.Caption(stage)
+			end
+		end
+	end, "script")
+
+	----------------------------------------------------------------------
+	-- Drag and drop, the wheel, the '+' marks, the right-click list
+	----------------------------------------------------------------------
+
+	function E.Cursor()
+		local x, y = GetCursorPosition()
+		return Num(x) or 0, Num(y) or 0
+	end
+
+	-- the region's anchors as they were before the drag
+	function E.Restore(d)
+		local region, points = d.region, d.points
+		if not (region and points) then
+			return
+		end
+		region:ClearAllPoints()
+		for i = 1, #points do
+			local pt = points[i]
+			region:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5])
+		end
+	end
+
+	-- the drag under way ended, the dragger stopped; `cancel`: a part that
+	-- moved goes back where it was, nothing written, its stage painted again
+	function E.StopDrag(cancel)
+		local d = ST.drag
+		ST.drag = nil
+		if ST.dragger then
+			ST.dragger:SetScript("OnUpdate", nil)
+		end
+		if d and cancel and d.moved then
+			E.Restore(d)
+			d.stage.dragging = false
+			d.stage.stale = true
+			d.stage:Repaint()
+		end
+		return d
+	end
+
+	-- the dragged part follows the cursor (every anchor of it, in its own
+	-- units); past CLICK px it is a drag, and the stage stops repainting until
+	-- the drop. A release the hit never heard (the game's window left) ends it
+	-- here: a drop if it moved
+	E.DragTick = Shared("OnUpdate on the designer stage's dragger (a part dragged)", function()
+		local d = ST.drag
+		if not d then
+			return
+		end
+		if IsMouseButtonDown and not IsMouseButtonDown("LeftButton") then
+			E.StopDrag()
+			if d.moved then
+				E.Dropped(d.stage, d)
+			end
+			return
+		end
+		local x, y = E.Cursor()
+		local dx, dy = (x - d.x0) / d.scale, (y - d.y0) / d.scale
+		if not d.moved then
+			if math.abs(dx) < K.CLICK and math.abs(dy) < K.CLICK then
+				return
+			end
+			d.moved = true
+			d.stage.dragging = true
+			GameTooltip:Hide()
+			E.Marks(d.stage)
+		end
+		-- (in the region's own units: its effective scale, the box's times its scale)
+		local ox, oy = (x - d.x0) / d.regionScale, (y - d.y0) / d.regionScale
+		d.region:ClearAllPoints()
+		for i = 1, #d.points do
+			local pt = d.points[i]
+			d.region:SetPoint(pt[1], pt[2], pt[3], pt[4] + ox, pt[5] + oy)
+		end
+		local sx = d.scale / d.stageScale
+		d.hit:ClearAllPoints()
+		d.hit:SetPoint("TOPLEFT", d.stage, "BOTTOMLEFT", d.hl + dx * sx, d.ht + dy * sx)
+	end, "script")
+
+	-- a part's anchors, each read plainly (a secret one: no drag), or nil
+	function E.Points(region)
+		local n = Num(Safe.Call(region, "GetNumPoints")) or 0
+		if n < 1 then
+			return nil
+		end
+		local points = {}
+		for i = 1, n do
+			local ok, point, rel, relPoint, x, y = pcall(region.GetPoint, region, i)
+			if not ok then
+				return nil
+			end
+			x, y, point, relPoint = Num(x), Num(y), Safe.Text(point), Safe.Text(relPoint)
+			if not (x and y and point and relPoint) or Safe.IsSecret(rel) then
+				return nil
+			end
+			points[i] = { point, rel, relPoint, x, y }
+		end
+		return points
+	end
+
+	E.HitDown = Shared("OnMouseDown on a designer stage's part", function(hit, button)
+		local stage = hit.stage
+		local part = stage.byKey[hit.key]
+		if button ~= "LeftButton" or not part or stage.dim then
+			return
+		end
+		E.StopDrag(true)   -- (a drag whose release never came: back where it was)
+		local region = part.region and part.region(stage.main)
+		local box = E.BoxOf(part, stage.main)
+		local x0, y0 = E.Cursor()
+		local d = { stage = stage, part = part, hit = hit, x0 = x0, y0 = y0, moved = false }
+		ST.drag = d
+		if part.locked or part.drag == false or not region then
+			return   -- (a click only: picked on the release)
+		end
+		local points = E.Points(region)
+		local scale, stageScale = Num(Safe.Call(box, "GetEffectiveScale")), Num(stage:GetEffectiveScale())
+		local hl, _, _, ht = Safe.ScreenRect(hit)
+		local sl, sb = Safe.ScreenRect(stage)
+		if not (points and scale and stageScale and hl and sl) then
+			return
+		end
+		d.region, d.points = region, points
+		d.scale, d.stageScale = scale, stageScale
+		d.regionScale = Num(Safe.Call(region, "GetEffectiveScale")) or scale * (part.scale or 1)
+		d.hl, d.ht = (hl - sl) / stageScale, (ht - sb) / stageScale
+		if not ST.dragger then
+			ST.dragger = CreateFrame("Frame")
+		end
+		ST.dragger:SetScript("OnUpdate", E.DragTick)
+	end, "script")
+
+	-- a drop: where the part shows now, through its Drop hook or the rule;
+	-- the region back on its anchors, then ONE write (the paint lays it at
+	-- its new place); the stage picked on it
+	function E.Dropped(stage, d)
+		stage.dragging = false
+		local part = d.part
+		local box = E.BoxOf(part, stage.main)
+		local l, b, r, t = E.Visible(part, d.region)
+		local cur = E.Current(part)
+		local t2
+		if l then
+			local bl, bb, br, bt, w, h = E.InBox(box, l, b, r, t)
+			if bl then
+				if part.Drop then
+					t2 = part.Drop(part, bl, bb, br, bt, w, h, cur, nil)
+				else
+					local point, x, y = E.Drop(part, bl, bb, br, bt, w, h, cur, IsShiftKeyDown())
+					t2 = point and E.With(part, { point = point, x = x, y = y }) or nil
+				end
+			end
+		end
+		E.Restore(d)
+		stage:Select(part.key)
+		if t2 then
+			E.Write(stage, part, t2)
+		else
+			stage:Repaint()
+		end
+	end
+
+	-- the release: a drag dropped (on its own stage; else back where it was),
+	-- else a click picks the part; the right button opens its list
+	E.HitUp = Shared("OnMouseUp on a designer stage's part", function(hit, button)
+		local stage = hit.stage
+		if button == "LeftButton" then
+			local d = E.StopDrag()
+			if d and d.moved then
+				if d.stage == stage then
+					E.Dropped(stage, d)
+				else
+					ST.drag = d
+					E.StopDrag(true)
+				end
+				return
+			end
+			local part = stage.byKey[hit.key]
+			if part and not stage.dim then
+				stage:Select(part.key)
+			end
+		elseif button == "RightButton" then
+			local part = stage.byKey[hit.key]
+			if part and not stage.dim then
+				stage:Menu(part.key)
+			end
+		end
+	end, "script")
+
+	E.HitEnter = Shared("OnEnter on a designer stage's part", function(hit)
+		local stage = hit.stage
+		local part = stage.byKey[hit.key]
+		if not part or stage.dragging then
+			return
+		end
+		stage.hovered = hit.key
+		E.Outlines(stage)
+		W.ShowTooltip(hit, part.label or tostring(part.key), E.Gestures(stage, part))
+	end, "script")
+
+	E.HitLeave = Shared("OnLeave on a designer stage's part", function(hit)
+		local stage = hit.stage
+		if stage.hovered == hit.key then
+			stage.hovered = nil
+			E.Outlines(stage)
+		end
+		W.TipLeave(hit)
+	end, "script")
+
+	function E.WriteWheel(key)
+		local stage = key.stage
+		local size = stage.pendSize
+		stage.pendSize = nil
+		local part = stage:Selected()
+		if part and size and part.size then
+			E.Write(stage, part, E.With(part, { size = size }))
+		end
+	end
+
+	-- the wheel over the picked part sizes it: the notches of a frame added
+	-- up, kept in its range, ONE write on the next frame (its own key: a
+	-- repaint asked for in the same frame never takes its place)
+	E.HitWheel = Shared("OnMouseWheel on a designer stage's part", function(hit, delta)
+		local stage = hit.stage
+		local part = stage:Selected()
+		if not (part and part.size and hit.key == part.key and Num(delta)) then
+			return
+		end
+		local sz = part.size
+		local cur = E.Current(part)
+		local from = stage.pendSize or (cur and Num(cur.size)) or sz.min or 0
+		local step = sz.step or 1
+		stage.pendSize = math.max(sz.min or from, math.min(sz.max or from, from + (delta > 0 and step or -step)))
+		E.Sched():NextFrame(stage.wheelKey, E.WriteWheel)
+	end, "script")
+
+	E.MarkClick = Shared("OnClick on a designer stage's '+' mark", function(mark)
+		local stage = mark.stage
+		stage:PlaceAt(stage.selected, mark.spot)
+	end, "script")
+
+	E.MarkEnter = Shared("OnEnter on a designer stage's '+' mark", function(mark)
+		W.PlusMark(mark.tex, K.PLUS, true)
+	end, "script")
+
+	E.MarkLeave = Shared("OnLeave on a designer stage's '+' mark", function(mark)
+		W.PlusMark(mark.tex, K.PLUS, false)
+	end, "script")
+
+	-- the right-click list's box (one per stage, laid over the part)
+	function E.MenuGet()
+		return nil
+	end
+
+	function E.MenuSet(value)
+		local box = ST.menuBox
+		local stage = box and box.stage
+		local part = stage and stage.byKey[box.melloKey]
+		if not part then
+			return
+		end
+		if value == K.MENU_SHOW or value == K.MENU_HIDE then
+			E.Write(stage, part, E.With(part, { show = value == K.MENU_SHOW }))
+		elseif value == K.MENU_HOME then
+			E.Write(stage, part, nil)
+		elseif part.content and part.content.set then
+			MelloUI:Batch(part.content.set, value)
+			stage:Repaint()
+		end
+	end
+
+	function E.NoOp()
+	end
+
+	----------------------------------------------------------------------
+	-- The stage's methods
+	----------------------------------------------------------------------
+
+	local M = {}
+
+	function M.Repaint(stage)
+		E.Sched():NextFrame(stage, E.RepaintNow)
+	end
+
+	function M.Selected(stage)
+		return stage.selected and stage.byKey[stage.selected] or nil
+	end
+
+	-- a part picked (nil: none): the keys borrowed for it out of a fight,
+	-- given back with none
+	function M.Select(stage, key)
+		if key ~= nil and not stage.byKey[key] then
+			key = nil
+		end
+		local was = stage.selected
+		stage.selected = key
+		if key then
+			E.Lend(stage)
+		else
+			E.TakeBack(stage)
+			stage.noKeys = nil
+		end
+		for i = 1, #stage.hits do
+			local hit = stage.hits[i]
+			local part = stage.byKey[hit.key]
+			hit:EnableMouseWheel(not stage.dim and key ~= nil and hit.key == key and part ~= nil and part.size ~= nil
+				and not part.locked and part.drag ~= false)
+		end
+		E.Outlines(stage)
+		E.Marks(stage)
+		E.Caption(stage)
+		if was ~= key and stage.opts.onSelect then
+			stage.opts.onSelect(stage, key)
+		end
+	end
+
+	M.Reveal = M.Select
+
+	-- a part outlined from outside (a row under the mouse), nil: none
+	function M.Outline(stage, key)
+		stage.outlined = key
+		E.Outlines(stage)
+	end
+
+	function M.SetPick(stage, pick)
+		local def = stage.def
+		pick = def.picks and def.picks[pick] and pick or def.first
+		if stage.selected then
+			stage:Select(nil)
+		end
+		stage.pick = pick
+		local main = stage.samples[pick]
+		if not main and def.Main then
+			main = def.Main(stage, pick)
+			if main then
+				stage.samples[pick] = main
+				Preview.Dress(stage.kind, main, pick)
+			end
+		end
+		for p, sample in pairs(stage.samples) do
+			sample:SetShown(p == pick)
+		end
+		stage.main = main
+		stage.fitScale = nil
+		E.RepaintNow(stage)
+	end
+
+	-- a pick from the stage's own furniture (a strip clicked): the page told
+	function M.Pick(stage, pick)
+		stage:SetPick(pick)
+		if stage.opts.onPick then
+			stage.opts.onPick(stage, stage.pick)
+		end
+	end
+
+	-- a part put on a spot ('+'): offset 0, or its Drop hook's place for it
+	function M.PlaceAt(stage, key, spot)
+		local part = key and stage.byKey[key]
+		if not part or part.locked or part.drag == false or not K.COL[spot or ""] then
+			return
+		end
+		local t
+		if part.Drop then
+			t = part.Drop(part, nil, nil, nil, nil, nil, nil, E.Current(part), spot)
+		else
+			t = E.With(part, { point = spot, x = 0, y = 0 })
+		end
+		if t then
+			E.Write(stage, part, t)
+		end
+	end
+
+	-- the right-click list on a part: what it shows (its content), Show or
+	-- Hide, its default place; each choice one write
+	function M.Menu(stage, key)
+		local part = key and stage.byKey[key]
+		local hit = E.HitOf(stage, key)
+		if not (part and hit) then
+			return
+		end
+		local box = stage.menuBox
+		if not box then
+			box = CreateFrame("Button", nil, stage)
+			box:EnableMouse(false)   -- (a place for the list only: never over its part)
+			box.stage, box.melloList, box.Refresh = stage, true, E.NoOp
+			box.melloValues = {}
+			stage.menuBox = box
+		end
+		local values = box.melloValues
+		wipe(values)
+		local content = part.content
+		for i = 1, content and content.values and #content.values or 0 do
+			values[#values + 1] = content.values[i]
+		end
+		if part.hide then
+			local cur = E.Current(part)
+			values[#values + 1] = (cur and cur.show == false) and stage.entries.show or stage.entries.hide
+		end
+		if part.store and part.store.set then
+			values[#values + 1] = stage.entries.home
+		end
+		if #values == 0 then
+			return
+		end
+		box.melloKey = key
+		box.melloGet = content and content.get or E.MenuGet
+		box.melloSet = E.MenuSet
+		box:ClearAllPoints()
+		box:SetAllPoints(hit)
+		box:SetFrameLevel(stage.level + 31)
+		ST.menuBox = box
+		W.OpenList(box)
+	end
+
+	-- a choice tried on the stage only (a row's list under the mouse): one
+	-- function per option id, made once; nil when the kind does not try it
+	function M.TryFor(stage, id)
+		local def = stage.def
+		if not (id and def.Tries and def.Tries(id)) then
+			return nil
+		end
+		local fn = stage.tries[id]
+		if not fn then
+			fn = function(value)
+				if value == nil then
+					stage.ctx.try = nil
+				else
+					stage.tryT.id, stage.tryT.value = id, value
+					stage.ctx.try = stage.tryT
+				end
+				stage:Repaint()
+			end
+			stage.tries[id] = fn
+		end
+		return fn
+	end
+
+	function M.SetState(stage, state)
+		stage.ctx.state = state
+		if stage.chips and stage.chips:Selected() ~= state then
+			stage.chips:Select(state)
+		end
+		stage:Repaint()
+	end
+
+	function M.Moved(stage)
+		local def = stage.def
+		return def.Moved and Num(def.Moved(stage.pick)) or 0
+	end
+
+	-- every moved part back, after one question (none moved: the line at once)
+	function M.ResetAll(stage)
+		local def = stage.def
+		local n = stage:Moved()
+		if n == 0 or not def.ResetAll then
+			MelloUI:Print(TEXT.nothing)
+			return
+		end
+		MelloUI:Confirm({
+			text = string.format(TEXT.resetAsk, n),
+			accept = TEXT.resetAccept,
+			cancel = TEXT.cancel,
+			onAccept = function()
+				MelloUI:Batch(def.ResetAll, stage.pick)
+				stage:Repaint()
+			end,
+		})
+	end
+
+	function M.PlaceOnScreen(stage)
+		local def = stage.def
+		MelloUI:StartEditLayout("configurator", def.mover and def.mover(stage.pick) or nil)
+	end
+
+	-- the deep settings Reset this page would write: each def.reset table
+	-- that holds something
+	function M.Wants(stage)
+		local n = 0
+		local list = stage.def.reset
+		for i = 1, type(list) == "table" and #list or 0 do
+			local db = MelloUI:GetModuleDB(list[i][1])
+			local v = db and db[list[i][2]]
+			if type(v) == "table" and next(v) ~= nil then
+				n = n + 1
+			end
+		end
+		return n
+	end
+
+	-- pinned at the page's top as it scrolls: one SetPoint when the place
+	-- changes, none per frame
+	function M.Stick(stage, offset)
+		local y = math.max(stage.y0, Num(offset) or 0)
+		if y ~= stage.stuckY then
+			stage.stuckY = y
+			stage:ClearAllPoints()
+			stage:SetPoint("TOPLEFT", stage.anchor, "TOPLEFT", stage.x0, -y)
+		end
+	end
+
+	-- a part's settings block for the page: which = "show" | "size" | "place"
+	-- | "panel"; a builder(parent, y) -> frame, height, or nil when the part
+	-- has none of it. Its get and set read the part picked when they run
+	function M.PartSpec(stage, part, which)
+		if not part then
+			return nil
+		end
+		local function Picked()
+			return stage:Selected()
+		end
+		local function Row(parent, y, label)
+			local row = CreateFrame("Frame", nil, parent)
+			row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -y)
+			row:SetPoint("RIGHT", parent, "RIGHT", 0, 0)
+			row:SetHeight(K.ROW_H)
+			local fs = W.Text(row, "GameFontHighlight", label, "text")
+			fs:SetPoint("LEFT", row, "LEFT", 0, 0)
+			return row
+		end
+		if which == "show" and part.hide then
+			return function(parent, y)
+				local row = Row(parent, y, TEXT.show)
+				local sw = W.Switch(row, function()
+					local p = Picked()
+					local cur = p and E.Current(p)
+					return not (cur and cur.show == false)
+				end, function(v)
+					local p = Picked()
+					if p then
+						E.Write(stage, p, E.With(p, { show = v and true or false }))
+					end
+				end)
+				sw:SetPoint("LEFT", row, "LEFT", K.LABEL_W, 0)
+				return row, K.ROW_H
+			end
+		elseif which == "size" and part.size then
+			local sz = part.size
+			return function(parent, y)
+				local row = Row(parent, y, part.sizeLabel or "Size")
+				local sl = W.Slider(row, 180, function()
+					local p = Picked()
+					local cur = p and E.Current(p)
+					return cur and Num(cur.size) or sz.min or 0
+				end, function(v)
+					local p = Picked()
+					if p and p.size then
+						E.Write(stage, p, E.With(p, { size = v }))
+					end
+				end, { min = sz.min, max = sz.max, step = sz.step or 1 })
+				sl:SetPoint("LEFT", row, "LEFT", K.LABEL_W, 0)
+				return row, K.ROW_H
+			end
+		elseif which == "place" and part.drag ~= false and not part.locked then
+			return function(parent, y)
+				local row = Row(parent, y, TEXT.x)
+				local function Get(axis)
+					return function()
+						local p = Picked()
+						local cur = p and E.Current(p)
+						return cur and Num(cur[axis]) or 0
+					end
+				end
+				local function Set(axis)
+					return function(v)
+						local p = Picked()
+						v = Num(v)
+						if p and v then
+							local range = p.range or K.RANGE
+							local cur = E.Current(p) or ST.EMPTY
+							E.Write(stage, p, E.With(p, { point = cur.point or "CENTER",
+								[axis] = math.max(-range, math.min(range, E.Round(v))) }))
+						end
+					end
+				end
+				local bx = W.NumberBox(row, 52, Get("x"), Set("x"))
+				bx:SetPoint("LEFT", row, "LEFT", K.LABEL_W, 0)
+				local ly = W.Text(row, "GameFontHighlight", TEXT.y, "text")
+				ly:SetPoint("LEFT", bx, "RIGHT", 16, 0)
+				local by = W.NumberBox(row, 52, Get("y"), Set("y"))
+				by:SetPoint("LEFT", ly, "RIGHT", 8, 0)
+				return row, K.ROW_H
+			end
+		elseif which == "panel" and stage.def.Panel then
+			local def = stage.def
+			return function(parent, y)
+				return def.Panel(part.class, stage, parent, y)
+			end
+		end
+		return nil
+	end
+
+	----------------------------------------------------------------------
+	-- Following the settings while on show (the bus: only while a stage
+	-- shows; one repaint a stage a frame)
+	----------------------------------------------------------------------
+
+	function E.DressTopic(kind, topic)
+		local list = Reg.dress[kind]
+		for i = 1, list and #list or 0 do
+			local topics = list[i].topics
+			for j = 1, topics and #topics or 0 do
+				if topics[j] == topic then
+					return true
+				end
+			end
+		end
+		return false
+	end
+
+	function E.KindTopic(kind, topic)
+		local def = Reg.kinds[kind]
+		local topics = def and def.topics
+		for j = 1, topics and #topics or 0 do
+			if topics[j] == topic then
+				return true
+			end
+		end
+		return false
+	end
+
+	function E.OnStageSetting(name)
+		if type(name) ~= "string" then
+			return
+		end
+		for stage in pairs(ST.shown) do
+			if Reg.Watches(stage.kind, name) then
+				stage:Repaint()
+			end
+		end
+	end
+
+	-- a module switched: its dressing may come or go, so dressed again first
+	function E.OnStageModule(name)
+		if type(name) ~= "string" then
+			return
+		end
+		for stage in pairs(ST.shown) do
+			if Reg.Watches(stage.kind, name) then
+				stage.redress = true
+				stage:Repaint()
+			end
+		end
+	end
+
+	function E.OnStageAll()
+		for stage in pairs(ST.shown) do
+			stage:Repaint()
+		end
+	end
+
+	function E.TopicFn(topic)
+		local fn = ST.topicFns[topic]
+		if not fn then
+			fn = function()
+				for stage in pairs(ST.shown) do
+					local dress = E.DressTopic(stage.kind, topic)
+					if dress or E.KindTopic(stage.kind, topic) then
+						stage.redress = stage.redress or dress
+						stage:Repaint()
+					end
+				end
+			end
+			ST.topicFns[topic] = fn
+		end
+		return fn
+	end
+
+	function E.Listen(stage)
+		MelloUI:On("setting", E.OnStageSetting, ST)
+		MelloUI:On("module", E.OnStageModule, ST)
+		MelloUI:On("palette", E.OnStageAll, ST)
+		MelloUI:On("fonts", E.OnStageAll, ST)
+		local topics = stage.def.topics
+		for i = 1, topics and #topics or 0 do
+			MelloUI:On(topics[i], E.TopicFn(topics[i]), ST)
+		end
+		local list = Reg.dress[stage.kind]
+		for i = 1, list and #list or 0 do
+			local dt = list[i].topics
+			for j = 1, dt and #dt or 0 do
+				MelloUI:On(dt[j], E.TopicFn(dt[j]), ST)
+			end
+		end
+	end
+
+	E.StageShow = Shared("OnShow on a designer stage", function(stage)
+		if not ST.shown[stage] then
+			ST.shown[stage] = true
+			ST.nShown = ST.nShown + 1
+		end
+		E.Listen(stage)
+		local scroll = stage.opts.scroll
+		stage:Stick(scroll and Num(Safe.Call(scroll, "GetVerticalScroll")) or 0)
+		E.RepaintNow(stage)
+	end, "script")
+
+	-- hidden: a drag under way cancelled (no write; painted again on the next
+	-- show), the part let go, the keys given back; the bus left with the last
+	E.StageHide = Shared("OnHide on a designer stage", function(stage)
+		local d = ST.drag
+		if d and d.stage == stage then
+			E.StopDrag(true)
+		end
+		stage.dragging = false
+		stage.pendSize = nil
+		if stage.selected then
+			stage:Select(nil)
+		end
+		E.TakeBack(stage)
+		if ST.shown[stage] then
+			ST.shown[stage] = nil
+			ST.nShown = ST.nShown - 1
+			if ST.nShown == 0 then
+				MelloUI:Off(ST)
+			end
+		end
+	end, "script")
+
+	-- a click on the stage's empty ground lets the part go (the rows under it
+	-- never see it: the stage takes the mouse)
+	E.StageUp = Shared("OnMouseUp on a designer stage's ground", function(stage)
+		if stage.selected then
+			stage:Select(nil)
+		end
+	end, "script")
+
+	function E.StateChip(chips, key)
+		chips.melloStage:SetState(key)
+	end
+
+	function E.Edged(stage, key, level)
+		local f = CreateFrame("Frame", nil, stage)
+		W.Edges(f, key, "OVERLAY")
+		f:SetFrameLevel(level)
+		f:EnableMouse(false)
+		f:Hide()
+		return f
+	end
+
+	function Reg.MakeStage(parent, kind, def, skin, opts)
+		opts = type(opts) == "table" and opts or Reg.NONE
+		local stage = CreateFrame("Frame", nil, parent)
+		stage.kind, stage.def, stage.skin, stage.opts = kind, def, skin, opts
+		local w = Fin(opts.width) or Fin(Safe.Call(parent, "GetWidth")) or 400
+		local h = def.height or K.HEIGHT
+		stage:SetSize(w, h)
+		stage.level = (Num(Safe.Call(parent, "GetFrameLevel")) or 0) + K.LIFT
+		stage:SetFrameLevel(stage.level)
+		stage:EnableMouse(true)
+		W.Solid(stage, "BACKGROUND", "mainWindow", 1):SetAllPoints(stage)
+		W.Edges(stage, "border", "BORDER")
+		stage.x0, stage.y0, stage.anchor = Num(opts.x) or 0, Num(opts.y0) or 0, opts.anchor or parent
+		stage.stuckY = stage.y0
+		stage:SetPoint("TOPLEFT", stage.anchor, "TOPLEFT", stage.x0, -stage.y0)
+		for name, fn in pairs(M) do
+			stage[name] = fn
+		end
+		stage.ctx, stage.tryT, stage.tries = {}, {}, {}
+		stage.samples, stage.hits, stage.marks, stage.order = {}, {}, {}, {}
+		stage.byKey, stage.faded = {}, setmetatable({}, weakKeys)
+		stage.wheelKey, stage.nudgeKey = { stage = stage }, { stage = stage }
+		stage.entries = { show = { value = K.MENU_SHOW, label = TEXT.show }, hide = { value = K.MENU_HIDE, label = TEXT.hide },
+			home = { value = K.MENU_HOME, label = def.homeLabel or TEXT.home } }
+		stage.holder = CreateFrame("Frame", nil, stage)
+		stage.holder:SetAllPoints(stage)
+		stage.selBox = E.Edged(stage, "selectedTrim", stage.level + 28)
+		stage.hoverBox = E.Edged(stage, "hover", stage.level + 29)
+		stage.caption = W.Text(stage, "GameFontHighlightSmall", nil, "text")
+		stage.caption:SetPoint("BOTTOMLEFT", stage, "BOTTOMLEFT", K.PAD, K.PAD / 2)
+		stage.caption:SetPoint("RIGHT", stage, "RIGHT", -K.PAD, 0)
+		if type(def.states) == "table" and #def.states > 0 then
+			local chips = W.Chips(stage, { width = math.floor(w / 2), onPick = E.StateChip })
+			chips.melloStage = stage
+			chips:SetItems(def.states)
+			chips:Select(def.states[1].key)
+			chips:SetPoint("TOPRIGHT", stage, "TOPRIGHT", -K.PAD, -K.PAD)
+			chips:SetFrameLevel(stage.level + 32)
+			stage.chips = chips
+			stage.ctx.state = def.states[1].key
+		end
+		if def.Furnish then
+			def.Furnish(stage, stage.holder, w, h)
+		end
+		stage:SetScript("OnShow", E.StageShow)
+		stage:SetScript("OnHide", E.StageHide)
+		stage:SetScript("OnMouseUp", E.StageUp)
+		stage:SetPick(def.first)
+		if stage:IsVisible() then
+			E.StageShow(stage)   -- (made on show: no OnShow comes)
+		end
+		return stage
+	end
+
+	function Reg.ShownStage(kind)
+		for stage in pairs(ST.shown) do
+			if stage.kind == kind then
+				return stage
+			end
+		end
+		return nil
+	end
+
+	function Preview.PartKeys(kind, pick)
+		local def = Reg.kinds[kind]
+		if not (def and def.PartKeys) then
+			return nil
+		end
+		return def.PartKeys(pick or def.first)
+	end
+
+	function Preview.RowEnter(row)
+		local o = row and row.melloOutline
+		local stage = o and Reg.ShownStage(o.kind)
+		if stage then
+			stage:Outline(o.key)
+		end
+	end
+
+	function Preview.RowLeave(row)
+		local o = row and row.melloOutline
+		local stage = o and Reg.ShownStage(o.kind)
+		if stage then
+			stage:Outline(nil)
+		end
+	end
+
+	-- (the engine's functions and its state, read by the suite)
+	E.state = ST
+	Preview.StageEngine = E
 end
 
 --------------------------------------------------------------------------------

@@ -1700,6 +1700,24 @@ function P.Deselect()
 	P.Select(nil)
 end
 
+-- (one look C6) the plate of the mover whose key is `key` picked (Edit
+-- Layout opened from a designer stage's Place on screen); not made yet: kept
+-- (P.focusKey) until its plate is laid, dropped as the plates go
+function P.SelectKey(key)
+	if key == nil then
+		return false
+	end
+	for entry, plate in pairs(plateOf) do
+		if entry.key == key and plate:IsShown() then
+			P.focusKey = nil
+			P.Select(entry)
+			return true
+		end
+	end
+	P.focusKey = key
+	return false
+end
+
 function P.CanNudge()
 	local plate = selected and plateOf[selected]
 	return plate ~= nil and plate:IsShown() and Movable(plate) and not drag.started and not drag.plate
@@ -1894,6 +1912,12 @@ local function LayEntry(entry, made)
 	plate.rect.w = -1   -- (its chip laid again)
 	plate:Lay(l, b, w, h)
 	Paint(plate)
+	-- (one look C6) the plate a designer stage's Place on screen asked for,
+	-- made a frame later (the first frame makes FIRST_BATCH): picked now
+	if P.focusKey ~= nil and P.focusKey == entry.key then
+		P.focusKey = nil
+		P.Select(entry)
+	end
 	if not plate:IsShown() then
 		if fresh then
 			MelloUI.Anim:FadeIn(plate, PLATE_FADE)
@@ -1995,6 +2019,7 @@ end
 function P.HideAll()
 	P.EndDrag()
 	P.KeyUp()
+	P.focusKey = nil
 	for i = #active, 1, -1 do
 		local p = active[i]
 		if p.kind == "entry" then

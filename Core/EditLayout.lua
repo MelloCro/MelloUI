@@ -1181,8 +1181,10 @@ end
 -- (0.19.9) the key frame lent to another mode of MelloUI's while Edit Layout
 -- is closed (Keybind Mode): the addon's one keyboard frame (check_panels'
 -- key-propagate). The borrower's handler(key) answers true to keep a key;
--- anything else goes on to the game
-local lentTo = nil
+-- anything else goes on to the game. (One look C6) a borrower taken over by
+-- another is told (its onLost); a polite one (the designer stage) never takes
+-- the keys from another
+local lentTo, lentLost = nil, nil
 
 local KeyDown = Shared("OnKeyDown on Edit Layout's keys", function(self, key)
 	if lentTo then
@@ -1271,24 +1273,45 @@ local function KeyboardOff()
 end
 
 -- (0.19.9) the key frame lent (above): never in a fight, never while Edit
--- Layout itself is open; false when it cannot be had
-function MelloUI:LendKeyboard(handler)
+-- Layout itself is open; false when it cannot be had. `opts` (one look C6):
+-- { polite = true } (refused while another borrower has it), onLost = fn
+-- (told once when another borrower takes it over)
+function MelloUI:LendKeyboard(handler, opts)
 	if InCombat() or S.open or type(handler) ~= "function" then
 		return false
 	end
+	opts = type(opts) == "table" and opts or nil
+	if lentTo and lentTo ~= handler then
+		if opts and opts.polite then
+			return false
+		end
+		local lost = lentLost
+		lentTo, lentLost = nil, nil
+		if lost then
+			pcall(lost)
+		end
+	end
 	lentTo = handler
+	lentLost = opts and type(opts.onLost) == "function" and opts.onLost or nil
 	KeyboardOn()
 	return true
 end
 
+-- (the key frame off unless Edit Layout's pieces show: a session paused for
+-- the configurator keeps no key frame of its own -- one look C6's review)
 function MelloUI:TakeBackKeyboard(handler)
 	if handler == nil or lentTo ~= handler then
 		return
 	end
-	lentTo = nil
-	if not S.open then
+	lentTo, lentLost = nil, nil
+	if not E:IsShowing() then
 		KeyboardOff()
 	end
+end
+
+-- the borrower holding the keys now (nil: none)
+function MelloUI:KeyboardLentTo()
+	return lentTo
 end
 
 --------------------------------------------------------------------------------
@@ -1302,6 +1325,13 @@ local function ShowPieces()
 	local P = Movers()
 	if P then
 		P.ShowAll()
+	end
+	-- (one look C6) the plate StartEditLayout's caller named, picked once
+	if S.focus ~= nil then
+		if P and P.SelectKey then
+			P.SelectKey(S.focus)
+		end
+		S.focus = nil
 	end
 	ShowBar()
 	KeyboardOn()
@@ -1703,6 +1733,7 @@ local function CancelQueue()
 		events:UnregisterEvent("PLAYER_REGEN_ENABLED")
 	end
 	S.queued = nil
+	S.focus = nil
 end
 
 --------------------------------------------------------------------------------
@@ -1770,7 +1801,10 @@ function E:Close(after)
 	end
 end
 
-function MelloUI:StartEditLayout(source)
+-- `focus` (one look C6: a designer stage's Place on screen): a mover's key,
+-- its plate picked as the pieces show (kept through a queued open)
+function MelloUI:StartEditLayout(source, focus)
+	S.focus = focus
 	local cfg = ConfigFrame()
 	if not S.open then
 		if Shown(cfg) then
