@@ -4679,7 +4679,9 @@ end
 --------------------------------------------------------------------------------
 
 do
-	local LINK_W_MIN, LINK_W_MAX, LINK_PAD = 60, 110, 24   -- the link's button: its width's bounds, the room round its text
+	-- the link's button: its width's bounds, the room round its text (the max as wide as the longest page's name with
+	-- its " >": "Unit & Group Frames >" -- the user's screenshot, 2026-10-16: at 110 its text ran over the value)
+	local LINK_W_MIN, LINK_W_MAX, LINK_PAD = 60, 200, 24
 	local LINK_OPTS = {}   -- (the row's options less its gate, which comes once the value is placed)
 
 	local function LinkText(v)

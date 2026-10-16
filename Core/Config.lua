@@ -3731,7 +3731,9 @@ do
 		-- (Q11: a locked part -- nothing to set yet -- says why under its name, and has no Reset part)
 		local locked = kind == "part" and t.part.locked
 		local line = (kind ~= "part" and own.line) or (type(locked) == "string" and locked) or nil
-		local row = W.Row(sec, sec.y + job.gap, ROW_HEIGHT, title, line, nil, RowOpts(sec))
+		-- (its line in the tooltip too: cut where the Copy from... and Reset begin -- the user's screenshot,
+		-- 2026-10-16: the cast bar's line ran under them)
+		local row = W.Row(sec, sec.y + job.gap, ROW_HEIGHT, title, line, line, RowOpts(sec))
 		local reset
 		if locked then
 			job.row = row
@@ -3763,6 +3765,7 @@ do
 			copy:SetPoint("RIGHT", reset, "LEFT", -10, 0)
 			row.copy = copy
 		end
+		W.ClipRow(row, row.copy or reset)
 		job.row = row
 		Placed(sec, row, job.gap + ROW_HEIGHT)
 	end
