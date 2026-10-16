@@ -126,13 +126,14 @@ Close it without installing and nothing changes. Run it again any time: **Instal
 
 - **Top bar:** on the left, **Preview** (below); on the right, **Install…** (the installer), **Edit Layout** (move and resize the interface on the screen itself, as in Drag. Everything. above; it works with UI Modifications off too) and close.
 - **Preview:** see how your interface behaves in a fight before you are in one. The button opens a list: **Solo Fight** and **Party Fight** play everything, then one part at a time: **Fader**, **Reminders**, **Widget Column**, **Party Frames**, **Damage Meter**, **Combat Text**, **Gains** and **Personal Display**. A click plays a short scene (about 26 seconds) with made-up names and numbers: resting, the pull, a fight, the kill and after it. The settings window steps aside while it plays and comes back after; a strip at the top of the screen names what plays, the moment ("Resting", "In a fight", "After the fight") and has **Stop**. What you set shows as you set it: what you fade In Combat comes back in the fight and fades after it, the reminders hide in the fight, the widgets that wait for a fight's end fold away. Party Fight and Party Frames draw stand-ins where your party frames sit (the game shows its own only in a real group), their health falling and healed back; the meter's numbers and race bar show the made-up group, and the fight summary after the kill says it is made up (it is never in your Fight History). Your Damage shows at your target's nameplate while you have a target. A part whose module is off is dimmed in the list. Out of combat only: a real fight, or opening Edit Layout, stops it at once (the settings window then stays shut). `/mello preview solo`, `party` or a part's word (`fader`, `reminders`, `widgets`, `partyframes`, `meter`, `combattext`, `gains`, `personal`), and `/mello preview stop`.
-- **Side list:** Home, then the pages in five groups, then Profiles: **The look** (Look, Windows, Fader), **Frames and bars** (Unit Frames, Group Frames, Frame Effects, Nameplates, Action Bars, Minimap, Bars & Meters, Swing Timers, Personal Display), **Chat and text** (Chat, Tooltip, Screen Text), **Quests and travel** (Quest Tracker, Quest List, Route, Reminders, Gains) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
+- **Side list:** Home, then the pages in five groups, then Profiles: **The look** (Look, Windows, Fader, Oldschool: the painted reskin's own settings), **Frames and bars** (Unit & Group Frames, Nameplates, Action Bars, Minimap, Bars & Meters, Swing Timers), **Chat and text** (Chat, Tooltip, Screen Text), **Quests and travel** (Quest Tracker, Quest List, Route, Reminders, Gains) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
 - **Pages:** every page is laid out the same way. At the top its name and what it holds, its switch where the page is one module's (Look's is **UI Modifications**: the painted reskin and every feature that tunes the interface go with it; the palette, the UI Shade and Reduce Motion keep working without it) and **Reset this page** (every setting on the page back to its default, on every tab; on a page with a picker, for the one picked and the settings every pick shares; the switches of whole modules and what is your character's own stay; it asks first, saying how many settings change). Under it the tabs, and on every tab the same sections in the same order: General, Look, Text, Layout, Behaviour, Sound, Advanced (a section with nothing in it is left out). Pages and tabs slide and fade in, and the wheel glides the page and the list; Reduce Motion (Look > General) makes all of it instant.
 - **Every setting in one place:** each setting lives on one page only. What the whole interface shares (the palette, the Kit Colours, the borders, the Font Style and its sizes, the UI Shade and its areas, the parchment sheets, Dark Mode's brightness, the bar texture and the health bar colours) lives on **Look**. A page it touches shows a **link row**: the setting's value and a button naming the page it lives on (**Look >**, **Minimap >**, **Windows >**) that takes you to it.
-- **Pickers:** Unit Frames (Player, Target, Focus, Pet, Party, Raid Frames, Cast Bars, Personal Display), Action Bars (Action Bars, Micro Menu, Bag Bar) and Windows (every game window the reskin dresses, from the AddOn list to the Trainers) have a picker at the top: the page's settings are for the one picked. **Copy from…** gives it another one's settings; it asks first ("Copy the Target frame's settings to Player?"). **All**, beside a setting, gives its value to every one that has it; it shows while their values differ. A setting that is one for several says **shared**, and its tooltip names them ("One setting for Player, Target and Focus."). Unit Frames shows a live preview of the picked frame in its header, following your settings as you change them.
+- **Designers:** Unit & Group Frames is a designer. Its frames stand in a row at the top: Player, Target, Focus, Pet, Buffs, Party, Raid, Personal, and **All frames** for what every frame shares (the heal light, the big moments, the debuff glow). Pick one, then one of its parts on the line under it (Name, Health bar, Portrait…): the part's options come first, the whole frame's under them, each heading saying whose it is ("Player · Look"). An option that is one setting for several frames is marked **Shared**, and its tooltip names the others.
+- **Pickers:** Action Bars (Action Bars, Micro Menu, Bag Bar) and Windows (every game window the reskin dresses, from the AddOn list to the Trainers) have a picker at the top: the page's settings are for the one picked. **Copy from…** gives it another one's settings; it asks first ("Copy the Micro Menu bar's settings to Action Bars?"). **All**, beside a setting, gives its value to every one that has it; it shows while their values differ. A setting that is one for several says **shared**, and its tooltip names them.
 - **Pictures:** the looks you choose by sight (the borders, the backdrops and backgrounds, the minimap's shape and square border) show the chosen one's picture. Click it and every choice opens as a picture under the row; a click on one puts it on at once. Not in a fight.
-- **Dimmed options:** an option that needs another switch, or that the one picked does not have, is dimmed and says why ("Switch on "UI Modifications" first (Look).", "Not for Pet"). When that switch is on another page or pick, a click on the dimmed option takes you to it.
-- **Search:** the box at the top of the side list finds any setting, page, tab or pick. Type two letters or more: the list shows what matches, best first (a name that matches, then its place, then what it does), each with its place over its name as a breadcrumb (Page > Tab > Section: "Unit Frames > Buffs & Debuffs > Layout") and the New tag if it is new; "Bank" finds "Windows > Bank". Point at a result for its whole place and what it does. Click one, or pick it with Up and Down and press Enter: its page opens on its tab and pick, at that setting, which lights up for a moment. Escape, the little X or an empty box brings the side list back. If a fight starts while you type, the keys go back to your character and your search stays.
+- **Dimmed options:** an option that needs another switch, or that the one picked does not have, is dimmed and says why ("Switch on "UI Modifications" first (Look).", "Not for AddOn list"). When that switch is on another page or pick, a click on the dimmed option takes you to it.
+- **Search:** the box at the top of the side list finds any setting, page, tab or pick. Type two letters or more: the list shows what matches, best first (a name that matches, then its place, then what it does), each with its place over its name as a breadcrumb (Page > Tab > Section: "Nameplates > Auras & Icons > Layout") and the New tag if it is new; "Bank" finds "Windows > Bank". Point at a result for its whole place and what it does. Click one, or pick it with Up and Down and press Enter: its page opens on its tab and pick, at that setting, which lights up for a moment. Escape, the little X or an empty box brings the side list back. If a fight starts while you type, the keys go back to your character and your search stays.
 - **Home:** the Tutorial, What's new (Earlier versions for the rest), Your setup (the profile in use, with a list to load another; the palette and your Kit Colours, each with Change… to its row on Look; your screen, with **Fit to this screen** when Mello's layout was fitted to another one; Install again) and Help with every command.
 - **New tags:** everything this update added (a switch, a slider, a dropdown, a button) has a small gold **New** tag right after its name. The tags also lead the way: on its page's entry in the side list (on a group's name while it is folded), on the tab that holds it, inside the **Edit Layout** button, and at the top of What's new. The next update's new options get the tags; this update's go away by themselves.
 - **Long lists:** a dropdown with many choices (the fonts, the Windows picker) shows 18 at a time, never more than half the screen, with a scroll bar; the mouse wheel scrolls it, and it opens at your current choice.
@@ -561,9 +562,8 @@ player frame, and a frame art opacity slider. Together with Dark Mode, Bar Textu
 
 Fading the player frame out of combat (0.14.0's Fade Out Of Combat) is the **Fader**'s since
 0.17.0 (below): its Player Frame row, Faded Opacity and Pet Frame Too; your settings carry over.
-The Unit Frames page has a link row to it.
 
-**Bar Background** (Unit Frames > Bars > Look, 0.19.0): what lies behind the health and power
+**Bar Background** (Oldschool > Frame Art, 0.19.0): what lies behind the health and power
 bars in the painted look, under the fill, the incoming heals and the bars' borders: the
 Painted Trough (as before), a flat Dark, the Bar Texture's finish in the dark (Bar Texture,
 Dark), or None. **Bar Background Opacity** lets the world show through the empty part of a bar.
@@ -573,7 +573,7 @@ One choice for every unit frame: player, target, focus, pet, target of target an
 circle at the lower left of its portrait, the player's circle at the party portrait's size, in your Level Orb
 look (Look > Borders). The game's party frame has no level of its own; with the kit off there is none.
 
-**Level Up** (Unit Frames > Frame > Look on the player, 0.21.3, on): when you gain a level, the number
+**Level Up** (Bars & Meters > XP & Reputation, 0.21.3, on): when you gain a level, the number
 in your player frame's level circle turns over to the new one (the old level rising out, the new one
 coming up) with a ring of light spreading from the circle, a light runs along the experience bar,
 and the on-screen notice says your new level and, with the Quest List, how many quests it opened in
@@ -586,12 +586,12 @@ plays it on the level you have.
 
 What a healer reads off the frames (0.19.0; on by default, both looks):
 
-- **Incoming Heals** (Unit Frames > Bars): the heals on their way to a unit, on its health bar
+- **Incoming Heals** (Unit & Group Frames: the Health bar of Player, Target and Focus): the heals on their way to a unit, on its health bar
   after the health: your heals in teal, other healers' in a darker teal, shields striped.
   They stop at the bar's end. Forever's player, target and focus frames (and their targets')
   have no incoming heals of their own, so MelloUI draws them there; the party, pet and raid
   frames show the game's own (the raid frames' Display Incoming Heals).
-- **Debuff Glow** (Unit Frames > Buffs & Debuffs): while a friend has a debuff that can be
+- **Debuff Glow** (Unit & Group Frames > All frames): while a friend has a debuff that can be
   removed, a soft glow in its colour (Magic blue, Curse purple, Disease brown, Poison green)
   round their frame: round the portrait and the bars on the unit and party frames; on the raid
   frames the border takes the colour too. **Debuff Glow Shows** picks which debuffs light a
@@ -607,27 +607,27 @@ What a healer reads off the frames (0.19.0; on by default, both looks):
 
 ### Group Frames
 
-MelloUI's own party and raid frames (0.20.0; an addon of its own, MelloUI Group Frames, with a page under Unit
-Frames). The game's party and raid frames give way to them; switch the page off and the game's come back. **In A
-Party** (Frames tab): these frames, or the normal party frames with portraits (the game's, in the painted look),
+MelloUI's own party and raid frames (0.20.0; an addon of its own, MelloUI Group Frames; its settings on Unit &
+Group Frames' Party and Raid frames). The game's party and raid frames give way to them; switch **Group Frames** off and the game's come back. **In A
+Party** (the Party frame): these frames, or the normal party frames with portraits (the game's, in the painted look),
 with indicators of their own, their parts (buffs, name, role icon, leader icon, ready check) moved in the Designer's Party Frames, and sharp round role badges; with those, you show as a normal party frame while solo too, where the game's party
 frames stand, so your heals and indicators can be seen on it. Either way the party moves in Edit Layout ("Party Frames"), never in Edit Mode.
 
-- **Frames tab:** In A Party; Show Yourself In Your Party; Show Yourself While Solo (your own frame where your
+- **The Party and Raid frames:** In A Party; Show Yourself In Your Party; Show Yourself While Solo (your own frame where your
   party's will stand); Frame Width and Height (the game's raid frame: 72 x 36); Spacing; Party Grows (down, up, right, left);
   Party Order (by role: tanks, healers, damage; group order; by name); Raid Grouping (by group, role or class, or
   one list); Raid Fills (down then across, or across then down); Frames Per Column / Row; the Gap between them;
   Fade When Out Of Range and its opacity. Move the party and the raid in Edit Layout ("Party Frames", "Raid
   Frames"). Layout changes made in a fight wait for its end.
-- **Bars tab:** Health Colour (class colour, My Colour, By Health with your Full / Half / Low colours, or green),
+- **Their Health bar, Power bar and Background:** Health Colour (class colour, My Colour, By Health with your Full / Half / Low colours, or green),
   the health bar's opacity, Background Colour (yours or the class colour) and its opacity, Missing Health (off,
   yours, the class colour, by health) and its opacity, Fill Direction, Smooth Bars, the Power Bar (healers,
   everyone, off; yours while solo), its height and colour (the power's own, the class colour, yours). Incoming
-  heals, shields and the debuff glow are Healer Frames' (Unit Frames > Bars and Buffs & Debuffs).
-- **Texts tab:** Name Colour (white, class colour, yours), Name Length, Health Text (percent, current, missing,
+  heals, shields and the debuff glow are Healer Frames' (the unit frames' Health bar, and All frames).
+- **Their Name, Health text and Status text:** Name Colour (white, class colour, yours), Name Length, Health Text (percent, current, missing,
   none), Dead / Offline Text.
 - **Colours:** a colour of yours is a swatch; click it for the colour wheel.
-- **Designer tab:** your aura indicators -- a buff picked by its spell (type its name or spell ID: every rank of it
+- **The Raid frame's Indicators:** your aura indicators -- a buff picked by its spell (type its name or spell ID: every rank of it
   counts; yours only, or anyone's), or a debuff on your group picked by its kind (dispellable by you or by your
   group, any dispellable, Magic, Curse, Disease, Poison, a boss debuff, crowd control; the game never lets a
   friend's debuff be picked by its spell). Looks: **Icon** (its time as a sweep), **Draining Icon**, **Square** (in
@@ -645,7 +645,7 @@ frames stand, so your heals and indicators can be seen on it. Either way the par
 ### Heal Effects
 
 Your heals on your group as light (0.20.0; part of the MelloUI Frame Effects addon; on by default; its
-settings on the **Frame Effects** page under Frames and bars, the **Heals** tab, its switch **Heal Effects**). A cast heal gathers on your cast bar while you cast, flies to their party or raid frame when
+settings on **Unit & Group Frames > All frames**, its switch **Heal Effects**). A cast heal gathers on your cast bar while you cast, flies to their party or raid frame when
 the cast ends, lands with a flash and fades; an instant one lands on their frame at once. It draws on the screen
 only: the game still plays your spell on your character. Your own Group Frames or the game's party and raid frames,
 whichever show.
@@ -678,7 +678,7 @@ whichever show.
 ### Cooldown Effects
 
 Your group's frames show their big moments (0.20.0; the MelloUI Frame Effects addon, Heal Effects' too; on by
-default; its settings on the **Frame Effects** page, the **Cooldowns** tab, its switch **Cooldown Effects**). What counts comes from the game's own spell data, for every class:
+default; its settings on **Unit & Group Frames > All frames**, its switch **Cooldown Effects**). What counts comes from the game's own spell data, for every class:
 
 - **A roar** (Challenging Shout, Challenging Roar): fiery square ripples burst from the frame's middle and spread
   across it, for 2 seconds. **A taunt** (Taunt, Growl, Mocking Blow): one such ripple.
@@ -698,12 +698,11 @@ default; its settings on the **Frame Effects** page, the **Cooldowns** tab, its 
 ### Personal Display
 
 Legion's resource display under your character, back and grown (0.21.0; the MelloUI Personal Display addon; off by
-default; its settings on the **Personal Display** page under Frames and bars):
+default; its settings on **Unit & Group Frames**' **Personal** frame):
 
 - **Health, power and your cast bar** under your character's feet, in the unit frames' gem-capped frames, with your
   health and power in percent beside them. The cast bar shows only while you cast or channel: the spell and its
-  seconds. **Width** and **Height** size the bars. Their frame is **Look > Borders > Personal Display Border** (the
-  page's **Border** link): the gem-capped Ornate by default, the cast bar's, a thin rim, the Single rail, the Stone
+  seconds. **Width** and **Height** size the bars. Their frame is **Look > Borders > Personal Display Border**: the gem-capped Ornate by default, the cast bar's, a thin rim, the Single rail, the Stone
   rail, the Backdrop or none; the bars and the shield column take it together.
 - **The shield column** stands on your character's right: one bar for every shield on you, added up as the game
   counts them: spells (Power Word: Shield, Ice Barrier, Mana Shield, the wards), talents and items, the ones against
@@ -738,11 +737,10 @@ default; its settings on the **Personal Display** page under Frames and bars):
   with Heal Effects): a heal's light gathers at your character's middle and flies from there to your party or raid
   frames.
 - The game's own Personal Resource Display is off while this is on, and comes back as you had it. The bars wear the
-  Bar Texture of the **Unit Frames** page's **Personal Display** pick (Bars tab), as the Group Frames wear the Raid
-  Frames pick's.
-- **Fade out of combat:** the **Fader** page's **Personal Display** row (Frames; the page's **Fade (Fader)** link). On
+  Personal frame's own **Bar Texture**, as the Group Frames wear theirs.
+- **Fade out of combat:** the **Fader** page's **Personal Display** row (Frames). On
   In Combat the display fades out of combat and comes back in a fight, and while you cast out of combat.
-- **Preview** (the page's **Play**, `/mello personal test`, or Preview > Personal Display): a made-up fight on the
+- **Preview** (the Personal frame's **Play**, `/mello personal test`, or Preview > Personal Display): a made-up fight on the
   display, a shield going up, hit until it breaks, casts and swings. `/mello personal secrets` tells what the game
   hands over plainly.
 
@@ -1776,7 +1774,7 @@ own choice comes back when you switch MelloUI's off. While the Personal Display 
 - **Look**: Framed (the cast bar's frame, the bar's name above it on the left and the seconds
   left on the right: **Label And Time**) or Hairline (a thin rim on a soft shade, nothing else).
   With the cast bars' painted look off, both are a plain bar. In the painted look the fill wears the Cast
-  Bars' Bar Texture (Unit Frames > Cast Bars > Bars > Bar Texture; Minimalist while that is off or Default).
+  Bars' Bar Texture (Bars & Meters > Cast Bar > Bar Texture; Minimalist while that is off or Default).
 - **Show**: In Combat (a bar shows in a fight once it swings or shoots, and fades out when the
   fight ends) or Always (each bar at rest while you carry a weapon for it).
 - **Width** and **Height**; out of range a bar dims, as the game's does. Move them in Edit Layout

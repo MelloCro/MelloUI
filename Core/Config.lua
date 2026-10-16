@@ -140,6 +140,7 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "0.25.0", lines = {
 		"One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off.",
+		"Configurator: Unit & Group Frames is one designer: pick a frame, then a part; its options first, the frame's below.",
 		"Windows: a new frame -- the logo heads the configurator's side list, small windows get a slim strip.",
 		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, Hide Bar Art, a Bar Texture for each.",
 		"Action bars and minimap: backdrops and MelloUI's minimap for everyone, no painted skin needed.",
@@ -2119,7 +2120,7 @@ local function WhereOf(page, place, row)
 		return page.lay.pickLabel[pick] or pick, pick
 	end
 	if r.tab ~= row.tab then
-		local name = r.tab.name
+		local name = r.tab.label or r.tab.name
 		local where = tabWhere[name]
 		if not where then
 			where = string.format(TEXT.tabWhere, name)
@@ -4762,17 +4763,19 @@ local function AddLayoutPage(key, nav, group)
 	local many = #p.tabs > 1
 	if many then
 		for i, t in ipairs(p.tabs) do
-			Entry({ kind = "tab", key = key, tab = i, new = t.new or nil }, t.name, title)
+			Entry({ kind = "tab", key = key, tab = i, new = t.new or nil }, t.label or t.name, title)
 		end
 	end
 	for _, pk in ipairs(p.picks or EMPTY) do
 		Entry({ kind = "pick", key = key, pick = pk.key }, pk.label, title, pk.desc)
 	end
 	for _, t in ipairs(p.tabs) do
-		local path = many and (title .. " > " .. t.name) or title
+		local path = many and (title .. " > " .. (t.label or t.name)) or title
 		for _, s in ipairs(t.sections) do
 			local crumb = path .. " > " .. s.name
-			for _, r in ipairs(s.rows) do
+			-- (one look, a designer: a part's tab shows its element's rows too;
+			-- they are found once, on the element's own tab)
+			for _, r in ipairs((s.element and t.part) and EMPTY or s.rows) do
 				-- (a feature's note reaches no setting: nothing to find)
 				local b = r.b or (r.distinct and r.distinct[1])
 				if b then

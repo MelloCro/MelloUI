@@ -100,9 +100,9 @@ L.SECTIONS = { "General", "Look", "Text", "Layout", "Behaviour", "Sound", "Text-
 
 L.groups = {
 	{ entries = { "Home" } },
-	{ title = "The look", entries = { "Look", "Windows", "Fader" } },
-	{ title = "Frames and bars", entries = { "UnitFrames", "GroupFrames", "FrameEffects", "Nameplates", "ActionBars", "Minimap",
-		"BarsMeters", "SwingTimers", "PersonalDisplay" } },
+	{ title = "The look", entries = { "Look", "Windows", "Fader", "Oldschool" } },
+	{ title = "Frames and bars", entries = { "UnitGroupFrames", "Nameplates", "ActionBars", "Minimap",
+		"BarsMeters", "SwingTimers" } },
 	{ title = "Chat and text", entries = { "Chat", "Tooltip", "ScreenText" } },
 	{ title = "Quests and travel", entries = { "QuestTracker", "QuestList", "Route", "Reminders", "Gains" } },
 	{ title = "Sound", entries = { "VoiceOver", "CustomSounds" } },
@@ -127,26 +127,52 @@ L.pages = {
 	-- header switch -- the Fader runs while any element fades)
 	Fader = { title = "Fader", icon = "module:Fader",
 		tabs = { "Fader", "Frames", "Bars", "Chat & Map" } },
-	UnitFrames = { title = "Unit Frames", icon = "module:UnitFrames",
-		flavour = "The player, target, focus, pet, party and raid frames, the cast bars and the personal resource display: pick a frame.",
-		tabs = { "Frame", "Bars", "Buffs & Debuffs" }, preview = "unitframe",
-		-- boss frames and target of target have no pick: the keys that reach
-		-- them say so in their row's hint (`also`)
-		picker = { label = "Frame", noun = "frame", picks = { { "player", "Player" }, { "target", "Target" },
-			{ "focus", "Focus" }, { "pet", "Pet" }, { "party", "Party" }, { "raid", "Raid Frames" },
-			{ "castbars", "Cast Bars" }, { "personal", "Personal Display" } } } },
+	-- (one look C8, the user 2026-10-15: one designer per family) the player, target, focus, pet, your buffs, the
+	-- party and raid frames (MelloUI's own) and the Personal Display: pick a frame, then a part of it; its own
+	-- options under the part's (docs/plans/onelook-designer/c7-lite.md, ugf-audit.md)
+	UnitGroupFrames = { title = "Unit & Group Frames", icon = "module:UnitFrames", designer = true, new = "0.25.0",
+		flavour = "You, your target and your group: pick a frame, click a part of it, change it.",
+		elements = {
+			{ key = "player", label = "Player", line = "Your own frame", parts = { { key = "name", label = "Name" },
+				{ key = "health", label = "Health bar" }, { key = "values", label = "Values" }, { key = "pvp", label = "PvP badge" },
+				{ key = "status", label = "Status glow" }, { key = "combat", label = "Combat glow" },
+				{ key = "portrait", label = "Portrait" } } },
+			{ key = "target", label = "Target", line = "Your target's frame (and its target's)", parts = {
+				{ key = "name", label = "Name" }, { key = "health", label = "Health bar" }, { key = "values", label = "Values" },
+				{ key = "auras", label = "Buffs & Debuffs" }, { key = "pvp", label = "PvP badge" },
+				{ key = "combat", label = "Combat glow" }, { key = "portrait", label = "Portrait" } } },
+			{ key = "focus", label = "Focus", line = "Your focus's frame", parts = { { key = "name", label = "Name" },
+				{ key = "health", label = "Health bar" }, { key = "values", label = "Values" }, { key = "pvp", label = "PvP badge" },
+				{ key = "combat", label = "Combat glow" }, { key = "portrait", label = "Portrait" } } },
+			{ key = "pet", label = "Pet", line = "Your pet's frame", parts = { { key = "status", label = "Status glow" },
+				{ key = "combat", label = "Combat glow" } } },
+			{ key = "buffs", label = "Buffs", line = "Your buffs and debuffs" },
+			{ key = "party", label = "Party", module = "GroupFrames", line = "Your party: MelloUI's Group Frames or the game's",
+				parts = { { key = "name", label = "Name" }, { key = "healthtext", label = "Health text" },
+				{ key = "status", label = "Status text" }, { key = "health", label = "Health bar" },
+				{ key = "power", label = "Power bar" }, { key = "background", label = "Background" } } },
+			{ key = "raid", label = "Raid", module = "GroupFrames", line = "MelloUI's raid frames", parts = {
+				{ key = "name", label = "Name" }, { key = "healthtext", label = "Health text" },
+				{ key = "status", label = "Status text" }, { key = "health", label = "Health bar" },
+				{ key = "power", label = "Power bar" }, { key = "background", label = "Background" },
+				{ key = "indicators", label = "Indicators" } } },
+			{ key = "personal", label = "Personal", module = "PersonalDisplay", line = "The bars under your character",
+				parts = { { key = "shield", label = "Shield column" }, { key = "cast", label = "Cast" },
+				{ key = "swing", label = "Swing rails" }, { key = "text", label = "Text" },
+				{ key = "cooldowns", label = "Big cooldowns" } } },
+		},
+		family = { key = "all", label = "All frames", line = "Every frame: the heal light, the big moments, the debuff glow" } },
+	-- (one look C8) the painted reskin's own rows, kept working here until the painted look becomes its own addon
+	Oldschool = { title = "Oldschool", icon = "module:UIModifications",
+		flavour = "The painted reskin's own settings, kept here until the painted look becomes its own addon.",
+		tabs = { "Painted Skins", "Frame Art" } },
 	-- (0.20.0) MelloUI_GroupFrames: MelloUI's own party and raid frames (their
 	-- frames, bars, texts; the Designer is one canvas row, W.CanvasRow)
-	GroupFrames = { title = "Group Frames", icon = "module:GroupFrames", module = "GroupFrames",
-		tabs = { "Frames", "Bars", "Texts", "Designer" } },
 	-- (0.20.0) the effects on the frames, one page (the user, 2026-10-09: "why are
 	-- these 2 not 1 category"; one addon, MelloUI_FrameEffects): Heals, Heal
 	-- Flight's (your heals' light from the cast bar to the frame), and Cooldowns,
 	-- Frame Effects' (your group's big moments); each tab's first row its
 	-- module's switch
-	FrameEffects = { title = "Frame Effects", icon = "module:FrameEffects",
-		flavour = "Your heals as light flying from your cast bar to the frame, and your group's big moments on their frames.",
-		tabs = { "Heals", "Cooldowns" } },
 	Nameplates = { title = "Nameplates", icon = "module:Nameplates",
 		flavour = "The nameplates over every unit, their icons and auras, the markers over your party, and the sparkles on what you can loot.",
 		tabs = { "Plates", "Auras & Icons", "Party Markers", "Sparkles" } },
@@ -170,11 +196,10 @@ L.pages = {
 		tabs = { "Swing Timers" } },
 	-- (0.21.0) health, power and the cast bar under the character, the shield column beside it (its header switch:
 	-- the Personal Display module's, off by default; MelloUI_PersonalDisplay)
-	PersonalDisplay = { title = "Personal Display", icon = "module:PersonalDisplay", module = "PersonalDisplay",
-		tabs = { "Personal Display" } },
 	BarsMeters = { title = "Bars & Meters", icon = "module:Stats",
 		flavour = "The experience and reputation bars, the cooldown manager, the damage meter, event widgets and the FPS / latency readout.",
-		tabs = { "XP & Reputation", "Cooldown Manager", "Damage Meter", "Event Widgets", "FPS / Latency" } },
+		-- (one look C8: "Cast Bar" interim, until the Bars designer -- the user's pick)
+		tabs = { "XP & Reputation", "Cast Bar", "Cooldown Manager", "Damage Meter", "Event Widgets", "FPS / Latency" } },
 	Chat = { title = "Chat", icon = "module:Chat",
 		flavour = "The chat windows, the lines in them and the whisper popup.",
 		tabs = { "Chat Frame", "Messages", "Whispers" } },
@@ -211,10 +236,10 @@ L.pages = {
 -- Auras module's name is /mello's aura probe: its page is buffs / debuffs.
 L.words = {
 	fade = { "Fader" },
-	groupframes = { "GroupFrames" },
-	partyframes = { "GroupFrames" },
-	raidframes = { "GroupFrames" },
-	indicators = { "GroupFrames", "Designer" },
+	groupframes = { "UnitGroupFrames", "raid:element" },
+	partyframes = { "UnitGroupFrames", "party:element" },
+	raidframes = { "UnitGroupFrames", "raid:element" },
+	indicators = { "UnitGroupFrames", "raid:indicators" },
 	mouseover = { "Fader" },
 	uimodifications = { "Look" },
 	palette = { "Look", "General" },
@@ -225,13 +250,13 @@ L.words = {
 	bartextures = { "Look", "Bar Texture" },
 	parchment = { "Look", "Parchment" },
 	characterpanel = { "Windows", pick = "CharacterPanel" },
-	buffs = { "UnitFrames", "Buffs & Debuffs" },
-	debuffs = { "UnitFrames", "Buffs & Debuffs" },
-	classicons = { "UnitFrames", "Frame" },
-	unitframepanel = { "UnitFrames", "Frame" },
-	bartext = { "UnitFrames", "Bars" },
-	castbarpanel = { "UnitFrames", "Frame", pick = "castbars" },
-	raidframepanel = { "UnitFrames", "Frame", pick = "raid" },
+	buffs = { "UnitGroupFrames", "buffs:element" },
+	debuffs = { "UnitGroupFrames", "buffs:element" },
+	classicons = { "UnitGroupFrames", "player:portrait" },
+	unitframepanel = { "Oldschool", "Frame Art" },
+	bartext = { "UnitGroupFrames", "player:values" },
+	castbarpanel = { "Oldschool", "Painted Skins" },
+	raidframepanel = { "Oldschool", "Painted Skins" },
 	nameplatepanel = { "Nameplates", "Plates" },
 	partymarkers = { "Nameplates", "Party Markers" },
 	sparkles = { "Nameplates", "Sparkles" },
@@ -464,79 +489,118 @@ function L.Define(R, Link)
 	R("Windows", "Windows", "Behaviour", "UIModifications.fadeWindows", { wide = "every window" })
 
 	-- Unit Frames (the picker: Player ... Personal Display)
-	R("UnitFrames", "Frame", "General", "UIModifications.qol_UnitFrames", { only = { "player", "target", "focus", "pet", "party" } })
-	R("UnitFrames", "Frame", "General", "UIModifications.qol_ClassIcons", { only = { "player", "target", "focus", "party" } })
-	R("UnitFrames", "Frame", "Look", { player = "UIModifications.UnitFramePanel", target = "UIModifications.UnitFramePanel", focus = "UIModifications.UnitFramePanel", pet = "UIModifications.UnitFramePanel", party = "UIModifications.UnitFramePanel", raid = "UIModifications.RaidFramePanel", castbars = "UIModifications.CastBarPanel" }, { name = "Painted Skin" })
-	R("UnitFrames", "Frame", "Look", { player = "DarkMode.unitframes", target = "DarkMode.unitframes", focus = "DarkMode.unitframes", pet = "DarkMode.unitframes", party = "DarkMode.unitframes", castbars = "DarkMode.castbar", personal = "DarkMode.personal" }, { name = "Dark Mode", also = { ["DarkMode.unitframes"] = "boss and target of target" },
-		whenFor = { ["DarkMode.unitframes"] = Uncovered("UnitFramePanel", "unit frames"), ["DarkMode.castbar"] = Uncovered("CastBarPanel", "cast bars") } })
+	-- (one look C8) a row on several frames' tabs: one row each, the first its home, the others marked
+	-- Shared ("also ..."); `plus`, a frame with no tab here yet, named on that line only (the game's party
+	-- frames: the Party chip's Portraits style comes with C9 / C10)
+	local UGF_LABEL = { player = "Player", target = "Target", focus = "Focus", pet = "Pet", buffs = "Buffs", party = "Party",
+		raid = "Raid", personal = "Personal" }
+	local function UGF(tabs, section, id, extra)
+		for i, tab in ipairs(tabs) do
+			local e = {}
+			for k, v in pairs(extra or {}) do
+				e[k] = v
+			end
+			e.plus = nil
+			if #tabs > 1 or (extra and extra.plus) then
+				local others = {}
+				for j, other in ipairs(tabs) do
+					if j ~= i then
+						others[#others + 1] = UGF_LABEL[other:match("^(%w+)")]
+					end
+				end
+				others[#others + 1] = extra and extra.plus
+				e.shared = "also " .. table.concat(others, ", ")
+			end
+			R("UnitGroupFrames", tab, section, id, e)
+		end
+	end
+	local GAME4 = { "player:element", "target:element", "focus:element", "pet:element" }
+	UGF(GAME4, "General", "UIModifications.qol_UnitFrames", { plus = "Party portraits" })
+	UGF({ "player:portrait", "target:portrait", "focus:portrait" }, "General", "UIModifications.qol_ClassIcons",
+		{ plus = "Party portraits" })
+	R("Oldschool", "Painted Skins", "Look", "UIModifications.UnitFramePanel", { name = "Unit Frames" })
+	R("Oldschool", "Painted Skins", "Look", "UIModifications.RaidFramePanel", { name = "Raid Frames" })
+	R("Oldschool", "Painted Skins", "Look", "UIModifications.CastBarPanel", { name = "Cast Bars" })
+	UGF(GAME4, "Look", "DarkMode.unitframes", { name = "Dark Mode", also = { ["DarkMode.unitframes"] = "boss and target of target" },
+		when = Uncovered("UnitFramePanel", "unit frames"), plus = "Party portraits" })
+	R("BarsMeters", "Cast Bar", "Look", "DarkMode.castbar", { name = "Dark Mode", when = Uncovered("CastBarPanel", "cast bars") })
+	R("UnitGroupFrames", "personal:element", "Look", "DarkMode.personal", { name = "Dark Mode" })
 	-- (0.19.4, the options audit: the unit frame skin fades or replaces the
 	-- same art and puts the writes back)
 	local UF = Uncovered("UnitFramePanel", "unit frames")
-	R("UnitFrames", "Frame", "Look", "UnitFrames.frameAlpha", { only = { "player", "target", "focus", "pet", "party" }, when = UF })
-	R("UnitFrames", "Frame", "Look", "UnitFrames.hideReputationColor", { only = { "target", "focus" }, when = UF })
-	R("UnitFrames", "Frame", "Look", "UnitFrames.hideCombatGlow", { only = { "player", "target", "focus", "pet", "party" }, when = UF })
-	R("UnitFrames", "Frame", "Look", "UnitFrames.hideStatusGlow", { only = { "player", "pet" }, when = UF })
-	R("UnitFrames", "Frame", "Look", "UnitFrames.hidePvPBadge", { only = { "player", "target", "focus" }, when = UF })
-	R("UnitFrames", "Frame", "Look", "ClassIcons.portraits", { only = { "player", "target", "focus", "party" } })
-	R("UnitFrames", "Frame", "Look", "UnitFramePanel.marks", { only = { "target", "focus" } })
+	UGF(GAME4, "Look", "UnitFrames.frameAlpha", { when = UF, plus = "Party portraits" })
+	UGF({ "target:name", "focus:name" }, "Look", "UnitFrames.hideReputationColor", { when = UF })
+	UGF({ "player:combat", "target:combat", "focus:combat", "pet:combat" }, "Look", "UnitFrames.hideCombatGlow", { when = UF, plus = "Party portraits" })
+	UGF({ "player:status", "pet:status" }, "Look", "UnitFrames.hideStatusGlow", { when = UF })
+	UGF({ "player:pvp", "target:pvp", "focus:pvp" }, "Look", "UnitFrames.hidePvPBadge", { when = UF })
+	UGF({ "player:portrait", "target:portrait", "focus:portrait" }, "Look", "ClassIcons.portraits", { plus = "Party portraits" })
+	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.marks")
 	-- (0.19.8, the border library's stage 3: a backdrop round the frame, the kit's one backdrop system)
-	R("UnitFrames", "Frame", "Look", "UnitFramePanel.backdrop", { only = { "player", "target", "focus" } })
-	R("UnitFrames", "Frame", "Look", "UnitFramePanel.backdropBackground", { only = { "player", "target", "focus" },
-		when = { key = "UnitFramePanel.backdrop", notValue = "none", line = "Only with a Frame Backdrop" } })
+	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.backdrop")
+	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.backdropBackground",
+		{ when = { key = "UnitFramePanel.backdrop", notValue = "none", line = "Only with a Frame Backdrop" } })
 	-- (0.21.3, the animations: the level badge turning over, the XP bar's light, the notice;
 	-- one-look D5: the Unit Frames module's, Unit Frame Tweaks')
-	R("UnitFrames", "Frame", "Look", "UnitFrames.levelUp", { only = { "player" } })
-	R("UnitFrames", "Frame", "Text", "UnitFrames.centerNames", { only = { "player", "target", "focus" }, when = UF })
-	R("UnitFrames", "Bars", "General", "UIModifications.qol_BarText", { only = { "player", "target", "focus" } })
+	R("BarsMeters", "XP & Reputation", "Look", "UnitFrames.levelUp")
+	UGF({ "player:name", "target:name", "focus:name" }, "Text", "UnitFrames.centerNames", { when = UF })
+	UGF({ "player:values", "target:values", "focus:values" }, "General", "UIModifications.qol_BarText")
 	-- (0.19.0) incoming heals and the debuff glow: one setting each for every frame (HealerFrames)
 	-- (0.19.4: incoming heals on MelloUI's three frames only, the bar
 	-- background on the unit frames the skin draws -- not the raid frames,
 	-- cast bars or personal resource)
-	R("UnitFrames", "Bars", "General", "HealerFrames.incomingHeals", { only = { "player", "target", "focus" },
-		also = { ["HealerFrames.incomingHeals"] = "their targets" } })
-	R("UnitFrames", "Bars", "Look", { player = "BarTextures.unitframesTexture", target = "BarTextures.unitframesTexture", focus = "BarTextures.unitframesTexture", pet = "BarTextures.unitframesTexture", party = "BarTextures.unitframesTexture", raid = "BarTextures.raidframesTexture", castbars = "BarTextures.castbarsTexture", personal = "BarTextures.personalTexture" }, { name = "Bar Texture", also = { ["BarTextures.unitframesTexture"] = "boss and target of target" } })
-	R("UnitFrames", "Bars", "Look", "UnitFramePanel.barBackground", { only = { "player", "target", "focus", "pet", "party" },
-		also = { ["UnitFramePanel.barBackground"] = "target of target" } })
-	R("UnitFrames", "Bars", "Look", "UnitFramePanel.barBackgroundAlpha", { only = { "player", "target", "focus", "pet", "party" },
-		also = { ["UnitFramePanel.barBackgroundAlpha"] = "target of target" },
+	UGF({ "player:health", "target:health", "focus:health" }, "General", "HealerFrames.incomingHeals",
+		{ also = { ["HealerFrames.incomingHeals"] = "their targets" } })
+	UGF(GAME4, "Look", "BarTextures.unitframesTexture", { name = "Bar Texture", plus = "Party portraits",
+		also = { ["BarTextures.unitframesTexture"] = "boss and target of target" } })
+	UGF({ "raid:element", "party:element" }, "Look", "BarTextures.raidframesTexture", { name = "Bar Texture" })
+	R("BarsMeters", "Cast Bar", "Look", "BarTextures.castbarsTexture", { name = "Bar Texture" })
+	R("UnitGroupFrames", "personal:element", "Look", "BarTextures.personalTexture", { name = "Bar Texture" })
+	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.barBackground",
+		{ also = { ["UnitFramePanel.barBackground"] = "target of target" } })
+	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.barBackgroundAlpha",
+		{ also = { ["UnitFramePanel.barBackgroundAlpha"] = "target of target" },
 		when = { key = "UnitFramePanel.barBackground", notValue = "none", line = "Not with the None background" } })
-	R("UnitFrames", "Bars", "Text", { player = "BarText.player", target = "BarText.target", focus = "BarText.focus" }, { name = "Values On This Frame" })
-	R("UnitFrames", "Bars", "Text", "BarText.health", { only = { "player", "target", "focus" } })
-	R("UnitFrames", "Bars", "Text", "BarText.power", { only = { "player", "target", "focus" } })
-	R("UnitFrames", "Bars", "Text", "BarText.format", { only = { "player", "target", "focus" } })
-	R("UnitFrames", "Bars", "Text", "BarText.showMax", { only = { "player", "target", "focus" } })
-	R("UnitFrames", "Bars", "Layout", "BarText.position", { only = { "player", "target", "focus" } })
-	R("UnitFrames", "Bars", "Layout", "BarText.offsetX", { only = { "player", "target", "focus" } })
-	R("UnitFrames", "Bars", "Layout", "BarText.offsetY", { only = { "player", "target", "focus" } })
-	R("UnitFrames", "Buffs & Debuffs", "General", "UIModifications.qol_Auras", { only = { "player", "target" } })
-	R("UnitFrames", "Buffs & Debuffs", "General", { player = "Auras.player", target = "Auras.target" }, { name = "Buffs & Debuffs On This Frame" })
-	R("UnitFrames", "Buffs & Debuffs", "General", "HealerFrames.debuffGlow", { wide = "every frame" })
+	R("UnitGroupFrames", "player:values", "Text", "BarText.player", { name = "Values On This Frame" })
+	R("UnitGroupFrames", "target:values", "Text", "BarText.target", { name = "Values On This Frame" })
+	R("UnitGroupFrames", "focus:values", "Text", "BarText.focus", { name = "Values On This Frame" })
+	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.health")
+	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.power")
+	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.format")
+	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.showMax")
+	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.position")
+	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.offsetX")
+	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.offsetY")
+	UGF({ "buffs:element", "target:auras" }, "General", "UIModifications.qol_Auras")
+	R("UnitGroupFrames", "buffs:element", "General", "Auras.player", { name = "Buffs & Debuffs On This Frame" })
+	R("UnitGroupFrames", "target:auras", "General", "Auras.target", { name = "Buffs & Debuffs On This Frame" })
+	R("UnitGroupFrames", "all", "General", "HealerFrames.debuffGlow")
 	-- (0.19.4: Dark Mode reaches the game's own icons of yours, never the
 	-- target's; with MelloUI's rows in their place it has nothing to darken.
 	-- Keep Dispel Colours also serves the Cooldown Manager's icons)
-	R("UnitFrames", "Buffs & Debuffs", "Look", "DarkMode.auras", { only = { "player" },
-		when = { any = GAME_AURAS.any, line = "Only on the game's own icons (Buffs & Debuffs or Your Buffs And Debuffs off)" } })
-	R("UnitFrames", "Buffs & Debuffs", "Look", "DarkMode.keepDispelColor", { only = { "player" },
-		when = { any = { GAME_AURAS, { key = "DarkMode.cooldowns", value = true } },
+	R("UnitGroupFrames", "buffs:element", "Look", "DarkMode.auras",
+		{ when = { any = GAME_AURAS.any, line = "Only on the game's own icons (Buffs & Debuffs or Your Buffs And Debuffs off)" } })
+	R("UnitGroupFrames", "buffs:element", "Look", "DarkMode.keepDispelColor",
+		{ when = { any = { GAME_AURAS, { key = "DarkMode.cooldowns", value = true } },
 			line = "Only on the game's own icons (Buffs & Debuffs or Your Buffs And Debuffs off) or the Cooldown Manager's" } })
 	-- (0.19.9: one set of rows for your buffs -- MelloUI's own rows while
 	-- they show, else the game's buff and debuff bars in the Edit Mode
 	-- layout: Tweaks' Buff Layout; the size in pixels on both picks)
-	R("UnitFrames", "Buffs & Debuffs", "Layout", { player = "Tweaks.buffSize", target = "Auras.targetSize" }, { name = "Icon Size" })
+	R("UnitGroupFrames", "buffs:element", "Layout", "Tweaks.buffSize", { name = "Icon Size" })
+	R("UnitGroupFrames", "target:auras", "Layout", "Auras.targetSize", { name = "Icon Size" })
 	-- (0.20.1) the rows' own layout sleeps while they hang under the player frame (the target rows' look there)
 	local NOT_FRAMED = { any = { GAME_AURAS.any[1], GAME_AURAS.any[2], { key = "Auras.playerFrame", value = false } },
 		line = "Not with Attach To The Player Frame" }
-	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffSpacing", { only = { "player" }, when = NOT_FRAMED })
-	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffPerRow", { only = { "player" }, when = NOT_FRAMED })
-	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffGrow", { only = { "player" }, when = NOT_FRAMED })
-	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffNewRows", { only = { "player" }, when = NOT_FRAMED })
-	R("UnitFrames", "Buffs & Debuffs", "Layout", "Auras.playerColumn", { only = { "player" }, when = NOT_FRAMED })
+	R("UnitGroupFrames", "buffs:element", "Layout", "Tweaks.buffSpacing", { when = NOT_FRAMED })
+	R("UnitGroupFrames", "buffs:element", "Layout", "Tweaks.buffPerRow", { when = NOT_FRAMED })
+	R("UnitGroupFrames", "buffs:element", "Layout", "Tweaks.buffGrow", { when = NOT_FRAMED })
+	R("UnitGroupFrames", "buffs:element", "Layout", "Tweaks.buffNewRows", { when = NOT_FRAMED })
+	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerColumn", { when = NOT_FRAMED })
 	-- (0.20.1, the user: "an option under UnitFrames -> Player to attach their own buffs and debuffs to their unitframe")
-	R("UnitFrames", "Buffs & Debuffs", "Layout", "Auras.playerFrame", { only = { "player" } })
-	R("UnitFrames", "Buffs & Debuffs", "Layout", "Auras.playerFrameGrow", { only = { "player" } })
-	R("UnitFrames", "Buffs & Debuffs", "Layout", "Auras.playerFrameSize", { only = { "player" } })
-	R("UnitFrames", "Buffs & Debuffs", "Behaviour", "Auras.targetOnlyMine", { only = { "target" } })
-	R("UnitFrames", "Buffs & Debuffs", "Behaviour", "HealerFrames.debuffGlowShows", { wide = "every frame" })
+	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerFrame")
+	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerFrameGrow")
+	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerFrameSize")
+	R("UnitGroupFrames", "target:auras", "Behaviour", "Auras.targetOnlyMine")
+	R("UnitGroupFrames", "all", "Behaviour", "HealerFrames.debuffGlowShows")
 
 	-- Nameplates (tabs: the parts differ)
 	R("Nameplates", "Plates", "General", "Nameplates.threatLine")
@@ -813,72 +877,72 @@ function L.Define(R, Link)
 		end
 		local MINE = "Only with My Colour"
 		-- the frames: what shows, their size and layout, the range
-		R("GroupFrames", "Frames", "General", "GroupFrames.partyStyle")
-		R("GroupFrames", "Frames", "General", "GroupFrames.showPlayer")
-		R("GroupFrames", "Frames", "General", "GroupFrames.solo")
-		R("GroupFrames", "Frames", "Layout", "GroupFrames.width")
-		R("GroupFrames", "Frames", "Layout", "GroupFrames.height")
+		UGF({ "raid:element", "party:element" }, "General", "GroupFrames.!enabled", { name = "Group Frames" })
+		R("UnitGroupFrames", "party:element", "General", "GroupFrames.partyStyle")
+		R("UnitGroupFrames", "party:element", "General", "GroupFrames.showPlayer")
+		R("UnitGroupFrames", "party:element", "General", "GroupFrames.solo")
+		UGF({ "raid:element", "party:element" }, "Layout", "GroupFrames.width")
+		UGF({ "raid:element", "party:element" }, "Layout", "GroupFrames.height")
 		-- (one look Q4: Edit Layout's Size of the party and the raid, the same value)
-		R("GroupFrames", "Frames", "Layout", "GroupFrames.@scale:GroupFramesParty", { name = "Party Scale" })
-		R("GroupFrames", "Frames", "Layout", "GroupFrames.@scale:GroupFramesRaid", { name = "Raid Scale" })
-		R("GroupFrames", "Frames", "Layout", "GroupFrames.spacing")
-		R("GroupFrames", "Frames", "Layout", "GroupFrames.partyGrowth")
-		R("GroupFrames", "Frames", "Layout", "GroupFrames.partySort")
-		R("GroupFrames", "Frames", "Layout", "GroupFrames.raidGroupBy")
-		R("GroupFrames", "Frames", "Layout", "GroupFrames.raidFlow")
-		R("GroupFrames", "Frames", "Layout", "GroupFrames.raidPerLine")
-		R("GroupFrames", "Frames", "Layout", "GroupFrames.raidSpacing")   -- (0.20.2: the raid's own)
-		R("GroupFrames", "Frames", "Layout", "GroupFrames.raidGap")
-		R("GroupFrames", "Frames", "Behaviour", "GroupFrames.rangeFade")
-		R("GroupFrames", "Frames", "Behaviour", "GroupFrames.rangeAlpha")
+		R("UnitGroupFrames", "party:element", "Layout", "GroupFrames.@scale:GroupFramesParty", { name = "Scale" })
+		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.@scale:GroupFramesRaid", { name = "Scale" })
+		R("UnitGroupFrames", "party:element", "Layout", "GroupFrames.spacing")
+		R("UnitGroupFrames", "party:element", "Layout", "GroupFrames.partyGrowth")
+		R("UnitGroupFrames", "party:element", "Layout", "GroupFrames.partySort")
+		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.raidGroupBy")
+		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.raidFlow")
+		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.raidPerLine")
+		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.raidSpacing")
+		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.raidGap")
+		UGF({ "raid:element", "party:element" }, "Behaviour", "GroupFrames.rangeFade")
+		UGF({ "raid:element", "party:element" }, "Behaviour", "GroupFrames.rangeAlpha")
 		-- the bars: health, background, missing health, power
-		R("GroupFrames", "Bars", "Look", "GroupFrames.healthColour")
-		R("GroupFrames", "Bars", "Look", "GroupFrames.healthCustom", When("healthColour", "custom", MINE))
-		R("GroupFrames", "Bars", "Look", "GroupFrames.healthHigh", When("healthColour", "health", "Only with By Health"))
-		R("GroupFrames", "Bars", "Look", "GroupFrames.healthMid", When("healthColour", "health", "Only with By Health"))
-		R("GroupFrames", "Bars", "Look", "GroupFrames.healthLow", When("healthColour", "health", "Only with By Health"))
-		R("GroupFrames", "Bars", "Look", "GroupFrames.healthAlpha")
-		R("GroupFrames", "Bars", "Look", "GroupFrames.backgroundTexture")   -- (0.20.1: the picture behind the bar)
-		R("GroupFrames", "Bars", "Look", "GroupFrames.background", When("backgroundTexture", "flat", "Only with Flat colour"))
-		R("GroupFrames", "Bars", "Look", "GroupFrames.backgroundCustom", When("background", "custom", MINE))
-		R("GroupFrames", "Bars", "Look", "GroupFrames.backgroundAlpha")
-		R("GroupFrames", "Bars", "Look", "GroupFrames.missing")
-		R("GroupFrames", "Bars", "Look", "GroupFrames.missingCustom", When("missing", "custom", MINE))
-		R("GroupFrames", "Bars", "Look", "GroupFrames.missingAlpha",
-			{ when = { key = "GroupFrames.missing", notValue = "off", line = "Only with Missing Health on" } })
-		R("GroupFrames", "Bars", "Layout", "GroupFrames.fillDirection")
-		R("GroupFrames", "Bars", "Layout", "GroupFrames.power")
-		R("GroupFrames", "Bars", "Layout", "GroupFrames.powerSolo")
-		R("GroupFrames", "Bars", "Layout", "GroupFrames.powerHeight")
-		R("GroupFrames", "Bars", "Layout", "GroupFrames.powerColour")
-		R("GroupFrames", "Bars", "Layout", "GroupFrames.powerCustom", When("powerColour", "custom", MINE))
-		R("GroupFrames", "Bars", "Behaviour", "GroupFrames.smooth")
+		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.healthColour")
+		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.healthCustom", When("healthColour", "custom", MINE))
+		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.healthHigh", When("healthColour", "health", "Only with By Health"))
+		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.healthMid", When("healthColour", "health", "Only with By Health"))
+		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.healthLow", When("healthColour", "health", "Only with By Health"))
+		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.healthAlpha")
+		UGF({ "raid:background", "party:background" }, "Look", "GroupFrames.backgroundTexture")
+		UGF({ "raid:background", "party:background" }, "Look", "GroupFrames.background", When("backgroundTexture", "flat", "Only with Flat colour"))
+		UGF({ "raid:background", "party:background" }, "Look", "GroupFrames.backgroundCustom", When("background", "custom", MINE))
+		UGF({ "raid:background", "party:background" }, "Look", "GroupFrames.backgroundAlpha")
+		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.missing")
+		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.missingCustom", When("missing", "custom", MINE))
+		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.missingAlpha", { when = { key = "GroupFrames.missing", notValue = "off", line = "Only with Missing Health on" } })
+		UGF({ "raid:health", "party:health" }, "Layout", "GroupFrames.fillDirection")
+		UGF({ "raid:power", "party:power" }, "Layout", "GroupFrames.power")
+		UGF({ "raid:power", "party:power" }, "Layout", "GroupFrames.powerSolo")
+		UGF({ "raid:power", "party:power" }, "Layout", "GroupFrames.powerHeight")
+		UGF({ "raid:power", "party:power" }, "Layout", "GroupFrames.powerColour")
+		UGF({ "raid:power", "party:power" }, "Layout", "GroupFrames.powerCustom", When("powerColour", "custom", MINE))
+		UGF({ "raid:health", "party:health" }, "Behaviour", "GroupFrames.smooth")
 		-- the texts (their places and sizes: the Designer's frame parts)
-		R("GroupFrames", "Texts", "Text", "GroupFrames.nameColour")
-		R("GroupFrames", "Texts", "Text", "GroupFrames.nameCustom", When("nameColour", "custom", MINE))
-		R("GroupFrames", "Texts", "Text", "GroupFrames.nameLength")
-		R("GroupFrames", "Texts", "Text", "GroupFrames.healthText")
-		R("GroupFrames", "Texts", "Text", "GroupFrames.statusText")
+		UGF({ "raid:name", "party:name" }, "Text", "GroupFrames.nameColour")
+		UGF({ "raid:name", "party:name" }, "Text", "GroupFrames.nameCustom", When("nameColour", "custom", MINE))
+		UGF({ "raid:name", "party:name" }, "Text", "GroupFrames.nameLength")
+		UGF({ "raid:healthtext", "party:healthtext" }, "Text", "GroupFrames.healthText")
+		UGF({ "raid:status", "party:status" }, "Text", "GroupFrames.statusText")
 		-- the Designer: the indicators and the frame's parts on one canvas
-		R("GroupFrames", "Designer", "General", "GroupFrames.indicators")
-		R("GroupFrames", "Designer", "General", "GroupFrames.designer")
+		R("UnitGroupFrames", "raid:indicators", "General", "GroupFrames.indicators")
+		R("UnitGroupFrames", "raid:indicators", "General", "GroupFrames.designer")
 	end
 
 	-- (0.20.0) Frame Effects, Heals: Heal Flight's switch, the look, the landing
 	-- in a raid, a made-up heal and every kind's landing to compare them
-	R("FrameEffects", "Heals", "General", "HealFlight.!enabled", { name = "Heal Effects" })
-	R("FrameEffects", "Heals", "General", "HealFlight.#Preview")
-	R("FrameEffects", "Heals", "General", "HealFlight.#Every Kind")
-	R("FrameEffects", "Heals", "General", "HealFlight.flight")
-	R("FrameEffects", "Heals", "General", "HealFlight.hotTicks")
-	R("FrameEffects", "Heals", "Look", "HealFlight.look")
-	R("FrameEffects", "Heals", "Look", "HealFlight.raidLanding")
+	R("UnitGroupFrames", "all", "General", "HealFlight.!enabled", { name = "Heal Effects" })
+	R("UnitGroupFrames", "all", "General", "HealFlight.#Preview")
+	R("UnitGroupFrames", "all", "General", "HealFlight.#Every Kind")
+	R("UnitGroupFrames", "all", "General", "HealFlight.flight")
+	R("UnitGroupFrames", "all", "General", "HealFlight.hotTicks")
+	R("UnitGroupFrames", "all", "Look", "HealFlight.look")
+	R("UnitGroupFrames", "all", "Look", "HealFlight.raidLanding")
 
 	-- (0.20.0) Frame Effects, Cooldowns: its switch, whose, and every kind to see
-	R("FrameEffects", "Cooldowns", "General", "FrameEffects.!enabled", { name = "Cooldown Effects" })
-	R("FrameEffects", "Cooldowns", "General", "FrameEffects.#Every Effect")
-	R("FrameEffects", "Cooldowns", "General", "FrameEffects.mine")
-	R("FrameEffects", "Cooldowns", "General", "FrameEffects.group")
+	R("UnitGroupFrames", "all", "General", "FrameEffects.!enabled", { name = "Cooldown Effects" })
+	R("UnitGroupFrames", "all", "General", "FrameEffects.#Every Effect")
+	R("UnitGroupFrames", "all", "General", "FrameEffects.mine")
+	R("UnitGroupFrames", "all", "General", "FrameEffects.group")
 
 	-- (0.17.1) Swing Timers (header: its module's switch): which bars, their
 	-- look, their size, when they show
@@ -893,28 +957,24 @@ function L.Define(R, Link)
 	R("SwingTimers", "Swing Timers", "Behaviour", "SwingTimers.show")
 
 	-- (0.21.0) Personal Display (header: its module's switch): the shield column, the texts, the width, the hop, the preview
-	R("PersonalDisplay", "Personal Display", "General", "PersonalDisplay.shield")
-	R("PersonalDisplay", "Personal Display", "General", "PersonalDisplay.#Preview")
-	R("PersonalDisplay", "Personal Display", "General", "PersonalDisplay.hideCastBar")
-	R("PersonalDisplay", "Personal Display", "General", "PersonalDisplay.swing")
-	R("PersonalDisplay", "Personal Display", "General", "PersonalDisplay.cooldowns")
+	R("UnitGroupFrames", "personal:element", "General", "PersonalDisplay.!enabled", { name = "Personal Display" })
+	R("UnitGroupFrames", "personal:shield", "General", "PersonalDisplay.shield")
+	R("UnitGroupFrames", "personal:element", "General", "PersonalDisplay.#Preview")
+	R("UnitGroupFrames", "personal:cast", "General", "PersonalDisplay.hideCastBar")
+	R("UnitGroupFrames", "personal:swing", "General", "PersonalDisplay.swing")
+	R("UnitGroupFrames", "personal:cooldowns", "General", "PersonalDisplay.cooldowns")
 	-- (the audit, 2026-10-12: gated as Route's minimap drawing is -- it does nothing without Heal Flight)
-	R("PersonalDisplay", "Personal Display", "Behaviour", "PersonalDisplay.healFrom",
-		{ when = { key = "HealFlight.!enabled", value = true, line = "Only with Heal Flight on" } })
-	R("PersonalDisplay", "Personal Display", "Text", "PersonalDisplay.text")
-	R("PersonalDisplay", "Personal Display", "Layout", "PersonalDisplay.width")
-	R("PersonalDisplay", "Personal Display", "Layout", "PersonalDisplay.height")
+	R("UnitGroupFrames", "personal:cast", "Behaviour", "PersonalDisplay.healFrom", { when = { key = "HealFlight.!enabled", value = true, line = "Only with Heal Flight on" } })
+	R("UnitGroupFrames", "personal:text", "Text", "PersonalDisplay.text")
+	R("UnitGroupFrames", "personal:element", "Layout", "PersonalDisplay.width")
+	R("UnitGroupFrames", "personal:element", "Layout", "PersonalDisplay.height")
 	-- (one look Q4: Edit Layout's Size of the bars and of the shield column, the same value)
-	R("PersonalDisplay", "Personal Display", "Layout", "PersonalDisplay.@scale:personalbars", { name = "Scale" })
-	R("PersonalDisplay", "Personal Display", "Layout", "PersonalDisplay.@scale:personalshield",
-		{ name = "Shield Column Scale" })
-	R("PersonalDisplay", "Personal Display", "Layout", "PersonalDisplay.cdSize",
-		{ when = { key = "PersonalDisplay.cooldowns", notValue = false, line = "Only with Big Cooldowns on" } })
-	R("PersonalDisplay", "Personal Display", "Behaviour", "PersonalDisplay.hop")
-	R("PersonalDisplay", "Personal Display", "Behaviour", "PersonalDisplay.zoom")
+	R("UnitGroupFrames", "personal:element", "Layout", "PersonalDisplay.@scale:personalbars", { name = "Scale" })
+	R("UnitGroupFrames", "personal:shield", "Layout", "PersonalDisplay.@scale:personalshield", { name = "Scale" })
+	R("UnitGroupFrames", "personal:cooldowns", "Layout", "PersonalDisplay.cdSize", { when = { key = "PersonalDisplay.cooldowns", notValue = false, line = "Only with Big Cooldowns on" } })
+	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.hop")
+	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.zoom")
 	-- (0.21.0: its border on Look > Borders, its fade on the Fader's page)
-	Link("PersonalDisplay", "Personal Display", "Look", "UIModifications.personalBarBorder", "Border")
-	Link("PersonalDisplay", "Personal Display", "Behaviour", "Fader.show_personal", "Fade (Fader)")
 
 	-- Quest Tracker (header: its module's switch; one look, stage E, the user 2026-10-15: its Painted Skin row is
 	-- removed -- the tracker always wears MelloUI's look)
@@ -1123,8 +1183,6 @@ function L.Define(R, Link)
 	Link("VoiceOver", "Widget", "Layout", "Reminders.widgetLock", "Lock The Widgets")
 	Link("Reminders", "Widgets", "General", "Meter.summary", "Fight Summary")
 	-- (0.17.0: the fades moved to the Fader)
-	Link("UnitFrames", "Frame", "Behaviour", { player = "Fader.show_player", pet = "Fader.petToo",
-		target = "Fader.show_target", party = "Fader.show_party", raid = "Fader.show_raid" }, "Fade (Fader)")
 	Link("Fader", "Fader", "Behaviour", "UIModifications.fadeWindows", "Windows Fade In")
 	Link("Chat", "Chat Frame", "Behaviour", "Chat.tabsOnMouseover", "Tabs Only On Mouseover",
 		{ when = Uncovered("ChatPanel", "chat") })
@@ -1142,37 +1200,14 @@ function L.Define(R, Link)
 		{ key = "NameplatePanel.nameShade", value = "plate" }, { key = "UIModifications.uiShade", value = true },
 		{ key = "UIModifications.reskin", notValue = false }, { key = "UIModifications.NameplatePanel", notValue = false } },
 		line = "Only with Name Shade: Whole plate on the Nameplate Kit and the UI Shade on (the name band keeps its own)" } })
-	Link("UnitFrames", "Frame", "Look", { player = "UIModifications.shade_unitframes", target = "UIModifications.shade_unitframes", focus = "UIModifications.shade_unitframes", pet = "UIModifications.shade_unitframes", party = "UIModifications.shade_unitframes", castbars = "UIModifications.shade_castbars" }, "UI Shade")
-	Link("UnitFrames", "Frame", "Text", "UIModifications.nameFormat", "Names")
-	Link("UnitFrames", "Bars", "Look", "BarTextures.texture", "Bar Texture (Look)")
-	Link("UnitFrames", "Bars", "Look", "BarTextures.healthColor", "Health Bar Colour")
 	-- (0.19.8, rule 9: the unit frames, the cast bars and the personal display have borders of their own now)
-	Link("UnitFrames", "Bars", "Look", { player = "UIModifications.unitFrameBorder", target = "UIModifications.unitFrameBorder",
-		focus = "UIModifications.unitFrameBorder", pet = "UIModifications.unitFrameBorder", party = "UIModifications.unitFrameBorder",
-		castbars = "UIModifications.castBarBorder", personal = "UIModifications.personalBarBorder" }, "Bar Border")
-	Link("UnitFrames", "Frame", "Look", { raid = "UIModifications.raidFrameBorder" }, "Raid Frame Border")
 	-- (0.21.0, the user's picks: the level orb beside the portrait ring; the Personal Display's hold on the cast bar
 	-- where the cast bar is set)
-	Link("UnitFrames", "Frame", "Look", { player = "UIModifications.levelOrb", target = "UIModifications.levelOrb",
-		focus = "UIModifications.levelOrb", pet = "UIModifications.levelOrb", party = "UIModifications.levelOrb" }, "Level Orb")
-	Link("UnitFrames", "Frame", "General", { castbars = "PersonalDisplay.hideCastBar" }, "Hide The Game's Cast Bar (Personal Display)",
-		{ when = { key = "PersonalDisplay.!enabled", value = true, line = "Only with the Personal Display on" } })
 	-- (the Group Frames wear the Raid Frames pick's skin, border and bar texture)
-	Link("GroupFrames", "Frames", "Look", "UIModifications.RaidFramePanel", "Painted Skin (Raid Frames)")
-	Link("GroupFrames", "Frames", "Look", "UIModifications.raidFrameBorder", "Raid Frame Border")
-	Link("GroupFrames", "Bars", "Look", "BarTextures.raidframesTexture", "Bar Texture (Raid Frames)")
 	-- (Swing On The Rails makes the Swing Timers step aside)
 	Link("SwingTimers", "Swing Timers", "General", "PersonalDisplay.swing", "Swing On The Rails (Personal Display)",
 		{ when = { key = "PersonalDisplay.!enabled", value = true, line = "Only with the Personal Display on" } })
-	Link("UnitFrames", "Frame", "Look", { player = "UIModifications.portraitRing", target = "UIModifications.portraitRing",
-		focus = "UIModifications.portraitRing", pet = "UIModifications.portraitRing", party = "UIModifications.portraitRing" },
-		"Portrait Ring")
-	Link("UnitFrames", "Buffs & Debuffs", "Look", { player = "UIModifications.shade_buffs" }, "UI Shade")
 	-- (0.19.4: the aura border is worn by MelloUI's own rows only)
-	Link("UnitFrames", "Buffs & Debuffs", "Look", "UIModifications.auraBorder", "Aura Border", { when = { all = {
-		{ key = "UIModifications.qol_Auras", value = true },
-		{ any = { { key = "Auras.player", value = true }, { key = "Auras.target", value = true } } } },
-		line = "Only on MelloUI's own buff rows (Buffs & Debuffs on)" } })
 	Link("Nameplates", "Plates", "Look", "UIModifications.uiShade", "UI Shade", { when = { all = {
 		{ key = "NameplatePanel.nameShade", value = "plate" },
 		{ key = "UIModifications.reskin", notValue = false }, { key = "UIModifications.NameplatePanel", notValue = false } },
@@ -1216,7 +1251,6 @@ function L.Define(R, Link)
 	Link("Chat", "Chat Frame", "Look", "Chat.borderAlpha", "Border Opacity")
 	Link("Chat", "Chat Frame", "Text", "Fonts.fontChatText", "Chat Font")
 	Link("Chat", "Chat Frame", "Text", "Fonts.scaleChatParchment", "Chat On Parchment Size")
-	Link("UnitFrames", "Bars", "Text", { player = "BarText.fontSize", target = "BarText.fontSize", focus = "BarText.fontSize" }, "Text Size")
 	Link("ActionBars", "Cooldown Timers", "Text", { bars = "CooldownText.fontRatio" }, "Text Size")
 	-- (one look, 2026-10-15: no Swing Timer Border link here -- the swing timers' Round rim wears no painted frame,
 	-- the user's decision 8; the row on Look > Borders stays until stage E's option table)
