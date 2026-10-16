@@ -454,11 +454,12 @@ on and off. Only the target's plate: one row, moved when you change target.
 With the reskin's Nameplate Kit on, the level circle sits on the right end's diamond and covers it (0.16.0: the game's
 level frame stays where the game lays it; only its circle, number and target ring move onto the diamond), and the
 name is centred on the bracket, gem to gem. The name above each health bar sits on a soft dark band, as long
-as the name, that fades out at its ends (Name Shade: Name, the default). Whole plate adds a soft shadow that follows
-the plate's own shape: round the level circle, round each end gem and along the bar, in every
-Nameplate Border look; this needs the UI Shade on (Look > General), and its Shade Strength sets how
-dark that shadow is. Off: no shade. The band behind the name keeps one strength of its own, like the
-on-screen notice's (0.19.4). Name Shade sits on Nameplates > Enemies > Name; the nameplates' Painted Skin on Oldschool.
+as the name, that fades out at its ends (Name Shade: Name, the default; Off: no shade). The band behind the
+name keeps one strength of its own, like the on-screen notice's (0.19.4). Name Shade sits on Nameplates >
+Enemies > Name. With the painted Nameplate Kit, Whole Plate Shade (Oldschool > Frame Art) adds a soft
+shadow that follows the plate's own shape: round the level circle, round each end gem and along the
+bar, in every Nameplate Border look; it needs the UI Shade on (Look > General), and its Shade Strength
+sets how dark that shadow is.
 
 **Elite and Rare Marks** (on; Oldschool > Frame Art, with the Nameplate Kit): a metal line over the
 name with a crest on its middle (since 0.19.4; before it a small crest before the name and the

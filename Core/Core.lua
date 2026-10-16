@@ -4594,6 +4594,26 @@ do
 				fe.mine, fe.group = nil, nil
 			end
 		end,
+		-- one look stage G (the user's yes to Q12): Name Shade is the
+		-- Nameplates module's (Name / Off); the Nameplate Kit's Whole plate is
+		-- its own switch, Whole Plate Shade (the band stays: Name). The kit's
+		-- old key carried, then dropped (a table with none left alone)
+		function(self)
+			local kit = Raw(self, "NameplatePanel")
+			local old = kit and kit.nameShade
+			if old == nil then
+				return
+			end
+			kit.nameShade = nil
+			if old == "off" then
+				local np = Own(self, "Nameplates")
+				if np then
+					np.nameShade = "off"
+				end
+			elseif old == "plate" then
+				kit.plateShade = true
+			end
+		end,
 		-- one look C13b (the audit's Q9): Level Up and XP Gain are Tweaks'
 		-- (no switch over them), no longer Unit Frames' under Unit Frame
 		-- Tweaks: a saved off carried, the old keys dropped

@@ -51,8 +51,16 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		threatLine = true,
 		comboPoints = true,
 		comboSize = 90,
+		-- (one look stage G, the user's yes to Q12: Name Shade is the Nameplates
+		-- module's -- the Nameplate Kit's key until then, its Whole plate the
+		-- kit's own switch on Oldschool now; Core.lua's MERGES carries it)
+		nameShade = "name",
 	},
 	options = {
+		{ type = "dropdown", key = "nameShade", name = "Name Shade", values = {
+			{ value = "name", label = "Name" },
+			{ value = "off", label = "Off" },
+		}, desc = "A soft dark shade behind each nameplate's name, as long as the name, so it reads on bright ground (enemies and NPCs, not friendly players' name-only plates; part of Nameplate Tweaks). Off: no shade." },
 		{ type = "header", name = "Crowd Control" },
 		{ type = "toggle", key = "bigCC", name = "Large CC Icon Above Name",
 		  desc = "Move the crowd-control icon from the right side of the nameplate to above the name and enlarge it. Requires Blizzard's Crowd Control nameplate aura option to be on." },
@@ -481,9 +489,8 @@ Plate.PAD_X, Plate.PAD_Y = 4, 5
 -- and every placer), the assumption here (the base game's Above default is
 -- LEFT). 'CENTER' is the one-constant fallback.
 Plate.POINT = "BOTTOM"
-Plate.OWNER = "Nameplates names"
 Plate.KEY = "Nameplates plate parts"
-Plate.MODES = { name = true, plate = true, off = true }
+Plate.MODES = { name = true, off = true }
 -- the band's look (Shade:Band's options, read once a band; alpha set to the
 -- soft text look's at each making: a readability band, as the notice's)
 Plate.LOOK = { colour = "innerPanel", feather = 20, layer = "BACKGROUND", sublevel = -8, pixel = true }
@@ -528,19 +535,9 @@ function Plate.On()
 	return (M.isEnabled and M.db ~= nil) and true or false
 end
 
--- Name Shade's mode: NameplatePanel's key until it moves (stage G). Read raw
--- first (MelloUI.db.modules.NameplatePanel: the table GetModuleDB hands that
--- module, Core.lua), then that module's own db (the test worlds).
+-- Name Shade's mode: the module's own key (one look stage G, Q12)
 function Plate.Mode()
-	local db = MelloUI.db
-	local all = type(db) == "table" and db.modules
-	local own = type(all) == "table" and all.NameplatePanel
-	local mode = type(own) == "table" and own.nameShade or nil
-	if mode == nil then
-		local panel = MelloUI:GetModule("NameplatePanel")
-		local pdb = panel and panel.db
-		mode = type(pdb) == "table" and pdb.nameShade or nil
-	end
+	local mode = M.db and M.db.nameShade
 	return Plate.MODES[mode] and mode or "name"
 end
 
@@ -1192,13 +1189,6 @@ function Plate.OnNameUpdate(unit)
 	end
 end
 
--- Name Shade changed (the bus's 'setting': its key is NameplatePanel's)
-function Plate.OnSetting(module, key)
-	if module == "NameplatePanel" and key == "nameShade" and Plate.On() then
-		Plate.All()
-	end
-end
-
 -- UNIT_NAME_UPDATE while a band or a form is wanted (on a change only)
 function Plate.Listen()
 	local want = (Plate.On() and (Plate.Mode() ~= "off" or Plate.FormWanted())) and true or false
@@ -1210,14 +1200,6 @@ function Plate.Listen()
 		Plate.frame:RegisterEvent("UNIT_NAME_UPDATE")
 	else
 		Plate.frame:UnregisterEvent("UNIT_NAME_UPDATE")
-	end
-end
-
--- the bus's 'setting', once
-function Plate.Start()
-	if not Plate.started then
-		Plate.started = true
-		MelloUI:On("setting", Plate.OnSetting, Plate.OWNER)
 	end
 end
 
@@ -2003,9 +1985,8 @@ function M:OnEnable(db)
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 	RegisterQuestEvents(true)
 	RegisterThreatEvents(ThreatOn())
-	-- (the plate names: the bus's 'setting' once, every plate shown now through
-	-- the budget, UNIT_NAME_UPDATE as wanted)
-	Plate.Start()
+	-- (the plate names: every plate shown now through the budget,
+	-- UNIT_NAME_UPDATE as wanted)
 	Plate.All()
 	if db.bigCC then
 		ApplyAll()
@@ -2039,7 +2020,7 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
-	if key == "nameFormat" then
+	if key == "nameFormat" or key == "nameShade" then
 		Plate.All()
 		return
 	end

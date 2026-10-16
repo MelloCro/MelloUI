@@ -52,13 +52,13 @@ local M = MelloUI:RegisterModule("NameplatePanel", {
 	-- (include: the options below sit under this row on UI Modifications' HUD tab)
 	window = { label = "Nameplates", desc = "Nameplate health and cast bars in the kit.", tab = "HUD", include = true },
 	enabledByDefault = true,
-	defaults = { nameShade = "name", marks = true },
+	-- (one look stage G, Q12: Name Shade is the Nameplates module's; the kit's
+	-- own is the shade that follows its plate, plateShade -- its Whole plate
+	-- until then; Core.lua's MERGES carries it)
+	defaults = { plateShade = false, marks = true },
 	options = {
-		{ type = "dropdown", key = "nameShade", name = "Name Shade", values = {
-			{ value = "name", label = "Name" },
-			{ value = "plate", label = "Whole plate" },
-			{ value = "off", label = "Off" },
-		}, desc = "A soft dark shade behind each nameplate's name, as long as the name, so it reads on bright ground (enemies and NPCs, not friendly players' name-only plates; part of Nameplate Tweaks). Whole plate (the Nameplate Kit): the UI Shade also follows the plate's own shape, round the level circle, the end gems and along the bar (it needs the UI Shade on, Look; how dark that is: its Shade Strength). Off: no shade." },
+		{ type = "toggle", key = "plateShade", name = "Whole Plate Shade", new = "0.25.0",
+		  desc = "The UI Shade also follows the painted plate's own shape: round the level circle, round each end gem and along the bar, in every Nameplate Border look. It needs the UI Shade on (Look); its Shade Strength sets how dark it is. The name's own band is Nameplates' Name Shade." },
 		{ type = "toggle", key = "marks", name = "Elite and Rare Marks",
 		  desc = "Elites, rares, rare elites and bosses stand out: a metal line over the name with a crest on it. Gold with a crown and wings for an elite, silver with a star for a rare, silver with a gold star and wings for a rare elite, and red-bronze scrollwork with a skull, winged at both ends, for a boss. The plate itself keeps its look." },
 	},
@@ -500,12 +500,12 @@ end
 -- on the bus's 'shade'.
 --------------------------------------------------------------------------------
 
-local SHADE_MODES = { name = true, plate = true, off = true }
 local PARTNER = { colour = "innerPanel" }   -- Kit:Shadow's options (read once: one table for all)
 
+-- the kit's shade: Whole Plate Shade on (one look Q12), else none of its own
+-- (the name's band is the Nameplates module's Name Shade)
 local function ShadeMode()
-	local mode = M.db and M.db.nameShade
-	return SHADE_MODES[mode] and mode or "name"
+	return (M.db and M.db.plateShade == true) and "plate" or "off"
 end
 
 -- (0.16.0: the UI Shade's Shade Strength, one for the whole UI: the Whole
@@ -1240,7 +1240,7 @@ function M:OnDisable()
 end
 
 function M:OnSettingChanged(key)
-	if key == "nameShade" then
+	if key == "plateShade" then
 		ShadeAll(nil)
 	elseif key == "marks" then
 		MarksSync()

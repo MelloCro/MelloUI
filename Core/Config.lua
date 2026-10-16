@@ -2219,8 +2219,8 @@ local function Gate(page, r)
 	local m = b.mod
 	-- (one-look D6) a row whose key a core module reads from another module's
 	-- table sleeps with that module's switches while its own module is off
-	-- (any-of: the layout's `owner`; Name Shade, NameplatePanel's key that the
-	-- Nameplates module reads)
+	-- (any-of: the layout's `owner`; Bar Textures' Health Bar Colour, which
+	-- Group Frames reads -- one look C12)
 	local gm = m
 	if r.owner and not MelloUI:IsModuleEnabled(m.name) then
 		gm = r.owner

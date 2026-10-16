@@ -175,6 +175,10 @@ MOVED = dict.fromkeys(
 MOVED.update(dict.fromkeys(["UnitFrames.levelUp", "UnitFrames.xpGain"],
                            ((0, 25, 0), "UnitFramePanel's Level Up / XP Gain in the previous release; Unit Frames' "
                                         "(core) since the one-look build")))
+# one look stage G (the user's yes to Q12): Name Shade moved from the Nameplate Kit (NameplatePanel.nameShade) to the
+# Nameplates module, its name kept, Name / Off (Core.lua's MERGES carries it; Whole plate is the kit's new switch)
+MOVED["Nameplates.nameShade"] = ((0, 25, 0), "NameplatePanel.nameShade (the Nameplate Kit's Name Shade) in the previous "
+                                             "release; the Nameplates module's since one look stage G")
 # one look C13b (the audit's Q9): and on to Tweaks (no switch over them), their names and rows kept (Core.lua's MERGES
 # carries a saved "off" from UnitFrames.levelUp / xpGain)
 MOVED.update(dict.fromkeys(["Tweaks.levelUp", "Tweaks.xpGain"],
