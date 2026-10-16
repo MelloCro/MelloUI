@@ -1024,20 +1024,14 @@ local function Relay(entry)
 	return l, b, w, h
 end
 
--- sized to `scale` about (px, py), UI units; the new rect
+-- sized to `scale` about (px, py), UI units, on the pixel grid; the new rect
+-- (one look Q4: Core's MelloUI:ScaleEntryAbout, the one sizing about a point,
+-- shared with the configurator's Scale rows)
+local function OnGrid(v)
+	return Snap.Round(v, perUnit)
+end
 local function ScaleAbout(entry, scale, px, py)
-	local l, b, w, h = MelloUI:EntryRect(entry)
-	local s0 = FrameScale(entry)
-	if not (l and s0) then
-		return nil
-	end
-	if not MelloUI:ScaleEntry(entry, scale) then
-		return nil
-	end
-	local k = scale / s0
-	local nl, nb = Snap.Round(px - (px - l) * k, perUnit), Snap.Round(py - (py - b) * k, perUnit)
-	MelloUI:MoveEntry(entry, nl, nb)
-	return nl, nb, w * k, h * k
+	return MelloUI:ScaleEntryAbout(entry, scale, px, py, OnGrid)
 end
 
 -- the next size for a wheel notch, in whole percent of the standard size:

@@ -1123,8 +1123,19 @@ do
 		b = false
 		local name, rest = tostring(id):match("^([^.]+)%.(.+)$")
 		local m = name and MelloUI.modules[name]
+		local mover = rest and rest:match("^@scale:(.+)$")
 		if m and rest == "!enabled" then
 			b = { id = id, mod = m, kind = "module" }
+		elseif m and mover then
+			-- (one look Q4) "<Module>.@scale:<mover key>": the element's Edit
+			-- Layout Size as a Scale row, one stored value (Core.lua's
+			-- EntryFraction / SetEntryFraction); asleep with its module, and
+			-- while Edit Layout is open (Gate)
+			b = { id = id, mod = m, kind = "option", scaleKey = mover, opt = { type = "slider", name = "Scale",
+				min = 0.5, max = 2, step = 0.01, percent = true, new = "0.25.0",
+				desc = "How big it is: Edit Layout's Size, the same value.",
+				get = function() return MelloUI:EntryFraction(mover) end,
+				set = function(v) MelloUI:SetEntryFraction(mover, v) end } }
 		elseif m and type(m.options) == "table" then
 			local button = rest:sub(1, 1) == "#" and rest:sub(2) or nil
 			for _, o in ipairs(m.options) do
@@ -1798,6 +1809,7 @@ local TEXT = {
 	uim = "UI Modifications",
 	pickTip = "The %s this page's settings are for. Rows it has no setting for are dimmed.",
 	nothing = "Nothing to set here yet.",
+	scaleBusy = "Edit Layout is open: size it there.",
 }
 local AREAS_REFUSED = "Not in combat: this would switch painted skins."   -- (UI Modifications' own line, areasRefused)
 
@@ -1866,6 +1878,10 @@ local function Write(b, value)
 	if b.kind == "module" then
 		MelloUI:SetModuleEnabled(b.mod.name, value)
 		MelloUI:RefreshConfig()
+		return
+	end
+	if b.opt.set then
+		b.opt.set(value)   -- (a Scale row: the mover's store, its own setting path)
 		return
 	end
 	MelloUI:NotifySettingChanged(b.mod.name, b.key, value)
@@ -2079,6 +2095,11 @@ local function Gate(page, r)
 	if not b then
 		local label = page.lay.pickLabel[page.pick] or tostring(page.pick)
 		return false, nil, NotFor(label)
+	end
+	-- (one look Q4) a Scale row sleeps while Edit Layout is open: it holds
+	-- the element's size then (one value, one place to set it at a time)
+	if b.scaleKey and MelloUI.LayoutSession and MelloUI.LayoutSession.Active() then
+		return false, nil, TEXT.scaleBusy
 	end
 	local m = b.mod
 	-- (one-look D6) a row whose key a core module reads from another module's
@@ -2446,6 +2467,13 @@ end
 local resetShared = 0   -- of a reset's writes, the ones other picks share (ResetWants)
 local function ResetRow(page, r, pick)
 	local b = Current(page, r, pick)
+	if b and b.scaleKey then
+		-- (a Scale row: back to 100 %)
+		if math.abs(MelloUI:EntryFraction(b.scaleKey) - 1) > 0.001 then
+			Want(b, 1)
+		end
+		return
+	end
 	if not (b and b.kind == "option" and b.opt.type ~= "button" and b.mod.defaults[b.key] ~= nil) then
 		return
 	end

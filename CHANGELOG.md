@@ -35,6 +35,7 @@
 - Nameplates: Show Names As no longer rewrites every plate's name on each health update, which is lighter in big pulls. A name lifted over your combo points stays centred over its bar.
 - Show Names As shortens players' names only: NPCs keep their whole name.
 - Bar Textures: each kind of bar (unit frames, raid frames, nameplates, the Personal Display, experience bars, cast bars, the Cooldown Manager, the tooltip) has its own Bar Texture: Shared (the Look page's), the game's own art (Plain on MelloUI's own bars), or a picture of its own. Your Apply To switches carry over.
+- Group Frames and the Personal Display: a Scale row in their Layout section (Party Scale, Raid Scale; Scale and Shield Column Scale), the same size as Edit Layout's Size. It waits while Edit Layout is open.
 - Fader: no switch of its own any more. An element fades as soon as you set it to In Combat or On Mouseover. If your Fader was off, your saved choices go back to Always, so nothing changes on your screen.
 - Quality Gems show on every item in the game's own bags, bank and guild bank and in Bags by Kind, painted look or not; Grey Out Junk lays a grey copy over a junk item's picture, so the game's own grey for a locked item stays as the game sets it. Your choices carry over.
 

@@ -2527,6 +2527,94 @@ do
 		return true
 	end
 
+	-- (one look Q4, the user 2026-10-15) sized to `scale` about (px, py), UI
+	-- units (nil: its centre); `round`: a function laying a coordinate on the
+	-- pixel grid (Edit Layout's). The one sizing about a point: Edit Layout's
+	-- wheel and Size box and the configurator's Scale rows. The new rect
+	function MelloUI:ScaleEntryAbout(entry, scale, px, py, round)
+		local l, b, w, h = self:EntryRect(entry)
+		local frame = type(entry) == "table" and entry.frame
+		local ok, s0 = false, nil
+		if type(frame) == "table" then
+			ok, s0 = pcall(frame.GetScale, frame)
+		end
+		s0 = ok and Finite(s0) or nil
+		if not (l and s0 and s0 > 0) then
+			return nil
+		end
+		if not self:ScaleEntry(entry, scale) then
+			return nil
+		end
+		local k = scale / s0
+		px, py = px or (l + w / 2), py or (b + h / 2)
+		local nl, nb = px - (px - l) * k, py - (py - b) * k
+		if round then
+			nl, nb = round(nl), round(nb)
+		end
+		self:MoveEntry(entry, nl, nb)
+		return nl, nb, w * k, h * k
+	end
+
+	-- an element's Edit Layout Size as a fraction of its 100 % (its base),
+	-- read from the store (a session's place first), else the frame: the
+	-- configurator's Scale row and Edit Layout's Size are one stored value
+	function MelloUI:EntryFraction(key)
+		local entry = byKey[key]
+		local base = entry and self:EntryBase(entry) or 1
+		local pos = self:GetPosition(key)
+		local s = type(pos) == "table" and Finite(pos.scale) or nil
+		if not s and entry then
+			local ok, fs = pcall(entry.frame.GetScale, entry.frame)
+			s = ok and Finite(fs) or nil
+		end
+		if not (s and s > 0) then
+			return 1
+		end
+		return s / base
+	end
+
+	-- the Scale row's write: clamped to the entry's range, sized about its
+	-- anchor (else its centre) and stored as Edit Layout stores it (none at
+	-- exactly the 100 % an entry names); a protected frame in a fight waits
+	-- for its end (MelloUI.Schedule). False: no such element registered now
+	local SCALE_LO, SCALE_HI = 0.5, 2   -- (Edit Layout's range, of the 100 %, an entry's min / max otherwise)
+	function MelloUI:SetEntryFraction(key, fraction)
+		fraction = Finite(fraction)
+		local entry = byKey[key]
+		if not (entry and fraction and fraction > 0) then
+			return false
+		end
+		local frame = entry.frame
+		if InCombatLockdown() then
+			local okP, protected = pcall(frame.IsProtected, frame)
+			if not okP or Secret(protected) or protected then
+				local S = self.Schedule or self.Kit
+				if S and S.WhenOutOfCombat then
+					S:WhenOutOfCombat(function()
+						self:SetEntryFraction(key, fraction)
+					end, "Scale " .. tostring(key))
+				end
+				return true
+			end
+		end
+		local base = self:EntryBase(entry)
+		local lo, hi = Finite(entry.min) or SCALE_LO * base, Finite(entry.max) or SCALE_HI * base
+		local scale = math.max(lo, math.min(hi, base * fraction))
+		local l, b, w, h = self:EntryRect(entry)
+		local a = entry.anchor
+		if l and a and POINT_X[a] then
+			self:ScaleEntryAbout(entry, scale, l + POINT_X[a] * w, b + POINT_Y[a] * h)
+		else
+			self:ScaleEntryAbout(entry, scale)
+		end
+		local named = Finite(entry.base)
+		local stored = scale
+		if named and named > 0 and math.abs(scale - named) <= 0.001 then
+			stored = false   -- (exactly the 100 % it names: none stored)
+		end
+		return self:SavePosition(key, frame, stored)
+	end
+
 	local function PlaceAt(frame, point, relTo, relPoint, x, y)
 		Raw(frame, "ClearAllPoints")(frame)
 		Raw(frame, "SetPoint")(frame, point, relTo, relPoint, x, y)
