@@ -892,6 +892,9 @@ local Stage = {
 	TEXT = { empty = "Switch on Group Frames first.", healthLocked = "It tints the health bar: nothing to move.",
 		home = "Default place", gameHome = "The game's place" },
 	TRY_TYPES = { dropdown = true, picture = true },
+	-- (F-v3's F5b) the state chips over your own frames' picks: the member as it is, dead or offline -- the health
+	-- text's Dead / Offline word and the grey, as a real member shows them (the Portraits pick: the game's, none)
+	STATES = { { key = "normal", label = "Normal" }, { key = "dead", label = "Dead" }, { key = "offline", label = "Offline" } },
 	cache = {},   -- [pick] = { list = {}, frame = { [key] = part }, ind = { [ind] = part } (weak) }
 	EMPTY = {},
 }
@@ -921,6 +924,10 @@ function Stage.Paint(f, pick, _, ctx)
 		SampleMarks(f, RD:List(nil, "party"), 0.6, ctx.only)
 		return
 	end
+	local s = f.sample
+	if s then
+		s.dead, s.offline = ctx.state == "dead", ctx.state == "offline"
+	end
 	local try = ctx.try
 	local key = try and type(try.id) == "string" and try.id:match("^GroupFrames%.(.+)$")
 	if key then
@@ -949,6 +956,10 @@ function Stage.Refresh(stage)
 		if party and chips:Selected() ~= stage.pick then
 			chips:Select(stage.pick)
 		end
+	end
+	-- (the state chips over your own frames only: the Portraits pick is the game's frame)
+	if stage.chips then
+		stage.chips:SetShown(stage.pick ~= "portrait")
 	end
 	-- (the party's style switched: its canvases show that style's list)
 	for canvas, inst in pairs(Page.canvases) do
@@ -1188,7 +1199,7 @@ do
 			topics = { "groupframes" },
 			reset = { { "GroupFrames", "parts" }, { "GroupFrames", "partyParts" } },
 			Furnish = Stage.Furnish, Main = Stage.Main, Refresh = Stage.Refresh, Paint = Stage.Paint,
-			parts = Stage.Parts, PartKeys = Stage.PartKeys, Tries = Stage.Tries, Empty = Stage.Empty,
+			parts = Stage.Parts, PartKeys = Stage.PartKeys, Tries = Stage.Tries, Empty = Stage.Empty, states = Stage.STATES,
 			Moved = Stage.Moved, ResetAll = Stage.ResetAll, mover = Stage.Mover, OnSelect = Stage.OnSelect,
 		})
 	end
