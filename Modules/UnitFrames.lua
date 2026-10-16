@@ -1134,6 +1134,112 @@ function Party.Width(frame)
 	end
 end
 
+-- The party frames in the game's own sharp art (the user, 2026-10-16: "the Party Frames Borders are still very low
+-- resolution even on 100% size, make them the same as we have on the Player Unitframe"). The member frame's own art
+-- (UI-HUD-UnitFrame-Party-PortraitOn) is 1x; client 70425 has the party frame in the player frame's style at 2x --
+-- its "Character" art (UI-HUD-UnitFrame-CharacterFrameOnParty-PortraitOn), which no game setting switches on. Laid
+-- as the game's own PartyMemberFrameMixin:ToCharacterStyleArt lays it: the frame art, the combat flash and status
+-- glow, the player's portrait mask, the health box and the mana bar where the game's ArtLayoutInfo.Character puts
+-- them (read from the game's table) in their masks; the bars' fills stay as the game and Bar Textures have them.
+-- While wanted (the module on, the painted skin not dressing the party), a member in its player art (never the
+-- vehicle's), out of combat; laid again after the game lays its art again (ToPlayerArt: a post-hook, the sweep
+-- out of combat); the game's own layout (ArtLayoutInfo.Player) back when no longer wanted. Kept per member here
+-- (Party.art), nothing written as a key on the game's frames. A preview's stand-in (ours) the same
+Party.art = setmetatable({}, { __mode = "k" })
+Party.ART = {
+	Character = { frame = "UI-HUD-UnitFrame-CharacterFrameOnParty-PortraitOn",
+		flash = "UI-HUD-UnitFrame-CharacterFrameOnParty-PortraitOn-InCombat",
+		status = "UI-HUD-UnitFrame-CharacterFrameOnParty-PortraitOn-Status", portrait = "UI-HUD-UnitFrame-Player-Portrait-Mask",
+		health = "UI-HUD-UnitFrame-CharacterFrameOnParty-PortraitOn-Bar-Health-Mask",
+		mana = "ui-hud-unitframe-playerframeonparty-portraiton-bar-mana-mask" },
+	Player = { frame = "UI-HUD-UnitFrame-Party-PortraitOn", flash = "ui-hud-unitframe-party-portraiton-incombat",
+		status = "ui-hud-unitframe-party-portraiton-status", portrait = "CircleMask",
+		health = "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Health-Mask", mana = "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Mana-Mask" },
+}
+
+-- the game's layout of a style (its own table; nil on a client without it)
+function Party.Layout(style)
+	local mixin = rawget(_G, "PartyMemberFrameMixin")
+	local info = type(mixin) == "table" and type(mixin.ArtLayoutInfo) == "table" and mixin.ArtLayoutInfo[style]
+	if type(info) == "table" and type(info.Health) == "table" and type(info.Mana) == "table" then
+		return info
+	end
+	return nil
+end
+
+-- a member laid in a style: `style` "Character" (the sharp art) or "Player" (the game's own) -- out of combat
+function Party.Lay(frame, style)
+	local L, A = Party.Layout(style), Party.ART[style]
+	local tex, hc, mana = rawget(frame, "Texture"), rawget(frame, "HealthBarContainer"), rawget(frame, "ManaBar")
+	if not (L and A and type(tex) == "table" and type(hc) == "table" and type(mana) == "table") then
+		return false
+	end
+	local own = style == "Player"   -- (the game's own sizes: its atlases' -- its ToPlayerArt)
+	tex:SetAtlas(A.frame, true)
+	local flash = rawget(frame, "Flash")
+	if type(flash) == "table" and L.Flash then
+		flash:SetAtlas(A.flash, true)
+		flash:SetPoint("TOPLEFT", frame, "TOPLEFT", L.Flash.OffsetX, L.Flash.OffsetY)
+	end
+	local overlay = rawget(frame, "PartyMemberOverlay")
+	local status = type(overlay) == "table" and rawget(overlay, "Status")
+	if type(status) == "table" and L.Status then
+		status:SetAtlas(A.status, true)
+		status:SetPoint("TOPLEFT", frame, "TOPLEFT", L.Status.OffsetX, L.Status.OffsetY)
+	end
+	local pm = rawget(frame, "PortraitMask")
+	if type(pm) == "table" then
+		pm:SetAtlas(A.portrait)
+	end
+	local H = L.Health
+	local bar = rawget(hc, "HealthBar")
+	if type(bar) == "table" then
+		bar:SetHeight(H.Height)
+	end
+	hc:SetWidth(H.Width)
+	hc:SetPoint("TOPLEFT", frame, "TOPLEFT", H.OffsetX, H.OffsetY)
+	local hm = rawget(hc, "HealthBarMask")
+	if type(hm) == "table" then
+		hm:SetAtlas(A.health, true)
+		hm:SetPoint("TOPLEFT", H.OffsetXMask, H.OffsetYMask)
+	end
+	local P = L.Mana
+	mana:SetWidth(P.Width)
+	mana:SetPoint("TOPLEFT", frame, "TOPLEFT", P.OffsetX, P.OffsetY)
+	local mm = rawget(mana, "ManaBarMask")
+	if type(mm) == "table" then
+		mm:SetAtlas(A.mana, own)
+		if not own then
+			mm:SetSize(P.WidthMask or 128, P.HeightMask or 9)
+		end
+		mm:SetPoint("TOPLEFT", frame, "TOPLEFT", P.OffsetXMask, P.OffsetYMask)
+	end
+	return true
+end
+
+-- a member's art as wanted now (out of combat): the sharp art on a member in its player art, the game's back else
+function Party.Art(frame)
+	local want = Party.Wanted() and rawget(frame, "state") ~= "vehicle" and not rawget(_G, "UNIT_FRAME_SHOW_HEALTH_ONLY")
+		and Party.Layout("Character") ~= nil and C_Texture and C_Texture.GetAtlasInfo
+		and C_Texture.GetAtlasInfo(Party.ART.Character.frame) ~= nil
+	if want then
+		if not Party.art[frame] and Party.Lay(frame, "Character") then
+			Party.art[frame] = true
+		end
+	elseif Party.art[frame] then
+		Party.art[frame] = nil
+		if rawget(frame, "state") ~= "vehicle" then
+			Party.Lay(frame, "Player")
+		end
+	end
+end
+
+-- the game laid a member's art again (its ToPlayerArt): ours again, out of combat
+Party.OnArt = Shared("ToPlayerArt on a party member: the sharp art again", function(frame)
+	Party.art[frame] = nil
+	Party.Due()
+end)
+
 -- the member's band on its name alone (`alone`: Group Frames has moved its
 -- name or its level, the line's two ends no longer one line -- else the band
 -- would stretch between them or turn inside out), else from the name on to
@@ -1423,6 +1529,7 @@ end
 function Party.Sweep()
 	for _, frame in ipairs(Party.Members()) do
 		Party.Hook(frame)
+		Party.Art(frame)
 		if Party.Wanted() and not Party.of[frame] then
 			local okS, shown = pcall(frame.IsShown, frame)
 			if not okS or Secret(shown) or shown then
@@ -1482,6 +1589,9 @@ function Party.Hook(frame)
 	Perf.HookScript(frame, "OnShow", Party.OnShow)
 	if type(frame.UpdateNameTextAnchors) == "function" then
 		hooksecurefunc(frame, "UpdateNameTextAnchors", Party.OnAnchors)
+	end
+	if type(frame.ToPlayerArt) == "function" then
+		hooksecurefunc(frame, "ToPlayerArt", Party.OnArt)
 	end
 end
 
@@ -1686,6 +1796,7 @@ function M:DressStandIn(frame)
 		Party.Due()
 	else
 		Party.Width(frame)
+		Party.Art(frame)
 	end
 	local made = Party.of[frame]
 	if made and made.entry then
@@ -1797,6 +1908,10 @@ function M:OnEnable(db)
 		MelloUI.Kit:OnCover(function(group, covered)
 			if group == "unitframes" and not covered and M.isEnabled then
 				ApplyNames()
+			end
+			-- (the painted skin takes the party or leaves it: the art as wanted then)
+			if group == "partyframes" then
+				Party.Due()
 			end
 		end)
 		-- (the party's members as the game makes them: a post-hook, the

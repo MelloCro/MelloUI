@@ -2458,12 +2458,13 @@ local function MakeParty(parent, onto)
 	health:SetPoint("TOPLEFT", hc, "TOPLEFT", 0, 0)
 	health:SetStatusBarTexture(PARTY_HEALTH)
 	hc.HealthBar = health
-	Masked(health:GetStatusBarTexture(), hc, PARTY_HEALTH .. "-Mask", hc, -28, 3)
+	-- (the masks under the game's keys: Unit Frames lays the stand-in's art as the game's member's -- Party.Lay)
+	hc.HealthBarMask = Masked(health:GetStatusBarTexture(), hc, PARTY_HEALTH .. "-Mask", hc, -28, 3)
 	f.HealthBarContainer = hc
 	local mana = Bar(f)
 	mana:SetSize(74, 7)
 	mana:SetPoint("TOPLEFT", f, "TOPLEFT", 44, -31)
-	Masked(mana:GetStatusBarTexture(), mana, "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Mana-Mask", f, 16, -26)
+	mana.ManaBarMask = Masked(mana:GetStatusBarTexture(), mana, "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Mana-Mask", f, 16, -26)
 	f.ManaBar = mana
 	f.PartyMemberOverlay = CreateFrame("Frame", nil, f)
 	f.PartyMemberOverlay:SetAllPoints(f)
