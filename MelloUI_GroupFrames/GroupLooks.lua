@@ -169,25 +169,73 @@ end
 
 local EDGE_INSET = 1
 
+-- (one look C9) a bar's place as numbers, the one rule: the point it is
+-- anchored by on the host (CENTER is the bottom edge's middle), the offset
+-- that rule gives before the player's own, whether it runs up (LEFT and
+-- RIGHT), and its size on a host w x h
+function Looks.BarSpot(point, size, length, w, h)
+	point = point or "BOTTOM"
+	size = size or 3
+	local len = math.max(0.1, math.min(1, length or 1))
+	if point == "LEFT" or point == "RIGHT" then
+		return point, point == "LEFT" and EDGE_INSET or -EDGE_INSET, 0, true, size, math.max(1, (h - 2 * EDGE_INSET) * len)
+	end
+	local edge = (point:find("TOP") and "TOP") or "BOTTOM"
+	local side = (point:find("LEFT") and "LEFT") or (point:find("RIGHT") and "RIGHT") or ""
+	local dx = (side == "LEFT" and EDGE_INSET) or (side == "RIGHT" and -EDGE_INSET) or 0
+	return edge .. side, dx, edge == "TOP" and -EDGE_INSET or EDGE_INSET, false, math.max(1, (w - 2 * EDGE_INSET) * len), size
+end
+
+-- (one look C9) BarSpot the other way: a bar dropped at l, b, r, t (the
+-- host's units from its bottom left) -> the point, x and y that lay it there
+-- (a drag keeps its direction: `keep`; else a bar taller than wide runs up).
+-- Its edge and its side the ones it lies nearest, each by its gap (an edge's
+-- inset, the middle's centre); a tie keeps the one it had
+local FX = { LEFT = 0, RIGHT = 1 }
+function Looks.BarDrop(l, b, r, t, w, h, ind, keep)
+	local was = ind and ind.point or "BOTTOM"
+	local vertical
+	if keep then
+		vertical = was == "LEFT" or was == "RIGHT"
+	else
+		vertical = (t - b) > (r - l)
+	end
+	local gl, gr = math.abs(l - EDGE_INSET), math.abs(w - EDGE_INSET - r)
+	local point
+	if vertical then
+		point = (gl < gr or (gl == gr and was ~= "RIGHT")) and "LEFT" or "RIGHT"
+	else
+		local gt, gb = math.abs(h - EDGE_INSET - t), math.abs(b - EDGE_INSET)
+		local edge = (gt < gb or (gt == gb and was:find("^TOP") ~= nil)) and "TOP" or "BOTTOM"
+		local gc = math.abs((l + r) / 2 - w / 2)
+		local side = was:match("LEFT$") or was:match("RIGHT$") or ""
+		local best = (side == "LEFT" and gl) or (side == "RIGHT" and gr) or gc
+		if gl < best then
+			side, best = "LEFT", gl
+		end
+		if gc < best then
+			side, best = "", gc
+		end
+		if gr < best then
+			side = "RIGHT"
+		end
+		point = edge .. side
+	end
+	local at, dx, dy, _, bw, bh = Looks.BarSpot(point, ind and ind.size, ind and ind.length, w, h)
+	local fx = FX[at:match("LEFT$") or at:match("RIGHT$") or ""] or 0.5
+	local fy = (at:find("^TOP") and 1) or (at:find("^BOTTOM") and 0) or 0.5
+	local x = (l + fx * bw) - fx * w - dx
+	local y = (b + fy * bh) - fy * h - dy
+	return point, math.floor(x + 0.5), math.floor(y + 0.5)
+end
+
 -- a bar's edge: its points on the host and whether it runs up
 local function BarPlace(b, ind, host)
-	local point = ind.point or "BOTTOM"
-	local size = ind.size or 3
-	local len = math.max(0.1, math.min(1, ind.length or 1))
-	local vertical = point == "LEFT" or point == "RIGHT"
 	local w, h = Num(host:GetWidth()) or 72, Num(host:GetHeight()) or 36
+	local at, dx, dy, vertical, bw, bh = Looks.BarSpot(ind.point, ind.size, ind.length, w, h)
 	b:ClearAllPoints()
-	if vertical then
-		b:SetSize(size, math.max(1, (h - 2 * EDGE_INSET) * len))
-		b:SetPoint(point, host, point, (point == "LEFT" and EDGE_INSET or -EDGE_INSET) + (ind.x or 0), ind.y or 0)
-	else
-		local edge = (point:find("TOP") and "TOP") or "BOTTOM"
-		local side = (point:find("LEFT") and "LEFT") or (point:find("RIGHT") and "RIGHT") or ""
-		b:SetSize(math.max(1, (w - 2 * EDGE_INSET) * len), size)
-		local at = edge .. side
-		local dx = (side == "LEFT" and EDGE_INSET) or (side == "RIGHT" and -EDGE_INSET) or 0
-		b:SetPoint(at, host, at, dx + (ind.x or 0), (edge == "TOP" and -EDGE_INSET or EDGE_INSET) + (ind.y or 0))
-	end
+	b:SetSize(bw, bh)
+	b:SetPoint(at, host, at, dx + (ind.x or 0), dy + (ind.y or 0))
 	return vertical
 end
 

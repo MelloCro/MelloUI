@@ -316,7 +316,7 @@ function Button.Lay(f)
 		pfill:SetDrawLayer("BORDER", 0)
 	end
 	if ns.Parts then
-		ns.Parts:Lay(f, true)
+		ns.Parts:Lay(f)   -- (by its partsLayout: the raid's when it has none)
 	end
 	Button.Paint(f)
 end

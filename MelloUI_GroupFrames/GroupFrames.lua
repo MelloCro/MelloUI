@@ -289,6 +289,9 @@ local M = MelloUI:RegisterModule(OWNER, {
 		sets = {},
 		started = {},
 		parts = {},
+		-- (one look C9) the Group Frames party's own places: GroupParts.lua's
+		-- "groupParty" layout, split off `parts` once (its `split` marker)
+		partyParts = {},
 		nextId = 1,
 	},
 	options = {
@@ -872,6 +875,10 @@ end, "script")
 
 function M:OnInit(db)
 	self.db = db
+	-- (one look C9) the Group Frames party's own places, from the raid's once
+	if ns.Parts then
+		ns.Parts:Split(db)
+	end
 	-- (0.20.2: the raid's spacing of its own) a player from before keeps the one spacing party and raid shared; once
 	if not db.raidSpacingMigrated then
 		db.raidSpacingMigrated = true
@@ -907,6 +914,11 @@ end
 
 function M:OnEnable(db)
 	self.db = db
+	-- (again on every enable: a profile loaded from before the split -- no
+	-- marker -- gives our party that profile's places too)
+	if ns.Parts then
+		ns.Parts:Split(db)
+	end
 	if not specEvents then
 		specEvents = CreateFrame("Frame")
 		for _, e in ipairs({ "PLAYER_SPECIALIZATION_CHANGED", "ACTIVE_TALENT_GROUP_CHANGED", "PLAYER_TALENT_UPDATE" }) do
@@ -958,6 +970,14 @@ RD.LAYOUT_KEYS = { width = true, height = true, spacing = true, raidSpacing = tr
 
 function M:OnSettingChanged(key, _, db)
 	self.db = db
+	if key == "parts" or key == "partyParts" then
+		-- (one look C9: a part's write, a reset of the page, a profile -- every
+		-- frame laid again, once)
+		if ns.Parts and ns.Parts.LayAll then
+			ns.Parts.LayAll()
+		end
+		return
+	end
 	if key == "indicators" and ns.Indicators then
 		if db.indicators then
 			ns.Indicators:Start()
@@ -973,7 +993,7 @@ function M:OnSettingChanged(key, _, db)
 		end
 	elseif RD.LAYOUT_KEYS[key] then
 		ns.Headers:Layout()
-	elseif key ~= "sets" and key ~= "parts" then
+	elseif key ~= "sets" then
 		ns.Headers:Repaint()
 	end
 end

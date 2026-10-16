@@ -124,11 +124,14 @@ local OnAttribute = Shared("OnAttributeChanged on a group frame", function(b, na
 	end
 end, "script")
 
-local function Dress(b)
+-- `kind`: its header's ("party": our Group Frames party, laid by its own
+-- parts layout -- one look C9 -- "raid": the raid's)
+local function Dress(b, kind)
 	if b.melloDressed then
 		return
 	end
 	b.melloDressed = true
+	b.partsLayout = kind == "party" and "groupParty" or nil
 	b:RegisterForClicks("AnyUp")
 	Button.Build(b)
 	Perf.HookScript(b, "OnAttributeChanged", OnAttribute)
@@ -375,7 +378,7 @@ local function MakeHeader(kind)
 		if not b then
 			break
 		end
-		Dress(b)
+		Dress(b, kind)
 		i = i + 1
 	end
 	return h
