@@ -10,7 +10,7 @@
 --   0.17.0: Core/Fader.lua and Modules/Fader.lua, its settings carried over)
 --   * (one-look D5, 2026-10-15) the party members' level on the name line,
 --     the soft name band behind the player's, pet's, target of target's and
---     party's names, Level Up and XP Gain, the frames' parts for the frame
+--     party's names, Level Up and XP Gain (Tweaks' since one look C13b), the frames' parts for the frame
 --     effects (M:PartsOf / M:CoverOf / M:RingOf) and the Reminder widget's
 --     anchor (M:ReminderAnchor) -- moved here from the Unit Frames Kit
 --     (UnitFramePanel), which fills its painted ring, orb and stand-in
@@ -35,12 +35,12 @@ local Num = MelloUI.Safe.Number
 local M = MelloUI:RegisterModule("UnitFrames", {
 	title = "Unit Frames",
 	slash = "player",   -- (0.21.3: /mello player level; from the Unit Frames Kit since one-look D5)
-	desc = "Centred names, transparent name band, no combat flash and frame art opacity for player, target and focus; the party's levels, the names' soft bands, Level Up and XP Gain.",
+	desc = "Centred names, a clear name band and no combat flash for player, target and focus; the party's levels and the names' soft bands.",
 	icon = "Interface\\Icons\\INV_Misc_GroupLooking",
-	flavour = "Player, target and focus, centred and calm. Frame art at the opacity you choose.",
+	flavour = "Player, target and focus, centred and calm.",
 	group = "Frames and bars", navOrder = 1,
 	role = "replaces",
-	tweak = { label = "Unit Frame Tweaks", desc = "Name and glow tweaks on the unit frames, the party's levels and the names' soft bands (they step aside where the reskin covers them), Level Up and XP Gain.", order = 5 },
+	tweak = { label = "Unit Frame Tweaks", desc = "Name and glow tweaks on the unit frames, the party's levels and the names' soft bands (they step aside where the reskin covers them).", order = 5 },
 	-- (one look C13, the user's yes to the audit's drops, 2026-10-15: the names
 	-- centred and the target's and focus's name band transparent while this
 	-- module is on, the frame art at its full opacity -- MelloUI's choices,
@@ -50,8 +50,6 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		hideCombatGlow = true,
 		hideStatusGlow = true,
 		hidePvPBadge = true,
-		levelUp = true,
-		xpGain = true,
 		nameFont = "shared",
 	},
 	options = {
@@ -73,12 +71,6 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		-- rows kept -- Core.lua's MERGES carries a saved "off"; no header row
 		-- of their own: in the schema they sit under Frame Art, on the page
 		-- each has its one row, Core/ConfigLayout.lua)
-		-- (0.21.3; the user, 2026-10-13: "Yes to all" to the animation previews)
-		{ type = "toggle", key = "levelUp", name = "Level Up",
-		  desc = "When you gain a level, a light runs along the experience bar and the on-screen notice says your new level and, with the Quest List, how many quests it opened in your zone (their givers pop onto the world map the next time it shows them). With the painted reskin, the number in your player frame's level circle also turns over with a ring of light. Not with Reduce Motion: then only the notice." },
-		-- (0.22.1; the user, 2026-10-14: "build all 5" to the animation previews)
-		{ type = "toggle", key = "xpGain", name = "XP Gain",
-		  desc = "When you gain experience, the stretch of the experience bar just gained lights up while a light runs along it to the new end. Not with Reduce Motion." },
 	},
 })
 
@@ -1717,199 +1709,22 @@ function M:ReminderAnchor()
 	return portrait, "LEFT", reach, FarEnd(main)
 end
 
---------------------------------------------------------------------------------
--- Level Up (0.21.3; the user, 2026-10-13: "Yes to all" to BuildData/output/
--- animation_previews, 5. Level up; one-look D5: the Unit Frames module's,
--- following Unit Frame Tweaks): a light runs along the game's XP bar (its
--- rect only: nothing of the bar's written), and NOTICE_AT seconds in the
--- notice says the level and, with the Quest List, the quests it opened in the
--- player's zone (its NewQuestsAt; their givers pop on the map there). While
--- the painted skin dresses the frames, the player frame's level badge also
--- turns over to the new level with a ring of light (MelloUI.FrameFX:
--- FX.LevelRoll on the badge's copy, its "level" landings: it needs the kit's
--- orb disc). The motion not under Reduce Motion; the notice always while the
--- option is on. Its event (PLAYER_LEVEL_UP) only while the option is on.
---------------------------------------------------------------------------------
 
-local Level = { NOTICE_AT = 0.8, ORB_SPILL = { 70, 70 }, BAR_SPILL = { 8, 12 }, new = nil }
-
-function Level.Notice()
-	local new = Level.new
-	if not new then
-		return
-	end
-	local text = "Level " .. new
-	local ql = MelloUI:GetModule("QuestList")
-	if ql and ql.isEnabled and type(ql.NewQuestsAt) == "function" then
-		local ok, n = pcall(ql.NewQuestsAt, ql, new)
-		n = ok and Num(n) or nil
-		if n and n > 0 then
-			text = text .. " \194\183 " .. n .. (n == 1 and " new quest nearby" or " new quests nearby")
-		end
-	end
-	MelloUI:Announce(text)
-end
-
-function Level.Up(new)
-	new = Num(new)
-	if not (new and M.isEnabled and M.db and M.db.levelUp ~= false) then
-		return
-	end
-	Level.new = new
-	local FX, anim = MelloUI.FrameFX, MelloUI.Anim
-	local motion = FX and anim and not anim.reduceMotion
-	if motion then
-		-- (the badge's roll needs the painted skin's orb and disc)
-		local sp = Covered() and FX.Split and FX.Split(PlayerFrame)
-		if sp then
-			FX.LevelRoll(sp, new - 1, new)
-			local badge = sp.orb or sp.disc
-			if badge then
-				FX.ShowOn(badge, "level", "orb", Level.ORB_SPILL)
-			end
-		end
-		local bar = rawget(_G, "MainStatusTrackingBarContainer")
-		if bar and bar:IsVisible() then
-			FX.ShowOn(bar, "level", "bar", Level.BAR_SPILL)
-		end
-	end
-	Perf.C_Timer.After(motion and Level.NOTICE_AT or 0, Level.Notice)
-end
-
-Level.OnEvent = Shared("OnEvent of Level Up", function(_, _, level)
-	Level.Up(level)
-end, "event")
-
--- its event while the option is on (and the module)
-function Level.Listen()
-	local on = M.isEnabled and M.db ~= nil and M.db.levelUp ~= false
-	if not (on or Level.frame) then
-		return
-	end
-	if not Level.frame then
-		Level.frame = CreateFrame("Frame")
-		Perf.SetScript(Level.frame, "OnEvent", Level.OnEvent)
-	end
-	if on then
-		Level.frame:RegisterEvent("PLAYER_LEVEL_UP")
-	else
-		Level.frame:UnregisterAllEvents()
-	end
-end
-M.Level = Level   -- (the tests)
-
---------------------------------------------------------------------------------
--- XP Gain (0.22.1; the user, 2026-10-14: "build all 5" to BuildData/output/animation_previews_2, 1. XP bar): the
--- stretch of the game's XP bar just gained lights up while a light runs along it to the new end (MelloUI.FrameFX, its
--- "xp" landing, on that stretch's rect: FX.ShowAt). Nothing of the game's bar is written or held back -- its fill
--- moves as it always has. Not a level gained (Level Up's), a bar not shown, XP that reads secret; not under Reduce
--- Motion. (One-look D5: the Unit Frames module's, following Unit Frame Tweaks.)
---------------------------------------------------------------------------------
-
-local XP = { SPILL = { 16, 8 }, MIN_W = 4, ROWS = { "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" },
-	EXPERIENCE = 4, PREVIEW = 0.08, at = nil, max = nil }
-
--- the game's XP bar shown now (the main or the second status bar row's Experience bar): its StatusBar
-function XP.Bar()
-	local info = rawget(_G, "StatusTrackingBarInfo")
-	local index = info and info.BarsEnum and info.BarsEnum.Experience or XP.EXPERIENCE
-	for _, name in ipairs(XP.ROWS) do
-		local row = rawget(_G, name)
-		local bar = type(row) == "table" and type(row.bars) == "table" and row.bars[index]
-		local sb = type(bar) == "table" and bar.StatusBar
-		if sb and sb:IsVisible() then
-			return sb
-		end
-	end
-	return nil
-end
-
--- the player's XP and the level's (nil: secret, none)
-function XP.Read()
-	local okX, x = pcall(UnitXP, "player")
-	local okM, m = pcall(UnitXPMax, "player")
-	x, m = okX and Num(x) or nil, okM and Num(m) or nil
-	if x and m and m > 0 then
-		return x, m
-	end
-	return nil
-end
-
--- the light from `old` to `now` (of `max`) on the bar
-function XP.Play(old, now, max)
-	local FX = MelloUI.FrameFX
-	local sb = XP.Bar()
-	if not (FX and FX.ShowAt and sb) or MelloUI.Anim.reduceMotion then
-		return
-	end
-	local l, b, r, t = FX.Rect(sb)
-	if not l then
-		return
-	end
-	local w = r - l
-	local x1 = l + w * math.min(1, now / max)
-	local x0 = math.min(l + w * math.max(0, old / max), x1 - XP.MIN_W)
-	FX.ShowAt(math.max(l, x0), b, x1, t, "xp", "gain", XP.SPILL)
-end
-
-function XP.Update()
-	local old, oldMax = XP.at, XP.max
-	local now, max = XP.Read()
-	XP.at, XP.max = now, max
-	if now and old and max == oldMax and now > old and M.isEnabled and M.db and M.db.xpGain ~= false then
-		XP.Play(old, now, max)
-	end
-end
-
-XP.OnEvent = Perf.Shared("OnEvent of XP Gain", function(_, event, unit)
-	if event == "PLAYER_ENTERING_WORLD" then
-		XP.at, XP.max = XP.Read()
-	elseif unit == "player" then
-		XP.Update()
-	end
-end, "event")
-
--- its events while the option is on (and the module)
-function XP.Listen()
-	local on = M.isEnabled and M.db ~= nil and M.db.xpGain ~= false
-	if not (on or XP.frame) then
-		return
-	end
-	if not XP.frame then
-		XP.frame = CreateFrame("Frame")
-		Perf.SetScript(XP.frame, "OnEvent", XP.OnEvent)
-	end
-	if on then
-		XP.frame:RegisterEvent("PLAYER_XP_UPDATE")
-		XP.frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-		XP.at, XP.max = XP.Read()
-	else
-		XP.frame:UnregisterAllEvents()
-		XP.at, XP.max = nil, nil
-	end
-end
-M.XP = XP   -- (the tests)
-
--- (/mello player level) the level-up played on the level you have, to see it
--- (the badge turning from the one before; the notice and the quests as at a
--- level gained)
+-- (/mello player level, /mello player xp) Level Up's and XP Gain's plays to
+-- see them: Tweaks' (one look C13b: they moved there), these words their
+-- doorway as before
 M.SlashWords = {
 	level = function()
-		local lv = Num(UnitLevel("player"))
-		if not (lv and M.isEnabled and M.db and M.db.levelUp ~= false) then
-			MelloUI:Print("Unit Frames: Level Up is off (Unit Frames > Frame > Look), or Unit Frame Tweaks are.")
-			return
+		local T = MelloUI.modules.Tweaks
+		if T and T.SlashLevel then
+			T.SlashLevel()
 		end
-		Level.Up(lv)
 	end,
-	-- (/mello player xp, 0.22.1) XP Gain's light on the bar as for a gain of PREVIEW of the level
 	xp = function()
-		local now, max = XP.Read()
-		if not (now and M.isEnabled and M.db and M.db.xpGain ~= false and XP.Bar()) then
-			MelloUI:Print("Unit Frames: XP Gain is off (Unit Frames > Frame > Look), Unit Frame Tweaks are, or no experience bar shows.")
-			return
+		local T = MelloUI.modules.Tweaks
+		if T and T.SlashXP then
+			T.SlashXP()
 		end
-		XP.Play(math.max(0, now - max * XP.PREVIEW), math.max(now, max * XP.PREVIEW), max)
 	end,
 }
 
@@ -1945,10 +1760,9 @@ end
 local coverWatched = false
 
 -- switched on after the login's PLAYER_ENTERING_WORLD (Core's start-up pass
--- over the login's first frames): that event as it came, to XP Gain's and
--- the names' covers' frames
+-- over the login's first frames): that event as it came, to the names'
+-- covers' frame (XP Gain's: Tweaks', one look C13b)
 function M:OnLoginWorld(...)
-	MelloUI:ReplayWorld(XP.frame, ...)
 	MelloUI:ReplayWorld(Compact.frame, ...)
 end
 
@@ -1974,14 +1788,10 @@ function M:OnEnable(db)
 	end
 	ApplyAll()
 	ApplyParts()
-	Level.Listen()
-	XP.Listen()
 end
 
 function M:OnDisable()
 	RefreshNames("both")   -- the game's full names back (first: the covers' release never waits on the rest)
-	Level.Listen()
-	XP.Listen()
 	ApplyParts()
 	ApplyAll()
 end
@@ -1990,12 +1800,6 @@ function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if key == "nameFormat" then
 		RefreshNames(value or "both")
-		return
-	elseif key == "levelUp" then
-		Level.Listen()
-		return
-	elseif key == "xpGain" then
-		XP.Listen()
 		return
 	end
 	ApplyAll()

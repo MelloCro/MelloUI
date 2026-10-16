@@ -4594,6 +4594,28 @@ do
 				fe.mine, fe.group = nil, nil
 			end
 		end,
+		-- one look C13b (the audit's Q9): Level Up and XP Gain are Tweaks'
+		-- (no switch over them), no longer Unit Frames' under Unit Frame
+		-- Tweaks: a saved off carried, the old keys dropped
+		function(self)
+			local uf = Raw(self, "UnitFrames")
+			if not uf or (uf.levelUp == nil and uf.xpGain == nil) then
+				return
+			end
+			local level, xp = uf.levelUp, uf.xpGain
+			uf.levelUp, uf.xpGain = nil, nil
+			if level == false or xp == false then
+				local t = Own(self, "Tweaks")
+				if t then
+					if level == false then
+						t.levelUp = false
+					end
+					if xp == false then
+						t.xpGain = false
+					end
+				end
+			end
+		end,
 		function(self)
 			for name, keys in pairs({ UnitFrames = { "frameAlpha", "centerNames", "hideReputationColor" },
 				HealFlight = { "raidLanding" }, PersonalDisplay = { "hop" } }) do

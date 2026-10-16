@@ -175,6 +175,11 @@ MOVED = dict.fromkeys(
 MOVED.update(dict.fromkeys(["UnitFrames.levelUp", "UnitFrames.xpGain"],
                            ((0, 25, 0), "UnitFramePanel's Level Up / XP Gain in the previous release; Unit Frames' "
                                         "(core) since the one-look build")))
+# one look C13b (the audit's Q9): and on to Tweaks (no switch over them), their names and rows kept (Core.lua's MERGES
+# carries a saved "off" from UnitFrames.levelUp / xpGain)
+MOVED.update(dict.fromkeys(["Tweaks.levelUp", "Tweaks.xpGain"],
+                           ((0, 25, 0), "UnitFramePanel's Level Up / XP Gain in the previous release; Tweaks' (core) "
+                                        "since one look C13b")))
 # one-look D7: the minimap's Painted Skin, UI Modifications' switch of the painted minimap, moved with the painted half
 # into the module MinimapKit (UIModifications.MinimapPanel -> .MinimapKit; Core.lua's MERGES carries a saved "off")
 MOVED["UIModifications.MinimapKit"] = ((0, 25, 0), "UIModifications.MinimapPanel (the minimap's Painted Skin) in the "
