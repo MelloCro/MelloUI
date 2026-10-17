@@ -139,6 +139,7 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "0.25.0", lines = {
+		"Settings: borders and parchment are on Oldschool; a new Automation page; Gains, FPS / latency and the damage meter have new homes.",
 		"One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off.",
 		"Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, a plate, a bar or the map, then a part; drag the party's and raid's parts on their large frame.",
 		"Windows: a new frame -- the logo heads the configurator's side list, small windows get a slim strip.",
@@ -146,8 +147,7 @@ local CHANGELOG = {
 		"Action bars and minimap: backdrops and MelloUI's square minimap for everyone, no painted skin needed; the round painted map is Oldschool's.",
 		"Quests: one gem per title, a ring on the quest you follow, Parchment its own switch; the tracker's Painted Skin is gone.",
 		"Route: the World Marker shows the way (the arrow row is gone); a bead marks your flight point.",
-		"Edit Layout: more of the game's windows move without the painted reskin.",
-		"Bags: quality gems and grey junk on every bag, bank and guild bank slot, painted look or not.",
+		"Edit Layout and bags: more windows move without the painted reskin; quality gems and grey junk on every slot.",
 		"Nameplates: a soft band behind enemy and NPC names; Show Names As is lighter in big pulls and for players only.",
 		"Macro Backup is gone: the game keeps your settings, and its account macros are freed.",
 		"Group Frames: party and raid keep their own places and indicators; profiles and share strings keep them.",
@@ -314,7 +314,7 @@ local SKIN = nil
 -- around a rounded icon, grey at rest, gold when selected, the text colour
 -- while hovered; with the kit, the rim every window's buttons wear (user,
 -- 2026-09-24: the icons follow the look's settings) -- the Button Border
--- (Look > Borders), swapped live with it, in the Kit Colours look -- showing the box's states: gold (checked) for the current page,
+-- (Oldschool > Borders), swapped live with it, in the Kit Colours look -- showing the box's states: gold (checked) for the current page,
 -- pressed while held, hover. box:SetGlow(on): a pulsing gold glow over the
 -- rim for an important module (Anim:Pulse; a still glow under Reduce Motion).
 local function IconBox(parent, size, texture)

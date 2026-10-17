@@ -38,7 +38,7 @@ local LOOKS = Kit.buttonLooks
 
 -- Window Background: the window's own stone, or one of the button
 -- backgrounds over the whole window (not None: the world would show through;
--- not Parchment: the window's parchment is Look > Parchment's Character
+-- not Parchment: the window's parchment is Oldschool > Parchment's Character
 -- Window since 0.19.4, the options audit: one control, ParchmentMode)
 local WINDOW_BACKGROUNDS = { { value = "window", label = "Window stone", piece = "window/frame_body" } }
 for _, v in ipairs(LOOKS.backgrounds) do
@@ -64,7 +64,7 @@ local M = MelloUI:RegisterModule("CharacterPanel", {
 	},
 	options = {
 		{ type = "dropdown", key = "windowBackground", name = "Window Background", values = WINDOW_BACKGROUNDS,
-		  desc = "What the character window shows behind everything: its own stone, or stone, cracked concrete, iron plate, leather or dark. Parchment is Look > Parchment's Character Window: under the right pane, or over the whole window (on its own stone, whatever this shows). The equipment slots, the progress bars and the side tabs wear the borders of Look > Borders (every window's)." },
+		  desc = "What the character window shows behind everything: its own stone, or stone, cracked concrete, iron plate, leather or dark. Parchment is Oldschool > Parchment's Character Window: under the right pane, or over the whole window (on its own stone, whatever this shows). The equipment slots, the progress bars and the side tabs wear the borders of Oldschool > Borders (every window's)." },
 	},
 })
 
@@ -88,7 +88,7 @@ local layHeld = nil       -- GetTime() of the window's OnShow, which lays the pa
 -- The test is MelloUI.Safe's (Core.lua), one set for the addon.
 local Secret = MelloUI.Safe.IsSecret
 
--- The window's parchment: Look > Parchment's Character Window (UI
+-- The window's parchment: Oldschool > Parchment's Character Window (UI
 -- Modifications' parchment_character; 0.19.4, the options audit: Window
 -- Background's Parchment folded in, one control) -- "off", "pane" (a sheet
 -- under the right pane) or "window" (one over the whole window, the right
@@ -2149,7 +2149,7 @@ local function Hook()
 	end)
 	-- the panes' inner panels come and go with the character tab (the paper
 	-- doll shown: the model and the stats; any other tab: a list and its
-	-- details), and with the window's parchment (Look > Parchment's Character
+	-- details), and with the window's parchment (Oldschool > Parchment's Character
 	-- Window, the right pane's or the whole window's: it goes through
 	-- SetParchment)
 	local paper = _G.PaperDollFrame
@@ -2295,7 +2295,7 @@ function M:RefreshDims()
 	end
 end
 
--- The whole window's parchment (Look > Parchment's Character Window: Whole
+-- The whole window's parchment (Oldschool > Parchment's Character Window: Whole
 -- window; Window Background's Parchment before 0.19.4) as a parchment SHEET
 -- on the window's stone, inside its rails, ending in the quest log's
 -- painted strokes on every side
@@ -2401,7 +2401,7 @@ function M:PaintDarkBackground()
 	pieceOf[body], pieceNameOf[body] = true, nil   -- still ours (a plain mark): never faded with the game's art
 end
 
--- The window on parchment (Look > Parchment's Character Window: the right
+-- The window on parchment (Oldschool > Parchment's Character Window: the right
 -- pane's sheet, or the whole window's): its texts in ink (QuestInk's rule,
 -- user 2026-09-23); the category and header plates, the bars and the icons
 -- as they are

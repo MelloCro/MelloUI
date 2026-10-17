@@ -4250,7 +4250,7 @@ do
 			end
 		end,
 		-- 0.19.4 (the options audit, C3): the character window's parchment
-		-- is one choice, Look > Parchment's Character Window (UI
+		-- is one choice, Oldschool > Parchment's Character Window (UI
 		-- Modifications' parchment_character: "off", "pane" -- the right
 		-- pane's sheet -- or "window", the whole window's). Its old switch
 		-- (a boolean): on is the right pane. Window Background's Parchment

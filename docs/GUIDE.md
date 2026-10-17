@@ -96,7 +96,7 @@ A small round button beside your portrait taps you on the shoulder, then tucks i
 - At a shop that sells what you are low on, a small shopping list opens beside it. Nothing is bought until you click **Buy**.
 - Bags almost full, talent points to spend and Well Fed running out get the same little button.
 - So do your buffs: a poison or an oil that ran out on your weapon (while you carry one to put back), one of your own buffs missing on you, and your buffs missing on your group, with their names. They stay up until it is back on, in fights too, and a click puts it back on (out of combat).
-- It all lives on the **Reminders** page, one switch per reminder. The Services bar's **Errands** group shows the same reminders.
+- It all lives on the **Reminders & Widgets** page, one switch per reminder. The Services bar's **Errands** group shows the same reminders.
 
 And what needs you *right now* shows up as small widgets in one column, each with a gold ring for its time: loot rolls (Need, Greed, Pass right there), the way back to your corpse, a timed quest's clock, summons and resurrect offers (Accept or Decline), ready checks, whispers (Reply opens the conversation), a hungry pet (Feed Pet), outbid / sold / won at the auction house, your crafting batch ("Crafting 12 of 20") and a profession cooldown that's ready again. Voice Over lives there too, always at the bottom: nothing moves what's being read, and a fight never stops it. Loot rolls, summons and ready checks sit right above it; at most four show at once (**Most Widgets Shown**), the rest wait in a slim "+2 more" row you can click open, and whispers or the auction house step aside in a fight and come back after. Move and size the column in Edit Layout; each one has its switch on the Reminders page's **Widgets** tab.
 
@@ -126,7 +126,7 @@ Close it without installing and nothing changes. Run it again any time: **Instal
 
 - **Top bar:** on the left, **Preview** (below); on the right, **Install…** (the installer), **Edit Layout** (move and resize the interface on the screen itself, as in Drag. Everything. above; it works with UI Modifications off too) and close.
 - **Preview:** see how your interface behaves in a fight before you are in one. The button opens a list: **Solo Fight** and **Party Fight** play everything, then one part at a time: **Fader**, **Reminders**, **Widget Column**, **Party Frames**, **Damage Meter**, **Combat Text**, **Gains** and **Personal Display**. A click plays a short scene (about 26 seconds) with made-up names and numbers: resting, the pull, a fight, the kill and after it. The settings window steps aside while it plays and comes back after; a strip at the top of the screen names what plays, the moment ("Resting", "In a fight", "After the fight") and has **Stop**. What you set shows as you set it: what you fade In Combat comes back in the fight and fades after it, the reminders hide in the fight, the widgets that wait for a fight's end fold away. Party Fight and Party Frames draw stand-ins where your party frames sit (the game shows its own only in a real group), their health falling and healed back; the meter's numbers and race bar show the made-up group, and the fight summary after the kill says it is made up (it is never in your Fight History). Your Damage shows at your target's nameplate while you have a target. A part whose module is off is dimmed in the list. Out of combat only: a real fight, or opening Edit Layout, stops it at once (the settings window then stays shut). `/mello preview solo`, `party` or a part's word (`fader`, `reminders`, `widgets`, `partyframes`, `meter`, `combattext`, `gains`, `personal`), and `/mello preview stop`.
-- **Side list:** Home, then the pages in five groups, then Profiles: **The look** (Look, Windows, Fader, Oldschool: the painted reskin's own settings), **Frames and bars** (Unit & Group Frames, Nameplates, Bars, Minimap, Meters), **Chat and text** (Chat, Tooltip, Screen Text), **Quests and travel** (Quest Tracker, Quest List, Route, Reminders, Gains) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
+- **Side list:** Home, then the pages in five groups, then Profiles: **The look** (Look, Windows, Fader, Oldschool: the painted reskin's own settings), **Frames and bars** (Unit & Group Frames, Nameplates, Bars, Minimap, Damage Meter), **Chat and text** (Chat, Tooltip, Screen Text), **Quests and travel** (Quest Tracker, Quest List, Route, Reminders & Widgets, Automation) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
 - **Pages:** every page is laid out the same way. At the top its name and what it holds, its switch where the page is one module's (Look's is **UI Modifications**: the painted reskin and every feature that tunes the interface go with it; the palette, the UI Shade and Reduce Motion keep working without it) and **Reset this page** (every setting on the page back to its default, on every tab; on a page with a picker, for the one picked and the settings every pick shares; the switches of whole modules and what is your character's own stay; it asks first, saying how many settings change). Under it the tabs, and on every tab the same sections in the same order: General, Look, Text, Layout, Behaviour, Sound, Advanced (a section with nothing in it is left out). Pages and tabs slide and fade in, and the wheel glides the page and the list; Reduce Motion (Look > General) makes all of it instant.
 - **Every setting in one place:** each setting lives on one page only. What the whole interface shares (the palette, the Kit Colours, the borders, the Font Style and its sizes, the UI Shade and its areas, the parchment sheets, Dark Mode's brightness, the bar texture and the health bar colours) lives on **Look**. A page it touches shows a **link row**: the setting's value and a button naming the page it lives on (**Look >**, **Minimap >**, **Windows >**) that takes you to it.
 - **Designers:** Unit & Group Frames is a designer. Its frames stand in a row at the top: Player, Target, Focus, Pet, Buffs, Party, Raid, Personal, and **All frames** for what every frame shares (the heal light, the big moments, the debuff glow). Pick one, then one of its parts on the line under it (Name, Health bar, Portrait…): the part's options come first, the whole frame's under them, each heading saying whose it is ("Player · Look"). An option that is one setting for several frames is marked **Shared**, and its tooltip names the others. The **Party** and **Raid** frames show your frame large at the top (it stays there while the page scrolls): click a part on it to open that part's options, or a part on the line to pick it there. The **Player**, **Target**, **Focus** and **Pet** frames show a copy of the game's own frame at the top, drawn with your settings (the bars, the names, the values, the portrait) at the game's own size, so it is as sharp as your frames; click its portrait, health bar, name or values to open that part. Each text part (a name, the values, the health text, the buff and indicator numbers, the Personal Display's text) has its own **Font** in its Text section: **Shared** keeps the face Look > Fonts gives it.
@@ -266,7 +266,7 @@ lines), and the nameplates on Whole plate. A window gets its shade on its first 
 is made at login for what you have not opened. The shade takes the palette's darkest tone and
 needs the reskin (each area follows its own part of it).
 
-**Parchment Style** (Look > Parchment, above the parchment switches): how the parchment looks
+**Parchment Style** (Oldschool > Parchment, above the parchment switches): how the parchment looks
 wherever it shows, on the sheets you switched on (tooltips, chat, whispers, the trackers, the
 meter, the character window, the dialogs) and on the quest log, quest and spell book pages.
 **Burnt paper** (the default since 0.20.1): warm paper with burnt edges, the big pages with
@@ -313,7 +313,7 @@ or **Cooldowns** (the game's Cooldown Manager), then a part of it (a button, the
 page arrows; the micro menu or the bag bar; a swing bar; the XP bar) for its own settings; the bar's own settings
 are under the parts'. Keybind Mode is in the page's header. The painted action bar skin's settings are on Oldschool,
 and the cooldown timers' style (text size, tenths, colours, minimum duration) on Look > Icons, as it is the action
-bars' and the nameplates' alike. The damage meter and the FPS / latency readout are on **Meters**.
+bars' and the nameplates' alike. The damage meter is on **Damage Meter**, the FPS / latency readout on **Reminders & Widgets**.
 
 On Action Bars, the stage lists your bars as strips (Bars 1 to 8, the stance and pet bars) beside the picked one, drawn
 large as the game lays it with your settings: a click on a strip makes it the bar the Layout rows set (Which Bar), a
@@ -597,7 +597,7 @@ One choice for every unit frame: player, target, focus, pet, target of target an
 
 **Party members' level** (0.21.3): with the painted unit frames, each party member shows its level in a
 circle at the lower left of its portrait, the player's circle at the party portrait's size, in your Level Orb
-look (Look > Borders). The game's party frame has no level of its own; with the kit off there is none.
+look (Oldschool > Borders). The game's party frame has no level of its own; with the kit off there is none.
 
 **Level Up** (Bars > XP & Rep > XP bar, 0.21.3, on): when you gain a level, the number
 in your player frame's level circle turns over to the new one (the old level rising out, the new one
@@ -736,7 +736,7 @@ default; its settings on **Unit & Group Frames**' **Personal** frame):
 
 - **Health, power and your cast bar** under your character's feet, in the unit frames' gem-capped frames, with your
   health and power in percent beside them. The cast bar shows only while you cast or channel: the spell and its
-  seconds. **Width** and **Height** size the bars. Their frame is **Look > Borders > Personal Display Border**: the gem-capped Ornate by default, the cast bar's, a thin rim, the Single rail, the Stone
+  seconds. **Width** and **Height** size the bars. Their frame is **Oldschool > Borders > Personal Display Border**: the gem-capped Ornate by default, the cast bar's, a thin rim, the Single rail, the Stone
   rail, the Backdrop or none; the bars and the shield column take it together.
 - **The shield column** stands on your character's right: one bar for every shield on you, added up as the game
   counts them: spells (Power Word: Shield, Ice Barrier, Mana Shield, the wards), talents and items, the ones against
@@ -1603,7 +1603,7 @@ lasts until everything is back on and something goes missing again.
 
 ### Restock
 
-Keeps drink, food, ammunition and reagents in your bags (its rows are on the Reminders page).
+Keeps drink, food, ammunition and reagents in your bags (its rows are on the Automation page).
 Each character has its own list, which profiles never carry or wipe; a new one starts with
 suggestions for its class: drink for the classes that use mana, food for everyone, 1000 arrows
 for a hunter (bullets with a gun), all from level 5, and class reagents at the levels they are used. Older,
@@ -1743,7 +1743,7 @@ On **Game**, the numbers over the enemies are drawn by the game: their font is *
 
 ### Damage Meter
 
-MelloUI's damage meter **in place of the game's** (Meters, Damage Meter). Its switch,
+MelloUI's damage meter **in place of the game's** (Damage Meter). Its switch,
 **Use MelloUI's Damage Meter (replaces the game's)**, is on by default: while it is on the game's
 own meter windows never show (MelloUI switches off the game's "Enable Damage Meter" setting out
 of combat and puts your own value back when you switch MelloUI's meter off). The numbers are the
@@ -1827,7 +1827,7 @@ copy from `/mellolog`.
 
 The **Minimap** page is a designer: pick **Minimap** or **Services**, then a part (Coordinates and Border; the
 Services button and the Tray) for its own settings, the element's under them. The page's switch is MelloUI's minimap.
-Square Border is the Border part's (Look > Borders links it), the map's Fade its last Behaviour row. **Route trail** and
+Square Border is the Border part's (Oldschool > Borders links it), the map's Fade its last Behaviour row. **Route trail** and
 **Objective marks** are drawn on the map by Route and the World Map: their parts say where their settings are. The
 modern map is square; the painted Minimap skin (Oldschool > Painted Skins > Minimap) brings the round map with its
 painted ring and the zone plate, and its **Minimap Shape** (Oldschool > Frame Art) picks Round or Square.

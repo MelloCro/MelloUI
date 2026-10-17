@@ -103,7 +103,7 @@ L.groups = {
 	{ title = "Frames and bars", entries = { "UnitGroupFrames", "Nameplates", "ActionBars", "Minimap",
 		"BarsMeters" } },
 	{ title = "Chat and text", entries = { "Chat", "Tooltip", "ScreenText" } },
-	{ title = "Quests and travel", entries = { "QuestTracker", "QuestList", "Route", "Reminders", "Gains" } },
+	{ title = "Quests and travel", entries = { "QuestTracker", "QuestList", "Route", "Reminders", "Automation" } },
 	{ title = "Sound", entries = { "VoiceOver", "CustomSounds" } },
 	{ entries = { "Profiles" } },
 }
@@ -114,10 +114,10 @@ L.pages = {
 	-- is UI Modifications', which takes the reskin and every folded feature
 	-- with it)
 	Look = { title = "Look", icon = "module:UIModifications", module = "UIModifications",
-		flavour = "The look of the whole interface: the painted reskin, the palette, the soft shade, borders, fonts, Dark Mode, the bar texture and the parchment sheets. Every element's own page links here.",
+		flavour = "The look of the whole interface: the palette, the soft shade, fonts, icons, Dark Mode, the bar texture and fading. The painted reskin is on the Oldschool page.",
 		switchLabel = "UI Modifications",
 		switchDesc = "The painted reskin AND every feature of UI Modifications: Vendor, Error Messages, Cooldown Timers, Nameplate Tweaks, Chat, Tooltip, Fonts, Dark Mode, Bar Textures, Buffs & Debuffs, Unit Frame Tweaks, FPS / Latency, Class Icons, Bar Values, the game windows' skins, hiding the micro menu, the bag bar and the minimap coordinates, and the world text scale. Off: all of them are off, Edit Layout lets go of the game's windows (they go back to the game's own places), Windows Fade In stops, names are shown in full and Class Coloured Names stops. The palette, the UI Shade, Reduce Motion and MelloUI's notices keep working.",
-		tabs = { "General", "Borders", "Fonts", "Icons", "Dark Mode", "Bar Texture", "Parchment" } },
+		tabs = { "General", "Fonts", "Icons", "Dark Mode", "Bar Texture", "Fading" } },
 	Windows = { title = "Windows", icon = "module:CharacterPanel",
 		flavour = "The game's windows in the painted look, one at a time: pick a window.",
 		tabs = { "Windows" },
@@ -127,7 +127,7 @@ L.pages = {
 	Fader = { title = "Fader", icon = "module:Fader",
 		-- (one look, Q5: each frame's and bar's Fade is its own element's last Behaviour row now -- the designers'
 		-- and the Reminders page's; the chat's and the map's here until stage H)
-		tabs = { "Fader", "Chat & Map" } },
+		tabs = { "Chat & Map" } },
 	-- (one look C8, the user 2026-10-15: one designer per family) the player, target, focus, pet, your buffs, the
 	-- party and raid frames (MelloUI's own) and the Personal Display: pick a frame, then a part of it; its own
 	-- options under the part's (docs/plans/onelook-designer/c7-lite.md, ugf-audit.md)
@@ -184,7 +184,7 @@ L.pages = {
 	-- (one look C8) the painted reskin's own rows, kept working here until the painted look becomes its own addon
 	Oldschool = { title = "Oldschool", icon = "module:UIModifications",
 		flavour = "The painted reskin's own settings, kept here until the painted look becomes its own addon.",
-		tabs = { "Painted Skins", "Frame Art" } },
+		tabs = { "General", "Painted Skins", "Borders", "Parchment", "Frame Art" } },
 	-- (0.20.0) MelloUI_GroupFrames: MelloUI's own party and raid frames (their
 	-- frames, bars, texts; the Designer is one canvas row, W.CanvasRow)
 	-- (0.20.0) the effects on the frames, one page (the user, 2026-10-09: "why are
@@ -269,9 +269,9 @@ L.pages = {
 	-- the Personal Display module's, off by default; MelloUI_PersonalDisplay)
 	-- (the Bars audit's point 5: the damage meter and the FPS / latency readout until stage H gives them homes;
 	-- the bars went to Bars, the Event Widgets tab with its one painted link)
-	BarsMeters = { title = "Meters", icon = "module:Stats",
-		flavour = "The damage meter and the FPS / latency readout.",
-		tabs = { "Damage Meter", "FPS / Latency" } },
+	BarsMeters = { title = "Damage Meter", icon = "module:Meter",
+		flavour = "The damage meter.",
+		tabs = { "Damage Meter" } },
 	Chat = { title = "Chat", icon = "module:Chat",
 		flavour = "The chat windows, the lines in them and the whisper popup.",
 		tabs = { "Chat Frame", "Messages", "Whispers" } },
@@ -280,7 +280,7 @@ L.pages = {
 		tabs = { "Tooltip" } },
 	ScreenText = { title = "Screen Text", icon = "module:ErrorFilter",
 		flavour = "The text in the middle of the screen: MelloUI's notices, the zone text, the red error messages and the floating combat numbers.",
-		tabs = { "Notices", "Error Messages", "Combat Text" } },
+		tabs = { "Notices", "Combat Text", "Gains", "Error Messages" } },
 	QuestTracker = { title = "Quest Tracker", icon = "module:QuestTracker", module = "QuestTracker",
 		tabs = { "Quest Tracker", "Objective Tracker" } },
 	QuestList = { title = "Quest List", icon = "module:QuestList", module = "QuestList",
@@ -289,11 +289,14 @@ L.pages = {
 		tabs = { "Route", "Arrow & Marker", "Flights" } },
 	-- no header switch: three modules share the page, and each tab's first
 	-- row is its module's switch (Reminders, Restock, Vendor Automation)
-	Reminders = { title = "Reminders", icon = "module:Reminders",
-		flavour = "Supplies, mail, repairs and training: a gentle nudge beside your portrait, never a nag. With the restock list and its shopping list, and the vendor's automatic repairs and junk sales.",
-		tabs = { "Reminders", "Restock", "Vendor", "Widgets" } },
-	Gains = { title = "Gains", icon = "module:Gains", module = "Gains",
-		tabs = { "Gains" } },
+	Reminders = { title = "Reminders & Widgets", icon = "module:Reminders",
+		flavour = "Supplies, mail, repairs and training: a gentle nudge beside your portrait, never a nag. With the widgets for loot rolls, summons and the rest, and the FPS / latency readout.",
+		tabs = { "Reminders", "Widgets", "FPS / Latency" } },
+	-- (one look stage H, the plain pages' audit: the restock list, the vendor's repairs and sales and the quests'
+	-- automatic accept and hand-in, one page; each tab's first row its module's switch)
+	Automation = { title = "Automation", icon = "module:Vendor", new = "0.25.0",
+		flavour = "The things MelloUI does for you: repairs and junk sales at the vendor, the restock list, accepting and handing in quests.",
+		tabs = { "Vendor", "Restock", "Quests" } },
 	VoiceOver = { title = "Voice Over", icon = "module:VoiceOver", module = "VoiceOver",
 		tabs = { "Reading", "Voices", "Sound Packs", "Widget" } },
 	CustomSounds = { title = "Custom Sounds", icon = "module:CustomSounds", module = "CustomSounds",
@@ -307,20 +310,21 @@ L.pages = {
 -- spread over several pages, and the panels with no row of their own. The
 -- Auras module's name is /mello's aura probe: its page is buffs / debuffs.
 L.words = {
-	fade = { "Fader" },
+	fade = { "Look", "Fading" },
 	groupframes = { "UnitGroupFrames", "raid:element" },
 	partyframes = { "UnitGroupFrames", "party:element" },
 	raidframes = { "UnitGroupFrames", "raid:element" },
 	indicators = { "UnitGroupFrames", "raid:indicators" },
-	mouseover = { "Fader" },
+	mouseover = { "Look", "Fading" },
 	uimodifications = { "Look" },
 	palette = { "Look", "General" },
 	uishade = { "Look", "General" },
-	borders = { "Look", "Borders" },
+	borders = { "Oldschool", "Borders" },
 	fonts = { "Look", "Fonts" },
 	darkmode = { "Look", "Dark Mode" },
 	bartextures = { "Look", "Bar Texture" },
-	parchment = { "Look", "Parchment" },
+	parchment = { "Oldschool", "Parchment" },
+	fading = { "Look", "Fading" },
 	characterpanel = { "Windows", pick = "CharacterPanel" },
 	buffs = { "UnitGroupFrames", "buffs:element" },
 	debuffs = { "UnitGroupFrames", "buffs:element" },
@@ -339,15 +343,18 @@ L.words = {
 	minimappanel = { "Minimap", "minimap:element" },
 	minimapkit = { "Oldschool", "Painted Skins" },   -- (onelook D7: the painted minimap; one look stage G: Oldschool's)
 	services = { "Minimap", "services:element" },
-	stats = { "BarsMeters", "FPS / Latency" },
+	stats = { "Reminders", "FPS / Latency" },
+	fps = { "Reminders", "FPS / Latency" },
+	gains = { "ScreenText", "Gains" },
 	damagemeterpanel = { "BarsMeters", "Damage Meter" },
 	chatpanel = { "Chat", "Chat Frame" },
 	tooltippanel = { "Tooltip" },
 	tweaks = { "ScreenText", "Notices" },
 	errorfilter = { "ScreenText", "Error Messages" },
 	trackerpanel = { "QuestTracker", "Objective Tracker" },
-	restock = { "Reminders", "Restock" },
-	vendor = { "Reminders", "Vendor" },
+	restock = { "Automation", "Restock" },
+	vendor = { "Automation", "Vendor" },
+	questauto = { "Automation", "Quests" },
 	widgets = { "Reminders", "Widgets" },
 	wand = { "ActionBars", "swing:element" },
 	autoshot = { "ActionBars", "swing:element" },
@@ -356,7 +363,7 @@ L.words = {
 -- (0.16.0: the chat windows' and the tooltips' painted skins and the chat's
 -- Dark Mode are set through each page's one Background dropdown, which reads
 -- and writes them: no row of their own. Their parchment has its switch on
--- Look > Parchment since 0.19.1, the dropdown showing it all the same. One
+-- Oldschool > Parchment since 0.19.1, the dropdown showing it all the same. One
 -- look, 2026-10-15: the chat's painted skin is a Painted Skin row on the Chat
 -- page and its parchment a Parchment row there -- the Background no longer
 -- sets either)
@@ -394,12 +401,12 @@ function L.Define(R, Link)
 		CHAT_PAINTED },
 		line = "Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)" }
 	-- Look: the global look, only here (every element's page links to it)
-	R("Look", "General", "General", "UIModifications.reskin")
-	R("Look", "General", "General", "UIModifications.preloadArt")
-	R("Look", "General", "General", "UIModifications.#Switch every area on")
+	R("Oldschool", "General", "General", "UIModifications.reskin")
+	R("Oldschool", "General", "General", "UIModifications.preloadArt")
+	R("Oldschool", "General", "General", "UIModifications.#Switch every area on")
 	-- (free: applied with UI Modifications on or off, its OnSettingChanged)
 	R("Look", "General", "Look", "UIModifications.palette", { swatch = "palette", free = true })
-	R("Look", "General", "Look", "UIModifications.kitColours")
+	R("Oldschool", "General", "Look", "UIModifications.kitColours")
 	R("Look", "General", "Look", "UIModifications.uiShade", { free = true })
 	R("Look", "General", "Look", "UIModifications.uiShadeStrength", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_windows", { free = true })
@@ -413,44 +420,45 @@ function L.Define(R, Link)
 	R("Look", "General", "Text", "UIModifications.classNames", { free = true })
 	R("Look", "General", "Text", "Tweaks.textShade", { free = true })
 	R("Look", "General", "Behaviour", "UIModifications.reduceMotion", { free = true })
+	R("Look", "General", "Behaviour", "UIModifications.fadeWindows")
 	-- (0.20.1: the windows' frame and title, the user's examples 3 and 4 in our own art)
-	R("Look", "Borders", "Look", "UIModifications.windowBorder")
-	R("Look", "Borders", "Look", "UIModifications.windowTitle")
-	R("Look", "Borders", "Look", "UIModifications.buttonBorder", { picture = true })
-	R("Look", "Borders", "Look", "UIModifications.sideTabBorder", { picture = true })
-	R("Look", "Borders", "Look", "UIModifications.barBorder", { picture = true })
+	R("Oldschool", "Borders", "Look", "UIModifications.windowBorder")
+	R("Oldschool", "Borders", "Look", "UIModifications.windowTitle")
+	R("Oldschool", "Borders", "Look", "UIModifications.buttonBorder", { picture = true })
+	R("Oldschool", "Borders", "Look", "UIModifications.sideTabBorder", { picture = true })
+	R("Oldschool", "Borders", "Look", "UIModifications.barBorder", { picture = true })
 	-- (0.19.8, the border library's stage 2: the unit frames' bars a border of their own, worn under their skin)
-	R("Look", "Borders", "Look", "UIModifications.unitFrameBorder", { picture = true,
+	R("Oldschool", "Borders", "Look", "UIModifications.unitFrameBorder", { picture = true,
 		when = { key = "UIModifications.UnitFramePanel", value = true, line = "Only with the unit frames' Painted Skin" } })
 	-- (0.19.1, the user 2026-10-04: "all border customization into Borders tab": the borders each element's page
 	-- had, here with the kit's; each of those pages links its own)
-	R("Look", "Borders", "Look", "UIModifications.nameplateBorder", { picture = true })
+	R("Oldschool", "Borders", "Look", "UIModifications.nameplateBorder", { picture = true })
 	-- (0.19.8: the cast bar's and the personal resource display's, the border library's)
-	R("Look", "Borders", "Look", "UIModifications.castBarBorder", { picture = true,
+	R("Oldschool", "Borders", "Look", "UIModifications.castBarBorder", { picture = true,
 		when = { key = "UIModifications.CastBarPanel", value = true, line = "Only with the cast bars' Painted Skin" } })
 	-- (0.21.0: the Personal Display's bars, a module of its own -- no skin gate)
-	R("Look", "Borders", "Look", "UIModifications.personalBarBorder", { picture = true })
+	R("Oldschool", "Borders", "Look", "UIModifications.personalBarBorder", { picture = true })
 	-- (0.20.1: the swing timers' frame, a choice of its own)
-	R("Look", "Borders", "Look", "UIModifications.swingTimerBorder", { picture = true,
+	R("Oldschool", "Borders", "Look", "UIModifications.swingTimerBorder", { picture = true,
 		when = { key = "UIModifications.CastBarPanel", value = true, line = "Only with the cast bars' Painted Skin" } })
-	R("Look", "Borders", "Look", "UIModifications.roundBorder", { picture = true })
+	R("Oldschool", "Borders", "Look", "UIModifications.roundBorder", { picture = true })
 	-- (0.19.8, the border library's stage 4: the unit frames' portrait ring a choice of its own, decision 8)
-	R("Look", "Borders", "Look", "UIModifications.portraitRing", { picture = true,
+	R("Oldschool", "Borders", "Look", "UIModifications.portraitRing", { picture = true,
 		when = { key = "UIModifications.UnitFramePanel", value = true, line = "Only with the unit frames' Painted Skin" } })
 	-- (0.20.1: the level orb's look, the RPG pack's stone badge a choice -- Modules/KitBorders.lua)
-	R("Look", "Borders", "Look", "UIModifications.levelOrb", { picture = true })
-	R("Look", "Borders", "Look", "UIModifications.auraBorder", { picture = true })
+	R("Oldschool", "Borders", "Look", "UIModifications.levelOrb", { picture = true })
+	R("Oldschool", "Borders", "Look", "UIModifications.auraBorder", { picture = true })
 	-- (0.19.8, the border library's first own row: Modules/KitBorders.lua; worn under the raid frames' skin)
-	R("Look", "Borders", "Look", "UIModifications.raidFrameBorder", { picture = true,
+	R("Oldschool", "Borders", "Look", "UIModifications.raidFrameBorder", { picture = true,
 		when = { key = "UIModifications.RaidFramePanel", value = true, line = "Only with the raid frames' Painted Skin" } })
 	-- (0.19.8, stage 3: where it goes -- on each frame, round the group, both)
-	R("Look", "Borders", "Look", "UIModifications.raidBorderPlace",
+	R("Oldschool", "Borders", "Look", "UIModifications.raidBorderPlace",
 		{ when = { key = "UIModifications.RaidFramePanel", value = true, line = "Only with the raid frames' Painted Skin" } })
 	-- (0.19.8: the game's Cooldown Manager's icons, Cooldown Tweaks)
-	R("Look", "Borders", "Look", "UIModifications.cooldownBorder", { picture = true })
-	R("Look", "Borders", "Look", "Tooltip.classBorder", { name = "Tooltip Class / Reaction Border",
+	R("Oldschool", "Borders", "Look", "UIModifications.cooldownBorder", { picture = true })
+	R("Tooltip", "Tooltip", "Look", "Tooltip.classBorder", {
 		when = Uncovered("TooltipPanel", "tooltip") })
-	R("Look", "Borders", "Look", "Chat.borderAlpha", { name = "Chat Border Opacity" })
+	R("Chat", "Chat Frame", "Look", "Chat.borderAlpha", { name = "Border Opacity" })
 	R("Look", "Fonts", "General", "UIModifications.qol_Fonts")
 	R("Look", "Fonts", "Text", "Fonts.style")
 	R("Look", "Fonts", "Text", "Fonts.sizeText")
@@ -459,41 +467,37 @@ function L.Define(R, Link)
 	R("Look", "Fonts", "Text", "Fonts.outline")
 	-- (0.19.1, the user 2026-10-04: "all font sizes, font types and anything thats changing the font somewhere into
 	-- this tab": each element's text size and font, named by its element; each of those pages links its own)
-	R("Look", "Fonts", "Text", "Fonts.scaleChatParchment", { gate = "UIModifications.parchment_chat" })
+	R("Oldschool", "Parchment", "Text", "Fonts.scaleChatParchment", { gate = "UIModifications.parchment_chat" })
 	R("Look", "Fonts", "Text", "BarText.fontSize", { name = "Unit Frame Bars: Font Size" })
 	-- (the Bars audit's point 2: the cooldown timers' style, shared by the action bars and the nameplates)
 	R("Look", "Icons", "Text", "CooldownText.fontRatio", { name = "Timer Text Size" })
 	R("Look", "Icons", "Text", "CooldownText.tenths")
 	R("Look", "Icons", "Text", "CooldownText.colorByTime")
 	R("Look", "Icons", "Behaviour", "CooldownText.minDuration")
-	R("Look", "Fonts", "Text", "Stats.fontSize", { name = "FPS / Latency: Font Size" })
 	R("Look", "Fonts", "Text", "QuestTracker.textSize", { name = "Quest Tracker: Text Size" })
 	R("Look", "Fonts", "Text", "QuestTracker.headerSize", { name = "Quest Tracker: Header Text Size" })
-	R("Look", "Fonts", "Text", "Tweaks.noticeOutline", { name = "Notices: Outlined Text", free = true })
 	-- (the configurator audit, 2026-10-01: one size per thing on screen --
 	-- MelloUI's combat text around you and the numbers over the enemies, the
 	-- game's or Your Damage's; the game sizes its own text around you itself:
 	-- Scale Damage gone in 0.19.4)
-	R("Look", "Fonts", "Text", "CombatText.size", { name = "Combat Text: Text Around You", when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
 	-- (0.20.1) Numbers Over Enemies only where the client has the cvar it writes (the user, 2026-10-10: this
 	-- client has none, the slider moved nothing and Combat Text reads the same cvar): else left out on purpose
 	local okWorld, worldText = pcall(function() return C_CVar and C_CVar.GetCVar and C_CVar.GetCVar("WorldTextScale") end)
 	local hasWorldText = okWorld and type(worldText) == "string"
 	if hasWorldText then
-		R("Look", "Fonts", "Text", "Tweaks.worldTextScale", { name = "Combat Text: Numbers Over Enemies" })
+		R("ScreenText", "Combat Text", "Text", "Tweaks.worldTextScale")
 	else
 		L.unplaced["Tweaks.worldTextScale"] = "this client has no WorldTextScale cvar: the slider would move nothing"
 	end
-	R("Look", "Fonts", "Text", "CombatText.titleNotices", { name = "Combat Text: Notices In Title Font", when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
 	R("Look", "Fonts", "Advanced", "Fonts.fontText")
 	R("Look", "Fonts", "Advanced", "Fonts.fontChat")
 	R("Look", "Fonts", "Advanced", "Fonts.fontTitle")
 	R("Look", "Fonts", "Advanced", "Fonts.fontChatText")
-	R("Look", "Fonts", "Advanced", "Fonts.fontChatParchment", { gate = "UIModifications.parchment_chat" })
+	R("Oldschool", "Parchment", "Advanced", "Fonts.fontChatParchment", { gate = "UIModifications.parchment_chat" })
 	R("Look", "Fonts", "Advanced", "Fonts.fontDamage")
 	R("Look", "Dark Mode", "General", "UIModifications.qol_DarkMode")
 	R("Look", "Dark Mode", "Look", "DarkMode.shade")
-	R("Look", "Dark Mode", "Look", "DarkMode.kitShade")
+	R("Oldschool", "General", "Look", "DarkMode.kitShade")
 	R("Look", "Dark Mode", "Look", "DarkMode.desaturate")
 	R("Look", "Bar Texture", "General", "UIModifications.qol_BarTextures")
 	R("Look", "Bar Texture", "Look", "BarTextures.texture")
@@ -514,17 +518,17 @@ function L.Define(R, Link)
 		{ when = { key = "BarTextures.healthColor", notValue = "green", line = "Not with the Green (Blizzard) colour" } })
 	R("Look", "Bar Texture", "Look", "BarTextures.executeRange")
 	R("Look", "Bar Texture", "Look", "BarTextures.executeBelow")
-	R("Look", "Parchment", "Look", "UIModifications.parchmentStyle")   -- (0.20.3: the look of every sheet and page)
-	R("Look", "Parchment", "Look", "UIModifications.parchment_tracker", { when = GAME_TRACKER })
+	R("Oldschool", "Parchment", "Look", "UIModifications.parchmentStyle")   -- (0.20.3: the look of every sheet and page)
+	R("Oldschool", "Parchment", "Look", "UIModifications.parchment_tracker", { when = GAME_TRACKER })
 	-- (the Quest Tracker's paper and the chat's: their rows on their own pages since the one look, links here -- the
 	-- Link rows below)
 	-- (0.19.1, the user 2026-10-04: "any Parchment Enable/Disable into the Parchment tab": the whisper popups' and the
 	-- tooltips', live while their painted skin is on -- the tooltips' Background dropdown shows it too)
-	R("Look", "Parchment", "Look", "UIModifications.parchment_whisper", { gate = "UIModifications.ChatPanel" })
-	R("Look", "Parchment", "Look", "UIModifications.parchment_meter")
-	R("Look", "Parchment", "Look", "UIModifications.parchment_character")
-	R("Look", "Parchment", "Look", "UIModifications.parchment_tooltip", { gate = "UIModifications.TooltipPanel" })
-	R("Look", "Parchment", "Look", "UIModifications.parchment_dialog")
+	R("Oldschool", "Parchment", "Look", "UIModifications.parchment_whisper", { gate = "UIModifications.ChatPanel" })
+	R("Oldschool", "Parchment", "Look", "UIModifications.parchment_meter")
+	R("Oldschool", "Parchment", "Look", "UIModifications.parchment_character")
+	R("Oldschool", "Parchment", "Look", "UIModifications.parchment_tooltip", { gate = "UIModifications.TooltipPanel" })
+	R("Oldschool", "Parchment", "Look", "UIModifications.parchment_dialog")
 
 	-- Windows (the picker: the registry's windows). A kit panel's row here is
 	-- live on the CURRENT pick's Painted Skin, not on the panel owning the
@@ -569,7 +573,6 @@ function L.Define(R, Link)
 	R("Windows", "Windows", "Behaviour", { StackSplitPanel = "Tweaks.splitHalf" })
 	-- (0.19.4, the options audit: UI Modifications' own, working without the
 	-- Fader, so here, not under the Fader's switch; the Fader links it)
-	R("Windows", "Windows", "Behaviour", "UIModifications.fadeWindows", { wide = "every window" })
 
 	-- Unit Frames (the picker: Player ... Personal Display)
 	-- (one look C8) a row on several frames' tabs: one row each, the first its home, the others marked
@@ -806,7 +809,7 @@ function L.Define(R, Link)
 	R("Minimap", "minimap:element", "Look", "DarkMode.minimap", { name = "Dark Mode", when = Uncovered("MinimapKit", "minimap") })
 	R("Minimap", "minimap:element", "Layout", "MinimapPanel.width")
 	R("Minimap", "minimap:element", "Layout", "MinimapPanel.height", { when = SQUARE })
-	-- (the frame round the square map: only the minimap wears it -- a link on Look > Borders)
+	-- (the frame round the square map: only the minimap wears it -- a link on Oldschool > Borders)
 	R("Minimap", "minimap:border", "Look", "MinimapPanel.squareBorder", { picture = true, when = SQUARE })
 	R("Minimap", "services:element", "General", "Services.!enabled", { name = "Services Bar" })
 	R("Minimap", "services:element", "General", "Services.showBar")
@@ -841,13 +844,14 @@ function L.Define(R, Link)
 	R("BarsMeters", "Damage Meter", "Layout", "Meter.railHeight")   -- (onelook B: Race Bar Thickness, Height's place)
 	R("BarsMeters", "Damage Meter", "Behaviour", "Meter.metric")
 	R("BarsMeters", "Damage Meter", "Behaviour", "Meter.historySize")
-	R("BarsMeters", "FPS / Latency", "General", "UIModifications.qol_Stats")
-	R("BarsMeters", "FPS / Latency", "General", "Stats.showFps")
-	R("BarsMeters", "FPS / Latency", "General", "Stats.showLatency")
-	R("BarsMeters", "FPS / Latency", "General", "Stats.worldLatency")
-	R("BarsMeters", "FPS / Latency", "Layout", "Stats.offsetX")
-	R("BarsMeters", "FPS / Latency", "Layout", "Stats.offsetY")
-	R("BarsMeters", "FPS / Latency", "Behaviour", "Stats.interval")
+	R("Reminders", "FPS / Latency", "General", "UIModifications.qol_Stats")
+	R("Reminders", "FPS / Latency", "General", "Stats.showFps")
+	R("Reminders", "FPS / Latency", "General", "Stats.showLatency")
+	R("Reminders", "FPS / Latency", "General", "Stats.worldLatency")
+	R("Reminders", "FPS / Latency", "Text", "Stats.fontSize")
+	R("Reminders", "FPS / Latency", "Layout", "Stats.offsetX")
+	R("Reminders", "FPS / Latency", "Layout", "Stats.offsetY")
+	R("Reminders", "FPS / Latency", "Behaviour", "Stats.interval")
 
 	-- Chat
 	R("Chat", "Chat Frame", "General", "UIModifications.qol_Chat")
@@ -857,7 +861,7 @@ function L.Define(R, Link)
 	R("Chat", "Chat Frame", "Look", "UIModifications.ChatPanel", { name = "Painted Skin" })
 	-- (one look; the user, 2026-10-15: "for those 2, chat and objective tracker, i want them to have the option for
 	-- either normal look, and parchment even with the reskin off": the chat's paper its own switch, as the Quest
-	-- Tracker's (Kit.ownParchments); the Background's Parchment until then; Look > Parchment links to it)
+	-- Tracker's (Kit.ownParchments); the Background's Parchment until then; Oldschool > Parchment links to it)
 	R("Chat", "Chat Frame", "Look", "UIModifications.parchment_chat", { name = "Parchment", free = true, when = CHAT_PAPER })
 	-- (the game's windows' ground, asleep under the painted chat, which lays its own; the Minimal Chat View's panel)
 	R("Chat", "Chat Frame", "Look", "Chat.background", { when = { any = { { key = "UIModifications.reskin", value = false },
@@ -880,7 +884,6 @@ function L.Define(R, Link)
 	R("Chat", "Messages", "Text", "Chat.shortChannels")
 	R("Chat", "Messages", "Text", "Chat.hideBrackets")
 	-- (free: read by MelloUI:Notice with Tweaks, and UI Modifications, off)
-	R("Chat", "Messages", "Behaviour", "Tweaks.chatNotices", { free = true })
 	-- (0.23.0: the Minimal Chat View's whisper window takes the whispers while it is on)
 	R("Chat", "Whispers", "General", "Chat.whisperPopup", { when = { key = "Chat.view", notValue = "minimal",
 		line = "Not with the Minimal Chat View: its whisper window takes the whispers" } })
@@ -907,6 +910,8 @@ function L.Define(R, Link)
 	-- and Core/CentreText.lua, with Tweaks and UI Modifications off)
 	R("ScreenText", "Notices", "General", "Tweaks.noticeOnScreen", { free = true })
 	R("ScreenText", "Notices", "General", "Tweaks.noticeToChat", { free = true })
+	R("ScreenText", "Notices", "Text", "Tweaks.noticeOutline", { free = true })
+	R("ScreenText", "Notices", "Behaviour", "Tweaks.chatNotices", { free = true })
 	R("ScreenText", "Notices", "Sound", "Tweaks.noticeSounds", { free = true })
 	R("ScreenText", "Error Messages", "General", "UIModifications.qol_ErrorFilter")
 	R("ScreenText", "Error Messages", "Behaviour", "ErrorFilter.resources")
@@ -923,6 +928,8 @@ function L.Define(R, Link)
 	R("ScreenText", "Combat Text", "General", "CombatText.#Preview")
 	R("ScreenText", "Combat Text", "Look", "CombatText.shadeSize")
 	-- (its text sizes and fonts: Look > Fonts since 0.19.1, linked below)
+	R("ScreenText", "Combat Text", "Text", "CombatText.size", { when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
+	R("ScreenText", "Combat Text", "Text", "CombatText.titleNotices", { when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
 	R("ScreenText", "Combat Text", "Layout", "CombatText.spread",
 		{ when = { key = "CombatText.style", value = "lanes", line = "Only for the Lanes style" } })
 	R("ScreenText", "Combat Text", "Layout", "CombatText.lines",
@@ -941,13 +948,13 @@ function L.Define(R, Link)
 	-- (carried over: Core.lua's MergeSettings) and the chat's Tabs Only On
 	-- Mouseover moved here, a Link row where it was (Windows Fade In went
 	-- back to Windows in 0.19.4: it works without the Fader; linked here)
-	R("Fader", "Fader", "General", "Fader.#Fade Everything")
-	R("Fader", "Fader", "General", "Fader.#Fade Nothing")
-	R("Fader", "Fader", "Look", "Fader.alpha")
-	R("Fader", "Fader", "Behaviour", "Fader.after")
-	R("Fader", "Fader", "Behaviour", "Fader.speed")
-	R("Fader", "Fader", "Behaviour", "Fader.target")
-	R("Fader", "Fader", "Behaviour", "Fader.mouse")
+	R("Look", "Fading", "General", "Fader.#Fade Everything")
+	R("Look", "Fading", "General", "Fader.#Fade Nothing")
+	R("Look", "Fading", "Look", "Fader.alpha")
+	R("Look", "Fading", "Behaviour", "Fader.after")
+	R("Look", "Fading", "Behaviour", "Fader.speed")
+	R("Look", "Fading", "Behaviour", "Fader.target")
+	R("Look", "Fading", "Behaviour", "Fader.mouse")
 	-- (0.21.0, the settings audit: a row for a module's own part dimmed while that module is off, as the Objective
 	-- Tracker's is while MelloUI's Quest Tracker stands in for it)
 	local OWNED = {
@@ -961,7 +968,7 @@ function L.Define(R, Link)
 	-- (the frames' and the bars' Fade rows: each element's last Behaviour row, at the end of the rows -- one look Q5)
 	R("Fader", "Chat & Map", "General", "Fader.show_chat")
 	R("Fader", "Chat & Map", "General", "Chat.tabsOnMouseover", { when = Uncovered("ChatPanel", "chat") })
-	for _, key in ipairs({ "tracker", "objectives", "widgets", "route" }) do   -- (the minimap's: its own page, Q5)
+	for _, key in ipairs({ "tracker", "objectives", "route" }) do   -- (the minimap's: its own page, Q5)
 		R("Fader", "Chat & Map", "General", "Fader.show_" .. key, OWNED[key])
 	end
 
@@ -1055,7 +1062,7 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "personal:shield", "Layout", "PersonalDisplay.@scale:personalshield", { name = "Scale" })
 	R("UnitGroupFrames", "personal:cooldowns", "Layout", "PersonalDisplay.cdSize", { when = { key = "PersonalDisplay.cooldowns", notValue = false, line = "Only with Big Cooldowns on" } })
 	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.zoom")
-	-- (0.21.0: its border on Look > Borders, its fade on the Fader's page)
+	-- (0.21.0: its border on Oldschool > Borders, its fade on the Fader's page)
 
 	-- Quest Tracker (header: its module's switch; one look, stage E, the user 2026-10-15: its Painted Skin row is
 	-- removed -- the tracker always wears MelloUI's look)
@@ -1095,11 +1102,11 @@ function L.Define(R, Link)
 	R("QuestList", "List", "General", "QuestList.levelAbove")
 	R("QuestList", "List", "Behaviour", "QuestList.dungeonSummary")
 	-- (0.19.8: Auto Accept & Hand In, Modules/QuestAuto.lua -- the addon study's item 6, off by default)
-	R("QuestList", "List", "Behaviour", "QuestAuto.accept")
-	R("QuestList", "List", "Behaviour", "QuestAuto.handIn")
-	R("QuestList", "List", "Behaviour", "QuestAuto.takeUpgrade", { when = { key = "QuestAuto.handIn", value = true,
+	R("Automation", "Quests", "Behaviour", "QuestAuto.accept")
+	R("Automation", "Quests", "Behaviour", "QuestAuto.handIn")
+	R("Automation", "Quests", "Behaviour", "QuestAuto.takeUpgrade", { when = { key = "QuestAuto.handIn", value = true,
 		line = "Only with Auto Hand In" } })
-	R("QuestList", "List", "Behaviour", "QuestAuto.skipKey", { when = { any = { { key = "QuestAuto.accept", value = true },
+	R("Automation", "Quests", "Behaviour", "QuestAuto.skipKey", { when = { any = { { key = "QuestAuto.accept", value = true },
 		{ key = "QuestAuto.handIn", value = true } }, line = "Only with Auto Accept or Auto Hand In" } })
 	R("QuestList", "Map", "General", "QuestList.mapPins")
 	R("QuestList", "Map", "General", "QuestList.pinCompleted")
@@ -1145,15 +1152,15 @@ function L.Define(R, Link)
 	R("Reminders", "Reminders", "Layout", "Reminders.place")
 	R("Reminders", "Reminders", "Behaviour", "Reminders.stayResting")
 	R("Reminders", "Reminders", "Behaviour", "Reminders.hold")
-	R("Reminders", "Restock", "General", "Restock.!enabled", { name = "Restock List And Shop" })
-	R("Reminders", "Restock", "General", "Restock.below")
-	R("Reminders", "Restock", "General", "Restock.shopPanel")
-	R("Reminders", "Restock", "General", "Restock.#Restock List")
-	R("Reminders", "Vendor", "General", "UIModifications.qol_Vendor")
-	R("Reminders", "Vendor", "Behaviour", "Vendor.autoRepair")
-	R("Reminders", "Vendor", "Behaviour", "Vendor.guildRepair")
-	R("Reminders", "Vendor", "Behaviour", "Vendor.autoSell")
-	R("Reminders", "Vendor", "Behaviour", "Vendor.report")
+	R("Automation", "Restock", "General", "Restock.!enabled", { name = "Restock List And Shop" })
+	R("Automation", "Restock", "General", "Restock.below")
+	R("Automation", "Restock", "General", "Restock.shopPanel")
+	R("Automation", "Restock", "General", "Restock.#Restock List")
+	R("Automation", "Vendor", "General", "UIModifications.qol_Vendor")
+	R("Automation", "Vendor", "Behaviour", "Vendor.autoRepair")
+	R("Automation", "Vendor", "Behaviour", "Vendor.guildRepair")
+	R("Automation", "Vendor", "Behaviour", "Vendor.autoSell")
+	R("Automation", "Vendor", "Behaviour", "Vendor.report")
 	-- (0.16.0: the widget column's users and three more portrait reminders,
 	-- Modules/Widgets.lua; the column's lock is the Reminders module's)
 	R("Reminders", "Widgets", "General", "Widgets.!enabled", { name = "Widgets" })
@@ -1169,16 +1176,17 @@ function L.Define(R, Link)
 	R("Reminders", "Widgets", "Layout", "Reminders.widgetMax")
 
 	-- Gains (header: its module's switch)
-	R("Gains", "Gains", "General", "Gains.skills")
-	R("Gains", "Gains", "General", "Gains.values")
-	R("Gains", "Gains", "General", "Gains.items")
-	R("Gains", "Gains", "General", "Gains.bought")
-	R("Gains", "Gains", "General", "Gains.junk")
+	R("ScreenText", "Gains", "General", "Gains.!enabled", { name = "Gains" })
+	R("ScreenText", "Gains", "General", "Gains.skills")
+	R("ScreenText", "Gains", "General", "Gains.values")
+	R("ScreenText", "Gains", "General", "Gains.items")
+	R("ScreenText", "Gains", "General", "Gains.bought")
+	R("ScreenText", "Gains", "General", "Gains.junk")
 	-- (0.17.0) money, the other currencies and the names' quality colour
-	R("Gains", "Gains", "General", "Gains.money")
-	R("Gains", "Gains", "General", "Gains.currencies")
-	R("Gains", "Gains", "Look", "Gains.qualityNames")
-	R("Gains", "Gains", "Behaviour", "Gains.hold")
+	R("ScreenText", "Gains", "General", "Gains.money")
+	R("ScreenText", "Gains", "General", "Gains.currencies")
+	R("ScreenText", "Gains", "Look", "Gains.qualityNames")
+	R("ScreenText", "Gains", "Behaviour", "Gains.hold")
 
 	-- Voice Over (header: its module's switch)
 	R("VoiceOver", "Reading", "General", "VoiceOver.gossip")
@@ -1220,7 +1228,8 @@ function L.Define(R, Link)
 	R("VoiceOver", "Sound Packs", "General", "VoiceOver.soundPacks")
 	R("VoiceOver", "Sound Packs", "General", "VoiceOver.speakUnrecorded")
 	R("VoiceOver", "Sound Packs", "General", "VoiceOver.preferRecordings")
-	R("VoiceOver", "Sound Packs", "General", "VoiceOver.collectLines")
+	-- (stage H, the plain pages' audit: Record Dialog Lines, the voice work's recorder, is no player choice)
+	L.unplaced["VoiceOver.collectLines"] = "the voice work's recorder, off for players: not a setting to offer"
 	R("VoiceOver", "Sound Packs", "Sound", "VoiceOver.soundChannel")
 	-- (0.16.0: the widget in MelloUI's widget column; its lock is the
 	-- column's, a link row, and its size is Edit Layout's wheel)
@@ -1273,6 +1282,7 @@ function L.Define(R, Link)
 		when = { key = "Tweaks.hideBagBar", value = false, line = "Hidden (Hide This Bar)" } })
 	R("ActionBars", "xprep:element", "Behaviour", "Fader.show_xp", { name = "Fade" })
 	R("Reminders", "Reminders", "Behaviour", "Fader.show_reminders", { name = "Fade" })
+	R("Reminders", "Widgets", "Behaviour", "Fader.show_widgets", { name = "Fade", when = { key = "Widgets.!enabled", value = true, line = "Only with the Widgets on" } })
 	R("Minimap", "minimap:element", "Behaviour", "Fader.show_minimap", { name = "Fade" })
 
 	-- the link rows: a setting whose one place is another page (the global
@@ -1293,7 +1303,6 @@ function L.Define(R, Link)
 	Link("VoiceOver", "Widget", "Layout", "Reminders.widgetLock", "Lock The Widgets")
 	Link("Reminders", "Widgets", "General", "Meter.summary", "Fight Summary")
 	-- (0.17.0: the fades moved to the Fader)
-	Link("Fader", "Fader", "Behaviour", "UIModifications.fadeWindows", "Windows Fade In")
 	Link("Chat", "Chat Frame", "Behaviour", "Chat.tabsOnMouseover", "Tabs Only On Mouseover",
 		{ when = Uncovered("ChatPanel", "chat") })
 	-- (0.16.0: the merged settings, from where their members were)
@@ -1336,35 +1345,26 @@ function L.Define(R, Link)
 	Link("ScreenText", "Combat Text", "Text", "Fonts.style", "Font")
 	-- (one look: the Quest Tracker's paper on its own page; the Parchment tab keeps it in its list, the user's
 	-- 0.19.1 "any Parchment Enable/Disable into the Parchment tab")
-	Link("Look", "Parchment", "Look", "UIModifications.parchment_questTracker", "Parchment: Quest Tracker")
+	Link("Oldschool", "Parchment", "Look", "UIModifications.parchment_questTracker", "Parchment: Quest Tracker")
 	-- (one look, 2026-10-15: the chat's paper on the Chat page the same way)
-	Link("Look", "Parchment", "Look", "UIModifications.parchment_chat", "Parchment: Chat", { when = CHAT_PAPER })
+	Link("Oldschool", "Parchment", "Look", "UIModifications.parchment_chat", "Parchment: Chat", { when = CHAT_PAPER })
 	Link("QuestTracker", "Quest Tracker", "Look", "UIModifications.shade_tracker", "UI Shade")
 	Link("QuestTracker", "Quest Tracker", "Text", "Fonts.style", "Font")
 	Link("QuestTracker", "Quest Tracker", "Layout", "MinimapPanel.width", "Map Width")
 	Link("QuestTracker", "Objective Tracker", "Look", "UIModifications.parchment_tracker", "Parchment", { when = GAME_TRACKER })
 	Link("QuestTracker", "Objective Tracker", "Look", "UIModifications.shade_tracker", "UI Shade")
 	Link("QuestList", "List", "Look", "UIModifications.QuestLogPanel", "Painted Skin (Quest Log)")
-	-- (0.19.1, the user 2026-10-04: the borders on Look > Borders, the text sizes and fonts on Look > Fonts, named
+	-- (0.19.1, the user 2026-10-04: the borders on Oldschool > Borders, the text sizes and fonts on Look > Fonts, named
 	-- where they were)
-	Link("Look", "Borders", "Look", "MinimapPanel.squareBorder", "Minimap Square Border")
-	Link("Tooltip", "Tooltip", "Look", "Tooltip.classBorder", "Class / Reaction Border", { when = Uncovered("TooltipPanel", "tooltip") })
-	Link("Chat", "Chat Frame", "Look", "Chat.borderAlpha", "Border Opacity")
+	Link("Oldschool", "Borders", "Look", "MinimapPanel.squareBorder", "Minimap Square Border")
 	Link("Chat", "Chat Frame", "Text", "Fonts.fontChatText", "Chat Font")
 	Link("Chat", "Chat Frame", "Text", "Fonts.scaleChatParchment", "Chat On Parchment Size")
 	-- (the Bars audit's point 2: the timers' style on Look > Icons, linked from both of its places)
 	Link("ActionBars", "actionbars:cooldown", "Text", "CooldownText.fontRatio", "Timer Text Size")
 	Link("Nameplates", "enemies:auras", "Text", "CooldownText.fontRatio", "Timer Text Size")
 	-- (one look, 2026-10-15: no Swing Timer Border link here -- the swing timers' Round rim wears no painted frame,
-	-- the user's decision 8; the row on Look > Borders stays until stage E's option table)
-	Link("BarsMeters", "FPS / Latency", "Text", "Stats.fontSize", "Text Size")
+	-- the user's decision 8; the row on Oldschool > Borders stays until stage E's option table)
 	Link("QuestTracker", "Quest Tracker", "Text", "QuestTracker.textSize", "Text Size")
 	Link("QuestTracker", "Quest Tracker", "Text", "QuestTracker.headerSize", "Header Size")
-	Link("ScreenText", "Notices", "Text", "Tweaks.noticeOutline", "Outlined Text")
-	Link("ScreenText", "Combat Text", "Text", "CombatText.size", "Text Around You Size")
-	Link("ScreenText", "Combat Text", "Text", "CombatText.titleNotices", "Notices In Title Font")
-	if hasWorldText then
-		Link("ScreenText", "Combat Text", "Text", "Tweaks.worldTextScale", "Numbers Over Enemies Size")
-	end
 	Link("ScreenText", "Combat Text", "Text", "Fonts.fontDamage", "Game Numbers Font")
 end

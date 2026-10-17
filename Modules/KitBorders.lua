@@ -1625,7 +1625,7 @@ function Kit:CooldownIconBorder(item, icon, overlays)
 		e = { icon = icon, overlays = overlays or {} }
 		self.cooldownIcons[item] = e
 	end
-	-- (a style of the painted kit's: with the reskin on, as every Look > Borders row; else the game's bevel)
+	-- (a style of the painted kit's: with the reskin on, as every Oldschool > Borders row; else the game's bevel)
 	local um = MelloUI:GetModule("UIModifications")
 	local value = (um and um.db and um.db.reskin ~= false) and self:BorderValue("cooldown") or "game"
 	local st = value ~= "game" and self.BorderStyles[value] or nil

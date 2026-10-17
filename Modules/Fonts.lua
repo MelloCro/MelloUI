@@ -290,7 +290,7 @@ do
 	local values = BuildRoleList()
 	values[1] = { value = KEEP, label = "Chat text, semibold" }
 	options[#options + 1] = { type = "dropdown", key = "fontChatParchment", name = "Chat on parchment", values = values,
-		desc = "The chat windows and whisper windows while they lie on their parchment sheet (Look > Parchment). By default the chat text's face in its semibold cut where it has one, heavier so the dark ink reads on the paper; each Font Style sets that cut of its reading face." }
+		desc = "The chat windows and whisper windows while they lie on their parchment sheet (Oldschool > Parchment). By default the chat text's face in its semibold cut where it has one, heavier so the dark ink reads on the paper; each Font Style sets that cut of its reading face." }
 end
 options[#options + 1] = { type = "subheader", name = "Size and outline" }
 options[#options + 1] = { type = "slider", key = "sizeText", name = "Interface text size", min = 0.7, max = 1.5, step = 0.05, percent = true,

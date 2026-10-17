@@ -59,11 +59,11 @@ local M = MelloUI:RegisterModule("ProfessionsPanel", {
 	defaults = { pageBackground = "concrete", listBackground = "list", bookBackground = "concrete" },
 	options = {
 		{ type = "dropdown", key = "bookBackground", name = "Book Page Background", values = PAGE_BACKGROUNDS,
-		  desc = "What the professions' book page shows behind the profession cards: cracked concrete, stone, iron plate, parchment, leather or dark. The spells' rims wear the Button Border, the rank bars the Progress Bar Border (Look > Borders)." },
+		  desc = "What the professions' book page shows behind the profession cards: cracked concrete, stone, iron plate, parchment, leather or dark. The spells' rims wear the Button Border, the rank bars the Progress Bar Border (Oldschool > Borders)." },
 		{ type = "dropdown", key = "pageBackground", name = "Crafting Page Background", values = PAGE_BACKGROUNDS,
 		  desc = "What the crafting page shows behind the recipe list and the recipe: cracked concrete, stone, iron plate, parchment, leather or dark." },
 		{ type = "dropdown", key = "listBackground", name = "Recipe List Background", values = LIST_BACKGROUNDS,
-		  desc = "What the recipe list shows behind its rows: its darker list stone, or one of the other backgrounds. All three are chosen with pictures on Windows > Professions. The reagent slots wear the Button Border, the rank bar the Progress Bar Border, the finished item the Round Border (Look > Borders, every window's)." },
+		  desc = "What the recipe list shows behind its rows: its darker list stone, or one of the other backgrounds. All three are chosen with pictures on Windows > Professions. The reagent slots wear the Button Border, the rank bar the Progress Bar Border, the finished item the Round Border (Oldschool > Borders, every window's)." },
 	},
 })
 

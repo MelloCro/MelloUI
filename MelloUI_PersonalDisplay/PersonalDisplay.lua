@@ -2399,7 +2399,7 @@ local function CastFill()
 	end
 end
 
--- Look > Borders' Personal Resource Border changed (the kit's 'border' on the bus): every part in the new look
+-- Oldschool > Borders' Personal Resource Border changed (the kit's 'border' on the bus): every part in the new look
 local function OnBorder(kind)
 	local ui = S.ui
 	if kind == "personal" and ui then

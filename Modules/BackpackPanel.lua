@@ -58,7 +58,7 @@ local M = MelloUI:RegisterModule("BackpackPanel", {
 		{ type = "dropdown", key = "windowBackground", name = "Window Background", values = WINDOW_BACKGROUNDS,
 		  desc = "What the bag windows show behind the items (Bags by Kind's window too, and the bank): cracked concrete (the window's own), stone, iron plate, parchment, leather or dark." },
 		{ type = "dropdown", key = "itemBackground", name = "Item Background", values = LOOKS.backgrounds,
-		  desc = "What an empty bag slot shows inside its rim. Both are chosen with pictures on Windows > Bags. The slots' rim is the Button Border (Look > Borders, every window's)." },
+		  desc = "What an empty bag slot shows inside its rim. Both are chosen with pictures on Windows > Bags. The slots' rim is the Button Border (Oldschool > Borders, every window's)." },
 	},
 })
 

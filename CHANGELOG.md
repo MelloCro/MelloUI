@@ -2,6 +2,9 @@
 
 ## 0.25.0
 
+- Configurator: the painted reskin's switches, borders and parchment sheets moved from Look to Oldschool, and Look keeps the palette, shade, fonts, icons, Dark Mode, bar texture and Fading (the Fader's settings).
+- Configurator: Automation is a new page (Vendor, Restock, Auto Accept and Hand In); Gains is a tab of Screen Text, the FPS / latency readout is on Reminders & Widgets, and the damage meter has its own page.
+- Screen Text: Chat Notices, Outlined Text and the combat text sizes are on its Notices and Combat Text tabs.
 - One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off: the Quest Tracker, the quest log and Quest List touches, and the rest of MelloUI's own windows and bars.
 - Action bars: Backdrops work without the painted skin. Switch a bar's backdrop on (Action Bars > Backdrops) and the bars you snap together share one soft dark shade that fades out at its edges, with no frame line. With the painted skin on, the gems and border styles stay as they were. Your backdrop switches carry over.
 - Action bars: Hide Page Arrows is on for everyone by default, painted skin or not (Action Bars > Bars).

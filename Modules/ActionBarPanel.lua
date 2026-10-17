@@ -85,7 +85,7 @@ for _, g in ipairs(GROUPS) do
 	-- (the buttons' rim: UI Modifications' Button Border, every window's)
 	options[#options + 1] = { type = "dropdown", key = g.keys.backdrop, name = "Backdrop", values = BACKDROP_VALUES,
 		desc = "The border of the backdrop round " .. what .. ": the red or iron gems on its corners, or one of the border "
-			.. "styles of Look > Borders (drawn heavy, its inner corners mitred). Each element's backdrop is switched on "
+			.. "styles of Oldschool > Borders (drawn heavy, its inner corners mitred). Each element's backdrop is switched on "
 			.. "on Bars (its Backdrop); switched-on elements placed together share one backdrop, in the look of the first of them: "
 			.. "Action Bar 1, the other bars, the micro menu, the bag bar." }
 	options[#options + 1] = { type = "dropdown", key = g.keys.background, name = "Backdrop Background", values = BACKGROUND_VALUES,

@@ -14,7 +14,7 @@
 --                      (Action Buttons' light and its "actionpress" on the bus:
 --                      one light, one look)
 --   Count Size         the charges' and stacks' numbers larger or smaller
---   and its rim: Look > Borders' Cooldown Manager Border (Modules/KitBorders.lua)
+--   and its rim: Oldschool > Borders' Cooldown Manager Border (Modules/KitBorders.lua)
 -- The game already has ready alerts (sound and a visual on each spell) and
 -- hiding a spell in its own Cooldown Manager settings: not made again here.
 -- Nothing is written on the game's frames as a key (side tables); every value
@@ -282,7 +282,7 @@ local function CountSize(item, scale)
 end
 
 --------------------------------------------------------------------------------
--- The bevels (Look > Borders' Cooldown Manager Border, Modules/KitBorders.lua)
+-- The bevels (Oldschool > Borders' Cooldown Manager Border, Modules/KitBorders.lua)
 --------------------------------------------------------------------------------
 local function BevelsOf(item)
 	local list = bevels[item]
