@@ -10074,7 +10074,7 @@ M.Guide = (function()
 		local open = type(rxp.settings) == "table" and rxp.settings.OpenSettings
 		local menu = type(rframe.DropDownMenu) == "function" and rframe.DropDownMenu
 		local settings = type(open) == "function" and function() open() end or nil
-		MelloUI:Fire("guide", { section = "RestedXP Guide", lines = lines, Repin = Guide.Repin,
+		MelloUI:Fire("guide", { section = "RestedXP Guide", lines = lines, Repin = Guide.Repin, Unpin = Guide.Unpin,
 			title = (type(name) == "string" and name or "RestedXP") .. (n and (" - step " .. n) or ""),
 			cog = { Left = menu and function() menu() end or settings, Right = settings, tip = "RestedXP Guides",
 				hint = "Click: its menu (guides, settings)  -  Right-click: its settings" } })
@@ -10125,6 +10125,23 @@ M.Guide = (function()
 	function Guide.Repin()
 		if not Guide.Step(true) then
 			MelloUI:Announce("This RestedXP step has no place to mark on the map.", "info")
+		end
+	end
+
+	-- a right-click on the step (the user, 2026-10-18: "a way to remove the waypoint, by right clicking on the
+	-- step"): the pin laid for it taken off, the route and the World Marker with it; the step stays laid (Guide.mapID),
+	-- so following does not put it back before the next step or a click. A pin of the player's own stays.
+	function Guide.Unpin()
+		local okH, has = pcall(C_Map.HasUserWaypoint)
+		if not (okH and Plain(has)) then
+			return
+		end
+		if not Ours() then
+			MelloUI:Announce("The map pin is your own, not this step's: it stays.", "info")
+			return
+		end
+		if C_Map.ClearUserWaypoint then
+			pcall(C_Map.ClearUserWaypoint)
 		end
 	end
 

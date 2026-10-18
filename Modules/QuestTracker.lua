@@ -1687,7 +1687,9 @@ end
 
 local function OnBlockClick(block, button)
 	if block.guideClick then
-		pcall(block.guideClick)   -- (the user, 2026-10-18: the World Marker missing, "click on that current step and re-check the pin")
+		-- (the user, 2026-10-18: the World Marker missing, "click on that current step and re-check the pin";
+		-- "a way to remove the waypoint, by right clicking on the step")
+		pcall(button == "RightButton" and block.guideRight or block.guideClick)
 		return
 	end
 	if block.recipeID then
@@ -1750,7 +1752,7 @@ local function OnBlockEnter(block, onMark)
 		GameTooltip:SetOwner(block, "ANCHOR_LEFT")
 		GameTooltip:SetText(block.title:GetText() or "")
 		local c = MelloUI.Look.Palette().text
-		GameTooltip:AddLine("Click: mark this step on the map again", c[1], c[2], c[3], true)
+		GameTooltip:AddLine("Click: mark this step on the map again  -  Right-click: remove its mark", c[1], c[2], c[3], true)
 		GameTooltip:Show()
 		Act.Lit(block, true)
 		return
@@ -1926,7 +1928,7 @@ local function ReleaseBlock(block)
 		b:Hide()   -- (a guide's tick boxes: another block's lines next)
 		b.line = nil
 	end
-	block.guideClick = nil
+	block.guideClick, block.guideRight = nil, nil
 	if itemOverlay and itemOverlay.over == block.item then
 		DetachOverlay()
 	end
@@ -3303,7 +3305,7 @@ local function FillGuideBlock(block, data, width)
 	t:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X, 0)
 	t:SetWidth(width - TEXT_X)
 	t:SetText(data.title or "Guide")
-	block.guideClick = data.Repin   -- (a click: its step marked on the map again)
+	block.guideClick, block.guideRight = data.Repin, data.Unpin   -- (a click: its step marked again; a right-click: its mark gone)
 	block.ink = Inked()
 	t:SetTextColor(StoneColour(block, 1, 0.82, 0))
 	InkLine(t, block.ink, 1)
