@@ -5679,13 +5679,54 @@ function M.nav.Register()
 			M.nav.ShowMap()
 		end,
 		hint = M.nav.MAP_TIP,
-		actions = {
-			{ glyph = "way", tip = M.nav.MAP_TIP, desc = "Opens the map on the destination, the route drawn on it.",
-			  fn = function() M.nav.ShowMap() end },
-			{ glyph = "cross", tip = M.nav.STOP_TIP, desc = "Clears the destination and its route.",
-			  fn = function() M.nav.Stop() end },
-		},
+		sub = function(key)
+			local e = M.nav.extra
+			if type(e) == "table" and type(e.sub) == "function" then
+				return e.sub(key)
+			end
+			return e and e.sub or nil
+		end,
+		actions = M.nav.actions,
 	})
+end
+
+-- the row's buttons: Route's own two, then another module's (SetRowExtra)
+M.nav.actions = {
+	{ glyph = "way", tip = M.nav.MAP_TIP, desc = "Opens the map on the destination, the route drawn on it.",
+	  fn = function() M.nav.ShowMap() end },
+	{ glyph = "cross", tip = M.nav.STOP_TIP, desc = "Clears the destination and its route.",
+	  fn = function() M.nav.Stop() end },
+}
+
+-- (the leveling guide, user 2026-10-18: "why are there two frames") another
+-- module's part of the row while it leads Route there, so its step is this
+-- one row and not a second one under it:
+--   Route:SetRowExtra(owner, { sub = text or fn(key) -> text, actions =
+--       { action ... } })   the line under the row's two (the column's
+--       `sub`) and round buttons after Route's own (as the column's
+--       `actions` take them, `shown` too); one owner at a time, the last
+--       one set wins
+--   Route:SetRowExtra(owner)   taken off again (only by the owner that set
+--       it): the row as Route has it alone
+function M:SetRowExtra(owner, extra)
+	local had = M.nav.extra
+	if type(extra) == "table" then
+		M.nav.extra = { owner = owner, sub = extra.sub }
+	elseif had and had.owner == owner then
+		M.nav.extra = nil
+	else
+		return
+	end
+	local list = M.nav.actions
+	for i = #list, 3, -1 do
+		list[i] = nil
+	end
+	if type(extra) == "table" and type(extra.actions) == "table" then
+		for _, a in ipairs(extra.actions) do
+			list[#list + 1] = a
+		end
+	end
+	M.nav.Refresh()
 end
 
 local function EnsureArrow()
