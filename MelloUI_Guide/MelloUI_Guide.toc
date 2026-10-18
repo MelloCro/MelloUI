@@ -17,3 +17,4 @@ GuideXP.lua
 GuideClass.lua
 GuideSteps.lua
 Guide.lua
+GuideUI.lua

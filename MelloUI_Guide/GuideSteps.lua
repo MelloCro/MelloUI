@@ -261,6 +261,7 @@ local function Context(M)
 		mode = M.db and M.db.mode or "fast",
 	}
 end
+Steps.Context = Context   -- (the choice window's Change route: the areas from where the character is now)
 
 --------------------------------------------------------------------------------
 -- Class help: class steps, train steps, fight tips

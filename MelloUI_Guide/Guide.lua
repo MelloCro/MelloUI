@@ -16,6 +16,9 @@
 --   Guide:Allows(questID, kind)  Quest Auto's filter (kind "accept" or
 --                             "turnin"): only the plan's quests, while
 --                             Auto Accept Plan Quests is on
+--   Guide:Areas()          -> { area }: the open cards, else the planner's
+--                             areas from where the character is now (the
+--                             choice window's Change route, GuideUI.lua)
 --   Guide.choice, Guide.index, Guide.routed  (beside the four functions the
 --                             plan named, for the choice window and the
 --                             specs) the open cards or nil, the current
@@ -190,4 +193,16 @@ end
 
 function M:Allows(questID, kind)
 	return Steps.Allows(M, questID, kind)
+end
+
+-- the areas to choose from (the choice window's Change route): the open
+-- cards, else the planner's from where the character is now
+function M:Areas()
+	if type(M.choice) == "table" and #M.choice > 0 then
+		return M.choice
+	end
+	if not M.isEnabled then
+		return {}
+	end
+	return ns.Plan.areas(Steps.Context(M))
 end
