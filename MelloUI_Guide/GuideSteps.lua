@@ -37,9 +37,12 @@
 -- and at every level up (a level opens quests, spells and class quests). So
 -- no step ever asks for a quest that is done or gone.
 -- The session's end is a break point: the choice cards ("guide" "choice"),
--- or the one area offered, chosen at once. At login with no plan of its own
--- the area the character stands in is chosen without a choice when it is
--- offered and not a short stay (a new character in Northshire carries on).
+-- or the one area offered, chosen at once. So is an area used up -- its
+-- session would hold no quest or open with a grind step: a grind step is
+-- led only when no area at all has quests for the character. At login with
+-- no plan of its own the area the character stands in is chosen without a
+-- choice when it is offered and not a short stay (a new character in
+-- Northshire carries on).
 --
 -- Saved per character: MelloUIGuideChar = { version = 1, area, mode, plan =
 -- the session (Plan.session's, with the steps as led here), index = the
@@ -593,13 +596,20 @@ local function HoldsQuest(M, id)
 end
 Steps.HoldsQuest = HoldsQuest
 
-local function HasQuests(session)
+-- the planner's session (before the class help goes round it) in an area
+-- the character has used up: no quest of it, or it opens with a grind step
+-- (no quest of the area fits now; the planner grinds only first)
+local function UsedUp(session)
+	local first = session.steps[1]
+	if not first or first.kind == "grind" then
+		return true
+	end
 	for _, s in ipairs(session.steps) do
-		if s.kind == "take" or s.kind == "do" or s.kind == "turnin" or s.kind == "class" then
-			return true
+		if s.kind == "take" or s.kind == "do" or s.kind == "turnin" then
+			return false
 		end
 	end
-	return false
+	return true
 end
 
 -- the current step to Route and the bus, once per step and place
@@ -653,8 +663,17 @@ end
 function Steps.Choose(M, key, ctx)
 	ctx = ctx or Context(M)
 	local previous = Current(M)
+	local planned = ns.Plan.session(ctx, key, ctx.mode)
+	if key ~= nil and UsedUp(planned) then
+		-- (Denis, 2026-10-18: a used-up area offers the choice) no grind
+		-- step there while another area has quests: a break point
+		local areas = ns.Plan.areas(ctx)
+		if #areas > 0 then
+			return Offer(M, areas, ctx)
+		end
+	end
 	M.area = key
-	local session = Dress(M, ns.Plan.session(ctx, key, ctx.mode), ctx, previous)
+	local session = Dress(M, planned, ctx, previous)
 	M.area = session.area
 	if not Start(M, session) then
 		return Offer(M, ns.Plan.areas(ctx), ctx, true)
@@ -662,7 +681,7 @@ function Steps.Choose(M, key, ctx)
 end
 
 -- a break point: the cards, or the one area there is chosen at once; none
--- at all: the planner's best (grinding when no quest fits)
+-- at all: the planner's best (grinding only then, when no area has quests)
 Offer = function(M, areas, ctx, ended)
 	if #areas == 0 then
 		if ended then
@@ -692,15 +711,17 @@ function Steps.Replan(M, reason)
 		return Steps.First(M, ctx)
 	end
 	local previous = Current(M)
-	local session = Dress(M, ns.Plan.session(ctx, M.area, ctx.mode), ctx, previous)
+	local planned = ns.Plan.session(ctx, M.area, ctx.mode)
 	M.reason = reason
-	if not HasQuests(session) then
-		-- the area has nothing left for the character: a break point
+	if UsedUp(planned) then
+		-- the area has nothing left for the character now (a class step
+		-- alone keeps no one there): a break point
 		local areas = ns.Plan.areas(ctx)
 		if #areas > 0 then
 			return Offer(M, areas, ctx)
 		end
 	end
+	local session = Dress(M, planned, ctx, previous)
 	if not Start(M, session) then
 		return Offer(M, ns.Plan.areas(ctx), ctx, true)
 	end
@@ -766,6 +787,11 @@ function Steps.Login(M)
 		M.session, M.index, M.area = saved.plan, saved.index, saved.area
 		-- the steps' records (class steps and tips read them)
 		Context(M)
+		local s = Current(M)
+		if s and s.kind == "grind" then
+			-- (a grind step saved: planned again, the cards when the area is used up)
+			return Steps.Replan(M, "resume: grinding")
+		end
 		return Steps.Check(M, "resume")
 	end
 	return Steps.First(M)

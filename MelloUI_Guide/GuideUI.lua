@@ -12,24 +12,26 @@
 --                       the mode line, and two buttons: "Plan the session"
 --                       (the picked area chosen and the plan window opened)
 --                       and "Go to <area>" (the picked area chosen)
---   the step bar        one row of the Reminders' widget column (column =
---                       true): the current step's label, step n of the
---                       session, its quests' names and, on a hard step, the
---                       fight tip's first clause (the whole tip in the
---                       tooltip); two round buttons on hover: Change route
---                       (the choice window from any step: the cards open, or
---                       the planner's areas from where the character is now)
---                       and Plan (the plan window); a click on the row opens
---                       the plan window too
+--   the step bar        Route's own row in the Reminders' widget column
+--                       (Denis, 2026-10-18: "why are there two frames"):
+--                       while the guide leads Route there, Route:SetRowExtra
+--                       puts the guide's part on it -- the step's label is
+--                       Route's title already; under it "Step n of N" and, on
+--                       a hard step, the fight tip's first clause; two round
+--                       buttons after Route's own: Change route (the choice
+--                       window from any step: the cards open, or the
+--                       planner's areas from where the character is now) and
+--                       Plan (the plan window). While the cards wait, Change
+--                       route alone. Off, or leading nothing: Route's row as
+--                       Route has it alone
 --   the plan window     the session's steps from the current one on, the
 --                       current one in gold
 -- Area pictures: MelloUI_Guide/Media/Areas/<name>.tga (512 x 256, our own,
 -- made on Denis's box), <name> from the area's zone name (GuideData's
 -- areaTitles, the planner's title): lower case, letters only, the first of
 -- AREA_ART it starts with ("Redridge Mountains" -> redridge), else "default".
--- Nothing is made at load: the bus listener only; the row is registered with
--- the first "guide" event (the module switched on), the windows made at
--- their first open.
+-- Nothing is made at load: the bus listeners and the row's part (a table);
+-- the windows made at their first open.
 --
 --   MelloUI.Guide.UI (ns.UI):
 --   UI.OpenChoice([areas])  the choice window (areas: Guide:Areas())
@@ -37,7 +39,8 @@
 --   UI.Refresh()            the step bar and an open plan window again
 --   UI.ART_DIR, UI.ArtFor(title) -> the picture's path
 --   UI.choiceFrame, UI.cards (the shown ones), UI.goButton, UI.planButton,
---   UI.planFrame, UI.ROW_KEY, UI.row (the row's spec)  (for the specs)
+--   UI.planFrame, UI.ROW_KEY (Route's row), UI.row (the guide's part of it)
+--   (for the specs)
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -53,9 +56,8 @@ end
 local floor, max, min = math.floor, math.max, math.min
 
 UI.ART_DIR = "Interface\\AddOns\\MelloUI_Guide\\Media\\Areas\\"
-UI.ROW_KEY = "guide"
+UI.ROW_KEY = "route"   -- (Route's row, which carries the step bar)
 local LOGO = "Interface\\AddOns\\MelloUI\\Media\\Textures\\LogoIcon.tga"
-local ICON = "Interface\\Icons\\INV_Misc_Book_09"
 
 -- the pictures there are (Media/Areas), matched by the zone name's start
 local AREA_ART = { "elwynn", "westfall", "redridge", "duskwood", "lochmodan", "dunmorogh", "wetlands", "teldrassil",
@@ -342,30 +344,10 @@ function UI.OpenPlan()
 end
 
 --------------------------------------------------------------------------------
--- The step bar (a row of the widget column)
+-- The step bar (the guide's part of Route's row)
 --------------------------------------------------------------------------------
 
-local function QuestNames(step)
-	local G = Guide()
-	local names = {}
-	local ids = step.questIDs or (step.quest and { step.quest }) or {}
-	for _, id in ipairs(ids) do
-		local r = G and G.records and G.records[id]
-		local title = r and r.title
-		if not title and C_QuestLog and C_QuestLog.GetTitleForQuestID then
-			title = Call(C_QuestLog.GetTitleForQuestID, id)
-		end
-		if type(title) == "string" and title ~= "" then
-			names[#names + 1] = title
-		end
-	end
-	if #names > 3 then
-		return names[1] .. ", " .. names[2] .. " and " .. (#names - 2) .. " more"
-	end
-	return table.concat(names, ", ")
-end
-
--- the tip's first clause, for the row (the whole tip is in the tooltip)
+-- the tip's first clause, for the row
 local function ShortTip(tip)
 	local cut = tip:match("^([^,%.]+)")
 	return cut or tip
@@ -381,70 +363,51 @@ local function Waiting()
 	return G and G.isEnabled and not G:Current() and type(G.choice) == "table" and #G.choice > 0
 end
 
-local registered = false
-
-local function Register()
-	local Rem = MelloUI.Reminders
-	if registered or not (Rem and Rem.Register) then
-		return
+-- the step Route's row is for now: the current one, while Route's
+-- destination is its place (not one the player picked since)
+local function Leading()
+	local s, G, R = Current(), Guide(), MelloUI.Route
+	if not (s and G.routed and R and R.isEnabled and R.HasDestination) then
+		return nil
 	end
-	registered = true
-	UI.row = {
-		key = UI.ROW_KEY, column = true, label = "Guide", enabled = true, icon = ICON,
-		check = function()
-			return (Current() ~= nil or Waiting()) and true or false
-		end,
-		title = function()
-			local s = Current()
-			if s then
-				return tostring(s.label or s.kind)
-			end
-			return "Where next? Pick an area"
-		end,
-		text = function()
-			local s, G = Current(), Guide()
-			local session = G and G:Plan()
-			if s and session and session.steps then
-				return "Step " .. (G.index or 1) .. " of " .. #session.steps
-			end
-			return ""
-		end,
-		sub = function()
-			local s = Current()
-			if not s then
-				return "Change route opens the cards."
-			end
-			local names = QuestNames(s)
-			if s.tip then
-				local tip = ShortTip(s.tip)
-				return names ~= "" and (names .. "\n" .. tip) or tip
-			end
-			return names
-		end,
-		tooltip = function(_, tooltip)
-			local s = Current()
-			if s and s.tip and tooltip and tooltip.AddLine then
-				tooltip:AddLine(s.tip, 1, 0.82, 0, true)
-			end
-		end,
-		hint = "Click: the session's steps",
-		onClick = function()
-			UI.OpenPlan()
-		end,
-		actions = {
-			{ glyph = "way", tip = "Change route", desc = "The areas to choose from, from where you are now.",
-			  fn = function() UI.OpenChoice() end },
-			{ glyph = "list", tip = "Plan", desc = "The session's steps.",
-			  fn = function() UI.OpenPlan() end },
-		},
-	}
-	Rem:Register(UI.row)
+	local ok, has, label = pcall(R.HasDestination, R)
+	return (ok and has and label == s.label) and s or nil
 end
 
+-- the guide's part of Route's row (Route:SetRowExtra): "Step n of N" and a
+-- hard step's tip under the row's lines, Change route and Plan after
+-- Route's own buttons
+UI.row = {
+	sub = function()
+		local s, G = Leading(), Guide()
+		local session = G and G:Plan()
+		if s and session and session.steps then
+			local line = "Step " .. (G.index or 1) .. " of " .. #session.steps
+			return s.tip and (line .. "\n" .. ShortTip(s.tip)) or line
+		end
+		if Waiting() then
+			return "Where next? Change route opens the cards."
+		end
+		return nil
+	end,
+	actions = {
+		{ glyph = "reply", tip = "Change route", desc = "The areas to choose from, from where you are now.",
+		  shown = function() return Leading() ~= nil or Waiting() end,
+		  fn = function() UI.OpenChoice() end },
+		{ glyph = "list", tip = "Plan", desc = "The session's steps.",
+		  shown = function() return Leading() ~= nil end,
+		  fn = function() UI.OpenPlan() end },
+	},
+}
+
 function UI.Refresh()
-	local Rem = MelloUI.Reminders
-	if registered and Rem and Rem.Refresh then
-		Rem:Refresh(UI.ROW_KEY)
+	local R = MelloUI.Route
+	if R and R.SetRowExtra then
+		if Leading() or Waiting() then
+			R:SetRowExtra(UI, UI.row)
+		else
+			R:SetRowExtra(UI)
+		end
 	end
 	if planWin and planWin.frame:IsShown() then
 		FillPlan()
@@ -452,7 +415,6 @@ function UI.Refresh()
 end
 
 MelloUI:On("guide", function(kind, a)
-	Register()
 	if kind == "choice" then
 		UI.OpenChoice(a)
 	elseif choice and choice.frame:IsShown() and kind == "plan" then
@@ -460,4 +422,11 @@ MelloUI:On("guide", function(kind, a)
 		choice.frame:Hide()
 	end
 	UI.Refresh()
+end, UI)
+
+-- (the module switched off: Route's row as Route has it alone)
+MelloUI:On("module", function(name)
+	if name == "Guide" then
+		UI.Refresh()
+	end
 end, UI)
