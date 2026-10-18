@@ -9710,6 +9710,7 @@ SlashCmdList.MELLOROUTE = function(msg)
 			M.Guide.Step()
 		end
 		M.Guide.Publish()   -- (its steps in the Quest Tracker, or gone)
+		M.Guide.PublishItems()   -- (its items in the quest item widget, or gone)
 	elseif msg == "clear" then
 		M.StopRoute()   -- (a tracked quest's route stays stopped too)
 		MelloUI:Print("Route cleared.")
@@ -9951,7 +9952,7 @@ M.Guide = (function()
 
 	function Guide.Forget()
 		Guide.mapID, Guide.x, Guide.y = nil, nil, nil
-		Guide.sig = nil
+		Guide.sig, Guide.itemSig = nil, nil
 	end
 
 	-- RestedXP's active steps for the Quest Tracker (the user, 2026-10-18: its
@@ -9987,6 +9988,22 @@ M.Guide = (function()
 	-- back. No guide running: its window shows, to pick one.
 	local veil = {}   -- [frame] = { alpha, scale } RestedXP's own while veiled; false: watched
 	local veiling = false
+	local regen   -- (its item frame holds secure buttons: in a fight veiled or not after it, PLAYER_REGEN_ENABLED)
+
+	local function Later()
+		if not regen then
+			regen = CreateFrame("Frame")
+			regen:SetScript("OnEvent", function(self)
+				self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+				Guide.Veil(Guide.veiledOn)
+			end)
+		end
+		regen:RegisterEvent("PLAYER_REGEN_ENABLED")
+	end
+
+	local function Locked(frame)
+		return InCombatLockdown() and frame.IsProtected and frame:IsProtected() and true or false
+	end
 
 	local function Lay(frame)
 		veiling = true
@@ -9997,16 +10014,22 @@ M.Guide = (function()
 
 	function Guide.Veil(on)
 		Guide.veiledOn = on
-		for _, name in ipairs({ "RXPFrame", "RXPG_ARROW" }) do
+		for _, name in ipairs({ "RXPFrame", "RXPG_ARROW", "RXPItemFrame" }) do
 			local frame = rawget(_G, name)
-			if type(frame) == "table" and frame.SetScale and frame.GetScale then
+			if type(frame) == "table" and frame.SetScale and frame.GetScale and Locked(frame) then
+				Later()
+			elseif type(frame) == "table" and frame.SetScale and frame.GetScale then
 				if veil[frame] == nil then
 					veil[frame] = false
 					hooksecurefunc(frame, "SetScale", function(self, s)
 						local v = veil[self]
 						if v and not veiling then
 							v.scale = s
-							Lay(self)
+							if Locked(self) then
+								Later()
+							else
+								Lay(self)
+							end
 						end
 					end)
 				end
@@ -10071,6 +10094,14 @@ M.Guide = (function()
 		-- (the section's cog, the user, 2026-10-18: its left click RestedXP's own cog menu -- "choose the active
 		-- leveling guide" or its settings; at the cursor, so not under the veil -- its right click the settings,
 		-- as RestedXP's /rxp opens them)
+		Guide.title = (type(name) == "string" and name or "RestedXP") .. (n and (" - step " .. n) or "")
+		Guide.stepText = nil
+		for _, line in ipairs(lines) do
+			if not line.done then
+				Guide.stepText = line.text
+				break
+			end
+		end
 		local open = type(rxp.settings) == "table" and rxp.settings.OpenSettings
 		local menu = type(rframe.DropDownMenu) == "function" and rframe.DropDownMenu
 		local settings = type(open) == "function" and function() open() end or nil
@@ -10120,6 +10151,61 @@ M.Guide = (function()
 		return true
 	end
 
+	-- RestedXP's items for its step on the bus's "guideitem" (the user, 2026-10-18: "when you need to use an item in
+	-- certain spots and steps ... a hearthstone, mage teleports/portals", in MelloUI's quest item widget, RestedXP's
+	-- own item frame veiled): the items it names that the bags hold (RXP.activeItems), then the spells it names the
+	-- player knows (RXP.activeSpells); published only when the list changed, nil once there are none or it is off
+	local function Pcall(fn, ...)
+		if type(fn) ~= "function" then
+			return nil
+		end
+		local ok, v = pcall(fn, ...)
+		return ok and Plain(v) or nil
+	end
+
+	function Guide.PublishItems()
+		local rxp = rawget(_G, "RXP")
+		local items = {}
+		if Guide.veiledOn and type(rxp) == "table" then
+			local CI, CS = rawget(_G, "C_Item"), rawget(_G, "C_Spell")
+			local count = CI and CI.GetItemCount or rawget(_G, "GetItemCount")
+			for id in pairs(type(rxp.activeItems) == "table" and rxp.activeItems or {}) do
+				id = tonumber(id)
+				local have = id and tonumber(Pcall(count, id)) or 0
+				if have > 0 then
+					items[#items + 1] = { kind = "item", id = id, count = have, name = Pcall(CI and CI.GetItemNameByID, id),
+						icon = Pcall(CI and CI.GetItemIconByID, id) }
+				end
+			end
+			local known = rawget(_G, "IsPlayerSpell")
+			for id, arg in pairs(type(rxp.activeSpells) == "table" and rxp.activeSpells or {}) do
+				id = tonumber(id)
+				if id and (arg == "p" or Pcall(known, id)) and CS and CS.GetSpellInfo then
+					local ok, info = pcall(CS.GetSpellInfo, id)
+					if ok and type(info) == "table" and type(info.name) == "string" then
+						items[#items + 1] = { kind = "spell", id = id, name = info.name, icon = info.iconID }
+					end
+				end
+			end
+			table.sort(items, function(a, b)
+				if a.kind ~= b.kind then
+					return a.kind == "item"
+				end
+				return a.id < b.id
+			end)
+		end
+		local parts = {}
+		for i, e in ipairs(items) do
+			parts[i] = e.kind .. e.id .. ":" .. (e.count or 0) .. ":" .. tostring(e.name)
+		end
+		local sig = table.concat(parts, ",")
+		if sig == Guide.itemSig then
+			return
+		end
+		Guide.itemSig = sig
+		MelloUI:Fire("guideitem", #items > 0 and { title = Guide.title, step = Guide.stepText, items = items } or nil)
+	end
+
 	-- a click on the step in the Quest Tracker (the user, 2026-10-18: the World Marker missing, "click on that current
 	-- step and re-check the pin"): its spot laid and tracked again; a step with no spot says so
 	function Guide.Repin()
@@ -10158,6 +10244,7 @@ M.Guide = (function()
 		hooksecurefunc(rxp, "UpdateGotoSteps", function()
 			Guide.Step()
 			Guide.Publish()
+			Guide.PublishItems()
 		end)
 	end
 

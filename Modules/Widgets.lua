@@ -2277,7 +2277,8 @@ local BUFF_EVENTS = { PLAYER_DEAD = true, UNIT_AURA = true, PLAYER_REGEN_ENABLED
 --------------------------------------------------------------------------------
 
 local qitem = { quest = nil, item = nil, icon = nil, name = nil, title = nil, have = 0, line = nil, done = nil,
-	need = nil, any = false, wantsWhere = false, NEAR = 100, OWNER = "Widgets: quest items" }
+	need = nil, any = false, wantsWhere = false, NEAR = 100, OWNER = "Widgets: quest items",
+	guide = nil, fromGuide = false, spell = nil }   -- guide: a guide's items (the bus's "guideitem"); spell: its name
 
 -- the open objective's line and progress: the first not finished (all done:
 -- the last one)
@@ -2388,10 +2389,33 @@ function qitem.Read()
 	return qitem.quest ~= nil
 end
 
+-- (the user, 2026-10-18: RestedXP's items for a step -- quest items, a
+-- hearthstone, a mage's teleports and portals -- in this widget, not its own
+-- window) no quest item here: the first a guide publishes on the bus's
+-- "guideitem" (Route's reader of RestedXP Guides: { title, step, items = {
+-- { kind = "item" / "spell", id, name, icon, count } } }), used by its own
+-- secure face: "/use item:<id>", or "/cast <name>" for a spell
+function qitem.Guide()
+	local g = qitem.guide
+	local e = type(g) == "table" and type(g.items) == "table" and g.items[1]
+	if type(e) ~= "table" or not (e.id or e.name) then
+		return false
+	end
+	qitem.fromGuide = true
+	qitem.quest = nil
+	qitem.item = e.kind == "item" and e.id or nil
+	qitem.spell = e.kind == "spell" and e.name or nil
+	qitem.have = Num(e.count) or 0
+	qitem.icon, qitem.name = e.icon, e.name
+	qitem.title, qitem.line, qitem.done, qitem.need = g.title, g.step, nil, nil
+	return qitem.item ~= nil or qitem.spell ~= nil
+end
+
 local QITEM = {
 	key = "questItem", column = true, label = TEXT.qiLabel, combat = false, hint = TEXT.qiHint,
 	check = function()
-		return qitem.Read()
+		qitem.fromGuide, qitem.spell = false, nil
+		return qitem.Read() or qitem.Guide()
 	end,
 	title = function()
 		return qitem.name or TEXT.qiLabel
@@ -2403,7 +2427,7 @@ local QITEM = {
 		return qitem.icon
 	end,
 	count = function()
-		return qitem.have
+		return not qitem.spell and qitem.have or nil
 	end,
 	fraction = function()
 		if qitem.done and qitem.need and qitem.need > 0 then
@@ -2414,6 +2438,9 @@ local QITEM = {
 		return not InCombatLockdown() and TEXT.qiUse or ""
 	end,
 	secure = function()
+		if qitem.spell then
+			return "/cast " .. qitem.spell
+		end
 		return qitem.item and ("/use item:" .. qitem.item) or nil
 	end,
 	tooltip = function(_, tip)
@@ -2421,7 +2448,9 @@ local QITEM = {
 		if qitem.title then
 			tip:AddLine(TEXT.qiFor:format(qitem.title), text[1], text[2], text[3], true)
 		end
-		tip:AddLine(TEXT.qiBags:format(qitem.have), text[1], text[2], text[3], true)
+		if not qitem.spell then
+			tip:AddLine(TEXT.qiBags:format(qitem.have), text[1], text[2], text[3], true)
+		end
 	end,
 }
 
@@ -3389,6 +3418,13 @@ function M:OnInit(db)
 			Refresh("questItem")
 		end
 	end, qitem.OWNER)
+	-- a guide's items for its step (qitem.Guide)
+	MelloUI:On("guideitem", function(data)
+		qitem.guide = type(data) == "table" and data or nil
+		if On("questItem") then
+			Refresh("questItem")
+		end
+	end, qitem.OWNER .. ": a guide's")
 end
 
 function M:OnEnable(db)
