@@ -1,0 +1,16 @@
+## Interface: 16001
+## Title: |cff9b8cffMello|rUI Guide
+## Notes: MelloUI's leveling guide: where to go next by level, XP and rested XP, the quests bundled by place, then step by step with Route. Untick it here to not load it at all.
+## Author: Denis, for MelloUI
+## Version: 0.23.1
+## Dependencies: MelloUI, MelloUI_Route, MelloUI_QuestList
+## OptionalDeps: MelloUI_Companion
+## X-MelloUI-Feature: Guide
+## SavedVariablesPerCharacter: MelloUIGuideChar
+## SavedVariables: MelloUIGuideLearned
+## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
+
+GuideOpenData.lua
+GuidePlan.lua
+GuideData.lua
+GuideXP.lua
