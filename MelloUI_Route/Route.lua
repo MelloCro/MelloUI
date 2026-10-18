@@ -9927,9 +9927,9 @@ end
 -- /route rxp turns it off and on. Every read is guarded: an RXP of another
 -- shape does nothing.
 --------------------------------------------------------------------------------
-do
+-- (built in a function of its own: its locals are not the main chunk's, which has few to spare)
+M.Guide = (function()
 	local Guide = { hooked = false }   -- mapID, x, y: the step laid last
-	M.Guide = Guide
 
 	local function Same(mapID, x, y, m2, x2, y2)
 		return mapID == m2 and x2 and y2 and math.abs(x - x2) < 0.0005 and math.abs(y - y2) < 0.0005 or false
@@ -9977,6 +9977,54 @@ do
 		end
 	end
 
+	-- RestedXP's own arrow and window veiled while its guide runs here (the
+	-- user, 2026-10-18: "when this compatibility is enabled, the restedxp arrow
+	-- and its window is hidden"). Not hidden: RestedXP reads their being shown
+	-- as state (its window hidden pauses the whole guide, isHidden; its arrow
+	-- hidden takes another waypoint path). A scale far below a pixel instead,
+	-- nothing to see or click, alpha 0 too; laid again after RestedXP's own
+	-- SetScale (its Window Scale setting); off, what it last asked for comes
+	-- back. No guide running: its window shows, to pick one.
+	local veil = {}   -- [frame] = { alpha, scale } RestedXP's own while veiled; false: watched
+	local veiling = false
+
+	local function Lay(frame)
+		veiling = true
+		frame:SetAlpha(0)
+		frame:SetScale(0.001)
+		veiling = false
+	end
+
+	function Guide.Veil(on)
+		Guide.veiledOn = on
+		for _, name in ipairs({ "RXPFrame", "RXPG_ARROW" }) do
+			local frame = rawget(_G, name)
+			if type(frame) == "table" and frame.SetScale and frame.GetScale then
+				if veil[frame] == nil then
+					veil[frame] = false
+					hooksecurefunc(frame, "SetScale", function(self, s)
+						local v = veil[self]
+						if v and not veiling then
+							v.scale = s
+							Lay(self)
+						end
+					end)
+				end
+				local v = veil[frame]
+				if on and not v then
+					veil[frame] = { alpha = frame:GetAlpha(), scale = frame:GetScale() }
+					Lay(frame)
+				elseif not on and v then
+					veil[frame] = false
+					veiling = true
+					frame:SetScale(v.scale or 1)
+					frame:SetAlpha(v.alpha or 1)
+					veiling = false
+				end
+			end
+		end
+	end
+
 	function Guide.Publish()
 		local rxp, rframe = rawget(_G, "RXP"), rawget(_G, "RXPFrame")
 		local steps = M.isEnabled and M.db and M.db.followGuide ~= false and type(rxp) == "table"
@@ -9986,6 +10034,9 @@ do
 			EachLine(steps, function(el)
 				parts[#parts + 1] = el.text .. ((el.completed or el.skip) and "+" or "-")
 			end)
+		end
+		if (#parts > 0) ~= (Guide.veiledOn or false) then
+			Guide.Veil(#parts > 0)
 		end
 		local sig = table.concat(parts, "\n")
 		if sig == Guide.sig then
@@ -10017,8 +10068,12 @@ do
 		local name = type(guide) == "table" and (guide.displayName or guide.name) or nil
 		local cdata = rawget(_G, "RXPCData")
 		local n = type(cdata) == "table" and tonumber(cdata.currentStep) or nil
+		-- (the section's cog: RestedXP's own settings, as its /rxp opens them)
+		local settings = type(rxp.settings) == "table" and rxp.settings.OpenSettings
 		MelloUI:Fire("guide", { section = "RestedXP Guide", lines = lines,
-			title = (type(name) == "string" and name or "RestedXP") .. (n and (" - step " .. n) or "") })
+			title = (type(name) == "string" and name or "RestedXP") .. (n and (" - step " .. n) or ""),
+			Settings = type(settings) == "function" and function() settings() end or nil,
+			settingsTip = "RestedXP Guides settings" })
 	end
 
 	function Guide.Step()
@@ -10073,7 +10128,9 @@ do
 			Guide.Publish()
 		end)
 	end
-end
+
+	return Guide
+end)()
 
 function M:OnInit(db)
 	self.db = db

@@ -3207,6 +3207,46 @@ local function GuideBox(block, i)
 	return b
 end
 
+-- a section's cog (the guide's: its own settings, guide.Settings; the user,
+-- 2026-10-18: "a cogwheel in the restedxp section ... which opens the
+-- restedxp own settings menu"), left of the section's fold button
+local function SectionCog(row, fn, tip)
+	local cog = row.cog
+	if not fn then
+		if cog then
+			cog:Hide()
+		end
+		return
+	end
+	if not cog then
+		cog = CreateFrame("Button", nil, row.toggle:GetParent())
+		cog:SetSize(14, 14)
+		cog.icon = cog:CreateTexture(nil, "ARTWORK")
+		cog.icon:SetAllPoints(cog)
+		cog.icon:SetAtlas("questlog-icon-setting")
+		cog.icon:SetAlpha(0.8)
+		cog:SetPoint("RIGHT", row.toggle, "LEFT", -6, 0)
+		Perf.SetScript(cog, "OnClick", function(self)
+			if self.fn then
+				pcall(self.fn)
+			end
+		end)
+		Perf.SetScript(cog, "OnEnter", function(self)
+			self.icon:SetAlpha(1)
+			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+			GameTooltip:SetText(self.tip or "Settings")
+			GameTooltip:Show()
+		end)
+		Perf.SetScript(cog, "OnLeave", function(self)
+			self.icon:SetAlpha(0.8)
+			GameTooltip:Hide()
+		end)
+		row.cog = cog
+	end
+	cog.fn, cog.tip = fn, tip
+	cog:Show()
+end
+
 local function HideBoxes(block, from)
 	for i = from, #(block.boxes or {}) do
 		block.boxes[i]:Hide()
@@ -3432,8 +3472,9 @@ local function Rebuild()
 		row:Hide()
 	end
 	local y = 0
-	local function Head(key, label, count)
+	local function Head(key, label, count, cog, tip)
 		local row = Section(key, label, count)
+		SectionCog(row, cog, tip)
 		row:ClearAllPoints()
 		row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
 		row:SetWidth(width)
@@ -3455,7 +3496,7 @@ local function Rebuild()
 	end
 	-- a guide's steps on top (GUIDE, above)
 	if guide then
-		Head("guide", guide.section or "Guide", #(guide.lines or {}))
+		Head("guide", guide.section or "Guide", #(guide.lines or {}), guide.Settings, guide.settingsTip)
 		if guideOpen then
 			Put("guide", FillGuideBlock, guide, width)
 		end
