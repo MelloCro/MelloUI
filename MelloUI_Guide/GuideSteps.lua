@@ -240,7 +240,12 @@ local function Context(M)
 	local done, log = ns.Data.state()
 	-- other races' starting areas and capitals out (Data.otherStarts); here: the area the character stands in
 	local q = MelloUI.QuestList
-	local here = q and q.CurrentAreaID and q.CurrentAreaID() or nil
+	-- (asked through pcall: the Quest List answers only once its index is built, i.e. while its module is on)
+	local okHere, here = false, nil
+	if q and q.CurrentAreaID then
+		okHere, here = pcall(q.CurrentAreaID)
+	end
+	here = okHere and here or nil
 	local others = ns.Data.otherStarts(side, done, here)
 	local records = {}
 	for _, r in ipairs(list) do
