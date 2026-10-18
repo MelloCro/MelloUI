@@ -9599,6 +9599,7 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 		Travel.Entered()   -- the travel time's login grace runs from the first one
 		M.ForgetNoContinent()
 		M.SideChanged()
+		M.Guide.Hook()   -- (every addon is loaded by now: RestedXP Guides too)
 		C_Timer.After(1, function() ReadWaypoint() end)
 	elseif event == "USER_WAYPOINT_UPDATED" or event == "SUPER_TRACKING_CHANGED" then
 		if event == "SUPER_TRACKING_CHANGED" then
@@ -9700,6 +9701,14 @@ SlashCmdList.MELLOROUTE = function(msg)
 		MelloUI:Print("user waypoint=%s supertracking waypoint=%s", okH and tostring(has) or "?",
 			C_SuperTrack and C_SuperTrack.IsSuperTrackingUserWaypoint and tostring(C_SuperTrack.IsSuperTrackingUserWaypoint()) or "?")
 		MelloUI:ShowLog("route dots")
+	elseif msg == "rxp" then
+		-- (RestedXP Guides: following its arrow on or off; the first, simple version)
+		M.db.followGuide = M.db.followGuide == false
+		M.Guide.Forget()
+		MelloUI:Print("Following RestedXP Guides: %s.", M.db.followGuide and "on" or "off")
+		if M.db.followGuide then
+			M.Guide.Step()
+		end
 	elseif msg == "clear" then
 		M.StopRoute()   -- (a tracked quest's route stays stopped too)
 		MelloUI:Print("Route cleared.")
@@ -9901,6 +9910,96 @@ SlashCmdList.MELLOROUTE = function(msg)
 			mapPainter and mapPainter.used or 0, tostring(Provider ~= nil),
 			mmPainter and tostring(mmPainter.used) or "none"))
 		print("   /route clear   |   /route reset   |   /route dots")
+	end
+end
+
+--------------------------------------------------------------------------------
+-- RestedXP Guides (a first, simple version for the user's in-game test,
+-- 2026-10-18: "if our world marker could read those coordinates and places a
+-- mark on that spot, that could work"): when RestedXP's arrow moves to a new
+-- guide step, the game's map pin goes on that spot and is tracked, so the
+-- route and the World Marker lead there (ReadWaypoint, on the pin's
+-- USER_WAYPOINT_UPDATED). Read only, from RestedXP's own table (RXP, its
+-- arrow's element: zone the map, x / y 0..100), after its UpdateGotoSteps.
+-- A pin of the player's own is never moved; a pin of ours the player clears,
+-- or a quest the player tracks instead, stays so until the next step.
+-- /route rxp turns it off and on. Every read is guarded: an RXP of another
+-- shape does nothing.
+--------------------------------------------------------------------------------
+do
+	local Guide = { hooked = false }   -- mapID, x, y: the step laid last
+	M.Guide = Guide
+
+	local function Same(mapID, x, y, m2, x2, y2)
+		return mapID == m2 and x2 and y2 and math.abs(x - x2) < 0.0005 and math.abs(y - y2) < 0.0005 or false
+	end
+
+	-- the pin on the map is the one laid for the last step
+	local function Ours()
+		local okH, has = pcall(C_Map.HasUserWaypoint)
+		if not (okH and Plain(has)) or not C_Map.GetUserWaypoint then
+			return false
+		end
+		local ok, point = pcall(C_Map.GetUserWaypoint)
+		if not ok or type(point) ~= "table" then
+			return false
+		end
+		local px, py = VectorXY(point.position)
+		return Guide.mapID and px and py and Same(Guide.mapID, Guide.x, Guide.y, Plain(point.uiMapID), px, py) or false
+	end
+
+	function Guide.Forget()
+		Guide.mapID, Guide.x, Guide.y = nil, nil, nil
+	end
+
+	function Guide.Step()
+		if not (M.isEnabled and M.db and M.db.followGuide ~= false) then
+			return
+		end
+		local rxp = rawget(_G, "RXP")
+		local af = type(rxp) == "table" and rawget(rxp, "arrowFrame")
+		local el = type(af) == "table" and rawget(af, "element")
+		if type(el) ~= "table" or not (af.IsShown and af:IsShown()) then
+			return
+		end
+		local zone, x, y = el.zone, tonumber(el.x), tonumber(el.y)
+		if type(zone) == "string" and type(rxp.GetMapId) == "function" then
+			local ok, id = pcall(rxp.GetMapId, zone)
+			zone = ok and id or nil
+		end
+		zone = tonumber(zone)
+		if not (zone and x and y) then
+			return
+		end
+		x, y = x / 100, y / 100
+		if Same(zone, x, y, Guide.mapID, Guide.x, Guide.y) then
+			return   -- this step was laid already
+		end
+		local okH, has = pcall(C_Map.HasUserWaypoint)
+		if okH and Plain(has) and not Ours() then
+			return   -- the player's own pin stays (followed again once it is gone)
+		end
+		if not (C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates) then
+			return
+		end
+		Guide.mapID, Guide.x, Guide.y = zone, x, y
+		if pcall(C_Map.SetUserWaypoint, UiMapPoint.CreateFromCoordinates(zone, x, y))
+			and C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
+			pcall(C_SuperTrack.SetSuperTrackedUserWaypoint, true)
+		end
+	end
+
+	-- once, after every addon is loaded: a post-hook on RestedXP's own step update
+	function Guide.Hook()
+		if Guide.hooked then
+			return
+		end
+		local rxp = rawget(_G, "RXP")
+		if type(rxp) ~= "table" or type(rawget(rxp, "UpdateGotoSteps")) ~= "function" then
+			return
+		end
+		Guide.hooked = true
+		hooksecurefunc(rxp, "UpdateGotoSteps", Guide.Step)
 	end
 end
 
