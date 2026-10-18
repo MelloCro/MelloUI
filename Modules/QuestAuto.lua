@@ -67,6 +67,7 @@ local M = MelloUI:RegisterModule("QuestAuto", {
 		  desc = "Hold it as you talk to a giver to see its dialog as usual: nothing is accepted or handed in there." },
 	},
 })
+MelloUI.QuestAuto = M
 
 local ACT_DELAY = 0.2   -- s: the dialog stays open this long for what reads it first (Voice Over: the next frame)
 
@@ -197,6 +198,20 @@ end
 local frame                           -- its event frame, made when a switch is first on (Sync)
 local pending, pendingID = nil, nil   -- the step to take after ACT_DELAY, the quest it was for
 local handedGossip = {}               -- [questID] = true: selected from this gossip (never twice: GOSSIP_CLOSED clears)
+local filter = nil                    -- M:SetFilter's fn(questID, kind), or nil
+
+-- (the leveling guide, MelloUI_Guide: only the quests of its plan) fn(questID,
+-- kind) asked before each quest is accepted ("accept") or handed in
+-- ("turnin"); only its true lets the quest through, anything else -- false,
+-- nil, an error -- leaves it to you. nil takes the filter off: every quest the
+-- rules let through, as before
+function M:SetFilter(fn)
+	filter = type(fn) == "function" and fn or nil
+end
+
+local function Let(id, kind)
+	return filter == nil or (id ~= nil and Yes(Call(filter, id, kind)))
+end
 
 local function Accept()
 	if QuestID() == pendingID and M.db.accept then
@@ -248,21 +263,21 @@ end
 
 local function OnDetail()
 	local id = QuestID()
-	if M.db.accept and id and not Repeatable(id) and not Grey(id) then
+	if M.db.accept and id and not Repeatable(id) and not Grey(id) and Let(id, "accept") then
 		Soon(Accept, id)
 	end
 end
 
 local function OnProgress()
 	local id = QuestID()
-	if M.db.handIn and id and not Repeatable(id) then
+	if M.db.handIn and id and not Repeatable(id) and Let(id, "turnin") then
 		Soon(Progress, id)
 	end
 end
 
 local function OnComplete()
 	local id = QuestID()
-	if M.db.handIn and id and not Repeatable(id) then
+	if M.db.handIn and id and not Repeatable(id) and Let(id, "turnin") then
 		Soon(Reward, id)
 	end
 end
@@ -276,7 +291,8 @@ local function OnGossip()
 	if M.db.handIn then
 		for _, q in ipairs(Call(G.GetActiveQuests) or {}) do
 			local id = Plain(q.questID)
-			if Yes(q.isComplete) and id and not handedGossip[id] and not Yes(q.repeatable) and not Secret(q.repeatable) then
+			if Yes(q.isComplete) and id and not handedGossip[id] and not Yes(q.repeatable) and not Secret(q.repeatable)
+				and Let(id, "turnin") then
 				handedGossip[id] = true
 				Call(G.SelectActiveQuest, id)
 				return
@@ -286,7 +302,7 @@ local function OnGossip()
 	if M.db.accept then
 		local available = Call(G.GetAvailableQuests) or {}
 		local only = #available == 1 and available[1]
-		if only and Plainly(only) then
+		if only and Plainly(only) and Let(Plain(only.questID), "accept") then
 			Call(G.SelectAvailableQuest, only.questID)
 		end
 	end
@@ -298,7 +314,7 @@ local function OnGreeting()
 		for i = 1, Num(Call(GetNumActiveQuests)) or 0 do
 			local _, done = Call(GetActiveTitle, i)
 			local id = Num(Call(GetActiveQuestID, i))
-			if Yes(done) and not Repeatable(id) and not (id and handedGossip[id]) then
+			if Yes(done) and not Repeatable(id) and not (id and handedGossip[id]) and Let(id, "turnin") then
 				if id then
 					handedGossip[id] = true
 				end
@@ -309,7 +325,8 @@ local function OnGreeting()
 	end
 	if M.db.accept and Num(Call(GetNumAvailableQuests)) == 1 then
 		local trivial, frequency, repeatable, _, id = Call(GetAvailableQuestInfo, 1)
-		if Plainly({ questID = id, isTrivial = trivial, frequency = frequency, repeatable = repeatable }) then
+		if Plainly({ questID = id, isTrivial = trivial, frequency = frequency, repeatable = repeatable })
+			and Let(Num(id), "accept") then
 			Call(SelectAvailableQuest, 1)
 		end
 	end
