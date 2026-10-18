@@ -4490,6 +4490,7 @@ local function CheckArrival()
 	end
 	local cont, x, y = PlayerYards()
 	if cont and cont == destination.cont and Dist(x, y, destination.x, destination.y) <= (tonumber(M.db.arrive) or 25) then
+		local d = destination   -- (kept for the bus, below: the pin cleared lets it go at once, ReadWaypoint)
 		-- with Travel Time, how long the way took: "Arrived: Stormwind (2:48)"
 		local took = Travel.Took(destination)
 		M:Notify("Arrived: " .. (destination.label or "destination") .. (took and (" (" .. took .. ")") or ""), "arrive")
@@ -4500,6 +4501,10 @@ local function CheckArrival()
 		-- with the marker, below)
 		M.ArriveLight()
 		M:Clear()
+		-- (the leveling guide, MelloUI_Guide) the way's end told on the bus once
+		-- the destination is let go, so a listener may set the next one; a
+		-- followed quest's spot is never cleared here and tells nothing
+		MelloUI:Fire("route", "arrived", d)
 	end
 end
 
