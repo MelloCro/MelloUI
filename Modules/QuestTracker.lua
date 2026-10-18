@@ -1686,6 +1686,10 @@ function Act.MarkClick(block, button)
 end
 
 local function OnBlockClick(block, button)
+	if block.guideClick then
+		pcall(block.guideClick)   -- (the user, 2026-10-18: the World Marker missing, "click on that current step and re-check the pin")
+		return
+	end
 	if block.recipeID then
 		if IsShiftKeyDown() and button ~= "RightButton" then
 			if C_TradeSkillUI and C_TradeSkillUI.SetRecipeTracked then
@@ -1741,6 +1745,16 @@ Act.HINT = {
 
 -- `onMark`: under the quest's mark (its own hint: following)
 local function OnBlockEnter(block, onMark)
+	if block.guideClick then
+		-- (a guide's step: a click marks it on the map again -- GUIDE, below)
+		GameTooltip:SetOwner(block, "ANCHOR_LEFT")
+		GameTooltip:SetText(block.title:GetText() or "")
+		local c = MelloUI.Look.Palette().text
+		GameTooltip:AddLine("Click: mark this step on the map again", c[1], c[2], c[3], true)
+		GameTooltip:Show()
+		Act.Lit(block, true)
+		return
+	end
 	if block.recipeID then
 		GameTooltip:SetOwner(block, "ANCHOR_LEFT")
 		local link
@@ -1912,6 +1926,7 @@ local function ReleaseBlock(block)
 		b:Hide()   -- (a guide's tick boxes: another block's lines next)
 		b.line = nil
 	end
+	block.guideClick = nil
 	if itemOverlay and itemOverlay.over == block.item then
 		DetachOverlay()
 	end
@@ -3207,12 +3222,13 @@ local function GuideBox(block, i)
 	return b
 end
 
--- a section's cog (the guide's: its own settings, guide.Settings; the user,
--- 2026-10-18: "a cogwheel in the restedxp section ... which opens the
--- restedxp own settings menu"), left of the section's fold button
-local function SectionCog(row, fn, tip)
+-- a section's cog (a guide's: `cog` = { Left, Right, tip, hint }; the user,
+-- 2026-10-18: "a cogwheel in the restedxp section", its left click RestedXP's
+-- own cog menu -- the guides, the settings -- its right click the settings),
+-- left of the section's fold button
+local function SectionCog(row, spec)
 	local cog = row.cog
-	if not fn then
+	if type(spec) ~= "table" or not (spec.Left or spec.Right) then
 		if cog then
 			cog:Hide()
 		end
@@ -3221,20 +3237,29 @@ local function SectionCog(row, fn, tip)
 	if not cog then
 		cog = CreateFrame("Button", nil, row.toggle:GetParent())
 		cog:SetSize(14, 14)
+		cog:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 		cog.icon = cog:CreateTexture(nil, "ARTWORK")
 		cog.icon:SetAllPoints(cog)
 		cog.icon:SetAtlas("questlog-icon-setting")
 		cog.icon:SetAlpha(0.8)
 		cog:SetPoint("RIGHT", row.toggle, "LEFT", -6, 0)
-		Perf.SetScript(cog, "OnClick", function(self)
-			if self.fn then
-				pcall(self.fn)
+		Perf.SetScript(cog, "OnClick", function(self, button)
+			local sp = self.spec
+			local fn = sp and (button == "RightButton" and sp.Right or sp.Left or sp.Right)
+			if fn then
+				GameTooltip:Hide()
+				pcall(fn)
 			end
 		end)
 		Perf.SetScript(cog, "OnEnter", function(self)
 			self.icon:SetAlpha(1)
+			local sp = self.spec
 			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-			GameTooltip:SetText(self.tip or "Settings")
+			GameTooltip:SetText(sp and sp.tip or "Settings")
+			if sp and sp.hint then
+				local c = MelloUI.Look.Palette().text   -- (a hint: small text is never mutedText)
+				GameTooltip:AddLine(sp.hint, c[1], c[2], c[3], true)
+			end
 			GameTooltip:Show()
 		end)
 		Perf.SetScript(cog, "OnLeave", function(self)
@@ -3243,7 +3268,7 @@ local function SectionCog(row, fn, tip)
 		end)
 		row.cog = cog
 	end
-	cog.fn, cog.tip = fn, tip
+	cog.spec = spec
 	cog:Show()
 end
 
@@ -3278,6 +3303,7 @@ local function FillGuideBlock(block, data, width)
 	t:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X, 0)
 	t:SetWidth(width - TEXT_X)
 	t:SetText(data.title or "Guide")
+	block.guideClick = data.Repin   -- (a click: its step marked on the map again)
 	block.ink = Inked()
 	t:SetTextColor(StoneColour(block, 1, 0.82, 0))
 	InkLine(t, block.ink, 1)
@@ -3472,9 +3498,9 @@ local function Rebuild()
 		row:Hide()
 	end
 	local y = 0
-	local function Head(key, label, count, cog, tip)
+	local function Head(key, label, count, cog)
 		local row = Section(key, label, count)
-		SectionCog(row, cog, tip)
+		SectionCog(row, cog)
 		row:ClearAllPoints()
 		row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
 		row:SetWidth(width)
@@ -3496,7 +3522,7 @@ local function Rebuild()
 	end
 	-- a guide's steps on top (GUIDE, above)
 	if guide then
-		Head("guide", guide.section or "Guide", #(guide.lines or {}), guide.Settings, guide.settingsTip)
+		Head("guide", guide.section or "Guide", #(guide.lines or {}), guide.cog)
 		if guideOpen then
 			Put("guide", FillGuideBlock, guide, width)
 		end

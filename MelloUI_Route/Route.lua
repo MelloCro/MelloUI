@@ -10068,15 +10068,19 @@ M.Guide = (function()
 		local name = type(guide) == "table" and (guide.displayName or guide.name) or nil
 		local cdata = rawget(_G, "RXPCData")
 		local n = type(cdata) == "table" and tonumber(cdata.currentStep) or nil
-		-- (the section's cog: RestedXP's own settings, as its /rxp opens them)
-		local settings = type(rxp.settings) == "table" and rxp.settings.OpenSettings
-		MelloUI:Fire("guide", { section = "RestedXP Guide", lines = lines,
+		-- (the section's cog, the user, 2026-10-18: its left click RestedXP's own cog menu -- "choose the active
+		-- leveling guide" or its settings; at the cursor, so not under the veil -- its right click the settings,
+		-- as RestedXP's /rxp opens them)
+		local open = type(rxp.settings) == "table" and rxp.settings.OpenSettings
+		local menu = type(rframe.DropDownMenu) == "function" and rframe.DropDownMenu
+		local settings = type(open) == "function" and function() open() end or nil
+		MelloUI:Fire("guide", { section = "RestedXP Guide", lines = lines, Repin = Guide.Repin,
 			title = (type(name) == "string" and name or "RestedXP") .. (n and (" - step " .. n) or ""),
-			Settings = type(settings) == "function" and function() settings() end or nil,
-			settingsTip = "RestedXP Guides settings" })
+			cog = { Left = menu and function() menu() end or settings, Right = settings, tip = "RestedXP Guides",
+				hint = "Click: its menu (guides, settings)  -  Right-click: its settings" } })
 	end
 
-	function Guide.Step()
+	function Guide.Step(force)   -- force: a click on the step (laid again, over the player's own pin too); true when laid
 		if not (M.isEnabled and M.db and M.db.followGuide ~= false) then
 			return
 		end
@@ -10096,20 +10100,31 @@ M.Guide = (function()
 			return
 		end
 		x, y = x / 100, y / 100
-		if Same(zone, x, y, Guide.mapID, Guide.x, Guide.y) then
+		if not force and Same(zone, x, y, Guide.mapID, Guide.x, Guide.y) then
 			return   -- this step was laid already
 		end
 		local okH, has = pcall(C_Map.HasUserWaypoint)
-		if okH and Plain(has) and not Ours() then
+		if not force and okH and Plain(has) and not Ours() then
 			return   -- the player's own pin stays (followed again once it is gone)
 		end
 		if not (C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates) then
 			return
 		end
 		Guide.mapID, Guide.x, Guide.y = zone, x, y
-		if pcall(C_Map.SetUserWaypoint, UiMapPoint.CreateFromCoordinates(zone, x, y))
-			and C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
+		if not pcall(C_Map.SetUserWaypoint, UiMapPoint.CreateFromCoordinates(zone, x, y)) then
+			return false
+		end
+		if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
 			pcall(C_SuperTrack.SetSuperTrackedUserWaypoint, true)
+		end
+		return true
+	end
+
+	-- a click on the step in the Quest Tracker (the user, 2026-10-18: the World Marker missing, "click on that current
+	-- step and re-check the pin"): its spot laid and tracked again; a step with no spot says so
+	function Guide.Repin()
+		if not Guide.Step(true) then
+			MelloUI:Announce("This RestedXP step has no place to mark on the map.", "info")
 		end
 	end
 
