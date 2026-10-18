@@ -114,6 +114,17 @@ local function QuestState(row, level)
 	return row[QL.F_REQ] <= level and "available" or "locked"
 end
 
+-- (the leveling guide, MelloUI_Guide) the same state by quest ID, at the
+-- character's level, so what the guide plans agrees with the map's marks; nil
+-- for a quest the data does not have
+function QL.QuestState(questID)
+	local row = QL.RowByID()[questID]
+	if not row then
+		return nil
+	end
+	return QuestState(row, QL.Plain(UnitLevel("player")) or 60)
+end
+
 -- A holiday's or world event's quest is pinned while it is in the log, or
 -- while the list shows the events: its giver stands only while the event
 -- runs (0.19.3; the list keeps these quests out of the zone lists too)
