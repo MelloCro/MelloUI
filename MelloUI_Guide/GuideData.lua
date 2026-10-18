@@ -17,6 +17,18 @@
 --                       those the data knows; unknown = { done = n, log = n },
 --                       the ones it does not (Forever's newest), left out
 --   Data.areaTitles()   -> { [areaKey] = name }, for the planner's ctx
+--   Data.foreignAreas(side) -> { [areaKey] = true }: the other side's
+--                       territory, left out of the cards and the session
+--                       (the steps drop these areas' records before they
+--                       plan). An area is the other side's when more than
+--                       half of its quests in the data (any level and class;
+--                       world event and dungeon quests left out; the area as
+--                       the records take it) are that side's only (2 for the
+--                       Alliance, 1 for the Horde) and fewer than 10 are this
+--                       side's only: The Barrens and Durotar are the Horde's
+--                       though a few of their quests are open to both,
+--                       Hillsbrad (Southshore's 18 quests beside Tarren
+--                       Mill's 40) stays both sides'. Made once a session.
 --
 -- Field by field (which source wins):
 --   area        the quest's own zone (the data's quest zone: where it is
@@ -325,4 +337,54 @@ function Data.areaTitles()
 	local q = QL()
 	local data = q and q.Data()
 	return type(data) == "table" and data.zones or {}
+end
+
+--------------------------------------------------------------------------------
+-- The other side's territory
+--------------------------------------------------------------------------------
+
+local FOREIGN_SHARE = 0.5   -- more than this share of an area's quests the other side's only ...
+local OWN_FEW = 10          -- ... and fewer than this many this side's only: the other side's territory
+
+local foreign = {}          -- [side] = { [areaKey] = true }, made once a session
+
+function Data.foreignAreas(side)
+	if foreign[side] then
+		return foreign[side]
+	end
+	local q = QL()
+	local data = q and q.Data()
+	local own = SIDES[side]
+	local out = {}
+	if not own or type(data) ~= "table" or type(data.quests) ~= "table" then
+		return out   -- (not kept: asked again once the data is there)
+	end
+	local other = own == 1 and 2 or 1
+	local count = {}   -- [areaKey] = { all, other's only, own only }
+	for _, row in ipairs(data.quests) do
+		if row[q.F_EVENT] == 0 and row[q.F_DUNGEON] == 0 then
+			local area = AreaOf(q, data, row)
+			if area then
+				local c = count[area]
+				if not c then
+					c = { 0, 0, 0 }
+					count[area] = c
+				end
+				c[1] = c[1] + 1
+				local rowSide = row[q.F_SIDE]
+				if rowSide == other then
+					c[2] = c[2] + 1
+				elseif rowSide == own then
+					c[3] = c[3] + 1
+				end
+			end
+		end
+	end
+	for area, c in pairs(count) do
+		if c[2] > c[1] * FOREIGN_SHARE and c[3] < OWN_FEW then
+			out[area] = true
+		end
+	end
+	foreign[side] = out
+	return out
 end
