@@ -30,3 +30,4 @@ move-folders:
   MelloUI/MelloUI_Route: MelloUI_Route
   MelloUI/MelloUI_VoiceOver: MelloUI_VoiceOver
   MelloUI/MelloUI_PersonalDisplay: MelloUI_PersonalDisplay
+  MelloUI/MelloUI_Guide: MelloUI_Guide
