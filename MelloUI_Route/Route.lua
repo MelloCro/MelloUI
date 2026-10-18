@@ -4361,6 +4361,48 @@ function Search.Priced(job)
 	end
 end
 
+-- (the leveling guide, MelloUI_Guide) What the way between two places costs,
+-- in seconds, as the arrow's own route would price it -- its roads, boats and
+-- flights -- so the guide's plan and the arrow agree. `from` and `to` are
+-- { cont, x, y }: the world map id and world yards, as the Quest List's data
+-- gives them. callback(seconds, "route") once, at once or in the frame the
+-- search ends; callback(nil) when there is no way (no road, boat or flight
+-- that reaches it), Route is off, or a place cannot be placed -- no straight
+-- guess: the guide has its own. The destination and its route stay as they are.
+function M:CostBetween(from, to, callback)
+	if not M.isEnabled then
+		callback(nil)
+		return
+	end
+	if not Build.Ready() then
+		M:WhenReady(function()
+			M:CostBetween(from, to, callback)
+		end)
+		return
+	end
+	local scont, sx, sy = YardsOfWorld(from.cont, from.x, from.y)
+	local gcont, gx, gy = YardsOfWorld(to.cont, to.x, to.y)
+	if not (scont and gcont) then
+		callback(nil)
+		return
+	end
+	local job = { kind = "route", scont = scont, sx = sx, sy = sy, gcont = gcont, gx = gx, gy = gy }
+	job.done = function()
+		local points, cost = job.points, job.cost
+		if points and #points == 2 and scont == gcont then
+			cost = Dist(sx, sy, gx, gy) / WALK   -- (the direct line won: its real walking time, as Search.Planned)
+		end
+		if cost then
+			callback(cost, "route")
+		else
+			callback(nil)
+		end
+	end
+	if Search.Run(job) then
+		job.done()
+	end
+end
+
 -- (0.17.0, Services' nearest: your own zone wins a near tie) The zone map a
 -- point lies in -- the zone, never a city inside it -- from continent yards
 -- (as Where gives them) or a candidate (as DistanceTo takes it); nil where
