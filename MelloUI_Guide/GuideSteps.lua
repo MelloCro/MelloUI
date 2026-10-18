@@ -648,6 +648,24 @@ end
 
 local Offer   -- (forward)
 
+-- the guide's own destination let go at a break point (the cards wait: no
+-- step leads, so Route's row must not keep pointing at the last one); a
+-- destination the player set is not the guide's and stays
+local function LetGo(M)
+	local R = Route()
+	if M.routed then
+		-- (the guide's step set the map pin, SetDestinationTo's `pin`: Route reads
+		-- the pin back every second, so the pin goes too, then the destination)
+		if C_Map and C_Map.ClearUserWaypoint then
+			pcall(C_Map.ClearUserWaypoint)
+		end
+		if R and R.Clear then
+			pcall(R.Clear, R)
+		end
+	end
+	M.routed, M.led = false, nil
+end
+
 local function Start(M, session)
 	M.session, M.index, M.choice, M.led = session, 1, nil, nil
 	if not Advance(M) then
@@ -687,6 +705,7 @@ Offer = function(M, areas, ctx, ended)
 		if ended then
 			-- (nothing to plan at all: no area, no grind spot; said on the bus)
 			M.session, M.index, M.choice = nil, 1, {}
+			LetGo(M)
 			Save(M)
 			SyncFilter(M)
 			MelloUI:Fire("guide", "choice", M.choice)
@@ -696,7 +715,8 @@ Offer = function(M, areas, ctx, ended)
 	elseif #areas == 1 and not ended then
 		return Steps.Choose(M, areas[1].key, ctx)
 	end
-	M.session, M.index, M.choice, M.led = nil, 1, areas, nil
+	M.session, M.index, M.choice = nil, 1, areas
+	LetGo(M)
 	Save(M)
 	SyncFilter(M)
 	MelloUI:Fire("guide", "choice", areas)
