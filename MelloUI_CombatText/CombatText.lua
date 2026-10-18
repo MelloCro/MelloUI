@@ -200,6 +200,7 @@ local DEALT = {
 	styles = {
 		{ value = "game", label = "Game (Blizzard)" },
 		{ value = "rise", label = "Rise: up from the enemy" },
+		{ value = "side", label = "Beside: up from the plate's side" },
 		{ value = "fan", label = "Fan: up, left and right" },
 		{ value = "stack", label = "Stack: a column beside the enemy" },
 	},
@@ -212,7 +213,7 @@ local DEALT = {
 	-- the text size times this, per look (the game's numbers over enemies are
 	-- about twice the size of the text over you; the column smaller), and
 	-- times the game's World Text Scale, as its own numbers
-	size = { rise = 3.2, fan = 2.9, stack = 1.5 },
+	size = { rise = 3.2, side = 2.6, fan = 2.9, stack = 1.5 },
 	pool = {},         -- the dealt lines' spares (never shared with the self text's)
 	stagger = 30,      -- Rise: a hit close behind the last, beside it in turn
 	crit = 1.15,       -- a crit, times that (on top of the crit size every line has)
@@ -220,6 +221,7 @@ local DEALT = {
 	startY = 6,        -- Rise and Fan start on the enemy: over its plate's middle
 	rise = 150,        -- Rise's way up, most of it at once (outCubic)
 	fanX = 80, fanY = 120,
+	sideX = 24, sideRise = 90,   -- Beside: from the plate's right edge, up and out (0.25.0), clear of the name
 	hold = 0.2,        -- a hit before you are on the enemy's list: held this long for the threat update
 	held = {},         -- those hits: { unit, at, kind, value, crit, glancing, colour, label } (pooled)
 	spare = {},
@@ -284,7 +286,7 @@ M = MelloUI:RegisterModule("CombatText", {
 		{ type = "dropdown", key = "style", name = "Combat Text Style", values = STYLES,
 		  desc = "Who draws the text over your character. Game: the game's own, as it always was. Lanes: damage taken falls on your left, healing rises on your right, procs and Dodge / Parry above your head, resources under your feet. Feed: one column over your portrait, the newest on top. Classic: one stream over your head, like the game's, in MelloUI's font and soft shade." },
 		{ type = "dropdown", key = "dealt", name = "Your Damage", values = DEALT.styles,
-		  desc = "The numbers of the damage you deal, over the enemies. Game: the game's own numbers, as always. Rise, Fan or Stack: drawn by MelloUI at each enemy's nameplate in its soft look, the game's numbers switched off meanwhile: crits gold and bigger, spells violet, a dodge or parry as a word, about a second and a half each, only on enemies you or your pet are fighting. Rise, Fan and Stack draw your hits while you play solo. In a group, or where the game keeps threat hidden, the game's own numbers show, because only they know whose hit it is. With enemy nameplates off, the game's own numbers show too (the plates are where MelloUI draws)." },
+		  desc = "The numbers of the damage you deal, over the enemies. Game: the game's own numbers, as always. Rise, Beside, Fan or Stack: drawn by MelloUI at each enemy's nameplate in its soft look, the game's numbers switched off meanwhile: crits gold and bigger, spells violet, a dodge or parry as a word, about a second and a half each, only on enemies you or your pet are fighting. Beside starts them at the plate's right end, so the name stays readable. Rise, Beside, Fan and Stack draw your hits while you play solo. In a group, or where the game keeps threat hidden, the game's own numbers show, because only they know whose hit it is. With enemy nameplates off, the game's own numbers show too (the plates are where MelloUI draws)." },
 		{ type = "button", name = "Preview", text = "Play",
 		  hint = "a short burst in the chosen style",
 		  desc = "Plays a few made-up lines (hits, a crit, heals, a Dodge, a proc) in the chosen style, so you can compare them without a fight. Also /mello combattext test.",
@@ -351,7 +353,7 @@ end
 local function Dealt()
 	local db = M.db
 	local d = db and db.dealt
-	if d == "rise" or d == "fan" or d == "stack" then
+	if d == "rise" or d == "side" or d == "fan" or d == "stack" then
 		return d
 	end
 	return "game"
@@ -1189,7 +1191,7 @@ local function DealtLine(unit, e, hold)
 	line.dealt = true   -- (the Game Numbers Font: Fill)
 	line.lane = lane
 	lane.lines[#lane.lines + 1] = line
-	Fill(line, e, look == "stack" and "LEFT" or "CENTER",
+	Fill(line, e, (look == "stack" or look == "side") and "LEFT" or "CENTER",
 		size * (e.glancing and DEALT.glancing or 1) * (e.crit and DEALT.crit or 1))
 	-- (Rise: a hit close behind the last starts beside it, in turn)
 	local now = GetTime()
@@ -1203,6 +1205,9 @@ local function DealtLine(unit, e, hold)
 	if look == "stack" then
 		point, rel, x, y = "LEFT", "TOPRIGHT", 6, 0
 		line.slotY = 0
+	elseif look == "side" then
+		-- (Beside: at the bar's right end, the name left clear; a hit close behind the last a little higher)
+		point, rel, x, y = "LEFT", "RIGHT", 10, lane.stack * pitch * 0.45
 	elseif look == "rise" and lane.stack > 0 then
 		lane.flip = -lane.flip
 		x, y = lane.flip * DEALT.stagger, y - pitch * 0.4
@@ -1220,6 +1225,8 @@ local function DealtLine(unit, e, hold)
 	Anim:Mirror(line, T.fadeIn, held, T.fadeOut)
 	if look == "rise" then
 		Anim:Slide(line, point, plate, rel, x, y, 0, DEALT.rise, life, "outCubic")
+	elseif look == "side" then
+		Anim:Slide(line, point, plate, rel, x, y, DEALT.sideX, DEALT.sideRise, life, "outCubic")
 	elseif look == "fan" then
 		lane.flip = -lane.flip
 		Anim:Slide(line, point, plate, rel, x, y, lane.flip * DEALT.fanX, DEALT.fanY, life, "outCubic")

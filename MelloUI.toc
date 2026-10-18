@@ -93,6 +93,7 @@ Modules\PartyMarkers.lua
 Modules\Sparkles.lua
 Modules\CustomSounds.lua
 Modules\Nameplates.lua
+Modules\PlateImpact.lua
 Modules\Tooltip.lua
 Modules\UnitFrames.lua
 Modules\Fader.lua
