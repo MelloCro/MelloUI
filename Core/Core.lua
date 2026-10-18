@@ -3359,6 +3359,8 @@ MelloUI.Features = {
 	Route = { addon = "MelloUI_Route", title = "Route" },
 	VoiceOver = { addon = "MelloUI_VoiceOver", title = "Voice Over" },
 	PersonalDisplay = { addon = "MelloUI_PersonalDisplay", title = "Personal Display" },
+	-- (the leveling guide; its own addon from the start)
+	Guide = { addon = "MelloUI_Guide", title = "Leveling Guide" },
 }
 
 -- a feature of its own addon that is not loaded (turned off in AddOns)
