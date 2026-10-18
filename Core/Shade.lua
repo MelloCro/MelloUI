@@ -14,8 +14,9 @@
 --   local band = MelloUI.Shade:Band(parent, opts)
 --       Three textures made on `parent` (they draw in its layers and follow
 --       its show, hide and alpha). opts, all optional, read once, not kept:
---         colour    a MelloUI.Palette key (default "innerPanel"); an unknown
---                   key paints innerPanel
+--         colour    a MelloUI.Palette key (default "innerPanel"), or (0.25.0)
+--                   a MelloUI.Meaning one (the Personal Display's red rim:
+--                   combatTaken); an unknown key paints innerPanel
 --         alpha     its strength, 0..1 (default 0.7)
 --         feather   the width of each soft end, in parent units (default 16)
 --         layer     the draw layer (default "BACKGROUND"; an unknown one too)
@@ -147,7 +148,7 @@ local BandMeta = { __index = Band }
 -- its colour from the palette as it is now (a new palette is a new table)
 function Band:Paint()
 	local palette = MelloUI.Palette
-	local c = palette[self.colour] or palette[DEFAULT_COLOUR]
+	local c = palette[self.colour] or MelloUI.Meaning[self.colour] or palette[DEFAULT_COLOUR]
 	local a = self.alpha
 	local slices = self.slices
 	for i = 1, #slices do

@@ -1619,6 +1619,11 @@ end
 --       Asked again, it starts over with the time given. Without the
 --       engine's timer bars (another client): false, the bar left full
 --       (empty with grow) -- no Lua loop stands in.
+--   MelloUI.Anim:TimerFor(bar, duration[, grow]) -> true when the engine runs it
+--       (0.25.0, the Personal Display's Loss Of Control) as Timer, on a
+--       duration object the game hands over (C_LossOfControl's): its span
+--       may be secret -- the engine reads it, Lua never does. Refused (or no
+--       object): false, the bar left as it was
 --   MelloUI.Anim:TimerText(fontString, bar) -> true when bound
 --       the font string shows the seconds left of the bar's timer, one
 --       decimal rounded up, written by the engine every 0.1 s at most; ""
@@ -1773,6 +1778,22 @@ do
 			and pcall(bar.SetTimerDuration, bar, d, enum.StatusBarInterpolation.Immediate, direction)
 		if not ok then
 			Rest(bar, grow and 0 or 1)
+			return false
+		end
+		Texts(bar, d)
+		return true
+	end
+
+	function Anim:TimerFor(bar, d, grow)
+		if type(bar) ~= "table" or not bar.SetTimerDuration or not (Secret(d) or type(d) == "table" or type(d) == "userdata") then
+			return false
+		end
+		local util, enum = Engine()
+		if not util then
+			return false
+		end
+		local direction = grow and enum.StatusBarTimerDirection.ElapsedTime or enum.StatusBarTimerDirection.RemainingTime
+		if not pcall(bar.SetTimerDuration, bar, d, enum.StatusBarInterpolation.Immediate, direction) then
 			return false
 		end
 		Texts(bar, d)

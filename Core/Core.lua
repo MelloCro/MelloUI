@@ -355,6 +355,8 @@ MelloUI.Meaning = {
 	personalShield = Hex("#409CFF"),     -- (meaning colour)
 	personalShieldLow = Hex("#F0961C"),  -- (meaning colour)
 	personalLoss = Hex("#E6F0FF"),       -- (meaning colour)
+	-- (0.25.0, the Personal Display's Low Health: the health bar under 35%, the sketch's ember)
+	personalLow = Hex("#E5823A"),        -- (meaning colour)
 	-- (0.21.0, the user's pick B of prd_multishield: each shield its part, in its school's colour)
 	personalShieldHoly = Hex("#FFE28C"),    -- (meaning colour)
 	personalShieldFire = Hex("#FF8028"),    -- (meaning colour)

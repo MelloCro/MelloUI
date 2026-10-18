@@ -22,6 +22,9 @@
 -- taken with it: broken, else a hit) -- no feature hung on a secret. /mello personal secrets: what this client hands
 -- over plain. Preview (Core/Preview.lua, part "personal"; /mello personal test): a made-up shield and casts on the
 -- solo scene's beats. The game's own Personal Resource Display is held off while this is on (its CVar, given back).
+-- Motion (0.25.0, the section after the hop): the bars answer the fight -- the part a hit or a cost took held lit and
+-- drained, a heal or a gain lit ahead of the bar, a heavy blow's red rim, the dodge's word, low health ember, a stun
+-- run down under the bars, the bars settled out of a fight.
 -- Nothing at login but the frames it shows (built in the frame after it is switched on); its events only while it is
 -- on.
 --------------------------------------------------------------------------------
@@ -78,6 +81,21 @@ local T = {
 	-- it seen, ended after this long
 	cdIcon = 16, cdGap = 3, cdLift = 2, cdMax = 4, cdUntilUsed = 30,
 	cdLink = 1.5,   -- an aura of a cooldown's kind this soon after its cast: its own (its early end ends it)
+	-- (Motion, the user's "aproved" to the Personal Display Motion page) the part lost held this long, then drained;
+	-- the ghost's strength; the lead's lift toward white; a heavy blow's rim and its dip (how deep, how long); the low
+	-- health share, its colour's edge, its beat; a big gain's share of the bar (its spark), the spark's size (its width,
+	-- its height a share of the power fill's) and fade; the rim's soft glow past the bracket's painted edge (at its ends,
+	-- over and under; its solid core tucked this far inside the art); the word's place, way and time; the loss of
+	-- control's line, its rim's strength, its fades, its grace past its time; the settle: the bars' rest out of a fight
+	-- (dimmed, a little lower), the wait before they settle, the times in and out
+	ghostDelay = 0.24, ghostAlpha = 0.85, pale = 0.6,
+	heavyRim = 0.38, dipDepth = 3, dip = 0.2,
+	lowHealth = 0.35, lowEdge = 0.001, beat = 0.6,
+	sparkShare = 0.08, sparkW = 8, sparkH = 2.4, spark = 0.42,
+	rimFeather = 12, rimFeatherY = 9, rimTuck = 3,
+	wordX = 4, wordY = 2, wordDX = 22, wordDY = 8, word = 0.85,
+	lineH = 3, locRim = 0.8, locFade = 0.15, locGrace = 0.2,
+	restAlpha = 0.45, restDrop = 5, settleDelay = 0.3, settleIn = 0.34, settleOut = 0.7,
 }
 local TEXT = {
 	bars = "Personal Display",
@@ -87,6 +105,9 @@ local TEXT = {
 	secret = "secret",
 	none = "nothing",
 	failed = "refused (%s)",
+	-- (Motion) the words where the game's own strings are missing
+	stunned = "Stunned",
+	words = { DODGE = "Dodge", PARRY = "Parry", BLOCK = "Block" },
 }
 -- Preview's made-up shield (plain amounts) and casts, on the solo scene's beats (Core/Preview.lua: pull, hit 1..12,
 -- kill): the shield up at the pull, drained hit by hit to low, broken at the sixth; a heal cast; a second shield
@@ -97,6 +118,11 @@ local SAMPLE = {
 	parts = { { 17, 250 }, { 11426, 200 }, { 17543, 150 } }, againParts = { { 11426, 420 } },
 	-- (Big Cooldowns) Shield Wall at the pull, Recklessness at the fourth hit, Shield Block at the seventh
 	cooldowns = { pull = 871, [4] = 1719, [7] = 2565 },
+	-- (Motion) the power at the start, gained each hit, spent at these hits; a critical blow at the fifth (it takes
+	-- this much), a dodge, a parry and a block, a stun at the tenth for 1.7 s (the user's clip, 2026-10-18; no cast
+	-- of the preview's running then)
+	power = 30, gain = 9, spend = { [4] = 30, [8] = 25, [11] = 30 },
+	crit = 5, critHurt = 30, avoid = { [3] = "DODGE", [9] = "PARRY", [12] = "BLOCK" }, stun = { 10, 1.7 },
 	hits = { [1] = 470, [2] = 340, [3] = 230, [4] = 150, [5] = 70, [6] = 0, [10] = 260 },
 	again = 9, againAmount = 420,
 	health = 100, hurt = 4,              -- the health falling this many % a hit
@@ -129,6 +155,7 @@ local S = {
 	texts = setmetatable({}, { __mode = "k" }),   -- [fs] = its size: the texts in Text Font's face (StyleText)
 }
 local Shield = {}
+local Motion = {}   -- (0.25.0: the bars answering the fight; its section after the hop)
 
 local function On()
 	return M and M.isEnabled and true or false
@@ -200,18 +227,42 @@ local function Fit(b, h)
 	b.arms = armL + armR
 end
 
--- one bar: the bracket (Kit:Bar) round a fill `h` tall and the Width() wide, a StatusBar on its opening
-local function NewBar(parent, h, area)
+-- one bar: the bracket (Kit:Bar) round a fill `h` tall and the Width() wide, a StatusBar on its opening. Layered
+-- (health, power: Motion): the ghost and the lead under it, a level each, the bracket's art lifted over all three
+local function NewBar(parent, h, area, layered)
 	local strip = MelloUI.Kit:Bar(parent, { kind = "frame", scale = h / Rows("frame") })
+	local level = parent:GetFrameLevel()
+	local ghost, lead
+	if layered then
+		strip:SetFrameLevel(level + 5)
+		strip.fill:SetFrameLevel(level + 1)
+		ghost = Motion.Fill(strip.fill, area, level + 2)
+		lead = Motion.Fill(strip.fill, area, level + 3)
+	end
 	local bar = CreateFrame("StatusBar", nil, strip.fill)
+	if layered then
+		bar:SetFrameLevel(level + 4)
+	end
 	bar:SetAllPoints(strip.fill)
 	bar:SetStatusBarTexture(W.BarFill(area))
 	W.SoftEnds(bar)   -- (every bar's ends soft: the user, 2026-10-16)
 	bar:SetMinMaxValues(0, 1)
 	bar:SetValue(1)
-	local b = { strip = strip, bar = bar, kind = "frame" }
+	local b = { strip = strip, bar = bar, kind = "frame", ghost = ghost, lead = lead }
 	Fit(b, h)
 	return b
+end
+
+-- (Motion) a fill under the bar: the ghost (the part lost) or the lead (the part gained)
+function Motion.Fill(parent, area, level)
+	local f = CreateFrame("StatusBar", nil, parent)
+	f:SetAllPoints(parent)
+	f:SetFrameLevel(level)
+	f:SetStatusBarTexture(W.BarFill(area))
+	W.SoftEnds(f)
+	f:SetMinMaxValues(0, 1)
+	f:SetValue(1)
+	return f
 end
 
 --------------------------------------------------------------------------------
@@ -560,6 +611,7 @@ local function LayStack(ui)
 		end
 	end
 	LayRails(ui)
+	Motion.Lay(ui)
 end
 
 local function Home(kind)
@@ -604,12 +656,13 @@ local function Build()
 	float:SetAllPoints(holder)
 	ui.float = float
 	local hh, hp, hc = Heights()
-	ui.health = NewBar(float, hh, "personal")
-	ui.power = NewBar(float, hp, "personal")
+	ui.health = NewBar(float, hh, "personal", true)
+	ui.power = NewBar(float, hp, "personal", true)
 	ui.cast = NewBar(float, hc, "castbars")
 	ui.stack = { ui.health, ui.power, ui.cast }
 	Paint(ui.health.bar, "personalHealth")
 	Paint(ui.cast.bar, "personalCast")
+	Motion.Make(ui)
 	for _, b in ipairs({ ui.health, ui.power }) do
 		b.text = b.bar:CreateFontString(nil, "OVERLAY")
 		StyleText(b.text, T.text)
@@ -734,6 +787,10 @@ local function Health()
 	if okM and okV and Usable(max) and Usable(v) then
 		ui.health.bar:SetMinMaxValues(0, max)
 		ui.health.bar:SetValue(v, EASE)
+		Motion.Value(ui.health, max, v)
+		-- (its share only where both read plain: the beat as it turns low; else the game's curves, secret)
+		local pm, pv = Num(max), Num(v)
+		Motion.Low(pm and pv and pm > 0 and pv / pm or nil)
 	end
 	Percent(ui.health.text, rawget(_G, "UnitHealthPercent"), "player", true, Curve())
 end
@@ -745,17 +802,29 @@ local function Power()
 	end
 	local okT, _, token = pcall(UnitPowerType, "player")
 	local colours = rawget(_G, "PowerBarColor")
-	local c = okT and not Secret(token) and type(token) == "string" and type(colours) == "table" and colours[token]
+	local plain = okT and not Secret(token) and type(token) == "string" and token or nil
+	-- (another power -- a druid's form --: its fills set at once, no cost or gain shown)
+	local shifted = plain ~= S.powerToken
+	S.powerToken = plain
+	local c = plain and type(colours) == "table" and colours[plain]
 	if c and c.r then
 		ui.power.bar:SetStatusBarColor(c.r, c.g, c.b)
+		ui.power.lead:SetStatusBarColor(Motion.Pale(c.r, c.g, c.b))
 	else
 		Paint(ui.power.bar, "combatResource")
+		local m = MelloUI.Meaning.combatResource
+		ui.power.lead:SetStatusBarColor(Motion.Pale(m[1], m[2], m[3]))
 	end
 	local okM, max = pcall(UnitPowerMax, "player")
 	local okV, v = pcall(UnitPower, "player")
 	if okM and okV and Usable(max) and Usable(v) then
 		ui.power.bar:SetMinMaxValues(0, max)
 		ui.power.bar:SetValue(v, EASE)
+		Motion.Value(ui.power, max, v, shifted)
+		if shifted then
+			S.powerLast = nil
+		end
+		Motion.Gain(Num(max), Num(v), plain)
 	end
 	Percent(ui.power.text, rawget(_G, "UnitPowerPercent"), "player", nil, false, Curve())
 end
@@ -782,6 +851,7 @@ local function CastIn()
 		strip:Show()
 	end
 	Anim:To(strip, "alpha", 1, T.castFade, "outQuad")
+	Motion.LayLine()
 end
 
 local function CastOut()
@@ -792,6 +862,7 @@ local function CastOut()
 		return
 	end
 	Anim:To(cast.strip, "alpha", 0, T.castFade, "inQuad", HideFrame)
+	Motion.LayLine()
 end
 
 -- a cast (or a channel: its bar runs down) shown: the spell's name and the time left, counted by the engine
@@ -1368,7 +1439,8 @@ local function Place()
 	if not ui then
 		return
 	end
-	local k, hop = Zoom.Factor(), S.hopY or 0
+	-- (the float's lift: the hop, a heavy blow's dip, the settle's drop -- Motion)
+	local k, hop = Zoom.Factor(), (S.hopY or 0) + (S.dipY or 0) + (S.settleY or 0)
 	local us = UIParent:GetEffectiveScale()
 	local mx, my = UIParent:GetCenter()
 	mx, my = mx * us, my * us
@@ -1439,6 +1511,8 @@ local function OnEditLayout(showing)
 		end
 		S.editFrom = nil
 	end
+	-- (Combat Settle: the display at its full place on the plate, no drop or dimming)
+	Motion.SettleGo(MelloUI.InCombat(), true)
 	Place()
 end
 
@@ -1473,6 +1547,582 @@ local function OnJump()
 	if On() then
 		C_Timer.After(T.jumpCheck, HopCheck)
 	end
+end
+
+--------------------------------------------------------------------------------
+-- Motion (0.25.0; the user, 2026-10-18: "aproved" to the Personal Display Motion page,
+-- https://claude.ai/artifact/9D9x4hxRGXxffC7afGhNdD, after the nameplates' Impact Effects): the bars answer the
+-- fight, each effect its own switch (Behaviour), all on:
+--   Damage Chunk, Power Spent  the part lost held lit, then drained: a ghost fill under the bar, set to the new value
+--                              T.ghostDelay after the change and eased there by the engine
+--   Heal Lead, Power Gained    the part gained lit at once: a lead fill between the ghost and the bar, which the bar
+--                              (eased) grows into; a big plain gain of power a spark at its edge (energy's ticks none)
+--   Heavy Hit                  a critical or crushing blow on you (UNIT_COMBAT, plain): the bars' rim red a moment,
+--                              the bars dipped a hair
+--   Dodge, Parry, Block        the word off the health bar's end (the Revenge window, where you look)
+--   Low Health                 under T.lowHealth the health bar ember: the game's curves on its secret percent (one
+--                              curve a colour channel -- numbers, no table made per event); its beat as it turns low
+--                              only where the health reads plain (the preview)
+--   Loss Of Control            stunned, feared, silenced, locked out: the bars' rim red and a line under them running
+--                              its time down (the engine's timer on the game's own duration), its name under it; the
+--                              game's banner over the character held off while it is on (its CVar, given back)
+--   Combat Settle              into a fight the bars rise into place; out of it, a moment later, they settle a little
+--                              lower, dimmed (the Fader's fades are its host's: they never meet)
+-- A secret value is never compared: the three fills, layered (ghost, lead, the bar), show a loss or a gain by drawing
+-- alone. The shield column's own light (applied, hit, low, broken: FrameFX's "shield") was there before. Reduce
+-- Motion: the dip, the word's way and the settle's drop go; Anim's fades end at once. One driver (its OnUpdate only
+-- while something is due); every piece made once, in Build
+--------------------------------------------------------------------------------
+
+Motion.CVAR = "lossOfControl"   -- the game's banner (LossOfControlFrame's switch)
+Motion.NONE = 0                 -- (LossOfControlData.displayType: shown by nothing)
+Motion.ACTIVE = (Constants and Constants.LossOfControlConsts
+	and Constants.LossOfControlConsts.LOSS_OF_CONTROL_ACTIVE_INDEX) or 1
+-- [UNIT_COMBAT's action] = its word's global string (the game's own text)
+Motion.AVOID = { DODGE = "DODGE", PARRY = "PARRY", BLOCK = "BLOCK" }
+
+function Motion.On(key)
+	return Db()[key] ~= false
+end
+
+-- a palette colour as the Look shows it (the reskin's own by the same keys)
+function Motion.Look(key)
+	local look = MelloUI.Look
+	local p = look and look.Palette and look.Palette() or MelloUI.Palette
+	local c = p and p[key]
+	if type(c) == "table" then
+		return c[1] or 1, c[2] or 1, c[3] or 1
+	end
+	return 1, 1, 1
+end
+
+-- a fill's colour lifted toward white: the lead's (the part gained, lit)
+function Motion.Pale(r, g, b)
+	local k = T.pale
+	return r + (1 - r) * k, g + (1 - g) * k, b + (1 - b) * k
+end
+
+-- the pieces (Build, once): each bar's rim under it, the loss of control's line, two words, the power's spark, the
+-- driver
+function Motion.Make(ui)
+	local float = ui.float
+	local level = float:GetFrameLevel()
+	local Shade = MelloUI.Shade
+	ui.motionBars = { ui.health, ui.power }
+	for _, b in ipairs(ui.motionBars) do
+		-- (under the fill: a glow round the bar, never on it -- the nameplates' lesson, seen in the simulator)
+		local rim = CreateFrame("Frame", nil, float)
+		rim:SetFrameLevel(level)
+		rim:SetAllPoints(b.strip.fill)
+		rim:SetAlpha(0)
+		-- (full strength under the bracket's art, soft past its painted edge: Lay anchors it)
+		local band = Shade and Shade:Band(rim, { colour = "combatTaken", feather = T.rimFeather,
+			featherY = T.rimFeatherY })
+		if band then
+			band:SetStrength(1)
+		end
+		b.rim, b.rimBand = rim, band
+	end
+	-- the loss of control's line: the engine counts it down (Anim:TimerFor / Anim:Timer)
+	local line = CreateFrame("StatusBar", nil, float)
+	line:SetFrameLevel(level + 4)
+	line:SetStatusBarTexture(W.BarFill("personal"))
+	W.SoftEnds(line)
+	line:SetMinMaxValues(0, 1)
+	line:SetValue(1)
+	line:SetHeight(T.lineH)
+	line:SetAlpha(0)
+	line:Hide()
+	line.name = line:CreateFontString(nil, "OVERLAY")
+	StyleText(line.name, T.text - 1)
+	line.name:SetPoint("TOP", line, "BOTTOM", 0, -1)
+	ui.loc = line
+	-- two words, in turn (over the bracket's art and the rails)
+	ui.words, ui.nextWord = {}, 1
+	for i = 1, 2 do
+		local w = CreateFrame("Frame", nil, float)
+		w:SetSize(1, 1)
+		w:SetFrameLevel(level + 9)
+		w.text = w:CreateFontString(nil, "OVERLAY")
+		StyleText(w.text, T.text + 1)
+		w.text:SetPoint("BOTTOMLEFT", w, "BOTTOMLEFT")
+		w:Hide()
+		ui.words[i] = w
+	end
+	-- the spark on the power lead's edge (over the bracket's art)
+	local spark = CreateFrame("Frame", nil, ui.power.strip)
+	spark:SetFrameLevel(level + 6)
+	spark:SetPoint("CENTER", ui.power.lead:GetStatusBarTexture(), "RIGHT", 0, 0)
+	spark:SetAlpha(0)
+	Spark(spark, "OVERLAY", 6, "glow_white.tga"):SetAllPoints(spark)
+	ui.spark = spark
+	ui.motionFrame = CreateFrame("Frame", nil, float)
+	S.settle = { 1, 1, 0, 0 }
+	S.settleA, S.settleY, S.dipY = 1, 0, 0
+end
+
+-- (LayStack) each rim out to its bracket's painted edge, the line, the spark the power fill's depth
+function Motion.Lay(ui)
+	if not ui.loc then
+		return
+	end
+	for _, b in ipairs(ui.motionBars) do
+		local above, below = Dress.Reach(b)
+		if b.rimBand then
+			b.rimBand:Anchor(b.strip.fill, math.max(0, Dress.Side(b) / 2 - T.rimTuck),
+				math.max(0, math.max(above, below) - T.rimTuck))
+		end
+	end
+	Motion.LayLine()
+	ui.spark:SetSize(T.sparkW, (ui.power.h or T.lineH) * T.sparkH)
+end
+
+-- the line under the lowest bar shown, as wide as its fill: the power bar, or the cast bar while you cast (a root
+-- leaves the cast running; seen in the simulator, the line over the cast bar)
+function Motion.LayLine()
+	local ui = S.ui
+	local line = ui and ui.loc
+	if not line then
+		return
+	end
+	local b = S.casting and ui.cast or ui.power
+	local _, below = Dress.Reach(b)
+	local fill = b.strip.fill
+	local y = -(below + T.gap + 1)
+	line:ClearAllPoints()
+	line:SetPoint("TOPLEFT", fill, "BOTTOMLEFT", 0, y)
+	line:SetPoint("TOPRIGHT", fill, "BOTTOMRIGHT", 0, y)
+end
+
+-- the ghosts the text's colour (as the nameplates' Impact Effects show the part lost), the health's lead its own
+-- colour lifted (the power's: Power, by its kind), the line the selected trim's; again on the bus's 'palette'
+function Motion.Paint()
+	local ui = S.ui
+	if not (ui and ui.loc) then
+		return
+	end
+	local r, g, b = Motion.Look("text")
+	for _, bar in ipairs(ui.motionBars) do
+		bar.ghost:SetStatusBarColor(r, g, b, T.ghostAlpha)
+	end
+	local hc = MelloUI.Meaning.personalHealth
+	ui.health.lead:SetStatusBarColor(Motion.Pale(hc[1], hc[2], hc[3]))
+	ui.loc:SetStatusBarColor(Motion.Look("selectedTrim"))
+	ui.loc.name:SetTextColor(r, g, b)
+end
+
+-- each fill shown by its switch
+function Motion.Shown()
+	local ui = S.ui
+	if not (ui and ui.loc) then
+		return
+	end
+	ui.health.ghost:SetShown(Motion.On("chunk"))
+	ui.health.lead:SetShown(Motion.On("lead"))
+	ui.power.ghost:SetShown(Motion.On("spend"))
+	ui.power.lead:SetShown(Motion.On("gain"))
+end
+
+-- a bar's new value, plain or secret (it goes to the fills as it is): the lead at once, the ghost T.ghostDelay after
+-- the first change (the driver), eased there; at once with `snap` or S.snap (read again, another power)
+function Motion.Value(b, max, v, snap)
+	local lead, ghost = b.lead, b.ghost
+	if not lead then
+		return
+	end
+	lead:SetMinMaxValues(0, max)
+	lead:SetValue(v)
+	ghost:SetMinMaxValues(0, max)
+	b.ghostV = v
+	if snap or S.snap then
+		b.ghostAt = nil
+		ghost:SetValue(v)
+	elseif not b.ghostAt then
+		b.ghostAt = GetTime() + T.ghostDelay
+		Motion.Wake()
+	end
+end
+
+-- the driver: awake only while a drain, the settle's wait or a loss of control's end is due
+function Motion.Wake()
+	local f = S.ui and S.ui.motionFrame
+	if f and not S.motionAwake then
+		S.motionAwake = true
+		Perf.SetScript(f, "OnUpdate", Motion.Tick)
+	end
+end
+
+function Motion.Tick(f)
+	local now, busy = GetTime(), false
+	for _, b in ipairs(S.ui.motionBars) do
+		local at = b.ghostAt
+		if at and now >= at then
+			b.ghostAt = nil
+			b.ghost:SetValue(b.ghostV, EASE)
+		elseif at then
+			busy = true
+		end
+	end
+	if S.settleAt and now >= S.settleAt then
+		S.settleAt = nil
+		Motion.SettleGo(MelloUI.InCombat())
+	elseif S.settleAt then
+		busy = true
+	end
+	if S.locDue and now >= S.locDue then
+		Motion.LocEnd()
+	elseif S.locDue then
+		busy = true
+	end
+	if not busy then
+		S.motionAwake = false
+		Perf.SetScript(f, "OnUpdate", nil)
+	end
+end
+
+-- a rim lit at once, faded over `time` to its rest (lit while control is lost)
+function Motion.Rim(b, time)
+	local rim = b.rim
+	Anim:Stop(rim, "alpha")
+	rim:SetAlpha(1)
+	Anim:To(rim, "alpha", S.locOn and T.locRim or 0, time, "outQuad")
+end
+
+-- (Heavy Hit) the rims red a moment, the bars dipped a hair
+function Motion.Heavy()
+	local ui = S.ui
+	if not (ui and ui.loc and Motion.On("heavy")) then
+		return
+	end
+	for _, b in ipairs(ui.motionBars) do
+		Motion.Rim(b, T.heavyRim)
+	end
+	if not Anim.reduceMotion then
+		Anim:Drive(ui.motionFrame, Motion.DipStep, T.dip, "linear", Motion.DipDone)
+	end
+end
+
+-- down a hair and back, the deepest at 30% of the way
+function Motion.DipStep(_, p)
+	local d = p < 0.3 and p / 0.3 or (1 - p) / 0.7
+	S.dipY = -T.dipDepth * d
+	Place()
+end
+
+function Motion.DipDone()
+	S.dipY = 0
+	Place()
+end
+
+-- (Dodge, Parry, Block) the word off the health bar's end, up and out, faded
+function Motion.Word(action)
+	local ui = S.ui
+	if not (ui and ui.loc and Motion.On("avoid")) then
+		return
+	end
+	local w = ui.words[ui.nextWord]
+	ui.nextWord = ui.nextWord % #ui.words + 1
+	local text = rawget(_G, Motion.AVOID[action] or "")
+	if Secret(text) or type(text) ~= "string" or text == "" then
+		text = TEXT.words[action] or action
+	end
+	w.text:SetText(text)
+	w.text:SetTextColor(Motion.Look("text"))
+	local fill = ui.health.strip.fill
+	Anim:Stop(w, "alpha")
+	w:ClearAllPoints()
+	w:SetPoint("BOTTOMLEFT", fill, "TOPRIGHT", T.wordX, T.wordY)
+	w:SetAlpha(1)
+	w:Show()
+	Anim:Slide(w, "BOTTOMLEFT", fill, "TOPRIGHT", T.wordX, T.wordY, T.wordDX, T.wordDY, T.word, "outCubic")
+	Anim:To(w, "alpha", 0, T.word, "inQuad", HideFrame)
+end
+
+-- (UNIT_COMBAT on you: the action and its flag, plain strings) a heavy blow, a dodge, parry or block
+function Motion.Combat(action, flag)
+	if S.preview or Secret(action) or Secret(flag) then
+		return
+	end
+	if action == "WOUND" then
+		if flag == "CRITICAL" or flag == "CRUSHING" then
+			Motion.Heavy()
+		elseif flag == "BLOCK" then
+			Motion.Word("BLOCK")
+		end
+	elseif Motion.AVOID[action] then
+		Motion.Word(action)
+	end
+end
+
+-- (Low Health) three curves, one a colour channel: the health colour from T.lowHealth up, ember under it; made once
+-- (false: this client has none)
+function Motion.Curves()
+	if S.lowCurves ~= nil then
+		return S.lowCurves or nil
+	end
+	S.lowCurves = false
+	local CU = rawget(_G, "C_CurveUtil")
+	if not (CU and CU.CreateCurve and rawget(_G, "UnitHealthPercent")) then
+		return nil
+	end
+	local hi, lo = MelloUI.Meaning.personalHealth, MelloUI.Meaning.personalLow
+	local list = {}
+	for i = 1, 3 do
+		local ok, c = pcall(CU.CreateCurve)
+		if not (ok and c and pcall(c.AddPoint, c, 0, lo[i]) and pcall(c.AddPoint, c, T.lowHealth - T.lowEdge, lo[i])
+			and pcall(c.AddPoint, c, T.lowHealth, hi[i]) and pcall(c.AddPoint, c, 1, hi[i])) then
+			return nil
+		end
+		list[i] = c
+	end
+	S.lowCurves = list
+	return list
+end
+
+-- the health bar's colour: a plain share (the preview, a client handing it plain) told here, the beat as it turns
+-- low; else the game's curves on the secret percent, straight into the bar's colour
+function Motion.Low(pct)
+	local ui = S.ui
+	if not (ui and ui.loc and Motion.On("lowHealth")) then
+		return
+	end
+	local bar = ui.health.bar
+	if pct then
+		local low = pct < T.lowHealth
+		Paint(bar, low and "personalLow" or "personalHealth")
+		if low and S.lowWas == false then
+			Motion.Rim(ui.health, T.beat)
+		end
+		S.lowWas = low
+		return
+	end
+	local curves = Motion.Curves()
+	if not curves then
+		Paint(bar, "personalHealth")
+		return
+	end
+	local Percent100 = rawget(_G, "UnitHealthPercent")
+	local okR, r = pcall(Percent100, "player", true, curves[1])
+	local okG, g = pcall(Percent100, "player", true, curves[2])
+	local okB, b = pcall(Percent100, "player", true, curves[3])
+	if not (okR and okG and okB and pcall(bar.SetStatusBarColor, bar, r, g, b)) then
+		Paint(bar, "personalHealth")
+	end
+end
+
+-- (Power Gained) a big plain gain: a spark at the lead's edge; energy's steady ticks (a fifth of the bar) none
+function Motion.Gain(max, v, token)
+	local last = S.powerLast
+	S.powerLast = v
+	local ui = S.ui
+	if S.snap or not (ui and ui.spark and max and v and last) or max <= 0 or token == "ENERGY"
+		or not Motion.On("gain") then
+		return
+	end
+	if (v - last) / max >= T.sparkShare then
+		Anim:Stop(ui.spark, "alpha")
+		ui.spark:SetAlpha(1)
+		Anim:To(ui.spark, "alpha", 0, T.spark, "outQuad")
+	end
+end
+
+-- (Loss Of Control) the game's active one, shown by something (nil: none)
+function Motion.LocData()
+	local L = rawget(_G, "C_LossOfControl")
+	if not (L and L.GetActiveLossOfControlData) then
+		return nil
+	end
+	local ok, data = pcall(L.GetActiveLossOfControlData, Motion.ACTIVE)
+	if ok and not Secret(data) and type(data) == "table" and not Secret(data.displayType)
+		and data.displayType ~= Motion.NONE then
+		return data
+	end
+	return nil
+end
+
+-- LOSS_OF_CONTROL_ADDED / _UPDATE: one taken on (a new one: its time from now), or the last one over
+function Motion.Loc(added)
+	if S.preview or not Motion.On("stun") then
+		return
+	end
+	local data = Motion.LocData()
+	if not data then
+		Motion.LocEnd()
+	elseif added or not S.locOn then
+		Motion.LocStart(data)
+	end
+end
+
+-- its time on the line: the engine's timer on the game's own duration
+function Motion.LocTimer(line)
+	local L = rawget(_G, "C_LossOfControl")
+	if not (L and L.GetActiveLossOfControlDuration) then
+		return false
+	end
+	local ok, d = pcall(L.GetActiveLossOfControlDuration, "player", Motion.ACTIVE)
+	return ok and Anim:TimerFor(line, d) or false
+end
+
+-- the rims red, the line in, run down: the game's duration (the engine reads it), else its seconds read plain, else
+-- held full until it ends; its name under it (plain or secret: the font string takes it). The preview: its seconds
+-- and its name
+function Motion.LocStart(data, seconds, name)
+	local ui = S.ui
+	if not (ui and ui.loc) then
+		return
+	end
+	local line = ui.loc
+	S.locOn, S.locDue = true, nil
+	Motion.LayLine()
+	local s = seconds or (data and Num(data.timeRemaining))
+	local timed = data ~= nil and Motion.LocTimer(line)
+	if not timed and s and s > 0 then
+		timed = Anim:Timer(line, s)
+	end
+	if not timed then
+		Anim:StopTimer(line, true)
+	end
+	if s and s > 0 then
+		S.locDue = GetTime() + s + T.locGrace
+		Motion.Wake()
+	end
+	local text
+	if Db().text == false then
+		text = ""
+	elseif name then
+		text = name
+	elseif data then
+		text = data.displayText
+	else
+		text = TEXT.stunned
+	end
+	pcall(line.name.SetText, line.name, text)
+	line:Show()
+	Anim:Stop(line, "alpha")
+	Anim:To(line, "alpha", 1, T.locFade, "outQuad")
+	for _, b in ipairs(ui.motionBars) do
+		Anim:Stop(b.rim, "alpha")
+		Anim:To(b.rim, "alpha", T.locRim, T.locFade, "outQuad")
+	end
+end
+
+function Motion.LocHidden(line)
+	line:Hide()
+	Anim:StopTimer(line, true)
+end
+
+-- over: the rims and the line out
+function Motion.LocEnd()
+	local ui = S.ui
+	if not (S.locOn and ui and ui.loc) then
+		return
+	end
+	S.locOn, S.locDue = false, nil
+	Anim:To(ui.loc, "alpha", 0, T.locFade, "inQuad", Motion.LocHidden)
+	for _, b in ipairs(ui.motionBars) do
+		Anim:To(b.rim, "alpha", 0, T.locFade, "inQuad")
+	end
+end
+
+-- the game's banner held off while Loss Of Control is on (its CVar, the player's own value given back); out of combat
+function Motion.HoldNow()
+	MelloUI:HoldCVar(M.db, Motion.CVAR, "savedLoc", M.isEnabled and Motion.On("stun"), "0")
+end
+
+function Motion.HoldBanner()
+	if not (M.db and MelloUI.HoldCVar) then
+		return
+	end
+	if MelloUI.InCombat() and MelloUI.Kit and MelloUI.Kit.WhenOutOfCombat then
+		MelloUI.Kit:WhenOutOfCombat(Motion.HoldNow, "Personal Display: the game's loss of control banner")
+	else
+		Motion.HoldNow()
+	end
+end
+
+-- (Combat Settle) where the bars rest: full in a fight, while Edit Layout places them or with it off; else dimmed and
+-- a little lower (Reduce Motion: dimmed only)
+function Motion.Rest(fight)
+	if fight or S.editing or not Motion.On("settle") then
+		return 1, 0
+	end
+	return T.restAlpha, Anim.reduceMotion and 0 or -T.restDrop
+end
+
+function Motion.SettleApply()
+	local ui = S.ui
+	local a = S.settleA
+	ui.health.strip:SetAlpha(a)
+	ui.power.strip:SetAlpha(a)
+	ui.column.float:SetAlpha(a)
+	Place()
+end
+
+function Motion.SettleStep(_, p)
+	local m = S.settle
+	S.settleA = m[1] + (m[2] - m[1]) * p
+	S.settleY = m[3] + (m[4] - m[3]) * p
+	Motion.SettleApply()
+end
+
+-- from where they are to their rest: eased (into a fight quick, out of it slow), or at once (`now`)
+function Motion.SettleGo(fight, now)
+	local ui = S.ui
+	if not (ui and ui.loc) then
+		return
+	end
+	local a, y = Motion.Rest(fight)
+	local m = S.settle
+	m[1], m[2], m[3], m[4] = S.settleA, a, S.settleY, y
+	if now then
+		Anim:Stop(ui.float, "drive")
+		Motion.SettleStep(nil, 1)
+		return
+	end
+	Anim:Drive(ui.float, Motion.SettleStep, fight and T.settleIn or T.settleOut, fight and "outQuad" or "inOutQuad")
+end
+
+-- a fight begun (at once) or over (a moment later: the driver)
+function Motion.Settle(fight)
+	S.settleAt = nil
+	if fight then
+		Motion.SettleGo(true)
+	else
+		S.settleAt = GetTime() + T.settleDelay
+		Motion.Wake()
+	end
+end
+
+-- off: nothing of it left lit or moved; the game's banner given back
+function Motion.Off()
+	local ui = S.ui
+	if not (ui and ui.loc) then
+		return
+	end
+	S.settleAt, S.locDue, S.locOn, S.motionAwake = nil, nil, false, false
+	Perf.SetScript(ui.motionFrame, "OnUpdate", nil)
+	for _, b in ipairs(ui.motionBars) do
+		b.ghostAt = nil
+		Anim:Stop(b.rim, "alpha")
+		b.rim:SetAlpha(0)
+	end
+	Anim:Stop(ui.loc, "alpha")
+	Motion.LocHidden(ui.loc)
+	ui.loc:SetAlpha(0)
+	for _, w in ipairs(ui.words) do
+		Anim:Stop(w, "alpha")
+		Anim:Stop(w, "slide")
+		w:Hide()
+	end
+	Anim:Stop(ui.spark, "alpha")
+	ui.spark:SetAlpha(0)
+	Anim:Stop(ui.motionFrame, "drive")
+	Anim:Stop(ui.float, "drive")
+	S.dipY, S.settleA, S.settleY = 0, 1, 0
+	ui.health.strip:SetAlpha(1)
+	ui.power.strip:SetAlpha(1)
+	ui.column.float:SetAlpha(1)
+	Motion.HoldBanner()
 end
 
 --------------------------------------------------------------------------------
@@ -1669,6 +2319,7 @@ local UNIT_EVENTS = {
 	"UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED",
 	"UNIT_SPELLCAST_DELAYED", "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_UPDATE",
 	"UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_SUCCEEDED",
+	"UNIT_COMBAT", "LOSS_OF_CONTROL_ADDED", "LOSS_OF_CONTROL_UPDATE",   -- (Motion)
 }
 local CAST_START = { UNIT_SPELLCAST_START = false, UNIT_SPELLCAST_DELAYED = false, UNIT_SPELLCAST_CHANNEL_START = true,
 	UNIT_SPELLCAST_CHANNEL_UPDATE = true }
@@ -1683,6 +2334,8 @@ local function OnEvent(_, event, a1, a2, a3)
 		Health()
 	elseif event == "UNIT_POWER_FREQUENT" or event == "UNIT_MAXPOWER" or event == "UNIT_DISPLAYPOWER" then
 		Power()
+	elseif event == "UNIT_COMBAT" then
+		Motion.Combat(a2, a3)
 	elseif event == "UNIT_ABSORB_AMOUNT_CHANGED" then
 		Shield.Changed()
 	elseif event == "UNIT_AURA" then
@@ -1714,6 +2367,12 @@ local function OnEvent(_, event, a1, a2, a3)
 		end
 	elseif event == "PLAYER_EQUIPMENT_CHANGED" then
 		Ranged.wand = MelloUI.Safe.RangedIsWand() == true
+	elseif event == "LOSS_OF_CONTROL_ADDED" or event == "LOSS_OF_CONTROL_UPDATE" then
+		Motion.Loc(event == "LOSS_OF_CONTROL_ADDED")
+	elseif event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
+		if not S.preview then
+			Motion.Settle(event == "PLAYER_REGEN_DISABLED")
+		end
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		Refresh()
 	end
@@ -1737,6 +2396,8 @@ local function Events(on)
 		pcall(f.RegisterUnitEvent, f, event, "player")
 	end
 	f:RegisterEvent("PLAYER_ENTERING_WORLD")
+	f:RegisterEvent("PLAYER_REGEN_DISABLED")
+	f:RegisterEvent("PLAYER_REGEN_ENABLED")
 	if SwingOn() then
 		for _, event in ipairs({ "PLAYER_SWING", "PLAYER_STARTED_MOVING", "PLAYER_STOPPED_MOVING", "STOP_AUTOREPEAT_SPELL",
 			"PLAYER_EQUIPMENT_CHANGED" }) do
@@ -1754,8 +2415,12 @@ Refresh = function()
 	if not ui then
 		return
 	end
+	-- (read again: the fills set at once, no loss or gain shown)
+	S.snap = true
 	Health()
 	Power()
+	S.snap = false
+	Motion.Paint()
 	CastRead(false)
 	if not S.casting then
 		CastRead(true)
@@ -2140,7 +2805,10 @@ local function Start()
 	GameCast.Hold(CastHeld())
 	ChargeFrom()
 	HoldGameSwing()
+	Motion.Shown()
+	Motion.HoldBanner()
 	Refresh()
+	Motion.SettleGo(MelloUI.InCombat(), true)
 	Place()
 end
 
@@ -2150,12 +2818,17 @@ end
 
 local function SampleHealth(pct)
 	local ui = S.ui
+	local power = S.previewPower or 100
 	ui.health.bar:SetMinMaxValues(0, 100)
 	ui.health.bar:SetValue(pct, EASE)
+	Motion.Value(ui.health, 100, pct)
+	Motion.Low(pct / 100)
 	ui.health.text:SetFormattedText("%.0f%%", pct)
 	ui.power.bar:SetMinMaxValues(0, 100)
-	ui.power.bar:SetValue(100, EASE)
-	ui.power.text:SetFormattedText("%.0f%%", 100)
+	ui.power.bar:SetValue(power, EASE)
+	Motion.Value(ui.power, 100, power)
+	Motion.Gain(100, power, nil)
+	ui.power.text:SetFormattedText("%.0f%%", power)
 end
 
 -- (the preview's own cast ended: a real one begun after the preview's stop left running)
@@ -2180,7 +2853,12 @@ local function OnPreview(beat, _, n)
 			CastOut()
 			Swing.Off()
 			Cds.Off()
+			Motion.LocEnd()
+			S.previewPower, S.powerLast, S.lowWas = nil, nil, nil
 			Refresh()
+			if MelloUI.InCombat() then
+				Motion.Settle(true)
+			end
 		end
 		return
 	end
@@ -2191,9 +2869,13 @@ local function OnPreview(beat, _, n)
 	if beat == "start" then
 		S.preview = true
 		ShieldOff()
-		S.previewHealth = SAMPLE.health
+		S.previewHealth, S.previewPower, S.powerLast, S.lowWas = SAMPLE.health, SAMPLE.power, nil, nil
+		S.snap = true
 		SampleHealth(S.previewHealth)
+		S.snap = false
+		Motion.SettleGo(false, true)
 	elseif beat == "pull" then
+		Motion.Settle(true)
 		Cds.Start(SAMPLE.cooldowns.pull)
 		Swing.Start("main", SAMPLE.swing)
 		Swing.Start("off", SAMPLE.swing * 2)
@@ -2201,8 +2883,19 @@ local function OnPreview(beat, _, n)
 		Shield.Apply(SAMPLE.shield)
 		SampleCast(SAMPLE.casts.pull)
 	elseif beat == "hit" then
-		S.previewHealth = math.max(20, (S.previewHealth or SAMPLE.health) - SAMPLE.hurt)
+		local hurt = n == SAMPLE.crit and SAMPLE.critHurt or SAMPLE.hurt
+		S.previewHealth = math.max(20, (S.previewHealth or SAMPLE.health) - hurt)
+		S.previewPower = math.max(0, math.min(100, (S.previewPower or SAMPLE.power) + SAMPLE.gain - (SAMPLE.spend[n] or 0)))
 		SampleHealth(S.previewHealth)
+		if n == SAMPLE.crit then
+			Motion.Heavy()
+		end
+		if SAMPLE.avoid[n] then
+			Motion.Word(SAMPLE.avoid[n])
+		end
+		if n == SAMPLE.stun[1] and Motion.On("stun") then
+			Motion.LocStart(nil, SAMPLE.stun[2], rawget(_G, "LOSS_OF_CONTROL_DISPLAY_STUN"))
+		end
 		local left = SAMPLE.hits[n]
 		if left == 0 then
 			Shield.Break()
@@ -2226,6 +2919,7 @@ local function OnPreview(beat, _, n)
 			Shield.Break()
 		end
 		SampleHealth(SAMPLE.health)
+		Motion.Settle(false)
 	end
 end
 
@@ -2244,9 +2938,11 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 	installer = false,
 	-- the player's own game setting, given back when off, and the camera zoom the display was placed at: never in a
 	-- profile
-	keep = { "savedGameDisplay", "zoomRef", "savedSwing" },
+	keep = { "savedGameDisplay", "zoomRef", "savedSwing", "savedLoc" },
 	defaults = { width = 160, height = 10, shield = true, text = true, zoom = true, hideCastBar = true,
-		healFrom = true, swing = true, cooldowns = true, cdSize = 16, textFont = "shared" },
+		healFrom = true, swing = true, cooldowns = true, cdSize = 16, textFont = "shared",
+		chunk = true, lead = true, heavy = true, spend = true, gain = true, avoid = true, lowHealth = true,
+		stun = true, settle = true },
 	options = {
 		{ type = "toggle", key = "shield", name = "Shield Column",
 		  desc = "An upright bar beside your character for every shield on you added up, as the game counts them: spells (Power Word: Shield, Ice Barrier, Mana Shield, the wards), talents and items, the ones against one kind of damage too. Each shield is its own part, in its school's colour (Power Word: Shield gold, Ice Barrier frost, Mana Shield arcane, a Fire Protection Potion fire), stacked in the order they went up, its icon beside the column. It fills when one goes up, drains as it takes the hits, turns amber when low and breaks when the last one is gone; one ending while another holds only takes its part away. Edit Layout places it." },
@@ -2259,7 +2955,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		{ type = "toggle", key = "cooldowns", name = "Big Cooldowns",
 		  desc = "The buffs you give yourself on a cooldown -- Shield Wall, Shield Block, Last Stand, Evasion, Ice Block, Recklessness, a trinket's -- as icons above the health bar, their time sweeping round them and their seconds on them, the most important first: an immunity, then damage taken down, more health, block, evasion, the rest. From the game's own spell data, for every class." },
 		{ type = "toggle", key = "text", name = "Percent And Spell Text",
-		  desc = "Your health and power in percent beside their bars, the spell and its seconds on the cast bar, and the shield's amount under its column." },
+		  desc = "Your health and power in percent beside their bars, the spell and its seconds on the cast bar, the shield's amount under its column, and what took your control under the bars." },
 		{ type = "dropdown", key = "textFont", name = "Text Font", values = MelloUI.FontFaces, new = "0.25.0",
 		  desc = "The face of the display's texts: the percents, the spell and its seconds, the shield's amount. Shared: the Interface text's face (Look > Fonts)." },
 		{ type = "slider", key = "width", name = "Width", min = 100, max = 260, step = 5,
@@ -2270,9 +2966,27 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "How big the Big Cooldowns' icons above the health bar are. Their seconds keep the display's text size." },
 		{ type = "toggle", key = "zoom", name = "Follow Camera Zoom",
 		  desc = "The display keeps its place by your character as you zoom the camera: closer under your feet when you zoom out, further down when you zoom in, so it never covers your character. Place it in Edit Layout at the zoom you play at; it follows from there. Turning the camera up or down is not followed (the game does not tell)." },
+		{ type = "toggle", key = "chunk", name = "Damage Chunk", new = "0.25.0",
+		  desc = "What a hit takes from your health stays lit a moment, then drains away." },
+		{ type = "toggle", key = "lead", name = "Heal Lead", new = "0.25.0",
+		  desc = "A heal lights the health it gives at once; the bar then grows into it." },
+		{ type = "toggle", key = "heavy", name = "Heavy Hit", new = "0.25.0",
+		  desc = "A critical or crushing blow on you flashes the bars' rim red and dips them a hair, once." },
+		{ type = "toggle", key = "spend", name = "Power Spent", new = "0.25.0",
+		  desc = "The rage, energy or mana an ability costs stays lit a moment, then drains, so you see the cost." },
+		{ type = "toggle", key = "gain", name = "Power Gained", new = "0.25.0",
+		  desc = "New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)." },
+		{ type = "toggle", key = "avoid", name = "Dodge, Parry, Block", new = "0.25.0",
+		  desc = "Your dodge, parry or block flicks its word off the health bar's end: your Revenge window, on the bars you watch." },
+		{ type = "toggle", key = "lowHealth", name = "Low Health", new = "0.25.0",
+		  desc = "Under 35% health the health bar turns ember." },
+		{ type = "toggle", key = "stun", name = "Loss Of Control", new = "0.25.0",
+		  desc = "While you are stunned, feared, silenced or locked out of a school, the bars' rim turns red and a line under them runs down its time, its name under it. The game's own banner over your character is off while this is on, and comes back as you had it when it is off." },
+		{ type = "toggle", key = "settle", name = "Combat Settle", new = "0.25.0",
+		  desc = "Into a fight the bars rise into place; a moment after it they settle a little lower and dim, until the next one." },
 		{ type = "button", name = "Preview", text = "Play",
-		  hint = "a shield going up, hit, low and broken, and casts",
-		  desc = "Plays a made-up fight on the display: a shield going up, taking hits until it is low and breaks, a cast and a second shield. Also /mello personal test.",
+		  hint = "a shield going up, hit, low and broken, casts, and the bars in the fight",
+		  desc = "Plays a made-up fight on the display: a shield going up, taking hits until it is low and breaks, a cast and a second shield, and the bars answering it -- the hits, a critical blow, power gained and spent, a dodge, a stun, low health and the heal after. Also /mello personal test.",
 		  onClick = function() M.Preview() end },
 	},
 })
@@ -2390,6 +3104,11 @@ local function UnitFill()
 		ui.power.bar:SetStatusBarTexture(fill)
 		ui.column.bar:SetStatusBarTexture(fill)
 		ui.column.loss:SetStatusBarTexture(fill)
+		for _, b in ipairs(ui.motionBars) do
+			b.ghost:SetStatusBarTexture(fill)
+			b.lead:SetStatusBarTexture(fill)
+		end
+		ui.loc:SetStatusBarTexture(fill)
 	end
 end
 
@@ -2415,6 +3134,7 @@ function M:OnEnable(db)
 	MelloUI:On("editlayout", OnEditLayout, OWNER)
 	MelloUI:On("module", OnModule, OWNER)
 	MelloUI:On("border", OnBorder, OWNER)
+	MelloUI:On("palette", Motion.Paint, OWNER)
 	if not S.watching then
 		-- (once: their owners' own listeners on the bus; with nothing made they do nothing)
 		S.watching = true
@@ -2446,6 +3166,7 @@ function M:OnDisable()
 	Swing.Off()
 	HoldGameSwing()
 	S.preview = false
+	Motion.Off()
 	ShieldOff()
 	local ui = S.ui
 	if ui then
@@ -2503,6 +3224,20 @@ function M:OnSettingChanged(key, _, db)
 		end
 	elseif key == "cdSize" then
 		Cds.Icons()
+	elseif key == "chunk" or key == "lead" or key == "spend" or key == "gain" then
+		Motion.Shown()
+		Refresh()
+	elseif key == "lowHealth" then
+		Paint(ui.health.bar, "personalHealth")
+		S.lowWas = nil
+		Refresh()
+	elseif key == "stun" then
+		if not Motion.On("stun") then
+			Motion.LocEnd()
+		end
+		Motion.HoldBanner()
+	elseif key == "settle" then
+		Motion.SettleGo(MelloUI.InCombat(), true)
 	elseif key == "textFont" then
 		for fs, size in pairs(S.texts) do
 			StyleText(fs, size)
@@ -2515,3 +3250,4 @@ M.S = S
 M.T = T
 M.Ranged = Ranged
 M.Cds = Cds
+M.Motion = Motion

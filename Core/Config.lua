@@ -148,7 +148,7 @@ local CHANGELOG = {
 		"Quests: one gem per title, a ring on the quest you follow, Parchment its own switch; the tracker's Painted Skin is gone.",
 		"Route: the World Marker shows the way and follows RestedXP Guides -- its steps in the Quest Tracker, its items in the Quest Items widget; a bead marks your flight point.",
 		"Edit Layout and bags: more windows move without the painted reskin; quality gems and grey junk on every slot.",
-		"Nameplates: Impact Effects -- hits flash, crits glow, casts warn, kills flash out; a soft band behind names; Combat Text's Beside look keeps them readable.",
+		"Nameplates and Personal Display answer the fight: hits leave a lit chunk, crits flash, casts warn, kills flash out; dodges and stuns show on your bars. Combat Text has a Beside look.",
 		"Macro Backup is gone: the game keeps your settings, and its account macros are freed.",
 		"Group Frames: party and raid keep their own places and indicators; profiles and share strings keep them.",
 	} },
