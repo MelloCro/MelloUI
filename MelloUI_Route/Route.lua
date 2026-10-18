@@ -9709,6 +9709,7 @@ SlashCmdList.MELLOROUTE = function(msg)
 		if M.db.followGuide then
 			M.Guide.Step()
 		end
+		M.Guide.Publish()   -- (its steps in the Quest Tracker, or gone)
 	elseif msg == "clear" then
 		M.StopRoute()   -- (a tracked quest's route stays stopped too)
 		MelloUI:Print("Route cleared.")
@@ -9950,6 +9951,74 @@ do
 
 	function Guide.Forget()
 		Guide.mapID, Guide.x, Guide.y = nil, nil, nil
+		Guide.sig = nil
+	end
+
+	-- RestedXP's active steps for the Quest Tracker (the user, 2026-10-18: its
+	-- steps "shown in the quest tracker", with "the manual checkbox to skip
+	-- certain steps"), on the bus's "guide": a line per step line, its text as
+	-- RestedXP shows it (ReplaceNpcIds), done when completed or skipped, a box
+	-- unless text-only or optional; ticking one runs RestedXP's own checkbox
+	-- (ActiveStepElementPostClick, the guide's skip). Published only when a
+	-- line changed (Guide.sig); nil once there is no guide or it is off.
+	local function Usable(el)
+		return type(el) == "table" and type(el.text) == "string" and el.text ~= "" and el.text ~= " "
+	end
+
+	local function EachLine(steps, fn)
+		for _, step in ipairs(steps) do
+			if type(step) == "table" and type(step.elements) == "table" then
+				for _, el in ipairs(step.elements) do
+					if Usable(el) then
+						fn(el)
+					end
+				end
+			end
+		end
+	end
+
+	function Guide.Publish()
+		local rxp, rframe = rawget(_G, "RXP"), rawget(_G, "RXPFrame")
+		local steps = M.isEnabled and M.db and M.db.followGuide ~= false and type(rxp) == "table"
+			and type(rframe) == "table" and rawget(rframe, "activeSteps")
+		local parts = {}
+		if type(steps) == "table" then
+			EachLine(steps, function(el)
+				parts[#parts + 1] = el.text .. ((el.completed or el.skip) and "+" or "-")
+			end)
+		end
+		local sig = table.concat(parts, "\n")
+		if sig == Guide.sig then
+			return
+		end
+		Guide.sig = sig
+		if #parts == 0 then
+			MelloUI:Fire("guide", nil)
+			return
+		end
+		local lines = {}
+		EachLine(steps, function(el)
+			local text = el.text
+			if type(rxp.ReplaceNpcIds) == "function" then
+				local ok, s = pcall(rxp.ReplaceNpcIds, text)
+				text = ok and type(s) == "string" and s or text
+			end
+			local line = { text = text, done = (el.completed or el.skip) and true or false,
+				box = not (el.textOnly or el.optional) }
+			line.Toggle = function(skip)
+				-- (RestedXP's checkbox, as its own guide window clicks it)
+				local button = { GetChecked = function() return skip end, GetParent = function() return { element = el } end }
+				pcall(rxp.ActiveStepElementPostClick, button)
+				Guide.Publish()
+			end
+			lines[#lines + 1] = line
+		end)
+		local guide = rawget(rxp, "currentGuide")
+		local name = type(guide) == "table" and (guide.displayName or guide.name) or nil
+		local cdata = rawget(_G, "RXPCData")
+		local n = type(cdata) == "table" and tonumber(cdata.currentStep) or nil
+		MelloUI:Fire("guide", { section = "RestedXP Guide", lines = lines,
+			title = (type(name) == "string" and name or "RestedXP") .. (n and (" - step " .. n) or "") })
 	end
 
 	function Guide.Step()
@@ -9999,7 +10068,10 @@ do
 			return
 		end
 		Guide.hooked = true
-		hooksecurefunc(rxp, "UpdateGotoSteps", Guide.Step)
+		hooksecurefunc(rxp, "UpdateGotoSteps", function()
+			Guide.Step()
+			Guide.Publish()
+		end)
 	end
 end
 

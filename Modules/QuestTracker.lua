@@ -1908,6 +1908,10 @@ local function ReleaseBlock(block)
 	block:ClearAllPoints()
 	Art.ItemLit(block.item, false)
 	block.questID, block.recipeID, block.recraft = nil, nil, nil
+	for _, b in ipairs(block.boxes or {}) do
+		b:Hide()   -- (a guide's tick boxes: another block's lines next)
+		b.line = nil
+	end
 	if itemOverlay and itemOverlay.over == block.item then
 		DetachOverlay()
 	end
@@ -3168,6 +3172,102 @@ local function FillRecipeBlock(block, entry, width)
 	return y
 end
 
+-- A guide's steps (2026-10-18, the user: "have its own steps shown in the
+-- quest tracker since we dont have our own route", with "the manual checkbox
+-- to skip certain steps"): whatever a guide publishes on the bus's "guide"
+-- (Route's reader of RestedXP Guides) -- { title, lines = { { text, done,
+-- box, Toggle } } }, or nil for none. A line with a box can be ticked to skip
+-- it, through the guide's own skip (line.Toggle); a text-only line has none.
+local GUIDE = { data = nil }
+
+local function GuideBox(block, i)
+	block.boxes = block.boxes or {}
+	local b = block.boxes[i]
+	if b then
+		return b
+	end
+	b = CreateFrame("Button", nil, block)
+	b:SetSize(11, 11)
+	local W = MelloUI.Widgets
+	W.Solid(b, "BACKGROUND", "innerPanel", 0.9):SetAllPoints(b)
+	W.Edges(b, "border", "BORDER")
+	b.tick = b:CreateTexture(nil, "ARTWORK")
+	b.tick:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+	b.tick:SetSize(15, 15)
+	b.tick:SetPoint("CENTER", b, "CENTER", 1, 0)
+	Perf.SetScript(b, "OnClick", function(self)
+		local line = self.line
+		if line and line.Toggle then
+			pcall(line.Toggle, not line.done)
+		end
+	end)
+	b:EnableMouseWheel(true)
+	Perf.SetScript(b, "OnMouseWheel", function(_, delta) Scroll(delta) end)
+	block.boxes[i] = b
+	return b
+end
+
+local function HideBoxes(block, from)
+	for i = from, #(block.boxes or {}) do
+		block.boxes[i]:Hide()
+		block.boxes[i].line = nil
+	end
+end
+
+local function FillGuideBlock(block, data, width)
+	block.questID, block.recipeID, block.recraft = nil, nil, nil
+	block.item.itemLink = nil
+	block.item:Hide()
+	if block.item.tray then
+		block.item.tray:Hide()
+		Art.ItemLit(block.item, false)
+	end
+	block.followed:Hide()
+	block.tier = nil
+	if block.mark then
+		block.mark:Hide()
+	end
+	Act.Washed(block, false)
+	if block.dist then
+		block.dist:Hide()
+		block.distValue, block.distLabel, block.distRoom = nil, nil, 0
+	end
+	local t = block.title
+	StyleText(t, TitleSize())
+	t:ClearAllPoints()
+	t:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X, 0)
+	t:SetWidth(width - TEXT_X)
+	t:SetText(data.title or "Guide")
+	block.ink = Inked()
+	t:SetTextColor(StoneColour(block, 1, 0.82, 0))
+	InkLine(t, block.ink, 1)
+	if block.ink and MelloUI.QuestInk then
+		MelloUI.QuestInk.Ink(t, "title")
+	end
+	local y = t:GetStringHeight() + TITLE_GAP
+	local n, boxes = 0, 0
+	for _, line in ipairs(data.lines or {}) do
+		n = n + 1
+		local shade = line.done and 0.55 or 0.95
+		local top = y
+		y = PutLine(block, n, line.text or "", y, width, false, shade, shade, shade, true)
+		if line.box then
+			boxes = boxes + 1
+			local b = GuideBox(block, boxes)
+			b.line = line
+			b.tick:SetShown(line.done and true or false)
+			b:ClearAllPoints()
+			b:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X + COLUMNS.bullet, -top - 1)
+			b:Show()
+		end
+	end
+	HideBoxes(block, boxes + 1)
+	HideLines(block, n + 1)
+	block:SetHeight(y)
+	block:Show()
+	return y
+end
+
 -- A section's header in the list ("Quests", "Professions"): in the kit's
 -- look the chat's heading (0.24.0: its name in small caps at the left, how
 -- many it holds beside it, a hairline under it; the kit's band is gone with
@@ -3313,7 +3413,9 @@ local function Rebuild()
 	-- the followed quest on top, then the nearest (Nearest first, above; the
 	-- watch order while it is off or no place is known)
 	Near.Order(quests, followedID, questsOpen)
-	local keep = {}
+	local guide = GUIDE.data
+	local guideOpen = guide and not SectionCollapsed("guide")
+	local keep = { guide = guideOpen or nil }
 	for _, id in ipairs(quests) do
 		keep[id] = questsOpen or nil
 	end
@@ -3351,6 +3453,14 @@ local function Rebuild()
 		end
 		y = y + h + BLOCK_GAP
 	end
+	-- a guide's steps on top (GUIDE, above)
+	if guide then
+		Head("guide", guide.section or "Guide", #(guide.lines or {}))
+		if guideOpen then
+			Put("guide", FillGuideBlock, guide, width)
+		end
+		y = y + 2
+	end
 	if #quests > 0 then
 		Head("quests", QUESTS_LABEL or "Quests", #quests)
 		for _, id in ipairs(questsOpen and quests or {}) do
@@ -3368,7 +3478,7 @@ local function Rebuild()
 	end
 	contentHeight = math.max(0, y - BLOCK_GAP)
 	content:SetHeight(math.max(1, contentHeight))
-	local entries = #quests + #recipes
+	local entries = #quests + #recipes + (guide and 1 or 0)
 
 	-- the frame's height: the header and the list, up to the height allowed
 	local collapsed = M.db.collapsed
@@ -3407,6 +3517,12 @@ end
 Near.MarkDirty = MarkDirty
 Motion.Dirty = MarkDirty
 M.SlashWords = { progress = Motion.Preview }   -- (0.21.3: /mello tracker progress)
+
+-- a guide's steps published, or taken away (nil): the list rebuilt (GUIDE)
+MelloUI:On("guide", function(data)
+	GUIDE.data = type(data) == "table" and data or nil
+	MarkDirty()
+end, "Quest Tracker guide")
 
 --------------------------------------------------------------------------------
 -- Building the frame
