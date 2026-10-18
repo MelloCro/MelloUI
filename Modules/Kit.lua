@@ -324,31 +324,36 @@ do
 	end
 end
 
--- The folder a piece is read from in the chosen look
+-- The folder a piece is read from in the chosen look. The uncoloured pieces
+-- (the pictures, the parchment, the rank marks) are only in Media\Kit, in the
+-- default look too (2026-10-18, found in the simulator: with UI Modifications
+-- off its settings never load, and every picture was asked for in the look's
+-- folder, where it is not -- the configurator's stone rails were missing)
 local function PieceRoot(name)
-	if not lookRoot then
+	local root = lookRoot
+	if not root then
 		local um = MelloUI:GetModule("UIModifications")
-		if not (um and um.db and Kit.BorderValue) then
+		local id = LOOK.PaletteId()
+		LOOK.ShowChoices(id)
+		if um and um.db and Kit.BorderValue then
+			lookRoot = Kit:LookFolder(id, Kit:BorderValue("colours"))
+			root = lookRoot
+		else
 			-- the default look, until the settings are loaded (Kit.colourLooks
 			-- already the palette's choices: a reader of the Kit Colours' values
 			-- need not read the setting first)
-			local id = LOOK.PaletteId()
-			LOOK.ShowChoices(id)
-			return (Kit:LookFolder(id))
+			root = (Kit:LookFolder(id))
 		end
-		local id = LOOK.PaletteId()
-		LOOK.ShowChoices(id)
-		lookRoot = Kit:LookFolder(id, Kit:BorderValue("colours"))
 	end
-	if lookRoot == ROOT then
+	if root == ROOT then
 		return ROOT
 	end
-	for _, pattern in ipairs(LOOK.ART_ROOTS[lookRoot] and LOOK.ART_UNCOLOURED or UNCOLOURED) do
+	for _, pattern in ipairs(LOOK.ART_ROOTS[root] and LOOK.ART_UNCOLOURED or UNCOLOURED) do
 		if name:find(pattern) then
 			return ROOT
 		end
 	end
-	return lookRoot
+	return root
 end
 
 local STATES = { "normal", "hover", "pressed", "checked", "disabled", "plain", "open", "closed", "selected", "focused", "off", "on", "title" }

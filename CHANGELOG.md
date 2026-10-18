@@ -33,6 +33,7 @@
 - Action bars: Hide Bar Art (Action Bars > Bars, on by default) ticks the game's own Edit Mode setting for Action Bar 1 on your own Edit Mode layouts, so every bar looks alike; untick it in Edit Mode and MelloUI leaves it. Shows after a /reload.
 - Chat: Parchment is its own switch on the Chat page (Chat Frame > Look), for the Chat View and the whisper window, with the painted reskin on or off. Background offers Dark, Game or None; the painted chat skin has its own Painted Skin row.
 - Fixed: Group Frames: profiles and share strings keep your indicators, and loading an older profile no longer empties them.
+- Fixed: with UI Modifications off, the stone rail borders (the configurator's search box and dropdowns) and the other shared pictures show again.
 - Macro Backup is gone: the game keeps your settings. The account macros it kept (MelloUI1, MelloUI2 ...) are removed at your next login, so their slots are free again, and /mello backup goes with it.
 - Quest Tracker: the Painted Skin switch is gone; the tracker always wears MelloUI's look.
 - Nameplates: a soft shade behind the names of enemies and NPCs, as long as the name, with or without the painted reskin (Name Shade, part of Nameplate Tweaks).
