@@ -17,6 +17,8 @@
 --                       those the data knows; unknown = { done = n, log = n },
 --                       the ones it does not (Forever's newest), left out
 --   Data.areaTitles()   -> { [areaKey] = name }, for the planner's ctx
+--   Data.otherStarts(side, done, here) -> { [areaKey] = true }: the other
+--     races' starting areas and their capitals (not the character's own)
 --   Data.foreignAreas(side) -> { [areaKey] = true }: the other side's
 --                       territory, left out of the cards and the session
 --                       (the steps drop these areas' records before they
@@ -386,5 +388,100 @@ function Data.foreignAreas(side)
 		end
 	end
 	foreign[side] = out
+	return out
+end
+
+--------------------------------------------------------------------------------
+-- Other races' starting areas (Denis, 2026-10-18: "Yes, skip other races'
+-- starting areas in the cards")
+--------------------------------------------------------------------------------
+
+-- A starting area: one with at least START_MIN of this side's quests of level
+-- START_LEVEL or below (Elwynn, Dun Morogh, Teldrassil, Zephras Isle for the
+-- Alliance in Forever's data). A race's capital goes with its starting area
+-- (STARTER_CITY, by the areas' names: the game's own pairs). The character's
+-- home start is the starting area holding most of its done quests, else the
+-- area it stands in; every other start and its capital are left out of the
+-- cards and the sessions. Class quests are not filtered (their givers stand
+-- where they stand).
+local START_LEVEL, START_MIN = 4, 5
+local STARTER_CITY = {
+	["Elwynn Forest"] = "Stormwind City", ["Dun Morogh"] = "Ironforge", ["Teldrassil"] = "Darnassus",
+	["Durotar"] = "Orgrimmar", ["Mulgore"] = "Thunder Bluff", ["Tirisfal Glades"] = "Undercity",
+}
+
+local starters = {}         -- [side] = { [areaKey] = true }, made once a session
+
+local function StarterAreas(side)
+	if starters[side] then
+		return starters[side]
+	end
+	local q = QL()
+	local data = q and q.Data()
+	local own = SIDES[side]
+	local out = {}
+	if not own or type(data) ~= "table" or type(data.quests) ~= "table" then
+		return out
+	end
+	local low = {}
+	for _, row in ipairs(data.quests) do
+		local rowSide = row[q.F_SIDE]
+		if row[q.F_EVENT] == 0 and row[q.F_DUNGEON] == 0 and (rowSide == own or rowSide == 3)
+			and (tonumber(row[q.F_LEVEL]) or 99) <= START_LEVEL then
+			local area = AreaOf(q, data, row)
+			if area then
+				low[area] = (low[area] or 0) + 1
+			end
+		end
+	end
+	for area, n in pairs(low) do
+		if n >= START_MIN then
+			out[area] = true
+		end
+	end
+	starters[side] = out
+	return out
+end
+
+-- Data.otherStarts(side, done, here) -> { [areaKey] = true }: the starting
+-- areas (and their capitals) that are not the character's own
+function Data.otherStarts(side, done, here)
+	local q = QL()
+	local data = q and q.Data()
+	local starts = StarterAreas(side)
+	local out = {}
+	if not (q and type(data) == "table") then
+		return out
+	end
+	-- home: the start holding most of the done quests, else where it stands
+	local home, best = nil, 0
+	local count = {}
+	for id in pairs(done or {}) do
+		local row = q.RowByID()[id]
+		local area = row and AreaOf(q, data, row)
+		if area and starts[area] then
+			count[area] = (count[area] or 0) + 1
+			if count[area] > best then
+				home, best = area, count[area]
+			end
+		end
+	end
+	if not home and here and starts[here] then
+		home = here
+	end
+	local zones = data.zones or {}
+	local byName = {}
+	for key, name in pairs(zones) do
+		byName[name] = key
+	end
+	for area in pairs(starts) do
+		if area ~= home then
+			out[area] = true
+			local city = STARTER_CITY[zones[area] or ""]
+			if city and byName[city] then
+				out[byName[city]] = true
+			end
+		end
+	end
 	return out
 end

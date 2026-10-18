@@ -237,13 +237,17 @@ local function Context(M)
 	M.records = byID
 	local skip = ClassQuestIDs(ClassOf(classFile))
 	local foreign = ns.Data.foreignAreas(side)
+	local done, log = ns.Data.state()
+	-- other races' starting areas and capitals out (Data.otherStarts); here: the area the character stands in
+	local q = MelloUI.QuestList
+	local here = q and q.CurrentAreaID and q.CurrentAreaID() or nil
+	local others = ns.Data.otherStarts(side, done, here)
 	local records = {}
 	for _, r in ipairs(list) do
-		if not skip[r.id] and not (r.area and foreign[r.area]) then
+		if not skip[r.id] and not (r.area and (foreign[r.area] or others[r.area])) then
 			records[#records + 1] = r
 		end
 	end
-	local done, log = ns.Data.state()
 	asks = 0
 	return {
 		level = level,
