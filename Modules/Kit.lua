@@ -3016,11 +3016,12 @@ local function NineSlice_Art(skin, opts)
 
 	if opts.gems ~= false and PIECES["deco/gem_large"] then
 		skin.gems = {}
-		for c, point in pairs(corners) do
+		-- (each corner's entry is { its point, its open side }: the gem centred T / 2 in from the point)
+		for c, a in pairs(corners) do
 			local gem = self:Texture(skin, c == "tl" and "deco/gem_large" or "deco/gem_small", "ARTWORK", 1, scale)
 			local sx = (c == "tl" or c == "bl") and 1 or -1
 			local sy = (c == "tl" or c == "tr") and -1 or 1
-			gem:SetPoint("CENTER", skin, point, sx * T / 2, sy * T / 2)
+			gem:SetPoint("CENTER", skin, a[1], sx * T / 2, sy * T / 2)
 			skin.gems[c] = gem
 		end
 	end
