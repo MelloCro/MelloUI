@@ -95,7 +95,7 @@ local T = {
 	rimFeather = 12, rimFeatherY = 9, rimTuck = 3,
 	wordX = 4, wordY = 2, wordDX = 22, wordDY = 8, word = 0.85,
 	lineH = 3, locRim = 0.8, locFade = 0.15, locGrace = 0.2,
-	restAlpha = 0.45, restDrop = 5, settleDelay = 0.3, settleIn = 0.34, settleOut = 0.7,
+	restDrop = 5, settleDelay = 0.3, settleIn = 0.34, settleOut = 0.7,
 }
 local TEXT = {
 	bars = "Personal Display",
@@ -182,6 +182,33 @@ local function Paint(bar, key)
 	if c then
 		bar:SetStatusBarColor(c[1], c[2], c[3])
 	end
+end
+
+-- the health bar's colour: your class's with Class Colours (C_ClassColor, else the plain RAID_CLASS_COLORS, as the
+-- group frames read it), else the meaning green
+local function HealthRGB()
+	if Db().classColour then
+		local ok, _, class = pcall(UnitClass, "player")
+		if ok and class ~= nil then
+			local CC = rawget(_G, "C_ClassColor")
+			if type(CC) == "table" and type(CC.GetClassColor) == "function" then
+				local okC, c = pcall(CC.GetClassColor, class)
+				if okC and c and c.GetRGB then
+					return c:GetRGB()
+				end
+			end
+			local t = not Secret(class) and rawget(_G, "RAID_CLASS_COLORS") and RAID_CLASS_COLORS[class]
+			if t then
+				return t.r, t.g, t.b
+			end
+		end
+	end
+	local c = MelloUI.Meaning.personalHealth
+	return c[1], c[2], c[3]
+end
+
+local function PaintHealth(bar)
+	bar:SetStatusBarColor(HealthRGB())
 end
 
 local function Note(path)
@@ -660,7 +687,7 @@ local function Build()
 	ui.power = NewBar(float, hp, "personal", true)
 	ui.cast = NewBar(float, hc, "castbars")
 	ui.stack = { ui.health, ui.power, ui.cast }
-	Paint(ui.health.bar, "personalHealth")
+	PaintHealth(ui.health.bar)
 	Paint(ui.cast.bar, "personalCast")
 	Motion.Make(ui)
 	for _, b in ipairs({ ui.health, ui.power }) do
@@ -1657,8 +1684,8 @@ function Motion.Make(ui)
 	Spark(spark, "OVERLAY", 6, "glow_white.tga"):SetAllPoints(spark)
 	ui.spark = spark
 	ui.motionFrame = CreateFrame("Frame", nil, float)
-	S.settle = { 1, 1, 0, 0 }
-	S.settleA, S.settleY, S.dipY = 1, 0, 0
+	S.settle = { 0, 0 }
+	S.settleY, S.dipY = 0, 0
 end
 
 -- (LayStack) each rim out to its bracket's painted edge, the line, the spark the power fill's depth
@@ -1705,8 +1732,7 @@ function Motion.Paint()
 	for _, bar in ipairs(ui.motionBars) do
 		bar.ghost:SetStatusBarColor(r, g, b, T.ghostAlpha)
 	end
-	local hc = MelloUI.Meaning.personalHealth
-	ui.health.lead:SetStatusBarColor(Motion.Pale(hc[1], hc[2], hc[3]))
+	ui.health.lead:SetStatusBarColor(Motion.Pale(HealthRGB()))
 	ui.loc:SetStatusBarColor(Motion.Look("selectedTrim"))
 	ui.loc.name:SetTextColor(r, g, b)
 end
@@ -1855,7 +1881,7 @@ function Motion.Combat(action, flag)
 end
 
 -- (Low Health) three curves, one a colour channel: the health colour from T.lowHealth up, ember under it; made once
--- (false: this client has none)
+-- (false: this client has none; nil again when Class Colours turns)
 function Motion.Curves()
 	if S.lowCurves ~= nil then
 		return S.lowCurves or nil
@@ -1865,7 +1891,7 @@ function Motion.Curves()
 	if not (CU and CU.CreateCurve and rawget(_G, "UnitHealthPercent")) then
 		return nil
 	end
-	local hi, lo = MelloUI.Meaning.personalHealth, MelloUI.Meaning.personalLow
+	local hi, lo = { HealthRGB() }, MelloUI.Meaning.personalLow
 	local list = {}
 	for i = 1, 3 do
 		local ok, c = pcall(CU.CreateCurve)
@@ -1889,7 +1915,11 @@ function Motion.Low(pct)
 	local bar = ui.health.bar
 	if pct then
 		local low = pct < T.lowHealth
-		Paint(bar, low and "personalLow" or "personalHealth")
+		if low then
+			Paint(bar, "personalLow")
+		else
+			PaintHealth(bar)
+		end
 		if low and S.lowWas == false then
 			Motion.Rim(ui.health, T.beat)
 		end
@@ -1898,7 +1928,7 @@ function Motion.Low(pct)
 	end
 	local curves = Motion.Curves()
 	if not curves then
-		Paint(bar, "personalHealth")
+		PaintHealth(bar)
 		return
 	end
 	local Percent100 = rawget(_G, "UnitHealthPercent")
@@ -1906,7 +1936,7 @@ function Motion.Low(pct)
 	local okG, g = pcall(Percent100, "player", true, curves[2])
 	local okB, b = pcall(Percent100, "player", true, curves[3])
 	if not (okR and okG and okB and pcall(bar.SetStatusBarColor, bar, r, g, b)) then
-		Paint(bar, "personalHealth")
+		PaintHealth(bar)
 	end
 end
 
@@ -2040,29 +2070,20 @@ function Motion.HoldBanner()
 	end
 end
 
--- (Combat Settle) where the bars rest: full in a fight, while Edit Layout places them or with it off; else dimmed and
--- a little lower (Reduce Motion: dimmed only)
+-- (Combat Settle) where the bars rest: in place in a fight, while Edit Layout places them, with it off or with Reduce
+-- Motion; else a little lower. Never dimmed (the user, 2026-10-19: the bars "are transparent" out of a fight): fading
+-- out of combat is the Fader's (its "personal" host, the Fader's page)
 function Motion.Rest(fight)
-	if fight or S.editing or not Motion.On("settle") then
-		return 1, 0
+	if fight or S.editing or not Motion.On("settle") or Anim.reduceMotion then
+		return 0
 	end
-	return T.restAlpha, Anim.reduceMotion and 0 or -T.restDrop
-end
-
-function Motion.SettleApply()
-	local ui = S.ui
-	local a = S.settleA
-	ui.health.strip:SetAlpha(a)
-	ui.power.strip:SetAlpha(a)
-	ui.column.float:SetAlpha(a)
-	Place()
+	return -T.restDrop
 end
 
 function Motion.SettleStep(_, p)
 	local m = S.settle
-	S.settleA = m[1] + (m[2] - m[1]) * p
-	S.settleY = m[3] + (m[4] - m[3]) * p
-	Motion.SettleApply()
+	S.settleY = m[1] + (m[2] - m[1]) * p
+	Place()
 end
 
 -- from where they are to their rest: eased (into a fight quick, out of it slow), or at once (`now`)
@@ -2071,9 +2092,9 @@ function Motion.SettleGo(fight, now)
 	if not (ui and ui.loc) then
 		return
 	end
-	local a, y = Motion.Rest(fight)
+	local y = Motion.Rest(fight)
 	local m = S.settle
-	m[1], m[2], m[3], m[4] = S.settleA, a, S.settleY, y
+	m[1], m[2] = S.settleY, y
 	if now then
 		Anim:Stop(ui.float, "drive")
 		Motion.SettleStep(nil, 1)
@@ -2118,10 +2139,7 @@ function Motion.Off()
 	ui.spark:SetAlpha(0)
 	Anim:Stop(ui.motionFrame, "drive")
 	Anim:Stop(ui.float, "drive")
-	S.dipY, S.settleA, S.settleY = 0, 1, 0
-	ui.health.strip:SetAlpha(1)
-	ui.power.strip:SetAlpha(1)
-	ui.column.float:SetAlpha(1)
+	S.dipY, S.settleY = 0, 0
 	Motion.HoldBanner()
 end
 
@@ -2942,7 +2960,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 	defaults = { width = 160, height = 10, shield = true, text = true, zoom = true, hideCastBar = true,
 		healFrom = true, swing = true, cooldowns = true, cdSize = 16, textFont = "shared",
 		chunk = true, lead = true, heavy = true, spend = true, gain = true, avoid = true, lowHealth = true,
-		stun = true, settle = true },
+		stun = true, settle = true, classColour = false },
 	options = {
 		{ type = "toggle", key = "shield", name = "Shield Column",
 		  desc = "An upright bar beside your character for every shield on you added up, as the game counts them: spells (Power Word: Shield, Ice Barrier, Mana Shield, the wards), talents and items, the ones against one kind of damage too. Each shield is its own part, in its school's colour (Power Word: Shield gold, Ice Barrier frost, Mana Shield arcane, a Fire Protection Potion fire), stacked in the order they went up, its icon beside the column. It fills when one goes up, drains as it takes the hits, turns amber when low and breaks when the last one is gone; one ending while another holds only takes its part away. Edit Layout places it." },
@@ -2958,6 +2976,8 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "Your health and power in percent beside their bars, the spell and its seconds on the cast bar, the shield's amount under its column, and what took your control under the bars." },
 		{ type = "dropdown", key = "textFont", name = "Text Font", values = MelloUI.FontFaces, new = "0.25.0",
 		  desc = "The face of the display's texts: the percents, the spell and its seconds, the shield's amount. Shared: the Interface text's face (Look > Fonts)." },
+		{ type = "toggle", key = "classColour", name = "Class Colours", new = "0.25.0",
+		  desc = "The health bar in your class's colour instead of green. With Low Health on it still turns ember under 35%." },
 		{ type = "slider", key = "width", name = "Width", min = 100, max = 260, step = 5,
 		  desc = "How wide the health, power and cast bars are. Edit Layout sizes the whole display." },
 		{ type = "slider", key = "height", name = "Height", min = 5, max = 16, step = 1,
@@ -2983,7 +3003,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		{ type = "toggle", key = "stun", name = "Loss Of Control", new = "0.25.0",
 		  desc = "While you are stunned, feared, silenced or locked out of a school, the bars' rim turns red and a line under them runs down its time, its name under it. The game's own banner over your character is off while this is on, and comes back as you had it when it is off." },
 		{ type = "toggle", key = "settle", name = "Combat Settle", new = "0.25.0",
-		  desc = "Into a fight the bars rise into place; a moment after it they settle a little lower and dim, until the next one." },
+		  desc = "Into a fight the bars rise into place; a moment after it they settle a little lower, until the next one. (To fade them out of combat: the Fader.)" },
 		{ type = "button", name = "Preview", text = "Play",
 		  hint = "a shield going up, hit, low and broken, casts, and the bars in the fight",
 		  desc = "Plays a made-up fight on the display: a shield going up, taking hits until it is low and breaks, a cast and a second shield, and the bars answering it -- the hits, a critical blow, power gained and spent, a dodge, a stun, low health and the heal after. Also /mello personal test.",
@@ -3227,8 +3247,12 @@ function M:OnSettingChanged(key, _, db)
 	elseif key == "chunk" or key == "lead" or key == "spend" or key == "gain" then
 		Motion.Shown()
 		Refresh()
-	elseif key == "lowHealth" then
-		Paint(ui.health.bar, "personalHealth")
+	elseif key == "lowHealth" or key == "classColour" then
+		if key == "classColour" then
+			S.lowCurves = nil
+			Motion.Paint()
+		end
+		PaintHealth(ui.health.bar)
 		S.lowWas = nil
 		Refresh()
 	elseif key == "stun" then
