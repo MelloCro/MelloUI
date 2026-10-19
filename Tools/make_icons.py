@@ -19,7 +19,7 @@ import os
 import sys
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 from paths import ADDON_MEDIA, master
 
 ART = os.path.normpath(os.path.join(os.path.dirname(os.path.dirname(master("x"))), "icons_v2"))
@@ -62,7 +62,37 @@ for n in ("ct_taken", "ct_heal", "ct_notice", "ct_avoid", "ct_gain"):
 def load(group, name):
     if group == "ring":
         return Image.open(os.path.join(ART, "ring", name + ".png")).convert("RGBA")
-    return Image.open(os.path.join(ART, "out", group, "png128", name + ".png")).convert("RGBA")
+    return key_pockets(Image.open(os.path.join(ART, "out", group, "png128", name + ".png")).convert("RGBA"))
+
+
+# A pixel this magenta (min(R, B) - G) is the sheets' key colour, never art: the most purple art in the set reaches
+# 0.42 (pin_portal), a leftover of the key 1.0 (measured 2026-10-19).
+POCKET = 0.6
+KEY_LEVEL = 0.85   # the key's own magenta-ness, as the cutter's level: from here on fully keyed
+
+
+def key_pockets(img):
+    """the cutter keeps an icon's inside solid from the sheet (so a purple icon stays purple), so a hole in the art the
+    sheet's magenta showed through -- the hourglass's glass, the user 2026-10-19: 'magenta leftovers' -- came out
+    opaque magenta. Each such pocket and its soft rim (2 px round it) keyed out as the cutter keys the outside: alpha
+    from the magenta share, the colour unmixed from the key, the cast left on the rim taken out."""
+    a = np.asarray(img).astype(np.float32) / 255.0
+    mag = np.minimum(a[..., 0], a[..., 2]) - a[..., 1]
+    seed = (mag > POCKET) & (a[..., 3] > 0)
+    if not seed.any():
+        return img
+    near = np.asarray(Image.fromarray((seed * 255).astype(np.uint8), "L").filter(ImageFilter.MaxFilter(5))) > 0
+    keep = 1.0 - np.clip(mag / KEY_LEVEL, 0, 1)
+    k = np.array([1.0, 0.0, 1.0], dtype=np.float32)
+    col = np.clip((a[..., :3] - (1 - keep)[..., None] * k) / np.maximum(keep, 1e-3)[..., None], 0, 1)
+    spill = np.clip(np.minimum(col[..., 0], col[..., 2]) - col[..., 1], 0, None)
+    col[..., 0] -= spill
+    col[..., 2] -= spill
+    out = a.copy()
+    out[near, :3] = col[near]
+    out[near, 3] = a[near, 3] * keep[near]
+    out[out[..., 3] <= 0, :3] = 0
+    return Image.fromarray((out * 255 + 0.5).astype(np.uint8), "RGBA")
 
 
 def scaled(img, size):
