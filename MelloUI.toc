@@ -37,7 +37,6 @@ Core\ConfigLayout.lua
 Core\ConfigPreview.lua
 Core\Tutorial.lua
 Core\Backup.lua
-Core\KitTuning.lua
 Core\LayoutFit.lua
 Core\Installer.lua
 Core\InstallerWindow.lua
@@ -54,22 +53,14 @@ Media\QuestListData.lua
 Media\PlaceData.lua
 Media\ClassIcons.lua
 Media\KitLayout.lua
-Media\KitSlices.lua
 Media\KitShadows.lua
-Media\KitTuning.lua
 Media\Profiles.lua
 Media\EditModeLayout.lua
 
 Modules\Kit.lua
-Modules\KitPainted.lua
 Modules\KitWindow.lua
-Modules\KitWindowPainted.lua
 Modules\KitShade.lua
-Modules\KitShadePainted.lua
-Modules\KitMarks.lua
 Modules\KitBorders.lua
-Modules\KitBordersPainted.lua
-Modules\KitBackdrop.lua
 Modules\UIModifications.lua
 Modules\DarkMode.lua
 Modules\Fonts.lua
@@ -101,6 +92,36 @@ Modules\PlateImpact.lua
 Modules\Tooltip.lua
 Modules\UnitFrames.lua
 Modules\Fader.lua
+Modules\QuestAuto.lua
+Modules\HealerFrames.lua
+Modules\ActionBars.lua
+Modules\ActionButtons.lua
+Modules\CooldownTweaks.lua
+Modules\KeybindMode.lua
+Modules\AuraProbe.lua
+Modules\HealProbe.lua
+Modules\BagWindow.lua
+Modules\MinimapPanel.lua
+Modules\QuestTracker.lua
+Modules\ErrorFilter.lua
+Modules\Auras.lua
+
+# The painted reskin (one look, stage I): MelloUI_Oldschool's files, loaded
+# after all of MelloUI's own (the order they will have in their own addon):
+# the painted engine, the painted parts of UI Modifications, Dark Mode and
+# the quest ink, then the painted skins of the game's windows and HUD
+Core\KitTuning.lua
+Media\KitSlices.lua
+Media\KitTuning.lua
+Modules\KitPainted.lua
+Modules\KitWindowPainted.lua
+Modules\KitShadePainted.lua
+Modules\KitMarks.lua
+Modules\KitBordersPainted.lua
+Modules\KitBackdrop.lua
+Modules\UIModificationsPainted.lua
+Modules\DarkModePainted.lua
+Modules\QuestInkPainted.lua
 Modules\CharacterPanel.lua
 Modules\GameMenuPanel.lua
 Modules\DialogPanel.lua
@@ -109,7 +130,6 @@ Modules\EditModePanel.lua
 Modules\AddonListPanel.lua
 Modules\OptionsPanel.lua
 Modules\QuestDialogPanel.lua
-Modules\QuestAuto.lua
 Modules\MerchantPanel.lua
 Modules\AuctionHousePanel.lua
 Modules\TrainerPanel.lua
@@ -146,22 +166,10 @@ Modules\CollectionsPanel.lua
 Modules\UnitFramePanel.lua
 Modules\CastBarPanel.lua
 Modules\RaidFramePanel.lua
-Modules\HealerFrames.lua
-Modules\ActionBars.lua
 Modules\ActionBarPanel.lua
-Modules\ActionButtons.lua
-Modules\CooldownTweaks.lua
-Modules\KeybindMode.lua
-Modules\AuraProbe.lua
-Modules\HealProbe.lua
 Modules\BackpackPanel.lua
-Modules\BagWindow.lua
-Modules\MinimapPanel.lua
 Modules\MinimapKit.lua
 Modules\TrackerPanel.lua
-Modules\QuestTracker.lua
-Modules\ErrorFilter.lua
-Modules\Auras.lua
 Modules\SocialPanel.lua
 Modules\ChatPanel.lua
 Modules\DamageMeterPanel.lua
