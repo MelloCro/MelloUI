@@ -7986,6 +7986,35 @@ function M.MinimapView(px, py)
 	return round, R, RX, RY
 end
 
+-- (2026-10-19, the user's video: on the move the marks stood still on the scrolling map, then jumped -- the layout
+-- runs 20 times a second, the map every frame) Between two layouts the whole layer moves with the map: by the
+-- player's way since the last one, in that layout's scale and turn (M.MinimapOffset), on the frames the tick skips.
+-- One SetPoint pair a frame while it changes; the layout sets it back to the map (MinimapShift(0, 0)).
+M.mmShift = { x = 0, y = 0 }
+function M.MinimapShift(x, y)
+	local s = M.mmShift
+	if math.abs(x - s.x) < 0.01 and math.abs(y - s.y) < 0.01 then
+		return
+	end
+	s.x, s.y = x, y
+	mm:ClearAllPoints()
+	mm:SetPoint("TOPLEFT", Minimap, "TOPLEFT", x, y)
+	mm:SetPoint("BOTTOMRIGHT", Minimap, "BOTTOMRIGHT", x, y)
+end
+
+function M.MinimapFollow()
+	local laid = M.mmView.cont
+	if not laid then
+		return
+	end
+	local cont, px, py = PlayerYards(true)
+	if cont ~= laid then
+		return
+	end
+	local ox, oy = M.MinimapOffset(px, py)
+	M.MinimapShift(-ox, -oy)
+end
+
 -- How far along (gx, gy) a mark beyond the minimap stands just inside its
 -- edge, `inset` pixels in: the factor of the offset (the goal's mark, the
 -- objective marks' edge marks)
@@ -8036,6 +8065,7 @@ local mmElapsed = 0
 local function MinimapTick(_, elapsed)
 	mmElapsed = mmElapsed + elapsed
 	if mmElapsed < 0.05 then
+		M.MinimapFollow()
 		return
 	end
 	mmElapsed = 0
@@ -8055,6 +8085,9 @@ local function MinimapTick(_, elapsed)
 	if cont and (drawRoute or next(M.mmClients) ~= nil) then
 		round, R, RX, RY = M.MinimapView(px, py)
 	end
+	-- (the pieces laid from here at the player's place now: the layer back on the map)
+	M.mmView.cont = R and cont or nil
+	M.MinimapShift(0, 0)
 	for _, fn in pairs(M.mmClients) do
 		fn(R and cont or nil, round, R, RX, RY)
 	end
@@ -8070,6 +8103,24 @@ local function MinimapTick(_, elapsed)
 	local DI = M.DrawIn
 	local budget = DI.on and DI.Budget(points) or nil
 	mmPainter.popY0 = nil
+	-- (2026-10-19, the user's video: the line stopped 20-40 px short of the arrow) the way from the player -- the map's
+	-- middle -- to their place on the path, in the guessed style, when that lies past the player's arrow (8 px: a gap
+	-- under it never shows, and the drawing stays as it was); not while the route draws in
+	local first = points[1]
+	if first and first[1] == cont and not budget then
+		local jx, jy = Offset(first[2], first[3])
+		if jx * jx + jy * jy >= 64 then
+			local ax, ay, bx, by
+			if round then
+				ax, ay, bx, by = ClipToCircle(0, 0, jx, jy, R)
+			else
+				ax, ay, bx, by = ClipToSquare(0, 0, jx, jy, RX, RY)
+			end
+			if ax then
+				mmPainter:Segment(ax, ay, bx, by, STYLE.guess, unit, "CENTER")
+			end
+		end
+	end
 	for i = 2, #points do
 		local a, b = points[i - 1], points[i]
 		local bx2, by2, f = b[2], b[3], 1
