@@ -517,52 +517,23 @@ function QL.StartShown(row)
 	return true
 end
 
--- Atlases in the order tried (not every client has each), then a plain file.
-local STARTER_ICON = {
-	drop = { atlas = { "ui-hud-unitframe-player-combaticon" }, file = "Interface/CharacterFrame/UI-StateIcon", coords = { 0.5, 1, 0, 0.484375 } },
-	pickup = { atlas = { "VignetteLoot", "Mobile-TreasureIcon" }, file = "Interface/Cursor/Pickup" },
-	dungeon = { atlas = { "Dungeon", "DungeonSkull" }, file = "Interface/Minimap/Tracking/None" },
-	raid = { atlas = { "Raid", "DungeonSkull" }, file = "Interface/Minimap/Tracking/None" },
-}
+-- (0.25.0, the user's picks: MelloUI's icon set, Media/Textures/Icons) what a quest begins from: a mob's drop the
+-- loot bag, an object the chest, an instance its door's pin (dungeons blue, raids green); in text the giver's ! and
+-- the grey ! of a start not known (the game's atlases and 1x files until then)
+local STARTER_ICON = { drop = "loot", pickup = "ql_chest", dungeon = "pin_dungeon", raid = "pin_raid" }
 
--- The same icons inline in text (menus): atlas markup, else the file's.
+-- The same icons inline in text (menus).
 function QL.StarterIconMarkup(key, size)
-	size = size or 14
-	if key == "giver" then
-		return string.format("|A:QuestNormal:%d:%d|a", size, size)
-	elseif key == "unknown" then
-		return string.format("|TInterface/Minimap/Tracking/None:%d:%d|t", size, size)
-	end
-	local icon = STARTER_ICON[key]
-	if not icon then
-		return ""
-	end
-	for _, atlas in ipairs(icon.atlas) do
-		if C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas) then
-			return string.format("|A:%s:%d:%d|a", atlas, size, size)
-		end
-	end
-	local c = icon.coords or { 0, 1, 0, 1 }
-	return string.format("|T%s:%d:%d:0:0:64:64:%d:%d:%d:%d|t", icon.file, size, size, c[1] * 64, c[2] * 64, c[3] * 64, c[4] * 64)
+	local name = key == "giver" and "quest_mark" or key == "unknown" and "ql_notyet" or STARTER_ICON[key]
+	return name and MelloUI.Widgets.IconMarkup(name, size or 14) or ""
 end
 
 function QL.SetStarterIcon(tex, key)
-	local icon = STARTER_ICON[key]
-	if not icon then
+	local name = STARTER_ICON[key]
+	if not name then
 		return false
 	end
-	for _, atlas in ipairs(icon.atlas) do
-		if pcall(tex.SetAtlas, tex, atlas) and tex:GetAtlas() then
-			return true
-		end
-	end
-	tex:SetTexture(icon.file)
-	local c = icon.coords
-	if c then
-		tex:SetTexCoord(c[1], c[2], c[3], c[4])
-	else
-		tex:SetTexCoord(0, 1, 0, 1)
-	end
+	MelloUI.Widgets.Icon(tex, name)
 	return true
 end
 
@@ -2171,13 +2142,14 @@ function QL.SetWaypoint(row, atEnder)
 	local R = MelloUI.Route
 	if R and R.isEnabled and R.SetDestinationTo then
 		local who = atEnder and (row[QL.F_ENDER] or "") ~= "" and row[QL.F_ENDER] or row[QL.F_GIVER]
-		local icon = atEnder and "|A:QuestTurnin:16:16|a " or "|A:QuestNormal:16:16|a "
+		local W = MelloUI.Widgets
+		local icon = W.IconMarkup(atEnder and "turnin_mark" or "quest_mark", 16) .. " "
 		local label = icon .. row[QL.F_TITLE] .. (who ~= "" and (" - " .. who) or "")
 		local what = atEnder and "turn-in" or QL.IsItemStart(row) and "item" or "quest giver"
 		local text = string.format("%sTracking %s %s for %s, {dist} away", icon, what, who ~= "" and who or "", row[QL.F_TITLE])
 		if instance then
 			local kind = QL.IsRaid(instance) and "raid" or "dungeon"
-			icon = QL.IsRaid(instance) and "|A:Raid:16:16|a " or "|A:Dungeon:16:16|a "
+			icon = W.IconMarkup(QL.IsRaid(instance) and "pin_raid" or "pin_dungeon", 16) .. " "
 			label = icon .. row[QL.F_TITLE] .. " - " .. QL.Data().dungeons[instance]
 			text = string.format("%sTracking the %s entrance of %s for %s (%s is found inside), {dist} away", icon, kind,
 				QL.Data().dungeons[instance], row[QL.F_TITLE], who)

@@ -6,6 +6,10 @@
 - Configurator: Automation is a new page (Vendor, Restock, Auto Accept and Hand In); Gains is a tab of Screen Text, the FPS / latency readout is on Reminders & Widgets, and the damage meter has its own page.
 - Screen Text: Chat Notices, Outlined Text and the combat text sizes are on its Notices and Combat Text tabs.
 - One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off: the Quest Tracker, the quest log and Quest List touches, and the rest of MelloUI's own windows and bars.
+- A new icon set, sharp at every size, for MelloUI's own buttons and marks: the Quest Tracker, the Quest List and its map, Route, the chat and the whisper window, the bags, the damage meter, Services, Reminders, the widgets, Voice Over, Combat Text and the Configurator's check boxes, sliders and buttons. Under the painted reskin its painted rims stay.
+- Quest Tracker: each quest's mark is a round button of the set, a hand-in once the quest is done; the quest you follow wears Route's goal flag.
+- Route: the goal is one flag on the map, the minimap and the World Marker, red with the beads and cream with the line or dashes; on the minimap it stands on a small pointer over the spot.
+- Nameplates: the quest mark over an enemy shows what your quest wants: a skull to slay it, a bag for what it drops, a ! otherwise.
 - Action bars: Backdrops work without the painted skin. Switch a bar's backdrop on (Action Bars > Backdrops) and the bars you snap together share one soft dark shade that fades out at its edges, with no frame line. With the painted skin on, the gems and border styles stay as they were. Your backdrop switches carry over.
 - Action bars: Hide Page Arrows is on for everyone by default, painted skin or not (Action Bars > Bars).
 - Edit Layout: more of the game's windows can be moved without the painted reskin: the auction house, trainers, guild bank, inspect, gem socketing, the PvP scoreboard and results, the calendar, the clock, chat channels, the help window, the addon list and the game's options.
@@ -25,9 +29,9 @@
 - Damage meter: the race bar is a slim line. Round class pins ride on it, your share is filled in your class colour, and the whole bar sits on a soft shade; its line stays where the old bar's was. The list when you point at it uses MelloUI's flat panel.
 - Damage meter: new Race Bar Thickness (Bars & Meters > Damage Meter, and in Edit Layout) sets how thick your share is. It replaces Race Bar Height.
 - Fight History: the title and your class's face head the fight list, the fight's name and the close share one line, and the window drags by its top. Each player's face sits in a round rim, their share a thin rail in their class colour; your spells use the same rail.
-- Quest Tracker: the quest you follow has a thin gold ring round its mark (dark on the parchment). A quest's item shows its whole picture on a small dark tray with a soft shadow; its edge turns gold under the pointer.
+- Quest Tracker: a quest's item shows its whole picture on a small dark tray with a soft shadow; its edge turns gold under the pointer.
 - Route: the flight map marks the flight point your route flies to with a bead of the route's trail instead of the gem.
-- Chat View: its tabs, its round buttons and the whisper window wear the round rims and the title font with or without the painted reskin.
+- Chat View: its tabs, its round buttons and the whisper window wear MelloUI's new icons and the title font, with or without the painted reskin.
 - Quest Tracker: Parchment is its own switch on the Quest Tracker page (Look) and in the setup's Parchment step, on or off with the painted reskin on or off.
 - Route: the Direction Arrow row in the widget column is gone, with its Landing Countdown: the World Marker shows the way. The flight map marks your route's flight point with a bead of your trail.
 - Route: the line and the marks on the minimap move smoothly with it as you walk (they stood still, then jumped), and the line starts at your arrow when you stand off the path.

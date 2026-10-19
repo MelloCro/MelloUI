@@ -180,25 +180,27 @@ end
 --------------------------------------------------------------------------------
 
 local KINDS = {
-	{ key = "repair", label = "Repair", data = "repair", event = "MERCHANT_SHOW", icon = "Interface/Minimap/Tracking/Repair" },
-	{ key = "mailbox", label = "Mailbox", data = "mailbox", event = "MAIL_SHOW", object = true, icon = "Interface/Minimap/Tracking/Mailbox" },
-	{ key = "innkeeper", label = "Innkeeper", data = "innkeeper", icon = "Interface/Minimap/Tracking/Innkeeper" },
-	{ key = "flight", label = "Flight Master", taxi = true, event = "TAXIMAP_OPENED", icon = "Interface/Minimap/Tracking/FlightMaster" },
-	{ key = "auction", label = "Auction House", data = "auction", event = "AUCTION_HOUSE_SHOW", icon = "Interface/Minimap/Tracking/Auctioneer" },
-	{ key = "banker", label = "Bank", data = "banker", event = "BANKFRAME_OPENED", icon = "Interface/Minimap/Tracking/Banker" },
-	{ key = "classtrainer", label = "Class Trainer", data = "trainer", trainer = "class", icon = "Interface/Minimap/Tracking/Class" },
-	{ key = "proftrainer", label = "Profession Trainer", data = "trainer", trainer = "profession", icon = "Interface/Minimap/Tracking/Profession" },
-	{ key = "barber", label = "Barber", event = "BARBER_SHOP_OPEN", icon = "Interface/Minimap/Tracking/BarberShop" },
+	{ key = "repair", label = "Repair", data = "repair", event = "MERCHANT_SHOW", icon = MelloUI.Widgets.IconPath("svc_repair") },
+	{ key = "mailbox", label = "Mailbox", data = "mailbox", event = "MAIL_SHOW", object = true, icon = MelloUI.Widgets.IconPath("svc_mail") },
+	{ key = "innkeeper", label = "Innkeeper", data = "innkeeper", icon = MelloUI.Widgets.IconPath("svc_inn") },
+	{ key = "flight", label = "Flight Master", taxi = true, event = "TAXIMAP_OPENED", icon = MelloUI.Widgets.IconPath("svc_flight") },
+	{ key = "auction", label = "Auction House", data = "auction", event = "AUCTION_HOUSE_SHOW", icon = MelloUI.Widgets.IconPath("svc_auction") },
+	{ key = "banker", label = "Bank", data = "banker", event = "BANKFRAME_OPENED", icon = MelloUI.Widgets.IconPath("svc_bank") },
+	{ key = "classtrainer", label = "Class Trainer", data = "trainer", trainer = "class", icon = MelloUI.Widgets.IconPath("svc_classtrainer") },
+	{ key = "proftrainer", label = "Profession Trainer", data = "trainer", trainer = "profession", icon = MelloUI.Widgets.IconPath("svc_proftrainer") },
+	{ key = "barber", label = "Barber", event = "BARBER_SHOP_OPEN", icon = MelloUI.Widgets.IconPath("svc_barber") },
 	{ key = "transmog", label = "Transmogrifier", event = "TRANSMOGRIFY_OPEN", icon = "Interface/Minimap/Tracking/Transmogrifier" },
 }
 
+-- (0.25.0, the user's pick: the Services icons of MelloUI's icon set, Media/Textures/Icons; the minimap's 1x
+-- tracking icons until then -- the transmogrifier keeps the game's)
 -- Kinds the bar never shows, reached by key through M:GoTo and M:Nearest (the
 -- Errands group, the reminders): a vendor of the restock goods, from the
 -- data's vendor rows, each with the families it sells (its 8th field, in the
 -- order "dfabr": drink, food, arrows, bullets, class reagents; opts.letters
 -- picks them)
 local HIDDEN = {
-	{ key = "vendor", label = "Vendor", data = "vendor", icon = "Interface/Minimap/Tracking/Food" },
+	{ key = "vendor", label = "Vendor", data = "vendor", icon = MelloUI.Widgets.IconPath("svc_vendor") },
 }
 
 -- The Errands group's entries (0.14.0; the user named the group, 2026-09-26):
@@ -207,11 +209,11 @@ local HIDDEN = {
 -- (M:GoTo with `opts`). Its tray row shows the reminder's own line (Rem:Text)
 -- where it has one, else the nearest one's distance.
 local ERRANDS = {
-	{ key = "restock", label = "Restock", reminder = "restock", service = "vendor", icon = "Interface/Minimap/Tracking/Food",
+	{ key = "restock", label = "Restock", reminder = "restock", service = "vendor", icon = MelloUI.Widgets.IconPath("svc_vendor"),
 	  opts = { letters = "df", fallback = "innkeeper", what = "vendor with food and drink", label = "Restock" } },
-	{ key = "mail", label = "Mail", reminder = "mail", service = "mailbox", icon = "Interface/Minimap/Tracking/Mailbox" },
-	{ key = "repairgear", label = "Repair Gear", reminder = "repair", service = "repair", icon = "Interface/Minimap/Tracking/Repair" },
-	{ key = "trainer", label = "Trainer", reminder = "trainer", service = "classtrainer", icon = "Interface/Minimap/Tracking/Class" },
+	{ key = "mail", label = "Mail", reminder = "mail", service = "mailbox", icon = MelloUI.Widgets.IconPath("svc_mail") },
+	{ key = "repairgear", label = "Repair Gear", reminder = "repair", service = "repair", icon = MelloUI.Widgets.IconPath("svc_repair") },
+	{ key = "trainer", label = "Trainer", reminder = "trainer", service = "classtrainer", icon = MelloUI.Widgets.IconPath("svc_classtrainer") },
 }
 
 -- The groups of Button Layout's Groups, in the row's order (layout E, 2026-09-25:
@@ -2948,6 +2950,7 @@ end
 -- Round medallion icons: the icon under a circular mask with the classic
 -- minimap tracking rim around it.
 local RIM_TEXTURE = "Interface\\Minimap\\MiniMap-TrackingBorder"
+local RINGED_GROW = 31 / 21 * 0.96   -- (0.25.0) a set icon's size against the button: the old rim's reach
 local function ApplyIconShape()
 	if not bar then
 		return
@@ -2966,38 +2969,57 @@ local function ApplyIconShape()
 			b.rim:SetSize(53 * k, 53 * k)
 			b.rim:SetPoint("TOPLEFT", b, "TOPLEFT", -5 * k, 4 * k)
 		end
-		if round then
-			b.icon:AddMaskTexture(b.mask)
-			b.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
-			b.rim:SetShown(not kit)
-		else
+		local of = b.kind or b.group
+		if of and MelloUI.Widgets.IconRinged(of.icon) then
+			-- (0.25.0) one of the set's Services icons: whole, its own disc and ring, as large as the old rim
+			-- reached round the button, with no rim of ours or the kit's over it (Round Icons or not)
 			b.icon:RemoveMaskTexture(b.mask)
 			b.icon:SetTexCoord(0, 1, 0, 1)
 			b.rim:Hide()
-		end
-		-- the hover glow takes the icon's shape too (user, 2026-09-26: "they
-		-- turn round, but the Highlight Glow stays a square"; 2026-10-04: the
-		-- round light, no square one cut round)
-		LayLight(b, round, kit)
-		-- the kit's rim (SR2 round; square for square icons), the icon in
-		-- its opening; the game's anchors back when the kit is off
-		if kit then
-			local want = KitRim(b, round)
-			for _, key in ipairs({ "kitRoundRim", "kitSquareRim" }) do
-				if b[key] then
-					b[key]:SetShown(b[key] == want)
-				end
-			end
-			want.icon = b.icon
-			MelloUI.Kit:SlotPlaceIcon(want)
-		else
 			for _, key in ipairs({ "kitRoundRim", "kitSquareRim" }) do
 				if b[key] then
 					b[key]:Hide()
 				end
 			end
+			local w = b:GetWidth() * RINGED_GROW
 			b.icon:ClearAllPoints()
-			b.icon:SetAllPoints(b)
+			b.icon:SetPoint("CENTER", b, "CENTER", 0, 0)
+			b.icon:SetSize(w, w)
+			LayLight(b, true, false)
+		else
+			if round then
+				b.icon:AddMaskTexture(b.mask)
+				b.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
+				b.rim:SetShown(not kit)
+			else
+				b.icon:RemoveMaskTexture(b.mask)
+				b.icon:SetTexCoord(0, 1, 0, 1)
+				b.rim:Hide()
+			end
+			-- the hover glow takes the icon's shape too (user, 2026-09-26: "they
+			-- turn round, but the Highlight Glow stays a square"; 2026-10-04: the
+			-- round light, no square one cut round)
+			LayLight(b, round, kit)
+			-- the kit's rim (SR2 round; square for square icons), the icon in
+			-- its opening; the game's anchors back when the kit is off
+			if kit then
+				local want = KitRim(b, round)
+				for _, key in ipairs({ "kitRoundRim", "kitSquareRim" }) do
+					if b[key] then
+						b[key]:SetShown(b[key] == want)
+					end
+				end
+				want.icon = b.icon
+				MelloUI.Kit:SlotPlaceIcon(want)
+			else
+				for _, key in ipairs({ "kitRoundRim", "kitSquareRim" }) do
+					if b[key] then
+						b[key]:Hide()
+					end
+				end
+				b.icon:ClearAllPoints()
+				b.icon:SetAllPoints(b)
+			end
 		end
 	end
 	if round then

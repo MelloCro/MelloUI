@@ -842,6 +842,67 @@ local KC = { SMALL = 20, GLYPH_FILL = 0.9, MIN = { check = 18, cog = 19, button 
 	STEM = { check = "checkbox", close = "close", cog = "cog", plus = "plus", minus = "minus", button = "iconplate" },
 	GLYPHS = { arrow = true, plus = true, minus = true } }
 
+-- (0.25.0; the user, 2026-10-19: "and the Configurator, checkboxes, sliders etc", the controls of MelloUI's icon set,
+-- Media/Textures/Icons by Tools/make_icons.py) A control wears MelloUI's own icon while its part is not in
+-- Oldschool's painted look (KC.Painted: an area that is always MelloUI's never is; the others as the kit answers --
+-- the configurator's own 'config', the reskin's handshake), the NewUI2 plate with it: the check box empty or
+-- ticked, Close the red cross, + / - the fold buttons, the cog the chat's Settings button, a dropdown's arrow and a
+-- title bar's (turned by its direction). Under the pointer the icon full, at rest a step down, pressed a step more.
+KC.ICON = { check = { off = "ctl_check_off", hover = "ctl_check_off", on = "ctl_check_on", onhover = "ctl_check_on" },
+	close = "btn_decline", plus = "btn_expand", minus = "btn_collapse", cog = "chat_settings", arrow = "ctl_dropdown",
+	titlearrow = "btn_arrow" }
+KC.TURN = { arrow = { down = 0, up = math.pi, left = -math.pi / 2, right = math.pi / 2 },
+	titlearrow = { up = 0, down = math.pi } }
+KC.LIT = { hover = 1, onhover = 1, pressed = 0.72 }
+KC.REST = 0.88
+
+function KC.Painted(area)
+	local Kit = KitNow()
+	if not (type(Kit) == "table" and type(Kit.IsOn) == "function" and type(Kit.Areas) == "table") then
+		return false
+	end
+	area = area or "config"
+	local entry = Kit.Areas[area]
+	if entry and entry.always then
+		return false
+	end
+	return Kit:IsOn(area) and true or false
+end
+
+function KC.LayIcon(tex, w, h, kind, dir, state, alpha, glyph, icon)
+	w, h = Num(w), Num(h)
+	if not (w and h and w > 0 and h > 0) then
+		return false
+	end
+	if type(icon) == "table" then
+		icon = icon[state] or icon.off
+	end
+	tex:SetAlpha((alpha or 1) * (KC.LIT[state] or KC.REST))
+	local name = icon .. (dir or "")
+	if tex.melloPiece == name and tex.melloW == w and tex.melloH == h then
+		return true
+	end
+	if tex.melloPiece ~= name then
+		tex.melloPiece = name
+		tex:SetTexture("Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\" .. icon)
+		tex:SetTexCoord(0, 1, 0, 1)
+		tex:SetVertexColor(1, 1, 1, 1)
+		local turn = KC.TURN[kind]
+		tex:SetRotation(turn and turn[dir or (kind == "arrow" and "down" or "up")] or 0)
+	end
+	tex.melloW, tex.melloH = w, h
+	local s
+	if kind == "arrow" or (glyph and KC.GLYPHS[kind] and kind ~= "plus" and kind ~= "minus") then
+		s = math.min(w, h) * KC.GLYPH_FILL
+	else
+		s = math.max(math.min(w, h), KC.MIN[kind] or 0)
+	end
+	tex:SetSize(s, s)
+	tex:ClearAllPoints()
+	tex:SetPoint("CENTER", tex.melloOn or tex:GetParent(), tex.melloPoint or "CENTER", tex.melloX or 0, 0)
+	return true
+end
+
 function KC.State(kind, hover, pressed, checked, disabled)
 	if kind == "check" then
 		local lit = (hover or pressed) and not disabled
@@ -857,6 +918,10 @@ function KC.State(kind, hover, pressed, checked, disabled)
 end
 
 function KC.Lay(tex, w, h, kind, dir, state, alpha, glyph)
+	local icon = KC.ICON[kind]
+	if icon and not KC.Painted(tex.melloArea) then
+		return KC.LayIcon(tex, w, h, kind, dir, state, alpha, glyph, icon)
+	end
 	local Kit = KitNow()
 	if not (Kit and Kit.Piece and Kit.Apply) then
 		return false
@@ -1349,14 +1414,6 @@ do
 		end
 	end, "script")
 
-	-- a disc of the knob under its own round mask
-	local function KnobMask(frame, disc)
-		local mask = frame:CreateMaskTexture()
-		mask:SetTexture(ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-		mask:SetAllPoints(disc)
-		disc:AddMaskTexture(mask)
-	end
-
 	-- the track: its edge and fill, the value's part in `trim`, the round knob
 	-- (the thumb: the ring, the knob's disc on it, each under its round mask)
 	local function SliderTrack(slider, width)
@@ -1376,16 +1433,13 @@ do
 		fill:SetHeight(TRACK_H - 2)
 		fill:SetPoint("LEFT", track, "LEFT", 1, 0)
 		fill:SetPoint("RIGHT", track, "RIGHT", -1, 0)
+		-- (0.25.0) the knob: the gold knob of MelloUI's icon set (Media/Textures/Icons/ctl_knob), a touch over the
+		-- track's height; it was a palette disc in an innerPanel ring under two round masks
 		local ring = track:CreateTexture(nil, "OVERLAY", nil, 0)
-		ring:SetSize(KNOB, KNOB)
-		W.Paint(ring, "innerPanel", "fill", 1)
+		ring:SetSize(KNOB + 2, KNOB + 2)
+		ring:SetTexture("Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\ctl_knob")
 		track:SetThumbTexture(ring)
-		local knob = track:CreateTexture(nil, "OVERLAY", nil, 1)
-		knob:SetSize(KNOB - 2, KNOB - 2)
-		knob:SetPoint("CENTER", ring, "CENTER", 0, 0)
-		W.Paint(knob, "selectedTrim", "fill", 1)
-		KnobMask(track, ring)
-		KnobMask(track, knob)
+		local knob = ring
 		-- (from the least value to the knob's middle: it moves with the knob)
 		local part = W.Solid(track, "ARTWORK", "trim", 1)
 		part:SetHeight(TRACK_H - 2)
@@ -2342,14 +2396,25 @@ end
 --------------------------------------------------------------------------------
 
 do
+	-- (0.25.0, the user: the widget's "low resolution textures like the borders") the round light: the gold glow of
+	-- MelloUI's icon set (Media/Textures/Icons/hover_glow), its band drawn out to hug the rim -- the light laid 0.175
+	-- of the region's width past each side (1.35 x); it was the minimap's 32 px zoom-button light, stretched
 	local LIGHT = {
-		round = "Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight",
+		round = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\hover_glow",
 		square = "Interface\\Buttons\\ButtonHilight-Square",
 	}
+	local ROUND_OUT = 0.175
 
 	function W.HoverLight(b, shape, region, out)
 		shape = LIGHT[shape] and shape or "square"
 		region, out = region or b, out or 0
+		if shape == "round" then
+			local okW, rw = pcall(region.GetWidth, region)
+			rw = okW and Num(rw) or nil
+			if rw and rw > 0 then
+				out = out + rw * ROUND_OUT
+			end
+		end
 		if b.hoverShape ~= shape then
 			b:SetHighlightTexture(LIGHT[shape], "ADD")
 			b.hoverShape, b.hoverRegion = shape, nil   -- (laid again below)
@@ -2366,6 +2431,53 @@ do
 end
 
 --------------------------------------------------------------------------------
+-- Icons (0.25.0; the user, 2026-10-19: the cartoon map-marker icons from their ChatGPT sheets, docs/plans/
+-- icons-and-palette.md): MelloUI's own icon set, Media/Textures/Icons (Tools/make_icons.py), one path for all of it
+--   W.IconPath(name) -> the file's path   W.Icon(tex, name) -> tex   (the whole picture, untinted)
+--   W.IconMarkup(name, size) -> inline text markup, size x size of the line's units
+--------------------------------------------------------------------------------
+do
+	local DIR = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\"
+
+	function W.IconPath(name)
+		return DIR .. name
+	end
+
+	function W.Icon(tex, name)
+		tex:SetTexture(DIR .. name)
+		tex:SetTexCoord(0, 1, 0, 1)
+		tex:SetVertexColor(1, 1, 1, 1)
+		return tex
+	end
+
+	function W.IconMarkup(name, size)
+		return "|T" .. DIR .. name .. ":" .. size .. ":" .. size .. "|t"
+	end
+
+	-- the kit to hand a round button's SetKit for a part in `area`: the kit while Oldschool's painted look dresses
+	-- that area (its rims), else none -- MelloUI's own ring and the set's pictures (KC.Painted)
+	function W.KitFor(area)
+		return KC.Painted(area) and KitNow() or false
+	end
+
+	-- a path to one of the set's round buttons and pins (Services, the chat, the buttons, the pins, Route's goal):
+	-- pictures with their own disc and ring, which a round button shows whole, with no rim of its own over them
+	local RINGED = { "svc_", "track_", "pin_", "chat_", "chan_", "btn_", "goal_", "obj_" }
+	function W.IconRinged(texture)
+		if type(texture) ~= "string" or texture:sub(1, #DIR) ~= DIR then
+			return false
+		end
+		for i = 1, #RINGED do
+			local p = RINGED[i]
+			if texture:sub(#DIR + 1, #DIR + #p) == p then
+				return true
+			end
+		end
+		return false
+	end
+end
+
+--------------------------------------------------------------------------------
 -- RoundIcon (0.14.0, the Reminder widget; lifted from the Services bar's
 -- round medallions, which can move onto it later): a round button, its icon
 -- under a round mask inside a rim, with the round light (W.HoverLight) over
@@ -2374,8 +2486,8 @@ end
 --   the kit's round rim (buttons/roundslot through Kit:Slot: every window's
 --   Round Border, swapped with it, its hover and pressed art its own, Dark
 --   Mode's shade), the icon fitted into its opening;
---   plain: the minimap's tracking rim round the icon (31 : 21, the Services
---   bar's medallion).
+--   plain: (0.25.0) the gold ring of MelloUI's icon set round the icon (its
+--   opening 0.775 of the ring; the minimap's 1x tracking rim until then, 31 : 21).
 --   W.RoundIcon(parent, size, texture[, opts]) -> b   a Button, size x size
 --       (the rim's outer size: the whole button), left and right clicks
 --       registered, in the plain look. opts (read once): name; shade (a
@@ -2398,11 +2510,46 @@ end
 --------------------------------------------------------------------------------
 
 do
-	local TRACKING_RIM = "Interface\\Minimap\\MiniMap-TrackingBorder"
-	local PLAIN_RATIO = 31 / 21   -- the tracking rim: a 31 px ring round a 21 px opening
+	-- (0.25.0, the user: "the Widget is still using low resolution textures like the borders etc") the plain rim:
+	-- the gold ring of MelloUI's icon set at the button's size, the icon in its opening
+	local PLAIN_RIM = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\ring_gold"
+	local OPENING = 0.775
 	local NONE = {}
 
+	-- (0.25.0) one of the set's own round buttons or pins (W.IconRinged) is shown whole in the plain look: the
+	-- button's size, unmasked, its own ring in place of the plain rim
+	local function PlainLay(b)
+		local icon, rim = b.icon, b.plainRim
+		icon:ClearAllPoints()
+		icon:SetPoint("CENTER", b, "CENTER", 0, 0)
+		if b.ringed then
+			icon:SetSize(b.size, b.size)
+			rim:Hide()
+			return
+		end
+		local d = b.size * OPENING
+		icon:SetSize(d, d)
+		rim:ClearAllPoints()
+		rim:SetSize(b.size, b.size)
+		rim:SetPoint("CENTER", b, "CENTER", 0, 0)
+		rim:Show()
+	end
+
 	local function SetIcon(b, texture)
+		local ringed = W.IconRinged(texture)
+		if ringed ~= (b.ringed or false) then
+			b.ringed = ringed or nil
+			if ringed then
+				b.icon:RemoveMaskTexture(b.mask)
+				b.icon:SetTexCoord(0, 1, 0, 1)
+			else
+				b.icon:AddMaskTexture(b.mask)
+				b.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
+			end
+			if not b.kitLaid then
+				PlainLay(b)
+			end
+		end
 		b.icon:SetTexture(texture)
 	end
 
@@ -2411,28 +2558,6 @@ do
 		b.icon:SetAlpha(on and 1 or 0.45)
 	end
 
-	-- the plain look: the icon centred at its opening's size, the tracking
-	-- rim's art round it (the art sits in its texture's top left: 53 wide
-	-- for a 21 wide opening). Its ring's middle is RIM_X, RIM_Y of the
-	-- texture's width from its top left, as the game lays it (the world
-	-- map's tracking button, Blizzard_WorldMapTemplates.xml: a 54 px border
-	-- over a 20 px icon at 7, 6 -- its middle at 17, 16; the help plate's
-	-- ring agrees): the rim's middle laid that far off the icon's. (Was 5
-	-- left and 4 above the opening: the ring 1.5 px low and right of the
-	-- icon at 44 px, the user's 2026-10-09 screenshot of the zone ring.)
-	local RIM_X, RIM_Y = 17 / 54, 16 / 54
-	local function PlainLay(b)
-		local d = b.size / PLAIN_RATIO
-		local k = d / 21
-		local icon, rim = b.icon, b.plainRim
-		icon:ClearAllPoints()
-		icon:SetSize(d, d)
-		icon:SetPoint("CENTER", b, "CENTER", 0, 0)
-		rim:ClearAllPoints()
-		local s = 53 * k
-		rim:SetSize(s, s)
-		rim:SetPoint("CENTER", icon, "CENTER", (0.5 - RIM_X) * s, -(0.5 - RIM_Y) * s)
-	end
 
 	-- the kit rim's shade partner (opts.shade): the rim drawn at the
 	-- button's size, so the partner's scale is that against its piece's
@@ -2481,7 +2606,6 @@ do
 			if b.kitRim then
 				b.kitRim:Hide()
 			end
-			b.plainRim:Show()
 			PlainLay(b)
 		end
 		b.kitLaid = on
@@ -2505,7 +2629,7 @@ do
 		b.mask = mask
 		W.HoverLight(b, "round")   -- over the whole rim: the kit's (on the button) and the plain medallion alike
 		b.plainRim = b:CreateTexture(nil, "OVERLAY")
-		b.plainRim:SetTexture(TRACKING_RIM)
+		b.plainRim:SetTexture(PLAIN_RIM)
 		b.SetIcon, b.SetOn, b.SetKit = SetIcon, SetOn, SetKit
 		if texture ~= nil then
 			b:SetIcon(texture)
@@ -2614,12 +2738,70 @@ do
 			8 * CELL, ROWS * CELL, c * CELL, (c + 1) * CELL, row * CELL, (row + 1) * CELL)
 	end
 
+	-- (0.25.0; the user's Batches 8 and 10, 2026-10-19) the glyphs that have a button of MelloUI's icon set: in the
+	-- plain look the button is that picture -- its own slate disc and gold ring, so no rim, disc or glyph of ours over
+	-- it; in the kit's look (Oldschool's rim) the glyph on the disc as before
+	W.GLYPH_BUTTON = { pause = "btn_pause", play = "btn_play", skip = "btn_next", stop = "btn_stop", list = "btn_list",
+		padlock = "btn_locked", padlockOpen = "btn_unlocked", check = "btn_accept", cross = "btn_decline",
+		way = "btn_way", reply = "btn_reply", chart = "btn_meter", friend = "btn_friend", invite = "btn_invite",
+		ignore = "btn_ignore", report = "btn_report", bin = "btn_discard", cog = "chat_settings",
+		chat = "chat_general", channels = "chat_channels", friends = "chat_friends" }
+	-- a set button named straight (the chat's tabs and row: chat_combat, chan_say ...) and the glyph it wears in the
+	-- kit's look; one with no glyph there shows its rim and disc alone (a letter, the caller's: b.label)
+	W.GLYPH_OF = { chat_general = "chat", chat_combat = "sword", chat_loot = "bag", chan_guild = "flag",
+		chat_whispers = "reply", chat_channels = "channels", chat_friends = "friends", chat_history = "chart",
+		chat_settings = "cog" }
+
+	-- the button as its glyph and look are: the set's picture, or the rim, the disc and the glyph (and the caller's
+	-- letter, b.label)
+	local function LayArt(b)
+		local art = (not b.kitLaid) and b.glyphArt or nil
+		if art then
+			if not b.art then
+				b.art = b:CreateTexture(nil, "ARTWORK", nil, 3)
+				b.art:SetAllPoints(b)
+			end
+			W.Icon(b.art, art)
+			b.art:Show()
+		elseif b.art then
+			b.art:Hide()
+		end
+		local plain = art ~= nil
+		b.icon:SetShown(not plain)
+		b.disc:SetShown(not plain)
+		if b.label then
+			b.label:SetShown(not plain)
+		end
+		if not b.kitLaid then
+			b.plainRim:SetShown(not plain)
+		end
+	end
+
 	local function SetGlyph(b, name)
-		if W.Glyph(b.icon, name) then
+		local cell = W.Glyph(b.icon, W.GLYPH_OF[name] or name)
+		if cell then
 			W.Paint(b.icon, "text", "vertex")
+		end
+		local art = W.GLYPH_BUTTON[name] or (W.IconRinged(W.IconPath(name)) and name) or nil
+		if cell or art then
+			b.glyphName, b.glyphArt = name, art
+			LayArt(b)
 			return true
 		end
 		return false
+	end
+
+	local function GlyphSetKit(b, Kit)
+		b.RoundSetKit(b, Kit)
+		LayArt(b)
+	end
+
+	local function GlyphSetOn(b, on)
+		b.RoundSetOn(b, on)
+		if b.art then
+			b.art:SetDesaturated(not on)
+			b.art:SetAlpha(on and 1 or 0.45)
+		end
 	end
 
 	function W.GlyphButton(parent, size, glyph, opts)
@@ -2630,6 +2812,8 @@ do
 		W.Paint(disc, "innerPanel", "vertex", 0.95)
 		b.disc = disc
 		b.SetGlyph = SetGlyph
+		b.RoundSetKit, b.SetKit = b.SetKit, GlyphSetKit
+		b.RoundSetOn, b.SetOn = b.SetOn, GlyphSetOn
 		if glyph ~= nil then
 			SetGlyph(b, glyph)
 		end
@@ -2669,6 +2853,10 @@ do
 		PlatePaint(b, false)
 	end, "script")
 
+	-- (0.25.0) the set's round button in place of the plate and its glyph, while the button's area is not in
+	-- Oldschool's painted look: kind "cog" the chat's Settings button, "bin" (Discard) the bin button
+	local PLATE_ART = { cog = "chat_settings", bin = "btn_discard" }
+
 	function W.PlateButton(parent, w, h, glyphSize, area, scripts, kind)
 		local b = CreateFrame("Button", nil, parent)
 		b:SetSize(w, h)
@@ -2688,6 +2876,21 @@ do
 			glyph:Hide()   -- (the cog plate has its own cog)
 		end
 		b.plate = p.piece
+		local art = PLATE_ART[kind]
+		if art and not KC.Painted(area) then
+			local t = b:CreateTexture(nil, "ARTWORK", nil, 4)
+			local side = math.min(w, h)
+			t:SetSize(side, side)
+			t:SetPoint("CENTER")
+			W.Icon(t, art)
+			b.art = t
+			glyph:SetAlpha(0)
+			if p.piece then
+				-- (hidden, not faded: KC.Lay sets the piece's alpha again on each size and state change)
+				p.piece:Hide()
+			end
+			W.HoverLight(b, "round", t)
+		end
 		return b, glyph
 	end
 end
@@ -5338,8 +5541,8 @@ end
 local Rail = {}
 Rail.__index = Rail
 local railOf = setmetatable({}, weakKeys)   -- [row or header] = its rail
-local PLUS = "Interface\\Buttons\\UI-PlusButton-Up"
-local MINUS = "Interface\\Buttons\\UI-MinusButton-Up"
+local PLUS = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\btn_expand"     -- (0.25.0: the set's; the game's 1x UI-PlusButton-Up until then)
+local MINUS = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\btn_collapse"
 local RAIL_TAG_IN = 2    -- a New tag's (snug) plate inside the row's right edge
 local RAIL_TAG_GAP = 3   -- a name to its New tag's plate
 
@@ -6493,6 +6696,10 @@ end
 -- W.Caret(tex, size, dir, lit): the kit's gold caret (a dropdown's) on a texture, pointing "down", "right", "up" or
 -- "left", lit under the mouse -- a group's fold arrow (the order list's, the bag window's group headings)
 function W.Caret(tex, size, dir, lit)
+	if not KC.Painted(tex.melloArea) then
+		-- (0.25.0) a group's fold in MelloUI's look: the set's - while open, + while folded (as the Quest List's)
+		return KC.Lay(tex, size, size, (dir or "down") == "down" and "minus" or "plus", nil, lit and "hover" or "normal", 1)
+	end
 	return KC.Lay(tex, size, size, "arrow", dir or "down", lit and "hover" or "normal", 1, true)
 end
 

@@ -791,14 +791,15 @@ end
 local Lines = { me = nil, party = {} }
 Meter.Lines = Lines
 local PARTS = { "sword", "hourglass", "heal" }
+-- (0.25.0, the user's Batch 13: MelloUI's icon set) a part's mark, its own colours: the sword, the hourglass, the
+-- green cross (the widget glyphs, tinted, until then); the raid-style frames' and their tooltips' too
+Meter.ICON = { sword = "meter_damage", hourglass = "meter_time", heal = "meter_heal" }
 
--- a part's colours: the sword gold, the hourglass the text colour, the
--- cross healing's green (the meaning colour Combat Text's heals wear)
+-- a part's text colour: the sword's gold, the hourglass the text colour, the cross healing's green (the meaning
+-- colour Combat Text's heals wear)
 local TINT = { sword = "gold", hourglass = "text", heal = "heal" }
 local function PaintPart(p)
-	local tint = TINT[p.kind] or "text"
-	Look.Paint(p.glyph, tint, "vertex")
-	Look.Tint(p.text, tint)
+	Look.Tint(p.text, TINT[p.kind] or "text")
 end
 
 Meter.PaintPart = PaintPart   -- (the raid-style frames' number: Modules/MeterRaid.lua)
@@ -812,7 +813,7 @@ local function NewLine(parent, align)
 	local line = { frame = f, align = align, parts = {} }
 	for i, kind in ipairs(PARTS) do
 		local g = f:CreateTexture(nil, "ARTWORK")
-		W.Glyph(g, kind)
+		W.Icon(g, Meter.ICON[kind])
 		g:SetSize(T.GLYPH, T.GLYPH)
 		local fs = f:CreateFontString(nil, "OVERLAY")
 		Look.Text(fs, "text", T.SIZE)

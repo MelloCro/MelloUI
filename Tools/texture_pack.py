@@ -281,6 +281,8 @@ STAY_TGA = [
     (r"^Textures/(ProgressRing|WidgetGlyphs)\.tga$", "the widget column's gold ring (a Cooldown swipe) and its buttons' glyphs (Tools/make_widget_art.py): smooth alpha edges tinted by the palette, 64 + 32 KB, shipped as their masters' bytes"),
     (r"^Textures/Masks/mitre\.tga$", "the mitre mask (Tools/make_mitre_mask.py): a 16 KB half-square whose texels hold "
                                       "their exact share, so a rail's half and its twin's meet with no seam; its master's bytes"),
+    (r"^Textures/Icons/[a-z_]+\.tga$", "MelloUI's own icon set (0.25.0, Tools/make_icons.py): painted icons with soft "
+                                       "alpha edges, 4-64 KB each, shipped as their masters' bytes (DXT bands the edges)"),
     (r"^Textures/ActiveLook\.tga$", "the active look (Kit:SetActive, Tools/make_active_look.py): 256 KB of smooth alpha ramps (ring, halo, glow), shipped as its master's bytes like SoftGlowRound"),
     (r"^Textures/KitShadows\w*\.tga$", "the kit's shadow partners (Kit:Shadow): soft alpha ramps at a quarter size; "
                                        "DXT5 bands them (make_kit_shadows.py --gate: 17 levels off, its limit 4)"),

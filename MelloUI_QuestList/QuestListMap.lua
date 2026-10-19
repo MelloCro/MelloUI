@@ -43,35 +43,16 @@ local STATE_TEXT = {
 	done = { "Completed", "text" },
 }
 
-local TRANSPORT_ATLAS = {
-	[0] = { "taxinode_continent_neutral_timed", "TaxiNode_Neutral" },
-	[1] = { "taxinode_continent_alliance_timed", "TaxiNode_Alliance" },
-	[2] = { "taxinode_continent_horde_timed", "TaxiNode_Horde" },
-}
--- (2026-10-03) the portal between Darnassus and Rut'theran Village and the
--- Deeprun Tram's stations, by their transport kind (3, 4): the game's
--- Alliance portal, its mine cart (no tram of its own in this client)
-local TRANSPORT_KIND_ATLAS = {
-	[3] = { "MagePortalAlliance", "TaxiNode_Alliance" },
-	[4] = { "Vehicle-SilvershardMines-MineCart", "Vehicle-AllianceCart", "TaxiNode_Alliance" },
-}
+-- (0.25.0, the user's picks: MelloUI's icon set) a transport's pin by its kind: a dock's ship (0, 1), a zeppelin
+-- tower's airship (2), the portal between Darnassus and Rut'theran Village (3), the Deeprun Tram's stations (4)
+-- (the game's taxi node, portal and mine cart atlases until then)
+local TRANSPORT_PIN = { [0] = "pin_boat", [1] = "pin_boat", [2] = "pin_zeppelin", [3] = "pin_portal", [4] = "pin_tram" }
 local TRANSPORT_PLACE = { [2] = "Zeppelin tower", [3] = "Portal", [4] = "Tram station" }
 local TRANSPORT_WHAT = { [2] = "zeppelin", [3] = "portal", [4] = "tram" }
 
 -- A quest found only inside a dungeon or raid is pinned beside its entrance.
 local BESIDE_DOOR_X, BESIDE_DOOR_Y = 20, 10   -- pixels: off the entrance pin's own icon
 
--- Not every atlas of the retail engine is in this client's art; try in turn.
-local function SetFirstAtlas(tex, list)
-	for _, atlas in ipairs(list) do
-		if pcall(tex.SetAtlas, tex, atlas) and tex:GetAtlas() then
-			return true
-		end
-	end
-	tex:SetTexture("Interface/Minimap/Tracking/None")
-	tex:SetTexCoord(0, 1, 0, 1)
-	return false
-end
 
 local function DungeonIDByName(name)
 	if not name then
@@ -531,14 +512,12 @@ function QL.DressMark(self, kind, data)
 	self.Label:ClearAllPoints()
 	self.Icon:ClearAllPoints()
 	self.Icon:SetAllPoints()
-	-- (the pool gives one button to every kind: an objective mark's glyph
-	-- crop, its tint and its ring go before another kind's art -- a giver's
-	-- "!" came up as a piece of its atlas, 0.19.5)
+	-- (the pool gives one button to every kind: an objective mark's crop and
+	-- tint go before another kind's art -- a giver's "!" came up as a piece of
+	-- its atlas, 0.19.5; the objective mark's own ring went with the icon set,
+	-- 0.25.0)
 	self.Icon:SetTexCoord(0, 1, 0, 1)
 	self.Icon:SetVertexColor(1, 1, 1, 1)
-	if self.Ring then
-		self.Ring:Hide()
-	end
 	self:SetHitRectInsets(0, 0, 0, 0)
 	if kind == "giver" then
 		self.Bg:Hide()
@@ -587,13 +566,10 @@ function QL.DressMark(self, kind, data)
 		self.Icon:Show()
 		self.Icon:SetDesaturated(false)
 		self.Icon:SetAlpha(1)
-		if kind == "entrance" then
-			self:SetSize(30, 30)
-			SetFirstAtlas(self.Icon, data.raid and { "Raid", "DungeonSkull" } or { "Dungeon", "DungeonSkull" })
-		else
-			self:SetSize(26, 26)
-			SetFirstAtlas(self.Icon, TRANSPORT_KIND_ATLAS[data.kind] or TRANSPORT_ATLAS[data.faction] or TRANSPORT_ATLAS[0])
-		end
+		-- (0.25.0) the pins of MelloUI's icon set: an instance's door blue (a dungeon) or green (a raid)
+		self:SetSize(26, 26)
+		MelloUI.Widgets.Icon(self.Icon, kind == "entrance" and (data.raid and "pin_raid" or "pin_dungeon")
+			or TRANSPORT_PIN[data.kind] or "pin_boat")
 	else
 		-- a zone's badge in the palette as it is now (the pins are laid
 		-- again on a new palette: QL.CreateProvider): its inner panel under
@@ -811,7 +787,7 @@ MarkClick = function(self, button)
 			-- Shift-click routes to the door; a plain click lists its quests.
 			local map = WorldMapFrame
 			local mapID = map and QL.Plain(map:GetMapID())
-			local icon = data.raid and "|A:Raid:16:16|a " or "|A:Dungeon:16:16|a "
+			local icon = MelloUI.Widgets.IconMarkup(data.raid and "pin_raid" or "pin_dungeon", 16) .. " "
 			local what = data.raid and "raid" or "dungeon"
 			local set, chimed = QL.RouteToPoint(mapID, data.x, data.y, icon .. data.name,
 				string.format("%sTracking the %s entrance of %s, {dist} away", icon, what, data.name))
@@ -827,7 +803,7 @@ MarkClick = function(self, button)
 			QL.Panel:Reveal("dungeon" .. data.dungeonID, data.raid and "raids" or "dungeons")
 			MelloUI:PlayUISound("page")
 			local done, total = DungeonProgress(data.dungeonID)
-			local icon = data.raid and "|A:Raid:18:18|a " or "|A:Dungeon:18:18|a "
+			local icon = MelloUI.Widgets.IconMarkup(data.raid and "pin_raid" or "pin_dungeon", 18) .. " "
 			local text = string.format("%s%s: %d quests listed, %d done", icon, data.name, total or 0, done or 0)
 			-- MelloUI's one on-screen notice (Core/Notice.lua), Route on or off
 			MelloUI:Announce(text, "silent")
@@ -836,7 +812,7 @@ MarkClick = function(self, button)
 		local map = WorldMapFrame
 		local mapID = map and QL.Plain(map:GetMapID())
 		local what = TRANSPORT_WHAT[data.kind] or "boat"
-		local icon = "|A:TaxiNode_Neutral:16:16|a "
+		local icon = MelloUI.Widgets.IconMarkup(TRANSPORT_PIN[data.kind] or "pin_boat", 16) .. " "
 		local set, chimed = QL.RouteToPoint(mapID, data.x, data.y, icon .. data.label,
 			string.format("%sTracking the %s to %s, {dist} away", icon, what, data.label))
 		if set and not chimed then   -- (Route's notice chimes when it can)
@@ -1602,7 +1578,7 @@ local function FlightPinClicked(pin, button)
 	local info = pin.taxiNodeData or pin.poiInfo
 	local name = QL.Plain(pin.name) or (info and QL.Plain(info.name)) or "Flight master"
 	if mapID and x and y then
-		local icon = "|T" .. "Interface/Minimap/Tracking/FlightMaster" .. ":16:16|t "
+		local icon = MelloUI.Widgets.IconMarkup("svc_flight", 16) .. " "
 		QL.RouteToPoint(mapID, x, y, icon .. name, string.format("%sTracking the flight master at %s, {dist} away", icon, name))
 	end
 end

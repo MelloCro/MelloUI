@@ -193,7 +193,7 @@ local function NewPin(ui, mine)
 	-- centred on the fill's right end: anchors only, so the game places it
 	-- from the secret amount
 	local face = W.RoundIcon(holder, mine and B.ME_PIN or B.PIN, UNKNOWN_ICON, PIN_OPTS)
-	face:SetKit(MelloUI.Kit)
+	face:SetKit(false)   -- (0.25.0: MelloUI's own gold ring of its icon set, the meter MelloUI's part; the kit's rim until then)
 	-- (the pointer stays the holder's: its list. W.RoundIcon's SetKit keeps
 	-- a mouse turned off through the kit rim's mouse hooks, in either order)
 	face:EnableMouse(false)

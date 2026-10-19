@@ -135,7 +135,7 @@ local function Side(h, healer)
 		return
 	end
 	h.part.kind = kind
-	W.Glyph(h.glyph, kind)
+	W.Icon(h.glyph, Meter.ICON[kind])
 	Meter.PaintPart(h.part)
 end
 
@@ -269,7 +269,7 @@ end
 --------------------------------------------------------------------------------
 
 local function TipLine(tip, glyph, label, value, r, g, b)
-	local mark = W.GlyphMarkup(glyph, R.TIP_GLYPH, r, g, b)
+	local mark = W.IconMarkup(Meter.ICON[glyph] or Meter.ICON.sword, R.TIP_GLYPH)
 	return pcall(tip.AddDoubleLine, tip, mark .. " " .. label, value, r, g, b, r, g, b)
 end
 

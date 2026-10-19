@@ -919,14 +919,31 @@ local function ApplyCount(fs, painted)
 		fs:SetPoint("BOTTOMRIGHT", e.face.icon or e.face, "BOTTOMRIGHT", 2, -2)
 	end
 	Look.Show(e.disc, e.shown)
+	if e.edge then
+		Look.Show(e.edge, e.shown)
+	end
 	fs:SetShown(e.shown)
 end
 
+-- (0.25.0, the user: the widget's "low resolution textures") the badge: the disc of MelloUI's icon set (sharp at
+-- any size; the portrait mask until then) in the caller's paint, a thin edge round it in the palette's trim, made
+-- once with the count
 function Look.Count(fs, disc, face, size)
 	local e = counts[fs] or {}
 	counts[fs] = e
 	e.disc, e.face, e.area = disc, face, Look.AREA
 	e.shown = e.shown or false
+	local W = MelloUI.Widgets
+	if type(W) == "table" and W.IconPath and not e.edge then
+		disc:SetTexture(W.IconPath("badge_disc"))
+		local layer, sub = disc:GetDrawLayer()
+		local edge = disc:GetParent():CreateTexture(nil, layer, nil, math.min((sub or 0) + 1, 7))
+		edge:SetTexture(W.IconPath("badge_edge"))
+		edge:SetAllPoints(disc)
+		Look.Paint(edge, "trim", "vertex")
+		Look.Hide(edge)
+		e.edge = edge
+	end
 	Look.Text(fs, "number", size)
 	Look.Hide(disc)
 	Track(e.area, fs, ApplyCount)

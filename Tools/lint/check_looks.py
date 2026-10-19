@@ -116,7 +116,8 @@ OWN = {
 # the core modules of stage D that enhance the game's own elements: no ratchet, no art scan (stage I never drives them
 # to 0); families 1, 3 and 5 still read them. Their cover reads are D5's handshakes.
 ENHANCERS = ["Modules/UnitFrames.lua", "Modules/ActionBars.lua", "Core/Backdrop.lua", "Modules/MinimapPanel.lua",
-             "Modules/QuestPages.lua", "Core/EditLayoutWindows.lua", "Modules/Nameplates.lua"]
+             "Modules/QuestPages.lua", "Core/EditLayoutWindows.lua", "Modules/Nameplates.lua",
+             "Modules/PlateImpact.lua"]   # (0.25.0: Impact Effects on the game's nameplates, beside Nameplates.lua)
 
 # the shared files family 2 reads beside the own parts (Kit.lua and the kit's panels never: the painted skins of the
 # game's windows name the game's art by design)
@@ -257,7 +258,7 @@ CEILINGS = {
     "hygiene:MelloUI_GroupFrames/GroupLooks.lua": 8,
     "hygiene:MelloUI_GroupFrames/GroupSolo.lua": 1,
     "hygiene:MelloUI_QuestList/QuestListMap.lua": 1,
-    "hygiene:MelloUI_Route/Route.lua": 5,
+    "hygiene:MelloUI_Route/Route.lua": 4,
     "hygiene:MelloUI_VoiceOver/VoiceOver.lua": 1,
     "hygiene:Modules/AuraProbe.lua": 1,
     "hygiene:Modules/BagWindow.lua": 1,
@@ -265,7 +266,7 @@ CEILINGS = {
     "hygiene:Modules/HealProbe.lua": 2,
     "hygiene:Modules/MeterBar.lua": 2,
     "hygiene:Modules/MeterRaid.lua": 0,
-    "hygiene:Modules/QuestTracker.lua": 4,
+    "hygiene:Modules/QuestTracker.lua": 3,
     "hygiene:Modules/Services.lua": 3,
     "hygiene:Modules/Stats.lua": 0,
     "hygiene:Modules/SwingTimers.lua": 2,

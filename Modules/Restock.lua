@@ -113,7 +113,7 @@ MelloUI.Restock = M
 M.buyingQuiet = false   -- (read only: set by the purchases, below)
 
 local REM_KEY = "restock"
-local ICON = "Interface\\Minimap\\Tracking\\Food"
+local ICON = MelloUI.Widgets.IconPath("svc_vendor")   -- (0.25.0: the set's food vendor; the 1x tracking icon until then)
 local URGENCY = 50        -- the widget's order (higher first): broken gear 100, Repair 40, Mail 20, Trainer 10
 local READY_DELAY = 8     -- s into the world before the first count and the reminder (nothing in the login frames)
 local MAX_ENTRIES = 12    -- lines on a list

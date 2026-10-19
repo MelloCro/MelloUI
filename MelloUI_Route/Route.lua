@@ -3724,9 +3724,9 @@ local function ReadTrackedQuest()
 		-- inside it, Beacon.InArea)
 		destination = { cont = ocont, x = ox, y = oy, fromQuest = true, questID = questID, objective = oname,
 			source = source, sourceOnly = sourceOnly, missing = missing, gated = Needed.Gates(questID) ~= nil,
-			area = area and true or false, label = "|A:QuestNormal:16:16|a " .. (oname or title or "quest") }
+			area = area and true or false, label = M.IconMark("quest_mark", 16) .. " " .. (oname or title or "quest") }
 		-- announced once per quest (and step), not at every next spawn
-		Plan(true, not same or step, "|A:QuestNormal:22:22|a  Tracking quest " .. (title or "") .. (oname and (": " .. oname) or "") .. ", {dist} away")
+		Plan(true, not same or step, M.IconMark("quest_mark", 22) .. "  Tracking quest " .. (title or "") .. (oname and (": " .. oname) or "") .. ", {dist} away")
 		return
 	end
 	local mapID, px, py = QuestObjectivePoint(questID)
@@ -3758,8 +3758,8 @@ local function ReadTrackedQuest()
 	-- where the data says area (ObjectiveSpot), and once a spot is reached:
 	-- M.QuestSpotArrive, the user's word of 2026-10-13)
 	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = px, my = py, fromQuest = true, questID = questID,
-		gated = Needed.Gates(questID) ~= nil, area = false, label = "|A:QuestNormal:16:16|a " .. (title or "quest") }
-	Plan(true, true, "|A:QuestNormal:22:22|a  Tracking quest " .. (title or "") .. ", {dist} away")
+		gated = Needed.Gates(questID) ~= nil, area = false, label = M.IconMark("quest_mark", 16) .. " " .. (title or "quest") }
+	Plan(true, true, M.IconMark("quest_mark", 22) .. "  Tracking quest " .. (title or "") .. ", {dist} away")
 end
 
 -- The waypoint the client shows is the destination; Blizzard's own map clicks
@@ -3810,7 +3810,7 @@ local function ReadWaypoint()
 	end
 	M.stopped = nil   -- (a new pin: the player's pick, M.StopRoute)
 	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = px, my = py, fromWaypoint = true,
-		label = "|A:Waypoint-MapPin-ChatIcon:16:16|a map pin" }
+		label = M.IconMark("goal_pin", 16) .. " map pin" }
 	Plan(true, true)
 end
 
@@ -4070,7 +4070,7 @@ do
 		local mapID, mx, my = MapPointOfYards(dock[1], dock[2], dock[3])
 		local before = standIn
 		local s = { cont = dock[1], x = dock[2], y = dock[3], spot = spot,
-			label = whole or ("|A:Waypoint-MapPin-ChatIcon:16:16|a " .. (label or "the boat")) }
+			label = whole or (M.IconMark("goal_pin", 16) .. " " .. (label or "the boat")) }
 		if before then
 			s.pin, s.questID = before.pin, before.questID
 			-- (2026-10-04) another quest meanwhile: the one to give back is that one,
@@ -4642,21 +4642,28 @@ local function NewPainter(frame)
 			rim:SetPoint("CENTER", dot, "CENTER")   -- (the ring round its dot: placed with it, once)
 			self.dots[self.used], self.rims[self.used] = dot, rim
 		end
-		local ringKey, ringAlpha = "selectedTrim", style.alpha
+		-- (0.25.0, the user's pick: MelloUI's icon set) a trail's bead is one picture, the set's red bead in its gold
+		-- ring (Route's red dot, tinted, in a gold disc until then); a `lined` one keeps its dot and ring
+		local bead = not style.lined
+		if dot.bead ~= bead then
+			dot.bead, dot.atSize = bead, nil
+			if bead then
+				dot:SetTexture(T.BEAD)
+				dot:SetVertexColor(1, 1, 1)
+			else
+				dot:SetTexture(TRAIL_DOT)
+				dot.look = nil
+			end
+		end
 		if style.lined then
-			M.GoalFlag(dot)
+			local ringKey, ringAlpha = "selectedTrim", style.alpha
+			M.GoalTint(dot)
 			if self.look ~= "beads" then
 				ringKey, ringAlpha = style.ring, style.ringAlpha * style.alpha
 			end
-		else
-			local c = MelloUI.Meaning.routeTrail
-			if dot.colour ~= c then
-				dot.colour = c
-				dot:SetVertexColor(c[1], c[2], c[3])
+			if rim.mpAlpha ~= ringAlpha or rim.mpKey ~= ringKey then
+				Paint(rim, ringKey, ringAlpha, "vertex")
 			end
-		end
-		if rim.mpAlpha ~= ringAlpha or rim.mpKey ~= ringKey then
-			Paint(rim, ringKey, ringAlpha, "vertex")
 		end
 		if dot.atAlpha ~= style.alpha then
 			dot.atAlpha = style.alpha
@@ -4664,7 +4671,8 @@ local function NewPainter(frame)
 		end
 		if dot.atSize ~= size then
 			dot.atSize = size
-			dot:SetSize(size * T.RING, size * T.RING)
+			local d = bead and size or size * T.RING
+			dot:SetSize(d, d)
 			rim:SetSize(size, size)
 		end
 		if dot.atX ~= x or dot.atY ~= y or dot.atAnchor ~= anchor then
@@ -4672,10 +4680,14 @@ local function NewPainter(frame)
 			dot:ClearAllPoints()
 			dot:SetPoint("CENTER", self.frame, anchor, x, y)
 		end
-		if not dot.on then
-			dot.on = true
+		if not dot.on or rim.bead ~= bead then
+			dot.on, rim.bead = true, bead
 			dot:Show()
-			rim:Show()
+			if bead then
+				rim:Hide()
+			else
+				rim:Show()
+			end
 		end
 	end
 	-- a stroke of the line: its dark casing under, its gold core over (every
@@ -4692,7 +4704,7 @@ local function NewPainter(frame)
 			self.cases[self.lused], self.cores[self.lused] = case, core
 		end
 		Paint(case, "innerPanel", 0.92 * alpha, "fill")
-		Paint(core, "text", alpha, "fill")
+		Paint(core, "selectedTrim", alpha, "fill")   -- (0.25.0: the gold line; the palette's text until then)
 		if case.atSize ~= size then
 			case.atSize = size
 			case:SetThickness(size * T.CASE)
@@ -4726,7 +4738,7 @@ local function NewPainter(frame)
 			self.jcases[self.jused], self.jcores[self.jused] = case, core
 		end
 		Paint(case, "innerPanel", 0.92 * alpha, "vertex")
-		Paint(core, "text", alpha, "vertex")
+		Paint(core, "selectedTrim", alpha, "vertex")
 		if case.atX ~= x or case.atY ~= y or case.atSize ~= size or case.atAnchor ~= anchor then
 			case.atX, case.atY, case.atSize, case.atAnchor = x, y, size, anchor
 			case:SetSize(size * T.CASE, size * T.CASE)
@@ -4867,7 +4879,7 @@ local function NewPainter(frame)
 			h:SetTexture(HEAD_GLOW)
 			h:SetBlendMode("ADD")
 			if MelloUI.Widgets then
-				MelloUI.Widgets.Paint(h, "text", "vertex", 1)
+				MelloUI.Widgets.Paint(h, "selectedTrim", "vertex", 1)
 			end
 			self.head = h
 		end
@@ -4899,34 +4911,46 @@ end
 --                                         minimap too, with their own glyph
 --   M.GoalLay(mark, ...)                  M.MarkPlace, the flag coloured for
 --                                         the trail's look now (M.GoalFlag)
-M.TRAIL.CHEVRON = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\chevron"   -- look-ok: the minimap goal's edge chevron, the palette's gold
+-- (0.25.0, MelloUI's icon set) the minimap goal's edge chevron: the set's gold arrow, its own colour (the white
+-- chevron tinted in the palette's gold until then); the trail's bead
+M.TRAIL.ICONS = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\"   -- (MelloUI's icon set: W.IconPath's folder)
+M.TRAIL.CHEVRON = M.TRAIL.ICONS .. "edge_arrow"
+M.TRAIL.BEAD = M.TRAIL.ICONS .. "route_bead"
+-- an icon of the set as inline text markup, size x size (W.IconMarkup's, without needing the widget set)
+function M.IconMark(name, size)
+	return "|T" .. M.TRAIL.ICONS .. name .. ":" .. size .. ":" .. size .. "|t"
+end
 M.TRAIL.GOAL_MAP = 26     -- the mark on the world map, screen px (the game's pin is 30, its diamond about 22)
 M.TRAIL.GOAL_MINI = 16    -- on the minimap
 M.GOAL_LEVEL = 2900       -- the world map mark's level when the map cannot say its waypoint pin's (its pins: 2000 up)
+-- (0.25.0, the user's pick: "as today", in MelloUI's icon set) the mark is one picture, M.GoalFlag's (the flag
+-- glyph on a dark disc in a gold ring until then)
 function M.GoalMark(parent)
-	local T, W = M.TRAIL, MelloUI.Widgets
 	local f = CreateFrame("Frame", nil, parent)
 	f:EnableMouse(false)
-	f.ring = f:CreateTexture(nil, "ARTWORK", nil, 1)
-	f.ring:SetTexture(T.ROUND)
-	f.ring:SetAllPoints()
-	f.disc = f:CreateTexture(nil, "ARTWORK", nil, 2)
-	f.disc:SetTexture(T.ROUND)
 	f.flag = f:CreateTexture(nil, "ARTWORK", nil, 3)
-	f.flag:SetPoint("CENTER")
-	if W then
-		W.Glyph(f.flag, "flag")
-		W.Paint(f.ring, "selectedTrim", "vertex", 1)
-		W.Paint(f.disc, "innerPanel", "vertex", 0.95)
-	end
+	f.flag:SetAllPoints()
 	f:Hide()
 	return f
 end
--- the flag's colour for the trail's look now: Route's red with the beads (a
--- meaning colour, out of the palette's list), the palette's text with the
--- line and the dashes; written only on a change (the maps' marks and the
--- World Marker alike)
-function M.GoalFlag(flag)
+-- the goal's picture for the trail's look now: the red flag with the beads, the cream one with the line and the
+-- dashes; written only on a change (the maps' marks and the World Marker alike)
+function M.GoalFlag(tex)
+	local name = M.TrailLook() == "beads" and "goal_red" or "goal_cream"
+	if tex.goalPic == name then
+		return
+	end
+	tex.goalPic = name
+	if MelloUI.Kit and MelloUI.Kit.Unpaint then
+		MelloUI.Kit:Unpaint(tex, "vertex")
+	end
+	tex:SetTexture(M.TRAIL.ICONS .. name)
+	tex:SetTexCoord(0, 1, 0, 1)
+	tex:SetVertexColor(1, 1, 1, 1)
+end
+-- a `lined` bead's dot (the flight map's) by the goal's colour rule: Route's red with the beads (a meaning colour,
+-- out of the palette's list), the palette's text with the line and the dashes; written only on a change
+function M.GoalTint(flag)
 	local look = M.TrailLook()
 	local c = MelloUI.Meaning.routeTrail
 	if flag.look == look and (look ~= "beads" or flag.red == c) then
@@ -4948,11 +4972,6 @@ function M.MarkPlace(f, size, anchorFrame, anchor, x, y)
 	if f.size ~= size then
 		f.size = size
 		f:SetSize(size, size)
-		local ring = math.max(1, size * 0.08)
-		f.disc:ClearAllPoints()
-		f.disc:SetPoint("TOPLEFT", f, "TOPLEFT", ring, -ring)
-		f.disc:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -ring, ring)
-		f.flag:SetSize(size * 0.58, size * 0.58)
 	end
 	-- (moved half a pixel or more, or onto another frame: the minimap's
 	-- marks follow the player a tick at a time, mostly by less)
@@ -4968,9 +4987,7 @@ function M.MarkPlace(f, size, anchorFrame, anchor, x, y)
 end
 function M.GoalLay(f, size, anchorFrame, anchor, x, y)
 	M.MarkPlace(f, size, anchorFrame, anchor, x, y)
-	if f.flag.look ~= M.TrailLook() or f.flag.look == "beads" and f.flag.red ~= MelloUI.Meaning.routeTrail then
-		M.GoalFlag(f.flag)
-	end
+	M.GoalFlag(f.flag)
 end
 local Provider = nil
 local mapPainter = nil
@@ -6161,53 +6178,21 @@ function Beacon.Art()
 end
 
 -- The marker's mark (0.19.5, the user's pick B of BuildData/output/
--- world_marker_flag_sketch): the maps' goal mark -- the flag on the palette's
--- dark disc in its gold ring -- in the kit gem's place. The gem texture is the
--- ring; the disc and the flag stand on it, on the gem's frame (core: sized by
--- the distance with it), made once, shown and hidden with the gem (post-hooks
--- on MelloUI's own texture) and popping in with it. The flag red with Red
--- Beads, the palette's text else (M.GoalFlag); the beam's light follows the
--- same look (Beacon.Tint).
+-- world_marker_flag_sketch): the maps' goal mark in the kit gem's place --
+-- since 0.25.0 the gem itself wears its picture (M.GoalFlag: the red flag
+-- with Red Beads, the cream one else); the beam's light follows the same look
+-- (Beacon.Tint).
 function Beacon.FlagMark()
-	local gem, W = marker.gem, MelloUI.Widgets
+	local gem = marker.gem
 	local Kit = MelloUI.Kit
 	if Kit and Kit.pieceOf then
 		Kit.pieceOf[gem], Kit.pieceNameOf[gem] = nil, nil   -- (no kit piece: no shadow partner; the disc is its own dark ground)
 	end
-	gem:SetTexture(M.TRAIL.ROUND)
+	-- (0.25.0, MelloUI's icon set) the gem itself wears the goal's picture (a gold ring, a dark disc and the flag
+	-- glyph over it until then)
 	gem:SetTexCoord(0, 1, 0, 1)
-	if W then
-		W.Paint(gem, "selectedTrim", "vertex", 1)
-	end
-	if not marker.goalDisc then
-		local core = marker.core
-		local disc = core:CreateTexture(nil, "ARTWORK", nil, 2)
-		disc:SetTexture(M.TRAIL.ROUND)
-		disc:SetPoint("TOPLEFT", gem, "TOPLEFT", Beacon.FLAG_RING, -Beacon.FLAG_RING)
-		disc:SetPoint("BOTTOMRIGHT", gem, "BOTTOMRIGHT", -Beacon.FLAG_RING, Beacon.FLAG_RING)
-		local flag = core:CreateTexture(nil, "ARTWORK", nil, 3)
-		flag:SetSize(Beacon.FLAG, Beacon.FLAG)
-		flag:SetPoint("CENTER", gem, "CENTER")
-		if W then
-			W.Paint(disc, "innerPanel", "vertex", 0.95)
-			W.Glyph(flag, "flag")
-		end
-		marker.goalDisc, marker.goalFlag = disc, flag
-		marker.goalPops = { TextShade.Pop(disc), TextShade.Pop(flag) }
-		hooksecurefunc(gem, "Show", Beacon.FollowGem)
-		hooksecurefunc(gem, "Hide", Beacon.FollowGem)
-		hooksecurefunc(gem, "SetShown", Beacon.FollowGem)
-	end
-	M.GoalFlag(marker.goalFlag)
-	Beacon.FollowGem()
-end
-function Beacon.FollowGem()
-	local disc, flag = marker and marker.goalDisc, marker and marker.goalFlag
-	if disc then
-		local shown = marker.gem:IsShown() and true or false
-		disc:SetShown(shown)
-		flag:SetShown(shown)
-	end
+	marker.goalFlag = gem
+	M.GoalFlag(gem)
 end
 
 -- The beam's light (its glow and the glow at its foot) in the trail's look: Route's red (MelloUI.Meaning.
@@ -6287,10 +6272,6 @@ end
 function Beacon.WayIn(f, landed)
 	if landed or not f.pin then
 		Beacon.Play(f.pop)
-		if f.goalPops then
-			Beacon.Play(f.goalPops[1])
-			Beacon.Play(f.goalPops[2])
-		end
 		-- the gem's shadow partner pops in with it (TextShade)
 		if MelloUI.Anim then
 			Beacon.Play(f.shade and f.shade.pop)
@@ -7849,6 +7830,7 @@ function M.GoalOnMinimap(cont, round, R, RX, RY)
 	if not (d and cont and d.cont == cont and M.isEnabled and M.db.minimap) then
 		if g then
 			g:Hide()
+			g.pointer:Hide()
 			M.goalChev.on = false
 			M.goalChev:Hide()
 		end
@@ -7863,14 +7845,17 @@ function M.GoalOnMinimap(cont, round, R, RX, RY)
 		chev:SetSize(20, 10)
 		chev:Hide()   -- (shown when a goal lies beyond the map: a new texture shows at once)
 		chev.on = false
-		if MelloUI.Widgets then
-			MelloUI.Widgets.Paint(chev, "selectedTrim", "vertex", 1)
-		end
 		M.goalChev = chev
+		-- (0.25.0) the pointer under the lifted flag, its tip on the goal's spot
+		g.pointer = mm:CreateTexture(nil, "OVERLAY", nil, 4)
+		g.pointer:SetTexture(M.TRAIL.CHEVRON)
+		g.pointer:SetSize(10, 5)
+		g.pointer:Hide()
 	end
 	local gx, gy = M.MinimapOffset(d.x, d.y)
 	if not (gx > -math.huge and gx < math.huge and gy > -math.huge and gy < math.huge) then
 		g:Hide()
+		g.pointer:Hide()
 		M.goalChev.on = false
 		M.goalChev:Hide()
 		return
@@ -7887,7 +7872,16 @@ function M.GoalOnMinimap(cont, round, R, RX, RY)
 		inside = math.abs(gx) <= RX - m and math.abs(gy) <= RY - m
 	end
 	if inside then
-		M.GoalLay(g, size, mm, "CENTER", gx, gy)
+		-- (0.25.0, the user's video: the flag hid the quest giver's "!" it stood on) the flag stands above its place,
+		-- the pointer's tip on the spot: the game's own icon there stays in sight
+		M.GoalLay(g, size, mm, "CENTER", gx, gy + size / 2 + 3)
+		local p = g.pointer
+		if p.atX ~= gx or p.atY ~= gy then
+			p.atX, p.atY = gx, gy
+			p:ClearAllPoints()
+			p:SetPoint("BOTTOM", mm, "CENTER", gx, gy)
+		end
+		p:Show()
 		if pop then
 			M.DrawIn.PopMark(g)
 		end
@@ -7898,6 +7892,7 @@ function M.GoalOnMinimap(cont, round, R, RX, RY)
 		return
 	end
 	-- beyond the map: the mark just inside its edge, the chevron outside it
+	g.pointer:Hide()
 	local k = M.MinimapEdge(gx, gy, round, R, RX, RY, m + 7)
 	M.GoalLay(g, size, mm, "CENTER", gx * k, gy * k)
 	local kc = M.MinimapEdge(gx, gy, round, R, RX, RY, 4)
@@ -10220,8 +10215,8 @@ M.Guide = (function()
 		if Guide.veiledOn and type(rxp) == "table" then
 			local CI, CS = rawget(_G, "C_Item"), rawget(_G, "C_Spell")
 			local count = CI and CI.GetItemCount or rawget(_G, "GetItemCount")
-			for id in pairs(type(rxp.activeItems) == "table" and rxp.activeItems or {}) do
-				id = tonumber(id)
+			for key in pairs(type(rxp.activeItems) == "table" and rxp.activeItems or {}) do
+				local id = tonumber(key)
 				local have = id and tonumber(Pcall(count, id)) or 0
 				if have > 0 then
 					items[#items + 1] = { kind = "item", id = id, count = have, name = Pcall(CI and CI.GetItemNameByID, id),
@@ -10229,8 +10224,8 @@ M.Guide = (function()
 				end
 			end
 			local known = rawget(_G, "IsPlayerSpell")
-			for id, arg in pairs(type(rxp.activeSpells) == "table" and rxp.activeSpells or {}) do
-				id = tonumber(id)
+			for key, arg in pairs(type(rxp.activeSpells) == "table" and rxp.activeSpells or {}) do
+				local id = tonumber(key)
 				if id and (arg == "p" or Pcall(known, id)) and CS and CS.GetSpellInfo then
 					local ok, info = pcall(CS.GetSpellInfo, id)
 					if ok and type(info) == "table" and type(info.name) == "string" then

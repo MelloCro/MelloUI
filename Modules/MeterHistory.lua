@@ -59,7 +59,6 @@ local M = Meter.M
 local Num, Text = MelloUI.Safe.Number, MelloUI.Safe.Text
 local ipairs, pairs, type, max, min, floor = ipairs, pairs, type, math.max, math.min, math.floor
 
-local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local UNKNOWN_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local AREA = "meter"   -- (the parchment's and the ink's area: the damage meter's)
 
@@ -79,7 +78,7 @@ local H = {
 	LIST_W = 236, ROW = 34, HEAD = 22, RUN_ROW = 40,
 	LEDGER_ROW = 28, LEDGER_MAX = 8, SPELL_ROW = 17, SPELLS_SHORT = 4,
 	FACE = 24, FACE_X = 2, FACE_IN = 0.09, TEXT_UP = 4, GAP = 6, RAIL_DOWN = 7.5, SHARE = 3, SPELL_X = 160, SPELL_W = 110,
-	TAB_W = 96, BUTTON = 32, DISC = 22, GLYPH = 14,
+	TAB_W = 96, BUTTON = 32, ART = 26,
 	GRAB = 56, CLOSE_X = 20, CLOSE_Y = 33, BRAND_MID = 17,
 }
 -- (the ledger's faces: the kit rim's whole-UI shade partner, the windows' area)
@@ -994,21 +993,13 @@ local function MakeButton()
 	button = CreateFrame("Button", "MelloUIFightHistoryButton", column)
 	button:SetSize(H.BUTTON, H.BUTTON)
 	button:SetFrameStrata("MEDIUM")
-	local disc = button:CreateTexture(nil, "ARTWORK", nil, 1)
-	disc:SetTexture(ROUND_MASK)
-	disc:SetSize(H.DISC, H.DISC)
-	disc:SetPoint("CENTER")
-	Look.Paint(disc, "innerPanel", "vertex", 0.95)
-	local glyph = button:CreateTexture(nil, "ARTWORK", nil, 2)
-	W.Glyph(glyph, "chart")
-	glyph:SetSize(H.GLYPH, H.GLYPH)
-	glyph:SetPoint("CENTER")
-	local hover = button:CreateTexture(nil, "HIGHLIGHT")
-	hover:SetTexture(ROUND_MASK)
-	hover:SetSize(H.DISC, H.DISC)
-	hover:SetPoint("CENTER")
-	Look.Paint(hover, "hover", "vertex", 0.5)
-	Look.Paint(glyph, "text", "vertex")   -- (the chart in the text colour)
+	-- (0.25.0) the meter's button of MelloUI's icon set, its own disc and ring, the round gold light over it (a
+	-- palette disc with the chart glyph until then)
+	local art = button:CreateTexture(nil, "ARTWORK", nil, 1)
+	art:SetSize(H.ART, H.ART)
+	art:SetPoint("CENTER")
+	W.Icon(art, "btn_meter")
+	W.HoverLight(button, "round", art)
 	Perf.SetScript(button, "OnClick", ButtonClick)
 	Perf.SetScript(button, "OnEnter", ButtonEnter)
 	Perf.SetScript(button, "OnLeave", ButtonLeave)

@@ -738,13 +738,15 @@ end
 
 -- clipOnly: only ever the voice pack's clip, never text-to-speech (the
 -- objectives, user 2026-09-29: not their text, not their counts)
+-- bullet: the line's mark, of MelloUI's icon set (0.25.0, the user's Batch 7: the 16 px SoundQueueBullet files
+-- until then): a greeting's speech bubble, the quest's ! and ?, a ? in grey while in progress, a page
 local KINDS = {
-	gossip   = { label = "Greeting",       bullet = "SoundQueueBulletGossip",   quest = false },
-	accept   = { label = "Quest offer",    bullet = "SoundQueueBulletAccept",   quest = true },
-	progress = { label = "Quest progress", bullet = "SoundQueueBulletProgress", quest = true },
-	complete = { label = "Quest turn-in",  bullet = "SoundQueueBulletComplete", quest = true },
-	objectives = { label = "Objectives",   bullet = "SoundQueueBulletProgress", quest = true, clipOnly = true },
-	readable = { label = "Page",           bullet = "SoundQueueBulletGossip",   quest = false, page = true },
+	gossip   = { label = "Greeting",       bullet = "voice_greeting", quest = false },
+	accept   = { label = "Quest offer",    bullet = "quest_mark",     quest = true },
+	progress = { label = "Quest progress", bullet = "voice_progress", quest = true },
+	complete = { label = "Quest turn-in",  bullet = "turnin_mark",    quest = true },
+	objectives = { label = "Objectives",   bullet = "voice_progress", quest = true, clipOnly = true },
+	readable = { label = "Page",           bullet = "voice_page",     quest = false, page = true },
 }
 
 local function PlainUnitValue(fn, unit)
@@ -2043,7 +2045,9 @@ local SPEC = {
 		if IsSecret(title) then
 			return title
 		end
-		return "|T" .. TexturePath(info.bullet) .. ":14:14|t " .. tostring(title)
+		local W = MelloUI.Widgets
+		local mark = type(W) == "table" and W.IconMarkup and W.IconMarkup(info.bullet, 14)
+		return mark and (mark .. " " .. tostring(title)) or tostring(title)
 	end,
 	icon = TexturePath("Book"),
 	model = function()

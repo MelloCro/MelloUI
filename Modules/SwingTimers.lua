@@ -438,12 +438,12 @@ function Rim.Tint(ui)
 	ui.rim.icon:SetVertexColor(c[1], c[2], c[3])
 end
 
--- the rim's look: the kit's round rim (handed MelloUI.Kit, as the chat's
--- rims; the plain rim in a world without it), the pointer kept off it once
--- the kit rim's hooks are on, the icon and its tint
+-- the rim's look: (0.25.0) MelloUI's own gold ring of its icon set (the bars wear MelloUI's look for everyone, the
+-- cast bars' painted skin on or off: the user's decision 8; the kit's round rim until then), the pointer kept off it,
+-- the icon and its tint
 function Rim.Dress(ui)
 	local rim = ui.rim
-	rim:SetKit(MelloUI.Kit)
+	rim:SetKit(false)
 	rim:EnableMouse(false)
 	Rim.Icon(ui)
 	Rim.Tint(ui)

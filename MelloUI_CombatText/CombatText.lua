@@ -905,7 +905,8 @@ local function Fill(row, e, align, scale)
 	local glyph = row.glyph
 	if glyph then
 		local W = MelloUI.Widgets
-		if e.glyph and W.Glyph(glyph, e.glyph) then
+		if e.glyph then
+			W.Icon(glyph, e.glyph)
 			local g = math.floor(TextSize() * T.glyph + 0.5)
 			glyph:SetSize(g, g)
 			-- (the kind's meaning colour, else the look's gold or white as it is
@@ -1360,8 +1361,11 @@ end
 -- the setting each kind follows
 local SWITCH = { taken = "taken", heal = "heals", notice = "notices", avoid = "avoid", resource = "resource",
 	combat = "combat", rep = "reputation" }
-local GLYPH = { taken = "hit", heal = "heal", notice = "proc", avoid = "avoid", resource = "gain", combat = "proc",
-	rep = "gain" }
+-- (0.25.0, the user's Batch 14, the lightened ones: MelloUI's icon set) a kind's mark, white and grey for the kind's
+-- tint: claw slashes for damage taken, a cross for healing, a star for a notice, a buckler for a dodge, parry or
+-- block, a drop for a gain (the widget glyphs triangle, cross, star, ring and drop until then)
+local GLYPH = { taken = "ct_taken", heal = "ct_heal", notice = "ct_notice", avoid = "ct_avoid", resource = "ct_gain",
+	combat = "ct_notice", rep = "ct_gain" }
 
 -- a word the game names (COMBAT_TEXT_DODGE, ENTERING_COMBAT ...), else ours
 local function Word(w)

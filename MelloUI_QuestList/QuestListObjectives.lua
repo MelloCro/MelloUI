@@ -48,14 +48,18 @@ local REACH = 0.06              -- map widths: a place this close to a group's p
 local PAD = 0.012               -- map widths the outline keeps round a group's places
 local FILL_SIZE = 0.05          -- a fill spot, in map widths
 local FILL_ALPHA = 0.08
-local DOT_PX = 10               -- a place's dot on the screen
-local MAP_DOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\MapDot"   -- a white dot in a black ring (the white takes the tint)
+local DOT_PX = 12               -- a place's dot on the screen (10 until the bead, 0.25.0)
+-- (0.25.0, the user's pick) a place's dot: the bead of MelloUI's icon set, white and grey in its dark outline (the
+-- white takes the tint); the flat MapDot until then
+local MAP_DOT = MelloUI.Widgets.IconPath("map_dot")
 local ZOOMED = 0.5              -- the map's zoom percent from which the places show as dots, the areas go
 local LINE = 2                  -- the outline, in canvas units (the dark line under it a little wider)
 local NEAR = 0.024              -- map units: a mark closer than this to another is moved
 local SOFT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\SoftGlowRound"
-local ROUND = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- (a plain disc: the mark's ring and its dark ground)
-local GLYPH = { [1] = "sword", [2] = "cog", [3] = "bag", [4] = "flag" }   -- by the data's kind
+-- (0.25.0, the user's picks: MelloUI's icon set) a mark by the data's kind: kill the standalone skull (with its soft
+-- shade), use the gauntlet's pin, collect the bag's pin, explore the compass's pin (the widget glyphs sword, cog,
+-- bag and flag on a dark disc in a gold ring until then)
+local OBJ_ICON = { [1] = "kill", [2] = "obj_use", [3] = "pin_collect", [4] = "obj_explore" }
 
 -- The quests in the log to show: not complete, and (Only The Tracked Quests)
 -- watched; their ids in a list made once and reused
@@ -442,36 +446,27 @@ function O.Add(map, mapID)
 	O.Zoom(map)   -- (the areas or the dots, as the map is zoomed now)
 end
 
--- the mark's look: its kind on the palette's dark disc in its gold ring (the
--- goal's mark of Route: one look), its progress under it
+-- the mark's look: its kind's icon (a pin of its own, or the skull on the soft dark shade), its progress under it
 function O.Dress(b, data)
 	local palette = MelloUI.Look.Palette()
-	local ground, ink, gold = palette.innerPanel, palette.text, palette.selectedTrim
+	local ground, gold = palette.innerPanel, palette.selectedTrim
 	b:SetSize(20, 20)
-	local ring = b.Ring
-	if not ring then
-		ring = b:CreateTexture(nil, "BACKGROUND", nil, -1)
-		ring:SetTexture(ROUND)
-		ring:SetAllPoints(b)
-		b.Ring = ring
+	local kill = data.kind == 1
+	b.Bg:SetShown(kill)
+	if kill then
+		b.Bg:SetTexture(SOFT)
+		b.Bg:SetTexCoord(0, 1, 0, 1)
+		b.Bg:ClearAllPoints()
+		b.Bg:SetPoint("TOPLEFT", b, "TOPLEFT", -6, 6)
+		b.Bg:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 6, -6)
+		b.Bg:SetVertexColor(ground[1], ground[2], ground[3], 0.75)
 	end
-	ring:SetVertexColor(gold[1], gold[2], gold[3], 1)
-	ring:Show()
-	b.Bg:Show()
-	b.Bg:SetTexture(ROUND)
-	b.Bg:ClearAllPoints()
-	b.Bg:SetPoint("TOPLEFT", b, "TOPLEFT", 1.6, -1.6)
-	b.Bg:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -1.6, 1.6)
-	b.Bg:SetVertexColor(ground[1], ground[2], ground[3], 0.95)
 	b.Icon:ClearAllPoints()
 	b.Icon:SetPoint("CENTER")
-	b.Icon:SetSize(12, 12)
+	b.Icon:SetSize(20, 20)
 	b.Icon:SetDesaturated(false)
 	b.Icon:SetAlpha(1)
-	if not MelloUI.Widgets.Glyph(b.Icon, GLYPH[data.kind] or "way") then
-		MelloUI.Widgets.Glyph(b.Icon, "way")
-	end
-	b.Icon:SetVertexColor(ink[1], ink[2], ink[3], 1)
+	MelloUI.Widgets.Icon(b.Icon, OBJ_ICON[data.kind] or "goal_pin")
 	b.Icon:Show()
 	local t = data.line
 	local have, need = t and t[7], t and t[8]
@@ -644,20 +639,27 @@ function O.MiniBuild()
 	end
 end
 
--- a mark of the pool (the goal's mark of Route, its glyph the kind's, in the
--- palette's text), made the first time it is needed
+-- a mark of the pool, made the first time it is needed: its kind's icon (as on the map), the skull on its soft
+-- dark shade (the palette's inner panel) -- placed by Route.MarkPlace
 local function MiniMark(list, i, kind)
 	local f = list[i]
 	if not f then
 		local R = MelloUI.Route
-		f = R.GoalMark(R.MinimapFrame())
+		f = CreateFrame("Frame", nil, R.MinimapFrame())
 		f:SetFrameLevel(R.MinimapFrame():GetFrameLevel() + 2)
-		MelloUI.Widgets.Paint(f.flag, "text", "vertex", 1)
+		f.shade = f:CreateTexture(nil, "BACKGROUND")
+		f.shade:SetTexture(SOFT)
+		f.shade:SetPoint("TOPLEFT", f, "TOPLEFT", -4, 4)
+		f.shade:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 4, -4)
+		MelloUI.Widgets.Paint(f.shade, "innerPanel", "vertex", 0.75)
+		f.icon = f:CreateTexture(nil, "ARTWORK")
+		f.icon:SetAllPoints(f)
 		list[i] = f
 	end
 	if f.kind ~= kind then
 		f.kind = kind
-		MelloUI.Widgets.Glyph(f.flag, GLYPH[kind] or "way")
+		MelloUI.Widgets.Icon(f.icon, OBJ_ICON[kind] or "goal_pin")
+		f.shade:SetShown(kind == 1)
 	end
 	return f
 end
@@ -711,9 +713,8 @@ function O.MiniDraw(cont, round, R, RX, RY)
 			local chev = mini.chevs[eused]
 			if not chev then
 				chev = Route.MinimapFrame():CreateTexture(nil, "OVERLAY", nil, 3)
-				chev:SetTexture(Route.TRAIL.CHEVRON)
+				chev:SetTexture(Route.TRAIL.CHEVRON)   -- (0.25.0: the set's gold arrow, its own colour)
 				chev:SetSize(16, 8)
-				MelloUI.Widgets.Paint(chev, "selectedTrim", "vertex", 0.9)
 				mini.chevs[eused] = chev
 			end
 			local kc = Route.MinimapEdge(gx, gy, round, R, RX, RY, 3)

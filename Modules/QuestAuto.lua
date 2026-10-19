@@ -39,7 +39,7 @@ local Plain = MelloUI.Safe.Value
 local M = MelloUI:RegisterModule("QuestAuto", {
 	title = "Auto Accept & Hand In",
 	desc = "Accepts quests and hands them in as you talk to their givers, off until you switch it on.",
-	icon = "Interface\\GossipFrame\\AvailableQuestIcon",
+	icon = MelloUI.Widgets.IconPath("quest_mark"),   -- (0.25.0: the set's !; the game's 1x gossip icon until then)
 	flavour = "Talk, and the quest is yours. Hold Shift to read it first.",
 	role = "adds",
 	-- (not on the installer's Features step: its switches are on Quest List > List, off by default)

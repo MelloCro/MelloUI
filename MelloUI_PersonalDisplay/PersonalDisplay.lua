@@ -1010,7 +1010,7 @@ function Parts.Get(i)
 	bar:SetHeight(T.colH)
 	local icon = W.RoundIcon(col.float, T.partIcon, nil)
 	icon:EnableMouse(false)   -- (the pointer passes through the display to the world)
-	icon:SetKit(MelloUI.Kit)
+	icon:SetKit(W.KitFor("unitframes"))   -- (0.25.0: MelloUI's ring unless Oldschool dresses the frames)
 	icon:SetPoint("BOTTOMLEFT", col.strip, "BOTTOMRIGHT", T.partGap,
 		col.strip.insets[4] + (i - 1) * (T.partIcon + T.partGap))
 	p = { bar = bar, icon = icon }
@@ -2659,7 +2659,7 @@ function Cds.Icon(i)
 	end
 	ic = W.RoundIcon(S.ui.float, T.cdIcon, nil)
 	ic:EnableMouse(false)   -- (the pointer passes through the display to the world)
-	ic:SetKit(MelloUI.Kit)
+	ic:SetKit(W.KitFor("unitframes"))   -- (0.25.0: MelloUI's ring unless Oldschool dresses the frames)
 	local sweep = CreateFrame("Cooldown", nil, ic, "CooldownFrameTemplate")
 	sweep:SetAllPoints(ic.icon)
 	Try(sweep, "SetSwipeTexture", "Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")

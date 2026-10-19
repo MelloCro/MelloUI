@@ -1102,7 +1102,7 @@ local function Heading(key, name)
 	Look.Text(h.text, "gold", 12)
 	h.text:SetText(name)
 	h.plus = h:CreateTexture(nil, "OVERLAY")
-	h.plus:SetTexture("Interface\\Buttons\\UI-PlusButton-Up")
+	h.plus:SetTexture(W.IconPath("btn_expand"))   -- (0.25.0: the set's +; the game's 1x art until then)
 	h.plus:SetSize(12, 12)
 	h.plus:SetPoint("LEFT", h, "LEFT", 0, 0)
 	if key == "junk" then
@@ -1983,7 +1983,8 @@ end, "script")
 -- and the game says so); an item held over a tab a moment opens it.
 do
 	local TABS = { "bags", "reagent" }
-	local ICONS = { bags = "Interface\\Buttons\\Button-Backpack-Up", reagent = "Interface\\Icons\\INV_Misc_Bag_08" }
+	-- (0.25.0) the backpack and the Reagent Bag of MelloUI's icon set (the game's art until then)
+	local ICONS = { bags = MelloUI.Widgets.IconPath("bag_backpack"), reagent = MelloUI.Widgets.IconPath("bag_reagent") }
 	local HOLD = 0.6   -- s an item is held over a tab before the tab opens
 	-- the game's art is drawn for a window's right: on the left it is mirrored (the plain look; the kit's rim is
 	-- square), the icon nudged the other way (the template's Camelot offset is -4)
@@ -2225,7 +2226,8 @@ local function Build()
 	-- rim's left edge, the sort's right edge under the close's; FitSearch)
 	win.shell = Kit:OwnWindow(f, {
 		area = AREA, plate = "rail",
-		ring = { at = "tl", texture = "Interface\\Buttons\\Button-Backpack-Up", game = true, bag = 0 },   -- (the backpack's portrait)
+		-- (the backpack's portrait: 0.25.0 the backpack of MelloUI's icon set, the game's 1x button art until then)
+		ring = { at = "tl", texture = W.IconPath("bag_backpack"), game = true, bag = 0 },
 		title = TEXT.title, close = true, escape = true, fit = true, background = WindowBackground,
 		mover = { key = "MelloUIBagWindow", label = TEXT.title, page = "Windows", default = M.Home },
 		inset = G.SIDE,
@@ -2248,9 +2250,20 @@ local function Build()
 	-- game's other search boxes; what does not match is dimmed)
 	local sort = CreateFrame("Button", nil, f)
 	sort:SetSize(28, G.ROW_H)
-	sort:SetNormalAtlas("bags-button-autosort-up")
-	sort:SetPushedAtlas("bags-button-autosort-down")
-	W.HoverLight(sort, "square")   -- (the game's sort button's light: the shared one)
+	-- (0.25.0, the user's Batch 11) the broom button of MelloUI's icon set, round at the row's height (the game's
+	-- sort atlases until then); pressed a shade darker, the round light over it
+	local side = math.min(28, G.ROW_H)
+	for i, set in ipairs({ sort.SetNormalTexture, sort.SetPushedTexture }) do
+		set(sort, W.IconPath("btn_sort"))
+		local t = i == 1 and sort:GetNormalTexture() or sort:GetPushedTexture()
+		t:ClearAllPoints()
+		t:SetPoint("CENTER")
+		t:SetSize(side, side)
+		if i == 2 then
+			t:SetVertexColor(0.8, 0.8, 0.8)
+		end
+	end
+	W.HoverLight(sort, "round", sort:GetNormalTexture())
 	sort:SetPoint("TOPRIGHT", f, "TOPRIGHT", -G.SIDE, G.ROW_Y)
 	Perf.SetScript(sort, "OnClick", SortClick)
 	Perf.SetScript(sort, "OnEnter", SortEnter)

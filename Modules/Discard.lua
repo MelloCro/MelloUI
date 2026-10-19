@@ -390,7 +390,7 @@ local function MakeButton(source, parent)
 	local W = MelloUI.Widgets
 	-- the controls' icon plate under the bin, whatever the window wears
 	-- (W.PlateButton: the bag window's Settings is the same button)
-	local b, glyph = W.PlateButton(parent, SIZE_W, SIZE_H, GLYPH, AREA[source], BUTTON_SCRIPTS)
+	local b, glyph = W.PlateButton(parent, SIZE_W, SIZE_H, GLYPH, AREA[source], BUTTON_SCRIPTS, "bin")
 	b.source = source
 	W.Glyph(glyph, "bin")
 	buttons[source] = b

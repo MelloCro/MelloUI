@@ -837,7 +837,7 @@ local READY = {
 	text = function()
 		return ready.who and TEXT.readyLine:format(ready.who) or ""
 	end,
-	icon = "Interface\\RaidFrame\\ReadyCheck-Waiting",
+	icon = MelloUI.Widgets.IconPath("turnin_mark"),   -- (0.25.0: the set's ?, as the game's waiting one; its 1x file until then)
 	progress = function()
 		if ready.at and ready.total then
 			return ready.at, ready.total
@@ -2575,7 +2575,7 @@ local HEALER = {
 local rare = { now = nil, alerted = {}, c = {}, pending = false, AGAIN = 300, KEEP = 60, PULSE = 12, EVERY = 15,
 	KINDS = { vignettekill = "rare", vignettekillelite = "rareelite" },
 	CLASSES = { rare = "rare", rareelite = "rareelite" },
-	ICON = "Interface\\Icons\\INV_Misc_Bone_Skull_01" }
+	ICON = MelloUI.Widgets.IconPath("kill_rare") }   -- (0.25.0: the set's rare skull; a game icon until then)
 
 -- the creature id in a creature's GUID ("Creature-0-...-<id>-<spawn>"); nil
 -- for a secret, another kind or none

@@ -701,36 +701,9 @@ function Art.Flat(button, kind, lit)
 	return true
 end
 
--- the followed quest's mark, laid once at its block's build.
--- MelloUI's look (onelook stage B, the user's pick C of
--- docs/plans/onelook-b-sketches/tracker.md, 2026-10-15; it took the kit's
--- small gem's place, which never showed on this client): a thin ring round
--- the quest's rim -- the widgets' ring (Look.Ring's texture, the Quest
--- List's zone ring) at 21, its band half a unit clear of the rim's art and
--- inside the washed row, no light; the block's own texture, so it lies under
--- the mark's button (its band is outside the rim: nothing covers it). Its
--- colour by the ground: Art.RingPaint.
-Art.RING = "Interface\\AddOns\\MelloUI\\Media\\Textures\\ProgressRing"   -- look-ok: the widgets' ring (Look.Ring's texture), MelloUI's look only
-Art.RING_SIZE = 21
-
-function Art.Followed(tex)
-	tex.melloRing = true
-	tex:SetTexture(Art.RING)
-	tex:SetTexCoord(0, 1, 0, 1)
-	tex:SetSize(Art.RING_SIZE, Art.RING_SIZE)
-	Art.RingPaint(tex)
-end
-
--- the ring's colour by the tracker's ground, read at every fill (the
--- parchment switched rebuilds): the palette's selected gold on the dark
--- panel, its border on the paper (the tracker's own hairlines there); by
--- palette key through the one registry, painted again on 'palette'
-function Art.RingPaint(tex)
-	local Kit = MelloUI.Kit
-	if Kit and Kit.Paint then
-		Kit:Paint(tex, Art.Paper() and "border" or "selectedTrim", "vertex", 1)
-	end
-end
+-- (the followed quest's thin ring round its mark -- onelook stage B, pick C
+-- -- went with 0.25.0's icon set: the followed quest's mark is Route's
+-- destination flag itself, Act.MarkIcon)
 
 -- The quest item's tray (onelook stage B, the user's pick C, 2026-10-15; it
 -- took the kit's square slot's place, buttons/slot_normal): W.TrayBox's
@@ -1799,12 +1772,32 @@ local function OnBlockLeave(block)
 	Act.Lit(block, false)
 end
 
--- (0.24.0) a quest's mark in the chat's look: the kit's round rim on a dark
--- disc, as the chat's tabs (W.GlyphButton), the game's own quest glyph in it
--- -- the hand-in ? once done, the ... while under way (the game's map
--- button's art, POIButton.lua) -- made at its block's first quest; its
--- scripts shared by every mark
-Act.MARK_ATLAS = { done = "UI-QuestIcon-TurnIn-Normal", open = "Quest-In-Progress-Icon-yellow" }
+-- (0.24.0) a quest's mark in the chat's look, made at its block's first quest, its scripts shared by every mark.
+-- (0.25.0, the user's pick: MelloUI's icon set) a round button of the set, whole (W.RoundIcon shows a ringed icon
+-- with its own disc and ring): the hand-in once done, the to-do while under way, and the followed quest Route's
+-- destination flag -- red with the beads, cream with the line or dashes, as Route draws it (it was the kit's rim
+-- on a dark disc with the game's map-button glyph, and a thin ring round the followed one)
+Act.MARK_ICON = { done = "track_handin", open = "track_todo", red = "goal_red", cream = "goal_cream" }
+
+function Act.MarkIcon(complete, followed)
+	local key
+	if followed then
+		local R = MelloUI.Route
+		local look = type(R) == "table" and R.TrailLook and R.TrailLook() or nil
+		key = (look == nil or look == "beads") and "red" or "cream"
+	else
+		key = complete and "done" or "open"
+	end
+	local paths = Act.markPaths
+	if not paths then
+		paths = {}
+		for k, name in pairs(Act.MARK_ICON) do
+			paths[k] = MelloUI.Widgets.IconPath(name)
+		end
+		Act.markPaths = paths
+	end
+	return paths[key]
+end
 Act.OnMarkClick = Perf.Shared("OnClick on a Quest Tracker mark", function(m, button)
 	Act.MarkClick(m.block, button)
 end, "script")
@@ -1824,20 +1817,16 @@ function Act.Mark(block)
 		return m
 	end
 	local W = MelloUI.Widgets
-	if not (type(W) == "table" and W.GlyphButton) then
+	if not (type(W) == "table" and W.RoundIcon and W.IconPath) then
 		return nil
 	end
-	m = W.GlyphButton(block, MARK_SIZE)
+	m = W.RoundIcon(block, MARK_SIZE)
 	m.block = block
-	m.glyph = m:CreateTexture(nil, "ARTWORK", nil, 3)
-	m.glyph:SetPoint("CENTER", m, "CENTER", 0, 0)
-	m.glyph:SetSize(MARK_SIZE * 0.62, MARK_SIZE * 0.62)
 	Perf.SetScript(m, "OnClick", Act.OnMarkClick)
 	Perf.SetScript(m, "OnEnter", Act.OnMarkEnter)
 	Perf.SetScript(m, "OnLeave", Act.OnMarkLeave)
 	m:EnableMouseWheel(true)
 	Perf.SetScript(m, "OnMouseWheel", Act.OnMarkWheel)
-	m:SetKit(MelloUI.Kit)   -- (after its scripts: the kit's rim hooks them)
 	block.mark = m
 	-- (a new part of a block: the Fader hooks it for On Mouseover, as NewBlock's)
 	local fader = MelloUI.Fader
@@ -1880,9 +1869,6 @@ local function NewBlock()
 		block.edge:SetPoint("BOTTOMLEFT", block.fill, "BOTTOMLEFT", 0, 0)
 		block.edge:Hide()
 	end
-	-- the followed quest's ring round its mark (Art.Followed)
-	block.followed = block:CreateTexture(nil, "ARTWORK")
-	Art.Followed(block.followed)
 	block.title = block:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	block.title:SetJustifyH("LEFT")
 	block.title:SetWordWrap(true)
@@ -2882,25 +2868,18 @@ local function FillBlock(block, questID, width, followedID)
 	end
 
 	local followed = followedID == questID
-	-- (0.24.0) the chat's look: the quest's mark in the kit's round rim
-	-- (Act.Mark; none where the widget set has no GlyphButton), the followed
-	-- one washed (Act.Washed)
+	-- (0.24.0) the chat's look: the quest's mark (Act.Mark: 0.25.0 a round
+	-- button of the icon set, Act.MarkIcon; none where the widget set has no
+	-- RoundIcon), the followed one washed (Act.Washed)
 	local mark = Act.Mark(block)
 	if mark then
-		mark.glyph:SetAtlas(complete and Act.MARK_ATLAS.done or Act.MARK_ATLAS.open)
+		mark:SetIcon(Act.MarkIcon(complete, followed))
 		-- centred on the title's first line
 		mark:ClearAllPoints()
 		mark:SetPoint("CENTER", block, "TOPLEFT", TEXT_X / 2 - 1, -TitleSize() / 2 - 1)
 		mark:Show()
 	end
 	Act.Washed(block, followed)
-	-- the followed quest's ring round its mark, at the mark's centre, in its colour for the ground now
-	block.followed:SetShown(followed and true or false)
-	if followed then
-		Art.RingPaint(block.followed)
-	end
-	block.followed:ClearAllPoints()
-	block.followed:SetPoint("CENTER", block, "TOPLEFT", TEXT_X / 2 - 1, -TitleSize() / 2 - 1)
 
 	local t = block.title
 	StyleText(t, TitleSize())
@@ -3127,7 +3106,6 @@ local function FillRecipeBlock(block, entry, width)
 		block.item.tray:Hide()
 		Art.ItemLit(block.item, false)
 	end
-	block.followed:Hide()
 	block.tier = nil
 	if block.mark then
 		block.mark:Hide()
@@ -3205,13 +3183,17 @@ local function GuideBox(block, i)
 	end
 	b = CreateFrame("Button", nil, block)
 	b:SetSize(11, 11)
+	-- (0.25.0) the check box of MelloUI's icon set, empty, the ticked one over it when the step is done (a flat
+	-- box and the game's 1x tick until then)
 	local W = MelloUI.Widgets
-	W.Solid(b, "BACKGROUND", "innerPanel", 0.9):SetAllPoints(b)
-	W.Edges(b, "border", "BORDER")
+	local box = b:CreateTexture(nil, "BACKGROUND")
+	box:SetSize(14, 14)
+	box:SetPoint("CENTER", b, "CENTER", 0, 0)
+	W.Icon(box, "ctl_check_off")
 	b.tick = b:CreateTexture(nil, "ARTWORK")
-	b.tick:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
-	b.tick:SetSize(15, 15)
-	b.tick:SetPoint("CENTER", b, "CENTER", 1, 0)
+	W.Icon(b.tick, "ctl_check_on")
+	b.tick:SetSize(14, 14)
+	b.tick:SetPoint("CENTER", b, "CENTER", 0, 0)
 	Perf.SetScript(b, "OnClick", function(self)
 		local line = self.line
 		if line and line.Toggle then
@@ -3242,7 +3224,10 @@ local function SectionCog(row, spec)
 		cog:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 		cog.icon = cog:CreateTexture(nil, "ARTWORK")
 		cog.icon:SetAllPoints(cog)
-		cog.icon:SetAtlas("questlog-icon-setting")
+		local W = MelloUI.Widgets
+		if type(W) == "table" and W.Icon then
+			W.Icon(cog.icon, "chat_settings")   -- (0.25.0: the set's; the game's atlas until then)
+		end
 		cog.icon:SetAlpha(0.8)
 		cog:SetPoint("RIGHT", row.toggle, "LEFT", -6, 0)
 		Perf.SetScript(cog, "OnClick", function(self, button)
@@ -3289,7 +3274,6 @@ local function FillGuideBlock(block, data, width)
 		block.item.tray:Hide()
 		Art.ItemLit(block.item, false)
 	end
-	block.followed:Hide()
 	block.tier = nil
 	if block.mark then
 		block.mark:Hide()
@@ -3727,19 +3711,36 @@ local function Build()
 	grip:SetSize(16, 16)
 	grip:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 3, 3)
 	grip:SetFrameLevel(frame:GetFrameLevel() + 10)
-	local gripTex = grip:CreateTexture(nil, "OVERLAY")
-	gripTex:SetAllPoints(grip)
-	gripTex:SetTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
-	gripTex:SetTexCoord(1, 0, 0, 1)   -- mirrored: it points to the bottom-left
+	-- (0.25.0) six dots in the palette's trim, a triangle in the bottom-left corner, the selected gold under the
+	-- pointer (the game's 1x size grabber, mirrored, until then)
+	local W = MelloUI.Widgets
+	local dots = {}
+	local function PaintDots(key)
+		if type(W) == "table" and W.Paint then
+			for _, dot in ipairs(dots) do
+				W.Paint(dot, key, "vertex", 1)
+			end
+		end
+	end
+	for _, d in ipairs({ { 2, 2 }, { 6, 2 }, { 10, 2 }, { 2, 6 }, { 6, 6 }, { 2, 10 } }) do
+		local dot = grip:CreateTexture(nil, "OVERLAY")
+		dot:SetTexture("Interface\\Buttons\\WHITE8X8")
+		dot:SetSize(2, 2)
+		dot:SetPoint("BOTTOMLEFT", grip, "BOTTOMLEFT", d[1], d[2])
+		dots[#dots + 1] = dot
+	end
+	PaintDots("trim")
 	grip:SetAlpha(0.35)
 	Perf.SetScript(grip, "OnEnter", function(self)
 		self:SetAlpha(1)
+		PaintDots("selectedTrim")
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 		GameTooltip:SetText("Drag to size the tracker")
 		GameTooltip:Show()
 	end)
 	Perf.SetScript(grip, "OnLeave", function(self)
 		self:SetAlpha(0.35)
+		PaintDots("trim")
 		GameTooltip:Hide()
 	end)
 	Perf.SetScript(grip, "OnMouseDown", function(_, button)

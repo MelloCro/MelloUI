@@ -565,11 +565,12 @@ end
 -- The widget: the specs, and asking it to look again
 --------------------------------------------------------------------------------
 
+-- (0.25.0) the Services icons of MelloUI's icon set (the minimap's 1x tracking icons until then)
 local ICON = {
-	mail = "Interface\\Minimap\\Tracking\\Mailbox",
-	repair = "Interface\\Minimap\\Tracking\\Repair",
-	class = "Interface\\Minimap\\Tracking\\Class",
-	profession = "Interface\\Minimap\\Tracking\\Profession",
+	mail = MelloUI.Widgets.IconPath("svc_mail"),
+	repair = MelloUI.Widgets.IconPath("svc_repair"),
+	class = MelloUI.Widgets.IconPath("svc_classtrainer"),
+	profession = MelloUI.Widgets.IconPath("svc_proftrainer"),
 }
 local URGENT, REPAIR, MAIL, TRAINER = 100, 40, 20, 10
 

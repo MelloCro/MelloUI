@@ -226,8 +226,10 @@ end
 
 -- the round rims' kit (one look, the user's pick 9, 2026-10-15): the kit's roundslot rim for everyone, as the Quest
 -- Tracker's marks and the Quest List's markers wear it, whatever the chat cover (until then only while it covered)
+-- (0.25.0) the kit's rim only while Oldschool dresses the chat; else MelloUI's own buttons of its icon set (the
+-- kit's roundslot rim for everyone until then)
 function View.RimKit()
-	return MelloUI.Kit or false
+	return MelloUI.Widgets.KitFor("chat")
 end
 
 function View.KitRim(b)
@@ -864,20 +866,22 @@ end
 
 local WHISPERS_KEY = "whispers"
 
+-- (0.25.0, the user's chat sheets: MelloUI's icon set) a window's tab by its name: the chat's buttons of the set
+-- (W.GlyphButton shows them whole; in Oldschool's look their glyphs, W.GLYPH_OF)
 local function GlyphFor(name)
 	name = type(name) == "string" and name:lower() or ""
 	if name:find("combat") then
-		return "sword"
+		return "chat_combat"
 	elseif name:find("loot") then
-		return "bag"
+		return "chat_loot"
 	elseif name:find("guild") then
-		return "flag"
+		return "chan_guild"
 	elseif name:find("whisper") then
-		return "reply"
+		return "chat_whispers"
 	elseif name:find("trade") then
-		return "channels"
+		return "chat_channels"
 	end
-	return "chat"
+	return "chat_general"
 end
 
 -- a count on a button's rim (a dark disc, the number in gold), on a frame of its own so it can pop in
@@ -1366,7 +1370,7 @@ function View.Rail()
 		local key = "c:" .. name:lower()
 		local t = View.tabs[key]
 		if not t then
-			t = NewTab("channels", "channel", key)
+			t = NewTab("chat_channels", "channel", key)
 			Buffer(key)
 			Restore(key, key)
 		end
@@ -1618,6 +1622,12 @@ local ActionClick = Perf.Shared("OnClick on a chat view button", function(b)
 	pcall(b.action)   -- (the windows it opens play their own sounds)
 end, "script")
 
+-- (0.25.0, the user's chat sheets) the row's buttons of MelloUI's icon set: a channel's letter button, and the
+-- actions' (the letter drawn on a disc, and the widget glyphs, until then; still so in Oldschool's look)
+local ROW_ART = { S = "chan_say", P = "chan_party", R = "chan_raid", I = "chan_instance", G = "chan_guild",
+	Y = "chan_yell", W = "chan_whisper", E = "chan_emote", channels = "chat_channels", friends = "chat_friends",
+	chart = "chat_history", cog = "chat_settings" }
+
 local function ButtonRow(frame)
 	View.buttons = {}
 	local n = #PICKS + #ACTIONS
@@ -1632,6 +1642,7 @@ local function ButtonRow(frame)
 				letter:SetTextColor(info.r, info.g, info.b)
 			end
 			letter:SetText(pick[1])
+			b.label = letter
 			b.slash, b.tipTitle, b.tipText = pick[2], pick[4], "Speak in " .. pick[4]:lower() .. " (" .. pick[2] .. ")."
 			Perf.SetScript(b, "OnClick", PickClick)
 		else
@@ -1642,6 +1653,7 @@ local function ButtonRow(frame)
 		end
 		Perf.SetScript(b, "OnEnter", ButtonEnter)
 		Perf.SetScript(b, "OnLeave", W.TipLeave)
+		b:SetGlyph(ROW_ART[pick and pick[1] or act[1]])
 		View.KitRim(b)
 		View.buttons[i] = b
 	end
@@ -1659,7 +1671,7 @@ local function PlaceButtons()
 	end
 end
 
--- every round button's rim: the kit's roundslot rim (View.RimKit)
+-- every round button's rim: View.RimKit's (the icon set's own, the kit's only under Oldschool's painted chat)
 function View.Rims()
 	local Kit = View.RimKit()
 	for _, t in pairs(View.tabs) do
@@ -1755,7 +1767,7 @@ local function Build()
 	drop:Hide()
 	View.dropLine = drop
 	-- the Whispers tab: the whisper window (ChatWhispers.lua), its count and its one light
-	local wt = View.NewTab("reply", "whispers", nil)
+	local wt = View.NewTab("chat_whispers", "whispers", nil)
 	local wb = wt.button
 	wt.key = WHISPERS_KEY
 	wb.tabName, wb.tabTip = TEXT.whispers, TEXT.whispersTip

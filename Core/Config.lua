@@ -140,12 +140,12 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "0.25.0", lines = {
 		"Settings: borders and parchment are on Oldschool; a new Automation page; Gains, FPS / latency and the damage meter have new homes.",
-		"One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off.",
 		"Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, a plate, a bar or the map, then a part; drag the party's and raid's parts on their large frame.",
-		"Windows: a new frame -- the logo heads the configurator's side list, small windows get a slim strip.",
+		"One look: MelloUI's parts wear its look, reskin or not; a new window frame -- the logo heads the configurator's side list, small windows get a slim strip.",
+		"A new icon set, sharp at every size: the tracker, Quest List, Route, chat, bags, damage meter, Services, widgets and the Configurator's controls; the quest you follow wears Route's flag.",
 		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, Hide Bar Art, a Bar Texture for each, one Health Colour for all.",
 		"Action bars and minimap: backdrops and MelloUI's square minimap for everyone, no painted skin needed; the round painted map is Oldschool's.",
-		"Quests: one gem per title, a ring on the quest you follow, Parchment its own switch; the tracker's Painted Skin is gone.",
+		"Quests: one gem per title, Parchment its own switch; the tracker's Painted Skin is gone.",
 		"Route: the World Marker shows the way and follows RestedXP Guides -- its steps in the Quest Tracker, its items in the Quest Items widget; a bead marks your flight point.",
 		"Edit Layout and bags: more windows move without the painted reskin; quality gems and grey junk on every slot.",
 		"Nameplates and Personal Display answer the fight: hits leave a lit chunk, crits flash, casts warn, kills flash out; dodges and stuns show on your bars. Combat Text has a Beside look.",

@@ -1255,7 +1255,21 @@ end
 -- Quest icon
 --------------------------------------------------------------------------------
 
-local QUEST_ICON_TEXTURE = "Interface\\GossipFrame\\AvailableQuestIcon"
+-- (0.25.0, the user's pick: "skull and bag", MelloUI's icon set) the icon by what the quest wants from the mob: the
+-- skull to slay it, the loot bag for an item it drops, the ! when the line says neither -- on a soft dark shade (the
+-- game's 1x AvailableQuestIcon until then)
+local QUEST_ICON = { kill = "kill", loot = "loot", quest = "quest_mark" }
+
+-- an unfinished objective line's kind: the mob's name in it or "slain" a kill, a count else an item
+local function ObjectiveKind(text, name)
+	if type(text) ~= "string" then
+		return "quest"
+	end
+	if (name and text:find(name, 1, true)) or text:find("slain", 1, true) then
+		return "kill"
+	end
+	return text:match("%d+%s*/%s*%d+") and "loot" or "quest"
+end
 local LINE_QUEST_OBJECTIVE = (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.QuestObjective) or 8
 local LINE_QUEST_TITLE = (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.QuestTitle) or 17
 
@@ -1263,7 +1277,7 @@ local function QuestActive()
 	return M.isEnabled and M.db and M.db.questIcon
 end
 
--- Does the unit's tooltip list an unfinished objective of one of our quests?
+-- Does the unit's tooltip list an unfinished objective of one of our quests? Its kind (QUEST_ICON's key), or false
 local function IsQuestTarget(unit)
 	if not (C_TooltipInfo and C_TooltipInfo.GetUnit) then
 		return false
@@ -1275,6 +1289,10 @@ local function IsQuestTarget(unit)
 		local data = C_TooltipInfo.GetUnit(unit)
 		if not data or type(data.lines) ~= "table" then
 			return false
+		end
+		local okN, name = pcall(UnitName, unit)
+		if not okN or type(name) ~= "string" or MelloUI.Safe.IsSecret(name) then
+			name = nil
 		end
 		local sawTitle = false
 		local sawObjective = false
@@ -1288,29 +1306,29 @@ local function IsQuestTarget(unit)
 					local cur, total = text:match("(%d+)%s*/%s*(%d+)")
 					if cur and total then
 						if tonumber(cur) < tonumber(total) then
-							return true
+							return ObjectiveKind(text, name)
 						end
 					else
 						local pct = text:match("(%d+)%%")
 						if pct then
 							if tonumber(pct) < 100 then
-								return true
+								return "quest"
 							end
 						else
-							return true
+							return ObjectiveKind(text, name)
 						end
 					end
 				else
-					return true
+					return "quest"
 				end
 			end
 		end
 		-- A quest title without any objective lines still means the mob is
 		-- relevant. If objectives were listed and none was unfinished (6/6,
 		-- 100%), the quest is done for this mob and the icon must go.
-		return sawTitle and not sawObjective
+		return (sawTitle and not sawObjective) and "quest" or false
 	end)
-	return ok and result == true
+	return ok and type(result) == "string" and result or false
 end
 
 -- each plate's quest icon, keyed by the game's unit frame: kept here, never
@@ -1340,12 +1358,29 @@ local function GetQuestIcon(unitFrame)
 			layer:SetFrameLevel(level + 5)
 		end
 		icon = layer:CreateTexture(nil, "OVERLAY")
-		icon:SetTexture(QUEST_ICON_TEXTURE)
 		icon:Hide()
+		-- its soft dark shade (the palette's inner panel), shown and hidden with it
+		local shade = layer:CreateTexture(nil, "ARTWORK")
+		shade:SetTexture(MelloUI.Shade and MelloUI.Shade.GLOW_FILE or nil)
+		shade:SetPoint("CENTER", icon, "CENTER", 0, 0)
+		MelloUI.Widgets.Paint(shade, "innerPanel", "vertex", 0.7)
+		shade:Hide()
+		-- (the icon is shown and hidden by SetShown, Show and Hide in this file: the shade follows each)
+		hooksecurefunc(icon, "SetShown", function(_, on)
+			shade:SetShown(on)
+		end)
+		hooksecurefunc(icon, "Show", function()
+			shade:Show()
+		end)
+		hooksecurefunc(icon, "Hide", function()
+			shade:Hide()
+		end)
+		icon.shade = shade
 		questIcons[unitFrame] = icon
 	end
 	local size = M.db.questIconSize or 22
 	icon:SetSize(size, size)
+	icon.shade:SetSize(size * 1.6, size * 1.6)
 	icon:ClearAllPoints()
 	-- beside the Nameplate Kit's left gem cap while it dresses the plate
 	-- (the cap stands outside the bar), else beside the raid mark / bar
@@ -1383,9 +1418,13 @@ local function UpdateQuestIcon(plate)
 		return
 	end
 	local unit = GetPlateUnit(plate)
-	local show = unit and IsQuestTarget(unit)
+	local kind = unit and IsQuestTarget(unit)
 	local icon = GetQuestIcon(unitFrame)
-	icon:SetShown(show and true or false)
+	if kind and icon.kind ~= kind then
+		icon.kind = kind
+		MelloUI.Widgets.Icon(icon, QUEST_ICON[kind])
+	end
+	icon:SetShown(kind and true or false)
 end
 
 local function UpdateAllQuestIcons()
@@ -2201,7 +2240,7 @@ do
 		f.top:SetAllPoints(f)
 		f.top:SetFrameLevel(f.bar:GetFrameLevel() + 5)
 		f.quest = f.top:CreateTexture(nil, "OVERLAY")
-		f.quest:SetTexture(QUEST_ICON_TEXTURE)
+		MelloUI.Widgets.Icon(f.quest, QUEST_ICON.kill)   -- (the stage's enemy: a mob to slay)
 		f.quest:SetPoint("RIGHT", f.bar, "LEFT", -Stage.QUEST_GAP, 0)
 		f.name = Stage.Text(f.top, "SystemFont_NamePlate")
 		f.name:SetText(Stage.NAME)

@@ -50,7 +50,9 @@ local GAP_RUN, GAP_IN, SHARE = 8, 3, 0.66          -- between runs, inside one; 
 local CAP, LAY, RUN_SECONDS = 200, 30, 120          -- lines kept per conversation; bubbles laid at most
 local OPEN_TIME, CLOSE_TIME, BUTTON = 0.28, 0.18, 20
 local SAVE_CONVS, SAVE_WHISPERS = 30, 100   -- kept over a logout: the newest conversations, their newest lines
-local UNKNOWN = "Interface\\ChatFrame\\UI-ChatWhisperIcon"   -- someone whose class is not known
+-- someone whose class is not known: the chat's whisper button of MelloUI's icon set (0.25.0; the game's whisper
+-- icon until then), shown whole in the face's place
+local UNKNOWN = MelloUI.Widgets.IconPath("chan_whisper")
 local TEXT = {
 	title = "Whispers",
 	none = "No whispers yet. Whisper someone (/w Name) and the conversation shows here.",
@@ -351,7 +353,7 @@ local function Row(i)
 	View.KitRim(face)
 	row.face = face
 	local dot = row:CreateTexture(nil, "OVERLAY", nil, 6)
-	dot:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")   -- (the widgets' round mask)
+	dot:SetTexture(W.IconPath("map_dot"))   -- (0.25.0: the set's bead, its white tinted; a flat disc until then)
 	dot:SetSize(7, 7)
 	dot:SetPoint("CENTER", face, "BOTTOMRIGHT", -3, 3)
 	row.dot = dot
@@ -706,7 +708,7 @@ local function LayActions()
 	if not acts then
 		return
 	end
-	local Kit = View.RimKit()   -- (the kit's roundslot rim, for everyone)
+	local Kit = View.RimKit()   -- (the icon set's own buttons; the kit's rim under Oldschool's painted chat)
 	local x = -8
 	local parts = P()
 	for i = #parts.ACTIONS, 1, -1 do

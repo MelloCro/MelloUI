@@ -115,7 +115,7 @@ local LOGO = TEXTURE_PATH .. "LogoIcon.tga"
 -- a TGA)
 local BANNER = TEXTURE_PATH .. "InstallerBanner.tga"
 local BANNER_U, BANNER_V = 450 / 512, 245.5 / 256
-local TICK = "Interface\\RaidFrame\\ReadyCheck-Ready"
+local TICK = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\ql_completed"   -- (0.25.0: the icon set's gold tick; the game's 1x ready check until then)
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local NAME = "MelloUIInstallerFrame"   -- (named: the shell's Escape)
 local OWNER = "Installer window"            -- the bus owner while it exists
@@ -1261,9 +1261,7 @@ local function BuildReview(page)
 		local tick = row:CreateTexture(nil, "ARTWORK")
 		tick:SetSize(16, 16)
 		tick:SetPoint("RIGHT", row, "RIGHT", -14, 0)
-		tick:SetTexture(TICK)
-		tick:SetDesaturated(true)   -- (gold from the palette, not the art's own green)
-		W.Paint(tick, "selectedTrim", "vertex", 1)
+		tick:SetTexture(TICK)   -- (the set's gold tick, its own colours)
 		row.tick = tick
 		row.label:SetPoint("RIGHT", tick, "LEFT", -10, 0)
 		page.rows[i] = row

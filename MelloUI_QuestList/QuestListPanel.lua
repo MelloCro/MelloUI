@@ -118,7 +118,7 @@ local function ShowTipIcon(row)
 	local key = (dungeon ~= 0 and QL.Data().dungeons[dungeon]) and (QL.IsRaid(dungeon) and "raid" or "dungeon")
 		or QL.StarterKind(row)
 	if not (key and QL.SetStarterIcon(tipIcon.tex, key)) then
-		tipIcon.tex:SetAtlas("QuestNormal")
+		MelloUI.Widgets.Icon(tipIcon.tex, "quest_mark")
 	end
 	tipIcon.tex:SetDesaturated(false)
 	tipIcon:Show()
@@ -362,17 +362,8 @@ local function EnsureWidgets(button)
 	button.pin = button:CreateTexture(nil, "OVERLAY", nil, 1)
 	button.pin:SetSize(PIN_SIZE, PIN_SIZE)
 	button.pin:SetPoint("CENTER", button.check, "BOTTOMRIGHT", -3, 3)
-	-- The map's own pin art, not the small chat icon version.
-	local pinned = false
-	for _, atlas in ipairs({ "Waypoint-MapPin-Minimap-Tracked", "Waypoint-MapPin-Tracked", "Waypoint-MapPin-Untracked" }) do
-		if pcall(button.pin.SetAtlas, button.pin, atlas) and button.pin:GetAtlas() then
-			pinned = true
-			break
-		end
-	end
-	if not pinned then
-		button.pin:SetTexture([[Interface\MINIMAP\TRACKING\None]])
-	end
+	-- (0.25.0) the gold pin with Route's red flag of MelloUI's icon set (the map's own pin atlas until then)
+	MelloUI.Widgets.Icon(button.pin, "goal_pin")
 	button.pin:Hide()
 	-- its scripts, once (EntryClick above)
 	Perf.SetScript(button, "OnClick", EntryClick)
@@ -476,7 +467,9 @@ local function InitHeader(button, entry)
 		highlight:ClearAllPoints()
 		highlight:SetAllPoints(button.plateArea)
 	end
-	button.plus:SetAtlas(entry.collapsed and "common-button-list-plus" or "common-button-list-minus", true)
+	-- (0.25.0) the fold buttons of MelloUI's icon set (the game's list +/- atlases until then)
+	MelloUI.Widgets.Icon(button.plus, entry.collapsed and "btn_expand" or "btn_collapse")
+	button.plus:SetSize(PIN_SIZE, PIN_SIZE)   -- (the pin's 14: the atlas' own size until then)
 	button.label:SetText(entry.name)
 	local bar = button.progress
 	if entry.sub then
@@ -556,25 +549,32 @@ local function InitRow(button, entry)
 	button.title:SetText(stepText .. levelText .. row[QL.F_TITLE])
 	-- Icon: tick = done before; yellow ? = in log and finished; grey ? = in log,
 	-- not finished; yellow ! = can be picked up; grey ! = not yet (level).
+	-- (0.25.0, MelloUI's icon set; the game's atlases, greyed for the states between, until then) the tick done
+	-- before (greyed), the ? to hand in, the grey ? still in the log, the ! to take, the grey ! not yet (its level),
+	-- or what the quest begins from
+	local W = MelloUI.Widgets
 	button.check:Show()
 	if entry.completed then
-		button.check:SetAtlas("questlog-icon-checkmark-yellow")
+		W.Icon(button.check, "ql_completed")
 		button.check:SetDesaturated(true)
 		button.check:SetAlpha(0.7)
 		KeyColour(button.title, "text", QL.DONE_ALPHA)   -- done: the text colour a step down
 	elseif entry.onQuest then
-		button.check:SetAtlas("QuestTurnin")
-		button.check:SetDesaturated(not entry.ready)
-		button.check:SetAlpha(entry.ready and 1 or 0.6)
+		W.Icon(button.check, entry.ready and "turnin_mark" or "voice_progress")
+		button.check:SetDesaturated(false)
+		button.check:SetAlpha(entry.ready and 1 or 0.85)
 		button.title:SetTextColor(r, g, b, 1)   -- (a row laid done before comes back to full)
 	else
 		-- not taken yet: the "!", or what the quest begins from (swords, chest, instance door)
 		local starter = QL.StarterKind(row)
-		if not (starter and QL.SetStarterIcon(button.check, starter)) then
-			button.check:SetAtlas("QuestNormal")
+		if starter and QL.SetStarterIcon(button.check, starter) then
+			button.check:SetDesaturated(not entry.available)
+			button.check:SetAlpha(entry.available and 1 or 0.6)
+		else
+			W.Icon(button.check, entry.available and "quest_mark" or "ql_notyet")
+			button.check:SetDesaturated(false)
+			button.check:SetAlpha(entry.available and 1 or 0.85)
 		end
-		button.check:SetDesaturated(not entry.available)
-		button.check:SetAlpha(entry.available and 1 or 0.6)
 		button.title:SetTextColor(r, g, b, 1)
 		if entry.hidden then
 			-- (0.19.5: hidden by hand, listed while Show Hidden Quests is on)
