@@ -2842,6 +2842,8 @@ local function GroupRow()
 	return mapW, cell, (mapW - n * cell) / (n + 1)
 end
 
+local RINGED_GROW = 31 / 21 * 0.96   -- (0.25.0) a set icon's size against the icon's: the old rim's reach
+
 local function LayoutBar()
 	if not bar then
 		return
@@ -2904,7 +2906,14 @@ local function LayoutBar()
 			b.rim:ClearAllPoints()
 			b.rim:SetPoint("TOPLEFT", b, "TOPLEFT", -5 * k, 4 * k)
 		end
-		LayLight(b, M.db.roundIcons and true or false, kit)
+		if b.ringedIcon then
+			-- (0.25.0) one of the set's icons, at this size: as large as the old rim reached round the icon, and its
+			-- round light the same in every look (it wears no kit rim)
+			b.icon:SetSize(icon * RINGED_GROW, icon * RINGED_GROW)
+			LayLight(b, true, false)
+		else
+			LayLight(b, M.db.roundIcons and true or false, kit)
+		end
 	end
 	if kit then
 		for _, b in ipairs(bar.buttons) do
@@ -2950,7 +2959,6 @@ end
 -- Round medallion icons: the icon under a circular mask with the classic
 -- minimap tracking rim around it.
 local RIM_TEXTURE = "Interface\\Minimap\\MiniMap-TrackingBorder"
-local RINGED_GROW = 31 / 21 * 0.96   -- (0.25.0) a set icon's size against the button: the old rim's reach
 local function ApplyIconShape()
 	if not bar then
 		return
@@ -2970,7 +2978,8 @@ local function ApplyIconShape()
 			b.rim:SetPoint("TOPLEFT", b, "TOPLEFT", -5 * k, 4 * k)
 		end
 		local of = b.kind or b.group
-		if of and MelloUI.Widgets.IconRinged(of.icon) then
+		b.ringedIcon = (of and MelloUI.Widgets.IconRinged(of.icon)) and true or nil
+		if b.ringedIcon then
 			-- (0.25.0) one of the set's Services icons: whole, its own disc and ring, as large as the old rim
 			-- reached round the button, with no rim of ours or the kit's over it (Round Icons or not)
 			b.icon:RemoveMaskTexture(b.mask)

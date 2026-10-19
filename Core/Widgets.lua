@@ -889,6 +889,7 @@ function KC.LayIcon(tex, w, h, kind, dir, state, alpha, glyph, icon)
 		tex:SetVertexColor(1, 1, 1, 1)
 		local turn = KC.TURN[kind]
 		tex:SetRotation(turn and turn[dir or (kind == "arrow" and "down" or "up")] or 0)
+		tex.melloTurned = true   -- (a painted plate laid after it turns it back)
 	end
 	tex.melloW, tex.melloH = w, h
 	local s
@@ -917,7 +918,35 @@ function KC.State(kind, hover, pressed, checked, disabled)
 	return (hover or pressed) and "hover" or "normal"
 end
 
+-- (0.25.0) every control laid, by its texture (weak), with its last lay: when its area's look switches (bus
+-- 'look:<area>': Oldschool's painted plate or the set's icon) each is laid again in the new look; the listener taken
+-- at an area's first lay, never at login
+KC.laid = setmetatable({}, { __mode = "k" })
+do
+	local listened = {}
+	local function ReLayAll()
+		for tex, a in pairs(KC.laid) do
+			tex.melloPiece = nil   -- (the other look's art: laid anew)
+			KC.Lay(tex, a[1], a[2], a[3], a[4], a[5], a[6], a[7])
+		end
+	end
+	function KC.Remember(tex, w, h, kind, dir, state, alpha, glyph)
+		local a = KC.laid[tex]
+		if a then
+			a[1], a[2], a[3], a[4], a[5], a[6], a[7] = w, h, kind, dir, state, alpha, glyph
+		else
+			KC.laid[tex] = { w, h, kind, dir, state, alpha, glyph }
+		end
+		local area = tex.melloArea or "config"
+		if not listened[area] and MelloUI.On then
+			listened[area] = true
+			MelloUI:On("look:" .. area, ReLayAll, "the controls' look (" .. area .. ")")
+		end
+	end
+end
+
 function KC.Lay(tex, w, h, kind, dir, state, alpha, glyph)
+	KC.Remember(tex, w, h, kind, dir, state, alpha, glyph)
 	local icon = KC.ICON[kind]
 	if icon and not KC.Painted(tex.melloArea) then
 		return KC.LayIcon(tex, w, h, kind, dir, state, alpha, glyph, icon)
@@ -948,6 +977,10 @@ function KC.Lay(tex, w, h, kind, dir, state, alpha, glyph)
 	end
 	if tex.melloPiece ~= name then
 		tex.melloPiece = name
+		if tex.melloTurned then
+			tex:SetRotation(0)   -- (0.25.0: the set's icon turned it, KC.TURN)
+			tex.melloTurned = nil
+		end
 		Kit:Apply(tex, name)
 	end
 	tex.melloW, tex.melloH = w, h
@@ -2007,7 +2040,9 @@ end
 --     handle), "slider" (a slider's track), "knob" (its handle); opts.left:
 --     the fill reaching that far left of the rect (an edit box's art: the
 --     search glass inside it); opts.body = false: a plate's edge alone;
---     opts.glyph: a + / - / arrow as its bare glyph at any size (no plate)
+--     opts.glyph: a + / - / arrow as its bare glyph at any size (no plate);
+--     opts.area (0.25.0): the look area a kit kind follows -- the set's icon, or Oldschool's painted piece while that
+--     area is painted (KC.Painted); the configurator's ("config") when none
 --   W.FlatState(parts, hover, pressed, checked, disabled, focus)
 --   W.FlatDir(parts, dir)   an arrow turned ("up" / "down" / "left" / "right")
 --   W.FlatKind(parts, kind) a + become a - and back (the Quest Tracker's folds)
@@ -2053,6 +2088,7 @@ do
 			-- (an icon button's plate under the game's glyph or the caller's: BACKGROUND)
 			local tex = holder:CreateTexture(nil, kind == "button" and "BACKGROUND" or "ARTWORK", nil, 2)
 			tex.melloOn = holder
+			tex.melloArea = opts.area   -- (0.25.0: the look area it follows, KC.Painted; the configurator's when none)
 			p.piece, p.dir = tex, (kind == "arrow" and (opts.dir or "down")) or (kind == "titlearrow" and (opts.dir or "up")) or nil
 			p.glyph = opts.glyph   -- (a + / - / arrow as its bare glyph at any size: the rule's `glyph`)
 			holder.melloFlat = p
@@ -2856,6 +2892,31 @@ do
 	-- (0.25.0) the set's round button in place of the plate and its glyph, while the button's area is not in
 	-- Oldschool's painted look: kind "cog" the chat's Settings button, "bin" (Discard) the bin button
 	local PLATE_ART = { cog = "chat_settings", bin = "btn_discard" }
+	local artButtons = setmetatable({}, weakKeys)   -- [b] = its area: the buttons that wear a picture of the set
+	local artAreas = {}
+
+	-- the set's picture, or the painted plate and its glyph, as the button's area looks now: laid at its making and
+	-- again on 'look:<area>' (the reskin switched while it stands)
+	local function PlateLook(b)
+		local painted = KC.Painted(b.plateArea)
+		local plate = plates[b] and plates[b].piece
+		b.art:SetShown(not painted)
+		if plate then
+			plate:SetShown(painted)   -- (hidden, not faded: KC.Lay sets the piece's alpha on each size and state change)
+		end
+		b.plateGlyph:SetAlpha(painted and 1 or 0)
+		if b.artLight then
+			b.artLight:SetAlpha(painted and 0 or 1)   -- (the plate lights itself, W.FlatState)
+		end
+	end
+
+	local function PlateLooks(area)
+		for b, a in pairs(artButtons) do
+			if a == area then
+				PlateLook(b)
+			end
+		end
+	end
 
 	function W.PlateButton(parent, w, h, glyphSize, area, scripts, kind)
 		local b = CreateFrame("Button", nil, parent)
@@ -2877,19 +2938,23 @@ do
 		end
 		b.plate = p.piece
 		local art = PLATE_ART[kind]
-		if art and not KC.Painted(area) then
+		if art then
 			local t = b:CreateTexture(nil, "ARTWORK", nil, 4)
 			local side = math.min(w, h)
 			t:SetSize(side, side)
 			t:SetPoint("CENTER")
 			W.Icon(t, art)
-			b.art = t
-			glyph:SetAlpha(0)
-			if p.piece then
-				-- (hidden, not faded: KC.Lay sets the piece's alpha again on each size and state change)
-				p.piece:Hide()
+			b.art, b.plateArea, b.plateGlyph = t, area, glyph
+			b.artLight = W.HoverLight(b, "round", t)
+			local key = area or "config"
+			artButtons[b] = key
+			if not artAreas[key] and MelloUI.On then
+				artAreas[key] = true
+				MelloUI:On("look:" .. key, function()
+					PlateLooks(key)
+				end, "the plate buttons' look (" .. key .. ")")
 			end
-			W.HoverLight(b, "round", t)
+			PlateLook(b)
 		end
 		return b, glyph
 	end

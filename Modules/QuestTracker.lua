@@ -685,6 +685,10 @@ local Art = {}
 -- "plus" or "minus", or an "arrow" up; 0.19.9 the kit's NewUI2 glyph, alone
 -- at a toggle's size), made the first time. `lit`: under the pointer. True
 -- while it shows (false where the widget set is missing: nothing drawn).
+-- (0.25.0) the toggles follow the tracker's look area, MelloUI's always: the set's icons whatever the reskin
+Art.FLAT_OPTS = { area = "questTracker" }
+Art.ARROW_OPTS = { dir = "up", area = "questTracker" }
+
 function Art.Flat(button, kind, lit)
 	local W = MelloUI.Widgets
 	if not (type(W) == "table" and W.FlatOver) then
@@ -692,7 +696,7 @@ function Art.Flat(button, kind, lit)
 	end
 	local p = button.flat
 	if not p then
-		p = W.FlatOver(button, kind, kind == "arrow" and { dir = "up" } or nil)
+		p = W.FlatOver(button, kind, kind == "arrow" and Art.ARROW_OPTS or Art.FLAT_OPTS)
 		button.flat = p
 	end
 	W.FlatShown(p, true)
