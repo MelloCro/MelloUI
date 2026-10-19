@@ -64,8 +64,10 @@ Modules\Kit.lua
 Modules\KitPainted.lua
 Modules\KitWindow.lua
 Modules\KitShade.lua
+Modules\KitShadePainted.lua
 Modules\KitMarks.lua
 Modules\KitBorders.lua
+Modules\KitBordersPainted.lua
 Modules\KitBackdrop.lua
 Modules\UIModifications.lua
 Modules\DarkMode.lua
