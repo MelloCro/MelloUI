@@ -63,6 +63,7 @@ Media\EditModeLayout.lua
 Modules\Kit.lua
 Modules\KitPainted.lua
 Modules\KitWindow.lua
+Modules\KitWindowPainted.lua
 Modules\KitShade.lua
 Modules\KitShadePainted.lua
 Modules\KitMarks.lua
