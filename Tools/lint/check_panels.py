@@ -134,9 +134,9 @@ CEILINGS = {
     "colour:Modules/ActionButtons.lua": 0,
 }
 
-# Kit.lua from this line on is the kit demo and the slice test (/kitdemo,
-# /kitwhat, /mellokit): developer windows, not the addon's own
-KIT_DEMO = ("Modules/Kit.lua", "-- /kitdemo [scale]: one window with every block")
+# The painted engine (Modules/KitPainted.lua, one look stage I: cut from Kit.lua) from this line on is the kit
+# demo and the slice test (/kitdemo, /kitwhat, /mellokit): developer windows, not the addon's own
+KIT_DEMO = ("Modules/KitPainted.lua", "-- /kitdemo [scale]: one window with every block")
 
 # The Gamepad UI checks' names: the game's panel openers, its popup
 # functions (every one shows, hides, queues or defines a popup, or reads the
@@ -185,7 +185,7 @@ CHECKS = {
                       "a hand-made next-frame coalescer: Kit:NextFrame(key, fn), fn bound once"),
     "portrait-759": (r"SetSize\(w \* 0\.759", None,
                      "an inline portrait fit: Kit:FitPortrait"),
-    "medallion-to-ring": (r"MEDALLION_TO_RING *=", {"skip": ["Modules/Kit.lua"]},
+    "medallion-to-ring": (r"MEDALLION_TO_RING *=", {"skip": ["Modules/KitPainted.lua"]},
                           "a copy of the kit's medallion ratio: Kit:FitPortrait / the kit's own constant"),
     "fit-icon-rim": (r"^local function FitIconRim\(", None,
                      "a panel's own icon-rim fit: Kit:SlotStone / the kit's rim helpers"),
@@ -234,7 +234,7 @@ CHECKS = {
                       "a guard or a fallback on MelloUI.Palette: it is defined in Core.lua, which loads first"),
     # a shade partner made by hand, outside the kit and its shade system
     # (0.14.0: the nameplates' and the Route arrow's are the two left)
-    "direct-shadow": (r"Kit:Shadow(?:Nine)?\(", {"skip": ["Modules/Kit.lua", "Modules/KitShade.lua"]},
+    "direct-shadow": (r"Kit:Shadow(?:Nine)?\(", {"skip": ["Modules/Kit.lua", "Modules/KitPainted.lua", "Modules/KitShade.lua"]},
                       "a partner made by hand: Kit:ShadeElement(root, area):Add(...) (Modules/KitShade.lua), which "
                       "keeps the area switches, the strength and the per-frame budget"),
     # a screen rect read by hand: GetRect in a pcall, then the same region's

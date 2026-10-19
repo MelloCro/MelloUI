@@ -76,7 +76,8 @@ from features import feature_files  # noqa: E402  (the feature addons' files, ch
 
 # ---------------------------------------------------------------------------------------------------------------- classes
 # the shared systems: they paint for every part (W.Paint / Kit:Paint, the widget set, the shell, the kit)
-SHARED = ["Core/GameLook.lua", "Core/Widgets.lua", "Modules/KitWindow.lua", "Core/Core.lua", "Modules/Kit.lua"]
+SHARED = ["Core/GameLook.lua", "Core/Widgets.lua", "Modules/KitWindow.lua", "Core/Core.lua", "Modules/Kit.lua",
+          "Modules/KitPainted.lua"]
 
 # MelloUI's own parts, by feature ("<folder>/*": every Lua file a feature addon's TOC lists)
 OWN = {

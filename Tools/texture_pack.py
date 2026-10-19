@@ -1417,6 +1417,8 @@ def write_layout(layout, path, uvmap=None, resized=None, header=None):
 # ---------------------------------------------------------------- kit tuning remap (Modules/Kit.lua, tested here)
 
 KIT_LUA = os.path.join(ROOT, "Modules", "Kit.lua")
+# (one look stage I: the painted engine, the tuning's home, cut from Kit.lua and loaded right after it)
+KIT_PAINTED_LUA = os.path.join(ROOT, "Modules", "KitPainted.lua")
 KIT_TUNING_LUA = os.path.join(ROOT, "Core", "KitTuning.lua")
 # (one look D1: the next-frame and combat queues and the UI scale watcher, which Kit.lua's old names point at)
 SCHEDULE_LUA = os.path.join(ROOT, "Core", "Schedule.lua")
@@ -1538,8 +1540,14 @@ def kit_tuning_session(layout_path, kit_path=None, tuning_path=None):
         load = lua.eval("function(src, name) return assert(loadstring(src, name)) end")
         files = [(tuning_path or KIT_TUNING_LUA, "=Core/KitTuning.lua"), (kit_path or KIT_LUA, "=Modules/Kit.lua")]
         # (a Kit.lua of one look D1 or later binds Core/Schedule.lua's services at load: that file first)
-        if "MelloUI.Schedule" in open(kit_path or KIT_LUA, encoding="utf-8").read():
+        kit_text = open(kit_path or KIT_LUA, encoding="utf-8").read()
+        if "MelloUI.Schedule" in kit_text:
             files.insert(0, (SCHEDULE_LUA, "=Core/Schedule.lua"))
+        # (a Kit.lua of one look stage I or later is the core look kit: Kit:ApplyTuning is in the painted engine
+        # beside it, Modules/KitPainted.lua)
+        if "Kit.__ = {}" in kit_text:
+            painted = os.path.join(os.path.dirname(kit_path), "KitPainted.lua") if kit_path else KIT_PAINTED_LUA
+            files.append((painted, "=Modules/KitPainted.lua"))
         for path, chunk in files:
             load(open(path, encoding="utf-8").read(), chunk)("MelloUI", lua.globals().KitStubNS)
         return lua, lua.eval(KIT_SESSION_LUA)()
