@@ -1323,7 +1323,7 @@ end
 -- chest). One baked white picture per icon, Media\Textures\Icons\Halo\<name>
 -- (Tools\make_icons.py HALO: the icon's alpha grown and blurred on a canvas
 -- reaching a quarter of the icon past each side), tinted with a palette
--- colour (selectedTrim, innerPanel). It is the UI Shade's area "icons"
+-- colour (selectedTrim added as light, innerPanel). It is the UI Shade's area "icons"
 -- (Modules/KitShade.lua; "Shade: Map Icons" on Look > General): shown while
 -- that area is on, at the UI Shade's strength.
 --   MelloUI.Shade:Lift(tex, name[, size]) -> the lift's texture, or nil
@@ -1438,6 +1438,7 @@ do
 			local key = IsDisc(name) and GLOW_KEY or SHADE_KEY
 			if key ~= lift.key then
 				lift.key = key
+				tex:SetBlendMode(key == GLOW_KEY and "ADD" or "BLEND")   -- (the glow is light, as the round glow's)
 				lift:Paint()
 			end
 		end
