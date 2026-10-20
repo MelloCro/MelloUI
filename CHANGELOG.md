@@ -10,7 +10,8 @@
 - Fredoka: MelloUI's text and titles wear one round, friendly font, Fredoka, with or without UI Modifications. It is also the new default Font Style for the whole interface (Look > Fonts); a style you chose stays yours.
 - Configurator: every page and group in the side list has its own picture from the new icon set. The dropdowns, the page tabs and the designers' chips wear the new pieces (the picked chip gold), and every heading has a gold divider with a diamond.
 - A new icon set, sharp at every size, for MelloUI's own buttons and marks: the Quest Tracker, the Quest List and its map, Route, the chat and the whisper window, the bags, the damage meter, Services, Reminders, the widgets, Voice Over, Combat Text and the Configurator's check boxes, sliders and buttons. Under the painted reskin its painted rims stay.
-- Quest Tracker: each quest's mark is a round button of the set, a hand-in once the quest is done; the quest you follow wears Route's goal flag.
+- Quest Tracker: each quest's mark is a round button of the set, a hand-in once the quest is done; the quest you follow wears Route's goal flag. When a quest is done its mark pops: a quick squash and bounce (Progress Motion; none with Reduce Motion).
+- Route: the World Marker's arrow at the screen's edge is MelloUI's own sapphire arrow.
 - Route: the goal is one flag on the map, the minimap and the World Marker, red with the beads and cream with the line or dashes; on the minimap it stands on a small pointer over the spot.
 - Nameplates: the quest mark over an enemy shows what your quest wants: a skull to slay it, a bag for what it drops, a ! otherwise.
 - Action bars: Backdrops work without the painted skin. Switch a bar's backdrop on (Action Bars > Backdrops) and the bars you snap together share one soft dark shade that fades out at its edges, with no frame line. With the painted skin on, the gems and border styles stay as they were. Your backdrop switches carry over.

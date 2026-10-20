@@ -1142,13 +1142,70 @@ function Motion.Complete(block, fs)
 	anim:From(fs, "alpha", 0, Motion.TURNIN, "outQuad")
 	local mark = block.mark
 	if mark and mark:IsShown() then
-		anim:Pop(mark, Motion.UNFOLD, Motion.UNFOLD_RISE)
+		Motion.PopMark(block, mark)
 	end
 	if not block.sweep then
 		block.sweep = Motion.Glow(block, "OVERLAY")
 		block.sweepJob = { block = block }
 	end
 	anim:Drive(block.sweepJob, Motion.SweepStep, Motion.SWEEP, "linear", Motion.SweepOver)
+end
+
+-- (2026-10-20, the user's pick b for the modern look) the mark, now the hand-in one, pops: squashed flat, stretched
+-- tall and up a little, past its size, settled (POP seconds, POP_KEYS: { time, width, height, rise }). A stand-in of
+-- its picture does it over the real mark, which waits unseen meanwhile: the tracker's layout never sees a size change.
+-- A picture it cannot read: the old pop (fade in, rise)
+Motion.POP = 0.56
+Motion.POP_KEYS = { { 0, 1, 1, 0 }, { 0.18, 1.6, 0.65, 0 }, { 0.42, 0.78, 1.5, 4 }, { 0.68, 1.2, 1.2, 1 },
+	{ 0.84, 0.95, 0.95, 0 }, { 1, 1, 1, 0 } }
+
+function Motion.PopMark(block, mark)
+	local icon = mark.icon
+	local ok, tex = false, nil
+	if icon then
+		ok, tex = pcall(icon.GetTexture, icon)
+	end
+	if not (ok and tex) or Secret(tex) then
+		MelloUI.Anim:Pop(mark, Motion.UNFOLD, Motion.UNFOLD_RISE)
+		return
+	end
+	local s = block.popStand
+	if not s then
+		s = block:CreateTexture(nil, "OVERLAY", nil, 6)
+		block.popStand = s
+		block.popJob = { block = block }
+	end
+	s:SetTexture(tex)
+	s:SetTexCoord(icon:GetTexCoord())
+	block.popJob.mark = mark
+	Motion.PopStep(block.popJob, 0)
+	s:Show()
+	mark:SetAlpha(0)
+	MelloUI.Anim:Drive(block.popJob, Motion.PopStep, Motion.POP, "linear", Motion.PopOver)
+end
+
+function Motion.PopStep(job, u)
+	local keys = Motion.POP_KEYS
+	local a, b = keys[#keys - 1], keys[#keys]
+	for i = 2, #keys do
+		if u <= keys[i][1] then
+			a, b = keys[i - 1], keys[i]
+			break
+		end
+	end
+	local p = (u - a[1]) / math.max(0.001, b[1] - a[1])
+	p = p < 0 and 0 or (p > 1 and 1 or p)
+	p = p * p * (3 - 2 * p)
+	local size = job.mark:GetWidth() or 20
+	local s = job.block.popStand
+	s:SetSize(size * (a[2] + (b[2] - a[2]) * p), size * (a[3] + (b[3] - a[3]) * p))
+	s:ClearAllPoints()
+	s:SetPoint("CENTER", job.mark, "CENTER", 0, a[4] + (b[4] - a[4]) * p)
+end
+
+function Motion.PopOver(job)
+	job.block.popStand:Hide()
+	job.mark:SetAlpha(1)
 end
 
 function Motion.SweepStep(job, u)

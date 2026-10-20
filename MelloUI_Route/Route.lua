@@ -6149,9 +6149,16 @@ function Beacon.FootFade(beam)
 	beam.foot:SetAlpha(Beacon.FOOT_ALPHA * (beam.fade or 1))
 end
 
--- The game's own player arrow (its high-resolution direction arrows, the
--- oldest fallback last): the marker's edge arrow
+-- The player arrow: MelloUI's own (2026-10-20, the user's pick 2, Sapphire: the icon set's arrow_player, turning
+-- round its gem in the picture's middle); without the widget set the game's own (its high-resolution direction
+-- arrows, the oldest fallback last): the marker's edge arrow
 function Travel.PlayerArrow(tex)
+	local W = MelloUI.Widgets
+	if type(W) == "table" and type(W.IconPath) == "function" then
+		tex:SetTexture(W.IconPath("arrow_player"))
+		tex:SetTexCoord(0, 1, 0, 1)
+		return
+	end
 	for _, atlas in ipairs({ "ui-hud-minimap-arrow-player-2x", "ui-hud-minimap-arrow-player" }) do
 		if pcall(tex.SetAtlas, tex, atlas) and tex:GetAtlas() then
 			return

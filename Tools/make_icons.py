@@ -65,11 +65,16 @@ for n in ("page_look", "page_windows", "page_fader", "page_oldschool", "page_fra
     SET.append(("pages", n, n, 64))
 for n in ("cat_look", "cat_frames", "cat_chat", "cat_quests", "cat_sound"):
     SET.append(("cats", n, n, 64))
+# (the user's pick 2, Sapphire, 2026-10-20) the player arrow: it turns round its gem, the gem the picture's middle
+# (cut_pieces.py arrows()); square, never cropped (SET's oblong rule would move the gem)
+SET.append(("arrows", "arrow_sapphire", "arrow_player", 128))
 
 
 def load(group, name):
     if group == "ring":
         return Image.open(os.path.join(ART, "ring", name + ".png")).convert("RGBA")
+    if group == "arrows":   # (cut_pieces.py: one square per arrow, its gem the middle)
+        return Image.open(os.path.join(ART, "out", "arrows", name + ".png")).convert("RGBA")
     return key_pockets(Image.open(os.path.join(ART, "out", group, "png128", name + ".png")).convert("RGBA"))
 
 
