@@ -401,7 +401,7 @@ Lang:Add("deDE", {
 	["Colour of the health bars: the unit frames', the nameplates' and your party and raid frames' (Group Frames). Blizzard bakes the green into its artwork, so the module has to colour flat textures itself. By health shades the bar from your full health colour through the half one to the low one, and keeps doing so in combat. My Colour is one colour of yours. An NPC's nameplate keeps the game's own colour (its reaction and threat) with every choice but By health. On the party and raid frames Class and Class / reaction are the class colour."] = "Die Farbe der Gesundheitsbalken: die der Einheitenfenster, der Namensplaketten und deiner Gruppen- und Schlachtzugsfenster (Gruppenfenster). Blizzard backt das Grün in seine Grafik, deshalb muss das Modul flache Texturen selbst einfärben. „Nach Gesundheit“ tönt den Balken von deiner Farbe für volle Gesundheit über die halbe bis zur niedrigen und tut das auch im Kampf. „Meine Farbe“ ist eine Farbe deiner Wahl. Die Namensplakette eines NPCs behält bei jeder Wahl außer „Nach Gesundheit“ die Farbe des Spiels (seine Reaktion und Bedrohung). Auf den Gruppen- und Schlachtzugsfenstern sind „Klasse“ und „Klasse / Reaktion“ die Klassenfarbe.", -- draft
 	["Green (Blizzard)"] = "Grün (Blizzard)", -- draft
 	["Class colour for players"] = "Klassenfarbe für Spieler", -- draft
-	["Class (players) / reaction (NPCs)"] = "Klasse (Spieler) / Reaktion (NPCs)", -- draft
+	["Class (players) / reaction (NPCs)"] = "Klasse / Reaktion (NPCs)", -- draft
 	["By health (your three colours)"] = "Nach Gesundheit (deine drei Farben)", -- draft
 	["My Colour"] = "Meine Farbe", -- draft
 	["My Health Colour"] = "Meine Gesundheitsfarbe", -- draft
@@ -1941,7 +1941,7 @@ Lang:Add("deDE", {
 	["Frames and bars"] = "Fenster und Leisten", -- draft
 	["Chat and text"] = "Chat und Text", -- draft
 	["Quests and travel"] = "Quests und Reisen", -- draft
-	["Bars 1-8, stance, pet, possess, totem"] = "Leisten 1-8, Haltung, Begleiter, Besessenheit, Totem", -- draft
+	["Bars 1-8, stance, pet, possess, totem"] = "Leisten 1-8, Haltung, Begleiter", -- draft
 	["Button"] = "Taste", -- draft
 	["Cooldown timer"] = "Abklingzeit-Timer", -- draft
 	["End caps"] = "Endstücke", -- draft
@@ -2179,7 +2179,7 @@ Lang:Add("deDE", {
 	-- Core/Config.lua
 	["Module based interface tweaks for World of Warcraft: Forever."] = "Modulare Oberflächenanpassungen für World of Warcraft: Forever.", -- draft
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Deine ganze Einrichtung unter einem Namen. Speichere sie, lade sie oder mach sie zum Standard für eine frische Installation.", -- draft
-	["Languages: the configurator and the installer in German. Pick the language at the left of the top line; it starts on your game's own."] = "Sprachen: der Konfigurator und der Installer auf Deutsch. Wähle die Sprache links in der oberen Leiste; sie beginnt mit der deines Spiels.", -- draft
+	["Languages: the configurator and the installer in German, French, Spanish, Portuguese, Russian, Chinese and Korean. Pick one at the left of the top line."] = "Sprachen: der Konfigurator und der Installer auf Deutsch, Französisch, Spanisch, Portugiesisch, Russisch, Chinesisch und Koreanisch. Wähle eine links in der obersten Zeile.", -- draft
 	["A line not translated yet shows in English. Corrections are welcome on MelloUI's CurseForge translation page."] = "Eine noch nicht übersetzte Zeile erscheint auf Englisch. Korrekturen sind auf MelloUIs Übersetzungsseite bei CurseForge willkommen.", -- draft
 	["MelloUI's windows show Cyrillic, Chinese and Korean names in the game's letters instead of boxes; buttons grow to fit a longer label."] = "MelloUIs Fenster zeigen kyrillische, chinesische und koreanische Namen in den Buchstaben des Spiels statt als Kästchen; Knöpfe wachsen für eine längere Beschriftung mit.", -- draft
 	["A seamless world map of MelloUI's own (M): zoom from Azeroth to a village, ground and caves up close; your party, Route, flights, dungeons, quests and objectives on it."] = "Eine nahtlose Weltkarte von MelloUI selbst (M): Zoome von Azeroth bis in ein Dorf, Gelände und Höhlen aus der Nähe; deine Gruppe, Route, Flüge, Dungeons, Quests und Ziele darauf.", -- draft
@@ -2303,7 +2303,7 @@ Lang:Add("deDE", {
 	["The game keeps your settings; /mello status shows where they came from. The voice pack, MelloUI_VoicePack, replaces the old pack: a separate download in two parts from the 0.15.0 release (the Voice pack link above). Unzip both into the AddOns folder, where they make one MelloUI_VoicePack folder."] = "Das Spiel behält deine Einstellungen; /mello status zeigt, woher sie kamen. Das Stimmenpaket MelloUI_VoicePack ersetzt das alte Paket: ein eigener Download in zwei Teilen aus dem Release 0.15.0 (der Link „Stimmenpaket“ oben). Entpacke beide in den AddOns-Ordner, wo sie einen Ordner MelloUI_VoicePack bilden.", -- draft
 	["installed"] = "installiert", -- draft
 	["old pack: the new one is under Help"] = "altes Paket: das neue ist unter „Hilfe“", -- draft
-	["not installed (the link is under Help)"] = "nicht installiert (der Link ist unter „Hilfe“)", -- draft
+	["not installed (the link is under Help)"] = "nicht installiert (Link unter Hilfe)", -- draft
 	["Profile '%s' loaded."] = "Profil „%s“ geladen.", -- draft
 	["Load"] = "Laden", -- draft
 	["Go back to how MelloUI was before the installer ran ('Before install')? Your settings return to what they were then, and Edit Mode's layouts too if the installer changed them."] = "Zurück zu MelloUI, wie es vor dem Installer war („Before install“)? Deine Einstellungen kehren zu dem zurück, was sie damals waren, und die Layouts des Bearbeitungsmodus auch, falls der Installer sie geändert hat.", -- draft
@@ -2416,7 +2416,7 @@ Lang:Add("deDE", {
 	["Your own Edit Mode layout stays"] = "Dein eigenes Layout bleibt", -- draft
 	["UI scale: yours stays as it is"] = "UI-Skalierung: deine bleibt, wie sie ist", -- draft
 	["MelloUI never changes it"] = "MelloUI ändert sie nie", -- draft
-	["Add the '%s' Edit Mode layout (your own layouts stay)"] = "Das Layout „%s“ des Bearbeitungsmodus hinzufügen (deine eigenen Layouts bleiben)", -- draft
+	["Add the '%s' Edit Mode layout (your own layouts stay)"] = "Das Layout „%s“ hinzufügen (deine eigenen bleiben)", -- draft
 	["Mello's layout, fitted to this screen, as an account layout of its own, made active. Your own layouts stay in the list, and Revert puts the one you use now back."] = "Mellos Layout, an diesen Bildschirm angepasst, als eigenes Accountlayout, aktiviert. Deine eigenen Layouts bleiben in der Liste, und „Zurücksetzen“ stellt das wieder her, das du jetzt nutzt.", -- draft
 	["Pieces at an edge keep their distance to it; the centre group tightens to fit; then everything is checked for overlaps."] = "Teile an einem Rand behalten ihren Abstand dazu; die mittlere Gruppe rückt zusammen, damit es passt; dann wird alles auf Überlappungen geprüft.", -- draft
 	["Worth a look in the game once it is in:"] = "Im Spiel einen Blick wert, sobald es drin ist:", -- draft
@@ -2498,9 +2498,9 @@ Lang:Add("deDE", {
 	["Mello's modules and their settings"] = "Mellos Module und ihre Einstellungen", -- draft
 	["The painted look and its choices"] = "Das gemalte Aussehen und seine Auswahl", -- draft
 	["MelloUI's features and their settings"] = "MelloUIs Funktionen und ihre Einstellungen", -- draft
-	["The painted reskin is switched off; your bars and layout stay as they are"] = "Der gemalte Skin ist ausgeschaltet; deine Leisten und dein Layout bleiben, wie sie sind", -- draft
+	["The painted reskin is switched off; your bars and layout stay as they are"] = "Der gemalte Skin ist aus; deine Leisten und dein Layout bleiben", -- draft
 	["No Edit Mode change"] = "Keine Änderung am Bearbeitungsmodus", -- draft
-	["Features stay off; chat on parchment needs Chat tweaks, so it stays off"] = "Funktionen bleiben aus; Chat auf Pergament braucht Chat-Anpassungen, also bleibt er aus", -- draft
+	["Features stay off; chat on parchment needs Chat tweaks, so it stays off"] = "Funktionen bleiben aus, also auch der Chat auf Pergament", -- draft
 	["Window places fitted to this screen"] = "Fensterplätze an diesen Bildschirm angepasst", -- draft
 	["Your other settings stay as they are"] = "Deine anderen Einstellungen bleiben, wie sie sind", -- draft
 	["Welcome to MelloUI"] = "Willkommen bei MelloUI", -- draft
@@ -2582,9 +2582,13 @@ Lang:Add("deDE", {
 	["Cooldown"] = "Abklingzeit", -- draft
 	["Out of range"] = "Außer Reichweite", -- draft
 	["Pressed"] = "Gedrückt", -- draft
+	["Click a strip to pick a bar; click a part of it for its settings."] = "Klicke auf einen Streifen, um eine Leiste zu wählen; klicke auf einen Teil davon für seine Einstellungen.", -- draft
+	["Your bars"] = "Deine Leisten", -- draft
 	-- Modules/Nameplates.lua
 	["%d px"] = "%d px", -- draft
 	["Your target"] = "Dein Ziel", -- draft
+	["Nameplate Tweaks is off: the game's own plate, none of MelloUI's parts on it."] = "Namensplaketten-Anpassungen sind aus: die Plakette des Spiels, ohne MelloUIs Teile darauf.", -- draft
+	["Click a part to pick it; its settings open below."] = "Klicke auf einen Teil, um ihn zu wählen; seine Einstellungen öffnen sich darunter.", -- draft
 	-- MelloUI_GroupFrames/GroupFrames.lua
 	["The aura's own icon, its time as a sweep."] = "Das eigene Symbol der Aura, ihre Zeit als Umlauf.", -- draft
 	["Draining Icon"] = "Leerlaufendes Symbol", -- draft
@@ -2610,6 +2614,7 @@ Lang:Add("deDE", {
 -- stale: ["Fixed: Heal Effects: spamming a heal no longer leaves the light looping on your cast bar after the cast."] = "Behoben: Heilungseffekte: Wiederholtes Wirken einer Heilung lässt das Licht nach dem Zauber nicht mehr auf deinem Zauberbalken kreisen.", -- draft
 -- stale: ["Fixed: Minimap: the day / night moon sits in the square map's top right corner, clear of the zone name."] = "Behoben: Minikarte: Der Tag-/Nacht-Mond sitzt in der oberen rechten Ecke der eckigen Karte, weg vom Zonennamen.", -- draft
 -- stale: ["Installer: Mello's layout fits many more UI scales; when Edit Mode is full of layouts, install without it or delete an older MelloUI one."] = "Installer: Mellos Layout passt zu vielen weiteren UI-Skalierungen; wenn der Bearbeitungsmodus voller Layouts ist, installiere ohne es oder lösche ein älteres von MelloUI.", -- draft
+-- stale: ["Languages: the configurator and the installer in German. Pick the language at the left of the top line; it starts on your game's own."] = "Sprachen: der Konfigurator und der Installer auf Deutsch. Wähle die Sprache links in der oberen Leiste; sie beginnt mit der deines Spiels.", -- draft
 -- stale: ["On"] = "An", -- draft
 -- stale: ["One area switched back on."] = "Ein Bereich wieder eingeschaltet.", -- draft
 -- stale: ["Services: your addons' minimap buttons gathered into an AddOns group in the Services row, off the minimap."] = "Dienste: die Minikartenknöpfe deiner Addons in einer Gruppe „Addons“ in der Dienste-Reihe gesammelt, weg von der Minikarte.", -- draft

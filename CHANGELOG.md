@@ -2,8 +2,8 @@
 
 ## 1.1.0
 
-- Languages: the configurator and the installer speak German. A Language dropdown at the left of the configurator's top line picks the language, starting on your game's own; a line not translated yet shows in English. The game's own words are used for the game's things (Namensplaketten, Aktionsleisten, Bearbeitungsmodus).
-- Languages: the German lines are a first draft; corrections are welcome on CurseForge's translation page for MelloUI.
+- Languages: the configurator and the installer speak German, French, Spanish, Portuguese, Russian, Simplified Chinese and Korean. A Language dropdown at the left of the configurator's top line picks the language, starting on your game's own; a line not translated yet shows in English. The game's own words are used for the game's things, as each client names them.
+- Languages: the translations are a first draft; corrections are welcome on CurseForge's translation page for MelloUI.
 - MelloUI's own windows keep the game's letters for Cyrillic, Chinese and Korean, so such names show in them instead of boxes.
 - Buttons in MelloUI's windows grow to fit a longer label instead of cutting it.
 

@@ -40,8 +40,8 @@ FILES = {
     "Modules/KitWindow.lua": (),
     "MelloUI_GroupFrames/GroupDesignerPage.lua": ("TEXT",),
     # (the designers' stages and the pages' own lists: their states' and indicators' labels)
-    "Modules/ActionButtons.lua": (),
-    "Modules/Nameplates.lua": (),
+    "Modules/ActionButtons.lua": ("TEXT",),
+    "Modules/Nameplates.lua": ("TEXT",),
     "MelloUI_GroupFrames/GroupFrames.lua": (),
 }
 # a section of a file the windows never draw (the slash commands' chat output, the probes): left out

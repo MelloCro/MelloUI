@@ -8,3 +8,9 @@
 ## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
 
 deDE.lua
+frFR.lua
+esES.lua
+ptBR.lua
+ruRU.lua
+zhCN.lua
+koKR.lua

@@ -3906,6 +3906,11 @@ local function GateRefresh(cover)
 		if not live and line and why and hint.IsTruncated and hint:IsTruncated() then
 			hint:SetText(GateLine(cover, why))
 		end
+		-- (and a line still cut -- a long label leaves the slot narrow -- says nothing: the row stays dimmed, its
+		-- tooltip and its click keep what wakes it)
+		if not live and hint.IsTruncated and hint:IsTruncated() then
+			hint:SetText("")
+		end
 		hint:SetShown(text ~= nil and text ~= "")
 	end
 end

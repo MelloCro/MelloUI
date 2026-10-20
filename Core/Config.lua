@@ -139,7 +139,7 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "1.1.0", lines = {
-		"Languages: the configurator and the installer in German. Pick the language at the left of the top line; it starts on your game's own.",
+		"Languages: the configurator and the installer in German, French, Spanish, Portuguese, Russian, Chinese and Korean. Pick one at the left of the top line.",
 		"A line not translated yet shows in English. Corrections are welcome on MelloUI's CurseForge translation page.",
 		"MelloUI's windows show Cyrillic, Chinese and Korean names in the game's letters instead of boxes; buttons grow to fit a longer label.",
 	} },
