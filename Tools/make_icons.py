@@ -68,6 +68,10 @@ for n in ("cat_look", "cat_frames", "cat_chat", "cat_quests", "cat_sound"):
 # (the user's pick 2, Sapphire, 2026-10-20) the player arrow: it turns round its gem, the gem the picture's middle
 # (cut_pieces.py arrows()); square, never cropped (SET's oblong rule would move the gem)
 SET.append(("arrows", "arrow_sapphire", "arrow_player", 128))
+# (2026-10-20, Batch 23) the action buttons' frames, square, hollow (Modules/ActionButtons.lua draws them as one
+# nine-slice each: the corners kept, the band at the rim's width)
+for n in ("normal", "hover", "pressed", "active", "empty", "range"):
+    SET.append(("pieces", "btn_frame_" + n, "frame_" + n, 128))
 
 
 def load(group, name):
@@ -75,6 +79,8 @@ def load(group, name):
         return Image.open(os.path.join(ART, "ring", name + ".png")).convert("RGBA")
     if group == "arrows":   # (cut_pieces.py: one square per arrow, its gem the middle)
         return Image.open(os.path.join(ART, "out", "arrows", name + ".png")).convert("RGBA")
+    if group == "pieces":   # (cut_pieces.py: each piece whole, at the sheet's size)
+        return key_pockets(Image.open(os.path.join(ART, "out", "pieces", name + ".png")).convert("RGBA"))
     return key_pockets(Image.open(os.path.join(ART, "out", group, "png128", name + ".png")).convert("RGBA"))
 
 

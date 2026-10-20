@@ -64,8 +64,13 @@ local M = MelloUI:RegisterModule("ActionButtons", {
 	defaults = {
 		pressLight = true,
 		rangeColours = true,
+		frames = true,
 	},
 	options = {
+		{ type = "toggle", key = "frames", name = "MelloUI Frames", new = "0.25.0",
+		  desc = "Every action button in MelloUI's frame: a dark iron rim with a gold line, brighter under the pointer, "
+			.. "bright gold while its aura or stance is on, red out of range, a dark slot when the button is empty. "
+			.. "Off: the game's own frames. The painted skin's bars keep their own (Oldschool)." },
 		{ type = "toggle", key = "pressLight", name = "Light While Pressed",
 		  desc = "While you hold an action button's key, or press it with the mouse, the whole button lights up in "
 			.. "the colour scheme's highlight colour, so you can see which button you are pressing." },
@@ -106,6 +111,109 @@ local function ColoursOn()
 end
 
 --------------------------------------------------------------------------------
+-- The frame (2026-10-20, the user's sheet, "a custom action bar ... border to fit"; ChatGPT Batch 23): MelloUI's
+-- frame on every button while the painted skin is off on the action bars (Kit area "actionbars"). One texture on
+-- the button's OVERLAY (under the light), a nine-slice of the set's frame (Media/Textures/Icons/frame_<state>, 128
+-- texels, its band FRAME.M texels each side drawn FRAME.BAND units wide; the whole picture where the client cannot
+-- cut a texture), in its state: empty (no action), active (checked: its aura or stance on), pressed (held), range
+-- (out of range), hover (the pointer on it), else normal -- laid again only when that changes. The game's own frame,
+-- pressed, hover and checked art (its NormalTexture, PushedTexture, HighlightTexture, CheckedTexture) unseen while
+-- it shows (alpha, written once each way, never on the game's per-frame paths), back when it goes. Made with the
+-- hooks: the bars show from the login, a texture a button.
+--------------------------------------------------------------------------------
+local FRAME = { M = 22, BAND = 5, SUB = 2, DIR = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\frame_",
+	GAME = { "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetCheckedTexture" } }
+local frameOf = setmetatable({}, { __mode = "k" })   -- [button] = its frame texture
+local framed = setmetatable({}, { __mode = "k" })    -- [button] = the state it shows ("off": the game's art back)
+local hover = setmetatable({}, { __mode = "k" })     -- [button] = true while the pointer is on it
+
+local function FramesOn()
+	if not (M.isEnabled and M.db and M.db.frames ~= false) then
+		return false
+	end
+	local K = MelloUI.Kit
+	return not (type(K) == "table" and type(K.IsOn) == "function" and K:IsOn("actionbars"))
+end
+
+local function FrameState(button)
+	local action = button.action
+	local hasAction = C_ActionBar and C_ActionBar.HasAction
+	if type(action) == "number" and not Secret(action) and type(hasAction) == "function" then
+		local ok, has = pcall(hasAction, action)
+		if ok and not Secret(has) and not has then
+			return "empty"
+		end
+	end
+	local ok, checked = pcall(button.GetChecked, button)
+	if ok and checked and not Secret(checked) then
+		return "active"
+	end
+	if pressed[button] then
+		return "pressed"
+	end
+	if outOfRange[button] then
+		return "range"
+	end
+	return hover[button] and "hover" or "normal"
+end
+
+-- the game's frame art seen (true) or not
+local function GameArt(button, on)
+	for _, getter in ipairs(FRAME.GAME) do
+		local get = button[getter]
+		local tex = type(get) == "function" and get(button)
+		if tex and tex.SetAlpha then
+			tex:SetAlpha(on and 1 or 0)
+		end
+	end
+end
+
+local function LayFrame(button)
+	local t = frameOf[button]
+	if not FramesOn() then
+		if t and framed[button] ~= "off" then
+			t:Hide()
+			framed[button] = "off"
+			GameArt(button, true)
+		end
+		return
+	end
+	if not t then
+		t = button:CreateTexture(nil, "OVERLAY", nil, FRAME.SUB)
+		t:SetAllPoints(button)
+		frameOf[button] = t
+	end
+	local state = FrameState(button)
+	if framed[button] == state then
+		return
+	end
+	if framed[button] == nil or framed[button] == "off" then
+		GameArt(button, false)
+		t:Show()
+	end
+	framed[button] = state
+	t:SetTexture(FRAME.DIR .. state)
+	if t.SetTextureSliceMargins and t.SetTextureSliceMode and t.SetScale then
+		local m = FRAME.M
+		t:SetTextureSliceMargins(m, m, m, m)
+		t:SetTextureSliceMode(Enum and Enum.UITextureSliceMode and Enum.UITextureSliceMode.Stretched or 0)
+		t:SetScale(FRAME.BAND / m)
+	end
+end
+
+local OnFrameEnter = Shared("OnEnter on an action button (its frame)", function(button)
+	hover[button] = true
+	LayFrame(button)
+end, "script")
+local OnFrameLeave = Shared("OnLeave on an action button (its frame)", function(button)
+	hover[button] = nil
+	LayFrame(button)
+end, "script")
+local OnFrameState = Shared("SetChecked / Update on an action button (its frame)", function(button)
+	LayFrame(button)
+end)
+
+--------------------------------------------------------------------------------
 -- The light
 --------------------------------------------------------------------------------
 local function ShowLight(button, on)
@@ -131,6 +239,7 @@ local function Press(button, by)
 	if pressed[button] ~= by then
 		pressed[button] = by
 		MelloUI:Fire("actionpress", button, by ~= nil)
+		LayFrame(button)
 	end
 	if by and not PressOn() then
 		by = nil
@@ -257,7 +366,7 @@ end)
 
 -- after the game's range indicator: out of range only when it checked
 local OnRange = Shared("ActionButton_UpdateRangeIndicator", function(button, checksRange, inRange)
-	if not ColoursOn() or type(button) ~= "table" or not button.icon then
+	if not (ColoursOn() or FramesOn()) or type(button) ~= "table" or not button.icon then
 		return
 	end
 	if Secret(checksRange) or Secret(inRange) then
@@ -265,6 +374,7 @@ local OnRange = Shared("ActionButton_UpdateRangeIndicator", function(button, che
 	end
 	outOfRange[button] = (checksRange and not inRange) and true or nil
 	LayCover(button)
+	LayFrame(button)
 end)
 
 -- a button's range now (the colours switched on: the game tells it only on a
@@ -296,6 +406,15 @@ local function Hook(button)
 	if type(button.UpdateUsable) == "function" then
 		hooksecurefunc(button, "UpdateUsable", OnUpdateUsable)
 	end
+	-- (the frame) the pointer, the checked state, a new or cleared action
+	Perf.HookScript(button, "OnEnter", OnFrameEnter)
+	Perf.HookScript(button, "OnLeave", OnFrameLeave)
+	if type(button.SetChecked) == "function" then
+		hooksecurefunc(button, "SetChecked", OnFrameState)
+	end
+	if type(button.Update) == "function" then
+		hooksecurefunc(button, "Update", OnFrameState)
+	end
 end
 
 local function HookAll()
@@ -318,6 +437,12 @@ local function HookAll()
 	if type(ActionButton_UpdateRangeIndicator) == "function" then
 		hooksecurefunc("ActionButton_UpdateRangeIndicator", OnRange)
 	end
+	-- (the frame) the painted skin's action bars on or off: the frames given way or back
+	MelloUI:On("look:actionbars", function()
+		for _, button in ipairs(buttons) do
+			LayFrame(button)
+		end
+	end, "Action Buttons' frames")
 	-- (0.21.2) a bar faded or back: its covers laid again (at the change only)
 	MelloUI:On("fade", function()
 		if ColoursOn() then
@@ -344,6 +469,7 @@ local function Refresh()
 			Grey(button, false)
 		end
 		LayCover(button)
+		LayFrame(button)
 	end
 end
 
