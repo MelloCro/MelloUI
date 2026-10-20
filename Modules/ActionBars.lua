@@ -1291,10 +1291,13 @@ end
 -- While MelloUI Frames is on and the painted skin is off on them (Kit area "statusbars"), the experience and
 -- reputation bars (the game's MainStatusTrackingBarContainer and SecondaryStatusTrackingBarContainer) wear the set's
 -- pieces where the game's art stood -- its BarFrameTexture, each bar's StatusBar.Background, its divider frames'
--- textures, unseen meanwhile (alpha, once each way): the frame (three slices; its opening the container's height,
--- its diamond ends past the bar's), the dark track, a notch on each divider, and a soft light on the fill's leading
--- edge (anchored to the fill: it rides with the bar, no OnUpdate). The fill stays the game's (its colour; its texture
--- Bar Texture's). Laid when the modules are on, again as the game shows another bar or lays its dividers anew.
+-- textures, unseen meanwhile (alpha, once each way): the frame (three slices; its opening on the bar, its diamond
+-- ends past the bar's), the dark track, a notch on each divider, and a soft light on the fill's leading edge
+-- (anchored to the fill: it rides with the bar) for a moment as the bar moves -- experience or reputation gained
+-- (PLAYER_XP_UPDATE / UPDATE_FACTION, the bars read the frame after: a value of its own, plain, that changed),
+-- never standing (the user, 2026-10-20: "persistant and are not going away"). The fill stays the game's (its
+-- colour; its texture Bar Texture's). Laid when the modules are on, again as the game shows another bar or lays
+-- its dividers anew.
 --------------------------------------------------------------------------------
 local Status = {
 	CONTAINERS = { "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" },
@@ -1307,6 +1310,9 @@ local Status = {
 	TRACK = { h = 32, l = 13.8, r = 12.3 },
 	cover = setmetatable({}, { __mode = "k" }),   -- [the game's region] = our parts over it
 	hooked = setmetatable({}, { __mode = "k" }),
+	sparks = setmetatable({}, { __mode = "k" }),  -- [a bar's StatusBar] = { tex, value }: its edge's light
+	GLOW = { TIME = 1.4, IN = 0.15, OUT = 0.55 },  -- (the light's moment: up, held, gone)
+	GLOW_KEY = "Action bars: a status bar's gain light",   -- (Kit:NextFrame's key)
 }
 
 function Status.On()
@@ -1416,8 +1422,9 @@ function Status.Bar(bar, shown)
 			spark:SetTexture(Status.DIR .. "bar_spark")
 			spark:SetBlendMode("ADD")
 			spark:SetPoint("CENTER", fill, "RIGHT", 0, 0)
+			spark:Hide()
 			parts.spark = spark
-			parts[4] = spark
+			Status.sparks[sb] = { tex = spark, value = Num(sb:GetValue()) }
 		end
 		Status.cover[bg] = parts
 	end
@@ -1428,6 +1435,8 @@ function Status.Bar(bar, shown)
 			local h = Num(sb:GetHeight()) or 10
 			parts.spark:SetSize(h * 2.2, h * 1.7)
 		end
+	elseif parts.spark then
+		parts.spark:Hide()
 	end
 	Status.Show(bg, parts, shown)
 end
@@ -1457,6 +1466,38 @@ function Status.Notches(c, shown)
 		end
 	end
 end
+
+-- a bar's edge light for a moment (MelloUI.Anim: none with Reduce Motion)
+function Status.GlowStep(job, u)
+	local G = Status.GLOW
+	local a = u < G.IN and u / G.IN or (u > G.OUT and (1 - u) / (1 - G.OUT) or 1)
+	job.tex:SetAlpha(math.max(0, math.min(1, a)))
+end
+
+function Status.GlowOver(job)
+	job.tex:Hide()
+end
+
+-- the bars read the frame after a gain: each that shows and moved lights its edge
+function Status.Glow()
+	if not Status.On() then
+		return
+	end
+	for sb, job in pairs(Status.sparks) do
+		local value = Num(sb:GetValue())
+		local was = job.value
+		job.value = value
+		if value and was and value ~= was and sb:IsVisible() then
+			Status.GlowStep(job, 0)
+			job.tex:Show()
+			MelloUI.Anim:Drive(job, Status.GlowStep, Status.GLOW.TIME, "linear", Status.GlowOver)
+		end
+	end
+end
+
+Status.OnGain = Perf.Shared("PLAYER_XP_UPDATE / UPDATE_FACTION (a status bar's gain light)", function()
+	Kit:NextFrame(Status.GLOW_KEY, Status.Glow)
+end, "script")
 
 function Status.Lay()
 	local shown = Status.On()
@@ -1498,6 +1539,13 @@ function Status.Start()
 			end
 			Perf.HookScript(c, "OnSizeChanged", Status.Again)
 		end
+	end
+	-- (the gains: one event frame, made as the look first starts)
+	if not Status.events then
+		Status.events = CreateFrame("Frame")
+		Status.events:RegisterEvent("PLAYER_XP_UPDATE")
+		Status.events:RegisterEvent("UPDATE_FACTION")
+		Status.events:SetScript("OnEvent", Status.OnGain)
 	end
 	Status.Lay()
 end

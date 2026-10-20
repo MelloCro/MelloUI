@@ -228,7 +228,7 @@ local ERRANDS = {
 -- AddOns (0.22.0): the entries its tray lists, one per addon button (the
 -- section of its own below, before the menu)
 local Addon = {
-	ICON = "Interface/Icons/INV_Misc_Gear_01",
+	ICON = MelloUI.Widgets.IconPath("svc_addons"),   -- (0.25.0: the set's; the game's gear before)
 	list = {},      -- the tray's entries, in name order: { addon = true, name, label, icon, obj, button }
 	byName = {},    -- [LibDBIcon name] = its entry (reused)
 	parent = {},    -- [button] = the parent it had, given back
@@ -241,7 +241,7 @@ local GROUPS = {
 	{ key = "repair", label = "Repair", members = { "repair" } },
 	{ key = "trainers", label = "Trainers", members = { "classtrainer", "proftrainer" } },
 	{ key = "looks", label = "Looks", members = { "barber", "transmog" } },
-	{ key = "errands", label = "Errands", errands = true, icon = "Interface/Icons/INV_Misc_Note_01",
+	{ key = "errands", label = "Errands", errands = true, icon = MelloUI.Widgets.IconPath("svc_errands"),
 	  members = { "restock", "mail", "repairgear", "trainer" } },
 	{ key = "addons", label = "AddOns", addons = true, icon = Addon.ICON, members = {} },
 }

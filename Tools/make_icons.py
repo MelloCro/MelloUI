@@ -34,7 +34,9 @@ for n in ("kill", "kill_elite", "kill_rare", "quest_mark", "turnin_mark", "loot"
 for n in ("pin_collect", "pin_portal", "pin_dungeon", "pin_raid", "pin_boat", "pin_zeppelin", "pin_tram"):
     SET.append(("pins", n, n, 64))
 for n in ("track_todo", "track_handin", "svc_repair", "svc_mail", "svc_inn", "svc_flight", "svc_auction", "svc_bank",
-          "svc_classtrainer", "svc_proftrainer", "svc_barber", "svc_vendor"):
+          "svc_classtrainer", "svc_proftrainer", "svc_barber", "svc_vendor",
+          # (Batch 30, 2026-10-20: Services' Errands and AddOns groups, the user's "needs its own icon to fit the theme")
+          "svc_errands", "svc_addons"):
     SET.append(("services", n, n, 64))
 for n in ("chat_general", "chat_combat", "chat_loot", "chat_whispers", "chan_say", "chan_party", "chan_raid",
           "chan_instance", "chan_guild", "chan_yell", "chan_whisper", "chan_emote", "chat_channels", "chat_friends",
@@ -373,20 +375,24 @@ def fx_light(name, art, size, colour, how):
 # power ones), the name plate's slate in the name slot, a darker slate in the bars' (a little see-through, as the
 # game's), the portrait ring over them all, its opening cut clear (the portrait shows through it).
 #   canvas, the picture (w, h) at its top left, the ring (centre x, y, opening radius), the band, each band's top
-#   (the slots between: name, health, mana, the class resource), the slots' x (from under the ring to the far edge)
+#   (the slots between: name, health, mana, the class resource), and across: under the ring (where the borders
+#   start), the slots' inside edge by the ring (the game's: each slot and its bar start there -- the user's
+#   screenshot of 2026-10-20, a dark piece of slot between the ring and the party's health bar) and the far edge.
+#   Between the ring and the slots the frame's top and foot borders run on under the ring, a dark iron between them
 UF_FRAMES = {
     # (the player: UI-HUD-UnitFrame-Player-PortraitOn-c60-2x, 396 x 142; with the class resource bar 396 x 148)
-    "uf_frame_player": ((512, 256), (396, 142), (73, 71, 52), 7, (22, 58, 90, 113), (100, 391)),
-    "uf_frame_player_res": ((512, 256), (396, 148), (73, 71, 52), 6, (23, 58, 90, 112, 134), (100, 391)),
+    "uf_frame_player": ((512, 256), (396, 142), (73, 71, 52), 7, (22, 58, 90, 113), (100, 144, 391)),
+    "uf_frame_player_res": ((512, 256), (396, 148), (73, 71, 52), 6, (23, 58, 90, 112, 134), (100, 144, 391)),
     # (the target's and focus's, its minus mob's the same: Target-PortraitOn-c60-2x, 388 x 136, the ring at the right)
-    "uf_frame_target": ((512, 256), (388, 136), (318.5, 67.5, 49.5), 6, (17, 52, 84, 106), (3, 290)),
+    "uf_frame_target": ((512, 256), (388, 136), (318.5, 67.5, 49.5), 6, (17, 52, 84, 106), (290, 249, 3)),
     # (the target of target's -- TargetofTarget-PortraitOn-c60-2x -- and the party's, the same shape:
     # CharacterFrameOnParty-PortraitOn-c60-2x, 240 x 98)
-    "uf_frame_small": ((256, 128), (240, 98), (45, 45.5, 33), 6, (6, 32, 55, 71), (55, 234)),
+    "uf_frame_small": ((256, 128), (240, 98), (45, 45.5, 33), 6, (6, 32, 55, 71), (55, 92, 234)),
 }
 UF_KINDS = ("name", "health", "power", "power")   # the slots from the top: their pieces
 UF_FILL_A = (0.92, 0.85, 0.85, 0.85)               # each slot's inside: its slate's alpha
 UF_BAND_M = 22                                     # a piece's band on its file, from its edge (cut to its picture)
+UF_IRON = (19, 22, 25)                             # the dark iron between the ring and the slots (the bands' own)
 
 
 def uf_piece(name):
@@ -429,10 +435,28 @@ def uf_fill(plate, w, h, alpha, dark):
     return Image.fromarray(arr.round().astype(np.uint8), "RGBA")
 
 
+def uf_rail(piece, w, b, foot):
+    # a piece's straight top (or foot) band drawn out to w, b high: a border running on under the ring
+    pw, ph = piece.size
+    m = UF_BAND_M
+    box = (pw // 4, ph - m, pw * 3 // 4, ph) if foot else (pw // 4, 0, pw * 3 // 4, m)
+    return piece.convert("RGBa").crop(box).resize((w, b), Image.LANCZOS).convert("RGBA")
+
+
 def uf_frame(name):
-    canvas, (w, h), (cx, cy, r_open), b, lines, (x0, x1) = UF_FRAMES[name]
+    canvas, (w, h), (cx, cy, r_open), b, lines, (under, inner, far) = UF_FRAMES[name]
     plate, gold, silver = uf_piece("uf_plate"), uf_piece("uf_health"), uf_piece("uf_power")
     art = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    # the slots from their inside edge by the ring (less the band) to the far edge; the borders from under the ring
+    if far > inner:
+        x0, x1, r0, r1, i0, i1 = inner - b, far, under, far, under, inner - b
+    else:
+        x0, x1, r0, r1, i0, i1 = far, inner + b, far, under, inner + b, under
+    top, foot = lines[0], lines[-1] + b
+    art.paste(Image.new("RGBA", (i1 - i0, foot - top), UF_IRON + (255,)), (i0, top))
+    last = silver if UF_KINDS[len(lines) - 2] == "power" else gold
+    art.alpha_composite(uf_rail(gold, r1 - r0, b, False), (r0, top))
+    art.alpha_composite(uf_rail(last, r1 - r0, b, True), (r0, foot - b))
     for i in range(len(lines) - 1):
         top, foot = lines[i], lines[i + 1] + b
         kind = UF_KINDS[i]

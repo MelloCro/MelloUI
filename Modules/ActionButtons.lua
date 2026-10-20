@@ -399,11 +399,12 @@ end
 --------------------------------------------------------------------------------
 -- Cooldown Ready (2026-10-20, the user: "this animation can be reused on the Action bars to notify when something
 -- comes off cooldown"; the golden frame flipbook, Media/Textures/Icons/fx_cooldown, Tools/make_icons.py FB_SQUARED).
--- As a button's cooldown runs out -- the game's own Cooldown frame's OnCooldownDone, post-hooked -- a golden square
--- runs its glint once round the button, its square on the button's edge. Only after a cooldown that ran longer than
--- READY.MIN (never the global cooldown): its start read by recency, the first SetCooldown since the last ran out
--- (its numbers never compared unless plain: they may be secret), a zero one or Clear() ending it unseen. One texture
--- a button, made on its first flash, over the frame (OVERLAY 7); driven by MelloUI.Anim; while the button shows.
+-- As a button's cooldown runs out -- the game's Clear() on its Cooldown frame or the frame's OnCooldownDone,
+-- post-hooked -- a golden square runs its glint once round the button, its square on the button's edge. Only after a
+-- cooldown that ran longer than READY.MIN (never the global cooldown): its start read by recency, the first SetCooldown since the last ran out
+-- (its numbers never compared unless plain: they may be secret); its end the game's Clear() or the frame's
+-- OnCooldownDone, on the action it began on (a zero SetCooldown ends it unseen). One texture a button, made on its
+-- first flash, over the frame (OVERLAY 7); driven by MelloUI.Anim; while the button shows.
 --------------------------------------------------------------------------------
 local READY = { MIN = 2.5, TIME = 0.6, SIZE = 1 / 0.8, FADE = 0.85 }   -- (SIZE: the square is 0.8 of each frame)
 local readyOf = setmetatable({}, { __mode = "k" })     -- [button] = { tex }: its flash
@@ -442,23 +443,32 @@ local function Flash(button)
 	MelloUI.Anim:Drive(r, ReadyStep, READY.TIME, "linear", ReadyOver)
 end
 
+-- (the action the button holds: a page turned or another action dropped on it ends what ran there unseen)
+local function ActionOf(button)
+	return Num(rawget(button, "action"))
+end
+
 local OnCooldownSet = Shared("SetCooldown on an action button's cooldown (Cooldown Ready)", function(cd, _, duration)
 	local d = Num(duration)
+	local button = cooldownOf[cd]
 	if d and d <= 0 then
 		since[cd] = nil
-	elseif not since[cd] then
-		since[cd] = GetTime()
+	elseif not since[cd] and button then
+		since[cd] = { at = GetTime(), action = ActionOf(button) }
 	end
 end)
 
-local OnCooldownClear = Shared("Clear on an action button's cooldown (Cooldown Ready)", function(cd)
-	since[cd] = nil
-end)
-
-local OnCooldownDone = Shared("OnCooldownDone of an action button's cooldown (Cooldown Ready)", function(cd)
+-- the cooldown over: the game's Clear() as its action's cooldown stops being active (ActionButton_ApplyCooldown, on
+-- the cooldown events: it comes before the frame's own OnCooldownDone, the user's test of 2026-10-20) or the frame's
+-- OnCooldownDone, whichever first; a flash when it ran long enough on the same action
+local OnCooldownEnd = Shared("Clear / OnCooldownDone on an action button's cooldown (Cooldown Ready)", function(cd)
 	local began, button = since[cd], cooldownOf[cd]
+	if not began then
+		return
+	end
 	since[cd] = nil
-	if began and button and ReadyOn() and GetTime() - began >= READY.MIN and button:IsVisible() then
+	if button and ReadyOn() and GetTime() - began.at >= READY.MIN and began.action == ActionOf(button)
+		and button:IsVisible() then
 		Flash(button)
 	end
 end)
@@ -471,9 +481,9 @@ local function HookReady(button)
 	cooldownOf[cd] = button
 	hooksecurefunc(cd, "SetCooldown", OnCooldownSet)
 	if type(cd.Clear) == "function" then
-		hooksecurefunc(cd, "Clear", OnCooldownClear)
+		hooksecurefunc(cd, "Clear", OnCooldownEnd)
 	end
-	Perf.HookScript(cd, "OnCooldownDone", OnCooldownDone)
+	Perf.HookScript(cd, "OnCooldownDone", OnCooldownEnd)
 end
 
 --------------------------------------------------------------------------------
