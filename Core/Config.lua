@@ -1187,12 +1187,20 @@ do
 
 	-- the Windows page's picks: the registry's kit panels on its Windows tab,
 	-- by label; a pick's key is the panel module's name
-	local function WindowPicks()
-		local out = {}
+	-- (1.0) and the picker's `own` windows, there without the registry's (MelloUI_Oldschool not loaded): the
+	-- windows MelloUI's own settings belong to (ConfigLayout's Windows page)
+	local function WindowPicks(own)
+		local out, have = {}, {}
 		for _, m in ipairs(MelloUI:ModulesInOrder()) do
 			local w = m.window
 			if type(w) == "table" and type(w.label) == "string" and w.tab == "Windows" then
 				out[#out + 1] = { key = m.name, label = w.label, desc = w.desc }
+				have[m.name] = true
+			end
+		end
+		for _, pk in ipairs(own or EMPTY) do
+			if not have[pk[1]] then
+				out[#out + 1] = { key = pk[1], label = pk[2], desc = pk[3] }
 			end
 		end
 		table.sort(out, ByLabel)
@@ -1338,7 +1346,7 @@ do
 				if type(picker) == "table" then
 					p.picks, p.pickLabel = {}, {}
 					if picker.from == "windows" then
-						p.picks = WindowPicks()
+						p.picks = WindowPicks(picker.own)
 					else
 						for i, pk in ipairs(picker.picks or EMPTY) do
 							p.picks[i] = { key = pk[1], label = pk[2] }
@@ -1480,7 +1488,9 @@ do
 					end
 				end
 				for k in pairs(map) do
-					if k ~= "*" and not p.pickLabel[k] then
+					-- (1.0: without MelloUI_Oldschool the painted windows' picks are not there -- their rows' keys for
+					-- them passed by quietly, as the rest of Oldschool's)
+					if k ~= "*" and not p.pickLabel[k] and not quiet then
 						Problem("%s > %s: no pick '%s'", p.key, t.name, tostring(k))
 					end
 				end

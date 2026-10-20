@@ -121,11 +121,19 @@ L.pages = {
 		switchLabel = "UI Modifications",
 		switchDesc = "The painted reskin AND every feature of UI Modifications: Vendor, Error Messages, Cooldown Timers, Nameplate Tweaks, Chat, Tooltip, Fonts, Dark Mode, Bar Textures, Buffs & Debuffs, Unit Frame Tweaks, FPS / Latency, Class Icons, Bar Values, the game windows' skins, hiding the micro menu, the bag bar and the minimap coordinates, and the world text scale. Off: all of them are off, Edit Layout lets go of the game's windows (they go back to the game's own places), Windows Fade In stops, names are shown in full and Class Coloured Names stops. The palette, the UI Shade, Reduce Motion and MelloUI's notices keep working.",
 		tabs = { "General", "Fonts", "Icons", "Dark Mode", "Bar Texture", "Fading" } },
-	-- (`oldschool`: the painted reskin's whole page, made only with MelloUI_Oldschool loaded -- one look stage I)
-	Windows = { title = "Windows", icon = "module:CharacterPanel", set = "page_windows", oldschool = true,
-		flavour = "The game's windows in the painted look, one at a time: pick a window.",
+	-- (1.0, the user, 2026-10-20: "once you disable MelloUI_OldSchool, the "Window" category disappears from the
+	-- Configurator, but that means that people cant configure their Bag anymore") made with or without
+	-- MelloUI_Oldschool: its picker's `own` windows are the ones MelloUI's own settings belong to (the bag window and
+	-- the bank by kind, Discard, the split box), always there; the painted skins of the game's windows join them with
+	-- Oldschool loaded (the registry's windows, these four among them, the same keys and labels)
+	Windows = { title = "Windows", icon = "module:CharacterPanel", set = "page_windows",
+		flavour = "The bag window and the game's windows, one at a time: pick a window.",
 		tabs = { "Windows" },
-		picker = { label = "Window", noun = "window", from = "windows" } },
+		picker = { label = "Window", noun = "window", from = "windows", own = {
+			{ "BackpackPanel", "Bags", "MelloUI's bag window: your items by kind, its layout and behaviour." },
+			{ "BankPanel", "Bank", "The bank by kind, inside the game's bank window." },
+			{ "LootPanel", "Loot windows", "The loot window's Discard button." },
+			{ "StackSplitPanel", "Split stack", "The split box's mouse wheel and half button." } } } },
 	-- (0.17.0) which parts fade away, and when they come back (one look: no
 	-- header switch -- the Fader runs while any element fades)
 	Fader = { title = "Fader", icon = "module:Fader", set = "page_fader",
