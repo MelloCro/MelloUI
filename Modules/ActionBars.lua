@@ -1299,9 +1299,11 @@ end
 local Status = {
 	CONTAINERS = { "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" },
 	DIR = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\",
-	-- (Tools/make_icons.py PIECES, 512 wide) the frame's picture 51 of 64 rows, its ends 39.5 texels, its opening
-	-- 0.476 of its height; the track's 32 of 32, its rounded ends 13.8 and 12.3
-	FRAME = { h = 51, cap = 39.5, open = 0.476 },
+	-- (Tools/make_icons.py PIECES, 512 wide) the frame's picture 51 of 64 rows, its ends 39.5 texels; its opening
+	-- `edge` texels in from either end and `edgeY` rows from its top and foot (measured on the piece), laid on the
+	-- bar itself less `over` units each side (its rim on the bar's own edge -- the user's screenshot of 2026-10-20:
+	-- "not quite connected to the actual bar"); the track's 32 of 32, its rounded ends 13.8 and 12.3
+	FRAME = { h = 51, cap = 39.5, edge = 32, edgeY = 14, over = 0.75 },
 	TRACK = { h = 32, l = 13.8, r = 12.3 },
 	cover = setmetatable({}, { __mode = "k" }),   -- [the game's region] = our parts over it
 	hooked = setmetatable({}, { __mode = "k" }),
@@ -1354,8 +1356,22 @@ function Status.Show(region, parts, shown)
 	end
 end
 
--- the frame round a container: its span (an empty region) the container's rect grown so the frame's opening is the
--- container's height and its ends stand past the bar's
+-- the bar a container shows its values in (every one of its bars has the same rect: the game's InitializeBars), or nil
+function Status.BarOf(c)
+	local bars = rawget(c, "bars")
+	if type(bars) == "table" then
+		for _, bar in pairs(bars) do
+			local sb = type(bar) == "table" and rawget(bar, "StatusBar")
+			if type(sb) == "table" and sb.GetHeight then
+				return sb
+			end
+		end
+	end
+	return nil
+end
+
+-- the frame round a container's bar: its span (an empty region) the bar's rect grown so the frame's opening is the
+-- bar's own less FRAME.over each side, its ends past the bar's
 function Status.Frame(c, shown)
 	local game = rawget(c, "BarFrameTexture")
 	local parts = Status.cover[c]
@@ -1369,12 +1385,13 @@ function Status.Frame(c, shown)
 	end
 	if shown then
 		local F = Status.FRAME
-		local h = Num(c:GetHeight()) or 13
-		local fh = h / F.open
-		local ext, cap = (fh - h) / 2, F.cap * fh / F.h
+		local bar = Status.BarOf(c) or c
+		local h = Num(bar:GetHeight()) or 14
+		local k = (h - 2 * F.over) / (F.h - 2 * F.edgeY)   -- (units per texel: the opening on the bar)
+		local x, y = F.edge * k - F.over, F.edgeY * k - F.over
 		parts.span:ClearAllPoints()
-		parts.span:SetPoint("TOPLEFT", c, "TOPLEFT", -cap, ext)
-		parts.span:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", cap, -ext)
+		parts.span:SetPoint("TOPLEFT", bar, "TOPLEFT", -x, y)
+		parts.span:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", x, -y)
 		Status.LaySlices(parts, Status.DIR .. "piece_bar_frame", F.h / 64, F.cap, F.cap, F.h, parts.span)
 	end
 	Status.Show(game, parts, shown)

@@ -56,7 +56,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 	options = {
 		-- (2026-10-20, the user: the game's frames as they are, in the set's borders, one picture each; the Frames section)
 		{ type = "toggle", key = "frames", name = "MelloUI Frames", new = "0.25.0",
-		  desc = "The player, target, focus, target of target and party frames in MelloUI's look, exactly as the game lays them out: a gold ring round the portrait, a dark level badge, and gold-lined iron borders round the name, health and power; the elite's and boss's golden dragon and the rare's silver one round the target. Off: the game's own frame art. The painted skin's frames keep their own (Oldschool)." },
+		  desc = "The player, target, focus, target of target, pet and party frames in MelloUI's look, exactly as the game lays them out: a gold ring round the portrait, a dark level badge, and gold-lined iron borders round the name, health and power; the elite's and boss's golden dragon and the rare's silver one round the target. Off: the game's own frame art. The painted skin's frames keep their own (Oldschool)." },
 		{ type = "header", name = "Names" },
 		{ type = "dropdown", key = "nameFont", name = "Name Font", values = MelloUI.FontFaces, new = "0.25.0",
 		  desc = "The face of the names on the player, target, focus and pet frames, their targets' and the party portraits' (their level follows). Shared: the Interface text's face (Look > Fonts)." },
@@ -1857,6 +1857,12 @@ function M:CoverOf(frame, portrait, circle, number)
 		ring = (type(c) == "table" and rawget(c, "FrameTexture")) or rawget(frame, "Texture")
 	end
 	local orb, disc = circle, nil
+	-- (MelloUI Frames' badge over the game's circle, unseen under it: the badge is what stands over the light -- the
+	-- user's screenshot of 2026-10-20, a heal's light over the level)
+	local badge = circle and M.Frames and M.Frames.Over(circle)
+	if badge then
+		orb = badge
+	end
 	if circle and Skin.OrbOf then
 		local o, d = Skin.OrbOf(circle, number)
 		if o then
@@ -2052,7 +2058,8 @@ function Frames.Regions(frame)
 		return { { c.FrameTexture, "target" }, { main and main.LevelBackgroundCircle, "badge" },
 			{ c.BossPortraitFrameTexture, Frames.BossKind(c.BossPortraitFrameTexture), c.FrameTexture } }
 	end
-	return { { rawget(frame, "FrameTexture"), "small" } }   -- (a target of target's)
+	-- (the pet's -- PetFrameTexture, the target of target's art -- and a target of target's)
+	return { { frame == rawget(_G, "PetFrame") and rawget(_G, "PetFrameTexture") or rawget(frame, "FrameTexture"), "small" } }
 end
 
 Frames.OnShown = Shared("Show / Hide on a frame picture MelloUI Frames stands on", function(region)
@@ -2147,6 +2154,11 @@ function Frames.Set(region, kind, from)
 	end
 end
 
+-- ours on a game picture while it shows (the frame effects lay it over their light: M:CoverOf), else nil
+function Frames.Over(region)
+	return Frames.shown[region] and Frames.cover[region] or nil
+end
+
 function Frames.LayOne(frame)
 	for _, pair in ipairs(Frames.Regions(frame)) do
 		Frames.Set(pair[1], pair[2], pair[3])
@@ -2160,7 +2172,7 @@ end
 
 function Frames.Lay()
 	for _, frame in ipairs({ PlayerFrame, TargetFrame, FocusFrame, rawget(_G, "TargetFrameToT"),
-		rawget(_G, "FocusFrameToT") }) do
+		rawget(_G, "FocusFrameToT"), rawget(_G, "PetFrame") }) do
 		if type(frame) == "table" then
 			Frames.LayOne(frame)
 		end

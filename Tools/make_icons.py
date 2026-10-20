@@ -175,13 +175,52 @@ def piece(name, width, canvas_h):
 
 # (2026-10-20) the modern look's light flipbooks (icons_v2/work/cut_fx.py, out/fx/fb_<name>_strip.png: 8 frames in a
 # row, light as alpha): each scaled to FB_FRAME a frame, one strip 8 * FB_FRAME wide
-FLIPBOOKS = ["questdone"]
+FLIPBOOKS = ["questdone", "cooldown"]
 FB_FRAME = 64
+# (the cooldown ready flash, Modules/ActionButtons.lua: the user, 2026-10-20, "this animation can be reused on the
+# Action bars to notify when something comes off cooldown") its frames re-centred on their own square -- the sheet's
+# drifts, the last four 55 texels higher -- each square FB_SQUARE of its frame (the button's edge in the game)
+FB_SQUARED = ("cooldown",)
+FB_SQUARE = 0.8
+
+
+def square_of(frame):
+    # the rounded square's sides: the outermost columns and rows its long lines run along (lit over a third of the
+    # way: a glint lights a short stretch) -- read on the first frame, whole and evenly lit
+    a = np.asarray(frame)[..., 3] > 40
+    cols, rows = a.sum(0), a.sum(1)
+    long_c = np.nonzero(cols > len(rows) / 3)[0]
+    long_r = np.nonzero(rows > len(cols) / 3)[0]
+    l, r, t, b = long_c.min(), long_c.max(), long_r.min(), long_r.max()
+    return (l + r) / 2, (t + b) / 2, r - l, b - t
+
+
+def shift_to(frame, ref):
+    # where `frame`'s light lies against `ref`'s: the shift (dx, dy) that lays it best on it (a cross-correlation of
+    # their alpha; the later frames' top line is faint, a glint sits on one side: neither moves this)
+    a = np.asarray(frame)[..., 3].astype(np.float64)
+    b = np.asarray(ref)[..., 3].astype(np.float64)
+    c = np.real(np.fft.ifft2(np.fft.fft2(b) * np.conj(np.fft.fft2(a))))
+    dy, dx = np.unravel_index(int(np.argmax(c)), c.shape)
+    n = a.shape[0]
+    return (dx if dx <= n // 2 else dx - n), (dy if dy <= n // 2 else dy - n)
 
 
 def flipbook(name):
     img = Image.open(os.path.join(ART, "out", "fx", "fb_%s_strip.png" % name)).convert("RGBa")
-    return img.resize((8 * FB_FRAME, FB_FRAME), Image.LANCZOS).convert("RGBA")
+    if name not in FB_SQUARED:
+        return img.resize((8 * FB_FRAME, FB_FRAME), Image.LANCZOS).convert("RGBA")
+    cell = img.height
+    out = Image.new("RGBa", (8 * FB_FRAME, FB_FRAME), (0, 0, 0, 0))
+    first = img.crop((0, 0, cell, cell))
+    cx, cy, w, h = square_of(first.convert("RGBA"))
+    half = max(w, h) / FB_SQUARE / 2   # (the first frame's square to FB_SQUARE of the frame)
+    for i in range(8):
+        frame = img.crop((i * cell, 0, (i + 1) * cell, cell))
+        dx, dy = shift_to(frame.convert("RGBA"), first.convert("RGBA")) if i else (0, 0)
+        box = (cx - dx - half, cy - dy - half, cx - dx + half, cy - dy + half)
+        out.paste(frame.transform((FB_FRAME, FB_FRAME), Image.EXTENT, box, Image.BICUBIC), (i * FB_FRAME, 0))
+    return out.convert("RGBA")
 
 
 # (2026-10-20) the modern look's light effects (the user, 2026-10-20: "more fitting to the Default Modernized look"):

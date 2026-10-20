@@ -50,6 +50,7 @@ local W = MelloUI.Widgets
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
+local Num = MelloUI.Safe.Number
 
 local M = MelloUI:RegisterModule("ActionButtons", {
 	title = "Action Buttons",
@@ -65,12 +66,17 @@ local M = MelloUI:RegisterModule("ActionButtons", {
 		pressLight = true,
 		rangeColours = true,
 		frames = true,
+		readyFlash = true,
 	},
 	options = {
 		{ type = "toggle", key = "frames", name = "MelloUI Frames", new = "0.25.0",
 		  desc = "Every action button in MelloUI's frame: a dark iron rim with a gold line, brighter under the pointer, "
 			.. "bright gold while its aura or stance is on, red out of range, a dark slot when the button is empty. "
 			.. "Off: the game's own frames. The painted skin's bars keep their own (Oldschool)." },
+		-- (2026-10-20, the user: the golden frame animation "to notify when something comes off cooldown")
+		{ type = "toggle", key = "readyFlash", name = "Cooldown Ready Flash", new = "0.25.0",
+		  desc = "When an action's cooldown runs out, a golden light runs once round its button, so you see it is "
+			.. "ready again. Never for the global cooldown." },
 		{ type = "toggle", key = "pressLight", name = "Light While Pressed",
 		  desc = "While you hold an action button's key, or press it with the mouse, the whole button lights up in "
 			.. "the colour scheme's highlight colour, so you can see which button you are pressing." },
@@ -391,6 +397,86 @@ local function ReadRange(button)
 end
 
 --------------------------------------------------------------------------------
+-- Cooldown Ready (2026-10-20, the user: "this animation can be reused on the Action bars to notify when something
+-- comes off cooldown"; the golden frame flipbook, Media/Textures/Icons/fx_cooldown, Tools/make_icons.py FB_SQUARED).
+-- As a button's cooldown runs out -- the game's own Cooldown frame's OnCooldownDone, post-hooked -- a golden square
+-- runs its glint once round the button, its square on the button's edge. Only after a cooldown that ran longer than
+-- READY.MIN (never the global cooldown): its start read by recency, the first SetCooldown since the last ran out
+-- (its numbers never compared unless plain: they may be secret), a zero one or Clear() ending it unseen. One texture
+-- a button, made on its first flash, over the frame (OVERLAY 7); driven by MelloUI.Anim; while the button shows.
+--------------------------------------------------------------------------------
+local READY = { MIN = 2.5, TIME = 0.6, SIZE = 1 / 0.8, FADE = 0.85 }   -- (SIZE: the square is 0.8 of each frame)
+local readyOf = setmetatable({}, { __mode = "k" })     -- [button] = { tex }: its flash
+local since = setmetatable({}, { __mode = "k" })       -- [cooldown] = when it began
+local cooldownOf = setmetatable({}, { __mode = "k" })  -- [cooldown] = its button
+
+local function ReadyOn()
+	return M.isEnabled and M.db and M.db.readyFlash ~= false
+end
+
+local function ReadyStep(job, u)
+	local f = math.min(7, math.floor(u * 8))
+	job.tex:SetTexCoord(f / 8, (f + 1) / 8, 0, 1)
+	job.tex:SetAlpha(u < READY.FADE and 1 or (1 - u) / (1 - READY.FADE))
+end
+
+local function ReadyOver(job)
+	job.tex:Hide()
+end
+
+local function Flash(button)
+	local r = readyOf[button]
+	if not r then
+		local t = button:CreateTexture(nil, "OVERLAY", nil, 7)
+		t:SetTexture(W.IconPath("fx_cooldown"))
+		t:SetBlendMode("ADD")
+		t:SetPoint("CENTER", button, "CENTER", 0, 0)
+		t:Hide()
+		r = { tex = t }
+		readyOf[button] = r
+	end
+	local w, h = Num(button:GetWidth()) or 36, Num(button:GetHeight()) or 36
+	r.tex:SetSize(w * READY.SIZE, h * READY.SIZE)
+	ReadyStep(r, 0)
+	r.tex:Show()
+	MelloUI.Anim:Drive(r, ReadyStep, READY.TIME, "linear", ReadyOver)
+end
+
+local OnCooldownSet = Shared("SetCooldown on an action button's cooldown (Cooldown Ready)", function(cd, _, duration)
+	local d = Num(duration)
+	if d and d <= 0 then
+		since[cd] = nil
+	elseif not since[cd] then
+		since[cd] = GetTime()
+	end
+end)
+
+local OnCooldownClear = Shared("Clear on an action button's cooldown (Cooldown Ready)", function(cd)
+	since[cd] = nil
+end)
+
+local OnCooldownDone = Shared("OnCooldownDone of an action button's cooldown (Cooldown Ready)", function(cd)
+	local began, button = since[cd], cooldownOf[cd]
+	since[cd] = nil
+	if began and button and ReadyOn() and GetTime() - began >= READY.MIN and button:IsVisible() then
+		Flash(button)
+	end
+end)
+
+local function HookReady(button)
+	local cd = rawget(button, "cooldown")
+	if type(cd) ~= "table" or type(cd.SetCooldown) ~= "function" then
+		return
+	end
+	cooldownOf[cd] = button
+	hooksecurefunc(cd, "SetCooldown", OnCooldownSet)
+	if type(cd.Clear) == "function" then
+		hooksecurefunc(cd, "Clear", OnCooldownClear)
+	end
+	Perf.HookScript(cd, "OnCooldownDone", OnCooldownDone)
+end
+
+--------------------------------------------------------------------------------
 -- Hooking the buttons (once)
 --------------------------------------------------------------------------------
 local function Hook(button)
@@ -415,6 +501,7 @@ local function Hook(button)
 	if type(button.Update) == "function" then
 		hooksecurefunc(button, "Update", OnFrameState)
 	end
+	HookReady(button)   -- (Cooldown Ready: its cooldown frame)
 end
 
 local function HookAll()
@@ -537,7 +624,6 @@ end
 
 do
 	local CP = MelloUI.ConfigPreview
-	local Num = MelloUI.Safe.Number
 	local Fin = MelloUI.Safe.Finite
 	local Stage = {
 		BARS = { { 1, "Bar 1" }, { 2, "Bar 2" }, { 3, "Bar 3" }, { 4, "Bar 4" }, { 5, "Bar 5" }, { 6, "Bar 6" },
