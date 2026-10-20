@@ -368,7 +368,7 @@ Add({ type = "toggle", key = "reduceMotion", name = "Reduce Motion", free = true
 -- no setting (nameplates on shows them in the chosen form).
 -- (0.16.0: Chat's Names In Chat merged in: one form for the frames, the
 -- nameplates and the chat; its old value carried, MelloUI:MergeSettings)
-Add({ type = "dropdown", key = "nameFormat", name = "Show Names As", values = {
+Add({ type = "dropdown", key = "nameFormat", name = "Show Names As", width = 260, values = {
 	{ value = "both", label = "Full name (Professor Skillybones)" },
 	{ value = "initial", label = "Initial and surname (P. Skillybones)" },
 	{ value = "firstinitial", label = "Name and initial (Professor S.)" },

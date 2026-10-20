@@ -28,6 +28,7 @@
 - Tooltip: switching the Background from Dark back to Game gives the tooltips the game's look at once (it waited for a reload). Without MelloUI Oldschool the Background offers Dark and Game only.
 - Configurator: without MelloUI Oldschool, nothing of the painted reskin shows anywhere: its palettes, borders and parchment switches and the rows that need a painted skin are gone, and the configurator opens on a fresh install.
 - Configurator: the rows of Bar Values, Buffs & Debuffs and Cooldown Timers rest, dimmed with a line saying why, while none of their frames' switches is on.
+- Configurator: lists with long choices are wider, so nothing is cut (Show Names As, the bar texture lists, Health Bar Colour, Heal Flight's Look, the party and raid sorting, the tooltip's Anchor); the pictures heading the pages sit in sharp frames, and the unit frames' preview is bigger, easier to drag.
 - Tooltip: Coloured Lines (Tooltip > Look, on): in a unit's tooltip the guild is green, Alliance blue and Horde red, the level line in the colour of how hard the unit is for you, a quest's title gold and its objectives cream while still to do, green once done.
 - Heal Flight and Frame Effects: new art made of soft light in MelloUI's look: the crosses, leaves, drops and sparks of a heal, the shields and crests, the rings and the streaks; the loot, level-up and XP lights too. With the painted reskin on (Oldschool) the old art stays.
 - Party frames: each member's level shows at the end of its name line, every number in one column.

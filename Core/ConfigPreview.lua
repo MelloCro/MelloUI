@@ -2819,7 +2819,9 @@ function Copy.Fit(p, f)
 		return
 	end
 	local fit = math.min(p:GetWidth() / d.w, p:GetHeight() / d.h)
-	local scale = math.min(ue / pe, fit)
+	-- (on the designer's stage the copy fills its corner, the stage sizing it to its room: the parts big enough to
+	-- drag -- 2026-10-20, the visual sweep; their places are in the frame's own units, the scale left out)
+	local scale = p.onStage and fit or math.min(ue / pe, fit)
 	if math.abs((f:GetScale() or 1) - scale) > 1e-4 then
 		f:SetScale(scale)
 	end
@@ -3003,7 +3005,8 @@ do
 		return list
 	end
 
-	-- the homes: each part's centre on its box's (the box's units) and its size, the sample painted with no places
+	-- the homes: each part's centre on its box's (the box's units) and its size, the sample painted with no places;
+	-- -> false while a part's could not be read yet (its sample not laid out: a pick shown for the first time)
 	function UFS.Measure(p, pick)
 		local homes = UFS.homes[pick] or {}
 		UFS.homes[pick] = homes
@@ -3021,15 +3024,37 @@ do
 					size = Copy.Num(size) and math.floor(Copy.Num(size) + 0.5) or nil }
 			end
 		end
+		for _, part in ipairs(UFS.Parts(pick)) do
+			if not homes[part.key] then
+				return false
+			end
+		end
+		return true
+	end
+
+	-- (2026-10-20, the visual sweep: Focus's homes unread on its first paint -- its Size and Place rows read 6 and
+	-- 0, 0) a home not read yet: the stage painted again on the next frame, a few times at most
+	UFS.retry = setmetatable({}, weakKeys)
+	function UFS.Again(p)
+		local n = (UFS.retry[p] or 0) + 1
+		UFS.retry[p] = n
+		local stage = p.onStage
+		if n <= 5 and type(stage) == "table" and stage.Repaint then
+			local S = MelloUI.Schedule or MelloUI.Kit
+			S:NextFrame(UFS.retry, function()
+				stage:Repaint()
+			end)
+		end
 	end
 
 	Preview.Register("unitframes", {
-		place = "wide", height = 150, maxScale = 1.5,
+		place = "wide", height = 190, maxScale = 2.2,
 		picks = UFS.PICKS, first = "player",
 		watch = { UnitFrames = true, BarText = true, BarTextures = true, Fonts = true, ClassIcons = true },
 		Main = function(stage, pick)
 			local p = Preview.Make(stage.holder, "unitframe", nil, { bare = true })
 			if p then
+				p.onStage = stage   -- (Copy.Fit: the copy fills the corner; UFS.Again: its stage)
 				p:SetPick(pick)
 			end
 			return p
@@ -3038,7 +3063,11 @@ do
 			if p.pick ~= pick then
 				p:SetPick(pick)
 			end
-			UFS.Measure(p, pick)
+			if UFS.Measure(p, pick) then
+				UFS.retry[p] = nil
+			else
+				UFS.Again(p)
+			end
 			Preview.Paint("unitframe", p, pick)
 		end,
 		parts = UFS.Parts,

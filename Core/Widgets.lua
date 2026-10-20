@@ -124,9 +124,7 @@ MelloUI.Widgets = W
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- a round icon's, a slider's knob
 local TEXTURE_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"
-local ICON_FRAME = "UI-HUD-ActionBar-IconFrame"        -- the action button bevel
-local ICON_MASK = "UI-HUD-ActionBar-IconFrame-Mask"    -- its rounded corners
-local GLOW_ART = "Interface\\Buttons\\UI-ActionButton-Border"
+local ICON_MASK = "UI-HUD-ActionBar-IconFrame-Mask"    -- the icon boxes' rounded corners (the action button's)
 local RIM_GROW = 1.1        -- the kit rim's rect: the icon box grown about its centre
 local FADE_IN, FADE_OUT = 0.10, 0.12   -- a row's hover
 local GATE_ALPHA = 0.4      -- a row that sleeps until a switch is on
@@ -2463,9 +2461,10 @@ end
 local function IconBox_SetGlow(self, on)
 	if on and not self.glow then
 		local glow = self:CreateTexture(nil, "OVERLAY", nil, 7)
-		glow:SetTexture(GLOW_ART)
+		-- (0.25.0, the visual sweep: the set's bright gold frame, added as light; the game's 64 px glow was stretched
+		-- round the box)
+		W.FrameArt(glow, "active", 6)
 		glow:SetBlendMode("ADD")
-		W.Paint(glow, "selectedTrim", "vertex")
 		local size = GlowSize(self)
 		glow:SetSize(size, size)
 		glow:SetPoint("CENTER", self, "CENTER", 0, 0)
@@ -2559,11 +2558,11 @@ function W.IconBox(parent, size, texture, skin)
 	box:SetSize(size, size)
 	box.size = size
 	box.icon = box:CreateTexture(nil, "ARTWORK")
-	local k = size / 45
 	box.frame = box:CreateTexture(nil, "OVERLAY")
-	box.frame:SetAtlas(ICON_FRAME)
-	box.frame:SetSize(46 * k, 45 * k)
-	box.frame:SetPoint("TOPLEFT", box, "TOPLEFT", 0, 0)
+	-- (0.25.0, the visual sweep: the set's own button frame round the box, sharp at its size -- the game's 46 px bevel
+	-- was stretched to it)
+	W.FrameArt(box.frame, "normal", math.max(3, math.floor(size / 12 + 0.5)))
+	box.frame:SetAllPoints(box)
 	local mask = box:CreateMaskTexture()
 	mask:SetAtlas(ICON_MASK)
 	maskOf[box] = mask
@@ -2683,6 +2682,19 @@ do
 
 	function W.IconMarkup(name, size)
 		return "|T" .. DIR .. name .. ":" .. size .. ":" .. size .. "|t"
+	end
+
+	-- (0.25.0) the set's square button frame, frame_<state> (normal, hover, pressed, active, empty, range), on `t` as
+	-- a nine-slice: its 22 px corners kept, its band `band` UI px wide (5 when left out) -- the action buttons'
+	-- MelloUI Frames and the icon boxes' (2026-10-20, the visual sweep: the game's bevel stretched there)
+	local FRAME_CORNER = 22
+	function W.FrameArt(t, state, band)
+		t:SetTexture(DIR .. "frame_" .. state)
+		if t.SetTextureSliceMargins and t.SetTextureSliceMode and t.SetScale then
+			t:SetTextureSliceMargins(FRAME_CORNER, FRAME_CORNER, FRAME_CORNER, FRAME_CORNER)
+			t:SetTextureSliceMode(Enum and Enum.UITextureSliceMode and Enum.UITextureSliceMode.Stretched or 0)
+			t:SetScale((band or 5) / FRAME_CORNER)
+		end
 	end
 
 	-- the kit to hand a round button's SetKit for a part in `area`: the kit while Oldschool's painted look dresses

@@ -76,7 +76,7 @@ local M = MelloUI:RegisterModule("Tooltip", {
 		  format = function(v) return string.format("%.2f s", v) end,
 		  desc = "How long the tooltip of a creature or an object stays fully visible after your cursor leaves it, before it fades out (the fade itself takes a quarter of a second)." },
 		{ type = "header", name = "Placement" },
-		{ type = "dropdown", key = "anchor", name = "Anchor", desc = "Where tooltips appear.",
+		{ type = "dropdown", key = "anchor", name = "Anchor", width = 230, desc = "Where tooltips appear.",
 		  values = {
 			{ value = "default", label = "Default (Edit Mode position)" },
 			{ value = "cursor", label = "At the cursor" },

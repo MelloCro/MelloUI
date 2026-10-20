@@ -805,7 +805,7 @@ M = MelloUI:RegisterModule("HealFlight", {
 		hotTicks = true,
 	},
 	options = {
-		{ type = "dropdown", key = "look", name = "Look", values = LOOK_VALUES,
+		{ type = "dropdown", key = "look", name = "Look", width = 240, values = LOOK_VALUES,
 		  desc = "How your heals look. By Class: Holy for priests and paladins, Nature for druids, Water for shamans (Holy for anyone else). Water: water circles your cast bar, a winding stream throws off droplets, a splash lands; a shield is a water bubble, a heal to full a geyser. Holy: gold sparks spiral into your spell's icon, a gold comet flies, a white flash and a burst of rays land, rune marks linger round the frame. Nature: green and gold ribbons circle your cast bar, ribbons fly shedding leaves, leaves burst and rise. Quiet: your cast bar's fill glows, a thin thread of light flies, the frame's border flares. Each kind lands its own way in each look: a heal over time sinks in, a shield wraps the frame in a barrier, protection puts a crest over it, a heal to full raises a column of light, a resurrection lights the fallen one's frame." },
 		{ type = "toggle", key = "flight", name = "Flying Light",
 		  desc = "The light that flies from your cast bar to the frame when a cast heal ends (Chain Heal's hops too). Off: the heal lands on the frame the moment the cast ends, as an instant one does; the glow on your cast bar while you cast and every effect on the frames stay." },

@@ -2932,7 +2932,10 @@ local function MakeRow(sec, r)
 			o[k] = nil
 		end
 	elseif t == "dropdown" then
+		-- (2026-10-20, the visual sweep: an option's `width` for a list whose choices are long -- Show Names As)
+		o.width = opt.width
 		row, control = W.DropdownRow(sec, sec.y, r.name, hint, desc, get, set, opt.values, o)
+		o.width = nil
 		if opt.relist then
 			page.relist[#page.relist + 1] = control
 		end
@@ -4113,6 +4116,11 @@ do
 			if key and not page.dFromStage and not key:match(":$") then
 				page.dStaging = true
 				stage:Select(key)
+				page.dStaging = nil
+			elseif not key and t.part and not page.dFromStage and stage.selected then
+				-- (2026-10-20, the visual sweep: a part with nothing on the stage -- the Health bar -- lets its pick go)
+				page.dStaging = true
+				stage:Select(nil)
 				page.dStaging = nil
 			end
 		end

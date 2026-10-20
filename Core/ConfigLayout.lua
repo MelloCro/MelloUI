@@ -234,7 +234,7 @@ L.pages = {
 		elements = {
 			-- (`stage`: the bars' strips and the picked bar large, Modules/ActionButtons.lua's 'actionbar' kind --
 			-- the user's A; a strip is Which Bar, the bar the Layout rows set)
-			{ key = "actionbars", label = "Action Bars", line = "The eight action bars and the stance, pet, possess and totem bars",
+			{ key = "actionbars", label = "Action Bars", line = "Bars 1-8, stance, pet, possess, totem",
 				stage = { kind = "actionbar", pick = "bars" },
 				parts = { { key = "button", label = "Button", stage = "button" },
 				{ key = "cooldown", label = "Cooldown timer", stage = "cooldown", showIn = "cooldown" },
@@ -242,7 +242,7 @@ L.pages = {
 				{ key = "keybind", label = "Keybind text", stage = "keybind", locked = "Nothing to set yet: the game's text" } } },
 			{ key = "menubags", label = "Menu & Bags", line = "The micro menu and the bag bar",
 				parts = { { key = "micro", label = "Micro menu" }, { key = "bags", label = "Bag bar" } } },
-			{ key = "castbar", label = "Cast Bar", line = "Your cast bar (its size and place: Edit Mode; the target's and focus' are on their frames)",
+			{ key = "castbar", label = "Cast Bar", line = "Your cast bar (size and place: Edit Mode)",
 				parts = { { key = "bar", label = "Bar", locked = "Nothing to set yet" },
 				{ key = "icon", label = "Icon", locked = "Nothing to set yet" },
 				{ key = "spell", label = "Spell text", locked = "Nothing to set yet (its size: Interface Text, Look > Fonts)" },
@@ -400,15 +400,15 @@ function L.Define(R, Link)
 	-- (2026-10-20, the configurator pass: a folded feature's rows sleep while none of its switches is on -- they
 	-- set nothing then; one look Q9 made the frames' switches the features' only switches, off for a new player)
 	local BAR_VALUES = { any = { { key = "BarText.player", value = true }, { key = "BarText.target", value = true },
-		{ key = "BarText.focus", value = true } }, line = "Only with values on a frame (Values On This Frame)" }
-	local OWN_PLAYER = { key = "Auras.player", value = true, line = "Only with Buffs & Debuffs On This Frame" }
-	local OWN_TARGET = { key = "Auras.target", value = true, line = "Only with Buffs & Debuffs On This Frame" }
+		{ key = "BarText.focus", value = true } }, line = "Only with values shown" }
+	local OWN_PLAYER = { key = "Auras.player", value = true, line = "Only with MelloUI's icons here" }
+	local OWN_TARGET = { key = "Auras.target", value = true, line = "Only with MelloUI's icons here" }
 	local OWN_ATTACHED = { all = { OWN_PLAYER, { key = "Auras.playerFrame", value = true } },
-		line = "Only with Attach To The Player Frame" }
+		line = "Only when attached to the frame" }
 	local OWN_ANY = { any = { OWN_PLAYER, OWN_TARGET, { key = "Auras.nameplates", value = true } },
-		line = "Only with your buffs and debuffs shown (Buffs & Debuffs On This Frame, Your Debuffs on the nameplates)" }
+		line = "Only with MelloUI's icons on" }
 	local TIMERS = { any = { { key = "CooldownText.actionBars", value = true }, { key = "CooldownText.nameplates", value = true } },
-		line = "Only with Cooldown Timers on (the action bars' or the nameplates')" }
+		line = "Only with Cooldown Timers on" }
 	-- the game's objective tracker: hidden while MelloUI's Quest Tracker is on
 	local GAME_TRACKER = { key = "QuestTracker.!enabled", value = false,
 		line = "Only for the game's tracker (MelloUI's Quest Tracker off)" }
@@ -736,7 +736,7 @@ function L.Define(R, Link)
 	R("Nameplates", "enemies:quest", "Layout", "Nameplates.questIconSize", { name = "Size" })
 	R("Nameplates", "enemies:debuffs", "General", "Auras.nameplates")
 	R("Nameplates", "enemies:debuffs", "Layout", "Auras.nameplateSize",
-		{ when = { key = "Auras.nameplates", value = true, line = "Only with Your Debuffs on the nameplates" } })
+		{ when = { key = "Auras.nameplates", value = true, line = "Only with Your Debuffs on" } })
 	R("Nameplates", "enemies:auras", "General", "CooldownText.nameplates")   -- (the Bars audit: Cooldown Timers' switch here)
 	-- Friendly players: Party Markers' switch first
 	R("Nameplates", "friendly:element", "General", "PartyMarkers.!enabled", { name = "Party Markers" })

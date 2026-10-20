@@ -177,14 +177,9 @@ end
 -- a frame texture in a state's picture (the set's: Media/Textures/Icons/frame_<state>, one nine-slice, its band at
 -- the rim's width) -- the real buttons' (LayFrame) and the configurator's stage's (Stage.Paint: the preview wears
 -- what the bars wear, the user, 2026-10-20)
+-- (the shared frame art, Widgets' W.FrameArt: the icon boxes wear it too)
 local function FrameArt(t, state)
-	t:SetTexture(W.IconPath("frame_" .. state))
-	if t.SetTextureSliceMargins and t.SetTextureSliceMode and t.SetScale then
-		local m = FRAME.M
-		t:SetTextureSliceMargins(m, m, m, m)
-		t:SetTextureSliceMode(Enum and Enum.UITextureSliceMode and Enum.UITextureSliceMode.Stretched or 0)
-		t:SetScale(FRAME.BAND / m)
-	end
+	W.FrameArt(t, state, FRAME.BAND)
 end
 
 local function LayFrame(button)
