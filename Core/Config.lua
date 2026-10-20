@@ -1289,56 +1289,71 @@ do
 			problems[#problems + 1] = string.format(...)
 		end
 		-- the pages, their tabs and each tab's sections
+		-- (one look stage I, step 4) a page that is the painted reskin's whole (ConfigLayout's `oldschool`: Windows,
+		-- Oldschool) is not made while MelloUI_Oldschool is not loaded: the rows and links aimed at it are passed
+		-- by and the side list leaves it out, no problem told
+		local gone = {}
+		out.gone = gone
+		-- (and what the layout names of MelloUI_Oldschool's -- the reskin's switch, a painted skin's, the painted part's
+		-- options, links to its rows -- is passed by quietly while it is not loaded, a `when` on such a switch reading
+		-- it as off; with it loaded every problem is told)
+		local quiet = type(rawget(MelloUI, "Oldschool")) ~= "table"
 		for key, def in pairs(L.pages) do
-			local p = { key = key, def = def, tabs = {}, tabOf = {} }
-			-- (0.19.9) a page whose header switch is a feature's that is not
-			-- loaded: the note first on each of its tabs (MakeNote)
-			local feature = def.module and FeatureOf(def.module .. ".!enabled")
-			local designer = def.designer and Lay.Designer(def) or nil
-			for i, name in ipairs(designer and designer.names or def.tabs or EMPTY) do
-				local t = { name = name, index = i, sections = {}, secOf = {} }
+			if def.oldschool and type(rawget(MelloUI, "Oldschool")) ~= "table" then
+				gone[key] = true
+			else
+				local p = { key = key, def = def, tabs = {}, tabOf = {} }
+				-- (0.19.9) a page whose header switch is a feature's that is not
+				-- loaded: the note first on each of its tabs (MakeNote)
+				local feature = def.module and FeatureOf(def.module .. ".!enabled")
+				local designer = def.designer and Lay.Designer(def) or nil
+				for i, name in ipairs(designer and designer.names or def.tabs or EMPTY) do
+					local t = { name = name, index = i, sections = {}, secOf = {} }
+					if designer then
+						-- (one look, the designer: a part's tab holds its rows, then
+						-- its element's; an element's tab its element's only)
+						Lay.DesignerSections(t, designer.tabs[name], L.SECTIONS)
+					else
+						for j, sname in ipairs(L.SECTIONS) do
+							local s = { name = sname, rows = {}, links = {} }
+							t.sections[j], t.secOf[sname] = s, s
+						end
+					end
+					if feature and t.sections[1] then
+						local s = t.sections[1]
+						s.rows[1] = { page = key, tab = t, section = s, note = feature, name = feature.title }
+					end
+					p.tabs[i], p.tabOf[name] = t, t
+				end
 				if designer then
-					-- (one look, the designer: a part's tab holds its rows, then
-					-- its element's; an element's tab its element's only)
-					Lay.DesignerSections(t, designer.tabs[name], L.SECTIONS)
-				else
-					for j, sname in ipairs(L.SECTIONS) do
-						local s = { name = sname, rows = {}, links = {} }
-						t.sections[j], t.secOf[sname] = s, s
+					Lay.DesignerLink(p)
+					p.designer = true
+				end
+				local picker = def.picker
+				if type(picker) == "table" then
+					p.picks, p.pickLabel = {}, {}
+					if picker.from == "windows" then
+						p.picks = WindowPicks()
+					else
+						for i, pk in ipairs(picker.picks or EMPTY) do
+							p.picks[i] = { key = pk[1], label = pk[2] }
+						end
+					end
+					for _, pk in ipairs(p.picks) do
+						p.pickLabel[pk.key] = pk.label
 					end
 				end
-				if feature and t.sections[1] then
-					local s = t.sections[1]
-					s.rows[1] = { page = key, tab = t, section = s, note = feature, name = feature.title }
+				if def.module then
+					out.switchOf[def.module] = { header = key }
 				end
-				p.tabs[i], p.tabOf[name] = t, t
+				out.pages[key] = p
 			end
-			if designer then
-				Lay.DesignerLink(p)
-				p.designer = true
-			end
-			local picker = def.picker
-			if type(picker) == "table" then
-				p.picks, p.pickLabel = {}, {}
-				if picker.from == "windows" then
-					p.picks = WindowPicks()
-				else
-					for i, pk in ipairs(picker.picks or EMPTY) do
-						p.picks[i] = { key = pk[1], label = pk[2] }
-					end
-				end
-				for _, pk in ipairs(p.picks) do
-					p.pickLabel[pk.key] = pk.label
-				end
-			end
-			if def.module then
-				out.switchOf[def.module] = { header = key }
-			end
-			out.pages[key] = p
 		end
 		for _, g in ipairs(L.groups or EMPTY) do
 			for _, key in ipairs(g.entries) do
-				out.order[#out.order + 1] = key
+				if not gone[key] then
+					out.order[#out.order + 1] = key
+				end
 			end
 		end
 		local place, switchOf = out.place, out.switchOf
@@ -1383,6 +1398,9 @@ do
 			end
 			local b = Bind(w.key)
 			if not b then
+				if quiet then
+					return { const = false, value = w.value, notValue = w.notValue, line = w.line }
+				end
 				if not FeatureOf(w.key) then
 					Problem("%s > %s: no setting '%s'", pageKey, tabName, tostring(w.key))
 				end
@@ -1409,7 +1427,9 @@ do
 				if not first then
 					local feature = FeatureOf(what)
 					if not feature then
-						Problem("%s > %s: no option '%s'", p.key, t.name, what)
+						if not quiet then
+							Problem("%s > %s: no option '%s'", p.key, t.name, what)
+						end
 					elseif what:sub(-9) == ".!enabled" then
 						-- (0.19.9) where its switch stands: one line saying it
 						-- is not loaded (MakeNote); its other rows left out
@@ -1441,7 +1461,7 @@ do
 					local id = map[pk.key] or map["*"]
 					local b = id and Bind(id)
 					if id and not b then
-						if not FeatureOf(id) then
+						if not FeatureOf(id) and not quiet then
 							Problem("%s > %s: no option '%s'", p.key, t.name, id)
 						end
 					elseif b then
@@ -1513,7 +1533,7 @@ do
 			local p = out.pages[pageKey]
 			local t = p and p.tabOf[tab]
 			local s = t and t.secOf[section]
-			if not s then
+			if not s and not gone[pageKey] then
 				Problem("no page / tab / section %s > %s > %s", tostring(pageKey), tostring(tab), tostring(section))
 			end
 			return p, t, s
@@ -1571,7 +1591,7 @@ do
 						lk.targets[pk.key] = b
 					elseif id then
 						good = false
-						if not FeatureOf(id) then
+						if not FeatureOf(id) and not quiet then
 							Problem("%s > %s: the link '%s' names '%s', which has no place", lk.page, lk.tab.name, lk.name, id)
 						end
 					end
@@ -1583,7 +1603,7 @@ do
 					lk.target = b
 				else
 					good = false
-					if not FeatureOf(target) then
+					if not FeatureOf(target) and not quiet then
 						Problem("%s > %s: the link '%s' names '%s', which has no place", lk.page, lk.tab.name, lk.name, tostring(target))
 					end
 				end
@@ -2171,7 +2191,10 @@ local function WhenHolds(w)
 		end
 		return not any
 	end
-	local v = ValueOf(w.b)
+	local v = w.const   -- (a switch of MelloUI_Oldschool's while it is not loaded: off, BindWhen)
+	if w.b then
+		v = ValueOf(w.b)
+	end
 	if w.notValue ~= nil then
 		return v ~= w.notValue
 	end

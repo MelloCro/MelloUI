@@ -82,6 +82,10 @@ Kit.plateOf = Kept.plateOf          -- [button] = its plate rep (ProfessionsPane
 -- and the map's waypoint pins); every reader asks these, never the texture
 Kit.pieceOf = Kept.pieceOf          -- [texture] = its piece (or true: ours, never faded with the game's art)
 Kit.pieceNameOf = Kept.pieceNameOf      -- [texture] = its piece's name
+-- (0.20.1) an own window's close button by its frame (Kit:OwnWindow's close, Modules/KitWindow.lua): the painted
+-- title plate takes it inside its rail (MelloUI_Oldschool/Modules/KitPainted.lua). The core's table since one look
+-- stage I's step 4: every own window writes it, with MelloUI_Oldschool loaded or not
+Kit.ownClose = setmetatable({}, { __mode = "k" })
 Kit.backgroundOf = Kept.backgroundOf     -- [texture] = true: a background tile (laid again when scales change)
 Kit.tintBaseOf = Kept.tintBaseOf       -- [texture] = { r, g, b }: the tint a module gave it, before Dark Mode's shade
 Kit.shadingNow = Kept.shadingNow       -- [texture] = true while the shade sets its colour (the hook passes it by)
@@ -4872,8 +4876,13 @@ do
 		if not (MelloUI.db and MelloUI:IsModuleEnabled(SWITCHES)) then
 			return false
 		end
-		-- (one look stage I: MelloUI_Oldschool from another MelloUI version
-		-- dresses nothing, its Oldschool.lua)
+		-- (one look stage I: without the painted engine -- MelloUI_Oldschool
+		-- not installed or not loaded -- nothing reads as reskinned, the
+		-- switch as saved kept for when it is back (step 4); MelloUI_Oldschool
+		-- from another MelloUI version dresses nothing, its Oldschool.lua)
+		if not Kit.__.painted then
+			return false
+		end
 		local oldschool = rawget(MelloUI, "Oldschool")
 		if type(oldschool) == "table" and oldschool.refused then
 			return false

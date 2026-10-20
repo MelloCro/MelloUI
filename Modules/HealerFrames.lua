@@ -575,7 +575,7 @@ local function MakeGlow(frame, parts, unit, raid)
 			local area = CreateFrame("Frame", nil, holder)
 			area:SetPoint("TOPLEFT", health, "TOPLEFT", -BAR_PAD, BAR_PAD)
 			area:SetPoint("BOTTOMRIGHT", mana or health, "BOTTOMRIGHT", BAR_PAD, -BAR_PAD)
-			g.nine = Kit:GlowNine(holder, area, "window/single", { scale = Kit.scale * Kit.frameScale, alpha = GLOW_ALPHA })
+			g.nine = Kit:GlowNine(holder, area, "window/single", { scale = Kit.scale * (Kit.frameScale or 1), alpha = GLOW_ALPHA })
 		end
 	end
 	glowOf[frame] = g

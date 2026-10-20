@@ -315,7 +315,7 @@ end
 --------------------------------------------------------------------------------
 
 function Shell:Replace(region, opts)
-	if not region then
+	if not (region and Kit.Replace) then   -- (Kit:Replace: the painted engine's)
 		return nil
 	end
 	local rep = Kit:Replace(region, opts)

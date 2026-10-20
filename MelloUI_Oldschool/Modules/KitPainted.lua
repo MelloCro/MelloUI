@@ -28,6 +28,9 @@ local Secret = MelloUI.Safe.IsSecret
 local Kit = MelloUI.Kit
 -- the core's locals (Modules/Kit.lua's Kit.__)
 local K = Kit.__
+-- (one look stage I, step 4) the painted engine is in: the Kit's Reskin() (Modules/Kit.lua) reads the reskin as on
+-- only with it -- without MelloUI_Oldschool nothing of MelloUI's reads as painted
+K.painted = true
 -- one handler for every object it is hooked on, wrapped once (user,
 -- 2026-09-24: the shared handlers, low-risk steps only): this file's scope's,
 -- or the core's where a scope has none (a test's world)
@@ -4812,8 +4815,8 @@ end
 -- (0.20.1) an own window's close button by its frame (Kit:OwnWindow's close): the title plate on the rail takes it
 -- inside, left of its right cap, as a game window's CloseButton. Also a game window's close that is another frame's
 -- (the group finder's pages, PortraitFrameTemplateNoCloseButton, share their parent's LFGParentFrameCloseButton:
--- GroupFinderPanel). The game's anchors of a moved close: Kit.closeSavedOf, once per button
-Kit.ownClose = setmetatable({}, { __mode = "k" })
+-- GroupFinderPanel). The game's anchors of a moved close: Kit.closeSavedOf, once per button. (Kit.ownClose itself is
+-- the core's, Modules/Kit.lua: the shell writes it with or without this engine)
 Kit.closeSavedOf = Kept.closeSavedOf   -- [close button] = its game anchors while a title plate holds it
 
 function Kit:TitleBehindRing(title, ring, outer)

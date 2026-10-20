@@ -870,7 +870,8 @@ local function BuildChoose(page)
 	-- (a hidden setup, the refit, has no card: it has its own entry)
 	page.cards = {}
 	for _, option in ipairs(I.OPTIONS) do
-		if not option.hidden then
+		-- (and a setup that is MelloUI_Oldschool's, Reskin only, only with it loaded)
+		if not option.hidden and not (option.oldschool and type(rawget(MelloUI, "Oldschool")) ~= "table") then
 			local i = #page.cards + 1
 			local col, row = (i - 1) % 2, floor((i - 1) / 2)
 			local card = W.Card(page, { width = CARD_W, height = CARD_H, title = option.title, text = option.desc,
@@ -3218,6 +3219,16 @@ local function Build()
 		title = STEPS.choose.title, close = true, escape = true, fit = true, sounds = true, mover = MOVER, calm = true,
 		inset = EDGE })
 	state.escape = true
+	-- (one look stage I, step 4) without MelloUI_Oldschool: no Windows step (the painted skins of the game's windows),
+	-- taken out of every setup's steps once, as the window is made (it cannot come in later: a reload loads it)
+	if type(rawget(MelloUI, "Oldschool")) ~= "table" then
+		for _, option in ipairs(I.OPTIONS) do
+			local at = IndexOf(option.steps, "windows")
+			if at then
+				table.remove(option.steps, at)
+			end
+		end
+	end
 	-- the steps rail
 	win.rail = W.NavRail(frame, { width = RAIL_W, rowHeight = 32, iconSize = 0, numbered = true, scroll = false,
 		onSelect = StepClick, clickable = StepClickable, doneGlyph = "common-icon-checkmark", skin = win.shell })

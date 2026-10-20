@@ -118,7 +118,8 @@ L.pages = {
 		switchLabel = "UI Modifications",
 		switchDesc = "The painted reskin AND every feature of UI Modifications: Vendor, Error Messages, Cooldown Timers, Nameplate Tweaks, Chat, Tooltip, Fonts, Dark Mode, Bar Textures, Buffs & Debuffs, Unit Frame Tweaks, FPS / Latency, Class Icons, Bar Values, the game windows' skins, hiding the micro menu, the bag bar and the minimap coordinates, and the world text scale. Off: all of them are off, Edit Layout lets go of the game's windows (they go back to the game's own places), Windows Fade In stops, names are shown in full and Class Coloured Names stops. The palette, the UI Shade, Reduce Motion and MelloUI's notices keep working.",
 		tabs = { "General", "Fonts", "Icons", "Dark Mode", "Bar Texture", "Fading" } },
-	Windows = { title = "Windows", icon = "module:CharacterPanel",
+	-- (`oldschool`: the painted reskin's whole page, made only with MelloUI_Oldschool loaded -- one look stage I)
+	Windows = { title = "Windows", icon = "module:CharacterPanel", oldschool = true,
 		flavour = "The game's windows in the painted look, one at a time: pick a window.",
 		tabs = { "Windows" },
 		picker = { label = "Window", noun = "window", from = "windows" } },
@@ -182,7 +183,7 @@ L.pages = {
 		},
 		family = { key = "all", label = "All frames", line = "Every frame: the heal light, the big moments, the debuff glow" } },
 	-- (one look C8) the painted reskin's own rows, kept working here until the painted look becomes its own addon
-	Oldschool = { title = "Oldschool", icon = "module:UIModifications",
+	Oldschool = { title = "Oldschool", icon = "module:UIModifications", oldschool = true,
 		flavour = "The painted reskin's own settings, kept here until the painted look becomes its own addon.",
 		tabs = { "General", "Painted Skins", "Borders", "Parchment", "Frame Art" } },
 	-- (0.20.0) MelloUI_GroupFrames: MelloUI's own party and raid frames (their

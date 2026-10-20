@@ -335,7 +335,7 @@ function Button.Paint(f)
 	-- density, a gradient laid over the whole frame), else the flat fill in the Background Colour; none: see-through
 	local bg, Kit = f.background, MelloUI.Kit
 	local look = db.backgroundTexture or "flat"
-	local piece = look ~= "flat" and Kit and Kit.buttonLooks.backgroundPiece[look]
+	local piece = look ~= "flat" and Kit and Kit.buttonLooks and Kit.buttonLooks.backgroundPiece[look]
 	bg:SetShown(look ~= "none")
 	if piece then
 		if Kit.pieceNameOf[bg] ~= piece then

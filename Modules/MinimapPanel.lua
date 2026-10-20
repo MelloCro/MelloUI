@@ -2392,7 +2392,7 @@ SlashCmdList.MELLOMMDUMP = function(msg)
 			tostring(f and f:IsShown() or false))
 		if Dress.on then
 			dresser:Dump(msg ~= "" and msg or nil)
-		else
+		elseif Kit.DumpWindow then   -- (the painted engine's)
 			Kit:DumpWindow(MinimapCluster, nil, msg ~= "" and msg or nil)
 		end
 	end

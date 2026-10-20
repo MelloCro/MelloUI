@@ -8,7 +8,8 @@
 -- This client makes no player nameplate (probed in game: C_NamePlate.GetNamePlateForUnit("player") nil, forbidden
 -- ones too) and nothing projects the character onto the screen: the display stands where Edit Layout puts it (under
 -- the character by default) and hops while you jump (IsFalling, plain).
---   the bars    health and power in the kit's bracket (Kit:Bar), their percent the game's own curve
+--   the bars    health and power in the kit's bracket (Kit:Bar; without MelloUI_Oldschool's painted engine a flat fill
+--               on a dark track with a thin border, PlainStrip), their percent the game's own curve
 --               (UnitHealthPercent / UnitPowerPercent with CurveConstants.ScaleTo100: the secret values handed to the
 --               font strings, which take them); the cast bar under them while you cast or channel (Anim:Timer: the
 --               engine counts it)
@@ -254,10 +255,44 @@ local function Fit(b, h)
 	b.arms = armL + armR
 end
 
+-- (one look stage I, step 4) the bar without the painted engine (MelloUI_Oldschool not loaded): the Personal
+-- Display's own -- a flat fill on a dark track with a thin border, in the palette (the user's pick, relayed 2026-10-19:
+-- "like the thin library-border bars") -- in the shape Kit:Bar and Kit:VBar hand back (the fill, the trough, the
+-- insets, the arms, SetBarLook / SetBarScale), dressed as "none" (Dress.Value): its own 1 px edges are its reach. The
+-- edges on the strip, the track on the fill: over and under the Motion layers as the bracket's art and trough are
+local function PlainStrip(parent, vertical)
+	local strip = CreateFrame("Frame", nil, parent)
+	local fill = CreateFrame("Frame", nil, strip)
+	fill:SetFrameLevel(strip:GetFrameLevel() + 1)
+	fill:SetPoint("TOPLEFT", strip, "TOPLEFT", 1, -1)
+	fill:SetPoint("BOTTOMRIGHT", strip, "BOTTOMRIGHT", -1, 1)
+	strip.fill = fill
+	strip.trough = W.Solid(fill, "BACKGROUND", "innerPanel", 0.9)
+	strip.trough:SetAllPoints(fill)
+	W.Edges(strip, "border", "BORDER")
+	strip.plain, strip.vertical = true, vertical or nil
+	strip.insets, strip.wl, strip.wr = { 1, 1, 1, 1 }, 1, 1
+	function strip.GetInsets()
+		return 1, 1, 1, 1
+	end
+	function strip.SetBarLook(self)
+		if self.vertical then
+			self:SetWidth(T.colW + 2)
+		end
+		return true
+	end
+	function strip.SetBarScale() end
+	if vertical then
+		strip:SetWidth(T.colW + 2)
+	end
+	return strip
+end
+
 -- one bar: the bracket (Kit:Bar) round a fill `h` tall and the Width() wide, a StatusBar on its opening. Layered
 -- (health, power: Motion): the ghost and the lead under it, a level each, the bracket's art lifted over all three
 local function NewBar(parent, h, area, layered)
-	local strip = MelloUI.Kit:Bar(parent, { kind = "frame", scale = h / Rows("frame") })
+	local Kit = MelloUI.Kit
+	local strip = Kit.Bar and Kit:Bar(parent, { kind = "frame", scale = h / Rows("frame") }) or PlainStrip(parent)
 	local level = parent:GetFrameLevel()
 	local ghost, lead
 	if layered then
@@ -304,7 +339,10 @@ local Dress = {}
 
 function Dress.Value()
 	local Kit = MelloUI.Kit
-	return Kit and Kit.BorderValue and Kit:BorderValue("personal") or "frame"
+	if not (Kit and Kit.Bar) then
+		return "none"   -- (one look stage I, step 4: the plain strip, its own edges)
+	end
+	return Kit.BorderValue and Kit:BorderValue("personal") or "frame"
 end
 
 -- a value's bracket look (its own bar pieces; an unknown one the Ornate), nil for a library style or none
@@ -376,12 +414,15 @@ function Dress.Bar(b, value)
 	local kind = Dress.Kind(value)
 	b.style = (not kind and value ~= "none") and value or nil
 	b.bare = value == "none"
-	-- (a library style or none: the Ornate strip, put out, keeps the fill where it was)
-	b.kind = kind or "frame"
+	-- (a library style or none: the Ornate strip, put out, keeps the fill where it was; the plain strip: no pieces)
+	b.kind = b.strip.plain and "plain" or kind or "frame"
 	Fit(b, b.h)
 	local strip = b.strip
 	strip:SetBarLook(b.kind)
 	strip:SetBarScale(b.scale)
+	if strip.plain then
+		strip:SetHeight(b.h + 2)
+	end
 	Dress.Pieces(strip, kind ~= nil)
 	Dress.Round(b, strip.fill, b.style, b.h)
 	Dress.Trough(b, strip)
@@ -392,7 +433,7 @@ function Dress.Column(col, value)
 	local kind = Dress.Kind(value)
 	col.style = (not kind and value ~= "none") and value or nil
 	col.bare = value == "none"
-	col.kind = kind or "frame"
+	col.kind = col.strip.plain and "plain" or kind or "frame"
 	local strip = col.strip
 	if not strip:SetBarLook(col.kind, Dress.Across(col.kind)) then
 		col.kind = "frame"
@@ -424,7 +465,8 @@ function Dress.Reach(b)
 		local _, y = b.border:Inset()
 		return y, y
 	elseif b.bare then
-		return 0, 0
+		local edge = b.strip.plain and 1 or 0   -- (the plain strip's own 1 px edges)
+		return edge, edge
 	end
 	local p = MelloUI.Kit:Piece("bars/" .. b.kind .. "_mid")
 	local open, box = p and p.open, p and p.box
@@ -439,7 +481,7 @@ function Dress.Side(b)
 	if b.style and b.border then
 		return 2 * b.border:Inset()
 	elseif b.bare then
-		return 0
+		return b.strip.plain and 2 or 0
 	end
 	return b.arms
 end
@@ -665,7 +707,7 @@ local function Build()
 		return ui
 	end
 	local Kit = MelloUI.Kit
-	if not (Kit and Kit.Bar and Kit.VBar) then
+	if not Kit then
 		return nil
 	end
 	ui = {}
@@ -733,7 +775,7 @@ local function Build()
 	clip:SetClipsChildren(true)
 	clip:SetPoint("TOPLEFT", presence:GetStatusBarTexture(), "TOPLEFT")
 	clip:SetPoint("BOTTOMRIGHT", presence:GetStatusBarTexture(), "BOTTOMRIGHT")
-	local strip = Kit:VBar(clip, { kind = "frame", width = Dress.Across("frame") })
+	local strip = Kit.VBar and Kit:VBar(clip, { kind = "frame", width = Dress.Across("frame") }) or PlainStrip(clip, true)
 	local ins = strip.insets
 	strip:SetHeight(T.colH + ins[3] + ins[4])
 	strip:SetPoint("CENTER", colFloat, "CENTER")

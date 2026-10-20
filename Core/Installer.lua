@@ -246,7 +246,8 @@ I.OPTIONS = {
 	  roles = { feature = "full", adds = "full" },
 	  set = Merge(NO_RESKIN_ROWS, { ["UIModifications.reskin"] = false, ["!UIModifications"] = true }),
 	  layout = false, places = false, steps = { "choose", "review", "keep" } },
-	{ key = "reskinOnly", title = "Reskin only",
+	-- (`oldschool`: offered only with MelloUI_Oldschool loaded -- the painted look is its; one look stage I, step 4)
+	{ key = "reskinOnly", title = "Reskin only", oldschool = true,
 	  desc = "The painted look and layout. Features stay off.",
 	  roles = { look = "full", feature = "off", adds = "off", replaces = "off" },
 	  set = { ["!UIModifications"] = true },
