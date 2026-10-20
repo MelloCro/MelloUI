@@ -1156,6 +1156,7 @@ end
 -- its picture does it over the real mark, which waits unseen meanwhile: the tracker's layout never sees a size change.
 -- A picture it cannot read: the old pop (fade in, rise)
 Motion.POP = 0.56
+Motion.BURST = 3.2   -- the burst's size, the mark's times this
 Motion.POP_KEYS = { { 0, 1, 1, 0 }, { 0.18, 1.6, 0.65, 0 }, { 0.42, 0.78, 1.5, 4 }, { 0.68, 1.2, 1.2, 1 },
 	{ 0.84, 0.95, 0.95, 0 }, { 1, 1, 1, 0 } }
 
@@ -1174,6 +1175,24 @@ function Motion.PopMark(block, mark)
 		s = block:CreateTexture(nil, "OVERLAY", nil, 6)
 		block.popStand = s
 		block.popJob = { block = block }
+		-- (the user's prompt 9, chatgpt-prompts-effects.md) the quest-done burst of light behind it: 8 frames in one
+		-- strip (Media/Textures/Icons/fx_questdone, Tools/make_icons.py FLIPBOOKS), added to what is under it
+		local W = MelloUI.Widgets
+		if type(W) == "table" and W.IconPath then
+			local b = block:CreateTexture(nil, "OVERLAY", nil, 5)
+			b:SetTexture(W.IconPath("fx_questdone"))
+			b:SetBlendMode("ADD")
+			b:Hide()
+			block.popBurst = b
+		end
+	end
+	local burst = block.popBurst
+	if burst then
+		burst:ClearAllPoints()
+		burst:SetPoint("CENTER", mark, "CENTER", 0, 0)
+		local size = (mark:GetWidth() or 20) * Motion.BURST
+		burst:SetSize(size, size)
+		burst:Show()
 	end
 	s:SetTexture(tex)
 	s:SetTexCoord(icon:GetTexCoord())
@@ -1196,6 +1215,11 @@ function Motion.PopStep(job, u)
 	local p = (u - a[1]) / math.max(0.001, b[1] - a[1])
 	p = p < 0 and 0 or (p > 1 and 1 or p)
 	p = p * p * (3 - 2 * p)
+	local burst = job.block.popBurst
+	if burst then
+		local f = math.min(7, math.floor(u * 8))
+		burst:SetTexCoord(f / 8, (f + 1) / 8, 0, 1)
+	end
 	local size = job.mark:GetWidth() or 20
 	local s = job.block.popStand
 	s:SetSize(size * (a[2] + (b[2] - a[2]) * p), size * (a[3] + (b[3] - a[3]) * p))
@@ -1205,6 +1229,9 @@ end
 
 function Motion.PopOver(job)
 	job.block.popStand:Hide()
+	if job.block.popBurst then
+		job.block.popBurst:Hide()
+	end
 	job.mark:SetAlpha(1)
 end
 

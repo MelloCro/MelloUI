@@ -157,8 +157,21 @@ def piece(name, width, canvas_h):
     return out.convert("RGBA"), h
 
 
+# (2026-10-20) the modern look's light flipbooks (icons_v2/work/cut_fx.py, out/fx/fb_<name>_strip.png: 8 frames in a
+# row, light as alpha): each scaled to FB_FRAME a frame, one strip 8 * FB_FRAME wide
+FLIPBOOKS = ["questdone"]
+FB_FRAME = 64
+
+
+def flipbook(name):
+    img = Image.open(os.path.join(ART, "out", "fx", "fb_%s_strip.png" % name)).convert("RGBa")
+    return img.resize((8 * FB_FRAME, FB_FRAME), Image.LANCZOS).convert("RGBA")
+
+
 def files():
     out = []
+    for name in FLIPBOOKS:
+        out.append(("fx_" + name, flipbook(name)))
     for name, width, canvas_h in PIECES:
         out.append(("piece_" + name, piece(name, width, canvas_h)[0]))
     for group, art, name, size in SET:
