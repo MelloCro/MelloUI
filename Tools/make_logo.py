@@ -14,7 +14,8 @@ Every texture's colour is bled outward under its transparent texels (the client 
 alpha 0 draws a dark fringe), written as 32-bit TGA masters into MelloUI-BuildData/masters/Media/Textures; the old
 masters kept beside them in BuildData/backup/logo-2026-10-20.
 
-    python Tools/make_logo.py [--write]   (without --write: only MelloUI-BuildData/output/logo)
+    python Tools/make_logo.py [--write] [--brand]   (without --write: only MelloUI-BuildData/output/logo;
+                                                     --brand: docs/brand, the places outside the game)
 """
 import os
 import shutil
@@ -99,6 +100,46 @@ def banner_tex():
     return bleed(canvas, 24)
 
 
+BRAND = os.path.join(REPO, "docs", "brand")
+# the places outside the game (the user, 2026-10-20: "update the logos, the banners"): each its own size
+BRAND_BANNERS = {"github-social-preview-1280x640.png": (1280, 640), "discord-server-banner-960x540.png": (960, 540)}
+
+
+def on_ground(size):
+    """the banner whole on its own dark ground at `size`: scaled to fit, its top and bottom faded into the ground
+    (never stretched, never cut)"""
+    W, H = size
+    src = Image.open(BANNER).convert("RGB")
+    arr = np.asarray(src).astype(np.float64)
+    edge = max(4, int(min(arr.shape[:2]) * 0.04))
+    ring = np.concatenate([arr[:edge].reshape(-1, 3), arr[-edge:].reshape(-1, 3), arr[:, :edge].reshape(-1, 3),
+                           arr[:, -edge:].reshape(-1, 3)])
+    ground = ring.mean(axis=0)
+    k = min(W / src.width, H / src.height)
+    w, h = round(src.width * k), round(src.height * k)
+    pic = np.asarray(src.resize((w, h), Image.LANCZOS)).astype(np.float64)
+    y = (np.arange(h) + 0.5) / h
+    fade = smooth(np.minimum(y, 1 - y) / 0.12)[:, None, None] if h < H else np.ones((h, 1, 1))
+    out = np.empty((H, W, 3))
+    out[:] = ground
+    top, left = (H - h) // 2, (W - w) // 2
+    out[top:top + h, left:left + w] = pic * fade + ground * (1 - fade)
+    return np.clip(np.round(out), 0, 255).astype(np.uint8)
+
+
+def brand(badge, cx, cy, half):
+    """docs/brand: the logo and the banner at the sizes the places outside the game take"""
+    os.makedirs(BRAND, exist_ok=True)
+    Image.fromarray(disc(badge, cx, cy, half + 2, 512)).save(os.path.join(BRAND, "melloui-icon-512.png"))
+    shutil.copy2(BANNER, os.path.join(BRAND, "melloui-banner.png"))
+    for name, size in BRAND_BANNERS.items():
+        Image.fromarray(on_ground(size)).save(os.path.join(BRAND, name))
+    old = os.path.join(BACKUP, "logo-icon.png")   # (MelloUI Oldschool keeps the old emblem)
+    if os.path.exists(old):
+        shutil.copy2(old, os.path.join(BRAND, "oldschool-icon-512.png"))
+    print("wrote %s" % BRAND)
+
+
 def main():
     write = "--write" in sys.argv
     os.makedirs(OUT, exist_ok=True)
@@ -114,6 +155,8 @@ def main():
     docs_icon = disc(badge, cx, cy, half + 2, 512)
     Image.fromarray(docs_icon).save(os.path.join(OUT, "logo-icon.png"))
     print("made", ", ".join("%s %s" % (k, v.shape[1::-1]) for k, v in made.items()), "| centre %.1f %.1f r %.1f" % (cx, cy, half))
+    if "--brand" in sys.argv:
+        brand(badge, cx, cy, half)
     if not write:
         return
     os.makedirs(BACKUP, exist_ok=True)
