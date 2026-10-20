@@ -99,6 +99,7 @@ M = MelloUI:RegisterModule("Map", {
 	flavour = "The whole world on one sheet, from the continents down to a village.",
 	group = "Quests and travel", navOrder = 4,
 	role = "feature",
+	new = "1.0.0",
 	enabledByDefault = true,
 	defaults = {},
 	-- (1.0) the window's own state, the player's: where it looked, its quest log open and on which tab -- never in a
