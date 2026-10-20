@@ -233,7 +233,27 @@ end
 -- under the portrait, for example). Blizzard's own text strings carry the
 -- offsets that compensate for that, so anchor to them when they exist and
 -- fall back to the bar itself otherwise.
-local function ApplyPosition(fs, bar)
+-- (2026-10-20, the user: drag the values on the frames; docs/plans/preview-drag.md) a frame's own place for one of
+-- its values, set on the Unit & Group Frames designer's stage: Unit Frames' `parts` (M.PartPlace there), or nil
+local function PlaceOf(frameKey, power)
+	local uf = frameKey and MelloUI.modules.UnitFrames
+	return uf and uf.PartPlace and uf.PartPlace(frameKey, power and "power" or "health") or nil
+end
+
+local function ApplyPosition(fs, bar, frameKey, power)
+	local unit = barUnit[bar]
+	if frameKey == nil and unit then
+		frameKey, power = unit.unit, unit.power
+	end
+	local uf = MelloUI.modules.UnitFrames
+	local place = PlaceOf(frameKey, power)
+	if place and uf.LayPlace then
+		uf.LayPlace(fs, bar, place)
+		return
+	end
+	if uf and uf.UnlayPlace then
+		uf.UnlayPlace(fs)
+	end
 	local position = M.db.position
 	local dx = math.floor((tonumber(M.db.offsetX) or 0) + 0.5)
 	local dy = math.floor((tonumber(M.db.offsetY) or 0) + 0.5)
@@ -480,10 +500,11 @@ function M.PreviewText(value, max)
 	return FormatText(value, max)
 end
 
-function M.PreviewPlace(fs, bar)
+-- (the configurator's copy: frameKey and power name the frame's own place, as its real bar has it)
+function M.PreviewPlace(fs, bar, frameKey, power)
 	if M.db and fs and bar then
 		ApplyFont(fs)
-		ApplyPosition(fs, bar)
+		ApplyPosition(fs, bar, frameKey or false, power)
 	end
 end
 
@@ -551,5 +572,12 @@ function M:OnSettingChanged(key, value, db)
 	self.db = db
 	Listen()
 end
+
+-- a value moved on the designer's stage (Unit Frames' `parts`): every value laid again, once
+MelloUI:On("setting", Perf.Shared("'setting' on the bus: Bar Text's places (Unit Frames' parts)", function(name, key)
+	if name == "UnitFrames" and key == "parts" and AnyFrame() then
+		ApplyAll()
+	end
+end), "BarText places")
 
 MelloUI:Profile("BarText", "bar value updates", UpdateBar)

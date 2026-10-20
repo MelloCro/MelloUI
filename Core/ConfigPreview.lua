@@ -321,14 +321,15 @@ end
 
 -- a value on a bar, as Bar Text writes and places it; dimmed while the
 -- frame would show none
-local function PaintValue(fs, bar, frame, power, value, max)
+local function PaintValue(fs, bar, frame, power, value, max, placeKey)
 	local BX = Exports("BarText", "PreviewText")
 	local text = BX and BX.PreviewText(value, max)
 	if not (frame and text) then
 		fs:Hide()
 		return
 	end
-	BX.PreviewPlace(fs, bar)
+	-- (placeKey: the frame whose own place the value takes -- 2026-10-20, the designer's stage; false: none)
+	BX.PreviewPlace(fs, bar, placeKey or false, power)
 	fs:SetText(text)
 	fs:SetAlpha(BX.PreviewShows(frame, power) and 1 or DIM)
 	fs:Show()
@@ -484,8 +485,9 @@ local function PaintCorner(p)
 		end
 	end
 	if s.frame then
-		PaintValue(p.text1, p.bar1, s.frame, false, s.health, s.max)
-		PaintValue(p.text2, p.bar2, s.frame, true, s.power, s.powerMax)
+		local placeKey = not p.noPlaces and s.frame
+		PaintValue(p.text1, p.bar1, s.frame, false, s.health, s.max, placeKey)
+		PaintValue(p.text2, p.bar2, s.frame, true, s.power, s.powerMax, placeKey)
 	end
 	if s.copy then
 		Copy.Paint(p, s)
@@ -2666,6 +2668,7 @@ function Copy.Make(p, key)
 	local on = (nd.onStrip and f.strip) or (nd.onPortrait and portrait) or f
 	name:SetPoint(nd.point[1], on, nd.point[2], nd.point[3], nd.point[4])
 	f.name = name
+	f.nameHome = { nd.point[1], on, nd.point[2], nd.point[3], nd.point[4], nd.w }
 	if d.circle then
 		f.circle = top:CreateTexture(nil, "OVERLAY", nil, 3)
 		if Atlas("UI-HUD-UnitFrame-SmallCircle") then
@@ -2769,6 +2772,33 @@ function Copy.Paint(p, s)
 	if face and face.NameFace and face.NameFace.Set then
 		face.NameFace.Set(f.name)
 	end
+	Copy.Name(p, f)
+end
+
+-- (2026-10-20, the designer's stage) the copy's name where the real frame's is: at its own place (Unit Frames'
+-- parts), else centred over the health bar as Centre Names lays it (Unit Frames on; never the pet's), else the
+-- game's own; none of the places while the stage reads the homes (p.noPlaces)
+function Copy.Name(p, f)
+	local fs, home = f.name, f.nameHome
+	local places = Exports("UnitFrames", "PartPlace")
+	local place = places and not p.noPlaces and places.PartPlace(p.pick, "name")
+	if place then
+		places.LayPlace(fs, f, place)
+		return
+	end
+	if places and places.UnlayPlace then
+		places.UnlayPlace(fs)
+	end
+	local box = p.pick ~= "pet" and Running("UnitFrames") and (f.box or f.health)
+	fs:ClearAllPoints()
+	if box then
+		fs:SetPoint("BOTTOM", box, "TOP", 0, 1)
+		fs:SetWidth(Copy.Num(box:GetWidth()) or home[6])
+	else
+		fs:SetPoint(home[1], home[2], home[3], home[4], home[5])
+		fs:SetWidth(home[6])
+	end
+	fs:SetJustifyH("CENTER")
 end
 
 -- the game's own scale (UIParent's effective one), or smaller where the corner
@@ -2900,3 +2930,118 @@ Preview.Register("unitframe", {
 	end,
 	Update = UnitUpdate,
 })
+
+--------------------------------------------------------------------------------
+-- The unit frames' stage (2026-10-20, the user: "i also want user to be able
+-- to click and move stuff around, for example draging the name, the hp text
+-- etc"; docs/plans/preview-drag.md): the 'unitframes' wide kind -- the
+-- Player, Target, Focus and Pet frames' sample (the 'unitframe' corner
+-- preview above: the real frame's copy) on the Unit & Group Frames designer's
+-- stage, its name and its two values picked, dragged, sized and hidden there.
+-- Their places are Unit Frames' (M.PartPlace / M.SetPartPlace: the name on
+-- its frame, a value on its bar), laid on the real frames and on this copy
+-- alike. A part's home: where the frame puts it, read off the sample painted
+-- with no places (p.noPlaces), each paint.
+--------------------------------------------------------------------------------
+do
+	local UFS = { PICKS = { player = true, target = true, focus = true, pet = true }, cache = {}, homes = {},
+		SIZE = { min = 6, max = 24, step = 1 },
+		LABEL = { name = "Name", health = "Health value", power = "Power value" } }
+
+	local function Places()
+		local m = MelloUI:GetModule("UnitFrames")
+		return (m and m.PartPlace and m.SetPartPlace) and m or nil
+	end
+
+	-- a part's region and the box its place is on: the name on the copy, a value on its bar
+	function UFS.Region(p, key)
+		if key == "name" then
+			return p.name
+		end
+		return key == "health" and p.text1 or p.text2
+	end
+	function UFS.Box(p, key)
+		if key == "name" then
+			return p.copy or p
+		end
+		return key == "health" and p.bar1 or p.bar2
+	end
+
+	function UFS.Part(pick, key)
+		return { key = key, label = UFS.LABEL[key], class = "part", text = true,
+			region = function(p)
+				return UFS.Region(p, key)
+			end,
+			box = function(p)
+				return UFS.Box(p, key)
+			end,
+			store = { get = function()
+				local m = Places()
+				return m and m.PartPlace(pick, key)
+			end, set = function(_, t)
+				local m = Places()
+				if m then
+					m.SetPartPlace(pick, key, t)
+				end
+			end },
+			home = function()
+				local h = UFS.homes[pick]
+				return h and h[key]
+			end,
+			homeLabel = "The frame's own place", size = UFS.SIZE, hide = true }
+	end
+
+	function UFS.Parts(pick)
+		local list = UFS.cache[pick]
+		if not list then
+			list = { UFS.Part(pick, "name") }
+			if pick ~= "pet" then
+				list[2], list[3] = UFS.Part(pick, "health"), UFS.Part(pick, "power")
+			end
+			UFS.cache[pick] = list
+		end
+		return list
+	end
+
+	-- the homes: each part's centre on its box's (the box's units) and its size, the sample painted with no places
+	function UFS.Measure(p, pick)
+		local homes = UFS.homes[pick] or {}
+		UFS.homes[pick] = homes
+		p.noPlaces = true
+		Preview.Paint("unitframe", p, pick)
+		p.noPlaces = nil
+		for _, part in ipairs(UFS.Parts(pick)) do
+			local r, box = UFS.Region(p, part.key), UFS.Box(p, part.key)
+			local ok, rx, ry = pcall(r.GetCenter, r)
+			local okB, bx, by = pcall(box.GetCenter, box)
+			rx, ry, bx, by = Copy.Num(rx), Copy.Num(ry), Copy.Num(bx), Copy.Num(by)
+			if ok and okB and rx and ry and bx and by then
+				local _, size = r:GetFont()
+				homes[part.key] = { point = "CENTER", x = math.floor(rx - bx + 0.5), y = math.floor(ry - by + 0.5),
+					size = Copy.Num(size) and math.floor(Copy.Num(size) + 0.5) or nil }
+			end
+		end
+	end
+
+	Preview.Register("unitframes", {
+		place = "wide", height = 150, maxScale = 1.5,
+		picks = UFS.PICKS, first = "player",
+		watch = { UnitFrames = true, BarText = true, BarTextures = true, Fonts = true, ClassIcons = true },
+		Main = function(stage, pick)
+			local p = Preview.Make(stage.holder, "unitframe", nil, { bare = true })
+			if p then
+				p:SetPick(pick)
+			end
+			return p
+		end,
+		Paint = function(p, pick)
+			if p.pick ~= pick then
+				p:SetPick(pick)
+			end
+			UFS.Measure(p, pick)
+			Preview.Paint("unitframe", p, pick)
+		end,
+		parts = UFS.Parts,
+	})
+	Preview.UnitStage = UFS   -- (the suite's)
+end

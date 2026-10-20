@@ -381,6 +381,116 @@ local function RestoreName(fs)
 	fs:SetJustifyH(saved.justify or "LEFT")
 end
 
+--------------------------------------------------------------------------------
+-- The frames' parts placed (2026-10-20, the user: "i also want user to be
+-- able to click and move stuff around, for example draging the name, the hp
+-- text etc"; docs/plans/preview-drag.md): the Unit & Group Frames designer
+-- stage's places for the player's, target's, focus's and pet's name and the
+-- first three's values -- ONE setting, `parts`: [frame][part] = { point, x,
+-- y, size, show }, on the frame (the name) or on its bar (a value); none: the
+-- frame's own place. The name is laid as Centre Names lays it (on a change,
+-- never per update), the values by Bar Text (M.PartPlace), the
+-- configurator's copies alike (Core/ConfigPreview.lua: Copy.Paint, Bar
+-- Text's PreviewPlace) -- the preview is the frame.
+--   M.PartPlace(frame, part) -> place | nil
+--   M.SetPartPlace(frame, part, place | nil)   one write, one 'setting'
+--   M.LayPlace(fs, box, place)   a text at a place (its spot's column its
+--                                justify, its size, shown or not)
+--   M.UnlayPlace(fs)             its own size and alpha back
+--------------------------------------------------------------------------------
+local Places = { FRAMES = { player = true, target = true, focus = true, pet = true },
+	sizes = setmetatable({}, { __mode = "k" }), laid = setmetatable({}, { __mode = "k" }) }
+
+function M.PartPlace(frame, part)
+	local db = M.db or MelloUI:GetModuleDB("UnitFrames")
+	local all = db and db.parts
+	local own = type(all) == "table" and all[frame]
+	local t = type(own) == "table" and own[part]
+	return type(t) == "table" and t or nil
+end
+
+function M.SetPartPlace(frame, part, place)
+	local db = M.db or MelloUI:GetModuleDB("UnitFrames")
+	if not (db and Places.FRAMES[frame] and type(part) == "string") then
+		return
+	end
+	-- (a fresh table each write: the saved one is never changed in place)
+	local all = {}
+	for f, parts in pairs(type(db.parts) == "table" and db.parts or {}) do
+		if type(parts) == "table" then
+			local copy = {}
+			for k, v in pairs(parts) do
+				copy[k] = v
+			end
+			all[f] = copy
+		end
+	end
+	local own = all[frame] or {}
+	if type(place) == "table" then
+		local t = {}
+		for k, v in pairs(place) do
+			t[k] = v
+		end
+		own[part] = t
+	else
+		own[part] = nil
+	end
+	all[frame] = next(own) and own or nil
+	MelloUI:NotifySettingChanged("UnitFrames", "parts", all)
+end
+
+function M.LayPlace(fs, box, place)
+	local point = type(place.point) == "string" and place.point or "CENTER"
+	fs:ClearAllPoints()
+	fs:SetPoint(point, box, point, Num(place.x) or 0, Num(place.y) or 0)
+	fs:SetJustifyH(point:find("LEFT") and "LEFT" or (point:find("RIGHT") and "RIGHT") or "CENTER")
+	local size = Num(place.size)
+	if size then
+		local font, was, flags = fs:GetFont()
+		if font then
+			if Places.sizes[fs] == nil then
+				Places.sizes[fs] = Num(was) or false
+			end
+			fs:SetFont(font, size, flags)
+		end
+	end
+	fs:SetAlpha(place.show == false and 0 or 1)
+	Places.laid[fs] = true
+end
+
+function M.UnlayPlace(fs)
+	if not Places.laid[fs] then
+		return
+	end
+	Places.laid[fs] = nil
+	local size = Places.sizes[fs]
+	Places.sizes[fs] = nil
+	if size then
+		local font, _, flags = fs:GetFont()
+		if font then
+			fs:SetFont(font, size, flags)
+		end
+	end
+	fs:SetAlpha(1)
+end
+
+-- a frame's name at its place, or as the module lays it (Centre Names; the
+-- game's own while the module is off or for the pet)
+function Places.Name(fs, frame, key, on, container)
+	local place = on and M.PartPlace(key, "name")
+	if place then
+		RememberName(fs)
+		M.LayPlace(fs, frame, place)
+		return
+	end
+	M.UnlayPlace(fs)
+	if on and container then
+		CenterName(fs, container)
+	else
+		RestoreName(fs)
+	end
+end
+
 local function PlayerNameContainer()
 	local content = PlayerFrame and PlayerFrame.PlayerFrameContent
 	local main = content and content.PlayerFrameContentMain
@@ -395,21 +505,18 @@ local function ApplyNames()
 	end
 	local on = M.isEnabled
 	if PlayerName then
-		if on then
-			CenterName(PlayerName, PlayerNameContainer())
-		else
-			RestoreName(PlayerName)
-		end
+		Places.Name(PlayerName, PlayerFrame, "player", on, PlayerNameContainer())
 	end
 	for _, frame in ipairs(TargetLikeFrames()) do
 		local main = frame and frame.TargetFrameContent and frame.TargetFrameContent.TargetFrameContentMain
 		if main and main.Name then
-			if on then
-				CenterName(main.Name, main.HealthBarsContainer)
-			else
-				RestoreName(main.Name)
-			end
+			Places.Name(main.Name, frame, frame == FocusFrame and "focus" or "target", on, main.HealthBarsContainer)
 		end
+	end
+	-- (the pet's name: the game's place until it is moved)
+	local petName = PetFrame and rawget(PetFrame, "name")
+	if petName and petName.GetObjectType then
+		Places.Name(petName, PetFrame, "pet", on, nil)
 	end
 end
 
@@ -2279,6 +2386,11 @@ function M:OnSettingChanged(key, value, db)
 	end
 	if key == "frames" then
 		Frames.Lay()
+		return
+	end
+	if key == "parts" then
+		-- (the names; the values are Bar Text's, on the bus's 'setting')
+		ApplyNames()
 		return
 	end
 	ApplyAll()

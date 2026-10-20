@@ -140,7 +140,7 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "0.25.0", lines = {
 		"Settings: borders and parchment are on Oldschool; a new Automation page; Gains, FPS / latency and the damage meter have new homes.",
-		"Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, a plate, a bar or the map, then a part; drag the party's and raid's parts on their large frame.",
+		"Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, a plate, a bar or the map, then a part; drag the names, values and parts on the frames.",
 		"One look: MelloUI's parts wear its look, its Gilded Slate colours and the Fredoka font, reskin or not; a new window frame -- the logo heads the side list, small windows get a slim strip.",
 		"A new icon set, sharp at every size, its map pins glowing and marks shaded; MelloUI Frames on action buttons, XP bars and unit frames; Heal Flight and Frame Effects in soft light.",
 		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, a gold flash as a cooldown ends, a Bar Texture for each, one Health Colour for all.",
@@ -3294,13 +3294,19 @@ do
 	DUI.HEAD_GAP = 6   -- the chips to the stage, the stage to the Parts line (fields: the main chunk's locals)
 
 	-- the stage's picks and parts against the page's elements and parts
+	-- (2026-10-20, the user: drag the name and the values on the frames too) a page's stage kinds, one stage each:
+	-- the unit frames' and the group frames' on Unit & Group Frames; `page.stageKind[el]` the element's
 	function DUI.StageMaps(page, pl)
-		local kind
-		page.stageEl, page.elOfPick, page.partOfStage, page.stageOfPart = {}, {}, {}, {}
+		local kinds, seen = {}, {}
+		page.stageEl, page.elOfPick, page.partOfStage, page.stageOfPart, page.stageKind = {}, {}, {}, {}, {}
 		for _, el in ipairs(pl.def.elements or EMPTY) do
 			local st = el.stage
 			if type(st) == "table" and st.kind and st.pick then
-				kind = kind or st.kind
+				if not seen[st.kind] then
+					seen[st.kind] = true
+					kinds[#kinds + 1] = st.kind
+				end
+				page.stageKind[el.key] = st.kind
 				page.stageEl[el.key] = st.pick
 				page.elOfPick[st.pick] = el.key
 				for _, other in ipairs(st.also or EMPTY) do
@@ -3318,7 +3324,7 @@ do
 				page.partOfStage[el.key], page.stageOfPart[el.key] = map, back
 			end
 		end
-		return kind
+		return kinds
 	end
 
 	-- a part picked on the stage: its part's tab (an indicator: the
@@ -3365,17 +3371,24 @@ do
 	end
 
 	function DUI.MakeStage(page, pl)
-		local kind = DUI.StageMaps(page, pl)
+		local kinds = DUI.StageMaps(page, pl)
 		local CP = MelloUI.ConfigPreview
-		if not (kind and CP and CP.Kind and CP.Kind(kind)) then
+		if not (CP and CP.Kind) then
 			return
 		end
-		page.stage = CP.Make(page, kind, SKIN, { width = page.width - PAD * 2, x = PAD, anchor = page,
-			scroll = window and window.scroll, onSelect = DUI.StageSelected(page), onPick = DUI.StagePicked(page),
-			onState = DUI.StageState(page) })
+		page.stages = {}
+		for _, kind in ipairs(kinds) do
+			local stage = CP.Kind(kind) and CP.Make(page, kind, SKIN, { width = page.width - PAD * 2, x = PAD,
+				anchor = page, scroll = window and window.scroll, onSelect = DUI.StageSelected(page),
+				onPick = DUI.StagePicked(page), onState = DUI.StageState(page) })
+			if stage then
+				stage:Hide()
+				page.stages[kind] = stage
+				page.stage = page.stage or stage
+			end
+		end
 		if page.stage then
 			DUI.StageHead(page)
-			page.stage:Hide()
 		end
 	end
 
@@ -3871,7 +3884,7 @@ do
 		if not part then
 			return nil
 		end
-		local specs = { part = part }
+		local specs = { part = part, kind = st.kind }
 		if part.hide then
 			DUI.AddSpec(specs, "General", "before", "show")
 		end
@@ -3893,9 +3906,9 @@ do
 		return which == "size" and W.SLIDER_ROW_HEIGHT or ROW_HEIGHT
 	end
 
-	function DUI.QueueSpecs(sec, list, part)
+	function DUI.QueueSpecs(sec, list, part, kind)
 		for _, which in ipairs(list) do
-			Queue(sec, { dspec = which, part = part }, ElementJob, DUI.SpecHeight(which))
+			Queue(sec, { dspec = which, part = part, kind = kind }, ElementJob, DUI.SpecHeight(which))
 		end
 	end
 
@@ -3906,7 +3919,8 @@ do
 	end }
 
 	function DUI.Spec(sec, job)
-		local stage = sec.page.stage
+		local page = sec.page
+		local stage = (page.stages and job.kind and page.stages[job.kind]) or page.stage
 		local build = stage and stage:PartSpec(job.part, job.dspec, DUI.SPEC_OPTS)
 		local h = DUI.SpecHeight(job.dspec)
 		if not build then
@@ -4032,7 +4046,9 @@ do
 		if el ~= page.dEl then
 			page.dEl = el
 			local items = {}
-			local state = page.stage and page.stage.ctx and page.stage.ctx.state
+			local own = el and page.stageKind and page.stages and page.stages[page.stageKind[el] or ""]
+			local stage = own or page.stage
+			local state = stage and stage.ctx and stage.ctx.state
 			for _, part in ipairs(t.el and t.el.parts or EMPTY) do
 				if not part.state or part.state == state then
 					items[#items + 1] = { key = part.key, label = part.label, tip = part.locked,
@@ -4058,11 +4074,25 @@ do
 	-- the stage shows one of this frame's already -- the party's style), the
 	-- tab's part picked on it (not when the stage picked it)
 	function DUI.FollowStage(page, el, t)
+		local kind = el and page.stageKind and page.stageKind[el]
+		local laid = false
+		for k, other in pairs(page.stages or EMPTY) do
+			if k ~= kind and other:IsShown() then
+				other:Hide()
+				laid = true
+			end
+		end
+		if kind and page.stages[kind] then
+			page.stage = page.stages[kind]
+		end
 		local stage = page.stage
 		if not stage then
+			if laid then
+				page:LayTabs(true)
+			end
 			return
 		end
-		local pick = el and page.stageEl[el]
+		local pick = kind and page.stageEl[el]
 		if pick then
 			if page.elOfPick[stage.pick] ~= el then
 				stage:SetPick(pick)
@@ -4074,6 +4104,9 @@ do
 			local only = t.part and (t.part.state or (not page.dChipState and t.part.showIn))
 			if only and stage.ctx.state ~= only then
 				stage:SetState(only)
+				if laid then
+					page:LayTabs(true)
+				end
 				return
 			end
 			local key = t.part and page.stageOfPart[el][t.part.key]
@@ -4086,6 +4119,9 @@ do
 		local want = pick ~= nil
 		if want ~= (stage:IsShown() and true or false) then
 			stage:SetShown(want)
+			laid = true
+		end
+		if laid then
 			page:LayTabs(true)
 		end
 	end
@@ -4126,7 +4162,7 @@ function BuildElementPage(key, width)
 				s.gap = s == t.firstSection and 0 or SECTION_GAP
 				Queue(sec, s, ElementJob, s.gap + W.HEADER_HEIGHT)
 				if spec then
-					page.dui.QueueSpecs(sec, spec.before, specs.part)
+					page.dui.QueueSpecs(sec, spec.before, specs.part, specs.kind)
 				end
 				for _, r in ipairs(s.rows) do
 					-- (a designer's element row stands on every tab of its
@@ -4140,7 +4176,7 @@ function BuildElementPage(key, width)
 					Queue(sec, lk, ElementJob, ROW_HEIGHT)
 				end
 				if spec then
-					page.dui.QueueSpecs(sec, spec.after, specs.part)
+					page.dui.QueueSpecs(sec, spec.after, specs.part, specs.kind)
 				end
 			end
 		end
