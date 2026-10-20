@@ -135,7 +135,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 		{ type = "toggle", key = "tipTurnIn", name = "Turn-In NPCs",
 		  desc = "On the tooltip of an NPC that takes back one of your quests: \"Turn in here\" once the quest is ready, a quieter \"Quest ends here\" while it is still in progress." },
 		{ type = "toggle", key = "tipCharacters", name = "Your Other Characters On Quests",
-		  desc = "On a quest's tooltip in the Quest List and on the map's quest givers, name your other characters who "
+		  desc = "On a quest's tooltip in the Quest List, name your other characters who "
 			.. "have done the quest or have it in their quest log. A character is noted each time it logs out; "
 			.. "/mello alts lists them and forgets a deleted one." },
 	},
