@@ -142,7 +142,7 @@ local CHANGELOG = {
 		"Settings: borders and parchment are on Oldschool; a new Automation page; Gains, FPS / latency and the damage meter have new homes.",
 		"Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, a plate, a bar or the map, then a part; drag the party's and raid's parts on their large frame.",
 		"One look: MelloUI's parts wear its look, its Gilded Slate colours and the Fredoka font, reskin or not; a new window frame -- the logo heads the side list, small windows get a slim strip.",
-		"A new icon set, sharp at every size, on MelloUI's parts and the Configurator; MelloUI Frames on action buttons, XP bars and unit frames; Heal Flight and Frame Effects in soft light.",
+		"A new icon set, sharp at every size, its map pins glowing and marks shaded; MelloUI Frames on action buttons, XP bars and unit frames; Heal Flight and Frame Effects in soft light.",
 		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, a gold flash as a cooldown ends, a Bar Texture for each, one Health Colour for all.",
 		"Action bars and minimap: backdrops and MelloUI's square minimap for everyone, no painted skin needed; the round painted map is Oldschool's.",
 		"Quests: one gem per title, short Quest List and map tips, Parchment its own switch; the tracker's Painted Skin is gone.",

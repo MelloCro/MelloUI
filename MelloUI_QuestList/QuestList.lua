@@ -528,6 +528,11 @@ function QL.StarterIconMarkup(key, size)
 	return name and MelloUI.Widgets.IconMarkup(name, size or 14) or ""
 end
 
+-- the set's icon a start shows (false for none): its lift on the maps (MelloUI.Shade:Lift)
+function QL.StarterIconName(key)
+	return STARTER_ICON[key] or false
+end
+
 function QL.SetStarterIcon(tex, key)
 	local name = STARTER_ICON[key]
 	if not name then

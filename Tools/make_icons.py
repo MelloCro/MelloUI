@@ -9,7 +9,7 @@ The art: MelloUI-BuildData/masters/icons_v2/out/<group>/png128/<name>.png (cut b
 cut_buttons.py from icons_v2/src/sheet*.png), ring/ring_gold_256.png and ring/hover_glow_256.png. Drawn here: the
 count badge's disc and its edge (white, the palette tints them). Each picture is scaled premultiplied (no dark fringe).
 Deterministic: the same art gives the same bytes. Also the modern look's light effects (FX_LIGHT, from icons_v2/out/fx):
-Media/FrameFX/Light/, the addon's only.
+Media/FrameFX/Light/, the addon's only; and the map icons' lifts (HALO): Media/Textures/Icons/Halo/, the addon's only.
 
     python Tools/make_icons.py            write them
     python Tools/make_icons.py --check    exit 1 unless all are up to date
@@ -84,6 +84,17 @@ SET.append(("pieces", "uf_badge", "uf_badge", 64))
 # pin style, its colour the sheet's disc's: CLASS_DISCS below, by the game's class file name
 # (W.IconPath("class_" .. classFile)): the map's party
 CLASSES = ("WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID")
+
+# (2026-10-20, the user: the sheets were asked for with no glow and no shadow, "added later in the game" -- "you didnt
+# add those effects to them") the lift of every icon shown on the maps and the minimap (MelloUI.Shade:Lift, Core/
+# Shade.lua): a soft white copy of its outline, grown and blurred, on a canvas reaching HALO_PAD of the icon past each
+# side; the game tints it -- the set's disc pins (HALO_DISCS, Shade.lua's DISCS) a gold glow reaching well out, the
+# standalone marks a dark shade hugging their shape. (grow, blur, gain): the first two as shares of the icon's size
+HALO_GROUPS = ("marks", "pins", "route", "questlist")
+HALO_DISCS = ("pin_", "goal_", "obj_", "class_")
+HALO_PAD, HALO_SIZE, HALO_WORK = 0.25, 64, 128   # (HALO_WORK: the icon's size while it is made, the canvas half again)
+HALO_GLOW, HALO_SHADE = (0.05, 0.08, 2.6), (0.035, 0.04, 2.2)
+HALO_OUT = ("Textures", "Icons", "Halo")
 
 
 def load(group, name):
@@ -179,6 +190,28 @@ def class_disc(name, size=64):
     rgb = fill * (1 - line) + ink * line
     img = Image.fromarray(np.dstack([rgb, alpha * 255]).round().astype(np.uint8), "RGBA")
     return img.convert("RGBa").resize((size, size), Image.LANCZOS).convert("RGBA")
+
+
+def halo(name, img):
+    grow, blur, gain = HALO_GLOW if name.startswith(HALO_DISCS) else HALO_SHADE
+    w = HALO_WORK
+    n = round(w * (1 + 2 * HALO_PAD))
+    a = scaled(img, w).getchannel("A")
+    canvas = Image.new("L", (n, n), 0)
+    canvas.paste(a, ((n - w) // 2, (n - w) // 2))
+    k = 2 * round(grow * w) + 1
+    if k > 1:
+        canvas = canvas.filter(ImageFilter.MaxFilter(k))
+    canvas = canvas.filter(ImageFilter.GaussianBlur(blur * w))
+    alpha = np.clip(np.asarray(canvas).astype(np.float64) / 255 * gain, 0, 1)
+    rgba = np.dstack([np.full((n, n, 3), 255.0), alpha * 255]).round().astype(np.uint8)
+    return Image.fromarray(rgba, "RGBA").convert("RGBa").resize((HALO_SIZE, HALO_SIZE), Image.LANCZOS).convert("RGBA")
+
+
+def halos():
+    out = [(name, halo(name, load(group, art))) for group, art, name, _ in SET if group in HALO_GROUPS]
+    out += [("class_" + name, halo("class_" + name, class_disc(name, HALO_WORK))) for name in CLASSES]
+    return out
 
 
 def disc(size, inner=None, edge=1.0):
@@ -587,6 +620,8 @@ def main():
     every = [(name, img, (master(*OUT, name + ".tga"), os.path.join(ADDON_MEDIA, *OUT, name + ".tga")))
              for name, img in icons]
     every += [(e[0], fx_light(*e), (os.path.join(ADDON_MEDIA, *FX_OUT, e[0] + ".tga"),)) for e in FX_LIGHT]
+    lifts = halos()
+    every += [(name, img, (os.path.join(ADDON_MEDIA, *HALO_OUT, name + ".tga"),)) for name, img in lifts]
     for name, img, paths in every:
         data = tga(img)
         if paths[0].startswith(master()):
@@ -608,8 +643,8 @@ def main():
             print("stale:", os.path.normpath(path))
         print("ok" if not stale else "STALE")
         return 1 if stale else 0
-    print("%d icons written (masters + Media/Textures/Icons), set sha256 %s; %d light effects (Media/FrameFX/Light)"
-          % (len(icons), sums.hexdigest()[:16], len(FX_LIGHT)))
+    print("%d icons written (masters + Media/Textures/Icons), set sha256 %s; %d light effects (Media/FrameFX/Light); "
+          "%d lifts (Media/Textures/Icons/Halo)" % (len(icons), sums.hexdigest()[:16], len(FX_LIGHT), len(lifts)))
     return 0
 
 

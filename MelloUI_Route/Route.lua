@@ -4988,6 +4988,13 @@ end
 function M.GoalLay(f, size, anchorFrame, anchor, x, y)
 	M.MarkPlace(f, size, anchorFrame, anchor, x, y)
 	M.GoalFlag(f.flag)
+	-- (0.25.0) the disc's gold glow under it on the maps (MelloUI.Shade:Lift; the World Marker's gem has its own
+	-- light), laid again only when the picture or the size changed
+	local pic = f.flag.goalPic
+	if f.liftPic ~= pic or f.liftSize ~= size then
+		f.liftPic, f.liftSize = pic, size
+		MelloUI.Shade:Lift(f.flag, pic, size)
+	end
 end
 local Provider = nil
 local mapPainter = nil

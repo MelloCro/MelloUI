@@ -446,28 +446,21 @@ function O.Add(map, mapID)
 	O.Zoom(map)   -- (the areas or the dots, as the map is zoomed now)
 end
 
--- the mark's look: its kind's icon (a pin of its own, or the skull on the soft dark shade), its progress under it
+-- the mark's look: its kind's icon on its lift (a pin's glow, the skull's soft shade: MelloUI.Shade:Lift, the soft
+-- round shade under the skull alone until then), its progress under it
 function O.Dress(b, data)
-	local palette = MelloUI.Look.Palette()
-	local ground, gold = palette.innerPanel, palette.selectedTrim
+	local gold = MelloUI.Look.Palette().selectedTrim
 	b:SetSize(20, 20)
-	local kill = data.kind == 1
-	b.Bg:SetShown(kill)
-	if kill then
-		b.Bg:SetTexture(SOFT)
-		b.Bg:SetTexCoord(0, 1, 0, 1)
-		b.Bg:ClearAllPoints()
-		b.Bg:SetPoint("TOPLEFT", b, "TOPLEFT", -6, 6)
-		b.Bg:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 6, -6)
-		b.Bg:SetVertexColor(ground[1], ground[2], ground[3], 0.75)
-	end
+	b.Bg:Hide()
 	b.Icon:ClearAllPoints()
 	b.Icon:SetPoint("CENTER")
 	b.Icon:SetSize(20, 20)
 	b.Icon:SetDesaturated(false)
 	b.Icon:SetAlpha(1)
-	MelloUI.Widgets.Icon(b.Icon, OBJ_ICON[data.kind] or "goal_pin")
+	local icon = OBJ_ICON[data.kind] or "goal_pin"
+	MelloUI.Widgets.Icon(b.Icon, icon)
 	b.Icon:Show()
+	MelloUI.Shade:Lift(b.Icon, icon, 20)
 	local t = data.line
 	local have, need = t and t[7], t and t[8]
 	b.Label:ClearAllPoints()
@@ -639,27 +632,23 @@ function O.MiniBuild()
 	end
 end
 
--- a mark of the pool, made the first time it is needed: its kind's icon (as on the map), the skull on its soft
--- dark shade (the palette's inner panel) -- placed by Route.MarkPlace
-local function MiniMark(list, i, kind)
+-- a mark of the pool, `size` big, made the first time it is needed: its kind's icon (as on the map) on its lift
+-- (MelloUI.Shade:Lift; the skull alone on a soft round shade until then) -- placed by Route.MarkPlace
+local function MiniMark(list, i, kind, size)
 	local f = list[i]
 	if not f then
 		local R = MelloUI.Route
 		f = CreateFrame("Frame", nil, R.MinimapFrame())
 		f:SetFrameLevel(R.MinimapFrame():GetFrameLevel() + 2)
-		f.shade = f:CreateTexture(nil, "BACKGROUND")
-		f.shade:SetTexture(SOFT)
-		f.shade:SetPoint("TOPLEFT", f, "TOPLEFT", -4, 4)
-		f.shade:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 4, -4)
-		MelloUI.Widgets.Paint(f.shade, "innerPanel", "vertex", 0.75)
 		f.icon = f:CreateTexture(nil, "ARTWORK")
 		f.icon:SetAllPoints(f)
 		list[i] = f
 	end
 	if f.kind ~= kind then
 		f.kind = kind
-		MelloUI.Widgets.Icon(f.icon, OBJ_ICON[kind] or "goal_pin")
-		f.shade:SetShown(kind == 1)
+		local icon = OBJ_ICON[kind] or "goal_pin"
+		MelloUI.Widgets.Icon(f.icon, icon)
+		MelloUI.Shade:Lift(f.icon, icon, size)
 	end
 	return f
 end
@@ -684,7 +673,7 @@ function O.MiniDraw(cont, round, R, RX, RY)
 				end
 				if inside then
 					used = used + 1
-					Route.MarkPlace(MiniMark(mini.marks, used, p.kind), MINI.MARK, Route.MinimapFrame(), "CENTER", gx, gy)
+					Route.MarkPlace(MiniMark(mini.marks, used, p.kind, MINI.MARK), MINI.MARK, Route.MinimapFrame(), "CENTER", gx, gy)
 				else
 					local d = math.sqrt(gx * gx + gy * gy)
 					if d <= beyond then
@@ -709,7 +698,7 @@ function O.MiniDraw(cont, round, R, RX, RY)
 			local gx, gy = Offset(p.x, p.y)
 			eused = eused + 1
 			local k = Route.MinimapEdge(gx, gy, round, R, RX, RY, MINI.EDGE_MARK / 2 + 8)
-			Route.MarkPlace(MiniMark(mini.edges, eused, p.kind), MINI.EDGE_MARK, Route.MinimapFrame(), "CENTER", gx * k, gy * k)
+			Route.MarkPlace(MiniMark(mini.edges, eused, p.kind, MINI.EDGE_MARK), MINI.EDGE_MARK, Route.MinimapFrame(), "CENTER", gx * k, gy * k)
 			local chev = mini.chevs[eused]
 			if not chev then
 				chev = Route.MinimapFrame():CreateTexture(nil, "OVERLAY", nil, 3)

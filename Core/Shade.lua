@@ -94,8 +94,12 @@
 --                                 last colour back (a font object puts its
 --                                 own colour on a string: Notice.lua,
 --                                 QuestInk.lua)
--- The one 'palette' listener (owner "Shade") repaints the bands, the glows
--- and the outlines.
+-- 0.25.0 adds one more, made on first use only:
+--   MelloUI.Shade:Lift(tex, name[, size])   the soft glow or shade under an
+--                                 icon of MelloUI's set on the maps and the
+--                                 minimap ("The icons' lift")
+-- The one 'palette' listener (owner "Shade") repaints the bands, the glows,
+-- the outlines and the lifts.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -126,6 +130,7 @@ local Secret = MelloUI.Safe.IsSecret
 local bands = setmetatable({}, { __mode = "k" })   -- every band made, for the repaint
 local glows = setmetatable({}, { __mode = "k" })   -- every glow made, for the repaint
 local outlines = setmetatable({}, { __mode = "k" })   -- every soft outline made, for the repaint
+local lifts = setmetatable({}, { __mode = "k" })   -- [icon texture] = its lift, for the repaint
 local listening = false
 local NO_OPTIONS = {}
 
@@ -254,6 +259,9 @@ local function Repaint()
 	end
 	for outline in pairs(outlines) do
 		outline:Paint()
+	end
+	for _, lift in pairs(lifts) do
+		lift:Paint()
 	end
 end
 
@@ -1301,5 +1309,149 @@ do
 		outlines[o] = true
 		Listen()
 		return o
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The icons' lift (0.25.0). MelloUI's icon set came from sheets asked for
+-- with no glow and no shadow, "added later in the game" (the prompts,
+-- MelloUI-BuildData/masters/icons_v2/chatgpt-prompts.md; the user,
+-- 2026-10-20: "you didnt add those effects to them"): under an icon shown on
+-- the maps or the minimap, a soft copy of its own outline -- a gold glow
+-- round the set's disc pins (pin_, goal_, obj_, class_), the dark soft shade
+-- hugging its standalone marks (the skulls, the ! and ?, the loot bag, the
+-- chest). One baked white picture per icon, Media\Textures\Icons\Halo\<name>
+-- (Tools\make_icons.py HALO: the icon's alpha grown and blurred on a canvas
+-- reaching a quarter of the icon past each side), tinted with a palette
+-- colour (selectedTrim, innerPanel). It is the UI Shade's area "icons"
+-- (Modules/KitShade.lua; "Shade: Map Icons" on Look > General): shown while
+-- that area is on, at the UI Shade's strength.
+--   MelloUI.Shade:Lift(tex, name[, size]) -> the lift's texture, or nil
+--       tex shows the set's icon `name` (W.Icon); its lift is made once, a
+--       region of tex's parent in tex's layer one sublevel under it, laid
+--       round tex at `size` (the icon's width in tex's units; left out, its
+--       width read), its alpha the icon's own at the call times the
+--       strength, desaturated with it. name not a string: hidden (the icon
+--       hidden, or showing art not the set's). Called after the icon's look
+--       is set; a call that changes nothing writes nothing (a minimap mark
+--       laid every tick)
+-- Made on first use only: the 'shade' listener comes with the first lift.
+-- The one 'palette' listener repaints them.
+--------------------------------------------------------------------------------
+
+do
+	local HALO = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\Halo\\"
+	local PAD = 0.25   -- (make_icons.py HALO_PAD)
+	local AREA = "icons"
+	local DISCS = { "pin_", "goal_", "obj_", "class_" }   -- (make_icons.py HALO_DISCS)
+	local GLOW_KEY, SHADE_KEY = "selectedTrim", "innerPanel"
+	local on, strength   -- the area's, as last told (nil until the first lift)
+
+	local Lift = {}
+	local LiftMeta = { __index = Lift }
+
+	local function IsDisc(name)
+		for i = 1, #DISCS do
+			local p = DISCS[i]
+			if name:sub(1, #p) == p then
+				return true
+			end
+		end
+		return false
+	end
+
+	function Lift:Paint()
+		local palette = MelloUI.Palette
+		local c = palette[self.key] or palette[SHADE_KEY]
+		self.tex:SetVertexColor(c[1], c[2], c[3], 1)
+	end
+
+	-- shown at its strength while the area is on and it has an icon, else hidden
+	function Lift:Show()
+		local tex = self.tex
+		if on and self.name then
+			tex:SetAlpha(strength * self.alpha)
+			tex:Show()
+		else
+			tex:Hide()
+		end
+	end
+
+	local function OnShade(area, isOn, s)
+		if area ~= AREA then
+			return
+		end
+		on, strength = isOn and true or false, Num(s) or DEFAULT_ALPHA
+		for _, lift in pairs(lifts) do
+			lift:Show()
+		end
+	end
+
+	-- the area's state now, and its listener (with the first lift)
+	local function Start()
+		local Kit = MelloUI.Kit
+		if Kit and Kit.ShadeOn then
+			on, strength = Kit:ShadeOn(AREA) and true or false, Num(Kit:ShadeStrength()) or DEFAULT_ALPHA
+		else
+			on, strength = true, DEFAULT_ALPHA
+		end
+		MelloUI:On("shade", Perf.Shared("'shade' on the bus: the icons' lifts", OnShade), "Shade lifts")
+		Listen()
+	end
+
+	function Shade:Lift(icon, name, size)
+		if type(icon) ~= "table" or not icon.GetParent then
+			return nil
+		end
+		local lift = lifts[icon]
+		if type(name) ~= "string" then
+			if lift and lift.name then
+				lift.name = false
+				lift.tex:Hide()
+			end
+			return lift and lift.tex
+		end
+		if not lift then
+			if on == nil then
+				Start()
+			end
+			local layer, sublevel = icon:GetDrawLayer()
+			sublevel = (Num(sublevel) or 0) - 1
+			local tex = icon:GetParent():CreateTexture(nil, LAYERS[layer] and layer or "ARTWORK", nil,
+				sublevel < -8 and -8 or sublevel)
+			tex:Hide()
+			lift = setmetatable({ tex = tex, name = false, alpha = 1 }, LiftMeta)
+			lifts[icon] = lift
+		end
+		local tex, changed = lift.tex, not lift.name
+		size = Num(size) or Num(icon:GetWidth()) or 0
+		if size ~= lift.size then
+			lift.size = size
+			local pad = size * PAD
+			tex:ClearAllPoints()
+			tex:SetPoint("TOPLEFT", icon, "TOPLEFT", -pad, pad)
+			tex:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", pad, -pad)
+		end
+		if name ~= lift.name then
+			lift.name = name
+			tex:SetTexture(HALO .. name)
+			local key = IsDisc(name) and GLOW_KEY or SHADE_KEY
+			if key ~= lift.key then
+				lift.key = key
+				lift:Paint()
+			end
+		end
+		local grey = icon:IsDesaturated()
+		grey = not Secret(grey) and grey and true or false
+		if grey ~= (lift.grey or false) then
+			lift.grey = grey
+			tex:SetDesaturated(grey)
+		end
+		local alpha = Num(icon:GetAlpha()) or 1
+		if alpha ~= lift.alpha or changed then
+			lift.alpha = alpha
+			lift:Show()
+		end
+		return tex
 	end
 end

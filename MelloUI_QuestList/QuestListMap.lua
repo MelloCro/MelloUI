@@ -504,6 +504,18 @@ function Marks.Hook(map)
 	end
 end
 
+-- (0.25.0) the lift a mark's icon wears (MelloUI.Shade:Lift: a pin's glow, a mark's soft shade) -> name, size: the
+-- icon set's pictures only (a start's, an entrance's, a transport's), none on the game's atlases or a zone's badge
+function Marks.Lift(kind, data)
+	if kind == "giver" then
+		return data.item and QL.StarterIconName(data.item), (data.item == "dungeon" or data.item == "raid") and 22 or 20
+	elseif kind == "entrance" or kind == "transport" then
+		return kind == "entrance" and (data.raid and "pin_raid" or "pin_dungeon") or TRANSPORT_PIN[data.kind]
+			or "pin_boat", 26
+	end
+	return false
+end
+
 -- A mark dressed for its kind and data. (A zone badge leaves its click to the
 -- map under it, Marks' Mouse: the map's own click opens that zone. A map
 -- changed from MelloUI's code stays MelloUI's for the session, the map's id
@@ -588,6 +600,9 @@ function QL.DressMark(self, kind, data)
 		self.Label:SetTextColor(ink[1], ink[2], ink[3], done and QL.DONE_ALPHA or 1)
 		self.Label:Show()
 		self:SetSize((self.Label:GetStringWidth() or 30) + 10, 15)
+	end
+	if kind ~= "objective" then   -- (an objective's own: QuestListObjectives.lua's Dress)
+		MelloUI.Shade:Lift(self.Icon, Marks.Lift(kind, data))
 	end
 end
 
