@@ -30,7 +30,7 @@ local Perf = MelloUI.Perf:Scope("MelloUI_Map (Map)")
 local Finite = MelloUI.Safe.Finite
 local W = MelloUI.Widgets
 local Kit = MelloUI.Kit
-local Canvas = ns.Canvas
+local Canvas, Pins, Layers = ns.Canvas, ns.Pins, ns.Layers
 local floor, max = math.floor, math.max
 
 local ICON = "Interface\\Icons\\INV_Misc_Map_01"
@@ -45,7 +45,7 @@ local T = {
 
 local TEXT = {
 	title = "Map",
-	hint = "Wheel: zoom   Drag: look around   Click: in   Right-click: out",
+	hint = "Wheel: zoom   Drag: look around   Click: in   Right-click: out   Middle-click: find me",
 	open = "Open The Map",
 	usage = "/mellomap: open or close the map | /mellomap dump: its places and the view, to copy",
 	off = "The map is off: switch it on in /mello (Quests and travel > Map).",
@@ -111,14 +111,38 @@ local function ShowName(name)
 	end
 end
 
--- the deepest map under the cursor (names the footer)
+-- a pin's tooltip (its spec's tip: a text, or fn(pin) -> title, body), or none
+local function PinTip(pin)
+	if pin == win.tipPin then
+		return
+	end
+	win.tipPin = pin
+	if not pin then
+		GameTooltip:Hide()
+		return
+	end
+	local tip = pin.spec.tip
+	local title, body = tip, nil
+	if type(tip) == "function" then
+		title, body = tip(pin)
+	end
+	if title then
+		W.ShowTooltip(win.canvas.frame, title, body, nil, "ANCHOR_CURSOR")
+	else
+		GameTooltip:Hide()
+	end
+end
+
+-- the deepest map under the cursor (names the footer), the pin under it (its tooltip)
 local function Hover()
 	local c = win.canvas
 	local x, y = c:Cursor()
 	if not x then
 		ShowName(nil)
+		PinTip(nil)
 		return
 	end
+	PinTip(not win.drag.on and win.pins:At(x, y) or nil)
 	local path = c:Path(x, y, win.path)
 	local p = path[#path]
 	ShowName(p and p.kind ~= "world" and p.name or nil)
@@ -189,6 +213,9 @@ local function Canvas_OnMouseUp(_, button)
 	if button == "RightButton" then
 		c:Out()
 		return
+	elseif button == "MiddleButton" then
+		Layers.FindMe()
+		return
 	end
 	local d = win.drag
 	if not d.on then
@@ -198,9 +225,16 @@ local function Canvas_OnMouseUp(_, button)
 	if d.moved then
 		c.moving = false
 		c.stats.lastAt = nil
+		c:Refocus()
 		SaveView()
 	else
-		c:Deeper(d.x, d.y)
+		-- (a click on a pin is the pin's; elsewhere a glide in)
+		local pin = win.pins:At(d.x, d.y)
+		if pin and pin.spec.click then
+			pin.spec.click(pin, button)
+		else
+			c:Deeper(d.x, d.y)
+		end
 	end
 end
 
@@ -213,6 +247,7 @@ end
 local function Canvas_OnLeave()
 	win.over = false
 	ShowName(nil)
+	PinTip(nil)
 end
 
 --------------------------------------------------------------------------------
@@ -272,6 +307,7 @@ end
 
 local function Hidden()
 	win.drag.on = false
+	PinTip(nil)
 	win.over = false
 	if win.canvas then
 		win.canvas:Stop()
@@ -279,6 +315,11 @@ local function Hidden()
 	end
 	SaveView()
 	win.frame:UnregisterEvent("MAP_EXPLORATION_UPDATED")
+end
+
+-- the window's beat while it shows (the layers' positions; nothing runs while it is closed)
+local function Frame_OnUpdate(_, elapsed)
+	Layers.Tick(elapsed)
 end
 
 local function Frame_OnEvent(_, event)
@@ -314,6 +355,13 @@ local function Build()
 	cf:EnableMouseWheel(true)
 	win.canvas = canvas
 	canvas.onRest = SaveView
+	-- the pins over it (never scaled), laid with every view; the layers that feed them
+	local pins = Pins.New(canvas)
+	win.pins = pins
+	canvas.onView = function()
+		pins:Lay()
+	end
+	Layers.Init(canvas, pins)
 	local name = W.Text(body, "GameFontHighlight", nil, "text")
 	name:SetPoint("BOTTOMLEFT", body, "BOTTOMLEFT", 8, 5)
 	name:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -8, 5)
@@ -330,13 +378,14 @@ local function Build()
 	Perf.HookScript(f, "OnShow", Shown)
 	Perf.HookScript(f, "OnHide", Hidden)
 	Perf.SetScript(f, "OnEvent", Frame_OnEvent)
+	Perf.SetScript(f, "OnUpdate", Frame_OnUpdate)
 	Lay(win.shell)
 	win.shell:OnKit(Lay)
 end
 
--- the canvas (nil until the map first opens): the layers' and the tests' way in
+-- the canvas and its pins (nil until the map first opens): the layers' and the tests' way in
 function M:Canvas()
-	return win.canvas
+	return win.canvas, win.pins
 end
 
 function M:Toggle(show)

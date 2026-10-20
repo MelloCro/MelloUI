@@ -9,4 +9,6 @@
 ## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
 
 MapCanvas.lua
+MapPins.lua
+MapLayers.lua
 Map.lua

@@ -125,13 +125,17 @@ local function ViaChild(id)
 	return nil
 end
 
-local function IsCity(id)
+-- a city: the client's own flag, or a zone map the client gives no exploration pieces (UiMap's ShowOverlays flag, 2:
+-- every zone of this client has it, the six capitals alone have not)
+local function IsCity(id, flags)
 	local fn = C_Map.IsCityMap
-	if not fn then
-		return false
+	if fn then
+		local ok, city = pcall(fn, id)
+		if ok and city == true then
+			return true
+		end
 	end
-	local ok, city = pcall(fn, id)
-	return ok and city == true
+	return flags ~= nil and floor(flags / 2) % 2 == 0
 end
 
 -- a place: the map's world rectangle (world units), its kind and its art, made the first time it is near the view
@@ -140,6 +144,7 @@ local function NewPlace(self, id, kind, x0, x1, y0, y1)
 	local p = {
 		id = id, kind = kind, name = type(info) == "table" and Text(info.name) or tostring(id),
 		parent = type(info) == "table" and Finite(info.parentMapID) or nil,
+		flags = type(info) == "table" and Finite(info.flags) or nil,
 		left = x0 * self.W, top = y0 * self.H, w = (x1 - x0) * self.W, h = (y1 - y0) * self.H,
 		tiles = nil, alpha = 0, live = false,
 	}
@@ -169,8 +174,10 @@ function Canvas:Layout()
 				x0, x1, y0, y1 = ViaChild(id)
 			end
 			if x0 then
-				local kind = mt == T.MAP_TYPE.continent and "continent" or (IsCity(id) and "city" or "zone")
-				local p = NewPlace(self, id, kind, x0, x1, y0, y1)
+				local p = NewPlace(self, id, mt == T.MAP_TYPE.continent and "continent" or "zone", x0, x1, y0, y1)
+				if p.kind == "zone" and IsCity(id, p.flags) then
+					p.kind = "city"
+				end
 				places[#places + 1], byID[id] = p, p
 			end
 		end
@@ -182,10 +189,15 @@ function Canvas:Layout()
 		end
 		return a.id < b.id
 	end)
+	-- (the levels: the maps biggest first; the zone under the view's centre over them all, Focus; the cities over
+	-- that, each over its zone)
 	local base = self.root:GetFrameLevel() + 1
+	local n = #places
+	self.focusLevel = base + n + 1
 	for i, p in ipairs(places) do
 		local f = CreateFrame("Frame", nil, self.root)
-		f:SetFrameLevel(base + i)
+		p.level = p.kind == "city" and base + n + 2 + i or base + i
+		f:SetFrameLevel(p.level)
 		f:SetSize(p.w, p.h)
 		f:Hide()
 		p.frame = f
@@ -426,6 +438,29 @@ local function NeedCut(self, x0, y0, x1, y1)
 	return ratio > T.CULL_ZOOM or ratio < 1 / T.CULL_ZOOM
 end
 
+-- the zone under the view's centre drawn over its neighbours: every zone's art spills past its borders, and a
+-- smaller neighbour (drawn later) covered the zone you look at; until M2's edges, the one in view wins
+local function Focus(self)
+	local path = self:Path(self.cw / 2, self.ch / 2, self.focusPath)
+	local f
+	for i = #path, 1, -1 do
+		if path[i].kind == "zone" then
+			f = path[i]
+			break
+		end
+	end
+	if f ~= self.focus then
+		local old = self.focus
+		if old then
+			old.frame:SetFrameLevel(old.level)
+		end
+		if f then
+			f.frame:SetFrameLevel(self.focusLevel)
+		end
+		self.focus = f
+	end
+end
+
 local function Ramp(v, a, b)
 	if v <= a then
 		return 0
@@ -523,6 +558,8 @@ function Canvas:SetView(cx, cy, z)
 		local box, mx, my = self.box, vw * T.CULL_MARGIN, vh * T.CULL_MARGIN
 		box[1], box[2], box[3], box[4], box[5] = x0 - mx, y0 - my, x1 + mx, y1 + my, z
 		Cull(self)
+		Focus(self)
+		self.cuts = self.cuts + 1   -- (the pins gather again)
 	end
 	local s = self.stats
 	local ms = debugprofilestop() - t0
@@ -548,6 +585,25 @@ function Canvas:SetView(cx, cy, z)
 	if self.onView then
 		self.onView(self)
 	end
+end
+
+-- a map's position (0..1 on uiMapID) in world units: a laid map's place, else the map's rect on the world (a city's
+-- or a cave's map the client places there), read once; nil where the client places it nowhere (an instance's own)
+function Canvas:ToWorld(id, x, y)
+	id, x, y = Finite(id), Finite(x), Finite(y)
+	if not (id and x and y and self.places) then
+		return nil
+	end
+	local r = self.byID[id] or self.rects[id]
+	if r == nil then
+		local x0, x1, y0, y1 = Rect(id, T.WORLD)
+		r = x0 and { left = x0 * self.W, top = y0 * self.H, w = (x1 - x0) * self.W, h = (y1 - y0) * self.H } or false
+		self.rects[id] = r
+	end
+	if not r then
+		return nil
+	end
+	return r.left + x * r.w, r.top + y * r.h
 end
 
 -- a canvas point (from its top left) in world units
@@ -598,6 +654,7 @@ local function GlideDone(frame)
 		self.gliding = false
 		self.moving = false
 		self.stats.lastAt = nil
+		self:Refocus()
 		if self.onRest then
 			self.onRest(self)
 		end
@@ -622,6 +679,13 @@ function Canvas:Glide(cx, cy, z, seconds, easing)
 	self.gliding, self.moving = true, true
 	self.stats.lastAt = nil
 	Anim:Drive(self.frame, GlideStep, seconds or T.GLIDE_SECONDS, easing or "inOutQuad", GlideDone)
+end
+
+-- the zone in view drawn on top again (a glide or a drag came to rest)
+function Canvas:Refocus()
+	if self.places and self.cx then
+		Focus(self)
+	end
 end
 
 function Canvas:Stop()
@@ -794,7 +858,7 @@ function Canvas.New(parent)
 	local loader = CreateFrame("Frame", nil, frame)
 	loader:Hide()
 	local self = setmetatable({
-		frame = frame, root = root, sea = sea, loader = loader, queue = {}, box = {}, g = {}, path = {},
+		frame = frame, root = root, sea = sea, loader = loader, queue = {}, box = {}, g = {}, path = {}, rects = {}, cuts = 0, focusPath = {},
 		cx = nil, cy = nil, z = 1, W = 1002, H = 668,
 		stats = { made = 0, files = 0, views = 0, culls = 0, live = 0, shown = 0, lastMs = 0, maxMs = 0,
 			moveFrames = 0, moveSum = 0, moveMax = 0, layoutMs = 0 },
