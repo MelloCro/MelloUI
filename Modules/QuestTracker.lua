@@ -1472,8 +1472,10 @@ end
 -- OnClick): a quest's mark follows it or lets it go; its title and lines open it on the map, a Shift-click links it
 -- into the chat line being typed (else stops watching it), a right-click opens the game's menu for a quest. The
 -- game's own functions and words where it has them (rawget: a client without one goes without that part). One
--- table: the file's locals.
+-- table: the file's locals. (0.25.0) Shared as MelloUI.QuestActs: the map's quest log (MelloUI_Map/MapQuestLog.lua)
+-- follows, shares, abandons and watches through these same ones (one system per job).
 local Act = {}
+MelloUI.QuestActs = Act
 
 -- a game string, or ours where the client has none
 function Act.Text(name, fallback)
@@ -1501,26 +1503,52 @@ function Act.Link(id)
 	return ok and done and true or false
 end
 
--- the quest's link put in the chat (the menu's): into the line being typed, else a new line opened with it
-function Act.LinkInChat(id)
-	local getLink, util = rawget(_G, "GetQuestLink"), rawget(_G, "ChatFrameUtil")
-	if type(getLink) ~= "function" or type(util) ~= "table" then
-		return
-	end
-	local ok, link = pcall(getLink, id)
-	link = ok and Plain(link) or nil
-	if type(link) ~= "string" then
-		return
+-- a link put in the chat: into the line being typed, else a new line opened with it (the map's pin too: one way)
+function Act.InsertLink(link)
+	local util = rawget(_G, "ChatFrameUtil")
+	if type(util) ~= "table" or type(link) ~= "string" then
+		return false
 	end
 	local okI, done = pcall(util.InsertLink, link)
 	if not (okI and done) and util.OpenChat then
 		pcall(util.OpenChat, link)
+	end
+	return true
+end
+
+-- the quest's link put in the chat (the menu's)
+function Act.LinkInChat(id)
+	local getLink = rawget(_G, "GetQuestLink")
+	if type(getLink) ~= "function" then
+		return
+	end
+	local ok, link = pcall(getLink, id)
+	link = ok and Plain(link) or nil
+	if type(link) == "string" then
+		Act.InsertLink(link)
 	end
 end
 
 function Act.Unwatch(id)
 	if C_QuestLog and C_QuestLog.RemoveQuestWatch then
 		pcall(C_QuestLog.RemoveQuestWatch, id)
+	end
+end
+
+-- (0.25.0, the map's quest log) the quest in the tracker (the game's watch list); watched or let go
+function Act.Watched(id)
+	if not (C_QuestLog and C_QuestLog.GetQuestWatchType) then
+		return false
+	end
+	local ok, kind = pcall(C_QuestLog.GetQuestWatchType, id)
+	return ok and Plain(kind) ~= nil
+end
+
+function Act.Watch(id, on)
+	if not on then
+		Act.Unwatch(id)
+	elseif C_QuestLog and C_QuestLog.AddQuestWatch then
+		pcall(C_QuestLog.AddQuestWatch, id)
 	end
 end
 
@@ -1571,7 +1599,8 @@ end
 -- next frame, out of this click's run. (0.15.0) Never in the Gamepad UI: the
 -- map opened from MelloUI code runs the Gamepad UI's frame manager in
 -- MelloUI's run and blocks its bindings (the Gamepad UI freeze); the player
--- opens the map there.
+-- opens the map there. (0.25.0) While MelloUI's map is on (MelloUI_Map: the game's map and quest log keys open
+-- it), the quest's page in its quest log instead; a quest that hands itself in keeps the game's completion.
 Act.GAMEPAD = "Quest Tracker: in the Gamepad UI, open your map to see this quest's details."
 function Act.Open(id, how)
 	if MelloUI.Safe.GamepadUI() then
@@ -1582,6 +1611,13 @@ function Act.Open(id, how)
 		-- (the Gamepad UI asked again: turned on since the click)
 		if MelloUI.Safe.GamepadUI() then
 			return
+		end
+		local map = MelloUI:GetModule("Map")
+		if map and map.isEnabled and map.OpenQuest and not (how == nil and Act.AutoComplete(id)) then
+			local ok, shown = pcall(map.OpenQuest, map, id)
+			if ok and shown then
+				return
+			end
 		end
 		if how == "log" then
 			local util = rawget(_G, "QuestUtil")

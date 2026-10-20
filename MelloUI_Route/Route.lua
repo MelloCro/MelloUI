@@ -5148,6 +5148,12 @@ function M:HasDestination()
 	return destination ~= nil, destination and destination.label
 end
 
+-- (the seamless map, MelloUI_Map) the route followed now and its destination, to read only: a new route table each
+-- plan, so a reader knows a new route by the table; nil, nil while there is none
+function M:CurrentRoute()
+	return route, destination
+end
+
 function M:Clear()
 	StandIn.Drop()
 	destination = nil
@@ -5921,6 +5927,89 @@ local function DrawWorldMap()
 		end
 		M.GoalLay(M.goalMap, M.TRAIL.GOAL_MAP / scale, mapFrame, "TOPLEFT", gx * W, -gy * H)
 	end
+end
+
+-- (the seamless map, MelloUI_Map) the trail and its goal on another addon's own canvas, by the one painter and goal
+-- mark the game's maps are drawn with: project(cont, x, y, key) gives a point's place on `frame` from its top left
+-- (x right, y down; nil: not on it; `key`, a route point or the destination, a table the caller may cache by; nil for
+-- the player's spot on the leg, which moves). Every leg of the way ahead, the boats' and the other continents' too:
+-- that canvas holds the whole world. A leg wholly off the frame is passed by (the dots are counted, MAX_DOTS). The
+-- frame's painter and goal mark are made the first time; their table is M's (this chunk is at its locals' limit).
+-- A new route draws in there as on the game's map (M.DrawIn: the way up to its budget, the beads popping in, the
+-- light at its head, the goal popping in once it is whole); the caller draws it again each frame while M.DrawIn.on.
+-- Returns true when some of the route was drawn.
+function M:DrawOn(frame, project)
+	local drawers = M.drawOn
+	if not drawers then
+		drawers = setmetatable({}, { __mode = "k" })
+		M.drawOn = drawers
+	end
+	local d = drawers[frame]
+	if not d then
+		d = { painter = NewPainter(frame), goal = M.GoalMark(frame) }
+		d.goal:SetFrameLevel(frame:GetFrameLevel() + 2)
+		drawers[frame] = d
+	end
+	local painter = d.painter
+	painter:Begin()
+	painter.popY0 = nil
+	local drawn = false
+	local DI = M.DrawIn
+	local budget
+	local W, H = Plain(frame:GetWidth()), Plain(frame:GetHeight())
+	local unit = 3.5 * (tonumber(M.db.lineWidth) or 3)
+	if W and H and W > 0 and H > 0 and route and route.points and #route.points >= 2 then
+		-- the way ahead (the player's spot on the leg first: no key, it moves); the drawing in's budget of it
+		local points = RouteAhead()
+		local first = points[1]
+		budget = DI.on and DI.Budget(points) or nil
+		local mx, my = W * 0.2, H * 0.2
+		local ax, ay = project(first[1], first[2], first[3], (points == route.points or not route.atX) and first or nil)
+		for i = 2, #points do
+			local a, b = points[i - 1], points[i]
+			local bx2, by2, f = b[2], b[3], 1
+			if budget then
+				bx2, by2, f = DI.Cut(a, b, budget)
+				if not bx2 then
+					break
+				end
+			end
+			local bx, by = project(b[1], bx2, by2, f == 1 and b or nil)   -- (a cut end is no route point: no key)
+			if ax and bx and not (ax < -mx and bx < -mx) and not (ax > W + mx and bx > W + mx)
+				and not (ay < -my and by < -my) and not (ay > H + my and by > H + my) then
+				if budget then
+					DI.Lay(painter, f)
+				end
+				painter:Segment(ax, -ay, bx, -by, STYLE[b[4]] or STYLE.road, unit, "TOPLEFT")
+				drawn = true
+			end
+			if budget then
+				DI.Walked(a, b, f)
+			end
+			ax, ay = bx, by
+		end
+	end
+	painter:End()
+	if budget or painter.headOn then
+		DI.HeadOn(painter, unit)
+	end
+	-- the goal: hidden while the way draws in, popping in once it is whole (DI.PopMark, as the game's map's)
+	local g = destination
+	local gx, gy
+	if g and not DI.on then
+		gx, gy = project(g.cont, g.x, g.y, g)
+	end
+	if gx then
+		M.GoalLay(d.goal, M.TRAIL.GOAL_MAP, frame, "TOPLEFT", gx, -gy)
+		if d.popGoal then
+			d.popGoal = nil
+			DI.PopMark(d.goal)
+		end
+	else
+		d.goal:Hide()
+		d.popGoal = DI.on and g ~= nil or nil
+	end
+	return drawn
 end
 
 local function CreateProvider()

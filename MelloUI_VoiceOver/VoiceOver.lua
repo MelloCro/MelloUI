@@ -2612,17 +2612,7 @@ local function CreateReadButton()
 	readButton:SetPoint("RIGHT", frame, "RIGHT", -11, 4)
 	readButton:SetText("Read")
 	Perf.SetScript(readButton, "OnClick", function()
-		if IsReadingLog() then
-			Stop()
-			MelloUI:PlayUISound("option_off")
-		else
-			local questID = QuestMapFrame.DetailsFrame.questID
-			if not ReadQuest(questID) then
-				MelloUI:Print("Voice Over: nothing to read for this quest.")
-			else
-				MelloUI:PlayUISound("option_on")
-			end
-		end
+		M.ReadToggle(QuestMapFrame.DetailsFrame.questID)
 	end)
 	Perf.SetScript(readButton, "OnEnter", function(self)
 		MelloUI.Widgets.ShowTooltip(self, "Read aloud",
@@ -2642,6 +2632,28 @@ local function CreateReadButton()
 			self:SetText(reading and "Stop" or "Read")
 		end
 	end)
+end
+
+-- (the quest log's reading, for this button and MelloUI's map's quest page, MelloUI_Map: one reader) whether it is
+-- offered (Read Button In The Quest Log, a voice to read with); whether a quest is being read; read the quest, or
+-- stop the reading under way
+function M.ReadCan()
+	return (M.isEnabled and M.db.questLog and HasTTS()) and true or false
+end
+
+function M.Reading()
+	return IsReadingLog()
+end
+
+function M.ReadToggle(questID)
+	if IsReadingLog() then
+		Stop()
+		MelloUI:PlayUISound("option_off")
+	elseif not ReadQuest(questID) then
+		MelloUI:Print("Voice Over: nothing to read for this quest.")
+	else
+		MelloUI:PlayUISound("option_on")
+	end
 end
 
 local function ApplyReadButton()

@@ -1,0 +1,16 @@
+<Bindings>
+	<!-- MelloUI's map (MelloUI_Map/Map.lua): while it is on, the keys bound to the game's world map (M) and quest log (L)
+	     run these; the player may give them keys of their own in the game's Key Bindings too -->
+	<Binding name="MELLOUI_MAP_TOGGLE" header="MELLOUI" category="ADDONS">
+		local map = MelloUI and MelloUI:GetModule("Map")
+		if map then
+			map:Toggle()
+		end
+	</Binding>
+	<Binding name="MELLOUI_MAP_QUESTLOG" category="ADDONS">
+		local map = MelloUI and MelloUI:GetModule("Map")
+		if map then
+			map:ToggleLog()
+		end
+	</Binding>
+</Bindings>

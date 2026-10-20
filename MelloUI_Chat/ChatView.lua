@@ -817,11 +817,25 @@ function View.Scroll(delta)
 end
 
 --------------------------------------------------------------------------------
--- Links: a click is the game's (SetItemRef), an item or a spell shows its tooltip under the pointer
+-- Links: a click is the game's (SetItemRef), an item or a spell shows its tooltip under the pointer. (0.25.0) A map
+-- pin's link (anyone's shared pin: the game's own worldmap link) opens on MelloUI's map while it is on -- your pin
+-- set there, Route on its way -- never the game's map; a modified click stays the game's (Shift: into the chat line)
 --------------------------------------------------------------------------------
 
 local LinkClick = Perf.Shared("OnHyperlinkClick on the chat view", function(_, link, text, button)
-	if not Secret(link) and type(SetItemRef) == "function" then
+	if Secret(link) or type(link) ~= "string" then
+		return
+	end
+	if button == "LeftButton" and link:sub(1, 9) == "worldmap:" and not (IsShiftKeyDown() or IsControlKeyDown()) then
+		local map = MelloUI:GetModule("Map")
+		if map and map.isEnabled and map.OpenPinLink then
+			local ok, opened = pcall(map.OpenPinLink, map, link)
+			if ok and opened then
+				return
+			end
+		end
+	end
+	if type(SetItemRef) == "function" then
 		pcall(SetItemRef, link, text, button, ChatFrame1)
 	end
 end, "script")

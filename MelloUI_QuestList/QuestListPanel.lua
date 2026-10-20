@@ -4,6 +4,14 @@
 -- The list as a page of the world map's quest log column, switched with the
 -- log by a button on the column's top row. Shares its data and helpers with
 -- QuestList.lua through ns.QuestList (QL).
+--
+-- (0.25.0, the user 2026-10-20: the Quest List "as a tab" of MelloUI's map,
+-- which the game's M and L open in the game's map's place) The page has two
+-- homes: the game's quest column (above), or a host of MelloUI's own map --
+-- QL.Panel:Mount(host) lays the same page in it (the host's whole rect, the
+-- map's own panel under it: no art of the log's, no switch), HostShow(on)
+-- follows the map's tab, Unmount() takes it back to the game's column. Its
+-- Current zone and continent then follow the map's view (QL.ViewMap).
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -32,7 +40,8 @@ local bandOf = QI.bandOf   -- [row] = its hover band (QI.RowBand)
 -- world that does not load it
 local QP = MelloUI.QuestPages
 local LEVEL_SHORTCUT = 4   -- the gear menu's level check: hide quests more than 4 (so 5 or more) levels above
-local PIN_SIZE = 14        -- the map pin on the pinned quest's icon
+local PIN_SIZE = 14        -- the map pin of the pinned quest, after its name
+local PIN_GAP = 4          -- between the name and the pin
 -- (0.19.9) a group's Done section's header; the header's progress bar's texture
 local DONE_SECTION = "Done (%d)"
 QL.doneOpen = QL.doneOpen or {}   -- (QuestList.lua's; here too for a panel loaded on its own)
@@ -333,11 +342,11 @@ local function EnsureWidgets(button)
 	-- in it went: the user, 2026-10-09)
 	button.slot = button:CreateTexture(nil, "BACKGROUND")
 	button.slot:Hide()
-	-- the map pin on the pinned quest: on its icon's corner, as the log marks
-	-- the quest it follows on its POI button (the columns never move for it)
+	-- the map pin of the pinned quest: right after its name on the title's line
+	-- (InitRow; the user, 2026-10-20: on the icon's corner it covered the
+	-- quest's icon -- "After the title")
 	button.pin = button:CreateTexture(nil, "OVERLAY", nil, 1)
 	button.pin:SetSize(PIN_SIZE, PIN_SIZE)
-	button.pin:SetPoint("CENTER", button.check, "BOTTOMRIGHT", -3, 3)
 	-- (0.25.0) the gold pin with Route's red flag of MelloUI's icon set (the map's own pin atlas until then)
 	MelloUI.Widgets.Icon(button.pin, "goal_pin")
 	button.pin:Hide()
@@ -510,7 +519,8 @@ local function InitRow(button, entry)
 	button.slot:SetPoint("TOPRIGHT", button, "TOPRIGHT", -ROW.edge, -ROW.top)
 	-- the hover band (hidden but on the row under the mouse)
 	QI.RowBand(button, titleSize):SetShown(MouseOver(button))
-	button.pin:SetShown(QL.trackedQuestID ~= nil and entry.row[QL.F_ID] == QL.trackedQuestID)
+	local pinned = QL.trackedQuestID ~= nil and entry.row[QL.F_ID] == QL.trackedQuestID
+	button.pin:SetShown(pinned)
 	local row = entry.row
 	local r, g, b = QL.DifficultyColor(QL.ColourLevel(row))
 	-- the game's trivial grey (0.5) reads as near black over the list's
@@ -601,9 +611,22 @@ local function InitRow(button, entry)
 	end
 	-- the title and the line under it short of the slot, on every row (the
 	-- gem stands before the title: the title keeps the whole width)
-	button.title:SetPoint("TOPRIGHT", button.slot, "TOPLEFT", -6, 0)
-	button.where:SetPoint("TOPRIGHT", button.title, "BOTTOMRIGHT", 0, -ROW.gap)
+	-- (a pinned row's name short of the pin's room; the line under it keeps the whole width)
+	local pinRoom = pinned and (PIN_SIZE + PIN_GAP) or 0
+	button.title:SetPoint("TOPRIGHT", button.slot, "TOPLEFT", -6 - pinRoom, 0)
+	button.where:SetPoint("TOPRIGHT", button.title, "BOTTOMRIGHT", pinRoom, -ROW.gap)
 	QI.RowGem(button, button.title, titleSize, tier)
+	if pinned then
+		-- the pin right after the name as it shows (cut at the title's width when it is long)
+		local Finite = MelloUI.Safe.Finite
+		local w = Finite(button.title:GetStringWidth()) or 0
+		local room = Finite(button.title:GetWidth())
+		if room and room > 0 and w > room then
+			w = room
+		end
+		button.pin:ClearAllPoints()
+		button.pin:SetPoint("LEFT", button.title, "LEFT", w + PIN_GAP, 0)
+	end
 	-- on the reskin's parchment: both lines in ink; a done quest faded
 	if QI.onParchment then
 		local faded = entry.completed or tier == 1
@@ -846,6 +869,19 @@ function QL.Panel:Sync(off)
 	if not frame then
 		return
 	end
+	if self.host then
+		-- (in MelloUI's map: shown with its tab; the game's list never faded)
+		frame:SetShown((not off and M.isEnabled and self.hostShown) and true or false)
+		frame.switch:Hide()
+		if faded then
+			faded = false
+			local _, sf = Column()
+			if sf then
+				sf:SetAlpha(1)
+			end
+		end
+		return
+	end
 	local column = (not off and M.isEnabled and ColumnShown()) and true or false
 	local list = column and M.db.view == "list"
 	frame:SetShown(list)
@@ -939,21 +975,20 @@ local function GroupSetup(_, root)
 	end
 end
 
-function QL.Panel:Create()
+function QL.Panel:Create(host)
 	if self.frame then
 		return
 	end
-	local qm, sf = Column()
-	if not (qm and sf) then
-		return
+	if not host then
+		local qm, sf = Column()
+		if not (qm and sf) then
+			return
+		end
 	end
 	local layer = QL.MapLayer()
-	local frame = CreateFrame("Frame", "MelloUIQuestListPanel", layer)
+	local frame = CreateFrame("Frame", "MelloUIQuestListPanel", host or layer)
 	self.frame = frame
 	frame:Hide()   -- (Sync shows it)
-	local area = qm.ContentsAnchor or qm
-	frame:SetPoint("TOPLEFT", area, "TOPLEFT")
-	frame:SetPoint("BOTTOMRIGHT", area, "BOTTOMRIGHT")
 	frame:EnableMouse(true)
 	frame:EnableMouseWheel(true)
 	Perf.SetScript(frame, "OnMouseWheel", Swallow)
@@ -965,25 +1000,15 @@ function QL.Panel:Create()
 	-- drawn as a region of that frame, covered the rows and the dropdown's
 	-- plate -- "they are there and clickable, just dont see them")
 	local list = CreateFrame("Frame", nil, frame)
-	list:SetAllPoints(sf)
 	frame.list = list
 	frame.bg = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
-	frame.bg:SetAllPoints(sf.Background or list)
 	if not pcall(frame.bg.SetAtlas, frame.bg, "QuestLog-main-background") then
 		MelloUI.Widgets.Paint(frame.bg, "innerPanel", "fill", 1)
 	end
-	local okB, border = pcall(CreateFrame, "Frame", nil, list, "QuestLogBorderFrameTemplate")
-	frame.border = okB and border or nil
 
 	-- the search row: the box on the game's (typing searches every zone), the
 	-- menu on the gear
 	local search = CreateFrame("EditBox", nil, frame, "SearchBoxTemplate")
-	if sf.SearchBox then
-		search:SetAllPoints(sf.SearchBox)
-	else
-		search:SetPoint("BOTTOMLEFT", sf, "TOPLEFT", 6, 7)
-		search:SetSize(200, ROW.searchHeight)
-	end
 	search:SetAutoFocus(false)
 	if search.Instructions then
 		search.Instructions:SetText("Search quests")
@@ -1008,26 +1033,12 @@ function QL.Panel:Create()
 			menu:SetDefaultText("Filter")
 		end
 	end
-	if sf.SettingsDropdown then
-		menu:SetPoint("CENTER", sf.SettingsDropdown, "CENTER")
-	else
-		menu:SetPoint("BOTTOMRIGHT", sf, "TOPRIGHT", 19, 7)
-	end
 	menu:SetupMenu(MenuSetup)
 	frame.menu = menu
 
 	-- the switch on the count box: in the layer, not the page (it shows over
 	-- the log too), over the page's border
 	local switch = CreateFrame("Button", nil, layer, "UIPanelButtonTemplate")
-	local box = _G.QuestLogCount
-	if box then
-		switch:SetAllPoints(box)
-	else
-		switch:SetSize(100, 20)
-		switch:SetPoint("LEFT", search, "RIGHT", 3, 0)
-	end
-	local over = frame.border or frame
-	switch:SetFrameLevel(over:GetFrameLevel() + 10)
 	switch:SetText("Quest List")
 	Perf.SetScript(switch, "OnClick", SwitchClick)
 	Perf.HookScript(switch, "OnEnter", SwitchEnter)
@@ -1127,11 +1138,119 @@ function QL.Panel:Create()
 		end
 	end, "Quest List panel")
 
-	-- the page follows the column: its show and hide, the map's included
-	Perf.HookScript(qm, "OnShow", SyncColumn)
-	Perf.HookScript(qm, "OnHide", SyncColumn)
-	Perf.HookScript(sf, "OnShow", SyncColumn)
-	Perf.HookScript(sf, "OnHide", SyncColumn)
+	self:Home(host)
+end
+
+-- where the page lies (above): the game's quest column (host nil: its scroll frame's rect, the log's art, the switch
+-- on the count box; the page following the column's show and hide) or a host of MelloUI's own map (its whole rect:
+-- the search row on top, the list under it, the map's own panel under all); false when the game's column is not there
+function QL.Panel:Home(host)
+	local frame = self.frame
+	local list, search, menu, switch = frame.list, frame.search, frame.menu, frame.switch
+	if host then
+		self.host = host
+		frame:SetParent(host)
+		frame:ClearAllPoints()
+		frame:SetAllPoints(host)
+		search:ClearAllPoints()
+		search:SetPoint("TOPLEFT", host, "TOPLEFT", 8, -4)
+		search:SetPoint("RIGHT", host, "RIGHT", -34, 0)
+		search:SetHeight(ROW.searchHeight)
+		menu:ClearAllPoints()
+		menu:SetPoint("LEFT", search, "RIGHT", 4, 0)
+		list:ClearAllPoints()
+		list:SetPoint("TOPLEFT", host, "TOPLEFT", 0, -(ROW.searchHeight + 10))
+		list:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", -8, 0)
+		frame.bg:Hide()
+		if frame.border then
+			frame.border:Hide()
+		end
+		switch:Hide()
+		return true
+	end
+	local qm, sf = Column()
+	if not (qm and sf) then
+		return false
+	end
+	self.host = nil
+	frame:SetParent(QL.MapLayer())
+	frame:ClearAllPoints()
+	local area = qm.ContentsAnchor or qm
+	frame:SetPoint("TOPLEFT", area, "TOPLEFT")
+	frame:SetPoint("BOTTOMRIGHT", area, "BOTTOMRIGHT")
+	list:ClearAllPoints()
+	list:SetAllPoints(sf)
+	frame.bg:ClearAllPoints()
+	frame.bg:SetAllPoints(sf.Background or list)
+	frame.bg:Show()
+	if not frame.border then
+		local okB, border = pcall(CreateFrame, "Frame", nil, list, "QuestLogBorderFrameTemplate")
+		frame.border = okB and border or nil
+	end
+	if frame.border then
+		frame.border:Show()
+	end
+	search:ClearAllPoints()
+	if sf.SearchBox then
+		search:SetAllPoints(sf.SearchBox)
+	else
+		search:SetPoint("BOTTOMLEFT", sf, "TOPLEFT", 6, 7)
+		search:SetSize(200, ROW.searchHeight)
+	end
+	menu:ClearAllPoints()
+	if sf.SettingsDropdown then
+		menu:SetPoint("CENTER", sf.SettingsDropdown, "CENTER")
+	else
+		menu:SetPoint("BOTTOMRIGHT", sf, "TOPRIGHT", 19, 7)
+	end
+	switch:ClearAllPoints()
+	local box = _G.QuestLogCount
+	if box then
+		switch:SetAllPoints(box)
+	else
+		switch:SetSize(100, 20)
+		switch:SetPoint("LEFT", search, "RIGHT", 3, 0)
+	end
+	switch:SetFrameLevel((frame.border or frame):GetFrameLevel() + 10)
+	if not self.columnHooked then
+		-- the page follows the column: its show and hide, the map's included
+		self.columnHooked = true
+		Perf.HookScript(qm, "OnShow", SyncColumn)
+		Perf.HookScript(qm, "OnHide", SyncColumn)
+		Perf.HookScript(sf, "OnShow", SyncColumn)
+		Perf.HookScript(sf, "OnHide", SyncColumn)
+	end
+	return true
+end
+
+-- (MelloUI's map) the page laid in `host` (made there when it was never made: the game's map may never have loaded)
+function QL.Panel:Mount(host)
+	if not self.frame then
+		self:Create(host)
+	elseif self.host ~= host then
+		self:Home(host)
+	end
+	self:Sync()
+	return self.frame ~= nil
+end
+
+-- (MelloUI's map) shown or hidden with the map's tab; laid afresh on its show (its OnShow)
+function QL.Panel:HostShow(on)
+	self.hostShown = on and true or false
+	self:Sync()
+end
+
+-- (MelloUI's map off) the page back to the game's column; kept hidden where it lies when that is not there
+function QL.Panel:Unmount()
+	if not (self.frame and self.host) then
+		return
+	end
+	self.hostShown = false
+	if self:Home(nil) then
+		self:Sync()
+	else
+		self.frame:Hide()
+	end
 end
 
 function QL.Panel:Apply()

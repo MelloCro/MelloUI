@@ -111,6 +111,7 @@ OWN = {
     "Personal Display": ["MelloUI_PersonalDisplay/*"],
     "Group Frames": ["MelloUI_GroupFrames/*"],   # (the user, 2026-10-15: own frames stay, the solo frame too)
     "Frame Effects": ["MelloUI_FrameEffects/*"],
+    "Map": ["MelloUI_Map/*"],   # (the seamless map, docs/plans/seamless-map.md)
 }
 
 # the core modules of stage D that enhance the game's own elements: no ratchet, no art scan (stage I never drives them

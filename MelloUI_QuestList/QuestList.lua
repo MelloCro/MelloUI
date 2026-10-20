@@ -2031,7 +2031,13 @@ function QL.ZoneNameForMap(mapID)
 	return nil
 end
 
+-- (0.25.0) the map the page lives in decides: MelloUI's map sets QL.ViewMap (the zone under its view) while the page
+-- is its tab, else the game's world map
 local function CurrentMapID()
+	local view = QL.ViewMap and QL.ViewMap()
+	if view then
+		return view
+	end
 	local ok, id = pcall(WorldMapFrame.GetMapID, WorldMapFrame)
 	local mapID = ok and QL.Plain(id) or nil
 	if not mapID then

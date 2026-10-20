@@ -3471,6 +3471,7 @@ MelloUI.Features = {
 	Route = { addon = "MelloUI_Route", title = "Route" },
 	VoiceOver = { addon = "MelloUI_VoiceOver", title = "Voice Over" },
 	PersonalDisplay = { addon = "MelloUI_PersonalDisplay", title = "Personal Display" },
+	Map = { addon = "MelloUI_Map", title = "Map" },
 	-- (one look, stage I) the painted reskin, MelloUI_Oldschool: every module
 	-- of its painted skins (its TOC's '## X-MelloUI-Feature:' line names them)
 	CharacterPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
