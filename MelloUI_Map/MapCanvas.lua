@@ -35,6 +35,14 @@
 --   canvas:Explored()              the explored pieces read again (the event)
 --   canvas:Stats() -> table        the numbers /melloperf map shows
 --
+-- The look (stage M2, the user's picks of 2026-10-20: C, F, H): each zone's
+-- picture inside its own soft outline (our mask, made by Tools/build_map_data.py
+-- from the client's tables: its pieces' hit rectangles, widened and blurred),
+-- its land pieces over it; under the zones the palette's slate sea (the
+-- canvas) and a grained land field, the zones' outlines widened; the places
+-- not explored yet drawn faint (every piece from MapData, the explored ones
+-- full). The continents' own art goes as the zones come in.
+--
 -- Secret values: every number the client hands over is read through
 -- MelloUI.Safe (Finite); a map whose place does not read plainly is not laid.
 --------------------------------------------------------------------------------
@@ -55,6 +63,7 @@ local wipe = wipe
 local Canvas = {}
 Canvas.__index = Canvas
 ns.Canvas = Canvas
+local EMPTY = {}
 
 local T = {
 	WORLD = 947,
@@ -74,8 +83,14 @@ local T = {
 	-- world's (both letterings at once); the world's goes out under them (M2 sets the look's final numbers)
 	WORLD_OUT = { 1.2, 1.5 },
 	CONT_IN = { 1.02, 1.2 },
-	ZONE_HINT = { 1.8, 3, 0.3 },   -- the zones: a hint first (to 30 %) ...
-	ZONE_IN = { 3, 4.5 },          -- ... then their full detail
+	-- (M2) the zones in over the slate as the continents' art goes
+	ZONE_IN = { 1.8, 2.8 },
+	CONT_OUT = { 2.2, 3.0 },
+	OUTLINES = "Interface\\AddOns\\MelloUI_Map\\Media\\Outlines\\",   -- <uiMapID>, city
+	GRAIN = "Interface\\AddOns\\MelloUI_Map\\Media\\Grain",
+	UNEXPLORED = 0.3,         -- a place not explored yet: its piece this faint (the user's pick H)
+	LAND_GROW = 0.06,         -- the land field: the zone's outline widened by this share of its size each side
+	LAND_TILE = 6,            -- world units a grain tile
 	CITY_IN = { 0.2, 0.4 },        -- a city as it fills this share of the view's width
 	MAP_TYPE = { continent = 2, zone = 3 },
 }
@@ -148,6 +163,10 @@ local function NewPlace(self, id, kind, x0, x1, y0, y1)
 		left = x0 * self.W, top = y0 * self.H, w = (x1 - x0) * self.W, h = (y1 - y0) * self.H,
 		tiles = nil, alpha = 0, live = false,
 	}
+	local data = ns.MapData
+	p.label = data and data.outline and data.outline[id] or nil   -- (a zone with an outline: where its name goes)
+	local okA, art = pcall(C_Map.GetMapArtID, id)
+	p.artID = okA and Finite(art) or nil
 	p.right, p.bottom = p.left + p.w, p.top + p.h
 	p.area = p.w * p.h
 	return p
@@ -192,11 +211,20 @@ function Canvas:Layout()
 	-- (the levels: the maps biggest first; the zone under the view's centre over them all, Focus; the cities over
 	-- that, each over its zone)
 	local base = self.root:GetFrameLevel() + 1
-	local n = #places
-	self.focusLevel = base + n + 1
+	local n, top = #places, 0
+	for _, p in ipairs(places) do
+		if p.kind == "world" or p.kind == "continent" then
+			top = top + 1
+		end
+	end
+	-- (M2) the land field over the world's and the continents' art, under every zone's
+	self.land:SetFrameLevel(base + top + 1)
+	self.land:SetSize(self.W, self.H)
+	self.focusLevel = base + n + 2
 	for i, p in ipairs(places) do
 		local f = CreateFrame("Frame", nil, self.root)
-		p.level = p.kind == "city" and base + n + 2 + i or base + i
+		local under = p.kind == "world" or p.kind == "continent"
+		p.level = p.kind == "city" and base + n + 3 + i or (under and base + i or base + i + 1)
 		f:SetFrameLevel(p.level)
 		f:SetSize(p.w, p.h)
 		f:Hide()
@@ -274,56 +302,108 @@ local function MakeTiles(p)
 		end
 	end
 	p.baseCount = #tiles
+	for i = 1, #tiles do
+		tiles[i].base = true
+	end
+	-- (M2) the zone's picture inside its soft outline; a city's, or a zone's the client gives no pieces (Forever's own
+	-- Riverglades), inside a soft-edged rectangle
+	local outline = p.label and T.OUTLINES .. p.id or ((p.kind == "city" or p.kind == "zone") and T.OUTLINES .. "city")
+		or nil
+	if outline then
+		local mask = p.frame:CreateMaskTexture()
+		mask:SetTexture(outline, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		mask:SetAllPoints(p.frame)
+		p.mask = mask
+	end
 	Canvas.AddExplored(p)
 end
 
--- the explored pieces of a map (its tiles past the base's: made again when the client tells of new ones)
-function Canvas.AddExplored(p)
+-- (M2) a zone's land field: the palette's grained land under it, inside its outline widened (the slate between the
+-- zones is the canvas's own sea); on the land frame, under every zone's picture
+local function MakeLand(self, p)
+	local g = T.LAND_GROW
+	local w, h = p.w * (1 + 2 * g), p.h * (1 + 2 * g)
+	local tex = self.land:CreateTexture(nil, "BACKGROUND")
+	tex:SetTexture(T.GRAIN, "REPEAT", "REPEAT")
+	tex:SetTexCoord(0, w / T.LAND_TILE, 0, h / T.LAND_TILE)
+	tex:SetSize(w, h)
+	W.Paint(tex, "raisedPanel", "vertex")
+	local mask = self.land:CreateMaskTexture()
+	mask:SetTexture(T.OUTLINES .. p.id, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	mask:SetAllPoints(tex)
+	tex:AddMaskTexture(mask)
+	tex:SetAlpha(p.alpha)
+	tex:Hide()
+	p.landTex, p.landX, p.landY = tex, p.left - p.w * g, p.top - p.h * g
+end
+
+-- one piece of a map: its tiles (the last column / row in a file the next power of two, as the client's map canvas
+-- reads it); `files` the client's list from `first` + 1 on; `alpha` its strength (a place not explored yet: faint)
+local function AddPiece(p, ew, eh, ox, oy, files, first, sub, alpha)
 	local tiles, tw, th = p.tiles, p.tileW, p.tileH
+	local wide, tall = ceil(ew / tw), ceil(eh / th)
+	for j = 1, tall do
+		local ph, fh = th, th
+		if j == tall then
+			ph = eh % th
+			if ph == 0 then
+				ph = th
+			end
+			fh = FileSize(ph)
+		end
+		for k = 1, wide do
+			local pw, fw = tw, tw
+			if k == wide then
+				pw = ew % tw
+				if pw == 0 then
+					pw = tw
+				end
+				fw = FileSize(pw)
+			end
+			local file = Finite(files[first + (j - 1) * wide + k])
+			if file then
+				local t = Tile(p, file, ox + tw * (k - 1), oy + th * (j - 1), pw, ph, fw, fh, "ARTWORK", sub, p.sx, p.sy)
+				t.alpha = alpha
+				tiles[#tiles + 1] = t
+			end
+		end
+	end
+end
+
+-- a map's pieces (its tiles past the base's: made again when the client tells of new ones): the ones the client
+-- calls explored (C_MapExplorationInfo) full; then (M2, the user's pick H) every other piece the map has (MapData,
+-- the client's tables) faint: a place not explored yet, still readable
+function Canvas.AddExplored(p)
+	local tiles, tw = p.tiles, p.tileW
 	if not (tiles and tw) then
 		return
 	end
+	local seen = p.seenPieces
+	if not seen then
+		seen = {}
+		p.seenPieces = seen
+	end
+	wipe(seen)
 	local api = rawget(_G, "C_MapExplorationInfo")
 	local ok, pieces = false, nil
 	if api and api.GetExploredMapTextures then
 		ok, pieces = pcall(api.GetExploredMapTextures, p.id)
 	end
-	if not (ok and type(pieces) == "table") then
-		return
-	end
-	for _, e in ipairs(pieces) do
+	for _, e in ipairs(ok and type(pieces) == "table" and pieces or EMPTY) do
 		local ew, eh = Finite(e.textureWidth), Finite(e.textureHeight)
 		local ox, oy = Finite(e.offsetX), Finite(e.offsetY)
 		local files = type(e.fileDataIDs) == "table" and e.fileDataIDs
 		-- (the pieces shown only under the mouse on the game's map: not drawn)
 		if ew and eh and ox and oy and files and e.isShownByMouseOver ~= true then
-			local wide, tall = ceil(ew / tw), ceil(eh / th)
-			local sub = e.isDrawOnTopLayer == true and 1 or 0
-			for j = 1, tall do
-				local ph, fh = th, th
-				if j == tall then
-					ph = eh % th
-					if ph == 0 then
-						ph = th
-					end
-					fh = FileSize(ph)
-				end
-				for k = 1, wide do
-					local pw, fw = tw, tw
-					if k == wide then
-						pw = ew % tw
-						if pw == 0 then
-							pw = tw
-						end
-						fw = FileSize(pw)
-					end
-					local file = Finite(files[(j - 1) * wide + k])
-					if file then
-						tiles[#tiles + 1] = Tile(p, file, ox + tw * (k - 1), oy + th * (j - 1), pw, ph, fw, fh,
-							"ARTWORK", sub, p.sx, p.sy)
-					end
-				end
-			end
+			seen[ew .. ":" .. eh .. ":" .. ox .. ":" .. oy] = true
+			AddPiece(p, ew, eh, ox, oy, files, 0, e.isDrawOnTopLayer == true and 1 or 0, 1)
+		end
+	end
+	local data = ns.MapData
+	local all = p.artID and data and data.pieces and data.pieces[p.artID]
+	for _, q in ipairs(all or EMPTY) do
+		if not seen[q[1] .. ":" .. q[2] .. ":" .. q[3] .. ":" .. q[4]] then
+			AddPiece(p, q[1], q[2], q[3], q[4], q, 4, 0, T.UNEXPLORED)
 		end
 	end
 end
@@ -352,6 +432,9 @@ local function ShowTile(self, p, t)
 		tex:SetTexCoord(0, t.u, 0, t.v)
 		tex:SetSize(t.w, t.h)
 		tex:SetAlpha(0)
+		if t.base and p.mask then
+			tex:AddMaskTexture(p.mask)   -- (M2: inside the zone's soft outline)
+		end
 		t.tex = tex
 		self.stats.made = self.stats.made + 1
 	end
@@ -388,6 +471,11 @@ local function HidePlace(p)
 	end
 	p.frame:Hide()
 	p.frame:ClearAllPoints()
+	local land = p.landTex
+	if land then
+		land:Hide()
+		land:ClearAllPoints()
+	end
 end
 
 -- the maps and their tiles against the cull box: in, made and anchored; out, hidden and unanchored
@@ -398,11 +486,19 @@ local function Cull(self)
 		if p.alpha > 0 and Overlaps(p.left, p.top, p.right, p.bottom, box) then
 			if not p.tiles then
 				MakeTiles(p)
+				if p.label then
+					MakeLand(self, p)
+				end
 			end
 			if not p.live then
 				p.live = true
 				p.frame:SetPoint("TOPLEFT", self.root, "TOPLEFT", p.left, -p.top)
 				p.frame:Show()
+				local land = p.landTex
+				if land then
+					land:SetPoint("TOPLEFT", self.land, "TOPLEFT", p.landX, -p.landY)
+					land:Show()
+				end
 			end
 			live = live + 1
 			for _, t in ipairs(p.tiles) do
@@ -478,9 +574,8 @@ end
 local function Detail(self, viewW)
 	local z = self.z
 	local world = Quant(1 - Ramp(z, T.WORLD_OUT[1], T.WORLD_OUT[2]))
-	local cont = Quant(Ramp(z, T.CONT_IN[1], T.CONT_IN[2]))
-	local zone = Quant(T.ZONE_HINT[3] * Ramp(z, T.ZONE_HINT[1], T.ZONE_HINT[2])
-		+ (1 - T.ZONE_HINT[3]) * Ramp(z, T.ZONE_IN[1], T.ZONE_IN[2]))
+	local cont = Quant(Ramp(z, T.CONT_IN[1], T.CONT_IN[2]) * (1 - Ramp(z, T.CONT_OUT[1], T.CONT_OUT[2])))
+	local zone = Quant(Ramp(z, T.ZONE_IN[1], T.ZONE_IN[2]))
 	local flipped = false
 	for _, p in ipairs(self.places) do
 		local a
@@ -499,6 +594,9 @@ local function Detail(self, viewW)
 			end
 			p.alpha = a
 			p.frame:SetAlpha(a)
+			if p.landTex then
+				p.landTex:SetAlpha(a)
+			end
 		end
 	end
 	return flipped
@@ -824,7 +922,7 @@ local function Loader_OnUpdate(loader)
 		if t.shown and not t.set then
 			t.tex:SetTexture(t.file, nil, nil, "TRILINEAR")
 			t.set = true
-			Anim:To(t.tex, "alpha", 1, T.FADE)
+			Anim:To(t.tex, "alpha", t.alpha or 1, T.FADE)
 			done = done + 1
 			self.stats.files = self.stats.files + 1
 		end
@@ -855,10 +953,13 @@ function Canvas.New(parent)
 	sea:SetAllPoints(frame)
 	local root = CreateFrame("Frame", nil, frame)
 	root:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+	-- (M2) the land field's frame: always on the root, its textures anchored only while their zone is in view
+	local land = CreateFrame("Frame", nil, root)
+	land:SetPoint("TOPLEFT", root, "TOPLEFT", 0, 0)
 	local loader = CreateFrame("Frame", nil, frame)
 	loader:Hide()
 	local self = setmetatable({
-		frame = frame, root = root, sea = sea, loader = loader, queue = {}, box = {}, g = {}, path = {}, rects = {}, cuts = 0, focusPath = {},
+		frame = frame, root = root, sea = sea, loader = loader, land = land, queue = {}, box = {}, g = {}, path = {}, rects = {}, cuts = 0, focusPath = {},
 		cx = nil, cy = nil, z = 1, W = 1002, H = 668,
 		stats = { made = 0, files = 0, views = 0, culls = 0, live = 0, shown = 0, lastMs = 0, maxMs = 0,
 			moveFrames = 0, moveSum = 0, moveMax = 0, layoutMs = 0 },

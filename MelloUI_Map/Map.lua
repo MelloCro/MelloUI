@@ -379,6 +379,7 @@ local function Build()
 	canvas.onView = function()
 		pins:Lay()
 		Layers.Route()
+		Layers.Labels()
 	end
 	Layers.Init(canvas, pins)
 	local name = W.Text(body, "GameFontHighlight", nil, "text")

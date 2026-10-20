@@ -20,6 +20,8 @@
 --                  the same), by Route's own painter, across continents
 --   quests         the quest givers of every zone and city: the Quest List's own
 --                  groups, picture and tooltip, from a zone's zoom on
+--   names          (M2) each zone's name on the soft shade, from a continent's
+--                  zoom to a zone's
 --
 -- The places of the data are the client's: GetMapPosFromWorldPos turns its
 -- world yards into a continent's position, the canvas carries that on.
@@ -38,6 +40,7 @@ local _, ns = ...
 local MelloUI = (ns and ns.MelloUI) or _G.MelloUI
 local Perf = MelloUI.Perf:Scope("MelloUI_Map (MapLayers)")
 local Finite = MelloUI.Safe.Finite
+local W = MelloUI.Widgets
 local Text = MelloUI.Safe.Text
 local pairs, ipairs, pcall, type, tostring = pairs, ipairs, pcall, type, tostring
 local wipe = wipe
@@ -54,8 +57,12 @@ local T = {
 	ARROW_ATLAS = "UI-WorldMapArrow",                 -- the game's own map arrow
 	ARROW_FILE = "Interface\\Minimap\\MinimapArrow",  -- (if the atlas is missing)
 	-- the stack (MapPins' layer order): the places under the group, the group under the player
-	ORDER = { entrances = 10, transports = 12, flights = 14, quests = 20, route = 30, group = 40, player = 50 },
+	ORDER = { names = 8, entrances = 10, transports = 12, flights = 14, quests = 20, route = 30, group = 40, player = 50 },
 	QUESTS_FROM = 2.5,       -- the quest givers from a zone's zoom on (a continent's: thousands)
+	NAMES_FROM = 1.15,       -- (M2) the zone names from a continent's zoom ...
+	NAMES_TO = 6.5,          -- ... to a zone's (closer, the zone's own art names its places)
+	NAME_SHADE = 0.6,        -- the soft shade under a name
+	NAME_GAP = 6,            -- px kept free round a name
 	GIVER_SIZE = 20,
 	PLACES_FROM = 1.15,      -- flights, transports and entrances from a continent's zoom on (the world's: too many)
 	PIN_SIZE = 18,
@@ -585,6 +592,110 @@ local function RouteChanged()
 	local current, goal = route:CurrentRoute()
 	if current ~= S.route or goal ~= S.goal then
 		Layers.Route()
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The zone names (stage M2, the user's pick F): each zone's name at the
+-- middle of its outline (MapData), in MelloUI's title font and the palette's
+-- text, on the soft shade (MelloUI.Shade) -- from a continent's zoom to a
+-- zone's; laid with every view, one anchor each, never scaled. The biggest
+-- zones first: a name that would cover one already laid is left out at that
+-- zoom. Made the first time each shows.
+--------------------------------------------------------------------------------
+
+local NAMES = { list = {}, boxes = {} }
+
+local function NameOf(p)
+	local label = NAMES.list[p]
+	if label then
+		return label
+	end
+	local frame = NAMES.frame
+	local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	local Kit = MelloUI.Kit
+	if Kit and Kit.TitleFont then
+		Kit:TitleFont(fs, true)
+	end
+	W.Paint(fs, "text", "text")
+	fs:SetText(p.name)
+	local band = MelloUI.Shade and MelloUI.Shade:Band(frame, { colour = "innerPanel", alpha = T.NAME_SHADE, feather = 14 })
+	if band then
+		band:Anchor(fs, 2, 1)
+		band:SetShown(false)
+	end
+	label = { fs = fs, band = band, w = Finite(fs:GetStringWidth()) or 80, h = Finite(fs:GetStringHeight()) or 16,
+		shown = false }
+	fs:Hide()
+	NAMES.list[p] = label
+	return label
+end
+
+local function HideName(label)
+	if label.shown then
+		label.shown = false
+		label.fs:Hide()
+		label.fs:ClearAllPoints()
+		if label.band then
+			label.band:SetShown(false)
+		end
+	end
+end
+
+function Layers.Labels()
+	local c, pins = S.canvas, S.pins
+	if not (c and c.places and c.cx and pins) then
+		return
+	end
+	local frame = NAMES.frame
+	if not frame then
+		local layer = pins:Layer("names", T.ORDER.names)
+		frame = layer.frame
+		NAMES.frame = frame
+	end
+	local on = c.z >= T.NAMES_FROM and c.z <= T.NAMES_TO
+	local k = c.k1 * c.z
+	local x0, y0 = c.cx - c.cw / (2 * k), c.cy - c.ch / (2 * k)
+	local boxes, n = NAMES.boxes, 0
+	for _, p in ipairs(c.places) do
+		local at = p.label
+		if at then
+			local label = NAMES.list[p]
+			local x = (p.left + at[1] * p.w - x0) * k
+			local y = (p.top + at[2] * p.h - y0) * k
+			local fits = on and x > -40 and x < c.cw + 40 and y > -20 and y < c.ch + 20
+			if fits then
+				label = label or NameOf(p)
+				local hw, hh = label.w / 2 + T.NAME_GAP, label.h / 2 + 2
+				for i = 1, n do
+					local b = boxes[i]
+					if not (x + hw < b[1] or x - hw > b[3] or y + hh < b[2] or y - hh > b[4]) then
+						fits = false
+						break
+					end
+				end
+				if fits then
+					n = n + 1
+					local b = boxes[n]
+					if not b then
+						b = {}
+						boxes[n] = b
+					end
+					b[1], b[2], b[3], b[4] = x - hw, y - hh, x + hw, y + hh
+					label.fs:SetPoint("CENTER", frame, "TOPLEFT", x, -y)
+					if not label.shown then
+						label.shown = true
+						label.fs:Show()
+						if label.band then
+							label.band:SetShown(true)
+						end
+					end
+				end
+			end
+			if label and not fits then
+				HideName(label)
+			end
+		end
 	end
 end
 
