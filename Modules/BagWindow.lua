@@ -2077,7 +2077,8 @@ do
 		return true
 	end
 
-	-- the tabs' picked look: the game's SelectedTexture, the kit's rim read again (its glow)
+	-- the tabs' picked look: the game's SelectedTexture, the kit's rim read again (its glow); MelloUI's own look's
+	-- plate (M.TabLook)
 	local function Checked()
 		for _, key in ipairs(TABS) do
 			local tab = win.tabs and win.tabs[key]
@@ -2090,6 +2091,7 @@ do
 				end
 			end
 		end
+		M.TabLook(win.shell and win.shell.kit)
 	end
 
 	-- an item held over a tab a moment: the tab opens (one shared function: the tab and the time in win.hold*)
@@ -2115,6 +2117,9 @@ do
 
 	local TabEnter = Shared("OnEnter on the bag window's side tabs", function(tab)
 		local key = KeyOf(tab)
+		if tab.melloPlate and not win.shell.kit then
+			W.Paint(tab.melloPlate, "hover")
+		end
 		local held = CursorItem() ~= nil
 		local free, all = Room(key)
 		W.ShowTooltip(tab, key == "reagent" and TEXT.reagentBag or TEXT.backpack,
@@ -2125,8 +2130,11 @@ do
 		end
 	end, "script")
 
-	local TabLeave = Shared("OnLeave on the bag window's side tabs", function()
+	local TabLeave = Shared("OnLeave on the bag window's side tabs", function(tab)
 		win.holdTab = nil
+		if tab and tab.melloPlate then
+			W.Paint(tab.melloPlate, "innerPanel")
+		end
 		GameTooltip:Hide()
 	end, "script")
 
@@ -2136,6 +2144,50 @@ do
 
 	local function SkinTab(K, tab)
 		K:SkinSideTab(tab, ShellReplace)
+	end
+
+	-- (1.0, the user's pick C of the side tabs' sheet, 2026-10-20: "these 2 side tabs on the Backpack have a wierd
+	-- texture" -- the game's side tab art showed, the kit's dress not run in MelloUI's look) MelloUI's look's own tab:
+	-- a slim plate of the dark panel (the hover's colour under the pointer), a line on its outer edge -- the open
+	-- tab's gold, the other's the border's -- the closed tab's icon dimmed, and the game's art out of sight (the art
+	-- the kit's rim fades too: Kit:SkinSideTab's Background and alsoFade). The kit look dresses the template as ever.
+	M.TAB_ART = { "Background", "SelectedTexture", "TabGlow", "HighlightTexture" }
+
+	function M.TabPlate(tab)
+		local bg = tab:CreateTexture(nil, "BACKGROUND", nil, -7)
+		bg:SetAllPoints()
+		W.Paint(bg, "innerPanel")
+		local edge = tab:CreateTexture(nil, "OVERLAY", nil, 6)
+		edge:SetPoint("TOPLEFT")
+		edge:SetPoint("BOTTOMLEFT")
+		edge:SetWidth(3 / G.TAB_SCALE)
+		W.Paint(edge, "border")
+		tab.melloPlate, tab.melloEdge = bg, edge
+		win.shell:Plain(bg)
+		win.shell:Plain(edge)
+	end
+
+	-- the tabs in the look now (`kit`: the kit look on, its rim fading the game's art itself)
+	function M.TabLook(kit)
+		for _, key in ipairs(TABS) do
+			local tab = win.tabs and win.tabs[key]
+			if tab then
+				if not kit then
+					for _, name in ipairs(M.TAB_ART) do
+						local region = tab[name]
+						if region then
+							region:SetAlpha(0)
+						end
+					end
+				end
+				local open = key == win.tab
+				if tab.melloEdge then
+					W.Paint(tab.melloEdge, open and "selectedTrim" or "border")
+				end
+				tab.Icon:SetDesaturated(not kit and not open)
+				tab.Icon:SetAlpha((kit or open) and 1 or 0.7)
+			end
+		end
 	end
 
 	-- the tabs, with the window (Build), hidden until a layout finds a Reagent Bag
@@ -2160,11 +2212,13 @@ do
 				tab:SetPoint("TOPRIGHT", f, "TOPLEFT", 0, -G.TAB_Y / k)
 			end
 			tab:Hide()
+			M.TabPlate(tab)
 			win.shell:Kit(SkinTab, tab)
 			tabs[key] = tab
 			above = tab
 		end
 		win.tabs = tabs
+		M.TabLook(win.shell.kit)
 	end
 
 	-- the tabs laid (each layout): shown while a Reagent Bag is on (else the bags, no tab), its own icon on its tab
@@ -2314,6 +2368,7 @@ local function Build()
 			S.undressed = #S.made
 			Dress()
 		end
+		M.TabLook(on)   -- (1.0: the side tabs' own look, or the kit's)
 		InkMoney()
 		-- (the insets follow the look: laid out again)
 		if win.content and win.frame:IsShown() then
