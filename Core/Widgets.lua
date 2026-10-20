@@ -449,8 +449,63 @@ function W.OnBarTexture(area, fn, owner)
 	end, owner)
 end
 
+--------------------------------------------------------------------------------
+-- MelloUI's own font objects (2026-10-20, the user: one font for the modern look, "to fit this theme": Fredoka):
+-- a copy of each game font object MelloUI's text names (MelloUIFont_GameFontNormal ...), its size, colour, shadow
+-- and outline the game object's, its face MelloUI's: the Fonts module's interface face while it is on and chose one
+-- (the game object wears it then: the copy copies it), else Fredoka. The Fonts module passes them by (its "^MelloUI"
+-- rule); every 'fonts' Fire lays them again. Made at load (a dozen font objects, nothing drawn).
+--   W.FontObject(name) -> the name of MelloUI's copy of the game font object `name` (`name` itself for one it has
+--       no copy of): for CreateFontString's template and SetFontObject
+--------------------------------------------------------------------------------
+do
+	local FACE = TEXTURE_PATH:gsub("Textures\\$", "") .. "Fonts\\Fredoka\\Fredoka-Medium.ttf"
+	local NAMES = { "GameFontNormal", "GameFontHighlight", "GameFontHighlightSmall", "GameFontNormalSmall",
+		"GameFontNormalLarge", "GameFontHighlightLarge", "GameFontNormalHuge", "GameFontDisable", "GameFontDisableSmall" }
+	local own = {}   -- [game name] = MelloUI's copy's name
+
+	local function Lay()
+		local fonts = MelloUI.modules and MelloUI.modules.Fonts
+		local db = fonts and fonts.isEnabled and fonts.db
+		local chosen = type(db) == "table" and type(db.fontText) == "string" and db.fontText ~= "" and db.fontText ~= "default"
+		for _, name in ipairs(NAMES) do
+			local game, copy = _G[name], _G[own[name]]
+			if game and copy then
+				pcall(copy.CopyFontObject, copy, game)
+				if not chosen then
+					local ok, _, size, flags = pcall(copy.GetFont, copy)
+					size = ok and Num(size)
+					if size and size > 0 then
+						pcall(copy.SetFont, copy, FACE, size, ok and type(flags) == "string" and flags or "")
+					end
+				end
+			end
+		end
+	end
+
+	if type(CreateFont) == "function" then
+		for _, name in ipairs(NAMES) do
+			if _G[name] then
+				own[name] = "MelloUIFont_" .. name
+				CreateFont(own[name])
+			end
+		end
+		Lay()
+		MelloUI:On("fonts", Lay, "the widgets' own fonts")
+		MelloUI:On("module", function(name)
+			if name == "Fonts" then
+				Lay()
+			end
+		end, "the widgets' own fonts (Fonts module)")
+	end
+
+	function W.FontObject(name)
+		return own[name] or name
+	end
+end
+
 function W.Text(parent, font, text, key)
-	local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlight")
+	local fs = parent:CreateFontString(nil, "OVERLAY", W.FontObject(font or "MelloUIFont_GameFontHighlight"))
 	fs:SetJustifyH("LEFT")
 	fs:SetJustifyV("TOP")
 	if text then
@@ -2237,14 +2292,43 @@ end
 -- MelloUI's own logo art is shown whole; a game icon loses its baked border
 local NO_CROP = { [TEXTURE_PATH .. "LogoIcon.tga"] = true, [TEXTURE_PATH .. "LogoFull.tga"] = true }
 
-local function IconBox_SetIcon(self, texture)
-	self.icon:SetTexture(texture)
-	if texture ~= nil and not NO_CROP[texture] then
-		self.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
-		self.cropped = true
-	elseif self.cropped then
-		self.icon:SetTexCoord(0, 1, 0, 1)
-		self.cropped = false
+local maskOf = setmetatable({}, weakKeys)   -- [box] = its icon's mask (no field: a box's parts keep their names)
+
+local IconBox_SetIcon
+do
+	-- (2026-10-20, the user's pick A: "bare") a picture of MelloUI's icon set is shown whole and alone: no bevel, no
+	-- rounded mask (with the kit, the rim still round it, as everywhere the set is)
+	local SET_DIR = TEXTURE_PATH .. "Icons\\"
+
+	local function Bare(self, bare)
+		self.bare = bare or nil
+		self.frame:SetShown(not bare)
+		local mask = maskOf[self]
+		if bare and self.masked and mask then
+			self.icon:RemoveMaskTexture(mask)
+			self.masked = false
+		elseif not bare and not self.masked and not self.kitLaid and mask then
+			self.icon:AddMaskTexture(mask)
+			self.masked = true
+		end
+	end
+
+	IconBox_SetIcon = function(self, texture)
+		self.icon:SetTexture(texture)
+		local bare = type(texture) == "string" and texture:sub(1, #SET_DIR) == SET_DIR
+		if (self.bare or false) ~= bare then
+			Bare(self, bare)
+		end
+		if bare then
+			self.icon:SetTexCoord(0, 1, 0, 1)
+			self.cropped = false
+		elseif texture ~= nil and not NO_CROP[texture] then
+			self.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
+			self.cropped = true
+		elseif self.cropped then
+			self.icon:SetTexCoord(0, 1, 0, 1)
+			self.cropped = false
+		end
 	end
 end
 
@@ -2310,7 +2394,6 @@ end
 -- construction as an action button (a 45 px icon, the 46 x 45 bevel on its
 -- top left corner, the corner mask at its native size centred on the icon),
 -- scaled to this size.
-local maskOf = setmetatable({}, weakKeys)   -- [box] = its icon's mask (no field: a box's parts keep their names)
 
 local function IconBox_SetKit(self, on)
 	on = on and true or false
@@ -2334,7 +2417,7 @@ local function IconBox_SetKit(self, on)
 	if on and self.masked then
 		icon:RemoveMaskTexture(mask)
 		self.masked = false
-	elseif not on and not self.masked then
+	elseif not on and not self.masked and not self.bare then
 		icon:AddMaskTexture(mask)
 		self.masked = true
 	end
@@ -4348,7 +4431,7 @@ do
 		tile.pic:SetPoint("CENTER")
 		tile.layers = {}
 		tile.size = TILE
-		tile.none = tile.pic:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+		tile.none = tile.pic:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormalSmall")
 		tile.none:SetPoint("CENTER")
 		tile.none:SetText("None")
 		W.Paint(tile.none, "text", "text")
@@ -4712,7 +4795,7 @@ do
 		-- hidden text, made with its first open)
 		local measure = menu.listMeasure
 		if not measure then
-			measure = menu:CreateFontString(nil, "BACKGROUND", "GameFontHighlight")
+			measure = menu:CreateFontString(nil, "BACKGROUND", "MelloUIFont_GameFontHighlight")
 			measure:Hide()
 			menu.listMeasure = measure
 		end
@@ -4977,7 +5060,7 @@ do
 		box.pic:SetSize(PICTURE_H, PICTURE_H)
 		box.pic:SetPoint("LEFT", box, "LEFT", 0, 0)
 		box.layers, box.size = {}, PICTURE_H
-		box.none = box.pic:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+		box.none = box.pic:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormalSmall")
 		box.none:SetPoint("CENTER")
 		box.none:SetText("None")
 		W.Paint(box.none, "text", "text")
@@ -5726,7 +5809,7 @@ local function NewRow(rail)
 	local row = CreateFrame("Button", nil, rail.content)
 	row:SetHeight(spec.rowHeight)
 	row:SetFrameLevel(rail.content:GetFrameLevel() + 1)
-	row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	row.text = row:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlight")
 	row.text:SetJustifyH("LEFT")
 	row.text:SetWordWrap(false)
 	W.RowPlate(row, { look = "palette", strength = 0.5, edge = false, selected = IsSelected })
@@ -5749,7 +5832,7 @@ local function NewHeader(rail)
 	local h = CreateFrame("Button", nil, rail.content)
 	h:SetHeight(rail.spec.headerHeight)
 	h:SetFrameLevel(rail.content:GetFrameLevel() + 1)
-	h.text = h:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	h.text = h:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
 	h.text:SetJustifyH("LEFT")
 	h.text:SetWordWrap(false)
 	h.text:SetPoint("LEFT", 26, 0)
@@ -5883,6 +5966,22 @@ function Rail:SetGroups(groups)
 			h.text:SetText(g.title)
 			h:EnableMouse(g.collapsible and true or false)
 			h.glyph:SetShown(g.collapsible and true or false)
+			-- (2026-10-20) a group's emblem (its `icon`, MelloUI's icon set, bare) between the fold and the title
+			if g.icon then
+				if not h.emblem then
+					h.emblem = h:CreateTexture(nil, "ARTWORK")
+					h.emblem:SetSize(18, 18)
+					h.emblem:SetPoint("LEFT", 24, 0)
+				end
+				h.emblem:SetTexture(g.icon)
+				h.emblem:Show()
+				h.text:SetPoint("LEFT", 46, 0)
+			else
+				if h.emblem then
+					h.emblem:Hide()
+				end
+				h.text:SetPoint("LEFT", 26, 0)
+			end
 			self.headers[gkey] = h
 			self.order[#self.order + 1] = h
 		end
@@ -6909,12 +7008,12 @@ do
 			row.caret:Show()
 			row.label:SetPoint("LEFT", row, "LEFT", x + 16, 0)
 			row.label:SetText(r.label or "")
-			row.label:SetFontObject("GameFontNormal")
+			row.label:SetFontObject("MelloUIFont_GameFontNormal")
 			W.Paint(row.label, "selectedTrim", "text")
 		elseif r.kind == "line" then
 			row.label:SetPoint("RIGHT", row, "RIGHT", -38, 0)
 			row.label:SetText(TEXT.line)
-			row.label:SetFontObject("GameFontHighlightSmall")
+			row.label:SetFontObject("MelloUIFont_GameFontHighlightSmall")
 			W.Paint(row.label, "mutedText", "text")
 			row.rule:ClearAllPoints()
 			row.rule:SetPoint("LEFT", row, "LEFT", x, 0)
@@ -6923,7 +7022,7 @@ do
 		else
 			row.label:SetPoint("LEFT", row, "LEFT", x, 0)
 			row.label:SetText(r.label or "")
-			row.label:SetFontObject("GameFontHighlight")
+			row.label:SetFontObject("MelloUIFont_GameFontHighlight")
 			W.Paint(row.label, "text", "text")
 		end
 		row.note:SetText(r.kind == "item" and r.note or "")
@@ -7259,7 +7358,7 @@ do
 		local box = CreateFrame("EditBox", nil, content)
 		box:SetAutoFocus(false)
 		box:SetHeight(20)
-		box:SetFontObject("GameFontHighlight")
+		box:SetFontObject("MelloUIFont_GameFontHighlight")
 		box:SetTextInsets(4, 4, 0, 0)
 		box:SetMaxLetters(32)
 		box:SetFrameLevel(content:GetFrameLevel() + 10)

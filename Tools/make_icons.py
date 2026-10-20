@@ -57,6 +57,14 @@ for n in ("meter_damage", "meter_time", "meter_heal"):
     SET.append(("meter", n, n, 32))
 for n in ("ct_taken", "ct_heal", "ct_notice", "ct_avoid", "ct_gain"):
     SET.append(("combattext", n + "_lift", n, 32))   # (the user's pick: the lifted ones, 2026-10-19)
+# (2026-10-20, the user: "go all the way with the new icons") the configurator's side list: a picture per page and
+# per category heading (Batches 15 to 17)
+for n in ("page_look", "page_windows", "page_fader", "page_oldschool", "page_frames", "page_nameplates", "page_bars",
+          "page_minimap", "page_meter", "page_chat", "page_tooltip", "page_screentext", "page_tracker", "page_questlist",
+          "page_route", "page_reminders", "page_automation", "page_voice", "page_sounds", "page_profiles"):
+    SET.append(("pages", n, n, 64))
+for n in ("cat_look", "cat_frames", "cat_chat", "cat_quests", "cat_sound"):
+    SET.append(("cats", n, n, 64))
 
 
 def load(group, name):

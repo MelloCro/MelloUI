@@ -5332,7 +5332,7 @@ local function EnsureMinimapFrame()
 	mm:SetAllPoints(Minimap)
 	mm:SetFrameLevel(Minimap:GetFrameLevel() + 6)
 	mmPainter = NewPainter(mm)
-	mm.text = mm:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	mm.text = mm:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormalSmall")
 	-- the route's length (and the destination), in the numbers' face as
 	-- the marker's distance line
 	RouteFont.Style(mm.text, "fontChat", _G.GameFontNormalSmall)
@@ -7417,9 +7417,9 @@ local function EnsureMarker()
 	-- their frame (`words`), the edge arrow on it too, shown only off screen,
 	-- where they change sides at once (no frame more made at login)
 	marker.words = front
-	marker.distance = front:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	marker.distance = front:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
 	RouteFont.Style(marker.distance, "fontChat", _G.GameFontNormal)   -- a number
-	marker.label = front:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	marker.label = front:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
 	RouteFont.Style(marker.label, "fontText", _G.GameFontHighlightSmall)   -- the destination's name
 	Beacon.LayWords(marker, false)
 	marker.label:SetWidth(180)
@@ -8775,7 +8775,7 @@ do
 		cap:SetHeight(F.BAND)
 		cap:SetFrameLevel((Safe.Number(tf:GetFrameLevel()) or 1) + 1)
 		cap:EnableMouse(false)
-		local text = cap:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+		local text = cap:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlight")
 		RouteFont.Style(text, "fontText", _G.GameFontHighlight)
 		text:SetWordWrap(false)
 		cap.text = text

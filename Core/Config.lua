@@ -125,7 +125,7 @@ local C = {
 }
 
 local HOME_FLAVOUR = "Module based interface tweaks for World of Warcraft: Forever."
-local PROFILES_META = { icon = ICON .. "INV_Scroll_06", title = "Profiles",
+local PROFILES_META = { icon = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\page_profiles", title = "Profiles",
 	flavour = "Your whole setup under one name. Save it, load it, or make it the default for a fresh install." }
 local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 
@@ -141,8 +141,8 @@ local CHANGELOG = {
 	{ version = "0.25.0", lines = {
 		"Settings: borders and parchment are on Oldschool; a new Automation page; Gains, FPS / latency and the damage meter have new homes.",
 		"Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, a plate, a bar or the map, then a part; drag the party's and raid's parts on their large frame.",
-		"One look: MelloUI's parts wear its look and its Gilded Slate colours, reskin or not; a new window frame -- the logo heads the configurator's side list, small windows get a slim strip.",
-		"A new icon set, sharp at every size: the tracker, Quest List, Route, chat, bags, damage meter, Services, widgets and the Configurator's controls; the quest you follow wears Route's flag.",
+		"One look: MelloUI's parts wear its look, its Gilded Slate colours and the Fredoka font, reskin or not; a new window frame -- the logo heads the side list, small windows get a slim strip.",
+		"A new icon set, sharp at every size: the tracker, Quest List, Route, chat, bags, meter, Services, widgets, the Configurator's controls and side list; the quest you follow wears Route's flag.",
 		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, Hide Bar Art, a Bar Texture for each, one Health Colour for all.",
 		"Action bars and minimap: backdrops and MelloUI's square minimap for everyone, no painted skin needed; the round painted map is Oldschool's.",
 		"Quests: one gem per title, Parchment its own switch; the tracker's Painted Skin is gone.",
@@ -1805,7 +1805,10 @@ local function PageMeta(key)
 	local named = type(icon) == "string" and icon:match("^module:(.+)$")
 	local m = (named and MelloUI.modules[named]) or nil
 	local own = def.module and MelloUI.modules[def.module]
-	if named or not icon then
+	if def.set then
+		-- (2026-10-20) the page's picture in MelloUI's icon set, shown bare (W.IconBox)
+		icon = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\" .. def.set
+	elseif named or not icon then
 		icon = m and (Meta(m)) or DEFAULT_ICON
 	end
 	if not flavour then
@@ -5375,7 +5378,8 @@ local function RailGroups()
 		end
 		if #entries > 0 then
 			groups[#groups + 1] = { key = g.title or entries[1].key or gi, title = g.title,
-				collapsible = g.title ~= nil or nil, entries = entries }
+				collapsible = g.title ~= nil or nil, entries = entries,
+				icon = g.icon and ("Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\" .. g.icon) or nil }
 		end
 	end
 	return groups, anyNew and true or false
@@ -6887,7 +6891,7 @@ end
 local function ProbeSecret(v, unit, kind)
 	MelloUI:Print("Secret found (part 2 of 2): a %s of %s. What this client allows with it:", kind, unit)
 	local f = CreateFrame("Frame")
-	local fs = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	local fs = f:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
 	local tex = f:CreateTexture()
 	local sb = CreateFrame("StatusBar", nil, f)
 	local tests = {

@@ -989,7 +989,7 @@ function Kit:OwnWindow(frame, opts)
 		for i = 1, #shell.plateEdges do
 			shell:Painted(shell.plateEdges[i])
 		end
-		local title = plate:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		local title = plate:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
 		title:SetPoint("CENTER", plate, "CENTER", 0, 0)
 		title:SetWordWrap(false)
 		title:SetText(opts.title or "")

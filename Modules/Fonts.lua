@@ -164,6 +164,12 @@ local TITLE_DEFAULT = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Fonts\\En
 local FONT_DIR = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Fonts\\"
 local NUMBERS = "NotoSans\\NotoSans_Condensed-Bold.ttf"   -- narrow, clear figures, in every style
 local STYLES = {
+	-- (2026-10-20, the user's pick for the modern look: one font for everything, "to fit this theme") Fredoka's round
+	-- letters, the icon set's soft cartoon shapes in type; the default (below). Its text sized as Noto Sans (the
+	-- same x-height and width, measured), its titles at Cinzel's 0.7 (the same capital height, measured)
+	{ value = "fredoka", paper = "Fredoka\\Fredoka-SemiBold.ttf", label = "Fredoka", title = "Fredoka\\Fredoka-SemiBold.ttf",
+	  titleScale = 0.7, text = "Fredoka\\Fredoka-Medium.ttf", textScale = 1,
+	  desc = "MelloUI's own face: Fredoka's round letters for the titles and the text, to fit MelloUI's icons. The default." },
 	{ value = "scriptorium", paper = "Alegreya\\Alegreya-SemiBold.ttf", label = "Scriptorium", title = "Cinzel\\Cinzel-Bold.ttf", titleScale = 0.7,
 	  text = "Alegreya\\Alegreya-Regular.ttf", textScale = 1.1, desc = "Cinzel's carved capitals over Alegreya, a warm book face." },
 	{ value = "chronicle", paper = "SourceSerif4\\SourceSerif4-SemiBold.ttf", label = "Chronicle", title = "AlegreyaSC\\AlegreyaSC-Bold.ttf", titleScale = 0.75,
@@ -291,6 +297,14 @@ do
 	values[1] = { value = KEEP, label = "Chat text, semibold" }
 	options[#options + 1] = { type = "dropdown", key = "fontChatParchment", name = "Chat on parchment", values = values,
 		desc = "The chat windows and whisper windows while they lie on their parchment sheet (Oldschool > Parchment). By default the chat text's face in its semibold cut where it has one, heavier so the dark ink reads on the paper; each Font Style sets that cut of its reading face." }
+end
+-- (2026-10-20) the Fredoka style is what a player who never chose gets: its faces and sizes are the defaults (a
+-- player's own choice, saved, stays theirs)
+do
+	defaults.style = "fredoka"
+	for key, value in pairs(StyleSettings(STYLE.fredoka)) do
+		defaults[key] = value
+	end
 end
 options[#options + 1] = { type = "subheader", name = "Size and outline" }
 options[#options + 1] = { type = "slider", key = "sizeText", name = "Interface text size", min = 0.7, max = 1.5, step = 0.05, percent = true,
@@ -1421,7 +1435,9 @@ local function RestoreAll()
 		MelloUI.Kit:SetTitleFace(nil)   -- the kit's default face with the module off
 	end
 	if MelloUI.Kit and MelloUI.Kit.SetTitleSizeFactor then
-		MelloUI.Kit:SetTitleSizeFactor(1, 1)
+		-- (the kit's default face at its own correction: Fredoka's 0.7 since 2026-10-20)
+		local k = FaceFactor("fontTitle", MelloUI.Kit.defaultTitleFont)
+		MelloUI.Kit:SetTitleSizeFactor(k, k)
 	end
 	RestoreChatWindows()
 	RestoreParchmentStrings()

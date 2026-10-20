@@ -311,13 +311,13 @@ local function EnsureWidgets(button)
 		return
 	end
 	-- a header's label, its count and its +/- (placed by QI.RowHeader)
-	button.label = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	button.label = button:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
 	if Game15Font_Shadow then
 		button.label:SetFontObject(Game15Font_Shadow)
 	end
 	button.label:SetJustifyH("LEFT")
 	button.label:SetWordWrap(false)
-	button.count = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	button.count = button:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
 	button.count:SetJustifyH("RIGHT")
 	button.plus = button:CreateTexture(nil, "OVERLAY")
 	-- where a header's plate lies (and its highlight, the kit's plate), as far
@@ -344,11 +344,11 @@ local function EnsureWidgets(button)
 	-- and the line under it (their right ends by the columns, InitRow)
 	button.check = button:CreateTexture(nil, "ARTWORK")
 	button.check:SetSize(ROW.iconSize, ROW.iconSize)
-	button.title = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	button.title = button:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
 	button.title:SetPoint("TOPLEFT", ROW.titleX, -ROW.top)
 	button.title:SetJustifyH("LEFT")
 	button.title:SetWordWrap(false)
-	button.where = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	button.where = button:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
 	button.where:SetPoint("TOPLEFT", button.title, "BOTTOMLEFT", 0, -ROW.gap)
 	button.where:SetJustifyH("LEFT")
 	button.where:SetWordWrap(false)
@@ -1062,7 +1062,7 @@ function QL.Panel:Create()
 	-- on the page, under the search row: the group the list shows (its text
 	-- the list's title: the zone, "Dungeons", the search) and how many of its
 	-- quests are done, then a divider
-	frame.count = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	frame.count = frame:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormalSmall")
 	frame.count:SetPoint("RIGHT", list, "TOPRIGHT", -10, -21)
 	frame.count:SetJustifyH("RIGHT")
 	local group = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
@@ -1107,7 +1107,7 @@ function QL.Panel:Create()
 	local rowsLevel = frame:GetFrameLevel() + 3
 	frame.scrollBox:SetFrameLevel(rowsLevel)
 	group:SetFrameLevel(rowsLevel)
-	frame.empty = frame:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+	frame.empty = frame:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontDisable")
 	frame.empty:SetPoint("CENTER", frame.scrollBox, "CENTER")
 	frame.empty:SetWidth(240)
 	frame.empty:Hide()

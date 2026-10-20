@@ -1398,7 +1398,7 @@ local function BuildKeep(page)
 	local top = CreateFrame("Frame", nil, box)
 	top:SetAllPoints(box)
 	top:SetFrameLevel(box:GetFrameLevel() + 12)   -- (over the ring's holder)
-	page.numeral = top:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")   -- (a font from the start; StyleFont sets its own)
+	page.numeral = top:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormalHuge")   -- (a font from the start; StyleFont sets its own)
 	page.numeral:SetPoint("CENTER", top, "CENTER", 0, 0)
 	local object, size = NumeralBase()
 	if MelloUI.StyleFont and object then

@@ -3300,7 +3300,7 @@ local function MakeActions(f, size)
 	link:SetAllPoints(report)
 	link:EnableMouse(true)
 	link:SetHyperlinksEnabled(true)
-	link.text = link:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	link.text = link:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
 	link.text:SetPoint("CENTER", link, "CENTER", 0, 0)
 	-- the game's own function, set as it is: a wrapper (Perf) would make the
 	-- click MelloUI's, and the report could not be sent
@@ -3392,7 +3392,7 @@ local function CreatePopup(key, kind, target, title)
 	local plate = DressHeader(f, f.kitDressed)
 	-- on the plate when there is one: a child frame draws over its parent's
 	-- regions, so a name on `head` would sit under the band
-	local name = (plate or head):CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	local name = (plate or head):CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
 	name:SetJustifyH("LEFT")
 	name:SetWordWrap(false)
 	f.header = name

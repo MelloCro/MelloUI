@@ -1873,7 +1873,7 @@ local function NewBlock()
 		block.edge:SetPoint("BOTTOMLEFT", block.fill, "BOTTOMLEFT", 0, 0)
 		block.edge:Hide()
 	end
-	block.title = block:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	block.title = block:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
 	block.title:SetJustifyH("LEFT")
 	block.title:SetWordWrap(true)
 	block.lines = {}
@@ -2448,7 +2448,7 @@ do
 			return 0
 		end
 		if not fs then
-			fs = block:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+			fs = block:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
 			fs:SetJustifyH("RIGHT")
 			fs:SetWordWrap(false)
 			block.dist = fs
@@ -2664,10 +2664,10 @@ end
 local function Line(block, i)
 	local fs = block.lines[i]
 	if not fs then
-		fs = block:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		fs = block:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
 		fs:SetJustifyH("LEFT")
 		fs:SetWordWrap(true)
-		fs.dash = block:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		fs.dash = block:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
 		fs.dash:SetText("-")
 		-- (its motion's pieces when it first moves, on its block: Progress
 		-- Motion, above)
@@ -2721,7 +2721,7 @@ local function PutLine(block, i, text, y, width, dash, r, g, b, under)
 	local c = fs.count
 	if count then
 		if not c then
-			c = block:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+			c = block:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
 			c:SetJustifyH("RIGHT")
 			c:SetWordWrap(false)
 			fs.count = c
@@ -3373,9 +3373,9 @@ local function Section(key, label, count)
 		local layer = CreateFrame("Frame", nil, row)
 		layer:SetAllPoints(row)
 		layer:SetFrameLevel(row:GetFrameLevel() + 6)
-		row.text = layer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		row.text = layer:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
 		-- how many it holds, beside its name (the chat's look)
-		row.count = layer:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		row.count = layer:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
 		row.count:SetPoint("LEFT", row.text, "RIGHT", 6, 0)
 		row.toggle = MakeToggle(layer, 14, function() return SectionCollapsed(key) end, function()
 			local c = type(M.db.collapsedSections) == "table" and M.db.collapsedSections or {}
@@ -3614,7 +3614,7 @@ local function Build()
 	local textLayer = CreateFrame("Frame", nil, header)
 	textLayer:SetAllPoints(header)
 	textLayer:SetFrameLevel(header:GetFrameLevel() + 8)
-	header.text = textLayer:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	header.text = textLayer:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormalLarge")
 	header.text:SetPoint("CENTER", header, "CENTER", 0, 0)
 	header.text:SetText(TRACKER_ALL_OBJECTIVES or "All Objectives")
 	-- (the title: the palette's gold, as the section names under it and every

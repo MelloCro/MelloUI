@@ -622,7 +622,7 @@ do
 		f.arrows.down:SetAtlas("ui-hud-actionbar-pagedownarrow-up")
 		f.arrows.down:SetSize(Stage.ARROW_W, Stage.ARROW_H)
 		f.arrows.down:SetPoint("BOTTOMLEFT", f.arrows, "BOTTOMLEFT", 0, 2)
-		f.arrows.page = f.arrows:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+		f.arrows.page = f.arrows:CreateFontString(nil, "ARTWORK", "MelloUIFont_GameFontNormal")
 		f.arrows.page:SetPoint("LEFT", f.arrows, "LEFT", Stage.ARROW_W + 3, 0)
 		f.arrows.page:SetText("1")
 		return f

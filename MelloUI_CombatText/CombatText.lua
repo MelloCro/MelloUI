@@ -733,7 +733,7 @@ local REGIONS = { "sign", "value", "word", "notice", "tail" }
 -- with no font yet -- "FontString:SetText(): Font not set", the first
 -- Preview, 2026-10-01; StyleText sets the size and face after)
 local function NewFont(row)
-	local fs = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	local fs = row:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlight")
 	fs:SetWordWrap(false)
 	fs:SetShadowOffset(TEXT_LOOK.shadowX, TEXT_LOOK.shadowY)
 	Shadow(fs)

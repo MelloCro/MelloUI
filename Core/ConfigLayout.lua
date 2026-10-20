@@ -97,14 +97,17 @@ MelloUI.ConfigLayout = L
 -- user 2026-09-29; the other pages have no row there, so they never show it)
 L.SECTIONS = { "General", "Look", "Text", "Layout", "Behaviour", "Sound", "Text-to-Speech", "Advanced" }
 
+-- (2026-10-20, the user: "go all the way with the new icons") a group's `icon` and a page's `set`: their pictures
+-- in MelloUI's icon set (Media/Textures/Icons), shown bare (pick A); a page's `icon` still names its module for
+-- its flavour line
 L.groups = {
 	{ entries = { "Home" } },
-	{ title = "The look", entries = { "Look", "Windows", "Fader", "Oldschool" } },
-	{ title = "Frames and bars", entries = { "UnitGroupFrames", "Nameplates", "ActionBars", "Minimap",
+	{ title = "The look", icon = "cat_look", entries = { "Look", "Windows", "Fader", "Oldschool" } },
+	{ title = "Frames and bars", icon = "cat_frames", entries = { "UnitGroupFrames", "Nameplates", "ActionBars", "Minimap",
 		"BarsMeters" } },
-	{ title = "Chat and text", entries = { "Chat", "Tooltip", "ScreenText" } },
-	{ title = "Quests and travel", entries = { "QuestTracker", "QuestList", "Route", "Reminders", "Automation" } },
-	{ title = "Sound", entries = { "VoiceOver", "CustomSounds" } },
+	{ title = "Chat and text", icon = "cat_chat", entries = { "Chat", "Tooltip", "ScreenText" } },
+	{ title = "Quests and travel", icon = "cat_quests", entries = { "QuestTracker", "QuestList", "Route", "Reminders", "Automation" } },
+	{ title = "Sound", icon = "cat_sound", entries = { "VoiceOver", "CustomSounds" } },
 	{ entries = { "Profiles" } },
 }
 
@@ -113,26 +116,26 @@ L.pages = {
 	-- the global look: every element's page links here (its header switch
 	-- is UI Modifications', which takes the reskin and every folded feature
 	-- with it)
-	Look = { title = "Look", icon = "module:UIModifications", module = "UIModifications",
+	Look = { title = "Look", icon = "module:UIModifications", set = "page_look", module = "UIModifications",
 		flavour = "The look of the whole interface: the soft shade, fonts, icons, Dark Mode, the bar texture and fading. The painted reskin and its palettes are on the Oldschool page.",
 		switchLabel = "UI Modifications",
 		switchDesc = "The painted reskin AND every feature of UI Modifications: Vendor, Error Messages, Cooldown Timers, Nameplate Tweaks, Chat, Tooltip, Fonts, Dark Mode, Bar Textures, Buffs & Debuffs, Unit Frame Tweaks, FPS / Latency, Class Icons, Bar Values, the game windows' skins, hiding the micro menu, the bag bar and the minimap coordinates, and the world text scale. Off: all of them are off, Edit Layout lets go of the game's windows (they go back to the game's own places), Windows Fade In stops, names are shown in full and Class Coloured Names stops. The palette, the UI Shade, Reduce Motion and MelloUI's notices keep working.",
 		tabs = { "General", "Fonts", "Icons", "Dark Mode", "Bar Texture", "Fading" } },
 	-- (`oldschool`: the painted reskin's whole page, made only with MelloUI_Oldschool loaded -- one look stage I)
-	Windows = { title = "Windows", icon = "module:CharacterPanel", oldschool = true,
+	Windows = { title = "Windows", icon = "module:CharacterPanel", set = "page_windows", oldschool = true,
 		flavour = "The game's windows in the painted look, one at a time: pick a window.",
 		tabs = { "Windows" },
 		picker = { label = "Window", noun = "window", from = "windows" } },
 	-- (0.17.0) which parts fade away, and when they come back (one look: no
 	-- header switch -- the Fader runs while any element fades)
-	Fader = { title = "Fader", icon = "module:Fader",
+	Fader = { title = "Fader", icon = "module:Fader", set = "page_fader",
 		-- (one look, Q5: each frame's and bar's Fade is its own element's last Behaviour row now -- the designers'
 		-- and the Reminders page's; the chat's and the map's here until stage H)
 		tabs = { "Chat & Map" } },
 	-- (one look C8, the user 2026-10-15: one designer per family) the player, target, focus, pet, your buffs, the
 	-- party and raid frames (MelloUI's own) and the Personal Display: pick a frame, then a part of it; its own
 	-- options under the part's (docs/plans/onelook-designer/c7-lite.md, ugf-audit.md)
-	UnitGroupFrames = { title = "Unit & Group Frames", icon = "module:UnitFrames", designer = true, new = "0.25.0",
+	UnitGroupFrames = { title = "Unit & Group Frames", icon = "module:UnitFrames", set = "page_frames", designer = true, new = "0.25.0",
 		flavour = "You, your target and your group: pick a frame, click a part of it, change it.",
 		-- (one look, shell-plan 1 item 2) `sample`: a frame with no stage shows Config Preview's corner sample
 		-- in the stage's slot (the 'unitframe' kind's pick, 1.5x), pinned with the chips as the stage is
@@ -183,7 +186,7 @@ L.pages = {
 		},
 		family = { key = "all", label = "All frames", line = "Every frame: the heal light, the big moments, the debuff glow" } },
 	-- (one look C8) the painted reskin's own rows, kept working here until the painted look becomes its own addon
-	Oldschool = { title = "Oldschool", icon = "module:UIModifications", oldschool = true,
+	Oldschool = { title = "Oldschool", icon = "module:UIModifications", set = "page_oldschool", oldschool = true,
 		flavour = "The painted reskin's own settings, kept here until the painted look becomes its own addon.",
 		tabs = { "General", "Painted Skins", "Borders", "Parchment", "Frame Art" } },
 	-- (0.20.0) MelloUI_GroupFrames: MelloUI's own party and raid frames (their
@@ -196,7 +199,7 @@ L.pages = {
 	-- (one look stage G, the user's yes of 2026-10-16 to docs/plans/onelook-designer/np-audit.md) the designer: the
 	-- enemies' plates (every part MelloUI puts on the game's plate), the friendly players' (Party Markers' class
 	-- medallion), the objects' (Loot Sparkles); no family block. The painted Nameplate Kit's rows are Oldschool's
-	Nameplates = { title = "Nameplates", icon = "module:Nameplates", designer = true,
+	Nameplates = { title = "Nameplates", icon = "module:Nameplates", set = "page_nameplates", designer = true,
 		flavour = "The game's nameplates: pick a kind, click a part of it, change it.",
 		elements = {
 			-- (`stage`: the enemy plate's sample, Modules/Nameplates.lua's 'nameplate' kind -- its parts picked,
@@ -219,7 +222,7 @@ L.pages = {
 	-- for the bars -- RECOMMENDED.md section 3) the action bars, the micro menu and the bag bar, your cast bar, the
 	-- swing timers, the XP and reputation bars and the game's Cooldown Manager; the painted action bar skin's rows
 	-- are Oldschool's. `locked`: a part with nothing to set yet (listed, not opened: Q11)
-	ActionBars = { title = "Bars", icon = "module:ActionBarPanel", designer = true,
+	ActionBars = { title = "Bars", icon = "module:ActionBarPanel", set = "page_bars", designer = true,
 		flavour = "Your bars: pick one, click a part of it, change it.",
 		-- (0.19.9) MelloUI's own Keybind Mode in the header (its button: Core/Config.lua KEYBIND_MODE)
 		action = "keybind",
@@ -253,7 +256,7 @@ L.pages = {
 	-- (one look stage G, the user's answers to docs/plans/onelook-designer/minimap-audit.md: a designer, chips Minimap
 	-- and Services; no sample; the modern map square only -- Round with its header is the painted skin's, Oldschool's;
 	-- Route trail and Objective marks locked parts that say where their settings are)
-	Minimap = { title = "Minimap", icon = "module:MinimapPanel", module = "MinimapPanel", designer = true,
+	Minimap = { title = "Minimap", icon = "module:MinimapPanel", set = "page_minimap", module = "MinimapPanel", designer = true,
 		flavour = "The minimap and the Services bar under it: pick one, click a part, change it.",
 		switchLabel = "MelloUI Minimap",
 		switchDesc = "MelloUI's minimap: its Width and Height, the square shape in the Chat panel, the Services bar merged under it, and the column under it that the Quest Tracker follows. Off: the game's own minimap, Edit Mode's Size sizes it again, and the Painted Skin is off with it.",
@@ -270,37 +273,37 @@ L.pages = {
 	-- the Personal Display module's, off by default; MelloUI_PersonalDisplay)
 	-- (the Bars audit's point 5: the damage meter and the FPS / latency readout until stage H gives them homes;
 	-- the bars went to Bars, the Event Widgets tab with its one painted link)
-	BarsMeters = { title = "Damage Meter", icon = "module:Meter",
+	BarsMeters = { title = "Damage Meter", icon = "module:Meter", set = "page_meter",
 		flavour = "The damage meter.",
 		tabs = { "Damage Meter" } },
-	Chat = { title = "Chat", icon = "module:Chat",
+	Chat = { title = "Chat", icon = "module:Chat", set = "page_chat",
 		flavour = "The chat windows, the lines in them and the whisper popup.",
 		tabs = { "Chat Frame", "Messages", "Whispers" } },
-	Tooltip = { title = "Tooltip", icon = "module:Tooltip",
+	Tooltip = { title = "Tooltip", icon = "module:Tooltip", set = "page_tooltip",
 		flavour = "The tooltips: their backdrop, the unit lines, where they sit, and the quest lines on them.",
 		tabs = { "Tooltip" } },
-	ScreenText = { title = "Screen Text", icon = "module:ErrorFilter",
+	ScreenText = { title = "Screen Text", icon = "module:ErrorFilter", set = "page_screentext",
 		flavour = "The text in the middle of the screen: MelloUI's notices, the zone text, the red error messages and the floating combat numbers.",
 		tabs = { "Notices", "Combat Text", "Gains", "Error Messages" } },
-	QuestTracker = { title = "Quest Tracker", icon = "module:QuestTracker", module = "QuestTracker",
+	QuestTracker = { title = "Quest Tracker", icon = "module:QuestTracker", set = "page_tracker", module = "QuestTracker",
 		tabs = { "Quest Tracker", "Objective Tracker" } },
-	QuestList = { title = "Quest List", icon = "module:QuestList", module = "QuestList",
+	QuestList = { title = "Quest List", icon = "module:QuestList", set = "page_questlist", module = "QuestList",
 		tabs = { "List", "Map" } },
-	Route = { title = "Route", icon = "module:Route", module = "Route",
+	Route = { title = "Route", icon = "module:Route", set = "page_route", module = "Route",
 		tabs = { "Route", "Arrow & Marker", "Flights" } },
 	-- no header switch: three modules share the page, and each tab's first
 	-- row is its module's switch (Reminders, Restock, Vendor Automation)
-	Reminders = { title = "Reminders & Widgets", icon = "module:Reminders",
+	Reminders = { title = "Reminders & Widgets", icon = "module:Reminders", set = "page_reminders",
 		flavour = "Supplies, mail, repairs and training: a gentle nudge beside your portrait, never a nag. With the widgets for loot rolls, summons and the rest, and the FPS / latency readout.",
 		tabs = { "Reminders", "Widgets", "FPS / Latency" } },
 	-- (one look stage H, the plain pages' audit: the restock list, the vendor's repairs and sales and the quests'
 	-- automatic accept and hand-in, one page; each tab's first row its module's switch)
-	Automation = { title = "Automation", icon = "module:Vendor", new = "0.25.0",
+	Automation = { title = "Automation", icon = "module:Vendor", set = "page_automation", new = "0.25.0",
 		flavour = "The things MelloUI does for you: repairs and junk sales at the vendor, the restock list, accepting and handing in quests.",
 		tabs = { "Vendor", "Restock", "Quests" } },
-	VoiceOver = { title = "Voice Over", icon = "module:VoiceOver", module = "VoiceOver",
+	VoiceOver = { title = "Voice Over", icon = "module:VoiceOver", set = "page_voice", module = "VoiceOver",
 		tabs = { "Reading", "Voices", "Sound Packs", "Widget" } },
-	CustomSounds = { title = "Custom Sounds", icon = "module:CustomSounds", module = "CustomSounds",
+	CustomSounds = { title = "Custom Sounds", icon = "module:CustomSounds", set = "page_sounds", module = "CustomSounds",
 		tabs = { "Sounds", "Preview" } },
 	Profiles = { title = "Profiles", own = true },
 }

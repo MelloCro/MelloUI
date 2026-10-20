@@ -1013,11 +1013,14 @@ end
 -- here and the setting changed nothing on the plates): `Kit:SetTitleFace`
 -- takes a path, `false` for the game's own face on the plates ("Keep the
 -- game's"), or nil for the default, Enchanted Land.
-Kit.defaultTitleFont = "Interface\\AddOns\\MelloUI\\Media\\Fonts\\EnchantedLand.ttf"
+-- (2026-10-20, the user's pick: Fredoka, one font for the modern look) the default face is Fredoka SemiBold at its
+-- correction in the title role (0.7 of the kit's 1.5: the Fonts module's Fredoka style, Modules/Fonts.lua); it was
+-- Enchanted Land at 1
+Kit.defaultTitleFont = "Interface\\AddOns\\MelloUI\\Media\\Fonts\\Fredoka\\Fredoka-SemiBold.ttf"
 Kit.titleFont = Kit.defaultTitleFont
 Kit.titleFontScale = 1.5   -- user, 2026-09-21: the face at 1.5 x the string's size (a custom face only; the game's own keeps its size)
-Kit.titleSizeFactor = 1    -- the Fonts module's "Titles & headers size" slider (user, 2026-09-22: it did nothing on the plates), times the face's correction
-Kit.titleFaceFactor = 1    -- the face's correction alone (0.19.4): a string with a size of its own (Kit:TitleFont's ownSize)
+Kit.titleSizeFactor = 0.7  -- the Fonts module's "Titles & headers size" slider (user, 2026-09-22: it did nothing on the plates), times the face's correction
+Kit.titleFaceFactor = 0.7  -- the face's correction alone (0.19.4): a string with a size of its own (Kit:TitleFont's ownSize)
 -- every string in the title face, for a re-size: true, or "own" for a string
 -- whose size is its own setting's (the slider passes it by)
 local titleStrings = setmetatable({}, { __mode = "k" })

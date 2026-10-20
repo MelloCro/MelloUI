@@ -895,7 +895,7 @@ local function Count(b)
 		disc:SetTexture(ROUND_MASK)
 		disc:SetAllPoints(holder)
 		W.Paint(disc, "innerPanel", "vertex", 0.95)
-		local fs = holder:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+		local fs = holder:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormalSmall")
 		fs:SetPoint("CENTER", holder, "CENTER", 0, 0)
 		W.Paint(fs, "selectedTrim", "text")
 		b.countFrame, b.countDisc, b.countText = holder, disc, fs
@@ -920,7 +920,7 @@ local function LabelFont(label)
 end
 
 local function Label(parent)
-	local label = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	local label = parent:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlight")
 	label:SetJustifyH("LEFT")
 	label:SetWordWrap(false)
 	LabelFont(label)
@@ -1635,7 +1635,7 @@ local function ButtonRow(frame)
 		local pick, act = PICKS[i], ACTIONS[i - #PICKS]
 		local b = W.GlyphButton(frame, LETTER, act and act[1] or nil)
 		if pick then
-			local letter = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+			local letter = b:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
 			letter:SetPoint("CENTER", b, "CENTER", 0, 0)
 			local info = ChatTypeInfo and ChatTypeInfo[pick[3]]
 			if info and Num(info.r) then

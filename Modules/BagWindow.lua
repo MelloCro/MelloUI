@@ -2890,7 +2890,7 @@ function D.Box(holder, field)
 	local box = CreateFrame("EditBox", nil, holder)
 	box:SetAutoFocus(false)
 	box:SetSize(D.FIELD_W, 22)
-	box:SetFontObject("GameFontHighlight")
+	box:SetFontObject("MelloUIFont_GameFontHighlight")
 	box:SetTextInsets(6, 6, 0, 0)
 	box:SetMaxLetters(32)
 	box.field, box.holder = field, holder
