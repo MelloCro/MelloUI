@@ -21,6 +21,7 @@
 - Edit Layout: more of the game's windows can be moved without the painted reskin: the auction house, trainers, guild bank, inspect, gem socketing, the PvP scoreboard and results, the calendar, the clock, chat channels, the help window, the addon list and the game's options.
 - Party frames: each member's level shows at the end of its name line, every number in one column.
 - Unit frames: a soft dark band sits behind the player's, pet's, target of target's and party members' names, the same length on every frame.
+- Unit frames: MelloUI Frames (on with Unit Frame Tweaks, Unit & Group Frames > Player, Target, Focus): the frames laid out as the game lays them, in MelloUI's look: a gold ring round the portrait, a dark level badge, a slate name plate and iron frames with a gold line round the health and power bars; the elite's gold wing and the rare's silver one on the target.
 - Unit frames: Level Up and XP Gain work without the painted skin and follow Unit Frame Tweaks. Without the skin, Level Up is the experience bar's light and the level-up notice.
 - Party and raid frames: names shown in a short form (Show Names As) are no longer written again on every health update, which is lighter in big fights.
 - Minimap: MelloUI's minimap for everyone: Width and Height, the square shape on the Chat panel and the Services bar merged under it, with or without the painted reskin.
