@@ -6,6 +6,8 @@
 - Languages: the translations are a first draft; corrections are welcome on CurseForge's translation page for MelloUI.
 - MelloUI's own windows keep the game's letters for Cyrillic, Chinese and Korean, so such names show in them instead of boxes.
 - Buttons in MelloUI's windows grow to fit a longer label instead of cutting it.
+- Map: Forever's new dungeons are on the map with their levels: the City of Dalaran (the Horde's gate and the Alliance's sewers, each side sees its own), the Excavation Site: Wetlands, the Ruins of Lordaeron and the Hall of Thanes, and the coming Drowned City and Shaper's Terrace. Route leads to your side's door.
+- Game menu: MelloUI's button under the Escape menu is a gold pill with MelloUI's badge, which glows softly the first time you open the menu.
 
 ## 1.0.0
 

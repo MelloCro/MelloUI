@@ -142,6 +142,8 @@ local CHANGELOG = {
 		"Languages: the configurator and the installer in German, French, Spanish, Portuguese, Russian, Chinese and Korean. Pick one at the left of the top line.",
 		"A line not translated yet shows in English. Corrections are welcome on MelloUI's CurseForge translation page.",
 		"MelloUI's windows show Cyrillic, Chinese and Korean names in the game's letters instead of boxes; buttons grow to fit a longer label.",
+		"Map: Forever's new dungeons with their levels, the City of Dalaran's door for your side; the Drowned City and the Shaper's Terrace too.",
+		"The Escape menu's MelloUI button is a gold pill with MelloUI's badge.",
 	} },
 	{ version = "1.0.0", lines = {
 		"A seamless world map of MelloUI's own (M): zoom from Azeroth to a village, ground and caves up close; your party, Route, flights, dungeons, quests and objectives on it.",
