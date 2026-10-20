@@ -1216,21 +1216,34 @@ end
 B.WriteChanged = WriteChanged
 
 -- the login's handover: a place Edit Mode holds now let go, the others held
--- (B.handedOver[key]: what the login did with each stored place, for /emdump)
+-- (1.0; the user, 2026-10-20: "on /reload my Action bars return to their default position instead of my
+-- modification") a place the active custom layout holds otherwise is the layout's: Edit Layout writes its places into
+-- a custom layout (WriteChanged), so one that differs was changed in Edit Mode since -- the stale copy goes and the
+-- frame, if it is a mover already, goes to the layout's place. Only a preset (no saved layout to read:
+-- EditModeSystemAnchor answers nil) refuses the write: there the copy is held, as before.
+-- (B.handedOver[key]: what the login did with each stored place, for /mello layout places)
 B.handedOver = {}
 local function Handover()
 	for key, pos in pairs(StoredSystems()) do
 		local system, index = ParseKey(key)
 		local frame = FrameOf(system, index)
-		if frame then
-			if SameAsEditMode(system, index, pos, frame) then
-				MelloUI:ForgetPosition(key)
-				B.handedOver[key] = "let go (Edit Mode holds it)"
-			else
-				B.handedOver[key] = RegisterSystem(frame) and "held" or "held (already a mover)"
-			end
-		else
+		if not frame then
 			B.handedOver[key] = "no frame"
+		elseif MelloUI:EditModeSystemAnchor(system, index) == nil then
+			B.handedOver[key] = RegisterSystem(frame) and "held (a preset or no saved place: the copy kept)"
+				or "held (already a mover)"
+		elseif SameAsEditMode(system, index, pos, frame) then
+			MelloUI:ForgetPosition(key)
+			B.handedOver[key] = "let go (Edit Mode holds it)"
+		else
+			MelloUI:ForgetPosition(key)
+			B.handedOver[key] = "let go (the layout's own place is newer)"
+			if MelloUI:MoverEntry(frame) then
+				local ok, err = pcall(SysHome(system, index), frame)
+				if not ok then
+					Report(err)
+				end
+			end
 		end
 	end
 end
@@ -1246,21 +1259,42 @@ local function PointOf(frame)
 	return tostring(p) .. tostring(rp) .. string.format("%.1f %.1f", Finite(x) or 0, Finite(y) or 0)
 end
 
+-- (1.0) a system's place in the active saved layout as text (nil: none readable -- a preset active)
+local function LayoutPlace(system, index)
+	local p, to, rp, x, y = MelloUI:EditModeSystemAnchor(system, index)
+	if not p then
+		return nil
+	end
+	return string.format("%s %s %s %.1f %.1f", tostring(p), tostring(to), tostring(rp), Finite(x) or 0, Finite(y) or 0)
+end
+
 local function SysEditMode(entering)
 	if entering then
-		SYS.atOpen = {}
+		SYS.atOpen, SYS.layoutAtOpen = {}, {}
 		for entry in pairs(sysOf) do
 			if entry.key ~= nil and MelloUI:GetPosition(entry.key) then
 				SYS.atOpen[entry] = PointOf(entry.frame)
 			end
 		end
+		for key in pairs(StoredSystems()) do
+			local system, index = ParseKey(key)
+			SYS.layoutAtOpen[key] = LayoutPlace(system, index) or false
+		end
 		return
 	end
-	local at = SYS.atOpen
-	SYS.atOpen = nil
+	local at, layoutAt = SYS.atOpen, SYS.layoutAtOpen
+	SYS.atOpen, SYS.layoutAtOpen = nil, nil
 	for entry, was in pairs(at or EMPTY) do
 		if PointOf(entry.frame) ~= was then
 			MelloUI:ForgetPosition(entry.key)
+		end
+	end
+	-- (1.0) a place Edit Mode's saved layout changed while it was open is Edit Mode's again: read from the layout,
+	-- since the follow put-back sets the frame's own point back before the compare above (the user's bars went back)
+	for key, was in pairs(layoutAt or EMPTY) do
+		local system, index = ParseKey(key)
+		if (LayoutPlace(system, index) or false) ~= was then
+			MelloUI:ForgetPosition(key)
 		end
 	end
 end
@@ -1293,11 +1327,26 @@ end
 if MelloUI.AddMoverSource then
 	MelloUI:AddMoverSource(RegisterSystems)
 end
-if MelloUI.AfterLogin then
-	MelloUI:AfterLogin(function()
+-- (1.0) after the login: asked from Core's own PLAYER_LOGIN (a post-hook on its OnEvent: Core's login pass under
+-- way then, its saved settings in; no frame of the bridge's at load), never at this file's load -- AfterLogin runs at
+-- once outside a login, and the store was not read yet: every place stayed "not handed over" (the user's /mello
+-- layout places)
+do
+	local asked = false
+	local function HandoverNow()
 		local ok, err = pcall(Handover)
 		if not ok then
 			Report(err)
+		end
+	end
+	Perf.HookScript(MelloUI, "OnEvent", function(_, event)
+		if event == "PLAYER_LOGIN" and not asked then
+			asked = true
+			if MelloUI.AfterLogin then
+				MelloUI:AfterLogin(HandoverNow)
+			else
+				HandoverNow()
+			end
 		end
 	end)
 end
