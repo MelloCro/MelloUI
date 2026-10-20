@@ -106,6 +106,8 @@ local TEXT = {
 	handInTo = "Ready to hand in: %s",
 	show = "Show", route = "Route", routing = "Routing", share = "Share", tracked = "Tracked", track = "Track",
 	abandon = "Abandon",
+	read = "Read", stop = "Stop",
+	readTip = "Read the quest aloud: its description in the quest giver's voice, then the recorded objectives when the voice pack has them (Voice Over). Again: stop.",
 	showTip = "The map goes to where this quest is done (its turn-in once it is ready).",
 	routeTip = "Follow this quest: Route shows the way to it. Click again to let it go.",
 	shareTip = "Share this quest with your group.",
@@ -146,6 +148,13 @@ local function Ask(fn, ...)
 		return v
 	end
 	return nil
+end
+
+-- (the user, 2026-10-20: "the VoiceOver Read Button is missing from the Quest Log") Voice Over's quest reading, when
+-- it offers it (MelloUI_VoiceOver: ReadCan, Reading, ReadToggle -- its own button's on the game's quest log)
+local function VoiceOver()
+	local ok, vo = pcall(MelloUI.GetModule, MelloUI, "VoiceOver")
+	return ok and type(vo) == "table" and type(vo.ReadToggle) == "function" and vo or nil
 end
 
 local function Watched(id)
@@ -603,8 +612,48 @@ local function Place(region, y, gap)
 end
 
 -- the buttons as the quest is now: Route lit while followed, Share while it can be shared, the tracked box, Abandon
+-- the page's buttons evenly across the page: the five, and Read while Voice Over offers it
+local BUTTON_ORDER = { "show", "route", "share", "track", "abandon", "read" }
+local function LayButtons()
+	local B = S.buttons
+	local n = 0
+	for _, key in ipairs(BUTTON_ORDER) do
+		if B[key]:IsShown() then
+			n = n + 1
+		end
+	end
+	local slot, i = S.pageW / max(n, 1), 0
+	for _, key in ipairs(BUTTON_ORDER) do
+		local b = B[key]
+		if b:IsShown() then
+			i = i + 1
+			b:ClearAllPoints()
+			b:SetPoint("TOP", B.row, "TOPLEFT", slot * (i - 0.5), 0)
+		end
+	end
+end
+
+-- Read's label as Voice Over reads (Stop while it reads)
+local function ReadLabel()
+	local VO, b = VoiceOver(), S.buttons.read
+	local reading = VO and VO.Reading() and true or false
+	if reading ~= b.reading then
+		b.reading = reading
+		b.label:SetText(reading and TEXT.stop or TEXT.read)
+	end
+end
+
 local function Buttons(id)
 	local A, B = Acts(), S.buttons
+	local VO = VoiceOver()
+	local canRead = VO and VO.ReadCan() and true or false
+	if B.read:IsShown() ~= canRead then
+		B.read:SetShown(canRead)
+		LayButtons()
+	end
+	if canRead then
+		ReadLabel()
+	end
 	local followed = A and A.Followed and A.Followed() == id
 	B.route.label:SetText(followed and TEXT.routing or TEXT.route)
 	B.route:SetOn(A ~= nil)
@@ -886,6 +935,13 @@ local ButtonClick = Perf.Shared("OnClick on the map's quest page buttons", funct
 	local B = S.buttons
 	if self == B.show then
 		Log.ShowQuest(id)
+	elseif self == B.read then
+		local VO = VoiceOver()
+		if VO then
+			VO.ReadToggle(id)   -- (its own sound and line)
+			ReadLabel()
+		end
+		return
 	elseif not A then
 		return
 	elseif self == B.route then
@@ -904,10 +960,8 @@ local ButtonClick = Perf.Shared("OnClick on the map's quest page buttons", funct
 	S.dirty = true
 end, "script")
 
-local function PageButton(row, i, icon, label, tip)
-	local b = W.RoundIcon(row, T.BUTTON, T.ICONS .. icon)
-	local slot = S.pageW / 5
-	b:SetPoint("TOP", row, "TOPLEFT", slot * (i - 0.5), 0)
+local function PageButton(row, icon, label, tip)
+	local b = W.RoundIcon(row, T.BUTTON, T.ICONS .. icon)   -- (laid by LayButtons)
 	b.label = W.Text(row, "GameFontHighlight", label, "text")
 	b.label:SetPoint("TOP", b, "BOTTOM", 0, -4)
 	b.label:SetJustifyH("CENTER")
@@ -1074,11 +1128,14 @@ function Log.Init(win)
 	local row = CreateFrame("Frame", nil, page)
 	row:SetHeight(T.BUTTON_ROW)
 	local B = { row = row }
-	B.show = PageButton(row, 1, "goal_pin", TEXT.show, TEXT.showTip)
-	B.route = PageButton(row, 2, "btn_way", TEXT.route, TEXT.routeTip)
-	B.share = PageButton(row, 3, "btn_invite", TEXT.share, TEXT.shareTip)
-	B.track = PageButton(row, 4, "ctl_check_on", TEXT.tracked, TEXT.trackTip)
-	B.abandon = PageButton(row, 5, "btn_discard", TEXT.abandon, TEXT.abandonTip)
+	B.show = PageButton(row, "goal_pin", TEXT.show, TEXT.showTip)
+	B.route = PageButton(row, "btn_way", TEXT.route, TEXT.routeTip)
+	B.share = PageButton(row, "btn_invite", TEXT.share, TEXT.shareTip)
+	B.track = PageButton(row, "ctl_check_on", TEXT.tracked, TEXT.trackTip)
+	B.abandon = PageButton(row, "btn_discard", TEXT.abandon, TEXT.abandonTip)
+	-- (Voice Over's Read, while it offers it: Buttons)
+	B.read = PageButton(row, "voice_page", TEXT.read, TEXT.readTip)
+	B.read:Hide()
 	-- (Route followed: the selected trim's ring round its button)
 	B.route.lit = B.route:CreateTexture(nil, "OVERLAY", nil, 2)
 	B.route.lit:SetTexture(T.ICONS .. "hover_glow")
@@ -1087,6 +1144,7 @@ function Log.Init(win)
 	B.route.lit:SetBlendMode("ADD")
 	B.route.lit:Hide()
 	S.buttons = B
+	LayButtons()
 	-- the title and the parts under the back button
 	S.backButton = back
 	P.top = T.FOLD + 10
@@ -1393,6 +1451,10 @@ end
 function Log.Tick()
 	if S.dirty and S.out then
 		Refresh()
+	end
+	local read = S.buttons and S.buttons.read
+	if read and read:IsVisible() then
+		ReadLabel()   -- (Read again once the reading ends by itself)
 	end
 end
 

@@ -40,7 +40,8 @@ local bandOf = QI.bandOf   -- [row] = its hover band (QI.RowBand)
 -- world that does not load it
 local QP = MelloUI.QuestPages
 local LEVEL_SHORTCUT = 4   -- the gear menu's level check: hide quests more than 4 (so 5 or more) levels above
-local PIN_SIZE = 14        -- the map pin on the pinned quest's icon
+local PIN_SIZE = 14        -- the map pin of the pinned quest, after its name
+local PIN_GAP = 4          -- between the name and the pin
 -- (0.19.9) a group's Done section's header; the header's progress bar's texture
 local DONE_SECTION = "Done (%d)"
 QL.doneOpen = QL.doneOpen or {}   -- (QuestList.lua's; here too for a panel loaded on its own)
@@ -365,11 +366,11 @@ local function EnsureWidgets(button)
 	-- in it went: the user, 2026-10-09)
 	button.slot = button:CreateTexture(nil, "BACKGROUND")
 	button.slot:Hide()
-	-- the map pin on the pinned quest: on its icon's corner, as the log marks
-	-- the quest it follows on its POI button (the columns never move for it)
+	-- the map pin of the pinned quest: right after its name on the title's line
+	-- (InitRow; the user, 2026-10-20: on the icon's corner it covered the
+	-- quest's icon -- "After the title")
 	button.pin = button:CreateTexture(nil, "OVERLAY", nil, 1)
 	button.pin:SetSize(PIN_SIZE, PIN_SIZE)
-	button.pin:SetPoint("CENTER", button.check, "BOTTOMRIGHT", -3, 3)
 	-- (0.25.0) the gold pin with Route's red flag of MelloUI's icon set (the map's own pin atlas until then)
 	MelloUI.Widgets.Icon(button.pin, "goal_pin")
 	button.pin:Hide()
@@ -542,7 +543,8 @@ local function InitRow(button, entry)
 	button.slot:SetPoint("TOPRIGHT", button, "TOPRIGHT", -ROW.edge, -ROW.top)
 	-- the hover band (hidden but on the row under the mouse)
 	QI.RowBand(button, titleSize):SetShown(MouseOver(button))
-	button.pin:SetShown(QL.trackedQuestID ~= nil and entry.row[QL.F_ID] == QL.trackedQuestID)
+	local pinned = QL.trackedQuestID ~= nil and entry.row[QL.F_ID] == QL.trackedQuestID
+	button.pin:SetShown(pinned)
 	local row = entry.row
 	local r, g, b = QL.DifficultyColor(QL.ColourLevel(row))
 	-- the game's trivial grey (0.5) reads as near black over the list's
@@ -633,9 +635,22 @@ local function InitRow(button, entry)
 	end
 	-- the title and the line under it short of the slot, on every row (the
 	-- gem stands before the title: the title keeps the whole width)
-	button.title:SetPoint("TOPRIGHT", button.slot, "TOPLEFT", -6, 0)
-	button.where:SetPoint("TOPRIGHT", button.title, "BOTTOMRIGHT", 0, -ROW.gap)
+	-- (a pinned row's name short of the pin's room; the line under it keeps the whole width)
+	local pinRoom = pinned and (PIN_SIZE + PIN_GAP) or 0
+	button.title:SetPoint("TOPRIGHT", button.slot, "TOPLEFT", -6 - pinRoom, 0)
+	button.where:SetPoint("TOPRIGHT", button.title, "BOTTOMRIGHT", pinRoom, -ROW.gap)
 	QI.RowGem(button, button.title, titleSize, tier)
+	if pinned then
+		-- the pin right after the name as it shows (cut at the title's width when it is long)
+		local Finite = MelloUI.Safe.Finite
+		local w = Finite(button.title:GetStringWidth()) or 0
+		local room = Finite(button.title:GetWidth())
+		if room and room > 0 and w > room then
+			w = room
+		end
+		button.pin:ClearAllPoints()
+		button.pin:SetPoint("LEFT", button.title, "LEFT", w + PIN_GAP, 0)
+	end
 	-- on the reskin's parchment: both lines in ink; a done quest faded
 	if QI.onParchment then
 		local faded = entry.completed or tier == 1
