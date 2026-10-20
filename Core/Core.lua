@@ -5009,7 +5009,54 @@ local function RecordShipped(db, name, text)
 	db.profilesShipped[name] = text
 end
 
--- The player's profiles, the baked ones (MelloUI_Profiles) copied in while
+-- (1.0, the user, 2026-10-20: "the Full expirience should also take into
+-- consideration if i Have MelloUI_Oldschool active or not, it should load the
+-- old Profiles if its active, if its not active then it will load the new
+-- ones") The shipped setups: MelloUI's own (MelloUI_Profiles, the Edit Mode
+-- layout MelloUI_EditModeLayout) and, while MelloUI_Oldschool is loaded (and
+-- not refused for another version), its frozen one for the painted reskin
+-- (MelloUI_OldschoolShipped: its profile under its own name, its layout).
+function MelloUI:OldschoolShipped()
+	local oldschool, shipped = rawget(self, "Oldschool"), rawget(_G, "MelloUI_OldschoolShipped")
+	if type(oldschool) == "table" and not oldschool.refused and type(shipped) == "table"
+		and type(shipped.profileName) == "string" and type(shipped.profile) == "string" then
+		return shipped
+	end
+	return nil
+end
+
+-- the shipped profiles by name (a new table: MelloUI's own, Oldschool's beside them)
+function MelloUI:ShippedProfiles()
+	local out = {}
+	local baked = type(MelloUI_Profiles) == "table" and MelloUI_Profiles.profiles
+	if type(baked) == "table" then
+		for name, text in pairs(baked) do
+			out[name] = text
+		end
+	end
+	local old = self:OldschoolShipped()
+	if old then
+		out[old.profileName] = old.profile
+	end
+	return out
+end
+
+-- the shipped profile the installer's Full experience applies
+function MelloUI:FullProfileName()
+	local old = self:OldschoolShipped()
+	return old and old.profileName or "MelloUI"
+end
+
+-- the shipped Edit Mode layout ({ name, layout }): Oldschool's while it is loaded
+function MelloUI:ShippedEditMode()
+	local old = self:OldschoolShipped()
+	if old and type(old.editMode) == "table" then
+		return old.editMode
+	end
+	return rawget(_G, "MelloUI_EditModeLayout")
+end
+
+-- The player's profiles, the baked ones (MelloUI:ShippedProfiles) copied in while
 -- the name is free. db.profilesShipped[name] records the baked text copied,
 -- so a copy the player never changed follows a newer baked text (a release's
 -- new "MelloUI"); a copy they saved over, or an older copy that was never
@@ -5018,7 +5065,7 @@ function MelloUI:Profiles()
 	local db = self.db
 	db.profiles = db.profiles or {}
 	local profiles = db.profiles
-	local baked = type(MelloUI_Profiles) == "table" and MelloUI_Profiles.profiles
+	local baked = self:ShippedProfiles()
 	if type(baked) == "table" then
 		for name, text in pairs(baked) do
 			if type(text) == "string" and name ~= self.FRESH_PROFILE then
@@ -5044,8 +5091,8 @@ function MelloUI:IsProfileBaked(name)
 	if name == self.FRESH_PROFILE then
 		return true
 	end
-	return type(MelloUI_Profiles) == "table" and type(MelloUI_Profiles.profiles) == "table"
-		and MelloUI_Profiles.profiles[name] == self:Profiles()[name]
+	local baked = self:ShippedProfiles()[name]
+	return baked ~= nil and baked == self:Profiles()[name]
 end
 
 -- Personal keys (audit, 2026-09-24). Some settings are no choice at all but

@@ -182,7 +182,7 @@ local TEXT = {
 }
 
 local function Data()
-	local data = MelloUI_EditModeLayout
+	local data = MelloUI:ShippedEditMode()   -- (1.0: the painted reskin's own while MelloUI_Oldschool is loaded)
 	if type(data) ~= "table" or type(data.layout) ~= "string" or data.layout == "" then
 		return nil
 	end

@@ -12,6 +12,10 @@
 # the version guard first (Oldschool.lua): from another MelloUI version it dresses nothing
 Oldschool.lua
 
+# (1.0) the Full experience made for the painted reskin: its profile and Edit Mode layout, which MelloUI's installer
+# applies while this addon is loaded (Core: MelloUI:ShippedProfiles, ShippedEditMode)
+Media\Shipped.lua
+
 # the painted engine, the painted parts of UI Modifications, Dark Mode and the quest ink, then the painted skins
 # of the game's windows and HUD (MelloUI.toc's order before stage I's step 2b)
 Core\KitTuning.lua

@@ -38,11 +38,13 @@ local M = MelloUI:RegisterModule("DarkMode", {
 	role = "look",
 	-- (off until switched on: a personal preference, never on by default)
 	tweak = { label = "Dark Mode", desc = "Darkens the painted reskin (its brightness below) and, where the reskin is off, the game's own art of unit frames, bars, nameplates, auras and menus.", order = 12, off = true },
-	-- every setting here is the player's own preference (user, 2026-09-26:
+	-- Dark Mode's switch is the player's own preference (user, 2026-09-26:
 	-- "Dark mode ... should be a personal preference"): no profile, share
-	-- string or setup carries it, and loading one leaves it as it is (its
-	-- switch is in UI Modifications' keep list)
-	keep = { "^." },
+	-- string or setup carries it, and loading one leaves it as it is (it is
+	-- in UI Modifications' keep list). (1.0, the user, 2026-10-20: the Full
+	-- experience carries the rest -- "Dark Mode strengths" -- so its
+	-- settings travel in profiles; it stays off until a player turns it on)
+	keep = {},
 	defaults = {
 		shade = 0.25,        -- brightness of the darkened art (0 = black, 1 = untouched)
 		-- (kitShade, the painted reskin's brightness: its part's, the end of this file)

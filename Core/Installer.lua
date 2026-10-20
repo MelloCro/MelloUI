@@ -124,7 +124,6 @@ local I = { applying = false }
 MelloUI.Installer = I
 
 local UMB = "UIModifications"          -- the umbrella: its keys switch the kit panels and the folded features
-local FULL_PROFILE = "MelloUI"          -- the shipped Full experience
 local BEFORE_PROFILE = "Before install" -- the restore point on the Profiles page
 local KEEP_SECONDS = 15
 local EMPTY = {}
@@ -615,9 +614,9 @@ end
 
 -- the shipped Full experience: never db.profiles.MelloUI (a player's own
 -- save of that name, or an older shipped copy, could stand in for it)
+-- (1.0: the painted reskin's own while MelloUI_Oldschool is loaded: MelloUI:FullProfileName)
 function I:FullText()
-	local shipped = type(MelloUI_Profiles) == "table" and type(MelloUI_Profiles.profiles) == "table"
-		and MelloUI_Profiles.profiles[FULL_PROFILE]
+	local shipped = MelloUI:ShippedProfiles()[MelloUI:FullProfileName()]
 	return type(shipped) == "string" and shipped or ""
 end
 
@@ -1163,7 +1162,7 @@ local function LayoutInfo()
 		local ok, info = pcall(MelloUI.EditModeLayoutInfo, MelloUI)
 		return ok and type(info) == "table" and info or nil
 	end
-	local data = MelloUI_EditModeLayout
+	local data = MelloUI:ShippedEditMode()   -- (1.0: Oldschool's while it is loaded)
 	if type(data) ~= "table" or type(data.layout) ~= "string" or not (C_EditMode and C_EditMode.ConvertStringToLayoutInfo) then
 		return nil
 	end
@@ -2013,7 +2012,7 @@ local function DoInstall(self, rp, option, target, fit, layoutOn, out)
 	end)
 	-- (the refit changes only what no profile carries -- the layout, the
 	-- places -- so the profile in use stays named)
-	MelloUI.db.activeProfile = option.whole and FULL_PROFILE or (option.refit and rp.before.activeProfile) or nil
+	MelloUI.db.activeProfile = option.whole and MelloUI:FullProfileName() or (option.refit and rp.before.activeProfile) or nil
 	-- the registered windows where the store now says
 	self:PlaceWindows()
 end

@@ -44,13 +44,11 @@ local M = MelloUI:RegisterModule("Chat", {
 	keep = { "savedWhisperMode", "savedClassColorCVar", "savedChatStyle",   -- the player's own game settings, given back when off: never in a profile
 		-- (0.23.0) the Chat View rail's order: window numbers are a character's
 		"viewOrder",
-		-- (0.17.0) the Background dropdown's own copy: what it shows is read
-		-- back from the keys it sets (Background) -- Dark Mode's (personal),
-		-- hideBackground -- which carry the look; in a profile its set would
-		-- write Dark Mode's personal key. (one look) It is the player's pick
-		-- too: Dark's plates and the Minimal Chat View's clear panel need it
-		-- (false: no pick, Core's MergeSettings)
-		"background" },
+		-- (1.0, the user, 2026-10-20: the Full experience carries "Chat
+		-- Background: Dark" -- the dropdown's own pick, background, travels in
+		-- a profile with the keys it sets, hideBackground and Dark Mode's chat,
+		-- no longer personal)
+	},
 	defaults = {
 		hideBackground = true,
 		windowAlphaOn = false,

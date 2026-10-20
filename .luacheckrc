@@ -174,6 +174,11 @@ files["Media"] = {
 	},
 }
 
+-- (1.0) MelloUI_Oldschool's shipped setup: a data file like Media's
+files["MelloUI_Oldschool/Media/Shipped.lua"] = {
+	globals = { "MelloUI_OldschoolShipped" },
+}
+
 -- Voice Over's NPC data (0.19.9: MelloUI_VoiceOver's, data files like Media's)
 files["MelloUI_VoiceOver/NPCVoiceData.lua"] = {
 	globals = { "MelloUI_NPCVoiceData" },
