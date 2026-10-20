@@ -927,6 +927,80 @@ function M:Keys()
 	return Keys.bound, Keys.boundCmd
 end
 
+-- The minimap's zone header (1.0; the user, 2026-10-20: "clicking on the top part of the minimap, opens the default
+-- wow Map"): the game's zone button (MinimapCluster.ZoneTextButton) calls ToggleWorldMap, which these keys never
+-- reach. While this map is on, an own click catcher lies over the button -- a cover: nothing of the game's button is
+-- changed -- from its left edge to the clock's (TimeManagerClockButton keeps its own click), one level over it; its
+-- tooltip the game's own (the zone, its PvP state, the World Map key). Off: hidden, the game's click again.
+local Header = {}
+
+local function HeaderTip(self)
+	local button = Header.button
+	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+	local ok = false
+	local pvp, setTip = rawget(_G, "C_PvP"), rawget(_G, "Minimap_SetTooltip")
+	if pvp and pvp.GetZonePVPInfo and type(setTip) == "function" then
+		local pvpType, _, factionName = pvp.GetZonePVPInfo()
+		ok = pcall(setTip, pvpType, factionName)
+	end
+	if not ok then
+		local zone = rawget(_G, "GetZoneText")
+		GameTooltip:SetText(zone and zone() or "")
+	end
+	local line = button and button.tooltipText
+	if type(line) == "string" then
+		GameTooltip:AddLine(line, 1, 1, 1)
+	end
+	GameTooltip:Show()
+end
+
+local function HeaderLevel()
+	local cover, button = Header.cover, Header.button
+	if cover and button then
+		cover:SetFrameLevel((button:GetFrameLevel() or 0) + 2)
+	end
+end
+
+local function TakeHeader(on)
+	local button = MinimapCluster and MinimapCluster.ZoneTextButton
+	if not button then
+		return
+	end
+	local cover = Header.cover
+	if not on then
+		if cover then
+			cover:Hide()
+		end
+		return
+	end
+	if not cover then
+		Header.button = button
+		cover = CreateFrame("Button", nil, button)
+		cover:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+		Perf.SetScript(cover, "OnClick", function()
+			M:Toggle()
+		end)
+		Perf.SetScript(cover, "OnEnter", HeaderTip)
+		Perf.SetScript(cover, "OnLeave", function()
+			GameTooltip:Hide()
+		end)
+		Perf.SetScript(cover, "OnShow", HeaderLevel)
+		Header.cover = cover
+		-- (MinimapPanel lifts the zone row over the map by its levels: one over the button again after each)
+		;(Perf.hooksecurefunc or hooksecurefunc)(button, "SetFrameLevel", HeaderLevel)
+	end
+	cover:ClearAllPoints()
+	local clock = rawget(_G, "TimeManagerClockButton")
+	cover:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT")
+	if clock and clock:IsShown() then
+		cover:SetPoint("TOPRIGHT", clock, "TOPLEFT", -1, 0)
+	else
+		cover:SetPoint("TOPRIGHT", button, "TOPRIGHT")
+	end
+	HeaderLevel()
+	cover:Show()
+end
+
 --------------------------------------------------------------------------------
 -- Module lifecycle
 --------------------------------------------------------------------------------
@@ -938,6 +1012,7 @@ end
 function M:OnEnable(db)
 	self.db = db or self.db
 	TakeKeys(true)
+	TakeHeader(true)
 end
 
 -- (MelloUI.Map:Show(uiMapID), the API's) the map opened, framed on that map
@@ -954,6 +1029,7 @@ end)
 
 function M:OnDisable()
 	TakeKeys(false)
+	TakeHeader(false)
 	Log.Unmount()   -- (the Quest List's page back to the game's column, whose map is the player's again)
 	if win.frame then
 		win.frame:Hide()
