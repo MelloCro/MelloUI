@@ -174,6 +174,11 @@ def load_vanilla(sql):
 # Map geometry
 # ---------------------------------------------------------------------------
 
+# Forever's new dungeons, where Wowhead's list has no levels: {instance: (min, max)} (foreverdb; Icy Veins and Method
+# agree on the Excavation Site, 2026-10-20). The City of Dalaran under both its area ids.
+FOREVER_LEVELS = {16919: (13, 20), 16611: (15, 22), 16732: (26, 33), 16544: (28, 35), 16560: (28, 35)}
+
+
 def load_wowhead_zones():
     """Wowhead's Forever zone list: {id: (name, instance)} with instance 0 zone,
     2 dungeon, 3 raid, 4 battleground. Knows Forever's new dungeons, which the
@@ -196,6 +201,9 @@ def load_wowhead_zones():
     # category 0 = Eastern Kingdoms, 1 = Kalimdor, -1 = elsewhere
     zones = {r["id"]: (r["name"], r.get("instance") or 0, r.get("category", -1)) for r in rows if "Test" not in r["name"]}
     load_wowhead_zones.levels = {r["id"]: (r.get("minlevel") or r.get("reqlevel") or 0, r.get("maxlevel") or 0) for r in rows}
+    for did, lv in FOREVER_LEVELS.items():
+        if not load_wowhead_zones.levels.get(did, (0, 0))[0]:
+            load_wowhead_zones.levels[did] = lv
     log(f"  {len(zones)} Wowhead zones, {sum(1 for _, t, _ in zones.values() if t in (2, 3))} dungeons and raids")
     return zones
 
@@ -992,6 +1000,23 @@ def lua_after(alts):
 # an instance: their target position IS the entrance. Skip the odd ones.
 SKIP_ENTRANCE = ("back door", "after ", "fall", "instance end")
 
+# Forever's new instances: classic-db has no trigger for their doors. Each is the instance portal the client's own
+# world files place (in the terrain, or in a building's doodads: the tiles WoWSim 0.9's ground build keeps,
+# 2026-10-20), but the Hall of Thanes, whose door has no portal in the files (Warcraft Tavern's 43.5, 52.0 on
+# Ironforge's map). A door only one side uses names it (1 Alliance, 2 Horde); 0 both.
+#   (instance map, its name when the client has no map row for it, continent, world x, world y, side)
+FOREVER_ENTRANCES = [
+    (2959, None, 0, 376.9, 524.8, 2),  # City of Dalaran: the Horde's gate outside the north-west wall
+    (2959, None, 0, 224.2, 176.4, 1),  # City of Dalaran: the Alliance's way in through the sewers
+    (2998, None, 0, -4169.8, -1400.8, 0),  # Excavation Site: Wetlands, up the dwarves' path from Dun Algaz
+    (2999, None, 0, 1804.2, 175.0, 0),  # Ruins of Lordaeron, in the ruins above Undercity
+    (3065, None, 0, -4843.6, -1057.5, 0),  # The Hall of Thanes, down from Ironforge's throne room
+    (0, "The Drowned City", 0, -12354.2, 852.7, 0),  # under the Vile Reef by Gillijim's Isle (no map row yet)
+    # the portal at the titan overlook in the Shaper's Terrace's own area, north of Un'Goro (no map row yet; a green
+    # portal stands 350 yd north-west of it, an older one under Marshal's Refuge)
+    (0, "The Shaper's Terrace", 1, -5924.0, -970.1, 0),
+]
+
 # Zeppelin towers stand outside the city bounds; name them by hand.
 DOCK_LABELS = [(1, 1340.0, -4645.0, "Orgrimmar", 250.0), (0, 2062.0, 260.0, "Undercity", 250.0),
                (1, 8533.7, 1025.1, "Rut'theran Village", 300.0), (1, -4347.8, 2444.4, "the Forgotten Coast", 300.0),
@@ -1000,6 +1025,16 @@ DOCK_LABELS = [(1, 1340.0, -4645.0, "Orgrimmar", 250.0), (0, 2062.0, 260.0, "Und
                (0, -8232.0, -5801.0, "Powderfuse Port", 300.0), (2991, 1848.0, 569.0, "Zephras Isle", 400.0),
                (2991, 1953.0, 1019.0, "Zephras Isle", 400.0)]
 ZEPPELIN_TOWERS = {"Orgrimmar", "Undercity", "Grom'gol Base Camp"}
+
+
+def add_entrance(entrances, zones, used_dungeons, area_of_map, dungeon_by_name, inst, name, cont, wx, wy, kind, side):
+    """One door: its dungeon (the map's area, else its name), a build-time zone guess, its side (0 both)."""
+    did = area_of_map.get(inst, 0)
+    if did not in used_dungeons:
+        did = dungeon_by_name.get(re.sub(r"^the ", "", name.lower()), 0)
+    loc = locate(zones, cont, wx, wy)
+    entrances.append((did, name, cont, round(wx, 1), round(wy, 1),
+                      loc[0]["areaID"] if loc else 0, loc[1] if loc else 0, loc[2] if loc else 0, kind, side))
 
 
 def build_map_points(sql, zones, used_dungeons, raids):
@@ -1043,14 +1078,12 @@ def build_map_points(sql, zones, used_dungeons, raids):
         if key in seen:
             continue
         seen.add(key)
-        name = m["MapName_lang"]
-        did = area_of_map.get(inst, 0)
-        if did not in used_dungeons:
-            did = dungeon_by_name.get(re.sub(r"^the ", "", name.lower()), 0)
-        loc = locate(zones, cont, wx, wy)
-        entrances.append((did, name, cont, round(wx, 1), round(wy, 1),
-                          loc[0]["areaID"] if loc else 0, loc[1] if loc else 0, loc[2] if loc else 0,
-                          2 if m["InstanceType"] == "2" else 1))
+        add_entrance(entrances, zones, used_dungeons, area_of_map, dungeon_by_name, inst, m["MapName_lang"],
+                     cont, wx, wy, 2 if m["InstanceType"] == "2" else 1, 0)
+    for inst, name, cont, wx, wy, side in FOREVER_ENTRANCES:
+        m = maps.get(inst)
+        add_entrance(entrances, zones, used_dungeons, area_of_map, dungeon_by_name, inst, name or m["MapName_lang"],
+                     cont, wx, wy, 2 if m and m["InstanceType"] == "2" else 1, side)
     entrances.sort(key=lambda e: (e[1], e[2], e[3]))
     log(f"  {len(entrances)} instance entrances ({sum(1 for e in entrances if e[0] == 0)} without a Wowhead instance id)")
 
@@ -1941,10 +1974,12 @@ def main():
             fh.write(f"\t\t[{did}] = {lua_str(used_dungeons[did])},\n")
         fh.write("\t},\n")
         fh.write("\t-- instance entrances: dungeon (key into dungeons, 0 unknown), name, continent, world x, world y,\n")
-        fh.write("\t-- zone (area id, build-time guess), map x, map y, kind (1 dungeon, 2 raid)\n\tentrances = {\n")
+        fh.write("\t-- zone (area id, build-time guess), map x, map y, kind (1 dungeon, 2 raid),\n")
+        fh.write("\t-- side (only on a door one faction uses: 1 Alliance, 2 Horde)\n\tentrances = {\n")
         for e in entrances:
-            did, name, cont, wx, wy, zone, px, py, kind = e
-            fh.write(f"\t\t{{{did},{lua_str(name)},{cont},{wx},{wy},{zone},{px},{py},{kind}}},\n")
+            did, name, cont, wx, wy, zone, px, py, kind, side = e
+            side = f",{side}" if side else ""
+            fh.write(f"\t\t{{{did},{lua_str(name)},{cont},{wx},{wy},{zone},{px},{py},{kind}{side}}},\n")
         fh.write("\t},\n")
         fh.write("\t-- transports: kind (1 boat, 2 zeppelin, 3 portal, 4 tram), faction (0 neutral, 1 Alliance, 2 Horde),\n")
         fh.write("\t-- label, dock name,\n")

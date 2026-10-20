@@ -542,12 +542,23 @@ function QL.SetStarterIcon(tex, key)
 	return true
 end
 
+-- A data entrance this character uses: a door only one side uses (its 10th
+-- field, the City of Dalaran's) is left out for the other; Neutral sees both.
+function QL.EntranceIsMine(e)
+	local side = e[10]
+	if not side or side == 0 then
+		return true
+	end
+	local mine = QL.PlayerSide()
+	return mine == 0 or mine == side
+end
+
 -- An instance's door: uiMapID, x, y from the entrance data, else from an
 -- entrance learned by walking in.
 function QL.EntrancePoint(dungeonID)
 	local data = QL.Data()
 	for _, e in ipairs(data.entrances or {}) do
-		if e[1] == dungeonID then
+		if e[1] == dungeonID and QL.EntranceIsMine(e) then
 			local mapID, cx, cy, contMapID = QL.ResolveWorld(e[3], e[4], e[5])
 			if mapID then
 				return mapID, QL.ProjectOnMap(mapID, mapID, cx, cy, contMapID)

@@ -524,9 +524,11 @@ local function Entrances()
 	local pins, data = S.pins, Data()
 	pins:Clear("entrances")
 	local seen = {}
+	-- (a door only one side uses, the City of Dalaran's: yours; both while the side is unknown)
+	local mine = T.DATA_SIDE[Side()]
 	for _, row in ipairs(data and data.entrances or EMPTY) do
-		local id, name, kind = row[1], row[2], row[9]
-		if name and not seen[name] and ENTRANCE[kind] then
+		local id, name, kind, side = row[1], row[2], row[9], row[10]
+		if name and not seen[name] and ENTRANCE[kind] and (not (side and mine) or side == 0 or side == mine) then
 			local wx, wy = WorldPoint(row[3], row[4], row[5])
 			if wx then
 				seen[name] = true
