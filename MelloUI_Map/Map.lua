@@ -18,7 +18,9 @@
 -- Nothing at login: the module's switch and its slash command only; the
 -- window and its canvas are made the first time the map opens.
 --
---   /mellomap, /mmap        open or close it (also a key binding, unbound)
+--   M (the game's map key)  opens it instead of the game's map (the keys bound
+--                           to the game's world map, while the map is on)
+--   /mellomap, /mmap        open or close it (also a key binding of its own)
 --   /mellomap dump          the places and the view, to copy
 --   /melloperf map          the canvas's numbers: open, a view's Lua time, the
 --                           frames while it moves, tiles made and shown
@@ -466,6 +468,98 @@ local function PerfReport()
 end
 
 --------------------------------------------------------------------------------
+-- The game's map key (the user, 2026-10-20: "this map is going to be a
+-- replacement for the Default "M" "L" keybinds map, and users will only see
+-- and interract with this one"): while the map is on, every key bound to the
+-- game's world map opens this one -- override bindings on a frame of ours,
+-- never the player's own bindings changed; set out of a fight (the bindings
+-- are locked in one: done as it ends); set again when the player binds
+-- other keys; given back when the map goes off. The quest log's key (L)
+-- joins when the map has the quest log in it.
+--------------------------------------------------------------------------------
+
+local KEYS = { "TOGGLEWORLDMAP" }
+local Keys = { on = false, bound = {} }
+
+local function KeysNow(out)
+	for i = #out, 1, -1 do
+		out[i] = nil
+	end
+	for _, action in ipairs(KEYS) do
+		local keys = { GetBindingKey(action) }
+		for _, key in ipairs(keys) do
+			if type(key) == "string" and key ~= "" then
+				out[#out + 1] = key
+			end
+		end
+	end
+	table.sort(out)
+	return out
+end
+
+local function Same(a, b)
+	if #a ~= #b then
+		return false
+	end
+	for i = 1, #a do
+		if a[i] ~= b[i] then
+			return false
+		end
+	end
+	return true
+end
+
+local function ApplyKeys()
+	local f = Keys.frame
+	if InCombatLockdown() then
+		f:RegisterEvent("PLAYER_REGEN_ENABLED")
+		return
+	end
+	f:UnregisterEvent("PLAYER_REGEN_ENABLED")
+	local want = Keys.on and KeysNow(Keys.want or {}) or {}
+	Keys.want = want
+	if Keys.applied and Same(want, Keys.bound) then
+		return
+	end
+	ClearOverrideBindings(f)
+	local bound = Keys.bound
+	for i = #bound, 1, -1 do
+		bound[i] = nil
+	end
+	for _, key in ipairs(want) do
+		SetOverrideBinding(f, false, key, "MELLOUI_MAP_TOGGLE")
+		bound[#bound + 1] = key
+	end
+	Keys.applied = true
+end
+
+local function Keys_OnEvent(_, event)
+	if event == "PLAYER_REGEN_ENABLED" or event == "UPDATE_BINDINGS" then
+		ApplyKeys()
+	end
+end
+
+local function TakeKeys(on)
+	Keys.on = on and true or false
+	if not Keys.frame then
+		Keys.frame = CreateFrame("Frame")
+		Perf.SetScript(Keys.frame, "OnEvent", Keys_OnEvent)
+	end
+	if Keys.on then
+		Keys.frame:RegisterEvent("UPDATE_BINDINGS")
+	else
+		Keys.frame:UnregisterEvent("UPDATE_BINDINGS")
+	end
+	Keys.applied = false
+	ApplyKeys()
+end
+
+-- the keys this map holds now (the tests and the dump)
+function M:Keys()
+	return Keys.bound
+end
+
+--------------------------------------------------------------------------------
 -- Module lifecycle
 --------------------------------------------------------------------------------
 
@@ -475,9 +569,11 @@ end
 
 function M:OnEnable(db)
 	self.db = db or self.db
+	TakeKeys(true)
 end
 
 function M:OnDisable()
+	TakeKeys(false)
 	if win.frame then
 		win.frame:Hide()
 	end
