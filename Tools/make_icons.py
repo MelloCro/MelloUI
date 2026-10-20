@@ -79,6 +79,10 @@ for n in ("normal", "hover", "pressed", "active", "empty", "range"):
 SET.append(("pieces", "bar_spark", "bar_spark", (64, 48)))   # (Batch 24: the light on the fill's leading edge)
 # (Batch 25) the unit frames' level badge (the ring and the bar frames are drawn into UF_FRAMES' pictures)
 SET.append(("pieces", "uf_badge", "uf_badge", 64))
+# (Batch 31, 2026-10-20, the user: "clean icons for party members ... in the theme") a pin per class, its colour on the
+# disc and its emblem on it, by the game's class file name (W.IconPath("class_" .. classFile)): the map's party
+for n in ("WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"):
+    SET.append(("classes", "class_" + n, "class_" + n, 64))
 
 
 def load(group, name):
