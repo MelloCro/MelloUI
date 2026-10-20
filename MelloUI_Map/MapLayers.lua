@@ -6,8 +6,12 @@
 -- -- never only the zone under the view:
 --
 --   the player     the game's own map arrow, turned by the facing
---   the group      your party or raid on the player's continent, a dot in each
---                  one's class colour, the name on hover
+--   the group      your party or raid wherever each one is (their own map: another
+--                  zone, the other continent), each one's class pin (the set's
+--                  class_<CLASS>: a disc in the class colour), the name on hover;
+--                  at every zoom
+--   waypoint       the game's own map pin while Route is off (with Route on, Route
+--                  draws its goal: the route layer)
 --   flights        the flight masters: the client's own nodes on each continent
 --                  (C_TaxiMap, by node ID; one you have not learned paler),
 --                  your side's and the neutral ones; the Quest List's data when
@@ -57,7 +61,10 @@ local T = {
 	ARROW_ATLAS = "UI-WorldMapArrow",                 -- the game's own map arrow
 	ARROW_FILE = "Interface\\Minimap\\MinimapArrow",  -- (if the atlas is missing)
 	-- the stack (MapPins' layer order): the places under the group, the group under the player
-	ORDER = { names = 8, entrances = 10, transports = 12, flights = 14, quests = 20, route = 30, group = 40, player = 50 },
+	ORDER = { names = 8, entrances = 10, transports = 12, flights = 14, quests = 20, route = 30, waypoint = 32, group = 40,
+		player = 50 },
+	MEMBER_SIZE = 16,        -- a party member's class pin (the user, 2026-10-20: "in the theme", "enough just in the color")
+	PIN_GOAL = "goal_pin",   -- the game's waypoint, while Route is off
 	QUESTS_FROM = 2.5,       -- the quest givers from a zone's zoom on (a continent's: thousands)
 	NAMES_FROM = 1.15,       -- (M2) the zone names from a continent's zoom ...
 	NAMES_TO = 6.5,          -- ... to a zone's (closer, the zone's own art names its places)
@@ -151,22 +158,45 @@ end
 -- The group
 --------------------------------------------------------------------------------
 
-local classSpec = {}   -- [class] = a dot in that class's colour (one table a class, shared by every member)
+local classSpec = {}   -- [class] = its pin (one table a class, shared by every member)
 
 local function MemberTip(pin)
 	local name = Text(UnitName(pin.data))
 	return name
 end
 
-local function DotOf(class)
+-- a member's pin: the set's class pin (its colour baked in), a plain dot when the class cannot be read
+local function PinOf(class)
 	local spec = classSpec[class or "?"]
 	if not spec then
-		local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-		spec = { icon = T.ICONS .. "map_dot", size = T.DOT_SIZE, rgb = c and { c.r, c.g, c.b } or nil, sub = 1,
-			tip = MemberTip }
+		if class then
+			spec = { icon = T.ICONS .. "class_" .. class, size = T.MEMBER_SIZE, sub = 1, tip = MemberTip }
+		else
+			spec = { icon = T.ICONS .. "map_dot", size = T.DOT_SIZE, sub = 1, tip = MemberTip }
+		end
 		classSpec[class or "?"] = spec
 	end
 	return spec
+end
+
+-- a member's place: on their own map (the client's best for them: another zone, the other continent), else on the
+-- player's; the map and the place, or nil
+local function MemberXY(unit, mapID)
+	local ok, own = pcall(C_Map.GetBestMapForUnit, unit)
+	own = ok and Finite(own) or nil
+	if own then
+		local x, y = UnitXY(own, unit)
+		if x then
+			return own, x, y
+		end
+	end
+	if mapID then
+		local x, y = UnitXY(mapID, unit)
+		if x then
+			return mapID, x, y
+		end
+	end
+	return nil
 end
 
 local function Group(mapID)
@@ -180,10 +210,10 @@ local function Group(mapID)
 	for i = 1, n do
 		local unit = prefix .. i
 		if UnitExists(unit) and not UnitIsUnit(unit, "player") then
-			local x, y = UnitXY(mapID, unit)
-			if x then
+			local on, x, y = MemberXY(unit, mapID)
+			if on then
 				local _, class = UnitClass(unit)
-				local pin = pins:SetAt("group", unit, mapID, x, y, DotOf(Text(class)))
+				local pin = pins:SetAt("group", unit, on, x, y, PinOf(Text(class)))
 				if pin then
 					pin.data = unit
 					seen[unit] = true
@@ -701,6 +731,30 @@ function Layers.Labels()
 end
 
 --------------------------------------------------------------------------------
+-- The game's own map pin (C_Map's user waypoint) while Route is off: Route,
+-- when on, takes the pin as its goal and draws it itself
+--------------------------------------------------------------------------------
+
+local WAYPOINT = { icon = T.ICONS .. T.PIN_GOAL, size = T.PIN_SIZE + 4, sub = 3 }
+
+local function Waypoint()
+	local route = rawget(MelloUI, "Route")
+	local has = C_Map.HasUserWaypoint and select(2, pcall(C_Map.HasUserWaypoint))
+	local point = has == true and not (route and route.isEnabled) and C_Map.GetUserWaypoint
+		and select(2, pcall(C_Map.GetUserWaypoint))
+	local mapID = type(point) == "table" and Finite(point.uiMapID)
+	local x, y
+	if mapID then
+		x, y = XY(point.position)
+	end
+	if not (mapID and x) then
+		S.pins:Remove("waypoint", "pin")
+		return
+	end
+	S.pins:SetAt("waypoint", "pin", mapID, x, y, WAYPOINT)
+end
+
+--------------------------------------------------------------------------------
 -- The window's beat
 --------------------------------------------------------------------------------
 
@@ -716,11 +770,12 @@ function Layers.Tick(elapsed)
 	local mapID = PlayerMap()
 	if mapID then
 		Player(mapID)
-		Group(mapID)
 	else
 		S.pins:Clear("player")
-		S.pins:Clear("group")
 	end
+	-- (the group on their own maps: shown while you are in an instance too)
+	Group(mapID)
+	Waypoint()
 	S.pins:Lay()
 	RouteChanged()
 end
@@ -752,6 +807,7 @@ function Layers.Init(canvas, pins)
 	pins:Layer("route", T.ORDER.route)
 	pins:Layer("quests", T.ORDER.quests, { minZ = T.QUESTS_FROM })
 	pins:Layer("group", T.ORDER.group)
+	pins:Layer("waypoint", T.ORDER.waypoint)
 	pins:Layer("player", T.ORDER.player)
 	S.wait = 0
 end

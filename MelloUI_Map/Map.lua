@@ -49,7 +49,11 @@ local T = {
 
 local TEXT = {
 	title = "Map",
-	hint = "Wheel: zoom   Drag: look around   Click: in   Right-click: out   Middle-click: find me",
+	hint = "Wheel: zoom   Drag: look around   Click: in   Right-click: out   Middle-click: find me   Ctrl-click: your pin",
+	pinLabel = "Your pin",
+	pinNotice = "Route: to your pin",
+	pinNone = "The map cannot set a pin there: click on land.",
+	pinOff = "Turn on Route or the Quest List to set a pin on the map.",
 	open = "Open The Map",
 	usage = "/mellomap: open or close the map | /mellomap dump: its places and the view, to copy",
 	off = "The map is off: switch it on in /mello (Quests and travel > Map).",
@@ -220,9 +224,65 @@ local function Canvas_OnMouseDown(_, button)
 	Watch(true)
 end
 
+--------------------------------------------------------------------------------
+-- Your pin (the user, 2026-10-20: "the set pin function so that i can use the
+-- navigation"): Ctrl-click sets it where you click -- the game's own map's
+-- click -- on the deepest map there; Route navigates to it (its trail, the
+-- World Marker; its goal drawn on this map), through the Quest List's own
+-- "route to a point" (QL.RouteToPoint: Route's destination, else the game's
+-- own waypoint and its arrow). Ctrl-right-click takes it away (Route's stop).
+--------------------------------------------------------------------------------
+
+local function QuestList()
+	local QL = rawget(MelloUI, "QuestList")
+	return type(QL) == "table" and QL.RouteToPoint and QL or nil
+end
+
+local function SetPin(x, y)
+	local c = win.canvas
+	local path = c:Path(x, y, win.path)
+	local p = path[#path]
+	if not p or p.kind == "world" then
+		MelloUI:Print(TEXT.pinNone)
+		return false
+	end
+	local wx, wy = c:Point(x, y)
+	local mx, my = (wx - p.left) / p.w, (wy - p.top) / p.h
+	local QL, R = QuestList(), rawget(MelloUI, "Route")
+	local ok
+	if QL then
+		ok = QL.RouteToPoint(p.id, mx, my, TEXT.pinLabel, TEXT.pinNotice)
+	elseif R and R.isEnabled and R.SetDestinationTo then
+		ok = R:SetDestinationTo({ mapID = p.id, x = mx, y = my }, TEXT.pinLabel, true, TEXT.pinNotice)
+	else
+		MelloUI:Print(TEXT.pinOff)
+		return false
+	end
+	if ok then
+		MelloUI:PlayUISound("click")
+	else
+		MelloUI:Print(TEXT.pinNone)
+	end
+	return ok and true or false
+end
+
+local function ClearPin()
+	local R, QL = rawget(MelloUI, "Route"), QuestList()
+	if R and R.StopRoute then
+		R.StopRoute()
+	elseif QL and QL.ClearWaypoint then
+		QL.ClearWaypoint()
+	end
+	MelloUI:PlayUISound("click")
+end
+
 local function Canvas_OnMouseUp(_, button)
 	local c = win.canvas
 	if button == "RightButton" then
+		if IsControlKeyDown() then
+			ClearPin()
+			return
+		end
 		c:Out()
 		return
 	elseif button == "MiddleButton" then
@@ -240,9 +300,11 @@ local function Canvas_OnMouseUp(_, button)
 		c:Refocus()
 		SaveView()
 	else
-		-- (a click on a pin is the pin's; elsewhere a glide in)
+		-- (Ctrl: your pin; a click on a pin is the pin's; elsewhere a glide in)
 		local pin = win.pins:At(d.x, d.y)
-		if pin and pin.spec.click then
+		if IsControlKeyDown() then
+			SetPin(d.x, d.y)
+		elseif pin and pin.spec.click then
 			pin.spec.click(pin, button)
 		else
 			c:Deeper(d.x, d.y)
