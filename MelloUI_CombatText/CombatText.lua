@@ -269,6 +269,7 @@ M = MelloUI:RegisterModule("CombatText", {
 	defaults = {
 		style = "game",
 		dealt = "game",
+		dealtScale = 0.7,   -- (0.25.0: Your Damage Size; players found the numbers too big)
 		size = T.size,
 		titleNotices = true,
 		shadeSize = 1,
@@ -287,6 +288,11 @@ M = MelloUI:RegisterModule("CombatText", {
 		  desc = "Who draws the text over your character. Game: the game's own, as it always was. Lanes: damage taken falls on your left, healing rises on your right, procs and Dodge / Parry above your head, resources under your feet. Feed: one column over your portrait, the newest on top. Classic: one stream over your head, like the game's, in MelloUI's font and soft shade." },
 		{ type = "dropdown", key = "dealt", name = "Your Damage", values = DEALT.styles,
 		  desc = "The numbers of the damage you deal, over the enemies. Game: the game's own numbers, as always. Rise, Beside, Fan or Stack: drawn by MelloUI at each enemy's nameplate in its soft look, the game's numbers switched off meanwhile: crits gold and bigger, spells violet, a dodge or parry as a word, about a second and a half each, only on enemies you or your pet are fighting. Beside starts them at the plate's right end, so the name stays readable. Rise, Beside, Fan and Stack draw your hits while you play solo. In a group, or where the game keeps threat hidden, the game's own numbers show, because only they know whose hit it is. With enemy nameplates off, the game's own numbers show too (the plates are where MelloUI draws)." },
+		-- (0.25.0; the user, 2026-10-20: "our custom damage font can not be scaled down, people complain its too big":
+		-- this client has no World Text Scale, so nothing sized them)
+		{ type = "slider", key = "dealtScale", name = "Your Damage Size", min = 0.3, max = 1.5, step = 0.05, percent = true,
+		  new = "0.25.0",
+		  desc = "The size of Your Damage's numbers over the enemies (Rise, Beside, Fan and Stack), whatever the text around you. 70% by default." },
 		{ type = "button", name = "Preview", text = "Play",
 		  hint = "a short burst in the chosen style",
 		  desc = "Plays a few made-up lines (hits, a crit, heals, a Dodge, a proc) in the chosen style, so you can compare them without a fight. Also /mello combattext test.",
@@ -1142,9 +1148,10 @@ end
 
 -- a look's size: the base text size's share, times the game's World Text
 -- Scale (the size of its own numbers over the enemies: Tweaks' Numbers Over
--- Enemies writes it); handed to Fill as a factor of the text around you's
--- size, so Text Around You never moves it (the configurator audit: one size
--- per thing on screen)
+-- Enemies writes it, where the client has it) and Your Damage Size (0.25.0:
+-- this client has no World Text Scale, the numbers had no size of their own);
+-- handed to Fill as a factor of the text around you's size, so Text Around You
+-- never moves it (the configurator audit: one size per thing on screen)
 local function DealtScale(look)
 	local world = 1
 	if C_CVar and C_CVar.GetCVar then
@@ -1156,7 +1163,9 @@ local function DealtScale(look)
 			world = 3
 		end
 	end
-	return (DEALT.size[look] or 1) * world * T.size / TextSize()
+	local own = Num(M.db and M.db.dealtScale) or 0.7
+	own = math.max(0.3, math.min(1.5, own))
+	return (DEALT.size[look] or 1) * world * own * T.size / TextSize()
 end
 
 local function DealtLine(unit, e, hold)

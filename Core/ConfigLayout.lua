@@ -947,6 +947,8 @@ function L.Define(R, Link)
 	R("ScreenText", "Combat Text", "General", "CombatText.!enabled", { name = "MelloUI Combat Text" })
 	R("ScreenText", "Combat Text", "General", "CombatText.style")
 	R("ScreenText", "Combat Text", "General", "CombatText.dealt")
+	R("ScreenText", "Combat Text", "Text", "CombatText.dealtScale",
+		{ when = { key = "CombatText.dealt", notValue = "game", line = "Only while MelloUI draws Your Damage" } })
 	R("ScreenText", "Combat Text", "General", "CombatText.#Preview")
 	R("ScreenText", "Combat Text", "Look", "CombatText.shadeSize")
 	-- (its text sizes and fonts: Look > Fonts since 0.19.1, linked below)
