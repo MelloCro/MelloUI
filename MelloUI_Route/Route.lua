@@ -2094,6 +2094,9 @@ do
 		local walkS = grid.cell * (grid.sx + grid.sy) / 2 / WALK
 		local paceS, swimS, wallS, diag = walkS * G.PACE, walkS * G.SWIM, walkS * Search.GRID_WALL, math.sqrt(2)
 		local targets, goal, slack, SL = o.targets, o.goal, o.slack, Search.GRID_SLACK
+		local cities = o.cont and Search.cities[o.cont]
+		cities = cities and #cities > 0 and o.cont or nil   -- (0.25.0: a capital's cells closed: its streets are the way)
+		local cell, gsx, gsy, ge0, gs0 = grid.cell, grid.sx, grid.sy, grid.e0, grid.s0
 		local gq, gr = goal and goal % 65536, goal and math.floor(goal / 65536)
 		local q1, q2 = math.max(0, o.q1), math.min(grid.w - 1, o.q2)
 		local r1, r2 = math.max(0, o.r1), math.min(grid.h - 1, o.r2)
@@ -2105,6 +2108,8 @@ do
 				v = false
 				if (targets and targets[c]) or c == goal then
 					v = paceS
+				elseif cities and Search.InCity(cities, (ge0 + (q + 0.5) * cell) * gsx, (gs0 + (r + 0.5) * cell) * gsy) then
+					v = false
 				else
 					local letter = G.At(grid, r, q)
 					if letter == "w" then
@@ -2254,8 +2259,8 @@ do
 		if grid then
 			q0, r0 = Search.CellOf(grid, x, y)
 		end
-		if not (q0 and g) then
-			return 0
+		if not (q0 and g) or Search.InCity(cont, x, y) then
+			return 0   -- (0.25.0: an end in a capital takes the streets' legs only)
 		end
 		Search.gridRuns = Search.gridRuns + 1
 		local reach = Search.GRID_REACH
@@ -2277,7 +2282,7 @@ do
 		if not any then
 			return 0
 		end
-		local dist, prev, found = Search.Grid(grid, q0, r0, { targets = targets, k = Search.GRID_LEGS,
+		local dist, prev, found = Search.Grid(grid, q0, r0, { targets = targets, k = Search.GRID_LEGS, cont = cont,
 			q1 = q0 - reach, q2 = q0 + reach, r1 = r0 - reach, r2 = r0 + reach, slack = { q0, r0 } })
 		local paths = Search.gridPaths[id] or {}
 		Search.gridPaths[id] = paths
@@ -2307,12 +2312,13 @@ do
 			q0, r0 = Search.CellOf(grid, sx, sy)
 			q1, r1 = Search.CellOf(grid, gx, gy)
 		end
-		if not (q0 and q1) or (q0 == q1 and r0 == r1) then
-			return nil
+		if not (q0 and q1) or (q0 == q1 and r0 == r1) or Search.InCity(cont, sx, sy) or Search.InCity(cont, gx, gy) then
+			return nil   -- (0.25.0: to or from a capital the streets are the way)
 		end
 		Search.gridRoutes = Search.gridRoutes + 1
 		local m, goal = Search.GRID_BOX, r1 * 65536 + q1
 		local dist, prev, found = Search.Grid(grid, q0, r0, { goal = goal, max = Search.GRID_ROUTE_MAX, greed = Search.GRID_GREED,
+			cont = cont,
 			q1 = math.min(q0, q1) - m, q2 = math.max(q0, q1) + m, r1 = math.min(r0, r1) - m, r2 = math.max(r0, r1) + m,
 			slack = { q0, r0, q1, r1 } })
 		if not found[1] then
@@ -2424,7 +2430,8 @@ do
 	-- 7,800 yd to a dock and back; the hubs join the graph by their own legs, an end shut in by the ground by its
 	-- grid legs)
 	local function HubOK(cont, x, y, ex, ey)
-		return not M.Ground.Has(cont) or (Dist(x, y, ex, ey) <= OFFROAD and M.Ground.Walk(cont, x, y, ex, ey) ~= false)
+		return not M.Ground.Has(cont) or (Dist(x, y, ex, ey) <= OFFROAD and M.Ground.Walk(cont, x, y, ex, ey) ~= false
+			and not Search.CrossesCity(cont, x, y, ex, ey))
 	end
 
 	local function HubEnds(id, cont, x, y, scont, sx, sy)
@@ -2505,7 +2512,7 @@ do
 		-- at STRAIGHT_COST, so that roads win there unless they are a real detour)
 		for i = 1, goals.n do
 			local gx, gy = goals.x[i], goals.y[i]
-			if scont == goals.cont[i] then
+			if scont == goals.cont[i] and not Search.CrossesCity(scont, sx, sy, gx, gy) then
 				local d = Dist(sx, sy, gx, gy)
 				local swum = M.Ground.Walk(scont, sx, sy, gx, gy)
 				if swum then
@@ -2769,6 +2776,13 @@ do
 					list.retryAt = GetTime() + Search.CITY_RETRY
 				end
 			end
+			-- (and the capitals' own rects as the client's map table has them, in the companion's yards, scaled as its
+			-- walk grid: a map not measured here still keeps its city out of the grid's ways)
+			local grid, rects = M.Ground.grids[cont], Search.CAPITALS[cont]
+			for i = 1, grid and rects and #rects or 0, 4 do
+				list[#list + 1], list[#list + 2] = rects[i] * grid.sx, rects[i + 1] * grid.sx
+				list[#list + 1], list[#list + 2] = rects[i + 2] * grid.sy, rects[i + 3] * grid.sy
+			end
 			Search.cities[cont] = list
 		end
 		for i = 1, #list, 4 do
@@ -2779,6 +2793,34 @@ do
 		return false
 	end
 	Search.CITY_MAPS = { 1453, 1455, 1457, 1454, 1456, 1458 }   -- (RouteRecorder's: the cities whose streets were walked)
+	-- their rects (yards east from, to; south from, to) in the companion's yards, from the client's UiMapAssignment
+	-- (build 1.60.1.70338, each map's first region): Stormwind, Ironforge, the Undercity; Orgrimmar, Thunder Bluff,
+	-- Darnassus
+	Search.CAPITALS = {
+		[1415] = { 14277.1, 16014.6, 15462.4, 16620.8, 16713.6, 17504.2, 12035.8, 12563.4,
+			15126.8, 16086.2, 5588.7, 6228.8 },
+		[1414] = { 20747.2, 22149.8, 10526.0, 11461.4, 16549.9, 17593.7, 13649.9, 14345.7,
+			14128.2, 15186.6, 2561.6, 3267.3 },
+	}
+
+	-- (0.25.0, the user's Thunder Bluff: the way went straight up a rise's cliff, past the elevator) whether a straight
+	-- line from (x0, y0) to (x1, y1) touches a capital (asked every CITY_STEP yards, both ends too): the grid knows
+	-- no elevator, building or city wall, so no straight line of its making goes in, out or through one
+	function Search.CrossesCity(cont, x0, y0, x1, y1)
+		local list = Search.cities[cont]
+		if list and #list == 0 and not list.retryAt then
+			return false   -- (none on this continent)
+		end
+		local n = math.max(1, math.ceil(Dist(x0, y0, x1, y1) / Search.CITY_STEP))
+		for i = 0, n do
+			local t = i / n
+			if Search.InCity(cont, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t) then
+				return true
+			end
+		end
+		return false
+	end
+	Search.CITY_STEP = 40
 	Search.CITY_RETRY = 30
 
 	-- the points between i and j all within HUG yards of the straight line from i to j
@@ -2811,7 +2853,7 @@ do
 	function Search.Cut(points, was, i, j)
 		local a, b = points[i], points[j]
 		local cont = a[1]
-		if Search.InCity(cont, b[2], b[3]) then
+		if Search.CrossesCity(cont, a[2], a[3], b[2], b[3]) then
 			return nil
 		end
 		local along = was[j] - was[i]
