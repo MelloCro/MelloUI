@@ -303,10 +303,12 @@ I.FEATURE_GROUPS = {
 	-- (0.16.0: Widgets joined the first column and Party Markers, the medallions over the party's heads, moved beside
 	-- the nameplates, so both columns fit the page: ten and nine rows; 0.17.0: the Damage Meter, ten and ten -- full:
 	-- a module left off the page says so, `installer = false`, as the Swing Timers, 0.17.1)
-	{ key = "quests", label = "Quests, travel and your group", members = { "QuestList", "QuestTracker", "Route", "Services",
-		"Reminders", "Restock", "Widgets", "Gains", "VoiceOver", "Vendor" } },
+	-- (1.0, the user 2026-10-20: the Map after Route, and FPS / Latency off the page to keep both columns at ten -- the
+	-- page never scrolls; Stats says so, installer = false)
+	{ key = "quests", label = "Quests, travel and your group", members = { "QuestList", "QuestTracker", "Route", "Map",
+		"Services", "Reminders", "Restock", "Widgets", "Gains", "VoiceOver" } },
 	{ key = "combat", label = "Combat, frames and tooltips", members = { "Auras", "CooldownText", "ErrorFilter", "Nameplates",
-		"PartyMarkers", "UnitFrames", "BarText", "Meter", "Tooltip", "Stats" } },
+		"PartyMarkers", "UnitFrames", "BarText", "Meter", "Tooltip", "Vendor" } },
 }
 
 -- the lines the window shows (its footer, the Keep page)

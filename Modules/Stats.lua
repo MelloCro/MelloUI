@@ -17,6 +17,8 @@ local M = MelloUI:RegisterModule("Stats", {
 	icon = "Interface\\Icons\\Spell_Nature_Lightning",
 	flavour = "Frames per second and latency in the corner. Blame the server with confidence.",
 	role = "adds",
+	-- (1.0: off the installer's Features step, which took the Map in its place; set in the configurator)
+	installer = false,
 	tweak = { label = "FPS / Latency", desc = "A small coloured FPS and latency readout in the bottom right corner.", order = 14 },
 	defaults = {
 		showFps = true,
