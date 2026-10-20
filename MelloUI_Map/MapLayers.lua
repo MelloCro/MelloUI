@@ -837,6 +837,14 @@ function Layers.Tick(elapsed)
 	if not S.pins then
 		return
 	end
+	-- (a new route drawing in, Route's M.DrawIn, as on the game's map: drawn again each frame while it grows, once
+	-- more when it is whole)
+	local R = rawget(MelloUI, "Route")
+	local growing = R and R.DrawIn and R.DrawIn.on and true or false
+	if growing or S.growing then
+		S.growing = growing
+		Layers.Route()
+	end
 	S.wait = S.wait - (elapsed or 0)
 	if S.wait > 0 then
 		return
