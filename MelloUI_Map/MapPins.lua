@@ -125,19 +125,30 @@ local function Hook(self, pin)
 	self.dirty = true
 end
 
+-- the core's icon lift (MelloUI.Shade:Lift), or nil where the core has none
+local function LiftAPI()
+	local Shade = rawget(MelloUI, "Shade")
+	return type(Shade) == "table" and Shade.Lift and Shade or nil
+end
+
 local function HideTex(pin)
 	local tex = pin.tex
 	if tex and pin.shown then
 		tex:Hide()
 		tex:ClearAllPoints()
+		-- (its lift hidden with it, no stale alpha kept: laid again with the pin's look when it shows again)
+		if LiftAPI() then
+			Pins.Lift(tex, false)
+			pin.dressed = false
+		end
 	end
 	pin.shown = false
 end
 
 -- the pin's look on its texture (made from its layer's pool the first time it shows)
 function Pins.Lift(tex, name, size)
-	local Shade = rawget(MelloUI, "Shade")
-	if type(Shade) == "table" and Shade.Lift then
+	local Shade = LiftAPI()
+	if Shade then
 		pcall(Shade.Lift, Shade, tex, name, size)
 	end
 end
