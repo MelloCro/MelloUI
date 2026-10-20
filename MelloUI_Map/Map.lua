@@ -122,7 +122,8 @@ local function SaveView()
 	M.db.view = { x = c.cx / c.W, y = c.cy / c.H, z = c.z }
 end
 
--- the view to open at: the one kept, else the player's zone (or the world)
+-- the view of the first open: the one kept, else the player's zone (or the world); every open then centres on the
+-- player (Refit)
 local function StartView(c)
 	local v = M.db and M.db.view
 	if type(v) == "table" then
@@ -545,13 +546,26 @@ end
 
 -- the view laid again on the canvas's size: the first one (the one kept, else your zone) the first time it has a
 -- size -- at the show, or at a later size change when the show came before the layout
-local function Refit()
+-- the view laid again (a new size); at an open (onPlayer) centred on the player at the zoom kept (the user, 2026-10-20:
+-- "it does not reopen on top of my character location as it should"), where the player's place can be read
+local function Refit(onPlayer)
 	local c = win.canvas
 	if not (c.places and c:Size()) then
 		return
 	end
 	c.box[5] = nil
-	if c.cx then
+	local x, y
+	if onPlayer then
+		x, y = Layers.PlayerPoint()
+	end
+	if x and y then
+		local z = c.z
+		if not z then
+			local _, _, kept = StartView(c)
+			z = kept
+		end
+		c:SetView(x, y, z)
+	elseif c.cx then
 		c:SetView(c.cx, c.cy, c.z)
 	else
 		c:SetView(StartView(c))
@@ -569,7 +583,7 @@ local function Shown()
 	local c = win.canvas
 	local t0 = debugprofilestop()
 	c:Layout()
-	Refit()
+	Refit(true)   -- (on the player)
 	Layers.Open()
 	AddonPins.Open()   -- (nothing while its switch is off: other addons' icons left to the game's map)
 	Objectives.Open()

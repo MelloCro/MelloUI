@@ -132,6 +132,19 @@ end
 
 local PLAYER = { size = T.ARROW_SIZE, sub = 2, tip = nil }
 
+-- the player's world point now (the map opens on it), or nil: an instance's own map, no place, a secret
+function Layers.PlayerPoint()
+	local mapID = PlayerMap()
+	if not (mapID and S.canvas) then
+		return nil
+	end
+	local x, y = UnitXY(mapID, "player")
+	if not (x and y) then
+		return nil
+	end
+	return S.canvas:ToWorld(mapID, x, y)
+end
+
 local function ArrowLook()
 	local info = C_Texture and C_Texture.GetAtlasInfo and select(2, pcall(C_Texture.GetAtlasInfo, T.ARROW_ATLAS))
 	if type(info) == "table" then
