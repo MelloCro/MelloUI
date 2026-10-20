@@ -512,6 +512,7 @@ local function Build()
 		pins:Lay()
 		Layers.Route()
 		Layers.Labels()
+		Log.ViewChanged()   -- (the Quest List's tab: its Current zone the zone under the view)
 	end
 	Layers.Init(canvas, pins)
 	-- the quest log's column on the canvas's right: out or folded as it was left
@@ -756,6 +757,7 @@ end
 
 function M:OnDisable()
 	TakeKeys(false)
+	Log.Unmount()   -- (the Quest List's page back to the game's column, whose map is the player's again)
 	if win.frame then
 		win.frame:Hide()
 	end

@@ -34,6 +34,12 @@
 --   Log.ShowQuest(questID) the map glides to where the quest is done (its
 --                          open objectives, its turn-in once it is done), marks
 --                          laid there
+--   Log.Tab(key)           (M4) the column's tab: "quests" (the log) or "list" (the Quest
+--                          List's own page, mounted here: QL.Panel:Mount; its Current
+--                          zone the zone under the map's view, QL.ViewMap), slid in
+--                          as the configurator's tabs (Anim:CrossFade)
+--   Log.ViewChanged()      the map's view moved: the Quest List again when its zone did
+--   Log.Unmount()          the map off: the Quest List's page back to the game's column
 --   Log.State()            the tests' and the dump's look in
 --------------------------------------------------------------------------------
 
@@ -80,6 +86,7 @@ Log.T = T
 
 local TEXT = {
 	title = "Quests",
+	tabList = "Quest List",
 	empty = "Your quest log is empty.",
 	back = "All quests",
 	level = "Level %d",
@@ -466,7 +473,9 @@ function Log.Lay()
 	if S.quests == 0 then
 		y = 40
 	end
-	S.count:SetText(S.quests)
+	local tab = S.tabs.quests
+	tab:SetText(S.quests > 0 and (TEXT.title .. "  " .. S.quests) or TEXT.title)
+	PanelTemplates_TabResize(tab, 8)
 	PageHeight(page, max(y + T.PAD, 1))
 end
 
@@ -892,6 +901,15 @@ end
 
 local function Swallow() end
 
+local Tabs   -- (M4, below: the tabs shown as the Quest List is there)
+
+local TabClick = Perf.Shared("OnClick on the map's quest log tabs", function(self)
+	if self.key ~= S.tab then
+		MelloUI:PlayUISound("tab")
+		Log.Tab(self.key)
+	end
+end, "script")
+
 local FoldClick = Perf.Shared("OnClick on the map's quest log fold", function()
 	MelloUI:PlayUISound("click")
 	Log.SetOut(false)
@@ -951,10 +969,27 @@ function Log.Init(win)
 		lag = T.LAG, pad = 0 }
 	Anim:DrawerRest(S.job)
 	-- the title row: Quests and the count; the fold button
-	S.titleText = W.Text(col, "GameFontNormalLarge", TEXT.title, "selectedTrim")
-	S.titleText:SetPoint("TOPLEFT", col, "TOPLEFT", T.PAD + 2, -11)
-	S.count = W.Text(col, "GameFontNormalLarge", nil, "text")
-	S.count:SetPoint("BOTTOMLEFT", S.titleText, "BOTTOMRIGHT", 8, 0)
+	-- (M4) the tabs: Quests (the log's count on it), the Quest List while it is there (the UI's own tabs, W.FlatTab)
+	local function Tab(text, key)
+		local tab = CreateFrame("Button", nil, col, "PanelTopTabButtonTemplate")
+		tab:SetText(text)
+		PanelTemplates_TabResize(tab, 8)
+		tab.key = key
+		W.FlatTab(tab, (win.shell and win.shell.kit) and win.shell or nil)   -- (as the configurator's: the ring with the kit)
+		Perf.SetScript(tab, "OnClick", TabClick)
+		return tab
+	end
+	S.tabs = { quests = Tab(TEXT.title, "quests"), list = Tab(TEXT.tabList, "list") }
+	S.tabs.quests:SetPoint("TOPLEFT", col, "TOPLEFT", T.PAD - 4, -7)
+	S.tabs.list:SetPoint("LEFT", S.tabs.quests, "RIGHT", 2, 0)
+	-- the two panes under the title row: the log's pages, the Quest List's page
+	S.paneQ = CreateFrame("Frame", nil, col)
+	S.paneL = CreateFrame("Frame", nil, col)
+	for _, pane in ipairs({ S.paneQ, S.paneL }) do
+		pane:SetPoint("TOPLEFT", col, "TOPLEFT", T.PAD, -(T.HEAD + 6))
+		pane:SetSize(T.W - 2 * T.PAD, 1)
+	end
+	S.paneL:Hide()
 	local fold = W.RoundIcon(col, T.FOLD, T.ICONS .. "btn_arrow")
 	fold.icon:SetRotation(-math.pi / 2)
 	fold:SetPoint("TOPRIGHT", col, "TOPRIGHT", -T.PAD, -8)
@@ -967,11 +1002,11 @@ function Log.Init(win)
 	rule:SetPoint("TOPLEFT", col, "TOPLEFT", T.PAD, -T.HEAD)
 	rule:SetPoint("TOPRIGHT", col, "TOPRIGHT", -T.PAD, -T.HEAD)
 	-- the pages: the list and a quest's, in one pager (the configurator's switch)
-	local pager = W.Pager(col, { step = 80, slide = T.SLIDE, outInstant = true })
+	local pager = W.Pager(S.paneQ, { step = 80, slide = T.SLIDE, outInstant = true })
 	S.pager = pager
 	local scroll = pager.scroll
-	scroll:SetPoint("TOPLEFT", col, "TOPLEFT", T.PAD, -(T.HEAD + 6))
-	scroll:SetPoint("BOTTOMRIGHT", col, "BOTTOMRIGHT", -(T.PAD + 2 * T.BAR), T.PAD)
+	scroll:SetPoint("TOPLEFT", S.paneQ, "TOPLEFT", 0, 0)
+	scroll:SetPoint("BOTTOMRIGHT", S.paneQ, "BOTTOMRIGHT", -2 * T.BAR, 0)
 	S.pageW = T.W - 2 * T.PAD - 2 * T.BAR
 	S.list = pager:NewPage()
 	S.list:SetWidth(S.pageW)
@@ -979,7 +1014,7 @@ function Log.Init(win)
 	S.page:SetWidth(S.pageW)
 	S.empty = W.Text(S.list, "GameFontHighlight", TEXT.empty, "text")
 	S.empty:SetPoint("TOPLEFT", S.list, "TOPLEFT", 2, -12)
-	local bar = W.ThinScrollBar(col, T.BAR)
+	local bar = W.ThinScrollBar(S.paneQ, T.BAR)
 	bar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", T.BAR, 0)
 	bar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", T.BAR, 0)
 	bar:Hide()
@@ -1045,7 +1080,14 @@ function Log.Init(win)
 	Log.Size()
 	pager:Show(S.list, 0, true)
 	local db = S.module and S.module.db
+	S.tab = "quests"
+	S.tabs.quests:SetSelected(true)
+	S.tabs.list:SetSelected(false)
+	Tabs()
 	Log.SetOut(db and db.log == true, true)
+	if db and db.logTab == "list" then
+		Log.Tab("list", true)
+	end
 end
 
 function Log.Size()
@@ -1056,7 +1098,115 @@ function Log.Size()
 	if h and h > 1 then
 		S.job.h = h
 		S.col:SetHeight(h)
+		local ph = max(1, h - T.HEAD - 6 - T.PAD)
+		S.paneQ:SetHeight(ph)
+		S.paneL:SetHeight(ph)
 	end
+end
+
+--------------------------------------------------------------------------------
+-- (M4) The tabs: the log and the Quest List (the user, 2026-10-20: "Yes, as a
+-- tab"), its page the Quest List's own (QuestListPanel.lua), laid here
+--------------------------------------------------------------------------------
+
+local TAB_FADE = { slide = 0, axis = "x", outTime = 0.10, inTime = 0.15, outInstant = true, instant = false }
+
+-- the Quest List's page, when the Quest List is there and on
+local function QuestListPanel()
+	local QL = rawget(MelloUI, "QuestList")
+	local P = type(QL) == "table" and QL.Panel
+	return (P and P.Mount and QL.M and QL.M.isEnabled) and QL or nil
+end
+
+local NO_PATH = {}
+
+-- the map under the view (the Quest List's Current zone): the zone in the middle once the zones' art shows (the
+-- canvas's ZONE_IN), else the continent there (the Quest List then takes the player's zone, as on the game's map);
+-- read from the path the canvas keeps for its focus (made again at each cut: no lookups per frame)
+function Log.ViewMap()
+	local c = S.canvas
+	local CT = ns.Canvas and ns.Canvas.T
+	local focus = c and c.focus
+	if focus and focus.id and CT and c.z >= CT.ZONE_IN[1] then
+		return focus.id
+	end
+	local path = c and c.focusPath or NO_PATH
+	for i = #path, 1, -1 do
+		if path[i].kind == "continent" then
+			return path[i].id
+		end
+	end
+	local ok, id = pcall(C_Map.GetBestMapForUnit, "player")
+	return ok and Finite(id) or nil
+end
+
+-- the Quest List's page shown here or not: with its tab, the column out and the map shown
+local function ListShown()
+	local QL = QuestListPanel()
+	if QL and S.mounted then
+		QL.Panel:HostShow(S.tab == "list" and S.out and S.shown)
+	end
+end
+
+function Log.Tab(key, instant)
+	if not S.built then
+		return
+	end
+	local QL = QuestListPanel()
+	if key == "list" and not QL then
+		key = "quests"
+	end
+	local old = S.tab == "list" and S.paneL or S.paneQ
+	local new = key == "list" and S.paneL or S.paneQ
+	S.tab = key
+	S.tabs.quests:SetSelected(key == "quests")
+	S.tabs.list:SetSelected(key == "list")
+	local db = S.module and S.module.db
+	if db then
+		db.logTab = key
+	end
+	if key == "list" and not S.mounted then
+		S.mounted = QL.Panel:Mount(S.paneL)
+		QL.ViewMap = Log.ViewMap
+	end
+	TAB_FADE.slide = key == "list" and T.SLIDE or -T.SLIDE
+	TAB_FADE.instant = (instant or not S.col:IsVisible()) and true or false
+	Anim:CrossFade(old ~= new and old or nil, new, TAB_FADE)
+	ListShown()
+end
+
+-- the tabs shown as the Quest List is there (its tab only then)
+function Tabs()
+	local here = QuestListPanel() ~= nil
+	S.tabs.list:SetShown(here)
+	if not here and S.tab == "list" then
+		Log.Tab("quests", true)
+	end
+end
+
+function Log.ViewChanged()
+	if S.tab ~= "list" or not (S.mounted and S.out and S.shown) then
+		return
+	end
+	local id = Log.ViewMap()
+	if id ~= S.viewID then
+		S.viewID = id
+		local QL = QuestListPanel()
+		if QL then
+			QL.Panel:Update(true)   -- (quiet: a zone with the same quests is not laid again)
+		end
+	end
+end
+
+function Log.Unmount()
+	local QL = rawget(MelloUI, "QuestList")
+	if S.mounted and type(QL) == "table" and QL.Panel and QL.Panel.Unmount then
+		QL.Panel:Unmount()
+	end
+	if type(QL) == "table" and QL.ViewMap == Log.ViewMap then
+		QL.ViewMap = nil
+	end
+	S.mounted = false
 end
 
 function Log.IsOut()
@@ -1111,8 +1261,10 @@ function Log.SetOut(out, instant)
 		if S.shown then
 			Events(S.col, true)
 		end
+		ListShown()
 	else
 		Events(S.col, false)
+		ListShown()
 		if instant then
 			Anim:StopDrawer(S.job)
 			Anim:DrawerRest(S.job)
@@ -1199,10 +1351,12 @@ function Log.Shown()
 		return
 	end
 	Log.Size()
+	Tabs()
 	if S.out then
 		Events(S.col, true)
 		Refresh()
 	end
+	ListShown()
 end
 
 function Log.Hidden()
@@ -1212,6 +1366,7 @@ function Log.Hidden()
 	end
 	Events(S.col, false)
 	S.pins:Clear("questlog")
+	ListShown()
 	Anim:StopDrawer(S.job)
 	if not S.out then
 		S.col:Hide()
