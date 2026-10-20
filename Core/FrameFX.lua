@@ -60,6 +60,41 @@ MelloUI.FrameFX = FX
 
 local MEDIA = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\"
 local TAU = 2 * math.pi
+
+-- (0.25.0) the modern look's light art (the user, 2026-10-20: "more fitting to the Default Modernized look"; their
+-- sheets, Tools/make_icons.py FX_LIGHT): these names from Media/FrameFX/Light while Oldschool's painted look is off
+-- (the kit's area "effects": "the old animations can stay with the oldschool"), Media/FrameFX's otherwise; the glows,
+-- pillars, fire lines and the rune are the same in both. Art(file) -> its path: the look read once, again after the
+-- bus's 'look:effects'; each path made once
+local Art
+do
+	local LIGHT = MEDIA .. "Light\\"
+	local NAMES = {}
+	for name in ("bubble bubble_gold bubble_gold_round bubble_round crest_blue crest_gold crest_green crest_steel drop "
+		.. "halo_white leaf plus_blue plus_gold plus_green rays_gold ring_fire ring_gold ripple_blue shard_blue sheen "
+		.. "spark_gold streak_blue streak_gold streak_green streak_red streak_white wave_gold wave_red wave_teal"):gmatch("%S+") do
+		NAMES[name .. ".tga"] = true
+	end
+	local made = { [true] = {}, [false] = {} }
+	local light   -- (nil: not read yet)
+	function Art(file)
+		if light == nil then
+			local Kit = MelloUI.Kit   -- (looked up here: the core loads the kit after this file)
+			light = not (type(Kit) == "table" and type(Kit.IsOn) == "function" and Kit:IsOn("effects"))
+		end
+		local paths = made[light]
+		local path = paths[file]
+		if not path then
+			path = ((light and NAMES[file]) and LIGHT or MEDIA) .. file
+			paths[file] = path
+		end
+		return path
+	end
+	MelloUI:On("look:effects", function()
+		light = nil
+	end, "FrameFX")
+	FX.LIGHT = NAMES   -- (the tests')
+end
 local cos, sin, min, max, floor = math.cos, math.sin, math.min, math.max, math.floor
 local TIME = { launch = 0.32, hop = 0.22, chargeFade = 0.15, chargeMax = 3 }
 FX.TIME = TIME
@@ -96,8 +131,9 @@ end
 
 -- (w = nil: its anchors size it)
 local function Show(t, file, w, h, a, rot)
+	file = Art(file)
 	if fileOf[t] ~= file then
-		t:SetTexture(MEDIA .. file)
+		t:SetTexture(file)
 		fileOf[t] = file
 	end
 	if w then
@@ -1317,7 +1353,6 @@ local function Inside(layer, B)
 		f:SetClipsChildren(true)
 		local t = f:CreateTexture(nil, "OVERLAY", nil, 7)
 		t:SetBlendMode("ADD")
-		t:SetTexture(MEDIA .. "sheen.tga")
 		sprites[f] = {}
 		c = { frame = f, tex = t }
 		clips[layer] = c
@@ -1336,6 +1371,11 @@ local function Sheen(layer, part, B, v, a)
 	local c = clips[layer]
 	local f = c.frame
 	local t = c.tex
+	local file = Art("sheen.tga")
+	if fileOf[t] ~= file then
+		t:SetTexture(file)
+		fileOf[t] = file
+	end
 	t:Show()
 	t:SetSize(B.u * 1.3, B.h * 1.7)
 	t:ClearAllPoints()

@@ -8,7 +8,8 @@ soft alpha edges band as DXT).
 The art: MelloUI-BuildData/masters/icons_v2/out/<group>/png128/<name>.png (cut by icons_v1/cut_sheet.py and
 cut_buttons.py from icons_v2/src/sheet*.png), ring/ring_gold_256.png and ring/hover_glow_256.png. Drawn here: the
 count badge's disc and its edge (white, the palette tints them). Each picture is scaled premultiplied (no dark fringe).
-Deterministic: the same art gives the same bytes.
+Deterministic: the same art gives the same bytes. Also the modern look's light effects (FX_LIGHT, from icons_v2/out/fx):
+Media/FrameFX/Light/, the addon's only.
 
     python Tools/make_icons.py            write them
     python Tools/make_icons.py --check    exit 1 unless all are up to date
@@ -187,6 +188,147 @@ def flipbook(name):
     return img.resize((8 * FB_FRAME, FB_FRAME), Image.LANCZOS).convert("RGBA")
 
 
+# (2026-10-20) the modern look's light effects (the user, 2026-10-20: "more fitting to the Default Modernized look"):
+# Core/FrameFX.lua reads Media/FrameFX/Light/<name> for the names here while Oldschool's painted look is off (the
+# kit's area "effects"), Media/FrameFX/<name> (Tools/heal_flight_art.py) otherwise and for every name not here (the
+# glows, pillars, fire lines and the rune are the same in both). Each from icons_v2/out/fx (work/cut_fx.py: light as
+# alpha, its colour unmixed) at its old file's place: its shape cut out, laid on the middle of the canvas; a colour
+# the sheets have no sprite in is the nearest sprite turned to its hue. Written to the addon only, as
+# heal_flight_art.py's are (no master: texture_pack.py leaves Media/FrameFX as it is)
+FX_OUT = ("FrameFX", "Light")
+# the sheets' own colours (the prompts'): hue in degrees, None keeps it; then the saturation's share
+TINT = {"gold": (44, 1.0), "blue": (211, 0.8), "green": (138, 1.0), "red": (4, 1.0), "white": (None, 0.08)}
+# (name, art, canvas, colour or None, how): "fit" its shape on the middle, "fill" stretched over the canvas, "level"
+# turned level first, "upright" its biggest piece alone, turned upright, "box" the cooldown flipbook's first frame
+# (a rounded square of light) stretched to the canvas by its corners (the shield over a frame's oblong)
+FX_LIGHT = [("plus_green", "heal_cross", 64, None, "fit"), ("plus_gold", "heal_cross", 64, "gold", "fit"),
+            ("plus_blue", "heal_cross", 64, "blue", "fit"),
+            ("leaf", "heal_leaf", 64, None, "level"), ("drop", "heal_drop", 64, "blue", "fit"),
+            ("spark_gold", "holy_spark", 64, None, "fit"), ("rays_gold", "heal_rays", 256, None, "fit"),
+            ("ring_gold", "cooldown_ring", 128, None, "fit"), ("ring_fire", "roar_ring", 128, None, "fit"),
+            ("wave_red", "taunt_ring", 128, None, "fit"), ("wave_teal", "heal_wave", 128, None, "fit"),
+            ("wave_gold", "heal_wave", 128, "gold", "fit"), ("ripple_blue", "heal_wave", 128, "blue", "fit"),
+            ("halo_white", "heal_wave", 128, "white", "fit"),
+            ("bubble_round", "shield_bubble", 128, None, "fit"),
+            ("bubble_gold_round", "shield_bubble", 128, "gold", "fit"),
+            ("bubble", "fb_cooldown_strip", (256, 128), "blue", "box"),
+            ("bubble_gold", "fb_cooldown_strip", (256, 128), None, "box"),
+            ("crest_gold", "prot_crest", 128, None, "fit"), ("crest_steel", "fortify_crest", 128, None, "fit"),
+            ("crest_blue", "prot_crest", 128, "blue", "fit"), ("crest_green", "prot_crest", 128, "green", "fit"),
+            ("sheen", "sheen", (64, 128), None, "fill"), ("shard_blue", "shield_shards", 64, None, "upright")]
+FX_LIGHT += [("streak_" + c, "sheen", (256, 64), c, "level") for c in ("white", "gold", "green", "blue", "red")]
+FX_MARGIN = 0.04   # of the canvas, round a fitted shape
+FX_SHAPE = 40      # the alpha a shape's own extent is read at (its faint glow round it left out of the middle)
+SHARD_CORE = 150   # the alpha the shards are told apart at (their glows touch below it)
+BOX_RIM, BOX_GLOW, BOX_FILL = 2.4, (4, 0.7), 16   # the oblong shield: its rim's gain, glow (blur, share), fill
+
+
+def fx_tint(img, colour):
+    if not colour:
+        return img
+    hue, sat = TINT[colour]
+    a = img.getchannel("A")
+    h, s, v = img.convert("RGB").convert("HSV").split()
+    if hue is not None:
+        h = Image.new("L", img.size, round(hue / 360 * 255))
+    s = s.point(lambda x: round(x * sat))
+    out = Image.merge("HSV", (h, s, v)).convert("RGB")
+    out.putalpha(a)
+    return out
+
+
+def fx_turn(img, upright):
+    # turned so its long axis (the light's own, weighted by alpha) lies level, or stands upright
+    a = np.asarray(img)[..., 3].astype(np.float64)
+    ys, xs = np.nonzero(a > FX_SHAPE)
+    w = a[ys, xs]
+    mx, my = np.average(xs, weights=w), np.average(ys, weights=w)
+    cov = np.cov(np.vstack([xs - mx, ys - my]), aweights=w)
+    vals, vecs = np.linalg.eigh(cov)
+    vx, vy = vecs[:, np.argmax(vals)]
+    deg = np.degrees(np.arctan2(vy, vx)) + (90 if upright else 0)   # (the axis's angle, the image's y down)
+    return img.convert("RGBa").rotate(deg, Image.BICUBIC, expand=True).convert("RGBA")
+
+
+def fx_biggest(img):
+    # the biggest piece alone (the shards fly apart: one of them), its own glow kept
+    from scipy import ndimage
+    arr = np.asarray(img).copy()
+    lab, n = ndimage.label(arr[..., 3] > SHARD_CORE)
+    sizes = ndimage.sum(np.ones_like(lab), lab, range(1, n + 1))
+    keep = ndimage.binary_dilation(lab == 1 + int(np.argmax(sizes)), iterations=8)
+    arr[..., 3] = np.where(keep, arr[..., 3], 0)
+    return Image.fromarray(arr, "RGBA")
+
+
+def fx_crop(img, level=FX_SHAPE):
+    a = np.asarray(img)[..., 3]
+    ys, xs = np.nonzero(a > level)
+    return xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
+
+
+def fx_fit(img, size):
+    # its shape on the middle of the canvas, a margin round it (the faint glow beyond the shape kept as far as it fits)
+    w, h = (size, size) if isinstance(size, int) else size
+    l, t, r, b = fx_crop(img)
+    cx, cy, half_w, half_h = (l + r) / 2, (t + b) / 2, (r - l) / 2, (b - t) / 2
+    k = min(w * (0.5 - FX_MARGIN) / half_w, h * (0.5 - FX_MARGIN) / half_h)
+    span_w, span_h = w / 2 / k, h / 2 / k
+    box = (round(cx - span_w), round(cy - span_h), round(cx + span_w), round(cy + span_h))
+    return img.convert("RGBa").crop(box).resize((w, h), Image.LANCZOS).convert("RGBA")
+
+
+def fx_box(img, size):
+    # the cooldown flipbook's first frame (its rounded square whole, evenly lit), cut by its corners and stretched
+    # over the oblong: the corners at their own shape, the sides drawn out, the middle left empty
+    w, h = size
+    frame = img.crop((0, 0, img.height, img.height))
+    l, t, r, b = fx_crop(frame, 24)
+    pad = round((r - l) * 0.03)
+    frame = frame.crop((l - pad, t - pad, r + pad, b + pad)).convert("RGBa")
+    side = frame.width
+    m = round(side * 0.24)                          # the corner: its round and its glow
+    mo = max(2, round(m * (h * 0.5) / side * 1.6))  # drawn at the scale of the square laid at half the canvas's height
+    xs_src, xs_dst = (0, m, side - m, side), (0, mo, w - mo, w)
+    ys_src, ys_dst = (0, m, side - m, side), (0, mo, h - mo, h)
+    out = Image.new("RGBa", (w, h), (0, 0, 0, 0))
+    for i in range(3):
+        for j in range(3):
+            src = frame.crop((xs_src[i], ys_src[j], xs_src[i + 1], ys_src[j + 1]))
+            out.paste(src.resize((xs_dst[i + 1] - xs_dst[i], ys_dst[j + 1] - ys_dst[j]), Image.LANCZOS),
+                      (xs_dst[i], ys_dst[j]))
+    # brighter (the first frame is the flipbook's dimmest; the shield is held at full), a soft glow either side of
+    # the rim and the faintest light inside it (a barrier seen through, as the old one's)
+    out = out.convert("RGBA")
+    arr = np.asarray(out).astype(np.float64)
+    rim = np.clip(arr[..., 3] * BOX_RIM, 0, 255)
+    glow = np.asarray(Image.fromarray(rim.astype(np.uint8), "L").filter(ImageFilter.GaussianBlur(BOX_GLOW[0])),
+                      np.float64) * BOX_GLOW[1]
+    inside = np.zeros((h, w))
+    inside[mo // 2:h - mo // 2, mo // 2:w - mo // 2] = BOX_FILL
+    lit = arr[..., 3] > 60
+    colour = np.median(arr[..., :3][lit], axis=0)
+    a = np.maximum(np.maximum(rim, glow), inside)
+    rgb = np.where((arr[..., 3] > 8)[..., None], arr[..., :3], colour)   # (the glow and the fill in the rim's colour)
+    return Image.fromarray(np.dstack([rgb, a]).round().astype(np.uint8), "RGBA")
+
+
+def fx_light(name, art, size, colour, how):
+    img = Image.open(os.path.join(ART, "out", "fx", art + ".png")).convert("RGBA")
+    if how == "box":
+        return fx_tint(fx_box(img, size), colour)
+    if how == "upright":
+        img = fx_turn(fx_biggest(img), True)
+    elif how == "level":
+        img = fx_turn(img, False)
+    if how == "fill":
+        l, t, r, b = fx_crop(img, 8)
+        img = img.convert("RGBa").crop((l, t, r, b)).resize(size, Image.LANCZOS).convert("RGBA")
+    else:
+        img = fx_fit(img, size)
+    return fx_tint(img, colour)
+
+
 def files():
     out = []
     for name in FLIPBOOKS:
@@ -221,10 +363,15 @@ def main():
     check = "--check" in sys.argv
     stale = []
     sums = hashlib.sha256()
-    for name, img in files():
+    icons = files()
+    every = [(name, img, (master(*OUT, name + ".tga"), os.path.join(ADDON_MEDIA, *OUT, name + ".tga")))
+             for name, img in icons]
+    every += [(e[0], fx_light(*e), (os.path.join(ADDON_MEDIA, *FX_OUT, e[0] + ".tga"),)) for e in FX_LIGHT]
+    for name, img, paths in every:
         data = tga(img)
-        sums.update(name.encode() + data)
-        for path in (master(*OUT, name + ".tga"), os.path.join(ADDON_MEDIA, *OUT, name + ".tga")):
+        if paths[0].startswith(master()):
+            sums.update(name.encode() + data)   # (the icon set's sum: the light effects not in it)
+        for path in paths:
             if check:
                 try:
                     with open(path, "rb") as f:
@@ -241,7 +388,8 @@ def main():
             print("stale:", os.path.normpath(path))
         print("ok" if not stale else "STALE")
         return 1 if stale else 0
-    print("%d icons written (masters + Media/Textures/Icons), set sha256 %s" % (len(files()), sums.hexdigest()[:16]))
+    print("%d icons written (masters + Media/Textures/Icons), set sha256 %s; %d light effects (Media/FrameFX/Light)"
+          % (len(icons), sums.hexdigest()[:16], len(FX_LIGHT)))
     return 0
 
 

@@ -4858,6 +4858,11 @@ do
 		-- its first run (the showcase, before the player chooses:
 		-- Kit:Showcase), the reskin's after it -- Oldschool's handshake
 		{ "installer", reskin = true, showcase = true },
+		-- (0.25.0) the effects' art (MelloUI.FrameFX: Heal Flight, the Frame
+		-- Effects, the landings): the old with the reskin (the user,
+		-- 2026-10-20: "the old animations can stay with the oldschool"), the
+		-- modern look's light art without it
+		{ "effects", reskin = true },
 	}
 	for _, area in ipairs(LIST) do
 		area.name, area.topic = area[1], "look:" .. area[1]

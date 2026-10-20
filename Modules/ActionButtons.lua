@@ -121,7 +121,7 @@ end
 -- it shows (alpha, written once each way, never on the game's per-frame paths), back when it goes. Made with the
 -- hooks: the bars show from the login, a texture a button.
 --------------------------------------------------------------------------------
-local FRAME = { M = 22, BAND = 5, SUB = 2, DIR = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\frame_",
+local FRAME = { M = 22, BAND = 5, SUB = 2,
 	GAME = { "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetCheckedTexture" } }
 local frameOf = setmetatable({}, { __mode = "k" })   -- [button] = its frame texture
 local framed = setmetatable({}, { __mode = "k" })    -- [button] = the state it shows ("off": the game's art back)
@@ -192,7 +192,7 @@ local function LayFrame(button)
 		t:Show()
 	end
 	framed[button] = state
-	t:SetTexture(FRAME.DIR .. state)
+	t:SetTexture(W.IconPath("frame_" .. state))   -- (the set's: Media/Textures/Icons/frame_<state>)
 	if t.SetTextureSliceMargins and t.SetTextureSliceMode and t.SetScale then
 		local m = FRAME.M
 		t:SetTextureSliceMargins(m, m, m, m)
