@@ -54,9 +54,9 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		frames = true,
 	},
 	options = {
-		-- (2026-10-20, the user's sheet: the frames as they are laid out, in the set's style; the Frames section)
+		-- (2026-10-20, the user: the game's frames as they are, in the set's borders, one picture each; the Frames section)
 		{ type = "toggle", key = "frames", name = "MelloUI Frames", new = "0.25.0",
-		  desc = "The player, target and focus frames in MelloUI's look, laid out as the game lays them: a gold ring round the portrait, a dark badge under the level, a slate name plate and iron frames with a gold line round the health and power bars; the elite's gold wing and the rare's silver one on the target. Off: the game's own frame art. The painted skin's frames keep their own (Oldschool)." },
+		  desc = "The player, target, focus, target of target and party frames in MelloUI's look, exactly as the game lays them out: a gold ring round the portrait, a dark level badge, and gold-lined iron borders round the name, health and power; the elite's and boss's golden dragon and the rare's silver one round the target. Off: the game's own frame art. The painted skin's frames keep their own (Oldschool)." },
 		{ type = "header", name = "Names" },
 		{ type = "dropdown", key = "nameFont", name = "Name Font", values = MelloUI.FontFaces, new = "0.25.0",
 		  desc = "The face of the names on the player, target, focus and pet frames, their targets' and the party portraits' (their level follows). Shared: the Interface text's face (Look > Fonts)." },
@@ -1305,6 +1305,10 @@ function Party.Art(frame)
 			MelloUI:Fire("partyart", frame)
 		end
 	end
+	-- (MelloUI Frames: its picture on the sharp art, the game's on its own; made below)
+	if M.Frames then
+		M.Frames.Party(frame)
+	end
 end
 
 -- the game laid a member's art again (its ToPlayerArt): ours again, out of combat
@@ -1802,14 +1806,7 @@ local function FarEnd(main)
 	return strip or health
 end
 
-local Frames   -- (MelloUI Frames, made below: M:RingOf answers with its ring)
-
 function M:RingOf(portrait)
-	-- (2026-10-20) MelloUI Frames' ring while it shows
-	local ours = portrait and Frames and Frames.ringOf[portrait]
-	if ours and ours:IsShown() then
-		return ours
-	end
 	if not (portrait and Skin.RingOf) then
 		return nil
 	end
@@ -1986,32 +1983,36 @@ function M:OnLoginWorld(...)
 end
 
 --------------------------------------------------------------------------------
--- MelloUI Frames (2026-10-20, the user: "maybe even the unitframes, same looking ones, just in the style"; ChatGPT
--- Batch 25). The player, target and focus frames as they are laid out (build 70425: the portrait in a ring, the level
--- in a circle, the name above the health and power bars), their art in the set's style while MelloUI Frames is on
--- and the painted skin leaves them (Kit's cover "unitframes"): the game's frame picture (FrameTexture, the class
--- resource's AlternatePowerFrameTexture, the target's BossPortraitFrameTexture) unseen meanwhile (alpha, once each
--- way), and over the parts it framed:
---   the ring       round the portrait, 1.3 x its size (its opening the portrait's), in the frame's container under
---                  the bars and the texts (the frame effects lie under it: M:RingOf)
---   the badge      under the level number, in the content's ARTWORK
---   the name plate behind the name, from under the ring to past the name's end
---   the bar frames round the health and power bars, their band FRAME.BAND units (nine-slices of the set's pieces;
---                  the target's and focus's mirrored: their portrait at the right)
---   the crest      the elite's gold wing, the rare's silver one, at the portrait's top outer side, while the game shows
---                  its own boss picture (its atlas tells which)
--- Laid when the module starts and as the cover or the setting changes; the frames' shapes are the game's own, so the
--- parts follow its rects (anchored, never measured again).
+-- MelloUI Frames (2026-10-20, the user: "look at how the original unitframe looks like, take the new art, recreate
+-- it exactly how it looks like just with the new borders, make it a single texture and apply it ... you always
+-- forget the Party Frames"). The frame pictures of the player, target, focus, their targets of target and the party
+-- members, redrawn on the game's own layout in Batch 25's art (Tools/make_icons.py UF_FRAMES: one picture each, the
+-- game's ring, slots and borders where the game has them), the level circles the set's badge, and the target's and
+-- focus's elite, boss and rare dragons Batch 29's (UF_DRAGONS: round the ring as the game's curl round its own).
+-- Each stands exactly where the game's picture stands -- its frame, draw layer and sublevel, its rect -- shown while
+-- that one shows (post-hooks on its Show / Hide / SetShown: the vehicle's art, a battle pet's level) and the game's
+-- unseen meanwhile (alpha, written once each way, never on a per-frame path). While MelloUI Frames is on and the
+-- painted skin leaves the frames (Kit's cover "unitframes"); a party member's while its sharp art is laid (Party.Art).
 --------------------------------------------------------------------------------
-Frames = {
+local Frames = {
 	DIR = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\",
-	RING = 1.3, BADGE = 26, BAND = 3,
-	-- (Tools/make_icons.py PIECES: 512 wide, the picture the top rows of its file; its corners' margins in texels)
-	PLATE = { h = 42, file = 64, m = { 4, 12, 17, 12 } },
-	HEALTH = { h = 42, file = 64, m = { 9, 8, 17, 8 } },
-	POWER = { h = 27, file = 32, m = { 9, 8, 12, 8 } },
-	made = setmetatable({}, { __mode = "k" }),    -- [frame] = its parts
-	ringOf = setmetatable({}, { __mode = "k" }),  -- [portrait] = our ring (M:RingOf)
+	-- [kind] = { file, the picture's share of its file across and down; `at`: its middle that far from the top left
+	-- of the frame's own picture -- the ring's centre on it -- and that size, not on the game picture's rect }
+	ART = {
+		player = { "uf_frame_player", 396 / 512, 142 / 256 }, res = { "uf_frame_player_res", 396 / 512, 148 / 256 },
+		target = { "uf_frame_target", 388 / 512, 136 / 256 }, small = { "uf_frame_small", 240 / 256, 98 / 128 },
+		badge = { "uf_badge", 1, 1 },
+		-- (the dragon round the target's ring: its art 256 texels for 128 units, the ring's centre 159.25 x 33.75 units
+		-- into the target's picture, as on its 2x art, 318.5 x 67.5 px)
+		elite = { "uf_boss_elite", 1, 1, at = { 159.25, -33.75, 128 } },
+		boss = { "uf_boss_boss", 1, 1, at = { 159.25, -33.75, 128 } },
+		rare = { "uf_boss_rare", 1, 1, at = { 159.25, -33.75, 128 } },
+	},
+	cover = setmetatable({}, { __mode = "k" }),    -- [the game's picture] = ours
+	kind = setmetatable({}, { __mode = "k" }),     -- [the game's picture] = the kind it wears (false: none)
+	shown = setmetatable({}, { __mode = "k" }),    -- [the game's picture] = whether ours shows (its alpha 0 then)
+	dressed = setmetatable({}, { __mode = "k" }),  -- [ours] = the kind laid on it
+	anchor = setmetatable({}, { __mode = "k" }),   -- [the game's picture] = the picture an `at` kind is laid from
 	covered = false,
 }
 
@@ -2019,158 +2020,160 @@ function Frames.On()
 	return M.isEnabled and M.db and M.db.frames ~= false and not Frames.covered
 end
 
--- a frame's parts: portrait, its container (the art's), the content (the texts' and bars'), health, power, name,
--- level, the game's pictures to hide, and whether it is mirrored (portrait at the right)
-function Frames.Parts(frame)
-	if frame == PlayerFrame then
-		local c, content = frame.PlayerFrameContainer, frame.PlayerFrameContent
-		local main = content and content.PlayerFrameContentMain
-		if not (c and main) then
-			return nil
-		end
-		return { portrait = c.PlayerPortrait, container = c, main = main,
-			health = main.HealthBarsContainer and main.HealthBarsContainer.HealthBar,
-			power = main.ManaBarArea and main.ManaBarArea.ManaBar, name = _G.PlayerName, level = _G.PlayerLevelText,
-			game = { c.FrameTexture, c.AlternatePowerFrameTexture } }
+local function Shown(region)
+	local ok, shown = pcall(region.IsShown, region)
+	return ok and not Secret(shown) and shown == true
+end
+
+-- the boss picture's kind by its atlas: the rare's silver, the boss's winged gold, the elite's gold
+function Frames.BossKind(region)
+	if type(region) ~= "table" then
+		return false
 	end
-	local c = type(frame) == "table" and rawget(frame, "TargetFrameContainer")
-	local content = type(frame) == "table" and rawget(frame, "TargetFrameContent")
-	local main = content and content.TargetFrameContentMain
-	if not (c and main) then
+	local ok, atlas = pcall(region.GetAtlas, region)
+	atlas = ok and not Secret(atlas) and type(atlas) == "string" and atlas:lower() or ""
+	if atlas:find("silver", 1, true) or atlas:find("rare", 1, true) then
+		return "rare"
+	end
+	return atlas:find("winged", 1, true) and "boss" or "elite"
+end
+
+-- a frame's pictures and the kind each wears
+function Frames.Regions(frame)
+	if frame == PlayerFrame then
+		local c, content = rawget(frame, "PlayerFrameContainer"), rawget(frame, "PlayerFrameContent")
+		local main = content and content.PlayerFrameContentMain
+		return { { c and c.FrameTexture, "player" }, { c and c.AlternatePowerFrameTexture, "res" },
+			{ main and main.LevelBackgroundCircle, "badge" } }
+	end
+	local c, content = rawget(frame, "TargetFrameContainer"), rawget(frame, "TargetFrameContent")
+	if c then
+		local main = content and content.TargetFrameContentMain
+		return { { c.FrameTexture, "target" }, { main and main.LevelBackgroundCircle, "badge" },
+			{ c.BossPortraitFrameTexture, Frames.BossKind(c.BossPortraitFrameTexture), c.FrameTexture } }
+	end
+	return { { rawget(frame, "FrameTexture"), "small" } }   -- (a target of target's)
+end
+
+Frames.OnShown = Shared("Show / Hide on a frame picture MelloUI Frames stands on", function(region)
+	Frames.Follow(region)
+end)
+
+-- whether a text of the frame's regions (...) is drawn on that layer and sublevel
+function Frames.TextAt(layer, sub, ...)
+	for i = 1, select("#", ...) do
+		local r = select(i, ...)
+		if r.GetObjectType and r:GetObjectType() == "FontString" then
+			local l2, s2 = r:GetDrawLayer()
+			if l2 == layer and (Num(s2) or 0) == sub then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+-- ours on a game picture: made once, in its frame at its layer and sublevel; its Show / Hide followed from then on
+function Frames.Make(region)
+	local okP, parent = pcall(region.GetParent, region)
+	if not (okP and type(parent) == "table" and parent.CreateTexture) then
 		return nil
 	end
-	return { portrait = c.Portrait, container = c, main = main, mirrored = true,
-		health = main.HealthBarsContainer and main.HealthBarsContainer.HealthBar, power = main.ManaBar,
-		name = main.Name, level = main.LevelText, boss = c.BossPortraitFrameTexture, game = { c.FrameTexture } }
+	local okL, layer, sub = pcall(region.GetDrawLayer, region)
+	if not (okL and type(layer) == "string" and not Secret(layer)) then
+		layer, sub = "BACKGROUND", 0
+	end
+	sub = Num(sub) or 0
+	-- (a text of its frame on its very layer and sublevel -- the party member's name, the target's level -- stays
+	-- over ours, as over the game's picture: ours a sublevel lower then; read once, as it is made)
+	local okT, text = pcall(Frames.TextAt, layer, sub, parent:GetRegions())
+	if okT and text then
+		sub = math.max(-8, sub - 1)
+	end
+	local ours = parent:CreateTexture(nil, layer, nil, sub)
+	ours:Hide()
+	Frames.cover[region] = ours
+	for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
+		hooksecurefunc(region, method, Frames.OnShown)
+	end
+	return ours
 end
 
--- a nine-slice of piece `p` (file `file`) on `region`'s layer: the band FRAME.BAND units
-function Frames.Slice(parent, layer, sub, file, p)
-	local t = parent:CreateTexture(nil, layer, nil, sub)
-	t:SetTexture(Frames.DIR .. file)
-	t:SetTexCoord(0, 1, 0, p.h / p.file)
-	if t.SetTextureSliceMargins and t.SetTextureSliceMode and t.SetScale then
-		t:SetTextureSliceMargins(p.m[1], p.m[2], p.m[3], p.m[4])
-		t:SetTextureSliceMode(Enum and Enum.UITextureSliceMode and Enum.UITextureSliceMode.Stretched or 0)
-		t:SetScale(Frames.BAND / p.m[2])
-	end
-	return t
-end
-
--- (a region's rect grown by `x` / `y` units, in the slice's own units: a scaled texture's offsets are its own)
-function Frames.Around(t, region, x, y)
-	local k = t.GetScale and t:GetScale() or 1
-	x, y = x / k, y / k
-	t:ClearAllPoints()
-	t:SetPoint("TOPLEFT", region, "TOPLEFT", -x, y)
-	t:SetPoint("BOTTOMRIGHT", region, "BOTTOMRIGHT", x, -y)
-end
-
-function Frames.Make(frame, P)
-	local parts = {}
-	local r = P.mirrored and "_r" or ""
-	parts.ring = P.container:CreateTexture(nil, "BACKGROUND", nil, 3)
-	parts.ring:SetTexture(Frames.DIR .. "uf_ring")
-	local s = (Num(P.portrait:GetWidth()) or 60) * Frames.RING
-	parts.ring:SetSize(s, s)
-	parts.ring:SetPoint("CENTER", P.portrait, "CENTER", 0, 0)
-	Frames.ringOf[P.portrait] = parts.ring
-	if P.level then
-		parts.badge = P.main:CreateTexture(nil, "ARTWORK", nil, 2)
-		parts.badge:SetTexture(Frames.DIR .. "uf_badge")
-		parts.badge:SetSize(Frames.BADGE, Frames.BADGE)
-		parts.badge:SetPoint("CENTER", P.level, "CENTER", 0, 0)
-	end
-	if P.name then
-		parts.plate = Frames.Slice(P.main, "ARTWORK", 1, "piece_uf_plate" .. r, Frames.PLATE)
-		local k = parts.plate.GetScale and parts.plate:GetScale() or 1
-		parts.plate:ClearAllPoints()
-		-- (from under the ring's edge to past the name's end)
-		local near, far = 10 / k, 8 / k
-		parts.plate:SetPoint("TOPLEFT", P.name, "TOPLEFT", (P.mirrored and -far or -near), 3 / k)
-		parts.plate:SetPoint("BOTTOMRIGHT", P.name, "BOTTOMRIGHT", (P.mirrored and near or far), -3 / k)
-	end
-	if P.health then
-		parts.health = Frames.Slice(P.main, "ARTWORK", 3, "piece_uf_health" .. r, Frames.HEALTH)
-		Frames.Around(parts.health, P.health, Frames.BAND, Frames.BAND)
-	end
-	if P.power then
-		parts.power = Frames.Slice(P.main, "ARTWORK", 3, "piece_uf_power" .. r, Frames.POWER)
-		Frames.Around(parts.power, P.power, Frames.BAND, Frames.BAND)
-	end
-	if P.boss then
-		parts.crest = P.container:CreateTexture(nil, "ARTWORK", nil, 3)
-		parts.crest:SetSize(s * 0.62, s * 0.62 * 116 / 128)
-		parts.crest:SetPoint("CENTER", P.portrait, P.mirrored and "TOPRIGHT" or "TOPLEFT", 0, 0)
-		if P.mirrored then
-			parts.crest:SetTexCoord(0, 1, 0, 1)
-		else
-			parts.crest:SetTexCoord(1, 0, 0, 1)
-		end
-		parts.crest:Hide()
-	end
-	Frames.made[frame] = parts
-	return parts
-end
-
--- the elite's or rare's wing while the game shows its boss picture (its atlas tells which)
-function Frames.Crest(P, parts, shown)
-	local crest, boss = parts.crest, P.boss
-	if not (crest and boss) then
+-- its picture and place for a kind (laid again only when the kind changes)
+function Frames.Dress(ours, region, kind)
+	if Frames.dressed[ours] == kind then
 		return
 	end
-	local want
-	if shown and boss:IsShown() then
-		local ok, atlas = pcall(boss.GetAtlas, boss)
-		atlas = ok and not Secret(atlas) and type(atlas) == "string" and atlas:lower() or ""
-		want = atlas:find("rare", 1, true) and "uf_rare" or "uf_elite"
+	Frames.dressed[ours] = kind
+	local art = Frames.ART[kind]
+	ours:SetTexture(Frames.DIR .. art[1])
+	ours:SetTexCoord(0, art[2], 0, art[3])
+	ours:ClearAllPoints()
+	local at, from = art.at, Frames.anchor[region]
+	if at and from then
+		ours:SetSize(at[3], at[3])
+		ours:SetPoint("CENTER", from, "TOPLEFT", at[1], at[2])
+	else
+		ours:SetAllPoints(region)
 	end
-	if want then
-		crest:SetTexture(Frames.DIR .. want)
+end
+
+-- ours shown while wanted and the game's picture shows; the game's unseen meanwhile
+function Frames.Follow(region)
+	local kind = Frames.kind[region]
+	local want = (kind and Frames.On() and Shown(region)) and true or false
+	local ours = Frames.cover[region]
+	if want and not ours then
+		ours = Frames.Make(region)
+		want = ours ~= nil
 	end
-	crest:SetShown(want ~= nil)
-	boss:SetAlpha(shown and 0 or 1)
+	if ours then
+		if want then
+			Frames.Dress(ours, region, kind)
+		end
+		ours:SetShown(want)
+	end
+	if (Frames.shown[region] or false) ~= want then
+		Frames.shown[region] = want
+		region:SetAlpha(want and 0 or 1)
+	end
+end
+
+function Frames.Set(region, kind, from)
+	if type(region) == "table" and region.SetAlpha then
+		Frames.kind[region] = kind or false
+		Frames.anchor[region] = from
+		Frames.Follow(region)
+	end
 end
 
 function Frames.LayOne(frame)
-	local P = Frames.Parts(frame)
-	if not (P and P.portrait) then
-		return
+	for _, pair in ipairs(Frames.Regions(frame)) do
+		Frames.Set(pair[1], pair[2], pair[3])
 	end
-	local shown = Frames.On()
-	local parts = Frames.made[frame]
-	if not parts then
-		if not shown then
-			return
-		end
-		parts = Frames.Make(frame, P)
-	end
-	for _, key in ipairs({ "ring", "badge", "plate", "health", "power" }) do
-		if parts[key] then
-			parts[key]:SetShown(shown)
-		end
-	end
-	for _, tex in ipairs(P.game) do
-		if tex and tex.SetAlpha then
-			tex:SetAlpha(shown and 0 or 1)
-		end
-	end
-	Frames.Crest(P, parts, shown)
+end
+
+-- a party member's picture: ours while its sharp art is laid (Party.Art; the game's own art has another shape)
+function Frames.Party(member)
+	Frames.Set(rawget(member, "Texture"), Party.art[member] and "small" or false)
 end
 
 function Frames.Lay()
-	for _, frame in ipairs({ PlayerFrame, TargetFrame, FocusFrame }) do
+	for _, frame in ipairs({ PlayerFrame, TargetFrame, FocusFrame, rawget(_G, "TargetFrameToT"),
+		rawget(_G, "FocusFrameToT") }) do
 		if type(frame) == "table" then
 			Frames.LayOne(frame)
 		end
 	end
+	for member in pairs(Party.art) do
+		Frames.Party(member)
+	end
 end
 
-Frames.OnClassification = Shared("CheckClassification on the target / focus frame (MelloUI Frames' crest)", function(frame)
-	local parts = Frames.made[frame]
-	local P = parts and Frames.Parts(frame)
-	if P then
-		Frames.Crest(P, parts, Frames.On())
+-- (the target's and focus's boss picture: the game lays it as the unit's classification is read)
+Frames.OnClassification = Shared("CheckClassification on the target / focus frame (MelloUI Frames' wing)", function(frame)
+	if Frames.On() then
+		Frames.LayOne(frame)
 	end
 end)
 

@@ -16,6 +16,7 @@ Media/FrameFX/Light/, the addon's only.
 """
 import hashlib
 import io
+import json
 import os
 import sys
 
@@ -74,9 +75,8 @@ SET.append(("arrows", "arrow_sapphire", "arrow_player", 128))
 for n in ("normal", "hover", "pressed", "active", "empty", "range"):
     SET.append(("pieces", "btn_frame_" + n, "frame_" + n, 128))
 SET.append(("pieces", "bar_spark", "bar_spark", (64, 48)))   # (Batch 24: the light on the fill's leading edge)
-# (Batch 25) the unit frames' portrait ring, level badge and the elite and rare wings
-SET += [("pieces", "uf_ring", "uf_ring", 128), ("pieces", "uf_badge", "uf_badge", 64),
-        ("pieces", "uf_elite", "uf_elite", (128, 116)), ("pieces", "uf_rare", "uf_rare", (128, 116))]
+# (Batch 25) the unit frames' level badge (the ring and the bar frames are drawn into UF_FRAMES' pictures)
+SET.append(("pieces", "uf_badge", "uf_badge", 64))
 
 
 def load(group, name):
@@ -158,11 +158,7 @@ PIECES = [("div_diamond", 512, 32), ("dd_closed", 512, 64), ("dd_hover", 512, 64
           ("dd_panel", 256, 256), ("dd_row", 256, 64), ("tab_off", 256, 128), ("tab_hover", 256, 128),
           ("tab_on", 256, 128), ("pill_off", 256, 64), ("pill_on", 256, 64),
           # (Batch 24) the experience and reputation bars' frame, track and notch (Modules/ActionBars.lua)
-          ("bar_frame", 512, 64), ("bar_track", 512, 32), ("bar_notch", 16, 64),
-          # (Batch 25) the unit frames' name plate and bar frames (Modules/UnitFrames.lua), each also mirrored ("_r":
-          # the target's and focus's, their portrait at the right)
-          ("uf_plate", 512, 64), ("uf_health", 512, 64), ("uf_power", 512, 32),
-          ("uf_plate_r", 512, 64), ("uf_health_r", 512, 64), ("uf_power_r", 512, 32)]
+          ("bar_frame", 512, 64), ("bar_track", 512, 32), ("bar_notch", 16, 64)]
 
 
 def piece(name, width, canvas_h):
@@ -329,8 +325,124 @@ def fx_light(name, art, size, colour, how):
     return fx_tint(img, colour)
 
 
+# (2026-10-20, the user: "look at how the original unitframe looks like, take the new art, recreate it exactly how it
+# looks like just with the new borders, make it a single texture and apply it") the unit frames' art, one picture
+# each, laid exactly where the game's own frame picture is (Modules/UnitFrames.lua, MelloUI Frames). Drawn on the
+# game's own layout -- client 70425's c60 2x art, measured once on it (none of its pixels used): the portrait ring's
+# centre and opening, each slot's inside (name, health, mana, the class resource) between the borders, the borders'
+# width -- with Batch 25's pieces: the health frame's gold band round every slot (the power frame's silver round the
+# power ones), the name plate's slate in the name slot, a darker slate in the bars' (a little see-through, as the
+# game's), the portrait ring over them all, its opening cut clear (the portrait shows through it).
+#   canvas, the picture (w, h) at its top left, the ring (centre x, y, opening radius), the band, each band's top
+#   (the slots between: name, health, mana, the class resource), the slots' x (from under the ring to the far edge)
+UF_FRAMES = {
+    # (the player: UI-HUD-UnitFrame-Player-PortraitOn-c60-2x, 396 x 142; with the class resource bar 396 x 148)
+    "uf_frame_player": ((512, 256), (396, 142), (73, 71, 52), 7, (22, 58, 90, 113), (100, 391)),
+    "uf_frame_player_res": ((512, 256), (396, 148), (73, 71, 52), 6, (23, 58, 90, 112, 134), (100, 391)),
+    # (the target's and focus's, its minus mob's the same: Target-PortraitOn-c60-2x, 388 x 136, the ring at the right)
+    "uf_frame_target": ((512, 256), (388, 136), (318.5, 67.5, 49.5), 6, (17, 52, 84, 106), (3, 290)),
+    # (the target of target's -- TargetofTarget-PortraitOn-c60-2x -- and the party's, the same shape:
+    # CharacterFrameOnParty-PortraitOn-c60-2x, 240 x 98)
+    "uf_frame_small": ((256, 128), (240, 98), (45, 45.5, 33), 6, (6, 32, 55, 71), (55, 234)),
+}
+UF_KINDS = ("name", "health", "power", "power")   # the slots from the top: their pieces
+UF_FILL_A = (0.92, 0.85, 0.85, 0.85)               # each slot's inside: its slate's alpha
+UF_BAND_M = 22                                     # a piece's band on its file, from its edge (cut to its picture)
+
+
+def uf_piece(name):
+    img = load("pieces", name)
+    return img.crop(img.getbbox())
+
+
+def uf_slot(piece, w, h, b):
+    # the piece's band round a w x h box, b texels wide, hollow: its straight left end at both ends (mirrored at the
+    # right), its straight middle drawn out along the sides
+    pw, ph = piece.size
+    m = UF_BAND_M
+    src = piece.convert("RGBa")
+    mid = (pw // 4, pw * 3 // 4)
+    parts = {"tl": src.crop((0, 0, m, m)), "bl": src.crop((0, ph - m, m, ph)),
+             "t": src.crop((mid[0], 0, mid[1], m)), "b": src.crop((mid[0], ph - m, mid[1], ph)),
+             "l": src.crop((0, m, m, ph - m))}
+    flip = Image.FLIP_LEFT_RIGHT
+    out = Image.new("RGBa", (w, h), (0, 0, 0, 0))
+    for key, box in (("t", (b, 0, w - b, b)), ("b", (b, h - b, w - b, h)), ("l", (0, b, b, h - b)),
+                     ("r", (w - b, b, w, h - b)), ("tl", (0, 0, b, b)), ("tr", (w - b, 0, w, b)),
+                     ("bl", (0, h - b, b, h)), ("br", (w - b, h - b, w, h))):
+        src_key = {"r": "l", "tr": "tl", "br": "bl"}.get(key, key)
+        img = parts[src_key]
+        if key in ("r", "tr", "br"):
+            img = img.transpose(flip)
+        out.paste(img.resize((box[2] - box[0], box[3] - box[1]), Image.LANCZOS), box[:2])
+    return out.convert("RGBA")
+
+
+def uf_fill(plate, w, h, alpha, dark):
+    # the name plate's slate down a slot's inside (its own light top and darker foot), or a darker one for the bars
+    pw, ph = plate.size
+    col = np.asarray(plate.convert("RGB"), np.float64)[UF_BAND_M:ph - UF_BAND_M, pw // 2]
+    ys = np.linspace(0, len(col) - 1, h)
+    shade = np.stack([np.interp(ys, np.arange(len(col)), col[:, c]) for c in range(3)], 1) * (0.55 if dark else 1)
+    arr = np.zeros((h, w, 4))
+    arr[..., :3] = shade[:, None, :]
+    arr[..., 3] = alpha * 255
+    return Image.fromarray(arr.round().astype(np.uint8), "RGBA")
+
+
+def uf_frame(name):
+    canvas, (w, h), (cx, cy, r_open), b, lines, (x0, x1) = UF_FRAMES[name]
+    plate, gold, silver = uf_piece("uf_plate"), uf_piece("uf_health"), uf_piece("uf_power")
+    art = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    for i in range(len(lines) - 1):
+        top, foot = lines[i], lines[i + 1] + b
+        kind = UF_KINDS[i]
+        art.alpha_composite(uf_fill(plate, x1 - x0 - 2 * b, foot - top - 2 * b, UF_FILL_A[i], kind != "name"),
+                            (x0 + b, top + b))
+        art.alpha_composite(uf_slot(silver if kind == "power" else gold, x1 - x0, foot - top, b), (x0, top))
+    # the ring over them, its opening the game's (the art's opening measured on it), then that opening cut clear
+    ring = uf_piece("uf_ring")
+    a = np.asarray(ring)[..., 3]
+    row = a[a.shape[0] // 2]
+    lit = np.nonzero(row > 128)[0]
+    gaps = [x for x in range(lit.min(), lit.max()) if row[x] <= 128]
+    k = r_open / ((gaps[-1] - gaps[0] + 1) / 2)
+    size = (round(ring.width * k), round(ring.height * k))
+    ring = ring.convert("RGBa").resize(size, Image.LANCZOS).convert("RGBA")
+    art.alpha_composite(ring, (round(cx - size[0] / 2), round(cy - size[1] / 2)))
+    arr = np.asarray(art).astype(np.float64)
+    yy, xx = np.mgrid[0:h, 0:w]
+    d = np.hypot(xx + 0.5 - cx, yy + 0.5 - cy)
+    arr[..., 3] *= np.clip(d - (r_open - 1.5), 0, 1)
+    out = Image.new("RGBA", canvas, (0, 0, 0, 0))
+    out.paste(Image.fromarray(arr.round().astype(np.uint8), "RGBA"), (0, 0))
+    return out
+
+
+# (Batch 29, icons_v2/work/cut_dragons.py) the target's elite, boss and rare dragons: each on a square canvas, the
+# portrait's circle (the sheet's guide) its middle, that circle UF_DRAGON_R texels round -- the target ring's outer
+# band, so the dragon lies over the ring's rim as the game's does (Modules/UnitFrames.lua lays it on the ring's centre)
+UF_DRAGONS = ("elite", "boss", "rare")
+UF_DRAGON_CANVAS, UF_DRAGON_R = 256, 60
+
+
+def uf_dragon(name):
+    with open(os.path.join(ART, "out", "pieces", "uf_dragon.json")) as f:
+        r = json.load(f)[name]["radius"]
+    img = load("pieces", "uf_dragon_" + name)
+    side = round(img.width * UF_DRAGON_R / r)
+    img = img.convert("RGBa").resize((side, side), Image.LANCZOS)
+    out = Image.new("RGBa", (UF_DRAGON_CANVAS, UF_DRAGON_CANVAS), (0, 0, 0, 0))
+    out.paste(img, ((UF_DRAGON_CANVAS - side) // 2, (UF_DRAGON_CANVAS - side) // 2))
+    return out.convert("RGBA")
+
+
 def files():
     out = []
+    for name in sorted(UF_FRAMES):
+        out.append((name, uf_frame(name)))
+    for name in UF_DRAGONS:
+        out.append(("uf_boss_" + name, uf_dragon(name)))
     for name in FLIPBOOKS:
         out.append(("fx_" + name, flipbook(name)))
     for name, width, canvas_h in PIECES:

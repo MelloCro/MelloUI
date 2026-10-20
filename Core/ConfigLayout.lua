@@ -618,8 +618,9 @@ function L.Define(R, Link)
 	-- (0.19.4, the options audit: the unit frame skin fades or replaces the
 	-- same art and puts the writes back)
 	local UF = Uncovered("UnitFramePanel", "unit frames")
-	-- (2026-10-20, the user's sheet: the frames as laid out, in the set's style)
-	UGF({ "player:element", "target:element", "focus:element" }, "Look", "UnitFrames.frames", { when = UF })
+	-- (2026-10-20, the user's sheet: the frames as laid out, in the set's style; the party's too: "you always forget
+	-- the Party Frames")
+	UGF({ "player:element", "target:element", "focus:element", "party:element" }, "Look", "UnitFrames.frames", { when = UF })
 	UGF({ "player:combat", "target:combat", "focus:combat", "pet:combat" }, "Look", "UnitFrames.hideCombatGlow", { when = UF, plus = "Party portraits" })
 	UGF({ "player:status", "pet:status" }, "Look", "UnitFrames.hideStatusGlow", { when = UF })
 	UGF({ "player:pvp", "target:pvp", "focus:pvp" }, "Look", "UnitFrames.hidePvPBadge", { when = UF })
