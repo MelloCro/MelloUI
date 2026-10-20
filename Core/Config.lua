@@ -1298,6 +1298,11 @@ do
 		-- options, links to its rows -- is passed by quietly while it is not loaded, a `when` on such a switch reading
 		-- it as off; with it loaded every problem is told)
 		local quiet = type(rawget(MelloUI, "Oldschool")) ~= "table"
+		-- (2026-10-20, the user: "Make sure that OldSchool reskin functions that only affect the oldschool reskin are
+		-- not shown without the addon MelloUI_Oldschool enabled") the ids of the rows left out for that (AddRow): never
+		-- placed again as a fallback row either
+		local hidden = {}
+		out.hidden = hidden
 		for key, def in pairs(L.pages) do
 			if def.oldschool and type(rawget(MelloUI, "Oldschool")) ~= "table" then
 				gone[key] = true
@@ -1408,6 +1413,29 @@ do
 			end
 			return { b = b, value = w.value, notValue = w.notValue, line = w.line }
 		end
+		-- a bound `when` that cannot hold while MelloUI_Oldschool is not loaded: it rests only on its switches (read
+		-- as off, BindWhen's const) where it must hold, and they do not hold
+		local function Never(w)
+			local parts = w.any or w.all
+			if parts then
+				for i = 1, #parts do
+					local never = Never(parts[i])
+					if w.any and not never then
+						return false
+					elseif w.all and never then
+						return true
+					end
+				end
+				return w.any ~= nil
+			end
+			if w.b then
+				return false
+			end
+			if w.notValue ~= nil then
+				return w.const == w.notValue
+			end
+			return w.const ~= w.value
+		end
 		local function AddRow(p, t, s, what, extra)
 			local r = { page = p.key, tab = t, section = s }
 			local first
@@ -1503,12 +1531,20 @@ do
 			end
 			if extra.gate then
 				r.gate = Bind(extra.gate)
-				if not r.gate then
+				if not r.gate and not quiet then
 					Problem("%s > %s: no switch '%s'", p.key, t.name, extra.gate)
 				end
 			end
 			if extra.when then
 				r.when = BindWhen(extra.when, p.key, t.name)
+			end
+			-- a row that only lives while a switch of MelloUI_Oldschool's is on (its gate, its `when`): left out
+			-- while that addon is not loaded
+			if quiet and ((extra.gate and not r.gate) or (r.when and Never(r.when))) then
+				for _, b in ipairs(r.distinct or { first }) do
+					hidden[b.id] = true
+				end
+				return nil
 			end
 			-- (0.19.4) a row with a key per pick: a `when` per key, by id
 			if extra.whenFor then
@@ -1540,6 +1576,17 @@ do
 		end
 		local links = {}
 		local function R(pageKey, tab, section, what, extra)
+			-- (a row on a page of MelloUI_Oldschool's while it is not loaded -- the borders, the parchment sheets --
+			-- is the reskin's: hidden, never placed again as a fallback row in its module's Advanced)
+			if gone[pageKey] then
+				local ids = type(what) == "string" and { what } or (type(what) == "table" and not what.prefix and what) or EMPTY
+				for _, id in pairs(ids) do
+					if type(id) == "string" then
+						hidden[id] = true
+					end
+				end
+				return
+			end
 			local p, t, s = Section(pageKey, tab, section)
 			if not s then
 				return
@@ -1609,6 +1656,10 @@ do
 				end
 			end
 			lk.p = nil
+			-- (a link that only means something while a switch of MelloUI_Oldschool's is on: left out without it)
+			if good and quiet and lk.when and Never(lk.when) then
+				good = false
+			end
 			if good then
 				lk.isLink = true
 				local list = lk.section.links
@@ -1623,7 +1674,7 @@ do
 			for _, o in ipairs(type(m.options) == "table" and m.options or EMPTY) do
 				if IsOption(o) then
 					local id = o.key ~= nil and (name .. "." .. tostring(o.key)) or (name .. ".#" .. tostring(o.name))
-					if not place[id] and not unplaced[id] then
+					if not place[id] and not unplaced[id] and not hidden[id] then
 						local key, tab = Lay.HomeOf(out, name)
 						local p = key and out.pages[key]
 						local t = p and (p.tabOf[tab] or p.tabs[1])

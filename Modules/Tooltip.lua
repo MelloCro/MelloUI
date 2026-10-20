@@ -49,13 +49,13 @@ local M = MelloUI:RegisterModule("Tooltip", {
 		-- settings it sets keep their own keys -- UI Modifications'
 		-- TooltipPanel and parchment_tooltip, darkBackdrop and darkBorder --
 		-- read by `get`, written by OnSettingChanged)
+		-- (2026-10-20, the user: the reskin's own choices never shown without MelloUI_Oldschool: Painted and
+		-- Parchment are put first by its TooltipPanel, M.PaintedBackgrounds)
 		{ type = "dropdown", key = "background", name = "Background", values = {
-			{ value = "painted", label = "Painted" },
-			{ value = "parchment", label = "Parchment" },
 			{ value = "dark", label = "Dark" },
 			{ value = "game", label = "Game" },
 		  }, get = function(db) return Background(db) end,
-		  desc = "The tooltips' background: the painted kit (Painted), the kit with a parchment sheet whose text is dark ink (Parchment), a flat near-black box with a dark border in your palette's colours (Dark), or the game's own. Painted and Parchment need the reskin on (Look)." },
+		  desc = "The tooltips' background: a flat near-black box with a dark border in your palette's colours (Dark), or the game's own." },
 		{ type = "slider", key = "backdropAlpha", name = "Backdrop Opacity", min = 0.3, max = 1, step = 0.05, percent = true,
 		  desc = "Opacity of the Dark background." },
 		{ type = "toggle", key = "classBorder", name = "Class / Reaction Border",
@@ -121,12 +121,29 @@ end
 -- darkBackdrop and darkBorder.
 Background = function(db)
 	local ui = Saved("UIModifications")
-	if not (ui and ui.TooltipPanel == false) then
+	-- (the painted skin only with MelloUI_Oldschool loaded: without it TooltipPanel is no setting, Dark or Game)
+	if M.painted and not (ui and ui.TooltipPanel == false) then
 		return (ui and ui.parchment_tooltip == true) and "parchment" or "painted"
 	end
 	return (db and db.darkBackdrop) and "dark" or "game"
 end
 M.Background = Background   -- (read only: the tests)
+
+-- (one look) MelloUI_Oldschool's TooltipPanel, when it loads: the painted skin's two choices put first, and Background
+-- reads its switch from then on
+function M.PaintedBackgrounds(desc)
+	if M.painted then
+		return
+	end
+	M.painted = true
+	for _, o in ipairs(M.options or {}) do
+		if o.key == "background" and type(o.values) == "table" then
+			table.insert(o.values, 1, { value = "parchment", label = "Parchment" })
+			table.insert(o.values, 1, { value = "painted", label = "Painted" })
+			o.desc = desc or o.desc
+		end
+	end
+end
 
 local function Put(module, key, value)
 	local t = Saved(module)
@@ -712,8 +729,13 @@ end
 -- Module lifecycle
 --------------------------------------------------------------------------------
 
-local function ApplyAll()
+-- fresh (a setting changed): the game's colours back first, once, so a look switched off (Dark to Game, the
+-- class border off) leaves the tooltips as the game draws them (2026-10-20: the configurator pass found them kept)
+local function ApplyAll(fresh)
 	for _, tooltip in ipairs(TooltipList()) do
+		if fresh then
+			RestoreBackdrop(tooltip)
+		end
 		StyleBackdrop(tooltip)
 	end
 	ApplyHealthBar()
@@ -752,7 +774,7 @@ function M:OnSettingChanged(key, value, db)
 			MelloUI:RefreshConfig()
 		end
 	end
-	ApplyAll()
+	ApplyAll(true)
 end
 
 MelloUI:Profile("Tooltip", "unit tooltips", OnUnitTooltip)

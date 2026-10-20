@@ -392,6 +392,18 @@ function L.Define(R, Link)
 	-- (Buffs & Debuffs with Your Buffs And Debuffs) stand in their place
 	-- (one look Q9: no Buffs & Debuffs master -- Your Buffs And Debuffs alone)
 	local GAME_AURAS = { any = { { key = "Auras.player", value = false } } }
+	-- (2026-10-20, the configurator pass: a folded feature's rows sleep while none of its switches is on -- they
+	-- set nothing then; one look Q9 made the frames' switches the features' only switches, off for a new player)
+	local BAR_VALUES = { any = { { key = "BarText.player", value = true }, { key = "BarText.target", value = true },
+		{ key = "BarText.focus", value = true } }, line = "Only with values on a frame (Values On This Frame)" }
+	local OWN_PLAYER = { key = "Auras.player", value = true, line = "Only with Buffs & Debuffs On This Frame" }
+	local OWN_TARGET = { key = "Auras.target", value = true, line = "Only with Buffs & Debuffs On This Frame" }
+	local OWN_ATTACHED = { all = { OWN_PLAYER, { key = "Auras.playerFrame", value = true } },
+		line = "Only with Attach To The Player Frame" }
+	local OWN_ANY = { any = { OWN_PLAYER, OWN_TARGET, { key = "Auras.nameplates", value = true } },
+		line = "Only with your buffs and debuffs shown (Buffs & Debuffs On This Frame, Your Debuffs on the nameplates)" }
+	local TIMERS = { any = { { key = "CooldownText.actionBars", value = true }, { key = "CooldownText.nameplates", value = true } },
+		line = "Only with Cooldown Timers on (the action bars' or the nameplates')" }
 	-- the game's objective tracker: hidden while MelloUI's Quest Tracker is on
 	local GAME_TRACKER = { key = "QuestTracker.!enabled", value = false,
 		line = "Only for the game's tracker (MelloUI's Quest Tracker off)" }
@@ -474,12 +486,12 @@ function L.Define(R, Link)
 	-- (0.19.1, the user 2026-10-04: "all font sizes, font types and anything thats changing the font somewhere into
 	-- this tab": each element's text size and font, named by its element; each of those pages links its own)
 	R("Oldschool", "Parchment", "Text", "Fonts.scaleChatParchment", { gate = "UIModifications.parchment_chat" })
-	R("Look", "Fonts", "Text", "BarText.fontSize", { name = "Unit Frame Bars: Font Size" })
+	R("Look", "Fonts", "Text", "BarText.fontSize", { name = "Unit Frame Bars: Font Size", when = BAR_VALUES })
 	-- (the Bars audit's point 2: the cooldown timers' style, shared by the action bars and the nameplates)
-	R("Look", "Icons", "Text", "CooldownText.fontRatio", { name = "Timer Text Size" })
-	R("Look", "Icons", "Text", "CooldownText.tenths")
-	R("Look", "Icons", "Text", "CooldownText.colorByTime")
-	R("Look", "Icons", "Behaviour", "CooldownText.minDuration")
+	R("Look", "Icons", "Text", "CooldownText.fontRatio", { name = "Timer Text Size", when = TIMERS })
+	R("Look", "Icons", "Text", "CooldownText.tenths", { when = TIMERS })
+	R("Look", "Icons", "Text", "CooldownText.colorByTime", { when = TIMERS })
+	R("Look", "Icons", "Behaviour", "CooldownText.minDuration", { when = TIMERS })
 	R("Look", "Fonts", "Text", "QuestTracker.textSize", { name = "Quest Tracker: Text Size" })
 	R("Look", "Fonts", "Text", "QuestTracker.headerSize", { name = "Quest Tracker: Header Text Size" })
 	-- (the configurator audit, 2026-10-01: one size per thing on screen --
@@ -656,16 +668,17 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "player:values", "Text", "BarText.player", { name = "Values On This Frame" })
 	R("UnitGroupFrames", "target:values", "Text", "BarText.target", { name = "Values On This Frame" })
 	R("UnitGroupFrames", "focus:values", "Text", "BarText.focus", { name = "Values On This Frame" })
-	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.health")
-	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.power")
-	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.format")
-	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.valueFont", { name = "Font" })
-	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.position")
-	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.offsetX")
-	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.offsetY")
+	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.health", { when = BAR_VALUES })
+	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.power", { when = BAR_VALUES })
+	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.format", { when = BAR_VALUES })
+	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.valueFont", { name = "Font", when = BAR_VALUES })
+	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.position", { when = BAR_VALUES })
+	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.offsetX", { when = BAR_VALUES })
+	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.offsetY", { when = BAR_VALUES })
 	R("UnitGroupFrames", "buffs:element", "General", "Auras.player", { name = "Buffs & Debuffs On This Frame" })
 	R("UnitGroupFrames", "target:auras", "General", "Auras.target", { name = "Buffs & Debuffs On This Frame" })
-	UGF({ "buffs:element", "target:auras" }, "Text", "Auras.textFont", { name = "Numbers Font", plus = "the nameplates' debuffs" })
+	UGF({ "buffs:element", "target:auras" }, "Text", "Auras.textFont", { name = "Numbers Font", plus = "the nameplates' debuffs",
+		when = OWN_ANY })
 	R("UnitGroupFrames", "all", "General", "HealerFrames.debuffGlow")
 	-- (0.19.4: Dark Mode reaches the game's own icons of yours, never the
 	-- target's; with MelloUI's rows in their place it has nothing to darken.
@@ -679,7 +692,7 @@ function L.Define(R, Link)
 	-- they show, else the game's buff and debuff bars in the Edit Mode
 	-- layout: Tweaks' Buff Layout; the size in pixels on both picks)
 	R("UnitGroupFrames", "buffs:element", "Layout", "Tweaks.buffSize", { name = "Icon Size" })
-	R("UnitGroupFrames", "target:auras", "Layout", "Auras.targetSize", { name = "Icon Size" })
+	R("UnitGroupFrames", "target:auras", "Layout", "Auras.targetSize", { name = "Icon Size", when = OWN_TARGET })
 	-- (0.20.1) the rows' own layout sleeps while they hang under the player frame (the target rows' look there)
 	local NOT_FRAMED = { any = { GAME_AURAS.any[1], { key = "Auras.playerFrame", value = false } },
 		line = "Not with Attach To The Player Frame" }
@@ -689,10 +702,10 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "buffs:element", "Layout", "Tweaks.buffNewRows", { when = NOT_FRAMED })
 	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerColumn", { when = NOT_FRAMED })
 	-- (0.20.1, the user: "an option under UnitFrames -> Player to attach their own buffs and debuffs to their unitframe")
-	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerFrame")
-	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerFrameGrow")
-	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerFrameSize")
-	R("UnitGroupFrames", "target:auras", "Behaviour", "Auras.targetOnlyMine")
+	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerFrame", { when = OWN_PLAYER })
+	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerFrameGrow", { when = OWN_ATTACHED })
+	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerFrameSize", { when = OWN_ATTACHED })
+	R("UnitGroupFrames", "target:auras", "Behaviour", "Auras.targetOnlyMine", { when = OWN_TARGET })
 	R("UnitGroupFrames", "all", "Behaviour", "HealerFrames.debuffGlowShows")
 
 	-- Nameplates (one look stage G: the designer; np-audit.md's table)
@@ -717,7 +730,8 @@ function L.Define(R, Link)
 	R("Nameplates", "enemies:quest", "General", "Nameplates.questIcon")
 	R("Nameplates", "enemies:quest", "Layout", "Nameplates.questIconSize", { name = "Size" })
 	R("Nameplates", "enemies:debuffs", "General", "Auras.nameplates")
-	R("Nameplates", "enemies:debuffs", "Layout", "Auras.nameplateSize")
+	R("Nameplates", "enemies:debuffs", "Layout", "Auras.nameplateSize",
+		{ when = { key = "Auras.nameplates", value = true, line = "Only with Your Debuffs on the nameplates" } })
 	R("Nameplates", "enemies:auras", "General", "CooldownText.nameplates")   -- (the Bars audit: Cooldown Timers' switch here)
 	-- Friendly players: Party Markers' switch first
 	R("Nameplates", "friendly:element", "General", "PartyMarkers.!enabled", { name = "Party Markers" })

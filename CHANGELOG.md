@@ -24,6 +24,9 @@
 - Edit Layout: more of the game's windows can be moved without the painted reskin: the auction house, trainers, guild bank, inspect, gem socketing, the PvP scoreboard and results, the calendar, the clock, chat channels, the help window, the addon list and the game's options.
 - Combat Text: Your Damage Size (Screen Text > Combat Text > Text, 70% by default) makes Your Damage's numbers over the enemies smaller or bigger. They had no size of their own on this client, and were too big.
 - Quest List: the tooltips of the list and of the givers' map marks are short: what level the quest needs, where it begins (its giver, or the item and where it drops), how it stands for you and one line for what a click does.
+- Tooltip: switching the Background from Dark back to Game gives the tooltips the game's look at once (it waited for a reload). Without MelloUI Oldschool the Background offers Dark and Game only.
+- Configurator: without MelloUI Oldschool, nothing of the painted reskin shows anywhere: its palettes, borders and parchment switches and the rows that need a painted skin are gone, and the configurator opens on a fresh install.
+- Configurator: the rows of Bar Values, Buffs & Debuffs and Cooldown Timers rest, dimmed with a line saying why, while none of their frames' switches is on.
 - Tooltip: Coloured Lines (Tooltip > Look, on): in a unit's tooltip the guild is green, Alliance blue and Horde red, the level line in the colour of how hard the unit is for you, a quest's title gold and its objectives cream while still to do, green once done.
 - Heal Flight and Frame Effects: new art made of soft light in MelloUI's look: the crosses, leaves, drops and sparks of a heal, the shields and crests, the rings and the streaks; the loot, level-up and XP lights too. With the painted reskin on (Oldschool) the old art stays.
 - Party frames: each member's level shows at the end of its name line, every number in one column.

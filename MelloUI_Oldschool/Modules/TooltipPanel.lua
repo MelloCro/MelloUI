@@ -50,6 +50,16 @@ local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
 
+-- (one look) the core Tooltip's Background offers the painted skin's choices while this addon is loaded
+do
+	local tooltip = MelloUI.modules and MelloUI.modules.Tooltip
+	if tooltip and tooltip.PaintedBackgrounds then
+		tooltip.PaintedBackgrounds("The tooltips' background: the painted kit (Painted), the kit with a parchment sheet "
+			.. "whose text is dark ink (Parchment), a flat near-black box with a dark border in your palette's colours "
+			.. "(Dark), or the game's own. Painted and Parchment need the reskin on (Oldschool).")
+	end
+end
+
 local M = MelloUI:RegisterModule("TooltipPanel", {
 	title = "Tooltip Kit",
 	desc = "Tooltips dressed in the painted kit: the stone box with the single rail, the unit health bar in the bracket.",
