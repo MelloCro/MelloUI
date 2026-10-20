@@ -2180,6 +2180,19 @@ do
 						end
 					end
 				end
+				-- (the user's screenshot, 2026-10-20: "they dont show the icons") the template's mask cuts the icon to the
+				-- game's tab shape, mirrored here for the left: in the game nothing of the icon was left. MelloUI's plate
+				-- shows it whole; the kit's rim has the mask back
+				local mask, icon = tab.Mask, tab.Icon
+				if mask and icon.RemoveMaskTexture then
+					if not kit and not tab.melloUnmasked then
+						pcall(icon.RemoveMaskTexture, icon, mask)
+						tab.melloUnmasked = true
+					elseif kit and tab.melloUnmasked then
+						pcall(icon.AddMaskTexture, icon, mask)
+						tab.melloUnmasked = nil
+					end
+				end
 				local open = key == win.tab
 				if tab.melloEdge then
 					W.Paint(tab.melloEdge, open and "selectedTrim" or "border")
