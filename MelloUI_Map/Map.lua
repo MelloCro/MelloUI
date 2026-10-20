@@ -22,6 +22,8 @@
 --                           link in the chat (the game's own map pin link: anyone
 --                           can click it; in MelloUI's chat it opens on this map)
 --   /mellomap share         your pin's link in the chat
+--   the search (title row)  places, your quests, dungeons, flight masters, docks
+--                           and quest givers: Enter or a click goes there (MapSearch.lua)
 --   M (the game's map key)  opens it instead of the game's map (the keys bound
 --                           to the game's world map, while the map is on)
 --   L (the quest log's key) opens it with your quests beside it (MapQuestLog.lua:
@@ -39,7 +41,7 @@ local Finite = MelloUI.Safe.Finite
 local Text = MelloUI.Safe.Text
 local W = MelloUI.Widgets
 local Kit = MelloUI.Kit
-local Canvas, Pins, Layers, Log = ns.Canvas, ns.Pins, ns.Layers, ns.QuestLog
+local Canvas, Pins, Layers, Log, Search = ns.Canvas, ns.Pins, ns.Layers, ns.QuestLog, ns.Search
 local floor, max = math.floor, math.max
 
 local ICON = "Interface\\Icons\\INV_Misc_Map_01"
@@ -447,6 +449,7 @@ end
 local function Hidden()
 	Layers.Close()
 	Log.Hidden()
+	Search.Hidden()
 	win.drag.on = false
 	PinTip(nil)
 	win.over = false
@@ -514,6 +517,8 @@ local function Build()
 	-- the quest log's column on the canvas's right: out or folded as it was left
 	win.module = M
 	Log.Init(win)
+	-- (M4) the search in the title row
+	Search.Init(win)
 	local name = W.Text(body, "GameFontHighlight", nil, "text")
 	name:SetPoint("BOTTOMLEFT", body, "BOTTOMLEFT", 8, 5)
 	name:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -8, 5)
@@ -543,6 +548,11 @@ end
 -- the quest log's column (MapQuestLog.lua): the tests' and the dump's way in
 function M:QuestLog()
 	return Log
+end
+
+-- the search (MapSearch.lua): the tests' way in
+function M:Search()
+	return Search
 end
 
 function M:Toggle(show)

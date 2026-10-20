@@ -741,6 +741,34 @@ function Layers.Labels()
 end
 
 --------------------------------------------------------------------------------
+-- (M4, the search) the named places the layers lay -- flight masters, docks,
+-- dungeons and raids -- each handed to add(kind, name, icon, wx, wy)
+--------------------------------------------------------------------------------
+
+function Layers.Searchable(add)
+	local pins = S.pins
+	if not pins then
+		return
+	end
+	for _, pin in pairs(pins.layers.flights and pins.layers.flights.pins or EMPTY) do
+		if type(pin.data) == "string" then
+			add("flight", pin.data, pin.spec and pin.spec.icon, pin.wx, pin.wy)
+		end
+	end
+	for _, pin in pairs(pins.layers.transports and pins.layers.transports.pins or EMPTY) do
+		if type(pin.data) == "table" then
+			add("dock", pin.data.title, pin.spec and pin.spec.icon, pin.wx, pin.wy)
+		end
+	end
+	for _, pin in pairs(pins.layers.entrances and pins.layers.entrances.pins or EMPTY) do
+		local d = pin.data
+		if type(d) == "table" then
+			add(d.kind == 2 and "raid" or "dungeon", d.name, pin.spec and pin.spec.icon, pin.wx, pin.wy)
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
 -- The game's own map pin (C_Map's user waypoint) while Route is off: Route,
 -- when on, takes the pin as its goal and draws it itself
 --------------------------------------------------------------------------------
