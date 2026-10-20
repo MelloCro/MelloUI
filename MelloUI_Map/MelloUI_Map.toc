@@ -13,6 +13,7 @@ MapCanvas.lua
 MapPins.lua
 MapLayers.lua
 MapAddonPins.lua
+MapObjectives.lua
 MapQuestLog.lua
 MapSearch.lua
 Map.lua

@@ -693,8 +693,8 @@ local function ApiEarly()
 end
 
 function AddonPins.Open()
-	if not S.pins then
-		return
+	if not S.pins or not S.pins.layers[LAYER.zone].on then
+		return   -- (switched off: other addons' icons left to the game's map)
 	end
 	S.shown = true
 	if not S.apiLaid then

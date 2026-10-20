@@ -22,6 +22,10 @@
 --                           link in the chat (the game's own map pin link: anyone
 --                           can click it; in MelloUI's chat it opens on this map)
 --   /mellomap share         your pin's link in the chat
+--   your quests' objectives every open objective of your log's quests, on the whole map
+--                           (MapObjectives.lua)
+--   the layers button       (the gear beside the quest column's opener) a check per layer:
+--                           what the map shows, kept in the module's settings (db.layers)
 --   other addons' pins      Questie's (HereBeDragons), HandyNotes', GatherMate2's, and
 --                           MelloUI.Map:AddPin for any addon (MapAddonPins.lua)
 --   the search (title row)  places, your quests, dungeons, flight masters, docks
@@ -44,7 +48,7 @@ local Text = MelloUI.Safe.Text
 local W = MelloUI.Widgets
 local Kit = MelloUI.Kit
 local Canvas, Pins, Layers, Log, Search = ns.Canvas, ns.Pins, ns.Layers, ns.QuestLog, ns.Search
-local AddonPins = ns.AddonPins
+local AddonPins, Objectives = ns.AddonPins, ns.Objectives
 local floor, max = math.floor, math.max
 
 local ICON = "Interface\\Icons\\INV_Misc_Map_01"
@@ -70,6 +74,20 @@ local TEXT = {
 	open = "Open The Map",
 	usage = "/mellomap: open or close the map | /mellomap share: your pin's link in the chat | /mellomap dump: its places and the view, to copy",
 	off = "The map is off: switch it on in /mello (Quests and travel > Map).",
+	layers = "The map shows",
+}
+
+-- (after M4; the user, 2026-10-20: "Layer switches", a button on the map, "Objectives on, rares off") what the map
+-- shows: a check per layer, kept in the module's settings (db.layers[key] = false: off; every one on until switched)
+local SWITCHES = {
+	{ key = "quests", label = "Quest givers", layers = { "quests" } },
+	{ key = "objectives", label = "Your quests' objectives", layers = { "objectives", "objective_dots" } },
+	{ key = "flights", label = "Flight masters", layers = { "flights" } },
+	{ key = "transports", label = "Boats, zeppelins and portals", layers = { "transports" } },
+	{ key = "entrances", label = "Dungeons and raids", layers = { "entrances" } },
+	{ key = "group", label = "Your party and raid", layers = { "group" } },
+	{ key = "names", label = "Zone names", layers = { "names" } },
+	{ key = "addons", label = "Other addons' pins", layers = { "addons", "addons_continent", "addons_world" } },
 }
 
 local M   -- (the module: its button opens it)
@@ -311,6 +329,84 @@ local function SetPin(x, y)
 	return PinTo(p.id, (wx - p.left) / p.w, (wy - p.top) / p.h, TEXT.pinLabel)
 end
 
+-- (after M4) a waypoint at a laid pin (the objectives' marks without the Quest List): the map under it, as your pin
+function M:PinOn(pin, label)
+	local c = win.canvas
+	local p = c and pin and pin.wx and c:PlaceAt(pin.wx, pin.wy)
+	if not p then
+		MelloUI:Print(TEXT.pinNone)
+		return false
+	end
+	return PinTo(p.id, (pin.wx - p.left) / p.w, (pin.wy - p.top) / p.h, label or TEXT.pinLabel)
+end
+
+--------------------------------------------------------------------------------
+-- The layers' switches (the layers button's menu)
+--------------------------------------------------------------------------------
+
+local function LayerOn(key)
+	local l = M.db and M.db.layers
+	return not (type(l) == "table" and l[key] == false)
+end
+
+local function ApplyLayers()
+	local pins = win.pins
+	for _, s in ipairs(SWITCHES) do
+		local on = LayerOn(s.key)
+		for _, name in ipairs(s.layers) do
+			if pins.layers[name] then
+				pins:Show(name, on)
+			end
+		end
+	end
+end
+
+-- a layer on or off: shown or hidden at once; the objectives laid (or let go), other addons' icons borrowed (or
+-- handed back to the game's map)
+local function SetLayer(key, on)
+	local db = M.db
+	db.layers = type(db.layers) == "table" and db.layers or {}
+	if on then
+		db.layers[key] = nil
+	else
+		db.layers[key] = false
+	end
+	ApplyLayers()
+	local shown = win.frame and win.frame:IsShown()
+	if key == "objectives" and shown then
+		Objectives.Lay()
+	elseif key == "addons" and shown then
+		if on then
+			AddonPins.Open()
+		else
+			AddonPins.Close()
+		end
+	end
+	win.pins:Lay()
+end
+M.SetLayer, M.LayerOn = function(_, key, on) SetLayer(key, on) end, function(_, key) return LayerOn(key) end
+
+local function LayersMenu(_, root)
+	root:CreateTitle(TEXT.layers)
+	for _, s in ipairs(SWITCHES) do
+		root:CreateCheckbox(s.label, function()
+			return LayerOn(s.key)
+		end, function()
+			SetLayer(s.key, not LayerOn(s.key))
+		end)
+	end
+end
+
+-- (the game's menu, as the Quest List's filter; not in the Gamepad UI, where the button hides: the game's menu
+-- opened from MelloUI code runs its frame manager in MelloUI's run -- the Services note)
+local FilterClick = Perf.Shared("OnClick on the map's layers button", function(self)
+	if MelloUI.Safe.GamepadUI() or not (MenuUtil and MenuUtil.CreateContextMenu) then
+		return
+	end
+	MelloUI:PlayUISound("click")
+	MenuUtil.CreateContextMenu(self, LayersMenu)
+end, "script")
+
 -- your pin's link in the chat: the game's own map pin link (C_Map.GetUserWaypointHyperlink), which anyone can click
 function M:SharePin()
 	local ok, link = false, nil
@@ -473,18 +569,26 @@ local function Shown()
 	c:Layout()
 	Refit()
 	Layers.Open()
-	AddonPins.Open()
+	AddonPins.Open()   -- (nothing while its switch is off: other addons' icons left to the game's map)
+	Objectives.Open()
 	Log.Shown()
+	local filter = Log.Filter()
+	if filter then
+		filter:SetShown(not MelloUI.Safe.GamepadUI())
+	end
 	c.stats.openMs = debugprofilestop() - t0
 	local f = win.frame
 	f:RegisterEvent("MAP_EXPLORATION_UPDATED")
 	f:RegisterEvent("TAXIMAP_OPENED")
 	f:RegisterEvent("TAXI_NODE_STATUS_CHANGED")
+	f:RegisterEvent("QUEST_LOG_UPDATE")
+	f:RegisterEvent("QUEST_WATCH_LIST_CHANGED")
 end
 
 local function Hidden()
 	Layers.Close()
 	AddonPins.Close()
+	Objectives.Close()
 	Log.Hidden()
 	Search.Hidden()
 	win.drag.on = false
@@ -502,12 +606,15 @@ local function Hidden()
 	f:UnregisterEvent("MAP_EXPLORATION_UPDATED")
 	f:UnregisterEvent("TAXIMAP_OPENED")
 	f:UnregisterEvent("TAXI_NODE_STATUS_CHANGED")
+	f:UnregisterEvent("QUEST_LOG_UPDATE")
+	f:UnregisterEvent("QUEST_WATCH_LIST_CHANGED")
 end
 
 -- the window's beat while it shows (the layers' positions; nothing runs while it is closed)
 local function Frame_OnUpdate(_, elapsed)
 	Layers.Tick(elapsed)
 	AddonPins.Tick()
+	Objectives.Tick(elapsed)
 	Log.Tick()
 end
 
@@ -516,6 +623,8 @@ local function Frame_OnEvent(_, event)
 		win.canvas:Explored()
 	elseif event == "TAXIMAP_OPENED" or event == "TAXI_NODE_STATUS_CHANGED" then
 		Layers.Event()   -- (a flight point learned, or a flight master's map: the flights again)
+	elseif event == "QUEST_LOG_UPDATE" or event == "QUEST_WATCH_LIST_CHANGED" then
+		Objectives.Soon()   -- (the objectives again after the burst)
 	end
 end
 
@@ -558,11 +667,16 @@ local function Build()
 	end
 	Layers.Init(canvas, pins)
 	AddonPins.Init(canvas, pins)
+	Objectives.Init(canvas, pins)
+	pins:Layer("names", Layers.T.ORDER.names)   -- (made here: its switch applies before the first names are laid)
 	-- the quest log's column on the canvas's right: out or folded as it was left
 	win.module = M
 	Log.Init(win)
 	-- (M4) the search in the title row
 	Search.Init(win)
+	-- (after M4) the layers button beside the column's opener; the layers as they were left
+	Log.Filter(FilterClick)
+	ApplyLayers()
 	local name = W.Text(body, "GameFontHighlight", nil, "text")
 	name:SetPoint("BOTTOMLEFT", body, "BOTTOMLEFT", 8, 5)
 	name:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -8, 5)

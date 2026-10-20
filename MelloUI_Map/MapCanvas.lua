@@ -927,9 +927,14 @@ end
 
 -- the maps under a canvas point, the world first, each one in by the client's own shapes
 function Canvas:Path(x, y, out)
+	local wx, wy = self:Point(x, y)
+	return self:PathWorld(wx, wy, out)
+end
+
+-- the same at a world point (world units)
+function Canvas:PathWorld(wx, wy, out)
 	out = out or {}
 	wipe(out)
-	local wx, wy = self:Point(x, y)
 	local p = self.byID[T.WORLD]
 	while p do
 		out[#out + 1] = p
@@ -945,6 +950,15 @@ function Canvas:Path(x, y, out)
 		end
 	end
 	return out
+end
+
+-- (after M4) the deepest map at a world point other than the world (a zone, a city, a continent), or nil: an
+-- objective mark's map for its waypoint
+local placePath = {}
+function Canvas:PlaceAt(wx, wy)
+	local path = self:PathWorld(wx, wy, placePath)
+	local p = path[#path]
+	return (p and p.kind ~= "world") and p or nil
 end
 
 -- the next map in under the point: the first on its path that the view does not show whole yet

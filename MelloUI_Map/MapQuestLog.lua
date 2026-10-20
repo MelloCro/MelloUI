@@ -40,6 +40,9 @@
 --                          as the configurator's tabs (Anim:CrossFade)
 --   Log.ViewChanged()      the map's view moved: the Quest List again when its zone did
 --   Log.Unmount()          the map off: the Quest List's page back to the game's column
+--   Log.Filter(click)      (after M4) the map's layers button beside the opener (beside the column while it
+--                          is out): the set's gear; click(button) opens the layers' menu (Map.lua)
+--   S.showID               the quest whose places Show laid (the objectives layer leaves it to them)
 --   Log.State()            the tests' and the dump's look in
 --------------------------------------------------------------------------------
 
@@ -63,6 +66,7 @@ local T = {
 	PAD = 10,                   -- room inside the column
 	BAR = 3,                    -- the thin scroll bar, and its gap
 	SLIDE = 12,                 -- the page switch's slide (the configurator's)
+	FILTER_GAP = 6,             -- (after M4) the layers button's gap to the opener and to the column
 	MARK = 18,                  -- a quest's mark (track_todo / track_handin)
 	CHECK = 16,                 -- its tracked box
 	TITLE_X = 35,               -- a quest's title and lines from the row's left (the mark, the gem, their gaps)
@@ -87,6 +91,8 @@ Log.T = T
 local TEXT = {
 	title = "Quests",
 	tabList = "Quest List",
+	filter = "Map layers",
+	filterTip = "Choose what the map shows.",
 	empty = "Your quest log is empty.",
 	back = "All quests",
 	level = "Level %d",
@@ -744,11 +750,23 @@ local function ShowMark(icon, title)
 end
 
 -- the quest's places in world units (flat x, y pairs in S.places) and the marks laid there; how many
+-- (the objectives layer leaves the quest shown here to these marks; laid again when that changes)
+local function Showing(id)
+	if S.showID ~= id then
+		S.showID = id
+		local O = ns.Objectives
+		if O then
+			O.Soon()
+		end
+	end
+end
+
 local function Places(id, title)
 	local out, n = S.places, 0
 	wipe(out)
 	local pins, Layers = S.pins, ns.Layers
 	pins:Clear("questlog")
+	Showing(nil)
 	local point = Layers and Layers.WorldPoint
 	if not point then
 		return 0
@@ -770,10 +788,15 @@ local function Places(id, title)
 		return n
 	end
 	local QO = MelloUI.QuestObjectives
+	local O = ns.Objectives
+	if O then
+		O.Data()   -- (the Companion's data, asked for once: Show worked only after Route or the Quest List asked)
+	end
 	local data = QO.Of(id)
 	if type(data) ~= "table" then
 		return 0
 	end
+	Showing(id)
 	local lines = QO.Lines(id)
 	local itemLine = QO.ItemLine and QO.ItemLine(data, lines)
 	-- the open objectives' places: every one, or every n-th past T.PLACES
@@ -902,6 +925,7 @@ end
 local function Swallow() end
 
 local Tabs   -- (M4, below: the tabs shown as the Quest List is there)
+local FilterPlace   -- (after M4, below: the layers button's place)
 
 local TabClick = Perf.Shared("OnClick on the map's quest log tabs", function(self)
 	if self.key ~= S.tab then
@@ -1187,6 +1211,24 @@ function Log.ViewChanged()
 	end
 end
 
+local FilterEnter = Perf.Shared("OnEnter on the map's layers button", function(self)
+	W.ShowTooltip(self, TEXT.filter, TEXT.filterTip)
+end, "script")
+
+function Log.Filter(click)
+	if not S.built or S.filter then
+		return S.filter
+	end
+	local b = W.RoundIcon(S.opener:GetParent(), T.OPENER, T.ICONS .. "chat_settings")
+	b:SetFrameLevel(S.opener:GetFrameLevel())
+	Perf.SetScript(b, "OnClick", click)
+	Perf.SetScript(b, "OnEnter", FilterEnter)
+	Perf.SetScript(b, "OnLeave", W.TipLeave)
+	S.filter = b
+	FilterPlace()
+	return b
+end
+
 function Log.Unmount()
 	local QL = rawget(MelloUI, "QuestList")
 	if S.mounted and type(QL) == "table" and QL.Panel and QL.Panel.Unmount then
@@ -1216,9 +1258,24 @@ local function Opener(on, fade)
 	end
 end
 
+-- (after M4) the layers button: beside the opener while the column is folded, beside the column while it is out
+-- (anchored to the column: it moves with the drawer)
+function FilterPlace()
+	local b = S.filter
+	if b then
+		b:ClearAllPoints()
+		if S.out then
+			b:SetPoint("TOPRIGHT", S.col, "TOPLEFT", -T.FILTER_GAP, -10)
+		else
+			b:SetPoint("TOPRIGHT", S.opener, "TOPLEFT", -T.FILTER_GAP, 0)
+		end
+	end
+end
+
 local function FoldDone()
 	S.col:Hide()
 	Opener(true, true)
+	FilterPlace()   -- (beside the opener now the column is gone)
 end
 
 function Log.SetOut(out, instant)
@@ -1236,6 +1293,11 @@ function Log.SetOut(out, instant)
 	end
 	S.out = out
 	instant = instant or not S.col:GetParent():IsVisible()
+	-- (out: beside the column, riding its slide in; folded at once: beside the opener; a fold under way rides the
+	-- column out, then FoldDone puts it beside the opener)
+	if out or instant then
+		FilterPlace()
+	end
 	if out then
 		Read()
 		Log.Lay()
@@ -1355,6 +1417,7 @@ function Log.Hidden()
 	end
 	Events(S.col, false)
 	S.pins:Clear("questlog")
+	Showing(nil)
 	ListShown()
 	Anim:StopDrawer(S.job)
 	if not S.out then

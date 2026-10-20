@@ -265,7 +265,30 @@ local function GiverTip(tip, pin)
 	end
 end
 
-local GIVER = { size = T.GIVER_SIZE, look = GiverLook, fillTip = GiverTip, sub = 2 }
+-- (after M4) a giver's click, as on the game's map (QuestListMap's MarkClick): a waypoint there (Route's), again
+-- on a tracked one: cleared; Alt: its quests hidden for this character; the givers laid again after
+local function GiverClick(pin, button)
+	local QL, g = QuestList(), pin.data
+	if button ~= "LeftButton" or not (QL and type(g) == "table" and g.quests and g.quests[1]) then
+		return
+	end
+	if IsAltKeyDown() and QL.HideGiver then
+		QL.HideGiver(g)
+	elseif g.tracked and QL.ClearWaypoint then
+		QL.ClearWaypoint()
+		MelloUI:PlayUISound("waypoint_clear")
+	elseif QL.SetWaypoint then
+		local set, chimed = QL.SetWaypoint(g.quests[1].row, g.quests[1].state == "ready")
+		if set and not chimed then
+			MelloUI:PlayUISound("waypoint_set")
+		end
+	end
+	-- (the givers again at once: the tracked one's look follows the waypoint)
+	Layers.Quests()
+	S.pins:Lay()
+end
+
+local GIVER = { size = T.GIVER_SIZE, look = GiverLook, fillTip = GiverTip, click = GiverClick, sub = 2 }
 
 function Layers.Quests()
 	local pins, QL = S.pins, QuestList()
