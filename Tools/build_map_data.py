@@ -28,6 +28,23 @@ only, never a picture of the game's.
                                          zones' outlines laid where the client places each zone on it (UiMapAssignment),
                                          joined, a little wider and soft; MapData.land[uiMapID] = true for each
 
+  MapData.caves[mapID]                   (after M4, the user 2026-10-20: "Caves at close zoom") each cave of a
+                                         continent: a model of the client's (a WMO) placed in its terrain tiles'
+                                         obj0 files (MODF: its file, place, turn and size; WoWExport/obj0_raw by the
+                                         WDT's MAID 2nd field), with pictures in the client's WMOMinimapTexture (one a
+                                         group of rooms and block of 128 units: its file, anchored at the group's
+                                         corner, MOGI in the model's root file, WoWExport/wmo_root_raw, 2 px a unit,
+                                         its rows from the bottom) and more than half of those rooms under the ground
+                                         there (the root ADTs' heights): mines, caves, crypts, the underground halls --
+                                         not a house's or a tower's floor plan, which would hide its roof. Per cave its
+                                         origin in terrain tiles (x east, y south of the grid's 0, 0), its turn
+                                         (degrees), its size, then each picture's file, anchor (the model's units) and
+                                         file size (px; WoWExport/wmo_minimap_raw, its header)
+
+  The caves' exports (wow.export's raw mode, by file ID): the obj0 files of every tile (MAID's 2nd field), the root
+  files of the models they place, the WMOMinimapTexture table (db2) and the pictures of the caves found (their size
+  only is read).
+
 Masks as MelloUI's others: 32-bit TGA, top-left origin, white with the same alpha (colour and alpha both say it).
 Deterministic: the same tables give the same bytes.
 
@@ -36,6 +53,7 @@ Deterministic: the same tables give the same bytes.
 """
 import csv
 import io
+import math
 import os
 import struct
 import sys
@@ -64,6 +82,10 @@ TERRAIN = r"F:/Download-Backup/WoWExport/terrain_raw/"
 WDT = {0: 775971, 1: 782779}    # each continent's world map (Map.ID): its WDT's file ID (Map.WdtFileDataID)
 TILE = 1600.0 / 3.0             # yards a terrain tile
 WATER_TILE = (0, 28, 48)        # an Eastern Kingdoms tile that is all open sea (west of Stormwind's harbour)
+EXPORT = r"F:/Download-Backup/WoWExport/"
+CAVE_SHARE = 0.5                # a model is a cave when more than this share of its pictured rooms (by area) is under
+                                # the ground: 676 placed models at 0, 298 at 1, a handful between (Sunken Hollow .59)
+CAVE_BLOCK = 128                # the model's units a picture's block (256 px at 2 px a unit)
 
 
 def rows(name):
@@ -145,6 +167,123 @@ def minimap_tiles(assign, mapID):
         if fid:
             tiles.append((k % 64, k // 64, fid))
     return (u0, v0, u1 - u0, v1 - v0), tiles
+
+
+def chunks(data):
+    """a chunked file's chunks: tag (read forwards), start, size"""
+    pos = 0
+    while pos + 8 <= len(data):
+        tag = data[pos:pos + 4][::-1]
+        size = struct.unpack_from("<I", data, pos + 4)[0]
+        yield tag, pos + 8, size
+        pos += 8 + size
+
+
+def maid(mapID):
+    """a continent's WDT's MAID: the 8 file IDs of each of its 4096 tiles, or None"""
+    path = TERRAIN + "%d.wdt" % WDT[mapID]
+    if not os.path.isfile(path):
+        return None
+    data = open(path, "rb").read()
+    at = next((p for t, p, _ in chunks(data) if t == b"MAID"), None)
+    return None if at is None else [struct.unpack_from("<8I", data, at + k * 32) for k in range(4096)]
+
+
+_ground = {}
+
+
+def ground(tiles, mapID, px, pz):
+    """the terrain's height at a point (yards east, south of the grid's 0, 0): the nearest of its chunk's 9 x 9"""
+    tx, ty = int(px // TILE), int(pz // TILE)
+    key = (mapID, tx, ty)
+    if key not in _ground:
+        cs = []
+        fid = tiles[ty * 64 + tx][0] if 0 <= tx < 64 and 0 <= ty < 64 else 0
+        path = TERRAIN + "%d.adt" % fid
+        if fid and os.path.isfile(path):
+            adt = open(path, "rb").read()
+            for tag, p, size in chunks(adt):
+                if tag == b"MCNK":
+                    wx, wy, wz = struct.unpack_from("<3f", adt, p + 0x68)
+                    for t2, p2, _ in chunks(adt[p + 128:p + size]):
+                        if t2 == b"MCVT":
+                            cs.append((32 * TILE - wy, 32 * TILE - wx, wz, struct.unpack_from("<145f", adt, p + 128 + p2)))
+        _ground[key] = cs
+    step = TILE / 16
+    for px0, pz0, wz, h in _ground[key]:
+        if px0 <= px < px0 + step and pz0 <= pz < pz0 + step:
+            c = min(8, max(0, int(round((px - px0) / (step / 8)))))
+            r = min(8, max(0, int(round((pz - pz0) / (step / 8)))))
+            return wz + h[r * 17 + c]
+    return None
+
+
+def cave_list(mapID):
+    """a continent's caves: [(x, y, turn, size, [(file, ax, ay, w, h), ...])] (see MapData.caves)"""
+    tiles = maid(mapID)
+    table = DB2 + "WMOMinimapTexture.csv"
+    if tiles is None or not os.path.isfile(table):
+        return []
+    pictures = defaultdict(list)
+    for r in rows("WMOMinimapTexture"):
+        pictures[int(r["WMOID"])].append((int(r["GroupNum"]), int(r["BlockX"]), int(r["BlockY"]), int(r["FileDataID"])))
+    placed, seen = [], set()
+    for k in range(4096):
+        path = EXPORT + "obj0_raw/%d.adt" % tiles[k][1]
+        if not tiles[k][1] or not os.path.isfile(path):
+            continue
+        adt = open(path, "rb").read()
+        for tag, p, size in chunks(adt):
+            if tag != b"MODF":
+                continue
+            for i in range(size // 64):
+                e = struct.unpack_from("<II3f3f6fHHHH", adt, p + i * 64)
+                if e[1] in seen or not e[14] & 0x8:   # (each placement once; its model by file ID)
+                    continue
+                seen.add(e[1])
+                placed.append((e[1], e[0], e[2:5], e[6], (e[17] or 1024) / 1024.0))
+    roots = {}
+    out = []
+    for uid, fid, pos, turn, scale in sorted(placed):
+        if fid not in roots:
+            path = EXPORT + "wmo_root_raw/%d.wmo" % fid
+            info = None
+            if os.path.isfile(path):
+                data = open(path, "rb").read()
+                wmo, groups = None, []
+                for tag, p, size in chunks(data):
+                    if tag == b"MOHD":
+                        wmo = struct.unpack_from("<I", data, p + 32)[0]
+                    elif tag == b"MOGI":
+                        groups = [struct.unpack_from("<6f", data, p + i * 32 + 4) for i in range(size // 32)]
+                info = (wmo, groups)
+            roots[fid] = info
+        info = roots[fid]
+        if not info or info[0] not in pictures:
+            continue
+        wmo, groups = info
+        th = math.radians(90 - turn)
+        c, s = math.cos(th), math.sin(th)
+        under = total = 0.0
+        pics = []
+        for g, bx, by, file in sorted(pictures[wmo]):
+            if g >= len(groups):
+                continue
+            b = groups[g]
+            if bx == 0 and by == 0:
+                lx, ly = (b[0] + b[3]) / 2 * scale, (b[1] + b[4]) / 2 * scale
+                h = ground(tiles, mapID, pos[0] + lx * c + ly * s, pos[2] + lx * s - ly * c)
+                area = (b[3] - b[0]) * (b[4] - b[1])
+                total += area
+                if h is not None and pos[1] + b[5] * scale < h - 1:
+                    under += area
+            path = EXPORT + "wmo_minimap_raw/%d.blp" % file
+            if os.path.isfile(path):
+                w, hh = struct.unpack_from("<2I", open(path, "rb").read(20), 12)
+                pics.append((file, round(b[0] + bx * CAVE_BLOCK, 2), round(b[1] + by * CAVE_BLOCK, 2), w, hh))
+        if total and under / total > CAVE_SHARE and pics:
+            out.append((round(pos[0] / TILE, 5), round(pos[2] / TILE, 5), round(turn, 2), round(scale, 4), pics))
+    return out
 
 
 def continent_land(assign, cont, zone_masks):
@@ -268,6 +407,19 @@ def build():
     out += ["\t},",
             "\t-- (M3) the file of a tile that is all open sea: the sea past the minimap's tiles",
             "\tminimapWater = %s," % (water or "nil"),
+            "\t-- (after M4) [mapID] = { { x, y (terrain tiles east, south of the minimap grid's 0, 0), turn (degrees),",
+            "\t-- size, { file, ax, ay (the anchor in the model's units), w, h (the file's px) ... } } }: the caves",
+            "\tcaves = {"]
+    for mapID in sorted(WDT):
+        caves = cave_list(mapID)
+        if not caves:
+            continue
+        out.append("\t\t[%d] = {" % mapID)
+        for x, y, turn, size, pics in caves:
+            out.append("\t\t\t{ %s, %s, %s, %s, { %s } }," % (x, y, turn, size, ", ".join(
+                "%d, %s, %s, %d, %d" % pic for pic in pics)))
+        out.append("\t\t},")
+    out += ["\t},",
             "}", ""]
     return "\n".join(out), files
 

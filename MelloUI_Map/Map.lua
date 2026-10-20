@@ -88,6 +88,7 @@ local SWITCHES = {
 	{ key = "group", label = "Your party and raid", layers = { "group" } },
 	{ key = "names", label = "Zone names", layers = { "names" } },
 	{ key = "addons", label = "Other addons' pins", layers = { "addons", "addons_continent", "addons_world" } },
+	{ key = "caves", label = "Caves (zoomed in close)", layers = {}, canvas = true },
 }
 
 local M   -- (the module: its button opens it)
@@ -351,6 +352,7 @@ end
 
 local function ApplyLayers()
 	local pins = win.pins
+	win.canvas:SetCaves(LayerOn("caves"))   -- (the caves are the canvas's own places, not pins)
 	for _, s in ipairs(SWITCHES) do
 		local on = LayerOn(s.key)
 		for _, name in ipairs(s.layers) do
@@ -775,11 +777,19 @@ local function Dump()
 	local out = {}
 	out[#out + 1] = string.format("world %s x %s, view %s %s zoom %s (max %s), canvas %s x %s", F(c.W), F(c.H),
 		F(c.cx), F(c.cy), F(c.z), F(c.zMax), F(c.cw), F(c.ch))
+	local caves, cavesLive = 0, 0
 	c:EachPlace(function(p)
+		if p.kind == "cave" then
+			-- (the caves counted in one line: 358 of them)
+			caves = caves + 1
+			cavesLive = cavesLive + (p.live and 1 or 0)
+			return
+		end
 		out[#out + 1] = string.format("%5d %-9s %-24s %s %s %s %s alpha %s %s tiles %s", p.id, p.kind, p.name or "?",
 			F(p.left / c.W), F(p.right / c.W), F(p.top / c.H), F(p.bottom / c.H), F(p.alpha), p.live and "live" or "-",
 			p.tiles and #p.tiles or "-")
 	end)
+	out[#out + 1] = string.format("caves %d, %d in view now", caves, cavesLive)
 	return table.concat(out, "\n")
 end
 

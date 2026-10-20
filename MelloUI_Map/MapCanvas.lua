@@ -100,6 +100,10 @@ local T = {
 	-- (M3) the minimap's ground in over the zones' art (and the cities'), which goes as it comes
 	MINI_IN = { 5.0, 8.0 },
 	MINI_SEAM = 0.004,        -- a minimap tile this share bigger each way: no hairline between neighbours
+	-- (after M4; the user, 2026-10-20: "Caves at close zoom") the caves' rooms in over the minimap's ground
+	CAVE_IN = { 7.5, 9.5 },
+	CAVE_YARDS = 1600 / 3,    -- yards a terrain tile (the caves' origins are in tiles, their rooms in yards)
+	CAVE_WRAP = "CLAMPTOBLACKADDITIVE",   -- a turned picture's corners past its file: clear, not its edge drawn out
 	CONT_OUT = { 2.2, 3.0 },
 	OUTLINES = "Interface\\AddOns\\MelloUI_Map\\Media\\Outlines\\",   -- <uiMapID>, city, <continent>
 	UNEXPLORED = 0.3,         -- a place not explored yet: its piece this faint (the user's pick H)
@@ -236,6 +240,8 @@ function Canvas:Layout()
 	end
 	-- (M3) the minimap's ground over every map's art, the open water just under it
 	self:MiniLayout(places, base + 2 * n + 6)
+	-- (after M4) the caves over the minimap's ground
+	self:CaveLayout(places, base + 2 * n + 7)
 	-- a continent's land: the box round its zones (its art reaches far out to sea: the Eastern Kingdoms' spans 0.37
 	-- to 1.16 of the world's width), what a glide into it frames
 	for _, p in ipairs(places) do
@@ -310,6 +316,114 @@ function Canvas:MiniLayout(places, level)
 		water:SetAlpha(0)
 		water:Hide()
 		self.water = { frame = water, tex = tex, file = file, set = false }
+	end
+end
+
+-- (after M4) the caves of the data (MapData.caves: the client's own pictures of each underground model's rooms,
+-- placed and turned as its terrain places it; Tools/build_map_data.py) over the minimap's ground from CAVE_IN: one
+-- place a cave, a picture a tile -- the box round the turned picture, its corners' coordinates in the file
+-- (SetTexCoord's eight), past the file clear (CAVE_WRAP); each lets its file go out of view, as the minimap's tiles
+local function CavePlace(self, g, cave, n, level)
+	local ox, oy = (g.x + cave[1] * g.w) * self.W, (g.y + cave[2] * g.h) * self.H
+	local kx, ky = g.w * self.W / T.CAVE_YARDS, g.h * self.H / T.CAVE_YARDS
+	local th = math.rad(90 - cave[3])
+	local c, s, size = math.cos(th), math.sin(th), cave[4] or 1
+	local pics = cave[5]
+	if type(pics) ~= "table" or #pics < 5 then
+		return nil
+	end
+	-- the model's units -> the canvas, and back
+	local function Out(lx, ly)
+		local u, v = (lx * c + ly * s) * size, (lx * s - ly * c) * size
+		return ox + u * kx, oy + v * ky
+	end
+	local function In(x, y)
+		local u, v = (x - ox) / kx, (y - oy) / ky
+		return (c * u + s * v) / size, (s * u - c * v) / size
+	end
+	local tiles = {}
+	local l, t0, r, b = math.huge, math.huge, -math.huge, -math.huge
+	for i = 1, #pics - 4, 5 do
+		local file, ax, ay, fw, fh = pics[i], pics[i + 1], pics[i + 2], pics[i + 3], pics[i + 4]
+		-- (the picture in the model's units: 2 px a unit from its anchor, its rows from the bottom)
+		local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
+		for _, corner in ipairs({ { ax, ay }, { ax + fw / 2, ay }, { ax, ay + fh / 2 }, { ax + fw / 2, ay + fh / 2 } }) do
+			local x, y = Out(corner[1], corner[2])
+			x0, y0, x1, y1 = min(x0, x), min(y0, y), max(x1, x), max(y1, y)
+		end
+		local function Coord(x, y)
+			local lx, ly = In(x, y)
+			return (lx - ax) * 2 / fw, 1 - (ly - ay) * 2 / fh
+		end
+		local ulx, uly = Coord(x0, y0)
+		local llx, lly = Coord(x0, y1)
+		local urx, ury = Coord(x1, y0)
+		local lrx, lry = Coord(x1, y1)
+		tiles[#tiles + 1] = {
+			file = file, wx0 = x0, wy0 = y0, wx1 = x1, wy1 = y1, w = x1 - x0, h = y1 - y0,
+			tc = { ulx, uly, llx, lly, urx, ury, lrx, lry }, wrap = T.CAVE_WRAP,
+			layer = "ARTWORK", sub = 0, tex = nil, set = false, shown = false, unload = true,
+		}
+		l, t0, r, b = min(l, x0), min(t0, y0), max(r, x1), max(b, y1)
+	end
+	local p = {
+		id = -100000 - n, kind = "cave", name = "cave", left = l, top = t0, right = r, bottom = b, w = r - l, h = b - t0,
+		tiles = tiles, alpha = 0, live = false, level = level,
+	}
+	p.area = p.w * p.h
+	for _, t in ipairs(tiles) do
+		t.x, t.y = t.wx0 - l, t.wy0 - t0
+	end
+	return p   -- (its frame made the first time it comes into view: CaveFrame)
+end
+
+-- a cave's frame, the first time it comes into view (358 caves: none made until one is near)
+local function CaveFrame(self, p)
+	local f = CreateFrame("Frame", nil, self.root)
+	f:SetFrameLevel(p.level)
+	f:SetSize(p.w, p.h)
+	f:SetAlpha(p.alpha)
+	f:Hide()
+	p.frame = f
+	return f
+end
+
+function Canvas:CaveLayout(places, level)
+	local data = ns.MapData
+	local all, grids = data and data.caves, data and data.minimap
+	if type(all) ~= "table" or type(grids) ~= "table" then
+		return
+	end
+	local ids = {}
+	for mapID in pairs(all) do
+		ids[#ids + 1] = mapID
+	end
+	table.sort(ids)
+	local n = 0
+	for _, mapID in ipairs(ids) do
+		local g = grids[mapID]
+		if type(g) == "table" then
+			for _, cave in ipairs(all[mapID]) do
+				local p = CavePlace(self, g, cave, n + 1, level)
+				if p then
+					n = n + 1
+					places[#places + 1] = p
+				end
+			end
+		end
+	end
+	self.hasCaves = n > 0
+end
+
+-- the caves shown or not (the layers' switch "Caves"): the view laid again at once
+function Canvas:SetCaves(on)
+	on = on and true or false
+	if self.cavesOn ~= on then
+		self.cavesOn = on
+		if self.cx then
+			self.box[5] = nil   -- (a cut: their places in or out)
+			self:SetView(self.cx, self.cy, self.z)
+		end
 	end
 end
 
@@ -490,7 +604,12 @@ local function ShowTile(self, p, t)
 			tex:SetSnapToPixelGrid(false)
 			tex:SetTexelSnappingBias(0)
 		end
-		tex:SetTexCoord(0, t.u, 0, t.v)
+		local tc = t.tc
+		if tc then
+			tex:SetTexCoord(tc[1], tc[2], tc[3], tc[4], tc[5], tc[6], tc[7], tc[8])   -- (a cave's turned picture)
+		else
+			tex:SetTexCoord(0, t.u, 0, t.v)
+		end
 		tex:SetSize(t.w, t.h)
 		tex:SetAlpha(0)
 		if t.base and p.mask then
@@ -552,6 +671,9 @@ local function Cull(self)
 			end
 			if not p.live then
 				p.live = true
+				if not p.frame then
+					CaveFrame(self, p)
+				end
 				p.frame:SetPoint("TOPLEFT", self.root, "TOPLEFT", p.left, -p.top)
 				p.frame:Show()
 			end
@@ -633,6 +755,7 @@ local function Detail(self, viewW)
 	-- (M3: only where the data has the minimap's ground; without it the zones stay)
 	local mini = self.hasMini and Quant(Ramp(z, T.MINI_IN[1], T.MINI_IN[2])) or 0
 	local zone = Quant(min(Ramp(z, T.ZONE_IN[1], T.ZONE_IN[2]), 1 - mini))
+	local cave = (self.hasCaves and self.cavesOn ~= false) and Quant(min(mini, Ramp(z, T.CAVE_IN[1], T.CAVE_IN[2]))) or 0
 	local flipped = false
 	for _, p in ipairs(self.places) do
 		local a
@@ -642,6 +765,8 @@ local function Detail(self, viewW)
 			a = cont
 		elseif p.kind == "minimap" then
 			a = mini
+		elseif p.kind == "cave" then
+			a = cave
 		elseif p.kind == "city" then
 			a = Quant(min(zone, Ramp(p.w / viewW, T.CITY_IN[1], T.CITY_IN[2])))
 		else
@@ -652,7 +777,9 @@ local function Detail(self, viewW)
 				flipped = true
 			end
 			p.alpha = a
-			p.frame:SetAlpha(a)
+			if p.frame then   -- (a cave's frame waits until it comes into view)
+				p.frame:SetAlpha(a)
+			end
 		end
 	end
 	local water = self.water
@@ -1025,7 +1152,7 @@ local function Loader_OnUpdate(loader)
 		local t = q[i]
 		t.queued = false
 		if t.shown and not t.set then
-			t.tex:SetTexture(t.file, nil, nil, "TRILINEAR")
+			t.tex:SetTexture(t.file, t.wrap, t.wrap, "TRILINEAR")
 			t.set = true
 			Anim:To(t.tex, "alpha", t.alpha or 1, T.FADE)
 			done = done + 1
