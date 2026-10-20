@@ -94,7 +94,7 @@ local M = MelloUI:RegisterModule("Auras", {
 		  desc = "Your debuffs on enemy nameplates, in place of the game's row. Crowd control stays with the game (and the Nameplates module)." },
 		{ type = "slider", key = "nameplateSize", parent = "nameplates", name = "Icon Size", min = 12, max = 32, step = 1,
 		  desc = "The size of your debuff icons on enemy nameplates, in pixels." },
-		{ type = "dropdown", key = "textFont", name = "Buff Numbers Font", values = MelloUI.FontFaces, new = "0.25.0",
+		{ type = "dropdown", key = "textFont", name = "Buff Numbers Font", values = MelloUI.FontFaces, new = "1.0.0",
 		  desc = "The face of the time and stacks on MelloUI's buffs and debuffs: yours, the target's and the nameplates'. Shared: the Chat & numbers face (Look > Fonts)." },
 	},
 })

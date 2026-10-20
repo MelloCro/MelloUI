@@ -175,7 +175,7 @@ M = MelloUI:RegisterModule("FrameEffects", {
 		  hint = "each kind on your own frame",
 		  desc = "Plays each kind on your own frame, one after another, its name and an example on the screen: a roar (Challenging Shout), a taunt, damage taken down (Shield Wall), more health (Last Stand), an immunity, a dodge or parry (Evasion).",
 		  onClick = function() PreviewAll() end },
-		{ type = "dropdown", key = "whose", name = "Whose", new = "0.25.0",
+		{ type = "dropdown", key = "whose", name = "Whose", new = "1.0.0",
 		  values = { { value = "both", label = "Yours And Your Group's" }, { value = "mine", label = "Yours" },
 			{ value = "group", label = "Your Group's" } },
 		  desc = "Whose big moments play on the frames. Yours: when you use one (Challenging Shout, Shield Wall, Last Stand, Divine Shield, Evasion ...), your own frame in your party or raid frames plays its effect for as long as it lasts (a roar: 2 seconds). Your group's: when someone of your party or raid uses one, their frame plays it -- you see at a glance who just used Shield Wall or Divine Shield, and whose roar just pulled." },

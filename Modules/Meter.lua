@@ -179,7 +179,7 @@ local M = MelloUI:RegisterModule("Meter", {
 		  desc = "The most players on the race bar: the best ones, and always you." },
 		{ type = "slider", key = "barWidth", name = "Race Bar Width", min = 150, max = 600, step = 10,
 		  desc = "How wide the race bar is. Also in Edit Layout: right-click the race bar." },
-		{ type = "slider", key = "railHeight", name = "Race Bar Thickness", min = 2, max = 8, step = 1, new = "0.25.0",
+		{ type = "slider", key = "railHeight", name = "Race Bar Thickness", min = 2, max = 8, step = 1, new = "1.0.0",
 		  desc = "How thick your share is on the race bar's line (its pins and labels keep their size). Also in Edit Layout: right-click the race bar." },
 		{ type = "toggle", key = "summary", name = "Fight Summary",
 		  desc = "After a fight, for a few seconds in the widget column (longer while you point at it): won or lost and its length, your damage, DPS and rank, the ring your share of the group. The pointer on it shows the top five; a click opens the fight in the Fight History." },

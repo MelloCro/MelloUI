@@ -74,7 +74,7 @@ local M = MelloUI:RegisterModule("BarText", {
 		{ type = "slider", key = "fontSize", name = "Font Size", min = 0, max = 20, step = 1,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Default" or tostring(v) end,
 		  desc = "Text size. Default follows the status bar text font of the game (and the Fonts module)." },
-		{ type = "dropdown", key = "valueFont", name = "Values Font", values = MelloUI.FontFaces, new = "0.25.0",
+		{ type = "dropdown", key = "valueFont", name = "Values Font", values = MelloUI.FontFaces, new = "1.0.0",
 		  desc = "The face of the health and power values on the player, target and focus frames. Shared: the Interface text's face (Look > Fonts)." },
 	},
 })

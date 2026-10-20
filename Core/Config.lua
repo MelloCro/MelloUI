@@ -138,25 +138,19 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
-	{ version = "0.25.0", lines = {
-		"Settings: borders and parchment are on Oldschool; a new Automation page; Gains, FPS / latency and the damage meter have new homes.",
-		"Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, a plate, a bar or the map, then a part; drag the names, values and parts on the frames.",
-		"One look: MelloUI's parts wear its look, its Gilded Slate colours and the Fredoka font, reskin or not; a new window frame -- the logo heads the side list, small windows get a slim strip.",
-		"A new icon set, sharp at every size, its map pins glowing and marks shaded; MelloUI Frames on action buttons, XP bars and unit frames; Heal Flight and Frame Effects in soft light.",
-		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, a gold flash as a cooldown ends, a Bar Texture for each, one Health Colour for all.",
+	{ version = "1.0.0", lines = {
+		"A seamless world map of MelloUI's own (M): zoom from Azeroth to a village, ground and caves up close; your party, Route, flights, dungeons, quests and objectives on it.",
+		"Map: your quest log and the Quest List beside it (L), search, a pin to share in chat, layer switches; Questie, HandyNotes and GatherMate2 pins on it too.",
+		"One look: its own look, Gilded Slate colours, the Fredoka font and a new logo, reskin or not; the installer sets up the new layout. The painted reskin is MelloUI Oldschool.",
+		"Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, then a part, drag names and values; a new Automation page.",
+		"A new icon set, sharp at every size, map pins glowing and marks shaded; MelloUI Frames on buttons, XP bars and unit frames; Heal Flight and Frame Effects in soft light.",
+		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, a gold flash as cooldowns end, one Health Colour for all.",
 		"Action bars and minimap: backdrops and MelloUI's square minimap for everyone, no painted skin needed; the round painted map is Oldschool's.",
-		"Quests: one gem per title, short Quest List and map tips, Parchment its own switch; the tracker's Painted Skin is gone.",
-		"Route: shorter ways over open ground, out of rough hills, never turned round mid-walk; the World Marker shows the way and follows RestedXP Guides, its steps in the Quest Tracker.",
-		"Edit Layout and bags: more windows move without the painted reskin; quality gems and grey junk on every slot.",
-		"Nameplates and Personal Display answer the fight: hits leave a lit chunk, crits flash, casts warn, kills flash out; dodges and stuns show on your bars. Combat Text has a Beside look.",
-		"Tooltips colour guilds, factions, levels and quest objectives. Macro Backup is gone: the game keeps your settings, and its account macros are freed.",
-		"Group Frames: party and raid keep their own places and indicators; profiles and share strings keep them.",
-	} },
-	{ version = "0.24.0", lines = {
-		"Quest Tracker: the chat's look -- a clean panel or parchment, round quest marks, a difficulty gem, counts on the right.",
-		"Quest Tracker: the game's clicks -- the mark follows a quest, a click opens the map, Shift-click links it, right-click opens the quest menu.",
-		"Quest log and Quest List: small headings on thin lines, round marker rims, one difficulty gem before each title.",
-		"Minimap: Square Border's new Chat panel -- the map on the chat's dark panel, the zone name and Services as small headings.",
+		"Quests: the Quest Tracker in the chat's look with the game's clicks, round marks, one gem per title, short Quest List and map tips; Parchment is its own switch.",
+		"Route: shorter ways over open ground, out of rough hills and capitals' cliffs, never turned round mid-walk; the World Marker shows the way and follows RestedXP Guides.",
+		"Nameplates and Personal Display answer the fight: lit chunks on hits, flashing crits, cast warnings; dodges and stuns on your bars. Combat Text has a Beside look.",
+		"Tooltips colour guilds, factions, levels and quest objectives. Macro Backup is gone: the game keeps your settings.",
+		"Edit Layout, bags and groups: more windows move without the reskin; quality gems and junk on every slot; party and raid frames keep their own places and indicators.",
 	} },
 	{ version = "0.23.1", lines = {
 		"Chat View: the chat and the whisper window keep their history over a /reload and a new login.",
@@ -175,6 +169,15 @@ local CHANGELOG = {
 		"Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it.",
 		"Bags by Kind: Bags Full Warning -- with your bags full, Empty shows a 0 slot that shakes and flashes red as the game says so.",
 		"Services: Trays Slide Out -- a group's list slides out from the minimap column like a drawer, and back in.",
+	} },
+	{ version = "0.22.0", lines = {
+		"Installer: Mello's layout fits many more UI scales; when Edit Mode is full of layouts, install without it or delete an older MelloUI one.",
+		"Bags by Kind: the Reagent Bag on its own tab at the bag window's side; move items between it and your bags, or drop one on a tab.",
+		"Services: your addons' minimap buttons gathered into an AddOns group in the Services row, off the minimap.",
+		"Split Stack: the mouse wheel changes the amount (Shift: ten at a time), and a ½ button halves the stack.",
+		"Fixed: Minimap: the day / night moon sits in the square map's top right corner, clear of the zone name.",
+		"Fixed: Group Frames: no more stray yellow box beside your party or raid frames when you target someone.",
+		"Fixed: Heal Effects: spamming a heal no longer leaves the light looping on your cast bar after the cast.",
 	} },
 }
 local LINKS = {
@@ -1147,7 +1150,7 @@ do
 			-- EntryFraction / SetEntryFraction); asleep with its module, and
 			-- while Edit Layout is open (Gate)
 			b = { id = id, mod = m, kind = "option", scaleKey = mover, opt = { type = "slider", name = "Scale",
-				min = 0.5, max = 2, step = 0.01, percent = true, new = "0.25.0",
+				min = 0.5, max = 2, step = 0.01, percent = true, new = "1.0.0",
 				desc = "How big it is: Edit Layout's Size, the same value.",
 				get = function() return MelloUI:EntryFraction(mover) end,
 				set = function(v) MelloUI:SetEntryFraction(mover, v) end } }

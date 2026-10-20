@@ -101,8 +101,11 @@ M = MelloUI:RegisterModule("Map", {
 	role = "feature",
 	enabledByDefault = true,
 	defaults = {},
+	-- (1.0) the window's own state, the player's: where it looked, its quest log open and on which tab -- never in a
+	-- profile or the installer's Full (its layers and Tracked Only travel)
+	keep = { "view", "log", "logTab" },
 	options = {
-		{ type = "button", name = TEXT.open, text = "Open", new = "0.25.0",
+		{ type = "button", name = TEXT.open, text = "Open", new = "1.0.0",
 		  desc = "Open MelloUI's map: the wheel zooms toward the cursor, a drag looks around, a click glides into the zone under the cursor and a right-click goes out again. Your map key (M) opens it, your quest log key (L) opens it with your quests beside it; /mellomap opens it too.",
 		  onClick = function() M:Toggle(true) end },
 	},

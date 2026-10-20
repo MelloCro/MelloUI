@@ -69,12 +69,12 @@ local M = MelloUI:RegisterModule("ActionButtons", {
 		readyFlash = true,
 	},
 	options = {
-		{ type = "toggle", key = "frames", name = "MelloUI Frames", new = "0.25.0",
+		{ type = "toggle", key = "frames", name = "MelloUI Frames", new = "1.0.0",
 		  desc = "Every action button in MelloUI's frame: a dark iron rim with a gold line, brighter under the pointer, "
 			.. "bright gold while its aura or stance is on, red out of range, a dark slot when the button is empty. "
 			.. "Off: the game's own frames. The painted skin's bars keep their own (Oldschool)." },
 		-- (2026-10-20, the user: the golden frame animation "to notify when something comes off cooldown")
-		{ type = "toggle", key = "readyFlash", name = "Cooldown Ready Flash", new = "0.25.0",
+		{ type = "toggle", key = "readyFlash", name = "Cooldown Ready Flash", new = "1.0.0",
 		  desc = "When an action's cooldown runs out, a golden light runs once round its button, so you see it is "
 			.. "ready again. Never for the global cooldown." },
 		{ type = "toggle", key = "pressLight", name = "Light While Pressed",

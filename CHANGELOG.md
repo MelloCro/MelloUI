@@ -1,7 +1,14 @@
 # Changelog
 
-## 0.25.0
+## 1.0.0
 
+- Map: one seamless map of the whole world in a window of MelloUI's own (MelloUI_Map, on by default). The mouse wheel zooms from Azeroth down to a village, a drag looks around, a click glides into the zone under the cursor and a right-click goes back out. Your map key (M) opens it, always centred on you.
+- Map: the world's painting lies under everything, with each continent's and zone's own art in soft edges, places you haven't explored yet faint, and the zone names on a soft shade. Zoomed in close, it shows the game's own minimap ground and the caves' tunnels (mines, caves, crypts, underground halls) right where they lie under the hills.
+- Map: on it are you and your party, Route's way and goal (drawing in as you set it), flight masters (paler where not learned), boats, zeppelins and portals, dungeons and raids with their levels, the quest givers, and your quests' objectives on the whole map at once. A click on a giver or an objective sets a waypoint, and the gear button switches each layer on or off.
+- Map: your quest log opens beside it (your quest log key, L): your quests and their pages with objectives, story and rewards, plus Show, Route, Share, Track, Abandon and Voice Over's Read. The Quest List is its second tab and follows the zone you look at.
+- Map: search places, dungeons, flight masters, docks, your quests and quest givers from the title bar. Ctrl-click sets your pin (Route leads you there), and Shift-click shares it in the chat as the game's own map link.
+- Map: Questie's, HandyNotes' and GatherMate2's pins show on the whole map with their own tooltips, and other addons can add pins of their own.
+- Quest List: the tracked quest's map pin stands after its name instead of over its icon.
 - Configurator: the painted reskin's switches, borders and parchment sheets moved from Look to Oldschool, and Look keeps the palette, shade, fonts, icons, Dark Mode, bar texture and Fading (the Fader's settings).
 - Configurator: Automation is a new page (Vendor, Restock, Auto Accept and Hand In); Gains is a tab of Screen Text, the FPS / latency readout is on Reminders & Widgets, and the damage meter has its own page.
 - Screen Text: Chat Notices, Outlined Text and the combat text sizes are on its Notices and Combat Text tabs.
@@ -106,9 +113,6 @@
 - Fader: no switch of its own any more. An element fades as soon as you set it to In Combat or On Mouseover. If your Fader was off, your saved choices go back to Always, so nothing changes on your screen.
 - Fader: each frame's and bar's Fade is on its own page now, the last Behaviour row of the Player, Target, Pet, Buffs, Party, Raid and Personal frames, the action bars, the micro menu, the bag bar, the XP bars, the Reminders and the minimap. The Fader page keeps how the fading works and the rows of the chat, the trackers, the widgets and the route.
 - Quality Gems show on every item in the game's own bags, bank and guild bank and in Bags by Kind, painted look or not; Grey Out Junk lays a grey copy over a junk item's picture, so the game's own grey for a locked item stays as the game sets it. Your choices carry over.
-
-## 0.24.0
-
 - Quest Tracker: the chat's look. In the painted look the tracker drops its stone frame and title plate for the chat's dark panel, or its parchment sheet with Parchment on: "Objectives" and the Quests and Professions headings sit on thin lines (Quests with how many you watch), each quest's mark sits in a round rim, a gem before a quest's title shows its difficulty on parchment (in place of the five pips, so titles keep their line; point at the quest for its name), objective counts stand at the right of their lines, and the quest you follow is highlighted like the open conversation in the whisper window. With the reskin off it keeps the game's look.
 - Quest Tracker: the game's clicks. Click a quest's mark to follow it, its way shown, and click it again to stop following; click the quest to open it on the map; Shift-click it to link it into the chat line you are typing, or, when you are not typing, to stop watching it; right-click it for the game's quest menu: follow, quest log, map, stop tracking, share with your group, link in chat and abandon (asked first).
 - Quest log and Quest List: the chat's look. Their headers are small headings on a thin line, the Quest List's markers sit in round rims, and on the parchment a quest's difficulty is one gem before its title, in place of the five pips, so the titles keep their whole width.

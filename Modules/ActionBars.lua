@@ -98,14 +98,14 @@ local ELEMENTS = {
 local defaults = { hidePageArrows = true, hideBarArt = true, statusFrame = true }
 local options = {
 	-- (2026-10-20, the user's sheet: "a custom ... progress bar border to fit") the Status section below
-	{ type = "toggle", key = "statusFrame", name = "MelloUI Frames", new = "0.25.0",
+	{ type = "toggle", key = "statusFrame", name = "MelloUI Frames", new = "1.0.0",
 	  desc = "The experience and reputation bars in MelloUI's look: a slim iron frame with gold diamond ends, a dark "
 		.. "track, the notches between the bar's parts and a soft light on the filling edge. Off: the game's own frame. "
 		.. "The painted skin's bars keep their own (Oldschool)." },
 	{ type = "toggle", key = "hidePageArrows", name = "Hide Page Arrows",
 	  desc = "Hide the main bar's page number and its up / down arrows (the bar still pages with the keybinds)." },
 	-- (0.25.0; the user, 2026-10-15: "MelloUI hides it") the game's own Edit Mode setting (Hide Bar Art, below)
-	{ type = "toggle", key = "hideBarArt", name = "Hide Bar Art", new = "0.25.0",
+	{ type = "toggle", key = "hideBarArt", name = "Hide Bar Art", new = "1.0.0",
 	  desc = "Action Bar 1 without the game's bar art (its frame, dividers and the art of empty slots), like "
 		.. "the other bars: MelloUI ticks Edit Mode's own Hide Bar Art for it. Only on your own Edit Mode layouts: a "
 		.. "preset such as Modern can't be changed. Shows after a /reload. Off: the art back on the layouts MelloUI "

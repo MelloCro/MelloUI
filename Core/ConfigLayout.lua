@@ -143,7 +143,7 @@ L.pages = {
 	-- (one look C8, the user 2026-10-15: one designer per family) the player, target, focus, pet, your buffs, the
 	-- party and raid frames (MelloUI's own) and the Personal Display: pick a frame, then a part of it; its own
 	-- options under the part's (docs/plans/onelook-designer/c7-lite.md, ugf-audit.md)
-	UnitGroupFrames = { title = "Unit & Group Frames", icon = "module:UnitFrames", set = "page_frames", designer = true, new = "0.25.0",
+	UnitGroupFrames = { title = "Unit & Group Frames", icon = "module:UnitFrames", set = "page_frames", designer = true, new = "1.0.0",
 		flavour = "You, your target and your group: pick a frame, click a part of it, change it.",
 		-- (2026-10-20, the user: "i also want user to be able to click and move stuff around, for example draging
 		-- the name, the hp text etc") the frames' stage: Config Preview's 'unitframes' kind, the real frame's copy
@@ -273,7 +273,7 @@ L.pages = {
 		flavour = "The minimap and the Services bar under it: pick one, click a part, change it.",
 		switchLabel = "MelloUI Minimap",
 		switchDesc = "MelloUI's minimap: its Width and Height, the square shape in the Chat panel, the Services bar merged under it, and the column under it that the Quest Tracker follows. Off: the game's own minimap, Edit Mode's Size sizes it again, and the Painted Skin is off with it.",
-		new = "0.25.0",
+		new = "1.0.0",
 		elements = {
 			{ key = "minimap", label = "Minimap", line = "The map, its size and its border",
 				parts = { { key = "coords", label = "Coordinates" }, { key = "border", label = "Border" },
@@ -305,7 +305,7 @@ L.pages = {
 	Route = { title = "Route", icon = "module:Route", set = "page_route", module = "Route",
 		tabs = { "Route", "Arrow & Marker", "Flights" } },
 	-- (the seamless map, MelloUI_Map: docs/plans/seamless-map.md, stage M0)
-	Map = { title = "Map", icon = "module:Map", module = "Map", new = "0.25.0",
+	Map = { title = "Map", icon = "module:Map", module = "Map", new = "1.0.0",
 		tabs = { "Map" } },
 	-- no header switch: three modules share the page, and each tab's first
 	-- row is its module's switch (Reminders, Restock, Vendor Automation)
@@ -314,7 +314,7 @@ L.pages = {
 		tabs = { "Reminders", "Widgets", "FPS / Latency" } },
 	-- (one look stage H, the plain pages' audit: the restock list, the vendor's repairs and sales and the quests'
 	-- automatic accept and hand-in, one page; each tab's first row its module's switch)
-	Automation = { title = "Automation", icon = "module:Vendor", set = "page_automation", new = "0.25.0",
+	Automation = { title = "Automation", icon = "module:Vendor", set = "page_automation", new = "1.0.0",
 		flavour = "The things MelloUI does for you: repairs and junk sales at the vendor, the restock list, accepting and handing in quests.",
 		tabs = { "Vendor", "Restock", "Quests" } },
 	VoiceOver = { title = "Voice Over", icon = "module:VoiceOver", set = "page_voice", module = "VoiceOver",

@@ -55,10 +55,10 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 	},
 	options = {
 		-- (2026-10-20, the user: the game's frames as they are, in the set's borders, one picture each; the Frames section)
-		{ type = "toggle", key = "frames", name = "MelloUI Frames", new = "0.25.0",
+		{ type = "toggle", key = "frames", name = "MelloUI Frames", new = "1.0.0",
 		  desc = "The player, target, focus, target of target, pet and party frames in MelloUI's look, exactly as the game lays them out: a gold ring round the portrait, a dark level badge, and gold-lined iron borders round the name, health and power; the elite's and boss's golden dragon and the rare's silver one round the target. Off: the game's own frame art. The painted skin's frames keep their own (Oldschool)." },
 		{ type = "header", name = "Names" },
-		{ type = "dropdown", key = "nameFont", name = "Name Font", values = MelloUI.FontFaces, new = "0.25.0",
+		{ type = "dropdown", key = "nameFont", name = "Name Font", values = MelloUI.FontFaces, new = "1.0.0",
 		  desc = "The face of the names on the player, target, focus and pet frames, their targets' and the party portraits' (their level follows). Shared: the Interface text's face (Look > Fonts)." },
 		{ type = "header", name = "Glows" },
 		{ type = "toggle", key = "hideCombatGlow", name = "Hide Combat Flash",

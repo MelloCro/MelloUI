@@ -156,7 +156,7 @@ end
 Kit:AddShadeArea("windows", "Windows", { order = 1 })
 Kit:AddShadeArea("minimap", "Minimap", { order = 7 })
 -- (0.25.0) the glow and shade under the icon set's marks on the maps and the minimap (MelloUI.Shade:Lift)
-Kit:AddShadeArea("icons", "Map Icons", { order = 7.5, new = "0.25.0" })
+Kit:AddShadeArea("icons", "Map Icons", { order = 7.5, new = "1.0.0" })
 Kit:AddShadeArea("tracker", "Tracker", { order = 8 })
 Kit:AddShadeArea("buffs", "Buffs", { order = 9 })
 Kit.shadeAreas = AREAS

@@ -291,7 +291,7 @@ M = MelloUI:RegisterModule("CombatText", {
 		-- (0.25.0; the user, 2026-10-20: "our custom damage font can not be scaled down, people complain its too big":
 		-- this client has no World Text Scale, so nothing sized them)
 		{ type = "slider", key = "dealtScale", name = "Your Damage Size", min = 0.3, max = 1.5, step = 0.05, percent = true,
-		  new = "0.25.0",
+		  new = "1.0.0",
 		  desc = "The size of Your Damage's numbers over the enemies (Rise, Beside, Fan and Stack), whatever the text around you. 70% by default." },
 		{ type = "button", name = "Preview", text = "Play",
 		  hint = "a short burst in the chosen style",
