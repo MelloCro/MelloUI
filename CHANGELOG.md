@@ -117,6 +117,10 @@
 - Quest Tracker: the game's clicks. Click a quest's mark to follow it, its way shown, and click it again to stop following; click the quest to open it on the map; Shift-click it to link it into the chat line you are typing, or, when you are not typing, to stop watching it; right-click it for the game's quest menu: follow, quest log, map, stop tracking, share with your group, link in chat and abandon (asked first).
 - Quest log and Quest List: the chat's look. Their headers are small headings on a thin line, the Quest List's markers sit in round rims, and on the parchment a quest's difficulty is one gem before its title, in place of the five pips, so the titles keep their whole width.
 - Minimap: Square Border has a new Chat panel. The square map on the dark panel the chat and the Quest Tracker wear: the zone name at the top left on a thin line, the clock and calendar at the right, a thin line round the map, and Services as a small heading over its buttons.
+- Map: clicking the zone name on the minimap opens it. The installer's Features step offers the Map; FPS / Latency is set on its own page.
+- Fixed: action bars and other frames you move in Edit Mode stay where you put them after a reload.
+- Fixed: action buttons no longer stay blue for lack of mana when you have enough.
+- Fixed: the shield on your health bar fits inside the bar.
 
 ## 0.23.1
 
