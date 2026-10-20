@@ -127,102 +127,78 @@ local function ShowTipIcon(row)
 	end
 end
 
+-- where a quest begins, in one line: its giver and zone, the item it begins with and where that is found, or the
+-- dungeon or raid it begins in
+local function BeginsAt(row)
+	local giver = row[QL.F_GIVER]
+	if giver == "" then
+		return nil
+	end
+	local instance = QL.InstanceStart(row)
+	if instance then
+		local name = QL.Data().dungeons[instance]
+		if QL.IsItemStart(row) then
+			return string.format("Item: %s, drops in %s", giver, name)
+		end
+		return string.format("From %s, inside %s", giver, name)
+	end
+	local zone = QL.Data().zones[QL.ZoneOf(row)]
+	if QL.IsItemStart(row) then
+		local how = row[QL.F_KIND] == QL.KIND_PICKUP and "picked up in " or "drops in "
+		return "Item: " .. giver .. (zone and (", " .. how .. zone) or "")
+	end
+	return "From " .. giver .. (zone and (", " .. zone) or "")
+end
+
+-- (0.25.0, the user: "too much text, it only needs to show important stuff ... Required Level, Who/How to get it";
+-- the lines' colours by name, QL.TipLine) the title in its difficulty colour, the level it needs (in that level's),
+-- where it begins, how it stands now (a ready quest's turn-in NPC when it is another), its event, your other
+-- characters' (QL.Record), one line of what a click does
 local function RowEnter(self)
 	local e = self.entry
 	if not e or not e.row then return end
 	local row = e.row
-	-- (the lines' colours by name, QL.TipLine: the palette's, or the Quest
-	-- List's fixed meaning colours; the title in the quest's difficulty
-	-- colour, as the quest log shows it)
 	local tip, Line = GameTooltip, QL.TipLine
 	tip:SetOwner(self, "ANCHOR_LEFT")
 	local r, g, b = QL.DifficultyColor(row[QL.F_LEVEL])
 	tip:SetText(row[QL.F_TITLE], r, g, b)
-	Line(tip, string.format("Level %d, requires level %d", row[QL.F_LEVEL], row[QL.F_REQ]), "text")
-	if row[QL.F_DUNGEON] ~= 0 and QL.Data().dungeons[row[QL.F_DUNGEON]] then
-		local what = QL.IsRaid(row[QL.F_DUNGEON]) and "Raid quest: " or "Dungeon quest: "
-		Line(tip, what .. QL.Data().dungeons[row[QL.F_DUNGEON]], "selectedTrim")
-	end
-	if row[QL.F_CHAIN] ~= 0 and QL.Data().chains[row[QL.F_CHAIN]] then
-		local step, total, nextRow = QL.ChainInfo(row)
-		Line(tip, string.format("Step %d of %d in the chain: %s", step, total, QL.Data().chains[row[QL.F_CHAIN]]), "selectedTrim")
-		if nextRow then
-			Line(tip, "Next: " .. nextRow[QL.F_TITLE], "text")
-		end
-	end
-	if row[QL.F_GIVER] ~= "" then
-		local giverZone = QL.Data().zones[QL.ZoneOf(row)]
-		local instance = QL.InstanceStart(row)
-		if instance then
-			local kind = QL.IsRaid(instance) and "raid" or "dungeon"
-			local name = QL.Data().dungeons[instance]
-			if QL.IsItemStart(row) then
-				Line(tip, string.format("Begins with the item %s, which drops inside the %s %s", row[QL.F_GIVER], kind, name), "text", true)
-			else
-				Line(tip, string.format("Begins at %s inside the %s %s", row[QL.F_GIVER], kind, name), "text", true)
-			end
-		elseif QL.IsItemStart(row) then
-			local how = row[QL.F_KIND] == QL.KIND_PICKUP and ", picked up in " or ", dropped by creatures in "
-			Line(tip, "Begins with the item " .. row[QL.F_GIVER] .. (giverZone and (how .. giverZone) or ""), "text")
-		else
-			Line(tip, "From " .. row[QL.F_GIVER] .. (giverZone and (" in " .. giverZone) or ""), "text")
-		end
-		local _, gx, gy = QL.GiverPoint(row)
-		if gx then
-			Line(tip, string.format("   at %.1f, %.1f", gx * 100, gy * 100), "text")
-		end
-	end
-	if (row[QL.F_ENDER] or "") ~= "" then
-		if QL.SameEnder(row) then
-			Line(tip, "Turn in to the same NPC", "text")
-		else
-			local endZone = QL.EnderZoneName(row)
-			Line(tip, "Turn in to " .. row[QL.F_ENDER] .. (endZone and (" in " .. endZone) or ""), "text")
-			local _, ex, ey = QL.EndPoint(row)
-			if ex then
-				Line(tip, string.format("   at %.1f, %.1f", ex * 100, ey * 100), "text")
-			end
-		end
+	tip:AddLine(string.format("Requires level %d", row[QL.F_REQ]), QL.DifficultyColor(row[QL.F_REQ]))
+	local begins = BeginsAt(row)
+	if begins then
+		Line(tip, begins, "text", true)
 	end
 	if e.completed then
 		Line(tip, "Completed", "text")
 	elseif e.onQuest and e.ready then
-		Line(tip, "In your quest log, ready to turn in", "questGold")
+		local ender = row[QL.F_ENDER] or ""
+		Line(tip, (ender ~= "" and not QL.SameEnder(row)) and ("Ready to turn in to " .. ender) or "Ready to turn in",
+			"questGold", true)
 	elseif e.onQuest then
-		Line(tip, "In your quest log, objectives not done", "text")
+		Line(tip, "In your quest log", "text")
 	elseif e.available then
-		Line(tip, "Available to pick up", "questGold")
+		Line(tip, "Available now", "questGold")
 	elseif e.unmet then
-		Line(tip, QL.UnmetText(QL.Unmet(row)) or "Not offered yet", "text", true)
-		if row[QL.F_REQ] > (QL.Plain(UnitLevel("player")) or 60) then
-			Line(tip, string.format("Needs level %d", row[QL.F_REQ]), "text")
+		local why = QL.UnmetText(QL.Unmet(row))
+		if why then
+			Line(tip, why, "text", true)
 		end
-	else
-		Line(tip, string.format("Needs level %d", row[QL.F_REQ]), "text")
 	end
 	if row[QL.F_EVENT] ~= 0 and not (e.completed or e.onQuest) then
-		local event = QL.Data().events[row[QL.F_EVENT]]
-		Line(tip, "Only while " .. (event or "its event") .. " runs", "text")
+		Line(tip, "Only during " .. (QL.Data().events[row[QL.F_EVENT]] or "its event"), "text")
 	end
-	-- (0.19.9) your other characters: done it, or have it in their log (QL.Record)
-	QL.RecordLines(tip, row[QL.F_ID])
+	QL.RecordLines(tip, row[QL.F_ID])   -- (0.19.9: your other characters' -- done it, or in their log)
+	-- (what a click does, one line)
+	local pin
 	if QL.trackedQuestID == row[QL.F_ID] then
-		Line(tip, "Map pin set on this quest giver. Click to remove it.", "pinHint")
-	elseif e.ready and QL.EndPoint(row) then
-		Line(tip, "Click to place a map pin on the turn-in NPC.", "pinHint")
-	elseif select(2, QL.GiverPoint(row)) then
-		local target = row[QL.F_KIND] == QL.KIND_DROP and "where the item drops most"
-			or row[QL.F_KIND] == QL.KIND_PICKUP and "where the item is picked up" or "on the quest giver"
-		Line(tip, "Click to place a map pin " .. target .. ".", "pinHint")
+		pin = "Click: remove the map pin"
+	elseif (e.ready and QL.EndPoint(row)) or select(2, QL.GiverPoint(row)) then
+		pin = "Click: map pin"
 	elseif QL.InstanceStart(row) and QL.EntrancePoint(QL.InstanceStart(row)) then
-		Line(tip, string.format("Click to route to the %s entrance.", QL.IsRaid(QL.InstanceStart(row)) and "raid" or "dungeon"), "pinHint")
-	else
-		Line(tip, "Location not known yet.", "text")
+		pin = "Click: route to the entrance"
 	end
-	if e.hidden then
-		Line(tip, "Hidden for this character. Alt-click to show it again.", "pinHint")
-	elseif not (e.completed or e.onQuest) then
-		Line(tip, "Alt-click to hide it from the map and the list (this character).", "pinHint")
+	local hide = e.hidden and "Alt-click: show again" or (not (e.completed or e.onQuest) and "Alt-click: hide" or nil)
+	if pin or hide then
+		Line(tip, (pin and hide) and (pin .. "   " .. hide) or pin or hide, "pinHint")
 	end
 	ShowTipIcon(row)
 	tip:Show()

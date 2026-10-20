@@ -1177,22 +1177,29 @@ function Motion.PopMark(block, mark)
 		block.popJob = { block = block }
 		-- (the user's prompt 9, chatgpt-prompts-effects.md) the quest-done burst of light behind it: 8 frames in one
 		-- strip (Media/Textures/Icons/fx_questdone, Tools/make_icons.py FLIPBOOKS), added to what is under it
+		-- (0.25.0, played smooth: W.Flipbook's two textures, each frame faded into the next)
 		local W = MelloUI.Widgets
-		if type(W) == "table" and W.IconPath then
-			local b = block:CreateTexture(nil, "OVERLAY", nil, 5)
-			b:SetTexture(W.IconPath("fx_questdone"))
-			b:SetBlendMode("ADD")
-			b:Hide()
-			block.popBurst = b
+		if type(W) == "table" and W.IconPath and W.Flipbook then
+			local pair = {}
+			for i = 1, 2 do
+				local b = block:CreateTexture(nil, "OVERLAY", nil, 5)
+				b:SetTexture(W.IconPath("fx_questdone"))
+				b:SetBlendMode("ADD")
+				b:Hide()
+				pair[i] = b
+			end
+			block.popBurst, block.popBurstNext = pair[1], pair[2]
 		end
 	end
 	local burst = block.popBurst
 	if burst then
-		burst:ClearAllPoints()
-		burst:SetPoint("CENTER", mark, "CENTER", 0, 0)
 		local size = (mark:GetWidth() or 20) * Motion.BURST
-		burst:SetSize(size, size)
-		burst:Show()
+		for _, b in ipairs({ burst, block.popBurstNext }) do
+			b:ClearAllPoints()
+			b:SetPoint("CENTER", mark, "CENTER", 0, 0)
+			b:SetSize(size, size)
+			b:Show()
+		end
 	end
 	s:SetTexture(tex)
 	s:SetTexCoord(icon:GetTexCoord())
@@ -1217,8 +1224,7 @@ function Motion.PopStep(job, u)
 	p = p * p * (3 - 2 * p)
 	local burst = job.block.popBurst
 	if burst then
-		local f = math.min(7, math.floor(u * 8))
-		burst:SetTexCoord(f / 8, (f + 1) / 8, 0, 1)
+		MelloUI.Widgets.Flipbook(burst, job.block.popBurstNext, u, 8)
 	end
 	local size = job.mark:GetWidth() or 20
 	local s = job.block.popStand
@@ -1231,6 +1237,7 @@ function Motion.PopOver(job)
 	job.block.popStand:Hide()
 	if job.block.popBurst then
 		job.block.popBurst:Hide()
+		job.block.popBurstNext:Hide()
 	end
 	job.mark:SetAlpha(1)
 end

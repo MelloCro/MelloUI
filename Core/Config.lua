@@ -145,11 +145,11 @@ local CHANGELOG = {
 		"A new icon set, sharp at every size, on MelloUI's parts and the Configurator; MelloUI Frames on action buttons, XP bars and unit frames; Heal Flight and Frame Effects in soft light.",
 		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, a gold flash as a cooldown ends, a Bar Texture for each, one Health Colour for all.",
 		"Action bars and minimap: backdrops and MelloUI's square minimap for everyone, no painted skin needed; the round painted map is Oldschool's.",
-		"Quests: one gem per title, Parchment its own switch; the tracker's Painted Skin is gone.",
+		"Quests: one gem per title, short Quest List and map tips, Parchment its own switch; the tracker's Painted Skin is gone.",
 		"Route: the World Marker shows the way and follows RestedXP Guides -- its steps in the Quest Tracker, its items in the Quest Items widget; a bead marks your flight point.",
 		"Edit Layout and bags: more windows move without the painted reskin; quality gems and grey junk on every slot.",
 		"Nameplates and Personal Display answer the fight: hits leave a lit chunk, crits flash, casts warn, kills flash out; dodges and stuns show on your bars. Combat Text has a Beside look.",
-		"Macro Backup is gone: the game keeps your settings, and its account macros are freed.",
+		"Tooltips colour guilds, factions, levels and quest objectives. Macro Backup is gone: the game keeps your settings, and its account macros are freed.",
 		"Group Frames: party and raid keep their own places and indicators; profiles and share strings keep them.",
 	} },
 	{ version = "0.24.0", lines = {

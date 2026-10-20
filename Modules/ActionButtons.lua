@@ -407,7 +407,7 @@ end
 -- first flash, over the frame (OVERLAY 7); driven by MelloUI.Anim; while the button shows.
 --------------------------------------------------------------------------------
 local READY = { MIN = 2.5, TIME = 0.6, SIZE = 1 / 0.8, FADE = 0.85 }   -- (SIZE: the square is 0.8 of each frame)
-local readyOf = setmetatable({}, { __mode = "k" })     -- [button] = { tex }: its flash
+local readyOf = setmetatable({}, { __mode = "k" })     -- [button] = { tex, next }: its flash (W.Flipbook's two)
 local since = setmetatable({}, { __mode = "k" })       -- [cooldown] = when it began
 local cooldownOf = setmetatable({}, { __mode = "k" })  -- [cooldown] = its button
 
@@ -416,30 +416,34 @@ local function ReadyOn()
 end
 
 local function ReadyStep(job, u)
-	local f = math.min(7, math.floor(u * 8))
-	job.tex:SetTexCoord(f / 8, (f + 1) / 8, 0, 1)
-	job.tex:SetAlpha(u < READY.FADE and 1 or (1 - u) / (1 - READY.FADE))
+	W.Flipbook(job.tex, job.next, u, 8, u < READY.FADE and 1 or (1 - u) / (1 - READY.FADE))
 end
 
 local function ReadyOver(job)
 	job.tex:Hide()
+	job.next:Hide()
 end
 
 local function Flash(button)
 	local r = readyOf[button]
 	if not r then
-		local t = button:CreateTexture(nil, "OVERLAY", nil, 7)
-		t:SetTexture(W.IconPath("fx_cooldown"))
-		t:SetBlendMode("ADD")
-		t:SetPoint("CENTER", button, "CENTER", 0, 0)
-		t:Hide()
-		r = { tex = t }
+		r = {}
+		for _, key in ipairs({ "tex", "next" }) do
+			local t = button:CreateTexture(nil, "OVERLAY", nil, 7)
+			t:SetTexture(W.IconPath("fx_cooldown"))
+			t:SetBlendMode("ADD")
+			t:SetPoint("CENTER", button, "CENTER", 0, 0)
+			t:Hide()
+			r[key] = t
+		end
 		readyOf[button] = r
 	end
 	local w, h = Num(button:GetWidth()) or 36, Num(button:GetHeight()) or 36
 	r.tex:SetSize(w * READY.SIZE, h * READY.SIZE)
+	r.next:SetSize(w * READY.SIZE, h * READY.SIZE)
 	ReadyStep(r, 0)
 	r.tex:Show()
+	r.next:Show()
 	MelloUI.Anim:Drive(r, ReadyStep, READY.TIME, "linear", ReadyOver)
 end
 

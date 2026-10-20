@@ -2655,6 +2655,25 @@ do
 		return DIR .. name
 	end
 
+	-- (0.25.0) a flipbook strip of `frames` frames in a row (the set's fx_*) played smooth: `a` shows the frame `u`
+	-- (0..1 of the run) is in, `b` the next one, each at its share of the step between them (u at a frame's middle:
+	-- a alone), `alpha` over both -- the user, 2026-10-20: "it should be smooth" (8 frames stepped read as a low
+	-- frame rate). Both textures the strip's, laid alike, ADD blend for light
+	function W.Flipbook(a, b, u, frames, alpha)
+		local x = math.max(0, math.min(1, u)) * frames - 0.5
+		local f = math.max(0, math.min(frames - 1, math.floor(x)))
+		local p = math.max(0, math.min(1, x - f))
+		if x < 0 then
+			p = 0
+		end
+		local g = math.min(frames - 1, f + 1)
+		alpha = alpha or 1
+		a:SetTexCoord(f / frames, (f + 1) / frames, 0, 1)
+		a:SetAlpha(alpha * (1 - p))
+		b:SetTexCoord(g / frames, (g + 1) / frames, 0, 1)
+		b:SetAlpha(alpha * p)
+	end
+
 	function W.Icon(tex, name)
 		tex:SetTexture(DIR .. name)
 		tex:SetTexCoord(0, 1, 0, 1)

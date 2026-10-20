@@ -602,69 +602,35 @@ MarkEnter = function(self)
 	local tip, Line = GameTooltip, QL.TipLine
 	tip:SetOwner(self, "ANCHOR_RIGHT")
 	if self.kind == "giver" then
+		-- (0.25.0, the user: "too much text, it only needs to show important stuff": who or what it is, its quests
+		-- one line each -- title and level, how it stands, an event's name when only then -- and one line of what a
+		-- click does)
 		QL.TipTitle(tip, data.giver ~= "" and data.giver or "Quest giver")
-		-- (0.19.9, the user's pick C of the Completed view) how many of this
-		-- giver's quests are left, and how many of them can be taken now
-		local left, now = 0, 0
-		for _, q in ipairs(data.quests) do
-			if q.state ~= "done" then
-				left = left + 1
-			end
-			if q.state == "available" then
-				now = now + 1
-			end
-		end
-		if left > 0 then
-			Line(tip, (left == 1 and "1 quest left here" or string.format("%d quests left here", left))
-				.. (now > 0 and string.format(" (%d you can take now)", now) or ""), "text")
-		end
 		if data.item == "drop" then
-			Line(tip, "Item that begins a quest, dropped by the creatures around here", "text", true)
+			Line(tip, "An item that begins a quest drops here", "text", true)
 		elseif data.item == "pickup" then
-			Line(tip, "Item that begins a quest, picked up around here", "text", true)
+			Line(tip, "An item that begins a quest is picked up here", "text", true)
 		elseif data.item then
-			Line(tip, string.format("Quests that begin with something found inside this %s:", data.item), "text", true)
+			Line(tip, string.format("Quests that begin inside this %s", data.item), "text", true)
 		end
+		local open = 0
 		for _, q in ipairs(data.quests) do
 			local row = q.row
 			local r, g, b = QL.DifficultyColor(row[QL.F_LEVEL])
 			local text = STATE_TEXT[q.state]
 			local sr, sg, sb = QL.TipColour(text[2])
-			tip:AddDoubleLine(string.format("%s (%d)", row[QL.F_TITLE], row[QL.F_LEVEL]), text[1], r, g, b, sr, sg, sb)
-			if data.item == "dungeon" or data.item == "raid" then
-				local what = QL.IsItemStart(row) and "drops inside" or "is inside"
-				Line(tip, string.format("   %s %s", row[QL.F_GIVER], what), "text", true)
-			end
-			local step, total, nextRow = QL.ChainInfo(row)
-			if step then
-				local chain = QL.Data().chains[row[QL.F_CHAIN]] or "chain"
-				local line = string.format("   Step %d of %d in %s", step, total, chain)
-				if nextRow and q.state ~= "done" then
-					line = line .. ", next: " .. nextRow[QL.F_TITLE]
-				end
-				Line(tip, line, "text", true)
-			end
+			local right = text[1]
 			if (row[QL.F_EVENT] or 0) ~= 0 and (q.state == "available" or q.state == "locked") then
-				Line(tip, "   Only while " .. (QL.Data().events[row[QL.F_EVENT]] or "its event") .. " runs", "text", true)
+				right = QL.Data().events[row[QL.F_EVENT]] or right
 			end
-			QL.RecordLines(tip, row[QL.F_ID], "   ")   -- (0.19.9, your other characters: QL.Record)
-		end
-		if data.tracked then
-			Line(tip, "Tracked. Click to remove the waypoint.", "pinHint")
-		else
-			local where = (data.item == "dungeon" or data.item == "raid") and ("Click to route to the " .. data.item .. " entrance.")
-				or data.item and "Click to set a waypoint here." or "Click to set a waypoint on this giver."
-			Line(tip, where, "pinHint")
-		end
-		local open = 0
-		for _, q in ipairs(data.quests) do
+			tip:AddDoubleLine(string.format("%s (%d)", row[QL.F_TITLE], row[QL.F_LEVEL]), right, r, g, b, sr, sg, sb)
 			if q.state == "available" or q.state == "locked" then
 				open = open + 1
 			end
 		end
-		if open > 0 then
-			Line(tip, open == 1 and "Alt-click to hide this quest (this character)." or "Alt-click to hide these quests (this character).", "pinHint")
-		end
+		local click = data.tracked and "Click: remove the waypoint"
+			or ((data.item == "dungeon" or data.item == "raid") and "Click: route to the entrance" or "Click: waypoint")
+		Line(tip, open > 0 and (click .. "   Alt-click: hide") or click, "pinHint")
 	elseif self.kind == "objective" then
 		QL.Objectives.Tip(tip, data, Line)
 	elseif self.kind == "entrance" then

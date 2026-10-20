@@ -36,6 +36,7 @@ local M = MelloUI:RegisterModule("Tooltip", {
 		classHealth = true,
 		hideHealthBar = true,
 		hideIssueLine = true,
+		colourLines = true,
 		anchor = "default",
 		hideInCombat = false,
 		scale = 1,
@@ -65,6 +66,11 @@ local M = MelloUI:RegisterModule("Tooltip", {
 		{ type = "toggle", key = "hideHealthBar", name = "Hide Health Bar", desc = "Hide the health bar under unit tooltips (on by default). Bar Texture and Class / Reaction Health Colour only matter while the bar is shown." },
 		{ type = "toggle", key = "hideIssueLine", name = "Hide Issue Report Line",
 		  desc = "Leave out the beta's \"Press F6 to submit an issue for this ...\" line, and the gap above it, from creature, item, spell and quest tooltips. The key still opens the issue report while the tooltip shows." },
+		-- (2026-10-20, the user: "more colors for example for factions, Guilds etc", "quest objectives")
+		{ type = "toggle", key = "colourLines", name = "Coloured Lines", new = "0.25.0",
+		  desc = "A unit's tooltip in colours that tell you at a glance: the guild green, Alliance blue and Horde red, "
+			.. "the level line in the colour of how hard the unit is for you, a quest's title gold and its objectives "
+			.. "cream while still to do, green once done." },
 		{ type = "toggle", key = "hideInCombat", name = "Hide Unit Tooltips In Combat", desc = "Do not show tooltips for units while in combat." },
 		{ type = "slider", key = "fadeDelay", name = "Fade Delay", min = 0.1, max = 1, step = 0.05,
 		  format = function(v) return string.format("%.2f s", v) end,
@@ -238,6 +244,92 @@ local function ColorHealthBar()
 	applyingBarColor = false
 end
 
+--------------------------------------------------------------------------------
+-- Coloured Lines (0.25.0; the user, 2026-10-20: "more colors for example for factions, Guilds etc", "maybe even quest
+-- objectives get their own colors"). A unit tooltip's lines in MelloUI.Meaning's colours as the game has laid them:
+-- the guild's line (GetGuildInfo's name, as it reads), the faction's (UnitFactionGroup's name), the level line (the
+-- game's LEVEL first) in the unit's difficulty colour, quest titles and objectives by the line's own type in the
+-- tooltip data (QuestTitle, QuestObjective and its `completed`). Only a line's colour is written, never its text; a
+-- line whose text is secret is left as the game coloured it.
+--------------------------------------------------------------------------------
+local Lines = { TITLE = 17, OBJECTIVE = 8 }   -- (Enum.TooltipDataLineType: QuestTitle, QuestObjective)
+do
+	local LT = Enum and Enum.TooltipDataLineType
+	if LT then
+		Lines.TITLE, Lines.OBJECTIVE = LT.QuestTitle or Lines.TITLE, LT.QuestObjective or Lines.OBJECTIVE
+	end
+end
+
+-- a plain string with something in it, or nil (absent, empty or secret: MelloUI.Safe.Text)
+function Lines.Text(v)
+	v = MelloUI.Safe.Text(v)
+	return v ~= "" and v or nil
+end
+
+-- a line's field: on the line, or among its args (the older data's)
+function Lines.Field(info, key)
+	local v = info[key]
+	if v == nil and type(info.args) == "table" then
+		for _, a in ipairs(info.args) do
+			if a.field == key then
+				v = a.boolVal
+				break
+			end
+		end
+	end
+	return (not Secret(v)) and v or nil
+end
+
+function Lines.Paint(fs, c)
+	if fs and c then
+		fs:SetTextColor(c[1], c[2], c[3])
+	end
+end
+
+function Lines.Apply(tooltip, data, unit)
+	if not (M.db and M.db.colourLines ~= false) then
+		return
+	end
+	local Mean = MelloUI.Meaning
+	local okG, guild = pcall(rawget(_G, "GetGuildInfo"), unit)
+	guild = okG and Lines.Text(guild) or nil
+	local okF, _, factionName = pcall(UnitFactionGroup, unit)
+	factionName = okF and Lines.Text(factionName) or nil
+	local faction = factionName and (factionName == Lines.Text(rawget(_G, "FACTION_HORDE")) and Mean.factionHorde
+		or factionName == Lines.Text(rawget(_G, "FACTION_ALLIANCE")) and Mean.factionAlliance) or nil
+	local okL, level = pcall(UnitLevel, unit)
+	level = okL and Num(level) or nil
+	local levelWord = Lines.Text(rawget(_G, "LEVEL"))
+	local lines = type(data) == "table" and type(data.lines) == "table" and data.lines or nil
+	local name = tooltip:GetName()
+	local okN, n = pcall(tooltip.NumLines, tooltip)
+	n = okN and Num(n) or 0
+	for i = 2, n do
+		local fs = _G[name .. "TextLeft" .. i]
+		local info = lines and lines[i]
+		local kind = type(info) == "table" and Lines.Field(info, "type") or nil
+		if kind == Lines.TITLE then
+			Lines.Paint(fs, Mean.questTitle)
+		elseif kind == Lines.OBJECTIVE then
+			Lines.Paint(fs, Lines.Field(info, "completed") == true and Mean.questDone or Mean.questLeft)
+		elseif fs then
+			local text = Lines.Text(fs:GetText())
+			if text then
+				if guild and (text == guild or text == "<" .. guild .. ">") then
+					Lines.Paint(fs, Mean.tipGuild)
+				elseif faction and text == factionName then
+					Lines.Paint(fs, faction)
+				elseif level and levelWord and text:sub(1, #levelWord) == levelWord then
+					local okC, c = pcall(rawget(_G, "GetCreatureDifficultyColor"), level)
+					if okC and type(c) == "table" and c.r then
+						fs:SetTextColor(c.r, c.g, c.b)
+					end
+				end
+			end
+		end
+	end
+end
+
 local function OnUnitTooltip(tooltip, data)
 	if not M.isEnabled or tooltip ~= GameTooltip then
 		return
@@ -264,6 +356,7 @@ local function OnUnitTooltip(tooltip, data)
 			line:SetTextColor(unitColor[1], unitColor[2], unitColor[3])
 		end
 	end
+	Lines.Apply(tooltip, data, unit)
 	StyleBackdrop(tooltip)
 	ColorHealthBar()
 end

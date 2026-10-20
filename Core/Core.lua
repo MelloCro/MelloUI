@@ -398,6 +398,15 @@ MelloUI.Meaning = {
 	personalShieldFrost = Hex("#6ED6FF"),   -- (meaning colour)
 	personalShieldShadow = Hex("#7A3CC0"),  -- (meaning colour)
 	personalShieldArcane = Hex("#C08CFF"),  -- (meaning colour)
+	-- (0.25.0, the user: "the Tooltips also need to be updated a bit, more colors for example for factions, Guilds
+	-- etc ... maybe even quest objectives get their own colors": a unit tooltip's lines, Modules/Tooltip.lua; the
+	-- factions' and the quest gold the Quest List's own)
+	tipGuild = Hex("#8CD878"),         -- a player's guild (meaning colour)
+	factionAlliance = Hex("#4D99FF"),  -- (meaning colour)
+	factionHorde = Hex("#FF4D4D"),     -- (meaning colour)
+	questTitle = Hex("#FFD100"),       -- a quest's title: the game's quest gold (meaning colour)
+	questLeft = Hex("#E9DCAA"),        -- an objective still to do (meaning colour)
+	questDone = Hex("#7AC860"),        -- an objective done (meaning colour)
 	-- (0.21.0, the Personal Display's Big Cooldowns: each kind's ring round you)
 	personalCdImmunity = Hex("#FFD66E"),    -- (meaning colour)
 	personalCdFortify = Hex("#BEC8D7"),     -- (meaning colour)
