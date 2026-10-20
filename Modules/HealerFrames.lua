@@ -241,6 +241,37 @@ local function Layers(set, fill)
 	end
 end
 
+-- (1.0, the user 2026-10-20: "shield texture is a bit too big for the health bar, it should fit") the health fill's
+-- masks on the segments' own textures and the stripes: the game cuts the player's and the target's fill with its
+-- HealthBarMask (its own absorb bar wears it too), so an unmasked segment showed the fill's whole height over the
+-- bar's edges. Ours only: the mask is read off the game's fill and added to MelloUI's textures (a texture takes at
+-- most three)
+local function Masks(set, fill)
+	local okN, n = pcall(fill.GetNumMaskTextures, fill)
+	if not okN or Secret(n) or type(n) ~= "number" or n < 1 then
+		return
+	end
+	local own = { set.mine:GetStatusBarTexture(), set.other:GetStatusBarTexture(), set.shield:GetStatusBarTexture(),
+		set.stripes }
+	set.masked = set.masked or {}
+	for i = 1, math.min(n, 3) do
+		local okM, mask = pcall(fill.GetMaskTexture, fill, i)
+		if okM and mask then
+			for _, tex in ipairs(own) do
+				local had = set.masked[tex]
+				if not had then
+					had = {}
+					set.masked[tex] = had
+				end
+				if not had[mask] then
+					had[mask] = true
+					tex:AddMaskTexture(mask)
+				end
+			end
+		end
+	end
+end
+
 local function Chain(set)
 	local fill = set.health:GetStatusBarTexture()
 	if fill then
@@ -257,6 +288,7 @@ local function Chain(set)
 		bar:SetPoint("BOTTOMLEFT", prev, "BOTTOMRIGHT")
 		prev = bar:GetStatusBarTexture()
 	end
+	Masks(set, fill)
 	return true
 end
 
