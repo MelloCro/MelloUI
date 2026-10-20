@@ -1507,8 +1507,32 @@ end
 -- Module lifecycle
 --------------------------------------------------------------------------------
 
+-- a Font Style named whose faces were never written (picked while this module was off: OnSettingChanged runs only
+-- while it is on; or a face the style took on later -- 2026-10-20, the Fredoka style's damage numbers): written now,
+-- so the style's name never stands over other faces (0.19.4)
+local function FillStyle(db)
+	local st = STYLE[db.style]
+	if not st then
+		return
+	end
+	local set, stale = StyleSettings(st), false
+	for k, v in pairs(set) do
+		if k:sub(1, 4) == "font" and db[k] ~= v then
+			stale = true
+		end
+	end
+	if stale then
+		for k, v in pairs(set) do
+			db[k] = v
+		end
+	end
+end
+
+-- (the world faces at the earliest moment: the game reads them as the world loads, so a style's faces are filled in
+-- first -- else the floating combat text took the old face for one more load, the user's test of 2026-10-20)
 function M:OnAddonLoaded(db)
 	self.db = db
+	FillStyle(db)
 	ApplyWorldFonts(db)
 end
 
@@ -1529,23 +1553,7 @@ function M:OnEnable(db)
 		end
 		db.paperFollows = true
 	end
-	-- a Font Style named whose faces were never written (picked while this
-	-- module was off: OnSettingChanged runs only while it is on): written
-	-- now, so the style's name never stands over other faces (0.19.4)
-	local st = STYLE[db.style]
-	if st then
-		local set, stale = StyleSettings(st), false
-		for k, v in pairs(set) do
-			if k:sub(1, 4) == "font" and db[k] ~= v then
-				stale = true
-			end
-		end
-		if stale then
-			for k, v in pairs(set) do
-				db[k] = v
-			end
-		end
-	end
+	FillStyle(db)
 	ApplyWorldFonts(db)
 	ApplyAll()
 end
