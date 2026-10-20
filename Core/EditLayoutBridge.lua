@@ -1216,6 +1216,8 @@ end
 B.WriteChanged = WriteChanged
 
 -- the login's handover: a place Edit Mode holds now let go, the others held
+-- (B.handedOver[key]: what the login did with each stored place, for /emdump)
+B.handedOver = {}
 local function Handover()
 	for key, pos in pairs(StoredSystems()) do
 		local system, index = ParseKey(key)
@@ -1223,9 +1225,12 @@ local function Handover()
 		if frame then
 			if SameAsEditMode(system, index, pos, frame) then
 				MelloUI:ForgetPosition(key)
+				B.handedOver[key] = "let go (Edit Mode holds it)"
 			else
-				RegisterSystem(frame)
+				B.handedOver[key] = RegisterSystem(frame) and "held" or "held (already a mover)"
 			end
+		else
+			B.handedOver[key] = "no frame"
 		end
 	end
 end
@@ -1346,6 +1351,30 @@ MelloUI:On("editmode", function(entering)
 		K:NextFrame(SYNC_KEY, SyncAfter)
 	end
 end, OWNER)
+
+-- /mello layout places (1.0; the user, 2026-10-20: "on /reload my Action bars return to their default position
+-- instead of my modification"): each Edit Mode place Edit Layout keeps -- the stored place, the active layout's, the
+-- frame's now -- and what the login's handover did with it, into the log (/mellolog to copy). Reads only
+function B.Dump()
+	MelloUI:ClearLog()
+	local n = 0
+	for key, pos in pairs(StoredSystems()) do
+		n = n + 1
+		local system, index = ParseKey(key)
+		local frame = FrameOf(system, index)
+		local name = frame and frame.GetName and Safe.Text(frame:GetName()) or "?"
+		local p, to, rp, x, y, inDefault = MelloUI:EditModeSystemAnchor(system, index)
+		local entry = frame and MelloUI:MoverEntry(frame)
+		MelloUI:Print("%s %s: stored %s/%s %.1f %.1f | layout %s %s/%s %s %s%s | now %s | %s, %s%s", key, name,
+			tostring(pos.point), tostring(pos.relPoint), Finite(pos.x) or 0, Finite(pos.y) or 0,
+			tostring(p), tostring(to), tostring(rp), tostring(Finite(x)), tostring(Finite(y)),
+			inDefault and " (default)" or "", frame and tostring(PointOf(frame)) or "-",
+			B.handedOver[key] or "not handed over", entry and "a mover" or "no mover",
+			(frame and p) and (SameAsEditMode(system, index, pos, frame) and ", same as the layout" or ", not the layout's") or "")
+	end
+	MelloUI:Print("%d stored Edit Mode place(s); Edit Mode %s", n, EditModeOpen() and "open" or "closed")
+	MelloUI:ShowLog("Edit Mode places")
+end
 
 -- (the media data files' load time is counted from the end of the next file,
 -- Core/EditLayoutWindows.lua: the last Core file before them in MelloUI.toc

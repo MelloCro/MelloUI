@@ -7420,6 +7420,12 @@ SlashCmdList.MELLOUI = function(msg)
 			MelloUI:Print("The installer is not available.")
 		end
 	elseif cmd == "layout" then
+		-- (1.0) the Edit Mode places Edit Layout keeps and what the login did with them (EditLayoutBridge's B.Dump)
+		local bridge = MelloUI.EditLayout and MelloUI.EditLayout.Bridge
+		if rest == "places" and bridge and bridge.Dump then
+			bridge.Dump()
+			return
+		end
 		if rest == "export" then
 			local text, name = MelloUI:ExportEditModeLayout()
 			if text then
