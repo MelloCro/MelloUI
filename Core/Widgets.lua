@@ -5619,13 +5619,21 @@ do
 		on = { tex = TEXTURE_PATH .. "Icons\\piece_pill_on", h = 60, l = 23.8, r = 25.4 },
 	}
 
-	local function Pill(b, state)
-		if b.melloPill == state then
-			return
+	local function PillSlices(b, layer, sublevel)
+		local s = {}
+		for i = 1, 3 do
+			s[i] = b:CreateTexture(nil, layer, nil, sublevel)
 		end
-		b.melloPill = state
-		local p, s = PILL[state], b.melloSlices
-		local v, k = p.h / 64, (Num(b:GetHeight()) or 22) / p.h
+		s[1]:SetPoint("TOPLEFT")
+		s[1]:SetPoint("BOTTOMLEFT")
+		s[3]:SetPoint("TOPRIGHT")
+		s[3]:SetPoint("BOTTOMRIGHT")
+		s[2]:SetPoint("TOPLEFT", s[1], "TOPRIGHT")
+		s[2]:SetPoint("BOTTOMRIGHT", s[3], "BOTTOMLEFT")
+		return s
+	end
+
+	local function CutPill(s, p, v, k)
 		for i = 1, 3 do
 			s[i]:SetTexture(p.tex)
 		end
@@ -5635,6 +5643,39 @@ do
 		s[3]:SetTexCoord(1 - p.r / 256, 1, 0, v)
 		s[3]:SetWidth(p.r * k)
 	end
+
+	-- W.Pill(b, state[, light]): a button drawn as the pill, state "off" (slate in a bronze rim) or "on" (gold): its
+	-- three slices made on the first call (BACKGROUND 3, under its label), cut at its height then. `light` (0..1):
+	-- the same pill again in its HIGHLIGHT layer, added as light in the palette's gold at that strength, so it
+	-- brightens under the pointer (asked once, kept). The chips' look and the game menu's MelloUI button
+	-- (2026-10-20, the user's pick B: the gold pill)
+	function W.Pill(b, state, light)
+		local s = b.melloSlices
+		if not s then
+			s = PillSlices(b, "BACKGROUND", 3)
+			b.melloSlices = s
+		end
+		if light and not b.melloPillLight then
+			local l = PillSlices(b, "HIGHLIGHT", 0)
+			for i = 1, 3 do
+				l[i]:SetBlendMode("ADD")
+				W.Paint(l[i], "selectedTrim", "vertex", light)
+			end
+			b.melloPillLight = l
+			b.melloPill = nil   -- (cut again below, the light with it)
+		end
+		if b.melloPill == state then
+			return
+		end
+		b.melloPill = state
+		local p = PILL[state]
+		local v, k = p.h / 64, (Num(b:GetHeight()) or 22) / p.h
+		CutPill(s, p, v, k)
+		if b.melloPillLight then
+			CutPill(b.melloPillLight, p, v, k)
+		end
+	end
+	local Pill = W.Pill
 
 	local function ChipLook(b)
 		local chips, item = b.melloChips, b.melloItem
@@ -5654,17 +5695,7 @@ do
 		for i = 1, #b.melloEdges do
 			b.melloEdges[i]:Hide()
 		end
-		local s = {}
-		for i = 1, 3 do
-			s[i] = b:CreateTexture(nil, "BACKGROUND", nil, 3)
-		end
-		s[1]:SetPoint("TOPLEFT")
-		s[1]:SetPoint("BOTTOMLEFT")
-		s[3]:SetPoint("TOPRIGHT")
-		s[3]:SetPoint("BOTTOMRIGHT")
-		s[2]:SetPoint("TOPLEFT", s[1], "TOPRIGHT")
-		s[2]:SetPoint("BOTTOMRIGHT", s[3], "BOTTOMLEFT")
-		b.melloSlices = s
+		Pill(b, "off")
 		b.melloLook = ChipLook
 	end
 

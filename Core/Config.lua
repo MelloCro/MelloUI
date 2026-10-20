@@ -6798,68 +6798,162 @@ end
 --   * at the menu's alpha, which Windows Fade In eases in as it opens
 -- The menu's OnShow hook is put on here, at load: before the Game Menu
 -- Panel's (its OnEnable), so the button is there when the panel lays it.
-local menuButton
+-- Its look (2026-10-20, the user's pick B of the game menu sheet: "i would
+-- like the MelloUI button to stand out more"): the gold pill (W.Pill, lit
+-- under the pointer) with the logo badge over its left end (its click too)
+-- and the label in MelloUI's font, `text` on the gold. The first time the
+-- menu opens in a session the badge pops in with one soft glow round it
+-- (MelloUI.Shade's, kept still, faded in and out once); none under Reduce
+-- Motion. With MelloUI Oldschool's painted menu (its Game Menu Panel on) the
+-- button wears that menu's own look, as before: the panel fades the pill
+-- (the button's own textures) as it dresses it, and here the badge and the
+-- glow stay hidden, the label is left unpainted and centred.
+do
+	local menuButton
+	local menuParts = {}   -- badge, glow (their frames), greeted (the first open's glow played)
+	local MENU = {
+		W = 212, H = 38,     -- the pill
+		X = 12, Y = -10,     -- under the menu: the badge's overhang centred, its top at the menu's edge
+		BADGE = 58,          -- the logo badge, its centre this far right of the pill's left end:
+		BADGE_X = 4,
+		TEXT_X = 14,         -- the label, clear of the badge
+		LIGHT = 0.35,        -- the pill's light under the pointer
+		GLOW_IN = 0.35, GLOW_HOLD = 0.9, GLOW_OUT = 0.8,   -- the first open's glow, seconds
+	}
 
--- the click: the menu closed through the game's panel manager (its gamepad
--- side would run in MelloUI's execution, so with the mouse UI only), then
--- the configurator
-local function MenuButtonClick()
-	MelloUI:PlayUISound("menu_button")
-	if not MelloUI.Safe.GamepadUI() then
-		HideUIPanel(GameMenuFrame)
+	-- the click: the menu closed through the game's panel manager (its gamepad
+	-- side would run in MelloUI's execution, so with the mouse UI only), then
+	-- the configurator
+	local function MenuButtonClick()
+		MelloUI:PlayUISound("menu_button")
+		if not MelloUI.Safe.GamepadUI() then
+			HideUIPanel(GameMenuFrame)
+		end
+		MelloUI:OpenConfig()
 	end
-	MelloUI:OpenConfig()
-end
 
--- the menu's alpha, on the button (a secret one is left)
-local function FollowAlpha(_, alpha)
-	alpha = MelloUI.Safe.Number(alpha)
-	if alpha and menuButton then
-		menuButton:SetAlpha(alpha)
+	-- the menu's alpha, on the button (a secret one is left)
+	local function FollowAlpha(_, alpha)
+		alpha = MelloUI.Safe.Number(alpha)
+		if alpha and menuButton then
+			menuButton:SetAlpha(alpha)
+		end
 	end
-end
 
-local function MakeMenuButton(menu)
-	-- (the template of the menu's own entries, MainMenuFrameTemplates.xml:
-	-- their look)
-	menuButton = CreateFrame("Button", "MelloUIGameMenuButton", UIParent, "MainMenuFrameButtonTemplate")
-	menuButton:SetText("MelloUI")
-	menuButton:SetFrameStrata(menu:GetFrameStrata())
-	menuButton:SetPoint("TOP", menu, "BOTTOM", 0, -4)
-	Perf.SetScript(menuButton, "OnClick", MenuButtonClick)
-	hooksecurefunc(menu, "SetAlpha", FollowAlpha)
-end
+	-- the first open's glow: in, held, out (shared ends, no closure per open)
+	local function GlowOut()
+		MelloUI.Anim:FadeOut(menuParts.glow, MENU.GLOW_OUT)
+	end
 
-local function MenuShown(menu)
-	if MelloUI.Safe.GamepadUI() then
+	local function GlowHold()
+		C_Timer.After(MENU.GLOW_HOLD, GlowOut)
+	end
+
+	local function MakeMenuButton(menu)
+		menuButton = CreateFrame("Button", "MelloUIGameMenuButton", UIParent)
+		menuButton:SetSize(MENU.W, MENU.H)
+		menuButton:SetFrameStrata(menu:GetFrameStrata())
+		menuButton:SetPoint("TOP", menu, "BOTTOM", MENU.X, MENU.Y)
+		W.Pill(menuButton, "on", MENU.LIGHT)
+		local fs = menuButton:CreateFontString(nil, "OVERLAY", W.FontObject("GameFontNormalLarge"))
+		menuButton:SetFontString(fs)
+		menuButton:SetText("MelloUI")
+		local badge = CreateFrame("Frame", nil, menuButton)
+		badge:SetSize(MENU.BADGE, MENU.BADGE)
+		badge:SetPoint("CENTER", menuButton, "LEFT", MENU.BADGE_X, 0)
+		local logo = badge:CreateTexture(nil, "ARTWORK")
+		logo:SetTexture(LOGO_FULL)
+		logo:SetAllPoints()
+		local glow = CreateFrame("Frame", nil, menuButton)
+		glow:SetAllPoints(badge)
+		glow:Hide()
+		local light = MelloUI.Shade:Glow(glow, { region = glow, size = MENU.BADGE, strength = "reach" })
+		if light then
+			light:Still()
+			light:SetShown(true)
+		end
+		menuParts.badge, menuParts.glow = badge, glow
+		Perf.SetScript(menuButton, "OnClick", MenuButtonClick)
+		hooksecurefunc(menu, "SetAlpha", FollowAlpha)
+	end
+
+	-- MelloUI Oldschool's painted menu (its Game Menu Panel on) lays the button on
+	-- its own plate, in its own look
+	local function PaintedMenu()
+		local panel = MelloUI:GetModule("GameMenuPanel")
+		return panel and panel.isEnabled and true or false
+	end
+
+	-- the look for the menu it shows with, each show: MelloUI's own, or nothing
+	-- over the painted menu's (see above; the badge's click reach too)
+	local function MenuLook(painted)
+		local fs = menuButton:GetFontString()
+		menuParts.badge:SetShown(not painted)
+		if painted then
+			menuParts.glow:Hide()
+			MelloUI.Painter.Unpaint(fs, "text")
+			local font = rawget(_G, "GameFontHighlightLarge")
+			if font and font.GetTextColor then
+				fs:SetTextColor(font:GetTextColor())
+			end
+			menuButton:SetHitRectInsets(0, 0, 0, 0)
+		else
+			W.Paint(fs, "text", "text")
+			menuButton:SetHitRectInsets(MENU.BADGE_X - MENU.BADGE / 2, 0, 0, 0)
+		end
+		fs:ClearAllPoints()
+		fs:SetPoint("CENTER", painted and 0 or MENU.TEXT_X, 0)
+		-- (the panel's own light: a texture of its, faded here on MelloUI's look)
+		local hl = menuButton:GetHighlightTexture()
+		if hl then
+			hl:SetAlpha(painted and 1 or 0)
+		end
+	end
+
+	local function MenuShown(menu)
+		if MelloUI.Safe.GamepadUI() then
+			if menuButton then
+				menuButton:Hide()
+			end
+			return
+		end
+		if not menuButton then
+			MakeMenuButton(menu)
+		end
+		-- (over the menu: a level read again each show, the menu is toplevel and
+		-- rises as it shows; a raise while it shows can pass it, which under
+		-- the menu's edge covers nothing; the glow, then the badge over the pill)
+		local level = MelloUI.Safe.Number(menu:GetFrameLevel())
+		if level then
+			level = math.min(level + 5, 10000)
+			menuButton:SetFrameLevel(level)
+			menuParts.glow:SetFrameLevel(level + 1)
+			menuParts.badge:SetFrameLevel(level + 2)
+		end
+		local painted = PaintedMenu()
+		MenuLook(painted)
+		FollowAlpha(menu, menu:GetAlpha())
+		menuButton:Show()
+		if not (painted or menuParts.greeted) then
+			menuParts.greeted = true
+			local Anim = MelloUI.Anim
+			if not Anim.reduceMotion then
+				Anim:Pop(menuParts.badge)
+				Anim:FadeIn(menuParts.glow, MENU.GLOW_IN, nil, GlowHold)
+			end
+		end
+	end
+
+	local function MenuHidden()
 		if menuButton then
 			menuButton:Hide()
 		end
-		return
 	end
-	if not menuButton then
-		MakeMenuButton(menu)
-	end
-	-- (over the menu: a level read again each show, the menu is toplevel and
-	-- rises as it shows; a raise while it shows can pass it, which under
-	-- the menu's edge covers nothing)
-	local level = MelloUI.Safe.Number(menu:GetFrameLevel())
-	if level then
-		menuButton:SetFrameLevel(math.min(level + 5, 10000))
-	end
-	FollowAlpha(menu, menu:GetAlpha())
-	menuButton:Show()
-end
 
-local function MenuHidden()
-	if menuButton then
-		menuButton:Hide()
+	if GameMenuFrame then
+		Perf.HookScript(GameMenuFrame, "OnShow", MenuShown)
+		Perf.HookScript(GameMenuFrame, "OnHide", MenuHidden)
 	end
-end
-
-if GameMenuFrame then
-	Perf.HookScript(GameMenuFrame, "OnShow", MenuShown)
-	Perf.HookScript(GameMenuFrame, "OnHide", MenuHidden)
 end
 
 --------------------------------------------------------------------------------
