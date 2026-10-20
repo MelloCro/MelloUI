@@ -16,6 +16,10 @@
 --                  data), one pin a dock with every way from it on hover
 --   entrances      dungeons and raids (the Quest List's data and the client's),
 --                  their levels on hover in the colour of how hard they are
+--   route          Route's trail and its goal flag (the World Marker's goal is
+--                  the same), by Route's own painter, across continents
+--   quests         the quest givers of every zone and city: the Quest List's own
+--                  groups, picture and tooltip, from a zone's zoom on
 --
 -- The places of the data are the client's: GetMapPosFromWorldPos turns its
 -- world yards into a continent's position, the canvas carries that on.
@@ -32,6 +36,7 @@
 
 local _, ns = ...
 local MelloUI = (ns and ns.MelloUI) or _G.MelloUI
+local Perf = MelloUI.Perf:Scope("MelloUI_Map (MapLayers)")
 local Finite = MelloUI.Safe.Finite
 local Text = MelloUI.Safe.Text
 local pairs, ipairs, pcall, type, tostring = pairs, ipairs, pcall, type, tostring
@@ -49,7 +54,9 @@ local T = {
 	ARROW_ATLAS = "UI-WorldMapArrow",                 -- the game's own map arrow
 	ARROW_FILE = "Interface\\Minimap\\MinimapArrow",  -- (if the atlas is missing)
 	-- the stack (MapPins' layer order): the places under the group, the group under the player
-	ORDER = { entrances = 10, transports = 12, flights = 14, group = 40, player = 50 },
+	ORDER = { entrances = 10, transports = 12, flights = 14, quests = 20, route = 30, group = 40, player = 50 },
+	QUESTS_FROM = 2.5,       -- the quest givers from a zone's zoom on (a continent's: thousands)
+	GIVER_SIZE = 20,
 	PLACES_FROM = 1.15,      -- flights, transports and entrances from a continent's zoom on (the world's: too many)
 	PIN_SIZE = 18,
 	NEW_ALPHA = 0.45,        -- a flight master you have not learned
@@ -183,6 +190,79 @@ local function Group(mapID)
 			seen[key] = nil
 		end
 	end
+end
+
+--------------------------------------------------------------------------------
+-- The quest givers: the Quest List's own groups (QL.GiverGroups: its filters,
+-- its states, its order), picture (QL.GiverIcon) and tooltip (QL.MarkTip),
+-- for every zone and city at once; from a zone's zoom on. Made when the
+-- window opens and again when the Quest List lays its own marks again (its
+-- RefreshPins: a quest taken, done, its data placed)
+--------------------------------------------------------------------------------
+
+local function QuestList()
+	local QL = rawget(MelloUI, "QuestList")
+	return (type(QL) == "table" and QL.GiverGroups and QL.GiverIcon and QL.MarkTip) and QL or nil
+end
+
+local function GiverLook(tex, pin)
+	local QL = QuestList()
+	if QL then
+		pcall(QL.GiverIcon, tex, pin.data)
+	end
+end
+
+local function GiverTip(tip, pin)
+	local QL = QuestList()
+	if QL then
+		pcall(QL.MarkTip, tip, "giver", pin.data, false)
+	end
+end
+
+local GIVER = { size = T.GIVER_SIZE, look = GiverLook, fillTip = GiverTip, sub = 2 }
+
+function Layers.Quests()
+	local pins, QL = S.pins, QuestList()
+	if not pins then
+		return
+	end
+	S.questsDirty = false
+	S.questsBuilt = QL ~= nil
+	pins:Clear("quests")
+	if not QL then
+		return
+	end
+	local t0 = debugprofilestop()
+	for _, p in ipairs(S.canvas.places) do
+		if p.kind == "zone" or p.kind == "city" then
+			local ok, groups = pcall(QL.GiverGroups, p.id, p.name)
+			for i, g in ipairs(ok and type(groups) == "table" and groups or EMPTY) do
+				local pin = pins:SetAt("quests", p.id * 1000 + i, p.id, g.x, g.y, GIVER)
+				if pin then
+					pin.data = g
+				end
+			end
+		end
+	end
+	S.questsMs = debugprofilestop() - t0
+end
+
+-- the Quest List laid its marks again: the givers again now if the window shows, else at its next open
+local function QuestsChanged()
+	S.questsDirty = true
+	if S.shown then
+		Layers.Quests()
+		S.pins:Lay()
+	end
+end
+
+local function WatchQuests()
+	local QL = QuestList()
+	if S.questWatch or not (QL and type(QL.RefreshPins) == "function") then
+		return
+	end
+	S.questWatch = true
+	Perf.hooksecurefunc(QL, "RefreshPins", QuestsChanged)
 end
 
 --------------------------------------------------------------------------------
@@ -327,6 +407,16 @@ local function LevelText(lv)
 	return string.format("|cff%02x%02x%02x%s|r", floor(r * 255), floor(g * 255), floor(b * 255), text)
 end
 
+local function EntranceFill(tip, pin)
+	local QL = rawget(MelloUI, "QuestList")
+	if not (type(QL) == "table" and QL.MarkTip) then
+		return
+	end
+	local d = pin.data
+	pcall(QL.MarkTip, tip, "entrance", { name = d.name, dungeonID = d.dungeonID or 0, raid = d.kind == 2,
+		source = d.source }, false)
+end
+
 local function EntranceTip(pin)
 	local d = pin.data
 	local word = d.kind == 2 and TEXT.raid or TEXT.dungeon
@@ -336,6 +426,15 @@ local function EntranceTip(pin)
 	return d.name, word
 end
 local ENTRANCE = { Icon(T.ENTRANCE_ICON[1], nil, EntranceTip), Icon(T.ENTRANCE_ICON[2], nil, EntranceTip) }
+-- (with the Quest List: its own entrance tooltip, the quests done there with it)
+local function EntranceSpec(kind)
+	local QL = rawget(MelloUI, "QuestList")
+	local spec = ENTRANCE[kind]
+	if type(QL) == "table" and QL.MarkTip then
+		spec.fillTip = EntranceFill
+	end
+	return spec
+end
 
 local function Entrances()
 	local pins, data = S.pins, Data()
@@ -348,9 +447,10 @@ local function Entrances()
 			if wx then
 				seen[name] = true
 				local lv = data.dungeonLevel and data.dungeonLevel[id]
-				local pin = pins:Set("entrances", name, wx, wy, ENTRANCE[kind])
+				local pin = pins:Set("entrances", name, wx, wy, EntranceSpec(kind))
 				if pin then
-					pin.data = { name = name, kind = kind, levels = lv and (lv[1] or 0) > 0 and lv or nil }
+					pin.data = { name = name, kind = kind, levels = lv and (lv[1] or 0) > 0 and lv or nil, dungeonID = id,
+						source = "data" }
 				end
 			end
 		end
@@ -369,9 +469,9 @@ local function Entrances()
 				if name and x and not seen[name] then
 					seen[name] = true
 					local kind = Text(e.atlasName) == "Raid" and 2 or 1
-					local pin = pins:SetAt("entrances", name, p.id, x, y, ENTRANCE[kind])
+					local pin = pins:SetAt("entrances", name, p.id, x, y, EntranceSpec(kind))
 					if pin then
-						pin.data = { name = name, kind = kind }
+						pin.data = { name = name, kind = kind, source = "client" }
 					end
 				end
 			end
@@ -384,14 +484,21 @@ function Layers.Open()
 	if not S.pins then
 		return
 	end
+	S.shown = true
 	if not S.built then
 		S.built = true
 		Transports()
 		Entrances()
 	end
+	-- (the givers: made again when the Quest List laid its marks again, or when they were last made without it)
+	WatchQuests()
+	if S.questsDirty or not S.questsBuilt then
+		Layers.Quests()
+	end
 	Flights()
 	S.wait = 0
 	S.pins:Lay()
+	Layers.Route()
 end
 
 -- a flight master's map opened or a flight point learned: the flights again
@@ -399,6 +506,85 @@ function Layers.Event()
 	if S.pins then
 		Flights()
 		S.pins:Lay()
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Route: its trail and its goal, drawn by Route itself (Route:DrawOn, its one
+-- painter and goal mark) on the route layer's frame, at the canvas's
+-- projection: a route point's continent yards -> the continent's position ->
+-- world units (cached by the point: a new route is a new table) -> the view
+--------------------------------------------------------------------------------
+
+local P = { x0 = 0, y0 = 0, k = 1, cache = setmetatable({}, { __mode = "k" }), size = {} }
+
+-- a continent's size in yards (the client's GetMapWorldSize), read once
+local function Yards(cont)
+	local s = P.size[cont]
+	if s == nil then
+		local ok, w, h = pcall(C_Map.GetMapWorldSize, cont)
+		w, h = ok and Finite(w), ok and Finite(h)
+		s = (w and h and w > 0 and h > 0) and { w, h } or false
+		P.size[cont] = s
+	end
+	return s
+end
+
+-- a point of the route (its continent and yards) on the route layer's frame, from its top left
+local function Project(cont, x, y, key)
+	local w = key and P.cache[key]
+	local wx, wy
+	if w then
+		wx, wy = w[1], w[2]
+	else
+		local s = Yards(cont)
+		x, y = Finite(x), Finite(y)
+		if not (s and x and y) then
+			return nil
+		end
+		wx, wy = S.canvas:ToWorld(cont, x / s[1], y / s[2])
+		if not wx then
+			return nil
+		end
+		if key then
+			P.cache[key] = { wx, wy }
+		end
+	end
+	return (wx - P.x0) * P.k, (wy - P.y0) * P.k
+end
+
+-- the trail and the goal laid at the view now (every view, and when Route has a new route or goal)
+function Layers.Route()
+	local c, pins = S.canvas, S.pins
+	local route = rawget(MelloUI, "Route")
+	local layer = pins and pins.layers.route
+	if not (layer and route and route.DrawOn and c.cx) then
+		return
+	end
+	local current, goal = nil, nil
+	if route.CurrentRoute then
+		current, goal = route:CurrentRoute()
+	end
+	-- (nothing to draw and nothing drawn before: no work)
+	if not (current or goal or S.routeDrawn) then
+		return
+	end
+	local k = c.k1 * c.z
+	P.k, P.x0, P.y0 = k, c.cx - c.cw / (2 * k), c.cy - c.ch / (2 * k)
+	local ok = pcall(route.DrawOn, route, layer.frame, Project)
+	S.routeDrawn = ok and (current or goal) and true or false
+	S.route, S.goal = current, goal
+end
+
+-- the window's beat: a new route or goal drawn
+local function RouteChanged()
+	local route = rawget(MelloUI, "Route")
+	if not (route and route.CurrentRoute) then
+		return
+	end
+	local current, goal = route:CurrentRoute()
+	if current ~= S.route or goal ~= S.goal then
+		Layers.Route()
 	end
 end
 
@@ -424,6 +610,12 @@ function Layers.Tick(elapsed)
 		S.pins:Clear("group")
 	end
 	S.pins:Lay()
+	RouteChanged()
+end
+
+-- the window closed (the givers wait for its next open)
+function Layers.Close()
+	S.shown = false
 end
 
 -- a glide to the player: at least FIND_ZOOM close, the zoom kept when closer
@@ -445,6 +637,8 @@ function Layers.Init(canvas, pins)
 	pins:Layer("entrances", T.ORDER.entrances, from)
 	pins:Layer("transports", T.ORDER.transports, from)
 	pins:Layer("flights", T.ORDER.flights, from)
+	pins:Layer("route", T.ORDER.route)
+	pins:Layer("quests", T.ORDER.quests, { minZ = T.QUESTS_FROM })
 	pins:Layer("group", T.ORDER.group)
 	pins:Layer("player", T.ORDER.player)
 	S.wait = 0

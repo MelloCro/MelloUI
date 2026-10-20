@@ -523,7 +523,6 @@ function QL.DressMark(self, kind, data)
 		self.Bg:Hide()
 		self.Icon:Show()
 		self:SetSize(22, 22)
-		local state = data.state
 		if data.item == "dungeon" or data.item == "raid" then
 			-- the icon (and where it takes the mouse) moved beside the entrance's door
 			self.Icon:ClearAllPoints()
@@ -532,26 +531,9 @@ function QL.DressMark(self, kind, data)
 			self:SetHitRectInsets(BESIDE_DOOR_X, -BESIDE_DOOR_X, -BESIDE_DOOR_Y, BESIDE_DOOR_Y)
 		end
 		if data.item then
-			-- a quest begun by an item or object: crossed swords where it drops
-			-- from creatures, a chest where it is picked up, the entrance icon
-			-- for an instance, instead of the "!"
 			self:SetSize(20, 20)
-			QL.SetStarterIcon(self.Icon, data.item)
-			self.Icon:SetDesaturated(state ~= "available")
-			self.Icon:SetAlpha(state == "available" and 1 or 0.75)
-		elseif state == "done" then
-			self.Icon:SetAtlas("questlog-icon-checkmark-yellow")
-			self.Icon:SetDesaturated(true)
-			self.Icon:SetAlpha(0.7)
-		elseif state == "ready" or state == "progress" then
-			self.Icon:SetAtlas("QuestTurnin")
-			self.Icon:SetDesaturated(state ~= "ready")
-			self.Icon:SetAlpha(state == "ready" and 1 or 0.75)
-		else
-			self.Icon:SetAtlas("QuestNormal")
-			self.Icon:SetDesaturated(state ~= "available")
-			self.Icon:SetAlpha(state == "available" and 1 or 0.75)
 		end
+		QL.GiverIcon(self.Icon, data)
 		self.Label:SetPoint("TOP", self.Icon, "BOTTOM", 0, 2)
 		self.Label:SetText(data.tracked and data.giver or "")
 		-- the tracked giver's pale blue, as its tooltip hint: the map's
@@ -591,17 +573,42 @@ function QL.DressMark(self, kind, data)
 	end
 end
 
-MarkEnter = function(self)
-	local data = self.data
-	if not data then
-		return
+-- (the seamless map, MelloUI_Map) a giver mark's picture by its group's state: the game's "!" and "?" (paler for
+-- what is not ready or not open yet), the check of a done one, or, for a quest begun by an item or object, crossed
+-- swords where it drops, a chest where it is picked up, the entrance's icon for an instance -- the Quest List's marks
+-- and MelloUI_Map's pins alike
+function QL.GiverIcon(icon, data)
+	local state = data.state
+	if data.item then
+		QL.SetStarterIcon(icon, data.item)
+		icon:SetDesaturated(state ~= "available")
+		icon:SetAlpha(state == "available" and 1 or 0.75)
+	elseif state == "done" then
+		icon:SetAtlas("questlog-icon-checkmark-yellow")
+		icon:SetDesaturated(true)
+		icon:SetAlpha(0.7)
+	elseif state == "ready" or state == "progress" then
+		icon:SetAtlas("QuestTurnin")
+		icon:SetDesaturated(state ~= "ready")
+		icon:SetAlpha(state == "ready" and 1 or 0.75)
+	else
+		icon:SetAtlas("QuestNormal")
+		icon:SetDesaturated(state ~= "available")
+		icon:SetAlpha(state == "available" and 1 or 0.75)
 	end
-	Marks.hovered = self
-	-- (the lines' colours by name, QL.TipLine: the palette's, or the Quest
-	-- List's fixed meaning colours)
-	local tip, Line = GameTooltip, QL.TipLine
-	tip:SetOwner(self, "ANCHOR_RIGHT")
-	if self.kind == "giver" then
+end
+
+-- (the seamless map, MelloUI_Map) a mark's tooltip lines by its kind and data: the Quest List's own marks and
+-- MelloUI_Map's pins alike (one tooltip); the tooltip owned and shown by the caller. `hints`: the click lines (only
+-- where the mark takes those clicks)
+function QL.MarkTip(tip, kind, data, hints)
+	local Line = QL.TipLine
+	local function Hint(text)
+		if hints then
+			Line(tip, text, "pinHint")
+		end
+	end
+	if kind == "giver" then
 		QL.TipTitle(tip, data.giver ~= "" and data.giver or "Quest giver")
 		-- (0.19.9, the user's pick C of the Completed view) how many of this
 		-- giver's quests are left, and how many of them can be taken now
@@ -650,11 +657,11 @@ MarkEnter = function(self)
 			QL.RecordLines(tip, row[QL.F_ID], "   ")   -- (0.19.9, your other characters: QL.Record)
 		end
 		if data.tracked then
-			Line(tip, "Tracked. Click to remove the waypoint.", "pinHint")
+			Hint("Tracked. Click to remove the waypoint.")
 		else
 			local where = (data.item == "dungeon" or data.item == "raid") and ("Click to route to the " .. data.item .. " entrance.")
 				or data.item and "Click to set a waypoint here." or "Click to set a waypoint on this giver."
-			Line(tip, where, "pinHint")
+			Hint(where)
 		end
 		local open = 0
 		for _, q in ipairs(data.quests) do
@@ -663,11 +670,11 @@ MarkEnter = function(self)
 			end
 		end
 		if open > 0 then
-			Line(tip, open == 1 and "Alt-click to hide this quest (this character)." or "Alt-click to hide these quests (this character).", "pinHint")
+			Hint(open == 1 and "Alt-click to hide this quest (this character)." or "Alt-click to hide these quests (this character).")
 		end
-	elseif self.kind == "objective" then
+	elseif kind == "objective" then
 		QL.Objectives.Tip(tip, data, Line)
-	elseif self.kind == "entrance" then
+	elseif kind == "entrance" then
 		QL.TipTitle(tip, data.name)
 		local lv = data.dungeonID ~= 0 and QL.Data().dungeonLevel and QL.Data().dungeonLevel[data.dungeonID]
 		local what = data.raid and "Raid" or "Dungeon"
@@ -681,10 +688,10 @@ MarkEnter = function(self)
 			if total > 0 then
 				-- (the count in gold, in the body text once all are done: as the zone badge)
 				Line(tip, string.format("%d of %d quests completed", done, total), done >= total and "text" or "selectedTrim")
-				Line(tip, "Click to list its quests. Shift-click to route there.", "pinHint")
+				Hint("Click to list its quests. Shift-click to route there.")
 			else
 				Line(tip, "No quests known for it yet.", "text")
-				Line(tip, "Shift-click to route there.", "pinHint")
+				Hint("Shift-click to route there.")
 			end
 		end
 		if data.source == "learned" then
@@ -692,7 +699,7 @@ MarkEnter = function(self)
 		elseif data.source == "client" then
 			Line(tip, "Position from the client's own entrance list.", "text")
 		end
-	elseif self.kind == "transport" then
+	elseif kind == "transport" then
 		QL.TipTitle(tip, data.label)
 		Line(tip, (TRANSPORT_PLACE[data.kind] or "Dock") .. " at " .. data.dock, "text")
 		if data.faction == 1 then
@@ -703,7 +710,7 @@ MarkEnter = function(self)
 			Line(tip, "Neutral, both factions", "text")
 		end
 		if data.destMapID or data.destCont then
-			Line(tip, "Click to route to it. Shift-click to open the destination's map.", "pinHint")
+			Hint("Click to route to it. Shift-click to open the destination's map.")
 		end
 		if data.learned then
 			Line(tip, "Recorded with /qlmap dock. Remove with /qlmap remove.", "text")
@@ -721,9 +728,22 @@ MarkEnter = function(self)
 			Line(tip, string.format("%d in your quest log", data.inLog), "text")
 		end
 		if data.opens then
-			Line(tip, "Click to open the zone map.", "pinHint")
+			Hint("Click to open the zone map.")
 		end
 	end
+end
+
+MarkEnter = function(self)
+	local data = self.data
+	if not data then
+		return
+	end
+	Marks.hovered = self
+	-- (the lines' colours by name, QL.TipLine: the palette's, or the Quest
+	-- List's fixed meaning colours)
+	local tip = GameTooltip
+	tip:SetOwner(self, "ANCHOR_RIGHT")
+	QL.MarkTip(tip, self.kind, data, true)
 	tip:Show()
 end
 
@@ -860,7 +880,10 @@ local function StartWanted(row, state)
 	return QL.StartShown(row) or not (state == "available" or state == "locked")
 end
 
-local function AddGiverPins(map, mapID, mapName)
+-- (the seamless map, MelloUI_Map) the quest givers a map shows, grouped by giver and place: each group { giver, x,
+-- y (on mapID), quests = { { row, state } } (by level), state (its highest), tracked, item }, done ones only with
+-- Pin Completed or tracked -- the Quest List's marks and MelloUI_Map's pins alike
+function QL.GiverGroups(mapID, mapName)
 	local level = QL.Plain(UnitLevel("player")) or 60
 	local groups, order = {}, {}
 	local function Consider(row, x, y, who, state, item)
@@ -922,7 +945,7 @@ local function AddGiverPins(map, mapID, mapName)
 		end
 	end
 	-- Givers with a map percentage only (collected in game on this zone).
-	local areaID = QL.zoneByName[mapName:lower()]
+	local areaID = mapName and QL.zoneByName[mapName:lower()]
 	for _, row in ipairs(areaID and QL.byZone[areaID] or {}) do
 		if not seen[row] and not (QL.resolved and QL.resolved[row]) and (row[QL.F_X] ~= 0 or row[QL.F_Y] ~= 0)
 			and QL.Eligible(row) then
@@ -934,11 +957,19 @@ local function AddGiverPins(map, mapID, mapName)
 			end
 		end
 	end
+	local out = {}
 	for _, group in ipairs(order) do
 		if group.state ~= "done" or M.db.pinCompleted or group.tracked then
 			table.sort(group.quests, function(a, b) return QL.ByLevel(a.row, b.row) end)
-			Marks.Add("giver", group)
+			out[#out + 1] = group
 		end
+	end
+	return out
+end
+
+local function AddGiverPins(_, mapID, mapName)
+	for _, group in ipairs(QL.GiverGroups(mapID, mapName)) do
+		Marks.Add("giver", group)
 	end
 end
 

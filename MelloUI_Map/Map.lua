@@ -121,6 +121,14 @@ local function PinTip(pin)
 		GameTooltip:Hide()
 		return
 	end
+	local fill = pin.spec.fillTip
+	if fill then
+		-- (a whole tooltip of its own: the Quest List's marks' lines)
+		GameTooltip:SetOwner(win.canvas.frame, "ANCHOR_CURSOR")
+		fill(GameTooltip, pin)
+		GameTooltip:Show()
+		return
+	end
 	local tip = pin.spec.tip
 	local title, body = tip, nil
 	if type(tip) == "function" then
@@ -310,6 +318,7 @@ local function Shown()
 end
 
 local function Hidden()
+	Layers.Close()
 	win.drag.on = false
 	PinTip(nil)
 	win.over = false
@@ -369,6 +378,7 @@ local function Build()
 	win.pins = pins
 	canvas.onView = function()
 		pins:Lay()
+		Layers.Route()
 	end
 	Layers.Init(canvas, pins)
 	local name = W.Text(body, "GameFontHighlight", nil, "text")

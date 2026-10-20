@@ -4426,6 +4426,12 @@ function M:HasDestination()
 	return destination ~= nil, destination and destination.label
 end
 
+-- (the seamless map, MelloUI_Map) the route followed now and its destination, to read only: a new route table each
+-- plan, so a reader knows a new route by the table; nil, nil while there is none
+function M:CurrentRoute()
+	return route, destination
+end
+
 function M:Clear()
 	StandIn.Drop()
 	destination = nil
@@ -5192,6 +5198,68 @@ local function DrawWorldMap()
 		end
 		M.GoalLay(M.goalMap, M.TRAIL.GOAL_MAP / scale, mapFrame, "TOPLEFT", gx * W, -gy * H)
 	end
+end
+
+-- (the seamless map, MelloUI_Map) the trail and its goal on another addon's own canvas, by the one painter and goal
+-- mark the game's maps are drawn with: project(cont, x, y, key) gives a point's place on `frame` from its top left
+-- (x right, y down; nil: not on it; `key`, a route point or the destination, a table the caller may cache by; nil for
+-- the player's spot on the leg, which moves). Every leg of the way ahead, the boats' and the other continents' too:
+-- that canvas holds the whole world. A leg wholly off the frame is passed by (the dots are counted, MAX_DOTS). The
+-- frame's painter and goal mark are made the first time; their table is M's (this chunk is at its locals' limit).
+-- Returns true when some of the route was drawn.
+function M:DrawOn(frame, project)
+	local drawers = M.drawOn
+	if not drawers then
+		drawers = setmetatable({}, { __mode = "k" })
+		M.drawOn = drawers
+	end
+	local d = drawers[frame]
+	if not d then
+		d = { painter = NewPainter(frame), goal = M.GoalMark(frame) }
+		d.goal:SetFrameLevel(frame:GetFrameLevel() + 2)
+		drawers[frame] = d
+	end
+	local painter = d.painter
+	painter:Begin()
+	local drawn = false
+	local W, H = Plain(frame:GetWidth()), Plain(frame:GetHeight())
+	local points = route and route.points
+	if W and H and W > 0 and H > 0 and points and #points >= 2 then
+		local unit = 3.5 * (tonumber(M.db.lineWidth) or 3)
+		local mx, my = W * 0.2, H * 0.2
+		local from = route.progress or 1
+		local ax, ay
+		if from < 1 or from >= #points then
+			from = 1
+			ax, ay = project(points[1][1], points[1][2], points[1][3], points[1])
+		elseif route.atX then
+			ax, ay = project(points[from][1], route.atX, route.atY, nil)
+		else
+			ax, ay = project(points[from][1], points[from][2], points[from][3], points[from])
+		end
+		for i = from + 1, #points do
+			local b = points[i]
+			local bx, by = project(b[1], b[2], b[3], b)
+			if ax and bx and not (ax < -mx and bx < -mx) and not (ax > W + mx and bx > W + mx)
+				and not (ay < -my and by < -my) and not (ay > H + my and by > H + my) then
+				painter:Segment(ax, -ay, bx, -by, STYLE[b[4]] or STYLE.road, unit, "TOPLEFT")
+				drawn = true
+			end
+			ax, ay = bx, by
+		end
+	end
+	painter:End()
+	local g = destination
+	local gx, gy
+	if g then
+		gx, gy = project(g.cont, g.x, g.y, g)
+	end
+	if gx then
+		M.GoalLay(d.goal, M.TRAIL.GOAL_MAP, frame, "TOPLEFT", gx, -gy)
+	else
+		d.goal:Hide()
+	end
+	return drawn
 end
 
 local function CreateProvider()

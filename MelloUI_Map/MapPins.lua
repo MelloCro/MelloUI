@@ -23,7 +23,10 @@
 --                                    spec: icon (a file) or atlas, size (px),
 --                                    rgb { r, g, b }, alpha, rotation, sub
 --                                    (draw sublevel), tip (text or fn(pin) ->
---                                    lines), click (fn(pin, button)), data
+--                                    lines), fillTip (fn(tooltip, pin): its
+--                                    lines, the whole tooltip), click (fn(pin,
+--                                    button)), look (fn(tex, pin): the pin's
+--                                    picture its own, after the size), data
 --   pins:SetAt(name, key, uiMapID, x, y, spec)  the same at a map's position
 --   pins:Remove(name, key) / pins:Clear(name)
 --   pins:Lay()                       the canvas's view laid (canvas.onView)
@@ -129,7 +132,7 @@ local function Dress(pin)
 	local tex, spec = pin.tex, pin.spec
 	if spec.atlas then
 		tex:SetAtlas(spec.atlas)
-	else
+	elseif spec.icon then
 		tex:SetTexture(spec.icon)
 		tex:SetTexCoord(0, 1, 0, 1)
 	end
@@ -144,6 +147,10 @@ local function Dress(pin)
 	tex:SetAlpha(spec.alpha or 1)
 	tex:SetRotation(pin.rotation or spec.rotation or 0)
 	tex:SetDrawLayer("ARTWORK", spec.sub or 0)
+	tex:SetDesaturated(false)
+	if spec.look then
+		spec.look(tex, pin)   -- (its own picture: the Quest List's giver icon)
+	end
 	pin.dressed = true
 end
 
@@ -291,7 +298,7 @@ function Pins:At(x, y)
 	local best, bestOrder
 	for _, pin in ipairs(self.shownList) do
 		local spec = pin.spec
-		if pin.shown and (spec.tip or spec.click) then
+		if pin.shown and (spec.tip or spec.fillTip or spec.click) then
 			local r = (spec.size or 16) / 2 + T.HIT
 			local dx, dy = pin.x - x, pin.y - y
 			if dx * dx + dy * dy <= r * r and (not bestOrder or pin.layer.order >= bestOrder) then
