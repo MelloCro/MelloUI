@@ -48,6 +48,14 @@
 -- from MapData, the explored ones full). The continents' art goes as the zones
 -- come in; the world's stays under them. A view stays on the world's painting.
 --
+-- The close zoom (stage M3, the user's pick A, 2026-10-20: "does the map on
+-- zoom in at a certain point change into the minimap style map?"): from zoom
+-- 5 to 8 the game's own minimap ground (its files, 512 px a 533-yard terrain
+-- tile, listed in MapData from each continent's WDT) comes in over the zones'
+-- art, which goes; past its tiles the sea in the minimap's own open water, a
+-- texture the canvas's size (the user: "i dont want to have such low
+-- resolution water texture"). A minimap tile out of view lets its file go.
+--
 -- Secret values: every number the client hands over is read through
 -- MelloUI.Safe (Finite); a map whose place does not read plainly is not laid.
 --------------------------------------------------------------------------------
@@ -89,6 +97,9 @@ local T = {
 	CONT_IN = { 1.02, 1.2 },
 	-- (M2) the zones in as the continents' art goes
 	ZONE_IN = { 1.8, 2.8 },
+	-- (M3) the minimap's ground in over the zones' art (and the cities'), which goes as it comes
+	MINI_IN = { 5.0, 8.0 },
+	MINI_SEAM = 0.004,        -- a minimap tile this share bigger each way: no hairline between neighbours
 	CONT_OUT = { 2.2, 3.0 },
 	OUTLINES = "Interface\\AddOns\\MelloUI_Map\\Media\\Outlines\\",   -- <uiMapID>, city, <continent>
 	UNEXPLORED = 0.3,         -- a place not explored yet: its piece this faint (the user's pick H)
@@ -223,6 +234,8 @@ function Canvas:Layout()
 		f:Hide()
 		p.frame = f
 	end
+	-- (M3) the minimap's ground over every map's art, the open water just under it
+	self:MiniLayout(places, base + 2 * n + 6)
 	-- a continent's land: the box round its zones (its art reaches far out to sea: the Eastern Kingdoms' spans 0.37
 	-- to 1.16 of the world's width), what a glide into it frames
 	for _, p in ipairs(places) do
@@ -245,6 +258,61 @@ function Canvas:Layout()
 	self.stats.layoutMs = debugprofilestop() - t0
 end
 
+-- (M3) the minimap's ground: a place for each continent's world map (MapData.minimap: its tile grid on Azeroth),
+-- at `level`, appended to the places (after their sort: not a map of the client's, never in byID); and the open
+-- water past its tiles (MapData.minimapWater) on a frame of the canvas's size, just under it
+function Canvas:MiniLayout(places, level)
+	local data = ns.MapData
+	local grids = data and data.minimap
+	if type(grids) ~= "table" then
+		return
+	end
+	local ids = {}
+	for mapID in pairs(grids) do
+		ids[#ids + 1] = mapID
+	end
+	table.sort(ids)
+	for _, mapID in ipairs(ids) do
+		local g = grids[mapID]
+		local list = type(g) == "table" and g.tiles
+		if type(list) == "table" and #list >= 3 then
+			local minX, minY, maxX, maxY = 64, 64, -1, -1
+			for i = 1, #list - 2, 3 do
+				minX, minY = min(minX, list[i]), min(minY, list[i + 1])
+				maxX, maxY = max(maxX, list[i]), max(maxY, list[i + 1])
+			end
+			local tw, th = g.w * self.W, g.h * self.H
+			local p = {
+				id = -1 - mapID, kind = "minimap", name = "minimap " .. mapID, grid = g, minX = minX, minY = minY,
+				tw = tw, th = th, left = (g.x + minX * g.w) * self.W, top = (g.y + minY * g.h) * self.H,
+				w = (maxX - minX + 1) * tw, h = (maxY - minY + 1) * th, tiles = nil, alpha = 0, live = false,
+				level = level,
+			}
+			p.right, p.bottom = p.left + p.w, p.top + p.h
+			p.area = p.w * p.h
+			local f = CreateFrame("Frame", nil, self.root)
+			f:SetFrameLevel(level)
+			f:SetSize(p.w, p.h)
+			f:Hide()
+			p.frame = f
+			places[#places + 1] = p
+			self.hasMini = true
+		end
+	end
+	local file = data.minimapWater
+	if file then
+		local water = CreateFrame("Frame", nil, self.root)
+		water:SetAllPoints(self.frame)
+		water:SetFrameLevel(level - 1)
+		local tex = water:CreateTexture(nil, "BACKGROUND")
+		tex:SetAllPoints(water)
+		tex:SetTexCoord(0.25, 0.75, 0.25, 0.75)   -- (its middle: one colour, no edge to stretch)
+		water:SetAlpha(0)
+		water:Hide()
+		self.water = { frame = water, tex = tex, file = file, set = false }
+	end
+end
+
 -- one tile's record: its art pixels cut at the art's edge, its place in its map and on the world
 local function Tile(p, file, x, y, pw, ph, fw, fh, layer, sub, sx, sy)
 	local t = {
@@ -265,8 +333,29 @@ local function FileSize(px)
 	return s
 end
 
+-- (M3) the minimap's tiles of a continent: one a terrain tile, its whole file, a hair bigger than its square; each
+-- lets its file go when it leaves the view (512 px each: a long pan at a close zoom would keep hundreds)
+local function MakeMiniTiles(p)
+	local tiles, list = {}, p.grid.tiles
+	p.tiles = tiles
+	local gw, gh = p.tw * T.MINI_SEAM, p.th * T.MINI_SEAM
+	for i = 1, #list - 2, 3 do
+		local file = Finite(list[i + 2])
+		if file then
+			local t = Tile(p, file, list[i] - p.minX, list[i + 1] - p.minY, 1, 1, 1, 1, "BACKGROUND", 0, p.tw, p.th)
+			t.x, t.y, t.w, t.h = t.x - gw, t.y - gh, t.w + 2 * gw, t.h + 2 * gh
+			t.unload = true
+			tiles[#tiles + 1] = t
+		end
+	end
+end
+
 -- a map's tiles: its base art, then its explored pieces (C_MapExplorationInfo), in art pixels of its own layer
 local function MakeTiles(p)
+	if p.kind == "minimap" then
+		MakeMiniTiles(p)
+		return
+	end
 	local tiles = {}
 	p.tiles = tiles
 	local layers = select(2, pcall(C_Map.GetMapArtLayers, p.id))
@@ -423,6 +512,13 @@ local function HideTile(t)
 	if tex then
 		tex:Hide()
 		tex:ClearAllPoints()
+		if t.unload and t.set then
+			-- (M3: its file let go; set again, and faded in, when it comes back into view)
+			Anim:Stop(tex, "alpha")
+			tex:SetTexture(nil)
+			tex:SetAlpha(0)
+			t.set = false
+		end
 	end
 	t.shown = false
 end
@@ -534,7 +630,9 @@ local function Detail(self, viewW)
 	local z = self.z
 	local world = 1   -- (B: the ground at every zoom)
 	local cont = Quant(Ramp(z, T.CONT_IN[1], T.CONT_IN[2]) * (1 - Ramp(z, T.CONT_OUT[1], T.CONT_OUT[2])))
-	local zone = Quant(Ramp(z, T.ZONE_IN[1], T.ZONE_IN[2]))
+	-- (M3: only where the data has the minimap's ground; without it the zones stay)
+	local mini = self.hasMini and Quant(Ramp(z, T.MINI_IN[1], T.MINI_IN[2])) or 0
+	local zone = Quant(min(Ramp(z, T.ZONE_IN[1], T.ZONE_IN[2]), 1 - mini))
 	local flipped = false
 	for _, p in ipairs(self.places) do
 		local a
@@ -542,6 +640,8 @@ local function Detail(self, viewW)
 			a = world
 		elseif p.kind == "continent" then
 			a = cont
+		elseif p.kind == "minimap" then
+			a = mini
 		elseif p.kind == "city" then
 			a = Quant(min(zone, Ramp(p.w / viewW, T.CITY_IN[1], T.CITY_IN[2])))
 		else
@@ -554,6 +654,16 @@ local function Detail(self, viewW)
 			p.alpha = a
 			p.frame:SetAlpha(a)
 		end
+	end
+	local water = self.water
+	if water and water.alpha ~= mini then
+		water.alpha = mini
+		if mini > 0 and not water.set then
+			water.tex:SetTexture(water.file)
+			water.set = true
+		end
+		water.frame:SetAlpha(mini)
+		water.frame:SetShown(mini > 0)
 	end
 	return flipped
 end

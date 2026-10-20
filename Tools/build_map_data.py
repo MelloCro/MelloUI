@@ -15,6 +15,14 @@ only, never a picture of the game's.
                                          blurred -- our geometry from the table's numbers, 128 x 128 for the art's
                                          1002 x 668
   MelloUI_Map/Media/Outlines/city.tga    a soft-edged rectangle (a city's art, which has no pieces)
+  MapData.minimap[mapID]                 (M3, the user's pick A: the close zoom in the minimap's ground) the minimap's
+                                         tiles of a continent's world map (Map.ID: 0 the Eastern Kingdoms, 1 Kalimdor):
+                                         from its WDT (the client's own file, WoWExport/terrain_raw: the MAID table,
+                                         one 533.33-yard tile an entry, its 8th field the minimap texture's file ID),
+                                         placed on Azeroth (947) by its UiMapAssignment: x, y the north-west corner of
+                                         tile (0, 0), w, h one tile, tiles the column, row and file of each
+  MapData.minimapWater                   the file of a tile that is all open water (the Eastern Kingdoms' 28, 48): the
+                                         sea past the tiles in the minimap's own water
   MelloUI_Map/Media/Outlines/<continent uiMapID>.tga
                                          a continent's land, a mask over its art (256 x 256 for its 1002 x 668): its
                                          zones' outlines laid where the client places each zone on it (UiMapAssignment),
@@ -52,6 +60,10 @@ CITY_EDGE = 12                  # the city mask's soft edge (mask px)
 CONTINENT, ZONE = 2, 3          # UIMapType
 LAND_SIZE = 256                 # a continent's land mask's side (its zones' outlines need more than a zone's 128)
 LAND_GROW, LAND_BLUR = 3, 2     # its zones' outlines joined, then widened and softened (quarter px)
+TERRAIN = r"F:/Download-Backup/WoWExport/terrain_raw/"
+WDT = {0: 775971, 1: 782779}    # each continent's world map (Map.ID): its WDT's file ID (Map.WdtFileDataID)
+TILE = 1600.0 / 3.0             # yards a terrain tile
+WATER_TILE = (0, 28, 48)        # an Eastern Kingdoms tile that is all open sea (west of Stormwind's harbour)
 
 
 def rows(name):
@@ -100,6 +112,39 @@ def rect_on(assign, child, top):
             ub, vb = to_ui(t, x0, y0)
             return min(ua, ub), max(ua, ub), min(va, vb), max(va, vb)
     return None
+
+
+def minimap_tiles(assign, mapID):
+    """the minimap's tiles of a continent's world map: its grid on Azeroth (x, y, w, h: 0..1) and [(tx, ty, file)]"""
+    path = TERRAIN + "%d.wdt" % WDT[mapID]
+    if not os.path.isfile(path):
+        return None
+    data = open(path, "rb").read()
+    maid, pos = None, 0
+    while pos + 8 <= len(data):
+        tag = data[pos:pos + 4][::-1]
+        size = struct.unpack_from("<I", data, pos + 4)[0]
+        if tag == b"MAID":
+            maid = pos + 8
+        pos += 8 + size
+    world = None
+    for a in assign.get(947, []):
+        if int(a["MapID"]) == mapID:
+            x0, y0, x1, y1 = region(a)
+            if world is None or (x1 - x0) * (y1 - y0) > world[0]:
+                world = ((x1 - x0) * (y1 - y0), a)
+    if maid is None or world is None:
+        return None
+    a, edge = world[1], 32 * TILE
+    # (tile (tx, ty)'s north-west corner: world x = edge - ty * TILE (north), y = edge - tx * TILE (west))
+    u0, v0 = to_ui(a, edge, edge)
+    u1, v1 = to_ui(a, edge - TILE, edge - TILE)
+    tiles = []
+    for k in range(4096):
+        fid = struct.unpack_from("<8I", data, maid + k * 32)[7]
+        if fid:
+            tiles.append((k % 64, k // 64, fid))
+    return (u0, v0, u1 - u0, v1 - v0), tiles
 
 
 def continent_land(assign, cont, zone_masks):
@@ -206,6 +251,23 @@ def build():
     out += ["\t},",
             "\t-- [uiMapID] = true: a continent whose painting is cut to its land (its outline mask)",
             "\tland = { %s }," % ", ".join("[%d] = true" % c for c in land),
+            "\t-- (M3) [mapID] = { x, y, w, h: the minimap's tile grid on Azeroth (947, 0..1), tiles: column, row, file ... }",
+            "\tminimap = {"]
+    water = None
+    for mapID in sorted(WDT):
+        got = minimap_tiles(assign, mapID)
+        if not got:
+            continue
+        (x, y, w, h), tiles = got
+        out.append("\t\t[%d] = { x = %.7f, y = %.7f, w = %.7f, h = %.7f, tiles = {" % (mapID, x, y, w, h))
+        for i in range(0, len(tiles), 8):
+            out.append("\t\t\t" + " ".join("%d, %d, %d," % t for t in tiles[i:i + 8]))
+        out.append("\t\t} },")
+        if mapID == WATER_TILE[0]:
+            water = next((f for tx, ty, f in tiles if (tx, ty) == WATER_TILE[1:]), None)
+    out += ["\t},",
+            "\t-- (M3) the file of a tile that is all open sea: the sea past the minimap's tiles",
+            "\tminimapWater = %s," % (water or "nil"),
             "}", ""]
     return "\n".join(out), files
 
