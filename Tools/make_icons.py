@@ -72,6 +72,7 @@ SET.append(("arrows", "arrow_sapphire", "arrow_player", 128))
 # nine-slice each: the corners kept, the band at the rim's width)
 for n in ("normal", "hover", "pressed", "active", "empty", "range"):
     SET.append(("pieces", "btn_frame_" + n, "frame_" + n, 128))
+SET.append(("pieces", "bar_spark", "bar_spark", (64, 48)))   # (Batch 24: the light on the fill's leading edge)
 
 
 def load(group, name):
@@ -151,7 +152,9 @@ def disc(size, inner=None, edge=1.0):
 # there is round(height * width / its width); Core/Widgets.lua's MODERN table holds those heights and the ends' widths
 PIECES = [("div_diamond", 512, 32), ("dd_closed", 512, 64), ("dd_hover", 512, 64), ("dd_open", 512, 64),
           ("dd_panel", 256, 256), ("dd_row", 256, 64), ("tab_off", 256, 128), ("tab_hover", 256, 128),
-          ("tab_on", 256, 128), ("pill_off", 256, 64), ("pill_on", 256, 64)]
+          ("tab_on", 256, 128), ("pill_off", 256, 64), ("pill_on", 256, 64),
+          # (Batch 24) the experience and reputation bars' frame, track and notch (Modules/ActionBars.lua)
+          ("bar_frame", 512, 64), ("bar_track", 512, 32), ("bar_notch", 16, 64)]
 
 
 def piece(name, width, canvas_h):

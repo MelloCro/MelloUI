@@ -17,6 +17,7 @@
 - Action bars: Backdrops work without the painted skin. Switch a bar's backdrop on (Action Bars > Backdrops) and the bars you snap together share one soft dark shade that fades out at its edges, with no frame line. With the painted skin on, the gems and border styles stay as they were. Your backdrop switches carry over.
 - Action bars: Hide Page Arrows is on for everyone by default, painted skin or not (Action Bars > Bars).
 - Action bars: MelloUI Frames (on by default, Bars > Action Bars > Button): every action button in MelloUI's frame, a dark iron rim with a gold line, brighter under the pointer, bright gold while its aura or stance is on, red out of range, a dark slot when empty. The painted skin's bars keep their own.
+- Experience and reputation bars: MelloUI Frames (on by default, Bars > XP & Rep): a slim iron frame with gold diamond ends, a dark track, gold notches between the bar's parts and a soft light on the filling edge.
 - Edit Layout: more of the game's windows can be moved without the painted reskin: the auction house, trainers, guild bank, inspect, gem socketing, the PvP scoreboard and results, the calendar, the clock, chat channels, the help window, the addon list and the game's options.
 - Party frames: each member's level shows at the end of its name line, every number in one column.
 - Unit frames: a soft dark band sits behind the player's, pet's, target of target's and party members' names, the same length on every frame.

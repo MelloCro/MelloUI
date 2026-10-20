@@ -784,6 +784,8 @@ function L.Define(R, Link)
 	R("ActionBars", "swing:offhand", "General", "SwingTimers.offhand")
 	R("ActionBars", "swing:seconds", "General", "SwingTimers.text")
 	-- XP & Rep: the bars' look; the XP bar's light and Level Up (one look C13b: Tweaks'), each bar's backdrop
+	-- (2026-10-20, the user's sheet: MelloUI's frame, track, notches and light on the bars, first)
+	R("ActionBars", "xprep:element", "Look", "ActionBars.statusFrame")
 	R("ActionBars", "xprep:element", "Look", "BarTextures.statusbarsTexture", { name = "Bar Texture" })
 	R("ActionBars", "xprep:element", "Look", "DarkMode.statusbars", { name = "Dark Mode", when = Uncovered("ActionBarPanel", "action bars") })
 	-- (0.22.1, the animations: the stretch of the XP bar just gained lit)

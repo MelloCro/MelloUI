@@ -57,6 +57,7 @@ local Backdrop = MelloUI.Backdrop
 local Outline = MelloUI.Outline
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
+local Num = MelloUI.Safe.Number
 local ScreenRect = Backdrop.ScreenRect   -- (the backdrops' one rect reader: MelloUI.Safe.ScreenRect's)
 -- what the kit keeps beside the game's frames (weak-keyed, never keys on them)
 local repOf = MelloUI.Kept.repOf
@@ -94,8 +95,13 @@ local ELEMENTS = {
 	  what = "the second status bar (a watched reputation while you level)" },
 }
 
-local defaults = { hidePageArrows = true, hideBarArt = true }
+local defaults = { hidePageArrows = true, hideBarArt = true, statusFrame = true }
 local options = {
+	-- (2026-10-20, the user's sheet: "a custom ... progress bar border to fit") the Status section below
+	{ type = "toggle", key = "statusFrame", name = "MelloUI Frames", new = "0.25.0",
+	  desc = "The experience and reputation bars in MelloUI's look: a slim iron frame with gold diamond ends, a dark "
+		.. "track, the notches between the bar's parts and a soft light on the filling edge. Off: the game's own frame. "
+		.. "The painted skin's bars keep their own (Oldschool)." },
 	{ type = "toggle", key = "hidePageArrows", name = "Hide Page Arrows",
 	  desc = "Hide the main bar's page number and its up / down arrows (the bar still pages with the keybinds)." },
 	-- (0.25.0; the user, 2026-10-15: "MelloUI hides it") the game's own Edit Mode setting (Hide Bar Art, below)
@@ -1280,6 +1286,206 @@ local function MigrateBackdrops(db)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- The status bars' look (2026-10-20, the user's sheet: "a custom ... progress bar border to fit"; ChatGPT Batch 24).
+-- While MelloUI Frames is on and the painted skin is off on them (Kit area "statusbars"), the experience and
+-- reputation bars (the game's MainStatusTrackingBarContainer and SecondaryStatusTrackingBarContainer) wear the set's
+-- pieces where the game's art stood -- its BarFrameTexture, each bar's StatusBar.Background, its divider frames'
+-- textures, unseen meanwhile (alpha, once each way): the frame (three slices; its opening the container's height,
+-- its diamond ends past the bar's), the dark track, a notch on each divider, and a soft light on the fill's leading
+-- edge (anchored to the fill: it rides with the bar, no OnUpdate). The fill stays the game's (its colour; its texture
+-- Bar Texture's). Laid when the modules are on, again as the game shows another bar or lays its dividers anew.
+--------------------------------------------------------------------------------
+local Status = {
+	CONTAINERS = { "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" },
+	DIR = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\",
+	-- (Tools/make_icons.py PIECES, 512 wide) the frame's picture 51 of 64 rows, its ends 39.5 texels, its opening
+	-- 0.476 of its height; the track's 32 of 32, its rounded ends 13.8 and 12.3
+	FRAME = { h = 51, cap = 39.5, open = 0.476 },
+	TRACK = { h = 32, l = 13.8, r = 12.3 },
+	cover = setmetatable({}, { __mode = "k" }),   -- [the game's region] = our parts over it
+	hooked = setmetatable({}, { __mode = "k" }),
+}
+
+function Status.On()
+	if not (on and M.db and M.db.statusFrame ~= false) then
+		return false
+	end
+	return not (type(Kit) == "table" and type(Kit.IsOn) == "function" and Kit:IsOn("statusbars"))
+end
+
+-- three textures on `parent` for a piece's three slices
+function Status.Slices(parent, layer, sub)
+	local s = {}
+	for i = 1, 3 do
+		s[i] = parent:CreateTexture(nil, layer, nil, sub)
+	end
+	return s
+end
+
+-- the slices laid over `anchor`: the piece `tex`, its picture the top `v` of the file, its ends `l` / `r` texels of
+-- 512, its picture `h` texels high (the ends' widths at the anchor's height)
+function Status.LaySlices(s, tex, v, l, r, h, anchor)
+	local k = (Num(anchor:GetHeight()) or 10) / h
+	for i = 1, 3 do
+		s[i]:SetTexture(tex)
+		s[i]:ClearAllPoints()
+	end
+	s[1]:SetTexCoord(0, l / 512, 0, v)
+	s[1]:SetPoint("TOPLEFT", anchor, "TOPLEFT")
+	s[1]:SetPoint("BOTTOMLEFT", anchor, "BOTTOMLEFT")
+	s[1]:SetWidth(l * k)
+	s[3]:SetTexCoord(1 - r / 512, 1, 0, v)
+	s[3]:SetPoint("TOPRIGHT", anchor, "TOPRIGHT")
+	s[3]:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT")
+	s[3]:SetWidth(r * k)
+	s[2]:SetTexCoord(l / 512, 1 - r / 512, 0, v)
+	s[2]:SetPoint("TOPLEFT", s[1], "TOPRIGHT")
+	s[2]:SetPoint("BOTTOMRIGHT", s[3], "BOTTOMLEFT")
+end
+
+-- our parts over a game region shown and the region unseen, or the other way round
+function Status.Show(region, parts, shown)
+	if region and region.SetAlpha then
+		region:SetAlpha(shown and 0 or 1)
+	end
+	for i = 1, #parts do
+		parts[i]:SetShown(shown)
+	end
+end
+
+-- the frame round a container: its span (an empty region) the container's rect grown so the frame's opening is the
+-- container's height and its ends stand past the bar's
+function Status.Frame(c, shown)
+	local game = rawget(c, "BarFrameTexture")
+	local parts = Status.cover[c]
+	if not parts then
+		if not shown then
+			return
+		end
+		parts = Status.Slices(c, "OVERLAY", 1)
+		parts.span = c:CreateTexture(nil, "BACKGROUND")
+		Status.cover[c] = parts
+	end
+	if shown then
+		local F = Status.FRAME
+		local h = Num(c:GetHeight()) or 13
+		local fh = h / F.open
+		local ext, cap = (fh - h) / 2, F.cap * fh / F.h
+		parts.span:ClearAllPoints()
+		parts.span:SetPoint("TOPLEFT", c, "TOPLEFT", -cap, ext)
+		parts.span:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", cap, -ext)
+		Status.LaySlices(parts, Status.DIR .. "piece_bar_frame", F.h / 64, F.cap, F.cap, F.h, parts.span)
+	end
+	Status.Show(game, parts, shown)
+end
+
+-- a bar's track over its background, and the light on its fill's edge
+function Status.Bar(bar, shown)
+	local sb = type(bar) == "table" and rawget(bar, "StatusBar")
+	local bg = sb and rawget(sb, "Background")
+	if not bg then
+		return
+	end
+	local parts = Status.cover[bg]
+	if not parts then
+		if not shown then
+			return
+		end
+		parts = Status.Slices(sb, "BACKGROUND", 1)
+		local fill = sb.GetStatusBarTexture and sb:GetStatusBarTexture()
+		if fill then
+			local spark = sb:CreateTexture(nil, "OVERLAY", nil, 6)
+			spark:SetTexture(Status.DIR .. "bar_spark")
+			spark:SetBlendMode("ADD")
+			spark:SetPoint("CENTER", fill, "RIGHT", 0, 0)
+			parts.spark = spark
+			parts[4] = spark
+		end
+		Status.cover[bg] = parts
+	end
+	if shown then
+		local T = Status.TRACK
+		Status.LaySlices(parts, Status.DIR .. "piece_bar_track", T.h / 32, T.l, T.r, T.h, bg)
+		if parts.spark then
+			local h = Num(sb:GetHeight()) or 10
+			parts.spark:SetSize(h * 2.2, h * 1.7)
+		end
+	end
+	Status.Show(bg, parts, shown)
+end
+
+-- a notch over each divider the game shows now
+function Status.Notches(c, shown)
+	local pool = rawget(c, "HorizontalDividersPool")
+	if not (pool and pool.EnumerateActive) then
+		return
+	end
+	for divider in pool:EnumerateActive() do
+		local game = rawget(divider, "BarDividerTexture")
+		if game then
+			local parts = Status.cover[game]
+			if not parts and shown then
+				local t = divider:CreateTexture(nil, "OVERLAY", nil, 2)
+				t:SetTexture(Status.DIR .. "piece_bar_notch")
+				t:SetTexCoord(0, 1, 0, 63 / 64)
+				t:SetPoint("TOPLEFT", game, "TOPLEFT", -1, 1)
+				t:SetPoint("BOTTOMRIGHT", game, "BOTTOMRIGHT", 1, -1)
+				parts = { t }
+				Status.cover[game] = parts
+			end
+			if parts then
+				Status.Show(game, parts, shown)
+			end
+		end
+	end
+end
+
+function Status.Lay()
+	local shown = Status.On()
+	for _, name in ipairs(Status.CONTAINERS) do
+		local c = rawget(_G, name)
+		if type(c) == "table" then
+			Status.Frame(c, shown)
+			local bars = rawget(c, "bars")
+			for _, bar in pairs(type(bars) == "table" and bars or Status) do
+				if type(bar) == "table" and rawget(bar, "StatusBar") then
+					Status.Bar(bar, shown)
+				end
+			end
+			Status.Notches(c, shown)
+		end
+	end
+end
+
+-- (the one entry: the look on -- hooked once, laid -- or off -- its covers taken away, the game's art back; never a
+-- hook while it is off: the rule of nothing on a game frame while no switch wants it)
+Status.Again = Perf.Shared("a status bar container's bar or dividers laid anew", function()
+	if Status.On() then
+		Status.Start()
+	else
+		Status.Lay()
+	end
+end)
+
+function Status.Start()
+	for _, name in ipairs(Status.CONTAINERS) do
+		local c = rawget(_G, name)
+		if type(c) == "table" and not Status.hooked[c] then
+			Status.hooked[c] = true
+			if type(c.UpdateDividers) == "function" then
+				hooksecurefunc(c, "UpdateDividers", Status.Again)
+			end
+			if type(c.ApplyPendingBarToShow) == "function" then
+				hooksecurefunc(c, "ApplyPendingBarToShow", Status.Again)
+			end
+			Perf.HookScript(c, "OnSizeChanged", Status.Again)
+		end
+	end
+	Status.Lay()
+end
+M.Status = Status   -- (the tests, the dumps)
+
 function M:OnEnable(db)
 	self.db = db
 	on = true
@@ -1292,11 +1498,19 @@ function M:OnEnable(db)
 	MelloUI:WhenModulesOn(ScheduleBackdrop)
 	-- (0.25.0) Hide Bar Art: its listener, its first pass once every module is on
 	Art.Start()
+	-- (2026-10-20) the status bars' look, once every module is on (the painted skin's area known); again with the
+	-- painted skin's status bars switched
+	MelloUI:WhenModulesOn(Status.Again)
+	if not Status.listening then
+		Status.listening = true
+		MelloUI:On("look:statusbars", Status.Again, "Action Bars' status bar look")
+	end
 end
 
 function M:OnDisable()
 	on = false
 	Art.Stop()
+	Status.Lay()   -- (on is false: the game's art back)
 	for _, f in pairs(holders) do
 		f:Hide()
 	end
@@ -1312,6 +1526,8 @@ function M:OnSettingChanged(key, _, db)
 		ApplyPageArrows()
 	elseif key == "hideBarArt" then
 		Art.Changed()
+	elseif key == "statusFrame" then
+		Status.Again()
 	elseif ELEMENT_KEY[key] then
 		-- an element's backdrop switched on or off: the backdrops again
 		Count()
