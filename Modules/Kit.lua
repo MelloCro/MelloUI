@@ -4906,7 +4906,9 @@ do
 		if area.follows then
 			area = Kit.Areas[area.follows]
 		end
-		if area.always or (area.showcase and Kit.showcaseOn) then
+		-- (the showcase only with the painted engine: without MelloUI_Oldschool the kit's look cannot be drawn -- a
+		-- fresh install's first run opened the configurator into Kit:RailMiddle, Oldschool's, 2026-10-20)
+		if area.always or (area.showcase and Kit.showcaseOn and Kit.__.painted) then
 			return true
 		elseif area.cover then
 			return Kit.covers[area.name] == true
