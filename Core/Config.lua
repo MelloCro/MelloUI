@@ -146,7 +146,7 @@ local CHANGELOG = {
 		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, a gold flash as a cooldown ends, a Bar Texture for each, one Health Colour for all.",
 		"Action bars and minimap: backdrops and MelloUI's square minimap for everyone, no painted skin needed; the round painted map is Oldschool's.",
 		"Quests: one gem per title, short Quest List and map tips, Parchment its own switch; the tracker's Painted Skin is gone.",
-		"Route: the World Marker shows the way and follows RestedXP Guides -- its steps in the Quest Tracker, its items in the Quest Items widget; a bead marks your flight point.",
+		"Route: shorter ways over open ground, out of rough hills, never turned round mid-walk; the World Marker shows the way and follows RestedXP Guides, its steps in the Quest Tracker.",
 		"Edit Layout and bags: more windows move without the painted reskin; quality gems and grey junk on every slot.",
 		"Nameplates and Personal Display answer the fight: hits leave a lit chunk, crits flash, casts warn, kills flash out; dodges and stuns show on your bars. Combat Text has a Beside look.",
 		"Tooltips colour guilds, factions, levels and quest objectives. Macro Backup is gone: the game keeps your settings, and its account macros are freed.",

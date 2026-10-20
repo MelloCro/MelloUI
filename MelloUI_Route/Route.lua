@@ -787,6 +787,7 @@ local function MergeRoads(data)
 					for other, cost in pairs(node[3] or {}) do
 						local ko = keyMap[other]
 						if ko and mine[ko] and type(cost) == "number" and ko ~= k then
+							cost = M.Ground.Reprice(cost, node, g[other], sx, sy)
 							if target[3][ko] == nil or target[3][ko] > cost then
 								target[3][ko] = cost
 								mine[ko][3][k] = cost
@@ -821,7 +822,14 @@ end
 -- The line is sampled once a cell, not twice, and the decoded rows are kept
 -- ROWS at most per grid, the oldest let go first: they grew as you walked
 -- (60 MB against 48). Clear itself makes nothing.
-M.Ground = { grids = {}, ROWS = 256 }
+-- (0.25.0, the navigation smoothed; the user, 2026-10-20: "does not take shortcuts into consideration even tho we
+-- have the data for walkable terrain") Off the roads you walk as fast as on them: ground the grid shows walkable is
+-- priced PACE times walking (a hair over a road's 1, so a road wins a like way), a swum stretch SWIM times. The
+-- companion bakes its ground links at BAKED times a road (Tools/ground_graph.py's GROUND_COST): they lost every way
+-- across open ground to the road round it, and are priced again as they are merged (M.Ground.Reprice).
+--   M.Ground.Walk(cont, x0, y0, x1, y1) -> nil (no grid), false (a wall or no ground), else the share swum
+--   M.Ground.Price(d, swum)               seconds for d yards over walkable ground, `swum` of it swum
+M.Ground = { grids = {}, ROWS = 256, PACE = 1.05, SWIM = 2.5, BAKED = 1.25 }
 
 function M.Ground.Set(data)
 	local walk = type(data) == "table" and data.walk
@@ -917,6 +925,62 @@ function M.Ground.Clear(cont, x0, y0, x1, y1)
 		end
 	end
 	return true
+end
+
+function M.Ground.Walk(cont, x0, y0, x1, y1)
+	local g = M.Ground.grids[cont]
+	if not g then
+		return nil
+	end
+	x0, y0, x1, y1 = x0 / g.sx, y0 / g.sy, x1 / g.sx, y1 / g.sy
+	local cell, e0, s0 = g.cell, g.e0, g.s0
+	local steps = math.max(1, math.ceil(Dist(x0, y0, x1, y1) / cell))
+	local qa, ra = math.floor((x0 - e0) / cell), math.floor((y0 - s0) / cell)
+	local qb, rb = math.floor((x1 - e0) / cell), math.floor((y1 - s0) / cell)
+	local asked, swum = 0, 0
+	for i = 0, steps do
+		local t = i / steps
+		local q = math.floor((x0 + (x1 - x0) * t - e0) / cell)
+		local r = math.floor((y0 + (y1 - y0) * t - s0) / cell)
+		if not ((q == qa and r == ra) or (q == qb and r == rb)) then
+			local at = M.Ground.At(g, r, q)
+			if at == "x" or at == "n" then   -- (no ground: off the shore's map, as the grid's search has it)
+				return false
+			end
+			asked = asked + 1
+			if at == "s" then
+				swum = swum + 1
+			end
+		end
+	end
+	return asked > 0 and swum / asked or 0
+end
+
+function M.Ground.Price(d, swum)
+	local G = M.Ground
+	return d / WALK * (G.PACE * (1 - swum) + G.SWIM * swum)
+end
+
+-- A companion link's price as merged (MergeRoads): `a`, `b` its two nodes in the companion's yards, `sx`, `sy` the
+-- continent's scale to this client's (a road priced in the companion's yards was a seventh cheaper than the same
+-- yards learned by walking). A link priced as the ground's walk is priced at PACE; a road, a bridge between two roads
+-- and a ground link partly swum keep their price, in this client's yards. (The link's own two points measured, not the
+-- nodes it joins: a cell keeps the first node merged into it, which can lie yards from this link's end.)
+function M.Ground.Reprice(cost, a, b, sx, sy)
+	if type(a) ~= "table" or type(b) ~= "table" or type(a[1]) ~= "number" or type(b[1]) ~= "number" then
+		return cost
+	end
+	local dd = Dist(a[1], a[2], b[1], b[2])
+	if dd < 1 then
+		return cost
+	end
+	local d = Dist(a[1] * sx, a[2] * sy, b[1] * sx, b[2] * sy)
+	local ratio = cost / (dd / WALK)
+	local baked = M.Ground.BAKED
+	if ratio >= baked - 0.03 and ratio <= baked + 0.05 then   -- (BAKED rounded to 0.1 s: a hair off on short links)
+		return M.Ground.Price(d, 0)
+	end
+	return cost * d / dd
 end
 
 -- The learned part of the graph: what the saved variable and the baker keep
@@ -1450,9 +1514,32 @@ local IsFlight   -- the block's rule for a learned flight link, which the travel
 -- searches run, the path ends crossed from (jumps); the seeker frame.
 -- BUDGET 3 ms: a slice ends past it after at most EVERY more nodes, inside
 -- the 5 ms a slow call starts at (/melloperf).
+-- (0.25.0, the navigation smoothed) LEG: a leg the walk grid allows, times walking (1.3 where no grid); SMOOTH_*:
+-- the way found pulled straight over walkable ground (Search.Smooth): a straight cut at most SMOOTH_MAX yards and
+-- SMOOTH_SPAN points ahead, the first looked for among the next SMOOTH_FIRST points, the farthest then found by
+-- steps doubled and halved; a cut kept if quicker, or within HUG yards of every point it leaves out (the road's own
+-- wiggle); KEEP, KEEP_SECONDS: a route being
+-- followed is changed at its refresh only for one this much quicker (Search.Planned)
 local Search = { LEG_NEAR = 80, LEG_MAX = 8, LEG_WIDE = 64, ISLAND_LEGS = 3, BUDGET = 3, EVERY = 16, PRICE_KEEP = 5, PRICE_NEAR = 30,
 	PRICE_CAP = 2, PRICE_EXTRA = 120, REPICK_MOVED = 40, queue = {}, running = nil, slice = 0, after = {}, plan = nil,
-	pricing = {}, priced = {}, runs = 0, jumps = 0, frame = nil }
+	pricing = {}, priced = {}, runs = 0, jumps = 0, frame = nil,
+	LEG = 1.1, SMOOTH_MAX = 500, SMOOTH_SPAN = 60, SMOOTH_FIRST = 4, HUG = 6, KEEP = 0.85, KEEP_SECONDS = 10,
+	cities = {}, smoothed = 0,
+	-- (0.25.0) an end with no straight leg finds its way out over the walk grid (Search.GridLegs): to the GRID_LEGS
+	-- nearest graph nodes within GRID_REACH cells, GRID_MAX cells looked at most; its ways kept for Path
+	GRID_REACH = 36, GRID_LEGS = 4, GRID_MAX = 6000, gridPaths = {}, gridRuns = 0,
+	-- (0.25.0) the grid's way when the graph has none (Search.GridRoute): in the box round the two ends and GRID_BOX
+	-- cells beyond it, GRID_ROUTE_MAX cells looked at most; an end's own GRID_SLACK cells round it may be walls
+	-- (someone stands there: the foot of a slope the coarse grid calls a wall), entered at GRID_WALL times walking
+	GRID_BOX = 24, GRID_ROUTE_MAX = 40000, GRID_SLACK = 2, GRID_WALL = 3, gridRoutes = 0,
+	-- (the grid's way: its estimate GRID_GREED times the straight walk -- a way within a few per cent of the best,
+	-- found in a fraction of the cells; the smoothing pulls it straight after)
+	GRID_GREED = 1, nearNode = {}, nearD = {},
+	-- (a goal the known ground does not reach: the way to the graph's node nearest it, the rest a guess; false: none)
+	APPROACH = true,
+	-- (0.25.0) the grid's way also tried when the graph's costs more than HYBRID_OVER times the straight walk (ends
+	-- within HYBRID_MAX yards), and taken when it is HYBRID_WIN times the graph's price or less
+	HYBRID_MAX = 2500, HYBRID_OVER = 1.08, HYBRID_WIN = 0.95, hybridWins = 0 }
 
 do
 	-- Nodes grouped in 250-yard buckets per continent, built on first use and
@@ -1978,7 +2065,8 @@ do
 
 	-- One leg from a point to the graph node `key`, `d` yards away
 	local function Leg(id, cont, x, y, key, d, node)
-		local cost = d / WALK * 1.3
+		-- (0.25.0) over ground the grid knows (Legs checked it) as walked; else 1.3, as ever
+		local cost = d / WALK * (M.Ground.Has(cont) and Search.LEG or 1.3)
 		if id == "S" and sHx and d > 5 and node then
 			-- the node's direction from the player against the heading
 			local dot = ((node[1] - x) * sHx + (node[2] - y) * sHy) / d
@@ -1993,6 +2081,258 @@ do
 		if node then
 			nodeExtra[node] = extra[nid]
 		end
+	end
+
+	-- (0.25.0) A search over the walk grid's cells (numbered row * 65536 + column) from (q0, r0): 8 neighbours, a
+	-- wall or no ground never entered (but a wall within GRID_SLACK cells of an end in o.slack = { q, r, ... }, at
+	-- GRID_WALL times walking), nor a wall's corner cut by a diagonal; a swum cell at SWIM. Toward o.goal (a cell: A*,
+	-- its estimate the walk straight there) or o.targets ([cell] = anything: until o.k of them are reached), inside
+	-- the box o.q1..q2, o.r1..r2, at most o.max cells looked at. -> each cell's price (seconds), the cell it was
+	-- reached from, and the cells reached among the targets or the goal, in order.
+	function Search.Grid(grid, q0, r0, o)
+		local G = M.Ground
+		local walkS = grid.cell * (grid.sx + grid.sy) / 2 / WALK
+		local paceS, swimS, wallS, diag = walkS * G.PACE, walkS * G.SWIM, walkS * Search.GRID_WALL, math.sqrt(2)
+		local targets, goal, slack, SL = o.targets, o.goal, o.slack, Search.GRID_SLACK
+		local gq, gr = goal and goal % 65536, goal and math.floor(goal / 65536)
+		local q1, q2 = math.max(0, o.q1), math.min(grid.w - 1, o.q2)
+		local r1, r2 = math.max(0, o.r1), math.min(grid.h - 1, o.r2)
+		local costOf = {}   -- (each cell asked of the grid once: false where it cannot be entered)
+		local function Cost(r, q)
+			local c = r * 65536 + q
+			local v = costOf[c]
+			if v == nil then
+				v = false
+				if (targets and targets[c]) or c == goal then
+					v = paceS
+				else
+					local letter = G.At(grid, r, q)
+					if letter == "w" then
+						v = paceS
+					elseif letter == "s" then
+						v = swimS
+					elseif letter == "x" and slack then
+						for i = 1, #slack, 2 do
+							if math.abs(q - slack[i]) <= SL and math.abs(r - slack[i + 1]) <= SL then
+								v = wallS
+								break
+							end
+						end
+					end
+				end
+				costOf[c] = v
+			end
+			return v
+		end
+		local hc, hf, hn = {}, {}, 0
+		local function HPush(c, f)
+			hn = hn + 1
+			local i = hn
+			hc[i], hf[i] = c, f
+			while i > 1 do
+				local up = math.floor(i / 2)
+				if hf[up] <= hf[i] then
+					break
+				end
+				hc[up], hc[i], hf[up], hf[i] = hc[i], hc[up], hf[i], hf[up]
+				i = up
+			end
+		end
+		local function HPop()
+			local c = hc[1]
+			hc[1], hf[1] = hc[hn], hf[hn]
+			hc[hn], hf[hn] = nil, nil
+			hn = hn - 1
+			local i = 1
+			while true do
+				local l, r, m = i * 2, i * 2 + 1, i
+				if l <= hn and hf[l] < hf[m] then m = l end
+				if r <= hn and hf[r] < hf[m] then m = r end
+				if m == i then
+					break
+				end
+				hc[m], hc[i], hf[m], hf[i] = hc[i], hc[m], hf[i], hf[m]
+				i = m
+			end
+			return c
+		end
+		local greed = o.greed or 1
+		local function Guess(r, q)
+			if not goal then
+				return 0
+			end
+			local dq, dr = math.abs(q - gq), math.abs(r - gr)
+			return (math.max(dq, dr) + (diag - 1) * math.min(dq, dr)) * paceS * greed
+		end
+		local start = r0 * 65536 + q0
+		local dist, prev, done, found = { [start] = 0 }, {}, {}, {}
+		HPush(start, Guess(r0, q0))
+		local looked, most, want = 0, o.max or Search.GRID_MAX, o.k or 1
+		while hn > 0 and looked < most do
+			local c = HPop()
+			if not done[c] then
+				done[c] = true
+				looked = looked + 1
+				if c ~= start and (c == goal or (targets and targets[c])) then
+					found[#found + 1] = c
+					if c == goal or #found >= want then
+						break
+					end
+				end
+				local r, q = math.floor(c / 65536), c % 65536
+				for k = 1, 8 do
+					local dq = (k == 1 or k == 5 or k == 6) and 1 or ((k == 2 or k == 7 or k == 8) and -1 or 0)
+					local dr = (k == 3 or k == 5 or k == 7) and 1 or ((k == 4 or k == 6 or k == 8) and -1 or 0)
+					local nq, nr = q + dq, r + dr
+					if nq >= q1 and nq <= q2 and nr >= r1 and nr <= r2 then
+						local nc = nr * 65536 + nq
+						if not done[nc] then
+							local cost = Cost(nr, nq)
+							if cost and (k <= 4 or (Cost(r, nq) and Cost(nr, q))) then
+								local nd = dist[c] + cost * (k > 4 and diag or 1)
+								if not dist[nc] or nd < dist[nc] then
+									dist[nc], prev[nc] = nd, c
+									HPush(nc, nd + Guess(nr, nq))
+								end
+							end
+						end
+					end
+				end
+				if looked % 64 == 0 then
+					Search.Yield()
+				end
+			end
+		end
+		return dist, prev, found
+	end
+
+	-- the bends of the grid's way from `start` to cell c, in continent yards ({ x, y, ... }, from the start outward,
+	-- neither end's own cell)
+	function Search.GridBends(grid, prev, start, c)
+		local cells, k = {}, c
+		while k and k ~= start do
+			cells[#cells + 1] = k
+			k = prev[k]
+		end
+		local cell, sx, sy, e0, s0 = grid.cell, grid.sx, grid.sy, grid.e0, grid.s0
+		local q0, r0 = start % 65536, math.floor(start / 65536)
+		local pts, dq0, dr0, pq, pr = {}, nil, nil, q0, r0
+		for i = #cells, 1, -1 do
+			local cr, cq = math.floor(cells[i] / 65536), cells[i] % 65536
+			local dq, dr = cq - pq, cr - pr
+			if dq ~= dq0 or dr ~= dr0 then
+				if pq ~= q0 or pr ~= r0 then
+					pts[#pts + 1] = (e0 + (pq + 0.5) * cell) * sx
+					pts[#pts + 1] = (s0 + (pr + 0.5) * cell) * sy
+				end
+				dq0, dr0 = dq, dr
+			end
+			pq, pr = cq, cr
+		end
+		return pts
+	end
+
+	-- a place's cell on the grid, nil off it
+	function Search.CellOf(grid, x, y)
+		local q = math.floor((x / grid.sx - grid.e0) / grid.cell)
+		local r = math.floor((y / grid.sy - grid.s0) / grid.cell)
+		if q < 0 or r < 0 or q >= grid.w or r >= grid.h then
+			return nil
+		end
+		return q, r
+	end
+
+	-- (0.25.0, the route bench: 34 of the 50 routes over twice the best way had an end in rough ground -- the coarse
+	-- grid's walls round it, no straight leg to a node within OFFROAD -- sent by a straight line to a far dock or
+	-- flight point and back, up to 55 times the best way) Such an end's way out over the walk grid (Search.Grid) to
+	-- the GRID_LEGS nearest graph nodes within GRID_REACH cells, each one a leg priced as walked; its bends kept
+	-- (Search.gridPaths[id][node id], from the end outward) and laid into the way found (Path), which Search.Smooth
+	-- then pulls straight. Their count returned.
+	function Search.GridLegs(id, cont, x, y)
+		local grid, g = M.Ground.grids[cont], live.graphs[cont]
+		local q0, r0
+		if grid then
+			q0, r0 = Search.CellOf(grid, x, y)
+		end
+		if not (q0 and g) then
+			return 0
+		end
+		Search.gridRuns = Search.gridRuns + 1
+		local reach = Search.GRID_REACH
+		local cell, sx, sy, e0, s0 = grid.cell, grid.sx, grid.sy, grid.e0, grid.s0
+		-- the targets: the nearest graph node in each cell within reach
+		local targets, any = {}, false
+		local n = NearList(cont, x, y, reach * cell * (sx + sy) / 2)
+		for i = 1, n do
+			local node = g[nearKey[i]]
+			if node then
+				local c = math.floor((node[2] / sy - s0) / cell) * 65536 + math.floor((node[1] / sx - e0) / cell)
+				local t = targets[c]
+				if not t or nearD[i] < t[2] then
+					targets[c] = { nearKey[i], nearD[i] }
+					any = true
+				end
+			end
+		end
+		if not any then
+			return 0
+		end
+		local dist, prev, found = Search.Grid(grid, q0, r0, { targets = targets, k = Search.GRID_LEGS,
+			q1 = q0 - reach, q2 = q0 + reach, r1 = r0 - reach, r2 = r0 + reach, slack = { q0, r0 } })
+		local paths = Search.gridPaths[id] or {}
+		Search.gridPaths[id] = paths
+		local start = r0 * 65536 + q0
+		for _, c in ipairs(found) do
+			local key = targets[c][1]
+			local node = g[key]
+			local nid = cont .. "|" .. key
+			local q, r = c % 65536, math.floor(c / 65536)
+			local cost = dist[c] + Dist((e0 + (q + 0.5) * cell) * sx, (s0 + (r + 0.5) * cell) * sy, node[1], node[2])
+				/ WALK * M.Ground.PACE
+			AddExtra(id, nid, cost)
+			nodeExtra[node] = extra[nid]
+			paths[nid] = Search.GridBends(grid, prev, start, c)
+		end
+		return #found
+	end
+
+	-- (0.25.0, the route bench: 33 of 600 pairs had no way though the grid joined them -- the graph there is in
+	-- pieces, which the far docks' straight lines used to bridge) The way over the walk grid itself when the graph
+	-- has none: A* from the start's cell to the goal's (Search.Grid) in the box round them; the points (start, bends,
+	-- goal, each with its price so far by its yards along) and the price, as Path's; or nil.
+	function Search.GridRoute(cont, sx, sy, gx, gy)
+		local grid = M.Ground.grids[cont]
+		local q0, r0, q1, r1
+		if grid then
+			q0, r0 = Search.CellOf(grid, sx, sy)
+			q1, r1 = Search.CellOf(grid, gx, gy)
+		end
+		if not (q0 and q1) or (q0 == q1 and r0 == r1) then
+			return nil
+		end
+		Search.gridRoutes = Search.gridRoutes + 1
+		local m, goal = Search.GRID_BOX, r1 * 65536 + q1
+		local dist, prev, found = Search.Grid(grid, q0, r0, { goal = goal, max = Search.GRID_ROUTE_MAX, greed = Search.GRID_GREED,
+			q1 = math.min(q0, q1) - m, q2 = math.max(q0, q1) + m, r1 = math.min(r0, r1) - m, r2 = math.max(r0, r1) + m,
+			slack = { q0, r0, q1, r1 } })
+		if not found[1] then
+			return nil
+		end
+		local bends = Search.GridBends(grid, prev, r0 * 65536 + q0, goal)
+		local price = dist[goal]
+		local total, px, py = 0, sx, sy
+		for k = 1, #bends, 2 do
+			total, px, py = total + Dist(px, py, bends[k], bends[k + 1]), bends[k], bends[k + 1]
+		end
+		total = total + Dist(px, py, gx, gy)
+		local points, run = { { cont, sx, sy, "ground", "S", 0 } }, 0
+		px, py = sx, sy
+		for k = 1, #bends, 2 do
+			run, px, py = run + Dist(px, py, bends[k], bends[k + 1]), bends[k], bends[k + 1]
+			points[#points + 1] = { cont, px, py, "ground", nil, price * (total > 0 and run / total or 0) }
+		end
+		points[#points + 1] = { cont, gx, gy, "ground", "G", price }
+		return points, price
 	end
 
 	-- A point's legs to the graph. Where the ground is not known: every node
@@ -2042,6 +2382,9 @@ do
 			local key = keys[i]
 			Leg(id, cont, x, y, key, ds[i], g and g[key])
 		end
+		if n == 0 then
+			Search.GridLegs(id, cont, x, y)   -- (0.25.0: shut in by the ground: its way out over the grid)
+		end
 	end
 
 	-- a straight leg from the start or to the goal to a dock / flight point:
@@ -2076,13 +2419,20 @@ do
 		goals.n = 0
 	end
 
-	-- a hub's straight leg from the start and to each goal on its continent
+	-- a hub's straight leg from the start and to each goal on its continent. (0.25.0, the route bench: where the
+	-- ground is known only a hop the grid allows -- a long straight line crossed hills and walls, a 175 yd walk sent
+	-- 7,800 yd to a dock and back; the hubs join the graph by their own legs, an end shut in by the ground by its
+	-- grid legs)
+	local function HubOK(cont, x, y, ex, ey)
+		return not M.Ground.Has(cont) or (Dist(x, y, ex, ey) <= OFFROAD and M.Ground.Walk(cont, x, y, ex, ey) ~= false)
+	end
+
 	local function HubEnds(id, cont, x, y, scont, sx, sy)
-		if cont == scont then
+		if cont == scont and HubOK(cont, x, y, sx, sy) then
 			AddExtra("S", id, HubLeg(Dist(x, y, sx, sy)))
 		end
 		for i = 1, goals.n do
-			if cont == goals.cont[i] then
+			if cont == goals.cont[i] and HubOK(cont, x, y, goals.x[i], goals.y[i]) then
 				AddExtra(goals.id[i], id, HubLeg(Dist(x, y, goals.x[i], goals.y[i])))
 			end
 		end
@@ -2099,6 +2449,7 @@ do
 		wipe(extra)
 		wipe(nodeExtra)
 		wipe(flightEnds)
+		wipe(Search.gridPaths)
 		for i = heapN, 1, -1 do
 			heapId[i], heapF[i], heapCont[i] = nil, nil, nil
 		end
@@ -2149,11 +2500,19 @@ do
 			end
 			Search.Yield()
 		end
-		-- (0.17.0: the direct line only where the ground allows it, or is not known)
+		-- (0.17.0: the direct line only where the ground allows it, or is not known; 0.25.0: where the ground
+		-- shows it walkable it is priced as walked -- it is the shortcut -- and only where the ground is not known
+		-- at STRAIGHT_COST, so that roads win there unless they are a real detour)
 		for i = 1, goals.n do
 			local gx, gy = goals.x[i], goals.y[i]
-			if scont == goals.cont[i] and M.Ground.Clear(scont, sx, sy, gx, gy) ~= false then
-				AddExtra("S", goals.id[i], Dist(sx, sy, gx, gy) / WALK * STRAIGHT_COST)
+			if scont == goals.cont[i] then
+				local d = Dist(sx, sy, gx, gy)
+				local swum = M.Ground.Walk(scont, sx, sy, gx, gy)
+				if swum then
+					AddExtra("S", goals.id[i], M.Ground.Price(d, swum))
+				elseif swum == nil then
+					AddExtra("S", goals.id[i], d / WALK * STRAIGHT_COST)
+				end
 			end
 		end
 		-- the estimate at the fastest way this character can travel: flying
@@ -2224,9 +2583,10 @@ do
 
 	-- Walk back from the goal; graph nodes are "c|key" in the points, as ever.
 	local function Path()
-		local ids = {}
+		local ids, gs = {}, {}
 		local id = "G"
 		while id do
+			gs[#ids + 1] = gScore[id]
 			if type(id) == "table" then
 				local key = KeyOf(id[1], id[2])
 				local name
@@ -2244,12 +2604,37 @@ do
 		end
 		for i = 1, math.floor(#ids / 2) do
 			ids[i], ids[#ids + 1 - i] = ids[#ids + 1 - i], ids[i]
+			gs[i], gs[#ids + 1 - i] = gs[#ids + 1 - i], gs[i]
 		end
 		local points = {}
+		local laidPaths = Search.gridPaths
 		for i, nid in ipairs(ids) do
 			local cont, x, y = Position(nid)
 			if cont then
 				local prev = ids[i - 1]
+				-- (0.25.0) a grid leg's bends laid in (Search.GridLegs): out of the start, or into a goal, their
+				-- prices so far by their yards along the leg
+				local laid = prev and (prev == "S" and laidPaths.S and laidPaths.S[nid]
+					or goals.of[nid] and laidPaths[nid] and laidPaths[nid][prev]) or nil
+				local p0 = points[#points]
+				if laid and p0 and #laid > 0 then
+					local m, seq = #laid / 2, {}
+					for k = 1, m do
+						local j = prev == "S" and k or (m + 1 - k)
+						seq[#seq + 1], seq[#seq + 2] = laid[j * 2 - 1], laid[j * 2]
+					end
+					local total, px, py = 0, p0[2], p0[3]
+					for k = 1, #seq, 2 do
+						total, px, py = total + Dist(px, py, seq[k], seq[k + 1]), seq[k], seq[k + 1]
+					end
+					total = total + Dist(px, py, x, y)
+					local g0, g1, run = gs[i - 1] or 0, gs[i] or 0, 0
+					px, py = p0[2], p0[3]
+					for k = 1, #seq, 2 do
+						run, px, py = run + Dist(px, py, seq[k], seq[k + 1]), seq[k], seq[k + 1]
+						points[#points + 1] = { cont, px, py, "ground", nil, g0 + (g1 - g0) * (total > 0 and run / total or 0) }
+					end
+				end
 				local kind = "road"
 				local hubNow, hubPrev = nid:sub(1, 1), prev and prev:sub(1, 1)
 				local isHubNow, isHubPrev = hubNow == "D" or hubNow == "T", hubPrev == "D" or hubPrev == "T"
@@ -2266,7 +2651,10 @@ do
 				if isHubPrev and isHubNow then
 					kind = hubPrev == "T" and "flight" or "boat"
 				end
-				points[#points + 1] = { cont, x, y, kind, nid }
+				if laid then
+					kind = "ground"   -- (the grid's own way: walkable)
+				end
+				points[#points + 1] = { cont, x, y, kind, nid, gs[i] }   -- (0.25.0: [6] the price so far: Search.Smooth)
 			end
 		end
 		return points, gScore.G
@@ -2284,6 +2672,14 @@ do
 	local function Walk(scont, single)
 		gScore.S = 0
 		Push("S", Heuristic("S"), scont)
+		-- (0.25.0) the graph node nearest each goal it reached, and its yards: Search.nearNode[i], Search.nearD[i]
+		local nearNodes, nearYards = Search.nearNode, Search.nearD
+		for i = #nearYards, 1, -1 do
+			nearNodes[i], nearYards[i] = nil, nil
+		end
+		for i = 1, goals.n do
+			nearYards[i] = math.huge
+		end
 		local expanded, settled, cap = 0, 0, nil
 		local ended
 		while true do
@@ -2316,6 +2712,16 @@ do
 						scratchBig = true
 						return "big"
 					end
+					if type(id) == "table" then
+						for i = 1, goals.n do
+							if cont == goals.cont[i] then
+								local d = Dist(id[1], id[2], goals.x[i], goals.y[i])
+								if d < nearYards[i] then
+									nearNodes[i], nearYards[i] = id, d
+								end
+							end
+						end
+					end
 					Expand(id, cont)
 					if expanded % Search.EVERY == 0 then
 						Search.Yield()
@@ -2336,8 +2742,184 @@ do
 		end
 	end
 
+	-- (0.25.0, the navigation smoothed; the user, 2026-10-20: "sometimes it just spins me around, and does not take
+	-- shortcuts into consideration even tho we have the data for walkable terrain") The way found runs node to node:
+	-- back to a road node behind the player, along every bend of a road, zigzag over the ground's lattice. It is
+	-- pulled straight: from each point kept, to the farthest point ahead the walk grid shows a straight walk to
+	-- (Ground.Walk), when that cut is quicker (Ground.Price against the way's own price between them) or keeps within
+	-- HUG yards of the points it leaves out (the road's own wiggle). Never past a dock or a flight point, a boat or a
+	-- flight, another continent or SMOOTH_MAX yards, never where no grid is, and never in a capital: the grid sees no
+	-- building or city wall (Tools/trace_roads.py leaves its ground out for the same reason). A stretch over ground
+	-- the grid shows walkable is "ground", drawn as a road.
+	-- The capitals' rects in continent yards ([cont] = { x0, x1, y0, y1, ... }), kept; while one of the maps could
+	-- not be measured (its map not known yet, or not on this client) asked again every CITY_RETRY seconds at most
+	function Search.InCity(cont, x, y)
+		local list = Search.cities[cont]
+		if not list or (list.retryAt and GetTime() >= list.retryAt) then
+			list = {}
+			for _, mapID in ipairs(Search.CITY_MAPS) do
+				local c0, x0, y0 = ToYards(mapID, 0, 0)
+				local c1, x1, y1 = ToYards(mapID, 1, 1)
+				if c0 and c1 then
+					if c0 == cont and c1 == cont then
+						list[#list + 1], list[#list + 2] = math.min(x0, x1), math.max(x0, x1)
+						list[#list + 1], list[#list + 2] = math.min(y0, y1), math.max(y0, y1)
+					end
+				else
+					list.retryAt = GetTime() + Search.CITY_RETRY
+				end
+			end
+			Search.cities[cont] = list
+		end
+		for i = 1, #list, 4 do
+			if x >= list[i] and x <= list[i + 1] and y >= list[i + 2] and y <= list[i + 3] then
+				return true
+			end
+		end
+		return false
+	end
+	Search.CITY_MAPS = { 1453, 1455, 1457, 1454, 1456, 1458 }   -- (RouteRecorder's: the cities whose streets were walked)
+	Search.CITY_RETRY = 30
+
+	-- the points between i and j all within HUG yards of the straight line from i to j
+	function Search.Hugs(points, i, j)
+		local a, b = points[i], points[j]
+		local ax, ay, dx, dy = a[2], a[3], b[2] - a[2], b[3] - a[3]
+		local len2 = dx * dx + dy * dy
+		local hug = Search.HUG
+		for k = i + 1, j - 1 do
+			local p = points[k]
+			local t = len2 > 0 and ((p[2] - ax) * dx + (p[3] - ay) * dy) / len2 or 0
+			t = t < 0 and 0 or (t > 1 and 1 or t)
+			if Dist(p[2], p[3], ax + dx * t, ay + dy * t) > hug then
+				return false
+			end
+		end
+		return true
+	end
+
+	-- a dock's or a flight point's place on the way: never cut past
+	local function Hub(p)
+		local c = type(p[5]) == "string" and p[5]:sub(1, 1)
+		return c == "D" or c == "T"
+	end
+
+	-- the cut from point i straight to point j: its price and, for a shortcut off the way, "ground"; or nil (a
+	-- capital at its end, a wall on it, or dearer than the way between them). `was`: the points' prices so far on
+	-- the way as found. A cut within HUG yards of the points it leaves out follows the way itself (the road's
+	-- wiggle): it is not asked of the grid -- the grid's rows, decoded as they are crossed, were most of the time
+	function Search.Cut(points, was, i, j)
+		local a, b = points[i], points[j]
+		local cont = a[1]
+		if Search.InCity(cont, b[2], b[3]) then
+			return nil
+		end
+		local along = was[j] - was[i]
+		if Search.Hugs(points, i, j) then
+			return along
+		end
+		-- (none swum is the least it can cost: a cut no quicker even so is not asked of the grid)
+		local d = Dist(a[2], a[3], b[2], b[3])
+		if M.Ground.Price(d, 0) >= along - 0.5 then
+			return nil
+		end
+		local swum = M.Ground.Walk(cont, a[2], a[3], b[2], b[3])
+		Search.Yield()
+		if not swum then
+			return nil
+		end
+		local straight = M.Ground.Price(d, swum)
+		if straight < along - 0.5 then
+			return straight, "ground"
+		end
+		return nil
+	end
+
+	function Search.Smooth(points, cost)
+		local n = points and #points or 0
+		if n < 3 or not cost then
+			return points, cost
+		end
+		local G = M.Ground
+		local was = {}   -- each point's price so far on the way as found
+		for k = 1, n do
+			was[k] = points[k][6]
+			if not was[k] then
+				return points, cost   -- (a point with no price: the way as found)
+			end
+		end
+		local out, total = { points[1] }, 0
+		points[1][6] = 0
+		local i = 1
+		while i < n do
+			local a = points[i]
+			local cont = a[1]
+			local best, price, kind = i + 1, was[i + 1] - was[i], nil
+			if G.Has(cont) and not Search.InCity(cont, a[2], a[3]) then
+				-- how far a cut may reach: the last point before another continent, a boat or a flight, a dock or a
+				-- flight point passed, or SMOOTH_MAX yards
+				local last = i + 1
+				for j = i + 2, math.min(n, i + Search.SMOOTH_SPAN) do
+					local b = points[j]
+					if b[1] ~= cont or b[4] == "boat" or b[4] == "flight" or Hub(points[j - 1])
+						or Dist(a[2], a[3], b[2], b[3]) > Search.SMOOTH_MAX then
+						break
+					end
+					last = j
+				end
+				-- the farthest cut in a few checks (a straight walk mostly holds up to some point and fails past it):
+				-- the first that works among the next few points, steps doubled while they work, then halved back
+				-- between the last that worked and the first that did not
+				local lo, hi = nil, last + 1
+				for j = i + 2, math.min(last, i + Search.SMOOTH_FIRST) do
+					local c, k = Search.Cut(points, was, i, j)
+					if c then
+						lo, price, kind = j, c, k
+						break
+					end
+				end
+				if lo then
+					local step = 1
+					while lo < last do
+						local j = math.min(lo + step, last)
+						local c, k = Search.Cut(points, was, i, j)
+						if not c then
+							hi = j
+							break
+						end
+						lo, price, kind = j, c, k
+						step = step * 2
+					end
+					while hi - lo > 1 do
+						local mid = math.floor((lo + hi) / 2)
+						local c, k = Search.Cut(points, was, i, mid)
+						if c then
+							lo, price, kind = mid, c, k
+						else
+							hi = mid
+						end
+					end
+					best = lo
+				end
+			end
+			local b = points[best]
+			if best > i + 1 then
+				b[4] = kind or b[4]
+				Search.smoothed = Search.smoothed + best - i - 1
+			elseif b[4] == "guess" and b[1] == cont and G.Walk(cont, a[2], a[3], b[2], b[3]) then
+				b[4] = "ground"   -- (a leg or a jump the grid shows walkable: no guess)
+			end
+			total = total + price
+			b[6] = total
+			out[#out + 1] = b
+			i = best
+		end
+		return out, total
+	end
+
 	-- Route from (scont, sx, sy) to (gcont, gx, gy): a list of { cont, x, y, kind }
-	-- points and the total cost in seconds, or nil.
+	-- points and the total cost in seconds, or nil. (0.25.0: a third, the search's own
+	-- price before the way was pulled straight: what a pricing gives for the place)
 	FindRoute = function(scont, sx, sy, gcont, gx, gy, hx, hy)
 		-- the character's own flight points, read before the memo below (the
 		-- first read counts as a hub change); the world map's list only while
@@ -2365,13 +2947,50 @@ do
 		Begin(scont, sx, sy, hx, hy)
 		local ended = Walk(scont, true)
 		if ended ~= "found" then
+			-- (0.25.0) no way on the graph: the grid's own, where the ground is known
+			if scont == gcont and M.Ground.Has(scont) then
+				local points, cost = Search.GridRoute(scont, sx, sy, gx, gy)
+				if points then
+					local smooth, price = Search.Smooth(points, cost)
+					return smooth, price, cost
+				end
+				-- (0.25.0, the route bench) a goal the known ground does not reach (a ledge, a plateau, a place only
+				-- a building's stairs lead to): the way to the graph's node nearest it, the rest a guess -- it was the
+				-- straight line from the player, or a dock's far detour
+				local near = Search.APPROACH and Search.nearNode[1]
+				if near and Search.nearD[1] < Dist(sx, sy, gx, gy) - 20 then
+					from.G = near
+					gScore.G = (gScore[near] or 0) + Search.nearD[1] / WALK * STRAIGHT_COST
+					local way, wcost = Path()
+					local smooth, price = Search.Smooth(way, wcost)
+					return smooth, price, wcost
+				end
+			end
 			if ended == "none" and others then
 				failed[scont] = failed[scont] or {}
 				failed[scont][gcont] = { edits.hubs, others }
 			end
 			return nil
 		end
-		return Path()
+		-- (0.25.0) the way pulled straight and its price; the search's own price third (a pricing's, Search.Price)
+		local points, cost = Path()
+		local smooth, price = Search.Smooth(points, cost)
+		-- (0.25.0, the route bench) the graph's way much dearer than a straight walk: the grid's own way is tried
+		-- too, and taken when clearly quicker (the roads and the ground's lattice miss a pass the grid knows)
+		if scont == gcont and M.Ground.Has(scont) and price then
+			local d = Dist(sx, sy, gx, gy)
+			if d <= Search.HYBRID_MAX and price > M.Ground.Price(d, 0) * Search.HYBRID_OVER then
+				local gp, gc = Search.GridRoute(scont, sx, sy, gx, gy)
+				if gp then
+					local gsmooth, gprice = Search.Smooth(gp, gc)
+					if gprice and gprice <= price * Search.HYBRID_WIN then
+						Search.hybridWins = Search.hybridWins + 1
+						return gsmooth, gprice, cost
+					end
+				end
+			end
+		end
+		return smooth, price, cost
 	end
 
 	-- (0.17.1) What each of `places` ({ cont, x, y } each) costs from
@@ -2404,6 +3023,22 @@ do
 		for i = 1, n do
 			local id = goals.id[i]
 			out[i] = closed[id] and gScore[id] or nil
+		end
+		-- (0.25.0) a place the graph did not reach, priced over the grid (as FindRoute routes it: Search.GridRoute;
+		-- past the cap too -- a place the graph reaches only the long way round can be the nearest over the ground);
+		-- and once the graph is walked out, as FindRoute does past that: to its node nearest the place, the rest a guess
+		if M.Ground.Has(scont) then
+			for i = 1, n do
+				local p = places[i]
+				if out[i] == nil and p[1] == scont then
+					local _, price = Search.GridRoute(scont, sx, sy, p[2], p[3])
+					local near, nd = Search.nearNode[i], Search.nearD[i]
+					if not price and ended ~= "cap" and Search.APPROACH and near and nd < Dist(sx, sy, p[2], p[3]) - 20 then
+						price = (gScore[near] or 0) + nd / WALK * STRAIGHT_COST
+					end
+					out[i] = price
+				end
+			end
 		end
 		return ended ~= "cap"
 	end
@@ -3098,6 +3733,11 @@ local function Plan(force, announce, announceText)
 			return
 		end
 	end
+	-- (0.25.0) a timed refresh of the route being followed (not forced, the player on it, the same destination):
+	-- the new one replaces it only if clearly quicker (Search.Planned)
+	local r, dd = route, destination
+	local refresh = not force and r and not offRoute and not r.guess and r.dest and r.dest[1] == dd.cont
+		and r.dest[2] == dd.x and r.dest[3] == dd.y and r or nil
 	lastPlan = now
 	offRoute = false
 	offRouteSince = nil
@@ -3144,11 +3784,24 @@ local function Plan(force, announce, announceText)
 	end
 	local hx, hy = Heading(cont)
 	local job = { kind = "route", scont = cont, sx = x, sy = y, gcont = d.cont, gx = d.x, gy = d.y, hx = hx, hy = hy,
-		d = d, announce = announce, text = announceText, done = Search.Planned }
+		d = d, announce = announce, text = announceText, done = Search.Planned, refresh = refresh }
 	Search.plan = job
 	if Search.Run(job) then
 		Search.Planned(job)
 	end
+end
+
+-- (0.25.0) What the rest of route `r` costs as priced when found, from the player at (px, py): from their place on
+-- it (r.progress, r.atX / atY: FollowRoute) and the step back onto it; nil without the prices (a straight guess)
+function Search.LeftPrice(r, px, py)
+	local pts, i = r.points, r.progress
+	local a, b, last = i and pts[i], i and pts[i + 1], pts[#pts]
+	if not (a and b and a[6] and b[6] and last and last[6] and r.atX) then
+		return nil
+	end
+	local seg = Dist(a[2], a[3], b[2], b[3])
+	local t = seg > 0 and math.min(1, Dist(a[2], a[3], r.atX, r.atY) / seg) or 0
+	return last[6] - (a[6] + (b[6] - a[6]) * t) + Dist(px, py, r.atX, r.atY) / WALK
 end
 
 -- The route a plan's search found, put in place (Plan; Search.Run's done)
@@ -3164,6 +3817,15 @@ function Search.Planned(job)
 	local cont, x, y = job.scont, job.sx, job.sy
 	local points, cost = job.points, job.cost
 	local announce, announceText = job.announce, job.text
+	-- (0.25.0, the user, 2026-10-20: "sometimes it just spins me around") The route being followed stays at its
+	-- refresh unless the new one is clearly quicker: two ways of nearly one price swapped at every refresh, and the
+	-- player was turned round
+	if job.refresh and job.refresh == route and points and cost then
+		local left = Search.LeftPrice(route, x, y)
+		if left and not (cost < left * Search.KEEP and left - cost >= Search.KEEP_SECONDS) then
+			return
+		end
+	end
 	if points and #points == 2 and cont == d.cont then
 		-- the direct line won: its real walking time, not the price that made roads compete
 		cost = Dist(x, y, d.x, d.y) / WALK
