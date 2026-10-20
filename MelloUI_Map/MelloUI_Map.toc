@@ -2,7 +2,7 @@
 ## Title: |cff9b8cffMello|rUI Map
 ## Notes: MelloUI's map: one seamless map of the whole world, from the continents down to a zone. it opens with the game's map key (M), your quests beside it with L, or /mellomap; switch it on or off in MelloUI (/mello); untick it here to not load it at all.
 ## Author: Mello
-## Version: 0.23.1
+## Version: 1.0.0
 ## Dependencies: MelloUI
 ## OptionalDeps: MelloUI_Oldschool
 ## X-MelloUI-Feature: Map
