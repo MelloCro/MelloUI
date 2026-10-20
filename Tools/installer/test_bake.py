@@ -375,6 +375,27 @@ def main():
           and "questList" not in places, "the tracker's sizes are the Full's (%s x %s); no Quest List width any more"
           % (baked["width"], baked["maxHeight"]))
 
+    print("== the Full on other screens (1.0)")
+    # the shipped layout holds every frame to its third's edge (fitting/anchor_layout.py: a raw Edit Mode export
+    # holds frames from the centre or the top left and leaves a smaller screen)
+    sys.path.insert(0, os.path.join(B.HERE, "fitting"))
+    import anchor_layout as AL
+    _, moved = AL.anchored(AL.C.decode(AL.LAYOUT_RX.search(open(AL.FILE, encoding="utf-8").read()).group(3)))
+    check(not moved, "Media/EditModeLayout.lua's layout is held to the screen's edges (anchor_layout.py --check): %s" % moved[:3])
+    # the Full's layout and settings fitted on the fitter tests' 18 screens: these PASS (the user's layout of
+    # 2026-10-20; the old one also failed 1366x768 and 1024x768, the new one's tall bottom stack 1600x900 and 1280x1024)
+    import fit as FP   # (the prototype's screen list and UI scale: fitting/fit.py SCREENS, ui_parent)
+    want_fail = {"1366x768", "1600x900", "1280x1024", "1024x768", "1024x768@0.80"}
+    got_fail = set()
+    for sid, sw, sh, sc, _ in FP.SCREENS:
+        uw, uh, _ = FP.ui_parent(sw, sh, sc)
+        slua, sfit = FC.new_world()
+        _, _, srep = sfit.Fit(sfit, FC.to_lua(slua, info), uw, uh, FC.to_lua(slua, inputs),
+                              FC.to_lua(slua, {"screenW": sw, "screenH": sh}))
+        if FC.from_lua(slua, srep)["verdict"].startswith("FAIL"):
+            got_fail.add(sid)
+    check(got_fail == want_fail, "the Full fits every screen but %s (FAIL: %s)" % (sorted(want_fail), sorted(got_fail)))
+
     print("== the Full rules of test_options.py")
     check(len(text) <= 40000, "%d characters (at most 40,000)" % len(text))   # (1.0, 2026-10-20: the macro backup that held 6,000 is gone; the user's own Full is about 19,000)
     check(not any(k in emap for k in F.FULL_DROP), "no FULL_DROP key")

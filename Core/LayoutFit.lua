@@ -492,6 +492,10 @@ local Column = {
 		roundIcons = true, match = true, mapW = 198, mapH = 198 },
 	DESIGN_AURAS = { rows = true, attached = true, size = 38, perRow = 12 },
 	ROW_NAMES = { "Buffs", "Debuffs" },
+	-- the pieces that stand under your buff rows, top first: their name, key
+	-- and why they step down (Column.F6Rows)
+	UNDER_ROWS = { { "Queue eye", "27:-1", "the queue eye steps down under your buff rows" },
+		{ "External defensives", "6:2", "external defensives step down under your buff rows (the game's debuff bar they hang on is hidden)" } },
 }
 DESIGN_INPUTS.column, DESIGN_INPUTS.auras = Column.DESIGN, Column.DESIGN_AURAS
 -- MelloUI's settings as the approved layout was drawn with them (the
@@ -2079,19 +2083,21 @@ end
 
 -- How far the player / target frames can come in: until the nearest
 -- persistent centre piece beside them is GAP away, and the pet frame that
--- hangs under the player frame touches the bar panel
+-- hangs under the player frame touches the bar panel; (1.0) a centre piece
+-- that shows with the frame now and then (the possess bar beside the target
+-- frame, in the user's layout of 2026-10-20) GAP away too
 local function FramesDmax(f)
 	local N = f.N
 	local pl, tg, pet = N["Player frame"], N["Target frame"], N["Pet frame"]
 	local dl, dr = 1e9, 1e9
 	for i = 1, f.nE do
 		local e = f.E[i]
-		if e.unit == "core" and (PERSISTENT[e.cat] or e.cat == "P") then
-			local g = PERSISTENT[e.cat] and GAP or 0   -- class-only tabs may touch
-			if Yov(e.t, e.b, pl.t, pl.b, 0) and e.l >= pl.r - EPS then
+		if e.unit == "core" and (PERSISTENT[e.cat] or e.cat == "P" or Together(e, pl) or Together(e, tg)) then
+			local g = (PERSISTENT[e.cat] or e.cat ~= "P") and GAP or 0   -- class-only tabs may touch
+			if Yov(e.t, e.b, pl.t, pl.b, 0) and e.l >= pl.r - EPS and (e.cat ~= "S" or Together(e, pl)) then
 				dl = min(dl, e.l - pl.r - g)
 			end
-			if Yov(e.t, e.b, tg.t, tg.b, 0) and e.r <= tg.l + EPS then
+			if Yov(e.t, e.b, tg.t, tg.b, 0) and e.r <= tg.l + EPS and (e.cat ~= "S" or Together(e, tg)) then
 				dr = min(dr, tg.l - e.r - g)
 			end
 			if Yov(e.t, e.b, pet.t, pet.b, 0) and e.l >= pet.r - EPS then
@@ -2686,18 +2692,36 @@ function Column.F6Rows(f)
 	a.size, a.perRow = chS, chP
 	Bump(f)
 	Elements(f)
+	-- the pieces under your buff rows, top first: one the rows -- or a piece
+	-- stepped down before it -- run into steps down under them, 4 clear (1.0:
+	-- the queue eye too, the user's layout of 2026-10-20 has it there; rows
+	-- that wrap at a smaller screen reach it)
 	local N = f.N
-	local x, rb = N["External defensives"], N.Debuffs
-	local over = false
-	for _, nm in ipairs(Column.ROW_NAMES) do
-		local p = N[nm]
-		if not Inherited(f, p, x) and min(p.r, x.r) - max(p.l, x.l) > EPS and min(p.b, x.b) - max(p.t, x.t) > EPS then
-			over = true
+	local below, stepped = N.Debuffs.b + 4, {}
+	for _, under in ipairs(Column.UNDER_ROWS) do
+		local x = N[under[1]]
+		local over = false
+		if x then
+			for _, nm in ipairs(Column.ROW_NAMES) do
+				local p = N[nm]
+				if not Inherited(f, p, x) and min(p.r, x.r) - max(p.l, x.l) > EPS and min(p.b, x.b) - max(p.t, x.t) > EPS then
+					over = true
+				end
+			end
+			for _, o in ipairs(stepped) do
+				if min(o.r, x.r) - max(o.l, x.l) > EPS and min(o.b, x.b) - max(o.t, x.t) > EPS then
+					over = true
+				end
+			end
 		end
-	end
-	if over then
-		Shift(f, "6:2", "F6 auras", "external defensives step down under your buff rows (the game's debuff bar they hang on is hidden)",
-			0, -ceil((rb.b + 4 - x.t) * 10) / 10)
+		if over then
+			Shift(f, under[2], "F6 auras", under[3], 0, -ceil((below - x.t) * 10) / 10)
+			Elements(f)
+			N = f.N
+			x = N[under[1]]
+			stepped[#stepped + 1] = x
+			below = max(below, x.b + 4)
+		end
 	end
 	local hits = AuraHits(f)
 	if #hits > 0 then
