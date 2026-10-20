@@ -96,8 +96,9 @@
 --                                 QuestInk.lua)
 -- 0.25.0 adds one more, made on first use only:
 --   MelloUI.Shade:Lift(tex, name, size)   the soft glow or shade under an
---                                 icon of MelloUI's set on the maps and the
---                                 minimap ("The icons' lift")
+--                                 icon of MelloUI's set on the maps, the
+--                                 minimap and the nameplates' quest icons
+--                                 ("The icons' lift")
 -- The one 'palette' listener (owner "Shade") repaints the bands, the glows,
 -- the outlines and the lifts.
 --------------------------------------------------------------------------------
@@ -1317,7 +1318,7 @@ end
 -- with no glow and no shadow, "added later in the game" (the prompts,
 -- MelloUI-BuildData/masters/icons_v2/chatgpt-prompts.md; the user,
 -- 2026-10-20: "you didnt add those effects to them"): under an icon shown on
--- the maps or the minimap, a soft copy of its own outline -- a gold glow
+-- the maps, the minimap or a nameplate (its quest icon), a soft copy of its own outline -- a gold glow
 -- round the set's disc pins (pin_, goal_, obj_, class_), the dark soft shade
 -- hugging its standalone marks (the skulls, the ! and ?, the loot bag, the
 -- chest). One baked white picture per icon, Media\Textures\Icons\Halo\<name>

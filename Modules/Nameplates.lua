@@ -1256,8 +1256,9 @@ end
 --------------------------------------------------------------------------------
 
 -- (0.25.0, the user's pick: "skull and bag", MelloUI's icon set) the icon by what the quest wants from the mob: the
--- skull to slay it, the loot bag for an item it drops, the ! when the line says neither -- on a soft dark shade (the
--- game's 1x AvailableQuestIcon until then)
+-- skull to slay it, the loot bag for an item it drops, the ! when the line says neither -- on its soft dark shade, the
+-- icon set's own shape (MelloUI.Shade:Lift; 1.0, the user 2026-10-20: the round glow behind it read as "some kind of
+-- round border") (the game's 1x AvailableQuestIcon until then)
 local QUEST_ICON = { kill = "kill", loot = "loot", quest = "quest_mark" }
 
 -- an unfinished objective line's kind: the mob's name in it or "slain" a kill, a count else an item
@@ -1359,28 +1360,10 @@ local function GetQuestIcon(unitFrame)
 		end
 		icon = layer:CreateTexture(nil, "OVERLAY")
 		icon:Hide()
-		-- its soft dark shade (the palette's inner panel), shown and hidden with it
-		local shade = layer:CreateTexture(nil, "ARTWORK")
-		shade:SetTexture(MelloUI.Shade and MelloUI.Shade.GLOW_FILE or nil)
-		shade:SetPoint("CENTER", icon, "CENTER", 0, 0)
-		MelloUI.Widgets.Paint(shade, "innerPanel", "vertex", 0.7)
-		shade:Hide()
-		-- (the icon is shown and hidden by SetShown, Show and Hide in this file: the shade follows each)
-		hooksecurefunc(icon, "SetShown", function(_, on)
-			shade:SetShown(on)
-		end)
-		hooksecurefunc(icon, "Show", function()
-			shade:Show()
-		end)
-		hooksecurefunc(icon, "Hide", function()
-			shade:Hide()
-		end)
-		icon.shade = shade
 		questIcons[unitFrame] = icon
 	end
 	local size = M.db.questIconSize or 22
 	icon:SetSize(size, size)
-	icon.shade:SetSize(size * 1.6, size * 1.6)
 	icon:ClearAllPoints()
 	-- beside the Nameplate Kit's left gem cap while it dresses the plate
 	-- (the cap stands outside the bar), else beside the raid mark / bar
@@ -1412,8 +1395,10 @@ local function UpdateQuestIcon(plate)
 		return
 	end
 	if not QuestActive() then
-		if questIcons[unitFrame] then
-			questIcons[unitFrame]:Hide()
+		local icon = questIcons[unitFrame]
+		if icon then
+			icon:Hide()
+			MelloUI.Shade:Lift(icon, nil)
 		end
 		return
 	end
@@ -1425,6 +1410,7 @@ local function UpdateQuestIcon(plate)
 		MelloUI.Widgets.Icon(icon, QUEST_ICON[kind])
 	end
 	icon:SetShown(kind and true or false)
+	MelloUI.Shade:Lift(icon, kind and QUEST_ICON[kind] or nil, M.db.questIconSize or 22)
 end
 
 local function UpdateAllQuestIcons()
