@@ -172,7 +172,12 @@ end
 --   selectedTab   #4E1812  the selected tab or row
 --   selectedTrim  #AE8546  the selected tab's trim, gold highlights, headings
 --   hover         #5A3C24  what the pointer is over
--- Those are Ember's, the palette MelloUI shipped with and the default. Six
+-- Those are Ember's, the palette MelloUI shipped with (the default until
+-- 0.25.0). Gilded Slate (0.25.0, the user 2026-10-19: "i want the Default
+-- Modern to only have this as its Color Palette") is the modern look's one
+-- palette: slate panels, gilded trim. The others are the painted reskin's
+-- (MelloUI_Oldschool): chosen and used only while it dresses
+-- (MelloUI:PaintedPalettes); their pickers show only then. Six
 -- more came with 0.14.0 (user, 2026-09-26: "Obsidian, Royal Azure and Fel
 -- Ember, each with a Vibrant version"; their colours from
 -- MelloUI-BuildData/palette/additions_0.14.0/palettes_0.14.0.json, the same
@@ -195,6 +200,14 @@ end
 --                         installer ask here
 --   MelloUI:SetPalette(id) (below, with the settings) the setting
 --                         UIModifications.palette; nil or unknown: ember
+--   MelloUI:PaintedPalettes() -> true while the painted reskin's palettes
+--                         apply: MelloUI_Oldschool there (not refused), UI
+--                         Modifications on, its reskin switch on. Otherwise
+--                         the palette in use is Gilded Slate, whatever the
+--                         setting holds (kept for the reskin)
+--   a palette entry's `modern` (Gilded Slate): the modern look's own, never
+--                         one of the reskin's choices; its `looks`
+--                         "original": the kit's uncoloured art (Media\Kit)
 --   MelloUI.Meaning       the few FIXED meaning colours, the same under every
 --                         palette (a 0.14.0 build decision, like the game's
 --                         own can't-use red): cannotUse, #4E1812, what the
@@ -220,16 +233,21 @@ do
 		"selectedTrim", "hover" }
 	-- `looks` (0.19.1): "ember" for a palette with Ember's two kit looks (Warm iron, Bronze) rather than one kit of
 	-- its own (Modules/Kit.lua: Kit:LookFolder; Tools/palettes.json, the same field)
-	local function Add(id, name, blurb, hexes, looks)
+	local function Add(id, name, blurb, hexes, looks, modern)
 		local roles = {}
 		for i = 1, #ROLES do
 			roles[ROLES[i]] = Hex(hexes[i])
 		end
 		local palettes = MelloUI.Palettes
-		palettes[id] = { id = id, name = name, blurb = blurb, roles = roles, looks = looks }
+		palettes[id] = { id = id, name = name, blurb = blurb, roles = roles, looks = looks, modern = modern }
 		palettes.order[#palettes.order + 1] = id
 	end
 	--   id, name, blurb, { mainWindow, innerPanel, raisedPanel, border, trim, text, mutedText, selectedTab, selectedTrim, hover }
+	-- (0.25.0) the modern look's own: text 12.6:1 on the window, 8.8:1 on hover; gold 9.3:1 on the inner panel
+	-- (docs/plans/icons-and-palette.md, its artifact the user picked)
+	Add("gildedSlate", "Gilded Slate", "MelloUI's modern look: slate panels, gilded trim, warm off-white text.",
+		{ "#1D2026", "#14161A", "#272B33", "#383D47", "#A8873A", "#E8E2D3", "#A39C8C", "#4A3A17", "#E0B53A", "#353A45" },
+		"original", true)
 	Add("ember", "Ember", "MelloUI's first palette: warm dark brown, bronze-gold trim, a deep red for the selection.",
 		{ "#1F1B16", "#11100D", "#2E1F14", "#3D342A", "#8D642F", "#C6AF85", "#7F6846", "#4E1812", "#AE8546", "#5A3C24" })
 	-- (0.19.1, user 2026-10-04: "a more Vivid and Vibrant Variation of the Ember Profile, both Bronze and Warm Iron":
@@ -254,7 +272,23 @@ do
 		"Fel and void, stronger: ember-charred black, vivid fel-green trim and titles, deep void purple for the selection.",
 		{ "#1C0F08", "#0F0704", "#301C13", "#422F27", "#58982A", "#E7E3D2", "#8E916F", "#400568", "#85C545", "#254804" })
 end
-MelloUI.Palette = MelloUI.Palettes.ember.roles
+MelloUI.Palette = MelloUI.Palettes.gildedSlate.roles
+
+-- (0.25.0) whether the painted reskin's palettes apply: MelloUI_Oldschool there (its Oldschool.lua; not one from
+-- another MelloUI version, which it refuses), UI Modifications on and its reskin switch on (as stored: the defaults
+-- not laid on, a switch never saved is on). Read when the palette is put in place
+function MelloUI:PaintedPalettes()
+	local oldschool = rawget(self, "Oldschool")
+	if type(oldschool) ~= "table" or oldschool.refused then
+		return false
+	end
+	if not (type(self.db) == "table" and type(self.db.enabled) == "table" and self:IsModuleEnabled("UIModifications")) then
+		return false
+	end
+	local modules = self.db.modules
+	local um = type(modules) == "table" and modules.UIModifications
+	return not (type(um) == "table" and um.reskin == false)
+end
 
 -- the id of the palette in use, found by its table (worked out again only
 -- when MelloUI.Palette is another table: no table made, a loop per switch)
@@ -4039,26 +4073,63 @@ do
 	end
 
 	-- the palette the settings name, read as stored (the module's defaults
-	-- not laid on, so a world without UI Modifications reads Ember)
+	-- not laid on, so a world without UI Modifications reads Ember). (0.25.0)
+	-- The setting is the reskin's choice: the modern look's own palette there
+	-- reads Ember too
+	local function Choice(self, id)
+		id = self:KnownPalette(id)
+		if self.Palettes[id].modern then
+			return "ember"
+		end
+		return id
+	end
+
 	local function Stored(self)
 		local modules = self.db and self.db.modules
 		local um = type(modules) == "table" and modules.UIModifications
-		return self:KnownPalette(type(um) == "table" and um.palette or nil)
+		return Choice(self, type(um) == "table" and um.palette or nil)
+	end
+
+	-- (0.25.0) the palette in use: the stored one while the painted reskin's palettes apply, else Gilded Slate (the
+	-- setting kept for the reskin)
+	local function InUse(self, id)
+		if self:PaintedPalettes() then
+			return id
+		end
+		return "gildedSlate"
 	end
 
 	ApplyStoredPalette = function(self, switch)
-		Put(Stored(self), switch)
+		Put(InUse(self, Stored(self)), switch)
 	end
 
 	function MelloUI:SetPalette(id)
-		id = self:KnownPalette(id)
+		id = Choice(self, id)
 		local before = self.Palette
 		if self.db and self.modules.UIModifications and Stored(self) ~= id then
 			self:NotifySettingChanged("UIModifications", "palette", id)
 		end
-		Put(id, true)
+		Put(InUse(self, id), true)
 		return self.Palette ~= before
 	end
+
+	-- (0.25.0) the reskin's palettes come and go with UI Modifications' switch and its reskin switch: the palette in
+	-- use put in place again (a restart or a profile load puts it in place itself, below)
+	local function Again(self)
+		if self.initialized and not self.restartingModules then
+			ApplyStoredPalette(self, true)
+		end
+	end
+	MelloUI:On("module", function(name)
+		if name == "UIModifications" then
+			Again(MelloUI)
+		end
+	end, "Core palette")
+	MelloUI:On("setting", function(name, key)
+		if name == "UIModifications" and key == "reskin" then
+			Again(MelloUI)
+		end
+	end, "Core palette reskin")
 end
 
 -- Runs fn(self) with restartingModules set, and puts the outer value back

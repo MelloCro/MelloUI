@@ -5317,12 +5317,16 @@ end
 
 do
 	local values = nil
+	-- the painted reskin's choices (0.25.0: the modern look's own palette, Gilded Slate -- `modern` -- is no choice:
+	-- it is the palette whenever the reskin's are not, MelloUI:PaintedPalettes)
 	function W.PaletteValues()
 		if not values then
 			values = {}
-			for i, id in ipairs(MelloUI.Palettes.order) do
+			for _, id in ipairs(MelloUI.Palettes.order) do
 				local entry = MelloUI.Palettes[id]
-				values[i] = { value = id, label = entry.name, tooltip = entry.blurb }
+				if not entry.modern then
+					values[#values + 1] = { value = id, label = entry.name, tooltip = entry.blurb }
+				end
 			end
 		end
 		return values

@@ -6,6 +6,7 @@
 - Configurator: Automation is a new page (Vendor, Restock, Auto Accept and Hand In); Gains is a tab of Screen Text, the FPS / latency readout is on Reminders & Widgets, and the damage meter has its own page.
 - Screen Text: Chat Notices, Outlined Text and the combat text sizes are on its Notices and Combat Text tabs.
 - One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off: the Quest Tracker, the quest log and Quest List touches, and the rest of MelloUI's own windows and bars.
+- Gilded Slate: MelloUI's look has one colour palette of its own, slate panels with gilded trim and warm off-white text. The eight palettes (Ember, Obsidian, Royal Azure, Fel Ember and their Vibrant versions) belong to the painted reskin and are picked on Oldschool; your choice is kept for it.
 - A new icon set, sharp at every size, for MelloUI's own buttons and marks: the Quest Tracker, the Quest List and its map, Route, the chat and the whisper window, the bags, the damage meter, Services, Reminders, the widgets, Voice Over, Combat Text and the Configurator's check boxes, sliders and buttons. Under the painted reskin its painted rims stay.
 - Quest Tracker: each quest's mark is a round button of the set, a hand-in once the quest is done; the quest you follow wears Route's goal flag.
 - Route: the goal is one flag on the map, the minimap and the World Marker, red with the beads and cream with the line or dashes; on the minimap it stands on a small pointer over the spot.

@@ -141,7 +141,7 @@ local CHANGELOG = {
 	{ version = "0.25.0", lines = {
 		"Settings: borders and parchment are on Oldschool; a new Automation page; Gains, FPS / latency and the damage meter have new homes.",
 		"Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, a plate, a bar or the map, then a part; drag the party's and raid's parts on their large frame.",
-		"One look: MelloUI's parts wear its look, reskin or not; a new window frame -- the logo heads the configurator's side list, small windows get a slim strip.",
+		"One look: MelloUI's parts wear its look and its Gilded Slate colours, reskin or not; a new window frame -- the logo heads the configurator's side list, small windows get a slim strip.",
 		"A new icon set, sharp at every size: the tracker, Quest List, Route, chat, bags, damage meter, Services, widgets and the Configurator's controls; the quest you follow wears Route's flag.",
 		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, Hide Bar Art, a Bar Texture for each, one Health Colour for all.",
 		"Action bars and minimap: backdrops and MelloUI's square minimap for everyone, no painted skin needed; the round painted map is Oldschool's.",
@@ -4915,6 +4915,10 @@ local function RefreshSetup(page)
 		card.paletteShown = palette
 		card.changePalette.melloTipTitle = string.format("Palette: %s", palette)
 	end
+	-- (0.25.0) the reskin's palettes and its Kit Colours are choices only while it dresses (MelloUI:PaintedPalettes):
+	-- else the modern look's palette is named, with no Change…, and the Kit Colours row goes
+	local painted = MelloUI:PaintedPalettes()
+	card.changePalette:SetShown(painted)
 	rows.colours.value:SetText(KitColoursLabel())
 	rows.screen.value:SetText(ScreenText())
 	local on, total = ModulesOn()
@@ -4926,10 +4930,10 @@ local function RefreshSetup(page)
 	card.install:SetShown(installer)
 	card.revert:SetShown(canRevert)
 	local fit, row = installer and FitDue() or false, installer or canRevert
-	if rows.fit.wanted == fit and rows.installer.wanted == row then
+	if rows.fit.wanted == fit and rows.installer.wanted == row and rows.colours.wanted == painted then
 		return false
 	end
-	rows.fit.wanted, rows.installer.wanted = fit, row
+	rows.fit.wanted, rows.installer.wanted, rows.colours.wanted = fit, row, painted
 	return LaySetup(card)
 end
 

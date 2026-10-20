@@ -114,7 +114,7 @@ L.pages = {
 	-- is UI Modifications', which takes the reskin and every folded feature
 	-- with it)
 	Look = { title = "Look", icon = "module:UIModifications", module = "UIModifications",
-		flavour = "The look of the whole interface: the palette, the soft shade, fonts, icons, Dark Mode, the bar texture and fading. The painted reskin is on the Oldschool page.",
+		flavour = "The look of the whole interface: the soft shade, fonts, icons, Dark Mode, the bar texture and fading. The painted reskin and its palettes are on the Oldschool page.",
 		switchLabel = "UI Modifications",
 		switchDesc = "The painted reskin AND every feature of UI Modifications: Vendor, Error Messages, Cooldown Timers, Nameplate Tweaks, Chat, Tooltip, Fonts, Dark Mode, Bar Textures, Buffs & Debuffs, Unit Frame Tweaks, FPS / Latency, Class Icons, Bar Values, the game windows' skins, hiding the micro menu, the bag bar and the minimap coordinates, and the world text scale. Off: all of them are off, Edit Layout lets go of the game's windows (they go back to the game's own places), Windows Fade In stops, names are shown in full and Class Coloured Names stops. The palette, the UI Shade, Reduce Motion and MelloUI's notices keep working.",
 		tabs = { "General", "Fonts", "Icons", "Dark Mode", "Bar Texture", "Fading" } },
@@ -317,7 +317,7 @@ L.words = {
 	indicators = { "UnitGroupFrames", "raid:indicators" },
 	mouseover = { "Look", "Fading" },
 	uimodifications = { "Look" },
-	palette = { "Look", "General" },
+	palette = { "Oldschool", "General" },   -- (0.25.0: the reskin's palettes; the modern look has Gilded Slate alone)
 	uishade = { "Look", "General" },
 	borders = { "Oldschool", "Borders" },
 	fonts = { "Look", "Fonts" },
@@ -404,8 +404,9 @@ function L.Define(R, Link)
 	R("Oldschool", "General", "General", "UIModifications.reskin")
 	R("Oldschool", "General", "General", "UIModifications.preloadArt")
 	R("Oldschool", "General", "General", "UIModifications.#Switch every area on")
-	-- (free: applied with UI Modifications on or off, its OnSettingChanged)
-	R("Look", "General", "Look", "UIModifications.palette", { swatch = "palette", free = true })
+	-- (free: applied with UI Modifications on or off, its OnSettingChanged; 0.25.0: the painted reskin's palettes, so its
+	-- page -- the modern look's one palette, Gilded Slate, is no choice)
+	R("Oldschool", "General", "Look", "UIModifications.palette", { swatch = "palette", free = true })
 	R("Oldschool", "General", "Look", "UIModifications.kitColours")
 	R("Look", "General", "Look", "UIModifications.uiShade", { free = true })
 	R("Look", "General", "Look", "UIModifications.uiShadeStrength", { free = true })

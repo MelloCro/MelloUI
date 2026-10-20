@@ -795,6 +795,14 @@ do
 
 	function I:PaletteOf(option, draft)
 		option = self:Option(option)
+		-- (0.25.0) the painted reskin's palettes only with MelloUI_Oldschool there and the reskin the setup leaves on
+		-- (MelloUI:PaintedPalettes once it is in): else the modern look's Gilded Slate
+		local oldschool = rawget(MelloUI, "Oldschool")
+		local reskinOff = (type(draft) == "table" and draft[UMB .. ".reskin"] == false)
+			or (option and type(option.set) == "table" and option.set[UMB .. ".reskin"] == false)
+		if type(oldschool) ~= "table" or oldschool.refused or reskinOff then
+			return "gildedSlate"
+		end
 		if not option then
 			return "ember"
 		elseif option.base == "fresh" then

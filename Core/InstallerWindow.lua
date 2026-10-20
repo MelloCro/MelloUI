@@ -2094,8 +2094,23 @@ local function WizardSteps()
 	-- Vibrant under the column with the fewest cards (the first such), so the
 	-- cards keep their width -> each card's { column, line }, the columns, the
 	-- lines
+	-- (0.25.0) the palettes the painted reskin chooses from: the registry's order without the modern look's own
+	-- (Gilded Slate, `modern`: no choice -- the palette whenever the reskin's are not); made once
+	local choiceOrder
+	local function ChoiceOrder()
+		if not choiceOrder then
+			choiceOrder = {}
+			for _, id in ipairs(MelloUI.Palettes.order) do
+				if not MelloUI.Palettes[id].modern then
+					choiceOrder[#choiceOrder + 1] = id
+				end
+			end
+		end
+		return choiceOrder
+	end
+
 	local function PalettePlaces()
-		local order = MelloUI.Palettes.order
+		local order = ChoiceOrder()
 		local places, colOf, cols, lines = {}, {}, 0, 1
 		local twin, used = {}, {}   -- [id] = it has a Vibrant; [column] = the lines it holds
 		for _, id in ipairs(order) do
@@ -2199,23 +2214,28 @@ local function WizardSteps()
 		-- the tooltip), a family to a column; never asleep: the palette
 		-- colours MelloUI's own windows with the reskin off too. The cards are
 		-- the page's first owed work (MakePaletteCard).
-		Part(flow, Heading(page, TEXT.palette), 0, HEADING_H, 8, true)
-		local places, cols, lines = PalettePlaces()
-		local pw = floor((PAGE_W - (cols - 1) * COLOUR_GAP) / cols)
-		local pgrid = Grid(page, cols * lines, cols, PALETTE_H, PALETTE_GAP_Y)
-		for i, id in ipairs(MelloUI.Palettes.order) do
-			local at = places[i]
-			LaterWork(page, MakePaletteCard, { page = page, grid = pgrid, id = id, w = pw,
-				x = (at[1] - 1) * (pw + COLOUR_GAP), y = -(at[2] - 1) * (PALETTE_H + PALETTE_GAP_Y) })
+		-- (0.25.0) the painted reskin's palettes, offered only with MelloUI_Oldschool there: without it MelloUI wears
+		-- Gilded Slate, no choice
+		local oldschool = rawget(MelloUI, "Oldschool")
+		if type(oldschool) == "table" and not oldschool.refused then
+			Part(flow, Heading(page, TEXT.palette), 0, HEADING_H, 8, true)
+			local places, cols, lines = PalettePlaces()
+			local pw = floor((PAGE_W - (cols - 1) * COLOUR_GAP) / cols)
+			local pgrid = Grid(page, cols * lines, cols, PALETTE_H, PALETTE_GAP_Y)
+			for i, id in ipairs(ChoiceOrder()) do
+				local at = places[i]
+				LaterWork(page, MakePaletteCard, { page = page, grid = pgrid, id = id, w = pw,
+					x = (at[1] - 1) * (pw + COLOUR_GAP), y = -(at[2] - 1) * (PALETTE_H + PALETTE_GAP_Y) })
+			end
+			Part(flow, pgrid, 0, pgrid.melloH, 8, true)
 		end
-		Part(flow, pgrid, 0, pgrid.melloH, 8, true)
 		LaterRow(page, ReskinRow, W.ROW_HEIGHT, 10)
 		-- the Kit Colours: a card each, three to a line, with its picture; as
 		-- many cards as the palette with the most choices, laid by the drafted
 		-- palette (LayColours)
 		local heading = Part(flow, Heading(page, TEXT.colours), 0, HEADING_H, 8, true)
 		local Kit, most = MelloUI.Kit, 0
-		for _, id in ipairs(MelloUI.Palettes.order) do
+		for _, id in ipairs(ChoiceOrder()) do
 			local n = Kit and Kit.ColourLooks and #Kit:ColourLooks(id) or 0
 			if n > most then
 				most = n

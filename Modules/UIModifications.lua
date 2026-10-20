@@ -247,7 +247,7 @@ do
 	local W = MelloUI.Widgets
 	Add({ type = "dropdown", key = "palette", name = "Palette", free = true,
 		values = type(W) == "table" and type(W.PaletteValues) == "function" and W.PaletteValues() or {},
-		desc = "The colours of MelloUI's look: its own windows and parts and all of the reskin's art. Your choice applies at once." })
+		desc = "The painted reskin's colours: its art, and MelloUI's own windows and parts while it dresses. Without it MelloUI wears its modern palette, Gilded Slate. Your choice applies at once." })
 end
 
 -- The borders, one choice per kind for every window (Kit.borderKinds; the

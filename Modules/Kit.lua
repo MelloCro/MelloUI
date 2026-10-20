@@ -191,11 +191,13 @@ do
 		return "ember"
 	end
 
-	-- (0.19.1) a palette with Ember's two looks, Warm iron and Bronze (Core's registry: `looks` "ember")
-	function LOOK.EmberStyle(id)
+	-- (0.19.1) a palette with Ember's two looks, Warm iron and Bronze (Core's registry: `looks` "ember"); (0.25.0)
+	-- `original` asked: a palette with no kit of its own (Gilded Slate, the modern look's: `looks` "original"), the
+	-- kit's uncoloured art in every look
+	function LOOK.EmberStyle(id, original)
 		local reg = MelloUI.Palettes
 		local entry = type(reg) == "table" and reg[id]
-		return type(entry) == "table" and entry.looks == "ember"
+		return type(entry) == "table" and entry.looks == (original and "original" or "ember")
 	end
 
 	function LOOK.PaletteId()
@@ -232,7 +234,7 @@ do
 			end
 			return root, "Kit"
 		end
-		if kitColours == "painted" then
+		if kitColours == "painted" or LOOK.EmberStyle(id, true) then
 			return ROOT, "Kit"
 		end
 		local root = roots[id]
@@ -258,7 +260,9 @@ do
 			local name = type(entry) == "table" and type(entry.name) == "string" and entry.name
 				or (id:sub(1, 1):upper() .. id:sub(2)):gsub("(%l)(%u)", "%1 %2")
 			local _, folder = self:LookFolder(id, "warm")
-			if LOOK.EmberStyle(id) then
+			if LOOK.EmberStyle(id, true) then
+				list = { PAINTED }   -- (0.25.0: no kit of its own, the Original alone)
+			elseif LOOK.EmberStyle(id) then
 				-- Ember's three choices, in that palette's own folders
 				local _, bronze = self:LookFolder(id, "bronze")
 				list = { { value = "warm", label = EMBER[1].label, folder = folder }, { value = "bronze", label = EMBER[2].label, folder = bronze }, PAINTED }
