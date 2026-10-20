@@ -7,11 +7,11 @@
    "systemIndex": 1,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOM",
+    "point": "BOTTOMLEFT",
     "relativeTo": "UIParent",
-    "relativePoint": "BOTTOM",
-    "offsetX": 0.0,
-    "offsetY": 53.0
+    "relativePoint": "CENTER",
+    "offsetX": -224.7,
+    "offsetY": -479.3
    },
    "anchorInfo2": null,
    "settings": [
@@ -29,7 +29,7 @@
     },
     {
      "setting": 3,
-     "value": 5
+     "value": 3
     },
     {
      "setting": 4,
@@ -37,7 +37,7 @@
     },
     {
      "setting": 6,
-     "value": 0
+     "value": 1
     },
     {
      "setting": 8,
@@ -54,11 +54,11 @@
    "systemIndex": 2,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOMRIGHT",
-    "relativeTo": "MainActionBar",
-    "relativePoint": "TOPRIGHT",
-    "offsetX": 0.0,
-    "offsetY": 4.0
+    "point": "BOTTOMLEFT",
+    "relativeTo": "UIParent",
+    "relativePoint": "CENTER",
+    "offsetX": -224.7,
+    "offsetY": -443.0
    },
    "anchorInfo2": null,
    "settings": [
@@ -76,7 +76,7 @@
     },
     {
      "setting": 3,
-     "value": 5
+     "value": 3
     },
     {
      "setting": 4,
@@ -97,11 +97,11 @@
    "systemIndex": 3,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOMRIGHT",
-    "relativeTo": "MultiBarBottomLeft",
-    "relativePoint": "TOPRIGHT",
-    "offsetX": 0.0,
-    "offsetY": 4.0
+    "point": "TOPLEFT",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOPLEFT",
+    "offsetX": 1152.3,
+    "offsetY": -1004.0
    },
    "anchorInfo2": null,
    "settings": [
@@ -140,11 +140,11 @@
    "systemIndex": 4,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOMRIGHT",
-    "relativeTo": "MultiBarBottomRight",
-    "relativePoint": "TOPRIGHT",
-    "offsetX": 0.0,
-    "offsetY": 4.0
+    "point": "TOPLEFT",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOPLEFT",
+    "offsetX": 1152.3,
+    "offsetY": -955.0
    },
    "anchorInfo2": null,
    "settings": [
@@ -226,11 +226,11 @@
    "systemIndex": 6,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOMRIGHT",
-    "relativeTo": "MultiBarLeft",
-    "relativePoint": "TOPRIGHT",
-    "offsetX": 0.0,
-    "offsetY": 4.0
+    "point": "TOPLEFT",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOPLEFT",
+    "offsetX": 2399.1,
+    "offsetY": -1050.0
    },
    "anchorInfo2": null,
    "settings": [
@@ -269,11 +269,11 @@
    "systemIndex": 7,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOMRIGHT",
-    "relativeTo": "MultiBar5",
-    "relativePoint": "TOPRIGHT",
-    "offsetX": 0.0,
-    "offsetY": 4.0
+    "point": "TOPLEFT",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOPLEFT",
+    "offsetX": 2399.1,
+    "offsetY": -1010.0
    },
    "anchorInfo2": null,
    "settings": [
@@ -312,11 +312,11 @@
    "systemIndex": 8,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOMRIGHT",
-    "relativeTo": "MultiBar6",
-    "relativePoint": "TOPRIGHT",
-    "offsetX": 0.0,
-    "offsetY": 4.0
+    "point": "TOPLEFT",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOPLEFT",
+    "offsetX": 2399.1,
+    "offsetY": -970.0
    },
    "anchorInfo2": null,
    "settings": [
@@ -355,11 +355,11 @@
    "systemIndex": 11,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOM",
+    "point": "BOTTOMLEFT",
     "relativeTo": "UIParent",
-    "relativePoint": "BOTTOM",
-    "offsetX": 0.0,
-    "offsetY": 155.5
+    "relativePoint": "CENTER",
+    "offsetX": -24.2,
+    "offsetY": -406.8
    },
    "anchorInfo2": null,
    "settings": [
@@ -373,7 +373,7 @@
     },
     {
      "setting": 3,
-     "value": 8
+     "value": 3
     },
     {
      "setting": 4,
@@ -421,11 +421,11 @@
    "systemIndex": 13,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOMRIGHT",
-    "relativeTo": "StanceBar",
-    "relativePoint": "TOPRIGHT",
-    "offsetX": 0.0,
-    "offsetY": 4.0
+    "point": "TOPLEFT",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOPLEFT",
+    "offsetX": 1578.0,
+    "offsetY": -971.5
    },
    "anchorInfo2": null,
    "settings": [
@@ -452,17 +452,17 @@
    "systemIndex": null,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOM",
+    "point": "BOTTOMLEFT",
     "relativeTo": "UIParent",
-    "relativePoint": "BOTTOM",
-    "offsetX": 0.0,
-    "offsetY": 239.0
+    "relativePoint": "CENTER",
+    "offsetX": -124.4,
+    "offsetY": -300.1
    },
    "anchorInfo2": null,
    "settings": [
     {
      "setting": 0,
-     "value": 5
+     "value": 2
     },
     {
      "setting": 1,
@@ -482,7 +482,7 @@
     "point": "TOPRIGHT",
     "relativeTo": "UIParent",
     "relativePoint": "TOPRIGHT",
-    "offsetX": -40.8,
+    "offsetX": 0.0,
     "offsetY": 0.0
    },
    "anchorInfo2": null,
@@ -497,7 +497,7 @@
     },
     {
      "setting": 2,
-     "value": 4
+     "value": 5
     },
     {
      "setting": 3,
@@ -510,11 +510,11 @@
    "systemIndex": 1,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOM",
+    "point": "BOTTOMLEFT",
     "relativeTo": "UIParent",
-    "relativePoint": "BOTTOM",
-    "offsetX": -417.4,
-    "offsetY": 186.0
+    "relativePoint": "CENTER",
+    "offsetX": -468.1,
+    "offsetY": -390.9
    },
    "anchorInfo2": null,
    "settings": [
@@ -524,7 +524,7 @@
     },
     {
      "setting": 16,
-     "value": 3
+     "value": 0
     }
    ]
   },
@@ -533,11 +533,11 @@
    "systemIndex": 2,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOM",
+    "point": "BOTTOMLEFT",
     "relativeTo": "UIParent",
-    "relativePoint": "BOTTOM",
-    "offsetX": 417.4,
-    "offsetY": 186.0
+    "relativePoint": "CENTER",
+    "offsetX": 236.5,
+    "offsetY": -390.9
    },
    "anchorInfo2": null,
    "settings": [
@@ -547,7 +547,7 @@
     },
     {
      "setting": 16,
-     "value": 3
+     "value": 0
     }
    ]
   },
@@ -556,11 +556,11 @@
    "systemIndex": 3,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOM",
+    "point": "TOP",
     "relativeTo": "UIParent",
-    "relativePoint": "BOTTOM",
-    "offsetX": -660.0,
-    "offsetY": 186.0
+    "relativePoint": "TOP",
+    "offsetX": -473.5,
+    "offsetY": -601.5
    },
    "anchorInfo2": null,
    "settings": [
@@ -585,9 +585,9 @@
    "anchorInfo": {
     "point": "TOPLEFT",
     "relativeTo": "UIParent",
-    "relativePoint": "TOPLEFT",
-    "offsetX": 24.0,
-    "offsetY": -250.0
+    "relativePoint": "BOTTOMLEFT",
+    "offsetX": 103.6,
+    "offsetY": 802.5
    },
    "anchorInfo2": null,
    "settings": [
@@ -597,7 +597,7 @@
     },
     {
      "setting": 5,
-     "value": 1
+     "value": 0
     },
     {
      "setting": 6,
@@ -621,7 +621,7 @@
     },
     {
      "setting": 16,
-     "value": 2
+     "value": 7
     },
     {
      "setting": 18,
@@ -720,8 +720,8 @@
     "point": "TOPRIGHT",
     "relativeTo": "UIParent",
     "relativePoint": "TOPRIGHT",
-    "offsetX": -325.8,
-    "offsetY": -347.7
+    "offsetX": -340.6,
+    "offsetY": -314.0
    },
    "anchorInfo2": null,
    "settings": [
@@ -928,7 +928,7 @@
     "relativeTo": "DebuffFrame",
     "relativePoint": "BOTTOMRIGHT",
     "offsetX": 0.0,
-    "offsetY": -4.0
+    "offsetY": -86.5
    },
    "anchorInfo2": null,
    "settings": [
@@ -988,18 +988,18 @@
     "point": "BOTTOMLEFT",
     "relativeTo": "UIParent",
     "relativePoint": "BOTTOMLEFT",
-    "offsetX": 32.0,
-    "offsetY": 32.0
+    "offsetX": 69.6,
+    "offsetY": 45.4
    },
    "anchorInfo2": null,
    "settings": [
     {
      "setting": 0,
-     "value": 4
+     "value": 5
     },
     {
      "setting": 1,
-     "value": 57
+     "value": 81
     },
     {
      "setting": 2,
@@ -1007,7 +1007,7 @@
     },
     {
      "setting": 3,
-     "value": 90
+     "value": 98
     }
    ]
   },
@@ -1016,11 +1016,11 @@
    "systemIndex": null,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOM",
+    "point": "LEFT",
     "relativeTo": "UIParent",
-    "relativePoint": "BOTTOM",
-    "offsetX": 0.0,
-    "offsetY": 210.0
+    "relativePoint": "LEFT",
+    "offsetX": 512.1,
+    "offsetY": -261.0
    },
    "anchorInfo2": null,
    "settings": []
@@ -1061,8 +1061,8 @@
     "point": "TOPRIGHT",
     "relativeTo": "UIParent",
     "relativePoint": "TOPRIGHT",
-    "offsetX": -5.8,
-    "offsetY": -347.7
+    "offsetX": -32.6,
+    "offsetY": -346.9
    },
    "anchorInfo2": null,
    "settings": [
@@ -1085,11 +1085,11 @@
    "systemIndex": null,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOMRIGHT",
+    "point": "BOTTOMLEFT",
     "relativeTo": "UIParent",
-    "relativePoint": "BOTTOMRIGHT",
-    "offsetX": -18.0,
-    "offsetY": 16.0
+    "relativePoint": "CENTER",
+    "offsetX": 996.3,
+    "offsetY": -512.0
    },
    "anchorInfo2": null,
    "settings": [
@@ -1103,7 +1103,7 @@
     },
     {
      "setting": 2,
-     "value": 3
+     "value": 1
     }
    ]
   },
@@ -1112,11 +1112,11 @@
    "systemIndex": null,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOMRIGHT",
+    "point": "BOTTOMLEFT",
     "relativeTo": "UIParent",
-    "relativePoint": "BOTTOMRIGHT",
-    "offsetX": -11.9,
-    "offsetY": 61.2
+    "relativePoint": "CENTER",
+    "offsetX": 986.8,
+    "offsetY": -482.1
    },
    "anchorInfo2": null,
    "settings": [
@@ -1130,7 +1130,7 @@
     },
     {
      "setting": 2,
-     "value": 2
+     "value": 0
     }
    ]
   },
@@ -1139,11 +1139,11 @@
    "systemIndex": 1,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOM",
+    "point": "BOTTOMLEFT",
     "relativeTo": "UIParent",
-    "relativePoint": "BOTTOM",
-    "offsetX": 0.0,
-    "offsetY": 20.2
+    "relativePoint": "CENTER",
+    "offsetX": -298.0,
+    "offsetY": -512.0
    },
    "anchorInfo2": null,
    "settings": [
@@ -1158,11 +1158,11 @@
    "systemIndex": 2,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "TOP",
-    "relativeTo": "MainStatusTrackingBarContainer",
-    "relativePoint": "BOTTOM",
-    "offsetX": 0.0,
-    "offsetY": 1.0
+    "point": "BOTTOMLEFT",
+    "relativeTo": "UIParent",
+    "relativePoint": "CENTER",
+    "offsetX": -298.0,
+    "offsetY": -157.9
    },
    "anchorInfo2": null,
    "settings": [
@@ -1287,7 +1287,7 @@
     },
     {
      "setting": 6,
-     "value": 1
+     "value": 0
     },
     {
      "setting": 8,
@@ -1342,7 +1342,7 @@
     },
     {
      "setting": 6,
-     "value": 1
+     "value": 0
     },
     {
      "setting": 8,
@@ -1479,13 +1479,13 @@
   {
    "system": 21,
    "systemIndex": null,
-   "isInDefaultPosition": true,
+   "isInDefaultPosition": false,
    "anchorInfo": {
     "point": "BOTTOM",
     "relativeTo": "UIParent",
     "relativePoint": "BOTTOM",
-    "offsetX": -410.0,
-    "offsetY": 380.0
+    "offsetX": 0.0,
+    "offsetY": 402.0
    },
    "anchorInfo2": null,
    "settings": [
@@ -1805,11 +1805,11 @@
    "systemIndex": null,
    "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "BOTTOMRIGHT",
+    "point": "BOTTOMLEFT",
     "relativeTo": "UIParent",
-    "relativePoint": "BOTTOM",
-    "offsetX": -50.0,
-    "offsetY": 155.5
+    "relativePoint": "CENTER",
+    "offsetX": -114.7,
+    "offsetY": -364.4
    },
    "anchorInfo2": null,
    "settings": []
@@ -1829,7 +1829,7 @@
    "settings": [
     {
      "setting": 0,
-     "value": 0
+     "value": 1
     }
    ]
   },
@@ -1848,20 +1848,20 @@
    "settings": [
     {
      "setting": 0,
-     "value": 0
+     "value": 1
     }
    ]
   },
   {
    "system": 27,
    "systemIndex": null,
-   "isInDefaultPosition": true,
+   "isInDefaultPosition": false,
    "anchorInfo": {
-    "point": "CENTER",
-    "relativeTo": "Minimap",
-    "relativePoint": "CENTER",
-    "offsetX": -68.0,
-    "offsetY": -68.0
+    "point": "RIGHT",
+    "relativeTo": "UIParent",
+    "relativePoint": "RIGHT",
+    "offsetX": -321.1,
+    "offsetY": 267.2
    },
    "anchorInfo2": null,
    "settings": [

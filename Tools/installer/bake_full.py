@@ -126,8 +126,15 @@ FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPan
 EDIT_MODE_FRAMES = ["MinimapCluster", "DamageMeter", "ChatFrame1", "ObjectiveTrackerFrame"]
 # the installer's additions to the keep lists and the one-time flag name rule
 # (the installer build's test_options.py name check)
-EXTRA_PERSONAL = {"UIModifications": ["seenVersion", "^layoutAsked_", "layoutFitFor", "layoutFitRev", "questTrackerKitMigrated"]}
+# (1.0: ^featureAsked_ the one-time offer flags of the scrapped Accounting, read by no code now; BagWindow.seenN the
+# bag window's count of items it has seen, one character's)
+EXTRA_PERSONAL = {"UIModifications": ["seenVersion", "^layoutAsked_", "layoutFitFor", "layoutFitRev", "questTrackerKitMigrated",
+                                      "^featureAsked_"],
+                  "BagWindow": ["seenN"]}
 ONE_TIME = re.compile(r"(Migrated|Folded|Once|Asked|Shown|Applied|Version|Done)$")
+# (1.0) store places of a mover gone from the code: never shipped (the 2026-10-20 snapshot's effectTester, a Frame
+# Effects test window that no code places any more)
+STALE_PLACES = ["effectTester"]
 LEGACY_PLACES = ["VoiceOver.overlayPoint", "VoiceOver.overlayRelativePoint", "VoiceOver.overlayX", "VoiceOver.overlayY",
                  "Chat.whisperPopupPos", "Route.arrowX", "Route.arrowY"]
 
@@ -281,7 +288,10 @@ end
 function DropFull(list)
     for _, spec in ipairs(list) do
         local name, key = spec:match("^([^.]+)%.(.+)$")
-        M:GetModuleDB(name)[key] = M.modules[name].defaults[key]
+        -- (a module of a feature addon the world leaves out, bakeworld's WITHOUT: Oldschool's panels, not baked)
+        if M.modules[name] then
+            M:GetModuleDB(name)[key] = M.modules[name].defaults[key]
+        end
     end
 end
 
@@ -299,7 +309,21 @@ function DesignPlaces(info, sw, sh)
     local inputs = LF:Inputs()
     local fitted, places, report = LF:Fit(info, W, H, inputs, { screenW = sw, screenH = sh })
     if not fitted or not report.pass then
-        error("the design-size fit did not pass: " .. tostring(report and report.verdict))
+        -- what failed, named (the checks' lists and the unsolved flags)
+        local why = {}
+        local rep = report and report.checks or {}
+        for _, list in ipairs({ "off", "hard", "centre", "stores", "windows" }) do
+            for _, t in ipairs(rep[list] or {}) do why[#why + 1] = list .. ": " .. tostring(t) end
+        end
+        for _, t in ipairs(report and report.flags or {}) do why[#why + 1] = "flag: " .. tostring(t) end
+        for _, p in ipairs(report and report.pieces or {}) do
+            why[#why + 1] = string.format("piece: %s [%s] L%.1f T%.1f R%.1f B%.1f", tostring(p.name), tostring(p.cat),
+                p.l or -1, p.t or -1, p.r or -1, p.b or -1)
+        end
+        why[#why + 1] = string.format("screen: %.1f x %.1f", W, H)
+        for _, t in ipairs(report and report.log or {}) do why[#why + 1] = "log: " .. tostring(t) end
+        for _, t in ipairs(report and report.levelsTried or {}) do why[#why + 1] = "tried: " .. tostring(t) end
+        error("the design-size fit did not pass: " .. tostring(report and report.verdict) .. "\n  " .. table.concat(why, "\n  "))
     end
     local um = M:GetModuleDB("UIModifications")
     if type(um.positions) ~= "table" then um.positions = {} end
@@ -310,7 +334,14 @@ function DesignPlaces(info, sw, sh)
     qt.maxHeight, qt.width = places.questTracker.maxHeight, places.questTracker.width
     -- places.layoutFitFor: one machine's fact, never baked
     STORE_FITTED = Store()
-    return { W = W, H = H, verdict = report.verdict, layoutName = report.layoutName, places = places, inputs = inputs }
+    return { W = W, H = H, verdict = report.verdict, layoutName = report.layoutName, places = places, inputs = inputs,
+        eye = report.eye }
+end
+
+function DropPlaces(list)
+    local um = M:GetModuleDB("UIModifications")
+    if type(um.positions) ~= "table" then return end
+    for _, k in ipairs(list) do um.positions[k] = nil end
 end
 
 function Save()
@@ -325,6 +356,11 @@ def extra_personal(module, key):
     for e in EXTRA_PERSONAL.get(module, []):
         if e == key or (e.startswith("^") and re.search(e, key)):
             return True
+    # (1.0) a module's qolFolded is no one-time flag but the mark the settings fold reads (MERGES): a profile without
+    # it is taken for one from before the fold, and loading a Full bake without it switched Buffs & Debuffs off (the
+    # bake of 2026-10-16, reverted). It ships, as the player's own export keeps it.
+    if key == "qolFolded":
+        return False
     return bool(ONE_TIME.search(key))
 
 
@@ -542,6 +578,17 @@ def _moved_keys(stages, stage):
     return keys
 
 
+def logged_in(snapshot, tries, wait, log, without=None):
+    """A world (bakeworld's, `without` those feature addons) with the snapshot logged in: every module's defaults as
+    its OnInit / OnEnable leave them (UI Modifications' area and shade switches come at the login)."""
+    lua, _, _, _ = B.make_world_retry(tries, wait, log, without=without)
+    lua.execute(open(snapshot, encoding="utf-8").read())
+    lua.execute(B.BUDGET)
+    lua.execute(LUA_STEPS)
+    lua.globals().Login()
+    return lua
+
+
 def bake(snapshot=SNAP, tries=5, wait=60, log=print):
     text_saved = saved_text(snapshot, tries, wait, log)
     mods = raw_modules(snapshot)
@@ -561,6 +608,7 @@ def bake(snapshot=SNAP, tries=5, wait=60, log=print):
         if e:
             raise SystemExit("Core/LayoutFit.lua did not load: " + e)
     fit = g.DesignPlaces(design_info(lua), 3440, 1440)
+    g.DropPlaces(B.to_lua(lua, STALE_PLACES))
     fit_py = B.py(lua, fit)
     fitted_store = B.py(lua, g.STORE_FITTED)
     off = moved_on_screen(fitted_store, fit_py["W"], fit_py["H"])
@@ -568,8 +616,21 @@ def bake(snapshot=SNAP, tries=5, wait=60, log=print):
         raise SystemExit("a moved place is off the screen at the design size (move that window in game, then take a "
                          "new snapshot): %s" % off)
     saved = g.Save()
-    kept, dropped = [], []
+    kept, dropped, absent = [], [], []
+    registered = lua.eval("(function(n) return MelloUI.modules[n] ~= nil end)")
+    # (what a feature addon the world leaves out brings into a loaded module: its part's defaults -- the painted
+    # reskin's switches and border kinds in UI Modifications, Dark Mode's Reskin Brightness -- the keys a world with
+    # it has and this one has not)
+    ours = B.default_keys(lua)
+    theirs = B.default_keys(logged_in(snapshot, tries, wait, log, without=()))
+    brought = {(m, k) for m in ours for k in theirs.get(m, set()) - ours[m]}
     for m, k, v in B.entries(saved):
+        # (1.0) the settings and switches of a module the world does not load (bakeworld's WITHOUT: Oldschool's
+        # panels a snapshot from a game with it holds), and the keys its parts bring, are not the one look's Full:
+        # with Oldschool loaded the installer takes Oldschool's own setup
+        if not registered(k if m == "!" else m) or (m, k) in brought:
+            absent.append((m, k, v))
+            continue
         (dropped if (m != "!" and extra_personal(m, k)) else kept).append((m, k, v))
     full = ";".join(("!" + k if m == "!" else m + "." + k) + "=" + v for m, k, v in kept)
     report = {
@@ -588,8 +649,10 @@ def bake(snapshot=SNAP, tries=5, wait=60, log=print):
         "migrationChanges": diff(g.TEXT_LOGIN, g.TEXT_MIGRATED),
         "fullDrop": FULL_DROP,
         "fit": {"W": fit_py["W"], "H": fit_py["H"], "verdict": fit_py["verdict"], "layoutName": fit_py["layoutName"],
-                "places": fit_py["places"]},
+                "places": fit_py["places"], "eye": [str(v) for v in (fit_py.get("eye") or {}).values()],
+                "inputs": fit_py["inputs"]},
         "extraPersonalDropped": [m + "." + k + "=" + v for m, k, v in dropped],
+        "notLoadedDropped": [("!" + k if m == "!" else m + "." + k) for m, k, v in absent],
         "sha256": sha(full),
         "text": full,
     }
@@ -713,7 +776,10 @@ def main():
     for k, mv in report["moves"].items():
         print("moved into the store: %s at %s (%s): %s" % (k, mv["stage"], mv["when"], mv["entry"]))
     print("fit at %.2f x %.2f: %s (%s)" % (report["fit"]["W"], report["fit"]["H"], report["fit"]["verdict"], report["fit"]["layoutName"]))
+    for t in report["fit"]["eye"]:
+        print("  the user's eye:", t)
     print("extra personal dropped:", report["extraPersonalDropped"])
+    print("modules not loaded (%s), dropped: %d entries" % (", ".join(B.WITHOUT), len(report["notLoadedDropped"])))
     src, m = current_entry()
     old = shipped_text(src)
     print("Full in Media/Profiles.lua: %s" % ("%d characters, sha256 %s" % (len(old), sha(old)) if old else "none"))

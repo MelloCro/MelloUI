@@ -65,7 +65,8 @@
 --              on the design screen)
 --     places   what the installer writes into MelloUI's settings:
 --                remove        UIModifications.positions keys to delete (the
---                              four frames Edit Mode places)
+--                              four frames Edit Mode places; Edit Layout's
+--                              EditMode.* copies, F0)
 --                windows       [frame] = place, UIModifications.positions
 --                questTracker  { clearPos = true, maxHeight, width }
 --                              (QuestTracker.pos = nil: it hangs on 12:-1;
@@ -448,9 +449,11 @@ local Column = {
 	-- x the border's scale, less the 1 px it lies over the map): the kit's
 	-- square borders; the kit's round ring (window/portrait_ring from the map
 	-- x 0.75 of its opening: its opaque box past the map); the game's own
-	-- frame art (the container) when the Minimap Kit is off
+	-- frame art (the container) when the Minimap Kit is off; (0.24.0, the one
+	-- look) the Chat panel: MinimapPanel's PANEL, its pad round the map, its
+	-- zone row and gap over it (22 + 4), the band inside that row
 	RAILS = { window = { 17, 17.375, 16.625, 17.375 }, single = { 5.6, 5.6, 5.6, 5.6 }, red = { 9.875, 11.75, 9.875, 11.75 },
-		iron = { 9.875, 11.75, 9.875, 11.75 }, none = { 0, 0, 0, 0 } },
+		iron = { 9.875, 11.75, 9.875, 11.75 }, none = { 0, 0, 0, 0 }, panel = { 6, 26, 6, 6 } },
 	RING = { 20.65, 20.65, 20.65, 20.65 },
 	GAME = { 8.5, 14, 8.5, 14 },
 	-- the window frame's bottom gem corners paint below its bottom rail
@@ -1349,7 +1352,8 @@ function Column.Model(f)
 	local kit, square, border = c.kit, c.shape == "square", c.border
 	local rim = (kit and square) and Column.RAILS[border] or kit and Column.RING or Column.GAME
 	local rk = (kit and not square) and sw / 198 or k
-	local merged = kit and square and (border == "window" or border == "single") and c.merge and c.bar or false
+	local panel = border == "panel"
+	local merged = kit and square and (border == "window" or border == "single" or panel) and c.merge and c.bar or false
 	local row
 	if c.bar then
 		if c.groups then
@@ -1373,16 +1377,19 @@ function Column.Model(f)
 		local bt = mB + row[3] * k
 		local bb = bt + row[2] * k
 		Column.Put(frame, mL - rim[1] * rk, mT - rim[2] * rk, mR + rim[3] * rk, bb + rim[4] * rk)
-		-- the zone plate on the frame's top rail
-		Column.Put(piece, frame[1], frame[2] - 2 * k, frame[3], bt)
+		-- the zone plate on the frame's top rail (the Chat panel's: in its zone row)
+		Column.Put(piece, frame[1], frame[2] - (panel and 0 or 2) * k, frame[3], bt)
 		bar = Column.Put(col.barRect, frame[1], bt, frame[3], frame[4])
 	else
 		Column.Put(frame, mL - rim[1] * rk, mT - rim[2] * rk, mR + rim[3] * rk, mB + rim[4] * rk)
 		-- the zone band at home (175 x 16, 15 right of the cluster's middle,
-		-- 4 down; the kit's plate 1.4 x it), its buttons at its ends
+		-- 4 down; the kit's plate 1.4 x it), its buttons at its ends; the
+		-- Chat panel's in its zone row
 		local cc = (mc[1] + mc[3]) / 2
 		local bl, bt0, br
-		if kit then
+		if kit and square and panel then
+			bl, bt0, br = frame[1], frame[2], frame[3]
+		elseif kit then
 			bl, bt0, br = cc - 107.5, mc[2] + 0.8, cc + 137.5
 		else
 			bl, bt0, br = cc - 91.5, mc[2] + 4, cc + 122.5
@@ -1867,9 +1874,14 @@ end
 -- F0. One store per place: Edit Mode places the minimap, the damage meter,
 -- the chat and the game's tracker, so MelloUI's store keeps no place for them
 -- (Core's put-back would move them again), and the Quest Tracker has no place of its
--- own. Runs first: the tracker's place below is read from 12:-1.
+-- own. Runs first: the tracker's place below is read from 12:-1. (1.0) Nor
+-- the copies Edit Layout keeps of the systems it moved, "EditMode.<system>.
+-- <index>" (Core/EditLayoutBridge.lua: a stored place the layout does not
+-- hold is held over it at the login): the layout carries those places, fitted
+-- to the screen. f.removed: every key taken out, for places.remove.
 local function F0Store(f)
 	local P = f.mello.positions
+	f.removed = {}
 	for _, key in ipairs(EDIT_MODE_FRAMES) do
 		local old = P[key]
 		if old ~= nil then
@@ -1877,6 +1889,19 @@ local function F0Store(f)
 			Log(f, "F0 store", "positions." .. key, "removed (was " .. PlaceText(old) .. ")",
 				"Edit Mode places this frame; one store per place (a reset in Edit Layout then returns it to the fitted place)")
 		end
+	end
+	local copies = {}
+	for key in pairs(P) do
+		if type(key) == "string" and find(key, "^EditMode%.%-?%d+%.%-?%d+$") then
+			copies[#copies + 1] = key
+		end
+	end
+	sort(copies)
+	for _, key in ipairs(copies) do
+		Log(f, "F0 store", "positions." .. key, "removed (was " .. PlaceText(P[key]) .. ")",
+			"Edit Layout's copy of an Edit Mode system's place: the layout carries it, fitted to this screen")
+		P[key] = nil
+		f.removed[#f.removed + 1] = key
 	end
 	local t = f.mello.tracker
 	if t.pos ~= nil then
@@ -3524,6 +3549,9 @@ local function Core(info, W, H, inputs, opts, job)
 		minimap = (f.mapFrom and f.mello.column.fitMap) and { width = f.mello.column.mapW, height = f.mello.column.mapH } or nil,
 		layoutFitFor = format("%.1fx%.1f", W, H),
 	}
+	for _, key in ipairs(f.removed or {}) do
+		places.remove[#places.remove + 1] = key   -- (F0: Edit Layout's EditMode.* copies)
+	end
 	-- the preview's pieces, from the same model (palette keys only)
 	local moved = {}
 	for _, x in ipairs(f.log) do
@@ -3792,9 +3820,11 @@ function LayoutFit:Inputs(read)
 		-- key reads as the module's default through the live settings
 		-- (auras.fitRows is the caller's own: set it where places.auras is
 		-- written)
-		-- (one look: square without the painted Minimap skin -- MinimapPanel's Square)
+		-- (one look: square without the painted Minimap skin -- MinimapPanel's Square; its border the Chat panel
+		-- unless None -- MinimapPanel's Border: a painted one only while the skin dresses the map)
 		column = { kit = read("MinimapPanel") and true or false,
-			shape = (read("MinimapKit") and read("MinimapPanel", "shape")) or "square", border = read("MinimapPanel", "squareBorder"),
+			shape = (read("MinimapKit") and read("MinimapPanel", "shape")) or "square",
+			border = (read("MinimapKit") or read("MinimapPanel", "squareBorder") == "none") and read("MinimapPanel", "squareBorder") or "panel",
 			merge = read("MinimapPanel", "servicesMerge") ~= false, bar = (read("Services") and read("Services", "showBar") ~= false) and true or false,
 			groups = read("Services", "buttonLayout") ~= "all", barOffset = tonumber(read("Services", "barOffset")),
 			roundIcons = read("Services", "roundIcons") ~= false,

@@ -23,7 +23,7 @@ Checks (the installer build's spec, sections 1.1 and 1.4):
     Mode frames, no QuestTracker.pos, no layoutFitFor; the three places wave
     3 moved are store entries, never the old keys; every whisper window
     (its size, all six cascade places) opens inside the design screen;
-  - test_options.py's Full rules: <= 4,000 characters, no FULL_DROP key, every
+  - test_options.py's Full rules: <= 40,000 characters, no FULL_DROP key, every
     key in its module's defaults or the declared nil-default list, every flag
     a registered module that is not driven by UI Modifications;
   - the snapshot record (in a temporary build data folder): a snapshot in
@@ -56,6 +56,10 @@ WINDOWS12 = ["CharacterFrame", "CollectionsJournal", "CommunitiesFrame", "Contai
 # (0.17.0, the 2026-10-01 snapshot: MelloUI's own elements placed in Edit Layout -- its bar, the race bar, your values
 # line, the widget column -- are store places too; the Route arrow is a moved one, moved_places)
 OWN_PLACES = ["editLayoutBar", "meterbar", "metervalues", "widgets"]
+# (1.0, the user's snapshot of 2026-10-20: the Group Frames, the bag window, the map, Combat Text's lanes, the Gains
+# feed, the on-screen notice, the Personal Display's bars and shield, the swing timers)
+OWN_PLACES += ["GroupFramesParty", "GroupFramesRaid", "MelloUIBagWindow", "MelloUIMap", "combatlanes", "gains", "notice",
+               "personalbars", "personalshield", "swingmelee", "swingshot"]
 ANCHOR_RX = re.compile(r"\s+")
 
 
@@ -88,6 +92,10 @@ def moved_places(snap):
         out["routeArrow"] = store["routeArrow"]
     return out
 NIL_DEFAULTS = {"QuestTracker.pos", "UIModifications.qol_Auras", "UIModifications.qol_ErrorFilter", "UIModifications.layoutFitFor"}
+# (1.0, the user's Full of 2026-10-20: the folded masters' marks, the bag window's kinds in the player's order and their
+# own kinds' count, the chat's Background pick, Group Frames' Hide The Game's Frames -- keys with no default)
+NIL_DEFAULTS |= {"Auras.qolFolded", "BarText.qolFolded", "ClassIcons.qolFolded", "CooldownText.qolFolded",
+                 "BagWindow.kindOrder", "BagWindow.ownN", "Chat.background", "GroupFrames.hideBlizzard"}
 ANCHORS = {"TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT"}
 
 
@@ -113,8 +121,11 @@ def world_new():
     return lua
 
 
-def strip_extra(text):
-    return ";".join(e for e in text.split(";") if e and not (
+def strip_extra(text, absent=()):
+    """`text` without the installer's keep additions, nor the entries the bake leaves out as not loaded (`absent`, its
+    report's notLoadedDropped: Oldschool's, a save from a game with it holds)."""
+    absent = set(absent)
+    return ";".join(e for e in text.split(";") if e and e.split("=", 1)[0] not in absent and not (
         not e.startswith("!") and F.extra_personal(*e.split("=", 1)[0].split(".", 1))))
 
 
@@ -192,9 +203,12 @@ def main():
           and stops(mods, {"FriendsFrame": {"x": 1, "y": 1}}, dict(moved, FriendsFrame={"x": 2, "y": 1}),
                     dict(moved, FriendsFrame={"x": 1, "y": 1})),
           "the move check stops on another store entry, a wrong move, or a login that changed another place")
-    check(report["fit"]["verdict"] == "PASS" and report["fit"]["layoutName"] == "MelloUI"
+    # (1.0: a PASS whose notes are the soft ones only -- a piece in the centre third or over another now and then, as
+    # the user laid them out on this screen)
+    soft = all(t.startswith(("in the centre third when it shows", "now and then")) for t in report["fit"]["eye"])
+    check(report["fit"]["verdict"] in ("PASS", "PASS, needs the user's eye") and soft and report["fit"]["layoutName"] == "MelloUI"
           and abs(report["fit"]["W"] - 2866.6666666666665) < 1e-9 and report["fit"]["H"] == 1200,
-          "the fit ran at the design size (2866.67 x 1200): %s" % report["fit"]["verdict"])
+          "the fit ran at the design size (2866.67 x 1200): %s %s" % (report["fit"]["verdict"], report["fit"]["eye"]))
 
     ents = B.entries(text)
     emap = B.entry_map(text)
@@ -232,6 +246,7 @@ def main():
     # over the user's own setup: same text; the player's personal keys stay
     lua2, errs, ns, _ = B.make_world_retry(5, 60)
     lua2.execute(open(F.SNAP, encoding="utf-8").read())
+    lua2.execute(B.CVAR_STORE)   # (1.0: a module restarted by the load gives its CVars back and holds them again)
     lua2.execute(B.BUDGET)
     lua2.execute(F.LUA_STEPS)
     lua2.globals().Login()
@@ -247,10 +262,17 @@ def main():
     personal_before = B.py(lua2, personal_of())
     M2.ApplySettingsText(M2, text)
     M2.SaveProfile(M2, "Over")
-    check(strip_extra(lua2.eval("MelloUI.db.profiles.Over")) == text, "loaded over the user's setup it gives the same text")
+    over = strip_extra(lua2.eval("MelloUI.db.profiles.Over"), report["notLoadedDropped"])
+    check(over == text, "loaded over the user's setup it gives the same text")
+    if over != text:
+        for c in F.diff(text, over):
+            print("      ", c)
     personal_after = B.py(lua2, personal_of())
     check(personal_after == personal_before and any(k.startswith("Route.flights_") for k in personal_before),
           "the player's personal keys stay (%d, the flight points among them)" % len(personal_before))
+    for k in sorted(set(personal_before) | set(personal_after)):
+        if personal_before.get(k) != personal_after.get(k):
+            print("       %s: %s -> %s" % (k, personal_before.get(k), personal_after.get(k)))
 
     print("== no personal data (1.4)")
     personal = [k for m, k, v in ents if m != "!" and M.IsPersonalKey(M, m, k)]
@@ -299,6 +321,8 @@ def main():
     check(sorted(n for n in names if n not in moved) == sorted(WINDOWS12 + OWN_PLACES),
           "the 12 window places and MelloUI's own elements' (0.17.0): %s" % names)
     check(all(n not in pos for n in F.EDIT_MODE_FRAMES), "no store place for the four Edit Mode frames")
+    check(not [n for n in pos if n.startswith("EditMode.")] and not [n for n in pos if n in F.STALE_PLACES],
+          "no Edit Layout copy of an Edit Mode system's place (1.0, the fit's F0), no stale place")
     for n, want in moved.items():
         got = pos.get(n)
         check(got is not None and {k: got[k] for k in got} == want, "the moved place %s is a store entry %s" % (n, got))
@@ -332,22 +356,27 @@ def main():
     import common as FC
     flua, fit = FC.new_world()
     info = FC.source_info()
-    inputs = {"positions": {n: pos[n] for n in pos}, "tracker": {"width": 300, "maxHeight": 440, "scale": 1},
-              "hideBagBar": False, "statsOn": False}
+    # (1.0: the Full's own inputs as the bake's fit read them -- the one look's minimap column, the tracker's sizes --
+    # its store places the shipped ones)
+    inputs = dict(report["fit"]["inputs"], positions={n: pos[n] for n in pos})
+    inputs["tracker"] = dict(inputs["tracker"], pos=None)
     fitted, places, rep = fit.Fit(fit, FC.to_lua(flua, info), fit.DESIGN_W, fit.DESIGN_H, FC.to_lua(flua, inputs),
                                   FC.to_lua(flua, {"screenW": 3440, "screenH": 1440}))
     rep, places = FC.from_lua(flua, rep), FC.from_lua(flua, places)
-    check(rep["verdict"] == "PASS", "the fitter's world: %s at the design size" % rep["verdict"])
+    check(rep["verdict"] in ("PASS", "PASS, needs the user's eye"), "the fitter's world: %s at the design size" % rep["verdict"])
     # (the fit hands back every store entry it keeps: the 12 windows it
     # places, and the other entries as they are)
     same = sorted(places["windows"]) == sorted(pos) and all(places["windows"][n] == pos[n] for n in pos)
     check(same, "fitted at the design size, the 12 window places come back unchanged (the moved two as they are)")
     # (after 0.18.0 the Quest List is a page of the map's quest log: the fit has no width of its own for it)
-    check(places["questTracker"]["maxHeight"] == 440 and places["questTracker"]["width"] == 300
-          and "questList" not in places, "the tracker's sizes are the design's; no Quest List width any more")
+    # (1.0: the tracker's sizes the bake's fit gave, the Full's own -- the user's, its width the minimap column's)
+    baked = report["fit"]["places"]["questTracker"]
+    check(places["questTracker"]["maxHeight"] == baked["maxHeight"] and places["questTracker"]["width"] == baked["width"]
+          and "questList" not in places, "the tracker's sizes are the Full's (%s x %s); no Quest List width any more"
+          % (baked["width"], baked["maxHeight"]))
 
     print("== the Full rules of test_options.py")
-    check(len(text) <= 4000, "%d characters (at most 4,000)" % len(text))   # (the macro backup holds 6,000 since MAX_CHUNKS 24)
+    check(len(text) <= 40000, "%d characters (at most 40,000)" % len(text))   # (1.0, 2026-10-20: the macro backup that held 6,000 is gone; the user's own Full is about 19,000)
     check(not any(k in emap for k in F.FULL_DROP), "no FULL_DROP key")
     stale = []
     for m, k, v in ents:

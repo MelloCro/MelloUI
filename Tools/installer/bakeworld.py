@@ -19,6 +19,10 @@ import paths as P  # noqa: E402  (Tools/paths.py: where the build data lives)
 
 # the addon folder, "/"-terminated (ROOT + "Core/Core.lua")
 ROOT = W.ROOT
+# (1.0) the feature addons the world leaves out, as a game without them: MelloUI_Oldschool, since the shipped
+# "MelloUI" Full is the one look's (with Oldschool loaded the installer takes Oldschool's own setup, its
+# Media/Shipped.lua) -- so its painted Minimap skin never dresses the bake's fit
+WITHOUT = ("MelloUI_Oldschool",)
 
 
 def build_data(*parts):
@@ -100,14 +104,30 @@ rawset(M, "CorePerf", false)
 M.ScheduleBackup = function() end
 '''
 
+# (1.0) the game's CVars as a store that keeps what is set (the stand-ins answer every unknown name with the dummy): a
+# module that gives a CVar back and holds it again (MelloUI:HoldCVar) reads back what it gave, as in the game. A world
+# that needs it runs this before its login.
+CVAR_STORE = r'''
+local cvars = {}
+C_CVar = {
+    GetCVar = function(name) return cvars[name] end,
+    SetCVar = function(name, value) cvars[name] = value ~= nil and tostring(value) or nil return true end,
+    GetCVarBool = function(name) return cvars[name] == "1" end,
+    GetCVarInfo = function(name) return cvars[name] end,
+}
+GetCVar, SetCVar, GetCVarBool = C_CVar.GetCVar, C_CVar.SetCVar, C_CVar.GetCVarBool
+'''
 
-def toc_files():
+
+def toc_files(without=None):
+    without = WITHOUT if without is None else without
     toc = [l.strip().replace("\\", "/") for l in open(ROOT + "MelloUI.toc", encoding="utf-8-sig").read().split("\n")]
     # (0.19.9: then the feature addons' files, as the game loads them right after MelloUI's:
-    # docs/plans/split-addons.md, Tools/lint/features.py)
+    # docs/plans/split-addons.md, Tools/lint/features.py; none of the WITHOUT folders)
     sys.path.insert(0, os.path.join(TOOLS, "lint"))
     from features import feature_files
-    return [l for l in toc if l.endswith(".lua") and l not in ("Core/Core.lua", "Core/Perf.lua")] + feature_files(ROOT)
+    features = [f for f in feature_files(ROOT) if f.split("/", 1)[0] not in without]
+    return [l for l in toc if l.endswith(".lua") and l not in ("Core/Core.lua", "Core/Perf.lua")] + features
 
 
 def _fatal(path, err):
@@ -122,7 +142,7 @@ def _fatal(path, err):
     return "RegisterModule(" in src
 
 
-def make_world():
+def make_world(without=None):
     lua = L51.LuaRuntime(unpack_returned_tuples=True)
     lua.execute(W.PRELUDE)
     loadf = lua.eval(LOADF)
@@ -132,7 +152,7 @@ def make_world():
     if e:
         errs["Core/Core.lua"] = e
     lua.execute(AFTER_CORE)
-    for f in toc_files():
+    for f in toc_files(without):
         try:
             src = open(ROOT + f, encoding="utf-8").read()
         except FileNotFoundError:
@@ -144,13 +164,13 @@ def make_world():
     return lua, errs, ns
 
 
-def make_world_retry(attempts=5, wait=60, log=print):
+def make_world_retry(attempts=5, wait=60, log=print, without=None):
     """A world whose Core and module files all load; a file another task is
     editing right now (wave 3 in the same tree) is waited for: up to
     `attempts` tries, `wait` seconds apart. Errors in files that register no
     module are reported, not fatal."""
     for i in range(attempts):
-        lua, errs, ns = make_world()
+        lua, errs, ns = make_world(without)
         fatal = {k: v for k, v in errs.items() if _fatal(k, v)}
         if not fatal:
             for k, v in errs.items():
@@ -162,6 +182,17 @@ def make_world_retry(attempts=5, wait=60, log=print):
         if i + 1 < attempts:
             time.sleep(wait)
     raise SystemExit("the addon did not load in %d tries: a file is mid-edit or broken" % attempts)
+
+
+def default_keys(lua):
+    """{module: {its defaults' keys}} of a world's registered modules (a part's, MelloUI.ModuleParts.Add, in its
+    module's)."""
+    out = {}
+    get = lua.eval("(function(m) local d = MelloUI.modules[m].defaults or {} local t = {} "
+                   "for k in pairs(d) do t[#t + 1] = tostring(k) end return t end)")
+    for name in list(lua.eval("MelloUI.modules").keys()):
+        out[str(name)] = set(py(lua, get(name)).values())
+    return out
 
 
 def py(lua, v):
