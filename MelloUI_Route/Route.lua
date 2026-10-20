@@ -1520,7 +1520,7 @@ local IsFlight   -- the block's rule for a learned flight link, which the travel
 -- steps doubled and halved; a cut kept if quicker, or within HUG yards of every point it leaves out (the road's own
 -- wiggle); KEEP, KEEP_SECONDS: a route being
 -- followed is changed at its refresh only for one this much quicker (Search.Planned)
-local Search = { LEG_NEAR = 80, LEG_MAX = 8, LEG_WIDE = 64, ISLAND_LEGS = 3, BUDGET = 3, EVERY = 16, PRICE_KEEP = 5, PRICE_NEAR = 30,
+local Search = { LEG_NEAR = 80, LEG_MAX = 8, HUB_SHUT = 150, LEG_WIDE = 64, ISLAND_LEGS = 3, BUDGET = 3, EVERY = 16, PRICE_KEEP = 5, PRICE_NEAR = 30,
 	PRICE_CAP = 2, PRICE_EXTRA = 120, REPICK_MOVED = 40, queue = {}, running = nil, slice = 0, after = {}, plan = nil,
 	pricing = {}, priced = {}, runs = 0, jumps = 0, frame = nil,
 	LEG = 1.1, SMOOTH_MAX = 500, SMOOTH_SPAN = 60, SMOOTH_FIRST = 4, HUG = 6, KEEP = 0.85, KEEP_SECONDS = 10,
@@ -2362,6 +2362,25 @@ do
 				list = {}
 				for i = 1, count do
 					list[i * 2 - 1], list[i * 2] = legKey[i], legD[i]
+				end
+				if count == 0 then
+					-- (1.0, the route tests: a hub shut in by walls -- the Deeprun Tram's dock in Stormwind, its
+					-- nearest node 96 yd off and no straight line clear -- had no leg at all since 5ea2e91, and the
+					-- grid takes no capital's end: Trade District to the Great Forge walked 1,732 s, not 740 by tram.
+					-- Its LEG_MAX nearest nodes within HUB_SHUT, straight, as before the ground was known: players
+					-- walk in through a door the grid does not see)
+					local m = NearList(cont, x, y, Search.HUB_SHUT)
+					local taken = {}
+					for k = 1, math.min(m, Search.LEG_MAX) do
+						local best
+						for i = 1, m do
+							if not taken[i] and (not best or nearD[i] < nearD[best]) then
+								best = i
+							end
+						end
+						taken[best] = true
+						list[k * 2 - 1], list[k * 2] = nearKey[best], nearD[best]
+					end
 				end
 				hubLegs[id], hubAt[id], hubNear[id] = list, { cont, x, y }, nil
 			end
