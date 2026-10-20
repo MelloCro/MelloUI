@@ -79,10 +79,11 @@ for n in ("normal", "hover", "pressed", "active", "empty", "range"):
 SET.append(("pieces", "bar_spark", "bar_spark", (64, 48)))   # (Batch 24: the light on the fill's leading edge)
 # (Batch 25) the unit frames' level badge (the ring and the bar frames are drawn into UF_FRAMES' pictures)
 SET.append(("pieces", "uf_badge", "uf_badge", 64))
-# (Batch 31, 2026-10-20, the user: "clean icons for party members ... in the theme") a pin per class, its colour on the
-# disc and its emblem on it, by the game's class file name (W.IconPath("class_" .. classFile)): the map's party
-for n in ("WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"):
-    SET.append(("classes", "class_" + n, "class_" + n, 64))
+# (Batch 31, 2026-10-20, the user: "clean icons for party members ... in the theme" -- then "enough just in the
+# color, we dont need the icons in the middle of it, so they can be scaled down") a plain disc per class in the set's
+# pin style, its colour the sheet's disc's: CLASS_DISCS below, by the game's class file name
+# (W.IconPath("class_" .. classFile)): the map's party
+CLASSES = ("WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID")
 
 
 def load(group, name):
@@ -140,6 +141,44 @@ def scaled(img, size):
         out.paste(inner, ((w - inner.width) // 2, (h - inner.height) // 2))
         return out.convert("RGBA")
     return img.convert("RGBa").resize((w, h), Image.LANCZOS).convert("RGBA")
+
+
+# the class discs: drawn 4 times over and scaled down; the outline the set's pins' (its share of the radius and its
+# dark brown, measured on the sheet), the fill the sheet's disc colour lit from the top left as the pins are, a soft
+# highlight there
+CLASS_SS, CLASS_LINE, CLASS_INK = 4, 0.1, (27, 15, 10)
+
+
+def class_colour(name):
+    # the disc's own colour on the sheet: the band between its emblem and its outline, the median
+    a = np.asarray(load("classes", "class_" + name)).astype(np.float64)
+    n = a.shape[0]
+    c = (n - 1) / 2
+    yy, xx = np.mgrid[0:n, 0:n]
+    d = np.hypot(xx - c, yy - c) / (n / 2)
+    band = (d > 0.80) & (d < 0.86) & (a[..., 3] > 250)
+    return np.median(a[band][:, :3], axis=0)
+
+
+def class_disc(name, size=64):
+    col = class_colour(name)
+    n = size * CLASS_SS
+    c = (n - 1) / 2
+    r = n / 2 - CLASS_SS
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float64)
+    dx, dy = (xx - c) / r, (yy - c) / r
+    d = np.hypot(dx, dy)
+    alpha = np.clip((1 - d) * r + 0.5, 0, 1)
+    # cel shaded as the pins: the colour flat, its top left a tone lighter and its bottom right a tone darker (soft
+    # steps, no gloss), a thin lighter crescent just inside the top left of the rim
+    lit = 1 + 0.08 * np.tanh(-(dx + dy) * 2.5)
+    crescent = ((d < 1 - CLASS_LINE * 1.6) & (np.hypot(dx - 0.09, dy - 0.09) > 0.86)).astype(np.float64) * 0.18
+    fill = np.clip(col[None, None, :] * lit[..., None] + (255 - col[None, None, :]) * crescent[..., None], 0, 255)
+    ink = np.array(CLASS_INK, np.float64)
+    line = np.clip((d - (1 - CLASS_LINE)) * r + 0.5, 0, 1)[..., None]
+    rgb = fill * (1 - line) + ink * line
+    img = Image.fromarray(np.dstack([rgb, alpha * 255]).round().astype(np.uint8), "RGBA")
+    return img.convert("RGBa").resize((size, size), Image.LANCZOS).convert("RGBA")
 
 
 def disc(size, inner=None, edge=1.0):
@@ -510,6 +549,8 @@ def files():
         out.append((name, uf_frame(name)))
     for name in UF_DRAGONS:
         out.append(("uf_boss_" + name, uf_dragon(name)))
+    for name in CLASSES:
+        out.append(("class_" + name, class_disc(name)))
     for name in FLIPBOOKS:
         out.append(("fx_" + name, flipbook(name)))
     for name, width, canvas_h in PIECES:
