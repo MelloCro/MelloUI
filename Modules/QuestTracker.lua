@@ -1412,20 +1412,29 @@ function Act.Link(id)
 	return ok and done and true or false
 end
 
--- the quest's link put in the chat (the menu's): into the line being typed, else a new line opened with it
-function Act.LinkInChat(id)
-	local getLink, util = rawget(_G, "GetQuestLink"), rawget(_G, "ChatFrameUtil")
-	if type(getLink) ~= "function" or type(util) ~= "table" then
-		return
-	end
-	local ok, link = pcall(getLink, id)
-	link = ok and Plain(link) or nil
-	if type(link) ~= "string" then
-		return
+-- a link put in the chat: into the line being typed, else a new line opened with it (the map's pin too: one way)
+function Act.InsertLink(link)
+	local util = rawget(_G, "ChatFrameUtil")
+	if type(util) ~= "table" or type(link) ~= "string" then
+		return false
 	end
 	local okI, done = pcall(util.InsertLink, link)
 	if not (okI and done) and util.OpenChat then
 		pcall(util.OpenChat, link)
+	end
+	return true
+end
+
+-- the quest's link put in the chat (the menu's)
+function Act.LinkInChat(id)
+	local getLink = rawget(_G, "GetQuestLink")
+	if type(getLink) ~= "function" then
+		return
+	end
+	local ok, link = pcall(getLink, id)
+	link = ok and Plain(link) or nil
+	if type(link) == "string" then
+		Act.InsertLink(link)
 	end
 end
 

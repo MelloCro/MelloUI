@@ -10,8 +10,9 @@
 --                  zone, the other continent), each one's class pin (the set's
 --                  class_<CLASS>: a disc in the class colour), the name on hover;
 --                  at every zoom
---   waypoint       the game's own map pin while Route is off (with Route on, Route
---                  draws its goal: the route layer)
+--   waypoint       your pin (the game's own map pin): drawn while Route is off
+--                  (with Route on Route draws its goal: here only its hover and
+--                  its click); Shift-click: its link in the chat
 --   flights        the flight masters: the client's own nodes on each continent
 --                  (C_TaxiMap, by node ID; one you have not learned paler),
 --                  your side's and the neutral ones; the Quest List's data when
@@ -89,6 +90,8 @@ local floor = math.floor
 
 local TEXT = {
 	notLearned = "Not learned yet",
+	yourPin = "Your pin",
+	yourPinHint = "Shift-click: share it in the chat\nCtrl-right-click on the map: take it away",
 	dungeon = "Dungeon",
 	raid = "Raid",
 	levels = "%s, levels %s",
@@ -742,13 +745,27 @@ end
 -- when on, takes the pin as its goal and draws it itself
 --------------------------------------------------------------------------------
 
-local WAYPOINT = { icon = T.ICONS .. T.PIN_GOAL, size = T.PIN_SIZE + 4, sub = 3, lift = T.PIN_GOAL }
+-- your pin's hover and click (the map's own lines; Shift-click: the map module's share)
+local function PinTip()
+	return TEXT.yourPin, TEXT.yourPinHint
+end
+
+local function PinClick(_, button)
+	local map = ns.Map
+	if button == "LeftButton" and IsShiftKeyDown() and map and map.SharePin then
+		map:SharePin()
+	end
+end
+
+local WAYPOINT = { icon = T.ICONS .. T.PIN_GOAL, size = T.PIN_SIZE + 4, sub = 3, lift = T.PIN_GOAL, tip = PinTip,
+	click = PinClick }
+-- (Route on: Route draws the goal; this one only takes the hover and the click over it)
+local WAYPOINT_HIT = { size = T.PIN_SIZE + 4, sub = 3, tip = PinTip, click = PinClick }
 
 local function Waypoint()
 	local route = rawget(MelloUI, "Route")
 	local has = C_Map.HasUserWaypoint and select(2, pcall(C_Map.HasUserWaypoint))
-	local point = has == true and not (route and route.isEnabled) and C_Map.GetUserWaypoint
-		and select(2, pcall(C_Map.GetUserWaypoint))
+	local point = has == true and C_Map.GetUserWaypoint and select(2, pcall(C_Map.GetUserWaypoint))
 	local mapID = type(point) == "table" and Finite(point.uiMapID)
 	local x, y
 	if mapID then
@@ -758,7 +775,7 @@ local function Waypoint()
 		S.pins:Remove("waypoint", "pin")
 		return
 	end
-	S.pins:SetAt("waypoint", "pin", mapID, x, y, WAYPOINT)
+	S.pins:SetAt("waypoint", "pin", mapID, x, y, (route and route.isEnabled) and WAYPOINT_HIT or WAYPOINT)
 end
 
 --------------------------------------------------------------------------------

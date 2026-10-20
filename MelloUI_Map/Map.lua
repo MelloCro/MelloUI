@@ -18,6 +18,10 @@
 -- Nothing at login: the module's switch and its slash command only; the
 -- window and its canvas are made the first time the map opens.
 --
+--   Ctrl-click              your pin (Route's way there); Shift-click on it: its
+--                           link in the chat (the game's own map pin link: anyone
+--                           can click it; in MelloUI's chat it opens on this map)
+--   /mellomap share         your pin's link in the chat
 --   M (the game's map key)  opens it instead of the game's map (the keys bound
 --                           to the game's world map, while the map is on)
 --   L (the quest log's key) opens it with your quests beside it (MapQuestLog.lua:
@@ -32,6 +36,7 @@ local ADDON, ns = ...
 local MelloUI = (ns and ns.MelloUI) or _G.MelloUI
 local Perf = MelloUI.Perf:Scope("MelloUI_Map (Map)")
 local Finite = MelloUI.Safe.Finite
+local Text = MelloUI.Safe.Text
 local W = MelloUI.Widgets
 local Kit = MelloUI.Kit
 local Canvas, Pins, Layers, Log = ns.Canvas, ns.Pins, ns.Layers, ns.QuestLog
@@ -45,6 +50,7 @@ local T = {
 	PAD = 14, TOP = 34, FOOT = 24, IN = 1,
 	HOVER = 0.1,       -- the name under the cursor read at most this often
 	CLICK = 4,         -- a press that moved less than this is a click
+	PIN_ZOOM = 6,      -- a shared pin opened: the map at least this close
 }
 
 local TEXT = {
@@ -54,8 +60,10 @@ local TEXT = {
 	pinNotice = "Route: to your pin",
 	pinNone = "The map cannot set a pin there: click on land.",
 	pinOff = "Turn on Route or the Quest List to set a pin on the map.",
+	pinShared = "Shared pin",
+	pinNoShare = "You have no pin to share: Ctrl-click on the map to set one.",
 	open = "Open The Map",
-	usage = "/mellomap: open or close the map | /mellomap dump: its places and the view, to copy",
+	usage = "/mellomap: open or close the map | /mellomap share: your pin's link in the chat | /mellomap dump: its places and the view, to copy",
 	off = "The map is off: switch it on in /mello (Quests and travel > Map).",
 }
 
@@ -238,22 +246,17 @@ local function QuestList()
 	return type(QL) == "table" and QL.RouteToPoint and QL or nil
 end
 
-local function SetPin(x, y)
-	local c = win.canvas
-	local path = c:Path(x, y, win.path)
-	local p = path[#path]
-	if not p or p.kind == "world" then
-		MelloUI:Print(TEXT.pinNone)
-		return false
-	end
-	local wx, wy = c:Point(x, y)
-	local mx, my = (wx - p.left) / p.w, (wy - p.top) / p.h
+-- your pin at a map's position (0..1): Route's way there through the Quest List's route-to-a-point, else Route's
+-- own; with neither, the game's own map pin alone
+local function PinTo(mapID, mx, my, label)
 	local QL, R = QuestList(), rawget(MelloUI, "Route")
 	local ok
 	if QL then
-		ok = QL.RouteToPoint(p.id, mx, my, TEXT.pinLabel, TEXT.pinNotice)
+		ok = QL.RouteToPoint(mapID, mx, my, label, TEXT.pinNotice)
 	elseif R and R.isEnabled and R.SetDestinationTo then
-		ok = R:SetDestinationTo({ mapID = p.id, x = mx, y = my }, TEXT.pinLabel, true, TEXT.pinNotice)
+		ok = R:SetDestinationTo({ mapID = mapID, x = mx, y = my }, label, true, TEXT.pinNotice)
+	elseif C_Map.SetUserWaypoint and UiMapPoint then
+		ok = pcall(C_Map.SetUserWaypoint, UiMapPoint.CreateFromCoordinates(mapID, mx, my))
 	else
 		MelloUI:Print(TEXT.pinOff)
 		return false
@@ -264,6 +267,62 @@ local function SetPin(x, y)
 		MelloUI:Print(TEXT.pinNone)
 	end
 	return ok and true or false
+end
+
+local function SetPin(x, y)
+	local c = win.canvas
+	local path = c:Path(x, y, win.path)
+	local p = path[#path]
+	if not p or p.kind == "world" then
+		MelloUI:Print(TEXT.pinNone)
+		return false
+	end
+	local wx, wy = c:Point(x, y)
+	return PinTo(p.id, (wx - p.left) / p.w, (wy - p.top) / p.h, TEXT.pinLabel)
+end
+
+-- your pin's link in the chat: the game's own map pin link (C_Map.GetUserWaypointHyperlink), which anyone can click
+function M:SharePin()
+	local ok, link = false, nil
+	if C_Map.GetUserWaypointHyperlink then
+		ok, link = pcall(C_Map.GetUserWaypointHyperlink)
+	end
+	link = ok and Text(link) or nil
+	local A = rawget(MelloUI, "QuestActs")
+	if not (link and A and A.InsertLink and A.InsertLink(link)) then
+		MelloUI:Print(TEXT.pinNoShare)
+		return false
+	end
+	return true
+end
+
+-- a map pin's link (anyone's shared pin) opened here: your pin set there (Route's way), the map shown on it; false
+-- when the link is not a map pin's
+function M:OpenPinLink(link)
+	if not (self.isEnabled and C_Map.GetUserWaypointFromHyperlink) then
+		return false
+	end
+	local ok, point = pcall(C_Map.GetUserWaypointFromHyperlink, link)
+	local mapID = ok and type(point) == "table" and Finite(point.uiMapID) or nil
+	local pos = mapID and point.position
+	local x, y
+	if type(pos) == "table" then
+		x, y = Finite(pos.x), Finite(pos.y)
+	end
+	if not (mapID and x and y) then
+		return false
+	end
+	PinTo(mapID, x, y, TEXT.pinShared)
+	self:Toggle(true)
+	local c = win.canvas
+	local wx, wy
+	if c then
+		wx, wy = c:ToWorld(mapID, x, y)
+	end
+	if wx then
+		c:Glide(wx, wy, max(c.z or 1, T.PIN_ZOOM))
+	end
+	return true
 end
 
 local function ClearPin()
@@ -698,6 +757,8 @@ SlashCmdList.MELLOMAP = function(msg)
 	local cmd = strtrim(msg or ""):lower()
 	if cmd == "dump" then
 		MelloUI:ShowText("Map", Dump())
+	elseif cmd == "share" then
+		M:SharePin()
 	elseif cmd == "" then
 		M:Toggle()
 	else
