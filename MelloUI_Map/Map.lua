@@ -20,6 +20,8 @@
 --
 --   M (the game's map key)  opens it instead of the game's map (the keys bound
 --                           to the game's world map, while the map is on)
+--   L (the quest log's key) opens it with your quests beside it (MapQuestLog.lua:
+--                           the quest log's column on the map's right)
 --   /mellomap, /mmap        open or close it (also a key binding of its own)
 --   /mellomap dump          the places and the view, to copy
 --   /melloperf map          the canvas's numbers: open, a view's Lua time, the
@@ -32,7 +34,7 @@ local Perf = MelloUI.Perf:Scope("MelloUI_Map (Map)")
 local Finite = MelloUI.Safe.Finite
 local W = MelloUI.Widgets
 local Kit = MelloUI.Kit
-local Canvas, Pins, Layers = ns.Canvas, ns.Pins, ns.Layers
+local Canvas, Pins, Layers, Log = ns.Canvas, ns.Pins, ns.Layers, ns.QuestLog
 local floor, max = math.floor, math.max
 
 local ICON = "Interface\\Icons\\INV_Misc_Map_01"
@@ -65,7 +67,7 @@ M = MelloUI:RegisterModule("Map", {
 	defaults = {},
 	options = {
 		{ type = "button", name = TEXT.open, text = "Open", new = "0.25.0",
-		  desc = "Open MelloUI's map: the wheel zooms toward the cursor, a drag looks around, a click glides into the zone under the cursor and a right-click goes out again. /mellomap opens it too, and you can give it a key in the game's Key Bindings (AddOns).",
+		  desc = "Open MelloUI's map: the wheel zooms toward the cursor, a drag looks around, a click glides into the zone under the cursor and a right-click goes out again. Your map key (M) opens it, your quest log key (L) opens it with your quests beside it; /mellomap opens it too.",
 		  onClick = function() M:Toggle(true) end },
 	},
 })
@@ -301,6 +303,7 @@ local function Refit()
 end
 
 local function Canvas_OnSizeChanged()
+	Log.Size()
 	if win.frame:IsShown() then
 		Refit()
 	end
@@ -312,6 +315,7 @@ local function Shown()
 	c:Layout()
 	Refit()
 	Layers.Open()
+	Log.Shown()
 	c.stats.openMs = debugprofilestop() - t0
 	local f = win.frame
 	f:RegisterEvent("MAP_EXPLORATION_UPDATED")
@@ -321,6 +325,7 @@ end
 
 local function Hidden()
 	Layers.Close()
+	Log.Hidden()
 	win.drag.on = false
 	PinTip(nil)
 	win.over = false
@@ -338,6 +343,7 @@ end
 -- the window's beat while it shows (the layers' positions; nothing runs while it is closed)
 local function Frame_OnUpdate(_, elapsed)
 	Layers.Tick(elapsed)
+	Log.Tick()
 end
 
 local function Frame_OnEvent(_, event)
@@ -384,6 +390,9 @@ local function Build()
 		Layers.Labels()
 	end
 	Layers.Init(canvas, pins)
+	-- the quest log's column on the canvas's right: out or folded as it was left
+	win.module = M
+	Log.Init(win)
 	local name = W.Text(body, "GameFontHighlight", nil, "text")
 	name:SetPoint("BOTTOMLEFT", body, "BOTTOMLEFT", 8, 5)
 	name:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -8, 5)
@@ -410,6 +419,11 @@ function M:Canvas()
 	return win.canvas, win.pins
 end
 
+-- the quest log's column (MapQuestLog.lua): the tests' and the dump's way in
+function M:QuestLog()
+	return Log
+end
+
 function M:Toggle(show)
 	if not self.isEnabled then
 		MelloUI:Print(TEXT.off)
@@ -422,6 +436,38 @@ function M:Toggle(show)
 		show = not win.frame:IsShown()
 	end
 	win.frame:SetShown(show and true or false)
+end
+
+-- (the quest log's key, L) the map with your quests beside it; again while they show: the map closed
+function M:ToggleLog()
+	if not self.isEnabled then
+		MelloUI:Print(TEXT.off)
+		return
+	end
+	if not win.frame then
+		Build()
+	end
+	local f = win.frame
+	if f:IsShown() and Log.IsOut() then
+		f:Hide()
+		return
+	end
+	f:Show()
+	Log.SetOut(true)
+end
+
+-- a quest's page in the map's quest log (the Quest Tracker's click: the game's map and quest log are this map
+-- while it is on); false when the quest is not in the log
+function M:OpenQuest(questID)
+	questID = Finite(questID)
+	if not (self.isEnabled and questID) then
+		return false
+	end
+	if not win.frame then
+		Build()
+	end
+	win.frame:Show()
+	return Log.Select(questID)
 end
 
 --------------------------------------------------------------------------------
@@ -471,25 +517,27 @@ end
 -- The game's map key (the user, 2026-10-20: "this map is going to be a
 -- replacement for the Default "M" "L" keybinds map, and users will only see
 -- and interract with this one"): while the map is on, every key bound to the
--- game's world map opens this one -- override bindings on a frame of ours,
--- never the player's own bindings changed; set out of a fight (the bindings
--- are locked in one: done as it ends); set again when the player binds
--- other keys; given back when the map goes off. The quest log's key (L)
--- joins when the map has the quest log in it.
+-- game's world map opens this one, every key bound to the game's quest
+-- log opens it with the quest log out (MapQuestLog.lua) -- override bindings
+-- on a frame of ours, never the player's own bindings changed; set out of a
+-- fight (the bindings are locked in one: done as it ends); set again when the
+-- player binds other keys; given back when the map goes off.
 --------------------------------------------------------------------------------
 
-local KEYS = { "TOGGLEWORLDMAP" }
-local Keys = { on = false, bound = {} }
+-- the game's action, and the map's command (Bindings.xml) its keys run instead
+local KEYS = { { "TOGGLEWORLDMAP", "MELLOUI_MAP_TOGGLE" }, { "TOGGLEQUESTLOG", "MELLOUI_MAP_QUESTLOG" } }
+local Keys = { on = false, bound = {}, want = {}, cmd = {}, boundCmd = {} }
 
-local function KeysNow(out)
-	for i = #out, 1, -1 do
-		out[i] = nil
-	end
-	for _, action in ipairs(KEYS) do
-		local keys = { GetBindingKey(action) }
+-- the keys to take now, sorted, and each one's command into `cmd`
+local function KeysNow(out, cmd)
+	wipe(out)
+	wipe(cmd)
+	for _, pair in ipairs(KEYS) do
+		local keys = { GetBindingKey(pair[1]) }
 		for _, key in ipairs(keys) do
-			if type(key) == "string" and key ~= "" then
+			if type(key) == "string" and key ~= "" and not cmd[key] then
 				out[#out + 1] = key
+				cmd[key] = pair[2]
 			end
 		end
 	end
@@ -497,12 +545,12 @@ local function KeysNow(out)
 	return out
 end
 
-local function Same(a, b)
+local function Same(a, b, ca, cb)
 	if #a ~= #b then
 		return false
 	end
 	for i = 1, #a do
-		if a[i] ~= b[i] then
+		if a[i] ~= b[i] or ca[a[i]] ~= cb[b[i]] then
 			return false
 		end
 	end
@@ -516,19 +564,22 @@ local function ApplyKeys()
 		return
 	end
 	f:UnregisterEvent("PLAYER_REGEN_ENABLED")
-	local want = Keys.on and KeysNow(Keys.want or {}) or {}
-	Keys.want = want
-	if Keys.applied and Same(want, Keys.bound) then
+	local want, cmd = Keys.want, Keys.cmd
+	if Keys.on then
+		KeysNow(want, cmd)
+	else
+		wipe(want)
+		wipe(cmd)
+	end
+	if Keys.applied and Same(want, Keys.bound, cmd, Keys.boundCmd) then
 		return
 	end
 	ClearOverrideBindings(f)
-	local bound = Keys.bound
-	for i = #bound, 1, -1 do
-		bound[i] = nil
-	end
+	local bound, boundCmd = wipe(Keys.bound), wipe(Keys.boundCmd)
 	for _, key in ipairs(want) do
-		SetOverrideBinding(f, false, key, "MELLOUI_MAP_TOGGLE")
+		SetOverrideBinding(f, false, key, cmd[key])
 		bound[#bound + 1] = key
+		boundCmd[key] = cmd[key]
 	end
 	Keys.applied = true
 end
@@ -554,9 +605,9 @@ local function TakeKeys(on)
 	ApplyKeys()
 end
 
--- the keys this map holds now (the tests and the dump)
+-- the keys this map holds now (the tests and the dump), and each one's command
 function M:Keys()
-	return Keys.bound
+	return Keys.bound, Keys.boundCmd
 end
 
 --------------------------------------------------------------------------------
@@ -605,6 +656,7 @@ end
 -- the key binding's names (Bindings.xml)
 BINDING_HEADER_MELLOUI = "MelloUI"
 BINDING_NAME_MELLOUI_MAP_TOGGLE = "Open or close MelloUI's map"
+BINDING_NAME_MELLOUI_MAP_QUESTLOG = "Open MelloUI's map with your quests"
 
 ns.Map = M
 ns.addon = ADDON

@@ -301,6 +301,7 @@ local function WorldPoint(wcont, wx, wy)
 	end
 	return S.canvas:ToWorld(Finite(mapID), x, y)
 end
+Layers.WorldPoint = WorldPoint   -- (the quest log's Show: a quest's places)
 
 local function Icon(name, alpha, tip)
 	return { icon = T.ICONS .. name, size = T.PIN_SIZE, alpha = alpha, tip = tip, sub = 1 }

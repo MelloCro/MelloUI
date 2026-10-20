@@ -28,6 +28,9 @@
 --   canvas:ZoomAt(x, y, notches)   the wheel: the world point under the canvas
 --                                  point (x, y) stays under it
 --   canvas:Fit(mapID, s)           glide to show a whole map
+--   canvas:FitBox(x0, y0, x1, y1)  the centre and zoom that show a box of world
+--                                  units (canvas.cover: the px of its right the
+--                                  quest log covers; the box in what shows)
 --   canvas:Path(x, y) -> list      the maps under a canvas point, the world first,
 --                                  by the client's own shapes (GetMapInfoAtPosition)
 --   canvas:Deeper(x, y) / :Out()   the next map in, under the point / the one out
@@ -815,6 +818,15 @@ function Canvas:ZoomAt(x, y, notches)
 	self:Glide(wx - (x - self.cw / 2) / k, wy - (y - self.ch / 2) / k, z, T.ZOOM_SECONDS, "outCubic")
 end
 
+-- the zoom that shows a box of world units, and its centre. (the quest log) canvas.cover: the px of the canvas's
+-- right the quest log's column covers while it is out -- the box fitted into what shows, in its middle
+function Canvas:FitBox(x0, y0, x1, y1)
+	local cover = self.cover or 0
+	local z = min(max(1, self.cw - cover) / ((x1 - x0) * T.FIT_ROOM), self.ch / ((y1 - y0) * T.FIT_ROOM)) / self.k1
+	local k = self.k1 * min(max(z, 1), self.zMax or 1)
+	return (x0 + x1) / 2 + cover / (2 * k), (y0 + y1) / 2, z
+end
+
 -- the zoom that shows a whole map (a continent: its land), and its centre
 function Canvas:FitOf(p)
 	local x0, y0, x1, y1 = p.left, p.top, p.right, p.bottom
@@ -822,8 +834,7 @@ function Canvas:FitOf(p)
 	if land then
 		x0, y0, x1, y1 = land[1], land[2], land[3], land[4]
 	end
-	local z = min(self.cw / ((x1 - x0) * T.FIT_ROOM), self.ch / ((y1 - y0) * T.FIT_ROOM)) / self.k1
-	return (x0 + x1) / 2, (y0 + y1) / 2, z
+	return self:FitBox(x0, y0, x1, y1)
 end
 
 function Canvas:Fit(id, seconds)
