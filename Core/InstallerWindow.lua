@@ -265,7 +265,7 @@ do
 		local id = I:PaletteOf(option, draft)
 		local line = lines[id]
 		if not line then
-			line = TEXT.paletteRow:format(W.PaletteName(id))
+			line = MelloUI.Lang.F(TEXT.paletteRow, W.PaletteName(id))
 			lines[id] = line
 		end
 		return line
@@ -408,7 +408,7 @@ local footMemo = { screen = nil, text = nil }
 local function ScreenLine()
 	local screen = ScreenText()
 	if footMemo.screen ~= screen then
-		footMemo.screen, footMemo.text = screen, TEXT.screen:format(screen)
+		footMemo.screen, footMemo.text = screen, MelloUI.Lang.F(TEXT.screen, screen)
 	end
 	return footMemo.text
 end
@@ -497,7 +497,7 @@ local function LayoutLine(option)
 		return TEXT.noLayout
 	end
 	if I:LayoutOn(option, draft, fit) then
-		return TEXT.layoutRow:format(LayoutNameOf(fit), (ScreenText()))
+		return MelloUI.Lang.F(TEXT.layoutRow, LayoutNameOf(fit), (ScreenText()))
 	end
 	return TEXT.noLayout
 end
@@ -756,7 +756,7 @@ local function SetTitle()
 	end
 	local fs = win.shell.title
 	if fs and fs:GetText() ~= title then
-		fs:SetText(title)
+		fs:SetText(MelloUI.Lang.T(title))
 	end
 end
 
@@ -789,7 +789,7 @@ RefreshFooter = function()
 		f.install:Hide()
 	end
 	if f.line:GetText() ~= line then
-		f.line:SetText(line)
+		f.line:SetText(MelloUI.Lang.T(line))
 	end
 end
 
@@ -826,7 +826,7 @@ end
 -- a step with no page of its own (none today; a step IW:Step clears): one
 -- line (Continue keeps the draft's value, Full's)
 function IW.BuildPlaceholder(page)
-	page.line = W.Text(page, "GameFontHighlight", TEXT.placeholder, "text")
+	page.line = W.Text(page, "GameFontHighlight", MelloUI.Lang.T(TEXT.placeholder), "text")
 	page.line:SetWidth(TEXT_W)
 	page.line:SetPoint("TOPLEFT", page, "TOPLEFT", PAD, -12)
 	return 60
@@ -861,7 +861,7 @@ local function BuildChoose(page)
 	banner:SetSize(BANNER_W, BANNER_H)
 	banner:SetPoint("TOP", page, "TOP", 0, -8)
 	page.banner = banner
-	local lead = W.Text(page, "GameFontHighlight", TEXT.lead, "text")
+	local lead = W.Text(page, "GameFontHighlight", MelloUI.Lang.T(TEXT.lead), "text")
 	lead:SetWidth(TEXT_W)
 	lead:SetPoint("TOPLEFT", page, "TOPLEFT", PAD, -(8 + BANNER_H + 10))
 	page.lead = lead
@@ -907,7 +907,7 @@ STEPS.choose.build, STEPS.choose.refresh = BuildChoose, RefreshChoose
 local function InfoPanel(page, label)
 	local box = W.Box(page, "mainWindow", "border", 0.85)
 	box:SetSize((PAGE_W - 10) / 2, 70)
-	box.label = W.Text(box, "GameFontHighlight", label, "text")
+	box.label = W.Text(box, "GameFontHighlight", MelloUI.Lang.T(label), "text")
 	box.label:SetPoint("TOPLEFT", box, "TOPLEFT", 12, -9)
 	box.value = W.Text(box, "GameFontNormalLarge", nil, "selectedTrim")
 	box.value:SetPoint("TOPLEFT", box.label, "BOTTOMLEFT", 0, -4)
@@ -962,7 +962,7 @@ function ACTIONS.deleteOld(button)
 	if state.phase ~= "choose" or type(name) ~= "string" or type(MelloUI.DeleteEditModeLayout) ~= "function" then
 		return
 	end
-	MelloUI:Confirm({ text = TEXT.deleteAsk:format(name), accept = TEXT.deleteYes, cancel = TEXT.deleteNo,
+	MelloUI:Confirm({ text = MelloUI.Lang.F(TEXT.deleteAsk, name), accept = TEXT.deleteYes, cancel = TEXT.deleteNo,
 		onAccept = function()
 			DeleteOld(name)
 		end })
@@ -993,7 +993,7 @@ local function BuildFit(page)
 		pic.edges[i] = box:CreateTexture(nil, "ARTWORK", nil, SUB_SCREEN + 1)
 		W.Paint(pic.edges[i], "mutedText", "fill", 1)
 	end
-	pic.msg = W.Text(box, "GameFontHighlight", TEXT.fitting, "text")
+	pic.msg = W.Text(box, "GameFontHighlight", MelloUI.Lang.T(TEXT.fitting), "text")
 	pic.msg:SetJustifyH("CENTER")
 	pic.msg:SetPoint("CENTER", box, "CENTER", 0, 0)
 	page.pic = pic
@@ -1003,11 +1003,11 @@ local function BuildFit(page)
 	page.suggest = Button(page, TEXT.useNoReskin, 150, "noReskin")
 	page.aspect = InfoPanel(page, TEXT.aspect)
 	page.scale = InfoPanel(page, TEXT.scale)
-	page.scale.line:SetText(TEXT.scaleLine)
-	local row = W.ToggleRow(page, 0, TEXT.switch:format("MelloUI"), nil, TEXT.switchDesc, LayoutGet, LayoutSet,
+	page.scale.line:SetText(MelloUI.Lang.T(TEXT.scaleLine))
+	local row = W.ToggleRow(page, 0, MelloUI.Lang.F(TEXT.switch, "MelloUI"), nil, TEXT.switchDesc, LayoutGet, LayoutSet,
 		{ skin = shell, look = "palette", zebra = true })
 	page.switchRow = row
-	page.how = W.Text(page, "GameFontHighlight", TEXT.how, "text")
+	page.how = W.Text(page, "GameFontHighlight", MelloUI.Lang.T(TEXT.how), "text")
 	page.how:SetWidth(TEXT_W)
 	page.room = W.Text(page, "GameFontHighlight", nil, "selectedTrim")
 	page.room:SetWidth(TEXT_W)
@@ -1142,17 +1142,17 @@ local function NoteText(page, report)
 	end
 	local text
 	if report and not report.pass then
-		text = (type(report.why) == "string" and report.why) or TEXT.notFitted
+		text = MelloUI.Lang.T((type(report.why) == "string" and report.why) or TEXT.notFitted)
 		if report.tooSmall then
-			text = text .. "\n" .. TEXT.suggest
+			text = text .. "\n" .. MelloUI.Lang.T(TEXT.suggest)
 		end
 	elseif report and type(report.eye) == "table" and #report.eye > 0 then
-		local lines = { TEXT.eyeHead }
+		local lines = { MelloUI.Lang.T(TEXT.eyeHead) }
 		for i = 1, min(#report.eye, EYE_SHOWN) do
 			lines[#lines + 1] = "- " .. tostring(report.eye[i])
 		end
 		if #report.eye > EYE_SHOWN then
-			lines[#lines + 1] = TEXT.eyeMore:format(#report.eye - EYE_SHOWN)
+			lines[#lines + 1] = MelloUI.Lang.F(TEXT.eyeMore, #report.eye - EYE_SHOWN)
 		end
 		text = concat(lines, "\n")
 	end
@@ -1171,14 +1171,14 @@ local function RefreshFit(page)
 	local done = fit and fit.done and fit
 	local report = done and type(done.report) == "table" and done.report or nil
 	local screen, ratio = ScreenText()
-	page.detected:SetText(TEXT.detected:format(screen))
+	page.detected:SetText(MelloUI.Lang.F(TEXT.detected, screen))
 	-- the picture, or the line while the fit runs
 	page.pic.msg:SetShown(not done)
 	DrawPicture(page, report)
 	local y = 30 + PIC_H + 10
 	-- the FAIL line or the eye items, and the suggestion
 	local note = NoteText(page, report)
-	page.note:SetText(note or "")
+	page.note:SetText(MelloUI.Lang.T(note or ""))
 	page.note:SetShown(note ~= nil)
 	if note then
 		Place(page.note, page, PAD, y)
@@ -1192,21 +1192,21 @@ local function RefreshFit(page)
 	end
 	-- the aspect and the UI scale
 	local aspect = page.aspect
-	aspect.value:SetText(ratio or "?")
+	aspect.value:SetText(MelloUI.Lang.T(ratio or "?"))
 	local LayoutFit = MelloUI.LayoutFit
 	local design = report and LayoutFit and abs((Num(report.W) or 0) - (LayoutFit.DESIGN_W or 0)) < 0.5
 		and abs((Num(report.H) or 0) - (LayoutFit.DESIGN_H or 0)) < 0.5
-	aspect.line:SetText(not done and TEXT.beingFitted or (report and not report.pass and TEXT.ownStays)
-		or (design and TEXT.asMade) or TEXT.fittedTo)
+	aspect.line:SetText(MelloUI.Lang.T(not done and TEXT.beingFitted or (report and not report.pass and TEXT.ownStays)
+		or (design and TEXT.asMade) or TEXT.fittedTo))
 	Place(aspect, page, 0, y)
-	page.scale.value:SetText(ScaleText())
+	page.scale.value:SetText(MelloUI.Lang.T(ScaleText()))
 	Place(page.scale, page, (PAGE_W + 10) / 2, y)
 	y = y + 70 + 10
 	-- the layout switch, named as the fit names this screen's layout
 	local row = page.switchRow
-	local label = TEXT.switch:format(LayoutNameOf(done))
+	local label = MelloUI.Lang.F(TEXT.switch, LayoutNameOf(done))
 	if row.label:GetText() ~= label then
-		row.label:SetText(label)
+		row.label:SetText(MelloUI.Lang.T(label))
 		row.tipTitle = label
 		W.ControlOf(row).tipTitle = label
 	end
@@ -1224,7 +1224,7 @@ local function RefreshFit(page)
 		ok, most = I:LayoutRoom(done)
 		room = ok
 		if not ok then
-			page.room:SetText(I.TEXT.noRoom:format(most))
+			page.room:SetText(MelloUI.Lang.F(I.TEXT.noRoom, most))
 		end
 	end
 	page.room:SetShown(not room)
@@ -1237,7 +1237,7 @@ local function RefreshFit(page)
 		Place(page.noLayout, page, PAD, y)
 		if old then
 			page.deleteOld.melloOld = old
-			page.deleteOld:SetText(TEXT.deleteOld:format(old))
+			page.deleteOld:SetText(MelloUI.Lang.F(TEXT.deleteOld, old))
 			Place(page.deleteOld, page, PAD + 210 + 10, y)
 		end
 		y = y + BUTTON_H + 10
@@ -1267,7 +1267,7 @@ local function BuildReview(page)
 		row.label:SetPoint("RIGHT", tick, "LEFT", -10, 0)
 		page.rows[i] = row
 	end
-	page.restore = W.Text(page, "GameFontHighlight", TEXT.restore, "text")
+	page.restore = W.Text(page, "GameFontHighlight", MelloUI.Lang.T(TEXT.restore), "text")
 	page.restore:SetWidth(TEXT_W)
 	return 1
 end
@@ -1277,10 +1277,10 @@ local function RefreshReview(page)
 	local option = Option()
 	local lead = leadMemo[option.key]
 	if not lead then
-		lead = TEXT.reviewLead:format(option.title)
+		lead = MelloUI.Lang.F(TEXT.reviewLead, option.title)
 		leadMemo[option.key] = lead
 	end
-	page.lead:SetText(lead)
+	page.lead:SetText(MelloUI.Lang.T(lead))
 	-- (the Screen step's fit: started again here when the screen changed
 	-- since, so Install waits for the new one)
 	EnsureFit(option.key)
@@ -1295,7 +1295,7 @@ local function RefreshReview(page)
 		end
 		row:SetShown(text ~= nil)
 		if text then
-			row.label:SetText(text)
+			row.label:SetText(MelloUI.Lang.T(text))
 			row:ClearAllPoints()
 			row:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
 			row:SetPoint("RIGHT", page, "RIGHT", 0, 0)
@@ -1411,10 +1411,10 @@ local function BuildKeep(page)
 	local count = CreateFrame("Frame", nil, page)
 	count:SetAllPoints(page)
 	page.count = count
-	count.question = W.Text(count, "GameFontHighlightLarge", TEXT.keepQuestion, "text")
+	count.question = W.Text(count, "GameFontHighlightLarge", MelloUI.Lang.T(TEXT.keepQuestion), "text")
 	count.question:SetJustifyH("CENTER")
 	count.question:SetPoint("TOP", page, "TOP", 0, -(20 + RING + 12))
-	count.line = W.Text(count, "GameFontHighlight", TEXT.keepLine, "text")
+	count.line = W.Text(count, "GameFontHighlight", MelloUI.Lang.T(TEXT.keepLine), "text")
 	count.line:SetJustifyH("CENTER")
 	count.line:SetWidth(TEXT_W)
 	count.line:SetPoint("TOP", count.question, "BOTTOM", 0, -8)
@@ -1468,7 +1468,7 @@ RefreshKeep = function()
 	local running, seconds, paused, why = I:Countdown()
 	page.numeral:SetShown(running)
 	if running then
-		page.numeral:SetText(NUMS[seconds] or tostring(seconds))
+		page.numeral:SetText(MelloUI.Lang.T(NUMS[seconds] or tostring(seconds)))
 	end
 	local line = state.keepLine
 	local held = false
@@ -1478,7 +1478,7 @@ RefreshKeep = function()
 	elseif InCombat() then
 		line, held = I.TEXT.pausedCombat, true
 	end
-	count.status:SetText(line or "")
+	count.status:SetText(MelloUI.Lang.T(line or ""))
 	count.revert:SetEnabled(not held)
 	local pending = Pending()
 	count.keep:SetShown(not (pending and pending.failed))
@@ -1529,7 +1529,7 @@ ShowDone = function()
 	local option = Option()
 	local lines = {}
 	if kept then
-		done.title:SetText(option.refit and TEXT.doneRefit or TEXT.doneTitle)
+		done.title:SetText(MelloUI.Lang.T(option.refit and TEXT.doneRefit or TEXT.doneTitle))
 		if state.needsReload then
 			lines[#lines + 1] = TEXT.doneReload
 		end
@@ -1547,13 +1547,16 @@ ShowDone = function()
 		end
 		lines[#lines + 1] = TEXT.doneWhere
 	else
-		done.title:SetText(TEXT.revertedTitle)
+		done.title:SetText(MelloUI.Lang.T(TEXT.revertedTitle))
 		if state.reason == "error" then
 			lines[#lines + 1] = I.TEXT.failed
 		end
 		if state.reloadOwed then
 			lines[#lines + 1] = TEXT.revertedReload
 		end
+	end
+	for i = 1, #lines do
+		lines[i] = MelloUI.Lang.T(lines[i])
 	end
 	done.lines:SetText(concat(lines, "\n"))
 	-- the buttons of this ending, in a centred row
@@ -1915,7 +1918,7 @@ local function WizardSteps()
 	end
 
 	local function Lead(page, text)
-		local fs = W.Text(page, "GameFontHighlight", text, "text")
+		local fs = W.Text(page, "GameFontHighlight", MelloUI.Lang.T(text), "text")
 		fs:SetWidth(TEXT_W)
 		return fs
 	end
@@ -2367,7 +2370,7 @@ local function WizardSteps()
 					label = choice.label
 				end
 			end
-			pickSquare = TEXT.mapPickSquare:format(label or "square")
+			pickSquare = MelloUI.Lang.F(TEXT.mapPickSquare, label or "square")
 		end
 		return pickSquare
 	end
@@ -2438,7 +2441,7 @@ local function WizardSteps()
 	local function MergeRefresh(row)
 		mergeRefresh(row)
 		if row.hint and MapGate() and MapShape() ~= "square" then
-			row.hint:SetText(PickSquareLine())
+			row.hint:SetText(MelloUI.Lang.T(PickSquareLine()))
 			row.hint:Show()
 		end
 	end
@@ -2929,7 +2932,7 @@ local function WizardSteps()
 		-- Skillybones)": the name on the row, the form beside it)
 		local opt = OptionOf("UIModifications", "nameFormat")
 		for i, entry in ipairs(opt and type(opt.values) == "table" and opt.values or EMPTY) do
-			local label = tostring(entry.label or entry.value)
+			local label = tostring(MelloUI.Lang.T(entry.label) or entry.value)
 			local kind, example = label:match("^(.-) %((.+)%)$")
 			LaterRow(page, NameRow(entry.value, example or label, example and kind or nil, i % 2 == 1), W.ROW_HEIGHT, 0)
 		end
@@ -2974,8 +2977,13 @@ local function WizardSteps()
 			end
 			DraftChanged()
 		end
-		local hint = (group.key == "hud" and TEXT.hudCount or TEXT.windowsCount):format(#keys)
-		local desc = concat(labels, ", ") .. "."
+		local hint = MelloUI.Lang.F(group.key == "hud" and TEXT.hudCount or TEXT.windowsCount, #keys)
+		-- (the languages: each window's name in the language in use)
+		local named = {}
+		for i = 1, #labels do
+			named[i] = MelloUI.Lang.T(labels[i])
+		end
+		local desc = concat(named, ", ") .. "."
 		return function(page)
 			return (W.ToggleRow(page, 0, group.label, hint, desc, Get, Set, RowOpts(zebra, ReskinGate)))
 		end
@@ -3053,9 +3061,9 @@ local function WizardSteps()
 			text = TEXT.featuresNone
 		else
 			if shown < #on then
-				text = TEXT.featuresMore:format(text, #on - shown)
+				text = MelloUI.Lang.F(TEXT.featuresMore, text, #on - shown)
 			end
-			text = TEXT.featuresRow:format(text)
+			text = MelloUI.Lang.F(TEXT.featuresRow, text)
 		end
 		featuresMemo.mask, featuresMemo.text = mask, text
 		return text
@@ -3195,6 +3203,8 @@ end, "script")
 --------------------------------------------------------------------------------
 
 local function Build()
+	-- (the languages: the table of the language in use, loaded once, at the first open of a window that speaks it)
+	MelloUI.Lang:Load()
 	local Kit = MelloUI.Kit
 	local frame = CreateFrame("Frame", NAME, UIParent)
 	frame:SetSize(WIN_W, WIN_H)
@@ -3216,7 +3226,7 @@ local function Build()
 	-- step titles are too long for a brand row in the steps rail), its ends on
 	-- the window's margin
 	win.shell = Kit:OwnWindow(frame, { area = "installer", ring = { at = "tl", texture = LOGO }, plate = "rail",
-		title = STEPS.choose.title, close = true, escape = true, fit = true, sounds = true, mover = MOVER, calm = true,
+		title = MelloUI.Lang.T(STEPS.choose.title), close = true, escape = true, fit = true, sounds = true, mover = MOVER, calm = true,
 		inset = EDGE })
 	state.escape = true
 	-- (one look stage I, step 4) without MelloUI_Oldschool: no Windows step (the painted skins of the game's windows),

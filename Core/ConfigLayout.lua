@@ -630,6 +630,7 @@ function L.Define(R, Link)
 				end
 				others[#others + 1] = extra and extra.plus
 				e.shared = "also " .. table.concat(others, ", ")
+				e.sharedWith = others   -- (the languages: Config writes "also ..." in the language in use)
 			end
 			R("UnitGroupFrames", tab, section, id, e)
 		end

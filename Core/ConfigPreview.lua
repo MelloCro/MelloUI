@@ -1216,25 +1216,27 @@ do
 	-- what the caption and a part's tooltip say: the gestures with the
 	-- part's place and size now
 	function E.Gestures(stage, part)
+		-- (the languages: each piece in the language in use, then joined)
+		local T, F = MelloUI.Lang.T, MelloUI.Lang.F
 		if part.locked then
-			return part.locked
+			return T(part.locked)
 		end
 		local cur = E.Current(part)
 		local out = ""
 		if part.drag ~= false then
-			out = TEXT.gestures
+			out = T(TEXT.gestures)
 			if cur and cur.point then
-				out = string.format(TEXT.place, cur.point, Num(cur.x) or 0, Num(cur.y) or 0) .. ". " .. out
+				out = F(TEXT.place, cur.point, Num(cur.x) or 0, Num(cur.y) or 0) .. ". " .. out
 			end
 		end
 		if part.size then
-			out = out .. string.format(TEXT.size, tostring(cur and cur.size or part.size.min))
+			out = out .. F(TEXT.size, tostring(cur and cur.size or part.size.min))
 		end
 		if part.content or part.hide or part.store then
-			out = out .. TEXT.menu
+			out = out .. T(TEXT.menu)
 		end
 		if stage.noKeys and stage.selected == part.key then
-			out = out .. TEXT.noKeys
+			out = out .. T(TEXT.noKeys)
 		end
 		return out
 	end
@@ -1254,6 +1256,7 @@ do
 				text = def.pickText
 			end
 		end
+		text = MelloUI.Lang.T(text)
 		if stage.caption:GetText() ~= text then
 			stage.caption:SetText(text)
 		end
@@ -2036,7 +2039,7 @@ do
 			row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -y)
 			row:SetPoint("RIGHT", parent, "RIGHT", 0, 0)
 			row:SetHeight(K.ROW_H)
-			local fs = W.Text(row, "GameFontHighlight", label, "text")
+			local fs = W.Text(row, "GameFontHighlight", MelloUI.Lang.T(label), "text")
 			fs:SetPoint("LEFT", row, "LEFT", 0, 0)
 			return row
 		end

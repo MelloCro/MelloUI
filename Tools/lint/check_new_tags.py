@@ -638,8 +638,18 @@ def tag_after(code, text, target):
     return ""
 
 
+# (the languages, Core.lua's Languages section: a label passed through the language is the same control -- Lang.F(fmt, ...)
+# names it as string.format(fmt, ...) did, Lang.T(x) as x)
+LANG_F = re.compile(r"\bMelloUI\.Lang\.F\(")
+LANG_T = re.compile(r"^MelloUI\.Lang\.T\((.*)\)$")
+
+
 def label_of(code, expr):
     expr = " ".join(expr.split())
+    expr = LANG_F.sub("string.format(", expr)
+    m = LANG_T.match(expr)
+    if m:
+        expr = m.group(1)
     m = re.fullmatch(r'"((?:[^"\\]|\\.)*)"', expr)
     if m:
         return m.group(1)
