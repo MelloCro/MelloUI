@@ -14,7 +14,7 @@ Made by `python Tools/make_logo.py --brand` from the user's art (MelloUI-BuildDa
 
 - CurseForge **MelloUI**: `docs/curseforge-description.md`
 - CurseForge **MelloUI Oldschool**: `docs/curseforge-oldschool-description.md`
-- GitHub, the repository's **About** (the cog beside it):
-  - Description: `All-in-one UI for World of Warcraft: Forever: one clean look, a seamless world map, smart navigation with the World Marker, RestedXP compatibility, voiced quest givers, and frames, nameplates and bars with live designers.`
+- GitHub, the repository's **About** (the cog beside it), set at the 1.0 release (`gh repo edit MelloCro/MelloUI --description ... --homepage ... --add-topic ...`):
+  - Description (310 of GitHub's 350 characters; the voice pack link moves when a new pack ships): `All-in-one UI for World of Warcraft: Forever: one clean look, a seamless world map, smart navigation with the World Marker, RestedXP compatibility, voiced quest givers, and frames, nameplates and bars with live designers. Voice pack (2.5 GB, two parts): https://github.com/MelloCro/MelloUI/releases/tag/v0.18.3`
   - Website: `https://www.curseforge.com/wow/addons/melloui`
   - Topics: `world-of-warcraft` `wow-addon` `wow-forever` `lua` `user-interface` `world-map` `navigation`
