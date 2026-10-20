@@ -281,14 +281,15 @@ STAY_TGA = [
     (r"^Textures/(ProgressRing|WidgetGlyphs)\.tga$", "the widget column's gold ring (a Cooldown swipe) and its buttons' glyphs (Tools/make_widget_art.py): smooth alpha edges tinted by the palette, 64 + 32 KB, shipped as their masters' bytes"),
     (r"^Textures/Masks/mitre\.tga$", "the mitre mask (Tools/make_mitre_mask.py): a 16 KB half-square whose texels hold "
                                       "their exact share, so a rail's half and its twin's meet with no seam; its master's bytes"),
-    (r"^Textures/Icons/[a-z_]+\.tga$", "MelloUI's own icon set (0.25.0, Tools/make_icons.py): painted icons with soft "
+    (r"^Textures/Icons/[A-Za-z_]+\.tga$", "MelloUI's own icon set (0.25.0, Tools/make_icons.py; the class pins named by the "
+                                       "game's class files, class_WARRIOR ...): painted icons with soft "
                                        "alpha edges, 4-64 KB each, shipped as their masters' bytes (DXT bands the edges)"),
     (r"^Textures/ActiveLook\.tga$", "the active look (Kit:SetActive, Tools/make_active_look.py): 256 KB of smooth alpha ramps (ring, halo, glow), shipped as its master's bytes like SoftGlowRound"),
     (r"^Textures/KitShadows\w*\.tga$", "the kit's shadow partners (Kit:Shadow): soft alpha ramps at a quarter size; "
                                        "DXT5 bands them (make_kit_shadows.py --gate: 17 levels off, its limit 4)"),
     (r"^Textures/InstallerBanner\.tga$", "addressed as InstallerBanner.tga by Core/InstallerWindow.lua; its DXT5 fails "
-                                         "the gate (32.3 dB, p99.9 50); a DXT5 or a 512 x 256 copy waits for the "
-                                         "user's eye (texture_pack.py banner)"),
+                                         "the gate (32.3 dB, p99.9 50); 1.0's (Tools/make_logo.py) ships at its "
+                                         "1024 x 512 master's bytes, sharp at its 558-unit width"),
     (r"^Textures/Masks/Minimap/[hv]\d+\.tga$", "the minimap's crop masks (Modules/MinimapPanel.lua Size.Crop): "
                                                "make_minimap_masks.py writes them into Media as TGA and --checks them "
                                                "there; 256 bands of 8 KB, 13 KB in the zip (as DXT1 BLPs: 15 KB)"),
@@ -2291,8 +2292,8 @@ def contact_sheet(made, comps, path, cell=288, per_row=2):
 # ---------------------------------------------------------------- the installer banner (never shipped)
 
 BANNER = "Textures/InstallerBanner.tga"
-BANNER_DRAWN = (900, 491)        # InstallerWindow.lua: BANNER_U, BANNER_V of its 1024 x 512 file
-BANNER_UNITS = (460, 251)        # ... drawn at BANNER_W x BANNER_H UI units
+BANNER_DRAWN = (1024, 341)       # InstallerWindow.lua: BANNER_U, BANNER_V of its 1024 x 512 file (1.0: make_logo.py)
+BANNER_UNITS = (558, 186)        # ... drawn at BANNER_W x BANNER_H UI units
 
 
 def make_banner_samples(out):

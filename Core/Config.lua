@@ -1816,6 +1816,15 @@ do
 				words.modules[title] = words.modules[title] or t
 			end
 		end
+		-- (1.0) a picker page's own picks by their key and label -- the Windows page's Bags, Bank, ...: the bag
+		-- window's cog asks for "BackpackPanel", a module only Oldschool brings
+		for key, p in pairs(lay.pages) do
+			for _, pk in ipairs(p.def.picker and p.def.picker.own or EMPTY) do
+				local t = { key, nil, pick = pk[1] }
+				words.modules[Norm(pk[1])] = words.modules[Norm(pk[1])] or t
+				words.modules[Norm(pk[2])] = words.modules[Norm(pk[2])] or t
+			end
+		end
 		return words
 	end
 

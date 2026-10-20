@@ -108,13 +108,13 @@ local EMPTY = {}
 
 local TEXTURE_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"   -- look-ok: MelloUI's logo and the setups' banner picture
 local LOGO = TEXTURE_PATH .. "LogoIcon.tga"
--- the approved banner (450 x 245.5 of a 512 x 256 file, half the drawn
--- art's pixels: shown at 460 x 251 it looks the same, a quarter of the
--- size; user, 2026-09-26): loaded when the Setup page shows, released when
--- the window closes (512 KB TGA: the texture build's quality gate keeps it
--- a TGA)
+-- the banner (1.0, the user's of 2026-10-20, its edges faded soft:
+-- Tools/make_logo.py): 1024 x 341 at the top of a 1024 x 512 file, shown
+-- 558 x 186 across the page; loaded when the Setup page shows, released
+-- when the window closes (a 2 MB TGA: the texture build's quality gate
+-- keeps it a TGA)
 local BANNER = TEXTURE_PATH .. "InstallerBanner.tga"
-local BANNER_U, BANNER_V = 450 / 512, 245.5 / 256
+local BANNER_U, BANNER_V = 1, 341 / 512
 local TICK = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\ql_completed"   -- (0.25.0: the icon set's gold tick; the game's 1x ready check until then)
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local NAME = "MelloUIInstallerFrame"   -- (named: the shell's Escape)
@@ -138,7 +138,7 @@ local CARD_W, CARD_H, CARD_GAP_X, CARD_GAP_Y = 279, 72, 16, 10
 -- units past the card, and the cards lie flush with the page's edges (the
 -- halo was cut off on their outer side; review, 2026-09-28)
 local LOOK_BLEED = 6
-local BANNER_W, BANNER_H = 460, 251
+local BANNER_W, BANNER_H = 558, 186
 local PIC_W, PIC_H, PIC_M = 520, 170, 8
 local RING = 110
 local BUTTON_W, BUTTON_H = 120, 24
