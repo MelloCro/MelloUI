@@ -610,6 +610,20 @@ end
 do
 	W.HEADER_HEIGHT = 28
 	local HEADER_X, HEADER_GAP, HEADER_END = 8, 12, 8   -- the title's left, the title to its line, the line's end
+	-- (2026-10-20, the user's pick 1: the diamond divider, MelloUI's icon set) the line is a gold line tapering to
+	-- points with a diamond in its middle: piece_div_diamond (Tools/make_icons.py PIECES: 512 wide, its picture the
+	-- top 26 of 32 rows), the diamond between u 0.4772 and 0.5228; the halves stretch, the diamond keeps its shape
+	local DIV = TEXTURE_PATH .. "Icons\\piece_div_diamond"
+	local DIV_V, DIV_L, DIV_R, DIV_H = 26 / 32, 0.4772, 0.5228, 10
+	local DIV_W = DIV_H * (DIV_R - DIV_L) * 512 / 26
+
+	local function Slice(h, l, r)
+		local t = h:CreateTexture(nil, "ARTWORK")
+		t:SetTexture(DIV)
+		t:SetTexCoord(l, r, 0, DIV_V)
+		t:SetHeight(DIV_H)
+		return t
+	end
 
 	function W.Header(parent, y, text, opts)
 		opts = opts or NO_OPTS
@@ -622,10 +636,20 @@ do
 		h.label = W.Text(h, "GameFontNormal", text, "selectedTrim")
 		h.label:SetWordWrap(false)
 		h.label:SetPoint("LEFT", h, "LEFT", opts.x or HEADER_X, 0)
-		h.line = W.Solid(h, "ARTWORK", "border", 1)
-		h.line:SetHeight(1)
+		-- the line's span (an empty region), the diamond on its middle, a half each side of it
+		h.line = h:CreateTexture(nil, "ARTWORK")
+		h.line:SetHeight(DIV_H)
 		h.line:SetPoint("LEFT", h.label, "RIGHT", HEADER_GAP, 0)
 		h.line:SetPoint("RIGHT", h, "RIGHT", -HEADER_END, 0)
+		local mid = Slice(h, DIV_L, DIV_R)
+		mid:SetWidth(DIV_W)
+		mid:SetPoint("CENTER", h.line, "CENTER", 0, 0)
+		local left, right = Slice(h, 0, DIV_L), Slice(h, DIV_R, 1)
+		left:SetPoint("LEFT", h.line, "LEFT", 0, 0)
+		left:SetPoint("RIGHT", mid, "LEFT", 0, 0)
+		right:SetPoint("LEFT", mid, "RIGHT", 0, 0)
+		right:SetPoint("RIGHT", h.line, "RIGHT", 0, 0)
+		h.lineParts = { left, mid, right }
 		return h
 	end
 end
@@ -1195,22 +1219,63 @@ local function ChoiceLabel(values, value)
 	return i and EntryText(values[i]) or nil
 end
 
-local DD_H = 25                -- the box's height
-local DD_TEXT_X = 8            -- the choice's left in the box
 local CARET = 11               -- the caret: the kit's arrow glyph in a square this big (0.19.9, KC; it was four 1 px lines)
-local CARET_X = 9              -- its right end from the box's right
 
--- the box as it is: its fill and caret (the hover) always; `whole`, its
--- state (enabled or not) too -- the edge, the choice's colour
+do
+local DD_H = 25                -- the box's height
+local DD_TEXT_X = 12           -- the choice's left in the box (2026-10-20: inside the piece's rounded left end)
+
+-- (2026-10-20, the user's sheet: "go all the way with the new icons") the box is the dropdown piece -- its slate
+-- trough in a gold rim, the arrow in a well at its right end -- at rest and under the pointer (piece_dd_closed,
+-- piece_dd_hover: Tools/make_icons.py PIECES, 512 wide, the picture the top `h` of 64 rows, its ends `l` and `r`
+-- of 512), three slices at the box's height: the ends keep their shape, the middle stretches
+local DD_PIECE = {
+	normal = { tex = TEXTURE_PATH .. "Icons\\piece_dd_closed", h = 42, l = 21.8, r = 54.6 },
+	hover = { tex = TEXTURE_PATH .. "Icons\\piece_dd_hover", h = 43, l = 21.4, r = 54.3 },
+}
+
+local function DropdownSlices(dd)
+	local s = {}
+	for i = 1, 3 do
+		s[i] = dd:CreateTexture(nil, "BACKGROUND", nil, 2)
+	end
+	s[1]:SetPoint("TOPLEFT")
+	s[1]:SetPoint("BOTTOMLEFT")
+	s[3]:SetPoint("TOPRIGHT")
+	s[3]:SetPoint("BOTTOMRIGHT")
+	s[2]:SetPoint("TOPLEFT", s[1], "TOPRIGHT")
+	s[2]:SetPoint("BOTTOMRIGHT", s[3], "BOTTOMLEFT")
+	dd.melloSlices = s
+end
+
+local function DropdownPiece(dd, state, alpha)
+	local p, s = DD_PIECE[state], dd.melloSlices
+	if dd.melloPiece ~= state then
+		dd.melloPiece = state
+		local v, k = p.h / 64, DD_H / p.h
+		for i = 1, 3 do
+			s[i]:SetTexture(p.tex)
+		end
+		s[1]:SetTexCoord(0, p.l / 512, 0, v)
+		s[1]:SetWidth(p.l * k)
+		s[2]:SetTexCoord(p.l / 512, 1 - p.r / 512, 0, v)
+		s[3]:SetTexCoord(1 - p.r / 512, 1, 0, v)
+		s[3]:SetWidth(p.r * k)
+	end
+	for i = 1, 3 do
+		s[i]:SetAlpha(alpha)
+	end
+end
+
+-- the box as it is: its piece (the hover) always; `whole`, its state
+-- (enabled or not) too -- the choice's colour
 local function DropdownLook(dd, whole)
 	local on = dd:IsEnabled() and true or false
 	local alpha = on and 1 or FLAT_OFF
-	-- (THE text field's look, lit while hovered: W.Field)
-	dd.melloField:SetState(on and flatHover[dd], not on, alpha)
+	DropdownPiece(dd, (on and flatHover[dd]) and "hover" or "normal", alpha)
 	if whole then
 		W.Paint(dd.Text, on and "text" or "mutedText", "text")
 	end
-	KC.Lay(dd.melloCaret, CARET, CARET, "arrow", "down", (on and flatHover[dd]) and "hover" or "normal", alpha, true)
 end
 
 local function DropdownRefresh(self)
@@ -1240,17 +1305,14 @@ function W.Dropdown(parent, width, get, set, values, opts)
 	dd:SetSize(width, DD_H)
 	KitRep(dd, false)   -- (the kit's sweep passes it by: no dropdown plate)
 	dd.melloList = true   -- (it opens the flyout's list: W.PictureMenu's block)
-	-- (0.20.1, the user's pick A of MelloUI-BuildData/output/dropdown_sketch, 2026-10-11 -- the flat box "too modern":
-	-- THE text field's look, the Stone rail round its dark trough, the kit's gold caret)
-	dd.melloField = W.Field(dd)
-	local caret = dd:CreateTexture(nil, "ARTWORK")
-	caret.melloOn, caret.melloPoint, caret.melloX = dd, "RIGHT", -(CARET_X + CARET / 2)
-	dd.melloCaret = caret
+	-- (2026-10-20) the dropdown piece of the user's sheet in three slices, the arrow in its right end's well (it was
+	-- 0.20.1's pick A: THE text field's look and the kit's gold caret)
+	DropdownSlices(dd)
 	local text = W.Text(dd, "GameFontHighlight", nil, "text")
 	text:SetJustifyV("MIDDLE")
 	text:SetWordWrap(false)
 	text:SetPoint("LEFT", dd, "LEFT", DD_TEXT_X, 0)
-	text:SetPoint("RIGHT", dd, "RIGHT", -(CARET_X + CARET + 4), 0)
+	text:SetPoint("RIGHT", dd, "RIGHT", -(DD_PIECE.normal.r * DD_H / DD_PIECE.normal.h + 4), 0)
 	dd.Text = text
 	dd.melloGet, dd.melloSet, dd.melloValues = get, set, values
 	dd.melloDefault, dd.melloSkin = opts.default, opts.skin
@@ -1266,6 +1328,7 @@ function W.Dropdown(parent, width, get, set, values, opts)
 	dd:Refresh()
 	return dd
 end
+end   -- (the dropdown's do-block, 2026-10-20)
 
 --------------------------------------------------------------------------------
 -- Slider (0.15.0, Sliders 1, the cleaner look the user picked; it was the
@@ -1793,20 +1856,39 @@ do
 		end
 	end
 
-	-- the whole look, every time (a tab has few parts): its fill by state and
-	-- hover, the edge gold on the selected tab unless the ring lies on it, the
-	-- label painted again (the button's own fonts change its colour)
+	-- (2026-10-20, the user's sheet: "go all the way with the new icons") the plate is the tab piece -- slate with a
+	-- bronze rim at rest, a gold one under the pointer, lighter slate in bright gold selected; rounded top corners, open
+	-- at the bottom (piece_tab_*: Tools/make_icons.py PIECES, 256 wide, the picture the top `h` of 128 rows, its ends
+	-- `l` and `r` of 256), three slices at the plate's height
+	local TAB_PIECE = {
+		off = { tex = TEXTURE_PATH .. "Icons\\piece_tab_off", h = 69, l = 39.8, r = 36.6 },
+		hover = { tex = TEXTURE_PATH .. "Icons\\piece_tab_hover", h = 69, l = 41.2, r = 37.0 },
+		on = { tex = TEXTURE_PATH .. "Icons\\piece_tab_on", h = 70, l = 40.7, r = 37.6 },
+	}
+	local function TabPiece(tab, state)
+		if tab.melloPiece == state then
+			return
+		end
+		tab.melloPiece = state
+		local p, s = TAB_PIECE[state], tab.melloSlices
+		local v, k = p.h / 128, TAB_H / p.h
+		for i = 1, 3 do
+			s[i]:SetTexture(p.tex)
+		end
+		s[1]:SetTexCoord(0, p.l / 256, 0, v)
+		s[1]:SetWidth(p.l * k)
+		s[2]:SetTexCoord(p.l / 256, 1 - p.r / 256, 0, v)
+		s[3]:SetTexCoord(1 - p.r / 256, 1, 0, v)
+		s[3]:SetWidth(p.r * k)
+	end
+
+	-- the whole look, every time (a tab has few parts): its piece by state and
+	-- hover, the label painted again (the button's own fonts change its colour)
 	local function TabLook(tab)
 		local on = tabOn[tab] == true
 		TabArt(tab)
 		local lit = flatHover[tab] and not on
-		W.Paint(tab.melloFill, (on and "selectedTab") or (lit and "hover") or "raisedPanel", "fill", 1)
-		local skin = tab.melloSkin
-		local key = (on and not (skin and skin.kit)) and "selectedTrim" or "border"
-		local edges = tab.melloEdges
-		for i = 1, 4 do
-			W.Paint(edges[i], key, "fill", 1)
-		end
+		TabPiece(tab, (on and "on") or (lit and "hover") or "off")
 		local fs = tab.Text
 		if fs then
 			W.Paint(fs, "text", "text")
@@ -1838,10 +1920,21 @@ do
 		-- height its owner lays the tab row by; a New badge on its top edge
 		-- then lies on the plate's)
 		tab:SetHeight(TAB_H)
-		local fill = tab:CreateTexture(nil, "BACKGROUND", nil, 2)
+		-- (the plate's rect: an empty region the slices lie in, the active look's ring round it)
+		local fill = tab:CreateTexture(nil, "BACKGROUND", nil, 1)
 		fill:SetPoint("TOPLEFT", tab, "TOPLEFT", TAB_IN, 0)
 		fill:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -TAB_IN, 0)
-		tab.melloFill, tab.melloEdges = fill, Edges(tab, "border", "BORDER", fill)
+		local s = {}
+		for i = 1, 3 do
+			s[i] = tab:CreateTexture(nil, "BACKGROUND", nil, 2)
+		end
+		s[1]:SetPoint("TOPLEFT", fill, "TOPLEFT")
+		s[1]:SetPoint("BOTTOMLEFT", fill, "BOTTOMLEFT")
+		s[3]:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
+		s[3]:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
+		s[2]:SetPoint("TOPLEFT", s[1], "TOPRIGHT")
+		s[2]:SetPoint("BOTTOMRIGHT", s[3], "BOTTOMLEFT")
+		tab.melloFill, tab.melloSlices, tab.melloEdges = fill, s, {}
 		local fs = tab.Text
 		if fs then
 			fs:ClearAllPoints()
@@ -5486,11 +5579,69 @@ do
 		end
 	end, "script")
 
+	-- (2026-10-20, the user's sheet: "go all the way with the new icons") a chip is a pill: slate in a bronze rim,
+	-- the picked one gold (piece_pill_off / piece_pill_on: Tools/make_icons.py PIECES, 256 wide, the picture the top
+	-- 60 of 64 rows, its rounded ends `l` and `r` of 256), three slices at the chip's height; its label `text`, gold
+	-- under the pointer, dark ink (`mainWindow`) on the gold pill
+	local PILL = {
+		off = { tex = TEXTURE_PATH .. "Icons\\piece_pill_off", h = 60, l = 25.0, r = 22.7 },
+		on = { tex = TEXTURE_PATH .. "Icons\\piece_pill_on", h = 60, l = 23.8, r = 25.4 },
+	}
+
+	local function Pill(b, state)
+		if b.melloPill == state then
+			return
+		end
+		b.melloPill = state
+		local p, s = PILL[state], b.melloSlices
+		local v, k = p.h / 64, (Num(b:GetHeight()) or 22) / p.h
+		for i = 1, 3 do
+			s[i]:SetTexture(p.tex)
+		end
+		s[1]:SetTexCoord(0, p.l / 256, 0, v)
+		s[1]:SetWidth(p.l * k)
+		s[2]:SetTexCoord(p.l / 256, 1 - p.r / 256, 0, v)
+		s[3]:SetTexCoord(1 - p.r / 256, 1, 0, v)
+		s[3]:SetWidth(p.r * k)
+	end
+
+	local function ChipLook(b)
+		local chips, item = b.melloChips, b.melloItem
+		local picked = chips and item and chips.picked ~= nil and item.key == chips.picked
+		local on = b:IsEnabled() and true or false
+		Pill(b, picked and "on" or "off")
+		local fs = b:GetFontString()
+		if fs then
+			W.Paint(fs, (not on and "mutedText") or (picked and "mainWindow") or (flatHover[b] and "selectedTrim") or "text",
+				"text")
+		end
+	end
+
+	-- a chip button made a pill once: the flat plate hidden, the three slices under the label
+	local function MakePill(b)
+		b.melloFill:Hide()
+		for i = 1, #b.melloEdges do
+			b.melloEdges[i]:Hide()
+		end
+		local s = {}
+		for i = 1, 3 do
+			s[i] = b:CreateTexture(nil, "BACKGROUND", nil, 3)
+		end
+		s[1]:SetPoint("TOPLEFT")
+		s[1]:SetPoint("BOTTOMLEFT")
+		s[3]:SetPoint("TOPRIGHT")
+		s[3]:SetPoint("BOTTOMRIGHT")
+		s[2]:SetPoint("TOPLEFT", s[1], "TOPRIGHT")
+		s[2]:SetPoint("BOTTOMRIGHT", s[3], "BOTTOMLEFT")
+		b.melloSlices = s
+		b.melloLook = ChipLook
+	end
+
 	local function Paint(chips)
 		for i = 1, chips.count do
 			local b = chips.buttons[i]
 			local item = b.melloItem
-			W.FlatGold(b, chips.picked ~= nil and item.key == chips.picked)
+			ChipLook(b)
 			b:SetAlpha((item.state == "off" or item.state == "locked") and CHIP_DIM or 1)
 		end
 	end
@@ -5559,6 +5710,7 @@ do
 			local b = chips.buttons[i]
 			if not b then
 				b = W.Button(chips, "", CHIP_MIN, nil, { height = h })
+				MakePill(b)
 				b.melloChips = chips
 				Perf.SetScript(b, "OnClick", ChipClick)
 				Perf.HookScript(b, "OnEnter", ChipEnter)

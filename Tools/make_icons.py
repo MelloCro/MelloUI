@@ -135,8 +135,27 @@ def disc(size, inner=None, edge=1.0):
     return Image.fromarray(img, "RGBA")
 
 
+# (2026-10-20) the configurator's stretchable pieces (Batches 18 and 20, icons_v2/work/cut_pieces.py): each scaled to a
+# power-of-two width at its own aspect and laid at the top left of a power-of-two canvas -- its picture's height
+# there is round(height * width / its width); Core/Widgets.lua's MODERN table holds those heights and the ends' widths
+PIECES = [("div_diamond", 512, 32), ("dd_closed", 512, 64), ("dd_hover", 512, 64), ("dd_open", 512, 64),
+          ("dd_panel", 256, 256), ("dd_row", 256, 64), ("tab_off", 256, 128), ("tab_hover", 256, 128),
+          ("tab_on", 256, 128), ("pill_off", 256, 64), ("pill_on", 256, 64)]
+
+
+def piece(name, width, canvas_h):
+    img = Image.open(os.path.join(ART, "out", "pieces", name + ".png")).convert("RGBA")
+    h = max(1, round(img.height * width / img.width))
+    inner = img.convert("RGBa").resize((width, h), Image.LANCZOS)
+    out = Image.new("RGBa", (width, canvas_h), (0, 0, 0, 0))
+    out.paste(inner, (0, 0))
+    return out.convert("RGBA"), h
+
+
 def files():
     out = []
+    for name, width, canvas_h in PIECES:
+        out.append(("piece_" + name, piece(name, width, canvas_h)[0]))
     for group, art, name, size in SET:
         img = load(group, art)
         if name == "edge_arrow":
