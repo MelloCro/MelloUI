@@ -288,7 +288,7 @@ end
 function DropFull(list)
     for _, spec in ipairs(list) do
         local name, key = spec:match("^([^.]+)%.(.+)$")
-        -- (a module of a feature addon the world leaves out, bakeworld's WITHOUT: Oldschool's panels, not baked)
+        -- (a module of a feature addon the world leaves out, bakeworld's FULL_WITHOUT: Oldschool's panels, not baked)
         if M.modules[name] then
             M:GetModuleDB(name)[key] = M.modules[name].defaults[key]
         end
@@ -544,7 +544,7 @@ def moved_on_screen(store, W, H):
 def saved_text(snapshot, tries, wait, log):
     """The snapshot as saved: every module registered and OnInit run (its
     defaults complete), no OnEnable / OnDisable (no one-time step yet)."""
-    lua, _, _, _ = B.make_world_retry(tries, wait, log)
+    lua, _, _, _ = B.make_world_retry(tries, wait, log, without=B.FULL_WITHOUT)
     lua.execute(open(snapshot, encoding="utf-8").read())
     lua.execute(B.BUDGET)
     lua.execute(LUA_STEPS)
@@ -592,7 +592,7 @@ def logged_in(snapshot, tries, wait, log, without=None):
 def bake(snapshot=SNAP, tries=5, wait=60, log=print):
     text_saved = saved_text(snapshot, tries, wait, log)
     mods = raw_modules(snapshot)
-    lua, errs, ns, tried = B.make_world_retry(tries, wait, log)
+    lua, errs, ns, tried = B.make_world_retry(tries, wait, log, without=B.FULL_WITHOUT)
     lua.execute(open(snapshot, encoding="utf-8").read())
     lua.execute(B.BUDGET)
     lua.execute(LUA_STEPS)
@@ -625,7 +625,7 @@ def bake(snapshot=SNAP, tries=5, wait=60, log=print):
     theirs = B.default_keys(logged_in(snapshot, tries, wait, log, without=()))
     brought = {(m, k) for m in ours for k in theirs.get(m, set()) - ours[m]}
     for m, k, v in B.entries(saved):
-        # (1.0) the settings and switches of a module the world does not load (bakeworld's WITHOUT: Oldschool's
+        # (1.0) the settings and switches of a module the world does not load (bakeworld's FULL_WITHOUT: Oldschool's
         # panels a snapshot from a game with it holds), and the keys its parts bring, are not the one look's Full:
         # with Oldschool loaded the installer takes Oldschool's own setup
         if not registered(k if m == "!" else m) or (m, k) in brought:
@@ -779,7 +779,7 @@ def main():
     for t in report["fit"]["eye"]:
         print("  the user's eye:", t)
     print("extra personal dropped:", report["extraPersonalDropped"])
-    print("modules not loaded (%s), dropped: %d entries" % (", ".join(B.WITHOUT), len(report["notLoadedDropped"])))
+    print("modules not loaded (%s), dropped: %d entries" % (", ".join(B.FULL_WITHOUT), len(report["notLoadedDropped"])))
     src, m = current_entry()
     old = shipped_text(src)
     print("Full in Media/Profiles.lua: %s" % ("%d characters, sha256 %s" % (len(old), sha(old)) if old else "none"))

@@ -19,10 +19,11 @@ import paths as P  # noqa: E402  (Tools/paths.py: where the build data lives)
 
 # the addon folder, "/"-terminated (ROOT + "Core/Core.lua")
 ROOT = W.ROOT
-# (1.0) the feature addons the world leaves out, as a game without them: MelloUI_Oldschool, since the shipped
-# "MelloUI" Full is the one look's (with Oldschool loaded the installer takes Oldschool's own setup, its
-# Media/Shipped.lua) -- so its painted Minimap skin never dresses the bake's fit
-WITHOUT = ("MelloUI_Oldschool",)
+# (1.0) the feature addons the Full bake's world leaves out (make_world(without=FULL_WITHOUT)), as a game without
+# them: MelloUI_Oldschool, since the shipped "MelloUI" Full is the one look's (with Oldschool loaded the installer
+# takes Oldschool's own setup, its Media/Shipped.lua) -- so its painted Minimap skin never dresses the bake's fit.
+# A world made without `without` loads every feature addon, as before.
+FULL_WITHOUT = ("MelloUI_Oldschool",)
 
 
 def build_data(*parts):
@@ -120,10 +121,10 @@ GetCVar, SetCVar, GetCVarBool = C_CVar.GetCVar, C_CVar.SetCVar, C_CVar.GetCVarBo
 
 
 def toc_files(without=None):
-    without = WITHOUT if without is None else without
+    without = without or ()
     toc = [l.strip().replace("\\", "/") for l in open(ROOT + "MelloUI.toc", encoding="utf-8-sig").read().split("\n")]
     # (0.19.9: then the feature addons' files, as the game loads them right after MelloUI's:
-    # docs/plans/split-addons.md, Tools/lint/features.py; none of the WITHOUT folders)
+    # docs/plans/split-addons.md, Tools/lint/features.py; none of the `without` folders)
     sys.path.insert(0, os.path.join(TOOLS, "lint"))
     from features import feature_files
     features = [f for f in feature_files(ROOT) if f.split("/", 1)[0] not in without]

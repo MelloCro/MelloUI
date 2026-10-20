@@ -2429,18 +2429,30 @@ do
 	-- ground is known only a hop the grid allows -- a long straight line crossed hills and walls, a 175 yd walk sent
 	-- 7,800 yd to a dock and back; the hubs join the graph by their own legs, an end shut in by the ground by its
 	-- grid legs)
-	local function HubOK(cont, x, y, ex, ey)
-		return not M.Ground.Has(cont) or (Dist(x, y, ex, ey) <= OFFROAD and M.Ground.Walk(cont, x, y, ex, ey) ~= false
-			and not Search.CrossesCity(cont, x, y, ex, ey))
+	-- (1.0) its price, or nil: a leg of NEAR yards or less always (the player beside the flight master, whose cells
+	-- are often its building's); one the grid finds no straight way along at STRAIGHT_COST, a last resort -- a hub
+	-- stands where players walk, and the grid's steep cells round a hilltop's took every way to it (Sentinel Hill's:
+	-- its flights were never taken); never into a capital
+	local function HubLegPrice(cont, x, y, ex, ey)
+		local d = Dist(x, y, ex, ey)
+		if not M.Ground.Has(cont) or d <= Search.NEAR then
+			return HubLeg(d)
+		end
+		if d > OFFROAD or Search.CrossesCity(cont, x, y, ex, ey) then
+			return nil
+		end
+		return M.Ground.Walk(cont, x, y, ex, ey) ~= false and HubLeg(d) or d / WALK * STRAIGHT_COST
 	end
 
 	local function HubEnds(id, cont, x, y, scont, sx, sy)
-		if cont == scont and HubOK(cont, x, y, sx, sy) then
-			AddExtra("S", id, HubLeg(Dist(x, y, sx, sy)))
+		local p = cont == scont and HubLegPrice(cont, x, y, sx, sy)
+		if p then
+			AddExtra("S", id, p)
 		end
 		for i = 1, goals.n do
-			if cont == goals.cont[i] and HubOK(cont, x, y, goals.x[i], goals.y[i]) then
-				AddExtra(goals.id[i], id, HubLeg(Dist(x, y, goals.x[i], goals.y[i])))
+			p = cont == goals.cont[i] and HubLegPrice(cont, x, y, goals.x[i], goals.y[i])
+			if p then
+				AddExtra(goals.id[i], id, p)
 			end
 		end
 	end
@@ -2512,13 +2524,15 @@ do
 		-- at STRAIGHT_COST, so that roads win there unless they are a real detour)
 		for i = 1, goals.n do
 			local gx, gy = goals.x[i], goals.y[i]
-			if scont == goals.cont[i] and not Search.CrossesCity(scont, sx, sy, gx, gy) then
-				local d = Dist(sx, sy, gx, gy)
+			local d = Dist(sx, sy, gx, gy)
+			if scont == goals.cont[i] and (d <= Search.NEAR or not Search.CrossesCity(scont, sx, sy, gx, gy)) then
 				local swum = M.Ground.Walk(scont, sx, sy, gx, gy)
 				if swum then
 					AddExtra("S", goals.id[i], M.Ground.Price(d, swum))
 				elseif swum == nil then
 					AddExtra("S", goals.id[i], d / WALK * STRAIGHT_COST)
+				elseif d <= Search.NEAR then
+					AddExtra("S", goals.id[i], M.Ground.Price(d, 0))   -- (1.0: beside the goal, its building's cells)
 				end
 			end
 		end
@@ -2822,6 +2836,10 @@ do
 	end
 	Search.CITY_STEP = 40
 	Search.CITY_RETRY = 30
+	-- (1.0) a straight leg of NEAR yards or less, from the start to a hub or a goal, is taken whatever the walk grid
+	-- or the capitals say: the player beside the flight master or the quest giver, whose cells are often its
+	-- building's (the Thunder Bluff way that climbed a rise was a long one). The smoothing's cuts stay as they are.
+	Search.NEAR = 25
 
 	-- the points between i and j all within HUG yards of the straight line from i to j
 	function Search.Hugs(points, i, j)

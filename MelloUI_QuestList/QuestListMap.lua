@@ -602,7 +602,11 @@ function QL.DressMark(self, kind, data)
 		self:SetSize((self.Label:GetStringWidth() or 30) + 10, 15)
 	end
 	if kind ~= "objective" then   -- (an objective's own: QuestListObjectives.lua's Dress)
-		MelloUI.Shade:Lift(self.Icon, Marks.Lift(kind, data))
+		-- (its icon's size as laid above: the shade reads none -- the door's 22, an item's 20, a giver's 22, a
+		-- door or a transport pin's 26)
+		local size = (kind == "entrance" or kind == "transport") and 26
+			or ((data.item == "dungeon" or data.item == "raid") and 22) or (data.item and 20) or 22
+		MelloUI.Shade:Lift(self.Icon, Marks.Lift(kind, data), size)
 	end
 end
 

@@ -109,7 +109,7 @@ def shipped_text():
 
 def world_new():
     """A new player's world: no saved variables, every module registered."""
-    lua, errs, ns, _ = B.make_world_retry(5, 60)
+    lua, errs, ns, _ = B.make_world_retry(5, 60, without=B.FULL_WITHOUT)   # (1.0: the Full is the one look's)
     lua.execute(B.BUDGET)
     lua.execute(F.LUA_STEPS)
     lua.execute('''
@@ -244,7 +244,7 @@ def main():
     check(ex is None, "the login leaves no questTrackerKit (stage E: the Painted Skin removed)")
 
     # over the user's own setup: same text; the player's personal keys stay
-    lua2, errs, ns, _ = B.make_world_retry(5, 60)
+    lua2, errs, ns, _ = B.make_world_retry(5, 60, without=B.FULL_WITHOUT)
     lua2.execute(open(F.SNAP, encoding="utf-8").read())
     lua2.execute(B.CVAR_STORE)   # (1.0: a module restarted by the load gives its CVars back and holds them again)
     lua2.execute(B.BUDGET)

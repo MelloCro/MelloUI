@@ -95,7 +95,7 @@
 --                                 own colour on a string: Notice.lua,
 --                                 QuestInk.lua)
 -- 0.25.0 adds one more, made on first use only:
---   MelloUI.Shade:Lift(tex, name[, size])   the soft glow or shade under an
+--   MelloUI.Shade:Lift(tex, name, size)   the soft glow or shade under an
 --                                 icon of MelloUI's set on the maps and the
 --                                 minimap ("The icons' lift")
 -- The one 'palette' listener (owner "Shade") repaints the bands, the glows,
@@ -1326,11 +1326,11 @@ end
 -- colour (selectedTrim added as light, innerPanel). It is the UI Shade's area "icons"
 -- (Modules/KitShade.lua; "Shade: Map Icons" on Look > General): shown while
 -- that area is on, at the UI Shade's strength.
---   MelloUI.Shade:Lift(tex, name[, size]) -> the lift's texture, or nil
+--   MelloUI.Shade:Lift(tex, name, size) -> the lift's texture, or nil
 --       tex shows the set's icon `name` (W.Icon); its lift is made once, a
 --       region of tex's parent in tex's layer one sublevel under it, laid
---       round tex at `size` (the icon's width in tex's units; left out, its
---       width read), its alpha the icon's own at the call times the
+--       round tex at `size` (the icon's width in tex's units, the caller's:
+--       the shade reads no size; left out, no margin), its alpha the icon's own at the call times the
 --       strength, desaturated with it. name not a string: hidden (the icon
 --       hidden, or showing art not the set's). Called after the icon's look
 --       is set; a call that changes nothing writes nothing (a minimap mark
@@ -1424,7 +1424,7 @@ do
 			lifts[icon] = lift
 		end
 		local tex, changed = lift.tex, not lift.name
-		size = Num(size) or Num(icon:GetWidth()) or 0
+		size = Num(size) or 0
 		if size ~= lift.size then
 			lift.size = size
 			local pad = size * PAD
