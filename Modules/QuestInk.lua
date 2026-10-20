@@ -66,7 +66,7 @@ local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 -- one handler for every string it is hooked on, wrapped once (user,
 -- 2026-09-24: the shared handlers, low-risk steps only)
 local Shared = Perf.Shared or function(_, fn) return fn end
--- ONELOOK HEADER END (the painted reskin's part, Modules/QuestInkPainted.lua, uses only public tables: MelloUI.QuestInk)
+-- ONELOOK HEADER END (the painted reskin's part, MelloUI_Oldschool/Modules/QuestInkPainted.lua, uses only public tables: MelloUI.QuestInk)
 
 local QI = {}
 MelloUI.QuestInk = QI
@@ -997,7 +997,7 @@ end
 -- (onelook D10) The kit's plates under a string -- its strips, the kit's
 -- replacements and the game's plate art the kit knows, their grid over the
 -- screen -- are the painted reskin's: a provider its part fills
--- (Modules/QuestInkPainted.lua, one look stage I). Without it a string
+-- (MelloUI_Oldschool/Modules/QuestInkPainted.lua, one look stage I). Without it a string
 -- lies on no kit plate; the core keeps what is MelloUI's own (a bar, an icon,
 -- QI.noInk, the parchment sheets). QI.plates, the provider:
 --   Want(t)             every plate asked again, begun at t or later (nil: now)
@@ -1836,4 +1836,4 @@ end
 QI.kept = { gameColourOf = gameColourOf, inkRole = inkRole, inkRoleFn = inkRoleFn, inkSaved = inkSaved,
 	plainText = plainText, textWatched = textWatched }
 
--- (the painted reskin's part: Modules/QuestInkPainted.lua, one look stage I)
+-- (the painted reskin's part: MelloUI_Oldschool/Modules/QuestInkPainted.lua, one look stage I)

@@ -108,6 +108,9 @@ def check_tocs(main_text):
     with open(os.path.join(ROOT, "Core", "Core.lua"), encoding="utf-8") as fh:
         features = dict(re.findall(r'^\t(\w+) = \{ addon = "(MelloUI_\w+)"', fh.read(), re.M))
     seen_features = set()
+    # (one look stage I) a companion whose TOC says '## X-MelloUI-Package: separate' (MelloUI_Oldschool) is a package
+    # of its own: left out of MelloUI's zip (.pkgmeta's ignore:), its own CurseForge project
+    separate = set()
     for f in toc_files(main_text):
         if f.split("/")[0] in names:
             problems.append(f"MelloUI.toc lists {f}: {f.split('/')[0]} is an addon of its own, its files go in its own TOC")
@@ -134,19 +137,32 @@ def check_tocs(main_text):
         for field in ("Version", "Interface"):
             if toc_field(text, field) is None:
                 problems.append(f"{name}.toc has no '## {field}:' line to keep in step with MelloUI.toc")
+        if toc_field(text, "X-MelloUI-Package") == "separate":
+            separate.add(name)
+            theirs, mine = toc_field(text, "X-Curse-Project-ID"), toc_field(main_text, "X-Curse-Project-ID")
+            if not theirs or theirs == mine:
+                problems.append(f"{name}.toc is a package of its own (X-MelloUI-Package: separate) but its "
+                                f"'## X-Curse-Project-ID:' is {theirs or 'missing'}: it needs its own project, not "
+                                f"MelloUI's {mine}")
     for feature, addon in sorted(features.items()):
         if feature not in seen_features:
             problems.append(f"Core/Core.lua's MelloUI.Features lists {feature} ({addon}), which has no folder "
                             f"{addon}/{addon}.toc naming it on its '## X-MelloUI-Feature:' line")
     with open(PKGMETA, encoding="utf-8") as fh:
         meta = fh.read()
-    for name in sorted(names):
+    for name in sorted(separate):
+        if not re.search(r"^[ \t]+-[ \t]+" + re.escape(name) + r"[ \t]*$", meta, re.M):
+            problems.append(f".pkgmeta does not leave {name} out of MelloUI's zip (ignore: - {name}): it is a "
+                            "package of its own")
+    for name in sorted(names - separate):
         line = r"^[ \t]+MelloUI/" + re.escape(name) + r":[ \t]*" + re.escape(name) + r"[ \t]*$"
         if not re.search(line, meta, re.M):
             problems.append(f".pkgmeta does not move {name} out of MelloUI (move-folders: MelloUI/{name}: {name}); "
                             "the zip would carry it inside the MelloUI folder, where the client never finds it")
     for moved in re.findall(r"^[ \t]+MelloUI/(\S+?):", meta, re.M):
-        if moved not in names:
+        if moved in separate:
+            problems.append(f".pkgmeta moves MelloUI/{moved}, a package of its own: it goes under ignore: instead")
+        elif moved not in names:
             problems.append(f".pkgmeta moves MelloUI/{moved}, which is not a companion folder with its own TOC")
     return comps, problems
 

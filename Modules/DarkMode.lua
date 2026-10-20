@@ -19,7 +19,7 @@
 -- reskin's brightness under it (Reskin Brightness, kitShade, Kit:SetShade) is
 -- a part of this module's settings (M:AddPart, UI Modifications' one contract
 -- MelloUI.ModuleParts: the same key and option id), in
--- Modules/DarkModePainted.lua (one look stage I); its hooks Enabled,
+-- MelloUI_Oldschool/Modules/DarkModePainted.lua (one look stage I); its hooks Enabled,
 -- Disabled and Setting are asked where ShadeKit ran.
 --------------------------------------------------------------------------------
 
@@ -27,7 +27,7 @@ local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("DarkMode")
 local hooksecurefunc = Perf.hooksecurefunc
--- ONELOOK HEADER END (the painted reskin's part, Modules/DarkModePainted.lua, uses only public tables)
+-- ONELOOK HEADER END (the painted reskin's part, MelloUI_Oldschool/Modules/DarkModePainted.lua, uses only public tables)
 
 local M = MelloUI:RegisterModule("DarkMode", {
 	title = "Dark Mode",
@@ -1038,4 +1038,4 @@ MelloUI:Profile("DarkMode", "nameplate events", eventFrame)
 MelloUI:Profile("DarkMode", "nameplate relayout", StyleNamePlateUnitFrame)
 MelloUI:Profile("DarkMode", "shading", ShadeAll)
 
--- (the painted reskin's part: Modules/DarkModePainted.lua, one look stage I)
+-- (the painted reskin's part: MelloUI_Oldschool/Modules/DarkModePainted.lua, one look stage I)

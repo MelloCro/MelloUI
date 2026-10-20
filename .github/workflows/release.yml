@@ -20,6 +20,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.guard.outputs.publish }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,7 +53,9 @@ jobs:
 
       # A companion folder (MelloUI_<x>/MelloUI_<x>.toc) left inside MelloUI/
       # in the zip is never found by the client: .pkgmeta must move each one
-      # out, and every TOC must carry MelloUI.toc's version.
+      # out, and every TOC must carry MelloUI.toc's version. A package of its
+      # own (## X-MelloUI-Package: separate: MelloUI_Oldschool) is left out of
+      # this zip instead (.pkgmeta's ignore:); the oldschool job zips it.
       - name: Companion folders are lifted out of MelloUI
         if: steps.guard.outputs.publish == 'yes'
         run: |
@@ -59,9 +63,14 @@ jobs:
           for toc in MelloUI_*/MelloUI_*.toc; do
             [ -e "$toc" ] || continue
             d="${toc%%/*}"
-            grep -Eq "^[[:space:]]+MelloUI/$d:[[:space:]]*$d[[:space:]]*$" .pkgmeta || { echo "::error::.pkgmeta does not move $d out of MelloUI"; exit 1; }
             v=$(sed -n 's/^## Version:[[:space:]]*//p' "$toc" | tr -d '\r')
             [ "$v" = "$version" ] || { echo "::error::$toc is version $v, MelloUI.toc is $version"; exit 1; }
+            if grep -Eq "^## X-MelloUI-Package:[[:space:]]*separate" "$toc"; then
+              grep -Eq "^[[:space:]]+-[[:space:]]+$d[[:space:]]*$" .pkgmeta || { echo "::error::.pkgmeta does not leave $d out of MelloUI's zip"; exit 1; }
+              echo "$d: a package of its own, version $v"
+              continue
+            fi
+            grep -Eq "^[[:space:]]+MelloUI/$d:[[:space:]]*$d[[:space:]]*$" .pkgmeta || { echo "::error::.pkgmeta does not move $d out of MelloUI"; exit 1; }
             echo "$d: moved out of MelloUI, version $v"
           done
 
@@ -76,3 +85,55 @@ jobs:
       # release's short Discord text goes in docs/discord/<version>.md, and once
       # it is approved the Announce workflow posts it:
       #   gh workflow run announce.yml -f version=<version>
+
+  # MelloUI_Oldschool (one look, stage I): the painted reskin, a CurseForge
+  # project of its own (its TOC's X-Curse-Project-ID). Its folder is staged as
+  # the top of a git repository of its own, tagged as this release, and the
+  # packager zips and uploads it from there; the zip is attached to this
+  # release on GitHub too. UNVERIFIED: dry-run it (the packager's -d, no
+  # upload) before the first real tag.
+  oldschool:
+    needs: release
+    if: needs.release.outputs.publish == 'yes'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Stage MelloUI_Oldschool as a repository of its own
+        id: stage
+        run: |
+          if [ ! -f MelloUI_Oldschool/MelloUI_Oldschool.toc ]; then
+            echo "no MelloUI_Oldschool: nothing to package"
+            echo "have=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          stage="$RUNNER_TEMP/MelloUI_Oldschool"
+          mkdir -p "$stage"
+          cp -r MelloUI_Oldschool/. "$stage/"
+          awk '/^## /{n++} n==1' CHANGELOG.md | sed '1d' | sed '/./,$!d' > "$stage/CHANGELOG-release.md"
+          printf '%s\n' "package-as: MelloUI_Oldschool" "manual-changelog: CHANGELOG-release.md" \
+            "enable-nolib-creation: no" "ignore:" "  - CHANGELOG-release.md" > "$stage/.pkgmeta"
+          cd "$stage"
+          git init -q
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -qm "MelloUI_Oldschool ${GITHUB_REF_NAME}"
+          git tag "${GITHUB_REF_NAME}"
+          echo "have=yes" >> "$GITHUB_OUTPUT"
+
+      - name: Package and upload
+        if: steps.stage.outputs.have == 'yes'
+        uses: BigWigsMods/packager@v2
+        with:
+          args: -t ${{ runner.temp }}/MelloUI_Oldschool -r ${{ runner.temp }}/oldschool-release
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+
+      - name: Attach the zip to the release
+        if: steps.stage.outputs.have == 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${GITHUB_REF_NAME}" "$RUNNER_TEMP"/oldschool-release/*.zip --repo "${GITHUB_REPOSITORY}"

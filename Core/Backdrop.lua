@@ -8,7 +8,7 @@
 -- This file is the core half -- the holder, its texture pools, the kept
 -- shape, the placing, the registry -- and MelloUI's own drawer; the painted
 -- kit registers its gems and border-library drawer, "gems"
--- (Modules/KitBackdrop.lua, Oldschool's).
+-- (MelloUI_Oldschool/Modules/KitBackdrop.lua, Oldschool's).
 --   MelloUI.Backdrop.ScreenRect(f) -> l, b, r, t | nil
 --       a frame's rect in screen px (MelloUI.Safe.ScreenRect: secret-safe),
 --       nil while it has no size: the backdrops' one reader

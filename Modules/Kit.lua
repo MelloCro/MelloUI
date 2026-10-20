@@ -10,7 +10,7 @@
 -- Fade / Unfade and the border kinds (Kit:ApplyBorder). Not a module with
 -- settings; other modules use MelloUI.Kit.
 --
--- The painted engine (one look, stage I: Modules/KitPainted.lua, loaded right
+-- The painted engine (one look, stage I: MelloUI_Oldschool/Modules/KitPainted.lua, loaded right
 -- after this file) adds the strips and bars, the replacement library
 -- (Kit.Replacements + Kit:Replace), the slot stones, the button looks, the
 -- tuning, the shared window parts, side tabs, its border kinds, the skin
@@ -98,7 +98,7 @@ Kit.slotEmpty = Kept.slotEmpty        -- [item button] = true while its slot is 
 -- the palette by Tools/kit_palette.py, one folder per look holding the same
 -- files, so the layout is shared. Pictures and the tiles already warm are not
 -- recoloured: every look reads them from Media\Kit (kit_palette's SKIP).
--- Nor are the Elite / Rare / Boss marks (marks/, Modules/KitMarks.lua): their
+-- Nor are the Elite / Rare / Boss marks (marks/, MelloUI_Oldschool/Modules/KitMarks.lua): their
 -- metals mean what a unit is, under every palette.
 -- The palettes (0.14.0, user 2026-09-26: one recoloured kit per palette for
 -- all six, and the Original): the folder is chosen from the palette in use
@@ -4868,6 +4868,12 @@ do
 		if not (MelloUI.db and MelloUI:IsModuleEnabled(SWITCHES)) then
 			return false
 		end
+		-- (one look stage I: MelloUI_Oldschool from another MelloUI version
+		-- dresses nothing, its Oldschool.lua)
+		local oldschool = rawget(MelloUI, "Oldschool")
+		if type(oldschool) == "table" and oldschool.refused then
+			return false
+		end
 		local s = Switches()
 		return not (s and s.reskin == false)
 	end
@@ -5146,7 +5152,7 @@ Kit.roundLooks = {
 	{ value = "roundrimsunk", label = "Sunk", piece = "buttons/roundrimsunk_normal" },
 }
 -- The kinds (UI Modifications makes one option of each, in this order). The core holds the round rims'
--- and the Kit Colours; the painted engine (Modules/KitPainted.lua) adds its own kinds round them
+-- and the Kit Colours; the painted engine (MelloUI_Oldschool/Modules/KitPainted.lua) adds its own kinds round them
 -- (Kit:AddBorderKind), the window's and title's, the buttons', side tabs', bars', nameplates' and auras'.
 Kit.borderKinds = {
 	{ kind = "round", key = "roundBorder", default = "roundslot", name = "Round Border", values = Kit.roundLooks, preview = "rim",
@@ -5247,7 +5253,7 @@ function Kit:ApplyBorder(kind)
 			RoundLook(rim, value)
 		end
 	elseif Kit.__.ApplyBorderKind then
-		-- (the painted engine's kinds: Modules/KitPainted.lua)
+		-- (the painted engine's kinds: MelloUI_Oldschool/Modules/KitPainted.lua)
 		Kit.__.ApplyBorderKind(self, kind, value)
 	end
 	MelloUI:Fire("border", kind, value)
@@ -5337,7 +5343,7 @@ do
 end
 
 --------------------------------------------------------------------------------
--- What the painted engine (Modules/KitPainted.lua, loaded after this file) uses of this core's locals: on the
+-- What the painted engine (MelloUI_Oldschool/Modules/KitPainted.lua, loaded after this file) uses of this core's locals: on the
 -- private table, set once everything above is made (FollowButton and RegisterShell, declared early, are
 -- filled in their blocks by now)
 --------------------------------------------------------------------------------

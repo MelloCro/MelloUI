@@ -6,7 +6,7 @@
 -- it and its lifecycle. The painted kit's half (the R1 ring, the Z2 zone
 -- plate, the tracking rim and zoom glyphs, the rail families and heavy frames
 -- round the square map, the zone band on the frame's top rail) is the module
--- MinimapKit (Modules/MinimapKit.lua, Oldschool's), which dresses this map
+-- MinimapKit (MelloUI_Oldschool/Modules/MinimapKit.lua, Oldschool's), which dresses this map
 -- through the one dresser it registers here (M:SetDresser; Dress, below):
 -- while it is on, the map is handed to it. Without it the map is square
 -- (one look, the user, 2026-10-16: Square), the game's own ring faded

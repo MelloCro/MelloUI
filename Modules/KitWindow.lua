@@ -164,7 +164,7 @@
 -- The painted dressing (the outer rail and page stone, the ring, the plate),
 -- Kit:ChoicePicture (a look choice's picture for the picture rows, W.PictureRow
 -- / W.PictureMenu) and the nudges are the painted reskin's (one look, stage I:
--- Modules/KitWindowPainted.lua, the dressing handed over as Kit.__.ShellDress).
+-- MelloUI_Oldschool/Modules/KitWindowPainted.lua, the dressing handed over as Kit.__.ShellDress).
 -- And, for the own windows' questions (the end of the file):
 --   MelloUI:Confirm({ text, accept, cancel, onAccept, onCancel })
 --------------------------------------------------------------------------------
@@ -223,7 +223,7 @@ local LEVEL_GRAB, LEVEL_CREST, LEVEL_PLATE, LEVEL_CLOSE = 1, 4, 7, 8
 local LEVEL_GAME_PORTRAIT = 9
 -- (the portrait's circle mask, the template's CircleMask: 2 in from each side, its bottom 4 up)
 local GAME_MASK_IN, GAME_MASK_UP = 2, 4
--- (the two the painted dressing shares, Modules/KitWindowPainted.lua)
+-- (the two the painted dressing shares, MelloUI_Oldschool/Modules/KitWindowPainted.lua)
 Kit.__.ShellPlateFit, Kit.__.RoundMask = PLATE_FIT, ROUND_MASK
 
 local shells = setmetatable({}, { __mode = "k" })   -- [frame] = its shell
@@ -1040,7 +1040,7 @@ function Kit:OwnWindow(frame, opts)
 		})
 	end
 
-	-- the kit's dressing: now, or at the first switch on (the painted reskin's, Modules/KitWindowPainted.lua; none
+	-- the kit's dressing: now, or at the first switch on (the painted reskin's, MelloUI_Oldschool/Modules/KitWindowPainted.lua; none
 	-- without it)
 	local dress = Kit.__.ShellDress
 	if dress then

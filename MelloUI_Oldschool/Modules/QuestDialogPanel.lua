@@ -1,0 +1,1312 @@
+--------------------------------------------------------------------------------
+-- MelloUI - Quest Dialogs Kit
+--
+-- (user, 2026-09-24: "we didnt do quest dialogs, shops, Auction House,
+-- profession training window, class trainers, Guild Crest Vendors, Flight
+-- map, all should follow the rules"): the quest giver's dialogs (QuestFrame:
+-- its greeting, offer, progress and reward panels) and the gossip window
+-- (GossipFrame) dressed in the painted kit on the game's own layout, by the
+-- rule book (docs/WINDOW-RULES.md):
+--   the window shell -- the outer double rail with its gem corners grown
+--   outward, the page stone, the title plate riding the top rail with the
+--   NPC's name on it in the title face (2c), the portrait ring with the NPC's
+--   portrait at the class medallion's size on the dark disc (2b), the close
+--   button; the inset's single rail; the game's parchment page -> the kit's
+--   parchment page with the painted brush-stroke edge (the quest log's own
+--   details page, "QuestDetailsBackgrounds"), ONE page on one rect for all
+--   four quest panels (2a); every text on it in dark ink by the parchment
+--   rule (QuestInk), the red plate buttons excepted; the Accept / Decline /
+--   Complete / Continue / Cancel / Goodbye buttons on the red plates; item,
+--   reward and spell buttons in every window's Button Border rim with the
+--   plain plate under their names; scroll bars by the kit's sweep.
+-- No text lies on plain stone (2e): the dialogs' text is all on the page.
+-- Should a client's dialog have no parchment region to replace, its inset
+-- is filled with the list-box stone under the palette's inner panel instead
+-- and its text keeps the game's colours.
+--
+-- Nothing of the game's is replaced or re-scripted: the dress is hooks,
+-- regions and child frames of our own, faded game art and our own texture in
+-- the ring, all put back when the switch (UI Modifications, Windows: "Quest
+-- dialogs") is turned off. No quest API is called. Nothing is built at login:
+-- each dialog is dressed on its first open (user, 2026-09-24) and kept.
+--
+-- /questdialogdump [gossip]: what the window is made of and what was dressed.
+--------------------------------------------------------------------------------
+
+local _, ns = ...
+local MelloUI = (ns and ns.MelloUI) or _G.MelloUI
+-- frames made in a game window: Core's maker, so the game's gamepad
+-- navigation never walks an open window for each one (MelloUI.Safe.CreateFrame)
+local CreateFrame = MelloUI.Safe.CreateFrame
+local Perf = MelloUI.Perf:Scope("QuestDialogPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceOf = MelloUI.Kept.pieceOf
+local plateOf = MelloUI.Kept.plateOf
+local repOf = MelloUI.Kept.repOf
+
+local M = MelloUI:RegisterModule("QuestDialogPanel", {
+	title = "Quest Dialogs Kit",
+	desc = "The quest giver's dialogs (offer, progress, reward) and the gossip window in the kit.",
+	window = { label = "Quest dialogs", desc = "The quest giver's dialogs (offer, progress, reward) and the gossip window in the kit.", tab = "Windows",
+		firstOpen = true },
+	enabledByDefault = true,
+	defaults = {},
+	options = {},
+})
+
+-- the ink surface's name (QuestInk): the dialogs' pages
+local AREA = "questdialog"
+-- what the game shows in the ring when there is no NPC to draw (a quest
+-- taken from an item): QuestFrame_SetPortrait's own fallback
+local BOOK_ICON = "Interface\\QuestFrame\\UI-QuestLog-BookIcon"
+local PORTRAIT_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+
+-- the quest frame's four pages, each with its own copy of the parchment
+local QUEST_PANELS = { "QuestFrameGreetingPanel", "QuestFrameDetailPanel", "QuestFrameProgressPanel", "QuestFrameRewardPanel" }
+-- its text buttons (UIPanelButtonTemplate), by the names the template gives them
+local QUEST_BUTTONS = { "QuestFrameAcceptButton", "QuestFrameDeclineButton", "QuestFrameCompleteButton", "QuestFrameGoodbyeButton",
+	"QuestFrameCompleteQuestButton", "QuestFrameGreetingGoodbyeButton" }
+-- a title string an older layout of the window may write the NPC's name into
+-- instead of the title container's TitleText
+local EXTRA_TITLES = { QuestFrame = { "QuestFrameNpcNameText" }, GossipFrame = { "GossipFrameNpcNameText" } }
+-- the quest text frames the game shares between the dialog and the quest
+-- log's details view (QuestInfo_Display parents them to whichever shows)
+local QUEST_INFO = { "QuestInfoFrame", "QuestInfoObjectivesFrame", "QuestInfoSpecialObjectivesFrame", "QuestInfoTimerFrame",
+	"QuestInfoRequiredMoneyFrame", "QuestInfoSealFrame", "QuestInfoSpacerFrame" }
+-- the red plates' rule keys (Kit:SkinRedButton): a button on one keeps its
+-- label's own colour (the parchment rule's exception for button labels)
+local RED_PLATES = { ["UI-Panel-Button-Up"] = true, ["_128-RedButton-Center"] = true }
+
+local skin = nil           -- { reps, followers, windows = { [frame] = win }, paper }
+local active = false
+local surfaceMade = false
+local itemButtons = {}     -- every item button given a rim (refitted on a new Button Border)
+local labelLayers = setmetatable({}, { __mode = "k" })   -- [label] = { layer, sublevel }: a fallback plate's label, raised over it
+
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe.IsSecret
+local ScreenRect = MelloUI.Safe.ScreenRect
+
+local function Replace(region, opts)
+	if not (region and skin) then
+		return nil
+	end
+	local rep, key = Kit:Replace(region, opts)
+	if not rep then
+		if key then
+			MelloUI:Notice("Quest dialogs: no kit piece mapped for %s", tostring(key))
+		end
+		return nil
+	end
+	skin.reps[#skin.reps + 1] = rep
+	if active then
+		rep:Enable()
+	end
+	return rep
+end
+
+-- A rep shown while the game shows `region` (art the game toggles itself:
+-- the greeting's horizontal break).
+local function Follow(rep, region)
+	if not (rep and region) then
+		return
+	end
+	local function Sync()
+		if active then
+			rep:SetShown(region:IsShown())
+		end
+	end
+	hooksecurefunc(region, "Show", Sync)
+	hooksecurefunc(region, "Hide", Sync)
+	hooksecurefunc(region, "SetShown", Sync)
+	skin.followers[#skin.followers + 1] = { rep = rep, region = region }
+	Sync()
+end
+
+-- A frame's name, secret-safe (nil when it has none or it cannot be read)
+local function NameOf(f)
+	local ok, name = pcall(f.GetName, f)
+	if ok and type(name) == "string" and not Secret(name) then
+		return name
+	end
+	return nil
+end
+
+-- A string's text: the text (nil when empty), and whether it read secret
+local function TextOf(fs)
+	local ok, text = pcall(fs.GetText, fs)
+	if not ok then
+		return nil, false
+	end
+	if Secret(text) then
+		return nil, true
+	end
+	if type(text) == "string" and text ~= "" then
+		return text, false
+	end
+	return nil, false
+end
+
+-- Whether `f` lies under `root` (a few parents up)
+local function IsUnder(f, root)
+	for _ = 1, 10 do
+		if not f then
+			return false
+		end
+		if f == root then
+			return true
+		end
+		f = f.GetParent and f:GetParent()
+	end
+	return false
+end
+
+--------------------------------------------------------------------------------
+-- The page: the game's parchment region of every panel replaced by the kit's
+-- parchment page with the painted edge, on ONE rect (2a: the four quest
+-- panels' pages lie in the same place with the same crop, so switching from
+-- the offer to the reward never moves the paper). The rect is the game's own
+-- parchment region -- the detail panel's, whose size stays the atlas's (the
+-- progress panel re-atlases its own for a quest's theme) -- or, should that
+-- have no size on this client, the text's scroll area.
+--------------------------------------------------------------------------------
+local function FitPageRect(win)
+	local rect, bg, area = win.pageRect, win.pageBg, win.pageArea
+	local ok, w = false, nil
+	if bg then
+		ok, w = pcall(bg.GetWidth, bg)
+	end
+	local target = (ok and w and not Secret(w) and w > 1) and bg or area
+	-- (0.20.1) its bottom lifted over the buttons moved clear of the bottom rail (The edges, below)
+	local lift = win.pageLift or 0
+	if target and (win.pageTarget ~= target or win.pageLiftLaid ~= lift) then
+		win.pageTarget, win.pageLiftLaid = target, lift
+		rect:ClearAllPoints()
+		rect:SetPoint("TOPLEFT", target, "TOPLEFT")
+		rect:SetPoint("BOTTOMRIGHT", target, "BOTTOMRIGHT", 0, lift)
+	end
+end
+
+-- The game's art laid over a panel's parchment for some quests (the stone,
+-- marble or silver materials, a campaign seal's picture): faded with the
+-- parchment it lies on, so every quest's page is the kit's one parchment and
+-- its text keeps the ink it is set for.
+local function PanelArt(panel, bg)
+	local list = {}
+	if not panel then
+		return list
+	end
+	for _, region in ipairs({ panel:GetRegions() }) do
+		if region:GetObjectType() == "Texture" and region ~= bg and not pieceOf[region] then
+			local layer = region:GetDrawLayer()
+			if layer == "BACKGROUND" or layer == "BORDER" then
+				list[#list + 1] = region
+			end
+		end
+	end
+	return list
+end
+
+local function DressPage(win, bg, art)
+	if not bg then
+		return nil
+	end
+	local rep = Replace(bg, { as = "QuestDetailsBackgrounds", rect = win.pageRect, alsoFade = art })
+	if rep then
+		win.paper = true
+		skin.paper = true
+	end
+	return rep
+end
+
+-- The window's inset (ButtonFrameTemplate's, round the page): the single
+-- rail, its marble faded. Its holder goes two levels over the window --
+-- above the panels (one level up, the page is their region), below their
+-- scroll frames' text: the rail lies over the page's edge and never ties with
+-- the panels (the kit's own SkinInset puts it at the panels' level). A window
+-- whose page could not be dressed gets the inset's stone under the inner
+-- panel instead, so its text is not on plain brown (2e).
+local function DressInset(win, frame)
+	local inset = frame.Inset
+	if not inset or repOf[inset] ~= nil then
+		return
+	end
+	local extra = { inset.Bg }
+	if inset.NineSlice then
+		for _, region in ipairs({ inset.NineSlice:GetRegions() }) do
+			if region:GetObjectType() == "Texture" then
+				extra[#extra + 1] = region
+			end
+		end
+	end
+	repOf[inset] = Replace(inset, { as = "common-insideframe", parent = frame, rect = inset, level = 2,
+		body = not win.paper, noFade = true, alsoFade = extra }) or false
+end
+
+--------------------------------------------------------------------------------
+-- The portrait (2b / 2c: an empty ring is a bug). The quest frame draws its
+-- NPC into a texture of its own (QuestFramePortrait, off the ring's centre),
+-- the gossip window into the template's portrait; both sit in the window's
+-- own stack under the kit's ring. So the NPC is drawn by the kit itself, as
+-- the macro window's icon is: a texture of the RING's holder, round-masked on
+-- the dark disc at the class medallion's size (Kit:RingDisc: 0.759 x the
+-- ring), showing the NPC's portrait (SetPortraitTexture on the unit the game
+-- draws) or, with no NPC, the art the game's portrait holds (the quest book).
+-- The game's portraits are faded meanwhile and put back on disable.
+--------------------------------------------------------------------------------
+local function PortraitCandidates(frame)
+	local list, seen = {}, {}
+	local pc = frame.PortraitContainer
+	local function Add(t)
+		if t and not seen[t] and t.GetObjectType and t:GetObjectType() == "Texture" then
+			seen[t] = true
+			list[#list + 1] = t
+		end
+	end
+	if frame == _G.QuestFrame then
+		Add(_G.QuestFramePortrait)
+	end
+	Add(pc and pc.portrait)
+	Add(frame.portrait)
+	return list
+end
+
+-- the art the first portrait with a file holds (secret-safe)
+local function PortraitArt(list)
+	for _, t in ipairs(list or {}) do
+		local ok, file = pcall(t.GetTexture, t)
+		if ok and not Secret(file) and file ~= nil and ((type(file) == "number" and file > 0) or (type(file) == "string" and file ~= "")) then
+			return file
+		end
+	end
+	return BOOK_ICON
+end
+
+local function UpdatePortrait(win)
+	local icon = win.icon
+	if not (icon and active) then
+		return
+	end
+	local okE, exists = pcall(UnitExists, win.unit)
+	-- a secret answer is taken as yes: the portrait call takes the unit
+	-- token, never the answer
+	local useUnit = okE and (Secret(exists) or exists == true)
+	if useUnit and pcall(SetPortraitTexture, icon, win.unit) then
+		return
+	end
+	icon:SetTexture(PortraitArt(win.portraits))
+end
+
+local function SkinPortrait(win, frame)
+	local ring = win.ring
+	local holder = ring and ring.object
+	if not (holder and holder.CreateTexture and ring.tex) then
+		return
+	end
+	win.portraits = PortraitCandidates(frame)
+	-- the disc and the NPC on the ring's holder: disc BACKGROUND 6, NPC
+	-- ARTWORK, the ring itself OVERLAY -- one stack, nothing of the game's
+	-- between them
+	local disc = Kit:RingDisc(ring, nil, holder, 6)
+	local icon = holder:CreateTexture(nil, "ARTWORK", nil, 1)
+	pieceOf[icon] = true
+	if disc then
+		icon:SetAllPoints(disc)
+	else
+		icon:SetPoint("CENTER", ring.tex, "CENTER")
+		icon:SetSize(1, 1)
+	end
+	local mask = holder:CreateMaskTexture()
+	mask:SetTexture(PORTRAIT_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	mask:SetAllPoints(icon)
+	icon:AddMaskTexture(mask)
+	win.icon = icon
+	local onEnable, onDisable = ring.onEnable, ring.onDisable
+	ring.onEnable = function(r)
+		if onEnable then
+			onEnable(r)
+		end
+		if not disc then
+			local okW, w = pcall(ring.tex.GetWidth, ring.tex)
+			if okW and w and not Secret(w) and w > 0 then
+				icon:SetSize(w * 0.759, w * 0.759)
+			end
+		end
+		UpdatePortrait(win)
+		for _, t in ipairs(win.portraits) do
+			Kit:Fade(t)
+		end
+	end
+	ring.onDisable = function(r)
+		if onDisable then
+			onDisable(r)
+		end
+		for _, t in ipairs(win.portraits) do
+			Kit:Unfade(t)
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The title (2c). The title plate's rule centres the title container's
+-- TitleText (where SetTitle writes the NPC's name) on the plate in the kit's
+-- title face (Kit:TitleFont: the Fonts options and the Font Style). An older
+-- layout of these windows writes the name into a string of its own
+-- (QuestFrameNpcNameText in QuestNpcNameFrame, GossipFrameNpcNameText): such
+-- a string is put on the plate in the title face while the container's is
+-- empty, or faded where the container already shows the same words; its
+-- points and font put back on disable. Where the two cannot be compared (a
+-- name read secret) it is left alone, never doubled on the plate.
+--------------------------------------------------------------------------------
+local function TitleStrings(frame)
+	local tc = frame.TitleContainer
+	local own = tc and tc.TitleText
+	local list, seen = {}, {}
+	if own then
+		seen[own] = true
+	end
+	local function Add(fs)
+		if fs and not seen[fs] and fs.GetObjectType and fs:GetObjectType() == "FontString" then
+			seen[fs] = true
+			list[#list + 1] = fs
+		end
+	end
+	for _, name in ipairs(EXTRA_TITLES[NameOf(frame) or ""] or {}) do
+		Add(_G[name])
+	end
+	Add(frame.TitleText)
+	local npcName = frame == _G.QuestFrame and _G.QuestNpcNameFrame or nil
+	if npcName and npcName.GetRegions then
+		for _, region in ipairs({ npcName:GetRegions() }) do
+			Add(region)
+		end
+	end
+	return list, own
+end
+
+local function PlaceTitles(win, on)
+	local moved, faded = win.titleMoved, win.titleFaded
+	if not on then
+		for fs, points in pairs(moved) do
+			Kit:TitleFont(fs, false)
+			fs:ClearAllPoints()
+			for _, pt in ipairs(points) do
+				fs:SetPoint(unpack(pt))
+			end
+		end
+		wipe(moved)
+		for fs in pairs(faded) do
+			Kit:Unfade(fs)
+		end
+		wipe(faded)
+		return
+	end
+	local rep = win.title
+	if not rep then
+		return
+	end
+	local list, own = TitleStrings(win.frame)
+	local ownText, ownSecret = nil, false
+	if own then
+		ownText, ownSecret = TextOf(own)
+	end
+	for _, fs in ipairs(list) do
+		local text = TextOf(fs)
+		if text and ownText and text == ownText then
+			-- the same words already on the plate: this copy gives way
+			if not faded[fs] then
+				faded[fs] = true
+				Kit:Fade(fs)
+			end
+		elseif text and not ownText and not ownSecret then
+			if faded[fs] then
+				faded[fs] = nil
+				Kit:Unfade(fs)
+			end
+			if not moved[fs] then
+				local points = {}
+				for i = 1, fs:GetNumPoints() do
+					points[i] = { fs:GetPoint(i) }
+				end
+				moved[fs] = points
+			end
+			fs:ClearAllPoints()
+			-- on the container's string (the rule centred it on the plate's
+			-- painted box), else on the plate itself
+			if own then
+				fs:SetPoint("CENTER", own, "CENTER")
+			else
+				fs:SetPoint("CENTER", rep.strip or rep.object, "CENTER")
+			end
+			Kit:TitleFont(fs, true)
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Text buttons on the red plates (B1), their labels in their own colour: the
+-- parchment rule's exception for button labels (user, 2026-09-24) -- the ink's
+-- walk never enters a button marked in QI.noInk. Kit:SkinRedButton knows the
+-- game's two button layouts; a button laid out otherwise gets the plate on
+-- its LOWEST texture (DialogPanel's way: on one above the label it covered
+-- it), its other art faded, and its label raised over the plate while dressed.
+--------------------------------------------------------------------------------
+local function PlainLabels(button)
+	local QI = MelloUI.QuestInk
+	for _, region in ipairs({ button:GetRegions() }) do
+		if region:GetObjectType() == "FontString" and QI and QI.inkOn[region] and QI.PlainText then
+			pcall(QI.PlainText, region)
+		end
+	end
+end
+
+local function SkinTextButton(button)
+	if not button then
+		return
+	end
+	local QI = MelloUI.QuestInk
+	if QI then
+		QI.noInk[button] = true
+	end
+	PlainLabels(button)
+	if repOf[button] ~= nil then
+		return
+	end
+	local ok, rep = pcall(Kit.SkinRedButton, Kit, button, Replace)
+	if ok and rep then
+		return
+	end
+	local anchor, extra, anchorRank = nil, {}, 99
+	local RANK = { BACKGROUND = 1, BORDER = 2, ARTWORK = 3, OVERLAY = 4 }
+	for _, region in ipairs({ button:GetRegions() }) do
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
+			local rank = RANK[region:GetDrawLayer()]
+			if rank and rank < anchorRank then
+				if anchor then
+					extra[#extra + 1] = anchor
+				end
+				anchor, anchorRank = region, rank
+			else
+				extra[#extra + 1] = region
+			end
+		end
+	end
+	for _, get in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+		local tex = button[get] and button[get](button)
+		if tex and tex ~= anchor then
+			extra[#extra + 1] = tex
+		end
+	end
+	repOf[button] = anchor and Replace(anchor, { as = "_128-RedButton-Center", rect = button, button = button, alsoFade = extra }) or false
+	local label = button.GetFontString and button:GetFontString()
+	if repOf[button] and label and label.GetDrawLayer then
+		local layer, sub = label:GetDrawLayer()
+		labelLayers[label] = { layer, sub }
+		if active then
+			pcall(label.SetDrawLayer, label, "OVERLAY", 7)
+		end
+	end
+end
+
+local function RaiseLabels(on)
+	for label, was in pairs(labelLayers) do
+		if on then
+			pcall(label.SetDrawLayer, label, "OVERLAY", 7)
+		elseif was[1] then
+			pcall(label.SetDrawLayer, label, was[1], was[2] or 0)
+		end
+	end
+end
+
+-- Buttons the kit's sweep put on a red plate (any this client adds to the
+-- dialogs): their labels kept out of the ink too
+local function MarkRedButtons(root, depth)
+	if not root or depth > 8 then
+		return
+	end
+	local QI = MelloUI.QuestInk
+	for _, child in ipairs({ root:GetChildren() }) do
+		local rep = repOf[child]
+		if type(rep) == "table" and RED_PLATES[rep.key] and QI and not QI.noInk[child] then
+			QI.noInk[child] = true
+			PlainLabels(child)
+		end
+		MarkRedButtons(child, depth + 1)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Item buttons (the required items, the rewards, a spell or reputation
+-- reward: LargeItemButtonTemplate and its kin -- an Icon and a NameFrame
+-- plate with the name on it). The icon in every window's Button Border rim
+-- (R1), hugging it as the professions' reagents do (its edge 2 px under the
+-- rim's inner edge, on the icon's centre; the game's quality border stays
+-- inside, as the bags'), the name plate on the plain gemless plate from the
+-- icon's right edge to the button's, the icon's height. The name and the
+-- count keep their colours: they lie on a plate, not on the paper (QuestInk
+-- skips a string whose button shows a rep).
+--------------------------------------------------------------------------------
+local function IconOf(button)
+	local icon = button.Icon or button.icon
+	local name = NameOf(button)
+	if not icon and name then
+		icon = _G[name .. "IconTexture"]
+	end
+	if icon and icon.GetObjectType and icon:GetObjectType() == "Texture" then
+		return icon
+	end
+	return nil
+end
+
+local function NameFrameOf(button)
+	local nf = button.NameFrame
+	local name = NameOf(button)
+	if not nf and name then
+		nf = _G[name .. "NameFrame"]
+	end
+	if nf and nf.GetObjectType and nf:GetObjectType() == "Texture" then
+		return nf
+	end
+	return nil
+end
+
+local function FitIconRim(button)
+	local rep = repOf[button]
+	local rim = type(rep) == "table" and rep.object
+	local icon = IconOf(button)
+	if not (rim and rim.base and icon) then
+		return
+	end
+	local name = rim.base .. "_normal"
+	local p = Kit:Piece(name)
+	local l, r, t, b = Kit:Insets(name, 1)
+	local ok, iw, ih = pcall(icon.GetSize, icon)
+	if not (p and l and ok and iw and ih) or Secret(iw) or Secret(ih) or iw <= 4 or ih <= 4 then
+		return
+	end
+	rim:ClearAllPoints()
+	rim:SetPoint("CENTER", icon, "CENTER")
+	rim:SetSize((iw - 4) * p.w / (p.w - l - r), (ih - 4) * p.h / (p.h - t - b))
+end
+
+local plateRectOf = setmetatable({}, { __mode = "k" })   -- [reward button] = its plate's rect frame
+-- the plate's width: from the icon's right edge to the button's (both of the
+-- button's own frame, so one scale)
+local function FitNamePlate(button)
+	local rect, icon = plateRectOf[button], IconOf(button)
+	if not (rect and icon) then
+		return
+	end
+	local okB, br = pcall(button.GetRight, button)
+	local okI, ir = pcall(icon.GetRight, icon)
+	if okB and okI and br and ir and not Secret(br) and not Secret(ir) and br - ir > 1 then
+		rect:SetWidth(br - ir)
+	end
+end
+
+local function SkinItemButton(button)
+	if repOf[button] ~= nil then
+		return
+	end
+	local icon, nameFrame = IconOf(button), NameFrameOf(button)
+	if not (icon and nameFrame) then
+		repOf[button] = false
+		return
+	end
+	local rim = Replace(icon, { as = Kit:ButtonRimRule(), button = button, parent = button, noFade = true })
+	repOf[button] = rim or false
+	if rim then
+		itemButtons[#itemButtons + 1] = button
+		Kit:RegisterButtonRim(button)
+		FitIconRim(button)
+	end
+	local rect = CreateFrame("Frame", nil, button)
+	rect:EnableMouse(false)
+	rect:SetPoint("TOPLEFT", icon, "TOPRIGHT")
+	rect:SetPoint("BOTTOMLEFT", icon, "BOTTOMRIGHT")
+	rect:SetWidth(1)
+	plateRectOf[button] = rect
+	plateOf[button] = Replace(nameFrame, { as = "UI-QuestItemNameFrame", rect = rect }) or false
+	FitNamePlate(button)
+	Perf.HookScript(button, "OnShow", function(b)
+		if active then
+			FitIconRim(b)
+			FitNamePlate(b)
+		end
+	end)
+end
+
+-- every item button under `root`, found by what it is (the reward buttons
+-- and the spell / reputation rewards are made on demand)
+local function SkinItemsIn(root, depth)
+	depth = depth or 0
+	if not root or depth > 8 or not root.GetChildren then
+		return
+	end
+	local QI = MelloUI.QuestInk
+	for _, child in ipairs({ root:GetChildren() }) do
+		if child:GetObjectType() == "Button" and repOf[child] == nil and IconOf(child) and NameFrameOf(child) then
+			SkinItemButton(child)
+		elseif not (QI and QI.noInk[child]) then
+			SkinItemsIn(child, depth + 1)
+		end
+	end
+end
+
+-- a new Button Border has a new opening: every rim fitted again
+Kit:OnBorderChanged("button", function()
+	for _, button in ipairs(itemButtons) do
+		FitIconRim(button)
+	end
+end)
+
+--------------------------------------------------------------------------------
+-- The ink (the parchment rule, user 2026-09-23 / 24: text on parchment is
+-- dark ink, meaningful colours as dark shades of their hue, button labels
+-- excepted): a QuestInk surface over the pages of every window whose page is
+-- on the kit's parchment, inked with the sheet inks (the page is the vellum
+-- in the kit's one parchment tone, as a sheet). A quest title or a gossip
+-- option is a button whose label lies on the paper: it is inked, though the
+-- default rules leave a string beside an icon alone.
+--------------------------------------------------------------------------------
+local function InkOn()
+	return active and skin ~= nil and skin.paper == true
+end
+
+local function InkRoots()
+	local list = {}
+	if skin then
+		local qwin = _G.QuestFrame and skin.windows[_G.QuestFrame]
+		if qwin and qwin.paper then
+			for _, name in ipairs(QUEST_PANELS) do
+				if _G[name] then
+					list[#list + 1] = _G[name]
+				end
+			end
+		end
+		local gf = _G.GossipFrame
+		local gwin = gf and skin.windows[gf]
+		if gwin and gwin.paper and gf.GreetingPanel then
+			list[#list + 1] = gf.GreetingPanel
+		end
+	end
+	return unpack(list)
+end
+
+local function InkSkip(fs)
+	local QI = MelloUI.QuestInk
+	local p = fs.GetParent and fs:GetParent()
+	if p and p.GetObjectType and p:GetObjectType() == "Button" and not (QI and QI.noInk[p]) and repOf[p] == nil
+		and p.GetFontString and p:GetFontString() == fs then
+		return false
+	end
+	return QI.DefaultSkip(fs)
+end
+
+local function Surface()
+	local QI = MelloUI.QuestInk
+	if not (QI and QI.Surface) then
+		return
+	end
+	if not surfaceMade then
+		surfaceMade = true
+		QI.Surface(AREA, { on = InkOn, sheet = true, skip = InkSkip, roots = InkRoots })
+	else
+		QI.RefreshSurface(AREA)
+	end
+end
+
+-- The quest text shown in the quest log instead (QuestInfo_Display parents
+-- the shared frames there): its strings in the game's colours again, as the
+-- quest log draws them
+local function PlainQuestInfo()
+	local QI = MelloUI.QuestInk
+	if not (QI and QI.PlainText) then
+		return
+	end
+	local function Walk(frame, depth)
+		if not frame or depth > 8 then
+			return
+		end
+		for _, region in ipairs({ frame:GetRegions() }) do
+			if region:GetObjectType() == "FontString" and QI.inkOn[region] then
+				QI.PlainText(region)
+			end
+		end
+		for _, child in ipairs({ frame:GetChildren() }) do
+			Walk(child, depth + 1)
+		end
+	end
+	for _, name in ipairs(QUEST_INFO) do
+		Walk(_G[name], 0)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The edges (0.20.1, the user's pick "Mixed": the dialogs move their text in, as the map's quest log; the merchant
+-- wears the rail round it, MerchantPanel). With the double rail that lies over the content: each text area starts
+-- clear of the left rail, measured from its content's own margin -- a quest page's lines have their own widths, so
+-- its area moves without narrowing (the scroll bar comes back clear of the right rail, still clear of the text); the
+-- gossip list lays its rows to its width, so it narrows, its right edge kept (Kit:Shrink) -- its scroll bar clear of
+-- the right rail, the Accept / Decline / Continue / Complete / Goodbye buttons clear of the side and bottom rails
+-- (Kit:ClearRails), the text areas and the page ending above them. Laid on each show of the window and its panels
+-- (RefreshWindow); without the skin, the game's own places back.
+--------------------------------------------------------------------------------
+local EDGE_GAP = 2   -- the text areas and the page above the buttons (the game's own: the areas end 28 up, the buttons 26)
+-- the text areas: their content's margin from their left edge (QuestFrame.xml: the lines at 10, the greeting's title
+-- rows' icons at 3; GossipFrame.xml: the option rows' icons at 3), and whether the area lays its rows to its width
+local QUEST_AREAS = { { "QuestGreetingScrollFrame", 3 }, { "QuestDetailScrollFrame", 10 }, { "QuestProgressScrollFrame", 10 },
+	{ "QuestRewardScrollFrame", 10 } }
+
+-- the window's text areas { region, margin, narrows, bar } and its buttons
+local function EdgeParts(frame)
+	local areas, buttons = {}, {}
+	if frame == _G.QuestFrame then
+		for _, entry in ipairs(QUEST_AREAS) do
+			local sf = _G[entry[1]]
+			if sf then
+				areas[#areas + 1] = { sf, entry[2], false, sf.ScrollBar }
+			end
+		end
+		for _, name in ipairs(QUEST_BUTTONS) do
+			if _G[name] then
+				buttons[#buttons + 1] = _G[name]
+			end
+		end
+	else
+		local gp = frame.GreetingPanel
+		if gp and gp.ScrollBox then
+			areas[1] = { gp.ScrollBox, 3, true, gp.ScrollBar }
+		end
+		buttons[1] = gp and gp.GoodbyeButton or nil
+	end
+	return areas, buttons
+end
+
+local function LayEdges(frame)
+	local win = skin and skin.windows[frame]
+	if not (win and Kit.RailEdges) then
+		return
+	end
+	local areas, buttons = EdgeParts(frame)
+	-- back on the game's own places first (measured there)
+	for _, a in ipairs(areas) do
+		Kit:Nudge(a[1], "rails", 0, 0)
+		Kit:Shrink(a[1], "rails", 0, 0)
+		if a[4] then
+			Kit:Nudge(a[4], "rails", 0, 0)
+		end
+	end
+	for _, button in ipairs(buttons) do
+		Kit:Nudge(button, "rails", 0, 0)
+	end
+	win.pageLift = nil
+	local rail = active and win.rail
+	local left = rail and Kit:RailEdges(rail)
+	if left then
+		-- the buttons clear of the rails, and the highest one's top
+		local top
+		for _, button in ipairs(buttons) do
+			if button:IsVisible() then
+				Kit:ClearRails(rail, button)
+				local _, _, _, t = ScreenRect(button)
+				if t and (not top or t > top) then
+					top = t
+				end
+			end
+		end
+		for _, a in ipairs(areas) do
+			local area = a[1]
+			local L, B = ScreenRect(area)
+			if L and area:IsVisible() then
+				local s = MelloUI.Safe.Number(area:GetEffectiveScale()) or 1
+				local dx = math.max(0, (left + Kit.RAIL_GAP) - (L + a[2] * s)) / s
+				local dh = (top and B < top + EDGE_GAP * s) and ((top + EDGE_GAP * s) - B) / s or 0
+				if dx > 0 then
+					Kit:Nudge(area, "rails", dx, 0)
+				end
+				if dh > 0 or (a[3] and dx > 0) then
+					Kit:Shrink(area, "rails", a[3] and dx or 0, dh)
+				end
+				if a[4] then
+					Kit:ClearRails(rail, a[4], nil, "x")
+				end
+			end
+		end
+		-- the page above the buttons
+		local page = win.pageTarget
+		local _, pb = ScreenRect(page or frame)
+		if page and top and pb and pb < top + EDGE_GAP then
+			win.pageLift = (top + EDGE_GAP - pb) / (MelloUI.Safe.Number(page:GetEffectiveScale()) or 1)
+		end
+	end
+	FitPageRect(win)
+end
+
+--------------------------------------------------------------------------------
+-- Building the skin
+--------------------------------------------------------------------------------
+local function RefreshWindow(frame)
+	local win = active and skin and skin.windows[frame]
+	if not win then
+		return
+	end
+	LayEdges(frame)
+	FitPageRect(win)
+	UpdatePortrait(win)
+	PlaceTitles(win, true)
+	for _, f in ipairs(skin.followers) do
+		f.rep:SetShown(f.region:IsShown())
+	end
+	-- controls made since (pooled rewards, a scroll bar laid out late)
+	SkinItemsIn(frame)
+	Kit:SweepControls(frame, Replace, skin)
+	MarkRedButtons(frame, 0)
+	if surfaceMade then
+		MelloUI.QuestInk.RefreshSurface(AREA)
+	end
+end
+
+-- a window shown: dressed again now and once more when the game has laid it
+-- out (the gossip window sets its page's picture after it shows)
+local function OnWindowShown(frame)
+	RefreshWindow(frame)
+	if C_Timer and C_Timer.After then
+		C_Timer.After(0, function()
+			RefreshWindow(frame)
+		end)
+	end
+end
+
+-- The shell every dialog shares: rail, page stone, ring, title, close.
+local function BuildShell(frame, unit)
+	local win = { frame = frame, unit = unit, followers = skin.followers, titleMoved = {}, titleFaded = {} }
+	skin.windows[frame] = win
+	local pc = frame.PortraitContainer
+	local portrait = (pc and pc.portrait) or (frame == _G.QuestFrame and _G.QuestFramePortrait) or nil
+	local first = #skin.reps + 1
+	win.ring = Kit:SkinWindowShell(frame, Replace, win, { portrait = portrait, bg = "UI-Background-Rock" })
+	for i = first, #skin.reps do
+		if skin.reps[i].key == "TitleBar" then
+			win.title = skin.reps[i]
+		elseif skin.reps[i].key == "NineSlicePanelTemplate" then
+			win.rail = skin.reps[i]   -- (the edges' measure: LayEdges)
+		end
+	end
+	if win.ring then
+		SkinPortrait(win, frame)
+	end
+	win.pageRect = CreateFrame("Frame", nil, frame)
+	win.pageRect:EnableMouse(false)
+	return win
+end
+
+local function BuildQuest(qf)
+	local win = BuildShell(qf, "questnpc")
+	local detail = _G.QuestFrameDetailPanel
+	win.pageBg = detail and (detail.Bg or _G.QuestFrameDetailPanelBg) or nil
+	win.pageArea = _G.QuestDetailScrollFrame or detail
+	FitPageRect(win)
+	for _, name in ipairs(QUEST_PANELS) do
+		local panel = _G[name]
+		if panel then
+			local bg = panel.Bg or _G[name .. "Bg"]
+			DressPage(win, bg, PanelArt(panel, bg))
+			Perf.HookScript(panel, "OnShow", function()
+				if active then
+					OnWindowShown(qf)
+				end
+			end)
+		end
+	end
+	DressInset(win, qf)
+	for _, name in ipairs(QUEST_BUTTONS) do
+		SkinTextButton(_G[name])
+	end
+	-- the greeting's line between the current and the available quests,
+	-- shown by the game only when both are listed
+	local brk = _G.QuestGreetingFrameHorizontalBreak
+	if brk then
+		Follow(Replace(brk, { as = "UI-HorizontalBreak" }), brk)
+	end
+	for _, name in ipairs(QUEST_PANELS) do
+		SkinItemsIn(_G[name])
+	end
+	Kit:SweepControls(qf, Replace, skin)
+	MarkRedButtons(qf, 0)
+	-- (the window's own OnShow is hooked at enable: HookWindows, below)
+	if type(_G.QuestFrame_SetPortrait) == "function" then
+		hooksecurefunc("QuestFrame_SetPortrait", function()
+			if active then
+				UpdatePortrait(win)
+				PlaceTitles(win, true)
+			end
+		end)
+	end
+end
+
+local function BuildGossip(gf)
+	local win = BuildShell(gf, "npc")
+	local gp = gf.GreetingPanel
+	win.pageBg = gf.Background
+	win.pageArea = gp and gp.ScrollBox or gp
+	FitPageRect(win)
+	DressPage(win, gf.Background, PanelArt(gp, nil))
+	DressInset(win, gf)
+	SkinTextButton(gp and gp.GoodbyeButton)
+	Kit:SweepControls(gf, Replace, skin)
+	MarkRedButtons(gf, 0)
+	-- (the window's own OnShow is hooked at enable: HookWindows, below)
+	-- the game sets the portrait and the page's picture in its own update
+	-- after the window shows: follow them (post-hooks on the instance; the
+	-- update also runs on quest log changes, so only while it is shown)
+	for _, method in ipairs({ "HandleShow", "Update" }) do
+		if type(gf[method]) == "function" then
+			hooksecurefunc(gf, method, function()
+				if active and gf:IsShown() then
+					RefreshWindow(gf)
+				end
+			end)
+		end
+	end
+end
+
+local hooked = false
+local function Hook()
+	if hooked then
+		return
+	end
+	hooked = true
+	-- the quest text frames go where the game shows them: dressed and inked
+	-- on the dialog's page, in the game's colours in the quest log
+	if type(_G.QuestInfo_Display) == "function" then
+		hooksecurefunc("QuestInfo_Display", function(_, parentFrame)
+			if not active then
+				return
+			end
+			local qf = _G.QuestFrame
+			if qf and IsUnder(parentFrame, qf) then
+				-- (the dialog's parts only once the dialog itself is built)
+				if skin.windows[qf] then
+					SkinItemsIn(parentFrame)
+					if surfaceMade then
+						MelloUI.QuestInk.RefreshSurface(AREA)
+					end
+				end
+			else
+				PlainQuestInfo()
+			end
+		end)
+	end
+end
+
+-- (user, 2026-09-24: dress rarely used windows on first open): a dialog is
+-- built the first time it shows -- from its OnShow hook (HookWindows, below),
+-- before its first frame is drawn -- never at login; the quest frame and the
+-- gossip window each on their own first show. What was built is kept for the
+-- session. True once anything is built.
+local function Build()
+	local qf, gf = _G.QuestFrame, _G.GossipFrame
+	if not (qf or gf) or not Kit then
+		return false
+	end
+	if qf and not (skin and skin.windows[qf]) and qf:IsShown() then
+		skin = skin or { reps = {}, followers = {}, windows = {} }
+		BuildQuest(qf)
+	end
+	if gf and not (skin and skin.windows[gf]) and gf:IsShown() then
+		skin = skin or { reps = {}, followers = {}, windows = {} }
+		BuildGossip(gf)
+	end
+	if not skin then
+		return false
+	end
+	Hook()
+	return true
+end
+
+local function Activate()
+	if active or not Build() then
+		return
+	end
+	active = true
+	for _, rep in ipairs(skin.reps) do
+		rep:Enable()
+	end
+	for _, f in ipairs(skin.followers) do
+		f.rep:SetShown(f.region:IsShown())
+	end
+	RaiseLabels(true)
+	for frame, win in pairs(skin.windows) do
+		FitPageRect(win)
+		PlaceTitles(win, true)
+		if frame:IsShown() then
+			UpdatePortrait(win)
+			LayEdges(frame)
+		end
+	end
+	Surface()
+end
+
+local function Deactivate()
+	if not active then
+		return
+	end
+	active = false
+	for _, rep in ipairs(skin.reps) do
+		rep:Disable()
+	end
+	RaiseLabels(false)
+	for frame, win in pairs(skin.windows) do
+		PlaceTitles(win, false)
+		LayEdges(frame)   -- (the game's own places back)
+	end
+	-- every string back in the game's colours (the surface is off now)
+	Surface()
+	PlainQuestInfo()
+end
+
+-- A dialog's show: dressed there and then on its first (Build makes only
+-- what shows; while the kit is on its pieces are enabled as they are made),
+-- so the first frame it draws is dressed -- also in combat: the build makes
+-- frames and textures of ours and moves only the game's own title strings,
+-- nothing protected (the dialogs were never held back for combat). The hook
+-- is installed at enable and does nothing while the module is off.
+local hookedFrames = setmetatable({}, { __mode = "k" })   -- [frame] = true: its OnShow hooked
+local function HookWindows()
+	for _, frame in ipairs({ _G.QuestFrame or false, _G.GossipFrame or false }) do
+		if frame and not hookedFrames[frame] then
+			hookedFrames[frame] = true
+			Perf.HookScript(frame, "OnShow", function()
+				if not M.isEnabled then
+					return
+				end
+				if not active then
+					Activate()
+				elseif not skin.windows[frame] then
+					-- built while the kit is on: its pieces were enabled as they
+					-- were made, before their own enable (the ring's NPC, its
+					-- disc) was chained on -- enabled once more now
+					local first = #skin.reps + 1
+					Build()
+					for i = first, #skin.reps do
+						skin.reps[i]:Enable()
+					end
+				end
+				if active and skin.windows[frame] then
+					OnWindowShown(frame)
+				end
+			end)
+		end
+	end
+end
+
+-- The dialogs load with the interface; wait for them if not. The NPC's
+-- portrait is drawn again when the game's changes.
+local events = CreateFrame("Frame")
+Perf.SetScript(events, "OnEvent", function(_, event)
+	if event == "ADDON_LOADED" or event == "PLAYER_LOGIN" then
+		if M.isEnabled and not active and (_G.QuestFrame or _G.GossipFrame) then
+			events:UnregisterEvent("ADDON_LOADED")
+			events:UnregisterEvent("PLAYER_LOGIN")
+			HookWindows()
+			Activate()
+		end
+		return
+	end
+	if active and skin then
+		for frame, win in pairs(skin.windows) do
+			if frame:IsShown() then
+				UpdatePortrait(win)
+			end
+		end
+	end
+end)
+pcall(events.RegisterEvent, events, "UNIT_PORTRAIT_UPDATE")
+pcall(events.RegisterEvent, events, "PORTRAITS_UPDATED")
+
+function M:OnEnable(db)
+	self.db = db
+	if _G.QuestFrame or _G.GossipFrame then
+		HookWindows()
+		Activate()
+	else
+		events:RegisterEvent("ADDON_LOADED")
+		events:RegisterEvent("PLAYER_LOGIN")
+	end
+end
+
+function M:OnDisable()
+	events:UnregisterEvent("ADDON_LOADED")
+	events:UnregisterEvent("PLAYER_LOGIN")
+	Deactivate()
+end
+
+--------------------------------------------------------------------------------
+-- /questdialogdump [gossip]: the quest frame (or the gossip window) -- its
+-- regions and children, the page, portrait, title, buttons, item buttons,
+-- scroll bars and inked strings found and dressed; opens the copy window.
+--------------------------------------------------------------------------------
+local function Num(v)
+	if v == nil then
+		return "nil"
+	end
+	if Secret(v) then
+		return "[secret]"
+	end
+	return type(v) == "number" and string.format("%.0f", v) or tostring(v)
+end
+
+local function Size(obj)
+	local ok, w, h = pcall(obj.GetSize, obj)
+	if not ok then
+		return "?"
+	end
+	return Num(w) .. " x " .. Num(h)
+end
+
+local function RepState(rep)
+	if rep == nil then
+		return "not looked at"
+	elseif rep == false then
+		return "not dressed"
+	end
+	local shown = rep.object and rep.object.IsShown and rep.object:IsShown()
+	return tostring(rep.key) .. (shown and " (shown)" or " (hidden)")
+end
+
+local function DumpFrame(label, frame)
+	MelloUI:Print("%s: shown %s, size %s, level %s, strata %s", label, tostring(frame:IsShown()), Size(frame),
+		Num(frame:GetFrameLevel()), tostring(frame:GetFrameStrata()))
+	for _, region in ipairs({ frame:GetRegions() }) do
+		local kind = region:GetObjectType()
+		local layer = region.GetDrawLayer and region:GetDrawLayer() or "?"
+		local what = ""
+		if kind == "Texture" then
+			what = (pieceOf[region] and "kit " or "") .. tostring(Kit:ArtKey(region) or "?")
+		elseif kind == "FontString" then
+			local text, secret = TextOf(region)
+			what = "text: " .. (secret and "[secret]" or tostring(text or ""):sub(1, 40))
+		end
+		MelloUI:Print("  region %s %s %s %s alpha %s shown %s faded %s", kind, tostring(NameOf(region) or ""), tostring(layer), what,
+			Num(region:GetAlpha()), tostring(region:IsShown()), tostring(Kit.faded[region] == true))
+	end
+	for _, child in ipairs({ frame:GetChildren() }) do
+		MelloUI:Print("  child %s %s layout %s level %s alpha %s shown %s kit %s", tostring(child:GetObjectType()),
+			tostring(NameOf(child) or (child.GetDebugName and child:GetDebugName()) or "?"), tostring(child.layoutType),
+			Num(child:GetFrameLevel()), Num(child:GetAlpha()), tostring(child:IsShown()), RepState(repOf[child]))
+	end
+end
+
+local function DumpButtons(root, depth, counts)
+	if not root or depth > 8 then
+		return
+	end
+	for _, child in ipairs({ root:GetChildren() }) do
+		if child:GetObjectType() == "Button" then
+			local label = child.GetFontString and child:GetFontString()
+			local text = label and TextOf(label)
+			local rep = repOf[child]
+			if IconOf(child) and NameFrameOf(child) then
+				counts.items = counts.items + 1
+				local name = rawget(child, "Name") or (NameOf(child) and _G[NameOf(child) .. "Name"])
+				MelloUI:Print("  item %s shown %s rim %s plate %s name %s", tostring(NameOf(child) or "?"), tostring(child:IsShown()),
+					RepState(rep), RepState(plateOf[child]), tostring(name and name.GetText and TextOf(name) or ""))
+			elseif rep ~= nil or text then
+				MelloUI:Print("  button %s shown %s plate %s noInk %s label %s", tostring(NameOf(child) or "?"), tostring(child:IsShown()),
+					RepState(rep),
+					tostring(MelloUI.QuestInk ~= nil and MelloUI.QuestInk.noInk[child] == true), tostring(text or ""):sub(1, 30))
+			end
+		end
+		if child.Track and child.Track.Thumb and child.Back and child.Forward then
+			counts.bars = counts.bars + 1
+			MelloUI:Print("  scroll bar %s shown %s kit %s", tostring(NameOf(child) or "?"), tostring(child:IsShown()), RepState(repOf[child]))
+		elseif child.ScrollUpButton or child.ScrollDownButton then
+			MelloUI:Print("  scroll bar (old layout, not dressed) %s", tostring(NameOf(child) or "?"))
+		end
+		DumpButtons(child, depth + 1, counts)
+	end
+end
+
+SLASH_MELLOQUESTDIALOGDUMP1 = "/questdialogdump"
+SlashCmdList.MELLOQUESTDIALOGDUMP = function(msg)
+	msg = (msg or ""):lower()
+	local gossip = msg == "gossip"
+	local frame = gossip and _G.GossipFrame or _G.QuestFrame
+	local label = gossip and "GossipFrame" or "QuestFrame"
+	MelloUI:ClearLog()
+	if not frame then
+		MelloUI:Print("/questdialogdump: no %s on this client", label)
+		MelloUI:ShowLog("questdialogdump " .. msg)
+		return
+	end
+	local win = skin and skin.windows[frame]
+	MelloUI:Print("Quest dialogs kit: module %s, dressed %s, built %s, page on parchment %s", tostring(M.isEnabled == true),
+		tostring(active), tostring(win ~= nil), tostring(win and win.paper or false))
+	if not win then
+		MelloUI:Print("%s: not dressed yet (the kit dresses it on its first open this session)", label)
+	end
+	DumpFrame(label, frame)
+	if win then
+		MelloUI:Print("shell: ring %s, title plate %s, NPC portrait %s (unit %s)", RepState(win.ring), RepState(win.title),
+			win.icon and tostring(win.icon:GetTexture()) or "none", tostring(win.unit))
+		for _, t in ipairs(win.portraits or {}) do
+			local ok, file = pcall(t.GetTexture, t)
+			MelloUI:Print("  game portrait %s art %s alpha %s faded %s", tostring(NameOf(t) or "?"), ok and Num(file) or "?",
+				Num(t:GetAlpha()), tostring(Kit.faded[t] == true))
+		end
+		local list, own = TitleStrings(frame)
+		local ownText, ownSecret = nil, false
+		if own then
+			ownText, ownSecret = TextOf(own)
+		end
+		MelloUI:Print("  title container text %s", ownSecret and "[secret]" or tostring(ownText or "(empty)"))
+		for _, fs in ipairs(list) do
+			local text, secret = TextOf(fs)
+			MelloUI:Print("  other title string %s text %s moved %s faded %s", tostring(NameOf(fs) or "?"),
+				secret and "[secret]" or tostring(text or "(empty)"), tostring(win.titleMoved[fs] ~= nil), tostring(win.titleFaded[fs] == true))
+		end
+		MelloUI:Print("page: rect %s on %s; game page %s (%s, size %s); inset %s", Size(win.pageRect),
+			win.pageTarget == win.pageBg and "the game's page" or "the text area", tostring(win.pageBg and NameOf(win.pageBg) or "none"),
+			tostring(win.pageBg and Kit:ArtKey(win.pageBg) or "?"), win.pageBg and Size(win.pageBg) or "-", RepState(frame.Inset and repOf[frame.Inset]))
+		if not gossip then
+			for _, name in ipairs(QUEST_PANELS) do
+				local panel = _G[name]
+				if panel then
+					local bg = panel.Bg or _G[name .. "Bg"]
+					MelloUI:Print("  %s shown %s page %s art %s alpha %s", name, tostring(panel:IsShown()), bg and "found" or "none",
+						tostring(bg and Kit:ArtKey(bg) or "?"), bg and Num(bg:GetAlpha()) or "-")
+				end
+			end
+		end
+	end
+	local counts = { items = 0, bars = 0 }
+	DumpButtons(frame, 0, counts)
+	MelloUI:Print("item buttons %d, scroll bars %d", counts.items, counts.bars)
+	local QI = MelloUI.QuestInk
+	local def = QI and QI.surfaces and QI.surfaces[AREA]
+	if def then
+		local n = 0
+		for fs in pairs(def.strings) do
+			if IsUnder(fs, frame) then
+				n = n + 1
+				if n <= 30 then
+					local text, secret = TextOf(fs)
+					local r, g, b = fs:GetTextColor()
+					MelloUI:Print("  ink %s %s colour %s %s %s: %s", tostring(QI.inkOn[fs] == true), tostring(NameOf(fs) or ""),
+						Num(r and r * 255), Num(g and g * 255), Num(b and b * 255), secret and "[secret]" or tostring(text or ""):sub(1, 40))
+				end
+			end
+		end
+		MelloUI:Print("ink surface: on %s, strings in this window %d", tostring(def.active == true), n)
+	else
+		MelloUI:Print("ink surface: not made")
+	end
+	MelloUI:ShowLog("questdialogdump " .. msg)
+end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { plateRectOf = plateRectOf }

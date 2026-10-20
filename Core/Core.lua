@@ -304,7 +304,7 @@ MelloUI.Meaning = {
 	threatAggro = { 0.816, 0.188, 0.118, hex = "D0301E" },   -- #D0301E, red (meaning colour)
 	-- (0.16.0, the user's pick C of bag_family_sketch: a special bag's slots
 	-- wear their bag type's colour on the rim) [bag family bit] = colour;
-	-- Modules/BackpackPanel.lua reads it
+	-- MelloUI_Oldschool/Modules/BackpackPanel.lua reads it
 	bagFamily = {
 		[0x0001] = Hex("#E1C850"),   -- quiver (meaning colour)
 		[0x0002] = Hex("#E1C850"),   -- ammo pouch (meaning colour)
@@ -3428,6 +3428,61 @@ MelloUI.Features = {
 	Route = { addon = "MelloUI_Route", title = "Route" },
 	VoiceOver = { addon = "MelloUI_VoiceOver", title = "Voice Over" },
 	PersonalDisplay = { addon = "MelloUI_PersonalDisplay", title = "Personal Display" },
+	-- (one look, stage I) the painted reskin, MelloUI_Oldschool: every module
+	-- of its painted skins (its TOC's '## X-MelloUI-Feature:' line names them)
+	CharacterPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	GameMenuPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	DialogPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	MacroPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	EditModePanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	AddonListPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	OptionsPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	QuestDialogPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	MerchantPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	AuctionHousePanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	TrainerPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	TabardPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	TaxiPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	MailPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	BankPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	GuildBankPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	TradePanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	LootPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	ItemTextPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	CharterPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	InspectPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	DressUpPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	BarberShopPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	SocketingPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	StablePanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	PvPPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	BattlefieldMapPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	ReadyPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	StackSplitPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	ColorPickerPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	CalendarPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	ClockPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	ChannelPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	HelpPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	ProfessionsPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	SpellBookPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	LegacyPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	QuestLogPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	GuildPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	GroupFinderPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	CollectionsPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	UnitFramePanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	CastBarPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	RaidFramePanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	ActionBarPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	BackpackPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	MinimapKit = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	TrackerPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	SocialPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	ChatPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	DamageMeterPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	TooltipPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
+	NameplatePanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
 }
 
 -- a feature of its own addon that is not loaded (turned off in AddOns)
@@ -4322,7 +4377,7 @@ do
 			end
 		end,
 		-- one-look D7: the minimap's painted half is a module of its own,
-		-- MinimapKit (Modules/MinimapKit.lua, Oldschool's), and MinimapPanel
+		-- MinimapKit (MelloUI_Oldschool/Modules/MinimapKit.lua, Oldschool's), and MinimapPanel
 		-- is MelloUI's minimap for everyone (the user, 2026-10-15: option b).
 		-- The Painted Skin's switch moved with the painted half:
 		-- UIModifications.MinimapPanel -> UIModifications.MinimapKit (a

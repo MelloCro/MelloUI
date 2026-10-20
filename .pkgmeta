@@ -13,6 +13,10 @@ ignore:
   - .pkgmeta
   - .luacheckrc
   - CHANGELOG.md
+  # MelloUI_Oldschool, the painted reskin, is a package of its own (its TOC's
+  # X-MelloUI-Package: separate; its own CurseForge project): the Release
+  # workflow's oldschool job zips it, never inside or beside MelloUI's
+  - MelloUI_Oldschool
 
 enable-nolib-creation: no
 

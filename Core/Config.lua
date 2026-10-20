@@ -6644,7 +6644,7 @@ end
 --   * made at the menu's first show with the mouse UI, never at login; never
 --     made or shown while the game's Gamepad UI is on (there: /mello)
 --   * centred under the menu; the Game Menu Panel lays it on its MelloUI
---     plate (Modules/GameMenuPanel.lua, Buttons), as it did the menu's own,
+--     plate (MelloUI_Oldschool/Modules/GameMenuPanel.lua, Buttons), as it did the menu's own,
 --     and there, inside the menu, puts it one strata up: a raise of the
 --     (toplevel) menu while it shows does not carry the button along
 --   * at the menu's alpha, which Windows Fade In eases in as it opens

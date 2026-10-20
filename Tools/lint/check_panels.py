@@ -83,11 +83,11 @@ CEILINGS = {
     "colour:Core/Reminders.lua": 0,
     "colour:Modules/KitShade.lua": 0,
     "colour:Modules/KitWindow.lua": 0,
-    "colour:Modules/ActionBarPanel.lua": 0,
+    "colour:MelloUI_Oldschool/Modules/ActionBarPanel.lua": 0,
     # (one look, stage D4: the backdrops' core half and the core's action bars, new own files)
     "colour:Core/Backdrop.lua": 0,
     "colour:Modules/ActionBars.lua": 0,
-    "colour:Modules/CastBarPanel.lua": 0,
+    "colour:MelloUI_Oldschool/Modules/CastBarPanel.lua": 0,
     "colour:Core/Installer.lua": 0,
     "colour:Core/InstallerWindow.lua": 0,
     "colour:MelloUI_Chat/Chat.lua": 0,
@@ -103,7 +103,7 @@ CEILINGS = {
     "colour:Modules/Stats.lua": 0,
     "colour:Modules/UIModifications.lua": 0,
     "colour:MelloUI_VoiceOver/VoiceOver.lua": 0,
-    "colour:Modules/WidgetPanel.lua": 0,
+    "colour:MelloUI_Oldschool/Modules/WidgetPanel.lua": 0,
     "meaning:MelloUI_Chat/Chat.lua": 17,
     "meaning:MelloUI_VoiceOver/VoiceOver.lua": 0,
     # the Gamepad UI freeze fix (0.15.0): 0 each (the tracker's right-click
@@ -134,9 +134,9 @@ CEILINGS = {
     "colour:Modules/ActionButtons.lua": 0,
 }
 
-# The painted engine (Modules/KitPainted.lua, one look stage I: cut from Kit.lua) from this line on is the kit
+# The painted engine (MelloUI_Oldschool/Modules/KitPainted.lua, one look stage I: cut from Kit.lua) from this line on is the kit
 # demo and the slice test (/kitdemo, /kitwhat, /mellokit): developer windows, not the addon's own
-KIT_DEMO = ("Modules/KitPainted.lua", "-- /kitdemo [scale]: one window with every block")
+KIT_DEMO = ("MelloUI_Oldschool/Modules/KitPainted.lua", "-- /kitdemo [scale]: one window with every block")
 
 # The Gamepad UI checks' names: the game's panel openers, its popup
 # functions (every one shows, hides, queues or defines a popup, or reads the
@@ -185,7 +185,7 @@ CHECKS = {
                       "a hand-made next-frame coalescer: Kit:NextFrame(key, fn), fn bound once"),
     "portrait-759": (r"SetSize\(w \* 0\.759", None,
                      "an inline portrait fit: Kit:FitPortrait"),
-    "medallion-to-ring": (r"MEDALLION_TO_RING *=", {"skip": ["Modules/KitPainted.lua"]},
+    "medallion-to-ring": (r"MEDALLION_TO_RING *=", {"skip": ["MelloUI_Oldschool/Modules/KitPainted.lua"]},
                           "a copy of the kit's medallion ratio: Kit:FitPortrait / the kit's own constant"),
     "fit-icon-rim": (r"^local function FitIconRim\(", None,
                      "a panel's own icon-rim fit: Kit:SlotStone / the kit's rim helpers"),
@@ -215,7 +215,7 @@ CHECKS = {
                        "a stand-in for Perf.Shared: every Perf:Scope has it (scope.Shared)"),
     "table-walk": (r"\{ *\S+:Get(?:Regions|Children)\(\) *\}", None,
                    "a table made per walk: select('#', frame:GetRegions()) and select(i, ...)"),
-    "addon-loaded": (r'RegisterEvent\("ADDON_LOADED"\)', {"only": r"^Modules/\w+Panel\.lua$"},
+    "addon-loaded": (r'RegisterEvent\("ADDON_LOADED"\)', {"only": r"^(?:MelloUI_Oldschool/)?Modules/\w+Panel\.lua$"},
                      "one more private ADDON_LOADED frame: name the addon in the registry's window.addon "
                      "(one shared load hook is audit rank 15)"),
     "window-single": (r'NineSlice[^\n]*prefix = "window/single"', None,
@@ -234,7 +234,7 @@ CHECKS = {
                       "a guard or a fallback on MelloUI.Palette: it is defined in Core.lua, which loads first"),
     # a shade partner made by hand, outside the kit and its shade system
     # (0.14.0: the nameplates' and the Route arrow's are the two left)
-    "direct-shadow": (r"Kit:Shadow(?:Nine)?\(", {"skip": ["Modules/Kit.lua", "Modules/KitPainted.lua", "Modules/KitShade.lua"]},
+    "direct-shadow": (r"Kit:Shadow(?:Nine)?\(", {"skip": ["Modules/Kit.lua", "MelloUI_Oldschool/Modules/KitPainted.lua", "Modules/KitShade.lua"]},
                       "a partner made by hand: Kit:ShadeElement(root, area):Add(...) (Modules/KitShade.lua), which "
                       "keeps the area switches, the strength and the per-frame budget"),
     # a screen rect read by hand: GetRect in a pcall, then the same region's
@@ -249,7 +249,7 @@ CHECKS = {
     # file that binds Core's maker once is passed over; so is a HUD panel
     # (its registry entry's tab = "HUD": no window the navigation opens)
     "window-createframe": (r"\bCreateFrame\(",
-                           {"only": r"^(Modules|MelloUI_\w+)/(\w+Panel|Kit|KitShade|QuestInk|QuestPages|QuestListMap|Route"
+                           {"only": r"^(?:MelloUI_Oldschool/)?(Modules|MelloUI_\w+)/(\w+Panel|Kit|KitShade|QuestInk|QuestPages|QuestListMap|Route"
                                     r"|VoiceOver|UIModifications)\.lua$",
                             "unless": [r"^local CreateFrame = MelloUI\.Safe\.CreateFrame\b", r'\btab = "HUD"']},
                            "the game's CreateFrame in a file that dresses a window: bind Core's maker once at the "

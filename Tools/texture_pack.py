@@ -301,8 +301,8 @@ STAY_TGA = [
 # not account for.
 DYNAMIC_PATHS = {
     # TextureFile(): the painted picture, or the look's ("_warm", "_bronze", "_<palette id>")
-    ("Modules/GameMenuPanel.lua", "Textures/GameMenuFrame"): GAMEMENU_ENDINGS,
-    ("Modules/GameMenuPanel.lua", "Textures/GameMenuFrame_"): tuple(e[1:] for e in GAMEMENU_ENDINGS if e),
+    ("MelloUI_Oldschool/Modules/GameMenuPanel.lua", "Textures/GameMenuFrame"): GAMEMENU_ENDINGS,
+    ("MelloUI_Oldschool/Modules/GameMenuPanel.lua", "Textures/GameMenuFrame_"): tuple(e[1:] for e in GAMEMENU_ENDINGS if e),
 }
 # Paths the Lua finishes at run time from a table's values: (the file the
 # values are written in, a pattern for a value's Media-relative path) -> the
@@ -392,7 +392,7 @@ def load_layout(path=None):
         return out
 
 
-KT_NIL = "\0nil"               # Core/KitTuning.lua's KT.NIL: "this field removed"
+KT_NIL = "\0nil"               # MelloUI_Oldschool/Core/KitTuning.lua's KT.NIL: "this field removed"
 
 
 def load_tuning():
@@ -1420,12 +1420,12 @@ def write_layout(layout, path, uvmap=None, resized=None, header=None):
 
 KIT_LUA = os.path.join(ROOT, "Modules", "Kit.lua")
 # (one look stage I: the painted engine, the tuning's home, cut from Kit.lua and loaded right after it)
-KIT_PAINTED_LUA = os.path.join(ROOT, "Modules", "KitPainted.lua")
-KIT_TUNING_LUA = os.path.join(ROOT, "Core", "KitTuning.lua")
+KIT_PAINTED_LUA = os.path.join(ROOT, "MelloUI_Oldschool", "Modules", "KitPainted.lua")
+KIT_TUNING_LUA = os.path.join(ROOT, "MelloUI_Oldschool", "Core", "KitTuning.lua")
 # (one look D1: the next-frame and combat queues and the UI scale watcher, which Kit.lua's old names point at)
 SCHEDULE_LUA = os.path.join(ROOT, "Core", "Schedule.lua")
 
-# Just enough of the client for Core/KitTuning.lua and Modules/Kit.lua to
+# Just enough of the client for MelloUI_Oldschool/Core/KitTuning.lua and Modules/Kit.lua to
 # load, and for Kit:ApplyTuning to run, in Lua 5.1: a frame method not
 # listed does nothing, a field not set is nil.
 KIT_STUBS_LUA = r'''
@@ -1523,11 +1523,11 @@ end'''
 
 
 class KitLoadError(Exception):
-    """Modules/Kit.lua (or Core/KitTuning.lua) did not load under KIT_STUBS_LUA."""
+    """Modules/Kit.lua (or MelloUI_Oldschool/Core/KitTuning.lua) did not load under KIT_STUBS_LUA."""
 
 
 def kit_tuning_session(layout_path, kit_path=None, tuning_path=None):
-    """Core/KitTuning.lua and Modules/Kit.lua loaded in Lua 5.1 (the client's
+    """MelloUI_Oldschool/Core/KitTuning.lua and Modules/Kit.lua loaded in Lua 5.1 (the client's
     Lua, where lupa has it) over the layout at `layout_path`. Returns (lua,
     session): KIT_SESSION_LUA's."""
     try:
@@ -1546,9 +1546,12 @@ def kit_tuning_session(layout_path, kit_path=None, tuning_path=None):
         if "MelloUI.Schedule" in kit_text:
             files.insert(0, (SCHEDULE_LUA, "=Core/Schedule.lua"))
         # (a Kit.lua of one look stage I or later is the core look kit: Kit:ApplyTuning is in the painted engine
-        # beside it, Modules/KitPainted.lua)
+        # beside it, MelloUI_Oldschool/Modules/KitPainted.lua)
         if "Kit.__ = {}" in kit_text:
             painted = os.path.join(os.path.dirname(kit_path), "KitPainted.lua") if kit_path else KIT_PAINTED_LUA
+            if not os.path.exists(painted):   # (stage I step 2b: in its tree's MelloUI_Oldschool/Modules)
+                painted = os.path.join(os.path.dirname(os.path.dirname(kit_path or KIT_LUA)), "MelloUI_Oldschool",
+                                       "Modules", "KitPainted.lua")
             files.append((painted, "=Modules/KitPainted.lua"))
         for path, chunk in files:
             load(open(path, encoding="utf-8").read(), chunk)("MelloUI", lua.globals().KitStubNS)

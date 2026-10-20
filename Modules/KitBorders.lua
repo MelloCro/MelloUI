@@ -48,7 +48,7 @@
 -- minimap wear it), Kit.BorderBandRail and Kit:TuckTrough -- and the Cooldown
 -- Manager Border (its kind `core = true`: UI Modifications' core settings
 -- make its row). The painted reskin's borders are their own file (one look
--- stage I: Modules/KitBordersPainted.lua, the two OLDSCHOOL blocks that were
+-- stage I: MelloUI_Oldschool/Modules/KitBordersPainted.lua, the two OLDSCHOOL blocks that were
 -- here; public tables only, two constants on Kit.__): (A) the configurator's pictures, the
 -- Button Border library, Raid Frame Border and the bar library (Unit Frame,
 -- Cast Bar, Personal Display, Swing Timer); (B) the bars' fit, the personal
@@ -106,9 +106,9 @@ Kit.BorderWeights = {
 -- a darken as the engine's vertex colour (a brightness, every channel alike)
 local DARK = { pressed = 0.72, disabled = 0.55 }
 local GLOW_ALPHA = 0.6   -- the shared glow under the mouse: the rails added again as light
--- (the two for the painted reskin's borders, Modules/KitBordersPainted.lua)
+-- (the two for the painted reskin's borders, MelloUI_Oldschool/Modules/KitBordersPainted.lua)
 Kit.__.BorderDark, Kit.__.BorderGlowAlpha = DARK, GLOW_ALPHA
--- ONELOOK HEADER END (the painted reskin's borders, Modules/KitBordersPainted.lua, use only public tables)
+-- ONELOOK HEADER END (the painted reskin's borders, MelloUI_Oldschool/Modules/KitBordersPainted.lua, use only public tables)
 
 -- The square rows' choices, the configurator's pictures included (`style`
 -- the library's id; `piece` the picture's master where there is one)
@@ -749,7 +749,7 @@ function Border:SetLit(hover, pressed, disabled)
 	ShowParts(self.glow, self.shown and state == "hover")
 end
 
--- (the painted reskin's borders, part A: Modules/KitBordersPainted.lua, one look stage I)
+-- (the painted reskin's borders, part A: MelloUI_Oldschool/Modules/KitBordersPainted.lua, one look stage I)
 
 -- (0.20.1) A bar's library border fitted to the bar as the bracket is (Kit.lua's bar Refit asks again on every
 -- refit): its band the bracket's share of the bar's height, centred; its rails a quarter of that band at most, never
@@ -776,7 +776,7 @@ function Kit:TuckTrough(trough, rect, border, l, r, t, b)
 	Kit:Retile(trough)
 end
 
--- (the painted reskin's borders, part B: Modules/KitBordersPainted.lua)
+-- (the painted reskin's borders, part B: MelloUI_Oldschool/Modules/KitBordersPainted.lua)
 
 --------------------------------------------------------------------------------
 -- Cooldown Manager Border (0.19.8; the addon study's item 7, "all as

@@ -52,7 +52,7 @@
 --     of the areas and features (Lists, M:SetAreas, Apply), and the contract
 --     a part extends a core module's settings by (MelloUI.ModuleParts,
 --     M:AddPart: Dark Mode's Reskin Brightness takes the same)
---   the painted reskin's part, Modules/UIModificationsPainted.lua (one
+--   the painted reskin's part, MelloUI_Oldschool/Modules/UIModificationsPainted.lua (one
 --     look stage I; MelloUI_Oldschool's): its switch and Preload Artwork, Switch
 --     every area on, the Kit Colours and the other border kinds, Raid Border
 --     Placement, the game windows' parchment sheets and Parchment Style; the
@@ -68,7 +68,7 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("UIModifications")
 -- the kit (Modules/Kit.lua, loaded before this file: see the TOC)
 local Kit = MelloUI.Kit
--- ONELOOK HEADER END (the painted reskin's part, Modules/UIModificationsPainted.lua, uses only public tables)
+-- ONELOOK HEADER END (the painted reskin's part, MelloUI_Oldschool/Modules/UIModificationsPainted.lua, uses only public tables)
 -- the game's elements Edit Layout moves (Core/EditLayoutWindows.lua, loaded
 -- before this file; onelook D2): each use nil-guarded
 local GW = MelloUI.EditLayoutWindows
@@ -409,7 +409,7 @@ local M = MelloUI:RegisterModule("UIModifications", {
 -- the line a caller of M:SetAreas prints when it is refused in combat
 M.areasRefused = AREAS_REFUSED
 -- (onelook D9) the parts extending these settings (Parts above: the painted
--- reskin's, Modules/UIModificationsPainted.lua)
+-- reskin's, MelloUI_Oldschool/Modules/UIModificationsPainted.lua)
 M.AddPart = Parts.Add
 
 -- the panel rows' requirement: the first part's that names one (the painted
@@ -1087,4 +1087,4 @@ function M:OnSettingChanged(key, value, db)
 	end
 end
 
--- (the painted reskin's part: Modules/UIModificationsPainted.lua, one look stage I)
+-- (the painted reskin's part: MelloUI_Oldschool/Modules/UIModificationsPainted.lua, one look stage I)

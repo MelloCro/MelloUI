@@ -1,6 +1,8 @@
 # Static check of every Lua file on each push and pull request: syntax errors,
 # unused locals, globals that are neither WoW API nor listed in .luacheckrc.
-# MelloUI_Companion is the route data companion that ships in the same zip.
+# MelloUI_Companion is the route data companion that ships in the same zip; the
+# feature addons (MelloUI_<x>) are MelloUI's own code, MelloUI_Oldschool (the
+# painted reskin, a package of its own) too.
 # The ratchet (Tools/lint/check_panels.py) fails when a copy of something a
 # shared system already does is added (one system per job); see its header.
 name: Lint
@@ -19,7 +21,7 @@ jobs:
       - name: luacheck
         uses: lunarmodules/luacheck@v1
         with:
-          args: Core Modules Media MelloUI_Companion MelloUI_Chat MelloUI_CombatText MelloUI_QuestList MelloUI_Route MelloUI_VoiceOver --no-color
+          args: Core Modules Media MelloUI_Companion MelloUI_Chat MelloUI_CombatText MelloUI_QuestList MelloUI_Route MelloUI_VoiceOver MelloUI_GroupFrames MelloUI_FrameEffects MelloUI_PersonalDisplay MelloUI_Oldschool --no-color
 
   ratchet:
     runs-on: ubuntu-latest

@@ -77,12 +77,12 @@ from features import feature_files  # noqa: E402  (the feature addons' files, ch
 # ---------------------------------------------------------------------------------------------------------------- classes
 # the shared systems: they paint for every part (W.Paint / Kit:Paint, the widget set, the shell, the kit)
 SHARED = ["Core/GameLook.lua", "Core/Widgets.lua", "Modules/KitWindow.lua", "Core/Core.lua", "Modules/Kit.lua",
-          "Modules/KitPainted.lua"]
+          "MelloUI_Oldschool/Modules/KitPainted.lua"]
 
 # MelloUI's own parts, by feature ("<folder>/*": every Lua file a feature addon's TOC lists)
 OWN = {
     "Widget column, reminders, widgets": ["Core/Reminders.lua", "Modules/Reminders.lua", "Modules/Widgets.lua"],
-    "Widget panel": ["Modules/WidgetPanel.lua"],
+    "Widget panel": ["MelloUI_Oldschool/Modules/WidgetPanel.lua"],
     "Voice Over": ["MelloUI_VoiceOver/VoiceOver.lua"],
     "Damage meter": ["Modules/Meter.lua", "Modules/MeterBar.lua", "Modules/MeterHistory.lua", "Modules/MeterRaid.lua"],
     "Combat Text": ["MelloUI_CombatText/CombatText.lua", "Core/Feed.lua"],
@@ -242,7 +242,7 @@ CEILINGS = {
     "cover:Modules/QuestTracker.lua": 0,
     "cover:Modules/Restock.lua": 2,
     "cover:Modules/Services.lua": 5,
-    "cover:Modules/WidgetPanel.lua": 2,
+    "cover:MelloUI_Oldschool/Modules/WidgetPanel.lua": 2,
     # hygiene
     "hygiene:Core/CentreText.lua": 1,
     "hygiene:Core/Config.lua": 2,
@@ -270,7 +270,7 @@ CEILINGS = {
     "hygiene:Modules/Services.lua": 3,
     "hygiene:Modules/Stats.lua": 0,
     "hygiene:Modules/SwingTimers.lua": 2,
-    "hygiene:Modules/UnitFramePanel.lua": 1,
+    "hygiene:MelloUI_Oldschool/Modules/UnitFramePanel.lua": 1,
     "hygiene:Modules/Widgets.lua": 0,
 }
 

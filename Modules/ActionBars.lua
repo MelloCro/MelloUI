@@ -2,7 +2,7 @@
 -- MelloUI - Action Bars: the action bars' backdrops and Hide Page Arrows
 --
 -- (onelook stage D4, docs/plans/onelook-cd-plans/D4.md: function out of the
--- skin) What the action bars' painted skin (Modules/ActionBarPanel.lua) kept
+-- skin) What the action bars' painted skin (MelloUI_Oldschool/Modules/ActionBarPanel.lua) kept
 -- to itself until then, in the core: it works whether the skin is on or off.
 --   Backdrops (0.18.5; user, 2026-09-23, sketched on the bars: "make a
 --   backdrop border behind the action bar"; 2026-10-04, docs/plans/
@@ -1246,7 +1246,7 @@ end
 -- (`backdropsMigrated`: this machine's, never in a profile). A new player
 -- (no earlier login: UI Modifications' welcomeAsked and seenVersion unset)
 -- starts with none. The looks are read from the skin's saved table as it is
--- (Modules/ActionBarPanel.lua's, never written here): its Action Bar Border
+-- (MelloUI_Oldschool/Modules/ActionBarPanel.lua's, never written here): its Action Bar Border
 -- of earlier the same day, where it is still there, decides the bars'.
 -- Only where the skin is the one running (until D4 the step was its own, run
 -- from its OnEnable; UI Modifications sets its flag in the start-up pass,
@@ -1319,7 +1319,7 @@ function M:OnSettingChanged(key, _, db)
 	end
 end
 
--- /abdump backdrops (Modules/ActionBarPanel.lua's /abdump): the members
+-- /abdump backdrops (MelloUI_Oldschool/Modules/ActionBarPanel.lua's /abdump): the members
 -- (screen rects, switches), the holders and what each draws, the fits
 function M.DumpBackdrops()
 	local list, n = Members()

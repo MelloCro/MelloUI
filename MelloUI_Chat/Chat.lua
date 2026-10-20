@@ -20,8 +20,9 @@
 -- handled untainted. A secret line is left exactly as the game wrote it.
 --
 -- (0.19.9: an addon of its own, MelloUI_Chat, loaded right after MelloUI; the
--- chat window's painted skin, Modules/ChatPanel.lua, stays MelloUI's and asks
--- this module for the background opacity only while it is loaded)
+-- chat window's painted skin, MelloUI_Oldschool/Modules/ChatPanel.lua, stayed MelloUI's -- the
+-- painted reskin's since one look stage I, MelloUI_Oldschool -- and asks this
+-- module for the background opacity only while it is loaded)
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -93,7 +94,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		  desc = "Give every chat window the same background opacity, kept in your profile. Off, each window keeps the opacity set in its tab's menu." },
 		{ type = "slider", key = "windowAlpha", parent = "windowAlphaOn", name = "Background Opacity", min = 0, max = 1, step = 0.05, percent = true,
 		  desc = "How solid the chat windows' background is. Moving the Background slider in a chat tab's menu changes this too." },
-		-- (user, 2026-10-04: "can we also make a Border opacity aswell?" -- the painted rails: Modules/ChatPanel.lua)
+		-- (user, 2026-10-04: "can we also make a Border opacity aswell?" -- the painted rails: MelloUI_Oldschool/Modules/ChatPanel.lua)
 		{ type = "slider", key = "borderAlpha", name = "Border Opacity", min = 0, max = 1, step = 0.05, percent = true,
 		  desc = "How solid the painted border round the chat windows and their button column is, and its shade (the painted chat: its Painted Skin, the reskin on)." },
 		{ type = "toggle", key = "hideEditBox", name = "Hide Input Box Art",

@@ -17,7 +17,7 @@
 --                      (onelook D11) Registered by Kit:AddShadeArea, in
 --                      order: the core's windows, minimap, tracker and buffs
 --                      here, the painted reskin's others in its own file
---                      (Modules/KitShadePainted.lua, one look stage I)
+--                      (MelloUI_Oldschool/Modules/KitShadePainted.lua, one look stage I)
 --   Kit:ShadeOn(area) -> the area's shade wanted: UI Shade on and the area's
 --                      switch on (false for a name not in the list)
 --   Kit:ShadeStrength() -> 0.3 .. 0.9 (0.7 by default): the areas' shade
@@ -119,7 +119,7 @@ local RESTART_KEY = "Kit shade after a restart"
 local MAKE_PER_FRAME = 24
 local CORNERS = { "tl", "tr", "bl", "br" }
 local WEAK = { __mode = "k" }
--- ONELOOK HEADER END (the painted reskin's part, Modules/KitShadePainted.lua, uses only public tables)
+-- ONELOOK HEADER END (the painted reskin's part, MelloUI_Oldschool/Modules/KitShadePainted.lua, uses only public tables)
 
 -- The areas, in the settings' order (UI Modifications lists them so; its
 -- rows are made from this list, an area registered later at its next listing).
@@ -130,7 +130,7 @@ local WEAK = { __mode = "k" }
 --       name already there returns its area as it is. opts: order, noSwitch
 --       (no switch of its own), new (the switch's New tag)
 -- (onelook D11) The core's areas: windows, the minimap, the tracker and the
--- buffs; the painted reskin's (Modules/KitShadePainted.lua)
+-- buffs; the painted reskin's (MelloUI_Oldschool/Modules/KitShadePainted.lua)
 -- put theirs in between, so the list keeps its order.
 local AREAS, AREA, BY_KEY = {}, {}, {}
 function Kit:AddShadeArea(name, label, opts)
@@ -673,4 +673,4 @@ function Kit:ShadeElement(root, area, opts)
 	return el
 end
 
--- (the painted reskin's HUD areas and its windows' rail shade: Modules/KitShadePainted.lua, one look stage I)
+-- (the painted reskin's HUD areas and its windows' rail shade: MelloUI_Oldschool/Modules/KitShadePainted.lua, one look stage I)
