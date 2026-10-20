@@ -46,6 +46,7 @@ local Perf = MelloUI.Perf:Scope("MelloUI_Map (MapLayers)")
 local Finite = MelloUI.Safe.Finite
 local W = MelloUI.Widgets
 local Text = MelloUI.Safe.Text
+local Pins = ns.Pins   -- (Pins.Lift: the icon set's glow under a pin)
 local pairs, ipairs, pcall, type, tostring = pairs, ipairs, pcall, type, tostring
 local wipe = wipe
 
@@ -170,7 +171,8 @@ local function PinOf(class)
 	local spec = classSpec[class or "?"]
 	if not spec then
 		if class then
-			spec = { icon = T.ICONS .. "class_" .. class, size = T.MEMBER_SIZE, sub = 1, tip = MemberTip }
+			spec = { icon = T.ICONS .. "class_" .. class, size = T.MEMBER_SIZE, sub = 1, tip = MemberTip,
+				lift = "class_" .. class }
 		else
 			spec = { icon = T.ICONS .. "map_dot", size = T.DOT_SIZE, sub = 1, tip = MemberTip }
 		end
@@ -246,6 +248,10 @@ local function GiverLook(tex, pin)
 	local QL = QuestList()
 	if QL then
 		pcall(QL.GiverIcon, tex, pin.data)
+		-- (a quest begun by an item: the set's starter icon, lifted; the game's quest marks none)
+		local item = type(pin.data) == "table" and pin.data.item
+		local name = item and QL.StarterIconName and select(2, pcall(QL.StarterIconName, item)) or false
+		Pins.Lift(tex, type(name) == "string" and name or false, T.GIVER_SIZE)
 	end
 end
 
@@ -333,8 +339,9 @@ local function WorldPoint(wcont, wx, wy)
 end
 Layers.WorldPoint = WorldPoint   -- (the quest log's Show: a quest's places)
 
-local function Icon(name, alpha, tip)
-	return { icon = T.ICONS .. name, size = T.PIN_SIZE, alpha = alpha, tip = tip, sub = 1 }
+-- (lift: the set's icons the glow is baked for -- the docks' and the entrances' pins; not the flight master's)
+local function Icon(name, alpha, tip, lift)
+	return { icon = T.ICONS .. name, size = T.PIN_SIZE, alpha = alpha, tip = tip, sub = 1, lift = lift and name or nil }
 end
 
 -- flights
@@ -393,7 +400,7 @@ local transportSpec = {}
 local function TransportSpec(kind)
 	local spec = transportSpec[kind]
 	if not spec then
-		spec = Icon(T.TRANSPORT_ICON[kind], nil, DockTip)
+		spec = Icon(T.TRANSPORT_ICON[kind], nil, DockTip, true)
 		transportSpec[kind] = spec
 	end
 	return spec
@@ -463,7 +470,7 @@ local function EntranceTip(pin)
 	end
 	return d.name, word
 end
-local ENTRANCE = { Icon(T.ENTRANCE_ICON[1], nil, EntranceTip), Icon(T.ENTRANCE_ICON[2], nil, EntranceTip) }
+local ENTRANCE = { Icon(T.ENTRANCE_ICON[1], nil, EntranceTip, true), Icon(T.ENTRANCE_ICON[2], nil, EntranceTip, true) }
 -- (with the Quest List: its own entrance tooltip, the quests done there with it)
 local function EntranceSpec(kind)
 	local QL = rawget(MelloUI, "QuestList")
@@ -735,7 +742,7 @@ end
 -- when on, takes the pin as its goal and draws it itself
 --------------------------------------------------------------------------------
 
-local WAYPOINT = { icon = T.ICONS .. T.PIN_GOAL, size = T.PIN_SIZE + 4, sub = 3 }
+local WAYPOINT = { icon = T.ICONS .. T.PIN_GOAL, size = T.PIN_SIZE + 4, sub = 3, lift = T.PIN_GOAL }
 
 local function Waypoint()
 	local route = rawget(MelloUI, "Route")

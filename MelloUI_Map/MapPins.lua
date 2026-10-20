@@ -26,7 +26,14 @@
 --                                    lines), fillTip (fn(tooltip, pin): its
 --                                    lines, the whole tooltip), click (fn(pin,
 --                                    button)), look (fn(tex, pin): the pin's
---                                    picture its own, after the size), data
+--                                    picture its own, after the size), lift
+--                                    (the set's icon name its glow or shade
+--                                    is baked for: MelloUI.Shade:Lift), data
+--   Pins.Lift(tex, name, size)       the icon set's glow (a disc) or shade
+--                                    under a pin's picture (the UI Shade's
+--                                    "icons"), where the core has it; name
+--                                    false: none (a pooled texture showing
+--                                    other art)
 --   pins:SetAt(name, key, uiMapID, x, y, spec)  the same at a map's position
 --   pins:Remove(name, key) / pins:Clear(name)
 --   pins:Lay()                       the canvas's view laid (canvas.onView)
@@ -128,6 +135,13 @@ local function HideTex(pin)
 end
 
 -- the pin's look on its texture (made from its layer's pool the first time it shows)
+function Pins.Lift(tex, name, size)
+	local Shade = rawget(MelloUI, "Shade")
+	if type(Shade) == "table" and Shade.Lift then
+		pcall(Shade.Lift, Shade, tex, name, size)
+	end
+end
+
 local function Dress(pin)
 	local tex, spec = pin.tex, pin.spec
 	if spec.atlas then
@@ -148,6 +162,8 @@ local function Dress(pin)
 	tex:SetRotation(pin.rotation or spec.rotation or 0)
 	tex:SetDrawLayer("ARTWORK", spec.sub or 0)
 	tex:SetDesaturated(false)
+	-- (its glow or shade: the spec's; a look of its own may set another after)
+	Pins.Lift(tex, spec.lift or false, s)
 	if spec.look then
 		spec.look(tex, pin)   -- (its own picture: the Quest List's giver icon)
 	end

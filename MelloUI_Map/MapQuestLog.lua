@@ -725,7 +725,9 @@ end
 local function ShowMark(icon, title)
 	local spec = S.markSpecs[icon]
 	if not spec then
-		spec = { icon = T.ICONS .. icon, size = T.MARK_SIZE, tip = ShowTip, sub = 1 }
+		-- (the objectives' marks wear the set's glow or shade; the turn-in's mark has none baked)
+		spec = { icon = T.ICONS .. icon, size = T.MARK_SIZE, tip = ShowTip, sub = 1,
+			lift = icon ~= "track_handin" and icon or nil }
 		S.markSpecs[icon] = spec
 	end
 	spec.title = title
