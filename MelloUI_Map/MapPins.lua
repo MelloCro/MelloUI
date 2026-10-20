@@ -28,7 +28,12 @@
 --                                    button)), look (fn(tex, pin): the pin's
 --                                    picture its own, after the size), lift
 --                                    (the set's icon name its glow or shade
---                                    is baked for: MelloUI.Shade:Lift), data
+--                                    is baked for: MelloUI.Shade:Lift), data;
+--                                    (M4) frame: another addon's icon frame,
+--                                    borrowed (MapAddonPins.lua: HereBeDragons'
+--                                    pins) -- laid in place of a texture, its
+--                                    own mouse and tooltip; release(frame)
+--                                    hands it back when the pin goes
 --   Pins.Lift(tex, name, size)       the icon set's glow (a disc) or shade
 --                                    under a pin's picture (the UI Shade's
 --                                    "icons"), where the core has it; name
@@ -133,6 +138,15 @@ end
 
 local function HideTex(pin)
 	local tex = pin.tex
+	if tex and pin.spec.frame then
+		-- (a borrowed frame: hidden only while it is ours -- its library may have taken it back for the game's map)
+		if pin.shown and tex:GetParent() == pin.layer.frame then
+			tex:Hide()
+			tex:ClearAllPoints()
+		end
+		pin.shown = false
+		return
+	end
 	if tex and pin.shown then
 		tex:Hide()
 		tex:ClearAllPoints()
@@ -155,6 +169,18 @@ end
 
 local function Dress(pin)
 	local tex, spec = pin.tex, pin.spec
+	if spec.frame then
+		-- (another addon's icon on this layer, over its frame; shown as its library shows it on the game's map)
+		local lf = pin.layer.frame
+		tex:SetParent(lf)
+		tex:ClearAllPoints()
+		if tex:GetFrameLevel() <= lf:GetFrameLevel() then
+			tex:SetFrameLevel(lf:GetFrameLevel() + 1)
+		end
+		tex:Show()
+		pin.dressed = true
+		return
+	end
 	if spec.atlas then
 		tex:SetAtlas(spec.atlas)
 	elseif spec.icon then
@@ -196,6 +222,11 @@ function Pins:Set(name, key, wx, wy, spec)
 		layer.pins[key] = pin
 	end
 	if pin.spec ~= spec then
+		if pin.tex and pin.spec and (pin.spec.frame or spec.frame) then
+			-- (a texture for a frame or the other way round: the old one let go first)
+			self:Remove(name, key)
+			return self:Set(name, key, wx, wy, spec)
+		end
 		pin.spec = spec
 		pin.dressed = false
 	end
@@ -218,7 +249,14 @@ function Pins:Remove(name, key)
 	end
 	HideTex(pin)
 	if pin.tex then
-		layer.pool[#layer.pool + 1] = pin.tex
+		local spec = pin.spec
+		if spec.frame then
+			if spec.release then
+				spec.release(pin.tex, layer.frame)   -- (a borrowed frame back where its library keeps it)
+			end
+		else
+			layer.pool[#layer.pool + 1] = pin.tex
+		end
 		pin.tex = nil
 	end
 	Unhook(self, pin)
@@ -288,16 +326,21 @@ function Pins:Lay()
 		local x, y = (pin.wx - x0) * k, (pin.wy - y0) * k
 		if layer.on and c.z >= layer.minZ and c.z <= layer.maxZ and x > -m and x < w + m and y > -m and y < h + m then
 			local tex = pin.tex
+			local frame = pin.spec.frame
 			if not tex then
 				local pool = layer.pool
-				tex = pool[#pool]
-				if tex then
+				tex = frame or pool[#pool]
+				if frame then
+					pin.shown = false
+				elseif tex then
 					pool[#pool] = nil
 				else
 					tex = layer.frame:CreateTexture(nil, "ARTWORK")
 				end
 				pin.tex = tex
 				pin.dressed = false
+			elseif frame and tex:GetParent() ~= layer.frame then
+				pin.dressed = false   -- (its library took it back for the game's map meanwhile: ours again)
 			end
 			if not pin.dressed then
 				Dress(pin)

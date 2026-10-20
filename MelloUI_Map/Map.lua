@@ -22,6 +22,8 @@
 --                           link in the chat (the game's own map pin link: anyone
 --                           can click it; in MelloUI's chat it opens on this map)
 --   /mellomap share         your pin's link in the chat
+--   other addons' pins      Questie's (HereBeDragons), HandyNotes', GatherMate2's, and
+--                           MelloUI.Map:AddPin for any addon (MapAddonPins.lua)
 --   the search (title row)  places, your quests, dungeons, flight masters, docks
 --                           and quest givers: Enter or a click goes there (MapSearch.lua)
 --   M (the game's map key)  opens it instead of the game's map (the keys bound
@@ -42,6 +44,7 @@ local Text = MelloUI.Safe.Text
 local W = MelloUI.Widgets
 local Kit = MelloUI.Kit
 local Canvas, Pins, Layers, Log, Search = ns.Canvas, ns.Pins, ns.Layers, ns.QuestLog, ns.Search
+local AddonPins = ns.AddonPins
 local floor, max = math.floor, math.max
 
 local ICON = "Interface\\Icons\\INV_Misc_Map_01"
@@ -129,14 +132,39 @@ local function ShowName(name)
 	end
 end
 
--- a pin's tooltip (its spec's tip: a text, or fn(pin) -> title, body), or none
+-- (M4) a frame on a pin whose tooltip and clicks are another addon's own (HandyNotes' plugins anchor theirs to the
+-- pin's frame): one, laid on the pin it serves
+local function PinAnchor(pin)
+	local a = win.pinAnchor
+	if not a then
+		a = CreateFrame("Frame", nil, win.pins.frame)
+		a:EnableMouse(false)
+		win.pinAnchor = a
+	end
+	local s = pin.spec.size or 16
+	a:SetSize(s, s)
+	a:ClearAllPoints()
+	a:SetPoint("CENTER", win.pins.frame, "TOPLEFT", pin.x or 0, -(pin.y or 0))
+	a:Show()
+	return a
+end
+
+-- a pin's tooltip (its spec's tip: a text, or fn(pin) -> title, body; enter / leave: another addon's own), or none
 local function PinTip(pin)
 	if pin == win.tipPin then
 		return
 	end
+	local old = win.tipPin
 	win.tipPin = pin
+	if old and old.spec.leave then
+		old.spec.leave(old, PinAnchor(old))
+	end
 	if not pin then
 		GameTooltip:Hide()
+		return
+	end
+	if pin.spec.enter then
+		pin.spec.enter(pin, PinAnchor(pin))
 		return
 	end
 	local fill = pin.spec.fillTip
@@ -344,6 +372,13 @@ local function Canvas_OnMouseUp(_, button)
 			ClearPin()
 			return
 		end
+		-- (a pin that takes a right click: another addon's menu on its node)
+		local x, y = c:Cursor()
+		local pin = x and win.pins:At(x, y)
+		if pin and pin.spec.right and pin.spec.click then
+			pin.spec.click(pin, button, PinAnchor(pin))
+			return
+		end
 		c:Out()
 		return
 	elseif button == "MiddleButton" then
@@ -366,7 +401,7 @@ local function Canvas_OnMouseUp(_, button)
 		if IsControlKeyDown() then
 			SetPin(d.x, d.y)
 		elseif pin and pin.spec.click then
-			pin.spec.click(pin, button)
+			pin.spec.click(pin, button, pin.spec.enter and PinAnchor(pin) or nil)
 		else
 			c:Deeper(d.x, d.y)
 		end
@@ -438,6 +473,7 @@ local function Shown()
 	c:Layout()
 	Refit()
 	Layers.Open()
+	AddonPins.Open()
 	Log.Shown()
 	c.stats.openMs = debugprofilestop() - t0
 	local f = win.frame
@@ -448,10 +484,14 @@ end
 
 local function Hidden()
 	Layers.Close()
+	AddonPins.Close()
 	Log.Hidden()
 	Search.Hidden()
 	win.drag.on = false
 	PinTip(nil)
+	if win.pinAnchor then
+		win.pinAnchor:Hide()
+	end
 	win.over = false
 	if win.canvas then
 		win.canvas:Stop()
@@ -467,6 +507,7 @@ end
 -- the window's beat while it shows (the layers' positions; nothing runs while it is closed)
 local function Frame_OnUpdate(_, elapsed)
 	Layers.Tick(elapsed)
+	AddonPins.Tick()
 	Log.Tick()
 end
 
@@ -513,8 +554,10 @@ local function Build()
 		Layers.Route()
 		Layers.Labels()
 		Log.ViewChanged()   -- (the Quest List's tab: its Current zone the zone under the view)
+		AddonPins.View()    -- (other addons' OnViewChanged)
 	end
 	Layers.Init(canvas, pins)
+	AddonPins.Init(canvas, pins)
 	-- the quest log's column on the canvas's right: out or folded as it was left
 	win.module = M
 	Log.Init(win)
@@ -754,6 +797,18 @@ function M:OnEnable(db)
 	self.db = db or self.db
 	TakeKeys(true)
 end
+
+-- (MelloUI.Map:Show(uiMapID), the API's) the map opened, framed on that map
+AddonPins.Shown(function(uiMapID)
+	if not M.isEnabled then
+		return false
+	end
+	M:Toggle(true)
+	if uiMapID and win.canvas and win.canvas.byID[uiMapID] then
+		win.canvas:Fit(uiMapID)
+	end
+	return true
+end)
 
 function M:OnDisable()
 	TakeKeys(false)

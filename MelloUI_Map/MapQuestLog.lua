@@ -1118,26 +1118,15 @@ local function QuestListPanel()
 	return (P and P.Mount and QL.M and QL.M.isEnabled) and QL or nil
 end
 
-local NO_PATH = {}
-
--- the map under the view (the Quest List's Current zone): the zone in the middle once the zones' art shows (the
--- canvas's ZONE_IN), else the continent there (the Quest List then takes the player's zone, as on the game's map);
--- read from the path the canvas keeps for its focus (made again at each cut: no lookups per frame)
+-- the map under the view (the Quest List's Current zone: Canvas:ViewMap, the zone in the middle, or the continent
+-- zoomed out, where the Quest List then takes the player's zone as on the game's map); over the sea the player's
 function Log.ViewMap()
-	local c = S.canvas
-	local CT = ns.Canvas and ns.Canvas.T
-	local focus = c and c.focus
-	if focus and focus.id and CT and c.z >= CT.ZONE_IN[1] then
-		return focus.id
+	local id = S.canvas and S.canvas:ViewMap()
+	if id then
+		return id
 	end
-	local path = c and c.focusPath or NO_PATH
-	for i = #path, 1, -1 do
-		if path[i].kind == "continent" then
-			return path[i].id
-		end
-	end
-	local ok, id = pcall(C_Map.GetBestMapForUnit, "player")
-	return ok and Finite(id) or nil
+	local ok, pid = pcall(C_Map.GetBestMapForUnit, "player")
+	return ok and Finite(pid) or nil
 end
 
 -- the Quest List's page shown here or not: with its tab, the column out and the map shown

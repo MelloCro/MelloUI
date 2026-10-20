@@ -908,6 +908,23 @@ function Canvas:Fit(id, seconds)
 	end
 end
 
+-- (M4) the map under the view's middle: the zone there once the zones' art shows (ZONE_IN), else the continent there;
+-- nil over the sea. Read from the path kept for the focus (made again at each cut: no lookups per frame). The Quest
+-- List's Current zone in the map's column, and other addons' OnViewChanged (MapAddonPins.lua)
+function Canvas:ViewMap()
+	local focus = self.focus
+	if focus and focus.id and self.z >= T.ZONE_IN[1] then
+		return focus.id
+	end
+	local path = self.focusPath
+	for i = #path, 1, -1 do
+		if path[i].kind == "continent" then
+			return path[i].id
+		end
+	end
+	return nil
+end
+
 -- the maps under a canvas point, the world first, each one in by the client's own shapes
 function Canvas:Path(x, y, out)
 	out = out or {}
