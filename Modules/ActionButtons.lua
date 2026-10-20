@@ -353,19 +353,24 @@ local OnUpdateUsable = Shared("UpdateUsable on an action button", function(butto
 	if not ColoursOn() then
 		return
 	end
-	if isUsable == nil or notEnoughMana == nil then
+	-- (a secret tested first, before any comparison)
+	local unknown = Secret(isUsable) or Secret(notEnoughMana)
+	if not unknown and (isUsable == nil or notEnoughMana == nil) then
 		local action = button.action
-		if Secret(action) or type(action) ~= "number" then
-			return
+		local ok = not Secret(action) and type(action) == "number"
+		if ok then
+			ok, isUsable, notEnoughMana = pcall(C_ActionBar.IsUsableAction, action)
 		end
-		local ok
-		ok, isUsable, notEnoughMana = pcall(C_ActionBar.IsUsableAction, action)
-		if not ok then
-			return
-		end
+		unknown = not ok or Secret(isUsable) or Secret(notEnoughMana) or isUsable == nil
 	end
-	if Secret(isUsable) or Secret(notEnoughMana) then
-		return   -- (cannot be told: the game's own colour stands)
+	if unknown then
+		-- (cannot be told: the game's own colour stands, so ours goes -- a cover laid on an earlier answer, at the
+		-- login before the mana was known, stayed over the icon for good while every later answer was secret: the
+		-- user, 2026-10-20, "even tho i have enough mana, some of my action bars show that i dont have enough mana")
+		short[button] = nil
+		Grey(button, false)
+		LayCover(button)
+		return
 	end
 	short[button] = (not isUsable and notEnoughMana) and true or nil
 	Grey(button, not isUsable and not notEnoughMana)
