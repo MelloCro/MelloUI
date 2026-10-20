@@ -2018,6 +2018,7 @@ local Frames = {
 	kind = setmetatable({}, { __mode = "k" }),     -- [the game's picture] = the kind it wears (false: none)
 	shown = setmetatable({}, { __mode = "k" }),    -- [the game's picture] = whether ours shows (its alpha 0 then)
 	dressed = setmetatable({}, { __mode = "k" }),  -- [ours] = the kind laid on it
+	copies = setmetatable({}, { __mode = "k" }),   -- [a preview's copy of a frame] = its kind (M:PreviewFrames)
 	anchor = setmetatable({}, { __mode = "k" }),   -- [the game's picture] = the picture an `at` kind is laid from
 	covered = false,
 }
@@ -2180,6 +2181,9 @@ function Frames.Lay()
 	for member in pairs(Party.art) do
 		Frames.Party(member)
 	end
+	for copy, key in pairs(Frames.copies) do
+		Frames.LayCopy(copy, key)
+	end
 end
 
 -- (the target's and focus's boss picture: the game lays it as the unit's classification is read)
@@ -2200,6 +2204,27 @@ function Frames.Start()
 	end
 	Frames.Lay()
 end
+-- (0.25.0; the user, 2026-10-20: "the preview should ALWAYS represent the actual look of it") the configurator's
+-- copy of a game frame (Core/ConfigPreview.lua Copy.Make: its art, level circle and boss picture as the game's) wears
+-- what the real frame wears: the same kinds on its pictures, laid with the real frames and as the switch moves
+function Frames.LayCopy(f, key)
+	local art = rawget(f, "art")
+	Frames.Set(art, key == "player" and "player" or (key == "pet" and "small") or "target")
+	Frames.Set(rawget(f, "circle"), "badge")
+	local boss = rawget(f, "boss")
+	if boss then
+		Frames.Set(boss, Frames.BossKind(boss), art)
+	end
+end
+
+function M:PreviewFrames(f, key)
+	if type(f) ~= "table" then
+		return
+	end
+	Frames.copies[f] = key
+	Frames.LayCopy(f, key)
+end
+
 M.Frames = Frames   -- (the tests, the dumps)
 
 function M:OnEnable(db)

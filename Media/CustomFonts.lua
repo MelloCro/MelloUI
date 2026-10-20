@@ -45,6 +45,12 @@ MelloUI_CustomFonts = {
 	{ name = "EB Garamond SemiBold Italic", file = "EBGaramond\\EBGaramond-SemiBoldItalic.ttf" },
 	{ name = "EB Garamond Bold", file = "EBGaramond\\EBGaramond-Bold.ttf" },
 	{ name = "EB Garamond Bold Italic", file = "EBGaramond\\EBGaramond-BoldItalic.ttf" },
+	-- (0.25.0) Fredoka, the modern look's face (the Fredoka Font Style; the user, 2026-10-20: missing here, so a
+	-- role could not pick it), OFL
+	{ name = "Fredoka", file = "Fredoka\\Fredoka-Regular.ttf" },
+	{ name = "Fredoka Medium", file = "Fredoka\\Fredoka-Medium.ttf" },
+	{ name = "Fredoka SemiBold", file = "Fredoka\\Fredoka-SemiBold.ttf" },
+	{ name = "Fredoka Bold", file = "Fredoka\\Fredoka-Bold.ttf" },
 	{ name = "IM Fell English", file = "IMFellEnglish\\IMFellEnglish-Regular.ttf" },
 	{ name = "IM Fell English Italic", file = "IMFellEnglish\\IMFellEnglish-Italic.ttf" },
 	{ name = "Noto Sans", file = "NotoSans\\NotoSans-Regular.ttf" },

@@ -167,9 +167,11 @@ local STYLES = {
 	-- (2026-10-20, the user's pick for the modern look: one font for everything, "to fit this theme") Fredoka's round
 	-- letters, the icon set's soft cartoon shapes in type; the default (below). Its text sized as Noto Sans (the
 	-- same x-height and width, measured), its titles at Cinzel's 0.7 (the same capital height, measured)
+	-- (`damage`: the one style that sets the damage numbers too -- one face for everything, the user's Combat Text in
+	-- it, 2026-10-20)
 	{ value = "fredoka", paper = "Fredoka\\Fredoka-SemiBold.ttf", label = "Fredoka", title = "Fredoka\\Fredoka-SemiBold.ttf",
-	  titleScale = 0.7, text = "Fredoka\\Fredoka-Medium.ttf", textScale = 1,
-	  desc = "MelloUI's own face: Fredoka's round letters for the titles and the text, to fit MelloUI's icons. The default." },
+	  titleScale = 0.7, text = "Fredoka\\Fredoka-Medium.ttf", textScale = 1, damage = "Fredoka\\Fredoka-SemiBold.ttf",
+	  desc = "MelloUI's own face: Fredoka's round letters for the titles, the text and the damage numbers, to fit MelloUI's icons. The default." },
 	{ value = "scriptorium", paper = "Alegreya\\Alegreya-SemiBold.ttf", label = "Scriptorium", title = "Cinzel\\Cinzel-Bold.ttf", titleScale = 0.7,
 	  text = "Alegreya\\Alegreya-Regular.ttf", textScale = 1.1, desc = "Cinzel's carved capitals over Alegreya, a warm book face." },
 	{ value = "chronicle", paper = "SourceSerif4\\SourceSerif4-SemiBold.ttf", label = "Chronicle", title = "AlegreyaSC\\AlegreyaSC-Bold.ttf", titleScale = 0.75,
@@ -237,6 +239,7 @@ local function StyleSettings(s)
 		fontChat = FONT_DIR .. NUMBERS, scaleChat = 1,
 		fontChatText = FONT_DIR .. s.text,
 		fontChatParchment = FONT_DIR .. s.paper,
+		fontDamage = s.damage and (FONT_DIR .. s.damage) or nil,
 	}
 end
 
@@ -250,7 +253,7 @@ MelloUI.FontStyleSettings = function(value)
 end
 
 local defaults = { outline = "OUTLINE", style = "custom" }
-local styleDesc = { "A preset: choosing a style changes every font at once -- the titles, the interface text, the chat and numbers, the chat text and the chat on parchment, the sizes back to 100% (each face brings its own size correction) -- each pairing themed with readability first. Fine-tune any of them afterwards (the style then shows Custom). The damage numbers keep their own choice." }
+local styleDesc = { "A preset: choosing a style changes every font at once -- the titles, the interface text, the chat and numbers, the chat text and the chat on parchment, the sizes back to 100% (each face brings its own size correction) -- each pairing themed with readability first. Fine-tune any of them afterwards (the style then shows Custom). The damage numbers keep their own choice, but for Fredoka's: one face for everything." }
 for _, s in ipairs(STYLES) do
 	styleDesc[#styleDesc + 1] = s.label .. ": " .. s.desc
 end

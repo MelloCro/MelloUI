@@ -2683,6 +2683,11 @@ function Copy.Make(p, key)
 	-- (Unit Frames' soft band behind the name: its own, made here once)
 	local uf = d.band and Exports("UnitFrames", "PreviewNameBand")
 	f.band = uf and uf:PreviewNameBand(name, f, key) or nil
+	-- (0.25.0: MelloUI Frames on the copy as on the real frame -- its picture, level badge and boss dragon)
+	local frames = Exports("UnitFrames", "PreviewFrames")
+	if frames then
+		frames:PreviewFrames(f, key)
+	end
 	Copy.made[p] = Copy.made[p] or {}
 	Copy.made[p][key] = f
 	return f

@@ -174,6 +174,19 @@ local function GameArt(button, on)
 	end
 end
 
+-- a frame texture in a state's picture (the set's: Media/Textures/Icons/frame_<state>, one nine-slice, its band at
+-- the rim's width) -- the real buttons' (LayFrame) and the configurator's stage's (Stage.Paint: the preview wears
+-- what the bars wear, the user, 2026-10-20)
+local function FrameArt(t, state)
+	t:SetTexture(W.IconPath("frame_" .. state))
+	if t.SetTextureSliceMargins and t.SetTextureSliceMode and t.SetScale then
+		local m = FRAME.M
+		t:SetTextureSliceMargins(m, m, m, m)
+		t:SetTextureSliceMode(Enum and Enum.UITextureSliceMode and Enum.UITextureSliceMode.Stretched or 0)
+		t:SetScale(FRAME.BAND / m)
+	end
+end
+
 local function LayFrame(button)
 	local t = frameOf[button]
 	if not FramesOn() then
@@ -198,13 +211,7 @@ local function LayFrame(button)
 		t:Show()
 	end
 	framed[button] = state
-	t:SetTexture(W.IconPath("frame_" .. state))   -- (the set's: Media/Textures/Icons/frame_<state>)
-	if t.SetTextureSliceMargins and t.SetTextureSliceMode and t.SetScale then
-		local m = FRAME.M
-		t:SetTextureSliceMargins(m, m, m, m)
-		t:SetTextureSliceMode(Enum and Enum.UITextureSliceMode and Enum.UITextureSliceMode.Stretched or 0)
-		t:SetScale(FRAME.BAND / m)
-	end
+	FrameArt(t, state)
 end
 
 local OnFrameEnter = Shared("OnEnter on an action button (its frame)", function(button)
@@ -896,8 +903,24 @@ do
 					b.hotkey:SetVertexColor(hk.r, hk.g, hk.b)
 				end
 				local down = state == "pressed" and i == 1
-				b.pushed:SetShown(down)
-				b.frame:SetShown(not down)
+				-- (MelloUI Frames: the set's frame in its state, as LayFrame lays the bars'; else the game's atlases)
+				local own = FramesOn()
+				if own then
+					local art = down and "pressed" or ((out and range) and "range" or "normal")
+					if b.art ~= art then
+						b.art = art
+						FrameArt(b.frame, art)
+					end
+				elseif b.art then
+					b.art = nil
+					if b.frame.SetTextureSliceMargins then
+						b.frame:SetTextureSliceMargins(0, 0, 0, 0)
+						b.frame:SetScale(1)
+					end
+					b.frame:SetAtlas("UI-HUD-ActionBar-IconFrame")
+				end
+				b.pushed:SetShown(down and not own)
+				b.frame:SetShown(own or not down)
 				b.light:SetShown(down and lit)
 			end
 		end
