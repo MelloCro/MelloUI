@@ -1335,6 +1335,14 @@ driver:SetScript("OnEvent", function(_, _, addon)
 	end
 end)
 
+-- a feature's own report (/melloperf <cmd> [arg]: the map's, MelloUI_Map): fn(arg) -> its text, shown in the copy window
+local reports = {}
+function Perf:AddReport(cmd, title, fn)
+	if type(cmd) == "string" and type(fn) == "function" then
+		reports[cmd:lower()] = { title = title or "Performance", fn = fn }
+	end
+end
+
 SLASH_MELLOPERF1 = "/melloperf"
 SlashCmdList.MELLOPERF = function(msg)
 	local cmd, arg = strtrim(msg or ""):lower():match("^(%S*)%s*(.-)$")
@@ -1355,6 +1363,9 @@ SlashCmdList.MELLOPERF = function(msg)
 		end
 	elseif cmd == "load" then
 		MelloUI:ShowText("Performance: loading", Perf:LoadReport())
+	elseif reports[cmd] then
+		local r = reports[cmd]
+		MelloUI:ShowText(r.title, r.fn(arg))
 	else
 		MelloUI:ShowText("Performance", Perf:Overview())
 	end

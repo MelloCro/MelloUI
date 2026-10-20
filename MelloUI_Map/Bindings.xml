@@ -1,0 +1,9 @@
+<Bindings>
+	<!-- MelloUI's map (MelloUI_Map/Map.lua): no key by default; the player gives it one in the game's Key Bindings -->
+	<Binding name="MELLOUI_MAP_TOGGLE" header="MELLOUI" category="ADDONS">
+		local map = MelloUI and MelloUI:GetModule("Map")
+		if map then
+			map:Toggle()
+		end
+	</Binding>
+</Bindings>

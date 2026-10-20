@@ -1,0 +1,12 @@
+## Interface: 16001
+## Title: |cff9b8cffMello|rUI Map
+## Notes: MelloUI's map: one seamless map of the whole world, from the continents down to a zone. Open it with /mellomap or a key of your own; switch it on or off in MelloUI (/mello); untick it here to not load it at all.
+## Author: Mello
+## Version: 0.23.1
+## Dependencies: MelloUI
+## OptionalDeps: MelloUI_Oldschool
+## X-MelloUI-Feature: Map
+## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
+
+MapCanvas.lua
+Map.lua
