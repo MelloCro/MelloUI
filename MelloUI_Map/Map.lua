@@ -301,8 +301,12 @@ local function Shown()
 	local t0 = debugprofilestop()
 	c:Layout()
 	Refit()
+	Layers.Open()
 	c.stats.openMs = debugprofilestop() - t0
-	win.frame:RegisterEvent("MAP_EXPLORATION_UPDATED")
+	local f = win.frame
+	f:RegisterEvent("MAP_EXPLORATION_UPDATED")
+	f:RegisterEvent("TAXIMAP_OPENED")
+	f:RegisterEvent("TAXI_NODE_STATUS_CHANGED")
 end
 
 local function Hidden()
@@ -314,7 +318,10 @@ local function Hidden()
 		win.canvas.moving = false
 	end
 	SaveView()
-	win.frame:UnregisterEvent("MAP_EXPLORATION_UPDATED")
+	local f = win.frame
+	f:UnregisterEvent("MAP_EXPLORATION_UPDATED")
+	f:UnregisterEvent("TAXIMAP_OPENED")
+	f:UnregisterEvent("TAXI_NODE_STATUS_CHANGED")
 end
 
 -- the window's beat while it shows (the layers' positions; nothing runs while it is closed)
@@ -325,6 +332,8 @@ end
 local function Frame_OnEvent(_, event)
 	if event == "MAP_EXPLORATION_UPDATED" and win.canvas then
 		win.canvas:Explored()
+	elseif event == "TAXIMAP_OPENED" or event == "TAXI_NODE_STATUS_CHANGED" then
+		Layers.Event()   -- (a flight point learned, or a flight master's map: the flights again)
 	end
 end
 
