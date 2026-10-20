@@ -120,6 +120,10 @@ local Num = MelloUI.Safe.Number
 
 local W = {}
 MelloUI.Widgets = W
+-- (the languages, Core.lua's Languages section: every label, hint, tooltip, choice and heading a builder draws passes
+-- through W.Tr -- the English as it is while no language table is in use; never a chat line, a name or a number. A
+-- field, not a local: Widgets.lua's headroom. A world without Core.lua's: the text as it is)
+W.Tr = MelloUI.Lang and MelloUI.Lang.T or function(text) return text end
 
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- a round icon's, a slider's knob
@@ -453,6 +457,10 @@ end
 -- and outline the game object's, its face MelloUI's: the Fonts module's interface face while it is on and chose one
 -- (the game object wears it then: the copy copies it), else Fredoka. The Fonts module passes them by (its "^MelloUI"
 -- rule); every 'fonts' Fire lays them again. Made at load (a dozen font objects, nothing drawn).
+-- (the languages, docs/plans/languages.md) Each copy is a font FAMILY where the client makes them (CreateFontFamily):
+-- Fredoka draws only Latin, so the other alphabets keep the game font's own members (its Cyrillic, Korean and
+-- Chinese faces) -- the configurator in Russian, Chinese or Korean, and such names in MelloUI's windows, never boxes.
+-- The game's members are read, never written. A client without families: one face, as before.
 --   W.FontObject(name) -> the name of MelloUI's copy of the game font object `name` (`name` itself for one it has
 --       no copy of): for CreateFontString's template and SetFontObject
 --------------------------------------------------------------------------------
@@ -460,7 +468,28 @@ do
 	local FACE = TEXTURE_PATH:gsub("Textures\\$", "") .. "Fonts\\Fredoka\\Fredoka-Medium.ttf"
 	local NAMES = { "GameFontNormal", "GameFontHighlight", "GameFontHighlightSmall", "GameFontNormalSmall",
 		"GameFontNormalLarge", "GameFontHighlightLarge", "GameFontNormalHuge", "GameFontDisable", "GameFontDisableSmall" }
-	local own = {}   -- [game name] = MelloUI's copy's name
+	local ALPHABETS = { "roman", "korean", "simplifiedchinese", "traditionalchinese", "russian" }
+	local own = {}      -- [game name] = MelloUI's copy's name
+	local family = {}   -- [game name] = { [alphabet] = true }: a family's members (nil: a copy of one face)
+
+	-- a font object's member for an alphabet (nil: none, or a client without families)
+	local function Member(obj, alphabet)
+		if type(obj) ~= "table" or type(obj.GetFontObjectForAlphabet) ~= "function" then
+			return nil
+		end
+		local ok, m = pcall(obj.GetFontObjectForAlphabet, obj, alphabet)
+		return ok and type(m) == "table" and m or nil
+	end
+
+	-- the face a member wears now: the chosen face (the game's own Latin member wears it) or Fredoka for Latin, the
+	-- game member's own for the other alphabets
+	local function Wear(copy, chosen)
+		local ok, _, size, flags = pcall(copy.GetFont, copy)
+		size = ok and Num(size)
+		if not chosen and size and size > 0 then
+			pcall(copy.SetFont, copy, FACE, size, ok and type(flags) == "string" and flags or "")
+		end
+	end
 
 	local function Lay()
 		local fonts = MelloUI.modules and MelloUI.modules.Fonts
@@ -468,24 +497,70 @@ do
 		local chosen = type(db) == "table" and type(db.fontText) == "string" and db.fontText ~= "" and db.fontText ~= "default"
 		for _, name in ipairs(NAMES) do
 			local game, copy = _G[name], _G[own[name]]
-			if game and copy then
-				pcall(copy.CopyFontObject, copy, game)
-				if not chosen then
-					local ok, _, size, flags = pcall(copy.GetFont, copy)
-					size = ok and Num(size)
-					if size and size > 0 then
-						pcall(copy.SetFont, copy, FACE, size, ok and type(flags) == "string" and flags or "")
+			local members = family[name]
+			if game and copy and members then
+				-- (the family's own look: its alignment and spacing as the game font's, each member the game member's
+				-- whole look copied, Latin then in the face)
+				pcall(copy.SetJustifyH, copy, game:GetJustifyH())
+				pcall(copy.SetJustifyV, copy, game:GetJustifyV())
+				for alphabet in pairs(members) do
+					local mine, theirs = Member(copy, alphabet), Member(game, alphabet)
+					if mine and theirs and mine ~= theirs then
+						pcall(mine.CopyFontObject, mine, theirs)
+						if alphabet == "roman" then
+							Wear(mine, chosen)
+						end
 					end
 				end
+			elseif game and copy then
+				pcall(copy.CopyFontObject, copy, game)
+				Wear(copy, chosen)
 			end
 		end
 	end
 
+	-- a family of MelloUI's own from the game font's members (Fredoka for Latin); nil where the client has none
+	local function Family(name, game)
+		if type(CreateFontFamily) ~= "function" or not Member(game, "roman") then
+			return nil
+		end
+		local list, members = {}, {}
+		for _, alphabet in ipairs(ALPHABETS) do
+			local m = Member(game, alphabet)
+			local ok, path, size, flags = false, nil, nil, nil
+			if m then
+				ok, path, size, flags = pcall(m.GetFont, m)
+			end
+			path, size = ok and MelloUI.Safe.Text(path), ok and Num(size)
+			if path and size and size > 0 then
+				list[#list + 1] = { alphabet = alphabet, file = alphabet == "roman" and FACE or path, height = size,
+					flags = type(flags) == "string" and flags or "" }
+				members[alphabet] = true
+			end
+		end
+		if #list < 2 then
+			return nil
+		end
+		local ok, fam = pcall(CreateFontFamily, own[name], list)
+		if not (ok and type(fam) == "table") then
+			return nil
+		end
+		-- (named as CreateFont names one: a template by that name)
+		if _G[own[name]] == nil then
+			_G[own[name]] = fam
+		end
+		return members
+	end
+
 	if type(CreateFont) == "function" then
 		for _, name in ipairs(NAMES) do
-			if _G[name] then
+			local game = _G[name]
+			if game then
 				own[name] = "MelloUIFont_" .. name
-				CreateFont(own[name])
+				family[name] = Family(name, game)
+				if not family[name] and not _G[own[name]] then
+					CreateFont(own[name])
+				end
 			end
 		end
 		Lay()
@@ -499,6 +574,11 @@ do
 
 	function W.FontObject(name)
 		return own[name] or name
+	end
+
+	-- (tests, /mello languages) whether the copy of `name` is a family, and its members
+	function W.FontFamilyOf(name)
+		return family[name]
 	end
 end
 
@@ -631,7 +711,7 @@ do
 		h:SetPoint("TOPLEFT", inset, -(y or 0))
 		h:SetPoint("RIGHT", parent, "RIGHT", -inset, 0)
 		h:EnableMouse(false)
-		h.label = W.Text(h, "GameFontNormal", text, "selectedTrim")
+		h.label = W.Text(h, "GameFontNormal", W.Tr(text), "selectedTrim")
 		h.label:SetWordWrap(false)
 		h.label:SetPoint("LEFT", h, "LEFT", opts.x or HEADER_X, 0)
 		-- the line's span (an empty region), the diamond on its middle, a half each side of it
@@ -714,12 +794,12 @@ function W.ShowTooltip(owner, title, body, line, anchor)
 	local P = MelloUI.Look.Palette()   -- (the palette's gold and text colour)
 	local gold, text = P.selectedTrim, P.text
 	GameTooltip:SetOwner(owner, anchor or "ANCHOR_RIGHT")
-	GameTooltip:SetText(title, gold[1], gold[2], gold[3])
+	GameTooltip:SetText(W.Tr(title), gold[1], gold[2], gold[3])
 	if line and line ~= "" then
-		GameTooltip:AddLine(line, text[1], text[2], text[3], true)
+		GameTooltip:AddLine(W.Tr(line), text[1], text[2], text[3], true)
 	end
 	if body and body ~= "" then
-		GameTooltip:AddLine(body, text[1], text[2], text[3], true)
+		GameTooltip:AddLine(W.Tr(body), text[1], text[2], text[3], true)
 	end
 	GameTooltip:Show()
 end
@@ -1206,8 +1286,13 @@ end
 -- An entry's text: its label, else its value as text (a string value as it
 -- is: a refresh makes no string)
 local function EntryText(entry)
-	local value = entry.value
-	return entry.label or (type(value) == "string" and value) or tostring(value)
+	local value = entry.label
+	if value then
+		-- (`own`: a text shown as it is -- the Language dropdown's languages, each in its own words)
+		return entry.own and value or W.Tr(value)
+	end
+	value = entry.value
+	return (type(value) == "string" and value) or tostring(value)
 end
 
 -- The text the box shows for `value` (nil when the list has no such entry:
@@ -1277,7 +1362,7 @@ local function DropdownLook(dd, whole)
 end
 
 local function DropdownRefresh(self)
-	local label = ChoiceLabel(self.melloValues, self.melloGet and self.melloGet()) or self.melloDefault or ""
+	local label = ChoiceLabel(self.melloValues, self.melloGet and self.melloGet()) or W.Tr(self.melloDefault) or ""
 	if label ~= self.shownLabel then
 		self.shownLabel = label
 		self.Text:SetText(label)
@@ -1768,11 +1853,28 @@ do
 	function W.Button(parent, text, width, skin, opts)
 		local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
 		b:SetSize(width or 110, opts and opts.height or 22)
-		b:SetText(text or "")
+		b:SetText(W.Tr(text) or "")
+		W.FitButton(b)
 		if opts and opts.onClick then
 			Perf.SetScript(b, "OnClick", opts.onClick)
 		end
 		return W.FlatButton(b, opts and opts.gold)
+	end
+
+	-- (the languages: a German or French label runs about 30% longer) a text button made wider when its text would
+	-- run past its edges (BUTTON_PAD kept at each side); never narrower than it was made, so an English label that
+	-- fits leaves its button as it was (the sim's English sweep: no button changed)
+	local BUTTON_PAD = 4
+	function W.FitButton(b)
+		local fs = b.GetFontString and b:GetFontString()
+		if not fs then
+			return
+		end
+		local get = fs.GetUnboundedStringWidth or fs.GetStringWidth
+		local w, now = Num(get(fs)), Num(b:GetWidth())
+		if w and now and w + 2 * BUTTON_PAD > now then
+			b:SetWidth(math.ceil(w + 2 * BUTTON_PAD))
+		end
 	end
 
 	-- the close button as it is: our plate in the state's piece
@@ -3593,7 +3695,7 @@ W.NEW = "New"
 W.SHARED = "Shared"   -- (one look: W.Row's opts.shared)
 
 function W.Tag(parent, text, snug)
-	local tag = W.Text(parent, "GameFontHighlightSmall", text, "selectedTrim")
+	local tag = W.Text(parent, "GameFontHighlightSmall", W.Tr(text), "selectedTrim")
 	tag:SetWordWrap(false)
 	local pad = snug and TAG_SNUG_X or TAG_PAD_X
 	local plate = parent:CreateTexture(nil, "ARTWORK")
@@ -3757,7 +3859,7 @@ local function GateLine(cover, why)
 	end
 	local line = lines[why]
 	if not line then
-		line = "Switch on \"" .. why .. "\" first."
+		line = MelloUI.Lang.F("Switch on \"%s\" first.", W.Tr(why))
 		lines[why] = line
 	end
 	return line
@@ -3767,7 +3869,7 @@ end
 -- that wakes it
 local function SleepLine(cover, why, line)
 	if line then
-		return line
+		return W.Tr(line)
 	end
 	return why and GateLine(cover, why) or nil
 end
@@ -3799,6 +3901,11 @@ local function GateRefresh(cover)
 			text = SleepLine(cover, why, line) or text
 		end
 		hint:SetText(text or "")
+		-- (the languages: a sleeping row's long line -- "Switch on X first (Look)." -- that the row cuts short gives
+		-- way to the short one; the tooltip keeps the long)
+		if not live and line and why and hint.IsTruncated and hint:IsTruncated() then
+			hint:SetText(GateLine(cover, why))
+		end
 		hint:SetShown(text ~= nil and text ~= "")
 	end
 end
@@ -3891,6 +3998,7 @@ local PLATE_OPTS = {}   -- a row's RowPlate options (one table, filled per row)
 
 function W.Row(parent, y, height, label, hint, desc, opts)
 	opts = opts or NO_OPTS
+	label, hint, desc = W.Tr(label), W.Tr(hint), W.Tr(desc)
 	local inset = opts.inset or 0
 	local row = CreateFrame("Frame", nil, parent)
 	row:SetHeight(height)
@@ -3972,6 +4080,7 @@ end
 
 function W.ToggleRow(parent, y, label, hint, desc, get, set, opts)
 	opts = opts or NO_OPTS
+	label, desc = W.Tr(label), W.Tr(desc)
 	local row = W.Row(parent, y, W.ROW_HEIGHT, label, hint, desc, opts)
 	local switch = W.Switch(row, get, set, opts)
 	switch:SetPoint("RIGHT", -12, 0)
@@ -4003,6 +4112,7 @@ local DROPDOWN_OPTS = {}
 
 function W.DropdownRow(parent, y, label, hint, desc, get, set, values, opts)
 	opts = opts or NO_OPTS
+	label, desc = W.Tr(label), W.Tr(desc)
 	local row = W.Row(parent, y, W.ROW_HEIGHT, label, hint, desc, opts)
 	DROPDOWN_OPTS.default, DROPDOWN_OPTS.tooltip = label, nil
 	local width = opts.width or 200
@@ -4014,6 +4124,7 @@ end
 -- (the button flat, as every typed row's control)
 function W.ButtonRow(parent, y, label, hint, desc, text, onClick, opts)
 	opts = opts or NO_OPTS
+	label, desc = W.Tr(label), W.Tr(desc)
 	local row = W.Row(parent, y, W.ROW_HEIGHT, label, hint, desc, opts)
 	local width = opts.width or 70
 	local button = W.Button(row, text or "Run", width, nil)
@@ -4557,7 +4668,7 @@ do
 		tile.size = TILE
 		tile.none = tile.pic:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormalSmall")
 		tile.none:SetPoint("CENTER")
-		tile.none:SetText("None")
+		tile.none:SetText(W.Tr("None"))
 		W.Paint(tile.none, "text", "text")
 		tile.label = W.Text(tile, "GameFontHighlightSmall", nil, "text")
 		tile.label:SetJustifyH("CENTER")
@@ -4723,7 +4834,7 @@ do
 			tile:ClearAllPoints()
 			tile:SetPoint("TOPLEFT", menu, "TOPLEFT", MENU_PAD + ((i - 1) % TILE_COLS) * TILE_STEP,
 				-(MENU_PAD + math.floor((i - 1) / TILE_COLS) * TILE_LINE))
-			tile.label:SetText(choice.label or tostring(choice.value))
+			tile.label:SetText(choice.label and W.Tr(choice.label) or tostring(choice.value))
 			DrawChoice(tile, kind, choice)
 			local on = choice.value == chosen
 			OutlineShown(tile.mark, on)
@@ -5151,7 +5262,7 @@ do
 			return
 		end
 		box.shownChoice, box.shownKind = choice, box.melloKind
-		box.name:SetText(choice and (choice.label or tostring(choice.value)) or "")
+		box.name:SetText(choice and (choice.label and W.Tr(choice.label) or tostring(choice.value)) or "")
 		DrawChoice(box, box.melloKind, choice)
 	end
 
@@ -5186,7 +5297,7 @@ do
 		box.layers, box.size = {}, PICTURE_H
 		box.none = box.pic:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormalSmall")
 		box.none:SetPoint("CENTER")
-		box.none:SetText("None")
+		box.none:SetText(W.Tr("None"))
 		W.Paint(box.none, "text", "text")
 		box.none:Hide()
 		box.name = W.Text(box, "GameFontHighlight", nil, "text")
@@ -5235,13 +5346,13 @@ do
 
 	local function LinkText(v)
 		if v == true then
-			return "On"
+			return W.Tr("On")
 		elseif v == false then
-			return "Off"
+			return W.Tr("Off")
 		elseif v == nil then
 			return ""
 		end
-		return tostring(v)
+		return type(v) == "string" and W.Tr(v) or tostring(v)
 	end
 
 	local LinkClick = Shared("OnClick on a link row's button", function(button)
@@ -5265,7 +5376,7 @@ do
 	local function LinkRowSetTarget(row, target, get)
 		if target then
 			local button = row.button
-			button:SetText(target .. " >")
+			button:SetText(W.Tr(target) .. " >")
 			local fs = button:GetFontString()
 			local w = fs and TextWidth(fs)
 			button:SetWidth(math.max(LINK_W_MIN, math.min(LINK_W_MAX, (w or 0) + LINK_PAD)))
@@ -5397,8 +5508,8 @@ local function Card_IsSelected(card)
 end
 
 local function Card_SetTexts(card, title, text)
-	card.title:SetText(title or "")
-	card.text:SetText(text or "")
+	card.title:SetText(W.Tr(title) or "")
+	card.text:SetText(W.Tr(text) or "")
 end
 
 local CardClick = Shared("OnClick on MelloUI's cards", function(card)
@@ -5441,7 +5552,7 @@ function W.Card(parent, spec, skin)
 		card.picture:SetHeight(h)
 		top = -8 - h - 6
 	end
-	card.title = W.Text(card, spec.titleFont or "GameFontNormal", spec.title or (palette and W.PaletteName(palette)))
+	card.title = W.Text(card, spec.titleFont or "GameFontNormal", W.Tr(spec.title) or (palette and W.PaletteName(palette)))
 	card.title:SetWordWrap(false)
 	card.title:SetPoint("TOPLEFT", card, "TOPLEFT", inset, top)
 	if spec.tag then
@@ -5453,7 +5564,7 @@ function W.Card(parent, spec, skin)
 	else
 		card.title:SetPoint("RIGHT", card, "RIGHT", -inset, 0)
 	end
-	card.text = W.Text(card, spec.textFont or "GameFontHighlight", spec.text, "text")
+	card.text = W.Text(card, spec.textFont or "GameFontHighlight", W.Tr(spec.text), "text")
 	card.text:SetPoint("TOPLEFT", card.title, "BOTTOMLEFT", 0, -5)
 	card.text:SetPoint("RIGHT", card, "RIGHT", -inset, 0)
 	card.text:SetWordWrap(true)
@@ -5749,7 +5860,7 @@ do
 				chips.buttons[i] = b
 			end
 			b.melloItem = item
-			b:SetText(item.label or tostring(item.key))
+			b:SetText(item.label and W.Tr(item.label) or tostring(item.key))
 			Fit(b, item)
 			b:Show()
 			chips.count = i
@@ -5910,7 +6021,7 @@ local RailTipEnter = Shared("OnEnter on a NavRail entry (tooltip)", function(row
 	end
 	local e = row.entry
 	local clippedName = row.text.IsTruncated and row.text:IsTruncated()
-	local tip = e and e.tip
+	local tip = e and W.Tr(e.tip)
 	if not (clippedName or tip) then
 		return
 	end
@@ -6146,7 +6257,7 @@ function Rail:SetGroups(groups)
 		if g.title then
 			local h = table.remove(self.headerPool) or NewHeader(self)
 			h.key, h.collapsible = gkey, g.collapsible
-			h.text:SetText(g.title)
+			h.text:SetText(W.Tr(g.title))
 			h:EnableMouse(g.collapsible and true or false)
 			h.glyph:SetShown(g.collapsible and true or false)
 			-- (2026-10-20) a group's emblem (its `icon`, MelloUI's icon set, bare) between the fold and the title
@@ -6173,7 +6284,7 @@ function Rail:SetGroups(groups)
 			n = n + 1
 			local row = table.remove(self.rowPool) or NewRow(self)
 			row.key, row.entry, row.group = e.key, e, gkey
-			row.text:SetText(spec.numbered and (n .. ". " .. e.text) or e.text)
+			row.text:SetText(spec.numbered and (n .. ". " .. W.Tr(e.text)) or W.Tr(e.text))
 			row.text:ClearAllPoints()
 			local x = 8
 			if spec.iconSize > 0 and e.icon then
@@ -6634,7 +6745,7 @@ function Rail:ShowResults(list, n, note, more)
 		line:SetWidth(self.width - 2 * RESULT_X)
 		line:ClearAllPoints()
 		line:SetPoint("TOPLEFT", self.content, "TOPLEFT", RESULT_X, -(y + 6))
-		line:SetText(note)
+		line:SetText(W.Tr(note))
 		line:Show()
 		y = y + 12 + (Num(line:GetStringHeight()) or 14)
 	elseif line then

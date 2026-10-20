@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0
+
+- Languages: the configurator and the installer speak German. A Language dropdown at the left of the configurator's top line picks the language, starting on your game's own; a line not translated yet shows in English. The game's own words are used for the game's things (Namensplaketten, Aktionsleisten, Bearbeitungsmodus).
+- Languages: the German lines are a first draft; corrections are welcome on CurseForge's translation page for MelloUI.
+- MelloUI's own windows keep the game's letters for Cyrillic, Chinese and Korean, so such names show in them instead of boxes.
+- Buttons in MelloUI's windows grow to fit a longer label instead of cutting it.
+
 ## 1.0.0
 
 - Map: one seamless map of the whole world in a window of MelloUI's own (MelloUI_Map, on by default). The mouse wheel zooms from Azeroth down to a village, a drag looks around, a click glides into the zone under the cursor and a right-click goes back out. Your map key (M) opens it, always centred on you.

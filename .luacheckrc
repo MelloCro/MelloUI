@@ -72,7 +72,7 @@ read_globals = {
 	"GameFontNormal", "ChatFontNormal", "PagedContentFrameBaseMixin", "LegacyChallengeObjectives", "QuestScrollFrame", "GameMenuFrame", "GameTimeFrame", "GameTooltip", "GameTooltipStatusBar",
 	"GameTooltip_AddNormalLine", "GameTooltip_SetDefaultAnchor", "GameTooltip_SetTitle",
 	"GameTooltip_UnitColor", "GeneralDockManager", "GetAddOnCPUUsage", "GetAddOnMemoryUsage",
-	"GetBuildInfo", "GetCVar", "GetPhysicalScreenSize", "GetCoinTextureString", "GetCursorPosition", "IsControlKeyDown", "IsAltKeyDown", "GetCurrentKeyBoardFocus", "IsKeyDown", "Menu", "GetFrameCPUUsage",
+	"GetBuildInfo", "GetLocale", "GetCVar", "GetPhysicalScreenSize", "GetCoinTextureString", "GetCursorPosition", "IsControlKeyDown", "IsAltKeyDown", "GetCurrentKeyBoardFocus", "IsKeyDown", "Menu", "GetFrameCPUUsage",
 	"GetFramerate", "GetFunctionCPUUsage", "GetGossipText", "GetGreetingText",
 	"GetGuildBankWithdrawMoney", "GetInstanceInfo", "GetMacroIndexByName", "GetMacroInfo",
 	"GetMinimapShape", "GetMouseFoci", "GetMouseFocus", "GetMoney", "GetNetStats", "GetNumMacros", "GetNumRoutes", "GetObjectiveText",
@@ -200,4 +200,10 @@ files["MelloUI_Companion"] = {
 		"MelloUI_RoadData", "MelloUI_QuestObjectiveData", "MelloUI_QuestNeededItems", "MelloUI_QuestMadeItems", "MelloUI_QuestUseItems",
 		"MelloUI_QuestObjectiveSources",
 	},
+}
+
+-- The languages (MelloUI_Languages, loaded on demand: Core/Language.lua): each file hands its table to
+-- MelloUI.Lang (Tools/languages/languages.py writes them).
+files["MelloUI_Languages"] = {
+	read_globals = { "MelloUI" },
 }

@@ -235,7 +235,8 @@ opts[#opts + 1] = { type = "button", name = "Switch every area on", hint = "when
 			MelloUI:Print("Every area is on already.")
 			return
 		end
-		MelloUI:Print("%d area%s switched back on.", count, count == 1 and "" or "s")
+		-- (one line per number, never an "s" added: the languages translate whole lines)
+		MelloUI:Print(count == 1 and "1 area switched back on." or "%d areas switched back on.", count)
 		if MelloUI.RefreshConfig then
 			MelloUI:RefreshConfig()
 		end

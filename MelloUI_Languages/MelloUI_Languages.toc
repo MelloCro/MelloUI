@@ -1,0 +1,10 @@
+## Interface: 16001
+## Title: |cff9b8cffMello|rUI Languages
+## Notes: The configurator's and the installer's languages for MelloUI, loaded when they open in a language other than English. Keep it enabled together with MelloUI.
+## Author: Mello
+## Version: 1.0.0
+## Dependencies: MelloUI
+## LoadOnDemand: 1
+## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
+
+deDE.lua

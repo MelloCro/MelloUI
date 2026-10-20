@@ -1180,7 +1180,7 @@ end, "script")
 
 -- a button's label, the button widened for a long one
 local function Label(button, text)
-	button:SetText(text)
+	button:SetText(MelloUI.Lang.T(text))
 	local fs = button:GetFontString()
 	local w = fs and Num(fs:GetStringWidth())
 	button:SetWidth(math.max(CONFIRM_BUTTON_W, (w or 0) + 2 * CONFIRM_PAD))
@@ -1252,7 +1252,7 @@ function MelloUI:Confirm(opts)
 	local replaced = confirm.opts
 	confirm.opts = opts
 	HoldEscape()
-	confirm.text:SetText(opts.text or "")
+	confirm.text:SetText(MelloUI.Lang.T(opts.text) or "")
 	Label(confirm.accept, opts.accept or "OK")
 	Label(confirm.cancel, opts.cancel or "Cancel")
 	-- the panel as tall as the question
