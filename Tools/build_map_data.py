@@ -1,6 +1,7 @@
-"""MelloUI Map's data (docs/plans/seamless-map.md, stage M2; the user's picks 2026-10-20: C soft outlines, F slate
-ground with our names, H places not explored yet dimmed), made from the client's own tables as wow.export wrote them
-(F:/Download-Backup/WoWExport/db2): numbers only, never a picture of the game's.
+"""MelloUI Map's data (docs/plans/seamless-map.md, stage M2; the user's picks 2026-10-20: C soft outlines, H places
+not explored yet dimmed; then B of the zoom sketch: the world painting under everything, each continent's painting cut
+to its land), made from the client's own tables as wow.export wrote them (F:/Download-Backup/WoWExport/db2): numbers
+only, never a picture of the game's.
 
   MelloUI_Map/MapData.lua
       outline[uiMapID] = { x, y }        where a zone's name goes (0..1 of its art): the middle of its outline
@@ -14,7 +15,10 @@ ground with our names, H places not explored yet dimmed), made from the client's
                                          blurred -- our geometry from the table's numbers, 128 x 128 for the art's
                                          1002 x 668
   MelloUI_Map/Media/Outlines/city.tga    a soft-edged rectangle (a city's art, which has no pieces)
-  MelloUI_Map/Media/Grain.tga            the land field's grain: our own noise, palette-tinted in the game
+  MelloUI_Map/Media/Outlines/<continent uiMapID>.tga
+                                         a continent's land, a mask over its art (256 x 256 for its 1002 x 668): its
+                                         zones' outlines laid where the client places each zone on it (UiMapAssignment),
+                                         joined, a little wider and soft; MapData.land[uiMapID] = true for each
 
 Masks as MelloUI's others: 32-bit TGA, top-left origin, white with the same alpha (colour and alpha both say it).
 Deterministic: the same tables give the same bytes.
@@ -25,19 +29,17 @@ Deterministic: the same tables give the same bytes.
 import csv
 import io
 import os
-import random
 import struct
 import sys
 from collections import defaultdict
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB2 = r"F:/Download-Backup/WoWExport/db2/"
 MAP = os.path.join(ROOT, "MelloUI_Map")
 DATA = os.path.join(MAP, "MapData.lua")
 OUTLINES = os.path.join(MAP, "Media", "Outlines")
-GRAIN = os.path.join(MAP, "Media", "Grain.tga")
 
 ART_W, ART_H = 1002, 668        # a zone map's art layer
 Q = 4                           # the outlines drawn at a quarter of it (the masks are 128 px: the same shapes, faster)
@@ -47,7 +49,9 @@ GROW, BLUR = 30, 24             # the outline: the hit rectangles widened, then 
 EDGE = 40                       # ... and faded out before the art's own edge (art px): a zone's land that reaches the
                                 # border of its picture would end there in a hard line (the neighbour's picture covers it)
 CITY_EDGE = 12                  # the city mask's soft edge (mask px)
-ZONE = 3                        # UIMapType.Zone
+CONTINENT, ZONE = 2, 3          # UIMapType
+LAND_SIZE = 256                 # a continent's land mask's side (its zones' outlines need more than a zone's 128)
+LAND_GROW, LAND_BLUR = 3, 2     # its zones' outlines joined, then widened and softened (quarter px)
 
 
 def rows(name):
@@ -67,21 +71,53 @@ def tga(img):
     return head + bytes(body)
 
 
-def grain():
-    rnd = random.Random(1602)
-    img = Image.new("L", (SIZE, SIZE))
-    px = img.load()
-    for y in range(SIZE):
-        for x in range(SIZE):
-            px[x, y] = 236 + rnd.randrange(20)
-    w, h = img.size
-    head = struct.pack("<BBBHHBHHHHBB", 0, 0, 2, 0, 0, 0, 0, 0, w, h, 32, 0x28)
-    body = bytearray()
-    for y in range(h):
-        for x in range(w):
-            v = px[x, y]
-            body += bytes((v, v, v, 255))
-    return head + bytes(body)
+# A map's rectangle on another (0..1 there), as the client's C_Map.GetMapRectOnMap works it out: the map's world
+# region (its own UiMapAssignment) carried through the other's assignment of the same world map (MapID)
+def region(a):
+    # (Region_0..2: the least x, y, z of the world region; Region_3..5 the most; world x runs north, y west)
+    return float(a["Region_0"]), float(a["Region_1"]), float(a["Region_3"]), float(a["Region_4"])
+
+
+def to_ui(a, wx, wy):
+    x0, y0, x1, y1 = region(a)
+    u0, v0, u1, v1 = float(a["UiMin_0"]), float(a["UiMin_1"]), float(a["UiMax_0"]), float(a["UiMax_1"])
+    return u0 + (y1 - wy) / (y1 - y0) * (u1 - u0), v0 + (x1 - wx) / (x1 - x0) * (v1 - v0)
+
+
+def rect_on(assign, child, top):
+    """(x0, x1, y0, y1) of child on top, 0..1; None when the tables do not place it there"""
+    own = [a for a in assign.get(child, []) if a["OrderIndex"] == "0"] or assign.get(child, [])
+    if not own:
+        return None
+    a = own[0]
+    x0, y0, x1, y1 = region(a)
+    for t in assign.get(top, []):
+        if t["MapID"] != a["MapID"]:
+            continue
+        tx0, ty0, tx1, ty1 = region(t)
+        if tx0 <= x0 and x1 <= tx1 and ty0 <= y0 and y1 <= ty1:
+            ua, va = to_ui(t, x1, y1)
+            ub, vb = to_ui(t, x0, y0)
+            return min(ua, ub), max(ua, ub), min(va, vb), max(va, vb)
+    return None
+
+
+def continent_land(assign, cont, zone_masks):
+    """a continent's land on its own art (quarter size): its zones' outlines where the client places them on it"""
+    out = Image.new("L", (QW, QH), 0)
+    for mid, mask in sorted(zone_masks.items()):
+        r = rect_on(assign, mid, cont)
+        if not r:
+            continue
+        w, h = int(round((r[1] - r[0]) * QW)), int(round((r[3] - r[2]) * QH))
+        if w < 2 or h < 2:
+            continue
+        tmp = Image.new("L", (QW, QH), 0)
+        tmp.paste(mask.resize((w, h), Image.BILINEAR), (int(round(r[0] * QW)), int(round(r[2] * QH))))
+        out = ImageChops.lighter(out, tmp)
+    if not out.getbbox():
+        return None
+    return out.filter(ImageFilter.MaxFilter(LAND_GROW * 2 + 1)).filter(ImageFilter.GaussianBlur(LAND_BLUR))
 
 
 _fade = []
@@ -115,7 +151,10 @@ def build():
     for r in rows("WorldMapOverlayTile"):
         if r["LayerIndex"] == "0":
             otiles[int(r["WorldMapOverlayID"])].append((int(r["RowIndex"]), int(r["ColIndex"]), int(r["FileDataID"])))
-    files, outline, pieces = {}, {}, {}
+    assign = defaultdict(list)
+    for r in rows("UiMapAssignment"):
+        assign[int(r["UiMapID"])].append(r)
+    files, outline, pieces, zone_masks = {}, {}, {}, defaultdict(dict)
     for mid in sorted(maps):
         if int(maps[mid]["Type"]) != ZONE or mid not in art_of:
             continue
@@ -139,10 +178,18 @@ def build():
         mask = Image.composite(mask, Image.new("L", mask.size, 0), edge_fade())
         small = mask.resize((SIZE, SIZE), Image.LANCZOS)
         files["%d.tga" % mid] = tga(small)
+        zone_masks[int(maps[mid]["ParentUiMapID"])][mid] = mask
         bb = mask.point(lambda v: 255 if v > 128 else 0).getbbox() or mask.getbbox()
         outline[mid] = (round((bb[0] + bb[2]) / 2 / QW, 3), round((bb[1] + bb[3]) / 2 / QH, 3))
         pieces[art] = plist
     files["city.tga"] = tga(city_mask())
+    land = []
+    for cont in sorted(zone_masks):
+        if cont in maps and int(maps[cont]["Type"]) == CONTINENT:
+            m = continent_land(assign, cont, zone_masks[cont])
+            if m is not None:
+                files["%d.tga" % cont] = tga(m.resize((LAND_SIZE, LAND_SIZE), Image.LANCZOS))
+                land.append(cont)
     out = ["-- MelloUI Map's data, made by Tools/build_map_data.py from the client's own tables (WoWExport/db2):",
            "-- numbers only; never edit by hand (run the tool). docs/plans/seamless-map.md, stage M2.",
            "local _, ns = ...",
@@ -156,7 +203,10 @@ def build():
             "\tpieces = {"]
     for art in sorted(pieces):
         out.append("\t\t[%d] = { %s }," % (art, ", ".join("{ " + ", ".join(str(v) for v in p) + " }" for p in pieces[art])))
-    out += ["\t},", "}", ""]
+    out += ["\t},",
+            "\t-- [uiMapID] = true: a continent whose painting is cut to its land (its outline mask)",
+            "\tland = { %s }," % ", ".join("[%d] = true" % c for c in land),
+            "}", ""]
     return "\n".join(out), files
 
 
@@ -165,7 +215,6 @@ def main():
     lua, files = build()
     stale = []
     want = [(DATA, lua.encode("utf-8"))] + [(os.path.join(OUTLINES, n), b) for n, b in sorted(files.items())]
-    want.append((GRAIN, grain()))
     for path, data in want:
         old = open(path, "rb").read() if os.path.isfile(path) else None
         if old != data:

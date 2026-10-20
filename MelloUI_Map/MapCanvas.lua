@@ -38,13 +38,15 @@
 --   canvas:Explored()              the explored pieces read again (the event)
 --   canvas:Stats() -> table        the numbers /melloperf map shows
 --
--- The look (stage M2, the user's picks of 2026-10-20: C, F, H): each zone's
+-- The look (stage M2, the user's picks of 2026-10-20: C, H; then B of the
+-- zoom sketch, "parchment all the way"): the world's painting is the ground at
+-- every zoom; each continent's painting over it cut to its land (our mask: its
+-- zones' outlines joined), its frame, painted sea and ships gone; each zone's
 -- picture inside its own soft outline (our mask, made by Tools/build_map_data.py
 -- from the client's tables: its pieces' hit rectangles, widened and blurred),
--- its land pieces over it; under the zones the palette's slate sea (the
--- canvas) and a grained land field, the zones' outlines widened; the places
--- not explored yet drawn faint (every piece from MapData, the explored ones
--- full). The continents' own art goes as the zones come in.
+-- its land pieces over it; the places not explored yet drawn faint (every piece
+-- from MapData, the explored ones full). The continents' art goes as the zones
+-- come in; the world's stays under them. A view stays on the world's painting.
 --
 -- Secret values: every number the client hands over is read through
 -- MelloUI.Safe (Finite); a map whose place does not read plainly is not laid.
@@ -81,19 +83,15 @@ local T = {
 	LOAD_PER_FRAME = 24,    -- files set a frame
 	FADE = 0.25,            -- a tile's fade in once its file is set
 	QUANT = 20,             -- the alphas' steps
-	-- the detail by zoom (1: the world fits): from, to. The continents are in before their own zoom (a click into one
-	-- fits its land: Kalimdor at about 1.27, the Eastern Kingdoms 1.47), so their art never shows half faded over the
-	-- world's (both letterings at once); the world's goes out under them (M2 sets the look's final numbers)
-	WORLD_OUT = { 1.2, 1.5 },
+	-- the detail by zoom (1: the world fits): from, to. The world's painting at every zoom, the ground (the user's
+	-- pick B); the continents' cut to their land in over it before their own zoom (a click into one fits its land:
+	-- Kalimdor at about 1.27, the Eastern Kingdoms 1.47)
 	CONT_IN = { 1.02, 1.2 },
-	-- (M2) the zones in over the slate as the continents' art goes
+	-- (M2) the zones in as the continents' art goes
 	ZONE_IN = { 1.8, 2.8 },
 	CONT_OUT = { 2.2, 3.0 },
-	OUTLINES = "Interface\\AddOns\\MelloUI_Map\\Media\\Outlines\\",   -- <uiMapID>, city
-	GRAIN = "Interface\\AddOns\\MelloUI_Map\\Media\\Grain",
+	OUTLINES = "Interface\\AddOns\\MelloUI_Map\\Media\\Outlines\\",   -- <uiMapID>, city, <continent>
 	UNEXPLORED = 0.3,         -- a place not explored yet: its piece this faint (the user's pick H)
-	LAND_GROW = 0.06,         -- the land field: the zone's outline widened by this share of its size each side
-	LAND_TILE = 6,            -- world units a grain tile
 	CITY_IN = { 0.2, 0.4 },        -- a city as it fills this share of the view's width
 	MAP_TYPE = { continent = 2, zone = 3 },
 }
@@ -214,15 +212,7 @@ function Canvas:Layout()
 	-- (the levels: the maps biggest first; the zone under the view's centre over them all, Focus; the cities over
 	-- that, each over its zone)
 	local base = self.root:GetFrameLevel() + 1
-	local n, top = #places, 0
-	for _, p in ipairs(places) do
-		if p.kind == "world" or p.kind == "continent" then
-			top = top + 1
-		end
-	end
-	-- (M2) the land field over the world's and the continents' art, under every zone's
-	self.land:SetFrameLevel(base + top + 1)
-	self.land:SetSize(self.W, self.H)
+	local n = #places
 	self.focusLevel = base + n + 2
 	for i, p in ipairs(places) do
 		local f = CreateFrame("Frame", nil, self.root)
@@ -248,12 +238,9 @@ function Canvas:Layout()
 			end
 		end
 	end
-	-- how far a view may go: round everything the client draws (the continents' art reaches past the world's)
-	local b = { 0, 0, self.W, self.H }
-	for _, p in ipairs(places) do
-		b[1], b[2], b[3], b[4] = min(b[1], p.left), min(b[2], p.top), max(b[3], p.right), max(b[4], p.bottom)
-	end
-	self.bounds = b
+	-- how far a view may go: the world's painting, the ground (the continents' art reaches past it, but only its land
+	-- is drawn, and that lies on the world)
+	self.bounds = { 0, 0, self.W, self.H }
 	self.places, self.byID = places, byID
 	self.stats.layoutMs = debugprofilestop() - t0
 end
@@ -309,9 +296,10 @@ local function MakeTiles(p)
 		tiles[i].base = true
 	end
 	-- (M2) the zone's picture inside its soft outline; a city's, or a zone's the client gives no pieces (Forever's own
-	-- Riverglades), inside a soft-edged rectangle
+	-- Riverglades), inside a soft-edged rectangle; (B) a continent's inside its land
+	local data = ns.MapData
 	local outline = p.label and T.OUTLINES .. p.id or ((p.kind == "city" or p.kind == "zone") and T.OUTLINES .. "city")
-		or nil
+		or (p.kind == "continent" and data and data.land and data.land[p.id] and T.OUTLINES .. p.id) or nil
 	if outline then
 		local mask = p.frame:CreateMaskTexture()
 		mask:SetTexture(outline, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
@@ -319,25 +307,6 @@ local function MakeTiles(p)
 		p.mask = mask
 	end
 	Canvas.AddExplored(p)
-end
-
--- (M2) a zone's land field: the palette's grained land under it, inside its outline widened (the slate between the
--- zones is the canvas's own sea); on the land frame, under every zone's picture
-local function MakeLand(self, p)
-	local g = T.LAND_GROW
-	local w, h = p.w * (1 + 2 * g), p.h * (1 + 2 * g)
-	local tex = self.land:CreateTexture(nil, "BACKGROUND")
-	tex:SetTexture(T.GRAIN, "REPEAT", "REPEAT")
-	tex:SetTexCoord(0, w / T.LAND_TILE, 0, h / T.LAND_TILE)
-	tex:SetSize(w, h)
-	W.Paint(tex, "raisedPanel", "vertex")
-	local mask = self.land:CreateMaskTexture()
-	mask:SetTexture(T.OUTLINES .. p.id, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-	mask:SetAllPoints(tex)
-	tex:AddMaskTexture(mask)
-	tex:SetAlpha(p.alpha)
-	tex:Hide()
-	p.landTex, p.landX, p.landY = tex, p.left - p.w * g, p.top - p.h * g
 end
 
 -- one piece of a map: its tiles (the last column / row in a file the next power of two, as the client's map canvas
@@ -436,7 +405,7 @@ local function ShowTile(self, p, t)
 		tex:SetSize(t.w, t.h)
 		tex:SetAlpha(0)
 		if t.base and p.mask then
-			tex:AddMaskTexture(p.mask)   -- (M2: inside the zone's soft outline)
+			tex:AddMaskTexture(p.mask)   -- (M2: inside the zone's soft outline; B: a continent's inside its land)
 		end
 		t.tex = tex
 		self.stats.made = self.stats.made + 1
@@ -474,11 +443,6 @@ local function HidePlace(p)
 	end
 	p.frame:Hide()
 	p.frame:ClearAllPoints()
-	local land = p.landTex
-	if land then
-		land:Hide()
-		land:ClearAllPoints()
-	end
 end
 
 -- the maps and their tiles against the cull box: in, made and anchored; out, hidden and unanchored
@@ -489,19 +453,11 @@ local function Cull(self)
 		if p.alpha > 0 and Overlaps(p.left, p.top, p.right, p.bottom, box) then
 			if not p.tiles then
 				MakeTiles(p)
-				if p.label then
-					MakeLand(self, p)
-				end
 			end
 			if not p.live then
 				p.live = true
 				p.frame:SetPoint("TOPLEFT", self.root, "TOPLEFT", p.left, -p.top)
 				p.frame:Show()
-				local land = p.landTex
-				if land then
-					land:SetPoint("TOPLEFT", self.land, "TOPLEFT", p.landX, -p.landY)
-					land:Show()
-				end
 			end
 			live = live + 1
 			for _, t in ipairs(p.tiles) do
@@ -576,7 +532,7 @@ end
 -- the detail by zoom: each map's alpha, set on a change; true when one came in or went out
 local function Detail(self, viewW)
 	local z = self.z
-	local world = Quant(1 - Ramp(z, T.WORLD_OUT[1], T.WORLD_OUT[2]))
+	local world = 1   -- (B: the ground at every zoom)
 	local cont = Quant(Ramp(z, T.CONT_IN[1], T.CONT_IN[2]) * (1 - Ramp(z, T.CONT_OUT[1], T.CONT_OUT[2])))
 	local zone = Quant(Ramp(z, T.ZONE_IN[1], T.ZONE_IN[2]))
 	local flipped = false
@@ -597,9 +553,6 @@ local function Detail(self, viewW)
 			end
 			p.alpha = a
 			p.frame:SetAlpha(a)
-			if p.landTex then
-				p.landTex:SetAlpha(a)
-			end
 		end
 	end
 	return flipped
@@ -964,13 +917,10 @@ function Canvas.New(parent)
 	sea:SetAllPoints(frame)
 	local root = CreateFrame("Frame", nil, frame)
 	root:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-	-- (M2) the land field's frame: always on the root, its textures anchored only while their zone is in view
-	local land = CreateFrame("Frame", nil, root)
-	land:SetPoint("TOPLEFT", root, "TOPLEFT", 0, 0)
 	local loader = CreateFrame("Frame", nil, frame)
 	loader:Hide()
 	local self = setmetatable({
-		frame = frame, root = root, sea = sea, loader = loader, land = land, queue = {}, box = {}, g = {}, path = {}, rects = {}, cuts = 0, focusPath = {},
+		frame = frame, root = root, sea = sea, loader = loader, queue = {}, box = {}, g = {}, path = {}, rects = {}, cuts = 0, focusPath = {},
 		cx = nil, cy = nil, z = 1, W = 1002, H = 668,
 		stats = { made = 0, files = 0, views = 0, culls = 0, live = 0, shown = 0, lastMs = 0, maxMs = 0,
 			moveFrames = 0, moveSum = 0, moveMax = 0, layoutMs = 0 },
