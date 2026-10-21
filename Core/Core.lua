@@ -1123,6 +1123,9 @@ end
 --                                          strength changed (Modules/KitShade.lua),
 --                                          once its partners follow
 --   "column"       -                     the column under the minimap re-laid
+--   "drawn"        what                    (1.2.0) what an element draws round its
+--                                          frame changed (a mover `box`): "chat",
+--                                          the chat's own view put on or taken off
 --   "where"        cont, x, y              the player's place for Route:WantWhere's
 --                                          owners, from Route's tick every 2 s while
 --                                          wanted, after 10 yd moved or a continent

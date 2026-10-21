@@ -146,6 +146,7 @@ local CHANGELOG = {
 		"Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast.",
 		"Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on.",
 		"Fixed: the middle of Silithus and parts of six other zones are no longer cut out of the map.",
+		"Fixed: Edit Layout's Chat box covers the whole minimal chat, its buttons too.",
 	} },
 	{ version = "1.1.0", lines = {
 		"Languages: the configurator and the installer in German, French, Spanish, Portuguese, Russian, Chinese and Korean. Pick one at the left of the top line.",

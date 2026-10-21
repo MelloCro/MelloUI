@@ -2048,6 +2048,17 @@ function View.Wanted()
 	return M.isEnabled and M.db ~= nil and M.db.view == "minimal"
 end
 
+-- What the view draws round the game's chat (1.2.0; the user, 2026-10-21: Edit Layout's Chat plate not the minimal
+-- chat's size, "we had this issue on the minimap"): its frame laid round ChatFrame1, the rail and the row of buttons
+-- in it. Edit Layout's plate of the dock takes it (UI Modifications' `box`), as the minimap's takes its DrawnRect.
+-- Screen px; nil while the view is off (the game's chat is what shows then)
+function View.DrawnRect()
+	if not (View.on and View.frame) then
+		return nil
+	end
+	return MelloUI.Safe.ScreenRect(View.frame)
+end
+
 -- on, off, or laid again (the Chat module's Apply, a setting, a whisper window opened)
 function View.Apply()
 	local WV = View.Whispers
@@ -2075,6 +2086,9 @@ function View.Apply()
 		end
 		View.WhisperCount(false)
 		View.Lay()
+		if not was then
+			MelloUI:Fire("drawn", "chat")   -- (the dock's plate: View.DrawnRect)
+		end
 	elseif View.on then
 		View.on = false
 		if WV then
@@ -2089,5 +2103,6 @@ function View.Apply()
 		PlaceEditBoxes(false)
 		View.frame:Hide()
 		View.PlaceStands()   -- (hidden with the view; after a fight)
+		MelloUI:Fire("drawn", "chat")
 	end
 end

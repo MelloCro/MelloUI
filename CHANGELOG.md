@@ -11,6 +11,7 @@
 - Map: zooming in keeps the painted map much longer. The game's minimap ground now fades in over the painting only when you are very close (from about 20 times the whole world), never fully replacing it, and every fade eases in and out.
 - Map: the mouse wheel zooms smoothly, a fast spin running on as one motion; you can drag while it zooms, and a drag let go at speed glides on.
 - Fixed: Map: the middle of Silithus and parts of Mulgore, Azshara, Tirisfal Glades, the Eastern Plaguelands, Dun Morogh and the Wetlands are no longer cut out of their zones.
+- Fixed: Edit Layout's Chat box covers the whole minimal chat, its tabs and its row of buttons too, and keeps all of it on the screen.
 
 ## 1.1.0
 

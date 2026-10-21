@@ -169,9 +169,18 @@ local function MinimapBox()
 	end
 	return nil
 end
+-- (1.2.0) the chat dock: the minimal chat's view laid round ChatFrame1, its rail and its row of buttons
+-- (MelloUI_Chat's View.DrawnRect; nil while the view is off)
+local function ChatBox()
+	local view = MelloUI.ChatView
+	if type(view) == "table" and view.DrawnRect then
+		return view.DrawnRect()
+	end
+	return nil
+end
 local SHARED = {
 	MinimapCluster = { label = "Minimap", page = "MinimapPanel", system = "Minimap", box = MinimapBox },
-	ChatFrame1 = { label = "Chat", page = "Chat", system = "ChatFrame" },
+	ChatFrame1 = { label = "Chat", page = "Chat", system = "ChatFrame", box = ChatBox },
 	-- (its options are the Objective Tracker panel's: the Quest Tracker page's
 	-- Objective Tracker tab, not MelloUI's own tracker's first one)
 	ObjectiveTrackerFrame = { label = "Objective tracker", page = "TrackerPanel", system = "ObjectiveTracker" },
@@ -481,8 +490,9 @@ end
 --------------------------------------------------------------------------------
 
 -- (0.20.3) an entry with a `box` (the minimap's cluster): what it draws changed size round it (the bus's 'column':
--- the map's size, the merge, a login's first lay) -> clamped by it again (Core's ClampEntry), and its place laid
--- again kept on the screen by it (a place fitted while the map was not drawn yet held the cluster's whole rect)
+-- the map's size, the merge, a login's first lay; 1.2.0 'drawn': the chat's own view put on or taken off) ->
+-- clamped by it again (Core's ClampEntry), and its place laid again kept on the screen by it (a place fitted while
+-- the map was not drawn yet held the cluster's whole rect)
 local boxed = setmetatable({}, { __mode = "k" })   -- [entry] = true
 local function BoxedRelay()
 	for entry in pairs(boxed) do
@@ -506,6 +516,7 @@ local function RegisterNamed(name, frame)
 			if entry.box and not boxed[entry] then
 				if next(boxed) == nil then
 					MelloUI:On("column", BoxedRelay, "UI Modifications: boxed entries")
+					MelloUI:On("drawn", BoxedRelay, "UI Modifications: boxed entries")
 				end
 				boxed[entry] = true
 			end
