@@ -57,7 +57,7 @@ local M = MelloUI:RegisterModule("NameplatePanel", {
 	-- until then; Core.lua's MERGES carries it)
 	defaults = { plateShade = false, marks = true },
 	options = {
-		{ type = "toggle", key = "plateShade", name = "Whole Plate Shade", new = "1.0.0",
+		{ type = "toggle", key = "plateShade", name = "Whole Plate Shade",
 		  desc = "The UI Shade also follows the painted plate's own shape: round the level circle, round each end gem and along the bar, in every Nameplate Border look. It needs the UI Shade on (Look); its Shade Strength sets how dark it is. The name's own band is Nameplates' Name Shade." },
 		{ type = "toggle", key = "marks", name = "Elite and Rare Marks",
 		  desc = "Elites, rares, rare elites and bosses stand out: a metal line over the name with a crest on it. Gold with a crown and wings for an elite, silver with a star for a rare, silver with a gold star and wings for a rare elite, and red-bronze scrollwork with a skull, winged at both ends, for a boss. The plate itself keeps its look." },

@@ -67,7 +67,7 @@ local M = MelloUI:RegisterModule("Tooltip", {
 		{ type = "toggle", key = "hideIssueLine", name = "Hide Issue Report Line",
 		  desc = "Leave out the beta's \"Press F6 to submit an issue for this ...\" line, and the gap above it, from creature, item, spell and quest tooltips. The key still opens the issue report while the tooltip shows." },
 		-- (2026-10-20, the user: "more colors for example for factions, Guilds etc", "quest objectives")
-		{ type = "toggle", key = "colourLines", name = "Coloured Lines", new = "1.0.0",
+		{ type = "toggle", key = "colourLines", name = "Coloured Lines",
 		  desc = "A unit's tooltip in colours that tell you at a glance: the guild green, Alliance blue and Horde red, "
 			.. "the level line in the colour of how hard the unit is for you, a quest's title gold and its objectives "
 			.. "cream while still to do, green once done." },

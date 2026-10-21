@@ -1155,7 +1155,7 @@ do
 			-- EntryFraction / SetEntryFraction); asleep with its module, and
 			-- while Edit Layout is open (Gate)
 			b = { id = id, mod = m, kind = "option", scaleKey = mover, opt = { type = "slider", name = "Scale",
-				min = 0.5, max = 2, step = 0.01, percent = true, new = "1.0.0",
+				min = 0.5, max = 2, step = 0.01, percent = true,
 				desc = "How big it is: Edit Layout's Size, the same value.",
 				get = function() return MelloUI:EntryFraction(mover) end,
 				set = function(v) MelloUI:SetEntryFraction(mover, v) end } }
