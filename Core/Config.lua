@@ -143,6 +143,7 @@ local CHANGELOG = {
 		"A line not translated yet shows in English. Corrections are welcome on MelloUI's CurseForge translation page.",
 		"MelloUI's windows show Cyrillic, Chinese and Korean names in the game's letters instead of boxes; buttons grow to fit a longer label.",
 		"Map: Forever's new dungeons with their levels, the City of Dalaran's door for your side; the Drowned City and the Shaper's Terrace too.",
+		"Route: its ways follow the game's own walkable ground, stairs, bridges and cities' layers; boats and zeppelins by their real times.",
 		"The Escape menu's MelloUI button is a gold pill with MelloUI's badge.",
 		"Fixed: a dead target or focus shows only the game's Dead, no 0 over it.",
 		"Fixed: the buff and debuff icons' borders stay whole over their cooldown spiral.",

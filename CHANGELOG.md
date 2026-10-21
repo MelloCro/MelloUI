@@ -7,6 +7,7 @@
 - MelloUI's own windows keep the game's letters for Cyrillic, Chinese and Korean, so such names show in them instead of boxes.
 - Buttons in MelloUI's windows grow to fit a longer label instead of cutting it.
 - Map: Forever's new dungeons are on the map with their levels: the City of Dalaran (the Horde's gate and the Alliance's sewers, each side sees its own), the Excavation Site: Wetlands, the Ruins of Lordaeron and the Hall of Thanes, and the coming Drowned City and Shaper's Terrace. Route leads to your side's door.
+- Route: its ways are laid over the game's own walkable ground, so in every zone it leads close to the shortest way instead of round in circles: stairs, ramps, bridges and walkways followed as they run, Ironforge's and Undercity's streets under the ground above them, and boats and zeppelins chosen by their real wait and ride time.
 - Game menu: MelloUI's button under the Escape menu is a gold pill with MelloUI's badge, which glows softly the first time you open the menu.
 - Fixed: a dead or unconscious target or focus shows only the game's Dead (or Unconscious), no longer a 0 written over it.
 - Fixed: Buffs & Debuffs: the cooldown spiral no longer sweeps over the icons' borders (the target's rows, yours and the nameplates'); the border and the debuff's dispel colour stay whole on top of it.
