@@ -5995,7 +5995,7 @@ local function NewPainter(frame)
 		if dot.bead ~= bead then
 			dot.bead, dot.atSize = bead, nil
 			if bead then
-				dot:SetTexture(T.BEAD)
+				MelloUI.Icons.Set(dot, T.BEAD, size)   -- (the copy for its size: MelloUI.Icons)
 				dot:SetVertexColor(1, 1, 1)
 			else
 				dot:SetTexture(TRAIL_DOT)
@@ -6020,6 +6020,9 @@ local function NewPainter(frame)
 			dot.atSize = size
 			local d = bead and size or size * T.RING
 			dot:SetSize(d, d)
+			if bead then
+				MelloUI.Icons.Fit(dot, d)
+			end
 			rim:SetSize(size, size)
 		end
 		if dot.atX ~= x or dot.atY ~= y or dot.atAnchor ~= anchor then
@@ -6265,7 +6268,7 @@ M.TRAIL.CHEVRON = M.TRAIL.ICONS .. "edge_arrow"
 M.TRAIL.BEAD = M.TRAIL.ICONS .. "route_bead"
 -- an icon of the set as inline text markup, size x size (W.IconMarkup's, without needing the widget set)
 function M.IconMark(name, size)
-	return "|T" .. M.TRAIL.ICONS .. name .. ":" .. size .. ":" .. size .. "|t"
+	return MelloUI.Icons.Markup(name, size)   -- (the copy for its size: MelloUI.Icons)
 end
 M.TRAIL.GOAL_MAP = 26     -- the mark on the world map, screen px (the game's pin is 30, its diamond about 22)
 M.TRAIL.GOAL_MINI = 16    -- on the minimap
@@ -6291,8 +6294,7 @@ function M.GoalFlag(tex)
 	if MelloUI.Kit and MelloUI.Kit.Unpaint then
 		MelloUI.Kit:Unpaint(tex, "vertex")
 	end
-	tex:SetTexture(M.TRAIL.ICONS .. name)
-	tex:SetTexCoord(0, 1, 0, 1)
+	MelloUI.Icons.Set(tex, name)   -- (the copy for its size: MelloUI.Icons, fitted again as it grows or shrinks)
 	tex:SetVertexColor(1, 1, 1, 1)
 end
 -- a `lined` bead's dot (the flight map's) by the goal's colour rule: Route's red with the beads (a meaning colour,
@@ -6340,6 +6342,7 @@ function M.GoalLay(f, size, anchorFrame, anchor, x, y)
 	local pic = f.flag.goalPic
 	if f.liftPic ~= pic or f.liftSize ~= size then
 		f.liftPic, f.liftSize = pic, size
+		MelloUI.Icons.Fit(f.flag, size)
 		MelloUI.Shade:Lift(f.flag, pic, size)
 	end
 end
@@ -6914,9 +6917,10 @@ local Beacon = {
 	-- "the waypoint marker and the Light beam change their size dynamically
 	-- depending on the distance"): full size within SIZE_NEAR yards (the pin
 	-- always), then (SIZE_NEAR / d) ^ SIZE_POWER, never under SIZE_MIN (the
-	-- mark never under MARK_MIN: 12 of its 18 units); the texts keep theirs.
-	-- Set when it changes by more than SIZE_STEP
-	SIZE_NEAR = 150, SIZE_POWER = 0.8, SIZE_MIN = 0.35, MARK_MIN = 12 / 18, SIZE_STEP = 0.005,
+	-- mark never under MARK_MIN: 12 of its 18 units, nor under MARK_PX screen
+	-- px, 2026-10-21); the texts keep theirs. Set when it changes by more
+	-- than SIZE_STEP
+	SIZE_NEAR = 150, SIZE_POWER = 0.8, SIZE_MIN = 0.35, MARK_MIN = 12 / 18, MARK_PX = 16, SIZE_STEP = 0.005,
 	-- the ring round the character follows the camera's zoom (the same day:
 	-- the arrow "behaves much more smoothly and dynamically when you are
 	-- spinning around" in another marker): RING_X / RING_Y at RING_ZOOM yards,
@@ -7358,12 +7362,25 @@ function Beacon.Resize(f, d, pin)
 	end
 	f.size = s
 	if f.core then
-		f.core:SetScale(math.max(s, Beacon.MARK_MIN))
+		-- (2026-10-21, the user: "keep its size big enough to not get shrunk down") never under MARK_PX screen px at
+		-- the UI's scale, its picture the copy made for its size (MelloUI.Icons)
+		local least = MelloUI.Icons.FloorScale(f, TextShade.GEM, Beacon.MARK_PX)
+		f.core:SetScale(math.min(1, math.max(s, Beacon.MARK_MIN, least)))
+		if f.gem then
+			MelloUI.Icons.Fit(f.gem)
+		end
 	end
 	if f.beam then
 		f.beam:SetScale(s)
 	end
 end
+-- (2026-10-21) the mark's floor is in screen px: a new UI scale or screen lays its size again at the next tick (its
+-- size and its last distance forgotten: a still marker's tick stops before the size otherwise)
+MelloUI:On("scale", function()
+	if marker then
+		marker.size, marker.lastD = nil, nil
+	end
+end, "the World Marker's floor")
 
 -- How much larger or smaller the ring round the character is at the camera's
 -- zoom now (see Beacon's RING_*)
@@ -7592,8 +7609,7 @@ end
 function Travel.PlayerArrow(tex)
 	local W = MelloUI.Widgets
 	if type(W) == "table" and type(W.IconPath) == "function" then
-		tex:SetTexture(W.IconPath("arrow_player"))
-		tex:SetTexCoord(0, 1, 0, 1)
+		MelloUI.Icons.Set(tex, "arrow_player")   -- (the copy for its size: MelloUI.Icons)
 		return
 	end
 	for _, atlas in ipairs({ "ui-hud-minimap-arrow-player-2x", "ui-hud-minimap-arrow-player" }) do
@@ -7633,8 +7649,8 @@ function Beacon.FlagMark()
 		Kit.pieceOf[gem], Kit.pieceNameOf[gem] = nil, nil   -- (no kit piece: no shadow partner; the disc is its own dark ground)
 	end
 	-- (0.25.0, MelloUI's icon set) the gem itself wears the goal's picture (a gold ring, a dark disc and the flag
-	-- glyph over it until then)
-	gem:SetTexCoord(0, 1, 0, 1)
+	-- glyph over it until then); set anew (MelloUI.Icons: its copy and its part of the copies' sheet)
+	gem.goalPic = nil
 	marker.goalFlag = gem
 	M.GoalFlag(gem)
 end
@@ -9285,15 +9301,15 @@ function M.GoalOnMinimap(cont, round, R, RX, RY)
 		g:SetFrameLevel(mm:GetFrameLevel() + 5)
 		M.goalMini = g
 		local chev = mm:CreateTexture(nil, "OVERLAY", nil, 4)
-		chev:SetTexture(M.TRAIL.CHEVRON)
 		chev:SetSize(20, 10)
+		MelloUI.Icons.Set(chev, M.TRAIL.CHEVRON, 20)   -- (the copy for its size: MelloUI.Icons)
 		chev:Hide()   -- (shown when a goal lies beyond the map: a new texture shows at once)
 		chev.on = false
 		M.goalChev = chev
 		-- (0.25.0) the pointer under the lifted flag, its tip on the goal's spot
 		g.pointer = mm:CreateTexture(nil, "OVERLAY", nil, 4)
-		g.pointer:SetTexture(M.TRAIL.CHEVRON)
 		g.pointer:SetSize(10, 5)
+		MelloUI.Icons.Set(g.pointer, M.TRAIL.CHEVRON, 10)
 		g.pointer:Hide()
 	end
 	local gx, gy = M.MinimapOffset(d.x, d.y)

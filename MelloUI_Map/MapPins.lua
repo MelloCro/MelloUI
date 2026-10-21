@@ -181,13 +181,12 @@ local function Dress(pin)
 		pin.dressed = true
 		return
 	end
+	local s = spec.size or 16
 	if spec.atlas then
 		tex:SetAtlas(spec.atlas)
 	elseif spec.icon then
-		tex:SetTexture(spec.icon)
-		tex:SetTexCoord(0, 1, 0, 1)
+		MelloUI.Icons.Set(tex, spec.icon, s)   -- (2026-10-21: the copy for its size; a game icon as it is)
 	end
-	local s = spec.size or 16
 	tex:SetSize(s, s)
 	local c = spec.rgb
 	if c then

@@ -371,6 +371,8 @@ local function PaintPortrait(p, s)
 		return
 	end
 	p.portraitShows = want
+	-- (2026-10-21) the game's art set from C below: no icon of MelloUI.Icons' any more; a medallion its copy again
+	MelloUI.Icons.Release(tex)
 	tex:SetTexCoord(0, 1, 0, 1)
 	-- the game's own portrait of the player (and Class Icons' medallion on
 	-- it, through its hook): a setter handed the unit, nothing read
@@ -378,7 +380,7 @@ local function PaintPortrait(p, s)
 		return
 	end
 	if medallion then
-		tex:SetTexture(medallion)
+		MelloUI.Icons.Set(tex, medallion)
 	elseif s.display and type(_G.SetPortraitTextureFromCreatureDisplayID) == "function"
 		and pcall(_G.SetPortraitTextureFromCreatureDisplayID, tex, s.display) then
 		return
@@ -2491,9 +2493,10 @@ local function PaintPartyPortrait(f, s)
 		return
 	end
 	f.portraitShows = want
+	MelloUI.Icons.Release(tex)   -- (2026-10-21: as PaintPortrait's)
 	tex:SetTexCoord(0, 1, 0, 1)
 	if medallion then
-		tex:SetTexture(medallion)
+		MelloUI.Icons.Set(tex, medallion)
 	elseif s.display and type(_G.SetPortraitTextureFromCreatureDisplayID) == "function"
 		and pcall(_G.SetPortraitTextureFromCreatureDisplayID, tex, s.display) then
 		return

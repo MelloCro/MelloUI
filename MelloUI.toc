@@ -19,6 +19,7 @@ Core\Companions.lua
 Core\QuestObjectives.lua
 Core\MapLayer.lua
 Core\Anim.lua
+Core\Icons.lua
 Core\Widgets.lua
 Core\Shade.lua
 Core\Outline.lua
@@ -52,6 +53,7 @@ Media\CustomTextures.lua
 Media\QuestListData.lua
 Media\PlaceData.lua
 Media\ClassIcons.lua
+Media\IconSizes.lua
 Media\KitLayout.lua
 Media\KitSlices.lua
 Media\KitShadows.lua

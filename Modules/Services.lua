@@ -175,6 +175,15 @@ local function NPCSubName()
 	return ""
 end
 
+-- (2026-10-21, the user: "all icons and its borders should always stay smooth") a button's or a row's picture from
+-- its copy for its size (MelloUI.Icons), cut by `crop` of each side (ROUND_CROP: a game icon's baked edge, under the
+-- round mask)
+local ROUND_CROP = 0.06
+local function Pic(tex, icon, crop)
+	crop = crop or 0
+	MelloUI.Icons.Set(tex, icon, nil, crop, 1 - crop, crop, 1 - crop)
+end
+
 --------------------------------------------------------------------------------
 -- Kinds
 --------------------------------------------------------------------------------
@@ -1340,10 +1349,12 @@ end
 -- a row for an addon: its icon (as its button crops it), its name
 function Addon.Fill(row, e)
 	row.kind = e
-	row.icon:SetTexture(e.icon)
 	local tex = e.button and e.button.icon
-	if tex and tex.GetTexCoord then
+	if tex and tex.GetTexCoord and not MelloUI.Icons.Has(e.icon) then
+		row.icon:SetTexture(e.icon)
 		row.icon:SetTexCoord(tex:GetTexCoord())
+	else
+		Pic(row.icon, e.icon, ROUND_CROP)
 	end
 	row.label:SetText(e.label)
 	row.where:SetText("")
@@ -1824,7 +1835,6 @@ local function MenuRow(i)
 	row.icon = row:CreateTexture(nil, "ARTWORK")
 	row.icon:SetSize(MENU_ICON, MENU_ICON)
 	row.icon:SetPoint("LEFT", 4, 0)
-	row.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
 	local mask = row:CreateMaskTexture()
 	mask:SetTexture(ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
 	mask:SetAllPoints(row.icon)
@@ -1896,7 +1906,7 @@ end
 -- adds that one's name), grey while none is known on this continent
 local function FillRow(row, kind, tray)
 	row.kind = kind
-	row.icon:SetTexture(kind.icon)
+	Pic(row.icon, kind.icon, ROUND_CROP)
 	row.label:SetText(kind.label)
 	local s = slotOf[kind]
 	if not s.nearestAt or GetTime() - s.nearestAt > NEAREST_KEEP then
@@ -1918,7 +1928,7 @@ end
 -- An errand's row: its icon, name and how it stands (Errand.Status)
 function Errand.Fill(row, e)
 	row.kind = e
-	row.icon:SetTexture(e.icon)
+	Pic(row.icon, e.icon, ROUND_CROP)
 	row.label:SetText(e.label)
 	local text, key = Errand.Status(e)
 	row.where:SetText(text)
@@ -1934,7 +1944,7 @@ end
 -- trainer's icon
 function Pick.Fill(row, e)
 	row.kind = e
-	row.icon:SetTexture(not e.prof and e.kind.icon or nil)
+	Pic(row.icon, not e.prof and e.kind.icon or nil, ROUND_CROP)
 	row.label:SetText(e.label)
 	row.where:SetText(e.yours and "yours" or "")
 	Tint(row.label, "text")
@@ -1952,7 +1962,6 @@ local function FillMenu(group)
 	end
 	for i, row in ipairs(menu.rows) do
 		local kind = kinds[i]
-		row.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)   -- (an addon's row crops as its button: Addon.Fill)
 		if kind and kind.addon then
 			Addon.Fill(row, kind)
 		elseif kind and kind.errand then
@@ -2483,7 +2492,7 @@ local function KindButtons()
 		b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 		b.icon = b:CreateTexture(nil, "ARTWORK")
 		b.icon:SetAllPoints()
-		b.icon:SetTexture(kind.icon)
+		Pic(b.icon, kind.icon)
 		MelloUI.Widgets.HoverLight(b, "square")   -- (its shape follows Round Icons: ApplyIconShape)
 		b.kind = kind
 		b.slot = slots[i]
@@ -2538,7 +2547,7 @@ local function GroupButtons()
 		b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 		b.icon = b:CreateTexture(nil, "ARTWORK")
 		b.icon:SetAllPoints()
-		b.icon:SetTexture(group.icon)
+		Pic(b.icon, group.icon)
 		MelloUI.Widgets.HoverLight(b, "square")   -- (its shape follows Round Icons: ApplyIconShape)
 		b.group = group
 		Perf.SetScript(b, "OnClick", GroupClick)
@@ -2978,12 +2987,12 @@ local function ApplyIconShape()
 			b.rim:SetPoint("TOPLEFT", b, "TOPLEFT", -5 * k, 4 * k)
 		end
 		local of = b.kind or b.group
+		local crop = 0
 		b.ringedIcon = (of and MelloUI.Widgets.IconRinged(of.icon)) and true or nil
 		if b.ringedIcon then
 			-- (0.25.0) one of the set's Services icons: whole, its own disc and ring, as large as the old rim
 			-- reached round the button, with no rim of ours or the kit's over it (Round Icons or not)
 			b.icon:RemoveMaskTexture(b.mask)
-			b.icon:SetTexCoord(0, 1, 0, 1)
 			b.rim:Hide()
 			for _, key in ipairs({ "kitRoundRim", "kitSquareRim" }) do
 				if b[key] then
@@ -2998,11 +3007,10 @@ local function ApplyIconShape()
 		else
 			if round then
 				b.icon:AddMaskTexture(b.mask)
-				b.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
+				crop = ROUND_CROP
 				b.rim:SetShown(not kit)
 			else
 				b.icon:RemoveMaskTexture(b.mask)
-				b.icon:SetTexCoord(0, 1, 0, 1)
 				b.rim:Hide()
 			end
 			-- the hover glow takes the icon's shape too (user, 2026-09-26: "they
@@ -3030,6 +3038,7 @@ local function ApplyIconShape()
 				b.icon:SetAllPoints(b)
 			end
 		end
+		Pic(b.icon, of and of.icon, crop)   -- (laid: its copy for the size it has now)
 	end
 	if round then
 		-- Dark Mode shades the rims with the minimap art.

@@ -1102,8 +1102,8 @@ local function Heading(key, name)
 	Look.Text(h.text, "gold", 12)
 	h.text:SetText(name)
 	h.plus = h:CreateTexture(nil, "OVERLAY")
-	h.plus:SetTexture(W.IconPath("btn_expand"))   -- (0.25.0: the set's +; the game's 1x art until then)
 	h.plus:SetSize(12, 12)
+	MelloUI.Icons.Set(h.plus, "btn_expand", 12)   -- (0.25.0: the set's +; the game's 1x art until then)
 	h.plus:SetPoint("LEFT", h, "LEFT", 0, 0)
 	if key == "junk" then
 		h.worth = h:CreateFontString(nil, "OVERLAY")
@@ -1986,6 +1986,13 @@ do
 	-- (0.25.0) the backpack and the Reagent Bag of MelloUI's icon set (the game's art until then)
 	local ICONS = { bags = MelloUI.Widgets.IconPath("bag_backpack"), reagent = MelloUI.Widgets.IconPath("bag_reagent") }
 	local HOLD = 0.6   -- s an item is held over a tab before the tab opens
+	-- (2026-10-21) a tab's icon from its copy for its size (MelloUI.Icons): the template's interior (50 units, its
+	-- texture coordinates cut 1/32 in: SidePanelTabButtonMixin:UpdateIconInterior), laid again each time it does
+	local iconOf = setmetatable({}, { __mode = "k" })
+	local INTERIOR, CUT = 50, 0.03125
+	local function TabIcon(tab)
+		MelloUI.Icons.Set(tab.Icon, iconOf[tab], INTERIOR, CUT, 1 - CUT, CUT, 1 - CUT)
+	end
 	-- the game's art is drawn for a window's right: on the left it is mirrored (the plain look; the kit's rim is
 	-- square), the icon nudged the other way (the template's Camelot offset is -4)
 	local MIRROR = { Background = "common-sidetab", HighlightTexture = "common-sidetab-hover",
@@ -2214,7 +2221,9 @@ do
 			tab.GetIconAnchorOffsetsForTabArt = IconOffsets   -- (an own frame of the game's template: its mixin's hook)
 			tab:InitializeIconAnchoring()
 			tab:SetFillToInterior(true)
-			tab.Icon:SetTexture(ICONS[key])
+			iconOf[tab] = ICONS[key]
+			TabIcon(tab)
+			hooksecurefunc(tab, "UpdateIconInterior", TabIcon)   -- (its crop set again by the template: ours after it)
 			tab:SetCustomOnMouseUpHandler(TabUp)
 			Perf.HookScript(tab, "OnReceiveDrag", TabDrag)
 			Perf.HookScript(tab, "OnEnter", TabEnter)
@@ -2326,6 +2335,7 @@ local function Build()
 		t:ClearAllPoints()
 		t:SetPoint("CENTER")
 		t:SetSize(side, side)
+		MelloUI.Icons.Set(t, "btn_sort", side)   -- (2026-10-21: the copy for its size)
 		if i == 2 then
 			t:SetVertexColor(0.8, 0.8, 0.8)
 		end

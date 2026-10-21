@@ -353,8 +353,8 @@ local function Row(i)
 	View.KitRim(face)
 	row.face = face
 	local dot = row:CreateTexture(nil, "OVERLAY", nil, 6)
-	dot:SetTexture(W.IconPath("map_dot"))   -- (0.25.0: the set's bead, its white tinted; a flat disc until then)
 	dot:SetSize(7, 7)
+	MelloUI.Icons.Set(dot, "map_dot", 7)   -- (0.25.0: the set's bead, its white tinted; a flat disc until then)
 	dot:SetPoint("CENTER", face, "BOTTOMRIGHT", -3, 3)
 	row.dot = dot
 	row.name = row:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
@@ -385,7 +385,7 @@ local function Picture(tex, c)
 	if Look and Look.ClassIcon then
 		Look.ClassIcon(tex, class, class and MelloUI.ClassIconPath and MelloUI:ClassIconPath(class) or UNKNOWN)
 	else
-		tex:SetTexture(UNKNOWN)
+		MelloUI.Icons.Set(tex, UNKNOWN)
 	end
 end
 

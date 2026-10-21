@@ -2221,8 +2221,6 @@ function Frames.Dress(ours, region, kind)
 	end
 	Frames.dressed[ours] = kind
 	local art = Frames.ART[kind]
-	ours:SetTexture(Frames.DIR .. art[1])
-	ours:SetTexCoord(0, art[2], 0, art[3])
 	ours:ClearAllPoints()
 	local at, from = art.at, Frames.anchor[region]
 	if at and from then
@@ -2231,6 +2229,8 @@ function Frames.Dress(ours, region, kind)
 	else
 		ours:SetAllPoints(region)
 	end
+	-- (2026-10-21) laid: the level badge from its copy for its size (MelloUI.Icons), the frames' pictures as they are
+	MelloUI.Icons.Set(ours, Frames.DIR .. art[1], nil, 0, art[2], 0, art[3])
 end
 
 -- ours shown while wanted and the game's picture shows; the game's unseen meanwhile

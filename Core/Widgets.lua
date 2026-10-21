@@ -1041,8 +1041,7 @@ function KC.LayIcon(tex, w, h, kind, dir, state, alpha, glyph, icon)
 	end
 	if tex.melloPiece ~= name then
 		tex.melloPiece = name
-		tex:SetTexture("Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\" .. icon)
-		tex:SetTexCoord(0, 1, 0, 1)
+		MelloUI.Icons.Set(tex, icon, w)   -- (fitted to its own size below)
 		tex:SetVertexColor(1, 1, 1, 1)
 		local turn = KC.TURN[kind]
 		tex:SetRotation(turn and turn[dir or (kind == "arrow" and "down" or "up")] or 0)
@@ -1056,6 +1055,7 @@ function KC.LayIcon(tex, w, h, kind, dir, state, alpha, glyph, icon)
 		s = math.max(math.min(w, h), KC.MIN[kind] or 0)
 	end
 	tex:SetSize(s, s)
+	MelloUI.Icons.Fit(tex, s)
 	tex:ClearAllPoints()
 	tex:SetPoint("CENTER", tex.melloOn or tex:GetParent(), tex.melloPoint or "CENTER", tex.melloX or 0, 0)
 	return true
@@ -1671,7 +1671,7 @@ do
 		-- track's height; it was a palette disc in an innerPanel ring under two round masks
 		local ring = track:CreateTexture(nil, "OVERLAY", nil, 0)
 		ring:SetSize(KNOB + 2, KNOB + 2)
-		ring:SetTexture("Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\ctl_knob")
+		MelloUI.Icons.Set(ring, "ctl_knob", KNOB + 2)
 		track:SetThumbTexture(ring)
 		local knob = ring
 		-- (from the least value to the knob's middle: it moves with the knob)
@@ -2507,21 +2507,14 @@ do
 	end
 
 	IconBox_SetIcon = function(self, texture)
-		self.icon:SetTexture(texture)
 		local bare = type(texture) == "string" and texture:sub(1, #SET_DIR) == SET_DIR
 		if (self.bare or false) ~= bare then
 			Bare(self, bare)
 		end
-		if bare then
-			self.icon:SetTexCoord(0, 1, 0, 1)
-			self.cropped = false
-		elseif texture ~= nil and not NO_CROP[texture] then
-			self.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
-			self.cropped = true
-		elseif self.cropped then
-			self.icon:SetTexCoord(0, 1, 0, 1)
-			self.cropped = false
-		end
+		-- (2026-10-21: through MelloUI.Icons, the copy for its size; a game icon cropped of its baked border)
+		local c = (not bare and texture ~= nil and not NO_CROP[texture]) and 0.06 or 0
+		self.cropped = c > 0
+		MelloUI.Icons.Set(self.icon, texture, nil, c, 1 - c, c, 1 - c)
 	end
 end
 
@@ -2599,6 +2592,7 @@ local function IconBox_SetKit(self, on)
 	else
 		icon:SetAllPoints()
 	end
+	MelloUI.Icons.Fit(icon, on and size * 0.9 or size)
 	local k = size / 45
 	local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(ICON_MASK)
 	if info and info.width and info.height then
@@ -2746,14 +2740,17 @@ end
 --------------------------------------------------------------------------------
 -- Icons (0.25.0; the user, 2026-10-19: the cartoon map-marker icons from their ChatGPT sheets, docs/plans/
 -- icons-and-palette.md): MelloUI's own icon set, Media/Textures/Icons (Tools/make_icons.py), one path for all of it
---   W.IconPath(name) -> the file's path   W.Icon(tex, name) -> tex   (the whole picture, untinted)
+--   W.IconPath(name) -> the file's path   W.Icon(tex, name[, units]) -> tex   (the whole picture, untinted)
 --   W.IconMarkup(name, size) -> inline text markup, size x size of the line's units
+-- (2026-10-21, the user: "all icons and its borders should always stay smooth") drawn through MelloUI.Icons
+-- (Core/Icons.lua): the copy of the picture made for its size on screen, picked again when that changes
 --------------------------------------------------------------------------------
 do
 	local DIR = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\"
+	local Icons = MelloUI.Icons
 
 	function W.IconPath(name)
-		return DIR .. name
+		return Icons.Path(name)
 	end
 
 	-- (0.25.0) a flipbook strip of `frames` frames in a row (the set's fx_*) played smooth: `a` shows the frame `u`
@@ -2775,15 +2772,15 @@ do
 		b:SetAlpha(alpha * p)
 	end
 
-	function W.Icon(tex, name)
-		tex:SetTexture(DIR .. name)
-		tex:SetTexCoord(0, 1, 0, 1)
+	-- (units: tex's width, when it is not sized yet or is sized after; Icons.Set reads it otherwise)
+	function W.Icon(tex, name, units)
+		Icons.Set(tex, name, units)
 		tex:SetVertexColor(1, 1, 1, 1)
 		return tex
 	end
 
 	function W.IconMarkup(name, size)
-		return "|T" .. DIR .. name .. ":" .. size .. ":" .. size .. "|t"
+		return Icons.Markup(name, size)
 	end
 
 	-- (0.25.0) the set's square button frame, frame_<state> (normal, hover, pressed, active, empty, range), on `t` as
@@ -2841,6 +2838,9 @@ end
 --       with it, following the rim's own show and hide: none in the plain
 --       look; made with the first kit look, at the shade's pace)
 --   b:SetIcon(texture)   b:SetOn(on) (grey and dimmed while off)
+--   b:SetCrop(share)     (2026-10-21) every picture cut by `share` of each
+--                        side (nil: the usual, a game icon's border); the
+--                        icon drawn from its copy for its size (MelloUI.Icons)
 --   b:SetKit(Kit)        the kit's look while handed the kit (MelloUI.Kit, as
 --                        a shell hands it to its dressing: this file never
 --                        reaches for it), the plain look for nil or false; the
@@ -2863,6 +2863,21 @@ do
 
 	-- (0.25.0) one of the set's own round buttons or pins (W.IconRinged) is shown whole in the plain look: the
 	-- button's size, unmasked, its own ring in place of the plain rim
+	-- (2026-10-21) the icon from its copy for its size (MelloUI.Icons): one of the set's buttons whole, any other
+	-- cropped to its art inside the mask
+	local CROP = 0.06
+	local function IconArt(b)
+		local c = b.crop or (b.ringed and 0 or CROP)
+		MelloUI.Icons.Set(b.icon, b.texture, nil, c, 1 - c, c, 1 - c)
+	end
+
+	-- a crop of its own for every picture it shows (a share of each side: a medallion cut inside its own ring), nil
+	-- for the usual one
+	local function SetCrop(b, crop)
+		b.crop = crop
+		IconArt(b)
+	end
+
 	local function PlainLay(b)
 		local icon, rim = b.icon, b.plainRim
 		icon:ClearAllPoints()
@@ -2870,32 +2885,34 @@ do
 		if b.ringed then
 			icon:SetSize(b.size, b.size)
 			rim:Hide()
+			MelloUI.Icons.Fit(icon)
 			return
 		end
 		local d = b.size * OPENING
 		icon:SetSize(d, d)
+		MelloUI.Icons.Fit(icon)
 		rim:ClearAllPoints()
 		rim:SetSize(b.size, b.size)
+		MelloUI.Icons.Fit(rim, b.size)
 		rim:SetPoint("CENTER", b, "CENTER", 0, 0)
 		rim:Show()
 	end
 
 	local function SetIcon(b, texture)
 		local ringed = W.IconRinged(texture)
+		b.texture = texture
 		if ringed ~= (b.ringed or false) then
 			b.ringed = ringed or nil
 			if ringed then
 				b.icon:RemoveMaskTexture(b.mask)
-				b.icon:SetTexCoord(0, 1, 0, 1)
 			else
 				b.icon:AddMaskTexture(b.mask)
-				b.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
 			end
 			if not b.kitLaid then
 				PlainLay(b)
 			end
 		end
-		b.icon:SetTexture(texture)
+		IconArt(b)
 	end
 
 	local function SetOn(b, on)
@@ -2947,6 +2964,7 @@ do
 			b.plainRim:Hide()
 			rim.icon = b.icon
 			Kit:SlotPlaceIcon(rim)
+			MelloUI.Icons.Fit(b.icon)   -- (the rim's opening: another size)
 		else
 			if b.kitRim then
 				b.kitRim:Hide()
@@ -2974,8 +2992,8 @@ do
 		b.mask = mask
 		W.HoverLight(b, "round")   -- over the whole rim: the kit's (on the button) and the plain medallion alike
 		b.plainRim = b:CreateTexture(nil, "OVERLAY")
-		b.plainRim:SetTexture(PLAIN_RIM)
-		b.SetIcon, b.SetOn, b.SetKit = SetIcon, SetOn, SetKit
+		MelloUI.Icons.Set(b.plainRim, PLAIN_RIM, size)
+		b.SetIcon, b.SetOn, b.SetKit, b.SetCrop = SetIcon, SetOn, SetKit, SetCrop
 		if texture ~= nil then
 			b:SetIcon(texture)
 		end
@@ -3106,7 +3124,7 @@ do
 				b.art = b:CreateTexture(nil, "ARTWORK", nil, 3)
 				b.art:SetAllPoints(b)
 			end
-			W.Icon(b.art, art)
+			W.Icon(b.art, art, b.size)
 			b.art:Show()
 		elseif b.art then
 			b.art:Hide()
@@ -3252,7 +3270,7 @@ do
 			local side = math.min(w, h)
 			t:SetSize(side, side)
 			t:SetPoint("CENTER")
-			W.Icon(t, art)
+			W.Icon(t, art, side)
 			b.art, b.plateArea, b.plateGlyph = t, area, glyph
 			b.artLight = W.HoverLight(b, "round", t)
 			local key = area or "config"
@@ -6303,7 +6321,7 @@ function Rail:SetGroups(groups)
 					h.emblem:SetSize(18, 18)
 					h.emblem:SetPoint("LEFT", 24, 0)
 				end
-				h.emblem:SetTexture(g.icon)
+				MelloUI.Icons.Set(h.emblem, g.icon, 18)   -- (2026-10-21: the copy for its size)
 				h.emblem:Show()
 				h.text:SetPoint("LEFT", 46, 0)
 			else
@@ -6340,7 +6358,7 @@ function Rail:SetGroups(groups)
 				if icon.SetIcon then
 					icon:SetIcon(e.icon)
 				else
-					icon:SetTexture(e.icon)
+					MelloUI.Icons.Set(icon, e.icon, spec.iconSize)
 				end
 				icon:Show()
 				x = 8 + spec.iconSize + 8
@@ -6490,7 +6508,7 @@ function Rail:Paint()
 			W.TagShown(h.newTag, tagShown)
 			h.text:SetPoint("RIGHT", tagShown and h.newTag.plate or h, tagShown and "LEFT" or "RIGHT", tagShown and -RAIL_TAG_GAP or -6, 0)
 		end
-		h.glyph:SetTexture(folded and PLUS or MINUS)
+		MelloUI.Icons.Set(h.glyph, folded and PLUS or MINUS, 14)
 		-- (the kit's glyphs only while its look is on: a switch off disabled them)
 		local kitOpen = h.collapsible and skin and skin.kit and true or false
 		RepShown(h.plusRep, kitOpen and folded)

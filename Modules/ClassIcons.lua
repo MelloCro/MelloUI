@@ -276,8 +276,7 @@ local function ApplyClassPortrait(texture, classFile)
 	end
 	if c.class ~= classFile or c.variant ~= variant then
 		c.class, c.variant = classFile, variant
-		c.tex:SetTexture(path)
-		c.tex:SetTexCoord(0, 1, 0, 1)
+		MelloUI.Icons.Set(c.tex, path)   -- (2026-10-21: the medallion's copy for the portrait's size)
 		CopyAlpha(c, texture)
 		CopyColour(c, texture)
 		CopyDesaturated(c, texture)

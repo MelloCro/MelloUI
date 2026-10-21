@@ -601,6 +601,33 @@ def files():
     return out
 
 
+def bigs():
+    """(2026-10-21, Tools/make_icon_sizes.py: the copies of the icons made for the sizes they are drawn at) every icon
+    of the set as its big art: [(name, its picture at its art's size, the file's size -- its side, or "WxH" for the
+    oblong chevron)]. Not the frames and the bar's spark (stretched pieces), the hover light, the flipbooks and the
+    unit frames' art."""
+    out = []
+    for group, art, name, size in SET:
+        if group == "pieces" and name != "uf_badge":
+            continue
+        img = load(group, art)
+        if not isinstance(size, int):
+            # an oblong one (the minimap's goal chevron): framed as its file is, at twice its size; its size "WxH"
+            if name == "edge_arrow":
+                img = img.rotate(180)
+            out.append((name, scaled(img, (size[0] * 2, size[1] * 2)), "%dx%d" % size))
+            continue
+        if img.width != img.height:
+            img = scaled(img, max(img.size))   # (squared as its file is: the level badge's cut is 159 x 160)
+        out.append((name, img, size))
+    for name in CLASSES:
+        out.append(("class_" + name, class_disc(name, 128), 64))
+    out.append(("ring_gold", load("ring", "ring_gold_256"), 128))
+    out.append(("badge_disc", disc(256), 64))
+    out.append(("badge_edge", disc(256, inner=256 / 2 - 1 - 256 * 0.075), 64))
+    return out
+
+
 def tga(img):
     buf = io.BytesIO()
     img.save(buf, format="TGA")
