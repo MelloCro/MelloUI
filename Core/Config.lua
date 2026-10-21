@@ -142,6 +142,7 @@ local CHANGELOG = {
 		"Route follows Follow The Arrow, Azeroth Pilot Reloaded and TomTom's arrow, as it follows RestedXP: the map pin, the World Marker, the guide's steps in the Quest Tracker.",
 		"Guidelime: turn on its Use TomTom arrow option and Route follows it too. /route guide turns following the guides off and on.",
 		"Several guides on at once? MelloUI asks which one to keep and switches the others off for that character.",
+		"Route: Loading navigation... shows a loading bar, above the world map and every window.",
 		"Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast.",
 		"Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on.",
 		"Fixed: the middle of Silithus and parts of six other zones are no longer cut out of the map.",

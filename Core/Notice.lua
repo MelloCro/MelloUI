@@ -19,13 +19,22 @@
 --   MelloUI:AnnounceSounds(kind[, mute])
 --       true when that call would play its sound now (a caller with a
 --       sound of its own plays it only when not: one chime, not two).
---   MelloUI:AnnounceWait(text[, kind]) / MelloUI:AnnounceDone(text)
+--   MelloUI:AnnounceWait(text[, kind[, opts]]) / MelloUI:AnnounceDone(text)
 --       (0.15.0) a line held for as long as its caller waits on something
 --       (Route's "Loading navigation..." while the roads go in), never a
 --       sound: shown like any other, but not faded after 4 s. Done fades
 --       it as a hold's end does, while it is still the line shown; a new
 --       line, or the notices switched off, takes its place as ever. A plain
 --       text only. Sent to the chat instead: said there once.
+--       (1.2.0) Over every window, at the tooltip's strata (the user,
+--       2026-10-21: the world map, HIGH as the notice, covered it); the
+--       other lines stay at HIGH. opts (read at the call): share (0..1) puts
+--       a loading bar under the text with the share done right of it, icon
+--       a picture in the gold ring left of both (look B of BuildData/output/
+--       route_loading_sketch).
+--   MelloUI:AnnounceProgress(text, share)
+--       (1.2.0) the bar of the held line `text` to `share`, while it is the
+--       line shown; nothing is made per call.
 --
 -- The settings are Tweaks' rows beside Chat Notices (read when used, a
 -- missing one as its default, so they hold with Tweaks off):
@@ -91,6 +100,20 @@ local MIN_WIDTH = 120
 local GUESS_WIDTH = 400         -- a width that cannot be read (a secret text)
 local PREVIEW = "Notices show here. Drag to move."
 
+-- (1.2.0) a held line's badge and loading bar (AnnounceWait's opts; the user
+-- picked look B, 2026-10-21): the caller's picture in the gold ring
+-- (W.RoundIcon's plain look) left of the text, a slim track under the text
+-- (W.Panel's track, as the swing bars': the Bar Texture's fill in the
+-- palette's gold, soft ends) and the share done right of the track, the band
+-- behind them all. Made with the first such line, hidden for any other.
+local Loader = { RING = 34, RING_GAP = 8,   -- the ring's size, the ring to the text
+	BAR_GAP = 6, BAR_H = 4,                -- the text's foot to the track, the track's height
+	PCT_SIZE = 14, PCT_GAP = 8,            -- the share's size, the track to the share
+	TRACK_ALPHA = 0.85, MIN_TRACK = 40,
+	PAD_Y = PAD_Y - 2,                     -- the band's full part above and below them
+	OWNER = "Notice bar",                  -- (its Bar Texture listeners: not the notice's own 'setting')
+	PCT = {} }                             -- [n] = "n%", made once each
+local HELD = {}   -- a held line with no badge or bar
 -- the text's palette colour and Core's UI sound, per kind. Only the two
 -- brightest text colours: over snow or sand, under the shade, trim and
 -- mutedText read at about 1.4 : 1, so learn and fail take the body text's
@@ -130,8 +153,9 @@ local function WantPreview()
 end
 
 local frame, text, font   -- made with the first notice (frame.shade: its band)
--- (wait: the text of a line held by AnnounceWait while it is shown, else nil)
-local state = { holds = 0, kind = "info", preview = false, entry = nil, wait = nil }
+-- (wait: the text of a line held by AnnounceWait while it is shown, else nil;
+-- bar: true while that line shows its loading bar)
+local state = { holds = 0, kind = "info", preview = false, entry = nil, wait = nil, bar = false }
 
 -- where it stands with no place saved: top centre, under the Route arrow
 local function Home(f)
@@ -161,17 +185,136 @@ local function Paint()
 	local r, g, b = GameLook.RoleColour(COLOUR[state.kind] == "selectedTrim" and "gold" or "text")
 	text:SetTextColor(r, g, b, 1)
 	GameLook.Shadow(text, SHADOW_ALPHA)
+	if Loader.fill then
+		Loader.fill:SetStatusBarColor(GameLook.RoleColour("gold"))
+		r, g, b = GameLook.RoleColour("text")
+		Loader.pct:SetTextColor(r, g, b, 1)
+		GameLook.Shadow(Loader.pct, SHADOW_ALPHA)
+	end
 end
 
--- the font: the interface face at SIZE, outlined only with Outlined Text
+-- the font: the interface face at SIZE (the share's at its own), outlined
+-- only with Outlined Text
 local function Style()
 	if text and font and MelloUI.StyleFont then
-		MelloUI:StyleFont(text, "fontText", font, SIZE, "", GameLook.Outline(Setting("noticeOutline")))
+		local outline = GameLook.Outline(Setting("noticeOutline"))
+		MelloUI:StyleFont(text, "fontText", font, SIZE, "", outline)
+		if Loader.pct then
+			MelloUI:StyleFont(Loader.pct, "fontText", font, Loader.PCT_SIZE, "", outline)
+		end
 	end
+end
+
+-- the badge, the track and the share, on a group the band lies behind
+function Loader.Make()
+	if Loader.group then
+		return
+	end
+	local W = MelloUI.Widgets
+	local group = CreateFrame("Frame", nil, frame)
+	group:SetPoint("CENTER")
+	group:SetSize(1, 1)
+	group:Hide()
+	local badge = W.RoundIcon(group, Loader.RING)
+	badge:EnableMouse(false)   -- (a picture in a rim)
+	badge:SetPoint("LEFT", group, "LEFT", 0, 0)
+	local track = CreateFrame("Frame", nil, group)
+	W.Panel(track, { on = true, alpha = Loader.TRACK_ALPHA })
+	track:SetPoint("TOPLEFT", text, "BOTTOMLEFT", 0, -Loader.BAR_GAP)
+	track:SetHeight(Loader.BAR_H)
+	local fill = CreateFrame("StatusBar", nil, track)
+	fill:SetPoint("TOPLEFT", track, "TOPLEFT", 1, -1)
+	fill:SetPoint("BOTTOMRIGHT", track, "BOTTOMRIGHT", -1, 1)
+	fill:SetStatusBarTexture(W.BarFill())
+	W.SoftEnds(fill)   -- (every bar's ends soft: the user, 2026-10-16)
+	fill:SetMinMaxValues(0, 1)
+	fill:SetValue(0)
+	local pct = group:CreateFontString(nil, "OVERLAY")
+	if font then
+		pct:SetFontObject(font)
+	end
+	pct:SetShadowOffset(TEXT.shadowX, TEXT.shadowY)
+	pct:SetPoint("RIGHT", text, "BOTTOMRIGHT", 0, -(Loader.BAR_GAP + Loader.BAR_H / 2))
+	Loader.group, Loader.badge, Loader.track, Loader.fill, Loader.pct = group, badge, track, fill, pct
+	Loader.shown = -1
+	-- a Bar Texture chosen or switched: the fill dressed again (and painted:
+	-- a new texture comes white)
+	W.OnBarTexture(nil, function()
+		fill:SetStatusBarTexture(W.BarFill())
+		Paint()
+	end, Loader.OWNER)
+	Style()
+	Paint()
+end
+
+-- the share done: the fill, and its number when that changed
+function Loader.Set(share)
+	share = Num(share) or 0
+	share = share < 0 and 0 or share > 1 and 1 or share
+	Loader.fill:SetValue(share)
+	local n = math.floor(share * 100 + 0.5)
+	if n ~= Loader.shown then
+		Loader.shown = n
+		local s = Loader.PCT[n]
+		if not s then
+			s = n .. "%"
+			Loader.PCT[n] = s
+		end
+		Loader.pct:SetText(s)
+	end
+end
+
+-- the line's layout: a held one over every window (TOOLTIP), with its badge
+-- and bar when it asked for them; any other at HIGH, the text alone. The
+-- sizes follow in Measure (Loader.Fit).
+function Loader.Lay(held)
+	frame:SetFrameStrata(held and "TOOLTIP" or "HIGH")
+	local on = held ~= nil and held.share ~= nil
+	state.bar = on
+	text:ClearAllPoints()
+	if not on then
+		if Loader.group then
+			Loader.group:Hide()
+		end
+		text:SetPoint("CENTER")
+		frame.shade:Anchor(text, PAD_X, PAD_Y)
+		return
+	end
+	Loader.Make()
+	local icon = held.icon
+	Loader.badge:SetShown(icon ~= nil)
+	if icon ~= nil then
+		Loader.badge:SetIcon(icon)
+	end
+	Loader.group:Show()
+	frame.shade:Anchor(Loader.group, PAD_X, Loader.PAD_Y)
+	Loader.Set(held.share)
+end
+
+-- the group round the badge, the text (`w` wide) and the bar: the text right
+-- of the ring, the column of text and track centred on it, the track short
+-- of the text's end by the widest share; -> the group's width
+function Loader.Fit(w)
+	local pct = Loader.pct
+	local shown = pct:GetText()
+	pct:SetText("100%")
+	local pw = Num(Call(pct, "GetUnboundedStringWidth")) or Num(Call(pct, "GetStringWidth")) or 0
+	pct:SetText(shown)
+	local th = Num(Call(text, "GetStringHeight")) or SIZE
+	local ring = Loader.badge:IsShown() and Loader.RING + Loader.RING_GAP or 0
+	local col = th + Loader.BAR_GAP + Loader.BAR_H
+	local h = math.max(ring > 0 and Loader.RING or 0, col)
+	Loader.group:SetSize(ring + w, h)
+	text:ClearAllPoints()
+	text:SetPoint("TOPLEFT", Loader.group, "TOPLEFT", ring, -(h - col) / 2)
+	local tw = w - pw - Loader.PCT_GAP
+	Loader.track:SetWidth(tw > Loader.MIN_TRACK and tw or Loader.MIN_TRACK)
+	return ring + w
 end
 
 -- the frame as wide as its text and shade (the mover's grab, the keep-on-
 -- screen); the shade follows the text by its anchors, needing none of this
+-- (a held line's badge and bar: their group, Loader.Fit)
 local function Measure()
 	if not text then
 		return
@@ -182,7 +325,11 @@ local function Measure()
 		text:SetWidth(MAX_TEXT)
 		w = MAX_TEXT
 	end
-	w = (w or GUESS_WIDTH) + 2 * (PAD_X + FEATHER)
+	w = w or GUESS_WIDTH
+	if state.bar then
+		w = Loader.Fit(w)
+	end
+	w = w + 2 * (PAD_X + FEATHER)
 	frame:SetWidth(w > MIN_WIDTH and w or MIN_WIDTH)
 end
 
@@ -227,11 +374,13 @@ local function Build()
 end
 
 -- a line on the frame, at full, in its kind's colour (a held one's place
--- taken: AnnounceWait marks its own after this)
-local function Put(msg, kind)
+-- taken: AnnounceWait marks its own after this; `held`, its opts, lays it out
+-- as one)
+local function Put(msg, kind, held)
 	Build()
 	text:SetText(msg)
 	state.kind, state.wait = kind, nil
+	Loader.Lay(held)
 	Paint()
 	Measure()
 	Anim:Stop(frame, "alpha")   -- one fading out comes back
@@ -307,7 +456,7 @@ end
 
 -- A line held while its caller waits (see the top): no hold timer, no
 -- sound; the chat gets it once when notices go there
-function MelloUI:AnnounceWait(msg, kind)
+function MelloUI:AnnounceWait(msg, kind, opts)
 	if type(msg) ~= "string" or Secret(msg) or msg == "" or not Setting("noticeOnScreen") then
 		return
 	end
@@ -315,8 +464,17 @@ function MelloUI:AnnounceWait(msg, kind)
 		self:Print(msg)
 		return
 	end
-	Put(msg, COLOUR[kind] and kind or "info")
+	Put(msg, COLOUR[kind] and kind or "info", type(opts) == "table" and opts or HELD)
 	state.wait = msg
+end
+
+-- The held line's bar, while that line is the one shown with its bar
+function MelloUI:AnnounceProgress(msg, share)
+	local wait = state.wait
+	if wait == nil or not state.bar or type(msg) ~= "string" or Secret(msg) or wait ~= msg then
+		return
+	end
+	Loader.Set(share)
 end
 
 -- The wait is over: its line fades, as at a hold's end, while it is still

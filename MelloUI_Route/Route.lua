@@ -498,7 +498,9 @@ end
 -- saved variable arriving, /route reset -- waits in `pending`, in order, and
 -- is made once the roads and the baked paths are in, as it always came after
 -- them: a breadcrumb on a road's cell still lands on the road.
-local Build = { ready = false, pending = {}, deadline = 0, count = 0, MAX_PENDING = 5000 }
+-- (done: the build's slices so far, expected: all of them, for the loading
+-- line's bar: Build.Expect)
+local Build = { ready = false, pending = {}, deadline = 0, count = 0, MAX_PENDING = 5000, done = 0, expected = 0 }
 
 -- A breadcrumb or a flight: may land on a road's cell, so the roads must be
 -- in first
@@ -533,6 +535,7 @@ function Build.Slice()
 		return
 	end
 	Build.count = 0
+	Build.done = Build.done + 16
 	if debugprofilestop() >= Build.deadline and Build.job and coroutine.running() == Build.job then
 		coroutine.yield()
 	end
@@ -10735,9 +10738,15 @@ do
 	Perf.SetScript(builder, "OnUpdate", function()
 		if Build.job then
 			Run(Build.told and Build.BUDGET_WAITED or BUDGET)
+			if Build.loading and MelloUI.AnnounceProgress then
+				MelloUI:AnnounceProgress(Build.LOADING, Build.Share())
+			end
 			return
 		end
 		builder:Hide()
+		if Build.loading and MelloUI.AnnounceProgress then
+			MelloUI:AnnounceProgress(Build.LOADING, Build.Share())   -- (the graph whole: BUILT)
+		end
 		local later = Build.later
 		Build.later = nil
 		if Build.closing or not M.isEnabled then
@@ -10775,6 +10784,7 @@ do
 		if not LoadData() then
 			return
 		end
+		Build.Expect(MelloUI_RoadData)
 		Build.job = coroutine.create(Body)
 		builder:Show()
 		-- something waited while the load was put off (a fight): said now
@@ -10821,8 +10831,64 @@ do
 	-- says nothing. Said only while the build runs: a load the game put off
 	-- (a fight, a moment's refusal: LoadData) holds no line over the whole
 	-- fight; Build.Want says it when the build starts.
+	-- (1.2.0, the user 2026-10-21: "a loading type ... with a loading bar",
+	-- look B) With Route's icon in its ring and a bar of how far the build
+	-- is, over every window (the world map covered it): MelloUI:AnnounceWait's
+	-- opts, the bar moved each frame of the build (AnnounceProgress). The
+	-- build fills it to BUILT; it is full once the route that waited is
+	-- planned (the route's own notice takes its place then, as ever).
 	Build.LOADING = "Loading navigation..."
 	Build.LOADING_AFTER = 0.3   -- seconds
+	Build.BUILT = 0.95
+	Build.HELD = { icon = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\page_route", share = 0 }
+
+	-- The build's work in slices (Build.Slice: one a node or a link it
+	-- handles): each of the companion's nodes unpacked and made, each link
+	-- made, and every node again for the side pieces; what was baked or
+	-- learned is too little to count. From the packed strings' lengths, not
+	-- a pass over the roads.
+	function Build.Expect(roads)
+		local nodes, work = 0, 0
+		local graphs = type(roads) == "table" and roads.graphs
+		for _, g in pairs(type(graphs) == "table" and graphs or {}) do
+			if type(g) == "table" then
+				local n, l = 0, 0
+				if g.packed and type(g.nodes) == "table" and type(g.links) == "table" then
+					for _, s in ipairs(g.nodes) do
+						n = n + #s
+					end
+					for _, s in ipairs(g.links) do
+						l = l + #s
+					end
+					n, l = n / 6, l / 8   -- (3 + 3 characters a node, 3 + 3 + 2 a link: MergeRoads)
+					work = work + 2 * n + l
+				elseif type(g.nodes) == "table" and type(g.links) == "table" then
+					n, l = #g.nodes / 2, #g.links / 3
+					work = work + n + l
+				else
+					for _ in pairs(g) do
+						n = n + 1
+					end
+					work = work + 2 * n
+				end
+				nodes = nodes + n
+			end
+		end
+		Build.done, Build.expected = 0, work + nodes
+	end
+
+	-- how far: the build's share of BUILT, all of it once the graph is whole
+	function Build.Share()
+		local e = Build.expected
+		if Build.ready then
+			return Build.BUILT
+		elseif e <= 0 then
+			return 0
+		end
+		local s = Build.done / e * Build.BUILT
+		return s < Build.BUILT and s or Build.BUILT
+	end
+
 	function Build.Loading()
 		if Build.ready or Build.told or not M.isEnabled then
 			return
@@ -10838,7 +10904,8 @@ do
 		end
 		Build.loading = true
 		if MelloUI.AnnounceWait then
-			MelloUI:AnnounceWait(Build.LOADING, "info")
+			Build.HELD.share = Build.Share()
+			MelloUI:AnnounceWait(Build.LOADING, "info", Build.HELD)
 		end
 	end
 
@@ -10852,6 +10919,9 @@ do
 			return
 		end
 		Build.loading = false
+		if Build.ready and MelloUI.AnnounceProgress then
+			MelloUI:AnnounceProgress(Build.LOADING, 1)   -- (fading full)
+		end
 		if MelloUI.AnnounceDone then
 			MelloUI:AnnounceDone(Build.LOADING)
 		end
