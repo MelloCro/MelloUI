@@ -66,6 +66,8 @@ read_globals = {
 	"IsQuestCompletable", "SelectActiveQuest", "SelectAvailableQuest",
 	-- (0.22.0, the bag window's side tabs: an item dropped into a bag, the Reagent Bag's icon)
 	"PutItemInBag", "PutItemInBackpack", "GetInventoryItemTexture",
+	-- (1.2.0, the swing badge: a hand's weapon, its kind of blow)
+	"GetInventoryItemID",
 	-- (0.19.6, Cooldown Tweaks: an action's spell, the out-of-range dot the hot key shows)
 	"GetActionInfo", "GetMacroSpell", "RANGE_INDICATOR", "FACTION_BAR_COLORS", "FCF_SetChatWindowFontSize",
 	"FocusFrame", "PetFrame", "Game15Font_Shadow", "GameFontHighlightOutline", "GameFontHighlightSmall",

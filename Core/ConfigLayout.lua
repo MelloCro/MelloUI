@@ -1390,8 +1390,8 @@ function L.Define(R, Link)
 	-- (0.21.0, the user's picks: the level orb beside the portrait ring; the Personal Display's hold on the cast bar
 	-- where the cast bar is set)
 	-- (the Group Frames wear the Raid Frames pick's skin, border and bar texture)
-	-- (Swing On The Rails makes the Swing Timers step aside)
-	Link("ActionBars", "swing:element", "General", "PersonalDisplay.swing", "Swing On The Rails (Personal Display)",
+	-- (the Swing Badge makes the Swing Timers step aside)
+	Link("ActionBars", "swing:element", "General", "PersonalDisplay.swing", "Swing Badge (Personal Display)",
 		{ when = { key = "PersonalDisplay.!enabled", value = true, line = "Only with the Personal Display on" } })
 	-- (0.19.4: the aura border is worn by MelloUI's own rows only)
 	Link("Nameplates", "enemies:health", "Look", "BarTextures.healthColor", "Health Bar Colour")

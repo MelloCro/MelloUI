@@ -68,12 +68,13 @@ local T = {
 	-- camera's target, about the chest) down to the bars' top (under the feet); the light's size there, scaled with
 	-- the zoom as the character is, within its bounds
 	stomach = 0.38, charge = 20, chargeMin = 12, chargeMax = 34,
-	-- (Swing On The Rails) the sparks' size on the health and power rails (at Height 10, in step with it), how long
-	-- after a swing's time with no next one they go, the landing's flash
-	glint = 7, glintOff = 5.5, swingGrace = 0.6, landFlash = 0.35,
-	-- (the ranged swing on the seam, the user's pick B of prd_ranged) its sparks' size, the aim at a shot's end (Swing
-	-- Timers' B.AIM: Auto Shot's last half second, standing still), the aim's red line and its held dimming
-	glintRanged = 6, aim = 0.5, aimLine = 1.4, aimHeld = 0.45,
+	-- (the swing badge, 1.2.0: the user's pick of 2026-10-21, pull_expressive) the badge's size as made (on a target's
+	-- plate, in its units), under the display (its units), the off hand's share of it, the gap to what it stands
+	-- beside; the wind-up (the wait's last share), the strike's length, how soon after your swing the game's report of
+	-- the blow on your target is taken as its outcome; how long after a swing's time with no next one it goes; the aim
+	-- at a shot's end (Swing Timers' B.AIM: Auto Shot's last half second, standing still)
+	badge = 24, badgeHere = 22, badgeOff = 0.66, badgeGap = 4, windup = 0.25, strike = 0.5, outcomeWindow = 0.2,
+	swingGrace = 0.6, aim = 0.5,
 	-- (the shields in parts, the user's pick B of prd_multishield) at most this many parts (more: the one total), their
 	-- icons' size beside the column and the gap between them
 	partMax = 6, partIcon = 11, partGap = 2,
@@ -108,7 +109,7 @@ local TEXT = {
 	failed = "refused (%s)",
 	-- (Motion) the words where the game's own strings are missing
 	stunned = "Stunned",
-	words = { DODGE = "Dodge", PARRY = "Parry", BLOCK = "Block" },
+	words = { DODGE = "Dodge", PARRY = "Parry", BLOCK = "Block", MISS = "Miss" },
 }
 -- Preview's made-up shield (plain amounts) and casts, on the solo scene's beats (Core/Preview.lua: pull, hit 1..12,
 -- kill): the shield up at the pull, drained hit by hit to low, broken at the sixth; a heal cast; a second shield
@@ -129,6 +130,8 @@ local SAMPLE = {
 	health = 100, hurt = 4,              -- the health falling this many % a hit
 	casts = { pull = { "Power Word: Shield", 1.2 }, [7] = { "Flash Heal", 1.5 } },
 	swing = 0.9,                         -- the main hand's swing (the scene's hit spacing), the off hand's twice it
+	-- (the swing badge) your blows' outcomes as the game would report them: a critical one, a parry
+	outcomes = { [4] = { "WOUND", "CRITICAL" }, [9] = { "PARRY" } },
 }
 
 local EASE = (Enum and Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut) or 1
@@ -332,8 +335,8 @@ end
 -- should reflect the changes made in the Look -> Borders"; the pick: Personal Resource Border with every bar look):
 -- a bracket look in place (Kit:Bar's and Kit:VBar's SetBarLook), a style of the border library round each fill
 -- (Kit:NewBorder, the bracket put out, the trough run half a rail under it as Kit:BarLibraryFit does), or none (the
--- fill on its trough). Each bar's reach -- its painted frame past its fill, over and under -- stacks the bars and
--- places the swing's rails
+-- fill on its trough). Each bar's reach -- its painted frame past its fill, over and under -- stacks the bars; its
+-- painted width past the fill places the swing badge at the display's left end
 --------------------------------------------------------------------------------
 local Dress = {}
 
@@ -504,11 +507,7 @@ local function LayWidth(ui)
 	return widest
 end
 
--- The swing on the rails (the user's pick C of prd_swing, 2026-10-12: "a glint on the rails", no bar at all): along a
--- bracket's rail an unseen StatusBar whose fill grows from the middle to both ends over the swing (Anim:Timer: the
--- engine counts it, no Lua a frame, Reduce Motion or not -- it tells time), a spark pinned to each end of that fill; the
--- swing lands as the sparks reach the ends (a flash there as the next one starts). The main hand on the health bar's
--- top rail, the off hand on the power bar's foot, shots on the seam between the two (Ranged, the aim's red halves)
+-- (the glows: Frame Effects' own art, added; Motion's spark, the swing badge's light)
 local SPARK_ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\"
 
 local function Spark(parent, layer, sub, file, colour)
@@ -521,131 +520,8 @@ local function Spark(parent, layer, sub, file, colour)
 	return tex
 end
 
-local function NewRail(b)
-	local strip = b.strip
-	local rail = CreateFrame("StatusBar", nil, strip)
-	rail:SetFrameLevel(strip:GetFrameLevel() + 2)
-	rail:SetStatusBarTexture(W.BarFill("personal"))
-	local fill = rail:GetStatusBarTexture()
-	fill:SetAlpha(0)   -- (only its ends are wanted: the sparks pinned to them)
-	local style = Enum and Enum.StatusBarFillStyle
-	if style and style.Center and rail.SetFillStyle then
-		pcall(rail.SetFillStyle, rail, style.Center)
-	end
-	rail:SetMinMaxValues(0, 1)
-	rail:SetValue(0)
-	local colour = MelloUI.Meaning.swingMelee
-	rail.parts = {}
-	for _, point in ipairs({ "LEFT", "RIGHT" }) do
-		local glow = Spark(rail, "OVERLAY", 6, "glow_white.tga")
-		glow:SetPoint("CENTER", fill, point, 0, 0)
-		local star = Spark(rail, "OVERLAY", 7, "spark_gold.tga", colour)
-		star:SetPoint("CENTER", fill, point, 0, 0)
-		rail.parts[#rail.parts + 1] = glow
-		rail.parts[#rail.parts + 1] = star
-	end
-	-- the landing: a flash at both ends
-	local land = CreateFrame("Frame", nil, rail)
-	land:SetAllPoints(rail)
-	land:SetAlpha(0)
-	rail.ends = {}
-	for _, point in ipairs({ "LEFT", "RIGHT" }) do
-		local flash = Spark(land, "OVERLAY", 7, "glow_white.tga")
-		flash:SetPoint("CENTER", rail, point, 0, 0)
-		rail.ends[#rail.ends + 1] = flash
-	end
-	rail.land = land
-	rail.bar = b
-	rail:Hide()
-	return rail
-end
-
--- (the ranged rail's aim, the user's pick B of prd_ranged, 2026-10-12) two red lines growing from the rail's ends to
--- its middle over the aim -- each half a StatusBar filling from its own end, the engine's timer (Anim:Timer) -- and a
--- red spark at each end; held (moving), dimmed and still
-local function NewAim(rail)
-	local aim = CreateFrame("Frame", nil, rail)
-	aim:SetAllPoints(rail)
-	aim:Hide()
-	local colour = MelloUI.Meaning.swingAim
-	local style = Enum and Enum.StatusBarFillStyle
-	aim.halves, aim.ends = {}, {}
-	for i, point in ipairs({ "LEFT", "RIGHT" }) do
-		local half = CreateFrame("StatusBar", nil, aim)
-		half:SetStatusBarTexture(W.BarFill("personal"))
-		half:SetStatusBarColor(colour[1], colour[2], colour[3])
-		if point == "RIGHT" and style and style.Reverse and half.SetFillStyle then
-			pcall(half.SetFillStyle, half, style.Reverse)   -- (the right half fills from its right end)
-		end
-		half:SetMinMaxValues(0, 1)
-		half:SetValue(0)
-		aim.halves[i] = half
-		local glow = Spark(aim, "OVERLAY", 6, "glow_red.tga")
-		glow:SetPoint("CENTER", rail, point, 0, 0)
-		local star = Spark(aim, "OVERLAY", 7, "spark_gold.tga", colour)
-		star:SetPoint("CENTER", rail, point, 0, 0)
-		aim.ends[#aim.ends + 1] = glow
-		aim.ends[#aim.ends + 1] = star
-	end
-	rail.aim = aim
-end
-
--- the rails on their brackets (the rail's middle: halfway through its painted rows), the sparks sized to the bar
-local function LayRails(ui)
-	local rails = ui.rails
-	if not rails then
-		return
-	end
-	for hand, rail in pairs(rails) do
-		local b = rail.bar
-		local fill = b.strip.fill
-		local above, below = Dress.Reach(b)
-		rail:ClearAllPoints()
-		if hand == "main" then
-			rail:SetPoint("BOTTOMLEFT", fill, "TOPLEFT", 0, above / 2)
-			rail:SetPoint("BOTTOMRIGHT", fill, "TOPRIGHT", 0, above / 2)
-		elseif hand == "ranged" then
-			-- the seam: where the health bar's painted foot meets the power's painted top (a gap apart, LayStack)
-			local seam = below + T.gap / 2
-			rail:SetPoint("TOPLEFT", fill, "BOTTOMLEFT", 0, -seam)
-			rail:SetPoint("TOPRIGHT", fill, "BOTTOMRIGHT", 0, -seam)
-		else
-			rail:SetPoint("TOPLEFT", fill, "BOTTOMLEFT", 0, -below / 2)
-			rail:SetPoint("TOPRIGHT", fill, "BOTTOMRIGHT", 0, -below / 2)
-		end
-		rail:SetHeight(1)
-		local size = (hand == "main" and T.glint or hand == "ranged" and T.glintRanged or T.glintOff) * (b.h / 10)
-		for i, tex in ipairs(rail.parts) do
-			-- (the glow wide and low, the star square)
-			if i % 2 == 1 then
-				tex:SetSize(size * 2.4, size * 1.1)
-			else
-				tex:SetSize(size * 1.5, size * 1.5)
-			end
-		end
-		for _, tex in ipairs(rail.ends) do
-			tex:SetSize(size * 2.6, size * 1.8)
-		end
-		local aim = rail.aim
-		if aim then
-			local line = T.aimLine * (b.h / 10) / 2
-			local left, right = aim.halves[1], aim.halves[2]
-			left:ClearAllPoints()
-			left:SetPoint("TOPLEFT", rail, "LEFT", 0, line)
-			left:SetPoint("BOTTOMRIGHT", rail, "CENTER", 0, -line)
-			right:ClearAllPoints()
-			right:SetPoint("TOPLEFT", rail, "CENTER", 0, line)
-			right:SetPoint("BOTTOMRIGHT", rail, "RIGHT", 0, -line)
-			for i, tex in ipairs(aim.ends) do
-				if i % 2 == 1 then
-					tex:SetSize(size * 2.6, size * 1.3)
-				else
-					tex:SetSize(size * 1.6, size * 1.6)
-				end
-			end
-		end
-	end
-end
+-- (the swing badge, below: laid again with the stack, its place under the display)
+local Badge = {}
 
 -- the stack: health, power, the cast bar under them, each bracket's painted edge on the one above's (their
 -- transparent rows overlapping), centred (their fills line up: each cap the same both sides)
@@ -679,7 +555,7 @@ local function LayStack(ui)
 			b.text:SetPoint("LEFT", b.strip.fill, "CENTER", textX, 0)
 		end
 	end
-	LayRails(ui)
+	Badge.Lay()
 	Motion.Lay(ui)
 end
 
@@ -749,8 +625,6 @@ local function Build()
 	cast.timed = Anim:TimerText(cast.time, cast.bar)
 	cast.strip:SetAlpha(0)
 	cast.strip:Hide()
-	ui.rails = { main = NewRail(ui.health), off = NewRail(ui.power), ranged = NewRail(ui.health) }
-	NewAim(ui.rails.ranged)
 	LayStack(ui)
 
 	-- the shield column: its own holder beside the character, a float the hop lifts with the bars
@@ -1706,7 +1580,7 @@ function Motion.Make(ui)
 	StyleText(line.name, T.text - 1)
 	line.name:SetPoint("TOP", line, "BOTTOM", 0, -1)
 	ui.loc = line
-	-- two words, in turn (over the bracket's art and the rails)
+	-- two words, in turn (over the bracket's art)
 	ui.words, ui.nextWord = {}, 1
 	for i = 1, 2 do
 		local w = CreateFrame("Frame", nil, float)
@@ -2186,103 +2060,541 @@ function Motion.Off()
 end
 
 --------------------------------------------------------------------------------
--- The swing (Swing On The Rails): the client's PLAYER_SWING (its seconds to the next swing, the hand) starts the
--- rail's run; the one before it has just landed (a flash at the ends); no next swing a moment past its time (out of
--- the fight, the attack stopped): the sparks go. The timing the client's alone -- nothing counted here
+-- The swing badge (1.2.0; the user, 2026-10-21: the swing on the rails "reimagined ... a visual indicator/feedback
+-- without it cluttering the screen with bars, but that its noticable of whats happening", "shown on the enemy
+-- nameplates", "more expressive"; the pick: BuildData/output/animation_previews/pull_expressive.html, the plan
+-- docs/plans/swing-badge.md). Your weapon in the gold ring (W.RoundIcon), the game's own sweep over it (its shade
+-- turning off as the next swing nears: the engine counts it), on your target's plate right of its level box -- the
+-- off hand's smaller one beside it, away from the bar -- or, with no plate for your target (nameplates off, the
+-- target off screen), at the display's left end. The timing is the client's alone (PLAYER_SWING: its seconds to the
+-- next swing, the hand): nothing counted here. The motion (Anim:Drive: Lua only while one runs; Reduce Motion: no
+-- wind-up, the rest at its end at once): the wind-up over the wait's last share (the weapon drawn back from the bar,
+-- a warm glow); the strike as the next swing comes (an axe, a sword, a mace chops; a dagger or a fist weapon stabs:
+-- snapped toward the bar, settled on a spring), a streak across the target's health bar and the bar lit; the blow's
+-- outcome -- the game's report of a blow on your target (UNIT_COMBAT, "target") within T.outcomeWindow of your
+-- swing -- a critical blow gold and bigger, a dodge, parry or miss bounced back grey with the game's word. Auto Shot:
+-- its aim red, four chevrons closing on the badge (moving holds them, spread and dimmed), the shot a recoil and a
+-- tracer into the plate; a wand gathers three motes and throws its bolt. Made with the first swing (nothing at
+-- login); nothing written on the game's frames (the badge is parented to the plate's UnitFrame, as the combo points'
+-- row is: Nameplates' TargetPlate).
 --------------------------------------------------------------------------------
 
+-- a cooldown sweep's call, where this client has it (each set once, at the sweep's making: the badge's, Big
+-- Cooldowns')
+local function Try(frame, method, ...)
+	local fn = frame[method]
+	if type(fn) == "function" then
+		pcall(fn, frame, ...)
+	end
+end
+
 local Swing = { due = { main = 0, off = 0, ranged = 0 } }
+-- (Auto Shot) the stage -- "reload", "aim", "hold" (moving), "wand" -- and the aim's due time: one C_Timer.After a
+-- shot, the function shared (a later shot moves aimAt, an earlier call finds it not due)
+local Ranged = { stage = nil, aimAt = 0, moving = false, wand = false }
 
 local function SwingOn()
 	return On() and Db().swing ~= false
 end
 
-function Swing.Land(rail)
-	local land = rail.land
-	Anim:Stop(land, "alpha")
-	land:SetAlpha(1)
-	Anim:To(land, "alpha", 0, T.landFlash, "outQuad")
+-- the badge's art and its lights' colours; the slot of each hand's weapon; a weapon whose blow is a stab (a fist
+-- weapon, a dagger: the item subclass); a badge with no weapon (unarmed); the outcomes of the game's report
+Badge.ROUND = "Interface\\CHARACTERFRAME\\TempPortraitAlphaMask"   -- (the sweep's round shape: Big Cooldowns')
+Badge.WHITE = "Interface\\Buttons\\WHITE8X8"
+Badge.GOLD, Badge.STEEL, Badge.ARCANE = { 1, 0.8, 0.35 }, { 0.75, 0.8, 0.9 }, { 0.78, 0.67, 1 }
+Badge.SLOT = { main = 16, off = 17, ranged = 18 }
+Badge.STAB = { [13] = true, [15] = true }
+Badge.UNARMED = "Interface\\Icons\\INV_Gauntlets_04"
+Badge.OUTCOME = { DODGE = "dodge", PARRY = "parry", MISS = "miss" }
+Badge.WORD = { dodge = "DODGE", parry = "PARRY", miss = "MISS" }   -- (the game's own words, its globals)
+Badge.list = {}
+Badge.pending = { at = nil, what = nil }   -- (a report of the blow before the swing itself)
+
+-- one badge (made with the first swing, kept): a holder its parent carries (the plate's UnitFrame, or the display),
+-- the ring and the weapon, the sweep, and over them its lights: the glow, the burst, the word, the aim's four
+-- chevrons, the wand's three motes; on the plate the health bar's light and streak, the shot's tracer
+function Badge.Make(small)
+	local d = T.badge * (small and T.badgeOff or 1)
+	local b = CreateFrame("Frame", nil, UIParent)
+	b:SetSize(d, d)
+	b:EnableMouse(false)
+	b:Hide()
+	b.d = d
+	local ring = W.RoundIcon(b, d, nil)
+	ring:EnableMouse(false)   -- (a picture in a rim)
+	ring:SetKit(W.KitFor("unitframes"))
+	b.ring = ring
+	local sweep = CreateFrame("Cooldown", nil, ring, "CooldownFrameTemplate")
+	sweep:SetAllPoints(ring.icon)
+	Try(sweep, "SetSwipeTexture", Badge.ROUND)
+	Try(sweep, "SetDrawEdge", false)
+	Try(sweep, "SetHideCountdownNumbers", true)
+	sweep:EnableMouse(false)
+	b.sweep = sweep
+	local fx = CreateFrame("Frame", nil, b)
+	fx:SetAllPoints(b)
+	b.fx = fx
+	b.glow = Spark(fx, "OVERLAY", 4, "glow_white.tga")
+	b.glow:SetPoint("CENTER", b, "CENTER", 0, 0)
+	b.burst = Spark(fx, "OVERLAY", 7, "spark_gold.tga")
+	b.burst:SetPoint("CENTER", b, "CENTER", 0, 0)
+	b.ticks, b.motes = {}, {}
+	local aim = MelloUI.Meaning.swingAim
+	for i = 1, 4 do
+		local t = fx:CreateTexture(nil, "OVERLAY", nil, 6)
+		W.Icon(t, "edge_arrow")
+		t:SetVertexColor(aim[1], aim[2], aim[3])
+		t:SetSize(d * 0.42, d * 0.42)
+		t:SetRotation((i - 0.5) * math.pi / 2 + 3 * math.pi / 2)   -- (the art's V points down: turned at the badge)
+		b.ticks[i] = t
+	end
+	for i = 1, 3 do
+		b.motes[i] = Spark(fx, "OVERLAY", 6, "glow_white.tga", Badge.ARCANE)
+		b.motes[i]:SetSize(d * 0.34, d * 0.34)
+	end
+	b.word = fx:CreateFontString(nil, "OVERLAY")
+	StyleText(b.word, T.text - 1)
+	b.flash = fx:CreateTexture(nil, "OVERLAY", nil, 3)
+	b.flash:SetTexture(Badge.WHITE)
+	b.flash:SetBlendMode("ADD")
+	-- (the streak from the badge's side: the bar's right end, its head bright)
+	local streak = CreateFrame("StatusBar", nil, fx)
+	streak:SetStatusBarTexture(Badge.WHITE)
+	local style = Enum and Enum.StatusBarFillStyle
+	if style and style.Reverse and streak.SetFillStyle then
+		pcall(streak.SetFillStyle, streak, style.Reverse)
+	end
+	local tex = streak:GetStatusBarTexture()
+	tex:SetBlendMode("ADD")
+	if tex.SetGradient and CreateColor then
+		pcall(tex.SetGradient, tex, "HORIZONTAL", CreateColor(1, 1, 1, 0.95), CreateColor(1, 1, 1, 0))
+	end
+	streak:SetMinMaxValues(0, 1)
+	b.streak = streak
+	b.tracer = Spark(fx, "OVERLAY", 7, "glow_white.tga", Badge.GOLD)
+	b.tracer:SetSize(d * 0.6, d * 0.4)
+	Badge.list[#Badge.list + 1] = b
+	Badge.Rest(b)
+	return b
 end
 
--- a rail whose swing is long past: put away
-function Swing.Idle()
-	local rails = S.ui and S.ui.rails
-	if not rails then
+-- a badge at rest: the weapon still and plain, every light out
+function Badge.Rest(b)
+	local ring = b.ring
+	ring.icon:SetRotation(0)
+	ring.icon:SetVertexColor(1, 1, 1)
+	ring:SetScale(1)
+	ring:ClearAllPoints()
+	ring:SetPoint("CENTER", b, "CENTER", 0, 0)
+	for _, r in ipairs({ b.glow, b.burst, b.word, b.flash, b.streak, b.tracer }) do
+		r:SetAlpha(0)
+	end
+	for _, t in ipairs(b.ticks) do
+		t:SetAlpha(0)
+	end
+	for _, m in ipairs(b.motes) do
+		m:SetAlpha(0)
+	end
+end
+
+-- the badge's parent, scale and levels (the plate's health bar under it, or the display's float)
+function Badge.Attach(b, parent, level, k)
+	if b.parent ~= parent then
+		b.parent = parent
+		b:SetParent(parent)
+	end
+	b:SetScale(k)
+	b:SetFrameLevel(level)
+	b.ring:SetFrameLevel(level + 1)
+	b.sweep:SetFrameLevel(level + 2)
+	b.fx:SetFrameLevel(level + 4)
+	b.streak:SetFrameLevel(level + 3)
+end
+
+-- the plate's health bar under a badge's light and streak (nil: none, the badge under the display)
+function Badge.BarOn(b, hb)
+	if b.bar == hb then
 		return
 	end
+	b.bar = hb
+	b.flash:ClearAllPoints()
+	b.streak:ClearAllPoints()
+	if hb then
+		b.flash:SetAllPoints(hb)
+		b.streak:SetAllPoints(hb)
+	end
+end
+
+-- where the badges stand: on your target's plate (right of its level box while that shows, else of its health bars;
+-- the strike toward the bar on their left, dir -1), else at the display's left end (dir 1, no bar). Laid on a new
+-- target, a plate added or taken, each swing (cheap) and with the stack (LayStack)
+function Badge.Place()
+	local big, small = Badge.big, Badge.small
+	if not big then
+		return
+	end
+	local NP = MelloUI:GetModule("Nameplates")
+	local uf = NP and NP.TargetPlate and NP:TargetPlate()
+	if uf then
+		local container = uf.HealthBarsContainer
+		local hb = container.healthBar
+		local lf = uf.PlayerLevelDiffFrame
+		local beside = (lf and MelloUI.Safe.Call(lf, "IsShown") == true) and lf or container
+		local ok, level = pcall(hb.GetFrameLevel, hb)
+		level = ((ok and Num(level)) or 0) + 10
+		Badge.Attach(big, uf, level, 1)
+		Badge.Attach(small, uf, level, 1)
+		big:ClearAllPoints()
+		big:SetPoint("LEFT", beside, "RIGHT", T.badgeGap, 0)
+		small:ClearAllPoints()
+		small:SetPoint("LEFT", big, "RIGHT", 3, 0)
+		Badge.BarOn(big, hb)
+		Badge.BarOn(small, hb)
+		big.dir, small.dir = -1, -1
+		return
+	end
+	local ui = S.ui
+	if not ui then
+		return
+	end
+	local fill = ui.health.strip.fill
+	local k = T.badgeHere / T.badge
+	local level = ui.float:GetFrameLevel() + 12
+	Badge.Attach(big, ui.float, level, k)
+	Badge.Attach(small, ui.float, level, k)
+	big:ClearAllPoints()
+	big:SetPoint("RIGHT", fill, "BOTTOMLEFT", -(Dress.Side(ui.health) / 2 + T.badgeGap) / k, -(T.gap / 2) / k)
+	small:ClearAllPoints()
+	small:SetPoint("RIGHT", big, "LEFT", -3, 0)
+	Badge.BarOn(big, nil)
+	Badge.BarOn(small, nil)
+	big.dir, small.dir = 1, 1
+end
+
+-- (LayStack) the stack laid: the badges' place again (under the display it hangs on the health bar)
+function Badge.Lay()
+	if Badge.big then
+		Badge.Place()
+	end
+end
+
+-- the badge of a hand (the off hand's the small one; a shot's the main one), both made the first time
+function Badge.For(hand)
+	if not Badge.big then
+		Badge.big, Badge.small = Badge.Make(false), Badge.Make(true)
+		Badge.Place()
+	end
+	return hand == "off" and Badge.small or Badge.big
+end
+
+-- the weapon a badge shows and its blow: the slot's icon (unarmed: a gauntlet); a dagger or a fist weapon stabs, the
+-- rest chops; the ranged slot's while shooting (a wand: its bolt, else the shot)
+function Badge.Weapon(b, hand)
+	local slot = Badge.SLOT[hand]
+	local okT, tex = pcall(GetInventoryItemTexture, "player", slot)
+	b.ring:SetIcon((okT and not Secret(tex) and tex) or Badge.UNARMED)
+	if hand == "ranged" then
+		b.kind = Ranged.wand and "wand" or "shot"
+		return
+	end
+	local sub
+	local okI, id = pcall(GetInventoryItemID, "player", slot)
+	local info = C_Item and C_Item.GetItemInfoInstant
+	if okI and not Secret(id) and type(id) == "number" and info then
+		local okS, _, _, _, _, _, _, subclass = pcall(info, id)
+		sub = okS and Num(subclass) or nil
+	end
+	b.kind = Badge.STAB[sub] and "stab" or "chop"
+end
+
+-- a hand's run: its badge shown with its weapon, the sweep over the `seconds` to the next swing, the wind-up (a
+-- wand: its motes) set for its last share
+function Badge.Run(hand, seconds)
+	local b = Badge.For(hand)
+	b.hand = hand
+	Badge.Weapon(b, hand)
+	Badge.Place()
+	Try(b.sweep, "SetCooldown", GetTime(), seconds)
+	b.running = true
+	Anim:Stop(b, "alpha")
+	if not b:IsShown() then
+		b:SetAlpha(0)
+		b:Show()
+	end
+	Anim:To(b, "alpha", 1, 0.15)
+	if b.kind == "shot" or Anim.reduceMotion then
+		b.windAt = nil
+		return
+	end
+	local lead = seconds * (b.kind == "wand" and 0.5 or T.windup)
+	b.windAt, b.windFor = GetTime() + seconds - lead, lead
+	C_Timer.After(seconds - lead, Badge.WindUp)
+end
+
+-- (C_Timer.After) the wind-up (or the wand's motes) of each badge whose time it is
+function Badge.WindUp()
 	local now = GetTime()
-	for hand, rail in pairs(rails) do
-		if rail.running and now + 0.01 >= Swing.due[hand] then
-			rail.running = false
-			Anim:StopTimer(rail)
-			rail:Hide()
-			if rail.aim then
-				Swing.AimOff(rail)
-			end
+	for _, b in ipairs(Badge.list) do
+		if b.windAt and b.running and now + 0.01 >= b.windAt then
+			b.windAt = nil
+			b.motion = b.kind == "wand" and "motes" or "windup"
+			Anim:Drive(b, Badge.Step, b.windFor, "linear")
 		end
 	end
 end
 
--- a swing of `hand` ("main" / "off") due in `seconds`
-function Swing.Start(hand, seconds)
-	local rail = S.ui and S.ui.rails and S.ui.rails[hand]
-	if not (rail and seconds and seconds > 0) or not SwingOn() then
+-- the swing before landed (the next one starts): the strike, its outcome the game's report of the blow if one came
+-- just before it
+function Badge.Land(hand)
+	local b = hand == "off" and Badge.small or Badge.big
+	if not (b and b.running and b.hand == hand) then
 		return
 	end
-	if rail.running then
-		Swing.Land(rail)
+	b.windAt = nil
+	b.landAt = GetTime()
+	b.outcome = "hit"
+	local p = Badge.pending
+	if p.at and b.landAt - p.at <= T.outcomeWindow then
+		b.outcome = p.what
 	end
-	rail.running = true
-	rail:Show()
-	Anim:Timer(rail, seconds, true)
+	p.at = nil
+	Badge.Said(b)
+	b.motion = "strike"
+	Anim:Drive(b, Badge.Step, T.strike, "linear")
+end
+
+-- an avoided blow's word (the game's own: DODGE, PARRY, MISS)
+function Badge.Said(b)
+	local key = Badge.WORD[b.outcome]
+	if key then
+		local text = rawget(_G, key)
+		if Secret(text) or type(text) ~= "string" or text == "" then
+			text = TEXT.words[key] or key
+		end
+		b.word:SetText(text)
+	end
+end
+
+-- (UNIT_COMBAT on your target) the game's report of a blow: the outcome of your swing that landed just before it,
+-- else kept for the swing that comes just after it. Another player's blow in that moment can be taken for yours
+function Badge.Outcome(action, flag)
+	if not Badge.big or Secret(action) or type(action) ~= "string" then
+		return
+	end
+	local what
+	if action == "WOUND" then
+		what = (not Secret(flag) and flag == "CRITICAL") and "crit" or "hit"
+	else
+		what = Badge.OUTCOME[action]
+	end
+	if not what then
+		return
+	end
+	local now, best = GetTime(), nil
+	for _, b in ipairs(Badge.list) do
+		if b.landAt and now - b.landAt <= T.outcomeWindow and (not best or b.landAt > best.landAt) then
+			best = b
+		end
+	end
+	if best then
+		if best.outcome == "hit" then   -- (one report a blow: the first)
+			best.outcome = what
+			Badge.Said(best)
+		end
+	else
+		Badge.pending.at, Badge.pending.what = now, what
+	end
+end
+
+-- Auto Shot's aim: the badge red, the four chevrons closing on it over T.aim; held (moving): spread and dimmed
+function Badge.Aim(held)
+	local b = Badge.big
+	if not (b and b.running) then
+		return
+	end
+	if held then
+		Anim:Stop(b, "drive")
+		b.motion = "hold"
+		Badge.Step(b, 0)
+	else
+		b.motion = "aim"
+		Anim:Drive(b, Badge.Step, T.aim, "linear")
+	end
+end
+
+-- a badge's swing long past (no next one): put away
+function Badge.Away(b)
+	b.running, b.windAt, b.motion = false, nil, nil
+	Anim:Stop(b, "drive")
+	Badge.Rest(b)
+	Anim:FadeOut(b, 0.25)
+end
+
+local function Spring(t, amp, k, w)
+	return amp * math.exp(-k * t) * math.cos(w * t)
+end
+
+-- one frame of a badge's motion (Anim:Drive's step; `share` of its time). Turns are toward the bar positive (the
+-- bar on the badge's left turns it counter-clockwise), offsets in the badge's units
+function Badge.Step(b, share)
+	local motion, dir, d = b.motion, b.dir or -1, b.d
+	local outCubic = Anim.easing.outCubic
+	local rot, dx, dy, scale, tint = 0, 0, 0, 1, nil
+	local glowA, glowCol, glowK = 0, Badge.GOLD, 2.4
+	local burstA, burstK, wordA, wordY = 0, 1, 0, 0
+	local flashA, flashCol, streakA, streakV, tracerA, tracerX = 0, nil, 0, 0, 0, 0
+	local ticksA, ticksD, motesA, motesR = 0, 0, 0, 0
+	if motion == "windup" then
+		local w = share * share
+		if b.kind == "stab" then
+			dx = -dir * 3 * w
+		else
+			rot = -0.5 * w
+		end
+		scale, glowA = 1 + 0.08 * w, 0.32 * w
+	elseif motion == "motes" then
+		motesA, motesR, glowA, glowCol = 0.8 * share, d * (0.78 - 0.2 * share), 0.25 * share, Badge.ARCANE
+	elseif motion == "aim" or motion == "hold" then
+		local held = motion == "hold"
+		local close = held and 0 or outCubic(share)
+		ticksA, ticksD = held and 0.45 or 0.95, d * (1.15 - 0.5 * close)
+		glowA, glowCol = held and 0.15 or 0.3 + 0.35 * close, MelloUI.Meaning.swingAim
+		tint, scale, rot = MelloUI.Meaning.swingAim, 1.06, -0.1
+	elseif motion == "strike" then
+		if share >= 1 then
+			b.motion = nil
+			Badge.Rest(b)
+			return
+		end
+		local L = share * T.strike
+		local out = b.outcome
+		local crit, avoided = out == "crit", Badge.WORD[out] ~= nil
+		if b.kind == "chop" then
+			if L < 0.07 then
+				rot = -0.5 + 1.1 * outCubic(L / 0.07)
+			else
+				rot = avoided and Spring(L - 0.07, -0.7, 7, 15) or Spring(L - 0.07, 0.6, 8, 16)
+			end
+		elseif b.kind == "stab" then
+			if L < 0.06 then
+				dx = dir * 6 * outCubic(L / 0.06)
+			else
+				dx = avoided and Spring(L - 0.06, -dir * 5, 9, 18) or Spring(L - 0.06, dir * 6, 10, 14)
+			end
+		elseif b.kind == "shot" then
+			dx = -dir * 5 * math.exp(-9 * L) * math.min(1, L / 0.04)
+		end
+		scale = 1 + (crit and 0.5 or avoided and 0.12 or 0.3) * math.exp(-9 * L) * math.min(1, L / 0.05)
+		if crit and L < 0.25 then
+			local k = 1 - L / 0.25
+			dx, dy = dx + math.sin(L * 120) * 1.6 * k, math.cos(L * 97) * 1.3 * k
+		end
+		if avoided then
+			glowA, glowCol, glowK = 0.9 * (1 - share), Badge.STEEL, 1.6
+			tint = L < 0.3 and Badge.STEEL or nil
+			wordA, wordY = 1 - share, 10 * share
+		else
+			glowA, glowCol = (crit and 0.8 or 0.5) * (1 - share), crit and Badge.GOLD or MelloUI.Meaning.swingMelee
+			glowK = crit and 3.2 or 2.4
+			if crit then
+				burstA, burstK = 1 - share, 1 + 1.6 * outCubic(share)
+			end
+			if b.bar then
+				local travel = (b.kind == "wand" and 0.14) or (b.kind == "shot" and 0.06) or 0
+				if L < travel then
+					tracerA, tracerX = 1, -d * 1.3 * (L / travel)
+				else
+					local t2 = L - travel
+					flashA = (crit and 0.6 or 0.35) * (1 - math.min(1, t2 / 0.35)) ^ 2
+					flashCol = crit and Badge.GOLD or nil
+					if travel == 0 and t2 < 0.16 then
+						streakA, streakV = 0.95, outCubic(t2 / 0.16)
+					end
+				end
+			end
+		end
+	end
+	-- the weapon
+	local ring, icon = b.ring, b.ring.icon
+	icon:SetRotation(-dir * rot)
+	if tint then
+		icon:SetVertexColor(1, 0.55 + 0.45 * tint[2], 0.55 + 0.45 * tint[3])
+	else
+		icon:SetVertexColor(1, 1, 1)
+	end
+	ring:SetScale(scale)
+	ring:SetPoint("CENTER", b, "CENTER", dx / scale, dy / scale)
+	-- the lights
+	b.glow:SetVertexColor(glowCol[1], glowCol[2], glowCol[3])
+	b.glow:SetSize(d * glowK, d * glowK)
+	b.glow:SetAlpha(glowA)
+	b.burst:SetSize(d * 1.4 * burstK, d * 1.4 * burstK)
+	b.burst:SetAlpha(burstA)
+	b.word:SetAlpha(wordA)
+	if wordA > 0 then
+		b.word:SetPoint("BOTTOM", b, "TOP", 0, 2 + wordY)
+	end
+	for i, t in ipairs(b.ticks) do
+		t:SetAlpha(ticksA)
+		if ticksA > 0 then
+			local an = (i - 0.5) * math.pi / 2
+			t:SetPoint("CENTER", b, "CENTER", math.cos(an) * ticksD, math.sin(an) * ticksD)
+		end
+	end
+	local now = GetTime()
+	for i, m in ipairs(b.motes) do
+		m:SetAlpha(motesA)
+		if motesA > 0 then
+			local an = now * (3 + 9 * share) + i * 2.094
+			m:SetPoint("CENTER", b, "CENTER", math.cos(an) * motesR, math.sin(an) * motesR)
+		end
+	end
+	local fc = flashCol or MelloUI.Meaning.swingMelee
+	b.flash:SetVertexColor(fc[1], fc[2], fc[3])
+	b.flash:SetAlpha(flashA)
+	b.streak:SetAlpha(streakA)
+	b.streak:SetValue(streakV)
+	b.tracer:SetAlpha(tracerA)
+	if tracerA > 0 then
+		b.tracer:SetPoint("CENTER", b, "LEFT", tracerX, 0)
+	end
+end
+
+-- a badge whose swing is long past: put away
+function Swing.Idle()
+	local now = GetTime()
+	for _, b in ipairs(Badge.list) do
+		if b.running and now + 0.01 >= Swing.due[b.hand] then
+			Badge.Away(b)
+		end
+	end
+end
+
+-- a swing of `hand` ("main" / "off") due in `seconds`: the one before landed
+function Swing.Start(hand, seconds)
+	if not (S.ui and seconds and seconds > 0) or not SwingOn() then
+		return
+	end
+	Badge.Land(hand)
+	Badge.Run(hand, seconds)
 	Swing.due[hand] = GetTime() + seconds + T.swingGrace
 	C_Timer.After(seconds + T.swingGrace, Swing.Idle)
 end
 
--- The ranged swing (the user's pick B of prd_ranged: "the shot on its own rail", the seam between the health and power
--- bars): a shot's reload (cream sparks out from the middle, moving is fine), then the aim (Auto Shot's last T.aim s:
--- red lines grown from the ends back to the middle, standing still -- moving holds it, dimmed, as Swing Timers' "Hold"),
--- the next shot as they meet. A wand's Shoot has no aim: its one run. The stage and the aim's due time kept here (one
--- C_Timer.After a shot, the function shared: a later shot moves aimAt, an earlier call finds it not due)
-local Ranged = { stage = nil, aimAt = 0, moving = false, wand = false }
-
-function Swing.AimOff(rail)
-	local aim = rail.aim
-	for _, half in ipairs(aim.halves) do
-		Anim:StopTimer(half)
-	end
-	aim:Hide()
-	for _, tex in ipairs(rail.parts) do
-		tex:SetAlpha(1)
-	end
-end
-
 -- the aim: run now, or held while moving
 function Ranged.Aim()
-	local rail = S.ui and S.ui.rails and S.ui.rails.ranged
-	if not (rail and rail.running) then
+	if not (Badge.big and Badge.big.running and Badge.big.hand == "ranged") then
 		return
-	end
-	local aim = rail.aim
-	aim:Show()
-	for _, tex in ipairs(rail.parts) do
-		tex:SetAlpha(0)   -- (the cream sparks at the ends turn red: the aim's own)
 	end
 	if Ranged.moving then
 		Ranged.stage = "hold"
-		for _, half in ipairs(aim.halves) do
-			Anim:StopTimer(half)
-		end
-		aim:SetAlpha(T.aimHeld)
 		Swing.due.ranged = math.huge   -- (held for as long as it takes)
+		Badge.Aim(true)
 	else
 		Ranged.stage = "aim"
-		aim:SetAlpha(1)
-		for _, half in ipairs(aim.halves) do
-			Anim:Timer(half, T.aim, true)
-		end
 		Swing.due.ranged = GetTime() + T.aim + T.swingGrace
 		C_Timer.After(T.aim + T.swingGrace, Swing.Idle)
+		Badge.Aim(false)
 	end
 end
 
@@ -2293,30 +2605,23 @@ function Ranged.Due()
 	end
 end
 
--- a shot fired, the next one due in `seconds`
+-- a shot fired (the one before landed), the next one due in `seconds`: the reload (a wand's whole run), then the aim
 function Ranged.Start(seconds)
-	local rail = S.ui and S.ui.rails and S.ui.rails.ranged
-	if not (rail and seconds and seconds > 0) or not SwingOn() then
+	if not (S.ui and seconds and seconds > 0) or not SwingOn() then
 		return
 	end
-	if rail.running then
-		Swing.Land(rail)
-	end
-	rail.running = true
-	rail:Show()
-	Swing.AimOff(rail)
+	Badge.Land("ranged")
+	Badge.Run("ranged", seconds)
 	local reload = Ranged.wand and seconds or (seconds - T.aim)
 	Ranged.stage = Ranged.wand and "wand" or "reload"
 	Ranged.aimAt = GetTime() + math.max(reload, 0)
 	Swing.due.ranged = GetTime() + seconds + T.swingGrace
 	C_Timer.After(seconds + T.swingGrace, Swing.Idle)
 	if reload > 0 then
-		Anim:Timer(rail, reload, true)
 		if not Ranged.wand then
 			C_Timer.After(reload, Ranged.Due)
 		end
 	else
-		Anim:StopTimer(rail, true)
 		Ranged.Aim()
 	end
 end
@@ -2332,12 +2637,9 @@ end
 -- Auto Shot stopped: no shot on its way
 function Ranged.Stop()
 	Ranged.stage = nil
-	local rail = S.ui and S.ui.rails and S.ui.rails.ranged
-	if rail then
-		rail.running = false
-		Anim:StopTimer(rail)
-		Swing.AimOff(rail)
-		rail:Hide()
+	local b = Badge.big
+	if b and b.running and b.hand == "ranged" then
+		Badge.Away(b)
 	end
 end
 
@@ -2356,16 +2658,13 @@ end
 
 function Swing.Off()
 	Ranged.stage = nil
-	local rails = S.ui and S.ui.rails
-	if rails then
-		for _, rail in pairs(rails) do
-			rail.running = false
-			Anim:StopTimer(rail)
-			rail:Hide()
-			if rail.aim then
-				Swing.AimOff(rail)
-			end
-		end
+	Badge.pending.at = nil
+	for _, b in ipairs(Badge.list) do
+		b.running, b.windAt, b.motion = false, nil, nil
+		Anim:Stop(b, "drive")
+		Anim:Stop(b, "alpha")
+		Badge.Rest(b)
+		b:Hide()
 	end
 end
 
@@ -2395,7 +2694,12 @@ local function OnEvent(_, event, a1, a2, a3)
 	elseif event == "UNIT_POWER_FREQUENT" or event == "UNIT_MAXPOWER" or event == "UNIT_DISPLAYPOWER" then
 		Power()
 	elseif event == "UNIT_COMBAT" then
-		Motion.Combat(a2, a3)
+		-- (1.2.0) a blow on your target: the swing badge's outcome; on you: Motion's
+		if not Secret(a1) and a1 == "target" then
+			Badge.Outcome(a2, a3)
+		else
+			Motion.Combat(a2, a3)
+		end
 	elseif event == "UNIT_ABSORB_AMOUNT_CHANGED" then
 		Shield.Changed()
 	elseif event == "UNIT_AURA" then
@@ -2427,6 +2731,8 @@ local function OnEvent(_, event, a1, a2, a3)
 		end
 	elseif event == "PLAYER_EQUIPMENT_CHANGED" then
 		Ranged.wand = MelloUI.Safe.RangedIsWand() == true
+	elseif event == "PLAYER_TARGET_CHANGED" or event == "NAME_PLATE_UNIT_ADDED" or event == "NAME_PLATE_UNIT_REMOVED" then
+		Badge.Lay()   -- (the badge onto your new target's plate, or under the display)
 	elseif event == "LOSS_OF_CONTROL_ADDED" or event == "LOSS_OF_CONTROL_UPDATE" then
 		Motion.Loc(event == "LOSS_OF_CONTROL_ADDED")
 	elseif event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
@@ -2460,9 +2766,11 @@ local function Events(on)
 	f:RegisterEvent("PLAYER_REGEN_ENABLED")
 	if SwingOn() then
 		for _, event in ipairs({ "PLAYER_SWING", "PLAYER_STARTED_MOVING", "PLAYER_STOPPED_MOVING", "STOP_AUTOREPEAT_SPELL",
-			"PLAYER_EQUIPMENT_CHANGED" }) do
+			"PLAYER_EQUIPMENT_CHANGED", "PLAYER_TARGET_CHANGED", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED" }) do
 			pcall(f.RegisterEvent, f, event)
 		end
+		-- (the swing badge: the blows on your target too, beside yours)
+		pcall(f.RegisterUnitEvent, f, "UNIT_COMBAT", "player", "target")
 		Ranged.wand = MelloUI.Safe.RangedIsWand() == true
 		local okM, moving = pcall(_G.IsPlayerMoving)
 		Ranged.moving = okM and not Secret(moving) and moving == true or false
@@ -2587,14 +2895,6 @@ local CD_PRIO = { I = 1, F = 2, L = 3, B = 4, E = 5, O = 6 }
 
 local function CdsOn()
 	return On() and Db().cooldowns ~= false
-end
-
--- a cooldown sweep's call, where this client has it (each set once, at the sweep's making)
-local function Try(frame, method, ...)
-	local fn = frame[method]
-	if type(fn) == "function" then
-		pcall(fn, frame, ...)
-	end
 end
 
 -- the order shown: the most important kind first, then the newest
@@ -2778,8 +3078,8 @@ function Cds.Off()
 end
 
 -- (0.21.0, the user 2026-10-12: "the swing timer needs to hide if im using the new ones") the game's own swing timers
--- held off while the rails show the swing (their CVar, the player's own value given back); MelloUI's Swing Timers stand
--- down by themselves (their RailsOn) and hold that CVar while they are on, so here only while they are off
+-- held off while the swing badge shows the swing (their CVar, the player's own value given back); MelloUI's Swing
+-- Timers stand down by themselves (their RailsOn) and hold that CVar while they are on, so here only while they are off
 local SWING_CVAR = "showSwingTimer"
 local function HoldGameSwing()
 	if not (M.db and MelloUI.HoldCVar) then
@@ -2790,7 +3090,7 @@ local function HoldGameSwing()
 	local function Hold()
 		if theirs then
 			-- (Swing Timers on: it holds them -- the player's own value, kept here while this held them, handed to it;
-			-- never written back, or the game's would show beside the rails)
+			-- never written back, or the game's would show beside the badge)
 			if M.db.savedSwing ~= nil then
 				if timers.db and timers.db.savedSwing == nil then
 					timers.db.savedSwing = M.db.savedSwing
@@ -2970,6 +3270,9 @@ local function OnPreview(beat, _, n)
 			Shield.Apply(SAMPLE.againAmount)
 		end
 		SampleCast(SAMPLE.casts[n])
+		if SAMPLE.outcomes[n] then
+			Badge.Outcome(SAMPLE.outcomes[n][1], SAMPLE.outcomes[n][2])
+		end
 		Swing.Start("main", SAMPLE.swing)
 		if n % 2 == 0 then
 			Swing.Start("off", SAMPLE.swing * 2)
@@ -2989,7 +3292,7 @@ end
 
 M = MelloUI:RegisterModule("PersonalDisplay", {
 	title = "Personal Display",
-	desc = "Your health, power and cast bar under your character, as Legion's resource display had them, and a shield column beside your character: it fills when a shield goes up, drains as it takes the hits, turns amber when low and breaks when it is gone. The game's own Personal Resource Display is switched off while this is on, and comes back as you had it when it is off; Hide The Game's Cast Bar (on) hides the game's cast bar too, and Swing On The Rails (on) stands in for Swing Timers. This client cannot tell an addon where your character stands, so the display stays where you put it in Edit Layout (under your character to begin with) and hops when you jump.",
+	desc = "Your health, power and cast bar under your character, as Legion's resource display had them, and a shield column beside your character: it fills when a shield goes up, drains as it takes the hits, turns amber when low and breaks when it is gone. The game's own Personal Resource Display is switched off while this is on, and comes back as you had it when it is off; Hide The Game's Cast Bar (on) hides the game's cast bar too, and Swing Badge (on) stands in for Swing Timers. This client cannot tell an addon where your character stands, so the display stays where you put it in Edit Layout (under your character to begin with) and hops when you jump.",
 	icon = "Interface\\Icons\\Spell_Holy_PowerWordShield",
 	flavour = "Health, power, casts and shields, right by your character.",
 	role = "replaces",
@@ -3010,8 +3313,8 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "The game's own cast bar is hidden while this is on: your casts show on the display's cast bar under your character. Off: both show." },
 		{ type = "toggle", key = "healFrom", name = "Heal Light From Your Character",
 		  desc = "With Heal Effects on (Frame Effects > Heals): the light of a heal you cast gathers at your character's middle instead of on the cast bar, and flies from there to the party or raid frame of the one you heal. It follows the display's place and the camera's zoom." },
-		{ type = "toggle", key = "swing", name = "Swing On The Rails",
-		  desc = "Your swing timer without a bar of its own: in a fight, two sparks run out from the middle of the health bar's top rail to its ends, and your swing lands as they reach them. An off hand's swings run along the bottom of the power bar. Your shots run on the seam between the health and power bars: cream sparks out while you reload, then a red line grows back from the ends while you aim (stand still: moving holds it), and the shot flies as it meets in the middle. A wand's shots run out once, with no aim. While it is on, MelloUI's Swing Timers step aside and the game's own swing timers stay off." },
+		{ type = "toggle", key = "swing", name = "Swing Badge",
+		  desc = "Your swing timer as a small badge on your target's nameplate, right of its level: your weapon in a gold ring, its shade turning off as your next swing nears. It winds up, strikes into your target's health bar as the swing lands, turns gold on a critical blow and bounces off grey on a dodge, parry or miss. An off hand's smaller badge stands beside it. Your shots: the badge turns red for the aim (stand still: moving holds it) and fires into the plate; a wand gathers its bolt. With no plate for your target (nameplates off), the badge waits at the left end of the display. While it is on, MelloUI's Swing Timers step aside and the game's own swing timers stay off." },
 		{ type = "toggle", key = "cooldowns", name = "Big Cooldowns",
 		  desc = "The buffs you give yourself on a cooldown -- Shield Wall, Shield Block, Last Stand, Evasion, Ice Block, Recklessness, a trinket's -- as icons above the health bar, their time sweeping round them and their seconds on them, the most important first: an immunity, then damage taken down, more health, block, evasion, the rest. From the game's own spell data, for every class." },
 		{ type = "toggle", key = "text", name = "Percent And Spell Text",
@@ -3311,9 +3614,11 @@ function M:OnSettingChanged(key, _, db)
 	end
 end
 
--- the state (the Fader reads the cast from it), the timings, the ranged swing's stages and the big cooldowns (the tests)
+-- the state (the Fader reads the cast from it), the timings, the ranged swing's stages, the swing badge and the big
+-- cooldowns (the tests)
 M.S = S
 M.T = T
 M.Ranged = Ranged
+M.Badge = Badge
 M.Cds = Cds
 M.Motion = Motion

@@ -9,6 +9,8 @@
 - Route: "Loading navigation..." shows Route's badge and a loading bar with how far the roads are in.
 - Route keeps its roads in about 20 MB less memory, every route the same as before.
 - The on-screen notices ("Loading navigation...", "Tracking ...", the rest) show above the world map and every other window.
+- Personal Display: the Swing Badge replaces Swing On The Rails. Your swing timer is a small badge on your target's nameplate, right of its level: your weapon in a gold ring, its shade turning off as the next swing nears. It winds up, strikes into the target's health bar as the swing lands, turns gold on a critical blow and bounces off grey on a dodge, parry or miss. An off hand has a smaller badge beside it.
+- Personal Display: your shots on the Swing Badge turn red for the aim (stand still; moving holds it) and fire into the target's plate; a wand gathers its bolt. With no nameplate for your target, the badge waits at the display's left end.
 - Map: the land between zones that no zone's map covers is painted in, in the map's own style: Ahn'Qiraj south of Silithus, the country west of Dun Morogh, north of the Plaguelands, the Wetlands' coast, between Ashenvale and Mount Hyjal, and more. Coastal zones now reach the true coast.
 - Map: zooming in keeps the painted map much longer. The game's minimap ground now fades in over the painting only when you are very close (from about 20 times the whole world), never fully replacing it, and every fade eases in and out.
 - Map: the mouse wheel zooms smoothly, a fast spin running on as one motion; you can drag while it zooms, and a drag let go at speed glides on.

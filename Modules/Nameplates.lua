@@ -1686,6 +1686,12 @@ function Combo.TargetFrame()
 	return uf and uf.HealthBarsContainer and uf.HealthBarsContainer.healthBar and uf or nil
 end
 
+-- (1.2.0) the target's plate's UnitFrame, or nil: the one lookup, the Personal Display's swing badge's too (its
+-- health bar at uf.HealthBarsContainer.healthBar, its level box uf.PlayerLevelDiffFrame)
+function M:TargetPlate()
+	return Combo.TargetFrame()
+end
+
 -- a StatusBar whose fill is `atlas`, shown full from `lo` + 1 on (the
 -- engine compares the count it is handed: nothing here does)
 function Combo.Bar(row, atlas, lo)

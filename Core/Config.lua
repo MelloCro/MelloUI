@@ -144,6 +144,7 @@ local CHANGELOG = {
 		"Several guides on at once? MelloUI asks which one to keep and switches the others off for that character.",
 		"Route: Loading navigation... shows a loading bar; the on-screen notices show above the world map and every window.",
 		"Route keeps its roads in about 20 MB less memory, every route the same.",
+		"Personal Display: the Swing Badge, your swing timer on your target's nameplate: it winds up, strikes, flashes gold on crits.",
 		"Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast.",
 		"Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on.",
 		"Fixed: the middle of Silithus and parts of six other zones are no longer cut out of the map.",
