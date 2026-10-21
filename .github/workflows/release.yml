@@ -90,8 +90,8 @@ jobs:
   # project of its own (its TOC's X-Curse-Project-ID). Its folder is staged as
   # the top of a git repository of its own, tagged as this release, and the
   # packager zips and uploads it from there; the zip is attached to this
-  # release on GitHub too. UNVERIFIED: dry-run it (the packager's -d, no
-  # upload) before the first real tag.
+  # release on GitHub too (first shipped with v1.0.0). Its CurseForge file
+  # requires MelloUI (the relation's project slug, on its .pkgmeta).
   oldschool:
     needs: release
     if: needs.release.outputs.publish == 'yes'
@@ -115,7 +115,8 @@ jobs:
           cp -r MelloUI_Oldschool/. "$stage/"
           awk '/^## /{n++} n==1' CHANGELOG.md | sed '1d' | sed '/./,$!d' > "$stage/CHANGELOG-release.md"
           printf '%s\n' "package-as: MelloUI_Oldschool" "manual-changelog: CHANGELOG-release.md" \
-            "enable-nolib-creation: no" "ignore:" "  - CHANGELOG-release.md" > "$stage/.pkgmeta"
+            "enable-nolib-creation: no" "ignore:" "  - CHANGELOG-release.md" \
+            "required-dependencies:" "  - melloui" > "$stage/.pkgmeta"
           cd "$stage"
           git init -q
           git add -A

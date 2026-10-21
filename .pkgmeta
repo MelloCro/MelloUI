@@ -18,6 +18,12 @@ ignore:
   # workflow's oldschool job zips it, never inside or beside MelloUI's
   - MelloUI_Oldschool
 
+# CurseForge relations (project slugs), sent with every upload: MelloUI
+# Oldschool is an optional add-on to MelloUI. (Oldschool's own zip requires
+# MelloUI: the Release workflow's oldschool job writes that relation.)
+optional-dependencies:
+  - melloui-oldschool
+
 enable-nolib-creation: no
 
 # The route data companion (MelloUI_Companion: the road network and the quest
