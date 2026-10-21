@@ -1002,6 +1002,86 @@ DOCK_LABELS = [(1, 1340.0, -4645.0, "Orgrimmar", 250.0), (0, 2062.0, 260.0, "Und
 ZEPPELIN_TOWERS = {"Orgrimmar", "Undercity", "Grom'gol Base Camp"}
 
 
+TRANSPORT_DOCK = 100.0   # yards: stops of a transport path this near are one dock (a path's wrap splits one's wait)
+
+
+def transport_cycles(sql):
+    """the transports cmangos has: {taxi path id: seconds a cycle} (transports.period, gameobject_template's data0)"""
+    period = {int(r["entry"]): int(r["period"]) / 1000.0 for r in sql_rows(sql, "transports")}
+    return {int(r["data0"]): period[int(r["entry"])] for r in sql_rows(sql, "gameobject_template")
+            if str(r.get("type")) == "15" and int(r["entry"]) in period}
+
+
+def transport_docks(path_nodes):
+    """a transport path's docks in its order: [(cont, x, y, seconds stopped there)] (the stops this near one another
+    one dock), and the yards it moves from each dock to the next (within one map, no jump: a teleport node)"""
+    ns = sorted(path_nodes, key=lambda n: int(n["NodeIndex"]))
+    pts = [(int(n["ContinentID"]), float(n["Loc_0"]), float(n["Loc_1"]), int(n["Flags"] or 0), int(n["Delay"] or 0))
+           for n in ns]
+    docks = []
+
+    def dock_of(p):
+        for i, d in enumerate(docks):
+            if d[0] == p[0] and math.hypot(d[1] - p[1], d[2] - p[2]) < TRANSPORT_DOCK:
+                return i
+        return None
+    for p in pts:
+        if p[4] > 0:
+            i = dock_of(p)
+            if i is None:
+                docks.append([p[0], p[1], p[2], p[4]])
+            else:
+                docks[i][3] += p[4]
+    n = len(pts)
+    first = next((k for k, p in enumerate(pts) if p[4] > 0), None)
+    legs = [0.0] * len(docks)
+    if first is None:
+        return [tuple(d) for d in docks], legs
+    cur, acc = dock_of(pts[first]), 0.0
+    for step in range(n):
+        a, b = pts[(first + step) % n], pts[(first + step + 1) % n]
+        if a[0] == b[0] and not (b[3] & 1):
+            acc += math.hypot(b[1] - a[1], b[2] - a[2])
+        if b[4] > 0:
+            d = dock_of(b)
+            if d != cur:
+                legs[cur] += acc
+                cur, acc = d, 0.0
+    legs[cur] += acc
+    return [tuple(d) for d in docks], legs
+
+
+def transport_seconds(path_nodes, cycle, pace):
+    """seconds from walking up to each dock at any moment to stepping off at the next one, the wait included:
+    [seconds a dock] -- a cycle of `cycle` seconds (cmangos'; else the docks' waits and the path's yards at `pace`),
+    the ship in the dock for its wait once a cycle, the ride the cycle's moving time by the leg's share of its yards"""
+    docks, legs = transport_docks(path_nodes)
+    waits = sum(d[3] for d in docks)
+    moving_yards = sum(legs)
+    cycle = cycle or waits + moving_yards / pace
+    moving = max(0.0, cycle - waits)
+    out = []
+    for d, leg in zip(docks, legs):
+        stop = d[3]
+        ride = moving * leg / max(1.0, moving_yards)
+        p = stop / cycle
+        out.append(round(p * stop / 2 + (1 - p) * ((cycle - stop) / 2 + stop) + ride))
+    return out
+
+
+def transport_pace(nodes, cycles):
+    """the known transports' moving pace, yards a second (the median: a path whose jumps carry no teleport flag runs
+    far off it)"""
+    paces = []
+    for pid, cycle in cycles.items():
+        docks, legs = transport_docks(nodes.get(pid, []))
+        moving = cycle - sum(d[3] for d in docks)
+        if len(docks) >= 2 and moving > 0:
+            paces.append(sum(legs) / moving)
+    paces.sort()
+    return paces[len(paces) // 2] if paces else 23.0
+
+
 def build_map_points(sql, zones, used_dungeons, raids):
     """Entrances of dungeons / raids and boat / zeppelin docks, with world
     coordinates (resolved on the client) and a build-time zone guess."""
@@ -1097,7 +1177,7 @@ def build_map_points(sql, zones, used_dungeons, raids):
             stops = stops_of(int(r["ID"]))
             if len(stops) >= 2:
                 hint = (node_names.get(int(r["FromTaxiNode"]), "") + " " + node_names.get(int(r["ToTaxiNode"]), "")).lower()
-                routes.append((stops, "zepp" in hint))
+                routes.append((stops, "zepp" in hint, int(r["ID"])))
     else:
         for r in sql_rows(sql, "gameobject_template"):
             if str(r.get("type")) != "15" or "naxx" in r["name"].lower():
@@ -1106,17 +1186,24 @@ def build_map_points(sql, zones, used_dungeons, raids):
             if len(stops) != 2:
                 log(f"  transport {r['name']}: {len(stops)} docks, skipped")
                 continue
-            routes.append((stops, "zeppelin" in r["name"].lower()))
+            routes.append((stops, "zeppelin" in r["name"].lower(), int(r["data0"])))
 
     def same_dock(a, b):
         return a[0] == b[0] and math.hypot(a[1] - b[1], a[2] - b[2]) < 100
 
-    longer = [stops for stops, _ in routes if len(stops) >= 3]
-    routes = [(stops, hint) for stops, hint in routes
+    longer = [stops for stops, _, _ in routes if len(stops) >= 3]
+    routes = [(stops, hint, pid) for stops, hint, pid in routes
               if not (len(stops) == 2 and any(all(any(same_dock(st, d) for d in big) for st in stops) for big in longer))]
 
+    # (2026-10-20, the route bench) each dock's expected seconds to the next: Route priced every boat and zeppelin at
+    # 90 s, the wait and the ride; they are 150 to 320 (a cycle of 5 to 6 minutes, a minute in each dock)
+    cycles = transport_cycles(sql)
+    pace = transport_pace(nodes, cycles)
+    log(f"  transports: {len(cycles)} cycles from cmangos, the rest at {pace:.1f} yd/s")
     transports = []
-    for stops, zeppelin_hint in routes:
+    for stops, zeppelin_hint, pid in routes:
+        secs = transport_seconds(nodes.get(pid, []), cycles.get(pid), pace)
+        docks, _ = transport_docks(nodes.get(pid, []))
         labels = []
         for cont, x, y in stops:
             loc = locate(zones, cont, x, y)
@@ -1141,10 +1228,12 @@ def build_map_points(sql, zones, used_dungeons, raids):
             if count >= 3:
                 label += ", then " + labels[(nxt + 1) % count][0]
             other = stops[nxt]
+            # (its dock in the path's own order: transport_docks merges as stops_of does)
+            k = next((j for j, d in enumerate(docks) if d[0] == cont and math.hypot(d[1] - x, d[2] - y) < TRANSPORT_DOCK), None)
             transports.append((kind, faction, label, here,
                                cont, round(x, 1), round(y, 1),
                                loc[0]["areaID"] if loc else 0, loc[1] if loc else 0, loc[2] if loc else 0,
-                               other[0], round(other[1], 1), round(other[2], 1)))
+                               other[0], round(other[1], 1), round(other[2], 1), secs[k] if k is not None else 0))
     log(f"  {len(transports)} boat / zeppelin docks")
     # (2026-10-03) the portal between Darnassus and Rut'theran Village and the Deeprun Tram between Stormwind and
     # Ironforge: no transport path in the data. Their ends where the road recorder marked them in game (the user's
@@ -1155,7 +1244,7 @@ def build_map_points(sql, zones, used_dungeons, raids):
             label = ("Portal to " if kind == 3 else "Deeprun Tram to ") + there
             transports.append((kind, 1, label, here, cont, x, y,
                                loc[0]["areaID"] if loc else 0, loc[1] if loc else 0, loc[2] if loc else 0,
-                               other[0], other[1], other[2]))
+                               other[0], other[1], other[2], 0))
     log(f"  {len(EXTRA_TRANSPORTS) * 2} portal / tram ends")
     return entrances, transports
 
@@ -1669,6 +1758,12 @@ def build_restock(sql, zones, pages):
     return vendor_rows, forever_rows, dict(goods), trainer_levels
 
 
+def transport_row(t):
+    kind, faction, label, here, cont, wx, wy, zone, px, py, dcont, dx, dy, secs = t
+    return (f"\t\t{{{kind},{faction},{lua_str(label)},{lua_str(here)},{cont},{wx},{wy},{zone},{px},{py},{dcont},{dx},{dy},"
+            f"{secs}}},\n")
+
+
 def lua_str(s):
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
@@ -1948,10 +2043,10 @@ def main():
         fh.write("\t},\n")
         fh.write("\t-- transports: kind (1 boat, 2 zeppelin, 3 portal, 4 tram), faction (0 neutral, 1 Alliance, 2 Horde),\n")
         fh.write("\t-- label, dock name,\n")
-        fh.write("\t-- continent, world x, world y, zone (build-time guess), map x, map y, destination continent, world x, world y\n\ttransports = {\n")
+        fh.write("\t-- continent, world x, world y, zone (build-time guess), map x, map y, destination continent, world x, world y,\n")
+        fh.write("\t-- expected seconds to the next dock, the wait included (0: not known -- a portal, the tram)\n\ttransports = {\n")
         for t in transports:
-            kind, faction, label, here, cont, wx, wy, zone, px, py, dcont, dx, dy = t
-            fh.write(f"\t\t{{{kind},{faction},{lua_str(label)},{lua_str(here)},{cont},{wx},{wy},{zone},{px},{py},{dcont},{dx},{dy}}},\n")
+            fh.write(transport_row(t))
         fh.write("\t},\n")
         fh.write("\t-- flight points: [id] = { name, continent, world x, world y, faction (0 both, 1 Alliance, 2 Horde) }\n\ttaxiNodes = {\n")
         for nid in sorted(taxi_nodes):
