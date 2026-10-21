@@ -31,6 +31,10 @@ Download the [release zip](https://github.com/MelloCro/MelloUI/releases/latest) 
 - The game keeps your settings, and the Profiles page saves and shares them.
 - After an update, restart the game once. `/reload` isn't enough for new files.
 
+## License
+
+MelloUI's code is under the [MIT License](LICENSE). Route's road data is All Rights Reserved: see [LICENSE-DATA](LICENSE-DATA).
+
 ## Links
 
 [Discord](https://discord.gg/gdpQ6ep7bW) · [Changelog](CHANGELOG.md) · [Report a bug](https://github.com/MelloCro/MelloUI/issues) · [Every feature, command and module in detail](docs/GUIDE.md)

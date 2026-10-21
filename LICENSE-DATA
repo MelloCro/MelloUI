@@ -1,0 +1,30 @@
+MelloUI route data: All Rights Reserved
+
+Copyright (c) 2026 MelloCro. All rights reserved.
+
+These files are MelloUI's route data:
+
+  MelloUI_Companion/RoadData.lua   Route's walk grid and road graph
+  MelloUI_Route/RouteData.lua      Route's recorded paths
+
+They are NOT covered by the MIT License in LICENSE, which covers the rest of
+MelloUI. This notice applies to these files as released after MelloUI 1.1.0;
+the copies released up to and including 1.1.0 stay under the MIT License.
+
+You may download MelloUI from its official releases (its CurseForge project and
+the GitHub releases of MelloCro/MelloUI), install it, and use these files
+unchanged as part of MelloUI in the game.
+
+Without written permission from MelloCro you may not copy, extract, modify,
+translate, redistribute, re-upload, sell or sublicense these files, any part of
+them, or any data derived from them, nor use them in any other software, addon,
+website, tool or data set.
+
+The game world and its ground belong to Blizzard Entertainment. This notice
+covers MelloUI's own work: the walk grid, the road graph, the recorded streets
+and paths, and their selection, processing and arrangement.
+
+THE FILES ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+
+To ask for permission, contact MelloCro on MelloUI's Discord (linked in
+README.md).

@@ -22,6 +22,14 @@ SOFTWARE.
 
 ---
 
+Route data (All Rights Reserved):
+
+- MelloUI_Companion/RoadData.lua and MelloUI_Route/RouteData.lua, as released
+  after MelloUI 1.1.0, are not covered by the MIT License above: see
+  LICENSE-DATA.
+
+---
+
 Third-party material:
 
 - Media/Textures/VoiceOver: overlay textures from the VoiceOver addon

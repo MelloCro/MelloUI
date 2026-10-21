@@ -24,3 +24,29 @@ docs/plans/
 CLAUDE.md
 docs/CODEMAP.md
 docs/CODEMAP-FUNCTIONS.md
+
+# Route's data tools (the user, 2026-10-21: the route data is All Rights Reserved, LICENSE-DATA): local
+# only, like HANDOVER; a dated copy in MelloUI-BuildData/backup/route-tools-*. Their versions up to 1.1.0 stay
+# in the history under MIT. (Tools/make_route_beam.py only draws art: it stays.)
+Tools/bake_routes.py
+Tools/check_roads.py
+Tools/ground_graph.py
+Tools/nav_bake.py
+Tools/nav_graph.py
+Tools/nav_graphcheck.py
+Tools/nav_grid.py
+Tools/nav_gridcheck.py
+Tools/nav_lifts.py
+Tools/nav_polys.py
+Tools/nav_zones.py
+Tools/navmesh.py
+Tools/roads/recorded.json
+Tools/roads/review.json
+Tools/roads/segments.json
+Tools/roads_import.py
+Tools/roads_review.html
+Tools/route_bench.py
+Tools/route_show.py
+Tools/route_transports.py
+Tools/trace_roads.py
+Tools/trace_terrain.py

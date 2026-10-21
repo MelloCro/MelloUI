@@ -8,7 +8,7 @@
 ## OptionalDeps: LibSharedMedia-3.0
 ## X-Category: Interface Enhancements
 ## X-Website: https://github.com/MelloCro/MelloUI
-## X-License: MIT
+## X-License: MIT; route data All Rights Reserved (LICENSE-DATA)
 ## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
 ## X-Curse-Project-ID: 1702190
 
