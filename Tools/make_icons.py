@@ -211,6 +211,9 @@ def halo(name, img):
 def halos():
     out = [(name, halo(name, load(group, art))) for group, art, name, _ in SET if group in HALO_GROUPS]
     out += [("class_" + name, halo("class_" + name, class_disc(name, HALO_WORK))) for name in CLASSES]
+    # (2026-10-21, the user: the shadow round the World Marker's edge arrow "to fit the actual icon" -- a round band
+    # until then) the player arrow's own dark shade, turned with it (MelloUI.Shade:Lift follows its icon's rotation)
+    out.append(("arrow_player", halo("arrow_player", load("arrows", "arrow_sapphire"))))
     return out
 
 
