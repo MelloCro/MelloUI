@@ -145,6 +145,7 @@ local CHANGELOG = {
 		"Map: Forever's new dungeons with their levels, the City of Dalaran's door for your side; the Drowned City and the Shaper's Terrace too.",
 		"The Escape menu's MelloUI button is a gold pill with MelloUI's badge.",
 		"Fixed: a dead target or focus shows only the game's Dead, no 0 over it.",
+		"Fixed: the buff and debuff icons' borders stay whole over their cooldown spiral.",
 	} },
 	{ version = "1.0.0", lines = {
 		"A seamless world map of MelloUI's own (M): zoom from Azeroth to a village, ground and caves up close; your party, Route, flights, dungeons, quests and objectives on it.",
