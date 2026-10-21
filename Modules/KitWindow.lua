@@ -1069,6 +1069,11 @@ end
 --     onAccept = fn,           fn() once the accept button closed it
 --     onCancel = fn,           fn() once the cancel button, Escape or a newer
 --                              question closed it (optional)
+--     choices = { { label = "...", onClick = fn }, ... },
+--                              one of several (2026-10-21, the guide addons):
+--                              a column of buttons in the accept button's
+--                              place, fn() once its button closed it; the
+--                              cancel button under them (optional)
 --   })
 -- One dialog for all of MelloUI's questions (one system per job): an own
 -- window on the shell above -- the corner ring with the emblem, "MelloUI"
@@ -1103,9 +1108,11 @@ local CONFIRM_GAP = 12         -- between the two buttons
 -- (the modern look, pick C: no side column, so the strip; the panel on the one inset from FLAT.TOP, the same 14
 -- from the panel to the buttons: a 64 high question stands 150 high, 194 painted)
 local CONFIRM_FLAT_FOOT = 56
+local CONFIRM_CHOICE_W, CONFIRM_ROW = 240, 6   -- a choice's least width; between the choices
 
--- the dialog's parts (made on the first question) and the question shown
-local confirm = { frame = nil, shell = nil, body = nil, text = nil, accept = nil, cancel = nil, opts = nil }
+-- the dialog's parts (made on the first question; the choice buttons on the first question with choices) and the
+-- question shown
+local confirm = { frame = nil, shell = nil, body = nil, text = nil, accept = nil, cancel = nil, choices = {}, opts = nil }
 
 -- The game's Escape hides every shown UISpecialFrames window at once
 -- (CloseSpecialWindows, after the game's own dialogs had their turn), so the
@@ -1142,7 +1149,7 @@ end
 
 -- the question answered: the dialog closed first, then the answer's own
 -- function (a question it asks in turn is the one shown then)
-local function Answer(accepted)
+local function Answer(accepted, index)   -- index: the choice picked (opts.choices)
 	local opts = confirm.opts
 	confirm.opts = nil
 	confirm.frame:Hide()
@@ -1151,7 +1158,10 @@ local function Answer(accepted)
 		return
 	end
 	local fn
-	if accepted then
+	local choice = index and type(opts.choices) == "table" and opts.choices[index]
+	if type(choice) == "table" then
+		fn = choice.onClick
+	elseif accepted then
 		fn = opts.onAccept
 	else
 		fn = opts.onCancel
@@ -1167,6 +1177,10 @@ end, "script")
 
 local Cancel_OnClick = Shared("OnClick on the confirm dialog's cancel button", function()
 	Answer(false)
+end, "script")
+
+local Choice_OnClick = Shared("OnClick on a confirm dialog's choice button", function(self)
+	Answer(true, self.choiceIndex)
 end, "script")
 
 -- Escape (UISpecialFrames) hides it: the question cancelled. A hide while it
@@ -1203,11 +1217,24 @@ local function ConfirmLay(sh)
 	local height = math.max(CONFIRM_BODY, h + 2 * CONFIRM_PAD)
 	body:SetHeight(height)
 	local y = foot - CONFIRM_FOOT + CONFIRM_BUTTON_Y
+	-- one of several: the choices a column in the accept button's place, the cancel button centred under them
+	local list = confirm.opts and type(confirm.opts.choices) == "table" and confirm.opts.choices or nil
+	local rows = list and #list or 0
+	for i, b in ipairs(confirm.choices) do
+		b:ClearAllPoints()
+		b:SetPoint("BOTTOM", f, "BOTTOM", 0, y + (rows - i + 1) * (CONFIRM_BUTTON_H + CONFIRM_ROW))
+		b:SetShown(i <= rows)
+	end
+	confirm.accept:SetShown(rows == 0)
 	confirm.accept:ClearAllPoints()
 	confirm.accept:SetPoint("BOTTOMRIGHT", f, "BOTTOM", -CONFIRM_GAP / 2, y)
 	confirm.cancel:ClearAllPoints()
-	confirm.cancel:SetPoint("BOTTOMLEFT", f, "BOTTOM", CONFIRM_GAP / 2, y)
-	f:SetHeight(-top + height + foot)
+	if rows > 0 then
+		confirm.cancel:SetPoint("BOTTOM", f, "BOTTOM", 0, y)
+	else
+		confirm.cancel:SetPoint("BOTTOMLEFT", f, "BOTTOM", CONFIRM_GAP / 2, y)
+	end
+	f:SetHeight(-top + height + foot + rows * (CONFIRM_BUTTON_H + CONFIRM_ROW))
 end
 
 local function BuildConfirm()
@@ -1255,6 +1282,21 @@ function MelloUI:Confirm(opts)
 	confirm.text:SetText(MelloUI.Lang.T(opts.text) or "")
 	Label(confirm.accept, opts.accept or "OK")
 	Label(confirm.cancel, opts.cancel or "Cancel")
+	-- (one of several: its buttons made on the first such question, then kept; all as wide as the widest label)
+	local widest = CONFIRM_CHOICE_W
+	for i, choice in ipairs(type(opts.choices) == "table" and opts.choices or {}) do
+		local b = confirm.choices[i]
+		if not b then
+			b = W.Button(f, "", CONFIRM_CHOICE_W, confirm.shell, { height = CONFIRM_BUTTON_H, onClick = Choice_OnClick, gold = true })
+			b.choiceIndex = i
+			confirm.choices[i] = b
+		end
+		Label(b, type(choice) == "table" and choice.label or "")
+		widest = math.max(widest, b:GetWidth())
+	end
+	for i = 1, type(opts.choices) == "table" and #opts.choices or 0 do
+		confirm.choices[i]:SetWidth(widest)
+	end
 	-- the panel as tall as the question
 	ConfirmLay(confirm.shell)
 	if f:IsShown() then

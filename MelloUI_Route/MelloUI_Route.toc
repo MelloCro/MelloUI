@@ -3,6 +3,7 @@
 ## Notes: MelloUI's Route: the way to your waypoint on the world map and the minimap, learned from where you walk and fly, the arrow and the World Marker. Switch it on or off in MelloUI (/mello); untick it here to not load it at all.
 ## Author: Mello
 ## Version: 1.1.0
+## X-License: MIT; RouteData.lua All Rights Reserved (MelloUI's LICENSE-DATA)
 ## Dependencies: MelloUI
 ## OptionalDeps: MelloUI_Oldschool
 ## X-MelloUI-Feature: Route
@@ -10,5 +11,6 @@
 ## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
 
 Route.lua
+Guides.lua
 RouteRecorder.lua
 RouteData.lua

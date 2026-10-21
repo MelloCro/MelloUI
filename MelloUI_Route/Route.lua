@@ -134,6 +134,7 @@ local function VectorXY(pos)
 	end
 	return x, y
 end
+M.VectorXY = VectorXY   -- (Guides.lua's pin check reads the map pin with it)
 
 local WALK = 7           -- yards per second on foot; costs are seconds
 local FLIGHT = 30        -- yards per second on a flight path
@@ -11089,7 +11090,9 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 		Travel.Entered()   -- the travel time's login grace runs from the first one
 		M.ForgetNoContinent()
 		M.SideChanged()
-		M.Guide.Hook()   -- (every addon is loaded by now: RestedXP Guides too)
+		if M.Guide then
+			M.Guide.Hook()   -- (every addon is loaded by now: the guides too; Guides.lua, absent: Route runs on)
+		end
 		C_Timer.After(1, function() ReadWaypoint() end)
 	elseif event == "USER_WAYPOINT_UPDATED" or event == "SUPER_TRACKING_CHANGED" then
 		if event == "SUPER_TRACKING_CHANGED" then
@@ -11191,16 +11194,14 @@ SlashCmdList.MELLOROUTE = function(msg)
 		MelloUI:Print("user waypoint=%s supertracking waypoint=%s", okH and tostring(has) or "?",
 			C_SuperTrack and C_SuperTrack.IsSuperTrackingUserWaypoint and tostring(C_SuperTrack.IsSuperTrackingUserWaypoint()) or "?")
 		MelloUI:ShowLog("route dots")
-	elseif msg == "rxp" then
-		-- (RestedXP Guides: following its arrow on or off; the first, simple version)
+	elseif msg == "guide" or msg == "rxp" then
+		-- (the guide addons, Guides.lua: following their steps on or off; "rxp" its first name, RestedXP's alone)
 		M.db.followGuide = M.db.followGuide == false
-		M.Guide.Forget()
-		MelloUI:Print("Following RestedXP Guides: %s.", M.db.followGuide and "on" or "off")
-		if M.db.followGuide then
-			M.Guide.Step()
+		MelloUI:Print("Following guides: %s.", M.db.followGuide and "on" or "off")
+		if M.Guide then
+			M.Guide.Forget()
+			M.Guide.Refresh()   -- (their spot, their steps in the Quest Tracker and their items, or all gone)
 		end
-		M.Guide.Publish()   -- (its steps in the Quest Tracker, or gone)
-		M.Guide.PublishItems()   -- (its items in the quest item widget, or gone)
 	elseif msg == "clear" then
 		M.StopRoute()   -- (a tracked quest's route stays stopped too)
 		MelloUI:Print("Route cleared.")
@@ -11405,342 +11406,6 @@ SlashCmdList.MELLOROUTE = function(msg)
 	end
 end
 
---------------------------------------------------------------------------------
--- RestedXP Guides (a first, simple version for the user's in-game test,
--- 2026-10-18: "if our world marker could read those coordinates and places a
--- mark on that spot, that could work"): when RestedXP's arrow moves to a new
--- guide step, the game's map pin goes on that spot and is tracked, so the
--- route and the World Marker lead there (ReadWaypoint, on the pin's
--- USER_WAYPOINT_UPDATED). Read only, from RestedXP's own table (RXP, its
--- arrow's element: zone the map, x / y 0..100), after its UpdateGotoSteps.
--- A pin of the player's own is never moved; a pin of ours the player clears,
--- or a quest the player tracks instead, stays so until the next step.
--- /route rxp turns it off and on. Every read is guarded: an RXP of another
--- shape does nothing.
---------------------------------------------------------------------------------
--- (built in a function of its own: its locals are not the main chunk's, which has few to spare)
-M.Guide = (function()
-	local Guide = { hooked = false }   -- mapID, x, y: the step laid last
-
-	local function Same(mapID, x, y, m2, x2, y2)
-		return mapID == m2 and x2 and y2 and math.abs(x - x2) < 0.0005 and math.abs(y - y2) < 0.0005 or false
-	end
-
-	-- the pin on the map is the one laid for the last step
-	local function Ours()
-		local okH, has = pcall(C_Map.HasUserWaypoint)
-		if not (okH and Plain(has)) or not C_Map.GetUserWaypoint then
-			return false
-		end
-		local ok, point = pcall(C_Map.GetUserWaypoint)
-		if not ok or type(point) ~= "table" then
-			return false
-		end
-		local px, py = VectorXY(point.position)
-		return Guide.mapID and px and py and Same(Guide.mapID, Guide.x, Guide.y, Plain(point.uiMapID), px, py) or false
-	end
-
-	function Guide.Forget()
-		Guide.mapID, Guide.x, Guide.y = nil, nil, nil
-		Guide.sig, Guide.itemSig = nil, nil
-	end
-
-	-- RestedXP's active steps for the Quest Tracker (the user, 2026-10-18: its
-	-- steps "shown in the quest tracker", with "the manual checkbox to skip
-	-- certain steps"), on the bus's "guide": a line per step line, its text as
-	-- RestedXP shows it (ReplaceNpcIds), done when completed or skipped, a box
-	-- unless text-only or optional; ticking one runs RestedXP's own checkbox
-	-- (ActiveStepElementPostClick, the guide's skip). Published only when a
-	-- line changed (Guide.sig); nil once there is no guide or it is off.
-	local function Usable(el)
-		return type(el) == "table" and type(el.text) == "string" and el.text ~= "" and el.text ~= " "
-	end
-
-	local function EachLine(steps, fn)
-		for _, step in ipairs(steps) do
-			if type(step) == "table" and type(step.elements) == "table" then
-				for _, el in ipairs(step.elements) do
-					if Usable(el) then
-						fn(el)
-					end
-				end
-			end
-		end
-	end
-
-	-- RestedXP's own arrow and window veiled while its guide runs here (the
-	-- user, 2026-10-18: "when this compatibility is enabled, the restedxp arrow
-	-- and its window is hidden"). Not hidden: RestedXP reads their being shown
-	-- as state (its window hidden pauses the whole guide, isHidden; its arrow
-	-- hidden takes another waypoint path). A scale far below a pixel instead,
-	-- nothing to see or click, alpha 0 too; laid again after RestedXP's own
-	-- SetScale (its Window Scale setting); off, what it last asked for comes
-	-- back. No guide running: its window shows, to pick one.
-	local veil = {}   -- [frame] = { alpha, scale } RestedXP's own while veiled; false: watched
-	local veiling = false
-	local regen   -- (its item frame holds secure buttons: in a fight veiled or not after it, PLAYER_REGEN_ENABLED)
-
-	local function Later()
-		if not regen then
-			regen = CreateFrame("Frame")
-			regen:SetScript("OnEvent", function(self)
-				self:UnregisterEvent("PLAYER_REGEN_ENABLED")
-				Guide.Veil(Guide.veiledOn)
-			end)
-		end
-		regen:RegisterEvent("PLAYER_REGEN_ENABLED")
-	end
-
-	local function Locked(frame)
-		return InCombatLockdown() and frame.IsProtected and frame:IsProtected() and true or false
-	end
-
-	local function Lay(frame)
-		veiling = true
-		frame:SetAlpha(0)
-		frame:SetScale(0.001)
-		veiling = false
-	end
-
-	function Guide.Veil(on)
-		Guide.veiledOn = on
-		for _, name in ipairs({ "RXPFrame", "RXPG_ARROW", "RXPItemFrame" }) do
-			local frame = rawget(_G, name)
-			if type(frame) == "table" and frame.SetScale and frame.GetScale and Locked(frame) then
-				Later()
-			elseif type(frame) == "table" and frame.SetScale and frame.GetScale then
-				if veil[frame] == nil then
-					veil[frame] = false
-					hooksecurefunc(frame, "SetScale", function(self, s)
-						local v = veil[self]
-						if v and not veiling then
-							v.scale = s
-							if Locked(self) then
-								Later()
-							else
-								Lay(self)
-							end
-						end
-					end)
-				end
-				local v = veil[frame]
-				if on and not v then
-					veil[frame] = { alpha = frame:GetAlpha(), scale = frame:GetScale() }
-					Lay(frame)
-				elseif not on and v then
-					veil[frame] = false
-					veiling = true
-					frame:SetScale(v.scale or 1)
-					frame:SetAlpha(v.alpha or 1)
-					veiling = false
-				end
-			end
-		end
-	end
-
-	function Guide.Publish()
-		local rxp, rframe = rawget(_G, "RXP"), rawget(_G, "RXPFrame")
-		local steps = M.isEnabled and M.db and M.db.followGuide ~= false and type(rxp) == "table"
-			and type(rframe) == "table" and rawget(rframe, "activeSteps")
-		local parts = {}
-		if type(steps) == "table" then
-			EachLine(steps, function(el)
-				parts[#parts + 1] = el.text .. ((el.completed or el.skip) and "+" or "-")
-			end)
-		end
-		if (#parts > 0) ~= (Guide.veiledOn or false) then
-			Guide.Veil(#parts > 0)
-		end
-		local sig = table.concat(parts, "\n")
-		if sig == Guide.sig then
-			return
-		end
-		Guide.sig = sig
-		if #parts == 0 then
-			MelloUI:Fire("guide", nil)
-			return
-		end
-		local lines = {}
-		EachLine(steps, function(el)
-			local text = el.text
-			if type(rxp.ReplaceNpcIds) == "function" then
-				local ok, s = pcall(rxp.ReplaceNpcIds, text)
-				text = ok and type(s) == "string" and s or text
-			end
-			local line = { text = text, done = (el.completed or el.skip) and true or false,
-				box = not (el.textOnly or el.optional) }
-			line.Toggle = function(skip)
-				-- (RestedXP's checkbox, as its own guide window clicks it)
-				local button = { GetChecked = function() return skip end, GetParent = function() return { element = el } end }
-				pcall(rxp.ActiveStepElementPostClick, button)
-				Guide.Publish()
-			end
-			lines[#lines + 1] = line
-		end)
-		local guide = rawget(rxp, "currentGuide")
-		local name = type(guide) == "table" and (guide.displayName or guide.name) or nil
-		local cdata = rawget(_G, "RXPCData")
-		local n = type(cdata) == "table" and tonumber(cdata.currentStep) or nil
-		-- (the section's cog, the user, 2026-10-18: its left click RestedXP's own cog menu -- "choose the active
-		-- leveling guide" or its settings; at the cursor, so not under the veil -- its right click the settings,
-		-- as RestedXP's /rxp opens them)
-		Guide.title = (type(name) == "string" and name or "RestedXP") .. (n and (" - step " .. n) or "")
-		Guide.stepText = nil
-		for _, line in ipairs(lines) do
-			if not line.done then
-				Guide.stepText = line.text
-				break
-			end
-		end
-		local open = type(rxp.settings) == "table" and rxp.settings.OpenSettings
-		local menu = type(rframe.DropDownMenu) == "function" and rframe.DropDownMenu
-		local settings = type(open) == "function" and function() open() end or nil
-		MelloUI:Fire("guide", { section = "RestedXP Guide", lines = lines, Repin = Guide.Repin, Unpin = Guide.Unpin,
-			title = (type(name) == "string" and name or "RestedXP") .. (n and (" - step " .. n) or ""),
-			cog = { Left = menu and function() menu() end or settings, Right = settings, tip = "RestedXP Guides",
-				hint = "Click: its menu (guides, settings)  -  Right-click: its settings" } })
-	end
-
-	function Guide.Step(force)   -- force: a click on the step (laid again, over the player's own pin too); true when laid
-		if not (M.isEnabled and M.db and M.db.followGuide ~= false) then
-			return
-		end
-		local rxp = rawget(_G, "RXP")
-		local af = type(rxp) == "table" and rawget(rxp, "arrowFrame")
-		local el = type(af) == "table" and rawget(af, "element")
-		if type(el) ~= "table" or not (af.IsShown and af:IsShown()) then
-			return
-		end
-		local zone, x, y = el.zone, tonumber(el.x), tonumber(el.y)
-		if type(zone) == "string" and type(rxp.GetMapId) == "function" then
-			local ok, id = pcall(rxp.GetMapId, zone)
-			zone = ok and id or nil
-		end
-		zone = tonumber(zone)
-		if not (zone and x and y) then
-			return
-		end
-		x, y = x / 100, y / 100
-		if not force and Same(zone, x, y, Guide.mapID, Guide.x, Guide.y) then
-			return   -- this step was laid already
-		end
-		local okH, has = pcall(C_Map.HasUserWaypoint)
-		if not force and okH and Plain(has) and not Ours() then
-			return   -- the player's own pin stays (followed again once it is gone)
-		end
-		if not (C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates) then
-			return
-		end
-		Guide.mapID, Guide.x, Guide.y = zone, x, y
-		if not pcall(C_Map.SetUserWaypoint, UiMapPoint.CreateFromCoordinates(zone, x, y)) then
-			return false
-		end
-		if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
-			pcall(C_SuperTrack.SetSuperTrackedUserWaypoint, true)
-		end
-		return true
-	end
-
-	-- RestedXP's items for its step on the bus's "guideitem" (the user, 2026-10-18: "when you need to use an item in
-	-- certain spots and steps ... a hearthstone, mage teleports/portals", in MelloUI's quest item widget, RestedXP's
-	-- own item frame veiled): the items it names that the bags hold (RXP.activeItems), then the spells it names the
-	-- player knows (RXP.activeSpells); published only when the list changed, nil once there are none or it is off
-	local function Pcall(fn, ...)
-		if type(fn) ~= "function" then
-			return nil
-		end
-		local ok, v = pcall(fn, ...)
-		return ok and Plain(v) or nil
-	end
-
-	function Guide.PublishItems()
-		local rxp = rawget(_G, "RXP")
-		local items = {}
-		if Guide.veiledOn and type(rxp) == "table" then
-			local CI, CS = rawget(_G, "C_Item"), rawget(_G, "C_Spell")
-			local count = CI and CI.GetItemCount or rawget(_G, "GetItemCount")
-			for key in pairs(type(rxp.activeItems) == "table" and rxp.activeItems or {}) do
-				local id = tonumber(key)
-				local have = id and tonumber(Pcall(count, id)) or 0
-				if have > 0 then
-					items[#items + 1] = { kind = "item", id = id, count = have, name = Pcall(CI and CI.GetItemNameByID, id),
-						icon = Pcall(CI and CI.GetItemIconByID, id) }
-				end
-			end
-			local known = rawget(_G, "IsPlayerSpell")
-			for key, arg in pairs(type(rxp.activeSpells) == "table" and rxp.activeSpells or {}) do
-				local id = tonumber(key)
-				if id and (arg == "p" or Pcall(known, id)) and CS and CS.GetSpellInfo then
-					local ok, info = pcall(CS.GetSpellInfo, id)
-					if ok and type(info) == "table" and type(info.name) == "string" then
-						items[#items + 1] = { kind = "spell", id = id, name = info.name, icon = info.iconID }
-					end
-				end
-			end
-			table.sort(items, function(a, b)
-				if a.kind ~= b.kind then
-					return a.kind == "item"
-				end
-				return a.id < b.id
-			end)
-		end
-		local parts = {}
-		for i, e in ipairs(items) do
-			parts[i] = e.kind .. e.id .. ":" .. (e.count or 0) .. ":" .. tostring(e.name)
-		end
-		local sig = table.concat(parts, ",")
-		if sig == Guide.itemSig then
-			return
-		end
-		Guide.itemSig = sig
-		MelloUI:Fire("guideitem", #items > 0 and { title = Guide.title, step = Guide.stepText, items = items } or nil)
-	end
-
-	-- a click on the step in the Quest Tracker (the user, 2026-10-18: the World Marker missing, "click on that current
-	-- step and re-check the pin"): its spot laid and tracked again; a step with no spot says so
-	function Guide.Repin()
-		if not Guide.Step(true) then
-			MelloUI:Announce("This RestedXP step has no place to mark on the map.", "info")
-		end
-	end
-
-	-- a right-click on the step (the user, 2026-10-18: "a way to remove the waypoint, by right clicking on the
-	-- step"): the pin laid for it taken off, the route and the World Marker with it; the step stays laid (Guide.mapID),
-	-- so following does not put it back before the next step or a click. A pin of the player's own stays.
-	function Guide.Unpin()
-		local okH, has = pcall(C_Map.HasUserWaypoint)
-		if not (okH and Plain(has)) then
-			return
-		end
-		if not Ours() then
-			MelloUI:Announce("The map pin is your own, not this step's: it stays.", "info")
-			return
-		end
-		if C_Map.ClearUserWaypoint then
-			pcall(C_Map.ClearUserWaypoint)
-		end
-	end
-
-	-- once, after every addon is loaded: a post-hook on RestedXP's own step update
-	function Guide.Hook()
-		if Guide.hooked then
-			return
-		end
-		local rxp = rawget(_G, "RXP")
-		if type(rxp) ~= "table" or type(rawget(rxp, "UpdateGotoSteps")) ~= "function" then
-			return
-		end
-		Guide.hooked = true
-		hooksecurefunc(rxp, "UpdateGotoSteps", function()
-			Guide.Step()
-			Guide.Publish()
-			Guide.PublishItems()
-		end)
-	end
-
-	return Guide
-end)()
-
 function M:OnInit(db)
 	self.db = db
 	-- (the Direction Arrow became a row of the widget column, 2026-10-03: its
@@ -11824,6 +11489,9 @@ function M:OnEnable(db)
 	if destination then
 		Redraw()
 	end
+	if M.Guide then
+		M.Guide.Hook()   -- (switched on after the login: the guides hooked and read now, not at the next loading screen)
+	end
 end
 
 function M:OnDisable()
@@ -11839,6 +11507,9 @@ function M:OnDisable()
 	Redraw()
 	UpdateMarker()
 	Build.Loaded()   -- (a load under way: its line goes)
+	if M.Guide then
+		M.Guide.Refresh()   -- (a followed guide's own arrow and window back, its steps out of the Quest Tracker)
+	end
 end
 
 function M:OnSettingChanged(key, value, db)
