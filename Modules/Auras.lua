@@ -254,8 +254,8 @@ local function ApplyAuraLook(button)
 		end
 		t.edge:Hide()
 		if not t.lib then
-			t.libAt = button:CreateTexture(nil, "OVERLAY", nil, 3)
-			t.lib = Kit:NewBorder({ rect = t.libAt, owner = button, place = "on", layer = "OVERLAY", sub = 3 })
+			t.libAt = t.over:CreateTexture(nil, "OVERLAY", nil, 3)
+			t.lib = Kit:NewBorder({ rect = t.libAt, owner = t.over, place = "on", layer = "OVERLAY", sub = 3 })
 		end
 		t.lib:Lay(style, "light")
 		local x, y = t.lib:Inset()
@@ -285,7 +285,7 @@ local function ApplyAuraLook(button)
 	-- handler)", user 2026-09-23, and the rest of the button's set-up was
 	-- lost with it), so the rim does not light on hover
 	if not t.rim then
-		t.rim = button:CreateTexture(nil, "OVERLAY", nil, 3)
+		t.rim = t.over:CreateTexture(nil, "OVERLAY", nil, 3)
 		t.rim.kitScale = Kit.scale
 	end
 	if MelloUI.Kept.pieceNameOf[t.rim] ~= base .. "_normal" then
@@ -331,7 +331,14 @@ local function InitButton(button, o)
 		cooldown.noCooldownCount = true
 		Try(button.SetDurationCooldown, button, cooldown)
 	end
-	-- the texts above the spiral
+	-- the borders above the spiral (2026-10-21, the user: "check the target buffs and debuffs for wierd border
+	-- overlap"): a rim lies over the icon's edge and the dispel border round it, and the spiral, a frame over the
+	-- button's own textures, swept across both. They are this frame's, between the spiral and the texts (the game
+	-- takes a dispel border of any frame under the button: AuraContainerUtil.ValidateInboundScriptObject)
+	local over = CreateFrame("Frame", nil, button)
+	over:SetAllPoints(button)
+	over:SetFrameLevel((cooldown or button):GetFrameLevel() + 1)
+	-- the texts above the spiral and the borders
 	local layer = CreateFrame("Frame", nil, button)
 	layer:SetAllPoints(button)
 	layer:SetFrameLevel((cooldown or button):GetFrameLevel() + 2)
@@ -352,11 +359,11 @@ local function InitButton(button, o)
 	Try(button.SetDurationText, button, time, fmt and { textFormatter = fmt } or {})
 	-- (gap: the room between two buttons of the row, the shade's reach kept in it)
 	texts[button] = { time = time, count = count, below = o.durationBelow, edge = edge, size = o.size, shade = o.shade,
-		gap = o.shade and math.min(o.spacing or 0, o.lineSpacing or o.spacing or 0) or nil }
+		gap = o.shade and math.min(o.spacing or 0, o.lineSpacing or o.spacing or 0) or nil, over = over }
 	SizeTexts(button, o.size)
 	ApplyAuraLook(button)
 	if o.dispel and button.AddDispelTypeTexture then
-		local border = button:CreateTexture(nil, "OVERLAY", nil, 5)   -- above an Aura Border rim
+		local border = over:CreateTexture(nil, "OVERLAY", nil, 5)   -- above an Aura Border rim
 		border:SetPoint("TOPLEFT", -1, 1)
 		border:SetPoint("BOTTOMRIGHT", 1, -1)
 		local style = Enum and Enum.CustomAuraButtonDispelTypeTextureStyle

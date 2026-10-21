@@ -1973,7 +1973,7 @@ function I:InstallBlocked(option, draft, fit, fresh)
 	if self:LayoutOn(option, draft, fit) then
 		local room, most = self:LayoutRoom(fit, fresh)
 		if not room then
-			return TEXT.noRoom:format(most)
+			return MelloUI.Lang.F(TEXT.noRoom, most)
 		end
 	end
 	return nil

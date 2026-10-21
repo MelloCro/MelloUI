@@ -1194,7 +1194,10 @@ local function AddEntrancePins(map, mapID, mapName)
 	local names = {}
 	for _, e in ipairs(data.entrances or {}) do
 		names[e[2]:lower()] = true
-		local x, y = WorldPointOnMap(mapID, mapName, e[3], e[4], e[5], e[6], e[7], e[8])
+		local x, y
+		if QL.EntranceIsMine(e) then
+			x, y = WorldPointOnMap(mapID, mapName, e[3], e[4], e[5], e[6], e[7], e[8])
+		end
 		if x then
 			Marks.Add("entrance", { dungeonID = e[1], name = e[2], raid = e[9] == 2, x = x, y = y, source = "data" })
 		end
@@ -1263,7 +1266,7 @@ local function AddInstanceStartPins(map, mapID, mapName)
 	local placed = {}
 	for _, e in ipairs(data.entrances or {}) do
 		local group = groups[e[1]]
-		if group and not placed[e[1]] then
+		if group and not placed[e[1]] and QL.EntranceIsMine(e) then
 			local x, y = WorldPointOnMap(mapID, mapName, e[3], e[4], e[5], e[6], e[7], e[8])
 			if x then
 				placed[e[1]] = true

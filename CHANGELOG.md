@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0
+
+- Languages: the configurator and the installer speak German, French, Spanish, Portuguese, Russian, Simplified Chinese and Korean. A Language dropdown at the left of the configurator's top line picks the language, starting on your game's own; a line not translated yet shows in English. The game's own words are used for the game's things, as each client names them.
+- Languages: the translations are a first draft; corrections are welcome on CurseForge's translation page for MelloUI.
+- MelloUI's own windows keep the game's letters for Cyrillic, Chinese and Korean, so such names show in them instead of boxes.
+- Buttons in MelloUI's windows grow to fit a longer label instead of cutting it.
+- Map: Forever's new dungeons are on the map with their levels: the City of Dalaran (the Horde's gate and the Alliance's sewers, each side sees its own), the Excavation Site: Wetlands, the Ruins of Lordaeron and the Hall of Thanes, and the coming Drowned City and Shaper's Terrace. Route leads to your side's door.
+- Game menu: MelloUI's button under the Escape menu is a gold pill with MelloUI's badge, which glows softly the first time you open the menu.
+- Fixed: a dead or unconscious target or focus shows only the game's Dead (or Unconscious), no longer a 0 written over it.
+- Fixed: Buffs & Debuffs: the cooldown spiral no longer sweeps over the icons' borders (the target's rows, yours and the nameplates'); the border and the debuff's dispel colour stay whole on top of it.
+
 ## 1.0.0
 
 - Map: one seamless map of the whole world in a window of MelloUI's own (MelloUI_Map, on by default). The mouse wheel zooms from Azeroth down to a village, a drag looks around, a click glides into the zone under the cursor and a right-click goes back out. Your map key (M) opens it, always centred on you.

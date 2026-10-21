@@ -138,6 +138,15 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "1.1.0", lines = {
+		"Languages: the configurator and the installer in German, French, Spanish, Portuguese, Russian, Chinese and Korean. Pick one at the left of the top line.",
+		"A line not translated yet shows in English. Corrections are welcome on MelloUI's CurseForge translation page.",
+		"MelloUI's windows show Cyrillic, Chinese and Korean names in the game's letters instead of boxes; buttons grow to fit a longer label.",
+		"Map: Forever's new dungeons with their levels, the City of Dalaran's door for your side; the Drowned City and the Shaper's Terrace too.",
+		"The Escape menu's MelloUI button is a gold pill with MelloUI's badge.",
+		"Fixed: a dead target or focus shows only the game's Dead, no 0 over it.",
+		"Fixed: the buff and debuff icons' borders stay whole over their cooldown spiral.",
+	} },
 	{ version = "1.0.0", lines = {
 		"A seamless world map of MelloUI's own (M): zoom from Azeroth to a village, ground and caves up close; your party, Route, flights, dungeons, quests and objectives on it.",
 		"Map: your quest log and the Quest List beside it (L), search, a pin to share in chat, layer switches; Questie, HandyNotes and GatherMate2 pins on it too.",
@@ -169,15 +178,6 @@ local CHANGELOG = {
 		"Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it.",
 		"Bags by Kind: Bags Full Warning -- with your bags full, Empty shows a 0 slot that shakes and flashes red as the game says so.",
 		"Services: Trays Slide Out -- a group's list slides out from the minimap column like a drawer, and back in.",
-	} },
-	{ version = "0.22.0", lines = {
-		"Installer: Mello's layout fits many more UI scales; when Edit Mode is full of layouts, install without it or delete an older MelloUI one.",
-		"Bags by Kind: the Reagent Bag on its own tab at the bag window's side; move items between it and your bags, or drop one on a tab.",
-		"Services: your addons' minimap buttons gathered into an AddOns group in the Services row, off the minimap.",
-		"Split Stack: the mouse wheel changes the amount (Shift: ten at a time), and a ½ button halves the stack.",
-		"Fixed: Minimap: the day / night moon sits in the square map's top right corner, clear of the zone name.",
-		"Fixed: Group Frames: no more stray yellow box beside your party or raid frames when you target someone.",
-		"Fixed: Heal Effects: spamming a heal no longer leaves the light looping on your cast bar after the cast.",
 	} },
 }
 local LINKS = {
@@ -253,7 +253,11 @@ local currentPage = nil
 
 -- Text(parent, font, text, key), Solid(parent, layer, key, alpha): the
 -- widgets' (colours by key)
-local Text, Solid = W.Text, W.Solid
+-- (the languages, Core.lua's Languages section: every text Config makes this way is looked up in the language in use; a
+-- number, a name or a line the table lacks shows as it is)
+local Text, Solid = function(parent, font, text, key)
+	return W.Text(parent, font, MelloUI.Lang.T(text), key)
+end, W.Solid
 
 local function WrappedHeight(fs, fallback)
 	local ok, h = pcall(fs.GetStringHeight, fs)
@@ -990,7 +994,7 @@ local function NewPage(name, width)
 			self.tabs = {}
 			for _, sec in ipairs(self.sections) do
 				local tab = CreateFrame("Button", nil, self, "PanelTopTabButtonTemplate")
-				tab:SetText(sec.name)
+				tab:SetText(MelloUI.Lang.T(sec.name))
 				PanelTemplates_TabResize(tab, 8)
 				tab.section = sec
 				-- (flat in both looks, 0.15.0; the selected one wears the
@@ -1055,7 +1059,7 @@ local function BuildPageHeader(page, icon, title, flavour, new, right)
 	flavourFS:SetPoint("TOPLEFT", titleFS, "BOTTOMLEFT", 2, -6)
 	flavourFS:SetWidth(page.width - PAD * 2 - (HEADER_ICON + 14) - (right or 0))
 	flavourFS:SetWordWrap(true)
-	flavourFS:SetText(flavour)
+	flavourFS:SetText(MelloUI.Lang.T(flavour))
 	page.flavour = flavourFS
 	page.headerHeight = HeaderHeight(page)
 end
@@ -1254,14 +1258,16 @@ do
 		local own = info.part or info.family
 		if own then
 			for _, sname in ipairs(SECTIONS) do
-				local s = { name = sname, rows = {}, links = {}, heading = own.label .. " · " .. sname }
+				local s = { name = sname, rows = {}, links = {}, heading = own.label .. " · " .. sname,
+					headParts = { own.label, sname } }
 				t.sections[#t.sections + 1] = s
 				t.secOf[sname] = s
 			end
 		end
 		if info.el then
 			for _, sname in ipairs(SECTIONS) do
-				local s = { name = sname, rows = {}, links = {}, heading = info.el.label .. " · " .. sname, element = true }
+				local s = { name = sname, rows = {}, links = {}, heading = info.el.label .. " · " .. sname, element = true,
+					headParts = { info.el.label, sname } }
 				t.sections[#t.sections + 1] = s
 				t.elSecOf[sname] = s
 				if not info.part then
@@ -1280,6 +1286,11 @@ do
 				home.elementRows[#home.elementRows + 1] = t
 			end
 		end
+	end
+
+	-- (the languages: a switch lets the resolved layout go -- its rows keep tooltips and lines made in a language)
+	function Lay.Relang()
+		resolved = nil
 	end
 
 	function Lay.Get()
@@ -1531,6 +1542,7 @@ do
 			r.name = extra.name or (first.kind == "module" and first.mod.title) or first.opt.name or first.id
 			r.wide, r.picture, r.swatch, r.also = extra.wide, extra.picture, extra.swatch, extra.also
 			r.shared = extra.shared   -- (one look, the designers: the Shared mark, W.Row's opts.shared)
+			r.sharedWith = extra.sharedWith
 			r.free = (extra.free or (first.opt and first.opt.free)) and true or nil
 			-- (one-look D6) the module whose switches the row sleeps with while
 			-- its key's own module is off (any-of: Gate)
@@ -2020,16 +2032,21 @@ local TEXT = {
 local AREAS_REFUSED = "Not in combat: this would switch painted skins."   -- (UI Modifications' own line, areasRefused)
 
 local function Settings(n)
-	return n == 1 and "1 setting" or string.format("%d settings", n)
+	return n == 1 and MelloUI.Lang.T("1 setting") or MelloUI.Lang.F("%d settings", n)
 end
 
--- "A", "A and B", "A, B and C"
+-- "A", "A and B", "A, B and C" (each label in the language in use, the "and" too)
 local function Join(list)
 	local n = #list
+	local T = MelloUI.Lang.T
 	if n <= 1 then
-		return list[1] or ""
+		return T(list[1] or "")
 	end
-	return table.concat(list, ", ", 1, n - 1) .. " and " .. list[n]
+	local head = {}
+	for i = 1, n - 1 do
+		head[i] = T(list[i])
+	end
+	return MelloUI.Lang.F("%s and %s", table.concat(head, ", "), T(list[n]))
 end
 
 local function LabelsOf(p, picks)
@@ -2190,7 +2207,7 @@ local function SwitchLine(why, where)
 	local w = where or ""
 	local line = byWhere[w]
 	if not line then
-		line = where and string.format(TEXT.switchOnAt, why, where) or string.format(TEXT.switchOn, why)
+		line = where and MelloUI.Lang.F(TEXT.switchOnAt, why, where) or MelloUI.Lang.F(TEXT.switchOn, why)
 		byWhere[w] = line
 	end
 	return line
@@ -2199,7 +2216,7 @@ local notFor = {}   -- [pick label] = "Not for <pick>"
 local function NotFor(label)
 	local line = notFor[label]
 	if not line then
-		line = string.format(TEXT.notFor, label)
+		line = MelloUI.Lang.F(TEXT.notFor, label)
 		notFor[label] = line
 	end
 	return line
@@ -2212,6 +2229,13 @@ end
 -- the pick it needs here (its label, and its key for the jump), or the
 -- other tab it is on ("Minimap tab")
 local farWhere, tabWhere = {}, {}   -- [place] / [tab name] = the text (made once each)
+-- (the languages: these lines are made in the language in use, so a switch lets them go)
+function Lay.WipeLines()
+	wipe(lines)
+	wipe(notFor)
+	wipe(farWhere)
+	wipe(tabWhere)
+end
 local function WhereOf(page, place, row)
 	local r = place.r
 	local pick = place.pickSet and place.picks[1]
@@ -2222,8 +2246,9 @@ local function WhereOf(page, place, row)
 			local label = other and other.picks and #place.picks < #other.picks and other.pickLabel[pick]
 			-- (a designer's row: its element and part, "Bars > Menu & Bags > Bag bar" -- the tab's own label)
 			local t = r.tab
-			where = (label and (PageTitle(r.page) .. " > " .. label))
-				or (t and t.el and (PageTitle(r.page) .. " > " .. t.label)) or PageTitle(r.page)
+			local T = MelloUI.Lang.T
+			where = (label and (T(PageTitle(r.page)) .. " > " .. T(label)))
+				or (t and t.el and (T(PageTitle(r.page)) .. " > " .. T(t.label))) or T(PageTitle(r.page))
 			farWhere[place] = where
 		end
 		return where, nil
@@ -2235,7 +2260,7 @@ local function WhereOf(page, place, row)
 		local name = r.tab.label or r.tab.name
 		local where = tabWhere[name]
 		if not where then
-			where = string.format(TEXT.tabWhere, name)
+			where = MelloUI.Lang.F(TEXT.tabWhere, name)
 			tabWhere[name] = where
 		end
 		return where, nil
@@ -2421,7 +2446,7 @@ local function Hint(page, r, b)
 	end
 	local opt = (b or Shape(page, r)).opt
 	if opt then
-		return opt.important and "IMPORTANT" or opt.hint
+		return opt.important and MelloUI.Lang.T("IMPORTANT") or opt.hint
 	end
 	return nil
 end
@@ -2438,11 +2463,11 @@ local function Tip(page, r, b)
 	if tip then
 		return tip
 	end
-	tip = (b.kind == "module" and b.mod.desc) or (b.opt and b.opt.desc) or ""
+	tip = MelloUI.Lang.T((b.kind == "module" and b.mod.desc) or (b.opt and b.opt.desc) or "")
 	local picks = r.keys and r.picksOf[b]
 	if picks and #picks >= 2 then
 		local also = r.also and r.also[b.id]
-		local line = string.format(TEXT.sharedTip, Join(LabelsOf(page.lay, picks)), also and string.format(TEXT.also, also) or "")
+		local line = MelloUI.Lang.F(TEXT.sharedTip, Join(LabelsOf(page.lay, picks)), also and MelloUI.Lang.F(TEXT.also, also) or "")
 		tip = tip ~= "" and (tip .. "\n\n" .. line) or line
 	end
 	tips[b] = tip
@@ -2747,10 +2772,10 @@ local function AskResetPage(page)
 	local label = pick and lay.pickLabel and lay.pickLabel[pick]
 	local count = Settings(n)
 	if label and shared > 0 then
-		count = string.format(TEXT.resetShared, count, shared, lay.def.picker.noun or "pick")
+		count = MelloUI.Lang.F(TEXT.resetShared, count, shared, lay.def.picker.noun or "pick")
 	end
-	local text = label and string.format(TEXT.resetAskPick, lay.def.title, label, count)
-		or string.format(TEXT.resetAsk, lay.def.title, count)
+	local text = label and MelloUI.Lang.F(TEXT.resetAskPick, lay.def.title, label, count)
+		or MelloUI.Lang.F(TEXT.resetAsk, lay.def.title, count)
 	MelloUI:Confirm({
 		text = text,
 		accept = TEXT.resetAccept,
@@ -2843,7 +2868,7 @@ local function AskCopyFrom(page, source)
 		return
 	end
 	MelloUI:Confirm({
-		text = string.format(TEXT.copyAsk, Owner(from, lay.def.picker.noun), to, Settings(n)),
+		text = MelloUI.Lang.F(TEXT.copyAsk, Owner(from, lay.def.picker.noun), to, Settings(n)),
 		accept = TEXT.copyAccept,
 		cancel = TEXT.cancel,
 		onAccept = function()
@@ -2923,6 +2948,14 @@ local function MakeRow(sec, r)
 	local e = { page = page, r = r, shape = shape }
 	local o = RowOpts(sec, r.new)
 	o.shared = r.shared
+	if r.sharedWith then
+		-- (the languages: "also Player, Target" in the language in use, each frame's name too)
+		local names = {}
+		for i, name in ipairs(r.sharedWith) do
+			names[i] = MelloUI.Lang.T(name)
+		end
+		o.shared = MelloUI.Lang.F("also %s", table.concat(names, ", "))
+	end
 	if opt and opt.important then
 		o.labelKey, o.hintKey = C.accent, C.accent
 	end
@@ -2997,7 +3030,7 @@ local function MakeRow(sec, r)
 			all.melloEntry = e
 			if not r.allTip then
 				local noun = page.lay.def.picker.noun or "one"
-				r.allTip = string.format(TEXT.allTip, noun, Join(LabelsOf(page.lay, PicksWithKeys(page.lay, r))))
+				r.allTip = MelloUI.Lang.F(TEXT.allTip, noun, Join(LabelsOf(page.lay, PicksWithKeys(page.lay, r))))
 			end
 			PageTip(all, TEXT.all, r.allTip)
 			W.RowPlateChild(row, all)
@@ -3108,7 +3141,10 @@ end
 -- a section's heading (8 px under the section before it)
 local function MakeHeading(sec, s)
 	local gap = s.gap
-	W.Header(sec, sec.y + gap, s.heading or s.name, { inset = SEC_INSET })
+	-- (the languages: a designer's "<Part> · <Section>" in the language in use, each half looked up)
+	local parts = s.headParts
+	local T = MelloUI.Lang.T
+	W.Header(sec, sec.y + gap, parts and (T(parts[1]) .. " · " .. T(parts[2])) or s.heading or s.name, { inset = SEC_INSET })
 	Placed(sec, nil, gap + W.HEADER_HEIGHT)
 end
 
@@ -3117,8 +3153,8 @@ end
 -- switch stands (Core.lua's MelloUI.Features), nothing to set
 local function MakeNote(sec, r)
 	local f = r.note
-	local row = W.Row(sec, sec.y, W.ROW_HEIGHT, string.format(TEXT.notLoaded, f.title),
-		string.format(TEXT.notLoadedHint, f.addon), nil, RowOpts(sec))
+	local row = W.Row(sec, sec.y, W.ROW_HEIGHT, MelloUI.Lang.F(TEXT.notLoaded, f.title),
+		MelloUI.Lang.F(TEXT.notLoadedHint, f.addon), nil, RowOpts(sec))
 	Placed(sec, row, ROW_HEIGHT)
 end
 
@@ -3258,12 +3294,12 @@ local function Header(page, pl)
 		end, function(value)
 			MelloUI:PlayUISound("tab")
 			SetPick(page, value)
-		end, PickValues(pl), { default = def.picker.label, tooltip = string.format(TEXT.pickTip, noun) })
+		end, PickValues(pl), { default = def.picker.label, tooltip = MelloUI.Lang.F(TEXT.pickTip, noun) })
 		dd:SetPoint("LEFT", lbl, "RIGHT", 8, 0)
 		local copy = W.Dropdown(line, COPY_W, NoValue, function(value)
 			AskCopyFrom(page, value)
 			page.copyBox:Refresh()
-		end, CopyValues(pl, page.pick), { default = TEXT.copy, tooltip = string.format(TEXT.copyTip, noun, noun) })
+		end, CopyValues(pl, page.pick), { default = TEXT.copy, tooltip = MelloUI.Lang.F(TEXT.copyTip, noun, noun) })
 		copy:SetPoint("LEFT", dd, "RIGHT", 12, 0)
 		page.pickerLine, page.picker, page.copyBox = line, dd, copy
 		-- (0.19.9) the page's own action beside them (Action Bars: Keybind Mode)
@@ -3706,7 +3742,7 @@ do
 			changes = changes and (changes .. " and " .. TEXT.blockPlace) or TEXT.blockPlace
 		end
 		MelloUI:Confirm({
-			text = string.format(TEXT.blockAsk, name, changes),
+			text = MelloUI.Lang.F(TEXT.blockAsk, name, changes),
 			accept = TEXT.resetAccept,
 			cancel = TEXT.cancel,
 			onAccept = function()
@@ -3806,7 +3842,7 @@ do
 			return
 		end
 		MelloUI:Confirm({
-			text = string.format(TEXT.copyAsk, Owner(source.label), el.label, Settings(n)),
+			text = MelloUI.Lang.F(TEXT.copyAsk, Owner(source.label), el.label, Settings(n)),
 			accept = TEXT.copyAccept,
 			cancel = TEXT.cancel,
 			onAccept = function()
@@ -3831,7 +3867,7 @@ do
 		local n, moved = DUI.Wants(head.melloPage, head.melloHead)
 		Clear()
 		n = n + (moved and 1 or 0)
-		local text = string.format(TEXT.resetBlock, head.melloName)
+		local text = MelloUI.Lang.F(TEXT.resetBlock, head.melloName)
 		if n > 0 then
 			text = text .. " (" .. n .. ")"
 		end
@@ -3845,7 +3881,8 @@ do
 	function DUI.Head(sec, job)
 		local page, t, kind = sec.page, job.t, job.dhead
 		local own = (kind == "family" and t.family) or t.el
-		local title = kind == "part" and (t.part.label .. " · " .. t.el.label) or own.label
+		local T = MelloUI.Lang.T
+		local title = kind == "part" and (T(t.part.label) .. " · " .. T(t.el.label)) or own.label
 		-- (Q11: a locked part -- nothing to set yet -- says why under its name, and has no Reset part)
 		local locked = kind == "part" and t.part.locked
 		local line = (kind ~= "part" and own.line) or (type(locked) == "string" and locked) or nil
@@ -3861,9 +3898,9 @@ do
 			reset = W.Button(row, TEXT.resetPart, 110, SKIN, { onClick = DUI.ResetClick })
 			PageTip(reset, TEXT.resetPart, TEXT.resetPartTip)
 		else
-			reset = W.Button(row, string.format(TEXT.resetBlock, own.label), 160, SKIN, { onClick = DUI.ResetClick })
+			reset = W.Button(row, MelloUI.Lang.F(TEXT.resetBlock, own.label), 160, SKIN, { onClick = DUI.ResetClick })
 			reset.melloName = own.label
-			PageTip(reset, string.format(TEXT.resetBlock, own.label), string.format(TEXT.resetBlockTip, own.label,
+			PageTip(reset, MelloUI.Lang.F(TEXT.resetBlock, own.label), MelloUI.Lang.F(TEXT.resetBlockTip, own.label,
 				kind == "element" and TEXT.resetElWhat or ""))
 			sec.refreshers[#sec.refreshers + 1] = function()
 				DUI.Count(reset)
@@ -3879,7 +3916,7 @@ do
 			copy = W.Dropdown(row, COPY_W, NoValue, function(value)
 				DUI.AskCopy(page, el, value)
 				copy:Refresh()
-			end, values, { default = TEXT.copy, tooltip = string.format(TEXT.copyElTip, own.label) })
+			end, values, { default = TEXT.copy, tooltip = MelloUI.Lang.F(TEXT.copyElTip, own.label) })
 			copy:SetPoint("RIGHT", reset, "LEFT", -10, 0)
 			row.copy = copy
 		end
@@ -4393,11 +4430,11 @@ local function VoicePackText()
 		for i, name in ipairs({ "MelloUI_VoicePack", "MelloUI_VoiceOverData", "AI_VoiceOverData_Forever", "AI_VoiceOverData_Vanilla" }) do
 			local ok, loaded = pcall(C_AddOns.IsAddOnLoaded, name)
 			if ok and loaded then
-				return i == 1 and "installed" or "old pack: the new one is under Help"
+				return MelloUI.Lang.T(i == 1 and "installed" or "old pack: the new one is under Help")
 			end
 		end
 	end
-	return "not installed (the link is under Help)"
+	return MelloUI.Lang.T("not installed (the link is under Help)")
 end
 
 -- how many of the modules with a page of their own are on
@@ -4683,7 +4720,7 @@ local function AddVersion(card, entry, y)
 	local lead = card.lead
 	card.lead = nil
 	local items = card.items
-	local head = Text(card, "GameFontNormal", "Version " .. entry.version, C.accent)
+	local head = Text(card, "GameFontNormal", MelloUI.Lang.F("Version %s", entry.version), C.accent)
 	head:SetPoint("TOPLEFT", CARD_PAD, -y)
 	items[#items + 1] = head
 	y = y + 22
@@ -5056,7 +5093,7 @@ local function RefreshSetup(page)
 	if card.paletteShown ~= palette then
 		-- (the tooltip's title names it: made again only when it changed)
 		card.paletteShown = palette
-		card.changePalette.melloTipTitle = string.format("Palette: %s", palette)
+		card.changePalette.melloTipTitle = MelloUI.Lang.F("Palette: %s", palette)
 	end
 	-- (0.25.0) the reskin's palettes and its Kit Colours are choices only while it dresses (MelloUI:PaintedPalettes):
 	-- else the modern look's palette is named, with no Change…, and the Kit Colours row goes
@@ -5065,7 +5102,7 @@ local function RefreshSetup(page)
 	rows.colours.value:SetText(KitColoursLabel())
 	rows.screen.value:SetText(ScreenText())
 	local on, total = ModulesOn()
-	rows.mello.value:SetText(string.format("%s, %d of %d modules on", tostring(MelloUI.version), on, total))
+	rows.mello.value:SetText(MelloUI.Lang.F("%s, %d of %d modules on", tostring(MelloUI.version), on, total))
 	rows.voice.value:SetText(VoicePackText())
 	local installer = type(MelloUI.OpenInstaller) == "function"
 	local I = MelloUI.Installer
@@ -5294,7 +5331,7 @@ function RefreshProfilesPage()
 	local gold, muted = MelloUI:PaletteCode("selectedTrim"), MelloUI:PaletteCode("mutedText")
 	local active = db.activeProfile and (gold .. db.activeProfile .. "|r") or (muted .. "none|r")
 	local default = db.defaultProfile and (gold .. db.defaultProfile .. "|r") or (muted .. "none|r")
-	sec.status:SetText(string.format("Active: %s      Default on a fresh install: %s", active, default))
+	sec.status:SetText(MelloUI.Lang.F("Active: %s      Default on a fresh install: %s", active, default))
 	-- new row frames within the frame's one budget of rows (the one row
 	-- under way finished), the rest on the next frame: a long list's first
 	-- show never makes them all in one frame. Their room is kept (sec.y).
@@ -5633,14 +5670,16 @@ end
 -- order), and a search's `tier` and `score`; `when` (a row found only at
 -- times) with the answer of its search (`gateTurn`, `gateOk`)
 local function Entry(e, name, path, tip, place, hint)
-	name = Bare(name) or ""
-	tip = Bare(tip)
-	place = Bare(place)
+	local T = MelloUI.Lang.T
+	local english = Bare(name) or ""
+	name = Bare(T(name)) or ""
+	tip = Bare(T(tip))
+	place = Bare(T(place))
 	e.name, e.path, e.tip, e.section = name, path, tip, place
 	e.full = path and (path .. " > " .. name) or name
 	e.lname = lower(name)
 	e.lplace = lower((path or "") .. " " .. (place or ""))
-	e.ldesc = lower((tip or "") .. " " .. (Bare(hint) or ""))
+	e.ldesc = lower((tip or "") .. " " .. (Bare(hint) or "") .. (english ~= name and (" " .. english) or ""))
 	e.rank = RANK[e.kind] or ROW_RANK
 	e.tier, e.score = 0, 0
 	local n = #index + 1
@@ -5683,8 +5722,9 @@ local function AddLayoutPage(key, nav, group)
 	if not p then
 		return
 	end
-	local title = p.def.title
-	Entry({ kind = "page", key = key, new = nav.new and true or nil }, title, group, nav.tip)
+	local T = MelloUI.Lang.T
+	local title = T(p.def.title)
+	Entry({ kind = "page", key = key, new = nav.new and true or nil }, p.def.title, T(group), nav.tip)
 	local many = #p.tabs > 1
 	if many then
 		for i, t in ipairs(p.tabs) do
@@ -5695,9 +5735,9 @@ local function AddLayoutPage(key, nav, group)
 		Entry({ kind = "pick", key = key, pick = pk.key }, pk.label, title, pk.desc)
 	end
 	for _, t in ipairs(p.tabs) do
-		local path = many and (title .. " > " .. (t.label or t.name)) or title
+		local path = many and (title .. " > " .. T(t.label or t.name)) or title
 		for _, s in ipairs(t.sections) do
-			local crumb = path .. " > " .. s.name
+			local crumb = path .. " > " .. T(s.name)
 			-- (one look, a designer: a part's tab shows its element's rows too;
 			-- they are found once, on the element's own tab)
 			for _, r in ipairs((s.element and t.part) and EMPTY or s.rows) do
@@ -5744,11 +5784,11 @@ local function Build()
 	-- the top bar: Edit Layout (its tooltip's texts, and the old mode's words)
 	local edit = window.parts.edit
 	Entry({ kind = "bar", part = "edit", when = EditLayoutThere, new = window.editNew or nil }, edit.melloTipTitle,
-		TEXT.bar, edit.melloTipBody, nil, TEXT.editWords)
+		MelloUI.Lang.T(TEXT.bar), edit.melloTipBody, nil, TEXT.editWords)
 	-- the top bar: Preview (0.17.0)
 	local preview = window.parts.preview
-	Entry({ kind = "bar", part = "preview", new = MelloUI:IsNew(preview.melloNew) or nil }, preview.melloTipTitle, TEXT.bar,
-		preview.melloTipBody, nil, TEXT.previewWords)
+	Entry({ kind = "bar", part = "preview", new = MelloUI:IsNew(preview.melloNew) or nil }, preview.melloTipTitle,
+		MelloUI.Lang.T(TEXT.bar), preview.melloTipBody, nil, TEXT.previewWords)
 end
 
 -- 1: `s` starts with `q`; 2: a word in it does; 3: it holds `q` (lower case)
@@ -5893,7 +5933,7 @@ local function NoteFor(n)
 	local more = n - MAX_SHOWN
 	local line = moreLines[more]
 	if not line then
-		line = string.format(TEXT.more, more)
+		line = MelloUI.Lang.F(TEXT.more, more)
 		moreLines[more] = line
 	end
 	return line
@@ -5936,6 +5976,10 @@ end
 function Search.Stale()
 	index = nil
 	turn = turn + 1
+end
+-- (the languages: the quiet lines made in the language in use, let go at a switch)
+function Search.Relang()
+	wipe(moreLines)
 end
 -- the gates asked again at the next keystroke ('backup': the copy written,
 -- removed or brought back)
@@ -6112,7 +6156,7 @@ function Search.MakeBox(rail, skin)
 	search:SetMaxLetters(40)
 	W.Paint(search, C.text, "text")   -- (what is typed, in the palette's text colour)
 	if search.Instructions then
-		search.Instructions:SetText(PROMPT)
+		search.Instructions:SetText(MelloUI.Lang.T(PROMPT))
 	end
 	Perf.HookScript(search, "OnTextChanged", Search.Changed)
 	Perf.SetScript(search, "OnEnterPressed", Search.Enter)
@@ -6184,6 +6228,11 @@ local function RefreshBar()
 	edit:ClearAllPoints()
 	install:ClearAllPoints()
 	preview:ClearAllPoints()
+	local label, language = parts.languageLabel, parts.language
+	label:ClearAllPoints()
+	language:ClearAllPoints()
+	local tag = label.newTag
+	language:SetPoint("LEFT", tag or label, "RIGHT", tag and (8 + W.TAG_PAD) or 8, 0)
 	if painted then
 		bar:SetPoint("TOPLEFT", window, "TOPLEFT", EDGE, BAR_TOP)
 		bar:SetPoint("TOPRIGHT", window, "TOPRIGHT", -EDGE, BAR_TOP)
@@ -6192,7 +6241,9 @@ local function RefreshBar()
 		edit:SetPoint("RIGHT", close, "LEFT", -8, 0)
 		install:SetPoint("RIGHT", there and edit or close, "LEFT", -8, 0)
 		preview:SetPoint("LEFT", bar, "LEFT", 8, 0)
+		label:SetPoint("LEFT", preview, "RIGHT", 16, 0)
 	else
+		label:SetPoint("LEFT", bar, "LEFT", 8, 0)
 		bar:SetPoint("TOPLEFT", window, "TOPLEFT", PAGE_LEFT, -4)
 		bar:SetPoint("TOPRIGHT", window, "TOPRIGHT", -EDGE, -4)
 		bar:SetHeight(-foot - 4)
@@ -6366,6 +6417,46 @@ local function Config_OnFonts()
 	end
 end
 
+-- 'language' (the Language dropdown, Core.lua's Languages section): every text made again in the language now in use -- the
+-- pages of both looks (each made again at its next show, as a look switch's other set is; the old pages' frames stay
+-- hidden until a /reload), the layout's lines, the side list, the top line and the search; the page on show at once
+local function Config_OnLanguage()
+	W.ClosePictureMenu(window)
+	if window.glowing then
+		window.glowing:SetGlow(false)
+		window.glowing = nil
+	end
+	for _, set in pairs(pagesBy) do
+		for name, page in pairs(set) do
+			page:Hide()
+			set[name] = nil
+		end
+	end
+	for _, set in pairs(buildingBy) do
+		wipe(set)
+	end
+	Lay.Relang()
+	Lay.WipeLines()
+	Search.Relang()
+	Search.Clear()
+	Search.Stale()
+	window.layNav()
+	RefreshNav()
+	local parts, T = window.parts, MelloUI.Lang.T
+	parts.preview:SetText(T(PREVIEW.name))
+	parts.edit:SetText(T(EDIT_LAYOUT.name))
+	parts.install:SetText(T("Install…"))
+	for _, b in ipairs({ parts.preview, parts.edit, parts.install }) do
+		W.FitButton(b)
+	end
+	parts.languageLabel:SetText(T(MelloUI.Lang.TEXT.label))
+	parts.language:Refresh()
+	RefreshBar()
+	if currentPage then
+		SelectPage(currentPage, true)
+	end
+end
+
 -- The window's parts for the guided tour (Core/Tutorial.lua): one table,
 -- made with the window (MelloUI:ConfigTour). A name that is not a page is
 -- taken as a /mello word (a module's name: the page it lives on)
@@ -6445,7 +6536,29 @@ local function TopBar()
 	preview:SetPoint("LEFT", bar, "LEFT", 8, 0)
 	preview.newTag, preview.melloNew = W.ButtonTag(preview, PREVIEW.new), PREVIEW.new
 	BarTip(preview, PREVIEW.name, PREVIEW.desc)
-	return { topBar = bar, install = install, edit = edit, close = close, preview = preview }
+	-- Language (2026-10-20, the user's pick A): its label, its New tag and the box at the line's left end (the
+	-- painted look's bar: right after Preview, RefreshBar); each language in its own words (`own`: never looked up);
+	-- the choice is the player's own, at the DB's root (Core.lua's Languages), never a profile's
+	local Lang = MelloUI.Lang
+	local values = {}
+	for i, l in ipairs(Lang.LIST) do
+		values[i] = { value = l.code, label = l.name, own = true }
+	end
+	local LANG = { skin = shell, default = Lang.TEXT.label, tooltip = Lang.TEXT.tip, new = "1.1.0" }
+	local language
+	language = W.Dropdown(bar, 118, function()
+		return Lang:Want()
+	end, function(code)
+		if Lang:Choose(code) == "reload" then
+			MelloUI:Announce(Lang.T(Lang.TEXT.reload))
+			MelloUI:Print(Lang.T(Lang.TEXT.reload))
+		end
+		language:Refresh()
+	end, values, LANG)
+	local languageLabel = Text(bar, "GameFontNormal", Lang.TEXT.label, C.text)
+	languageLabel.newTag = W.NewTag(bar, languageLabel, LANG.new)
+	return { topBar = bar, install = install, edit = edit, close = close, preview = preview, language = language,
+		languageLabel = languageLabel }
 end
 
 local function CreateWindow()
@@ -6469,8 +6582,10 @@ local function CreateWindow()
 	KIT, SKIN = shell.kit and Kit or nil, shell.kit and shell or nil
 	pages, building = pagesBy[shell.kit], buildingBy[shell.kit]
 
-	-- the layout, resolved once (its time counted in this frame's rows)
+	-- the layout, resolved once (its time counted in this frame's rows); the language's table first (the languages:
+	-- MelloUI_Languages, loaded once, at the first open of a window that speaks it -- never at login)
 	local t0 = debugprofilestop()
+	MelloUI.Lang:Load()
 	Lay.Get()
 	W.RowBudget.Spent(debugprofilestop() - t0)
 
@@ -6495,26 +6610,31 @@ local function CreateWindow()
 	window.brandRoom = shell:Brand(rail.box)
 	-- the search box on its strip (nothing else of the search now)
 	Search.MakeBox(rail, shell)
-	local groups, anyNew = RailGroups()
-	-- (What's new's line about the New tags: while any shows; Edit Layout's
-	-- button counts while it is there)
-	window.editNew = type(MelloUI.StartEditLayout) == "function" and MelloUI:IsNew(EDIT_LAYOUT.new) or nil
-	window.anyNew = anyNew or window.editNew or MelloUI:IsNew(PREVIEW.new) or false
-	-- (the search's index walks the list as it stands)
-	window.navGroups = groups
-	-- (each page's place in the list: the side a page slides in from)
-	window.navEntries, window.pageOrder = {}, {}
-	local n = 0
-	for _, g in ipairs(groups) do
-		for _, e in ipairs(g.entries) do
-			n = n + 1
-			window.navEntries[e.key] = e
-			window.pageOrder[e.key] = n
+	-- (the side list's groups and entries, laid again at a language switch: window.layNav)
+	local function LayNav()
+		local groups, anyNew = RailGroups()
+		-- (What's new's line about the New tags: while any shows; Edit Layout's
+		-- button counts while it is there)
+		window.editNew = type(MelloUI.StartEditLayout) == "function" and MelloUI:IsNew(EDIT_LAYOUT.new) or nil
+		window.anyNew = anyNew or window.editNew or MelloUI:IsNew(PREVIEW.new) or false
+		-- (the search's index walks the list as it stands)
+		window.navGroups = groups
+		-- (each page's place in the list: the side a page slides in from)
+		window.navEntries, window.pageOrder = {}, {}
+		local n = 0
+		for _, g in ipairs(groups) do
+			for _, e in ipairs(g.entries) do
+				n = n + 1
+				window.navEntries[e.key] = e
+				window.pageOrder[e.key] = n
+			end
 		end
+		BeginRows(FIRST_BUDGET)
+		rail:SetGroups(groups)
+		EndRows()
 	end
-	BeginRows(FIRST_BUDGET)
-	rail:SetGroups(groups)
-	EndRows()
+	window.layNav = LayNav
+	LayNav()
 
 	-- The page area: the pager (see Pages above), its scroll frame with the
 	-- classic scroll bar in the gutter on its right
@@ -6563,6 +6683,7 @@ local function CreateWindow()
 	MelloUI:On("module", Config_OnModule, "Config")
 	MelloUI:On("palette", Config_OnPalette, "Config")
 	MelloUI:On("fonts", Config_OnFonts, "Config")
+	MelloUI:On("language", Config_OnLanguage, "Config")
 end
 
 local function GetPage(name)
@@ -6798,68 +6919,162 @@ end
 --   * at the menu's alpha, which Windows Fade In eases in as it opens
 -- The menu's OnShow hook is put on here, at load: before the Game Menu
 -- Panel's (its OnEnable), so the button is there when the panel lays it.
-local menuButton
+-- Its look (2026-10-20, the user's pick B of the game menu sheet: "i would
+-- like the MelloUI button to stand out more"): the gold pill (W.Pill, lit
+-- under the pointer) with the logo badge over its left end (its click too)
+-- and the label in MelloUI's font, `text` on the gold. The first time the
+-- menu opens in a session the badge pops in with one soft glow round it
+-- (MelloUI.Shade's, kept still, faded in and out once); none under Reduce
+-- Motion. With MelloUI Oldschool's painted menu (its Game Menu Panel on) the
+-- button wears that menu's own look, as before: the panel fades the pill
+-- (the button's own textures) as it dresses it, and here the badge and the
+-- glow stay hidden, the label is left unpainted and centred.
+do
+	local menuButton
+	local menuParts = {}   -- badge, glow (their frames), greeted (the first open's glow played)
+	local MENU = {
+		W = 212, H = 38,     -- the pill
+		X = 12, Y = -10,     -- under the menu: the badge's overhang centred, its top at the menu's edge
+		BADGE = 58,          -- the logo badge, its centre this far right of the pill's left end:
+		BADGE_X = 4,
+		TEXT_X = 14,         -- the label, clear of the badge
+		LIGHT = 0.35,        -- the pill's light under the pointer
+		GLOW_IN = 0.35, GLOW_HOLD = 0.9, GLOW_OUT = 0.8,   -- the first open's glow, seconds
+	}
 
--- the click: the menu closed through the game's panel manager (its gamepad
--- side would run in MelloUI's execution, so with the mouse UI only), then
--- the configurator
-local function MenuButtonClick()
-	MelloUI:PlayUISound("menu_button")
-	if not MelloUI.Safe.GamepadUI() then
-		HideUIPanel(GameMenuFrame)
+	-- the click: the menu closed through the game's panel manager (its gamepad
+	-- side would run in MelloUI's execution, so with the mouse UI only), then
+	-- the configurator
+	local function MenuButtonClick()
+		MelloUI:PlayUISound("menu_button")
+		if not MelloUI.Safe.GamepadUI() then
+			HideUIPanel(GameMenuFrame)
+		end
+		MelloUI:OpenConfig()
 	end
-	MelloUI:OpenConfig()
-end
 
--- the menu's alpha, on the button (a secret one is left)
-local function FollowAlpha(_, alpha)
-	alpha = MelloUI.Safe.Number(alpha)
-	if alpha and menuButton then
-		menuButton:SetAlpha(alpha)
+	-- the menu's alpha, on the button (a secret one is left)
+	local function FollowAlpha(_, alpha)
+		alpha = MelloUI.Safe.Number(alpha)
+		if alpha and menuButton then
+			menuButton:SetAlpha(alpha)
+		end
 	end
-end
 
-local function MakeMenuButton(menu)
-	-- (the template of the menu's own entries, MainMenuFrameTemplates.xml:
-	-- their look)
-	menuButton = CreateFrame("Button", "MelloUIGameMenuButton", UIParent, "MainMenuFrameButtonTemplate")
-	menuButton:SetText("MelloUI")
-	menuButton:SetFrameStrata(menu:GetFrameStrata())
-	menuButton:SetPoint("TOP", menu, "BOTTOM", 0, -4)
-	Perf.SetScript(menuButton, "OnClick", MenuButtonClick)
-	hooksecurefunc(menu, "SetAlpha", FollowAlpha)
-end
+	-- the first open's glow: in, held, out (shared ends, no closure per open)
+	local function GlowOut()
+		MelloUI.Anim:FadeOut(menuParts.glow, MENU.GLOW_OUT)
+	end
 
-local function MenuShown(menu)
-	if MelloUI.Safe.GamepadUI() then
+	local function GlowHold()
+		C_Timer.After(MENU.GLOW_HOLD, GlowOut)
+	end
+
+	local function MakeMenuButton(menu)
+		menuButton = CreateFrame("Button", "MelloUIGameMenuButton", UIParent)
+		menuButton:SetSize(MENU.W, MENU.H)
+		menuButton:SetFrameStrata(menu:GetFrameStrata())
+		menuButton:SetPoint("TOP", menu, "BOTTOM", MENU.X, MENU.Y)
+		W.Pill(menuButton, "on", MENU.LIGHT)
+		local fs = menuButton:CreateFontString(nil, "OVERLAY", W.FontObject("GameFontNormalLarge"))
+		menuButton:SetFontString(fs)
+		menuButton:SetText("MelloUI")
+		local badge = CreateFrame("Frame", nil, menuButton)
+		badge:SetSize(MENU.BADGE, MENU.BADGE)
+		badge:SetPoint("CENTER", menuButton, "LEFT", MENU.BADGE_X, 0)
+		local logo = badge:CreateTexture(nil, "ARTWORK")
+		logo:SetTexture(LOGO_FULL)
+		logo:SetAllPoints()
+		local glow = CreateFrame("Frame", nil, menuButton)
+		glow:SetAllPoints(badge)
+		glow:Hide()
+		local light = MelloUI.Shade:Glow(glow, { region = glow, size = MENU.BADGE, strength = "reach" })
+		if light then
+			light:Still()
+			light:SetShown(true)
+		end
+		menuParts.badge, menuParts.glow = badge, glow
+		Perf.SetScript(menuButton, "OnClick", MenuButtonClick)
+		hooksecurefunc(menu, "SetAlpha", FollowAlpha)
+	end
+
+	-- MelloUI Oldschool's painted menu (its Game Menu Panel on) lays the button on
+	-- its own plate, in its own look
+	local function PaintedMenu()
+		local panel = MelloUI:GetModule("GameMenuPanel")
+		return panel and panel.isEnabled and true or false
+	end
+
+	-- the look for the menu it shows with, each show: MelloUI's own, or nothing
+	-- over the painted menu's (see above; the badge's click reach too)
+	local function MenuLook(painted)
+		local fs = menuButton:GetFontString()
+		menuParts.badge:SetShown(not painted)
+		if painted then
+			menuParts.glow:Hide()
+			MelloUI.Painter.Unpaint(fs, "text")
+			local font = rawget(_G, "GameFontHighlightLarge")
+			if font and font.GetTextColor then
+				fs:SetTextColor(font:GetTextColor())
+			end
+			menuButton:SetHitRectInsets(0, 0, 0, 0)
+		else
+			W.Paint(fs, "text", "text")
+			menuButton:SetHitRectInsets(MENU.BADGE_X - MENU.BADGE / 2, 0, 0, 0)
+		end
+		fs:ClearAllPoints()
+		fs:SetPoint("CENTER", painted and 0 or MENU.TEXT_X, 0)
+		-- (the panel's own light: a texture of its, faded here on MelloUI's look)
+		local hl = menuButton:GetHighlightTexture()
+		if hl then
+			hl:SetAlpha(painted and 1 or 0)
+		end
+	end
+
+	local function MenuShown(menu)
+		if MelloUI.Safe.GamepadUI() then
+			if menuButton then
+				menuButton:Hide()
+			end
+			return
+		end
+		if not menuButton then
+			MakeMenuButton(menu)
+		end
+		-- (over the menu: a level read again each show, the menu is toplevel and
+		-- rises as it shows; a raise while it shows can pass it, which under
+		-- the menu's edge covers nothing; the glow, then the badge over the pill)
+		local level = MelloUI.Safe.Number(menu:GetFrameLevel())
+		if level then
+			level = math.min(level + 5, 10000)
+			menuButton:SetFrameLevel(level)
+			menuParts.glow:SetFrameLevel(level + 1)
+			menuParts.badge:SetFrameLevel(level + 2)
+		end
+		local painted = PaintedMenu()
+		MenuLook(painted)
+		FollowAlpha(menu, menu:GetAlpha())
+		menuButton:Show()
+		if not (painted or menuParts.greeted) then
+			menuParts.greeted = true
+			local Anim = MelloUI.Anim
+			if not Anim.reduceMotion then
+				Anim:Pop(menuParts.badge)
+				Anim:FadeIn(menuParts.glow, MENU.GLOW_IN, nil, GlowHold)
+			end
+		end
+	end
+
+	local function MenuHidden()
 		if menuButton then
 			menuButton:Hide()
 		end
-		return
 	end
-	if not menuButton then
-		MakeMenuButton(menu)
-	end
-	-- (over the menu: a level read again each show, the menu is toplevel and
-	-- rises as it shows; a raise while it shows can pass it, which under
-	-- the menu's edge covers nothing)
-	local level = MelloUI.Safe.Number(menu:GetFrameLevel())
-	if level then
-		menuButton:SetFrameLevel(math.min(level + 5, 10000))
-	end
-	FollowAlpha(menu, menu:GetAlpha())
-	menuButton:Show()
-end
 
-local function MenuHidden()
-	if menuButton then
-		menuButton:Hide()
+	if GameMenuFrame then
+		Perf.HookScript(GameMenuFrame, "OnShow", MenuShown)
+		Perf.HookScript(GameMenuFrame, "OnHide", MenuHidden)
 	end
-end
-
-if GameMenuFrame then
-	Perf.HookScript(GameMenuFrame, "OnShow", MenuShown)
-	Perf.HookScript(GameMenuFrame, "OnHide", MenuHidden)
 end
 
 --------------------------------------------------------------------------------

@@ -767,6 +767,192 @@ function MelloUI.EditModeOpen()
 end
 
 --------------------------------------------------------------------------------
+-- Languages
+--
+-- The configurator's and the installer's languages (post-1.0; the user,
+-- 2026-10-20: "German, french, spanish, russian, portugese, and add simple
+-- chinesse and korean ... the language dropdown should sit somewhere on top
+-- of the configurator"; docs/plans/languages.md).
+--
+-- The English text is the key: the schemas, Core/ConfigLayout.lua and the
+-- windows keep their English as they are, and a language's table maps an
+-- English line to its translation. A line the table lacks shows in English.
+-- The tables live in the load-on-demand addon MelloUI_Languages, one file a
+-- language; loading it builds only the wanted one (each file asks Wants
+-- first). It loads at the first open of a window that speaks it (the
+-- configurator, the installer), never at login: until then, and for English,
+-- T hands every text back as it is.
+--   Lang.T(text)        the text in the language in use (any non-string, a
+--                       secret, or a line the table lacks: as it is)
+--   Lang.F(fmt, ...)    string.format of the translated template
+--   Lang.code           the language in use ("enUS" until a table is in)
+--   Lang:Want()         the language wanted: the player's choice
+--                       (MelloUIDB.language), else the game's (GetLocale)
+--   Lang:Wants(code)    (the language files' guard) is `code` the one wanted?
+--   Lang:Add(code, t)   (the files) a language's table
+--   Lang:Load()         the tables loaded (once) and the wanted one put in use;
+--                       true when the language in use is the wanted one
+--   Lang:Choose(code)   the player's choice saved; "live" when it is in use at
+--                       once, "reload" when it needs a /reload (another
+--                       language's file was passed by at the load)
+--   Lang.LIST           the languages, each with its own name (never
+--                       translated: a player who reads no English still finds it)
+--   Lang:Fire()         'language' on the bus (the windows lay their texts again)
+-- Nothing here runs at login but these definitions.
+--------------------------------------------------------------------------------
+
+do
+	local Lang = {
+		code = "enUS",
+		ENGLISH = "enUS",
+		ADDON = "MelloUI_Languages",
+		-- (each in its own words; `alphabet`: the font family's member that draws it -- Core/Widgets.lua's own fonts)
+		LIST = {
+			{ code = "enUS", name = "English", alphabet = "roman" },
+			{ code = "deDE", name = "Deutsch", alphabet = "roman" },
+			{ code = "frFR", name = "Français", alphabet = "roman" },
+			{ code = "esES", name = "Español", alphabet = "roman" },
+			{ code = "ptBR", name = "Português", alphabet = "roman" },
+			{ code = "ruRU", name = "Русский", alphabet = "russian" },
+			{ code = "zhCN", name = "简体中文", alphabet = "simplifiedchinese" },
+			{ code = "koKR", name = "한국어", alphabet = "korean" },
+		},
+		-- the game's locales that read another's table (esMX: Spain's until a Mexican one is made; ptPT: Brazil's)
+		ALIAS = { esMX = "esES", ptPT = "ptBR", enGB = "enUS", enCN = "enUS", enTW = "enUS" },
+		tables = {},
+		-- the configurator's Language dropdown (Core/Config.lua's top line; the user's pick A, 2026-10-20)
+		TEXT = {
+			label = "Language",
+			tip = "The language of the configurator and the installer. A line not translated yet shows in English.",
+			reload = "Type /reload to finish switching the language.",
+		},
+	}
+	MelloUI.Lang = Lang
+
+	local known = {}
+	for _, l in ipairs(Lang.LIST) do
+		known[l.code] = l
+	end
+	Lang.BY_CODE = known
+
+	local current   -- the table in use (nil: English)
+	local loaded    -- the addon's load was asked (true), or failed ("failed")
+	local Secret = Safe.IsSecret
+
+	-- (Lang.misses, a table a test sets: every text asked for that the table in use lacks -- the simulator's sweep lists
+	-- the English a window still draws)
+	function Lang.T(text)
+		if current and type(text) == "string" and not Secret(text) then
+			local v = current[text]
+			if v then
+				return v
+			end
+			local misses = Lang.misses
+			if misses then
+				misses[text] = true
+			end
+		end
+		return text
+	end
+
+	-- (its string arguments looked up too: a label, a page's title or a pick's name joined into a line; a name the
+	-- table lacks, a player's own text, stays as it is)
+	local format, select, unpack = string.format, select, unpack
+	function Lang.F(fmt, ...)
+		if not current then
+			return format(fmt, ...)
+		end
+		local n = select("#", ...)
+		local args = { ... }
+		for i = 1, n do
+			local a = args[i]
+			if type(a) == "string" and not Secret(a) then
+				args[i] = current[a] or a
+			end
+		end
+		return format(Lang.T(fmt), unpack(args, 1, n))
+	end
+
+	-- a game locale or a saved choice as one of the LIST's codes (English for any other)
+	local function Known(code)
+		code = type(code) == "string" and (Lang.ALIAS[code] or code) or nil
+		return known[code] and code or Lang.ENGLISH
+	end
+	Lang.Known = Known
+
+	function Lang:Want()
+		local db = MelloUI.db
+		local chosen = type(db) == "table" and db.language or nil
+		if type(chosen) == "string" and known[chosen] then
+			return chosen
+		end
+		return Known(type(GetLocale) == "function" and GetLocale() or nil)
+	end
+
+	-- (the language files' guard: the file of any other language returns at once, its table never made)
+	function Lang:Wants(code)
+		return self:Want() == code
+	end
+
+	function Lang:Add(code, t)
+		if type(t) == "table" and known[code] then
+			self.tables[code] = t
+		end
+	end
+
+	local function Use(code)
+		local t = code ~= Lang.ENGLISH and Lang.tables[code] or nil
+		current = t
+		Lang.code = t and code or Lang.ENGLISH
+	end
+
+	function Lang:Load()
+		local want = self:Want()
+		if want ~= self.ENGLISH and not self.tables[want] and not loaded then
+			loaded = true
+			local load = C_AddOns and C_AddOns.LoadAddOn
+			local ok, done = pcall(load, self.ADDON)
+			if not (ok and done) then
+				loaded = "failed"
+			end
+		end
+		Use(want)
+		return self.code == want
+	end
+
+	-- Is the language in use the one wanted? (false: a choice waits for a /reload)
+	function Lang:Current()
+		return self.code == self:Want()
+	end
+
+	function Lang:Fire()
+		MelloUI:Fire("language", self.code)
+	end
+
+	function Lang:Choose(code)
+		code = Known(code)
+		local db = MelloUI.db
+		if type(db) ~= "table" then
+			return nil
+		end
+		-- (the game's own language chosen: no choice kept, so a client switched to another language follows it)
+		local game = Known(type(GetLocale) == "function" and GetLocale() or nil)
+		db.language = code ~= game and code or nil
+		if code == self.code then
+			return "live"
+		end
+		if code == self.ENGLISH or self.tables[code] or not loaded then
+			self:Load()
+			if self.code == code then
+				self:Fire()
+				return "live"
+			end
+		end
+		return "reload"
+	end
+end
+
+--------------------------------------------------------------------------------
 -- Utilities
 --------------------------------------------------------------------------------
 
@@ -795,6 +981,11 @@ local function Printable(v)
 end
 
 function MelloUI:Print(msg, ...)
+	-- (the languages, Core.lua's Languages section: a line the configurator or the installer prints, in the language in use)
+	local Lang = MelloUI.Lang
+	if Lang then
+		msg = Lang.T(msg)
+	end
 	local n = select("#", ...)
 	if n > 0 then
 		local args = { ... }

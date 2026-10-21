@@ -37,15 +37,17 @@ local BUILTIN_FONTS = {
 local function BuildFontList()
 	local list = {}
 	local seen = {}
-	local function Add(value, label)
+	-- (`own`: a face's name, shown as it is in every language -- Core.lua's Languages section; the default's "(default)" is
+	-- looked up)
+	local function Add(value, label, own)
 		if value and not seen[value] then
 			seen[value] = true
-			list[#list + 1] = { value = value, label = label or value }
+			list[#list + 1] = { value = value, label = label or value, own = own ~= false or nil }
 		end
 	end
 
-	for _, entry in ipairs(BUILTIN_FONTS) do
-		Add(entry.value, entry.label)
+	for i, entry in ipairs(BUILTIN_FONTS) do
+		Add(entry.value, entry.label, i > 1)
 	end
 
 	-- Custom fonts dropped into Media\Fonts and listed in Media\CustomFonts.lua.
