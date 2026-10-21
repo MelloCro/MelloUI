@@ -151,6 +151,12 @@ local hooked = setmetatable({}, { __mode = "k" })
 -- a SECRET value is formatted through the unit (the percentage), not the bar
 local barUnit = setmetatable({}, { __mode = "k" })
 local fontHooked = false
+-- (2026-10-21, the user: "when somebody is dead, it shows the dead tag and 0 hp at the same time") a target-like
+-- frame's health bar wears the game's own label while its unit is dead or unconscious (TargetFrameMixin:CheckDead:
+-- HealthBarsContainer.DeadText / UnconsciousText): the value gives way to it, following its show and hide
+local labelsOf = setmetatable({}, { __mode = "k" })    -- [health bar] = { the dead label, the unconscious one }
+local barOfLabel = setmetatable({}, { __mode = "k" })  -- [label] = its health bar
+local labelShown = setmetatable({}, { __mode = "k" })  -- [health bar] = a label of the game's shows
 
 local function BarList()
 	local list = {}
@@ -180,9 +186,12 @@ local function BarList()
 		if frame and frame.TargetFrameContent then
 			local main = frame.TargetFrameContent.TargetFrameContentMain
 			if main then
-				Add(frameKey,
-					main.HealthBarsContainer and main.HealthBarsContainer.HealthBar,
-					main.ManaBar)
+				local box = main.HealthBarsContainer
+				local health = box and box.HealthBar
+				Add(frameKey, health, main.ManaBar)
+				if health and not labelsOf[health] then
+					labelsOf[health] = { box.DeadText, box.UnconsciousText }
+				end
 			end
 		end
 	end
@@ -367,6 +376,24 @@ local function SetRawValue(fs, bar)
 	fs:SetText(bar:GetValue())
 end
 
+-- a label of the game's on the bar shows (a secret answer counts as hidden)
+local function GameLabel(bar)
+	local labels = labelsOf[bar]
+	if not labels then
+		return false
+	end
+	for i = 1, 2 do
+		local label = labels[i]
+		if label then
+			local ok, shown = pcall(label.IsShown, label)
+			if ok and not Secret(shown) and shown then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 -- Called on every value change of every tracked bar, so no closures here.
 local function UpdateBar(bar)
 	local fs = texts[bar]
@@ -374,6 +401,11 @@ local function UpdateBar(bar)
 		return
 	end
 	if not M.isEnabled or not fs.active then
+		fs:Hide()
+		return
+	end
+	if GameLabel(bar) then
+		fs.lastText = nil
 		fs:Hide()
 		return
 	end
@@ -411,6 +443,20 @@ local function RefreshAll()
 	end
 end
 
+-- a game label shown or hidden (the game runs CheckDead on every health event:
+-- the value is laid again only when a label's state changed)
+local function LabelChanged(label)
+	local bar = barOfLabel[label]
+	if not bar then
+		return
+	end
+	local now = GameLabel(bar)
+	if now ~= labelShown[bar] then
+		labelShown[bar] = now
+		UpdateBar(bar)
+	end
+end
+
 local function EnsureText(bar)
 	local fs = texts[bar]
 	if not fs then
@@ -422,6 +468,16 @@ local function EnsureText(bar)
 		Perf.HookScript(bar, "OnValueChanged", function(self) UpdateBar(self) end)
 		Perf.HookScript(bar, "OnMinMaxChanged", function(self) UpdateBar(self) end)
 		Perf.HookScript(bar, "OnShow", function(self) UpdateBar(self) end)
+		-- (the game's dead and unconscious labels: post-hooks, nothing written on them)
+		for _, label in ipairs(labelsOf[bar] or {}) do
+			if label.Show and not barOfLabel[label] then
+				barOfLabel[label] = bar
+				hooksecurefunc(label, "Show", LabelChanged)
+				hooksecurefunc(label, "Hide", LabelChanged)
+				hooksecurefunc(label, "SetShown", LabelChanged)
+			end
+		end
+		labelShown[bar] = GameLabel(bar)
 	end
 	return fs
 end
