@@ -13,7 +13,11 @@ only, never a picture of the game's.
                                          a zone's soft outline, a mask over its art: the union of its pieces' hit
                                          rectangles (WorldMapOverlay.HitRect*, in the art's own pixels), widened and
                                          blurred -- our geometry from the table's numbers, 128 x 128 for the art's
-                                         1002 x 668
+                                         1002 x 668; (2026-10-21, the user: "extend the zones to the coast") then
+                                         stretched over the land beside it no zone covers, out to the terrain's true
+                                         coast (the minimap's own pictures of each terrain tile tell land from
+                                         water: their open water is near black), so its own painted coast shows;
+                                         a hole between zones big enough to paint is left (Tools/map_gaps.py)
   MelloUI_Map/Media/Outlines/city.tga    a soft-edged rectangle (a city's art, which has no pieces)
   MapData.minimap[mapID]                 (M3, the user's pick A: the close zoom in the minimap's ground) the minimap's
                                          tiles of a continent's world map (Map.ID: 0 the Eastern Kingdoms, 1 Kalimdor):
@@ -75,6 +79,19 @@ GROW, BLUR = 30, 24             # the outline: the hit rectangles widened, then 
 EDGE = 40                       # ... and faded out before the art's own edge (art px): a zone's land that reaches the
                                 # border of its picture would end there in a hard line (the neighbour's picture covers it)
 CITY_EDGE = 12                  # the city mask's soft edge (mask px)
+PIECE_TRIM = 0.15               # a piece with no hit rectangle: its picture's rectangle, this share in from each side
+TERRAIN_MAP = {1414: 1, 1415: 0}   # each continent's world map (Map.ID): the terrain its coasts are taken from
+TERRAIN_ART = ("map_m3_png", ".png"), ("map_zoom_png", ".png"), ("map_gap_raw", ".blp")   # (WoWExport: the minimap's
+                                # pictures by file ID, exported for the close zoom and for the gaps)
+TILE_PX = 32                    # a terrain tile's minimap picture read at this size for the land
+WATER_LUM = 22                  # the minimap draws open water near black (its all-sea tile: about 5): darker than
+                                # this, smoothed over a few px, is water
+LAKE = 900                      # water enclosed by land, smaller than this (continent art px), is a lake: land
+COAST_SCALE = 2                 # the coasts worked out at twice the continent painting's size (smoother shapes)
+COAST_REACH = 60                # a zone takes uncovered land up to this far from its outline (continent art px)
+COAST_SEA = 3                   # ... its outline then reaching this far past the land, softly (quarter px)
+HOLE_AREA, HOLE_RINGED = 600, 0.6   # uncovered land this big (continent art px), this share of its edge on zones'
+                                # outlines, is a hole between zones: left to paint (Tools/map_gaps.py)
 CONTINENT, ZONE = 2, 3          # UIMapType
 LAND_SIZE = 256                 # a continent's land mask's side (its zones' outlines need more than a zone's 128)
 LAND_GROW, LAND_BLUR = 3, 2     # its zones' outlines joined, then widened and softened (quarter px)
@@ -323,6 +340,158 @@ def city_mask():
     return m.filter(ImageFilter.GaussianBlur(CITY_EDGE / 2))
 
 
+def zone_mask(ovs):
+    """a zone's soft outline on its art (quarter size): the union of its pieces' hit rectangles (WorldMapOverlay
+    HitRect*, in the art's own pixels), widened, blurred and faded before the art's edge; None when it has none
+    (also Tools/map_gaps.py's: the gaps are measured against the very masks the map draws)"""
+    mask = Image.new("L", (QW, QH), 0)
+    d = ImageDraw.Draw(mask)
+    for o in ovs:
+        l, t, r, b = (int(o["HitRectLeft"]), int(o["HitRectTop"]), int(o["HitRectRight"]), int(o["HitRectBottom"]))
+        if not (r > l and b > t):
+            # (2026-10-21, Tools/map_gaps.py's first sheet: a piece with no hit rectangle -- Silithus's middle,
+            # parts of Mulgore, Azshara, Tirisfal, the Eastern Plaguelands, Dun Morogh, the Wetlands -- was cut out
+            # of its zone: its picture's own rectangle instead, PIECE_TRIM in from each side, its margins being clear)
+            x, y, w, h = int(o["OffsetX"]), int(o["OffsetY"]), int(o["TextureWidth"]), int(o["TextureHeight"])
+            l, t, r, b = x + w * PIECE_TRIM, y + h * PIECE_TRIM, x + w * (1 - PIECE_TRIM), y + h * (1 - PIECE_TRIM)
+        if r > l and b > t:
+            d.rectangle((l / Q, t / Q, r / Q, b / Q), fill=255)
+    if not mask.getbbox():
+        return None
+    mask = mask.filter(ImageFilter.MaxFilter((GROW // Q) * 2 + 1)).filter(ImageFilter.GaussianBlur(BLUR / Q))
+    return Image.composite(mask, Image.new("L", mask.size, 0), edge_fade())
+
+
+def terrain_art(fid):
+    for d, ext in TERRAIN_ART:
+        p = EXPORT + d + "/" + str(fid) + ext
+        if os.path.exists(p):
+            return p
+    return None
+
+
+def terrain_land(assign, cont, scale=1):
+    """a continent's land where its painting lies (bool, its art px times scale): the terrain's, from the minimap's
+    own pictures of every terrain tile (water near black; where there is no tile, sea), placed with the
+    continent's own assignment as the map places the minimap ground; small lakes count as land. None when the
+    continent has no terrain here"""
+    import numpy as np
+    import cv2
+    if cont not in TERRAIN_MAP:
+        return None
+    got = minimap_tiles(assign, TERRAIN_MAP[cont])
+    world = None
+    for a in assign.get(cont, []):
+        if int(a["MapID"]) == TERRAIN_MAP[cont]:
+            x0, y0, x1, y1 = region(a)
+            if world is None or (x1 - x0) * (y1 - y0) > world[0]:
+                world = ((x1 - x0) * (y1 - y0), a)
+    if not got or world is None:
+        return None
+    a, edge = world[1], 32 * TILE
+    u0, v0 = to_ui(a, edge, edge)
+    u1, v1 = to_ui(a, edge - TILE, edge - TILE)
+    du, dv = u1 - u0, v1 - v0
+    # (the land of every tile, read once: 1,700 pictures take minutes; kept beside the build's other local data,
+    # under the tiles' list and the reading's numbers)
+    import hashlib
+    key = hashlib.sha1(repr((got[1], TILE_PX, WATER_LUM)).encode()).hexdigest()[:12]
+    cache = os.path.join(os.path.dirname(ROOT), "MelloUI-BuildData", "cache", "terrain_land_%d_%s.png" % (TERRAIN_MAP[cont], key))
+    if os.path.isfile(cache):
+        grid = Image.open(cache).convert("L")
+    else:
+        grid = Image.new("L", (64 * TILE_PX, 64 * TILE_PX), 0)
+        for tx, ty, fid in got[1]:
+            path = terrain_art(fid)
+            if path:
+                g = Image.open(path).convert("L").filter(ImageFilter.BoxBlur(3)).resize((TILE_PX, TILE_PX), Image.BOX)
+                grid.paste(g.point(lambda v: 255 if v >= WATER_LUM else 0), (tx * TILE_PX, ty * TILE_PX))
+        os.makedirs(os.path.dirname(cache), exist_ok=True)
+        grid.save(cache)
+    W, H = ART_W * scale, ART_H * scale
+    # (an art pixel's middle, as a place on the continent (0..1), in the tiles' grid at TILE_PX a tile)
+    land = grid.transform((W, H), Image.AFFINE, (TILE_PX / (W * du), 0, (0.5 / W - u0) / du * TILE_PX,
+                                                 0, TILE_PX / (H * dv), (0.5 / H - v0) / dv * TILE_PX), Image.BILINEAR)
+    keep = np.asarray(land) > 127
+    n, lab, stats, _ = cv2.connectedComponentsWithStats((~keep).astype(np.uint8), 4)
+    for i in range(1, n):
+        x, y, w, h = stats[i, :4]
+        if x > 0 and y > 0 and x + w < W and y + h < H and stats[i, cv2.CC_STAT_AREA] < LAKE * scale * scale:
+            keep |= lab == i
+    return keep
+
+
+def placed(assign, cont, masks, scale=1):
+    """each zone's outline where the client places it on the continent: {uiMapID: uint8 array (its art px x scale)}"""
+    import numpy as np
+    W, H = ART_W * scale, ART_H * scale
+    out = {}
+    for mid in sorted(masks):
+        r = rect_on(assign, mid, cont)
+        if not r:
+            continue
+        w, h = int(round((r[1] - r[0]) * W)), int(round((r[3] - r[2]) * H))
+        if w < 2 or h < 2:
+            continue
+        m = np.zeros((H, W), np.uint8)
+        sm = np.asarray(masks[mid].resize((w, h), Image.BILINEAR))
+        X, Y = int(round(r[0] * W)), int(round(r[2] * H))
+        xa, ya, xb, yb = max(X, 0), max(Y, 0), min(X + w, W), min(Y + h, H)
+        if xb > xa and yb > ya:
+            m[ya:yb, xa:xb] = sm[ya - Y:yb - Y, xa - X:xb - X]
+            out[mid] = m
+    return out
+
+
+def coast_extend(assign, cont, masks):
+    """(the user, 2026-10-21: "extend the zones to the coast") each zone's outline stretched over the uncovered land
+    nearest it, out to the terrain's coast and softly past it into its own painted sea; a hole between zones big
+    enough to paint is left as it is. masks: {uiMapID: quarter-size L}; the same, stretched"""
+    import numpy as np
+    import cv2
+    S = COAST_SCALE
+    land = terrain_land(assign, cont, S)
+    if land is None:
+        return masks
+    on = placed(assign, cont, masks, S)
+    cover = np.zeros(land.shape, np.uint8)
+    for m in on.values():
+        cover = np.maximum(cover, m)
+    covered = cover >= 128
+    strip = land & ~covered
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(strip.astype(np.uint8), 8)
+    take = np.zeros(land.shape, bool)
+    for i in range(1, n):
+        m = lab == i
+        ring = (cv2.dilate(m.astype(np.uint8), np.ones((7, 7), np.uint8)) > 0) & ~m
+        ringed = float((ring & covered).sum()) / max(1, int(ring.sum()))
+        if stats[i, cv2.CC_STAT_AREA] >= HOLE_AREA * S * S and ringed >= HOLE_RINGED:
+            continue
+        take |= m
+    best = np.full(land.shape, np.inf, np.float32)
+    owner = np.full(land.shape, -1, np.int32)
+    order = sorted(on)
+    for k, mid in enumerate(order):
+        d = cv2.distanceTransform((on[mid] < 128).astype(np.uint8), cv2.DIST_L2, 5)
+        win = take & (d < best) & (d <= COAST_REACH * S)
+        owner[win], best[win] = k, d[win]
+    out = dict(masks)
+    W, H = ART_W * S, ART_H * S
+    for k, mid in enumerate(order):
+        share = owner == k
+        if not share.any():
+            continue
+        x0, x1, y0, y1 = rect_on(assign, mid, cont)
+        # (the zone's quarter grid from the continent's: a quarter pixel's middle on the continent)
+        a, e = (x1 - x0) * W / QW, (y1 - y0) * H / QH
+        ext = Image.fromarray((share * 255).astype(np.uint8)).transform(
+            (QW, QH), Image.AFFINE, (a, 0, x0 * W + a / 2 - 0.5, 0, e, y0 * H + e / 2 - 0.5), Image.BILINEAR)
+        ext = ext.filter(ImageFilter.MaxFilter(COAST_SEA * 2 + 1)).filter(ImageFilter.GaussianBlur(COAST_SEA))
+        ext = Image.composite(ext, Image.new("L", ext.size, 0), edge_fade())
+        out[mid] = ImageChops.lighter(masks[mid], ext)
+    return out
+
+
 def build():
     maps = {int(r["ID"]): r for r in rows("UiMap")}
     art_of = {}
@@ -346,26 +515,23 @@ def build():
         ovs = sorted(overlays.get(art, []), key=lambda r: int(r["ID"]))
         if not ovs:
             continue
-        mask = Image.new("L", (QW, QH), 0)
-        d = ImageDraw.Draw(mask)
         plist = []
         for o in ovs:
-            l, t, r, b = (int(o["HitRectLeft"]), int(o["HitRectTop"]), int(o["HitRectRight"]), int(o["HitRectBottom"]))
-            if r > l and b > t:
-                d.rectangle((l / Q, t / Q, r / Q, b / Q), fill=255)
             tl = [f for _, _, f in sorted(otiles[int(o["ID"])])]
             if tl:
                 plist.append([int(o["TextureWidth"]), int(o["TextureHeight"]), int(o["OffsetX"]), int(o["OffsetY"])] + tl)
-        if not mask.getbbox() or not plist:
+        mask = zone_mask(ovs)
+        if mask is None or not plist:
             continue
-        mask = mask.filter(ImageFilter.MaxFilter((GROW // Q) * 2 + 1)).filter(ImageFilter.GaussianBlur(BLUR / Q))
-        mask = Image.composite(mask, Image.new("L", mask.size, 0), edge_fade())
-        small = mask.resize((SIZE, SIZE), Image.LANCZOS)
-        files["%d.tga" % mid] = tga(small)
         zone_masks[int(maps[mid]["ParentUiMapID"])][mid] = mask
+        # (the name in the middle of the zone's own land: the outline before its coast is stretched)
         bb = mask.point(lambda v: 255 if v > 128 else 0).getbbox() or mask.getbbox()
         outline[mid] = (round((bb[0] + bb[2]) / 2 / QW, 3), round((bb[1] + bb[3]) / 2 / QH, 3))
         pieces[art] = plist
+    for cont in sorted(zone_masks):
+        zone_masks[cont] = coast_extend(assign, cont, zone_masks[cont])
+        for mid, mask in zone_masks[cont].items():
+            files["%d.tga" % mid] = tga(mask.resize((SIZE, SIZE), Image.LANCZOS))
     files["city.tga"] = tga(city_mask())
     land = []
     for cont in sorted(zone_masks):

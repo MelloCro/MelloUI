@@ -26,7 +26,12 @@
 --                                  both views share (MelloUI.Anim:Drive; Reduce
 --                                  Motion: at once)
 --   canvas:ZoomAt(x, y, notches)   the wheel: the world point under the canvas
---                                  point (x, y) stays under it
+--                                  point (x, y) stays under it (a chase in log
+--                                  zoom: each notch moves its goal)
+--   canvas:Hold(wx, wy, x, y)      a drag during the wheel's chase: the world
+--                                  point (wx, wy) held under (x, y) as it goes on
+--   canvas:Fling(vx, vy)           a drag let go at speed (canvas px a second):
+--                                  the view runs on and eases out
 --   canvas:Fit(mapID, s)           glide to show a whole map
 --   canvas:FitBox(x0, y0, x1, y1)  the centre and zoom that show a box of world
 --                                  units (canvas.cover: the px of its right the
@@ -49,12 +54,16 @@
 -- come in; the world's stays under them. A view stays on the world's painting.
 --
 -- The close zoom (stage M3, the user's pick A, 2026-10-20: "does the map on
--- zoom in at a certain point change into the minimap style map?"): from zoom
--- 5 to 8 the game's own minimap ground (its files, 512 px a 533-yard terrain
--- tile, listed in MapData from each continent's WDT) comes in over the zones'
--- art, which goes; past its tiles the sea in the minimap's own open water, a
--- texture the canvas's size (the user: "i dont want to have such low
--- resolution water texture"). A minimap tile out of view lets its file go.
+-- zoom in at a certain point change into the minimap style map?"; moved
+-- 2026-10-21, the user: "do the OpenMap zoom changes, start at 20", its
+-- study docs/plans/openmap-zoom-study.md): the game's own minimap ground (its
+-- files, 512 px a 533-yard terrain tile, listed in MapData from each
+-- continent's WDT) laid OVER the painting, which stays -- in from zoom 20
+-- (where the zones' art runs out of pixels) to 0.45 by 34, rising to 0.85 by
+-- 48 (where the minimap is about 1:1); every fade a smoothstep. The sea under
+-- it in the minimap's own open water (the user: "i dont want to have such low
+-- resolution water texture"), on the world's painting under every zone, at
+-- the ground's alpha. A minimap tile out of view lets its file go.
 --
 -- Secret values: every number the client hands over is read through
 -- MelloUI.Safe (Finite); a map whose place does not read plainly is not laid.
@@ -81,9 +90,11 @@ local EMPTY = {}
 local T = {
 	WORLD = 947,
 	STEP = 1.25,            -- one wheel notch
-	ZOOM_SECONDS = 0.25,    -- a notch's ease
+	ZOOM_RATE = 14,         -- the wheel's chase in log zoom (1/s: a notch 95 % there in about 0.2 s)
 	GLIDE_SECONDS = 0.4,    -- a click's glide
-	MAX_PX = 64,            -- the deepest zoom: canvas units per world unit (a city's art about 2.5 x its pixels)
+	FLING_SECONDS = 0.6,    -- a let-go drag's run (outCubic: it starts at the drag's speed)
+	MAX_ZOOM = 48,          -- the deepest zoom, times the whole world (where the minimap ground is about 1:1) ...
+	MAX_PX = 64,            -- ... or deeper on a small canvas: canvas units per world unit (a city's art about 2.5 x its pixels)
 	FIT_ROOM = 1.08,        -- a fitted map's margin
 	CULL_MARGIN = 0.35,     -- the cull box: the view and this share of it round it
 	CULL_EDGE = 0.1,        -- cut again when the view comes this near its edge
@@ -97,15 +108,23 @@ local T = {
 	CONT_IN = { 1.02, 1.2 },
 	-- (M2) the zones in as the continents' art goes
 	ZONE_IN = { 1.8, 2.8 },
-	-- (M3) the minimap's ground in over the zones' art (and the cities'), which goes as it comes
-	MINI_IN = { 5.0, 8.0 },
-	MINI_SEAM = 0.004,        -- a minimap tile this share bigger each way: no hairline between neighbours
+	-- (M3; 2026-10-21, the user's "start at 20") the minimap's ground over the painting, which stays: to MINI_MIX
+	-- over MINI_IN, then on to MINI_DEEP_MIX over MINI_DEEP
+	MINI_IN = { 20, 34 },
+	MINI_MIX = 0.45,
+	MINI_DEEP = { 30, 48 },
+	MINI_DEEP_MIX = 0.85,
+	MINI_GREY = 0.35,         -- (2026-10-21, the user's pick B of the tint sketch) the ground and its water this much greyer
+	-- a fill's tile this share bigger each way: no hairline between neighbours. (2026-10-21) The minimap's tiles lie
+	-- edge to edge, exactly: at part strength an overlap is drawn twice, a line along every tile's edge
+	FILL_SEAM = 0.004,
 	-- (after M4; the user, 2026-10-20: "Caves at close zoom") the caves' rooms in over the minimap's ground
-	CAVE_IN = { 7.5, 9.5 },
+	CAVE_IN = { 28, 40 },
 	CAVE_YARDS = 1600 / 3,    -- yards a terrain tile (the caves' origins are in tiles, their rooms in yards)
 	CAVE_WRAP = "CLAMPTOBLACKADDITIVE",   -- a turned picture's corners past its file: clear, not its edge drawn out
 	CONT_OUT = { 2.2, 3.0 },
 	OUTLINES = "Interface\\AddOns\\MelloUI_Map\\Media\\Outlines\\",   -- <uiMapID>, city, <continent>
+	FILLS = "Interface\\AddOns\\MelloUI_Map\\Media\\Fills\\",         -- the gaps' fills (MapFills)
 	UNEXPLORED = 0.3,         -- a place not explored yet: its piece this faint (the user's pick H)
 	CITY_IN = { 0.2, 0.4 },        -- a city as it fills this share of the view's width
 	MAP_TYPE = { continent = 2, zone = 3 },
@@ -238,7 +257,9 @@ function Canvas:Layout()
 		f:Hide()
 		p.frame = f
 	end
-	-- (M3) the minimap's ground over every map's art, the open water just under it
+	-- (the gaps between zones painted for MelloUI) each fill just over its continent's painting, under its zones
+	self:FillLayout(places, byID)
+	-- (M3) the minimap's ground over every map's art, the open water on the world's painting
 	self:MiniLayout(places, base + 2 * n + 6)
 	-- (after M4) the caves over the minimap's ground
 	self:CaveLayout(places, base + 2 * n + 7)
@@ -264,9 +285,46 @@ function Canvas:Layout()
 	self.stats.layoutMs = debugprofilestop() - t0
 end
 
+-- (2026-10-21, the user: "extend the zones to the coast, chatgpt for the inland ones") the land between zones no
+-- zone's map covers, painted for MelloUI (MapFills, Tools/map_fills.py): a place a fill, on its continent's
+-- painting just over it and under its zones, whose soft outlines fade onto it; its alpha the zones' (it shows where
+-- they do); appended to the places as the minimap's ground (not a map of the client's, never in byID)
+function Canvas:FillLayout(places, byID)
+	local fills = ns.MapFills
+	if type(fills) ~= "table" then
+		return
+	end
+	local conts = {}
+	for cont in pairs(fills) do
+		conts[#conts + 1] = cont
+	end
+	table.sort(conts)
+	local n = 0
+	for _, cont in ipairs(conts) do
+		local c, list = byID[cont], fills[cont]
+		for i, f in ipairs(c and c.kind == "continent" and type(list) == "table" and list or EMPTY) do
+			n = n + 1
+			local p = {
+				id = -1000 - n, kind = "fill", name = "fill " .. cont .. "/" .. i, fill = f,
+				left = c.left + f.x * c.w, top = c.top + f.y * c.h, w = f.w * c.w, h = f.h * c.h,
+				tiles = nil, alpha = 0, live = false, level = c.level + 1,
+			}
+			p.right, p.bottom = p.left + p.w, p.top + p.h
+			p.area = p.w * p.h
+			local fr = CreateFrame("Frame", nil, self.root)
+			fr:SetFrameLevel(p.level)
+			fr:SetSize(p.w, p.h)
+			fr:Hide()
+			p.frame = fr
+			places[#places + 1] = p
+		end
+	end
+end
+
 -- (M3) the minimap's ground: a place for each continent's world map (MapData.minimap: its tile grid on Azeroth),
 -- at `level`, appended to the places (after their sort: not a map of the client's, never in byID); and the open
--- water past its tiles (MapData.minimapWater) on a frame of the canvas's size, just under it
+-- water (MapData.minimapWater) on the world's painting, over its tiles and under every other map (2026-10-21: the
+-- ground over the painting at part strength, the water may lie only where the zones' art does not: the sea)
 function Canvas:MiniLayout(places, level)
 	local data = ns.MapData
 	local grids = data and data.minimap
@@ -306,16 +364,15 @@ function Canvas:MiniLayout(places, level)
 		end
 	end
 	local file = data.minimapWater
-	if file then
-		local water = CreateFrame("Frame", nil, self.root)
-		water:SetAllPoints(self.frame)
-		water:SetFrameLevel(level - 1)
-		local tex = water:CreateTexture(nil, "BACKGROUND")
-		tex:SetAllPoints(water)
+	local world = places[1]
+	if file and world and world.kind == "world" then
+		local tex = world.frame:CreateTexture(nil, "BORDER")   -- (over the world's tiles, BACKGROUND)
+		tex:SetAllPoints(world.frame)
 		tex:SetTexCoord(0.25, 0.75, 0.25, 0.75)   -- (its middle: one colour, no edge to stretch)
-		water:SetAlpha(0)
-		water:Hide()
-		self.water = { frame = water, tex = tex, file = file, set = false }
+		tex:SetDesaturation(T.MINI_GREY)
+		tex:SetAlpha(0)
+		tex:Hide()
+		self.water = { tex = tex, file = file, set = false, alpha = 0 }
 	end
 end
 
@@ -447,16 +504,33 @@ local function FileSize(px)
 	return s
 end
 
--- (M3) the minimap's tiles of a continent: one a terrain tile, its whole file, a hair bigger than its square; each
--- lets its file go when it leaves the view (512 px each: a long pan at a close zoom would keep hundreds)
+-- (M3) the minimap's tiles of a continent: one a terrain tile, its whole file on its square; each lets its file go
+-- when it leaves the view (512 px each: a long pan at a close zoom would keep hundreds)
 local function MakeMiniTiles(p)
 	local tiles, list = {}, p.grid.tiles
 	p.tiles = tiles
-	local gw, gh = p.tw * T.MINI_SEAM, p.th * T.MINI_SEAM
 	for i = 1, #list - 2, 3 do
 		local file = Finite(list[i + 2])
 		if file then
 			local t = Tile(p, file, list[i] - p.minX, list[i + 1] - p.minY, 1, 1, 1, 1, "BACKGROUND", 0, p.tw, p.th)
+			t.unload = true
+			tiles[#tiles + 1] = t
+		end
+	end
+end
+
+-- a fill's tiles: squares of its picture (MapFills: column, row, file), each a whole file a hair bigger than its
+-- square (no hairline between neighbours); each lets its file go out of view, as the minimap's tiles
+local function MakeFillTiles(p)
+	local f, tiles = p.fill, {}
+	p.tiles = tiles
+	local list = type(f.tiles) == "table" and f.tiles or EMPTY
+	local tw, th = p.w / f.cols, p.h / f.rows
+	local gw, gh = tw * T.FILL_SEAM, th * T.FILL_SEAM
+	for i = 1, #list - 2, 3 do
+		local c, r, name = Finite(list[i]), Finite(list[i + 1]), list[i + 2]
+		if c and r and type(name) == "string" then
+			local t = Tile(p, T.FILLS .. name, c, r, 1, 1, 1, 1, "BACKGROUND", 0, tw, th)
 			t.x, t.y, t.w, t.h = t.x - gw, t.y - gh, t.w + 2 * gw, t.h + 2 * gh
 			t.unload = true
 			tiles[#tiles + 1] = t
@@ -468,6 +542,9 @@ end
 local function MakeTiles(p)
 	if p.kind == "minimap" then
 		MakeMiniTiles(p)
+		return
+	elseif p.kind == "fill" then
+		MakeFillTiles(p)
 		return
 	end
 	local tiles = {}
@@ -612,6 +689,9 @@ local function ShowTile(self, p, t)
 		end
 		tex:SetSize(t.w, t.h)
 		tex:SetAlpha(0)
+		if p.kind == "minimap" then
+			tex:SetDesaturation(T.MINI_GREY)
+		end
 		if t.base and p.mask then
 			tex:AddMaskTexture(p.mask)   -- (M2: inside the zone's soft outline; B: a continent's inside its land)
 		end
@@ -734,13 +814,15 @@ local function Focus(self)
 	end
 end
 
+-- 0 below a, 1 past b, a smoothstep between (2026-10-21: each fade eases in and out, no kink at its ends)
 local function Ramp(v, a, b)
 	if v <= a then
 		return 0
 	elseif v >= b then
 		return 1
 	end
-	return (v - a) / (b - a)
+	local t = (v - a) / (b - a)
+	return t * t * (3 - 2 * t)
 end
 
 local function Quant(a)
@@ -752,10 +834,11 @@ local function Detail(self, viewW)
 	local z = self.z
 	local world = 1   -- (B: the ground at every zoom)
 	local cont = Quant(Ramp(z, T.CONT_IN[1], T.CONT_IN[2]) * (1 - Ramp(z, T.CONT_OUT[1], T.CONT_OUT[2])))
-	-- (M3: only where the data has the minimap's ground; without it the zones stay)
-	local mini = self.hasMini and Quant(Ramp(z, T.MINI_IN[1], T.MINI_IN[2])) or 0
-	local zone = Quant(min(Ramp(z, T.ZONE_IN[1], T.ZONE_IN[2]), 1 - mini))
-	local cave = (self.hasCaves and self.cavesOn ~= false) and Quant(min(mini, Ramp(z, T.CAVE_IN[1], T.CAVE_IN[2]))) or 0
+	-- (M3: only where the data has the minimap's ground; over the zones' art, which stays under it)
+	local mini = self.hasMini and Quant(T.MINI_MIX * Ramp(z, T.MINI_IN[1], T.MINI_IN[2])
+		+ (T.MINI_DEEP_MIX - T.MINI_MIX) * Ramp(z, T.MINI_DEEP[1], T.MINI_DEEP[2])) or 0
+	local zone = Quant(Ramp(z, T.ZONE_IN[1], T.ZONE_IN[2]))
+	local cave = (self.hasCaves and self.cavesOn ~= false and mini > 0) and Quant(Ramp(z, T.CAVE_IN[1], T.CAVE_IN[2])) or 0
 	local flipped = false
 	for _, p in ipairs(self.places) do
 		local a
@@ -789,8 +872,8 @@ local function Detail(self, viewW)
 			water.tex:SetTexture(water.file)
 			water.set = true
 		end
-		water.frame:SetAlpha(mini)
-		water.frame:SetShown(mini > 0)
+		water.tex:SetAlpha(mini)
+		water.tex:SetShown(mini > 0)
 	end
 	return flipped
 end
@@ -806,7 +889,7 @@ function Canvas:Size()
 	end
 	self.cw, self.ch = w, h
 	self.k1 = min(w / self.W, h / self.H)
-	self.zMax = max(1, T.MAX_PX / self.k1)
+	self.zMax = max(T.MAX_ZOOM, T.MAX_PX / self.k1)
 	return w, h
 end
 
@@ -939,16 +1022,35 @@ local function GlideStep(frame, share)
 	self:SetView(cx, cy, z)
 end
 
+-- a move came to rest: the zone in view on top again, the view kept
+local function Rest(self)
+	self.moving = false
+	self.stats.lastAt = nil
+	self:Refocus()
+	if self.onRest then
+		self.onRest(self)
+	end
+end
+
 local function GlideDone(frame)
 	local self = byFrame[frame]
 	if self then
 		self.gliding = false
-		self.moving = false
-		self.stats.lastAt = nil
-		self:Refocus()
-		if self.onRest then
-			self.onRest(self)
-		end
+		Rest(self)
+	end
+end
+
+local function StopGlide(self)
+	if self.gliding then
+		Anim:Stop(self.frame, "drive")
+		self.gliding = false
+	end
+end
+
+local function StopChase(self)
+	if self.chasing then
+		self.chase:Stop()
+		self.chasing = false
 	end
 end
 
@@ -956,6 +1058,7 @@ function Canvas:Glide(cx, cy, z, seconds, easing)
 	if not self.cx then
 		return
 	end
+	StopChase(self)   -- (the wheel's chase gives way where it is)
 	cx, cy, z = self:Clamp(cx, cy, z)
 	local g = self.g
 	g.cx0, g.cy0, g.z0 = self.cx, self.cy, self.z
@@ -979,33 +1082,87 @@ function Canvas:Refocus()
 	end
 end
 
+-- a glide or the wheel's chase stopped where it is
 function Canvas:Stop()
-	if self.gliding then
-		Anim:Stop(self.frame, "drive")
-		self.gliding = false
+	if self.gliding or self.chasing then
+		StopGlide(self)
+		StopChase(self)
 		self.moving = false
 		self.stats.lastAt = nil
 	end
 end
 
--- where a running glide is going (the next notch adds to it), else the view
-function Canvas:Goal()
-	if self.gliding then
-		local g = self.g
-		return g.cx1, g.cy1, g.z1
+-- (a drag let go at speed, canvas px a second) the view runs on and eases out: outCubic starts at three times its
+-- mean speed, so a run of a third of its time at the drag's speed starts at that speed. Not under Reduce Motion, nor
+-- while the wheel's chase runs (it carries the view on itself); true when it runs
+function Canvas:Fling(vx, vy)
+	if Anim.reduceMotion or self.chasing or not self.cx then
+		return false
 	end
-	return self.cx, self.cy, self.z
+	local run = T.FLING_SECONDS / 3 / (self.k1 * self.z)
+	self:Glide(self.cx - vx * run, self.cy - vy * run, self.z, T.FLING_SECONDS, "outCubic")
+	return true
+end
+
+--------------------------------------------------------------------------------
+-- The wheel (2026-10-21, the user: "do the OpenMap zoom changes"): a chase in log zoom by MelloUI.Anim's glide --
+-- each notch moves its goal and the zoom closes the same share of the gap at any frame rate (ZOOM_RATE), so a fast
+-- spin is one motion -- about an anchor: a world point held under a canvas point (the cursor at the notch; a drag
+-- carries it on, Hold)
+--------------------------------------------------------------------------------
+
+local LOG_UNITS = 1000   -- the chase's offsets: log zoom times this (the glide settles within half of one)
+
+local function ChaseGet(frame)
+	local self = byFrame[frame]
+	return self and log(self.z) * LOG_UNITS or 0
+end
+
+local function ChaseRange(frame)
+	local self = byFrame[frame]
+	return self and log(self.zMax or 1) * LOG_UNITS or 0
+end
+
+local function ChaseSet(frame, v)
+	local self = byFrame[frame]
+	if not self then
+		return
+	end
+	local a, z = self.anchor, exp(v / LOG_UNITS)
+	local k = self.k1 * z
+	self:SetView(a.wx - (a.x - self.cw / 2) / k, a.wy - (a.y - self.ch / 2) / k, z)
+	if self.chasing and v == self.chase.target then   -- (there: its last step, a jump, Reduce Motion)
+		self.chasing = false
+		Rest(self)
+	end
 end
 
 function Canvas:ZoomAt(x, y, notches)
 	if not self.cx then
 		return
 	end
-	local _, _, gz = self:Goal()
-	local z = min(max(gz * T.STEP ^ notches, 1), self.zMax)
-	local wx, wy = self:Point(x, y)
-	local k = self.k1 * z
-	self:Glide(wx - (x - self.cw / 2) / k, wy - (y - self.ch / 2) / k, z, T.ZOOM_SECONDS, "outCubic")
+	local chase = self.chase
+	if not chase then   -- (made at the first notch)
+		chase = Anim:Glide(self.frame, { get = ChaseGet, set = ChaseSet, range = ChaseRange, rate = T.ZOOM_RATE })
+		self.chase = chase
+	end
+	StopGlide(self)   -- (a click's glide gives way where it is)
+	local a = self.anchor
+	a.wx, a.wy = self:Point(x, y)
+	a.x, a.y = x, y
+	local from = self.chasing and chase.target or log(self.z) * LOG_UNITS
+	self.chasing, self.moving = true, true
+	self.stats.lastAt = nil
+	chase:To(from + notches * log(T.STEP) * LOG_UNITS)
+end
+
+-- (a drag) the world point (wx, wy) held under the canvas point (x, y): the view moved there at once, and the
+-- wheel's chase, while it runs, goes on about it
+function Canvas:Hold(wx, wy, x, y)
+	local a = self.anchor
+	a.wx, a.wy, a.x, a.y = wx, wy, x, y
+	local k = self.k1 * self.z
+	self:SetView(wx - (x - self.cw / 2) / k, wy - (y - self.ch / 2) / k, self.z)
 end
 
 -- the zoom that shows a box of world units, and its centre. (the quest log) canvas.cover: the px of the canvas's
@@ -1189,6 +1346,7 @@ function Canvas.New(parent)
 	loader:Hide()
 	local self = setmetatable({
 		frame = frame, root = root, sea = sea, loader = loader, queue = {}, box = {}, g = {}, path = {}, rects = {}, cuts = 0, focusPath = {},
+		anchor = { wx = 0, wy = 0, x = 0, y = 0 }, chase = nil, chasing = false,
 		cx = nil, cy = nil, z = 1, W = 1002, H = 668,
 		stats = { made = 0, files = 0, views = 0, culls = 0, live = 0, shown = 0, lastMs = 0, maxMs = 0,
 			moveFrames = 0, moveSum = 0, moveMax = 0, layoutMs = 0 },

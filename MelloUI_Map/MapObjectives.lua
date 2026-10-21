@@ -40,7 +40,8 @@ ns.Objectives = Objectives
 local T = {
 	ORDER = { marks = 22, dots = 21 },   -- over the quest givers (20), under the quest column's marks (25)
 	MARKS_FROM = 2.5,     -- the marks from a zone's zoom on (the givers' zoom: Layers.T.QUESTS_FROM)
-	DOTS_FROM = 5,        -- the places' dots from the minimap ground's zoom on (the canvas's MINI_IN)
+	DOTS_FROM = 5,        -- the places' dots from a zone filling the view on (the zoom the minimap ground came at
+	                      -- until 2026-10-21; kept: the dots belong to a zone's close look, painted or not)
 	REACH = 4,            -- world units: a place this close to one of a group's places is in it (about the Quest
 	                      -- List's 0.06 of a zone's width)
 	MARK_SIZE = 20,

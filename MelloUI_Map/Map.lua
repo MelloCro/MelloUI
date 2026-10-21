@@ -49,7 +49,7 @@ local W = MelloUI.Widgets
 local Kit = MelloUI.Kit
 local Canvas, Pins, Layers, Log, Search = ns.Canvas, ns.Pins, ns.Layers, ns.QuestLog, ns.Search
 local AddonPins, Objectives = ns.AddonPins, ns.Objectives
-local floor, max = math.floor, math.max
+local floor, max, min = math.floor, math.max, math.min
 
 local ICON = "Interface\\Icons\\INV_Misc_Map_01"
 
@@ -60,6 +60,8 @@ local T = {
 	HOVER = 0.1,       -- the name under the cursor read at most this often
 	CLICK = 4,         -- a press that moved less than this is a click
 	PIN_ZOOM = 6,      -- a shared pin opened: the map at least this close
+	FLING_SMOOTH = 0.05,   -- (2026-10-21) the drag's speed smoothed over about this many seconds ...
+	FLING_MIN = 150,       -- ... and a let-go at least this fast (canvas px a second) runs on
 }
 
 local TEXT = {
@@ -225,7 +227,8 @@ local function Hover()
 	ShowName(p and p.kind ~= "world" and p.name or nil)
 end
 
--- one handler while the cursor is over the canvas or a drag runs: the drag's pan, the name (throttled)
+-- one handler while the cursor is over the canvas or a drag runs: the drag's pan (the point grabbed held under the
+-- cursor, the wheel's chase going on about it; its speed smoothed for a let-go), the name (throttled)
 local function Watch_OnUpdate(frame, elapsed)
 	local c = win.canvas
 	local d = win.drag.on and win.drag
@@ -239,9 +242,14 @@ local function Watch_OnUpdate(frame, elapsed)
 				c.stats.lastAt = nil
 			end
 			if d.moved then
-				local k = c.k1 * c.z
-				c:SetView(d.cx - dx / k, d.cy - dy / k, c.z)
+				c:Hold(d.wx, d.wy, x, y)
+				if elapsed > 0 then
+					local s = min(1, elapsed / T.FLING_SMOOTH)
+					d.vx = d.vx + ((x - d.lx) / elapsed - d.vx) * s
+					d.vy = d.vy + ((y - d.ly) / elapsed - d.vy) * s
+				end
 			end
+			d.lx, d.ly = x, y
 		end
 	end
 	win.hoverIn = (win.hoverIn or 0) - elapsed
@@ -279,9 +287,14 @@ local function Canvas_OnMouseDown(_, button)
 	if not x then
 		return
 	end
-	c:Stop()
+	-- (a press during the wheel's chase: the zoom goes on, the drag carries it; a click's glide or a fling stops)
+	if not c.chasing then
+		c:Stop()
+	end
 	local d = win.drag
-	d.on, d.x, d.y, d.cx, d.cy, d.moved = true, x, y, c.cx, c.cy, false
+	d.on, d.x, d.y, d.moved = true, x, y, false
+	d.wx, d.wy = c:Point(x, y)
+	d.lx, d.ly, d.vx, d.vy = x, y, 0, 0
 	Watch(true)
 end
 
@@ -493,10 +506,14 @@ local function Canvas_OnMouseUp(_, button)
 	end
 	d.on = false
 	if d.moved then
-		c.moving = false
-		c.stats.lastAt = nil
-		c:Refocus()
-		SaveView()
+		-- (let go at speed: the view runs on and is kept where it comes to rest; else here)
+		local fast = d.vx * d.vx + d.vy * d.vy >= T.FLING_MIN * T.FLING_MIN
+		if not (fast and c:Fling(d.vx, d.vy)) and not c.chasing then
+			c.moving = false
+			c.stats.lastAt = nil
+			c:Refocus()
+			SaveView()
+		end
 	else
 		-- (Ctrl: your pin; a click on a pin is the pin's; elsewhere a glide in)
 		local pin = win.pins:At(d.x, d.y)
