@@ -26,9 +26,7 @@
 --       it as a hold's end does, while it is still the line shown; a new
 --       line, or the notices switched off, takes its place as ever. A plain
 --       text only. Sent to the chat instead: said there once.
---       (1.2.0) Over every window, at the tooltip's strata (the user,
---       2026-10-21: the world map, HIGH as the notice, covered it); the
---       other lines stay at HIGH. opts (read at the call): share (0..1) puts
+--       (1.2.0) opts (read at the call): share (0..1) puts
 --       a loading bar under the text with the share done right of it, icon
 --       a picture in the gold ring left of both (look B of BuildData/output/
 --       route_loading_sketch).
@@ -60,8 +58,10 @@
 -- Route arrow's default place), on MelloUI's one mover and position store
 -- (key "notice", "Centre notices"): while Edit Layout shows, a sample line
 -- stands there on its plate to drag, its Reset puts it back, and it is kept
--- on the screen. One look whatever the reskin (onelook stage E): the band,
--- the palette's colours and shadow (the zone text section keeps Text Shade's
+-- on the screen. Its layer: (1.2.0, the user 2026-10-21: the world map, HIGH
+-- as the notice was, covered "Loading navigation..." and "Tracking ...") the
+-- tooltip's, TOOLTIP, over every window. One look whatever the reskin
+-- (onelook stage E): the band, the palette's colours and shadow (the zone text section keeps Text Shade's
 -- own switch: a dressing of the game's texts, not a part of MelloUI's).
 --
 -- Nothing is made at login: the frame, the shade and the mover entry come
@@ -264,11 +264,9 @@ function Loader.Set(share)
 	end
 end
 
--- the line's layout: a held one over every window (TOOLTIP), with its badge
--- and bar when it asked for them; any other at HIGH, the text alone. The
--- sizes follow in Measure (Loader.Fit).
+-- the line's layout: a held one with its badge and bar when it asked for
+-- them, any other the text alone. The sizes follow in Measure (Loader.Fit).
 function Loader.Lay(held)
-	frame:SetFrameStrata(held and "TOOLTIP" or "HIGH")
 	local on = held ~= nil and held.share ~= nil
 	state.bar = on
 	text:ClearAllPoints()
@@ -344,7 +342,7 @@ local function Build()
 	end
 	frame = CreateFrame("Frame", "MelloUINotice", UIParent)
 	frame:SetSize(MIN_WIDTH, HEIGHT)
-	frame:SetFrameStrata("HIGH")
+	frame:SetFrameStrata("TOOLTIP")   -- (over every window: the top)
 	frame:SetClampedToScreen(true)
 	frame:Hide()
 	text = frame:CreateFontString(nil, "OVERLAY")

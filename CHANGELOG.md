@@ -6,7 +6,9 @@
 - Route: Guidelime (and its guide packs) is followed through TomTom: turn on Guidelime's "Use TomTom arrow" option.
 - Route: with two or more levelling guides on (RestedXP Guides, Follow The Arrow, Azeroth Pilot Reloaded, Guidelime, ForeverWisp), MelloUI asks once at login which one to keep; the others are switched off in the AddOns list for that character, and a /reload finishes it. Keep them all is remembered.
 - Route: `/route guide` turns following the guides off and on (`/route rxp` still works).
-- Route: "Loading navigation..." shows Route's badge and a loading bar with how far the roads are in, and stays above the world map and every other window while it loads.
+- Route: "Loading navigation..." shows Route's badge and a loading bar with how far the roads are in.
+- Route keeps its roads in about 20 MB less memory, every route the same as before.
+- The on-screen notices ("Loading navigation...", "Tracking ...", the rest) show above the world map and every other window.
 - Map: the land between zones that no zone's map covers is painted in, in the map's own style: Ahn'Qiraj south of Silithus, the country west of Dun Morogh, north of the Plaguelands, the Wetlands' coast, between Ashenvale and Mount Hyjal, and more. Coastal zones now reach the true coast.
 - Map: zooming in keeps the painted map much longer. The game's minimap ground now fades in over the painting only when you are very close (from about 20 times the whole world), never fully replacing it, and every fade eases in and out.
 - Map: the mouse wheel zooms smoothly, a fast spin running on as one motion; you can drag while it zooms, and a drag let go at speed glides on.

@@ -474,7 +474,7 @@ local DestinationDistance -- defined with the route state below
 --------------------------------------------------------------------------------
 -- The graph
 --
--- live.graphs[continent][key] = { x, y, { [otherKey] = cost } }, key = cell.
+-- live.graphs[continent][key] = a node, key = cell: { x, y, road, otherKey, cost, otherKey, cost, ... } (Links)
 --------------------------------------------------------------------------------
 
 -- (flights: the flight times learned by timing, ["<from node>><to node>"] =
@@ -568,6 +568,129 @@ local function KeyOf(x, y)
 	return math.floor(x / CELL) .. ":" .. math.floor(y / CELL)
 end
 
+-- A node's links (route memory, 2026-10-21: docs/plans/route-memory.md; the user, 2026-10-20: "Keep accuracy" --
+-- the same nodes, links and seconds, held in less). A node is held one of two ways:
+--   as built   { x, y, { [other key] = seconds }, road }   (the build's merges look a link up by its key at once)
+--   compact    { x, y, road, other key, seconds, other key, seconds, ... }   (one table, its array as long as it needs)
+-- The build makes every node compact once its merges are done (Links.Compact), its links in the order its table as
+-- built gave them -- the order the search has always tried them in; a node made later is compact from the start and a
+-- link learned later goes on its end. A table and a hash a node was some 580 bytes, one array some 340: about a third
+-- of the graph. `road`: as built a node of the companion's roads true (nil: learned); compact 1 a road's node, 0 a
+-- learned one, 2 more on a side piece of the graph (Build.FindIslands: Links.IsSide).
+local Links = { compact = false, scratch = {} }
+
+function Links.IsRoad(node)
+	local l = node[3]
+	if type(l) == "table" then
+		return node[4]
+	end
+	return l % 2 == 1
+end
+
+-- (compact) whether the node lies on a side piece of the graph, as the build found them (Build.FindIslands)
+function Links.IsSide(node)
+	local l = node[3]
+	return type(l) == "number" and l >= 2
+end
+
+-- Build.islands[cont]: the side pieces' nodes, each compact one marked in itself (a set of 19,000 nodes was 1.3 MB);
+-- one as built in the set itself
+Links.SIDE = { __index = function(_, node)
+	if node ~= nil and Links.IsSide(node) then
+		return true
+	end
+	return nil
+end }
+
+-- the seconds of the link from `node` to the node keyed `key`, nil: none
+function Links.Get(node, key)
+	local l = node[3]
+	if type(l) == "table" then
+		return l[key]
+	end
+	for i = 4, #node - 1, 2 do
+		if node[i] == key then
+			return node[i + 1]
+		end
+	end
+	return nil
+end
+
+-- the link to `key` at `cost` seconds; nil: the link goes (the ones after it move up, in their order)
+function Links.Set(node, key, cost)
+	local l = node[3]
+	if type(l) == "table" then
+		l[key] = cost
+		return
+	end
+	local n = #node
+	for i = 4, n - 1, 2 do
+		if node[i] == key then
+			if cost ~= nil then
+				node[i + 1] = cost
+			else
+				for j = i, n - 2 do
+					node[j] = node[j + 2]
+				end
+				node[n - 1], node[n] = nil, nil
+			end
+			return
+		end
+	end
+	if cost ~= nil then
+		node[n + 1], node[n + 2] = key, cost
+	end
+end
+
+function Links.Count(node)
+	local l = node[3]
+	if type(l) == "table" then
+		local n = 0
+		for _ in pairs(l) do
+			n = n + 1
+		end
+		return n
+	end
+	return (#node - 3) / 2
+end
+
+-- fn(key, seconds) for each link, in order (not on the search's paths: a closure a call)
+function Links.Each(node, fn)
+	local l = node[3]
+	if type(l) == "table" then
+		for k, cost in pairs(l) do
+			fn(k, cost)
+		end
+		return
+	end
+	for i = 4, #node - 1, 2 do
+		fn(node[i], node[i + 1])
+	end
+end
+
+-- the links to keys `g` holds no node at
+function Links.Prune(node, g)
+	local l = node[3]
+	if type(l) == "table" then
+		for other in pairs(l) do
+			if not g[other] then
+				l[other] = nil
+			end
+		end
+		return
+	end
+	local n, j = #node, 4
+	for i = 4, n - 1, 2 do
+		if g[node[i]] then
+			node[j], node[j + 1] = node[i], node[i + 1]
+			j = j + 2
+		end
+	end
+	for i = n, j, -1 do
+		node[i] = nil
+	end
+end
+
 -- A learned change to the link between two traced road nodes, with the
 -- road's own cost (false: none), so /route reset can put the roads back as
 -- traced without the road data, which is let go once merged (memory audit,
@@ -582,25 +705,56 @@ local function RoadEdit(node, key)
 		roadEdits[node] = e
 	end
 	if e[key] == nil then
-		e[key] = node[3][key] or false
+		e[key] = Links.Get(node, key) or false
 	end
 end
 
 local function Link(cont, a, akey, b, bkey, cost)
-	local roads = a[4] and b[4]
-	if a[3][bkey] == nil or a[3][bkey] > cost then
+	local roads = Links.IsRoad(a) and Links.IsRoad(b)
+	local old = Links.Get(a, bkey)
+	if old == nil or old > cost then
 		if roads then
 			RoadEdit(a, bkey)
 		end
-		a[3][bkey] = cost
+		Links.Set(a, bkey, cost)
 	end
-	if b[3][akey] == nil or b[3][akey] > cost then
+	old = Links.Get(b, akey)
+	if old == nil or old > cost then
 		if roads then
 			RoadEdit(b, akey)
 		end
-		b[3][akey] = cost
+		Links.Set(b, akey, cost)
 	end
 	Edited(cont)
+end
+
+-- Every node made compact once the build's merges are done: a new table, exactly as long as its links need (a table
+-- constructor's last call: its array sized to fit), in the old one's place; its links in the order the old one's
+-- pairs gave them. What holds a node itself follows it (roadEdits; the side pieces are found after). In the build's
+-- slices; a node already compact is left as it is.
+function Links.Compact()
+	local list = Links.scratch
+	for _, g in pairs(live.graphs) do
+		for key, node in pairs(g) do
+			local l = node[3]
+			if type(l) == "table" then
+				local n = 0
+				for k, cost in pairs(l) do
+					list[n + 1], list[n + 2] = k, cost
+					n = n + 2
+				end
+				local new = { node[1], node[2], node[4] and 1 or 0, unpack(list, 1, n) }
+				g[key] = new   -- (an existing key: the walk goes on)
+				local e = roadEdits[node]
+				if e then
+					roadEdits[node], roadEdits[new] = nil, e
+				end
+			end
+			Build.Slice()
+		end
+	end
+	Links.scratch = {}
+	Links.compact = true
 end
 
 -- cells (0.21.3, the build's roads: MergeRoads): cells[cx][cy] = the key of
@@ -619,7 +773,7 @@ local function AddNode(cont, x, y, cells, alone, under)
 	local key = under and "u" .. KeyOf(x, y) or KeyOf(x, y)
 	local node = g[key]
 	if not node then
-		node = { x, y, {} }
+		node = Links.compact and { x, y, 0 } or { x, y, {} }
 		g[key] = node
 		Edited(cont)
 		NodeAdded(cont, key, node)
@@ -669,9 +823,7 @@ local function CountNodes()
 	for _, g in pairs(live.graphs) do
 		for _, node in pairs(g) do
 			nodes = nodes + 1
-			for _ in pairs(node[3]) do
-				edges = edges + 1
-			end
+			edges = edges + Links.Count(node)
 		end
 	end
 	return nodes, edges / 2
@@ -732,18 +884,20 @@ local function Merge(other)
 				if target then
 					for linked, cost in pairs(node[3] or {}) do
 						local ko = keyMap[linked] or linked
-						if ko ~= k and type(cost) == "number" and (target[3][ko] == nil or target[3][ko] > cost) then
+						local old = Links.Get(target, ko)
+						if ko ~= k and type(cost) == "number" and (old == nil or old > cost) then
 							local back = mine[ko]
-							local roads = target[4] and back and back[4]
+							local roads = Links.IsRoad(target) and back and Links.IsRoad(back)
 							if roads then
 								RoadEdit(target, ko)
 							end
-							target[3][ko] = cost
-							if back and (back[3][k] == nil or back[3][k] > cost) then
+							Links.Set(target, ko, cost)
+							old = back and Links.Get(back, k)
+							if back and (old == nil or old > cost) then
 								if roads then
 									RoadEdit(back, k)
 								end
-								back[3][k] = cost
+								Links.Set(back, k, cost)
 							end
 						end
 					end
@@ -759,7 +913,7 @@ end
 -- Tools/trace_roads.py): folded in like baked data but scaled to the
 -- continent sizes this client reports, marked as traced so they are never
 -- written back into the saved variable, and linked to whatever was learned
--- near them.
+-- near them. (route memory: the build's first part, its nodes as built -- Links -- and looked up so)
 local tracedNodes = 0
 
 local function MergeRoads(data)
@@ -1289,14 +1443,14 @@ local function LearnedOnly()
 	for cont, g in pairs(live.graphs) do
 		local og = {}
 		for key, node in pairs(g) do
-			if not node[4] then
+			if not Links.IsRoad(node) then
 				local links = {}
-				for other, cost in pairs(node[3]) do
+				Links.Each(node, function(other, cost)
 					local o = g[other]
-					if o and not o[4] then
+					if o and not Links.IsRoad(o) then
 						links[other] = cost
 					end
-				end
+				end)
 				og[key] = { node[1], node[2], links }
 			end
 		end
@@ -1879,6 +2033,11 @@ do
 					end
 					list[#list + 1] = key
 				end
+				-- (route memory) each list exactly as long as it is, in its order: one grown by appending holds up to
+				-- twice its room (0.5 MB over both continents)
+				for bk, list in pairs(index) do
+					index[bk] = { unpack(list) }
+				end
 				buckets[c] = index
 			end
 		end
@@ -2052,12 +2211,24 @@ do
 							local a = stack[top]
 							stack[top] = nil
 							top, size = top - 1, size + 1
-							for k in pairs(a[3]) do
-								local b = g[k]
-								if b and not piece[b] then
-									piece[b] = n
-									top = top + 1
-									stack[top] = b
+							local l = a[3]
+							if type(l) == "table" then   -- (as built: Links)
+								for k in pairs(l) do
+									local b = g[k]
+									if b and not piece[b] then
+										piece[b] = n
+										top = top + 1
+										stack[top] = b
+									end
+								end
+							else
+								for i = 4, #a - 1, 2 do
+									local b = g[a[i]]
+									if b and not piece[b] then
+										piece[b] = n
+										top = top + 1
+										stack[top] = b
+									end
 								end
 							end
 							Build.Slice()
@@ -2071,9 +2242,13 @@ do
 						big = i
 					end
 				end
-				local side = {}
+				-- (route memory) a compact node marked in itself (Links.SIDE), one as built in the set
+				local side = setmetatable({}, Links.SIDE)
 				for node, i in pairs(piece) do
-					if i ~= big then
+					local l = node[3]
+					if type(l) == "number" then
+						node[3] = l % 2 + (i ~= big and 2 or 0)
+					elseif i ~= big then
 						side[node] = true
 					end
 				end
@@ -3022,13 +3197,26 @@ do
 		if type(id) == "table" then
 			local g, links = live.graphs[cont], id[3]
 			local degree = 0
-			for k, cost in pairs(links) do
-				-- a flight only between two flight points this character may use
-				local o = g[k]
-				if not (o and IsFlight(Dist(id[1], id[2], o[1], o[2]), cost)) or (FlightEnd(cont, id) and FlightEnd(cont, o)) then
-					Relax(o or (cont .. "|" .. k), cont, cost)
+			if type(links) == "table" then
+				-- (a node as built, which the build's compaction did not reach: Links)
+				for k, cost in pairs(links) do
+					-- a flight only between two flight points this character may use
+					local o = g[k]
+					if not (o and IsFlight(Dist(id[1], id[2], o[1], o[2]), cost)) or (FlightEnd(cont, id) and FlightEnd(cont, o)) then
+						Relax(o or (cont .. "|" .. k), cont, cost)
+					end
+					degree = degree + 1
 				end
-				degree = degree + 1
+			else
+				-- (compact: { x, y, road, key, seconds, ... }, the links in the order they always were tried in)
+				for i = 4, #id - 1, 2 do
+					local k, cost = id[i], id[i + 1]
+					local o = g[k]
+					if not (o and IsFlight(Dist(id[1], id[2], o[1], o[2]), cost)) or (FlightEnd(cont, id) and FlightEnd(cont, o)) then
+						Relax(o or (cont .. "|" .. k), cont, cost)
+					end
+					degree = degree + 1
+				end
 			end
 			-- the end of a path: cross open ground to any path nearby -- only
 			-- where the ground is not known (0.17.1: the ground's own links are
@@ -3047,7 +3235,7 @@ do
 				end
 				for k, d in pairs(near) do
 					local o = g[k]
-					if o ~= id and links[k] == nil then
+					if o ~= id and Links.Get(id, k) == nil then
 						Relax(o, cont, d / WALK * JUMP_COST)
 					end
 				end
@@ -3129,7 +3317,7 @@ do
 					local pc, pk = prev:match("^(%d+)|(.+)$")
 					local _, nk = nid:match("^(%d+)|(.+)$")
 					local pnode = pc and live.graphs[tonumber(pc)] and live.graphs[tonumber(pc)][pk]
-					if pnode and nk and pnode[3][nk] == nil then
+					if pnode and nk and Links.Get(pnode, nk) == nil then
 						kind = "guess"
 					end
 				end
@@ -3850,25 +4038,20 @@ do
 	ForgetLearned = function()
 		for node, e in pairs(roadEdits) do
 			for key, cost in pairs(e) do
-				node[3][key] = cost or nil
+				Links.Set(node, key, cost or nil)
 			end
 		end
 		roadEdits = {}
 		local roads = 0
 		for _, g in pairs(live.graphs) do
 			for key, node in pairs(g) do
-				if not node[4] then
+				if not Links.IsRoad(node) then
 					g[key] = nil
 				end
 			end
 			for _, node in pairs(g) do
 				roads = roads + 1
-				local links = node[3]
-				for other in pairs(links) do
-					if not g[other] then
-						links[other] = nil
-					end
-				end
+				Links.Prune(node, g)
 			end
 		end
 		tracedNodes = roads
@@ -4151,7 +4334,7 @@ function Travel.LinkFlight(a, b, d)
 	local kb = ib:match("^%d+|(.+)$")
 	local g = c and kb and live.graphs[tonumber(c)]
 	local node = g and g[ka]
-	local cost = node and node[3][kb]
+	local cost = node and Links.Get(node, kb)
 	if type(cost) == "number" and IsFlight(d, cost) then
 		return cost
 	end
@@ -10696,9 +10879,12 @@ do
 		-- (0.21.3) the road graph's side pieces (Search: Ashore); not at a
 		-- logout's build, which plans no route. What was learned meanwhile
 		-- after them, as later changes are.
+		-- (route memory) first every node made compact, the merges done (Links); not at a logout's build either, which
+		-- only writes the learned part (LearnedOnly reads both)
 		if at.stage == 2 then
 			at.stage = 3
 			if not Build.closing then
+				Links.Compact()
 				Build.FindIslands()
 			end
 		end
@@ -10844,7 +11030,8 @@ do
 
 	-- The build's work in slices (Build.Slice: one a node or a link it
 	-- handles): each of the companion's nodes unpacked and made, each link
-	-- made, and every node again for the side pieces; what was baked or
+	-- made, and every node twice more, made compact (Links.Compact) and
+	-- walked for the side pieces; what was baked or
 	-- learned is too little to count. From the packed strings' lengths, not
 	-- a pass over the roads.
 	function Build.Expect(roads)
@@ -10874,7 +11061,7 @@ do
 				nodes = nodes + n
 			end
 		end
-		Build.done, Build.expected = 0, work + nodes
+		Build.done, Build.expected = 0, work + 2 * nodes
 	end
 
 	-- how far: the build's share of BUILT, all of it once the graph is whole
