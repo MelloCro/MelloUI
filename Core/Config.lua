@@ -138,6 +138,14 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "1.2.0", lines = {
+		"Route follows Follow The Arrow, Azeroth Pilot Reloaded and TomTom's arrow, as it follows RestedXP: the map pin, the World Marker, the guide's steps in the Quest Tracker.",
+		"Guidelime: turn on its Use TomTom arrow option and Route follows it too. /route guide turns following the guides off and on.",
+		"Several guides on at once? MelloUI asks which one to keep and switches the others off for that character.",
+		"Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast.",
+		"Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on.",
+		"Fixed: the middle of Silithus and parts of six other zones are no longer cut out of the map.",
+	} },
 	{ version = "1.1.0", lines = {
 		"Languages: the configurator and the installer in German, French, Spanish, Portuguese, Russian, Chinese and Korean. Pick one at the left of the top line.",
 		"A line not translated yet shows in English. Corrections are welcome on MelloUI's CurseForge translation page.",
@@ -172,13 +180,6 @@ local CHANGELOG = {
 		"Chat View: right-click a tab for the game's window menu -- rename, a new window with the channels you pick, close, font size.",
 		"Chat View: your /join channels get their own tabs; drag tabs to reorder; the chat and whisper window scroll smoothly.",
 		"Round borders are sharp at small sizes: the Services buttons' and Round Border styles' rings are solid, not dotted.",
-	} },
-	{ version = "0.22.1", lines = {
-		"Unit Frames: XP Gain -- the stretch of the experience bar you just gained lights up as a light runs along it.",
-		"Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in.",
-		"Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it.",
-		"Bags by Kind: Bags Full Warning -- with your bags full, Empty shows a 0 slot that shakes and flashes red as the game says so.",
-		"Services: Trays Slide Out -- a group's list slides out from the minimap column like a drawer, and back in.",
 	} },
 }
 local LINKS = {

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0
+
+- Route: follows more levelling guides, as it follows RestedXP Guides: Follow The Arrow, Azeroth Pilot Reloaded and TomTom's arrow. The guide's step gets the map pin, so the route and the World Marker lead there; its lines and a Skip this step box show in the Quest Tracker, its items in the quest item widget, and the guide's own arrow and window step aside. With several running, the one whose step changed last is followed.
+- Route: Guidelime (and its guide packs) is followed through TomTom: turn on Guidelime's "Use TomTom arrow" option.
+- Route: with two or more levelling guides on (RestedXP Guides, Follow The Arrow, Azeroth Pilot Reloaded, Guidelime, ForeverWisp), MelloUI asks once at login which one to keep; the others are switched off in the AddOns list for that character, and a /reload finishes it. Keep them all is remembered.
+- Route: `/route guide` turns following the guides off and on (`/route rxp` still works).
+- Map: the land between zones that no zone's map covers is painted in, in the map's own style: Ahn'Qiraj south of Silithus, the country west of Dun Morogh, north of the Plaguelands, the Wetlands' coast, between Ashenvale and Mount Hyjal, and more. Coastal zones now reach the true coast.
+- Map: zooming in keeps the painted map much longer. The game's minimap ground now fades in over the painting only when you are very close (from about 20 times the whole world), never fully replacing it, and every fade eases in and out.
+- Map: the mouse wheel zooms smoothly, a fast spin running on as one motion; you can drag while it zooms, and a drag let go at speed glides on.
+- Fixed: Map: the middle of Silithus and parts of Mulgore, Azshara, Tirisfal Glades, the Eastern Plaguelands, Dun Morogh and the Wetlands are no longer cut out of their zones.
+
 ## 1.1.0
 
 - Languages: the configurator and the installer speak German, French, Spanish, Portuguese, Russian, Simplified Chinese and Korean. A Language dropdown at the left of the configurator's top line picks the language, starting on your game's own; a line not translated yet shows in English. The game's own words are used for the game's things, as each client names them.
