@@ -1208,25 +1208,66 @@ M.Layout = Layout   -- (the tests')
 -- FX.LevelRoll on the badge's copy, its "level" landings: it needs the kit's
 -- orb disc). The motion not under Reduce Motion; the notice always while the
 -- option is on. Its event (PLAYER_LEVEL_UP) only while the option is on.
+-- (1.2.0, animations round 3; the user 2026-10-22, "yes to all" to BuildData/output/animation_previews/more_anims.html:
+-- the modern look showed only the notice) The XP bar runs full from the share the level ended at, bursts and drains
+-- to the new level's (FX.LevelBar, a copy over the game's bar; the old light where its fill cannot be read); the
+-- level circle turns over in every look (FX.LevelRoll on the painted disc, else MelloUI Frames' badge or the game's
+-- circle); the notice a moment's line: the level in gold over a gold rule, the quests it opened under it
+-- (MelloUI:AnnounceMoment). The share the level ended at: read at each PLAYER_XP_UPDATE while the option is on (one
+-- with the new level's numbers may come first: the one before it kept, `before`)
 --------------------------------------------------------------------------------
 
-local Level = { NOTICE_AT = 0.8, ORB_SPILL = { 70, 70 }, BAR_SPILL = { 8, 12 }, new = nil }
+local Level = { NOTICE_AT = 0.95, ORB_SPILL = { 70, 70 }, BAR_SPILL = { 8, 12 }, BEFORE = 2, new = nil }
 
 function Level.Notice()
 	local new = Level.new
 	if not new then
 		return
 	end
-	local text = "Level " .. new
+	local sub
 	local ql = MelloUI:GetModule("QuestList")
 	if ql and ql.isEnabled and type(ql.NewQuestsAt) == "function" then
 		local ok, n = pcall(ql.NewQuestsAt, ql, new)
 		n = ok and Num(n) or nil
 		if n and n > 0 then
-			text = text .. " \194\183 " .. n .. (n == 1 and " new quest nearby" or " new quests nearby")
+			sub = n .. (n == 1 and " new quest nearby" or " new quests nearby")
 		end
 	end
-	MelloUI:Announce(text)
+	MelloUI:AnnounceMoment("Level " .. new, sub)
+end
+
+-- the bar's share now (nil: secret, none)
+function Level.Share()
+	local okX, x = pcall(UnitXP, "player")
+	local okM, m = pcall(UnitXPMax, "player")
+	x, m = okX and Num(x) or nil, okM and Num(m) or nil
+	if x and m and m > 0 then
+		return x / m, m
+	end
+	return nil
+end
+
+-- (PLAYER_XP_UPDATE) the share kept; a new level's numbers: the share before them kept as `before`
+function Level.Track()
+	local share, max = Level.Share()
+	if not share then
+		return
+	end
+	if Level.max and max ~= Level.max and Level.share then
+		Level.before, Level.beforeAt = Level.share, GetTime()
+	end
+	Level.share, Level.max = share, max
+end
+
+-- the share the level ended at: the one kept before the new level's numbers came, else the last one read (they have
+-- not come yet), else none (0)
+function Level.From()
+	local before, at = Level.before, Level.beforeAt
+	Level.before, Level.beforeAt = nil, nil
+	if before and at and GetTime() - at < Level.BEFORE then
+		return before
+	end
+	return Level.share or 0
 end
 
 function Level.Up(new)
@@ -1237,27 +1278,39 @@ function Level.Up(new)
 	Level.new = new
 	local FX, anim = MelloUI.FrameFX, MelloUI.Anim
 	local motion = FX and anim and not anim.reduceMotion
+	local from = Level.From()
 	if motion then
-		-- (the badge's roll needs the painted skin's orb and disc)
-		local Kit = MelloUI.Kit
-		local sp = Kit and Kit:IsCovered("unitframes") and FX.Split and FX.Split(PlayerFrame)
-		if sp then
-			FX.LevelRoll(sp, new - 1, new)
+		-- (the badge's roll: the painted skin's disc, else the circle's stand-in -- 1.2.0, the modern look too)
+		local sp = FX.Split and FX.Split(PlayerFrame)
+		if sp and FX.LevelRoll(sp, new - 1, new) then
 			local badge = sp.orb or sp.disc
 			if badge then
 				FX.ShowOn(badge, "level", "orb", Level.ORB_SPILL)
 			end
 		end
-		local bar = rawget(_G, "MainStatusTrackingBarContainer")
-		if bar and bar:IsVisible() then
-			FX.ShowOn(bar, "level", "bar", Level.BAR_SPILL)
+		-- (1.2.0) the bar run full and drained to the new level's share; else its light
+		local sb = M.XP and M.XP.Bar()
+		-- (the new level's numbers not read yet: drained to empty; the preview's, /mello player level: to where it was)
+		local to = Level.Share() or 0
+		if to >= from and not Level.preview then
+			to = 0
+		end
+		if not (sb and FX.LevelBar and FX.LevelBar(sb, from, to)) then
+			local bar = rawget(_G, "MainStatusTrackingBarContainer")
+			if bar and bar:IsVisible() then
+				FX.ShowOn(bar, "level", "bar", Level.BAR_SPILL)
+			end
 		end
 	end
 	Perf.C_Timer.After(motion and Level.NOTICE_AT or 0, Level.Notice)
 end
 
-Level.OnEvent = Perf.Shared("OnEvent of Level Up", function(_, _, level)
-	Level.Up(level)
+Level.OnEvent = Perf.Shared("OnEvent of Level Up", function(_, event, level)
+	if event == "PLAYER_XP_UPDATE" then
+		Level.Track()
+	else
+		Level.Up(level)
+	end
 end, "event")
 
 -- its event while the option is on (and the module)
@@ -1272,6 +1325,8 @@ function Level.Listen()
 	end
 	if on then
 		Level.frame:RegisterEvent("PLAYER_LEVEL_UP")
+		Level.frame:RegisterUnitEvent("PLAYER_XP_UPDATE", "player")
+		Level.Track()
 	else
 		Level.frame:UnregisterAllEvents()
 	end
@@ -1379,7 +1434,9 @@ function M.SlashLevel()
 		MelloUI:Print("Level Up is off (Bars > XP & Rep).")
 		return
 	end
+	Level.preview = true
 	Level.Up(lv)
+	Level.preview = nil
 end
 
 -- (/mello player xp, 0.22.1) XP Gain's light on the bar as for a gain of

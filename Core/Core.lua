@@ -366,9 +366,8 @@ MelloUI.Meaning = {
 	combatResource = Hex("#609CE6"),   -- (meaning colour)
 	-- (Your Damage: a spell's hit on an enemy, as the game tells them apart)
 	combatSpell = Hex("#BE96E6"),      -- (meaning colour)
-	-- (0.17.1, the swing timers, the user's picks of swing_looks: the shot
-	-- reloading in cream, a melee swing pale; Modules/SwingTimers.lua)
-	swingShot = Hex("#E9DCAA"),        -- (meaning colour)
+	-- (0.17.1, the swing timers, the user's picks of swing_looks: a melee swing pale -- since 1.2.0 the swing badge's
+	-- strike, Core/SwingBadge.lua; the shot bar's cream went with the bars)
 	swingMelee = Hex("#EFEBE3"),       -- (meaning colour)
 	-- (the shot's aim, the red of the picked swing_looks: stand still)
 	swingAim = Hex("#D63428"),         -- (meaning colour)

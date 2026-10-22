@@ -1167,6 +1167,61 @@ local function DealtScale(look)
 	return (DEALT.size[look] or 1) * world * own * T.size / TextSize()
 end
 
+-- (1.2.0, the user's pick of 2026-10-22: BuildData/output/animation_previews/more_anims.html, "yes to all") your
+-- crit punches in: its number bigger and settling (the engine's text scale: the line's anchoring on a plate cannot be
+-- read, so the line itself is never scaled), a gold flare behind it and a small shake of the number inside its line
+-- (centred lines only), over DEALT.punch.time (Anim:Drive; Reduce Motion: none of it). The flare made with a line's
+-- first crit, kept with the line
+DEALT.punch = { time = 0.45, grow = 0.6, settle = 0.16, shake = 0.18 }
+
+function DEALT.PunchStep(line, share)
+	local P, value, flare = DEALT.punch, line.value, line.flare
+	local t = share * P.time
+	local k, dx, dy, a = 1, 0, 0, 0
+	if share < 1 then
+		if t < P.settle then
+			local y = t / P.settle - 1   -- (outBack: past its end a hair, then back)
+			k = 1 + P.grow * (1 - (1 + 2.9 * y * y * y + 1.9 * y * y))
+		end
+		if line.punchCenter and t < P.shake then
+			local s = 1 - t / P.shake
+			dx, dy = math.sin(t * 140) * 2.5 * s, math.cos(t * 110) * 2 * s
+		end
+		a = 0.85 * (1 - share)
+	end
+	if value.SetTextScale then
+		value:SetTextScale(k)
+	end
+	if line.punchCenter then
+		value:SetPoint("CENTER", line, "CENTER", dx, dy)
+	end
+	if flare then
+		local w = 0.6 + 0.6 * share
+		flare:SetSize(line.flareW * w, line.flareH)
+		flare:SetAlpha(a)
+	end
+end
+
+function DEALT.Punch(line, size, align)
+	if MelloUI.Anim.reduceMotion then
+		return
+	end
+	local flare = line.flare
+	if not flare then
+		flare = line:CreateTexture(nil, "ARTWORK", nil, 7)
+		flare:SetTexture("Interface\\AddOns\\MelloUI\\Media\\FrameFX\\glow_white.tga")
+		flare:SetBlendMode("ADD")
+		line.flare = flare
+	end
+	local gold = RoleRGB("gold")
+	flare:SetVertexColor(gold[1], gold[2], gold[3])
+	flare:ClearAllPoints()
+	flare:SetPoint("CENTER", line.value, "CENTER", 0, 0)
+	line.flareW, line.flareH = size * 4.5, size * 1.2
+	line.punchCenter = align == "CENTER"
+	MelloUI.Anim:Drive(line, DEALT.PunchStep, DEALT.punch.time, "linear")
+end
+
 local function DealtLine(unit, e, hold)
 	local plate = PlateOf(unit)
 	if not plate then
@@ -1200,6 +1255,9 @@ local function DealtLine(unit, e, hold)
 	line.dealt = true   -- (the Game Numbers Font: Fill)
 	line.lane = lane
 	lane.lines[#lane.lines + 1] = line
+	if line.flare then
+		DEALT.PunchStep(line, 1)   -- (a spare whose crit was cut short: at rest)
+	end
 	Fill(line, e, (look == "stack" or look == "side") and "LEFT" or "CENTER",
 		size * (e.glancing and DEALT.glancing or 1) * (e.crit and DEALT.crit or 1))
 	-- (Rise: a hit close behind the last starts beside it, in turn)
@@ -1239,6 +1297,9 @@ local function DealtLine(unit, e, hold)
 	elseif look == "fan" then
 		lane.flip = -lane.flip
 		Anim:Slide(line, point, plate, rel, x, y, lane.flip * DEALT.fanX, DEALT.fanY, life, "outCubic")
+	end
+	if e.crit then
+		DEALT.Punch(line, TextSize() * size * DEALT.crit * T.crit, (look == "stack" or look == "side") and "LEFT" or "CENTER")
 	end
 	return line
 end

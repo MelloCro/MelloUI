@@ -39,6 +39,8 @@
 --                                  coin's, bare and small (Loot, below)
 --   FX.LevelRoll(split, old, new) -> true   (0.21.3) a level badge's number
 --                                  turning over (Level up, below)
+--   FX.LevelBar(bar, from, to) -> true   (1.2.0) the XP bar run full from
+--                                  `from`, a burst, drained to `to` (below)
 --   FX.Clear(layer), FX.Free(layer)
 -- The frames (the same for every feature): FX.Members() -> list, set (your
 -- group's units now); FX.Canon(unit) (you in a raid: your raid unit);
@@ -1490,21 +1492,18 @@ local function Place(dst, l, b, r, t, a)
 	dst:Show()
 end
 
-local function CopyTexture(dst, src)
-	if not (src and FX.Visible(src)) then
-		return
-	end
-	local l, b, r, t = FX.Rect(src)
-	if not l then
-		return
-	end
+-- a region's picture on dst, not its place: its atlas or file and coordinates, its colour, blend and desaturation.
+-- -> "atlas" or "file", or nil (none to read: dst left as it was)
+local function CopyLook(dst, src)
+	local kind = "atlas"
 	local okA, atlas = pcall(src.GetAtlas, src)
 	if okA and not Secret(atlas) and type(atlas) == "string" and atlas ~= "" then
 		dst:SetAtlas(atlas)
 	else
+		kind = "file"
 		local okT, file = pcall(src.GetTexture, src)
 		if not okT or Secret(file) or file == nil then
-			return
+			return nil
 		end
 		dst:SetTexture(file)
 		local okC, c1, c2, c3, c4, c5, c6, c7, c8 = pcall(src.GetTexCoord, src)
@@ -1524,7 +1523,17 @@ local function CopyTexture(dst, src)
 	dst:SetBlendMode((okB and not Secret(blend) and type(blend) == "string") and blend or "BLEND")
 	local okD, des = pcall(src.IsDesaturated, src)
 	dst:SetDesaturated(okD and not Secret(des) and des == true)
-	Place(dst, l, b, r, t, ShownAlpha(src))
+	return kind
+end
+
+local function CopyTexture(dst, src)
+	if not (src and FX.Visible(src)) then
+		return
+	end
+	local l, b, r, t = FX.Rect(src)
+	if l and CopyLook(dst, src) then
+		Place(dst, l, b, r, t, ShownAlpha(src))
+	end
 end
 
 local function CopyText(dst, src)
@@ -1579,10 +1588,10 @@ local function RollStep(L, u)
 	local p = max(0, min(1, (t - LEVEL.ROLL_AT) / LEVEL.ROLL))
 	local e = 1 - (1 - p) * (1 - p)
 	L.old:ClearAllPoints()
-	L.old:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", L.l, L.b + L.h * e)
+	L.old:SetPoint("BOTTOM", UIParent, "BOTTOMLEFT", L.l + L.w / 2, L.b + L.h * e)
 	L.old:SetAlpha(1 - p)
 	L.new:ClearAllPoints()
-	L.new:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", L.l, L.b - L.h * (1 - e))
+	L.new:SetPoint("BOTTOM", UIParent, "BOTTOMLEFT", L.l + L.w / 2, L.b - L.h * (1 - e))
 	L.new:SetAlpha(p)
 end
 
@@ -1592,7 +1601,10 @@ end
 
 function FX.LevelRoll(split, old, new)
 	local anim = MelloUI.Anim
-	if not (split and split.disc and split.number) or (anim and anim.reduceMotion) then
+	-- (1.2.0, animations round 3) the disc the number sits on: the painted skin's, else what stands for the circle --
+	-- MelloUI Frames' badge in the modern look, or the game's own circle -- copied as the orb, the number over it
+	local disc = split and (split.disc or split.orb)
+	if not (disc and split.number) or (anim and anim.reduceMotion) then
 		return false
 	end
 	local nl, nb, nr, nt = FX.Rect(split.number)
@@ -1618,7 +1630,7 @@ function FX.LevelRoll(split, old, new)
 	L.disc:Hide()
 	CopyTexture(L.orb, split.orb)
 	CopyTexture(L.disc, split.disc)
-	if not L.disc:IsShown() then
+	if not (L.disc:IsShown() or (split.disc == nil and L.orb:IsShown())) then
 		return false
 	end
 	CopyText(L.old, split.number)
@@ -1627,15 +1639,129 @@ function FX.LevelRoll(split, old, new)
 	L.new:SetText(tostring(new))
 	L.l, L.b, L.w, L.h = nl, nb, nr - nl, nt - nb
 	-- (the number's own room, a little taller: the rolling numbers cut at its edges)
-	local dl, _, dr = FX.Rect(split.disc)
+	local dl, _, dr = FX.Rect(disc)
 	L.clip:ClearAllPoints()
 	L.clip:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", dl or nl, nb - 1)
 	L.clip:SetSize(max(1, (dr or nr) - (dl or nl)), max(1, L.h + 2))
-	L.old:SetSize(max(1, L.w), max(1, L.h))
-	L.new:SetSize(max(1, L.w), max(1, L.h))
+	-- (1.2.0: as wide as their text, centred on the number -- held to the number's own width a number of two digits
+	-- could be cut to "..." in wowsim, the game's circle measured narrower than its text)
+	L.old:SetSize(0, max(1, L.h))
+	L.new:SetSize(0, max(1, L.h))
 	RollStep(L, 0)
 	L.frame:Show()
 	Anim:Drive(L, RollStep, LEVEL.TOTAL, "linear", RollOver)
+	return true
+end
+
+-- (1.2.0, animations round 3; the user 2026-10-22, "yes to all" to BuildData/output/animation_previews/more_anims.html)
+-- The XP bar at a level gained: a copy of its fill's picture laid over the bar runs from the share the level ended at
+-- to full (BAR.RUN seconds, a light at its end), bursts there in gold (BAR.BURST: a glow, a ring, the bar washed in
+-- gold), then drains to the new level's share (from BAR.DRAIN_AT, BAR.DRAIN long) and is gone. The game's bar under it
+-- is never written: it shows the new level all along, under the copy. Its pieces made at the first level gained. Not
+-- under Reduce Motion; false when the bar's fill cannot be read (the caller's light then)
+local BAR = { RUN = 0.6, BURST = 0.7, DRAIN_AT = 0.95, DRAIN = 0.5, TOTAL = 1.5, SPARK = 3, BURST_H = 5, WASH = 0.35 }
+FX.LEVEL_BAR = BAR
+local barRun = {}   -- the copy: frame, fill, wash, spark, burst, ring; the bar's rect l, b, r, t; from, to
+
+local function OutCubic(p)
+	local q = 1 - p
+	return 1 - q * q * q
+end
+
+local function BarStep(Run, u)
+	local t = u * BAR.TOTAL
+	local v
+	if t < BAR.RUN then
+		v = Run.from + (1 - Run.from) * OutCubic(t / BAR.RUN)
+	elseif t < BAR.DRAIN_AT then
+		v = 1
+	else
+		v = 1 - (1 - Run.to) * OutCubic(min(1, (t - BAR.DRAIN_AT) / BAR.DRAIN))
+	end
+	local w, h = Run.r - Run.l, Run.t - Run.b
+	local y = Run.b + h / 2
+	Run.fill:SetWidth(max(1, w * v))
+	Run.fill:SetShown(v > 0.002)
+	-- the light at the running end
+	Run.spark:ClearAllPoints()
+	Run.spark:SetPoint("CENTER", UIParent, "BOTTOMLEFT", Run.l + w * v, y)
+	Run.spark:SetSize(h * BAR.SPARK, h * BAR.SPARK)
+	Run.spark:SetAlpha(t < BAR.RUN and 0.9 or 0)
+	-- the burst at the full end, the bar washed in gold meanwhile
+	local p = (t - BAR.RUN) / BAR.BURST
+	local on = p > 0 and p < 1
+	Run.burst:SetShown(on)
+	Run.ring:SetShown(on)
+	Run.wash:SetShown(on)
+	if on then
+		local s = h * BAR.BURST_H * (0.5 + p)
+		Run.burst:ClearAllPoints()
+		Run.burst:SetPoint("CENTER", UIParent, "BOTTOMLEFT", Run.r, y)
+		Run.burst:SetSize(s * 2, s)
+		Run.burst:SetAlpha(0.9 * (1 - p))
+		Run.ring:ClearAllPoints()
+		Run.ring:SetPoint("CENTER", UIParent, "BOTTOMLEFT", Run.r, y)
+		Run.ring:SetSize(h * (2 + 4 * OutCubic(p)), h * (2 + 4 * OutCubic(p)))
+		Run.ring:SetAlpha(0.8 * (1 - p))
+		Run.wash:SetAlpha(BAR.WASH * (1 - p))
+	end
+end
+
+local function BarOver(Run)
+	Run.frame:Hide()
+end
+
+function FX.LevelBar(bar, from, to)
+	local anim = MelloUI.Anim
+	if type(bar) ~= "table" or type(bar.GetStatusBarTexture) ~= "function" or (anim and anim.reduceMotion) then
+		return false
+	end
+	local okF, fill = pcall(bar.GetStatusBarTexture, bar)
+	local l, b, r, t = FX.Rect(bar)
+	if not (okF and type(fill) == "table" and l) or r - l < 4 then
+		return false
+	end
+	local Run = barRun
+	if not Run.frame then
+		local f = CreateFrame("Frame", nil, FX.Host())
+		f:SetAllPoints(UIParent)
+		Run.fill = f:CreateTexture(nil, "ARTWORK", nil, 0)
+		Run.wash = f:CreateTexture(nil, "ARTWORK", nil, 1)
+		Run.spark = f:CreateTexture(nil, "OVERLAY", nil, 0)
+		Run.burst = f:CreateTexture(nil, "OVERLAY", nil, 1)
+		Run.ring = f:CreateTexture(nil, "OVERLAY", nil, 2)
+		Run.frame = f
+		FX.bar = Run   -- (the tests')
+	end
+	-- (the fill's picture, not its size: the new level's first sliver may be too thin to read a rect from)
+	local kind = CopyLook(Run.fill, fill)
+	if not kind then
+		return false
+	end
+	if kind == "file" then
+		Run.fill:SetTexCoord(0, 1, 0, 1)
+	end
+	Run.fill:SetAlpha(1)
+	Run.wash:SetTexture(Art("glow_gold.tga"))
+	Run.spark:SetTexture(Art("glow_white.tga"))
+	Run.burst:SetTexture(Art("glow_gold.tga"))
+	Run.ring:SetTexture(Art("ring_gold.tga"))
+	for _, tex in ipairs({ Run.wash, Run.spark, Run.burst, Run.ring }) do
+		tex:SetBlendMode("ADD")
+	end
+	Run.l, Run.b, Run.r, Run.t = l, b, r, t
+	from, to = Num(from) or 0, Num(to) or 0
+	Run.from, Run.to = max(0, min(1, from)), max(0, min(1, to))
+	Run.fill:ClearAllPoints()
+	Run.fill:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l, b)
+	Run.fill:SetHeight(max(1, t - b))
+	Run.wash:ClearAllPoints()
+	Run.wash:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l, b)
+	Run.wash:SetSize(r - l, max(1, t - b))
+	Run.frame:SetFrameLevel(FX.Host():GetFrameLevel() + 30)
+	BarStep(Run, 0)
+	Run.frame:Show()
+	Anim:Drive(Run, BarStep, BAR.TOTAL, "linear", BarOver)
 	return true
 end
 

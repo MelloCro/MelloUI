@@ -32,6 +32,7 @@ Core\Threat.lua
 Core\Fader.lua
 Core\Preview.lua
 Core\FrameFX.lua
+Core\SwingBadge.lua
 Core\Config.lua
 Core\ConfigLayout.lua
 Core\ConfigPreview.lua

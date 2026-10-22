@@ -194,7 +194,7 @@ L.pages = {
 				{ key = "indicators", label = "Indicators", stage = "ind:" } } },
 			{ key = "personal", label = "Personal", module = "PersonalDisplay", line = "The bars under your character",
 				parts = { { key = "shield", label = "Shield column" }, { key = "cast", label = "Cast" },
-				{ key = "swing", label = "Swing rails" }, { key = "text", label = "Text" },
+				{ key = "swing", label = "Swing badge" }, { key = "text", label = "Text" },
 				{ key = "cooldowns", label = "Big cooldowns" } } },
 		},
 		family = { key = "all", label = "All frames", line = "Every frame: the heal light, the big moments, the debuff glow" } },
@@ -255,9 +255,10 @@ L.pages = {
 				{ key = "icon", label = "Icon", locked = "Nothing to set yet" },
 				{ key = "spell", label = "Spell text", locked = "Nothing to set yet (its size: Interface Text, Look > Fonts)" },
 				{ key = "timer", label = "Timer", locked = "Nothing to set yet" } } },
-			{ key = "swing", label = "Swing Timers", module = "SwingTimers", line = "Your shot, melee and off-hand swings",
-				parts = { { key = "shot", label = "Shot bar" }, { key = "melee", label = "Melee bar" },
-				{ key = "offhand", label = "Off-hand bar" }, { key = "seconds", label = "Seconds" } } },
+			-- (1.2.0: the swing badge -- the bars, their Seconds, Width, Height and Show retired)
+			{ key = "swing", label = "Swing Timers", module = "SwingTimers", line = "Your swings and shots on the swing badge",
+				parts = { { key = "shot", label = "Shots" }, { key = "melee", label = "Melee swings" },
+				{ key = "offhand", label = "Off hand" } } },
 			{ key = "xprep", label = "XP & Rep", line = "The experience and reputation bars",
 				parts = { { key = "xp", label = "XP bar" }, { key = "rep", label = "Reputation bar" } } },
 			{ key = "cooldowns", label = "Cooldowns", line = "The game's Cooldown Manager",
@@ -811,13 +812,9 @@ function L.Define(R, Link)
 	R("ActionBars", "castbar:element", "Look", "DarkMode.castbar", { name = "Dark Mode", when = Uncovered("CastBarPanel", "cast bars") })
 	-- (0.17.1) Swing Timers: its switch (the module's, off by default), each bar's, the seconds, the size, when
 	R("ActionBars", "swing:element", "General", "SwingTimers.!enabled", { name = "Swing Timers" })
-	R("ActionBars", "swing:element", "Layout", "SwingTimers.width")
-	R("ActionBars", "swing:element", "Layout", "SwingTimers.height")
-	R("ActionBars", "swing:element", "Behaviour", "SwingTimers.show")
 	R("ActionBars", "swing:shot", "General", "SwingTimers.shot")
 	R("ActionBars", "swing:melee", "General", "SwingTimers.melee")
 	R("ActionBars", "swing:offhand", "General", "SwingTimers.offhand")
-	R("ActionBars", "swing:seconds", "General", "SwingTimers.text")
 	-- XP & Rep: the bars' look; the XP bar's light and Level Up (one look C13b: Tweaks'), each bar's backdrop
 	-- (2026-10-20, the user's sheet: MelloUI's frame, track, notches and light on the bars, first)
 	R("ActionBars", "xprep:element", "Look", "ActionBars.statusFrame")

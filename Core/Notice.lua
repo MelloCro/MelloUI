@@ -33,6 +33,11 @@
 --   MelloUI:AnnounceProgress(text, share)
 --       (1.2.0) the bar of the held line `text` to `share`, while it is the
 --       line shown; nothing is made per call.
+--   MelloUI:AnnounceMoment(text[, sub])
+--       (1.2.0) a moment's line (Level Up's): `text` in gold, a gold rule
+--       drawn out from its middle under it, `sub` smaller under the rule in
+--       the body text's colour; held and faded as any line, its sound
+--       info's. Sent to the chat instead: the two as one line.
 --
 -- The settings are Tweaks' rows beside Chat Notices (read when used, a
 -- missing one as its default, so they hold with Tweaks off):
@@ -114,14 +119,20 @@ local Loader = { RING = 34, RING_GAP = 8,   -- the ring's size, the ring to the 
 	OWNER = "Notice bar",                  -- (its Bar Texture listeners: not the notice's own 'setting')
 	PCT = {} }                             -- [n] = "n%", made once each
 local HELD = {}   -- a held line with no badge or bar
+-- (1.2.0, animations round 3; the user 2026-10-22, "yes to all" to BuildData/output/animation_previews/more_anims.html:
+-- Level Up's notice) a moment's line: the text in gold, a gold rule under it drawn out from its middle (RULE seconds,
+-- outCubic; at once under Reduce Motion) RULE_K of the text's width, its second line under the rule at SUB_SIZE in
+-- the body text's colour, the band behind them all. Made with the first such line, hidden for any other
+local Moment = { GAP = 5, RULE_H = 2, RULE_K = 0.8, RULE = 0.4, RULE_ALPHA = 0.85, SUB_SIZE = 15, SUB_GAP = 5,
+	full = 1, line = {} }   -- (line: the one moment asked for, reused)
 -- the text's palette colour and Core's UI sound, per kind. Only the two
 -- brightest text colours: over snow or sand, under the shade, trim and
 -- mutedText read at about 1.4 : 1, so learn and fail take the body text's
 -- colour and are told apart by their sounds
 local COLOUR = { track = "selectedTrim", arrive = "selectedTrim", learn = "text", fail = "text",
-	info = "text", silent = "text" }
+	info = "text", silent = "text", moment = "selectedTrim" }
 local SOUND = { track = "notice_track", arrive = "notice_arrive", learn = "notice_learn", fail = "notice_fail",
-	info = "notice_learn" }
+	info = "notice_learn", moment = "notice_learn" }
 
 local DEFAULTS = { noticeOnScreen = true, noticeToChat = false, noticeOutline = false, noticeSounds = true,
 	textShade = true }
@@ -191,6 +202,11 @@ local function Paint()
 		Loader.pct:SetTextColor(r, g, b, 1)
 		GameLook.Shadow(Loader.pct, SHADOW_ALPHA)
 	end
+	if Moment.sub then
+		r, g, b = GameLook.RoleColour("text")
+		Moment.sub:SetTextColor(r, g, b, 1)
+		GameLook.Shadow(Moment.sub, SHADOW_ALPHA)
+	end
 end
 
 -- the font: the interface face at SIZE (the share's at its own), outlined
@@ -201,6 +217,9 @@ local function Style()
 		MelloUI:StyleFont(text, "fontText", font, SIZE, "", outline)
 		if Loader.pct then
 			MelloUI:StyleFont(Loader.pct, "fontText", font, Loader.PCT_SIZE, "", outline)
+		end
+		if Moment.sub then
+			MelloUI:StyleFont(Moment.sub, "fontText", font, Moment.SUB_SIZE, "", outline)
 		end
 	end
 end
@@ -310,6 +329,73 @@ function Loader.Fit(w)
 	return ring + w
 end
 
+-- a moment's pieces: the rule (the palette's gold, W.Solid: painted again with the palette) and the second line, on a
+-- group the band lies behind
+function Moment.Make()
+	if Moment.group then
+		return
+	end
+	local group = CreateFrame("Frame", nil, frame)
+	group:SetPoint("CENTER")
+	group:SetSize(1, 1)
+	group:Hide()
+	local rule = MelloUI.Widgets.Solid(group, "OVERLAY", "selectedTrim", Moment.RULE_ALPHA)
+	rule:SetHeight(Moment.RULE_H)
+	local sub = group:CreateFontString(nil, "OVERLAY")
+	if font then
+		sub:SetFontObject(font)
+	end
+	sub:SetJustifyH("CENTER")
+	sub:SetWordWrap(false)
+	sub:SetShadowOffset(TEXT.shadowX, TEXT.shadowY)
+	Moment.group, Moment.rule, Moment.sub = group, rule, sub
+	Style()
+	Paint()
+end
+
+-- the line's layout: a moment's when it asked for one (after Loader.Lay, which lays any other); its sizes in Measure
+-- (Moment.Fit)
+function Moment.Lay(m)
+	state.moment = m ~= nil
+	if not m then
+		if Moment.group then
+			Moment.group:Hide()
+		end
+		return
+	end
+	Moment.Make()
+	Moment.sub:SetText(m.sub or "")
+	Moment.sub:SetShown(m.sub ~= nil)
+	Moment.group:Show()
+	frame.shade:Anchor(Moment.group, PAD_X, PAD_Y)
+end
+
+-- the group round the text (`w` wide), the rule and the second line, centred on each other; -> the group's width
+function Moment.Fit(w)
+	local sub = Moment.sub
+	local th = Num(Call(text, "GetStringHeight")) or SIZE
+	local sw, sh = 0, 0
+	if sub:IsShown() then
+		sw = Num(Call(sub, "GetUnboundedStringWidth")) or Num(Call(sub, "GetStringWidth")) or 0
+		sh = (Num(Call(sub, "GetStringHeight")) or Moment.SUB_SIZE) + Moment.SUB_GAP
+	end
+	local gw = math.max(w, sw)
+	Moment.group:SetSize(gw, th + Moment.GAP + Moment.RULE_H + sh)
+	text:ClearAllPoints()
+	text:SetPoint("TOP", Moment.group, "TOP", 0, 0)
+	Moment.rule:ClearAllPoints()
+	Moment.rule:SetPoint("TOP", text, "BOTTOM", 0, -Moment.GAP)
+	sub:ClearAllPoints()
+	sub:SetPoint("TOP", Moment.rule, "BOTTOM", 0, -Moment.SUB_GAP)
+	Moment.full = math.max(1, w * Moment.RULE_K)
+	return gw
+end
+
+-- the rule drawn out from its middle
+function Moment.Step(_, share)
+	Moment.rule:SetWidth(math.max(1, Moment.full * share))
+end
+
 -- the frame as wide as its text and shade (the mover's grab, the keep-on-
 -- screen); the shade follows the text by its anchors, needing none of this
 -- (a held line's badge and bar: their group, Loader.Fit)
@@ -326,6 +412,8 @@ local function Measure()
 	w = w or GUESS_WIDTH
 	if state.bar then
 		w = Loader.Fit(w)
+	elseif state.moment then
+		w = Moment.Fit(w)
 	end
 	w = w + 2 * (PAD_X + FEATHER)
 	frame:SetWidth(w > MIN_WIDTH and w or MIN_WIDTH)
@@ -373,14 +461,19 @@ end
 
 -- a line on the frame, at full, in its kind's colour (a held one's place
 -- taken: AnnounceWait marks its own after this; `held`, its opts, lays it out
--- as one)
-local function Put(msg, kind, held)
+-- as one; `moment` as a moment's line, its rule drawn out)
+local function Put(msg, kind, held, moment)
 	Build()
 	text:SetText(msg)
 	state.kind, state.wait = kind, nil
 	Loader.Lay(held)
+	Moment.Lay(moment)
 	Paint()
 	Measure()
+	if moment then
+		Moment.Step(nil, 0)
+		Anim:Drive(Moment, Moment.Step, Moment.RULE, "outCubic")
+	end
 	Anim:Stop(frame, "alpha")   -- one fading out comes back
 	frame:SetAlpha(1)
 	Place()
@@ -449,6 +542,27 @@ function MelloUI:Announce(msg, kind, mute)
 	local sound = SOUND[kind]
 	if sound and not mute and Setting("noticeSounds") then
 		self:PlayUISound(sound)
+	end
+end
+
+-- A moment's line (see the top): held and faded as Announce's, info's sound
+function MelloUI:AnnounceMoment(msg, sub)
+	if type(msg) ~= "string" or Secret(msg) or msg == "" or not Setting("noticeOnScreen") then
+		return
+	end
+	if Secret(sub) or type(sub) ~= "string" or sub == "" then
+		sub = nil
+	end
+	if Setting("noticeToChat") then
+		self:Print(sub and (msg .. " \194\183 " .. sub) or msg)
+	else
+		Moment.line.sub = sub
+		Put(msg, "moment", nil, Moment.line)
+		state.holds = state.holds + 1
+		C_Timer.After(HOLD, Fade)
+	end
+	if Setting("noticeSounds") then
+		self:PlayUISound(SOUND.moment)
 	end
 end
 

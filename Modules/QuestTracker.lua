@@ -868,11 +868,19 @@ end
 -- line's pieces made at its first motion. The option off or Reduce Motion:
 -- the lines as they are, at once (off: a done objective keeps its dash).
 -- (One table: the file's locals.)
+-- (1.2.0, animations round 3; the user 2026-10-22, "yes to all" to BuildData/output/animation_previews/more_anims.html)
+-- The count's light is a soft gold band under the line, clear at its tail, its head running to the line's end
+-- (BAND_W long: the soft shade's left half, its fade; the oval before it was SoftGlowRound, a ring); the tick as it is
+-- drawn has a small soft glint (GLINT seconds); the light over the title is a sheen crossing it (SHEEN, SWEEP
+-- seconds); the turn-in line slides in from TURNIN_DX as it fades in.
 --------------------------------------------------------------------------------
 
-local Motion = { ROLL = 0.28, LIGHT = 0.6, TICK = 0.25, HOLD = 0.9, SWEEP = 0.7, UNFOLD = 0.3, UNFOLD_RISE = 4, TURNIN = 0.35,
-	SHINE_W = 68, SHINE_H = 19, SWEEP_W = 48, hold = {} }
-Motion.GLOW = "Interface\\AddOns\\MelloUI\\Media\\Textures\\SoftGlowRound"   -- look-ok: a moment's light, in both looks
+local Motion = { ROLL = 0.28, LIGHT = 0.6, TICK = 0.25, HOLD = 0.9, SWEEP = 0.55, UNFOLD = 0.3, UNFOLD_RISE = 4, TURNIN = 0.35,
+	TURNIN_DX = -10, BAND_W = 90, BAND_A = 0.32, BAND_PAD = 4, GLINT = 0.55, GLINT_K = 1.6, SHEEN_W = 0.9, SHEEN_H = 1.8,
+	hold = {} }
+Motion.SHEEN = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\sheen"   -- look-ok: a moment's light, in both looks
+Motion.BAND = "Interface\\AddOns\\MelloUI\\Media\\Textures\\SoftShade"   -- look-ok: a moment's light, in both looks
+Motion.GLINT_ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\glow_white"   -- look-ok: a moment's light, in both looks
 
 function Motion.On()
 	local anim = MelloUI.Anim
@@ -885,10 +893,12 @@ function Motion.W()
 	return type(W) == "table" and W.Glyph and W.SpacerMarkup and W or nil
 end
 
--- a soft light in the look's gold, added to what is under it (hidden)
-function Motion.Glow(parent, layer)
-	local t = parent:CreateTexture(nil, layer or "ARTWORK")
-	t:SetTexture(Motion.GLOW)
+-- (1.2.0) the count's band: the soft shade's left half (clear at its tail, full at its head, soft above and below) in
+-- the look's gold, added to what is under it (hidden)
+function Motion.Band(parent)
+	local t = parent:CreateTexture(nil, "ARTWORK")
+	t:SetTexture(Motion.BAND)
+	t:SetTexCoord(0, 0.5, 0, 1)
 	t:SetBlendMode("ADD")
 	PaintKey(t, "selectedTrim", "vertex")
 	t:Hide()
@@ -959,8 +969,7 @@ end
 function Motion.Lay(fs, roll)
 	local block = fs.block
 	if not fs.shine then
-		fs.shine = Motion.Glow(block)
-		fs.shine:SetSize(Motion.SHINE_W, Motion.SHINE_H)
+		fs.shine = Motion.Band(block)
 	end
 	if roll.spaced then
 		local src = roll.src or fs
@@ -1018,15 +1027,25 @@ function Motion.Step(roll, u)
 			r.b:SetAlpha(p)
 		end
 	end
+	-- (1.2.0) the band: its head from the line's start to its end (outCubic), its tail BAND_W behind, never before
+	-- the line's start
 	local shine = fs.shine
 	if shine and u < 1 then
+		local head = (fs:GetWidth() or 0) * Motion.Ease(u)
+		local tail = math.max(0, head - Motion.BAND_W)
 		shine:ClearAllPoints()
-		shine:SetPoint("CENTER", fs, "TOPLEFT", -10 + ((fs:GetWidth() or 0) + 20) * u, -roll.h / 2)
-		shine:SetAlpha(0.42 * math.sin(u * math.pi))
-		shine:Show()
+		shine:SetPoint("LEFT", fs, "TOPLEFT", tail, -roll.h / 2)
+		shine:SetSize(math.max(1, head - tail), roll.h + Motion.BAND_PAD)
+		shine:SetAlpha(Motion.BAND_A * (1 - 0.6 * u))
+		shine:Show()   -- (from the roll's start: at the line's start a pixel of its clear tail)
 	elseif shine then
 		shine:Hide()
 	end
+end
+
+function Motion.Ease(u)
+	local q = 1 - u
+	return 1 - q * q * q
 end
 
 -- the number landed: the line's own text back, the rolling numbers gone
@@ -1101,16 +1120,35 @@ function Motion.Tick(fs, done, fresh)
 	fs.dash:Hide()
 	tick:Show()
 	if fresh and Motion.On() then
+		-- (1.2.0) the glint as it is drawn (made at the line's first fresh tick)
+		if not tick.glint then
+			local glint = fs.block:CreateTexture(nil, "OVERLAY")
+			glint:SetTexture(Motion.GLINT_ART)
+			glint:SetBlendMode("ADD")
+			PaintKey(glint, "selectedTrim", "vertex")
+			tick.glint = glint
+		end
+		tick.glint:ClearAllPoints()
+		tick.glint:SetPoint("CENTER", fs.dash, "CENTER", 0, 0)
+		tick.glint:SetSize(size * Motion.GLINT_K, size * Motion.GLINT_K)
 		Motion.TickStep(tick, 0)
-		MelloUI.Anim:Drive(tick, Motion.TickStep, Motion.ROLL + Motion.TICK, "linear")
+		MelloUI.Anim:Drive(tick, Motion.TickStep, Motion.ROLL + Motion.GLINT, "linear")
+	elseif tick.glint then
+		tick.glint:Hide()
 	end
 end
 
 function Motion.TickStep(tick, u)
-	local p = (u * (Motion.ROLL + Motion.TICK) - Motion.ROLL) / Motion.TICK
+	local t = u * (Motion.ROLL + Motion.GLINT)
+	local p = (t - Motion.ROLL) / Motion.TICK
 	p = p < 0.02 and 0.02 or (p > 1 and 1 or p)
 	Motion.W().Glyph(tick, "check", p)
 	tick:SetWidth(tick.size * p)
+	local glint, g = tick.glint, (t - Motion.ROLL) / Motion.GLINT
+	if glint then
+		glint:SetAlpha(g > 0 and g < 1 and 0.5 * (1 - g) or 0)
+		glint:SetShown(g > 0 and g < 1)
+	end
 end
 
 -- a quest done just now (lastComplete false): its turn-in look waits HOLD
@@ -1140,12 +1178,23 @@ function Motion.Complete(block, fs)
 	end
 	local anim = MelloUI.Anim
 	anim:From(fs, "alpha", 0, Motion.TURNIN, "outQuad")
+	-- (1.2.0) sliding in to its place from TURNIN_DX (its own anchor, as the layout laid it)
+	local okP, p, rel, rp, x, y = pcall(fs.GetPoint, fs, 1)
+	if okP and p and type(x) == "number" and type(y) == "number" then
+		anim:Slide(fs, p, rel, rp, x + Motion.TURNIN_DX, y, -Motion.TURNIN_DX, 0, Motion.TURNIN, "outCubic")
+	end
 	local mark = block.mark
 	if mark and mark:IsShown() then
 		Motion.PopMark(block, mark)
 	end
 	if not block.sweep then
-		block.sweep = Motion.Glow(block, "OVERLAY")
+		-- (1.2.0) a sheen, in the body text's colour, added to the title
+		local sheen = block:CreateTexture(nil, "OVERLAY")
+		sheen:SetTexture(Motion.SHEEN)
+		sheen:SetBlendMode("ADD")
+		PaintKey(sheen, "text", "vertex")
+		sheen:Hide()
+		block.sweep = sheen
 		block.sweepJob = { block = block }
 	end
 	anim:Drive(block.sweepJob, Motion.SweepStep, Motion.SWEEP, "linear", Motion.SweepOver)
@@ -1247,9 +1296,10 @@ function Motion.SweepStep(job, u)
 	local t, h = block.title, TitleSize()
 	local w = math.min(t:GetStringWidth() or 0, t:GetWidth() or 0)
 	local s = block.sweep
-	s:SetSize(Motion.SWEEP_W, h * 1.6)
+	local sw = h * Motion.SHEEN_W
+	s:SetSize(sw, h * Motion.SHEEN_H)
 	s:ClearAllPoints()
-	s:SetPoint("CENTER", t, "TOPLEFT", -Motion.SWEEP_W / 2 + (w + Motion.SWEEP_W) * u, -h / 2)
+	s:SetPoint("CENTER", t, "TOPLEFT", -sw / 2 + (w + sw) * u, -h / 2)
 	s:SetAlpha(0.8 * math.sin(u * math.pi))
 	s:Show()
 end
