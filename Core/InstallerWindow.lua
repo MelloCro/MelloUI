@@ -1262,7 +1262,7 @@ local function BuildReview(page)
 		local tick = row:CreateTexture(nil, "ARTWORK")
 		tick:SetSize(16, 16)
 		tick:SetPoint("RIGHT", row, "RIGHT", -14, 0)
-		tick:SetTexture(TICK)   -- (the set's gold tick, its own colours)
+		MelloUI.Icons.Set(tick, TICK, 16)   -- (the set's gold tick, its own colours: its copy for its size)
 		row.tick = tick
 		row.label:SetPoint("RIGHT", tick, "LEFT", -10, 0)
 		page.rows[i] = row

@@ -204,7 +204,7 @@ local function Dot(layer, W, H, x, y, fill)
 	local dot = O.dots[n]
 	if not dot then
 		dot = layer:CreateTexture(nil, "ARTWORK", nil, 1)
-		dot:SetTexture(MAP_DOT)
+		MelloUI.Icons.Set(dot, MAP_DOT)   -- (2026-10-21: the copy for its size, fitted as O.Zoom sizes it)
 		O.dots[n] = dot
 	end
 	dot:SetVertexColor(fill[1], fill[2], fill[3], 1)
@@ -237,6 +237,7 @@ function O.Zoom(map)
 			local size = DOT_PX / s
 			for i = 1, O.ndots do
 				O.dots[i]:SetSize(size, size)
+				MelloUI.Icons.Fit(O.dots[i], size)
 			end
 		end
 		if O.painter and not (O.scale and math.abs(s - O.scale) < O.scale * 0.1) then

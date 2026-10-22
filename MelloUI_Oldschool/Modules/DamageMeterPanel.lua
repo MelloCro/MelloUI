@@ -88,8 +88,7 @@ local function Medallion(entry)
 	end
 	local path = MelloUI.ClassIconPath and MelloUI:ClassIconPath(classFile)
 	if path then
-		icon:SetTexture(path)
-		icon:SetTexCoord(0, 1, 0, 1)
+		MelloUI.Icons.Set(icon, path)   -- (2026-10-21: the medallion's copy for its size)
 		medallionOf[entry] = classFile
 	end
 end

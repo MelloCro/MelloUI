@@ -935,11 +935,11 @@ function Look.Count(fs, disc, face, size)
 	e.shown = e.shown or false
 	local W = MelloUI.Widgets
 	if type(W) == "table" and W.IconPath and not e.edge then
-		disc:SetTexture(W.IconPath("badge_disc"))
+		MelloUI.Icons.Set(disc, "badge_disc")   -- (2026-10-21: the copies for their size, MelloUI.Icons)
 		local layer, sub = disc:GetDrawLayer()
 		local edge = disc:GetParent():CreateTexture(nil, layer, nil, math.min((sub or 0) + 1, 7))
-		edge:SetTexture(W.IconPath("badge_edge"))
 		edge:SetAllPoints(disc)
+		MelloUI.Icons.Set(edge, "badge_edge")
 		Look.Paint(edge, "trim", "vertex")
 		Look.Hide(edge)
 		e.edge = edge
@@ -1025,8 +1025,7 @@ local function ApplyClassIcon(tex, painted)
 	end
 	local coords = _G.CLASS_ICON_TCOORDS and e.class and _G.CLASS_ICON_TCOORDS[e.class]
 	if painted or not coords then
-		tex:SetTexture(e.medallion or "Interface\\Icons\\INV_Misc_QuestionMark")
-		tex:SetTexCoord(0, 1, 0, 1)
+		MelloUI.Icons.Set(tex, e.medallion or "Interface\\Icons\\INV_Misc_QuestionMark")   -- (its copy for its size)
 		return
 	end
 	local _, file = Look.Art("classCircles")

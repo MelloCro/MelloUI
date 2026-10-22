@@ -911,9 +911,9 @@ local function Fill(row, e, align, scale)
 	if glyph then
 		local W = MelloUI.Widgets
 		if e.glyph then
-			W.Icon(glyph, e.glyph)
 			local g = math.floor(TextSize() * T.glyph + 0.5)
 			glyph:SetSize(g, g)
+			W.Icon(glyph, e.glyph, g)
 			-- (the kind's meaning colour, else the look's gold or white as it is
 			-- now: a line lives a few seconds, the mark is never registered for
 			-- a repaint)

@@ -325,8 +325,12 @@ local function ApplyClassPortrait(texture, classFile)
 	end
 	if c.class ~= classFile or c.variant ~= variant then
 		c.class, c.variant = classFile, variant
-		c.tex:SetTexture(path)
-		c.tex:SetTexCoord(0, 1, 0, 1)
+		if square then
+			c.tex:SetTexture(path)   -- (1.2.0: the modern portrait, its copy for the portrait's size already picked)
+			c.tex:SetTexCoord(0, 1, 0, 1)
+		else
+			MelloUI.Icons.Set(c.tex, path)   -- (2026-10-21: the medallion's copy for the portrait's size)
+		end
 		-- (the square portrait cut round; a medallion as it is)
 		if c.round and c.cut ~= (square and true or false) then
 			c.cut = square and true or false

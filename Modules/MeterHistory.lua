@@ -154,9 +154,9 @@ local function FaceOf(class)
 	return path or UNKNOWN_ICON
 end
 
--- a face's picture cut to the medallion inside its own ring
-local function CutFace(icon)
-	icon:SetTexCoord(H.FACE_IN, 1 - H.FACE_IN, H.FACE_IN, 1 - H.FACE_IN)
+-- a face's picture cut to the medallion inside its own ring (its round button's crop: MelloUI.Icons draws it)
+local function CutFace(b)
+	b:SetCrop(H.FACE_IN)
 end
 
 -- a player's name as the window says it: "You" in gold
@@ -457,7 +457,7 @@ local function LedgerRow(i)
 	-- (click-through: W.RoundIcon's SetKit keeps a mouse turned off through
 	-- the kit rim's mouse hooks, in either order)
 	face:EnableMouse(false)
-	CutFace(face.icon)
+	CutFace(face)
 	face:SetPoint("LEFT", row, "LEFT", H.FACE_X, 0)
 	row.face = face
 	-- the texts on one line over the row's middle
@@ -748,7 +748,7 @@ local function BrandFace(sh)
 	if path then
 		win.brandFace = rim
 		rim:SetIcon(path)
-		CutFace(rim.icon)
+		CutFace(rim)
 	end
 end
 

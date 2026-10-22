@@ -244,7 +244,7 @@ local function Lay()
 		if e then
 			r.entry = e
 			if e.icon then
-				r.icon:SetTexture(e.icon)
+				MelloUI.Icons.Set(r.icon, e.icon, T.ICON)   -- (2026-10-21: the copy for its size)
 				r.icon:Show()
 			else
 				r.icon:Hide()

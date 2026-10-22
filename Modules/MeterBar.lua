@@ -197,7 +197,7 @@ local function NewPin(ui, mine)
 	-- (the pointer stays the holder's: its list. W.RoundIcon's SetKit keeps
 	-- a mouse turned off through the kit rim's mouse hooks, in either order)
 	face:EnableMouse(false)
-	face.icon:SetTexCoord(B.ICON_IN, 1 - B.ICON_IN, B.ICON_IN, 1 - B.ICON_IN)
+	face:SetCrop(B.ICON_IN)   -- (its medallion cut inside its own ring; drawn from its copy for its size)
 	face:SetPoint("CENTER", fill or bar, "RIGHT", 0, 0)
 	-- over the rail and your share (the track's StatusBar); yours over the others
 	face:SetFrameLevel(ui.fill:GetFrameLevel() + (mine and 2 or 1))

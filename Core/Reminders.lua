@@ -2199,8 +2199,10 @@ local function Column()
 		if Kit and Kit.Unpaint then
 			Kit:Unpaint(tex, "vertex")
 		end
-		tex:SetTexture(icon)
-		tex:SetTexCoord(0.06, 0.94, 0.06, 0.94)
+		-- (2026-10-21) its copy for its size (MelloUI.Icons): one of MelloUI's own whole, its ring never cut; a game
+		-- icon cropped of its baked edge
+		local c = MelloUI.Icons.Has(icon) and 0 or 0.06
+		MelloUI.Icons.Set(tex, icon, nil, c, 1 - c, c, 1 - c)
 		tex:SetVertexColor(1, 1, 1, 1)
 	end
 

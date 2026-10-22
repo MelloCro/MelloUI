@@ -402,6 +402,7 @@ function Shell:Lay()
 			x, y, point = self.ringX or CORNER_X, self.ringY or CORNER_Y, "TOPLEFT"
 		end
 		crest:SetSize(size, size)
+		MelloUI.Icons.Fit(self.plainEmblem, size)   -- (its emblem's copy for that size; none for the game's art)
 		crest:ClearAllPoints()
 		crest:SetPoint("CENTER", frame, point, x, y)
 		self.crestTop, self.crestLeft = y + size / 2, point == "TOPLEFT" and (size / 2 - x) or 0
@@ -508,10 +509,11 @@ function Shell:BuildModern()
 		rim:SetFrameLevel(frame:GetFrameLevel() + LEVEL_CREST)
 		rim:EnableMouse(false)
 		rim:SetIcon(self.emblemTexture)
-		rim.icon:SetTexCoord(0, 1, 0, 1)   -- (the whole emblem: a round picture, not a spell icon's trimmed square)
+		rim:SetCrop(0)   -- (the whole emblem: a round picture, not a spell icon's trimmed square)
 		local C = self.bagPortrait ~= nil and rawget(_G, "C_Container")
 		if type(C) == "table" and C.SetBagPortraitTexture then
-			-- (ring.bag: the bag's own portrait, as the game's bag window draws it)
+			-- (ring.bag: the bag's own portrait, as the game's bag window draws it; the game's art: no icon of ours)
+			MelloUI.Icons.Release(rim.icon)
 			pcall(C.SetBagPortraitTexture, rim.icon, self.bagPortrait)
 		end
 		rim:SetKit(Kit)
@@ -959,12 +961,13 @@ function Kit:OwnWindow(frame, opts)
 		crest:SetFrameLevel(base + (shell.gameCorner and LEVEL_GAME_PORTRAIT or LEVEL_CREST))
 		crest:EnableMouse(false)
 		local emblem = crest:CreateTexture(nil, "ARTWORK")
-		emblem:SetTexture(shell.emblemTexture)
 		emblem:SetAllPoints(crest)
+		MelloUI.Icons.Set(emblem, shell.emblemTexture, shell.gameCorner and PLAIN_CORNER or shell.ringSize)   -- (2026-10-21: the copy for its size)
 		if shell.gameCorner then
 			-- (a bag's own portrait as the game's bag window draws it, C_Container.SetBagPortraitTexture: ring.bag)
 			local C = rawget(_G, "C_Container")
 			if ring.bag ~= nil and type(C) == "table" and C.SetBagPortraitTexture then
+				MelloUI.Icons.Release(emblem)
 				pcall(C.SetBagPortraitTexture, emblem, ring.bag)
 			end
 			-- (the game's portrait: round, its circle mask where the template has it)

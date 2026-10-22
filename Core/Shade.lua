@@ -1332,10 +1332,10 @@ end
 --       region of tex's parent in tex's layer one sublevel under it, laid
 --       round tex at `size` (the icon's width in tex's units, the caller's:
 --       the shade reads no size; left out, no margin), its alpha the icon's own at the call times the
---       strength, desaturated with it. name not a string: hidden (the icon
---       hidden, or showing art not the set's). Called after the icon's look
---       is set; a call that changes nothing writes nothing (a minimap mark
---       laid every tick)
+--       strength, desaturated with it, turned as it is turned (2026-10-21). name
+--       not a string: hidden (the icon hidden, or showing art not the set's).
+--       Called after the icon's look is set (and after it turns); a call that
+--       changes nothing writes nothing (a minimap mark laid every tick)
 -- Made on first use only: the 'shade' listener comes with the first lift.
 -- The one 'palette' listener repaints them.
 --------------------------------------------------------------------------------
@@ -1453,6 +1453,14 @@ do
 		if alpha ~= lift.alpha or changed then
 			lift.alpha = alpha
 			lift:Show()
+		end
+		-- (2026-10-21) turned as its icon is turned, about the same middle (the World Marker's edge arrow: its shade
+		-- under it, never beside it)
+		local okR, rot = pcall(icon.GetRotation, icon)
+		rot = okR and Num(rot) or 0
+		if rot ~= (lift.rot or 0) then
+			lift.rot = rot
+			tex:SetRotation(rot)
 		end
 		return tex
 	end

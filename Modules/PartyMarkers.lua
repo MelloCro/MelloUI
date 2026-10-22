@@ -229,8 +229,8 @@ local function UpdatePlate(plate)
 	end
 	marker = GetMarker(plate, unitFrame)
 	PlaceMarker(unitFrame, marker)
-	marker.icon:SetTexture(path)
-	marker.icon:SetTexCoord(0, 1, 0, 1)
+	-- (2026-10-21: the medallion's copy for its size; told the size: a nameplate's rects can read secret)
+	MelloUI.Icons.Set(marker.icon, path, tonumber(M.db.size) or 30)
 	local color = role and ROLE_COLORS[role]
 	if color then
 		marker.ring:SetVertexColor(color[1], color[2], color[3], 1)
@@ -429,7 +429,7 @@ do
 		marker:ClearAllPoints()
 		marker:SetPoint("BOTTOM", p.name, "TOP", 0, gap)
 		local path = MelloUI.ClassIconPath and MelloUI:ClassIconPath(S.CLASS)
-		marker.icon:SetTexture(path)
+		MelloUI.Icons.Set(marker.icon, path, size)
 		local ringPad = math.max(2, math.floor(size * 0.08 + 0.5))
 		marker.ring:SetSize(size + ringPad * 2, size + ringPad * 2)
 		marker.ring:ClearAllPoints()
