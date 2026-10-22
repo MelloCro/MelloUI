@@ -25,6 +25,8 @@
 - Personal Display: a heal lights the health it gave with a light at its end, and a glint runs along the bar when you are back at full; a critical blow breaks the health it took into falling shards; a big cost drops off the power bar as a block; a broken shield cracks apart.
 - Personal Display: into a fight the bars open from a gold line; out of it they rest slimmer, their percents hidden. At death they grey and fold, and open again when you are back.
 - The icons' gold rings stay sharp while they pop, strike and shrink (Big Cooldowns, the swing badge).
+- Icons stay smooth and sharp at every size and UI scale: MelloUI's icons, the class and faction medallions and the map's marks are each drawn from a copy made for their size on your screen, picked again when the scale changes.
+- World Marker: its flag never shrinks below a readable size, and the edge arrow's soft shade keeps the arrow's own shape as it turns.
 - Quest Tracker: Progress Motion's light is a soft gold band running under the line as the count rolls; a finished objective's tick glints as it is drawn, a sheen crosses the title of a finished quest and Ready for turn-in slides in.
 - Level Up: the experience bar runs full and bursts, your level on the player frame turns over to the new one inside a ring of light, and the notice shows the level in gold over a gold line, the quests it opened beneath.
 - Combat Text: a critical hit of yours over an enemy punches in bigger with a gold flare and a small shake, then settles.
