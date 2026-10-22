@@ -47,6 +47,7 @@ local M = MelloUI:RegisterModule("DungeonInfo", {
 	flavour = "Every dungeon's bosses and their loot beside the map; star the items you want and a loot roll tells you when one drops.",
 	group = "Quests and travel", navOrder = 4,
 	role = "feature", new = "1.2.0",
+	installer = false,   -- (the Fresh start wizard's Features step is full, both columns at ten: it rides with the Map)
 	enabledByDefault = true,
 	defaults = {
 		doorRow = false,   -- (the user's pick D: off by default, no clutter)

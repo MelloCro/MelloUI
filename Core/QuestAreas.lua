@@ -701,7 +701,7 @@ end
 --------------------------------------------------------------------------------
 
 T.POP, T.TRACE, T.GONE, T.SWELL, T.LIFT, T.RING, T.RING_K, T.TICK, T.HOLD = 0.3, 0.6, 0.5, 0.6, 0.15, 0.6, 1.9, 0.3, 0.3
-T.RING_ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\halo_white"   -- look-ok: a moment's light, both looks
+T.RING_ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\halo_white"   -- onelook-allow: a moment's light, both looks
 
 local function Clamp(v)
 	return v < 0 and 0 or (v > 1 and 1 or v)

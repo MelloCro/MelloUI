@@ -1660,8 +1660,8 @@ Combo.lifted = setmetatable({}, { __mode = "k" })   -- [a plate's UnitFrame] = i
 -- (1.2.0) the motion: the pop's length and growth, the glint's, the spend's (each point a STAGGER after the one past
 -- it), the bar's gold flash; the count last read plain (nil: secret or none); the pieces (made at the first motion)
 Combo.FX = { POP = 0.28, POP_K = 1.6, GLINT = 0.45, SPEND = 0.3, STAGGER = 0.05, DROP = 0.8, WASH = 0.6, WASH_A = 0.45,
-	FLASH = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\glow_white",   -- look-ok: a moment's light, both looks
-	SHEEN = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\sheen",   -- look-ok: a moment's light, both looks
+	FLASH = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\glow_white",   -- onelook-allow: a moment's light, both looks
+	SHEEN = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\sheen",   -- onelook-allow: a moment's light, both looks
 	WHITE = "Interface\\Buttons\\WHITE8X8", last = nil, popAt = {}, spendAt = {}, glintAt = nil, washAt = nil,
 	job = {} }
 

@@ -884,9 +884,9 @@ end
 local Motion = { ROLL = 0.28, LIGHT = 0.6, TICK = 0.25, HOLD = 0.9, SWEEP = 0.55, UNFOLD = 0.3, UNFOLD_RISE = 4, TURNIN = 0.35,
 	TURNIN_DX = -10, LIST_DX = 14, GLIDE = 0.3, FOLD = 0.45, BAND_W = 90, BAND_A = 0.32, BAND_PAD = 4, GLINT = 0.55, GLINT_K = 1.6, SHEEN_W = 0.9, SHEEN_H = 1.8,
 	hold = {}, listY = {}, listPrev = {}, listReady = false, listOpen = nil, folding = {} }
-Motion.SHEEN = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\sheen"   -- look-ok: a moment's light, in both looks
-Motion.BAND = "Interface\\AddOns\\MelloUI\\Media\\Textures\\SoftShade"   -- look-ok: a moment's light, in both looks
-Motion.GLINT_ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\glow_white"   -- look-ok: a moment's light, in both looks
+Motion.SHEEN = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\sheen"   -- onelook-allow: a moment's light, in both looks
+Motion.BAND = "Interface\\AddOns\\MelloUI\\Media\\Textures\\SoftShade"   -- onelook-allow: a moment's light, in both looks
+Motion.GLINT_ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\glow_white"   -- onelook-allow: a moment's light, in both looks
 
 function Motion.On()
 	local anim = MelloUI.Anim
@@ -4315,9 +4315,9 @@ local function Listen()
 	-- new table: the same one (the Kit Colours' Fire) changed no line, as the
 	-- paint registry skips it too. Switched off, the switch-on's rebuild
 	-- draws the palette in use.
-	drawnFrom = MelloUI.Look.Palette()   -- look-ok: the palette as the look shows it (its own table per look)
+	drawnFrom = MelloUI.Look.Palette()   -- onelook-allow: the palette as the look shows it (its own table per look)
 	MelloUI:On("palette", function()
-		local P = MelloUI.Look.Palette()   -- look-ok: as above
+		local P = MelloUI.Look.Palette()   -- onelook-allow: as above
 		if P == drawnFrom then
 			return
 		end

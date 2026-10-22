@@ -1049,10 +1049,14 @@ def file_job(p, out, option, effort):
     upp = p["info"]["upp"]
     if rs and upp:
         upp = upp / rs["scale"]
+    # (1.2.0) a mip chain halves to 1 x 1: an image encoded with a side that is not a power of two (the class
+    # portraits' 96 px copies, STAY_TGA) has none
+    w, h = rs["canvas"] if rs else p["size"]
+    pot = w & (w - 1) == 0 and h & (h - 1) == 0
     return {"src": p["src"], "rel": p["rel"], "info": p["info"], "rs": rs,
             "dst": os.path.join(out, option, p["rel"][:-4].replace("/", os.sep) + ".blp"),
             "content": rs["content"] if rs else p["info"]["content"],
-            "fmt": FMT_OF[p["cls"]], "mips": wants_mips(upp, p["info"]["forced"]), "effort": effort,
+            "fmt": FMT_OF[p["cls"]], "mips": pot and wants_mips(upp, p["info"]["forced"]), "effort": effort,
             "minify": (1 / upp) / TARGET if upp else None}
 
 

@@ -74,7 +74,7 @@ local T = {
 	RING = 0.6,
 	LIFTED = 1.18,
 	MOMENT = 2,
-	RING_ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\halo_white",   -- look-ok: a moment's light, both looks
+	RING_ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\halo_white",   -- onelook-allow: a moment's light, both looks
 }
 Pins.T = T
 
