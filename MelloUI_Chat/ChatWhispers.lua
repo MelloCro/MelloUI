@@ -827,7 +827,7 @@ local function Build()
 	local f = CreateFrame("Frame", "MelloUIWhispers", holder)
 	f:SetHeight(WIN_H)
 	f:EnableMouse(true)
-	W.Panel(f, { on = true, alpha = 0.94 })
+	W.Panel(f, { on = true, alpha = 0.94, rim = "whisper" })   -- (1.2.0: the gold rim, the chat's with it when out)
 	WV.holder, WV.frame = holder, f
 	-- the title, the close cross, the title's hairline
 	local title = f:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
@@ -842,7 +842,7 @@ local function Build()
 	Perf.SetScript(close, "OnClick", function()
 		WV.Close()
 	end)
-	local hair = W.Solid(f, "ARTWORK", "border")
+	local hair = W.Solid(f, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
 	hair:SetHeight(1)
 	hair:SetPoint("TOPLEFT", f, "TOPLEFT", 6, -TITLE_H)
 	hair:SetPoint("TOPRIGHT", f, "TOPRIGHT", -6, -TITLE_H)
@@ -872,7 +872,7 @@ local function Build()
 		WV.LayList()
 	end)
 	WV.listBar = listBar
-	local divider = W.Solid(f, "ARTWORK", "border")
+	local divider = W.Solid(f, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
 	divider:SetWidth(1)
 	divider:SetPoint("TOPLEFT", f, "TOPLEFT", LIST_W + 2, -(TITLE_H + 6))
 	divider:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", LIST_W + 2, 6)
@@ -892,7 +892,7 @@ local function Build()
 	WV.info:SetPoint("RIGHT", head, "RIGHT", -(4 * (BUTTON + 6) + 10), 0)
 	WV.info:SetJustifyH("LEFT")
 	WV.info:SetWordWrap(false)
-	local headLine = W.Solid(f, "ARTWORK", "border")
+	local headLine = W.Solid(f, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
 	headLine:SetHeight(1)
 	headLine:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 6, 0)
 	headLine:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -8, 0)
@@ -1042,6 +1042,14 @@ function WV.Fonts()
 	end
 end
 
+-- (1.2.0) out on the chat's top edge: one gold rim round it and the chat (MelloUI.Rims: snapped windows)
+function WV.DrawerOut()
+	local Rims = rawget(MelloUI, "Rims")
+	if type(Rims) == "table" and Rims.Lay then
+		Rims:Lay()
+	end
+end
+
 -- open (the conversation `key`, else the one open last, else the newest); `answer`: the box out to answer in (the
 -- widget's Reply); false while the minimal chat is off
 function WV.Open(key, answer)
@@ -1065,7 +1073,7 @@ function WV.Open(key, answer)
 	WV.Select(c)
 	if not was then
 		f:Show()
-		MelloUI.Anim:Drawer(job, true, OPEN_TIME)
+		MelloUI.Anim:Drawer(job, true, OPEN_TIME, WV.DrawerOut)
 	end
 	if View.Lit then
 		View.Lit()

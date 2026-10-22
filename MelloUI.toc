@@ -22,6 +22,7 @@ Core\QuestAreas.lua
 Core\Anim.lua
 Core\Widgets.lua
 Core\Shade.lua
+Core\Rims.lua
 Core\Outline.lua
 Core\Backdrop.lua
 Core\GameLook.lua
@@ -54,6 +55,7 @@ Media\CustomTextures.lua
 Media\QuestListData.lua
 Media\PlaceData.lua
 Media\ClassIcons.lua
+Media\ClassPortraits.lua
 Media\KitLayout.lua
 Media\KitSlices.lua
 Media\KitShadows.lua

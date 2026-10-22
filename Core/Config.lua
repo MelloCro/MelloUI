@@ -145,7 +145,7 @@ local CHANGELOG = {
 		"Route: Loading navigation... shows a loading bar, and the roads take about 20 MB less memory; notices show above the world map.",
 		"The Swing Badge, your swing timer on your target's nameplate: it winds up, strikes, flashes gold on crits; it replaces the Swing Timers' bars too.",
 		"New motion: Big Cooldowns, quest progress and the tracker's list, Level Up's XP bar and level, crits, combo points, reminders, the zone's name.",
-		"Personal Display: a gold-framed look with the spell's icon; casts, heals, crits, big costs, shields and fights all play in motion.",
+		"Windows framed in gold, snapped ones sharing one rim; new class portraits on the frames; the Personal Display in gold and in motion.",
 		"Reputation Gain lights the reputation bar and says a new standing in gold; Impact Effects reach your target frame too.",
 		"Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast.",
 		"Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on.",

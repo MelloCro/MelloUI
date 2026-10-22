@@ -480,9 +480,17 @@ function Shell:BuildModern()
 	ground:SetDrawLayer("BACKGROUND", FLAT.GROUND)
 	ground:SetAllPoints(frame)
 	self.ground = self:Plain(ground)
-	self.groundEdges = W.Edges(frame, "border", "BORDER")
+	-- (1.2.0, the user's pick C of gilded_windows_sketch) the edge the windows' gold hairline (the seam where a
+	-- snapped window meets it), the gold rim round the window (MelloUI.Rims: the modern look's, none while the kit
+	-- dresses the window)
+	self.groundEdges = W.HairEdges(frame)
 	for i = 1, #self.groundEdges do
 		self:Plain(self.groundEdges[i])
+	end
+	local Rims = rawget(MelloUI, "Rims")
+	if type(Rims) == "table" and Rims.Add then
+		local shell = self
+		Rims:Add(frame, { shown = function() return not shell.kit end })
 	end
 	local shade = MelloUI.Shade and MelloUI.Shade:Band(frame, FLAT.SHADE)
 	if shade then
@@ -515,7 +523,7 @@ function Shell:BuildModern()
 		local holder = CreateFrame("Frame", nil, frame)
 		holder:SetFrameLevel(frame:GetFrameLevel() + LEVEL_CREST)
 		holder:EnableMouse(false)
-		local line = W.Solid(holder, "ARTWORK", "border", 1)
+		local line = W.Solid(holder, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
 		line:SetHeight(1)
 		self.brandHolder = holder
 		self.brandLine = self:Plain(line)
@@ -694,6 +702,10 @@ function Shell:Switch(on)
 		self.plains[i]:SetShown(not on)
 	end
 	self:ShadeWindow()
+	local Rims = rawget(MelloUI, "Rims")
+	if type(Rims) == "table" and Rims.Lay then
+		Rims:Lay()   -- (its rim: the modern look's only)
+	end
 	for i = 1, #self.onKit do
 		local ok, err = pcall(self.onKit[i], self, on)
 		if not ok then

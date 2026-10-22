@@ -1731,7 +1731,7 @@ local function Build()
 	frame:SetFrameLevel(ChatFrame1:GetFrameLevel() + 5)
 	frame:SetPoint("TOPLEFT", ChatFrame1, "TOPLEFT", -PAD, PAD + 2)
 	frame:SetPoint("BOTTOMRIGHT", ChatFrame1, "BOTTOMRIGHT", PAD, -(ROW_H + PAD))
-	W.Panel(frame, { on = true, alpha = 0.82 })
+	W.Panel(frame, { on = true, alpha = 0.82, rim = "chat" })   -- (1.2.0: the gold rim, MelloUI.Rims)
 	-- its empty parts take the click: nothing reaches the game's hidden chat under it (the user, 2026-10-15: a click
 	-- on the rail "randomly selects somebody from chat for me to whisper him" -- a hidden line's player link)
 	frame:EnableMouse(true)
@@ -1749,7 +1749,7 @@ local function Build()
 		View.PlaceRail()
 	end)
 	View.rail = rail
-	local divider = W.Solid(frame, "ARTWORK", "border")
+	local divider = W.Solid(frame, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
 	divider:SetWidth(1)
 	divider:SetPoint("TOPLEFT", frame, "TOPLEFT", RAIL_W, -8)
 	divider:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", RAIL_W, ROW_H + 4)
@@ -1796,7 +1796,7 @@ local function Build()
 	wt.glow = glow
 	View.whisperTab = wt
 	-- the row's hairline
-	local hair = W.Solid(frame, "ARTWORK", "border")
+	local hair = W.Solid(frame, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
 	hair:SetHeight(1)
 	hair:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, ROW_H)
 	hair:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, ROW_H)

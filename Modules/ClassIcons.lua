@@ -44,7 +44,7 @@ local M = MelloUI:RegisterModule("ClassIcons", {
 	},
 	options = {
 		{ type = "toggle", key = "portraits", name = "Player Portraits",
-		  desc = "Replace player portraits (yourself, target, focus, party) with the player's class medallion. NPC portraits are never touched." },
+		  desc = "Replace player portraits (yourself, target, focus, party) with the player's class portrait: in MelloUI's modern look its own class emblems, in the painted look the class medallions. NPC portraits are never touched." },
 	},
 })
 
@@ -69,20 +69,48 @@ local CLASSES_IN_CLIENT = {
 -- old copy compared v with nil before asking issecretvalue, which a secret
 -- refuses (audit, 2026-09-24).
 local SafeValue = MelloUI.Safe.Value
+local Num = MelloUI.Safe.Number
 
 -- Returns the texture path (no extension) for a class file name (as
 -- select(2, UnitClass(unit)) returns it, e.g. "WARRIOR"), or nil when that
 -- class has no shipped icon. variant "plain" is the medallion without its
 -- diamonds (Tools/make_plain_medallions.py), for the character window's
 -- portrait inside the kit ring.
-function MelloUI:ClassIconPath(classFile, variant)
+-- (1.2.0) variant "portrait": the class's portrait as a unit frame shows it -- in the modern look its own square
+-- portrait (Media/ClassPortraits.lua, the user's pick of 2026-10-22: "new Portrait Icons for the Default Modern UI,
+-- the Oldschool still uses the ones we created for it"), the copy nearest `px` (the portrait's screen px; nil: the
+-- middle one), to be cut round by the caller; in the painted look (its unit frames dressed) the medallion. A second
+-- return: true for the square portrait
+function MelloUI:ClassIconPath(classFile, variant, px)
 	classFile = SafeValue(classFile)
+	if variant == "portrait" then
+		local Kit = MelloUI.Kit
+		local painted = Kit and Kit.IsOn and Kit:IsOn("unitframes")
+		local modern = not painted and MelloUI_ClassPortraits
+		local copies = modern and classFile and modern.classes and modern.classes[classFile]
+		if copies then
+			local sizes = modern.sizes
+			local want = Num(px)
+			local pick = sizes[math.ceil(#sizes / 2)]
+			if want and want > 0 then
+				pick = sizes[#sizes]
+				for i = 1, #sizes do
+					if sizes[i] >= want * 0.98 then
+						pick = sizes[i]
+						break
+					end
+				end
+			end
+			return copies[pick], true
+		end
+		variant = nil
+	end
 	local icons = MelloUI_ClassIcons
 	local path = classFile and icons and icons.classes and icons.classes[classFile] or nil
 	if path and variant then
 		path = path .. "_" .. variant
 	end
-	return path
+	return path, false
 end
 
 --------------------------------------------------------------------------------
@@ -137,10 +165,6 @@ end
 -- [portrait] = { tex, hide, masked, class, variant, alpha, r, g, b, a, desat }:
 -- the cover and what it shows (a side table: nothing written on the game's)
 local covers = setmetatable({}, { __mode = "k" })
-
-local function Num(v)
-	return MelloUI.Safe.Number(v)
-end
 
 -- the game's look of its portrait copied onto the cover (each only when it
 -- changed: these come with every update of the frame)
@@ -240,7 +264,15 @@ local function NewCover(portrait)
 		hide:SetSize(1, 1)
 		hide:SetPoint("BOTTOMRIGHT", portrait, "TOPLEFT", -64, 64)
 	end
-	local c = { tex = tex, hide = hide, masked = false, shown = false }
+	-- (1.2.0) the round cut the modern look's square portraits take, as the game's own portrait has one (CircleMask);
+	-- on the cover only while it shows one (the medallions are round already)
+	local round = nil
+	if parent.CreateMaskTexture and tex.AddMaskTexture then
+		round = parent:CreateMaskTexture()
+		pcall(round.SetAtlas, round, "CircleMask")
+		round:SetAllPoints(tex)
+	end
+	local c = { tex = tex, hide = hide, masked = false, shown = false, round = round, cut = false }
 	covers[portrait] = c
 	hooksecurefunc(portrait, "SetAlpha", OnPortraitAlpha)
 	hooksecurefunc(portrait, "SetVertexColor", OnPortraitColour)
@@ -256,12 +288,29 @@ end
 -- The medallion of classFile on the portrait's cover (made at its first
 -- need), set only when the class or the variant changed. Returns true if it
 -- shows one.
+-- (1.2.0) a portrait's size on the screen (px): its width at its scale, in the screen's pixels; nil while unreadable
+local function ScreenPx(texture)
+	local okW, w = pcall(texture.GetWidth, texture)
+	local okS, s = pcall(texture.GetEffectiveScale, texture)
+	w, s = okW and Num(w), okS and Num(s)
+	local h = GetPhysicalScreenSize and Num((select(2, GetPhysicalScreenSize())))
+	if not (w and s and w > 0) then
+		return nil
+	end
+	return w * s * ((h and h > 0) and h or 768) / 768
+end
+
 local function ApplyClassPortrait(texture, classFile)
 	if not texture then
 		return false
 	end
 	local variant = VariantFor(texture)
-	local path = MelloUI:ClassIconPath(classFile, variant)
+	local path, square = MelloUI:ClassIconPath(classFile, "portrait", ScreenPx(texture))
+	if not square then
+		path = MelloUI:ClassIconPath(classFile, variant)
+	else
+		variant = path   -- (the copy picked: a new size or look sets it again)
+	end
 	local c = covers[texture]
 	if not path then
 		if c and c.class then
@@ -278,6 +327,15 @@ local function ApplyClassPortrait(texture, classFile)
 		c.class, c.variant = classFile, variant
 		c.tex:SetTexture(path)
 		c.tex:SetTexCoord(0, 1, 0, 1)
+		-- (the square portrait cut round; a medallion as it is)
+		if c.round and c.cut ~= (square and true or false) then
+			c.cut = square and true or false
+			if c.cut then
+				c.tex:AddMaskTexture(c.round)
+			else
+				c.tex:RemoveMaskTexture(c.round)
+			end
+		end
 		CopyAlpha(c, texture)
 		CopyColour(c, texture)
 		CopyDesaturated(c, texture)
@@ -341,6 +399,17 @@ function M:RefreshPortraits(textures)
 		end
 	end
 end
+
+-- (1.2.0) every covered portrait again in the look and size it has now (the unit frames' look switched, the UI's
+-- scale): the modern portrait or the medallion, the copy for its size
+local function RecoverAll()
+	for texture, c in pairs(covers) do
+		if c.class then
+			pcall(ApplyClassPortrait, texture, c.class)
+		end
+	end
+end
+M.RecoverAll = RecoverAll
 
 -- (the tests': the cover of a portrait, nil when none)
 function M.CoverOf(texture)
@@ -483,6 +552,11 @@ function M:OnEnable(db)
 	end
 	ClassOf("player")   -- (yours read now, while it reads plainly)
 	InstallHooks()
+	if not M.listening then
+		M.listening = true
+		MelloUI:On("look:unitframes", RecoverAll, "Class Icons")
+		MelloUI:On("scale", RecoverAll, "Class Icons")
+	end
 	-- the unit frames' portraits covered at once: on again after an
 	-- OnDisable, and at login too (the user, 2026-10-09: "i reloaded in game,
 	-- and the portrait changed back to the default one, ticking the option off

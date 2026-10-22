@@ -1058,7 +1058,8 @@ local function LayoutDivider(f, b, groups)
 		Kit:Retile(d.stone)
 	end
 	if panel and not d.hair and MelloUI.Widgets then
-		d.hair = MelloUI.Widgets.Solid(d, "ARTWORK", "border")
+		local W = MelloUI.Widgets
+		d.hair = W.Solid(d, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
 		d.hair:SetHeight(1)
 		d.hair:SetPoint("BOTTOMLEFT", d, "BOTTOMLEFT", 0, 3)
 		d.hair:SetPoint("BOTTOMRIGHT", d, "BOTTOMRIGHT", 0, 3)
@@ -1140,13 +1141,14 @@ local function PanelParts(f)
 	bg:SetFrameLevel(math.max(0, Minimap:GetFrameLevel() - 1))
 	bg:EnableMouse(false)
 	bg:SetAllPoints(f)
-	W.Panel(bg, { on = true, alpha = 0.94 })
+	W.Panel(bg, { on = true, alpha = 0.94, rim = "minimap" })   -- (1.2.0: the gold rim, MelloUI.Rims)
 	Shade.Add(bg, { shape = "shade/square" })
 	p.bg = bg
+	-- (1.2.0) the column's inner lines the windows' gold hairline
 	for i = 1, 4 do
-		p.lines[i] = W.Solid(f, "ARTWORK", "border")
+		p.lines[i] = W.Solid(f, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
 	end
-	p.hair = W.Solid(f, "ARTWORK", "border")
+	p.hair = W.Solid(f, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
 	p.hair:SetHeight(1)
 	f.panelParts = p
 	return p

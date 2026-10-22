@@ -365,7 +365,8 @@ local function PaintPortrait(p, s)
 	local tex = p.portrait.icon
 	local ci = Running("ClassIcons")
 	local medallions = ci and ci.db.portraits and true or false
-	local medallion = medallions and s.class and MelloUI:ClassIconPath(s.class) or nil
+	-- (1.2.0: the class portrait as the unit frame shows it -- the modern look's own, else the medallion)
+	local medallion = medallions and s.class and MelloUI:ClassIconPath(s.class, "portrait") or nil
 	local want = s.you and (medallions and "you, medallion" or "you") or medallion or s.display or NO_PORTRAIT
 	if p.portraitShows == want then
 		return
@@ -2485,7 +2486,7 @@ end
 local function PaintPartyPortrait(f, s)
 	local tex = f.Portrait
 	local ci = Running("ClassIcons")
-	local medallion = ci and ci.db.portraits and s.class and MelloUI:ClassIconPath(s.class) or nil
+	local medallion = ci and ci.db.portraits and s.class and MelloUI:ClassIconPath(s.class, "portrait") or nil
 	local want = medallion or s.display or NO_PORTRAIT
 	if f.portraitShows == want then
 		return

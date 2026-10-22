@@ -616,12 +616,12 @@ end
 -- backdrop: a region each, so the kit look can hide them): { top, bottom,
 -- left, right }. The one copy: the own-window shell's plate uses it too.
 -- `rect`: the region they lie round, when not the frame itself (a check
--- box's box, a tab's plate: regions of the frame)
-local function Edges(frame, key, layer, rect)
+-- box's box, a tab's plate: regions of the frame); `alpha` theirs (1)
+local function Edges(frame, key, layer, rect, alpha)
 	local out = {}
 	for i = 1, 4 do
 		out[i] = frame:CreateTexture(nil, layer or "BORDER")
-		W.Paint(out[i], key, "fill", 1)
+		W.Paint(out[i], key, "fill", alpha or 1)
 	end
 	rect = rect or frame
 	out[1]:SetPoint("TOPLEFT", rect, "TOPLEFT", 0, 0)
@@ -636,6 +636,21 @@ local function Edges(frame, key, layer, rect)
 end
 W.Edges = Edges
 
+-- (1.2.0; the user's pick C of gilded_windows_sketch: "every inner line" of MelloUI's windows gold) THE hairline of
+-- the windows' inner lines -- a panel's edge, a title's rule, a divider, the seam of two snapped windows: the
+-- Personal Display's joint hairline, the palette's trim at HAIR_ALPHA. W.Hairline(region) paints a line in it
+-- (painted again with the palette); W.HairEdges(frame[, layer[, rect]]) four of them round a frame (W.Edges')
+W.HAIR_KEY, W.HAIR_ALPHA = "trim", 0.55
+
+function W.Hairline(region)
+	W.Paint(region, W.HAIR_KEY, "fill", W.HAIR_ALPHA)
+	return region
+end
+
+function W.HairEdges(frame, layer, rect)
+	return Edges(frame, W.HAIR_KEY, layer or "BORDER", rect, W.HAIR_ALPHA)
+end
+
 --------------------------------------------------------------------------------
 -- Panel (0.15.0, the cleaner look the user picked: Background A): THE
 -- content panel of the own windows, in both looks -- a flat `innerPanel`
@@ -647,7 +662,13 @@ W.Edges = Edges
 -- another panel. The kit's list box stays the game windows'.
 --   W.Panel(parent, opts) -> panel   a Frame, sized and placed by the caller
 --     opts: on (true: the look laid on `parent` itself, which is returned --
---           a section that is its own panel), alpha (the fill's, 1)
+--           a section that is its own panel), alpha (the fill's, 1),
+--           rim (1.2.0: a window of its own -- the Quest Tracker, the minimap
+--           column, the chat, the whisper window: the gold rim round it,
+--           MelloUI.Rims; a look area's name: none while the painted look
+--           dresses that area)
+--   (1.2.0) its edge the windows' gold hairline (W.HairEdges: the user's
+--   pick C of gilded_windows_sketch, every inner line gold)
 --   panel.panelFill, panel.panelEdges   (painted by key: a new palette
 --                                       paints them again)
 --------------------------------------------------------------------------------
@@ -658,7 +679,7 @@ local function PanelLook(frame, alpha)
 	local fill = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
 	fill:SetAllPoints(frame)
 	W.Paint(fill, "innerPanel", "fill", alpha or 1)
-	return fill, Edges(frame, "border", "BORDER")
+	return fill, W.HairEdges(frame)
 end
 
 function W.Panel(parent, opts)
@@ -669,6 +690,10 @@ function W.Panel(parent, opts)
 		alpha = 1
 	end
 	panel.panelFill, panel.panelEdges = PanelLook(panel, alpha)
+	local Rims = opts.rim and rawget(MelloUI, "Rims")
+	if type(Rims) == "table" and Rims.Add then
+		Rims:Add(panel, { area = type(opts.rim) == "string" and opts.rim or nil })
+	end
 	return panel
 end
 
