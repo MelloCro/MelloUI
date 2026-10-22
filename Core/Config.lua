@@ -6552,7 +6552,7 @@ local function TopBar()
 	for i, l in ipairs(Lang.LIST) do
 		values[i] = { value = l.code, label = l.name, own = true }
 	end
-	local LANG = { skin = shell, default = Lang.TEXT.label, tooltip = Lang.TEXT.tip, new = "1.1.0" }
+	local LANG = { skin = shell, default = Lang.TEXT.label, tooltip = Lang.TEXT.tip }
 	local language
 	language = W.Dropdown(bar, 118, function()
 		return Lang:Want()
