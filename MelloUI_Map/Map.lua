@@ -181,6 +181,14 @@ local function PinTip(pin)
 	end
 	local old = win.tipPin
 	win.tipPin = pin
+	-- (1.2.0) the pin under the cursor lifts, the one left sets down; an objective's mark lights its area
+	if old then
+		win.pins:Raise(old, false)
+	end
+	if pin then
+		win.pins:Raise(pin, true)
+	end
+	Objectives.Hover(pin)
 	if old and old.spec.leave then
 		old.spec.leave(old, PinAnchor(old))
 	end
@@ -696,6 +704,7 @@ local function Build()
 	win.pins = pins
 	canvas.onView = function()
 		pins:Lay()
+		Objectives.View()   -- (1.2.0: the quest areas' edge width and the ones in view)
 		Layers.Route()
 		Layers.Labels()
 		Log.ViewChanged()   -- (the Quest List's tab: its Current zone the zone under the view)

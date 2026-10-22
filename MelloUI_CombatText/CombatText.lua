@@ -1018,6 +1018,9 @@ local function LineHidden(line)
 	end
 	MelloUI.Anim:Stop(line)
 	MelloUI.Anim:StopMirror(line)
+	if line.flare then
+		line.flare:Hide()   -- (a crit's flare never outlives its line: DEALT.punch)
+	end
 	local spares = line.spares or pool
 	spares[#spares + 1] = line
 end
@@ -1171,8 +1174,11 @@ end
 -- crit punches in: its number bigger and settling (the engine's text scale: the line's anchoring on a plate cannot be
 -- read, so the line itself is never scaled), a gold flare behind it and a small shake of the number inside its line
 -- (centred lines only), over DEALT.punch.time (Anim:Drive; Reduce Motion: none of it). The flare made with a line's
--- first crit, kept with the line
-DEALT.punch = { time = 0.45, grow = 0.6, settle = 0.16, shake = 0.18 }
+-- first crit, kept with the line, and SHOWN ONLY WHILE ITS PUNCH RUNS (the user's video, 2026-10-22: a crit's flare lit
+-- again after its punch and stayed while the number faded): hidden at the punch's last step, at its end however the
+-- drive ended (PunchDone), when the line is put away (LineHidden) and when a spare is taken. A crit fades in at once
+-- (punch.fadeIn): the number's own fade had hidden its punch
+DEALT.punch = { time = 0.45, grow = 0.6, settle = 0.16, shake = 0.18, fadeIn = 0.02 }
 
 function DEALT.PunchStep(line, share)
 	local P, value, flare = DEALT.punch, line.value, line.flare
@@ -1196,10 +1202,21 @@ function DEALT.PunchStep(line, share)
 		value:SetPoint("CENTER", line, "CENTER", dx, dy)
 	end
 	if flare then
-		local w = 0.6 + 0.6 * share
-		flare:SetSize(line.flareW * w, line.flareH)
-		flare:SetAlpha(a)
+		if share >= 1 then
+			flare:SetAlpha(0)
+			flare:Hide()
+		else
+			local w = 0.6 + 0.6 * share
+			flare:SetSize(line.flareW * w, line.flareH)
+			flare:SetAlpha(a)
+			flare:Show()
+		end
 	end
+end
+
+-- the punch over, however its drive ended: at rest, the flare away
+function DEALT.PunchDone(line)
+	DEALT.PunchStep(line, 1)
 end
 
 function DEALT.Punch(line, size, align)
@@ -1219,7 +1236,7 @@ function DEALT.Punch(line, size, align)
 	flare:SetPoint("CENTER", line.value, "CENTER", 0, 0)
 	line.flareW, line.flareH = size * 4.5, size * 1.2
 	line.punchCenter = align == "CENTER"
-	MelloUI.Anim:Drive(line, DEALT.PunchStep, DEALT.punch.time, "linear")
+	MelloUI.Anim:Drive(line, DEALT.PunchStep, DEALT.punch.time, "linear", DEALT.PunchDone)
 end
 
 local function DealtLine(unit, e, hold)
@@ -1288,8 +1305,10 @@ local function DealtLine(unit, e, hold)
 	holder:Show()
 	local Anim = MelloUI.Anim
 	local held = hold or (e.crit and T.critHold or T.hold)
-	local life = T.fadeIn + held + T.fadeOut
-	Anim:Mirror(line, T.fadeIn, held, T.fadeOut)
+	-- (a crit in at once, its punch the way in: DEALT.punch)
+	local fadeIn = (e.crit and not Anim.reduceMotion) and DEALT.punch.fadeIn or T.fadeIn
+	local life = fadeIn + held + T.fadeOut
+	Anim:Mirror(line, fadeIn, held, T.fadeOut)
 	if look == "rise" then
 		Anim:Slide(line, point, plate, rel, x, y, 0, DEALT.rise, life, "outCubic")
 	elseif look == "side" then

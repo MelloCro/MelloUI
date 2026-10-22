@@ -15,6 +15,12 @@
 --     plate's anchoring is secret, the slide sets the anchor and reads none);
 --   * Cast Warning: the enemy's cast bar glows hotter towards its end and
 --     shatters when the cast is interrupted.
+-- (1.2.0, animations round 4; the user 2026-10-22, "all of them" to BuildData/output/animation_previews/
+-- round4_anims.html) On Your Target Frame: the target frame's health bar answers the same way -- the flash, the chunk,
+-- the crit glow, the kill flash (the words and the cast warning stay the plate's). The target frame is the game's
+-- protected unit frame: our pieces for it are UIParent's, anchored to its bar in its strata above it (FX.Make's
+-- `free`), so nothing is parented onto it; its bar found anew on each target (TargetFrame's content), made at its
+-- first need.
 -- From the page, Execute Shine and Debuff Pop were left out:
 -- UnitHealthPercent is SecretReturns (the crossing cannot be seen), and the
 -- aura data is hidden in a fight, its buttons the game's restricted ones.
@@ -47,6 +53,7 @@ local M = MelloUI:RegisterModule("PlateImpact", {
 		kill = true,
 		evade = true,
 		cast = true,
+		targetFrame = true,
 	},
 	options = {
 		{ type = "toggle", key = "flash", name = "Hit Flash",
@@ -61,13 +68,17 @@ local M = MelloUI:RegisterModule("PlateImpact", {
 		  desc = "When your target dodges, parries or is missed, the word flicks off the side of its plate." },
 		{ type = "toggle", key = "cast", name = "Cast Warning",
 		  desc = "Your target's cast bar glows hotter as its cast nears the end, and shatters when the cast is interrupted." },
+		-- (1.2.0, animations round 4; the user, 2026-10-22: "all of them" to the round 4 previews)
+		{ type = "toggle", key = "targetFrame", name = "On Your Target Frame", new = "1.2.0",
+		  desc = "Your target frame's health bar answers the hits too: the flash, the part a hit took draining away, the gold glow of a critical hit and the killing blow's flash, as on your target's nameplate." },
 	},
 })
 
 -- (one table: few top-level locals)
 local FX = {
-	rec = setmetatable({}, { __mode = "k" }),   -- [unit frame] = our pieces on its plate
+	rec = setmetatable({}, { __mode = "k" }),   -- [unit frame] = our pieces on its plate (and the target frame's)
 	uf = nil,            -- the target's plate's unit frame
+	frame = nil,         -- (1.2.0) the target frame while On Your Target Frame has it (its pieces in rec[TargetFrame])
 	dead = false,        -- the target's killing blow seen (once a life)
 	drainAt = nil,       -- the chunk's pending drain (GetTime), one at a time
 	WHITE = "Interface\\Buttons\\WHITE8X8",
@@ -148,7 +159,24 @@ end
 -- the plates recycle): over the bar a frame with the flash (on the fill) and
 -- the crit glow (a soft band round the bar); the ghost bar in a clip from the
 -- fill's right edge to the bar's; the words; on the cast bar its glow.
-function FX.Make(uf, bar)
+-- (1.2.0) the fill's own picture: its atlas (the game's bar shape -- the target frame's has clear rows top and bottom,
+-- seen in wowsim 2026-10-22), else its file, else the white one -> the asset, and whether it is an atlas. The chunk and
+-- the flash take its shape
+function FX.FillLook(fill)
+	local okA, atlas = pcall(fill.GetAtlas, fill)
+	if okA and not Secret(atlas) and type(atlas) == "string" and atlas ~= "" then
+		return atlas, true
+	end
+	local ok, file = pcall(fill.GetTexture, fill)
+	if ok and not Secret(file) and (type(file) == "string" or type(file) == "number") then
+		return file, false
+	end
+	return FX.WHITE, false
+end
+
+-- (1.2.0) `free`: the pieces UIParent's, anchored to the bar in its strata (the target frame: protected, nothing
+-- parented onto it)
+function FX.Make(uf, bar, free)
 	local r = FX.rec[uf]
 	if r then
 		return r
@@ -159,18 +187,33 @@ function FX.Make(uf, bar)
 	end
 	r = {}
 	local level = bar:GetFrameLevel() or 1
+	local host = free and UIParent or bar
+	local strata = free and bar:GetFrameStrata() or nil
 	-- the ghost: a full bar of ours behind a clip that starts where the fill ends
-	local clip = CreateFrame("Frame", nil, bar)
+	local clip = CreateFrame("Frame", nil, host)
+	if strata then
+		clip:SetFrameStrata(strata)
+	end
 	clip:SetClipsChildren(true)
 	clip:SetPoint("TOPLEFT", fill, "TOPRIGHT", 0, 0)
 	clip:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
 	clip:SetFrameLevel(level + 2)
 	local ghost = CreateFrame("StatusBar", nil, clip)
 	ghost:SetAllPoints(bar)
-	ghost:SetStatusBarTexture(FX.WHITE)
+	local file, isAtlas = FX.FillLook(fill)
+	ghost:SetStatusBarTexture(file)
+	-- (its own colours out: the chunk and the flash in the palette's, the bar's shape kept)
+	local okG, gtex = pcall(ghost.GetStatusBarTexture, ghost)
+	if okG and type(gtex) == "table" and gtex.SetDesaturated then
+		gtex:SetDesaturated(true)
+		gtex:SetBlendMode("ADD")   -- (added to the empty bar under it: pale, as the white chunk was)
+	end
 	r.clip, r.ghost = clip, ghost
 	-- the flash and the glow
-	local top = CreateFrame("Frame", nil, bar)
+	local top = CreateFrame("Frame", nil, host)
+	if strata then
+		top:SetFrameStrata(strata)
+	end
 	top:SetAllPoints(bar)
 	top:SetFrameLevel(level + 4)
 	local flashHost = CreateFrame("Frame", nil, top)
@@ -178,12 +221,20 @@ function FX.Make(uf, bar)
 	flashHost:SetAlpha(0)
 	local flash = flashHost:CreateTexture(nil, "OVERLAY")
 	flash:SetAllPoints(flashHost)
-	flash:SetTexture(FX.WHITE)
+	if isAtlas then
+		flash:SetAtlas(file)
+	else
+		flash:SetTexture(file)
+	end
+	flash:SetDesaturated(true)
 	flash:SetBlendMode("ADD")
 	r.top, r.flashHost, r.flash = top, flashHost, flash
 	-- (the glow under the bar, so only its halo shows round it: a band has a
 	-- solid middle -- seen in the simulator, 2026-10-18, gold over the bar)
-	local glowHost = CreateFrame("Frame", nil, bar:GetParent() or bar)
+	local glowHost = CreateFrame("Frame", nil, free and UIParent or (bar:GetParent() or bar))
+	if strata then
+		glowHost:SetFrameStrata(strata)
+	end
 	glowHost:SetAllPoints(bar)
 	glowHost:SetFrameLevel(math.max(0, level - 1))
 	glowHost:SetAlpha(0)
@@ -208,8 +259,8 @@ function FX.Make(uf, bar)
 		r.words[i] = w
 	end
 	-- the cast bar's glow and its shards (the shards on the plate: the cast
-	-- bar hides as its cast ends)
-	local cast = uf.castBar
+	-- bar hides as its cast ends; a plate's only)
+	local cast = not free and uf.castBar
 	if type(cast) == "table" and cast.CreateTexture then
 		-- (under the cast bar too: its halo round it; let down by the cast's end events)
 		local castGlow = CreateFrame("Frame", nil, cast:GetParent() or uf)
@@ -311,9 +362,51 @@ local function Rec()
 	return FX.uf and FX.rec[FX.uf] or nil
 end
 
--- a hit: the flash, a crit's glow, the drain timed
-function FX.Hit(crit)
-	local r = Rec()
+-- (1.2.0) the target frame's pieces while On Your Target Frame has it
+local function FrameRec()
+	return FX.frame and FX.rec[FX.frame] or nil
+end
+
+-- (1.2.0) the target frame and its health bar while there is a target (nil: none, the option off)
+function FX.TargetFrame()
+	local tf = rawget(_G, "TargetFrame")
+	local content = type(tf) == "table" and tf.TargetFrameContent
+	local main = type(content) == "table" and content.TargetFrameContentMain
+	local bars = type(main) == "table" and main.HealthBarsContainer
+	local bar = type(bars) == "table" and bars.HealthBar
+	if type(bar) ~= "table" or not bar.GetStatusBarTexture then
+		return nil
+	end
+	local okE, exists = pcall(UnitExists, "target")
+	if not okE or Secret(exists) or not exists then
+		return nil
+	end
+	return tf, bar
+end
+
+-- (1.2.0) the target frame taken on with a new target (or let go)
+function FX.AttachFrame()
+	FX.Calm(FrameRec())
+	FX.frame = nil
+	if not On("targetFrame") then
+		return
+	end
+	local tf, bar = FX.TargetFrame()
+	if not tf then
+		return
+	end
+	local r = FX.Make(tf, bar, true)
+	if not r then
+		return
+	end
+	FX.frame = tf
+	FX.Paint(r)
+	r.clip:SetShown(On("chunk"))
+	FX.Ghost(r, false)
+end
+
+-- a hit on one bar's pieces: the flash, a crit's glow
+local function HitOn(r, crit)
 	if not r then
 		return
 	end
@@ -326,9 +419,15 @@ function FX.Hit(crit)
 	end
 end
 
+-- a hit: on the plate and the target frame
+function FX.Hit(crit)
+	HitOn(Rec(), crit)
+	HitOn(FrameRec(), crit)
+end
+
 -- the drain: due DRAIN after the last health change, one driver (no timer made per hit)
 function FX.Drain()
-	if not (On("chunk") and Rec()) then
+	if not (On("chunk") and (Rec() or FrameRec())) then
 		return
 	end
 	FX.drainAt = GetTime() + FX.DRAIN
@@ -339,6 +438,7 @@ function FX.OnUpdate(self)
 	if FX.drainAt and GetTime() >= FX.drainAt then
 		FX.drainAt = nil
 		FX.Ghost(Rec(), true)
+		FX.Ghost(FrameRec(), true)
 	end
 	if not FX.drainAt then
 		self:SetScript("OnUpdate", nil)
@@ -370,7 +470,7 @@ function FX.Word(action)
 end
 
 -- the killing blow: the bar flashes out where the plate stood (a frame of
--- UIParent's, anchored to the bar: it outlives the plate a moment)
+-- UIParent's, anchored to the bar: it outlives the plate a moment); (1.2.0) the target frame's bar too, its own
 function FX.Kill()
 	if FX.dead or not On("kill") then
 		return
@@ -381,10 +481,27 @@ function FX.Kill()
 		local bars = uf.HealthBarsContainer
 		bar = type(bars) == "table" and bars.healthBar or nil
 	end
+	local fr = FrameRec()
+	if fr then
+		local _, fbar = FX.TargetFrame()
+		if fbar then
+			FX.KillOn(fbar, "killFrameTF")
+		end
+		FX.Calm(fr)
+	end
 	if not bar then
 		return
 	end
-	local k = FX.killFrame
+	FX.KillOn(bar, "killFrame")
+	local r = Rec()
+	if r then
+		FX.Calm(r)
+	end
+end
+
+-- a bar's kill flash on its own frame of ours (`slot`: which one, made at its first need)
+function FX.KillOn(bar, slot)
+	local k = FX[slot]
 	if not k then
 		k = CreateFrame("Frame", nil, UIParent)
 		k:SetFrameStrata("MEDIUM")
@@ -400,17 +517,17 @@ function FX.Kill()
 			k.band:SetShown(true)
 		end
 		k:Hide()
-		FX.killFrame = k
+		FX[slot] = k
 	end
 	k:ClearAllPoints()
 	if not pcall(k.SetAllPoints, k, bar) then
 		return
 	end
-	k.tex:SetVertexColor(Palette("text"))
-	local r = Rec()
-	if r then
-		FX.Calm(r)
+	local okS, strata = pcall(bar.GetFrameStrata, bar)
+	if okS and type(strata) == "string" and not Secret(strata) then
+		k:SetFrameStrata(strata)
 	end
+	k.tex:SetVertexColor(Palette("text"))
 	k:Show()
 	Fade(k, 1, 0, FX.KILL, HideFrame)
 end
@@ -480,6 +597,7 @@ local UNIT_EVENTS = { "UNIT_COMBAT", "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_SPEL
 function FX.OnEvent(_, event, unit, a1, a2, a3)
 	if event == "PLAYER_TARGET_CHANGED" then
 		FX.Attach()
+		FX.AttachFrame()
 		return
 	end
 	if event == "NAME_PLATE_UNIT_ADDED" or event == "NAME_PLATE_UNIT_REMOVED" then
@@ -499,7 +617,7 @@ function FX.OnEvent(_, event, unit, a1, a2, a3)
 		end
 		return
 	end
-	if not FX.uf then
+	if not (FX.uf or FX.frame) then
 		return
 	end
 	if event == "UNIT_COMBAT" then
@@ -523,6 +641,7 @@ function FX.OnEvent(_, event, unit, a1, a2, a3)
 		end
 	elseif event == "UNIT_MAXHEALTH" then
 		FX.Ghost(Rec(), false)
+		FX.Ghost(FrameRec(), false)
 	elseif event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START" then
 		FX.CastNow()
 	elseif event == "UNIT_SPELLCAST_INTERRUPTED" then
@@ -551,6 +670,7 @@ function M:OnEnable(db)
 		pcall(f.RegisterUnitEvent, f, event, "target")
 	end
 	FX.Attach()
+	FX.AttachFrame()
 end
 
 function M:OnDisable()
@@ -560,11 +680,21 @@ function M:OnDisable()
 		f:SetScript("OnUpdate", nil)
 	end
 	FX.Calm(Rec())
-	FX.uf, FX.drainAt = nil, nil
+	FX.Calm(FrameRec())
+	FX.uf, FX.frame, FX.drainAt = nil, nil, nil
 end
 
 function M:OnSettingChanged(key, _, db)
 	self.db = db
+	if key == "targetFrame" then
+		FX.AttachFrame()
+		return
+	end
+	local fr = FrameRec()
+	if fr and key == "chunk" then
+		fr.clip:SetShown(On("chunk"))
+		FX.Ghost(fr, false)
+	end
 	local r = Rec()
 	if not r then
 		return

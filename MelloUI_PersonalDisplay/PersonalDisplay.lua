@@ -97,6 +97,34 @@ local T = {
 	wordX = 4, wordY = 2, wordDX = 22, wordDY = 8, word = 0.85,
 	lineH = 3, locRim = 0.8, locFade = 0.15, locGrace = 0.2,
 	restDrop = 5, settleDelay = 0.3, settleIn = 0.34, settleOut = 0.7,
+	-- (1.2.0, Gilded: the user's pick A of prd_looks) the gold rim's rail past every fill; health to power, fill to fill,
+	-- and the trim's hairline between them; the cast's spell icon, a share of the cast fill's depth; the soft shade
+	-- under the rims (its strength, its feather)
+	rim = 2.7, joint = 3, hair = 1, hairAlpha = 0.55, castIcon = 1.7, shade = 0.5, shadeFeather = 4,
+	-- (1.2.0, the ten motions: the user's "All of them" to prd_motion2, seen in look A) the cast bar opening from its
+	-- middle (from this wide), the light on its head (its glow, its core); a cast landed: the flash, the light off its
+	-- end (how far, how long), the fold (when, how long, to this deep); cut: the jolt (how long, how far), the drop
+	-- (when, how long, how far); pushed back: the old fill held, then faded, the red at the head
+	unfold = 0.2, unfoldFrom = 12, head = 12, headCore = 5,
+	flash = 0.35, landRun = 30, landStreak = 26, landTip = 10, land = 0.4, foldAt = 0.22, fold = 0.2, foldTo = 2,
+	jolt = 0.3, joltX = 3, dropAt = 0.45, drop = 0.35, dropY = 6,
+	pushHold = 0.24, pushFade = 0.46, castLate = 0.4,
+	-- a heal's rush over the part it gave (how long, the light's width) and the light at its end; a heal heard this
+	-- recently (UNIT_COMBAT) makes the next health change one; the glint along the bar back at full (its share of
+	-- the bar, the glint's width, how long)
+	rush = 0.38, rushW = 18, rushEnd = 0.35, rushGlow = 16, healRecent = 0.4,
+	full = 0.995, glintW = 14, glint = 0.55,
+	-- a heavy blow's shards: how long they fall, how far down at the end, how far apart sideways
+	shards = 0.75, shardFall = 40, shardSpread = 9,
+	-- a big spend (a plain share of the bar at least): the block dropped, how far, how long
+	spendShare = 0.15, spendDrop = 6, spendTime = 0.45,
+	-- into a fight: the gold line (grown, held, faded), the bars opening from their middle; out of it the slim rest
+	-- (the fills' depths) and its percents out
+	openLine = 0.2, openHold = 0.25, openFade = 0.3, open = 0.25, openFrom = 0.02, restHealth = 3, restPower = 2,
+	-- death: the fills drained, greyed, folded (to this deep); back: unfolded, filled with the sweep
+	deathDrain = 0.4, deathGrey = 0.5, deathFold = 0.35, deathAt = 0.8, deathTo = 1.5, back = 0.3, backFill = 0.6,
+	-- (the shield crack) its shards: how many, how long, how far out
+	crackN = 6, crack = 0.7, crackOut = 22,
 }
 local TEXT = {
 	bars = "Personal Display",
@@ -108,6 +136,7 @@ local TEXT = {
 	failed = "refused (%s)",
 	-- (Motion) the words where the game's own strings are missing
 	stunned = "Stunned",
+	interrupted = "Interrupted", castFailed = "Failed",   -- (1.2.0, Cast Motion: a cut cast's word)
 	words = { DODGE = "Dodge", PARRY = "Parry", BLOCK = "Block", MISS = "Miss" },
 }
 -- Preview's made-up shield (plain amounts) and casts, on the solo scene's beats (Core/Preview.lua: pull, hit 1..12,
@@ -127,7 +156,7 @@ local SAMPLE = {
 	hits = { [1] = 470, [2] = 340, [3] = 230, [4] = 150, [5] = 70, [6] = 0, [10] = 260 },
 	again = 9, againAmount = 420,
 	health = 100, hurt = 4,              -- the health falling this many % a hit
-	casts = { pull = { "Power Word: Shield", 1.2 }, [7] = { "Flash Heal", 1.5 } },
+	casts = { pull = { "Power Word: Shield", 1.2, 17 }, [7] = { "Flash Heal", 1.5, 2061 } },   -- (name, seconds, spell)
 	swing = 0.9,                         -- the main hand's swing (the scene's hit spacing), the off hand's twice it
 	-- (the swing badge) your blows' outcomes as the game would report them: a critical one, a parry
 	outcomes = { [4] = { "WOUND", "CRITICAL" }, [9] = { "PARRY" } },
@@ -159,6 +188,8 @@ local S = {
 }
 local Shield = {}
 local Motion = {}   -- (0.25.0: the bars answering the fight; its section after the hop)
+local Gilded = {}   -- (1.2.0: the modern look's gold rims; its section after the bars' look)
+local CastFX = {}   -- (1.2.0, Cast Motion: the cast bar's moments; in the cast bar's section)
 
 local function On()
 	return M and M.isEnabled and true or false
@@ -258,10 +289,10 @@ local function Fit(b, h)
 end
 
 -- (one look stage I, step 4) the bar without the painted engine (MelloUI_Oldschool not loaded): the Personal
--- Display's own -- a flat fill on a dark track with a thin border, in the palette (the user's pick, relayed 2026-10-19:
--- "like the thin library-border bars") -- in the shape Kit:Bar and Kit:VBar hand back (the fill, the trough, the
--- insets, the arms, SetBarLook / SetBarScale), dressed as "none" (Dress.Value): its own 1 px edges are its reach. The
--- edges on the strip, the track on the fill: over and under the Motion layers as the bracket's art and trough are
+-- Display's own -- a flat fill on a dark track, in the palette -- in the shape Kit:Bar and Kit:VBar hand back (the
+-- fill, the trough, the insets, the arms, SetBarLook / SetBarScale), dressed as "gilded" (Dress.Value; 1.2.0, the
+-- user's pick A of prd_looks: its 1 px border of 0.21.0 went for the gold rims, Gilded). The track on the fill, under
+-- the Motion layers as the bracket's trough is
 local function PlainStrip(parent, vertical)
 	local strip = CreateFrame("Frame", nil, parent)
 	local fill = CreateFrame("Frame", nil, strip)
@@ -271,7 +302,6 @@ local function PlainStrip(parent, vertical)
 	strip.fill = fill
 	strip.trough = W.Solid(fill, "BACKGROUND", "innerPanel", 0.9)
 	strip.trough:SetAllPoints(fill)
-	W.Edges(strip, "border", "BORDER")
 	strip.plain, strip.vertical = true, vertical or nil
 	strip.insets, strip.wl, strip.wr = { 1, 1, 1, 1 }, 1, 1
 	function strip.GetInsets()
@@ -342,7 +372,7 @@ local Dress = {}
 function Dress.Value()
 	local Kit = MelloUI.Kit
 	if not (Kit and Kit.Bar) then
-		return "none"   -- (one look stage I, step 4: the plain strip, its own edges)
+		return "gilded"   -- (the plain strip in MelloUI's gold rims: 1.2.0, Gilded)
 	end
 	return Kit.BorderValue and Kit:BorderValue("personal") or "frame"
 end
@@ -350,7 +380,7 @@ end
 -- a value's bracket look (its own bar pieces; an unknown one the Ornate), nil for a library style or none
 function Dress.Kind(value)
 	local Kit = MelloUI.Kit
-	if value == "none" or (Kit.BorderStyles and Kit.BorderStyles[value]) then
+	if value == "none" or value == "gilded" or (Kit.BorderStyles and Kit.BorderStyles[value]) then
 		return nil
 	end
 	return Kit:Piece("bars/" .. tostring(value) .. "_mid") and value or "frame"
@@ -414,8 +444,9 @@ end
 -- one bar in the look `value` (its fill b.h deep; b.kind the strip's bracket look)
 function Dress.Bar(b, value)
 	local kind = Dress.Kind(value)
-	b.style = (not kind and value ~= "none") and value or nil
-	b.bare = value == "none"
+	b.gilded = value == "gilded"
+	b.style = (not kind and value ~= "none" and not b.gilded) and value or nil
+	b.bare = value == "none" or b.gilded
 	-- (a library style or none: the Ornate strip, put out, keeps the fill where it was; the plain strip: no pieces)
 	b.kind = b.strip.plain and "plain" or kind or "frame"
 	Fit(b, b.h)
@@ -433,8 +464,9 @@ end
 -- the shield column in the look `value` (its upright pieces; a bracket look with none: the Ornate's)
 function Dress.Column(col, value)
 	local kind = Dress.Kind(value)
-	col.style = (not kind and value ~= "none") and value or nil
-	col.bare = value == "none"
+	col.gilded = value == "gilded"
+	col.style = (not kind and value ~= "none" and not col.gilded) and value or nil
+	col.bare = value == "none" or col.gilded
 	col.kind = col.strip.plain and "plain" or kind or "frame"
 	local strip = col.strip
 	if not strip:SetBarLook(col.kind, Dress.Across(col.kind)) then
@@ -459,16 +491,20 @@ function Dress.Apply(ui)
 	if ui.column then
 		Dress.Column(ui.column, value)
 	end
+	if value == "gilded" and ui.column then
+		Gilded.Make(ui)
+	end
 end
 
 -- a bar's painted reach past its fill, over and under
 function Dress.Reach(b)
-	if b.style and b.border then
+	if b.gilded then
+		return Gilded.Reach(b)
+	elseif b.style and b.border then
 		local _, y = b.border:Inset()
 		return y, y
 	elseif b.bare then
-		local edge = b.strip.plain and 1 or 0   -- (the plain strip's own 1 px edges)
-		return edge, edge
+		return 0, 0
 	end
 	local p = MelloUI.Kit:Piece("bars/" .. b.kind .. "_mid")
 	local open, box = p and p.open, p and p.box
@@ -480,12 +516,139 @@ end
 
 -- its painted width past the fill's, both sides together
 function Dress.Side(b)
-	if b.style and b.border then
+	if b.gilded then
+		return 2 * T.rim
+	elseif b.style and b.border then
 		return 2 * b.border:Inset()
 	elseif b.bare then
-		return b.strip.plain and 2 or 0
+		return 0
 	end
 	return b.arms
+end
+
+--------------------------------------------------------------------------------
+-- Gilded (1.2.0; the user, 2026-10-22: "lets try with some custom borders for hp, mana and cast bar", "Dont forget
+-- the shield bar"; their pick "I would go with A" of BuildData/output/animation_previews/prd_looks.html): the modern
+-- look's frames in MelloUI's gold rim (W.RimArt) -- health and power in one, a dark joint between them with a hairline
+-- of trim; the cast bar in its own, the spell's icon in the gold ring (W.RoundIcon) at its left; the shield column in
+-- its own -- a soft shade under each (MelloUI.Shade). Made the first time the look is laid (the build, with no painted
+-- engine), kept; laid again with the stack (LayStack)
+--------------------------------------------------------------------------------
+
+-- a bar's reach past its fill: the rim over and under; health and power one frame, the joint between them
+function Gilded.Reach(b)
+	local ui = S.ui
+	local half = (T.joint - T.gap) / 2
+	if ui and b == ui.health then
+		return T.rim, half
+	elseif ui and b == ui.power then
+		return half, T.rim
+	end
+	return T.rim, T.rim
+end
+
+-- a rim on a frame of its own at `level` (laid by Gilded.Round), its shade on `under` (a frame under the fills)
+function Gilded.Rim(parent, level, under)
+	local f = CreateFrame("Frame", nil, parent)
+	f:SetFrameLevel(level)
+	f.art = f:CreateTexture(nil, "OVERLAY")
+	W.RimArt(f.art, T.rim)
+	f.art:SetAllPoints(f)
+	local Shade = MelloUI.Shade
+	f.shade = Shade and Shade:Band(under, { alpha = T.shade, feather = T.shadeFeather, featherY = T.shadeFeather,
+		sublevel = -8 })
+	return f
+end
+
+-- round `from`'s top left to `to`'s bottom right, the rail past them; its shade under it
+function Gilded.Round(f, from, to)
+	f:ClearAllPoints()
+	f:SetPoint("TOPLEFT", from, "TOPLEFT", -T.rim, T.rim)
+	f:SetPoint("BOTTOMRIGHT", to, "BOTTOMRIGHT", T.rim, -T.rim)
+	if f.shade then
+		f.shade:Anchor(f, -1, -1)
+	end
+end
+
+-- the pieces (once): the block's dark joint under the fills (over the Motion rims), its hairline, its rim over them;
+-- the cast bar's rim and icon on its strip (its fades and folds theirs); the column's rim
+function Gilded.Make(ui)
+	if ui.gild then
+		return
+	end
+	local level = ui.float:GetFrameLevel()
+	local g = {}
+	g.back = CreateFrame("Frame", nil, ui.float)
+	g.back:SetFrameLevel(level + 1)
+	g.joint = W.Solid(g.back, "BACKGROUND", "innerPanel", 1)
+	g.joint:SetDrawLayer("BACKGROUND", -7)
+	g.joint:SetAllPoints(g.back)
+	g.hair = W.Solid(g.back, "BACKGROUND", "trim", T.hairAlpha)
+	g.hair:SetDrawLayer("BACKGROUND", -6)
+	g.block = Gilded.Rim(ui.float, level + 6, g.back)
+	local cast = ui.cast
+	g.cast = Gilded.Rim(cast.strip, cast.bar:GetFrameLevel() + 2, cast.strip)
+	local icon = W.RoundIcon(cast.strip, 16, nil)
+	icon:EnableMouse(false)   -- (the pointer passes through the display to the world)
+	icon:SetFrameLevel(cast.bar:GetFrameLevel() + 3)
+	g.icon = icon
+	local col = ui.column
+	g.column = Gilded.Rim(col.strip, col.bar:GetFrameLevel() + 3, col.strip)
+	ui.gild = g
+end
+
+-- (LayStack) every piece round its fills, shown in the gilded look only
+function Gilded.Lay(ui)
+	local g = ui.gild
+	if not g then
+		return
+	end
+	local on = ui.look == "gilded"
+	for _, f in ipairs({ g.back, g.block, g.cast, g.icon, g.column }) do
+		f:SetShown(on)
+	end
+	if not on then
+		return
+	end
+	local hf, pf = ui.health.strip.fill, ui.power.strip.fill
+	g.back:ClearAllPoints()
+	g.back:SetPoint("TOPLEFT", hf, "TOPLEFT")
+	g.back:SetPoint("BOTTOMRIGHT", pf, "BOTTOMRIGHT")
+	local y = -(T.joint - T.hair) / 2
+	g.hair:ClearAllPoints()
+	g.hair:SetPoint("TOPLEFT", hf, "BOTTOMLEFT", 0, y)
+	g.hair:SetPoint("TOPRIGHT", hf, "BOTTOMRIGHT", 0, y)
+	g.hair:SetHeight(T.hair)
+	Gilded.Round(g.block, hf, pf)
+	local cf = ui.cast.strip.fill
+	Gilded.Round(g.cast, cf, cf)
+	-- (the icon's ring over the rail's left end, its right edge on the fill's)
+	local d = math.floor(T.castIcon * ui.cast.h + 0.5)
+	g.icon.size = d
+	g.icon:SetSize(d, d)
+	g.icon:SetKit(false)
+	g.icon:ClearAllPoints()
+	g.icon:SetPoint("RIGHT", cf, "LEFT", 0, 0)
+	local colFill = ui.column.strip.fill
+	Gilded.Round(g.column, colFill, colFill)
+end
+
+-- the cast's spell icon (plain or secret: the texture takes it), the question mark when there is none
+function Gilded.Icon(texture)
+	local g = S.ui and S.ui.gild
+	if g and not (texture ~= nil and pcall(g.icon.icon.SetTexture, g.icon.icon, texture)) then
+		g.icon.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+	end
+end
+
+-- the rims' colour: a meaning's (a cut cast's red), or the palette's gold again
+function Gilded.Tint(f, key)
+	local c = key and MelloUI.Meaning[key]
+	if c then
+		f.art:SetVertexColor(c[1], c[2], c[3])
+	else
+		W.Paint(f.art, "selectedTrim", "vertex", 1)
+	end
 end
 
 -- the Height changed: each bar at its new depth, in its look (no frame made again)
@@ -538,8 +701,9 @@ local function LayStack(ui)
 			-- the first one's painted top on the float's
 			b.strip:SetPoint("TOP", float, "TOP", 0, top - above)
 		else
-			-- each painted top a gap under the one before's painted foot
-			b.strip:SetPoint("TOP", prev.strip.fill, "BOTTOM", 0, top - (prevBelow + T.gap + above))
+			-- each painted top a gap under the one before's painted foot (kept: the cast bar's moves start there)
+			b.anchorTo, b.anchorY = prev.strip.fill, top - (prevBelow + T.gap + above)
+			b.strip:SetPoint("TOP", b.anchorTo, "BOTTOM", 0, b.anchorY)
 		end
 		if i < #ui.stack then
 			y = y + above + b.h + below + T.gap
@@ -556,10 +720,12 @@ local function LayStack(ui)
 			b.text:SetPoint("LEFT", b.strip.fill, "CENTER", textX, 0)
 		end
 	end
+	Gilded.Lay(ui)
 	if SwingOn() then
 		SB.Lay()
 	end
 	Motion.Lay(ui)
+	Motion.FormApply()   -- (the bars' form again: at rest, folded, opening)
 end
 
 local function Home(kind)
@@ -628,6 +794,7 @@ local function Build()
 	cast.timed = Anim:TimerText(cast.time, cast.bar)
 	cast.strip:SetAlpha(0)
 	cast.strip:Hide()
+	CastFX.Make(ui)
 	LayStack(ui)
 
 	-- the shield column: its own holder beside the character, a float the hop lifts with the bars
@@ -657,8 +824,8 @@ local function Build()
 	strip:SetHeight(T.colH + ins[3] + ins[4])
 	strip:SetPoint("CENTER", colFloat, "CENTER")
 	colHolder:SetSize(strip:GetWidth(), strip:GetHeight())
-	-- (the presence's fill covers the column and its number under it)
-	presence:SetPoint("TOPLEFT", strip, "TOPLEFT", -T.text, T.gap)
+	-- (the presence's fill covers the column, its rim and its number under it)
+	presence:SetPoint("TOPLEFT", strip, "TOPLEFT", -T.text, T.gap + T.rim)
 	presence:SetPoint("BOTTOMRIGHT", strip, "BOTTOMRIGHT", T.text, -(T.text + 6))
 	-- the part lost (pale, under the fill) and the fill, upright
 	local loss = CreateFrame("StatusBar", nil, strip.fill)
@@ -682,6 +849,7 @@ local function Build()
 	colHolder:SetAlpha(0)
 	ui.column = { holder = colHolder, float = colFloat, strip = strip, bar = bar, loss = loss, amount = amount,
 		presence = presence, clip = clip }   -- (clip: the tests' Q6 reads the column's structure from it)
+	Motion.MakeCrack(ui)
 	-- every part in the Personal Resource Border's look, the bars stacked by it
 	Dress.Apply(ui)
 	LayStack(ui)
@@ -736,7 +904,9 @@ local function Health()
 		Motion.Value(ui.health, max, v)
 		-- (its share only where both read plain: the beat as it turns low; else the game's curves, secret)
 		local pm, pv = Num(max), Num(v)
-		Motion.Low(pm and pv and pm > 0 and pv / pm or nil)
+		local share = pm and pv and pm > 0 and pv / pm or nil
+		Motion.Low(share)
+		Motion.HealthMoment(share, S.healAt and GetTime() - S.healAt < T.healRecent)
 	end
 	Percent(ui.health.text, rawget(_G, "UnitHealthPercent"), "player", true, Curve())
 end
@@ -791,40 +961,332 @@ local function FadePoke()
 	end
 end
 
-local function CastIn()
-	local strip = S.ui.cast.strip
+-- (1.2.0, Cast Motion; the user's "All of them" to prd_motion2, seen in look A) the cast bar's moments: a cast begun
+-- opens the bar from its middle, a light on its head running with the fill (anchored to the fill's edge: the engine
+-- moves it, no Lua a frame); one landed flashes, sends a light off the bar's end and folds it; one cut turns red, jolts,
+-- says why and drops; a pushback holds the old fill a moment, the head red. Told by the events (SUCCEEDED before STOP:
+-- landed; INTERRUPTED, FAILED: cut), never by a secret; a cast whose times are secret runs full, no head. The spell's
+-- icon in its ring is never scaled: it moves and fades with the bar (the user: "make sure that the icon borders stay
+-- sharp in all animations"). Off (Cast Motion): the bar fades in and out, as before
+
+function CastFX.On()
+	return Db().castMotion ~= false
+end
+
+-- the pieces (Build, once): the old fill a pushback leaves (under the bar), the head's light, the flash over the fill,
+-- the light off its end, a frame for the end's drive
+function CastFX.Make(ui)
+	local cast = ui.cast
+	local fill = cast.strip.fill
+	local level = cast.bar:GetFrameLevel()
+	local ghost = CreateFrame("StatusBar", nil, fill)
+	ghost:SetAllPoints(fill)
+	ghost:SetFrameLevel(level)
+	ghost:SetStatusBarTexture(W.BarFill("castbars"))
+	W.SoftEnds(ghost)
+	ghost:SetMinMaxValues(0, 1)
+	ghost:SetAlpha(0)
+	cast.bar:SetFrameLevel(level + 1)
+	cast.ghost = ghost
+	local head = CreateFrame("Frame", nil, cast.strip)
+	head:SetFrameLevel(level + 2)
+	head:SetPoint("CENTER", cast.bar:GetStatusBarTexture(), "RIGHT", 0, 0)
+	head:SetSize(T.head, T.head)
+	head:SetAlpha(0)
+	head.glow = Spark(head, "OVERLAY", 5, "glow_white.tga")
+	head.glow:SetAllPoints(head)
+	head.core = Spark(head, "OVERLAY", 6, "glow_white.tga")
+	head.core:SetSize(T.headCore, T.headCore)
+	head.core:SetPoint("CENTER", head, "CENTER", 0, 0)
+	cast.head = head
+	cast.flash = Spark(cast.bar, "OVERLAY", -1, "glow_white.tga")
+	cast.flash:SetTexture(W.BarFill("castbars"))
+	cast.flash:SetAllPoints(fill)
+	cast.flash:SetAlpha(0)
+	local run = CreateFrame("Frame", nil, cast.strip)
+	run:SetFrameLevel(level + 2)
+	run:SetSize(1, 1)
+	run:SetAlpha(0)
+	run.streak = Spark(run, "OVERLAY", 5, "glow_white.tga")
+	run.streak:SetSize(T.landStreak, cast.h / 2)
+	run.streak:SetPoint("RIGHT", run, "CENTER", 0, 0)
+	run.tip = Spark(run, "OVERLAY", 6, "glow_white.tga")
+	run.tip:SetSize(T.landTip, T.landTip)
+	run.tip:SetPoint("CENTER", run, "CENTER", 0, 0)
+	cast.run = run
+	cast.fx = CreateFrame("Frame", nil, cast.strip)
+	CastFX.Paint(ui)
+end
+
+-- (Motion.Paint, the bus's 'palette') their colours: the head and the flash the text's warm white, the light off the
+-- end the gold, the old fill the ghosts' colour
+function CastFX.Paint(ui)
+	local cast = ui and ui.cast
+	if not (cast and cast.head) then
+		return
+	end
+	local r, g, b = Motion.Look("text")
+	cast.head.glow:SetVertexColor(r, g, b)
+	cast.head.core:SetVertexColor(1, 1, 1)
+	cast.flash:SetVertexColor(r, g, b)
+	cast.run.streak:SetVertexColor(Motion.Look("selectedTrim"))
+	cast.run.tip:SetVertexColor(r, g, b)
+	cast.ghost:SetStatusBarColor(r, g, b, T.ghostAlpha)
+end
+
+-- the bar where LayStack hangs it, moved by dx, dy (the jolt, the drop, the fold's middle)
+function CastFX.Place(cast, dx, dy)
+	if cast.anchorTo then
+		cast.strip:SetPoint("TOP", cast.anchorTo, "BOTTOM", dx, cast.anchorY + dy)
+	end
+end
+
+-- everything a moment moved put back: its place, depth and width, its colours, every light out
+function CastFX.Reset(cast)
+	Anim:Stop(cast.strip, "drive")
+	Anim:Stop(cast.fx, "drive")
+	Anim:Stop(cast.ghost, "drive")
+	CastFX.Place(cast, 0, 0)
+	if cast.strip.plain then
+		cast.strip:SetHeight(cast.h + 2)
+	end
+	cast.strip:SetWidth(Width() + cast.arms)
+	Paint(cast.bar, "personalCast")
+	local g = S.ui.gild
+	if g then
+		Gilded.Tint(g.cast, nil)
+	end
+	cast.name:SetAlpha(1)
+	cast.time:SetAlpha(1)
+	cast.flash:SetAlpha(0)
+	cast.run:SetAlpha(0)
+	cast.ghost:SetAlpha(0)
+	CastFX.Head(cast, false)
+end
+
+-- the head's light: on while a timed cast runs (its colour the warm white, or a pushback's red)
+function CastFX.Head(cast, on, key)
+	local head = cast.head
+	if not head then
+		return
+	end
+	head:SetAlpha(on and CastFX.On() and 0.85 or 0)
+	local c = key and MelloUI.Meaning[key]
+	if c then
+		head.glow:SetVertexColor(c[1], c[2], c[3])
+	else
+		head.glow:SetVertexColor(Motion.Look("text"))
+	end
+end
+
+-- the cast's share shown now (its time read plain), nil when unknown
+function CastFX.Share(now)
+	local total = Num(S.castTotal)
+	if not (total and total > 0 and S.castStart) then
+		return nil
+	end
+	local p = math.min(1, math.max(0, (now - S.castStart) / total))
+	return S.castChannel and 1 - p or p
+end
+
+-- opening: the bar from T.unfoldFrom wide out to its width, its texts in
+function CastFX.UnfoldStep(strip, p)
+	local cast = S.ui.cast
+	local w = Width() + cast.arms
+	strip:SetWidth(T.unfoldFrom + (w - T.unfoldFrom) * p)
+	cast.name:SetAlpha(p)
+	cast.time:SetAlpha(p)
+end
+
+local function Seg(t, a, d)
+	return math.min(1, math.max(0, (t - a) / d))
+end
+
+local function OutCubic(p)
+	return 1 - (1 - p) ^ 3
+end
+
+-- landed: the flash, the light off the end, the fold to its middle as it fades
+function CastFX.LandStep(_, p)
+	local cast = S.ui.cast
+	local t = p * (T.foldAt + T.fold)
+	cast.flash:SetAlpha(1 - Seg(t, 0, T.flash))
+	local q = Seg(t, 0, T.land)
+	cast.run:SetPoint("CENTER", cast.strip.fill, "RIGHT", 2 + T.landRun * OutCubic(q), 0)
+	cast.run:SetAlpha(0.9 * (1 - q))
+	local u = OutCubic(Seg(t, T.foldAt, T.fold))
+	if cast.strip.plain then
+		-- (the fill folded to its middle line; the painted bracket only fades)
+		local h = cast.h + (T.foldTo - cast.h) * u
+		cast.strip:SetHeight(h + 2)
+		CastFX.Place(cast, 0, -(cast.h - h) / 2)
+	end
+	cast.strip:SetAlpha(1 - u)
+end
+
+-- cut: the jolt, then the drop as it fades
+function CastFX.CutStep(_, p)
+	local cast = S.ui.cast
+	local t = p * (T.dropAt + T.drop)
+	local s = Seg(t, 0, T.jolt)
+	local dx = s < 1 and math.sin(s * math.pi * 4) * T.joltX * (1 - s) or 0
+	local d = Seg(t, T.dropAt, T.drop)
+	CastFX.Place(cast, dx, -T.dropY * d)
+	cast.strip:SetAlpha(1 - d)
+end
+
+-- pushed back: the old fill held, then faded; the head red a moment
+function CastFX.PushStep(ghost, p)
+	local t = p * (T.pushHold + T.pushFade)
+	ghost:SetAlpha(1 - Seg(t, T.pushHold, T.pushFade))
+	if t >= T.pushHold then
+		CastFX.Head(S.ui.cast, S.casting, nil)
+	end
+end
+
+-- an end played out: the bar away, put back for the next
+function CastFX.Gone()
+	local cast = S.ui and S.ui.cast
+	if cast and not S.casting then
+		cast.strip:Hide()
+		cast.strip:SetAlpha(0)
+		CastFX.Reset(cast)
+	end
+end
+
+function CastFX.PushDone(ghost)
+	ghost:SetAlpha(0)
+end
+
+-- a cast read again later than it was (a pushback, a channel cut short): the fill it had, held and faded
+function CastFX.Push(old)
+	local cast = S.ui.cast
+	if not (CastFX.On() and old and cast.ghost) then
+		return
+	end
+	cast.ghost:SetValue(old)
+	cast.ghost:SetAlpha(1)
+	CastFX.Head(cast, true, "combatTaken")
+	Anim:Drive(cast.ghost, CastFX.PushStep, T.pushHold + T.pushFade, "linear", CastFX.PushDone)
+end
+
+-- its end played: landed, cut (the game's word for why), or the plain fade
+function CastFX.Play(cast, kind, text)
+	Anim:Stop(cast.strip, "drive")
+	Anim:Stop(cast.strip, "alpha")
+	cast.strip:SetAlpha(1)
+	cast.strip:SetWidth(Width() + cast.arms)
+	if kind == "cut" then
+		local share = CastFX.Share(GetTime())
+		Anim:StopTimer(cast.bar, share or true)
+		Paint(cast.bar, "combatTaken")
+		local g = S.ui.gild
+		if g then
+			Gilded.Tint(g.cast, "combatTaken")
+		end
+		cast.name:SetAlpha(1)
+		cast.name:SetText(Db().text == false and "" or text)
+		cast.time:SetShown(false)
+		Anim:Drive(cast.fx, CastFX.CutStep, T.dropAt + T.drop, "linear", CastFX.Gone)
+	else
+		Anim:StopTimer(cast.bar, not S.castChannel)
+		Anim:Drive(cast.fx, CastFX.LandStep, T.foldAt + T.fold, "linear", CastFX.Gone)
+	end
+end
+
+-- how a cast ended, from its event: landed (its SUCCEEDED just heard; a channel run out), cut (interrupted, failed: the
+-- game's word for it), else plain
+function CastFX.Kind(event, a4)
+	if event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED" then
+		local word = rawget(_G, event == "UNIT_SPELLCAST_FAILED" and "FAILED" or "INTERRUPTED")
+		if Secret(word) or type(word) ~= "string" or word == "" then
+			word = event == "UNIT_SPELLCAST_FAILED" and TEXT.castFailed or TEXT.interrupted
+		end
+		return "cut", word
+	elseif event == "UNIT_SPELLCAST_CHANNEL_STOP" then
+		-- (its fourth: who interrupted it, nil when it ran out -- this client's own cast bar reads it so)
+		if Secret(a4) or a4 ~= nil then
+			return "cut", rawget(_G, "INTERRUPTED") or TEXT.interrupted
+		end
+		return "land"
+	elseif S.castLanded and GetTime() - S.castLanded < T.castLate then
+		return "land"
+	end
+	return "plain"
+end
+
+local function CastIn(fresh)
+	local cast = S.ui.cast
+	local strip = cast.strip
+	if fresh and cast.fx then
+		CastFX.Reset(cast)
+	end
 	if not strip:IsShown() then
 		strip:Show()
 	end
 	Anim:To(strip, "alpha", 1, T.castFade, "outQuad")
+	if fresh and CastFX.On() and cast.fx then
+		cast.name:SetAlpha(0)
+		cast.time:SetAlpha(0)
+		Anim:Drive(strip, CastFX.UnfoldStep, T.unfold, "outCubic")
+	end
 	Motion.LayLine()
 end
 
-local function CastOut()
+-- the cast's end: `kind` landed, cut (`text` its word) or plain (the fade). Told once: a cut heard just after a plain
+-- end (the game's order may be either) still turns it
+local function CastOut(kind, text)
 	S.casting = false
 	FadePoke()
 	local cast = S.ui and S.ui.cast
 	if not cast then
 		return
 	end
-	Anim:To(cast.strip, "alpha", 0, T.castFade, "inQuad", HideFrame)
 	Motion.LayLine()
+	kind = kind or "plain"
+	local now = GetTime()
+	if S.castEnd and not (kind == "cut" and S.castEnd == "plain" and now - S.castEndAt < T.castLate) then
+		return
+	end
+	S.castEnd, S.castEndAt = kind, now
+	if not cast.fx then
+		Anim:To(cast.strip, "alpha", 0, T.castFade, "inQuad", HideFrame)
+		return
+	end
+	CastFX.Head(cast, false)
+	if kind ~= "plain" and CastFX.On() and cast.strip:IsShown() then
+		CastFX.Play(cast, kind, text)
+	else
+		Anim:To(cast.strip, "alpha", 0, T.castFade, "inQuad", CastFX.Gone)
+	end
 end
 
--- a cast (or a channel: its bar runs down) shown: the spell's name and the time left, counted by the engine
-local function CastShow(name, seconds, channel)
+-- a cast (or a channel: its bar runs down) shown: the spell's name, its icon and the time left, counted by the engine
+-- from when it began (`from`: a cast read again after a pushback stands where its time has it)
+local function CastShow(name, seconds, channel, texture, from)
 	local cast = S.ui.cast
+	local fresh = not S.casting
+	local old = not fresh and CastFX.Share(GetTime()) or nil
 	cast.name:SetText(Db().text == false and "" or name)
 	-- (the seconds the engine's: shown or not with the text)
 	cast.time:SetShown(Db().text ~= false and cast.timed and true or false)
 	if seconds then
-		Anim:Timer(cast.bar, seconds, not channel)
+		Anim:Timer(cast.bar, seconds, not channel, from)
 	else
 		Anim:StopTimer(cast.bar, true)   -- (its times unreadable: the bar full, no seconds)
 	end
-	S.casting = true
+	S.castStart, S.castTotal, S.castChannel = from or GetTime(), seconds, channel or nil
+	S.casting, S.castEnd, S.castLanded = true, nil, nil
+	Gilded.Icon(texture)
 	FadePoke()
-	CastIn()
+	CastIn(fresh)
+	if cast.head then
+		CastFX.Head(cast, seconds ~= nil)
+	end
+	local now = CastFX.Share(GetTime())
+	if old and now and now < old - 0.01 then
+		CastFX.Push(old)
+	end
 end
 
 -- a cast or a channel still running (its name read, plain or secret)
@@ -842,19 +1304,19 @@ local function CastRead(channel)
 		return
 	end
 	local info = channel and UnitChannelInfo or UnitCastingInfo
-	local ok, name, _, _, startMS, endMS = pcall(info, "player")
+	local ok, name, _, texture, startMS, endMS = pcall(info, "player")
 	if not ok or not (Secret(name) or type(name) == "string") then
 		CastOut()
 		return
 	end
-	local seconds
+	local seconds, from
 	if Secret(startMS) or Secret(endMS) then
 		S.reads.cast = TEXT.secret
-	elseif type(endMS) == "number" then
+	elseif type(endMS) == "number" and type(startMS) == "number" then
 		S.reads.cast = TEXT.plain
-		seconds = math.max(0.05, endMS / 1000 - GetTime())
+		from, seconds = startMS / 1000, math.max(0.05, (endMS - startMS) / 1000)
 	end
-	CastShow(name, seconds, channel)
+	CastShow(name, seconds, channel, texture, from)
 end
 
 --------------------------------------------------------------------------------
@@ -1114,6 +1576,7 @@ function Shield.Break()
 	col.loss:SetValue(0, EASE)
 	col.amount:SetText("")
 	Light("k")
+	Motion.Crack()
 	C_Timer.After(T.breakHold, ColumnOut)
 	Parts.Update()
 end
@@ -1172,6 +1635,11 @@ function Shield.Changed()
 		elseif not S.shieldOn or (max and amount > max) or (value and amount > value) then
 			Note("plain: applied")
 			S.lastKind = "apply"
+			-- (its aura heard just before -- the game sends the two in either order: its own, as a secret amount's are;
+			-- else the column fell back to the one total, the user's Power Word: Shield blue one time, yellow the next)
+			if S.absorbAt - S.auraAddedAt <= T.recent then
+				Shield.Adopt()
+			end
 			Shield.Apply(amount)
 		elseif value and amount < value then
 			Note("plain: hit")
@@ -1605,6 +2073,146 @@ function Motion.Make(ui)
 	ui.motionFrame = CreateFrame("Frame", nil, float)
 	S.settle = { 0, 0 }
 	S.settleY, S.dipY = 0, 0
+	Motion.MakeMoments(ui, level)
+end
+
+-- (1.2.0, the ten motions) a frame between two anchors of the fills: from `a`'s right edge to `b`'s (the part a heal
+-- gave, a hit or a cost took) -- the engine's own anchors, no value read, so a secret one draws as a plain one
+local function Between(parent, level, a, b)
+	local f = CreateFrame("Frame", nil, parent)
+	f:SetFrameLevel(level)
+	f:SetPoint("TOPLEFT", a:GetStatusBarTexture(), "TOPRIGHT")
+	f:SetPoint("BOTTOMRIGHT", b:GetStatusBarTexture(), "BOTTOMRIGHT")
+	return f
+end
+
+-- a frame from `a`'s point to `b`'s, top to bottom (the halves and quarters the shards are cut by)
+local function Span(parent, a, aPoint, b, bPoint)
+	local f = CreateFrame("Frame", nil, parent)
+	f:SetPoint("TOPLEFT", a, aPoint)
+	f:SetPoint("BOTTOMRIGHT", b, bPoint)
+	return f
+end
+
+-- an unseen StatusBar over the health fill (and a glint's room either side), holding 0 or 1 as the game's curve has
+-- it, and a frame clipped to its fill: shown only while it holds 1 (the shield column's way: no Lua reads the value)
+local function Presence(parent, fill)
+	local bar = CreateFrame("StatusBar", nil, parent)
+	bar:SetPoint("TOPLEFT", fill, "TOPLEFT", -T.glintW, T.rim)
+	bar:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT", T.glintW, -T.rim)
+	bar:SetStatusBarTexture(W.BarFill("personal"))
+	bar:GetStatusBarTexture():SetAlpha(0)
+	bar:SetMinMaxValues(0, 1)
+	bar:SetValue(0)
+	local clip = CreateFrame("Frame", nil, parent)
+	clip:SetClipsChildren(true)
+	clip:SetPoint("TOPLEFT", bar:GetStatusBarTexture(), "TOPLEFT")
+	clip:SetPoint("BOTTOMRIGHT", bar:GetStatusBarTexture(), "BOTTOMRIGHT")
+	return bar, clip
+end
+
+-- a glint to sweep across a fill: a soft light a little wider than tall, on `parent` (a clip)
+local function Glint(parent, level)
+	local f = CreateFrame("Frame", nil, parent)
+	f:SetFrameLevel(level)
+	f:SetSize(T.glintW, 1)
+	f:SetAlpha(0)
+	f.tex = Spark(f, "OVERLAY", 6, "glow_white.tga")
+	f.tex:SetAllPoints(f)
+	return f
+end
+
+-- (1.2.0) the moments' pieces: the heal's rush and its light, the shards of a heavy blow (the part lost cut in four by
+-- anchors), the block a big cost drops, the gold line a fight opens from, the glint back at full (behind two presence
+-- clips: full now, not full before) and the sweep coming back to life; each its own driver frame
+function Motion.MakeMoments(ui, level)
+	local float = ui.float
+	local hb, pb = ui.health, ui.power
+	-- the rush: over the bar, under the rim; its light clipped to the part given
+	local rush = Between(float, level + 5, hb.bar, hb.lead)
+	rush:SetClipsChildren(true)
+	rush:SetAlpha(0)
+	rush.light = rush:CreateTexture(nil, "OVERLAY")
+	rush.light:SetTexture(W.BarFill("personal"))
+	rush.light:SetBlendMode("ADD")
+	rush.light:SetAllPoints(rush)
+	rush.tip = Spark(rush, "OVERLAY", 6, "glow_white.tga")
+	rush.tip:SetSize(T.rushGlow, T.rushGlow)
+	rush.tip:SetPoint("CENTER", rush, "RIGHT", 0, 0)
+	ui.rush = rush
+	-- the shards: the part lost (the lead at the new value, the ghost held at the old), halves, quarters
+	local lost = Between(float, level + 5, hb.lead, hb.ghost)
+	local halves = { Span(lost, lost, "TOPLEFT", lost, "BOTTOM"), Span(lost, lost, "TOP", lost, "BOTTOMRIGHT") }
+	ui.shards = {}
+	for _, half in ipairs(halves) do
+		for _, q in ipairs({ Span(half, half, "TOPLEFT", half, "BOTTOM"), Span(half, half, "TOP", half, "BOTTOMRIGHT") }) do
+			local s = CreateFrame("Frame", nil, float)
+			s:SetFrameLevel(level + 7)
+			s.quarter = q
+			s.tex = s:CreateTexture(nil, "OVERLAY")
+			s.tex:SetTexture(W.BarFill("personal"))
+			s.tex:SetAllPoints(s)
+			s:SetAlpha(0)
+			ui.shards[#ui.shards + 1] = s
+		end
+	end
+	ui.shardFrame = CreateFrame("Frame", nil, float)
+	-- the block a big cost drops: the part spent (the power's lead at the new value, its ghost at the old)
+	local spent = Between(float, level + 5, pb.lead, pb.ghost)
+	local drop = CreateFrame("Frame", nil, float)
+	drop:SetFrameLevel(level + 7)
+	drop.from = spent
+	drop.tex = drop:CreateTexture(nil, "OVERLAY")
+	drop.tex:SetTexture(W.BarFill("personal"))
+	drop.tex:SetAllPoints(drop)
+	drop:SetAlpha(0)
+	ui.drop = drop
+	-- the gold line a fight opens from, at the joint
+	local line = CreateFrame("Frame", nil, float)
+	line:SetFrameLevel(level + 7)
+	line:SetPoint("CENTER", hb.strip.fill, "BOTTOM", 0, -T.joint / 2)
+	line:SetSize(1, 2)
+	line:SetAlpha(0)
+	line.core = line:CreateTexture(nil, "OVERLAY")
+	line.core:SetTexture(W.BarFill("personal"))
+	line.core:SetAllPoints(line)
+	line.glow = Spark(line, "OVERLAY", -1, "glow_white.tga")
+	line.glow:SetPoint("TOPLEFT", line, "TOPLEFT", -4, 4)
+	line.glow:SetPoint("BOTTOMRIGHT", line, "BOTTOMRIGHT", 4, -4)
+	ui.openLine = line
+	-- the glint back at full: inside "full now", inside "not full before"
+	local nowBar, nowClip = Presence(float, hb.strip.fill)
+	local beforeBar, beforeClip = Presence(nowClip, hb.strip.fill)
+	nowClip:SetFrameLevel(level + 5)
+	beforeClip:SetFrameLevel(level + 5)
+	ui.fullNow, ui.fullBefore = nowBar, beforeBar
+	ui.glint = Glint(beforeClip, level + 5)
+	-- the sweep back to life, inside the health fill
+	local lifeClip = CreateFrame("Frame", nil, float)
+	lifeClip:SetClipsChildren(true)
+	lifeClip:SetAllPoints(hb.strip.fill)
+	lifeClip:SetFrameLevel(level + 5)
+	ui.lifeGlint = Glint(lifeClip, level + 5)
+	ui.formFrame = CreateFrame("Frame", nil, float)
+	ui.deathFrame = CreateFrame("Frame", nil, float)
+	S.restK, S.deathK, S.openK = 0, 0, 1
+end
+
+-- (1.2.0, the shield crack) the column's shards, made with the column (Build, once)
+function Motion.MakeCrack(ui)
+	local col = ui.column
+	local crack = CreateFrame("Frame", nil, col.float)
+	crack:SetFrameLevel(col.bar:GetFrameLevel() + 6)
+	crack:SetAllPoints(col.strip.fill)
+	crack:SetAlpha(0)
+	crack.pieces = {}
+	for i = 1, T.crackN do
+		local p = crack:CreateTexture(nil, "OVERLAY")
+		p:SetTexture(W.BarFill("personal"))
+		p:SetSize(5, 7)
+		crack.pieces[i] = p
+	end
+	col.crack = crack
 end
 
 -- (LayStack) each rim out to its bracket's painted edge, the line, the spark the power fill's depth
@@ -1654,6 +2262,25 @@ function Motion.Paint()
 	ui.health.lead:SetStatusBarColor(Motion.Pale(HealthRGB()))
 	ui.loc:SetStatusBarColor(Motion.Look("selectedTrim"))
 	ui.loc.name:SetTextColor(r, g, b)
+	CastFX.Paint(ui)
+	-- (1.2.0) the moments: the rush the health's lead lifted, the shards and the dropped block the ghosts' colour, the
+	-- line and the glints gold and warm white
+	if ui.rush then
+		ui.rush.light:SetVertexColor(Motion.Pale(HealthRGB()))
+		ui.rush.tip:SetVertexColor(r, g, b)
+		ui.drop.tex:SetVertexColor(r, g, b, T.ghostAlpha)
+		ui.openLine.core:SetVertexColor(Motion.Look("selectedTrim"))
+		ui.openLine.glow:SetVertexColor(Motion.Look("selectedTrim"))
+		ui.glint.tex:SetVertexColor(r, g, b)
+		ui.lifeGlint.tex:SetVertexColor(Motion.Look("selectedTrim"))
+	end
+	local col = ui.column
+	if col and col.crack then
+		local c = MelloUI.Meaning.personalShield
+		for _, p in ipairs(col.crack.pieces) do
+			p:SetVertexColor(Motion.Pale(c[1], c[2], c[3]))
+		end
+	end
 end
 
 -- each fill shown by its switch
@@ -1733,8 +2360,9 @@ function Motion.Rim(b, time)
 	Anim:To(rim, "alpha", S.locOn and T.locRim or 0, time, "outQuad")
 end
 
--- (Heavy Hit) the rims red a moment, the bars dipped a hair
+-- (Heavy Hit) the rims red a moment, the bars dipped a hair (and Damage Chunk's shards)
 function Motion.Heavy()
+	Motion.Shards()   -- (1.2.0: the part lost in shards, Damage Chunk's)
 	local ui = S.ui
 	if not (ui and ui.loc and Motion.On("heavy")) then
 		return
@@ -1788,7 +2416,9 @@ function Motion.Combat(action, flag)
 	if S.preview or Secret(action) or Secret(flag) then
 		return
 	end
-	if action == "WOUND" then
+	if action == "HEAL" then
+		S.healAt = GetTime()   -- (the next health change a heal's: its rush)
+	elseif action == "WOUND" then
 		if flag == "CRITICAL" or flag == "CRUSHING" then
 			Motion.Heavy()
 		elseif flag == "BLOCK" then
@@ -1864,11 +2494,14 @@ function Motion.Gain(max, v, token)
 	local last = S.powerLast
 	S.powerLast = v
 	local ui = S.ui
-	if S.snap or not (ui and ui.spark and max and v and last) or max <= 0 or token == "ENERGY"
-		or not Motion.On("gain") then
+	if S.snap or not (ui and ui.spark and max and v and last) or max <= 0 then
 		return
 	end
-	if (v - last) / max >= T.sparkShare then
+	if (last - v) / max >= T.spendShare then
+		Motion.Drop()   -- (1.2.0: a big cost's block dropped off)
+		return
+	end
+	if token ~= "ENERGY" and Motion.On("gain") and (v - last) / max >= T.sparkShare then
 		Anim:Stop(ui.spark, "alpha")
 		ui.spark:SetAlpha(1)
 		Anim:To(ui.spark, "alpha", 0, T.spark, "outQuad")
@@ -2012,6 +2645,7 @@ function Motion.SettleGo(fight, now)
 		return
 	end
 	local y = Motion.Rest(fight)
+	Motion.Form(fight, now)   -- (1.2.0: opened from the gold line, slim at rest)
 	local m = S.settle
 	m[1], m[2] = S.settleY, y
 	if now then
@@ -2031,6 +2665,337 @@ function Motion.Settle(fight)
 		S.settleAt = GetTime() + T.settleDelay
 		Motion.Wake()
 	end
+end
+
+--------------------------------------------------------------------------------
+-- The moments (1.2.0; the user's "All of them" to prd_motion2, seen in look A of prd_looks): a heal's rush over the
+-- part it gave and the light at its end; a heavy blow's part lost broken in shards that fall; the glint along the bar
+-- back at full; a big cost's block dropped off; a fight opening from a gold line, the bars slim at rest out of it; at
+-- death grey and folded, back to life unfolded with a sweep; the shield's crack. Each plays once at its moment (no
+-- pulse), from the events and the engine's anchors -- never a secret compared. Their switches the effects' own: Heal
+-- Lead, Heavy Hit, Power Spent, Combat Settle; the crack with the column
+--------------------------------------------------------------------------------
+
+local function Lerp(a, b, p)
+	return a + (b - a) * p
+end
+
+-- (Heal Lead) the rush: the part given lit and fading, the light at its end after it (both clipped to the part: none
+-- with nothing given, a heal at full)
+function Motion.RushStep(rush, p)
+	local t = p * T.rush * 2
+	rush.light:SetAlpha(0.9 * (1 - Seg(t, 0, T.rush)))
+	rush.tip:SetAlpha(0.9 * Seg(t, 0.25, 0.07) * (1 - Seg(t, 0.32, T.rushEnd)))
+end
+
+function Motion.RushDone(rush)
+	rush:SetAlpha(0)
+end
+
+function Motion.Rush()
+	local ui = S.ui
+	if not (ui and ui.rush and Motion.On("lead")) or Anim.reduceMotion then
+		return
+	end
+	ui.rush:SetAlpha(1)
+	Anim:Drive(ui.rush, Motion.RushStep, T.rush * 2, "linear", Motion.RushDone)
+end
+
+-- the health's two presences: "full now" (the share now at T.full or more), "not full before" (under it): a plain share
+-- told, else the game's curves on the secret percent
+function Motion.FullCurves()
+	if S.fullCurves ~= nil then
+		return S.fullCurves or nil
+	end
+	S.fullCurves = false
+	local CU = rawget(_G, "C_CurveUtil")
+	if not (CU and CU.CreateCurve and rawget(_G, "UnitHealthPercent")) then
+		return nil
+	end
+	local list = {}
+	for i, low in ipairs({ 0, 1 }) do
+		local ok, c = pcall(CU.CreateCurve)
+		if not (ok and c and pcall(c.AddPoint, c, 0, low) and pcall(c.AddPoint, c, T.full - 0.001, low)
+			and pcall(c.AddPoint, c, T.full, 1 - low) and pcall(c.AddPoint, c, 1, 1 - low)) then
+			return nil
+		end
+		list[i] = c
+	end
+	S.fullCurves = list
+	return list
+end
+
+function Motion.FullSet(bar, share, before)
+	if share then
+		local full = share >= T.full
+		bar:SetValue((full ~= before) and 1 or 0)
+		return
+	end
+	local curves = Motion.FullCurves()
+	local fn = rawget(_G, "UnitHealthPercent")
+	local ok, v = false, nil
+	if curves and fn then
+		ok, v = pcall(fn, "player", true, curves[before and 2 or 1])
+	end
+	if not (ok and pcall(bar.SetValue, bar, v)) then
+		bar:SetValue(0)   -- (unreadable: no glint)
+	end
+end
+
+-- the glint along the health bar, seen only back at full (the presences: full now, not full before)
+function Motion.GlintStep(g, p)
+	local w = Width()
+	g:ClearAllPoints()
+	g:SetPoint("CENTER", S.ui.health.strip.fill, "LEFT", -T.glintW / 2 + (w + T.glintW) * p, 0)
+	g:SetHeight(S.ui.health.h + 2)
+	g:SetAlpha(1)
+end
+
+function Motion.GlintDone(g)
+	g:SetAlpha(0)
+	S.glinting = false
+	local ui = S.ui
+	if ui and ui.fullBefore then
+		Motion.FullSet(ui.fullBefore, S.healthShare, true)
+	end
+end
+
+-- a health change: the presences read, a heal's rush and glint played (`healed`: a heal just heard)
+function Motion.HealthMoment(share, healed)
+	local ui = S.ui
+	if not (ui and ui.fullNow) then
+		return
+	end
+	S.healthShare = share
+	Motion.FullSet(ui.fullNow, share, false)
+	if healed and not S.snap then
+		Motion.Rush()
+		if Motion.On("lead") and not Anim.reduceMotion and not S.glinting then
+			S.glinting = true
+			Anim:Drive(ui.glint, Motion.GlintStep, T.glint, "inOutQuad", Motion.GlintDone)
+		end
+	end
+	if not S.glinting then
+		Motion.FullSet(ui.fullBefore, share, true)
+	end
+end
+
+-- (Heavy Hit) the part lost in four shards, falling apart (the ghost held unseen meanwhile, drained after them)
+function Motion.ShardStep(_, p)
+	local ui = S.ui
+	local q = p
+	local r, g, b = Motion.Look("text")
+	local red = MelloUI.Meaning.combatTaken
+	local k = 0.35 * q
+	for i, s in ipairs(ui.shards) do
+		local x = (i - 2.5) * T.shardSpread * q
+		local y = -((14 + (i % 2) * 8) * q + T.shardFall * q * q)
+		s:ClearAllPoints()
+		s:SetPoint("TOPLEFT", s.quarter, "TOPLEFT", x + 0.6, y)
+		s:SetPoint("BOTTOMRIGHT", s.quarter, "BOTTOMRIGHT", x - 0.6, y)
+		s.tex:SetRotation((i % 2 == 1 and 1 or -1) * (0.6 + i * 0.3) * q * 3)
+		s.tex:SetVertexColor(Lerp(r, red[1], k), Lerp(g, red[2], k), Lerp(b, red[3], k))
+		s:SetAlpha(1 - q)
+	end
+end
+
+function Motion.ShardDone()
+	local ui = S.ui
+	for _, s in ipairs(ui.shards) do
+		s:SetAlpha(0)
+	end
+	ui.health.ghost:SetAlpha(1)
+end
+
+function Motion.Shards()
+	local ui = S.ui
+	if not (ui and ui.shards) or Anim.reduceMotion or not Motion.On("chunk") then
+		return
+	end
+	local b = ui.health
+	b.ghost:SetAlpha(0)
+	b.ghostAt = GetTime() + T.shards
+	Motion.Wake()
+	Anim:Drive(ui.shardFrame, Motion.ShardStep, T.shards, "linear", Motion.ShardDone)
+end
+
+-- (Power Spent) a big cost's block dropped off (the ghost held unseen meanwhile, drained after it)
+function Motion.DropStep(drop, p)
+	local dy = -T.spendDrop * OutCubic(p)
+	drop:ClearAllPoints()
+	drop:SetPoint("TOPLEFT", drop.from, "TOPLEFT", 2 * p, dy)
+	drop:SetPoint("BOTTOMRIGHT", drop.from, "BOTTOMRIGHT", 2 * p, dy)
+	drop:SetAlpha(1 - p)
+end
+
+function Motion.DropDone(drop)
+	drop:SetAlpha(0)
+	S.ui.power.ghost:SetAlpha(1)
+end
+
+function Motion.Drop()
+	local ui = S.ui
+	if not (ui and ui.drop and Motion.On("spend")) or Anim.reduceMotion then
+		return
+	end
+	local b = ui.power
+	b.ghost:SetAlpha(0)
+	b.ghostAt = GetTime() + T.spendTime
+	Motion.Wake()
+	Anim:Drive(ui.drop, Motion.DropStep, T.spendTime, "linear", Motion.DropDone)
+end
+
+-- (Combat Settle) the bars' form: slim at rest (S.restK 1), folded at death (S.deathK 1), opened to S.openK of their
+-- width; laid on the plain strips (a painted bracket keeps its depth), again after every LayStack
+function Motion.FormApply()
+	local ui = S.ui
+	if not (ui and ui.formFrame) then
+		return
+	end
+	local rest, dead = S.restK or 0, S.deathK or 0
+	local w = Width()
+	for i, b in ipairs({ ui.health, ui.power }) do
+		local strip = b.strip
+		if strip.plain then
+			local h = Lerp(b.h, i == 1 and T.restHealth or T.restPower, rest)
+			h = Lerp(h, i == 1 and T.deathTo or 0.5, dead)
+			strip:SetHeight(h + 2)
+			strip:SetWidth(Lerp(T.unfoldFrom, w, S.openK or 1) + b.arms)
+		end
+		if b.text then
+			b.text:SetAlpha(1 - math.max(rest, dead))
+		end
+	end
+end
+
+-- into a fight: the gold line grown from the middle, held, faded; the bars opening from it and filling out to their
+-- depth. Out of one: slim at rest
+function Motion.OpenStep(_, p)
+	local ui = S.ui
+	local t = p * (T.openLine + T.openHold + T.openFade)
+	local line = ui.openLine
+	line:SetWidth(math.max(1, Width() * OutCubic(Seg(t, 0, T.openLine))))
+	line:SetAlpha(1 - Seg(t, T.openLine + T.openHold, T.openFade))
+	S.openK = Lerp(T.openFrom, 1, OutCubic(Seg(t, 0.12, T.open)))
+	S.restK = S.restFrom * (1 - OutCubic(Seg(t, 0.18, T.open)))
+	Motion.FormApply()
+end
+
+function Motion.RestStep(_, p)
+	S.restK = Lerp(S.restFrom, 1, p)
+	Motion.FormApply()
+end
+
+function Motion.FormDone()
+	S.ui.openLine:SetAlpha(0)
+	S.openK = 1
+	Motion.FormApply()
+end
+
+-- the form for a fight begun or over (Motion.SettleGo's): at rest only where the bars settle (Motion.Rest)
+function Motion.Form(fight, now)
+	local ui = S.ui
+	if not (ui and ui.formFrame) then
+		return
+	end
+	local rest = Motion.Rest(fight) ~= 0
+	S.restFrom = S.restK or 0
+	if now or Anim.reduceMotion or S.deathK > 0 then
+		Anim:Stop(ui.formFrame, "drive")
+		S.restK, S.openK = rest and 1 or 0, 1
+		ui.openLine:SetAlpha(0)
+		Motion.FormApply()
+	elseif rest then
+		Anim:Drive(ui.formFrame, Motion.RestStep, T.settleOut, "inOutQuad", Motion.FormDone)
+	elseif S.restFrom > 0 then
+		-- (from rest into a fight: the line and the opening; a fight begun at full form only fills out)
+		S.openK = T.openFrom
+		Anim:Drive(ui.formFrame, Motion.OpenStep, T.openLine + T.openHold + T.openFade, "linear", Motion.FormDone)
+	end
+end
+
+-- death: the fills greyed, the bars folded, their percents out; back: unfolded, the colours back, the sweep
+function Motion.DeathStep(_, p)
+	local ui = S.ui
+	local t = p * (T.deathAt + T.deathFold)
+	local grey = Seg(t, T.deathDrain / 2, T.deathGrey)
+	for _, b in ipairs({ ui.health, ui.power }) do
+		b.bar:GetStatusBarTexture():SetDesaturated(grey > 0.5)
+		b.bar:SetAlpha(1 - 0.2 * grey)
+	end
+	S.deathK = OutCubic(Seg(t, T.deathAt, T.deathFold))
+	Motion.FormApply()
+end
+
+function Motion.BackStep(_, p)
+	local ui = S.ui
+	local t = p * (T.back + T.backFill)
+	S.deathK = 1 - OutCubic(Seg(t, 0, T.back))
+	Motion.FormApply()
+	local g = ui.lifeGlint
+	local q = Seg(t, T.back * 0.8, T.backFill)
+	g:ClearAllPoints()
+	g:SetPoint("CENTER", ui.health.strip.fill, "LEFT", Width() * q, 0)
+	g:SetHeight(ui.health.h + 2)
+	g:SetAlpha(q > 0 and q < 1 and 1 or 0)
+end
+
+function Motion.BackDone()
+	S.deathK = 0
+	S.ui.lifeGlint:SetAlpha(0)
+	Motion.FormApply()
+end
+
+function Motion.Death(dead)
+	local ui = S.ui
+	if not (ui and ui.deathFrame) or S.preview or (dead and S.dead) or (not dead and not S.dead) then
+		return
+	end
+	S.dead = dead
+	for _, b in ipairs({ ui.health, ui.power }) do
+		b.bar:GetStatusBarTexture():SetDesaturated(false)
+		b.bar:SetAlpha(1)
+	end
+	if not Motion.On("settle") then
+		S.deathK = 0
+		Motion.FormApply()
+		return
+	end
+	if dead then
+		Anim:Drive(ui.deathFrame, Motion.DeathStep, T.deathAt + T.deathFold, "linear")
+	else
+		Anim:Drive(ui.deathFrame, Motion.BackStep, T.back + T.backFill, "linear", Motion.BackDone)
+	end
+end
+
+-- dead or a ghost now (plain on this client; a secret: alive)
+function Motion.IsDead()
+	local ok, dead = pcall(UnitIsDeadOrGhost, "player")
+	return ok and not Secret(dead) and dead and true or false
+end
+
+-- (the shield crack) the column broken: its shards flung out either side and falling
+function Motion.CrackStep(crack, p)
+	local fill = S.ui.column.strip.fill
+	local q = OutCubic(p)
+	for i, piece in ipairs(crack.pieces) do
+		local side = i % 2 == 1 and -1 or 1
+		local x = side * (4 + T.crackOut * q) * (0.6 + i * 0.12)
+		local y = -T.colH * (0.55 + i * 0.07) - 18 * p * p
+		piece:ClearAllPoints()
+		piece:SetPoint("CENTER", fill, "TOP", x, y)
+		piece:SetRotation(side * p * (1.5 + i * 0.4))
+	end
+	crack:SetAlpha(1 - p)
+end
+
+function Motion.Crack()
+	local col = S.ui and S.ui.column
+	if not (col and col.crack) or Anim.reduceMotion or Db().shield == false then
+		return
+	end
+	col.crack:SetAlpha(1)
+	Anim:Drive(col.crack, Motion.CrackStep, T.crack, "linear")
 end
 
 -- off: nothing of it left lit or moved; the game's banner given back
@@ -2059,6 +3024,30 @@ function Motion.Off()
 	Anim:Stop(ui.motionFrame, "drive")
 	Anim:Stop(ui.float, "drive")
 	S.dipY, S.settleY = 0, 0
+	-- (1.2.0) the moments
+	for _, f in ipairs({ ui.rush, ui.glint, ui.lifeGlint, ui.drop, ui.shardFrame, ui.formFrame, ui.deathFrame }) do
+		Anim:Stop(f, "drive")
+	end
+	ui.rush:SetAlpha(0)
+	ui.glint:SetAlpha(0)
+	ui.lifeGlint:SetAlpha(0)
+	ui.drop:SetAlpha(0)
+	ui.openLine:SetAlpha(0)
+	for _, s in ipairs(ui.shards) do
+		s:SetAlpha(0)
+	end
+	for _, b in ipairs(ui.motionBars) do
+		b.ghost:SetAlpha(1)
+		b.bar:GetStatusBarTexture():SetDesaturated(false)
+		b.bar:SetAlpha(1)
+	end
+	S.glinting, S.dead = false, false
+	S.restK, S.deathK, S.openK = 0, 0, 1
+	Motion.FormApply()
+	if ui.column and ui.column.crack then
+		Anim:Stop(ui.column.crack, "drive")
+		ui.column.crack:SetAlpha(0)
+	end
 	Motion.HoldBanner()
 end
 
@@ -2127,7 +3116,7 @@ local CAST_START = { UNIT_SPELLCAST_START = false, UNIT_SPELLCAST_DELAYED = fals
 local CAST_END = { UNIT_SPELLCAST_STOP = true, UNIT_SPELLCAST_FAILED = true, UNIT_SPELLCAST_INTERRUPTED = true,
 	UNIT_SPELLCAST_CHANNEL_STOP = true }
 
-local function OnEvent(_, event, a1, a2, a3)
+local function OnEvent(_, event, a1, a2, a3, a4)
 	if not S.ui then
 		return
 	end
@@ -2148,6 +3137,10 @@ local function OnEvent(_, event, a1, a2, a3)
 		if not S.preview and not Secret(a3) and type(a3) == "number" then
 			Cds.Start(a3)
 		end
+		-- (Cast Motion: the cast in hand landed -- its STOP comes after this)
+		if S.casting and not S.castChannel then
+			S.castLanded = GetTime()
+		end
 	elseif CAST_START[event] ~= nil then
 		CastRead(CAST_START[event])
 	elseif CAST_END[event] then
@@ -2155,7 +3148,7 @@ local function OnEvent(_, event, a1, a2, a3)
 		-- stays, as the game's own cast bar keeps it by its castID)
 		local attempt = event == "UNIT_SPELLCAST_FAILED" or event == "UNIT_SPELLCAST_INTERRUPTED"
 		if not S.preview and not (attempt and StillCasting()) then
-			CastOut()
+			CastOut(CastFX.Kind(event, a4))
 		end
 	elseif event == "LOSS_OF_CONTROL_ADDED" or event == "LOSS_OF_CONTROL_UPDATE" then
 		Motion.Loc(event == "LOSS_OF_CONTROL_ADDED")
@@ -2163,6 +3156,8 @@ local function OnEvent(_, event, a1, a2, a3)
 		if not S.preview then
 			Motion.Settle(event == "PLAYER_REGEN_DISABLED")
 		end
+	elseif event == "PLAYER_DEAD" or event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
+		Motion.Death(Motion.IsDead())   -- (1.2.0: grey and folded, back with the sweep)
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		Refresh()
 	end
@@ -2194,6 +3189,9 @@ local function Events(on)
 	f:RegisterEvent("PLAYER_ENTERING_WORLD")
 	f:RegisterEvent("PLAYER_REGEN_DISABLED")
 	f:RegisterEvent("PLAYER_REGEN_ENABLED")
+	for _, event in ipairs({ "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST" }) do
+		f:RegisterEvent(event)
+	end
 end
 
 -- everything read again (the login, a setting, the preview's end)
@@ -2578,6 +3576,7 @@ function Cds.Place(ic)
 	ic.x = x
 	local k = ic.k
 	ic:SetScale(k * sc)
+	W.RoundIconRefit(ic)   -- (its ring sharp at every step of the pop and the end)
 	ic.top:SetScale(1 / k)
 	ic:SetAlpha(alpha)
 	ic:ClearAllPoints()
@@ -2795,6 +3794,8 @@ local function SampleHealth(pct)
 	ui.health.bar:SetValue(pct, EASE)
 	Motion.Value(ui.health, 100, pct)
 	Motion.Low(pct / 100)
+	Motion.HealthMoment(pct / 100, S.samplePct ~= nil and pct > S.samplePct)
+	S.samplePct = pct
 	ui.health.text:SetFormattedText("%.0f%%", pct)
 	ui.power.bar:SetMinMaxValues(0, 100)
 	ui.power.bar:SetValue(power, EASE)
@@ -2806,13 +3807,13 @@ end
 -- (the preview's own cast ended: a real one begun after the preview's stop left running)
 local function PreviewCastOut()
 	if S.preview then
-		CastOut()
+		CastOut("land")
 	end
 end
 
 local function SampleCast(spec)
 	if spec then
-		CastShow(spec[1], spec[2], false)
+		CastShow(spec[1], spec[2], false, SpellIcon(spec[3]))
 		C_Timer.After(spec[2], PreviewCastOut)
 	end
 end
@@ -2921,7 +3922,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 	defaults = { width = 160, height = 10, shield = true, text = true, zoom = true, hideCastBar = true,
 		healFrom = true, swing = true, cooldowns = true, cdSize = 16, textFont = "shared",
 		chunk = true, lead = true, heavy = true, spend = true, gain = true, avoid = true, lowHealth = true,
-		stun = true, settle = true, classColour = false },
+		stun = true, settle = true, classColour = false, castMotion = true },
 	options = {
 		{ type = "toggle", key = "shield", name = "Shield Column",
 		  desc = "An upright bar beside your character for every shield on you added up, as the game counts them: spells (Power Word: Shield, Ice Barrier, Mana Shield, the wards), talents and items, the ones against one kind of damage too. Each shield is its own part, in its school's colour (Power Word: Shield gold, Ice Barrier frost, Mana Shield arcane, a Fire Protection Potion fire), stacked in the order they went up, its icon beside the column. It fills when one goes up, drains as it takes the hits, turns amber when low and breaks when the last one is gone; one ending while another holds only takes its part away. Edit Layout places it." },
@@ -2947,14 +3948,16 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "How big the Big Cooldowns' icons above the health bar are. Their seconds keep the display's text size." },
 		{ type = "toggle", key = "zoom", name = "Follow Camera Zoom",
 		  desc = "The display keeps its place by your character as you zoom the camera: closer under your feet when you zoom out, further down when you zoom in, so it never covers your character. Place it in Edit Layout at the zoom you play at; it follows from there. Turning the camera up or down is not followed (the game does not tell)." },
+		{ type = "toggle", key = "castMotion", name = "Cast Motion", new = "1.2.0",
+		  desc = "The cast bar opens from its middle with a light on its head; a cast that lands flashes and folds away, one that is interrupted turns red, jolts and drops, and a pushback shows where the bar was a moment." },
 		{ type = "toggle", key = "chunk", name = "Damage Chunk",
-		  desc = "What a hit takes from your health stays lit a moment, then drains away." },
+		  desc = "What a hit takes from your health stays lit a moment, then drains away; a critical or crushing blow breaks it into shards that fall." },
 		{ type = "toggle", key = "lead", name = "Heal Lead",
-		  desc = "A heal lights the health it gives at once; the bar then grows into it." },
+		  desc = "A heal lights the health it gives at once, a light at its end; the bar then grows into it. Back at full health, a glint runs along the bar." },
 		{ type = "toggle", key = "heavy", name = "Heavy Hit",
 		  desc = "A critical or crushing blow on you flashes the bars' rim red and dips them a hair, once." },
 		{ type = "toggle", key = "spend", name = "Power Spent",
-		  desc = "The rage, energy or mana an ability costs stays lit a moment, then drains, so you see the cost." },
+		  desc = "The rage, energy or mana an ability costs stays lit a moment, then drains, so you see the cost; a big cost drops off the bar as a block." },
 		{ type = "toggle", key = "gain", name = "Power Gained",
 		  desc = "New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)." },
 		{ type = "toggle", key = "avoid", name = "Dodge, Parry, Block",
@@ -2964,7 +3967,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		{ type = "toggle", key = "stun", name = "Loss Of Control",
 		  desc = "While you are stunned, feared, silenced or locked out of a school, the bars' rim turns red and a line under them runs down its time, its name under it. The game's own banner over your character is off while this is on, and comes back as you had it when it is off." },
 		{ type = "toggle", key = "settle", name = "Combat Settle",
-		  desc = "Into a fight the bars rise into place; a moment after it they settle a little lower, until the next one. (To fade them out of combat: the Fader.)" },
+		  desc = "Into a fight the bars open from a gold line and rise into place; a moment after it they settle a little lower and slimmer, their percents hidden, until the next one. At death they grey and fold; back to life they open again. (To fade them out of combat: the Fader.)" },
 		{ type = "button", name = "Preview", text = "Play",
 		  hint = "a shield going up, hit, low and broken, casts, and the bars in the fight",
 		  desc = "Plays a made-up fight on the display: a shield going up, taking hits until it is low and breaks, a cast and a second shield, and the bars answering it -- the hits, a critical blow, power gained and spent, a dodge, a stun, low health and the heal after. Also /mello personal test.",

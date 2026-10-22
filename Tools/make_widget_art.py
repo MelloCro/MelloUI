@@ -17,6 +17,19 @@ column": Voice Over and the other widgets, the user's picked look of
                                  outline"; two round masks stacked at 10 px
                                  were blurred) -- tinted, the white takes the
                                  palette's colour and the ring stays black
+    Textures/QuestAreaEdge.tga   (1.2.0) the quest areas' edge (Core/QuestAreas.lua; the user's look A of
+                                 BuildData/output/animation_previews/map_marks.html): ONE picture across a
+                                 Line's thickness -- a dark casing, the WHITE core, the casing, the same both
+                                 ways (no Line's way matters, the joints close) -- tinted gold (the casing
+                                 stays black)
+    Textures/QuestAreaGlow.tga   (1.2.0) the areas' glow: a soft white dab (a Gaussian), a row of them inside
+                                 the edge overlapping into one band with no seams
+    Textures/GildedRim.tga       (1.2.0) MelloUI's gold rim round a bar (Core/Widgets.lua W.RimArt; the user's
+                                 pick A of BuildData/output/animation_previews/prd_looks.html, the Personal
+                                 Display): a nine-slice -- a rounded rail, a dark casing either side of WHITE
+                                 metal lit from above (the top rail 1, the sides RIM_SIDE, the bottom darker),
+                                 a soft shade under the top rail inside -- tinted the palette's selectedTrim
+                                 (the casings and the shade stay black)
 
 Both are WHITE where they draw, their alpha the picture, so the game tints
 them with a palette colour (the ring with selectedTrim, its dim track with
@@ -60,6 +73,24 @@ DOT_NAME = ("Textures", "MapDot.tga")
 DOT_SIZE = 32                 # the map dot's texture (drawn at about 10 px)
 DOT_FILL, DOT_OUT = 0.60, 0.94   # the white dot to DOT_FILL of the half-width, the black ring to DOT_OUT
 GLYPH_NAME = ("Textures", "WidgetGlyphs.tga")
+EDGE_NAME = ("Textures", "QuestAreaEdge.tga")
+EDGE_W, EDGE_H = 8, 8             # u along the line, v across it: drawn about 7 px thick, so about one texel a
+                                  # pixel (the client draws addon art bilinear with no mipmaps: a profile of more
+                                  # rows than pixels would be read one row in four and shimmer -- the icons' lesson)
+# the edge's profile across the Line, shares of its thickness from one side (the same from the other): clear to
+# CASE, the casing to CORE, the core in the middle (drawn 7 px: the core 2 px, a casing 1.7 px each side)
+EDGE_CASE, EDGE_CORE = 0.12, 0.36
+EDGE_CASE_A = 0.60                # the casing's alpha
+GLOW_NAME = ("Textures", "QuestAreaGlow.tga")
+GLOW_SIZE, GLOW_SIGMA = 32, 0.36  # the dab, its Gaussian's spread (shares of the half-width: about 0.02 at the rim)
+RIM_NAME = ("Textures", "GildedRim.tga")
+RIM_SIZE, RIM_CORNER = 32, 7      # the texture, its nine-slice corners (W.RimArt's RIM_CORNER): the outer radius
+RIM_RAIL = 4                      # the rail, texels from the outside (W.RimArt's RIM_RAIL): drawn about 2.7 UI px,
+                                  # so about one texel a pixel (no mipmaps: the icons' lesson)
+RIM_CASE = 1.0                    # the dark casing either side of the metal (texels), its alpha
+RIM_CASE_A = 0.80
+RIM_SIDE, RIM_LIGHT = 0.72, 0.28  # the metal lit from above: RIM_SIDE + RIM_LIGHT * its face's upward share
+RIM_SHADE, RIM_SHADE_A = 3.0, 0.30   # the soft shade inside under the top rail: its depth (texels), its strength
 
 RING_SIZE = 128
 RING_IN, RING_OUT = 0.870, 0.985   # the band, shares of the half-width
@@ -320,6 +351,74 @@ def map_dot():
     return img
 
 
+def area_edge():
+    """the quest areas' edge across a Line (rows: one side to the other, the same both ways), drawn SUPER x 4 times
+    finer and averaged down: colour white in the core, black in the casing; alpha the profile"""
+    n = EDGE_H * SUPER * 16
+    v = (np.arange(n) + 0.5) / n
+    w = np.minimum(v, 1 - v)                        # the share from the nearer side
+    soft = 0.02                                     # the casing's and the core's soft edges (box-filtered to a row)
+    case = smootherstep((w - EDGE_CASE) / soft + 0.5)
+    core = smootherstep((w - EDGE_CORE) / soft + 0.5)
+    a = np.maximum(case * EDGE_CASE_A, core)
+    white = core                                    # premultiplied white (the casing black)
+    a = a.reshape(EDGE_H, -1).mean(axis=1)
+    white = white.reshape(EDGE_H, -1).mean(axis=1)
+    col = np.where(a > 0, np.clip(white / np.maximum(a, 1e-6), 0, 1), 0.0)
+    img = np.zeros((EDGE_H, EDGE_W, 4), np.uint8)
+    img[..., 0] = img[..., 1] = img[..., 2] = np.clip(col * 255 + 0.5, 0, 255).astype(np.uint8)[:, None]
+    img[..., 3] = np.clip(a * 255 + 0.5, 0, 255).astype(np.uint8)[:, None]
+    return img
+
+
+def area_glow():
+    """the areas' glow dab: white, its alpha a Gaussian of the distance from the middle (SUPER times finer)"""
+    n = GLOW_SIZE * SUPER
+    c = (np.arange(n) + 0.5) / n * 2.0 - 1.0
+    r2 = c[None, :] ** 2 + c[:, None] ** 2
+    a = np.exp(-r2 / (2 * GLOW_SIGMA * GLOW_SIGMA)) * (r2 < 1)
+    a = a.reshape(GLOW_SIZE, SUPER, GLOW_SIZE, SUPER).mean(axis=(1, 3))
+    img = np.full((GLOW_SIZE, GLOW_SIZE, 4), 255, np.uint8)
+    img[..., 3] = np.clip(a * 255 + 0.5, 0, 255).astype(np.uint8)
+    return img
+
+
+def gilded_rim():
+    """the gold rim: a rounded rail round the texture's edge (its outer radius RIM_CORNER), drawn SUPER x 2 times
+    finer and averaged down; white metal lit from above, black casings and the shade (colour premultiplied)"""
+    k = SUPER * 2
+    n = RIM_SIZE * k
+    c = (np.arange(n) + 0.5) / k - RIM_SIZE / 2.0
+    x, y = c[None, :], c[:, None]                   # y down: row 0 the top
+    half = RIM_SIZE / 2.0 - RIM_CORNER
+    qx, qy = np.abs(x) - half, np.abs(y) - half
+    ox, oy = np.maximum(qx, 0), np.maximum(qy, 0)
+    out = np.hypot(ox, oy)
+    depth = RIM_CORNER - out - np.minimum(np.maximum(qx, qy), 0)   # from the outer edge inward
+    # the face's upward share: the corners' round, the top and bottom rails straight (the sides none)
+    corner = (qx > 0) & (qy > 0)
+    face = np.where(corner, oy / np.maximum(out, 1e-6), (qy >= qx).astype(float))
+    up = face * np.where(y < 0, 1.0, -1.0)
+    metal = (depth >= RIM_CASE) & (depth < RIM_RAIL - RIM_CASE)
+    case = ((depth >= 0) & (depth < RIM_CASE)) | ((depth >= RIM_RAIL - RIM_CASE) & (depth < RIM_RAIL))
+    inner = depth - RIM_RAIL
+    shade = (inner >= 0) & (inner < RIM_SHADE)
+    a = np.zeros_like(depth)
+    white = np.zeros_like(depth)
+    a[metal] = 1.0
+    white[metal] = RIM_SIDE + RIM_LIGHT * up[metal]
+    a[case] = RIM_CASE_A
+    sa = RIM_SHADE_A * np.maximum(up, 0) * (1 - inner / RIM_SHADE)
+    a[shade] = sa[shade]
+    a = a.reshape(RIM_SIZE, k, RIM_SIZE, k).mean(axis=(1, 3))
+    white = white.reshape(RIM_SIZE, k, RIM_SIZE, k).mean(axis=(1, 3))
+    col = np.where(a > 0, np.clip(white / np.maximum(a, 1e-6), 0, 1), 0.0)
+    img = np.zeros((RIM_SIZE, RIM_SIZE, 4), np.uint8)
+    img[..., 0] = img[..., 1] = img[..., 2] = np.clip(col * 255 + 0.5, 0, 255).astype(np.uint8)
+    img[..., 3] = np.clip(a * 255 + 0.5, 0, 255).astype(np.uint8)
+    return img
+
+
 def tga(img):
     buf = io.BytesIO()
     Image.fromarray(img, "RGBA").save(buf, format="TGA")
@@ -333,7 +432,8 @@ def main():
         print("unknown argument: %s (nothing written)\n" % " ".join(bad))
         print(__doc__[__doc__.index("    python Tools/"):].rstrip())
         return 2
-    files = [(RING_NAME, tga(ring())), (GLYPH_NAME, tga(glyph_sheet())), (DOT_NAME, tga(map_dot()))]
+    files = [(RING_NAME, tga(ring())), (GLYPH_NAME, tga(glyph_sheet())), (DOT_NAME, tga(map_dot())),
+             (EDGE_NAME, tga(area_edge())), (GLOW_NAME, tga(area_glow())), (RIM_NAME, tga(gilded_rim()))]
     stale = []
     for name, data in files:
         targets = [master(*name), os.path.join(ADDON_MEDIA, *name)]

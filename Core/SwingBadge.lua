@@ -18,7 +18,9 @@
 -- or a fist weapon stabs: snapped toward the bar, settled on a spring), a streak across the target's health bar and
 -- the bar lit; the blow's outcome -- the game's report of a blow on your target (UNIT_COMBAT, "target") within
 -- T.outcomeWindow of your swing -- a critical blow gold and bigger, a dodge, parry or miss bounced back grey with the
--- game's word. Auto Shot: its aim red, four chevrons closing on the badge (moving holds them, spread and dimmed), the
+-- game's word; (the user, 2026-10-22: "as the hits land, there should be like sun rays sparking from the middle of the
+-- icon") every blow that lands sparks sun rays from the weapon's middle (the look's light art, FrameFX.Art: the
+-- modern look's own), a critical one bigger and brighter -- each strike's turned a little from the last. Auto Shot: its aim red, four chevrons closing on the badge (moving holds them, spread and dimmed), the
 -- shot a recoil and a tracer into the plate; a wand gathers three motes and throws its bolt. Out of range (the game's
 -- own check, PLAYER_SWING_RANGE_UPDATE: the Swing Timers' before) a badge's weapon red-tinted (Meaning.actionRange).
 -- Made with the first swing (nothing at login); nothing written on the game's frames (the badge is parented to the
@@ -54,7 +56,11 @@ MelloUI.SwingBadge = SB
 -- of the blow on your target is taken as its outcome; how long after a swing's time with no next one it goes; the aim
 -- at a shot's end (Auto Shot's last half second, standing still); the word's size
 SB.T = { badge = 24, badgeOff = 0.66, badgeGap = 4, windup = 0.25, strike = 0.5, outcomeWindow = 0.2, swingGrace = 0.6,
-	aim = 0.5, word = 12 }
+	aim = 0.5, word = 12,
+	-- (the sun rays as a blow lands) how long they spark (a crit's a little longer), their size against the badge's
+	-- at the start and at the end (a crit's), their strength, how far each strike's turns from the last's
+	rays = 0.32, raysCrit = 0.42, raysFrom = 0.5, raysTo = 2.2, raysCritTo = 3.6, raysA = 0.75, raysCritA = 1,
+	raysTurn = 0.7 }
 local T = SB.T
 
 -- the badge's art and its lights' colours; the slot of each hand's weapon; a weapon whose blow is a stab (a fist
@@ -153,8 +159,12 @@ function Badge.Make(small)
 	b.fx = fx
 	b.glow = Spark(fx, "OVERLAY", 4, "glow_white.tga")
 	b.glow:SetPoint("CENTER", b, "CENTER", 0, 0)
-	b.burst = Spark(fx, "OVERLAY", 7, "spark_gold.tga")
-	b.burst:SetPoint("CENTER", b, "CENTER", 0, 0)
+	-- (the sun rays from the weapon's middle, over it: the look's own light art at about a texel a pixel)
+	b.burst = fx:CreateTexture(nil, "OVERLAY", nil, 7)
+	b.burst:SetTexture(MelloUI.FrameFX and MelloUI.FrameFX.Art and MelloUI.FrameFX.Art("rays_gold_small.tga")
+		or SB.ART .. "rays_gold_small.tga")
+	b.burst:SetBlendMode("ADD")
+	b.burst:SetPoint("CENTER", ring, "CENTER", 0, 0)
 	b.ticks, b.motes = {}, {}
 	local aim = MelloUI.Meaning.swingAim
 	for i = 1, 4 do
@@ -207,6 +217,7 @@ function Badge.Rest(b)
 	ring.icon:SetRotation(0)
 	ring.icon:SetVertexColor(c[1], c[2], c[3])
 	ring:SetScale(1)
+	W.RoundIconRefit(ring)
 	ring:ClearAllPoints()
 	ring:SetPoint("CENTER", b, "CENTER", 0, 0)
 	for _, r in ipairs({ b.glow, b.burst, b.word, b.flash, b.streak, b.tracer }) do
@@ -370,6 +381,7 @@ function Badge.Land(hand)
 	end
 	p.at = nil
 	Badge.Said(b)
+	b.raysAt = ((b.raysAt or 0) + T.raysTurn) % (2 * math.pi)   -- (each strike's rays turned from the last's)
 	b.motion = "strike"
 	Anim:Drive(b, Badge.Step, T.strike, "linear")
 end
@@ -452,7 +464,7 @@ function Badge.Step(b, share)
 	local outCubic = Anim.easing.outCubic
 	local rot, dx, dy, scale, tint = 0, 0, 0, 1, nil
 	local glowA, glowCol, glowK = 0, SB.GOLD, 2.4
-	local burstA, burstK, wordA, wordY = 0, 1, 0, 0
+	local burstA, burstK, wordA, wordY, raysTurn = 0, 1, 0, 0, 0
 	local flashA, flashCol, streakA, streakV, tracerA, tracerX = 0, nil, 0, 0, 0, 0
 	local ticksA, ticksD, motesA, motesR = 0, 0, 0, 0
 	if motion == "windup" then
@@ -507,8 +519,13 @@ function Badge.Step(b, share)
 		else
 			glowA, glowCol = (crit and 0.8 or 0.5) * (1 - share), crit and SB.GOLD or MelloUI.Meaning.swingMelee
 			glowK = crit and 3.2 or 2.4
-			if crit then
-				burstA, burstK = 1 - share, 1 + 1.6 * outCubic(share)
+			-- (the sun rays sparking from the weapon's middle: in at once, out as they spread)
+			local life = crit and T.raysCrit or T.rays
+			if L < life then
+				local q = L / life
+				burstA = (crit and T.raysCritA or T.raysA) * math.min(1, L / 0.03) * (1 - q) ^ 1.5
+				burstK = T.raysFrom + ((crit and T.raysCritTo or T.raysTo) - T.raysFrom) * outCubic(q)
+				raysTurn = (b.raysAt or 0) + 0.25 * q
 			end
 			if b.bar then
 				local travel = (b.kind == "wand" and 0.14) or (b.kind == "shot" and 0.06) or 0
@@ -535,12 +552,14 @@ function Badge.Step(b, share)
 		icon:SetVertexColor(c[1], c[2], c[3])
 	end
 	ring:SetScale(scale)
+	W.RoundIconRefit(ring)   -- (its ring sharp at every step of the strike)
 	ring:SetPoint("CENTER", b, "CENTER", dx / scale, dy / scale)
 	-- the lights
 	b.glow:SetVertexColor(glowCol[1], glowCol[2], glowCol[3])
 	b.glow:SetSize(d * glowK, d * glowK)
 	b.glow:SetAlpha(glowA)
-	b.burst:SetSize(d * 1.4 * burstK, d * 1.4 * burstK)
+	b.burst:SetSize(d * burstK, d * burstK)
+	b.burst:SetRotation(raysTurn)
 	b.burst:SetAlpha(burstA)
 	b.word:SetAlpha(wordA)
 	if wordA > 0 then

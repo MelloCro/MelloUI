@@ -10,7 +10,7 @@
 -- tooltip lists them all. Hovering it softly expands the others out of it,
 -- each one a round button of its own; leaving it eases them back in (after a
 -- short grace, so the pointer can travel onto one). A round glow in the
--- palette's gold pulses for about 10 s, then holds steady, and brightens
+-- palette's gold holds steady (1.2.0: no pulse; before, about 10 s of it) and brightens
 -- while the player is in reach of where the reminder sends him. With the
 -- kit's unit frames, the round rims are the kit's and wear the whole UI's
 -- shade (Kit:ShadeElement, the unit frames' area): a dark halo under them.
@@ -125,10 +125,17 @@
 -- The settings are the Reminders module's, read when used (a missing one is
 -- its default, so they hold with that module off): place ("left" of the
 -- ring, "above" or "right"; not saved: the side the ring's anchor names,
--- else left), glow ("pulse": about 10 s, then steady; "still"; "off"), hold
+-- else left), glow ("still"; "off"; an old "pulse" reads as "still"), hold
 -- (4-20 s, 8), stayResting (on: Rem:StayUp) and remind_<key> (on). Reduce
 -- Motion stills the glow and lands
 -- every move at once (MelloUI.Anim, MelloUI.Shade:Glow).
+-- (1.2.0, animations round 4; the user 2026-10-22, "all of them" to
+-- BuildData/output/animation_previews/round4_anims.html) Its moments, one each,
+-- never repeating: a gold ring once as the widget pops up and its line
+-- sliding in from the button (Motion.Up); a reminder done while up (its
+-- reason ended: repaired, restocked, read) with none left, a tick drawn on
+-- the button, then the widget fades out sinking a little (Motion.Done).
+-- Reduce Motion: none of them, the plain fades.
 --
 -- Where it sits: on the player's portrait ring, Unit Frames' M:ReminderAnchor()
 -- -> region, side, reach, far (the ring with the kit or the game's portrait,
@@ -215,8 +222,8 @@ Rem.TEXT = {
 }
 local TEXT = Rem.TEXT
 
-local DEFAULTS = { glow = "pulse", hold = HOLD, stayResting = true, widgetLock = false, widgetMax = 4 }
-local GLOWS = { pulse = true, still = true, off = true }
+local DEFAULTS = { glow = "still", hold = HOLD, stayResting = true, widgetLock = false, widgetMax = 4 }
+local GLOWS = { still = true, off = true }
 local SIDES = { LEFT = "left", RIGHT = "right", TOP = "above", left = "left", right = "right", above = "above" }
 -- each place: the widget's point on the ring's, the way out of the button
 -- (the more ones and the label go further that way), the tooltip's side
@@ -278,7 +285,7 @@ end
 
 local function GlowMode()
 	local g = Setting("glow")
-	return (not Secret(g) and GLOWS[g]) and g or "pulse"
+	return (not Secret(g) and GLOWS[g]) and g or "still"
 end
 
 -- a spec's field that may be a value or fn(key) -> one (an error reported, nil)
@@ -636,11 +643,7 @@ local function ApplyGlow(glow)
 		glow:SetShown(false)
 		return
 	end
-	if mode == "still" then
-		glow:Still()
-	else
-		glow:Settle()
-	end
+	glow:Still()
 	glow:SetShown(true)
 end
 
@@ -669,6 +672,7 @@ local function ShowLabel(on)
 		end
 	elseif S.hovered then
 		Anim:Stop(lf)
+		Anim:Stop(ui.label, "slide")   -- (1.2.0: its slide in, where it is: it is hidden)
 		lf:Hide()
 		lf:SetAlpha(1)
 	elseif lf:IsShown() then
@@ -944,6 +948,83 @@ local function OnMover(what, entry)
 	end
 end
 
+-- (1.2.0) the widget's moments (see the top): the ring and the tick made with the widget (Motion.Make), each one-shot:
+-- the ring an engine burst (Anim:Burst, RING_K bigger), the line's slide (SLIDE_D from the button) and the tick on the
+-- engine's tweens; RING / SLIDE / TICK / HOLD seconds, the sink
+local Motion = { RING = 0.6, SLIDE = 0.35, SLIDE_D = 10, TICK = 0.3, HOLD = 0.35, SINK = 6, RING_K = 1.9,
+	ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\halo_white",   -- look-ok: a moment's light, both looks
+	done = false, tickJob = {} }
+
+function Motion.Make(b)
+	local ring = b:CreateTexture(nil, "OVERLAY", nil, 7)
+	ring:SetTexture(Motion.ART)
+	ring:SetBlendMode("ADD")
+	ring:SetPoint("CENTER", b, "CENTER", 0, 0)
+	ring:SetSize(SIZE, SIZE)
+	Look.Paint(ring, "selectedTrim", "vertex")
+	ring:Hide()
+	local shade = b:CreateTexture(nil, "OVERLAY", nil, 5)
+	shade:SetTexture(ROUND)
+	shade:SetPoint("CENTER", b, "CENTER", 0, 0)
+	shade:SetSize(SIZE * 0.8, SIZE * 0.8)
+	Look.Paint(shade, "innerPanel", "vertex", 0.6)
+	shade:Hide()
+	local tick = b:CreateTexture(nil, "OVERLAY", nil, 6)
+	tick:SetPoint("LEFT", b, "CENTER", -SIZE * 0.25, 0)
+	Look.Paint(tick, "selectedTrim", "vertex")
+	tick:Hide()
+	ui.ring, ui.tickShade, ui.tick = ring, shade, tick
+end
+
+-- popped up: the ring once, the line in from the button
+function Motion.Up()
+	if Anim.reduceMotion then
+		return
+	end
+	Anim:Burst(ui.ring, Motion.RING_K, 0.9, Motion.RING)
+	local p = PLACES[ui.place]
+	local d = Motion.SLIDE_D
+	local x, y = p.dx * (GAP + 6), p.dy * (GAP + 4)
+	Anim:Slide(ui.label, p.label, ui.button, p.labelRel, x - p.dx * d, y - p.dy * d * 0.6, p.dx * d, p.dy * d * 0.6,
+		Motion.SLIDE)
+end
+
+function Motion.TickStep(_, share)
+	local t = share * (Motion.TICK + Motion.HOLD)
+	local p = math.min(1, t / Motion.TICK)
+	p = p < 0.02 and 0.02 or p
+	local w = SIZE * 0.5
+	W.Glyph(ui.tick, "check", p)
+	ui.tick:SetSize(w * p, w)
+end
+
+-- the tick drawn, then the fade out sinking (Hide's); the tick stays on through the fade (the next pop puts it away)
+function Motion.TickOver()
+	local holder = ui.holder
+	if not Motion.done then
+		return
+	end
+	Motion.done = false
+	local p1, rel, p2, x, y = holder:GetPoint(1)
+	if p1 and type(x) == "number" and type(y) == "number" then
+		Anim:Slide(holder, p1, rel, p2, x, y, 0, -Motion.SINK, FADE)
+	end
+	Anim:FadeOut(holder, FADE)
+end
+
+-- done while up, none left: the tick, then the fade (true: played; Hide waits for it)
+function Motion.Done()
+	if Anim.reduceMotion or not (ui and ui.holder:IsShown() and W.Glyph) then
+		return false
+	end
+	Motion.done = true
+	ui.tickShade:Show()
+	ui.tick:Show()
+	Motion.TickStep(nil, 0)
+	Anim:Drive(Motion.tickJob, Motion.TickStep, Motion.TICK + Motion.HOLD, "linear", Motion.TickOver)
+	return true
+end
+
 Build = function()
 	if ui then
 		return ui
@@ -966,6 +1047,7 @@ Build = function()
 	b:SetKit(KitOn())
 	ui.button = b
 	ui.glow = MelloUI.Shade:Glow(b, { region = b, size = SIZE })   -- look-ok: ApplyGlows, none in the game's look (GlowMode)
+	Motion.Make(b)
 	-- the count: a number on a small dark disc at the button's lower right
 	-- (Look.Count)
 	local disc = b:CreateTexture(nil, "OVERLAY", nil, 6)
@@ -1112,8 +1194,12 @@ Hide = function(now)
 		ui.labelFrame:SetAlpha(1)
 	elseif holder:IsShown() then
 		ShowLabel(false)
-		Anim:FadeOut(holder, FADE)
+		-- (1.2.0: a reminder done just now, none left: its tick first, then the fade)
+		if not (S.doneNow and Motion.Done()) then
+			Anim:FadeOut(holder, FADE)
+		end
 	end
+	S.doneNow = false
 	-- (its tooltip, whichever part owns it)
 	local owned = GameTooltip:IsOwned(ui.button) or (ui.overlay and GameTooltip:IsOwned(ui.overlay))
 	for i = 1, #ui.minis do
@@ -1195,7 +1281,13 @@ Show = function()
 	Place()
 	local holder = ui.holder
 	if not holder:IsShown() or Anim:Target(holder, "alpha") == 0 then
+		-- (a tick under way, or its fade, ended where it is: the widget up again)
+		Motion.done = false
+		Anim:Stop(Motion.tickJob, "drive")
+		ui.tick:Hide()
+		ui.tickShade:Hide()
 		Anim:Pop(holder, POP, RISE)
+		Motion.Up()
 	end
 	if ui.button.key then
 		ApplyGlow(ui.glow)
@@ -1515,6 +1607,10 @@ local function Take(key, why, raise)
 		if st.dismissed == "change" then
 			st.dismissed = false
 		end
+		-- (1.2.0: up, and its reason ended -- repaired, restocked, read: done, Motion.Done)
+		if wasUp and wasActive then
+			S.doneNow = true
+		end
 		st.up = false
 	elseif raise or wasActive == false then
 		Raise(key, why)
@@ -1530,6 +1626,7 @@ local function RunDirty()
 		return   -- (the login moment runs them)
 	end
 	S.walks = 0
+	S.doneNow = false
 	local any = false
 	for i = 1, #order do
 		local key = order[i]

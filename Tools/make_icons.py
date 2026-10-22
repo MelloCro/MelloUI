@@ -318,6 +318,9 @@ FX_LIGHT = [("plus_green", "heal_cross", 64, None, "fit"), ("plus_gold", "heal_c
             ("plus_blue", "heal_cross", 64, "blue", "fit"),
             ("leaf", "heal_leaf", 64, None, "level"), ("drop", "heal_drop", 64, "blue", "fit"),
             ("spark_gold", "holy_spark", 64, None, "fit"), ("rays_gold", "heal_rays", 256, None, "fit"),
+            # (1.2.0, the swing badge's sun rays from its icon's middle: drawn at about 30-120 px, so a copy at 128,
+            # about a texel a pixel -- the 256's thin rays shimmered small; the user: "sun rays sparking")
+            ("rays_gold_small", "heal_rays", 128, None, "fit"),
             ("ring_gold", "cooldown_ring", 128, None, "fit"), ("ring_fire", "roar_ring", 128, None, "fit"),
             ("wave_red", "taunt_ring", 128, None, "fit"), ("wave_teal", "heal_wave", 128, None, "fit"),
             ("wave_gold", "heal_wave", 128, "gold", "fit"), ("ripple_blue", "heal_wave", 128, "blue", "fit"),

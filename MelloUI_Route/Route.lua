@@ -7013,6 +7013,8 @@ local function ClipToSquare(ax, ay, bx, by, R, RY)
 	end
 	return nil
 end
+-- (1.2.0) the clips for the other modules' drawing on the minimap (the Quest List's quest areas, MelloUI.QuestAreas)
+M.ClipToCircle, M.ClipToSquare = ClipToCircle, ClipToSquare
 
 --------------------------------------------------------------------------------
 -- Stopping the route (/route clear; user, 2026-10-03: "clicking on stop the

@@ -1632,6 +1632,16 @@ local QUEST_EVENTS = {
 -- plates (ClassNameplateBarRogue / Druid) are not loaded in this client
 -- (Blizzard_NamePlates.toc: ExcludeLoadGameType camelot): no CVar to steer.
 -- The target frame's ComboFrame (CVar comboPointLocation) is UnitFramePanel's.
+-- (1.2.0, animations round 4; the user 2026-10-22, "all of them" to BuildData/
+-- output/animation_previews/round4_anims.html) Its motion, only on the
+-- player's own power event and only while the count reads plain (a secret
+-- count: no motion, as before), never on a new target: a point gained pops in
+-- (a copy of its point's art over it, bigger and settling, a small flash), the
+-- fifth sends a glint across the row, and a finisher (the count to 0 from more)
+-- sweeps copies of the spent points down into the plate's health bar, which
+-- flashes gold. Copies of ours over the row's own pieces (nothing of the row's
+-- written but its value), on one frame over them; one Anim:Drive while any
+-- moves; Reduce Motion: none of it.
 --------------------------------------------------------------------------------
 
 Combo.ART = {
@@ -1647,6 +1657,13 @@ Combo.DROP = 1 / 16     -- the shadow under its socket, of a socket (the sketch'
 Combo.CAT = 1           -- GetShapeshiftFormID's Cat Form (DRUID_CAT_FORM)
 Combo.LEVEL = 8         -- over the health bar: over the kit's bracket rail and the threat line
 Combo.lifted = setmetatable({}, { __mode = "k" })   -- [a plate's UnitFrame] = its name's lift
+-- (1.2.0) the motion: the pop's length and growth, the glint's, the spend's (each point a STAGGER after the one past
+-- it), the bar's gold flash; the count last read plain (nil: secret or none); the pieces (made at the first motion)
+Combo.FX = { POP = 0.28, POP_K = 1.6, GLINT = 0.45, SPEND = 0.3, STAGGER = 0.05, DROP = 0.8, WASH = 0.6, WASH_A = 0.45,
+	FLASH = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\glow_white",   -- look-ok: a moment's light, both looks
+	SHEEN = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\sheen",   -- look-ok: a moment's light, both looks
+	WHITE = "Interface\\Buttons\\WHITE8X8", last = nil, popAt = {}, spendAt = {}, glintAt = nil, washAt = nil,
+	job = {} }
 
 -- the player's class when it has combo points (ROGUE or DRUID), else false
 function Combo.Class()
@@ -1846,8 +1863,9 @@ function Combo.Detach()
 	end
 end
 
--- the count handed to the bars (plain or secret alike: never compared here)
-function Combo.Count()
+-- the count handed to the bars (plain or secret alike: never compared here); `moment`: the player's own power event
+-- -- with a plain count, its change plays (Combo.Moment)
+function Combo.Count(moment)
 	local row = Combo.row
 	if not (row and Combo.at) then
 		return
@@ -1863,6 +1881,148 @@ function Combo.Count()
 		row.lit[i]:SetValue(n)
 		row.point[i]:SetValue(n)
 		row.glow[i]:SetValue(n)
+	end
+	local FX = Combo.FX
+	local last = FX.last
+	FX.last = (not Secret(n)) and n or nil
+	if moment and last and FX.last and FX.last ~= last then
+		Combo.Moment(last, FX.last)
+	end
+end
+
+-- the motion's pieces, on one frame over the row's (made at the first motion): a point's copy and a flash a socket,
+-- a copy for its spend, the glint, the bar's flash
+function Combo.FXMake(row)
+	local FX = Combo.FX
+	local f = CreateFrame("Frame", nil, row)
+	f:SetAllPoints(row)
+	f:EnableMouse(false)
+	row.fx, row.pop, row.flash, row.spend = f, {}, {}, {}
+	for i = 1, Combo.N do
+		row.pop[i] = f:CreateTexture(nil, "OVERLAY", nil, 1)
+		row.flash[i] = f:CreateTexture(nil, "OVERLAY", nil, 2)
+		row.flash[i]:SetTexture(FX.FLASH)
+		row.flash[i]:SetBlendMode("ADD")
+		row.spend[i] = f:CreateTexture(nil, "OVERLAY", nil, 1)
+	end
+	row.glint = f:CreateTexture(nil, "OVERLAY", nil, 3)
+	row.glint:SetTexture(FX.SHEEN)
+	row.glint:SetBlendMode("ADD")
+	-- (the bar's flash on the row itself, under its sockets: over the bar, never over a socket)
+	row.wash = row:CreateTexture(nil, "BACKGROUND", nil, -8)
+	row.wash:SetTexture(FX.WHITE)
+	row.wash:SetBlendMode("ADD")
+	MelloUI.Look.Paint(row.wash, "selectedTrim", "vertex")
+	for _, t in ipairs({ row.glint, row.wash }) do
+		t:Hide()
+	end
+end
+
+-- a socket's middle on the row (as Combo.Lay lays it)
+function Combo.At(row, i)
+	local s = row.size or 12
+	return (i - 1) * (s + s * Combo.GAP) + s / 2, s
+end
+
+-- the count went from `last` to `n` (both plain): the points gained pop, the fifth glints, a finisher's spend
+function Combo.Moment(last, n)
+	local row = Combo.row
+	if not row or MelloUI.Anim.reduceMotion then
+		return
+	end
+	if not row.fx then
+		Combo.FXMake(row)
+	end
+	local FX, now = Combo.FX, GetTime()
+	row.fx:SetFrameLevel(row.glow[1]:GetFrameLevel() + 1)
+	if n > last then
+		for i = last + 1, math.min(n, Combo.N) do
+			FX.popAt[i] = now
+			row.pop[i]:SetAtlas(row.art.point)
+		end
+		if n >= Combo.N then
+			FX.glintAt = now
+		end
+	elseif n == 0 then
+		for i = 1, math.min(last, Combo.N) do
+			FX.spendAt[i] = now + (last - i) * FX.STAGGER
+			row.spend[i]:SetAtlas(row.art.point)
+		end
+		local hb = Combo.at and Combo.at.HealthBarsContainer and Combo.at.HealthBarsContainer.healthBar
+		if hb then
+			row.wash:ClearAllPoints()
+			row.wash:SetAllPoints(hb)
+			FX.washAt = now
+		end
+	end
+	Combo.FXStep()
+	MelloUI.Anim:Drive(FX.job, Combo.FXStep, FX.WASH + FX.STAGGER * Combo.N + 0.1, "linear")
+end
+
+-- one frame of every piece under way, from the times they began
+function Combo.FXStep()
+	local row, FX = Combo.row, Combo.FX
+	if not (row and row.fx) then
+		return
+	end
+	local now = GetTime()
+	for i = 1, Combo.N do
+		local x, s = Combo.At(row, i)
+		local pop, flash = row.pop[i], row.flash[i]
+		local p = FX.popAt[i] and (now - FX.popAt[i]) / FX.POP
+		if p and p < 1 then
+			local k = 1 + (FX.POP_K - 1) * (1 - MelloUI.Anim.easing.outCubic(p))
+			pop:ClearAllPoints()
+			pop:SetPoint("CENTER", row, "LEFT", x, 0)
+			pop:SetSize(s * k, s * k)
+			pop:SetAlpha(1 - p * p)
+			pop:Show()
+			flash:ClearAllPoints()
+			flash:SetPoint("CENTER", row, "LEFT", x, 0)
+			flash:SetSize(s * 2, s * 2)
+			flash:SetAlpha(0.8 * (1 - p))
+			flash:Show()
+		else
+			FX.popAt[i] = nil
+			pop:Hide()
+			flash:Hide()
+		end
+		local spend = row.spend[i]
+		local q = FX.spendAt[i] and (now - FX.spendAt[i]) / FX.SPEND
+		if q and q < 1 then
+			q = q < 0 and 0 or q
+			spend:ClearAllPoints()
+			spend:SetPoint("CENTER", row, "LEFT", x, -s * FX.DROP * MelloUI.Anim.easing.outCubic(q))
+			spend:SetSize(s * (1 - 0.6 * q), s * (1 - 0.6 * q))
+			spend:SetAlpha(1 - q)
+			spend:Show()
+		else
+			FX.spendAt[i] = nil
+			spend:Hide()
+		end
+	end
+	local g = FX.glintAt and (now - FX.glintAt) / FX.GLINT
+	if g and g < 1 then
+		local w = row.size or 12
+		local x0 = Combo.At(row, 1) - w / 2
+		local x1 = Combo.At(row, Combo.N) + w / 2
+		row.glint:ClearAllPoints()
+		row.glint:SetPoint("CENTER", row, "LEFT", x0 + (x1 - x0) * g, 0)
+		row.glint:SetSize(w, w * 1.6)
+		row.glint:SetAlpha(0.9 * math.sin(g * math.pi))
+		row.glint:Show()
+	else
+		FX.glintAt = nil
+		row.glint:Hide()
+	end
+	local wsh = FX.washAt and (now - FX.washAt - FX.SPEND * 0.6) / FX.WASH
+	if wsh and wsh < 1 then
+		wsh = wsh < 0 and 0 or wsh
+		row.wash:SetAlpha(FX.WASH_A * (wsh > 0 and (1 - wsh) or 0))
+		row.wash:Show()
+	else
+		FX.washAt = nil
+		row.wash:Hide()
 	end
 end
 
@@ -1925,7 +2085,7 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit, power)
 	elseif event == "UNIT_POWER_FREQUENT" then
 		-- (the player's; only a combo point change: energy ticks pass by)
 		if Secret(power) or power == nil or power == "COMBO_POINTS" then
-			Combo.Count()
+			Combo.Count(true)
 		end
 	elseif event == "PLAYER_TARGET_CHANGED" or event == "UPDATE_SHAPESHIFT_FORM" then
 		Combo.Update()

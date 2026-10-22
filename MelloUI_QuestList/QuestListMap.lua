@@ -129,6 +129,42 @@ function QL.Fresh(group)
 	return any
 end
 
+-- (1.2.0; the user's "all eight" of BuildData/output/animation_previews/map_marks.html, 5) a quest ready to hand in
+-- that no lay showed ready yet: its giver's "?" drops in with a ring of light (the first lay of a session counts every
+-- ready one: the first open's own pops). [row] = true, weak: a quest is ready once. A map of its own keeps its own
+-- `seen` (MelloUI_Map's givers: each map shows the moment once)
+QL.readySeen = setmetatable({}, { __mode = "k" })
+QL.READY_DROP, QL.READY_RISE = 0.32, 12
+
+function QL.ReadyNew(group, seen)
+	if group.state ~= "ready" then
+		return false
+	end
+	seen = seen or QL.readySeen
+	local any = false
+	for _, q in ipairs(group.quests or {}) do
+		local row = q.row
+		if row and not seen[row] and q.state == "ready" then
+			seen[row] = true
+			any = true
+		end
+	end
+	return any
+end
+
+function QL.ReadyDrop(b)
+	local anim = MelloUI.Anim
+	if not anim or anim.reduceMotion then
+		return
+	end
+	anim:FadeIn(b, QL.READY_DROP * 0.6)
+	anim:From(b, "y", QL.READY_RISE, QL.READY_DROP, "outCubic")
+	local QA = MelloUI.QuestAreas
+	if QA and QA.MarkBump then
+		QA.MarkBump(b, b.Icon, 22)
+	end
+end
+
 -- the rows whose giver is on the player's zone map (its children too), as the
 -- zone's pins have them (AddGiverPins); `into` reused
 local nearRows = {}
@@ -274,6 +310,10 @@ local function Clip(map)
 	Marks.clip = clip
 	Perf.SetScript(clip, "OnHide", function()
 		MarkLeave()
+		-- (1.2.0) the map gone: its next lay is a first look again (no progress or done moments)
+		if QL.Objectives then
+			QL.Objectives.hidden = true
+		end
 	end)
 	return clip
 end
@@ -370,21 +410,40 @@ function Marks.End(map)
 	Level()
 	Marks.gamepad = MelloUI.Safe.GamepadUI()
 	Marks.Anchor(map)
+	local anim = MelloUI.Anim
 	for i = 1, Marks.n do
 		local m, b = Marks.list[i], MarkButton(i)
 		b.kind, b.data = m.kind, m.data
+		-- (1.2.0) a pooled button's moves of its last lay stopped, its alpha back -- unless it holds the very same mark
+		-- again (a lay soon after another: a moment under way goes on)
+		local d = m.data
+		local key = m.kind .. ":" .. tostring(d.questID or d.giver or d.name) .. ":" .. tostring(d.index) .. ":"
+			.. math.floor((Finite(d.x) or 0) * 10000) .. ":" .. math.floor((Finite(d.y) or 0) * 10000)
+		local same = b.markKey == key
+		b.markKey = key
+		if not same then
+			if anim then
+				anim:Stop(b)
+			end
+			b:SetAlpha(1)
+		end
 		QL.DressMark(b, m.kind, m.data)
 		b:ClearAllPoints()
 		if Marks.xs[i] then
-			b:SetPoint("CENTER", Marks.anchors[i], "CENTER", 0, 0)
+			-- (1.2.0) marks of objectives sharing an area stand side by side (QuestListObjectives: data.dx)
+			b:SetPoint("CENTER", Marks.anchors[i], "CENTER", m.data.dx or 0, 0)
 			Mouse(b)
 			b:Show()
 			-- (0.21.3) a giver a level just gained opened: it pops in, once
 			if m.kind == "giver" and QL.Fresh(m.data) then
-				local anim = MelloUI.Anim
 				if anim and anim.Pop then
 					anim:Pop(b, QL.FRESH_POP, QL.FRESH_RISE)
 				end
+			-- (1.2.0) a giver with a quest newly ready to hand in: its ? drops in with a ring of light, once
+			elseif m.kind == "giver" and QL.ReadyNew(m.data) then
+				QL.ReadyDrop(b)
+			elseif m.kind == "objective" and QL.Objectives and QL.Objectives.Moment then
+				QL.Objectives.Moment(b, m.data, same)
 			end
 		else
 			b:Hide()
@@ -392,7 +451,7 @@ function Marks.End(map)
 	end
 	for i = Marks.n + 1, #Marks.buttons do
 		local b = Marks.buttons[i]
-		b.kind, b.data = nil, nil
+		b.kind, b.data, b.markKey = nil, nil, nil
 		b:Hide()
 	end
 	Watch()
@@ -724,6 +783,10 @@ MarkEnter = function(self)
 		return
 	end
 	Marks.hovered = self
+	-- (1.2.0) an objective's mark lifts, its area lit (QuestListObjectives)
+	if self.kind == "objective" and QL.Objectives and QL.Objectives.Hover then
+		QL.Objectives.Hover(self, true)
+	end
 	-- (the lines' colours by name, QL.TipLine: the palette's, or the Quest
 	-- List's fixed meaning colours)
 	local tip = GameTooltip
@@ -737,6 +800,9 @@ MarkLeave = function(self)
 	self = self or Marks.hovered
 	if Marks.hovered == self then
 		Marks.hovered = nil
+	end
+	if self and self.kind == "objective" and QL.Objectives and QL.Objectives.Hover then
+		QL.Objectives.Hover(self, false)
 	end
 	if self and GameTooltip:GetOwner() == self then
 		GameTooltip:Hide()
@@ -1640,10 +1706,10 @@ function QL.CreateProvider()
 			Marks.Anchor(self:GetMap())
 		end
 	end
-	-- (0.19.5) the zoom: the objectives' areas zoomed out, their places' dots
-	-- zoomed in, the dots one size on the screen (QuestListObjectives.lua)
+	-- (0.19.5) the zoom: the objectives' places' dots zoomed in, the dots and
+	-- (1.2.0) the areas' edge one size on the screen (QuestListObjectives.lua)
 	function QL.Provider:OnCanvasScaleChanged()
-		if QL.Objectives and QL.Objectives.ndots > 0 then
+		if QL.Objectives and (QL.Objectives.ndots > 0 or QL.Objectives.painter) then
 			QL.Objectives.Zoom(self:GetMap())
 		end
 	end

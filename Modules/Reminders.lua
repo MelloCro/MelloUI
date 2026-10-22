@@ -91,8 +91,9 @@ local PLACES = {
 	{ value = "above", label = "Above the portrait" },
 	{ value = "right", label = "Right of the portrait" },
 }
+-- (1.2.0, animations round 4: no pulse -- the widget's ring once as it comes up instead; an old "pulse" reads as
+-- Steady)
 local GLOWS = {
-	{ value = "pulse", label = "Pulse, then steady" },
 	{ value = "still", label = "Steady" },
 	{ value = "off", label = "Off" },
 }
@@ -119,7 +120,7 @@ local M = MelloUI:RegisterModule("Reminders", {
 		trainerProfession = true,
 		stayResting = true,   -- (the widget reads it: Rem:StayUp; Restock's own until RC4, carried over: CarryRestock)
 		place = "left",
-		glow = "pulse",
+		glow = "still",
 		hold = 8,
 		widgetLock = false,   -- (the widget column's, Core/Reminders.lua: Edit Layout's plate locked)
 		widgetMax = 4,        -- (the widget column's rows at most; the rest fold into its "+N more" row)
@@ -144,7 +145,7 @@ local M = MelloUI:RegisterModule("Reminders", {
 		{ type = "dropdown", key = "place", name = "Place", values = PLACES,
 		  desc = "Where the reminder button sits beside your portrait. With the player frame hidden it keeps a place of its own, which you can move in Edit Layout." },
 		{ type = "dropdown", key = "glow", name = "Glow", values = GLOWS,
-		  desc = "The soft glow around the button: a gentle pulse for a few seconds, then steady; always steady; or none. It brightens when you are close to where the reminder sends you." },
+		  desc = "The soft glow around the button: steady, or none. It brightens when you are close to where the reminder sends you. A ring of light plays once as a reminder comes up." },
 		{ type = "slider", key = "hold", name = "Show For", min = 4, max = 20, step = 1, format = Seconds,
 		  desc = "How long a new reminder stays before it tucks itself away. It stays while your pointer is on it." },
 		{ type = "toggle", key = "widgetLock", name = "Lock The Widgets",

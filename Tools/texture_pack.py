@@ -278,6 +278,10 @@ STAY_TGA = [
     (r"^Textures/LogoIcon\.tga$", "addressed as LogoIcon.tga by Core/Config.lua and the TOC's IconTexture; 256 KB, loaded once"),
     (r"^Textures/SoftShade\.tga$", "the soft shade (Core/Shade.lua): a 32 KB smooth alpha gradient stretched behind text; DXT bands it"),
     (r"^Textures/SoftGlowRound\.tga$", "the round soft glow (Core/Shade.lua Shade:Glow): a 64 KB smooth radial alpha ramp, shipped as its master's bytes like SoftShade"),
+    (r"^Textures/QuestArea(Edge|Glow)\.tga$", "the quest areas' edge profile and glow dab (Tools/make_widget_art.py, "
+                                             "1.2.0): 1 + 4 KB of smooth alpha ramps DXT would band; their masters' bytes"),
+    (r"^Textures/GildedRim\.tga$", "the gold rim's nine-slice (W.RimArt; Tools/make_widget_art.py, 1.2.0): 4 KB, a rail "
+                                   "four texels deep that DXT's 4 x 4 blocks would smear; its master's bytes"),
     (r"^Textures/(ProgressRing|WidgetGlyphs)\.tga$", "the widget column's gold ring (a Cooldown swipe) and its buttons' glyphs (Tools/make_widget_art.py): smooth alpha edges tinted by the palette, 64 + 32 KB, shipped as their masters' bytes"),
     (r"^Textures/Masks/mitre\.tga$", "the mitre mask (Tools/make_mitre_mask.py): a 16 KB half-square whose texels hold "
                                       "their exact share, so a rail's half and its twin's meet with no seam; its master's bytes"),

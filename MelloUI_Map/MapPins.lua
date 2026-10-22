@@ -43,6 +43,15 @@
 --   pins:Remove(name, key) / pins:Clear(name)
 --   pins:Lay()                       the canvas's view laid (canvas.onView)
 --   pins:At(x, y) -> pin             the topmost tip- or click-pin under a canvas point
+--   pin.dx                           (1.2.0) px the pin stands right of its point (marks side by side)
+-- (1.2.0; the user's "all eight" of BuildData/output/animation_previews/map_marks.html) a pin's moments, one-shot on
+-- MelloUI.Anim's engine (Reduce Motion: the end at once); only a pin shown now moves (one out of view is simply
+-- there when it comes in):
+--   pins:Pop(pin, delay)             popped in after `delay`: its picture from small past its size and back, faded in
+--   pins:Ring(pin)                   a gold ring of light from it, once (a count up, a quest ready to hand in)
+--   pins:Raise(pin, on)              lifted a little bigger (the pin under the cursor) or set down
+--   pin.moment = { pop = delay, ring = true, at = GetTime() }   played by the first lay that shows the pin, within
+--                                    T.MOMENT s of `at` (a pin out of view meanwhile: dropped), then let go
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -60,6 +69,12 @@ local T = {
 	MARGIN = 24,      -- px past the view a pin is still laid (its icon half out)
 	LEVEL = 400,      -- the pin layer over the canvas's maps (their levels run to its root's + twice the maps' count)
 	HIT = 3,          -- px round a pin's icon that still points at it
+	POP = 0.3,        -- (1.2.0) a pop's time, a lift's, the ring's; the lift's size
+	LIFT = 0.15,
+	RING = 0.6,
+	LIFTED = 1.18,
+	MOMENT = 2,
+	RING_ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\halo_white",   -- look-ok: a moment's light, both looks
 }
 Pins.T = T
 
@@ -155,6 +170,9 @@ local function HideTex(pin)
 			Pins.Lift(tex, false)
 			pin.dressed = false
 		end
+	end
+	if pin.ring then
+		pin.ring:Hide()
 	end
 	pin.shown = false
 end
@@ -259,6 +277,16 @@ function Pins:Remove(name, key)
 		end
 		pin.tex = nil
 	end
+	if pin.ring then
+		pin.ring:Hide()
+		layer.rings = layer.rings or {}
+		layer.rings[#layer.rings + 1] = pin.ring
+		pin.ring = nil
+	end
+	local Anim = MelloUI.Anim
+	if Anim then
+		Anim:Stop(pin)
+	end
 	Unhook(self, pin)
 	layer.pins[key] = nil
 	self.dirty = true
@@ -323,7 +351,7 @@ function Pins:Lay()
 	local n = 0
 	for _, pin in ipairs(self.near) do
 		local layer = pin.layer
-		local x, y = (pin.wx - x0) * k, (pin.wy - y0) * k
+		local x, y = (pin.wx - x0) * k + (pin.dx or 0), (pin.wy - y0) * k
 		if layer.on and c.z >= layer.minZ and c.z <= layer.maxZ and x > -m and x < w + m and y > -m and y < h + m then
 			local tex = pin.tex
 			local frame = pin.spec.frame
@@ -350,7 +378,23 @@ function Pins:Lay()
 				tex:Show()
 				pin.shown = true
 			end
+			if pin.ring then
+				pin.ring:SetPoint("CENTER", layer.frame, "TOPLEFT", x, -y)
+				pin.ring:Show()
+			end
 			pin.x, pin.y = x, y
+			local mo = pin.moment
+			if mo then
+				pin.moment = nil
+				if GetTime() - (mo.at or 0) <= T.MOMENT then
+					if mo.pop then
+						self:Pop(pin, mo.pop)
+					end
+					if mo.ring then
+						self:Ring(pin)
+					end
+				end
+			end
 			n = n + 1
 			list[n] = pin
 		elseif pin.shown then
@@ -377,6 +421,101 @@ function Pins:At(x, y)
 		end
 	end
 	return best
+end
+
+-- (1.2.0) the moments
+local function Clamp(v)
+	return v < 0 and 0 or (v > 1 and 1 or v)
+end
+
+-- a pin's picture at k times its size (a pin not shown, or a borrowed frame: nothing)
+local function Size(pin, k)
+	local tex = pin.tex
+	if tex and pin.shown and not pin.spec.frame then
+		local s = (pin.spec.size or 16) * k
+		tex:SetSize(s, s)
+	end
+end
+
+local function PopStep(pin, v)
+	local p = Clamp((v * pin.popTotal - pin.popDelay) / T.POP)
+	-- (from 0.4 of its size a little past it and back)
+	local q = p - 1
+	Size(pin, 0.4 + 0.6 * (1 + 2.9 * q * q * q + 1.9 * q * q))
+	if pin.tex and pin.shown and not pin.spec.frame then
+		pin.tex:SetAlpha((pin.spec.alpha or 1) * Clamp(p * 3))
+	end
+end
+
+local function Rest(pin)
+	Size(pin, pin.lifted and T.LIFTED or 1)
+	if pin.tex and pin.shown and not pin.spec.frame then
+		pin.tex:SetAlpha(pin.spec.alpha or 1)
+	end
+end
+
+function Pins:Pop(pin, delay)
+	local Anim = MelloUI.Anim
+	if not (pin and pin.shown and pin.tex) or pin.spec.frame then
+		return
+	end
+	if not Anim or Anim.reduceMotion then
+		Rest(pin)
+		return
+	end
+	pin.popDelay = delay or 0
+	pin.popTotal = pin.popDelay + T.POP
+	PopStep(pin, 0)
+	Anim:Drive(pin, PopStep, pin.popTotal, "linear", Rest)
+end
+
+function Pins:Ring(pin)
+	local Anim = MelloUI.Anim
+	if not (Anim and pin and pin.shown and pin.tex) or Anim.reduceMotion then
+		return
+	end
+	local layer = pin.layer
+	local ring = pin.ring
+	if not ring then
+		local rings = layer.rings
+		ring = rings and rings[#rings]
+		if ring then
+			rings[#rings] = nil
+		else
+			ring = layer.frame:CreateTexture(nil, "OVERLAY", nil, 7)
+			ring:SetTexture(T.RING_ART)
+			ring:SetBlendMode("ADD")
+			if MelloUI.Painter and MelloUI.Painter.Paint then
+				MelloUI.Painter.Paint(ring, "selectedTrim", "vertex")
+			end
+		end
+		pin.ring = ring
+	end
+	local s = (pin.spec.size or 16) * 1.3
+	ring:SetSize(s, s)
+	ring:ClearAllPoints()
+	ring:SetPoint("CENTER", layer.frame, "TOPLEFT", pin.x or 0, -(pin.y or 0))
+	Anim:Burst(ring, 1.9, 0.9, T.RING)
+end
+
+local function LiftStep(pin, v)
+	local from, to = pin.liftFrom or 1, pin.lifted and T.LIFTED or 1
+	Size(pin, from + (to - from) * (1 - (1 - v) ^ 3))
+end
+
+function Pins:Raise(pin, on)
+	local Anim = MelloUI.Anim
+	if not pin or pin.spec.frame then
+		return
+	end
+	local w = pin.tex and pin.tex:GetWidth()
+	pin.liftFrom = (type(w) == "number" and w > 0) and w / (pin.spec.size or 16) or 1
+	pin.lifted = on and true or false
+	if not Anim or Anim.reduceMotion then
+		Rest(pin)
+		return
+	end
+	Anim:Drive(pin, LiftStep, T.LIFT, "linear", Rest)
 end
 
 -- every pin of a layer (the tests and the dump)

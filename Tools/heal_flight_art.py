@@ -357,6 +357,7 @@ SPRITES = {
     "leaf": leaf,
     "ring_gold": lambda: ring(GOLD),
     "rays_gold": lambda: rays(GOLD),
+    "rays_gold_small": lambda: rays(GOLD, size=128),   # (1.2.0: the swing badge's sun rays, drawn small)
     "wave_gold": lambda: wave(GOLD),
     "wave_teal": lambda: wave(TEAL),
     "plus_gold": lambda: plus(GOLD),

@@ -18,6 +18,7 @@ Core\Schedule.lua
 Core\Companions.lua
 Core\QuestObjectives.lua
 Core\MapLayer.lua
+Core\QuestAreas.lua
 Core\Anim.lua
 Core\Widgets.lua
 Core\Shade.lua

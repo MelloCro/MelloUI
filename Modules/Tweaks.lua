@@ -69,6 +69,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		-- Core.lua's MergeSettings carries a saved off) Level Up and XP Gain
 		levelUp = true,
 		xpGain = true,
+		repGain = true,
 	},
 	options = {
 		{ type = "header", name = "Hide Frames" },
@@ -172,10 +173,13 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		  desc = "Junk (grey quality) items show grey in your bags, the bank and the guild bank, so they stand apart from what you keep. One switch for all three windows." },
 		-- (0.21.3; the user, 2026-10-13: "Yes to all" to the animation previews; one look C13b: Unit Frames' until then)
 		{ type = "toggle", key = "levelUp", name = "Level Up",
-		  desc = "When you gain a level, a light runs along the experience bar and the on-screen notice says your new level and, with the Quest List, how many quests it opened in your zone (their givers pop onto the world map the next time it shows them). With the painted reskin, the number in your player frame's level circle also turns over with a ring of light. Not with Reduce Motion: then only the notice." },
+		  desc = "When you gain a level, the experience bar runs full with a burst of light, the number in your player frame's level circle turns over to the new one with a ring of light, and the on-screen notice says your new level in gold and, with the Quest List, how many quests it opened in your zone (their givers pop onto the world map the next time it shows them). Not with Reduce Motion: then only the notice." },
 		-- (0.22.1; the user, 2026-10-14: "build all 5" to the animation previews)
 		{ type = "toggle", key = "xpGain", name = "XP Gain",
 		  desc = "When you gain experience, the stretch of the experience bar just gained lights up while a light runs along it to the new end. Not with Reduce Motion." },
+		-- (1.2.0, animations round 4; the user, 2026-10-22: "all of them" to the round 4 previews)
+		{ type = "toggle", key = "repGain", name = "Reputation Gain", new = "1.2.0",
+		  desc = "When you gain reputation with the faction you watch, the stretch of the reputation bar just gained lights up as the experience bar's does. Reaching a new standing runs the bar full with a burst of light, and the on-screen notice says it in gold: Honored, and the faction's name. Not with Reduce Motion: then only the notice." },
 	},
 })
 
@@ -1344,10 +1348,11 @@ M.Level = Level   -- (the tests)
 local XP = { SPILL = { 16, 8 }, MIN_W = 4, ROWS = { "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" },
 	EXPERIENCE = 4, PREVIEW = 0.08, at = nil, max = nil }
 
--- the game's XP bar shown now (the main or the second status bar row's Experience bar): its StatusBar
-function XP.Bar()
+-- the game's XP bar shown now (the main or the second status bar row's Experience bar): its StatusBar. (1.2.0)
+-- `kind`: another of the game's bars there ("Reputation", Reputation Gain's), its index `fallback`
+function XP.Bar(kind, fallback)
 	local info = rawget(_G, "StatusTrackingBarInfo")
-	local index = info and info.BarsEnum and info.BarsEnum.Experience or XP.EXPERIENCE
+	local index = info and info.BarsEnum and info.BarsEnum[kind or "Experience"] or fallback or XP.EXPERIENCE
 	for _, name in ipairs(XP.ROWS) do
 		local row = rawget(_G, name)
 		local bar = type(row) == "table" and type(row.bars) == "table" and row.bars[index]
@@ -1424,6 +1429,121 @@ function XP.Listen()
 	end
 end
 M.XP = XP   -- (the tests)
+
+--------------------------------------------------------------------------------
+-- Reputation Gain (1.2.0, animations round 4; the user 2026-10-22, "all of them" to BuildData/output/
+-- animation_previews/round4_anims.html): the watched faction's bar answers as the XP bar does. A gain lights the
+-- stretch just gained (XP Gain's light: FrameFX's "xp" landing on its rect); a new standing runs the bar full with a
+-- burst and drains it to the new standing's share (FX.LevelBar, Level Up's) and says it: the standing in gold over its
+-- rule, the faction under it (MelloUI:AnnounceMoment). The game's bar is never written. The numbers are
+-- C_Reputation.GetWatchedFactionData's, the share as the game's bar draws it (the standing past this standing's
+-- threshold, of the way to the next); a read that is secret or missing keeps what was known; another faction watched
+-- is read again and plays nothing. Not under Reduce Motion (the notice still says a new standing). Its events only
+-- while the option is on.
+--------------------------------------------------------------------------------
+
+local Rep = { REPUTATION = 1, id = nil, reaction = nil, share = nil }
+
+-- the watched faction now: its id, standing (reaction), share of the way to the next, name; nil when none or secret
+function Rep.Read()
+	local api = _G.C_Reputation
+	if not (api and api.GetWatchedFactionData) then
+		return nil
+	end
+	local ok, d = pcall(api.GetWatchedFactionData)
+	if not ok or type(d) ~= "table" then
+		return nil
+	end
+	local id, reaction = Num(d.factionID), Num(d.reaction)
+	local lo, hi, standing = Num(d.currentReactionThreshold), Num(d.nextReactionThreshold), Num(d.currentStanding)
+	if not (id and id ~= 0 and reaction and lo and hi and standing) or hi <= lo then
+		return nil
+	end
+	local share = (standing - lo) / (hi - lo)
+	return id, reaction, share < 0 and 0 or (share > 1 and 1 or share), MelloUI.Safe.Text(d.name)
+end
+
+-- the standing's own name (the game's FACTION_STANDING_LABELn), else nil
+function Rep.Standing(reaction)
+	local s = _G["FACTION_STANDING_LABEL" .. reaction]
+	return (type(s) == "string" and not MelloUI.Safe.IsSecret(s) and s ~= "") and s or nil
+end
+
+-- the light on the stretch from `old` to `now`
+function Rep.Gain(old, now)
+	local FX = MelloUI.FrameFX
+	local sb = XP.Bar("Reputation", Rep.REPUTATION)
+	if not (FX and FX.ShowAt and sb) or MelloUI.Anim.reduceMotion then
+		return
+	end
+	local l, b, r, t = FX.Rect(sb)
+	if not l then
+		return
+	end
+	local w = r - l
+	local x1 = l + w * now
+	local x0 = math.min(l + w * old, x1 - XP.MIN_W)
+	FX.ShowAt(math.max(l, x0), b, x1, t, "xp", "gain", XP.SPILL)
+end
+
+-- a new standing: the bar's run, the notice
+function Rep.Up(from, to, reaction, name)
+	local FX = MelloUI.FrameFX
+	local sb = XP.Bar("Reputation", Rep.REPUTATION)
+	if sb and FX and FX.LevelBar and not MelloUI.Anim.reduceMotion then
+		FX.LevelBar(sb, from, to)
+	end
+	local standing = Rep.Standing(reaction)
+	if standing then
+		MelloUI:AnnounceMoment(standing, name)
+	end
+end
+
+function Rep.Update()
+	local id, reaction, share, name = Rep.Read()
+	if not id then
+		return
+	end
+	local was, wasReaction, wasShare = Rep.id, Rep.reaction, Rep.share
+	Rep.id, Rep.reaction, Rep.share = id, reaction, share
+	if was ~= id or not (M.isEnabled and M.db and M.db.repGain ~= false) then
+		return
+	end
+	if reaction > wasReaction then
+		Rep.Up(wasShare, share, reaction, name)
+	elseif reaction == wasReaction and share > wasShare then
+		Rep.Gain(wasShare, share)
+	end
+end
+
+Rep.OnEvent = Perf.Shared("OnEvent of Reputation Gain", function(_, event)
+	if event == "PLAYER_ENTERING_WORLD" then
+		Rep.id = nil
+	end
+	Rep.Update()
+end, "event")
+
+-- its events while the option is on (and the module)
+function Rep.Listen()
+	local on = M.isEnabled and M.db ~= nil and M.db.repGain ~= false
+	if not (on or Rep.frame) then
+		return
+	end
+	if not Rep.frame then
+		Rep.frame = CreateFrame("Frame")
+		Perf.SetScript(Rep.frame, "OnEvent", Rep.OnEvent)
+	end
+	if on then
+		Rep.frame:RegisterEvent("UPDATE_FACTION")
+		Rep.frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+		Rep.id = nil
+		Rep.Update()
+	else
+		Rep.frame:UnregisterAllEvents()
+		Rep.id, Rep.reaction, Rep.share = nil, nil, nil
+	end
+end
+M.Rep = Rep   -- (the tests)
 
 -- (/mello player level) the level-up played on the level you have, to see it
 -- (the badge turning from the one before; the notice and the quests as at a
@@ -2029,6 +2149,7 @@ function M:OnEnable(db)
 	end
 	Level.Listen()
 	XP.Listen()
+	Rep.Listen()
 	Split.Hook()
 end
 
@@ -2040,6 +2161,7 @@ function M:OnDisable()
 	RestoreWorldTextScale()
 	Level.Listen()
 	XP.Listen()
+	Rep.Listen()
 end
 
 -- switched on after the login's PLAYER_ENTERING_WORLD (Core's start-up pass
@@ -2060,6 +2182,8 @@ function M:OnSettingChanged(key, value, db)
 		Level.Listen()
 	elseif key == "xpGain" then
 		XP.Listen()
+	elseif key == "repGain" then
+		Rep.Listen()
 	elseif key == "qualityGems" or key == "greyJunk" then
 		Gems.Install()   -- (once: a retry, should the game's function not have been there at the enable)
 		Gems.Sync()

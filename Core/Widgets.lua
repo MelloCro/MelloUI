@@ -2799,6 +2799,23 @@ do
 		end
 	end
 
+	-- (1.2.0; the user's pick A of BuildData/output/animation_previews/prd_looks.html, 2026-10-22: the Personal
+	-- Display's bars, its cast bar and its shield column) MelloUI's gold rim round a bar, on `t` as a nine-slice:
+	-- Textures/GildedRim (Tools/make_widget_art.py), white metal lit from above between dark casings, tinted the
+	-- palette's selectedTrim; its rail `band` UI px deep. The caller lays `t` round what it frames, `band` past it on
+	-- every side: the rail's inner casing on that edge, its inner corners rounded over the corners inside
+	local RIM_ART = "Interface\\AddOns\\MelloUI\\Media\\Textures\\GildedRim"
+	local RIM_CORNER, RIM_RAIL = 7, 4   -- the texture's corners and its rail (texels)
+	function W.RimArt(t, band)
+		t:SetTexture(RIM_ART)
+		W.Paint(t, "selectedTrim", "vertex", 1)
+		if t.SetTextureSliceMargins and t.SetTextureSliceMode and t.SetScale then
+			t:SetTextureSliceMargins(RIM_CORNER, RIM_CORNER, RIM_CORNER, RIM_CORNER)
+			t:SetTextureSliceMode(Enum and Enum.UITextureSliceMode and Enum.UITextureSliceMode.Stretched or 0)
+			t:SetScale(band / RIM_RAIL)
+		end
+	end
+
 	-- the kit to hand a round button's SetKit for a part in `area`: the kit while Oldschool's painted look dresses
 	-- that area (its rims), else none -- MelloUI's own ring and the set's pictures (KC.Painted)
 	function W.KitFor(area)
@@ -2981,6 +2998,17 @@ do
 		end
 		SetKit(b, false)
 		return b
+	end
+
+	-- (1.2.0; the user, 2026-10-22: "make sure that the icon borders stay sharp in all animations") a round icon a
+	-- motion scales, drawn again for the size it shows at now: its ring and picture from the set's sharp copy for that
+	-- size where the set has copies (MelloUI.Icons). Call it after each scale a motion sets
+	function W.RoundIconRefit(b)
+		local I = MelloUI.Icons
+		if I and I.Fit and not b.kitLaid then
+			I.Fit(b.plainRim, b.size)
+			I.Fit(b.icon)
+		end
 	end
 end
 

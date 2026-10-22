@@ -8,28 +8,44 @@
 -- done yet that has places on the open zone map (MelloUI.QuestObjectives, the
 -- Companion's data: asked for with the map's first refresh that has a quest
 -- to show, as Route asks for it when it routes):
---   its area   the places in groups (a place joins a group when it lies
---              within REACH of one of its places): a thin outline round each
---              group in the palette's trim on a darker line, and a faint fill
---              (soft spots at FILL_ALPHA: the map's own names read through),
---              drawn on the map's canvas, so they pan and zoom with it
+--   its area   (1.2.0; the user's look A of BuildData/output/animation_
+--              previews/map_marks.html, "the custom area circles on the map
+--              needs a big rework") the shape of its places, MelloUI.
+--              QuestAreas': a lone place a circle, places near each other
+--              one smooth area, a gold edge with its glow inside; drawn on
+--              the map's canvas (it pans and zooms with it), the edge one
+--              size on the screen (O.Zoom); objectives with the same places
+--              (Gold Dust and Large Candle: the same kobolds) one area, their
+--              marks side by side. Shown at every zoom (the convex outline
+--              and a faint ring a place, zoomed out only, until then)
 --   its spots  zoomed in (the map's zoom past ZOOMED), a dot per place in the
---              place of the area: a pale gold dot in a black ring (one
---              texture, Media/Textures/MapDot: Tools/make_widget_art.py),
---              DOT_PX on the screen at every zoom (the user, 2026-10-06: the
---              soft spots were "very hard to see"; the sketch's dots); the
---              area and its outline zoomed out only (O.Zoom, on the map's
---              zoom: its zoom percent and canvas scale, read only)
---   its mark   one mark per group (the Quest List's marks, kind "objective":
---              one size on the screen at every zoom): the objective's kind
---              (sword: kill, bag: collect, cog: use, flag: explore) on the
---              palette's dark disc with its progress under it ("4/8"), at
---              the group's middle moved clear of the giver marks and of each
---              other; hover: the quest, the objective and its progress, what
---              drops it and how often; click: a waypoint there (Route's)
+--              area: the bead of MelloUI's icon set, DOT_PX on the screen at
+--              every zoom (O.Zoom, on the map's zoom: its zoom percent and
+--              canvas scale, read only)
+--   its mark   one mark per area (each loop of its edge: the middle of its
+--              places), the Quest List's marks, kind "objective": one size on
+--              the screen at every zoom; the objective's kind (MelloUI's icon
+--              set: the skull, the bag's pin, the gauntlet's, the compass's)
+--              with its progress under it ("4/8"), moved clear of the giver
+--              marks and of each other; hover: the quest, the objective and
+--              its progress, what drops it and how often; click: a waypoint
+--              there (Route's)
 -- A done objective shows nothing; a done quest only its hand-in "?" (the
 -- giver marks). Laid with the giver marks on the map's refresh and on the
 -- log's changes while the map shows; nothing per frame, nothing at login.
+-- The motion (1.2.0, the same sketch, "all eight"; MelloUI.QuestAreas, one
+-- engine: one-shot, Reduce Motion the end at once):
+--   new        an area never drawn before this session (the first open, a
+--              quest taken) is drawn round from its mark and its marks pop
+--              in, the nearest to you first (POP_STEP a map width, POP_MAX)
+--   hover      a mark lifts, its area stays lit and the others step back
+--   progress   (a lay while the map stayed open on this zone: the game's
+--              refresh on the log's change, or ours) an objective's count
+--              up: its marks swell with a ring of light, the count rises into
+--              place, its area swells once
+--   done       (the same) an objective gone while its quest stays: a tick is
+--              drawn on each of its marks, which then shrink away (marks of
+--              the lay before, O.ghosts); its area drawn back into them
 -- The minimap (step 2, below): the same marks near you, drawn in Route's
 -- minimap layer (Route.WantMinimap: one minimap system).
 --------------------------------------------------------------------------------
@@ -40,22 +56,23 @@ local QL = ns.QuestList
 local Finite = MelloUI.Safe.Finite
 local Secret = MelloUI.Safe.IsSecret
 
-local O = { tex = {}, ntex = 0, lines = {}, nlines = 0, asked = false,
-	dots = {}, ndots = 0, zoomedIn = nil }
+local O = { dots = {}, ndots = 0, zoomedIn = nil, asked = false, painter = nil, scale = nil, groups = {},
+	seen = {}, counts = {}, last = {}, now = {}, lastMap = nil, hidden = true, ghosts = {}, areaOf = {} }
 QL.Objectives = O
 
-local REACH = 0.06              -- map widths: a place this close to a group's place is in it
-local PAD = 0.012               -- map widths the outline keeps round a group's places
-local FILL_SIZE = 0.05          -- a fill spot, in map widths
-local FILL_ALPHA = 0.08
 local DOT_PX = 12               -- a place's dot on the screen (10 until the bead, 0.25.0)
 -- (0.25.0, the user's pick) a place's dot: the bead of MelloUI's icon set, white and grey in its dark outline (the
 -- white takes the tint); the flat MapDot until then
 local MAP_DOT = MelloUI.Widgets.IconPath("map_dot")
-local ZOOMED = 0.5              -- the map's zoom percent from which the places show as dots, the areas go
-local LINE = 2                  -- the outline, in canvas units (the dark line under it a little wider)
+local ZOOMED = 0.5              -- the map's zoom percent from which the places show as dots
 local NEAR = 0.024              -- map units: a mark closer than this to another is moved
-local SOFT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\SoftGlowRound"
+local SEG_PX = 5                -- (1.2.0) the areas' edge in stretches about this long on the screen (its points taken
+                                -- every so many: MelloUI.QuestAreas' STEP yards apart)
+local SIDE_PX = 15              -- marks of objectives sharing an area: this far either side of its middle
+local MARK = 20                 -- a mark's icon (O.Dress)
+local POP_STEP, POP_MAX = 0.5, 0.45   -- s a map width from you before a new mark pops, at most
+local DIM = 0.35                -- the other areas' alpha while a mark is hovered (their marks: DIM_MARK)
+local DIM_MARK = 0.55
 -- (0.25.0, the user's picks: MelloUI's icon set) a mark by the data's kind: kill the standalone skull (with its soft
 -- shade), use the gauntlet's pin, collect the bag's pin, explore the compass's pin (the widget glyphs sword, cog,
 -- bag and flag on a dark disc in a gold ring until then)
@@ -104,101 +121,46 @@ local function DataReady()
 	return ok and MelloUI_QuestObjectiveData ~= nil
 end
 
--- A world place on the map shown: x, y in 0..1, or nil
-local function OnMap(mapID, cont, wx, wy)
-	if not (C_Map.GetMapPosFromWorldPos and CreateVector2D) then
-		return nil
+-- (1.2.0) world yards to a map's 0..1: the client's own answer at three points by a place (one ask a point
+-- otherwise; the edge's points lie off the map at its borders, where the zone map's own check refuses them), kept by
+-- map and continent: { x0, y0, dx/dwx, dy/dwx, dx/dwy, dy/dwy }, or false
+local affine = {}
+local function Affine(mapID, cont, wx, wy)
+	local key = mapID .. ":" .. cont
+	local a = affine[key]
+	if a ~= nil then
+		return a
 	end
-	local ok, _, pos = pcall(C_Map.GetMapPosFromWorldPos, cont, CreateVector2D(wx, wy), mapID)
-	if not ok then
-		return nil
-	end
-	local x, y = QL.VectorXY(pos)
-	x, y = Finite(x), Finite(y)
-	if x and y and x >= 0 and x <= 1 and y >= 0 and y <= 1 then
-		return x, y
-	end
-	return nil
-end
-
--- The places as groups: single linkage within REACH (a few dozen places a
--- quest at most: the data keeps 30 an objective)
-local function Groups(xs, ys, reach)
-	reach = reach or REACH
-	local group, n = {}, #xs
-	for i = 1, n do
-		group[i] = i
-	end
-	local function Root(i)
-		while group[i] ~= i do
-			group[i] = group[group[i]]
-			i = group[i]
+	a = false
+	if C_Map.GetMapPosFromWorldPos and CreateVector2D then
+		local function At(x, y)
+			local ok, _, pos = pcall(C_Map.GetMapPosFromWorldPos, cont, CreateVector2D(x, y), mapID)
+			if not ok then
+				return nil
+			end
+			local mx, my = QL.VectorXY(pos)
+			return Finite(mx), Finite(my)
 		end
-		return i
-	end
-	for i = 1, n do
-		for j = i + 1, n do
-			local dx, dy = xs[i] - xs[j], ys[i] - ys[j]
-			if dx * dx + dy * dy <= reach * reach then
-				group[Root(j)] = Root(i)
+		local x0, y0 = At(wx, wy)
+		local x1, y1 = At(wx + 50, wy)
+		local x2, y2 = At(wx, wy + 50)
+		if x0 and y0 and x1 and y1 and x2 and y2 then
+			a = { x0 - wx * (x1 - x0) / 50 - wy * (x2 - x0) / 50, y0 - wx * (y1 - y0) / 50 - wy * (y2 - y0) / 50,
+				(x1 - x0) / 50, (y1 - y0) / 50, (x2 - x0) / 50, (y2 - y0) / 50 }
+			if a[3] == 0 and a[5] == 0 then
+				a = false
 			end
 		end
 	end
-	local out, at = {}, {}
-	for i = 1, n do
-		local r = Root(i)
-		local g = at[r]
-		if not g then
-			g = {}
-			at[r] = g
-			out[#out + 1] = g
-		end
-		g[#g + 1] = i
+	-- (no answer at a place: asked again at the next one)
+	if a then
+		affine[key] = a
 	end
-	return out
+	return a
 end
 
--- The convex hull of a group's places (Andrew's monotone chain), moved out by
--- PAD from its middle: a list of x, y pairs, or nil under three places
-local function Hull(xs, ys, members, cx, cy)
-	if #members < 3 then
-		return nil
-	end
-	local pts = {}
-	for _, i in ipairs(members) do
-		pts[#pts + 1] = { xs[i], ys[i] }
-	end
-	table.sort(pts, function(a, b) return a[1] < b[1] or (a[1] == b[1] and a[2] < b[2]) end)
-	local function Cross(o, a, b)
-		return (a[1] - o[1]) * (b[2] - o[2]) - (a[2] - o[2]) * (b[1] - o[1])
-	end
-	local hull = {}
-	for _, p in ipairs(pts) do
-		while #hull >= 2 and Cross(hull[#hull - 1], hull[#hull], p) <= 0 do
-			hull[#hull] = nil
-		end
-		hull[#hull + 1] = p
-	end
-	local lower = #hull + 1
-	for i = #pts - 1, 1, -1 do
-		local p = pts[i]
-		while #hull >= lower and Cross(hull[#hull - 1], hull[#hull], p) <= 0 do
-			hull[#hull] = nil
-		end
-		hull[#hull + 1] = p
-	end
-	hull[#hull] = nil
-	if #hull < 3 then
-		return nil
-	end
-	for _, p in ipairs(hull) do
-		local dx, dy = p[1] - cx, p[2] - cy
-		local d = math.sqrt(dx * dx + dy * dy)
-		if d > 0 then
-			p[1], p[2] = p[1] + dx / d * PAD, p[2] + dy / d * PAD
-		end
-	end
-	return hull
+local function MapXY(a, wx, wy)
+	return a[1] + a[3] * wx + a[5] * wy, a[2] + a[4] * wx + a[6] * wy
 end
 
 -- The areas' layer: one frame on the canvas (it pans and zooms with it; no
@@ -221,40 +183,15 @@ function O.Layer(canvas)
 	return f
 end
 
--- the layer's regions, kept and reused
-local function Tex(layer)
-	local n = O.ntex + 1
-	O.ntex = n
-	local t = O.tex[n]
-	if not t then
-		t = layer:CreateTexture(nil, "BORDER")
-		O.tex[n] = t
-	end
-	return t
-end
-
-local function CanvasLine(layer)
-	local n = O.nlines + 1
-	O.nlines = n
-	local l = O.lines[n]
-	if not l and layer.CreateLine then
-		l = layer:CreateLine(nil, "BORDER")
-		O.lines[n] = l
-	end
-	return l
-end
-
+-- the map's pins cleared: the dots, the areas out of sight (kept for the next lay: what is gone is seen then)
 function O.Clear()
-	for i = 1, O.ntex do
-		O.tex[i]:Hide()
-	end
-	for i = 1, O.nlines do
-		O.lines[i]:Hide()
-	end
 	for i = 1, O.ndots do
 		O.dots[i]:Hide()
 	end
-	O.ntex, O.nlines, O.ndots, O.zoomedIn = 0, 0, 0, nil
+	O.ndots, O.zoomedIn = 0, nil
+	if O.painter then
+		O.painter:Hide()
+	end
 end
 
 -- a place's dot: the palette's pale gold (its text) in the texture's black
@@ -275,10 +212,12 @@ local function Dot(layer, W, H, x, y, fill)
 	dot:SetPoint("CENTER", layer, "TOPLEFT", x * W, -y * H)
 end
 
--- The map's zoom: zoomed out the areas (fill and outline), zoomed in the
--- dots, DOT_PX on the screen (the canvas's units: DOT_PX / its scale, as
--- Route's trail); the shown state written only when it changes, the dots'
--- size at every step of a zoom
+-- The map's zoom: zoomed in the dots, DOT_PX on the screen (the canvas's
+-- units: DOT_PX / its scale, as Route's trail); the areas one size on the
+-- screen (MelloUI.QuestAreas' painter:Scale) and their edge in stretches of
+-- about SEG_PX (both written when the zoom moved by a tenth: a zoom's
+-- steps); the dots' shown state written only when it changes, their size at
+-- every step
 function O.Zoom(map)
 	if not map then
 		return
@@ -289,44 +228,35 @@ function O.Zoom(map)
 	local zoomedIn = (z and z >= ZOOMED) and true or false
 	if zoomedIn ~= O.zoomedIn then
 		O.zoomedIn = zoomedIn
-		for i = 1, O.ntex do
-			O.tex[i]:SetShown(not zoomedIn)
-		end
-		for i = 1, O.nlines do
-			O.lines[i]:SetShown(not zoomedIn)
-		end
 		for i = 1, O.ndots do
 			O.dots[i]:SetShown(zoomedIn)
 		end
 	end
-	if zoomedIn and s and s > 0 then
-		local size = DOT_PX / s
-		for i = 1, O.ndots do
-			O.dots[i]:SetSize(size, size)
+	if s and s > 0 then
+		if zoomedIn then
+			local size = DOT_PX / s
+			for i = 1, O.ndots do
+				O.dots[i]:SetSize(size, size)
+			end
+		end
+		if O.painter and not (O.scale and math.abs(s - O.scale) < O.scale * 0.1) then
+			O.scale = s
+			O.painter:Scale(1 / s)
+			for _, g in ipairs(O.groups) do
+				local stride = O.Stride(g, s)
+				if stride ~= g.stride then
+					g.stride = stride
+					O.painter:Area(g.key, g.shape, g.project, stride)
+				end
+			end
 		end
 	end
 end
 
-local function Spot(canvas, W, H, x, y, size, r, g, b, a)
-	local t = Tex(canvas)
-	t:SetTexture(SOFT)
-	t:SetVertexColor(r, g, b, a)
-	t:SetSize(size * W, size * W)
-	t:ClearAllPoints()
-	t:SetPoint("CENTER", canvas, "TOPLEFT", x * W, -y * H)
-	t:Show()
-end
-
-local function Edge(canvas, W, H, x1, y1, x2, y2, width, r, g, b, a)
-	local l = CanvasLine(canvas)
-	if not l then
-		return
-	end
-	l:SetColorTexture(r, g, b, a)
-	l:SetThickness(width)
-	l:SetStartPoint("TOPLEFT", canvas, x1 * W, -y1 * H)
-	l:SetEndPoint("TOPLEFT", canvas, x2 * W, -y2 * H)
-	l:Show()
+-- an area's edge points taken every `stride`th: a stretch about SEG_PX on the screen at the canvas's scale `s`
+function O.Stride(g, s)
+	local px = (g.perStep or 0) * (s or 1)
+	return px > 0 and math.max(1, math.ceil(SEG_PX / px)) or 1
 end
 
 -- a mark's spot moved clear of the marks laid so far (givers first): down,
@@ -384,83 +314,288 @@ local function EachOpen(questID, fn)
 	end
 end
 
+-- the player's place on the map (0..1), or nil: the new marks' pop goes out from it
+local function Me(mapID)
+	if not (C_Map.GetPlayerMapPosition) then
+		return nil
+	end
+	local ok, pos = pcall(C_Map.GetPlayerMapPosition, mapID, "player")
+	if not ok then
+		return nil
+	end
+	local x, y = QL.VectorXY(pos)
+	return Finite(x), Finite(y)
+end
+
 -- The objective marks of the zone map shown (QL.Provider:LayPins, after the
 -- givers: their marks are in Marks.list already)
 function O.Add(map, mapID)
 	O.Clear()
+	local painter = O.painter
+	-- (a lay while this map stayed open: the game's own refresh on the log's change, or ours: what changed moves)
+	local live = not O.hidden and O.lastMap == mapID
+	O.hidden = false
+	O.last, O.now = O.now, O.last
+	wipe(O.now)
+	wipe(O.areaOf)
 	local list = LogQuests(QL.M.db.objectiveTrackedOnly)
-	if #list == 0 or not DataReady() then
-		return
-	end
 	local canvas = map:GetCanvas()
 	local W, H = QL.Plain(canvas:GetWidth()), QL.Plain(canvas:GetHeight())
-	if not (Finite(W) and Finite(H) and W > 0 and H > 0) then
+	if #list == 0 or not DataReady() or not (Finite(W) and Finite(H) and W > 0 and H > 0) then
+		if painter then
+			painter:Begin()
+			O.Gone(map, mapID, live)
+		end
+		O.lastMap = mapID
 		return
 	end
-	canvas = O.Layer(canvas)   -- (the areas drawn on their layer, the same size as the canvas)
+	local layer = O.Layer(canvas)   -- (the areas drawn on their layer, the same size as the canvas)
+	if not painter then
+		painter = MelloUI.QuestAreas.Painter(layer, "BORDER")
+		O.painter = painter
+	end
+	painter:Begin()
+	local QA = MelloUI.QuestAreas
 	local palette = MelloUI.Look.Palette()
-	local trim, under = palette.trim, palette.mainWindow
 	wipe(placed)
 	for _, m in ipairs(QL.MarkList()) do
 		if m.x and m.y then
 			placed[#placed + 1] = { m.x, m.y }
 		end
 	end
+	-- the open objectives by their shape: one area a shape, its objectives' marks side by side
+	local byShape, order = {}, {}
 	for _, questID in ipairs(list) do
 		EachOpen(questID, function(index, entry, t)
-			local xs, ys = {}, {}
-			for k = 5, #entry - 1, 2 do
-				local x, y = OnMap(mapID, entry[4], entry[k], entry[k + 1])
-				if x then
-					xs[#xs + 1], ys[#ys + 1] = x, y
-				end
-			end
-			for _, members in ipairs(Groups(xs, ys)) do
-				local cx, cy = 0, 0
-				for _, i in ipairs(members) do
-					cx, cy = cx + xs[i], cy + ys[i]
-					Spot(canvas, W, H, xs[i], ys[i], FILL_SIZE, trim[1], trim[2], trim[3], FILL_ALPHA)
-					Dot(canvas, W, H, xs[i], ys[i], palette.text)
-				end
-				cx, cy = cx / #members, cy / #members
-				local hull = Hull(xs, ys, members, cx, cy)
-				if hull then
-					for pass = 1, 2 do
-						for i = 1, #hull do
-							local a, b = hull[i], hull[i % #hull + 1]
-							if pass == 1 then
-								Edge(canvas, W, H, a[1], a[2], b[1], b[2], LINE + 1.5, under[1], under[2], under[3], 0.55)
-							else
-								Edge(canvas, W, H, a[1], a[2], b[1], b[2], LINE, trim[1], trim[2], trim[3], 0.9)
-							end
+			local xs, ys, key = QA.Places(entry)
+			local a = #xs > 0 and Affine(mapID, entry[4], xs[1], ys[1])
+			local shape = a and QA.Shape(key, xs, ys)
+			if shape then
+				local g = byShape[shape]
+				if not g then
+					g = { key = key, shape = shape, a = a, objs = {} }
+					byShape[shape] = g
+					order[#order + 1] = g
+					-- the places' dots (zoomed in), those on the map
+					for i = 1, #xs do
+						local x, y = MapXY(a, xs[i], ys[i])
+						if x >= 0 and x <= 1 and y >= 0 and y <= 1 then
+							Dot(layer, W, H, x, y, palette.text)
 						end
 					end
 				end
-				local mx, my = Clear(cx, cy)
-				placed[#placed + 1] = { mx, my }
-				QL.Marks.Add("objective", { x = mx, y = my, questID = questID, index = index, kind = entry[1],
-					name = entry[2], line = t, mapID = mapID })
+				g.objs[#g.objs + 1] = { questID, index, entry, t }
 			end
 		end)
 	end
-	O.Zoom(map)   -- (the areas or the dots, as the map is zoomed now)
+	-- (the edge's 10-yard points taken every `stride`th: a stretch about SEG_PX on the screen)
+	local step, perStep = QA.T.STEP, nil
+	local okS, scale = pcall(map.GetCanvasScale, map)
+	scale = okS and Finite(scale) or 1
+	wipe(O.groups)
+	local meX, meY = Me(mapID)
+	for _, g in ipairs(order) do
+		local a = g.a
+		if not perStep then
+			local x1 = MapXY(a, 0, 0)
+			local x2 = MapXY(a, step, 0)
+			local x3 = MapXY(a, 0, step)
+			perStep = math.max(math.abs(x2 - x1), math.abs(x3 - x1)) * W   -- canvas units a STEP
+		end
+		g.perStep = perStep
+		g.project = function(x, y)
+			local mx, my = MapXY(a, x, y)
+			return mx * W, -my * H
+		end
+		g.stride = O.Stride(g, scale)
+		O.groups[#O.groups + 1] = g
+		local area = painter:Area(g.key, g.shape, g.project, g.stride)
+		local fresh = not O.seen[g.key]
+		O.seen[g.key] = true
+		local delay = 0
+		-- each objective's count: up since the lay before (a live one) -- its marks' moment, once an objective
+		local bumps = {}
+		for j, o in ipairs(g.objs) do
+			local id, t = o[1] * 100 + o[2], o[4]
+			local have, before = t and t[7], O.counts[o[1] * 100 + o[2]]
+			O.counts[id] = have
+			bumps[j] = (live and have and before and have > before) and before or false
+		end
+		for _, m in ipairs(g.shape.marks) do
+			local mx, my = MapXY(a, m[1], m[2])
+			if mx >= 0 and mx <= 1 and my >= 0 and my <= 1 then
+				mx, my = Clear(mx, my)
+				placed[#placed + 1] = { mx, my }
+				local d = meX and math.sqrt((mx - meX) ^ 2 + (my - meY) ^ 2) or 0
+				local pop = fresh and math.min(POP_MAX, d * POP_STEP) or nil
+				if pop and (delay == 0 or pop < delay) then
+					delay = pop
+				end
+				for j, o in ipairs(g.objs) do
+					local questID, index, entry, t = o[1], o[2], o[3], o[4]
+					local id = questID * 100 + index
+					local data = { x = mx, y = my, questID = questID, index = index, kind = entry[1], name = entry[2],
+						line = t, mapID = mapID, area = g.key, dx = (j - (#g.objs + 1) / 2) * 2 * SIDE_PX, pop = pop,
+						bump = bumps[j] or nil }
+					QL.Marks.Add("objective", data)
+					local seen = O.now[id]
+					if not seen then
+						seen = { area = g.key, quest = questID }
+						O.now[id] = seen
+					end
+					seen[#seen + 1] = data
+				end
+			end
+		end
+		O.areaOf[g.key] = area
+		if fresh then
+			QA.TraceIn(area, QA.T.TRACE, delay)
+		end
+	end
+	-- the progress: an area whose count went up swells once
+	for _, seen in pairs(O.now) do
+		local d = seen[1]
+		local area = d and d.bump and O.areaOf[seen.area]
+		if area then
+			QA.Swell(area)
+		end
+	end
+	O.Gone(map, mapID, live)
+	O.lastMap = mapID
+	O.Zoom(map)   -- (the dots shown or not, the edge's width, as the map is zoomed now)
+end
+
+-- The objectives gone since the lay before (a live lay only: the log changed while this map showed): each mark of a
+-- done one gets its tick and shrinks away on a ghost (the marks are laid again from scratch), its area drawn back
+-- into it while no objective keeps it; then the areas no lay drew go
+function O.Gone(map, mapID, live)
+	local painter = O.painter
+	local QA = MelloUI.QuestAreas
+	if live then
+		local n = 0
+		for id, was in pairs(O.last) do
+			if not O.now[id] then
+				local stays = C_QuestLog.IsOnQuest and select(2, pcall(C_QuestLog.IsOnQuest, was.quest))
+				for _, d in ipairs(was) do
+					if stays == true then
+						n = n + 1
+						O.Ghost(map, n, d)
+					end
+				end
+				local area = painter.areas[was.area]
+				if area and area.gen ~= painter.gen and not area.hold then
+					area.hold = true
+					area.frame:Show()
+					QA.TraceOut(area, QA.T.GONE, O.AreaGone)
+				end
+			end
+		end
+	end
+	painter:End()
+end
+
+function O.AreaGone(area)
+	area.hold = nil
+	if O.painter.areas[area.key] == area and area.gen ~= O.painter.gen then
+		MelloUI.QuestAreas.Release(O.painter, area)
+	end
+end
+
+-- a ghost: a gone mark's last look, on its own anchor on the canvas, in the marks' clip (made on the first need)
+function O.Ghost(map, n, d)
+	local clip = QL.Marks.clip
+	local canvas = map:GetCanvas()
+	local W, H = QL.Plain(canvas:GetWidth()), QL.Plain(canvas:GetHeight())
+	if not (clip and W and H) then
+		return
+	end
+	local g = O.ghosts[n]
+	if not g then
+		g = { anchor = canvas:CreateTexture(nil, "BACKGROUND") }
+		g.anchor:SetSize(1, 1)
+		g.f = CreateFrame("Frame", nil, clip)
+		g.f:SetSize(MARK, MARK)
+		g.f:EnableMouse(false)
+		g.icon = g.f:CreateTexture(nil, "ARTWORK")
+		g.icon:SetPoint("CENTER")
+		O.ghosts[n] = g
+	end
+	g.anchor:ClearAllPoints()
+	g.anchor:SetPoint("CENTER", canvas, "TOPLEFT", d.x * W, -d.y * H)
+	g.f:SetFrameStrata(clip:GetFrameStrata())
+	g.f:SetFrameLevel(clip:GetFrameLevel() + 20)
+	g.f:ClearAllPoints()
+	g.f:SetPoint("CENTER", g.anchor, "CENTER", d.dx or 0, 0)
+	local icon = OBJ_ICON[d.kind] or "goal_pin"
+	MelloUI.Widgets.Icon(g.icon, icon)
+	g.icon:SetSize(MARK, MARK)
+	g.f:Show()
+	MelloUI.QuestAreas.MarkTick(g.f, g.icon, MARK, O.GhostDone)
+end
+
+function O.GhostDone(f)
+	f:Hide()
+end
+
+-- (QuestListMap's Marks.End, a mark laid and shown) its moment: a new one's pop, a count's swell and its number risen
+-- into place; `same`: the button held this very mark before (its moves under way go on), else it is set at rest
+function O.Moment(b, data, same)
+	local QA = MelloUI.QuestAreas
+	if data.pop then
+		QA.MarkPop(b, b.Icon, MARK, data.pop)
+	elseif data.bump then
+		QA.MarkBump(b, b.Icon, MARK)
+		local Anim = MelloUI.Anim
+		if Anim and b.Label:IsShown() then
+			Anim:From(b.Label, "y", -7, 0.25, "outCubic")
+			b.Label:SetAlpha(0)
+			Anim:To(b.Label, "alpha", 1, 0.2)
+		end
+	elseif not same then
+		QA.MarkStill(b, b.Icon, MARK)
+	end
+end
+
+-- (QuestListMap's MarkEnter / MarkLeave) a mark hovered: it lifts, its area stays lit and the other areas and their
+-- marks step back; left: all back
+function O.Hover(b, on)
+	local Anim = MelloUI.Anim
+	local data = b.data
+	if not (Anim and data and data.area) then
+		return
+	end
+	MelloUI.QuestAreas.MarkLift(b, b.Icon, MARK, on)
+	local key = on and data.area or nil
+	if O.painter then
+		O.painter:Each(function(area)
+			if not area.hold then
+				Anim:To(area.frame, "alpha", (key == nil or area.key == key) and 1 or DIM, 0.15)
+				Anim:To(area.glow, "alpha", (key ~= nil and area.key == key) and 1 or MelloUI.QuestAreas.T.GLOW_REST, 0.15)
+			end
+		end)
+	end
+	for _, m in ipairs(QL.Marks.buttons) do
+		if m ~= b and m.kind == "objective" and m:IsShown() and m.data then
+			Anim:To(m, "alpha", (key == nil or m.data.area == key) and 1 or DIM_MARK, 0.15)
+		end
+	end
 end
 
 -- the mark's look: its kind's icon on its lift (a pin's glow, the skull's soft shade: MelloUI.Shade:Lift, the soft
 -- round shade under the skull alone until then), its progress under it
 function O.Dress(b, data)
 	local gold = MelloUI.Look.Palette().selectedTrim
-	b:SetSize(20, 20)
+	b:SetSize(MARK, MARK)
 	b.Bg:Hide()
 	b.Icon:ClearAllPoints()
 	b.Icon:SetPoint("CENTER")
-	b.Icon:SetSize(20, 20)
+	b.Icon:SetSize(MARK, MARK)
 	b.Icon:SetDesaturated(false)
 	b.Icon:SetAlpha(1)
 	local icon = OBJ_ICON[data.kind] or "goal_pin"
 	MelloUI.Widgets.Icon(b.Icon, icon)
 	b.Icon:Show()
-	MelloUI.Shade:Lift(b.Icon, icon, 20)
+	MelloUI.Shade:Lift(b.Icon, icon, MARK)
 	local t = data.line
 	local have, need = t and t[7], t and t[8]
 	b.Label:ClearAllPoints()
@@ -556,22 +691,39 @@ end
 -- marks near you, drawn in Route's minimap layer (Route.WantMinimap: one
 -- minimap system; Route off, none) while Objective Marks and On The Minimap
 -- are on and an open objective has places:
---   the places   each open objective's places, in Route's yards
---                (Route:WorldYards), in groups as on the zone map
---                (MINI.REACH yards), one place a group at its middle; made
---                again half a second after the log's last change, never at
---                login (the first: MINI.WAIT seconds after it), never a tick
---   a tick       (Route's minimap tick) a mark per group on the minimap -- the
---                objective's kind on the dark disc in its gold ring, the
---                goal's mark of Route (Route.GoalMark) -- and, for the
---                three nearest groups a little beyond it (within
---                MINI.BEYOND of its radius), a smaller mark just inside its
---                edge with a gold chevron outside, turned toward them. No
---                mouse: the minimap's own clicks and pings go through
+--   the areas    (1.2.0; the user's picks of BuildData/output/animation_
+--                previews/map_marks.html: look A, on the minimap too, "all
+--                eight") each open objective's area as on the maps
+--                (MelloUI.QuestAreas: the same shapes), worked out half a
+--                second after the log's last change, never at login (the
+--                first: MINI.WAIT seconds after it), never a tick; their
+--                places carried to Route's yards by Route:WorldYards (an
+--                affine of three of its answers a continent)
+--   a tick       (Route's minimap tick) the areas round you drawn thin under
+--                Route's trail (the edge alone, clipped to the map's round or
+--                square), a mark per area loop (the maps' marks; objectives
+--                sharing an area side by side) -- the objective's kind -- and,
+--                for the three nearest a little beyond the edge (within
+--                MINI.BEYOND of its radius), a smaller mark on its edge with a
+--                gold chevron outside, turned toward them. (1.2.0) A mark
+--                nearing the edge grows smaller over MINI.RIM px into its
+--                edge size and slides onto the edge as it passes it, its
+--                chevron coming in; one far beyond fades out (from MINI.FADE
+--                of the reach): all of it from the distance, no state, no
+--                extra work a tick. No mouse: the minimap's own clicks and
+--                pings go through
+--   moments      (1.2.0) after the first build: an area new since then drawn
+--                round from its marks; a count up: its marks swell with a
+--                ring (the next tick that shows them); an objective done while
+--                its quest stays: a tick drawn on each of its marks, which
+--                shrink away (ghosts), its area drawn back into them; you
+--                stepping into an area: its edge swells once, its marks lift
+--                once
 --------------------------------------------------------------------------------
-local MINI = { REACH = 70, WAIT = 10, BEYOND = 1.7, MARK = 14, EDGE_MARK = 12, OWNER = "Quest List objectives" }
-O.mini = { points = {}, n = 0, marks = {}, edges = {}, chevs = {}, queued = false,
-	readyAt = (GetTime and GetTime() or 0) + MINI.WAIT }
+local MINI = { WAIT = 10, BEYOND = 1.7, MARK = 14, EDGE_MARK = 12, OWNER = "Quest List objectives",
+	SEG_PX = 6, SIDE_PX = 8, RIM = 10, FADE = 0.85 }
+O.mini = { points = {}, n = 0, areas = {}, leaving = {}, ghosts = {}, ghostFrames = {}, counts = {}, of = {}, seen = {},
+	queued = false, built = false, painter = nil, holder = nil, readyAt = (GetTime and GetTime() or 0) + MINI.WAIT }
 
 function O.MiniWanted()
 	local M, R = QL.M, MelloUI.Route
@@ -583,6 +735,7 @@ function O.MiniSoon()
 	local mini = O.mini
 	if not O.MiniWanted() then
 		mini.n = 0
+		wipe(mini.areas)
 		local R = MelloUI.Route
 		if R and R.WantMinimap then
 			R.WantMinimap(MINI.OWNER, nil)
@@ -596,128 +749,471 @@ function O.MiniSoon()
 	C_Timer.After(math.max(0.5, mini.readyAt - GetTime()), O.MiniBuild)
 end
 
+-- world yards to Route's (Route:WorldYards, linear: three answers by a place), kept by continent with its way back:
+-- { cont, x0, y0, ax, ay, bx, by, inverse { ... } }, or false
+local yardsOf = {}
+local function Yards(R, wcont, wx, wy)
+	local a = yardsOf[wcont]
+	if a then
+		return a
+	end
+	local c0, x0, y0 = R:WorldYards(wcont, wx, wy)
+	local c1, x1, y1 = R:WorldYards(wcont, wx + 50, wy)
+	local c2, x2, y2 = R:WorldYards(wcont, wx, wy + 50)
+	if not (c0 and c0 == c1 and c0 == c2 and x0 and x1 and x2) then
+		return false
+	end
+	local ax, ay, bx, by = (x1 - x0) / 50, (y1 - y0) / 50, (x2 - x0) / 50, (y2 - y0) / 50
+	local det = ax * by - bx * ay
+	if det == 0 then
+		return false
+	end
+	a = { cont = c0, x0 - wx * ax - wy * bx, y0 - wx * ay - wy * by, ax, ay, bx, by,
+		-- the way back: Route's yards to world yards
+		ix = { by / det, -bx / det }, iy = { -ay / det, ax / det } }
+	yardsOf[wcont] = a
+	return a
+end
+
+local function Carry(a, x, y)
+	return a[1] + a[3] * x + a[5] * y, a[2] + a[4] * x + a[6] * y
+end
+
+local function Back(a, rx, ry)
+	local dx, dy = rx - a[1], ry - a[2]
+	return a.ix[1] * dx + a.ix[2] * dy, a.iy[1] * dx + a.iy[2] * dy
+end
+
 function O.MiniBuild()
 	local mini, R = O.mini, MelloUI.Route
+	local QA = MelloUI.QuestAreas
 	mini.queued = false
-	mini.n = 0
-	if O.MiniWanted() and DataReady() then
+	local live = mini.built
+	local was = {}
+	for _, g in ipairs(mini.areas) do
+		was[g.key] = g
+	end
+	wipe(mini.areas)
+	local of, byShape = {}, {}
+	if O.MiniWanted() and DataReady() and QA then
+		mini.built = true
 		for _, questID in ipairs(LogQuests(QL.M.db.objectiveTrackedOnly)) do
-			EachOpen(questID, function(_, entry)
-				local xs, ys, cont = {}, {}, nil
-				for k = 5, #entry - 1, 2 do
-					local c, x, y = R:WorldYards(entry[4], entry[k], entry[k + 1])
-					if c and (cont == nil or c == cont) then
-						cont = c
-						xs[#xs + 1], ys[#ys + 1] = x, y
+			EachOpen(questID, function(index, entry, t)
+				local xs, ys, key = QA.Places(entry)
+				local a = #xs > 0 and Yards(R, entry[4], xs[1], ys[1])
+				local shape = a and QA.Shape(key, xs, ys)
+				if shape then
+					local g = byShape[shape]
+					if not g then
+						g = { key = key, shape = shape, a = a, cont = a.cont, objs = {} }
+						-- its box in Route's yards (the tick draws the areas near you only)
+						local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
+						for _, loop in ipairs(shape.loops) do
+							for i = 1, #loop - 1, 2 do
+								local rx, ry = Carry(a, loop[i], loop[i + 1])
+								if rx < x0 then x0 = rx end
+								if rx > x1 then x1 = rx end
+								if ry < y0 then y0 = ry end
+								if ry > y1 then y1 = ry end
+							end
+						end
+						g.x0, g.y0, g.x1, g.y1 = x0, y0, x1, y1
+						g.fresh = live and not mini.seen[key]
+						mini.seen[key] = true
+						byShape[shape] = g
+						mini.areas[#mini.areas + 1] = g
 					end
-				end
-				for _, members in ipairs(Groups(xs, ys, MINI.REACH)) do
-					local cx, cy = 0, 0
-					for _, i in ipairs(members) do
-						cx, cy = cx + xs[i], cy + ys[i]
-					end
-					mini.n = mini.n + 1
-					local p = mini.points[mini.n]
-					if not p then
-						p = {}
-						mini.points[mini.n] = p
-					end
-					p.cont, p.x, p.y, p.kind = cont, cx / #members, cy / #members, entry[1]
+					g.objs[#g.objs + 1] = { questID, index, entry, t }
+					of[questID * 100 + index] = true
 				end
 			end)
 		end
 	end
+	-- gone since the last build (the points still as they were): a done objective's marks get their tick (ghosts, the
+	-- shown ones), its area drawn back into them
+	if live then
+		for id, seen in pairs(mini.of) do
+			if not of[id] then
+				local ok, on = pcall(C_QuestLog.IsOnQuest, seen.quest)
+				for _, p in ipairs(seen) do
+					if ok and on == true and p.shownAt then
+						mini.ghosts[#mini.ghosts + 1] = { cont = p.cont, x = p.x, y = p.y, dx = p.dx, kind = p.kind,
+							fresh = true }
+					end
+				end
+				local g = was[seen.area]
+				if g and not byShape[g.shape] and not g.leaving then
+					g.leaving = true
+					mini.leaving[#mini.leaving + 1] = g
+				end
+			end
+		end
+	end
+	-- the points: a mark a loop of each area, its objectives' side by side
+	mini.n = 0
+	wipe(mini.of)
+	for _, g in ipairs(mini.areas) do
+		for j, o in ipairs(g.objs) do
+			local questID, index, entry, t = o[1], o[2], o[3], o[4]
+			local id = questID * 100 + index
+			local have = t and t[7]
+			local before = mini.counts[id]
+			mini.counts[id] = have
+			local bump = (live and have and before and have > before) and true or nil
+			local seen = { quest = questID, area = g.key }
+			mini.of[id] = seen
+			for _, m in ipairs(g.shape.marks) do
+				local rx, ry = Carry(g.a, m[1], m[2])
+				mini.n = mini.n + 1
+				local p = mini.points[mini.n]
+				if not p then
+					p = {}
+					mini.points[mini.n] = p
+				end
+				p.cont, p.x, p.y, p.kind, p.area = g.cont, rx, ry, entry[1], g
+				p.dx = (j - (#g.objs + 1) / 2) * 2 * MINI.SIDE_PX
+				p.bump, p.pop, p.shownAt = bump, g.fresh or nil, nil
+				seen[#seen + 1] = p
+			end
+		end
+	end
 	if R and R.WantMinimap then
-		R.WantMinimap(MINI.OWNER, mini.n > 0 and O.MiniDraw or nil)
+		R.WantMinimap(MINI.OWNER, (mini.n > 0 or #mini.leaving > 0 or #mini.ghosts > 0) and O.MiniDraw or nil)
 	end
 end
 
--- a mark of the pool, `size` big, made the first time it is needed: its kind's icon (as on the map) on its lift
--- (MelloUI.Shade:Lift; the skull alone on a soft round shade until then) -- placed by Route.MarkPlace
-local function MiniMark(list, i, kind, size)
-	local f = list[i]
+-- a mark of a point (its own frame, kept with the point: a moment stays with its mark), `size` big, made the first
+-- time it is needed: its kind's icon (as on the map) on its lift (MelloUI.Shade:Lift) -- placed by Route.MarkPlace
+local function MiniMark(p, kind, size)
+	local f = p.frame
 	if not f then
 		local R = MelloUI.Route
 		f = CreateFrame("Frame", nil, R.MinimapFrame())
 		f:SetFrameLevel(R.MinimapFrame():GetFrameLevel() + 2)
 		f.icon = f:CreateTexture(nil, "ARTWORK")
-		f.icon:SetAllPoints(f)
-		list[i] = f
+		f.icon:SetPoint("CENTER")
+		p.frame = f
 	end
 	if f.kind ~= kind then
 		f.kind = kind
 		local icon = OBJ_ICON[kind] or "goal_pin"
 		MelloUI.Widgets.Icon(f.icon, icon)
-		MelloUI.Shade:Lift(f.icon, icon, size)
+		MelloUI.Shade:Lift(f.icon, icon, MINI.MARK)
+	end
+	-- (its icon's size: not while a moment drives it)
+	if f.atSize ~= size and not (MelloUI.Anim and MelloUI.Anim:IsRunning(f, "drive")) then
+		f.atSize = size
+		f.icon:SetSize(size, size)
 	end
 	return f
 end
 
+local function Chevron(p)
+	local chev = p.chev
+	if not chev then
+		local Route = MelloUI.Route
+		chev = Route.MinimapFrame():CreateTexture(nil, "OVERLAY", nil, 3)
+		chev:SetTexture(Route.TRAIL.CHEVRON)   -- (0.25.0: the set's gold arrow, its own colour)
+		chev:SetSize(16, 8)
+		p.chev = chev
+	end
+	return chev
+end
+
+-- the areas' projection and clip a tick: their upvalues set before each area (no function made a tick)
+local mA, mHW, mHH, mRound, mR, mRX, mRY, mCont, mPPY
+local function MiniProject(x, y)
+	local a = mA
+	local gx, gy = MelloUI.Route.MinimapOffset(a[1] + a[3] * x + a[5] * y, a[2] + a[4] * x + a[6] * y)
+	return gx + mHW, gy - mHH
+end
+
+local function MiniClip(ax, ay, bx, by)
+	local Route = MelloUI.Route
+	ax, ay, bx, by = ax - mHW, ay + mHH, bx - mHW, by + mHH
+	if mRound then
+		ax, ay, bx, by = Route.ClipToCircle(ax, ay, bx, by, mR)
+	else
+		ax, ay, bx, by = Route.ClipToSquare(ax, ay, bx, by, mRX, mRY)
+	end
+	if not ax then
+		return nil
+	end
+	return ax + mHW, ay - mHH, bx + mHW, by - mHH
+end
+
+-- the areas' holder: under Route's own layer (its trail over them), moved with it (Route.MinimapShift)
+local function MiniPainter()
+	local mini = O.mini
+	if not mini.painter then
+		local mm = MelloUI.Route.MinimapFrame()
+		local h = CreateFrame("Frame", nil, mm:GetParent() or mm)   -- (the minimap: Route's layer's parent)
+		h:SetAllPoints(mm)
+		h:SetFrameLevel(math.max(0, mm:GetFrameLevel() - 1))
+		h:EnableMouse(false)
+		mini.holder = h
+		mini.painter = MelloUI.QuestAreas.Painter(h, "ARTWORK", true)
+	end
+	return mini.painter
+end
+
+local function MiniAreaGone(area)
+	local mini = O.mini
+	area.hold = nil
+	for i = #mini.leaving, 1, -1 do
+		if mini.leaving[i].key == area.key then
+			table.remove(mini.leaving, i)
+		end
+	end
+	if mini.painter.areas[area.key] == area and area.gen ~= mini.painter.gen then
+		MelloUI.QuestAreas.Release(mini.painter, area)
+	end
+end
+
+local function MiniGhostDone(f)
+	f:Hide()
+	f.ghost = nil
+end
+
+-- a ghost's frame: one of the pool (free when its tick is over)
+local function GhostFrame(parent)
+	local mini = O.mini
+	for _, f in ipairs(mini.ghostFrames) do
+		if not f.ghost and not f:IsShown() then
+			return f
+		end
+	end
+	local f = CreateFrame("Frame", nil, parent)
+	f:SetFrameLevel(parent:GetFrameLevel() + 3)
+	f.icon = f:CreateTexture(nil, "ARTWORK")
+	f.icon:SetPoint("CENTER")
+	mini.ghostFrames[#mini.ghostFrames + 1] = f
+	return f
+end
+
+-- one area drawn this tick (near you), its moments: a new one drawn round, a leaving one drawn back, you stepping in
+local function MiniArea(painter, g, px, py, reach)
+	if not (g.cont == mCont and g.x1 >= px - reach and g.x0 <= px + reach and g.y1 >= py - reach
+		and g.y0 <= py + reach) then
+		if g.leaving then
+			g.leaving = "far"   -- (out of sight: let go at once)
+		end
+		return
+	end
+	local QA = MelloUI.QuestAreas
+	mA = g.a
+	local stride = math.max(1, math.floor(MINI.SEG_PX / (QA.T.STEP * mPPY) + 0.5))
+	-- (the loops near you only: the reach round you, in the shape's world yards)
+	local box = g.cullBox
+	if not box then
+		box = {}
+		g.cullBox = box
+	end
+	local x1, y1 = Back(g.a, px - reach, py - reach)
+	local x2, y2 = Back(g.a, px + reach, py - reach)
+	local x3, y3 = Back(g.a, px - reach, py + reach)
+	local x4, y4 = Back(g.a, px + reach, py + reach)
+	box[1], box[2] = math.min(x1, x2, x3, x4), math.min(y1, y2, y3, y4)
+	box[3], box[4] = math.max(x1, x2, x3, x4), math.max(y1, y2, y3, y4)
+	local area = painter:Area(g.key, g.shape, MiniProject, stride, MiniClip, box)
+	if g.fresh and area.new then
+		g.fresh = false
+		QA.TraceIn(area, QA.T.TRACE)
+	end
+	if g.leaving and not area.hold then
+		area.hold = true
+		QA.TraceOut(area, QA.T.GONE, MiniAreaGone)
+	end
+	-- (1.2.0) you in it: its edge swells once and its marks lift, as you step in (the inside: world yards)
+	local inside = false
+	if px >= g.x0 and px <= g.x1 and py >= g.y0 and py <= g.y1 then
+		local wx, wy = Back(g.a, px, py)
+		for _, loop in ipairs(g.shape.loops) do
+			if QA.Inside(wx, wy, loop) then
+				inside = not inside
+			end
+		end
+	end
+	if inside and not g.inside and g.wasNear then
+		QA.Swell(area)
+		g.stepIn = true
+	end
+	g.inside, g.wasNear = inside, true
+end
+
 function O.MiniDraw(cont, round, R, RX, RY)
 	local mini, Route = O.mini, MelloUI.Route
-	local used, eused = 0, 0
-	if cont and Route.MinimapFrame() then
+	local QA = MelloUI.QuestAreas
+	local frame = Route.MinimapFrame()
+	local painter = frame and QA and MiniPainter()
+	if painter then
+		painter:Begin()
+	end
+	if cont and frame and painter then
 		local Offset, m = Route.MinimapOffset, MINI.MARK / 2 + 1
 		local beyond = (round and R or math.max(RX, RY)) * MINI.BEYOND
-		-- the nearest beyond the edge, in three slots (no list made a tick)
+		local v = Route.mmView
+		-- the areas round you: drawn thin, clipped to the map's shape
+		local w, h = frame:GetWidth(), frame:GetHeight()
+		mHW, mHH, mRound, mR, mRX, mRY = (w or 0) / 2, (h or 0) / 2, round, R, RX, RY
+		mCont, mPPY = cont, v.ppy or 1
+		local reach = math.max(R, RX, RY) / (v.ppy or 1) + QA.T.RADIUS
+		for _, g in ipairs(mini.areas) do
+			MiniArea(painter, g, v.px, v.py, reach)
+		end
+		for i = #mini.leaving, 1, -1 do
+			local g = mini.leaving[i]
+			MiniArea(painter, g, v.px, v.py, reach)
+			if g.leaving == "far" then
+				table.remove(mini.leaving, i)
+			end
+		end
+		-- the marks: inside, or among the three nearest beyond the edge
 		local e1, e2, e3, d1, d2, d3 = nil, nil, nil, math.huge, math.huge, math.huge
 		for i = 1, mini.n do
 			local p = mini.points[i]
+			p.on = false
 			if p.cont == cont then
 				local gx, gy = Offset(p.x, p.y)
-				local inside
+				gx = gx + (p.dx or 0)
+				local room   -- px from the edge's limit, inside (> 0) or past it
 				if round then
-					inside = gx * gx + gy * gy <= (R - m) * (R - m)
+					room = (R - m) - math.sqrt(gx * gx + gy * gy)
 				else
-					inside = math.abs(gx) <= RX - m and math.abs(gy) <= RY - m
+					room = math.min(RX - m - math.abs(gx), RY - m - math.abs(gy))
 				end
-				if inside then
-					used = used + 1
-					Route.MarkPlace(MiniMark(mini.marks, used, p.kind, MINI.MARK), MINI.MARK, Route.MinimapFrame(), "CENTER", gx, gy)
+				p.gx, p.gy, p.room = gx, gy, room
+				if room >= 0 then
+					p.on = true
 				else
 					local d = math.sqrt(gx * gx + gy * gy)
+					p.d = d
 					if d <= beyond then
 						if d < d1 then
-							e3, d3, e2, d2, e1, d1 = e2, d2, e1, d1, i, d
+							e3, d3, e2, d2, e1, d1 = e2, d2, e1, d1, p, d
 						elseif d < d2 then
-							e3, d3, e2, d2 = e2, d2, i, d
+							e3, d3, e2, d2 = e2, d2, p, d
 						elseif d < d3 then
-							e3, d3 = i, d
+							e3, d3 = p, d
 						end
 					end
 				end
 			end
 		end
-		for slot = 1, 3 do
-			-- (the three slots read in turn, as ipairs did a list of them: up to the first one empty)
-			local i = slot == 1 and e1 or slot == 2 and e2 or e3
-			if not i then
-				break
-			end
+		if e1 then e1.on = true end
+		if e2 then e2.on = true end
+		if e3 then e3.on = true end
+		for i = 1, mini.n do
 			local p = mini.points[i]
-			local gx, gy = Offset(p.x, p.y)
-			eused = eused + 1
-			local k = Route.MinimapEdge(gx, gy, round, R, RX, RY, MINI.EDGE_MARK / 2 + 8)
-			Route.MarkPlace(MiniMark(mini.edges, eused, p.kind, MINI.EDGE_MARK), MINI.EDGE_MARK, Route.MinimapFrame(), "CENTER", gx * k, gy * k)
-			local chev = mini.chevs[eused]
-			if not chev then
-				chev = Route.MinimapFrame():CreateTexture(nil, "OVERLAY", nil, 3)
-				chev:SetTexture(Route.TRAIL.CHEVRON)   -- (0.25.0: the set's gold arrow, its own colour)
-				chev:SetSize(16, 8)
-				mini.chevs[eused] = chev
+			local f = p.frame
+			if p.on then
+				local gx, gy, room = p.gx, p.gy, p.room
+				local size, alpha
+				if room >= 0 then
+					-- (nearing the edge: smaller over RIM px into the edge's size)
+					local s = math.min(1, room / MINI.RIM)
+					size = MINI.EDGE_MARK + (MINI.MARK - MINI.EDGE_MARK) * s * s * (3 - 2 * s)
+					alpha = 1
+				else
+					local k = Route.MinimapEdge(gx, gy, round, R, RX, RY, m)
+					local over = p.d * (1 - k)
+					gx, gy = gx * k, gy * k
+					size = MINI.EDGE_MARK
+					local a = math.min(1, over / MINI.RIM)
+					local arrow = a * a * (3 - 2 * a)
+					local fade = (p.d - MINI.FADE * beyond) / ((1 - MINI.FADE) * beyond)
+					fade = fade < 0 and 0 or (fade > 1 and 1 or fade)
+					alpha = 1 - fade * fade * (3 - 2 * fade)
+					local chev = Chevron(p)
+					local kc = Route.MinimapEdge(p.gx, p.gy, round, R, RX, RY, 3)
+					chev:ClearAllPoints()
+					chev:SetPoint("CENTER", frame, "CENTER", p.gx * kc, p.gy * kc)
+					chev:SetRotation(math.atan2(p.gy, p.gx) + math.pi / 2)   -- (the art's V points down)
+					chev:SetAlpha(alpha * arrow)
+					chev:Show()
+				end
+				f = MiniMark(p, p.kind, size)
+				Route.MarkPlace(f, size, frame, "CENTER", gx, gy)
+				if not (MelloUI.Anim and MelloUI.Anim:IsRunning(f, "drive")) then
+					f:SetAlpha(alpha)
+				end
+				-- its moments: a new area's pop, a count's ring, you stepping into its area
+				if p.pop then
+					p.pop = nil
+					QA.MarkPop(f, f.icon, size, 0)
+				elseif p.bump then
+					p.bump = nil
+					QA.MarkBump(f, f.icon, size)
+				elseif p.area and p.area.stepIn then
+					QA.MarkBump(f, f.icon, size, true)
+				end
+				p.shownAt = true
+			else
+				p.shownAt = nil
+				if f then
+					f:Hide()
+				end
 			end
-			local kc = Route.MinimapEdge(gx, gy, round, R, RX, RY, 3)
-			chev:ClearAllPoints()
-			chev:SetPoint("CENTER", Route.MinimapFrame(), "CENTER", gx * kc, gy * kc)
-			chev:SetRotation(math.atan2(gy, gx) + math.pi / 2)   -- (the art's V points down)
-			chev:Show()
+			if (not p.on or (p.room or 0) >= 0) and p.chev then
+				p.chev:Hide()
+			end
 		end
+		for _, g in ipairs(mini.areas) do
+			g.stepIn = nil
+		end
+		-- the done marks' ghosts: their tick and their way out, where their mark stood
+		for i = #mini.ghosts, 1, -1 do
+			local gh = mini.ghosts[i]
+			if gh.cont == cont then
+				local f = gh.frame
+				if not f then
+					f = GhostFrame(frame)
+					gh.frame = f
+					f.ghost = true
+					local icon = OBJ_ICON[gh.kind] or "goal_pin"
+					MelloUI.Widgets.Icon(f.icon, icon)
+					f.icon:SetSize(MINI.MARK, MINI.MARK)
+				end
+				local gx, gy = Offset(gh.x, gh.y)
+				Route.MarkPlace(f, MINI.MARK, frame, "CENTER", gx + (gh.dx or 0), gy)
+				f:Show()
+				if gh.fresh then
+					gh.fresh = false
+					QA.MarkTick(f, f.icon, MINI.MARK, MiniGhostDone)
+				end
+				if not f.ghost then
+					f:Hide()
+					table.remove(mini.ghosts, i)
+				end
+			end
+		end
+	else
+		for i = 1, mini.n do
+			local p = mini.points[i]
+			if p.frame then
+				p.frame:Hide()
+			end
+			if p.chev then
+				p.chev:Hide()
+			end
+		end
+		for _, f in ipairs(mini.ghostFrames) do
+			f:Hide()
+			f.ghost = nil
+		end
+		wipe(mini.ghosts)
 	end
-	for i = used + 1, #mini.marks do
-		mini.marks[i]:Hide()
+	if painter then
+		painter:End()
 	end
-	for i = eused + 1, #mini.edges do
-		mini.edges[i]:Hide()
-		mini.chevs[i]:Hide()
+	-- (the points past the list's end: their frames out of sight)
+	for i = mini.n + 1, #mini.points do
+		local p = mini.points[i]
+		if p.frame then
+			p.frame:Hide()
+		end
+		if p.chev then
+			p.chev:Hide()
+		end
 	end
 end

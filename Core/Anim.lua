@@ -56,7 +56,7 @@
 --       flight). Pass a shared function, not a new closure per call; a new
 --       Drive on the frame starts again from 0. Stop / Land / IsRunning take
 --       "drive"; Reduce Motion: step(frame, 1) at once, then onDone
---   MelloUI.Anim:Timer(bar, seconds[, grow]) / :TimerText(fs, bar) /
+--   MelloUI.Anim:Timer(bar, seconds[, grow[, from]]) / :TimerText(fs, bar) /
 --       :StopTimer(bar[, full])   a StatusBar counting seconds away, run by
 --       the engine with its seconds' text (0.17.1, the swing timers; below)
 --   MelloUI.Anim:Busy() -> tweens, glides     what runs (tests, /melloperf)
@@ -1411,6 +1411,69 @@ do
 end
 
 --------------------------------------------------------------------------------
+-- The burst (1.2.0, animations round 4: the reminder's ring of light as it comes up). A region shown at `alpha`, grown
+-- about its middle to `grow` times its size and faded out over `duration`, once, left at alpha 0: one AnimationGroup
+-- per region (a Scale and an Alpha together), made on its first burst, its values set again per call; engine-driven,
+-- no Lua at all while it plays or at its end. Under Reduce Motion it is not played (the region hidden).
+--   MelloUI.Anim:Burst(region, grow (1.9), alpha (0.9), duration (0.6)) -> group, or nil
+--------------------------------------------------------------------------------
+
+do
+	local burstOf = setmetatable({}, { __mode = "k" })     -- [region] = its group
+	local burstParts = setmetatable({}, { __mode = "k" })  -- [group] = { scale, fade }
+
+	-- a plain number above 0, else the default
+	local function Above(v, default)
+		v = MelloUI.Safe.Number(v)
+		return (v and v > 0) and v or default
+	end
+
+	function Anim:Burst(region, grow, alpha, duration)
+		if type(region) ~= "table" or not region.CreateAnimationGroup then
+			return nil
+		end
+		if self.reduceMotion then
+			region:Hide()
+			return nil
+		end
+		local group = burstOf[region]
+		if not group then
+			group = region:CreateAnimationGroup()
+			local scale = group:CreateAnimation("Scale")
+			scale:SetOrder(1)
+			if scale.SetOrigin then
+				scale:SetOrigin("CENTER", 0, 0)
+			end
+			if scale.SetSmoothing then
+				scale:SetSmoothing("OUT")
+			end
+			local fade = group:CreateAnimation("Alpha")
+			fade:SetOrder(1)
+			fade:SetToAlpha(0)
+			group:SetToFinalAlpha(true)
+			burstParts[group] = { scale, fade }
+			burstOf[region] = group
+		end
+		grow, alpha, duration = Above(grow, 1.9), Above(alpha, 0.9), Above(duration, 0.6)
+		local scale, fade = burstParts[group][1], burstParts[group][2]
+		if scale.SetScaleFrom and scale.SetScaleTo then
+			scale:SetScaleFrom(1, 1)
+			scale:SetScaleTo(grow, grow)
+		elseif scale.SetScale then
+			scale:SetScale(grow, grow)
+		end
+		scale:SetDuration(duration)
+		fade:SetFromAlpha(alpha)
+		fade:SetDuration(duration)
+		group:Stop()
+		region:SetAlpha(alpha)
+		region:Show()
+		self:PlayGroup(group)
+		return group
+	end
+end
+
+--------------------------------------------------------------------------------
 -- The slide (0.17.0, Combat Text's Your Damage: a number rising off an
 -- enemy's nameplate). A frame anchored to a nameplate has secret anchoring
 -- on this client: its GetPoint, GetRect and GetCenter answer secret
@@ -1613,9 +1676,11 @@ end
 -- writes its seconds into a font string (a duration text binding), with no
 -- Lua each frame: the frame rate lesson of 0.17.0. NOT stopped by Reduce
 -- Motion: it tells time, it is no motion for show.
---   MelloUI.Anim:Timer(bar, seconds[, grow]) -> true when the engine runs it
+--   MelloUI.Anim:Timer(bar, seconds[, grow[, from]]) -> true when the engine runs it
 --       the bar full now and empty after `seconds` (grow: empty, then full),
---       in the bar's own fill style (Center: from both ends to the middle).
+--       in the bar's own fill style (Center: from both ends to the middle);
+--       (1.2.0) `from`: the GetTime() it began at, when earlier than now (a
+--       cast pushed back, read again: the bar where its time has it).
 --       Asked again, it starts over with the time given. Without the
 --       engine's timer bars (another client): false, the bar left full
 --       (empty with grow) -- no Lua loop stands in.
@@ -1630,7 +1695,7 @@ end
 --       once it has run out or is stopped. Bound once: it follows every
 --       Timer on that bar after.
 --   MelloUI.Anim:StopTimer(bar[, full])   its timer stopped, the bar empty
---       (full: full), its texts ""
+--       (full: full; 1.2.0, a number: that share), its texts ""
 --   MelloUI.Anim:RawSeconds() -> the bare-seconds formatter, or nil
 --       a time as the bare number of seconds, rounded up, counting down to
 --       1: no "s", no minutes (the user, 2026-10-09 / 2026-10-10: the group
@@ -1750,7 +1815,7 @@ do
 		end
 	end
 
-	function Anim:Timer(bar, seconds, grow)
+	function Anim:Timer(bar, seconds, grow, from)
 		if type(bar) ~= "table" or not bar.SetValue then
 			return false
 		end
@@ -1774,7 +1839,7 @@ do
 			durationOf[bar] = d
 		end
 		local direction = grow and enum.StatusBarTimerDirection.ElapsedTime or enum.StatusBarTimerDirection.RemainingTime
-		local ok = pcall(d.SetTimeFromStart, d, GetTime(), seconds)
+		local ok = pcall(d.SetTimeFromStart, d, type(from) == "number" and from or GetTime(), seconds)
 			and pcall(bar.SetTimerDuration, bar, d, enum.StatusBarInterpolation.Immediate, direction)
 		if not ok then
 			Rest(bar, grow and 0 or 1)
@@ -1804,7 +1869,7 @@ do
 		if type(bar) ~= "table" or not bar.SetValue then
 			return
 		end
-		Rest(bar, full and 1 or 0)
+		Rest(bar, type(full) == "number" and full or (full and 1 or 0))
 		Texts(bar, nil)
 	end
 

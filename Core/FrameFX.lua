@@ -73,7 +73,8 @@ do
 	local LIGHT = MEDIA .. "Light\\"
 	local NAMES = {}
 	for name in ("bubble bubble_gold bubble_gold_round bubble_round crest_blue crest_gold crest_green crest_steel drop "
-		.. "halo_white leaf plus_blue plus_gold plus_green rays_gold ring_fire ring_gold ripple_blue shard_blue sheen "
+		.. "halo_white leaf plus_blue plus_gold plus_green rays_gold rays_gold_small ring_fire ring_gold ripple_blue "
+		.. "shard_blue sheen "
 		.. "spark_gold streak_blue streak_gold streak_green streak_red streak_white wave_gold wave_red wave_teal"):gmatch("%S+") do
 		NAMES[name .. ".tga"] = true
 	end
@@ -96,6 +97,7 @@ do
 		light = nil
 	end, "FrameFX")
 	FX.LIGHT = NAMES   -- (the tests')
+	FX.Art = Art       -- (1.2.0: the swing badge's sun rays, from the same art as the look's other lights)
 end
 local cos, sin, min, max, floor = math.cos, math.sin, math.min, math.max, math.floor
 local TIME = { launch = 0.32, hop = 0.22, chargeFade = 0.15, chargeMax = 3 }

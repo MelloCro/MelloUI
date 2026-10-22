@@ -642,6 +642,13 @@ end
 --     shared font objects (ZoneTextFont, SubZoneTextFont, PVPInfoTextFont)
 --     are never changed.
 --   * the notice's soft text shadow.
+--   * (1.2.0, animations round 4; the user 2026-10-22, "all of them" to
+--     BuildData/output/animation_previews/round4_anims.html) a gold rule
+--     under the lowest line with text, drawn out from its middle as the zone
+--     text comes in (Rule.TIME; Reduce Motion: at once), as the moment
+--     notices have (AnnounceMoment): a bar of ours in the palette's gold on
+--     that line's holder (it fades with that zone frame), laid by anchors and
+--     filled from its middle, so no size is read.
 -- The game keeps its colours (they tell friendly, hostile, contested,
 -- sanctuary), its places, its sizes and its fading.
 --
@@ -682,6 +689,11 @@ do
 	end
 	local zoneFrame, subFrame = _G.ZoneTextFrame, _G.SubZoneTextFrame
 	local built, styled = false, false
+	-- the rule: a StatusBar of ours a holder (made with the bands), laid under its line from its left to its right end
+	-- (anchors only, as the bands: no size read), its fill from the middle out (Center), K of it at full; GAP under
+	-- the line, H tall; the one shown now
+	local Rule = { K = 0.8, GAP = 6, H = 2, ALPHA = 0.85, TIME = 0.45, FILE = "Interface\\Buttons\\WHITE8X8", bars = {},
+		on = nil }
 
 	-- The look core, shared with the centre texts (Core/CentreText.lua: the
 	-- error lines, raid warnings and boss emotes), so every big text in the
@@ -735,6 +747,11 @@ do
 	end
 
 	local function ZonePaint()
+		-- (the rule in the palette's gold, styled or not: it shows only while styled)
+		local r, g, b = GameLook.RoleColour("gold")
+		for _, bar in pairs(Rule.bars) do
+			bar:SetStatusBarColor(r, g, b)
+		end
 		if not styled then
 			return
 		end
@@ -766,13 +783,28 @@ do
 					holder = Holder(parent)
 					holders[parent] = holder
 				end
-				line.fs = fs
+				line.fs, line.holder = fs, holder
 				line.band = MelloUI.Shade:Band(holder, TEXT)   -- look-ok: the zone text's band (Text Shade's own switch)
 				line.band:Anchor(fs, PAD_X, line.padY)
 				line.band:SetShown(false)
+				if not Rule.bars[holder] then
+					local bar = CreateFrame("StatusBar", nil, holder)
+					bar:SetStatusBarTexture(Rule.FILE)
+					local style = _G.Enum and _G.Enum.StatusBarFillStyle
+					if style and style.Center and bar.SetFillStyle then
+						pcall(bar.SetFillStyle, bar, style.Center)
+					end
+					bar:SetMinMaxValues(0, 1)
+					bar:SetValue(0)
+					bar:SetHeight(Rule.H)
+					bar:SetAlpha(Rule.ALPHA)
+					bar:Hide()
+					Rule.bars[holder] = bar
+				end
 			end
 		end
 		MelloUI:On("palette", ZonePaint, ZONE_OWNER)
+		ZonePaint()
 	end
 
 	-- what the game gave a text, kept before it is first changed: its font
@@ -834,6 +866,45 @@ do
 		end
 	end
 
+	function Rule.Step(_, share)
+		if Rule.on then
+			Rule.on:SetValue(Rule.K * share)
+		end
+	end
+
+	-- the rule under the lowest line with text while the look is on (play: drawn out again), else away
+	function Rule.Lay(play)
+		local low
+		if styled then
+			for i = #LINES, 1, -1 do
+				local line = LINES[i]
+				if line.fs and line.holder and HasText(line.fs) then
+					low = line
+					break
+				end
+			end
+		end
+		for _, bar in pairs(Rule.bars) do
+			bar:Hide()
+		end
+		Rule.on = low and Rule.bars[low.holder] or nil
+		local bar = Rule.on
+		if not bar then
+			Anim:Stop(Rule, "drive")
+			return
+		end
+		bar:ClearAllPoints()
+		bar:SetPoint("TOPLEFT", low.fs, "BOTTOMLEFT", 0, -Rule.GAP)
+		bar:SetPoint("TOPRIGHT", low.fs, "BOTTOMRIGHT", 0, -Rule.GAP)
+		bar:Show()
+		if play then
+			Rule.Step(nil, 0)
+			Anim:Drive(Rule, Rule.Step, Rule.TIME, "outCubic")
+		elseif not Anim:IsRunning(Rule, "drive") then
+			Rule.Step(nil, 1)
+		end
+	end
+
 	-- the notice's look on every line (again: the outline may have changed)
 	local function ZoneOn()
 		for i = 1, #LINES do
@@ -847,6 +918,7 @@ do
 		end
 		styled = true
 		Bands()
+		Rule.Lay(false)
 	end
 
 	-- the game's own look again
@@ -861,6 +933,7 @@ do
 			end
 		end
 		Bands()
+		Rule.Lay(false)
 	end
 
 	-- the look as the setting wants it; again = style it again while on
@@ -883,15 +956,18 @@ do
 	local function OnZoneShow()
 		if MelloUI.initialized then
 			Sync(false)
+			Rule.Lay(true)
 		end
 	end
 
-	-- the lines' texts changed (the game's handler has run, or cleared them)
+	-- the lines' texts changed (the game's handler has run, or cleared them): the rule drawn out again
 	local function OnZoneTexts()
 		if styled then
 			Bands()
+			Rule.Lay(true)
 		end
 	end
+	MelloUI.ZoneRule = Rule   -- (the tests')
 
 	local hooked = type(zoneFrame) == "table" and type(zoneFrame.HookScript) == "function"
 		and type(subFrame) == "table" and type(subFrame.HookScript) == "function"

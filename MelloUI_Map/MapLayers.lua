@@ -84,7 +84,8 @@ local T = {
 }
 Layers.T = T
 
-local S = { canvas = nil, pins = nil, wait = 0, seen = {}, docks = {}, built = false }
+local S = { canvas = nil, pins = nil, wait = 0, seen = {}, docks = {}, built = false,
+	readySeen = setmetatable({}, { __mode = "k" }) }   -- (1.2.0: the givers' ready moments shown, by quest row)
 local EMPTY = {}
 local floor = math.floor
 
@@ -322,6 +323,10 @@ function Layers.Quests()
 				local pin = pins:SetAt("quests", p.id * 1000 + i, p.id, g.x, g.y, GIVER)
 				if pin then
 					pin.data = g
+					-- (1.2.0) a quest newly ready to hand in: its "?" pops in with a ring of light (MapPins' moment)
+					if QL.ReadyNew and QL.ReadyNew(g, S.readySeen) then
+						pin.moment = { pop = 0, ring = true, at = GetTime() }
+					end
 				end
 			end
 		end

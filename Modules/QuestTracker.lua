@@ -873,18 +873,24 @@ end
 -- (BAND_W long: the soft shade's left half, its fade; the oval before it was SoftGlowRound, a ring); the tick as it is
 -- drawn has a small soft glint (GLINT seconds); the light over the title is a sheen crossing it (SHEEN, SWEEP
 -- seconds); the turn-in line slides in from TURNIN_DX as it fades in.
+-- (1.2.0, animations round 4; the user 2026-10-22, "all of them" to round4_anims.html) The list moves too (Motion.List,
+-- from the rebuild): a new quest's block fades in sliding from the right (LIST_DX), a block whose place changed glides
+-- there (GLIDE: an order, a block above grown or gone), and a quest no longer listed keeps its block a moment in place,
+-- fading out (FOLD; one handed in -- it was ready for turn-in -- crossed by its title's sheen first) while the rest
+-- glide up. Not on the first list after the login, nor when a section opens or folds; the option off or Reduce Motion:
+-- none of it.
 --------------------------------------------------------------------------------
 
 local Motion = { ROLL = 0.28, LIGHT = 0.6, TICK = 0.25, HOLD = 0.9, SWEEP = 0.55, UNFOLD = 0.3, UNFOLD_RISE = 4, TURNIN = 0.35,
-	TURNIN_DX = -10, BAND_W = 90, BAND_A = 0.32, BAND_PAD = 4, GLINT = 0.55, GLINT_K = 1.6, SHEEN_W = 0.9, SHEEN_H = 1.8,
-	hold = {} }
+	TURNIN_DX = -10, LIST_DX = 14, GLIDE = 0.3, FOLD = 0.45, BAND_W = 90, BAND_A = 0.32, BAND_PAD = 4, GLINT = 0.55, GLINT_K = 1.6, SHEEN_W = 0.9, SHEEN_H = 1.8,
+	hold = {}, listY = {}, listPrev = {}, listReady = false, listOpen = nil, folding = {} }
 Motion.SHEEN = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\sheen"   -- look-ok: a moment's light, in both looks
 Motion.BAND = "Interface\\AddOns\\MelloUI\\Media\\Textures\\SoftShade"   -- look-ok: a moment's light, in both looks
 Motion.GLINT_ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\glow_white"   -- look-ok: a moment's light, in both looks
 
 function Motion.On()
 	local anim = MelloUI.Anim
-	return M.db.progressMotion ~= false and anim ~= nil and anim.Drive ~= nil and not anim.reduceMotion
+	return M.db.progressMotion ~= false and type(anim) == "table" and anim.Drive ~= nil and not anim.reduceMotion
 end
 
 -- the widget set's glyphs (the tick, the count's spacer), or nil
@@ -1198,6 +1204,70 @@ function Motion.Complete(block, fs)
 		block.sweepJob = { block = block }
 	end
 	anim:Drive(block.sweepJob, Motion.SweepStep, Motion.SWEEP, "linear", Motion.SweepOver)
+end
+
+-- (1.2.0) the list's motion (see the top): whether this rebuild moves (the option, not the first list, the quests'
+-- section as it was); the record of each block's place swapped at its end
+function Motion.List(questsOpen)
+	return Motion.listReady and Motion.listOpen == questsOpen and Motion.On()
+end
+
+function Motion.ListDone(questsOpen, any)
+	-- (this list's places become the last ones; the table before them cleared for the next)
+	local prev = Motion.listPrev
+	Motion.listPrev, Motion.listY = Motion.listY, prev
+	for k in pairs(prev) do
+		prev[k] = nil
+	end
+	Motion.listOpen = questsOpen
+	if any and frame and frame:IsShown() then
+		Motion.listReady = true
+	end
+end
+
+-- a block laid at `y`: new (a quest or recipe not in the last list) slides in, one moved glides from its last place
+function Motion.Place(key, block, y)
+	local was = Motion.listPrev[key]
+	local anim = MelloUI.Anim
+	if was == nil then
+		if key ~= "guide" then
+			anim:From(block, "alpha", 0, Motion.TURNIN, "outQuad")
+			anim:Slide(block, "TOPLEFT", content, "TOPLEFT", Motion.LIST_DX, -y, -Motion.LIST_DX, 0, Motion.TURNIN, "outCubic")
+		end
+	elseif math.abs(was - y) >= 1 then
+		anim:Slide(block, "TOPLEFT", content, "TOPLEFT", 0, -was, 0, was - y, Motion.GLIDE, "outCubic")
+	end
+end
+
+-- a quest's block no longer listed: kept a moment where it was, fading out (handed in: its title's sheen first), then
+-- let go. -> whether it folds (a recipe's or the guide's block: let go at once)
+function Motion.Fold(key, block)
+	if type(key) ~= "number" or not block:IsShown() then
+		return false
+	end
+	local anim = MelloUI.Anim
+	Motion.folding[block] = GetTime() + Motion.FOLD
+	block.questID = nil   -- (no longer its quest's: nothing of a rebuild reaches it)
+	if lastComplete[key] and block.sweepJob then
+		anim:Drive(block.sweepJob, Motion.SweepStep, Motion.FOLD, "linear", Motion.SweepOver)
+	end
+	anim:Stop(block, "slide")
+	anim:To(block, "alpha", 0, Motion.FOLD, "outQuad")   -- (let go at its end: FoldDone)
+	C_Timer.After(Motion.FOLD + 0.05, Motion.FoldDone)
+	return true
+end
+
+-- (C_Timer.After) the folds whose time is over let go (into the free blocks)
+function Motion.FoldDone()
+	local now = GetTime()
+	for block, due in pairs(Motion.folding) do
+		if now + 0.01 >= due then
+			Motion.folding[block] = nil
+			MelloUI.Anim:Stop(block, "alpha")
+			block:SetAlpha(1)
+			Motion.Release(block)
+		end
+	end
 end
 
 -- (2026-10-20, the user's pick b for the modern look) the mark, now the hand-in one, pops: squashed flat, stretched
@@ -2101,6 +2171,7 @@ local function ReleaseBlock(block)
 	end
 	freeBlocks[#freeBlocks + 1] = block
 end
+Motion.Release = ReleaseBlock   -- (1.2.0: a fold's end, Motion.FoldDone, above)
 
 -- On the parchment sheet the text is dark ink and a quest's difficulty is
 -- its gem before its title (QuestInk; user, 2026-09-23 -- five pips at its
@@ -3655,10 +3726,13 @@ local function Rebuild()
 	for _, entry in ipairs(recipes) do
 		keep[RecipeKey(entry)] = recipesOpen or nil
 	end
+	local listMotion = Motion.List(questsOpen)
 	for key, block in pairs(blocks) do
 		if not keep[key] then
-			ReleaseBlock(block)
 			blocks[key] = nil
+			if not (listMotion and Motion.Fold(key, block)) then
+				ReleaseBlock(block)
+			end
 		end
 	end
 	for _, row in pairs(sections) do
@@ -3685,6 +3759,10 @@ local function Rebuild()
 			h = 0
 			block:Hide()
 		end
+		if listMotion then
+			Motion.Place(key, block, y)
+		end
+		Motion.listY[key] = y
 		y = y + h + BLOCK_GAP
 	end
 	-- a guide's steps on top (GUIDE, above)
@@ -3723,6 +3801,7 @@ local function Rebuild()
 	-- nothing watched: nothing shown, as the game's tracker; in Edit Mode the
 	-- game's own is out to be moved, and this one waits
 	frame:SetShown(entries > 0 and not inEditMode)
+	Motion.ListDone(questsOpen, entries > 0)   -- (1.2.0: after the show: the first list shown makes it ready)
 	-- the view stays where it was (clamped to the new length), or at the
 	-- end when it was there
 	SetOffset(atEnd and math.huge or scrollOffset)
@@ -3751,6 +3830,7 @@ end
 Near.MarkDirty = MarkDirty
 Motion.Dirty = MarkDirty
 M.SlashWords = { progress = Motion.Preview }   -- (0.21.3: /mello tracker progress)
+M.Motion = Motion   -- (the tests')
 
 -- a guide's steps published, or taken away (nil): the list rebuilt (GUIDE)
 MelloUI:On("guide", function(data)
