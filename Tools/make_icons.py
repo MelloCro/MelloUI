@@ -50,7 +50,9 @@ SET += [("trail", "map_dot", "map_dot", 32), ("trail", "route_bead", "route_bead
         ("trail", "edge_arrow", "edge_arrow", (64, 32))]
 for n in ("btn_pause", "btn_play", "btn_next", "btn_stop", "btn_list", "btn_locked", "btn_unlocked", "btn_accept",
           "btn_decline", "btn_way", "btn_reply", "btn_meter", "btn_expand", "btn_collapse", "btn_friend", "btn_invite",
-          "btn_ignore", "btn_report", "btn_sort", "btn_discard", "btn_arrow"):
+          "btn_ignore", "btn_report", "btn_sort", "btn_discard", "btn_arrow",
+          # (1.2.0, Dungeon Info's button over the map: btn_list's ring and disc, a door; icons_v2/make_btn_dungeon.py)
+          "btn_dungeon"):
     SET.append(("buttons", n, n, 64))
 for n in ("ql_completed", "ql_chest", "ql_notyet"):
     SET.append(("questlist", n, n, 64))

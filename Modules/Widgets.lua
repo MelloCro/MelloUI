@@ -236,7 +236,7 @@ local TEXT = {
 	rareDismiss = "Dismiss", rareDismissDesc = "Until another rare comes up.",
 	rareSample = "Ghost Howl", rareTest = "Rare Alert test: %s as a rare, for a minute.",
 	rareTestOff = "Rare Alert is off (Reminders > Widgets).",
-	loot = "Loot Rolls", lootLine = "Roll before the ring runs out", need = "Need", needDesc = "Roll for it as Need.",
+	loot = "Loot Rolls", lootLine = "Roll before the ring runs out", lootMine = "On your list: roll Need", need = "Need", needDesc = "Roll for it as Need.",
 	greed = "Greed", greedDesc = "Roll for it as Greed.", pass = "Pass", passDesc = "Pass on it.",
 	corpse = "Your corpse", corpseLabel = "Corpse Run", corpseFar = "%s, to the %s", corpseNear = "Your body is near",
 	corpseLine = "Go back to your body", way = "Show the way", wayCorpse = "The arrow points at your corpse.",
@@ -365,6 +365,18 @@ local function LootInfo()
 	return r, texture, name, count, quality, canNeed, canGreed
 end
 
+-- (1.2.0, the user's pick B of journal_loot_trip) the roll's item on your Dungeon Info list (MelloUI_DungeonInfo): its
+-- row marked -- the star on the item, the sun rays as it comes, the rim lit -- its line saying so, Need out and lit
+local function LootMine()
+	local r = loot.rolls[1]
+	local J = rawget(MelloUI, "DungeonInfo")
+	if not (r and type(J) == "table" and J.IsTracked and J.LinkID and J.M and J.M.isEnabled) then
+		return false
+	end
+	local id = J.LinkID((Ask(_G.GetLootRollItemLink, r.id)))
+	return id ~= nil and J.IsTracked(id)
+end
+
 local function Roll(kind)
 	local r = loot.rolls[1]
 	if not r then
@@ -401,7 +413,10 @@ local LOOT = {
 		end
 		return name
 	end,
-	text = TEXT.lootLine,
+	text = function()
+		return LootMine() and TEXT.lootMine or TEXT.lootLine
+	end,
+	mark = LootMine,
 	icon = function()
 		local _, texture = LootInfo()
 		return (not Secret(texture) and texture) or "Interface\\Buttons\\UI-GroupLoot-Dice-Up"
@@ -424,6 +439,7 @@ local LOOT = {
 	actions = {
 		{ icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", tip = TEXT.need, desc = TEXT.needDesc,
 		  shown = function() local _, _, _, _, _, canNeed = LootInfo() return canNeed == true end,
+		  lit = LootMine,
 		  fn = function() Roll(1) end },
 		{ icon = "Interface\\Buttons\\UI-GroupLoot-Coin-Up", tip = TEXT.greed, desc = TEXT.greedDesc,
 		  shown = function() local _, _, _, _, _, _, canGreed = LootInfo() return canGreed ~= false end,
@@ -3418,6 +3434,12 @@ function M:OnInit(db)
 			Refresh("questItem")
 		end
 	end, qitem.OWNER)
+	-- (1.2.0) a star put on or taken off in Dungeon Info: a roll up for that item marked again
+	MelloUI:On("dungeonInfo:tracked", function()
+		if loot.n > 0 then
+			Refresh("loot")
+		end
+	end, "Widgets: loot rolls")
 	-- a guide's items for its step (qitem.Guide)
 	MelloUI:On("guideitem", function(data)
 		qitem.guide = type(data) == "table" and data or nil

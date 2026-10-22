@@ -390,6 +390,9 @@ MelloUI.Meaning = {
 	personalLoss = Hex("#E6F0FF"),       -- (meaning colour)
 	-- (0.25.0, the Personal Display's Low Health: the health bar under 35%, the sketch's ember)
 	personalLow = Hex("#E5823A"),        -- (meaning colour)
+	-- (1.2.0, the user's pick A of widget_looks: a widget's time in its last 10 seconds, its ring and its text;
+	-- Core/Reminders.lua's column)
+	widgetEmber = Hex("#E5823A"),        -- (meaning colour)
 	-- (0.21.0, the user's pick B of prd_multishield: each shield its part, in its school's colour)
 	personalShieldHoly = Hex("#FFE28C"),    -- (meaning colour)
 	personalShieldFire = Hex("#FF8028"),    -- (meaning colour)
@@ -3665,6 +3668,8 @@ MelloUI.Features = {
 	VoiceOver = { addon = "MelloUI_VoiceOver", title = "Voice Over" },
 	PersonalDisplay = { addon = "MelloUI_PersonalDisplay", title = "Personal Display" },
 	Map = { addon = "MelloUI_Map", title = "Map" },
+	-- (1.2.0, docs/plans/dungeon-info.md) Dungeon Info: the map's column, a dungeon's bosses and loot
+	DungeonInfo = { addon = "MelloUI_DungeonInfo", title = "Dungeon Info" },
 	-- (one look, stage I) the painted reskin, MelloUI_Oldschool: every module
 	-- of its painted skins (its TOC's '## X-MelloUI-Feature:' line names them)
 	CharacterPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },

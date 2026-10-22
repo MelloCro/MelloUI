@@ -952,7 +952,7 @@ end
 -- the ring an engine burst (Anim:Burst, RING_K bigger), the line's slide (SLIDE_D from the button) and the tick on the
 -- engine's tweens; RING / SLIDE / TICK / HOLD seconds, the sink
 local Motion = { RING = 0.6, SLIDE = 0.35, SLIDE_D = 10, TICK = 0.3, HOLD = 0.35, SINK = 6, RING_K = 1.9,
-	ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\halo_white",   -- look-ok: a moment's light, both looks
+	ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\halo_white",   -- (a moment's ring of light, both looks)
 	done = false, tickJob = {} }
 
 function Motion.Make(b)
@@ -2015,7 +2015,15 @@ end
 --               (SecureActionButtonTemplate, laid by measure over it) runs
 --               the macro with the player's own click (Feed Pet); in combat
 --               it says so. glyph: pause play skip stop list padlock padlockOpen
---               check cross way reply (the widget set's one sheet, W.Glyph)
+--               check cross way reply (the widget set's one sheet, W.Glyph).
+--               lit = fn(key) -> true (1.2.0): the button out without a
+--               hover, a gold light round it (a loot roll's Need for an item
+--               on your Dungeon Info list); the others still come out on
+--               hover and go back in
+--   mark        fn(key) -> true (1.2.0, Dungeon Info's items in a loot
+--               roll): the row marked -- a gold star on the face, the rim lit,
+--               sun rays from the face once as it comes up (or as the mark
+--               comes on while it shows)
 --   tray        fn(key, rows) -> footer: the list under the band (W.TrayBox):
 --               the spec fills rows[1..n] = { glyph | icon, text, right,
 --               onClick = fn(key, entry, mouseButton) } and sets rows.n;
@@ -2120,6 +2128,43 @@ local function Column()
 	local FoldEnter, FoldLeave, FoldClick, FoldTrayClick
 	local ColLay, Tick
 
+	-- (1.2.0) the rows' look and motions: "The rows' look and motion" below. Its sizes in UI units, its times in s
+	local Mo = {
+		-- the card: from the face's middle to CARD_R short of the row's right, CARD_Y in from its top and bottom
+		-- (CARD_W wide open); its rim RIM deep, TUCK over it; FILL its innerPanel's alpha, SHADE its soft shade's
+		CARD_X = 6 + FACE / 2, CARD_R = 4, CARD_Y = 11, RIM = 2.7, TUCK = 0.7, FILL = 0.94, SHADE = 0.55,
+		CARD_W = ROW_W - (6 + FACE / 2) - 4,
+		-- the lines on it: the title TITLE_Y from the row's top (TITLE_KIT on Oldschool's band), the line GAP under
+		-- it (GAP_KIT); a row with subtitles EXTRA taller, its last line on the card
+		TITLE_X = 6 + FACE + 10, TITLE_Y = -18, TITLE_KIT = -14, GAP = 6, GAP_KIT = 5, EXTRA = 9,
+		-- arrive: the face pops (POP), the card opens (OPEN from OPEN_AT), the lines fade in and slide LINES_DX
+		ARRIVE = 0.65, POP = 0.32, OPEN_AT = 0.12, OPEN = 0.35, LINES_AT = 0.3, LINES = 0.25, LINES_SLIDE = 0.3,
+		LINES_DX = 8, BURST_AT = 0.05, BURST = 0.6, HALO = 1.25, HALO_K = 1.65, AFTER_GLIDE = 0.1,
+		-- the rows' glide; how long the rows above wait for one leaving, by why it leaves, and its own time
+		GLIDE = 0.4,
+		WAIT = { done = 0.85, away = 0.25, timeout = 0.3, fold = 0 },
+		TIME = { done = 1, away = 0.35, timeout = 0.4, fold = 0.45 },
+		-- done: the tick, the lines out, the card folding, the face away
+		TICK = 0.35, LINES_OUT_AT = 0.45, LINES_OUT = 0.2, FOLD_AT = 0.55, FOLD = 0.3, GONE_AT = 0.75, GONE = 0.25,
+		AWAY_DX = 40, OUT_K = 0.3, INTO_K = 0.65, FOLD_POP_AT = 0.4, FOLD_POP = 0.3, FOLD_LABEL_K = 0.35,
+		-- the timer: its last EMBER s in ember (eased EMBER_IN), the light on the ring's end (SPARK, SPARK_R from the
+		-- face's middle: the ring's band, Tools/make_widget_art.py), the flash at 0
+		EMBER = 10, EMBER_IN = 0.6, SPARK = 16, SPARK_R = FACE * RING_FRAME / 2 * 0.927, FLASH = 0.4, FLASH_K = 1.3,
+		-- a message: the count's pop, the line's roll, the light across the card
+		MSG = 0.7, COUNT_POP = 0.3, COUNT_K = 0.45, DISC = 19, ROLL = 0.35, ROLL_D = 16, LIGHT_AT = 0.1, LIGHT = 0.6,
+		LIGHT_W = 60, LIGHT_A = 0.32, LIGHT_FROM = 21, LIGHT_TO = 313,
+		-- hover: the lift, the rim brighter, the glow up
+		LIFT = 2, LIFT_T = 0.2, RIM_UP = 0.35, GLOW_UP = 0.3,
+		-- a mark (an item on your Dungeon Info list in a loot roll): the star on the face (STAR, out at the face's
+		-- top left), the sun rays once (RAYS of the face, grown RAYS_K over RAYS_T s)
+		STAR = 20, STAR_OUT = 0.33, RAYS = 1.5, RAYS_K = 2.6, RAYS_T = 0.9,
+		STAR_ART = "Interface\\AddOns\\MelloUI\\Media\\Textures\\DungeonInfoStar",
+		-- the art: a soft light (the flash, the ring's end), the light across a card
+		GLOW_ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\glow_gold",
+		SHEEN_ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\sheen",
+		list = {}, order = {}, gone = { n = 0 }, arrivals = { n = 0 },   -- (ColLay's, reused)
+	}
+
 	local function ColOn()
 		return #colOrder > 0
 	end
@@ -2205,6 +2250,7 @@ local function Column()
 		for i = 1, #col.rows do
 			local row = col.rows[i]
 			row.face:SetKit(Kit)
+			Mo.Look(row, Kit and true or false)
 			if row.crest and row.crest.kind then
 				Col.Crest(row, row.crest.kind)   -- (the kit's crest or the game's icon)
 			end
@@ -2223,6 +2269,10 @@ local function Column()
 			if f.tray then
 				f.tray:SetKit(Kit)
 			end
+		end
+		-- (the rows' heights by the look: laid again)
+		if up.n > 0 then
+			ColLay()
 		end
 	end
 
@@ -2288,10 +2338,15 @@ local function Column()
 		model:Hide()
 		Perf.SetScript(model, "OnHide", ModelHide)
 		row.model = model
-		-- the face: its scripts before its kit look (the kit's rim hooks them)
+		-- the face: its scripts before its kit look (the kit's rim hooks them); held by its middle (an empty region
+		-- there), so a motion scales it about it (1.2.0)
+		local faceAt = row:CreateTexture(nil, "BACKGROUND")
+		faceAt:SetSize(1, 1)
+		faceAt:SetPoint("CENTER", row, "TOPLEFT", Mo.CARD_X, -(5 + FACE / 2))
+		row.faceAt = faceAt
 		local face = W.RoundIcon(row, FACE, nil, ROUND_OPTS)
 		face:SetFrameLevel(base + 3)
-		face:SetPoint("TOPLEFT", row, "TOPLEFT", 6, -5)
+		face:SetPoint("CENTER", faceAt, "CENTER", 0, 0)
 		face.row = row
 		Perf.SetScript(face, "OnClick", RowClick)
 		Perf.SetScript(face, "OnEnter", RowEnter)
@@ -2299,8 +2354,10 @@ local function Column()
 		Perf.SetScript(face, "OnDragStart", ColDragStart)
 		Perf.SetScript(face, "OnDragStop", ColDragStop)
 		MelloUI:AddMoverHandle(col.holder, face)
-		face:SetKit(KitOn())
+		local kit = KitOn()
+		face:SetKit(kit)
 		row.face = face
+		row.modern = not kit   -- (1.2.0: the card's look, Mo.Surface; again as the look switches, Mo.Look)
 		ground:SetAllPoints(face.icon)
 		model:SetAllPoints(face.icon)
 		row.glow = MelloUI.Shade:Glow(face, { region = face, size = FACE, strength = GLOW_LOW })   -- look-ok: ApplyGlows (GlowMode)
@@ -2340,6 +2397,7 @@ local function Column()
 		local over = CreateFrame("Frame", nil, face)
 		over:SetAllPoints(face)
 		over:SetFrameLevel(ring:GetFrameLevel() + 1)
+		row.over = over
 		local disc = over:CreateTexture(nil, "OVERLAY", nil, 6)
 		disc:SetTexture(ROUND)
 		disc:SetSize(19, 19)
@@ -2352,9 +2410,9 @@ local function Column()
 		Look.Count(count, disc, face, COUNT_SIZE)
 		row.count = count
 		-- the lines: the title, the line and its time, the subtitles
+		-- (the title's and the line's top left by the look: Mo.LayLines)
 		local title = row:CreateFontString(nil, "OVERLAY")
 		Look.Text(title, "gold", TITLE_SIZE)
-		title:SetPoint("TOPLEFT", face, "TOPRIGHT", 10, -9)
 		title:SetPoint("RIGHT", row, "RIGHT", -12, 0)
 		title:SetJustifyH("LEFT")
 		title:SetWordWrap(false)
@@ -2366,7 +2424,6 @@ local function Column()
 		row.time = time
 		local text = row:CreateFontString(nil, "OVERLAY")
 		Look.Text(text, "text", LINE_SIZE)
-		text:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -5)
 		text:SetPoint("RIGHT", time, "LEFT", -8, 0)
 		text:SetJustifyH("LEFT")
 		text:SetWordWrap(false)
@@ -2392,13 +2449,9 @@ local function Column()
 		-- subtitle line sit on the band's full strength however tall it is)
 		-- (the soft band: Look.Plate)
 		row.band = Look.Plate(row, { alpha = 0.7, feather = 18, featherY = 14, region = box, padX = 2, padY = 0 })
+		Mo.Make(row)
 		col.rows[#col.rows + 1] = row
 		return row
-	end
-
-	-- the row for the i-th key up (made the first time)
-	local function Row(i)
-		return col.rows[i] or NewRow()
 	end
 
 	--------------------------------------------------------------------------
@@ -2433,10 +2486,39 @@ local function Column()
 		return b
 	end
 
-	-- the actions shown now onto the row's buttons: how many
+	-- (1.2.0) a lit button's light: the set's hover glow, gold, round it (made the first time it is lit)
+	local function BtnLight(b, on)
+		local t = b.litGlow
+		if not t and on then
+			t = b:CreateTexture(nil, "OVERLAY", nil, 2)
+			t:SetTexture(W.IconPath("hover_glow"))
+			t:SetPoint("CENTER")
+			t:SetSize(BTN + 12, BTN + 12)
+			t:SetBlendMode("ADD")
+			Look.Paint(t, "selectedTrim", "vertex")
+			b.litGlow = t
+		end
+		if t then
+			t:SetShown(on)
+		end
+	end
+
+	-- the actions shown now onto the row's buttons: how many. (1.2.0) The lit ones (an action's `lit`) in
+	-- row.pinned -- out without a hover, their light on -- the others in row.unpinned (what a leave takes back in)
 	local function LayButtons(row, key)
 		local spec = specs[key]
 		local actions = spec and spec.actions
+		local pinned, unpinned = row.pinned, row.unpinned
+		if not pinned then
+			pinned, unpinned = {}, {}
+			row.pinned, row.unpinned = pinned, unpinned
+		end
+		for i = #pinned, 1, -1 do
+			pinned[i] = nil
+		end
+		for i = #unpinned, 1, -1 do
+			unpinned[i] = nil
+		end
 		local n = 0
 		if type(actions) == "table" then
 			for i = 1, #actions do
@@ -2447,11 +2529,20 @@ local function Column()
 					b.action = a
 					SetPicture(b.icon, Value(a.glyph, key), Value(a.icon, key))
 					b:SetOn(not (a.secure and InCombatLockdown()))
+					local lit = a.lit ~= nil and Yes(a.lit, key) or false
+					BtnLight(b, lit)
+					if lit then
+						pinned[#pinned + 1] = b
+					else
+						unpinned[#unpinned + 1] = b
+					end
 				end
 			end
 		end
 		for i = n + 1, #row.btns do
 			row.btns[i].action = nil
+			BtnLight(row.btns[i], false)
+			unpinned[#unpinned + 1] = row.btns[i]
 		end
 		row.nBtns = n
 		return n
@@ -2723,6 +2814,9 @@ local function Column()
 
 	local function Fill(row, key)
 		local spec = specs[key]
+		-- (the same key again: its line as it read, for a new message's roll)
+		local same = row.key == key
+		local before = same and row.text:GetText() or nil
 		row.key = key
 		row.face.key = key
 		-- the title (its own colour, or the palette's gold) and the line
@@ -2770,15 +2864,20 @@ local function Column()
 			row.count:SetText(n)
 			Look.CountShown(row.count, true)
 		else
+			n = nil
 			Look.CountShown(row.count, false)
 		end
+		Mo.Count(row, same, n, before)
 		-- the ring
 		local start, duration, pausedAt = Values(spec.progress, key)
 		start, duration, pausedAt = Num(start), Num(duration), Num(pausedAt)
 		if start and duration and duration > 0 then
 			local ring = row.ring
+			-- (run out: so until it gets a new time -- checked again once, flashed once, Mo.Flash)
+			if row.pStart ~= start or row.pDur ~= duration then
+				row.expired = false
+			end
 			row.pStart, row.pDur, row.pPaused = start, duration, pausedAt
-			row.expired = false
 			if pausedAt then
 				-- (held where it stopped: the swipe's start moved on by the pause)
 				ring:SetCooldown(start + (GetTime() - pausedAt), duration)
@@ -2795,7 +2894,7 @@ local function Column()
 			end
 			ring:Show()
 		else
-			row.pStart, row.pDur, row.pPaused = nil, nil, nil
+			row.pStart, row.pDur, row.pPaused, row.expired = nil, nil, nil, false
 			-- a share with no time (a pet's happiness): the ring held there
 			local share = spec.fraction ~= nil and Num(Value(spec.fraction, key)) or nil
 			if share then
@@ -2816,6 +2915,7 @@ local function Column()
 		row.dim:SetShown(paused)
 		row.pauseGlyph:SetShown(paused)
 		row.time:SetText(TimeText(row))
+		Mo.Timer(row, false)
 		-- the subtitles, the band growing with them
 		local sub = Value(spec.sub, key)
 		local h = ROW_H
@@ -2826,7 +2926,7 @@ local function Column()
 			local sh = Num(row.sub:GetStringHeight())
 			row.subH = sh
 			sh = sh or (SUB_LINES * (SUB_SIZE + 2))
-			local need = 9 + TITLE_SIZE + 5 + LINE_SIZE + 6 + sh + 18
+			local need = 9 + TITLE_SIZE + 5 + LINE_SIZE + 6 + sh + 18 + (row.modern and Mo.EXTRA or 0)
 			if need > h then
 				h = need
 			end
@@ -2842,7 +2942,7 @@ local function Column()
 		row.title:SetShown(not compact)
 		row.text:SetShown(not compact)
 		row.time:SetShown(not compact)
-		row.band:SetShown(not compact)
+		Mo.Surface(row, compact)
 		if compact then
 			row.sub:Hide()
 			h = ROW_H
@@ -2862,6 +2962,19 @@ local function Column()
 		-- the spec's `alert` says so)
 		Col.Glow(row, key)
 		LayButtons(row, key)
+		-- (1.2.0) its mark, and the lit buttons out (one no longer lit goes back in, unless the pointer is on it)
+		Mo.Mark(row, spec.mark ~= nil and Yes(spec.mark, key) or false, same)
+		if row.pinned[1] then
+			EXP.count = #row.pinned
+			Anim:Expand(row.pinned, row.face, EXP)
+			row.hadPinned = true
+		elseif row.hadPinned then
+			row.hadPinned = false
+			if CS.hovered ~= row then
+				EXP.count = #row.unpinned
+				Anim:Collapse(row.unpinned, row.face, EXP)
+			end
+		end
 		if row.trayOpen then
 			FillTray(row)
 		end
@@ -2906,11 +3019,13 @@ local function Column()
 					if now - row.pStart >= row.pDur then
 						if not row.expired then
 							row.expired = true
+							Mo.Flash(row)
 							Queue(row.key, "expired")
 						end
 					else
 						more = true
 					end
+					Mo.Timer(row, true)
 				end
 				if Talk(row, now) then
 					more = true
@@ -3023,7 +3138,9 @@ local function Column()
 		return s
 	end
 
-	local function RowOff(row)
+	-- a row let go of its key: its tray shut, its buttons in, the secure button and the tooltip off it (one leaving
+	-- shows on through its motion, Mo.Leave; RowOff hides it at once)
+	local function RowLetGo(row)
 		if row.trayOpen then
 			row.trayOpen = false
 			if row.tray then
@@ -3037,9 +3154,17 @@ local function Column()
 		if CS.hovered == row then
 			CS.hovered = nil
 		end
+		if GameTooltip:IsOwned(row) or GameTooltip:IsOwned(row.face) then
+			GameTooltip:Hide()
+		end
 		row.key, row.face.key = nil, nil
+	end
+
+	local function RowOff(row)
+		RowLetGo(row)
 		row.model:Hide()
 		row:Hide()
+		Mo.Rest(row)
 	end
 
 	--------------------------------------------------------------------------
@@ -3070,6 +3195,8 @@ local function Column()
 		f:RegisterForClicks("LeftButtonUp")
 		f:Hide()
 		f.icons = {}
+		-- (1.2.0: placed and moved as the rows are, Mo.Put; its small face's pop, Mo.FoldPop)
+		f.y, f.dx, f.lift, f.glideJob, f.popJob = 0, 0, 0, { row = f }, { row = f }
 		Perf.SetScript(f, "OnClick", FoldClick)
 		Perf.SetScript(f, "OnEnter", FoldEnter)
 		Perf.SetScript(f, "OnLeave", FoldLeave)
@@ -3136,6 +3263,10 @@ local function Column()
 		for i = 1, k do
 			local b = FoldIcon(f, i)
 			b:SetIcon(Rem:Icon(folded[i]) or SAMPLE_ICON)
+			-- (one a pop left small, its pop cut off: whole again)
+			if not f.popKey and b:GetScale() ~= 1 then
+				Mo.IconScale(b, i, 1)
+			end
 			b:Show()
 		end
 		for i = k + 1, #f.icons do
@@ -3160,6 +3291,770 @@ local function Column()
 			GameTooltip:Hide()
 		end
 		f:Hide()
+		Anim:Stop(f.glideJob, "drive")
+		f.toY = nil   -- (shown again: straight to its place)
+	end
+
+	--------------------------------------------------------------------------
+	-- The rows' look and motion (1.2.0; the user's pick A of
+	-- BuildData/output/animation_previews/widget_looks.html with all seven of
+	-- its motions, 2026-10-22: "A, all of them")
+	--
+	-- The look (MelloUI's modern look; Oldschool's painted one keeps its soft
+	-- band): a row's lines on a card -- the innerPanel under the gold rim
+	-- (W.RimArt), from the face's middle to the row's right, a soft shade
+	-- under it (MelloUI.Shade) -- the title and its line laid a little lower
+	-- to sit on it. The motions, in both looks, none under Reduce Motion (the
+	-- rows stand where they belong and come and go at once):
+	--   arrive     the rows above glide up; the face pops in with a ring of
+	--              light, the card unfolds out of it, the lines slide in
+	--   done       a tick drawn on the face, the card folds back into it, the
+	--              face shrinks away; the rows above glide down
+	--   Not now    the row slides off to the right fading; the rows above glide
+	--   the timer  a light on the ring's moving end; its last EMBER s the
+	--              ring and the time in ember, a ring of light as they turn;
+	--              at 0 a flash, and the row leaves shrinking
+	--   a message  the count gone up: it pops, the old line rolls up and out,
+	--              the new one in, a light runs across the card
+	--   hover      the row lifts LIFT, its rim brightens, its glow comes up
+	--   the fold   past the cap: the row shrinks into the fold row, its small
+	--              face there pops in, "+N more" too
+	-- Each row keeps its key while that is up (Mo.Bind hands the frames out
+	-- by key; col.rows[i] is still the row of up[i]), laid at its own height
+	-- over the holder's bottom. Its parts are made with it (Mo.Make), its
+	-- moves run on Anim:Drive with one job table per move (made with it):
+	-- nothing is made per move.
+	--------------------------------------------------------------------------
+
+	do
+		local sin, cos, pi, min = math.sin, math.cos, math.pi, math.min
+
+		local function Seg(t, a, d)
+			local p = (t - a) / d
+			return p < 0 and 0 or (p > 1 and 1 or p)
+		end
+
+		local function OutCubic(p)
+			return 1 - (1 - p) ^ 3
+		end
+
+		local function InOut(p)
+			if p < 0.5 then
+				return 4 * p * p * p
+			end
+			return 1 - (-2 * p + 2) ^ 3 / 2
+		end
+
+		local function OutBack(p)
+			local y = p - 1
+			return 1 + 2.7 * y * y * y + 1.7 * y * y
+		end
+
+		-- the ember (a meaning colour, read when drawing; a world without them: the palette's gold)
+		local function Ember()
+			local m = rawget(MelloUI, "Meaning")
+			local c = type(m) == "table" and m.widgetEmber or nil
+			return type(c) == "table" and c or Look.Palette().selectedTrim
+		end
+
+		-- a line of the roll: on the clipping frame, laid over the row's line
+		local function RollLine(row)
+			local fs = row.roll:CreateFontString(nil, "OVERLAY")
+			Look.Text(fs, "text", LINE_SIZE)
+			fs:SetJustifyH("LEFT")
+			fs:SetWordWrap(false)
+			fs:SetPoint("TOPLEFT", row.text, "TOPLEFT", 0, 0)
+			fs:SetPoint("RIGHT", row.text, "RIGHT", 0, 0)
+			return fs
+		end
+
+		-- the moves of a shown row (none under Reduce Motion, nor for one not seen)
+		function Mo.Moves(r)
+			return not Anim.reduceMotion and r:IsShown() and col.holder:IsShown()
+		end
+
+		function Mo.Make(row)
+			local face, over = row.face, row.over
+			-- the card, its rim round it, its shade under it
+			local card = W.Solid(row, "BACKGROUND", "innerPanel", Mo.FILL)
+			card:SetPoint("TOPLEFT", row, "TOPLEFT", Mo.CARD_X, -Mo.CARD_Y)
+			card:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -Mo.CARD_R, Mo.CARD_Y)
+			card:Hide()
+			row.card = card
+			local out = Mo.RIM - Mo.TUCK
+			local rimAt = row:CreateTexture(nil, "BORDER")   -- (its rect only: the rim laid on it, W.RimArt scales it)
+			rimAt:SetPoint("TOPLEFT", card, "TOPLEFT", -out, out)
+			rimAt:SetPoint("BOTTOMRIGHT", card, "BOTTOMRIGHT", out, -out)
+			local rim = row:CreateTexture(nil, "BORDER", nil, 1)
+			W.RimArt(rim, Mo.RIM)
+			rim:SetAllPoints(rimAt)
+			rim:Hide()
+			row.rim = rim
+			row.shade = MelloUI.Shade:Band(row, { colour = "innerPanel", alpha = Mo.SHADE, feather = 8, featherY = 6,
+				layer = "BACKGROUND", sublevel = -4, region = card, padX = -2, padY = -1 })
+			if row.shade then
+				row.shade:SetShown(false)
+			end
+			-- the light across it (a message)
+			local light = row:CreateTexture(nil, "ARTWORK", nil, 2)
+			light:SetTexture(Mo.SHEEN_ART)
+			light:SetBlendMode("ADD")
+			light:SetWidth(Mo.LIGHT_W)
+			Look.Paint(light, "text", "vertex", Mo.LIGHT_A)
+			light:Hide()
+			row.light = light
+			-- the ring of light round the face (its arrival, its time turning ember): under the face, seen past it
+			local halo = row:CreateTexture(nil, "OVERLAY", nil, 7)
+			halo:SetTexture(Motion.ART)
+			halo:SetBlendMode("ADD")
+			halo:SetSize(FACE * Mo.HALO, FACE * Mo.HALO)
+			halo:SetPoint("CENTER", row.faceAt, "CENTER", 0, 0)
+			Look.Paint(halo, "selectedTrim", "vertex")
+			halo:Hide()
+			row.halo = halo
+			-- over the face and its ring: the flash at 0, the tick (done), the light on the ring's end
+			local flash = over:CreateTexture(nil, "OVERLAY", nil, 7)
+			flash:SetTexture(Mo.GLOW_ART)
+			flash:SetBlendMode("ADD")
+			flash:SetSize(FACE * 1.4, FACE * 1.4)
+			flash:SetPoint("CENTER", face, "CENTER", 0, 0)
+			Look.Paint(flash, "text", "vertex")
+			flash:Hide()
+			row.flash = flash
+			local tick = over:CreateTexture(nil, "OVERLAY", nil, 5)
+			tick:SetPoint("LEFT", face, "CENTER", -FACE * 0.25, 0)
+			Look.Paint(tick, "selectedTrim", "vertex")
+			tick:Hide()
+			row.tick = tick
+			local spark = over:CreateTexture(nil, "OVERLAY", nil, 4)
+			spark:SetTexture(Mo.GLOW_ART)
+			spark:SetBlendMode("ADD")
+			spark:SetSize(Mo.SPARK, Mo.SPARK)
+			Look.Paint(spark, "text", "vertex")
+			spark:Hide()
+			row.spark = spark
+			-- the line's roll (a message): the old line and the new one on a frame clipping them to the line's place
+			local roll = CreateFrame("Frame", nil, row)
+			roll:SetPoint("TOPLEFT", row.text, "TOPLEFT", -2, 3)
+			roll:SetPoint("BOTTOMRIGHT", row.text, "BOTTOMRIGHT", 2, -3)
+			if roll.SetClipsChildren then
+				roll:SetClipsChildren(true)
+			end
+			roll:Hide()
+			row.roll = roll
+			row.rollOld, row.rollNew = RollLine(row), RollLine(row)
+			-- the moves' jobs (Anim:Drive's keys) and where the row stands
+			row.glideJob, row.moveJob, row.msgJob = { row = row }, { row = row }, { row = row }
+			row.hoverJob, row.emberJob = { row = row }, { row = row }
+			row.y, row.dx, row.lift, row.hoverOn, row.hoverTo, row.countK = 0, 0, 0, 0, 0, 1
+			row.k, row.open, row.lineA, row.lineDX = 1, 1, 1, 0
+			Mo.LayLines(row)
+			Mo.Surface(row, false)
+		end
+
+		-- the title and its line where the look has them (a little lower on the card), the title slid by lineDX
+		function Mo.LayLines(row)
+			local modern = row.modern
+			row.title:SetPoint("TOPLEFT", row, "TOPLEFT", Mo.TITLE_X + row.lineDX, modern and Mo.TITLE_Y or Mo.TITLE_KIT)
+			row.text:SetPoint("TOPLEFT", row.title, "BOTTOMLEFT", 0, -(modern and Mo.GAP or Mo.GAP_KIT))
+		end
+
+		-- the card (the modern look) or Oldschool's band; neither while compact
+		function Mo.Surface(row, compact)
+			row.cardOn = row.modern and not compact
+			row.band:SetShown(not compact and not row.modern)
+			Mo.Open(row)
+		end
+
+		-- the card open its share (row.open): its right edge drawn in towards the face
+		function Mo.Open(row)
+			local on = row.cardOn and row.open > 0.02
+			row.card:SetShown(on)
+			row.rim:SetShown(on)
+			if row.shade then
+				row.shade:SetShown(on)
+			end
+			if on then
+				row.card:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -Mo.CARD_R - (1 - row.open) * Mo.CARD_W, Mo.CARD_Y)
+			end
+		end
+
+		-- the look switched (kit: Oldschool's painted look on)
+		function Mo.Look(row, kit)
+			row.modern = not kit
+			Mo.Surface(row, row.compact)
+			Mo.LayLines(row)
+		end
+
+		-- a row's moment: its face's scale k (about its middle, drawn again for that size: sharp), the card's share
+		-- open, the lines' alpha and slide
+		function Mo.Pose(row, k, open, lineA, lineDX)
+			k = k < 0.02 and 0.02 or k
+			if row.k ~= k then
+				row.k = k
+				row.face:SetScale(k)
+				W.RoundIconRefit(row.face)
+			end
+			if row.open ~= open then
+				row.open = open
+				Mo.Open(row)
+			end
+			if row.lineA ~= lineA then
+				row.lineA = lineA
+				row.title:SetAlpha(lineA)
+				row.text:SetAlpha(row.roll:IsShown() and 0 or lineA)
+				row.time:SetAlpha(lineA)
+				row.sub:SetAlpha(lineA)
+			end
+			if row.lineDX ~= lineDX then
+				row.lineDX = lineDX
+				Mo.LayLines(row)
+			end
+		end
+
+		-- a row (or the fold row) where it stands: y over the holder's bottom, dx aside, lifted
+		function Mo.Place(r)
+			r:SetPoint("BOTTOMLEFT", col.holder, "BOTTOMLEFT", r.dx, r.y + r.lift)
+		end
+
+		-- a row (or the fold row) at `y`: straight there while new, hidden or under Reduce Motion, else gliding from
+		-- where it stands after `wait`. -> true when it glides
+		function Mo.Put(r, y, wait)
+			if r.toY == y then
+				return false
+			end
+			if r.toY == nil or not Mo.Moves(r) then
+				Anim:Stop(r.glideJob, "drive")
+				r.y, r.toY = y, y
+				Mo.Place(r)
+				return false
+			end
+			r.fromY, r.toY, r.glideAt = r.y, y, wait
+			Anim:Drive(r.glideJob, Mo.GlideStep, wait + Mo.GLIDE, "linear")
+			return true
+		end
+
+		function Mo.GlideStep(job, share)
+			local r = job.row
+			local t = share * (r.glideAt + Mo.GLIDE) - r.glideAt
+			r.y = r.fromY + (r.toY - r.fromY) * InOut(t <= 0 and 0 or (t >= Mo.GLIDE and 1 or t / Mo.GLIDE))
+			Mo.Place(r)
+		end
+
+		-- col.rows in the order of `up`: [i] the row of up[i] -- the one that shows its key, else a free one (no key,
+		-- not leaving), else a new one -- then the others as they were. The rows whose key is not up any more go to
+		-- Mo.gone with why (Mo.Why). -> how long the rows that move wait: the longest wait of those leaving with a
+		-- motion (the rows above them glide once they are out of the way)
+		function Mo.Bind(n)
+			local rows, byUp, laid, gone = col.rows, Mo.list, Mo.order, Mo.gone
+			local wait = 0
+			gone.n = 0
+			for i = 1, n do
+				byUp[i] = false
+			end
+			for i = 1, #rows do
+				local r = rows[i]
+				r.slot = nil
+				local key = r.key
+				if key then
+					for j = 1, n do
+						if up[j] == key then
+							r.slot = j
+							byUp[j] = r
+							break
+						end
+					end
+					if not r.slot then
+						r.leaveKind = Mo.Why(r)
+						gone.n = gone.n + 1
+						gone[gone.n] = r
+						if Mo.Moves(r) then
+							local w = Mo.WAIT[r.leaveKind]
+							wait = w > wait and w or wait
+						end
+					end
+				end
+			end
+			local free = 1
+			for i = 1, n do
+				if not byUp[i] then
+					local r = nil
+					while not r and free <= #rows do
+						local c = rows[free]
+						free = free + 1
+						if not (c.key or c.leaving or c.slot) then
+							r = c
+						end
+					end
+					r = r or NewRow()   -- (added at the end of col.rows: past `free`, marked, never handed out twice)
+					r.slot = i
+					byUp[i] = r
+				end
+			end
+			local k = 0
+			for i = 1, n do
+				k = k + 1
+				laid[k] = byUp[i]
+			end
+			for i = 1, #rows do
+				if not rows[i].slot then
+					k = k + 1
+					laid[k] = rows[i]
+				end
+			end
+			for i = 1, k do
+				rows[i] = laid[i]
+				laid[i] = false
+			end
+			return wait
+		end
+
+		-- why a row's key went: a Not now ("away"), into the fold, its time run out, else done
+		function Mo.Why(r)
+			local key = r.key
+			local st = states[key]
+			if st and Dismissed(st) then
+				return "away"
+			end
+			for i = 1, folded.n do
+				if folded[i] == key then
+					return "fold"
+				end
+			end
+			return r.expired and "timeout" or "done"
+		end
+
+		-- a row whose key went, on its way out (Mo.OUT by why), then hidden (Mo.Gone); foldY: the fold row's place.
+		-- false: no motion (Reduce Motion, not seen): the caller takes it off at once
+		function Mo.Leave(row, foldY)
+			local kind = row.leaveKind
+			row.leaveKind = nil
+			if not Mo.Moves(row) then
+				return false
+			end
+			local key = row.key
+			RowLetGo(row)
+			Mo.MessageOff(row)
+			Anim:Stop(row.glideJob, "drive")
+			Anim:Stop(row.hoverJob, "drive")
+			row.toY, row.leaving = nil, kind
+			if kind == "fold" then
+				row.fromY, row.intoY, row.foldKey, row.popped = row.y, foldY + (FOLD_H - (row.h or ROW_H)) / 2, key, false
+				Mo.FoldIcon(key, 0.02)   -- (its small face waits for the row to get there)
+			elseif kind == "done" then
+				Look.CountShown(row.count, false)
+				row.pauseGlyph:Hide()
+				row.dim:Show()
+				Mo.TickDraw(row, 0)
+				row.tick:Show()
+			end
+			Anim:Drive(row.moveJob, Mo.OUT[kind], Mo.TIME[kind], "linear", Mo.Gone)
+			return true
+		end
+
+		Mo.OUT = {}
+
+		function Mo.OUT.done(job, share)
+			local row = job.row
+			local t = share * Mo.TIME.done
+			Mo.TickDraw(row, Seg(t, 0, Mo.TICK))
+			local gone = Seg(t, Mo.GONE_AT, Mo.GONE)
+			Mo.Pose(row, 1 - 0.6 * OutCubic(gone), 1 - OutCubic(Seg(t, Mo.FOLD_AT, Mo.FOLD)),
+				1 - Seg(t, Mo.LINES_OUT_AT, Mo.LINES_OUT), row.lineDX)
+			row:SetAlpha(1 - gone)
+		end
+
+		function Mo.OUT.away(job, share)
+			local row = job.row
+			row.dx = Mo.AWAY_DX * OutCubic(share)
+			Mo.Place(row)
+			row:SetAlpha(1 - share)
+		end
+
+		function Mo.OUT.timeout(job, share)
+			local row = job.row
+			local p = OutCubic(share)
+			Mo.Pose(row, 1 - Mo.OUT_K * p, 1 - p, 1 - p, row.lineDX)
+			row:SetAlpha(1 - share)
+		end
+
+		function Mo.OUT.fold(job, share)
+			local row = job.row
+			local s = OutCubic(share)
+			row.y = row.fromY + (row.intoY - row.fromY) * s
+			Mo.Place(row)
+			Mo.Pose(row, 1 - Mo.INTO_K * s, 1 - s, s < 0.5 and 1 - 2 * s or 0, row.lineDX)
+			row:SetAlpha(1 - Seg(share, 0.8, 0.2))
+			if not row.popped and share * Mo.TIME.fold >= Mo.FOLD_POP_AT then
+				row.popped = true
+				Mo.FoldPop(row.foldKey)
+			end
+		end
+
+		-- the tick drawn in its share p (its left part: W.Glyph's share)
+		function Mo.TickDraw(row, p)
+			p = p < 0.02 and 0.02 or p
+			local w = FACE * 0.5
+			W.Glyph(row.tick, "check", p)
+			row.tick:SetSize(w * p, w)
+		end
+
+		function Mo.Leaving()
+			for i = 1, #col.rows do
+				if col.rows[i].leaving then
+					return true
+				end
+			end
+			return false
+		end
+
+		-- out: hidden and made new; the last one out takes the column with it
+		function Mo.Gone(job)
+			local row = job.row
+			row.model:Hide()
+			row:Hide()
+			Mo.Rest(row)
+			if up.n == 0 and folded.n == 0 and not Mo.Leaving() and col.holder:IsShown() then
+				Anim:FadeOut(col.holder, FADE)
+			end
+		end
+
+		-- a row as a new one: every move stopped, every part at rest
+		function Mo.Rest(row)
+			Anim:Stop(row.moveJob, "drive")
+			Anim:Stop(row.glideJob, "drive")
+			Anim:Stop(row.hoverJob, "drive")
+			Anim:Stop(row.emberJob, "drive")
+			Mo.MessageOff(row)
+			row.leaving, row.leaveKind, row.toY, row.expired = nil, nil, nil, false
+			row.dx, row.lift, row.hoverOn, row.hoverTo, row.embered, row.countN = 0, 0, 0, 0, false, nil
+			row:SetAlpha(1)
+			row:SetHitRectInsets(0, 0, 0, 0)
+			Mo.Pose(row, 1, 1, 1, 0)
+			row.markOn, row.hadPinned = false, false
+			if row.markStar then
+				row.markStar:Hide()
+				row.markRays:Hide()
+			end
+			Mo.RimLight(row, 0)
+			Mo.SparkOff(row)
+			Mo.Halo(row, nil)
+			row.tick:Hide()
+			row.halo:Hide()
+			row.flash:Hide()
+			Look.Colour(row.time, nil)
+		end
+
+		-- arriving: hidden for `wait`, then the face pops in with its ring of light, the card opens, the lines come in
+		function Mo.Arrive(row, wait)
+			row.moveAt, row.burst = wait, false
+			Mo.ArriveStep(row.moveJob, 0)
+			row:Show()
+			Anim:Drive(row.moveJob, Mo.ArriveStep, wait + Mo.ARRIVE, "linear", Mo.Arrived)
+		end
+
+		function Mo.ArriveStep(job, share)
+			local row = job.row
+			local t = share * (row.moveAt + Mo.ARRIVE) - row.moveAt
+			if t < 0 then
+				row:SetAlpha(0)
+				Mo.Pose(row, 0.02, 0, 0, -Mo.LINES_DX)
+				return
+			end
+			row:SetAlpha(1)
+			if not row.burst and t >= Mo.BURST_AT then
+				row.burst = true
+				Anim:Burst(row.halo, Mo.HALO_K, 0.9, Mo.BURST)
+				if row.markOn and row.markRays then
+					Anim:Burst(row.markRays, Mo.RAYS_K, 1, Mo.RAYS_T)
+				end
+			end
+			Mo.Pose(row, OutBack(Seg(t, 0, Mo.POP)), OutCubic(Seg(t, Mo.OPEN_AT, Mo.OPEN)), Seg(t, Mo.LINES_AT, Mo.LINES),
+				-Mo.LINES_DX * (1 - OutCubic(Seg(t, Mo.LINES_AT, Mo.LINES_SLIDE))))
+		end
+
+		function Mo.Arrived(job)
+			Mo.Pose(job.row, 1, 1, 1, 0)
+		end
+
+		-- the ring of light gold, or in a meaning colour (the ember)
+		function Mo.Halo(row, colour)
+			if colour then
+				Look.Unpaint(row.halo)
+				row.halo:SetVertexColor(colour[1], colour[2], colour[3], 1)
+				row.haloOwn = true
+			elseif row.haloOwn then
+				row.haloOwn = false
+				Look.Paint(row.halo, "selectedTrim", "vertex")
+			end
+		end
+
+		-- the time: its last EMBER s in ember (the shared timer turns it, eased, with its ring of light; Fill
+		-- (ticking false) paints the ring again: the ember put back), the light on the ring's end
+		function Mo.Timer(row, ticking)
+			local left = nil
+			if row.pDur and not row.pPaused then
+				left = row.pDur - (GetTime() - row.pStart)
+			end
+			local ember = left ~= nil and left <= Mo.EMBER
+			if ember ~= row.embered then
+				row.embered = ember
+				if not ember then
+					Anim:Stop(row.emberJob, "drive")
+					Look.Colour(row.time, nil)
+				elseif ticking and left > Mo.EMBER - 1 and Mo.Moves(row) then
+					Mo.Halo(row, Ember())
+					Anim:Burst(row.halo, Mo.HALO_K, 0.9, Mo.BURST)
+					Anim:Drive(row.emberJob, Mo.EmberStep, Mo.EMBER_IN, "linear")
+				else
+					Mo.EmberStep(row.emberJob, 1)
+				end
+			elseif ember and not ticking and not Anim:IsRunning(row.emberJob, "drive") then
+				Mo.EmberStep(row.emberJob, 1)
+			end
+			Mo.Spark(row, left)
+		end
+
+		function Mo.EmberStep(job, p)
+			local row = job.row
+			local P, x = Look.Palette(), Ember()
+			local g, t = P.selectedTrim, P.text
+			row.ring:SetSwipeColor(g[1] + (x[1] - g[1]) * p, g[2] + (x[2] - g[2]) * p, g[3] + (x[3] - g[3]) * p, 1)
+			if p >= 1 then
+				Look.Colour(row.time, x)
+			else
+				row.time:SetTextColor(t[1] + (x[1] - t[1]) * p, t[2] + (x[2] - t[2]) * p, t[3] + (x[3] - t[3]) * p)
+			end
+		end
+
+		-- the light on the ring's moving end: turned clockwise about the face's middle by the engine (Anim:Orbit)
+		-- from where the time stands round to the top, as long as the time has left; none paused. Asked again (the
+		-- shared timer, a lay) it goes on as it is, unless the time changed or it stopped (hidden with the column)
+		function Mo.Spark(row, left)
+			if not (left and left > 0.05 and row.ring:IsShown()) or Anim.reduceMotion then
+				Mo.SparkOff(row)
+				return
+			end
+			if row.sparkStart == row.pStart and row.sparkDur == row.pDur and Anim:Orbiting(row.spark) then
+				return
+			end
+			row.sparkStart, row.sparkDur = row.pStart, row.pDur
+			local a = 2 * pi * (1 - left / row.pDur)
+			local x, y = Mo.SPARK_R * sin(a), Mo.SPARK_R * cos(a)
+			Anim:StopOrbit(row.spark)
+			row.spark:ClearAllPoints()
+			row.spark:SetPoint("CENTER", row.face, "CENTER", x, y)
+			Anim:Orbit(row.spark, -x, -y, -360 * left / row.pDur, left)
+		end
+
+		function Mo.SparkOff(row)
+			row.sparkStart, row.sparkDur = nil, nil
+			Anim:StopOrbit(row.spark)
+		end
+
+		-- the time run out: a flash over the face
+		function Mo.Flash(row)
+			if Mo.Moves(row) then
+				Anim:Burst(row.flash, Mo.FLASH_K, 0.9, Mo.FLASH)
+			end
+		end
+
+		-- the count gone up on the same key (a new message): it pops, the line rolls when it changed, a light runs
+		-- across the card. n: the count (nil: none), before: the line as it read
+		function Mo.Count(row, same, n, before)
+			local had = row.countN
+			row.countN = n
+			if not (same and n and had and n > had) or row.leaving or not Mo.Moves(row) then
+				return
+			end
+			local now = row.text:GetText()
+			row.rolls = not row.compact and not Secret(before) and not Secret(now) and type(before) == "string"
+				and type(now) == "string" and before ~= now
+			if row.rolls then
+				row.rollOld:SetText(before)
+				row.rollNew:SetText(now)
+				row.roll:Show()
+				row.text:SetAlpha(0)
+			end
+			Anim:Drive(row.msgJob, Mo.MsgStep, Mo.MSG, "linear", Mo.MsgDone)
+		end
+
+		function Mo.CountScale(row, k)
+			if row.countK == k then
+				return
+			end
+			row.countK = k
+			row.disc:SetSize(Mo.DISC * k, Mo.DISC * k)
+			if row.count.SetTextScale then
+				row.count:SetTextScale(k)
+			end
+		end
+
+		function Mo.MsgStep(job, share)
+			local row = job.row
+			local t = share * Mo.MSG
+			local p = Seg(t, 0, Mo.COUNT_POP)
+			Mo.CountScale(row, 1 + Mo.COUNT_K * sin(pi * p) * (1 - 0.3 * p))
+			if row.rolls then
+				local q = Seg(t, 0, Mo.ROLL)
+				local e, a = OutCubic(q), row.lineA
+				row.rollOld:SetPoint("TOPLEFT", row.text, "TOPLEFT", 0, Mo.ROLL_D * e)
+				row.rollOld:SetAlpha((1 - q) * a)
+				row.rollNew:SetPoint("TOPLEFT", row.text, "TOPLEFT", 0, -Mo.ROLL_D * (1 - e))
+				row.rollNew:SetAlpha(q * a)
+			end
+			local l, light = Seg(t, Mo.LIGHT_AT, Mo.LIGHT), row.light
+			if row.cardOn and l > 0 and l < 1 then
+				local x = Mo.LIGHT_FROM + (Mo.LIGHT_TO - Mo.LIGHT_FROM) * l
+				light:SetPoint("TOP", row.card, "TOPLEFT", x, 0)
+				light:SetPoint("BOTTOM", row.card, "BOTTOMLEFT", x, 0)
+				light:SetAlpha(sin(pi * l))
+				light:Show()
+			else
+				light:Hide()
+			end
+		end
+
+		function Mo.MsgDone(job)
+			Mo.MessageOff(job.row)
+		end
+
+		function Mo.MessageOff(row)
+			Anim:Stop(row.msgJob, "drive")
+			Mo.CountScale(row, 1)
+			row.rolls = false
+			row.roll:Hide()
+			row.text:SetAlpha(row.lineA)
+			row.light:Hide()
+		end
+
+		-- the pointer on a row or off it: the lift, the rim, the glow (its hit rect reaching down as far as it
+		-- rose, so the pointer stays on it)
+		function Mo.Hover(row, on)
+			local to = on and 1 or 0
+			if row.leaving or row.hoverTo == to then
+				return
+			end
+			row.hoverFrom, row.hoverTo = row.hoverOn, to
+			row:SetHitRectInsets(0, 0, 0, on and -Mo.LIFT or 0)
+			Anim:Drive(row.hoverJob, Mo.HoverStep, Mo.LIFT_T, "linear")
+		end
+
+		function Mo.HoverStep(job, share)
+			local row = job.row
+			local on = row.hoverFrom + (row.hoverTo - row.hoverFrom) * OutCubic(share)
+			row.hoverOn = on
+			row.lift = Mo.LIFT * on
+			Mo.Place(row)
+			if row.cardOn then
+				Mo.RimLight(row, row.markOn and 1 or on)
+			end
+			if not row.alert then
+				row.glow:SetStrength(GLOW_LOW + Mo.GLOW_UP * on)
+			end
+		end
+
+		-- the rim lit `on` (0..1) over its gold: the palette's selectedTrim brighter
+		function Mo.RimLight(row, on)
+			local c = Look.Palette().selectedTrim
+			local k = 1 + Mo.RIM_UP * on
+			row.rim:SetVertexColor(min(1, c[1] * k), min(1, c[2] * k), min(1, c[3] * k), 1)
+		end
+
+		-- (1.2.0) the row marked or not (a spec's `mark`): its star on the face, its rim lit; the sun rays once as the
+		-- mark comes on while it shows (`same`: the same key as before; a row arriving bursts them as it pops in,
+		-- Mo.ArriveStep). The star and the rays made the first time a row is marked
+		function Mo.Mark(row, on, same)
+			local was = row.markOn
+			row.markOn = on
+			if on and not row.markStar then
+				local star = row.over:CreateTexture(nil, "OVERLAY", nil, 7)
+				star:SetTexture(Mo.STAR_ART)
+				star:SetTexCoord(0, 0.5, 0, 1)
+				star:SetSize(Mo.STAR, Mo.STAR)
+				star:SetPoint("CENTER", row.face, "CENTER", -FACE * Mo.STAR_OUT, FACE * Mo.STAR_OUT)
+				Look.Paint(star, "selectedTrim", "vertex")
+				row.markStar = star
+				local FX = rawget(MelloUI, "FrameFX")
+				local rays = row:CreateTexture(nil, "OVERLAY", nil, 6)
+				rays:SetTexture(type(FX) == "table" and FX.Art and FX.Art("rays_gold_small.tga") or Motion.ART)
+				rays:SetBlendMode("ADD")
+				rays:SetSize(FACE * Mo.RAYS, FACE * Mo.RAYS)
+				rays:SetPoint("CENTER", row.faceAt, "CENTER", 0, 0)
+				rays:Hide()
+				row.markRays = rays
+			end
+			if row.markStar then
+				row.markStar:SetShown(on)
+			end
+			if on ~= (was and true or false) then
+				if row.cardOn then
+					Mo.RimLight(row, on and 1 or row.hoverOn)
+				end
+				if on and same and Mo.Moves(row) then
+					Anim:Burst(row.markRays, Mo.RAYS_K, 1, Mo.RAYS_T)
+				end
+			end
+		end
+
+		-- the fold row's small face of `key` (nil: not among them) and its place
+		local function FoldAt(key)
+			local f = col.fold
+			if not (f and key) then
+				return nil
+			end
+			local n = folded.n < FOLD_ICONS and folded.n or FOLD_ICONS
+			for i = 1, n do
+				if folded[i] == key then
+					return f.icons[i], i
+				end
+			end
+			return nil
+		end
+
+		-- a small face at scale k about its middle (its place as FoldIcon lays it)
+		function Mo.IconScale(b, i, k)
+			local x = 8 + (i - 1) * (FOLD_ICON + 4) + FOLD_ICON / 2
+			b:SetScale(k)
+			b:SetPoint("LEFT", col.fold, "LEFT", x / k - FOLD_ICON / 2, 0)
+			W.RoundIconRefit(b)
+		end
+
+		function Mo.FoldIcon(key, k)
+			local b, i = FoldAt(key)
+			if b then
+				Mo.IconScale(b, i, k)
+			end
+		end
+
+		-- the row got into the fold: its small face pops in, "+N more" too
+		function Mo.FoldPop(key)
+			local f = col.fold
+			if not (f and f:IsShown()) then
+				Mo.FoldIcon(key, 1)
+				return
+			end
+			f.popKey = key
+			Anim:Drive(f.popJob, Mo.FoldPopStep, Mo.FOLD_POP, "linear", Mo.FoldPopDone)
+		end
+
+		function Mo.FoldPopStep(job, share)
+			local f = job.row
+			local k = OutBack(share)
+			Mo.FoldIcon(f.popKey, k < 0.02 and 0.02 or k)
+			if f.label.SetTextScale then
+				f.label:SetTextScale(1 + Mo.FOLD_LABEL_K * sin(pi * share))
+			end
+		end
+
+		function Mo.FoldPopDone(job)
+			local f = job.row
+			Mo.FoldIcon(f.popKey, 1)
+			if f.label.SetTextScale then
+				f.label:SetTextScale(1)
+			end
+			f.popKey = nil
+		end
 	end
 
 	-- The subtitles measured again on the next frame (user, 2026-09-30: the
@@ -3191,10 +4086,13 @@ local function Column()
 		end
 		ColBuild()
 		local holder = col.holder
-		local total, below = 0, nil
-		-- bottom first, each row above the one before it
+		-- (1.2.0) each key keeps its row: the frames handed out by key, the ones whose key went marked to leave,
+		-- `wait` the time the rows that move give them (Mo.Bind)
+		local wait = Mo.Bind(n)
+		local total, glided, arrivals = 0, false, Mo.arrivals
+		-- bottom first, each row above the one before it, each at its own height (gliding there: Mo.Put)
 		for i = 1, n do
-			local row = Row(i)
+			local row = col.rows[i]
 			local key = up[i]
 			local was = row.key
 			if was ~= key and row.trayOpen then
@@ -3207,44 +4105,56 @@ local function Column()
 				Report(h)
 				h = ROW_H
 			end
-			row:ClearAllPoints()
-			if below then
-				row:SetPoint("BOTTOMLEFT", below, "TOPLEFT", 0, 0)
-			else
-				row:SetPoint("BOTTOMLEFT", holder, "BOTTOMLEFT", 0, 0)
+			row.h = h
+			if Mo.Put(row, total, wait) then
+				glided = true
 			end
-			below = row
 			total = total + h
 			if not row:IsShown() then
 				row:SetAlpha(1)
-				if was == nil and holder:IsShown() then
-					Anim:FadeIn(row, ROW_FADE)
+				if was == nil and not Anim.reduceMotion then
+					arrivals.n = arrivals.n + 1
+					arrivals[arrivals.n] = row
 				else
 					row:Show()
 				end
 			end
 		end
-		for i = n + 1, #col.rows do
-			local row = col.rows[i]
-			if row.key or row:IsShown() then
-				RowOff(row)
-			end
-		end
 		-- the fold row on top of them
+		local foldY = total
 		if folded.n > 0 then
 			local f = FoldBuild()
 			FoldFill(f)
-			f:ClearAllPoints()
-			if below then
-				f:SetPoint("BOTTOMLEFT", below, "TOPLEFT", 0, 0)
-			else
-				f:SetPoint("BOTTOMLEFT", holder, "BOTTOMLEFT", 0, 0)
+			if Mo.Put(f, total, wait) then
+				glided = true
 			end
 			f:Show()
 			total = total + FOLD_H
 		elseif col.fold and col.fold:IsShown() then
 			FoldOff(col.fold)
 		end
+		-- the rows whose key went: out with their motion, or off at once
+		local gone = Mo.gone
+		for i = 1, gone.n do
+			local row = gone[i]
+			gone[i] = false
+			if not Mo.Leave(row, foldY) then
+				RowOff(row)
+			end
+		end
+		gone.n = 0
+		for i = n + 1, #col.rows do
+			local row = col.rows[i]
+			if (row.key or row:IsShown()) and not row.leaving then
+				RowOff(row)
+			end
+		end
+		-- the new ones in, once the rows above have begun to make room
+		for i = 1, arrivals.n do
+			Mo.Arrive(arrivals[i], wait + (glided and Mo.AFTER_GLIDE or 0))
+			arrivals[i] = false
+		end
+		arrivals.n = 0
 		holder:SetHeight(total > 0 and total or ROW_H)
 		-- (a row with subtitles: measured again once they are laid out)
 		if not CS.remeasure then
@@ -3261,7 +4171,7 @@ local function Column()
 				Anim:FadeIn(holder, ROW_FADE)
 			end
 			StartTick()
-		elseif holder:IsShown() then
+		elseif holder:IsShown() and not Mo.Leaving() then   -- (one still leaving: the last one out takes it, Mo.Gone)
 			for i = 1, #col.rows do
 				local row = col.rows[i]
 				if GameTooltip:IsOwned(row) or GameTooltip:IsOwned(row.face) then
@@ -3333,6 +4243,7 @@ local function Column()
 			return
 		end
 		CS.hovered = row
+		Mo.Hover(row, true)
 		local n = row.nBtns or 0
 		if n > 0 and not row.trayOpen then
 			EXP.count = n
@@ -3364,8 +4275,14 @@ local function Column()
 		if o and CS.secureFor == self and o:IsShown() and o:IsMouseOver() then
 			return
 		end
-		EXP.count = #row.btns
-		Anim:Collapse(row.btns, row.face, EXP)
+		-- (1.2.0: the lit ones stay out)
+		local back = row.unpinned or row.btns
+		EXP.count = #back
+		Anim:Collapse(back, row.face, EXP)
+		-- (off the row itself and the room it rose from: from the row onto its face it stays lifted)
+		if not row:IsMouseOver(0, -Mo.LIFT, 0, 0) then
+			Mo.Hover(row, false)
+		end
 	end, "script")
 
 	-- a drag of the column is no click (its mouse-up comes with it)
@@ -3701,13 +4618,14 @@ local function Column()
 		alert = not Secret(alert) and alert == true
 		ApplyGlow(row.glow)
 		local mode = GlowMode()
-		if alert and mode ~= "off" then
+		row.alert = alert and mode ~= "off"
+		if row.alert then
 			row.glow:SetStrength("reach")
 			if mode == "pulse" then
 				row.glow:Pulse()
 			end
 		else
-			row.glow:SetStrength(GLOW_LOW)
+			row.glow:SetStrength(GLOW_LOW + Mo.GLOW_UP * (row.hoverOn or 0))   -- (up while hovered: Mo.Hover)
 		end
 	end
 

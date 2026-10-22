@@ -1,0 +1,16 @@
+## Interface: 16001
+## Title: |cff9b8cffMello|rUI Dungeon Info
+## Notes: MelloUI's Dungeon Info: every dungeon and raid on the map, its bosses and what they drop, your own list of items to look out for in a loot roll, and a trip that picks up a dungeon's quests in the fastest order. Switch it on or off in MelloUI (/mello); untick it here to not load it at all.
+## Author: Mello
+## Version: 1.1.0
+## Dependencies: MelloUI
+## OptionalDeps: MelloUI_Oldschool, MelloUI_QuestList, MelloUI_Route, MelloUI_Map
+## X-MelloUI-Feature: DungeonInfo
+## SavedVariables: MelloUIDungeonInfoSaved
+## SavedVariablesPerCharacter: MelloUIDungeonInfoChar
+## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
+
+DungeonInfoData.lua
+DungeonInfo.lua
+DungeonInfoPanel.lua
+DungeonInfoTrip.lua

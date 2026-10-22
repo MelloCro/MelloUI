@@ -139,14 +139,13 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "1.2.0", lines = {
-		"Route follows Follow The Arrow, Azeroth Pilot Reloaded and TomTom's arrow, as it follows RestedXP: the map pin, the World Marker, the guide's steps in the Quest Tracker.",
-		"Guidelime: turn on its Use TomTom arrow option and Route follows it too. /route guide turns following the guides off and on.",
-		"Several guides on at once? MelloUI asks which one to keep and switches the others off for that character.",
+		"Dungeon Info: every dungeon and raid, its bosses in order and what each one drops. Open it with the door button over the map, a dungeon's door on it, or /dungeoninfo.",
+		"Star the items you want: a loot roll for one shines gold and lights Need. Pick Up Quests: Route takes you to all of a dungeon's quests in the fastest order.",
+		"Route follows Follow The Arrow, Azeroth Pilot Reloaded, TomTom's arrow and Guidelime through it, as it follows RestedXP. Several guides on? MelloUI asks which to keep.",
 		"Route: Loading navigation... shows a loading bar, and the roads take about 20 MB less memory; notices show above the world map.",
 		"The Swing Badge, your swing timer on your target's nameplate: it winds up, strikes, flashes gold on crits; it replaces the Swing Timers' bars too.",
-		"New motion: Big Cooldowns, quest progress and the tracker's list, Level Up's XP bar and level, crits, combo points, reminders, the zone's name.",
-		"Windows framed in gold, snapped ones sharing one rim; new class portraits on the frames; the Personal Display in gold and in motion.",
-		"Reputation Gain lights the reputation bar and says a new standing in gold; Impact Effects reach your target frame too.",
+		"New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame.",
+		"Windows framed in gold, snapped ones sharing one rim; the widget column's rows on gold cards, in motion; new class portraits; the Personal Display in gold and in motion.",
 		"Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast.",
 		"Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on.",
 		"Quest areas: smooth gold areas that follow the spawns, on both maps and the minimap; their marks pop in, lift, ring on progress and tick off.",

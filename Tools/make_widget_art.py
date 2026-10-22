@@ -30,6 +30,9 @@ column": Voice Over and the other widgets, the user's picked look of
                                  metal lit from above (the top rail 1, the sides RIM_SIDE, the bottom darker),
                                  a soft shade under the top rail inside -- tinted the palette's selectedTrim
                                  (the casings and the shade stay black)
+    Textures/DungeonInfoStar.tga     (1.2.0) Dungeon Info's star (MelloUI_DungeonInfo; the loot roll row's badge,
+                                 Core/Reminders.lua): two 64 px cells, a filled star (an item on your list) and its
+                                 outline (one not), WHITE lit from above in a black casing, tinted selectedTrim
 
 Both are WHITE where they draw, their alpha the picture, so the game tints
 them with a palette colour (the ring with selectedTrim, its dim track with
@@ -91,6 +94,10 @@ RIM_CASE = 1.0                    # the dark casing either side of the metal (te
 RIM_CASE_A = 0.80
 RIM_SIDE, RIM_LIGHT = 0.72, 0.28  # the metal lit from above: RIM_SIDE + RIM_LIGHT * its face's upward share
 RIM_SHADE, RIM_SHADE_A = 3.0, 0.30   # the soft shade inside under the top rail: its depth (texels), its strength
+
+STAR_NAME = ("Textures", "DungeonInfoStar.tga")
+STAR_CELL, STAR_R, STAR_IN = 64, 0.44, 0.47   # a cell; the star's points (shares of the cell), its inner corners
+STAR_CASE, STAR_LINE = 0.075, 0.085           # the black casing round it, the outline star's white line (cell shares)
 
 RING_SIZE = 128
 RING_IN, RING_OUT = 0.870, 0.985   # the band, shares of the half-width
@@ -419,6 +426,53 @@ def gilded_rim():
     return img
 
 
+def star():
+    """Dungeon Info's star, two cells: filled, then its outline; drawn BIG times finer and averaged down (colour
+    premultiplied). White metal lit from above (RIM_SIDE + RIM_LIGHT at the top), a black casing round each"""
+    from PIL import ImageDraw
+    k = BIG
+    n = STAR_CELL * k
+
+    def points(r):
+        out = []
+        for i in range(10):
+            ang = -math.pi / 2 + i * math.pi / 5
+            rr = r if i % 2 == 0 else r * STAR_IN
+            out.append((n / 2 + rr * math.cos(ang), n / 2 + rr * math.sin(ang) + n * 0.02))
+        return out
+
+    def cell(filled):
+        a = Image.new("L", (n, n), 0)
+        w = Image.new("L", (n, n), 0)
+        da, dw = ImageDraw.Draw(a), ImageDraw.Draw(w)
+        r = STAR_R * n
+        casing = STAR_CASE * n
+        da.polygon(points(r + casing), fill=int(255 * RIM_CASE_A))
+        if filled:
+            da.polygon(points(r), fill=255)
+            dw.polygon(points(r), fill=255)
+        else:
+            line = STAR_LINE * n
+            da.polygon(points(r), fill=255)
+            dw.polygon(points(r), fill=255)
+            da.polygon(points(r - line), fill=int(255 * RIM_CASE_A))
+            dw.polygon(points(r - line), fill=0)
+            da.polygon(points(r - line - casing), fill=0)
+        aa = np.asarray(a, float) / 255
+        ww = np.asarray(w, float) / 255
+        shade = RIM_SIDE + RIM_LIGHT * (1 - np.linspace(0, 1, n))[:, None]   # lit from above
+        lum = ww * shade                                                    # premultiplied white
+        aa = aa.reshape(STAR_CELL, k, STAR_CELL, k).mean(axis=(1, 3))
+        lum = lum.reshape(STAR_CELL, k, STAR_CELL, k).mean(axis=(1, 3))
+        col = np.where(aa > 0, np.clip(lum / np.maximum(aa, 1e-6), 0, 1), 0.0)
+        img = np.zeros((STAR_CELL, STAR_CELL, 4), np.uint8)
+        img[..., 0] = img[..., 1] = img[..., 2] = np.clip(col * 255 + 0.5, 0, 255).astype(np.uint8)
+        img[..., 3] = np.clip(aa * 255 + 0.5, 0, 255).astype(np.uint8)
+        return img
+
+    return np.concatenate([cell(True), cell(False)], axis=1)
+
+
 def tga(img):
     buf = io.BytesIO()
     Image.fromarray(img, "RGBA").save(buf, format="TGA")
@@ -433,7 +487,8 @@ def main():
         print(__doc__[__doc__.index("    python Tools/"):].rstrip())
         return 2
     files = [(RING_NAME, tga(ring())), (GLYPH_NAME, tga(glyph_sheet())), (DOT_NAME, tga(map_dot())),
-             (EDGE_NAME, tga(area_edge())), (GLOW_NAME, tga(area_glow())), (RIM_NAME, tga(gilded_rim()))]
+             (EDGE_NAME, tga(area_edge())), (GLOW_NAME, tga(area_glow())), (RIM_NAME, tga(gilded_rim())),
+             (STAR_NAME, tga(star()))]
     stale = []
     for name, data in files:
         targets = [master(*name), os.path.join(ADDON_MEDIA, *name)]

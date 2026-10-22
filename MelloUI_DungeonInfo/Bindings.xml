@@ -1,0 +1,9 @@
+<Bindings>
+	<!-- Dungeon Info (MelloUI_DungeonInfo/DungeonInfo.lua): MelloUI's map with Dungeon Info beside it; again, closed -->
+	<Binding name="MELLOUI_DUNGEONINFO_TOGGLE" category="ADDONS">
+		local J = MelloUI and MelloUI.DungeonInfo
+		if J then
+			J.Toggle()
+		end
+	</Binding>
+</Bindings>

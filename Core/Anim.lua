@@ -56,6 +56,8 @@
 --       flight). Pass a shared function, not a new closure per call; a new
 --       Drive on the frame starts again from 0. Stop / Land / IsRunning take
 --       "drive"; Reduce Motion: step(frame, 1) at once, then onDone
+--   MelloUI.Anim:Burst(region, grow, alpha, duration) / :Orbit(region, ox, oy, degrees, duration) /
+--       :StopOrbit(region) / :Orbiting(region)   a ring of light once, a light turned about a point once (below)
 --   MelloUI.Anim:Timer(bar, seconds[, grow[, from]]) / :TimerText(fs, bar) /
 --       :StopTimer(bar[, full])   a StatusBar counting seconds away, run by
 --       the engine with its seconds' text (0.17.1, the swing timers; below)
@@ -1470,6 +1472,73 @@ do
 		region:Show()
 		self:PlayGroup(group)
 		return group
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The orbit (1.2.0, the widget column's timer: the light on its ring's moving end). A region turned about a point
+-- (ox, oy) away from its middle by `degrees` (negative: clockwise) over `duration`, once, then hidden: one
+-- AnimationGroup per region (a Rotation), made on its first orbit, its values set again per call; engine-driven, no
+-- Lua while it plays (its end hides the region). Under Reduce Motion it is not played (the region hidden).
+--   MelloUI.Anim:Orbit(region, ox, oy, degrees, duration) -> group, or nil
+--   MelloUI.Anim:StopOrbit(region)   stopped and hidden
+--   MelloUI.Anim:Orbiting(region) -> true while it turns
+--------------------------------------------------------------------------------
+
+do
+	local orbitOf = setmetatable({}, { __mode = "k" })     -- [region] = its group
+	local turnOf = setmetatable({}, { __mode = "k" })      -- [group] = its Rotation
+	local Hidden   -- (the groups' one end, made with the first)
+
+	function Anim:Orbit(region, ox, oy, degrees, duration)
+		if type(region) ~= "table" or not region.CreateAnimationGroup then
+			return nil
+		end
+		duration = MelloUI.Safe.Number(duration)
+		if self.reduceMotion or not duration or duration <= 0 then
+			self:StopOrbit(region)
+			return nil
+		end
+		local group = orbitOf[region]
+		if not group then
+			if not Hidden then
+				Hidden = Perf.Shared("OnFinished of an orbit (hides its region)", function(g)
+					local r = g:GetParent()
+					if r then
+						r:Hide()
+					end
+				end, "script")
+			end
+			group = region:CreateAnimationGroup()
+			turnOf[group] = group:CreateAnimation("Rotation")
+			Perf.SetScript(group, "OnFinished", Hidden)
+			orbitOf[region] = group
+		end
+		local turn = turnOf[group]
+		group:Stop()
+		if turn.SetOrigin then
+			turn:SetOrigin("CENTER", tonumber(ox) or 0, tonumber(oy) or 0)
+		end
+		turn:SetDegrees(tonumber(degrees) or 0)
+		turn:SetDuration(duration)
+		region:Show()
+		group:Play()
+		return group
+	end
+
+	function Anim:StopOrbit(region)
+		local group = region and orbitOf[region]
+		if group and group:IsPlaying() then
+			group:Stop()
+		end
+		if region and region.Hide then
+			region:Hide()
+		end
+	end
+
+	function Anim:Orbiting(region)
+		local group = region and orbitOf[region]
+		return group ~= nil and group:IsPlaying() and true or false
 	end
 end
 

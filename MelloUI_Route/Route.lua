@@ -5960,6 +5960,7 @@ function M:Clear()
 	StandIn.Drop()
 	destination = nil
 	route = nil
+	M.TripCleared()   -- (1.2.0: a quest trip ends with its route)
 	Redraw()
 end
 
@@ -5973,6 +5974,10 @@ local function CheckArrival()
 	end
 	local cont, x, y = PlayerYards()
 	if cont and cont == destination.cont and Dist(x, y, destination.x, destination.y) <= (tonumber(M.db.arrive) or 25) then
+		-- (1.2.0) a quest trip's stop that holds: kept until its quests are taken (Dungeon Info moves the trip on)
+		if M.trip and M.TripArrived() then
+			return
+		end
 		-- with Travel Time, how long the way took: "Arrived: Stormwind (2:48)"
 		local took = Travel.Took(destination)
 		M:Notify("Arrived: " .. (destination.label or "destination") .. (took and (" (" .. took .. ")") or ""), "arrive")
@@ -6815,7 +6820,316 @@ function M:DrawOn(frame, project)
 		d.goal:Hide()
 		d.popGoal = DI.on and g ~= nil or nil
 	end
+	-- (1.2.0) a quest trip's later legs and its stops (M.TripDraw, below)
+	M.TripDraw(d, frame, project, W, H)
 	return drawn
+end
+
+--------------------------------------------------------------------------------
+-- (1.2.0, Dungeon Info's "Pick Up Its Quests") A trip: stops in the order the caller chose (Dungeon Info prices
+-- them with M:PriceFrom and orders them), led one at a time. The stop led is the destination as any other
+-- (SetDestinationTo, with its pin); the legs after it are found as jobs and drawn on the seamless map thinner and
+-- fainter, every stop ahead numbered, one out of the view a chip at its edge with an arrow toward it (the user's pick A
+-- of journal_loot_trip). A stop with `hold` is kept on arrival (said once) until the caller moves the trip on
+-- (M:TripNext: its quests taken); the last one ends the trip as any destination ends. Another destination chosen,
+-- or the route cleared, ends it. Bus "route:trip" at every change; M.tripBeat counts them (the seamless map draws
+-- again). Nothing of it is made before a trip is asked for.
+--   M:PriceFrom(from, places, done) -> false while the roads are not in (M:WhenReady first); from and places in
+--                                      Route's yards ({ cont, x, y }); done(costs, exhausted), costs[i] seconds or nil
+--   M:Trip(stops) -> true when led      stops { { wcont, wx, wy, label =, notice =, hold = }, ... }: given their
+--                                      yards (cont, x, y) here
+--   M:TripNext()                       the next stop led (past the last: the trip ends)
+--   M:TripEnd()                        the trip and its route ended
+--   M:TripState() -> the trip or nil   to read only: stops, at (the stop led), arrived, version
+--------------------------------------------------------------------------------
+do
+	local TR = {
+		LATER = { size = 0.62, gap = 2.0, alpha = 0.5 },      -- a later leg: thinner and fainter than the way now
+		LATER_FAR = { size = 0.55, gap = 3.2, alpha = 0.4 },  -- its flights and boats
+		MARK = 18, RING = 22,                                 -- a stop's disc and its gold ring (px)
+		EDGE = 16,                                            -- a chip's middle from the view's edge (px)
+	}
+	M.tripBeat = 0
+
+	function TR.Changed(trip)
+		M.tripBeat = M.tripBeat + 1
+		if trip then
+			trip.version = trip.version + 1
+		end
+		MelloUI:Fire("route:trip")
+	end
+
+	-- its legs' searches dropped (not answered)
+	function TR.Drop(trip)
+		for _, job in pairs(trip.jobs) do
+			job.stale = true
+		end
+	end
+
+	-- the trip, while its stop is still the destination (another chosen, or none: it has ended)
+	function TR.Alive()
+		local trip = M.trip
+		if trip and not trip.leading and trip.lead ~= destination then
+			TR.Drop(trip)
+			M.trip = nil
+			TR.Changed(nil)
+			return nil
+		end
+		return trip
+	end
+
+	function TR.Lead(trip)
+		local s = trip.stops[trip.at]
+		trip.leading, trip.arrived = true, false
+		local ok = M:SetDestinationTo({ cont = s.wcont, wx = s.wx, wy = s.wy }, s.label, true, s.notice)
+		trip.leading = false
+		trip.lead = ok and destination or nil
+		return ok
+	end
+
+	-- the way from stop i-1 to stop i, found as a job
+	function TR.Leg(trip, i)
+		local a, b = trip.stops[i - 1], trip.stops[i]
+		local job = { kind = "route", scont = a.cont, sx = a.x, sy = a.y, gcont = b.cont, gx = b.x, gy = b.y }
+		job.done = function(j)
+			j.ended = true
+			if M.trip == trip and j.points and #j.points >= 2 then
+				trip.legs[i] = j.points
+				TR.Changed(trip)
+			end
+		end
+		trip.jobs[i] = job
+		if Search.Run(job) then
+			job.done(job)
+		end
+	end
+
+	function M:PriceFrom(from, places, done)
+		if not Build.Ready() then
+			return false
+		end
+		local list = {}
+		for i, p in ipairs(places) do
+			list[i] = { p[1], p[2], p[3] }
+		end
+		local job = { kind = "price", scont = from[1], sx = from[2], sy = from[3], places = list, costs = {} }
+		job.done = function(j)
+			j.ended = true
+			done(j.costs, j.exhausted)
+		end
+		if Search.Run(job) then
+			job.done(job)
+		end
+		return true
+	end
+
+	function M:Trip(stops)
+		if M.trip then
+			TR.Drop(M.trip)
+			M.trip = nil
+		end
+		local list = {}
+		for _, s in ipairs(stops) do
+			local cont, x, y = YardsOfWorld(s.wcont, s.wx, s.wy)
+			if cont then
+				s.cont, s.x, s.y = cont, x, y
+				list[#list + 1] = s
+			end
+		end
+		local trip = { stops = list, at = 1, legs = {}, jobs = {}, version = 0 }
+		M.trip = trip
+		if #list == 0 or not TR.Lead(trip) then
+			M.trip = nil
+			TR.Changed(nil)
+			return false
+		end
+		if Build.ready then
+			for i = 2, #list do
+				TR.Leg(trip, i)
+			end
+		end
+		TR.Changed(trip)
+		return true
+	end
+
+	function M:TripNext()
+		local trip = TR.Alive()
+		if not trip then
+			return false
+		end
+		if trip.at >= #trip.stops then
+			M:TripEnd()
+			return false
+		end
+		trip.at = trip.at + 1
+		if not TR.Lead(trip) then
+			M:TripEnd()
+			return false
+		end
+		TR.Changed(trip)
+		return true
+	end
+
+	function M:TripEnd()
+		local trip = M.trip
+		if not trip then
+			return
+		end
+		TR.Drop(trip)
+		M.trip = nil
+		if trip.lead and trip.lead == destination then
+			if destination.fromWaypoint and C_Map.ClearUserWaypoint then
+				pcall(C_Map.ClearUserWaypoint)
+			end
+			M:Clear()
+		end
+		TR.Changed(nil)
+	end
+
+	function M:TripState()
+		return TR.Alive()
+	end
+
+	-- (M:Clear, CheckArrival's last stop) the route ended under the trip: the trip with it
+	function M.TripCleared()
+		local trip = M.trip
+		if trip and not trip.leading then
+			TR.Drop(trip)
+			M.trip = nil
+			TR.Changed(nil)
+		end
+	end
+
+	-- (CheckArrival) the stop led reached: true when it holds (kept, said once; the caller moves the trip on)
+	function M.TripArrived()
+		local trip = M.trip
+		local s = trip and trip.lead == destination and trip.stops[trip.at]
+		if not (s and s.hold) then
+			return false
+		end
+		if not trip.arrived then
+			trip.arrived = true
+			M:Notify("Arrived: " .. (s.label or "destination"), "arrive")
+			TR.Changed(trip)
+		end
+		return true
+	end
+
+	-- a stop's mark: its number on the palette's dark disc in the gold ring; off the view, a chip just inside its edge
+	-- with the gold arrow toward it (written only on a change)
+	function TR.Mark(d, frame, n, num, x, y, W, H)
+		local m = d.stops[n]
+		if not m then
+			m = CreateFrame("Frame", nil, frame)
+			m:EnableMouse(false)
+			m:SetFrameLevel(frame:GetFrameLevel() + 3)
+			m.disc = m:CreateTexture(nil, "ARTWORK", nil, 1)
+			m.disc:SetTexture(M.TRAIL.ROUND)
+			m.disc:SetSize(TR.MARK, TR.MARK)
+			m.disc:SetPoint("CENTER")
+			m.ring = m:CreateTexture(nil, "ARTWORK", nil, 2)
+			m.ring:SetTexture(M.TRAIL.ICONS .. "ring_gold")
+			m.ring:SetAllPoints()
+			m.num = m:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+			m.num:SetPoint("CENTER", 0, 0)
+			m.arrow = m:CreateTexture(nil, "ARTWORK", nil, 3)
+			m.arrow:SetTexture(M.TRAIL.CHEVRON)
+			m.arrow:SetSize(14, 7)
+			m.arrow:Hide()
+			local Wd = MelloUI.Widgets
+			if Wd and Wd.Paint then
+				Wd.Paint(m.disc, "mainWindow", "vertex")
+				Wd.Paint(m.num, "text", "text")
+			end
+			d.stops[n] = m
+		end
+		if m.at ~= num then
+			m.at = num
+			m.num:SetText(num)
+		end
+		local cx, cy, ux, uy = x, y, nil, nil
+		if not (x >= 0 and x <= W and y >= 0 and y <= H) then
+			local hx, hy = W / 2, H / 2
+			local dx, dy = x - hx, y - hy
+			local len = math.sqrt(dx * dx + dy * dy)
+			local k = math.min(dx ~= 0 and math.max(0, hx - TR.EDGE) / math.abs(dx) or math.huge,
+				dy ~= 0 and math.max(0, hy - TR.EDGE) / math.abs(dy) or math.huge)
+			if not (len > 0 and k < math.huge) then
+				m:Hide()
+				return
+			end
+			cx, cy, ux, uy = hx + dx * k, hy + dy * k, dx / len, dy / len
+		end
+		M.MarkPlace(m, TR.RING, frame, "TOPLEFT", cx, -cy)
+		local arrow = m.arrow
+		if ux then
+			if not arrow.ux or math.abs(arrow.ux - ux) + math.abs(arrow.uy - uy) > 0.01 then
+				arrow.ux, arrow.uy = ux, uy
+				local off = TR.RING / 2 + 5
+				arrow:ClearAllPoints()
+				arrow:SetPoint("CENTER", m, "CENTER", ux * off, -uy * off)
+				arrow:SetRotation(math.atan2(-uy, ux) + math.pi / 2)   -- (the art's V points down)
+			end
+			arrow:Show()
+		elseif arrow.ux then
+			arrow.ux = nil
+			arrow:Hide()
+		end
+	end
+
+	-- (M:DrawOn) the legs after the stop led and the stops ahead, on another addon's canvas; all put away without a trip
+	function M.TripDraw(d, frame, project, W, H)
+		local trip = TR.Alive()
+		local painter = d.tripPainter
+		if not (trip and W and H and W > 0 and H > 0) then
+			if painter then
+				painter:Clear()
+				for _, m in ipairs(d.stops) do
+					m:Hide()
+				end
+			end
+			return
+		end
+		if not painter then
+			painter = NewPainter(frame)
+			d.tripPainter, d.stops = painter, {}
+		end
+		painter:Begin()
+		painter.popY0 = nil
+		local unit = 3.5 * (tonumber(M.db.lineWidth) or 3)
+		local mx, my = W * 0.2, H * 0.2
+		for i = trip.at + 1, #trip.stops do
+			local points = trip.legs[i]
+			if points then
+				local first = points[1]
+				local ax, ay = project(first[1], first[2], first[3], first)
+				for k = 2, #points do
+					local b = points[k]
+					local bx, by = project(b[1], b[2], b[3], b)
+					if ax and bx and not (ax < -mx and bx < -mx) and not (ax > W + mx and bx > W + mx)
+						and not (ay < -my and by < -my) and not (ay > H + my and by > H + my) then
+						local far = b[4] == "flight" or b[4] == "boat"
+						painter:Segment(ax, -ay, bx, -by, far and TR.LATER_FAR or TR.LATER, unit, "TOPLEFT")
+					end
+					ax, ay = bx, by
+				end
+			end
+		end
+		painter:End()
+		-- the stops ahead, numbered; the stop led only out of the view (its goal mark stands on it in the view)
+		local used = 0
+		for i = trip.at, #trip.stops do
+			local s = trip.stops[i]
+			local x, y = project(s.cont, s.x, s.y, s)
+			if x and not (i == trip.at and x >= 0 and x <= W and y >= 0 and y <= H) then
+				used = used + 1
+				TR.Mark(d, frame, used, i, x, y, W, H)
+			end
+		end
+		for k = used + 1, #d.stops do
+			d.stops[k]:Hide()
+		end
+	end
 end
 
 local function CreateProvider()

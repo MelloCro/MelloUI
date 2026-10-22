@@ -106,7 +106,7 @@ L.groups = {
 	{ title = "Frames and bars", icon = "cat_frames", entries = { "UnitGroupFrames", "Nameplates", "ActionBars", "Minimap",
 		"BarsMeters" } },
 	{ title = "Chat and text", icon = "cat_chat", entries = { "Chat", "Tooltip", "ScreenText" } },
-	{ title = "Quests and travel", icon = "cat_quests", entries = { "QuestTracker", "QuestList", "Route", "Map", "Reminders", "Automation" } },
+	{ title = "Quests and travel", icon = "cat_quests", entries = { "QuestTracker", "QuestList", "Route", "Map", "DungeonInfo", "Reminders", "Automation" } },
 	{ title = "Sound", icon = "cat_sound", entries = { "VoiceOver", "CustomSounds" } },
 	{ entries = { "Profiles" } },
 }
@@ -307,6 +307,9 @@ L.pages = {
 	-- (the seamless map, MelloUI_Map: docs/plans/seamless-map.md, stage M0)
 	Map = { title = "Map", icon = "module:Map", module = "Map",
 		tabs = { "Map" } },
+	-- (1.2.0, docs/plans/dungeon-info.md) Dungeon Info (MelloUI_DungeonInfo)
+	DungeonInfo = { title = "Dungeon Info", icon = "module:DungeonInfo", module = "DungeonInfo",
+		tabs = { "Dungeon Info" } },
 	-- no header switch: three modules share the page, and each tab's first
 	-- row is its module's switch (Reminders, Restock, Vendor Automation)
 	Reminders = { title = "Reminders & Widgets", icon = "module:Reminders", set = "page_reminders",
@@ -1205,6 +1208,8 @@ function L.Define(R, Link)
 	R("Route", "Arrow & Marker", "Sound", "Route.markerSound")
 	R("Route", "Flights", "General", "Route.flightHint")
 	R("Map", "Map", "General", "Map.#Open The Map")
+	R("DungeonInfo", "Dungeon Info", "General", "DungeonInfo.#Open Dungeon Info")
+	R("DungeonInfo", "Dungeon Info", "General", "DungeonInfo.doorRow")
 
 	-- Reminders (each tab's first row its module's switch)
 	R("Reminders", "Reminders", "General", "Reminders.!enabled", { name = "Reminders" })

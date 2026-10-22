@@ -42,6 +42,11 @@
 --   Log.Unmount()          the map off: the Quest List's page back to the game's column
 --   Log.Filter(click)      (after M4) the map's layers button beside the opener (beside the column while it
 --                          is out): the set's gear; click(button) opens the layers' menu (Map.lua)
+--   Log.Mode(mode)         (1.2.0) what the column holds: "log" (the quests: the tabs above) or "dungeonInfo"
+--                          (Dungeon Info's own page, MelloUI_DungeonInfo: J.Panel:Mount into it, as the
+--                          Quest List's is); its button the door over the map. Beside the column while it is
+--                          out: the door, the layers button and the log's opener, the current one lit
+--   Log.IsDungeonInfo()        the column out on Dungeon Info
 --   S.showID               the quest whose places Show laid (the objectives layer leaves it to them)
 --   Log.State()            the tests' and the dump's look in
 --------------------------------------------------------------------------------
@@ -117,6 +122,8 @@ local TEXT = {
 	fold = "Hide the quest log",
 	opener = "Quest log",
 	openerTip = "Your quests beside the map (L).",
+	dungeonInfo = "Dungeon Info",
+	dungeonInfoTip = "Dungeons and raids beside the map: their bosses, what they drop, their quests.",
 	rowTip = "Click: its page   Shift-click: link it in the chat",
 	trackBox = "Tracked in the Quest Tracker: click to take it off, or to show it there",
 	collapse = "Click: fold or unfold this zone",
@@ -125,6 +132,7 @@ local TEXT = {
 -- the state: one table (the file's locals stay few)
 local S = {
 	built = false, out = false, shown = false, dirty = false,
+	mode = "log",     -- (1.2.0) the column's: the quests ("log") or Dungeon Info ("dungeonInfo")
 	entries = {}, n = 0, quests = 0,
 	heads = {}, rows = {}, objs = {}, rewards = {},
 	collapsed = {},   -- [zone name] = true while folded (this session)
@@ -993,9 +1001,24 @@ local FoldClick = Perf.Shared("OnClick on the map's quest log fold", function()
 	Log.SetOut(false)
 end, "script")
 
-local OpenerClick = Perf.Shared("OnClick on the map's quest log opener", function()
+-- (1.2.0) a mode's button (the log's opener, Dungeon Info's door): the column out on it; again while it shows there,
+-- folded
+local function ModeClick(mode)
 	MelloUI:PlayUISound("click")
+	if S.out and S.mode == mode then
+		Log.SetOut(false)
+		return
+	end
+	Log.Mode(mode)
 	Log.SetOut(true)
+end
+
+local OpenerClick = Perf.Shared("OnClick on the map's quest log opener", function()
+	ModeClick("log")
+end, "script")
+
+local DoorClick = Perf.Shared("OnClick on the map's Dungeon Info button", function()
+	ModeClick("dungeonInfo")
 end, "script")
 
 local BackClick = Perf.Shared("OnClick on the map's quest page back", function()
@@ -1068,7 +1091,13 @@ function Log.Init(win)
 		pane:SetSize(T.W - 2 * T.PAD, 1)
 	end
 	S.paneL:Hide()
+	-- (1.2.0) Dungeon Info's pane: the whole column under the fold button (its own tabs in the title row)
+	S.paneJ = CreateFrame("Frame", nil, col)
+	S.paneJ:SetPoint("TOPLEFT", col, "TOPLEFT", 0, 0)
+	S.paneJ:SetPoint("BOTTOMRIGHT", col, "BOTTOMRIGHT", 0, 0)
+	S.paneJ:Hide()
 	local fold = W.RoundIcon(col, T.FOLD, T.ICONS .. "btn_arrow")
+	fold:SetFrameLevel(col:GetFrameLevel() + 20)   -- (over Dungeon Info's pane)
 	fold.icon:SetRotation(-math.pi / 2)
 	fold:SetPoint("TOPRIGHT", col, "TOPRIGHT", -T.PAD, -8)
 	fold.tipTitle = TEXT.fold
@@ -1157,6 +1186,24 @@ function Log.Init(win)
 	Perf.SetScript(opener, "OnEnter", TipEnter)
 	Perf.SetScript(opener, "OnLeave", W.TipLeave)
 	S.opener = opener
+	-- (1.2.0) Dungeon Info's button (while Dungeon Info is there), and a light round each mode's button while
+	-- the column shows its mode
+	local door = W.RoundIcon(frame, T.OPENER, T.ICONS .. "btn_dungeon")
+	door:SetFrameLevel(holder:GetFrameLevel() + 2)
+	door.tipTitle, door.tipBody = TEXT.dungeonInfo, TEXT.dungeonInfoTip
+	Perf.SetScript(door, "OnClick", DoorClick)
+	Perf.SetScript(door, "OnEnter", TipEnter)
+	Perf.SetScript(door, "OnLeave", W.TipLeave)
+	door:Hide()
+	S.door = door
+	for _, b in ipairs({ opener, door }) do
+		b.lit = b:CreateTexture(nil, "OVERLAY", nil, 2)
+		b.lit:SetTexture(T.ICONS .. "hover_glow")
+		b.lit:SetPoint("CENTER")
+		b.lit:SetSize(T.OPENER + 10, T.OPENER + 10)
+		b.lit:SetBlendMode("ADD")
+		b.lit:Hide()
+	end
 	Perf.SetScript(col, "OnEvent", Column_OnEvent)
 	S.built = true
 	Log.Size()
@@ -1170,6 +1217,10 @@ function Log.Init(win)
 	if db and db.logTab == "list" then
 		Log.Tab("list", true)
 	end
+	if db and db.logMode == "dungeonInfo" then
+		Log.Mode("dungeonInfo", true)
+	end
+	FilterPlace()
 end
 
 function Log.Size()
@@ -1211,11 +1262,26 @@ function Log.ViewMap()
 	return ok and Finite(pid) or nil
 end
 
--- the Quest List's page shown here or not: with its tab, the column out and the map shown
+-- the Quest List's page shown here or not: with its tab, the column out on the log and the map shown
 local function ListShown()
 	local QL = QuestListPanel()
 	if QL and S.mounted then
-		QL.Panel:HostShow(S.tab == "list" and S.out and S.shown)
+		QL.Panel:HostShow(S.mode == "log" and S.tab == "list" and S.out and S.shown)
+	end
+end
+
+-- (1.2.0) Dungeon Info, when it is there and on (MelloUI_DungeonInfo: its page, J.Panel)
+local function DungeonInfo()
+	local J = rawget(MelloUI, "DungeonInfo")
+	local P = type(J) == "table" and J.Panel
+	return (P and P.Mount and J.M and J.M.isEnabled) and J or nil
+end
+
+-- its page shown here or not: the column out on it and the map shown
+local function DungeonInfoShown()
+	local J = DungeonInfo()
+	if J and S.jmounted then
+		J.Panel:HostShow(S.mode == "dungeonInfo" and S.out and S.shown)
 	end
 end
 
@@ -1246,13 +1312,59 @@ function Log.Tab(key, instant)
 	ListShown()
 end
 
--- the tabs shown as the Quest List is there (its tab only then)
+-- the tabs shown as the Quest List is there (its tab only then); none on Dungeon Info (its own); Dungeon Info's door
+-- while Dungeon Info is there (the log again when it has gone)
 function Tabs()
 	local here = QuestListPanel() ~= nil
-	S.tabs.list:SetShown(here)
+	local log = S.mode == "log"
+	S.tabs.quests:SetShown(log)
+	S.tabs.list:SetShown(here and log)
 	if not here and S.tab == "list" then
 		Log.Tab("quests", true)
 	end
+	S.door:SetShown(DungeonInfo() ~= nil)
+	if S.mode == "dungeonInfo" and not DungeonInfo() then
+		Log.Mode("log", true)
+	end
+end
+
+function Log.Mode(mode, instant)
+	if not S.built then
+		return
+	end
+	local J = DungeonInfo()
+	if mode == "dungeonInfo" and not J then
+		mode = "log"
+	end
+	local db = S.module and S.module.db
+	if db then
+		db.logMode = mode
+	end
+	if mode == S.mode and not instant then
+		return
+	end
+	local logPane = S.tab == "list" and S.paneL or S.paneQ
+	local old = S.mode == "dungeonInfo" and S.paneJ or logPane
+	local new = mode == "dungeonInfo" and S.paneJ or logPane
+	S.mode = mode
+	if mode == "dungeonInfo" and not S.jmounted then
+		S.jmounted = J.Panel:Mount(S.paneJ, T)
+	end
+	Tabs()
+	TAB_FADE.slide = mode == "dungeonInfo" and T.SLIDE or -T.SLIDE
+	TAB_FADE.instant = (instant or not S.col:IsVisible()) and true or false
+	if old ~= new then
+		Anim:CrossFade(old, new, TAB_FADE)
+	elseif not new:IsShown() then
+		new:Show()
+	end
+	ListShown()
+	DungeonInfoShown()
+	FilterPlace()
+end
+
+function Log.IsDungeonInfo()
+	return S.out and S.mode == "dungeonInfo"
 end
 
 function Log.ViewChanged()
@@ -1288,6 +1400,11 @@ function Log.Filter(click)
 end
 
 function Log.Unmount()
+	local J = rawget(MelloUI, "DungeonInfo")
+	if S.jmounted and type(J) == "table" and J.Panel and J.Panel.Unmount then
+		J.Panel:Unmount()
+	end
+	S.jmounted = false
 	local QL = rawget(MelloUI, "QuestList")
 	if S.mounted and type(QL) == "table" and QL.Panel and QL.Panel.Unmount then
 		QL.Panel:Unmount()
@@ -1302,38 +1419,33 @@ function Log.IsOut()
 	return S.out
 end
 
--- the map's opener: gone while the column is out, back (faded in) once it has folded away
-local function Opener(on, fade)
-	local b = S.opener
-	Anim:Stop(b, "alpha")
-	if not on then
-		b:Hide()
-	elseif fade then
-		Anim:FadeIn(b, 0.15)
-	else
-		b:SetAlpha(1)
-		b:Show()
-	end
-end
-
--- (after M4) the layers button: beside the opener while the column is folded, beside the column while it is out
--- (anchored to the column: it moves with the drawer)
+-- (after M4) the map's buttons in a row from its corner -- the log's opener, the layers button, Dungeon Info's door --
+-- while the column is folded; beside the column while it is out (anchored to it: they move with the drawer), the
+-- button of what it shows lit. (1.2.0: before, the opener went while the column was out; with two things to show,
+-- each button stays, to switch to its own)
 function FilterPlace()
-	local b = S.filter
-	if b then
-		b:ClearAllPoints()
-		if S.out then
-			b:SetPoint("TOPRIGHT", S.col, "TOPLEFT", -T.FILTER_GAP, -10)
-		else
-			b:SetPoint("TOPRIGHT", S.opener, "TOPLEFT", -T.FILTER_GAP, 0)
+	local opener = S.opener
+	opener:ClearAllPoints()
+	if S.out then
+		opener:SetPoint("TOPRIGHT", S.col, "TOPLEFT", -T.FILTER_GAP, -10)
+	else
+		opener:SetPoint("TOPRIGHT", S.canvas.frame, "TOPRIGHT", -10, -10)
+	end
+	local last = opener
+	for _, b in ipairs({ S.filter, S.door }) do
+		if b and (b ~= S.door or b:IsShown()) then
+			b:ClearAllPoints()
+			b:SetPoint("TOPRIGHT", last, "TOPLEFT", -T.FILTER_GAP, 0)
+			last = b
 		end
 	end
+	opener.lit:SetShown(S.out and S.mode == "log")
+	S.door.lit:SetShown(S.out and S.mode == "dungeonInfo")
 end
 
 local function FoldDone()
 	S.col:Hide()
-	Opener(true, true)
-	FilterPlace()   -- (beside the opener now the column is gone)
+	FilterPlace()   -- (back in the map's corner now the column is gone)
 end
 
 function Log.SetOut(out, instant)
@@ -1359,7 +1471,6 @@ function Log.SetOut(out, instant)
 	if out then
 		Read()
 		Log.Lay()
-		Opener(false)
 		S.col:Show()
 		if instant then
 			Anim:StopDrawer(S.job)
@@ -1371,14 +1482,16 @@ function Log.SetOut(out, instant)
 			Events(S.col, true)
 		end
 		ListShown()
+		DungeonInfoShown()
 	else
 		Events(S.col, false)
 		ListShown()
+		DungeonInfoShown()
 		if instant then
 			Anim:StopDrawer(S.job)
 			Anim:DrawerRest(S.job)
 			S.col:Hide()
-			Opener(true)
+			FilterPlace()
 		else
 			Anim:Drawer(S.job, false, T.CLOSE, FoldDone)
 		end
@@ -1470,6 +1583,7 @@ function Log.Shown()
 		Refresh()
 	end
 	ListShown()
+	DungeonInfoShown()
 end
 
 function Log.Hidden()
@@ -1481,10 +1595,10 @@ function Log.Hidden()
 	S.pins:Clear("questlog")
 	Showing(nil)
 	ListShown()
+	DungeonInfoShown()
 	Anim:StopDrawer(S.job)
 	if not S.out then
 		S.col:Hide()
-		Opener(true)
 	end
 end
 

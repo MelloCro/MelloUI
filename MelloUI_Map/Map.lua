@@ -105,7 +105,7 @@ M = MelloUI:RegisterModule("Map", {
 	defaults = {},
 	-- (1.0) the window's own state, the player's: where it looked, its quest log open and on which tab -- never in a
 	-- profile or the installer's Full (its layers and Tracked Only travel)
-	keep = { "view", "log", "logTab" },
+	keep = { "view", "log", "logTab", "logMode" },
 	options = {
 		{ type = "button", name = TEXT.open, text = "Open",
 		  desc = "Open MelloUI's map: the wheel zooms toward the cursor, a drag looks around, a click glides into the zone under the cursor and a right-click goes out again. Your map key (M) opens it, your quest log key (L) opens it with your quests beside it; /mellomap opens it too.",
@@ -782,12 +782,48 @@ function M:ToggleLog()
 		Build()
 	end
 	local f = win.frame
-	if f:IsShown() and Log.IsOut() then
+	if f:IsShown() and Log.IsOut() and not Log.IsDungeonInfo() then
 		f:Hide()
 		return
 	end
 	f:Show()
+	Log.Mode("log")
 	Log.SetOut(true)
+end
+
+-- (1.2.0) the map with Dungeon Info beside it (MelloUI_DungeonInfo's J.Open; the page is its own to show)
+function M:OpenDungeonInfo()
+	if not self.isEnabled then
+		MelloUI:Print(TEXT.off)
+		return false
+	end
+	if not win.frame then
+		Build()
+	end
+	win.frame:Show()
+	Log.Mode("dungeonInfo")
+	Log.SetOut(true)
+	return Log.IsDungeonInfo()
+end
+
+-- the map shown with Dungeon Info out (Dungeon Info's key toggles it)
+function M:DungeonInfoShown()
+	return win.frame ~= nil and win.frame:IsShown() and Log.IsDungeonInfo()
+end
+
+-- (1.2.0) the map glides to a place given in the game's world coordinates (Dungeon Info's Show: a dungeon's door), a
+-- box `box` world units across round it (the quest log's Show's least box, 3 times: the door and what is round it)
+function M:ShowWorld(wcont, wx, wy, box)
+	if not (self.isEnabled and win.canvas and Layers and Layers.WorldPoint) then
+		return false
+	end
+	local x, y = Layers.WorldPoint(wcont, wx, wy)
+	if not x then
+		return false
+	end
+	local h = (box or 36) / 2
+	win.canvas:Glide(win.canvas:FitBox(x - h, y - h, x + h, y + h))
+	return true
 end
 
 -- a quest's page in the map's quest log (the Quest Tracker's click: the game's map and quest log are this map

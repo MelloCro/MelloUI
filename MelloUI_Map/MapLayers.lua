@@ -96,6 +96,9 @@ local TEXT = {
 	dungeon = "Dungeon",
 	raid = "Raid",
 	levels = "%s, levels %s",
+	-- (1.2.0: Dungeon Info's lines on a door's tooltip, the user's pick B of journal_placements)
+	bosses = "%d bosses: %s",
+	dungeonInfo = "Click: open it in Dungeon Info",
 }
 
 --------------------------------------------------------------------------------
@@ -496,6 +499,29 @@ local function LevelText(lv)
 	return string.format("|cff%02x%02x%02x%s|r", floor(r * 255), floor(g * 255), floor(b * 255), text)
 end
 
+-- (1.2.0) Dungeon Info's instance behind a door, when Dungeon Info is there and on (MelloUI_DungeonInfo)
+local function DungeonInfoOf(pin)
+	local J = rawget(MelloUI, "DungeonInfo")
+	local d = pin.data
+	if not (type(J) == "table" and J.Get and J.M and J.M.isEnabled and type(d) == "table" and d.dungeonID) then
+		return nil
+	end
+	return J, J.Get(d.dungeonID)
+end
+
+-- its bosses in a line ("4 bosses: Oggleflint, Taragaman the Hungerer, ..."), nil with none known
+local function BossLine(inst)
+	local n = #inst.bosses
+	if n == 0 then
+		return nil
+	end
+	local names = {}
+	for i, b in ipairs(inst.bosses) do
+		names[i] = b.name
+	end
+	return string.format(TEXT.bosses, n, table.concat(names, ", "))
+end
+
 local function EntranceFill(tip, pin)
 	local QL = rawget(MelloUI, "QuestList")
 	if not (type(QL) == "table" and QL.MarkTip) then
@@ -504,17 +530,42 @@ local function EntranceFill(tip, pin)
 	local d = pin.data
 	pcall(QL.MarkTip, tip, "entrance", { name = d.name, dungeonID = d.dungeonID or 0, raid = d.kind == 2,
 		source = d.source }, false)
+	local _, inst = DungeonInfoOf(pin)
+	if inst then
+		local P = MelloUI.Look.Palette()
+		local gold, text = P.selectedTrim, P.text
+		local line = BossLine(inst)
+		if line then
+			tip:AddLine(line, text[1], text[2], text[3], true)
+		end
+		tip:AddLine(TEXT.dungeonInfo, gold[1], gold[2], gold[3])
+		tip:Show()
+	end
 end
 
 local function EntranceTip(pin)
 	local d = pin.data
 	local word = d.kind == 2 and TEXT.raid or TEXT.dungeon
-	if d.levels then
-		return d.name, string.format(TEXT.levels, word, LevelText(d.levels))
+	local line = d.levels and string.format(TEXT.levels, word, LevelText(d.levels)) or word
+	local _, inst = DungeonInfoOf(pin)
+	if inst then
+		local bosses = BossLine(inst)
+		return d.name, line .. (bosses and ("\n" .. bosses) or "") .. "\n" .. TEXT.dungeonInfo
 	end
-	return d.name, word
+	return d.name, line
 end
+
+-- (1.2.0) a click on a door: its page in Dungeon Info (the map's column)
+local function EntranceClick(pin, button)
+	local J, inst = DungeonInfoOf(pin)
+	if button == "LeftButton" and inst then
+		MelloUI:PlayUISound("click")
+		J.Open(inst.key)
+	end
+end
+
 local ENTRANCE = { Icon(T.ENTRANCE_ICON[1], nil, EntranceTip, true), Icon(T.ENTRANCE_ICON[2], nil, EntranceTip, true) }
+ENTRANCE[1].click, ENTRANCE[2].click = EntranceClick, EntranceClick
 -- (with the Quest List: its own entrance tooltip, the quests done there with it)
 local function EntranceSpec(kind)
 	local QL = rawget(MelloUI, "QuestList")
@@ -657,6 +708,7 @@ function Layers.Route()
 		current, goal = route:CurrentRoute()
 	end
 	-- (nothing to draw and nothing drawn before: no work)
+	S.tripBeat = route.tripBeat
 	if not (current or goal or S.routeDrawn) then
 		return
 	end
@@ -674,7 +726,8 @@ local function RouteChanged()
 		return
 	end
 	local current, goal = route:CurrentRoute()
-	if current ~= S.route or goal ~= S.goal then
+	-- (1.2.0) a quest trip's legs found, its stop moved on: Route's tripBeat
+	if current ~= S.route or goal ~= S.goal or route.tripBeat ~= S.tripBeat then
 		Layers.Route()
 	end
 end
