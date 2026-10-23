@@ -69,6 +69,11 @@ CACHE = _resolve("cache")
 #: The cut source art the kit is built from. Still inside Tools -- see above.
 PACK_SOURCES = os.path.join(HERE, "pack_sources")
 
+# (1.2.2) the line every generated data file holding classic-db data carries under its header: the cmangos classic-db
+# is GPL-3.0, and so are the files made from it (LICENSE, LICENSE-GPL-3.0.txt)
+GPL_NOTICE = ("-- Holds data derived from the cmangos classic-db (GPL-3.0): this file is under the GPL-3.0, "
+              "see LICENSE-GPL-3.0.txt and LICENSE in the MelloUI folder.")
+
 
 def _masters() -> str:
     override = os.environ.get("MELLOUI_BUILD_DATA", "").strip()

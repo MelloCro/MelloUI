@@ -26,6 +26,14 @@ The CurseForge app installs everything for you. By hand: download the release zi
 *   After an update, restart the game once. `/reload` isn't enough for new files.
 *   Changed your mind? `/mello install` runs the installer again.
 
+## Credits
+
+Dungeon Info's boss loot for WoW: Forever's own dungeons, and for the classic dungeons Forever changed, comes from the lists of [DungeonMaster](https://www.curseforge.com/wow/addons/dungeonmaster) by MalkDev (GPL-3.0). Thank you!
+
+Dungeon Info's drop rates for WoW: Forever's own dungeons are players' data: Data from [Everloot](https://everloot.app), [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+
+The classic quests, NPCs and dungeon drops come from the [cmangos classic-db](https://github.com/cmangos/classic-db) (GPL-3.0): the data files made from it are under the GPL-3.0 too (LICENSE and LICENSE-GPL-3.0.txt in the MelloUI folder).
+
 ## Links
 
 [Discord](https://discord.gg/gdpQ6ep7bW) · [Source & releases](https://github.com/MelloCro/MelloUI) · [Changelog](https://github.com/MelloCro/MelloUI/blob/main/CHANGELOG.md) · [Report a bug](https://github.com/MelloCro/MelloUI/issues)

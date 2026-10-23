@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.2
+
+- Dungeon Info: each dungeon and raid has a Trash section: the rare and epic drops of its other creatures, with who drops each and the chance.
+- Dungeon Info: a new look. Every dungeon and raid shows its picture, cut to fit and never stretched (Forever's own dungeons, such as the Hall of Thanes, the Excavation Site and Dalaran, their loading screen): on its row in the list, behind its name at the top of its page, and on its bosses' pages.
+- Dungeon Info counts what falls in front of you: a boss's kills and drops, and the corpses you loot with their rare drops, so drops the data does not know get a chance too. `/dungeoninfo export` puts what you have seen in a text to post in MelloUI's Discord; it goes into the next update for everyone.
+- Dungeon Info: with DungeonJournal installed, its loot lists for the bosses and the trash show in Dungeon Info too.
+- Dungeon Info: the bosses of Forever's own dungeons (the Hall of Thanes, the Ruins of Lordaeron, the Excavation Site) list their loot, and the classic dungeons Forever changed (the Deadmines, Wailing Caverns, Shadowfang Keep ...) show Forever's drops: from DungeonMaster's lists, by MalkDev. A drop's chance shows once it has been seen falling.
+- Dungeon Info shows the drop rates players collect for Everloot (everloot.app, CC BY-SA 4.0) for the bosses of Forever's own dungeons, whose loot is not in the game's files, as they come in.
+
 ## 1.2.1
 
 - Fixed: after learning a new stance or form, the game could block MelloUI's actions in a fight and drop to a few frames a second until a restart. A blocked action now costs MelloUI next to nothing, so the game recovers by itself, and `/mellobug` counts repeats instead of listing each one.

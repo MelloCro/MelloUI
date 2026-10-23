@@ -35,8 +35,12 @@ J.TEXT = {
 	title = "Dungeon Info",
 	mapOff = "Dungeon Info lives in MelloUI's map: switch the map on in /mello (Quests and travel > Map).",
 	notFound = "No dungeon or raid called \"%s\".",
-	usage = "/dungeoninfo [dungeon]: open Dungeon Info (on that dungeon's page).",
+	usage = "/dungeoninfo [dungeon]: open Dungeon Info (on that dungeon's page). /dungeoninfo export: the drops you have seen, to send in.",
 	learned = "Seen drop",
+	trash = "Trash drops",
+	exportTitle = "Dungeon Info: the drops you have seen",
+	exportNone = "No drops seen yet: they are counted as bosses and other creatures fall in front of you in a dungeon or raid.",
+	exportHelp = "Copy all of this (Ctrl+A, Ctrl+C) and post it in MelloUI's Discord or on its CurseForge page: what you saw goes into the next update, for everyone.",
 }
 local TEXT = J.TEXT
 
@@ -66,7 +70,7 @@ J.M = M
 -- The data, read the first time it is asked for
 --------------------------------------------------------------------------------
 
-local S = { built = false, byKey = {}, byMap = {}, list = {}, kill = nil }
+local S = { built = false, byKey = {}, byMap = {}, list = {}, kill = nil, version = 0 }
 J.S = S
 
 local function Build()
@@ -80,13 +84,46 @@ local function Build()
 		local inst = { key = key, map = r[1], kind = r[2], name = r[3], lo = r[4], hi = r[5], players = r[6],
 			emblem = r[7], keys = r[8], bosses = {} }
 		for i, b in ipairs(r[9]) do
-			local boss = { id = b[1], name = b[2], index = i, drops = {} }
+			local boss = { id = b[1], name = b[2], index = i, drops = {}, inst = inst }
+			-- (1.2.2) a drop's source: 0 the database, 1 DungeonMaster's list (no chance: -1); quality 0 not known yet
 			local d = b[3]
-			for j = 1, #d, 6 do
-				boss.drops[#boss.drops + 1] = { item = d[j], chance = d[j + 1] / 10, quality = d[j + 2], name = d[j + 3],
-					req = d[j + 4], starts = d[j + 5] }
+			for j = 1, #d, 7 do
+				boss.drops[#boss.drops + 1] = { item = d[j], chance = d[j + 1] >= 0 and d[j + 1] / 10 or nil,
+					quality = d[j + 2], name = d[j + 3] ~= "" and d[j + 3] or nil, req = d[j + 4], starts = d[j + 5],
+					src = d[j + 6] == 1 and "curated" or "data" }
 			end
 			inst.bosses[i] = boss
+		end
+		-- (1.2.2) the trash's drops (a page of their own, as a boss's: its id the instance's key, below zero, never an
+		-- encounter's) and the loading screen of an instance with no LFG picture of its own
+		local trash = { id = -key, name = TEXT.trash, trash = true, drops = {}, inst = inst }
+		local t = type(r[10]) == "table" and r[10] or {}
+		for j = 1, #t, 8 do
+			trash.drops[#trash.drops + 1] = { item = t[j], chance = t[j + 1] >= 0 and t[j + 1] / 100 or nil,
+				quality = t[j + 2], name = t[j + 3] ~= "" and t[j + 3] or nil, req = t[j + 4], starts = t[j + 5],
+				mobs = t[j + 6], src = t[j + 7] == 1 and "curated" or "data" }
+		end
+		inst.trash, inst.pic, inst.picKind = trash, r[11] or 0, r[12] or 0
+		-- (1.2.2) Everloot's drop rates, players' data (Data from Everloot, https://everloot.app, CC BY-SA 4.0): a
+		-- boss's by his encounter, the trash's with its creatures; quality 0: the game's own, read in game
+		local byId = {}
+		for _, b in ipairs(inst.bosses) do
+			byId[b.id] = b
+		end
+		local eb = type(r[13]) == "table" and r[13] or {}
+		for j = 1, #eb, 6 do
+			local b = byId[eb[j]]
+			if b then
+				b.ever = b.ever or {}
+				b.ever[#b.ever + 1] = { item = eb[j + 1], chance = eb[j + 2] / 10, quality = eb[j + 3],
+					name = eb[j + 4] ~= "" and eb[j + 4] or nil, req = eb[j + 5], starts = 0, src = "everloot" }
+			end
+		end
+		local et = type(r[14]) == "table" and r[14] or {}
+		for j = 1, #et, 6 do
+			trash.ever = trash.ever or {}
+			trash.ever[#trash.ever + 1] = { item = et[j], chance = et[j + 1] / 100, quality = et[j + 2],
+				name = et[j + 3] ~= "" and et[j + 3] or nil, req = et[j + 4], starts = 0, mobs = et[j + 5], src = "everloot" }
 		end
 		for _, k in ipairs(inst.keys) do
 			S.byKey[k] = inst
@@ -172,6 +209,14 @@ local function Account()
 		_G.MelloUIDungeonInfoSaved = a
 	end
 	a.learned = type(a.learned) == "table" and a.learned or {}
+	-- (1.2.2) the drops seen, counted: boss[encounter] = { n = kills, i = { [item] = times }, q = { [item] = quality } },
+	-- mob[npc] = { k = instance key, name, n = corpses looted, i, q }, roll[instance key] = { i, q } (a roll whose
+	-- creature is not known), bossNpc[npc] = encounter
+	local s = type(a.seen) == "table" and a.seen or {}
+	a.seen = s
+	for _, k in ipairs({ "boss", "mob", "roll", "bossNpc" }) do
+		s[k] = type(s[k]) == "table" and s[k] or {}
+	end
 	return a
 end
 
@@ -209,36 +254,38 @@ function J.TrackedCount()
 	return n
 end
 
--- how many of your items drop in the instance
+-- how many of your items drop in the instance (its bosses and its trash)
 function J.TrackedIn(inst)
 	local t, n = Char().tracked, 0
 	for _, boss in ipairs(inst.bosses) do
-		for _, d in ipairs(boss.drops) do
+		for _, d in ipairs(J.Drops(boss)) do
 			if t[d.item] then
 				n = n + 1
 			end
 		end
-		for id in pairs(J.Learned(boss)) do
-			if t[id] then
-				n = n + 1
-			end
+	end
+	for _, d in ipairs(J.Drops(inst.trash)) do
+		if t[d.item] then
+			n = n + 1
 		end
 	end
 	return n
 end
 
--- where an item drops: the instance and the boss (the data's first, then the learned)
+-- where an item drops: the instance and the boss (or its trash), and the drop
 function J.WhereDrops(itemID)
 	Build()
 	for _, inst in ipairs(S.list) do
 		for _, boss in ipairs(inst.bosses) do
-			for _, d in ipairs(boss.drops) do
+			for _, d in ipairs(J.Drops(boss)) do
 				if d.item == itemID then
 					return inst, boss, d
 				end
 			end
-			if J.Learned(boss)[itemID] then
-				return inst, boss, nil
+		end
+		for _, d in ipairs(J.Drops(inst.trash)) do
+			if d.item == itemID then
+				return inst, inst.trash, d
 			end
 		end
 	end
@@ -246,7 +293,7 @@ function J.WhereDrops(itemID)
 end
 
 local NONE = {}
--- the drops seen from a boss the data does not list: { [itemID] = true }
+-- (1.2.0's) the drops seen from a boss before 1.2.2 counted them: { [itemID] = true }
 function J.Learned(boss)
 	local l = Account().learned[boss.id]
 	return type(l) == "table" and l or NONE
@@ -302,6 +349,19 @@ function J.ItemKind(item)
 		return slot or subType or ""
 	end
 	return subType or Text(itemType) or ""
+end
+
+-- (1.2.2) an item's quality as the game knows it (a Forever item the data has none of: the server's), or nil
+function J.ItemQuality(item)
+	local fn = C_Item and C_Item.GetItemQualityByID
+	if fn then
+		local ok, q = pcall(fn, item)
+		q = ok and Num(q) or nil
+		if q then
+			return q
+		end
+	end
+	return nil
 end
 
 function J.QualityColour(quality)
@@ -477,6 +537,15 @@ SlashCmdList.MELLODUNGEONINFO = function(msg)
 		J.Open()
 		return
 	end
+	if msg:lower() == "export" then
+		local text = J.Export()
+		if text then
+			MelloUI:ShowText(TEXT.exportTitle, TEXT.exportHelp .. "\n\n" .. text)
+		else
+			MelloUI:Print(TEXT.exportNone)
+		end
+		return
+	end
 	local inst = J.Find(msg)
 	if inst then
 		J.Open(inst.key)
@@ -490,71 +559,532 @@ end
 BINDING_NAME_MELLOUI_DUNGEONINFO_TOGGLE = "Open or close Dungeon Info"
 
 --------------------------------------------------------------------------------
--- Drops learned: a boss killed (ENCOUNTER_END), then his loot (the loot window, a roll) in the next two minutes in
--- the same instance -- for the bosses whose drops the data has not
+-- (1.2.2) The drops: the data's, DungeonJournal's while it is loaded, and the ones seen fall, counted for the account
+-- (the user, 2026-10-23: "the loot from the bosses ... we also need to have information about the trash mobs loot
+-- since some of them drop valuable loot"; Forever's own dungeons are in no database MelloUI may ship, and other
+-- addons' lists are theirs: read in game, never copied). A boss's kills and what each dropped; the trash's corpses
+-- looted by creature and their rare drops. /dungeoninfo export puts what you have seen in the copy window, to send
+-- in: Tools/build_dungeoninfo.py adds what players sent to the data's `seen`, counted with your own.
+--   J.Drops(boss) -> { { item, chance (percent, nil: not known), quality, name, req, starts, mobs, src }, ... }
+--     src "data" (the database's), "listed" (DungeonJournal's), "seen" (seen fall only)
 --------------------------------------------------------------------------------
 
-local LEARN_FOR = 120   -- s after a kill its loot is his
+local LEARN_FOR = 300   -- s after a kill its loot is his (a slow looter, a long roll)
+local TRASH_QUALITY = 3 -- the trash's drops counted: rare and better (the user's pick)
+local ROLL_SAME = 10    -- s: a roll for an item the loot window just showed is the same drop
 local events = CreateFrame("Frame")
 
-local function Learn(itemID, quality)
-	local kill = S.kill
-	quality = Num(quality)
-	if not (kill and itemID and quality and quality >= 2) or GetTime() - kill.at > LEARN_FOR then
-		return
-	end
-	local inst = J.ByMap(kill.map)
-	local boss
-	for _, b in ipairs(inst and inst.bosses or NONE) do
-		if b.id == kill.id then
-			boss = b
-		end
-	end
-	if not boss then
-		return
-	end
-	for _, d in ipairs(boss.drops) do
-		if d.item == itemID then
-			return   -- (known)
-		end
-	end
-	local l = Account().learned
-	l[boss.id] = l[boss.id] or {}
-	l[boss.id][itemID] = true
+local function Seen()
+	return Account().seen
 end
 
-local OnEvent = Perf.Shared("OnEvent of Dungeon Info (drops learned)", function(_, event, a1, _, _, _, a5)
-	if event == "ENCOUNTER_END" then
-		if Num(a5) == 1 and Num(a1) then
-			local ok, _, _, _, _, _, _, _, mapID = pcall(GetInstanceInfo)
-			S.kill = { id = a1, at = GetTime(), map = ok and Num(mapID) or nil }
+-- what the data's `seen` (the players' exports) and your own say of a boss: kills, { [item] = times }, { [item] = q }
+local function BossCounts(id)
+	local n, times, q = 0, {}, {}
+	local data = rawget(_G, "MelloUI_DungeonInfoData")
+	local shipped = type(data) == "table" and type(data.seen) == "table" and data.seen.boss
+	local f = type(shipped) == "table" and shipped[id]
+	if type(f) == "table" then
+		n = n + (f[1] or 0)
+		for j = 2, #f, 3 do
+			times[f[j]] = (times[f[j]] or 0) + f[j + 1]
+			q[f[j]] = f[j + 2]
 		end
-	elseif event == "LOOT_READY" then
-		if not S.kill then
-			return
+	end
+	local own = Seen().boss[id]
+	if type(own) == "table" then
+		n = n + (Num(own.n) or 0)
+		for item, c in pairs(own.i or NONE) do
+			times[item] = (times[item] or 0) + c
+			q[item] = (own.q or NONE)[item] or q[item]
 		end
-		local n = Num(GetNumLootItems and GetNumLootItems()) or 0
-		for slot = 1, n do
-			local ok, link = pcall(GetLootSlotLink, slot)
-			local ok2, _, _, _, _, quality = pcall(GetLootSlotInfo, slot)
-			if ok and ok2 then
-				Learn(J.LinkID(link), quality)
+	end
+	return n, times, q
+end
+
+-- the trash creatures of an instance, shipped and your own: { [npc] = { name, n = corpses, i = { [item] = times },
+-- q = { [item] = quality } } }, and the rolls whose creature is not known: { [item] = times }, { [item] = quality }
+local function TrashCounts(key)
+	local mobs, rolls, rq = {}, {}, {}
+	local function Mob(npc, name)
+		local m = mobs[npc]
+		if not m then
+			m = { name = name, n = 0, i = {}, q = {} }
+			mobs[npc] = m
+		end
+		if (not m.name or m.name == "") and name and name ~= "" then
+			m.name = name
+		end
+		return m
+	end
+	local data = rawget(_G, "MelloUI_DungeonInfoData")
+	local shipped = type(data) == "table" and type(data.seen) == "table" and data.seen or NONE
+	for npc, f in pairs(type(shipped.mob) == "table" and shipped.mob or NONE) do
+		if f[1] == key then
+			local m = Mob(npc, f[2])
+			m.n = m.n + (f[3] or 0)
+			for j = 4, #f, 3 do
+				m.i[f[j]] = (m.i[f[j]] or 0) + f[j + 1]
+				m.q[f[j]] = f[j + 2]
 			end
 		end
+	end
+	local sr = type(shipped.roll) == "table" and shipped.roll[key]
+	for j = 1, type(sr) == "table" and #sr or 0, 3 do
+		rolls[sr[j]] = (rolls[sr[j]] or 0) + sr[j + 1]
+		rq[sr[j]] = sr[j + 2]
+	end
+	local s = Seen()
+	for npc, o in pairs(s.mob) do
+		if type(o) == "table" and o.k == key then
+			local m = Mob(npc, o.name)
+			m.n = m.n + (Num(o.n) or 0)
+			for item, c in pairs(o.i or NONE) do
+				m.i[item] = (m.i[item] or 0) + c
+				m.q[item] = (o.q or NONE)[item] or m.q[item]
+			end
+		end
+	end
+	local own = s.roll[key]
+	if type(own) == "table" then
+		for item, c in pairs(own.i or NONE) do
+			rolls[item] = (rolls[item] or 0) + c
+			rq[item] = (own.q or NONE)[item] or rq[item]
+		end
+	end
+	return mobs, rolls, rq
+end
+
+--------------------------------------------------------------------------------
+-- DungeonJournal's lists, read in game while it is loaded (its own data, never copied: All Rights Reserved), as Route
+-- reads the levelling guides: its dungeon by name ("Hall of Thanes" is the client's "The Hall of Thanes"; its
+-- Scarlet Monastery's wings are one instance here), its bosses by name or alias (its Magmatus is the client's
+-- Infurnus); its trash list and the creatures it lists that are no encounter of the client's go to the trash
+--------------------------------------------------------------------------------
+
+local bridged = setmetatable({}, { __mode = "k" })   -- [inst] = { [boss id] = { { item, name, quality, mob }, ... } } | false
+
+local function Norm(s)
+	s = type(s) == "string" and s:lower() or ""
+	return (s:gsub("^the%s+", ""):gsub("[^%w]", ""))
+end
+
+local function BridgeRead(inst, db)
+	local want = Norm(inst.name)
+	local byName = {}
+	for _, b in ipairs(inst.bosses) do
+		byName[Norm(b.name)] = b
+	end
+	local out, found = {}, false
+	for name, d in pairs(db) do
+		local n = type(name) == "string" and Norm(name) or ""
+		if type(d) == "table" and type(d.bosses) == "table" and n ~= ""
+			and (n == want or (name:find(":", 1, true) and n:sub(1, #want) == want)) then
+			found = true
+			for _, e in ipairs(d.bosses) do
+				if type(e) == "table" and type(e.loot) == "table" then
+					local boss
+					if not e.trash then
+						boss = byName[Norm(e.name)]
+						for _, alias in ipairs(type(e.aliases) == "table" and e.aliases or NONE) do
+							boss = boss or byName[Norm(alias)]
+						end
+					end
+					local id = boss and boss.id or inst.trash.id
+					local mob = (not boss and not e.trash and type(e.name) == "string") and e.name or nil
+					local list = out[id] or {}
+					out[id] = list
+					for _, l in ipairs(e.loot) do
+						local item = type(l) == "table" and tonumber(l[1])
+						if item then
+							list[#list + 1] = { item = item, name = type(l[2]) == "string" and l[2] or nil,
+								quality = tonumber(l[4]) or 2, mob = mob }
+						end
+					end
+				end
+			end
+		end
+	end
+	return found and out or false
+end
+
+-- DungeonJournal's drops of `inst` by boss id (the trash's: inst.trash.id), or nil: not loaded, or not there
+function J.Bridge(inst)
+	local b = bridged[inst]
+	if b ~= nil then
+		return b or nil
+	end
+	local fdj = rawget(_G, "ForeverDungeonJournal_NS")
+	local db = type(fdj) == "table" and rawget(fdj, "DB")
+	if type(db) ~= "table" then
+		return nil   -- (not kept: it may be loaded later)
+	end
+	local ok, got = pcall(BridgeRead, inst, db)
+	b = ok and got or false
+	bridged[inst] = b
+	return b or nil
+end
+
+--------------------------------------------------------------------------------
+-- The drops of a boss or of an instance's trash: the data's first, then DungeonJournal's, then the ones only seen;
+-- a chance from the counts where the data has none (kept until a drop is seen again)
+--------------------------------------------------------------------------------
+
+local cache = setmetatable({}, { __mode = "k" })   -- [boss] = { v = S.version, list }
+
+local function ChanceOf(times, n)
+	if not (times and n and n > 0) then
+		return nil
+	end
+	return math.min(100, times / n * 100)
+end
+
+function J.Drops(boss)
+	if not boss then
+		return NONE
+	end
+	local c = cache[boss]
+	if c and c.v == S.version then
+		return c.list
+	end
+	local list, have = {}, {}
+	-- the counts: a boss's kills, or the trash's creatures (each item at its likeliest creature's rate)
+	local chance, q, mobsOf = {}, {}, {}
+	if boss.trash then
+		local mobs, rolls, rq = TrashCounts(-boss.id)
+		for _, m in pairs(mobs) do
+			for item, times in pairs(m.i) do
+				local ch = ChanceOf(times, m.n)
+				if ch and ch > (chance[item] or -1) then
+					chance[item] = ch
+				end
+				q[item] = m.q[item] or q[item]
+				if m.name and m.name ~= "" then
+					mobsOf[item] = mobsOf[item] and (mobsOf[item] .. ", " .. m.name) or m.name
+				end
+			end
+		end
+		for item in pairs(rolls) do
+			chance[item] = chance[item] or false   -- (seen, no rate)
+			q[item] = q[item] or rq[item]
+		end
+	else
+		local n, times, bq = BossCounts(boss.id)
+		for item, t in pairs(times) do
+			chance[item] = ChanceOf(t, n) or false
+			q[item] = bq[item]
+		end
+		for item in pairs(J.Learned(boss)) do
+			chance[item] = chance[item] or false
+		end
+	end
+	-- the data's drops in its order (a curated one with no chance takes the counts' once there are some), then
+	-- Everloot's players' rates for an item the data does not list
+	for _, d in ipairs(boss.drops) do
+		if d.chance == nil and chance[d.item] then
+			list[#list + 1] = setmetatable({ chance = chance[d.item] }, { __index = d })
+		else
+			list[#list + 1] = d
+		end
+		have[d.item] = true
+	end
+	for _, d in ipairs(boss.ever or NONE) do
+		if not have[d.item] then
+			list[#list + 1] = d
+			have[d.item] = true
+		end
+	end
+	local B = boss.inst and J.Bridge(boss.inst)
+	local listed = B and B[boss.id] or NONE
+	local start = #list
+	for _, l in ipairs(listed) do
+		if not have[l.item] then
+			have[l.item] = true
+			list[#list + 1] = { item = l.item, name = l.name, quality = l.quality, req = 0, starts = 0, src = "listed",
+				chance = chance[l.item] or nil, mobs = l.mob or mobsOf[l.item] }
+		end
+	end
+	for item, ch in pairs(chance) do
+		if not have[item] then
+			have[item] = true
+			list[#list + 1] = { item = item, quality = q[item] or 2, req = 0, starts = 0, src = "seen",
+				chance = ch or nil, mobs = mobsOf[item] }
+		end
+	end
+	-- (the data's in its own order; the rest: the better quality first, then the likelier)
+	local rest = {}
+	for i = start + 1, #list do
+		rest[#rest + 1] = list[i]
+	end
+	table.sort(rest, function(a, b)
+		if a.quality ~= b.quality then
+			return a.quality > b.quality
+		end
+		if (a.chance or 0) ~= (b.chance or 0) then
+			return (a.chance or 0) > (b.chance or 0)
+		end
+		return a.item < b.item
+	end)
+	for i, d in ipairs(rest) do
+		list[start + i] = d
+	end
+	cache[boss] = { v = S.version, list = list }
+	return list
+end
+
+--------------------------------------------------------------------------------
+-- Counting what falls: a boss's kill (ENCOUNTER_END) and its loot -- its corpse (the creatures seen as the boss
+-- units in its fight, or else the first corpse looted after the kill) or a roll in the next two minutes; a trash
+-- creature's corpse each time one is looted, and its rare drops; a roll away from a kill: the instance's trash, its
+-- creature not known. A corpse counts once (its GUID), an item once a kill; a creature counted as trash is never
+-- taken for the boss
+--------------------------------------------------------------------------------
+
+local looted = {}   -- [corpse GUID] = true (this session)
+local nLooted = 0
+local recent = {}   -- [item] = when the loot window showed it (a roll for it soon after is the same drop)
+
+local function Here()
+	local ok, _, kind, _, _, _, _, _, mapID = pcall(GetInstanceInfo)
+	if not ok or (kind ~= "party" and kind ~= "raid") then
+		return nil
+	end
+	return J.ByMap(Num(mapID))
+end
+
+-- a creature's id from its GUID ("Creature-0-3132-0-12-261306-0000ABCDEF"), nil for a player, an object, a secret
+local function NpcOf(guid)
+	if Secret(guid) or type(guid) ~= "string" then
+		return nil
+	end
+	local kind, npc = guid:match("^(%a+)%-[^-]+%-[^-]+%-[^-]+%-[^-]+%-(%d+)%-")
+	if kind ~= "Creature" and kind ~= "Vehicle" then
+		return nil
+	end
+	return tonumber(npc)
+end
+
+-- a creature's name, when the corpse is your target or under the mouse
+local function NameOf(guid)
+	for _, unit in ipairs({ "mouseover", "target" }) do
+		local ok, g = pcall(UnitGUID, unit)
+		if ok and not Secret(g) and g == guid then
+			local okN, name = pcall(UnitName, unit)
+			return okN and Text(name) or nil
+		end
+	end
+	return nil
+end
+
+local function Bump()
+	S.version = S.version + 1
+	local P = J.Panel
+	if P and P.Lay then
+		P:Lay()
+	end
+end
+
+-- a boss's drop, once a kill
+local function BossItem(kill, item, quality)
+	if kill.items[item] then
+		return
+	end
+	kill.items[item] = true
+	local b = Seen().boss[kill.id] or { n = 0, i = {}, q = {} }
+	Seen().boss[kill.id] = b
+	b.i[item] = (b.i[item] or 0) + 1
+	b.q[item] = quality
+end
+
+local function Kill()
+	local kill = S.kill
+	if kill and GetTime() - kill.at <= LEARN_FOR then
+		return kill
+	end
+	return nil
+end
+
+local function LootReady()
+	local inst = Here()
+	if not inst then
+		return
+	end
+	local s, kill = Seen(), Kill()
+	local n = Num(GetNumLootItems and GetNumLootItems()) or 0
+	local changed = false
+	local corpses = {}
+	for slot = 1, n do
+		local okL, link = pcall(GetLootSlotLink, slot)
+		local okI, _, _, _, _, quality = pcall(GetLootSlotInfo, slot)
+		local item = okL and J.LinkID(link) or nil
+		quality = okI and Num(quality) or nil
+		local source = rawget(_G, "GetLootSourceInfo")
+		local src = source and { pcall(source, slot) } or NONE
+		for j = 2, src[1] == true and #src or 0, 2 do
+			local guid = src[j]
+			local npc = NpcOf(guid)
+			if npc then
+				if not corpses[guid] then
+					corpses[guid] = npc
+				end
+				if item and quality then
+					recent[item] = GetTime()
+					local enc = s.bossNpc[npc]
+					-- (no boss unit seen in his fight: the first corpse looted after the kill is his)
+					if not enc and kill and not kill.npcSet and not s.mob[npc] then
+						kill.npcSet = true
+						s.bossNpc[npc] = kill.id
+						enc = kill.id
+					end
+					if enc then
+						if kill and kill.id == enc and quality >= 2 then
+							BossItem(kill, item, quality)
+							changed = true
+						end
+					elseif quality >= TRASH_QUALITY and not looted[guid] then
+						local m = s.mob[npc] or { k = inst.key, n = 0, i = {}, q = {} }
+						s.mob[npc] = m
+						m.i[item] = (m.i[item] or 0) + 1
+						m.q[item] = quality
+						changed = true
+					end
+				end
+			end
+		end
+	end
+	-- each trash corpse looted counts once (its rate's denominator), its name when it is your target or under the mouse
+	for guid, npc in pairs(corpses) do
+		if not looted[guid] then
+			looted[guid] = true
+			nLooted = nLooted + 1
+			if not s.bossNpc[npc] then
+				local m = s.mob[npc] or { k = inst.key, n = 0, i = {}, q = {} }
+				s.mob[npc] = m
+				m.n = m.n + 1
+				m.name = m.name or NameOf(guid)
+				changed = true
+			end
+		end
+	end
+	if nLooted > 2000 then
+		wipe(looted)   -- (a long session: a corpse looted again after this is counted again, rarely)
+		nLooted = 0
+	end
+	if changed then
+		Bump()
+	end
+end
+
+local function LootRoll(rollID)
+	local inst = Here()
+	if not inst then
+		return
+	end
+	local okL, link = pcall(GetLootRollItemLink, rollID)
+	local okI, _, _, _, quality = pcall(GetLootRollItemInfo, rollID)
+	local item = okL and J.LinkID(link) or nil
+	quality = okI and Num(quality) or nil
+	if not (item and quality) or (recent[item] and GetTime() - recent[item] < ROLL_SAME) then
+		return
+	end
+	local kill = Kill()
+	if kill and quality >= 2 then
+		BossItem(kill, item, quality)
+	elseif quality >= TRASH_QUALITY then
+		local s = Seen()
+		local r = s.roll[inst.key] or { i = {}, q = {} }
+		s.roll[inst.key] = r
+		r.i[item] = (r.i[item] or 0) + 1
+		r.q[item] = quality
+	else
+		return
+	end
+	Bump()
+end
+
+local OnEvent = Perf.Shared("OnEvent of Dungeon Info (drops counted)", function(_, event, a1, _, _, _, a5)
+	if event == "ENCOUNTER_START" then
+		-- the boss units in his fight: their corpses are his
+		local id = Num(a1)
+		if id then
+			local s = Seen()
+			for i = 1, 5 do
+				local ok, guid = pcall(UnitGUID, "boss" .. i)
+				local npc = ok and NpcOf(guid)
+				if npc then
+					s.bossNpc[npc] = id
+				end
+			end
+		end
+	elseif event == "ENCOUNTER_END" then
+		if Num(a5) == 1 and Num(a1) then
+			local ok, _, _, _, _, _, _, _, mapID = pcall(GetInstanceInfo)
+			S.kill = { id = a1, at = GetTime(), map = ok and Num(mapID) or nil, items = {} }
+			local b = Seen().boss[a1] or { n = 0, i = {}, q = {} }
+			Seen().boss[a1] = b
+			b.n = (Num(b.n) or 0) + 1
+			Bump()
+		end
+	elseif event == "LOOT_READY" then
+		LootReady()
 	elseif event == "START_LOOT_ROLL" then
-		if not S.kill then
-			return
-		end
-		local ok, link = pcall(GetLootRollItemLink, a1)
-		local ok2, _, _, _, quality = pcall(GetLootRollItemInfo, a1)
-		if ok and ok2 then
-			Learn(J.LinkID(link), quality)
-		end
+		LootRoll(a1)
 	end
 end, "script")
 Perf.SetScript(events, "OnEvent", OnEvent)
 
+--------------------------------------------------------------------------------
+-- /dungeoninfo export: your own counts as text, to send in (an id of your account's own, made once, so a second
+-- export of yours replaces the first instead of counting twice; no name of yours in it)
+--   MDI1 <id> <MelloUI version>
+--   B <encounter> <kills> <item>:<times>:<quality> ...
+--   M <instance key> <npc> <corpses> <item>:<times>:<quality> ...|<name>
+--   R <instance key> <item>:<times>:<quality> ...
+--   END
+--------------------------------------------------------------------------------
+
+local function Pairs(i, q)
+	local out = {}
+	for item, c in pairs(i or NONE) do
+		out[#out + 1] = string.format("%d:%d:%d", item, c, (q or NONE)[item] or 0)
+	end
+	table.sort(out)
+	return table.concat(out, " ")
+end
+
+function J.Export()
+	local a = Account()
+	local s = a.seen
+	if type(a.id) ~= "string" then
+		a.id = string.format("%08x%04x", math.random(0, 0x7fffffff), math.random(0, 0xffff))
+	end
+	local lines = { string.format("MDI1 %s %s", a.id, tostring(MelloUI.version)) }
+	local n = 0
+	for id, b in pairs(s.boss) do
+		if type(b) == "table" and ((Num(b.n) or 0) > 0 or next(b.i or NONE)) then
+			lines[#lines + 1] = string.format("B %d %d %s", id, Num(b.n) or 0, Pairs(b.i, b.q))
+			n = n + 1
+		end
+	end
+	for npc, m in pairs(s.mob) do
+		if type(m) == "table" and (Num(m.n) or 0) > 0 then
+			lines[#lines + 1] = string.format("M %d %d %d %s|%s", m.k or 0, npc, m.n, Pairs(m.i, m.q),
+				(m.name or ""):gsub("[|\n]", " "))
+			n = n + 1
+		end
+	end
+	for key, r in pairs(s.roll) do
+		if type(r) == "table" and next(r.i or NONE) then
+			lines[#lines + 1] = string.format("R %d %s", key, Pairs(r.i, r.q))
+			n = n + 1
+		end
+	end
+	lines[#lines + 1] = "END"
+	return n > 0 and table.concat(lines, "\n") or nil
+end
+
 function M:OnEnable()
+	events:RegisterEvent("ENCOUNTER_START")
 	events:RegisterEvent("ENCOUNTER_END")
 	events:RegisterEvent("LOOT_READY")
 	events:RegisterEvent("START_LOOT_ROLL")

@@ -138,6 +138,13 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "1.2.2", lines = {
+		"Dungeon Info: a Trash section on every dungeon, the rare drops of its other creatures with who drops them.",
+		"Dungeon Info: a new look, every dungeon's picture on its row and its pages, never stretched.",
+		"Dungeon Info: the loot of Forever's new dungeons' bosses and of the classic dungeons Forever changed (DungeonMaster's lists).",
+		"Dungeon Info counts the drops it sees fall, with chances; /dungeoninfo export lets you send yours in for everyone.",
+		"Dungeon Info: with DungeonJournal installed, its loot lists show too.",
+	} },
 	{ version = "1.2.1", lines = {
 		"Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart.",
 		"Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit.",
@@ -181,9 +188,6 @@ local CHANGELOG = {
 		"Nameplates and Personal Display answer the fight: lit chunks on hits, flashing crits, cast warnings; dodges and stuns on your bars. Combat Text has a Beside look.",
 		"Tooltips colour guilds, factions, levels and quest objectives. Macro Backup is gone: the game keeps your settings.",
 		"Edit Layout, bags and groups: more windows move without the reskin; quality gems and junk on every slot; party and raid frames keep their own places and indicators.",
-	} },
-	{ version = "0.23.1", lines = {
-		"Chat View: the chat and the whisper window keep their history over a /reload and a new login.",
 	} },
 }
 local LINKS = {

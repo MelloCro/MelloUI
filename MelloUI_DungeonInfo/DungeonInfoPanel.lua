@@ -29,8 +29,55 @@ J.Panel = P
 
 local STAR = "Interface\\AddOns\\MelloUI\\Media\\Textures\\DungeonInfoStar"
 local EMBLEM = "Interface\\LFGFrame\\LFGIcon-"
-local PICTURE = "Interface\\LFGFrame\\UI-LFG-BACKGROUND-"
+local PLAIN_HEAD = 64   -- (1.2.2) a head with no picture: room for the emblem and the name
+-- (1.2.2) the kinds of picture (DungeonInfoData.lua's 12th field): the painted area's rows (of the file's height)
+-- and the file's shape as the game shows it, width / height. 1: a Forever loading screen (2992 x 1684, the painting
+-- between its clear bands); 2: a classic loading screen (shown 4:3, the painting under its logo, above its frame);
+-- 3: an LFG background (256 x 128, painted whole)
+local PICTURE_KINDS = {
+	[1] = { 0.158, 0.842, 2992 / 1684 },
+	[2] = { 0.22, 0.78, 4 / 3 },
+	[3] = { 0, 1, 2 },
+}
 local ROUND = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+-- (1.2.2) the heads' and the rows' fades: the soft shade's file (MelloUI.Shade.FILE), tinted innerPanel (W.Paint,
+-- painted again with the palette), cut to its soft rising part across its flat middle: its top rows (full at
+-- FADE_V, Core/Shade.lua VCAP) for a head, its left end's columns (full at FADE_CAP, Shade.lua CAP) for a row
+local FADE_V, FADE_CAP, FADE_MID = 0.3125, 0.25, 0.4
+
+-- (1.2.2) an instance's picture on `tex` at w x h: the box's shape cut from the middle of its kind's painted area,
+-- never stretched; false (the texture left as it was) for one with none
+local function CutPicture(tex, inst, w, h)
+	local kind = PICTURE_KINDS[inst.picKind or 0]
+	if not ((inst.pic or 0) > 0 and kind and w > 0 and h > 0) then
+		return false
+	end
+	tex:SetTexture(inst.pic)
+	local v0, v1, aspect = kind[1], kind[2], kind[3]
+	local band, box = aspect / (v1 - v0), w / h
+	if box < band then
+		local u0 = (1 - box / band) / 2
+		tex:SetTexCoord(u0, 1 - u0, v0, v1)
+	else
+		local mid, half = (v0 + v1) / 2, (v1 - v0) * band / box / 2
+		tex:SetTexCoord(0, 1, mid - half, mid + half)
+	end
+	return true
+end
+
+-- a picture's fade, made on `parent` over its picture (the column's colour; its points and size set by the caller)
+local function Fade(parent, sublevel, across)
+	local fade = parent:CreateTexture(nil, "BACKGROUND", nil, sublevel)
+	fade:SetTexture(MelloUI.Shade.FILE)
+	if across then
+		fade:SetTexCoord(FADE_CAP, 0, FADE_MID, 1 - FADE_MID)   -- full at the left, clear to the right
+	else
+		fade:SetTexCoord(FADE_MID, 1 - FADE_MID, FADE_V, 0)     -- full at the top, clear below
+	end
+	W.Paint(fade, "innerPanel", "vertex")
+	fade:Hide()
+	return fade
+end
 
 local TEXT = {
 	dungeons = "Dungeons", raids = "Raids", mine = "My Items",
@@ -50,7 +97,12 @@ local TEXT = {
 	noQuests = "No quests for your side and class here.",
 	mineEmpty = "Star an item on a boss's page to keep it here. A loot roll then marks it when it drops.",
 	elsewhere = "Elsewhere",
-	chance = "%d%%", chanceSmall = "<1%",
+	chance = "%d%%", chanceTenth = "%.1f%%", chanceSmall = "<0.1%",
+	trash = "Trash", trashDrops = "Trash drops", trashSub = "The rare drops of the dungeon's other creatures",
+	noTrash = "No rare drops known from its other creatures yet: they are counted as they fall in front of you.",
+	droppedBy = "Dropped by %s", listed = "Listed by DungeonJournal", seenTip = "Seen fall in front of you or other players",
+	everloot = "Players' data: Everloot (everloot.app), CC BY-SA 4.0",
+	curated = "From DungeonMaster's lists (by MalkDev, GPL-3.0)",
 	starOn = "On your list", starOff = "Put it on your list",
 	starTip = "A loot roll marks the items on your list when one drops.",
 	inLog = "In your log", done = "Done", fromLevel = "From level %d", after = "After an earlier quest",
@@ -164,6 +216,12 @@ local RowEnter = Perf.Shared("OnEnter on Dungeon Info's list rows", function(sel
 	end
 end, "script")
 
+-- (1.2.2, the user's pick A of BuildData/output/journal_sketch/journal_look2.html, "Pictures") a row is its dungeon's
+-- picture: the picture on the row's right ROW_PIC, the column's colour fading out over its left ROW_FADE, the name and
+-- its line on the column left of it; the rows for your level in the gold hairline, the others' pictures LATER_ALPHA
+local ROW_H, ROW_STEP = 46, 50
+local ROW_PIC, ROW_FADE, LATER_ALPHA = 0.55, 0.82, 0.55
+
 local function DungeonRow(i)
 	local r = S.drows[i]
 	if r then
@@ -171,12 +229,16 @@ local function DungeonRow(i)
 	end
 	r = CreateFrame("Button", nil, S.list)
 	r:RegisterForClicks("LeftButtonUp")
-	r.emblem = W.RoundIcon(r, 34, nil)
-	r.emblem:EnableMouse(false)
-	r.emblem:SetPoint("LEFT", r, "LEFT", 2, 0)
+	r.picture = r:CreateTexture(nil, "BACKGROUND", nil, -2)
+	r.picture:SetPoint("TOPRIGHT", r, "TOPRIGHT", 0, 0)
+	r.picture:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", 0, 0)
+	r.fade = Fade(r, -1, true)
+	r.fade:SetPoint("TOPLEFT", r.picture, "TOPLEFT", 0, 0)
+	r.fade:SetPoint("BOTTOMLEFT", r.picture, "BOTTOMLEFT", 0, 0)
+	r.edges = W.HairEdges(r, "BORDER", r)
 	r.title = W.Text(r, "GameFontHighlight", nil, "text")
 	r.title:SetWordWrap(false)
-	r.title:SetPoint("TOPLEFT", r, "TOPLEFT", 46, -7)
+	r.title:SetPoint("TOPLEFT", r, "TOPLEFT", 10, -7)
 	r.line = W.Text(r, "GameFontHighlight", nil, "text")
 	W.Paint(r.line, "text", "text", T.LINE_ALPHA)
 	r.line:SetWordWrap(false)
@@ -194,6 +256,11 @@ local function DungeonRow(i)
 	r.star:SetPoint("RIGHT", r.sn, "LEFT", -3, 0)
 	Star(r.star, true)
 	W.Paint(r.star, "selectedTrim", "vertex")
+	-- (the counts on a soft dark band, over the picture)
+	r.band = MelloUI.Shade:Band(r, { alpha = 0.7, feather = 10, layer = "BORDER" })
+	if r.band then
+		r.band:Anchor(r.qmark, r.sn, 3, 2)
+	end
 	r.title:SetPoint("RIGHT", r, "RIGHT", -40, 0)
 	r.line:SetPoint("RIGHT", r, "RIGHT", -40, 0)
 	Perf.SetScript(r, "OnClick", RowClick)
@@ -230,9 +297,18 @@ local function Takeable(inst)
 end
 P.Takeable = Takeable
 
-local function FillDungeonRow(r, inst)
+local function FillDungeonRow(r, inst, width, near)
 	r.inst = inst
-	r.emblem:SetIcon(EMBLEM .. inst.emblem)
+	local picW = floor(width * ROW_PIC)
+	r.picture:SetWidth(picW)
+	r.fade:SetWidth(floor(picW * ROW_FADE))
+	local pic = CutPicture(r.picture, inst, picW, ROW_H)
+	r.picture:SetShown(pic)
+	r.picture:SetAlpha(near and 1 or LATER_ALPHA)
+	r.fade:SetShown(pic)
+	for _, e in ipairs(r.edges) do
+		e:SetShown(near)
+	end
 	r.title:SetText(inst.name)
 	r.line:SetText(Where(inst))
 	local q, s = Takeable(inst), J.TrackedIn(inst)
@@ -240,6 +316,9 @@ local function FillDungeonRow(r, inst)
 	r.qmark:SetShown(q > 0)
 	r.sn:SetText(s > 0 and s or "")
 	r.star:SetShown(s > 0)
+	if r.band then
+		r.band:SetShown(q > 0 or s > 0)
+	end
 end
 
 -- the sections of the list: by your level
@@ -279,12 +358,12 @@ function P.LayList()
 				if Section(inst, level) == sec then
 					nr = nr + 1
 					local r = DungeonRow(nr)
-					FillDungeonRow(r, inst)
+					FillDungeonRow(r, inst, width, sec == 1)
 					r:ClearAllPoints()
 					r:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
-					r:SetSize(width, 44)
+					r:SetSize(width, ROW_H)
 					r:Show()
-					y = y + 44
+					y = y + ROW_STEP
 				end
 			end
 			y = y + 8
@@ -323,6 +402,20 @@ local ItemEnter = Perf.Shared("OnEnter on Dungeon Info's item rows", function(se
 	if self.item then
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 		pcall(GameTooltip.SetItemByID, GameTooltip, self.item)
+		-- (1.2.2) who drops it (the trash's), and where it is known from when not the data
+		local d, c = self.d, MelloUI.Look.Palette().text
+		if d and d.mobs and d.mobs ~= "" then
+			GameTooltip:AddLine(TEXT.droppedBy:format(d.mobs), c[1], c[2], c[3], true)
+		end
+		if d and d.src == "everloot" then
+			GameTooltip:AddLine(TEXT.everloot, c[1], c[2], c[3], true)
+		elseif d and d.src == "curated" then
+			GameTooltip:AddLine(TEXT.curated, c[1], c[2], c[3], true)
+		elseif d and d.src == "listed" then
+			GameTooltip:AddLine(TEXT.listed, c[1], c[2], c[3], true)
+		elseif d and d.src == "seen" then
+			GameTooltip:AddLine(TEXT.seenTip, c[1], c[2], c[3], true)
+		end
 		GameTooltip:Show()
 	end
 end, "script")
@@ -385,10 +478,15 @@ end
 
 -- an item's row filled: d a drop of the data's, or nil (seen in front of you: item only)
 local function FillItemRow(r, item, d, line)
-	r.item = item
-	SetItemPicture(r.frame, r.icon, item, d and d.quality or 2)
+	r.item, r.d = item, d
+	-- (a quality the data does not know, 0: the game's own, a Forever item's once the server has sent it)
+	local quality = d and d.quality or 2
+	if quality == 0 then
+		quality = J.ItemQuality(item) or 2
+	end
+	SetItemPicture(r.frame, r.icon, item, quality)
 	r.name:SetText(J.ItemName(item, d and d.name))
-	r.name:SetTextColor(J.QualityColour(d and d.quality or 2))
+	r.name:SetTextColor(J.QualityColour(quality))
 	local kind = line
 	if not kind then
 		kind = J.ItemKind(item)
@@ -399,10 +497,13 @@ local function FillItemRow(r, item, d, line)
 		end
 	end
 	r.kind:SetText(kind)
-	if d then
-		r.chance:SetText(d.chance >= 1 and TEXT.chance:format(floor(d.chance + 0.5)) or TEXT.chanceSmall)
+	-- its chance: the data's, or the counts' (1.2.2); none known: "Seen drop" when only seen, nothing when listed
+	local ch = d and d.chance
+	if ch then
+		r.chance:SetText(ch >= 1 and TEXT.chance:format(floor(ch + 0.5)) or ch >= 0.1 and TEXT.chanceTenth:format(ch)
+			or TEXT.chanceSmall)
 	else
-		r.chance:SetText(TEXT.seen)
+		r.chance:SetText((not d or d.src == "seen") and TEXT.seen or "")
 	end
 	Star(r.starB.tex, J.IsTracked(item))
 end
@@ -472,14 +573,14 @@ local function FillBossRow(r, boss, i, n)
 	r.num:SetText(i)
 	r.name:SetText(boss.name)
 	-- (his three best drops, your starred ones first)
-	local shown = {}
-	for _, d in ipairs(boss.drops) do
+	local shown, drops = {}, J.Drops(boss)
+	for _, d in ipairs(drops) do
 		if J.IsTracked(d.item) and #shown < 3 then
 			shown[#shown + 1] = d
 		end
 	end
-	for _, d in ipairs(boss.drops) do
-		if #shown < 3 and not J.IsTracked(d.item) and d.quality >= 2 and (d.starts or 0) == 0 then
+	for _, d in ipairs(drops) do
+		if #shown < 3 and not J.IsTracked(d.item) and (d.quality >= 2 or d.quality == 0) and (d.starts or 0) == 0 then
 			shown[#shown + 1] = d
 		end
 	end
@@ -493,6 +594,19 @@ local function FillBossRow(r, boss, i, n)
 			SetItemPicture(slot.frame, slot.icon, d.item, d.quality)
 		end
 	end
+end
+
+-- (1.2.2) the trash's row: a boss row (pool slot 0, never one of the bosses') with the plain kill mark, its drops'
+-- best three; a click opens their page as a boss's
+local function TrashRow(inst)
+	local r = S.brows[0]
+	if not r then
+		r = BossRow(0)
+		W.Icon(r.skull, "kill")
+	end
+	FillBossRow(r, inst.trash, 1, 1)   -- (the mark shown, no number)
+	r.name:SetText(TEXT.trashDrops)
+	return r
 end
 
 local QuestClick = Perf.Shared("OnClick on Dungeon Info's quest rows", function(self)
@@ -637,6 +751,11 @@ local function BackButton(page)
 	return back
 end
 
+-- (1.2.2) a head's fade under its name, from the picture's top: FADE of its height
+local FADE = 0.62
+-- (1.2.2, the user's pick A) a boss's head: his dungeon's picture, slimmer (BOSS_PICTURE of the width)
+local BOSS_PICTURE = 0.26
+
 function P.LayInst()
 	local inst, page, width = S.inst, S.instPage, S.pageW
 	if not inst then
@@ -647,8 +766,17 @@ function P.LayInst()
 	-- the head: its picture (the client's own, the plain one for the instances it has none of), its emblem, its name
 	local y = T.FOLD + 8
 	local picH = floor(width * 0.42)
-	H.picture:SetTexture(PICTURE .. inst.emblem)
-	H.picture:SetTexCoord(0, 1, 0.04, 0.04 + 0.42 * 2 * 0.5)
+	-- (1.2.2, the user: "some are missing, some have their artwork streched and they are not fitting inside of the
+	-- designated spot") every instance's picture is a file of the client's and its kind (DungeonInfoData.lua), cut to
+	-- the box (CutPicture); none: a short plain head
+	local plain = not CutPicture(H.picture, inst, width, picH)
+	H.fade:SetHeight(floor(picH * FADE))
+	H.fade:SetShown(not plain)
+	if plain then
+		picH = PLAIN_HEAD
+	end
+	H.picture:SetShown(not plain)
+	H.plain:SetShown(plain)
 	H.picture:ClearAllPoints()
 	H.picture:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
 	H.picture:SetSize(width, picH)
@@ -701,6 +829,16 @@ function P.LayInst()
 		S.noBosses:SetWidth(width - 4)
 		y = y + 30
 	end
+	-- (1.2.2) its trash's rare drops: one row, their page a click away
+	nh = nh + 1
+	local nTrash = #J.Drops(inst.trash)
+	y = PutHeading(page, nh, y + 8, width, TEXT.trash, nTrash > 0 and nTrash or nil)
+	local tr = TrashRow(inst)
+	tr:ClearAllPoints()
+	tr:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
+	tr:SetSize(width, 32)
+	tr:Show()
+	y = y + 32
 	-- its quests
 	local quests = J.Quests(inst, S.quests)
 	nh = nh + 1
@@ -729,7 +867,6 @@ end
 -- A boss's page: his drops (the data's, then the ones seen in front of you)
 --------------------------------------------------------------------------------
 
-local seenList = {}
 
 function P.LayBoss()
 	local inst, boss, page, width = S.inst, S.boss, S.bossPage, S.pageW
@@ -739,38 +876,41 @@ function P.LayBoss()
 	local H = S.bossHead
 	H.back.text:SetText(inst.name)
 	local y = T.FOLD + 10
-	H.title:ClearAllPoints()
-	H.title:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -y)
-	H.title:SetText(boss.name)
+	H.title:SetText(boss.trash and TEXT.trashDrops or boss.name)
 	local n = #inst.bosses
-	H.sub:SetText((boss.index == n and TEXT.lastBoss or TEXT.bossOf):format(boss.index, n))
-	y = y + (Finite(H.title:GetStringHeight()) or 16) + 6 + (Finite(H.sub:GetStringHeight()) or 12) + 12
-	local count = #boss.drops
-	for i = #seenList, 1, -1 do
-		seenList[i] = nil
+	H.sub:SetText(boss.trash and TEXT.trashSub or (boss.index == n and TEXT.lastBoss or TEXT.bossOf):format(boss.index, n))
+	-- (1.2.2) his dungeon's picture with his name inside at its top, tall enough for the name and its line; none: the
+	-- name on the column as before
+	H.title:SetWidth(width - 20)
+	H.sub:SetWidth(width - 20)
+	local textH = (Finite(H.title:GetStringHeight()) or 16) + 4 + (Finite(H.sub:GetStringHeight()) or 12)
+	local picH = max(floor(width * BOSS_PICTURE), floor(textH + 22))
+	local pic = CutPicture(H.picture, inst, width, picH)
+	H.picture:SetShown(pic)
+	H.fade:SetShown(pic)
+	for _, e in ipairs(H.edges) do
+		e:SetShown(pic)
 	end
-	for id in pairs(J.Learned(boss)) do
-		seenList[#seenList + 1] = id
+	H.title:ClearAllPoints()
+	if pic then
+		H.picture:ClearAllPoints()
+		H.picture:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -(T.FOLD + 8))
+		H.picture:SetSize(width, picH)
+		H.fade:SetHeight(floor(picH * FADE))
+		H.title:SetPoint("TOPLEFT", H.picture, "TOPLEFT", 10, -10)
+		y = T.FOLD + 8 + picH + 10
+	else
+		H.title:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -y)
+		y = y + textH + 2 + 12
 	end
-	table.sort(seenList)
-	count = count + #seenList
-	y = PutHeading(page, 1, y, width, TEXT.loot, count > 0 and count or nil)
+	-- (1.2.2) the data's, DungeonJournal's and the ones seen fall, in one list; a trash drop's line names who drops it
+	local drops = J.Drops(boss)
+	y = PutHeading(page, 1, y, width, TEXT.loot, #drops > 0 and #drops or nil)
 	local i = 0
-	for _, d in ipairs(boss.drops) do
+	for _, d in ipairs(drops) do
 		i = i + 1
 		local r = ItemRow(page, i)
-		FillItemRow(r, d.item, d)
-		r.inst, r.boss, r.mine = inst, boss, false
-		r:ClearAllPoints()
-		r:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
-		r:SetSize(width, 34)
-		r:Show()
-		y = y + 34
-	end
-	for _, id in ipairs(seenList) do
-		i = i + 1
-		local r = ItemRow(page, i)
-		FillItemRow(r, id, nil)
+		FillItemRow(r, d.item, d, boss.trash and d.mobs ~= "" and d.mobs or nil)
 		r.inst, r.boss, r.mine = inst, boss, false
 		r:ClearAllPoints()
 		r:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
@@ -779,6 +919,7 @@ function P.LayBoss()
 		y = y + 34
 	end
 	HideFrom(S.irows[page] or {}, i)
+	S.noLoot:SetText(boss.trash and TEXT.noTrash or TEXT.noLoot)
 	S.noLoot:SetShown(i == 0)
 	if i == 0 then
 		S.noLoot:ClearAllPoints()
@@ -973,7 +1114,7 @@ function P:Show(inst, encounterID)
 		S.listOffset = pager:Offset()
 	end
 	S.inst = inst
-	local boss
+	local boss = encounterID and inst.trash and inst.trash.id == encounterID and inst.trash or nil
 	for _, b in ipairs(inst.bosses) do
 		if b.id == encounterID then
 			boss = b
@@ -1078,10 +1219,21 @@ local function Build(pane)
 	local H = {}
 	H.back = BackButton(page)
 	H.picture = page:CreateTexture(nil, "BACKGROUND", nil, 1)
+	-- (1.2.2) the plain head of an instance with no picture: the inner panel in the picture's place
+	H.plain = page:CreateTexture(nil, "BACKGROUND", nil, 0)
+	H.plain:SetTexture("Interface\\Buttons\\WHITE8X8")
+	H.plain:SetAllPoints(H.picture)
+	W.Paint(H.plain, "innerPanel", "vertex")
+	H.plain:Hide()
 	H.edges = W.HairEdges(page, "BORDER", H.picture)
+	-- (1.2.2, the user: the name block "not fitting inside of the designated spot"; their pick B of the two placements)
+	-- the emblem and the name inside the picture at its top, over a fade (FADE) from the column's colour
+	H.fade = Fade(page, 2)
+	H.fade:SetPoint("TOPLEFT", H.picture, "TOPLEFT", 0, 0)
+	H.fade:SetPoint("TOPRIGHT", H.picture, "TOPRIGHT", 0, 0)
 	H.emblem = W.RoundIcon(page, 46, nil)
 	H.emblem:EnableMouse(false)
-	H.emblem:SetPoint("BOTTOMLEFT", H.picture, "BOTTOMLEFT", 8, -10)
+	H.emblem:SetPoint("TOPLEFT", H.picture, "TOPLEFT", 8, -8)
 	H.band = MelloUI.Shade:Band(page, { alpha = 0.75, feather = 14, layer = "ARTWORK" })
 	H.title = W.Text(page, "GameFontNormalLarge", nil, "selectedTrim")
 	H.title:SetPoint("BOTTOMLEFT", H.emblem, "RIGHT", 8, 2)
@@ -1102,13 +1254,25 @@ local function Build(pane)
 	S.buttons = B
 	S.noBosses = W.Text(page, "GameFontHighlight", TEXT.noBosses, "text")
 	S.noQuests = W.Text(page, "GameFontHighlight", TEXT.noQuests, "text")
-	-- a boss's head
+	-- a boss's head (1.2.2, the user's pick A: his dungeon's picture, slimmer, his name inside it at its top over the
+	-- fade, as the dungeon's own head)
 	local bp = S.bossPage
 	local BH = {}
 	BH.back = BackButton(bp)
+	BH.picture = bp:CreateTexture(nil, "BACKGROUND", nil, 1)
+	BH.picture:Hide()
+	BH.fade = Fade(bp, 2)
+	BH.fade:SetPoint("TOPLEFT", BH.picture, "TOPLEFT", 0, 0)
+	BH.fade:SetPoint("TOPRIGHT", BH.picture, "TOPRIGHT", 0, 0)
+	BH.edges = W.HairEdges(bp, "BORDER", BH.picture)
 	BH.title = W.Text(bp, "GameFontNormalLarge", nil, "selectedTrim")
+	BH.title:SetWordWrap(false)
 	BH.sub = W.Text(bp, "GameFontHighlight", nil, "text")
 	BH.sub:SetPoint("TOPLEFT", BH.title, "BOTTOMLEFT", 0, -4)
+	BH.band = MelloUI.Shade:Band(bp, { alpha = 0.75, feather = 14, layer = "ARTWORK" })
+	if BH.band then
+		BH.band:Anchor(BH.title, BH.sub, 4, 2)
+	end
 	S.bossHead = BH
 	S.noLoot = W.Text(bp, "GameFontHighlight", TEXT.noLoot, "text")
 	-- laid again as the game comes to know items, or your quests change, while it shows
