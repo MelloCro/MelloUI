@@ -1386,8 +1386,16 @@ end
 -- /reload); one chat line a session per function (Chat Notices). /mellobug
 -- shows them in the copy window to paste into a report; /mellobug clear
 -- forgets them. Two events, nothing else at login; nothing a frame.
+-- (1.2.1) A block costs next to nothing. The same function blocked again
+-- within REPEAT s only counts on its entry (a hooked method the game blocks
+-- on every global cooldown is one entry, not one a block), and the memory is
+-- measured at most once in MEMORY_GAP s: UpdateAddOnMemoryUsage walks every
+-- addon's heap, and charged to MelloUI on every block it kept MelloUI's
+-- budget empty, so the game went on blocking (a player's 2 fps in a fight
+-- after learning a stance, 0.23.1, until a restart).
 --------------------------------------------------------------------------------
-local BUG = { KEEP = 10, told = {}, ADDONS = { MelloUI = true, MelloUI_Companion = true } }
+local BUG = { KEEP = 10, REPEAT = 60, MEMORY_GAP = 60, told = {}, seen = {},
+	ADDONS = { MelloUI = true, MelloUI_Companion = true } }
 Perf.bug = BUG
 
 function BUG.List()
@@ -1411,13 +1419,25 @@ function BUG.Capture(event, addon, func)
 	if not list then
 		return
 	end
+	-- the same function again soon: its entry counts it, nothing else is done
+	local at = GetTime()
+	local seen = BUG.seen[func]
+	if seen and at - seen.at < BUG.REPEAT and seen.entry.func == func then
+		seen.at = at
+		seen.entry.count = (seen.entry.count or 1) + 1
+		return
+	end
 	local lines = {}
 	SessionLines(function(...)
 		lines[#lines + 1] = format(...)
 	end)
 	local okZ, zone = pcall(GetRealZoneText)
 	local okC, combat = pcall(InCombatLockdown)
-	local kb = AddonMemory()
+	if not BUG.memoryAt or at - BUG.memoryAt >= BUG.MEMORY_GAP then
+		BUG.memoryAt = at
+		BUG.memoryKB = AddonMemory()
+	end
+	local kb = BUG.memoryKB   -- (measured within the last minute)
 	local entry = {
 		when = date("%Y-%m-%d %H:%M:%S"),
 		what = event == "ADDON_ACTION_FORBIDDEN" and "forbidden" or "blocked",
@@ -1429,8 +1449,13 @@ function BUG.Capture(event, addon, func)
 		lines = lines,
 	}
 	table.insert(list, 1, entry)
+	BUG.seen[func] = { entry = entry, at = at }
 	while #list > BUG.KEEP do
-		table.remove(list)
+		local gone = table.remove(list)
+		local s = gone and BUG.seen[gone.func]
+		if s and s.entry == gone then
+			BUG.seen[gone.func] = nil
+		end
 	end
 	if not BUG.told[func] then
 		BUG.told[func] = true
@@ -1454,7 +1479,8 @@ function BUG.Report()
 	end
 	for i, e in ipairs(list) do
 		add("")
-		add("%d. %s  %s %s by the game: %s", i, e.when or "?", e.addon or "?", e.what or "blocked", e.func or "?")
+		add("%d. %s  %s %s by the game: %s%s", i, e.when or "?", e.addon or "?", e.what or "blocked", e.func or "?",
+			(tonumber(e.count) or 1) > 1 and format(" (%d times)", e.count) or "")
 		add("   %s, %s%s; MelloUI %s, %s KB", e.combat and "in combat" or "out of combat", e.zone or "?",
 			e.gamepad and ", Gamepad UI" or "", tostring(e.version), e.memory and tostring(e.memory) or "?")
 		for _, line in ipairs(e.lines or {}) do
@@ -1487,6 +1513,7 @@ SlashCmdList.MELLOBUG = function(msg)
 			wipe(list)
 		end
 		wipe(BUG.told)
+		wipe(BUG.seen)
 		MelloUI:Print("Blocked actions forgotten.")
 		return
 	end

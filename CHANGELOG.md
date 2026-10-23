@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.1
+
+- Fixed: after learning a new stance or form, the game could block MelloUI's actions in a fight and drop to a few frames a second until a restart. A blocked action now costs MelloUI next to nothing, so the game recovers by itself, and `/mellobug` counts repeats instead of listing each one.
+- Fixed: the installer said your screen was too small for Mello's layout, at any UI scale, whenever some of your own settings did not fit it. It now says it is your settings.
+- Combat Text: an aura that comes and goes again within a few seconds (a warlock's Demonic Knowledge as the pet moves in and out of range) is shown once, not every time.
+- Fixed (MelloUI Oldschool): popups that ask you to type something, such as renaming a hunter pet, show their text box again.
+- The Dungeon Info button on the map is drawn from a copy made for its size, sharp like the other icons.
+
 ## 1.2.0
 
 - Dungeon Info (new): every dungeon and raid beside MelloUI's map. Open it with the door button over the map, a click on a dungeon's door on the map, `/dungeoninfo` or a key binding. A dungeon's page shows its picture, its bosses in order with their best drops and its quests; a boss's page shows every drop with its chance. Drops the data doesn't know are learned the first time a boss falls in front of you.

@@ -119,7 +119,13 @@ local function GameArt(dialog)
 	end
 	for _, child in ipairs({ dialog:GetChildren() }) do
 		local name = child.GetName and child:GetName()
-		if child.layoutType or (type(name) == "string" and (name:find("Border$") or name:find("NineSlice$"))) then
+		-- (1.2.1) a plain frame only: the text box the game asks a name in
+		-- (a pet's, a note's) has a nine-slice of its own (the tooltip
+		-- backdrop's layoutType) and was faded with the box (a player's
+		-- report: "when renaming hunter pets, the input field just isn't
+		-- there"); an input or a button is never the box's art
+		if child:GetObjectType() == "Frame"
+			and (child.layoutType or (type(name) == "string" and (name:find("Border$") or name:find("NineSlice$")))) then
 			Add(child)
 		end
 	end

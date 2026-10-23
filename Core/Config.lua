@@ -138,6 +138,12 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "1.2.1", lines = {
+		"Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart.",
+		"Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit.",
+		"Combat Text: an aura that comes and goes every few seconds (Demonic Knowledge with your pet) is shown once.",
+		"Fixed (Oldschool): popups that ask you to type, such as renaming a hunter pet, show their text box again.",
+	} },
 	{ version = "1.2.0", lines = {
 		"Dungeon Info: every dungeon and raid, its bosses in order and what each one drops. Open it with the door button over the map, a dungeon's door on it, or /dungeoninfo.",
 		"Star the items you want: a loot roll for one shines gold and lights Need. Pick Up Quests: Route takes you to all of a dungeon's quests in the fastest order.",
@@ -178,14 +184,6 @@ local CHANGELOG = {
 	} },
 	{ version = "0.23.1", lines = {
 		"Chat View: the chat and the whisper window keep their history over a /reload and a new login.",
-	} },
-	{ version = "0.23.0", lines = {
-		"Chat: Chat View (Minimal) -- one dark panel, round tabs on a rail, each line under its sender, channel and time; a row of round buttons below.",
-		"Chat View: one whisper window grows up out of the chat -- every conversation, theirs left and yours right; the Whispers tab counts new ones.",
-		"Chat View: Background Parchment puts the chat and the whisper window on the parchment sheet in dark ink.",
-		"Chat View: right-click a tab for the game's window menu -- rename, a new window with the channels you pick, close, font size.",
-		"Chat View: your /join channels get their own tabs; drag tabs to reorder; the chat and whisper window scroll smoothly.",
-		"Round borders are sharp at small sizes: the Services buttons' and Round Border styles' rings are solid, not dotted.",
 	} },
 }
 local LINKS = {

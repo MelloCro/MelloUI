@@ -172,6 +172,7 @@ local T = {
 	lineWidth = 420,
 	sampleHold = 3600,                       -- Edit Layout's samples: held until it closes
 	glyph = 0.8,                             -- the feed's mark, times the text size
+	auraQuiet = 10,                          -- an aura that comes or goes again within this many seconds: told once
 }
 
 local TEXT = {
@@ -1429,9 +1430,9 @@ local KINDS = {
 	ABSORB_ADDED = { "heal", shield = true },
 	ENERGIZE = { "resource" }, PERIODIC_ENERGIZE = { "resource" },
 	SPELL_ACTIVE = { "notice", crit = true, data = true },
-	SPELL_AURA_START = { "notice", data = true }, SPELL_CAST = { "notice", data = true },
-	SPELL_AURA_START_HARMFUL = { "notice", data = true, harmful = true },
-	SPELL_AURA_END = { "notice", fades = true }, SPELL_AURA_END_HARMFUL = { "notice", fades = true },
+	SPELL_AURA_START = { "notice", data = true, aura = "start" }, SPELL_CAST = { "notice", data = true },
+	SPELL_AURA_START_HARMFUL = { "notice", data = true, harmful = true, aura = "start" },
+	SPELL_AURA_END = { "notice", fades = true, aura = "end" }, SPELL_AURA_END_HARMFUL = { "notice", fades = true, aura = "end" },
 	INTERRUPT = { "notice", word = "INTERRUPT" }, SPELL_DISPELLED = { "notice", word = "SPELL_DISPELLED" },
 	EXTRA_ATTACKS = { "notice", word = "EXTRA_ATTACKS" },
 	FACTION = { "rep" }, HONOR_GAINED = { "rep", honor = true },
@@ -1484,10 +1485,30 @@ local function PlayerName()
 	return ok and Text(name) or nil
 end
 
+-- (1.2.1) An aura that comes or goes again within T.auraQuiet s is told once,
+-- then nothing until it has stayed away that long (a player's report,
+-- 2026-10-15: a warlock's Demonic Knowledge, given again each time the pet
+-- came back in range, a line every few seconds). By its plain name, one
+-- time a name in each table (a secret name cannot be told apart: shown).
+local auraStarted, auraEnded = {}, {}
+local function AuraQuiet(spec, data)
+	local name = Text(data)
+	if not name then
+		return false
+	end
+	local seen = spec.aura == "start" and auraStarted or auraEnded
+	local now, last = GetTime(), seen[name]
+	seen[name] = now
+	return last ~= nil and now - last < T.auraQuiet
+end
+
 -- the event's entry, or nil (a kind not shown, nothing to show)
 local function Entry(kind, data, arg3, arg4)
 	local spec = KINDS[kind]
 	if not spec then
+		return nil
+	end
+	if spec.aura and AuraQuiet(spec, data) then
 		return nil
 	end
 	local e = Clear(E)

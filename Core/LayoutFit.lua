@@ -486,10 +486,15 @@ local Column = {
 	ROWS_LEAST = 6,              -- Auras' Icons Per Row slider's least
 	BOSS_GAP = 20,               -- the design's gap between the boss frames and the tracker (-325.8 against -5.8 - 300)
 	-- the design's MelloUI settings for the column and your buff rows (Full's:
-	-- the square map in the window frame merged with the Services groups, the
-	-- tracker matching the minimap's width, your buff rows by the column)
-	DESIGN = { kit = true, shape = "square", border = "window", merge = true, bar = true, groups = true, barOffset = -26,
-		roundIcons = true, match = true, mapW = 198, mapH = 198 },
+	-- the square map in the Chat panel merged with the Services groups, the
+	-- tracker matching the minimap's width, your buff rows by the column).
+	-- (1.2.1) 1.0's Full: the panel, the map 268 wide, the plain icons. The
+	-- painted window frame these still had (Oldschool's since 1.0) failed the
+	-- one look's layout on every screen, so FailCause called any player's
+	-- FAIL "too small at your UI scale" (a player's report on a 5120 x 2160
+	-- screen, 2026-10-21: "no matter what my UI scale is set to")
+	DESIGN = { kit = true, shape = "square", border = "panel", merge = true, bar = true, groups = true, barOffset = -22,
+		roundIcons = false, match = true, mapW = 268, mapH = 198 },
 	DESIGN_AURAS = { rows = true, attached = true, size = 38, perRow = 12 },
 	ROW_NAMES = { "Buffs", "Debuffs" },
 	-- the pieces that stand under your buff rows, top first: their name, key
@@ -498,6 +503,7 @@ local Column = {
 		{ "External defensives", "6:2", "external defensives step down under your buff rows (the game's debuff bar they hang on is hidden)" } },
 }
 DESIGN_INPUTS.column, DESIGN_INPUTS.auras = Column.DESIGN, Column.DESIGN_AURAS
+LayoutFit.DESIGN_INPUTS = DESIGN_INPUTS   -- (read only: the tests')
 -- MelloUI's settings as the approved layout was drawn with them (the
 -- 2026-09-24 snapshot, before layout E's options): the Services bar's two
 -- rows, the Quest Tracker at its own width, your buff rows on the game's buff

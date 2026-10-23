@@ -48,6 +48,7 @@ ns.MelloUI.IconSizes = {
 		["Textures\\Icons\\btn_collapse"] = 64,
 		["Textures\\Icons\\btn_decline"] = 64,
 		["Textures\\Icons\\btn_discard"] = 64,
+		["Textures\\Icons\\btn_dungeon"] = 64,
 		["Textures\\Icons\\btn_expand"] = 64,
 		["Textures\\Icons\\btn_friend"] = 64,
 		["Textures\\Icons\\btn_ignore"] = 64,
