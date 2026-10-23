@@ -2,7 +2,7 @@
 ## Title: |cff9b8cffMello|rUI Dungeon Info
 ## Notes: MelloUI's Dungeon Info: every dungeon and raid on the map, its bosses and what they drop, your own list of items to look out for in a loot roll, and a trip that picks up a dungeon's quests in the fastest order. Switch it on or off in MelloUI (/mello); untick it here to not load it at all.
 ## Author: Mello
-## Version: 1.2.0
+## Version: 1.2.1
 ## Dependencies: MelloUI
 ## OptionalDeps: MelloUI_Oldschool, MelloUI_QuestList, MelloUI_Route, MelloUI_Map
 ## X-MelloUI-Feature: DungeonInfo

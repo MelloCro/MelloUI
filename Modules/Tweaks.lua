@@ -178,7 +178,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		{ type = "toggle", key = "xpGain", name = "XP Gain",
 		  desc = "When you gain experience, the stretch of the experience bar just gained lights up while a light runs along it to the new end. Not with Reduce Motion." },
 		-- (1.2.0, animations round 4; the user, 2026-10-22: "all of them" to the round 4 previews)
-		{ type = "toggle", key = "repGain", name = "Reputation Gain", new = "1.2.0",
+		{ type = "toggle", key = "repGain", name = "Reputation Gain",
 		  desc = "When you gain reputation with the faction you watch, the stretch of the reputation bar just gained lights up as the experience bar's does. Reaching a new standing runs the bar full with a burst of light, and the on-screen notice says it in gold: Honored, and the faction's name. Not with Reduce Motion: then only the notice." },
 	},
 })

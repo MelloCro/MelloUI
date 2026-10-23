@@ -69,7 +69,7 @@ local M = MelloUI:RegisterModule("PlateImpact", {
 		{ type = "toggle", key = "cast", name = "Cast Warning",
 		  desc = "Your target's cast bar glows hotter as its cast nears the end, and shatters when the cast is interrupted." },
 		-- (1.2.0, animations round 4; the user, 2026-10-22: "all of them" to the round 4 previews)
-		{ type = "toggle", key = "targetFrame", name = "On Your Target Frame", new = "1.2.0",
+		{ type = "toggle", key = "targetFrame", name = "On Your Target Frame",
 		  desc = "Your target frame's health bar answers the hits too: the flash, the part a hit took draining away, the gold glow of a critical hit and the killing blow's flash, as on your target's nameplate." },
 	},
 })

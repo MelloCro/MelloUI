@@ -46,17 +46,17 @@ local M = MelloUI:RegisterModule("DungeonInfo", {
 	icon = "Interface\\Icons\\INV_Misc_Book_09",
 	flavour = "Every dungeon's bosses and their loot beside the map; star the items you want and a loot roll tells you when one drops.",
 	group = "Quests and travel", navOrder = 4,
-	role = "feature", new = "1.2.0",
+	role = "feature",
 	installer = false,   -- (the Fresh start wizard's Features step is full, both columns at ten: it rides with the Map)
 	enabledByDefault = true,
 	defaults = {
 		doorRow = false,   -- (the user's pick D: off by default, no clutter)
 	},
 	options = {
-		{ type = "button", name = "Open Dungeon Info", text = "Open", new = "1.2.0",
+		{ type = "button", name = "Open Dungeon Info", text = "Open",
 		  desc = "Open Dungeon Info beside MelloUI's map: the door button over the map, a click on a dungeon's door on the map, /dungeoninfo and the key you give it in the game's Key Bindings open it too.",
 		  onClick = function() J.Open() end },
-		{ type = "toggle", key = "doorRow", name = "At A Dungeon's Door", new = "1.2.0",
+		{ type = "toggle", key = "doorRow", name = "At A Dungeon's Door",
 		  desc = "When you walk up to a dungeon's door (or into it), a row in the widget column: its bosses, how many of your items drop there, and its page in Dungeon Info and its quests one click away." },
 	},
 })

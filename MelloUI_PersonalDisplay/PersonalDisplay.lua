@@ -3948,7 +3948,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "How big the Big Cooldowns' icons above the health bar are. Their seconds keep the display's text size." },
 		{ type = "toggle", key = "zoom", name = "Follow Camera Zoom",
 		  desc = "The display keeps its place by your character as you zoom the camera: closer under your feet when you zoom out, further down when you zoom in, so it never covers your character. Place it in Edit Layout at the zoom you play at; it follows from there. Turning the camera up or down is not followed (the game does not tell)." },
-		{ type = "toggle", key = "castMotion", name = "Cast Motion", new = "1.2.0",
+		{ type = "toggle", key = "castMotion", name = "Cast Motion",
 		  desc = "The cast bar opens from its middle with a light on its head; a cast that lands flashes and folds away, one that is interrupted turns red, jolts and drops, and a pushback shows where the bar was a moment." },
 		{ type = "toggle", key = "chunk", name = "Damage Chunk",
 		  desc = "What a hit takes from your health stays lit a moment, then drains away; a critical or crushing blow breaks it into shards that fall." },
