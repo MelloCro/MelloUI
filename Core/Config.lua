@@ -138,6 +138,14 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "1.2.3", lines = {
+		"Route: the service buttons (Repair, Innkeeper, Flight Master ...) route to the nearest one at once again.",
+		"Route: routes to the other continent are found faster and show Loading navigation... with its bar while they are.",
+		"Route: a route to a place the roads don't reach starts at once; one such spot no longer blocks routes to the other continent.",
+		"Route takes far less memory while its roads go in and while it finds routes.",
+		"Swing Badge: the strike shows when your blow lands; crits and parries show on the blow they belong to.",
+		"Fixed: an error in fights from the Personal Display's Big Cooldowns.",
+	} },
 	{ version = "1.2.2", lines = {
 		"Dungeon Info: a Trash section on every dungeon, the rare drops of its other creatures with who drops them.",
 		"Dungeon Info: a new look, every dungeon's picture on its row and its pages, never stretched.",
@@ -174,20 +182,6 @@ local CHANGELOG = {
 		"The Escape menu's MelloUI button is a gold pill with MelloUI's badge.",
 		"Fixed: a dead target or focus shows only the game's Dead, no 0 over it.",
 		"Fixed: the buff and debuff icons' borders stay whole over their cooldown spiral.",
-	} },
-	{ version = "1.0.0", lines = {
-		"A seamless world map of MelloUI's own (M): zoom from Azeroth to a village, ground and caves up close; your party, Route, flights, dungeons, quests and objectives on it.",
-		"Map: your quest log and the Quest List beside it (L), search, a pin to share in chat, layer switches; Questie, HandyNotes and GatherMate2 pins on it too.",
-		"One look: its own look, Gilded Slate colours, the Fredoka font and a new logo, reskin or not; the installer sets up the new layout. The painted reskin is MelloUI Oldschool.",
-		"Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, then a part, drag names and values; a new Automation page.",
-		"A new icon set, sharp at every size, map pins glowing and marks shaded; MelloUI Frames on buttons, XP bars and unit frames; Heal Flight and Frame Effects in soft light.",
-		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, a gold flash as cooldowns end, one Health Colour for all.",
-		"Action bars and minimap: backdrops and MelloUI's square minimap for everyone, no painted skin needed; the round painted map is Oldschool's.",
-		"Quests: the Quest Tracker in the chat's look with the game's clicks, round marks, one gem per title, short Quest List and map tips; Parchment is its own switch.",
-		"Route: shorter ways over open ground, out of rough hills and capitals' cliffs, never turned round mid-walk; the World Marker shows the way and follows RestedXP Guides.",
-		"Nameplates and Personal Display answer the fight: lit chunks on hits, flashing crits, cast warnings; dodges and stuns on your bars. Combat Text has a Beside look.",
-		"Tooltips colour guilds, factions, levels and quest objectives. Macro Backup is gone: the game keeps your settings.",
-		"Edit Layout, bags and groups: more windows move without the reskin; quality gems and junk on every slot; party and raid frames keep their own places and indicators.",
 	} },
 }
 local LINKS = {

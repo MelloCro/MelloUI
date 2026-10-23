@@ -573,11 +573,20 @@ end
 --   as built   { x, y, { [other key] = seconds }, road }   (the build's merges look a link up by its key at once)
 --   compact    { x, y, road, other key, seconds, other key, seconds, ... }   (one table, its array as long as it needs)
 -- The build makes every node compact once its merges are done (Links.Compact), its links in the order its table as
--- built gave them -- the order the search has always tried them in; a node made later is compact from the start and a
--- link learned later goes on its end. A table and a hash a node was some 580 bytes, one array some 340: about a third
+-- built gave them; a node made later is compact from the start and a link learned later goes on its end. (1.2.3) The
+-- companion's own nodes are made compact at once, their links in the companion's order (MergeRoads). A table and a hash a node was some 580 bytes, one array some 340: about a third
 -- of the graph. `road`: as built a node of the companion's roads true (nil: learned); compact 1 a road's node, 0 a
 -- learned one, 2 more on a side piece of the graph (Build.FindIslands: Links.IsSide).
-local Links = { compact = false, scratch = {} }
+local Links = { compact = false, scratch = {}, fill = {}, grown = {} }
+
+-- (1.2.3) a list of at least `n` placeholders (false) for a node made with that many slots (AddNode's `slots`)
+function Links.Fill(n)
+	local f = Links.fill
+	for i = #f + 1, n do
+		f[i] = false
+	end
+	return f
+end
 
 function Links.IsRoad(node)
 	local l = node[3]
@@ -639,6 +648,9 @@ function Links.Set(node, key, cost)
 	end
 	if cost ~= nil then
 		node[n + 1], node[n + 2] = key, cost
+		if not Links.compact then
+			Links.grown[node] = true   -- (its array may have grown past its links: made exact by Links.Compact)
+		end
 	end
 end
 
@@ -731,19 +743,25 @@ end
 -- Every node made compact once the build's merges are done: a new table, exactly as long as its links need (a table
 -- constructor's last call: its array sized to fit), in the old one's place; its links in the order the old one's
 -- pairs gave them. What holds a node itself follows it (roadEdits; the side pieces are found after). In the build's
--- slices; a node already compact is left as it is.
+-- slices; a node already compact is left as it is (1.2.3: the companion's are made so: MergeRoads), but for one a
+-- merge added a link to (Links.grown), which is made again as long as its links need.
 function Links.Compact()
-	local list = Links.scratch
+	local list, grown = Links.scratch, Links.grown
 	for _, g in pairs(live.graphs) do
 		for key, node in pairs(g) do
 			local l = node[3]
+			local new
 			if type(l) == "table" then
 				local n = 0
 				for k, cost in pairs(l) do
 					list[n + 1], list[n + 2] = k, cost
 					n = n + 2
 				end
-				local new = { node[1], node[2], node[4] and 1 or 0, unpack(list, 1, n) }
+				new = { node[1], node[2], node[4] and 1 or 0, unpack(list, 1, n) }
+			elseif grown[node] then
+				new = { node[1], node[2], l, unpack(node, 4, #node) }
+			end
+			if new then
 				g[key] = new   -- (an existing key: the walk goes on)
 				local e = roadEdits[node]
 				if e then
@@ -753,7 +771,7 @@ function Links.Compact()
 			Build.Slice()
 		end
 	end
-	Links.scratch = {}
+	Links.scratch, Links.fill, Links.grown = {}, {}, {}
 	Links.compact = true
 end
 
@@ -768,12 +786,18 @@ end
 -- (route-ground) `under`: a node of an underground capital's streets (Ironforge, the Undercity), keyed apart ("u"
 -- before its cell: the ground over them lies in the same cells), joined by distance only to its own kind and with no
 -- walk grid asked (the grid is the ground above); M.Ground.under[cont] set
-local function AddNode(cont, x, y, cells, alone, under)
+-- (1.2.3) `slots`: a node made compact at once with that many slots for its links, `false` each until filled
+-- (MergeRoads)
+local function AddNode(cont, x, y, cells, alone, under, slots)
 	local g = Graph(cont)
 	local key = under and "u" .. KeyOf(x, y) or KeyOf(x, y)
 	local node = g[key]
 	if not node then
-		node = Links.compact and { x, y, 0 } or { x, y, {} }
+		if slots then
+			node = { x, y, 0, unpack(Links.Fill(slots), 1, slots) }   -- (its array exactly that long: Links.Compact)
+		else
+			node = Links.compact and { x, y, 0 } or { x, y, {} }
+		end
 		g[key] = node
 		Edited(cont)
 		NodeAdded(cont, key, node)
@@ -985,15 +1009,8 @@ local function MergeRoads(data)
 				local nodes, links, at = g.nodes, g.links, {}
 				local first = tonumber(g.under) or math.huge
 				for i = 1, math.floor(#nodes / 2) do
-					local x, y = nodes[i * 2 - 1] * sx, nodes[i * 2] * sy
-					local under = i >= first
-					local k = under and "u" .. KeyOf(x, y) or KeyOf(x, y)
-					at[i] = k
-					if not mine[k] then
-						local _, created = AddNode(cont, x, y, cells, true, under)
-						created[4] = true
-						added = added + 1
-					end
+					local k = KeyOf(nodes[i * 2 - 1] * sx, nodes[i * 2] * sy)
+					at[i] = i >= first and "u" .. k or k
 					Slice()
 				end
 				-- each link (i, j, seconds): from the arrays, or decoded from the packed strings (3 + 3 + 2 characters)
@@ -1005,20 +1022,74 @@ local function MergeRoads(data)
 						end
 						return
 					end
-					local function Num(str, from, to)
-						local n = 0
-						for k = from, to do
-							local c = str:byte(k)
-							n = n * 92 + c - 33 - (c > 34 and 1 or 0) - (c > 92 and 1 or 0)
-						end
-						return n
-					end
+					-- (1.2.3: a link's eight characters read in one call and worked out here -- the build reads every link
+					-- twice now, and one call a character and a function a number was most of that time)
+					local byte = string.byte
 					for _, str in ipairs(g.packedLinks) do
 						for p = 1, #str - 7, 8 do
-							fn(Num(str, p, p + 2), Num(str, p + 3, p + 5), Num(str, p + 6, p + 7) / 10)
+							local c1, c2, c3, c4, c5, c6, c7, c8 = byte(str, p, p + 7)
+							c1 = c1 - 33 - (c1 > 34 and 1 or 0) - (c1 > 92 and 1 or 0)
+							c2 = c2 - 33 - (c2 > 34 and 1 or 0) - (c2 > 92 and 1 or 0)
+							c3 = c3 - 33 - (c3 > 34 and 1 or 0) - (c3 > 92 and 1 or 0)
+							c4 = c4 - 33 - (c4 > 34 and 1 or 0) - (c4 > 92 and 1 or 0)
+							c5 = c5 - 33 - (c5 > 34 and 1 or 0) - (c5 > 92 and 1 or 0)
+							c6 = c6 - 33 - (c6 > 34 and 1 or 0) - (c6 > 92 and 1 or 0)
+							c7 = c7 - 33 - (c7 > 34 and 1 or 0) - (c7 > 92 and 1 or 0)
+							c8 = c8 - 33 - (c8 > 34 and 1 or 0) - (c8 > 92 and 1 or 0)
+							fn((c1 * 92 + c2) * 92 + c3, (c4 * 92 + c5) * 92 + c6, (c7 * 92 + c8) / 10)
 							Slice()
 						end
 					end
+				end
+				-- (1.2.3, the build's garbage: each node was made as built -- a table and a hash of its links -- and copied
+				-- compact once the merges were done, ~48 MB let go at once) Each new node is made once, compact and as
+				-- long as its links need: its links counted first, it made with that many slots (AddNode's `slots`),
+				-- filled in the order the links come, and the slots a link given twice left over let go. A node there
+				-- before is linked as Link does. The same nodes, links and seconds; a node's links in the companion's
+				-- order, where they were in its hash's.
+				local count = {}   -- key -> its links counted; for a node made here, then its last slot filled
+				Each(function(a, b, cost)
+					local ka, kb = at[a], at[b]
+					if ka and kb and ka ~= kb and type(cost) == "number" then
+						count[ka] = (count[ka] or 0) + 1
+						count[kb] = (count[kb] or 0) + 1
+					end
+				end)
+				for k in pairs(count) do
+					if mine[k] then
+						count[k] = nil   -- (a node there before)
+					end
+				end
+				for i = 1, math.floor(#nodes / 2) do
+					local k = at[i]
+					if not mine[k] then
+						local _, created = AddNode(cont, nodes[i * 2 - 1] * sx, nodes[i * 2] * sy, cells, true, i >= first,
+							2 * (count[k] or 0))
+						created[3] = 1   -- (a road's node: Links)
+						count[k] = 3
+						added = added + 1
+					end
+					Slice()
+				end
+				local function Fill(node, key, other, cost)
+					local top = count[key]
+					if not top then
+						local old = Links.Get(node, other)
+						if old == nil or old > cost then
+							Links.Set(node, other, cost)
+						end
+						return
+					end
+					for i = 4, top - 1, 2 do
+						if node[i] == other then
+							if node[i + 1] > cost then
+								node[i + 1] = cost
+							end
+							return
+						end
+					end
+					node[top + 1], node[top + 2] = other, cost
+					count[key] = top + 2
 				end
 				Each(function(a, b, cost)
 					local ka, kb = at[a], at[b]
@@ -1030,12 +1101,17 @@ local function MergeRoads(data)
 						if dd >= 1 then
 							cost = cost * Dist(ax * sx, ay * sy, bx * sx, by * sy) / dd
 						end
-						if na[3][kb] == nil or na[3][kb] > cost then
-							na[3][kb] = cost
-							nb[3][ka] = cost
-						end
+						Fill(na, ka, kb, cost)
+						Fill(nb, kb, ka, cost)
 					end
 				end)
+				for k, top in pairs(count) do
+					local node = mine[k]
+					for i = #node, top + 1, -1 do
+						node[i] = nil   -- (a slot a link given twice left over)
+					end
+					Slice()
+				end
 				g = {}   -- (nothing more below)
 			end
 			for key, node in pairs(g) do
@@ -1108,7 +1184,7 @@ end
 -- across open ground to the road round it, and are priced again as they are merged (M.Ground.Reprice).
 --   M.Ground.Walk(cont, x0, y0, x1, y1) -> nil (no grid), false (a wall or no ground), else the share swum
 --   M.Ground.Price(d, swum)               seconds for d yards over walkable ground, `swum` of it swum
-M.Ground = { grids = {}, ROWS = 256, PACE = 1.05, SWIM = 2.5, BAKED = 1.25, SWIM_REAL = 7 / 4.7, parts = {},
+M.Ground = { grids = {}, ROWS = 256, PACE = 1.05, SWIM = 2.5, BAKED = 1.25, SWIM_REAL = 7 / 4.7,
 	under = {},    -- (route-ground) under[cont]: its graph keeps an underground capital's streets apart (AddNode)
 	unders = {} }  -- (route-ground) unders[cont]: those streets' own grids ({ grid, ... }: M.Ground.ClearUnder)
 
@@ -1122,7 +1198,11 @@ function M.Ground.Set(data)
 		local size = type(data.sizes) == "table" and data.sizes[cont]
 		g.sx = (w and size and size[1] and size[1] > 0) and w / size[1] or 1
 		g.sy = (h and size and size[2] and size[2] > 0) and h / size[2] or 1
-		g.decoded, g.kept, g.keptAt = {}, {}, 0   -- the rows decoded, and which, in the order they came
+		if g.edges then
+			g.pieces, g.pieceKeys, g.pieceAt = {}, {}, 0   -- the pieces of rows spelled out, and which, in their order
+		else
+			g.decoded, g.kept, g.keptAt = {}, {}, 0   -- the rows decoded, and which, in the order they came
+		end
 		return g
 	end
 	for contKey, g in pairs(walk) do
@@ -1180,42 +1260,25 @@ function M.Ground.Has(cont)
 	return M.Ground.grids[cont] ~= nil
 end
 
--- a row's runs: { last column of run 1, its letter, last column of run 2, ... }; (route-ground) an edge grid's row
--- spelled out instead, a letter a cell -- a cell is then one byte read (M.Ground.Byte), where the search over its
--- 4-yard cells asked millions (2.7 M on the bench's 60 slowest routes: most of their time), and ROWS_EDGES of them
--- kept (a few KB each)
+-- a row's runs: { last column of run 1, its letter, last column of run 2, ... } (an edge grid's cells are read by
+-- pieces instead: M.Ground.Byte)
 function M.Ground.Row(g, r)
 	local runs = g.decoded[r]
 	if runs then
 		return runs
 	end
 	local text = g.rows[r + 1]
-	if g.edges then
-		-- (route-ground: one scratch table for every row's pieces -- a table a row was garbage at every decode)
-		local parts, n = M.Ground.parts, 0
-		if type(text) == "string" then
-			for letter, count in text:gmatch("(%a)(%d*)") do
-				n = n + 1
-				parts[n] = count == "" and letter or letter:rep(tonumber(count))
-			end
-		end
-		runs = table.concat(parts, "", 1, n)
-		for i = n, 1, -1 do
-			parts[i] = nil
-		end
-	else
-		runs = {}
-		if type(text) == "string" then
-			local col = 0
-			for letter, count in text:gmatch("(%a)(%d*)") do
-				col = col + (tonumber(count) or 1)
-				runs[#runs + 1] = col - 1
-				runs[#runs + 1] = letter
-			end
+	runs = {}
+	if type(text) == "string" then
+		local col = 0
+		for letter, count in text:gmatch("(%a)(%d*)") do
+			col = col + (tonumber(count) or 1)
+			runs[#runs + 1] = col - 1
+			runs[#runs + 1] = letter
 		end
 	end
 	-- (the oldest row let go once ROWS are kept: a ring of their numbers)
-	local slot = g.keptAt % (g.edges and M.Ground.ROWS_EDGES or M.Ground.ROWS) + 1
+	local slot = g.keptAt % M.Ground.ROWS + 1
 	local old = g.kept[slot]
 	if old then
 		g.decoded[old] = nil
@@ -1230,11 +1293,11 @@ function M.Ground.At(g, r, q)
 	if r < 0 or q < 0 or r >= g.h or q >= g.w then
 		return nil
 	end
-	local runs = M.Ground.Row(g, r)
 	if g.edges then
-		local b = runs:byte(q + 1)
+		local b = M.Ground.Byte(g, r, q)
 		return b and M.Ground.LETTER[b]
 	end
+	local runs = M.Ground.Row(g, r)
 	local lo, hi = 1, #runs / 2
 	if hi < 1 then
 		return nil
@@ -1270,15 +1333,65 @@ do
 		letter[b] = string.char(b)
 	end
 	M.Ground.OPEN, M.Ground.SWUM, M.Ground.OPENB, M.Ground.SWUMB, M.Ground.LETTER = open, swum, openB, swumB, letter
-	M.Ground.ROWS_EDGES = 512
 end
 
--- an edge grid's cell as its letter's byte (nil off the grid)
-function M.Ground.Byte(g, r, q)
-	if r < 0 or q < 0 or r >= g.h or q >= g.w then
-		return nil
+-- (1.2.3; the route garbage, 2026-10-23: decoding whole rows was 56 % of what a search allocated -- each row 3-6 KB
+-- spelled out, and as much again in its pieces, for the cell or two a leg reads of it) An edge grid's cells are read
+-- SEG at a time: the piece of a row holding the cell, spelled out a letter a cell straight from the row's runs (no
+-- pieces in between), PIECES of them kept a grid, the oldest let go first. A cell is one byte read, where the search
+-- over the 4-yard cells asks millions (2.7 M on the bench's 60 slowest routes: most of their time).
+do
+	local SEG, PIECES = 512, 2048   -- (the bench: 0.95 x 1.2.2's CPU, the cache 2.3 MB against 4.6; 128 / 4096 was 1.08 x)
+	local buf = {}   -- (one scratch list of bytes for every piece)
+	M.Ground.SEG, M.Ground.PIECES = SEG, PIECES
+
+	-- the piece of row r from column c0 (a multiple of SEG): its string, kept
+	function M.Ground.Piece(g, r, c0)
+		local text = g.rows[r + 1]
+		local n, c1 = 0, c0 + SEG
+		if type(text) == "string" then
+			local byte, at, len, col = string.byte, 1, #text, 0
+			while at <= len and col < c1 do
+				local b = byte(text, at)   -- a run: its letter, then its length (none: 1)
+				at = at + 1
+				local count, d, digits = 0, byte(text, at), false
+				while d and d >= 48 and d <= 57 do
+					count, digits = count * 10 + d - 48, true
+					at = at + 1
+					d = byte(text, at)
+				end
+				local stop = col + (digits and count or 1)
+				if stop > c0 then
+					for _ = col > c0 and col or c0, (stop < c1 and stop or c1) - 1 do
+						n = n + 1
+						buf[n] = b
+					end
+				end
+				col = stop
+			end
+		end
+		local piece = string.char(unpack(buf, 1, n))
+		local key = r * 65536 + c0
+		local slot = g.pieceAt % PIECES + 1
+		local old = g.pieceKeys[slot]
+		if old then
+			g.pieces[old] = nil
+		end
+		g.pieceKeys[slot], g.pieceAt = key, slot
+		g.pieces[key] = piece
+		return piece
 	end
-	return M.Ground.Row(g, r):byte(q + 1)
+
+	-- an edge grid's cell as its letter's byte (nil off the grid)
+	function M.Ground.Byte(g, r, q)
+		if r < 0 or q < 0 or r >= g.h or q >= g.w then
+			return nil
+		end
+		local o = q % SEG
+		local c0 = q - o
+		local piece = g.pieces[r * 65536 + c0] or M.Ground.Piece(g, r, c0)
+		return piece:byte(o + 1)
+	end
 end
 
 -- whether side `bit` (1 east, 2 south, 4 south-east, 8 south-west) of the cell with this letter is open
@@ -1984,6 +2097,15 @@ local IsFlight   -- the block's rule for a learned flight link, which the travel
 local Search = { LEG_NEAR = 80, LEG_MAX = 8, HUB_SHUT = 150, LEG_WIDE = 64, ISLAND_LEGS = 3, BUDGET = 3, EVERY = 16, PRICE_KEEP = 5, PRICE_NEAR = 30,
 	PRICE_CAP = 2, PRICE_EXTRA = 120, REPICK_MOVED = 40, queue = {}, running = nil, slice = 0, after = {}, plan = nil,
 	pricing = {}, priced = {}, runs = 0, jumps = 0, frame = nil,
+	-- (1.2.3) the estimate off the goals' continents (Search.Away): away[cont] = { n, x = {}, y = {}, k = {}, v }, its
+	-- departures and their least price on to a goal, and the continent's speed; nodes opened again (Relax)
+	away = {}, awaySpeed = {}, reopened = 0,
+	-- (1.2.3) a goal shut in on a side piece of the graph (Search.ShutIn): PROBE_MAX nodes walked at most, its tables
+	-- kept, how often a search was spared, and whether the last one was (shut); its last resort's nodes round the goal
+	-- (Search.ReachNear): within the first of REACH_YD that has some, REACH_TRIES of them searched for at most, their
+	-- lists kept
+	PROBE_MAX = 6000, probeSeen = {}, probeQueue = {}, probeCont = {}, shutIn = 0, shut = false,
+	REACH_YD = { 500, 1500, 4000 }, REACH_TRIES = 8, reachNode = {}, reachD = {}, reachSkip = {},
 	LEG = 1.1, SMOOTH_MAX = 500, SMOOTH_SPAN = 60, SMOOTH_FIRST = 4, HUG = 6, KEEP = 0.85, KEEP_SECONDS = 10,
 	cities = {}, smoothed = 0,
 	-- (0.25.0) an end with no straight leg finds its way out over the walk grid (Search.GridLegs): to the GRID_LEGS
@@ -2415,6 +2537,7 @@ do
 		gScore, from, closed, extra, nodeExtra, pos, flightEnds = {}, {}, {}, {}, {}, {}, {}
 		heapId, heapF, heapCont, heapN = {}, {}, {}, 0
 		jumpNear = {}
+		Search.gridT = nil   -- (the walk grid's search's own: Search.Grid)
 	end
 
 	-- Small binary heap keyed by f.
@@ -2501,21 +2624,212 @@ do
 		local gc, gx, gy = goals.cont, goals.x, goals.y
 		if goals.n == 1 then
 			if cont ~= gc[1] then
-				return 0
+				return Search.AwayFrom(cont, x, y)
 			end
 			return Dist(x, y, gx[1], gy[1]) / sSpeed
 		end
-		local best
+		local best, off
 		for i = 1, goals.n do
 			if cont ~= gc[i] then
-				return 0
-			end
-			local d = Dist(x, y, gx[i], gy[i])
-			if not best or d < best then
-				best = d
+				off = true
+			else
+				local d = Dist(x, y, gx[i], gy[i])
+				if not best or d < best then
+					best = d
+				end
 			end
 		end
-		return (best or 0) / sSpeed
+		best = best and best / sSpeed
+		if off then
+			local a = Search.AwayFrom(cont, x, y)
+			if not best or a < best then
+				best = a
+			end
+		end
+		return best or 0
+	end
+
+	-- (1.2.3; the user, 2026-10-23: "there is a long wait time when im navigating to the other continent") A place on a
+	-- continent where no goal is was estimated at 0, so a route to the other continent walked most of the start's
+	-- continent (15,000-37,000 nodes on the route bench) before it crossed. It is estimated at the least it can cost to
+	-- leave it toward a goal: to a departure at the continent's own fastest speed, and the departure's least price on
+	-- from there (Search.Away). Never more than a way can cost; where the estimate meets a goal's (a dock's crossing
+	-- back) it may jump, so Walk opens a node again that a cheaper way reaches (Relax).
+	function Search.AwayFrom(cont, x, y)
+		local a = Search.away[cont]
+		if not a or a.n == 0 then
+			return 0
+		end
+		local ax, ay, ak, v, best = a.x, a.y, a.k, a.v, nil
+		for j = 1, a.n do
+			local c = Dist(x, y, ax[j], ay[j]) / v + ak[j]
+			if not best or c < best then
+				best = c
+			end
+		end
+		return best
+	end
+
+	-- The departures of each continent for this search's goals (its tables kept, refilled): a dock whose pair is on
+	-- another continent, or a usable flight point with a flight to one, priced at the crossing (the cheaper way of the
+	-- two, as AddExtra keeps a dock's) and the goals' estimate from where it lands (none there: 0); then a dock within
+	-- a continent (the tram, a portal, a boat along the coast) at its own price and the cheapest departure from where
+	-- it leads, twice (a chain of two). One place once, at its least price. A continent's speed: flying with a usable
+	-- flight point on it, else walking. all: the flight points (Begin's), n: how many in hubIds.
+	function Search.Away(all, n)
+		local away, speed, list = Search.away, Search.awaySpeed, docks or {}
+		for _, a in pairs(away) do
+			a.n = 0
+		end
+		wipe(speed)
+		for i = 1, n do
+			local tid = hubIds[i]
+			local t = all[tid]
+			if t and TaxiUsable(tid, t) then
+				speed[t.cont] = FLIGHT
+			end
+		end
+		local function Rest(cont, x, y)
+			local best
+			for k = 1, goals.n do
+				if goals.cont[k] == cont then
+					local d = Dist(x, y, goals.x[k], goals.y[k]) / sSpeed
+					if not best or d < best then
+						best = d
+					end
+				end
+			end
+			return best or 0
+		end
+		local function Add(cont, x, y, k)
+			local a = away[cont]
+			if not a then
+				a = { n = 0, x = {}, y = {}, k = {} }
+				away[cont] = a
+			end
+			for j = 1, a.n do
+				if a.x[j] == x and a.y[j] == y then
+					if k < a.k[j] then
+						a.k[j] = k
+					end
+					return
+				end
+			end
+			local i = a.n + 1
+			a.n, a.x[i], a.y[i], a.k[i], a.v = i, x, y, k, speed[cont] or WALK
+		end
+		for i = 1, #list do
+			local d = list[i]
+			local p = d.pair and list[d.pair]
+			if p and p.cont ~= d.cont then
+				Add(d.cont, d.x, d.y, math.min(M.DockSeconds(d), M.DockSeconds(p)) + Rest(p.cont, p.x, p.y))
+			end
+		end
+		for i = 1, n do
+			local tid = hubIds[i]
+			local t = all[tid]
+			if t and TaxiUsable(tid, t) then
+				for other, secs in pairs(t.links) do
+					local o = all[other]
+					if o and o.cont ~= t.cont and TaxiUsable(other, o) then
+						Add(t.cont, t.x, t.y, secs + Rest(o.cont, o.x, o.y))
+					end
+				end
+			end
+		end
+		for _ = 1, 2 do
+			for i = 1, #list do
+				local d = list[i]
+				local p = d.pair and list[d.pair]
+				local a = p and p.cont == d.cont and away[d.cont]
+				if a and a.n > 0 then
+					Add(d.cont, d.x, d.y, math.min(M.DockSeconds(d), M.DockSeconds(p)) + Search.AwayFrom(d.cont, p.x, p.y))
+				end
+			end
+		end
+	end
+
+	-- (1.2.3; the route bench, 2026-10-23: 20 of the 23 searches that ran to the 60,000-node cap had no way on the
+	-- graph at all -- every leg of the goal on a side piece of it that nothing leaves -- and walked both continents,
+	-- seconds of the game's frames, before the walk grid's way or the last resort was taken) Whether the goal `gid` is
+	-- shut in: every leg it has lands on a side piece (Build.FindIslands), and that piece, walked out from them by its
+	-- links (PROBE_MAX nodes at most), holds no leg of anything else -- the start, a dock, a flight point, another
+	-- goal -- nor a link to a cell with one. Every link counts, a flight's too, so a goal a search could reach is never
+	-- called shut in. The piece is left in Search.probeSeen.
+	function Search.ShutIn(gid)
+		local ex, islands = extra[gid], Build.islands
+		if not (ex and islands) then
+			return false
+		end
+		local seen, queue, conts = Search.probeSeen, Search.probeQueue, Search.probeCont
+		wipe(seen)
+		local n, shut = 0, true
+		for other in pairs(ex) do
+			local c, key = other:match("^(%d+)|(.+)$")
+			c = tonumber(c)
+			local node = c and live.graphs[c] and live.graphs[c][key]
+			local side = node and islands[c]
+			if not (side and side[node]) then
+				shut = false   -- (a hub, another end, a cell with no node, or the big piece)
+				break
+			end
+			if not seen[node] then
+				seen[node] = true
+				n = n + 1
+				queue[n], conts[n] = node, c
+			end
+		end
+		local head = 1
+		while shut and head <= n do
+			local node, c = queue[head], conts[head]
+			head = head + 1
+			local nx = nodeExtra[node]
+			if nx then
+				for other in pairs(nx) do
+					if other ~= gid then
+						shut = false
+						break
+					end
+				end
+			end
+			local g, l = live.graphs[c], node[3]
+			local first, last = 4, #node - 1
+			if type(l) == "table" then   -- (as built: Links)
+				first, last = 1, 0
+				for k in pairs(l) do
+					if shut then
+						local o = g[k]
+						if not o then
+							shut = extra[c .. "|" .. k] == nil
+						elseif not seen[o] then
+							seen[o] = true
+							n = n + 1
+							queue[n], conts[n] = o, c
+						end
+					end
+				end
+			end
+			for i = first, last, 2 do
+				if shut then
+					local k = node[i]
+					local o = g[k]
+					if not o then
+						shut = extra[c .. "|" .. k] == nil
+					elseif not seen[o] then
+						seen[o] = true
+						n = n + 1
+						queue[n], conts[n] = o, c
+					end
+				end
+			end
+			if n > Search.PROBE_MAX then
+				shut = false   -- (too big a piece to tell)
+			end
+		end
+		if shut then
+			Search.shutIn = Search.shutIn + 1
+		end
+		return shut
 	end
 
 	-- One link out of the node being expanded
@@ -2525,6 +2839,10 @@ do
 		if old == nil or tentative < old then
 			gScore[other] = tentative
 			from[other] = sFrom
+			if closed[other] and not goals.of[other] then
+				closed[other] = nil   -- (1.2.3: a cheaper way to a node already expanded: expanded again, Search.AwayFrom)
+				Search.reopened = Search.reopened + 1
+			end
 			Push(other, tentative + Heuristic(other, cont), cont)
 		end
 	end
@@ -2587,6 +2905,19 @@ do
 	-- reached from, and the cells reached among the targets or the goal, in order.
 	function Search.Grid(grid, q0, r0, o)
 		local G = M.Ground
+		-- (1.2.3, the route garbage: a fresh set of these tables a call, up to 60,000 cells each, was a third of what a
+		-- search allocated) One set for every call, emptied as it begins, let go with the graph search's own once Route
+		-- is idle (ReleaseIfIdle). Only a search job calls this, one at a time, and every caller is done with dist,
+		-- prev and found before the next call.
+		local T = Search.gridT
+		if T then
+			for _, t in pairs(T) do
+				wipe(t)
+			end
+		else
+			T = { costOf = {}, letterOf = {}, hc = {}, hf = {}, dist = {}, prev = {}, done = {}, found = {} }
+			Search.gridT = T
+		end
 		local walkS = grid.cell * (grid.sx + grid.sy) / 2 / WALK
 		local paceS, swimS, wallS, diag = walkS * G.PACE, walkS * G.SWIM, walkS * Search.GRID_WALL, math.sqrt(2)
 		local targets, goal, slack, SL = o.targets, o.goal, o.slack, Search.GRID_SLACK
@@ -2599,10 +2930,10 @@ do
 		local gq, gr = goal and goal % 65536, goal and math.floor(goal / 65536)
 		local q1, q2 = math.max(0, o.q1), math.min(grid.w - 1, o.q2)
 		local r1, r2 = math.max(0, o.r1), math.min(grid.h - 1, o.r2)
-		local costOf = {}   -- (each cell asked of the grid once: false where it cannot be entered)
+		local costOf = T.costOf   -- (each cell asked of the grid once: false where it cannot be entered)
 		-- (route-ground) an edge grid (g.edges): a step only over a side the character walks across -- near an end
 		-- (o.slack) a shut one at GRID_WALL times walking; each cell's letter asked once (false: off the grid)
-		local edges, letterOf = grid.edges, {}
+		local edges, letterOf = grid.edges, T.letterOf
 		local function Letter(r, q)
 			local c = r * 65536 + q
 			local v = letterOf[c]
@@ -2671,7 +3002,7 @@ do
 			end
 			return v
 		end
-		local hc, hf, hn = {}, {}, 0
+		local hc, hf, hn = T.hc, T.hf, 0
 		local function HPush(c, f)
 			hn = hn + 1
 			local i = hn
@@ -2712,7 +3043,8 @@ do
 			return (math.max(dq, dr) + (diag - 1) * math.min(dq, dr)) * paceS * greed
 		end
 		local start = r0 * 65536 + q0
-		local dist, prev, done, found = { [start] = 0 }, {}, {}, {}
+		local dist, prev, done, found = T.dist, T.prev, T.done, T.found
+		dist[start] = 0
 		HPush(start, Guess(r0, q0))
 		local looked, most, want = 0, o.max or (grid.edges and Search.GRID_MAX_EDGES or Search.GRID_MAX), o.k or 1
 		while hn > 0 and looked < most do
@@ -2756,6 +3088,9 @@ do
 					Search.Yield()
 				end
 			end
+		end
+		if looked > SCRATCH_KEEP then
+			scratchBig = true   -- (held a few seconds only, as a big graph search's)
 		end
 		return dist, prev, found
 	end
@@ -3188,6 +3523,7 @@ do
 			end
 		end
 		sSpeed = speed
+		Search.Away(all, n)
 	end
 
 	-- The links out of one node
@@ -3404,6 +3740,113 @@ do
 		end
 		scratchBig = scratchBig or expanded > SCRATCH_KEEP
 		return ended
+	end
+
+	-- (1.2.3) The search to the one goal ("G"), or "none" at once when the goal is shut in (Search.ShutIn): what the
+	-- search would have ended in, without walking the rest of the graph first (Search.shut says so; nothing near the
+	-- goal was reached: the last resort finds its node itself, Search.ReachNear). FindRoute keeps no "no way between
+	-- the two continents" for it (the goal's place is shut in, not its continent).
+	function Search.WalkOne(scont)
+		Search.shut = Search.ShutIn("G")
+		if Search.shut then
+			local nearNodes, nearYards = Search.nearNode, Search.nearD
+			for i = #nearYards, 1, -1 do
+				nearNodes[i], nearYards[i] = nil, nil
+			end
+			return "none"
+		end
+		return Walk(scont, true)
+	end
+
+	-- (1.2.3) A shut-in goal's last resort, as a failed search's (FindRoute: the way to the graph's node nearest the
+	-- goal, the rest a guess): the node nearest the goal that the start reaches. Called after FindRoute's search with
+	-- the island legs (Search.islandLegs), so its searches have them too.
+	-- * A start shut in itself: walked out as ever (a small piece: quick), its nearest node to the goal taken.
+	-- * Else the nodes round the goal outside its own piece, within the first of REACH_YD that has any, nearest first,
+	--   each searched for in turn (REACH_TRIES in all): the first found is it. One shut in itself rules its whole piece
+	--   out at once; none found within REACH_TRIES: walked out as ever.
+	-- Its way in left in from / gScore, Search.nearNode / nearD set as Walk sets them, "G" back at the goal. nil: none.
+	function Search.ReachNear(scont, sx, sy, gx, gy, hx, hy)
+		local g = live.graphs[scont]
+		local list, yards, skip = Search.reachNode, Search.reachD, Search.reachSkip
+		wipe(skip)
+		for node in pairs(Search.probeSeen) do
+			skip[node] = true   -- (the goal's own piece: Search.ShutIn's, the goal's the last asked)
+		end
+		local island = Build.islands and Build.islands[scont] and true or nil
+		local near, tries = nil, 0
+		if not Search.ShutIn("S") then
+			for _, reach in ipairs(Search.REACH_YD) do   -- (wider until one is found: a goal amid side pieces)
+				local n, m = NearList(scont, gx, gy, reach), 0
+				for i = 1, n do
+					local node = g and g[nearKey[i]]
+					if node and not skip[node] then
+						m = m + 1
+						list[m], yards[m] = node, nearD[i]
+					end
+				end
+				for i = #list, m + 1, -1 do
+					list[i], yards[i] = nil, nil
+				end
+				for t = 1, m do
+					if near or tries >= Search.REACH_TRIES then
+						break
+					end
+					local k   -- (the nearest of the rest not ruled out: a selection)
+					for j = t, m do
+						if not skip[list[j]] and (not k or yards[j] < yards[k]) then
+							k = j
+						end
+					end
+					if not k then
+						break
+					end
+					list[t], list[k], yards[t], yards[k] = list[k], list[t], yards[k], yards[t]
+					local c = list[t]
+					tries = tries + 1
+					ClearGoals()
+					SetGoal(1, "G", scont, c[1], c[2])
+					goals.n = 1
+					Search.islandLegs = island
+					Begin(scont, sx, sy, hx, hy)
+					Search.islandLegs = nil
+					local ended = Search.WalkOne(scont)
+					if ended == "found" then
+						local via = from.G
+						near = (closed[c] and c) or (type(via) == "table" and closed[via] and via) or nil
+					elseif Search.shut then
+						for node in pairs(Search.probeSeen) do
+							skip[node] = true   -- (that piece shut in: none of it)
+						end
+					end
+					skip[c] = true
+				end
+				if near or tries >= Search.REACH_TRIES then
+					break
+				end
+			end
+		end
+		ClearGoals()
+		SetGoal(1, "G", scont, gx, gy)
+		goals.n = 1
+		local nearNodes, nearYards = Search.nearNode, Search.nearD
+		if not near then
+			-- (walked out toward the goal as a failed search ever was, its nearest node reached)
+			Search.islandLegs = island
+			Begin(scont, sx, sy, hx, hy)
+			Search.islandLegs = nil
+			Walk(scont, true)
+			Search.shut = true
+			return nearNodes[1]
+		end
+		SetPos("G", scont, gx, gy)
+		Search.gridPaths.G = nil   -- (the bends of the node's own legs, not the goal's)
+		Search.shut = true
+		for i = #nearYards, 1, -1 do
+			nearNodes[i], nearYards[i] = nil, nil
+		end
+		nearNodes[1], nearYards[1] = near, Dist(near[1], near[2], gx, gy)
+		return near
 	end
 
 	local function Searched()
@@ -3733,14 +4176,14 @@ do
 		SetGoal(1, "G", gcont, gx, gy)
 		goals.n = 1
 		Begin(scont, sx, sy, hx, hy)
-		local ended = Walk(scont, true)
+		local ended = Search.WalkOne(scont)
 		if ended == "none" and M.Ground.under[scont] and (sUnder ~= nil or gUnder ~= nil) then
 			-- (route-ground) no way from the ends' own floors (a start off the streets its map names, its only leg
 			-- the crumb just learned under it): from either floor
 			Search.layer.S, Search.layer.G = nil, nil
 			Search.Yield(true)
 			Begin(scont, sx, sy, hx, hy)
-			ended = Walk(scont, true)
+			ended = Search.WalkOne(scont)
 		end
 		-- (route-ground) both ends on an underground capital's streets: their own grid for the grid's ways below
 		local under = sUnder == true and gUnder == true and scont == gcont and M.Ground.UnderGrid(scont, sx, sy)
@@ -3761,7 +4204,7 @@ do
 				Search.islandLegs = true
 				Begin(scont, sx, sy, hx, hy)
 				Search.islandLegs = nil
-				ended = Walk(scont, true)
+				ended = Search.WalkOne(scont)
 			end
 		end
 		if ended ~= "found" then
@@ -3770,6 +4213,11 @@ do
 				-- a building's stairs lead to): the way to the graph's node nearest it, the rest a guess -- it was the
 				-- straight line from the player, or a dock's far detour
 				local near = Search.APPROACH and Search.nearNode[1]
+				if Search.APPROACH and Search.shut then
+					-- (1.2.3) the goal shut in: no search walked toward it, so the node nearest it that the start reaches
+					-- is found by searches of its own
+					near = Search.ReachNear(scont, sx, sy, gx, gy, hx, hy)
+				end
 				if near and Search.nearD[1] < Dist(sx, sy, gx, gy) - 20 then
 					from.G = near
 					gScore.G = (gScore[near] or 0) + Search.nearD[1] / WALK * STRAIGHT_COST
@@ -3778,7 +4226,9 @@ do
 					return smooth, price, wcost
 				end
 			end
-			if ended == "none" and others then
+			-- (1.2.3, the route bench: one start on a shut-in piece of the graph kept every later route to that continent
+			-- from being looked for, from anywhere) kept only when neither end is shut in: then the continents are
+			if ended == "none" and others and not Search.shut and not Search.ShutIn("S") then
 				failed[scont] = failed[scont] or {}
 				failed[scont][gcont] = { edits.hubs, others }
 			end
@@ -3815,7 +4265,9 @@ do
 	-- nodes, where FindRoute gave none either), false when it stopped at the
 	-- cap (Walk's "cap").
 	-- (route-ground) sUnder: the start's layer, as FindRoute's; a place's own its fourth ({ cont, x, y, under })
-	function Search.Price(scont, sx, sy, places, out, sUnder)
+	-- (1.2.3) pick: only the cheapest is wanted (M:Cheapest), so a place past the cap by its straight walk is not
+	-- walked over the grid
+	function Search.Price(scont, sx, sy, places, out, sUnder, pick)
 		if not next(CharFlights()) then
 			RefreshDiscovered()
 		end
@@ -3879,13 +4331,34 @@ do
 		-- (route-ground) and between the two, as FindRoute: a place neither reached asked again with an end's way off
 		-- a side piece over the grid
 		if M.Ground.Has(scont) then
+			-- (1.2.3, the user: "when i click on repair, it takes around good 5 seconds") for a pick, a place whose
+			-- straight walk alone is past the cap (the cheapest so far x PRICE_CAP + PRICE_EXTRA) is not walked over
+			-- the grid: no walk there is shorter than the straight line, so it is far dearer than the cheapest and has
+			-- none, as one the search stopped short of. That walk ran to GRID_ROUTE_MAX cells for nothing: ~400 ms
+			-- each of Auberdine's two far repairers, nine tenths of the pick
+			local cheapest, far = nil, nil
+			if pick then
+				for i = 1, n do
+					if out[i] and (not cheapest or out[i] < cheapest) then
+						cheapest = out[i]
+					end
+				end
+			end
 			local left = false
 			for i = 1, n do
 				local p = places[i]
 				if out[i] == nil and p[1] == scont then
-					local _, price = Search.GridRoute(scont, sx, sy, p[2], p[3])
-					out[i] = price
-					left = left or price == nil
+					if cheapest and Dist(sx, sy, p[2], p[3]) / WALK > cheapest * Search.PRICE_CAP + Search.PRICE_EXTRA then
+						far = far or {}
+						far[i] = true
+					else
+						local _, price = Search.GridRoute(scont, sx, sy, p[2], p[3])
+						out[i] = price
+						left = left or price == nil
+						if pick and price and (not cheapest or price < cheapest) then
+							cheapest = price
+						end
+					end
 				end
 			end
 			if left and Build.islands and Build.islands[scont] then
@@ -3894,7 +4367,7 @@ do
 			for i = 1, n do
 				local p = places[i]
 				local near, nd = Search.nearNode[i], Search.nearD[i]
-				if out[i] == nil and p[1] == scont and ended ~= "cap" and Search.APPROACH and near
+				if out[i] == nil and p[1] == scont and not (far and far[i]) and ended ~= "cap" and Search.APPROACH and near
 					and nd < Dist(sx, sy, p[2], p[3]) - 20 then
 					out[i] = (gScore[near] or 0) + nd / WALK * STRAIGHT_COST
 				end
@@ -3932,7 +4405,7 @@ do
 
 	local function Work(job)
 		if job.kind == "price" then
-			job.exhausted = Search.Price(job.scont, job.sx, job.sy, job.places, job.costs, job.sUnder)
+			job.exhausted = Search.Price(job.scont, job.sx, job.sy, job.places, job.costs, job.sUnder, job.pick)
 		else
 			job.points, job.cost = FindRoute(job.scont, job.sx, job.sy, job.gcont, job.gx, job.gy, job.hx, job.hy,
 				job.sUnder, job.gUnder)
@@ -3944,6 +4417,7 @@ do
 		if not job.co then
 			job.co = coroutine.create(Work)
 		end
+		job.slices = (job.slices or 0) + 1   -- (1.2.3: the loading bar's measure, Search.CrossShare)
 		Search.running, Search.slice = job, Clock()
 		local ok, err = coroutine.resume(job.co, job)
 		Search.running = nil
@@ -4006,6 +4480,7 @@ do
 			Search.repickDue = false
 			Search.frame:Hide()
 			Build.Loaded()   -- (the loading line, if it waited for this search: never held)
+			Search.CrossTick()   -- (a route to another continent's: gone)
 			return
 		end
 		local job = q[1]
@@ -4029,6 +4504,7 @@ do
 				end
 			end
 		end
+		Search.CrossTick()   -- (1.2.3: a route to another continent's loading line: its bar moved, or full and gone)
 	end
 
 	-- /route reset: the learned nodes go, with every link to them, and the
@@ -4646,9 +5122,58 @@ local function Plan(force, announce, announceText)
 	local job = { kind = "route", scont = cont, sx = x, sy = y, gcont = d.cont, gx = d.x, gy = d.y, hx = hx, hy = hy,
 		d = d, announce = announce, text = announceText, done = Search.Planned, refresh = refresh,
 		sUnder = Search.UnderMap(here), gUnder = Search.UnderMap(d.mapID) }
+	-- (1.2.3) to another continent, with no route to this place on the screen yet: the loading line while it searches
+	-- (Search.CrossShow)
+	job.cross = d.cont ~= cont and not (r and r.dest and r.dest[1] == d.cont and r.dest[2] == d.x and r.dest[3] == d.y)
 	Search.plan = job
 	if Search.Run(job) then
 		Search.Planned(job)
+	elseif job.cross then
+		C_Timer.After(Build.LOADING_AFTER, function()
+			Search.CrossShow(job)
+		end)
+	end
+end
+
+-- (1.2.3; the user, 2026-10-23: "every time when you load a route thats on a different continent, it should show the
+-- loading screen like it does on the first load") A route to another continent searches for a second or more in the
+-- game (its job in the frames' slices): the first load's line, icon and bar (Build.LOADING, Build.HELD) held while it
+-- runs, from LOADING_AFTER on as there (a quick one never flashes it). The bar: the search's slices so far (job.slices,
+-- a frame each: its legs to the docks and flight points take as many as its walk) against the last such searches'
+-- (Search.crossSlices), to BUILT; full and gone once the route is in, gone when the plan was asked again or Route
+-- switched off (Search.CrossTick, each frame of the search's).
+Search.crossSlices = 100
+
+function Search.CrossShare(job)
+	local s = (job.slices or 0) / Search.crossSlices * Build.BUILT
+	return s < Build.BUILT and s or Build.BUILT
+end
+
+function Search.CrossShow(job)
+	if job.ended or job.stale or job.failed or Search.plan ~= job or Search.crossShown or Build.loading
+		or not M.isEnabled or not MelloUI.AnnounceWait then
+		return
+	end
+	Search.crossShown = job
+	Build.HELD.share = Search.CrossShare(job)
+	MelloUI:AnnounceWait(Build.LOADING, "info", Build.HELD)
+end
+
+function Search.CrossTick()
+	local job = Search.crossShown
+	if not job then
+		return
+	end
+	if job.ended or job.stale or job.failed or Search.plan ~= job or not M.isEnabled then
+		Search.crossShown = nil
+		if job.ended and not job.failed and MelloUI.AnnounceProgress then
+			MelloUI:AnnounceProgress(Build.LOADING, 1)   -- (fading full)
+		end
+		if MelloUI.AnnounceDone then
+			MelloUI:AnnounceDone(Build.LOADING)
+		end
+	elseif MelloUI.AnnounceProgress then
+		MelloUI:AnnounceProgress(Build.LOADING, Search.CrossShare(job))
 	end
 end
 
@@ -4668,6 +5193,9 @@ end
 -- The route a plan's search found, put in place (Plan; Search.Run's done)
 function Search.Planned(job)
 	job.ended = true
+	if job.cross and job.slices then
+		Search.crossSlices = (Search.crossSlices + job.slices) / 2   -- (the loading bar's measure: Search.CrossShare)
+	end
 	if Search.plan == job then
 		Search.plan = nil
 	end
@@ -5833,7 +6361,7 @@ function M:Cheapest(candidates, costs)
 			return nil, nil, true   -- (asked for already: its answer comes)
 		end
 		local job = { kind = "price", scont = pcont, sx = px, sy = py, places = places, costs = {}, sig = sig,
-			done = Search.Priced, sUnder = sUnder }
+			done = Search.Priced, sUnder = sUnder, pick = true }
 		Search.pricing[sig] = job
 		if not Search.Run(job) then
 			return nil, nil, true
@@ -11369,8 +11897,9 @@ do
 	Build.HELD = { icon = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\page_route", share = 0 }
 
 	-- The build's work in slices (Build.Slice: one a node or a link it
-	-- handles): each of the companion's nodes unpacked and made, each link
-	-- made, and every node twice more, made compact (Links.Compact) and
+	-- handles): each of the companion's nodes unpacked, keyed, made and its
+	-- slots trimmed, each link counted and made (1.2.3: MergeRoads), and every
+	-- node twice more, made compact (Links.Compact) and
 	-- walked for the side pieces; what was baked or
 	-- learned is too little to count. From the packed strings' lengths, not
 	-- a pass over the roads.
@@ -11388,10 +11917,10 @@ do
 						l = l + #s
 					end
 					n, l = n / 6, l / 8   -- (3 + 3 characters a node, 3 + 3 + 2 a link: MergeRoads)
-					work = work + 2 * n + l
+					work = work + 4 * n + 2 * l
 				elseif type(g.nodes) == "table" and type(g.links) == "table" then
 					n, l = #g.nodes / 2, #g.links / 3
-					work = work + n + l
+					work = work + 3 * n + 2 * l
 				else
 					for _ in pairs(g) do
 						n = n + 1

@@ -3431,8 +3431,10 @@ function Cds.Aura(info)
 		return
 	end
 	local now, changed = GetTime(), false
+	-- (1.2.3, the user's error: Forever hands a whole list over secret -- a secret one read as nothing, as AuraNews;
+	-- a cooldown whose own aura's going is not told ends at its time)
 	local added, removed = info.addedAuras, info.removedAuraInstanceIDs
-	if type(added) == "table" then
+	if not Secret(added) and type(added) == "table" then
 		for _, aura in ipairs(added) do
 			local id, spell = aura.auraInstanceID, aura.spellId
 			local kind = not Secret(spell) and CDS[spell]
@@ -3446,7 +3448,7 @@ function Cds.Aura(info)
 			end
 		end
 	end
-	if type(removed) == "table" then
+	if not Secret(removed) and type(removed) == "table" then
 		for _, r in ipairs(removed) do
 			if not Secret(r) then
 				for i = #S.cds, 1, -1 do

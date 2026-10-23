@@ -14,10 +14,14 @@
 -- place: the Personal Display's left end, the Swing Timers' mover above the cast bar. The timing is the client's alone
 -- (PLAYER_SWING: its seconds to the next swing, the hand): nothing counted here. The motion (Anim:Drive: Lua only while
 -- one runs; Reduce Motion: no wind-up, the rest at its end at once): the wind-up over the wait's last share (the weapon
--- drawn back from the bar, a warm glow); the strike as the next swing comes (an axe, a sword, a mace chops; a dagger
--- or a fist weapon stabs: snapped toward the bar, settled on a spring), a streak across the target's health bar and
--- the bar lit; the blow's outcome -- the game's report of a blow on your target (UNIT_COMBAT, "target") within
--- T.outcomeWindow of your swing -- a critical blow gold and bigger, a dodge, parry or miss bounced back grey with the
+-- drawn back from the bar, a warm glow); the strike as the blow lands (an axe, a sword, a mace chops; a dagger or a fist
+-- weapon stabs: snapped toward the bar, settled on a spring), a streak across the target's health bar and the bar lit.
+-- (The user, 2026-10-23, with a video: the glow "starts when the attack animation starts ... way before the attack lands
+-- on the enemy") PLAYER_SWING comes as a swing begins; the game's report of the blow on your target (UNIT_COMBAT,
+-- "target") a moment later, as it lands -- so a swing's strike waits for that report, the time between the two learned
+-- from your last swings (Swing.Gap: their middle, so a bleed's tick or another's blow in between can't move it): a
+-- report near that time strikes with its outcome, one far earlier is left out, and with none the strike comes at the
+-- learned time. The outcome: a critical blow gold and bigger, a dodge, parry or miss bounced back grey with the
 -- game's word; (the user, 2026-10-22: "as the hits land, there should be like sun rays sparking from the middle of the
 -- icon") every blow that lands sparks sun rays from the weapon's middle (the look's light art, FrameFX.Art: the
 -- modern look's own), a critical one bigger and brighter -- each strike's turned a little from the last. Auto Shot: its aim red, four chevrons closing on the badge (moving holds them, spread and dimmed), the
@@ -60,7 +64,12 @@ SB.T = { badge = 24, badgeOff = 0.66, badgeGap = 4, windup = 0.25, strike = 0.5,
 	-- (the sun rays as a blow lands) how long they spark (a crit's a little longer), their size against the badge's
 	-- at the start and at the end (a crit's), their strength, how far each strike's turns from the last's
 	rays = 0.32, raysCrit = 0.42, raysFrom = 0.5, raysTo = 2.2, raysCritTo = 3.6, raysA = 0.75, raysCritA = 1,
-	raysTurn = 0.7 }
+	raysTurn = 0.7,
+	-- (a swing's blow: 2026-10-23) the time from a swing to its blow's report before any is learned (the user's video:
+	-- ~0.6 s), the swings it is learned from, how near the learned time a report must come to be the blow (a share of
+	-- that time), and how long after its swing a blow is waited for at most
+	-- (and the least time learned: a report sooner after its swing -- a tick in the same moment -- is never its blow)
+	landGuess = 0.6, landSamples = 9, landNear = 0.4, landWindow = 1.0, landMin = 0.15 }
 local T = SB.T
 
 -- the badge's art and its lights' colours; the slot of each hand's weapon; a weapon whose blow is a stab (a fist
@@ -80,7 +89,8 @@ SB.WORDS = { DODGE = "Dodge", PARRY = "Parry", MISS = "Miss" }   -- (where the g
 SB.HAND = { [0] = "main", [1] = "off", [2] = "ranged" }
 
 local Badge = { list = {}, pending = { at = nil, what = nil } }   -- (pending: a report of the blow before the swing)
-local Swing = { due = { main = 0, off = 0, ranged = 0 } }
+-- (gaps: the times from your last swings to their blows' reports, a ring of T.landSamples)
+local Swing = { due = { main = 0, off = 0, ranged = 0 }, gaps = {}, nGap = 0, sorted = {} }
 -- (Auto Shot) the stage -- "reload", "aim", "hold" (moving), "wand" -- and the aim's due time: one C_Timer.After a
 -- shot, the function shared (a later shot moves aimAt, an earlier call finds it not due); the range per hand
 local Ranged = { stage = nil, aimAt = 0, moving = false, wand = false }
@@ -365,25 +375,65 @@ function Badge.WindUp()
 	end
 end
 
--- the swing before landed (the next one starts): the strike, its outcome the game's report of the blow if one came
--- just before it
-function Badge.Land(hand)
-	local b = hand == "off" and Badge.small or Badge.big
-	if not (b and b.running and b.hand == hand) then
-		return
+-- the time from a swing to its blow's report: the middle of the last ones (T.landGuess before any)
+function Swing.Gap()
+	local gaps, sorted = Swing.gaps, Swing.sorted
+	local n = #gaps
+	if n == 0 then
+		return T.landGuess
 	end
-	b.windAt = nil
+	for i = 1, n do
+		sorted[i] = gaps[i]
+	end
+	table.sort(sorted)
+	return sorted[math.floor((n + 1) / 2)]
+end
+
+function Swing.Learn(gap)
+	Swing.nGap = Swing.nGap % T.landSamples + 1
+	Swing.gaps[Swing.nGap] = gap
+end
+
+-- the strike, the blow's outcome ("hit" when no report told one)
+function Badge.Land(b, what)
+	b.swungAt = nil
 	b.landAt = GetTime()
-	b.outcome = "hit"
-	local p = Badge.pending
-	if p.at and b.landAt - p.at <= T.outcomeWindow then
-		b.outcome = p.what
-	end
-	p.at = nil
+	b.outcome, b.told = what or "hit", what ~= nil
 	Badge.Said(b)
 	b.raysAt = ((b.raysAt or 0) + T.raysTurn) % (2 * math.pi)   -- (each strike's rays turned from the last's)
 	b.motion = "strike"
 	Anim:Drive(b, Badge.Step, T.strike, "linear")
+end
+
+-- a swing of `hand` began (its badge's run to the next one just started): its blow waited for -- the one before struck
+-- now if it still waits; a report just before this swing (a host's preview tells them in that order) strikes at once
+function Badge.Swung(hand)
+	local b = hand == "off" and Badge.small or Badge.big
+	if not (b and b.running and b.hand == hand) then
+		return
+	end
+	if b.swungAt then
+		Badge.Land(b, nil)
+	end
+	local now, p = GetTime(), Badge.pending
+	if p.at and now - p.at <= T.outcomeWindow then
+		local what = p.what
+		p.at = nil
+		Badge.Land(b, what)
+		return
+	end
+	b.swungAt, b.gap, b.learned = now, Swing.Gap(), false
+	C_Timer.After(b.gap, Badge.Due)
+end
+
+-- (C_Timer.After) the strike of each swing whose blow came at no report by its learned time
+function Badge.Due()
+	local now = GetTime()
+	for _, b in ipairs(Badge.list) do
+		if b.swungAt and now + 0.01 >= b.swungAt + b.gap then
+			Badge.Land(b, nil)
+		end
+	end
 end
 
 -- an avoided blow's word (the game's own: DODGE, PARRY, MISS)
@@ -398,8 +448,11 @@ function Badge.Said(b)
 	end
 end
 
--- (UNIT_COMBAT on your target) the game's report of a blow: the outcome of your swing that landed just before it,
--- else kept for the swing that comes just after it. Another player's blow in that moment can be taken for yours
+-- (UNIT_COMBAT on your target) the game's report of a blow: the swing waiting longest for its blow -- its first
+-- report is learned from; one near its learned time (or after) strikes it, one far earlier (a bleed's tick, another
+-- player's blow) is left out. With none waiting: the outcome of the strike made just before it (its learned time came
+-- first; a shot's, which strikes as it is fired), else kept for a swing that comes just after it. Another player's
+-- blow in that moment can be taken for yours
 function SB.Outcome(action, flag)
 	if not Badge.big or Secret(action) or type(action) ~= "string" then
 		return
@@ -413,15 +466,32 @@ function SB.Outcome(action, flag)
 	if not what then
 		return
 	end
-	local now, best = GetTime(), nil
+	local now, wait = GetTime(), nil
+	for _, b in ipairs(Badge.list) do
+		if b.swungAt and now - b.swungAt <= T.landWindow and (not wait or b.swungAt < wait.swungAt) then
+			wait = b
+		end
+	end
+	if wait then
+		local gap = now - wait.swungAt
+		if not wait.learned and gap >= T.landMin then
+			wait.learned = true
+			Swing.Learn(gap)
+		end
+		if gap >= wait.gap * (1 - T.landNear) then
+			Badge.Land(wait, what)
+		end
+		return
+	end
+	local best = nil
 	for _, b in ipairs(Badge.list) do
 		if b.landAt and now - b.landAt <= T.outcomeWindow and (not best or b.landAt > best.landAt) then
 			best = b
 		end
 	end
 	if best then
-		if best.outcome == "hit" then   -- (one report a blow: the first)
-			best.outcome = what
+		if not best.told then   -- (one report a blow: the first)
+			best.outcome, best.told = what, true
 			Badge.Said(best)
 		end
 	else
@@ -616,8 +686,8 @@ function SB.Start(hand, seconds)
 	if not (seconds and seconds > 0) or not Shows(hand) then
 		return
 	end
-	Badge.Land(hand)
 	Badge.Run(hand, seconds)
+	Badge.Swung(hand)   -- (after the run: a fight's first swing is a blow too)
 	Swing.due[hand] = GetTime() + seconds + T.swingGrace
 	C_Timer.After(seconds + T.swingGrace, Swing.Idle)
 end
@@ -651,7 +721,13 @@ function SB.Shot(seconds)
 	if not (seconds and seconds > 0) or not Shows("ranged") then
 		return
 	end
-	Badge.Land("ranged")
+	-- (a shot strikes as it is fired: the arrow is on its way; its report comes as it hits, the outcome then)
+	local b, p = Badge.big, Badge.pending
+	if b and b.running and b.hand == "ranged" then
+		local what = (p.at and GetTime() - p.at <= T.outcomeWindow) and p.what or nil
+		p.at = nil
+		Badge.Land(b, what)
+	end
 	Badge.Run("ranged", seconds)
 	local reload = Ranged.wand and seconds or (seconds - T.aim)
 	Ranged.stage = Ranged.wand and "wand" or "reload"
@@ -702,7 +778,7 @@ function SB.Off()
 	Ranged.stage = nil
 	Badge.pending.at = nil
 	for _, b in ipairs(Badge.list) do
-		b.running, b.windAt, b.motion = false, nil, nil
+		b.running, b.windAt, b.motion, b.swungAt = false, nil, nil, nil
 		Anim:Stop(b, "drive")
 		Anim:Stop(b, "alpha")
 		Badge.Rest(b)

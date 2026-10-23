@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.3
+
+- Route: Repair, Innkeeper, Flight Master and the other service buttons route to the nearest one at once again. Since 1.1.0 a click could take several seconds while far ones were measured that could never be the nearest.
+- Route: routes to the other continent are found faster, and while one is found "Loading navigation..." shows with its bar, as on the first route of a session.
+- Route: a route to a place the roads don't reach (inside a building, on a ledge, behind a fence) starts at once instead of after several seconds.
+- Fixed: after one route from a spot the roads don't reach, routes to the other continent could keep failing until you learned a new flight point.
+- Route uses less memory: the roads go in with about half the memory thrown away, and finding a route leaves far less behind, so MelloUI's memory reading swings much less.
+- Swing Badge: the strike shows when your blow lands, not when the swing starts, and a critical hit or a parry shows on the blow it belongs to.
+- Fixed: an error in fights from the Personal Display's Big Cooldowns when the game keeps aura updates secret.
+
 ## 1.2.2
 
 - Dungeon Info: each dungeon and raid has a Trash section: the rare and epic drops of its other creatures, with who drops each and the chance.
