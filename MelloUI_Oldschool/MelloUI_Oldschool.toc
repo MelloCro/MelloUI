@@ -2,7 +2,7 @@
 ## Title: |cff9b8cffMello|rUI Oldschool
 ## Notes: MelloUI's painted look, the hand-painted reskin: the game's windows on painted stone and parchment, the painted frames, bars, borders and minimap. Its settings are on MelloUI's Oldschool page (/mello); untick it here to not load it at all.
 ## Author: Mello
-## Version: 1.2.2
+## Version: 1.2.3
 ## Dependencies: MelloUI
 ## X-MelloUI-Feature: CharacterPanel GameMenuPanel DialogPanel MacroPanel EditModePanel AddonListPanel OptionsPanel QuestDialogPanel MerchantPanel AuctionHousePanel TrainerPanel TabardPanel TaxiPanel MailPanel BankPanel GuildBankPanel TradePanel LootPanel ItemTextPanel CharterPanel InspectPanel DressUpPanel BarberShopPanel SocketingPanel StablePanel PvPPanel BattlefieldMapPanel ReadyPanel StackSplitPanel ColorPickerPanel CalendarPanel ClockPanel ChannelPanel HelpPanel ProfessionsPanel SpellBookPanel LegacyPanel QuestLogPanel GuildPanel GroupFinderPanel CollectionsPanel UnitFramePanel CastBarPanel RaidFramePanel ActionBarPanel BackpackPanel MinimapKit TrackerPanel SocialPanel ChatPanel DamageMeterPanel TooltipPanel NameplatePanel
 ## X-MelloUI-Package: separate

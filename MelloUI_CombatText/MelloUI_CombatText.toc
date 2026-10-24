@@ -2,7 +2,7 @@
 ## Title: |cff9b8cffMello|rUI Combat Text
 ## Notes: MelloUI's Combat Text: your damage, healing and notices around you. Switch it on or off in MelloUI (/mello); untick it here to not load it at all.
 ## Author: Mello
-## Version: 1.2.2
+## Version: 1.2.3
 ## Dependencies: MelloUI
 ## OptionalDeps: MelloUI_Oldschool
 ## X-MelloUI-Feature: CombatText
