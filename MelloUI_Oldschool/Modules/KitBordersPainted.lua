@@ -349,6 +349,16 @@ Kit:AddBorderKind({ kind = "personal", key = "personalBarBorder", default = "fra
 -- (0.20.1, the user: "our swing timers, also need to be able to change their borders to the library selection") the
 -- swing timers' frame a choice of its own (their Framed look). (one look, stage B: the swing timers wear the round
 -- rim and a flat bar, no frame, so nothing reads this any more: a removal candidate for the options audit, stage H)
+-- (the user's retail test, 2026-10-27: the Default skin "loaded from the Oldschool") the Personal Display's look as
+-- the painted reskin answers it: the Personal Display Border's choice while the reskin is on, else MelloUI's own
+-- gilded strip (its Dress.Value asks here: the reskin's say stays the reskin's); its 'border' told again at the
+-- reskin's switch, so the display dresses anew
+function Kit:PersonalLook()
+	return self:IsOn("copy") and self:BorderValue("personal") or "gilded"
+end
+MelloUI:On("look:copy", function()
+	MelloUI:Fire("border", "personal", Kit:PersonalLook())
+end, "Oldschool: the Personal Display's look")
 Kit:AddBorderKind({ kind = "swing", key = "swingTimerBorder", default = "castbar", name = "Swing Timer Border",
 	values = CastLooks(), preview = "bar",
 	desc = "No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing." }, "personal")

@@ -371,10 +371,12 @@ local Dress = {}
 
 function Dress.Value()
 	local Kit = MelloUI.Kit
-	if not (Kit and Kit.Bar) then
+	-- (the painted reskin answers it: its bracket only while that reskin is on, MelloUI_Oldschool's Kit:PersonalLook --
+	-- the user's test, 2026-10-27: the Default skin "loaded from the Oldschool")
+	if not (Kit and Kit.Bar and Kit.PersonalLook) then
 		return "gilded"   -- (the plain strip in MelloUI's gold rims: 1.2.0, Gilded)
 	end
-	return Kit.BorderValue and Kit:BorderValue("personal") or "frame"
+	return Kit:PersonalLook()
 end
 
 -- a value's bracket look (its own bar pieces; an unknown one the Ornate), nil for a library style or none
@@ -4102,7 +4104,8 @@ local function CastFill()
 	end
 end
 
--- Oldschool > Borders' Personal Resource Border changed (the kit's 'border' on the bus): every part in the new look
+-- Oldschool > Borders' Personal Resource Border changed, or the painted reskin switched (the kit's 'border' on the
+-- bus, Kit:PersonalLook's): every part in the new look
 local function OnBorder(kind)
 	local ui = S.ui
 	if kind == "personal" and ui then

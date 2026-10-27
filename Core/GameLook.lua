@@ -255,7 +255,15 @@ local function Plain3(r, g, b)
 	return 1, 1, 1
 end
 
+-- (the user's retail test, 2026-10-27: "why does every single default looking window have a blue background" -- their
+-- pick, the game's dark charcoal) GAME_GROUND: the grounds of the Default skin's windows and panels -- the game's own
+-- tooltip ground without its blue (each channel its darkest), the game's dark in grey
 local function GameColour(name)
+	if name == "GAME_GROUND" then
+		local r, g, b = GameColour("TOOLTIP_DEFAULT_BACKGROUND_COLOR")
+		local m = math.min(r, g, b)
+		return m, m, m
+	end
 	local c = rawget(_G, name)
 	if type(c) == "table" then
 		if type(c.GetRGB) == "function" then
@@ -463,7 +471,7 @@ end
 --------------------------------------------------------------------------------
 -- The plate behind a block of text: the soft shade band painted, the game's
 -- tooltip frame (TooltipDefaultLayout's nine pieces, the corners unique, the
--- edges tiled, the centre in TOOLTIP_DEFAULT_BACKGROUND_COLOR, laid as the
+-- edges tiled, the centre in GAME_GROUND (the game's dark), laid as the
 -- game's NineSlice lays them) as regions of the parent round the region:
 -- under the parent's text (BACKGROUND and BORDER), over nothing of its own
 --------------------------------------------------------------------------------
@@ -536,7 +544,7 @@ local function GameFrame(p)
 		g[piece[1]] = tex
 	end
 	if not inset then
-		g.Center:SetVertexColor(GameColour("TOOLTIP_DEFAULT_BACKGROUND_COLOR"))
+		g.Center:SetVertexColor(GameColour("GAME_GROUND"))
 	end
 	p.game = g
 	return g
@@ -706,9 +714,9 @@ end
 --------------------------------------------------------------------------------
 
 local NEUTRAL = {
-	-- (1.2.4, the Default skin: the grounds the game's own tooltip ground, its dark navy -- the sketch the user approved)
-	mainWindow = "TOOLTIP_DEFAULT_BACKGROUND_COLOR", innerPanel = "TOOLTIP_DEFAULT_BACKGROUND_COLOR",
-	raisedPanel = "TOOLTIP_DEFAULT_BACKGROUND_COLOR",
+	-- (1.2.4, the Default skin: the grounds the game's dark -- its tooltip ground without the navy, GAME_GROUND; the
+	-- sketch's navy until the user's retail test, 2026-10-27)
+	mainWindow = "GAME_GROUND", innerPanel = "GAME_GROUND", raisedPanel = "GAME_GROUND",
 	border = "GRAY_FONT_COLOR", trim = "NORMAL_FONT_COLOR", selectedTrim = "NORMAL_FONT_COLOR",
 	-- (wave 4: a selection in the game's gold, as its lists' highlights, not its red)
 	text = "HIGHLIGHT_FONT_COLOR", mutedText = "GRAY_FONT_COLOR", selectedTab = "NORMAL_FONT_COLOR",
@@ -717,7 +725,7 @@ local NEUTRAL = {
 	hover = "GRAY_FONT_COLOR",
 }
 -- a backdrop's fill and edge in the game's look: the tooltip's own colours
-local BACKDROP = { fill = "TOOLTIP_DEFAULT_BACKGROUND_COLOR", border = "TOOLTIP_DEFAULT_COLOR" }
+local BACKDROP = { fill = "GAME_GROUND", border = "TOOLTIP_DEFAULT_COLOR" }
 local paints = setmetatable({}, weak)   -- [region] = { key, how, alpha, area }
 
 local function ApplyPaint(region, painted)
@@ -1089,6 +1097,29 @@ local function MarkRect(tex)
 	return n > 0 and rel or nil
 end
 
+-- (the user's retail test, 2026-10-27: the configurator's hover "way to wide" -- sized once, from a row not laid yet,
+-- it kept the game's whole piece) the piece laid on its region's middle at the smaller of the two -- again whenever
+-- the region's size changes (one hook a region, made at its first mark): never wider or taller than its row
+local markOf = setmetatable({}, weak)   -- [region] = { [tex] = true }: the marks laid on it in the game's look
+local function LayMark(tex, rel, info)
+	local ok, rw, rh = pcall(rel.GetSize, rel)
+	rw, rh = ok and Num(rw), ok and Num(rh)
+	tex:ClearAllPoints()
+	tex:SetPoint("CENTER", rel, "CENTER", 0, 0)
+	tex:SetSize(math.min(info.width, rw or 0), math.min(info.height, rh or info.height))
+end
+local MarkResized = Shared("OnSizeChanged on a game-look mark's row", function(rel)
+	local api = _G.C_Texture
+	for tex in pairs(markOf[rel] or {}) do
+		local e = marks[tex]
+		local _, atlas = Look.Art(e and e.kind == "hover" and "listHover" or "listActive")
+		local info = e and e.fills == rel and api and api.GetAtlasInfo and api.GetAtlasInfo(atlas)
+		if info then
+			LayMark(tex, rel, info)
+		end
+	end
+end, "script")
+
 local function ApplyMark(tex, painted)
 	local e = marks[tex]
 	if not e then
@@ -1097,6 +1128,9 @@ local function ApplyMark(tex, painted)
 	local W, Kit = MelloUI.Widgets, MelloUI.Kit
 	if painted then
 		if e.fills then
+			if markOf[e.fills] then
+				markOf[e.fills][tex] = nil
+			end
 			tex:ClearAllPoints()
 			tex:SetAllPoints(e.fills)
 			e.fills = nil
@@ -1119,11 +1153,14 @@ local function ApplyMark(tex, painted)
 	local info = rel and api and api.GetAtlasInfo and api.GetAtlasInfo(atlas)
 	if info then
 		e.fills = rel
-		local ok, rw, rh = pcall(rel.GetSize, rel)
-		rw, rh = ok and Num(rw), ok and Num(rh)
-		tex:ClearAllPoints()
-		tex:SetPoint("CENTER", rel, "CENTER", 0, 0)
-		tex:SetSize(math.min(info.width, rw or info.width), math.min(info.height, rh or info.height))
+		LayMark(tex, rel, info)
+		if not markOf[rel] then
+			markOf[rel] = setmetatable({}, weak)
+			if rel.HookScript then
+				Perf.HookScript(rel, "OnSizeChanged", MarkResized)
+			end
+		end
+		markOf[rel][tex] = true
 	end
 end
 

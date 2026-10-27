@@ -237,7 +237,7 @@ CEILINGS = {
     "api:Modules/MeterHistory.lua": 0,
     "api:Modules/QuestTracker.lua": 0,
     # art
-    "art:Core/GameLook.lua": 39,   # (2026-10-26, the Default skin: its palette's grounds the tooltip's own colour, +3)
+    "art:Core/GameLook.lua": 35,   # (2026-10-27: the grounds GAME_GROUND, the tooltip's colour named once, -4)
     # area
     "area:Core/Reminders.lua": 0,
     "area:Core/Widgets.lua": 1,   # (0 at 492aae6; the tree's Kit:Paint move brings Kit.lua's 'look:own' here)
@@ -266,7 +266,7 @@ CEILINGS = {
     "hygiene:MelloUI_Chat/Chat.lua": 4,
     "hygiene:MelloUI_CombatText/CombatText.lua": 0,
     "hygiene:MelloUI_GroupFrames/GroupButton.lua": 2,
-    "hygiene:MelloUI_GroupFrames/GroupDesignerPage.lua": 4,
+    "hygiene:MelloUI_GroupFrames/GroupDesignerPage.lua": 2,   # (2026-10-27: Your Indicators' canvas moved to GroupSpellGroupsPage.lua)
     "hygiene:MelloUI_GroupFrames/GroupLooks.lua": 8,
     "hygiene:MelloUI_GroupFrames/GroupSolo.lua": 1,
     "hygiene:MelloUI_QuestList/QuestListMap.lua": 1,

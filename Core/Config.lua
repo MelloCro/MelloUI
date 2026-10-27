@@ -8002,10 +8002,29 @@ do
 	-- is walked on close with the Gamepad UI). To prove in game before it ships: /console taintLog 2, then Edit Mode, Log
 	-- Out and Exit from the menu, Logs/taint.log clean of MelloUI, then MelloUI.GameMenuInside = true (off: the pill)
 	MENU.SECTION = 20   -- (the menu's own room between sections, MainMenuFrameMixin:AddSection's)
-	local function AddEntry(menu)
+	-- the menu's buttons shown now: Forever's menu keeps them in a list (GameMenuFrame.buttons); retail's keeps only its
+	-- pool (the user's retail test, 2026-10-27: "there is no game menu button" -- no list, so no place was found); one
+	-- table, filled again at each open (nothing made per open)
+	local shownButtons = {}
+	local function ShownButtons(menu)
 		local list = menu.buttons
+		if type(list) == "table" then
+			return list
+		end
+		for i = #shownButtons, 1, -1 do
+			shownButtons[i] = nil
+		end
+		local pool = menu.buttonPool
+		if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
+			for b in pool:EnumerateActive() do
+				shownButtons[#shownButtons + 1] = b
+			end
+		end
+		return shownButtons
+	end
+	local function AddEntry(menu)
 		local after
-		for _, b in ipairs(type(list) == "table" and list or {}) do
+		for _, b in ipairs(ShownButtons(menu)) do
 			local text = b.GetText and b:GetText()
 			if not MelloUI.Safe.IsSecret(text) and (text == GAMEMENU_OPTIONS or text == rawget(_G, "BLIZZARD_STORE")) then
 				local at = MelloUI.Safe.Number(b.layoutIndex)

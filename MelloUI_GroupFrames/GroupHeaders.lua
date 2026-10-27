@@ -608,6 +608,35 @@ local function PlaceLater()
 	Later(PlaceParty, "Group Frames: the normal party frames' place")
 end
 
+-- (1.2.4, the user's retail test, 2026-10-27: party portraits "set on EditMode to 100%, and on the Edit Layout 100%
+-- and they are miniature" -- their pick, bigger by default) the game's party frames held at Edit Mode's own size
+-- times Edit Layout's (the party container's scale) times PORTRAIT_BASE: about the player frame's height at 100% and
+-- 100%; Edit Mode's size read from its own writes (held.gameScale, the post-hooks below), put back when let go. Out
+-- of a fight only (the frame's geometry is the game's protected party's)
+held.PORTRAIT_BASE = 1.4
+local function ScaleGame(pf, c)
+	local set = Base(pf, "SetScale")
+	if not set or InCombatLockdown() then
+		return
+	end
+	if held.gameScale == nil then
+		local ok, s = pcall(pf.GetScale, pf)
+		held.gameScale = ok and Num(s) or 1
+	end
+	local cs, ps = Scale(c), Scale(pf:GetParent())
+	local rel = (cs and ps and ps > 0) and cs / ps or 1
+	held.scaling = true
+	pcall(set, pf, held.gameScale * rel * held.PORTRAIT_BASE)
+	held.scaling = false
+end
+-- Edit Mode sized the party frame (its Frame Size): that size kept as the game's, the frame held again
+local function OnGameScaled(_, scale)
+	if held.on and not held.scaling then
+		held.gameScale = Num(scale) or held.gameScale
+		PlaceLater()
+	end
+end
+
 -- (Edit Mode laid it, or the container moved: laid again, out of a fight)
 local function OnGameLaid()
 	if held.on and not held.placing then
@@ -680,6 +709,10 @@ local function HoldGameParty()
 		held.hooked = true
 		hooksecurefunc(pf, "SetPoint", OnGameLaid)
 		hooksecurefunc(c, "SetPoint", OnGameLaid)
+		hooksecurefunc(pf, "SetScale", OnGameScaled)
+		if type(pf.SetScaleBase) == "function" then
+			hooksecurefunc(pf, "SetScaleBase", OnGameScaled)
+		end
 		-- (the game stacked its members again -- a roster change, a pet, Edit Mode: Party Spacing again)
 		if type(pf.Layout) == "function" then
 			hooksecurefunc(pf, "Layout", OnGameLaid)
@@ -697,14 +730,27 @@ local function FreeGameParty()
 		LayGame(pf, h[1], h[2], h[3], h[4], h[5])
 		StackMembers(pf, Num(rawget(pf, "spacing")) or GAME_MEMBER.spacing, false)
 	end
+	-- (the game's own size back)
+	local set = type(pf) == "table" and Base(pf, "SetScale")
+	if set and held.gameScale and not InCombatLockdown() then
+		held.scaling = true
+		pcall(set, pf, held.gameScale)
+		held.scaling = false
+		held.gameScale = nil
+	end
 end
 
 PlaceParty = function()
 	local c = containers.party
+	local holding = S.on and S.made and GameParty()
+	local pf = rawget(_G, "PartyFrame")
+	if holding and c and type(pf) == "table" then
+		ScaleGame(pf, c)   -- (first: the plate's size follows the frames' -- GameFootprint)
+	end
 	if c then
 		c:SetSize(Footprint("party"))
 	end
-	if S.on and S.made and GameParty() then
+	if holding then
 		HoldGameParty()
 	else
 		FreeGameParty()
