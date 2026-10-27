@@ -1541,15 +1541,41 @@ do
 	end
 
 	-- (1.2.4, the retail test: "calling 'SetShown' on bad self (Attempt to access forbidden object from code tainted
-	-- by an AddOn)") a shadow, or the piece it follows, inside a frame the game made forbidden since (retail's
-	-- world-widget tooltip): never touched again -- every method but IsForbidden refuses it
+	-- by an AddOn)", twice -- the second past an IsForbidden that said no) a shadow, or the piece it follows, inside a
+	-- frame the game restricts since (retail's world-widget tooltip): never touched again. Asked of the object
+	-- (IsForbidden, HasAccessConstraints; a secret answer is no answer), and learnt from a write it refuses
+	-- (Refused: its message names a forbidden object; any other error is raised as before)
+	local dead = setmetatable({}, WEAK)   -- [region] = true: found restricted, out of every list
+	local ASK = { "IsForbidden", "HasAccessConstraints" }
 	local function Forbidden(obj)
-		local f = type(obj) == "table" and obj.IsForbidden
-		if type(f) ~= "function" then
+		if type(obj) ~= "table" then
 			return false
 		end
-		local ok, v = pcall(f, obj)
-		return not ok or v == true
+		if dead[obj] then
+			return true
+		end
+		for i = 1, #ASK do
+			local f = obj[ASK[i]]
+			if type(f) == "function" then
+				local ok, v = pcall(f, obj)
+				if not ok or (not Secret(v) and v == true) then
+					dead[obj] = true
+					return true
+				end
+			end
+		end
+		return false
+	end
+	-- a write the client refused (pcall's answer): a restricted object marked dead, another error raised
+	local function Refused(obj, ok, err)
+		if ok then
+			return false
+		end
+		if type(err) == "string" and err:find("forbidden", 1, true) then
+			dead[obj] = true
+			return true
+		end
+		error(err, 0)
 	end
 
 	-- (a partner's strip ends with it)
@@ -1564,7 +1590,10 @@ do
 			-- through a new palette)
 			c = sh.kitTint
 		end
-		sh:SetVertexColor(c[1], c[2], c[3], sh.kitStrength)
+		if Refused(sh, pcall(sh.SetVertexColor, sh, c[1], c[2], c[3], sh.kitStrength)) then
+			partners[sh] = nil
+			return
+		end
 		local l, r = sh.kitEndL, sh.kitEndR
 		if l then
 			l:SetVertexColor(c[1], c[2], c[3], sh.kitStrength)
@@ -1597,7 +1626,10 @@ do
 			return
 		end
 		local on = (sh.kitWanted and sh.kitShape and sh.kitPieceShown and sh.kitRepOn ~= false and sh.kitFollowShown ~= false) and true or false
-		sh:SetShown(on)
+		if Refused(sh, pcall(sh.SetShown, sh, on)) then
+			partners[sh] = nil
+			return
+		end
 		local l, r = sh.kitEndL, sh.kitEndR
 		if l then
 			l:SetShown(on and l.kitShape ~= nil and sh.kitOpenL == true)
@@ -1942,18 +1974,22 @@ do
 	-- piece's partner only when its scale did (Fit). A scale change of one
 	-- frame reads each hosted entry's two effective scales, no more: finding
 	-- whether an entry lies under that frame costs as many reads.
+	local function RefitOne(obj)
+		if obj.kitParts then
+			local r = Ratio(obj.rect, obj.host)
+			if r ~= obj.ratio then
+				obj.ratio = r
+				LayNine(obj)
+			end
+		elseif obj.kitShadow then
+			Fit(obj, obj.kitShadow)
+		end
+	end
 	local function Refit()
 		for obj in pairs(hosted) do
-			if Forbidden(obj) or Forbidden(obj.kitShadow) then
-				hosted[obj] = nil   -- (a forbidden frame's: dropped, Forbidden above)
-			elseif obj.kitParts then
-				local r = Ratio(obj.rect, obj.host)
-				if r ~= obj.ratio then
-					obj.ratio = r
-					LayNine(obj)
-				end
-			elseif obj.kitShadow then
-				Fit(obj, obj.kitShadow)
+			-- (a restricted frame's: dropped -- Forbidden, or the client refusing a write of the fit, Refused)
+			if Forbidden(obj) or Forbidden(obj.kitShadow) or Refused(obj, pcall(RefitOne, obj)) then
+				hosted[obj] = nil
 			end
 		end
 	end
