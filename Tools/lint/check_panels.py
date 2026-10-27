@@ -61,7 +61,7 @@ CEILINGS = {
     "safe-standin": 0,
     "fn-standin": 0,
     "shared-standin": 23,
-    "table-walk": 337,
+    "table-walk": 335,
     "addon-loaded": 33,
     "window-single": 9,
     "direct-sound": 0,

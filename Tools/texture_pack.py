@@ -164,9 +164,6 @@ LOOKS = ("Kit",) + kit_palette.FOLDERS
 # DXT sheet that fails the gate in any other look ships as a TGA in that
 # look alone, the same pixels at the same uv.
 BASE_LOOKS = ("Kit",) + kit_palette.EMBER_FOLDERS
-# the Game Menu picture's endings, one per look (GameMenuPanel.lua names the
-# file without them: "GameMenuFrame" is the painted one)
-GAMEMENU_ENDINGS = ("",) + tuple(lk.suffix for lk in kit_palette.LOOKS.values())
 SKIP_DIRS = ("Fonts", "Sounds")
 
 # screen px per UI unit
@@ -232,7 +229,6 @@ KIT_SHOWN = [
 # Everything else: UI units per FILE px (None: not known / varies), whether
 # mips are forced, and where the size comes from.
 TEX_SHOWN = [
-    (r"^Textures/GameMenuFrame", 340 / 910, False, "GameMenuPanel: 910 px art in a 340-unit frame"),
     (r"^Icons/", 62 / 256, False, "class / faction medallions in the 62-unit portrait"),
     (r"^Textures/LogoIcon", 64 / 256, False, "logo: 16-64 units (addon list, configurator)"),
     (r"^Textures/Quests/pip_", 11 / 32, False, "QuestInk.Pips: 11 units"),
@@ -252,7 +248,6 @@ TEX_SHOWN = [
 # The part of a whole file a module draws (its texcoords), as fractions of
 # the file (so a halved file keeps them); the rest is never on screen.
 TEX_DRAWN = [
-    (r"^Textures/GameMenuFrame", (910 / 1024, 1728 / 2048), "GameMenuPanel TEX_RIGHT / TEX_BOTTOM"),
     # (the last match wins) the installer's step pictures: a 2.5:1 band, the Skin step's the whole screen (16:9)
     (r"^Installer/", (1, 410 / 512), "InstallerWindow BAND_UV"),
     (r"^Installer/look_", (910 / 1024, 1), "InstallerWindow SCREEN_UV"),
@@ -325,9 +320,6 @@ CONFIGURATOR_MOTION = ("Candle", "Card1_Modern", "Card2_Modern", "Cracks_Oldscho
 DYNAMIC_PATHS = {
     ("Core/InstallerWindow.lua", "Installer/"): INSTALLER_PICTURES,
     ("Core/ConfigMotion.lua", "Textures/Configurator/"): CONFIGURATOR_MOTION,
-    # TextureFile(): the painted picture, or the look's ("_warm", "_bronze", "_<palette id>")
-    ("MelloUI_Oldschool/Modules/GameMenuPanel.lua", "Textures/GameMenuFrame"): GAMEMENU_ENDINGS,
-    ("MelloUI_Oldschool/Modules/GameMenuPanel.lua", "Textures/GameMenuFrame_"): tuple(e[1:] for e in GAMEMENU_ENDINGS if e),
 }
 # Paths the Lua finishes at run time from a table's values: (the file the
 # values are written in, a pattern for a value's Media-relative path) -> the
@@ -2008,14 +2000,12 @@ SAMPLES = [
     ("profession_backdrop", "Profession panel (alchemy)", ["Kit/backdrops/profession_alchemy.tga"], "dark", ""),
     ("profession_icon", "Profession round icon (herbalism)", ["Kit/icons/profession_herbalism.tga"], "dark", ""),
     ("medallion_alliance", "Faction medallion, Alliance", ["Icons/Faction/Alliance.tga"], "dark", ""),
-    ("game_menu", "Game menu frame, Warm iron", ["Textures/GameMenuFrame_warm.tga"], "dark", ""),
     ("chat_shade", "Chat name shade (tinted #2E1F14 x 0.55 over vellum, as Chat.lua draws it)",
      ["Textures/Chat/name_shade.tga"], "vellum", "a soft gradient band; banding would show here first"),
 ]
 
 # right-sized files shown at the size the screen draws them: key, file, title
 ONSCREEN = [
-    ("rightsize_gamemenu", "Textures/GameMenuFrame_warm.tga", "Game menu frame, Warm iron"),
     ("rightsize_alliance", "Icons/Faction/Alliance.tga", "Faction medallion, Alliance"),
     ("rightsize_classicon", "Icons/Class/MAGE.tga", "Class medallion, Mage"),
 ]
@@ -3287,7 +3277,6 @@ def main():
                               "tga_bytes", "tga_gpu")
     stems_tga = {p["rel"][:-4]: (p["tga_bytes"], p["tga_gpu"]) for p in plans}
     report["preload_tga"] = preload_stats(layout, stems_tga)
-    report["gamemenu_tga"] = {k: stems_tga.get("Textures/GameMenuFrame" + k) for k in GAMEMENU_ENDINGS}
     for o, (_, rows, pieces) in results.items():
         vres = verified[o]
         report["option_" + o] = summarise(rows, "bytes", "gpu")
@@ -3323,9 +3312,6 @@ def main():
         stems = {r["rel"][:-4]: (r["bytes"], r["gpu"]) for r in rows}
         lay_o = layout if o == "a" else load_layout(os.path.join(out, o, "KitLayout.lua"))
         report["preload_" + o] = preload_stats(lay_o, stems)
-        report["gamemenu_" + o] = {k: stems.get("Textures/GameMenuFrame" + k) for k in GAMEMENU_ENDINGS}
-        report["gamemenu_fmt_" + o] = {k: next((r["fmt"] for r in rows if r["rel"] == "Textures/GameMenuFrame%s.tga" % k), None)
-                                       for k in GAMEMENU_ENDINGS}
         if o in ("b", "c", "d"):
             # Modules/Kit.lua's own remap on this layout: a failure stops the ship
             # (a live override would draw the wrong art); stubs that no longer

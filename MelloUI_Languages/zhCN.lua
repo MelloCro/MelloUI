@@ -192,7 +192,6 @@ Lang:Add("zhCN", {
 	["Bags"] = "背包", -- draft
 	["The backpack and bag windows in the kit."] = "行囊和背包窗口使用套件外观。", -- draft
 	["Game menu"] = "游戏菜单", -- draft
-	["The Escape menu on its painted plates. With the game's Gamepad UI on, the MelloUI plate stays empty: /mello opens MelloUI's settings."] = "Esc菜单使用手绘牌匾。开启游戏的手柄界面时，MelloUI牌匾保持空白：/mello打开MelloUI的设置。", -- draft
 	["Popup dialogs"] = "弹出对话框", -- draft
 	["The game's popup dialogs (confirmations, the world refresh notice, Release spirit ...) on the kit's stone and rail, with red plate buttons."] = "游戏的弹出对话框（确认、世界刷新通知、释放灵魂……）使用套件的石材和石条，配红色牌匾按钮。", -- draft
 	["Macros"] = "宏命令", -- draft
@@ -1311,10 +1310,6 @@ Lang:Add("zhCN", {
 	["Brushed dark metal"] = "拉丝深色金属", -- draft
 	["Dark gradient"] = "深色渐变", -- draft
 	["Dark round gradient"] = "深色圆形渐变", -- draft
-	-- GameMenuPanel
-	["Game Menu Panel"] = "游戏菜单面板", -- draft
-	["The Escape menu on a painted stone and iron frame with red plates for its buttons."] = "Esc菜单使用手绘的石铁边框，按钮为红色牌匾。", -- draft
-	["Nine red plates under a gold header. The way out, in stone and iron."] = "金色标题下九块红色牌匾。出口，以石与铁铸成。", -- draft
 	-- DialogPanel
 	["Dialogs Kit"] = "对话框套件", -- draft
 	["The game's popup dialogs on the kit's stone and rail with red plate buttons, and a parchment sheet if you choose one."] = "游戏的弹出对话框使用套件的石材和石条，配红色牌匾按钮，你选择的话再加一张羊皮纸。", -- draft

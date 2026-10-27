@@ -90,6 +90,7 @@ QI.INK = {
 	text  = { 0.227, 0.165, 0.110 },   -- #3A2A1C, objectives
 	faded = { 0.310, 0.255, 0.200 },   -- #4F4133, a trivial or done quest: 5 : 1, still readable
 	                                   -- (user, 2026-09-23: the first, #7E6C54 at 2.5 : 1, was hard to read)
+	mark  = { 0.500, 0.110, 0.050 },   -- #801C0D, a red ink for what is picked (1.2.4: the configurator's chips in ink)
 }
 -- a tier's pip: the game's difficulty colours, deep enough to stand on parchment
 QI.TIER_COLOUR = {

@@ -192,7 +192,6 @@ Lang:Add("koKR", {
 	["Bags"] = "가방", -- draft
 	["The backpack and bag windows in the kit."] = "소지품과 가방 창에 키트 적용.", -- draft
 	["Game menu"] = "게임 메뉴", -- draft
-	["The Escape menu on its painted plates. With the game's Gamepad UI on, the MelloUI plate stays empty: /mello opens MelloUI's settings."] = "Esc 메뉴를 페인팅 명판 위에. 게임의 게임패드 UI가 켜져 있으면 MelloUI 명판은 비어 있습니다: /mello 로 MelloUI 설정을 엽니다.", -- draft
 	["Popup dialogs"] = "팝업 대화 상자", -- draft
 	["The game's popup dialogs (confirmations, the world refresh notice, Release spirit ...) on the kit's stone and rail, with red plate buttons."] = "게임의 팝업 대화 상자(확인, 세계 새로 고침 알림, 영혼 해방...)를 키트의 돌과 레일 위에, 빨간 명판 버튼과 함께.", -- draft
 	["Macros"] = "매크로", -- draft
@@ -1311,10 +1310,6 @@ Lang:Add("koKR", {
 	["Brushed dark metal"] = "브러시드 어두운 금속", -- draft
 	["Dark gradient"] = "어두운 그라데이션", -- draft
 	["Dark round gradient"] = "어두운 원형 그라데이션", -- draft
-	-- GameMenuPanel
-	["Game Menu Panel"] = "게임 메뉴 패널", -- draft
-	["The Escape menu on a painted stone and iron frame with red plates for its buttons."] = "버튼에 빨간 명판을 단, 돌과 철의 페인팅 테두리 위 Esc 메뉴.", -- draft
-	["Nine red plates under a gold header. The way out, in stone and iron."] = "금빛 머리글 아래 빨간 명판 아홉 개. 돌과 철로 된 나가는 길.", -- draft
 	-- DialogPanel
 	["Dialogs Kit"] = "대화 상자 키트", -- draft
 	["The game's popup dialogs on the kit's stone and rail with red plate buttons, and a parchment sheet if you choose one."] = "키트의 돌과 레일 위, 빨간 명판 버튼이 있는 게임 팝업 대화 상자, 원하면 양피지까지.", -- draft

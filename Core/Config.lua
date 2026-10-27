@@ -112,9 +112,12 @@ local CONFIG = {
 		default = { file = TEXTURE_PATH .. "Configurator\\Painting_Default.tga", side = 266, head = 142, foot = 86,
 			footMid = 39, brand = 118, ring = { x = 55, y = 55, size = 58 }, title = { x = 104, y = 57, size = 24 },
 			grab = 108, headTitle = 26 },
+		-- (sideWash, 1.2.4 -- the user, 2026-10-27: the side column "hard to read"; their pick B of
+		-- oldschool_readable_sketch, "Quiet stone": the stone under the list darkened by the inner panel's colour at
+		-- that alpha, its cracks faint, no edge of its own)
 		oldschool = { file = TEXTURE_PATH .. "Configurator\\Painting_Oldschool.tga", side = 266, head = 147, foot = 114,
 			footMid = 51, brand = 120, ring = { x = 55, y = 55, size = 58 }, title = { x = 104, y = 55, size = 36 },
-			grab = 110, headTitle = 40 },
+			grab = 110, headTitle = 40, sideWash = 0.6 },
 	},
 	COORDS = { 0, 0.75, 0, 1 },   -- (each painting in the left three quarters of its 2048 x 1024 file)
 	-- the content inside its area: the page scroll's left past the side line, its right short of the window's edge
@@ -125,6 +128,9 @@ local CONFIG = {
 	HEAD_IN = 26, HEAD_TOP = 14, HEAD_RIGHT = 24, HEAD_CLOSE = 58, TABS_UP = 10, TAB_GAP = 4,
 	-- the side column: its rows' inset, the fixed entries' rows, the list's rows and headers, the foot line
 	SIDE_IN = 8, FIXED_ROW = 32, LIST_ROW = 29, LIST_HEAD = 28, SIDE_FOOT = 30, CONTENT_LEFT = 270,
+	-- (the quiet stone's, spec.sideWash: over the painting's ground, -7 in KitWindow's FLAT.GROUND; its top this far
+	-- over the fixed entries, under the brand's line)
+	SIDE_WASH_LEVEL = -6, SIDE_WASH_UP = 12,
 	FOOT_IN = 26, FOOT_GAP = 12,
 }
 for _, spec in pairs(CONFIG.PAINTING) do
@@ -171,10 +177,10 @@ local CHANGELOG = {
 		"Party frames: Flip Horizontally (Party > Layout) puts the portrait on the right, for a party on the right side of the screen.",
 		"Previews: a dragged part stays inside; indicators: right-click to remove, spell groups to drag onto your frame (heals over time, defensives ...).",
 		"Fixed: Show Yourself In Your Party with Party Frames (Portraits). Mouseover Highlight: the frame under your mouse lights up.",
-		"Skin (Look > General): Default dresses MelloUI's own windows, raid frames and marks in the game's own look; the effects painted in each skin's style.",
+		"Skin (Look > General): Default dresses MelloUI's own windows, raid frames and marks in the game's own look; the effects painted in each skin's style; one Game Menu for all.",
 		"A new installer: your skin first, then each part of the UI step by step, with a picture of every choice.",
 		"Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles.",
-		"The configurator: one painted window per skin that moves a little while open (Oldschool's pages in ink on parchment); Quality of Life holds Automation, Screen Text, Reminders and Tooltip.",
+		"The configurator: one painted window per skin that moves a little while open (Oldschool's in ink on parchment); Quality of Life holds Automation, Screen Text, Reminders and Tooltip.",
 		"Options two to a line, none greyed out: they show once their switch is on, a switch's own settings behind its cog.",
 		"Look holds every font (a card for each part) and every bar texture, background and border; Colours the health colours.",
 	} },
@@ -4057,10 +4063,25 @@ do
 	function DUI.StageHead(page)
 		if not page.stageHead then
 			page.stageHead = CreateFrame("Frame", nil, page)
-			-- (every designer preview on one dark ground, its head row too -- the user, 2026-10-16: "we want visual
-			-- consistency, and not that every preview window looks different")
-			W.Solid(page.stageHead, "BACKGROUND", "innerPanel", 1):SetAllPoints(page.stageHead)
+			if SKIN then
+				-- (1.2.4, Oldschool -- the user's pick 1 of oldschool_readable_sketch: the chips in ink on the
+				-- parchment) the window's own painting cut to the head's place, laid again as it moves (DUI.PatchHead)
+				page.stageGround = page.stageHead:CreateTexture(nil, "BACKGROUND")
+				page.stageGround:SetAllPoints(page.stageHead)
+			else
+				-- (every designer preview on one dark ground, its head row too -- the user, 2026-10-16: "we want
+				-- visual consistency, and not that every preview window looks different")
+				W.Solid(page.stageHead, "BACKGROUND", "innerPanel", 1):SetAllPoints(page.stageHead)
+			end
 			page.stageHead:Hide()
+		end
+	end
+
+	-- the head's painted ground cut again to where it stands now (Oldschool's; nothing on the other looks)
+	function DUI.PatchHead(page)
+		local g = page.stageGround
+		if g and SKIN and page.stageHead:IsShown() then
+			SKIN:Patch(g, page.stageHead)
 		end
 	end
 
@@ -4085,9 +4106,10 @@ do
 		end
 		local slot = CreateFrame("Frame", nil, page)
 		slot:SetFrameLevel(page:GetFrameLevel() + 40)
-		-- (the stages' one dark ground over the whole slot; the sample bare on it, no box of its own)
-		W.Solid(slot, "BACKGROUND", "innerPanel", 1):SetAllPoints(slot)
-		W.Edges(slot, "border", "BORDER")
+		-- (the stages' one ground over the whole slot, ConfigPreview's Ground; the sample bare on it, no box of its own)
+		local ground, edge = CP.Ground(SKIN)
+		W.Solid(slot, "BACKGROUND", ground, 1):SetAllPoints(slot)
+		W.Edges(slot, edge, "BORDER")
 		slot:EnableMouse(true)
 		local p = CP.Make(slot, kind, SKIN, { bare = true })
 		if not p then
@@ -4623,6 +4645,7 @@ do
 		local top = DUI.Top(page)
 		if top then
 			top:Stick((Num(scroll:GetVerticalScroll()) or 0) + (top.pinAbove or 0))
+			DUI.PatchHead(page)
 		end
 	end
 
@@ -4646,7 +4669,8 @@ do
 		for _, sec in ipairs(page.sections) do
 			page.secByName[sec.name] = sec
 		end
-		page.elChips = W.Chips(page, { width = page.width - PAD * 2, onPick = function(_, key)
+		-- (1.2.4, Oldschool: the chips in ink on the parchment -- the user's pick 1 of oldschool_readable_sketch)
+		page.elChips = W.Chips(page, { width = page.width - PAD * 2, ink = KIT and "tab" or nil, onPick = function(_, key)
 			local sec = page.secByName[key .. ":element"] or page.secByName[key]
 			if sec and sec ~= page.current then
 				page:Select(sec, true)
@@ -4656,7 +4680,8 @@ do
 		if KIT then
 			CONFIG.InkOn(page.partsLabel, "title")   -- (1.2.4, stage 5: on the parchment, CONFIG.Paper)
 		end
-		page.partChips = W.Chips(page, { width = page.width - PAD * 2 - PARTS_W, onPick = function(_, key)
+		page.partChips = W.Chips(page, { width = page.width - PAD * 2 - PARTS_W, ink = KIT and "box" or nil,
+			onPick = function(_, key)
 			local sec = page.dEl and page.secByName[page.dEl .. ":" .. key]
 			if sec and sec ~= page.current then
 				page:Select(sec, true)
@@ -4685,6 +4710,7 @@ do
 			page.stageHead:SetHeight(chipsH + DUI.HEAD_GAP + 2)
 			page.stageHead:SetFrameLevel(level)
 			page.stageHead:Show()
+			DUI.PatchHead(page)
 			page.elChips:SetPoint("BOTTOMLEFT", stage, "TOPLEFT", 0, DUI.HEAD_GAP)
 			page.elChips:SetFrameLevel(level + 2)
 			y = stage.y0 + stage:GetHeight() + DUI.HEAD_GAP
@@ -7398,6 +7424,23 @@ do
 		rail.box:ClearAllPoints()
 		rail.box:SetPoint("TOPLEFT", fixed.box, "BOTTOMLEFT", 0, -4)
 		rail.box:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", IN, CONFIG.SIDE_FOOT + 6)
+		-- (the look's quiet stone under the list: spec.sideWash, over the painting and under the rows; from under the
+		-- brand's line to over the side foot line, the side column's width)
+		local wash = window.sideWash
+		if spec.sideWash and not wash then
+			wash = W.Solid(window, "BACKGROUND", "innerPanel", spec.sideWash)
+			wash:SetDrawLayer("BACKGROUND", CONFIG.SIDE_WASH_LEVEL)
+			window.sideWash = wash
+		end
+		if wash then
+			wash:SetShown(spec.sideWash ~= nil)
+			wash:ClearAllPoints()
+			wash:SetPoint("TOPLEFT", fixed.box, "TOPLEFT", -IN, CONFIG.SIDE_WASH_UP)
+			wash:SetPoint("BOTTOMRIGHT", window, "BOTTOMLEFT", side - 10, CONFIG.SIDE_FOOT - 4)
+			if spec.sideWash then
+				W.Paint(wash, "innerPanel", "vertex", spec.sideWash)
+			end
+		end
 		local sideFoot = window.sideFoot
 		sideFoot:ClearAllPoints()
 		sideFoot:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", 18, 6)
@@ -7823,23 +7866,17 @@ end
 --     OnShow / OnHide and SetAlpha are post-hooks)
 --   * made at the menu's first show with the mouse UI, never at login; never
 --     made or shown while the game's Gamepad UI is on (there: /mello)
---   * centred under the menu; the Game Menu Panel lays it on its MelloUI
---     plate (MelloUI_Oldschool/Modules/GameMenuPanel.lua, Buttons), as it did the menu's own,
---     and there, inside the menu, puts it one strata up: a raise of the
---     (toplevel) menu while it shows does not carry the button along
+--   * centred under the menu
 --   * at the menu's alpha, which Windows Fade In eases in as it opens
--- The menu's OnShow hook is put on here, at load: before the Game Menu
--- Panel's (its OnEnable), so the button is there when the panel lays it.
 -- Its look (2026-10-20, the user's pick B of the game menu sheet: "i would
 -- like the MelloUI button to stand out more"): the gold pill (W.Pill, lit
 -- under the pointer) with the logo badge over its left end (its click too)
 -- and the label in MelloUI's font, `text` on the gold. The first time the
 -- menu opens in a session the badge pops in with one soft glow round it
 -- (MelloUI.Shade's, kept still, faded in and out once); none under Reduce
--- Motion. With MelloUI Oldschool's painted menu (its Game Menu Panel on) the
--- button wears that menu's own look, as before: the panel fades the pill
--- (the button's own textures) as it dresses it, and here the badge and the
--- glow stay hidden, the label is left unpainted and centred.
+-- Motion. One menu for every skin (1.2.4, the user, 2026-10-27: "all 3 Skins
+-- should have only 1 shared game menu"): MelloUI Oldschool's painted menu,
+-- its Game Menu Panel, is gone.
 do
 	local menuButton
 	local menuParts = {}   -- badge, glow (their frames), greeted (the first open's glow played)
@@ -7917,36 +7954,18 @@ do
 		hooksecurefunc(menu, "SetAlpha", FollowAlpha)
 	end
 
-	-- MelloUI Oldschool's painted menu (its Game Menu Panel on) lays the button on
-	-- its own plate, in its own look
-	local function PaintedMenu()
-		local panel = MelloUI:GetModule("GameMenuPanel")
-		return panel and panel.isEnabled and true or false
-	end
-
-	-- the look for the menu it shows with, each show: MelloUI's own, or nothing
-	-- over the painted menu's (see above; the badge's click reach too)
-	local function MenuLook(painted)
+	-- the pill's look, each show (the badge's click reach too)
+	local function MenuLook()
 		local fs = menuButton:GetFontString()
-		menuParts.badge:SetShown(not painted)
-		if painted then
-			menuParts.glow:Hide()
-			MelloUI.Painter.Unpaint(fs, "text")
-			local font = rawget(_G, "GameFontHighlightLarge")
-			if font and font.GetTextColor then
-				fs:SetTextColor(font:GetTextColor())
-			end
-			menuButton:SetHitRectInsets(0, 0, 0, 0)
-		else
-			W.Paint(fs, "text", "text")
-			menuButton:SetHitRectInsets(MENU.BADGE_X - MENU.BADGE / 2, 0, 0, 0)
-		end
+		menuParts.badge:Show()
+		W.Paint(fs, "text", "text")
+		menuButton:SetHitRectInsets(MENU.BADGE_X - MENU.BADGE / 2, 0, 0, 0)
 		fs:ClearAllPoints()
-		fs:SetPoint("CENTER", painted and 0 or MENU.TEXT_X, 0)
-		-- (the panel's own light: a texture of its, faded here on MelloUI's look)
+		fs:SetPoint("CENTER", MENU.TEXT_X, 0)
+		-- (the template's own light: the pill lights itself)
 		local hl = menuButton:GetHighlightTexture()
 		if hl then
-			hl:SetAlpha(painted and 1 or 0)
+			hl:SetAlpha(0)
 		end
 	end
 
@@ -7971,11 +7990,10 @@ do
 			menuParts.glow:SetFrameLevel(level + 1)
 			menuParts.badge:SetFrameLevel(level + 2)
 		end
-		local painted = PaintedMenu()
-		MenuLook(painted)
+		MenuLook()
 		FollowAlpha(menu, menu:GetAlpha())
 		menuButton:Show()
-		if not (painted or menuParts.greeted) then
+		if not menuParts.greeted then
 			menuParts.greeted = true
 			local Anim = MelloUI.Anim
 			if not Anim.reduceMotion then

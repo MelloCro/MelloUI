@@ -25,6 +25,8 @@
 - The options stand two to a line, each one's note under its name; a module's own switch, long lists and headings take the whole width. Options that only work while a switch is on are no longer greyed out: they show as soon as you switch it on, and a switch's own settings sit behind the cog beside it. A search for a hidden option takes you to the switch that shows it.
 - Quality of Life: Automation, Screen Text, Reminders & Widgets and Tooltip are one page now, their tabs side by side (Vendor, Restock, Quests, Notices, Combat Text, Gains, Error Messages, Reminders, Widgets, FPS / Latency, Tooltip), and the side list is shorter.
 - Look holds every font and every bar texture. Fonts: the Font Style, its sizes and faces, then a card for each part with fonts of its own (Unit Frames, Party & Raid, Buffs & Debuffs, Personal Display, Quest Tracker, Combat Text, FPS / Latency). Textures: Every Bar, then each kind of bar (Same as Every Bar until you pick one), the tooltip's and the chat's backgrounds and borders. Colours: the health bar colours and the execute range. The frames' pages show a link to each.
+- Oldschool's configurator is easier to read: the stone under the page list is quieter, and on the frame designers the frames and their parts are written in ink on the parchment (the picked one in red, underlined), the preview on a warm dark in a bronze edge.
+- One Game Menu for every skin: MelloUI Oldschool no longer paints its own menu.
 
 ## 1.2.3
 

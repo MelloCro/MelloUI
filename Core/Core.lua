@@ -3674,7 +3674,6 @@ MelloUI.Features = {
 	-- (one look, stage I) the painted reskin, MelloUI_Oldschool: every module
 	-- of its painted skins (its TOC's '## X-MelloUI-Feature:' line names them)
 	CharacterPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
-	GameMenuPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
 	DialogPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
 	MacroPanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },
 	EditModePanel = { addon = "MelloUI_Oldschool", title = "Oldschool" },

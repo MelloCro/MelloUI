@@ -765,6 +765,38 @@ function Shell:LayPainting()
 	end
 end
 
+-- (1.2.4; the user's pick 1 of oldschool_readable_sketch, 2026-10-27) `tex` drawn with the painting the window wears,
+-- cut to `region`'s place on it: a pinned part's ground (the designer's chip row over its stage) that looks like the
+-- paper under it while the rows pass beneath. The caller lays it again where the region moves (its scroll); false
+-- with no painting or a rect that does not read
+function Shell:Patch(tex, region)
+	local spec = self:PaintingSpec()
+	local frame = self.frame
+	if not (spec and frame and tex and region) then
+		return false
+	end
+	local Safe = MelloUI.Safe
+	local fl, fb, fr, ft = Safe.ScreenRect(frame)
+	local rl, rb, rr, rt = Safe.ScreenRect(region)
+	if not (fl and rl) or fr <= fl or ft <= fb then
+		return false
+	end
+	local c = spec.coords or { 0, 1, 0, 1 }
+	local function U(x)
+		return c[1] + (c[2] - c[1]) * (x - fl) / (fr - fl)
+	end
+	local function V(y)
+		return c[3] + (c[4] - c[3]) * (ft - y) / (ft - fb)
+	end
+	if tex.melloPatchFile ~= spec.file then
+		tex.melloPatchFile = spec.file
+		tex:SetTexture(spec.file)
+	end
+	tex:SetTexCoord(U(rl), U(rr), V(rt), V(rb))
+	tex:SetVertexColor(1, 1, 1, 1)
+	return true
+end
+
 -- MelloUI.Skin's follower (the painted windows'): Default <-> Modern -- the look laid again, the window's listeners told
 -- (the kit's look unchanged)
 function Shell.SkinSwitched(shell)

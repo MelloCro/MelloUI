@@ -192,7 +192,6 @@ Lang:Add("ruRU", {
 	["Bags"] = "Сумки", -- draft
 	["The backpack and bag windows in the kit."] = "Рюкзак и окна сумок в наборе.", -- draft
 	["Game menu"] = "Меню игры", -- draft
-	["The Escape menu on its painted plates. With the game's Gamepad UI on, the MelloUI plate stays empty: /mello opens MelloUI's settings."] = "Меню Esc на рисованных табличках. При включённом интерфейсе контроллера игры табличка MelloUI остаётся пустой: /mello открывает настройки MelloUI.", -- draft
 	["Popup dialogs"] = "Всплывающие диалоги", -- draft
 	["The game's popup dialogs (confirmations, the world refresh notice, Release spirit ...) on the kit's stone and rail, with red plate buttons."] = "Всплывающие диалоги игры (подтверждения, уведомление об обновлении мира, «Освободить дух»...) на камне и планке набора, с кнопками-красными табличками.", -- draft
 	["Macros"] = "Макросы", -- draft
@@ -1311,10 +1310,6 @@ Lang:Add("ruRU", {
 	["Brushed dark metal"] = "Шлифованный тёмный металл", -- draft
 	["Dark gradient"] = "Тёмный градиент", -- draft
 	["Dark round gradient"] = "Тёмный круглый градиент", -- draft
-	-- GameMenuPanel
-	["Game Menu Panel"] = "Панель меню игры", -- draft
-	["The Escape menu on a painted stone and iron frame with red plates for its buttons."] = "Меню Esc на рисованной рамке из камня и железа с красными табличками для кнопок.", -- draft
-	["Nine red plates under a gold header. The way out, in stone and iron."] = "Девять красных табличек под золотой шапкой. Выход — в камне и железе.", -- draft
 	-- DialogPanel
 	["Dialogs Kit"] = "Набор диалогов", -- draft
 	["The game's popup dialogs on the kit's stone and rail with red plate buttons, and a parchment sheet if you choose one."] = "Всплывающие диалоги игры на камне и планке набора с кнопками-красными табличками и листом пергамента, если вы его выберете.", -- draft

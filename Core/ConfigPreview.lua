@@ -799,6 +799,16 @@ local function MakeCorner(parent, kind, def, skin, bare)
 	return p
 end
 
+-- every preview's one ground and edge (2026-10-16: one dark ground for all), by the configurator's look: on the kit's
+-- parchment (`skin`: Oldschool) the window's warm dark in a bronze rule, never the near-black that stood out of the
+-- paper (the user, 2026-10-27: "the preview window" hard to read; their pick 1 of oldschool_readable_sketch)
+function Preview.Ground(skin)
+	if skin then
+		return "mainWindow", "trim"
+	end
+	return "innerPanel", "border"
+end
+
 -- (a wide stage: below, "The wide stage")
 function Preview.Make(parent, kind, skin, opts)
 	local def = parent and Reg.kinds[kind]
@@ -2407,8 +2417,9 @@ do
 		stage.level = (Num(Safe.Call(parent, "GetFrameLevel")) or 0) + K.LIFT
 		stage:SetFrameLevel(stage.level)
 		stage:EnableMouse(true)
-		W.Solid(stage, "BACKGROUND", "innerPanel", 1):SetAllPoints(stage)   -- (every preview's one dark ground: 2026-10-16)
-		W.Edges(stage, "border", "BORDER")
+		local ground, edge = Preview.Ground(skin)
+		W.Solid(stage, "BACKGROUND", ground, 1):SetAllPoints(stage)   -- (every preview's one ground: Preview.Ground)
+		W.Edges(stage, edge, "BORDER")
 		stage.x0, stage.y0, stage.anchor = Num(opts.x) or 0, Num(opts.y0) or 0, opts.anchor or parent
 		stage.stuckY = stage.y0
 		stage:SetPoint("TOPLEFT", stage.anchor, "TOPLEFT", stage.x0, -stage.y0)

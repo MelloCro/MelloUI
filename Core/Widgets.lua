@@ -6398,7 +6398,8 @@ end
 -- small flat buttons, wrapping at `width`, the picked one gold (W.FlatGold).
 --   W.Chips(parent, spec) -> chips   spec: height (22), gap (4), width (the
 --     row's room; nil: one line), select (false: no pick kept, the anchors),
---     onPick fn(chips, key, item)
+--     onPick fn(chips, key, item), ink ("tab" / "box": in ink on parchment,
+--     Oldschool's configurator -- InkLook)
 --   chips:SetItems(items)   items { key, label, state (nil, "off" or
 --     "locked": dimmed, still clickable), new (its New tag), tip }; the
 --     buttons come from the chips' own pool (a set again makes none after
@@ -6504,10 +6505,45 @@ do
 	end
 	local Pill = W.Pill
 
+	-- (1.2.4, Oldschool's configurator -- the user, 2026-10-27, its preview "hard to read"; their pick 1 of
+	-- oldschool_readable_sketch) a chip in ink on the parchment, spec.ink: no pill, its label in QuestInk's inks two
+	-- sizes up and without an outline; "tab" (the frames' row): the picked one in the red mark ink, underlined; "box"
+	-- (the Parts line): each in a thin faded-ink box, the picked one's box and label in the mark ink
+	local INK_UP = 2
+	local function InkLook(b, picked, on)
+		local INK = MelloUI.QuestInk.INK
+		local fs, ink = b:GetFontString(), b.melloInk
+		local c = (not on and INK.faded) or (picked and INK.mark) or (flatHover[b] and INK.title) or INK.text
+		if fs then
+			-- (its face each time from the button's own font: the template swaps font objects on hover, and the
+			-- Fonts module may change the face)
+			local base = b.GetNormalFontObject and b:GetNormalFontObject()
+			local ok, face, size = false, nil, nil
+			if base and base.GetFont then
+				ok, face, size = pcall(base.GetFont, base)
+			end
+			if ok and face and Num(size) then
+				fs:SetFont(face, size + INK_UP, "")
+			end
+			fs:SetShadowOffset(0, 0)   -- (ink casts no shadow: under the glyph, unseen)
+			fs:SetTextColor(c[1], c[2], c[3], 1)
+		end
+		ink.line:SetShown(ink.kind == "tab" and picked and true or false)
+		local e = picked and INK.mark or INK.faded
+		for i = 1, #ink.box do
+			ink.box[i]:SetVertexColor(e[1], e[2], e[3], picked and 1 or 0.7)
+			ink.box[i]:SetShown(ink.kind == "box")
+		end
+	end
+
 	local function ChipLook(b)
 		local chips, item = b.melloChips, b.melloItem
 		local picked = chips and item and chips.picked ~= nil and item.key == chips.picked
 		local on = b:IsEnabled() and true or false
+		if b.melloInk then
+			InkLook(b, picked, on)
+			return
+		end
 		Pill(b, picked and "on" or "off")
 		local fs = b:GetFontString()
 		if fs then
@@ -6542,6 +6578,45 @@ do
 		if Skin then
 			Skin.followers[b] = ChipLook   -- (1.2.4: the skin switched, the pill in its look)
 		end
+	end
+
+	-- a chip button made an ink chip once (spec.ink, InkLook): the flat plate hidden, the label off the palette's
+	-- paint, two sizes up without an outline, its underline and box made
+	local function MakeInk(b, kind)
+		b.melloFill:Hide()
+		for i = 1, #b.melloEdges do
+			b.melloEdges[i]:Hide()
+		end
+		local fs = b:GetFontString()
+		if fs then
+			MelloUI.Painter.Unpaint(fs, "text")
+		end
+		local ink = { kind = kind, box = {} }
+		ink.line = b:CreateTexture(nil, "ARTWORK")
+		ink.line:SetTexture(WHITE)
+		ink.line:SetHeight(2)
+		local mark = MelloUI.QuestInk.INK.mark
+		ink.line:SetVertexColor(mark[1], mark[2], mark[3], 1)
+		if fs then
+			ink.line:SetPoint("TOPLEFT", fs, "BOTTOMLEFT", -2, -2)
+			ink.line:SetPoint("TOPRIGHT", fs, "BOTTOMRIGHT", 2, -2)
+		end
+		-- (W.Edges' four lines, in ink: not the palette's paint, which a palette switch would lay over them)
+		for i = 1, 4 do
+			ink.box[i] = b:CreateTexture(nil, "BORDER")
+			ink.box[i]:SetTexture(WHITE)
+		end
+		local e = ink.box
+		e[1]:SetPoint("TOPLEFT", b, "TOPLEFT", 0, 0)
+		e[1]:SetPoint("BOTTOMRIGHT", b, "TOPRIGHT", 0, -1)
+		e[2]:SetPoint("TOPLEFT", b, "BOTTOMLEFT", 0, 1)
+		e[2]:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 0, 0)
+		e[3]:SetPoint("TOPLEFT", b, "TOPLEFT", 0, 0)
+		e[3]:SetPoint("BOTTOMRIGHT", b, "BOTTOMLEFT", 1, 0)
+		e[4]:SetPoint("TOPLEFT", b, "TOPRIGHT", -1, 0)
+		e[4]:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 0, 0)
+		b.melloInk = ink
+		b.melloLook = ChipLook
 	end
 
 	local function Paint(chips)
@@ -6595,6 +6670,9 @@ do
 
 	-- a chip's width: its label and, while its update runs, its New tag
 	local function Fit(b, item)
+		if b.melloInk then
+			ChipLook(b)   -- (the ink's larger face first: the width is the label's in it)
+		end
 		local fs = b:GetFontString()
 		local w = math.max(CHIP_MIN, math.ceil((fs and TextWidth(fs) or 24) + 2 * CHIP_PAD))
 		local new = item.new ~= nil and MelloUI:IsNew(item.new)
@@ -6617,7 +6695,11 @@ do
 			local b = chips.buttons[i]
 			if not b then
 				b = W.Button(chips, "", CHIP_MIN, nil, { height = h })
-				MakePill(b)
+				if chips.spec.ink then
+					MakeInk(b, chips.spec.ink)
+				else
+					MakePill(b)
+				end
 				b.melloChips = chips
 				Perf.SetScript(b, "OnClick", ChipClick)
 				Perf.HookScript(b, "OnEnter", ChipEnter)

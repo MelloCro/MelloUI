@@ -45,9 +45,9 @@ their compass gems recoloured (GEM_TWINS).
 build_kit.py runs this after writing Media/Kit; or on its own:
     python Tools/kit_palette.py [--only LOOK,...] [--jobs N]
         Media/Kit -> each look's folder (KitWarm, KitBronze, Kit<Id>: LOOKS);
-        Media/Textures/GameMenuFrame -> _warm, _bronze, _<id>
+        each of TEXTURES (none now) -> _warm, _bronze, _<id>
     python Tools/kit_palette.py --check [--jobs N]
-        builds nothing: exit 1 when a look's master or Game Menu picture is
+        builds nothing: exit 1 when a look's master or whole picture is
         not what Tools/palettes.json and these ramps make (run it beside
         build_nineslice --check and texture_pack ship --check)
     python Tools/kit_palette.py sheets [--out DIR]
@@ -244,7 +244,7 @@ GOLDEN = re.compile(r"^(buttons/(arrow|checkbox|cog|plus|minus|iconplate)_|windo
 # Each look: its folder beside Media/Kit (Kit:LookFolder in Kit.lua picks it
 # from the palette and Kit Colours), its ramps (the metal, the red, a whole
 # frame's gold), its palette and the ending of its whole frames' files
-# ("GameMenuFrame_warm"). Ember's two looks keep the keys Kit Colours stores
+# (a TEXTURES file + "_warm"). Ember's two looks keep the keys Kit Colours stores
 # ("warm", "bronze"); every other palette's one look is keyed by its id.
 Look = namedtuple("Look", "folder ramp red gold palette suffix")
 LOOKS = {"warm": Look("KitWarm", WARM, RED, GOLD, DEFAULT, "_warm"),
@@ -509,11 +509,11 @@ def check(kit=KIT, textures=None, jobs=None):
 
 
 # Whole painted frames outside the kit (Media/Textures), one file per look
-# beside the painted one ("GameMenuFrame_warm.tga", "GameMenuFrame_obsidian.tga";
-# user, 2026-09-24: the Game Menu kept its painted colours in both looks).
-# Their gold (the Game Menu's header plate) stays gold in the palette's trim,
-# not the red ramp (the look's `gold`).
-TEXTURES = ["GameMenuFrame"]
+# beside the painted one; their gold stays gold in the palette's trim, not
+# the red ramp (the look's `gold`). None now: the one there was, the Game
+# Menu's (GameMenuFrame_<look>), went with Oldschool's painted menu (1.2.4,
+# the user, 2026-10-27: "all 3 Skins should have only 1 shared game menu").
+TEXTURES = []
 
 
 def recolour_picture(a, look):

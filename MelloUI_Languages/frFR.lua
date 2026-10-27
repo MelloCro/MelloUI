@@ -192,7 +192,6 @@ Lang:Add("frFR", {
 	["Bags"] = "Sacs", -- draft
 	["The backpack and bag windows in the kit."] = "Le sac à dos et les fenêtres des sacs dans le kit.", -- draft
 	["Game menu"] = "Menu de jeu", -- draft
-	["The Escape menu on its painted plates. With the game's Gamepad UI on, the MelloUI plate stays empty: /mello opens MelloUI's settings."] = "Le menu Échap sur ses plaques peintes. Avec l'interface manette du jeu activée, la plaque MelloUI reste vide : /mello ouvre les réglages de MelloUI.", -- draft
 	["Popup dialogs"] = "Fenêtres de dialogue", -- draft
 	["The game's popup dialogs (confirmations, the world refresh notice, Release spirit ...) on the kit's stone and rail, with red plate buttons."] = "Les fenêtres de dialogue du jeu (confirmations, l'avis d'actualisation du monde, Libérer l'esprit...) sur la pierre et le rail du kit, avec des boutons à plaque rouge.", -- draft
 	["Macros"] = "Macros", -- draft
@@ -1311,10 +1310,6 @@ Lang:Add("frFR", {
 	["Brushed dark metal"] = "Métal sombre brossé", -- draft
 	["Dark gradient"] = "Dégradé sombre", -- draft
 	["Dark round gradient"] = "Dégradé sombre rond", -- draft
-	-- GameMenuPanel
-	["Game Menu Panel"] = "Panneau du menu du jeu", -- draft
-	["The Escape menu on a painted stone and iron frame with red plates for its buttons."] = "Le menu Échap sur un cadre peint de pierre et de fer, avec des plaques rouges pour ses boutons.", -- draft
-	["Nine red plates under a gold header. The way out, in stone and iron."] = "Neuf plaques rouges sous un en-tête doré. La sortie, en pierre et en fer.", -- draft
 	-- DialogPanel
 	["Dialogs Kit"] = "Kit des dialogues", -- draft
 	["The game's popup dialogs on the kit's stone and rail with red plate buttons, and a parchment sheet if you choose one."] = "Les fenêtres de dialogue du jeu sur la pierre et le rail du kit avec des boutons à plaque rouge, et une feuille de parchemin si vous en choisissez une.", -- draft
