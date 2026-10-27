@@ -148,7 +148,9 @@ local CHANGELOG = {
 		"Mouseover Highlight: the party and raid frame (and the nameplate) under your mouse lights up with a crisp outline.",
 		"Skin (Look > General): Default dresses MelloUI's own windows and parts in the game's own look, in the very same places.",
 		"Under Default: the party and raid frames in the game's raid frame look, the game's own marks on Route and the map, no meter parchment.",
+		"Under Default and Oldschool: the same heal and cooldown effects, painted in each skin's own style.",
 		"A new installer: your skin first, then each part of the UI step by step, with a picture of every choice.",
+		"Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles.",
 	} },
 	{ version = "1.2.3", lines = {
 		"Route: the service buttons (Repair, Innkeeper, Flight Master ...) route to the nearest one at once again.",

@@ -213,6 +213,35 @@ function Skin.LayHair(tex, alpha)
 	tex:SetVertexColor(1, 1, 1, alpha or 1)
 end
 
+-- (1.2.4, the whisper window's bubbles: BuildData/output/chat_room_sketch) a chat bubble's ground: the game's bubble
+-- middle (ChatBubble-NineSlice-Center: the piece NineSliceUtil lays between the bubble's edges) as its middle texel,
+-- flat, so a bubble of any size is the game's own dark, never its picture stretched; read once, as the hairline
+local bubbleUV = nil
+
+function Skin.LayBubbleGround(tex)
+	local name = "ChatBubble-NineSlice-Center"
+	if bubbleUV == nil then
+		bubbleUV = false
+		local Num = MelloUI.Safe.Number
+		local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name)
+		local file = info and (info.file or info.filename)
+		local l, r = info and Num(info.leftTexCoord), info and Num(info.rightTexCoord)
+		local t, b = info and Num(info.topTexCoord), info and Num(info.bottomTexCoord)
+		local w, h = info and Num(info.width), info and Num(info.height)
+		if file and l and r and t and b and w and h and w > 1 and h > 1 then
+			local u, v = l + (r - l) * (math.floor(w / 2) / w), t + (b - t) * (math.floor(h / 2) / h)
+			bubbleUV = { u, u + (r - l) / w, v, v + (b - t) / h, file = file }
+		end
+	end
+	if bubbleUV then
+		tex:SetTexture(bubbleUV.file)
+		tex:SetTexCoord(bubbleUV[1], bubbleUV[2], bubbleUV[3], bubbleUV[4])
+	else
+		tex:SetAtlas(name)   -- (no sheet to read: the middle whole)
+	end
+	tex:SetVertexColor(1, 1, 1, 1)
+end
+
 --------------------------------------------------------------------------------
 -- The game's pictures for MelloUI's icon set (by name): the same things the game itself draws -- its map's service
 -- icons for the Services, its quest marks, chat and friends icons, its spell and item icons for the configurator's

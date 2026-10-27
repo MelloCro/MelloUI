@@ -5,7 +5,7 @@
 - Heal and cooldown effects on the unit frames are bolder and play across the whole frame: the portrait and the bars each get their own part of the moment, and the gold border lights all round the frame, its top where the name is too.
 - A heal bursts with a shockwave and stars flung off the frame, a heal over time seals onto the portrait, a shield's barrier closes round the frame in its own shape, Blessing of Protection stamps its crest onto the portrait, Lay on Hands drops a column of light, a resurrection unfolds wings behind the frame, a group heal runs through the group as a wave, Chain Heal bursts along the bars of every frame it reaches.
 - Cooldowns: a roar sends square shockwaves out of the frame, a taunt springs a red !, Shield Wall, Barkskin and Dispersion clamp steel guards onto it, Last Stand and Vengeance beat a heart, Divine Shield, Divine Protection and Ice Block grow a golden barrier, Evasion and Deterrence leave afterimages.
-- In a raid they stay inside each frame. The Quiet look and Oldschool's painted effects keep their own.
+- In a raid they stay inside each frame. The Quiet look keeps its own.
 - Party frames: Flip Horizontally (Party > Layout) mirrors the party portraits for a party on the right side of the screen: the portrait on the right, the name, level, bars, icons and buffs to its left. The effects play mirrored too.
 - The frame previews in the configurator: a part you drag stays inside the preview, and the preview fits the frame with every part shown on it. The party portraits' preview shows the members' aura row as the game does.
 - Indicators: right-click one on the preview to remove it, and size its time and stacks right under the preview (Party or Raid > Indicators).
@@ -14,8 +14,10 @@
 - Skin (Look > General): Default dresses MelloUI's own windows and parts in the game's own look, with its borders, buttons, tabs, check boxes, icons and fonts in the very same places, and the game's own unit frames and action buttons. Modern stays as it is.
 - A new installer: everyone goes through it step by step. Your skin comes first (Default, Modern or Oldschool), then your layout, party and raid frames, quests and travel, combat, chat, minimap, bags and sounds, each with a picture of what you pick, in your skin. It replaces the four setups and Fresh start.
 - Fixed: the Damage Meter's Parchment switch could not be changed without MelloUI Oldschool. It is on the Damage Meter page now (Look) and works in every skin.
+- Under Default, the heal and cooldown effects play the same moments with pieces painted like the game's own spell light. Under Oldschool they play them too, painted like its RPG art.
 - Under Default, the party and raid frames wear the game's raid frame look (unless you picked a Bar Texture for them), Route, the map, the Quest List and Voice Over use the game's own marks and buttons, and the damage meter shows no parchment.
 - Fixed: the plain buttons in Dungeon Info and on the map made no sound. They click now.
+- Chat: more room for your messages. The installer sets the chat's text to 14 (the game's own setting, still yours to change), MelloUI's layout makes the chat taller, and the whisper window is taller with more space round its bubbles. Its list of people lines up with the chat's tabs, and under Default its bubbles keep their text inside the game's bubble border.
 
 ## 1.2.3
 

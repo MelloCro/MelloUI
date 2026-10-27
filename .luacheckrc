@@ -71,6 +71,7 @@ read_globals = {
 	"GetInventoryItemID",
 	-- (0.19.6, Cooldown Tweaks: an action's spell, the out-of-range dot the hot key shows)
 	"GetActionInfo", "GetMacroSpell", "RANGE_INDICATOR", "FACTION_BAR_COLORS", "FCF_SetChatWindowFontSize",
+	"GetChatWindowInfo", "SetChatWindowSize",
 	"FocusFrame", "PetFrame", "Game15Font_Shadow", "GameFontHighlightOutline", "GameFontHighlightSmall",
 	"GameFontNormal", "ChatFontNormal", "PagedContentFrameBaseMixin", "LegacyChallengeObjectives", "QuestScrollFrame", "GameMenuFrame", "GameTimeFrame", "GameTooltip", "GameTooltipStatusBar",
 	"GameTooltip_AddNormalLine", "GameTooltip_SetDefaultAnchor", "GameTooltip_SetTitle",

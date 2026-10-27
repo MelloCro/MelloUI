@@ -317,8 +317,7 @@ FX_OUT = ("FrameFX", "Light")
 # the sheets' own colours (the prompts'): hue in degrees, None keeps it; then the saturation's share
 TINT = {"gold": (44, 1.0), "blue": (211, 0.8), "green": (138, 1.0), "red": (4, 1.0), "white": (None, 0.08)}
 # (name, art, canvas, colour or None, how): "fit" its shape on the middle, "fill" stretched over the canvas, "level"
-# turned level first, "upright" its biggest piece alone, turned upright, "box" the cooldown flipbook's first frame
-# (a rounded square of light) stretched to the canvas by its corners (the shield over a frame's oblong)
+# turned level first, "upright" its biggest piece alone, turned upright
 FX_LIGHT = [("plus_green", "heal_cross", 64, None, "fit"), ("plus_gold", "heal_cross", 64, "gold", "fit"),
             ("plus_blue", "heal_cross", 64, "blue", "fit"),
             ("leaf", "heal_leaf", 64, None, "level"), ("drop", "heal_drop", 64, "blue", "fit"),
@@ -326,18 +325,13 @@ FX_LIGHT = [("plus_green", "heal_cross", 64, None, "fit"), ("plus_gold", "heal_c
             # (1.2.0, the swing badge's sun rays from its icon's middle: drawn at about 30-120 px, so a copy at 128,
             # about a texel a pixel -- the 256's thin rays shimmered small; the user: "sun rays sparking")
             ("rays_gold_small", "heal_rays", 128, None, "fit"),
-            ("ring_gold", "cooldown_ring", 128, None, "fit"), ("ring_fire", "roar_ring", 128, None, "fit"),
-            ("wave_red", "taunt_ring", 128, None, "fit"), ("wave_teal", "heal_wave", 128, None, "fit"),
+            ("ring_gold", "cooldown_ring", 128, None, "fit"),
             ("wave_gold", "heal_wave", 128, "gold", "fit"), ("ripple_blue", "heal_wave", 128, "blue", "fit"),
             ("halo_white", "heal_wave", 128, "white", "fit"),
-            ("bubble_round", "shield_bubble", 128, None, "fit"),
-            ("bubble_gold_round", "shield_bubble", 128, "gold", "fit"),
-            ("bubble", "fb_cooldown_strip", (256, 128), "blue", "box"),
-            ("bubble_gold", "fb_cooldown_strip", (256, 128), None, "box"),
-            ("crest_gold", "prot_crest", 128, None, "fit"), ("crest_steel", "fortify_crest", 128, None, "fit"),
+            ("crest_gold", "prot_crest", 128, None, "fit"),
             ("crest_blue", "prot_crest", 128, "blue", "fit"), ("crest_green", "prot_crest", 128, "green", "fit"),
             ("sheen", "sheen", (64, 128), None, "fill"), ("shard_blue", "shield_shards", 64, None, "upright")]
-FX_LIGHT += [("streak_" + c, "sheen", (256, 64), c, "level") for c in ("white", "gold", "green", "blue", "red")]
+FX_LIGHT += [("streak_" + c, "sheen", (256, 64), c, "level") for c in ("white", "gold", "green", "blue")]
 # (1.2.4, the frames' bold landings -- Core/FrameFXBold.lua; the user's picks of MelloUI-BuildData/output/
 # forever_fx_sketch, 2026-10-26: "A versions of everything") the pieces they draw: the Holy pieces in white (the engine
 # tints them a look's or a named colour), the wings in each look's colour, and the ChatGPT sheet's
@@ -359,12 +353,53 @@ FX_LIGHT += [("spark_white", "holy_spark", 64, "white", "fit"), ("rays_white", "
 # two crisp lines of a circle at the picture's edge, each FX_OUTLINE_LINE of its half: outline_round the outer (tinted
 # the palette's selected trim), outline_edge the one inside it (white)
 FX_DRAWN = ("line_h", "line_v", "barrier_round", "outline_round", "outline_edge")
+# (1.2.4, the Default skin; the user, 2026-10-27: "use chatgpt to generate WoW Accurate effects") the same names in
+# pieces made like the game's own spell light: the ChatGPT sheets masters/icons_v2/src/fx/default_fx1_heals and
+# default_fx2_guards (chatgpt-prompts-default-effects.md), cut by cut_fx.py into out/fx/default_*. Core/FrameFX.lua
+# reads Media/FrameFX/Default/<name> for these names while the Default skin is on (its DEFAULT_NAMES); the drawn ones
+# (the lines, the barrier's round part, the outlines) stay the modern look's for every skin
+FX_DEFAULT_OUT = ("FrameFX", "Default")
+FX_DEFAULT = [("spark_white", "default_holy_mote", 64, "white", "fit"), ("spark_gold", "default_holy_mote", 64, None, "fit"),
+              ("plus_gold", "default_heal_sign", 64, None, "fit"), ("plus_green", "default_heal_sign", 64, "green", "fit"),
+              ("plus_blue", "default_heal_sign", 64, "blue", "fit"),
+              ("star_gold", "default_holy_star", 128, None, "fit"), ("star_green", "default_holy_star", 128, "green", "fit"),
+              ("star_blue", "default_holy_star", 128, "blue", "fit"),
+              ("shock_white", "default_shockwave", 128, "white", "fit"),
+              ("halo_white", "default_shockwave", 128, "white", "fit"),
+              ("rays_white", "default_light_rays", 256, "white", "fit"), ("rays_gold", "default_light_rays", 256, None, "fit"),
+              ("rays_gold_small", "default_light_rays", 128, None, "fit"),
+              ("glow_white", "default_glow", 64, "white", "fit"),
+              ("res_wings", "default_angel_wings", 128, None, "fit"),
+              ("res_wings_green", "default_angel_wings", 128, "green", "fit"),
+              ("res_wings_blue", "default_angel_wings", 128, "blue", "fit"),
+              ("crest_gold", "default_protection_sigil", 128, None, "fit"),
+              ("crest_green", "default_protection_sigil", 128, "green", "fit"),
+              ("crest_blue", "default_protection_sigil", 128, "blue", "fit"),
+              ("seal_gold", "default_rune_seal", 128, None, "fit"), ("seal_green", "default_rune_seal", 128, "green", "fit"),
+              ("seal_blue", "default_rune_seal", 128, "blue", "fit"),
+              # (the column's upper part is faint: its whole light, not its bright foot alone)
+              ("pillar_gold", "default_pillar", (64, 256), None, "fill"),
+              ("pillar_green", "default_pillar", (64, 256), "green", "fill"),
+              ("pillar_blue", "default_pillar", (64, 256), "blue", "fill"),
+              ("shard_blue", "default_arcane_shards", 64, None, "upright"),
+              ("guard_round", "default_steel_guard", (64, 128), None, "fit"),
+              ("guard_side", "default_steel_guard", (32, 128), None, "fit"),
+              ("bang", "default_taunt_mark", (64, 128), None, "fit"), ("heart", "default_heart", 64, None, "fit")]
+FX_DEFAULT += [("streak_" + c, "default_light_sweep", (256, 64), None if c == "gold" else c, "level")
+               for c in ("white", "gold", "green", "blue")]
+# (1.2.4, the Oldschool skin; the user, 2026-10-27: "alright, now the old school effects") the same names, canvases and
+# colours in the painted RPG kit's style: the ChatGPT sheets src/fx/oldschool_fx1_heals and oldschool_fx2_guards
+# (chatgpt-prompts-oldschool-effects.md), cut into out/fx/oldschool_*. Core/FrameFX.lua reads
+# Media/FrameFX/Oldschool/<name> for these names while Oldschool's painted look is on
+FX_OLDSCHOOL_OUT = ("FrameFX", "Oldschool")
+FX_OLDSCHOOL = [(n, art.replace("default_", "oldschool_", 1), size, colour,
+                 "fill" if n.startswith("streak_") else how)   # (its sweep a curved stroke: the whole of it along)
+                for n, art, size, colour, how in FX_DEFAULT]
 FX_RING_LINE = 0.86
 FX_OUTLINE_LINE = 0.03
 FX_MARGIN = 0.04   # of the canvas, round a fitted shape
 FX_SHAPE = 40      # the alpha a shape's own extent is read at (its faint glow round it left out of the middle)
 SHARD_CORE = 150   # the alpha the shards are told apart at (their glows touch below it)
-BOX_RIM, BOX_GLOW, BOX_FILL = 2.4, (4, 0.7), 16   # the oblong shield: its rim's gain, glow (blur, share), fill
 
 
 def fx_tint(img, colour):
@@ -422,41 +457,6 @@ def fx_fit(img, size):
     return img.convert("RGBa").crop(box).resize((w, h), Image.LANCZOS).convert("RGBA")
 
 
-def fx_box(img, size):
-    # the cooldown flipbook's first frame (its rounded square whole, evenly lit), cut by its corners and stretched
-    # over the oblong: the corners at their own shape, the sides drawn out, the middle left empty
-    w, h = size
-    frame = img.crop((0, 0, img.height, img.height))
-    l, t, r, b = fx_crop(frame, 24)
-    pad = round((r - l) * 0.03)
-    frame = frame.crop((l - pad, t - pad, r + pad, b + pad)).convert("RGBa")
-    side = frame.width
-    m = round(side * 0.24)                          # the corner: its round and its glow
-    mo = max(2, round(m * (h * 0.5) / side * 1.6))  # drawn at the scale of the square laid at half the canvas's height
-    xs_src, xs_dst = (0, m, side - m, side), (0, mo, w - mo, w)
-    ys_src, ys_dst = (0, m, side - m, side), (0, mo, h - mo, h)
-    out = Image.new("RGBa", (w, h), (0, 0, 0, 0))
-    for i in range(3):
-        for j in range(3):
-            src = frame.crop((xs_src[i], ys_src[j], xs_src[i + 1], ys_src[j + 1]))
-            out.paste(src.resize((xs_dst[i + 1] - xs_dst[i], ys_dst[j + 1] - ys_dst[j]), Image.LANCZOS),
-                      (xs_dst[i], ys_dst[j]))
-    # brighter (the first frame is the flipbook's dimmest; the shield is held at full), a soft glow either side of
-    # the rim and the faintest light inside it (a barrier seen through, as the old one's)
-    out = out.convert("RGBA")
-    arr = np.asarray(out).astype(np.float64)
-    rim = np.clip(arr[..., 3] * BOX_RIM, 0, 255)
-    glow = np.asarray(Image.fromarray(rim.astype(np.uint8), "L").filter(ImageFilter.GaussianBlur(BOX_GLOW[0])),
-                      np.float64) * BOX_GLOW[1]
-    inside = np.zeros((h, w))
-    inside[mo // 2:h - mo // 2, mo // 2:w - mo // 2] = BOX_FILL
-    lit = arr[..., 3] > 60
-    colour = np.median(arr[..., :3][lit], axis=0)
-    a = np.maximum(np.maximum(rim, glow), inside)
-    rgb = np.where((arr[..., 3] > 8)[..., None], arr[..., :3], colour)   # (the glow and the fill in the rim's colour)
-    return Image.fromarray(np.dstack([rgb, a]).round().astype(np.uint8), "RGBA")
-
-
 def fx_drawn(name):
     if name in ("outline_round", "outline_edge"):
         n = 256
@@ -485,8 +485,6 @@ def fx_drawn(name):
 
 def fx_light(name, art, size, colour, how):
     img = Image.open(os.path.join(ART, "out", "fx", art + ".png")).convert("RGBA")
-    if how == "box":
-        return fx_tint(fx_box(img, size), colour)
     if how == "upright":
         img = fx_turn(fx_biggest(img), True)
     elif how == "level":
@@ -705,6 +703,10 @@ def main():
              for name, img in icons]
     every += [(e[0], fx_light(*e), (os.path.join(ADDON_MEDIA, *FX_OUT, e[0] + ".tga"),)) for e in FX_LIGHT]
     every += [(n, fx_drawn(n), (os.path.join(ADDON_MEDIA, *FX_OUT, n + ".tga"),)) for n in FX_DRAWN]
+    every += [("default/" + e[0], fx_light(*e), (os.path.join(ADDON_MEDIA, *FX_DEFAULT_OUT, e[0] + ".tga"),))
+              for e in FX_DEFAULT]
+    every += [("oldschool/" + e[0], fx_light(*e), (os.path.join(ADDON_MEDIA, *FX_OLDSCHOOL_OUT, e[0] + ".tga"),))
+              for e in FX_OLDSCHOOL]
     lifts = halos()
     every += [(name, img, (os.path.join(ADDON_MEDIA, *HALO_OUT, name + ".tga"),)) for name, img in lifts]
     for name, img, paths in every:

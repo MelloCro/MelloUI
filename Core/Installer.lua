@@ -1819,6 +1819,12 @@ local function DoInstall(self, rp, option, target, fit, layoutOn, out)
 			end
 			SetOwn("layoutApplied", true)
 		end
+		-- (1.2.4, the user's pick B of BuildData/output/chat_room_sketch: the chat's text 14 for the chat MelloUI's
+		-- layout makes -- the game's own setting, Fonts' SetChatTextSize; its sizes before kept: Revert puts them back)
+		local fonts = option.base == "setup" and MelloUI:GetModule("Fonts")
+		if fonts and fonts.SetChatTextSize then
+			rp.chatSizes = fonts:SetChatTextSize(14)
+		end
 	end)
 	-- (the refit changes only what no profile carries -- the layout, the
 	-- places -- so the profile in use stays named)
@@ -2068,12 +2074,20 @@ function I:Revert(reason)
 			Report(err)
 		end
 	end
+	-- (1.2.4) the chat's text sizes as they were
+	local fonts = type(rp.chatSizes) == "table" and next(rp.chatSizes) ~= nil and MelloUI:GetModule("Fonts")
+	if fonts and fonts.SetChatTextSize then
+		local okS, errS = pcall(fonts.SetChatTextSize, fonts, rp.chatSizes)
+		if not okS then
+			Report(errS)
+		end
+	end
 	local placed, err = pcall(self.PlaceWindows, self)
 	if not placed then
 		Report(err)
 	end
 	rp.pending = nil
-	rp.layoutWritten, rp.layoutPut, rp.layoutFlags = nil, nil, nil
+	rp.layoutWritten, rp.layoutPut, rp.layoutFlags, rp.chatSizes = nil, nil, nil, nil
 	local reloaded = rp.reloadedSince or (pending and pending.reloadedSince)
 	local reloadOwed = (needsReload and reloaded) and true or false
 	MelloUI:Print(TEXT.reverted)

@@ -43,10 +43,13 @@ local WV = { convs = {}, order = {}, current = nil, open = false, job = {}, rows
 M.Whispers = WV
 View.Whispers = WV
 
--- UI units
-local WIN_H, TITLE_H, LIST_W, ROW_H, PORTRAIT, HEAD_H, BOX_H = 262, 24, 158, 42, 28, 40, 22
-local FACE, PADX, PADY, TX, RX = 16, 8, 4, 32, 8   -- their picture; a bubble's padding; their text's left, yours' right
-local GAP_RUN, GAP_IN, SHARE = 8, 3, 0.66          -- between runs, inside one; a bubble's widest share of the talk
+-- UI units (1.2.4, the user's pick B of BuildData/output/chat_room_sketch, 2026-10-27: taller, a little more air in
+-- and between the bubbles; the people list as wide as the chat's rail -- "why arent these lines aligned" -- so its
+-- divider runs on from the rail's: the list's right edge 2 short of it, as the rail's own)
+local WIN_H, TITLE_H, LIST_W, ROW_H, PORTRAIT, HEAD_H, BOX_H = 340, 24, (View.RAIL_W or 112) - 2, 42, 28, 40, 22
+-- their picture; a bubble's padding, their text's left, yours' right (set by the bubble's look: WV.LayTalk)
+local FACE, PADX, PADY, TX, RX = 16, 10, 6, 36, 10
+local GAP_RUN, GAP_IN, SHARE = 12, 5, 0.66           -- between runs, inside one; a bubble's widest share of the talk
 local CAP, LAY, RUN_SECONDS = 200, 30, 120          -- lines kept per conversation; bubbles laid at most
 local OPEN_TIME, CLOSE_TIME, BUTTON = 0.28, 0.18, 20
 local SAVE_CONVS, SAVE_WHISPERS = 30, 100   -- kept over a logout: the newest conversations, their newest lines
@@ -358,16 +361,18 @@ local function Row(i)
 	dot:SetPoint("CENTER", face, "BOTTOMRIGHT", -3, 3)
 	row.dot = dot
 	row.name = row:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
+	-- (1.2.4: the list as narrow as the chat's rail -- the name the row's whole width, the "2m" at the end of the
+	-- last line's)
 	row.name:SetPoint("TOPLEFT", face, "TOPRIGHT", 8, 1)
-	row.name:SetPoint("RIGHT", row, "RIGHT", -34, 0)
+	row.name:SetPoint("RIGHT", row, "RIGHT", -6, 0)
 	row.name:SetJustifyH("LEFT")
 	row.name:SetWordWrap(false)
 	row.ago = row:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
-	row.ago:SetPoint("TOPRIGHT", row, "TOPRIGHT", -6, -7)
+	row.ago:SetPoint("BOTTOMRIGHT", row, "RIGHT", -6, -(PORTRAIT / 2))
 	row.ago:SetJustifyH("RIGHT")
 	row.last = row:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
 	row.last:SetPoint("BOTTOMLEFT", face, "BOTTOMRIGHT", 8, 0)
-	row.last:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+	row.last:SetPoint("RIGHT", row.ago, "LEFT", -4, 0)
 	row.last:SetJustifyH("LEFT")
 	row.last:SetWordWrap(false)   -- (the engine ends a long one with "...": nothing measured)
 	Perf.SetScript(row, "OnClick", RowClick)
@@ -477,6 +482,7 @@ local function Bubble(k)
 	b.text:SetJustifyH("LEFT")
 	b.text:SetJustifyV("TOP")
 	b.text:SetWordWrap(true)
+	b.text:SetSpacing(1)
 	b.stamp = talk:CreateFontString(nil, "OVERLAY")
 	b.face = talk:CreateTexture(nil, "ARTWORK")
 	b.face:SetSize(FACE, FACE)
@@ -532,6 +538,13 @@ function WV.LayTalk()
 		WV.Bar(WV.talkBar, 0)
 		return
 	end
+	-- (1.2.4) the bubble's look: under Default the game's own bubble, its text 16 inside the border as the game's
+	-- ChatBubbleTemplate keeps it (its `inset`; the border lies 3 outside the ground: Skin's OUT), on the game's dark;
+	-- else MelloUI's 10 x 6 (the user's pick B of BuildData/output/chat_room_sketch)
+	local Skin = rawget(MelloUI, "Skin")
+	local game = Skin and Skin.IsDefault() and not View.paper or false
+	PADX, PADY = game and 13 or 10, game and 13 or 6
+	TX, RX = FACE + PADX + 10, PADX
 	local okW, width = pcall(talk.GetWidth, talk)
 	width = okW and Num(width) or 280
 	local widest = math.max(60, width * SHARE - 2 * PADX)
@@ -583,9 +596,17 @@ function WV.LayTalk()
 		ground:ClearAllPoints()
 		ground:SetPoint("TOPLEFT", text, "TOPLEFT", -PADX, PADY)
 		ground:SetPoint("BOTTOMRIGHT", text, "BOTTOMRIGHT", PADX, -PADY)
-		local Skin = rawget(MelloUI, "Skin")
-		local game = Skin and Skin.IsDefault() and not View.paper or false
-		W.Paint(ground, (mine and not game) and "selectedTab" or "raisedPanel", "fill", View.paper and 0.16 or 0.92)
+		if game then
+			-- (the game's bubble middle, flat: no second box inside its border; out of the palette's repaint)
+			local Kit = MelloUI.Kit
+			if Kit and Kit.Unpaint then
+				Kit:Unpaint(ground, "fill")
+			end
+			Skin.LayBubbleGround(ground)
+		else
+			ground:SetTexCoord(0, 1, 0, 1)
+			W.Paint(ground, mine and "selectedTab" or "raisedPanel", "fill", View.paper and 0.16 or 0.92)
+		end
 		ground:Show()
 		BubbleEdge(b, game)
 		-- their picture by the newest bubble of their run
@@ -917,8 +938,8 @@ local function Build()
 	P().MakeActions(WV.shim, BUTTON)
 	-- the talk: clipped, the wheel scrolls it by bubble, links click as in the chat
 	local talk = CreateFrame("Frame", nil, f)
-	talk:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 6, -4)
-	talk:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, BOX_H + 12)
+	talk:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 10, -8)
+	talk:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, BOX_H + 14)
 	talk:SetClipsChildren(true)
 	talk:EnableMouseWheel(true)
 	talk:SetScript("OnMouseWheel", function(_, delta)

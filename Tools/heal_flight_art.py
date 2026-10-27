@@ -215,17 +215,6 @@ def plus(colour, size=32):
     return light(np.clip(sharp + halo, 0, 1), colour, hot=0.35)
 
 
-def rune(colour, size=32):
-    img, d = canvas(size)
-    s = size * SS
-    c = s / 2
-    k = s * 0.2
-    d.polygon([(c, c - k), (c + k * 0.6, c), (c, c + k), (c - k * 0.6, c)], fill=255)
-    sharp = down(img, size, 0.4)
-    halo = down(img, size, 2.0, 0.6)
-    return light(np.clip(sharp + halo, 0, 1), colour, hot=0.7)
-
-
 def drop(size=32):
     """a droplet, its point up (turned in the game to the way it moves)"""
     img, d = canvas(size)
@@ -252,42 +241,6 @@ def ripple(colour, size=128):
     return light(np.clip(sharp + halo, 0, 1), colour, hot=0.4)
 
 
-def bubble(w=256, h=128, colour=None, high_colour=None):
-    """a bubble on a frame's edge: a soft rim, a bright highlight at its upper left, a faint inside; its corners
-    square like the frames' (the user, 2026-10-09: "the borders here are square and they have round edges")"""
-    img = Image.new("L", (w * SS, h * SS), 0)
-    d = ImageDraw.Draw(img)
-    m = 4 * SS
-    d.rounded_rectangle((m, m, w * SS - m, h * SS - m), radius=h * SS * 0.05, outline=220, width=3 * SS)
-    rim = np.asarray(img.resize((w, h), Image.LANCZOS).filter(ImageFilter.GaussianBlur(1.0))).astype(np.float32) / 255
-    halo = np.asarray(img.resize((w, h), Image.LANCZOS).filter(ImageFilter.GaussianBlur(4))).astype(np.float32) / 255 * 0.8
-    hi = Image.new("L", (w * SS, h * SS), 0)
-    dh = ImageDraw.Draw(hi)
-    # (a straight glint along the top left corner, square like the frame: no round arc)
-    g = m * 2.6
-    dh.line(((g, h * SS * 0.55), (g, g), (w * SS * 0.32, g)), fill=255, width=2 * SS, joint="curve")
-    high = np.asarray(hi.resize((w, h), Image.LANCZOS).filter(ImageFilter.GaussianBlur(0.8))).astype(np.float32) / 255
-    inside = Image.new("L", (w * SS, h * SS), 0)
-    ImageDraw.Draw(inside).rounded_rectangle((m, m, w * SS - m, h * SS - m), radius=h * SS * 0.05, fill=255)
-    fill = np.asarray(inside.resize((w, h), Image.LANCZOS).filter(ImageFilter.GaussianBlur(8))).astype(np.float32) / 255 * 0.12
-    a = np.clip(rim + halo + high + fill, 0, 1)
-    base = np.array(colour or WATER, np.float32)[None, None, :]
-    shine = np.array(high_colour or FOAM, np.float32)[None, None, :]
-    rgb = base * (1 - high[..., None]) + shine * high[..., None]
-    return Image.fromarray(np.dstack([rgb.round().astype(np.uint8), (a * 255).round().astype(np.uint8)]), "RGBA")
-
-
-def ring_fire(size=128):
-    """the roar's ripple on a round piece (a portrait's ring, the split of a portrait-and-bars frame; the user,
-    2026-10-09, C of the sketch): the square ripples' fire as a ring, its line at 0.84 of the sprite"""
-    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
-    c = (size - 1) / 2
-    d = np.hypot(x - c, y - c) - size * 0.42
-    core = np.exp(-(d / 1.3) ** 2)
-    glow = np.exp(-(d / 5.0) ** 2) * 0.75
-    return light(np.clip(core + glow, 0, 1), FIRE, hot=0.7)
-
-
 def halo(size=128):
     """a round border's light (on a portrait's ring): a thin bright line at 0.8 of the sprite, its glow either
     side; white, tinted in the game (the border's colour)"""
@@ -297,28 +250,6 @@ def halo(size=128):
     line = np.exp(-(d / 1.2) ** 2)
     glow = np.exp(-(d / 6.0) ** 2) * 0.7
     return light(np.clip(line + glow, 0, 1), WHITE, hot=0.0)
-
-
-def bubble_round(size=128, colour=None, high_colour=None):
-    """the bubble on a round piece: a soft rim on the ring, a curved glint at its upper left, a faint inside"""
-    img = Image.new("L", (size * SS, size * SS), 0)
-    d = ImageDraw.Draw(img)
-    m = 4 * SS
-    d.ellipse((m, m, size * SS - m, size * SS - m), outline=220, width=3 * SS)
-    rim = np.asarray(img.resize((size, size), Image.LANCZOS).filter(ImageFilter.GaussianBlur(1.0))).astype(np.float32) / 255
-    glow = np.asarray(img.resize((size, size), Image.LANCZOS).filter(ImageFilter.GaussianBlur(4))).astype(np.float32) / 255 * 0.8
-    hi = Image.new("L", (size * SS, size * SS), 0)
-    g = m * 3
-    ImageDraw.Draw(hi).arc((g, g, size * SS - g, size * SS - g), 190, 250, fill=255, width=2 * SS)
-    high = np.asarray(hi.resize((size, size), Image.LANCZOS).filter(ImageFilter.GaussianBlur(0.8))).astype(np.float32) / 255
-    inside = Image.new("L", (size * SS, size * SS), 0)
-    ImageDraw.Draw(inside).ellipse((m, m, size * SS - m, size * SS - m), fill=255)
-    fill = np.asarray(inside.resize((size, size), Image.LANCZOS).filter(ImageFilter.GaussianBlur(8))).astype(np.float32) / 255 * 0.12
-    a = np.clip(rim + glow + high + fill, 0, 1)
-    base = np.array(colour or WATER, np.float32)[None, None, :]
-    shine = np.array(high_colour or FOAM, np.float32)[None, None, :]
-    rgb = base * (1 - high[..., None]) + shine * high[..., None]
-    return Image.fromarray(np.dstack([rgb.round().astype(np.uint8), (a * 255).round().astype(np.uint8)]), "RGBA")
 
 
 def shard(colour, size=32):
@@ -337,18 +268,6 @@ def shard(colour, size=32):
     return light(np.clip(body + halo, 0, 1), colour, hot=0.3)
 
 
-def fire_line(across=True, length=128, thick=32):
-    """a fiery line (the roar's square ripples are built of four: the same sharp width at any size): a thin hot
-    core, its glow either side, full strength to its ends (the corners meet another line)"""
-    t = np.arange(thick, dtype=np.float32) - (thick - 1) / 2
-    core = np.exp(-(t / 1.3) ** 2)
-    glow = np.exp(-(t / 5.0) ** 2) * 0.75
-    profile = np.clip(core + glow, 0, 1)
-    band = np.repeat(profile[:, None], length, axis=1)   # thick x length
-    img = light(band, FIRE, hot=0.7)
-    return img if across else img.transpose(Image.ROTATE_90)
-
-
 SPRITES = {
     "glow_gold": lambda: glow(GOLD),
     "glow_green": lambda: glow(GREEN),
@@ -359,10 +278,8 @@ SPRITES = {
     "rays_gold": lambda: rays(GOLD),
     "rays_gold_small": lambda: rays(GOLD, size=128),   # (1.2.0: the swing badge's sun rays, drawn small)
     "wave_gold": lambda: wave(GOLD),
-    "wave_teal": lambda: wave(TEAL),
     "plus_gold": lambda: plus(GOLD),
     "plus_green": lambda: plus(GREEN),
-    "rune_gold": lambda: rune(GOLD),
     "streak_gold": lambda: streak(GOLD),
     "streak_green": lambda: streak(GREEN),
     "crest_gold": lambda: crest(GOLD),
@@ -377,21 +294,9 @@ SPRITES = {
     "plus_blue": lambda: plus(FOAM),
     "ripple_blue": lambda: ripple(WATER),
     "drop": drop,
-    "bubble": bubble,
-    "glow_red": lambda: glow(RED),
-    "wave_red": lambda: wave(RED),
-    "streak_red": lambda: streak(RED),
-    "crest_steel": lambda: crest(STEEL),
-    "glow_steel": lambda: glow(STEEL),
     "streak_white": lambda: streak(WHITE),
-    "bubble_gold": lambda: bubble(colour=GOLD, high_colour=WHITE),
-    "line_fire_h": lambda: fire_line(True),
-    "line_fire_v": lambda: fire_line(False),
     "glow_fire": lambda: glow(FIRE),
-    "ring_fire": ring_fire,
     "halo_white": halo,
-    "bubble_round": bubble_round,
-    "bubble_gold_round": lambda: bubble_round(colour=GOLD, high_colour=WHITE),
     "shard_blue": lambda: shard(WATER),
 }
 

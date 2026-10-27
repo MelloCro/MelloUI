@@ -1110,6 +1110,50 @@ function M:ChatWindowFont(frame, onPaper)
 	return ChatWindowFace(frame, original, onPaper)
 end
 
+-- (1.2.4, the installer; the user's pick B of BuildData/output/chat_room_sketch, 2026-10-27: "the text too big for
+-- the window" -- this client starts a new character's chat at 18) the game's own chat text size of every chat window,
+-- as the tab menu's Font Size stores it (SetChatWindowSize: the setting alone, never the game's chat code), the
+-- windows laid again at it. `size`: one size, or { [window] = size } (a revert's). Returns the sizes the changed
+-- windows had ({ [window] = size }: what puts them back).
+function M:SetChatTextSize(size)
+	local before = {}
+	if type(SetChatWindowSize) ~= "function" or type(GetChatWindowInfo) ~= "function" then
+		return before
+	end
+	for i = 1, (NUM_CHAT_WINDOWS or 10) do
+		local want = type(size) == "table" and size[i] or (type(size) ~= "table" and size or nil)
+		local ok, _, was = pcall(GetChatWindowInfo, i)
+		was = ok and SafeNumber(was) or nil
+		local frame = _G["ChatFrame" .. i]
+		if not (was and was > 0) and frame and frame.GetFont then
+			-- (no size in the setting: the window's own, as the game drew it)
+			local okF, _, fontSize = pcall(frame.GetFont, frame)
+			was = okF and SafeNumber(fontSize) or nil
+			was = was and math.floor(was + 0.5) or nil
+		end
+		want = tonumber(want)
+		if was and was > 0 and want and was ~= want and pcall(SetChatWindowSize, i, want) then
+			before[i] = was
+			if frame and frame.GetFont then
+				chatBaseOf[frame] = want   -- (the game's size now, as its menu's choice would be)
+				if not self.isEnabled then
+					local okF, face, _, flags = pcall(frame.GetFont, frame)
+					if okF and face then
+						pcall(frame.SetFont, frame, face, want, flags)
+					end
+				end
+			end
+		end
+	end
+	if next(before) then
+		if self.isEnabled then
+			ApplyChatWindows()
+		end
+		MelloUI:Fire("fonts")
+	end
+	return before
+end
+
 -- The chat's face on one of its frames (a chat window, a whisper window, its
 -- answer box: Chat.lua too, with this module on or off): a family of our own
 -- (Font families, above), the game's faces kept for the other alphabets; one

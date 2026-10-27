@@ -52,7 +52,12 @@ MelloUI.ChatView = View   -- (ChatPanel's no-fade and the Fader's chat fade ask 
 
 -- UI units
 local RAIL_W, ROW_H, ICON, LETTER, PAD = 112, 34, 24, 24, 6
-local GAP_RUN, GAP_LINE, GAP_PLAIN, INDENT, RUN_SECONDS = 6, 1, 2, 10, 120
+-- (1.2.4, the user's pick B of BuildData/output/chat_room_sketch, 2026-10-27: "the messages window looks a bit too
+-- clamped togther" -- a little more air between speakers, inside a run and round the lines: the area 16 off the rail,
+-- 12 off the top and the right, 10 over the buttons; a wrapped line's own lines 1 apart)
+local GAP_RUN, GAP_LINE, GAP_PLAIN, INDENT, RUN_SECONDS = 10, 2, 3, 10, 120
+View.RAIL_W = RAIL_W   -- (the whisper window's people list as wide: its divider under the rail's, ChatWhispers.lua)
+View.FOOT = 4          -- the newest line over the area's foot (the lay's and the glide's)
 local CAP, LAY = 300, 40          -- lines kept per tab; rows laid at most (the holder clips what does not fit)
 local SEED = 60                   -- the game's own lines a tab starts with when the view comes on
 local SAVE_LINES = 150            -- lines kept over a logout per tab (MelloUIChatHistory)
@@ -497,6 +502,7 @@ local function Row(k)
 			fs:SetJustifyV("TOP")
 		end
 		row.body:SetWordWrap(true)
+		row.body:SetSpacing(1)
 		row.time:SetJustifyH("RIGHT")
 		View.rows[k] = row
 		RowFonts(row)
@@ -569,7 +575,7 @@ function View.Lay()
 		if prev then
 			body:SetPoint("BOTTOMLEFT", prev, "TOPLEFT", x - prevX, gap)
 		else
-			body:SetPoint("BOTTOMLEFT", area, "BOTTOMLEFT", x, 2 - View.pixel)   -- (the glide's push: View.Glide)
+			body:SetPoint("BOTTOMLEFT", area, "BOTTOMLEFT", x, View.FOOT - View.pixel)   -- (the glide's push: View.Glide)
 			View.firstX = x
 		end
 		body:SetWidth(math.max(40, width - x - 4))
@@ -796,7 +802,7 @@ View.scroller = {
 	shift = function()
 		local row = View.rows[1]
 		if row and row.body:IsShown() then
-			row.body:SetPoint("BOTTOMLEFT", View.area, "BOTTOMLEFT", View.firstX or 0, 2 - View.pixel)
+			row.body:SetPoint("BOTTOMLEFT", View.area, "BOTTOMLEFT", View.firstX or 0, View.FOOT - View.pixel)
 		end
 	end,
 	estimate = function()
@@ -1719,7 +1725,7 @@ function View.Fit()
 			end
 		end)
 	end
-	area:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, ROW_H + 6 + lift)
+	area:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -12, ROW_H + 10 + lift)
 end
 
 local function Build()
@@ -1802,8 +1808,8 @@ local function Build()
 	hair:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, ROW_H)
 	-- the lines' holder: clips, takes the wheel and the links
 	local area = CreateFrame("Frame", nil, frame)
-	area:SetPoint("TOPLEFT", frame, "TOPLEFT", RAIL_W + 10, -8)
-	area:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, ROW_H + 6)
+	area:SetPoint("TOPLEFT", frame, "TOPLEFT", RAIL_W + 16, -12)
+	area:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -12, ROW_H + 10)
 	area:SetClipsChildren(true)
 	area:EnableMouseWheel(true)
 	area:SetScript("OnMouseWheel", function(_, delta)

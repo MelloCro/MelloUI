@@ -17,13 +17,13 @@
 --            light, a sheen, rune marks, square ripples, the kit's border
 --            glow (Kit:GlowNine) -- drawn in a frame of ours laid on the
 --            target frame, clipping what shows 10% past its sides
--- Looks (the heals'): holy (gold), nature (green and gold, leaves), water
--- (blue and foam, droplets, ripples, a bubble), quiet (the border's flare and
--- little else). The heals' kinds: h heal, o heal over time, s shield, p
--- protection, b big heal (heal to full), r resurrection, t a heal over time's
--- tick; a group or chain heal lands as a heal. The tanks' tools and defensives
--- (COOLDOWNS, the same in every look): W roar (square ripples, 2 s), U
--- taunt, F fortify, L more health, I immunity, E evasion.
+-- Looks (the heals'): holy (gold), nature (green), water (blue), quiet (the
+-- border's flare and little else). The heals' kinds: h heal, o heal over time,
+-- s shield, p protection, b big heal (heal to full), r resurrection, g group
+-- heal, c chain heal, t a heal over time's tick; the tanks' tools and
+-- defensives: W roar, U taunt, F fortify, L more health, I immunity, E
+-- evasion. Every look but Quiet lands them bold (Core/FrameFXBold.lua), in the
+-- skin's own pieces; Quiet keeps its own small landings (LANDINGS.quiet).
 -- A layer is one frame of ours with its own pooled sprites and up to two
 -- border glows; its state lives in this file's tables, never on a frame.
 --   FX.Host() -> host, FX.FreeLayer() -> layer, FX.Layer(host) -> layer
@@ -72,10 +72,10 @@ local Art
 do
 	local LIGHT = MEDIA .. "Light\\"
 	local NAMES = {}
-	for name in ("bubble bubble_gold bubble_gold_round bubble_round crest_blue crest_gold crest_green crest_steel drop "
-		.. "halo_white leaf plus_blue plus_gold plus_green rays_gold rays_gold_small ring_fire ring_gold ripple_blue "
+	for name in ("crest_blue crest_gold crest_green drop "
+		.. "halo_white leaf plus_blue plus_gold plus_green rays_gold rays_gold_small ring_gold ripple_blue "
 		.. "shard_blue sheen "
-		.. "spark_gold streak_blue streak_gold streak_green streak_red streak_white wave_gold wave_red wave_teal "
+		.. "spark_gold streak_blue streak_gold streak_green streak_white wave_gold "
 		-- (1.2.4, the bold landings' pieces: Core/FrameFXBold.lua)
 		.. "bang barrier_round guard_round guard_side heart line_h line_v rays_white res_wings res_wings_blue "
 		.. "outline_edge outline_round "
@@ -83,33 +83,60 @@ do
 		.. "star_green"):gmatch("%S+") do
 		NAMES[name .. ".tga"] = true
 	end
-	local made = { [true] = {}, [false] = {} }
-	local light   -- (nil: not read yet)
+	-- (1.2.4, the skins; the user, 2026-10-27: "use chatgpt to generate WoW Accurate effects", "now the old school
+	-- effects") the same moments in each skin's own pieces, these names: the Default skin's made like the game's own
+	-- spell light (Media/FrameFX/Default), Oldschool's painted as its RPG kit (Media/FrameFX/Oldschool) -- the ChatGPT
+	-- sheets masters/icons_v2/src/fx/default_fx* and oldschool_fx*, Tools/make_icons.py FX_DEFAULT and FX_OLDSCHOOL;
+	-- the rest the modern look's (Default) or Oldschool's old painted ones
+	local DEFAULT, OLDSCHOOL = MEDIA .. "Default\\", MEDIA .. "Oldschool\\"
+	local DRAWN = { ["line_h.tga"] = true, ["line_v.tga"] = true, ["barrier_round.tga"] = true,
+		["outline_round.tga"] = true, ["outline_edge.tga"] = true }
+	local DEFAULT_NAMES = {}
+	for name in ("bang crest_blue crest_gold crest_green glow_white guard_round guard_side halo_white heart "
+		.. "pillar_blue pillar_gold pillar_green plus_blue plus_gold plus_green rays_gold rays_gold_small rays_white "
+		.. "res_wings res_wings_blue res_wings_green seal_blue seal_gold seal_green shard_blue shock_white spark_gold "
+		.. "spark_white star_blue star_gold star_green streak_blue streak_gold streak_green "
+		.. "streak_white"):gmatch("%S+") do
+		DEFAULT_NAMES[name .. ".tga"] = true
+	end
+	local made = { light = {}, default = {}, old = {} }
+	local look   -- "light" (the modern look's), "default" (the Default skin's) or "old" (Oldschool's); nil: not read yet
 	function Art(file)
-		if light == nil then
+		if look == nil then
 			local Kit = MelloUI.Kit   -- (looked up here: the core loads the kit after this file)
-			light = not (type(Kit) == "table" and type(Kit.IsOn) == "function" and Kit:IsOn("effects"))
+			local Skin = rawget(MelloUI, "Skin")
+			if type(Kit) == "table" and type(Kit.IsOn) == "function" and Kit:IsOn("effects") then
+				look = "old"
+			elseif type(Skin) == "table" and type(Skin.IsDefault) == "function" and Skin.IsDefault() then
+				look = "default"
+			else
+				look = "light"
+			end
 		end
-		local paths = made[light]
+		local paths = made[look]
 		local path = paths[file]
 		if not path then
-			path = ((light and NAMES[file]) and LIGHT or MEDIA) .. file
+			if look == "default" and DEFAULT_NAMES[file] then
+				path = DEFAULT .. file
+			elseif look == "old" and DEFAULT_NAMES[file] then
+				path = OLDSCHOOL .. file
+			elseif DRAWN[file] then
+				path = LIGHT .. file   -- (the lines of light drawn by Tools/make_icons.py: every skin's)
+			else
+				path = ((look ~= "old" and NAMES[file]) and LIGHT or MEDIA) .. file
+			end
 			paths[file] = path
 		end
 		return path
 	end
-	MelloUI:On("look:effects", function()
-		light = nil
-	end, "FrameFX")
-	FX.LIGHT = NAMES   -- (the tests')
-	FX.Art = Art       -- (1.2.0: the swing badge's sun rays, from the same art as the look's other lights)
-	-- (1.2.4) the modern look's light on (not Oldschool's painted effects): the bold landings are drawn in it alone
-	function FX.ModernArt()
-		if light == nil then
-			Art("glow_white.tga")
-		end
-		return light == true
+	local function Again()
+		look = nil
 	end
+	MelloUI:On("look:effects", Again, "FrameFX")
+	MelloUI:On("skin", Again, "FrameFX")
+	FX.LIGHT = NAMES   -- (the tests')
+	FX.DEFAULT = DEFAULT_NAMES   -- (the names both skins' sets have)
+	FX.Art = Art       -- (1.2.0: the swing badge's sun rays, from the same art as the look's other lights)
 end
 local cos, sin, min, max, floor = math.cos, math.sin, math.min, math.max, math.floor
 local TIME = { launch = 0.32, hop = 0.22, chargeFade = 0.15, chargeMax = 3 }
@@ -658,189 +685,17 @@ end
 -- = "tr" (its top right corner, the plus's spot).
 --------------------------------------------------------------------------------
 
-local GOLD, GREEN, BLUE = "LIGHTYELLOW_FONT_COLOR", "GREEN_FONT_COLOR", "LIGHTBLUE_FONT_COLOR"
+local GOLD = "LIGHTYELLOW_FONT_COLOR"
 
-local FLASH = { "sprite", "glow_white.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.22, env = "flash", stack = 2 }
-local FLASH_BIG = { "sprite", "glow_white.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.32, env = "flash", stack = 3 }
 local FLASH_SOFT = { "sprite", "glow_white.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.16, env = "flash", a = 0.55 }
-
-local function Streak(file, w, t1)
-	-- (across the frame's own width, inside it -- the user 2026-10-09; `w`, the callers' old
-	-- length, no longer used)
-	return { "sprite", file, fit = true, w = 1.0, h = 0.4, t0 = 0, t1 = t1 or 0.36, env = "flash", grow = { 0.6, 1.0 } }
-end
 
 local function Border(colour, slot, grow, t0, t1, a, env)
 	return { "border", colour = colour, slot = slot, grow = grow, t0 = t0, t1 = t1, a = a or 1, env = env or "hold" }
 end
 
 local LANDINGS = {
-	holy = {
-		h = {
-			FLASH, Streak("streak_gold.tga", 7),
-			{ "sprite", "rays_gold.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.5, env = "flash", grow = { 0.48, 1 }, spin = 0.1 },
-			{ "sprite", "wave_gold.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.45, env = "fade", grow = { 0.35, 1 } },
-			{ "spray", "spark_gold.tga", n = 10, r0 = 0.3, r1 = 0.9, size = 0.5, t0 = 0, t1 = 0.6, env = "fade" },
-			{ "plus", "plus_gold.tga", size = 0.62, t0 = 0.04, t1 = 1.0, env = "hold" },
-			Border(GOLD, 1, 0, 0, 1.3),
-			{ "runes", "rune_gold.tga", m = -0.1, size = 0.26, t0 = 0.25, t1 = 1.4, env = "hold", a = 0.9 },
-			{ "rise", "spark_gold.tga", n = 6, height = 0.7, size = 0.3, t0 = 0.3, t1 = 1.4, env = "hold" },
-		},
-		o = {
-			{ "sprite", "wave_gold.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.5, env = "pulse", grow = { 1, 0.61 } },
-			{ "settle", "spark_gold.tga", n = 10, from = 1.3, size = 0.4, t0 = 0, t1 = 1.0, env = "hold" },
-			{ "sprite", "glow_white.tga", fit = true, w = 1, h = 1, t0 = 0.38, t1 = 0.62, env = "flash", a = 0.8 },
-			{ "sprite", "glow_gold.tga", fit = true, w = 1, h = 1, t0 = 0.3, t1 = 1.0, env = "pulse", a = 0.7 },
-			Border(GOLD, 1, 0, 0.3, 1.25, 0.8),
-		},
-		s = {
-			FLASH, Streak("streak_gold.tga", 6, 0.3),
-			Border(GOLD, 1, 0, 0, 1.4),
-			Border(GOLD, 2, -4, 0.04, 1.3, 0.6),
-			{ "sheen", "sheen.tga", t0 = 0.12, t1 = 0.72 },
-			{ "corners", "spark_gold.tga", m = -0.2, size = 0.5, t0 = 0, t1 = 1.0, env = "hold" },
-		},
-		p = {
-			FLASH, Streak("streak_gold.tga", 8, 0.42),
-			{ "crest", "crest_gold.tga", size = 1.0, t0 = 0.02, t1 = 1.5, env = "hold", stack = 2 },
-			Border(GOLD, 1, 0, 0, 1.5),
-			Border(GOLD, 2, -4, 0, 1.2, 0.65),
-			{ "spray", "spark_gold.tga", n = 8, r0 = 0.5, r1 = 0.9, size = 0.45, t0 = 0, t1 = 0.7, env = "fade" },
-		},
-		b = {
-			FLASH_BIG, Streak("streak_gold.tga", 10, 0.48),
-			{ "pillar", "pillar_gold.tga", w = 0.9, h = 1.0, t0 = 0, t1 = 1.3, env = "hold", stack = 2, grow = { 0.35, 1 } },
-			{ "sprite", "rays_gold.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.7, env = "flash", grow = { 0.43, 1 }, spin = 0.08, stack = 2 },
-			{ "sprite", "wave_gold.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.6, env = "fade", grow = { 0.27, 1 } },
-			{ "spray", "spark_gold.tga", n = 16, r0 = 0.3, r1 = 0.9, size = 0.55, t0 = 0, t1 = 0.8, env = "fade" },
-			{ "rise", "spark_gold.tga", n = 10, height = 0.7, size = 0.35, t0 = 0.1, t1 = 1.5, env = "hold" },
-			{ "plus", "plus_gold.tga", size = 0.78, t0 = 0.04, t1 = 1.2, env = "hold" },
-			Border(GOLD, 1, 0, 0, 1.5),
-		},
-		r = {
-			{ "pillar", "pillar_gold.tga", w = 0.9, h = 1.0, t0 = 0, t1 = 1.9, env = "hold", stack = 2, grow = { 0.15, 1 } },
-			{ "rise", "spark_gold.tga", n = 12, height = 0.7, size = 0.38, t0 = 0, t1 = 1.9, env = "hold" },
-			{ "sprite", "glow_gold.tga", fit = true, w = 1, h = 1, t0 = 0.2, t1 = 1.7, env = "pulse", a = 0.9 },
-			{ "sprite", "glow_white.tga", fit = true, w = 1, h = 1, t0 = 0.9, t1 = 1.3, env = "flash", a = 0.8 },
-			Border(GOLD, 1, 0, 0.2, 1.8, 0.8),
-		},
-		-- (a heal over time's tick: a small ring closing, three motes, the border warm)
-		t = {
-			{ "sprite", "wave_gold.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.6, env = "pulse", grow = { 1, 0.68 }, a = 0.75 },
-			{ "settle", "spark_gold.tga", n = 3, from = 0.9, size = 0.3, t0 = 0, t1 = 0.7, env = "hold" },
-			Border(GOLD, 1, 0, 0, 0.7, 0.4, "pulse"),
-		},
-	},
-	nature = {
-		h = {
-			FLASH, Streak("streak_green.tga", 7),
-			{ "sprite", "wave_teal.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.45, env = "fade", grow = { 0.35, 1 } },
-			{ "sprite", "glow_green.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.4, env = "flash" },
-			{ "spray", "leaf.tga", n = 12, r0 = 0.25, r1 = 0.9, size = 0.55, t0 = 0, t1 = 0.65, env = "fade", turn = true },
-			{ "plus", "plus_green.tga", size = 0.62, t0 = 0.04, t1 = 1.0, env = "hold" },
-			Border(GREEN, 1, 0, 0, 1.3),
-			{ "rise", "leaf.tga", n = 6, height = 0.7, size = 0.45, t0 = 0.3, t1 = 1.4, env = "hold", leaf = true },
-		},
-		o = {
-			{ "sprite", "wave_teal.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.5, env = "pulse", grow = { 1, 0.61 } },
-			{ "settle", "leaf.tga", n = 6, from = 1.4, size = 0.5, t0 = 0, t1 = 1.1, env = "hold", leaf = true },
-			{ "sprite", "glow_white.tga", fit = true, w = 1, h = 1, t0 = 0.38, t1 = 0.62, env = "flash", a = 0.7 },
-			{ "sprite", "glow_green.tga", fit = true, w = 1, h = 1, t0 = 0.3, t1 = 1.0, env = "pulse", a = 0.7 },
-			Border(GREEN, 1, 0, 0.3, 1.25, 0.8),
-		},
-		s = {
-			FLASH, Streak("streak_green.tga", 6, 0.3),
-			Border(GREEN, 1, 0, 0, 1.4),
-			Border(GREEN, 2, -4, 0.04, 1.3, 0.6),
-			{ "sheen", "sheen.tga", t0 = 0.12, t1 = 0.72 },
-			{ "orbit", "leaf.tga", n = 4, rx = 0.8, ry = 0.7, spin = 1.2, size = 0.5, t0 = 0, t1 = 1.2, env = "hold" },
-		},
-		p = {
-			FLASH, Streak("streak_green.tga", 8, 0.42),
-			{ "crest", "crest_green.tga", size = 1.0, t0 = 0.02, t1 = 1.5, env = "hold", stack = 2 },
-			Border(GREEN, 1, 0, 0, 1.5),
-			Border(GREEN, 2, -4, 0, 1.2, 0.65),
-			{ "orbit", "leaf.tga", n = 10, rx = 0.8, ry = 0.7, spin = 2.2, size = 0.5, t0 = 0, t1 = 1.4, env = "hold" },
-		},
-		b = {
-			FLASH_BIG, Streak("streak_green.tga", 10, 0.48),
-			{ "pillar", "pillar_green.tga", w = 0.9, h = 1.0, t0 = 0, t1 = 1.3, env = "hold", stack = 2, grow = { 0.35, 1 } },
-			{ "sprite", "wave_teal.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.6, env = "fade", grow = { 0.27, 1 } },
-			{ "sprite", "glow_green.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.5, env = "flash", stack = 2 },
-			{ "spray", "leaf.tga", n = 16, r0 = 0.25, r1 = 0.9, size = 0.6, t0 = 0, t1 = 0.8, env = "fade", turn = true },
-			{ "rise", "leaf.tga", n = 8, height = 0.7, size = 0.5, t0 = 0.1, t1 = 1.5, env = "hold", leaf = true },
-			{ "plus", "plus_green.tga", size = 0.78, t0 = 0.04, t1 = 1.2, env = "hold" },
-			Border(GREEN, 1, 0, 0, 1.5),
-		},
-		r = {
-			{ "pillar", "pillar_green.tga", w = 0.9, h = 1.0, t0 = 0, t1 = 1.9, env = "hold", stack = 2, grow = { 0.15, 1 } },
-			{ "spiral", "leaf.tga", n = 10, r = 0.7, height = 0.9, turns = 1.7, size = 0.5, t0 = 0, t1 = 1.9, env = "hold" },
-			{ "sprite", "glow_green.tga", fit = true, w = 1, h = 1, t0 = 0.2, t1 = 1.7, env = "pulse", a = 0.9 },
-			{ "sprite", "glow_white.tga", fit = true, w = 1, h = 1, t0 = 0.9, t1 = 1.3, env = "flash", a = 0.7 },
-			Border(GREEN, 1, 0, 0.2, 1.8, 0.8),
-		},
-		-- (a heal over time's tick: one leaf settling, a green pulse)
-		t = {
-			{ "settle", "leaf.tga", n = 1, from = 0.9, size = 0.5, t0 = 0, t1 = 0.7, env = "hold", leaf = true },
-			{ "sprite", "glow_green.tga", fit = true, w = 0.9, h = 1, t0 = 0.1, t1 = 0.65, env = "pulse", a = 0.4 },
-			Border(GREEN, 1, 0, 0, 0.7, 0.45, "pulse"),
-		},
-	},
-	water = {
-		h = {
-			FLASH, Streak("streak_blue.tga", 7),
-			{ "sprite", "ripple_blue.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.5, env = "fade", grow = { 0.31, 1 } },
-			{ "sprite", "ripple_blue.tga", fit = true, w = 1, h = 1, t0 = 0.1, t1 = 0.6, env = "fade", grow = { 0.31, 1 } },
-			{ "sprite", "ripple_blue.tga", fit = true, w = 1, h = 1, t0 = 0.2, t1 = 0.7, env = "fade", grow = { 0.31, 1 } },
-			{ "sprite", "glow_blue.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.4, env = "flash" },
-			{ "crown", "drop.tga", n = 12, speed = 0.9, fall = 1.1, size = 0.42, t0 = 0, t1 = 0.75, env = "fade" },
-			{ "plus", "plus_blue.tga", size = 0.62, t0 = 0.04, t1 = 1.0, env = "hold" },
-			Border(BLUE, 1, 0, 0, 1.3),
-			{ "settle", "drop.tga", n = 4, from = 1.0, size = 0.32, t0 = 0.5, t1 = 1.3, env = "hold" },
-		},
-		o = {
-			{ "settle", "drop.tga", n = 7, from = 1.4, size = 0.38, t0 = 0, t1 = 0.9, env = "hold" },
-			{ "sprite", "ripple_blue.tga", fit = true, w = 0.95, h = 1, t0 = 0.3, t1 = 0.9, env = "fade", grow = { 0.27, 1 } },
-			{ "sprite", "ripple_blue.tga", fit = true, w = 0.95, h = 1, t0 = 0.45, t1 = 1.05, env = "fade", grow = { 0.27, 1 } },
-			{ "sprite", "glow_white.tga", fit = true, w = 1, h = 1, t0 = 0.38, t1 = 0.62, env = "flash", a = 0.6 },
-			{ "sprite", "glow_blue.tga", fit = true, w = 1, h = 1, t0 = 0.3, t1 = 1.0, env = "pulse", a = 0.7 },
-			Border(BLUE, 1, 0, 0.3, 1.25, 0.8),
-		},
-		s = {
-			FLASH, Streak("streak_blue.tga", 6, 0.3),
-			{ "sprite", "bubble.tga", fit = true, w = 1.02, h = 1.04, t0 = 0, t1 = 1.4, env = "hold", grow = { 0.92, 1 } },
-			{ "sheen", "sheen.tga", t0 = 0.12, t1 = 0.72 },
-			Border(BLUE, 1, 0, 0, 1.3, 0.6),
-		},
-		p = {
-			FLASH, Streak("streak_blue.tga", 8, 0.42),
-			{ "sprite", "bubble.tga", fit = true, w = 1.02, h = 1.04, t0 = 0, t1 = 1.5, env = "hold", grow = { 0.92, 1 } },
-			{ "crest", "crest_blue.tga", size = 1.0, t0 = 0.02, t1 = 1.5, env = "hold", stack = 2 },
-			Border(BLUE, 1, 0, 0, 1.5),
-		},
-		b = {
-			FLASH_BIG, Streak("streak_blue.tga", 10, 0.48),
-			{ "pillar", "pillar_blue.tga", w = 0.9, h = 1.0, t0 = 0, t1 = 1.3, env = "hold", stack = 2, grow = { 0.35, 1 } },
-			{ "crown", "drop.tga", n = 16, speed = 1.0, fall = 1.2, size = 0.45, y = -0.2, t0 = 0.05, t1 = 1.0, env = "fade" },
-			{ "sprite", "ripple_blue.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.6, env = "fade", grow = { 0.29, 1 } },
-			{ "sprite", "ripple_blue.tga", fit = true, w = 1, h = 1, t0 = 0.12, t1 = 0.72, env = "fade", grow = { 0.29, 1 } },
-			{ "sprite", "glow_blue.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.5, env = "flash", stack = 2 },
-			{ "plus", "plus_blue.tga", size = 0.78, t0 = 0.04, t1 = 1.2, env = "hold" },
-			Border(BLUE, 1, 0, 0, 1.5),
-		},
-		r = {
-			{ "pillar", "pillar_blue.tga", w = 0.9, h = 1.0, t0 = 0, t1 = 1.9, env = "hold", stack = 2, grow = { 0.15, 1 } },
-			{ "spiral", "drop.tga", n = 12, r = 0.7, height = 0.9, turns = 1.7, size = 0.45, t0 = 0, t1 = 1.9, env = "hold", upright = true },
-			{ "sprite", "glow_blue.tga", fit = true, w = 1, h = 1, t0 = 0.2, t1 = 1.7, env = "pulse", a = 0.9 },
-			{ "sprite", "glow_white.tga", fit = true, w = 1, h = 1, t0 = 0.9, t1 = 1.3, env = "flash", a = 0.7 },
-			Border(BLUE, 1, 0, 0.2, 1.8, 0.8),
-		},
-		-- (a heal over time's tick: one drop falling in, a ripple)
-		t = {
-			{ "settle", "drop.tga", n = 1, from = 0.9, size = 0.4, t0 = 0, t1 = 0.45, env = "hold" },
-			{ "sprite", "ripple_blue.tga", fit = true, w = 0.75, h = 0.85, t0 = 0.3, t1 = 0.85, env = "fade", grow = { 0.27, 1 }, a = 0.85 },
-		},
-	},
+	-- (1.2.4, 2026-10-27, the user: "yes remove them") holy's, nature's and water's own small landings are gone:
+	-- every skin plays the bold ones (Core/FrameFXBold.lua); the Quiet look keeps its own
 	quiet = {
 		h = { FLASH_SOFT, Border(GOLD, 1, 0, 0, 1.0), { "plus", "plus_gold.tga", size = 0.48, t0 = 0.03, t1 = 0.9, env = "hold" } },
 		o = { Border(GOLD, 1, 0, 0, 1.0, 0.65, "pulse"),
@@ -959,83 +814,6 @@ do
 	LANDINGS.xp.h = LANDINGS.xp.gain
 end
 
--- The tanks' tools and defensives (the user, 2026-10-09: "Last Stand, Shield
--- Wall ... Aoe Taunt ... a roar effect, repeatable pulsing red waves
--- emitting from its unitframe"; first looks, judged in the Effect Tester):
--- the same in every look. `held`: the list lasts as long as the spell
--- (S.dur, ns.SpellLasts; `fixed`: that long instead); a held part runs to the end, in and out at its edges.
-local RED, STEEL = "RED_FONT_COLOR", "WHITE_FONT_COLOR"
-
-local function Held(part)
-	part.t0, part.held = part.t0 or 0, true
-	return part
-end
-
-local COOLDOWNS = {
-	-- the roar (Challenging Shout, Challenging Roar), after the user's reference (2026-10-09: a champion's
-	-- scream, "aggressive vibrating sound waves") and their word on it: "instead of making them round and
-	-- jittery, why not make them square, spawning in the middle and spreading trough the whole unitframe,
-	-- like a square agressive water ripple". A red flash and streak, then fiery rectangles of the frame's
-	-- shape bursting out of its middle one after another (a hot flash there as each starts), each with a
-	-- fainter echo just behind it, out to a little past the frame's edge. As long as the taunt holds, the
-	-- first three strongest; a ripple every 0.3 s living 0.8 s (50% faster than at first, the user).
-	-- (2 s whatever the taunt's length, the user 2026-10-09: "the roar duration should be set to 2 seconds")
-	W = { held = true, fixed = 2,
-		{ "sprite", "glow_red.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.35, env = "flash", stack = 2 },
-		{ "sprite", "streak_red.tga", fit = true, w = 1, h = 0.4, t0 = 0, t1 = 0.42, env = "flash", grow = { 0.54, 1 } },
-		Held({ "squares", "line_fire_h.tga", alt = "line_fire_v.tga", grow = { 0.15, 1.2 }, every = 0.3, life = 0.8,
-			thick = 0.42, echo = 0.72, strong = 3, soft = 0.8, core = "glow_fire.tga", stack = 2, env = "hold" }),
-		Held({ "border", colour = RED, slot = 1, grow = 0, a = 0.9, env = "breathe" }),
-	},
-	-- a taunt (Taunt, Growl): one square ripple of the roar's, the border flashing red
-	U = {
-		{ "sprite", "glow_red.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.3, env = "flash" },
-		{ "squares", "line_fire_h.tga", alt = "line_fire_v.tga", grow = { 0.15, 1.2 }, every = 9, life = 0.8,
-			thick = 0.42, echo = 0.72, core = "glow_fire.tga", stack = 2, t0 = 0, t1 = 0.9, env = "hold" },
-		Border(RED, 1, 0, 0, 0.9, 1, "flash"),
-	},
-	-- a fortify (Shield Wall, Barkskin): a white flash, a steel crest snapping over the frame, a sheen, then a
-	-- steel barrier held round it, breathing, for as long as it lasts
-	F = { held = true,
-		{ "sprite", "glow_white.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.25, env = "flash", stack = 2 },
-		{ "sprite", "streak_white.tga", fit = true, w = 1, h = 0.4, t0 = 0, t1 = 0.35, env = "flash" },
-		{ "crest", "crest_steel.tga", size = 1.0, t0 = 0.02, t1 = 1.4, env = "hold", stack = 2 },
-		{ "sheen", "sheen.tga", t0 = 0.15, t1 = 0.75 },
-		Held({ "border", colour = STEEL, slot = 1, grow = 0, a = 0.85, env = "breathe" }),
-		Border(STEEL, 2, -4, 0, 1.0, 0.6),
-	},
-	-- Last Stand (more health): a flash, a gold streak, then the frame beats like a heart, red, for as long as
-	-- it lasts
-	L = { held = true,
-		{ "sprite", "glow_white.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.25, env = "flash", stack = 2 },
-		{ "sprite", "streak_gold.tga", fit = true, w = 1, h = 0.4, t0 = 0, t1 = 0.35, env = "flash" },
-		Held({ "sprite", "glow_red.tga", fit = true, w = 1, h = 1, env = "beat", a = 0.85 }),
-		Held({ "border", colour = RED, slot = 1, grow = 0, a = 1, env = "beat" }),
-	},
-	-- an immunity (Divine Shield, Ice Block): a big white flash, a gold barrier on the frame's own square edge
-	-- (not a rounded bubble swelling past it, the user 2026-10-09), held, breathing,
-	-- a sheen passing
-	I = { held = true,
-		{ "sprite", "glow_white.tga", fit = true, w = 1, h = 1, t0 = 0, t1 = 0.3, env = "flash", stack = 3 },
-		{ "sprite", "streak_gold.tga", fit = true, w = 1, h = 0.4, t0 = 0, t1 = 0.45, env = "flash" },
-		Held({ "sprite", "bubble_gold.tga", fit = true, w = 1.02, h = 1.04, env = "breathe", grow = { 0.92, 1 } }),
-		{ "sheen", "sheen.tga", t0 = 0.15, t1 = 0.75 },
-		Held({ "border", colour = GOLD, slot = 1, grow = 0, a = 0.7, env = "breathe" }),
-	},
-	-- an evasion (Evasion, Deterrence): a quick white streak, then afterimages flickering either side of the
-	-- frame for as long as it lasts
-	E = { held = true,
-		{ "sprite", "streak_white.tga", fit = true, w = 1, h = 0.4, t0 = 0, t1 = 0.3, env = "flash" },
-		Held({ "sprite", "glow_steel.tga", fit = true, w = 1, h = 1, dx = -0.18, env = "flicker", a = 0.45 }),
-		Held({ "sprite", "glow_steel.tga", fit = true, w = 1, h = 1, dx = 0.18, env = "flicker", a = 0.45, phase = 1.6 }),
-		Held({ "border", colour = STEEL, slot = 1, grow = 0, a = 0.6, env = "flicker" }),
-	},
-}
-
--- on a round piece (a portrait's ring: the split of a portrait-and-bars frame, FX.Split) the round art in place
--- of the square
-local ROUND_ART = { ["bubble.tga"] = "bubble_round.tga", ["bubble_gold.tga"] = "bubble_gold_round.tga" }
-
 local LAUNCH = { holy = LaunchA, nature = LaunchB, water = LaunchW, quiet = LaunchC, loot = LaunchLoot }
 local CHARGE = { holy = ChargeA, nature = ChargeB, water = ChargeW, quiet = ChargeC }
 
@@ -1053,15 +831,15 @@ end
 
 -- the landing for a look and a kind (a group or chain heal, or one not known:
 -- a heal); its length (s). (1.2.4, the user's picks of the Forever sketch -- "A versions of everything", 2026-10-26:
--- the frames' bold landings, Core/FrameFXBold.lua) in the modern art, every look but Quiet plays its bold landing on
--- the whole frame (S: the landing's state -- a group heal's wave reads its frame)
+-- the frames' bold landings, Core/FrameFXBold.lua) every look but Quiet plays its bold landing on the whole frame, in
+-- every skin, in the skin's own pieces (S: the landing's state -- a group heal's wave reads its frame)
 local function Landing(look, kind, S)
-	local bold = look ~= "quiet" and FX.BoldLanding and FX.ModernArt() and FX.BoldLanding(look, kind, S)
+	local bold = look ~= "quiet" and FX.BoldLanding and (FX.BoldLanding(look, kind, S) or FX.BoldLanding(look, "h", S))
 	if bold then
 		return Totalled(bold)
 	end
-	local set = LANDINGS[look] or LANDINGS.holy
-	return Totalled(COOLDOWNS[kind] or set[kind] or set.h)
+	local set = LANDINGS[look] or LANDINGS.quiet
+	return Totalled(set[kind] or set.h)
 end
 
 --------------------------------------------------------------------------------
@@ -1090,29 +868,17 @@ local function Shape(name, v)
 	return 1 - v
 end
 
--- a heart's beat (lub-dub, a second apart) at local time lt
-local function Beat(lt)
-	local ph = lt % 1
-	return max(math.exp(-(ph / 0.07) ^ 2), 0.75 * math.exp(-((ph - 0.22) / 0.07) ^ 2))
-end
-
 -- a part's strength at its share `v` (of `span` s, `lt` s in): a held part
--- comes in and goes at its edges; beat, breathe and flicker ride on that
+-- comes in and goes at its edges
 local function Env(part, v, lt, span)
 	local name = part.env
 	local base
 	if part.held then
 		base = max(0, min(1, lt / (part.ramp or 0.15), (span - lt) / 0.6))
 	else
-		base = Shape((name == "beat" or name == "breathe" or name == "flicker") and "hold" or name, v)
+		base = Shape(name, v)
 	end
-	if name == "beat" then
-		return base * (0.35 + 0.65 * Beat(lt))
-	elseif name == "breathe" then
-		return base * (0.7 + 0.3 * sin(lt * TAU / 2.4))
-	elseif name == "flicker" then
-		return base * (0.55 + 0.45 * sin(lt * 13 + (part.phase or 0)))
-	elseif name == "blink" then
+	if name == "blink" then
 		-- (1.2.4: `pulses` blinks over its span, fading -- a bold taunt's rim)
 		return base * math.abs(sin(math.pi * v * (part.pulses or 2)))
 	end
@@ -1144,56 +910,9 @@ function DRAW.sprite(layer, n, part, B, v, a)
 	local rot = part.spin and part.spin * v * TAU or 0
 	-- (`edge` "r": at the frame's right end -- the XP gain's tip, 0.22.1)
 	local x, y = (part.edge == "r" and B.r or B.x) + (part.dx or 0) * B.u, B.y + (part.dy or 0) * B.u
-	local file = B.round and ROUND_ART[part[2]] or part[2]
+	local file = part[2]
 	for _ = 1, part.stack or 1 do
 		n = Put(layer, n, file, x, y, w, h, a, rot)
-	end
-	return n
-end
-
--- square ripples sent out of the frame's middle one after another, every
--- `every` s, each growing over `life` s from `grow[1]` to `grow[2]` of the
--- frame's size and fading: four lines of up to `thick` u (`[2]` across,
--- `alt` down), an `echo` of it further in (that share of its size) at 40%; the first `strong` at full strength, the rest at `soft`;
--- `core`: a hot flash at the middle as each one starts
--- (the lines meet at the corners, none past another; thinner while the
--- ripple is small, `thick` at its full size)
-local function Square(layer, n, part, B, g, a, q)
-	local hw, hh = B.w / 2 * g, B.h / 2 * g
-	if B.round then
-		-- (on a ring: a round ripple of the same fire, its line at 0.84 of the sprite)
-		for _ = 1, part.stack or 1 do
-			n = Put(layer, n, "ring_fire.tga", B.x, B.y, 2 * hw / 0.84, 2 * hh / 0.84, a)
-		end
-		return n
-	end
-	local t = part.thick * B.u * (0.45 + 0.55 * q)
-	for _ = 1, part.stack or 1 do
-		n = Put(layer, n, part[2], B.x, B.y + hh, 2 * hw, t, a)
-		n = Put(layer, n, part[2], B.x, B.y - hh, 2 * hw, t, a)
-		n = Put(layer, n, part.alt, B.x - hw, B.y, t, 2 * hh, a)
-		n = Put(layer, n, part.alt, B.x + hw, B.y, t, 2 * hh, a)
-	end
-	return n
-end
-
-function DRAW.squares(layer, n, part, B, v, a, lt)
-	local every, life = part.every, part.life
-	local last = floor(lt / every)
-	for j = max(0, last - math.ceil(life / every)), last do
-		local age = lt - j * every
-		if age >= 0 and age <= life then
-			local q = age / life
-			local g = part.grow[1] + (part.grow[2] - part.grow[1]) * (1 - (1 - q) * (1 - q))
-			local strength = (j < (part.strong or 1e9) and 1 or (part.soft or 0.5)) * a * (1 - q)
-			n = Square(layer, n, part, B, g, strength, q)
-			if part.echo then
-				n = Square(layer, n, part, B, g * part.echo, strength * 0.4, q)
-			end
-			if part.core and age < 0.18 then
-				n = Put(layer, n, part.core, B.x, B.y, B.u * 1.3, nil, a * (1 - age / 0.18))
-			end
-		end
 	end
 	return n
 end
@@ -1269,92 +988,6 @@ function DRAW.rise(layer, n, part, B, v, a)
 			part.leaf and (-1.3 + 0.4 * sin(v * 5 + i)) or 0)
 	end
 	return n
-end
-
--- a crown of droplets thrown up and out (from the frame's middle, or `y` u
--- above it), falling back, each pointing the way it moves
-function DRAW.crown(layer, n, part, B, v, a)
-	local atan2 = math.atan2
-	for i = 1, part.n do
-		local ang = math.pi / 2 + ((i - 1) / max(1, part.n - 1) - 0.5) * (part.spread or 2.4)
-		local speed = part.speed * B.u * (0.7 + 0.5 * R(i, 1))
-		local fall = part.fall * B.u
-		local x = B.x + cos(ang) * speed * v
-		local y = B.y + (part.y or 0) * B.u + sin(ang) * speed * v - fall * v * v
-		local rot = atan2(sin(ang) * speed - 2 * fall * v, cos(ang) * speed) - math.pi / 2
-		n = Put(layer, n, part[2], x, y, part.size * B.u * (0.8 + 0.4 * R(i, 2)), nil, a, rot)
-	end
-	return n
-end
-
-function DRAW.orbit(layer, n, part, B, v, a)
-	for i = 1, part.n do
-		local ang = i / part.n * TAU + v * part.spin
-		n = Put(layer, n, part[2], B.x + cos(ang) * part.rx * B.w / 2, B.y + sin(ang) * part.ry * B.h / 2,
-			part.size * B.u, nil, a, ang + math.pi / 2)
-	end
-	return n
-end
-
-function DRAW.spiral(layer, n, part, B, v, a)
-	for i = 1, part.n do
-		local k = max(0, min(1, v * 1.25 - (i - 1) / part.n * 0.5))
-		if k > 0 then
-			local ang = k * part.turns * TAU + i
-			n = Put(layer, n, part[2], B.x + cos(ang) * part.r * B.u, B.b + k * part.height * B.u, part.size * B.u, nil,
-				a * sin(math.pi * k), part.upright and 0 or ang + 1.2)
-		end
-	end
-	return n
-end
-
-function DRAW.runes(layer, n, part, B, v, a)
-	local m = part.m * B.u
-	local l, b, r, t = B.l - m, B.b - m, B.r + m, B.t + m
-	local w, h = r - l, t - b
-	local rad = B.w / 2 + m   -- (on a ring: round it)
-	local per = B.round and TAU * rad or 2 * (w + h)
-	local count = max(8, floor(per / (B.u * 0.24)))
-	for i = 0, count - 1 do
-		local d = i / count * per
-		local x, y
-		if B.round then
-			x, y = B.x + cos(d / rad) * rad, B.y + sin(d / rad) * rad
-		elseif d < w then
-			x, y = l + d, t
-		elseif d < w + h then
-			x, y = r, t - (d - w)
-		elseif d < 2 * w + h then
-			x, y = r - (d - w - h), b
-		else
-			x, y = l, b + (d - 2 * w - h)
-		end
-		local twinkle = 0.6 + 0.4 * sin(i * 1.7 + v * 9)
-		if i % 3 == 0 then
-			n = Put(layer, n, part[2], x, y, part.size * B.u, nil, a * twinkle)
-		else
-			n = Put(layer, n, "glow_gold.tga", x, y, part.size * B.u * 0.5, nil, a * twinkle * 0.8)
-		end
-	end
-	return n
-end
-
-function DRAW.corners(layer, n, part, B, v, a)
-	local m = part.m * B.u
-	local s = part.size * B.u
-	local rot = v * math.pi
-	if B.round then
-		local rad = B.w * 0.36
-		for k = 0, 3 do
-			local ang = TAU * (k / 4 + 0.125)
-			n = Put(layer, n, part[2], B.x + cos(ang) * rad, B.y + sin(ang) * rad, s, nil, a, rot)
-		end
-		return n
-	end
-	n = Put(layer, n, part[2], B.l - m, B.t + m, s, nil, a, rot)
-	n = Put(layer, n, part[2], B.r + m, B.t + m, s, nil, a, rot)
-	n = Put(layer, n, part[2], B.l - m, B.b - m, s, nil, a, rot)
-	return Put(layer, n, part[2], B.r + m, B.b - m, s, nil, a, rot)
 end
 
 function DRAW.pillar(layer, n, part, B, v, a)
