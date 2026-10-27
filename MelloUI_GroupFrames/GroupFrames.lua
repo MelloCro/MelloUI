@@ -127,72 +127,6 @@ end
 RD.NamedColour = NamedColour
 
 --------------------------------------------------------------------------------
--- The starter sets (pick 4B): per class, laid once per spec on its first use.
--- A buff by one of its spell IDs (its name is the client's, every rank found
--- by RD:Ids); a debuff by its kind. Change or clear any of it.
---------------------------------------------------------------------------------
-
-local function Buff(id, look, point, colour, extra)
-	local e = { kind = "buff", spell = id, look = look, point = point, colour = colour }
-	for k, v in pairs(extra or {}) do
-		e[k] = v
-	end
-	return e
-end
-local function Debuff(what, look, point, colour, extra)
-	local e = { kind = "debuff", what = what, look = look, point = point, colour = colour }
-	for k, v in pairs(extra or {}) do
-		e[k] = v
-	end
-	return e
-end
-
--- every class: the boss debuff in the middle
-local BOSS = Debuff("boss", "icon", "CENTER", "RED_FONT_COLOR", { size = 14 })
-
-RD.STARTERS = {
-	PRIEST = {
-		Buff(139, "icon", "TOPRIGHT", "GREEN_FONT_COLOR"),                         -- Renew
-		Buff(17, "square", "TOPLEFT", "NORMAL_FONT_COLOR", { x = 14 }),            -- Power Word: Shield
-		Buff(10060, "bar", "LEFT", "EPIC_PURPLE_COLOR", { whose = "any" }),         -- Power Infusion
-		Debuff("mine", "bar", "BOTTOM", nil, { colourBy = "type" }),
-		BOSS,
-	},
-	DRUID = {
-		Buff(774, "icon", "TOPRIGHT", "GREEN_FONT_COLOR"),                         -- Rejuvenation
-		Buff(8936, "square", "TOPLEFT", "GREEN_FONT_COLOR", { x = 14 }),           -- Regrowth
-		Buff(774, "health", "CENTER", "GREEN_FONT_COLOR"),                         -- Rejuvenation: the health bar's colour
-		Debuff("mine", "bar", "BOTTOM", nil, { colourBy = "type" }),
-		BOSS,
-	},
-	PALADIN = {
-		Buff(1022, "square", "TOPLEFT", "LIGHTBLUE_FONT_COLOR", { x = 14, whose = "any" }),   -- Blessing of Protection
-		Buff(1044, "square", "TOPLEFT", "ORANGE_FONT_COLOR", { x = 26, whose = "any" }),      -- Blessing of Freedom
-		Debuff("mine", "bar", "BOTTOM", nil, { colourBy = "type" }),
-		BOSS,
-	},
-	SHAMAN = {
-		Buff(29203, "square", "TOPLEFT", "LIGHTBLUE_FONT_COLOR", { x = 14 }),       -- Healing Way
-		Debuff("mine", "bar", "BOTTOM", nil, { colourBy = "type" }),
-		BOSS,
-	},
-	MAGE = {
-		Buff(1008, "square", "TOPLEFT", "EPIC_PURPLE_COLOR", { x = 14 }),           -- Amplify Magic
-		Debuff("mine", "bar", "BOTTOM", nil, { colourBy = "type" }),
-		BOSS,
-	},
-	WARRIOR = {
-		Buff(6673, "square", "TOPLEFT", "ORANGE_FONT_COLOR", { x = 14 }),           -- Battle Shout
-		BOSS,
-	},
-}
--- the rest: what anyone can do something about
-RD.STARTER_ANY = {
-	Debuff("group", "bar", "BOTTOM", nil, { colourBy = "type" }),
-	BOSS,
-}
-
---------------------------------------------------------------------------------
 -- The module
 --------------------------------------------------------------------------------
 
@@ -389,11 +323,11 @@ local M = MelloUI:RegisterModule(OWNER, {
 		-- the Designer
 		{ type = "toggle", key = "indicators", name = "Indicators On The Frames",
 		  desc = "Your aura indicators on the frames. Off: the frames show none." },
-		-- (one look C10: the list and the picked one's settings; the frame and its
-		-- parts are the designer stage's -- GroupDesignerPage.lua's Page.HEIGHT)
-		{ type = "canvas", key = "designer", name = "Your Indicators", height = 616,
-		  search = "indicators icons squares bars hots shields buffs debuffs dispel colour wheel designer",
-		  desc = "Your indicators for the spec you play, and the one you picked: its look, place, size, colour and text. Drag it on the frame above to move it.",
+		-- (one look C10: the frame and its parts are the designer stage's; 1.2.4:
+		-- the canvas is the spell groups' tray and block, GroupSpellGroupsPage.lua's)
+		{ type = "canvas", key = "designer", name = "Your Indicators", height = 900,
+		  search = "indicators spell groups icons squares bars hots shields buffs debuffs defensives lockouts dispel colour wheel designer",
+		  desc = "Your spell groups for the spec you play: drag a group onto the frame above, switch its spells on or off, and set its look, place, size, colour and text.",
 		  build = function(canvas, width)
 			if ns.Page and ns.Page.Build then
 				ns.Page.Build(canvas, width)
@@ -504,7 +438,9 @@ RD.NewId = NextId
 -- an indicator's fields, filled where missing (a starter's, an older one's)
 function RD:Fill(t)
 	t.id = t.id or NextId()
-	t.kind = t.kind == "debuff" and "debuff" or "buff"
+	-- (1.2.4: a spell group, GroupSpellGroups.lua)
+	local SG = t.kind == "group" and ns.SpellGroups
+	t.kind = (SG and "group") or (t.kind == "debuff" and "debuff") or "buff"
 	t.look = RD.LOOK[t.look] and t.look or "icon"
 	t.point = t.point or "TOPRIGHT"
 	t.x, t.y = tonumber(t.x) or 0, tonumber(t.y) or 0
@@ -515,7 +451,7 @@ function RD:Fill(t)
 		t.r, t.g, t.b = NamedColour(t.colour or "WHITE_FONT_COLOR")
 	end
 	t.colour = nil
-	t.colourBy = t.colourBy == "type" and t.kind == "debuff" and "type" or "mine"
+	t.colourBy = t.colourBy == "type" and t.kind ~= "buff" and "type" or "mine"
 	t.whose = t.whose == "any" and "any" or "mine"
 	t.when = t.when == "combat" and "combat" or "always"
 	if type(t.text) ~= "table" then
@@ -526,7 +462,9 @@ function RD:Fill(t)
 		t.count = { show = true, point = "BOTTOMRIGHT", x = 1, y = -1 }
 	end
 	t.count.size = tonumber(t.count.size) or RD.SIZE.text
-	if t.kind == "buff" then
+	if SG then
+		SG.Fill(t)
+	elseif t.kind == "buff" then
 		-- (kept by name: every rank; the ID it came with gives the name)
 		if not t.name and t.spell then
 			t.name = RD:SpellName(t.spell)
@@ -539,8 +477,9 @@ function RD:Fill(t)
 	return t
 end
 
--- a starter laid fresh (a copy: the table above stays as it is); `id` its
--- own (a spec's starters: "<specKey>#<n>", nothing counted in the settings)
+-- a starter laid fresh (a copy: the class's spell groups stay as they are);
+-- `id` its own (a spec's starters: "<specKey>#<n>", nothing counted in the
+-- settings)
 local function Laid(e, id)
 	local t = {}
 	for k, v in pairs(e) do
@@ -619,7 +558,8 @@ end
 function RD:Starter(class, key)
 	local out = {}
 	local party, n = self:KindOf(key) == "party", 0
-	for i, e in ipairs(RD.STARTERS[class] or RD.STARTER_ANY) do
+	-- (1.2.4: the class's spell groups, GroupSpellGroups.lua)
+	for i, e in ipairs(ns.SpellGroups and ns.SpellGroups.Starter(class) or {}) do
 		local t = Laid(e, key and (key .. "#" .. i) or nil)
 		if party then
 			n = PartyPlace(t, n)
@@ -951,6 +891,9 @@ function RD:GatherAll()
 		for _, t in ipairs(list) do
 			if t.kind == "buff" and t.name then
 				self:Ids(t.name, t.spell)
+			elseif t.kind == "group" and ns.SpellGroups then
+				-- (a spell group's typed spells)
+				ns.SpellGroups.Gather(t)
 			end
 		end
 	end

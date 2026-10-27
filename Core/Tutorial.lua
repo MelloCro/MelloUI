@@ -26,8 +26,8 @@ MelloUI.Tutorial = T
 --------------------------------------------------------------------------------
 -- The steps: the page to show, the part to point at (given the window's
 -- tour table `c`, the page and the step), where the tip hangs, and what it
--- says. The window's parts come from c.part(name) (the plate's title, the
--- side list, the top bar's controls); a page's entry in the side list from
+-- says. The window's parts come from c.part(name) (the brand's title, the
+-- side list, Edit Layout's entry, the footer's buttons); a page's entry in the side list from
 -- c.navEntry(key), which unfolds its group and brings the row into view at
 -- once; a page's header parts (its switch, its picker, the preview) and its
 -- tabs from the built page. A side-list entry's tip hangs off its right
@@ -58,7 +58,7 @@ local function HeaderTarget(_, page, step)
 	return page and page[step.header] or nil
 end
 
--- a top bar control (the step's `part`) while it is there: shown
+-- a control of the window's own (the step's `part`) while it is there: shown
 local function BarTarget(c, _, step)
 	local part = c.part(step.part)
 	return (part and part:IsShown()) and part or nil
@@ -79,7 +79,7 @@ local STEPS = {
 	  text = "Welcome to MelloUI. This is its settings window: /mello opens it, or the MelloUI button in the game menu (Escape). Every part of your interface has its page here. This tour shows where things live; close the window to stop it." },
 	{ page = "Home", point = "RightEdgeTop",
 	  target = function(c) return c.part("nav") end,
-	  text = "The side list: the pages by group (The look, Frames and bars, Chat and text, Quests and travel, Sound), gold for the page you are on. Click a group's name to fold it. The box over it searches every setting: each result shows where it lives (page, tab and section), and a click takes you there." },
+	  text = "The side list: Edit Layout, Look, Home and Profiles at its top, then the pages by group (The look, Frames and bars, Chat, Quests and travel, Quality of life, Sound), gold for the page you are on. Click a group's name to fold it. The box over it searches every setting: each result shows where it lives (page, tab and section), and a click takes you there." },
 	{ page = "Home", point = "LeftEdgeCenter",
 	  target = function(_, page) return page.setup end,
 	  text = "Your setup: the profile in use (choosing another asks first), the palette and the Kit Colours with Change… to their place on Look, your screen and what is on. The installer sets everything up again from here." },
@@ -96,13 +96,14 @@ local STEPS = {
 	{ page = "Windows", point = "BottomEdgeLeft", target = HeaderTarget, header = "picker",
 	  text = "Windows: the game's windows in the painted look, one at a time. Pick a window for its Painted Skin, its backgrounds (click one to see every choice as a picture) and links to its shade, parchment and borders on Look." },
 	-- (Edit Layout's step, in its own words, while the build has it: the
-	-- one step about moving things, on the top bar's Edit Layout button;
-	-- 0.15.0: it replaced the step at the old Layout group)
-	{ page = "Windows", point = "BottomEdgeCenter", target = EditLayoutTarget, part = "edit",
+	-- one step about moving things, on the side column's Edit Layout entry
+	-- -- 1.2.4, the shell; it was the top bar's button; 0.15.0: it replaced
+	-- the step at the old Layout group)
+	{ page = "Windows", point = "RightEdgeCenter", target = EditLayoutTarget, part = "edit",
 	  text = "Edit Layout: move and resize everything. Drag an element, wheel to resize, right-click for its size, position and snapping, Ctrl+right-click to reset it. Nothing is kept until you choose Save. Action bars and unit frames open the game's Edit Mode from there." },
-	-- (the top bar's Install… is there while the installer is)
-	{ page = "Windows", point = "BottomEdgeCenter", target = BarTarget, part = "install",
-	  text = "Install…, at the top right: the installer. It sets MelloUI up step by step, fitted to your screen: your skin first (Default, Modern or Oldschool), then the features you want. You have 15 seconds to keep the new setup, and Revert on Home's Your setup goes back later." },
+	-- (the footer's Install… is there while the installer is)
+	{ page = "Windows", point = "TopEdgeCenter", target = BarTarget, part = "install",
+	  text = "Install…, at the bottom right: the installer. It sets MelloUI up step by step, fitted to your screen: your skin first (Default, Modern or Oldschool), then the features you want. You have 15 seconds to keep the new setup, and Revert on Home's Your setup goes back later." },
 	{ page = "VoiceOver", point = "RightEdgeCenter", target = NavTarget,
 	  text = "Voice Over: every quest giver and greeting read aloud, in a voice matched to the NPC's race and gender. With the voice pack installed the recorded lines play; without it the text-to-speech voices do. The overlay shows who is speaking. In chat: /vo stop, /vo packs. The quest log gets a Read button." },
 	{ page = "QuestList", point = "RightEdgeCenter", target = NavTarget,
@@ -114,8 +115,8 @@ local STEPS = {
 	  text = "Minimap is a designer: the map (its size, coordinates and border) and Services, the bar under the minimap: in six groups it routes you to the nearest repair, mailbox, inn, flight master, auction house, bank or trainer, learning the ones it meets; Errands holds your reminders. /services <kind> does the same from chat." },
 	{ page = "QuestTracker", point = "RightEdgeCenter", target = NavTarget,
 	  text = "Quest Tracker: the quests you watch in a tracker under the minimap, as wide as the map above it, that scrolls when the list runs long. The nearest quest comes first (the arrow on its title switches it), each with its distance. With the reskin on, its Painted Skin switch dresses it in the kit." },
-	{ page = "Reminders", point = "RightEdgeCenter", target = NavTarget,
-	  text = "Reminders: a small round button beside your portrait for supplies running low, new mail, worn gear and new training. Click it to go there. The page's other tabs: Restock keeps your list and buys only when you click Buy; Vendor repairs your gear and sells your junk." },
+	{ page = "QualityOfLife", point = "RightEdgeCenter", target = NavTarget,
+	  text = "Quality of Life: the small helpers, a tab each. Vendor repairs your gear and sells your junk; Restock keeps your list and buys only when you click Buy; Quests accepts and hands in quests for you; Notices, Combat Text, Gains and Error Messages are the text in the middle of the screen; Reminders puts a small round button beside your portrait for supplies running low, new mail, worn gear and new training; then the widgets, FPS / Latency and the tooltip." },
 	-- (one look stage G: the Nameplates page is a designer; Party Markers is its Friendly players)
 	{ page = "Nameplates", point = "BottomEdgeLeft", target = HeaderTarget, header = "elChips",
 	  text = "Nameplates is a designer too: Enemies (the name, the bar, the threat line, the combo points, the CC and quest icons and your debuffs on their plates), Friendly players (Party Markers: a class medallion over your party's heads, ringed in their role's colour, on their friendly nameplates, in the open world) and Objects (Loot Sparkles)." },

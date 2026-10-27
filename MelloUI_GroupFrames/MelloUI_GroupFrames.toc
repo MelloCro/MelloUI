@@ -9,6 +9,8 @@
 ## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
 
 GroupFrames.lua
+GroupSpells.lua
+GroupSpellGroups.lua
 GroupLooks.lua
 GroupParts.lua
 GroupButton.lua
@@ -16,3 +18,4 @@ GroupIndicators.lua
 GroupHeaders.lua
 GroupSolo.lua
 GroupDesignerPage.lua
+GroupSpellGroupsPage.lua

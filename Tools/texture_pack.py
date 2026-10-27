@@ -319,8 +319,12 @@ STAY_TGA = [
 INSTALLER_PICTURES = tuple("%s_%s" % (name, skin) for name in ("look", "party_group", "party_portraits", "quests", "column",
                                                               "combat", "chat", "chatgame", "bags", "bagsgame")
                            for skin in ("default", "modern", "oldschool"))
+# (1.2.4, the configurator shell's motion: Core/ConfigMotion.lua's Tex(parent, file) and the compass cards' C.file)
+CONFIGURATOR_MOTION = ("Candle", "Card1_Modern", "Card2_Modern", "Cracks_Oldschool", "Flame", "Glow", "RingGlint",
+                       "RingGlow", "Streak")
 DYNAMIC_PATHS = {
     ("Core/InstallerWindow.lua", "Installer/"): INSTALLER_PICTURES,
+    ("Core/ConfigMotion.lua", "Textures/Configurator/"): CONFIGURATOR_MOTION,
     # TextureFile(): the painted picture, or the look's ("_warm", "_bronze", "_<palette id>")
     ("MelloUI_Oldschool/Modules/GameMenuPanel.lua", "Textures/GameMenuFrame"): GAMEMENU_ENDINGS,
     ("MelloUI_Oldschool/Modules/GameMenuPanel.lua", "Textures/GameMenuFrame_"): tuple(e[1:] for e in GAMEMENU_ENDINGS if e),

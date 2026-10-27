@@ -420,7 +420,7 @@ Lang:Add("koKR", {
 	["The health percentage under which the bar turns purple (20% for most execute abilities, 35% for some)."] = "막대가 보라색이 되는 생명력 비율(대부분의 마무리 기술은 20%, 일부는 35%).", -- draft
 	["Apply To"] = "적용 대상", -- draft
 	["The fill of the health and power bars of the player, target, focus, pet, party, boss and target-of-target frames: Shared (the Look page's Bar Texture), the game's own art, or a picture of their own."] = "플레이어, 대상, 주시 대상, 소환수, 파티, 우두머리, 대상의 대상 창의 생명력과 자원 막대 채움: 공유(외형 페이지의 막대 질감), 게임의 그림, 또는 자체 그림.", -- draft
-	["Shared (Look's Bar Texture)"] = "공유(외형)", -- draft
+	["Same as Every Bar"] = "공유(외형)", -- draft
 	["The game's"] = "게임의 것", -- draft
 	["Raid Frames"] = "공격대 창", -- draft
 	["The fill of MelloUI's party and raid frames and the game's raid-style frames: Shared (the Look page's Bar Texture), Plain (a flat fill; the game's own art on the game's frames), or a picture of their own."] = "MelloUI의 파티 및 공격대 창과 게임의 공격대 형태 창의 채움: 공유(외형 페이지의 막대 질감), 단색(평면 채움; 게임의 창에서는 게임의 그림), 또는 자체 그림.", -- draft

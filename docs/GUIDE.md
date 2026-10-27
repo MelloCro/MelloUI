@@ -98,7 +98,7 @@ A small round button beside your portrait taps you on the shoulder, then tucks i
 - At a shop that sells what you are low on, a small shopping list opens beside it. Nothing is bought until you click **Buy**.
 - Bags almost full, talent points to spend and Well Fed running out get the same little button.
 - So do your buffs: a poison or an oil that ran out on your weapon (while you carry one to put back), one of your own buffs missing on you, and your buffs missing on your group, with their names. They stay up until it is back on, in fights too, and a click puts it back on (out of combat).
-- It all lives on the **Reminders & Widgets** page, one switch per reminder. The Services bar's **Errands** group shows the same reminders.
+- It all lives on **Quality of Life > Reminders**, one switch per reminder. The Services bar's **Errands** group shows the same reminders.
 
 And what needs you *right now* shows up as small widgets in one column, each with a gold ring for its time: loot rolls (Need, Greed, Pass right there), the way back to your corpse, a timed quest's clock, summons and resurrect offers (Accept or Decline), ready checks, whispers (Reply opens the conversation), a hungry pet (Feed Pet), outbid / sold / won at the auction house, your crafting batch ("Crafting 12 of 20") and a profession cooldown that's ready again. Voice Over lives there too, always at the bottom: nothing moves what's being read, and a fight never stops it. Loot rolls, summons and ready checks sit right above it; at most four show at once (**Most Widgets Shown**), the rest wait in a slim "+2 more" row you can click open, and whispers or the auction house step aside in a fight and come back after. Move and size the column in Edit Layout; each one has its switch on the Reminders page's **Widgets** tab.
 
@@ -125,24 +125,25 @@ Then:
 - **Install:** your current setup is saved as the profile **Before install** first. Then you have 15 seconds: **Keep** the new setup, or **Revert** to go back at once; if you don't answer, it goes back by itself. A fight or Edit Mode pauses the countdown, and a `/reload` in the middle brings it back with 15 seconds. Before install stays on the Profiles page, so you can load it later too.
 - **Done:** take the tour, open MelloUI, or reload once if the fonts over characters' heads changed.
 
-Close it without installing and nothing changes. Run it again any time: **Install…** at the top of `/mello`, **Install again** on its Home page, or `/mello install`. Updating from an earlier version? No installer, just one line in chat. If you put Mello's layout in with 0.13.x, press **Fit to this screen** once on Home > Your setup (or type `/mello layout apply`): the Services row under the minimap is shorter since 0.14.0, and the fit closes the gap under it. The game keeps the Edit Mode layout per character: on another character, `/mello layout apply` makes Mello's layout the active one there too.
+Close it without installing and nothing changes. Run it again any time: **Install…** at the bottom of `/mello`, **Install again** on its Home page, or `/mello install`. Updating from an earlier version? No installer, just one line in chat. If you put Mello's layout in with 0.13.x, press **Fit to this screen** once on Home > Your setup (or type `/mello layout apply`): the Services row under the minimap is shorter since 0.14.0, and the fit closes the gap under it. The game keeps the Edit Mode layout per character: on another character, `/mello layout apply` makes Mello's layout the active one there too.
 
 ## ⚙️ The settings window
 
 `/mello`, or the **MelloUI** button in the game menu (Escape), opens it. A page's name after it opens that page: `/mello chat`, `/mello unit frames`, `/mello fonts` (a module's name works too).
 
-- **Top bar:** on the left, **Preview** (below); on the right, **Install…** (the installer), **Edit Layout** (move and resize the interface on the screen itself, as in Drag. Everything. above; it works with UI Modifications off too) and close.
+- **The window:** one painted window in each skin (Modern, Default, Oldschool): the side list on the left, the page's title, its switch and its tabs across the top, the page in the middle, and along the bottom **Reset this page**, **Language**, **Preview** (below), **Install…** (the installer) and **Close**. Only the middle changes as you go. While it is open its painting moves a little: flames along Modern's lines and its compass roses (they swing and settle as you change page), a lamp's glint on Default's metal, candlelight and embers on Oldschool's stone; **Reduce Motion** (Look > General) keeps it still. Under Oldschool the pages lie on its parchment, in dark ink (the controls keep their own look, a cog's panel stays dark).
 - **Preview:** see how your interface behaves in a fight before you are in one. The button opens a list: **Solo Fight** and **Party Fight** play everything, then one part at a time: **Fader**, **Reminders**, **Widget Column**, **Party Frames**, **Damage Meter**, **Combat Text**, **Gains** and **Personal Display**. A click plays a short scene (about 26 seconds) with made-up names and numbers: resting, the pull, a fight, the kill and after it. The settings window steps aside while it plays and comes back after; a strip at the top of the screen names what plays, the moment ("Resting", "In a fight", "After the fight") and has **Stop**. What you set shows as you set it: what you fade In Combat comes back in the fight and fades after it, the reminders hide in the fight, the widgets that wait for a fight's end fold away. Party Fight and Party Frames draw stand-ins where your party frames sit (the game shows its own only in a real group), their health falling and healed back; the meter's numbers and race bar show the made-up group, and the fight summary after the kill says it is made up (it is never in your Fight History). Your Damage shows at your target's nameplate while you have a target. A part whose module is off is dimmed in the list. Out of combat only: a real fight, or opening Edit Layout, stops it at once (the settings window then stays shut). `/mello preview solo`, `party` or a part's word (`fader`, `reminders`, `widgets`, `partyframes`, `meter`, `combattext`, `gains`, `personal`), and `/mello preview stop`.
-- **Side list:** Home, then the pages in five groups, then Profiles: **The look** (Look, Windows, Fader, Oldschool: the painted reskin's own settings), **Frames and bars** (Unit & Group Frames, Nameplates, Bars, Minimap, Damage Meter), **Chat and text** (Chat, Tooltip, Screen Text), **Quests and travel** (Quest Tracker, Quest List, Route, Map, Dungeon Info, Reminders & Widgets, Automation) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
-- **Pages:** every page is laid out the same way. At the top its name and what it holds, its switch where the page is one module's (Look's is **UI Modifications**: the painted reskin and every feature that tunes the interface go with it; the palette, the UI Shade and Reduce Motion keep working without it) and **Reset this page** (every setting on the page back to its default, on every tab; on a page with a picker, for the one picked and the settings every pick shares; the switches of whole modules and what is your character's own stay; it asks first, saying how many settings change). Under it the tabs, and on every tab the same sections in the same order: General, Look, Text, Layout, Behaviour, Sound, Advanced (a section with nothing in it is left out). Pages and tabs slide and fade in, and the wheel glides the page and the list; Reduce Motion (Look > General) makes all of it instant.
-- **Every setting in one place:** each setting lives on one page only. What the whole interface shares (the palette, the Kit Colours, the borders, the Font Style and its sizes, the UI Shade and its areas, the parchment sheets, Dark Mode's brightness, the bar texture and the health bar colours) lives on **Look**. A page it touches shows a **link row**: the setting's value and a button naming the page it lives on (**Look >**, **Minimap >**, **Windows >**) that takes you to it.
+- **Side list:** at the top **Edit Layout** (move and resize the interface on the screen itself, as in Drag. Everything. above; it works with UI Modifications off too), **Look**, **Home** and **Profiles**; under them the search box, then the pages in six groups: **The look** (Windows, Fader, Oldschool: the painted reskin's own settings), **Frames and bars** (Unit & Group Frames, Nameplates, Bars, Minimap, Damage Meter), **Chat**, **Quests and travel** (Quest Tracker, Quest List, Route, Map, Dungeon Info), **Quality of life** (Quality of Life: Vendor, Restock, Quests, Notices, Combat Text, Gains, Error Messages, Reminders, Widgets, FPS / Latency and Tooltip, a tab each) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it. At the bottom: MelloUI's version, its share of each frame and the memory it holds.
+- **Pages:** every page is laid out the same way. At the top its name and what it holds, its switch where the page is one module's (top right) (Look's is **UI Modifications**: the painted reskin and every feature that tunes the interface go with it; the palette, the UI Shade and Reduce Motion keep working without it) and, at the bottom, **Reset this page** (every setting on the page back to its default, on every tab; on a page with a picker, for the one picked and the settings every pick shares; the switches of whole modules and what is your character's own stay; it asks first, saying how many settings change). Under it the tabs, and on every tab the same sections in the same order: General, Look, Text, Layout, Behaviour, Sound, Advanced (a section with nothing in it is left out). Pages and tabs slide and fade in, and the wheel glides the page and the list; Reduce Motion (Look > General) makes all of it instant.
+- **Every setting in one place:** each setting lives on one page only. What the whole interface shares (the palette, the Kit Colours, the borders, the Font Style and its sizes, the UI Shade and its areas, the parchment sheets, Dark Mode's brightness, the bar texture and the health bar colours) lives on **Look**: **Fonts** holds every font of the interface (the Font Style, its sizes and faces, then a card for each part with its own: Unit Frames, Party & Raid, Buffs & Debuffs, Personal Display, Quest Tracker, Combat Text, FPS / Latency), **Textures** every bar's texture (Every Bar, then each kind of bar, Same as Every Bar until you pick one), the tooltip's and the chat's backgrounds and borders, **Colours** the health bar colours and the execute range. A page it touches shows a **link row**: the setting's value and a button naming the page it lives on (**Look >**, **Minimap >**, **Windows >**) that takes you to it.
 - **Designers:** Unit & Group Frames is a designer. Its frames stand in a row at the top: Player, Target, Focus, Pet, Buffs, Party, Raid, Personal, and **All frames** for what every frame shares (the heal light, the big moments, the debuff glow). Pick one, then one of its parts on the line under it (Name, Health bar, Portrait…): the part's options come first, the whole frame's under them, each heading saying whose it is ("Player · Look"). An option that is one setting for several frames is marked **Shared**, and its tooltip names the others. The **Party** and **Raid** frames show your frame large at the top (it stays there while the page scrolls): click a part on it to open that part's options, or a part on the line to pick it there. The **Player**, **Target**, **Focus** and **Pet** frames show a copy of the game's own frame at the top, drawn with your settings (the bars, the names, the values, the portrait) at the game's own size, so it is as sharp as your frames; click its portrait, health bar, name or values to open that part. Each text part (a name, the values, the health text, the buff and indicator numbers, the Personal Display's text) has its own **Font** in its Text section: **Shared** keeps the face Look > Fonts gives it.
 - **Pickers:** Action Bars (Action Bars, Micro Menu, Bag Bar) and Windows (every game window the reskin dresses, from the AddOn list to the Trainers) have a picker at the top: the page's settings are for the one picked. **Copy from…** gives it another one's settings; it asks first ("Copy the Micro Menu bar's settings to Action Bars?"). **All**, beside a setting, gives its value to every one that has it; it shows while their values differ. A setting that is one for several says **shared**, and its tooltip names them.
 - **Pictures:** the looks you choose by sight (the borders, the backdrops and backgrounds, the minimap's shape and square border) show the chosen one's picture. Click it and every choice opens as a picture under the row; a click on one puts it on at once. Not in a fight.
-- **Dimmed options:** an option that needs another switch, or that the one picked does not have, is dimmed and says why ("Switch on "UI Modifications" first (Look).", "Not for AddOn list"). When that switch is on another page or pick, a click on the dimmed option takes you to it.
+- **Two to a line:** the options stand in two columns, each one's note under its name; a module's own switch, a list of long choices, the headings and the frame designers' own parts take the whole width. When options show or hide, the ones after them close up, still two to a line.
+- **Options that need a switch:** an option that only works while a switch is on (its module's, UI Modifications', a choice it needs) shows once that switch is on; a tab with nothing to show says what wakes it ("Switch on "UI Modifications" first (Look).", "Not for AddOn list"). A switch's own settings (Shade Strength under UI Shade, Execute Below under Execute Range) sit behind the **cog** beside it, shown while the switch is on: click it for a small panel with them. A search for an option that is hidden takes you to the switch that shows it.
 - **Search:** the box at the top of the side list finds any setting, page, tab or pick. Type two letters or more: the list shows what matches, best first (a name that matches, then its place, then what it does), each with its place over its name as a breadcrumb (Page > Tab > Section: "Look > Fonts > Text") and the New tag if it is new; "Bank" finds "Windows > Bank". Point at a result for its whole place and what it does. Click one, or pick it with Up and Down and press Enter: its page opens on its tab and pick, at that setting, which lights up for a moment. Escape, the little X or an empty box brings the side list back. If a fight starts while you type, the keys go back to your character and your search stays.
 - **Home:** the Tutorial, What's new (Earlier versions for the rest), Your setup (the profile in use, with a list to load another; the palette and your Kit Colours, each with Change… to its row on Look; your screen, with **Fit to this screen** when Mello's layout was fitted to another one; Install again) and Help with every command.
-- **New tags:** everything this update added (a switch, a slider, a dropdown, a button) has a small gold **New** tag right after its name. The tags also lead the way: on its page's entry in the side list (on a group's name while it is folded), on the tab that holds it, inside the **Edit Layout** button, and at the top of What's new. The next update's new options get the tags; this update's go away by themselves.
+- **New tags:** everything this update added (a switch, a slider, a dropdown, a button) has a small gold **New** tag right after its name. The tags also lead the way: on its page's entry in the side list (on a group's name while it is folded), on the tab that holds it, on the **Edit Layout** entry, and at the top of What's new. The next update's new options get the tags; this update's go away by themselves.
 - **Long lists:** a dropdown with many choices (the fonts, the Windows picker) shows 18 at a time, never more than half the screen, with a scroll bar; the mouse wheel scrolls it, and it opens at your current choice.
 - Drag the window by its top edge: it stays where you put it. Escape closes it. At a large Font Style a page's tabs take a second row.
 
@@ -226,8 +227,8 @@ To share a profile, click **Share** on its row and copy the string; to use someo
 | `/mello swing log` | 20 seconds of your swings and shots as the game reports them, to copy from `/mellolog` (Swing Timers) |
 | `/mello help` | the command list in chat |
 | `/mello tutorial` | the guided tour of the settings window (also the Tutorial button on its Home page) |
-| `/mello install` | the installer: a setup for the whole interface, fitted to your screen, with 15 seconds to keep it or go back (also **Install…** in the settings window's top bar and **Install again** on its Home page) |
-| `/mello edit` | Edit Layout: move and resize the interface (also **Edit Layout** in the settings window's top bar); `/mello edit dump` logs every element it knows, and why one has no plate, to the copy window |
+| `/mello install` | the installer: a setup for the whole interface, fitted to your screen, with 15 seconds to keep it or go back (also **Install…** at the bottom of the settings window and **Install again** on its Home page) |
+| `/mello edit` | Edit Layout: move and resize the interface (also **Edit Layout** at the top of the settings window's side list); `/mello edit dump` logs every element it knows, and why one has no plate, to the copy window |
 | `/mello layout` | the Edit Mode layout the reskin is drawn for: `apply` fits it to your screen and puts it into Edit Mode as an account layout ("MelloUI", or "MelloUI <width>x<height>" on another screen size) and makes it active (done once by itself when you switch the reskin on by hand; the installer puts it in for you), `export` prints the active layout's share string for baking into `Media\EditModeLayout.lua` |
 | `/mellolog [clear]` | the copy window with what the dump commands logged (`clear` empties it) |
 | `/mellobug [clear]` | when the game says MelloUI was blocked from an action: a report of the last blocks (the function, combat, MelloUI's frame times) in the copy window, to send with a bug report (`clear` forgets them) |
@@ -320,7 +321,7 @@ or **Cooldowns** (the game's Cooldown Manager), then a part of it (a button, the
 page arrows; the micro menu or the bag bar; a swing bar; the XP bar) for its own settings; the bar's own settings
 are under the parts'. Keybind Mode is in the page's header. The painted action bar skin's settings are on Oldschool,
 and the cooldown timers' style (text size, tenths, colours, minimum duration) on Look > Icons, as it is the action
-bars' and the nameplates' alike. The damage meter is on **Damage Meter**, the FPS / latency readout on **Reminders & Widgets**.
+bars' and the nameplates' alike. The damage meter is on **Damage Meter**, the FPS / latency readout on **Quality of Life > FPS / Latency**.
 
 On Action Bars, the stage lists your bars as strips (Bars 1 to 8, the stance and pet bars) beside the picked one, drawn
 large as the game lays it with your settings: a click on a strip makes it the bar the Layout rows set (Which Bar), a
@@ -362,7 +363,7 @@ target-of-target), raid-style party and raid frames, nameplate health and cast b
 experience / reputation / honor bars, cast bars and the cooldown manager bars. Ships with
 Flat, Smooth, Gloss and Minimalist textures, lists the two Blizzard bar textures and any
 LibSharedMedia status bar textures, and reads custom files from `Media\Textures` listed in
-`Media\CustomTextures.lua`. Colours that Blizzard baked into its atlases (power types,
+`Media\CustomTextures.lua`. Every bar's texture is on **Look > Textures** (Every Bar, then each kind of bar); the frames' pages link there. Colours that Blizzard baked into its atlases (power types,
 experience, reputation, cast states) are re-applied so bars keep their meaning.
 
 ### Chat
@@ -537,7 +538,7 @@ top corners (on the bar's top when the name sits inside the bar).
 - "Outlined Text" (off), after Centre Text Shade: draws the notice's lines, the zone text and
   the game's centre messages with an outline. It is not under On-screen Notices, so it also
   sets the zone text's outline with the notices off.
-- Numbers Over Enemies (Screen Text > Combat Text; it was World Text Scale) slider (0.5x to 3.0x, default 1.0x) for the floating damage and healing
+- Numbers Over Enemies (Quality of Life > Combat Text; it was World Text Scale) slider (0.5x to 3.0x, default 1.0x) for the floating damage and healing
   numbers. Writes the `WorldTextScale` CVar.
 
 ### Vendor
@@ -652,7 +653,7 @@ frames stand, so your heals and indicators can be seen on it. Either way the par
   one list); Raid Fills (down then across, or across then down); Frames Per Column / Row; the Gap between them;
   Out Of Range Opacity (100%: no fade). Move the party and the raid in Edit Layout ("Party Frames", "Raid
   Frames"). Layout changes made in a fight wait for its end.
-- **Their Health bar, Power bar and Background:** the Health Bar Colour, one for every frame (Look > Bar Texture, a
+- **Their Health bar, Power bar and Background:** the Health Bar Colour, one for every frame (Look > Colours, a
   link on the Health bar: class colour, Class & Reaction -- the class colour here --, My Colour, By health with your
   Full / Half / Low colours, or green), the health bar's opacity, Background Colour (yours or the class colour) and its opacity, Missing Health (off,
   yours, the class colour, by health) and its opacity, Fill Direction, Smooth Bars, the Power Bar (healers,
@@ -667,18 +668,23 @@ frames stand, so your heals and indicators can be seen on it. Either way the par
   **Show** / **Hide** and its default place. Point at a list's choice (a colour, a texture) and the large frame tries it
   before you pick it. The Party frame switches between **Group Frames** and **Portraits** there; your Group Frames
   party and your raid frames each keep their own places, and their own indicators.
-- **Your Indicators** (the Party and Raid frames' Indicators): your aura indicators -- a buff picked by its spell (type its name or spell ID: every rank of it
-  counts; yours only, or anyone's), or a debuff on your group picked by its kind (dispellable by you or by your
-  group, any dispellable, Magic, Curse, Disease, Poison, a boss debuff, crowd control; the game never lets a
-  friend's debuff be picked by its spell). Looks: **Icon** (its time as a sweep), **Draining Icon**, **Square** (in
-  your colour on its own dark shade, draining from the top), **Bar** along an edge, or **Health Colour** (the health
-  bar takes your colour while the aura is on). One of nine spots with an offset, a size, your colour (a debuff can
-  take its type's colour), its time and stacks as text with their own size, spot and offset, Show Always or In a
-  fight. A pick in the list picks it on the large frame (and the other way round), where it is moved and sized. The
-  name, the health text, the role icon, the raid mark, the ready check and the centre icon move, size or hide on the
-  large frame. Each spec keeps its own list (**Copy from** takes another's, a party's or a raid's); each
-  class starts with a set of its own, shown until you change it. The game draws the indicators with its own aura
-  widget, so they keep working in a fight while the auras are secret.
+- **Your Indicators** (the Party and Raid frames' Indicators; spell groups since 1.2.4): your aura indicators as
+  **spell groups**, cards in a tray -- **Yours** (your class's heals over time, shields and other buffs), **Everyone's**
+  (defensives from others, their own defensives, haste and power, speed and freedom, group buffs, lockouts such as
+  Forbearance and Weakened Soul: every class's spells), and **Debuffs** by their kind (dispellable, a boss's, crowd
+  control; the game never lets a friend's debuff be picked by its spell). The spells are read from the game's own
+  spell data, every rank of each. Drag a card onto the large frame to put the group there (a placed one moves);
+  click it to open its block: its spells as rows, each with its switch (drag a row onto another group's card to move
+  it there, onto another row for your own order, onto the frame for a single spell of its own), a spell added by its
+  name or ID, and the group's look -- **Icon** (its time as a sweep), **Draining Icon**, **Square**, **Bar** along an
+  edge or **Health Colour** -- its place, size, **Grow** (the first icon stands on the spot, the rest go that way),
+  **Most shown**, **Per line**, room, whose, **Order** (time left, as they came, or your order with a colour per
+  spell), when, and its time and stacks. **Reset group** puts its spells back as they started. A pick in the tray
+  picks it on the large frame (and the other way round). The name, the health text, the role icon, the raid mark,
+  the ready check and the centre icon move, size or hide on the large frame. Each spec keeps its own list (**Copy
+  from** takes another's, a party's or a raid's); each class starts with a set of its own, shown until you change
+  it. The game draws the groups with its own aura widget, so they keep working in a fight while the auras are
+  secret.
 - **See it:** "Show the fake raid on screen" under the Raid frame's Your Indicators, or Preview > Raid Frames: a made-up raid where your
   raid frames stand, laid out as they are. On the Party frame, "Show the fake party on screen" (or Preview > Group
   Frames Party) puts a made-up party where your Group Frames party stands, with the party's own indicators; with the
@@ -778,7 +784,7 @@ default; its settings on **Unit & Group Frames**' **Personal** frame):
   with Heal Effects): a heal's light gathers at your character's middle and flies from there to your party or raid
   frames.
 - The game's own Personal Resource Display is off while this is on, and comes back as you had it. The bars wear the
-  Personal frame's own **Bar Texture**, as the Group Frames wear theirs.
+  Personal Display's own **Bar Texture** (Look > Textures), as the Group Frames wear theirs.
 - **Fade out of combat:** the **Fader** page's **Personal Display** row (Frames). On
   In Combat the display fades out of combat and comes back in a fight, and while you cast out of combat.
 - **Preview** (the Personal frame's **Play**, `/mello personal test`, or Preview > Personal Display): a made-up fight on the
@@ -1610,7 +1616,7 @@ lasts until everything is back on and something goes missing again.
 
 ### Restock
 
-Keeps drink, food, ammunition and reagents in your bags (its rows are on the Automation page).
+Keeps drink, food, ammunition and reagents in your bags (its rows are on Quality of Life > Restock).
 Each character has its own list, which profiles never carry or wipe; a new one starts with
 suggestions for its class: drink for the classes that use mana, food for everyone, 1000 arrows
 for a hunter (bullets with a gun), all from level 5, and class reagents at the levels they are used. Older,
@@ -1735,7 +1741,7 @@ The count is in gold and the name in the palette's text colour; the value and "b
 
 ### Combat Text
 
-The text that floats over your character in a fight (the damage you take, your heals, Dodge and Parry, procs, the resources you gain) can be drawn by MelloUI, each line on the on-screen notice's soft dark shade instead of a thick outline (**Outlined Text** outlines it too). **Combat Text Style** (Screen Text, Combat Text tab) picks who draws it:
+The text that floats over your character in a fight (the damage you take, your heals, Dodge and Parry, procs, the resources you gain) can be drawn by MelloUI, each line on the on-screen notice's soft dark shade instead of a thick outline (**Outlined Text** outlines it too). **Combat Text Style** (Quality of Life, Combat Text tab) picks who draws it:
 
 - **Game (Blizzard)** (the default): the game's own text, exactly as before; MelloUI does nothing at all.
 - **Lanes:** round your character. Damage taken falls on your left, healing rises on your right, procs, auras, Dodge and Parry and the start and end of a fight sit above your head, and the resources you gain show small under your feet.
@@ -1818,7 +1824,7 @@ own choice comes back when you switch MelloUI's off. While the Personal Display 
   next swing. A wand's shots ("Shoot (wand)") count down on it too.
 - **Off Hand Bar**: a thinner bar under it for your off-hand weapon, while you carry one.
 - **The look**: the Round rim, your weapon's icon in a round rim left of a flat dark bar, the seconds past its
-  right end (**Seconds**). The fill wears the cast bar's Bar Texture (Bars > Cast Bar > Bar Texture). The swing
+  right end (**Seconds**). The fill wears the cast bar's Bar Texture (Look > Textures > Cast Bars). The swing
   timers' settings are on Bars > Swing Timers.
 - **Show**: In Combat (a bar shows in a fight once it swings or shoots, and fades out when the
   fight ends) or Always (each bar at rest while you carry a weapon for it).

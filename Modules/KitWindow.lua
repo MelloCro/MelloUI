@@ -73,6 +73,17 @@
 --     inset = 8,             the modern look's content inset (default FLAT.IN,
 --                            the small windows' one inset): the strip's ends
 --                            sit on it, shell:Inset answers it
+--     painting = { modern = spec, default = spec, oldschool = spec },
+--                            (1.2.4, the configurator: docs/plans/configurator-shell.md) the window's whole ground ONE
+--                            painting a look -- its areas, their lines and the brand's ring painted in -- in place of
+--                            the stone, the calm ground, the crest and the plate: spec = { file, coords = { l, r, t,
+--                            b }, ring = { x, y, size } (the emblem's centre in the painted ring, from the top left,
+--                            and its size), title = { x, y, size } (the title's left and middle, its size), grab (the
+--                            drag band's foot, under the top), the caller's own fields kept }. The edge per look: the
+--                            gold rim (Modern) or the game's tooltip border (Default), MelloUI.Rims; the kit's outer
+--                            rail (Oldschool: its dressing's Frame, no page stone). shell:Look() -> "modern" |
+--                            "default" | "oldschool", shell:PaintingSpec() its spec; the OnKit listeners run at a
+--                            Default / Modern switch too (MelloUI.Skin), `on` unchanged
 --     fit = true,            scaled down to fit the screen (never up, not
 --                            while the mover holds the user's scale), on
 --                            every show and UI scale change
@@ -643,12 +654,131 @@ function Shell:LayModern()
 end
 
 -- the drag band: full width from the top, down to the look's grab line (the
--- painted look's opts.grabBottom; the strip's foot, or opts.brand's grab)
+-- painted look's opts.grabBottom; the strip's foot, or opts.brand's grab; a
+-- painting's spec.grab)
 function Shell:LayGrab()
 	local grab = self.grab
 	grab:ClearAllPoints()
 	grab:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 0, 0)
-	grab:SetPoint("BOTTOMRIGHT", self.frame, "TOPRIGHT", 0, self.kit and self.grabBottom or self.flatGrab)
+	local foot = self.kit and self.grabBottom or self.flatGrab
+	if self.painting then
+		foot = -(tonumber(self:PaintingSpec().grab) or -GRAB_BOTTOM)
+	end
+	grab:SetPoint("BOTTOMRIGHT", self.frame, "TOPRIGHT", 0, foot)
+end
+
+--------------------------------------------------------------------------------
+-- A painted window (opts.painting, 1.2.4: the configurator; docs/plans/configurator-shell.md): one painting a look as
+-- the whole ground, the emblem in its painted ring and the title beside it, the edge as the look has it
+--------------------------------------------------------------------------------
+
+-- the look on show: the kit's while it dresses the window, else the skin's (MelloUI.Skin)
+function Shell:Look()
+	if self.kit then
+		return "oldschool"
+	end
+	local Skin = rawget(MelloUI, "Skin")
+	return (Skin and Skin.IsDefault()) and "default" or "modern"
+end
+
+function Shell:PaintingSpec()
+	local p = self.painting
+	return p and (p[self:Look()] or p.modern) or nil
+end
+
+-- made with the window (its first open): the ground, the brand on a holder over the window's columns, the rim (none
+-- while the kit dresses it: its rail is the edge then), the soft shade round it
+function Shell:BuildPainting()
+	local frame = self.frame
+	local ground = frame:CreateTexture(nil, "BACKGROUND", nil, FLAT.GROUND)
+	ground:SetAllPoints(frame)
+	self.ground = ground
+	local holder = CreateFrame("Frame", nil, frame)
+	holder:SetFrameLevel(frame:GetFrameLevel() + LEVEL_CREST)
+	holder:EnableMouse(false)
+	holder:SetAllPoints(frame)
+	self.brandHolder = holder
+	local emblem = holder:CreateTexture(nil, "ARTWORK")
+	self.emblem = emblem
+	local title = holder:CreateFontString(nil, "OVERLAY", W.FontObject("GameFontNormalHuge"))
+	title:SetJustifyH("LEFT")
+	title:SetWordWrap(false)
+	title:SetText(self.titleText or "")
+	Kit:Paint(title, "selectedTrim", "text")
+	self.title = title
+	local Rims = rawget(MelloUI, "Rims")
+	if type(Rims) == "table" and Rims.Add then
+		local shell = self
+		Rims:Add(frame, { shown = function() return not shell.kit end })
+	end
+	local shade = MelloUI.Shade and MelloUI.Shade:Band(frame, FLAT.SHADE)
+	if shade then
+		shade:Anchor(frame)
+		self.shade = shade
+		if not shadeListening then
+			shadeListening = true
+			MelloUI:On("shade", Shells_OnShade, "Kit own windows")
+		end
+	end
+	-- (a Default / Modern switch: laid again, the window's own parts with it)
+	local Skin = rawget(MelloUI, "Skin")
+	if Skin and Skin.Follow then
+		Skin.Follow(self, Shell.SkinSwitched)
+	end
+end
+
+-- the painting, the emblem and the title as the look on show has them (the title's face the look's: the kit's title
+-- face with the kit, else MelloUI's copy of the game font, the game's own under Default; its size the spec's)
+function Shell:LayPainting()
+	local spec = self:PaintingSpec()
+	local ground = self.ground
+	if not (spec and ground) then
+		return
+	end
+	if self.groundFile ~= spec.file then
+		self.groundFile = spec.file
+		ground:SetTexture(spec.file)
+	end
+	local c = spec.coords or { 0, 1, 0, 1 }
+	ground:SetTexCoord(c[1], c[2], c[3], c[4])
+	local ring, emblem = spec.ring, self.emblem
+	if ring and emblem then
+		local size = ring.size or 58
+		emblem:ClearAllPoints()
+		emblem:SetSize(size, size)
+		emblem:SetPoint("CENTER", self.frame, "TOPLEFT", ring.x, -ring.y)
+		MelloUI.Icons.Set(emblem, self.emblemTexture or LOGO, size)
+	end
+	local title, at = self.title, spec.title
+	if title and at then
+		Kit:TitleFont(title, false)
+		title:SetFontObject(W.FontObject("GameFontNormalHuge"))
+		if self.kit then
+			Kit:TitleFont(title, true)
+		end
+		local ok, face, _, flags = pcall(title.GetFont, title)
+		if ok and type(face) == "string" and at.size then
+			title:SetFont(face, at.size, type(flags) == "string" and flags or "")
+		end
+		title:ClearAllPoints()
+		title:SetPoint("LEFT", self.frame, "TOPLEFT", at.x, -at.y)
+	end
+end
+
+-- MelloUI.Skin's follower (the painted windows'): Default <-> Modern -- the look laid again, the window's listeners told
+-- (the kit's look unchanged)
+function Shell.SkinSwitched(shell)
+	if not shell.paintingBuilt then
+		return
+	end
+	shell:LayPainting()
+	shell:LayGrab()
+	for i = 1, #shell.onKit do
+		local ok, err = pcall(shell.onKit[i], shell, shell.kit)
+		if not ok then
+			geterrorhandler()(err)
+		end
+	end
 end
 
 function Shell:Inset(edge, top)
@@ -694,10 +824,13 @@ function Shell:Switch(on)
 		for i = 1, #painted do
 			painted[i]:SetShown(false)
 		end
-		self:BuildModern()
-		-- (after the plates' own switch -- off, the title and the close back where they found them: 0.20.1)
-		self:LayModern()
+		if not self.painting then
+			self:BuildModern()
+			-- (after the plates' own switch -- off, the title and the close back where they found them: 0.20.1)
+			self:LayModern()
+		end
 	end
+	self:LayPainting()
 	self:LayGrab()
 	self:LayClose()
 	for i = 1, #self.plains do
@@ -910,6 +1043,9 @@ function Kit:OwnWindow(frame, opts)
 	end
 	shells[frame] = shell
 	local base = frame:GetFrameLevel()
+	if opts.painting then
+		return self:OwnPaintedWindow(shell, opts)
+	end
 
 	-- the page: the game's rock, the region the kit's page stone replaces
 	-- (DressFrame; it shows only if the stone is missing)
@@ -1071,6 +1207,51 @@ function Kit:OwnWindow(frame, opts)
 		shell:BuildModern()
 		shell:LayModern()
 	end
+	return shell
+end
+
+-- Kit:OwnWindow's painted window (opts.painting): the drag band, the shows and hides, the look's listener, the fit,
+-- Escape, the mover, then the painting and the kit's dressing (the outer rail alone: the painting is the page)
+function Kit:OwnPaintedWindow(shell, opts)
+	local frame = shell.frame
+	shell.painting = opts.painting
+	shell.titleText = opts.title
+	shell.emblemTexture = opts.emblem or LOGO
+	local grab = CreateFrame("Frame", nil, frame)
+	grab:SetFrameLevel(frame:GetFrameLevel() + LEVEL_GRAB)
+	grab:EnableMouse(true)
+	shell.grab = grab
+	Perf.HookScript(frame, "OnShow", Shell_OnShow)
+	Perf.HookScript(frame, "OnHide", Shell_OnHide)
+	if opts.area then
+		MelloUI:On("look:" .. opts.area, function(on)
+			shell:SetKit(on)
+		end, shell)
+	end
+	if shell.fit and not scaleListening then
+		scaleListening = true
+		MelloUI:On("scale", Shells_OnScale, "Kit own windows")
+	end
+	if opts.escape then
+		shell:SetEscape(true)
+	end
+	local mover = opts.mover
+	if mover then
+		shell.mover = MelloUI:RegisterMover(frame, grab, {
+			key = mover.key, anchor = mover.anchor, default = mover.default or Centre, save = mover.save, reset = mover.reset,
+			min = mover.min, max = mover.max, base = mover.base, plainDrag = mover.plainDrag, with = shell.bounds,
+			label = mover.label, page = mover.page, group = mover.group, placeholder = mover.placeholder,
+			resize = mover.resize,
+		})
+	end
+	shell:BuildPainting()
+	shell.paintingBuilt = true
+	local dress = Kit.__.ShellDress
+	if dress then
+		shell:Kit(dress.Frame, shell)
+	end
+	shell:LayPainting()
+	shell:LayGrab()
 	return shell
 end
 

@@ -64,13 +64,13 @@ local function BuildTextureList()
 end
 
 -- (one look Q3, the user 2026-10-15) each area's Bar Texture: "shared" (the
--- Look page's picture, `texture`), "game" (the game's own art; on MelloUI's
+-- Look page's Every Bar, `texture`), "game" (the game's own art; on MelloUI's
 -- own bars, a plain fill: "Plain") or a picture of its own. The lists are
 -- made once, at load, from the one texture list
 local TEXTURES = BuildTextureList()
 local AREA_LISTS = {}
 for i, label in ipairs({ "The game's", "Plain" }) do
-	local list = { { value = "shared", label = "Shared (Look's Bar Texture)" }, { value = "game", label = label } }
+	local list = { { value = "shared", label = "Same as Every Bar" }, { value = "game", label = label } }
 	for _, e in ipairs(TEXTURES) do
 		if e.value ~= "default" then
 			list[#list + 1] = e

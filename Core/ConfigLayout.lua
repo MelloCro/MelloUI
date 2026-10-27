@@ -105,8 +105,10 @@ L.groups = {
 	{ title = "The look", icon = "cat_look", entries = { "Look", "Windows", "Fader", "Oldschool" } },
 	{ title = "Frames and bars", icon = "cat_frames", entries = { "UnitGroupFrames", "Nameplates", "ActionBars", "Minimap",
 		"BarsMeters" } },
-	{ title = "Chat and text", icon = "cat_chat", entries = { "Chat", "Tooltip", "ScreenText" } },
-	{ title = "Quests and travel", icon = "cat_quests", entries = { "QuestTracker", "QuestList", "Route", "Map", "DungeonInfo", "Reminders", "Automation" } },
+	{ title = "Chat", icon = "cat_chat", entries = { "Chat" } },
+	{ title = "Quests and travel", icon = "cat_quests", entries = { "QuestTracker", "QuestList", "Route", "Map", "DungeonInfo" } },
+	-- (1.2.4, the configurator shell -- the user, 2026-10-27: "11 tabs is fine, build the Quality of Life page")
+	{ title = "Quality of life", icon = "cat_look", entries = { "QualityOfLife" } },
 	{ title = "Sound", icon = "cat_sound", entries = { "VoiceOver", "CustomSounds" } },
 	{ entries = { "Profiles" } },
 }
@@ -117,10 +119,14 @@ L.pages = {
 	-- is UI Modifications', which takes the reskin and every folded feature
 	-- with it)
 	Look = { title = "Look", icon = "module:UIModifications", set = "page_look", module = "UIModifications",
-		flavour = "The look of the whole interface: the soft shade, fonts, icons, Dark Mode, the bar texture and fading. The painted reskin and its palettes are on the Oldschool page.",
+		flavour = "The look of the whole interface: its skin, the soft shade, every font and texture, the colours, icons, Dark Mode and fading. The painted reskin and its palettes are on the Oldschool page.",
 		switchLabel = "UI Modifications",
 		switchDesc = "The painted reskin AND every feature of UI Modifications: Vendor, Error Messages, Cooldown Timers, Nameplate Tweaks, Chat, Tooltip, Fonts, Dark Mode, Bar Textures, Buffs & Debuffs, Unit Frame Tweaks, FPS / Latency, Class Icons, Bar Values, the game windows' skins, hiding the micro menu, the bag bar and the minimap coordinates, and the world text scale. Off: all of them are off, Edit Layout lets go of the game's windows (they go back to the game's own places), Windows Fade In stops, names are shown in full and Class Coloured Names stops. The palette, the UI Shade, Reduce Motion and MelloUI's notices keep working.",
-		tabs = { "General", "Fonts", "Icons", "Dark Mode", "Bar Texture", "Fading" } },
+		tabs = { "General", "Fonts", "Textures", "Colours", "Icons", "Dark Mode", "Fading" },
+		-- (1.2.4, Look's homes: every font and every bar texture, background and border here, a card per part of the
+		-- interface after the tab's own sections -- Core/Config.lua's Lay.Card; the frames' pages link here)
+		cards = { Fonts = { "Unit Frames", "Party & Raid", "Buffs & Debuffs", "Personal Display", "Quest Tracker",
+			"Combat Text", "FPS / Latency" }, Textures = { "Bars", "Backgrounds", "Borders" } } },
 	-- (1.0, the user, 2026-10-20: "once you disable MelloUI_OldSchool, the "Window" category disappears from the
 	-- Configurator, but that means that people cant configure their Bag anymore") made with or without
 	-- MelloUI_Oldschool: its picker's `own` windows are the ones MelloUI's own settings belong to (the bag window and
@@ -292,12 +298,6 @@ L.pages = {
 	Chat = { title = "Chat", icon = "module:Chat", set = "page_chat",
 		flavour = "The chat windows, the lines in them and the whisper popup.",
 		tabs = { "Chat Frame", "Messages", "Whispers" } },
-	Tooltip = { title = "Tooltip", icon = "module:Tooltip", set = "page_tooltip",
-		flavour = "The tooltips: their backdrop, the unit lines, where they sit, and the quest lines on them.",
-		tabs = { "Tooltip" } },
-	ScreenText = { title = "Screen Text", icon = "module:ErrorFilter", set = "page_screentext",
-		flavour = "The text in the middle of the screen: MelloUI's notices, the zone text, the red error messages and the floating combat numbers.",
-		tabs = { "Notices", "Combat Text", "Gains", "Error Messages" } },
 	QuestTracker = { title = "Quest Tracker", icon = "module:QuestTracker", set = "page_tracker", module = "QuestTracker",
 		tabs = { "Quest Tracker", "Objective Tracker" } },
 	QuestList = { title = "Quest List", icon = "module:QuestList", set = "page_questlist", module = "QuestList",
@@ -310,16 +310,15 @@ L.pages = {
 	-- (1.2.0, docs/plans/dungeon-info.md) Dungeon Info (MelloUI_DungeonInfo)
 	DungeonInfo = { title = "Dungeon Info", icon = "module:DungeonInfo", module = "DungeonInfo",
 		tabs = { "Dungeon Info" } },
-	-- no header switch: three modules share the page, and each tab's first
-	-- row is its module's switch (Reminders, Restock, Vendor Automation)
-	Reminders = { title = "Reminders & Widgets", icon = "module:Reminders", set = "page_reminders",
-		flavour = "Supplies, mail, repairs and training: a gentle nudge beside your portrait, never a nag. With the widgets for loot rolls, summons and the rest, and the FPS / latency readout.",
-		tabs = { "Reminders", "Widgets", "FPS / Latency" } },
-	-- (one look stage H, the plain pages' audit: the restock list, the vendor's repairs and sales and the quests'
-	-- automatic accept and hand-in, one page; each tab's first row its module's switch)
-	Automation = { title = "Automation", icon = "module:Vendor", set = "page_automation",
-		flavour = "The things MelloUI does for you: repairs and junk sales at the vendor, the restock list, accepting and handing in quests.",
-		tabs = { "Vendor", "Restock", "Quests" } },
+	-- (1.2.4, the configurator shell; the user, 2026-10-27: "11 tabs is fine, build the Quality of Life page") the
+	-- small helpers one page, in the sketch's order: Automation's tabs (one look stage H: the vendor's repairs and
+	-- sales, the restock list, the quests' automatic accept and hand-in), Screen Text's (the notices, the floating
+	-- combat numbers, Gains, the red error messages), Reminders & Widgets' and the tooltip's. No header switch: the
+	-- page holds many modules, each tab's first row its module's switch
+	QualityOfLife = { title = "Quality of Life", icon = "module:Vendor", set = "page_automation",
+		flavour = "The small helpers, a tab each: the vendor, your restock list and quests done for you, the text in the middle of the screen, the reminders and widgets, FPS / latency and the tooltip.",
+		tabs = { "Vendor", "Restock", "Quests", "Notices", "Combat Text", "Gains", "Error Messages", "Reminders", "Widgets",
+			"FPS / Latency", "Tooltip" } },
 	VoiceOver = { title = "Voice Over", icon = "module:VoiceOver", set = "page_voice", module = "VoiceOver",
 		tabs = { "Reading", "Voices", "Sound Packs", "Widget" } },
 	CustomSounds = { title = "Custom Sounds", icon = "module:CustomSounds", set = "page_sounds", module = "CustomSounds",
@@ -333,6 +332,14 @@ L.pages = {
 -- spread over several pages, and the panels with no row of their own. The
 -- Auras module's name is /mello's aura probe: its page is buffs / debuffs.
 L.words = {
+	-- (1.2.4: the old pages' names, now tabs of Quality of Life)
+	qualityoflife = { "QualityOfLife" },
+	qol = { "QualityOfLife" },
+	automation = { "QualityOfLife", "Vendor" },
+	screentext = { "QualityOfLife", "Notices" },
+	reminders = { "QualityOfLife", "Reminders" },
+	remindersandwidgets = { "QualityOfLife", "Reminders" },
+	tooltip = { "QualityOfLife", "Tooltip" },
 	fade = { "Look", "Fading" },
 	groupframes = { "UnitGroupFrames", "raid:element" },
 	partyframes = { "UnitGroupFrames", "party:element" },
@@ -345,7 +352,10 @@ L.words = {
 	borders = { "Oldschool", "Borders" },
 	fonts = { "Look", "Fonts" },
 	darkmode = { "Look", "Dark Mode" },
-	bartextures = { "Look", "Bar Texture" },
+	bartextures = { "Look", "Textures" },
+	textures = { "Look", "Textures" },
+	colours = { "Look", "Colours" },
+	colors = { "Look", "Colours" },
 	parchment = { "Oldschool", "Parchment" },
 	fading = { "Look", "Fading" },
 	characterpanel = { "Windows", pick = "CharacterPanel" },
@@ -366,19 +376,19 @@ L.words = {
 	minimappanel = { "Minimap", "minimap:element" },
 	minimapkit = { "Oldschool", "Painted Skins" },   -- (onelook D7: the painted minimap; one look stage G: Oldschool's)
 	services = { "Minimap", "services:element" },
-	stats = { "Reminders", "FPS / Latency" },
-	fps = { "Reminders", "FPS / Latency" },
-	gains = { "ScreenText", "Gains" },
+	stats = { "QualityOfLife", "FPS / Latency" },
+	fps = { "QualityOfLife", "FPS / Latency" },
+	gains = { "QualityOfLife", "Gains" },
 	damagemeterpanel = { "BarsMeters", "Damage Meter" },
 	chatpanel = { "Chat", "Chat Frame" },
-	tooltippanel = { "Tooltip" },
-	tweaks = { "ScreenText", "Notices" },
-	errorfilter = { "ScreenText", "Error Messages" },
+	tooltippanel = { "QualityOfLife", "Tooltip" },
+	tweaks = { "QualityOfLife", "Notices" },
+	errorfilter = { "QualityOfLife", "Error Messages" },
 	trackerpanel = { "QuestTracker", "Objective Tracker" },
-	restock = { "Automation", "Restock" },
-	vendor = { "Automation", "Vendor" },
-	questauto = { "Automation", "Quests" },
-	widgets = { "Reminders", "Widgets" },
+	restock = { "QualityOfLife", "Restock" },
+	vendor = { "QualityOfLife", "Vendor" },
+	questauto = { "QualityOfLife", "Quests" },
+	widgets = { "QualityOfLife", "Widgets" },
 	wand = { "ActionBars", "swing:element" },
 	autoshot = { "ActionBars", "swing:element" },
 }
@@ -494,9 +504,11 @@ function L.Define(R, Link)
 		{ when = { key = "UIModifications.RaidFramePanel", value = true, line = "Only with the raid frames' Painted Skin" } })
 	-- (0.19.8: the game's Cooldown Manager's icons, Cooldown Tweaks)
 	R("Oldschool", "Borders", "Look", "UIModifications.cooldownBorder", { picture = true })
-	R("Tooltip", "Tooltip", "Look", "Tooltip.classBorder", {
+	R("Look", "Textures", "Look", "Tooltip.classBorder", { name = "Tooltip Class Border", card = "Borders",
 		when = Uncovered("TooltipPanel", "tooltip") })
-	R("Chat", "Chat Frame", "Look", "Chat.borderAlpha", { name = "Border Opacity" })
+	Link("QualityOfLife", "Tooltip", "Look", "Tooltip.classBorder", "Class Border")
+	R("Look", "Textures", "Look", "Chat.borderAlpha", { name = "Chat Border Opacity", card = "Borders" })
+	Link("Chat", "Chat Frame", "Look", "Chat.borderAlpha", "Border Opacity")
 	R("Look", "Fonts", "General", "UIModifications.qol_Fonts")
 	R("Look", "Fonts", "Text", "Fonts.style")
 	R("Look", "Fonts", "Text", "Fonts.sizeText")
@@ -506,14 +518,13 @@ function L.Define(R, Link)
 	-- (0.19.1, the user 2026-10-04: "all font sizes, font types and anything thats changing the font somewhere into
 	-- this tab": each element's text size and font, named by its element; each of those pages links its own)
 	R("Oldschool", "Parchment", "Text", "Fonts.scaleChatParchment", { gate = "UIModifications.parchment_chat" })
-	R("Look", "Fonts", "Text", "BarText.fontSize", { name = "Unit Frame Bars: Font Size", when = BAR_VALUES })
 	-- (the Bars audit's point 2: the cooldown timers' style, shared by the action bars and the nameplates)
 	R("Look", "Icons", "Text", "CooldownText.fontRatio", { name = "Timer Text Size", when = TIMERS })
 	R("Look", "Icons", "Text", "CooldownText.tenths", { when = TIMERS })
 	R("Look", "Icons", "Text", "CooldownText.colorByTime", { when = TIMERS })
 	R("Look", "Icons", "Behaviour", "CooldownText.minDuration", { when = TIMERS })
-	R("Look", "Fonts", "Text", "QuestTracker.textSize", { name = "Quest Tracker: Text Size" })
-	R("Look", "Fonts", "Text", "QuestTracker.headerSize", { name = "Quest Tracker: Header Text Size" })
+	R("Look", "Fonts", "Text", "QuestTracker.textSize", { name = "Text Size", card = "Quest Tracker" })
+	R("Look", "Fonts", "Text", "QuestTracker.headerSize", { name = "Header Text Size", card = "Quest Tracker" })
 	-- (the configurator audit, 2026-10-01: one size per thing on screen --
 	-- MelloUI's combat text around you and the numbers over the enemies, the
 	-- game's or Your Damage's; the game sizes its own text around you itself:
@@ -523,7 +534,7 @@ function L.Define(R, Link)
 	local okWorld, worldText = pcall(function() return C_CVar and C_CVar.GetCVar and C_CVar.GetCVar("WorldTextScale") end)
 	local hasWorldText = okWorld and type(worldText) == "string"
 	if hasWorldText then
-		R("ScreenText", "Combat Text", "Text", "Tweaks.worldTextScale")
+		R("QualityOfLife", "Combat Text", "Text", "Tweaks.worldTextScale")
 	else
 		L.unplaced["Tweaks.worldTextScale"] = "this client has no WorldTextScale cvar: the slider would move nothing"
 	end
@@ -537,25 +548,25 @@ function L.Define(R, Link)
 	R("Look", "Dark Mode", "Look", "DarkMode.shade")
 	R("Oldschool", "General", "Look", "DarkMode.kitShade")
 	R("Look", "Dark Mode", "Look", "DarkMode.desaturate")
-	R("Look", "Bar Texture", "General", "UIModifications.qol_BarTextures")
-	R("Look", "Bar Texture", "Look", "BarTextures.texture")
+	R("Look", "Textures", "General", "UIModifications.qol_BarTextures")
+	R("Look", "Textures", "Look", "BarTextures.texture", { name = "Every Bar", card = "Bars" })
 	-- the health bars' colour reaches the unit frames AND the nameplates
 	-- (their descs; RecolorHealthBar): global
 	-- (one look Q7: ONE Health Colour, every frame's -- the party and raid
 	-- frames' too, so live while Bar Textures or Group Frames is on; its
 	-- colours with it, Group Frames' until then; a link on each frame's
 	-- Health bar in Unit & Group Frames)
-	R("Look", "Bar Texture", "Look", "BarTextures.healthColor", { owner = "GroupFrames" })
-	R("Look", "Bar Texture", "Look", "BarTextures.healthCustom", { owner = "GroupFrames",
+	R("Look", "Colours", "Look", "BarTextures.healthColor", { owner = "GroupFrames" })
+	R("Look", "Colours", "Look", "BarTextures.healthCustom", { owner = "GroupFrames",
 		when = { key = "BarTextures.healthColor", value = "custom", line = "Only with My Colour" } })
 	for _, key in ipairs({ "healthHigh", "healthMid", "healthLow" }) do
-		R("Look", "Bar Texture", "Look", "BarTextures." .. key, { owner = "GroupFrames",
+		R("Look", "Colours", "Look", "BarTextures." .. key, { owner = "GroupFrames",
 			when = { key = "BarTextures.healthColor", value = "health", line = "Only with By health" } })
 	end
-	R("Look", "Bar Texture", "Look", "BarTextures.overrideThreat",
+	R("Look", "Colours", "Look", "BarTextures.overrideThreat",
 		{ when = { key = "BarTextures.healthColor", notValue = "green", line = "Not with the Green (Blizzard) colour" } })
-	R("Look", "Bar Texture", "Look", "BarTextures.executeRange")
-	R("Look", "Bar Texture", "Look", "BarTextures.executeBelow")
+	R("Look", "Colours", "Look", "BarTextures.executeRange")
+	R("Look", "Colours", "Look", "BarTextures.executeBelow")
 	R("Oldschool", "Parchment", "Look", "UIModifications.parchmentStyle")   -- (0.20.3: the look of every sheet and page)
 	R("Oldschool", "Parchment", "Look", "UIModifications.parchment_tracker", { when = GAME_TRACKER })
 	-- (the Quest Tracker's paper and the chat's: their rows on their own pages since the one look, links here -- the
@@ -670,18 +681,26 @@ function L.Define(R, Link)
 	-- (0.21.3, the animations: the level badge turning over, the XP bar's light, the notice;
 	-- one-look D5: the Unit Frames module's, Unit Frame Tweaks')
 	-- (one look C11, Q2: each text part its own face -- MelloUI.FontFaces, "Shared" today's)
-	UGF({ "player:name", "target:name", "focus:name" }, "Text", "UnitFrames.nameFont", { name = "Font",
-		plus = "Pet, their targets, Party portraits" })
+	R("Look", "Fonts", "Text", "UnitFrames.nameFont", { name = "Names Font", card = "Unit Frames" })
+	for _, tab in ipairs({ "player:name", "target:name", "focus:name" }) do
+		Link("UnitGroupFrames", tab, "Text", "UnitFrames.nameFont", "Font")
+	end
 	-- (0.19.0) incoming heals and the debuff glow: one setting each for every frame (HealerFrames)
 	-- (0.19.4: incoming heals on MelloUI's three frames only, the bar
 	-- background on the unit frames the skin draws -- not the raid frames,
 	-- cast bars or personal resource)
 	UGF({ "player:health", "target:health", "focus:health" }, "General", "HealerFrames.incomingHeals",
 		{ also = { ["HealerFrames.incomingHeals"] = "their targets" } })
-	UGF(GAME4, "Look", "BarTextures.unitframesTexture", { name = "Bar Texture", plus = "Party portraits",
-		also = { ["BarTextures.unitframesTexture"] = "boss and target of target" } })
-	UGF({ "raid:element", "party:element" }, "Look", "BarTextures.raidframesTexture", { name = "Bar Texture" })
-	R("UnitGroupFrames", "personal:element", "Look", "BarTextures.personalTexture", { name = "Bar Texture" })
+	R("Look", "Textures", "Look", "BarTextures.unitframesTexture", { name = "Unit Frames", card = "Bars",
+		also = { ["BarTextures.unitframesTexture"] = "boss and target of target, party portraits" } })
+	for _, tab in ipairs(GAME4) do
+		Link("UnitGroupFrames", tab, "Look", "BarTextures.unitframesTexture", "Bar Texture")
+	end
+	R("Look", "Textures", "Look", "BarTextures.raidframesTexture", { name = "Party & Raid Frames", card = "Bars" })
+	Link("UnitGroupFrames", "raid:element", "Look", "BarTextures.raidframesTexture", "Bar Texture")
+	Link("UnitGroupFrames", "party:element", "Look", "BarTextures.raidframesTexture", "Bar Texture")
+	R("Look", "Textures", "Look", "BarTextures.personalTexture", { name = "Personal Display", card = "Bars" })
+	Link("UnitGroupFrames", "personal:element", "Look", "BarTextures.personalTexture", "Bar Texture")
 	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.barBackground",
 		{ also = { ["UnitFramePanel.barBackground"] = "target of target" } })
 	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.barBackgroundAlpha",
@@ -693,14 +712,20 @@ function L.Define(R, Link)
 	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.health", { when = BAR_VALUES })
 	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.power", { when = BAR_VALUES })
 	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.format", { when = BAR_VALUES })
-	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.valueFont", { name = "Font", when = BAR_VALUES })
+	R("Look", "Fonts", "Text", "BarText.valueFont", { name = "Bar Values Font", card = "Unit Frames", when = BAR_VALUES })
+	R("Look", "Fonts", "Text", "BarText.fontSize", { name = "Bar Values Size", card = "Unit Frames", when = BAR_VALUES })
+	for _, tab in ipairs({ "player:values", "target:values", "focus:values" }) do
+		Link("UnitGroupFrames", tab, "Text", "BarText.valueFont", "Font")
+		Link("UnitGroupFrames", tab, "Text", "BarText.fontSize", "Font Size")
+	end
 	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.position", { when = BAR_VALUES })
 	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.offsetX", { when = BAR_VALUES })
 	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.offsetY", { when = BAR_VALUES })
 	R("UnitGroupFrames", "buffs:element", "General", "Auras.player", { name = "Buffs & Debuffs On This Frame" })
 	R("UnitGroupFrames", "target:auras", "General", "Auras.target", { name = "Buffs & Debuffs On This Frame" })
-	UGF({ "buffs:element", "target:auras" }, "Text", "Auras.textFont", { name = "Numbers Font", plus = "the nameplates' debuffs",
-		when = OWN_ANY })
+	R("Look", "Fonts", "Text", "Auras.textFont", { name = "Numbers Font", card = "Buffs & Debuffs", when = OWN_ANY })
+	Link("UnitGroupFrames", "buffs:element", "Text", "Auras.textFont", "Numbers Font")
+	Link("UnitGroupFrames", "target:auras", "Text", "Auras.textFont", "Numbers Font")
 	R("UnitGroupFrames", "all", "General", "HealerFrames.debuffGlow")
 	-- (0.19.4: Dark Mode reaches the game's own icons of yours, never the
 	-- target's; with MelloUI's rows in their place it has nothing to darken.
@@ -743,7 +768,8 @@ function L.Define(R, Link)
 	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.evade")
 	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.cast")
 	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.targetFrame")
-	R("Nameplates", "enemies:health", "Look", "BarTextures.nameplatesTexture", { name = "Bar Texture" })
+	R("Look", "Textures", "Look", "BarTextures.nameplatesTexture", { name = "Nameplates", card = "Bars" })
+	Link("Nameplates", "enemies:health", "Look", "BarTextures.nameplatesTexture", "Bar Texture")
 	R("Nameplates", "enemies:element", "Behaviour", "Nameplates.hover")   -- (1.2.4: every plate's, the user)
 	R("Nameplates", "enemies:threat", "General", "Nameplates.threatLine")
 	R("Nameplates", "enemies:combo", "General", "Nameplates.comboPoints")
@@ -815,7 +841,8 @@ function L.Define(R, Link)
 	R("ActionBars", "menubags:bags", "Behaviour", "Tweaks.bagBarFold",
 		{ when = { key = "Tweaks.hideBagBar", value = false, line = "Only while the bag bar shows" } })
 	-- Cast Bar: its look (its parts the game's: nothing to set yet)
-	R("ActionBars", "castbar:element", "Look", "BarTextures.castbarsTexture", { name = "Bar Texture" })
+	R("Look", "Textures", "Look", "BarTextures.castbarsTexture", { name = "Cast Bars", card = "Bars" })
+	Link("ActionBars", "castbar:element", "Look", "BarTextures.castbarsTexture", "Bar Texture")
 	R("ActionBars", "castbar:element", "Look", "DarkMode.castbar", { name = "Dark Mode", when = Uncovered("CastBarPanel", "cast bars") })
 	-- (0.17.1) Swing Timers: its switch (the module's, off by default), each bar's, the seconds, the size, when
 	R("ActionBars", "swing:element", "General", "SwingTimers.!enabled", { name = "Swing Timers" })
@@ -825,7 +852,8 @@ function L.Define(R, Link)
 	-- XP & Rep: the bars' look; the XP bar's light and Level Up (one look C13b: Tweaks'), each bar's backdrop
 	-- (2026-10-20, the user's sheet: MelloUI's frame, track, notches and light on the bars, first)
 	R("ActionBars", "xprep:element", "Look", "ActionBars.statusFrame")
-	R("ActionBars", "xprep:element", "Look", "BarTextures.statusbarsTexture", { name = "Bar Texture" })
+	R("Look", "Textures", "Look", "BarTextures.statusbarsTexture", { name = "Experience & Reputation", card = "Bars" })
+	Link("ActionBars", "xprep:element", "Look", "BarTextures.statusbarsTexture", "Bar Texture")
 	R("ActionBars", "xprep:element", "Look", "DarkMode.statusbars", { name = "Dark Mode", when = Uncovered("ActionBarPanel", "action bars") })
 	-- (0.22.1, the animations: the stretch of the XP bar just gained lit)
 	R("ActionBars", "xprep:xp", "Look", "Tweaks.xpGain")
@@ -834,7 +862,8 @@ function L.Define(R, Link)
 	R("ActionBars", "xprep:rep", "Look", "Tweaks.repGain")
 	R("ActionBars", "xprep:rep", "Look", "ActionBars.backdropXP2", { name = "Backdrop" })
 	-- Cooldowns (0.19.8, Cooldown Tweaks: Modules/CooldownTweaks.lua -- the addon study's item 7)
-	R("ActionBars", "cooldowns:element", "Look", "BarTextures.cooldownsTexture", { name = "Bar Texture" })
+	R("Look", "Textures", "Look", "BarTextures.cooldownsTexture", { name = "Cooldown Bars", card = "Bars" })
+	Link("ActionBars", "cooldowns:element", "Look", "BarTextures.cooldownsTexture", "Bar Texture")
 	R("ActionBars", "cooldowns:element", "Look", "DarkMode.cooldowns", { name = "Dark Mode" })
 	R("ActionBars", "cooldowns:element", "Layout", "CooldownTweaks.centreRows")
 	R("ActionBars", "cooldowns:icon", "Look", "CooldownTweaks.pressLight")
@@ -904,14 +933,15 @@ function L.Define(R, Link)
 	R("BarsMeters", "Damage Meter", "Layout", "Meter.railHeight")   -- (onelook B: Race Bar Thickness, Height's place)
 	R("BarsMeters", "Damage Meter", "Behaviour", "Meter.metric")
 	R("BarsMeters", "Damage Meter", "Behaviour", "Meter.historySize")
-	R("Reminders", "FPS / Latency", "General", "UIModifications.qol_Stats")
-	R("Reminders", "FPS / Latency", "General", "Stats.showFps")
-	R("Reminders", "FPS / Latency", "General", "Stats.showLatency")
-	R("Reminders", "FPS / Latency", "General", "Stats.worldLatency")
-	R("Reminders", "FPS / Latency", "Text", "Stats.fontSize")
-	R("Reminders", "FPS / Latency", "Layout", "Stats.offsetX")
-	R("Reminders", "FPS / Latency", "Layout", "Stats.offsetY")
-	R("Reminders", "FPS / Latency", "Behaviour", "Stats.interval")
+	R("QualityOfLife", "FPS / Latency", "General", "UIModifications.qol_Stats")
+	R("QualityOfLife", "FPS / Latency", "General", "Stats.showFps")
+	R("QualityOfLife", "FPS / Latency", "General", "Stats.showLatency")
+	R("QualityOfLife", "FPS / Latency", "General", "Stats.worldLatency")
+	R("Look", "Fonts", "Text", "Stats.fontSize", { card = "FPS / Latency" })
+	Link("QualityOfLife", "FPS / Latency", "Text", "Stats.fontSize", "Font Size")
+	R("QualityOfLife", "FPS / Latency", "Layout", "Stats.offsetX")
+	R("QualityOfLife", "FPS / Latency", "Layout", "Stats.offsetY")
+	R("QualityOfLife", "FPS / Latency", "Behaviour", "Stats.interval")
 
 	-- Chat
 	R("Chat", "Chat Frame", "General", "UIModifications.qol_Chat")
@@ -924,7 +954,8 @@ function L.Define(R, Link)
 	-- Tracker's (Kit.ownParchments); the Background's Parchment until then; Oldschool > Parchment links to it)
 	R("Chat", "Chat Frame", "Look", "UIModifications.parchment_chat", { name = "Parchment", free = true, when = CHAT_PAPER })
 	-- (the game's windows' ground, asleep under the painted chat, which lays its own; the Minimal Chat View's panel)
-	R("Chat", "Chat Frame", "Look", "Chat.background", { when = { any = { { key = "UIModifications.reskin", value = false },
+	Link("Chat", "Chat Frame", "Look", "Chat.background", "Background")
+	R("Look", "Textures", "Look", "Chat.background", { name = "Chat Background", card = "Backgrounds", when = { any = { { key = "UIModifications.reskin", value = false },
 		{ key = "UIModifications.ChatPanel", value = false }, { key = "Chat.view", value = "minimal" } },
 		line = "Only without the painted chat, or with the Minimal Chat View" } })
 	-- (the opacity is the painted chat's stone's too: live under it whatever the Background reads)
@@ -949,60 +980,64 @@ function L.Define(R, Link)
 		line = "Not with the Minimal Chat View: its whisper window takes the whispers" } })
 
 	-- Tooltip
-	R("Tooltip", "Tooltip", "General", "UIModifications.qol_Tooltip")
-	R("Tooltip", "Tooltip", "Look", "Tooltip.background")
-	R("Tooltip", "Tooltip", "Look", "Tooltip.backdropAlpha", { when = { key = "Tooltip.background", value = "dark", line = "Only for the Dark background" } })
+	R("QualityOfLife", "Tooltip", "General", "UIModifications.qol_Tooltip")
+	R("Look", "Textures", "Look", "Tooltip.background", { name = "Tooltip Background", card = "Backgrounds" })
+	R("Look", "Textures", "Look", "Tooltip.backdropAlpha", { name = "Tooltip Background Opacity", card = "Backgrounds",
+		when = { key = "Tooltip.background", value = "dark", line = "Only for the Dark background" } })
+	Link("QualityOfLife", "Tooltip", "Look", "Tooltip.background", "Background")
 	-- (0.19.4: Hide Health Bar, on by default, leaves nothing to dress)
 	local HEALTH_BAR = { key = "Tooltip.hideHealthBar", value = false, line = "Only while the health bar shows (Hide Health Bar off)" }
-	R("Tooltip", "Tooltip", "Look", "BarTextures.tooltipTexture", { name = "Bar Texture", when = HEALTH_BAR })
-	R("Tooltip", "Tooltip", "Look", "Tooltip.classHealth", { when = HEALTH_BAR })
-	R("Tooltip", "Tooltip", "Look", "Tooltip.hideHealthBar")
-	R("Tooltip", "Tooltip", "Look", "Tooltip.hideIssueLine")
-	R("Tooltip", "Tooltip", "Look", "Tooltip.colourLines")
-	R("Tooltip", "Tooltip", "Layout", "Tooltip.anchor")
-	R("Tooltip", "Tooltip", "Layout", "Tooltip.scale")
-	R("Tooltip", "Tooltip", "Behaviour", "Tooltip.hideInCombat")
-	R("Tooltip", "Tooltip", "Behaviour", "Tooltip.fadeDelay")
-	R("Tooltip", "Tooltip", "Behaviour", "QuestList.tipQuestItems")
-	R("Tooltip", "Tooltip", "Behaviour", "QuestList.tipTurnIn")
-	R("Tooltip", "Tooltip", "Behaviour", "QuestList.tipCharacters")
+	R("Look", "Textures", "Look", "BarTextures.tooltipTexture", { name = "Tooltip Health Bar", card = "Bars", when = HEALTH_BAR })
+	Link("QualityOfLife", "Tooltip", "Look", "BarTextures.tooltipTexture", "Bar Texture", { when = HEALTH_BAR })
+	R("QualityOfLife", "Tooltip", "Look", "Tooltip.classHealth", { when = HEALTH_BAR })
+	R("QualityOfLife", "Tooltip", "Look", "Tooltip.hideHealthBar")
+	R("QualityOfLife", "Tooltip", "Look", "Tooltip.hideIssueLine")
+	R("QualityOfLife", "Tooltip", "Look", "Tooltip.colourLines")
+	R("QualityOfLife", "Tooltip", "Layout", "Tooltip.anchor")
+	R("QualityOfLife", "Tooltip", "Layout", "Tooltip.scale")
+	R("QualityOfLife", "Tooltip", "Behaviour", "Tooltip.hideInCombat")
+	R("QualityOfLife", "Tooltip", "Behaviour", "Tooltip.fadeDelay")
+	R("QualityOfLife", "Tooltip", "Behaviour", "QuestList.tipQuestItems")
+	R("QualityOfLife", "Tooltip", "Behaviour", "QuestList.tipTurnIn")
+	R("QualityOfLife", "Tooltip", "Behaviour", "QuestList.tipCharacters")
 
 	-- Screen Text (the notices' rows free: Core reads them, Core/Notice.lua
 	-- and Core/CentreText.lua, with Tweaks and UI Modifications off)
-	R("ScreenText", "Notices", "General", "Tweaks.noticeOnScreen", { free = true })
-	R("ScreenText", "Notices", "General", "Tweaks.noticeToChat", { free = true })
-	R("ScreenText", "Notices", "Text", "Tweaks.noticeOutline", { free = true })
-	R("ScreenText", "Notices", "Behaviour", "Tweaks.chatNotices", { free = true })
-	R("ScreenText", "Notices", "Sound", "Tweaks.noticeSounds", { free = true })
-	R("ScreenText", "Error Messages", "General", "UIModifications.qol_ErrorFilter")
-	R("ScreenText", "Error Messages", "Behaviour", "ErrorFilter.resources")
-	R("ScreenText", "Error Messages", "Behaviour", "ErrorFilter.cooldowns")
-	R("ScreenText", "Error Messages", "Behaviour", "ErrorFilter.range")
-	R("ScreenText", "Error Messages", "Behaviour", "ErrorFilter.targeting")
-	R("ScreenText", "Error Messages", "Behaviour", "ErrorFilter.busy")
+	R("QualityOfLife", "Notices", "General", "Tweaks.noticeOnScreen", { free = true })
+	R("QualityOfLife", "Notices", "General", "Tweaks.noticeToChat", { free = true })
+	R("QualityOfLife", "Notices", "Text", "Tweaks.noticeOutline", { free = true })
+	R("QualityOfLife", "Notices", "Behaviour", "Tweaks.chatNotices", { free = true })
+	R("QualityOfLife", "Notices", "Sound", "Tweaks.noticeSounds", { free = true })
+	R("QualityOfLife", "Error Messages", "General", "UIModifications.qol_ErrorFilter")
+	R("QualityOfLife", "Error Messages", "Behaviour", "ErrorFilter.resources")
+	R("QualityOfLife", "Error Messages", "Behaviour", "ErrorFilter.cooldowns")
+	R("QualityOfLife", "Error Messages", "Behaviour", "ErrorFilter.range")
+	R("QualityOfLife", "Error Messages", "Behaviour", "ErrorFilter.targeting")
+	R("QualityOfLife", "Error Messages", "Behaviour", "ErrorFilter.busy")
 	-- (0.17.0) Combat Text: MelloUI's text over your character (its module's
 	-- switch the tab's first row), then the engine's numbers over the enemies
 	-- (their font and size, and the game's own switches for them)
-	R("ScreenText", "Combat Text", "General", "CombatText.!enabled", { name = "MelloUI Combat Text" })
-	R("ScreenText", "Combat Text", "General", "CombatText.style")
-	R("ScreenText", "Combat Text", "General", "CombatText.dealt")
-	R("ScreenText", "Combat Text", "Text", "CombatText.dealtScale",
+	R("QualityOfLife", "Combat Text", "General", "CombatText.!enabled", { name = "MelloUI Combat Text" })
+	R("QualityOfLife", "Combat Text", "General", "CombatText.style")
+	R("QualityOfLife", "Combat Text", "General", "CombatText.dealt")
+	R("QualityOfLife", "Combat Text", "Text", "CombatText.dealtScale",
 		{ when = { key = "CombatText.dealt", notValue = "game", line = "Only while MelloUI draws Your Damage" } })
-	R("ScreenText", "Combat Text", "General", "CombatText.#Preview")
-	R("ScreenText", "Combat Text", "Look", "CombatText.shadeSize")
+	R("QualityOfLife", "Combat Text", "General", "CombatText.#Preview")
+	R("QualityOfLife", "Combat Text", "Look", "CombatText.shadeSize")
 	-- (its text sizes and fonts: Look > Fonts since 0.19.1, linked below)
-	R("ScreenText", "Combat Text", "Text", "CombatText.size", { when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
-	R("ScreenText", "Combat Text", "Text", "CombatText.titleNotices", { when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
-	R("ScreenText", "Combat Text", "Layout", "CombatText.spread",
+	R("Look", "Fonts", "Text", "CombatText.size", { card = "Combat Text", when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
+	Link("QualityOfLife", "Combat Text", "Text", "CombatText.size", "Text Around You")
+	R("QualityOfLife", "Combat Text", "Text", "CombatText.titleNotices", { when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
+	R("QualityOfLife", "Combat Text", "Layout", "CombatText.spread",
 		{ when = { key = "CombatText.style", value = "lanes", line = "Only for the Lanes style" } })
-	R("ScreenText", "Combat Text", "Layout", "CombatText.lines",
+	R("QualityOfLife", "Combat Text", "Layout", "CombatText.lines",
 		{ when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
 	-- (MelloUI's kinds sleep on Game, as Most Lines; the game's four switches
 	-- for the numbers over the enemies never)
 	local MELLO_STYLES = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" }
 	for _, key in ipairs({ "taken", "heals", "notices", "avoid", "resource", "combat", "reputation",
 		"enemyDamage", "enemyPeriodic", "enemyPet", "enemyHealing" }) do
-		R("ScreenText", "Combat Text", "Behaviour", "CombatText." .. key,
+		R("QualityOfLife", "Combat Text", "Behaviour", "CombatText." .. key,
 			key:sub(1, 5) ~= "enemy" and { when = MELLO_STYLES } or nil)
 	end
 
@@ -1062,7 +1097,7 @@ function L.Define(R, Link)
 		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.raidGap")
 		UGF({ "raid:element", "party:element" }, "Behaviour", "GroupFrames.rangeAlpha")
 		-- the bars: health, background, missing health, power
-		-- (one look Q7: the health bar's colour is the one Health Colour, Look > Bar Texture: a link below)
+		-- (one look Q7: the health bar's colour is the one Health Colour, Look > Colours: a link below)
 		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.healthAlpha")
 		UGF({ "raid:background", "party:background" }, "Look", "GroupFrames.backgroundTexture")
 		UGF({ "raid:background", "party:background" }, "Look", "GroupFrames.background", When("backgroundTexture", "flat", "Only with Flat colour"))
@@ -1085,9 +1120,14 @@ function L.Define(R, Link)
 		UGF({ "raid:name", "party:name" }, "Text", "GroupFrames.nameLength")
 		UGF({ "raid:healthtext", "party:healthtext" }, "Text", "GroupFrames.healthText")
 		UGF({ "raid:status", "party:status" }, "Text", "GroupFrames.statusText")
-		UGF({ "raid:name", "party:name" }, "Text", "GroupFrames.nameFont", { name = "Font" })
-		UGF({ "raid:healthtext", "party:healthtext" }, "Text", "GroupFrames.healthFont", { name = "Font" })
-		UGF({ "raid:indicators", "party:indicators" }, "Text", "GroupFrames.indicatorFont", { name = "Numbers Font" })
+		R("Look", "Fonts", "Text", "GroupFrames.nameFont", { name = "Names Font", card = "Party & Raid" })
+		R("Look", "Fonts", "Text", "GroupFrames.healthFont", { name = "Health Text Font", card = "Party & Raid" })
+		R("Look", "Fonts", "Text", "GroupFrames.indicatorFont", { name = "Indicator Numbers Font", card = "Party & Raid" })
+		for _, f in ipairs({ "raid", "party" }) do
+			Link("UnitGroupFrames", f .. ":name", "Text", "GroupFrames.nameFont", "Font")
+			Link("UnitGroupFrames", f .. ":healthtext", "Text", "GroupFrames.healthFont", "Font")
+			Link("UnitGroupFrames", f .. ":indicators", "Text", "GroupFrames.indicatorFont", "Numbers Font")
+		end
 		-- the Designer: the indicators and the frame's parts on one canvas
 		-- (one look C9b / C10: party and raid each their own list -- one switch, the canvas on both)
 		UGF({ "raid:indicators", "party:indicators" }, "General", "GroupFrames.indicators")
@@ -1120,7 +1160,8 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "personal:cast", "Behaviour", "PersonalDisplay.healFrom", { when = { key = "HealFlight.!enabled", value = true, line = "Only with Heal Flight on" } })
 	R("UnitGroupFrames", "personal:cast", "Behaviour", "PersonalDisplay.castMotion")
 	R("UnitGroupFrames", "personal:text", "Text", "PersonalDisplay.text")
-	R("UnitGroupFrames", "personal:text", "Text", "PersonalDisplay.textFont", { name = "Font" })
+	R("Look", "Fonts", "Text", "PersonalDisplay.textFont", { name = "Font", card = "Personal Display" })
+	Link("UnitGroupFrames", "personal:text", "Text", "PersonalDisplay.textFont", "Font")
 	R("UnitGroupFrames", "personal:element", "Layout", "PersonalDisplay.width")
 	R("UnitGroupFrames", "personal:element", "Layout", "PersonalDisplay.height")
 	-- (one look Q4: Edit Layout's Size of the bars and of the shield column, the same value)
@@ -1177,11 +1218,11 @@ function L.Define(R, Link)
 	R("QuestList", "List", "General", "QuestList.levelAbove")
 	R("QuestList", "List", "Behaviour", "QuestList.dungeonSummary")
 	-- (0.19.8: Auto Accept & Hand In, Modules/QuestAuto.lua -- the addon study's item 6, off by default)
-	R("Automation", "Quests", "Behaviour", "QuestAuto.accept")
-	R("Automation", "Quests", "Behaviour", "QuestAuto.handIn")
-	R("Automation", "Quests", "Behaviour", "QuestAuto.takeUpgrade", { when = { key = "QuestAuto.handIn", value = true,
+	R("QualityOfLife", "Quests", "Behaviour", "QuestAuto.accept")
+	R("QualityOfLife", "Quests", "Behaviour", "QuestAuto.handIn")
+	R("QualityOfLife", "Quests", "Behaviour", "QuestAuto.takeUpgrade", { when = { key = "QuestAuto.handIn", value = true,
 		line = "Only with Auto Hand In" } })
-	R("Automation", "Quests", "Behaviour", "QuestAuto.skipKey", { when = { any = { { key = "QuestAuto.accept", value = true },
+	R("QualityOfLife", "Quests", "Behaviour", "QuestAuto.skipKey", { when = { any = { { key = "QuestAuto.accept", value = true },
 		{ key = "QuestAuto.handIn", value = true } }, line = "Only with Auto Accept or Auto Hand In" } })
 	R("QuestList", "Map", "General", "QuestList.mapPins")
 	R("QuestList", "Map", "General", "QuestList.pinCompleted")
@@ -1219,52 +1260,52 @@ function L.Define(R, Link)
 	R("DungeonInfo", "Dungeon Info", "General", "DungeonInfo.doorRow")
 
 	-- Reminders (each tab's first row its module's switch)
-	R("Reminders", "Reminders", "General", "Reminders.!enabled", { name = "Reminders" })
-	R("Reminders", "Reminders", "General", "Reminders.remind_mail")
-	R("Reminders", "Reminders", "General", "Reminders.remind_repair")
-	R("Reminders", "Reminders", "General", "Reminders.repairAt")
-	R("Reminders", "Reminders", "General", "Reminders.remind_trainer")
-	R("Reminders", "Reminders", "General", "Reminders.trainerClass")
-	R("Reminders", "Reminders", "General", "Reminders.trainerProfession")
-	R("Reminders", "Reminders", "Look", "Reminders.glow")
-	R("Reminders", "Reminders", "Layout", "Reminders.place")
-	R("Reminders", "Reminders", "Behaviour", "Reminders.stayResting")
-	R("Reminders", "Reminders", "Behaviour", "Reminders.hold")
-	R("Automation", "Restock", "General", "Restock.!enabled", { name = "Restock List And Shop" })
-	R("Automation", "Restock", "General", "Restock.below")
-	R("Automation", "Restock", "General", "Restock.shopPanel")
-	R("Automation", "Restock", "General", "Restock.#Restock List")
-	R("Automation", "Vendor", "General", "UIModifications.qol_Vendor")
-	R("Automation", "Vendor", "Behaviour", "Vendor.autoRepair")
-	R("Automation", "Vendor", "Behaviour", "Vendor.guildRepair")
-	R("Automation", "Vendor", "Behaviour", "Vendor.autoSell")
-	R("Automation", "Vendor", "Behaviour", "Vendor.report")
+	R("QualityOfLife", "Reminders", "General", "Reminders.!enabled", { name = "Reminders" })
+	R("QualityOfLife", "Reminders", "General", "Reminders.remind_mail")
+	R("QualityOfLife", "Reminders", "General", "Reminders.remind_repair")
+	R("QualityOfLife", "Reminders", "General", "Reminders.repairAt")
+	R("QualityOfLife", "Reminders", "General", "Reminders.remind_trainer")
+	R("QualityOfLife", "Reminders", "General", "Reminders.trainerClass")
+	R("QualityOfLife", "Reminders", "General", "Reminders.trainerProfession")
+	R("QualityOfLife", "Reminders", "Look", "Reminders.glow")
+	R("QualityOfLife", "Reminders", "Layout", "Reminders.place")
+	R("QualityOfLife", "Reminders", "Behaviour", "Reminders.stayResting")
+	R("QualityOfLife", "Reminders", "Behaviour", "Reminders.hold")
+	R("QualityOfLife", "Restock", "General", "Restock.!enabled", { name = "Restock List And Shop" })
+	R("QualityOfLife", "Restock", "General", "Restock.below")
+	R("QualityOfLife", "Restock", "General", "Restock.shopPanel")
+	R("QualityOfLife", "Restock", "General", "Restock.#Restock List")
+	R("QualityOfLife", "Vendor", "General", "UIModifications.qol_Vendor")
+	R("QualityOfLife", "Vendor", "Behaviour", "Vendor.autoRepair")
+	R("QualityOfLife", "Vendor", "Behaviour", "Vendor.guildRepair")
+	R("QualityOfLife", "Vendor", "Behaviour", "Vendor.autoSell")
+	R("QualityOfLife", "Vendor", "Behaviour", "Vendor.report")
 	-- (0.16.0: the widget column's users and three more portrait reminders,
 	-- Modules/Widgets.lua; the column's lock is the Reminders module's)
-	R("Reminders", "Widgets", "General", "Widgets.!enabled", { name = "Widgets" })
+	R("QualityOfLife", "Widgets", "General", "Widgets.!enabled", { name = "Widgets" })
 	for _, key in ipairs({ "loot", "corpse", "timed", "summon", "resurrect", "ready", "threat", "whisper", "pet", "auction",
 		"craft", "cooldown", "questItem", "healer", "rare", "rareSound",
 		"bags", "bagsAt", "talents", "wellfed", "weapon", "buffs", "groupBuffs" }) do
 		-- (0.19.4: the whisper row is raised by Chat's popup alone; 0.23.0: or the Minimal Chat View's whisper window)
-		R("Reminders", "Widgets", "General", "Widgets." .. key, key == "whisper"
+		R("QualityOfLife", "Widgets", "General", "Widgets." .. key, key == "whisper"
 			and { when = { any = { { key = "Chat.whisperPopup", value = true }, { key = "Chat.view", value = "minimal" } },
 				line = "Needs Chat's Whisper Popup Window or the Minimal Chat View" } } or nil)
 	end
-	R("Reminders", "Widgets", "Layout", "Reminders.widgetLock")
-	R("Reminders", "Widgets", "Layout", "Reminders.widgetMax")
+	R("QualityOfLife", "Widgets", "Layout", "Reminders.widgetLock")
+	R("QualityOfLife", "Widgets", "Layout", "Reminders.widgetMax")
 
 	-- Gains (header: its module's switch)
-	R("ScreenText", "Gains", "General", "Gains.!enabled", { name = "Gains" })
-	R("ScreenText", "Gains", "General", "Gains.skills")
-	R("ScreenText", "Gains", "General", "Gains.values")
-	R("ScreenText", "Gains", "General", "Gains.items")
-	R("ScreenText", "Gains", "General", "Gains.bought")
-	R("ScreenText", "Gains", "General", "Gains.junk")
+	R("QualityOfLife", "Gains", "General", "Gains.!enabled", { name = "Gains" })
+	R("QualityOfLife", "Gains", "General", "Gains.skills")
+	R("QualityOfLife", "Gains", "General", "Gains.values")
+	R("QualityOfLife", "Gains", "General", "Gains.items")
+	R("QualityOfLife", "Gains", "General", "Gains.bought")
+	R("QualityOfLife", "Gains", "General", "Gains.junk")
 	-- (0.17.0) money, the other currencies and the names' quality colour
-	R("ScreenText", "Gains", "General", "Gains.money")
-	R("ScreenText", "Gains", "General", "Gains.currencies")
-	R("ScreenText", "Gains", "Look", "Gains.qualityNames")
-	R("ScreenText", "Gains", "Behaviour", "Gains.hold")
+	R("QualityOfLife", "Gains", "General", "Gains.money")
+	R("QualityOfLife", "Gains", "General", "Gains.currencies")
+	R("QualityOfLife", "Gains", "Look", "Gains.qualityNames")
+	R("QualityOfLife", "Gains", "Behaviour", "Gains.hold")
 
 	-- Voice Over (header: its module's switch)
 	R("VoiceOver", "Reading", "General", "VoiceOver.gossip")
@@ -1359,8 +1400,8 @@ function L.Define(R, Link)
 	R("ActionBars", "menubags:bags", "Behaviour", "Fader.show_bags", { name = "Fade",
 		when = { key = "Tweaks.hideBagBar", value = false, line = "Hidden (Hide This Bar)" } })
 	R("ActionBars", "xprep:element", "Behaviour", "Fader.show_xp", { name = "Fade" })
-	R("Reminders", "Reminders", "Behaviour", "Fader.show_reminders", { name = "Fade" })
-	R("Reminders", "Widgets", "Behaviour", "Fader.show_widgets", { name = "Fade", when = { key = "Widgets.!enabled", value = true, line = "Only with the Widgets on" } })
+	R("QualityOfLife", "Reminders", "Behaviour", "Fader.show_reminders", { name = "Fade" })
+	R("QualityOfLife", "Widgets", "Behaviour", "Fader.show_widgets", { name = "Fade", when = { key = "Widgets.!enabled", value = true, line = "Only with the Widgets on" } })
 	R("Minimap", "minimap:element", "Behaviour", "Fader.show_minimap", { name = "Fade" })
 
 	-- the link rows: a setting whose one place is another page (the global
@@ -1379,15 +1420,15 @@ function L.Define(R, Link)
 	Link("Windows", "Windows", "Look", "UIModifications.windowBorder", "Window Border")
 	Link("Windows", "Windows", "Look", "UIModifications.windowTitle", "Window Title")
 	Link("VoiceOver", "Widget", "Layout", "Reminders.widgetLock", "Lock The Widgets")
-	Link("Reminders", "Widgets", "General", "Meter.summary", "Fight Summary")
+	Link("QualityOfLife", "Widgets", "General", "Meter.summary", "Fight Summary")
 	-- (0.17.0: the fades moved to the Fader)
 	Link("Chat", "Chat Frame", "Behaviour", "Chat.tabsOnMouseover", "Tabs Only On Mouseover",
 		{ when = Uncovered("ChatPanel", "chat") })
 	-- (0.16.0: the merged settings, from where their members were)
 	Link("Chat", "Messages", "Text", "UIModifications.nameFormat", "Names")
 	Link("Chat", "Messages", "Text", "UIModifications.classNames", "Class Coloured Names")
-	Link("Tooltip", "Tooltip", "Text", "UIModifications.classNames", "Class Coloured Names")
-	Link("ScreenText", "Notices", "Text", "Tweaks.textShade", "Text Shade")
+	Link("QualityOfLife", "Tooltip", "Text", "UIModifications.classNames", "Class Coloured Names")
+	Link("QualityOfLife", "Notices", "Text", "Tweaks.textShade", "Text Shade")
 	Link("Route", "Arrow & Marker", "Text", "Tweaks.textShade", "Text Shade")
 	-- (the user, 2026-10-16: Text Shade the one switch of every shade behind text -- the nameplates' Name Shade and
 	-- the chat's Shade Behind Tags and Links went into it; the unit frames' name bands follow it)
@@ -1417,9 +1458,8 @@ function L.Define(R, Link)
 	Link("Chat", "Chat Frame", "Text", "Fonts.scaleChat", "Chat Size")
 	Link("Chat", "Whispers", "Look", "UIModifications.parchment_whisper", "Parchment",
 		{ when = { key = "Chat.whisperPopup", value = true, line = "Only with the Whisper Popup Window" } })
-	Link("Tooltip", "Tooltip", "Look", "BarTextures.texture", "Bar Texture (Look)", { when = HEALTH_BAR })
-	Link("Tooltip", "Tooltip", "Look", "UIModifications.barBorder", "Progress Bar Border", { when = HEALTH_BAR })
-	Link("ScreenText", "Combat Text", "Text", "Fonts.style", "Font")
+	Link("QualityOfLife", "Tooltip", "Look", "UIModifications.barBorder", "Progress Bar Border", { when = HEALTH_BAR })
+	Link("QualityOfLife", "Combat Text", "Text", "Fonts.style", "Font")
 	-- (one look: the Quest Tracker's paper on its own page; the Parchment tab keeps it in its list, the user's
 	-- 0.19.1 "any Parchment Enable/Disable into the Parchment tab")
 	Link("Oldschool", "Parchment", "Look", "UIModifications.parchment_questTracker", "Parchment: Quest Tracker")
@@ -1445,5 +1485,5 @@ function L.Define(R, Link)
 	-- the user's decision 8; the row on Oldschool > Borders stays until stage E's option table)
 	Link("QuestTracker", "Quest Tracker", "Text", "QuestTracker.textSize", "Text Size")
 	Link("QuestTracker", "Quest Tracker", "Text", "QuestTracker.headerSize", "Header Size")
-	Link("ScreenText", "Combat Text", "Text", "Fonts.fontDamage", "Game Numbers Font")
+	Link("QualityOfLife", "Combat Text", "Text", "Fonts.fontDamage", "Game Numbers Font")
 end

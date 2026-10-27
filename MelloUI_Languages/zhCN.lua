@@ -420,7 +420,7 @@ Lang:Add("zhCN", {
 	["The health percentage under which the bar turns purple (20% for most execute abilities, 35% for some)."] = "生命条变紫的生命百分比（大多数斩杀技能为20%，部分为35%）。", -- draft
 	["Apply To"] = "应用于", -- draft
 	["The fill of the health and power bars of the player, target, focus, pet, party, boss and target-of-target frames: Shared (the Look page's Bar Texture), the game's own art, or a picture of their own."] = "玩家、目标、焦点、宠物、小队、首领和目标的目标框体的生命条和能量条填充：共享（“外观”页的条材质）、游戏自己的美术，或它们自己的图片。", -- draft
-	["Shared (Look's Bar Texture)"] = "共享（外观）", -- draft
+	["Same as Every Bar"] = "共享（外观）", -- draft
 	["The game's"] = "游戏的", -- draft
 	["Raid Frames"] = "团队框体", -- draft
 	["The fill of MelloUI's party and raid frames and the game's raid-style frames: Shared (the Look page's Bar Texture), Plain (a flat fill; the game's own art on the game's frames), or a picture of their own."] = "MelloUI的小队和团队框体以及游戏的团队样式框体的填充：共享（“外观”页的条材质）、纯色（扁平填充；游戏框体上用游戏自己的美术），或它们自己的图片。", -- draft

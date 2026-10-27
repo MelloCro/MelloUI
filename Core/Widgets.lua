@@ -4440,6 +4440,10 @@ end
 --                  the tag), dimmed with the row while it sleeps; a label with
 --                  a tag and no hint keeps its text's width, cut only where
 --                  the two would reach the control (row.newTag)
+--     opts.colW    (1.2.4, the configurator's two columns) a half row: this
+--                  wide at opts.colX from its parent's left, opts.colH tall
+--                  (not its own height); its Shared mark and hint a second
+--                  line under the label (row.stacked), each cut at the control
 --   row:Refresh()  the row's control (get again) and its gate
 -- The typed rows (a row and its control, which takes get / set; the
 -- controls flat in both looks, 0.15.0: nothing of theirs for the kit's
@@ -4572,7 +4576,14 @@ function W.Gate(row, gate, opts)
 			-- (after the row's last tag, as W.Row lays its hint: the Shared / "also ..." mark too -- the user's
 			-- screenshot, 2026-10-16: the gate's line over the "also Target, Focus ..." mark)
 			local last = row.sharedTag or row.newTag
-			row.hint:SetPoint("LEFT", last or row.label, "RIGHT", last and (10 + TAG_PAD_X) or 10, 0)
+			if row.stacked and row.sharedTag then
+				row.hint:SetPoint("LEFT", row.sharedTag, "RIGHT", 10 + TAG_PAD_X, 0)
+			elseif row.colW then
+				-- (a half row: under its label -- its second line; a row with none shows it only while asleep)
+				row.hint:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -W.HALF_GAP)
+			else
+				row.hint:SetPoint("LEFT", last or row.label, "RIGHT", last and (10 + TAG_PAD_X) or 10, 0)
+			end
 			row.hint:SetWordWrap(false)
 			local at = clipped[row] and clipAt[row]
 			if at then
@@ -4598,8 +4609,35 @@ local function FitLabel(row, span)
 		return
 	end
 	local room = width - 2 * (row.rowInset or 0) - (row.labelX or 14) - span - 10 - tag
+	if row.colW then
+		room = row.colW - (row.labelX or 14) - span - 10 - tag   -- (a half row: its own width)
+	end
 	if text > room then
 		label:SetWidth(math.max(20, room))
+	end
+end
+
+-- (1.2.4) a half row with a second line (W.Row's opts.colW): the label, its New tag after it, cut where they would
+-- reach 10 px short of the control; the hint under it (after the Shared mark) cut the same. `span` unknown (a link
+-- row's value): left as it is. (In a block with W.ClipRow, its one caller: no local of the main chunk's)
+do
+local function FitHalf(row, span)
+	local room = span and row.colW and row.colW - (row.labelX or 14) - span - 10
+	if not room then
+		return
+	end
+	local text = TextWidth(row.label)
+	local tag = row.newTag and TagSpan(row.newTag) or 0
+	if text and tag and text + tag > room then
+		row.label:SetWidth(math.max(20, room - tag))
+	end
+	local hint = row.hint
+	if hint then
+		local used = row.sharedTag and TagSpan(row.sharedTag) or 0
+		local w = TextWidth(hint)
+		if w and used and w > room - used then
+			hint:SetWidth(math.max(20, room - used))
+		end
 	end
 end
 
@@ -4612,7 +4650,9 @@ function W.ClipRow(row, control, span)
 	if not (last and control) then
 		return
 	end
-	if last == row.label and row.newTag then
+	if row.stacked then
+		FitHalf(row, span)
+	elseif last == row.label and row.newTag then
 		FitLabel(row, span)
 	else
 		last:SetPoint("RIGHT", control, "LEFT", -10, 0)
@@ -4624,17 +4664,29 @@ function W.ClipRow(row, control, span)
 		Perf.HookScript(row, "OnLeave", TipLeave)
 	end
 end
+end   -- (the block of FitHalf and W.ClipRow)
 
 local PLATE_OPTS = {}   -- a row's RowPlate options (one table, filled per row)
+-- (1.2.4) a half row's second line: the label lifted this much over the row's middle, the line this far under it
+W.HALF_LIFT, W.HALF_GAP = 7, 3
 
 function W.Row(parent, y, height, label, hint, desc, opts)
 	opts = opts or NO_OPTS
 	label, hint, desc = W.Tr(label), W.Tr(hint), W.Tr(desc)
 	local inset = opts.inset or 0
 	local row = CreateFrame("Frame", nil, parent)
-	row:SetHeight(height)
-	row:SetPoint("TOPLEFT", inset, -y)
-	row:SetPoint("RIGHT", parent, "RIGHT", -inset, 0)
+	local half = opts.colW
+	if half then
+		-- (1.2.4, the configurator's two columns: a half row its own width at its column's place, its column's height)
+		row:SetHeight(opts.colH or height)
+		row:SetPoint("TOPLEFT", opts.colX or inset, -y)
+		row:SetWidth(half)
+		row.colW = half
+	else
+		row:SetHeight(height)
+		row:SetPoint("TOPLEFT", inset, -y)
+		row:SetPoint("RIGHT", parent, "RIGHT", -inset, 0)
+	end
 	row:EnableMouse(true)
 	if opts.zebra then
 		-- CR4 (user, 2026-09-21): a faint band on every other row
@@ -4663,7 +4715,10 @@ function W.Row(parent, y, height, label, hint, desc, opts)
 	end
 	row.label = W.Text(row, "GameFontHighlight", label, opts.labelKey or "text")
 	row.labelX, row.rowInset = 14 + (opts.indent or 0), inset
-	row.label:SetPoint("LEFT", row.labelX, 0)
+	-- (a half row with a Shared mark or a hint: those a second line under the label, the label lifted)
+	local second = half and ((hint and hint ~= "") or opts.shared) and true or nil
+	row.stacked = second
+	row.label:SetPoint("LEFT", row.labelX, second and W.HALF_LIFT or 0)
 	row.label:SetWordWrap(false)
 	-- (the option's New tag: made only while its update runs)
 	row.newTag = opts.new and W.NewTag(row, row.label, opts.new) or nil
@@ -4671,13 +4726,23 @@ function W.Row(parent, y, height, label, hint, desc, opts)
 	-- or the text given -- after the label and its New tag)
 	if opts.shared then
 		row.sharedTag = W.Tag(row, type(opts.shared) == "string" and opts.shared or W.SHARED)
-		row.sharedTag:SetPoint("LEFT", row.newTag or row.label, "RIGHT",
-			TAG_GAP + TAG_PAD_X + (row.newTag and TAG_PAD_X or 0), 0)
+		if second then
+			row.sharedTag:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", TAG_PAD_X, -W.HALF_GAP - 2)
+		else
+			row.sharedTag:SetPoint("LEFT", row.newTag or row.label, "RIGHT",
+				TAG_GAP + TAG_PAD_X + (row.newTag and TAG_PAD_X or 0), 0)
+		end
 	end
 	local last = row.sharedTag or row.newTag
 	if hint and hint ~= "" then
 		row.hint = W.Text(row, "GameFontHighlightSmall", hint, opts.hintKey or "text")
-		row.hint:SetPoint("LEFT", last or row.label, "RIGHT", last and (10 + TAG_PAD_X) or 10, 0)
+		if second and row.sharedTag then
+			row.hint:SetPoint("LEFT", row.sharedTag, "RIGHT", 10 + TAG_PAD_X, 0)
+		elseif second then
+			row.hint:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -W.HALF_GAP)
+		else
+			row.hint:SetPoint("LEFT", last or row.label, "RIGHT", last and (10 + TAG_PAD_X) or 10, 0)
+		end
 		row.hint:SetWordWrap(false)
 	end
 	if desc and desc ~= "" then
@@ -6023,8 +6088,10 @@ do
 		local o = LINK_OPTS
 		o.skin, o.inset, o.indent, o.zebra, o.line = opts.skin, opts.inset, opts.indent, opts.zebra, opts.line
 		o.look, o.strength, o.new, o.labelKey = opts.look, opts.strength, opts.new, opts.labelKey
+		o.colX, o.colW, o.colH = opts.colX, opts.colW, opts.colH   -- (1.2.4: a half row, W.Row's)
 		local row = W.Row(parent, y, W.ROW_HEIGHT, label, nil, opts.desc, o)
 		o.skin, o.inset, o.indent, o.zebra, o.line, o.look, o.strength, o.new, o.labelKey = nil, nil, nil, nil, nil, nil, nil, nil, nil
+		o.colX, o.colW, o.colH = nil, nil, nil
 		local button = W.Button(row, "", LINK_W_MIN, nil, { onClick = LinkClick })
 		button:SetPoint("RIGHT", -12, 0)
 		button.melloLinkRow = row

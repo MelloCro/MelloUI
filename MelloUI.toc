@@ -42,6 +42,7 @@ Core\SwingBadge.lua
 Core\Config.lua
 Core\ConfigLayout.lua
 Core\ConfigPreview.lua
+Core\ConfigMotion.lua
 Core\Tutorial.lua
 Core\Backup.lua
 Core\LayoutFit.lua

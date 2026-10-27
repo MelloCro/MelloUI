@@ -102,6 +102,9 @@ NOT_CONFIGURATOR = {
     "MelloUI_GroupFrames/GroupDesignerPage.lua": "the Group Frames's canvas: one schema option "
                                                  "(GroupFrames.designer, tagged); its controls edit the indicator "
                                                  "list and the frame parts, not options",
+    "MelloUI_GroupFrames/GroupSpellGroupsPage.lua": "that canvas's content since 1.2.4 (the spell groups' tray and "
+                                                    "block): its controls edit the indicator list's groups, not "
+                                                    "options",
     "Core/InstallerWindow.lua": "the installer's own window and steps (not the configurator)",
     "Modules/Restock.lua": "the Restock List window and the shop's list (the Reminders page's Restock List button, "
                            "a schema option, opens them)",
@@ -129,6 +132,15 @@ NOT_CONFIGURATOR = {
 # the controls an OWN_FILES file builds that are no option of the configurator, and why (never New-tagged)
 NOT_OPTIONS = {
     "Core/Config.lua:Button(MelloUI)": "MelloUI's own entry at the game's Escape menu (it opens the configurator)",
+    # (1.2.4, the configurator's shell -- docs/plans/configurator-shell.md: the window's own controls moved to its
+    # painted header and footer, none of them an option)
+    "Core/Config.lua:Button(Close)": "the configurator's footer Close (it closes the window)",
+    "Core/Config.lua:W.Dropdown(foot)": "the Language box, moved from the top bar to the footer in 1.2.4 (its own "
+                                        "New tag, the language's, since 2026-10-20)",
+    "Core/Config.lua:W.Switch(head)": "a page's module switch, moved from the page's header to the window's painted "
+                                      "header in 1.2.4 (its New tag the page's own)",
+    "Core/Config.lua:Button(cog)": "a switch's cog (1.2.4, pick B): opens the panel of its sub-settings, sets nothing",
+    "Core/Config.lua:Button(catcher)": "the click outside the cog's panel that closes it (1.2.4), sets nothing",
 }
 # the configurator's page tools (0.15.0, the rebuild): controls of a page that are no option -- they set nothing of
 # their own, they pick, copy, reset or jump -- so they never carry a New tag (the rebuild's own texts say so), by
@@ -139,6 +151,7 @@ PAGE_TOOLS = {
                                           "picks)",
     "Core/Config.lua:Button(All)": "Apply to all on a row per pick (writes the pick's value into the row's other keys)",
     "Core/Config.lua:Button(Reset this page)": "Reset this page (puts the page's settings back to their defaults)",
+    "Core/Config.lua:Button(R.text)": "the footer's Reset this page (1.2.4, the shell: one for the page on show)",
     "Core/Config.lua:Button(Change…)#2": "Your setup's second Change… (Home's palette and Kit Colours rows jump "
                                           "to their one place on the Look page)",
     # (one look, the designers' block heads: shell-plan 4.6 / 4.8)

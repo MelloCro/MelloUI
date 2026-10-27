@@ -420,7 +420,7 @@ Lang:Add("esES", {
 	["The health percentage under which the bar turns purple (20% for most execute abilities, 35% for some)."] = "El porcentaje de salud por debajo del cual la barra se vuelve morada (20% para la mayoría de habilidades de ejecución, 35% para algunas).", -- draft
 	["Apply To"] = "Aplicar a", -- draft
 	["The fill of the health and power bars of the player, target, focus, pet, party, boss and target-of-target frames: Shared (the Look page's Bar Texture), the game's own art, or a picture of their own."] = "El relleno de las barras de salud y de recurso de los marcos de jugador, objetivo, foco, mascota, grupo, jefes y objetivo del objetivo: Compartida (la Textura de barra de la página Aspecto), el arte del juego o una imagen propia.", -- draft
-	["Shared (Look's Bar Texture)"] = "Compartida (Aspecto)", -- draft
+	["Same as Every Bar"] = "Compartida (Aspecto)", -- draft
 	["The game's"] = "La del juego", -- draft
 	["Raid Frames"] = "Marcos de banda", -- draft
 	["The fill of MelloUI's party and raid frames and the game's raid-style frames: Shared (the Look page's Bar Texture), Plain (a flat fill; the game's own art on the game's frames), or a picture of their own."] = "El relleno de los marcos de grupo y de banda de MelloUI y de los marcos estilo banda del juego: Compartida (la Textura de barra de la página Aspecto), Lisa (un relleno plano; el arte del juego en los marcos del juego) o una imagen propia.", -- draft

@@ -62,6 +62,9 @@
 --       :StopTimer(bar[, full])   a StatusBar counting seconds away, run by
 --       the engine with its seconds' text (0.17.1, the swing timers; below)
 --   MelloUI.Anim:Busy() -> tweens, glides     what runs (tests, /melloperf)
+--   MelloUI.Anim:Group(region[, looping]) -> group   (1.2.4, the configurator's motion) a new AnimationGroup on
+--       region ("REPEAT" / "BOUNCE": looping), its animations the caller's; played through PlayGroup, stopped
+--       through StopGroup -- the one place a group of MelloUI's own is made
 --   MelloUI.Anim:PlayGroup(group, settle)
 --       plays an AnimationGroup (one already playing goes on: Stop it first
 --       to restart it) and returns true. Under Reduce Motion it is not
@@ -804,6 +807,14 @@ local function Settle(group, settle)
 	if type(settle) == "function" then
 		settle(group)
 	end
+end
+
+function Anim:Group(region, looping)
+	local group = region:CreateAnimationGroup()
+	if looping then
+		group:SetLooping(looping)
+	end
+	return group
 end
 
 function Anim:PlayGroup(group, settle)

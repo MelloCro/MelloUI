@@ -107,10 +107,15 @@ CEILINGS = {
     "meaning:MelloUI_Chat/Chat.lua": 17,
     "meaning:MelloUI_VoiceOver/VoiceOver.lua": 0,
     # the Gamepad UI freeze fix (0.15.0): 0 each (the tracker's right-click
-    # to the quest on the map got its Gamepad UI check)
-    "blizz-menu-button": 0,
+    # to the quest on the map got its Gamepad UI check). 2026-10-27, the
+    # user's decision (CLAUDE.md hard rule 1's one exception, docs/plans/
+    # configurator-shell.md): MelloUI's entry INSIDE the game menu -- one
+    # AddButton and its own layout fields from a post-hook of InitButtons,
+    # never in the Gamepad UI (Core/Config.lua, MelloUI.GameMenuInside): 1 each, to be
+    # proven with taintLog 2 in game before it ships
+    "blizz-menu-button": 1,
     "blizz-popup": 0,
-    "blizz-layout-field": 0,
+    "blizz-layout-field": 1,
     "panel-call": 0,
     "map-pool-call": 0,
     # Edit Layout (0.15.0): its three new files start at 0; its one key frame

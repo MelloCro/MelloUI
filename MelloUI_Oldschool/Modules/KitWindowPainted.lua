@@ -56,9 +56,12 @@ end
 -- dragged, Kit.shells[frame].outer, and its shade)
 local function DressFrame(K, shell)
 	local frame = shell.frame
-	shell.page = shell:Replace(shell.bg, { as = "UI-Background-Rock", parent = frame, rect = frame, inset = K:OuterRailInset(), alsoFade = { shell.tint } })
-	-- (the window's own choice in the stone's place, opts.background)
-	shell:SetBackground()
+	-- (a painted window -- the configurator, opts.painting -- has no rock: its painting is the page)
+	if shell.bg then
+		shell.page = shell:Replace(shell.bg, { as = "UI-Background-Rock", parent = frame, rect = frame, inset = K:OuterRailInset(), alsoFade = { shell.tint } })
+		-- (the window's own choice in the stone's place, opts.background)
+		shell:SetBackground()
+	end
 	-- (body = false: the page stone above is the window's one background)
 	local ok, rail = pcall(shell.Replace, shell, shell:Anchor(frame, "BORDER"), { as = "NineSlicePanelTemplate", parent = frame, rect = frame,
 		body = false, skip = shell.ringAt == "tl" and "tl" or nil })

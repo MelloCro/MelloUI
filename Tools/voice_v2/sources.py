@@ -48,7 +48,7 @@ WOWHEAD = os.path.join(CACHE, "wowhead")
 STORE = os.path.join(CACHE, "voice_lines.json")
 LISTFILE = os.path.join(CACHE, "verified-listfile.csv")
 DB2_DIR = os.environ.get("MELLOUI_DB2_DIR", r"F:\Download-Backup\WoWExport\db2_1.60")
-GAME_WDB = os.environ.get("MELLOUI_WDB_DIR", r"F:\World of Warcraft\_classic_beta_\Cache\WDB\enUS")
+GAME_WDB = os.environ.get("MELLOUI_WDB_DIR", r"F:\World of Warcraft\_forever_\Cache\WDB\enUS")   # (_classic_beta_ until the client moved, 2026-10-27)
 V2_OUT = os.path.join(OUTPUT, "voice_v2")
 PARSE_CACHE = os.path.join(V2_OUT, "_cache")
 
