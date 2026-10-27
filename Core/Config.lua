@@ -138,6 +138,18 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "1.2.4", lines = {
+		"Heal and cooldown effects: bolder and across the whole frame; the portrait and the bars each play their own part, the gold border lit all round.",
+		"A heal bursts, a heal over time seals onto the portrait, a shield closes round the frame, a resurrection unfolds wings, a group heal runs through the group.",
+		"Cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards for Shield Wall, a heartbeat for Last Stand, a golden barrier for Divine Shield, afterimages for Evasion.",
+		"Party frames: Flip Horizontally (Party > Layout) puts the portrait on the right, for a party on the right side of the screen.",
+		"Previews: a dragged part stays inside the preview; indicators: right-click one to remove it, size its time and stacks under the preview.",
+		"Fixed: Show Yourself In Your Party with Party Frames (Portraits): you on top of your party, the members under you.",
+		"Mouseover Highlight: the party and raid frame (and the nameplate) under your mouse lights up with a crisp outline.",
+		"Skin (Look > General): Default dresses MelloUI's own windows and parts in the game's own look, in the very same places.",
+		"Under Default: the party and raid frames in the game's raid frame look, the game's own marks on Route and the map, no meter parchment.",
+		"A new installer: your skin first, then each part of the UI step by step, with a picture of every choice.",
+	} },
 	{ version = "1.2.3", lines = {
 		"Route: the service buttons (Repair, Innkeeper, Flight Master ...) route to the nearest one at once again.",
 		"Route: routes to the other continent are found faster and show Loading navigation... with its bar while they are.",
@@ -172,16 +184,6 @@ local CHANGELOG = {
 		"Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on.",
 		"Quest areas: smooth gold areas that follow the spawns, on both maps and the minimap; their marks pop in, lift, ring on progress and tick off.",
 		"Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat.",
-	} },
-	{ version = "1.1.0", lines = {
-		"Languages: the configurator and the installer in German, French, Spanish, Portuguese, Russian, Chinese and Korean. Pick one at the left of the top line.",
-		"A line not translated yet shows in English. Corrections are welcome on MelloUI's CurseForge translation page.",
-		"MelloUI's windows show Cyrillic, Chinese and Korean names in the game's letters instead of boxes; buttons grow to fit a longer label.",
-		"Map: Forever's new dungeons with their levels, the City of Dalaran's door for your side; the Drowned City and the Shaper's Terrace too.",
-		"Route: its ways follow the game's own walkable ground, stairs, bridges and cities' layers; boats and zeppelins by their real times.",
-		"The Escape menu's MelloUI button is a gold pill with MelloUI's badge.",
-		"Fixed: a dead target or focus shows only the game's Dead, no 0 over it.",
-		"Fixed: the buff and debuff icons' borders stay whole over their cooldown spiral.",
 	} },
 }
 local LINKS = {
@@ -3939,14 +3941,16 @@ do
 
 	-- the specs of tab `t` by section ({ [section] = { before, after },
 	-- part = the stage's part }), nil for none: a part of a frame with a
-	-- stage, never the indicators' (their own list)
+	-- stage; a family's ("ind:", the indicators: their own list) only what its
+	-- template gives -- its texts' sizes (1.2.4; the user, 2026-10-24: the
+	-- indicators' time and stacks sized "on the stage itself")
 	function DUI.Specs(t)
 		local key, st = t.part and t.part.stage, t.el and t.el.stage
 		local CP = MelloUI.ConfigPreview
-		if not (key and type(st) == "table" and CP and CP.PartOf) or key:match(":$") then
+		if not (key and type(st) == "table" and CP and CP.PartOf) then
 			return nil
 		end
-		local part = CP.PartOf(st.kind, st.pick, key)
+		local part = CP.PartOf(st.kind, t.part.pick or st.pick, key)
 		if not part then
 			return nil
 		end
@@ -3960,6 +3964,10 @@ do
 		if part.drag ~= false and not part.locked then
 			DUI.AddSpec(specs, "Layout", "after", "place")
 		end
+		-- (a part's texts in Text; a template's where it says -- the Indicators tab's first, right under the stage)
+		for _, d in ipairs(type(part.texts) == "table" and part.texts or EMPTY) do
+			DUI.AddSpec(specs, part.textsSection or "Text", "before", "text:" .. d.key)
+		end
 		return specs
 	end
 	function DUI.AddSpec(specs, section, where, which)
@@ -3969,7 +3977,7 @@ do
 	end
 
 	function DUI.SpecHeight(which)
-		return which == "size" and W.SLIDER_ROW_HEIGHT or ROW_HEIGHT
+		return (which == "size" or which:sub(1, 5) == "text:") and W.SLIDER_ROW_HEIGHT or ROW_HEIGHT
 	end
 
 	function DUI.QueueSpecs(sec, list, part, kind)

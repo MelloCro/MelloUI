@@ -528,7 +528,9 @@ Kit.parchmentShown = {}
 -- off"): its paper is the Minimal Chat View's and its whisper window's sheet (MelloUI_Chat/ChatView.lua), and the
 -- painted chat's (Oldschool's ChatPanel) while that covers the game's windows. The whisper popups' paper
 -- (parchment_whisper) stays the painted popup's: its sheet lies on the painted body only
-Kit.ownParchments = { questTracker = true, chat = true }
+-- (1.2.4, the user, 2026-10-27: "fix the parchment option") the damage meter's too: its paper lies on MelloUI's Fight
+-- History (Modules/MeterHistory.lua), and its row slept without Oldschool's reskin while the saved value showed
+Kit.ownParchments = { questTracker = true, chat = true, meter = true }
 
 -- an area's saved parchment value as on / off: a switch, or a choice whose
 -- "off" is off (the character window's, 0.19.4: "pane" / "window", UI
@@ -537,9 +539,19 @@ function Kit.ParchmentValueOn(v)
 	return (v == true or (type(v) == "string" and v ~= "off")) and true or false
 end
 
+-- (1.2.4, the Default skin's wave C: the user's pick B, 2026-10-27) the areas whose paper the Default skin lays none of
+-- (the game has no paper that tiles: the part shows the game's dark ground); told again at a switch (below)
+Kit.skinlessParchments = { meter = true }
+
 function Kit:ParchmentOn(area)
 	if not area then
 		return true
+	end
+	if Kit.skinlessParchments[area] then
+		local Skin = rawget(MelloUI, "Skin")
+		if Skin and Skin.IsDefault() then
+			return false
+		end
 	end
 	local um = MelloUI:GetModule("UIModifications")
 	local db = um and um.db
@@ -568,6 +580,19 @@ function Kit:SetParchment(area, on)
 	-- 'parchment' topic, audit 2026-09-24 rank 5; the files that still hook
 	-- this function run after it, as before)
 	MelloUI:Fire("parchment", area, on)
+end
+
+-- (1.2.4) the skin switched (MelloUI.Skin): the papers it lays none of, shown or taken away as they read now (a
+-- world without the bus -- the build tools' stubs -- has no switch to follow)
+if type(MelloUI.On) == "function" then
+	MelloUI:On("skin", function()
+		for area in pairs(Kit.skinlessParchments) do
+			local on = Kit:ParchmentOn(area)
+			if Kit.parchmentShown[area] ~= nil and Kit.parchmentShown[area] ~= on then
+				Kit:SetParchment(area, on)
+			end
+		end
+	end, Kit)
 end
 
 -- Palette colours on the kit's own regions ("Palette-ready", user

@@ -34,7 +34,6 @@ local M = MelloUI:RegisterModule("Tweaks", {
 	desc = "Hide the micro menu and bag bar, and scale the floating combat text.",
 	icon = "Interface\\Icons\\INV_Misc_Wrench_01",
 	flavour = "Small knobs with a big effect. Hide what you never click, scale what you never see.",
-	role = "adds",
 	tweak = { label = "Tweaks", desc = "", order = 15, always = true },
 	keep = { "savedWorldTextScale", "menuTipShown" },   -- the player's own text scale to give back, a one-time tip: never in a profile
 	defaults = {

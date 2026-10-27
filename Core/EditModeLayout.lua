@@ -181,8 +181,9 @@ local TEXT = {
 	deleteEditMode = "close Edit Mode first",
 }
 
-local function Data()
-	local data = MelloUI:ShippedEditMode()   -- (1.0: the painted reskin's own while MelloUI_Oldschool is loaded)
+local function Data(skin)
+	-- (1.0: the painted reskin's own while MelloUI_Oldschool is loaded; 1.2.4: a skin's own when the installer names it)
+	local data = MelloUI:ShippedEditMode(skin)
 	if type(data) ~= "table" or type(data.layout) ~= "string" or data.layout == "" then
 		return nil
 	end
@@ -372,9 +373,10 @@ end
 
 -- The baked layout as the game's layout info: an account layout named after
 -- it, the input style fixed. A new table each call (the fitter and Edit Mode
--- may keep it).
-function MelloUI:EditModeLayoutInfo()
-	local data = Data()
+-- may keep it). skin (1.2.4, the installer's Skin step): that skin's shipped
+-- layout (MelloUI:ShippedEditMode)
+function MelloUI:EditModeLayoutInfo(skin)
+	local data = Data(skin)
 	if not data then
 		return nil, TEXT.noBake
 	end

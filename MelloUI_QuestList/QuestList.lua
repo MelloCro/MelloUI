@@ -35,7 +35,6 @@ local M = MelloUI:RegisterModule("QuestList", {
 	icon = "Interface\\Icons\\INV_Misc_Map_01",
 	flavour = "Every quest of the zone in the map's quest log: who gives it, where, and what is left to do.",
 	group = "Quests and travel", navOrder = 1,
-	role = "feature",
 	area = { key = "questList" },   -- MelloUI's own look, always since onelook stage C (it followed the quest log's kit before)
 	keep = { "learnedEntrances", "learnedTransports",   -- pins recorded by hand (older versions kept them here): never in a profile
 		"savedQuestPOI" },   -- (0.19.5) the game's Quest Objectives setting as the player had it (Hide The Game's Quest Areas)

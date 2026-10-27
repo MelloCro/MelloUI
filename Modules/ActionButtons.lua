@@ -57,10 +57,6 @@ local M = MelloUI:RegisterModule("ActionButtons", {
 	desc = "Lights an action button while its key is held, and colours its icon by range and resources.",
 	icon = "Interface\\Icons\\Ability_Warrior_Riposte",
 	flavour = "See which button you press, and which spell cannot reach its target.",
-	role = "adds",
-	-- (not on the installer's Features step: its two columns are full, as for
-	-- the Swing Timers and Discard; on by default, its switches on Bars > Action Bars > Button)
-	installer = false,
 	enabledByDefault = true,
 	defaults = {
 		pressLight = true,
@@ -135,6 +131,11 @@ local hover = setmetatable({}, { __mode = "k" })     -- [button] = true while th
 
 local function FramesOn()
 	if not (M.isEnabled and M.db and M.db.frames ~= false) then
+		return false
+	end
+	-- (1.2.4, the Default skin -- MelloUI.Skin: the game's own button frames)
+	local Skin = rawget(MelloUI, "Skin")
+	if Skin and Skin.IsDefault() then
 		return false
 	end
 	local K = MelloUI.Kit
@@ -597,6 +598,13 @@ function M:OnSettingChanged(_, _, db)
 	self.db = db
 	Refresh()
 end
+
+-- (1.2.4) the skin switched (MelloUI.Skin): the frames in its look
+MelloUI:On("skin", function()
+	if M.isEnabled then
+		Refresh()
+	end
+end, M)
 
 -- (0.19.8) the light on any frame of the action bars' kind -- the Cooldown
 -- Manager's icons (Modules/CooldownTweaks.lua): one light, one look

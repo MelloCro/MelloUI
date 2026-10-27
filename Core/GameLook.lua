@@ -82,6 +82,7 @@ local Perf = MelloUI.Perf:Scope("GameLook")
 -- (a handler wrapped once for the profiler: every Perf:Scope has it)
 local Shared = Perf.Shared
 local Secret = MelloUI.Safe.IsSecret
+local Num = MelloUI.Safe.Number
 
 local Look = { AREA = "own" }
 MelloUI.Look = Look
@@ -170,12 +171,14 @@ local weak = { __mode = "k" }
 local pieces = {}
 local told = {}       -- [area] = the look its pieces show (true painted)
 
--- (onelook stage C, 2026-10-15: MelloUI's own parts always wear MelloUI's
--- look, whatever the reskin, an area's cover or Kit say -- it asked
--- Kit:IsOn(area) before. The game's halves below are no longer reached and
--- go in stage E; Oldschool's painted dressing reads Kit:IsOn itself.)
+-- (onelook stage C, 2026-10-15: MelloUI's own parts wear MelloUI's look
+-- whatever the reskin, an area's cover or Kit say -- it asked Kit:IsOn(area)
+-- before; Oldschool's painted dressing reads Kit:IsOn itself. 1.2.4: the
+-- game's halves below are the Default skin's -- MelloUI.Skin, Core/Skin.lua
+-- -- every area alike: MelloUI's own look but under the Default skin)
 function Look:On(area)
-	return true
+	local Skin = rawget(MelloUI, "Skin")
+	return not (Skin and Skin.IsDefault())
 end
 
 local gameFilled   -- (Look.Palette's: filled again after a switch)
@@ -703,7 +706,9 @@ end
 --------------------------------------------------------------------------------
 
 local NEUTRAL = {
-	mainWindow = "BLACK_FONT_COLOR", innerPanel = "BLACK_FONT_COLOR", raisedPanel = "BLACK_FONT_COLOR",
+	-- (1.2.4, the Default skin: the grounds the game's own tooltip ground, its dark navy -- the sketch the user approved)
+	mainWindow = "TOOLTIP_DEFAULT_BACKGROUND_COLOR", innerPanel = "TOOLTIP_DEFAULT_BACKGROUND_COLOR",
+	raisedPanel = "TOOLTIP_DEFAULT_BACKGROUND_COLOR",
 	border = "GRAY_FONT_COLOR", trim = "NORMAL_FONT_COLOR", selectedTrim = "NORMAL_FONT_COLOR",
 	-- (wave 4: a selection in the game's gold, as its lists' highlights, not its red)
 	text = "HIGHLIGHT_FONT_COLOR", mutedText = "GRAY_FONT_COLOR", selectedTab = "NORMAL_FONT_COLOR",
@@ -1067,6 +1072,23 @@ Look.ART.listActive = { "atlas", "Options_List_Active" }
 Look.ART.listHover = { "atlas", "Options_List_Hover" }
 local marks = setmetatable({}, weak)   -- [tex] = { kind, key, alpha, area }
 
+-- (1.2.4, the Default skin: the mark never drawn bigger than the game's piece -- the user, "every texture and border
+-- ... sharp and highres") a mark that fills one region's rect: in the game's look the piece at its own size (or the
+-- region's, the smaller), on the region's middle; its fill of the region put back in the painted look
+local function MarkRect(tex)
+	local n = tex:GetNumPoints()
+	local rel
+	for i = 1, n do
+		local _, r = tex:GetPoint(i)
+		if rel == nil then
+			rel = r
+		elseif r ~= rel then
+			return nil
+		end
+	end
+	return n > 0 and rel or nil
+end
+
 local function ApplyMark(tex, painted)
 	local e = marks[tex]
 	if not e then
@@ -1074,6 +1096,11 @@ local function ApplyMark(tex, painted)
 	end
 	local W, Kit = MelloUI.Widgets, MelloUI.Kit
 	if painted then
+		if e.fills then
+			tex:ClearAllPoints()
+			tex:SetAllPoints(e.fills)
+			e.fills = nil
+		end
 		tex:SetTexture(WHITE)
 		tex:SetTexCoord(0, 1, 0, 1)
 		if W then
@@ -1087,6 +1114,17 @@ local function ApplyMark(tex, painted)
 	local _, atlas = Look.Art(e.kind == "hover" and "listHover" or "listActive")
 	tex:SetAtlas(atlas, false, nil, true)   -- (resetTexCoords: no earlier crop kept on the mark)
 	tex:SetVertexColor(1, 1, 1, 1)
+	local rel = e.fills or MarkRect(tex)
+	local api = _G.C_Texture
+	local info = rel and api and api.GetAtlasInfo and api.GetAtlasInfo(atlas)
+	if info then
+		e.fills = rel
+		local ok, rw, rh = pcall(rel.GetSize, rel)
+		rw, rh = ok and Num(rw), ok and Num(rh)
+		tex:ClearAllPoints()
+		tex:SetPoint("CENTER", rel, "CENTER", 0, 0)
+		tex:SetSize(math.min(info.width, rw or info.width), math.min(info.height, rh or info.height))
+	end
 end
 
 function Look.Mark(tex, kind, key, alpha, area)

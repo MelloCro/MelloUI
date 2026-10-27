@@ -48,12 +48,8 @@ local M = MelloUI:RegisterModule("SwingTimers", {
 	desc = "Your swing timer as a badge on your target's nameplate, or above your cast bar while its plate is not there: your weapon in a gold ring with the next swing's sweep over it, a wind-up and a strike, a crit flashing gold, a dodge or parry bounced back; Auto Shot's aim and a wand's bolt. The game's own swing timers are switched off while this is on, and come back as you had them when it is off. While the Personal Display shows its Swing Badge, that one shows your swings.",
 	icon = "Interface\\Icons\\Ability_Marksmanship",
 	flavour = "Every swing and shot at a glance.",
-	role = "replaces",
 	slash = "swing",
 	enabledByDefault = false,
-	-- (not on the installer's Features step: its two columns are full; it is
-	-- switched on in the settings window)
-	installer = false,
 	-- the player's own game setting, given back when off: never in a profile
 	keep = { "savedSwing" },
 	-- (1.2.0: the bars' Seconds, Width, Height and Show went with them -- an old save's dropped at each enable, Retired;

@@ -247,8 +247,6 @@ local M = MelloUI:RegisterModule(OWNER, {
 	desc = "MelloUI's own party and raid frames in place of the game's: their size, layout and sorting, every bar's colour (class, your own, by health), the power bar, the texts, and your own aura indicators on them.",
 	icon = "Interface\\Icons\\Spell_Holy_PrayerOfHealing",
 	flavour = "Your party and raid as you want them: colours, bars, texts, and your HoTs and shields at a glance.",
-	role = "feature",
-	installer = false,
 	enabledByDefault = true,
 	-- (0.20.2) the raid spacing's one-time copy: this machine's step, never in a profile
 	keep = { "raidSpacingMigrated" },
@@ -272,6 +270,7 @@ local M = MelloUI:RegisterModule(OWNER, {
 		healthAlpha = 1,
 		fillDirection = "RIGHT",
 		smooth = true,
+		hover = true,   -- (1.2.4: the mouseover highlight, MelloUI.FrameHover)
 		backgroundTexture = "flat",
 		background = "custom",
 		backgroundCustom = "palette:innerPanel",
@@ -344,6 +343,8 @@ local M = MelloUI:RegisterModule(OWNER, {
 		  desc = "Which way the health and power bars fill." },
 		{ type = "toggle", key = "smooth", name = "Smooth Bars",
 		  desc = "The bars glide to a new value instead of jumping." },
+		{ type = "toggle", key = "hover", name = "Mouseover Highlight", new = "1.2.4",
+		  desc = "While your mouse is over a party or raid frame, its gold lights up with a soft glow behind it, and a crisp outline runs round its own shape: round on the portrait, straight along the rest." },
 		{ type = "dropdown", key = "backgroundTexture", name = "Background", values = RD.BackgroundTextures(),
 		  desc = "What lies behind the health bar: a flat colour (Background Colour), one of MelloUI's backgrounds (stone, concrete, parchment, the dark gradients...), or none." },
 		{ type = "dropdown", key = "background", name = "Background Colour", values = C.background,
@@ -1071,6 +1072,12 @@ RD.LAYOUT_KEYS = { width = true, height = true, spacing = true, raidSpacing = tr
 
 function M:OnSettingChanged(key, _, db)
 	self.db = db
+	if key == "hover" then
+		if MelloUI.FrameHover then
+			MelloUI.FrameHover.Refresh()
+		end
+		return
+	end
 	if key == "parts" or key == "partyParts" then
 		-- (one look C9: a part's write, a reset of the page, a profile -- every
 		-- frame laid again, once)

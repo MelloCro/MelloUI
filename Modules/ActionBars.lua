@@ -127,7 +127,6 @@ local M = MelloUI:RegisterModule("ActionBars", {
 		.. "page arrows and bar art hidden, whatever their look.",
 	-- (always on: no switch of its own, each of its rows switches one thing)
 	hidden = true,
-	role = "look",
 	enabledByDefault = true,
 	defaults = defaults,
 	options = options,
@@ -1319,6 +1318,12 @@ function Status.On()
 	if not (on and M.db and M.db.statusFrame ~= false) then
 		return false
 	end
+	-- (1.2.4, the Default skin -- MelloUI.Skin: the game's own status bars; laid again at a switch, the bus's 'skin'
+	-- below Status.Again)
+	local Skin = rawget(MelloUI, "Skin")
+	if Skin and Skin.IsDefault() then
+		return false
+	end
 	return not (type(Kit) == "table" and type(Kit.IsOn) == "function" and Kit:IsOn("statusbars"))
 end
 
@@ -1525,6 +1530,7 @@ Status.Again = Perf.Shared("a status bar container's bar or dividers laid anew",
 		Status.Lay()
 	end
 end)
+MelloUI:On("skin", Status.Again, Status)   -- (1.2.4: the skin switched, MelloUI.Skin)
 
 function Status.Start()
 	for _, name in ipairs(Status.CONTAINERS) do

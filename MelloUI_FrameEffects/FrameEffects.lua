@@ -164,9 +164,7 @@ M = MelloUI:RegisterModule("FrameEffects", {
 	desc = "Your group's frames show their big moments: a roar's square ripples, a taunt, Shield Wall's steel, Last Stand's heartbeat, an immunity's barrier, an evasion's afterimages -- on your own frame when you use one, on a group mate's when they do.",
 	icon = "Interface\\Icons\\Ability_Warrior_ShieldWall",
 	flavour = "Shield Wall, Last Stand, a roar: your group's frames show their big moments.",
-	role = "adds",
 	enabledByDefault = true,
-	installer = false,
 	defaults = {
 		whose = "both",
 	},

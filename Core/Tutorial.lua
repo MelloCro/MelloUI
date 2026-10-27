@@ -102,7 +102,7 @@ local STEPS = {
 	  text = "Edit Layout: move and resize everything. Drag an element, wheel to resize, right-click for its size, position and snapping, Ctrl+right-click to reset it. Nothing is kept until you choose Save. Action bars and unit frames open the game's Edit Mode from there." },
 	-- (the top bar's Install… is there while the installer is)
 	{ page = "Windows", point = "BottomEdgeCenter", target = BarTarget, part = "install",
-	  text = "Install…, at the top right: the installer. It sets MelloUI up in a few steps, fitted to your screen: Full experience, No reskin, Reskin only or Fresh start. You have 15 seconds to keep the new setup, and Revert on Home's Your setup goes back later." },
+	  text = "Install…, at the top right: the installer. It sets MelloUI up step by step, fitted to your screen: your skin first (Default, Modern or Oldschool), then the features you want. You have 15 seconds to keep the new setup, and Revert on Home's Your setup goes back later." },
 	{ page = "VoiceOver", point = "RightEdgeCenter", target = NavTarget,
 	  text = "Voice Over: every quest giver and greeting read aloud, in a voice matched to the NPC's race and gender. With the voice pack installed the recorded lines play; without it the text-to-speech voices do. The overlay shows who is speaking. In chat: /vo stop, /vo packs. The quest log gets a Read button." },
 	{ page = "QuestList", point = "RightEdgeCenter", target = NavTarget,

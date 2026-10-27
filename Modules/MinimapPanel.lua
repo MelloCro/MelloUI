@@ -118,7 +118,6 @@ end
 local M = MelloUI:RegisterModule("MinimapPanel", {
 	title = "Minimap",
 	desc = "MelloUI's minimap: its size, the square shape in the Chat panel, the Services bar merged under it and the column under it the Quest Tracker follows. Off: the game's own minimap.",
-	role = "look",
 	enabledByDefault = true,
 	defaults = { shape = "round", squareBorder = "window", servicesMerge = true, width = MAP_BASE, height = MAP_BASE },
 	-- the old Size taken over once (Size.Migrate): this machine's step, never
@@ -1059,7 +1058,7 @@ local function LayoutDivider(f, b, groups)
 	end
 	if panel and not d.hair and MelloUI.Widgets then
 		local W = MelloUI.Widgets
-		d.hair = W.Solid(d, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
+		d.hair = W.HairSolid(d, "ARTWORK")
 		d.hair:SetHeight(1)
 		d.hair:SetPoint("BOTTOMLEFT", d, "BOTTOMLEFT", 0, 3)
 		d.hair:SetPoint("BOTTOMRIGHT", d, "BOTTOMRIGHT", 0, 3)
@@ -1146,9 +1145,9 @@ local function PanelParts(f)
 	p.bg = bg
 	-- (1.2.0) the column's inner lines the windows' gold hairline
 	for i = 1, 4 do
-		p.lines[i] = W.Solid(f, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
+		p.lines[i] = W.HairSolid(f, "ARTWORK")
 	end
-	p.hair = W.Solid(f, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
+	p.hair = W.HairSolid(f, "ARTWORK")
 	p.hair:SetHeight(1)
 	f.panelParts = p
 	return p

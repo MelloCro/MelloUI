@@ -2493,7 +2493,7 @@ local function Column()
 		local t = b.litGlow
 		if not t and on then
 			t = b:CreateTexture(nil, "OVERLAY", nil, 2)
-			t:SetTexture(W.IconPath("hover_glow"))
+			W.RoundGlow(t)
 			t:SetPoint("CENTER")
 			t:SetSize(BTN + 12, BTN + 12)
 			t:SetBlendMode("ADD")

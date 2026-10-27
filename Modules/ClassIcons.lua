@@ -32,7 +32,6 @@ local M = MelloUI:RegisterModule("ClassIcons", {
 	desc = "High resolution painted class medallions in place of the default class icons, and on player portraits.",
 	icon = "Interface\\Icons\\INV_Misc_Rune_01",
 	flavour = "Painted medallions for every class, on the character sheet and on every portrait.",
-	role = "look",
 	-- (one look Q9 and the user's A, 2026-10-16: no master switch -- Player
 	-- Portraits is the switch; off, nothing of it runs. Core.lua's MERGES
 	-- turns it off for a save whose Class Icons was off)

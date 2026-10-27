@@ -238,6 +238,14 @@ end
 -- (the painted reskin's switch, Preload Artwork and Switch every area on
 -- lead the list: its part puts them before the palette)
 
+-- (1.2.4; docs/plans/default-skin.md) The skin: MelloUI's own art, or the game's own in exactly the same places.
+-- Core/Skin.lua (MelloUI.Skin) reads it, this module on or off, and tells every part at a switch
+defaults.skin = "modern"
+Add({ type = "dropdown", key = "skin", name = "Skin", free = true, new = "1.2.4", width = 260, values = {
+	{ value = "modern", label = "Modern (MelloUI's own look)" },
+	{ value = "default", label = "Default (the game's own look)" },
+}, desc = "How MelloUI's own windows and parts look: Modern, MelloUI's own art; or Default, the game's own borders, buttons, icons and fonts in the very same places -- the quest tracker, the map column, the chat, the bags, the configurator and every other window. Nothing moves; only the look changes, at once. Oldschool's painted look, while it is on, dresses on top." })
+
 -- The palette (0.14.0): Core applies it (MelloUI:SetPalette), this module on
 -- or off; its choices are the widget set's one list, every palette by its
 -- name (W.PaletteValues)
@@ -345,12 +353,24 @@ local PARCHMENT_DESC = {
 	parchment_whisper = "The whisper popup on a parchment sheet, its text in dark ink.",
 	parchment_meter = "The damage meter on a parchment sheet, its text in dark ink.",
 }
+-- (1.2.4) a paper the Default skin lays none of (Kit.skinlessParchments): its row says so while that skin shows
+local function SkinlessLine()
+	local Skin = rawget(MelloUI, "Skin")
+	if Skin and Skin.IsDefault() then
+		return "The Default skin has no parchment here: the game has no paper that tiles, so it shows the game's dark ground."
+	end
+	return nil
+end
+
 for _, entry in ipairs(PARCHMENTS) do
 	-- (one look, Kit.ownParchments: the paper of a part of MelloUI's own -- the Quest Tracker's, the chat's -- is live
 	-- whatever the reskin, and with this module off: `free`, applied from the bus's 'setting' below)
-	local own = Kit and type(Kit.ownParchments) == "table" and Kit.ownParchments[entry[1]:sub(11)] or nil
+	local area = entry[1]:sub(11)
+	local own = Kit and type(Kit.ownParchments) == "table" and Kit.ownParchments[area] or nil
+	local skinless = Kit and type(Kit.skinlessParchments) == "table" and Kit.skinlessParchments[area] or nil
 	Add({ type = entry.values and "dropdown" or "toggle", key = entry[1], name = "Parchment: " .. entry[2], values = entry.values,
-		requires = not own and "reskin" or nil, free = own, new = entry.new, desc = PARCHMENT_DESC[entry[1]] })
+		requires = not own and "reskin" or nil, free = own, new = entry.new, desc = PARCHMENT_DESC[entry[1]],
+		missing = skinless and SkinlessLine or nil })
 end
 
 Add({ type = "toggle", key = "fadeWindows", name = "Windows Fade In",
@@ -403,7 +423,6 @@ local M = MelloUI:RegisterModule("UIModifications", {
 	icon = "Interface\\Icons\\INV_Misc_Gem_Ruby_02",
 	flavour = "The painted reskin, area by area, and the quality-of-life tweaks on nameplates, tooltips, chat and unit frames. Start here.",
 	group = "The look", navOrder = 1,
-	role = "core",
 })
 
 -- the line a caller of M:SetAreas prints when it is refused in combat
@@ -1046,6 +1065,8 @@ function M:OnSettingChanged(key, value, db)
 		return   -- applied from the bus's 'setting', module on or off
 	elseif key == "palette" then
 		return   -- applied from the bus's 'setting', module on or off (MelloUI:SetPalette)
+	elseif key == "skin" then
+		return   -- applied from the bus's 'setting', module on or off (MelloUI.Skin, Core/Skin.lua)
 	elseif key == "uiShade" or key == "uiShadeStrength" or key:sub(1, 6) == "shade_" then
 		return   -- the UI shade: applied from the bus's 'setting', module on or off (Modules/KitShade.lua)
 	elseif key:sub(1, 10) == "parchment_" then

@@ -3,8 +3,9 @@
 --
 -- The first-login installer is a front end over systems MelloUI already has,
 -- not a second settings system:
---   - the profiles: "Full experience" IS the shipped profile "MelloUI"
---     (Media/Profiles.lua), read from the shipped table, never a saved copy;
+--   - the profiles: the setup starts from the picked skin's shipped profile
+--     ("MelloUI", Media/Profiles.lua; Oldschool's own for its skin), read
+--     from the shipped table, never a saved copy;
 --   - the settings path (NotifySettingChanged / SetModuleEnabled) inside ONE
 --     MelloUI:Batch: one backup, at most one 'setting' Fire per key;
 --   - Core/EditModeLayout.lua for the Edit Mode layout and MelloUI.LayoutFit
@@ -22,23 +23,27 @@
 -- A state is a whole set of settings:
 --   { modules = { [module] = { key = value } }, enabled = { [module] = flag },
 --     activeProfile = name }
--- A setup's TARGET is such a state, made from the player's current one,
--- Full's text and the modules' roles (RoleOf), then applied in one Batch and
--- taken back exactly (the restore point, db.installer).
+-- A setup's TARGET is such a state, made from the player's current one and
+-- the picked skin's shipped text with the picks over it, then applied in one
+-- Batch and taken back exactly (the restore point, db.installer).
 --
---   I.OPTIONS, I:Option(key)            the four setups (Full experience, No
---                                       reskin, Reskin only, Fresh start)
---                                       and the hidden refit, "fit" (Fit to
---                                       this screen: the layout and the
---                                       window places fitted again, every
---                                       other setting the player's own)
---   I.RoleOf(module), I.Kind(module)    what a module is, what switches it
---   I:FullText() -> text                the shipped Full
+--   I.OPTIONS, I:Option(key)            the setup ("setup", 1.2.4: every
+--                                       player picks the skin and the features
+--                                       step by step; the four setups of
+--                                       0.13.0 went) and the hidden refit,
+--                                       "fit" (Fit to this screen: the layout
+--                                       and the window places fitted again,
+--                                       every other setting the player's own)
+--   I.SETUP, I.SKINS                    the setup's steps after the skin and
+--                                       the layout, and what each choice sets
+--   I.SkinOf(draft), I:Offered(choice), I:DefaultPicks(), I:SetupDraft(picks)
+--                                       the picks and the draft made of them
+--   I.Kind(module), I.SwitchKey(module) what switches a module, and its key
+--   I:FullText([skin]) -> text          a skin's shipped setup
 --   I:Capture() -> state                every module's settings, exactly
 --   I:TargetFromText(text[, cur])       defaults + text; the player's own
 --                                       (personal) and NEVER keys = cur's
---   I:Draft(state, draft) -> state      a Fresh start draft laid on
---   I:DefaultDraft([full]) -> draft     the wizard's controls at Full's values
+--   I:Draft(state, draft) -> state      a draft laid on (a Font Style first)
 --   I:PaletteOf(option, draft) -> id    the palette the setup puts in (the
 --                                       Review step names it)
 --   I:TargetFor(option, draft, fit[, cur]) -> state
@@ -100,13 +105,10 @@
 --   ("installed", optionKey, needsReload)   ("countdown", seconds, paused, why)
 --   ("kept", needsReload)                   ("reverted", reason, reloadOwed)
 --   ("revertFailed", reason, why)
--- A draft (Fresh start's wizard) is { ["Module.key"] = value,
--- ["!Module"] = on, layout = on }: nothing is written until Install. A
--- feature switched on there (I.SwitchKey(module) true) takes Full's settings
--- for that module, the draft's own keys over them; a personal key the draft
--- sets (Dark Mode: the player's own preference) goes in as set, and a revert
--- takes it back (target.explicit, copied onto the restore point).
---   I.FEATURE_GROUPS, I.SwitchKey(module), I:FeaturesOn(draft) -> names
+-- A draft is { ["Module.key"] = value, ["!Module"] = on, layout = on,
+-- skin = name }: nothing is written until Install. A personal key a draft
+-- sets goes in as set, and a revert takes it back (target.explicit, copied
+-- onto the restore point).
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -138,38 +140,6 @@ I.SESSION_AT = tonumber(time and time()) or 0
 -- Data
 --------------------------------------------------------------------------------
 
--- A module's role (what a setup does with it). A module's own `role`
--- (RegisterModule) wins; a hidden kit panel (it carries `window`) is look;
--- these are the roles of the modules that do not declare one yet:
---   core      UI Modifications, the switchboard
---   look      restyles the game's art, fonts or sounds
---   feature   MelloUI's own tools
---   adds      adds information or automation without restyling
---   replaces  replaces or restyles a game part
-local ROLE = {
-	UIModifications = "core",
-	DarkMode = "look", Fonts = "look", ClassIcons = "look", BarTextures = "look", CustomSounds = "look",
-	QuestList = "feature", Route = "feature", Services = "feature", PartyMarkers = "feature", VoiceOver = "feature",
-	BarText = "adds", CooldownText = "adds", Tweaks = "adds", Stats = "adds", Vendor = "adds", Chat = "adds",
-	Nameplates = "adds", ErrorFilter = "adds",
-	QuestTracker = "replaces", Auras = "replaces", Tooltip = "replaces", UnitFrames = "replaces",
-}
-
--- UI Modifications' own keys by role: its look keys (the kit panels' keys
--- and the border kinds' keys are found at call time: the registry and
--- Kit.borderKinds), and the one preference Full and Fresh start carry.
--- qol_<Module> follows that module's role; the rest is never set by a role.
--- The palette (0.14.0) is a look: Full experience and Reskin only put
--- Full's in (Mello's own look), No reskin keeps the player's, Fresh start
--- takes the Look step's card (the draft); the Review step names it.
--- (one look, stage E, 2026-10-15: questTrackerKit, the Quest Tracker's removed Painted Skin, is no look key any more)
-local U_LOOK = { reskin = true, preloadArt = true, fadeWindows = true, positions = true, autoSnap = true,
-	palette = true }
-local U_PREFERENCE = { nameFormat = true }
-
--- (a palette's id as Core reads the setting: MelloUI:KnownPalette, Core's
--- one rule -- a registry id, any other value Ember)
-
 -- keys no setup ever sets: the player's accessibility choice, and two
 -- dropped keys a profile or share string from before may still bring:
 -- `unlock` (the old Unlock the Windows mode, gone with Edit Layout, 0.15.0)
@@ -191,20 +161,10 @@ local OWN = { [UMB] = { seenVersion = true, layoutFitFor = true, layoutFitRev = 
 -- of those, what an install that puts the layout in writes, and a revert puts back
 local LAYOUT_OWN = { "layoutFitFor", "layoutFitRev", "layoutApplied" }
 
--- "No reskin": Chat's and Tweaks' art-hiding rows act while the reskin is
--- off, so they are neutral there (the chat buttons and background stay, and
--- the chat windows keep the game's own background opacity)
-local NO_RESKIN_ROWS = {
-	["Chat.chatButtons"] = true, ["Chat.hideBackground"] = false, ["Chat.hideEditBox"] = false,
-	["Chat.hideTabs"] = false, ["Chat.tabsOnMouseover"] = false, ["Chat.editBoxTop"] = false,
-	["Chat.windowAlphaOn"] = false,
-	["Tweaks.hideMinimapCoords"] = false, ["Tweaks.hideMicroMenu"] = false, ["Tweaks.hideBagBar"] = false,
-}
-
 -- parchment areas whose sheet and dark ink belong to different modules: the
 -- paper never shows while its ink's module is off (the parchment ink rule)
 local INK = { chat = { sheet = "ChatPanel", ink = "Chat" } }
-I.INK, I.NEVER, I.NO_RESKIN_ROWS = INK, NEVER, NO_RESKIN_ROWS   -- (read only: the tests and the window read them)
+I.INK, I.NEVER = INK, NEVER   -- (read only: the tests read them)
 
 -- keys a module's OnSettingChanged expands into others: written first
 -- (written after the faces, the Font Style would flip to "custom")
@@ -216,48 +176,19 @@ local STARTUP = { Fonts = { fontText = true, fontDamage = true } }
 -- more keys to change they go off first and on last, so the walk runs once
 local BUNDLE = { Fonts = true }
 
-local function Merge(a, b)
-	local t = {}
-	for k, v in pairs(a) do
-		t[k] = v
-	end
-	for k, v in pairs(b) do
-		t[k] = v
-	end
-	return t
-end
-
--- The four setups, and the refit. whole: Full's state as it is; roles: what
--- each role takes ("full": Full's settings and switch, "off": switched off,
--- nil: the player's own); set: laid over last; base "fresh": Everything Off
--- and the wizard's draft (each feature switched on there with Full's
--- settings); refit: the player's own state as it is; layout:
--- the fitted Edit Mode layout ("draft": the Screen step's switch); places:
--- the fitter's window places; hidden: no card on the Setup step (the refit
--- has its own entry: the configurator's Fit to this screen, when Mello's
--- layout went in fitted to another screen size or UI scale).
+-- The setups: the one setup (1.2.4: the four of 0.13.0 -- Full experience, No reskin, Reskin only, Fresh start --
+-- went with the installer's rebuild) and the refit. base "setup": the picked skin's shipped setup with the picks over
+-- it (I:SetupDraft); refit: the player's own state as it is; layout: the fitted Edit Mode layout ("draft": the
+-- picks', in when the fit passes); places: the fitter's window places; hidden: not offered as a setup (the refit has
+-- its own entry: the configurator's Fit to this screen, when Mello's layout went in fitted to another screen size or
+-- UI scale).
 I.OPTIONS = {
-	{ key = "full", title = "Full experience", tag = "Recommended",
-	  desc = "Mello's layout, looks and features, set up for your screen.",
-	  whole = true, layout = true, places = true, steps = { "choose", "fit", "review", "keep" } },
-	{ key = "noReskin", title = "No reskin, features on",
-	  desc = "Your UI and bars stay. MelloUI's features switch on.",
-	  roles = { feature = "full", adds = "full" },
-	  set = Merge(NO_RESKIN_ROWS, { ["UIModifications.reskin"] = false, ["!UIModifications"] = true }),
-	  layout = false, places = false, steps = { "choose", "review", "keep" } },
-	-- (`oldschool`: offered only with MelloUI_Oldschool loaded -- the painted look is its; one look stage I, step 4)
-	{ key = "reskinOnly", title = "Reskin only", oldschool = true,
-	  desc = "The painted look and layout. Features stay off.",
-	  roles = { look = "full", feature = "off", adds = "off", replaces = "off" },
-	  set = { ["!UIModifications"] = true },
-	  layout = true, places = true, steps = { "choose", "fit", "review", "keep" } },
-	{ key = "fresh", title = "Fresh start",
-	  desc = "Everything off. Set it up step by step.",
-	  base = "fresh", layout = "draft", places = false,
-	  -- (the Minimap and Features steps before the Screen step: the fitter
-	  -- reads the map's shape, the merge, the Services bar, the tracker, the
-	  -- buff rows and the FPS text)
-	  steps = { "choose", "look", "map", "parchment", "fonts", "features", "fit", "chat", "windows", "review", "keep" } },
+	-- (1.2.4, the user, 2026-10-26: "the installer should also have the user go trough every step and picking and
+	-- choosing the look, i would start with the look"; "everybody always goes trough the picking process, no more 1
+	-- button full settings"; docs/plans/installer-steps.md) THE setup: the skin first, then the features, each step's
+	-- answer in the draft; the picked skin's shipped setup with the picks laid over it (base "setup", I:SetupDraft)
+	{ key = "setup", title = "MelloUI setup", base = "setup", layout = "draft", places = true,
+	  steps = { "skin", "layout", "party", "quests", "combat", "chat", "minimap", "bags", "sound", "review", "keep" } },
 	{ key = "fit", title = "Fit to this screen", hidden = true, refit = true,
 	  desc = "Mello's layout and the window places fitted to this screen. Your other settings stay.",
 	  layout = true, places = true, steps = { "fit", "review", "keep" } },
@@ -274,42 +205,49 @@ function I:Option(key)
 	return OPTION[key]
 end
 
--- The Fresh start wizard's Windows step: the kit panels in six groups (the
--- 43 of the Windows tab and the 10 of the HUD)
-I.WINDOW_GROUPS = {
-	{ key = "character", label = "Your character", members = { "CharacterPanel", "SpellBookPanel", "ProfessionsPanel",
-		"LegacyPanel", "CollectionsPanel", "BackpackPanel", "QuestLogPanel", "InspectPanel", "DressUpPanel", "SocketingPanel",
-		"BarberShopPanel" } },
-	{ key = "shops", label = "Shops, mail, bank, trainers", members = { "MerchantPanel", "AuctionHousePanel", "TrainerPanel",
-		"TabardPanel", "TaxiPanel", "MailPanel", "BankPanel", "GuildBankPanel", "TradePanel", "LootPanel", "StablePanel",
-		"QuestDialogPanel", "ItemTextPanel", "CharterPanel" } },
-	{ key = "social", label = "Social, guild, group finder", members = { "SocialPanel", "GuildPanel", "GroupFinderPanel",
-		"PvPPanel", "BattlefieldMapPanel", "ReadyPanel" } },
-	{ key = "options", label = "Options, macros, Edit Mode, AddOn list", members = { "GameMenuPanel", "OptionsPanel",
-		"MacroPanel", "EditModePanel", "AddonListPanel", "DialogPanel", "StackSplitPanel", "ColorPickerPanel" } },
-	{ key = "calendar", label = "Calendar, clock, help, channels", members = { "CalendarPanel", "ClockPanel", "HelpPanel",
-		"ChannelPanel" } },
-	{ key = "hud", label = "The HUD", members = { "UnitFramePanel", "CastBarPanel", "RaidFramePanel", "ActionBarPanel",
-		"MinimapKit", "TrackerPanel", "ChatPanel", "DamageMeterPanel", "TooltipPanel", "NameplatePanel" } },   -- (onelook D7: the painted minimap)
+-- (1.2.4) The setup's steps after the skin and the layout (the window draws its pages from these): a step's choices,
+-- each one what it writes into the draft. kind "one": a card of several, its `set` laid into the draft; kind "many": a
+-- switch each, its `modules` switched on or off (I.SwitchKey: a module's own flag or its folded switch). `extras`: the
+-- switches under a "one" step's cards (`set`: one setting on or off, `modules` as a "many" step's, `only`: shown with
+-- that card picked). `on`: a switch's first answer; `pick`: the step's first card (the recommended one). A choice
+-- whose modules are not there (a feature addon switched off) is not offered. Every key is one of its own across the
+-- steps (the window names each by it).
+I.SETUP = {
+	{ key = "party", kind = "one", pick = "group", choices = {
+		{ key = "group", set = { ["GroupFrames.partyStyle"] = "group" }, modules = { "GroupFrames" } },
+		{ key = "portraits", set = { ["GroupFrames.partyStyle"] = "party" }, modules = { "GroupFrames" } } },
+	  extras = {
+		{ key = "yourself", on = true, set = "GroupFrames.showPlayer", modules = { "GroupFrames" } },
+		{ key = "flip", on = false, set = "UnitFrames.partyFlip", only = "portraits", modules = { "UnitFrames" } },
+		{ key = "markers", on = false, modules = { "PartyMarkers" } } } },
+	{ key = "quests", kind = "many", choices = {
+		{ key = "tracker", modules = { "QuestTracker" } }, { key = "questlist", modules = { "QuestList" } },
+		{ key = "route", modules = { "Route" } }, { key = "map", modules = { "Map" } },
+		{ key = "voice", modules = { "VoiceOver" } }, { key = "services", modules = { "Services" } },
+		{ key = "dungeon", modules = { "DungeonInfo" } } } },
+	{ key = "combat", kind = "many", choices = {
+		{ key = "nameplates", modules = { "Nameplates" } }, { key = "combattext", modules = { "CombatText" } },
+		{ key = "meter", modules = { "Meter" } }, { key = "effects", modules = { "FrameEffects", "HealFlight" } },
+		{ key = "prd", modules = { "PersonalDisplay" } } } },
+	{ key = "chat", kind = "one", pick = "view", choices = {
+		{ key = "view", set = { ["Chat.view"] = "minimal" }, modules = { "Chat" } },
+		{ key = "plainchat", set = { ["Chat.view"] = "game" }, modules = { "Chat" } } } },
+	{ key = "minimap", kind = "many", choices = {
+		{ key = "column", modules = { "MinimapPanel" } }, { key = "reminders", modules = { "Reminders" } },
+		{ key = "widgets", modules = { "Widgets" } } } },
+	{ key = "bags", kind = "one", pick = "kinds", choices = {
+		{ key = "kinds", set = { ["!BagWindow"] = true }, modules = { "BagWindow" } },
+		{ key = "separate", set = { ["!BagWindow"] = false }, modules = { "BagWindow" } } },
+	  -- (needs: { step, choice } the window ticks too when this one is ticked: Restock's reminder is the Reminders
+	  -- widget's; its shop list works without it, so Reminders off leaves Restock be)
+	  extras = { { key = "gains", on = true, modules = { "Gains" } },
+		{ key = "restock", on = true, modules = { "Restock" }, needs = { "minimap", "reminders" } },
+		{ key = "discard", on = true, modules = { "Discard" } } } },
+	{ key = "sound", kind = "one", pick = "melloSound", choices = {
+		{ key = "melloSound", set = { ["!CustomSounds"] = true }, modules = { "CustomSounds" } },
+		{ key = "gameSound", set = { ["!CustomSounds"] = false }, modules = { "CustomSounds" } } } },
 }
-
--- The Fresh start wizard's Features step: every feature, adds and replaces
--- module with a switch of its own, in two columns (Chat has its own step;
--- Tweaks has no switch). Each starts off; one switched on takes Full's
--- settings for that module. (0.14.0: the reminder widget's page, Reminders,
--- and Restock, its fourth user with a module of its own; both say their
--- role themselves. Gains, the feed of skill ups and items, after them.)
-I.FEATURE_GROUPS = {
-	-- (0.16.0: Widgets joined the first column and Party Markers, the medallions over the party's heads, moved beside
-	-- the nameplates, so both columns fit the page: ten and nine rows; 0.17.0: the Damage Meter, ten and ten -- full:
-	-- a module left off the page says so, `installer = false`, as the Swing Timers, 0.17.1)
-	-- (1.0, the user 2026-10-20: the Map after Route, and FPS / Latency off the page to keep both columns at ten -- the
-	-- page never scrolls; Stats says so, installer = false)
-	{ key = "quests", label = "Quests, travel and your group", members = { "QuestList", "QuestTracker", "Route", "Map",
-		"Services", "Reminders", "Restock", "Widgets", "Gains", "VoiceOver" } },
-	{ key = "combat", label = "Combat, frames and tooltips", members = { "Auras", "CooldownText", "ErrorFilter", "Nameplates",
-		"PartyMarkers", "UnitFrames", "BarText", "Meter", "Tooltip", "Vendor" } },
-}
+I.SKINS = { "default", "modern", "oldschool" }
 
 -- the lines the window shows (its footer, the Keep page)
 I.TEXT = {
@@ -318,7 +256,7 @@ I.TEXT = {
 	editMode = "Close Edit Mode first.",
 	fitting = "Your screen is still being fitted.",
 	refit = "Your screen changed; it is being fitted again.",
-	noRoom = "Edit Mode already keeps %d account layouts, the most it can. Delete one in Edit Mode, or switch the layout off on the Screen step.",
+	noRoom = "Edit Mode already keeps %d account layouts, the most it can. Delete one in Edit Mode, or keep your own layout.",
 	pending = "Keep or revert the setup you just installed first.",
 	nothing = "There is no setup to go back to.",
 	pausedCombat = "Paused while you are in combat.",
@@ -449,17 +387,6 @@ local function Kind(m)
 end
 I.Kind = Kind
 
-local function RoleOf(m)
-	if not m then
-		return nil
-	end
-	return m.role or (m.hidden and type(m.window) == "table" and "look") or ROLE[m.name] or nil
-end
-I.RoleOf = RoleOf
-
--- the roles a feature switch in the wizard takes Full's settings for
-local FEATURE_ROLES = { feature = true, adds = true, replaces = true }
-
 -- the draft key that switches a module: its own flag, or UI Modifications'
 -- qol_<name> for a folded feature, or <name>.@on for one whose rows are its
 -- switches (Overlay writes them all) (nil: a kit panel, or one with no
@@ -476,46 +403,6 @@ local function SwitchKey(m)
 	return nil
 end
 I.SwitchKey = SwitchKey
-
--- a feature on under a state: running, and for one whose rows are its
--- switches, one of them on (the state's, else its default)
-function I:FeatureOn(state, name)
-	if not self:EffectiveOn(state, name) then
-		return false
-	end
-	local m = MelloUI.modules[name]
-	if not (m and Kind(m) == "rows") then
-		return true
-	end
-	local own = state.modules[name] or EMPTY
-	for _, key in ipairs(m.switches) do
-		local v = own[key]
-		if v == nil then
-			v = m.defaults[key]
-		end
-		if v then
-			return true
-		end
-	end
-	return false
-end
-
--- the Features step's members the draft switches on, in the step's order
-function I:FeaturesOn(draft)
-	local on = {}
-	if type(draft) ~= "table" then
-		return on
-	end
-	for _, group in ipairs(self.FEATURE_GROUPS) do
-		for _, name in ipairs(group.members) do
-			local key = SwitchKey(MelloUI.modules[name])
-			if key and draft[key] == true then
-				on[#on + 1] = name
-			end
-		end
-	end
-	return on
-end
 
 local function Module(name)
 	return MelloUI.modules[name]
@@ -548,31 +435,6 @@ local function Kept(name, key)
 	return never and never[key] or false
 end
 I.Kept = Kept
-
--- UI Modifications' own key's role (nil: never set by a role rule)
-local function UKeyRole(key)
-	if type(key) ~= "string" then
-		return nil
-	end
-	if U_LOOK[key] or key:sub(1, 10) == "parchment_" then
-		return "look"
-	elseif U_PREFERENCE[key] then
-		return "preference"
-	end
-	local Kit = MelloUI.Kit
-	local kinds = type(Kit) == "table" and type(Kit.borderKinds) == "table" and Kit.borderKinds or EMPTY
-	for i = 1, #kinds do
-		if kinds[i].key == key then
-			return "look"
-		end
-	end
-	local m = Module(key)
-	if m and Kind(m) == "panel" then
-		return "look"
-	end
-	return nil
-end
-I.UKeyRole = UKeyRole
 
 -- a module's own flag in a state (nil: its enabledByDefault)
 local function Flag(state, name)
@@ -614,11 +476,12 @@ end
 -- States
 --------------------------------------------------------------------------------
 
--- the shipped Full experience: never db.profiles.MelloUI (a player's own
+-- a skin's shipped setup: never db.profiles.MelloUI (a player's own
 -- save of that name, or an older shipped copy, could stand in for it)
--- (1.0: the painted reskin's own while MelloUI_Oldschool is loaded: MelloUI:FullProfileName)
-function I:FullText()
-	local shipped = MelloUI:ShippedProfiles()[MelloUI:FullProfileName()]
+-- (1.0: the painted reskin's own while MelloUI_Oldschool is loaded: MelloUI:FullProfileName; 1.2.4: skin, the Skin
+-- step's pick -- Oldschool's for "oldschool", MelloUI's own for "default" and "modern")
+function I:FullText(skin)
+	local shipped = MelloUI:ShippedProfiles()[MelloUI:FullProfileName(skin)]
 	return type(shipped) == "string" and shipped or ""
 end
 
@@ -712,77 +575,105 @@ function I:Draft(state, draft)
 			end
 		end
 	end
-	local t = Overlay(s, draft)
-	-- (onelook D7) MelloUI's minimap is a module of its own now (Everything Off, the Fresh start's base, holds it
-	-- off): in the wizard's setup it comes on with the painted minimap -- UI Modifications, its reskin and the HUD's
-	-- minimap switch on -- as it did before the split, unless the draft names it
-	if draft and draft["!MinimapPanel"] == nil and type(t.enabled) == "table" and type(t.modules) == "table" then
-		local um = t.modules[UMB] or EMPTY
-		if t.enabled[UMB] ~= false and um.reskin ~= false and um.MinimapKit ~= false then
-			t.enabled.MinimapPanel = true
-		end
-	end
-	return t
+	return Overlay(s, draft)
 end
 
--- what pressing Continue through every wizard step gives: each control at
--- Full's value (the look, minimap, parchment, fonts, chat and windows
--- steps), every feature off (the Features step), and Dark Mode as the
--- player has it now (their own preference: no profile carries it; off for a
--- new player)
-local DRAFT_UM = { reskin = true, palette = true, kitColours = true, buttonBorder = true,
-	qol_Fonts = true, qol_Chat = true }
-local DRAFT_MAP = { "shape", "squareBorder", "servicesMerge" }
-function I:DefaultDraft(full)
-	full = full or self:TargetFromText(self:FullText())
-	local d = { ["!UIModifications"] = true }
-	for key, v in pairs(full.modules[UMB] or EMPTY) do
-		if type(key) == "string" and not Kept(UMB, key) and (DRAFT_UM[key] or key:sub(1, 10) == "parchment_"
-			or (Module(key) and Kind(Module(key)) == "panel")) then
-			d["UIModifications." .. key] = DeepCopy(v)
+-- (1.2.4) The setup's picks and its draft. Picks are the window's answers: { skin = "default" | "modern" | "oldschool",
+-- layout = "mello" | "own", [a "one" step] = its card's key, [a "many" step] = { [choice] = on }, x = { [extra] = on } }.
+--   I.SkinOf(draft) -> skin        the draft's skin: Oldschool only while MelloUI_Oldschool is there, Modern otherwise
+--   I:Offered(choice) -> on        a choice's modules are all there (a feature addon off: not offered)
+--   I:DefaultPicks() -> picks      every step at its first answer: Modern, Mello's layout, every feature on
+--   I:SetupDraft(picks) -> draft   the picks as the setup's draft (draft.skin, draft.layout and the settings)
+local SKIN_OF = { default = "default", modern = "modern", oldschool = "oldschool" }
+
+function I.SkinOf(draft)
+	local skin = SKIN_OF[type(draft) == "table" and draft.skin or "modern"] or "modern"
+	if skin == "oldschool" and not MelloUI:OldschoolShipped() then
+		return "modern"
+	end
+	return skin
+end
+
+function I:Offered(choice)
+	for _, name in ipairs(choice.modules or EMPTY) do
+		if not (Module(name) and SwitchKey(Module(name))) then
+			return false
 		end
 	end
-	for k, v in pairs(full.modules.Fonts or EMPTY) do
-		if type(k) == "string" and not Kept("Fonts", k) then
-			d["Fonts." .. k] = DeepCopy(v)
+	return true
+end
+
+function I:DefaultPicks()
+	local picks = { skin = "modern", layout = "mello", x = {} }
+	for _, st in ipairs(self.SETUP) do
+		if st.kind == "many" then
+			picks[st.key] = {}
+			for _, c in ipairs(st.choices) do
+				picks[st.key][c.key] = true
+			end
+		else
+			picks[st.key] = st.pick
+		end
+		for _, x in ipairs(st.extras or EMPTY) do
+			picks.x[x.key] = x.on and true or false
 		end
 	end
-	local icons, tweaks = full.modules.ClassIcons or EMPTY, full.modules.Tweaks or EMPTY
-	d["ClassIcons.portraits"] = icons.portraits
-	-- (0.16.0: the name form is Show Names As, UI Modifications', for every name; the shade behind text Text
-	-- Shade's, Tweaks' -- the chat's own switch went into it, the user, 2026-10-16)
-	local uiFull = full.modules.UIModifications or EMPTY
-	d["UIModifications.nameFormat"], d["Tweaks.textShade"] = uiFull.nameFormat, tweaks.textShade
-	local map = full.modules.MinimapPanel or EMPTY
-	for _, k in ipairs(DRAFT_MAP) do
-		d["MinimapPanel." .. k] = DeepCopy(map[k])
+	return picks
+end
+
+-- the modules' switches on or off into a draft
+local function SwitchInto(d, modules, on)
+	for _, name in ipairs(modules or EMPTY) do
+		local key = SwitchKey(Module(name))
+		if key then
+			d[key] = on and true or false
+		end
 	end
-	-- ((onelook D7) MelloUI's minimap, a module of its own now: on with the painted minimap, I:Draft)
-	for _, group in ipairs(self.FEATURE_GROUPS) do
-		for _, name in ipairs(group.members) do
-			local key = SwitchKey(Module(name))
-			if key then
-				d[key] = false
+end
+
+function I:SetupDraft(picks)
+	picks = type(picks) == "table" and picks or self:DefaultPicks()
+	-- (Mello's layout: in when the fit passes, I:LayoutOn; Keep my layout: never)
+	local d = { skin = picks.skin, layout = picks.layout == "own" and false or nil }
+	local skin = self.SkinOf(d)
+	d.skin = skin
+	-- the skin: MelloUI's own parts in the game's look (Default) or its own (Modern, Oldschool); Oldschool's painted
+	-- reskin on only with Oldschool picked (its switch is MelloUI_Oldschool's: false is off, the panels' rule)
+	d[UMB .. ".skin"] = skin == "default" and "default" or "modern"
+	d[UMB .. ".reskin"] = skin == "oldschool"
+	local x = type(picks.x) == "table" and picks.x or EMPTY
+	for _, st in ipairs(self.SETUP) do
+		local answer = picks[st.key]
+		for _, c in ipairs(st.choices) do
+			if self:Offered(c) then
+				if st.kind == "many" then
+					SwitchInto(d, c.modules, type(answer) == "table" and answer[c.key])
+				elseif answer == c.key then
+					for spec, v in pairs(c.set or EMPTY) do
+						d[spec] = v
+					end
+				end
 			end
 		end
-	end
-	-- Dark Mode: its switch as the player has set it (on only when switched
-	-- on: off until then), and its brightness as set
-	local dark = Module("DarkMode")
-	if dark then
-		local v = MelloUI:GetModuleDB(UMB).qol_DarkMode
-		d[UMB .. ".qol_DarkMode"] = (Kind(dark) == "tweakOff" and v == true or Kind(dark) ~= "tweakOff" and v ~= false) and true or false
-		d["DarkMode.shade"] = DeepCopy(MelloUI:GetModuleDB("DarkMode").shade)
+		for _, e in ipairs(st.extras or EMPTY) do
+			if self:Offered(e) and not (e.only and answer ~= e.only) then
+				if type(e.set) == "string" then
+					d[e.set] = x[e.key] and true or false
+				else
+					SwitchInto(d, e.modules, x[e.key])
+				end
+			end
+		end
 	end
 	return d
 end
 
--- The palette a setup puts in (the Review step names it): Fresh start's
--- Look step card (its draft), Full's own for a setup that takes Full's
--- look (Full experience, Reskin only), else the one in use (No reskin and
--- the refit keep the player's). An id of MelloUI.Palettes (an unknown one
--- is Ember, as Core reads it). Full's is read from Full's text once: the
--- shipped text never changes in a session.
+-- The palette a setup puts in (the Review step names it): the modern look's
+-- Gilded Slate for the Default and Modern skins (the painted reskin off),
+-- Oldschool's shipped one for its skin, else the one in use (the refit keeps
+-- the player's). An id of MelloUI.Palettes (an unknown one is Ember, as Core
+-- reads it). The shipped one is read from its text once: the shipped text
+-- never changes in a session.
 do
 	local NO_STATE = { modules = {}, enabled = {} }   -- (Full's alone: no player's keys laid over it)
 	local fullPalette = nil
@@ -800,16 +691,13 @@ do
 		-- (0.25.0) the painted reskin's palettes only with MelloUI_Oldschool there and the reskin the setup leaves on
 		-- (MelloUI:PaintedPalettes once it is in): else the modern look's Gilded Slate
 		local oldschool = rawget(MelloUI, "Oldschool")
-		local reskinOff = (type(draft) == "table" and draft[UMB .. ".reskin"] == false)
-			or (option and type(option.set) == "table" and option.set[UMB .. ".reskin"] == false)
+		local reskinOff = type(draft) == "table" and draft[UMB .. ".reskin"] == false
 		if type(oldschool) ~= "table" or oldschool.refused or reskinOff then
 			return "gildedSlate"
 		end
 		if not option then
 			return "ember"
-		elseif option.base == "fresh" then
-			return MelloUI:KnownPalette(type(draft) == "table" and draft[UMB .. ".palette"] or FullPalette(self))
-		elseif option.whole or (option.roles or EMPTY)[UKeyRole("palette")] == "full" then
+		elseif option.base == "setup" then
 			return MelloUI:KnownPalette(FullPalette(self))
 		end
 		return MelloUI:PaletteId()
@@ -842,42 +730,6 @@ local function Explicit(target, name, key)
 	return (type(keys) == "table" and keys[key]) and true or false
 end
 
--- a module's switch as another state has it
-local function CopySwitch(t, from, m)
-	local kind, name = Kind(m), m.name
-	local um, fum = t.modules[UMB], from.modules[UMB] or EMPTY
-	if kind == "panel" then
-		um[name] = DeepCopy(fum[name])
-	elseif kind == "tweak" or kind == "tweakOff" then
-		um["qol_" .. name] = DeepCopy(fum["qol_" .. name])
-	elseif kind == "module" then
-		t.enabled[name] = from.enabled[name]
-	elseif kind == "rows" then
-		local own, theirs = t.modules[name], from.modules[name] or EMPTY
-		if not own then
-			own = {}
-			t.modules[name] = own
-		end
-		for _, key in ipairs(m.switches) do
-			own[key] = DeepCopy(theirs[key])
-		end
-	end   -- always: no switch
-end
-
-local function SwitchOff(t, m)
-	local kind, name = Kind(m), m.name
-	if kind == "tweak" or kind == "tweakOff" then
-		t.modules[UMB]["qol_" .. name] = false
-	elseif kind == "module" then
-		t.enabled[name] = false
-	elseif kind == "rows" then
-		t.modules[name] = t.modules[name] or {}
-		for _, key in ipairs(m.switches) do
-			t.modules[name][key] = false
-		end
-	end   -- panel: through the reskin (the setup's own set); always: untouched
-end
-
 -- a parchment area whose sheet shows while its ink's module is off: the
 -- paper goes (the parchment ink rule)
 local function InkGuard(self, t)
@@ -897,9 +749,8 @@ end
 -- Chat's background opacity: the chat reskin applies it with Chat Tweaks off
 -- too (user, 2026-09-26: a new character's painted chat stone was nearly
 -- see-through), so a setup with the chat reskin on and Chat Tweaks off
--- (Reskin only; Fresh start with its Chat step off) carries Full's two rows
--- as Full's text has them (a row the wizard's draft sets stays the draft's).
--- With the reskin off they stay as the setup has them (NO_RESKIN_ROWS).
+-- carries the shipped setup's two rows as its text has them (a row the
+-- draft sets stays the draft's).
 local RESKIN_ALPHA_ROWS = { "windowAlphaOn", "windowAlpha" }
 local function ReskinAlpha(self, t, full, cur, draft)
 	if not self:EffectiveOn(t, "ChatPanel") or self:EffectiveOn(t, "Chat") then
@@ -925,63 +776,15 @@ local function Target(self, option, draft, fit, cur, forFit)
 	assert(option, "MelloUI.Installer:TargetFor needs a setup")
 	cur = cur or self:Capture()
 	local t
-	if option.whole then
-		t = self:TargetFromText(self:FullText(), cur)
-	elseif option.refit then
+	if option.refit then
 		t = DeepCopy(cur)
-	elseif option.base == "fresh" then
-		-- Everything Off; each feature the draft switches on (the Features
-		-- step, Chat's own step) with Full's settings for that module; then the
-		-- draft's own keys over them (Chat's name form, say)
-		local base, full = self:TargetFromText(MelloUI:FreshProfileText(), cur), nil
-		-- (with the reskin switched off, a table taken from Full keeps the
-		-- rows No reskin keeps neutral: the chat's buttons, background and
-		-- opacity stay the game's)
-		local plain = draft and draft[UMB .. ".reskin"] == false
-		for name, m in MelloUI:IterateModules() do
-			local key = FEATURE_ROLES[RoleOf(m)] and SwitchKey(m)
-			if key and draft and draft[key] == true then
-				full = full or self:TargetFromText(self:FullText(), cur)
-				local taken = DeepCopy(full.modules[name])
-				if plain and type(taken) == "table" then
-					for spec, v in pairs(NO_RESKIN_ROWS) do
-						local row = spec:sub(1, #name + 1) == name .. "." and spec:sub(#name + 2)
-						if row then
-							taken[row] = v
-						end
-					end
-				end
-				base.modules[name] = taken
-			end
-		end
-		t = self:Draft(base, draft or EMPTY)
+	else
+		-- (1.2.4) the picked skin's shipped setup (Mello's settings for everything), the picks over it: the skin, a
+		-- feature switched off, the party's frames, the chat's view (I:SetupDraft)
+		local full = self:TargetFromText(self:FullText(self.SkinOf(draft)), cur)
+		t = self:Draft(full, draft or EMPTY)
 		t.explicit = ExplicitOf(draft)
 		ReskinAlpha(self, t, full, cur, draft)
-	else
-		local full = self:TargetFromText(self:FullText(), cur)
-		t = DeepCopy(cur)
-		t.modules[UMB] = t.modules[UMB] or {}
-		local roles = option.roles or EMPTY
-		for name, m in MelloUI:IterateModules() do
-			if name ~= UMB then
-				local how = roles[RoleOf(m)]
-				if how == "full" then
-					t.modules[name] = DeepCopy(full.modules[name])
-					CopySwitch(t, full, m)
-				elseif how == "off" then
-					SwitchOff(t, m)
-				end
-			end
-		end
-		local um, fum = t.modules[UMB], full.modules[UMB] or EMPTY
-		for _, key in ipairs(SortedUnion(um, fum)) do
-			local role = UKeyRole(key)
-			if role and roles[role] == "full" then
-				um[key] = DeepCopy(fum[key])
-			end
-		end
-		t = Overlay(t, option.set)
-		ReskinAlpha(self, t, full, cur)
 	end
 	t.activeProfile = nil
 	if not forFit then
@@ -989,8 +792,8 @@ local function Target(self, option, draft, fit, cur, forFit)
 	end
 	InkGuard(self, t)
 	KeepUntouched(t, cur)
-	-- the personal keys the draft sets itself (the wizard's Dark Mode: the
-	-- player choosing their own preference) go in as set
+	-- the personal keys the draft sets itself (the player choosing their own
+	-- preference) go in as set
 	for name, keys in pairs(t.explicit or EMPTY) do
 		for key in pairs(keys) do
 			t.modules[name] = t.modules[name] or {}
@@ -999,7 +802,7 @@ local function Target(self, option, draft, fit, cur, forFit)
 	end
 	-- the name form's two copies follow Show Names As (user, 2026-09-30:
 	-- after a fresh install the frames kept the setup's "last" while Show
-	-- Names As said the wizard's pick): the wizard sets only Show Names As,
+	-- Names As said the draft's pick): a draft sets only Show Names As,
 	-- and the apply's reconcile would put an older copy back over its push
 	local form = (t.modules[UMB] or EMPTY).nameFormat
 	for _, name in ipairs(NAME_COPIES) do
@@ -1042,7 +845,7 @@ local function NeedsFit(option, draft)
 end
 
 -- the four frames Edit Mode places: the fit's places.remove, or, when no
--- fit was given (No reskin, a Fresh start without the layout), the fitter's
+-- fit was given (the layout kept the player's own), the fitter's
 -- own list (LayoutFit.EDIT_MODE_FRAMES: one list, never a copy here)
 local function EditModeFrames(remove)
 	if type(remove) == "table" then
@@ -1054,8 +857,8 @@ local function EditModeFrames(remove)
 end
 
 -- Edit Mode keeps the player's own layout: its frames' store places and the
--- tracker's own place as the player has them (Full's text has none of them,
--- and Reskin only takes Full's whole store)
+-- tracker's own place as the player has them (the shipped text has none of
+-- them, and its whole store would go in)
 local function KeepOwnLayoutPlaces(target, cur, remove)
 	local um = target.modules[UMB]
 	local have = (cur.modules[UMB] or EMPTY).positions
@@ -1080,7 +883,7 @@ end
 -- other setting). With the layout: the four Edit Mode frames' store places
 -- removed, the tracker's own place cleared and its sizes, the window
 -- places, the buff rows by the minimap's column (Icons
--- Per Row, Icon Size) as the fit wrapped them. Without it (the switch off, a FAIL, No reskin,
+-- Per Row, Icon Size) as the fit wrapped them. Without it (the player's own layout kept, a FAIL,
 -- no fit): only the window places; Edit Mode
 -- still holds the player's own layout, so its four frames' store places and
 -- the tracker's own place stay as the player has them (cur: the current
@@ -1159,12 +962,12 @@ end
 
 -- the approved layout's info (Core/EditModeLayout.lua; the baked string
 -- converted here while that file has no EditModeLayoutInfo)
-local function LayoutInfo()
+local function LayoutInfo(skin)
 	if MelloUI.EditModeLayoutInfo then
-		local ok, info = pcall(MelloUI.EditModeLayoutInfo, MelloUI)
+		local ok, info = pcall(MelloUI.EditModeLayoutInfo, MelloUI, skin)
 		return ok and type(info) == "table" and info or nil
 	end
-	local data = MelloUI:ShippedEditMode()   -- (1.0: Oldschool's while it is loaded)
+	local data = MelloUI:ShippedEditMode(skin)   -- (1.0: Oldschool's while it is loaded; 1.2.4: the setup's skin's)
 	if type(data) ~= "table" or type(data.layout) ~= "string" or not (C_EditMode and C_EditMode.ConvertStringToLayoutInfo) then
 		return nil
 	end
@@ -1217,7 +1020,10 @@ local function BeginFit(fit)
 		inputs.column.fitMap = true
 	end
 	fit.W, fit.H = ScreenSize()
-	fit.job = LayoutFit:Run(LayoutInfo(), fit.W, fit.H, inputs, function(fitted, places, report)
+	-- (the setup's picked skin's layout; another setup's: nil, the shipped one as before)
+	local option = I:Option(fit.option)
+	local skin = option and option.base == "setup" and I.SkinOf(fit.draft) or nil
+	fit.job = LayoutFit:Run(LayoutInfo(skin), fit.W, fit.H, inputs, function(fitted, places, report)
 		Fitted(fit, fitted, places, report)
 	end)
 end
@@ -1424,7 +1230,7 @@ local function DoApply(self, target, exact, out)
 		MelloUI:NotifySettingChanged(name, key, DeepCopy(value))
 	end
 	-- a key the apply leaves alone: the player's own and NEVER keys, unless
-	-- the target sets it itself (target.explicit: the wizard's Dark Mode)
+	-- the target sets it itself (target.explicit: a personal key the draft sets)
 	local function Skip(name, key)
 		return Kept(name, key) and not Explicit(target, name, key)
 	end
@@ -1982,9 +1788,10 @@ end
 -- The setup, its layout and its facts, in one Batch (one backup), then the
 -- windows re-placed. The layout facts: layoutFitFor (and the model's
 -- layoutFitRev) only when the fitted layout really went in; layoutApplied
--- whenever the layout went in or the setup leaves the reskin on (the
--- installer answered the layout question: a later hand switch of the reskin
--- never puts the raw layout over the player's "my own layout stays"). All
+-- whenever the layout went in, the setup leaves the reskin on, or the setup's
+-- Layout step was answered (1.2.4: every setup) -- the installer answered the
+-- layout question: a later hand switch of the reskin never puts the raw
+-- layout over the player's "my own layout stays". All
 -- noted on the restore point before they are written, so a revert, or a
 -- fault half way, puts them back.
 local function DoInstall(self, rp, option, target, fit, layoutOn, out)
@@ -2001,7 +1808,8 @@ local function DoInstall(self, rp, option, target, fit, layoutOn, out)
 			-- back, even when Edit Mode refused it or a later step failed)
 			rp.layoutPut, rp.layoutWhy, rp.layoutWritten = PutLayout(fit)
 		end
-		if rp.layoutPut or ReskinStaysOn(target) then
+		-- (1.2.4: the setup's Layout step answers the layout question whatever the skin: Mello's layout or the player's)
+		if rp.layoutPut or ReskinStaysOn(target) or option.base == "setup" then
 			rp.layoutFlags = true
 			if rp.layoutPut then
 				SetOwn("layoutFitFor", fit.places and fit.places.layoutFitFor or nil)
@@ -2014,7 +1822,7 @@ local function DoInstall(self, rp, option, target, fit, layoutOn, out)
 	end)
 	-- (the refit changes only what no profile carries -- the layout, the
 	-- places -- so the profile in use stays named)
-	MelloUI.db.activeProfile = option.whole and MelloUI:FullProfileName() or (option.refit and rp.before.activeProfile) or nil
+	MelloUI.db.activeProfile = option.refit and rp.before.activeProfile or nil
 	-- the registered windows where the store now says
 	self:PlaceWindows()
 end

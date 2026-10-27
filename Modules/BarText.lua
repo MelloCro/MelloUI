@@ -21,7 +21,6 @@ local M = MelloUI:RegisterModule("BarText", {
 	desc = "Always show health and power values on the player, target and focus frames.",
 	icon = "Interface\\Icons\\INV_Misc_Note_02",
 	flavour = "Numbers where they belong. Health and power values, always in view.",
-	role = "adds",
 	-- (one look Q9 and the user's A, 2026-10-16: no master switch -- the
 	-- three frames' own switches are; all three off, nothing of it runs.
 	-- Core.lua's MERGES turns them off for a save whose Bar Values was off)

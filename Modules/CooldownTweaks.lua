@@ -37,9 +37,6 @@ local M = MelloUI:RegisterModule("CooldownTweaks", {
 	desc = "Centred rows, key bindings, a light while pressed and the count size on the game's Cooldown Manager.",
 	icon = "Interface\\Icons\\Spell_Holy_BorrowedTime",
 	flavour = "Your cooldowns, in the middle, with their keys on them.",
-	role = "adds",
-	-- (not on the installer's Features step: its rows are on Bars > Cooldowns)
-	installer = false,
 	enabledByDefault = true,
 	defaults = {
 		centreRows = true,

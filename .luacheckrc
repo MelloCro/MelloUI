@@ -127,6 +127,8 @@ read_globals = {
 	"C_EventUtils", "C_Secrets", "C_CurveUtil", "C_StringUtil", "CurveConstants", "UnitHealthPercent",
 	"UnitHealth", "UnitHealthMax", "UnitPower", "UnitPowerMax", "AbbreviateNumbers", "UnitIsDeadOrGhost", "UnitIsGhost",
 	"UnitIsConnected", "IsInGroup", "UnitHealthMissing", "GetRaidTargetIndex", "GetReadyCheckStatus", "UnitInRange",
+	-- (1.2.4) Group Frames' frame of you in your party: the leader's crown, the guide's
+	"UnitIsGroupLeader", "HasLFGRestrictions",
 	-- (0.21.0) the Personal Display: the shield's total, a channel's times, airborne for the hop
 	"UnitGetTotalAbsorbs", "UnitChannelInfo", "IsFalling",
 	-- Bar Text's secret-value formatting

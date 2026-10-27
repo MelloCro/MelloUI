@@ -1,6 +1,6 @@
 # **MelloUI – One Clean UI, a World Map of Its Own & Voiced NPCs**
 
-_Hey! MelloUI is my all-in-one UI for World of Warcraft: Forever. Everything is a switch, and on your first login the installer sets it up the way you pick: the Full experience fitted to your screen, only the features, or step by step. Type `/mello` for the settings any time._
+_Hey! MelloUI is my all-in-one UI for World of Warcraft: Forever. Everything is a switch, and on your first login the installer walks you through it step by step: your skin (the game's own look, Modern or Oldschool), then the features you want, fitted to your screen. Type `/mello` for the settings any time._
 
 ## What's in it
 

@@ -53,7 +53,6 @@ local M = MelloUI:RegisterModule("PartyMarkers", {
 	icon = "Interface\\Icons\\INV_Misc_GroupNeedMore",
 	flavour = "A class medallion over every party member's head, ringed in their role's colour: the healer, found at a glance.",
 	group = "Frames and bars", navOrder = 4,
-	role = "feature",
 	enabledByDefault = true,
 	defaults = defaults,
 	options = options,

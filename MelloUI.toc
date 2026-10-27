@@ -21,6 +21,7 @@ Core\MapLayer.lua
 Core\QuestAreas.lua
 Core\Anim.lua
 Core\Icons.lua
+Core\Skin.lua
 Core\Widgets.lua
 Core\Shade.lua
 Core\Rims.lua
@@ -35,6 +36,8 @@ Core\Threat.lua
 Core\Fader.lua
 Core\Preview.lua
 Core\FrameFX.lua
+Core\FrameFXBold.lua
+Core\FrameHover.lua
 Core\SwingBadge.lua
 Core\Config.lua
 Core\ConfigLayout.lua

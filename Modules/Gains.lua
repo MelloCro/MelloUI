@@ -214,7 +214,6 @@ local M = MelloUI:RegisterModule("Gains", {
 	icon = "Interface\\Icons\\INV_Misc_Bag_08",
 	flavour = "Every skill point and every new item, told softly beside your character, then gone.",
 	group = "Quests and travel", navOrder = 6,
-	role = "feature",
 	enabledByDefault = true,
 	defaults = {
 		skills = true,

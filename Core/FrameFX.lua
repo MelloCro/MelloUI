@@ -75,7 +75,12 @@ do
 	for name in ("bubble bubble_gold bubble_gold_round bubble_round crest_blue crest_gold crest_green crest_steel drop "
 		.. "halo_white leaf plus_blue plus_gold plus_green rays_gold rays_gold_small ring_fire ring_gold ripple_blue "
 		.. "shard_blue sheen "
-		.. "spark_gold streak_blue streak_gold streak_green streak_red streak_white wave_gold wave_red wave_teal"):gmatch("%S+") do
+		.. "spark_gold streak_blue streak_gold streak_green streak_red streak_white wave_gold wave_red wave_teal "
+		-- (1.2.4, the bold landings' pieces: Core/FrameFXBold.lua)
+		.. "bang barrier_round guard_round guard_side heart line_h line_v rays_white res_wings res_wings_blue "
+		.. "outline_edge outline_round "
+		.. "res_wings_green seal_blue seal_gold seal_green shock_white spark_white star_blue star_gold "
+		.. "star_green"):gmatch("%S+") do
 		NAMES[name .. ".tga"] = true
 	end
 	local made = { [true] = {}, [false] = {} }
@@ -98,6 +103,13 @@ do
 	end, "FrameFX")
 	FX.LIGHT = NAMES   -- (the tests')
 	FX.Art = Art       -- (1.2.0: the swing badge's sun rays, from the same art as the look's other lights)
+	-- (1.2.4) the modern look's light on (not Oldschool's painted effects): the bold landings are drawn in it alone
+	function FX.ModernArt()
+		if light == nil then
+			Art("glow_white.tga")
+		end
+		return light == true
+	end
 end
 local cos, sin, min, max, floor = math.cos, math.sin, math.min, math.max, math.floor
 local TIME = { launch = 0.32, hop = 0.22, chargeFade = 0.15, chargeMax = 3 }
@@ -116,6 +128,7 @@ FX.state = state
 FX.sprites = sprites   -- (the tests')
 FX.clips = clips       -- (the tests': a landing's sprites live in its clip frame)
 FX.tintOf, FX.covers = tintOf, covers   -- (the tests')
+FX.flares = flares   -- (the tests': a landing's borders -- 1.2.4, on a split frame's plate rim)
 FX.icons = icons   -- (the tests': a loot flight's item, 0.21.3)
 
 --------------------------------------------------------------------------------
@@ -1026,11 +1039,8 @@ local ROUND_ART = { ["bubble.tga"] = "bubble_round.tga", ["bubble_gold.tga"] = "
 local LAUNCH = { holy = LaunchA, nature = LaunchB, water = LaunchW, quiet = LaunchC, loot = LaunchLoot }
 local CHARGE = { holy = ChargeA, nature = ChargeB, water = ChargeW, quiet = ChargeC }
 
--- the landing for a look and a kind (a group or chain heal, or one not known:
--- a heal); its length (s)
-local function Landing(look, kind)
-	local set = LANDINGS[look] or LANDINGS.holy
-	local list = COOLDOWNS[kind] or set[kind] or set.h
+-- a list's length (s): its parts' latest end
+local function Totalled(list)
 	if not list.total then
 		local total = 0
 		for _, part in ipairs(list) do
@@ -1039,6 +1049,19 @@ local function Landing(look, kind)
 		list.total = total
 	end
 	return list
+end
+
+-- the landing for a look and a kind (a group or chain heal, or one not known:
+-- a heal); its length (s). (1.2.4, the user's picks of the Forever sketch -- "A versions of everything", 2026-10-26:
+-- the frames' bold landings, Core/FrameFXBold.lua) in the modern art, every look but Quiet plays its bold landing on
+-- the whole frame (S: the landing's state -- a group heal's wave reads its frame)
+local function Landing(look, kind, S)
+	local bold = look ~= "quiet" and FX.BoldLanding and FX.ModernArt() and FX.BoldLanding(look, kind, S)
+	if bold then
+		return Totalled(bold)
+	end
+	local set = LANDINGS[look] or LANDINGS.holy
+	return Totalled(COOLDOWNS[kind] or set[kind] or set.h)
 end
 
 --------------------------------------------------------------------------------
@@ -1061,6 +1084,8 @@ local function Shape(name, v)
 		return 1 - (v - 0.65) / 0.35
 	elseif name == "pulse" then
 		return sin(math.pi * v)
+	elseif name == "in" then
+		return min(1, v / 0.15)   -- (1.2.4: up at once, held -- a bold landing's wind-up, Core/FrameFXBold.lua)
 	end
 	return 1 - v
 end
@@ -1077,7 +1102,7 @@ local function Env(part, v, lt, span)
 	local name = part.env
 	local base
 	if part.held then
-		base = max(0, min(1, lt / 0.15, (span - lt) / 0.6))
+		base = max(0, min(1, lt / (part.ramp or 0.15), (span - lt) / 0.6))
 	else
 		base = Shape((name == "beat" or name == "breathe" or name == "flicker") and "hold" or name, v)
 	end
@@ -1087,6 +1112,9 @@ local function Env(part, v, lt, span)
 		return base * (0.7 + 0.3 * sin(lt * TAU / 2.4))
 	elseif name == "flicker" then
 		return base * (0.55 + 0.45 * sin(lt * 13 + (part.phase or 0)))
+	elseif name == "blink" then
+		-- (1.2.4: `pulses` blinks over its span, fading -- a bold taunt's rim)
+		return base * math.abs(sin(math.pi * v * (part.pulses or 2)))
 	end
 	return base
 end
@@ -1395,7 +1423,11 @@ end
 -- inside it -- every effect stays inside the frame); two per layer (a shield's double
 -- barrier), laid on the frame's rect (never anchored to the game's frame).
 -- A ring's border is drawn with its sprites instead (DRAW.halo: clipped with
--- them, round a badge too)
+-- them, round a badge too).
+-- (1.2.4; the user, 2026-10-26: "across the whole unitframe border, that means also on the top border where the name
+-- is") a split frame's on its plate's gold rim round the name and the bars (FX.Split's pl, pb, pr, pt): its box from
+-- the ring's middle, cut where the rim meets the ring (the ring lights itself: its halo)
+local FLARE_SPILL = 64   -- UI units a cut border's light may reach past its box
 local function Flare(layer, slot, B, grow, colour)
 	local Kit = MelloUI.Kit   -- (looked up here: the core loads the kit after this file)
 	local set = flares[layer]
@@ -1405,22 +1437,45 @@ local function Flare(layer, slot, B, grow, colour)
 	end
 	local f = set[slot]
 	if not f then
-		local holder = CreateFrame("Frame", nil, layer)
-		f = { holder = holder }
+		local clip = CreateFrame("Frame", nil, layer)
+		local holder = CreateFrame("Frame", nil, clip)
+		f = { clip = clip, holder = holder }
 		if Kit and Kit.GlowNine then
 			f.nine = Kit:GlowNine(holder, holder, "window/single", { scale = (Kit.scale or 1) * 0.8, alpha = 1 })
 		end
 		set[slot] = f
 	end
-	local h = f.holder
+	local h, clip = f.holder, f.clip
+	local l, b, r, t, open = B.l, B.b, B.r, B.t, nil
+	-- (1.2.4: a mirrored party frame -- Unit Frames' Flip Horizontally -- its ring right of its plate: open on the right)
+	local right = B.pl and B.pc and B.pc > (B.pl + B.pr) / 2
+	if right then
+		l, b, r, t, open = B.pl, B.pb, B.pc, B.pt, B.pr
+	elseif B.pl then
+		l, b, r, t, open = B.pc, B.pb, B.pr, B.pt, B.pl
+	end
 	h:ClearAllPoints()
-	h:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", B.l - grow, B.b - grow)
-	h:SetSize(max(1, B.w + 2 * grow), max(1, B.h + 2 * grow))
+	h:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - grow, b - grow)
+	h:SetSize(max(1, r - l + 2 * grow), max(1, t - b + 2 * grow))
 	h:SetAlpha(0)
 	h:Show()
+	clip:ClearAllPoints()
+	clip:SetClipsChildren(open ~= nil)
+	if right then
+		local cl = l - grow - FLARE_SPILL
+		clip:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", cl, b - grow - FLARE_SPILL)
+		clip:SetSize(max(1, open - cl), max(1, t - b + 2 * (grow + FLARE_SPILL)))
+	elseif open then
+		clip:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", open, b - grow - FLARE_SPILL)
+		clip:SetSize(max(1, r + grow + FLARE_SPILL - open), max(1, t - b + 2 * (grow + FLARE_SPILL)))
+	else
+		clip:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - grow, b - grow)
+		clip:SetSize(max(1, r - l + 2 * grow), max(1, t - b + 2 * grow))
+	end
+	clip:Show()
 	if f.nine and Kit.GlowShow then
-		local r, g, b = Rgb(colour)
-		Kit:GlowShow(f.nine, r, g, b, 1)
+		local cr, cg, cb = Rgb(colour)
+		Kit:GlowShow(f.nine, cr, cg, cb, 1)
 	end
 end
 
@@ -1455,6 +1510,8 @@ local function Box(S)
 	B.w, B.h = S.fr - S.fl, S.ft - S.fb
 	B.x, B.y = (S.fl + S.fr) / 2, (S.fb + S.ft) / 2
 	B.round, B.bars, B.cut = S.round and true or false, S.bars and true or false, S.cut and true or false
+	B.pl, B.pb, B.pr, B.pt, B.pc = S.pl, S.pb, S.pr, S.pt, S.pc   -- (1.2.4: a split frame's plate, its border there)
+	B.rl, B.rb, B.rr, B.rt = S.rl, S.rb, S.rr, S.rt                -- (its ring's square: a bold landing's whole frame)
 	B.u = B.round and B.h * ROUND_U or B.h
 	B.spillX, B.spillY = S.spillX, S.spillY
 	return B
@@ -1527,6 +1584,8 @@ local function CopyLook(dst, src)
 	dst:SetDesaturated(okD and not Secret(des) and des == true)
 	return kind
 end
+
+FX.CopyLook = CopyLook   -- (1.2.4: a bold landing's afterimages of the frame's picture, FrameFXBold.lua)
 
 local function CopyTexture(dst, src)
 	if not (src and FX.Visible(src)) then
@@ -1809,6 +1868,7 @@ local function Stack(layer, S)
 	local set = flares[layer]
 	if set then
 		for _, f in pairs(set) do
+			f.clip:SetFrameLevel(base + 1)
 			f.holder:SetFrameLevel(base + 1)
 		end
 	end
@@ -1838,6 +1898,9 @@ local function Clear(layer)
 	if cv then
 		cv.frame:Hide()
 	end
+	if FX.Bold then
+		FX.Bold.Clear(layer)
+	end
 	local S = state[layer]
 	if S then
 		S.stage, S.mate, S.owner = nil, nil, nil
@@ -1858,6 +1921,11 @@ local function LandStep(layer, p)
 	local sheen = false
 	local c = clips[layer]   -- (Inside: made by Arrive)
 	local host = c.frame
+	-- (1.2.4) a bold landing's own parts: on the whole frame, over it and under it (Core/FrameFXBold.lua)
+	local bold = list.bold and not B.round and FX.Bold
+	if bold then
+		bold.Begin(layer, S, B, t, list)
+	end
 	for _, part in ipairs(list) do
 		local kind = part[1]
 		local t1 = part.held and (total - (part.tail or 0)) or part.t1
@@ -1869,6 +1937,10 @@ local function LandStep(layer, p)
 			tintNow = part.tint and S.tint or nil
 			if kind == "border" and not B.round then
 				FlareAlpha(layer, part.slot, a)
+			elseif part.bold then
+				if bold then
+					bold.Draw(part, v, a, lt, span)
+				end
 			elseif kind == "sheen" then
 				if not B.round then
 					Sheen(layer, part, B, v, a)
@@ -1884,6 +1956,9 @@ local function LandStep(layer, p)
 		end
 	end
 	tintNow = nil
+	if bold then
+		bold.End(layer)
+	end
 	if not sheen then
 		c.tex:Hide()
 	end
@@ -1931,11 +2006,18 @@ function Arrive(layer)
 			S.fl, S.fb, S.fr, S.ft = l, b, r, t
 		end
 	end
+	S.pl, S.pb, S.pr, S.pt, S.pc = nil, nil, nil, nil, nil
+	S.rl, S.rb, S.rr, S.rt = nil, nil, nil, nil
 	if S.frame and not S.round then
 		local sp = FX.Split(S.frame)
 		S.bars, S.cut = sp and true or false, sp and true or false
 		if sp then
 			S.fl, S.fb, S.fr, S.ft = sp.bl, sp.bb, sp.br, sp.bt
+			if sp.pl then
+				S.pl, S.pb, S.pr, S.pt, S.pc = sp.pl, sp.pb, sp.pr, sp.pt, (sp.rl + sp.rr) / 2
+			end
+			-- (1.2.4: the ring's square too -- a bold landing plays on the whole frame, FrameFXBold.lua)
+			S.rl, S.rb, S.rr, S.rt = sp.rl, sp.rb, sp.rr, sp.rt
 			-- (the ring over it, and the badge that stands on the ring over that)
 			S.ring, S.orb, S.disc, S.number = sp.ring, sp.orb, sp.disc, sp.number
 			Mate(layer, S, sp)
@@ -1948,7 +2030,7 @@ function Arrive(layer)
 	S.stage = "land"
 	LootIcon(layer, nil)
 	local B = Box(S)
-	local list = Landing(S.quiet and "quiet" or S.look, S.kind)
+	local list = Landing(S.quiet and "quiet" or S.look, S.kind, S)
 	S.landing = list
 	-- (a held list as long as the spell lasts, unless it has a `fixed` length of its own)
 	S.total = list.held and (list.fixed or S.dur or 6) or list.total
@@ -2334,6 +2416,21 @@ function FX.Split(frame)
 	-- the user's clips and screenshot, 2026-10-16. The kit's own ring is copied over it, as before)
 	if not kitRing then
 		split.ring = nil
+	end
+	-- (1.2.4) the plate's gold rim round the name and the bars, where the frame wears a picture of ours that has one
+	-- (Unit Frames' M:PlateOf: its rim as shares of the picture): its border lit there (Flare), the bold parts on it
+	split.pl, split.pb, split.pr, split.pt = nil, nil, nil, nil
+	if panel.PlateOf then
+		local ok, pic, plate = pcall(panel.PlateOf, panel, frame)
+		local l, b, r, t
+		if ok and pic and type(plate) == "table" then
+			l, b, r, t = FX.Rect(pic)
+		end
+		if l and r > l and t > b then
+			local w, h = r - l, t - b
+			split.pl, split.pr = l + plate[1] * w, l + plate[3] * w
+			split.pt, split.pb = t - plate[2] * h, t - plate[4] * h
+		end
 	end
 	return split
 end

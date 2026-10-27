@@ -333,7 +333,6 @@ local M = MelloUI:RegisterModule("Fonts", {
 	icon = "Interface\\Icons\\INV_Scroll_03",
 	flavour = "One font for all of Azeroth. Pick it, scale it, outline it.",
 	group = "The look", navOrder = 3,
-	role = "look",
 	tweak = { label = "Custom Fonts", desc = "The fonts and sizes used by the whole interface. Off: the game's own fonts.", order = 11 },
 	enabledByDefault = true,   -- every role "default" changes nothing; UI Modifications drives the switch
 	keep = { "paperFollows" },   -- a one-time step that was done: never in a profile
@@ -342,9 +341,16 @@ local M = MelloUI:RegisterModule("Fonts", {
 })
 
 -- The face chosen for a role, or nil to keep the game's.
-local function ChosenFont(roleKey)
-	local db = M.db
+-- (1.2.4, the Default skin -- MelloUI.Skin, docs/plans/default-skin.md: Fredoka is Modern's face; under the Default
+-- skin a role in one of Fredoka's cuts shows the game's own face -- any other face of the player's choosing stays
+-- theirs)
+local function ChosenFont(roleKey, db)
+	db = db or M.db
 	local value = db and db[roleKey]
+	local Skin = rawget(MelloUI, "Skin")
+	if type(value) == "string" and value:find("\\Fredoka\\", 1, true) and Skin and Skin.IsDefault() then
+		return nil
+	end
 	if type(value) == "string" and value ~= "" and value ~= KEEP then
 		return value
 	end
@@ -1012,7 +1018,11 @@ local function ChatWindowFace(frame, original, onPaper)
 		face = ChosenFont("fontChatParchment") or Semibold(face) or face
 		size = size * (tonumber(M.db and M.db.scaleChatParchment) or 1)
 	end
-	return face or original.path, math.max(6, math.floor(size + 0.5))
+	-- (no face chosen: the game's chat face -- the chat font object's as the game made it; a chat window is first
+	-- read after the font objects took their faces, so its own first read can be ours: 1.2.4, the Default skin)
+	local chat = _G.ChatFontNormal
+	local base = chat and Remember(chat)
+	return face or (base and base.path) or original.path, math.max(6, math.floor(size + 0.5))
 end
 
 -- a chat window whose lines are ink (Chat.lua took its outline off: the
@@ -1420,8 +1430,7 @@ local function ApplyAll()
 	-- own for "Keep the game's") and its size slider (set per string, not
 	-- through a font object)
 	if MelloUI.Kit and MelloUI.Kit.SetTitleFace then
-		local value = M.db.fontTitle
-		MelloUI.Kit:SetTitleFace((type(value) == "string" and value ~= "" and value ~= KEEP) and value or false)
+		MelloUI.Kit:SetTitleFace(ChosenFont("fontTitle") or false)
 	end
 	if MelloUI.Kit and MelloUI.Kit.SetTitleSizeFactor then
 		MelloUI.Kit:SetTitleSizeFactor(ScaleFor("fontTitle"), FaceScale("fontTitle"))
@@ -1464,8 +1473,7 @@ local worldOriginals = {}
 
 local function ApplyWorldFonts(db)
 	for roleKey, globals in pairs(WORLD_FONT_GLOBALS) do
-		local value = db and db[roleKey]
-		local face = (type(value) == "string" and value ~= "" and value ~= KEEP) and value or nil
+		local face = ChosenFont(roleKey, db)
 		for _, name in ipairs(globals) do
 			if worldOriginals[name] == nil and type(_G[name]) == "string" then
 				worldOriginals[name] = _G[name]
@@ -1601,6 +1609,15 @@ function M:OnSettingChanged(key, value, db)
 end
 
 MelloUI:Profile("Fonts", "parchment panel walk", OnParchmentPanelUpdated)
+
+-- (1.2.4) the skin switched (MelloUI.Skin): the faces again -- under the Default skin the Fredoka style is the game's
+-- own faces (ChosenFont); the names over characters follow at the next load, as for any face
+MelloUI:On("skin", function()
+	if M.isEnabled and M.db then
+		ApplyAll()
+		ApplyWorldFonts(M.db)
+	end
+end, M)
 
 -- What this module keeps beside the game's frames (hard rule 1: weak-keyed
 -- tables, never keys on the frames), for the dumps and the tests: read only

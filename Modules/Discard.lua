@@ -53,11 +53,7 @@ local M = MelloUI:RegisterModule("Discard", {
 	desc = "A button on the bag and loot windows that throws away your cheapest grey or white junk to free a slot (sells it at a vendor).",
 	icon = "Interface\\Icons\\INV_Misc_Bag_10",
 	flavour = "Full bags? The cheapest junk makes room, never anything worth keeping.",
-	role = "feature",
 	-- (no group: its rows sit on the Windows page, the bag and loot windows' Behaviour)
-	-- (not on the installer's Features step: its two columns are full, as for
-	-- the Swing Timers; on by default, its switches on the Windows page)
-	installer = false,
 	enabledByDefault = true,
 	defaults = { bagButton = true, lootButton = true, keepWorth = 100 },
 	options = {

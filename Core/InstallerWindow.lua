@@ -4,24 +4,25 @@
 -- The installer's window over the engine (Core/Installer.lua): a kit window
 -- (Kit:OwnWindow, area "installer": always in the kit, user 2026-09-25) with
 -- the steps rail on the left, the step pages on the right and the footer's
--- Back / Continue / Install. The setups' paths:
---   Full experience, Reskin only   choose, fit, review, keep
---   No reskin, features on         choose, review, keep
---   Fresh start                    choose, look, map, parchment, fonts,
---                                  features, fit, chat, windows, review, keep
+-- Back / Continue / Install. The paths:
+--   the setup (1.2.4)              skin, layout, party, quests, combat, chat,
+--                                  minimap, bags, sound, review, keep
 --   Fit to this screen (refit)     fit, review, keep (its own entry only)
--- (the approved sketch of 2026-09-24.)
+-- (the user, 2026-10-26: "the installer should also have the user go trough
+-- every step and picking and choosing the look, i would start with the
+-- look"; "everybody always goes trough the picking process, no more 1 button
+-- full settings"; the sketch MelloUI-BuildData/output/installer_steps_sketch,
+-- its steps kept with the user's three additions of 2026-10-27.)
 --
 -- Built from the shared parts, one system per job: the shell (the corner
 -- ring with the emblem, the plate on the rail with the step's title, close,
 -- Escape, the fit to the screen, the open and close sounds; ONE mover,
 -- Core's, with no saved place: a drag moves it for the session and every
--- open puts it back in the centre), W.NavRail (the numbered steps; switching
--- setups takes its rows from the rail's pool), W.Pager (a page per step,
--- made on its first show, cross-faded 0.10 s out / 0.15 s in with a 12 px
--- slide; at once under Reduce Motion), W.Card (the four setups), the typed
--- rows, W.Button (flat plates; Install the main action, its edge and label
--- in gold), W.Header (a group's heading), the shell's calm ground (0.15.0,
+-- open puts it back in the centre), W.NavRail (the numbered steps), W.Pager
+-- (a page per step, made on its first show, cross-faded 0.10 s out / 0.15 s
+-- in with a 12 px slide; at once under Reduce Motion), W.Card (a step's
+-- choices), W.ToggleRow (the switches), W.Button (flat plates; Install the
+-- main action, its edge and label in gold), the shell's calm ground (0.15.0,
 -- the cleaner look: one flat ground, the stone only as a band inside the
 -- rail) with ONE W.Panel on it for the body (the dark inner panel: every
 -- line of text on it, none small on the stone, WINDOW-RULES 2e; one
@@ -32,28 +33,22 @@
 --
 -- Nothing of it exists at login: this file defines functions and data. The
 -- window is built the first time it opens (WINDOW-RULES 2f), each page on
--- its first show; revisiting a page or switching setups makes no frame. Its
--- bus listeners are taken when it is built, its combat events and the
--- 'editmode' listener only while it shows; nothing polls. It writes nothing
--- but the setup's draft until Install; the engine applies, counts down and
--- reverts, and tells the window on the bus ('installer'). The fit runs on
--- the Screen step's first show (a frame's share at a time, I:StartFit) and
--- Install waits for it. The UI scale is only shown, never changed.
+-- its first show; revisiting a page makes no frame. Its bus listeners are
+-- taken when it is built, its combat events and the 'editmode' listener only
+-- while it shows; nothing polls. It writes nothing but the setup's picks
+-- until Install; the engine applies, counts down and reverts, and tells the
+-- window on the bus ('installer'). The fit runs from the Layout step's first
+-- show (a frame's share at a time, I:StartFit), again after a pick changes
+-- what it reads, and Install waits for it. The UI scale is only shown, never
+-- changed.
 --
--- Fresh start's wizard (Look, Minimap, Parchment and dark mode, Fonts,
--- Features, Chat, Windows) is the same kind of page: its switches, choice
--- rows and cards read and write that setup's draft only, each starting at
--- Full's value (Dark mode at the player's own: a personal preference), so
--- Continue through every step gives Mello's look with the features off. A
--- feature switched on there comes with Mello's settings for it (the engine).
--- A change there drops the setup's fit (the fitter reads the reskin, The
--- HUD and Tweaks): Review fits again and Install waits for it. Pictures,
--- never a live preview (user, 2026-09-25: a Kit Colours switch walks every
--- kit texture): a palette card shows that palette's swatch (0.14.0: the
--- Look step's seven, above the Kit Colours), a colour card the kit's window
--- frame from that look's own folder under the drafted palette (the kit's
--- Kit:ColourLooks and Kit:LookRoot), a font card its own faces. The Review
--- step names the palette the setup puts in (I:PaletteOf).
+-- The setup's pages (SetupSteps, below) are all the same: a lead, one big
+-- picture -- the choice's, in the skin picked (the Layout step's: the fit's
+-- own drawing of this screen) -- and the choices under it, cards for one of
+-- several and switches for several, each writing the picks (the engine's
+-- I.SETUP says what each one sets; I:SetupDraft makes the draft). Pictures,
+-- never a live preview: shipped in Media\Installer, loaded when their page
+-- shows, let go when the window closes.
 --
 --   MelloUI:OpenInstaller(from)    the entry (the configurator's Install...,
 --                                  Install again and Fit to this screen,
@@ -67,16 +62,13 @@
 --                                  /reload or a restart the countdown runs
 --                                  again with its 15 s, I:ResumePending)
 --   IW:Close()   IW:IsShown()   IW:Busy() (shown, or a countdown runs)
---   IW:Draft([optionKey]) -> draft the setup's draft: the Screen step's
---                                  layout switch, and Fresh start's wizard
---                                  (Full's values to begin with; made when
---                                  Fresh start is picked)
---   IW:FontChoice([draft]) -> key  the Fonts step's card the draft names:
---                                  a Font Style's value, "mello" or "game"
---                                  (the tests' probe)
+--   IW:Draft([optionKey]) -> draft the setup's draft (made from its picks,
+--                                  I:SetupDraft), the refit's (the Screen
+--                                  step's layout switch)
+--   IW:Picks() -> picks            the setup's answers (I:DefaultPicks to
+--                                  begin with: the recommended ones)
 --   IW:Step(key, def)              a step's page put in or replaced (every
---                                  step has its own in this file, the Fresh
---                                  start wizard's included): def = { build =
+--                                  step has its own in this file): def = { build =
 --                                  fn(page, IW) -> height, refresh =
 --                                  fn(page, IW) -> height or nil, title,
 --                                  label }; a step with no page shows a
@@ -84,8 +76,8 @@
 --   IW:Refresh()                   the page on show and the footer again
 --   IW.win                         the built window: frame, shell, rail,
 --                                  pager, pages[step], foot
---   IW.state                       (read only) option, step, phase, drafts,
---                                  fits; IW.PAGE_W: a page's width
+--   IW.state                       (read only) option, step, phase, picks,
+--                                  drafts, fits; IW.PAGE_W: a page's width
 --------------------------------------------------------------------------------
 
 local ADDON_NAME, ns = ...
@@ -106,23 +98,21 @@ local floor, min, abs = math.floor, math.min, math.abs
 local format, concat = string.format, table.concat
 local EMPTY = {}
 
-local TEXTURE_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"   -- look-ok: MelloUI's logo and the setups' banner picture
+local TEXTURE_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"   -- look-ok: MelloUI's logo
 local LOGO = TEXTURE_PATH .. "LogoIcon.tga"
--- the banner (1.0, the user's of 2026-10-20, its edges faded soft:
--- Tools/make_logo.py): 1024 x 341 at the top of a 1024 x 512 file, shown
--- 558 x 186 across the page; loaded when the Setup page shows, released
--- when the window closes (a 2 MB TGA: the texture build's quality gate
--- keeps it a TGA)
-local BANNER = TEXTURE_PATH .. "InstallerBanner.tga"
-local BANNER_U, BANNER_V = 1, 341 / 512
+-- (1.2.4) the steps' pictures (Media\Installer, Tools/make_installer_pictures.py, shipped by Tools/texture_pack.py),
+-- each at the top left of a 1024 x 512 file: the Skin step's the whole screen, 910 x 512 (16:9); every other step's a
+-- 2.5:1 band, 1024 x 410; drawn the text's width
+local PICTURES = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Installer\\"   -- (the steps' pictures)
+local SCREEN_UV, BAND_UV = { 910 / 1024, 1 }, { 1, 410 / 512 }
 local TICK = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\ql_completed"   -- (0.25.0: the icon set's gold tick; the game's 1x ready check until then)
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local NAME = "MelloUIInstallerFrame"   -- (named: the shell's Escape)
 local OWNER = "Installer window"            -- the bus owner while it exists
 local OWNER_SHOWN = "Installer window shown"   -- ... and while it shows
 
--- geometry (UI units, the approved sketch)
-local WIN_W, WIN_H = 780, 600
+-- geometry (UI units; 1.2.4: wider and taller for the steps' pictures)
+local WIN_W, WIN_H = 860, 640
 local EDGE = 16                 -- the window's margin
 local TOP = -64                 -- the rail's and the body's top, under the corner ring
 local RAIL_W = 160
@@ -132,14 +122,16 @@ local FOOT_MID = 32
 local PAGE_W = WIN_W - BODY_X - EDGE   -- 574
 local PAD = 14                  -- a page's text margin
 local TEXT_W = PAGE_W - 2 * PAD
-local CARD_W, CARD_H, CARD_GAP_X, CARD_GAP_Y = 279, 72, 16, 10
+local CARD_H, CARD_GAP_X = 78, 12
 -- the pages' clip reaches this far past their left and right edges: a chosen
 -- card wears the active look (Kit:SetActive), whose halo reaches 8 x 0.7
 -- units past the card, and the cards lie flush with the page's edges (the
 -- halo was cut off on their outer side; review, 2026-09-28)
 local LOOK_BLEED = 6
-local BANNER_W, BANNER_H = 558, 186
-local PIC_W, PIC_H, PIC_M = 520, 170, 8
+-- a step's picture (the Layout and Screen steps' drawing of the fit too): the text's width, the pictures' shape
+local PIC_W, PIC_M = TEXT_W, 8
+local PIC_H = floor(PIC_W * 410 / 1024)
+local SCREEN_H = floor(PIC_W * 9 / 16)   -- (the Skin step's picture: the whole screen)
 local RING = 110
 local BUTTON_W, BUTTON_H = 120, 24
 local DONE_BUTTON_W = 124
@@ -160,7 +152,6 @@ local SUB_SCREEN, SUB_MAIN, SUB_BAR, SUB_FRAME, SUB_RING, SUB_ZONE = -8, -6, -4,
 
 -- The texts (in-game words: addon-only, no tool or other addon named)
 local TEXT = {
-	lead = "Choose how MelloUI starts. Nothing changes until you install, and you can go back right after.",
 	screen = "Screen: %s",
 	detected = "Detected screen: %s",
 	fitting = "Fitting to your screen...",
@@ -177,8 +168,7 @@ local TEXT = {
 	how = "Pieces at an edge keep their distance to it; the centre group tightens to fit; then everything is checked for overlaps.",
 	eyeHead = "Worth a look in the game once it is in:",
 	eyeMore = "... and %d more",
-	suggest = "'No reskin, features on' suits this screen.",
-	useNoReskin = "Use No reskin",
+	suggest = "Your own Edit Mode layout suits this screen better.",
 	-- (0.22.0) the way on when Edit Mode has no room for one more layout
 	installWithout = "Install Without The Layout",
 	deleteOld = "Delete '%s'",
@@ -198,8 +188,6 @@ local TEXT = {
 	doneRefit = "Your layout was fitted to this screen.",   -- (Fit to this screen: nothing was installed)
 	doneReload = "The names above characters use the new font after a reload: type /reload.",
 	doneWhere = "Every setting lives in /mello, and in the MelloUI button of the game menu.",
-	doneFresh = "Features are off: switch them on in /mello.",
-	doneFeatures = "The features you switched on start with Mello's settings. The rest wait in /mello.",
 	revertedTitle = "Back to 'Before install'.",
 	revertedReload = "Type /reload to finish: the names above characters still use the installed font.",
 	plateDone = "All set",
@@ -208,51 +196,65 @@ local TEXT = {
 	placeholder = "Continue keeps Mello's own choice for this step.",
 	continue = "Continue", back = "Back", install = "Install", keep = "Keep", revert = "Revert",
 	tour = "Take the tour", open = "Open MelloUI", again = "Choose again", close = "Close",
-	-- Fresh start's wizard
-	lookLead = "Your palette, the painted kit and its colours. Nothing changes until you install.",
-	palette = "Palette",
-	reskin = "Painted Kit Reskin",
-	reskinDesc = "The game's windows and HUD dressed in the painted kit. Off: they keep the game's own art; MelloUI's own parts keep its look, and the features you switch on keep working.",
-	colours = "Kit Colours",
-	colourLine = { warm = "Iron in warm browns", bronze = "Browns with gold bevels", painted = "Grey iron, bright red" },
-	colourOwn = "Iron in the palette's own colours",   -- (a palette's own kit, under any palette but Ember)
-	classIcons = "Class icons in portraits",
-	parchmentLead = "Parchment behind text, in dark ink. Each area has its own sheet.",
-	parchment = "Parchment",
-	darkMode = "Dark mode",
-	brightness = "Default UI brightness",
-	brightnessDesc = "How bright the game's own artwork is where Dark mode darkens it. Lower is darker.",
-	fontsLead = "A font style is a preset: it changes every font at once. Each card shows its title face and its reading face.",
-	fontTitleSample = "Quest log",
-	fontTextSample = "The road to Westfall is long.",
-	melloFonts = "Mello's fonts",
-	melloFontsTip = "The faces and sizes of Mello's own setup, as Full experience has them.",
-	gameFonts = "The game's fonts",
-	gameFontsTip = "The game's own faces everywhere: the font options stay off.",
-	chatLead = "How names read in chat.",
-	chatTweaks = "Chat tweaks",
-	names = "Names in chat",
-	textShade = "Shade behind text",
-	windowsLead = "Which windows wear the painted kit.",
-	windowsCount = "%d windows",
-	hudCount = "%d parts",
-	mapLead = "The minimap's shape. The pictures show each one; nothing changes until you install.",
-	mapLine = { round = "The map in the painted ring.", square = "The whole map in the window frame." },
-	mapMergeHint = "with Services on",
-	mapPickSquare = "Pick \"%s\" first.",   -- (the merge row, round chosen: the square card's name)
-	featuresLead = "MelloUI's own features. They all start off; one you switch on comes with Mello's settings for it.",
-	allFeatures = "All features",
-	allFeaturesDesc = "Every feature below on or off at once.",
-	-- the Review step's lines for the two
-	reviewChoices = "Your choices from each step",
-	mapGame = "Minimap: the game's own",
-	mapRoundRow = "Minimap: round, in the painted ring",
-	mapSquareRow = "Minimap: square, in the window frame",
-	mapMergedRow = "Minimap: square, the Services bar inside its frame",
-	featuresNone = "Features stay off; switch them on in /mello any time",
-	featuresRow = "Features on: %s",
-	featuresMore = "%s and %d more",
 	paletteRow = "Palette: %s",
+	-- the setup's steps (1.2.4)
+	skinLead = "How everything looks: the game's frames and MelloUI's own windows and features alike. Every step after this one shows its pictures in this skin.",
+	recommended = "Recommended",
+	notInstalled = "Not installed",
+	switchedOff = "Switched off",
+	getOldschool = "MelloUI Oldschool is an addon of its own. Get it from CurseForge, then restart the game: this card turns on.",
+	enableOldschool = "MelloUI Oldschool is installed but switched off: switch it on in the game's AddOn list, then type /reload.",
+	copyHint = "The game can't open web pages: the link is selected in the box, Ctrl+C copies it.",
+	layoutLead = "Where everything stands on your %s screen.",
+	ownLayoutPicture = "Your own Edit Mode layout stays as it is.",
+	useOwnLayout = "Keep My Layout",
+	manyLead = "Pick what you want. Each one comes with Mello's settings for it; change them any time in /mello.",
+	reviewSkin = "Skin: %s",
+	reviewNone = "none",
+	gamePalette = "Colours: the game's own",
+	-- the names and lines of the skins, the layouts and each step's choices (I.SKINS, I.SETUP)
+	choices = {
+		default = { "Default", "The game's own look for everything, MelloUI's windows and features too." },
+		modern = { "Modern", "MelloUI's own look for everything: slate panels, gold trim, one clean font." },
+		oldschool = { "Oldschool", "The painted RPG look for everything: parchment, iron and stone." },
+		mello = { "Mello's Layout", "Bars, frames, chat and the map column fitted to your screen; your own layouts stay in Edit Mode's list." },
+		own = { "Keep My Layout", "Your Edit Mode layout stays exactly as it is; MelloUI only dresses it." },
+		group = { "Group Frames", "MelloUI's own party and raid frames, the heal and cooldown effects across them." },
+		portraits = { "Portraits", "The game's party frames with their portraits, in your skin." },
+		yourself = { "Show Yourself In Your Party", "Your own frame on top of the group." },
+		flip = { "Flip Horizontally", "Portraits on the right: for a party on the right side of the screen." },
+		markers = { "Party Markers", "Your friends' class medallions over their heads, to find them in a crowd." },
+		tracker = { "Quest Tracker", "Your quests by zone, in your skin." },
+		questlist = { "Quest List", "Every quest near you, on the map and in a list." },
+		route = { "Route", "The way to your next quest, over the real ground." },
+		map = { "Map", "One seamless world map with your quests." },
+		voice = { "Voice Over", "Quest givers speak their text." },
+		services = { "Services", "Repair, innkeeper, flight master: one click routes there." },
+		dungeon = { "Dungeon Info", "Every dungeon and raid on the map: its bosses, their loot, your wish list." },
+		nameplates = { "Nameplates", "Enemy plates: names, debuffs, crowd control, threat." },
+		combattext = { "Combat Text", "Your hits and heals, easy to read." },
+		meter = { "Damage Meter", "Damage and healing, for you and your group." },
+		effects = { "Heal And Cooldown Effects", "Heals fly to the frame and land on it; cooldowns show on it." },
+		prd = { "Personal Display", "Your health, power and cooldowns under your character." },
+		view = { "Chat View", "Channel tabs, readable lines, a whisper window." },
+		plainchat = { "The Plain Chat", "The chat windows as the game has them." },
+		column = { "Map Column", "The minimap as wide as the tracker, its buttons in groups." },
+		reminders = { "Reminders", "A buff or food running out: a quiet card." },
+		widgets = { "Widgets", "Small cards: your quest's step, a timer, a count." },
+		kinds = { "Bags By Kind", "One window, sorted by kind, with search." },
+		separate = { "Separate Bags", "One window a bag, as the game has them." },
+		gains = { "Gains", "Short lines beside you: what you loot, receive and buy." },
+		restock = { "Restock", "Drink, food, ammunition and reagents: a list to buy at the shop, bought on a click." },
+		discard = { "Discard", "A button that sells or throws away your cheapest junk to free a slot." },
+		melloSound = { "MelloUI Sounds", "Soft clicks, a chime for a waypoint, a quest done." },
+		gameSound = { "The Game's Sounds", "The game's own interface sounds." },
+	},
+	leads = {
+		party = "Which frames show your group, in your skin. Both can be clicked to heal.",
+		chat = "Your chat window, in your skin.",
+		bags = "Your bags, in your skin.",
+		sound = "The interface's sounds.",
+	},
 }
 IW.TEXT = TEXT
 
@@ -274,32 +276,26 @@ end
 
 -- What the Review step lists per setup; true: the Edit Mode layout's line,
 -- as the fit and the Screen step's switch make it; a function: fn(option,
--- draft) -> the line (the palette's; Fresh start's Minimap and Features
--- lines, set with the wizard's pages below). No reskin and the refit keep
--- the player's palette: no line.
+-- draft) -> the line. The setup's rows are its steps' picks (SetupSteps sets
+-- them); the refit keeps the player's palette: no line.
 local REVIEW = {
-	full = { "Mello's modules and their settings", "The painted look and its choices", PaletteLine, true, TEXT.scaleRow },
-	noReskin = { "MelloUI's features and their settings", "The painted reskin is switched off; your bars and layout stay as they are",
-		"No Edit Mode change", TEXT.scaleRow },
-	reskinOnly = { "The painted look and its choices", PaletteLine, true,
-		"Features stay off; chat on parchment needs Chat tweaks, so it stays off", TEXT.scaleRow },
-	fresh = { TEXT.reviewChoices, PaletteLine, true, TEXT.scaleRow },
 	fit = { true, "Window places fitted to this screen", "Your other settings stay as they are", TEXT.scaleRow },
 }
-local REVIEW_ROWS = 6
+local REVIEW_ROWS = 12
 
 -- The steps: each one's plate title and rail label, and its page's builder
--- and refresh (IW:Step: the Fresh start wizard's pages come that way)
+-- and refresh (the setup's pages are set by SetupSteps, below)
 local STEPS = {
-	choose = { title = "Welcome to MelloUI", label = "Setup" },
-	look = { title = "Look", label = "Look" },
-	map = { title = "Minimap", label = "Minimap" },
-	parchment = { title = "Parchment and dark mode", label = "Parchment" },
-	fonts = { title = "Fonts", label = "Fonts" },
-	features = { title = "Features", label = "Features" },
-	fit = { title = "Fit to your screen", label = "Your screen" },
+	skin = { title = "Welcome to MelloUI", label = "Skin" },
+	layout = { title = "Layout", label = "Layout" },
+	party = { title = "Party and raid", label = "Party and raid" },
+	quests = { title = "Quests and travel", label = "Quests" },
+	combat = { title = "Combat", label = "Combat" },
 	chat = { title = "Chat", label = "Chat" },
-	windows = { title = "Windows", label = "Windows" },
+	minimap = { title = "Minimap and widgets", label = "Minimap" },
+	bags = { title = "Bags", label = "Bags" },
+	sound = { title = "Sound", label = "Sound" },
+	fit = { title = "Fit to your screen", label = "Your screen" },
 	review = { title = "Review and install", label = "Review" },
 	keep = { title = "Keep this setup?", label = "Keep" },
 }
@@ -310,8 +306,9 @@ local STEPS = {
 
 local win   -- the window, once built (IW.win)
 local state = {
-	option = "full",     -- the chosen setup's key (Full experience preselected)
-	step = "choose",     -- the step on show
+	option = "setup",    -- the setup's key (the refit's, "fit", from its own entry)
+	step = "skin",       -- the step on show
+	picks = nil,         -- the setup's answers (I:DefaultPicks, made at the first ask)
 	phase = "choose",    -- "choose" (before Install) | "keep" (the answer owed) | "done"
 	doneMode = nil,      -- "kept" | "reverted"
 	needsReload = false, -- (kept) the fonts over heads changed
@@ -346,19 +343,25 @@ end
 
 local InCombat = MelloUI.InCombat   -- (Core's reader)
 
--- a setup's draft: nothing but its own choices until Install. Fresh start's
--- begins at Full's values (every wizard control does), kept as they
--- began too (wizardFull: the Fonts step's "Mello's fonts")
-local wizardFull = nil
+-- the setup's answers: the recommended ones to begin with
+local function Picks()
+	if not state.picks then
+		state.picks = I:DefaultPicks()
+	end
+	return state.picks
+end
+
+-- a setup's draft: nothing but its own choices until Install. The setup's
+-- is made from its picks (again after a pick: SetupSteps drops it), the
+-- refit's holds the Screen step's layout switch
 local function DraftFor(key)
 	key = key or state.option
 	local d = state.drafts[key]
 	if not d then
 		local option = Option(key)
-		if option and option.base == "fresh" then
-			local ok, draft = pcall(I.DefaultDraft, I)
+		if option and option.base == "setup" then
+			local ok, draft = pcall(I.SetupDraft, I, Picks())
 			d = (ok and type(draft) == "table") and draft or {}
-			wizardFull = I.DeepCopy(d)
 		else
 			d = {}
 		end
@@ -367,9 +370,10 @@ local function DraftFor(key)
 	return d
 end
 
--- whether the setup's path has the Screen step (the fit runs there)
+-- whether the setup fits the screen (its window places or its layout: the
+-- engine's own rule, NeedsFit)
 local function HasFit(option)
-	return option and IndexOf(option.steps, "fit") ~= nil
+	return option and (option.places or option.layout) and true or false
 end
 
 -- the pending answer on the restore point (nil: none owed)
@@ -647,18 +651,6 @@ function ACTIONS.again()
 	Present(first, -1)
 end
 
--- the Screen step's suggestion on a screen too small for Mello's layout
-function ACTIONS.noReskin()
-	if state.phase ~= "choose" then
-		return
-	end
-	MelloUI:PlayUISound("tab")
-	state.option = "noReskin"
-	win.rail:SetGroups(IW.GroupsFor(Option()))
-	state.step, state.footLine = "review", nil
-	Present("review", 1)
-end
-
 --------------------------------------------------------------------------------
 -- The rail
 --------------------------------------------------------------------------------
@@ -837,68 +829,6 @@ function IW.RefreshPlaceholder()
 end
 
 --------------------------------------------------------------------------------
--- The Setup step: the banner, the lead, the four setups (the refit has no card)
---------------------------------------------------------------------------------
-
-local function CardPick(card)
-	if state.phase ~= "choose" or card.key == state.option then
-		return
-	end
-	state.option, state.footLine = card.key, nil
-	win.rail:SetGroups(IW.GroupsFor(Option()))
-	RailRefresh()
-	RefreshPage("choose")
-	RefreshFooter()
-	-- (Fresh start's draft made in this light frame, so the Look step's
-	-- first show only builds its page)
-	if Option().base == "fresh" then
-		DraftFor()
-	end
-end
-
-local function BuildChoose(page)
-	local banner = page:CreateTexture(nil, "ARTWORK")
-	banner:SetSize(BANNER_W, BANNER_H)
-	banner:SetPoint("TOP", page, "TOP", 0, -8)
-	page.banner = banner
-	local lead = W.Text(page, "GameFontHighlight", MelloUI.Lang.T(TEXT.lead), "text")
-	lead:SetWidth(TEXT_W)
-	lead:SetPoint("TOPLEFT", page, "TOPLEFT", PAD, -(8 + BANNER_H + 10))
-	page.lead = lead
-	-- the cards hang under the lead (a Font Style that makes it taller moves
-	-- them with it)
-	-- (a hidden setup, the refit, has no card: it has its own entry)
-	page.cards = {}
-	for _, option in ipairs(I.OPTIONS) do
-		-- (and a setup that is MelloUI_Oldschool's, Reskin only, only with it loaded)
-		if not option.hidden and not (option.oldschool and type(rawget(MelloUI, "Oldschool")) ~= "table") then
-			local i = #page.cards + 1
-			local col, row = (i - 1) % 2, floor((i - 1) / 2)
-			local card = W.Card(page, { width = CARD_W, height = CARD_H, title = option.title, text = option.desc,
-				tag = option.tag, key = option.key, onClick = CardPick }, win.shell)
-			card:SetPoint("TOPLEFT", lead, "BOTTOMLEFT", col * (CARD_W + CARD_GAP_X) - PAD, -12 - row * (CARD_H + CARD_GAP_Y))
-			page.cards[i] = card
-		end
-	end
-	return 1
-end
-
-local function RefreshChoose(page)
-	if not win.bannerLoaded then
-		page.banner:SetTexture(BANNER)
-		page.banner:SetTexCoord(0, BANNER_U, 0, BANNER_V)
-		win.bannerLoaded = true
-	end
-	for _, card in ipairs(page.cards) do
-		card:SetSelected(card.key == state.option)
-	end
-	local lead = Num(page.lead:GetStringHeight()) or 30
-	return 8 + BANNER_H + 10 + lead + 12 + 2 * CARD_H + CARD_GAP_Y + 8
-end
-
-STEPS.choose.build, STEPS.choose.refresh = BuildChoose, RefreshChoose
-
---------------------------------------------------------------------------------
 -- The Screen step: the detected screen, the fitted picture, the
 -- aspect and the UI scale (read only), the layout switch
 --------------------------------------------------------------------------------
@@ -976,12 +906,10 @@ local function OldLayouts(fit)
 	return fit.old
 end
 
-local function BuildFit(page)
-	local shell = win.shell
-	page.detected = W.Text(page, "GameFontHighlight", nil, "text")
-	page.detected:SetPoint("TOPLEFT", page, "TOPLEFT", PAD, -8)
-	-- the picture: the screen, and the pieces in palette solids (a pool of
-	-- textures made on the first draw and reused)
+-- the fit's picture: the screen, and the pieces in palette solids (a pool of
+-- textures made on the first draw and reused): the Screen step's, and the
+-- setup's Layout step's (1.2.4)
+local function FitPicture(page)
 	local box = W.Box(page, "innerPanel", "border", 1)
 	box:SetSize(PIC_W, PIC_H)
 	box:SetPoint("TOP", page, "TOP", 0, -30)
@@ -996,11 +924,19 @@ local function BuildFit(page)
 	pic.msg = W.Text(box, "GameFontHighlight", MelloUI.Lang.T(TEXT.fitting), "text")
 	pic.msg:SetJustifyH("CENTER")
 	pic.msg:SetPoint("CENTER", box, "CENTER", 0, 0)
+	pic.msg:SetWidth(PIC_W - 40)
 	page.pic = pic
+	return box
+end
+
+local function BuildFit(page)
+	local shell = win.shell
+	page.detected = W.Text(page, "GameFontHighlight", nil, "text")
+	page.detected:SetPoint("TOPLEFT", page, "TOPLEFT", PAD, -8)
+	FitPicture(page)
 	-- under it: the FAIL line or the eye items, and the suggestion
 	page.note = W.Text(page, "GameFontHighlight", nil, "text")
 	page.note:SetWidth(TEXT_W)
-	page.suggest = Button(page, TEXT.useNoReskin, 150, "noReskin")
 	page.aspect = InfoPanel(page, TEXT.aspect)
 	page.scale = InfoPanel(page, TEXT.scale)
 	page.scale.line:SetText(MelloUI.Lang.T(TEXT.scaleLine))
@@ -1184,12 +1120,6 @@ local function RefreshFit(page)
 		Place(page.note, page, PAD, y)
 		y = y + (Num(page.note:GetStringHeight()) or 14) + 8
 	end
-	local suggest = report and report.tooSmall and option.key ~= "noReskin" and true or false
-	page.suggest:SetShown(suggest)
-	if suggest then
-		Place(page.suggest, page, PAD, y)
-		y = y + BUTTON_H + 10
-	end
 	-- the aspect and the UI scale
 	local aspect = page.aspect
 	aspect.value:SetText(MelloUI.Lang.T(ratio or "?"))
@@ -1285,7 +1215,7 @@ local function RefreshReview(page)
 	-- since, so Install waits for the new one)
 	EnsureFit(option.key)
 	local y = 10 + (Num(page.lead:GetStringHeight()) or 14) + 10
-	local lines = REVIEW[option.key] or REVIEW.full
+	local lines = REVIEW[option.key] or REVIEW.setup
 	for i, row in ipairs(page.rows) do
 		local text = lines[i]
 		if text == true then
@@ -1533,18 +1463,6 @@ ShowDone = function()
 		if state.needsReload then
 			lines[#lines + 1] = TEXT.doneReload
 		end
-		if option.base == "fresh" then
-			-- (read from the settings now, as the engine reads a state: kept
-			-- after a /reload, the draft is gone)
-			local now = { enabled = MelloUI.db.enabled, modules = MelloUI.db.modules }
-			local any = false
-			for _, group in ipairs(I.FEATURE_GROUPS) do
-				for _, name in ipairs(group.members) do
-					any = any or I:FeatureOn(now, name)
-				end
-			end
-			lines[#lines + 1] = any and TEXT.doneFeatures or TEXT.doneFresh
-		end
 		lines[#lines + 1] = TEXT.doneWhere
 	else
 		done.title:SetText(MelloUI.Lang.T(TEXT.revertedTitle))
@@ -1595,1483 +1513,584 @@ ShowDone = function()
 end
 
 --------------------------------------------------------------------------------
--- The Fresh start wizard: the Look, Parchment and dark mode, Fonts,
--- Chat and Windows steps. Every control reads and writes Fresh start's
--- draft and nothing else: the settings are written by Install, in its one
--- Batch. Each starts at Full's value (I:DefaultDraft). The lists come from
--- where they live, one system each: the Kit Colours and the Button Border
--- looks from the kit (Kit.borderKinds, whose Kit Colours are
--- Kit.colourLooks), the parchment areas from UI Modifications
--- (MelloUI.ParchmentAreas), the Font Styles from Fonts (MelloUI.FontStyles,
--- MelloUI.FontStyleSettings), the name forms and the descriptions from the
--- modules' own registrations, the windows from the registry grouped by
--- I.WINDOW_GROUPS. A row (or the colour cards) that means nothing while a
--- switch is off sleeps, dimmed, and says which switch wakes it (W.Gate;
--- indented under a switch on its own page). UI Modifications itself is on
--- while anything the draft asks for runs under it. Pictures, never a live
--- preview (user, 2026-09-25: a Kit Colours switch walks every kit texture): a
--- palette card shows its swatch, a colour card the kit's window frame as
--- that look's folder holds it (the drafted palette's), a map card its piece
--- in the drafted look, a font card its own faces. Each page is made on its
--- first show, its rows (and the font cards' faces, the palette cards)
--- within one budget a frame; a click changes the draft, drops the setup's
--- fit and lays the page on show again (its gates), nothing more.
+-- The setup's steps (1.2.4): Skin, Layout, Party and raid, Quests and
+-- travel, Combat, Chat, Minimap and widgets, Bags, Sound, and their Review
+-- rows. Every page the same: its lead, ONE picture (the choice's, in the
+-- skin picked; the Layout step's the fit's own drawing of this screen), the
+-- choices under it -- cards for one of several, switches for several. A
+-- pick changes the picks and nothing else (the draft is made from them
+-- again, DraftFor; the fit is dropped, as the fitter reads what the picks
+-- switch, and runs again on the Layout or Review step); Install writes them.
+-- What each choice sets is the engine's (I.SETUP, I:SetupDraft); a choice
+-- whose feature addon is off is not offered, and a step left with nothing to
+-- offer is not on the path (IW.PruneSteps, as the window is made).
 --------------------------------------------------------------------------------
 
 -- (a function's own scope: the file's main chunk is close to Lua's 200
 -- locals; defined and run once while the file loads, making no frame)
-local function WizardSteps()
-	local FRESH = "fresh"
-	local UMBRELLA_ON = "!UIModifications"
-	local RESKIN = "UIModifications.reskin"
-	local COLOURS_KEY, BORDER_KEY = "UIModifications.kitColours", "UIModifications.buttonBorder"
-	local PALETTE_KEY = "UIModifications.palette"
-	-- (one look Q9: Class Icons' Player Portraits is its switch)
-	local PORTRAITS = "ClassIcons.portraits"
-	local DARK_ON, SHADE = "UIModifications.qol_DarkMode", "DarkMode.shade"
-	local FONTS_ON, FONT_STYLE = "UIModifications.qol_Fonts", "Fonts.style"
-	-- (0.16.0: the name form is Show Names As, UI Modifications', for every name)
-	local CHAT_ON, NAME_STYLE, TEXT_SHADE = "UIModifications.qol_Chat", "UIModifications.nameFormat", "Tweaks.textShade"
-	-- the wizard's switches of what runs under UI Modifications: it is on while
-	-- any of them is
-	local UMBRELLA = { RESKIN, PORTRAITS, DARK_ON, FONTS_ON, CHAT_ON }
-	-- the parchment sheets whose dark ink is Chat's (the engine's ink guard,
-	-- I.INK, for the chat windows; the whisper popups are Chat's own). One
-	-- look: the chat's is Kit.ownParchments' (the Minimal Chat View's paper,
-	-- the reskin on or off), so Chat tweaks alone gate it (ChatGate; the
-	-- whisper popups' ChatSheetGate)
-	local CHAT_SHEETS = { parchment_chat = true, parchment_whisper = true }
-	local KEEP_FACE = "default"   -- a Fonts role on "Keep the game's"
-	local GATE_INDENT = 22        -- a row that sleeps under a switch on its own page
-	local HEADING_H = 28          -- (W.Header's height, W.HEADER_HEIGHT; W is not read at load)
-	local COLOUR_GAP = 10
-	local COLOUR_W = floor((PAGE_W - 2 * COLOUR_GAP) / 3)
-	local COLOUR_H = 120
-	local FRAME_PIC_H = 64        -- a colour card's picture: the kit's window frame on its body
-	-- a palette's card, its swatch, between the two lines (small: the page
-	-- fits the body with the reskin off too, the Kit Colours' line shown)
-	local PALETTE_H, PALETTE_PIC, PALETTE_GAP_Y = 40, 10, 4
-	local FONT_H = 70
-	local TITLE_BASE, TEXT_BASE = 20, 13   -- a font card's samples before their faces' size factors (Morpheus-, Friz-sized)
-	local GAME_TITLE, GAME_TEXT = "Fonts\\MORPHEUS.TTF", "Fonts\\FRIZQT__.TTF"   -- (when the game's objects read nothing)
+local function SetupSteps()
+	local SETUP = "setup"
+	local CURSEFORGE = "https://www.curseforge.com/wow/addons/melloui-oldschool"
+	local OLDSCHOOL = "MelloUI_Oldschool"
+	local SKIN_CARD_H = 88
+	local SWITCH_W = floor((PAGE_W - CARD_GAP_X) / 2)   -- two columns of switches
+	-- a step's picture, by the choice shown (a name ending in "_" is the skin's: "<name><skin>"); a step named by a
+	-- string has one picture whatever its choices; the Sound step has none
+	local PICTURE = {
+		skin = { default = "look_default", modern = "look_modern", oldschool = "look_oldschool" },
+		party = { group = "party_group_", portraits = "party_portraits_" },
+		quests = "quests_", combat = "combat_", minimap = "column_",
+		chat = { view = "chat_", plainchat = "chatgame_" },
+		bags = { kinds = "bags_", separate = "bagsgame_" },
+	}
+	local STEP_OF = {}   -- [step key] = its step in I.SETUP
+	for _, st in ipairs(I.SETUP) do
+		STEP_OF[st.key] = st
+	end
+	local loaded = {}    -- [picture texture] = true while it holds a picture (let go on close)
 
-	local function Wizard()
-		return DraftFor(FRESH)
+	local function Choice(key)
+		return TEXT.choices[key] or { key, "" }
 	end
 
-	-- a switch in the draft: on unless false, as the setting it stands for
-	local function On(key)
-		return Wizard()[key] ~= false
+	-- the skin picked, as the engine takes it (Oldschool only with MelloUI_Oldschool there)
+	local function Skin()
+		return I.SkinOf(Picks())
 	end
 
-	-- the Features step's switch keys (I.FEATURE_GROUPS, I.SwitchKey), and
-	-- those of them that run under UI Modifications; read once, the first
-	-- time asked (the modules register after this file)
-	local featureKeys, featureUM = nil, nil
-	local function FeatureKeys()
-		if not featureKeys then
-			featureKeys, featureUM = {}, {}
-			for _, group in ipairs(I.FEATURE_GROUPS) do
-				for _, name in ipairs(group.members) do
-					local m = MelloUI:GetModule(name)
-					local key = I.SwitchKey(m)
-					if key then
-						featureKeys[#featureKeys + 1] = key
-						-- (one whose rows are its switches runs under UI
-						-- Modifications too: Buffs & Debuffs)
-						if key:sub(1, 16) == "UIModifications." or I.Kind(m) == "rows" then
-							featureUM[#featureUM + 1] = key
-						end
-					end
-				end
-			end
+	-- MelloUI_Oldschool: "loaded", "off" (installed, switched off in the AddOn list) or "missing"
+	local function OldschoolState()
+		if MelloUI:OldschoolShipped() then
+			return "loaded"
 		end
-		return featureKeys, featureUM
+		local api = rawget(_G, "C_AddOns")
+		local info = type(api) == "table" and api.GetAddOnInfo or rawget(_G, "GetAddOnInfo")
+		local ok, name = false, nil
+		if type(info) == "function" then
+			ok, name = pcall(info, OLDSCHOOL)
+		end
+		return (ok and type(name) == "string" and not Secret(name)) and "off" or "missing"
 	end
 
-	-- the draft changed: UI Modifications on while anything under it is
-	-- wanted; the Screen step's fit dropped (the fitter reads the kit
-	-- minimap column -- the reskin, The HUD -- and Tweaks, which the wizard
-	-- changes after that step and on a way back: Review fits again, Install
-	-- waits for it, and unchanged inputs answer from the fitter's last fit);
-	-- then the page on show (its gates) and the footer again (quiet: not, for
-	-- a slider's drag)
-	local function DraftChanged(quiet)
-		local d = Wizard()
-		local want = false
-		for i = 1, #UMBRELLA do
-			if d[UMBRELLA[i]] ~= false then
-				want = true
-				break
-			end
-		end
-		-- (a folded feature switched on keeps it on too: only a true counts,
-		-- the Features step's switches begin false)
-		local _, folded = FeatureKeys()
-		for i = 1, want and 0 or #folded do
-			if d[folded[i]] == true then
-				want = true
-				break
-			end
-		end
-		d[UMBRELLA_ON] = want
-		local fit = state.fits[FRESH]
-		if fit then
+	-- the picks changed: the draft is made again; the fit dropped (keepFit: the Layout step's own pick, which the
+	-- fitter does not read), the page on show and the footer again
+	local function Changed(keepFit)
+		state.drafts[SETUP] = nil
+		local fit = state.fits[SETUP]
+		if fit and not keepFit then
 			I:CancelFit(fit)
-			state.fits[FRESH] = nil
+			state.fits[SETUP] = nil
 		end
-		if not quiet then
-			IW:Refresh()
-		end
+		state.footLine = nil
+		RefreshPage()
+		RefreshFooter()
 	end
 
-	local function Put(key, value, quiet)
-		Wizard()[key] = value
-		DraftChanged(quiet)
+	function IW:Picks()
+		return Picks()
 	end
 
-	-- the gates: live, or the switch that wakes the row
-	local function ReskinGate()
-		if On(RESKIN) then
-			return true
-		end
-		return false, TEXT.reskin
-	end
-
-	local function ChatGate()
-		if On(CHAT_ON) then
-			return true
-		end
-		return false, TEXT.chatTweaks
-	end
-
-	-- a chat sheet: the kit's, its ink Chat tweaks' (the whisper popups'; the
-	-- chat's own, Kit.ownParchments, is ChatGate's alone: SheetRow)
-	local function ChatSheetGate()
-		if not On(RESKIN) then
-			return false, TEXT.reskin
-		end
-		return ChatGate()
-	end
-
-	local function DarkGate()
-		if On(DARK_ON) then
-			return true
-		end
-		return false, TEXT.darkMode
-	end
-
-	local function RowOpts(zebra, gate, indent)
-		return { skin = win.shell, look = "palette", zebra = zebra, gate = gate, indent = indent }
-	end
-
-	-- a module's option by its key, and a folded feature's own description:
-	-- read from the registration where they live
-	local function OptionOf(name, key)
-		local m = MelloUI:GetModule(name)
-		local options = m and type(m.options) == "table" and m.options or EMPTY
-		for i = 1, #options do
-			local opt = options[i]
-			if type(opt) == "table" and opt.key == key then
-				return opt
-			end
-		end
-		return nil
-	end
-
-	local function TweakDesc(name)
-		local m = MelloUI:GetModule(name)
-		return m and type(m.tweak) == "table" and m.tweak.desc or nil
-	end
-
-	-- a switch row over one draft key (`default`: its value while the draft
-	-- has none)
-	local function KeyRow(page, label, hint, desc, key, default, opts)
-		local function Get()
-			local v = Wizard()[key]
-			if v == nil then
-				return default
-			end
-			return v and true or false
-		end
-		local function Set(on)
-			Put(key, on and true or false)
-		end
-		return (W.ToggleRow(page, 0, label, hint, desc, Get, Set, opts))
-	end
-
-	-- A page's parts, laid top to bottom on every refresh: x, the height (nil:
-	-- a text's own), the gap under it, and whether it spans the page; a hidden
-	-- part takes no room. Flow returns the page's height.
-	local function Part(flow, region, x, h, gap, wide)
-		flow[#flow + 1] = { region = region, x = x or 0, h = h, gap = gap or 0, wide = wide }
-		return region
-	end
-
-	-- A row made once the page shows, within the frame's budget of rows (the
-	-- configurator's: 3 ms of them in the frame the page first shows, 2.5 ms
-	-- in each frame after while it fades in), in the page's order; its room
-	-- kept from the start, so nothing moves when it comes. LaterWork: work
-	-- with no room of its own (a font card's faces) in the same budget.
-	local FIRST_ROWS, LATER_ROWS = 3, 2.5
-	local function Owe(page, entry)
-		local todo = page.todo
-		if not todo then
-			todo = {}
-			page.todo, page.nextTodo = todo, 1
-		end
-		todo[#todo + 1] = entry
-		page.owed = (page.owed or 0) + 1
-	end
-
-	local function LaterRow(page, make, h, gap)
-		local part = { make = make, x = 0, h = h, gap = gap or 0, wide = true }
-		page.flow[#page.flow + 1] = part
-		Owe(page, part)
-	end
-
-	local function LaterWork(page, work, arg)
-		Owe(page, { work = work, arg = arg })
-	end
-
-	local function Flow(page)
-		local y = 10
-		for _, part in ipairs(page.flow) do
-			local r = part.region
-			if not r then
-				y = y + part.h + part.gap   -- (a row still to come)
-			elseif r:IsShown() then
-				r:ClearAllPoints()
-				r:SetPoint("TOPLEFT", page, "TOPLEFT", part.x, -y)
-				if part.wide then
-					r:SetPoint("RIGHT", page, "RIGHT", 0, 0)
-				end
-				y = y + (part.h or Num(r:GetStringHeight()) or 14) + part.gap
-			end
-		end
-		return y + 10
-	end
-
-	local function Clock()
-		return Num(debugprofilestop and debugprofilestop()) or 0
-	end
-
-	local MoreRows   -- (below: the next frame's rows)
-
-	-- the page's rows still to come, in order, until `ms` of this frame's
-	-- rows are spent (a row under way is finished); the rest on the next
-	-- frame, asked for first (a row that fails leaves the rest to it). A row
-	-- is counted as made as it begins: one that fails is not owed for ever.
-	-- One budget of rows a frame, whoever asks (the click that shows a page,
-	-- a click on a row while rows are owed, the next frame's rows, the
-	-- configurator's pages): the widget set's, W.RowBudget.
-	local function MakeRows(page, ms)
-		if (page.owed or 0) == 0 then
-			return
-		end
-		local Kit = MelloUI.Kit
-		if Kit and Kit.NextFrame then
-			Kit:NextFrame(page, MoreRows)
-		else
-			ms = math.huge   -- (no next frame to wait for: all of them now)
-		end
-		local stop = W.RowBudget.Begin(ms)
-		if not stop then
-			return
-		end
-		local todo = page.todo
-		repeat
-			local n = page.nextTodo
-			local entry = todo[n]
-			todo[n] = false
-			page.nextTodo, page.owed = n + 1, page.owed - 1
-			if entry.work then
-				entry.work(entry.arg)
-			else
-				local row = entry.make(page)
-				entry.make, entry.region = nil, row
-				page.rows[#page.rows + 1] = row
-				row:Refresh()
-			end
-		until page.owed == 0 or Clock() >= stop
-		W.RowBudget.End()
-	end
-
-	-- (a page no longer on show waits: its rows come when it shows again)
-	MoreRows = function(page)
-		if page.owed > 0 and win and win.frame:IsShown() and page:IsShown() then
-			MakeRows(page, LATER_ROWS)
-			Flow(page)
-		end
-	end
-
-	local function RefreshRows(page)
-		for _, row in ipairs(page.rows) do
-			row:Refresh()
-		end
-	end
-
-	local function RefreshWizard(page)
-		RefreshRows(page)
-		MakeRows(page, FIRST_ROWS)
-		return Flow(page)
-	end
+	--------------------------------------------------------------------------------
+	-- The parts every page has: the lead, the picture, a row of cards, the switches
+	--------------------------------------------------------------------------------
 
 	local function Lead(page, text)
-		local fs = W.Text(page, "GameFontHighlight", MelloUI.Lang.T(text), "text")
-		fs:SetWidth(TEXT_W)
-		return fs
+		page.lead = W.Text(page, "GameFontHighlight", text and MelloUI.Lang.T(text) or nil, "text")
+		page.lead:SetWidth(TEXT_W)
+		page.lead:SetPoint("TOPLEFT", page, "TOPLEFT", PAD, -8)
+		return page.lead
 	end
 
-	-- a heading over a group: the own windows' section heading (W.Header,
-	-- 0.15.0: the title in gold and a hairline after it, in both looks; the
-	-- kit's header plate stays the game windows'). `.label` is its title (a
-	-- sleeping group's cards dim with it, W.Gate)
-	local function Heading(page, text)
-		return W.Header(page, 0, text)
+	-- the picture box, its picture a texture inside its 1 px edge; screen: the whole screen's shape (the Skin step's)
+	local function PictureBox(page, screen)
+		local box = W.Box(page, "innerPanel", "border", 1)
+		box:SetSize(PIC_W, screen and SCREEN_H or PIC_H)
+		box.uv = screen and SCREEN_UV or BAND_UV
+		box.tex = box:CreateTexture(nil, "ARTWORK")
+		box.tex:SetPoint("TOPLEFT", box, "TOPLEFT", 1, -1)
+		box.tex:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", -1, 1)
+		page.picture = box
+		return box
 	end
 
-	-- a card's tooltip (the Font Styles' own words)
-	local CardTip = Shared("OnEnter on the installer's choice cards (tooltip)", function(card)
-		if card.tipBody then
-			W.ShowTooltip(card, card.tipTitle, card.tipBody)
+	local function PictureOf(stepKey, choiceKey)
+		local name = PICTURE[stepKey]
+		if type(name) == "table" then
+			name = name[choiceKey]
 		end
-	end, "script")
-
-	local function Tip(card, title, body)
-		card.tipTitle, card.tipBody = title, body
-		Perf.HookScript(card, "OnEnter", CardTip)
-		Perf.HookScript(card, "OnLeave", W.TipLeave)
-	end
-
-	-- a grid of cards on a holder that spans the page, `across` to a line
-	local function Grid(page, count, across, h, gapY)
-		local grid = CreateFrame("Frame", nil, page)
-		local lines = floor((count + across - 1) / across)
-		grid.melloH = lines > 0 and (lines * h + (lines - 1) * gapY) or 0
-		grid:SetHeight(grid.melloH > 0 and grid.melloH or 1)
-		return grid
-	end
-
-	--------------------------------------------------------------------------------
-	-- Look: the palette (a card each, its swatch: W.Card's palette card), the
-	-- reskin, the Kit Colours (a picture each: the drafted palette's
-	-- choices, from their own folders), Button Border, the class icons
-	--------------------------------------------------------------------------------
-
-	local function BorderKind(key)
-		local Kit = MelloUI.Kit
-		local kinds = Kit and type(Kit.borderKinds) == "table" and Kit.borderKinds or EMPTY
-		for i = 1, #kinds do
-			if kinds[i].key == key then
-				return kinds[i]
-			end
-		end
-		return nil
-	end
-
-	-- the window frame's one-texture picture (the kit's slices), when whole
-	local function FrameSlice()
-		local slices = _G.MelloUI_KitSlices
-		local slice = type(slices) == "table" and slices["window/frame"]
-		if type(slice) == "table" and type(slice.full) == "string" and type(slice.grid) == "table" and type(slice.size) == "table" then
-			return slice
-		end
-		return nil
-	end
-
-	-- the drafted palette: its card's id (the engine's reading, as Install
-	-- puts it in: an unknown one is Ember)
-	local function DraftPalette()
-		return I:PaletteOf(FRESH, Wizard())
-	end
-
-	-- the drafted Kit Colours (the kit's default while the draft has none)
-	local function DraftColours()
-		local chosen = Wizard()[COLOURS_KEY]
-		if chosen == nil then
-			local kind = BorderKind("kitColours")
-			chosen = kind and kind.default
-		end
-		return chosen
-	end
-
-	-- The kit's own rules for the drafted look (B9: Kit.lua's, never a copy
-	-- here): the Kit Colours choices under the drafted palette
-	-- (Kit:ColourLooks: Ember's three, another palette's own kit and the
-	-- Original), and the folder a piece is read from (Kit:LookRoot: a choice
-	-- in its own folder; a piece by the drafted palette and Kit Colours, an
-	-- uncoloured one from Media\Kit). Nothing without the kit.
-	local function DraftLooks()
-		local Kit = MelloUI.Kit
-		return Kit and Kit.ColourLooks and Kit:ColourLooks(DraftPalette()) or EMPTY
-	end
-
-	local function DraftRoot(look, piece)
-		local Kit = MelloUI.Kit
-		if not (Kit and Kit.LookRoot) then
+		if type(name) ~= "string" then
 			return nil
 		end
-		if type(look) == "table" then
-			return Kit:LookRoot(look, piece)
+		if name:sub(-1) == "_" then
+			name = name .. Skin()
 		end
-		return Kit:LookRoot(DraftColours(), piece, DraftPalette())
+		return PICTURES .. name
 	end
 
-	-- the card the drafted Kit Colours draws under the drafted palette: the
-	-- choice itself, or the one read from the same folder (a Bronze kept
-	-- from Ember is, under another palette, that palette's own kit): the
-	-- kit's own rule, Kit:ColourLookShown, asked for the drafted pair
-	local function ColourShown()
-		local Kit = MelloUI.Kit
-		local look = Kit and Kit.ColourLookShown and Kit:ColourLookShown(DraftPalette(), DraftColours())
-		return look and look.value or DraftColours()
-	end
-
-	-- a colour card's line: Ember's looks by name (Ember's three, and an
-	-- Ember-style palette's: Ember Vibrant, 0.19.1); under another palette its
-	-- own kit, and the Original (two choices)
-	local function ColourLine(look, looks)
-		if look.value ~= "painted" and #looks < 3 then
-			return TEXT.colourOwn
-		end
-		return TEXT.colourLine[look.value]
-	end
-
-	-- A colour card's picture: the kit's window frame on the frame's own body,
-	-- both from that look's folder, at the frame's own shape. Not kit
-	-- textures, so the kit's colour switch never repaints them. Laid again
-	-- when the drafted palette changes (the body made once).
-	local function ColourPicture(card, root, slice)
-		local gw, gh = slice.grid[1], slice.grid[2]
-		local pic = card.picture
-		pic:SetTexture(root .. slice.full)
-		pic:ClearAllPoints()
-		pic:SetPoint("TOP", card, "TOP", 0, -8)
-		pic:SetSize(floor(FRAME_PIC_H * gw / gh + 0.5), FRAME_PIC_H)
-		pic:SetTexCoord(0, gw / slice.size[1], 0, gh / slice.size[2])
-		local pieces = MelloUI_KitLayout.pieces
-		local body = type(pieces) == "table" and pieces["window/frame_body"]
-		if type(body) == "table" and type(body.file) == "string" and body.w and body.h then
-			local texel = slice.texel or 1
-			local u, v = min(1, gw * texel / body.w), min(1, gh * texel / body.h)
-			local uv = type(body.uv) == "table" and body.uv or nil
-			local l, r, t, b = uv and uv[1] or 0, uv and uv[2] or 1, uv and uv[3] or 0, uv and uv[4] or 1
-			local tex = card.body
-			if not tex then
-				tex = card:CreateTexture(nil, "ARTWORK", nil, -1)
-				tex:SetAllPoints(pic)
-				card.body = tex
-			end
-			tex:SetTexture(root .. body.file)
-			tex:SetTexCoord(l, l + (r - l) * u, t, t + (b - t) * v)
+	-- the picture set, written only when it is another (loaded on its page's show, let go on close)
+	local function ShowPicture(box, file)
+		if box.file ~= file then
+			box.file = file
+			box.tex:SetTexture(file)
+			box.tex:SetTexCoord(0, box.uv[1], 0, box.uv[2])
+			loaded[box.tex] = file and true or nil
 		end
 	end
 
-	-- the Kit Colours cards as the drafted palette has them: its choices'
-	-- names, lines and pictures (a card more than it offers hidden); laid
-	-- again only when the drafted palette changed (the kit's list per palette
-	-- is one table)
-	local function LayColours(page)
-		local looks = DraftLooks()
-		if page.coloursOf == looks then
-			return
+	function IW.ReleasePictures()
+		for tex in pairs(loaded) do
+			tex:SetTexture(nil)
+			loaded[tex] = nil
 		end
-		page.coloursOf = looks
-		local slice = FrameSlice()
-		for i, card in ipairs(page.colours) do
-			local look = looks[i]
-			card:SetShown(look ~= nil)
-			if look then
-				card.key = look.value
-				card:SetTexts(look.label, ColourLine(look, looks))
-				local root = slice and card.picture and DraftRoot(look)
-				if root then
-					ColourPicture(card, root, slice)
-				end
+		for _, page in pairs(win and win.pages or EMPTY) do
+			if page.picture then
+				page.picture.file = nil
 			end
 		end
 	end
 
-	-- the palettes' cards: a column per palette, its Vibrant under it (an id
-	-- "<palette>Vibrant"), in the registry's order; a later palette with no
-	-- Vibrant under the column with the fewest cards (the first such), so the
-	-- cards keep their width -> each card's { column, line }, the columns, the
-	-- lines
-	-- (0.25.0) the palettes the painted reskin chooses from: the registry's order without the modern look's own
-	-- (Gilded Slate, `modern`: no choice -- the palette whenever the reskin's are not); made once
-	local choiceOrder
-	local function ChoiceOrder()
-		if not choiceOrder then
-			choiceOrder = {}
-			for _, id in ipairs(MelloUI.Palettes.order) do
-				if not MelloUI.Palettes[id].modern then
-					choiceOrder[#choiceOrder + 1] = id
-				end
-			end
-		end
-		return choiceOrder
-	end
-
-	local function PalettePlaces()
-		local order = ChoiceOrder()
-		local places, colOf, cols, lines = {}, {}, 0, 1
-		local twin, used = {}, {}   -- [id] = it has a Vibrant; [column] = the lines it holds
-		for _, id in ipairs(order) do
-			local base = id:match("^(.+)Vibrant$")
-			if base then
-				twin[base] = true
-			end
-		end
-		for i, id in ipairs(order) do
-			local base = id:match("^(.+)Vibrant$")
-			local col = base and colOf[base]
-			if not col and not base and not twin[id] and cols > 0 then
-				col = 1
-				for c = 2, cols do
-					if used[c] < used[col] then
-						col = c
-					end
-				end
-			end
-			if col then
-				used[col] = used[col] + 1
-				places[i] = { col, used[col] }
-				if used[col] > lines then
-					lines = used[col]
-				end
-			else
-				cols = cols + 1
-				colOf[id], used[cols] = cols, 1
-				places[i] = { cols, 1 }
-			end
-		end
-		return places, cols, lines
-	end
-
-	-- a palette card: the draft only (the palette goes in with Install;
-	-- nothing is recoloured now)
-	local function PalettePick(card)
-		Put(PALETTE_KEY, card.key)
-	end
-
-	-- A palette card, made as the page's owed work (the frame's one budget
-	-- of rows: seven swatch cards and the rest of the page are too much for
-	-- the click's frame), in its place on the grid, whose room is kept from
-	-- the start: nothing moves when it comes. `spot`: { page, grid, id, w,
-	-- x, y }, made with the page.
-	local function MakePaletteCard(spot)
-		local card = W.Card(spot.grid, { width = spot.w, height = PALETTE_H, palette = spot.id, pictureHeight = PALETTE_PIC,
-			onClick = PalettePick }, win.shell)
-		card:SetPoint("TOPLEFT", spot.grid, "TOPLEFT", spot.x, spot.y)
-		Tip(card, card.title:GetText(), MelloUI.Palettes[spot.id].blurb)
-		card:SetSelected(card.key == DraftPalette())
-		local list = spot.page.palettes
-		list[#list + 1] = card
-	end
-
-	local function ColourPick(card)
-		if On(RESKIN) then
-			Put(COLOURS_KEY, card.key)
+	-- a row of cards across the page (each card knows its step: card.melloStep); tags: [key] = its tag's text
+	local function CardRow(page, stepKey, keys, height, tags, onClick)
+		local n = #keys
+		local w = floor((PAGE_W - (n - 1) * CARD_GAP_X) / n)
+		page.cards = {}
+		for i, key in ipairs(keys) do
+			local c = Choice(key)
+			local card = W.Card(page, { width = w, height = height, title = c[1], text = c[2], key = key,
+				tag = tags[key], onClick = onClick }, win.shell)
+			card.melloStep = stepKey
+			page.cards[i] = card
 		end
 	end
 
-	local function IconsGet()
-		return On(PORTRAITS)
+	local function LayCards(page, y, picked)
+		local x = 0
+		for _, card in ipairs(page.cards) do
+			card:ClearAllPoints()
+			card:SetPoint("TOPLEFT", page, "TOPLEFT", x, -y)
+			card:SetSelected(card.key == picked)
+			x = x + card:GetWidth() + CARD_GAP_X
+		end
+		return y + (page.cards[1] and page.cards[1]:GetHeight() or 0)
 	end
 
-	local function IconsSet(on)
-		Put(PORTRAITS, on and true or false)
-	end
-
-	local function ReskinRow(page)
-		return KeyRow(page, TEXT.reskin, nil, TEXT.reskinDesc, RESKIN, true, RowOpts(true))
-	end
-
-	local function IconsRow(page)
-		return (W.ToggleRow(page, 0, TEXT.classIcons, nil, TweakDesc("ClassIcons"), IconsGet, IconsSet, RowOpts(false)))
-	end
-
-	-- Button Border: the kit's own choice row, under the reskin
-	local function BorderGet()
-		local border = BorderKind("buttonBorder")
-		return Wizard()[BORDER_KEY] or (border and border.default)
-	end
-
-	local function BorderSet(value)
-		Put(BORDER_KEY, value)
-	end
-
-	local function BorderRow(page)
-		local border = BorderKind("buttonBorder")
-		return (W.DropdownRow(page, 0, border.name, nil, border.desc, BorderGet, BorderSet, border.values,
-			RowOpts(true, ReskinGate, GATE_INDENT)))
-	end
-
-	local function BuildLook(page)
-		local t0 = Clock()
-		Wizard()
-		local flow = {}
-		page.flow, page.rows, page.colours, page.palettes = flow, {}, {}, {}
-		Part(flow, Lead(page, TEXT.lookLead), PAD, nil, 10)
-		-- the palette (0.14.0): a card each (its swatch and name; its blurb in
-		-- the tooltip), a family to a column; never asleep: the palette
-		-- colours MelloUI's own windows with the reskin off too. The cards are
-		-- the page's first owed work (MakePaletteCard).
-		-- (0.25.0) the painted reskin's palettes, offered only with MelloUI_Oldschool there: without it MelloUI wears
-		-- Gilded Slate, no choice
-		local oldschool = rawget(MelloUI, "Oldschool")
-		if type(oldschool) == "table" and not oldschool.refused then
-			Part(flow, Heading(page, TEXT.palette), 0, HEADING_H, 8, true)
-			local places, cols, lines = PalettePlaces()
-			local pw = floor((PAGE_W - (cols - 1) * COLOUR_GAP) / cols)
-			local pgrid = Grid(page, cols * lines, cols, PALETTE_H, PALETTE_GAP_Y)
-			for i, id in ipairs(ChoiceOrder()) do
-				local at = places[i]
-				LaterWork(page, MakePaletteCard, { page = page, grid = pgrid, id = id, w = pw,
-					x = (at[1] - 1) * (pw + COLOUR_GAP), y = -(at[2] - 1) * (PALETTE_H + PALETTE_GAP_Y) })
-			end
-			Part(flow, pgrid, 0, pgrid.melloH, 8, true)
-		end
-		LaterRow(page, ReskinRow, W.ROW_HEIGHT, 10)
-		-- the Kit Colours: a card each, three to a line, with its picture; as
-		-- many cards as the palette with the most choices, laid by the drafted
-		-- palette (LayColours)
-		local heading = Part(flow, Heading(page, TEXT.colours), 0, HEADING_H, 8, true)
-		local Kit, most = MelloUI.Kit, 0
-		for _, id in ipairs(ChoiceOrder()) do
-			local n = Kit and Kit.ColourLooks and #Kit:ColourLooks(id) or 0
-			if n > most then
-				most = n
-			end
-		end
-		local looks = DraftLooks()
-		local grid = Grid(page, most, 3, COLOUR_H, COLOUR_GAP)
-		local slice = FrameSlice()
-		for i = 1, most do
-			local look = looks[i] or looks[#looks]   -- (laid by LayColours, hidden if the drafted palette has fewer)
-			local root = slice and look and DraftRoot(look)
-			local card = W.Card(grid, { width = COLOUR_W, height = COLOUR_H, title = look and look.label,
-				key = look and look.value, picture = root and (root .. slice.full) or nil, pictureHeight = FRAME_PIC_H, onClick = ColourPick }, win.shell)
-			card:SetPoint("TOPLEFT", grid, "TOPLEFT", ((i - 1) % 3) * (COLOUR_W + COLOUR_GAP), -floor((i - 1) / 3) * (COLOUR_H + COLOUR_GAP))
-			page.colours[i] = card
-		end
-		page.coloursOf = nil
-		LayColours(page)
-		Part(flow, grid, 0, grid.melloH, 6, true)
-		-- asleep with the reskin off as a row is (W.Gate: dimmed, its cover
-		-- taking the clicks with the tooltip; its line under the cards, on the
-		-- page, read at full strength)
-		local line = Part(flow, W.Text(page, "GameFontHighlight", nil, "text"), PAD, nil, 8)
-		line:SetWidth(TEXT_W)
-		line:Hide()
-		grid.label, grid.hint = heading.label, line
-		page.coloursGate, page.coloursCover = line, W.Gate(grid, ReskinGate)
-		local border = BorderKind("buttonBorder")
-		if border and type(border.values) == "table" then
-			LaterRow(page, BorderRow, W.ROW_HEIGHT, 0)
-		end
-		LaterRow(page, IconsRow, W.ROW_HEIGHT, 0)
-		-- (the page's own parts -- the headings, the colour cards and their
-		-- pictures -- are this frame's work too: counted in the frame's one
-		-- budget of rows, so the owed cards and rows keep the click's frame
-		-- within it and come on the next frames)
-		W.RowBudget.Spent(Clock() - t0)
-		return 1
-	end
-
-	local function RefreshLook(page)
-		LayColours(page)
-		local chosen = ColourShown()
-		for _, card in ipairs(page.colours) do
-			local on = card:IsShown() and card.key == chosen
-			if card:IsSelected() ~= on then
-				card:SetSelected(on)
-			end
-		end
-		local palette = DraftPalette()
-		for _, card in ipairs(page.palettes) do
-			local on = card.key == palette
-			if card:IsSelected() ~= on then
-				card:SetSelected(on)
-			end
-		end
-		page.coloursCover:Refresh()
-		return RefreshWizard(page)
-	end
-
-	STEPS.look.build, STEPS.look.refresh = BuildLook, RefreshLook
-
-	--------------------------------------------------------------------------------
-	-- Minimap: Round or Square, a card each with the kit piece of that shape
-	-- (MinimapPanel's own list, its PickerGroups), and Merge With Services
-	-- (square only). The page sleeps with the reskin off or the HUD's minimap
-	-- off (the Windows step). Square carries Full's border and merge with it.
-	--------------------------------------------------------------------------------
-
-	local MAP_SHAPE, MAP_BORDER, MAP_MERGE = "MinimapPanel.shape", "MinimapPanel.squareBorder", "MinimapPanel.servicesMerge"
-	local MAP_HUD = "UIModifications.MinimapKit"   -- (onelook D7: the painted minimap's switch)
-	local MAP_H, MAP_PIC = 118, 64   -- a shape card; its picture's height
-
-	-- MinimapPanel's shapes (its picker's own list) and their heading
-	local function MapChoices()
-		local mm = MelloUI:GetModule("MinimapPanel")
-		local ok, groups = false, nil
-		if mm and mm.PickerGroups then
-			ok, groups = pcall(mm.PickerGroups, mm)
-		end
-		local group = ok and type(groups) == "table" and groups[1]
-		local sections = type(group) == "table" and type(group.sections) == "table" and group.sections or EMPTY
-		for _, section in ipairs(sections) do
-			if section.key == "shape" and type(section.choices) == "table" then
-				return section.choices, section.title
-			end
-		end
-		return EMPTY, nil
-	end
-
-	-- the HUD group's name on the Windows step (the switch that holds the minimap)
-	local function HudLabel()
-		for _, group in ipairs(I.WINDOW_GROUPS) do
-			if group.key == "hud" then
-				return group.label
-			end
-		end
-		return nil
-	end
-
-	local function MapGate()
-		if not On(RESKIN) then
-			return false, TEXT.reskin
-		elseif not On(MAP_HUD) then
-			return false, HudLabel() or TEXT.reskin
-		end
-		return true
-	end
-
-	local function MapShape()
-		local v = Wizard()[MAP_SHAPE]
-		if v == nil then
-			local mm = MelloUI:GetModule("MinimapPanel")
-			v = mm and type(mm.defaults) == "table" and mm.defaults.shape or nil
-		end
-		return v
-	end
-
-	-- the merge row's line while round is chosen ('Pick "Square" first.',
-	-- the square card's name): made once, the first time it shows (the
-	-- picker's list is built on each call, so never read in a gate)
-	local pickSquare = nil
-	local function PickSquareLine()
-		if not pickSquare then
-			local label
-			for _, choice in ipairs((MapChoices())) do
-				if choice.value == "square" then
-					label = choice.label
-				end
-			end
-			pickSquare = MelloUI.Lang.F(TEXT.mapPickSquare, label or "square")
-		end
-		return pickSquare
-	end
-
-	-- (round chosen: asleep with no switch named -- a card is picked, not
-	-- switched; the row's own Refresh, below, says which)
-	local function MergeGate()
-		local live, why = MapGate()
-		if not live then
-			return false, why
-		elseif MapShape() ~= "square" then
-			return false
-		end
-		return true
-	end
-
-	local function MapPick(card)
-		if not MapGate() then
-			return
-		end
-		if card.key == "square" then
-			local d, full = Wizard(), wizardFull or EMPTY
-			if d[MAP_BORDER] == nil then
-				d[MAP_BORDER] = full[MAP_BORDER]
-			end
-			if d[MAP_MERGE] == nil then
-				d[MAP_MERGE] = full[MAP_MERGE]
-			end
-		end
-		Put(MAP_SHAPE, card.key)
-	end
-
-	-- A shape card's picture: the kit piece itself from the folder the
-	-- drafted look reads it from (Kit:LookRoot: the drafted palette and Kit
-	-- Colours; B9 -- it was always the painted grey), at its own shape, the
-	-- map's place in it (the piece's opening) in the drafted palette's window
-	-- colour (W.PaletteFill: one picture of one look, never the palette in
-	-- use round another's ring). Not a kit texture: the kit never repaints
-	-- it. RefreshMap does both again when the drafted look changed.
-	local function MapPicture(card, name)
-		local layout = MelloUI_KitLayout
-		local pieces = type(layout) == "table" and layout.pieces
-		local p = type(pieces) == "table" and pieces[name]
-		if not (type(p) == "table" and type(p.file) == "string" and Num(p.w) and Num(p.h) and card.picture) then
-			return
-		end
-		card.piece = name
-		local pic = card.picture
-		pic:ClearAllPoints()
-		pic:SetPoint("TOP", card, "TOP", 0, -8)
-		pic:SetSize(floor(MAP_PIC * p.w / p.h + 0.5), MAP_PIC)
-		if type(p.uv) == "table" then
-			pic:SetTexCoord(p.uv[1], p.uv[2], p.uv[3], p.uv[4])
-		end
-		if type(p.open) == "table" then
-			local s = MAP_PIC / p.h
-			local inside = card:CreateTexture(nil, "ARTWORK", nil, -1)
-			inside:SetPoint("TOPLEFT", pic, "TOPLEFT", p.open[1] * s, -p.open[2] * s)
-			inside:SetPoint("BOTTOMRIGHT", pic, "TOPLEFT", p.open[3] * s, -p.open[4] * s)
-			W.PaletteFill(inside, DraftPalette(), "mainWindow")
-			card.inside = inside
-		end
-	end
-
-	-- the merge row's Refresh: the widget set's (its control, its gate),
-	-- then, round chosen on a live page, the line that says to pick square
-	local mergeRefresh = nil
-	local function MergeRefresh(row)
-		mergeRefresh(row)
-		if row.hint and MapGate() and MapShape() ~= "square" then
-			row.hint:SetText(MelloUI.Lang.T(PickSquareLine()))
-			row.hint:Show()
-		end
-	end
-
-	local function MergeRow(page)
-		local opt = OptionOf("MinimapPanel", "servicesMerge")
-		local row = KeyRow(page, opt and opt.name or MAP_MERGE, TEXT.mapMergeHint, opt and opt.desc, MAP_MERGE, true,
-			RowOpts(true, MergeGate, GATE_INDENT))
-		mergeRefresh = mergeRefresh or row.Refresh
-		row.Refresh = MergeRefresh
+	-- a switch (a "many" step's choice, an extra under the cards): get and set the picks' answer
+	local function Switch(page, key, get, set)
+		local c = Choice(key)
+		local row = W.ToggleRow(page, 0, c[1], nil, c[2], get, set, { skin = win.shell, look = "palette", zebra = true })
+		row:SetWidth(SWITCH_W)
+		row.melloKey = key
+		page.switches[#page.switches + 1] = row
 		return row
 	end
 
-	local function BuildMap(page)
-		Wizard()
-		local flow = {}
-		page.flow, page.rows, page.shapes = flow, {}, {}
-		Part(flow, Lead(page, TEXT.mapLead), PAD, nil, 10)
-		local choices, title = MapChoices()
-		local heading = Part(flow, Heading(page, title or STEPS.map.title), 0, HEADING_H, 8, true)
-		local layout = MelloUI_KitLayout
-		local pieces = type(layout) == "table" and type(layout.pieces) == "table" and layout.pieces or EMPTY
-		local grid = Grid(page, #choices, 2, MAP_H, CARD_GAP_Y)
-		page.mapPalette, page.mapColours = DraftPalette(), DraftColours()
-		for i, choice in ipairs(choices) do
-			local p = choice.piece and pieces[choice.piece]
-			local root = type(p) == "table" and type(p.file) == "string" and DraftRoot(nil, choice.piece)
-			local file = root and (root .. p.file) or nil
-			local card = W.Card(grid, { width = CARD_W, height = MAP_H, title = choice.label, text = TEXT.mapLine[choice.value],
-				key = choice.value, picture = file, pictureHeight = MAP_PIC, onClick = MapPick }, win.shell)
-			card:SetPoint("TOPLEFT", grid, "TOPLEFT", ((i - 1) % 2) * (CARD_W + CARD_GAP_X), -floor((i - 1) / 2) * (MAP_H + CARD_GAP_Y))
-			if file then
-				MapPicture(card, choice.piece)
+	-- the switches shown in two columns from y, each read again; -> the y under them
+	local function LaySwitches(page, y, shown)
+		local n = 0
+		for _, row in ipairs(page.switches) do
+			local on = shown == nil or shown(row)
+			row:SetShown(on)
+			if on then
+				local col, line = n % 2, floor(n / 2)
+				row:ClearAllPoints()
+				row:SetPoint("TOPLEFT", page, "TOPLEFT", col * (SWITCH_W + CARD_GAP_X), -(y + line * W.ROW_HEIGHT))
+				row:Refresh()
+				n = n + 1
 			end
-			page.shapes[i] = card
 		end
-		Part(flow, grid, 0, grid.melloH, 6, true)
-		-- asleep as the Look step's cards are (W.Gate; its line under them)
-		local line = Part(flow, W.Text(page, "GameFontHighlight", nil, "text"), PAD, nil, 8)
-		line:SetWidth(TEXT_W)
-		line:Hide()
-		grid.label, grid.hint = heading.label, line
-		page.shapesGate, page.shapesCover = line, W.Gate(grid, MapGate)
-		LaterRow(page, MergeRow, W.ROW_HEIGHT, 0)
-		return 1
+		return y + floor((n + 1) / 2) * W.ROW_HEIGHT
 	end
 
-	local function RefreshMap(page)
-		-- (the drafted look changed since: the pictures from its folder)
-		local palette, colours = DraftPalette(), DraftColours()
-		if page.mapPalette ~= palette or page.mapColours ~= colours then
-			page.mapPalette, page.mapColours = palette, colours
-			local pieces = MelloUI_KitLayout.pieces
-			for _, card in ipairs(page.shapes) do
-				local root = card.piece and DraftRoot(nil, card.piece)
-				if root and card.picture then
-					card.picture:SetTexture(root .. pieces[card.piece].file)
-				end
-				if card.inside then
-					W.PaletteFill(card.inside, palette, "mainWindow")
-				end
-			end
-		end
-		local shape = MapShape()
-		for _, card in ipairs(page.shapes) do
-			local on = card.key == shape
-			if card:IsSelected() ~= on then
-				card:SetSelected(on)
-			end
-		end
-		page.shapesCover:Refresh()
-		return RefreshWizard(page)
+	local function LeadHeight(page)
+		return Num(page.lead:GetStringHeight()) or 14
 	end
-
-	STEPS.map.build, STEPS.map.refresh = BuildMap, RefreshMap
 
 	--------------------------------------------------------------------------------
-	-- Parchment and dark mode: a switch per parchment area (the kit's sheets:
-	-- asleep with the reskin off, but the Quest Tracker's and the chat's
-	-- (Kit.ownParchments) live whatever the reskin; the chat's and the whisper
-	-- popups' also with Chat tweaks off), Dark mode and its brightness
+	-- Skin: Default, Modern (recommended), Oldschool (with MelloUI_Oldschool; else its link to copy)
 	--------------------------------------------------------------------------------
 
-	-- an area's sheet switch; an area with a choice (MelloUI.ParchmentAreas'
-	-- `values`: the character window's, 0.19.4) its dropdown, an older
-	-- switch's true read as the area's `on`
-	local function SheetRow(key, label, zebra, area)
-		-- (one look) a part of MelloUI's own (Kit.ownParchments: the Quest Tracker's, the chat's) is live whatever the
-		-- reskin; the chat's still sleeps with Chat tweaks off (its ink, and its Minimal Chat View, are theirs)
-		local own = MelloUI.Kit and MelloUI.Kit.ownParchments and MelloUI.Kit.ownParchments[key:sub(11)]
-		local gate = CHAT_SHEETS[key] and (own and ChatGate or ChatSheetGate) or (not own and ReskinGate) or nil
-		local draftKey = "UIModifications." .. key
-		if type(area) == "table" and type(area.values) == "table" then
-			local function Get()
-				local v = Wizard()[draftKey]
-				if v == true then
-					return area.on
-				end
-				return type(v) == "string" and v or "off"
-			end
-			local function Set(value)
-				Put(draftKey, value)
-			end
-			return function(page)
-				return (W.DropdownRow(page, 0, label, nil, nil, Get, Set, area.values, RowOpts(zebra, gate)))
-			end
-		end
-		return function(page)
-			return KeyRow(page, label, nil, nil, draftKey, false, RowOpts(zebra, gate))
-		end
-	end
-
-	local function DarkRow(page)
-		return KeyRow(page, TEXT.darkMode, nil, TweakDesc("DarkMode"), DARK_ON, false, RowOpts(true))
-	end
-
-	-- the brightness: the Dark Mode option's own range
-	local function ShadeGet()
-		local dark = MelloUI:GetModule("DarkMode")
-		local default = dark and type(dark.defaults) == "table" and Num(dark.defaults.shade) or 0.25
-		return Num(Wizard()[SHADE]) or default
-	end
-
-	local function ShadeSet(value)
-		Put(SHADE, value, true)
-	end
-
-	local function ShadeRow(page)
-		local opt = OptionOf("DarkMode", "shade")
-		local sopts = RowOpts(false, DarkGate, GATE_INDENT)
-		sopts.min, sopts.max = opt and opt.min or 0, opt and opt.max or 1
-		sopts.step, sopts.percent = opt and opt.step or 0.05, (opt == nil or opt.percent) and true or false
-		return (W.SliderRow(page, 0, TEXT.brightness, nil, TEXT.brightnessDesc, ShadeGet, ShadeSet, sopts))
-	end
-
-	local function BuildParchment(page)
-		Wizard()
-		local flow = {}
-		page.flow, page.rows = flow, {}
-		Part(flow, Lead(page, TEXT.parchmentLead), PAD, nil, 10)
-		Part(flow, Heading(page, TEXT.parchment), 0, HEADING_H, 4, true)
-		for i, area in ipairs(type(MelloUI.ParchmentAreas) == "table" and MelloUI.ParchmentAreas or EMPTY) do
-			local key, label = area[1], area[2]
-			if type(key) == "string" and type(label) == "string" then
-				LaterRow(page, SheetRow(key, label, i % 2 == 1, area), W.ROW_HEIGHT, 0)
-			end
-		end
-		flow[#flow].gap = 12
-		LaterRow(page, DarkRow, W.ROW_HEIGHT, 0)
-		LaterRow(page, ShadeRow, W.SLIDER_ROW_HEIGHT, 0)
-		return 1
-	end
-
-	STEPS.parchment.build, STEPS.parchment.refresh = BuildParchment, RefreshWizard
-
-	--------------------------------------------------------------------------------
-	-- Fonts: a card per choice -- Mello's own faces (Full's), each Font Style,
-	-- the game's -- each showing a title in its title face and a line in its
-	-- reading face (set on the card's own texts: pictures of the faces, not
-	-- the fonts in use)
-	--------------------------------------------------------------------------------
-
-	local gameFaces = nil   -- the game's own title and text faces (read on the Fonts step's first show)
-	local function GameFaces()
-		if not gameFaces then
-			local _, title = MorpheusObject()
-			gameFaces = { title = title or GAME_TITLE, text = BaseFace(_G.GameFontNormal) or GAME_TEXT }
-		end
-		return gameFaces
-	end
-
-	local function Face(path, fallback)
-		if type(path) ~= "string" or path == "" or path == KEEP_FACE then
-			return fallback
-		end
-		return path
-	end
-
-	local function IsStyle(value)
-		for _, style in ipairs(type(MelloUI.FontStyles) == "table" and MelloUI.FontStyles or EMPTY) do
-			if style.value == value then
-				return true
-			end
-		end
-		return false
-	end
-
-	-- the card the draft names: the game's with the Fonts switch off, a Font
-	-- Style by name, else Mello's own
-	-- Full's own Font Style, when it names one (the 2026-09-26 Full is Gothic):
-	-- that style IS Mello's fonts, so it has no card of its own besides
-	-- Mello's, and a draft naming it reads as Mello's
-	local function FullStyle()
-		local s = (wizardFull or EMPTY)[FONT_STYLE]
-		return type(s) == "string" and IsStyle(s) and s or nil
-	end
-
-	local function FontChoice(d)
-		if d[FONTS_ON] == false then
-			return "game"
-		end
-		local style = d[FONT_STYLE]
-		if type(style) == "string" and IsStyle(style) then
-			return style == FullStyle() and "mello" or style
-		end
-		return "mello"
-	end
-
-	function IW:FontChoice(d)
-		return FontChoice(type(d) == "table" and d or Wizard())
-	end
-
-	-- the cards: Mello's own faces (Full's), the Font Styles, the game's
-	local function FontCards()
-		local game, full = GameFaces(), wizardFull or EMPTY
-		local settings = MelloUI.FontStyleSettings
-		-- Mello's card: Full's own faces over its Font Style's (if it names one)
-		local own = FullStyle()
-		local base = own and type(settings) == "function" and settings(own)
-		base = type(base) == "table" and base or EMPTY
-		-- (0.19.4) a sample's size: its face's own correction (Fonts'
-		-- FaceFactor; the game's faces 1) times the player's size
-		local Factor = MelloUI.FontFaceFactor
-		local function Scale(role, face, size)
-			local f = type(Factor) == "function" and tonumber(Factor(role, face)) or 1
-			return (f or 1) * (Num(size) or 1)
-		end
-		local mTitle = Face(full["Fonts.fontTitle"], Face(base.fontTitle, game.title))
-		local mText = Face(full["Fonts.fontText"], Face(base.fontText, game.text))
-		local list = { { key = "mello", tag = TEXT.melloFonts, tip = TEXT.melloFontsTip,
-			title = mTitle, titleScale = Scale("fontTitle", mTitle, full["Fonts.sizeTitle"] or base.sizeTitle),
-			text = mText, textScale = Scale("fontText", mText, full["Fonts.sizeText"] or base.sizeText) } }
-		for _, style in ipairs(type(MelloUI.FontStyles) == "table" and MelloUI.FontStyles or EMPTY) do
-			local set = style.value ~= own and type(settings) == "function" and settings(style.value)
-			if type(set) == "table" then
-				local title, text = Face(set.fontTitle, game.title), Face(set.fontText, game.text)
-				list[#list + 1] = { key = style.value, tag = style.label, tip = style.desc,
-					title = title, titleScale = Scale("fontTitle", title, set.sizeTitle),
-					text = text, textScale = Scale("fontText", text, set.sizeText) }
-			end
-		end
-		list[#list + 1] = { key = "game", tag = TEXT.gameFonts, tip = TEXT.gameFontsTip,
-			title = game.title, titleScale = 1, text = game.text, textScale = 1 }
-		return list
-	end
-
-	-- a sample in a face of its own (a face the client cannot load: the game's)
-	local function SampleFont(fs, face, size, fallback)
-		size = floor(size + 0.5)
-		local ok, set = pcall(fs.SetFont, fs, face, size, "")
-		if not ok or set == false then
-			pcall(fs.SetFont, fs, fallback, size, "")
-		end
-	end
-
-	-- A pick: the game's switches the Fonts off; Mello's puts Full's font
-	-- settings back; a Font Style puts Full's back, then names the style alone,
-	-- its faces and sizes filled in from it when the setup is made (I:Draft:
-	-- written after the faces, the style would read Custom)
-	local function FontPick(card)
-		local key = card.key
-		if key == "game" then
-			Put(FONTS_ON, false)
+	local function SkinPick(card)
+		if state.phase ~= "choose" then
 			return
 		end
-		local d = Wizard()
-		for k, v in pairs(wizardFull or EMPTY) do
-			if type(k) == "string" and k:sub(1, 6) == "Fonts." then
-				d[k] = I.DeepCopy(v)
+		local page = win.pages.skin
+		if card.key == "oldschool" and OldschoolState() ~= "loaded" then
+			page.getShown = true
+			RefreshPage()
+			if page.get.box:IsShown() then
+				page.get.box:SetFocus()
+				page.get.box:HighlightText()
 			end
+			return
 		end
-		if key ~= "mello" then
-			local set = MelloUI.FontStyleSettings and MelloUI.FontStyleSettings(key)
-			for k in pairs(type(set) == "table" and set or EMPTY) do
-				d["Fonts." .. k] = nil
-			end
-			d[FONT_STYLE] = key
-		end
-		Put(FONTS_ON, true)
+		page.getShown = false
+		Picks().skin = card.key
+		Changed()
 	end
 
-	-- A card's samples in its faces: a face the client loads for the first
-	-- time here (a new player's Fonts are off: none of them read yet) may
-	-- take a while, so the faces come within the page's budget of rows, a
-	-- card at a time, each card's samples shown once they have theirs
-	local function CardFaces(card)
-		local spec, game = card.faces, GameFaces()
-		SampleFont(card.title, spec.title, TITLE_BASE * spec.titleScale, game.title)
-		SampleFont(card.text, spec.text, TEXT_BASE * spec.textScale, game.text)
-		card.title:Show()
-		card.text:Show()
-	end
-
-	local function BuildFonts(page)
-		Wizard()
-		local flow = {}
-		page.flow, page.rows, page.fonts = flow, {}, {}
-		Part(flow, Lead(page, TEXT.fontsLead), PAD, nil, 10)
-		local specs = FontCards()
-		local grid = Grid(page, #specs, 2, FONT_H, CARD_GAP_Y)
-		for i, spec in ipairs(specs) do
-			local card = W.Card(grid, { width = CARD_W, height = FONT_H, title = TEXT.fontTitleSample, text = TEXT.fontTextSample,
-				tag = spec.tag, key = spec.key, onClick = FontPick }, win.shell)
-			card:SetPoint("TOPLEFT", grid, "TOPLEFT", ((i - 1) % 2) * (CARD_W + CARD_GAP_X), -floor((i - 1) / 2) * (FONT_H + CARD_GAP_Y))
-			card.faces = spec
-			card.title:Hide()
-			card.text:Hide()
-			LaterWork(page, CardFaces, card)
-			Tip(card, spec.tag, spec.tip)
-			page.fonts[i] = card
+	-- the link box: CurseForge's page for MelloUI Oldschool, selected to copy (the game opens no web page); its text
+	-- put back if typed over
+	local Link_OnTextChanged = Shared("OnTextChanged on the installer's link box", function(box, user)
+		if user and box:GetText() ~= CURSEFORGE then
+			box:SetText(CURSEFORGE)
+			box:HighlightText()
 		end
-		Part(flow, grid, 0, grid.melloH, 0, true)
+	end, "script")
+	local Link_OnFocus = Shared("OnEditFocusGained on the installer's link box", function(box)
+		box:HighlightText()
+	end, "script")
+	local Link_OnEscape = Shared("OnEscapePressed on the installer's link box", function(box)
+		box:ClearFocus()
+	end, "script")
+
+	local function BuildSkin(page)
+		Lead(page, TEXT.skinLead)
+		PictureBox(page, true)
+		local old = OldschoolState()
+		local tags = { modern = TEXT.recommended }
+		if old ~= "loaded" then
+			tags.oldschool = old == "off" and TEXT.switchedOff or TEXT.notInstalled
+		end
+		CardRow(page, "skin", { "default", "modern", "oldschool" }, SKIN_CARD_H, tags, SkinPick)
+		if old ~= "loaded" then
+			page.cards[3]:SetAlpha(0.55)   -- (dimmed: a click shows the way to it)
+		end
+		-- the way to MelloUI Oldschool (shown after a click on its card)
+		local get = CreateFrame("Frame", nil, page)
+		get:SetSize(PAGE_W, 1)
+		get.line = W.Text(get, "GameFontHighlight", nil, "text")
+		get.line:SetWidth(TEXT_W)
+		get.line:SetPoint("TOPLEFT", get, "TOPLEFT", PAD, 0)
+		local box = CreateFrame("EditBox", nil, get)
+		box:SetSize(TEXT_W - 40, 22)
+		box:SetAutoFocus(false)
+		box:SetFontObject("MelloUIFont_GameFontHighlight")
+		box:SetText(CURSEFORGE)
+		W.Field(box)
+		Perf.SetScript(box, "OnTextChanged", Link_OnTextChanged)
+		Perf.SetScript(box, "OnEditFocusGained", Link_OnFocus)
+		Perf.SetScript(box, "OnEscapePressed", Link_OnEscape)
+		get.box = box
+		get.hint = W.Text(get, "GameFontHighlight", MelloUI.Lang.T(TEXT.copyHint), "text")
+		get.hint:SetWidth(TEXT_W)
+		page.get = get
+		page.oldschool = old
 		return 1
 	end
 
-	local function RefreshFonts(page)
-		local choice = FontChoice(Wizard())
-		for _, card in ipairs(page.fonts) do
-			local on = card.key == choice
-			if card:IsSelected() ~= on then
-				card:SetSelected(on)
+	local function RefreshSkin(page)
+		local y = 8 + LeadHeight(page) + 10
+		page.picture:ClearAllPoints()
+		page.picture:SetPoint("TOPLEFT", page, "TOPLEFT", (PAGE_W - PIC_W) / 2, -y)
+		ShowPicture(page.picture, PictureOf("skin", Skin()))
+		y = y + SCREEN_H + 12
+		y = LayCards(page, y, Skin())
+		local get = page.get
+		get:SetShown(page.getShown and page.oldschool ~= "loaded" or false)
+		if get:IsShown() then
+			y = y + 12
+			get:ClearAllPoints()
+			get:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
+			local missing = page.oldschool == "missing"
+			get.line:SetText(MelloUI.Lang.T(missing and TEXT.getOldschool or TEXT.enableOldschool))
+			local h = Num(get.line:GetStringHeight()) or 28
+			get.box:SetShown(missing)
+			get.hint:SetShown(missing)
+			if missing then
+				get.box:ClearAllPoints()
+				get.box:SetPoint("TOPLEFT", get, "TOPLEFT", PAD + 6, -(h + 8))
+				get.hint:ClearAllPoints()
+				get.hint:SetPoint("TOPLEFT", get, "TOPLEFT", PAD, -(h + 8 + 22 + 6))
+				h = h + 8 + 22 + 6 + (Num(get.hint:GetStringHeight()) or 14)
 			end
+			y = y + h
 		end
-		MakeRows(page, FIRST_ROWS)
-		return Flow(page)
+		return y + 8
 	end
 
-	STEPS.fonts.build, STEPS.fonts.refresh = BuildFonts, RefreshFonts
+	STEPS.skin.build, STEPS.skin.refresh = BuildSkin, RefreshSkin
 
 	--------------------------------------------------------------------------------
-	-- Features: "All features" on top, then each feature's own switch in the
-	-- two columns of I.FEATURE_GROUPS. Every one starts off (Fresh start's
-	-- promise); one switched on comes with Mello's settings for it (the
-	-- engine's Target). The All switch sets every row; it is on only while
-	-- every row is.
+	-- Layout: Mello's layout, fitted to this screen (the fit's own drawing), or the player's own
 	--------------------------------------------------------------------------------
 
-	local FEATURE_GAP = 10
-	local FEATURE_W = floor((PAGE_W - FEATURE_GAP) / 2)
-
-	local function AllGet()
-		local d, keys = Wizard(), FeatureKeys()
-		for i = 1, #keys do
-			if d[keys[i]] ~= true then
-				return false
-			end
+	local function LayoutPick(card)
+		if state.phase ~= "choose" or Picks().layout == card.key then
+			return
 		end
-		return #keys > 0
+		Picks().layout = card.key
+		Changed(true)
 	end
 
-	local function AllSet(on)
-		local d, keys = Wizard(), FeatureKeys()
-		for i = 1, #keys do
-			d[keys[i]] = on and true or false
+	-- the way on when the fit says the layout cannot go in: keep the player's own (the Screen step's own action is
+	-- the refit's switch)
+	local fitNoLayout = ACTIONS.noLayout
+	function ACTIONS.noLayout(button)
+		if Option().base ~= SETUP then
+			return fitNoLayout(button)
 		end
-		DraftChanged()
+		if state.phase == "choose" then
+			MelloUI:PlayUISound("tab")
+			Picks().layout = "own"
+			Changed(true)
+		end
 	end
 
-	local function AllRow(page)
-		return (W.ToggleRow(page, 0, TEXT.allFeatures, nil, TEXT.allFeaturesDesc, AllGet, AllSet, RowOpts(true)))
-	end
-
-	-- the name a feature goes by (its row, the Review line): its switch's
-	-- label, else its title
-	local function FeatureLabel(m)
-		return type(m.tweak) == "table" and m.tweak.label or m.title or m.name
-	end
-
-	-- a feature that needs another for part of its work: switched on, it
-	-- switches that one on too (Restock's reminder is the Reminders widget's;
-	-- its shop list works without it, so Reminders off leaves Restock be)
-	local NEEDS = { Restock = "Reminders" }
-
-	-- a feature's switch as a row (KeyRow's, plus what it needs)
-	local function FeatureToggle(page, label, desc, name, opts)
-		local key = I.SwitchKey(MelloUI:GetModule(name))
-		local need = NEEDS[name] and I.SwitchKey(MelloUI:GetModule(NEEDS[name]))
-		local function Get()
-			return Wizard()[key] == true
-		end
-		local function Set(on)
-			if on and need then
-				Wizard()[need] = true
-			end
-			Put(key, on and true or false)
-		end
-		return (W.ToggleRow(page, 0, label, nil, desc, Get, Set, opts))
-	end
-
-	-- a feature's row in its column, in its place (made within the page's
-	-- budget of rows, as every other row)
-	local function FeatureRow(spec)
-		local m = MelloUI:GetModule(spec.name)
-		local row = FeatureToggle(spec.col, FeatureLabel(m), TweakDesc(spec.name) or m.desc, spec.name,
-			RowOpts(spec.i % 2 == 1))
-		row:ClearAllPoints()
-		row:SetPoint("TOPLEFT", spec.col, "TOPLEFT", 0, -(HEADING_H + 4 + (spec.i - 1) * W.ROW_HEIGHT))
-		row:SetPoint("RIGHT", spec.col, "RIGHT", 0, 0)
-		row.melloFeature = spec.name
-		local page = spec.page
-		page.rows[#page.rows + 1] = row
-		row:Refresh()
-	end
-
-	local function BuildFeatures(page)
-		Wizard()
-		local flow = {}
-		page.flow, page.rows, page.columns = flow, {}, {}
-		Part(flow, Lead(page, TEXT.featuresLead), PAD, nil, 10)
-		LaterRow(page, AllRow, W.ROW_HEIGHT, 10)
-		local most = 0
-		for _, group in ipairs(I.FEATURE_GROUPS) do
-			most = math.max(most, #group.members)
-		end
-		local h = HEADING_H + 4 + most * W.ROW_HEIGHT
-		local holder = CreateFrame("Frame", nil, page)
-		holder:SetHeight(h)
-		for c, group in ipairs(I.FEATURE_GROUPS) do
-			local col = CreateFrame("Frame", nil, holder)
-			col:SetSize(FEATURE_W, h)
-			col:SetPoint("TOPLEFT", holder, "TOPLEFT", (c - 1) * (FEATURE_W + FEATURE_GAP), 0)
-			local heading = Heading(col, group.label)
-			heading:ClearAllPoints()
-			heading:SetPoint("TOPLEFT", col, "TOPLEFT", 0, 0)
-			heading:SetPoint("RIGHT", col, "RIGHT", 0, 0)
-			col.heading = heading
-			page.columns[c] = col
-			local i = 0
-			for _, name in ipairs(group.members) do
-				if I.SwitchKey(MelloUI:GetModule(name)) then
-					i = i + 1
-					LaterWork(page, FeatureRow, { page = page, col = col, i = i, name = name })
-				end
-			end
-		end
-		Part(flow, holder, 0, h, 0, true)
+	local function BuildLayout(page)
+		Lead(page)
+		FitPicture(page)
+		CardRow(page, "layout", { "mello", "own" }, CARD_H, { mello = TEXT.recommended }, LayoutPick)
+		page.note = W.Text(page, "GameFontHighlight", nil, "text")
+		page.note:SetWidth(TEXT_W)
+		page.room = W.Text(page, "GameFontHighlight", nil, "selectedTrim")
+		page.room:SetWidth(TEXT_W)
+		page.ownButton = Button(page, TEXT.useOwnLayout, 170, "noLayout")
+		page.deleteOld = Button(page, "", 230, "deleteOld")
 		return 1
 	end
 
-	STEPS.features.build, STEPS.features.refresh = BuildFeatures, RefreshWizard
+	local function RefreshLayout(page)
+		local option = Option()
+		local mello = Picks().layout ~= "own"
+		page.lead:SetText(MelloUI.Lang.F(TEXT.layoutLead, (ScreenText())))
+		local y = 8 + LeadHeight(page) + 10
+		page.box:ClearAllPoints()
+		page.box:SetPoint("TOPLEFT", page, "TOPLEFT", (PAGE_W - PIC_W) / 2, -y)
+		-- the fit (it runs from here; Install waits for it): Mello's layout drawn on this screen, or the player's own
+		local fit = EnsureFit(option.key)
+		local done = fit and fit.done and fit
+		local report = done and type(done.report) == "table" and done.report or nil
+		DrawPicture(page, mello and report or nil)
+		page.pic.msg:SetText(MelloUI.Lang.T(not mello and TEXT.ownLayoutPicture or TEXT.fitting))
+		page.pic.msg:SetShown(not mello or not done)
+		y = y + PIC_H + 12
+		y = LayCards(page, y, mello and "mello" or "own") + 10
+		-- the fit's line (why it does not fit, or what is worth a look), the way on, the room in Edit Mode
+		local note = mello and NoteText(page, report) or nil
+		page.note:SetShown(note ~= nil)
+		if note then
+			page.note:SetText(note)
+			Place(page.note, page, PAD, y)
+			y = y + (Num(page.note:GetStringHeight()) or 14) + 8
+		end
+		local room, old = true, nil
+		if mello and done and I:LayoutOn(option, DraftFor(option.key), done) then
+			local ok, most = I:LayoutRoom(done)
+			room = ok
+			if not ok then
+				page.room:SetText(MelloUI.Lang.F(I.TEXT.noRoom, most))
+				old = OldLayouts(done)[1]
+			end
+		end
+		page.room:SetShown(not room)
+		if not room then
+			Place(page.room, page, PAD, y)
+			y = y + (Num(page.room:GetStringHeight()) or 28) + 8
+		end
+		local way = mello and ((report and report.tooSmall) or not room) and true or false
+		page.ownButton:SetShown(way)
+		page.deleteOld:SetShown(old ~= nil)
+		if way then
+			Place(page.ownButton, page, PAD, y)
+			if old then
+				page.deleteOld.melloOld = old
+				page.deleteOld:SetText(MelloUI.Lang.F(TEXT.deleteOld, old))
+				Place(page.deleteOld, page, PAD + 170 + 10, y)
+			end
+			y = y + BUTTON_H + 10
+		end
+		return y + 4
+	end
+
+	STEPS.layout.build, STEPS.layout.refresh = BuildLayout, RefreshLayout
 
 	--------------------------------------------------------------------------------
-	-- Chat: Chat tweaks, the name forms (Show Names As' list, every name's; one chosen) and the
-	-- shade behind names, both asleep with Chat tweaks off
+	-- The steps of one choice (Party and raid, Chat, Bags, Sound) and of several (Quests and travel, Combat, Minimap
+	-- and widgets): their pages made from I.SETUP
 	--------------------------------------------------------------------------------
 
-	-- a name form's row (one of them chosen: a click on the chosen one keeps it)
-	local function NameRow(value, example, kind, zebra)
-		local function Get()
-			local v = Wizard()[NAME_STYLE]
-			if v == nil then
-				local ui = MelloUI:GetModule("UIModifications")
-				v = ui and type(ui.defaults) == "table" and ui.defaults.nameFormat or nil
-			end
-			return v == value
+	local function OnePick(card)
+		if state.phase ~= "choose" or Picks()[card.melloStep] == card.key then
+			return
 		end
-		local function Set(on)
-			if on then
-				Put(NAME_STYLE, value)
-			else
-				IW:Refresh()
-			end
-		end
-		return function(page)
-			-- (every name's form, 0.16.0: not asleep with Chat tweaks off)
-			return (W.ToggleRow(page, 0, example, kind, nil, Get, Set, RowOpts(zebra)))
-		end
+		Picks()[card.melloStep] = card.key
+		Changed()
 	end
 
-	local function ChatRow(page)
-		return KeyRow(page, TEXT.chatTweaks, nil, TweakDesc("Chat"), CHAT_ON, true, RowOpts(true))
-	end
-
-	-- (Text Shade: every shade behind MelloUI's text, the chat's tags and links among them -- not Chat tweaks')
-	local function TextShadeRow(page)
-		local shade = OptionOf("Tweaks", "textShade")
-		return KeyRow(page, TEXT.textShade, nil, shade and shade.desc, TEXT_SHADE, true, RowOpts(true))
-	end
-
-	local function BuildChat(page)
-		Wizard()
-		local flow = {}
-		page.flow, page.rows = flow, {}
-		Part(flow, Lead(page, TEXT.chatLead), PAD, nil, 10)
-		LaterRow(page, ChatRow, W.ROW_HEIGHT, 10)
-		Part(flow, Heading(page, TEXT.names), 0, HEADING_H, 4, true)
-		-- the name forms, each shown by its example ("Full name (Professor
-		-- Skillybones)": the name on the row, the form beside it)
-		local opt = OptionOf("UIModifications", "nameFormat")
-		for i, entry in ipairs(opt and type(opt.values) == "table" and opt.values or EMPTY) do
-			local label = tostring(MelloUI.Lang.T(entry.label) or entry.value)
-			local kind, example = label:match("^(.-) %((.+)%)$")
-			LaterRow(page, NameRow(entry.value, example or label, example and kind or nil, i % 2 == 1), W.ROW_HEIGHT, 0)
-		end
-		flow[#flow].gap = 8
-		LaterRow(page, TextShadeRow, W.ROW_HEIGHT, 0)
-		return 1
-	end
-
-	STEPS.chat.build, STEPS.chat.refresh = BuildChat, RefreshWizard
-
-	--------------------------------------------------------------------------------
-	-- Windows: which windows wear the kit, a switch per group of
-	-- I.WINDOW_GROUPS (on while every member is), asleep with the reskin off
-	--------------------------------------------------------------------------------
-
-	-- a group's row (nil: none of its windows is here)
-	local function GroupRow(group, zebra)
-		local keys, labels = {}, {}
-		for _, name in ipairs(type(group.members) == "table" and group.members or EMPTY) do
-			local m = MelloUI:GetModule(name)
-			if m then
-				keys[#keys + 1] = "UIModifications." .. name
-				labels[#labels + 1] = type(m.window) == "table" and m.window.label or name
+	local function Offered(list)
+		local out = {}
+		for _, c in ipairs(list or EMPTY) do
+			if I:Offered(c) then
+				out[#out + 1] = c
 			end
 		end
-		if #keys == 0 then
-			return nil
-		end
-		local function Get()
-			local d = Wizard()
-			for i = 1, #keys do
-				if d[keys[i]] == false then
-					return false
-				end
-			end
-			return true
-		end
-		local function Set(on)
-			local d = Wizard()
-			for i = 1, #keys do
-				d[keys[i]] = on and true or false
-			end
-			DraftChanged()
-		end
-		local hint = MelloUI.Lang.F(group.key == "hud" and TEXT.hudCount or TEXT.windowsCount, #keys)
-		-- (the languages: each window's name in the language in use)
-		local named = {}
-		for i = 1, #labels do
-			named[i] = MelloUI.Lang.T(labels[i])
-		end
-		local desc = concat(named, ", ") .. "."
-		return function(page)
-			return (W.ToggleRow(page, 0, group.label, hint, desc, Get, Set, RowOpts(zebra, ReskinGate)))
-		end
+		return out
 	end
 
-	local function BuildWindows(page)
-		Wizard()
-		page.flow, page.rows = {}, {}
-		Part(page.flow, Lead(page, TEXT.windowsLead), PAD, nil, 10)
-		for i, group in ipairs(type(I.WINDOW_GROUPS) == "table" and I.WINDOW_GROUPS or EMPTY) do
-			local make = GroupRow(group, i % 2 == 1)
-			if make then
-				LaterRow(page, make, W.ROW_HEIGHT, 0)
+	local function BuildStep(page, key)
+		local st = STEP_OF[key]
+		Lead(page, st.kind == "many" and TEXT.manyLead or TEXT.leads[key])
+		if PICTURE[key] then
+			PictureBox(page)
+		end
+		page.switches = {}
+		local picks = Picks()
+		if st.kind == "many" then
+			for _, c in ipairs(Offered(st.choices)) do
+				Switch(page, c.key, function()
+					return picks[key][c.key] and true or false
+				end, function(on)
+					picks[key][c.key] = on and true or false
+					Changed()
+				end)
 			end
-		end
-		return 1
-	end
-
-	STEPS.windows.build, STEPS.windows.refresh = BuildWindows, RefreshWizard
-
-	--------------------------------------------------------------------------------
-	-- Review: the Minimap's line and the Features' line (a short one: at most
-	-- three names and how many more; a row is one line)
-	--------------------------------------------------------------------------------
-
-	local NAMES_SHOWN, NAMES_ROOM = 3, 46   -- the names listed, and the room for them (characters)
-
-	-- (read once: the Services bar's switch key; false: none)
-	local servicesKey = nil
-	local function MapLine(_, d)
-		if d[RESKIN] == false or d[MAP_HUD] == false or d["!MinimapPanel"] == false or not MelloUI:GetModule("MinimapPanel") then
-			return TEXT.mapGame
-		end
-		local shape = d[MAP_SHAPE]
-		if shape == nil then
-			shape = MapShape()
-		end
-		if shape ~= "square" then
-			return TEXT.mapRoundRow
-		end
-		if servicesKey == nil then
-			servicesKey = I.SwitchKey(MelloUI:GetModule("Services")) or false
-		end
-		if d[MAP_MERGE] ~= false and servicesKey and d[servicesKey] == true then
-			return TEXT.mapMergedRow
-		end
-		return TEXT.mapSquareRow
-	end
-
-	-- the Features line, made again only when the switches on change (the
-	-- Review page refreshes on a show, a fit, a scale change): which are on,
-	-- as the bits of one number in the step's order
-	local featuresMemo = { mask = nil, text = nil }
-	local function FeaturesLine(_, d)
-		local keys = FeatureKeys()
-		local mask = 0
-		for i = 1, #keys do
-			mask = mask * 2 + (d[keys[i]] == true and 1 or 0)
-		end
-		if featuresMemo.mask == mask then
-			return featuresMemo.text
-		end
-		local on = I:FeaturesOn(d)
-		local text, shown = "", 0
-		for i = 1, #on do
-			local m = MelloUI:GetModule(on[i])
-			local name = m and FeatureLabel(m) or on[i]
-			if shown >= NAMES_SHOWN or (shown > 0 and #text + 2 + #name > NAMES_ROOM) then
-				break
-			end
-			text = shown == 0 and name or (text .. ", " .. name)
-			shown = shown + 1
-		end
-		if #on == 0 then
-			text = TEXT.featuresNone
 		else
-			if shown < #on then
-				text = MelloUI.Lang.F(TEXT.featuresMore, text, #on - shown)
+			local keys = {}
+			for _, c in ipairs(Offered(st.choices)) do
+				keys[#keys + 1] = c.key
 			end
-			text = MelloUI.Lang.F(TEXT.featuresRow, text)
+			CardRow(page, key, keys, CARD_H, { [st.pick] = TEXT.recommended }, OnePick)
+			for _, e in ipairs(Offered(st.extras)) do
+				local row = Switch(page, e.key, function()
+					return picks.x[e.key] and true or false
+				end, function(on)
+					picks.x[e.key] = on and true or false
+					-- (a pick this one needs, ticked with it: Restock's Reminders)
+					local need = e.needs
+					if on and need and type(picks[need[1]]) == "table" then
+						picks[need[1]][need[2]] = true
+					end
+					Changed()
+				end)
+				row.melloOnly = e.only
+			end
 		end
-		featuresMemo.mask, featuresMemo.text = mask, text
+		return 1
+	end
+
+	local function RefreshStep(page, key)
+		local st = STEP_OF[key]
+		local picks = Picks()
+		local y = 8 + LeadHeight(page) + 10
+		if page.picture then
+			page.picture:ClearAllPoints()
+			page.picture:SetPoint("TOPLEFT", page, "TOPLEFT", (PAGE_W - PIC_W) / 2, -y)
+			ShowPicture(page.picture, PictureOf(key, picks[key]))
+			y = y + PIC_H + 12
+		end
+		if st.kind == "many" then
+			y = LaySwitches(page, y)
+		else
+			y = LayCards(page, y, picks[key]) + 10
+			local picked = picks[key]
+			y = LaySwitches(page, y, function(row)
+				return row.melloOnly == nil or row.melloOnly == picked
+			end)
+		end
+		return y + 8
+	end
+
+	for _, st in ipairs(I.SETUP) do
+		local key = st.key
+		STEPS[key].build = function(page)
+			return BuildStep(page, key)
+		end
+		STEPS[key].refresh = function(page)
+			return RefreshStep(page, key)
+		end
+	end
+
+	-- the steps the setup's path keeps: a step with nothing to offer (its feature addons switched off) is left out,
+	-- once, as the window is made (a feature addon comes in only with a reload)
+	function IW.PruneSteps()
+		local option = I:Option(SETUP)
+		if not option then
+			return
+		end
+		for i = #option.steps, 1, -1 do
+			local st = STEP_OF[option.steps[i]]
+			if st and #Offered(st.choices) == 0 then
+				table.remove(option.steps, i)
+			end
+		end
+	end
+
+	--------------------------------------------------------------------------------
+	-- The Review step's rows for the setup: a line a step, the layout's, the colours'
+	--------------------------------------------------------------------------------
+
+	local reviewMemo = {}   -- [step key] = { sig, text }: a line made again only when its picks changed
+
+	local function Line(key, sig, make)
+		local m = reviewMemo[key]
+		if m and m.sig == sig then
+			return m.text
+		end
+		local text = make()
+		reviewMemo[key] = { sig = sig, text = text }
 		return text
 	end
 
-	REVIEW.fresh = { TEXT.reviewChoices, PaletteLine, MapLine, FeaturesLine, true, TEXT.scaleRow }
+	local function SkinRow()
+		local skin = Skin()
+		return Line("skin", skin, function()
+			return MelloUI.Lang.F(TEXT.reviewSkin, MelloUI.Lang.T(Choice(skin)[1]))
+		end)
+	end
+
+	local function StepRow(key)
+		local st = STEP_OF[key]
+		return function()
+			local option = I:Option(SETUP)
+			if not (option and IndexOf(option.steps, key)) then
+				return nil
+			end
+			local picks = Picks()
+			local names, sig = {}, ""
+			if st.kind == "many" then
+				for _, c in ipairs(Offered(st.choices)) do
+					if picks[key][c.key] then
+						names[#names + 1] = Choice(c.key)[1]
+						sig = sig .. c.key .. ";"
+					end
+				end
+			else
+				names[1] = Choice(picks[key])[1]
+				sig = tostring(picks[key]) .. ";"
+				for _, e in ipairs(Offered(st.extras)) do
+					if picks.x[e.key] and not (e.only and e.only ~= picks[key]) then
+						names[#names + 1] = Choice(e.key)[1]
+						sig = sig .. e.key .. ";"
+					end
+				end
+			end
+			return Line(key, sig, function()
+				local list = {}
+				for i, name in ipairs(names) do
+					list[i] = MelloUI.Lang.T(name)
+				end
+				local text = #list == 0 and MelloUI.Lang.T(TEXT.reviewNone) or concat(list, ", ")
+				return MelloUI.Lang.T(STEPS[key].title) .. ": " .. text
+			end)
+		end
+	end
+
+	local function ColoursRow(option, draft)
+		if Skin() == "default" then
+			return TEXT.gamePalette
+		end
+		return PaletteLine(option, draft)
+	end
+
+	local rows = { SkinRow, true }
+	for _, st in ipairs(I.SETUP) do
+		rows[#rows + 1] = StepRow(st.key)
+	end
+	rows[#rows + 1] = ColoursRow
+	rows[#rows + 1] = TEXT.scaleRow
+	REVIEW.setup = rows
 end
-WizardSteps()
+SetupSteps()
 
 --------------------------------------------------------------------------------
 -- The engine's news (the bus's 'installer'), a screen change ('scale'), and
@@ -3098,7 +2117,7 @@ local function OnInstaller(what, a, b)
 	elseif what == "kept" or what == "reverted" then
 		DropFits(true)
 		if not shown then
-			state.phase, state.step, state.doneMode, state.keepLine, state.footLine = "choose", "choose", nil, nil, nil
+			state.phase, state.step, state.doneMode, state.keepLine, state.footLine = "choose", Option().steps[1], nil, nil, nil
 			state.installed = false
 		elseif what == "kept" then
 			state.doneMode, state.needsReload, state.keepLine = "kept", a and true or false, nil
@@ -3184,13 +2203,8 @@ local Window_OnHide = Shared("OnHide on the installer window", function(frame)
 	if MelloUI.Kit and MelloUI.Kit.Showcase then
 		MelloUI.Kit:Showcase(false)
 	end
-	-- the banner released (about 2 MB); loaded again on the Setup page's
-	-- next show
-	local choose = win.pages.choose
-	if choose and win.bannerLoaded then
-		choose.banner:SetTexture(nil)
-	end
-	win.bannerLoaded = false
+	-- the steps' pictures let go; loaded again when their page next shows
+	IW.ReleasePictures()
 	DropFits(false)
 	-- (the refit closed early: nothing to set up, no line)
 	if state.phase == "choose" and not state.installed and not Option().hidden then
@@ -3217,7 +2231,7 @@ local function Build()
 	Perf.SetScript(frame, "OnShow", Window_OnShow)
 	Perf.SetScript(frame, "OnHide", Window_OnHide)
 	Perf.SetScript(frame, "OnEvent", Window_OnEvent)
-	win = { frame = frame, pages = {}, foot = {}, bannerLoaded = false }
+	win = { frame = frame, pages = {}, foot = {} }
 	IW.win = win
 	-- the shell: the corner ring with the emblem, the plate on the rail,
 	-- close, Escape, the fit, the sounds; its one mover keeps no place; the
@@ -3226,19 +2240,11 @@ local function Build()
 	-- step titles are too long for a brand row in the steps rail), its ends on
 	-- the window's margin
 	win.shell = Kit:OwnWindow(frame, { area = "installer", ring = { at = "tl", texture = LOGO }, plate = "rail",
-		title = MelloUI.Lang.T(STEPS.choose.title), close = true, escape = true, fit = true, sounds = true, mover = MOVER, calm = true,
+		title = MelloUI.Lang.T(STEPS.skin.title), close = true, escape = true, fit = true, sounds = true, mover = MOVER, calm = true,
 		inset = EDGE })
 	state.escape = true
-	-- (one look stage I, step 4) without MelloUI_Oldschool: no Windows step (the painted skins of the game's windows),
-	-- taken out of every setup's steps once, as the window is made (it cannot come in later: a reload loads it)
-	if type(rawget(MelloUI, "Oldschool")) ~= "table" then
-		for _, option in ipairs(I.OPTIONS) do
-			local at = IndexOf(option.steps, "windows")
-			if at then
-				table.remove(option.steps, at)
-			end
-		end
-	end
+	-- (1.2.4) the setup's steps with nothing to offer (their feature addons off) left out, before the rail is made
+	IW.PruneSteps()
 	-- the steps rail
 	win.rail = W.NavRail(frame, { width = RAIL_W, rowHeight = 32, iconSize = 0, numbered = true, scroll = false,
 		onSelect = StepClick, clickable = StepClickable, doneGlyph = "common-icon-checkmark", skin = win.shell })
@@ -3322,14 +2328,14 @@ function IW:Open(page)
 				win.rail:SetGroups(IW.GroupsFor(Option()))
 			end
 		end
-	elseif not shown or page == "choose" or page == "fit" then
-		-- every open starts on its setup's first step: the setup chosen is
-		-- kept, the refit (Fit to this screen) is chosen by its own entry
+	elseif not shown or page == "fit" then
+		-- every open starts on its setup's first step (the picks made are
+		-- kept); the refit (Fit to this screen) is chosen by its own entry
 		-- only and starts on the Screen step
 		if page == "fit" and I:Option("fit") then
 			state.option = "fit"
 		elseif Option().hidden then
-			state.option = "full"
+			state.option = "setup"
 		end
 		state.phase, state.step, state.doneMode, state.keepLine, state.footLine = "choose", Option().steps[1], nil, nil, nil
 		state.installed = false

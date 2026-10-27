@@ -498,6 +498,20 @@ local function HideBubble(b)
 	b.text:Hide()
 	b.stamp:Hide()
 	b.face:Hide()
+	if b.edge then
+		b.edge:Hide()
+	end
+end
+
+-- (1.2.4, the Default skin -- MelloUI.Skin, docs/plans/default-skin.md: the user's sketch) the game's own chat bubble
+-- round a bubble: its border (MelloUI.Skin.Border), the bubble's ground the game's dark under it, made at its first need
+local function BubbleEdge(b, game)
+	if game and not b.edge then
+		b.edge = MelloUI.Skin.Border(WV.talk, "bubble", b.ground)
+	end
+	if b.edge then
+		b.edge:SetShown(game)
+	end
 end
 
 local function SameRun(newer, older)
@@ -569,8 +583,11 @@ function WV.LayTalk()
 		ground:ClearAllPoints()
 		ground:SetPoint("TOPLEFT", text, "TOPLEFT", -PADX, PADY)
 		ground:SetPoint("BOTTOMRIGHT", text, "BOTTOMRIGHT", PADX, -PADY)
-		W.Paint(ground, mine and "selectedTab" or "raisedPanel", "fill", View.paper and 0.16 or 0.92)
+		local Skin = rawget(MelloUI, "Skin")
+		local game = Skin and Skin.IsDefault() and not View.paper or false
+		W.Paint(ground, (mine and not game) and "selectedTab" or "raisedPanel", "fill", View.paper and 0.16 or 0.92)
 		ground:Show()
+		BubbleEdge(b, game)
 		-- their picture by the newest bubble of their run
 		if not mine and not (newer and SameRun(newer, rec)) then
 			b.face:ClearAllPoints()
@@ -842,7 +859,7 @@ local function Build()
 	Perf.SetScript(close, "OnClick", function()
 		WV.Close()
 	end)
-	local hair = W.Solid(f, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
+	local hair = W.HairSolid(f, "ARTWORK")
 	hair:SetHeight(1)
 	hair:SetPoint("TOPLEFT", f, "TOPLEFT", 6, -TITLE_H)
 	hair:SetPoint("TOPRIGHT", f, "TOPRIGHT", -6, -TITLE_H)
@@ -872,7 +889,7 @@ local function Build()
 		WV.LayList()
 	end)
 	WV.listBar = listBar
-	local divider = W.Solid(f, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
+	local divider = W.HairSolid(f, "ARTWORK")
 	divider:SetWidth(1)
 	divider:SetPoint("TOPLEFT", f, "TOPLEFT", LIST_W + 2, -(TITLE_H + 6))
 	divider:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", LIST_W + 2, 6)
@@ -892,7 +909,7 @@ local function Build()
 	WV.info:SetPoint("RIGHT", head, "RIGHT", -(4 * (BUTTON + 6) + 10), 0)
 	WV.info:SetJustifyH("LEFT")
 	WV.info:SetWordWrap(false)
-	local headLine = W.Solid(f, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
+	local headLine = W.HairSolid(f, "ARTWORK")
 	headLine:SetHeight(1)
 	headLine:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 6, 0)
 	headLine:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -8, 0)
@@ -1030,6 +1047,11 @@ function WV.Restyle()
 		WV.LayTalk()
 	end
 end
+
+-- (1.2.4) the skin switched (MelloUI.Skin): the bubbles in its look
+MelloUI:On("skin", function()
+	WV.Restyle()
+end, WV)
 
 -- the chat's font again on the bubbles (View.Fonts)
 function WV.Fonts()

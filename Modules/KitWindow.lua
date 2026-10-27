@@ -491,7 +491,7 @@ function Shell:BuildModern()
 	local Rims = rawget(MelloUI, "Rims")
 	if type(Rims) == "table" and Rims.Add then
 		local shell = self
-		Rims:Add(frame, { shown = function() return not shell.kit end })
+		Rims:Add(frame, { kind = "window", shown = function() return not shell.kit end })
 	end
 	local shade = MelloUI.Shade and MelloUI.Shade:Band(frame, FLAT.SHADE)
 	if shade then
@@ -525,7 +525,7 @@ function Shell:BuildModern()
 		local holder = CreateFrame("Frame", nil, frame)
 		holder:SetFrameLevel(frame:GetFrameLevel() + LEVEL_CREST)
 		holder:EnableMouse(false)
-		local line = W.Solid(holder, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
+		local line = W.HairSolid(holder, "ARTWORK")
 		line:SetHeight(1)
 		self.brandHolder = holder
 		self.brandLine = self:Plain(line)

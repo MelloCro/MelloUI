@@ -136,6 +136,10 @@ local function Dress(b, kind)
 	Button.Build(b)
 	Perf.HookScript(b, "OnAttributeChanged", OnAttribute)
 	buttons[#buttons + 1] = b
+	-- (1.2.4: the mouseover highlight, MelloUI.FrameHover)
+	if MelloUI.FrameHover then
+		MelloUI.FrameHover.Attach(b)
+	end
 	-- the kit's raid dressing (its rail and stone) while the painted skin is on
 	local rfp = MelloUI:GetModule("RaidFramePanel")
 	if rfp and rfp.DressStandIn then
@@ -173,19 +177,37 @@ local function Scale(region)
 	return (s and s > 0) and s or nil
 end
 
+-- (retail's fix of 2026-10-25, 1.2.4 here: the user, "we have also fixed the checkbox to show your own party
+-- unitframe while in a party") a normal party member's reach past its own rect while Group Frames holds them
+-- (StackMembers): under it, its pet's room while the game shows party pets (the showPartyPets CVar: the game's own 26
+-- between members then, 10 without -- PartyFrame.lua)
+local GAME_MEMBER = { w = 120, h = 53, n = 4, spacing = 10, pet = 16 }
+local function PetRoom()
+	local get = type(C_CVar) == "table" and C_CVar.GetCVarBool
+	local ok, on = false, nil
+	if type(get) == "function" then
+		ok, on = pcall(get, "showPartyPets")
+	end
+	return (ok and on == true) and GAME_MEMBER.pet or 0
+end
+
 -- the game's normal party frames' footprint in the party container's units:
 -- four members (PartyMemberFrameTemplate, 120 x 53) at the party frame's
--- scale, the game's spacing between (10; 26 with the pets shown)
-local GAME_MEMBER = { w = 120, h = 53, n = 4, spacing = 10 }
-local function GameFootprint()
+-- scale with their pets' room, Party Spacing between (StackMembers) -- and
+-- you on top with Show Yourself In Your Party (GroupSolo.lua)
+local function GameFootprint(sp)
 	local pf, c = rawget(_G, "PartyFrame"), containers.party
 	local ratio = 1
 	local ps, cs = Scale(pf), Scale(c)
 	if ps and cs then
 		ratio = ps / cs
 	end
-	local sp = type(pf) == "table" and Num(rawget(pf, "spacing")) or GAME_MEMBER.spacing
-	return GAME_MEMBER.w * ratio, (GAME_MEMBER.n * GAME_MEMBER.h + (GAME_MEMBER.n - 1) * sp) * ratio
+	local n = GAME_MEMBER.n
+	local h = n * (GAME_MEMBER.h + PetRoom()) + (n - 1) * sp
+	if DB().showPlayer then
+		h = h + GAME_MEMBER.h + sp
+	end
+	return GAME_MEMBER.w * ratio, h * ratio
 end
 
 -- the room between two frames: the party's, or the raid's own (0.20.2)
@@ -200,7 +222,7 @@ local function Footprint(kind)
 	local w, h, sp = db.width, db.height, Spacing(kind)
 	if kind == "party" and db.partyStyle == "party" then
 		-- (the game's normal party frames show at its place: the plate their size)
-		return GameFootprint()
+		return GameFootprint(sp)
 	end
 	if kind == "party" then
 		if db.partyGrowth == "RIGHT" or db.partyGrowth == "LEFT" then
@@ -593,6 +615,48 @@ local function OnGameLaid()
 	end
 end
 
+-- the game's members stacked as its own Layout stacks them (VerticalLayoutFrame: shown ones by layoutIndex, TOPLEFT
+-- at its padding, down from its top), each with its pet's room under it (`rooms`) and `spacing` between -- under you
+-- with Show Yourself In Your Party (GroupSolo.lua: your frame of ours in the first member's place). Held: Party
+-- Spacing, laid after the game's every Layout (the post-hook in HoldGameParty: the roster, pets, Edit Mode -- events,
+-- never per frame); given back: the game's own spacing, as its next Layout lays them. Only a member whose point
+-- differs is laid; out of a fight (the callers' Later). Nothing of the game's is called or written
+local function StackMembers(pf, spacing, rooms)
+	local list = {}
+	PartyMembers(function(m)
+		local ok, shown = pcall(m.IsShown, m)
+		if ok and shown == true and Num(rawget(m, "layoutIndex")) then
+			list[#list + 1] = m
+		end
+	end)
+	table.sort(list, function(a, b)
+		return rawget(a, "layoutIndex") < rawget(b, "layoutIndex")
+	end)
+	local left = Num(rawget(pf, "leftPadding")) or 0
+	local y = Num(rawget(pf, "topPadding")) or 0
+	local down = rooms and PetRoom() or 0
+	if rooms and ns.Solo and ns.Solo.InParty() then
+		local me = ns.Solo.frame
+		local okH, h = false, nil
+		if me then
+			okH, h = pcall(me.GetHeight, me)
+		end
+		y = y + (okH and Num(h) or GAME_MEMBER.h) + spacing
+	end
+	for _, m in ipairs(list) do
+		local okN, n = pcall(m.GetNumPoints, m)
+		local okP, p, rel, rp, x, oy = pcall(m.GetPoint, m, 1)
+		x, oy = okP and Num(x), okP and Num(oy)
+		if not (okN and n == 1 and p == "TOPLEFT" and rel == pf and rp == "TOPLEFT" and x and oy
+			and math.abs(x - left) < 0.01 and math.abs(oy + y) < 0.01) then
+			pcall(m.ClearAllPoints, m)
+			pcall(m.SetPoint, m, "TOPLEFT", pf, "TOPLEFT", left, -y)
+		end
+		local okH, h = pcall(m.GetHeight, m)
+		y = y + (okH and Num(h) or GAME_MEMBER.h) + down + spacing
+	end
+end
+
 local function HoldGameParty()
 	local pf, c = rawget(_G, "PartyFrame"), containers.party
 	if not (type(pf) == "table" and c and type(pf.GetPoint) == "function") then
@@ -611,10 +675,15 @@ local function HoldGameParty()
 	end
 	held.on = true
 	LayGame(pf, "TOPLEFT", UIParent, "BOTTOMLEFT", l / s, t / s)
+	StackMembers(pf, Spacing("party"), true)
 	if not held.hooked then
 		held.hooked = true
 		hooksecurefunc(pf, "SetPoint", OnGameLaid)
 		hooksecurefunc(c, "SetPoint", OnGameLaid)
+		-- (the game stacked its members again -- a roster change, a pet, Edit Mode: Party Spacing again)
+		if type(pf.Layout) == "function" then
+			hooksecurefunc(pf, "Layout", OnGameLaid)
+		end
 	end
 end
 
@@ -626,6 +695,7 @@ local function FreeGameParty()
 	local pf, h = rawget(_G, "PartyFrame"), held.home
 	if type(pf) == "table" and h then
 		LayGame(pf, h[1], h[2], h[3], h[4], h[5])
+		StackMembers(pf, Num(rawget(pf, "spacing")) or GAME_MEMBER.spacing, false)
 	end
 end
 
@@ -952,6 +1022,10 @@ local function Listen()
 			Button.Lay(b)
 		end
 	end, "GroupFrames.border")
+	-- (1.2.4) the skin switched (MelloUI.Skin): the cells in its look (the Default skin's: the game's raid frame)
+	MelloUI:On("skin", function()
+		H:Repaint()
+	end, "GroupFrames.skin")
 end
 
 --------------------------------------------------------------------------------

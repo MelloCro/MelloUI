@@ -855,7 +855,7 @@ Lint workflow) fails when a copy is added and names the system to use.
   with it, holds it, then the place it lies, then its description; within
   each, a page before a tab or a pick, those before a row.
 - **Its registry entry.** Its module's `MelloUI:RegisterModule` carries what
-  the configurator, UI Modifications and the installer show; nothing is
+  the configurator and UI Modifications show; nothing is
   listed by hand anywhere else (UI Modifications makes its PANELS and TWEAKS
   from it, and the configurator's old MODULE_META is gone; Core.lua's header
   has the shape):
@@ -876,10 +876,8 @@ Lint workflow) fails when a copy is added and names the system to use.
   - `group` and `navOrder` are no longer read (0.15.0: the side list is
     Core/ConfigLayout.lua's `L.groups`, the pages its `L.pages`); Core still
     checks their types.
-  - `icon` and `flavour` for its side-list icon and page header; `role`
-    ("core", "look", "feature", "adds" or "replaces") says what the
-    installer's setups do with it (a hidden kit panel with a `window` is
-    look); `area = { key, follows }`; a feature folded under UI
+  - `icon` and `flavour` for its side-list icon and page header;
+    `area = { key, follows }`; a feature folded under UI
     Modifications is `tweak = { label, desc, order, off, always }` (`order`
     as window's); `new = "<version>"` for a brand-new module's page (its
     side-list entry and page title tagged New while that update runs: New

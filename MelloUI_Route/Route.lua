@@ -40,7 +40,6 @@ local M = MelloUI:RegisterModule("Route", {
 	icon = "Interface\\Icons\\Ability_Tracking",
 	flavour = "A trail of gems from here to there, along the roads you have walked before.",
 	group = "Quests and travel", navOrder = 2,
-	role = "feature",
 	keep = { "^flights_" },   -- each character's own flight points (CharFlightsKey): never in a profile, never wiped by one
 	enabledByDefault = true,
 	defaults = {
@@ -7560,13 +7559,14 @@ do
 			m.disc:SetSize(TR.MARK, TR.MARK)
 			m.disc:SetPoint("CENTER")
 			m.ring = m:CreateTexture(nil, "ARTWORK", nil, 2)
-			m.ring:SetTexture(M.TRAIL.ICONS .. "ring_gold")
 			m.ring:SetAllPoints()
+			-- (the copies for their sizes, and the skin's pictures: MelloUI.Icons)
+			MelloUI.Icons.Set(m.ring, "ring_gold", TR.RING)
 			m.num = m:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 			m.num:SetPoint("CENTER", 0, 0)
 			m.arrow = m:CreateTexture(nil, "ARTWORK", nil, 3)
-			m.arrow:SetTexture(M.TRAIL.CHEVRON)
 			m.arrow:SetSize(14, 7)
+			MelloUI.Icons.Set(m.arrow, M.TRAIL.CHEVRON, 14)
 			m.arrow:Hide()
 			local Wd = MelloUI.Widgets
 			if Wd and Wd.Paint then

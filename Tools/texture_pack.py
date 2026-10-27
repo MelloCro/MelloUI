@@ -244,6 +244,8 @@ TEX_SHOWN = [
     (r"^Textures/ActiveLook", 61 / 128, False, "the active look (Kit:SetActive): a 128 px cell round a 45-unit button, 61 units across"),
     (r"^Textures/KitShadows", 4 * 26 / 64, False, "kit shadow partners (Kit:Shadow): a texel is 4 painted px, brackets shown at 26 per 64"),
     (r"^Textures/Route/", None, True, "route beam: any world map zoom"),
+    (r"^Installer/", 626 / 1024, False, "the installer's step pictures (Core/InstallerWindow.lua, 1.2.4): 1024 px drawn the "
+                                        "text's 626 units (the Skin step's 910 px screen the same width)"),
     (r"^Textures/Stone", None, False, "not referenced by any Lua file"),
 ]
 
@@ -251,6 +253,9 @@ TEX_SHOWN = [
 # the file (so a halved file keeps them); the rest is never on screen.
 TEX_DRAWN = [
     (r"^Textures/GameMenuFrame", (910 / 1024, 1728 / 2048), "GameMenuPanel TEX_RIGHT / TEX_BOTTOM"),
+    # (the last match wins) the installer's step pictures: a 2.5:1 band, the Skin step's the whole screen (16:9)
+    (r"^Installer/", (1, 410 / 512), "InstallerWindow BAND_UV"),
+    (r"^Installer/look_", (910 / 1024, 1), "InstallerWindow SCREEN_UV"),
 ]
 # whole files drawn with a repeating wrap (SetTexture's wrap arguments)
 # (0.21.3: none since the Route beam's streaks were retired)
@@ -310,7 +315,12 @@ STAY_TGA = [
 # every file it can name to TGA; lua_refs lists every other built path it
 # meets (they are checked by hand), and stops the ship at a '.tga' it can
 # not account for.
+# (1.2.4) the installer's step pictures: PictureOf names a step's picture and the skin picked (Tools/make_installer_pictures.py)
+INSTALLER_PICTURES = tuple("%s_%s" % (name, skin) for name in ("look", "party_group", "party_portraits", "quests", "column",
+                                                              "combat", "chat", "chatgame", "bags", "bagsgame")
+                           for skin in ("default", "modern", "oldschool"))
 DYNAMIC_PATHS = {
+    ("Core/InstallerWindow.lua", "Installer/"): INSTALLER_PICTURES,
     # TextureFile(): the painted picture, or the look's ("_warm", "_bronze", "_<palette id>")
     ("MelloUI_Oldschool/Modules/GameMenuPanel.lua", "Textures/GameMenuFrame"): GAMEMENU_ENDINGS,
     ("MelloUI_Oldschool/Modules/GameMenuPanel.lua", "Textures/GameMenuFrame_"): tuple(e[1:] for e in GAMEMENU_ENDINGS if e),

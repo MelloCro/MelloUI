@@ -84,7 +84,6 @@ local M = MelloUI:RegisterModule("BarTextures", {
 	desc = "Change the fill texture of health, power, nameplate, experience, reputation, honor and cast bars.",
 	icon = "Interface\\Icons\\Spell_Holy_Renew",
 	flavour = "Health and mana bars in the finish you like: flat, smooth, glossy or minimalist.",
-	role = "look",
 	tweak = { label = "Bar Textures", desc = "The finish of health and mana bars (flat, smooth, glossy, minimalist) and their colours; the fill under the kit's brackets.", order = 7 },
 	defaults = {
 		texture = MEDIA .. "Flat",
@@ -1696,6 +1695,7 @@ end
 --                `appliers`: "unitframes", "raidframes", "castbars",
 --                "personal" ... -- also while the module or that area is off)
 --       active   the module works on that area's bars (its colours apply)
+--   M.PickedTexture(area) -> texture | nil   the player's own pick for the area (nil: none, the default kept)
 --   M.PreviewHealthColor(mode, sample) -> r, g, b
 --       mode    a Health Bar Colour ("green", "class", "reaction",
 --               "health"); nil: the one chosen
@@ -1730,6 +1730,17 @@ do
 			return nil, active
 		end
 		return IsPlainString(texture) and texture or nil, active
+	end
+
+	-- (1.2.4, the Default skin) the texture the player picked for an area's bars, else nil: the game's art asked for,
+	-- the module or the area off, or the Shared Bar Texture as it came (its default). The Default skin's own bars show
+	-- the game's fill then (Group Frames' cells); a pick of the player's wins
+	function M.PickedTexture(area)
+		local texture = M.PreviewTexture(area)
+		if texture == nil or (AreaValue(area) == "shared" and texture == (M.defaults and M.defaults.texture)) then
+			return nil
+		end
+		return texture
 	end
 
 	-- the fraction as a plain number from 0 to 1 (1: none given)

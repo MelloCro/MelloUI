@@ -72,7 +72,7 @@
 --   W.LinkRow(parent, y, label, get, onClick, opts)   a setting kept on
 --                                      another page: its value and a button
 --                                      to it (0.15.0)
---   W.Card(parent, spec, skin)         a choice card (the installer's setups;
+--   W.Card(parent, spec, skin)         a choice card (the installer's picks;
 --                                      spec.palette: a palette's card)
 --   W.PaletteSwatch(parent, spec)      a palette shown by its colours, and
 --     W.PaletteValues(), W.PaletteName(id), W.PaletteFill(tex, id, role):
@@ -233,12 +233,36 @@ do
 		return type(Look) == "table" and type(Look.Palette) == "function" and Look.Palette() or MelloUI.Palette
 	end
 
-	local function Apply(region, key, how, alpha)
+	-- (1.2.4) a hairline (P.Hair) under the Default skin: the game's own line (MelloUI.Skin); back in a colour, its
+	-- plain white ground again first
+	local function Hair(region, how, alpha, e)
+		local Skin = rawget(MelloUI, "Skin")
+		if Skin and Skin.IsDefault() then
+			Skin.LayHair(region, alpha)
+			e.laid = true
+			return true
+		end
+		if e.laid then
+			e.laid = false
+			if how == "vertex" then
+				region:SetTexture(WHITE)
+				region:SetTexCoord(0, 1, 0, 1)
+			else
+				region:SetVertexColor(1, 1, 1, 1)
+			end
+		end
+		return false
+	end
+
+	local function Apply(region, key, how, alpha, e)
 		local c = Colours()[key]
 		if not c then
 			return
 		end
 		alpha = alpha or 1
+		if e and e.hair and Hair(region, how, alpha, e) then
+			return
+		end
 		if how == "fill" then
 			-- the region's own alpha kept (a plain part the kit faded, a dim
 			-- a caller set): a colour set again must not bring it back
@@ -266,7 +290,7 @@ do
 	local function RepaintAll()
 		for _, list in pairs(lists) do
 			for region, e in pairs(list) do
-				Apply(region, e.key, e.how, e.alpha)
+				Apply(region, e.key, e.how, e.alpha, e)
 			end
 		end
 	end
@@ -290,14 +314,24 @@ do
 		if e then
 			e.key, e.how, e.alpha = key, how, alpha
 		else
-			list[region] = { key = key, how = how, alpha = alpha }
+			e = { key = key, how = how, alpha = alpha }
+			list[region] = e
 		end
-		Apply(region, key, how, alpha)
+		Apply(region, key, how, alpha, e)
 		if not listening and MelloUI.On then
 			listening = true
 			paintedFrom = MelloUI.Palette
 			MelloUI:On("palette", OnPalette, "Kit palette")
 			MelloUI:On("look:own", RepaintAll, "Kit palette")   -- (the reskin switched: the game's colours or the palette)
+		end
+	end
+
+	-- (1.2.4) a region painted (fill or vertex) that is a hairline: the game's own line under the Default skin
+	function P.Hair(region)
+		local e = region and lists.main[region]
+		if e and not e.hair then
+			e.hair = true
+			Apply(region, e.key, e.how, e.alpha, e)
 		end
 	end
 
@@ -494,7 +528,10 @@ do
 	local function Lay()
 		local fonts = MelloUI.modules and MelloUI.modules.Fonts
 		local db = fonts and fonts.isEnabled and fonts.db
+		-- (1.2.4, the Default skin -- MelloUI.Skin: the game object's own face, as a face of the player's choosing)
+		local Skin = rawget(MelloUI, "Skin")
 		local chosen = type(db) == "table" and type(db.fontText) == "string" and db.fontText ~= "" and db.fontText ~= "default"
+			or (Skin and Skin.IsDefault())
 		for _, name in ipairs(NAMES) do
 			local game, copy = _G[name], _G[own[name]]
 			local members = family[name]
@@ -565,6 +602,7 @@ do
 		end
 		Lay()
 		MelloUI:On("fonts", Lay, "the widgets' own fonts")
+		MelloUI:On("skin", Lay, "the widgets' own fonts (skin)")
 		MelloUI:On("module", function(name)
 			if name == "Fonts" then
 				Lay()
@@ -640,15 +678,35 @@ W.Edges = Edges
 -- the windows' inner lines -- a panel's edge, a title's rule, a divider, the seam of two snapped windows: the
 -- Personal Display's joint hairline, the palette's trim at HAIR_ALPHA. W.Hairline(region) paints a line in it
 -- (painted again with the palette); W.HairEdges(frame[, layer[, rect]]) four of them round a frame (W.Edges')
+-- (1.2.4) under the Default skin each is the game's own line (MelloUI.Painter's Hair: MelloUI.Skin);
+-- W.HairSolid(parent[, layer]) a line of its own (W.Solid's), made a hairline
 W.HAIR_KEY, W.HAIR_ALPHA = "trim", 0.55
 
-function W.Hairline(region)
-	W.Paint(region, W.HAIR_KEY, "fill", W.HAIR_ALPHA)
-	return region
-end
+do   -- (in a block: the main chunk is near Lua's 200 locals)
+	local function Hair(region)
+		local P = MelloUI.Painter
+		if P and P.Hair then
+			P.Hair(region)
+		end
+		return region
+	end
 
-function W.HairEdges(frame, layer, rect)
-	return Edges(frame, W.HAIR_KEY, layer or "BORDER", rect, W.HAIR_ALPHA)
+	function W.Hairline(region)
+		W.Paint(region, W.HAIR_KEY, "fill", W.HAIR_ALPHA)
+		return Hair(region)
+	end
+
+	function W.HairSolid(parent, layer)
+		return Hair(W.Solid(parent, layer, W.HAIR_KEY, W.HAIR_ALPHA))
+	end
+
+	function W.HairEdges(frame, layer, rect)
+		local edges = Edges(frame, W.HAIR_KEY, layer or "BORDER", rect, W.HAIR_ALPHA)
+		for i = 1, #edges do
+			Hair(edges[i])
+		end
+		return edges
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -728,6 +786,25 @@ do
 		return t
 	end
 
+	-- (1.2.4, the Default skin: MelloUI.Skin) the game's Settings divider in the diamond line's place, on its middle
+	-- (its 630 px drawn shorter); made at its first need
+	local function HeaderSkin(h, game)
+		for i = 1, 3 do
+			h.lineParts[i]:SetShown(not game)
+		end
+		if game and not h.gameLine then
+			local g = h:CreateTexture(nil, "ARTWORK")
+			g:SetAtlas(MelloUI.Skin.ART.divider)
+			g:SetHeight(1)
+			g:SetPoint("LEFT", h.line, "LEFT", 0, 0)
+			g:SetPoint("RIGHT", h.line, "RIGHT", 0, 0)
+			h.gameLine = g
+		end
+		if h.gameLine then
+			h.gameLine:SetShown(game)
+		end
+	end
+
 	function W.Header(parent, y, text, opts)
 		opts = opts or NO_OPTS
 		local inset = opts.inset or 0
@@ -753,6 +830,9 @@ do
 		right:SetPoint("LEFT", mid, "RIGHT", 0, 0)
 		right:SetPoint("RIGHT", h.line, "RIGHT", 0, 0)
 		h.lineParts = { left, mid, right }
+		if rawget(MelloUI, "Skin") then
+			MelloUI.Skin.Follow(h, HeaderSkin)
+		end
 		return h
 	end
 end
@@ -1377,12 +1457,49 @@ end
 
 -- the box as it is: its piece (the hover) always; `whole`, its state
 -- (enabled or not) too -- the choice's colour
-local function DropdownLook(dd, whole)
-	local on = dd:IsEnabled() and true or false
-	local alpha = on and 1 or FLAT_OFF
-	DropdownPiece(dd, (on and flatHover[dd]) and "hover" or "normal", alpha)
-	if whole then
-		W.Paint(dd.Text, on and "text" or "mutedText", "text")
+local DropdownLook
+do   -- (in a block: the main chunk is near Lua's 200 locals)
+	-- (1.2.4, the Default skin: MelloUI.Skin) the game's own dropdown in the piece's place (WowStyle1DropdownTemplate's
+	-- art and anchors, the box the game's 25 high: its text holder at its own 41 px height, its arrow button at its
+	-- own 27 px, by state); made at its first need
+	local function DropdownGame(dd, game, on)
+		local g = dd.melloSkinParts
+		if game and not g then
+			g = { bg = dd:CreateTexture(nil, "BACKGROUND", nil, 2), arrow = dd:CreateTexture(nil, "ARTWORK", nil, 1) }
+			g.bg:SetAtlas(MelloUI.Skin.ART.ddHolder)
+			g.bg:SetPoint("TOPLEFT", dd, "TOPLEFT", -8, 7)
+			g.bg:SetPoint("BOTTOMRIGHT", dd, "BOTTOMRIGHT", 8, -9)
+			g.arrow:SetPoint("RIGHT", dd, "RIGHT", 1, -3)
+			dd.melloSkinParts = g
+		end
+		for i = 1, 3 do
+			dd.melloSlices[i]:SetShown(not game)
+		end
+		if not g then
+			return
+		end
+		g.bg:SetShown(game)
+		g.arrow:SetShown(game)
+		if game then
+			local A = MelloUI.Skin.ART
+			g.arrow:SetAtlas((not on and A.ddArrowOff) or (flatHover[dd] and A.ddArrowLit) or A.ddArrow, true)
+		end
+	end
+
+	DropdownLook = function(dd, whole)
+		local on = dd:IsEnabled() and true or false
+		local alpha = on and 1 or FLAT_OFF
+		local Skin = rawget(MelloUI, "Skin")
+		local game = Skin and Skin.IsDefault() or false
+		if game or dd.melloSkinParts then
+			DropdownGame(dd, game, on)
+		end
+		if not game then
+			DropdownPiece(dd, (on and flatHover[dd]) and "hover" or "normal", alpha)
+		end
+		if whole then
+			W.Paint(dd.Text, on and "text" or "mutedText", "text")
+		end
 	end
 end
 
@@ -1428,6 +1545,9 @@ function W.Dropdown(parent, width, get, set, values, opts)
 	Perf.SetScript(dd, "OnClick", DropdownClick)
 	Perf.SetScript(dd, "OnHide", Flyout.BoxHidden)
 	FlatHooks(dd, DropdownLook)
+	if rawget(MelloUI, "Skin") then
+		MelloUI.Skin.followers[dd] = DropdownLook   -- (1.2.4: the skin switched, the box in its look)
+	end
 	if opts.tooltip then
 		dd.melloTipTitle, dd.melloTip = opts.default, opts.tooltip
 		Perf.HookScript(dd, "OnEnter", DropdownTip)
@@ -1823,11 +1943,77 @@ do
 	-- colour. A gold label on the hover fill would be too faint (the
 	-- palette's rule: only `text` on `hover`), so under the pointer the main
 	-- action's label is `text`, its edge still gold.
+	-- (1.2.4, the Default skin: MelloUI.Skin) the game's own red panel button in the flat plate's place: the three
+	-- pieces of UIPanelButtonTemplate's own file (its art the top 22 of 32 rows: never taller than that, centred), its
+	-- highlight added over them under the pointer, its disabled file while disabled; the label the game's gold (white
+	-- under the pointer). Made at its first need
+	local function GameSlices(b, layer, sub)
+		local s = {}
+		local h = math.min(Num(b:GetHeight()) or 22, 22)
+		for i = 1, 3 do
+			s[i] = b:CreateTexture(nil, layer, nil, sub)
+		end
+		s[1]:SetSize(12, h)
+		s[1]:SetPoint("LEFT")
+		s[3]:SetSize(12, h)
+		s[3]:SetPoint("RIGHT")
+		s[2]:SetPoint("TOPLEFT", s[1], "TOPRIGHT")
+		s[2]:SetPoint("BOTTOMRIGHT", s[3], "BOTTOMLEFT")
+		return s
+	end
+	local function GameFile(s, file)
+		for i = 1, 3 do
+			s[i]:SetTexture(file)
+		end
+		s[1]:SetTexCoord(0, 0.09375, 0, 0.6875)
+		s[2]:SetTexCoord(0.09375, 0.53125, 0, 0.6875)
+		s[3]:SetTexCoord(0.53125, 0.625, 0, 0.6875)
+	end
+	local function GamePlate(b, game, on, lit)
+		local g = b.melloSkinParts
+		if game and not g then
+			g = { plate = GameSlices(b, "BACKGROUND", 3), lit = GameSlices(b, "ARTWORK", 1) }
+			GameFile(g.lit, MelloUI.Skin.ART.buttonLit)
+			for i = 1, 3 do
+				g.lit[i]:SetBlendMode("ADD")
+			end
+			b.melloSkinParts = g
+		end
+		b.melloFill:SetShown(not game)
+		for i = 1, 4 do
+			b.melloEdges[i]:SetShown(not game)
+		end
+		if not g then
+			return
+		end
+		local file = on and MelloUI.Skin.ART.button or MelloUI.Skin.ART.buttonOff
+		if g.file ~= file then
+			g.file = file
+			GameFile(g.plate, file)
+		end
+		for i = 1, 3 do
+			g.plate[i]:SetShown(game)
+			g.lit[i]:SetShown(game and lit and true or false)
+		end
+	end
+
 	local function FlatLook(b, edges)
 		local on = b:IsEnabled() and true or false
 		local alpha = on and 1 or FLAT_OFF
 		local gold = flatGold[b]
 		local lit = on and flatHover[b]
+		local Skin = rawget(MelloUI, "Skin")
+		local game = Skin and Skin.IsDefault() or false
+		if game or b.melloSkinParts then
+			GamePlate(b, game, on, lit)
+		end
+		if game then
+			local fs = b:GetFontString()
+			if fs then
+				W.Paint(fs, (not on and "mutedText") or (lit and "text") or "selectedTrim", "text")
+			end
+			return
+		end
 		W.Paint(b.melloFill, lit and "hover" or "raisedPanel", "fill", alpha)
 		if edges then
 			local key = gold and "selectedTrim" or "border"
@@ -1839,6 +2025,10 @@ do
 		if fs then
 			W.Paint(fs, (not on and "mutedText") or (gold and not lit and "selectedTrim") or "text", "text")
 		end
+	end
+
+	local function FlatLookWhole(b)
+		FlatLook(b, true)
 	end
 
 	function W.FlatButton(b, gold)
@@ -1858,6 +2048,10 @@ do
 		end
 		HidePlate(b)
 		FlatHooks(b, FlatLook, true)
+		local Skin = rawget(MelloUI, "Skin")
+		if Skin then
+			Skin.followers[b] = FlatLookWhole   -- (1.2.4: the skin switched, its plate in the skin's look)
+		end
 		return b
 	end
 
@@ -1990,11 +2184,56 @@ do
 		hover = { tex = TEXTURE_PATH .. "Icons\\piece_tab_hover", h = 69, l = 41.2, r = 37.0 },
 		on = { tex = TEXTURE_PATH .. "Icons\\piece_tab_on", h = 70, l = 40.7, r = 37.6 },
 	}
-	local function TabPiece(tab, state)
-		if tab.melloPiece == state then
+	-- the slices on the plate's rect: the whole height (MelloUI's piece), or from its foot at `h` (the game's tab, at
+	-- its own height: never drawn taller than it is)
+	local function TabSlices(tab, h)
+		local s, fill = tab.melloSlices, tab.melloFill
+		for i = 1, 3 do
+			s[i]:ClearAllPoints()
+		end
+		if h then
+			s[1]:SetPoint("BOTTOMLEFT", fill, "BOTTOMLEFT")
+			s[3]:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
+			for i = 1, 3 do
+				s[i]:SetHeight(h)
+			end
+			s[2]:SetPoint("BOTTOMLEFT", s[1], "BOTTOMRIGHT")
+			s[2]:SetPoint("BOTTOMRIGHT", s[3], "BOTTOMLEFT")
 			return
 		end
-		tab.melloPiece = state
+		s[1]:SetPoint("TOPLEFT", fill, "TOPLEFT")
+		s[1]:SetPoint("BOTTOMLEFT", fill, "BOTTOMLEFT")
+		s[3]:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
+		s[3]:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
+		s[2]:SetPoint("TOPLEFT", s[1], "TOPRIGHT")
+		s[2]:SetPoint("BOTTOMRIGHT", s[3], "BOTTOMLEFT")
+	end
+
+	local function TabPiece(tab, state)
+		-- (1.2.4, the Default skin: MelloUI.Skin) the game's Settings tab: Options_Tab at rest and under the pointer,
+		-- the active tab selected -- its 7 px ends kept, the 1 px middle drawn along, each at its own height
+		local Skin = rawget(MelloUI, "Skin")
+		local game = Skin and Skin.IsDefault() or false
+		local want = game and ("game " .. state) or state
+		if tab.melloPiece == want then
+			return
+		end
+		local was = tab.melloPiece
+		tab.melloPiece = want
+		if game then
+			local s, pre = tab.melloSlices, MelloUI.Skin.ART[state == "on" and "tabOn" or "tab"]
+			s[1]:SetAtlas(pre .. "Left")
+			s[2]:SetAtlas(pre .. "Middle")
+			s[3]:SetAtlas(pre .. "Right")
+			s[1]:SetWidth(7)
+			s[3]:SetWidth(7)
+			local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(pre .. "Left")
+			TabSlices(tab, info and info.height or TAB_H)
+			return
+		end
+		if was and was:sub(1, 5) == "game " then
+			TabSlices(tab, nil)
+		end
 		local p, s = TAB_PIECE[state], tab.melloSlices
 		local v, k = p.h / 128, TAB_H / p.h
 		for i = 1, 3 do
@@ -2016,7 +2255,9 @@ do
 		TabPiece(tab, (on and "on") or (lit and "hover") or "off")
 		local fs = tab.Text
 		if fs then
-			W.Paint(fs, "text", "text")
+			local Skin = rawget(MelloUI, "Skin")
+			-- (the Default skin: the game's tabs' gold labels, the selected one and the one under the pointer white)
+			W.Paint(fs, (Skin and Skin.IsDefault() and not (on or lit)) and "selectedTrim" or "text", "text")
 		end
 	end
 
@@ -2073,6 +2314,10 @@ do
 		tab.SetSelected, tab.melloActive, tab.melloKitLook = TabSetSelected, TabActive, TabLook
 		FlatHooks(tab, TabLook)
 		FollowLook(skin, tab)
+		local Skin = rawget(MelloUI, "Skin")
+		if Skin then
+			Skin.followers[tab] = TabLook   -- (1.2.4: the skin switched, the tab in its look)
+		end
 		return tab
 	end
 end
@@ -2115,13 +2360,45 @@ do
 
 	local FieldSeen   -- (its OnShow: below)
 
+	-- (1.2.4, the Default skin: MelloUI.Skin) the game's own text box on the rect, InputBoxTemplate's three pieces at
+	-- its height (20); made at its first need
+	local GAME_H = 20
+
+	local function GameBox(f, game)
+		if game and not f.game then
+			local ART = MelloUI.Skin.ART
+			local l = f.host:CreateTexture(nil, "BACKGROUND", nil, 2)
+			l:SetAtlas(ART.inputLeft)
+			l:SetSize(8, GAME_H)
+			l:SetPoint("LEFT", f.rect, "LEFT", 0, 0)
+			local r = f.host:CreateTexture(nil, "BACKGROUND", nil, 2)
+			r:SetAtlas(ART.inputRight)
+			r:SetSize(8, GAME_H)
+			r:SetPoint("RIGHT", f.rect, "RIGHT", 0, 0)
+			local m = f.host:CreateTexture(nil, "BACKGROUND", nil, 2)
+			m:SetAtlas(ART.inputMiddle)
+			m:SetPoint("TOPLEFT", l, "TOPRIGHT", 0, 0)
+			m:SetPoint("BOTTOMRIGHT", r, "BOTTOMLEFT", 0, 0)
+			f.game = { l, m, r }
+		end
+		if f.game then
+			for i = 1, 3 do
+				f.game[i]:SetShown(game)
+				f.game[i]:SetAlpha(f.alpha)
+			end
+		end
+	end
+
 	local function Lay(f)
 		-- (the rail made only while the field is on the screen: a field seen while it was hidden (SetShown(false))
 		-- and shown again while its host is off the screen makes it at its next show, drawing nothing till then; the
 		-- test world's hard3/ownlook G3 counted one such dropdown's 18)
 		local want = f.seen and f.shown
+		local Skin = rawget(MelloUI, "Skin")
+		local game = Skin and Skin.IsDefault() or false
 		local stone = false
 		f.pending = nil
+		want = want and not game   -- (the game's box in the rail's place: no rail made)
 		if want and f.border == nil and not f.host:IsVisible() then
 			f.pending = true
 			if not f.hooked then
@@ -2137,7 +2414,8 @@ do
 				f.border:SetLit(f.focus, nil, f.disabled)
 			end
 		end
-		local plain = f.shown and not stone and not f.pending and f.seen and true or false
+		GameBox(f, f.shown and game)
+		local plain = f.shown and not game and not stone and not f.pending and f.seen and true or false
 		if plain and not f.fill then
 			local fill = f.host:CreateTexture(nil, "BACKGROUND", nil, 2)
 			fill:SetAllPoints(f.rect)
@@ -2185,7 +2463,12 @@ do
 			f.hooked = true
 			Perf.HookScript(host, "OnShow", FieldSeen)
 		end
-		Lay(f)
+		local Skin = rawget(MelloUI, "Skin")
+		if Skin then
+			Skin.Follow(f, Lay)
+		else
+			Lay(f)
+		end
 		return f
 	end
 end
@@ -2507,209 +2790,259 @@ end
 --                          a shell follows its switches)
 --------------------------------------------------------------------------------
 
--- MelloUI's own logo art is shown whole; a game icon loses its baked border
-local NO_CROP = { [TEXTURE_PATH .. "LogoIcon.tga"] = true, [TEXTURE_PATH .. "LogoFull.tga"] = true }
+do   -- (the IconBox's parts in a block: the main chunk is near Lua's 200 locals)
+	-- MelloUI's own logo art is shown whole; a game icon loses its baked border
+	local NO_CROP = { [TEXTURE_PATH .. "LogoIcon.tga"] = true, [TEXTURE_PATH .. "LogoFull.tga"] = true }
 
-local maskOf = setmetatable({}, weakKeys)   -- [box] = its icon's mask (no field: a box's parts keep their names)
+	local maskOf = setmetatable({}, weakKeys)   -- [box] = its icon's mask (no field: a box's parts keep their names)
 
-local IconBox_SetIcon
-do
-	-- (2026-10-20, the user's pick A: "bare") a picture of MelloUI's icon set is shown whole and alone: no bevel, no
-	-- rounded mask (with the kit, the rim still round it, as everywhere the set is)
-	local SET_DIR = TEXTURE_PATH .. "Icons\\"
+	-- (1.2.4, the Default skin: MelloUI.Skin) the box in the game's look (`game`; nil: as it was): every picture cut
+	-- round (IconBox_SetKit's mask), a framed one in the game's gold ring in the frame's place (the ring's opening the box,
+	-- as the round buttons'), a bare one alone -- the sketch the user approved; the ring made at its first need
+	local IconBoxGame
+	do
+		local OPENING = 0.775   -- (the gold ring's opening: W.RoundIcon's)
+		IconBoxGame = function(self, game)
+			if game ~= nil then
+				self.gameLaid = game or nil
+			end
+			local ringed = self.gameLaid and not self.bare
+			if ringed and not self.gameRing then
+				local ring = self:CreateTexture(nil, "OVERLAY")
+				ring:SetAtlas(MelloUI.Skin.ART.ring)
+				ring:SetSize(self.size / OPENING, self.size / OPENING)
+				ring:SetPoint("CENTER", self, "CENTER", 0, 0)
+				self.gameRing = ring
+			end
+			if self.gameRing then
+				self.gameRing:SetShown(ringed and true or false)
+			end
+			self.frame:SetShown(not self.gameLaid and not self.bare)
+		end
+	end
 
-	local function Bare(self, bare)
-		self.bare = bare or nil
-		self.frame:SetShown(not bare)
-		local mask = maskOf[self]
-		if bare and self.masked and mask then
-			self.icon:RemoveMaskTexture(mask)
+	local IconBox_SetIcon
+	do
+		-- (2026-10-20, the user's pick A: "bare") a picture of MelloUI's icon set is shown whole and alone: no bevel, no
+		-- rounded mask (with the kit, the rim still round it, as everywhere the set is)
+		local SET_DIR = TEXTURE_PATH .. "Icons\\"
+
+		local function Bare(self, bare)
+			self.bare = bare or nil
+			IconBoxGame(self)
+			local mask = maskOf[self]
+			if self.gameLaid then
+				return   -- (the Default skin: every picture cut round, its mask kept)
+			end
+			if bare and self.masked and mask then
+				self.icon:RemoveMaskTexture(mask)
+				self.masked = false
+			elseif not bare and not self.masked and not self.kitLaid and mask then
+				self.icon:AddMaskTexture(mask)
+				self.masked = true
+			end
+		end
+
+		IconBox_SetIcon = function(self, texture)
+			local bare = type(texture) == "string" and texture:sub(1, #SET_DIR) == SET_DIR
+			if (self.bare or false) ~= bare then
+				Bare(self, bare)
+			end
+			-- (2026-10-21: through MelloUI.Icons, the copy for its size; a game icon cropped of its baked border)
+			local c = (not bare and texture ~= nil and not NO_CROP[texture]) and 0.06 or 0
+			self.cropped = c > 0
+			MelloUI.Icons.Set(self.icon, texture, nil, c, 1 - c, c, 1 - c)
+		end
+	end
+
+	local function IconBox_SetSelected(self, selected)
+		self.selected = selected and true or false
+		W.Paint(self.frame, self.selected and "selectedTrim" or "mutedText", "vertex", 1)
+		if self.rim and self.rim.Update then
+			self.rim:Update()
+		end
+	end
+
+	local function IconBox_SetHovered(self, hovered)
+		if hovered then
+			W.Paint(self.frame, "text", "vertex", 1)
+		else
+			self:SetSelected(self.selected)
+		end
+		if self.rim and self.rim.Update then
+			self.rim.hover = hovered and true or nil
+			self.rim:Update()
+		end
+	end
+
+	local function IconBox_SetOn(self, on)
+		self.icon:SetDesaturated(not on)
+		self.icon:SetAlpha(on and 1 or 0.45)
+	end
+
+	-- the glow's size: from the rim with the kit (centred on the box, the rim's
+	-- centre), so the light is symmetric around the iron (user, 2026-09-22)
+	local function GlowSize(self)
+		local rim = self.kitLaid and self.size * RIM_GROW or self.size
+		return rim * 1.45
+	end
+
+	-- a pulsing gold glow over the rim (the action button's proc glow, additive
+	-- light on top of the iron -- user, 2026-09-22), for an important module;
+	-- under Reduce Motion a still glow at full strength (Anim:Pulse)
+	local function IconBox_SetGlow(self, on)
+		if on and not self.glow then
+			local glow = self:CreateTexture(nil, "OVERLAY", nil, 7)
+			-- (0.25.0, the visual sweep: the set's bright gold frame, added as light; the game's 64 px glow was stretched
+			-- round the box)
+			W.FrameArt(glow, "active", 6)
+			glow:SetBlendMode("ADD")
+			local size = GlowSize(self)
+			glow:SetSize(size, size)
+			glow:SetPoint("CENTER", self, "CENTER", 0, 0)
+			self.glow = glow
+			self.glowAnim = MelloUI.Anim:Pulse(glow, 0.45, 1, 0.9)
+		elseif self.glow then
+			self.glow:SetShown(on and true or false)
+			if on then
+				MelloUI.Anim:Pulse(self.glow)   -- its group, played again
+			else
+				MelloUI.Anim:StopGroup(self.glowAnim)   -- not played again when Reduce Motion goes off
+			end
+		end
+	end
+
+	-- The icon for the look: with the kit at 0.9 of the box, centred, until the
+	-- rim fits it into its square opening (no rounded mask, as on the action
+	-- bars); without it the whole box with the bevel's rounded corners. Same
+	-- construction as an action button (a 45 px icon, the 46 x 45 bevel on its
+	-- top left corner, the corner mask at its native size centred on the icon),
+	-- scaled to this size.
+
+	local function IconBox_SetKit(self, on)
+		on = on and true or false
+		local Skin = rawget(MelloUI, "Skin")
+		local game = not on and Skin and Skin.IsDefault() or false
+		IconBoxGame(self, game)
+		local size, icon, mask = self.size, self.icon, maskOf[self]
+		icon:ClearAllPoints()
+		if on then
+			icon:SetPoint("CENTER", self, "CENTER")
+			icon:SetSize(size * 0.9, size * 0.9)
+		else
+			icon:SetAllPoints()
+		end
+		MelloUI.Icons.Fit(icon, on and size * 0.9 or size)
+		mask:ClearAllPoints()
+		if game then
+			mask:SetTexture(ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+			mask:SetAllPoints(icon)
+		else
+			mask:SetAtlas(ICON_MASK)
+			local k = size / 45
+			local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(ICON_MASK)
+			if info and info.width and info.height then
+				local ik = on and k * 0.9 or k   -- the corner mask at the icon's size
+				mask:SetSize(info.width * ik, info.height * ik)
+				mask:SetPoint("CENTER", icon, "CENTER")
+			else
+				mask:SetAllPoints(icon)
+			end
+		end
+		local want = not on and (game or not self.bare)
+		if self.masked and not want then
+			icon:RemoveMaskTexture(mask)
 			self.masked = false
-		elseif not bare and not self.masked and not self.kitLaid and mask then
-			self.icon:AddMaskTexture(mask)
+		elseif want and not self.masked then
+			icon:AddMaskTexture(mask)
 			self.masked = true
 		end
-	end
-
-	IconBox_SetIcon = function(self, texture)
-		local bare = type(texture) == "string" and texture:sub(1, #SET_DIR) == SET_DIR
-		if (self.bare or false) ~= bare then
-			Bare(self, bare)
-		end
-		-- (2026-10-21: through MelloUI.Icons, the copy for its size; a game icon cropped of its baked border)
-		local c = (not bare and texture ~= nil and not NO_CROP[texture]) and 0.06 or 0
-		self.cropped = c > 0
-		MelloUI.Icons.Set(self.icon, texture, nil, c, 1 - c, c, 1 - c)
-	end
-end
-
-local function IconBox_SetSelected(self, selected)
-	self.selected = selected and true or false
-	W.Paint(self.frame, self.selected and "selectedTrim" or "mutedText", "vertex", 1)
-	if self.rim and self.rim.Update then
-		self.rim:Update()
-	end
-end
-
-local function IconBox_SetHovered(self, hovered)
-	if hovered then
-		W.Paint(self.frame, "text", "vertex", 1)
-	else
-		self:SetSelected(self.selected)
-	end
-	if self.rim and self.rim.Update then
-		self.rim.hover = hovered and true or nil
-		self.rim:Update()
-	end
-end
-
-local function IconBox_SetOn(self, on)
-	self.icon:SetDesaturated(not on)
-	self.icon:SetAlpha(on and 1 or 0.45)
-end
-
--- the glow's size: from the rim with the kit (centred on the box, the rim's
--- centre), so the light is symmetric around the iron (user, 2026-09-22)
-local function GlowSize(self)
-	local rim = self.kitLaid and self.size * RIM_GROW or self.size
-	return rim * 1.45
-end
-
--- a pulsing gold glow over the rim (the action button's proc glow, additive
--- light on top of the iron -- user, 2026-09-22), for an important module;
--- under Reduce Motion a still glow at full strength (Anim:Pulse)
-local function IconBox_SetGlow(self, on)
-	if on and not self.glow then
-		local glow = self:CreateTexture(nil, "OVERLAY", nil, 7)
-		-- (0.25.0, the visual sweep: the set's bright gold frame, added as light; the game's 64 px glow was stretched
-		-- round the box)
-		W.FrameArt(glow, "active", 6)
-		glow:SetBlendMode("ADD")
-		local size = GlowSize(self)
-		glow:SetSize(size, size)
-		glow:SetPoint("CENTER", self, "CENTER", 0, 0)
-		self.glow = glow
-		self.glowAnim = MelloUI.Anim:Pulse(glow, 0.45, 1, 0.9)
-	elseif self.glow then
-		self.glow:SetShown(on and true or false)
-		if on then
-			MelloUI.Anim:Pulse(self.glow)   -- its group, played again
-		else
-			MelloUI.Anim:StopGroup(self.glowAnim)   -- not played again when Reduce Motion goes off
+		self.kitLaid = on
+		if self.glow then
+			local s = GlowSize(self)
+			self.glow:SetSize(s, s)
 		end
 	end
-end
 
--- The icon for the look: with the kit at 0.9 of the box, centred, until the
--- rim fits it into its square opening (no rounded mask, as on the action
--- bars); without it the whole box with the bevel's rounded corners. Same
--- construction as an action button (a 45 px icon, the 46 x 45 bevel on its
--- top left corner, the corner mask at its native size centred on the icon),
--- scaled to this size.
+	-- (1.2.4) the skin switched (MelloUI.Skin): the box laid again in the skin's look
+	local function IconBox_Skin(self)
+		IconBox_SetKit(self, self.kitLaid)
+	end
 
-local function IconBox_SetKit(self, on)
-	on = on and true or false
-	local size, icon, mask = self.size, self.icon, maskOf[self]
-	icon:ClearAllPoints()
-	if on then
-		icon:SetPoint("CENTER", self, "CENTER")
-		icon:SetSize(size * 0.9, size * 0.9)
-	else
-		icon:SetAllPoints()
-	end
-	MelloUI.Icons.Fit(icon, on and size * 0.9 or size)
-	local k = size / 45
-	local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(ICON_MASK)
-	if info and info.width and info.height then
-		local ik = on and k * 0.9 or k   -- the corner mask at the icon's size
-		mask:SetSize(info.width * ik, info.height * ik)
-		mask:SetPoint("CENTER", icon, "CENTER")
-	else
-		mask:SetAllPoints(icon)
-	end
-	if on and self.masked then
-		icon:RemoveMaskTexture(mask)
-		self.masked = false
-	elseif not on and not self.masked and not self.bare then
-		icon:AddMaskTexture(mask)
-		self.masked = true
-	end
-	self.kitLaid = on
-	if self.glow then
-		local s = GlowSize(self)
-		self.glow:SetSize(s, s)
-	end
-end
-
--- the rim, as regions of the BOX (the icon's own frame) so it draws over the
--- icon; its rect the box grown by 10 % about its centre; its states the
--- box's: pressed, hover, and selected (checked: the kit's active look,
--- Kit:SetActive, round the rim)
-local function DressIconBox(K, box, skin)
-	local size = box.size
-	local rimRect = CreateFrame("Frame", nil, box)
-	rimRect:SetPoint("CENTER", box, "CENTER")
-	rimRect:SetSize(size * RIM_GROW, size * RIM_GROW)
-	rimRect:EnableMouse(false)
-	local rep = skin:Replace(box.frame, { as = K:ButtonRimRule(), rect = rimRect, button = box, icon = box.icon,
-		checked = box.melloChecked })
-	box.rim = rep and rep.object or nil
-	if rep then
-		if MelloUI.Kept then
-			MelloUI.Kept.repOf[box] = rep
-		end
-		K:RegisterButtonRim(box)
-	end
-end
-
--- the boxes of each shell, laid again at its switches (one shared fn per
--- shell: shell:OnKit keeps it once)
-local boxesOf = setmetatable({}, weakKeys)   -- [shell] = { [box] = true } (weak)
-local function Boxes_OnKit(shell, on)
-	local set = boxesOf[shell]
-	if set then
-		for box in pairs(set) do
-			box:SetKit(on)
-		end
-	end
-end
-
-function W.IconBox(parent, size, texture, skin)
-	local box = CreateFrame("Frame", nil, parent)
-	box:SetSize(size, size)
-	box.size = size
-	box.icon = box:CreateTexture(nil, "ARTWORK")
-	box.frame = box:CreateTexture(nil, "OVERLAY")
-	-- (0.25.0, the visual sweep: the set's own button frame round the box, sharp at its size -- the game's 46 px bevel
-	-- was stretched to it)
-	W.FrameArt(box.frame, "normal", math.max(3, math.floor(size / 12 + 0.5)))
-	box.frame:SetAllPoints(box)
-	local mask = box:CreateMaskTexture()
-	mask:SetAtlas(ICON_MASK)
-	maskOf[box] = mask
-	box.SetIcon, box.SetSelected = IconBox_SetIcon, IconBox_SetSelected
-	box.SetHovered, box.SetOn, box.SetGlow, box.SetKit = IconBox_SetHovered, IconBox_SetOn, IconBox_SetGlow, IconBox_SetKit
-	box.masked = false
-	box:SetKit(skin and skin.kit)
-	if texture ~= nil then
-		box:SetIcon(texture)
-	end
-	box.selected = false
-	if skin then
-		box.melloChecked = function() return box.selected end
-		skin:Kit(DressIconBox, box, skin)
-		if skin.OnKit then
-			local set = boxesOf[skin]
-			if not set then
-				set = setmetatable({}, weakKeys)
-				boxesOf[skin] = set
+	-- the rim, as regions of the BOX (the icon's own frame) so it draws over the
+	-- icon; its rect the box grown by 10 % about its centre; its states the
+	-- box's: pressed, hover, and selected (checked: the kit's active look,
+	-- Kit:SetActive, round the rim)
+	local function DressIconBox(K, box, skin)
+		local size = box.size
+		local rimRect = CreateFrame("Frame", nil, box)
+		rimRect:SetPoint("CENTER", box, "CENTER")
+		rimRect:SetSize(size * RIM_GROW, size * RIM_GROW)
+		rimRect:EnableMouse(false)
+		local rep = skin:Replace(box.frame, { as = K:ButtonRimRule(), rect = rimRect, button = box, icon = box.icon,
+			checked = box.melloChecked })
+		box.rim = rep and rep.object or nil
+		if rep then
+			if MelloUI.Kept then
+				MelloUI.Kept.repOf[box] = rep
 			end
-			set[box] = true
-			skin:OnKit(Boxes_OnKit)
+			K:RegisterButtonRim(box)
 		end
 	end
-	box:SetSelected(false)
-	return box
+
+	-- the boxes of each shell, laid again at its switches (one shared fn per
+	-- shell: shell:OnKit keeps it once)
+	local boxesOf = setmetatable({}, weakKeys)   -- [shell] = { [box] = true } (weak)
+	local function Boxes_OnKit(shell, on)
+		local set = boxesOf[shell]
+		if set then
+			for box in pairs(set) do
+				box:SetKit(on)
+			end
+		end
+	end
+
+	function W.IconBox(parent, size, texture, skin)
+		local box = CreateFrame("Frame", nil, parent)
+		box:SetSize(size, size)
+		box.size = size
+		box.icon = box:CreateTexture(nil, "ARTWORK")
+		box.frame = box:CreateTexture(nil, "OVERLAY")
+		-- (0.25.0, the visual sweep: the set's own button frame round the box, sharp at its size -- the game's 46 px bevel
+		-- was stretched to it)
+		W.FrameArt(box.frame, "normal", math.max(3, math.floor(size / 12 + 0.5)))
+		box.frame:SetAllPoints(box)
+		local mask = box:CreateMaskTexture()
+		mask:SetAtlas(ICON_MASK)
+		maskOf[box] = mask
+		box.SetIcon, box.SetSelected = IconBox_SetIcon, IconBox_SetSelected
+		box.SetHovered, box.SetOn, box.SetGlow, box.SetKit = IconBox_SetHovered, IconBox_SetOn, IconBox_SetGlow, IconBox_SetKit
+		box.masked = false
+		box:SetKit(skin and skin.kit)
+		if texture ~= nil then
+			box:SetIcon(texture)
+		end
+		box.selected = false
+		if skin then
+			box.melloChecked = function() return box.selected end
+			skin:Kit(DressIconBox, box, skin)
+			if skin.OnKit then
+				local set = boxesOf[skin]
+				if not set then
+					set = setmetatable({}, weakKeys)
+					boxesOf[skin] = set
+				end
+				set[box] = true
+				skin:OnKit(Boxes_OnKit)
+			end
+		end
+		box:SetSelected(false)
+		local Skin = rawget(MelloUI, "Skin")
+		if Skin then
+			Skin.followers[box] = IconBox_Skin
+		end
+		return box
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -2736,20 +3069,49 @@ do
 		square = "Interface\\Buttons\\ButtonHilight-Square",
 	}
 	local ROUND_OUT = 0.175
+	-- (1.2.4, the Default skin: MelloUI.Skin) the game's own round highlight (114 px, drawn smaller) on the region; each
+	-- light kept with its asking, laid again at a switch
+	local asked = setmetatable({}, weakKeys)   -- [b] = { shape, region, out }
+	local listening = false
 
 	function W.HoverLight(b, shape, region, out)
 		shape = LIGHT[shape] and shape or "square"
 		region, out = region or b, out or 0
-		if shape == "round" then
+		local a = asked[b]
+		if a then
+			a[1], a[2], a[3] = shape, region, out
+		else
+			asked[b] = { shape, region, out }
+		end
+		if not listening and MelloUI.On then
+			listening = true
+			MelloUI:On("skin", function()
+				for lb, la in pairs(asked) do
+					W.HoverLight(lb, la[1], la[2], la[3])
+				end
+			end, "the hover lights (skin)")
+		end
+		local Skin = rawget(MelloUI, "Skin")
+		local game = shape == "round" and Skin and Skin.IsDefault() or false
+		if shape == "round" and not game then
 			local okW, rw = pcall(region.GetWidth, region)
 			rw = okW and Num(rw) or nil
 			if rw and rw > 0 then
 				out = out + rw * ROUND_OUT
 			end
 		end
-		if b.hoverShape ~= shape then
-			b:SetHighlightTexture(LIGHT[shape], "ADD")
-			b.hoverShape, b.hoverRegion = shape, nil   -- (laid again below)
+		local key = game and "game round" or shape
+		if b.hoverShape ~= key then
+			if game then
+				b:SetHighlightTexture(LIGHT.round, "ADD")
+				local t = b:GetHighlightTexture()
+				if t then
+					t:SetAtlas(MelloUI.Skin.ART.roundLight)
+				end
+			else
+				b:SetHighlightTexture(LIGHT[shape], "ADD")
+			end
+			b.hoverShape, b.hoverRegion = key, nil   -- (laid again below)
 		end
 		local hl = b.GetHighlightTexture and b:GetHighlightTexture()
 		if hl and (b.hoverRegion ~= region or b.hoverOut ~= out) then
@@ -2759,6 +3121,29 @@ do
 			b.hoverRegion, b.hoverOut = region, out
 		end
 		return hl
+	end
+
+	-- (1.2.4) W.RoundGlow(t) -> t: the round light on `t` (sized and blended by its caller) -- a state's light round
+	-- a round button (a mode shown, a button lit): the set's glow, the game's round highlight under the Default skin
+	-- (MelloUI.Skin), laid again at a switch
+	local function RoundGlowLay(t)
+		local Skin = rawget(MelloUI, "Skin")
+		if Skin and Skin.IsDefault() then
+			t:SetAtlas(Skin.ART.roundLight)
+		else
+			t:SetTexture(LIGHT.round)
+			t:SetTexCoord(0, 1, 0, 1)
+		end
+	end
+
+	function W.RoundGlow(t)
+		local Skin = rawget(MelloUI, "Skin")
+		if Skin then
+			Skin.Follow(t, RoundGlowLay)
+		else
+			t:SetTexture(LIGHT.round)
+		end
+		return t
 	end
 end
 
@@ -2828,7 +3213,8 @@ do
 	-- every side: the rail's inner casing on that edge, its inner corners rounded over the corners inside
 	local RIM_ART = "Interface\\AddOns\\MelloUI\\Media\\Textures\\GildedRim"
 	local RIM_CORNER, RIM_RAIL = 7, 4   -- the texture's corners and its rail (texels)
-	function W.RimArt(t, band)
+
+	local function GoldRim(t, band)
 		t:SetTexture(RIM_ART)
 		W.Paint(t, "selectedTrim", "vertex", 1)
 		if t.SetTextureSliceMargins and t.SetTextureSliceMode and t.SetScale then
@@ -2836,6 +3222,52 @@ do
 			t:SetTextureSliceMode(Enum and Enum.UITextureSliceMode and Enum.UITextureSliceMode.Stretched or 0)
 			t:SetScale(band / RIM_RAIL)
 		end
+	end
+
+	-- (1.2.4, the Default skin: MelloUI.Skin) a rim in the game's look: the tooltip's border on its rect in the gold's
+	-- place (the gold drawn as nothing), shown and hidden with it; made at its first need, laid again at a switch. A
+	-- rim whose owner lays the skin itself (`own`: MelloUI.Rims' window rims) is left to it
+	local rimBand = setmetatable({}, weakKeys)     -- [t] = its rail's depth (every rim laid here)
+	local rimBorder = setmetatable({}, weakKeys)   -- [t] = its game border (a frame of t's parent's)
+
+	local RimShown = Shared("a rim's Show / Hide / SetShown (its game border with it)", function(t)
+		local b = rimBorder[t]
+		if b then
+			b:SetShown(t:IsShown() and b.on)
+		end
+	end, "hook")
+
+	local function RimLay(t)
+		local band = rimBand[t]
+		local Skin = rawget(MelloUI, "Skin")
+		local game = Skin and Skin.IsDefault() or false
+		local b = rimBorder[t]
+		if game and not b then
+			b = Skin.Border(t:GetParent(), "tooltip", t)
+			rimBorder[t] = b
+			hooksecurefunc(t, "Show", RimShown)
+			hooksecurefunc(t, "Hide", RimShown)
+			hooksecurefunc(t, "SetShown", RimShown)
+		end
+		if b then
+			b.on = game
+			b:SetShown(game and t:IsShown())
+		end
+		if game then
+			t:SetTexture(nil)
+		else
+			GoldRim(t, band)
+		end
+	end
+
+	function W.RimArt(t, band, own)
+		local Skin = rawget(MelloUI, "Skin")
+		if own or not Skin then
+			GoldRim(t, band)
+			return
+		end
+		rimBand[t] = band
+		Skin.Follow(t, RimLay)
 	end
 
 	-- the kit to hand a round button's SetKit for a part in `area`: the kit while Oldschool's painted look dresses
@@ -2920,10 +3352,45 @@ do
 		IconArt(b)
 	end
 
+	-- (1.2.4, the Default skin) a game picture alone (b.alone, its spec): never bigger than its own size, on the game's
+	-- chat button plate when it asks for one (`plate`, at the plate's own size), at the opening's size then
+	local function AloneLay(b, icon, alone)
+		local most = alone.plate and b.size * OPENING or b.size
+		local w, h = most, most
+		local info = alone.atlas and C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(alone.atlas)
+		local aw, ah = info and Num(info.width), info and Num(info.height)
+		if aw and ah and aw > 0 and ah > 0 then
+			local s = math.min(1, most / aw, most / ah)
+			w, h = aw * s, ah * s
+		end
+		icon:SetSize(w, h)
+		if alone.plate and not b.alonePlate then
+			b.alonePlate = b:CreateTexture(nil, "BACKGROUND", nil, 2)
+			b.alonePlate:SetPoint("CENTER", b, "CENTER", 0, 0)
+		end
+		if b.alonePlate then
+			if alone.plate then
+				b.alonePlate:SetAtlas(alone.plate, true)   -- (its own size)
+			end
+			b.alonePlate:SetShown(alone.plate and true or false)
+		end
+	end
+
 	local function PlainLay(b)
 		local icon, rim = b.icon, b.plainRim
 		icon:ClearAllPoints()
 		icon:SetPoint("CENTER", b, "CENTER", 0, 0)
+		if b.disc then
+			b.disc:SetShown(b.discOn and true or false)
+		end
+		if b.alonePlate and not b.alone then
+			b.alonePlate:Hide()
+		end
+		if b.alone then
+			AloneLay(b, icon, b.alone)
+			rim:Hide()
+			return
+		end
 		if b.ringed then
 			icon:SetSize(b.size, b.size)
 			rim:Hide()
@@ -2940,15 +3407,50 @@ do
 		rim:Show()
 	end
 
+	-- (1.2.4, the Default skin: MelloUI.Skin) one of the set's round buttons with a game picture for it shows that picture in
+	-- the plain rim (the game's gold ring then), masked; a picture with a clear ground (the map's service icons) on a
+	-- dark disc, made at its first need
+	local function GameDisc(b, on)
+		if on and not b.disc then
+			local disc = b:CreateTexture(nil, "BACKGROUND")
+			disc:SetTexture(ROUND_MASK)
+			W.Paint(disc, "mainWindow", "vertex", 0.9)
+			disc:SetPoint("CENTER", b, "CENTER", 0, 0)
+			disc:SetSize(b.size * OPENING, b.size * OPENING)
+			b.disc = disc
+		end
+		b.discOn = on or nil
+	end
+
+	-- (1.2.4, the sketch the user approved) a game picture in the place of one of the set's own round buttons shows
+	-- alone, as the set's showed alone; in the gold ring only one with a clear ground (`disc`) or a page's picture
+	-- from RING_AT up. A game picture of the atlas's own shape unmasked; an icon file cut round
+	local RING_AT = 36
+
 	local function SetIcon(b, texture)
-		local ringed = W.IconRinged(texture)
+		local Skin = rawget(MelloUI, "Skin")
+		local game = Skin and Skin.Icon(texture)
+		local own = W.IconRinged(texture)
+		local ringed = own and not game
+		local alone = own and game and not game.disc and not (game.round and b.size >= RING_AT) and game or nil
 		b.texture = texture
-		if ringed ~= (b.ringed or false) then
-			b.ringed = ringed or nil
-			if ringed then
-				b.icon:RemoveMaskTexture(b.mask)
-			else
-				b.icon:AddMaskTexture(b.mask)
+		local disc = game and game.disc or false
+		if disc ~= (b.discOn or false) then
+			GameDisc(b, disc)
+			if not b.kitLaid then
+				PlainLay(b)
+			end
+		end
+		if ringed ~= (b.ringed or false) or alone ~= b.alone then
+			b.ringed, b.alone = ringed or nil, alone
+			local off = (ringed or (alone and alone.atlas)) and true or false
+			if off ~= (b.maskOff or false) then
+				b.maskOff = off or nil
+				if off then
+					b.icon:RemoveMaskTexture(b.mask)
+				else
+					b.icon:AddMaskTexture(b.mask)
+				end
 			end
 			if not b.kitLaid then
 				PlainLay(b)
@@ -2979,7 +3481,12 @@ do
 	end
 
 	local function SetKit(b, Kit)
-		local on = (type(Kit) == "table" and Kit.Slot and Kit.SlotPlaceIcon) and true or false
+		-- (1.2.4) the kit's rim never under the Default skin (MelloUI.Skin): the plain rim, the game's gold ring there;
+		-- the look asked kept for a switch
+		b.askedKit = Kit or false
+		local Skin = rawget(MelloUI, "Skin")
+		local on = (type(Kit) == "table" and Kit.Slot and Kit.SlotPlaceIcon) and not (Skin and Skin.IsDefault())
+			and true or false
 		if on then
 			local rim = b.kitRim
 			if not rim then
@@ -3016,6 +3523,15 @@ do
 		b.kitLaid = on
 	end
 
+	local function RoundSkin(b)
+		if b.texture ~= nil then
+			SetIcon(b, b.texture)
+		end
+		if b.askedKit then
+			b:SetKit(b.askedKit)
+		end
+	end
+
 	function W.RoundIcon(parent, size, texture, opts)
 		opts = type(opts) == "table" and opts or NONE
 		local b = CreateFrame("Button", opts.name, parent)
@@ -3040,6 +3556,11 @@ do
 			b:SetIcon(texture)
 		end
 		SetKit(b, false)
+		-- (1.2.4) the skin switched: its picture again in the skin's look (MelloUI.Skin)
+		local Skin = rawget(MelloUI, "Skin")
+		if Skin then
+			Skin.followers[b] = RoundSkin
+		end
 		return b
 	end
 
@@ -3170,26 +3691,47 @@ do
 
 	-- the button as its glyph and look are: the set's picture, or the rim, the disc and the glyph (and the caller's
 	-- letter, b.label)
+	-- (1.2.4, the Default skin: MelloUI.Skin) a set picture with a game picture for it: that picture in the plain rim (the
+	-- game's gold ring), on the disc -- a channel key whole, the game's chat button with its letter
 	local function LayArt(b)
 		local art = (not b.kitLaid) and b.glyphArt or nil
+		local Skin = rawget(MelloUI, "Skin")
+		local game = art and Skin and Skin.Icon(art)
+		local plate = game and game.plate or false   -- (a chat button: the game's chat button plate under the picture)
+		local ringIt = game and not game.letter and not plate or false
+		if plate and not b.gamePlate then
+			b.gamePlate = b:CreateTexture(nil, "BACKGROUND", nil, 2)
+			b.gamePlate:SetPoint("CENTER")
+		end
+		if b.gamePlate then
+			if plate then
+				b.gamePlate:SetAtlas(plate, true)   -- (its own size: the game's 27 x 26)
+			end
+			b.gamePlate:SetShown(plate and true or false)
+		end
 		if art then
 			if not b.art then
 				b.art = b:CreateTexture(nil, "ARTWORK", nil, 3)
+			end
+			b.art:ClearAllPoints()
+			if ringIt or plate then
+				b.art:SetAllPoints(b.icon)
+			else
 				b.art:SetAllPoints(b)
 			end
-			W.Icon(b.art, art, b.size)
+			W.Icon(b.art, art, (ringIt or plate) and b.icon:GetWidth() or b.size)
 			b.art:Show()
 		elseif b.art then
 			b.art:Hide()
 		end
 		local plain = art ~= nil
 		b.icon:SetShown(not plain)
-		b.disc:SetShown(not plain)
+		b.disc:SetShown(not plain or ringIt)
 		if b.label then
 			b.label:SetShown(not plain)
 		end
 		if not b.kitLaid then
-			b.plainRim:SetShown(not plain)
+			b.plainRim:SetShown(not plain or ringIt)
 		end
 	end
 
@@ -3212,6 +3754,15 @@ do
 		LayArt(b)
 	end
 
+	-- (1.2.4) the skin switched: its rim and picture in the skin's look (MelloUI.Skin)
+	local function GlyphSkin(b)
+		if b.askedKit then
+			GlyphSetKit(b, b.askedKit)
+		else
+			LayArt(b)
+		end
+	end
+
 	local function GlyphSetOn(b, on)
 		b.RoundSetOn(b, on)
 		if b.art then
@@ -3232,6 +3783,10 @@ do
 		b.RoundSetOn, b.SetOn = b.SetOn, GlyphSetOn
 		if glyph ~= nil then
 			SetGlyph(b, glyph)
+		end
+		local Skin = rawget(MelloUI, "Skin")
+		if Skin then
+			Skin.followers[b] = GlyphSkin
 		end
 		return b
 	end
@@ -5494,8 +6049,8 @@ do
 end
 
 --------------------------------------------------------------------------------
--- Card: one choice among a few, shown whole (the installer's four setups; the
--- Fresh start wizard's Kit Colours and Font Styles): a box with a title, a
+-- Card: one choice among a few, shown whole (the installer's steps: its skins,
+-- layouts, party frames, chat, bags, sounds): a box with a title, a
 -- line under it, a tag at its top right (W.Tag: "Recommended") and a picture
 -- above the texts when given. ONE "selected" look for the addon, the NavRail
 -- marker's: the raised panel's fill, a 2 px selectedTrim edge, the title in
@@ -5851,10 +6406,28 @@ do
 			b.melloPillLight = l
 			b.melloPill = nil   -- (cut again below, the light with it)
 		end
-		if b.melloPill == state then
+		-- (1.2.4, the Default skin: MelloUI.Skin) the game's Settings tab in the pill's place: Options_Tab, the picked
+		-- one the active tab -- its 7 px ends kept, the 1 px middle drawn along (as the game's own tabs)
+		local Skin = rawget(MelloUI, "Skin")
+		local game = Skin and Skin.IsDefault() or false
+		local want = game and ("game " .. state) or state
+		if b.melloPill == want then
 			return
 		end
-		b.melloPill = state
+		b.melloPill = want
+		if game then
+			local pre = MelloUI.Skin.ART[state == "on" and "tabOn" or "tab"]
+			for _, set in ipairs({ s, b.melloPillLight or NO_OPTS }) do
+				if set[1] then
+					set[1]:SetAtlas(pre .. "Left")
+					set[2]:SetAtlas(pre .. "Middle")
+					set[3]:SetAtlas(pre .. "Right")
+					set[1]:SetWidth(7)
+					set[3]:SetWidth(7)
+				end
+			end
+			return
+		end
 		local p = PILL[state]
 		local v, k = p.h / 64, (Num(b:GetHeight()) or 22) / p.h
 		CutPill(s, p, v, k)
@@ -5871,6 +6444,12 @@ do
 		Pill(b, picked and "on" or "off")
 		local fs = b:GetFontString()
 		if fs then
+			local Skin = rawget(MelloUI, "Skin")
+			if Skin and Skin.IsDefault() then
+				-- (the game's tabs: gold labels, the picked one and the one under the pointer white)
+				W.Paint(fs, (not on and "mutedText") or ((picked or flatHover[b]) and "text") or "selectedTrim", "text")
+				return
+			end
 			W.Paint(fs, (not on and "mutedText") or (picked and "mainWindow") or (flatHover[b] and "selectedTrim") or "text",
 				"text")
 		end
@@ -5882,8 +6461,20 @@ do
 		for i = 1, #b.melloEdges do
 			b.melloEdges[i]:Hide()
 		end
+		local g = b.melloSkinParts   -- (the Default skin's panel button: no plate under a pill)
+		if g then
+			for i = 1, 3 do
+				g.plate[i]:Hide()
+				g.lit[i]:Hide()
+			end
+			b.melloSkinParts = nil
+		end
 		Pill(b, "off")
 		b.melloLook = ChipLook
+		local Skin = rawget(MelloUI, "Skin")
+		if Skin then
+			Skin.followers[b] = ChipLook   -- (1.2.4: the skin switched, the pill in its look)
+		end
 	end
 
 	local function Paint(chips)

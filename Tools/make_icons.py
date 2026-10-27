@@ -338,6 +338,29 @@ FX_LIGHT = [("plus_green", "heal_cross", 64, None, "fit"), ("plus_gold", "heal_c
             ("crest_blue", "prot_crest", 128, "blue", "fit"), ("crest_green", "prot_crest", 128, "green", "fit"),
             ("sheen", "sheen", (64, 128), None, "fill"), ("shard_blue", "shield_shards", 64, None, "upright")]
 FX_LIGHT += [("streak_" + c, "sheen", (256, 64), c, "level") for c in ("white", "gold", "green", "blue", "red")]
+# (1.2.4, the frames' bold landings -- Core/FrameFXBold.lua; the user's picks of MelloUI-BuildData/output/
+# forever_fx_sketch, 2026-10-26: "A versions of everything") the pieces they draw: the Holy pieces in white (the engine
+# tints them a look's or a named colour), the wings in each look's colour, and the ChatGPT sheet's
+# (masters/icons_v2/src/fx/fx11_bold, cut by cut_fx.py into out/fx/bold_*): the impact star and the seal ring in each
+# look's colour, the shockwave in white, the taunt's !, the two steel guards (round the portrait, down the border)
+FX_LIGHT += [("spark_white", "holy_spark", 64, "white", "fit"), ("rays_white", "heal_rays", 256, "white", "fit"),
+             ("res_wings", "res_wings", 128, None, "fit"), ("res_wings_green", "res_wings", 128, "green", "fit"),
+             ("res_wings_blue", "res_wings", 128, "blue", "fit"),
+             ("star_gold", "bold_impact_star", 128, None, "fit"), ("star_green", "bold_impact_star", 128, "green", "fit"),
+             ("star_blue", "bold_impact_star", 128, "blue", "fit"),
+             ("seal_gold", "bold_seal_ring", 128, None, "fit"), ("seal_green", "bold_seal_ring", 128, "green", "fit"),
+             ("seal_blue", "bold_seal_ring", 128, "blue", "fit"), ("shock_white", "bold_shockwave", 128, "white", "fit"),
+             ("bang", "bold_taunt_mark", (64, 128), None, "fit"), ("guard_round", "bold_guard_curved", (64, 128), None, "fit"),
+             ("guard_side", "bold_guard_straight", (32, 128), None, "fit"), ("heart", "heart", 64, None, "fit")]
+# (1.2.4) drawn here, white: a soft line of light, its glow across it and none along it (laid end to end: the bold
+# landings' barrier box and the roar's shockwaves), across and upright; the barrier's round part, a ring of light whose
+# line stands at FX_RING_LINE of its half (its glow inside the square), a faint fill within (Core/FrameFXBold.lua)
+# (1.2.4, the mouseover highlight's outline round the portrait -- MelloUI.FrameHover, Core/FrameFXBold.lua OutlineOf)
+# two crisp lines of a circle at the picture's edge, each FX_OUTLINE_LINE of its half: outline_round the outer (tinted
+# the palette's selected trim), outline_edge the one inside it (white)
+FX_DRAWN = ("line_h", "line_v", "barrier_round", "outline_round", "outline_edge")
+FX_RING_LINE = 0.86
+FX_OUTLINE_LINE = 0.03
 FX_MARGIN = 0.04   # of the canvas, round a fitted shape
 FX_SHAPE = 40      # the alpha a shape's own extent is read at (its faint glow round it left out of the middle)
 SHARD_CORE = 150   # the alpha the shards are told apart at (their glows touch below it)
@@ -432,6 +455,32 @@ def fx_box(img, size):
     a = np.maximum(np.maximum(rim, glow), inside)
     rgb = np.where((arr[..., 3] > 8)[..., None], arr[..., :3], colour)   # (the glow and the fill in the rim's colour)
     return Image.fromarray(np.dstack([rgb, a]).round().astype(np.uint8), "RGBA")
+
+
+def fx_drawn(name):
+    if name in ("outline_round", "outline_edge"):
+        n = 256
+        yy, xx = np.mgrid[0:n, 0:n]
+        r = np.hypot(xx - (n - 1) / 2, yy - (n - 1) / 2) / (n / 2)
+        hi = 1.0 if name == "outline_round" else 1.0 - FX_OUTLINE_LINE
+        lo = hi - FX_OUTLINE_LINE
+        aa = 1.0 / (n / 2)   # (a texel's edge, smoothed)
+        a = np.clip((r - lo) / aa + 0.5, 0, 1) * np.clip((hi - r) / aa + 0.5, 0, 1)
+    elif name == "barrier_round":
+        n = 128
+        yy, xx = np.mgrid[0:n, 0:n]
+        r = np.hypot(xx - (n - 1) / 2, yy - (n - 1) / 2) / (n / 2)
+        d = r - FX_RING_LINE
+        a = np.exp(-(d / 0.022) ** 2) + 0.4 * np.exp(-(d / 0.06) ** 2) + 0.12 * (r < FX_RING_LINE)
+    else:
+        n, m = 128, 16
+        y = np.arange(m) - (m - 1) / 2
+        a = np.tile((np.exp(-(y / 1.3) ** 2) * 0.95 + np.exp(-(y / 4.0) ** 2) * 0.45)[:, None], (1, n))
+        if name == "line_v":
+            a = a.T
+    a = np.clip(a, 0, 1) * 255
+    rgba = np.dstack([np.full(a.shape, 255.0)] * 3 + [a])
+    return Image.fromarray((rgba + 0.5).astype(np.uint8), "RGBA")
 
 
 def fx_light(name, art, size, colour, how):
@@ -655,6 +704,7 @@ def main():
     every = [(name, img, (master(*OUT, name + ".tga"), os.path.join(ADDON_MEDIA, *OUT, name + ".tga")))
              for name, img in icons]
     every += [(e[0], fx_light(*e), (os.path.join(ADDON_MEDIA, *FX_OUT, e[0] + ".tga"),)) for e in FX_LIGHT]
+    every += [(n, fx_drawn(n), (os.path.join(ADDON_MEDIA, *FX_OUT, n + ".tga"),)) for n in FX_DRAWN]
     lifts = halos()
     every += [(name, img, (os.path.join(ADDON_MEDIA, *HALO_OUT, name + ".tga"),)) for name, img in lifts]
     for name, img, paths in every:

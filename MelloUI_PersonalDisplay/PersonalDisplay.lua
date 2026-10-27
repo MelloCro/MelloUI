@@ -3914,10 +3914,8 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 	desc = "Your health, power and cast bar under your character, as Legion's resource display had them, and a shield column beside your character: it fills when a shield goes up, drains as it takes the hits, turns amber when low and breaks when it is gone. The game's own Personal Resource Display is switched off while this is on, and comes back as you had it when it is off; Hide The Game's Cast Bar (on) hides the game's cast bar too, and Swing Badge (on) stands in for Swing Timers. This client cannot tell an addon where your character stands, so the display stays where you put it in Edit Layout (under your character to begin with) and hops when you jump.",
 	icon = "Interface\\Icons\\Spell_Holy_PowerWordShield",
 	flavour = "Health, power, casts and shields, right by your character.",
-	role = "replaces",
 	slash = "personal",
 	enabledByDefault = false,
-	installer = false,
 	-- the player's own game setting, given back when off, and the camera zoom the display was placed at: never in a
 	-- profile
 	keep = { "savedGameDisplay", "zoomRef", "savedSwing", "savedLoc" },

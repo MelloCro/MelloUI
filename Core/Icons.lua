@@ -168,10 +168,51 @@ local function Width(tex, units)
 	return (w and w > 0) and w or nil
 end
 
+-- (1.2.4, the Default skin) a game picture never bigger than its own size ("every texture sharp"): a texture sized
+-- on its own (one point, or none yet: sized before it is placed) is drawn at most at its atlas's size, in its shape,
+-- about that point; the caller's size kept for the other look (st.size; a caller's new size taken as it comes)
+local function Cap(tex, st, game)
+	if not game.atlas then
+		return
+	end
+	local okN, n = pcall(tex.GetNumPoints, tex)
+	local okS, w, h = pcall(tex.GetSize, tex)
+	w, h = okS and Finite(w), okS and Finite(h)
+	if not (okN and n <= 1 and w and h and w > 0 and h > 0) then
+		return
+	end
+	if not (st.capW == w and st.capH == h) then
+		st.size = { w, h }   -- (the caller's: a size of its own since the last cap)
+	end
+	local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(game.atlas)
+	local aw, ah = info and Finite(info.width), info and Finite(info.height)
+	local cw, ch = st.size[1], st.size[2]
+	if aw and ah and aw > 0 and ah > 0 then
+		local s = math.min(1, cw / aw, ch / ah)
+		cw, ch = aw * s, ah * s
+	end
+	st.capW, st.capH = cw, ch
+	if cw ~= w or ch ~= h then
+		tex:SetSize(cw, ch)
+	end
+end
+
+-- (leaving the game's picture) the caller's size again
+local function Uncap(tex, st)
+	if st.size then
+		tex:SetSize(st.size[1], st.size[2])
+	end
+	st.size, st.capW, st.capH = nil, nil, nil
+end
+
 -- tex drawn from the copy for its size; force: its file and part set even when they are the ones it had (a refit
 -- that picks the same copy writes nothing). False while its size is unknown (the full file shown meanwhile)
 local laying = false
 local function Lay(tex, st, force)
+	if st.game then
+		Cap(tex, st, st.game)
+		return true   -- (the Default skin's game picture: no copies to pick, MelloUI.Skin laid it)
+	end
 	local units = Width(tex, st.units)
 	local file, l, r, t, b, copy = Icons.Pick(st.path, units and units * Icons.PixelsPerUnit(tex))
 	if not force and st.file == file and st.copy == copy then
@@ -236,8 +277,38 @@ local function Wake()
 	end
 end
 
+-- (1.2.4, the Default skin: MelloUI.Skin) an icon of the set with a game picture for it shows that picture while the
+-- Default skin is on -- kept here with its name, so a switch lays the other look again (the bus's 'skin')
+local function SetGame(tex, icon, units, l, r, t, b, game)
+	local st = held[tex]
+	if not st then
+		st = {}
+		held[tex] = st
+		Watch(tex)
+	end
+	st.icon, st.units, st.game, st.file, st.copy = icon, units, game, nil, nil
+	st.l, st.r, st.t, st.b = l or 0, r or 1, t or 0, b or 1
+	pending[tex] = nil
+	laying = true
+	MelloUI.Skin.LayIcon(tex, game)
+	laying = false
+	Cap(tex, st, game)
+	return tex
+end
+
 function Icons.Set(tex, icon, units, l, r, t, b)
+	local Skin = rawget(MelloUI, "Skin")
+	local game = Skin and Skin.Icon(icon)
+	if game then
+		return SetGame(tex, icon, units, l, r, t, b, game)
+	end
 	local path = Icons.Path(icon)
+	local was = held[tex]
+	if was and was.game then
+		was.game = nil
+		Skin.ClearIcon(tex)
+		Uncap(tex, was)
+	end
 	if not Rel(path) then
 		-- (a picture with no copies: a game icon, a file id, a file of another folder -- as it is; Foreign lets go of a
 		-- held texture)
@@ -251,7 +322,7 @@ function Icons.Set(tex, icon, units, l, r, t, b)
 		held[tex] = st
 		Watch(tex)
 	end
-	st.path, st.units = path, units
+	st.path, st.units, st.icon = path, units, icon
 	st.l, st.r, st.t, st.b = l or 0, r or 1, t or 0, b or 1
 	if not Lay(tex, st, true) then
 		pending[tex] = true
@@ -281,6 +352,13 @@ end
 
 function Icons.Markup(icon, size, region)
 	size = floor((Finite(size) or 14) + 0.5)
+	local Skin = rawget(MelloUI, "Skin")
+	local game = Skin and Skin.Icon(icon)
+	if game and game.atlas then
+		return "|A:" .. game.atlas .. ":" .. size .. ":" .. size .. "|a"
+	elseif game then
+		return "|T" .. game.file .. ":" .. size .. ":" .. size .. ":0:0:64:64:4:60:4:60|t"
+	end
 	local path = Icons.Path(icon)
 	local file, x, y, cw, ch, w, h = Copy(path, size * Icons.PixelsPerUnit(region))
 	if not file then
@@ -309,3 +387,20 @@ end
 MelloUI:On("scale", FitAll, Icons)
 MelloUI:On("setting", FitAll, Icons)
 MelloUI:On("mover", FitAll, Icons)
+
+-- (1.2.4) the skin switched (MelloUI.Skin): every held icon set again by its name, in the skin's look now
+MelloUI:On("skin", function()
+	local list = {}
+	for tex, st in pairs(held) do
+		if st.icon ~= nil then
+			list[#list + 1] = tex
+		end
+	end
+	for i = 1, #list do
+		local tex = list[i]
+		local st = held[tex]
+		if st then
+			Icons.Set(tex, st.icon, st.units, st.l, st.r, st.t, st.b)
+		end
+	end
+end, Icons)

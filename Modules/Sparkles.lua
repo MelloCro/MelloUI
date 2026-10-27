@@ -39,9 +39,7 @@ local M = MelloUI:RegisterModule("Sparkles", {
 	desc = "The game's sparkle on quest items you can loot, kept on through its graphics presets, and golden glints over the ore veins and herbs you walk up to: dim out of reach, bright in reach, grey when your skill is too low. The game settings it needs come back as you had them when it is off.",
 	icon = "Interface\\Icons\\Trade_Mining",
 	flavour = "What you can loot, at a glance.",
-	role = "adds",
 	enabledByDefault = false,
-	installer = false,
 	-- the player's own game settings, given back when off: never in a profile
 	keep = { "savedLoot", "savedOutline", "savedOutlineEngine", "savedRaidOutline", "savedRaidOutlineEngine",
 		"savedSoftInteract", "savedSoftRange", "savedSoftArc", "savedSoftOnlyInRange", "savedSoftIcon",

@@ -27,6 +27,7 @@ local Looks = ns.Looks
 
 local Page = {}
 ns.Page = Page
+RD.Page = Page   -- (the tests')
 
 local PartyReplica   -- (below: the normal party member's replica)
 
@@ -81,6 +82,9 @@ local function Box(parent, x, y, w, h)
 end
 
 local function Name(ind)
+	if ind.kind == "group" and ns.SpellGroups then
+		return ns.SpellGroups.Label(ind)
+	end
 	if ind.kind == "debuff" then
 		local k = RD.KIND[ind.what]
 		return k and k.label or "?"
@@ -151,6 +155,10 @@ local function Spots(parent, x, y, get, set)
 	return grid
 end
 
+-- (the spell groups' page, GroupSpellGroupsPage.lua: the same helpers)
+Page.Label, Page.Box, Page.Choices, Page.Spots, Page.Name = Label, Box, Choices, Spots, Name
+Page.samples = setmetatable({}, { __mode = "v" })   -- [stage pick] = its big sample (a drop's target)
+
 --------------------------------------------------------------------------------
 -- Samples: a frame of the group frames' own (GroupButton.lua: the same builder
 -- and painters as the secure frames, made-up values), its indicators drawn by
@@ -204,8 +212,10 @@ end
 -- member, dressed by the unit frame skin as the members are, with the parts it
 -- lacks at the game's own places (its role, its ready check, its aura row)
 
-local SAMPLE_AURAS = { "Interface\\Icons\\Spell_Holy_Renew", "Interface\\Icons\\Spell_Holy_WordFortitude",   -- look-ok: a sample's auras
-	"Interface\\Icons\\Spell_Shadow_ShadowWordPain" }   -- look-ok: a sample's auras
+-- (1.2.4, retail's preview update; the user, 2026-10-24: the preview "a accurate representation of the actual
+-- unitframes") the members' aura row as it shows: their debuffs (the game's row shows debuffs only)
+local SAMPLE_AURAS = { "Interface\\Icons\\Spell_Shadow_ShadowWordPain",   -- look-ok: a sample's auras
+	"Interface\\Icons\\Spell_Shadow_CurseOfTounges" }   -- look-ok: a sample's auras
 
 PartyReplica = function(parent, i, ready)
 	local CP = MelloUI.ConfigPreview
@@ -265,7 +275,7 @@ PartyReplica = function(parent, i, ready)
 	end
 	if not rawget(f, "AuraFrameContainer") then
 		local c = CreateFrame("Frame", nil, f)
-		c:SetSize(3 * 15 + 2 * 2, 15)
+		c:SetSize(#SAMPLE_AURAS * 15 + (#SAMPLE_AURAS - 1) * 2, 15)
 		At(c, "party.buffs")
 		for j, icon in ipairs(SAMPLE_AURAS) do
 			local t = c:CreateTexture(nil, "ARTWORK")
@@ -301,10 +311,18 @@ local function SampleMarks(f, inds, frac, only)
 		if not health then
 			m.b:SetFrameLevel(f:GetFrameLevel() + 3)
 		end
-		m.p.tint:SetDrawLayer(health and "BORDER" or "OVERLAY", health and 4 or 0)
 		local bar = rawget(f, "healthBar") or (rawget(f, "HealthBarContainer") and f.HealthBarContainer.HealthBar)
-		Looks.Lay(m.b, m.p, ind, f, Looks.Fill(bar))
-		Looks.Sample(m.b, m.p, ind, frac)
+		if ind.kind == "group" and Page.SampleGroup then
+			-- (a spell group's made-up members of the group, laid its way)
+			Page.SampleGroup(f, m, ind, frac, Looks.Fill(bar))
+		else
+			if m.items and Page.HideItems then
+				Page.HideItems(m)
+			end
+			m.p.tint:SetDrawLayer(health and "BORDER" or "OVERLAY", health and 4 or 0)
+			Looks.Lay(m.b, m.p, ind, f, Looks.Fill(bar))
+			Looks.Sample(m.b, m.p, ind, frac)
+		end
 		m.b:SetShown(not only or only(i, ind))
 	end
 	for i = #inds + 1, #f.marks do
@@ -367,6 +385,10 @@ end
 local KIND_ICON = "Interface\\Icons\\Spell_Holy_DispelMagic"   -- look-ok: a debuff row's picture
 
 function Page.Build(canvas, width)
+	-- (the spell groups' tray and block, retail's picked sketch B: GroupSpellGroupsPage.lua)
+	if Page.BuildGroups then
+		return Page.BuildGroups(canvas, width)
+	end
 	-- (the frame it is for: its section's, "party:indicators" or "raid:indicators")
 	local row = canvas:GetParent()
 	local sec = row and row:GetParent()
@@ -747,7 +769,7 @@ local function FakeShow()
 		f:ClearAllPoints()
 		f:SetPoint("TOPLEFT", h, "TOPLEFT", x, y)
 		SampleMarks(f, list, f.sample.frac, function(j, e)
-			return e.kind == "buff" and (n + j) % 2 == 0 or (e.kind == "debuff" and n % 4 == 2)
+			return e.kind == "group" or e.kind == "buff" and (n + j) % 2 == 0 or (e.kind == "debuff" and n % 4 == 2)
 		end)
 	end
 	h:Show()
@@ -791,7 +813,7 @@ local function FakePartyShow()
 		f:ClearAllPoints()
 		f:SetPoint(g[3], h, g[3], g[1] * (n - 1) * (db.width + sp), g[2] * (n - 1) * (db.height + sp))
 		SampleMarks(f, list, f.sample.frac, function(j, e)
-			return e.kind == "buff" and (n + j) % 2 == 0 or (e.kind == "debuff" and n % 4 == 2)
+			return e.kind == "group" or e.kind == "buff" and (n + j) % 2 == 0 or (e.kind == "debuff" and n % 4 == 2)
 		end)
 	end
 	h:Show()
@@ -902,14 +924,18 @@ local Stage = {
 
 function Stage.Main(stage, pick)
 	if pick == "portrait" then
-		return PartyReplica(stage.holder, 1, true)
+		local r = PartyReplica(stage.holder, 1, true)
+		Page.samples[pick] = r
+		return r
 	end
 	-- (made-up states on the big one: ready, a mark, a role; your class)
 	local s = Member(1)
 	s.class = RD:Class()
 	s.health, s.frac, s.power = 0.85, 0.6, 0.7
 	s.mark, s.ready, s.role = 1, "ready", s.role or "HEALER"
-	return SampleFrame(stage.holder, s, pick == "groupParty" and "groupParty" or nil)
+	local f = SampleFrame(stage.holder, s, pick == "groupParty" and "groupParty" or nil)
+	Page.samples[pick] = f
+	return f
 end
 
 -- the sample as the frames are now (a try's choice painted on it only), its
@@ -1011,6 +1037,19 @@ function Stage.HealthContent()
 	return Stage.health
 end
 
+-- (1.2.4) a part's place as the portraits stand: Unit Frames' Flip Horizontally mirrors them, so their places show
+-- and are taken turned round, and are kept the game's way round (Modules/UnitFrames.lua M:MirrorPlace)
+function Stage.AsShown(layout, t)
+	if layout ~= "portrait" then
+		return t
+	end
+	local uf = MelloUI:GetModule("UnitFrames")
+	if uf and uf.PartyFlipped and uf.MirrorPlace and uf:PartyFlipped() then
+		return uf:MirrorPlace(t)
+	end
+	return t
+end
+
 function Stage.FramePart(p, layout)
 	local text = p.text and true or nil
 	local sizes = Parts.SIZE
@@ -1020,19 +1059,39 @@ function Stage.FramePart(p, layout)
 			return Parts.RegionOf(f, p.key)
 		end,
 		store = { get = function()
-			return Parts:Of(p.key, layout)
+			return Stage.AsShown(layout, Parts:Of(p.key, layout))
 		end, set = function(_, t)
-			Parts:Place(layout, p.key, t)
+			Parts:Place(layout, p.key, Stage.AsShown(layout, t))
 		end },
 		home = function()
-			return Parts:Shown(p.key, layout)
+			return Stage.AsShown(layout, Parts:Shown(p.key, layout))
 		end,
-		size = { min = text and sizes.textMin or sizes.iconMin, max = text and sizes.textMax or sizes.iconMax, step = 1 },
+		size = p.sizes and { min = p.sizes.min, max = p.sizes.max, step = 1 }   -- (a part's own range)
+			or { min = text and sizes.textMin or sizes.iconMin, max = text and sizes.textMax or sizes.iconMax, step = 1 },
 		hide = true,
 		homeLabel = layout == "portrait" and Stage.TEXT.gameHome or Stage.TEXT.home,
 		content = p.key == "health" and Stage.HealthContent() or nil,
 	}
 end
+
+-- (1.2.4; the user, 2026-10-24: the indicators' fonts sized "on the stage itself") an indicator's own texts -- the
+-- time and the stacks -- as rows on the Indicators tab, under the stage: the picked indicator's, shown and sized,
+-- the same values as its Time and Stacks in the settings below (ind.text, ind.count)
+Stage.IND_TEXTS = {
+	{ key = "text", label = "Time", field = "textSize", showField = "textShow", min = RD.SIZE.textMin,
+	  max = RD.SIZE.textMax,
+	  get = function(ind) return type(ind.text) == "table" and ind.text.size or RD.SIZE.text end,
+	  shown = function(ind) return type(ind.text) == "table" and ind.text.show end },
+	{ key = "count", label = "Stacks", field = "countSize", showField = "countShow", min = RD.SIZE.textMin,
+	  max = RD.SIZE.textMax,
+	  get = function(ind) return type(ind.count) == "table" and ind.count.size or RD.SIZE.text end,
+	  shown = function(ind) return type(ind.count) == "table" and ind.count.show end },
+}
+-- the Indicators tab's template (ConfigPreview's `templates`): its texts' rows only (the size and the place: the
+-- stage's wheel and drag, and the settings below), first on the tab -- in General, over the list -- so they stand
+-- right under the stage
+Stage.IND_TEMPLATE = { key = "ind:", label = "Indicators", class = "indicator", drag = false, texts = Stage.IND_TEXTS,
+	textsSection = "General" }
 
 -- an indicator's place written onto it (nil: its default place), its list
 -- told once
@@ -1045,6 +1104,17 @@ function Stage.SetInd(part, t)
 		ind.point, ind.x, ind.y = t.point or ind.point, tonumber(t.x) or 0, tonumber(t.y) or 0
 		if tonumber(t.size) then
 			ind.size = tonumber(t.size)
+		end
+		-- (its time and stacks, shown and sized: the Indicators tab's rows, Stage.IND_TEXTS)
+		for _, d in ipairs(Stage.IND_TEXTS) do
+			local sub = ind[d.key]
+			local v = tonumber(t[d.field])
+			if v and type(sub) == "table" then
+				sub.size = v
+			end
+			if type(t[d.showField]) == "boolean" and type(sub) == "table" then
+				sub.show = t[d.showField]
+			end
 		end
 	end
 	RD:Changed(ind, part.listKey)
@@ -1070,9 +1140,25 @@ function Stage.IndPart(ind)
 		end
 		return nil
 	end
+	-- (a spell group's place is where its first icon stands, Looks.Pin: a drop reads that icon)
+	part.lead = function(_, region, f)
+		for _, m in ipairs(f and f.marks or Stage.EMPTY) do
+			if m.b == region then
+				local first = m.items and m.items[1]
+				return first and first.b:IsShown() and first.b or nil
+			end
+		end
+		return nil
+	end
 	part.store = { get = function()
 		return ind
 	end, set = Stage.SetInd }
+	part.texts = Stage.IND_TEXTS
+	-- (1.2.4; the user, 2026-10-26: right-clicking a group on the preview to "Remove the whole group") the right-click
+	-- list's Remove: taken off the frame, as the page's Remove button does
+	part.remove = function()
+		RD:Remove(ind, part.listKey)
+	end
 	part.content = { values = Stage.LookValues(), get = function()
 		return ind.look
 	end, set = function(v)
@@ -1206,6 +1292,7 @@ do
 			Furnish = Stage.Furnish, Main = Stage.Main, Refresh = Stage.Refresh, Paint = Stage.Paint,
 			parts = Stage.Parts, PartKeys = Stage.PartKeys, Tries = Stage.Tries, Empty = Stage.Empty, states = Stage.STATES,
 			Moved = Stage.Moved, ResetAll = Stage.ResetAll, mover = Stage.Mover, OnSelect = Stage.OnSelect,
+			templates = { ["ind:"] = Stage.IND_TEMPLATE },
 		})
 	end
 end

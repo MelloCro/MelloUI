@@ -836,6 +836,8 @@ end
 --   Moved(pick) -> n, ResetAll(pick), mover(pick) -> a mover key, reset ({ {
 --   module, key } }: Wants), Panel(class, stage, parent, y) -> frame, height,
 --   OnSelect(stage, key) (a part picked or let go: the kind's own followers),
+--   templates ({ [key] = part }: a family of parts made per thing on the stage -- "ind:" -- its tab's template,
+--   Preview.PartOf; 1.2.4),
 --   pickText (the caption while nothing is picked, or a picked part has no gesture: a kind whose parts are
 --   picked, never moved; TEXT.pick's "drag it" otherwise)
 -- The page sets stage.pinAbove (what it pins over the stage, px) for Stick.
@@ -850,7 +852,11 @@ end
 --   }, hide (Show / Hide offered), locked (the reason: picked, never moved),
 --   drag (false: picked, never moved), content = { values = { { value,
 --   label } }, get(), set(value) }, Drop(part, l, b, r, t, w, h, place,
---   spot) -> place (the box's units; `spot`: the place for that '+').
+--   spot) -> place (the box's units; `spot`: the place for that '+'),
+--   texts ({ { key, label, field, min, max, get(place) }, ... }: its own texts, each a "text:<key>" spec, a size
+--   row: 1.2.4), textsSection (the section those rows open: Text when absent), lead(part, region, sample) ->
+--   region | nil (the piece of it its place puts on the spot -- a group's first icon -- what a drop reads: 1.2.4),
+--   remove(part) (1.2.4: the right-click list offers Remove -- an indicator, a spell group taken off the frame).
 -- A place: { point, x, y, size, show } -- exactly ONE store write a gesture,
 -- inside one MelloUI:Batch, seeded from home when the part has none yet.
 -- The def's Paint lays every part from its store on every paint (a drag moves
@@ -862,7 +868,8 @@ end
 
 do
 	local K = { HEIGHT = 214, PAD = 8, CLICK = 3, H_TEXT = 12, H = 4, RANGE = 60, MAGNET = 2, GHOST = 0.35,
-		DIM = 0.4, LIFT = 40, PLUS = 14, MAX_SCALE = 3, ROW_H = 26, LABEL_W = 110 }
+		DIM = 0.4, LIFT = 40, PLUS = 14, MAX_SCALE = 3, ROW_H = 26, LABEL_W = 110,
+		EDGE = 2 }   -- (EDGE: a dragged part's room from the stage's edge, its units)
 	local TEXT = {
 		pick = "Click a part to pick it; drag it to move it.",
 		gestures = "Drag to move it, click a + for a spot, the arrow keys move it 1 px (Shift: 10).",
@@ -870,7 +877,7 @@ do
 		menu = " Right-click it for more.",
 		place = "%s %d, %d",
 		noKeys = " The arrow keys are not free now (a fight, or Edit Layout open).",
-		show = "Show", hide = "Hide", home = "Default place", x = "X", y = "Y", placeRow = "Place",
+		show = "Show", hide = "Hide", home = "Default place", remove = "Remove", x = "X", y = "Y", placeRow = "Place",
 		resetAsk = "Put the %d moved parts back in their places?",
 		resetAccept = "Reset", cancel = "Cancel",
 		nothing = "Nothing to reset: every part is in its place.",
@@ -883,7 +890,7 @@ do
 	K.FX = { LEFT = 0, CENTER = 0.5, RIGHT = 1 }
 	K.FY = { BOTTOM = 0, MIDDLE = 0.5, TOP = 1 }
 	K.ARROW = { UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 0 } }
-	K.MENU_SHOW, K.MENU_HIDE, K.MENU_HOME = "\001show", "\001hide", "\001home"
+	K.MENU_SHOW, K.MENU_HIDE, K.MENU_HOME, K.MENU_REMOVE = "\001show", "\001hide", "\001home", "\001remove"
 	local Safe = MelloUI.Safe
 	local Num, Fin = Safe.Number, Safe.Finite
 	-- (the engine's functions, one table: the file's main chunk keeps its locals)
@@ -1074,8 +1081,32 @@ do
 		return part.box and part.box(sample) or sample
 	end
 
-	-- the sample in its room, as big as fits (to maxScale), again when its
-	-- size changed
+	-- (2026-10-24, the user: parts moved "out of the preview menu"; the preview "a accurate representation of the
+	-- actual unitframes") what the sample shows, in its own units from its bottom left: the frame and every part
+	-- shown on it -- a part placed past the frame's edge shows in the room too, never over the chips or the caption
+	function E.Extent(stage, w, h)
+		local main, def = stage.main, stage.def
+		local ml, mb = Safe.ScreenRect(main)
+		local ms = Num(Safe.Call(main, "GetEffectiveScale"))
+		local l, b, r, t = 0, 0, w, h
+		if not (ml and ms and ms > 0 and def.parts) then
+			return l, b, r, t, false   -- (the sample not placed yet: the frame alone, read again once it is)
+		end
+		for _, part in ipairs(def.parts(stage.pick, main) or ST.EMPTY) do
+			local region = part.region and part.region(main)
+			if region and Safe.Call(region, "IsVisible") == true then
+				local pl, pb, pr, pt = E.Visible(part, region)
+				if pl and pr > pl and pt > pb then
+					l, b = math.min(l, (pl - ml) / ms), math.min(b, (pb - mb) / ms)
+					r, t = math.max(r, (pr - ml) / ms), math.max(t, (pt - mb) / ms)
+				end
+			end
+		end
+		return l, b, r, t, true
+	end
+
+	-- the sample in its room, as big as fits (to maxScale) with what it shows
+	-- (E.Extent), again when its size or its parts' reach changed
 	function E.Fit(stage)
 		local main, def = stage.main, stage.def
 		local w, h = Fin(Safe.Call(main, "GetWidth")), Fin(Safe.Call(main, "GetHeight"))
@@ -1089,12 +1120,23 @@ do
 		if not (rw and rh) then
 			left, top, rw, rh = E.Room(stage)
 		end
-		local scale = math.max(0.25, math.min(def.maxScale or K.MAX_SCALE, rw / w, rh / h))
-		if scale ~= stage.fitScale or left ~= stage.fitLeft or top ~= stage.fitTop then
-			stage.fitScale, stage.fitLeft, stage.fitTop = scale, left, top
-			main:SetScale(scale)
-			main:ClearAllPoints()
-			main:SetPoint("CENTER", stage, "TOPLEFT", (left + rw / 2) / scale, -(top + rh / 2) / scale)
+		-- (twice when the first read the frame alone -- the sample not placed yet: its parts once it is)
+		for _ = 1, 2 do
+			local el, eb, er, et, read = E.Extent(stage, w, h)
+			local scale = math.max(0.25, math.min(def.maxScale or K.MAX_SCALE, rw / (er - el), rh / (et - eb)))
+			-- (the frame's centre off what it shows by this much, its units: half a unit's steps, no churn)
+			local cx = math.floor(((el + er) / 2 - w / 2) * 2 + 0.5) / 2
+			local cy = math.floor(((eb + et) / 2 - h / 2) * 2 + 0.5) / 2
+			if scale ~= stage.fitScale or left ~= stage.fitLeft or top ~= stage.fitTop or cx ~= stage.fitX
+				or cy ~= stage.fitY then
+				stage.fitScale, stage.fitLeft, stage.fitTop, stage.fitX, stage.fitY = scale, left, top, cx, cy
+				main:SetScale(scale)
+				main:ClearAllPoints()
+				main:SetPoint("CENTER", stage, "TOPLEFT", (left + rw / 2) / scale - cx, -(top + rh / 2) / scale - cy)
+			end
+			if read then
+				return
+			end
 		end
 	end
 
@@ -1553,6 +1595,11 @@ do
 			return
 		end
 		local x, y = E.Cursor()
+		-- (the part kept on the stage: the cursor's travel bounded where its shown rect meets the stage's inside)
+		if d.minX then
+			x = math.max(d.x0 + d.minX, math.min(d.x0 + d.maxX, x))
+			y = math.max(d.y0 + d.minY, math.min(d.y0 + d.maxY, y))
+		end
 		local dx, dy = (x - d.x0) / d.scale, (y - d.y0) / d.scale
 		if not d.moved then
 			if math.abs(dx) < K.CLICK and math.abs(dy) < K.CLICK then
@@ -1622,6 +1669,16 @@ do
 		d.scale, d.stageScale = scale, stageScale
 		d.regionScale = Num(Safe.Call(region, "GetEffectiveScale")) or scale * (part.scale or 1)
 		d.hl, d.ht = (hl - sl) / stageScale, (ht - sb) / stageScale
+		-- (2026-10-24, the user: "i can basically move stuff out of the preview menu, which shouldnt be the case")
+		-- how far the cursor may take it: its shown rect inside the stage's edge (one already out may come back,
+		-- never go further); the drop's place then shows in the room (E.Fit's extent)
+		local vl, vb, vr, vt = E.Visible(part, region)
+		local _, _, sr, st = Safe.ScreenRect(stage)
+		if vl and sr then
+			local inset = K.EDGE * stageScale
+			d.minX, d.maxX = math.min(0, sl + inset - vl), math.max(0, sr - inset - vr)
+			d.minY, d.maxY = math.min(0, sb + inset - vb), math.max(0, st - inset - vt)
+		end
 		if not ST.dragger then
 			ST.dragger = CreateFrame("Frame")
 		end
@@ -1635,7 +1692,8 @@ do
 		stage.dragging = false
 		local part = d.part
 		local box = E.BoxOf(part, stage.main)
-		local l, b, r, t = E.Visible(part, d.region)
+		-- (a part whose place is where one piece of it stands -- a spell group's first icon -- read by that piece)
+		local l, b, r, t = E.Visible(part, part.lead and part.lead(part, d.region, stage.main) or d.region)
 		local cur = E.Current(part)
 		local t2
 		if l then
@@ -1761,6 +1819,12 @@ do
 			E.Write(stage, part, E.With(part, { show = value == K.MENU_SHOW }))
 		elseif value == K.MENU_HOME then
 			E.Write(stage, part, nil)
+		elseif value == K.MENU_REMOVE and part.remove then
+			-- (1.2.4; the user, 2026-10-26: right-clicking a group on the preview to "Remove the whole group") taken off
+			-- the frame at once, as the page's own Remove button does; nothing picked after it
+			stage:Select(nil)
+			MelloUI:Batch(part.remove, part)
+			stage:Repaint()
 		elseif part.content and part.content.set then
 			MelloUI:Batch(part.content.set, value)
 			stage:Repaint()
@@ -1902,6 +1966,9 @@ do
 		end
 		if part.store and part.store.set then
 			values[#values + 1] = stage.entries.home
+		end
+		if part.remove then
+			values[#values + 1] = stage.entries.remove
 		end
 		if #values == 0 then
 			return
@@ -2135,6 +2202,48 @@ do
 			return function(parent, y)
 				return def.Panel(part.class, stage, parent, y)
 			end
+		elseif type(which) == "string" and which:sub(1, 5) == "text:" and part.texts then
+			-- (1.2.4; the user, 2026-10-24: the indicators' time and stacks sized "on the stage itself") one of the
+			-- part's own texts, sized: part.texts = { { key, label, field, min, max, get(place) -> size, showField,
+			-- shown(place) }, ... }; the picked part's, written as `field` on its place (its store's set takes it),
+			-- with a switch for whether it shows when it names a showField
+			local def
+			for _, d in ipairs(part.texts) do
+				if d.key == which:sub(6) then
+					def = d
+				end
+			end
+			if not def then
+				return nil
+			end
+			return function(parent, y)
+				local row = Row(parent, y, def.label)
+				local sl = W.Slider(row, typed and 256 or 180, function()
+					local p = Picked()
+					local cur = p and p.texts and E.Current(p)
+					return cur and Num(def.get(cur)) or def.min
+				end, function(v)
+					local p = Picked()
+					if p and p.texts then
+						E.Write(stage, p, E.With(p, { [def.field] = v }))
+					end
+				end, { min = def.min, max = def.max, step = 1 })
+				Place(sl, row, 14)
+				if def.showField then
+					local sw = W.Switch(row, function()
+						local p = Picked()
+						local cur = p and p.texts and E.Current(p)
+						return cur and def.shown(cur) and true or false
+					end, function(v)
+						local p = Picked()
+						if p and p.texts then
+							E.Write(stage, p, E.With(p, { [def.showField] = v and true or false }))
+						end
+					end)
+					sw:SetPoint("RIGHT", sl, "LEFT", -12, 0)
+				end
+				return row, Height(row)
+			end
 		end
 		return nil
 	end
@@ -2311,7 +2420,8 @@ do
 		stage.byKey, stage.faded = {}, setmetatable({}, weakKeys)
 		stage.wheelKey, stage.nudgeKey = { stage = stage }, { stage = stage }
 		stage.entries = { show = { value = K.MENU_SHOW, label = TEXT.show }, hide = { value = K.MENU_HIDE, label = TEXT.hide },
-			home = { value = K.MENU_HOME, label = def.homeLabel or TEXT.home } }
+			home = { value = K.MENU_HOME, label = def.homeLabel or TEXT.home },
+			remove = { value = K.MENU_REMOVE, label = TEXT.remove } }
 		stage.holder = CreateFrame("Frame", nil, stage)
 		stage.holder:SetAllPoints(stage)
 		stage.topRows = {}   -- (the chip rows over the stage's top: its state chips, a kind's own -- E.Room)
@@ -2372,7 +2482,10 @@ do
 				return list[i]
 			end
 		end
-		return nil
+		-- (1.2.4) a family of parts made per thing on the stage ("ind:", the indicators): the def's template of them,
+		-- what their tab's rows act on (the one picked)
+		local t = def and type(def.templates) == "table" and def.templates[key]
+		return type(t) == "table" and t or nil
 	end
 
 	function Preview.RowEnter(row)
@@ -2682,7 +2795,11 @@ function Copy.Make(p, key)
 			f.circle:SetAtlas("UI-HUD-UnitFrame-SmallCircle", true)
 		end
 		f.circle:SetPoint(d.circle[1], f, d.circle[1], d.circle[2], d.circle[3])
-		f.level = top:CreateFontString(nil, "OVERLAY", "WhiteLargeNumberFont")
+		-- (1.2.3, the user's error on retail: "Couldn't find inherited node "WhiteLargeNumberFont"" -- Forever's own font,
+		-- which retail does not define: there the font it is made of; its colour is the paint's, Copy.Paint)
+		f.level = top:CreateFontString(nil, "OVERLAY")
+		f.level:SetFontObject(rawget(_G, "WhiteLargeNumberFont") or rawget(_G, "NumberFont_GameLarge")
+			or rawget(_G, "GameFontHighlightLarge"))
 		f.level:SetDrawLayer("OVERLAY", 4)
 		f.level:SetPoint("CENTER", f.circle, "CENTER", 0, -0.5)
 	end

@@ -16,7 +16,7 @@ One switch and every window, every bar, the minimap, the nameplates, the chat, t
 
 Ember, the warm brown and bronze MelloUI started with, now has company: **Obsidian** (black glass and pewter), **Royal Azure** (deep navy and gold) and **Fel Ember** (charred black, fel green and void purple), each with a brighter **Vibrant** version, as Ember has one too. Every palette comes with its own painted kit, so the rails, gems and plates change colour with it, and every MelloUI window, text and highlight follows.
 
-- Pick one on Look > General (Home's Your setup names yours, with Change… to it), or on the installer's Look step in Fresh start. Kit Colours then offers that palette's kit or the Original (under Ember and Ember Vibrant: Warm iron, Bronze or the Original).
+- Pick one on Look > General (Home's Your setup names yours, with Change… to it). Kit Colours then offers that palette's kit or the Original (under Ember and Ember Vibrant: Warm iron, Bronze or the Original).
 - A soft dark shade follows the outline of every painted piece, so the interface stands out from the world: windows, bars, unit frames, chat, bags, the minimap, the trackers, buffs, event widgets and nameplates. It is on at 70 %. UI Shade, Shade Strength and a switch per area are on Look > General (the painted unit frames' on Oldschool > Frame Art); each area's own page links to its switch.
 - Items you can't use and spells you can't learn stay on dark red in every palette.
 
@@ -104,14 +104,19 @@ And what needs you *right now* shows up as small widgets in one column, each wit
 
 ## 🧭 Set up in a minute
 
-The first time you log in with MelloUI, a few seconds in, the installer asks how you want to start:
+The first time you log in with MelloUI, a few seconds in, the installer walks you through your setup, one step at a time. Every step shows a picture of what you pick, and the recommended answer is picked to begin with:
 
-- **Full experience** (recommended): Mello's own setup. The reskin in the Ember palette, the features and Mello's Edit Mode layout, fitted to your screen.
-- **No reskin, features on:** the game's look stays and MelloUI's features come on. No Edit Mode change.
-- **Reskin only:** the painted look and Mello's layout; the features stay off.
-- **Fresh start:** everything off, then one step at a time: the look (the reskin, the palette, Kit Colours, the button borders, class icons), the minimap (Round or Square), parchment and dark mode, fonts, the features, your screen, chat and the windows. Each step's choices start at Mello's own, and nothing changes until you install. On the Features step every feature starts off: switch on the ones you want, or all of them with **All features**. Each one you switch on comes with Mello's own settings for it; the rest wait in `/mello`.
+1. **Skin:** how everything looks, the game's frames and MelloUI's own windows and features alike. **Default** is the game's own look, **Modern** (recommended) MelloUI's slate and gold, **Oldschool** the painted look (with MelloUI Oldschool installed; without it, its card gives you the CurseForge link to copy).
+2. **Layout:** Mello's layout fitted to your screen, or your own Edit Mode layout as it is.
+3. **Party and raid:** Group Frames or the game's party portraits, with Show Yourself In Your Party, Flip Horizontally (portraits) and Party Markers.
+4. **Quests and travel:** the Quest Tracker, the Quest List, Route, the Map, Voice Over, Services and Dungeon Info, each a switch.
+5. **Combat:** Nameplates, Combat Text, the Damage Meter, the heal and cooldown effects and the Personal Display.
+6. **Chat:** Chat View or the plain chat.
+7. **Minimap and widgets:** the map column, Reminders and Widgets.
+8. **Bags:** bags by kind or separate bags, with Gains, Restock and Discard.
+9. **Sound:** MelloUI's sounds or the game's.
 
-Dark Mode is yours: no setup changes it and no profile carries it. Fresh start's dark mode row starts at your own choice (off on a new character).
+Each feature you keep comes with Mello's own settings for it; change them any time in `/mello`. Nothing changes until you install. Dark Mode is yours: the installer never changes it and no profile carries it.
 
 Then:
 
@@ -185,12 +190,12 @@ that is applied when the addon starts with no settings at all, such as on a fres
 that is the built-in **Everything Off** profile (every module off, made from the module list
 at each login, so it cannot be deleted or overwritten), and the installer opens a few seconds
 later (*Set up in a minute* above). The installer adds two more: the shipped **MelloUI**
-profile is its Full experience, and **Before install** is the setup you had before you last
+profile is the setup it builds your picks on, and **Before install** is the setup you had before you last
 installed. Profiles are
 kept in the saved variables with the rest of the settings, so they stay from one session to the
 next. On a development copy, `Tools\bake_routes.py --watch` (the same watcher that bakes the
 learned roads) also bakes your own into `Media\Profiles.lua` after each `/reload`. The
-watcher never writes the shipped **MelloUI** profile (the Full experience the installer applies,
+watcher never writes the shipped **MelloUI** profile (the setup the installer builds on,
 baked from a saved setup by `Tools\installer\bake_full.py --write`) or Everything Off, and
 `Tools\release.py` refuses a release while that file holds a stale MelloUI or any other profile,
 which would ship to every player (`python Tools\installer\bake_full.py --check` says which). Only
@@ -240,8 +245,8 @@ To share a profile, click **Share** on its row and copy the string; to use someo
 
 ### Palettes and the UI Shade (UI Modifications)
 
-**Palette** (UI Modifications, set on Look > General above Kit Colours, or on the installer's Look
-step; Home's Your setup names it): Ember (the default), Obsidian, Obsidian Vibrant,
+**Palette** (UI Modifications, set on Look > General above Kit Colours; Home's Your setup
+names it): Ember (the default), Obsidian, Obsidian Vibrant,
 Royal Azure, Royal Azure Vibrant, Fel Ember and Fel Ember Vibrant. A palette is ten colours
 (the window, the inner panel, raised panels, borders, trim, text, muted text, the selected tab,
 its gold trim, the hover), and everything MelloUI draws takes its colours from the one in use:
@@ -249,7 +254,7 @@ its windows, texts, highlights, the notice, Route's lines, the shades. Each pale
 has its own painted kit (`Media\Kit<Name>`); **Kit Colours** then offers that kit or the
 Original, and under Ember Warm iron, Bronze and the Original as before. A switch changes
 everything at once, with no `/reload`, and works with UI Modifications off too. The installer's
-Full experience and Reskin only put in Ember; No reskin and Fit to this screen keep yours. A few
+Oldschool skin puts in Ember, Default and Modern Gilded Slate; Fit to this screen keeps yours. A few
 colours carry a meaning and stay the same in every palette: the chat channels, Voice Over's
 states, Route's straight-guess blue and beam red, the map's quest-giver blue, and the dark red
 of what you can't use or learn (merchants, trade, trainers).
@@ -1716,7 +1721,7 @@ item always is). Both rows are on the Windows page, the bag and loot windows' Be
 
 ### Gains
 
-Short lines beside your character (right of the screen's centre, a little below) show what you just gained, each on the on-screen notice's soft dark shade, without an outline unless the notice's **Outlined Text** is on. It is on by default (the installer's Fresh start begins with every feature off):
+Short lines beside your character (right of the screen's centre, a little below) show what you just gained, each on the on-screen notice's soft dark shade, without an outline unless the notice's **Outlined Text** is on. It is on by default (the installer's Bags step has its switch):
 
 - **Skill Ups:** "+1 Defense 57 / 80" when a skill goes up: weapon skills, Defense, professions, secondary skills and languages (the lines the Skills tab lists, a folded heading's too). A newly learned skill is no "+1", and a new rank from a trainer (or a riding rank) only changes the numbers a line shows. **Show Skill Values** (on): the value and the cap after the name.
 - **Looted & Received Items:** "+3 Linen Cloth" for each item that comes into your bags: loot, quest rewards, crafted items, mail and trades. The small gem before the name is the item's quality colour, the same gem as in the bags and the tooltips. Moving items between your bags, the bank and your gear never counts. When one loot brings more than five items, the best of them are shown.

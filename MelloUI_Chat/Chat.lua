@@ -38,7 +38,6 @@ local M = MelloUI:RegisterModule("Chat", {
 	icon = "Interface\\Icons\\Ability_Warrior_BattleShout",
 	flavour = "Less frame, more talk. Short channel tags and class colours keep the log readable.",
 	group = "Chat and sound", navOrder = 1,
-	role = "adds",
 	tweak = { label = "Chat Tweaks", desc = "Short channel names, class-coloured names, the whisper popup, the chat buttons, smooth scrolling, the names' form (Show Names As), the Background dropdown and the art-hiding switches (which only apply while the chat reskin is off). Off: every one of them goes.", order = 9 },
 	area = { key = "whisper", follows = "ChatPanel" },   -- the whisper popups: as the chat windows
 	keep = { "savedWhisperMode", "savedClassColorCVar", "savedChatStyle",   -- the player's own game settings, given back when off: never in a profile

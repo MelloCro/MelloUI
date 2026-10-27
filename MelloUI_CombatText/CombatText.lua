@@ -260,9 +260,6 @@ M = MelloUI:RegisterModule("CombatText", {
 	desc = "The text that floats over your character in a fight (damage taken, heals, Dodge and Parry, procs, resources gained) in MelloUI's look, in one of three styles, or the game's own.",
 	icon = "Interface\\Icons\\Ability_Warrior_BattleShout",
 	flavour = "Your hits taken, heals and procs in MelloUI's soft look, or the game's own text.",
-	-- (a look: how the game's combat text is drawn, Game by default; the
-	-- installer's setups leave it as it is, no Features row of its own)
-	role = "look",
 	enabledByDefault = true,
 	-- the player's own game settings, given back when off (the game's text
 	-- around you, its numbers over the enemies): never in a profile

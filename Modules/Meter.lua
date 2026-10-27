@@ -142,7 +142,6 @@ local M = MelloUI:RegisterModule("Meter", {
 	desc = "MelloUI's damage meter in place of the game's: three numbers by every frame (this fight, this run, healing), a race bar for the group in a fight, a summary after it and a Fight History window. The game's own damage meter is switched off while it is on, and comes back as you had it when it is off.",
 	icon = "Interface\\Icons\\Ability_DualWield",
 	flavour = "How the fight went, where you already look.",
-	role = "replaces",
 	enabledByDefault = true,
 	-- the player's own game settings, given back when off (the game's meter,
 	-- the party's pets): never in a profile

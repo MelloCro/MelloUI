@@ -36,6 +36,10 @@
 --                   made (Shade:RoundToPixel): for parts added to a nameplate
 --                   after the game rounded the plate at its OnLoad
 --                   (Blizzard_NamePlateUnitFrame.lua:104)
+--         blend     (1.2.4) "ADD": light (a glow behind a frame: the
+--                   mouseover highlight); default "BLEND", a shade
+--         hollow    (1.2.4) true: its middle clear, only its soft edges laid
+--                   (a glow round a frame whose own inside may be see-through)
 --   band:Anchor(region[, padX, padY])
 --       Its full-strength middle covers the region grown by padX on each
 --       side and padY above and below; the soft ends reach `feather` further
@@ -334,6 +338,14 @@ function Shade:Band(parent, opts)
 		for i = 1, #band.slices do
 			Shade:RoundToPixel(band.slices[i])
 		end
+	end
+	if opts.blend == "ADD" then
+		for i = 1, #band.slices do
+			band.slices[i]:SetBlendMode("ADD")
+		end
+	end
+	if opts.hollow then
+		band.mid:SetAlpha(0)   -- (its anchors kept: the edges hang on it)
 	end
 	band:Paint()
 	if opts.region then
@@ -1333,7 +1345,8 @@ end
 --       round tex at `size` (the icon's width in tex's units, the caller's:
 --       the shade reads no size; left out, no margin), its alpha the icon's own at the call times the
 --       strength, desaturated with it, turned as it is turned (2026-10-21). name
---       not a string: hidden (the icon hidden, or showing art not the set's).
+--       not a string: hidden (the icon hidden, or showing art not the set's);
+--       hidden too while the skin shows the game's picture for it (1.2.4).
 --       Called after the icon's look is set (and after it turns); a call that
 --       changes nothing writes nothing (a minimap mark laid every tick)
 -- Made on first use only: the 'shade' listener comes with the first lift.
@@ -1367,10 +1380,17 @@ do
 		self.tex:SetVertexColor(c[1], c[2], c[3], 1)
 	end
 
-	-- shown at its strength while the area is on and it has an icon, else hidden
+	-- (1.2.4) an icon the skin shows the game's picture for (MelloUI.Skin: the Default skin) has no lift: its halo is
+	-- the set's icon's shape, the game's pictures carry their own
+	local function Gamed(name)
+		local Skin = rawget(MelloUI, "Skin")
+		return Skin and Skin.Icon(name) ~= nil or false
+	end
+
+	-- shown at its strength while the area is on and it has an icon of the set's look, else hidden
 	function Lift:Show()
 		local tex = self.tex
-		if on and self.name then
+		if on and self.name and not Gamed(self.name) then
 			tex:SetAlpha(strength * self.alpha)
 			tex:Show()
 		else
@@ -1397,6 +1417,11 @@ do
 			on, strength = true, DEFAULT_ALPHA
 		end
 		MelloUI:On("shade", Perf.Shared("'shade' on the bus: the icons' lifts", OnShade), "Shade lifts")
+		MelloUI:On("skin", Perf.Shared("'skin' on the bus: the icons' lifts", function()
+			for _, lift in pairs(lifts) do
+				lift:Show()
+			end
+		end), "Shade lifts")
 		Listen()
 	end
 

@@ -41,7 +41,6 @@ local M = MelloUI:RegisterModule("Services", {
 	icon = "Interface\\Icons\\Ability_Repair",
 	flavour = "Repair, mailbox, innkeeper, bank... the nearest one is a click under the minimap.",
 	group = "Quests and travel", navOrder = 3,
-	role = "feature",
 	area = { key = "services", follows = "MinimapKit" },   -- the bar under the minimap: as the painted minimap (onelook D7)
 	enabledByDefault = true,
 	defaults = {
@@ -2853,6 +2852,36 @@ end
 
 local RINGED_GROW = 31 / 21 * 0.96   -- (0.25.0) a set icon's size against the icon's: the old rim's reach
 
+-- Round medallion icons: the icon under a circular mask with the classic
+-- minimap tracking rim around it.
+-- (1.2.4, the Default skin: MelloUI.Skin) the game's map icon for the service in the game's gold ring, on a dark disc:
+-- the ring at the button's size grown as the set's pictures were (RINGED_GROW), the icon in its opening
+local RIM_TEXTURE = "Interface\\Minimap\\MiniMap-TrackingBorder"
+local GAME_OPENING = 0.775
+local function LayRim(b, game)
+	b.rim:ClearAllPoints()
+	if game then
+		b.rim:SetAtlas(MelloUI.Skin.ART.ring)
+		local w = b:GetWidth() * RINGED_GROW
+		b.rim:SetSize(w, w)
+		b.rim:SetPoint("CENTER", b, "CENTER", 0, 0)
+		if not b.disc then
+			b.disc = b:CreateTexture(nil, "BACKGROUND")
+			b.disc:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
+			MelloUI.Widgets.Paint(b.disc, "mainWindow", "vertex", 0.9)
+		end
+		b.disc:ClearAllPoints()
+		b.disc:SetPoint("CENTER", b, "CENTER", 0, 0)
+		b.disc:SetSize(w * GAME_OPENING, w * GAME_OPENING)
+		return
+	end
+	b.rim:SetTexture(RIM_TEXTURE)
+	-- the rim art sits in the top left of its texture: 53 wide for a 21 wide opening
+	local k = b:GetWidth() / 21
+	b.rim:SetSize(53 * k, 53 * k)
+	b.rim:SetPoint("TOPLEFT", b, "TOPLEFT", -5 * k, 4 * k)
+end
+
 local function LayoutBar()
 	if not bar then
 		return
@@ -2910,15 +2939,14 @@ local function LayoutBar()
 		b:Show()
 		b:SetPoint("TOPLEFT", gap + col * (cell + gap) + inset, -(pad + row * (cell + vgap) + inset))
 		if b.rim then
-			local k = icon / 21
-			b.rim:SetSize(53 * k, 53 * k)
-			b.rim:ClearAllPoints()
-			b.rim:SetPoint("TOPLEFT", b, "TOPLEFT", -5 * k, 4 * k)
+			LayRim(b, b.rimGame)   -- (the rim at this size: the game's ring under the Default skin, MelloUI.Skin)
 		end
 		if b.ringedIcon then
 			-- (0.25.0) one of the set's icons, at this size: as large as the old rim reached round the icon, and its
-			-- round light the same in every look (it wears no kit rim)
-			b.icon:SetSize(icon * RINGED_GROW, icon * RINGED_GROW)
+			-- round light the same in every look (it wears no kit rim); the game's map icon in its ring's opening
+			local w = icon * RINGED_GROW * (b.rimGame and GAME_OPENING or 1)
+			b.icon:SetSize(w, w)
+			MelloUI.Icons.Fit(b.icon)   -- (a game picture at most its own size)
 			LayLight(b, true, false)
 		else
 			LayLight(b, M.db.roundIcons and true or false, kit)
@@ -2965,44 +2993,45 @@ local function TellColumn()
 	end
 end
 
--- Round medallion icons: the icon under a circular mask with the classic
--- minimap tracking rim around it.
-local RIM_TEXTURE = "Interface\\Minimap\\MiniMap-TrackingBorder"
 local function ApplyIconShape()
 	if not bar then
 		return
 	end
 	local round = M.db.roundIcons and true or false
 	local kit = KitOn()
+	local Skin = rawget(MelloUI, "Skin")
 	for _, b in ipairs(bar.buttons) do
 		if not b.mask then
 			b.mask = b:CreateMaskTexture()
 			b.mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
 			b.mask:SetAllPoints(b.icon)
 			b.rim = b:CreateTexture(nil, "OVERLAY")
-			b.rim:SetTexture(RIM_TEXTURE)
-			-- the rim art sits in the top left of its texture: 53 wide for a 21 wide opening
-			local k = b:GetWidth() / 21
-			b.rim:SetSize(53 * k, 53 * k)
-			b.rim:SetPoint("TOPLEFT", b, "TOPLEFT", -5 * k, 4 * k)
 		end
 		local of = b.kind or b.group
 		local crop = 0
+		local game = of and Skin and Skin.Icon(of.icon) or nil
+		b.rimGame = game and true or false
+		LayRim(b, game)   -- (every pass: the button's size is the bar's, laid after it was made)
+		if b.disc then
+			b.disc:SetShown(game and true or false)
+		end
 		b.ringedIcon = (of and MelloUI.Widgets.IconRinged(of.icon)) and true or nil
 		if b.ringedIcon then
 			-- (0.25.0) one of the set's Services icons: whole, its own disc and ring, as large as the old rim
-			-- reached round the button, with no rim of ours or the kit's over it (Round Icons or not)
+			-- reached round the button, with no rim of ours or the kit's over it (Round Icons or not); (1.2.4) under
+			-- the Default skin the game's map icon for it in the game's gold ring, on its dark disc, as large
 			b.icon:RemoveMaskTexture(b.mask)
-			b.rim:Hide()
+			b.rim:SetShown(game and true or false)
 			for _, key in ipairs({ "kitRoundRim", "kitSquareRim" }) do
 				if b[key] then
 					b[key]:Hide()
 				end
 			end
-			local w = b:GetWidth() * RINGED_GROW
+			local w = b:GetWidth() * RINGED_GROW * (game and GAME_OPENING or 1)
 			b.icon:ClearAllPoints()
 			b.icon:SetPoint("CENTER", b, "CENTER", 0, 0)
 			b.icon:SetSize(w, w)
+			MelloUI.Icons.Fit(b.icon)   -- (a game picture at most its own size)
 			LayLight(b, true, false)
 		else
 			if round then
@@ -3312,6 +3341,13 @@ function M:LayoutForMinimap()
 	end
 	UpdateButtonPosition()
 end
+
+-- (1.2.4) the skin switched (MelloUI.Skin): the buttons' pictures and rims in its look
+MelloUI:On("skin", Perf.Shared("'skin' on the bus: the Services buttons", function()
+	if bar and M.isEnabled then
+		ApplyIconShape()
+	end
+end), M)
 
 -- MinimapPanel's question about the row under the map (its column, layout
 -- E), asked at call time: `groups`, true while the buttons stand as ONE row

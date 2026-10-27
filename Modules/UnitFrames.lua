@@ -39,7 +39,6 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 	icon = "Interface\\Icons\\INV_Misc_GroupLooking",
 	flavour = "Player, target and focus, centred and calm.",
 	group = "Frames and bars", navOrder = 1,
-	role = "replaces",
 	tweak = { label = "Unit Frame Tweaks", desc = "Name and glow tweaks on the unit frames, the party's levels and the names' soft bands (they step aside where the reskin covers them).", order = 5 },
 	-- (one look C13, the user's yes to the audit's drops, 2026-10-15: the names
 	-- centred and the target's and focus's name band transparent while this
@@ -52,11 +51,16 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		hidePvPBadge = true,
 		nameFont = "shared",
 		frames = true,
+		partyFlip = false,
 	},
 	options = {
 		-- (2026-10-20, the user: the game's frames as they are, in the set's borders, one picture each; the Frames section)
 		{ type = "toggle", key = "frames", name = "MelloUI Frames",
 		  desc = "The player, target, focus, target of target, pet and party frames in MelloUI's look, exactly as the game lays them out: a gold ring round the portrait, a dark level badge, and gold-lined iron borders round the name, health and power; the elite's and boss's golden dragon and the rare's silver one round the target. Off: the game's own frame art. The painted skin's frames keep their own (Oldschool)." },
+		-- (1.2.4; the user, 2026-10-26: "to have the option to flip the party frames horizontally, i like to have them
+		-- on the right side of the screen and not the left side") Party.Flip
+		{ type = "toggle", key = "partyFlip", name = "Flip Horizontally", new = "1.2.4",
+		  desc = "The party portraits mirrored, for a party on the right side of the screen: the portrait on the right, the name, level, bars, icons and buffs to its left. The health and power bars still fill from the left, as on the target frame." },
 		{ type = "header", name = "Names" },
 		{ type = "dropdown", key = "nameFont", name = "Name Font", values = MelloUI.FontFaces,
 		  desc = "The face of the names on the player, target, focus and pet frames, their targets' and the party portraits' (their level follows). Shared: the Interface text's face (Look > Fonts)." },
@@ -1735,6 +1739,8 @@ function Party.Sweep()
 		end
 	end
 	NameBand.All()
+	-- (1.2.4: last, every part as laid now -- mirrored or back)
+	Party.FlipAll()
 end
 
 function Party.Due()
@@ -1777,6 +1783,10 @@ function Party.Hook(frame)
 	if type(frame.ToPlayerArt) == "function" then
 		hooksecurefunc(frame, "ToPlayerArt", Party.OnArt)
 	end
+	-- (1.2.4: the mouseover highlight -- a post-hook of its own, MelloUI.FrameHover)
+	if MelloUI.FrameHover then
+		MelloUI.FrameHover.Attach(frame)
+	end
 end
 
 Party.OnEvent = Shared("OnEvent of the party levels", function()
@@ -1804,6 +1814,272 @@ function Party.Listen()
 	else
 		Party.frame:UnregisterAllEvents()
 	end
+end
+
+--------------------------------------------------------------------------------
+-- Flip Horizontally (1.2.4; the user, 2026-10-26: "to have the option to flip the party frames horizontally, i like to
+-- have them on the right side of the screen and not the left side"). A member in its sharp art (Party.art) mirrored
+-- across its middle: every part's anchors -- the game's (its art, combat flash, status glow, portrait, name, bars,
+-- icons, alternate power bar, pet, buffs), ours (the level, the name's band) and the places Group Frames gave them --
+-- turned round (TOPLEFT x <-> TOPRIGHT -x), the art's pictures flipped (their texture coordinates; MelloUI Frames'
+-- own picture through Frames.flip), the name and the level justified the other way. Whoever lays a part again (the
+-- game's ToPlayerArt and UpdateNameTextAnchors, Party.Lay and Place, Group Frames' Parts:Lay) lays it the game's way
+-- round: what was laid since our last mirror is mirrored again and our own stale points dropped (the game's SetPoint
+-- without ClearAllPoints leaves them). The bars still fill from the left, as the target frame's (the heal prediction's
+-- segments follow the fill). Out of combat (Party.Sweep, M:DressStandIn); what we wrote is kept here per region,
+-- nothing written as a key on the game's frames.
+--------------------------------------------------------------------------------
+Party.MIRROR = { LEFT = "RIGHT", RIGHT = "LEFT", TOPLEFT = "TOPRIGHT", TOPRIGHT = "TOPLEFT", BOTTOMLEFT = "BOTTOMRIGHT",
+	BOTTOMRIGHT = "BOTTOMLEFT", TOP = "TOP", BOTTOM = "BOTTOM", CENTER = "CENTER" }
+-- the member's parts mirrored: its own, its overlay's, ours (Party.FlipParts)
+Party.FLIP_PARTS = { "Texture", "Flash", "Portrait", "Name", "HealthBarContainer", "ManaBar", "PowerBarAlt",
+	"NotPresentIcon", "ReadyCheck", "PetFrame", "AuraFrameContainer" }
+Party.FLIP_OVERLAY = { "Status", "LeaderIcon", "GuideIcon", "PVPIcon", "Disconnect", "RoleIcon" }
+Party.flip = {
+	points = setmetatable({}, { __mode = "k" }),   -- [region] = the points we wrote: { p, rel, rp, x, y, ... }
+	coords = setmetatable({}, { __mode = "k" }),   -- [texture] = the 8 coordinates we wrote
+	justify = setmetatable({}, { __mode = "k" }),  -- [font string] = the justification we wrote
+	frames = setmetatable({}, { __mode = "k" }),   -- [member] = true while mirrored
+	list = {}, set = {}, keep = {},                -- (one pass's scratch)
+}
+
+-- a member mirrored now: the setting on, the level and band wanted, its sharp art laid
+function Party.Flipped(frame)
+	return (M.db and M.db.partyFlip and Party.Wanted() and Party.art[frame]) and true or false
+end
+
+function Party.FlipNear(a, b)
+	return a == b or (type(a) == "number" and type(b) == "number" and math.abs(a - b) < 0.01)
+end
+
+-- whether a point is one we wrote on the region (its record `rec`)
+function Party.FlipOurs(rec, p, rel, rp, x, y)
+	if not rec then
+		return false
+	end
+	local Near = Party.FlipNear
+	for i = 1, #rec, 5 do
+		if rec[i] == p and rec[i + 1] == rel and rec[i + 2] == rp and Near(rec[i + 3], x) and Near(rec[i + 4], y) then
+			return true
+		end
+	end
+	return false
+end
+
+-- a point on a flat list (p, rel, rp, x, y, ...)
+function Party.FlipPush(list, p, rel, rp, x, y)
+	local n = #list
+	list[n + 1], list[n + 2], list[n + 3], list[n + 4], list[n + 5] = p, rel, rp, x, y
+end
+
+-- the flat points set on the region, mirrored or as they are; the record kept when mirrored
+function Party.FlipWrite(r, pts, mirror)
+	local rec = mirror and {} or nil
+	r:ClearAllPoints()
+	for i = 1, #pts, 5 do
+		local p, rel, rp, x, y = pts[i], pts[i + 1], pts[i + 2], pts[i + 3], pts[i + 4]
+		if mirror then
+			p, rp, x = Party.MIRROR[p] or p, Party.MIRROR[rp] or rp, -x
+			Party.FlipPush(rec, p, rel, rp, x, y)
+		end
+		r:SetPoint(p, rel, rp, x, y)
+	end
+	Party.flip.points[r] = rec
+end
+
+-- one part: the points laid since our last mirror mirrored (on), or ours turned back the game's way (off); a part
+-- anchored on anything but the member, its overlay or another of its parts, or read secret, is left as it is (a point
+-- on no frame named is on the part's parent)
+function Party.FlipRegion(r, on, frame)
+	if type(r) ~= "table" or type(r.GetNumPoints) ~= "function" then
+		return
+	end
+	local F = Party.flip
+	local rec, keep = F.points[r], F.keep
+	local okN, n = pcall(r.GetNumPoints, r)
+	n = okN and Num(n) or nil
+	if not n then
+		return
+	end
+	wipe(keep)
+	local stale = false
+	for i = 1, n do
+		local ok, p, rel, rp, x, y = pcall(r.GetPoint, r, i)
+		if not ok or Secret(p) or Secret(rel) or Secret(rp) or Secret(x) or Secret(y) or type(p) ~= "string" then
+			return
+		end
+		if rel == nil then
+			local okP, parent = pcall(r.GetParent, r)
+			rel = okP and parent or nil
+		end
+		x, y = Num(x) or 0, Num(y) or 0
+		if Party.FlipOurs(rec, p, rel, rp, x, y) then
+			stale = true
+		elseif rel ~= nil and (rel == frame or F.set[rel]) then
+			Party.FlipPush(keep, p, rel, rp, x, y)
+		else
+			return
+		end
+	end
+	if on then
+		if #keep > 0 then
+			Party.FlipWrite(r, keep, true)
+		end
+	elseif #keep > 0 then
+		if stale then
+			Party.FlipWrite(r, keep, false)
+		end
+		F.points[r] = nil
+	elseif rec then
+		Party.FlipWrite(r, rec, true)   -- (ours mirrored back: the game's way round)
+		F.points[r] = nil
+	end
+end
+
+-- a text's justification the other way round (on), or back (off)
+function Party.FlipJustify(fs, on)
+	if type(fs) ~= "table" or type(fs.GetJustifyH) ~= "function" then
+		return
+	end
+	local F = Party.flip
+	local ok, j = pcall(fs.GetJustifyH, fs)
+	if not ok or Secret(j) or type(j) ~= "string" then
+		return
+	end
+	local ours = F.justify[fs] == j
+	if on and not ours then
+		local m = Party.MIRROR[j] or j
+		fs:SetJustifyH(m)
+		F.justify[fs] = m
+	elseif not on then
+		if ours then
+			fs:SetJustifyH(Party.MIRROR[j] or j)
+		end
+		F.justify[fs] = nil
+	end
+end
+
+-- a picture flipped left for right (on: its coordinates as laid since ours, the upper and lower left corners swapped
+-- for the right ones), or back (off)
+function Party.FlipCoords(tex, on)
+	if type(tex) ~= "table" or type(tex.GetTexCoord) ~= "function" then
+		return
+	end
+	local F = Party.flip
+	local ok, a, b, c, d, e, f, g, h = pcall(tex.GetTexCoord, tex)
+	if not ok then
+		return
+	end
+	for i = 2, 9 do
+		local v = select(i, ok, a, b, c, d, e, f, g, h)
+		if Secret(v) or type(v) ~= "number" then
+			return
+		end
+	end
+	local rec, Near = F.coords[tex], Party.FlipNear
+	local ours = rec and Near(rec[1], a) and Near(rec[2], b) and Near(rec[3], c) and Near(rec[4], d)
+		and Near(rec[5], e) and Near(rec[6], f) and Near(rec[7], g) and Near(rec[8], h)
+	if on and not ours then
+		tex:SetTexCoord(e, f, g, h, a, b, c, d)
+		F.coords[tex] = { e, f, g, h, a, b, c, d }
+	elseif not on then
+		if ours then
+			tex:SetTexCoord(e, f, g, h, a, b, c, d)
+		end
+		F.coords[tex] = nil
+	end
+end
+
+-- a part on the pass's scratch list
+function Party.FlipAdd(r)
+	local F = Party.flip
+	if type(r) == "table" then
+		F.list[#F.list + 1] = r
+		F.set[r] = true
+	end
+end
+
+-- a member's parts (the scratch list, and the set of what its parts may hang on)
+function Party.FlipParts(frame)
+	local F = Party.flip
+	wipe(F.list)
+	wipe(F.set)
+	for _, key in ipairs(Party.FLIP_PARTS) do
+		Party.FlipAdd(rawget(frame, key))
+	end
+	local overlay = rawget(frame, "PartyMemberOverlay")
+	if type(overlay) == "table" then
+		F.set[overlay] = true   -- (laid over the whole member: its parts hang on it)
+		for _, key in ipairs(Party.FLIP_OVERLAY) do
+			Party.FlipAdd(rawget(overlay, key))
+		end
+	end
+	local made = Party.of[frame]
+	if made then
+		Party.FlipAdd(made.number)
+		Party.FlipAdd(made.entry and made.entry.band and made.entry.band.mid)
+	end
+	return F.list, overlay
+end
+
+-- a member mirrored or turned back as wanted now (out of combat)
+function Party.Flip(frame)
+	local on = Party.Flipped(frame)
+	local F = Party.flip
+	if not on and not F.frames[frame] then
+		return
+	end
+	F.frames[frame] = on or nil
+	local list, overlay = Party.FlipParts(frame)
+	for _, r in ipairs(list) do
+		Party.FlipRegion(r, on, frame)
+	end
+	local made = Party.of[frame]
+	Party.FlipJustify(rawget(frame, "Name"), on)
+	Party.FlipJustify(made and made.number, on)
+	Party.FlipCoords(rawget(frame, "Texture"), on)
+	Party.FlipCoords(rawget(frame, "Flash"), on)
+	Party.FlipCoords(type(overlay) == "table" and rawget(overlay, "Status") or nil, on)
+	-- (MelloUI Frames' picture: flipped as it is laid)
+	if M.Frames then
+		M.Frames.Party(frame)
+	end
+end
+
+-- every member and stand-in in its sharp art, and every one mirrored before (out of combat)
+function Party.FlipAll()
+	for frame in pairs(Party.art) do
+		Party.Flip(frame)
+	end
+	for frame in pairs(Party.flip.frames) do
+		if not Party.art[frame] then
+			Party.Flip(frame)
+		end
+	end
+end
+
+-- (Group Frames' party Designer, MelloUI_GroupFrames/GroupDesignerPage.lua) whether the party portraits are mirrored,
+-- and a part's place turned round -- the Designer shows and takes a mirrored member's places as they stand and keeps
+-- them the game's way round (nil: nil; a new table)
+function M:PartyFlipped()
+	return (self.isEnabled and self.db and self.db.partyFlip and Party.Wanted()) and true or false
+end
+
+function M:MirrorPlace(t)
+	if type(t) ~= "table" then
+		return t
+	end
+	local out = {}
+	for k, v in pairs(t) do
+		out[k] = v
+	end
+	if type(out.point) == "string" then
+		out.point = Party.MIRROR[out.point] or out.point
+	end
+	if tonumber(out.x) then
+		out.x = -tonumber(out.x)
+	end
+	return out
 end
 
 M.Compact, M.Party, M.NameBand = Compact, Party, NameBand   -- (the tests)
@@ -1837,6 +2113,14 @@ function M:PartyLine(frame, nameMoved, levelMoved)
 		made.moved = levelMoved and true or nil
 	end
 	Party.Band(frame, alone)
+	-- (1.2.4: the parts just laid the game's way round, mirrored again)
+	if Party.flip.frames[frame] or Party.Flipped(frame) then
+		if InCombatLockdown() then
+			Party.Due()
+		else
+			Party.Flip(frame)
+		end
+	end
 end
 
 -- the party members' parts as their skin is now: the painted skin coming or
@@ -1994,6 +2278,7 @@ function M:DressStandIn(frame)
 	else
 		Party.Width(frame)
 		Party.Art(frame)
+		Party.Flip(frame)
 	end
 	local made = Party.of[frame]
 	if made and made.entry then
@@ -2112,8 +2397,16 @@ local Frames = {
 	-- [kind] = { file, the picture's share of its file across and down; `at`: its middle that far from the top left
 	-- of the frame's own picture -- the ring's centre on it -- and that size, not on the game picture's rect }
 	ART = {
-		player = { "uf_frame_player", 396 / 512, 142 / 256 }, res = { "uf_frame_player_res", 396 / 512, 148 / 256 },
-		target = { "uf_frame_target", 388 / 512, 136 / 256 }, small = { "uf_frame_small", 240 / 256, 98 / 128 },
+		-- (1.2.4, the frames' bold landings -- Core/FrameFXBold.lua: the user, 2026-10-26, "across the whole unitframe
+		-- border, that means also on the top border where the name is") `plate`: its gold rim round the name and the
+		-- bars, `edge` its outer edge, as shares of the picture (left, top, right, bottom): M:PlateOf
+		player = { "uf_frame_player", 396 / 512, 142 / 256, plate = { 140 / 396, 26 / 142, 387 / 396, 115.5 / 142 },
+			edge = { 140 / 396, 22 / 142, 391 / 396, 120 / 142 } },
+		res = { "uf_frame_player_res", 396 / 512, 148 / 256, plate = { 140 / 396, 26.5 / 148, 388 / 396, 135.5 / 148 },
+			edge = { 140 / 396, 23 / 148, 391 / 396, 140 / 148 } },
+		target = { "uf_frame_target", 388 / 512, 136 / 256 },
+		small = { "uf_frame_small", 240 / 256, 98 / 128, plate = { 88 / 240, 9.5 / 98, 231 / 240, 72.5 / 98 },
+			edge = { 88 / 240, 6 / 98, 234 / 240, 77 / 98 } },
 		badge = { "uf_badge", 1, 1 },
 		-- (the dragon round the target's ring: its art 256 texels for 128 units, the ring's centre 159.25 x 33.75 units
 		-- into the target's picture, as on its 2x art, 318.5 x 67.5 px)
@@ -2127,12 +2420,23 @@ local Frames = {
 	dressed = setmetatable({}, { __mode = "k" }),  -- [ours] = the kind laid on it
 	copies = setmetatable({}, { __mode = "k" }),   -- [a preview's copy of a frame] = its kind (M:PreviewFrames)
 	anchor = setmetatable({}, { __mode = "k" }),   -- [the game's picture] = the picture an `at` kind is laid from
+	flip = setmetatable({}, { __mode = "k" }),     -- [the game's picture] = true: ours flipped (a mirrored party member)
+	flipped = setmetatable({}, { __mode = "k" }),  -- [ours] = true: laid flipped
+	mirrored = setmetatable({}, { __mode = "k" }), -- [a plate's or edge's shares] = their mirror image (M:PlateOf)
 	covered = false,
 }
 
 function Frames.On()
-	return M.isEnabled and M.db and M.db.frames ~= false and not Frames.covered
+	-- (1.2.4, the Default skin -- MelloUI.Skin: the game's own frame pictures)
+	local skin = rawget(MelloUI, "Skin")
+	return M.isEnabled and M.db and M.db.frames ~= false and not Frames.covered and not (skin and skin.IsDefault())
 end
+-- (the skin switched: the frame pictures in its look)
+MelloUI:On("skin", function()
+	if M.isEnabled then
+		Frames.Lay()
+	end
+end, Frames)
 
 local function Shown(region)
 	local ok, shown = pcall(region.IsShown, region)
@@ -2214,12 +2518,15 @@ function Frames.Make(region)
 	return ours
 end
 
--- its picture and place for a kind (laid again only when the kind changes)
+-- its picture and place for a kind (laid again only when the kind changes, or the picture's flip: a party member
+-- mirrored, Party.Flip)
 function Frames.Dress(ours, region, kind)
-	if Frames.dressed[ours] == kind then
+	local flip = Frames.flip[region] or false
+	if Frames.dressed[ours] == kind and (Frames.flipped[ours] or false) == flip then
 		return
 	end
 	Frames.dressed[ours] = kind
+	Frames.flipped[ours] = flip or nil
 	local art = Frames.ART[kind]
 	ours:ClearAllPoints()
 	local at, from = art.at, Frames.anchor[region]
@@ -2230,7 +2537,11 @@ function Frames.Dress(ours, region, kind)
 		ours:SetAllPoints(region)
 	end
 	-- (2026-10-21) laid: the level badge from its copy for its size (MelloUI.Icons), the frames' pictures as they are
-	MelloUI.Icons.Set(ours, Frames.DIR .. art[1], nil, 0, art[2], 0, art[3])
+	if flip then
+		MelloUI.Icons.Set(ours, Frames.DIR .. art[1], nil, art[2], 0, 0, art[3])
+	else
+		MelloUI.Icons.Set(ours, Frames.DIR .. art[1], nil, 0, art[2], 0, art[3])
+	end
 end
 
 -- ours shown while wanted and the game's picture shows; the game's unseen meanwhile
@@ -2275,7 +2586,46 @@ end
 
 -- a party member's picture: ours while its sharp art is laid (Party.Art; the game's own art has another shape)
 function Frames.Party(member)
-	Frames.Set(rawget(member, "Texture"), Party.art[member] and "small" or false)
+	local tex = rawget(member, "Texture")
+	if type(tex) == "table" then
+		Frames.flip[tex] = Party.Flipped(member) or nil
+	end
+	Frames.Set(tex, Party.art[member] and "small" or false)
+end
+
+-- a plate's shares (left, top, right, bottom) mirrored left for right: made once each
+function Frames.Mirrored(shares)
+	if type(shares) ~= "table" then
+		return shares
+	end
+	local m = Frames.mirrored[shares]
+	if not m then
+		m = { 1 - shares[3], shares[2], 1 - shares[1], shares[4] }
+		Frames.mirrored[shares] = m
+	end
+	return m
+end
+
+-- (1.2.4, the frames' bold landings) a frame's picture of ours with a plate -- the picture, its plate's rim and outer
+-- edge (shares of it: ART's plate, edge) -- or nil: FX.Split's plate (its border lit on that rim, the bold parts on
+-- the whole frame) and the afterimages' copy (Core/FrameFXBold.lua)
+function M:PlateOf(frame)
+	if type(frame) ~= "table" or not Frames.On() then
+		return nil
+	end
+	local regions = Party.art[frame] and { { rawget(frame, "Texture"), "small" } } or Frames.Regions(frame)
+	for _, pair in ipairs(regions) do
+		local ours = pair[1] and Frames.Over(pair[1])
+		local art = ours and Frames.ART[Frames.dressed[ours]]
+		if art and art.plate then
+			-- (1.2.4: a mirrored party member's picture flipped, its plate on the other side)
+			if Frames.flipped[ours] then
+				return ours, Frames.Mirrored(art.plate), Frames.Mirrored(art.edge)
+			end
+			return ours, art.plate, art.edge
+		end
+	end
+	return nil
 end
 
 function Frames.Lay()
@@ -2386,6 +2736,10 @@ function M:OnSettingChanged(key, value, db)
 	end
 	if key == "frames" then
 		Frames.Lay()
+		return
+	end
+	if key == "partyFlip" then
+		Party.Due()
 		return
 	end
 	if key == "parts" then

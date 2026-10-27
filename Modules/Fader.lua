@@ -176,10 +176,8 @@ M = MelloUI:RegisterModule("Fader", {
 	desc = "Fade parts of the interface away while you do not need them: out of combat, or until you point at them. Pick for each frame, bar, the chat, the minimap and the trackers.",
 	icon = "Interface\\Icons\\Spell_Magic_LesserInvisibilty",
 	flavour = "Your interface, only when you need it.",
-	-- (a look: how the interface shows; the installer's setups leave it as
-	-- it is, no Features row of its own. One look: on for everyone, no switch
-	-- of its own -- its engine runs while any element fades, AnyFade)
-	role = "look",
+	-- (one look: on for everyone, no switch of its own -- its engine runs
+	-- while any element fades, AnyFade)
 	enabledByDefault = true,
 	-- (no switch: never in a profile's switches -- Core's Everything Off left it
 	-- off for a new player, whose settings then never matched Everything Off,

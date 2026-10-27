@@ -1,4 +1,13 @@
-"""MelloUI's one look: the guard (docs/plans/one-look-build.md section 7, stage E; docs/plans/onelook-e-plans/E4v2.md).
+"""MelloUI's looks: the guard (docs/plans/one-look-build.md section 7, stage E; docs/plans/onelook-e-plans/E4v2.md;
+since 2026-10-26 the three skins, docs/plans/default-skin.md).
+
+THE THREE SKINS (2026-10-26, the user: "if you use the default skin, then everything has the default game look ...
+modern uses the modern skin and oldschool the old school"; "keep the same modern look, just a reskin using default
+assets"). The Default skin brings the game's own art back to MelloUI's parts -- but through ONE place: Core/Skin.lua
+(MelloUI.Skin: the switch, its piece names Skin.ART, the icons' game pictures, the game borders) and MelloUI.Look's
+game halves (Core/GameLook.lua), which the shared systems ask. So the families below still hold for everything else:
+no game art named in an own part or in Widgets / KitWindow (they take it from Skin.ART), no new game-look API, no
+"look-ok" escapes. Core/Skin.lua is a shared system and is not art-scanned (it is the art's one home).
 
 Since onelook stage C MelloUI's own parts wear one look, the modern one. What 0.17.1-0.21 built for the reskin switched
 off -- MelloUI.Look's game halves, the 'own' area and its switches, W.Game, the plain shell, the game's art on MelloUI's
@@ -77,6 +86,7 @@ from features import feature_files  # noqa: E402  (the feature addons' files, ch
 # ---------------------------------------------------------------------------------------------------------------- classes
 # the shared systems: they paint for every part (W.Paint / Kit:Paint, the widget set, the shell, the kit)
 SHARED = ["Core/GameLook.lua", "Core/Widgets.lua", "Modules/KitWindow.lua", "Core/Core.lua", "Modules/Kit.lua",
+          "Core/Skin.lua",
           "MelloUI_Oldschool/Modules/KitPainted.lua"]
 
 # MelloUI's own parts, by feature ("<folder>/*": every Lua file a feature addon's TOC lists)
@@ -112,6 +122,7 @@ OWN = {
     "Group Frames": ["MelloUI_GroupFrames/*"],   # (the user, 2026-10-15: own frames stay, the solo frame too)
     "Frame Effects": ["MelloUI_FrameEffects/*"],
     "Map": ["MelloUI_Map/*"],   # (the seamless map, docs/plans/seamless-map.md)
+    "Dungeon Info": ["MelloUI_DungeonInfo/*"],   # (1.2.0; classified 2026-10-26: its panel reads Look.Palette)
 }
 
 # the core modules of stage D that enhance the game's own elements: no ratchet, no art scan (stage I never drives them
@@ -226,7 +237,7 @@ CEILINGS = {
     "api:Modules/MeterHistory.lua": 0,
     "api:Modules/QuestTracker.lua": 0,
     # art
-    "art:Core/GameLook.lua": 36,
+    "art:Core/GameLook.lua": 39,   # (2026-10-26, the Default skin: its palette's grounds the tooltip's own colour, +3)
     # area
     "area:Core/Reminders.lua": 0,
     "area:Core/Widgets.lua": 1,   # (0 at 492aae6; the tree's Kit:Paint move brings Kit.lua's 'look:own' here)

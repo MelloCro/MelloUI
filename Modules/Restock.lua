@@ -88,7 +88,6 @@ local M = MelloUI:RegisterModule("Restock", {
 	desc = "Keeps drink, food, ammunition and reagents in your bags: a reminder when one runs low (with Reminders on), and at a shop a list of what to buy, bought only when you click Buy.",
 	icon = "Interface\\Icons\\INV_Drink_07",
 	flavour = "Water, bread and arrows, topped up before they run out.",
-	role = "feature",
 	-- (no group: its rows sit on the Reminders page, Modules/Reminders.lua)
 	keep = { "^list_" },   -- each character's own list (ListKey): never in a profile, never wiped by one
 	enabledByDefault = true,

@@ -12,7 +12,8 @@
 --   MelloUI.Rims:Add(frame[, opts]) -> entry   the window `frame` rimmed: a rim of its own on a child frame round it,
 --       its rail outward from the frame's edge (its inner casing over the frame's own 1 px edge), drawn over the
 --       window's parts. opts (read once): area (a look area, Kit.Areas: no rim while the painted look dresses it),
---       shown (fn(frame) -> false: no rim -- the painted shells). Windows snapped edge to edge -- a side shared, the
+--       shown (fn(frame) -> false: no rim -- the painted shells), kind ("window": an own window's shell, the game's
+--       dialog border under the Default skin; else the game's tooltip border there). Windows snapped edge to edge -- a side shared, the
 --       two others in line, at most the snap gap (Edit Layout's) apart -- wear one rim round them all: the first of
 --       them (top, then left) carries it, the gap between them filled as the window (the Personal Display's joint)
 --   MelloUI.Rims:Lay()    laid again on the next frame (a window moved, slid out, its look switched)
@@ -82,7 +83,7 @@ local function Make(e)
 	rim:SetFrameLevel(f:GetFrameLevel() + T.level)
 	rim:EnableMouse(false)
 	rim.art = rim:CreateTexture(nil, "OVERLAY")
-	W.RimArt(rim.art, T.band)
+	W.RimArt(rim.art, T.band, true)   -- (its skin laid here: Round)
 	rim.art:SetAllPoints(rim)
 	rim.joint = W.Solid(rim, "BACKGROUND", "mainWindow", 1)
 	rim.joint:Hide()
@@ -90,11 +91,25 @@ local function Make(e)
 end
 
 -- the rim round `first`'s top left to `last`'s bottom right (the group's), its joint over the gap between `a` and `b`
+-- (1.2.4, the Default skin -- MelloUI.Skin: the game's own border in the gold rim's place, the dialog's for a window,
+-- the tooltip's for a panel that is a window of its own; made at its first need)
 local function Round(e, first, last)
 	local rim, out = e.rim, T.band - T.tuck
 	rim:ClearAllPoints()
 	rim:SetPoint("TOPLEFT", first, "TOPLEFT", -out, out)
 	rim:SetPoint("BOTTOMRIGHT", last, "BOTTOMRIGHT", out, -out)
+	local Skin = rawget(MelloUI, "Skin")
+	local game = Skin and Skin.IsDefault()
+	rim.art:SetShown(not game)
+	if game then
+		if not rim.game then
+			rim.game = Skin.Border(rim, e.kind, first, last)
+		end
+		Skin.LayBorder(rim.game, first, last)
+		rim.game:Show()
+	elseif rim.game then
+		rim.game:Hide()
+	end
 	rim:SetShown(true)
 end
 
@@ -240,6 +255,7 @@ local function Listen()
 	MelloUI:On("mover", Again, "Rims")
 	MelloUI:On("scale", Again, "Rims")
 	MelloUI:On("column", Again, "Rims")
+	MelloUI:On("skin", Again, "Rims")
 	local Kit = MelloUI.Kit
 	for name in pairs(Kit and Kit.Areas or {}) do
 		MelloUI:On("look:" .. name, Again, "Rims")
@@ -252,7 +268,7 @@ function Rims:Add(frame, opts)
 		return e
 	end
 	opts = opts or {}
-	e = { frame = frame, area = opts.area, shown = opts.shown }
+	e = { frame = frame, area = opts.area, shown = opts.shown, kind = opts.kind == "window" and "window" or "tooltip" }
 	Rims.byFrame[frame] = e
 	Rims.list[#Rims.list + 1] = e
 	Listen()

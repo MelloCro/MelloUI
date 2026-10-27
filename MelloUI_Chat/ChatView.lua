@@ -1749,7 +1749,7 @@ local function Build()
 		View.PlaceRail()
 	end)
 	View.rail = rail
-	local divider = W.Solid(frame, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
+	local divider = W.HairSolid(frame, "ARTWORK")
 	divider:SetWidth(1)
 	divider:SetPoint("TOPLEFT", frame, "TOPLEFT", RAIL_W, -8)
 	divider:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", RAIL_W, ROW_H + 4)
@@ -1796,7 +1796,7 @@ local function Build()
 	wt.glow = glow
 	View.whisperTab = wt
 	-- the row's hairline
-	local hair = W.Solid(frame, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
+	local hair = W.HairSolid(frame, "ARTWORK")
 	hair:SetHeight(1)
 	hair:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, ROW_H)
 	hair:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, ROW_H)

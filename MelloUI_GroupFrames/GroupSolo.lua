@@ -21,7 +21,11 @@
 -- left (Edit Layout's "Party Frames", where the game's party frame is held:
 -- GroupHeaders.lua), at the game's party frame's scale, in the container (it
 -- fades with the party frames), and shows by the game's state driver
--- ("[group] hide; show": in a fight too). It is a host as
+-- ("[group] hide; show": in a fight too). With Show Yourself In Your Party
+-- (2026-10-25, the user: the option did nothing on the Portraits look -- the
+-- game's party frames never show you) it shows in a party too, at the top,
+-- the game's members stacked under it (GroupHeaders.lua StackMembers:
+-- Solo.InParty), with your role and the leader's crown as theirs. It is a host as
 -- the members are: the indicators (kind "party"), the Designer's party parts,
 -- Healer Frames' heals and debuff glow, and Heal Flight and Frame Effects
 -- (Headers:Hosts / HostOf: kind "party", its portrait and ring).
@@ -30,6 +34,7 @@
 --   Solo:Update()            wanted or not: made, placed and driven, or put away
 --   Solo:Repaint()           its look again (a setting of the looks)
 --   Solo:Shown() -> frame    the frame while it shows, else nil
+--   Solo.InParty() -> bool   it stands at the top of your party now (the settings and the group's state)
 --   Solo.frame               the frame (nil until made)
 --------------------------------------------------------------------------------
 
@@ -39,14 +44,19 @@ local Perf = MelloUI.Perf:Scope("MelloUI_GroupFrames (solo)")
 local Shared = Perf.Shared
 local Text = MelloUI.Safe.Text
 local Num = MelloUI.Safe.Number
+local IsSecret = MelloUI.Safe.IsSecret
 local RD = ns.RD
 local Looks = ns.Looks
+local Button = ns.Button
 
-local Solo = { frame = nil, driven = false, listening = false, editing = false }
+local Solo = { frame = nil, driven = false, rule = nil, listening = false, editing = false }
 ns.Solo = Solo
 
 local UNIT = "player"
-local RULE = "[group] hide; show"
+-- when it shows: solo (Show Yourself While Solo), in a party (Show Yourself In Your Party), or both; never in a raid
+-- (Group Frames' raid frames show there)
+local RULES = { solo = "[group] hide; show", party = "[group:raid] hide; [group] show; hide",
+	both = "[group:raid] hide; show" }
 -- the members' aura row (PartyAuraFrameTemplate: 15 x 15, 2 apart, its
 -- border the debuff overlay's; MAX_PARTY_DEBUFFS four; the row at 48,-43)
 local AURA = { size = 15, gap = 2, max = 4, x = 48, y = -43 }
@@ -81,11 +91,23 @@ local function Enum2(group, name)
 	return type(t) == "table" and t[name] or nil
 end
 
--- wanted: the module on, Party Frames the choice in a party, you shown solo
+-- wanted: the module on, Party Frames the choice in a party, you shown solo or in your party
 local function Wanted()
 	local H = ns.Headers
 	local db = RD.DB()
-	return (H and H.S and H.S.on and db.partyStyle == "party" and db.solo) and true or false
+	return (H and H.S and H.S.on and db.partyStyle == "party" and (db.solo or db.showPlayer)) and true or false
+end
+
+local function Rule()
+	local db = RD.DB()
+	return RULES[db.solo and (db.showPlayer and "both" or "solo") or "party"]
+end
+
+function Solo.InParty()
+	local okG, grouped = pcall(IsInGroup)
+	local okR, raid = pcall(IsInRaid)
+	return (Wanted() and RD.DB().showPlayer and not Solo.editing and okG and grouped == true
+		and not (okR and raid == true)) and true or false
 end
 
 --------------------------------------------------------------------------------
@@ -219,6 +241,28 @@ local function Look(f)
 	Colour(f)
 	Health(f)
 	Power(f)
+	Solo.Group(f)
+end
+
+-- in a party: your role and the leader's crown (the guide's in a group from the dungeon finder), as the game's members
+-- show theirs (PartyMemberFrame.lua UpdateAssignedRoles / UpdateLeader; the role in the members' sharp picture,
+-- Button.RoleAtlas); solo: none. Shown or hidden here, faded by the Designer's parts (their alpha)
+function Solo.Group(f)
+	local ov = f.PartyMemberOverlay
+	local okG, grouped = pcall(IsInGroup)
+	grouped = okG and grouped == true
+	local okR, role = pcall(UnitGroupRolesAssigned, UNIT)
+	local atlas = grouped and okR and Button.RoleAtlas(Text(role)) or nil
+	if atlas then
+		Call(ov.RoleIcon, "SetAtlas", atlas)
+	end
+	ov.RoleIcon:SetShown(atlas ~= nil)
+	local okL, lead = pcall(UnitIsGroupLeader, UNIT)
+	lead = grouped and okL and not IsSecret(lead) and lead == true
+	local okF, guide = pcall(HasLFGRestrictions)
+	guide = okF and not IsSecret(guide) and guide == true
+	ov.LeaderIcon:SetShown(lead and not guide)
+	ov.GuideIcon:SetShown(lead and guide)
 end
 
 local function Paint(f)
@@ -240,13 +284,17 @@ local function EffectiveScale(region)
 	return (s and s > 0) and s or nil
 end
 
+-- (in the game's first member's place: its party frame's padding -- PartyFrame.lua UpdatePaddingAndLayout; read only)
 local function Place(f)
 	local parent = f:GetParent()
+	local pf = rawget(_G, "PartyFrame")
 	local pe = EffectiveScale(parent) or 1
-	local want = EffectiveScale(rawget(_G, "PartyFrame")) or pe
+	local want = EffectiveScale(pf) or pe
+	local left = type(pf) == "table" and Num(rawget(pf, "leftPadding")) or 0
+	local top = type(pf) == "table" and Num(rawget(pf, "topPadding")) or 0
 	f:SetScale(want / pe)
 	f:ClearAllPoints()
-	f:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
+	f:SetPoint("TOPLEFT", parent, "TOPLEFT", left, -top)
 end
 
 --------------------------------------------------------------------------------
@@ -258,6 +306,8 @@ local UNIT_EVENTS = { UNIT_HEALTH = Health, UNIT_MAXHEALTH = Health, UNIT_POWER_
 -- (a place to read again: the game's party frame laid out by Edit Mode, the
 -- world entered, the UI's scale)
 local PLACE_EVENTS = { UI_SCALE_CHANGED = true, PLAYER_ENTERING_WORLD = true, EDIT_MODE_LAYOUTS_UPDATED = true }
+-- (your role and the leader in a party: Solo.Group)
+local GROUP_EVENTS = { GROUP_ROSTER_UPDATE = true, PLAYER_ROLES_ASSIGNED = true, PARTY_LEADER_CHANGED = true }
 
 local function PlaceNow()
 	if Solo.frame and Solo.driven then
@@ -284,6 +334,8 @@ local OnEvent = Shared("the solo party frame's events", function(_, event)
 		paint(f)
 	elseif event == "PORTRAITS_UPDATED" then
 		Portrait(f)
+	elseif GROUP_EVENTS[event] then
+		Solo.Group(f)
 	end
 end, "script")
 
@@ -302,6 +354,9 @@ local function Listen(on)
 		end
 		pcall(events.RegisterEvent, events, "PORTRAITS_UPDATED")
 		for e in pairs(PLACE_EVENTS) do
+			pcall(events.RegisterEvent, events, e)
+		end
+		for e in pairs(GROUP_EVENTS) do
 			pcall(events.RegisterEvent, events, e)
 		end
 	elseif events then
@@ -396,6 +451,9 @@ local function Make()
 		Look(self)
 	end, "script"))
 	Solo.frame = f
+	if MelloUI.FrameHover then
+		MelloUI.FrameHover.Attach(f)   -- (1.2.4: the mouseover highlight)
+	end
 	Dress(f)
 	if ns.Indicators then
 		ns.Indicators:Host(f, UNIT, Looks.Fill(f.HealthBarContainer.HealthBar), "party")
@@ -404,15 +462,20 @@ local function Make()
 end
 
 local function Drive(f, on)
-	if on == Solo.driven then
+	local rule = on and Rule() or nil
+	if on == Solo.driven and rule == Solo.rule then
 		return
 	end
-	Solo.driven = on
+	local was = Solo.driven
+	Solo.driven, Solo.rule = on, rule
 	if on then
-		RegisterStateDriver(f, "visibility", RULE)
+		RegisterStateDriver(f, "visibility", rule)
 	else
 		UnregisterStateDriver(f, "visibility")
 		f:Hide()
+	end
+	if on == was then
+		return   -- (only its rule changed)
 	end
 	if f.AuraFrameContainer then
 		Call(f.AuraFrameContainer, "SetAuraGroupEnabled", "auras", on)

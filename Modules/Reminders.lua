@@ -108,7 +108,6 @@ local M = MelloUI:RegisterModule("Reminders", {
 	icon = "Interface\\Icons\\INV_Letter_15",
 	flavour = "Supplies, mail, repairs and training: a gentle nudge beside your portrait, never a nag.",
 	group = "Quests and travel", navOrder = 5,
-	role = "feature",
 	keep = { "^trainer_", "^notnow_" },   -- each character's next trainer level (TrainerKey) and the widget's Not now until the next rest area (Core/Reminders.lua: notnow_<GUID>_<key>): never in a profile
 	enabledByDefault = true,
 	defaults = {

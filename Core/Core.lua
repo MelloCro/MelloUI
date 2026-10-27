@@ -40,15 +40,16 @@
 --   update it came with, `new = "<version>"`: its New tag while that update
 --   runs (MelloUI:IsNew below; the user's rule of 2026-09-26)
 -- The registry's own fields (audit, 2026-09-24, rank 4: one place that says
--- what a module is, for the configurator, the installer and UI
--- Modifications). All optional, kept on the module as given. UI
--- Modifications builds its rows and the switches' defaults from `window` and
--- `tweak` (UIModifications.lua's header); the configurator reads `icon` and
--- `flavour` (its tiles) and `group` and `navOrder` (its side list); the
--- installer reads `role`; `area` and the window's `addon` and `firstOpen` are
--- facts nothing reads yet. (The game windows Edit Layout moves are no
--- registry field: Core/EditLayoutWindows.lua's one list, since onelook D2;
--- the window's `frames` and `plainGrab = true`, which named them, are gone.)
+-- what a module is, for the configurator and UI Modifications). All
+-- optional, kept on the module as given. UI Modifications builds its rows and
+-- the switches' defaults from `window` and `tweak` (UIModifications.lua's
+-- header); the configurator reads `icon` and `flavour` (its tiles) and `group`
+-- and `navOrder` (its side list); `area` and the window's `addon` and
+-- `firstOpen` are facts nothing reads yet. (The game windows Edit Layout
+-- moves are no registry field: Core/EditLayoutWindows.lua's one list, since
+-- onelook D2; the window's `frames` and `plainGrab = true`, which named them,
+-- are gone. 1.2.4: `role`, which the old installer's setups read, is gone
+-- too; the installer asks skin first.)
 --   icon             texture path (or file id) of its tile
 --   flavour          one line under its title
 --   group            the side-list group its entry sits in: "The look",
@@ -80,18 +81,8 @@
 --                    without `follows` it may be always on (Kit.Areas'
 --                    `always`: the Quest Tracker's and the Quest List's since
 --                    onelook stage C)
---   role             what the installer's setups do with it: "core" (UI
---                    Modifications, the switchboard), "look" (restyles the
---                    game's art, fonts or sounds), "feature" (MelloUI's own
---                    tools), "adds" (adds information or automation to the
---                    game's UI without restyling it), "replaces" (replaces or
---                    restyles a game part). A hidden kit panel (it carries
---                    `window`) needs none: it is look.
---   installer        false: a feature, adds or replaces module NOT offered on
---                    the installer's Features step (0.17.1: its two columns are
---                    full; the Swing Timers are switched on in the settings)
--- One of the wrong type (or a role not in that list) goes to the error
--- handler and is left off the module; the module itself still registers.
+-- One of the wrong type goes to the error handler and is left off the
+-- module; the module itself still registers.
 -- MelloUI:ModulesInOrder() lists the modules in the order they registered.
 --------------------------------------------------------------------------------
 
@@ -1341,7 +1332,8 @@ end
 -- clicks made by Tools\make_ui_sounds.py; the game's own sounds if a file is
 -- missing; the Custom Sounds module's own click when it is on.
 --   MelloUI:PlayUISound(kind)
---     the soft clicks:  "page", "tab", "check_on", "check_off"
+--     the soft clicks:  "page", "tab", "check_on", "check_off"; "click" (a
+--                       plain button: the same as "tab")
 --     the game's own:   "option_on", "option_off" (its checkbox clicks),
 --                       "menu_open", "menu_close", "menu_button" (the game
 --                       menu's), "window_open", "window_close", "tick" (the
@@ -1408,7 +1400,13 @@ do
 		end
 	end
 
+	-- a kind that plays another's sound, so Custom Sounds swaps it the same way
+	-- (1.2.4, user 2026-10-24: Dungeon Info's and the Map's plain buttons asked
+	-- for "click", which no kind answered, and were silent)
+	local SAME_AS = { click = "tab" }
+
 	function MelloUI:PlayUISound(kind)
+		kind = SAME_AS[kind] or kind
 		local sound = SOUNDS[kind]
 		if not sound then
 			return
@@ -3640,13 +3638,9 @@ end
 -- registry's own fields (see the header): checked, kept as given
 MelloUI.moduleList = {}
 local REGISTRY_FIELDS = { flavour = "string", group = "string", window = "table", tweak = "table", area = "table",
-	role = "string", navOrder = "number" }
+	navOrder = "number" }
 REGISTRY_FIELDS.new = "string"   -- (0.14.0: a new module's New tag, the update it came with)
 REGISTRY_FIELDS.slash = "string"   -- (0.17.1: its short /mello word)
--- (0.17.1: false -- a feature not offered on the installer's Features step,
--- whose two columns are full; switched on in the settings window)
-REGISTRY_FIELDS.installer = "boolean"
-local ROLES = { core = true, look = true, feature = true, adds = true, replaces = true }
 
 -- MelloUI's features that ship as addons of their own (0.19.9; the user,
 -- 2026-10-08: docs/plans/split-addons.md): module name -> { addon, title }.
@@ -3756,10 +3750,6 @@ function MelloUI:RegisterModule(name, module)
 			Report("MelloUI module '" .. name .. "': " .. field .. " must be a " .. kind)
 			module[field] = nil
 		end
-	end
-	if module.role ~= nil and not ROLES[module.role] then
-		Report("MelloUI module '" .. name .. "': role must be core, look, feature, adds or replaces")
-		module.role = nil
 	end
 	if module.enabledByDefault == nil then
 		module.enabledByDefault = true
@@ -4230,7 +4220,7 @@ end
 --------------------------------------------------------------------------------
 -- The palette switch (0.14.0). The setting is UI Modifications' `palette`
 -- (an id of MelloUI.Palettes; nil or an unknown one is Ember): profiles,
--- share strings and the installer's setups carry it; it is no personal key.
+-- share strings and the installer's setup carry it; it is no personal key.
 -- Applied at login (after the default profile, before the modules start:
 -- nothing is drawn yet, so only the table is put in place), when the
 -- settings are replaced (RestartModules: a profile load, a late settings
@@ -5240,15 +5230,24 @@ function MelloUI:ShippedProfiles()
 	return out
 end
 
--- the shipped profile the installer's Full experience applies
-function MelloUI:FullProfileName()
-	local old = self:OldschoolShipped()
+-- (1.2.4, the installer's Skin step) a skin's shipped setup: Oldschool's for the Oldschool skin (with MelloUI_Oldschool
+-- loaded), MelloUI's own for Default and Modern; no skin given: Oldschool's whenever it is loaded (as before)
+local function ShippedOldschool(self, skin)
+	if skin ~= nil and skin ~= "oldschool" then
+		return nil
+	end
+	return self:OldschoolShipped()
+end
+
+-- the shipped profile the installer applies (skin: the Skin step's pick)
+function MelloUI:FullProfileName(skin)
+	local old = ShippedOldschool(self, skin)
 	return old and old.profileName or "MelloUI"
 end
 
--- the shipped Edit Mode layout ({ name, layout }): Oldschool's while it is loaded
-function MelloUI:ShippedEditMode()
-	local old = self:OldschoolShipped()
+-- the shipped Edit Mode layout ({ name, layout }): Oldschool's while it is loaded (skin: as FullProfileName's)
+function MelloUI:ShippedEditMode(skin)
+	local old = ShippedOldschool(self, skin)
 	if old and type(old.editMode) == "table" then
 		return old.editMode
 	end

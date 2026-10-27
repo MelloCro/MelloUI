@@ -81,7 +81,6 @@ local M = MelloUI:RegisterModule("Widgets", {
 	desc = "Small live widgets in one column: loot rolls, the way back to your corpse, timed quests, summons, resurrect offers, ready checks, whispers, your pet, the auction house, crafting batches, profession cooldowns, quest items and a healer drinking. And more reminders by your portrait: bags, talents, Well Fed, weapon poisons and oils, your buffs.",
 	icon = "Interface\\Icons\\INV_Misc_PocketWatch_01",
 	flavour = "What needs you now, in one small column.",
-	role = "feature",
 	-- (no group: its rows sit on the Reminders page's Widgets tab, Core/ConfigLayout.lua)
 	keep = { "^cd_" },   -- each character's profession cooldowns (cd_<GUID>): never in a profile
 	enabledByDefault = true,

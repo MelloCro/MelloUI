@@ -39,7 +39,6 @@ local M = MelloUI:RegisterModule("Nameplates", {
 	icon = "Interface\\Icons\\Ability_Hunter_SniperShot",
 	flavour = "Know who is stunned, who is your quest target, and who is about to be a problem.",
 	group = "Frames and bars", navOrder = 2,
-	role = "adds",
 	tweak = { label = "Nameplate Tweaks", desc = "On the game's nameplates: the large crowd-control icon above the name, the quest marker on enemies you still need, the threat line, the combo points on your target's plate, the names' form (Show Names As) and the soft shade behind the names (Name Shade). Off: all six go. Works with or without the reskin.", order = 4 },
 	defaults = {
 		nameFormat = "both",   -- set by UI Modifications' "Show Names As" (one setting for every name)
@@ -51,6 +50,7 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		threatLine = true,
 		comboPoints = true,
 		comboSize = 90,
+		hover = true,   -- (1.2.4: the mouseover highlight, MelloUI.FrameHover)
 		-- (the band behind the names: Text Shade's, Look > General > Text -- the
 		-- user, 2026-10-16; Name Shade's key dropped by Core.lua's MERGES)
 	},
@@ -64,6 +64,8 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		{ type = "slider", key = "ccGap", parent = "bigCC", name = "Gap Above Name", min = 0, max = 30, step = 1,
 		  format = function(v) return string.format("%d px", v) end,
 		  desc = "Space between the name / debuff row and the crowd-control icon." },
+		{ type = "toggle", key = "hover", name = "Mouseover Highlight", new = "1.2.4",
+		  desc = "The plate of whatever your mouse is over (the enemy itself or its plate) lights with a crisp outline round its bar." },
 		{ type = "header", name = "Quest Icon" },
 		{ type = "toggle", key = "questIcon", name = "Quest Icon",
 		  desc = "Show a yellow quest marker left of the health bar on enemies that still count for one of your quests." },
@@ -2065,10 +2067,17 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit, power)
 		if Combo.on then
 			Combo.Update()   -- (the target's plate may come after the target)
 		end
+		-- (1.2.4: the mouseover highlight, MelloUI.FrameHover)
+		if MelloUI.FrameHover then
+			MelloUI.FrameHover.Plate(plate, unit)
+		end
 		-- (the plate names: the one core plate-add path, after the game's driver
 		-- and its post-hooks; last, so nothing above waits on it)
 		Plate.Added(plate)
 	elseif event == "NAME_PLATE_UNIT_REMOVED" then
+		if MelloUI.FrameHover then
+			MelloUI.FrameHover.PlateGone(unit)
+		end
 		local plate = C_NamePlate.GetNamePlateForUnit(unit)
 		if plate and plate.UnitFrame and questIcons[plate.UnitFrame] then
 			questIcons[plate.UnitFrame]:Hide()
@@ -2223,6 +2232,12 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
+	if key == "hover" then
+		if MelloUI.FrameHover then
+			MelloUI.FrameHover.Refresh()
+		end
+		return
+	end
 	if key == "nameFormat" then
 		Plate.All()
 		return

@@ -35,7 +35,6 @@ local M = MelloUI:RegisterModule("DarkMode", {
 	icon = "Interface\\Icons\\Spell_Shadow_Twilight",
 	flavour = "Dim the gold and the glare. The interface steps back, the world steps forward.",
 	group = "The look", navOrder = 2,
-	role = "look",
 	-- (off until switched on: a personal preference, never on by default)
 	tweak = { label = "Dark Mode", desc = "Darkens the painted reskin (its brightness below) and, where the reskin is off, the game's own art of unit frames, bars, nameplates, auras and menus.", order = 12, off = true },
 	-- Dark Mode's switch is the player's own preference (user, 2026-09-26:

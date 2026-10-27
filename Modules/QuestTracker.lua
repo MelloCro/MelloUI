@@ -47,7 +47,6 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 	icon = "Interface\\Icons\\INV_Misc_Book_08",
 	flavour = "Every watched quest within reach: the tracker scrolls when the list runs long.",
 	group = "Quests and travel", navOrder = 4,
-	role = "replaces",   -- (the game's objective tracker; it has a window but is not a hidden kit panel)
 	-- (one look, stage E, the user 2026-10-15: its Painted Skin -- the
 	-- questTrackerKit row on UI Modifications' Windows tab and on its Look
 	-- page -- removed; the tracker always wears MelloUI's look)
@@ -799,7 +798,7 @@ local function BuildKitLook()
 	holder:EnableMouse(false)
 	W.Panel(holder, { on = true, alpha = 0.94, rim = true })   -- (1.2.0: the gold rim, MelloUI.Rims)
 	local sheet = Kit.ParchmentSheet and Kit:ParchmentSheet(holder, frame, { rect = frame, margin = 3, area = "questTracker" })
-	local hair = W.Solid(holder, "ARTWORK", W.HAIR_KEY, W.HAIR_ALPHA)
+	local hair = W.HairSolid(holder, "ARTWORK")
 	hair:SetHeight(1)
 	hair:SetPoint("TOPLEFT", header, "BOTTOMLEFT", INSET - 2, 0)
 	hair:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", -(INSET - 2), 0)

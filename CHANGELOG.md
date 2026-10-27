@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.4
+
+- Heal and cooldown effects on the unit frames are bolder and play across the whole frame: the portrait and the bars each get their own part of the moment, and the gold border lights all round the frame, its top where the name is too.
+- A heal bursts with a shockwave and stars flung off the frame, a heal over time seals onto the portrait, a shield's barrier closes round the frame in its own shape, Blessing of Protection stamps its crest onto the portrait, Lay on Hands drops a column of light, a resurrection unfolds wings behind the frame, a group heal runs through the group as a wave, Chain Heal bursts along the bars of every frame it reaches.
+- Cooldowns: a roar sends square shockwaves out of the frame, a taunt springs a red !, Shield Wall, Barkskin and Dispersion clamp steel guards onto it, Last Stand and Vengeance beat a heart, Divine Shield, Divine Protection and Ice Block grow a golden barrier, Evasion and Deterrence leave afterimages.
+- In a raid they stay inside each frame. The Quiet look and Oldschool's painted effects keep their own.
+- Party frames: Flip Horizontally (Party > Layout) mirrors the party portraits for a party on the right side of the screen: the portrait on the right, the name, level, bars, icons and buffs to its left. The effects play mirrored too.
+- The frame previews in the configurator: a part you drag stays inside the preview, and the preview fits the frame with every part shown on it. The party portraits' preview shows the members' aura row as the game does.
+- Indicators: right-click one on the preview to remove it, and size its time and stacks right under the preview (Party or Raid > Indicators).
+- Fixed: Show Yourself In Your Party did nothing with Party Frames (Portraits). Your frame now shows on top of your party with your role and the leader's crown, and the members stand under it, Party Spacing apart.
+- Mouseover Highlight: the party and raid frame under your mouse lights up, its gold brighter with a soft glow behind and a crisp outline round its shape; the plate of whatever your mouse is over gets the outline too. Each has its switch (Party, Raid and Nameplates, Behaviour).
+- Skin (Look > General): Default dresses MelloUI's own windows and parts in the game's own look, with its borders, buttons, tabs, check boxes, icons and fonts in the very same places, and the game's own unit frames and action buttons. Modern stays as it is.
+- A new installer: everyone goes through it step by step. Your skin comes first (Default, Modern or Oldschool), then your layout, party and raid frames, quests and travel, combat, chat, minimap, bags and sounds, each with a picture of what you pick, in your skin. It replaces the four setups and Fresh start.
+- Fixed: the Damage Meter's Parchment switch could not be changed without MelloUI Oldschool. It is on the Damage Meter page now (Look) and works in every skin.
+- Under Default, the party and raid frames wear the game's raid frame look (unless you picked a Bar Texture for them), Route, the map, the Quest List and Voice Over use the game's own marks and buttons, and the damage meter shows no parchment.
+- Fixed: the plain buttons in Dungeon Info and on the map made no sound. They click now.
+
 ## 1.2.3
 
 - Route: Repair, Innkeeper, Flight Master and the other service buttons route to the nearest one at once again. Since 1.1.0 a click could take several seconds while far ones were measured that could never be the nearest.

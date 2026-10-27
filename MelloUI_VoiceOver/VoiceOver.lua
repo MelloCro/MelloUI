@@ -173,7 +173,6 @@ local M = MelloUI:RegisterModule("VoiceOver", {
 	icon = "Interface\\Icons\\INV_Misc_Horn_01",
 	flavour = "Every quest giver speaks. Recorded voices with the pack, text-to-speech without it.",
 	group = "Chat and sound", navOrder = 2,
-	role = "feature",
 	enabledByDefault = true,
 	keep = { "collectLinesOffOnce", "newPackTold" },   -- one-time steps that were done: never in a profile
 	defaults = defaults,

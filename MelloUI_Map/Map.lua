@@ -100,7 +100,6 @@ M = MelloUI:RegisterModule("Map", {
 	icon = ICON,
 	flavour = "The whole world on one sheet, from the continents down to a village.",
 	group = "Quests and travel", navOrder = 4,
-	role = "feature",
 	enabledByDefault = true,
 	defaults = {},
 	-- (1.0) the window's own state, the player's: where it looked, its quest log open and on which tab -- never in a
@@ -324,11 +323,12 @@ end
 -- own; with neither, the game's own map pin alone
 local function PinTo(mapID, mx, my, label)
 	local QL, R = QuestList(), rawget(MelloUI, "Route")
-	local ok
+	local ok, chimed
 	if QL then
-		ok = QL.RouteToPoint(mapID, mx, my, label, TEXT.pinNotice)
+		ok, chimed = QL.RouteToPoint(mapID, mx, my, label, TEXT.pinNotice)
 	elseif R and R.isEnabled and R.SetDestinationTo then
 		ok = R:SetDestinationTo({ mapID = mapID, x = mx, y = my }, label, true, TEXT.pinNotice)
+		chimed = ok and R.AnnounceSounds ~= nil and R:AnnounceSounds()
 	elseif C_Map.SetUserWaypoint and UiMapPoint then
 		ok = pcall(C_Map.SetUserWaypoint, UiMapPoint.CreateFromCoordinates(mapID, mx, my))
 	else
@@ -336,7 +336,10 @@ local function PinTo(mapID, mx, my, label)
 		return false
 	end
 	if ok then
-		MelloUI:PlayUISound("click")
+		-- (through Route its notice chimes instead: one sound, not two)
+		if not chimed then
+			MelloUI:PlayUISound("waypoint_set")
+		end
 	else
 		MelloUI:Print(TEXT.pinNone)
 	end
@@ -485,7 +488,7 @@ local function ClearPin()
 	elseif QL and QL.ClearWaypoint then
 		QL.ClearWaypoint()
 	end
-	MelloUI:PlayUISound("click")
+	MelloUI:PlayUISound("waypoint_clear")
 end
 
 local function Canvas_OnMouseUp(_, button)

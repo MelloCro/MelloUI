@@ -23,7 +23,6 @@ local M = MelloUI:RegisterModule("CooldownText", {
 	desc = "Large countdown numbers on action bar cooldowns and nameplate auras, coloured by time left.",
 	icon = "Interface\\Icons\\Spell_Nature_TimeStop",
 	flavour = "Countdowns on every cooldown, coloured by how long you still have to wait.",
-	role = "adds",
 	-- (one look, the Bars audit's point 1, the user's yes: Q9's fold -- no master; On Action Bars and Nameplate
 	-- Auras are its switches, each where its rows are; Core.lua's MERGES folds an older save's master into them)
 	tweak = { label = "Cooldown Timers", desc = "Countdown numbers on action bar cooldowns and nameplate auras, coloured by the time left.", order = 3, always = true },

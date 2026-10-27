@@ -71,10 +71,7 @@ local M = MelloUI:RegisterModule("HealerFrames", {
 	desc = "Incoming heals on the unit frames, and a glow in a debuff's colour round any frame whose unit has a debuff to remove.",
 	icon = "Interface\\Icons\\Spell_Holy_FlashHeal",
 	flavour = "See the heals coming in, and who needs a cleanse.",
-	role = "feature",
-	-- (no group: its rows sit on the Unit Frames page; not on the installer's
-	-- Features step, on by default)
-	installer = false,
+	-- (no group: its rows sit on the Unit Frames page)
 	enabledByDefault = true,
 	defaults = { incomingHeals = true, debuffGlow = true, debuffGlowShows = "all" },
 	options = {

@@ -36,7 +36,6 @@ local M = MelloUI:RegisterModule("Auras", {
 	desc = "Your own buff and debuff rows on the target frame, enemy nameplates and at your buffs, drawn by the game so they keep working in combat.",
 	icon = "Interface\\Icons\\Spell_Holy_WordFortitude",
 	flavour = "Buffs and debuffs in rows of your own, drawn by the game itself, so they never go dark in a fight.",
-	role = "replaces",
 	-- (one look Q9, the user 2026-10-15: no master switch -- the three rows'
 	-- own switches, Your Buffs And Debuffs, Target Frame and Enemy Nameplates,
 	-- are the switches; Core.lua's MERGES turns them off for a save whose

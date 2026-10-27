@@ -97,9 +97,7 @@ M = MelloUI:RegisterModule("BagWindow", {
 	desc = "Your bags in one window of MelloUI's own, sorted by kind: what you picked up lately, gear, quest items, consumables, junk, trade goods and the rest, each under its own heading. The empty slots fold into one slot with their count.",
 	icon = "Interface\\Icons\\INV_Misc_Bag_08",
 	flavour = "A place for everything, and everything under its heading.",
-	role = "feature",
 	-- (no group: its rows sit on the Windows page, the bag window's)
-	installer = false,
 	enabledByDefault = true,
 	defaults = { recentFor = "close", columns = 10, itemSize = 37, foldEmpty = true, sortBy = "quality", bank = true,
 		lootFlight = true, itemsGlide = true, moneyRoll = true, fullWarning = true },

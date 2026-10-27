@@ -194,11 +194,75 @@ local function Bar(parent)
 	return b
 end
 
--- a background picture tiled again as its frame changes size (one handler for every frame)
+-- (1.2.4, the Default skin's wave C: the user's pick A, docs/plans/default-skin.md 5e) under the Default skin a cell
+-- is the game's own compact raid frame in place (MelloUI.Skin's raid pieces, CompactUnitFrameTemplate's art): its
+-- health and resource fills (unless the raid frames' Bar Texture is the player's own pick), its dark ground under a
+-- Flat Background, its separators along the bottom and the right in place of the frame's 1-unit edges. Every piece
+-- tiles, so it is sharp at any size
+local SEP, SEP_TEXELS, SEP_LEN = 2, 8, 128   -- the separators: their line the outer 2 of 8 texels, 128 long
+local Finite = MelloUI.Safe.Finite
+
+-- the skin while the Default skin shows (nil: MelloUI's own look)
+local function GameSkin()
+	local Skin = rawget(MelloUI, "Skin")
+	return (Skin and Skin.IsDefault()) and Skin or nil
+end
+
+local function Tile(tex, across, down)
+	tex:SetHorizTile(across)
+	tex:SetVertTile(down)
+end
+
+-- the separators' length a texel a unit, repeated (never drawn bigger than their picture)
+local function SeparatorsFit(f)
+	local s = f.separators
+	local okW, w = pcall(f.GetWidth, f)
+	local okH, h = pcall(f.GetHeight, f)
+	w, h = okW and Finite(w) or SEP_LEN, okH and Finite(h) or SEP_LEN
+	s[1]:SetTexCoord(0, w / SEP_LEN, 0, SEP / SEP_TEXELS)
+	s[2]:SetTexCoord(0, SEP / SEP_TEXELS, 0, h / SEP_LEN)
+end
+
+-- the game's separators shown (made on their first need) and the frame's own edges hidden, or the other way round
+local function Separators(f, Skin)
+	local s = f.separators
+	for i = 1, #f.edges do
+		f.edges[i]:SetShown(not Skin)
+	end
+	if not Skin then
+		if s then
+			s[1]:Hide()
+			s[2]:Hide()
+		end
+		return
+	end
+	if not s then
+		local across = f:CreateTexture(nil, "OVERLAY", nil, 7)
+		across:SetTexture(Skin.ART.raidSepH, "REPEAT", "CLAMP")
+		across:SetHeight(SEP)
+		across:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 0)
+		across:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, 0)
+		local down = f:CreateTexture(nil, "OVERLAY", nil, 7)
+		down:SetTexture(Skin.ART.raidSepV, "CLAMP", "REPEAT")
+		down:SetWidth(SEP)
+		down:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, 0)
+		down:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, 0)
+		s = { across, down }
+		f.separators = s
+	end
+	SeparatorsFit(f)
+	s[1]:Show()
+	s[2]:Show()
+end
+
+-- a background picture tiled again as its frame changes size (one handler for every frame); the separators too
 local function Background_OnSize(f)
 	local Kit = MelloUI.Kit
 	if Kit and f.background and Kit.pieceNameOf[f.background] then
 		Kit:Retile(f.background)
+	end
+	if f.separators and f.separators[1]:IsShown() then
+		SeparatorsFit(f)
 	end
 end
 
@@ -292,11 +356,21 @@ function Button.Lay(f)
 	pb:SetPoint("TOPLEFT", hb, "BOTTOMLEFT", 0, -GAP)
 	pb:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -ix, iy)
 	pb:SetShown(power)
+	-- (the Default skin: the game's fills, tiled as its own frame tiles them, unless the player picked a Bar Texture)
+	local Skin = GameSkin()
+	local bt = Skin and MelloUI:GetModule("BarTextures")
+	local game = Skin and not (bt and bt.PickedTexture and bt.PickedTexture("raidframes")) and Skin.ART or nil
 	local file = W.BarFill("raidframes")
 	for _, b in ipairs({ hb, f.missingBar, pb }) do
-		b:SetStatusBarTexture(file)
-		W.SoftEnds(b)   -- (every bar's ends soft: the user, 2026-10-16)
+		b:SetStatusBarTexture(game and (b == pb and game.raidPower or game.raidFill) or file)
+		local fill = Looks.Fill(b)
+		if fill then
+			Tile(fill, game ~= nil, game ~= nil and b ~= pb)
+		end
+		-- (every bar's ends soft: the user, 2026-10-16; the game's own art keeps its own look)
+		W.SoftEnds(b, game ~= nil)
 	end
+	Separators(f, Skin)
 	local dir = db.fillDirection or "RIGHT"
 	Fill(hb, dir, REVERSE[dir] or false)
 	Fill(pb, dir, REVERSE[dir] or false)
@@ -336,7 +410,16 @@ function Button.Paint(f)
 	local bg, Kit = f.background, MelloUI.Kit
 	local look = db.backgroundTexture or "flat"
 	local piece = look ~= "flat" and Kit and Kit.buttonLooks and Kit.buttonLooks.backgroundPiece[look]
+	-- (1.2.4) Flat under the Default skin: the game's dark ground, tiled, in its own colours while the Background
+	-- Colour is one of the palette's (the skin's: the palette follows it), else in the player's colour
+	local Skin = look == "flat" and GameSkin() or nil
 	bg:SetShown(look ~= "none")
+	if bg.gameGround and not Skin then
+		bg.gameGround = nil
+		Tile(bg, false, false)
+		bg:SetTexture(WHITE)
+		bg:SetTexCoord(0, 1, 0, 1)
+	end
 	if piece then
 		if Kit.pieceNameOf[bg] ~= piece then
 			Kit:Apply(bg, piece)
@@ -350,6 +433,18 @@ function Button.Paint(f)
 			bg:SetTexCoord(0, 1, 0, 1)
 		end
 		local bgR, bgG, bgB = ModeRGB(f, db.background, "backgroundCustom")
+		if Skin then
+			if not bg.gameGround then
+				bg.gameGround = true
+				bg:SetAtlas(Skin.ART.raidGround)
+				Tile(bg, true, true)
+			end
+			local skins = db.background == "custom" and type(db.backgroundCustom) == "string"
+				and db.backgroundCustom:find("^palette:")
+			if skins then
+				bgR, bgG, bgB = 1, 1, 1
+			end
+		end
 		bg:SetVertexColor(bgR or 0, bgG or 0, bgB or 0, db.backgroundAlpha or 0.9)
 	end
 	local fill = Looks.Fill(f.healthBar)

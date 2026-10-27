@@ -6,7 +6,7 @@
 
 **Discord:** [discord.gg/gdpQ6ep7bW](https://discord.gg/gdpQ6ep7bW) · help, bug reports and every new release
 
-*Hey! MelloUI is my all-in-one UI for World of Warcraft: Forever. Everything is a switch: a fresh install starts with nothing on, and on your first login the installer sets it up the way you pick, its Full experience fitted to your screen (`/mello install` runs it again any time; `/mello` opens the settings).*
+*Hey! MelloUI is my all-in-one UI for World of Warcraft: Forever. Everything is a switch: a fresh install starts with nothing on, and on your first login the installer walks you through it, your skin first, then the features you want, fitted to your screen (`/mello install` runs it again any time; `/mello` opens the settings).*
 
 ## What's in it
 
