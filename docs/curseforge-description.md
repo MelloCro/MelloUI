@@ -28,6 +28,8 @@ The CurseForge app installs everything for you. By hand: download the release zi
 
 ## Credits
 
+Parts of the configurator's design come from [EllesmereUI](https://www.curseforge.com/wow/addons/ellesmereui), used with its author's kind permission. Thank you!
+
 Dungeon Info's boss loot for WoW: Forever's own dungeons, and for the classic dungeons Forever changed, comes from the lists of [DungeonMaster](https://www.curseforge.com/wow/addons/dungeonmaster) by MalkDev (GPL-3.0). Thank you!
 
 Dungeon Info's drop rates for WoW: Forever's own dungeons are players' data: Data from [Everloot](https://everloot.app), [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).

@@ -31,6 +31,10 @@ Download the [release zip](https://github.com/MelloCro/MelloUI/releases/latest) 
 - The game keeps your settings, and the Profiles page saves and shares them.
 - After an update, restart the game once. `/reload` isn't enough for new files.
 
+## Credits
+
+Parts of the configurator's design come from [EllesmereUI](https://www.curseforge.com/wow/addons/ellesmereui), used with its author's kind permission. Thank you!
+
 ## License
 
 MelloUI's code is under the [MIT License](LICENSE). Route's road data is All Rights Reserved: see [LICENSE-DATA](LICENSE-DATA).

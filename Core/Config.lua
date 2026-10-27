@@ -5079,7 +5079,7 @@ local SETUP_VALUE = 100   -- where a Your setup row's value starts
 local CHANGE_W = 70       -- Your setup's Change… (its text and the plate's sides)
 local CARD_HEAD = SEC_INSET + ROW_HEIGHT - 6 + 8   -- a card's texts start under its heading
 local TUTORIAL_W = 110
-local HELP_NOTE_H = 28    -- Help's note, planned (two lines) until it is made
+local HELP_NOTE_H = 50    -- Help's note and thanks, planned (two lines, one line 8 under them) until made
 -- Earlier versions: true (the safe path) makes the older versions through
 -- the worker, a version a job within its 2.5 ms a frame, the button saying
 -- "Loading…" until the page's height is laid once after the last; false
@@ -5098,6 +5098,8 @@ local HOME_TIPS = {
 	revert = "Back to how MelloUI was before the installer ran (the 'Before install' profile): your settings, and Edit Mode's layouts if the installer changed them. Asks first.",
 }
 local HELP_NOTE = "The game keeps your settings; /mello status shows where they came from. The voice pack, MelloUI_VoicePack, replaces the old pack: a separate download in two parts from the 0.15.0 release (the Voice pack link above). Unzip both into the AddOns folder, where they make one MelloUI_VoicePack folder."
+-- (1.2.4) the thanks under it: EllesmereUI's author let MelloUI use some of its design (the configurator's shell)
+local HELP_CREDIT = "Parts of this window's design come from EllesmereUI, used with its author's kind permission. Thank you!"
 
 -- This frame's rows counted as spent: a page's first open whose own parts
 -- are this frame's work (Home's header and cards), so the worker starts on
@@ -5479,7 +5481,7 @@ local function NewsLay(card)
 	NewsHeight(card)
 end
 
--- Help's height as RunHelp lays it, its note `note` tall
+-- Help's height as RunHelp lays it, its note and thanks `note` tall
 local function HelpHeight(note)
 	return CARD_HEAD + 22 + #COMMANDS * 20 + 8 + 22 + #LINKS * 28 + 8 + note + CARD_PAD
 end
@@ -5568,8 +5570,12 @@ local function RunHelp(sec)
 	note:SetPoint("TOPLEFT", CARD_PAD, -y)
 	note:SetWidth(width - CARD_PAD * 2)
 	note:SetWordWrap(true)
-	card.note = note
-	card.h = HelpHeight(WrappedHeight(note, 14))
+	local credit = Text(card, "GameFontHighlight", HELP_CREDIT, C.text)
+	credit:SetPoint("TOPLEFT", note, "BOTTOMLEFT", 0, -8)
+	credit:SetWidth(width - CARD_PAD * 2)
+	credit:SetWordWrap(true)
+	card.note, card.credit = note, credit
+	card.h = HelpHeight(WrappedHeight(note, 14) + 8 + WrappedHeight(credit, 14))
 	card:SetHeight(card.h)
 	page.helpSection = card
 	CONFIG.PaperCard(card)
@@ -5578,7 +5584,7 @@ end
 
 -- After a font change (page:LayTabs, from the 'fonts' topic: the page on
 -- show at once, another on its next show): What's new's lines placed again
--- from their wrapped heights, Help's height from its note's, and the page
+-- from their wrapped heights, Help's height from its note's and thanks', and the page
 -- laid with them (Help under the taller card, the page's height)
 local function RelayHome(page)
 	local help = page.helpSection
@@ -5586,7 +5592,7 @@ local function RelayHome(page)
 		NewsLay(page.news)
 	end
 	if help and help.note then
-		help.h = HelpHeight(WrappedHeight(help.note, 14))
+		help.h = HelpHeight(WrappedHeight(help.note, 14) + 8 + WrappedHeight(help.credit, 14))
 		help:SetHeight(help.h)
 	end
 	LayHome(page, true)
