@@ -429,6 +429,24 @@ local function LoadOf(addon)
 	return loadName == addon or (type(addon) == "string" and loadName:sub(1, #addon + 1) == addon .. " ")
 end
 
+-- (1.2.4, the Forever build on the retail client, 2026-10-27) a script hooked on a frame, as frame:HookScript. A
+-- frame the client refuses a hook on (retail: one shown or hidden with a secret, "blocked by secret aspects", or a
+-- forbidden one) is left alone -- the hook's feature does without it -- and counted (/melloperf's report); any other
+-- error is raised as before. Only at hook time: nothing per event
+Perf.blockedHooks = 0
+function Perf.HookOn(frame, script, fn, ...)
+	local ok, err = pcall(frame.HookScript, frame, script, fn, ...)
+	if ok then
+		return
+	end
+	if type(err) == "string" and (err:find("secret aspect", 1, true) or err:find("forbidden", 1, true)) then
+		Perf.blockedHooks = Perf.blockedHooks + 1
+		Perf.blockedLast = tostring(script)
+		return
+	end
+	error(err, 0)
+end
+
 local function NewScope(name)
 	local scope = {}
 	-- a script's wrapper per handler, so a handler set again and again (an
@@ -480,15 +498,15 @@ local function NewScope(name)
 
 	function scope.HookScript(frame, script, fn, ...)
 		if type(fn) ~= "function" then
-			return frame:HookScript(script, fn, ...)
+			return Perf.HookOn(frame, script, fn, ...)
 		end
 		if prewrapped[fn] then
 			scope.nPassed = scope.nPassed + 1
-			return frame:HookScript(script, fn, ...)
+			return Perf.HookOn(frame, script, fn, ...)
 		end
 		local kind = script == "OnUpdate" and "update" or "script"
 		scope.nWraps = scope.nWraps + 1
-		return frame:HookScript(script, Wrap(Row(name, kind, script .. " on " .. FrameLabel(frame, name)), fn), ...)
+		return Perf.HookOn(frame, script, Wrap(Row(name, kind, script .. " on " .. FrameLabel(frame, name)), fn), ...)
 	end
 
 	function scope.SetScript(frame, script, fn, ...)
@@ -1267,6 +1285,9 @@ function Perf:LoadReport()
 			local f = files[i]
 			add("  %6d wrappers  %6d labels  %6d on %d shared  %s", f.wraps, f.labels, f.passed, f.shared, f.name)
 		end
+	end
+	if Perf.blockedHooks > 0 then
+		add("  %d hooks refused by the client (secret aspects), the last on %s", Perf.blockedHooks, Perf.blockedLast)
 	end
 	local kb = AddonMemory()
 	if kb then

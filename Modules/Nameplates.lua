@@ -823,16 +823,22 @@ end
 -- (Each asked for secret first: the form and the full name come from two
 -- calls, NameUtil's, and their secrecy can differ.)
 function Plate.Form(uf)
-	if not Plate.FormWanted() then
+	-- (retail's Forever look, M.ForeverArt.NameOn: every name above a bar covered, centred and outlined)
+	local forever = M.ForeverArt.NameOn()
+	local wanted = Plate.FormWanted()
+	if not (wanted or forever) then
 		return nil
 	end
 	local unit = uf.unit
 	if Secret(unit) or type(unit) ~= "string" then
 		return nil
 	end
-	local text = MelloUI:UnitNameAs(unit, M.db.nameFormat)
+	local text = MelloUI:UnitNameAs(unit, wanted and M.db.nameFormat or "both")
 	if not Secret(text) and text == nil then
 		return nil
+	end
+	if forever then
+		return text
 	end
 	local full = MelloUI:UnitNameAs(unit, "both")
 	if Secret(text) or Secret(full) or text ~= full then
@@ -888,6 +894,9 @@ function Plate.Cover(uf, again, form)
 		fs = MelloUI.Shade:Cover(Plate.Host(uf), name, Plate.COVER)
 		if not fs then
 			return
+		end
+		if M.ForeverArt.NameOn() then
+			M.ForeverArt.NameLook(fs)
 		end
 		Plate.coverOf[name] = fs
 		Plate.coverShown[name] = true
@@ -978,7 +987,11 @@ end)
 -- after a Font Style copy of a cover (Shade's RefontAll, a frame after the
 -- change; never per update): the glyphs hidden again, or uncovered where
 -- that is refused
-function Plate.Refont(_, name)
+function Plate.Refont(fs, name)
+	-- (retail's Forever look: centred and outlined again after the copy of the game's)
+	if fs and M.ForeverArt.NameOn() then
+		M.ForeverArt.NameLook(fs)
+	end
 	if Plate.coverOn[name] and Plate.On() then
 		Plate.hidden[name] = Plate.Hide(name) or nil
 		local uf = Plate.ownerOf[name]
@@ -1199,7 +1212,7 @@ end
 
 -- UNIT_NAME_UPDATE while a band or a form is wanted (on a change only)
 function Plate.Listen()
-	local want = (Plate.On() and (Plate.Shade() or Plate.FormWanted())) and true or false
+	local want = (Plate.On() and (Plate.Shade() or Plate.FormWanted() or M.ForeverArt.NameOn())) and true or false
 	if want == Plate.listening or not Plate.frame then
 		return
 	end
@@ -1470,8 +1483,16 @@ for i = 1, 40 do
 	PLATE_UNITS[i] = "nameplate" .. i
 end
 
+-- (retail, never shipped: the user's own play while WoW Forever is down, 2026-10-24: "The Threat Bar is not needed on
+-- the Nameplates on retail, but the widget warning stays if you have aggro") the retail client (MelloUI.Retail): no
+-- threat line on the plates; the widget column's warning (Modules/Widgets.lua) reads MelloUI.Threat on its own and
+-- stays
+function M.ThreatLineHere()
+	return not MelloUI.Retail
+end
+
 local function ThreatOn()
-	return M.isEnabled and M.db ~= nil and M.db.threatLine ~= false
+	return M.isEnabled and M.db ~= nil and M.db.threatLine ~= false and M.ThreatLineHere()
 end
 
 -- a group fight: the player in combat, in a party or a raid
@@ -2046,6 +2067,357 @@ function M:NameLift(uf)
 end
 
 --------------------------------------------------------------------------------
+-- Forever's plate art on retail (retail, never shipped: the user's own play while WoW Forever is down, 2026-10-24:
+-- "i want the Forever Look ... i would like the textures from Forever art"). Forever draws its plates' rimmed bar
+-- background and the target's yellow border from its own "c60" art, which retail's client lacks (it has the plain
+-- modern pictures under the same names). With the local copy of Forever's pictures in place
+-- (Interface\AddOns\MelloUI_ForeverArt: Tools/retail_forever_art.py, copied by Tools/sync_retail.ps1, never in the
+-- repo), each plate's background is covered by Forever's on the very rect the game lays (Blizzard_NamePlateUnitFrame:
+-- the bar's TOPLEFT -2,3 to BOTTOMRIGHT 6,-6, the same on both clients) and the target's border by Forever's yellow
+-- on Forever's offsets from that background (Camelot's SELECTED_BORDER_OFFSETS -3,2 / 0,2), tinted as the game tints
+-- its own (the target's white, the focus's orange: post-hook on its SetVertexColor). The game's two at alpha 0
+-- meanwhile (written once each way; the game only shows, hides and tints them as the target or focus changes), ours
+-- shown as the game shows its own (post-hooks on Show / Hide / SetShown). Only on a client without Forever's art
+-- (Forever's own plates stay the game's), not on the Classic style (its border is another picture), while the
+-- module is on. Made once per plate frame, at its first add.
+-- The user's "yes, do both" (the same day): the name and the level as Camelot lays them --
+--   the name   with the name above the bar, every plate's name is the plate names' cover (Plate.Form: Show Names
+--              As's form, else the full name), centred and outlined (NamePlateSetupOptions'
+--              nameJustificationWhenAboveHealthBar CENTER, useOutlinedFontWhenAboveHealthBar), so the band, which
+--              stands on the name's middle, sits under it as on Forever
+--   the level  a badge of ours where Camelot's NameplateLevelFrame stands: right of the bar (5 past it, 3 above, 2
+--              below, 28 wide), Forever's plate under the unit's level in the game's difficulty colours (its
+--              GetDifficultyColor: C_QuestLog.GetTrivialRange and the *_DIFFICULTY_COLOR colours; a unit you
+--              cannot attack in UNIT_LEVEL_NON_ATTACKABLE's), a skull for a level the game does not show (0 or
+--              less); its target / focus outline shown and tinted with the game's border (Follow, OnTint). Not on
+--              a name-only plate, nor an object's. Set at the plate's add and at UNIT_LEVEL / PLAYER_LEVEL_UP
+--------------------------------------------------------------------------------
+M.ForeverArt = {
+	DIR = "Interface\\AddOns\\MelloUI_ForeverArt\\",
+	BG = { file = "PlateBarBG", coords = { 0, 264 / 512, 0, 38 / 64 } },
+	SELECTED = { file = "PlateSelected", coords = { 0, 264 / 512, 0, 1 }, at = { -3, 2, 0, 2 }, tint = true },
+	LEVEL = { file = "PlateLevel", coords = { 0, 30 / 32, 0, 30 / 32 } },
+	LEVEL_SELECTED = { file = "PlateLevelSelected", coords = { 0, 56 / 64, 0, 44 / 64 } },
+	SKULL = { file = "PlateLevelSkull", coords = { 0, 52 / 64, 0, 52 / 64 } },
+	BADGE = { width = 28, gap = 5, top = 3, bottom = -2, skull = 16, outline = { -3, 3, 3, -4 } },
+	CLASSIC = 6,   -- Enum.NamePlateStyle.Classic
+	badge = setmetatable({}, { __mode = "k" }),     -- [unit frame] = its badge { frame, text, selected, skull }
+	badgeOf = setmetatable({}, { __mode = "k" }),   -- [the game's target border] = the plate's badge
+	cover = setmetatable({}, { __mode = "k" }),   -- [the game's texture] = ours
+	faded = setmetatable({}, { __mode = "k" }),   -- [the game's texture] = true while ours stands for it
+}
+
+-- the retail client (MelloUI.Retail) without Forever's art of its own, and the pictures there: the local
+-- MelloUI_ForeverArt (made from the WoW Forever export, never shipped) loaded -- without it the game's own art stays.
+-- Asked once the login is over (every addon loaded by then)
+function M.ForeverArt.Can()
+	local F = M.ForeverArt
+	if F.can == nil then
+		local ok, info = false, nil
+		if MelloUI.Retail and C_Texture and C_Texture.GetAtlasInfo then
+			ok, info = pcall(C_Texture.GetAtlasInfo, "UI-HUD-CoolDownManager-Selected-yellow")
+		end
+		local loaded = C_AddOns and C_AddOns.IsAddOnLoaded
+		local okA, art = false, false
+		if ok and info == nil and loaded then
+			okA, art = pcall(loaded, "MelloUI_ForeverArt")
+		end
+		local can = okA and art == true
+		if not _G.IsLoggedIn() then
+			return can
+		end
+		F.can = can
+	end
+	return F.can
+end
+
+function M.ForeverArt.Want()
+	if not (M.isEnabled and M.ForeverArt.Can()) then
+		return false
+	end
+	local ok, style = pcall(GetCVar, "nameplateStyle")
+	return tonumber(ok and style or nil) ~= M.ForeverArt.CLASSIC
+end
+
+-- the plates' names in Forever's look (the cover, Plate.Form): the art wanted and the names above the bars
+function M.ForeverArt.NameOn()
+	return M.ForeverArt.Want() and Plate.Above()
+end
+
+-- a name cover centred and outlined (its face and size the game's, as copied)
+function M.ForeverArt.NameLook(fs)
+	pcall(fs.SetJustifyH, fs, "CENTER")
+	local ok, file, size, flags = pcall(fs.GetFont, fs)
+	if not ok or Secret(file) or type(file) ~= "string" or Secret(size) then
+		return
+	end
+	flags = (not Secret(flags) and type(flags) == "string") and flags or ""
+	if not flags:find("OUTLINE", 1, true) then
+		pcall(fs.SetFont, fs, file, size, flags ~= "" and (flags .. ",OUTLINE") or "OUTLINE")
+	end
+end
+
+local function ArtShown(region)
+	local ok, shown = pcall(region.IsShown, region)
+	return ok and not Secret(shown) and shown == true
+end
+
+-- ours as the game's own shows now, the game's unseen meanwhile
+function M.ForeverArt.Follow(region)
+	local F = M.ForeverArt
+	local ours = F.cover[region]
+	if not ours then
+		return
+	end
+	local want = F.Want() and ArtShown(region)
+	ours:SetShown(want)
+	if (F.faded[region] or false) ~= want then
+		F.faded[region] = want or nil
+		region:SetAlpha(want and 0 or 1)
+	end
+	local badge = F.badgeOf[region]
+	if badge then
+		badge.selected:SetShown(want)
+	end
+end
+
+M.ForeverArt.OnShown = Perf.Shared("Show / Hide on a plate's background or target border (Forever's art)", function(region)
+	M.ForeverArt.Follow(region)
+end)
+
+M.ForeverArt.OnTint = Perf.Shared("SetVertexColor on a plate's target border (Forever's art)", function(region, r, g, b)
+	local ours = M.ForeverArt.cover[region]
+	if ours and not (Secret(r) or Secret(g) or Secret(b)) then
+		ours:SetVertexColor(r, g, b)
+		local badge = M.ForeverArt.badgeOf[region]
+		if badge then
+			badge.selected:SetVertexColor(r, g, b)
+		end
+	end
+end)
+
+-- ours on a game texture of the plate (its frame, layer and sublevel), made once; `bg` the background the border
+-- hangs from
+function M.ForeverArt.Make(region, look, bg)
+	local F = M.ForeverArt
+	if F.cover[region] then
+		return F.cover[region]
+	end
+	local okP, parent = pcall(region.GetParent, region)
+	if not (okP and type(parent) == "table" and parent.CreateTexture) then
+		return nil
+	end
+	local okL, layer, sub = pcall(region.GetDrawLayer, region)
+	if not (okL and type(layer) == "string" and not Secret(layer)) then
+		layer, sub = "BACKGROUND", 0
+	end
+	local ours = parent:CreateTexture(nil, layer, nil, Num(sub) or 0)
+	ours:Hide()
+	-- (on the plate's pixel grid, as the game rounds its own parts at the plate's making: v180/nameplatepixels)
+	if ours.SetRoundLayoutToNearestPixel then
+		pcall(ours.SetRoundLayoutToNearestPixel, ours, true)
+	end
+	ours:SetTexture(F.DIR .. look.file)
+	ours:SetTexCoord(look.coords[1], look.coords[2], look.coords[3], look.coords[4])
+	if look.at and bg then
+		ours:SetPoint("TOPLEFT", bg, "TOPLEFT", look.at[1], look.at[2])
+		ours:SetPoint("BOTTOMRIGHT", bg, "BOTTOMRIGHT", look.at[3], look.at[4])
+	else
+		ours:SetAllPoints(region)
+	end
+	F.cover[region] = ours
+	for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
+		hooksecurefunc(region, method, F.OnShown)
+	end
+	if look.tint then
+		local okC, r, g, b = pcall(region.GetVertexColor, region)
+		if okC then
+			F.OnTint(region, r, g, b)
+		end
+		hooksecurefunc(region, "SetVertexColor", F.OnTint)
+	end
+	return ours
+end
+
+-- a plate added: its background and target border covered (made at its frame's first add)
+function M.ForeverArt.Lay(plate)
+	local F = M.ForeverArt
+	if not (plate and F.Want()) then
+		return
+	end
+	if plate.IsForbidden and plate:IsForbidden() then
+		return
+	end
+	local uf = plate.UnitFrame
+	local bars = uf and uf.HealthBarsContainer
+	local bar = bars and bars.healthBar
+	local bg, selected = bar and bar.bgTexture, bar and bar.selectedBorder
+	if not (bg and selected) then
+		return
+	end
+	if F.Make(bg, F.BG) then
+		F.Follow(bg)
+		if F.Make(selected, F.SELECTED, bg) then
+			local badge = F.MakeBadge(uf, bar)
+			if badge then
+				F.badgeOf[selected] = badge
+				local okC, r, g, b = pcall(selected.GetVertexColor, selected)
+				if okC and not (Secret(r) or Secret(g) or Secret(b)) then
+					badge.selected:SetVertexColor(r, g, b)
+				end
+			end
+			F.Follow(selected)
+		end
+	end
+	F.Level(uf)
+end
+
+-- a piece of Forever's art on a texture of ours, on the plate's pixel grid
+function M.ForeverArt.Paint(tex, look)
+	if tex.SetRoundLayoutToNearestPixel then
+		pcall(tex.SetRoundLayoutToNearestPixel, tex, true)
+	end
+	tex:SetTexture(M.ForeverArt.DIR .. look.file)
+	tex:SetTexCoord(look.coords[1], look.coords[2], look.coords[3], look.coords[4])
+end
+
+-- the level badge of a plate (Camelot's NameplateLevelFrame's place and parts), made once
+function M.ForeverArt.MakeBadge(uf, bar)
+	local F = M.ForeverArt
+	if F.badge[uf] then
+		return F.badge[uf]
+	end
+	local B = F.BADGE
+	local f = CreateFrame("Frame", nil, uf)
+	if f.SetRoundLayoutToNearestPixel then
+		pcall(f.SetRoundLayoutToNearestPixel, f, true)
+	end
+	f:EnableMouse(false)
+	local okL, level = pcall(bar.GetFrameLevel, bar)
+	if okL and not Secret(level) and type(level) == "number" then
+		f:SetFrameLevel(level + 5)
+	end
+	f:SetPoint("TOPLEFT", bar, "TOPRIGHT", B.gap, B.top)
+	f:SetPoint("BOTTOMLEFT", bar, "BOTTOMRIGHT", B.gap, B.bottom)
+	f:SetWidth(B.width)
+	local plate = f:CreateTexture(nil, "BACKGROUND")
+	plate:SetAllPoints(f)
+	F.Paint(plate, F.LEVEL)
+	-- (Camelot's SystemFont_NamePlateLevel where the client has it: a font object named only where it is defined)
+	local font = "GameFontNormalSmall"
+	for _, name in ipairs({ "SystemFont_NamePlateLevel", "SystemFont_NamePlate" }) do
+		if rawget(_G, name) then
+			font = name
+			break
+		end
+	end
+	local text = MelloUI.Widgets.Text(f, font)
+	text:SetJustifyH("CENTER")
+	text:SetJustifyV("MIDDLE")
+	text:SetPoint("CENTER", plate, "CENTER", 0, 0)
+	local selected = f:CreateTexture(nil, "OVERLAY")
+	selected:SetPoint("TOPLEFT", f, "TOPLEFT", B.outline[1], B.outline[2])
+	selected:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", B.outline[3], B.outline[4])
+	F.Paint(selected, F.LEVEL_SELECTED)
+	selected:Hide()
+	local skull = f:CreateTexture(nil, "OVERLAY")
+	skull:SetSize(B.skull, B.skull)
+	skull:SetPoint("CENTER", plate, "CENTER", 0, 0)
+	F.Paint(skull, F.SKULL)
+	skull:Hide()
+	f:Hide()
+	local badge = { frame = f, text = text, selected = selected, skull = skull }
+	F.badge[uf] = badge
+	return badge
+end
+
+-- the colour of a level against yours (Camelot's NameplateLevelFrameMixin:GetDifficultyColor)
+function M.ForeverArt.LevelColour(diff)
+	local okR, range = pcall(C_QuestLog.GetTrivialRange)
+	range = okR and Num(range) or 5
+	local name
+	if diff < -range then
+		name = "TRIVIAL_DIFFICULTY_COLOR"
+	elseif diff <= -3 then
+		name = "EASY_DIFFICULTY_COLOR"
+	elseif diff <= 2 then
+		name = "FAIR_DIFFICULTY_COLOR"
+	elseif diff <= 4 then
+		name = "DIFFICULT_DIFFICULTY_COLOR"
+	else
+		name = "IMPOSSIBLE_DIFFICULTY_COLOR"
+	end
+	return rawget(_G, name)
+end
+
+-- a plate's badge as its unit is now (Camelot's CompactUnitFrame_UpdatePlayerLevelDiff)
+function M.ForeverArt.Level(uf)
+	local F = M.ForeverArt
+	local badge = uf and F.badge[uf]
+	if not badge then
+		return
+	end
+	local unit = uf.unit
+	local show = F.Want() and type(unit) == "string" and not Secret(unit) and not Plate.NameOnly(uf)
+	if show and UnitIsGameObject then
+		local okO, object = pcall(UnitIsGameObject, unit)
+		show = not (okO and not Secret(object) and object)
+	end
+	if not show then
+		badge.frame:Hide()
+		return
+	end
+	local okL, level = pcall(UnitEffectiveLevel, unit)
+	if not okL then
+		badge.frame:Hide()
+		return
+	end
+	local colour = rawget(_G, "UNIT_LEVEL_NON_ATTACKABLE") or rawget(_G, "HIGHLIGHT_FONT_COLOR")
+	local plain = Num(level)
+	if Secret(level) or not plain then
+		-- (a secret level handed to the text as it is: no colour or skull told from it)
+		badge.skull:Hide()
+		pcall(badge.text.SetText, badge.text, level)
+		badge.text:Show()
+	else
+		local okA, attack = pcall(UnitCanAttack, "player", unit)
+		local okP, mine = pcall(UnitEffectiveLevel, "player")
+		mine = okP and Num(mine) or nil
+		if okA and not Secret(attack) and attack and mine then
+			colour = F.LevelColour(plain - mine) or colour
+		end
+		badge.skull:SetShown(plain <= 0)
+		badge.text:SetShown(plain > 0)
+		badge.text:SetText(plain)
+	end
+	if colour and colour.GetRGB then
+		badge.text:SetTextColor(colour:GetRGB())
+	end
+	badge.frame:Show()
+end
+
+-- every plate's badge as its unit is now (the player's level, a switch)
+function M.ForeverArt.Levels()
+	for uf in pairs(M.ForeverArt.badge) do
+		M.ForeverArt.Level(uf)
+	end
+end
+
+-- every plate's covers as wanted now (the module switched, the style changed)
+function M.ForeverArt.All()
+	local F = M.ForeverArt
+	for region in pairs(F.cover) do
+		F.Follow(region)
+	end
+	F.Levels()
+	if F.Want() and C_NamePlate and C_NamePlate.GetNamePlates then
+		for _, plate in ipairs(C_NamePlate.GetNamePlates() or {}) do
+			F.Lay(plate)
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
 -- Events & lifecycle
 --------------------------------------------------------------------------------
 
@@ -2067,6 +2439,8 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit, power)
 		if Combo.on then
 			Combo.Update()   -- (the target's plate may come after the target)
 		end
+		-- (retail: Forever's plate art over the game's, M.ForeverArt)
+		M.ForeverArt.Lay(plate)
 		-- (1.2.4: the mouseover highlight, MelloUI.FrameHover)
 		if MelloUI.FrameHover then
 			MelloUI.FrameHover.Plate(plate, unit)
@@ -2091,6 +2465,14 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit, power)
 			-- the game's driver ran first and the frame is already put away)
 			Plate.Cleared(plate.UnitFrame)
 		end
+	elseif event == "UNIT_LEVEL" then
+		-- (retail's Forever look: the plate's level badge, M.ForeverArt)
+		local ok, plate = pcall(C_NamePlate.GetNamePlateForUnit, unit)
+		if ok and type(plate) == "table" and plate.UnitFrame then
+			M.ForeverArt.Level(plate.UnitFrame)
+		end
+	elseif event == "PLAYER_LEVEL_UP" then
+		M.ForeverArt.Levels()
 	elseif event == "UNIT_POWER_FREQUENT" then
 		-- (the player's; only a combo point change: energy ticks pass by)
 		if Secret(power) or power == nil or power == "COMBO_POINTS" then
@@ -2195,11 +2577,17 @@ function M:OnEnable(db)
 	self.db = db
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+	-- (retail's Forever look: the plates' level badges, M.ForeverArt)
+	if M.ForeverArt.Can() then
+		eventFrame:RegisterEvent("UNIT_LEVEL")
+		eventFrame:RegisterEvent("PLAYER_LEVEL_UP")
+	end
 	RegisterQuestEvents(true)
 	RegisterThreatEvents(ThreatOn())
 	-- (the plate names: every plate shown now through the budget,
 	-- UNIT_NAME_UPDATE as wanted)
 	Plate.All()
+	M.ForeverArt.All()
 	if db.bigCC then
 		ApplyAll()
 	end
@@ -2223,11 +2611,14 @@ function M:OnDisable()
 	Plate.Stop()
 	eventFrame:UnregisterEvent("NAME_PLATE_UNIT_ADDED")
 	eventFrame:UnregisterEvent("NAME_PLATE_UNIT_REMOVED")
+	eventFrame:UnregisterEvent("UNIT_LEVEL")
+	eventFrame:UnregisterEvent("PLAYER_LEVEL_UP")
 	RegisterQuestEvents(false)
 	RegisterThreatEvents(false)
 	Combo.Register(false)
 	OutOfCombat(RestoreAll)
 	HideAllQuestIcons()
+	M.ForeverArt.All()   -- (isEnabled is false: the game's own art back)
 end
 
 function M:OnSettingChanged(key, value, db)

@@ -52,6 +52,13 @@ MelloUI.GroupFrames = RD   -- (the tests', and the Preview's part "raid")
 
 local OWNER = "GroupFrames"
 
+-- (1.2.4, the retail client: MelloUI.Retail, Core.lua) Group Frames' retail
+-- guards -- the game's party members' buff rows, click-through aura buttons,
+-- the buff tooltip put away; WoW Forever as before
+function RD.Retail()
+	return MelloUI.Retail
+end
+
 -- (0.20.1, the user: "i want to be able to change the background on the raid unitframes") Background: a flat colour
 -- (Background Colour, as before) or one of the kit's shared backgrounds (Kit.buttonLooks.backgrounds: the tiles and the
 -- gradients, the window backgrounds' own list), or none (GroupButton's Paint lays it)

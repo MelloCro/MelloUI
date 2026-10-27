@@ -305,10 +305,12 @@ L.pages = {
 	Route = { title = "Route", icon = "module:Route", set = "page_route", module = "Route",
 		tabs = { "Route", "Arrow & Marker", "Flights" } },
 	-- (the seamless map, MelloUI_Map: docs/plans/seamless-map.md, stage M0)
-	Map = { title = "Map", icon = "module:Map", module = "Map",
+	-- (1.2.3, the user's retail screenshot: with its addon not loaded a "module:" icon has no module to read, and the
+	-- row showed a bare slot) the modules' own icons named here
+	Map = { title = "Map", icon = "Interface\\Icons\\INV_Misc_Map_01", module = "Map",
 		tabs = { "Map" } },
 	-- (1.2.0, docs/plans/dungeon-info.md) Dungeon Info (MelloUI_DungeonInfo)
-	DungeonInfo = { title = "Dungeon Info", icon = "module:DungeonInfo", module = "DungeonInfo",
+	DungeonInfo = { title = "Dungeon Info", icon = "Interface\\Icons\\INV_Misc_Book_09", module = "DungeonInfo",
 		tabs = { "Dungeon Info" } },
 	-- (1.2.4, the configurator shell; the user, 2026-10-27: "11 tabs is fine, build the Quality of Life page") the
 	-- small helpers one page, in the sketch's order: Automation's tabs (one look stage H: the vendor's repairs and

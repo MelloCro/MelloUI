@@ -186,6 +186,17 @@ local function StyleBackdrop(tooltip)
 	if not M.isEnabled or not tooltip or not tooltip.NineSlice then
 		return
 	end
+	-- (1.2.3, the user's retail error: "NineSlice.lua:261: calling 'SetVertexColor' on bad self (Attempt to access
+	-- forbidden object from code tainted by an AddOn)" -- a world widget's tooltip the game keeps forbidden to addons)
+	-- a forbidden tooltip or backdrop left as the game has it (asked by pcall: a refused answer counts as forbidden)
+	for _, f in ipairs({ tooltip, tooltip.NineSlice }) do
+		if f.IsForbidden then
+			local ok, forbidden = pcall(f.IsForbidden, f)
+			if not ok or Secret(forbidden) or forbidden then
+				return
+			end
+		end
+	end
 	-- the kit's tooltip (TooltipPanel) stands in for the backdrop colouring
 	-- while it covers the group (user, 2026-09-21: tweaks apply only while
 	-- the kit module for the group is off)

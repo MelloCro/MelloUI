@@ -379,12 +379,22 @@ local function PlatesShown()
 	return true
 end
 
+-- (retail, never shipped: the user's own play while WoW Forever is down, 2026-10-24: "in the open world the damage
+-- numbers are shown from every source, even other players that are attacking the same target as me, that should
+-- never be the case") the retail client (MelloUI.Retail): its open-world enemies are shared by everyone who
+-- hits them and NPC companions fight at your side, so whose hit UNIT_COMBAT reports cannot be told even solo -- the
+-- game's own numbers there (only they know whose hit it is), as in a group
+function DEALT.Untellable()
+	return MelloUI.Retail
+end
+
 -- MelloUI draws your damage now: a look chosen, the plates there, solo
 -- (in a group the hits cannot be told apart), and the threat lists readable
 -- in this fight (DEALT.threatHidden: a secret answer seen; the fight's end
 -- tries again)
 local function DealtDrawing()
 	return DealtOn() and PlatesShown() and not MelloUI.Threat.Grouped() and not DEALT.threatHidden
+		and not DEALT.Untellable()
 end
 
 local function TextSize()

@@ -168,9 +168,8 @@ end
 -- (the user's retail test, 2026-10-27: "the backpack border is messed up") the dialog's diamond metal is Forever's own
 -- art (a band 24 units deep, OUT); the retail client's is a thin rule at its pieces' outer edge with a see-through
 -- shadow inside it -- laid 24 out it showed the world between its rule and the window. There a window wears the
--- tooltip's border on its edge (the client by its interface number: Forever's 1.x, retail's 10 and up)
-local _, _, _, interface = GetBuildInfo()
-Skin.FOREVER_ART = type(interface) ~= "number" or interface < 20000
+-- tooltip's border on its edge (the client: MelloUI.Retail, Core.lua)
+Skin.FOREVER_ART = not MelloUI.Retail
 
 function Skin.Border(frame, kind, first, last)
 	kind = LAYOUT[kind] and kind or "tooltip"

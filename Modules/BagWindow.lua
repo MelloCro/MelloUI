@@ -2088,7 +2088,11 @@ do
 		for _, key in ipairs(TABS) do
 			local tab = win.tabs and win.tabs[key]
 			if tab then
-				tab:SetChecked(key == win.tab)
+				if tab.SetChecked then
+					tab:SetChecked(key == win.tab)
+				elseif tab.SelectedTexture then
+					tab.SelectedTexture:SetShown(key == win.tab)   -- (retail's mixin has none: M.MakeTabs)
+				end
 				local rep = Kit.repOf and Kit.repOf[tab]
 				local rim = rep and rep.object
 				if rim and rim.Update then
@@ -2217,14 +2221,32 @@ do
 			tab:SetScale(k)
 			Mirror(tab)
 			tab.GetIconAnchorOffsetsForTabArt = IconOffsets   -- (an own frame of the game's template: its mixin's hook)
-			tab:InitializeIconAnchoring()
-			tab:SetFillToInterior(true)
+			-- (1.2.3, the user's error on retail: "attempt to call a nil value" -- retail's mixin of this template has
+			-- fewer methods than Forever's: each one asked for where it is, its job done here where it is not)
+			if tab.InitializeIconAnchoring then
+				tab:InitializeIconAnchoring()
+			else
+				tab.Icon:ClearAllPoints()
+				tab.Icon:SetPoint("CENTER", tab, "CENTER", IconOffsets())
+			end
+			if tab.SetFillToInterior then
+				tab:SetFillToInterior(true)
+			end
 			iconOf[tab] = ICONS[key]
-			TabIcon(tab)
-			hooksecurefunc(tab, "UpdateIconInterior", TabIcon)   -- (its crop set again by the template: ours after it)
-			tab:SetCustomOnMouseUpHandler(TabUp)
+			TabIcon(tab)   -- (the interior's size and crop too)
+			if tab.UpdateIconInterior then
+				hooksecurefunc(tab, "UpdateIconInterior", TabIcon)   -- (its crop set again by the template: ours after it)
+			end
+			if tab.SetCustomOnMouseUpHandler then
+				tab:SetCustomOnMouseUpHandler(TabUp)
+			else
+				Perf.HookScript(tab, "OnMouseUp", TabUp)
+			end
 			Perf.HookScript(tab, "OnReceiveDrag", TabDrag)
-			Perf.HookScript(tab, "OnEnter", TabEnter)
+			-- (1.2.3, the user's retail error: "SharedUIPanelTemplates.lua:346: bad argument #1 to 'SetText'" -- the
+			-- template's own OnEnter shows its tooltipText, which these tabs never set; Forever's returns early without
+			-- one, retail's does not) ours alone: its tooltip is the tab's whole hover
+			Perf.SetScript(tab, "OnEnter", TabEnter)
 			Perf.HookScript(tab, "OnLeave", TabLeave)
 			if above then
 				tab:SetPoint("TOPRIGHT", above, "BOTTOMRIGHT", 0, -G.TAB_GAP / k)

@@ -779,7 +779,13 @@ function Button.Range(f)
 		f:SetAlpha(1)
 		return
 	end
-	local ok, inRange, checked = pcall(UnitInRange, f.unit)
+	Button.RangeAlpha(f, f.unit, alpha)
+end
+
+-- the range rule on any frame of `unit` (retail: the game's normal party
+-- members too, GroupHeaders.lua)
+function Button.RangeAlpha(f, unit, alpha)
+	local ok, inRange, checked = pcall(UnitInRange, unit)
 	if not ok then
 		f:SetAlpha(1)
 		return

@@ -1304,10 +1304,37 @@ Party.ART = {
 		health = "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Health-Mask", mana = "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Mana-Mask" },
 }
 
--- the game's layout of a style (its own table; nil on a client without it)
+-- (retail, never shipped: the user's screenshot 2026-10-24, the party in the game's own art) a client without the
+-- sharp art (retail has none of the CharacterFrameOnParty atlases): the Character layout under MelloUI Frames'
+-- picture only, the game's own atlases beneath it (the same 120 x 49 art; the player's portrait mask)
+function Party.Sharp()
+	return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(Party.ART.Character.frame) ~= nil or false
+end
+
+function Party.ArtOf(style)
+	if style ~= "Character" or Party.Sharp() then
+		return Party.ART[style]
+	end
+	local P = Party.ART.Player
+	return { frame = P.frame, flash = P.flash, status = P.status, portrait = Party.ART.Character.portrait }
+end
+
+-- (retail, the user's own play while WoW Forever is down -- 2026-10-24, never shipped: its PartyMemberFrameMixin has
+-- no ArtLayoutInfo, its ToPlayerArt the Player numbers inline) client 70425's table, the parts of it read here
+Party.LAYOUT = {
+	Player = { Health = { Width = 70, Height = 10, OffsetX = 45, OffsetY = -19, OffsetXMask = -29, OffsetYMask = 3 },
+		Mana = { Width = 74, OffsetX = 41, OffsetY = -30, OffsetXMask = 14, OffsetYMask = -26 },
+		Flash = { OffsetX = 1, OffsetY = -2 }, Status = { OffsetX = 1, OffsetY = -2 } },
+	Character = { Health = { Width = 70, Height = 10, OffsetX = 45, OffsetY = -19, OffsetXMask = -29, OffsetYMask = 3 },
+		Mana = { Width = 69, OffsetX = 46, OffsetY = -30, OffsetXMask = 17, OffsetYMask = -28 },
+		Flash = { OffsetX = 1, OffsetY = -2 }, Status = { OffsetX = 1, OffsetY = -2 } },
+}
+
+-- the game's layout of a style (its own table; client 70425's where the game has no table at all -- retail)
 function Party.Layout(style)
 	local mixin = rawget(_G, "PartyMemberFrameMixin")
-	local info = type(mixin) == "table" and type(mixin.ArtLayoutInfo) == "table" and mixin.ArtLayoutInfo[style]
+	local own = type(mixin) == "table" and mixin.ArtLayoutInfo
+	local info = (type(own) == "table" and own[style]) or (type(mixin) == "table" and own == nil and Party.LAYOUT[style])
 	if type(info) == "table" and type(info.Health) == "table" and type(info.Mana) == "table" then
 		return info
 	end
@@ -1316,7 +1343,7 @@ end
 
 -- a member laid in a style: `style` "Character" (the sharp art) or "Player" (the game's own) -- out of combat
 function Party.Lay(frame, style)
-	local L, A = Party.Layout(style), Party.ART[style]
+	local L, A = Party.Layout(style), Party.ArtOf(style)
 	local tex, hc, mana = rawget(frame, "Texture"), rawget(frame, "HealthBarContainer"), rawget(frame, "ManaBar")
 	if not (L and A and type(tex) == "table" and type(hc) == "table" and type(mana) == "table") then
 		return false
@@ -1401,8 +1428,7 @@ end
 -- a member's art as wanted now (out of combat): the sharp art on a member in its player art, the game's back else
 function Party.Art(frame)
 	local want = Party.Wanted() and rawget(frame, "state") ~= "vehicle" and not rawget(_G, "UNIT_FRAME_SHOW_HEALTH_ONLY")
-		and Party.Layout("Character") ~= nil and C_Texture and C_Texture.GetAtlasInfo
-		and C_Texture.GetAtlasInfo(Party.ART.Character.frame) ~= nil
+		and Party.Layout("Character") ~= nil and (Party.Sharp() or (M.Frames ~= nil and M.Frames.On()))
 	-- (each lay told on the bus: Dark Mode shades the art again)
 	if want then
 		if not Party.art[frame] and Party.Lay(frame, "Character") then
@@ -2214,8 +2240,10 @@ function M:PartsOf(frame)
 		local main = content and content.PlayerFrameContentMain
 		local bars = main and main.HealthBarsContainer
 		local area = main and main.ManaBarArea
+		-- (retail: MelloUI Frames' stand-in circle, Frames.Circle)
 		return c and c.PlayerPortrait, bars and bars.HealthBar, area and area.ManaBar, PlayerName,
-			main and main.LevelBackgroundCircle, _G.PlayerLevelText
+			main and (rawget(main, "LevelBackgroundCircle") or (M.Frames and M.Frames.Circle(main, "player"))),
+			_G.PlayerLevelText
 	end
 	-- (a party member's shape: no other frame has these three -- the compact
 	-- and Group Frames' buttons no portrait, the pets and target of target no
@@ -2456,18 +2484,357 @@ function Frames.BossKind(region)
 	return atlas:find("winged", 1, true) and "boss" or "elite"
 end
 
+-- (retail, the user's own play while WoW Forever is down -- 2026-10-24, never shipped) the level circle: the game's
+-- (Forever's frames, Camelot: the level text in it), else -- retail prints the level on the name's line -- a stand-in
+-- of ours on the rect Forever's stands on (its template's 39 x 39, the frame's corner), on the level text's layer
+-- (ours a sublevel under it: Frames.Make) and drawing nothing itself; while the badge shows on it the level text sits
+-- in it in Forever's font, as Camelot's OnLoad lays it, its own anchors back after (Frames.Seat; the names are
+-- Centre Names', Places.Name)
+Frames.CIRCLE = { size = 39, player = { "BOTTOMLEFT", 13, 7 }, target = { "BOTTOMRIGHT", -13, 7 } }
+Frames.stand = setmetatable({}, { __mode = "k" })   -- [the frame's content] = our stand-in
+Frames.seat = setmetatable({}, { __mode = "k" })    -- [our stand-in] = { level = text, held = its anchors, font }
+
+function Frames.Circle(main, kind)
+	if type(main) ~= "table" then
+		return nil
+	end
+	local game = rawget(main, "LevelBackgroundCircle")
+	if game or Frames.stand[main] then
+		return game or Frames.stand[main]
+	end
+	local level = kind == "player" and rawget(_G, "PlayerLevelText") or rawget(main, "LevelText")
+	if type(level) ~= "table" or type(main.CreateTexture) ~= "function" then
+		return nil
+	end
+	local okL, layer, sub = pcall(level.GetDrawLayer, level)
+	if not (okL and type(layer) == "string" and not Secret(layer)) then
+		layer, sub = "OVERLAY", 0
+	end
+	local at = Frames.CIRCLE[kind]
+	local stand = main:CreateTexture(nil, layer, nil, Num(sub) or 0)
+	stand:SetSize(Frames.CIRCLE.size, Frames.CIRCLE.size)
+	stand:SetPoint(at[1], main, at[1], at[2], at[3])
+	Frames.stand[main] = stand
+	local ctx = kind == "player" and rawget(PlayerFrame.PlayerFrameContent, "PlayerFrameContentContextual")
+	Frames.seat[stand] = { level = level, role = ctx and rawget(ctx, "RoleIcon") or nil }
+	return stand
+end
+
+-- a region's anchors as they are (to give back)
+function Frames.Points(region)
+	local points = {}
+	for i = 1, region:GetNumPoints() do
+		local point, rel, relPoint, x, y = region:GetPoint(i)
+		points[i] = { point, rel, relPoint, x, y }
+	end
+	return points
+end
+
+function Frames.Put(region, points)
+	region:ClearAllPoints()
+	for _, p in ipairs(points) do
+		region:SetPoint(p[1], p[2], p[3], p[4], p[5])
+	end
+end
+
+-- the level text seated in the stand-in while its badge shows, back after; out of combat
+-- (the texts of a unit button: once the fight is over, as wanted then)
+function Frames.Seat(stand, want)
+	local seat = Frames.seat[stand]
+	if not seat or (seat.held ~= nil) == want then
+		return
+	end
+	if InCombatLockdown() then
+		MelloUI.Schedule:WhenOutOfCombat(function()
+			Frames.Seat(stand, Frames.shown[stand] == true)
+		end, stand)
+		return
+	end
+	local level = seat.level
+	if want then
+		local ok, at = pcall(Frames.Points, level)
+		if not ok then
+			return
+		end
+		seat.held = { level = at, font = level:GetFontObject() }
+		level:ClearAllPoints()
+		level:SetPoint("CENTER", stand, "CENTER", 0, -0.5)
+		local font = rawget(_G, "WhiteLargeNumberFont") or rawget(_G, "NumberFont_GameLarge")
+		if font then
+			level:SetFontObject(font)
+		end
+		if seat.role then
+			Frames.OnRoles()
+		end
+		return
+	end
+	local held = seat.held
+	seat.held = nil
+	Frames.Put(level, held.level)
+	if held.font then
+		level:SetFontObject(held.font)
+	end
+	-- (the game's rule back: the level hidden while its role icon shows in that place)
+	if seat.role then
+		local ok, on = pcall(seat.role.IsShown, seat.role)
+		if ok and not Secret(on) and on then
+			level:Hide()
+		end
+	end
+end
+
+-- (retail, the user's screenshot 2026-10-24: "the level text is missing from the Player unitframes") retail shows your
+-- group role in a dungeon where its level text stood and hides the level then (PlayerFrame_UpdateRolesAssigned; Forever
+-- never shows that icon): while the level sits in our badge, away from the icon, it is shown again after -- a write on
+-- the game's role update, never per frame; the vehicle's art keeps it hidden
+Frames.OnRoles = Shared("PlayerFrame_UpdateRolesAssigned (MelloUI Frames' level in its badge)", function()
+	for _, seat in pairs(Frames.seat) do
+		if seat.role and seat.held and rawget(PlayerFrame, "state") ~= "vehicle" then
+			seat.level:Show()
+		end
+	end
+end)
+
+-- (retail, the user's screenshot 2026-10-24: "the health bars on the Unitframes are still a bit off aswell as the power
+-- bar") MelloUI Frames' pictures have their slots where Forever's frames hold the bars -- its Camelot code lays them
+-- (PlayerFrame_UpdateHealthBarVisuals / UpdateManaBarVisuals, TargetFrameMixin:OnLoad / UpdateHealthBarVisuals,
+-- TargetOfTargetMixin:OnLoad, PetFrameMixin:OnLoad) -- and retail lays them its own way (the player's health bar 5 higher,
+-- 2 further left, 19 high). While a frame wears our picture on retail: Camelot's numbers, written as its code writes them
+-- (`clear`: its ClearAllPoints first, else that one point replaced); each region's own anchors and size back when the
+-- picture goes (MelloUI Frames off), forgotten when the game lays other art there (the vehicle's: its own numbers then);
+-- out of combat. Rows: { region, width, height, clear, point, relative, relativePoint, x, y }
+-- (the user's dump, 2026-10-24: the boxes at Forever's numbers, the fill still over the slots -- Forever's health bar is
+-- 20 high, 3 above its box, its mask the slot's shape; retail's mask cuts no such slot) the player's and target's health
+-- bars the slot itself (the box's own rect) and their bars' masks MelloUI's soft one (W.SoftMask, as the party's sharp
+-- art has them) on the inside of the bar's slot in our picture (the user's screenshot, 2026-10-24: "the separation line
+-- between Hp and mana is not visible", the target's power bar -- Camelot's 134 wide, 4 past its box on each side --
+-- "spilling out"): Frames.SOFT's insets from the bar's TOPLEFT and BOTTOMRIGHT, measured on uf_frame_player(_res) /
+-- uf_frame_target (2 texels a unit; the player's picture at 17,-14.5 on its 232 x 100 frame, the target's 388 x 136
+-- texels on retail's 192 x 67 art at 20,-16.5), rounded inward; the game's mask atlas, size and anchors back after
+Frames.BARS = {
+	player = { { "hc", 124, 15, false, "TOPLEFT", "parent", "TOPLEFT", 87, -46 },
+		{ "health", 124, 15, true, "TOPLEFT", "hc", "TOPLEFT", 0, 0 },
+		{ "mana", 124, 10, false, "TOPLEFT", "parent", "TOPLEFT", 87, -61 },
+		-- (the class bar while there is one -- retail's AlternatePowerBar, 124 x 9 at 85,-73 -- at the other bars'
+		-- x, in the class-resource picture's third slot; `opt`: none, no row)
+		{ "alt", 124, 9, false, "TOPLEFT", "parent", "TOPLEFT", 87, -73, opt = true } },
+	target = { { "health", 126, 15, true, "TOPLEFT", "hc", "TOPLEFT", 0, 0 },
+		{ "hc", 126, 15, false, "BOTTOMRIGHT", "container", "LEFT", 147, -9 },
+		{ "mana", 134, nil, true, "TOPRIGHT", "hc", "BOTTOMRIGHT", 4, -1 },
+		{ "strip", nil, nil, true, "TOPRIGHT", "main", "TOPRIGHT", -82, -26 } },
+	tot = { { "health", nil, nil, true, "BOTTOMRIGHT", "self", "RIGHT", -5, -3 },
+		{ "hmask", nil, nil, true, "TOPLEFT", "health", "TOPLEFT", -26, 3 },
+		{ "mana", 74, 7, true, "TOPLEFT", "health", "BOTTOMLEFT", -2, -2 } },
+	pet = { { "health", nil, nil, true, "BOTTOMLEFT", "portrait", "RIGHT", 3, -4 },
+		{ "hmask", nil, nil, true, "TOPLEFT", "health", "TOPLEFT", -26, 3 },
+		{ "mana", nil, nil, true, "TOPLEFT", "health", "BOTTOMLEFT", -2, -2 } },
+}
+Frames.SOFT = {
+	player = { { "hmask", "health", 1.5, -1, -1.5, 1.5 }, { "mmask", "mana", 1.5, -2, -1.5, 0 } },
+	res = { { "hmask", "health", 1.5, -0.5, -1, 1.5 }, { "mmask", "mana", 1.5, -1.5, -1, 0.5 },   -- (the class bar's art)
+		{ "altmask", "alt", 1.5, -0.5, -1, 0.5 } },   -- (its third slot: 88.5-210 x -73.5..-81.5)
+	target = { { "hmask", "health", 3, -1, -3.5, 1.5 }, { "mmask", "mana", 7, -1, -7.5, 1.5 } },
+}
+Frames.bars = setmetatable({}, { __mode = "k" })   -- [frame] = { regions = { [region] = as the game had it }, masks = ... }
+Frames.ART_KINDS = { player = true, res = true, target = true, small = true }
+Frames.owner = setmetatable({}, { __mode = "k" })  -- [a frame's picture] = the frame (Frames.LayOne)
+
+-- retail's frames: the player's has no level circle (Forever's Camelot templates add one)
+function Frames.Retail()
+	local content = type(PlayerFrame) == "table" and rawget(PlayerFrame, "PlayerFrameContent")
+	local main = content and rawget(content, "PlayerFrameContentMain")
+	return type(main) == "table" and rawget(main, "LevelBackgroundCircle") == nil
+end
+
+-- a frame's bars and what they hang from, by the rows' names
+function Frames.BarParts(frame)
+	if frame == PlayerFrame then
+		local content = rawget(frame, "PlayerFrameContent")
+		local main = content and rawget(content, "PlayerFrameContentMain")
+		local hc = main and rawget(main, "HealthBarsContainer")
+		local area = main and rawget(main, "ManaBarArea")
+		local mana = area and rawget(area, "ManaBar")
+		-- (the class bar the game has on now: its own key on the player frame, read only)
+		local alt = rawget(frame, "activeAlternatePowerBar")
+		alt = type(alt) == "table" and alt or nil
+		return "player", { hc = hc, health = hc and rawget(hc, "HealthBar"), hmask = hc and rawget(hc, "HealthBarMask"),
+			mana = mana, mmask = mana and rawget(mana, "ManaBarMask"), alt = alt, altmask = alt and rawget(alt, "PowerBarMask") }
+	end
+	if frame == rawget(_G, "PetFrame") then
+		return "pet", { portrait = rawget(_G, "PetPortrait"), health = rawget(_G, "PetFrameHealthBar"),
+			hmask = rawget(_G, "PetFrameHealthBarMask"), mana = rawget(_G, "PetFrameManaBar") }
+	end
+	local c = rawget(frame, "TargetFrameContainer")
+	if c then
+		local content = rawget(frame, "TargetFrameContent")
+		local main = content and rawget(content, "TargetFrameContentMain")
+		local hc = main and rawget(main, "HealthBarsContainer")
+		local mana = main and rawget(main, "ManaBar")
+		return "target", { container = c, main = main, hc = hc, health = hc and rawget(hc, "HealthBar"),
+			hmask = hc and rawget(hc, "HealthBarMask"), mana = mana, mmask = mana and rawget(mana, "ManaBarMask"),
+			strip = main and rawget(main, "ReputationColor") }
+	end
+	local health = rawget(frame, "HealthBar")
+	return "tot", { self = frame, health = health, hmask = type(health) == "table" and rawget(health, "HealthBarMask") or nil,
+		mana = rawget(frame, "ManaBar") }
+end
+
+-- each row's region with what it hangs from (none missing), or nil
+function Frames.BarRows(kind, parts)
+	local rows = {}
+	for _, row in ipairs(Frames.BARS[kind]) do
+		local r = parts[row[1]]
+		local rel = type(r) == "table" and type(r.SetPoint) == "function"
+			and (row[6] == "parent" and r:GetParent() or parts[row[6]]) or nil
+		if type(rel) == "table" then
+			rows[#rows + 1] = { r, rel, row }
+		elseif not row.opt then
+			return nil
+		end
+	end
+	return rows
+end
+
+-- the frame's bars as wanted now (`again`: the game laid its own again -- ToPlayerArt -- ours written again)
+function Frames.Bars(frame, again)
+	if InCombatLockdown() then
+		MelloUI.Schedule:WhenOutOfCombat(function()
+			Frames.Bars(frame, true)
+		end, frame)
+		return
+	end
+	local worn, art = false, false
+	for _, pair in ipairs(Frames.Regions(frame)) do
+		if pair[1] and Frames.ART_KINDS[pair[2]] then
+			worn = worn or Frames.shown[pair[1]] == true
+			art = art or Shown(pair[1])
+		end
+	end
+	local want = worn and Frames.Retail()
+	local held = Frames.bars[frame]
+	if not want then
+		Frames.bars[frame] = nil
+		-- (the game's own art there: its own numbers back; other art -- the vehicle's -- laid its own)
+		if held and art then
+			for r, at in pairs(held.regions) do
+				if at.w then
+					r:SetWidth(at.w)
+				end
+				if at.h then
+					r:SetHeight(at.h)
+				end
+				Frames.Put(r, at.points)
+			end
+			for mask, at in pairs(held.masks) do
+				if at.atlas then
+					mask:SetAtlas(at.atlas, true)
+				end
+				mask:SetSize(at.w, at.h)
+				Frames.Put(mask, at.points)
+			end
+		end
+		if held then
+			for _, fill in ipairs(held.fills) do
+				MelloUI.Widgets.SoftEndsOwn(fill, false)
+			end
+		end
+		return
+	end
+	if held and not again then
+		return
+	end
+	local kind, parts = Frames.BarParts(frame)
+	local rows = Frames.BarRows(kind, parts)
+	if not rows then
+		return
+	end
+	local alt = frame == PlayerFrame and rawget(frame, "PlayerFrameContainer")
+	alt = alt and rawget(alt, "AlternatePowerFrameTexture")
+	local soft = Frames.SoftOf((alt and Shown(alt)) and "res" or kind, parts)
+	-- (each region's own as the game had it, taken the first time it is laid: a class bar that comes later too)
+	held = held or { regions = {}, masks = {}, fills = {} }
+	Frames.bars[frame] = held
+	for _, e in ipairs(rows) do
+		local r, row = e[1], e[3]
+		if not held.regions[r] then
+			local ok, points = pcall(Frames.Points, r)
+			if not ok then
+				return
+			end
+			held.regions[r] = { points = points, w = row[2] and r:GetWidth() or nil, h = row[3] and r:GetHeight() or nil }
+		end
+	end
+	for _, pair in ipairs(soft) do
+		local mask = pair[1]
+		if not held.masks[mask] then
+			local okP, points = pcall(Frames.Points, mask)
+			local okA, atlas = pcall(mask.GetAtlas, mask)
+			if not okP then
+				return
+			end
+			held.masks[mask] = { points = points, w = mask:GetWidth(), h = mask:GetHeight(),
+				atlas = okA and not Secret(atlas) and type(atlas) == "string" and atlas ~= "" and atlas or nil }
+			local okF, fill = pcall(pair[2].GetStatusBarTexture, pair[2])
+			if okF and type(fill) == "table" then
+				held.fills[#held.fills + 1] = fill
+			end
+		end
+	end
+	for _, e in ipairs(rows) do
+		local r, rel, row = e[1], e[2], e[3]
+		if row[2] then
+			r:SetWidth(row[2])
+		end
+		if row[3] then
+			r:SetHeight(row[3])
+		end
+		if row[4] then
+			r:ClearAllPoints()
+		end
+		r:SetPoint(row[5], rel, row[7], row[8], row[9])
+	end
+	for _, pair in ipairs(soft) do
+		local mask, bar, at = pair[1], pair[2], pair[3]
+		MelloUI.Widgets.SoftMask(mask, bar)
+		mask:ClearAllPoints()
+		mask:SetPoint("TOPLEFT", bar, "TOPLEFT", at[3], at[4])
+		mask:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", at[5], at[6])
+	end
+	for _, fill in ipairs(held.fills) do
+		MelloUI.Widgets.SoftEndsOwn(fill, true)
+	end
+end
+
+-- a kind's soft masks: { mask, its bar, its row } each (none missing; none for a kind without them)
+function Frames.SoftOf(kind, parts)
+	local list = {}
+	for _, row in ipairs(Frames.SOFT[kind] or {}) do
+		local mask, bar = parts[row[1]], parts[row[2]]
+		if type(mask) == "table" and type(bar) == "table" and type(bar.GetStatusBarTexture) == "function" then
+			list[#list + 1] = { mask, bar, row }
+		end
+	end
+	return list
+end
+
+Frames.OnPlayerArt = Shared("PlayerFrame_ToPlayerArt (MelloUI Frames' bars)", function()
+	if Frames.bars[PlayerFrame] then
+		Frames.Bars(PlayerFrame, true)
+	end
+end)
+
 -- a frame's pictures and the kind each wears
 function Frames.Regions(frame)
 	if frame == PlayerFrame then
 		local c, content = rawget(frame, "PlayerFrameContainer"), rawget(frame, "PlayerFrameContent")
 		local main = content and content.PlayerFrameContentMain
 		return { { c and c.FrameTexture, "player" }, { c and c.AlternatePowerFrameTexture, "res" },
-			{ main and main.LevelBackgroundCircle, "badge" } }
+			{ Frames.Circle(main, "player"), "badge" } }
 	end
 	local c, content = rawget(frame, "TargetFrameContainer"), rawget(frame, "TargetFrameContent")
 	if c then
 		local main = content and content.TargetFrameContentMain
-		return { { c.FrameTexture, "target" }, { main and main.LevelBackgroundCircle, "badge" },
+		return { { c.FrameTexture, "target" }, { Frames.Circle(main, "target"), "badge" },
 			{ c.BossPortraitFrameTexture, Frames.BossKind(c.BossPortraitFrameTexture), c.FrameTexture } }
 	end
 	-- (the pet's -- PetFrameTexture, the target of target's art -- and a target of target's)
@@ -2512,10 +2879,22 @@ function Frames.Make(region)
 	local ours = parent:CreateTexture(nil, layer, nil, sub)
 	ours:Hide()
 	Frames.cover[region] = ours
+	Frames.Watch(region)
+	return ours
+end
+
+-- (the user's retail screenshot, 2026-10-24: the class-resource frame in the game's own art) a game picture's Show /
+-- Hide followed from the first time it is given a kind -- not only once ours is made on it: one the game shows later
+-- (the class-resource art, shown when the class bar comes) is covered then
+Frames.watched = setmetatable({}, { __mode = "k" })
+function Frames.Watch(region)
+	if Frames.watched[region] then
+		return
+	end
+	Frames.watched[region] = true
 	for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
 		hooksecurefunc(region, method, Frames.OnShown)
 	end
-	return ours
 end
 
 -- its picture and place for a kind (laid again only when the kind changes, or the picture's flip: a party member
@@ -2563,12 +2942,23 @@ function Frames.Follow(region)
 		Frames.shown[region] = want
 		region:SetAlpha(want and 0 or 1)
 	end
+	if Frames.seat[region] then
+		Frames.Seat(region, want)
+	end
+	-- (retail: the frame's bars where our picture has their slots, Frames.Bars)
+	local owner = Frames.owner[region]
+	if owner and Frames.Retail() then
+		Frames.Bars(owner)
+	end
 end
 
 function Frames.Set(region, kind, from)
 	if type(region) == "table" and region.SetAlpha then
 		Frames.kind[region] = kind or false
 		Frames.anchor[region] = from
+		if kind then
+			Frames.Watch(region)
+		end
 		Frames.Follow(region)
 	end
 end
@@ -2580,6 +2970,9 @@ end
 
 function Frames.LayOne(frame)
 	for _, pair in ipairs(Frames.Regions(frame)) do
+		if pair[1] and Frames.ART_KINDS[pair[2]] then
+			Frames.owner[pair[1]] = frame
+		end
 		Frames.Set(pair[1], pair[2], pair[3])
 	end
 end
@@ -2647,6 +3040,10 @@ end
 Frames.OnClassification = Shared("CheckClassification on the target / focus frame (MelloUI Frames' wing)", function(frame)
 	if Frames.On() then
 		Frames.LayOne(frame)
+		-- (retail's CheckClassification lays the health bar again at each target: ours again, Frames.Bars)
+		if Frames.bars[frame] then
+			Frames.Bars(frame, true)
+		end
 	end
 end)
 
@@ -2657,6 +3054,13 @@ function Frames.Start()
 			if type(frame) == "table" and type(frame.CheckClassification) == "function" then
 				hooksecurefunc(frame, "CheckClassification", Frames.OnClassification)
 			end
+		end
+		-- (retail: the level in its badge past the role icon, the player's bars after the game lays them)
+		if type(rawget(_G, "PlayerFrame_UpdateRolesAssigned")) == "function" then
+			hooksecurefunc("PlayerFrame_UpdateRolesAssigned", Frames.OnRoles)
+		end
+		if type(rawget(_G, "PlayerFrame_ToPlayerArt")) == "function" then
+			hooksecurefunc("PlayerFrame_ToPlayerArt", Frames.OnPlayerArt)
 		end
 	end
 	Frames.Lay()
@@ -2736,6 +3140,10 @@ function M:OnSettingChanged(key, value, db)
 	end
 	if key == "frames" then
 		Frames.Lay()
+		-- (a client without the sharp party art lays its layout only under the picture: retail, Party.ArtOf)
+		if not Party.Sharp() then
+			Party.Due()
+		end
 		return
 	end
 	if key == "partyFlip" then

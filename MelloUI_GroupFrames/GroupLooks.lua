@@ -164,6 +164,17 @@ local function ShowEdges(p, on)
 	end
 end
 
+-- (retail, never shipped: the user, 2026-10-24, the icons "make it a problem to
+-- click cast heal") an aura button lets a click through to the frame under it
+-- -- click casting, the unit's own click -- its hover still its tooltip. Set as
+-- the button is made (the game holds a button to itself once its auras are
+-- secret); WoW Forever's buttons as before
+function Looks.ClickThrough(b)
+	if RD.Retail() and type(b) == "table" and type(b.SetMouseClickEnabled) == "function" then
+		pcall(b.SetMouseClickEnabled, b, false)
+	end
+end
+
 -- every part put away (a Designer mark that holds a spell group's items, not
 -- a look of its own)
 function Looks.HideAll(p)

@@ -107,6 +107,13 @@ _G.MelloUI = MelloUI
 MelloUI.name = ADDON_NAME
 MelloUI.version = C_AddOns and C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version") or "dev"
 MelloUI.modules = {}
+-- (1.2.4; the user, 2026-10-27: this build tested on the retail client until WoW Forever launches -- "fix this here")
+-- the client by its interface number: WoW Forever's 1.x (16001), retail's 10 and up (120105). The one test every
+-- retail guard reads (its art, its frames' templates, its secrets); on WoW Forever false and nothing changes
+do
+	local ok, _, _, _, interface = pcall(GetBuildInfo)
+	MelloUI.Retail = ok and type(interface) == "number" and interface >= 20000 or false
+end
 
 --------------------------------------------------------------------------------
 -- New tags (the user's rule, 2026-09-26: "every new Dropdown menu, every new

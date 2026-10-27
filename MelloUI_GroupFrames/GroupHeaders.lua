@@ -822,6 +822,85 @@ TinyRoles = function()
 	end)
 end
 
+--------------------------------------------------------------------------------
+-- (retail, never shipped: the user, 2026-10-24, on the Portraits look -- "this
+-- mouseover container that shows the buffs instead of just showing them under
+-- it, which makes it a problem to click cast heal", and Out Of Range Opacity
+-- doing nothing there) while the game's normal party members are the choice:
+-- their buffs in a row under them (GroupSolo.lua's Solo.BuffRow) and the
+-- game's mouseover box of them put away as it shows (PartyMemberBuffTooltip:
+-- over the frames, it took the clicks); out of range faded as our own frames
+-- are (Button.RangeAlpha), never over the game's own fade (a member phased or
+-- in another group: its NotPresentIcon). WoW Forever as before.
+--------------------------------------------------------------------------------
+local ranged = setmetatable({}, { __mode = "k" })   -- [member] = faded by us
+local notPresentHooked = setmetatable({}, { __mode = "k" })
+
+local function RetailParty()
+	return RD.Retail() and S.on and GameParty()
+end
+
+local function MemberRange(f)
+	if not RetailParty() then
+		return
+	end
+	local unit = Text(rawget(f, "unit"))
+	local np = rawget(f, "NotPresentIcon")
+	if not unit or (type(np) == "table" and np.IsShown and np:IsShown()) then
+		return
+	end
+	local alpha = DB().rangeAlpha or 0.45
+	if alpha >= 1 then
+		if ranged[f] then
+			ranged[f] = nil
+			f:SetAlpha(1)
+		end
+		return
+	end
+	ranged[f] = true
+	Button.RangeAlpha(f, unit, alpha)
+end
+
+-- every member back to the game's own (the choice changed, the module off)
+local function MembersBack()
+	for f in pairs(ranged) do
+		ranged[f] = nil
+		pcall(f.SetAlpha, f, 1)
+	end
+	if ns.Solo and ns.Solo.BuffRowsOn then
+		ns.Solo.BuffRowsOn(false)
+	end
+end
+
+local function RetailMember(f, unit)
+	if not RetailParty() then
+		return
+	end
+	if ns.Solo and ns.Solo.BuffRow and ns.Solo.BuffRow(f, unit) then
+		ns.Solo.BuffRowsOn(true)
+	end
+	if not notPresentHooked[f] and type(f.UpdateNotPresentIcon) == "function" then
+		notPresentHooked[f] = true
+		-- (the game sets the member's alpha there: ours again after it -- its events, never per frame)
+		hooksecurefunc(f, "UpdateNotPresentIcon", MemberRange)
+	end
+	MemberRange(f)
+end
+
+local tipHooked = false
+local function HookBuffTip()
+	local tip = rawget(_G, "PartyMemberBuffTooltip")
+	if tipHooked or not RD.Retail() or type(tip) ~= "table" or type(tip.HookScript) ~= "function" then
+		return
+	end
+	tipHooked = true
+	Perf.HookScript(tip, "OnShow", Shared("the game's party buff box put away", function(self)
+		if RetailParty() then
+			self:Hide()
+		end
+	end, "script"))
+end
+
 -- the game's normal party members as hosts of the indicators (while they are
 -- the choice for a party): the unit theirs, the health tint over their bar
 local function PartyHosts()
@@ -839,6 +918,7 @@ local function PartyHosts()
 		end
 		HookRole(f)
 		SharpRole(f)
+		RetailMember(f, Text(rawget(f, "unit")))
 	end)
 end
 
@@ -859,6 +939,10 @@ function H:Style()
 			Drive(true)
 			HideGame()
 			PartyHosts()
+		end
+		-- (retail: Group Frames the choice now -- the members' own alpha and no buff rows)
+		if not (S.on and GameParty()) then
+			MembersBack()
 		end
 		PlaceParty()
 		SoloUpdate()
@@ -987,6 +1071,15 @@ local OnEvent = Shared("the group frames' events", function(_, event, unit, ...)
 				Button[paint](b)
 			end
 		end
+		-- (retail: the game's normal party member of that unit faded as ours)
+		if paint == "Range" and RD.Retail() and GameParty() then
+			local u = Text(unit)
+			PartyMembers(function(f)
+				if u and Text(rawget(f, "unit")) == u then
+					MemberRange(f)
+				end
+			end)
+		end
 		return
 	end
 	if event == "PLAYER_REGEN_ENABLED" then
@@ -994,6 +1087,10 @@ local OnEvent = Shared("the group frames' events", function(_, event, unit, ...)
 			H:Layout()
 		end
 		H:Blizzard()
+		-- (retail: a member's buff row asked for in the fight, made now)
+		if RetailParty() then
+			PartyHosts()
+		end
 	elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" or event == "PLAYER_ENTERING_WORLD" then
 		Each(Button.Refresh)
 		if S.hidden then
@@ -1026,6 +1123,8 @@ local function Listen()
 		pcall(events.RegisterEvent, events, e)
 	end
 	Perf.SetScript(events, "OnEvent", OnEvent)
+	-- (retail: the game's mouseover box of the party's buffs put away while its members are the choice)
+	HookBuffTip()
 	-- the game's members made later (a raid formed): click-through too while hidden
 	if type(rawget(_G, "DefaultCompactUnitFrameSetup")) == "function" then
 		hooksecurefunc("DefaultCompactUnitFrameSetup", function(frame)
@@ -1104,6 +1203,10 @@ function H:Repaint()
 			Button.Refresh(b)
 		end
 	end
+	-- (retail: the game's normal party members' fade as Out Of Range Opacity is now)
+	if RetailParty() then
+		PartyMembers(MemberRange)
+	end
 	-- (0.20.1) the made-up members too: the Designer's samples, the fake raid
 	MelloUI:Fire("groupframes", "paint")
 end
@@ -1154,6 +1257,7 @@ function H:Stop()
 		if S.hidden then
 			ShowGame()
 		end
+		MembersBack()
 	end, "Group Frames: the headers off")
 end
 
@@ -1161,3 +1265,108 @@ end
 H.S = S
 H.headers, H.containers, H.byUnit = headers, containers, byUnit
 H.loose = loose
+H.ranged = ranged
+
+--------------------------------------------------------------------------------
+-- /run MelloUI.GroupFrames.DumpParty() (the user, 2026-10-24: on the Portraits
+-- look the name's and the level's size "dont work"): every normal party frame
+-- -- the game's members, your solo one, the Designer's replica -- its name and
+-- level as they are (font, size, place), the parts the Designer keeps for
+-- them, its alpha and range, its buff row. Into the copy window, opened;
+-- nothing changed. (No slash command of its own: a dump is a mode of a shared
+-- one -- Tools/lint/check_panels.py's dump-slash -- and the shared one is
+-- Oldschool's, which retail has not)
+--------------------------------------------------------------------------------
+function RD.DumpParty()
+	MelloUI:ClearLog()
+	local function S_(v)
+		if MelloUI.Safe.IsSecret(v) then
+			return "<secret>"
+		end
+		return tostring(v)
+	end
+	local function Font(fs)
+		if type(fs) ~= "table" or type(fs.GetFont) ~= "function" then
+			return "none"
+		end
+		local ok, file, size, flags = pcall(fs.GetFont, fs)
+		local okP, p, rel, rp, x, y = pcall(fs.GetPoint, fs, 1)
+		local relName = okP and type(rel) == "table" and rel.GetName and rel:GetName() or "?"
+		local face = ok and (MelloUI.Safe.IsSecret(file) and "<secret>" or tostring(file):match("[^\\/]+$")) or "?"
+		return string.format("%s size %s %s | %s>%s:%s(%s,%s) shown %s alpha %s", face,
+			ok and S_(size) or "?", ok and S_(flags) or "", okP and S_(p) or "?", S_(relName), okP and S_(rp) or "?",
+			okP and S_(x) or "?", okP and S_(y) or "?", S_(fs:IsShown()), S_(fs:GetAlpha()))
+	end
+	local function Part(key)
+		local P = ns.Parts
+		local t = P and P:Of(key)
+		if type(t) ~= "table" then
+			return "default"
+		end
+		return string.format("%s %s,%s size %s show %s", S_(t.point), S_(t.x), S_(t.y), S_(t.size), S_(t.show))
+	end
+	local db = DB()
+	MelloUI:Print("Group Frames on %s  retail %s  In A Party %s  solo %s  Out Of Range Opacity %s  buff box hooked %s",
+		S_(S.on), S_(RD.Retail()), S_(db.partyStyle), S_(db.solo), S_(db.rangeAlpha), S_(tipHooked))
+	MelloUI:Print("parts: name [%s]  level [%s]  buffs [%s]", Part("party.name"), Part("party.level"), Part("party.buffs"))
+	local uf = MelloUI:GetModule("UnitFrames")
+	local function One(label, f)
+		if type(f) ~= "table" then
+			MelloUI:Print("%s: none", label)
+			return
+		end
+		local unit = rawget(f, "unit")
+		local okR, inRange, checked = false, nil, nil
+		if type(unit) == "string" then
+			okR, inRange, checked = pcall(UnitInRange, unit)
+		end
+		MelloUI:Print("%s: unit %s shown %s alpha %s range %s/%s ours %s", label, S_(unit), S_(f:IsShown()), S_(f:GetAlpha()),
+			okR and S_(inRange) or "-", okR and S_(checked) or "-", S_(ranged[f] or false))
+		MelloUI:Print("   name: %s", Font(rawget(f, "Name")))
+		local level = uf and uf.PartyLevelText and uf:PartyLevelText(f)
+		MelloUI:Print("   level: %s", level and Font(level) or "not made (Unit Frames' party level)")
+		local row = ns.Solo and ns.Solo.buffRows and ns.Solo.buffRows[f]
+		local own = ns.Solo and ns.Solo.ownBuffs and ns.Solo.ownBuffs[f]
+		MelloUI:Print("   buff row: %s", row and ("shown " .. S_(row:IsShown())) or (own and "in its debuff row") or "none")
+	end
+	local n = 0
+	PartyMembers(function(f)
+		n = n + 1
+		One("member " .. n, f)
+	end)
+	if n == 0 then
+		MelloUI:Print("the game's party members: none in its pool")
+	end
+	One("solo", ns.Solo and ns.Solo.frame)
+	local replica = RD.Page and RD.Page.samples and RD.Page.samples.portrait
+	One("Designer replica", replica)
+	-- (2026-10-24, the user: the preview "a accurate representation of the actual unitframes") the replica against
+	-- each real frame, part by part, in the frame's own units: "same" within half a unit. A member shows the game's
+	-- own place for a part you never moved (its default in the replica): a difference there is the default's
+	local function Against(label, f)
+		if type(f) ~= "table" or not ns.Parts then
+			return
+		end
+		MelloUI:Print("replica against %s:", label)
+		for _, row in ipairs(ns.Parts.Compare(replica, f)) do
+			local a, b = row.a, row.b
+			local function At(w)
+				return w and string.format("%s %.1f,%.1f %.0fx%.0f%s", w.point, w.x, w.y, w.w, w.h, w.shown and "" or " hidden")
+					or "none"
+			end
+			local verdict = not row.diff and "-" or (row.diff <= 0.5 and "same" or string.format("OFF by %.1f", row.diff))
+			MelloUI:Print("   %s: %s | replica %s | %s %s", row.label, verdict, At(a), label, At(b))
+		end
+	end
+	if replica then
+		local m = 0
+		PartyMembers(function(f)
+			m = m + 1
+			Against("member " .. m, f)
+		end)
+		Against("solo", ns.Solo and ns.Solo.frame)
+	else
+		MelloUI:Print("replica against the frames: open the Designer's Party > Portraits first")
+	end
+	MelloUI:ShowLog("Group Frames: the party frames")
+end

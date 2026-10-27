@@ -1540,8 +1540,23 @@ do
 		return e
 	end
 
+	-- (1.2.4, the retail test: "calling 'SetShown' on bad self (Attempt to access forbidden object from code tainted
+	-- by an AddOn)") a shadow, or the piece it follows, inside a frame the game made forbidden since (retail's
+	-- world-widget tooltip): never touched again -- every method but IsForbidden refuses it
+	local function Forbidden(obj)
+		local f = type(obj) == "table" and obj.IsForbidden
+		if type(f) ~= "function" then
+			return false
+		end
+		local ok, v = pcall(f, obj)
+		return not ok or v == true
+	end
+
 	-- (a partner's strip ends with it)
 	local function Paint(sh)
+		if Forbidden(sh) then
+			return
+		end
 		local palette = MelloUI.Palette
 		local c = palette[sh.kitColour] or palette.innerPanel
 		if sh.kitTinted then
@@ -1577,6 +1592,10 @@ do
 	end
 
 	local function Sync(sh)
+		if Forbidden(sh) then
+			partners[sh] = nil
+			return
+		end
 		local on = (sh.kitWanted and sh.kitShape and sh.kitPieceShown and sh.kitRepOn ~= false and sh.kitFollowShown ~= false) and true or false
 		sh:SetShown(on)
 		local l, r = sh.kitEndL, sh.kitEndR
@@ -1925,7 +1944,9 @@ do
 	-- whether an entry lies under that frame costs as many reads.
 	local function Refit()
 		for obj in pairs(hosted) do
-			if obj.kitParts then
+			if Forbidden(obj) or Forbidden(obj.kitShadow) then
+				hosted[obj] = nil   -- (a forbidden frame's: dropped, Forbidden above)
+			elseif obj.kitParts then
 				local r = Ratio(obj.rect, obj.host)
 				if r ~= obj.ratio then
 					obj.ratio = r

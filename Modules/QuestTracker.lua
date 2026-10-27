@@ -3061,6 +3061,16 @@ local function ItemFirst(questID)
 	return ok and type(hints) == "table" and hints or nil
 end
 
+-- a quest item button's cooldown, from its quest's log entry
+local function ItemCooldown(item)
+	if GetQuestLogSpecialItemCooldown and item.logIndex then
+		local ok, start, duration, enable = pcall(GetQuestLogSpecialItemCooldown, item.logIndex)
+		if ok and Plain(start) and Plain(duration) then
+			pcall(item.cooldown.SetCooldown, item.cooldown, start, duration, enable)
+		end
+	end
+end
+
 -- Fill a block from the quest log; returns its height.
 local function FillBlock(block, questID, width, followedID)
 	local logIndex = C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetLogIndexForQuestID(questID)
@@ -3102,15 +3112,11 @@ local function FillBlock(block, questID, width, followedID)
 		if tray then
 			tray:Show()
 		end
-		if GetQuestLogSpecialItemCooldown then
-			local ok, start, duration, enable = pcall(GetQuestLogSpecialItemCooldown, logIndex)
-			if ok and Plain(start) and Plain(duration) then
-				pcall(item.cooldown.SetCooldown, item.cooldown, start, duration, enable)
-			end
-		end
+		item.logIndex = logIndex
+		ItemCooldown(item)
 		textWidth = width - ITEM_SIZE - 8   -- (the text and the distance 4 clear of the tray)
 	else
-		item.itemLink = nil
+		item.itemLink, item.logIndex = nil, nil
 		item:Hide()
 		if item.tray then
 			item.tray:Hide()
@@ -4074,6 +4080,18 @@ local EVENTS = {
 
 Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 	if event == "UNIT_QUEST_LOG_CHANGED" and unit ~= "player" then
+		return
+	end
+	-- (2026-10-24, the user's /melloperf on retail: the tracker rebuilt 7.4 times a second, 2.1 ms and 80 KB each --
+	-- retail sends BAG_UPDATE_COOLDOWN at nearly every cooldown, every cast's own: only the shown quest items'
+	-- cooldowns are drawn again, the list stays)
+	if event == "BAG_UPDATE_COOLDOWN" then
+		for _, block in pairs(blocks) do
+			local item = block.item
+			if item and item.logIndex and item:IsShown() then
+				ItemCooldown(item)
+			end
+		end
 		return
 	end
 	MarkDirty()

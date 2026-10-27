@@ -655,8 +655,9 @@ local function CoverBar(bar)
 		c.file = file
 		c.tex:SetTexture(file)
 	end
-	local info = bar.overrideInfo or (PowerBarColor and bar.powerToken and PowerBarColor[bar.powerToken])
-	if c.token ~= info then
+	-- (a power bar's colour its power's; a health bar's the module's, written by SetHealthColour)
+	local info = not healthBars[bar] and (bar.overrideInfo or (PowerBarColor and bar.powerToken and PowerBarColor[bar.powerToken]))
+	if not healthBars[bar] and c.token ~= info then
 		c.token = info
 		if info and IsPlainNumber(info.r) and IsPlainNumber(info.g) and IsPlainNumber(info.b) then
 			c.tex:SetVertexColor(info.r, info.g, info.b)
@@ -834,6 +835,12 @@ local function CollectUnitFrameBars(list)
 				-- (its art re-set on every frame: covered, never written)
 				if frame.totFrame.ManaBar then
 					covered[frame.totFrame.ManaBar] = true
+				end
+				-- (2026-10-24, the user's /melloperf on retail: "WRITE-BACKS ONTO GAME REGIONS ... 53.5 /s BarTextures:
+				-- a health bar's colour" -- the game writes its health bar's colour again on that same every-frame
+				-- update, and ours went back on after each: hard rule 1. Covered too: its cover wears the colour)
+				if frame.totFrame.HealthBar then
+					covered[frame.totFrame.HealthBar] = true
 				end
 			end
 		end
@@ -1031,6 +1038,23 @@ local recolouring = false
 local lastColour = setmetatable({}, { __mode = "k" })
 
 local function SetHealthColour(bar, r, g, b)
+	-- (a covered bar -- the target of target's: the game writes its colour every frame -- wears the colour on its
+	-- cover, written only on a change; the bar keeps the game's, never written)
+	if covered[bar] then
+		local c = coverOf[bar]
+		if c then
+			if IsPlainNumber(r) and IsPlainNumber(g) and IsPlainNumber(b) then
+				if c.r == r and c.g == g and c.b == b then
+					return
+				end
+				c.r, c.g, c.b = r, g, b
+			else
+				c.r, c.g, c.b = nil, nil, nil   -- (a secret colour: written as it is)
+			end
+			c.tex:SetVertexColor(r, g, b)
+		end
+		return
+	end
 	if IsPlainNumber(r) and IsPlainNumber(g) and IsPlainNumber(b) then
 		local last = lastColour[bar]
 		if last and last[1] == r and last[2] == g and last[3] == b then

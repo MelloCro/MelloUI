@@ -138,29 +138,103 @@ local function DressAura(b)
 	if style ~= nil then
 		Call(b, "AddDispelTypeTexture", border, { style = style, showWhenHarmful = true, showWithoutDispelType = true })
 	end
+	-- (retail: a click goes through to the frame -- click casting -- the hover still its tooltip)
+	Looks.ClickThrough(b)
 end
 
-local function MakeAuras(f)
-	local ok, c = pcall(CreateFrame, "AuraContainer", nil, f, "CustomAuraContainerTemplate")
+-- an aura row dressed as the members' (the game's aura container: up to four,
+-- 2 apart), `filter`'s auras of `unit`, sorted by `sort` (nil: the game's own
+-- order), placed by the SetPoint arguments `...` (before its group: the game
+-- holds a container with aura groups to its own layout)
+function Solo.AuraRow(parent, filter, unit, sort, ...)
+	local ok, c = pcall(CreateFrame, "AuraContainer", nil, parent, "CustomAuraContainerTemplate")
 	if not ok or type(c) ~= "table" or type(c.AddAuraGroup) ~= "function" then
 		return nil
 	end
-	c:SetPoint("TOPLEFT", f, "TOPLEFT", AURA.x, AURA.y)
+	c:SetPoint(...)
 	c:SetSize(AURA.size, AURA.size)
+	local opts = { maxFrameCount = AURA.max, initializeFrame = DressAura, sortMethod = sort,
+		layout = { elementSpacing = AURA.gap, elementWidth = AURA.size, elementHeight = AURA.size } }
+	if not Call(c, "AddAuraGroup", "auras", filter, opts) then
+		return nil
+	end
+	Call(c, "SetUnit", unit)
+	return c
+end
+
+local function MakeAuras(f)
 	-- (the members show their buffs instead where the game says so)
 	local buffs = rawget(_G, "PARTY_FRAME_SHOW_BUFFS") and true or false
 	local sort = rawget(_G, "AuraContainerSortMethod")
-	local opts = { maxFrameCount = AURA.max, initializeFrame = DressAura,
-		layout = { elementSpacing = AURA.gap, elementWidth = AURA.size, elementHeight = AURA.size } }
-	if not buffs and type(sort) == "table" then
-		opts.sortMethod = sort.UnitFrameDebuff
+	return Solo.AuraRow(f, buffs and "HELPFUL" or "HARMFUL", UNIT,
+		(not buffs and type(sort) == "table") and sort.UnitFrameDebuff or nil, "TOPLEFT", f, "TOPLEFT", AURA.x, AURA.y)
+end
+
+-- (retail, never shipped: the user, 2026-10-24, "this mouseover container that shows the buffs instead of just
+-- showing them under it, which makes it a problem to click cast heal") the game's party members show their buffs
+-- only in a box on mouseover (PartyMemberBuffTooltip, which GroupHeaders.lua puts away there): a row of their buffs
+-- under the frame instead, right after the game's debuff row -- in it, so the Designer's Buffs & Debuffs part moves,
+-- sizes and hides both. Made out of a fight (the caller's), its unit followed (`unit`: the member's now)
+local buffRows = setmetatable({}, { __mode = "k" })   -- [member] = its row
+-- (2026-10-24, the user: the preview "a accurate representation of the actual unitframes"; the solo frame's buffs
+-- sat a line under its debuffs, the members' after theirs) our solo frame's debuff row is a game aura container --
+-- nothing may be anchored to it -- so its buffs are a second group in it, flowing after the debuffs on their line
+-- (the container lays its groups in turn, groupSpacing apart): as the members show them, and moved, sized and hidden
+-- with the Buffs & Debuffs part by being in it
+local ownBuffs = setmetatable({}, { __mode = "k" })   -- [our solo frame] = its debuff container, the buffs in it
+local function OwnBuffs(f, unit)
+	local c = rawget(f, "AuraFrameContainer")
+	if ownBuffs[f] or InCombatLockdown() or not (type(c) == "table" and type(c.AddAuraGroup) == "function") then
+		return ownBuffs[f]
 	end
-	if not Call(c, "AddAuraGroup", "auras", buffs and "HELPFUL" or "HARMFUL", opts) then
+	local opts = { maxFrameCount = AURA.max, initializeFrame = DressAura, layout = { elementSpacing = AURA.gap,
+		elementWidth = AURA.size, elementHeight = AURA.size, groupSpacing = AURA.gap } }
+	if not Call(c, "AddAuraGroup", "buffs", "HELPFUL", opts) then
 		return nil
 	end
-	Call(c, "SetUnit", UNIT)
+	Call(c, "SetUnit", unit or UNIT)
+	ownBuffs[f] = c
 	return c
 end
+
+function Solo.BuffRow(member, unit)
+	if not RD.Retail() or type(member) ~= "table" then
+		return nil
+	end
+	if member == Solo.frame then
+		return OwnBuffs(member, unit)
+	end
+	local row = buffRows[member]
+	if not row then
+		if InCombatLockdown() then
+			return nil
+		end
+		local debuffs = rawget(member, "AuraFrameContainer")
+		if not (type(debuffs) == "table" and debuffs.CreateTexture) then
+			return nil
+		end
+		row = Solo.AuraRow(debuffs, "HELPFUL", unit or UNIT, nil, "TOPLEFT", debuffs, "TOPRIGHT", AURA.gap, 0)
+		if not row then
+			return nil
+		end
+		buffRows[member] = row
+		row.unit = unit or UNIT
+	elseif unit and row.unit ~= unit and not InCombatLockdown() then
+		if Call(row, "SetUnit", unit) then
+			row.unit = unit
+		end
+	end
+	return row
+end
+
+-- every member's buff row on or off (Party Frames the choice, the module on)
+function Solo.BuffRowsOn(on)
+	for _, row in pairs(buffRows) do
+		Call(row, "SetAuraGroupEnabled", "auras", on and true or false)
+		row:SetShown(on and true or false)
+	end
+end
+Solo.buffRows, Solo.ownBuffs = buffRows, ownBuffs   -- (the tests', the party dump's)
 
 --------------------------------------------------------------------------------
 -- Painting
@@ -454,6 +528,8 @@ local function Make()
 	if MelloUI.FrameHover then
 		MelloUI.FrameHover.Attach(f)   -- (1.2.4: the mouseover highlight)
 	end
+	-- (retail: your buffs after your debuffs, as the members' -- Solo.BuffRow)
+	Solo.BuffRow(f, UNIT)
 	Dress(f)
 	if ns.Indicators then
 		ns.Indicators:Host(f, UNIT, Looks.Fill(f.HealthBarContainer.HealthBar), "party")
@@ -479,6 +555,9 @@ local function Drive(f, on)
 	end
 	if f.AuraFrameContainer then
 		Call(f.AuraFrameContainer, "SetAuraGroupEnabled", "auras", on)
+	end
+	if ownBuffs[f] then
+		Call(f.AuraFrameContainer, "SetAuraGroupEnabled", "buffs", on)
 	end
 end
 

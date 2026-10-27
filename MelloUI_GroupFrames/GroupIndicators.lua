@@ -182,6 +182,7 @@ local function Slot(h, ind)
 		local ok, p = pcall(Looks.Make, b)
 		if ok then
 			made.p = p
+			Looks.ClickThrough(b)
 		elseif #I.errors < 20 then
 			I.errors[#I.errors + 1] = "dress: " .. tostring(p)
 		end
@@ -342,11 +343,13 @@ local function LaySlots(h, g, ind, filter)
 			local b = Try("group slot " .. key, g.c.AddAuraSlot, g.c, key, filter, { initializeFrame = function(btn)
 				local ok, p = pcall(Looks.Make, btn)
 				made.p = ok and p or nil
+				Looks.ClickThrough(btn)
 			end, candidateFilters = se.cand })
 			if type(b) == "table" then
 				if not made.p then
 					local ok, p = pcall(Looks.Make, b)
 					made.p = ok and p or nil
+					Looks.ClickThrough(b)
 				end
 				if made.p then
 					s = { m = { b = b, p = made.p }, filter = filter, csig = se.sig, on = true }
@@ -417,6 +420,7 @@ local function LayGroup(h, ind, fighting)
 			local ok = Try("group " .. tostring(ind.id), c.AddAuraGroup, c, GROUP, filter, {
 				initializeFrame = function(b)
 					local okMake, p = pcall(Looks.Make, b)
+					Looks.ClickThrough(b)
 					if okMake then
 						local m = { b = b, p = p }
 						g.made[#g.made + 1] = m
