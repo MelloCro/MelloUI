@@ -41,7 +41,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 from paths import CACHE  # noqa: E402
-GAME = "F:/World of Warcraft/_classic_beta_"
+GAME = "F:/World of Warcraft/_forever_"
 WDB = GAME + "/Cache/WDB/enUS/questcache.wdb"
 MAGIC = b"TSQW"
 STRINGS = ("title", "summary", "description", "area", "giverText", "giverName", "turnInText", "turnInName",

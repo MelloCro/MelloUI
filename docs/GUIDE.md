@@ -57,7 +57,7 @@ It comes in two parts, and you need both. Remade for 0.18.3: every voice at a be
 
 1. Download [MelloUI_VoicePack_Part1.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part1.zip) and [MelloUI_VoicePack_Part2.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part2.zip).
 2. Had an earlier voice pack? Delete its `MelloUI_VoicePack` folder first: the new recordings replace all of it, and old files left behind only take up space.
-3. Unzip both into `World of Warcraft\_classic_beta_\Interface\AddOns`. They fill the same `MelloUI_VoicePack` folder next to MelloUI. The `.toc` file must be directly inside `MelloUI_VoicePack`, not in another folder.
+3. Unzip both into `World of Warcraft\_forever_\Interface\AddOns`. They fill the same `MelloUI_VoicePack` folder next to MelloUI. The `.toc` file must be directly inside `MelloUI_VoicePack`, not in another folder.
 4. Had the old pack, `MelloUI_VoiceOverData`? Delete that folder. `MelloUI_VoicePack` replaces it, and MelloUI never uses the old one while the new one is installed.
 5. Start the game, tick **MelloUI Voice Pack** in the addon list at the character screen. That's it. `/vo packs` in game shows the pack is loaded.
 
@@ -164,11 +164,11 @@ Earlier versions could keep a copy in your account macros (**Macro Backup**, fro
 
 ## Install
 
-Download the [latest release](https://github.com/MelloCro/MelloUI/releases/latest) zip (not GitHub's "Source code" zip) and copy every folder in it, `MelloUI` and `MelloUI_Companion`, to:
+Download the [latest release](https://github.com/MelloCro/MelloUI/releases/latest) zip (not GitHub's "Source code" zip) and copy every folder in it, `MelloUI` and each `MelloUI_` folder beside it, to:
 
 ```
-<World of Warcraft>\_classic_beta_\Interface\AddOns\MelloUI
-<World of Warcraft>\_classic_beta_\Interface\AddOns\MelloUI_Companion
+<World of Warcraft>\_forever_\Interface\AddOns\MelloUI
+<World of Warcraft>\_forever_\Interface\AddOns\MelloUI_...   (each MelloUI_ folder)
 ```
 
 `MelloUI_Companion` holds the Route module's road network and quest objective places and only loads when a route needs them; keep it next to MelloUI and enabled. Some features are addons of their own, each a checkbox in the game's AddOns list (untick one to not load it at all): `MelloUI_Chat`, `MelloUI_CombatText`, `MelloUI_QuestList`, `MelloUI_Route` and `MelloUI_VoiceOver`. From a clone of this repository, every `MelloUI_*` folder sits inside the `MelloUI` folder: copy them out into `AddOns` beside it. After installing or updating, restart the game fully once (a `/reload` does not find new folders or files).
@@ -2108,7 +2108,7 @@ Advanced, and the checks name it).
 
 ## Notes on the Forever client
 
-- Interface version is `16001` (1.60.1). The addon directory is `_classic_beta_`.
+- Interface version is `16001` (1.60.1). The addon directory is `_forever_`.
 - `WOW_PROJECT_ID` reports mainline; there is no runtime flag for Forever. Use the TOC
   interface number or feature probes instead.
 - The retail *secret values* system is active. Never compare or format values coming from

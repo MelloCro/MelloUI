@@ -29,8 +29,8 @@ Vanilla lines the pack never had (whether or not you met them) are listed by
 Tools/export_vanilla_lines.py instead.
 
 Usage:
-  python Tools/export_voice_lines.py [--wtf "F:/World of Warcraft/_classic_beta_/WTF"]
-        [--pack "F:/World of Warcraft/_classic_beta_/Interface/AddOns/MelloUI_VoiceOverData"]
+  python Tools/export_voice_lines.py [--wtf "F:/World of Warcraft/_forever_/WTF"]
+        [--pack "F:/World of Warcraft/_forever_/Interface/AddOns/MelloUI_VoiceOverData"]
         [--store MelloUI-BuildData/cache/voice_lines.json] [--out MelloUI-BuildData/output]
 
 Needs the lupa package (pip install lupa) to read the Lua files.
@@ -56,8 +56,8 @@ try:
 except ImportError:
     sys.exit("pip install lupa")
 
-DEFAULT_WTF = "F:/World of Warcraft/_classic_beta_/WTF"
-ADDONS = "F:/World of Warcraft/_classic_beta_/Interface/AddOns"
+DEFAULT_WTF = "F:/World of Warcraft/_forever_/WTF"
+ADDONS = "F:/World of Warcraft/_forever_/Interface/AddOns"
 DEFAULT_PACK = next((os.path.join(ADDONS, name) for name in ("MelloUI_VoiceOverData", "AI_VoiceOverData_Vanilla")
                      if os.path.isdir(os.path.join(ADDONS, name))), os.path.join(ADDONS, "MelloUI_VoiceOverData"))
 

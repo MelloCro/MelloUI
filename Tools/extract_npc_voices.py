@@ -16,7 +16,7 @@ creaturecache.wdb (the NPCs you have actually seen in game).
 
 Usage:
   python Tools/extract_npc_voices.py [--cache DIR] [--out MelloUI_VoiceOver/NPCVoiceData.lua]
-                                     [--wdb "F:/World of Warcraft/_classic_beta_/Cache/WDB/enUS/creaturecache.wdb"]
+                                     [--wdb "F:/World of Warcraft/_forever_/Cache/WDB/enUS/creaturecache.wdb"]
                                      [--build 1.15.9.69722]
 
 Only the Python standard library is needed.
@@ -401,7 +401,7 @@ def main():
     ap.add_argument("--build", default="1.15.9.69722", help="Classic Era build for the wago.tools DB2 exports")
     ap.add_argument("--retail-build", default="12.1.0.69814",
                     help="retail build used as a fallback for display IDs missing from Classic Era (\"none\" to skip)")
-    ap.add_argument("--wdb", default="F:/World of Warcraft/_classic_beta_/Cache/WDB/enUS/creaturecache.wdb",
+    ap.add_argument("--wdb", default="F:/World of Warcraft/_forever_/Cache/WDB/enUS/creaturecache.wdb",
                     help="creaturecache.wdb from the Forever client; NPCs seen in game that are not in the vanilla DB are added from it")
     ap.add_argument("--report", default=None, help="write a CSV with every NPC, its model path and classification")
     args = ap.parse_args()

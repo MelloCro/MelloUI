@@ -218,7 +218,7 @@ def listview(page, lv_id):
 # The server's objective types (the client's quest cache) Route can place: 0 a creature to kill, 1 an item to
 # collect, 2 an object to use, 3 a creature to talk to; the rest (a skill, an area, money, reputation ...) not
 SERVER_KINDS = {0: "npc", 1: "item", 2: "object", 3: "npc"}
-CREATURE_WDB = "F:/World of Warcraft/_classic_beta_/Cache/WDB/enUS/creaturecache.wdb"
+CREATURE_WDB = "F:/World of Warcraft/_forever_/Cache/WDB/enUS/creaturecache.wdb"
 
 GRID = 40          # yards: one place kept per cell
 CAP = 30           # places kept per objective at most

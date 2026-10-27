@@ -24,7 +24,7 @@ Options:
   --manifest  MelloUI-BuildData/output/forever_voice_lines.json
   --sources   Tools/pack_sources          (assigned MP3s, kept out of the game folder)
   --downloads C:/Users/<you>/Downloads/VoiceOver_GossipQuest
-  --addons    F:/World of Warcraft/_classic_beta_/Interface/AddOns
+  --addons    F:/World of Warcraft/_forever_/Interface/AddOns
   --name      MelloUI_VoiceOverData
   --priority  200                          (higher than the vanilla pack's 100)
 
@@ -343,7 +343,7 @@ def main():
     ap.add_argument("--manifest", default=os.path.join(OUTPUT, "forever_voice_lines.json"))
     ap.add_argument("--sources", default=os.path.join(HERE, "pack_sources"))
     ap.add_argument("--downloads", default=os.path.join(os.path.expanduser("~"), "Downloads", "VoiceOver_GossipQuest"))
-    ap.add_argument("--addons", default="F:/World of Warcraft/_classic_beta_/Interface/AddOns")
+    ap.add_argument("--addons", default="F:/World of Warcraft/_forever_/Interface/AddOns")
     ap.add_argument("--name", default="MelloUI_VoiceOverData")
     ap.add_argument("--priority", type=int, default=150)
     ap.add_argument("--store", default=os.path.join(CACHE, "voice_lines.json"))

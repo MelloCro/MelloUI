@@ -53,7 +53,7 @@ try:
 except ImportError:
     sys.exit("pip install lupa")
 
-DEFAULT_PACK = "F:/World of Warcraft/_classic_beta_/Interface/AddOns/MelloUI_VoiceOverData"
+DEFAULT_PACK = "F:/World of Warcraft/_forever_/Interface/AddOns/MelloUI_VoiceOverData"
 KIND_COLUMN = {"accept": "Details", "progress": "RequestItemsText", "complete": "OfferRewardText"}
 TABLES = {
     "quest_template", "creature_template",

@@ -28,7 +28,7 @@ import lupa
 from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ADDONS = "F:/World of Warcraft/_classic_beta_/Interface/AddOns"
+ADDONS = "F:/World of Warcraft/_forever_/Interface/AddOns"
 OUT = os.path.join(OUTPUT, "MelloUI_VoiceOverData")
 NAME = "MelloUI_VoiceOverData"
 TABLES = {

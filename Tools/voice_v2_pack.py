@@ -60,7 +60,7 @@ from paths import OUTPUT  # noqa: E402
 
 ADDON_NAME = "MelloUI_VoicePack"
 OLD_PACK = "MelloUI_VoiceOverData"
-DEFAULT_ADDONS = r"F:\World of Warcraft\_classic_beta_\Interface\AddOns"
+DEFAULT_ADDONS = r"F:\World of Warcraft\_forever_\Interface\AddOns"
 MANIFEST_FORMAT = "melloui-voice-lines/2"
 MAX_CONSTANTS = 100_000          # per function block; Lua 5.1 allows 262,143
 MIN_SECONDS = 0.3

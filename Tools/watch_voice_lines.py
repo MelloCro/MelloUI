@@ -27,7 +27,7 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_WTF = "F:/World of Warcraft/_classic_beta_/WTF"
+DEFAULT_WTF = "F:/World of Warcraft/_forever_/WTF"
 
 
 def saved_files(wtf):

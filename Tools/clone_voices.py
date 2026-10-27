@@ -35,7 +35,7 @@ sys.path.insert(0, HERE)
 from generate_voice_lines import api_key, fetch_voices, API, KEY_FILE  # noqa: E402
 from build_voice_pack import mp3_duration  # noqa: E402
 
-DEFAULT_PACK = "F:/World of Warcraft/_classic_beta_/Interface/AddOns/AI_VoiceOverData_Vanilla"
+DEFAULT_PACK = "F:/World of Warcraft/_forever_/Interface/AddOns/AI_VoiceOverData_Vanilla"
 NPC_DATA = os.path.join(HERE, "..", "MelloUI_VoiceOver", "NPCVoiceData.lua")
 
 # Race / gender voices worth having; others have no talking NPCs in the pack.

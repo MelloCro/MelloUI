@@ -22,7 +22,7 @@
 
 ## Install
 
-Download the [release zip](https://github.com/MelloCro/MelloUI/releases/latest) (not GitHub's "Source code" zip) and copy every folder in it, `MelloUI` and each `MelloUI_` folder beside it, into `World of Warcraft\_classic_beta_\Interface\AddOns\`. Then restart the game fully once (`/reload` doesn't find new folders). Each `MelloUI_` folder is one part of MelloUI (the map, Route, the Quest List, the chat ...) and can be switched off in the game's addon list.
+Download the [release zip](https://github.com/MelloCro/MelloUI/releases/latest) (not GitHub's "Source code" zip) and copy every folder in it, `MelloUI` and each `MelloUI_` folder beside it, into `World of Warcraft\_forever_\Interface\AddOns\`. Then restart the game fully once (`/reload` doesn't find new folders). Each `MelloUI_` folder is one part of MelloUI (the map, Route, the Quest List, the chat ...) and can be switched off in the game's addon list.
 
 **Voice pack (optional, 2.5 GB in two parts, remade for 0.18.3):** download [part 1](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part1.zip) and [part 2](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part2.zip). Had an earlier voice pack? Delete its `MelloUI_VoicePack` folder first. Then unzip both parts into the same `AddOns` folder: they make one `MelloUI_VoicePack` folder next to MelloUI. Tick it in the addon list. It replaces the old `MelloUI_VoiceOverData` pack, so delete that one too. No pack? The game's text-to-speech reads instead.
 
