@@ -240,17 +240,17 @@ TEX_SHOWN = [
     (r"^Textures/ActiveLook", 61 / 128, False, "the active look (Kit:SetActive): a 128 px cell round a 45-unit button, 61 units across"),
     (r"^Textures/KitShadows", 4 * 26 / 64, False, "kit shadow partners (Kit:Shadow): a texel is 4 painted px, brackets shown at 26 per 64"),
     (r"^Textures/Route/", None, True, "route beam: any world map zoom"),
-    (r"^Installer/", 626 / 1024, False, "the installer's step pictures (Core/InstallerWindow.lua, 1.2.4): 1024 px drawn the "
-                                        "text's 626 units (the Skin step's 910 px screen the same width)"),
+    (r"^Installer/", None, False, "the installer's pictures (Core/InstallerWindow.lua, 1.2.4: the user's own, "
+                                  "Tools/make_installer_pictures.py): drawn at most at their own size on screen "
+                                  "(its DrawnSize), so shipped at their size"),
     (r"^Textures/Stone", None, False, "not referenced by any Lua file"),
 ]
 
 # The part of a whole file a module draws (its texcoords), as fractions of
 # the file (so a halved file keeps them); the rest is never on screen.
 TEX_DRAWN = [
-    # (the last match wins) the installer's step pictures: a 2.5:1 band, the Skin step's the whole screen (16:9)
-    (r"^Installer/", (1, 410 / 512), "InstallerWindow BAND_UV"),
-    (r"^Installer/look_", (910 / 1024, 1), "InstallerWindow SCREEN_UV"),
+    # (1.2.4: the installer's pictures are each their own size at their file's top left, on opaque black that DXT
+    # keeps exactly: measured as whole files)
 ]
 # whole files drawn with a repeating wrap (SetTexture's wrap arguments)
 # (0.21.3: none since the Route beam's streaks were retired)
@@ -310,9 +310,10 @@ STAY_TGA = [
 # every file it can name to TGA; lua_refs lists every other built path it
 # meets (they are checked by hand), and stops the ship at a '.tga' it can
 # not account for.
-# (1.2.4) the installer's step pictures: PictureOf names a step's picture and the skin picked (Tools/make_installer_pictures.py)
-INSTALLER_PICTURES = tuple("%s_%s" % (name, skin) for name in ("look", "party_group", "party_portraits", "quests", "column",
-                                                              "combat", "chat", "chatgame", "bags", "bagsgame")
+# (1.2.4) the installer's pictures, the user's own: PictureOf names a step's picture and the skin picked
+# (Tools/make_installer_pictures.py)
+INSTALLER_PICTURES = tuple("%s_%s" % (name, skin) for name in ("look", "party_portraits", "nameplates", "chat", "column",
+                                                              "bags")
                            for skin in ("default", "modern", "oldschool"))
 # (1.2.4, the configurator shell's motion: Core/ConfigMotion.lua's Tex(parent, file) and the compass cards' C.file)
 CONFIGURATOR_MOTION = ("Candle", "Card1_Modern", "Card2_Modern", "Cracks_Oldschool", "Flame", "Glow", "RingGlint",

@@ -45,13 +45,14 @@
 -- click on a secure button laid over Keep (MelloUIInstallerReload, made at
 -- Keep's first hover; never in a fight). Revert reloads nothing.
 --
--- The setup's pages (SetupSteps, below) are all the same: a lead, one big
--- picture -- the choice's, in the skin picked (the Layout step's: the fit's
--- own drawing of this screen) -- and the choices under it, cards for one of
--- several and switches for several, each writing the picks (the engine's
--- I.SETUP says what each one sets; I:SetupDraft makes the draft). Pictures,
--- never a live preview: shipped in Media\Installer, loaded when their page
--- shows, let go when the window closes.
+-- The setup's pages (SetupSteps, below) are all the same: a lead, the
+-- choices -- cards for one of several and switches for several, each
+-- writing the picks (the engine's I.SETUP says what each one sets;
+-- I:SetupDraft makes the draft) -- and the picture of what is picked, in the
+-- skin picked, where there is one (1.2.4: the user's own pictures; the Skin
+-- step's over its cards, the Layout step's the fit's own drawing of this
+-- screen). Pictures, never a live preview: shipped in Media\Installer,
+-- loaded when their page shows, let go when the window closes.
 --
 --   MelloUI:OpenInstaller(from)    the entry (the configurator's Install...,
 --                                  Install again and Fit to this screen,
@@ -103,11 +104,9 @@ local EMPTY = {}
 
 local TEXTURE_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"   -- look-ok: MelloUI's logo
 local LOGO = TEXTURE_PATH .. "LogoIcon.tga"
--- (1.2.4) the steps' pictures (Media\Installer, Tools/make_installer_pictures.py, shipped by Tools/texture_pack.py),
--- each at the top left of a 1024 x 512 file: the Skin step's the whole screen, 910 x 512 (16:9); every other step's a
--- 2.5:1 band, 1024 x 410; drawn the text's width
+-- (1.2.4) the steps' pictures (Media\Installer, Tools/make_installer_pictures.py, shipped by Tools/texture_pack.py):
+-- the user's own, each at the top left of its file (SetupSteps' PICTURE_SIZE), drawn at its own shape
 local PICTURES = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Installer\\"   -- (the steps' pictures)
-local SCREEN_UV, BAND_UV = { 910 / 1024, 1 }, { 1, 410 / 512 }
 local TICK = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\ql_completed"   -- (0.25.0: the icon set's gold tick; the game's 1x ready check until then)
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local NAME = "MelloUIInstallerFrame"   -- (named: the shell's Escape)
@@ -131,10 +130,11 @@ local CARD_H, CARD_GAP_X = 78, 12
 -- units past the card, and the cards lie flush with the page's edges (the
 -- halo was cut off on their outer side; review, 2026-09-28)
 local LOOK_BLEED = 6
--- a step's picture (the Layout and Screen steps' drawing of the fit too): the text's width, the pictures' shape
+-- the Layout and Screen steps' drawing of the fit: the text's width, a 2.5:1 band
 local PIC_W, PIC_M = TEXT_W, 8
 local PIC_H = floor(PIC_W * 410 / 1024)
-local SCREEN_H = floor(PIC_W * 9 / 16)   -- (the Skin step's picture: the whole screen)
+local SCREEN_H = floor(PIC_W * 9 / 16)   -- (the most the Skin step's picture, the whole UI, is drawn: 16:9)
+local PIC_MAX_H = 300                    -- (the most a step's picture is drawn: the page fits the body, a 2-line lead too)
 local RING = 110
 local BUTTON_W, BUTTON_H = 120, 24
 local DONE_BUTTON_W = 124
@@ -1673,15 +1673,41 @@ local function SetupSteps()
 	local OLDSCHOOL = "MelloUI_Oldschool"
 	local SKIN_CARD_H = 88
 	local SWITCH_W = floor((PAGE_W - CARD_GAP_X) / 2)   -- two columns of switches
-	-- a step's picture, by the choice shown (a name ending in "_" is the skin's: "<name><skin>"); a step named by a
-	-- string has one picture whatever its choices; the Sound step has none
+	-- (1.2.4; the user, 2026-10-28: "here i have taken and labled pictures for the Installer, everything else does not
+	-- need the picture") the user's own pictures: a step's, by the choice picked, in the skin picked ("<name><skin>");
+	-- a step named by a string has one whatever its switches (Combat's: its Nameplates); every other card and step,
+	-- none (no frame, no gap)
 	local PICTURE = {
-		skin = { default = "look_default", modern = "look_modern", oldschool = "look_oldschool" },
-		party = { group = "party_group_", portraits = "party_portraits_" },
-		quests = "quests_", combat = "combat_", minimap = "column_",
-		chat = { view = "chat_", plainchat = "chatgame_" },
-		bags = { kinds = "bags_", separate = "bagsgame_" },
+		skin = "look_",
+		party = { portraits = "party_portraits_" },
+		combat = "nameplates_",
+		chat = { view = "chat_" },
+		minimap = "column_",
+		bags = { kinds = "bags_" },
 	}
+	-- each picture's own size in its file, px (w, h), and its file's (canvas w, h): the picture its top left
+	-- (Tools/make_installer_pictures.py makes the files, and its --check compares this table with them)
+	local PICTURE_SIZE = {
+		bags_default = { 427, 788, 512, 1024 },
+		bags_modern = { 441, 799, 512, 1024 },
+		bags_oldschool = { 434, 797, 512, 1024 },
+		chat_default = { 557, 231, 1024, 256 },
+		chat_modern = { 562, 241, 1024, 256 },
+		chat_oldschool = { 562, 239, 1024, 256 },
+		column_default = { 316, 597, 512, 1024 },
+		column_modern = { 322, 607, 512, 1024 },
+		column_oldschool = { 324, 601, 512, 1024 },
+		look_default = { 1820, 1024, 2048, 1024 },
+		look_modern = { 1820, 1023, 2048, 1024 },
+		look_oldschool = { 1820, 1023, 2048, 1024 },
+		nameplates_default = { 344, 127, 512, 128 },
+		nameplates_modern = { 327, 101, 512, 128 },
+		nameplates_oldschool = { 305, 122, 512, 128 },
+		party_portraits_default = { 306, 456, 512, 512 },
+		party_portraits_modern = { 282, 433, 512, 512 },
+		party_portraits_oldschool = { 353, 469, 512, 512 },
+	}
+	IW.PICTURE, IW.PICTURE_SIZE = PICTURE, PICTURE_SIZE   -- (read only: the tests)
 	local STEP_OF = {}   -- [step key] = its step in I.SETUP
 	for _, st in ipairs(I.SETUP) do
 		STEP_OF[st.key] = st
@@ -1740,40 +1766,58 @@ local function SetupSteps()
 		return page.lead
 	end
 
-	-- the picture box, its picture a texture inside its 1 px edge; screen: the whole screen's shape (the Skin step's)
-	local function PictureBox(page, screen)
+	-- the picture box: its picture a texture inside its 1 px edge, the box the picture's own drawn size (ShowPicture)
+	local function PictureBox(page)
 		local box = W.Box(page, "innerPanel", "border", 1)
-		box:SetSize(PIC_W, screen and SCREEN_H or PIC_H)
-		box.uv = screen and SCREEN_UV or BAND_UV
 		box.tex = box:CreateTexture(nil, "ARTWORK")
 		box.tex:SetPoint("TOPLEFT", box, "TOPLEFT", 1, -1)
 		box.tex:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", -1, 1)
+		box:Hide()
 		page.picture = box
 		return box
 	end
 
+	-- the picture of a step's choice in the skin picked (its name in Media\Installer), or nil: none
 	local function PictureOf(stepKey, choiceKey)
 		local name = PICTURE[stepKey]
 		if type(name) == "table" then
 			name = name[choiceKey]
 		end
-		if type(name) ~= "string" then
-			return nil
-		end
-		if name:sub(-1) == "_" then
-			name = name .. Skin()
-		end
-		return PICTURES .. name
+		return type(name) == "string" and name .. Skin() or nil
 	end
 
-	-- the picture set, written only when it is another (loaded on its page's show, let go on close)
-	local function ShowPicture(box, file)
+	-- a picture's drawn size (units): its own shape, inside maxW x maxH, and never more units than its file has
+	-- pixels on this screen (MelloUI.Icons.PixelsPerUnit; the sharp-art rule: never drawn bigger than its file)
+	local function DrawnSize(size, maxW, maxH, region)
+		local icons = MelloUI.Icons
+		local ppu = icons and icons.PixelsPerUnit and icons.PixelsPerUnit(region) or 1
+		local s = min(maxW / size[1], maxH / size[2], 1 / ppu)
+		return size[1] * s, size[2] * s   -- (not rounded: a small picture keeps its exact shape)
+	end
+
+	-- the picture named (nil: none) shown from y down, centred on the page, at most maxH tall with its edge; -> the y
+	-- under it, or nil when there is none (its box hidden: no frame, no gap). The file is set only when it is another
+	-- (loaded on its page's show, let go on close)
+	local function ShowPicture(page, name, maxH, y)
+		local box = page.picture
+		local size = name and PICTURE_SIZE[name]
+		if not size then
+			box:Hide()
+			return nil
+		end
+		local file = PICTURES .. name
 		if box.file ~= file then
 			box.file = file
 			box.tex:SetTexture(file)
-			box.tex:SetTexCoord(0, box.uv[1], 0, box.uv[2])
-			loaded[box.tex] = file and true or nil
+			box.tex:SetTexCoord(0, size[1] / size[3], 0, size[2] / size[4])
+			loaded[box.tex] = true
 		end
+		local w, h = DrawnSize(size, TEXT_W - 2, maxH - 2, box)
+		box:SetSize(w + 2, h + 2)
+		box:ClearAllPoints()
+		box:SetPoint("TOPLEFT", page, "TOPLEFT", floor((PAGE_W - w - 2) / 2), -y)
+		box:Show()
+		return y + h + 2
 	end
 
 	function IW.ReleasePictures()
@@ -1886,7 +1930,7 @@ local function SetupSteps()
 
 	local function BuildSkin(page)
 		Lead(page, TEXT.skinLead)
-		PictureBox(page, true)
+		PictureBox(page)
 		local old = OldschoolState()
 		local tags = { modern = TEXT.recommended }
 		if old ~= "loaded" then
@@ -1921,10 +1965,8 @@ local function SetupSteps()
 
 	local function RefreshSkin(page)
 		local y = 8 + LeadHeight(page) + 10
-		page.picture:ClearAllPoints()
-		page.picture:SetPoint("TOPLEFT", page, "TOPLEFT", (PAGE_W - PIC_W) / 2, -y)
-		ShowPicture(page.picture, PictureOf("skin", Skin()))
-		y = y + SCREEN_H + 12
+		-- (the whole UI over the three cards: every skin's the same shape, so a pick moves nothing)
+		y = (ShowPicture(page, PictureOf("skin"), SCREEN_H + 2, y) or y) + 12
 		y = LayCards(page, y, Skin())
 		local get = page.get
 		get:SetShown(page.getShown and page.oldschool ~= "loaded" or false)
@@ -2120,12 +2162,6 @@ local function SetupSteps()
 		local st = STEP_OF[key]
 		local picks = Picks()
 		local y = 8 + LeadHeight(page) + 10
-		if page.picture then
-			page.picture:ClearAllPoints()
-			page.picture:SetPoint("TOPLEFT", page, "TOPLEFT", (PAGE_W - PIC_W) / 2, -y)
-			ShowPicture(page.picture, PictureOf(key, picks[key]))
-			y = y + PIC_H + 12
-		end
 		if st.kind == "many" then
 			y = LaySwitches(page, y)
 		else
@@ -2140,6 +2176,11 @@ local function SetupSteps()
 			y = LaySwitches(page, y, function(row)
 				return row.melloOnly == nil or row.melloOnly == picked
 			end)
+		end
+		-- the picture of what is picked, under the choices (a card with a picture and one without: a pick moves
+		-- nothing above it), or none
+		if page.picture then
+			y = ShowPicture(page, PictureOf(key, picks[key]), PIC_MAX_H, y + 12) or y
 		end
 		return y + 8
 	end
