@@ -14,6 +14,10 @@ DXT), like Media/Textures/Icons/Halo; Tools/texture_pack.py never sees them (the
 
     python Tools/make_icon_sizes.py            write them
     python Tools/make_icon_sizes.py --check    exit 1 unless all are up to date
+    python Tools/make_icon_sizes.py --set oldschool [--check]   a look's own set (Tools/make_icons.py LOOK_SETS): its
+        pictures' sheets at <its addon's Media>/IconSizes/Icons/<name>.tga and <its addon's Media>/IconSizes.lua, which
+        registers the set with MelloUI.Icons as the addon loads (Icons.AddSet: its root, area, square, halos, sheets,
+        files) -- run after make_icons.py --set
 """
 import hashlib
 import io
@@ -66,19 +70,27 @@ def tga(img):
 
 
 def main():
-    bad = [a for a in sys.argv[1:] if a != "--check"]
+    look, args = make_icons.look_arg(sys.argv[1:])
+    bad = [a for a in args if a != "--check"]
+    if look is not None and look not in make_icons.LOOK_SETS:
+        bad.append("--set " + look)
     if bad:
         print("unknown argument: %s (nothing written)\n" % " ".join(bad))
         print(__doc__[__doc__.index("    python Tools/"):].rstrip())
         return 2
-    check = "--check" in sys.argv
+    check = "--check" in args
     layout = icon_sizes.check_layouts()
     if layout:
         print("the sheets' layouts:", "; ".join(layout))
         return 1
+    media, lua, fams = ADDON_MEDIA, LUA, None
+    if look:
+        spec = make_icons.LOOK_SETS[look]
+        media, lua = spec["addon"], os.path.join(spec["addon"], "IconSizes.lua")
+        fams = [("Icons", make_icons.look_bigs(look))]
     stale, sums, files = [], hashlib.sha256(), {}
     writes = []
-    for folder, icons in families():
+    for folder, icons in fams or families():
         for name, img, size in icons:
             if size not in icon_sizes.SHEET:
                 print("no sheet for a %s px file: %s/%s" % (size, folder, name))
@@ -90,8 +102,13 @@ def main():
             files[folder.replace("/", "\\") + "\\" + name] = size
             data = tga(icon_sizes.sheet(img, size))
             sums.update(name.encode() + data)
-            writes.append((os.path.join(ADDON_MEDIA, OUT, *folder.split("/"), name + ".tga"), data))
-    writes.append((LUA, icon_sizes.lua_layout(files).encode("utf-8")))
+            writes.append((os.path.join(media, OUT, *folder.split("/"), name + ".tga"), data))
+    if look:
+        spec = make_icons.LOOK_SETS[look]
+        halos = sorted(name for name, _img in make_icons.look_halos(look))
+        writes.append((lua, icon_sizes.lua_set_layout(files, look, spec, halos).encode("utf-8")))
+    else:
+        writes.append((LUA, icon_sizes.lua_layout(files).encode("utf-8")))
     for path, data in writes:
         if check:
             try:
@@ -109,8 +126,8 @@ def main():
             print("stale:", os.path.normpath(path))
         print("ok" if not stale else "STALE")
         return 1 if stale else 0
-    print("%d icons' sheets written (Media/%s) and Media/IconSizes.lua, sha256 %s"
-          % (len(files), OUT, sums.hexdigest()[:16]))
+    print("%d icons' sheets written (%s) and %s, sha256 %s"
+          % (len(files), os.path.normpath(os.path.join(media, OUT)), os.path.normpath(lua), sums.hexdigest()[:16]))
     return 0
 
 

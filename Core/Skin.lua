@@ -343,12 +343,16 @@ for name, icon in pairs({
 end
 Skin.ICON = ICON
 
--- an icon's name in the set: a name, or its path in the set's folder (Icons.DIR), its extension left off
+-- an icon's name in the set: a name, or its path in the set's folder (Icons.DIR) or in a look's own set's (1.2.4:
+-- Oldschool's, kept by a picture set while that look was on), its extension left off
 local function NameOf(icon)
 	if type(icon) ~= "string" then
 		return nil
 	end
 	local Icons = MelloUI.Icons
+	if Icons and Icons.NameOf then
+		return Icons.NameOf(icon)
+	end
 	local dir = Icons and Icons.DIR
 	if dir and icon:sub(1, #dir) == dir then
 		icon = icon:sub(#dir + 1)

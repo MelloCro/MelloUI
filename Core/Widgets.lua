@@ -3547,15 +3547,20 @@ do
 	end
 
 	-- a path to one of the set's round buttons and pins (Services, the chat, the buttons, the pins, Route's goal):
-	-- pictures with their own disc and ring, which a round button shows whole, with no rim of its own over them
+	-- pictures with their own disc and ring, which a round button shows whole, with no rim of its own over them (a
+	-- path in a look's own set's folder too, 1.2.4: Oldschool's, its square frames -- MelloUI.Icons)
 	local RINGED = { "svc_", "track_", "pin_", "chat_", "chan_", "btn_", "goal_", "obj_" }
 	function W.IconRinged(texture)
-		if type(texture) ~= "string" or texture:sub(1, #DIR) ~= DIR then
+		if type(texture) ~= "string" or not texture:find("\\", 1, true) then
+			return false
+		end
+		local name = MelloUI.Icons.NameOf(texture)
+		if not name then
 			return false
 		end
 		for i = 1, #RINGED do
 			local p = RINGED[i]
-			if texture:sub(#DIR + 1, #DIR + #p) == p then
+			if name:sub(1, #p) == p then
 				return true
 			end
 		end
@@ -3594,7 +3599,10 @@ end
 --                        whose mouse its maker turned off (a picture in a
 --                        rim) keeps it off through the rim's hooks
 --   b.icon, b.mask, b.plainRim, b.kitRim (nil until the first kit look),
---   b.size, b.kitLaid (true while the kit's rim shows)
+--   b.size, b.kitLaid (true while the kit's rim shows), b.square (1.2.4: one
+--   of the set's round buttons drawn by a look's own set that frames them
+--   square -- Oldschool's, MelloUI.Icons.Square -- shown whole in its own
+--   frame: no rim, no kit rim, the square light; switched with the set)
 -- It sets no script and holds no colour; nothing is made per call after.
 --------------------------------------------------------------------------------
 
@@ -3697,12 +3705,29 @@ do
 	-- from RING_AT up. A game picture of the atlas's own shape unmasked; an icon file cut round
 	local RING_AT = 36
 
+	-- (1.2.4; the user's pick B, "B: painted") one of the set's round buttons drawn by a look's own set that frames
+	-- its buttons square (Oldschool's: a square dark-iron frame, a red leather inset): shown whole at the button's size,
+	-- no rim of MelloUI's or the kit's round it, the square light under the pointer. Laid again as it changes
+	local function Square(b, square)
+		square = square and true or false
+		if square == (b.square or false) then
+			return false
+		end
+		b.square = square or nil
+		W.HoverLight(b, square and "square" or "round")
+		return true
+	end
+
 	local function SetIcon(b, texture)
 		local Skin = rawget(MelloUI, "Skin")
 		local game = Skin and Skin.Icon(texture)
 		local own = W.IconRinged(texture)
 		local ringed = own and not game
 		local alone = own and game and not game.disc and not (game.round and b.size >= RING_AT) and game or nil
+		if Square(b, ringed and MelloUI.Icons.Square(texture)) and b.askedKit then
+			b.texture = texture
+			b:SetKit(b.askedKit)   -- (the kit's round rim off -- the frame is the picture's own -- or back on)
+		end
 		b.texture = texture
 		local disc = game and game.disc or false
 		if disc ~= (b.discOn or false) then
@@ -3756,7 +3781,7 @@ do
 		b.askedKit = Kit or false
 		local Skin = rawget(MelloUI, "Skin")
 		local on = (type(Kit) == "table" and Kit.Slot and Kit.SlotPlaceIcon) and not (Skin and Skin.IsDefault())
-			and true or false
+			and not b.square and true or false
 		if on then
 			local rim = b.kitRim
 			if not rim then
@@ -3802,6 +3827,16 @@ do
 		end
 	end
 
+	-- (1.2.4) a look's own set switched (MelloUI.Icons' 'icons': Oldschool's painted reskin on or off): every round
+	-- button's picture again, square or round
+	local rounds = setmetatable({}, weakKeys)
+	local roundsHeard = false
+	local function RoundsAgain()
+		for b in pairs(rounds) do
+			RoundSkin(b)
+		end
+	end
+
 	function W.RoundIcon(parent, size, texture, opts)
 		opts = type(opts) == "table" and opts or NONE
 		local b = CreateFrame("Button", opts.name, parent)
@@ -3826,10 +3861,15 @@ do
 			b:SetIcon(texture)
 		end
 		SetKit(b, false)
-		-- (1.2.4) the skin switched: its picture again in the skin's look (MelloUI.Skin)
+		-- (1.2.4) the skin switched: its picture again in the skin's look (MelloUI.Skin); a look's own set too
 		local Skin = rawget(MelloUI, "Skin")
 		if Skin then
 			Skin.followers[b] = RoundSkin
+		end
+		rounds[b] = true
+		if not roundsHeard and MelloUI.On then
+			roundsHeard = true
+			MelloUI:On("icons", RoundsAgain, "the round icons (a look's own set)")
 		end
 		return b
 	end

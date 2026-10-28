@@ -3,9 +3,9 @@
 --
 -- The first-login installer is a front end over systems MelloUI already has,
 -- not a second settings system:
---   - the profiles: the setup starts from the picked skin's shipped profile
---     ("MelloUI", Media/Profiles.lua; Oldschool's own for its skin), read
---     from the shipped table, never a saved copy;
+--   - the profiles: the setup starts from the shipped profile ("MelloUI",
+--     Media/Profiles.lua; 1.2.4: one for every skin), read from the
+--     shipped table, never a saved copy;
 --   - the settings path (NotifySettingChanged / SetModuleEnabled) inside ONE
 --     MelloUI:Batch: one backup, at most one 'setting' Fire per key;
 --   - Core/EditModeLayout.lua for the Edit Mode layout and MelloUI.LayoutFit
@@ -39,7 +39,7 @@
 --   I.SkinOf(draft), I:Offered(choice), I:DefaultPicks(), I:SetupDraft(picks)
 --                                       the picks and the draft made of them
 --   I.Kind(module), I.SwitchKey(module) what switches a module, and its key
---   I:FullText([skin]) -> text          a skin's shipped setup
+--   I:FullText() -> text                the shipped setup (one for every skin)
 --   I:Capture() -> state                every module's settings, exactly
 --   I:TargetFromText(text[, cur])       defaults + text; the player's own
 --                                       (personal) and NEVER keys = cur's
@@ -480,12 +480,14 @@ end
 -- States
 --------------------------------------------------------------------------------
 
--- a skin's shipped setup: never db.profiles.MelloUI (a player's own
--- save of that name, or an older shipped copy, could stand in for it)
--- (1.0: the painted reskin's own while MelloUI_Oldschool is loaded: MelloUI:FullProfileName; 1.2.4: skin, the Skin
--- step's pick -- Oldschool's for "oldschool", MelloUI's own for "default" and "modern")
-function I:FullText(skin)
-	local shipped = MelloUI:ShippedProfiles()[MelloUI:FullProfileName(skin)]
+-- the shipped setup: never db.profiles.MelloUI (a player's own save of that
+-- name, or an older shipped copy, could stand in for it). (1.2.4, the user
+-- 2026-10-28: "make sure that all 3 Themes follow the same Profiles, no more
+-- separate profiles depending on the Theme") One for every skin, Oldschool's
+-- painted reskin's settings in it: the Skin step only sets the skin over it
+-- (I:SetupDraft)
+function I:FullText()
+	local shipped = MelloUI:ShippedProfiles()[MelloUI:FullProfileName()]
 	return type(shipped) == "string" and shipped or ""
 end
 
@@ -692,7 +694,7 @@ end
 
 -- The palette a setup puts in (the Review step names it): the modern look's
 -- Gilded Slate for the Default and Modern skins (the painted reskin off),
--- Oldschool's shipped one for its skin, else the one in use (the refit keeps
+-- the shipped setup's for the Oldschool skin, else the one in use (the refit keeps
 -- the player's). An id of MelloUI.Palettes (an unknown one is Ember, as Core
 -- reads it). The shipped one is read from its text once: the shipped text
 -- never changes in a session.
@@ -801,9 +803,9 @@ local function Target(self, option, draft, fit, cur, forFit)
 	if option.refit then
 		t = DeepCopy(cur)
 	else
-		-- (1.2.4) the picked skin's shipped setup (Mello's settings for everything), the picks over it: the skin, a
-		-- feature switched off, the party's frames, the chat's view (I:SetupDraft)
-		local full = self:TargetFromText(self:FullText(self.SkinOf(draft)), cur)
+		-- (1.2.4) the shipped setup (Mello's settings for everything, one for every skin), the picks over it: the skin,
+		-- a feature switched off, the party's frames, the chat's view (I:SetupDraft)
+		local full = self:TargetFromText(self:FullText(), cur)
 		t = self:Draft(full, draft or EMPTY)
 		t.explicit = ExplicitOf(draft)
 		ReskinAlpha(self, t, full, cur, draft)
@@ -866,26 +868,45 @@ local function NeedsFit(option, draft)
 	return option.layout and not (draft and draft.layout == false) and true or false
 end
 
--- the four frames Edit Mode places: the fit's places.remove, or, when no
--- fit was given (the layout kept the player's own), the fitter's
--- own list (LayoutFit.EDIT_MODE_FRAMES: one list, never a copy here)
-local function EditModeFrames(remove)
-	if type(remove) == "table" then
-		return remove
+-- a store place of what Edit Mode's layout places: the four frames (the
+-- fitter's own list, LayoutFit.EDIT_MODE_FRAMES: one list, never a copy
+-- here) and Edit Layout's EditMode.<system>.<index> copies
+local function EditModePlace(key)
+	if type(key) ~= "string" then
+		return false
+	end
+	if key:find("^EditMode%.%-?%d+%.%-?%d+$") then
+		return true
 	end
 	local LayoutFit = MelloUI.LayoutFit
-	local list = type(LayoutFit) == "table" and LayoutFit.EDIT_MODE_FRAMES
-	return type(list) == "table" and list or EMPTY
+	for _, name in ipairs(type(LayoutFit) == "table" and type(LayoutFit.EDIT_MODE_FRAMES) == "table"
+		and LayoutFit.EDIT_MODE_FRAMES or EMPTY) do
+		if name == key then
+			return true
+		end
+	end
+	return false
 end
 
--- Edit Mode keeps the player's own layout: its frames' store places and the
--- tracker's own place as the player has them (the shipped text has none of
--- them, and its whole store would go in)
-local function KeepOwnLayoutPlaces(target, cur, remove)
+-- Edit Mode keeps the player's own layout: its frames' store places, Edit
+-- Layout's copies and the tracker's own place as the player has them (the
+-- shipped text's are for the shipped layout; its whole store would go in)
+local function KeepOwnLayoutPlaces(target, cur)
 	local um = target.modules[UMB]
 	local have = (cur.modules[UMB] or EMPTY).positions
 	have = type(have) == "table" and have or EMPTY
-	for _, key in ipairs(EditModeFrames(remove)) do
+	local LayoutFit = MelloUI.LayoutFit
+	local keys = {}   -- (the keys in order, each also as keys[key] = true)
+	for _, key in ipairs(type(LayoutFit) == "table" and type(LayoutFit.EDIT_MODE_FRAMES) == "table"
+		and LayoutFit.EDIT_MODE_FRAMES or EMPTY) do
+		keys[#keys + 1], keys[key] = key, true
+	end
+	for key in pairs(type(um.positions) == "table" and um.positions or EMPTY) do
+		if EditModePlace(key) and not keys[key] then
+			keys[#keys + 1], keys[key] = key, true
+		end
+	end
+	for _, key in ipairs(keys) do
 		local p = have[key]
 		if p ~= nil or type(um.positions) == "table" then
 			if type(um.positions) ~= "table" then
@@ -903,7 +924,10 @@ end
 
 -- The fitter's places into the target (inside the one Batch like every
 -- other setting). With the layout: the four Edit Mode frames' store places
--- removed, the tracker's own place cleared and its sizes, the window
+-- removed, the tracker's own place cleared and its sizes (1.2.4: MelloUI's
+-- places win, LayoutFit's ownPlaces -- the fit removes none of them and keeps
+-- the tracker's own place, fitted to this screen; PlaceWindows puts them over
+-- the layout once it is in), the window
 -- places, the buff rows by the minimap's column (Icons
 -- Per Row, Icon Size) as the fit wrapped them. Without it (the player's own layout kept, a FAIL,
 -- no fit): only the window places; Edit Mode
@@ -920,7 +944,7 @@ function I:PlacesToTarget(target, fit, option, draft, cur)
 	local places = type(fit) == "table" and type(fit.places) == "table" and fit.places or nil
 	local layoutOn = self:LayoutOn(option, draft, fit)
 	if not layoutOn and type(cur) == "table" then
-		KeepOwnLayoutPlaces(target, cur, places and places.remove)
+		KeepOwnLayoutPlaces(target, cur)
 	end
 	if not (places and (option.places or layoutOn)) then
 		return target
@@ -936,10 +960,16 @@ function I:PlacesToTarget(target, fit, option, draft, cur)
 		for _, key in ipairs(type(places.remove) == "table" and places.remove or EMPTY) do
 			store[key] = nil
 		end
+		-- (1.2.4: MelloUI's places of what the layout places, as the fit kept them on this screen: they win over it)
+		for key, p in pairs(type(places.own) == "table" and places.own or EMPTY) do
+			store[key] = DeepCopy(p)
+		end
 		local qt, t = places.questTracker, target.modules.QuestTracker
 		if type(qt) == "table" and t then
 			if qt.clearPos then
 				t.pos = nil
+			elseif type(qt.pos) == "table" then
+				t.pos = DeepCopy(qt.pos)   -- (1.2.4: its own place wins, as the fit kept it on this screen)
 			end
 			if qt.maxHeight ~= nil then
 				t.maxHeight = qt.maxHeight
@@ -983,13 +1013,14 @@ local function Reader(self, state)
 end
 
 -- the approved layout's info (Core/EditModeLayout.lua; the baked string
--- converted here while that file has no EditModeLayoutInfo)
-local function LayoutInfo(skin)
+-- converted here while that file has no EditModeLayoutInfo). (1.2.4) One for
+-- every skin, as the shipped profile is: its places were fitted for it.
+local function LayoutInfo()
 	if MelloUI.EditModeLayoutInfo then
-		local ok, info = pcall(MelloUI.EditModeLayoutInfo, MelloUI, skin)
+		local ok, info = pcall(MelloUI.EditModeLayoutInfo, MelloUI)
 		return ok and type(info) == "table" and info or nil
 	end
-	local data = MelloUI:ShippedEditMode(skin)   -- (1.0: Oldschool's while it is loaded; 1.2.4: the setup's skin's)
+	local data = MelloUI:ShippedEditMode()
 	if type(data) ~= "table" or type(data.layout) ~= "string" or not (C_EditMode and C_EditMode.ConvertStringToLayoutInfo) then
 		return nil
 	end
@@ -1042,10 +1073,7 @@ local function BeginFit(fit)
 		inputs.column.fitMap = true
 	end
 	fit.W, fit.H = ScreenSize()
-	-- (the setup's picked skin's layout; another setup's: nil, the shipped one as before)
-	local option = I:Option(fit.option)
-	local skin = option and option.base == "setup" and I.SkinOf(fit.draft) or nil
-	fit.job = LayoutFit:Run(LayoutInfo(skin), fit.W, fit.H, inputs, function(fitted, places, report)
+	fit.job = LayoutFit:Run(LayoutInfo(), fit.W, fit.H, inputs, function(fitted, places, report)
 		Fitted(fit, fitted, places, report)
 	end)
 end

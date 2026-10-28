@@ -2,7 +2,14 @@
 (the installer's Full setup and the Profiles page's "MelloUI").
 
   python Tools/installer/bake_full.py [--snapshot PATH] [--check] [--write] [--deps] [--tries N] [--wait S]
-  python Tools/installer/bake_full.py --string FILE | --clipboard [--fill-missing] [--write]
+  python Tools/installer/bake_full.py --string FILE | --clipboard [--fill-missing] [--carry FILE] [--write]
+
+(1.2.4, the user 2026-10-28: "make sure that all 3 Themes follow the same Profiles, no more separate profiles
+depending on the Theme") "MelloUI" is the one shipped profile for every skin: the installer applies it for Default,
+Modern and Oldschool alike, and the Skin step sets the skin over it (UIModifications.skin and reskin, SKIN_KEYS, are
+never in it). So it carries MelloUI_Oldschool's own settings too -- its modules' and the keys its parts bring into
+MelloUI's (the painted reskin's borders, kit colours, parchment areas) -- read with it loaded; the rest is read
+without it, as before (its painted Minimap skin never dresses the bake's fit).
 
 From a profile share string (1.2.4): Save the setup as a profile in game, Export it (the Profiles page, or
 /mello profile export <name>), copy the string into a file (or leave it on the clipboard), then
@@ -15,7 +22,11 @@ addon's own reader -- that file, with the string and its text beside it, is kept
 is listed as shipped, shipped changed (the fitter's places, a login step) or left out with its reason (a player's
 own key, a one-time mark, an old key, a module the string's client has and this one has not ...); one left out for
 no known reason stops the --write. A module the shipped Full has settings for and the string none (a feature addon
-the client it came from lacks) is named; --fill-missing carries the shipped Full's own entries for it.
+the client it came from lacks) is named; --fill-missing carries the shipped Full's own entries for it, and the
+shipped Full's MelloUI_Oldschool entries the string has none of (one made without it loaded). --carry FILE (a
+profile text or share string) carries that text's MelloUI_Oldschool entries the string has none of, before
+--fill-missing: on 2026-10-28 the frozen "MelloUI Oldschool" profile of 1.0, when the one profile took its place. The
+string's own entries always win; what was carried, and from where, is listed and kept beside the string.
 
 The text is made by the addon's own code, in a Lua 5.1 world with the REAL
 Core, Backup and every TOC file of the working tree:
@@ -31,11 +42,16 @@ Core, Backup and every TOC file of the working tree:
      the documented entries. A snapshot still holding Route.arrowX / arrowY
      is refused (that move measures the arrow's frame: show the arrow once
      in game first);
-  3. FULL_DROP back to the defaults;
+  3. FULL_DROP back to the defaults, FULL_DROP_IN's entries taken out of
+     their table settings (kept-but-unread legacy; a player's own saved copy
+     keeps them);
   4. the fitter's design-size places laid over (the real Core/LayoutFit.lua:
-     LayoutFit:Fit(info, DESIGN_W, DESIGN_H, LayoutFit:Inputs())): the four
-     Edit Mode frames' store places removed, the window places as fitted
-     (at the design size: the snapshot's own), QuestTracker.pos cleared, the
+     LayoutFit:Fit(info, DESIGN_W, DESIGN_H, LayoutFit:Inputs())): (1.2.4,
+     the user 2026-10-28: "MelloUI Configurator Export is always being
+     Prioritized over the Game Edit Mode Export", LayoutFit's ownPlaces) the
+     store places of the four Edit Mode frames and Edit Layout's EditMode.*
+     copies KEPT, the window places and QuestTracker.pos as fitted (at the
+     design size: the snapshot's own unless one leaves the screen), the
      tracker's and Quest List's sizes as fitted; layoutFitFor NOT baked. The
      moved places the fitter does not place are checked on the screen at the
      design size: every whisper window (the popup's size, all six cascade
@@ -44,7 +60,10 @@ Core, Backup and every TOC file of the working tree:
      lists), then the installer's own personal rules for keep entries not in
      the modules yet: seenVersion, ^layoutAsked_, layoutFitFor, layoutFitRev and any
      one-time flag by its name (...Migrated, Folded, Once, Asked, Shown,
-     Applied, Version, Done).
+     Applied, Version, Done);
+  6. MelloUI_Oldschool's own entries added: the snapshot logged in again with
+     it loaded, FULL_DROP, SaveProfile, its modules' entries and the keys it
+     brings taken (the skin's, SKIN_KEYS, never).
 
 The snapshot lives in the build data beside the addon (MelloUI-BuildData,
 or MELLOUI_BUILD_DATA): it holds a player's own data and never goes into the
@@ -140,8 +159,18 @@ FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPan
              # (1.2.4: Oldschool's painted Game Menu removed -- one Game Menu for every skin; the configurator audit:
              # Reskin Brightness folded into Dark Mode's one Brightness, Shade: Buffs and Swing Timer Border removed)
              "UIModifications.GameMenuPanel", "DarkMode.kitShade", "UIModifications.shade_buffs",
-             "UIModifications.swingTimerBorder"]
+             "UIModifications.swingTimerBorder",
+             # (1.2.4, fr-02: a raid-style party reads Raid's `parts`; the party's own places from one look C9 are
+             # kept in a player's saved settings, unread, and never shipped)
+             "GroupFrames.partyParts"]
+# The same for entries inside a table setting: {setting: the entry keys' pattern}, those entries taken out of the
+# bake's copy (a player's own saved copy keeps them). (1.2.4, fr-02: the party's own spell groups and their marks,
+# gparty@<spec>, are no longer read by the frames)
+FULL_DROP_IN = {"GroupFrames.sets": "^gparty@", "GroupFrames.started": "^gparty@"}
 EDIT_MODE_FRAMES = ["MinimapCluster", "DamageMeter", "ChatFrame1", "ObjectiveTrackerFrame"]
+# (1.2.4) the skin: the installer's Skin step sets it over the one profile, so the profile never carries it (a
+# profile loaded on the Profiles page leaves the skin in use as it is)
+SKIN_KEYS = ["UIModifications.skin", "UIModifications.reskin"]
 # the installer's additions to the keep lists and the one-time flag name rule
 # (the installer build's test_options.py name check)
 # (1.0: ^featureAsked_ the one-time offer flags of the scrapped Accounting, read by no code now; BagWindow.seenN the
@@ -313,6 +342,21 @@ function DropFull(list)
     end
 end
 
+-- FULL_DROP_IN: a table setting's entries whose key matches, taken out of a copy laid in its place
+function DropIn(list)
+    for spec, pattern in pairs(list) do
+        local name, key = spec:match("^([^.]+)%.(.+)$")
+        local t = M.modules[name] and M:GetModuleDB(name)[key]
+        if type(t) == "table" then
+            local kept = {}
+            for k, v in pairs(t) do
+                if not (type(k) == "string" and k:find(pattern)) then kept[k] = v end
+            end
+            M:GetModuleDB(name)[key] = kept
+        end
+    end
+end
+
 local function Copy(p)
     local c = {}
     for k, v in pairs(p) do c[k] = v end
@@ -347,8 +391,11 @@ function DesignPlaces(info, sw, sh)
     if type(um.positions) ~= "table" then um.positions = {} end
     for _, k in ipairs(places.remove or {}) do um.positions[k] = nil end
     for k, p in pairs(places.windows or {}) do um.positions[k] = Copy(p) end
+    for k, p in pairs(places.own or {}) do um.positions[k] = Copy(p) end   -- (1.2.4: MelloUI's places win)
     local qt = M:GetModuleDB("QuestTracker")
-    if places.questTracker.clearPos then qt.pos = nil end
+    -- (1.2.4, ownPlaces: its own place kept, as the fit kept it on the screen)
+    if places.questTracker.clearPos then qt.pos = nil
+    elseif places.questTracker.pos then qt.pos = Copy(places.questTracker.pos) end
     qt.maxHeight, qt.width = places.questTracker.maxHeight, places.questTracker.width
     -- places.layoutFitFor: one machine's fact, never baked
     STORE_FITTED = Store()
@@ -367,7 +414,57 @@ function Save()
     if not ok then error("SaveProfile: " .. tostring(why)) end
     return M.db.profiles.MelloUI
 end
+
+-- (1.2.4) a text as a new player's game writes it back (SerializeSettings' order: the loaded modules', then the
+-- features not loaded): read into a new player's saved variables, written out; the live ones put back after
+function Canonical(text)
+    local live = M.db
+    M.db = { enabled = {}, modules = {}, profiles = {} }
+    M.ApplyDefaults(M.db, { enabled = {}, modules = {}, profiles = {} })
+    for name in M:IterateModules() do M:GetModuleDB(name) end
+    local ok, out = pcall(function()
+        M:DeserializeSettings(text)
+        return M:SerializeSettings()
+    end)
+    M.db = live
+    if not ok then error("Canonical: " .. tostring(out)) end
+    return out
+end
 '''
+
+
+def own_of(theirs, ours):
+    """The feature addons a world leaves out, from two worlds' default keys (B.default_keys: `theirs` with them,
+    `ours` without): (their modules, {a loaded module: the keys their parts bring into it})."""
+    return set(theirs) - set(ours), {m: theirs[m] - ours[m] for m in ours if theirs.get(m, set()) - ours[m]}
+
+
+def split_key(key):
+    """'Module.key' -> (module, key); '!Module' -> ('!', module), as B.entries gives them."""
+    if key.startswith("!"):
+        return "!", key[1:]
+    m, _, k = key.partition(".")
+    return m, k
+
+
+def is_own(own, m, k):
+    """Whether an entry (B.entries' module, key; '!' for a flag) is one of those addons' own."""
+    mods, brought = own
+    if m == "!":
+        return k in mods
+    return m in mods or k in brought.get(m, ())
+
+
+_OWN = []
+
+
+def feature_own(tries=5, wait=60, log=print):
+    """own_of for the bake's world (B.FULL_WITHOUT left out), from two fresh worlds; made once a run."""
+    if not _OWN:
+        theirs, _, _, _ = B.make_world_retry(tries, wait, log, without=())
+        ours, _, _, _ = B.make_world_retry(tries, wait, log, without=B.FULL_WITHOUT)
+        _OWN.append(own_of(B.default_keys(theirs), B.default_keys(ours)))
+    return _OWN[0]
 
 
 def extra_personal(module, key):
@@ -620,6 +717,7 @@ def bake(snapshot=SNAP, tries=5, wait=60, log=print):
     migrated = sorted(B.py(lua, g.MovePlaces(B.to_lua(lua, wanted))).values())
     stages = check_moves(mods, B.py(lua, g.STORE_SAVED), B.py(lua, g.STORE_LOGIN), B.py(lua, g.STORE_MOVED))
     g.DropFull(B.to_lua(lua, FULL_DROP))
+    g.DropIn(B.to_lua(lua, FULL_DROP_IN))
     if lua.eval('rawget(MelloUI, "LayoutFit")') is None:
         loadf = lua.eval(B.LOADF)
         e = loadf(open(B.ROOT + "Core/LayoutFit.lua", encoding="utf-8").read(), "@Core/LayoutFit.lua", ns)
@@ -634,23 +732,39 @@ def bake(snapshot=SNAP, tries=5, wait=60, log=print):
         raise SystemExit("a moved place is off the screen at the design size (move that window in game, then take a "
                          "new snapshot): %s" % off)
     saved = g.Save()
-    kept, dropped, absent = [], [], []
-    registered = lua.eval("(function(n) return MelloUI.modules[n] ~= nil end)")
-    # (what a feature addon the world leaves out brings into a loaded module: its part's defaults -- the painted
-    # reskin's switches and border kinds in UI Modifications, Dark Mode's Reskin Brightness -- the keys a world with
-    # it has and this one has not)
-    ours = B.default_keys(lua)
-    theirs = B.default_keys(logged_in(snapshot, tries, wait, log, without=()))
-    brought = {(m, k) for m in ours for k in theirs.get(m, set()) - ours[m]}
+    kept, dropped, skin, carried = [], [], [], []
+    # (1.2.4: the one profile for every skin) the settings of the feature addons the world leaves out (bakeworld's
+    # FULL_WITHOUT: Oldschool's modules, and the keys its parts bring into a loaded one -- the painted reskin's
+    # switches and border kinds in UI Modifications) are read from the snapshot logged in WITH them, against their
+    # own defaults; this world's copy of them (kept as it came, or no default to compare with) is passed by
+    with_lua = logged_in(snapshot, tries, wait, log, without=())
+    own = own_of(B.default_keys(with_lua), B.default_keys(lua))
+
+    def key_of(m, k):
+        return "!" + k if m == "!" else m + "." + k
+
     for m, k, v in B.entries(saved):
-        # (1.0) the settings and switches of a module the world does not load (bakeworld's FULL_WITHOUT: Oldschool's
-        # panels a snapshot from a game with it holds), and the keys its parts bring, are not the one look's Full:
-        # with Oldschool loaded the installer takes Oldschool's own setup
-        if not registered(k if m == "!" else m) or (m, k) in brought:
-            absent.append((m, k, v))
+        if is_own(own, m, k):
+            continue
+        if key_of(m, k) in SKIN_KEYS:
+            skin.append(key_of(m, k))
             continue
         (dropped if (m != "!" and extra_personal(m, k)) else kept).append((m, k, v))
-    full = ";".join(("!" + k if m == "!" else m + "." + k) + "=" + v for m, k, v in kept)
+    gw = with_lua.globals()
+    gw.DropFull(B.to_lua(with_lua, FULL_DROP))
+    for m, k, v in B.entries(gw.Save()):
+        if not is_own(own, m, k):
+            continue
+        if key_of(m, k) in SKIN_KEYS:
+            skin.append(key_of(m, k))
+            continue
+        (dropped if (m != "!" and extra_personal(m, k)) else carried).append((m, k, v))
+    joined = ";".join(key_of(m, k) + "=" + v for m, k, v in kept + carried)
+    # (Oldschool's entries in their places: the text as a new player's game writes it back, so a save of the loaded
+    # profile gives it byte for byte; never an entry more or less)
+    full = g.Canonical(joined) if carried else joined
+    if B.entry_map(full) != B.entry_map(joined):
+        raise SystemExit("writing the profile back changed it: %s" % diff(joined, full))
     report = {
         "snapshot": snapshot,
         "loadTries": tried,
@@ -666,11 +780,13 @@ def bake(snapshot=SNAP, tries=5, wait=60, log=print):
                   for k, v in sorted(stages.items())},
         "migrationChanges": diff(g.TEXT_LOGIN, g.TEXT_MIGRATED),
         "fullDrop": FULL_DROP,
+        "fullDropIn": FULL_DROP_IN,
         "fit": {"W": fit_py["W"], "H": fit_py["H"], "verdict": fit_py["verdict"], "layoutName": fit_py["layoutName"],
                 "places": fit_py["places"], "eye": [str(v) for v in (fit_py.get("eye") or {}).values()],
                 "inputs": fit_py["inputs"]},
         "extraPersonalDropped": [m + "." + k + "=" + v for m, k, v in dropped],
-        "notLoadedDropped": [("!" + k if m == "!" else m + "." + k) for m, k, v in absent],
+        "skinLeftOut": sorted(set(skin)),
+        "featureCarried": [key_of(m, k) for m, k, v in carried],
         "sha256": sha(full),
         "text": full,
     }
@@ -779,6 +895,7 @@ def text_diff(old, new):
 SHARE_TAG = "!MelloUI1!"
 SHARE_LETTERS, SHARE_TEXT = 131072, 1048576   # (Core/Core.lua's limits for an import)
 STRING_FILE, TEXT_FILE = "profile_string.txt", "profile_text.txt"
+CARRIED_FILE = "carried.txt"   # (the entries carried into the snapshot beside the string's own, each with its reason)
 
 
 def read_share(path=None, clipboard=False):
@@ -936,22 +1053,36 @@ FITTED = {"UIModifications.positions", "QuestTracker.pos", "QuestTracker.maxHeig
           "Auras.playerPerRow", "Auras.playerSize"}
 
 
-def account(text, full, report, lua, checks):
+def account(text, full, report, lua, checks, carried=None):
     """Every entry of the string, sorted: {"same": [...], "changed": [(key, why)], "dropped": [(key, why)],
-    "unexplained": [key], "added": [key]}."""
+    "unexplained": [key], "added": [(key, why)]} (carried: {key: why} of the entries carried into its snapshot)."""
     M = lua.globals().MelloUI
     src, out = B.entry_map(text), B.entry_map(full)
     check = {c["key"]: c for c in checks}
     registered = lua.eval("(function(n) return MelloUI.modules[n] ~= nil end)")
     login = {c["key"] for c in report.get("loginChanges", []) + report.get("migrationChanges", [])}
-    absent = set(report.get("notLoadedDropped", []))
-    res = {"same": [], "changed": [], "dropped": [], "unexplained": [], "added": sorted(set(out) - set(src))}
+    skin = set(report.get("skinLeftOut", []))
+    feature = set(report.get("featureCarried", []))
+    carried = carried or {}
+    own_login = "%s's own, as its login leaves it (read with it loaded)" % ", ".join(B.FULL_WITHOUT)
+    res = {"same": [], "changed": [], "dropped": [], "unexplained": [],
+           "added": [(key, carried.get(key) or (own_login if key in feature else "a login step of the current code"
+                                                if key in login else "added by the bake"))
+                     for key in sorted(set(out) - set(src))],
+           # (an entry carried into the snapshot that did not ship: a login step took it -- Oldschool's own, read with
+           # it loaded, or one of the current code's)
+           "carriedGone": [(key, "a login step of the current code" if key in login else own_login
+                            if is_own(feature_own(), *split_key(key)) else "taken out by the bake")
+                           for key in sorted(set(carried) - set(out))]}
     for key, value in sorted(src.items()):
         if key in out:
             if out[key] == value:
                 res["same"].append(key)
             elif key in FITTED:
                 res["changed"].append((key, "fitted to the design size (the installer fits it again to each screen)"))
+            elif key in FULL_DROP_IN:
+                res["changed"].append((key, "its entries matching %s left out: kept-but-unread legacy the current code "
+                                            "no longer reads (FULL_DROP_IN)" % FULL_DROP_IN[key]))
             elif key in login or key in LOGIN_STEPS:
                 res["changed"].append((key, "a login step of the current code"))
             else:
@@ -968,14 +1099,13 @@ def account(text, full, report, lua, checks):
         elif not key.startswith("!") and extra_personal(name, sub):
             why = "a one-time mark (the bake's own rule): never shipped"
         elif key in FULL_DROP:
-            why = "an old key the current code no longer reads (FULL_DROP)"
-        elif not registered(name) or key in absent:
-            why = "%s's (a module of it, or a setting it brings): the shipped Full leaves it out, it ships its own" \
-                % ", ".join(B.FULL_WITHOUT)
+            why = "kept-but-unread legacy: an old key the current code no longer reads (FULL_DROP)"
+        elif key in skin or key in SKIN_KEYS:
+            why = "the skin: the installer's Skin step sets it over the one profile (SKIN_KEYS)"
+        elif (not registered(name) or is_own(feature_own(), *split_key(key))) and key not in feature:
+            why = "%s's, equal to its default with it loaded (read with it loaded)" % ", ".join(B.FULL_WITHOUT)
         elif key in login or key in LOGIN_STEPS or key in [k for spec in MOVES.values() for k in spec["old"]]:
             why = "taken out by a login step of the current code (a merge or a move)"
-        elif key in FITTED:
-            why = "taken out by the fitter (the layout places it)"
         else:
             res["unexplained"].append(key)
             continue
@@ -983,14 +1113,36 @@ def account(text, full, report, lua, checks):
     return res
 
 
+def carry_entries(text, source, own, why):
+    """The entries of `source` that are a left-out feature addon's own (is_own), not the skin's and not set by `text`:
+    [(entry, why)]."""
+    have = set(B.entry_map(text))
+    out = []
+    for m, k, v in B.entries(source or ""):
+        key = "!" + k if m == "!" else m + "." + k
+        if key not in have and key not in SKIN_KEYS and is_own(own, m, k):
+            have.add(key)
+            out.append((key + "=" + v, why))
+    return out
+
+
 def ship_string(args):
-    """--string / --clipboard: the string becomes the bake's snapshot, then the bake runs as for any snapshot."""
+    """--string / --clipboard: the string becomes the bake's snapshot, then the bake runs as for any snapshot.
+    -> (snapshot, the string's own text, {key: why carried}, entry checks)"""
     raw = read_share(args.string, args.clipboard)
-    text = decode_share(raw)
+    own_text = decode_share(raw)
+    text = own_text
     print("the string: %d letters, its text %d characters, %d entries" % (len(re.sub(r"\s+", "", raw)), len(text),
                                                                          len([e for e in text.split(";") if e])))
     src, _ = current_entry()
     shipped = shipped_text(src)
+    carried = []
+    own = feature_own(args.tries, args.wait) if (args.carry or args.fill_missing) else None
+    if args.carry:
+        given = read_share(args.carry).strip()
+        given = decode_share(given) if given.startswith(SHARE_TAG) else given
+        carried += carry_entries(text, given, own, "carried from %s (--carry): %s's own, the string has none"
+                                 % (os.path.basename(args.carry), ", ".join(B.FULL_WITHOUT)))
     missing = missing_modules(text, shipped)
     if missing:
         print("modules the shipped Full has settings for and the string has none for (not in the client it came "
@@ -998,10 +1150,21 @@ def ship_string(args):
         for name, es in sorted(missing.items()):
             print("  %-22s %3d entries%s" % (name, len(es), "  -> carried over from the shipped Full (--fill-missing)"
                                              if args.fill_missing else ""))
-        if args.fill_missing:
-            text = ";".join([e for e in text.split(";") if e] + [e for es in missing.values() for e in es])
-        else:
+        if not args.fill_missing:
             print("  (they ship at their defaults; --fill-missing carries the shipped Full's own entries for them)")
+    if args.fill_missing:
+        have = set(B.entry_map(text)) | {e.partition("=")[0] for e, _ in carried}
+        for name, es in sorted(missing.items()):
+            carried += [(e, "carried from the shipped Full (--fill-missing): the string has no entry for %s" % name)
+                        for e in es if e.partition("=")[0] not in have]
+        carried += carry_entries(";".join([text] + [e for e, _ in carried]), shipped, own,
+                                 "carried from the shipped Full (--fill-missing): %s's own, the string has none"
+                                 % ", ".join(B.FULL_WITHOUT))
+    if carried:
+        print("carried into the string's snapshot (the string's own entries always win):")
+        for e, why in carried:
+            print("  %-48s %s" % (e.partition("=")[0], why))
+        text = ";".join([e for e in text.split(";") if e] + [e for e, _ in carried])
     sv, checks, applied = string_snapshot(text, args.tries, args.wait)
     print("read by the addon's own reader: %d of %d entries applied" % (applied, len(checks)))
     # (a --write keeps it in the build data, where --check and the release bake it again; a look only, in a
@@ -1013,12 +1176,15 @@ def ship_string(args):
         import tempfile
         folder = tempfile.mkdtemp(prefix="bake_string_")
     snapshot = os.path.join(folder, "MelloUI.SavedVariables.lua")
-    for name, body in ((snapshot, sv), (os.path.join(folder, STRING_FILE), re.sub(r"\s+", "", raw) + "\n"),
-                       (os.path.join(folder, TEXT_FILE), text + "\n")):
+    files = [(snapshot, sv), (os.path.join(folder, STRING_FILE), re.sub(r"\s+", "", raw) + "\n"),
+             (os.path.join(folder, TEXT_FILE), own_text + "\n")]
+    if carried:
+        files.append((os.path.join(folder, CARRIED_FILE), "".join("%s\t%s\n" % (e, why) for e, why in carried)))
+    for name, body in files:
         with open(name, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(body)
     print("the string's snapshot: %s" % snapshot)
-    return snapshot, text, checks
+    return snapshot, own_text, {e.partition("=")[0]: why for e, why in carried}, checks
 
 
 def print_account(acc):
@@ -1028,8 +1194,10 @@ def print_account(acc):
         print("  changed   %-48s %s" % (key, why))
     for key, why in acc["dropped"]:
         print("  left out  %-48s %s" % (key, why))
-    for key in acc["added"]:
-        print("  added     %s" % key)
+    for key, why in acc["added"]:
+        print("  added     %-48s %s" % (key, why))
+    for key, why in acc.get("carriedGone", []):
+        print("  carried, not shipped  %-36s %s" % (key, why))
     for key in acc["unexplained"]:
         print("  LEFT OUT FOR NO KNOWN REASON  %s" % key)
 
@@ -1041,7 +1209,10 @@ def main():
                     "page's Export): it becomes the bake's snapshot")
     ap.add_argument("--clipboard", action="store_true", help="as --string, the string read from the clipboard")
     ap.add_argument("--fill-missing", action="store_true", help="with --string: a module the string has no entry "
-                    "for (a feature addon its client lacks) keeps the shipped Full's own entries")
+                    "for (a feature addon its client lacks) keeps the shipped Full's own entries, and so do "
+                    "MelloUI_Oldschool's settings the string has none of")
+    ap.add_argument("--carry", metavar="FILE", help="with --string: MelloUI_Oldschool's settings from this profile "
+                    "text or share string, where the string has none (before --fill-missing)")
     ap.add_argument("--check", action="store_true", help="exit 1 unless Media/Profiles.lua holds this bake and only it")
     ap.add_argument("--write", action="store_true", help="write the \"MelloUI\" entry of Media/Profiles.lua")
     ap.add_argument("--deps", action="store_true", help="list the files this bake reads, then exit")
@@ -1056,11 +1227,13 @@ def main():
     if gone:
         raise SystemExit("the bake's files are missing: %s" % gone)
     acc = None
+    if (a.fill_missing or a.carry) and not (a.string or a.clipboard):
+        raise SystemExit("--fill-missing and --carry go with --string or --clipboard")
     if a.string or a.clipboard:
-        a.snapshot, source_text, checks = ship_string(a)
+        a.snapshot, source_text, carried, checks = ship_string(a)
     full, report, lua = bake(a.snapshot, a.tries, a.wait)
     if a.string or a.clipboard:
-        acc = account(source_text, full, report, lua, checks)
+        acc = account(source_text, full, report, lua, checks, carried)
         report["stringAccount"] = acc
     os.makedirs(OUT, exist_ok=True)
     open(os.path.join(OUT, "full.txt"), "w", encoding="utf-8", newline="\n").write(full)
@@ -1077,7 +1250,8 @@ def main():
     for t in report["fit"]["eye"]:
         print("  the user's eye:", t)
     print("extra personal dropped:", report["extraPersonalDropped"])
-    print("modules not loaded (%s), dropped: %d entries" % (", ".join(B.FULL_WITHOUT), len(report["notLoadedDropped"])))
+    print("%s's own, read with it loaded: %d entries; the skin left out: %s" % (
+        ", ".join(B.FULL_WITHOUT), len(report["featureCarried"]), report["skinLeftOut"]))
     src, m = current_entry()
     old = shipped_text(src)
     print("Full in Media/Profiles.lua: %s" % ("%d characters, sha256 %s" % (len(old), sha(old)) if old else "none"))

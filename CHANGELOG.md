@@ -15,12 +15,14 @@
 - Hide Heal Numbers (Unit & Group Frames > Player, its portrait): your portrait no longer shows the green numbers of the heals you take; damage, misses and mana gains still show.
 - Your party stays in one place when you switch between raid frames and portraits, and your raid frames keep their top-left corner when you change how many stand in a column (the top-right for a party flipped to the right).
 - Preview (the configurator's footer): Solo Fight, Party Fight and the new Raid Fight. Each shows only its own group frames: none alone, your party in the look you picked, the raid in a raid.
+- Oldschool has its own icons, hand-painted RPG pictures in square iron frames. The icons follow your skin: Default shows the game's own, Modern MelloUI's, Oldschool its painted set.
 - Modern has its own sounds. Custom Sounds follows your skin: Modern plays its own clicks, windows, items and alerts, Oldschool keeps the iron and leather ones, and the Default skin keeps the game's own.
 - Fixed: Show Yourself In Your Party did nothing with Party Frames (Portraits). Your frame now shows on top of your party with your role and the leader's crown, and the members stand under it, Party Spacing apart.
 - Party Frames (Portraits) are a size larger at 100%, about as tall as your own frame; Edit Mode's Frame Size and Edit Layout's size still change them.
 - Mouseover Highlight: the party and raid frame under your mouse lights up, its gold brighter with a soft glow behind and a crisp outline round its shape; the plate of whatever your mouse is over gets the outline too. Each has its switch (Party, Raid and Nameplates, Behaviour).
 - Skin (Look > General): Default dresses MelloUI's own windows and parts in the game's own look, with its borders, buttons, tabs, check boxes, icons and fonts in the very same places, and the game's own unit frames and action buttons. Modern stays as it is. Its windows and panels are the game's dark grey.
 - Fixed: with MelloUI Oldschool installed, the Personal Display wore Oldschool's painted frame in the Modern and Default skins too.
+- One setup for every skin: the installer gives Default, Modern and Oldschool the same MelloUI setup and sets your skin on top. MelloUI's own places for the minimap, the chat, the damage meter and the Quest Tracker now win over the Edit Mode layout's, and a Fit to this screen keeps them.
 - The installer reloads the UI when you keep your new setup, so everything takes it at once (in a fight, Keep waits for the fight's end).
 - A new installer: everyone goes through it step by step. Your skin comes first (Default, Modern or Oldschool), then your layout, party and raid frames, quests and travel, combat, chat, minimap, bags and sounds, each with a picture of what you pick, in your skin. It replaces the four setups and Fresh start.
 - Fixed: the Damage Meter's Parchment switch could not be changed without MelloUI Oldschool. It is on the Damage Meter page now (Look) and works in every skin.

@@ -13,6 +13,8 @@ Media/FrameFX/Light/, the addon's only; and the map icons' lifts (HALO): Media/T
 
     python Tools/make_icons.py            write them
     python Tools/make_icons.py --check    exit 1 unless all are up to date
+    python Tools/make_icons.py --set oldschool [--check]   a look's own set (LOOK_SETS): its masters, its addon's
+                                          copies and lifts
 """
 import hashlib
 import io
@@ -97,6 +99,24 @@ HALO_DISCS = ("pin_", "goal_", "obj_", "class_")
 HALO_PAD, HALO_SIZE, HALO_WORK = 0.25, 64, 128   # (HALO_WORK: the icon's size while it is made, the canvas half again)
 HALO_GLOW, HALO_SHADE = (0.05, 0.08, 2.6), (0.035, 0.04, 2.2)
 HALO_OUT = ("Textures", "Icons", "Halo")
+
+# (1.2.4; the user's pick B of oldschool_icons_sketch, 2026-10-28: "B: painted") a look's own set: the set's names drawn
+# again for that look, shipped in its addon (<addon>/Icons/<name>.tga, its lifts in Icons/Halo) and shown by
+# MelloUI.Icons while the look is on (Icons.AddSet: the list Tools/make_icon_sizes.py --set writes). Its art:
+# <art>/png128/<name>.png, cut from its ChatGPT sheets (masters/icons_oldschool/cut_sheets.py, the brief in
+# chatgpt-prompts.md there); only the pictures drawn so far -- a name it lacks stays this set's. The pieces, the badges,
+# the ring, the class discs and the trail's dots stay shared. area: the Kit area it shows in; square: its buttons wear
+# their own square frame (W.RoundIcon's square mode)
+LOOK_SETS = {
+    "oldschool": {
+        "art": os.path.join(os.path.dirname(os.path.dirname(master("x"))), "icons_oldschool"),
+        "addon": os.path.join(os.path.dirname(ADDON_MEDIA), "MelloUI_Oldschool", "Media"),
+        "root": "Interface\\AddOns\\MelloUI_Oldschool\\Media\\",
+        "area": "copy", "square": True,
+    },
+}
+LOOK_SKIP = ("map_dot", "route_bead")
+LOOK_OUT = ("Icons",)
 
 
 def load(group, name):
@@ -237,9 +257,9 @@ def disc(size, inner=None, edge=1.0):
 # (2026-10-20) the configurator's stretchable pieces (Batches 18 and 20, icons_v2/work/cut_pieces.py): each scaled to a
 # power-of-two width at its own aspect and laid at the top left of a power-of-two canvas -- its picture's height
 # there is round(height * width / its width); Core/Widgets.lua's MODERN table holds those heights and the ends' widths
+# (1.2.4: the tabs' peaked pieces went with the text tabs, d46cee3)
 PIECES = [("div_diamond", 512, 32), ("dd_closed", 512, 64), ("dd_hover", 512, 64), ("dd_open", 512, 64),
-          ("dd_panel", 256, 256), ("dd_row", 256, 64), ("tab_off", 256, 128), ("tab_hover", 256, 128),
-          ("tab_on", 256, 128), ("pill_off", 256, 64), ("pill_on", 256, 64),
+          ("dd_panel", 256, 256), ("dd_row", 256, 64), ("pill_off", 256, 64), ("pill_on", 256, 64),
           # (Batch 24) the experience and reputation bars' frame, track and notch (Modules/ActionBars.lua)
           ("bar_frame", 512, 64), ("bar_track", 512, 32), ("bar_notch", 16, 64)]
 
@@ -683,19 +703,116 @@ def bigs():
     return out
 
 
+def look_entries(look):
+    """a look's own set: the set's pictures it has art for so far, [(group, name, the file's size, its art)]"""
+    art = LOOK_SETS[look]["art"]
+    out = []
+    for group, _art, name, size in SET:
+        if group == "pieces" or name in LOOK_SKIP:
+            continue
+        path = os.path.join(art, "png128", name + ".png")
+        if os.path.exists(path):
+            out.append((group, name, size, Image.open(path).convert("RGBA")))
+    return out
+
+
+def look_files(look):
+    """the look's icons at their files' sizes, as files() has the set's: [(name, picture)]"""
+    out = []
+    for _group, name, size, img in look_entries(look):
+        if name == "edge_arrow":
+            img = img.rotate(180)
+        out.append((name, scaled(img, size)))
+    return out
+
+
+def look_bigs(look):
+    """the look's icons as their big art, as bigs() has the set's: [(name, picture, the file's size)]"""
+    out = []
+    for _group, name, size, img in look_entries(look):
+        if not isinstance(size, int):
+            if name == "edge_arrow":
+                img = img.rotate(180)
+            out.append((name, scaled(img, (size[0] * 2, size[1] * 2)), "%dx%d" % size))
+            continue
+        if img.width != img.height:
+            img = scaled(img, max(img.size))
+        out.append((name, img, size))
+    return out
+
+
+def look_halos(look):
+    """the look's lifts, of its own pictures' shapes (its square frames' for its framed pins): [(name, picture)]"""
+    return [(name, halo(name, img)) for group, name, _size, img in look_entries(look) if group in HALO_GROUPS]
+
+
+def look_main(look, check):
+    """--set <look>: its masters (masters/icons_<look>/Media/Icons), its addon's copies and its lifts"""
+    spec = LOOK_SETS[look]
+    stale, sums = [], hashlib.sha256()
+    icons = look_files(look)
+    every = [(name, img, (os.path.join(spec["art"], "Media", *LOOK_OUT, name + ".tga"),
+                          os.path.join(spec["addon"], *LOOK_OUT, name + ".tga"))) for name, img in icons]
+    lifts = look_halos(look)
+    every += [(name, img, (os.path.join(spec["addon"], *LOOK_OUT, "Halo", name + ".tga"),)) for name, img in lifts]
+    for name, img, paths in every:
+        data = tga(img)
+        sums.update(name.encode() + data)
+        for path in paths:
+            if check:
+                try:
+                    with open(path, "rb") as f:
+                        if f.read() != data:
+                            stale.append(path)
+                except OSError:
+                    stale.append(path)
+                continue
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "wb") as f:
+                f.write(data)
+    if check:
+        for path in stale:
+            print("stale:", os.path.normpath(path))
+        print("ok" if not stale else "STALE")
+        return 1 if stale else 0
+    print("%s: %d of %d icons written (masters + %s), %d lifts, sha256 %s"
+          % (look, len(icons), sum(1 for g, _a, n, _s in SET if g != "pieces" and n not in LOOK_SKIP),
+             os.path.normpath(os.path.join(spec["addon"], *LOOK_OUT)), len(lifts), sums.hexdigest()[:16]))
+    return 0
+
+
 def tga(img):
     buf = io.BytesIO()
     img.save(buf, format="TGA")
     return buf.getvalue()
 
 
+def look_arg(argv):
+    """--set <look> -> (look or None, the other arguments)"""
+    rest, look = [], None
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--set" and i + 1 < len(argv):
+            look = argv[i + 1]
+            i += 2
+            continue
+        rest.append(argv[i])
+        i += 1
+    return look, rest
+
+
 def main():
-    bad = [a for a in sys.argv[1:] if a != "--check"]
+    look, args = look_arg(sys.argv[1:])
+    bad = [a for a in args if a != "--check"]
+    if look is not None and look not in LOOK_SETS:
+        bad.append("--set " + look)
     if bad:
         print("unknown argument: %s (nothing written)\n" % " ".join(bad))
         print(__doc__[__doc__.index("    python Tools/"):].rstrip())
         return 2
-    check = "--check" in sys.argv
+    check = "--check" in args
+    if look:
+        return look_main(look, check)
     stale = []
     sums = hashlib.sha256()
     icons = files()

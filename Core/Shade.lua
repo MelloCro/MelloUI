@@ -1354,7 +1354,7 @@ end
 --------------------------------------------------------------------------------
 
 do
-	local HALO = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\Halo\\"
+	-- (the halos: Media\Textures\Icons\Halo\<name>, or a look's own set's -- MelloUI.Icons.HaloPath)
 	local PAD = 0.25   -- (make_icons.py HALO_PAD)
 	local AREA = "icons"
 	local DISCS = { "pin_", "goal_", "obj_", "class_" }   -- (make_icons.py HALO_DISCS)
@@ -1422,6 +1422,15 @@ do
 				lift:Show()
 			end
 		end), "Shade lifts")
+		-- (1.2.4) a look's own set switched (MelloUI.Icons: Oldschool's painted icons): each lift its picture's halo as
+		-- it shows now -- the set's own (its square frames' shape), or MelloUI's
+		MelloUI:On("icons", Perf.Shared("'icons' on the bus: the icons' lifts", function()
+			for _, lift in pairs(lifts) do
+				if lift.name then
+					lift.tex:SetTexture(MelloUI.Icons.HaloPath(lift.name))
+				end
+			end
+		end), "Shade lifts")
 		Listen()
 	end
 
@@ -1460,7 +1469,7 @@ do
 		end
 		if name ~= lift.name then
 			lift.name = name
-			tex:SetTexture(HALO .. name)
+			tex:SetTexture(MelloUI.Icons.HaloPath(name))   -- (a look's own set's while it shows the picture: 1.2.4)
 			local key = IsDisc(name) and GLOW_KEY or SHADE_KEY
 			if key ~= lift.key then
 				lift.key = key

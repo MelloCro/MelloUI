@@ -5247,23 +5247,26 @@ local function RecordShipped(db, name, text)
 	db.profilesShipped[name] = text
 end
 
--- (1.0, the user, 2026-10-20: "the Full expirience should also take into
--- consideration if i Have MelloUI_Oldschool active or not, it should load the
--- old Profiles if its active, if its not active then it will load the new
--- ones") The shipped setups: MelloUI's own (MelloUI_Profiles, the Edit Mode
--- layout MelloUI_EditModeLayout) and, while MelloUI_Oldschool is loaded (and
--- not refused for another version), its frozen one for the painted reskin
--- (MelloUI_OldschoolShipped: its profile under its own name, its layout).
+-- The shipped setup: MelloUI's own (MelloUI_Profiles' "MelloUI", the Edit
+-- Mode layout MelloUI_EditModeLayout), one for every skin (1.2.4, the user
+-- 2026-10-28: "make sure that all 3 Themes follow the same Profiles, no more
+-- separate profiles depending on the Theme"; its "MelloUI" carries the
+-- painted reskin's own settings too, Tools/installer/bake_full.py). The
+-- frozen "MelloUI Oldschool" of 1.0 is no longer shipped nor applied: a
+-- player's copy of it in the list stays theirs (MelloUI:Profiles never
+-- deletes one).
+-- Whether MelloUI_Oldschool is loaded, and not refused for another version:
+-- its table, else nil (the installer's Oldschool skin; the name is 1.0's,
+-- when it brought a setup of its own).
 function MelloUI:OldschoolShipped()
-	local oldschool, shipped = rawget(self, "Oldschool"), rawget(_G, "MelloUI_OldschoolShipped")
-	if type(oldschool) == "table" and not oldschool.refused and type(shipped) == "table"
-		and type(shipped.profileName) == "string" and type(shipped.profile) == "string" then
-		return shipped
+	local oldschool = rawget(self, "Oldschool")
+	if type(oldschool) == "table" and not oldschool.refused then
+		return oldschool
 	end
 	return nil
 end
 
--- the shipped profiles by name (a new table: MelloUI's own, Oldschool's beside them)
+-- the shipped profiles by name (a new table)
 function MelloUI:ShippedProfiles()
 	local out = {}
 	local baked = type(MelloUI_Profiles) == "table" and MelloUI_Profiles.profiles
@@ -5272,34 +5275,16 @@ function MelloUI:ShippedProfiles()
 			out[name] = text
 		end
 	end
-	local old = self:OldschoolShipped()
-	if old then
-		out[old.profileName] = old.profile
-	end
 	return out
 end
 
--- (1.2.4, the installer's Skin step) a skin's shipped setup: Oldschool's for the Oldschool skin (with MelloUI_Oldschool
--- loaded), MelloUI's own for Default and Modern; no skin given: Oldschool's whenever it is loaded (as before)
-local function ShippedOldschool(self, skin)
-	if skin ~= nil and skin ~= "oldschool" then
-		return nil
-	end
-	return self:OldschoolShipped()
+-- the shipped profile the installer applies, whatever the skin
+function MelloUI:FullProfileName()
+	return "MelloUI"
 end
 
--- the shipped profile the installer applies (skin: the Skin step's pick)
-function MelloUI:FullProfileName(skin)
-	local old = ShippedOldschool(self, skin)
-	return old and old.profileName or "MelloUI"
-end
-
--- the shipped Edit Mode layout ({ name, layout }): Oldschool's while it is loaded (skin: as FullProfileName's)
-function MelloUI:ShippedEditMode(skin)
-	local old = ShippedOldschool(self, skin)
-	if old and type(old.editMode) == "table" then
-		return old.editMode
-	end
+-- the shipped Edit Mode layout ({ name, layout }), whatever the skin
+function MelloUI:ShippedEditMode()
 	return rawget(_G, "MelloUI_EditModeLayout")
 end
 

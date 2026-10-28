@@ -1,1 +1,1 @@
-installer/full_2026-10-20_131724/MelloUI.SavedVariables.lua
+installer/full_string_2026-10-28_130304/MelloUI.SavedVariables.lua

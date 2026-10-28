@@ -19,10 +19,14 @@ Checks (the installer build's spec, sections 1.1 and 1.4):
     personal key of the snapshot;
   - the UI scale is not in it;
   - the places: the 12 window places, and fitted at the design size by the
-    fitter's own test world they come back unchanged; none of the four Edit
-    Mode frames, no QuestTracker.pos, no layoutFitFor; the three places wave
+    fitter's own test world they come back unchanged; (1.2.4: MelloUI's
+    places win) the four Edit Mode frames' places, Edit Layout's copies and
+    QuestTracker.pos the snapshot's own, no layoutFitFor; the three places wave
     3 moved are store entries, never the old keys; every whisper window
     (its size, all six cascade places) opens inside the design screen;
+  - one profile for every skin (1.2.4): MelloUI_Oldschool's own settings in
+    it as the bake read them with it loaded, checked against its defaults;
+    the skin (SKIN_KEYS) never; MelloUI_Oldschool ships no profile of its own;
   - test_options.py's Full rules: <= 40,000 characters, no FULL_DROP key, every
     key in its module's defaults or the declared nil-default list, every flag
     a registered module that is not driven by UI Modifications;
@@ -136,8 +140,8 @@ def world_new():
 
 
 def strip_extra(text, absent=()):
-    """`text` without the installer's keep additions, nor the entries the bake leaves out as not loaded (`absent`, its
-    report's notLoadedDropped: Oldschool's, a save from a game with it holds)."""
+    """`text` without the installer's keep additions, nor the entries the bake leaves out (`absent`, its report's
+    skinLeftOut: the skin, which the installer's Skin step sets)."""
     absent = set(absent)
     return ";".join(e for e in text.split(";") if e and e.split("=", 1)[0] not in absent and not (
         not e.startswith("!") and F.extra_personal(*e.split("=", 1)[0].split(".", 1))))
@@ -218,8 +222,10 @@ def main():
                     dict(moved, FriendsFrame={"x": 1, "y": 1})),
           "the move check stops on another store entry, a wrong move, or a login that changed another place")
     # (1.0: a PASS whose notes are the soft ones only -- a piece in the centre third or over another now and then, as
-    # the user laid them out on this screen)
-    soft = all(t.startswith(("in the centre third when it shows", "now and then")) for t in report["fit"]["eye"])
+    # the user laid them out on this screen) (1.2.4: MelloUI's places win, the minimap at the user's own place -- the
+    # buff bar beside it wraps its row for it, the user's to look at)
+    soft = all(t.startswith(("in the centre third when it shows", "now and then", "buffs wrap at"))
+               for t in report["fit"]["eye"])
     check(report["fit"]["verdict"] in ("PASS", "PASS, needs the user's eye") and soft and report["fit"]["layoutName"] == "MelloUI"
           and abs(report["fit"]["W"] - 2866.6666666666665) < 1e-9 and report["fit"]["H"] == 1200,
           "the fit ran at the design size (2866.67 x 1200): %s %s" % (report["fit"]["verdict"], report["fit"]["eye"]))
@@ -287,7 +293,7 @@ def main():
         personal_before = B.py(lua2, personal_of())
     M2.ApplySettingsText(M2, text)
     M2.SaveProfile(M2, "Over")
-    over = strip_extra(lua2.eval("MelloUI.db.profiles.Over"), report["notLoadedDropped"])
+    over = strip_extra(lua2.eval("MelloUI.db.profiles.Over"), report["skinLeftOut"])
     check(over == text, "loaded over the user's setup it gives the same text")
     if over != text:
         for c in F.diff(text, over):
@@ -326,7 +332,8 @@ def main():
     saved = re.findall(r"(?:^|;)(\w+\.saved[A-Z]\w*)=", text)
     check(not saved, "no saved game setting (a module's saved* backup) in it: %s" % saved)
     top = ["kitTuning", "kitEditor", "profiles", "profilesShipped", "activeProfile", "defaultProfile", "installer"]
-    known = lua.eval("function(n) return MelloUI.modules[n] ~= nil end")
+    # (1.2.4: MelloUI_Oldschool's own modules too, a feature this world leaves out)
+    known = lua.eval("function(n) return MelloUI.modules[n] ~= nil or MelloUI.Features[n] ~= nil end")
     check(all(known(k if m == "!" else m) for m, k, v in ents) and not any(t + "." in text or t + "=" in text for t in top),
           "only module settings, no top-level db key")
 
@@ -343,18 +350,27 @@ def main():
         return M:GetModuleDB("UIModifications").positions end)''')(text))
     names = sorted(pos)
     moved = moved_places(snap)
-    check(sorted(n for n in names if n not in moved) == sorted(WINDOWS12 + OWN_PLACES),
-          "the 12 window places and MelloUI's own elements' (0.17.0): %s" % names)
-    check(all(n not in pos for n in F.EDIT_MODE_FRAMES), "no store place for the four Edit Mode frames")
-    check(not [n for n in pos if n.startswith("EditMode.")] and not [n for n in pos if n in F.STALE_PLACES],
-          "no Edit Layout copy of an Edit Mode system's place (1.0, the fit's F0), no stale place")
+    # (1.2.4: the Edit Mode frames' places and Edit Layout's copies are kept, the check below)
+    check(sorted(n for n in names if n not in moved and n not in F.EDIT_MODE_FRAMES and not n.startswith("EditMode."))
+          == sorted(WINDOWS12 + OWN_PLACES), "the 12 window places and MelloUI's own elements' (0.17.0): %s" % names)
+    # (1.2.4, the user 2026-10-28: "MelloUI Configurator Export is always being Prioritized over the Game Edit Mode
+    # Export": the four Edit Mode frames' places and Edit Layout's copies are the snapshot's own, never taken out)
+    snap_pos = (snap.get("UIModifications") or {}).get("positions") or {}
+    kept = [n for n in snap_pos if n in F.EDIT_MODE_FRAMES or str(n).startswith("EditMode.")]
+    check(all(pos.get(n) == snap_pos[n] for n in kept)
+          and not [n for n in pos if (n in F.EDIT_MODE_FRAMES or n.startswith("EditMode.")) and n not in snap_pos],
+          "the Edit Mode frames' places and Edit Layout's copies are the snapshot's own, as they are: %s" % sorted(kept))
+    check(not [n for n in pos if n in F.STALE_PLACES], "no stale place")
     for n, want in moved.items():
         got = pos.get(n)
         check(got is not None and {k: got[k] for k in got} == want, "the moved place %s is a store entry %s" % (n, got))
     for k in F.LEGACY_PLACES:
         check(k not in emap, "no old place key %s" % k)
     check("voiceOverlay" not in pos, "no voiceOverlay place (0.16.0: the widget column has its own)")
-    check("QuestTracker.pos" not in emap and "UIModifications.layoutFitFor" not in emap, "no QuestTracker.pos, no layoutFitFor")
+    # (1.2.4: the Quest Tracker's own place is the snapshot's, as the design screen keeps it -- none when it has none)
+    tpos = (snap.get("QuestTracker") or {}).get("pos")
+    check(("QuestTracker.pos" in emap) == isinstance(tpos, dict) and "UIModifications.layoutFitFor" not in emap,
+          "QuestTracker.pos the snapshot's own (%s), no layoutFitFor" % tpos)
     well = all(isinstance(p.get("x"), (int, float)) and isinstance(p.get("y"), (int, float))
                and p.get("point", "BOTTOMLEFT") in ANCHORS and p.get("relPoint", "CENTER") in ANCHORS for p in pos.values())
     check(well, "every place in the store's form (anchors, numbers)")
@@ -384,15 +400,23 @@ def main():
     # (1.0: the Full's own inputs as the bake's fit read them -- the one look's minimap column, the tracker's sizes --
     # its store places the shipped ones)
     inputs = dict(report["fit"]["inputs"], positions={n: pos[n] for n in pos})
-    inputs["tracker"] = dict(inputs["tracker"], pos=None)
+    # (1.2.4: the tracker's own place as the Full has it; MelloUI's places win, as LayoutFit:Inputs says)
+    qtp = lua.eval('(function(text) MelloUI:ApplySettingsText(text) return MelloUI:GetModuleDB("QuestTracker").pos end)')(text)
+    qtp = B.py(lua, qtp) if qtp is not None else None
+    inputs["tracker"] = dict(inputs["tracker"], pos=qtp)
+    check(inputs.get("ownPlaces") is True, "the bake's fit read MelloUI's places as winning (LayoutFit:Inputs' ownPlaces)")
     fitted, places, rep = fit.Fit(fit, FC.to_lua(flua, info), fit.DESIGN_W, fit.DESIGN_H, FC.to_lua(flua, inputs),
                                   FC.to_lua(flua, {"screenW": 3440, "screenH": 1440}))
     rep, places = FC.from_lua(flua, rep), FC.from_lua(flua, places)
     check(rep["verdict"] in ("PASS", "PASS, needs the user's eye"), "the fitter's world: %s at the design size" % rep["verdict"])
     # (the fit hands back every store entry it keeps: the 12 windows it
     # places, and the other entries as they are)
-    same = sorted(places["windows"]) == sorted(pos) and all(places["windows"][n] == pos[n] for n in pos)
+    # (1.2.4: MelloUI's own places of what the layout places come back apart, places.own)
+    back = dict(places["windows"], **(places.get("own") or {}))
+    same = sorted(back) == sorted(pos) and all(back[n] == pos[n] for n in pos)
     check(same, "fitted at the design size, the 12 window places come back unchanged (the moved two as they are)")
+    check(sorted(places.get("own") or {}) == sorted(n for n in pos if n in F.EDIT_MODE_FRAMES or n.startswith("EditMode.")),
+          "the Edit Mode frames' places come back as MelloUI's own (places.own): %s" % sorted(places.get("own") or {}))
     # (after 0.18.0 the Quest List is a page of the map's quest log: the fit has no width of its own for it)
     # (1.0: the tracker's sizes the bake's fit gave, the Full's own -- the user's, its width the minimap column's)
     baked = report["fit"]["places"]["questTracker"]
@@ -411,6 +435,9 @@ def main():
     # 2026-10-20; the old one also failed 1366x768 and 1024x768, the new one's tall bottom stack 1600x900 and 1280x1024)
     import fit as FP   # (the prototype's screen list and UI scale: fitting/fit.py SCREENS, ui_parent)
     want_fail = {"1366x768", "1600x900", "1280x1024", "1024x768", "1024x768@0.80"}
+    # (1.2.4, the user's string of 2026-10-28: on 1680x1050 the queue eye under the minimap meets the debuff rows -- the
+    # string's own settings, with MelloUI's places winning or not)
+    want_fail |= {"1680x1050"}
     got_fail = set()
     for sid, sw, sh, sc, _ in FP.SCREENS:
         uw, uh, _ = FP.ui_parent(sw, sh, sc)
@@ -424,17 +451,41 @@ def main():
     print("== the Full rules of test_options.py")
     check(len(text) <= 40000, "%d characters (at most 40,000)" % len(text))   # (1.0, 2026-10-20: the macro backup that held 6,000 is gone; the user's own Full is about 19,000)
     check(not any(k in emap for k in F.FULL_DROP), "no FULL_DROP key")
+    # (1.2.4, fr-02: a table setting's kept-but-unread legacy entries -- the party's own gparty@<spec> spell groups)
+    legacy = []
+    for spec, pattern in F.FULL_DROP_IN.items():
+        mod, key = spec.split(".", 1)
+        t = lua.eval("(function(text, m, k) MelloUI:ApplySettingsText(text) return MelloUI:GetModuleDB(m)[k] end)")(text, mod, key)
+        legacy += ["%s[%s]" % (spec, k) for k in (B.py(lua, t) if t is not None else {}) if re.search(pattern, str(k))]
+    check(not legacy, "no FULL_DROP_IN entry (kept-but-unread legacy inside a table setting): %s" % legacy[:4])
     stale = []
+    # (1.2.4: MelloUI_Oldschool's own entries -- its modules, the keys it brings -- against a world with it loaded)
+    own = F.feature_own()
+    wlua, _, _, _ = B.make_world_retry(5, 60, without=())
     for m, k, v in ents:
         if m == "!":
             continue
-        has = lua.eval("(function(m, k) return MelloUI.modules[m].defaults[k] ~= nil end)")(m, k)
+        has = (wlua if F.is_own(own, m, k) else lua).eval(
+            "(function(m, k) return MelloUI.modules[m] ~= nil and MelloUI.modules[m].defaults[k] ~= nil end)")(m, k)
         if not has and (m + "." + k) not in NIL_DEFAULTS:
             stale.append(m + "." + k)
     check(not stale, "every key is in its module's defaults or the nil-default list: %s" % stale)
     flags = [k for m, k, v in ents if m == "!"]
-    check(all(lua.eval("(function(n) local m = MelloUI.modules[n]; return m ~= nil and not m.hidden end)")(n) for n in flags),
+    check(all((wlua if F.is_own(own, "!", n) else lua).eval(
+        "(function(n) local m = MelloUI.modules[n]; return m ~= nil and not m.hidden end)")(n) for n in flags),
           "every flag a registered module UI Modifications does not drive: %s" % flags)
+
+    print("== one profile for every skin (1.2.4)")
+    carried = [m + "." + k for m, k, v in ents if m != "!" and F.is_own(own, m, k)]
+    check(set(carried) == set(report["featureCarried"]) and carried,
+          "MelloUI_Oldschool's own settings are in it, read with it loaded: %d (%s ...)" % (len(carried), carried[:3]))
+    check(not [k for k in F.SKIN_KEYS if k in emap], "the skin is not in it (the installer's Skin step sets it): %s"
+          % [k for k in F.SKIN_KEYS if k in emap])
+    import lupa.lua51 as L51
+    olua = L51.LuaRuntime()
+    olua.execute(open(B.ROOT + "MelloUI_Oldschool/Media/Shipped.lua", encoding="utf-8").read())
+    check(olua.globals().MelloUI_OldschoolShipped is None,
+          "MelloUI_Oldschool ships no profile of its own (its Media/Shipped.lua sets nothing)")
 
     print("== the snapshot record")
     check(os.path.normcase(os.path.abspath(F.SNAP)) == os.path.normcase(os.path.abspath(F.recorded_snapshot()))

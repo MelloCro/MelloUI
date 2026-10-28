@@ -59,6 +59,32 @@
 --                                   screen px: a shrinking icon's floor
 -- Nothing at login: textures are fitted as they are set, the next frame's
 -- pass asked of MelloUI.Schedule:NextFrame; the bus tells the changes.
+--
+-- A look's own set (1.2.4; the user's pick B of MelloUI-BuildData/output/
+-- oldschool_icons_sketch, 2026-10-28: "B: painted"): Default shows the game's
+-- pictures (MelloUI.Skin), Modern this set, Oldschool its own painted set while
+-- its painted reskin is on -- one place (Icons.Path), no option: the look the
+-- player picked picks the icons, as Custom Sounds' set picks the sounds. A set
+-- registers itself as its addon loads (MelloUI_Oldschool's
+-- Media/IconSizes.lua, written by Tools/make_icon_sizes.py --set oldschool);
+-- a picture it has not drawn stays this set's.
+--   Icons.AddSet(key, set)          set: root (its addon's Media folder, ending
+--                                   in a backslash), area (a Kit area: shown
+--                                   while Kit:IsOn(area)), square (its buttons
+--                                   wear their own square frame: W.RoundIcon's
+--                                   square mode), sheets and files (as
+--                                   Media/IconSizes.lua's: its pictures under
+--                                   root .. "Icons\\", their copies under
+--                                   root .. "IconSizes\\"), halos ([name] =
+--                                   true: its lifts, under its Icons\Halo\)
+--   Icons.NameOf(icon) -> name      a picture's name in the sets (a name, or a
+--                                   path in any set's folder), or nil
+--   Icons.Showing(icon) -> set, name   the set showing that picture now (nil:
+--                                   this one's)
+--   Icons.Square(icon) -> true when the set showing it frames its buttons square
+--   Icons.HaloPath(name) -> the lift's file for the picture as it shows now
+-- The area switched ('look:<area>' on the bus): every held icon set again by
+-- its name, then 'icons' fired (the round buttons, the lifts follow it).
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -77,33 +103,123 @@ local DIR = Icons.DIR
 -- a copy this much smaller than the icon's pixels is still taken (16.2 px: the 16 px copy, not the 20)
 local SLACK = 0.98
 
+-- the looks' own sets, in the order they registered (Icons.AddSet)
+local sets = {}
+Icons.sets = sets
+local SET_ICONS = "Icons\\"   -- (a set's pictures, under its root; its files' keys begin so)
+local EXT = "%.[TtBb][GgLl][AaPp]$"
+
+function Icons.NameOf(icon)
+	if type(icon) ~= "string" then
+		return nil
+	end
+	if not icon:find("\\", 1, true) then
+		return (icon:gsub(EXT, ""))
+	end
+	if icon:sub(1, #DIR) == DIR then
+		return (icon:sub(#DIR + 1):gsub(EXT, ""))
+	end
+	for i = 1, #sets do
+		local dir = sets[i].dir
+		if icon:sub(1, #dir) == dir then
+			return (icon:sub(#dir + 1):gsub(EXT, ""))
+		end
+	end
+	return nil
+end
+
+-- the set's area on now (Kit:IsOn: read live, so a picture set before the first look pass is right too)
+local function Shows(set)
+	local Kit = rawget(MelloUI, "Kit")
+	return type(Kit) == "table" and type(Kit.IsOn) == "function" and Kit:IsOn(set.area) == true
+end
+
+function Icons.Showing(icon)
+	if sets[1] == nil then
+		return nil
+	end
+	local name = Icons.NameOf(icon)
+	if not name then
+		return nil
+	end
+	for i = 1, #sets do
+		local set = sets[i]
+		if set.files[SET_ICONS .. name] and Shows(set) then
+			return set, name
+		end
+	end
+	return nil
+end
+
 function Icons.Path(icon)
-	if type(icon) == "string" and not icon:find("\\", 1, true) then
+	if type(icon) ~= "string" then
+		return icon
+	end
+	local set, name = Icons.Showing(icon)
+	if set then
+		return set.dir .. name
+	end
+	if not icon:find("\\", 1, true) then
 		return DIR .. icon
+	end
+	-- (a set's own path while the set is off: this set's picture again)
+	if sets[1] ~= nil and icon:sub(1, #DIR) ~= DIR then
+		name = Icons.NameOf(icon)
+		if name then
+			return DIR .. name
+		end
 	end
 	return icon
 end
 
--- the path's key in Media/IconSizes.lua's files (under Media, no extension), or nil: a file with no copies -- or the
--- list not loaded yet (it loads after this file: asked again then, nothing remembered)
-local relOf = {}   -- [path under Media] = its key, or false
+function Icons.Square(icon)
+	local set = Icons.Showing(icon)
+	return set ~= nil and set.square == true
+end
+
+local HALO = DIR .. "Halo\\"
+function Icons.HaloPath(name)
+	local set, own = Icons.Showing(name)
+	if set and set.halos[own] then
+		return set.dir .. "Halo\\" .. own
+	end
+	return HALO .. (Icons.NameOf(name) or tostring(name))
+end
+
+-- the path's place in a list of copies: its key there (under its root, no extension), the list and its sheets'
+-- folder -- MelloUI's (Media/IconSizes.lua, MelloUI.IconSizes) or a set's -- or nil: a file with no copies, or the
+-- list not loaded yet (MelloUI's loads after this file: asked again then, nothing remembered)
+local relOf = {}   -- [path] = { key, list, folder }, or false
 local function Rel(path)
-	if type(path) ~= "string" or path:sub(1, #MEDIA) ~= MEDIA then
+	if type(path) ~= "string" then
 		return nil
 	end
-	local data = MelloUI.IconSizes
-	if not (type(data) == "table" and type(data.files) == "table") then
-		return nil
+	local got = relOf[path]
+	if got ~= nil then
+		return got and got[1] or nil, got and got[2], got and got[3]
 	end
-	local rel = relOf[path]
-	if rel == nil then
-		rel = path:sub(#MEDIA + 1):gsub("%.[TtBb][GgLl][AaPp]$", "")
-		if not data.files[rel] then
-			rel = false
+	local root, data, folder
+	if path:sub(1, #MEDIA) == MEDIA then
+		root, data, folder = MEDIA, MelloUI.IconSizes, SIZES
+		if not (type(data) == "table" and type(data.files) == "table") then
+			return nil
 		end
-		relOf[path] = rel
+	else
+		for i = 1, #sets do
+			local set = sets[i]
+			if path:sub(1, #set.root) == set.root then
+				root, data, folder = set.root, set, set.root .. "IconSizes\\"
+				break
+			end
+		end
+		if not root then
+			return nil
+		end
 	end
-	return rel or nil
+	local rel = path:sub(#root + 1):gsub(EXT, "")
+	got = data.files[rel] and { rel, data, folder } or false
+	relOf[path] = got
+	return got and rel or nil, got and data, got and folder
 end
 
 -- a region's effective scale, or nil (none to read, or secret: a nameplate's)
@@ -127,17 +243,16 @@ end
 -- the copy for px across: its sheet's path, its rect in sheet px (x, y, width, height: an oblong file's copies keep
 -- its shape, the sheet's r) and the sheet's (w, h); nil when none fits
 local function Copy(path, px)
-	local rel = Rel(path)
+	local rel, data, folder = Rel(path)
 	px = Finite(px)
 	if not (rel and px and px > 0) then
 		return nil
 	end
-	local data = MelloUI.IconSizes
 	local sheet = data.sheets[data.files[rel]]
 	for i = 1, #sheet do
 		local c = sheet[i]
 		if c[1] >= px * SLACK then
-			return SIZES .. rel, c[2], c[3], c[1], floor(c[1] * (sheet.r or 1) + 0.5), sheet.w, sheet.h
+			return folder .. rel, c[2], c[3], c[1], floor(c[1] * (sheet.r or 1) + 0.5), sheet.w, sheet.h
 		end
 	end
 	return nil
@@ -388,8 +503,8 @@ MelloUI:On("scale", FitAll, Icons)
 MelloUI:On("setting", FitAll, Icons)
 MelloUI:On("mover", FitAll, Icons)
 
--- (1.2.4) the skin switched (MelloUI.Skin): every held icon set again by its name, in the skin's look now
-MelloUI:On("skin", function()
+-- every held icon set again by its name, in the look on show now
+local function SetAgain()
 	local list = {}
 	for tex, st in pairs(held) do
 		if st.icon ~= nil then
@@ -403,4 +518,42 @@ MelloUI:On("skin", function()
 			Icons.Set(tex, st.icon, st.units, st.l, st.r, st.t, st.b)
 		end
 	end
-end, Icons)
+end
+
+-- (1.2.4) the skin switched (MelloUI.Skin): in the skin's look now
+MelloUI:On("skin", SetAgain, Icons)
+
+-- (1.2.4) a set's area switched (its look on or off, the modules restarted: a profile loaded): its pictures or this
+-- set's, then the round buttons and the lifts told ('icons')
+local function Switched()
+	SetAgain()
+	MelloUI:Fire("icons")
+end
+
+local listening = {}   -- [area] = true once its topic is heard
+function Icons.AddSet(key, set)
+	if type(key) ~= "string" or type(set) ~= "table" or type(set.root) ~= "string" or type(set.area) ~= "string"
+		or type(set.files) ~= "table" or type(set.sheets) ~= "table" then
+		error("Icons.AddSet: a key and { root, area, sheets, files } wanted", 2)
+	end
+	set.key, set.dir = key, set.root .. SET_ICONS
+	set.halos = type(set.halos) == "table" and set.halos or {}
+	for i = 1, #sets do
+		if sets[i].key == key then
+			sets[i] = set
+			relOf = {}
+			return set
+		end
+	end
+	sets[#sets + 1] = set
+	relOf = {}   -- (a path under its root may have been asked before: no copies then)
+	if not listening[set.area] then
+		listening[set.area] = true
+		MelloUI:On("look:" .. set.area, Switched, Icons)
+		if not listening.restart then
+			listening.restart = true
+			MelloUI:On("restart", Switched, Icons)
+		end
+	end
+	return set
+end
