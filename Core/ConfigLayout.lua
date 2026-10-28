@@ -182,16 +182,19 @@ L.pages = {
 			-- (one look C10) `stage`: the designer stage over the chips (MelloUI_GroupFrames' 'raidframe' kind, its
 			-- pick; `also`: its other picks of this frame); a part's `stage`: its part's key there ("ind:" any
 			-- indicator) -- picked on the stage, its tab opens; its tab opened, picked on the stage
-			{ key = "party", label = "Party", module = "GroupFrames", line = "Your party: MelloUI's Group Frames or the game's",
-				stage = { kind = "raidframe", pick = "groupParty", also = { "portrait" } },
-				parts = { { key = "name", label = "Name", stage = "name" },
-				{ key = "healthtext", label = "Health text", stage = "health" },
-				{ key = "status", label = "Status text", stage = "health", state = "down" },
-				{ key = "health", label = "Health bar", stage = "bar.health" },
-				{ key = "power", label = "Power bar", stage = "bar.power" },
-				{ key = "background", label = "Background", stage = "bar.background" },
+			-- (1.2.4; the user, 2026-10-28: "Party section should only show the Picture 3, and Raid Should only use Raid
+			-- Frames") Party: the party frames with portraits and their own parts -- asleep, its stage dimmed, while the
+			-- party wears the raid frames, whose look is Raid's alone
+			{ key = "party", label = "Party", module = "GroupFrames", line = "Your party: the raid frames, or party frames with portraits",
+				stage = { kind = "raidframe", pick = "portrait" },
+				parts = { { key = "name", label = "Name", stage = "party.name" },
+				{ key = "level", label = "Level", stage = "party.level" },
+				{ key = "role", label = "Role icon", stage = "party.role" },
+				{ key = "leader", label = "Leader icon", stage = "party.leader" },
+				{ key = "ready", label = "Ready check", stage = "party.ready" },
+				{ key = "auras", label = "Buffs & Debuffs", stage = "party.buffs" },
 				{ key = "indicators", label = "Indicators", stage = "ind:" } } },
-			{ key = "raid", label = "Raid", module = "GroupFrames", line = "MelloUI's raid frames",
+			{ key = "raid", label = "Raid", module = "GroupFrames", line = "MelloUI's raid frames: your raid, and your party when it uses them",
 				stage = { kind = "raidframe", pick = "raid" }, parts = {
 				{ key = "name", label = "Name", stage = "name" },
 				{ key = "healthtext", label = "Health text", stage = "health" },
@@ -689,10 +692,14 @@ function L.Define(R, Link)
 	-- the Party Frames")
 	UGF({ "player:element", "target:element", "focus:element", "party:element" }, "Look", "UnitFrames.frames", { when = UF })
 	-- (1.2.4; the user, 2026-10-26: "flip the party frames horizontally ... on the right side of the screen")
-	R("UnitGroupFrames", "party:element", "Layout", "UnitFrames.partyFlip", { when = UF })
+	-- (1.2.4: the portraits' alone -- asleep while the party wears the raid frames)
+	R("UnitGroupFrames", "party:element", "Layout", "UnitFrames.partyFlip", { when = { all = { UF,
+		{ key = "GroupFrames.partyStyle", value = "party" } }, line = "Only with Party Frames (Portraits), not the painted unit frames" } })
 	UGF({ "player:combat", "target:combat", "focus:combat", "pet:combat" }, "Look", "UnitFrames.hideCombatGlow", { when = UF, plus = "Party portraits" })
 	UGF({ "player:status", "pet:status" }, "Look", "UnitFrames.hideStatusGlow", { when = UF })
 	UGF({ "player:pvp", "target:pvp", "focus:pvp" }, "Look", "UnitFrames.hidePvPBadge", { when = UF })
+	-- (1.2.4, fr-05; the user, 2026-10-28: "the option to hide the incoming heals numbers on my own Player Unitframe")
+	UGF({ "player:portrait" }, "Look", "UnitFrames.hideHealNumbers", { when = UF })
 	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.marks")
 	-- (0.19.8, the border library's stage 3: a backdrop round the frame, the kit's one backdrop system)
 	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.backdrop")
@@ -705,7 +712,8 @@ function L.Define(R, Link)
 	-- one-look D5: the Unit Frames module's, Unit Frame Tweaks')
 	-- (one look C11, Q2: each text part its own face -- MelloUI.FontFaces, "Shared" today's)
 	R("Look", "Fonts", "Text", "UnitFrames.nameFont", { name = "Names Font", card = "Unit Frames" })
-	for _, tab in ipairs({ "player:name", "target:name", "focus:name" }) do
+	-- (1.2.4: the party's portraits too -- their names wear the unit frames' face, GroupParts.lua's Parts.PARTY)
+	for _, tab in ipairs({ "player:name", "target:name", "focus:name", "party:name" }) do
 		Link("UnitGroupFrames", tab, "Text", "UnitFrames.nameFont", "Font")
 	end
 	-- (0.19.0) incoming heals and the debuff glow: one setting each for every frame (HealerFrames)
@@ -721,7 +729,8 @@ function L.Define(R, Link)
 	end
 	R("Look", "Textures", "Look", "BarTextures.raidframesTexture", { name = "Party & Raid Frames", card = "Bars" })
 	Link("UnitGroupFrames", "raid:element", "Look", "BarTextures.raidframesTexture", "Bar Texture")
-	Link("UnitGroupFrames", "party:element", "Look", "BarTextures.raidframesTexture", "Bar Texture")
+	-- (1.2.4: Party's are the portraits, whose bars are the unit frames')
+	Link("UnitGroupFrames", "party:element", "Look", "BarTextures.unitframesTexture", "Bar Texture")
 	R("Look", "Textures", "Look", "BarTextures.personalTexture", { name = "Personal Display", card = "Bars" })
 	Link("UnitGroupFrames", "personal:element", "Look", "BarTextures.personalTexture", "Bar Texture")
 	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.barBackground",
@@ -1103,19 +1112,26 @@ function L.Define(R, Link)
 			return { when = { key = "GroupFrames." .. key, value = value, line = line } }
 		end
 		local MINE = "Only with My Colour"
+		-- (1.2.4; the user, 2026-10-28: "we are modifying the Party "Group Frames" and Raid Frames separatelly even tho
+		-- they are the same") the raid frames' look is Raid's alone -- a party in raid frames wears it; Party keeps
+		-- what is the party's own (the choice, you in it, its size, spacing, growth and order) and the portraits'
+		local function RaidStyle()
+			return When("partyStyle", "group", "Only with Raid Frames")
+		end
 		-- the frames: what shows, their size and layout, the range
 		UGF({ "raid:element", "party:element" }, "General", "GroupFrames.!enabled", { name = "Group Frames" })
 		R("UnitGroupFrames", "party:element", "General", "GroupFrames.partyStyle")
 		R("UnitGroupFrames", "party:element", "General", "GroupFrames.showPlayer")
 		R("UnitGroupFrames", "party:element", "General", "GroupFrames.solo")
-		UGF({ "raid:element", "party:element" }, "Layout", "GroupFrames.width")
-		UGF({ "raid:element", "party:element" }, "Layout", "GroupFrames.height")
+		R("UnitGroupFrames", "party:element", "Look", "GroupFrames.#Raid Frames' Look", RaidStyle())
+		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.width")
+		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.height")
 		-- (one look Q4: Edit Layout's Size of the party and the raid, the same value)
 		R("UnitGroupFrames", "party:element", "Layout", "GroupFrames.@scale:GroupFramesParty", { name = "Scale" })
 		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.@scale:GroupFramesRaid", { name = "Scale" })
-		R("UnitGroupFrames", "party:element", "Layout", "GroupFrames.spacing")
-		R("UnitGroupFrames", "party:element", "Layout", "GroupFrames.partyGrowth")
-		R("UnitGroupFrames", "party:element", "Layout", "GroupFrames.partySort")
+		R("UnitGroupFrames", "party:element", "Layout", "GroupFrames.spacing", RaidStyle())
+		R("UnitGroupFrames", "party:element", "Layout", "GroupFrames.partyGrowth", RaidStyle())
+		R("UnitGroupFrames", "party:element", "Layout", "GroupFrames.partySort", RaidStyle())
 		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.raidGroupBy")
 		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.raidFlow")
 		R("UnitGroupFrames", "raid:element", "Layout", "GroupFrames.raidPerLine")
@@ -1124,38 +1140,38 @@ function L.Define(R, Link)
 		UGF({ "raid:element", "party:element" }, "Behaviour", "GroupFrames.rangeAlpha")
 		-- the bars: health, background, missing health, power
 		-- (one look Q7: the health bar's colour is the one Health Colour, Look > Colours: a link below)
-		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.healthAlpha")
-		UGF({ "raid:background", "party:background" }, "Look", "GroupFrames.backgroundTexture")
-		UGF({ "raid:background", "party:background" }, "Look", "GroupFrames.background", When("backgroundTexture", "flat", "Only with Flat colour"))
-		UGF({ "raid:background", "party:background" }, "Look", "GroupFrames.backgroundCustom", When("background", "custom", MINE))
-		UGF({ "raid:background", "party:background" }, "Look", "GroupFrames.backgroundAlpha")
-		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.missing")
-		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.missingCustom", When("missing", "custom", MINE))
-		UGF({ "raid:health", "party:health" }, "Look", "GroupFrames.missingAlpha", { when = { key = "GroupFrames.missing", notValue = "off", line = "Only with Missing Health on" } })
-		UGF({ "raid:health", "party:health" }, "Layout", "GroupFrames.fillDirection")
-		UGF({ "raid:power", "party:power" }, "Layout", "GroupFrames.power")
-		UGF({ "raid:power", "party:power" }, "Layout", "GroupFrames.powerSolo")
-		UGF({ "raid:power", "party:power" }, "Layout", "GroupFrames.powerHeight")
-		UGF({ "raid:power", "party:power" }, "Layout", "GroupFrames.powerColour")
-		UGF({ "raid:power", "party:power" }, "Layout", "GroupFrames.powerCustom", When("powerColour", "custom", MINE))
-		UGF({ "raid:health", "party:health" }, "Behaviour", "GroupFrames.smooth")
+		R("UnitGroupFrames", "raid:health", "Look", "GroupFrames.healthAlpha")
+		R("UnitGroupFrames", "raid:background", "Look", "GroupFrames.backgroundTexture")
+		R("UnitGroupFrames", "raid:background", "Look", "GroupFrames.background", When("backgroundTexture", "flat", "Only with Flat colour"))
+		R("UnitGroupFrames", "raid:background", "Look", "GroupFrames.backgroundCustom", When("background", "custom", MINE))
+		R("UnitGroupFrames", "raid:background", "Look", "GroupFrames.backgroundAlpha")
+		R("UnitGroupFrames", "raid:health", "Look", "GroupFrames.missing")
+		R("UnitGroupFrames", "raid:health", "Look", "GroupFrames.missingCustom", When("missing", "custom", MINE))
+		R("UnitGroupFrames", "raid:health", "Look", "GroupFrames.missingAlpha", { when = { key = "GroupFrames.missing", notValue = "off", line = "Only with Missing Health on" } })
+		R("UnitGroupFrames", "raid:health", "Layout", "GroupFrames.fillDirection")
+		R("UnitGroupFrames", "raid:power", "Layout", "GroupFrames.power")
+		R("UnitGroupFrames", "raid:power", "Layout", "GroupFrames.powerSolo")
+		R("UnitGroupFrames", "raid:power", "Layout", "GroupFrames.powerHeight")
+		R("UnitGroupFrames", "raid:power", "Layout", "GroupFrames.powerColour")
+		R("UnitGroupFrames", "raid:power", "Layout", "GroupFrames.powerCustom", When("powerColour", "custom", MINE))
+		R("UnitGroupFrames", "raid:health", "Behaviour", "GroupFrames.smooth")
 		UGF({ "raid:element", "party:element" }, "Behaviour", "GroupFrames.hover")   -- (1.2.4: the mouseover highlight)
 		-- the texts (their places and sizes: the Designer's frame parts)
-		UGF({ "raid:name", "party:name" }, "Text", "GroupFrames.nameColour")
-		UGF({ "raid:name", "party:name" }, "Text", "GroupFrames.nameCustom", When("nameColour", "custom", MINE))
-		UGF({ "raid:name", "party:name" }, "Text", "GroupFrames.nameLength")
-		UGF({ "raid:healthtext", "party:healthtext" }, "Text", "GroupFrames.healthText")
-		UGF({ "raid:status", "party:status" }, "Text", "GroupFrames.statusText")
+		R("UnitGroupFrames", "raid:name", "Text", "GroupFrames.nameColour")
+		R("UnitGroupFrames", "raid:name", "Text", "GroupFrames.nameCustom", When("nameColour", "custom", MINE))
+		R("UnitGroupFrames", "raid:name", "Text", "GroupFrames.nameLength")
+		R("UnitGroupFrames", "raid:healthtext", "Text", "GroupFrames.healthText")
+		R("UnitGroupFrames", "raid:status", "Text", "GroupFrames.statusText")
 		R("Look", "Fonts", "Text", "GroupFrames.nameFont", { name = "Names Font", card = "Party & Raid" })
 		R("Look", "Fonts", "Text", "GroupFrames.healthFont", { name = "Health Text Font", card = "Party & Raid" })
 		R("Look", "Fonts", "Text", "GroupFrames.indicatorFont", { name = "Indicator Numbers Font", card = "Party & Raid" })
+		Link("UnitGroupFrames", "raid:name", "Text", "GroupFrames.nameFont", "Font")
+		Link("UnitGroupFrames", "raid:healthtext", "Text", "GroupFrames.healthFont", "Font")
 		for _, f in ipairs({ "raid", "party" }) do
-			Link("UnitGroupFrames", f .. ":name", "Text", "GroupFrames.nameFont", "Font")
-			Link("UnitGroupFrames", f .. ":healthtext", "Text", "GroupFrames.healthFont", "Font")
 			Link("UnitGroupFrames", f .. ":indicators", "Text", "GroupFrames.indicatorFont", "Numbers Font")
 		end
 		-- the Designer: the indicators and the frame's parts on one canvas
-		-- (one look C9b / C10: party and raid each their own list -- one switch, the canvas on both)
+		-- (one look C10: one switch, the canvas on both -- Raid's the raid frames' list, Party's the portraits')
 		UGF({ "raid:indicators", "party:indicators" }, "General", "GroupFrames.indicators")
 		UGF({ "raid:indicators", "party:indicators" }, "General", "GroupFrames.designer")
 	end
@@ -1432,7 +1448,8 @@ function L.Define(R, Link)
 	Link("Windows", "Windows", "Look", { CharacterPanel = "UIModifications.parchment_character", DialogPanel = "UIModifications.parchment_dialog", ColorPickerPanel = "UIModifications.parchment_dialog", ReadyPanel = "UIModifications.parchment_dialog", StackSplitPanel = "UIModifications.parchment_dialog" }, "Parchment")
 	Link("Windows", "Windows", "Look", "UIModifications.buttonBorder", "Button Border")
 	-- (one look Q7: the one Health Colour on every frame's Health bar)
-	for _, tab in ipairs({ "player:health", "target:health", "focus:health", "party:health", "raid:health" }) do
+	-- (1.2.4: Party's are the portraits, no Health bar part of their own: the frame's tab)
+	for _, tab in ipairs({ "player:health", "target:health", "focus:health", "party:element", "raid:health" }) do
 		Link("UnitGroupFrames", tab, "Look", "BarTextures.healthColor", "Health Bar Colour")
 	end
 	Link("Windows", "Windows", "Look", "UIModifications.sideTabBorder", "Side Tab Border")

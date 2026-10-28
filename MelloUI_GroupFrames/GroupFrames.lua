@@ -162,7 +162,8 @@ function RD.Health()
 end
 
 RD.CHOICES = {
-	partyStyle = V("group", "Group Frames", "party", "Party Frames (Portraits)"),
+	-- (1.2.4; the user, 2026-10-28: "either Raid or Party Frames" -- one look for the raid and a party in raid frames)
+	partyStyle = V("group", "Raid Frames", "party", "Party Frames (Portraits)"),
 	partyGrowth = V("DOWN", "Down", "UP", "Up", "RIGHT", "Right", "LEFT", "Left"),
 	partySort = V("role", "By Role (Tanks, Healers, Damage)", "group", "Group Order", "name", "By Name"),
 	raidGroupBy = V("group", "By Group", "role", "By Role", "class", "By Class", "none", "One List"),
@@ -238,16 +239,20 @@ local M = MelloUI:RegisterModule(OWNER, {
 		indicators = true,
 		sets = {},
 		started = {},
+		-- (1.2.4: the raid's places, our party's too when it wears the raid frames; the party's own from one look C9,
+		-- `partyParts`, stay in old settings unread)
 		parts = {},
-		-- (one look C9) the Group Frames party's own places: GroupParts.lua's
-		-- "groupParty" layout, split off `parts` once (its `split` marker)
-		partyParts = {},
 		nextId = 1,
 	},
 	options = {
 		-- the frames
 		{ type = "dropdown", key = "partyStyle", name = "In A Party", values = C.partyStyle,
-		  desc = "In a party: these frames, or the classic party frames with portraits. In a raid, these frames always show." },
+		  desc = "In a party: the raid frames (their look is set on Raid), or the party frames with portraits. In a raid, the raid frames always show." },
+		-- (1.2.4; the user, 2026-10-28: "if the Person selects that he wants to see the Raid Frames, then he should get
+		-- the Look under the "Raid" category") the party in raid frames wears the raid's look: to Raid
+		{ type = "button", name = "Raid Frames' Look", text = "Raid", new = "1.2.4",
+		  desc = "Your party wears the raid frames' look: set it on Raid.",
+		  onClick = function() MelloUI:OpenConfig("raidframes") end },
 		{ type = "toggle", key = "showPlayer", name = "Show Yourself In Your Party",
 		  desc = "Your own frame among your party's." },
 		{ type = "toggle", key = "solo", name = "Show Yourself While Solo",
@@ -505,18 +510,15 @@ end
 -- is "party@<specKey>".
 RD.KINDS_OF_FRAME = { "group", "party" }
 local PARTY_KEY = "party@"
--- (one look C9b, the user: the indicator lists separate for party and raid)
--- our Group Frames party keeps its own list per spec too: "gparty@<specKey>"
--- ("group" and a bare spec key are our raid frames' from then on)
+-- (one look C9b: our party's own lists, "gparty@<specKey>"; 1.2.4, the user 2026-10-28: "we are modifying the Party
+-- "Group Frames" and Raid Frames separatelly even tho they are the same" -- our party in raid frames shows the raid's
+-- list, a bare spec key, again. Its old own lists stay in the settings, offered in Copy from only)
 local GPARTY_KEY = "gparty@"
 
 function RD:KeyOf(key, kind)
 	key = key or self:Spec()
 	if kind == "party" and key:sub(1, #PARTY_KEY) ~= PARTY_KEY then
 		return PARTY_KEY .. key
-	end
-	if kind == "groupParty" and key:sub(1, #GPARTY_KEY) ~= GPARTY_KEY then
-		return GPARTY_KEY .. key
 	end
 	return key
 end
@@ -683,35 +685,6 @@ function RD:CopyFrom(from, to)
 	end
 	Keep(to or self:Spec(), list)
 	self:Changed()
-end
-
--- (one look C9b) our Group Frames party's own lists, from the raid's: each
--- spec's list the raid keeps copied whole (new ids) where the party has none
--- of its own yet -- at the module's first start and after every profile load
--- (OnEnable); an emptied list of the party's is its own and stays empty
-function RD:SplitLists(db)
-	db = db or DB()
-	if type(db.sets) ~= "table" or type(db.started) ~= "table" then
-		return 0
-	end
-	local todo = {}
-	for key, list in pairs(db.sets) do
-		local gkey = GPARTY_KEY .. key
-		if self:KindOf(key) == "group" and type(list) == "table" and db.sets[gkey] == nil and not db.started[gkey] then
-			todo[#todo + 1] = key
-		end
-	end
-	for _, key in ipairs(todo) do
-		local copy = {}
-		for _, e in ipairs(db.sets[key]) do
-			local t = Copy(e)
-			t.id = nil
-			copy[#copy + 1] = self:Fill(t)
-		end
-		db.sets[GPARTY_KEY .. key] = copy
-		db.started[GPARTY_KEY .. key] = true
-	end
-	return #todo
 end
 
 -- the lists to copy from (the Designer's Copy from), as dropdown values: every
@@ -925,12 +898,6 @@ end, "script")
 
 function M:OnInit(db)
 	self.db = db
-	-- (one look C9) the Group Frames party's own places, from the raid's once;
-	-- (C9b) and its own indicator lists
-	if ns.Parts then
-		ns.Parts:Split(db)
-	end
-	RD:SplitLists(db)
 	-- (0.20.2: the raid's spacing of its own) a player from before keeps the one spacing party and raid shared; once
 	if not db.raidSpacingMigrated then
 		db.raidSpacingMigrated = true
@@ -966,12 +933,6 @@ end
 
 function M:OnEnable(db)
 	self.db = db
-	-- (again on every enable: a profile loaded from before the split -- no
-	-- marker -- gives our party that profile's places and lists too)
-	if ns.Parts then
-		ns.Parts:Split(db)
-	end
-	RD:SplitLists(db)
 	if not specEvents then
 		specEvents = CreateFrame("Frame")
 		for _, e in ipairs({ "PLAYER_SPECIALIZATION_CHANGED", "ACTIVE_TALENT_GROUP_CHANGED", "PLAYER_TALENT_UPDATE" }) do
@@ -1029,7 +990,7 @@ function M:OnSettingChanged(key, _, db)
 		end
 		return
 	end
-	if key == "parts" or key == "partyParts" then
+	if key == "parts" then
 		-- (one look C9: a part's write, a reset of the page, a profile -- every
 		-- frame laid again, once)
 		if ns.Parts and ns.Parts.LayAll then

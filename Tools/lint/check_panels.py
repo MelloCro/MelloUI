@@ -300,10 +300,10 @@ CHECKS = {
     # secure buttons: the reminders' overlay, the tracker's item button, Edit
     # Layout's two Edit Mode buttons (0.15.0); the chat view's tabs' stand-ins,
     # the game's own tab menu on a right click, laid by the reminders' OverlayPlace
-    # (0.23.0)
+    # (0.23.0); the installer's Keep (1.2.4: the game's /reload, its macro, over Keep)
     "secure-button": (r"SecureActionButtonTemplate",
                       {"skip": ["Core/Reminders.lua", "Modules/QuestTracker.lua", "Core/EditLayoutBridge.lua",
-                                "MelloUI_Chat/ChatView.lua"]},
+                                "MelloUI_Chat/ChatView.lua", "Core/InstallerWindow.lua"]},
                       "a secure button: made lazily out of combat, laid by rect on UIParent, one click phase "
                       "(Core/Reminders.lua's Attach / OverlayPlace, Core/EditLayoutBridge.lua)"),
     # (0.17.0) a column of lines made by hand: a new line put first in a list

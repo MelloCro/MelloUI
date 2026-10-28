@@ -1055,8 +1055,9 @@ function Page.BuildGroups(canvas, width)
 	show:HookScript("OnClick", function()
 		local Pv = MelloUI.Preview
 		if Pv and Pv.Start then
-			local part = inst.el == "raid" and "raid" or (inst.kind == "groupParty" and "groupparty" or "party")
-			local ok, why = Pv:Start("party", part)
+			-- (that part alone, in its own scene: the strip names the Raid Fight or the Party Fight)
+			local part = inst.el == "raid" and "raid" or "party"
+			local ok, why = Pv:Start(part, part)
 			if not ok and why == "combat" then
 				MelloUI:Print(Pv.TEXT.inCombat)
 			end

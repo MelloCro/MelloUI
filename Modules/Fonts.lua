@@ -993,9 +993,23 @@ local chatHooked = false
 
 local chatBaseOf = setmetatable({}, { __mode = "k" })   -- [chat frame] = the font size the player chose for it
 -- The chat windows follow the chat role (their own face is Arial Narrow).
--- A chat window's size is the game's own chat font size (its menu) times
--- the chat role's slider; the game's size is remembered per window.
+-- A chat window's size is the game's own chat font size (its menu's Font
+-- Size, kept in the game's chat settings: GetChatWindowInfo, read each time)
+-- times the chat role's slider. (1.2.4, the user 2026-10-28: the size picked
+-- in the menu did not survive a /reload -- the size the window showed at its
+-- first read here stood in for the game's, and the game's chat settings can
+-- land after that read.) The size last set from the menu or here stands in
+-- while the game's settings give none.
 local function ChatBaseSize(frame, original)
+	local okI, id = pcall(frame.GetID, frame)
+	id = okI and SafeNumber(id) or nil
+	if id and id >= 1 and id <= (NUM_CHAT_WINDOWS or 10) and type(GetChatWindowInfo) == "function" then
+		local ok, _, size = pcall(GetChatWindowInfo, id)
+		size = ok and SafeNumber(size) or nil
+		if size and size > 0 then
+			return size
+		end
+	end
 	if chatBaseOf[frame] then
 		return chatBaseOf[frame]
 	end
@@ -1090,6 +1104,22 @@ local function ApplyChatWindows()
 					-- (the chat's family on: the whisper windows follow, Chat.lua)
 					MelloUI:Fire("fonts")
 				end
+			end
+		end)
+	end
+	-- (1.2.4) the game's chat settings landing after this pass (the real
+	-- client can bring them after the login): its own handler lays each window
+	-- at its stored size in one face (ChatFrameOverrides' UPDATE_CHAT_WINDOWS);
+	-- the chat's faces and the role's size go back over it. Made at the first
+	-- pass, never when the file loads
+	if not Family.chatWatch then
+		local watch = CreateFrame("Frame")
+		Family.chatWatch = watch
+		watch:RegisterEvent("UPDATE_CHAT_WINDOWS")
+		Perf.SetScript(watch, "OnEvent", function()
+			if M.isEnabled then
+				ApplyChatWindows()
+				MelloUI:Fire("fonts")
 			end
 		end)
 	end

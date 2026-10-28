@@ -8,9 +8,9 @@
 --
 -- The first login belongs to the installer (Core/Installer.lua: its one
 -- delayed check opens it for a new player); this file asks nothing at login
--- and makes nothing then. The tour is offered on the installer's Done page
--- ("Take the tour"), and is always there as the Tutorial button on the Home
--- page and /mello tutorial.
+-- and makes nothing then. The tour is the Tutorial button on the Home page
+-- and /mello tutorial (1.2.4: the installer's Done page that offered it went:
+-- Keep reloads the UI).
 --------------------------------------------------------------------------------
 
 local _, ns = ...

@@ -519,6 +519,8 @@ Plate.coverOn = setmetatable({}, { __mode = "k" })     -- its cover while it cov
 Plate.coverShown = setmetatable({}, { __mode = "k" })  -- true: its cover shown (ours, never read back)
 Plate.hidden = setmetatable({}, { __mode = "k" })      -- true: its glyphs hidden by us
 Plate.tinted = setmetatable({}, { __mode = "k" })      -- true: its SetVertexColor hook is on
+-- by cover
+Plate.looked = setmetatable({}, { __mode = "k" })      -- true: it wears retail's Forever look (Plate.Look)
 Plate.plates = {}      -- every plate frame met, once
 Plate.followers = {}   -- FollowName's functions
 Plate.queue, Plate.queueN, Plate.queueFrom = {}, 0, 1
@@ -871,6 +873,29 @@ function Plate.Reveal(name)
 	end
 end
 
+-- The cover's own look over its copy of the game's name. Shade copies the game's font, justify and shadow onto a
+-- cover (at its making, after the game lays the plate out again -- Relaid's CoverFont -- and at a Font Style
+-- change); retail's Forever look (M.ForeverArt.NameOn) then centres and outlines it again, after every copy and
+-- whenever a cover goes on. Else a plate the game laid out again while covered (retail: every plate at each
+-- UpdateNamePlateOptions -- VARIABLES_LOADED, DISPLAY_SIZE_CHANGED, the plate size and style CVars) kept the game's
+-- left, plain name for every unit its pooled frame took on (the user, 2026-10-28: "2 mobs in the same frame having
+-- their names in 2 different spots"). The look gone (the Classic style), the game's copy back. `copied`: the game's
+-- look was just put on. Our own font string only; Forever's own plates (NameOn false): the copy as it is
+function Plate.Look(fs, copied)
+	if copied then
+		Plate.looked[fs] = nil
+	end
+	if M.ForeverArt.NameOn() then
+		if not Plate.looked[fs] then
+			M.ForeverArt.NameLook(fs)
+			Plate.looked[fs] = true
+		end
+	elseif Plate.looked[fs] then
+		Plate.looked[fs] = nil
+		MelloUI.Shade:CoverFont(fs)
+	end
+end
+
 -- The cover on a plate's name with its form (`form` given, or asked now);
 -- `again`: the glyphs hidden again (an add, a layout). No form, or no way to
 -- hide the glyphs: uncovered. The cover is made once per name (with a slot:
@@ -895,9 +920,7 @@ function Plate.Cover(uf, again, form)
 		if not fs then
 			return
 		end
-		if M.ForeverArt.NameOn() then
-			M.ForeverArt.NameLook(fs)
-		end
+		Plate.Look(fs, true)
 		Plate.coverOf[name] = fs
 		Plate.coverShown[name] = true
 		Plate.Watch(uf)
@@ -923,6 +946,7 @@ function Plate.Cover(uf, again, form)
 	if Plate.hidden[name] then
 		if first then
 			Plate.coverOn[name] = fs
+			Plate.Look(fs)
 			-- (the game's colour as it was, handed on untouched: a secret too)
 			if okC then
 				MelloUI.Shade:CoverColour(fs, r, g, b, 1)
@@ -989,8 +1013,8 @@ end)
 -- that is refused
 function Plate.Refont(fs, name)
 	-- (retail's Forever look: centred and outlined again after the copy of the game's)
-	if fs and M.ForeverArt.NameOn() then
-		M.ForeverArt.NameLook(fs)
+	if fs then
+		Plate.Look(fs, true)
 	end
 	if Plate.coverOn[name] and Plate.On() then
 		Plate.hidden[name] = Plate.Hide(name) or nil
@@ -1161,6 +1185,8 @@ function Plate.Relaid(uf)
 	local fs = Plate.coverOn[name]
 	if fs then
 		MelloUI.Shade:CoverFont(fs)
+		-- (retail's Forever look again over the copy: the game's re-lay just put its left, plain name on)
+		Plate.Look(fs, true)
 		Plate.hidden[name] = Plate.Hide(name) or nil
 		if not Plate.hidden[name] then
 			-- (refused now after an earlier hide: the glyphs back, as in Refont)

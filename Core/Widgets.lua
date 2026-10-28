@@ -41,7 +41,9 @@
 --   W.Button(parent, text, width, skin, opts)   a flat plate (0.15.0), and
 --     W.FlatButton(button, gold): the same look on a button made by hand
 --   W.CloseButton(parent, skin)        a flat plate with a cross (0.15.0)
---   W.FlatTab(tab, skin)               a page's tab made by hand, flat (0.15.0)
+--   W.FlatTab(tab, skin)               a page's tab made by hand: its label
+--                                      alone, a gold line under the selected
+--                                      one (1.2.4); W.TabFit(tab, pad) sizes it
 --   W.FlatField(box)                   a text field or search box made by
 --                                      hand, flat (0.15.0; W.FlatSearch)
 --   W.IconBox(parent, size, texture, skin)
@@ -544,6 +546,18 @@ do
 				-- whole look copied, Latin then in the face)
 				pcall(copy.SetJustifyH, copy, game:GetJustifyH())
 				pcall(copy.SetJustifyV, copy, game:GetJustifyV())
+				-- (1.2.4, lk-03: the family's own height the game font's Latin one first -- the Interface text size
+				-- reaches the game's members; copied into ours alone they left our family, and every string wearing
+				-- it, at the height it was made with. SetFontHeight is the client's own way to size a family, every
+				-- alphabet's face kept: Blizzard's TextSizeManager. The members are copied after it)
+				local latin, height = Member(game, "roman"), nil
+				if latin then
+					local okH, _, h = pcall(latin.GetFont, latin)
+					height = okH and Num(h) or nil
+				end
+				if height and height > 0 and type(copy.SetFontHeight) == "function" then
+					pcall(copy.SetFontHeight, copy, height)
+				end
 				for alphabet in pairs(members) do
 					local mine, theirs = Member(copy, alphabet), Member(game, alphabet)
 					if mine and theirs and mine ~= theirs then
@@ -2244,30 +2258,36 @@ do
 end
 
 --------------------------------------------------------------------------------
--- Tabs (0.15.0, flat: user, 2026-09-29 "all flat"; they were the kit's tab
--- art, TB6): a page's tab -- the
--- game's top tab (PanelTopTabButtonTemplate), made by the caller (the
--- configurator's pages) -- its art hidden, the tab TAB_H high and a flat
--- plate on it, TAB_IN inside its sides (tabs laid 6 px over each other stand
--- 2 px apart): at rest `raisedPanel` in a 1 px `border` edge, `hover` under
--- the pointer; the selected one `selectedTab` in a `selectedTrim` edge. The
--- label is `text` in every state (gold on the selected tab's fill is under
--- 4.5:1 in Ember) and stays in the plate's middle (the game's select bobs it
--- up and down). With the kit's look on (its `skin`) the selected tab wears
--- the active look round its plate, the gold edge then giving way to the
--- resting one under the ring (as a chosen card's). Its rep is false (MelloUI.Kept.repOf), so
--- the kit's sweep (Kit:SkinPanelTab) passes it by. The tab keeps the width
--- its owner gives it: the template's own resize on a show and on a display
--- change is dropped (it undid the owner's padding: the tabs' gaps jumped).
+-- Tabs (1.2.4, text tabs: the user's pick A of MelloUI-BuildData/output/config_tabs_sketch, 2026-10-28, "A: text
+-- tabs"; before them the 0.15.0 flat plates, then 2026-10-20's peaked pieces): a page's tab -- the game's top tab
+-- (PanelTopTabButtonTemplate), made by the caller (the configurator's pages, Fight History, Dungeon Info, the map's
+-- quest log) -- its art hidden, the tab TAB_H high: its label alone, at full size in every state (the widgets' own
+-- GameFontHighlight), `text` at rest; the selected one `selectedTrim`, a short line of that gold along its foot
+-- (TAB_IN inside its sides, LINE_H high) in MelloUI.Shade's soft light of the same gold; the one under the pointer a
+-- faint line (HOVER_A of the gold, one unit high, HOVER_IN further in). The Default skin keeps the game's tabs'
+-- colours: `selectedTrim` gold at rest, `text` selected and under the pointer. Under Oldschool's painted reskin the
+-- selected label is `text` (the painted palettes' gold is darker than their text: Ember's 5.1:1 against 8:1). No plate
+-- and no active look round the selected one, in any skin. The label rides LABEL_UP over the tab's middle, clear of the
+-- line (the game's select bobs it up and down), and is never cut short: its width is the text's own (an owner that
+-- sized the tab with PanelTemplates_TabResize at the template's small font keeps that width, the label at full size
+-- in it). Its rep is false (MelloUI.Kept.repOf), so the kit's sweep (Kit:SkinPanelTab) passes it by. The tab keeps
+-- the width its owner gives it: the template's own resize on a show and on a display change is dropped (it undid the
+-- owner's padding: the tabs' gaps jumped).
 --   W.FlatTab(tab, skin) -> tab   once per tab; then
---   tab:SetSelected(on)   the selected look; the selected tab disabled, as
---                         the game's select makes it (a click on it does
---                         nothing), its tooltip hidden
---   tab.melloFill (the plate), tab.melloEdges
+--   tab:SetSelected(on)   the selected look; the selected tab disabled, as the game's select makes it (a click on it
+--                         does nothing), its tooltip hidden; then tab.melloOnSelect(tab), when its owner set one
+--   W.TabFit(tab, pad) -> width   the tab as wide as its label and `pad` at each side (the configurator's row)
+--   tab.melloLine (the line), tab.melloGlow (its light: a Shade band, made at the tab's first select)
 --------------------------------------------------------------------------------
 
 do
-	local TAB_H, TAB_IN = 24, 4   -- the tab's height (its plate's), and the plate inside its sides
+	local TAB_H, TAB_IN = 24, 4            -- the tab's height; the selected line inside its sides
+	local LINE_H, LABEL_UP = 2, 3          -- the selected line's height; the label's middle over the tab's
+	local HOVER_A, HOVER_IN = 0.5, 2       -- the line under the pointer: its strength of the gold, further in each side
+	local TAB_FONT = "GameFontHighlight"   -- (full size: the option rows' labels -- CLAUDE.md rule 8)
+	-- the selected line's light: a hollow soft band round it, light (ADD) in its gold (Frame Hover's way)
+	local GLOW = { colour = "selectedTrim", alpha = 0.5, feather = 6, featherY = 3, blend = "ADD", hollow = true,
+		layer = "BACKGROUND", sublevel = 1 }
 	local TAB_ART = { "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive",
 		"LeftHighlight", "MiddleHighlight", "RightHighlight" }
 	local tabOn = setmetatable({}, weakKeys)   -- [tab] = true: the selected one
@@ -2277,7 +2297,7 @@ do
 	-- under the pointer) at alpha 0 and hidden, again at every lay: the
 	-- game's select (PanelTemplates_SelectTab) shows the *Active three again
 	-- after its Disable, so their alpha keeps them unseen; the open tab's
-	-- middle as tall as the plate (the owner lays the tab row by it)
+	-- middle as tall as the tab (the owner lays the tab row by it)
 	local function TabArt(tab)
 		for _, key in ipairs(TAB_ART) do
 			local art = rawget(tab, key)
@@ -2292,95 +2312,68 @@ do
 		end
 	end
 
-	-- (2026-10-20, the user's sheet: "go all the way with the new icons") the plate is the tab piece -- slate with a
-	-- bronze rim at rest, a gold one under the pointer, lighter slate in bright gold selected; rounded top corners, open
-	-- at the bottom (piece_tab_*: Tools/make_icons.py PIECES, 256 wide, the picture the top `h` of 128 rows, its ends
-	-- `l` and `r` of 256), three slices at the plate's height
-	local TAB_PIECE = {
-		off = { tex = TEXTURE_PATH .. "Icons\\piece_tab_off", h = 69, l = 39.8, r = 36.6 },
-		hover = { tex = TEXTURE_PATH .. "Icons\\piece_tab_hover", h = 69, l = 41.2, r = 37.0 },
-		on = { tex = TEXTURE_PATH .. "Icons\\piece_tab_on", h = 70, l = 40.7, r = 37.6 },
-	}
-	-- the slices on the plate's rect: the whole height (MelloUI's piece), or from its foot at `h` (the game's tab, at
-	-- its own height: never drawn taller than it is)
-	local function TabSlices(tab, h)
-		local s, fill = tab.melloSlices, tab.melloFill
-		for i = 1, 3 do
-			s[i]:ClearAllPoints()
-		end
-		if h then
-			s[1]:SetPoint("BOTTOMLEFT", fill, "BOTTOMLEFT")
-			s[3]:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
-			for i = 1, 3 do
-				s[i]:SetHeight(h)
+	-- Oldschool's painted reskin on (its palettes' gold darker than their text: a picked label takes the text colour;
+	-- the tabs' and the chips')
+	function W.PaintedReskin()
+		local Kit = rawget(MelloUI, "Kit")
+		return type(Kit) == "table" and type(Kit.IsOn) == "function" and Kit:IsOn("copy") == true
+	end
+	local Painted = W.PaintedReskin
+
+	-- the line along the tab's foot: the selected one's (its light with it), or the one under the pointer; laid again
+	-- only when the state changes
+	local function TabLine(tab, on, lit)
+		local line, want = tab.melloLine, (on and "on") or (lit and "lit") or nil
+		if tab.melloLineState ~= want then
+			tab.melloLineState = want
+			line:SetShown(want ~= nil)
+			if want then
+				local inset = on and TAB_IN or (TAB_IN + HOVER_IN)
+				line:ClearAllPoints()
+				line:SetPoint("BOTTOMLEFT", tab, "BOTTOMLEFT", inset, 0)
+				line:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -inset, 0)
+				line:SetHeight(on and LINE_H or 1)
+				W.Paint(line, "selectedTrim", "fill", on and 1 or HOVER_A)
 			end
-			s[2]:SetPoint("BOTTOMLEFT", s[1], "BOTTOMRIGHT")
-			s[2]:SetPoint("BOTTOMRIGHT", s[3], "BOTTOMLEFT")
-			return
 		end
-		s[1]:SetPoint("TOPLEFT", fill, "TOPLEFT")
-		s[1]:SetPoint("BOTTOMLEFT", fill, "BOTTOMLEFT")
-		s[3]:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
-		s[3]:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
-		s[2]:SetPoint("TOPLEFT", s[1], "TOPRIGHT")
-		s[2]:SetPoint("BOTTOMRIGHT", s[3], "BOTTOMLEFT")
+		local glow = tab.melloGlow
+		if on and not glow then
+			local Shade = rawget(MelloUI, "Shade")
+			glow = Shade and Shade.Band and Shade:Band(tab, GLOW) or nil
+			if glow then
+				glow:Anchor(line)
+				tab.melloGlow = glow
+			end
+		end
+		if glow then
+			glow:SetShown(on)
+		end
 	end
 
-	local function TabPiece(tab, state)
-		-- (1.2.4, the Default skin: MelloUI.Skin) the game's Settings tab: Options_Tab at rest and under the pointer,
-		-- the active tab selected -- its 7 px ends kept, the 1 px middle drawn along, each at its own height
-		local Skin = rawget(MelloUI, "Skin")
-		local game = Skin and Skin.IsDefault() or false
-		local want = game and ("game " .. state) or state
-		if tab.melloPiece == want then
-			return
-		end
-		local was = tab.melloPiece
-		tab.melloPiece = want
-		if game then
-			local s, pre = tab.melloSlices, MelloUI.Skin.ART[state == "on" and "tabOn" or "tab"]
-			s[1]:SetAtlas(pre .. "Left")
-			s[2]:SetAtlas(pre .. "Middle")
-			s[3]:SetAtlas(pre .. "Right")
-			s[1]:SetWidth(7)
-			s[3]:SetWidth(7)
-			local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(pre .. "Left")
-			TabSlices(tab, info and info.height or TAB_H)
-			return
-		end
-		if was and was:sub(1, 5) == "game " then
-			TabSlices(tab, nil)
-		end
-		local p, s = TAB_PIECE[state], tab.melloSlices
-		local v, k = p.h / 128, TAB_H / p.h
-		for i = 1, 3 do
-			s[i]:SetTexture(p.tex)
-		end
-		s[1]:SetTexCoord(0, p.l / 256, 0, v)
-		s[1]:SetWidth(p.l * k)
-		s[2]:SetTexCoord(p.l / 256, 1 - p.r / 256, 0, v)
-		s[3]:SetTexCoord(1 - p.r / 256, 1, 0, v)
-		s[3]:SetWidth(p.r * k)
-	end
-
-	-- the whole look, every time (a tab has few parts): its piece by state and
-	-- hover, the label painted again (the button's own fonts change its colour)
+	-- the whole look, every time (a tab has few parts): its line by state and hover, the label painted again (the
+	-- button's own fonts change its colour)
 	local function TabLook(tab)
 		local on = tabOn[tab] == true
 		TabArt(tab)
-		local lit = flatHover[tab] and not on
-		TabPiece(tab, (on and "on") or (lit and "hover") or "off")
+		local lit = (flatHover[tab] and not on) and true or false
+		TabLine(tab, on, lit)
 		local fs = tab.Text
 		if fs then
+			fs:SetWidth(0)   -- (never cut short: PanelTemplates_TabResize fixes it at the width it measured)
 			local Skin = rawget(MelloUI, "Skin")
-			-- (the Default skin: the game's tabs' gold labels, the selected one and the one under the pointer white)
-			W.Paint(fs, (Skin and Skin.IsDefault() and not (on or lit)) and "selectedTrim" or "text", "text")
+			local key
+			if Skin and Skin.IsDefault() then
+				key = (on or lit) and "text" or "selectedTrim"
+			else
+				key = (on and not Painted()) and "selectedTrim" or "text"
+			end
+			W.Paint(fs, key, "text")
 		end
 	end
 
-	-- (widget:melloActive: the selected tab wears the active look round its plate)
+	-- (widget:melloActive: no active look round a text tab, in any skin -- the selected one is its label and line)
 	local function TabActive(tab)
-		return tabOn[tab] == true, tab.melloFill, "rect"
+		return false, tab, "rect"
 	end
 
 	local function TabSetSelected(tab, on)
@@ -2391,37 +2384,49 @@ do
 			GameTooltip:Hide()
 		end
 		TabLook(tab)
-		WidgetActive(tab.melloSkin, tab, on, tab.melloFill, "rect")
+		-- (its owner told: the configurator's row scrolls its selected tab into view)
+		local told = on and rawget(tab, "melloOnSelect")
+		if told then
+			told(tab)
+		end
+	end
+
+	function W.TabFit(tab, pad)
+		local fs = tab and tab.Text
+		local width = 0
+		if fs then
+			fs:SetWidth(0)
+			local get = fs.GetUnboundedStringWidth or fs.GetStringWidth
+			width = Num(get(fs)) or 0
+		end
+		width = math.ceil(width + 2 * (Num(pad) or 0))
+		tab:SetWidth(width)
+		return width
 	end
 
 	function W.FlatTab(tab, skin)
-		if not tab or tab.melloFill then
+		if not tab or tab.melloLine then
 			return tab
 		end
 		KitRep(tab, false)   -- (the kit's sweep passes it by: no TB6)
-		-- (the tab as tall as its plate, and its hidden open-tab art too: the
-		-- height its owner lays the tab row by; a New badge on its top edge
-		-- then lies on the plate's)
+		-- (the tab as tall as TAB_H, and its hidden open-tab art too: the height its owner lays the tab row by; a New
+		-- badge on its top edge)
 		tab:SetHeight(TAB_H)
-		-- (the plate's rect: an empty region the slices lie in, the active look's ring round it)
-		local fill = tab:CreateTexture(nil, "BACKGROUND", nil, 1)
-		fill:SetPoint("TOPLEFT", tab, "TOPLEFT", TAB_IN, 0)
-		fill:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -TAB_IN, 0)
-		local s = {}
-		for i = 1, 3 do
-			s[i] = tab:CreateTexture(nil, "BACKGROUND", nil, 2)
+		-- (the label at full size in every state: the template's are GameFontNormalSmall / GameFontHighlightSmall)
+		if tab.SetNormalFontObject then
+			local font = W.FontObject(TAB_FONT)
+			tab:SetNormalFontObject(font)
+			tab:SetHighlightFontObject(font)
+			tab:SetDisabledFontObject(font)
 		end
-		s[1]:SetPoint("TOPLEFT", fill, "TOPLEFT")
-		s[1]:SetPoint("BOTTOMLEFT", fill, "BOTTOMLEFT")
-		s[3]:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
-		s[3]:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
-		s[2]:SetPoint("TOPLEFT", s[1], "TOPRIGHT")
-		s[2]:SetPoint("BOTTOMRIGHT", s[3], "BOTTOMLEFT")
-		tab.melloFill, tab.melloSlices, tab.melloEdges = fill, s, {}
+		local line = tab:CreateTexture(nil, "BORDER")
+		line:Hide()
+		tab.melloLine = line
 		local fs = tab.Text
 		if fs then
 			fs:ClearAllPoints()
-			fs:SetPoint("CENTER", fill, "CENTER", 0, 0)
+			fs:SetPoint("CENTER", tab, "CENTER", 0, LABEL_UP)
+			fs:SetWidth(0)
 		end
 		-- (the owner's width kept: the template sizes the tab again on a show
 		-- and on a display change, to its own padding)
@@ -2433,9 +2438,157 @@ do
 		FollowLook(skin, tab)
 		local Skin = rawget(MelloUI, "Skin")
 		if Skin then
-			Skin.followers[tab] = TabLook   -- (1.2.4: the skin switched, the tab in its look)
+			Skin.followers[tab] = TabLook   -- (1.2.4: the skin switched, the tab in its colours)
 		end
 		return tab
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Scroll rows (1.2.4; the user's pick for a row too long for its room, 2026-10-28: "Tighten, then scroll" -- the
+-- configurator's page tabs first, then the designers' Parts line: one row, never two): a row of frames side by side
+-- in a clip of its own (its children clipped), on a strip that slides inside it. A row longer than its room scrolls:
+-- at a cut edge, while the row hides more that way, MelloUI.Shade's soft band in the window's colour over the frames
+-- -- its full middle the `cover` at the clip's edge, so no label shows under the arrow on it, its soft end `edge`
+-- further in -- and a small arrow (the icon set's btn_arrow on W.RoundIcon: the game's picture under Default) that
+-- scrolls it a `step`; the mouse wheel over the row a `wheel` (the wheel taken only while the row scrolls: else it
+-- goes on to what lies under the row, a page's own scroll). The frame shown (row:Show: a tab or chip picked) stays in
+-- view, clear of the band beside it, at every lay. The clip reaches `pad` past the room at each side, `below` under
+-- the frames and `above` over them (a picked line's light, a New badge); its caller anchors it, the frames' start
+-- `pad` in from its left and their foot `below` over its bottom. The edges' parts are made at the row's first scroll;
+-- a row that fits makes none and lies still.
+--   W.ScrollRow(parent[, spec]) -> row   spec (read once): pad (8), below (6), above (14), cover (32), edge (24),
+--       arrow (18), arrowY (the arrows' middle over the clip's: 0), step (80), wheel (60), fade (0.9; false: no band,
+--       the arrows alone -- a row on parchment)
+--   row:Lay(frames, room, high[, gap]) -> width   the frames (made on row.strip) from its left, `gap` apart
+--   row:Show(frame)   that frame brought into view, and kept so at the next lays
+--   row.clip, row.strip, row.room, row.max (its reach: the width past the room), row.scroll, row.xs[frame],
+--   row.fadeL / fadeR, row.arrowL / arrowR (once made)
+--------------------------------------------------------------------------------
+
+do
+	local ROW = { pad = 8, below = 6, above = 14, cover = 32, edge = 24, arrow = 18, arrowY = 0, step = 80, wheel = 60,
+		fade = 0.9 }
+
+	local function Scroll(row, s)
+		s = math.max(0, math.min(row.max, s or 0))
+		row.scroll = s
+		row.strip:ClearAllPoints()
+		row.strip:SetPoint("BOTTOMLEFT", row.clip, "BOTTOMLEFT", row.pad - s, row.below)
+		local left, right = s > 0.5, s < row.max - 0.5
+		if row.arrowL then
+			row.arrowL:SetShown(left)
+			row.arrowR:SetShown(right)
+		end
+		if row.fadeL then
+			row.fadeL:SetShown(left)
+			row.fadeR:SetShown(right)
+		end
+	end
+
+	local Arrow = Shared("OnClick on a scroll row's arrows", function(self)
+		local row = self.melloRow
+		Scroll(row, row.scroll + self.melloDir * row.step)
+	end, "script")
+
+	local Wheel = Shared("OnMouseWheel on a scroll row", function(self, delta)
+		local row = self.melloRow
+		if row.max > 0 then
+			Scroll(row, row.scroll - delta * row.wheel)
+		end
+	end, "script")
+
+	-- a cut edge's parts, `side` -1 the left, 1 the right: its soft band (none without `fade`) and its arrow, hidden
+	local function Edge(row, side)
+		local inner = side < 0 and "LEFT" or "RIGHT"
+		local band
+		local Shade = rawget(MelloUI, "Shade")
+		if row.fade and Shade and Shade.Band then
+			-- (the band's full middle the clip's edge, `cover` wide: the arrow on it)
+			local spot = row.cover:CreateTexture(nil, "ARTWORK")
+			spot:SetPoint("TOP" .. inner, row.clip, "TOP" .. inner)
+			spot:SetPoint("BOTTOM" .. inner, row.clip, "BOTTOM" .. inner)
+			spot:SetWidth(row.coverW)
+			band = Shade:Band(row.cover, { colour = "mainWindow", alpha = row.fade, feather = row.edge, layer = "ARTWORK",
+				region = spot })
+			if band then
+				band:SetShown(false)
+			end
+		end
+		local arrow = W.RoundIcon(row.cover, row.arrow, W.IconPath("btn_arrow"))
+		arrow.icon:SetRotation(side < 0 and math.pi / 2 or -math.pi / 2)   -- (the set's arrow points up)
+		arrow:SetPoint(inner, row.clip, inner, -side * (row.pad + 2), row.arrowY)
+		arrow.melloRow, arrow.melloDir = row, side
+		Perf.SetScript(arrow, "OnClick", Arrow)
+		arrow:Hide()
+		return band, arrow
+	end
+
+	local function RowShow(row, frame)
+		row.shown = frame
+		local x = row.xs[frame]
+		if not (x and row.max > 0) then
+			return
+		end
+		local clear, s, w = row.coverW - row.pad + row.edge, row.scroll, Num(frame:GetWidth()) or 0
+		if x + w + clear > s + row.room then
+			s = x + w + clear - row.room
+		end
+		if x - clear < s then
+			s = x - clear
+		end
+		Scroll(row, s)
+	end
+
+	local function RowLay(row, frames, room, high, gap)
+		gap = Num(gap) or 0
+		row.room = room
+		row.clip:SetSize(room + 2 * row.pad, row.below + high + row.above)
+		local x, n = 0, #frames
+		for i, f in ipairs(frames) do
+			f:ClearAllPoints()
+			f:SetPoint("BOTTOMLEFT", row.strip, "BOTTOMLEFT", x, 0)
+			row.xs[f] = x
+			x = x + (Num(f:GetWidth()) or 0) + (i < n and gap or 0)
+		end
+		row.strip:SetSize(math.max(1, x), high)
+		row.max = math.max(0, x - room)
+		row.clip:EnableMouseWheel(row.max > 0)
+		if row.max > 0 and not row.arrowR then
+			row.fadeL, row.arrowL = Edge(row, -1)
+			row.fadeR, row.arrowR = Edge(row, 1)
+		end
+		Scroll(row, row.scroll)
+		if row.shown then
+			RowShow(row, row.shown)
+		end
+		return x
+	end
+
+	function W.ScrollRow(parent, spec)
+		spec = type(spec) == "table" and spec or NO_OPTS
+		local clip = CreateFrame("Frame", nil, parent)
+		if clip.SetClipsChildren then
+			clip:SetClipsChildren(true)
+		end
+		local strip = CreateFrame("Frame", nil, clip)
+		strip:SetSize(1, 1)
+		local cover = CreateFrame("Frame", nil, clip)
+		cover:SetAllPoints(clip)
+		cover:SetFrameLevel(strip:GetFrameLevel() + 10)   -- (over the frames)
+		local row = { clip = clip, strip = strip, cover = cover, scroll = 0, max = 0, room = 0, xs = {} }
+		for key, value in pairs(ROW) do
+			local v = spec[key]
+			if v == nil then
+				v = value
+			end
+			row[key == "cover" and "coverW" or key] = v
+		end
+		row.Lay, row.Show = RowLay, RowShow
+		clip.melloRow = row
+		clip:EnableMouseWheel(false)
+		Perf.SetScript(clip, "OnMouseWheel", Wheel)
+		return row
 	end
 end
 
@@ -6515,25 +6668,38 @@ function W.PaletteSwatch(parent, spec)
 end
 
 --------------------------------------------------------------------------------
--- Chips (one look, the designers: the element chips, the Parts line, a plain
--- page's anchors, the stage's state chips -- one system, rule 5): a row of
--- small flat buttons, wrapping at `width`, the picked one gold (W.FlatGold).
---   W.Chips(parent, spec) -> chips   spec: height (22), gap (4), width (the
---     row's room; nil: one line), select (false: no pick kept, the anchors),
---     onPick fn(chips, key, item), ink ("tab" / "box": in ink on parchment,
---     Oldschool's configurator -- InkLook)
---   chips:SetItems(items)   items { key, label, state (nil, "off" or
---     "locked": dimmed, still clickable), new (its New tag), tip }; the
---     buttons come from the chips' own pool (a set again makes none after
---     the first); a pick no longer among them is let go
+-- Chips (one look, the designers: the Parts line, the stage's state chips, Edit Layout's picker, the Group Frames
+-- designer's styles -- one system, rule 5): small quiet buttons side by side (1.2.4, the user's pick A of
+-- MelloUI-BuildData/output/config_chips_sketch, 2026-10-28; before them the pills): each in a hairline box (`trim`;
+-- the Default skin: the game's grey, `border`), its label `text`; the picked one's box `selectedTrim` over a faint
+-- `selectedTab` fill, its label `selectedTrim` (`text` under Oldschool's painted reskin, as the tabs'); the one under
+-- the pointer on the `hover` fill. The Default skin's labels the game's gold, the picked one and the one under the
+-- pointer white. Wrapping at `width`, or one row (`row`: tightened, then scrolled -- W.ScrollRow -- never two).
+--   W.Chips(parent, spec) -> chips   spec: height (22), gap (6; a row's tightens to 4), width (the room; nil: one
+--     line; a row's must be given), row (true: one row in `width` -- its padding and gaps tightened, CHIP_PADS and
+--     CHIP_GAPS in turn, then scrolled, the picked one kept in view), select (false: no pick kept), onPick fn(chips,
+--     key, item), ink ("box": in ink on parchment, Oldschool's configurator -- InkLook)
+--   chips:SetItems(items)   items { key, label, state (nil, "off" or "locked": dimmed, still clickable), new (its New
+--     tag), tip }; the buttons come from the chips' own pool (a set again makes none after the first); a pick no
+--     longer among them is let go; a row back at its start
 --   chips:Select(key)   chips:Selected()   chips:SetState(key, state)
 --   chips:Height()   the height the rows take
+--   chips:Refit()   measured and laid again (a font changed: the Interface text size, a skin), as they are
+--   chips.buttons, chips.count, chips.row (a row's W.ScrollRow)
 --------------------------------------------------------------------------------
 
 do
-	local CHIP_PAD = 12     -- each side of a chip's label
-	local CHIP_MIN = 36     -- the narrowest chip
-	local CHIP_DIM = 0.5    -- an "off" or "locked" chip's alpha
+	local CHIP_PADS = { 10, 7 }   -- each side of a chip's label (a row's tightened in turn)
+	local CHIP_GAPS = { 6, 4 }    -- between two chips (the same)
+	local CHIP_MIN = 36           -- the narrowest chip
+	local CHIP_DIM = 0.5          -- an "off" or "locked" chip's alpha
+	-- the colours' strengths: the box at rest, the picked one's fill, the hover's; the Default skin's own (its
+	-- `selectedTab` the game's full gold and its `hover` its grey: a faint touch of each, the sketch's)
+	local QUIET = { edge = 0.45, fill = 0.55, hover = 1, gameEdge = 0.7, gameFill = 0.08, gameHover = 0.2 }
+	-- a row's scroll (W.ScrollRow): nothing round a chip to keep clear (a hairline box, a New tag inside it); on
+	-- parchment the arrows alone
+	local ROW_SPEC = { pad = 2, below = 2, above = 2 }
+	local ROW_INK = { pad = 2, below = 2, above = 2, fade = false }
 
 	local ChipEnter = Shared("OnEnter on a chip (tooltip)", function(b)
 		local item = b.melloItem
@@ -6542,7 +6708,7 @@ do
 		end
 	end, "script")
 
-	-- (2026-10-20, the user's sheet: "go all the way with the new icons") a chip is a pill: slate in a bronze rim,
+	-- (2026-10-20, the user's sheet: "go all the way with the new icons") the pill: slate in a bronze rim,
 	-- the picked one gold (piece_pill_off / piece_pill_on: Tools/make_icons.py PIECES, 256 wide, the picture the top
 	-- 60 of 64 rows, its rounded ends `l` and `r` of 256), three slices at the chip's height; its label `text`, gold
 	-- under the pointer, dark ink (`mainWindow`) on the gold pill
@@ -6579,8 +6745,8 @@ do
 	-- W.Pill(b, state[, light]): a button drawn as the pill, state "off" (slate in a bronze rim) or "on" (gold): its
 	-- three slices made on the first call (BACKGROUND 3, under its label), cut at its height then. `light` (0..1):
 	-- the same pill again in its HIGHLIGHT layer, added as light in the palette's gold at that strength, so it
-	-- brightens under the pointer (asked once, kept). The chips' look and the game menu's MelloUI button
-	-- (2026-10-20, the user's pick B: the gold pill)
+	-- brightens under the pointer (asked once, kept). The game menu's MelloUI button (2026-10-20, the user's pick B:
+	-- the gold pill; the chips' look until 1.2.4's quiet chips)
 	function W.Pill(b, state, light)
 		local s = b.melloSlices
 		if not s then
@@ -6625,17 +6791,42 @@ do
 			CutPill(b.melloPillLight, p, v, k)
 		end
 	end
-	local Pill = W.Pill
+	-- the quiet chip as it is: its fill (the picked one's, the hover's, else none), its box, its label
+	local function QuietLook(b, picked, on)
+		local Skin = rawget(MelloUI, "Skin")
+		local game = Skin and Skin.IsDefault() or false
+		local lit = on and flatHover[b] and not picked
+		local fill = (picked and (game and QUIET.gameFill or QUIET.fill)) or (lit and (game and QUIET.gameHover or
+			QUIET.hover)) or 0
+		W.Paint(b.melloFill, picked and "selectedTab" or "hover", "fill", fill)
+		local edge = (picked and "selectedTrim") or (game and "border") or "trim"
+		local alpha = picked and 1 or (game and QUIET.gameEdge or QUIET.edge)
+		for i = 1, #b.melloEdges do
+			W.Paint(b.melloEdges[i], edge, "fill", alpha)
+		end
+		local fs = b:GetFontString()
+		if fs then
+			local key
+			if game then
+				key = (not on and "mutedText") or ((picked or lit) and "text") or "selectedTrim"
+			else
+				key = (not on and "mutedText") or (picked and not W.PaintedReskin() and "selectedTrim") or "text"
+			end
+			W.Paint(fs, key, "text")
+		end
+	end
 
 	-- (1.2.4, Oldschool's configurator -- the user, 2026-10-27, its preview "hard to read"; their pick 1 of
-	-- oldschool_readable_sketch) a chip in ink on the parchment, spec.ink: no pill, its label in QuestInk's inks two
-	-- sizes up and without an outline; "tab" (the frames' row): the picked one in the red mark ink, underlined; "box"
-	-- (the Parts line): each in a thin faded-ink box, the picked one's box and label in the mark ink
+	-- oldschool_readable_sketch) a chip in ink on the parchment, spec.ink: its label in QuestInk's inks two sizes up
+	-- and without an outline, in a thin faded-ink box; the picked one's box and label in the mark ink, a faint wash of
+	-- the faded ink under the pointer (the chips sketch's paper)
 	local INK_UP = 2
+	local INK_A = { edge = 0.55, picked = 0.9, wash = 0.12 }
 	local function InkLook(b, picked, on)
 		local INK = MelloUI.QuestInk.INK
 		local fs, ink = b:GetFontString(), b.melloInk
-		local c = (not on and INK.faded) or (picked and INK.mark) or (flatHover[b] and INK.title) or INK.text
+		local lit = on and flatHover[b] and not picked
+		local c = (not on and INK.faded) or (picked and INK.mark) or (lit and INK.title) or INK.text
 		if fs then
 			-- (its face each time from the button's own font: the template swaps font objects on hover, and the
 			-- Fonts module may change the face)
@@ -6650,43 +6841,29 @@ do
 			fs:SetShadowOffset(0, 0)   -- (ink casts no shadow: under the glyph, unseen)
 			fs:SetTextColor(c[1], c[2], c[3], 1)
 		end
-		ink.line:SetShown(ink.kind == "tab" and picked and true or false)
 		local e = picked and INK.mark or INK.faded
 		for i = 1, #ink.box do
-			ink.box[i]:SetVertexColor(e[1], e[2], e[3], picked and 1 or 0.7)
-			ink.box[i]:SetShown(ink.kind == "box")
+			ink.box[i]:SetVertexColor(e[1], e[2], e[3], picked and INK_A.picked or INK_A.edge)
 		end
+		local f = INK.faded
+		ink.wash:SetVertexColor(f[1], f[2], f[3], lit and INK_A.wash or 0)
 	end
 
 	local function ChipLook(b)
 		local chips, item = b.melloChips, b.melloItem
-		local picked = chips and item and chips.picked ~= nil and item.key == chips.picked
+		local picked = (chips and item and chips.picked ~= nil and item.key == chips.picked) and true or false
 		local on = b:IsEnabled() and true or false
 		if b.melloInk then
 			InkLook(b, picked, on)
-			return
-		end
-		Pill(b, picked and "on" or "off")
-		local fs = b:GetFontString()
-		if fs then
-			local Skin = rawget(MelloUI, "Skin")
-			if Skin and Skin.IsDefault() then
-				-- (the game's tabs: gold labels, the picked one and the one under the pointer white)
-				W.Paint(fs, (not on and "mutedText") or ((picked or flatHover[b]) and "text") or "selectedTrim", "text")
-				return
-			end
-			W.Paint(fs, (not on and "mutedText") or (picked and "mainWindow") or (flatHover[b] and "selectedTrim") or "text",
-				"text")
+		else
+			QuietLook(b, picked, on)
 		end
 	end
 
-	-- a chip button made a pill once: the flat plate hidden, the three slices under the label
-	local function MakePill(b)
-		b.melloFill:Hide()
-		for i = 1, #b.melloEdges do
-			b.melloEdges[i]:Hide()
-		end
-		local g = b.melloSkinParts   -- (the Default skin's panel button: no plate under a pill)
+	-- a chip button made quiet once: the flat button's own fill and edges its box (QuietLook paints them), the Default
+	-- skin's panel button art (if a look made it) hidden
+	local function MakeQuiet(b)
+		local g = b.melloSkinParts
 		if g then
 			for i = 1, 3 do
 				g.plate[i]:Hide()
@@ -6694,17 +6871,16 @@ do
 			end
 			b.melloSkinParts = nil
 		end
-		Pill(b, "off")
-		b.melloLook = ChipLook
-		local Skin = rawget(MelloUI, "Skin")
-		if Skin then
-			Skin.followers[b] = ChipLook   -- (1.2.4: the skin switched, the pill in its look)
+		b.melloFill:Show()
+		for i = 1, #b.melloEdges do
+			b.melloEdges[i]:Show()
 		end
+		b.melloLook = ChipLook
 	end
 
 	-- a chip button made an ink chip once (spec.ink, InkLook): the flat plate hidden, the label off the palette's
-	-- paint, two sizes up without an outline, its underline and box made
-	local function MakeInk(b, kind)
+	-- paint, two sizes up without an outline, its box and wash made
+	local function MakeInk(b)
 		b.melloFill:Hide()
 		for i = 1, #b.melloEdges do
 			b.melloEdges[i]:Hide()
@@ -6713,16 +6889,10 @@ do
 		if fs then
 			MelloUI.Painter.Unpaint(fs, "text")
 		end
-		local ink = { kind = kind, box = {} }
-		ink.line = b:CreateTexture(nil, "ARTWORK")
-		ink.line:SetTexture(WHITE)
-		ink.line:SetHeight(2)
-		local mark = MelloUI.QuestInk.INK.mark
-		ink.line:SetVertexColor(mark[1], mark[2], mark[3], 1)
-		if fs then
-			ink.line:SetPoint("TOPLEFT", fs, "BOTTOMLEFT", -2, -2)
-			ink.line:SetPoint("TOPRIGHT", fs, "BOTTOMRIGHT", 2, -2)
-		end
+		local ink = { box = {} }
+		ink.wash = b:CreateTexture(nil, "BACKGROUND", nil, 2)
+		ink.wash:SetTexture(WHITE)
+		ink.wash:SetAllPoints(b)
 		-- (W.Edges' four lines, in ink: not the palette's paint, which a palette switch would lay over them)
 		for i = 1, 4 do
 			ink.box[i] = b:CreateTexture(nil, "BORDER")
@@ -6741,12 +6911,20 @@ do
 		b.melloLook = ChipLook
 	end
 
+	-- every chip in its look and alpha; a row's picked one brought into view
 	local function Paint(chips)
+		local shown
 		for i = 1, chips.count do
 			local b = chips.buttons[i]
 			local item = b.melloItem
 			ChipLook(b)
 			b:SetAlpha((item.state == "off" or item.state == "locked") and CHIP_DIM or 1)
+			if chips.picked ~= nil and item.key == chips.picked then
+				shown = b
+			end
+		end
+		if chips.row then
+			chips.row:Show(shown)
 		end
 	end
 
@@ -6766,13 +6944,65 @@ do
 		end
 	end, "script")
 
+	-- a chip's label measured (at each set): its text and, while its update runs, its New tag
+	local function Measure(b, item)
+		if b.melloInk then
+			ChipLook(b)   -- (the ink's larger face first: the width is the label's in it)
+		end
+		local fs = b:GetFontString()
+		b.melloTextW = fs and TextWidth(fs) or 24
+		local new = item.new ~= nil and MelloUI:IsNew(item.new)
+		if new and not b.melloNewTag then
+			b.melloNewTag = W.Tag(b, W.NEW)
+		end
+		W.TagShown(b.melloNewTag, new)
+		b.melloTagW = new and (TagSpan(b.melloNewTag) or 0) or 0
+	end
+
+	-- a chip as wide as its label and `pad` at each side (its New tag at its right, inside the pad) -> the width
+	local function Fit(b, pad)
+		if b.melloTagW > 0 then
+			b.melloNewTag:ClearAllPoints()
+			b.melloNewTag:SetPoint("RIGHT", b, "RIGHT", -(pad - 4 + TAG_PAD_X), 0)
+		end
+		local w = math.max(CHIP_MIN, math.ceil(b.melloTextW + 2 * pad)) + b.melloTagW
+		b:SetWidth(w)
+		return w
+	end
+
+	-- the chips at padding step `t` (CHIP_PADS[t], CHIP_GAPS[t] unless the spec has a gap) -> the row they make
+	local function FitAll(chips, t)
+		local width = 0
+		for i = 1, chips.count do
+			width = width + Fit(chips.buttons[i], CHIP_PADS[t])
+		end
+		return width + math.max(0, chips.count - 1) * (chips.spec.gap or CHIP_GAPS[t])
+	end
+
 	local function Lay(chips)
 		local spec = chips.spec
-		local h, gap, room = spec.height or 22, spec.gap or 4, Num(spec.width)
+		local h, room = spec.height or 22, Num(spec.width)
+		local row = chips.row
+		if row and room then
+			-- (one row: tightened step by step, then scrolled -- the user's "Tighten, then scroll")
+			local t = 1
+			while FitAll(chips, t) > room and t < #CHIP_PADS do
+				t = t + 1
+			end
+			local list = chips.list
+			for i = 1, math.max(#list, chips.count) do
+				list[i] = i <= chips.count and chips.buttons[i] or nil
+			end
+			row:Lay(list, room, h, spec.gap or CHIP_GAPS[t])
+			chips.rows = chips.count > 0 and 1 or 0
+			chips:SetSize(room, h)
+			return
+		end
+		local gap = spec.gap or CHIP_GAPS[1]
 		local x, y, rows, widest = 0, 0, 0, 1
 		for i = 1, chips.count do
 			local b = chips.buttons[i]
-			local w = Num(b:GetWidth()) or CHIP_MIN
+			local w = Fit(b, CHIP_PADS[1])
 			if room and x > 0 and x + w > room then
 				x, y = 0, y + h + gap
 			end
@@ -6790,37 +7020,23 @@ do
 		chips:SetSize(widest, math.max(1, rows > 0 and (rows * h + (rows - 1) * gap) or 0))
 	end
 
-	-- a chip's width: its label and, while its update runs, its New tag
-	local function Fit(b, item)
-		if b.melloInk then
-			ChipLook(b)   -- (the ink's larger face first: the width is the label's in it)
-		end
-		local fs = b:GetFontString()
-		local w = math.max(CHIP_MIN, math.ceil((fs and TextWidth(fs) or 24) + 2 * CHIP_PAD))
-		local new = item.new ~= nil and MelloUI:IsNew(item.new)
-		if new and not b.melloNewTag then
-			b.melloNewTag = W.Tag(b, W.NEW)
-			b.melloNewTag:SetPoint("RIGHT", b, "RIGHT", -(CHIP_PAD - 4 + TAG_PAD_X), 0)
-		end
-		W.TagShown(b.melloNewTag, new)
-		if new then
-			w = w + (TagSpan(b.melloNewTag) or 0)
-		end
-		b:SetWidth(w)
-	end
-
 	local function SetItems(chips, items)
 		local h = chips.spec.height or 22
+		local holder = chips.row and chips.row.strip or chips
 		local found = false
 		chips.count = 0
 		for i, item in ipairs(type(items) == "table" and items or NO_OPTS) do
 			local b = chips.buttons[i]
 			if not b then
-				b = W.Button(chips, "", CHIP_MIN, nil, { height = h })
+				b = W.Button(holder, "", CHIP_MIN, nil, { height = h })
 				if chips.spec.ink then
-					MakeInk(b, chips.spec.ink)
+					MakeInk(b)
 				else
-					MakePill(b)
+					MakeQuiet(b)
+				end
+				local Skin = rawget(MelloUI, "Skin")
+				if Skin then
+					Skin.followers[b] = ChipLook   -- (1.2.4: the skin switched, the chip in its look)
 				end
 				b.melloChips = chips
 				Perf.SetScript(b, "OnClick", ChipClick)
@@ -6830,7 +7046,7 @@ do
 			end
 			b.melloItem = item
 			b:SetText(item.label and W.Tr(item.label) or tostring(item.key))
-			Fit(b, item)
+			Measure(b, item)
 			b:Show()
 			chips.count = i
 			found = found or (chips.picked ~= nil and item.key == chips.picked)
@@ -6841,6 +7057,9 @@ do
 		end
 		if not found then
 			chips.picked = nil
+		end
+		if chips.row then
+			chips.row.shown, chips.row.scroll = nil, 0   -- (new chips: the row from its start)
 		end
 		Lay(chips)
 		Paint(chips)
@@ -6869,13 +7088,30 @@ do
 		return Num(chips:GetHeight()) or 0
 	end
 
+	-- the chips measured and laid again where they are (their labels' font changed: a text size, a skin), a row's
+	-- scroll and its picked one kept
+	local function Refit(chips)
+		for i = 1, chips.count do
+			local b = chips.buttons[i]
+			Measure(b, b.melloItem)
+		end
+		Lay(chips)
+		Paint(chips)
+	end
+
 	function W.Chips(parent, spec)
 		local chips = CreateFrame("Frame", nil, parent)
 		chips.spec = type(spec) == "table" and spec or {}
-		chips.buttons, chips.count, chips.rows = {}, 0, 0
+		chips.buttons, chips.count, chips.rows, chips.list = {}, 0, 0, {}
 		chips.SetItems, chips.Select, chips.Selected, chips.SetState, chips.Height = SetItems, Select, Selected, SetState,
 			Height
+		chips.Refit = Refit
 		chips:SetSize(1, 1)   -- (a rect from the start: Lay)
+		if chips.spec.row then
+			local row = W.ScrollRow(chips, chips.spec.ink and ROW_INK or ROW_SPEC)
+			row.clip:SetPoint("BOTTOMLEFT", chips, "BOTTOMLEFT", -row.pad, -row.below)
+			chips.row = row
+		end
 		return chips
 	end
 end

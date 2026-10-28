@@ -41,6 +41,9 @@
 -- show (a frame's share at a time, I:StartFit), again after a pick changes
 -- what it reads, and Install waits for it. The UI scale is only shown, never
 -- changed.
+-- (1.2.4) Keep reloads the UI: the game's own /reload, run by the player's
+-- click on a secure button laid over Keep (MelloUIInstallerReload, made at
+-- Keep's first hover; never in a fight). Revert reloads nothing.
 --
 -- The setup's pages (SetupSteps, below) are all the same: a lead, one big
 -- picture -- the choice's, in the skin picked (the Layout step's: the fit's
@@ -181,21 +184,18 @@ local TEXT = {
 	layoutWaits = "The Edit Mode layout, once your screen is fitted",
 	noLayout = "No Edit Mode change: your own layout stays",
 	scaleRow = "Your UI scale stays as it is",
-	restore = "Your current setup is saved as the profile 'Before install' first, so you can go back to it later from the Profiles page. After Install you have 15 seconds to keep the new setup; one reload at the end, only if the fonts need it.",
+	restore = "Your current setup is saved as the profile 'Before install' first, so you can go back to it later from the Profiles page. After Install you have 15 seconds to keep the new setup; Keep then reloads the UI.",
 	keepQuestion = "Keep this setup?",
 	keepLine = "If you don't answer, MelloUI goes back to 'Before install' when the timer runs out.",
-	doneTitle = "MelloUI is set up.",
-	doneRefit = "Your layout was fitted to this screen.",   -- (Fit to this screen: nothing was installed)
-	doneReload = "The names above characters use the new font after a reload: type /reload.",
-	doneWhere = "Every setting lives in /mello, and in the MelloUI button of the game menu.",
+	keepReload = "Keep reloads the UI, so everything takes the new setup.",
+	keptReload = "Type /reload so everything takes the new setup.",   -- (a Keep with no reload: its secure button not laid)
 	revertedTitle = "Back to 'Before install'.",
 	revertedReload = "Type /reload to finish: the names above characters still use the installed font.",
-	plateDone = "All set",
 	plateReverted = "Back as before",
 	closedEarly = "Install... in /mello (or /mello install) sets MelloUI up any time.",
 	placeholder = "Continue keeps Mello's own choice for this step.",
 	continue = "Continue", back = "Back", install = "Install", keep = "Keep", revert = "Revert",
-	tour = "Take the tour", open = "Open MelloUI", again = "Choose again", close = "Close",
+	again = "Choose again", close = "Close",
 	paletteRow = "Palette: %s",
 	-- the setup's steps (1.2.4)
 	skinLead = "How everything looks: the game's frames and MelloUI's own windows and features alike. Every step after this one shows its pictures in this skin.",
@@ -246,8 +246,8 @@ local TEXT = {
 		gains = { "Gains", "Short lines beside you: what you loot, receive and buy." },
 		restock = { "Restock", "Drink, food, ammunition and reagents: a list to buy at the shop, bought on a click." },
 		discard = { "Discard", "A button that sells or throws away your cheapest junk to free a slot." },
-		melloSound = { "MelloUI Sounds", "Soft clicks, a chime for a waypoint, a quest done." },
-		gameSound = { "The Game's Sounds", "The game's own interface sounds." },
+		melloSound = { "MelloUI Sounds", "The sounds of your skin: soft clicks, a chime for a waypoint, a quest done." },
+		gameSound = { "The Game's Sounds", "The game's own interface sounds. The Default skin always uses them." },
 	},
 	leads = {
 		party = "Which frames show your group, in your skin. Both can be clicked to heal.",
@@ -309,9 +309,8 @@ local state = {
 	option = "setup",    -- the setup's key (the refit's, "fit", from its own entry)
 	step = "skin",       -- the step on show
 	picks = nil,         -- the setup's answers (I:DefaultPicks, made at the first ask)
-	phase = "choose",    -- "choose" (before Install) | "keep" (the answer owed) | "done"
-	doneMode = nil,      -- "kept" | "reverted"
-	needsReload = false, -- (kept) the fonts over heads changed
+	phase = "choose",    -- "choose" (before Install) | "keep" (the answer owed) | "done" (reverted)
+	doneMode = nil,      -- "reverted" (1.2.4: a kept setup reloads the UI, no Done page)
 	reloadOwed = false,  -- (reverted) the game read the installed fonts since
 	reason = nil,        -- (reverted) why: "button", "timeout", "error"
 	keepLine = nil,      -- a line on the Keep page (a refusal, a failure)
@@ -598,12 +597,17 @@ function ACTIONS.install()
 	end
 end
 
-function ACTIONS.keep()
+-- Keep: the setup kept (the 'kept' Fire closes the window: no Done page, the user, 2026-10-28: "Drop it"). From the
+-- secure button over Keep (`reloading`: Reload, below) the game's /reload follows; a plain click on Keep (that button
+-- not laid) says to type /reload
+function ACTIONS.keep(_, reloading)
 	MelloUI:PlayUISound("menu_button")
-	local _, why = I:Keep()
+	local kept, why = I:Keep()
 	if why then
 		state.keepLine = why
 		RefreshKeep()
+	elseif kept and not reloading then
+		MelloUI:Print(TEXT.keptReload)
 	end
 end
 
@@ -613,26 +617,6 @@ function ACTIONS.revert()
 	if not ok and why then
 		state.keepLine = why
 		RefreshKeep()
-	end
-end
-
-function ACTIONS.tour()
-	MelloUI:PlayUISound("menu_button")
-	win.frame:Hide()
-	local tutorial = MelloUI.Tutorial
-	if tutorial and tutorial.Start then
-		tutorial:Start()
-	end
-end
-
--- (the configurator's open toggles: one already shown, opened during the
--- countdown under this window, stays)
-function ACTIONS.open()
-	MelloUI:PlayUISound("menu_button")
-	win.frame:Hide()
-	local config = _G.MelloUIConfigFrame
-	if MelloUI.OpenConfig and not (config and config:IsShown()) then
-		MelloUI:OpenConfig()
 	end
 end
 
@@ -741,7 +725,7 @@ end
 local function SetTitle()
 	local title
 	if state.phase == "done" then
-		title = state.doneMode == "reverted" and TEXT.plateReverted or TEXT.plateDone
+		title = TEXT.plateReverted   -- (the one Done page: a kept setup reloads the UI)
 	else
 		local def = STEPS[state.step]
 		title = def and def.title or ""
@@ -1313,6 +1297,175 @@ local function NumeralBase()
 	return _G.GameFontNormalHuge, 34
 end
 
+--------------------------------------------------------------------------------
+-- Keep reloads the UI (1.2.4; the user, 2026-10-28: "after the installer process is done, it should automatically
+-- after the last step do a /reload for everything to update"). The game blocks a reload MelloUI's code asks for
+-- ("MelloUI blocked by the game: Reload()", 0.19.9), so it is the game's own /reload, run by the player's click on a
+-- secure button: MelloUIInstallerReload (made at the first hover, out of combat), laid over Keep while the pointer is
+-- on it, its macro "/stopmacro [combat]" then "/reload" (Edit Layout's bridge reaches /editmode the same way). Its
+-- PreClick, ours and run before the macro, keeps the setup (ACTIONS.keep); a click Keep cannot take sets no action,
+-- so nothing reloads. It acts on the release, as every button (useOnKeyDown false). In a fight it is never laid and
+-- Keep is held, as Revert; one laid before the fight does nothing on a click (no attribute is set in a fight, and the
+-- macro stops itself). Gone when the pointer leaves, the Keep page ends or the window closes (in a fight: when it
+-- ends); the countdown's refresh lays it again where Keep stands (the window dragged, the pointer resting on Keep as a
+-- fight ended). Revert reloads nothing: in the session of the install it puts everything back as it was.
+--------------------------------------------------------------------------------
+
+local Reload = {}
+do
+	local MACRO = "/stopmacro [combat]\n/reload"
+	local OVER_LEVEL = 10   -- over Keep's own level
+	local HIDE_KEY = "Installer: Keep's reload button"
+	local button            -- the secure button, once made
+	local clicking = false  -- a click under way: the button stays for its PostClick
+	local forwarding = false   -- Keep's own hover scripts run from here: our hooks on Keep stay out
+
+	local function KeepButton()
+		local page = win and win.pages.keep
+		return page and page.count and page.count.keep or nil
+	end
+
+	-- Keep can be taken now: its page on show, an answer owed that can be kept, Keep not held
+	local function Keepable(keep)
+		local pending = Pending()
+		return (keep and state.phase == "keep" and keep:IsVisible() and keep:IsEnabled() and pending
+			and not pending.failed) and true or false
+	end
+
+	-- Keep's hover look run as if the pointer came or went (the pointer is on the secure button over it)
+	local function Forward(script)
+		local keep = KeepButton()
+		if not keep then
+			return
+		end
+		forwarding = true
+		local run = _G.ExecuteFrameScript
+		local ok, err = true, nil
+		if type(run) == "function" then
+			ok, err = pcall(run, keep, script)
+		else
+			local fn = keep:GetScript(script)
+			if fn then
+				ok, err = pcall(fn, keep)
+			end
+		end
+		forwarding = false
+		local handler = not ok and geterrorhandler and geterrorhandler()
+		if handler then
+			handler(err)
+		end
+	end
+
+	local function HideNow()
+		Reload.Sync()
+	end
+
+	function Reload.Hide()
+		if not button or clicking or not button:IsShown() then
+			return
+		end
+		if InCombat() then
+			MelloUI.Schedule:WhenOutOfCombat(HideNow, HIDE_KEY)
+			return
+		end
+		button:Hide()
+		button:ClearAllPoints()
+	end
+
+	local PreClick = Shared("PreClick on MelloUIInstallerReload", function(self)
+		if InCombat() then
+			return
+		end
+		clicking = true
+		local go = Keepable(KeepButton())
+		local action = go and "macro" or nil
+		if self:GetAttribute("type1") ~= action then
+			self:SetAttribute("type1", action)
+		end
+		if go then
+			ACTIONS.keep(nil, true)
+		end
+	end, "script")
+
+	local PostClick = Shared("PostClick on MelloUIInstallerReload", function()
+		clicking = false
+		Reload.Sync()
+	end, "script")
+
+	local Enter = Shared("OnEnter on MelloUIInstallerReload", function()
+		Forward("OnEnter")
+	end, "script")
+
+	local Leave = Shared("OnLeave on MelloUIInstallerReload", function()
+		Forward("OnLeave")
+		Reload.Hide()
+	end, "script")
+
+	local function Make()
+		if button then
+			return button
+		elseif InCombat() then
+			return nil
+		end
+		button = CreateFrame("Button", "MelloUIInstallerReload", UIParent, "SecureActionButtonTemplate")
+		button:Hide()
+		button:RegisterForClicks("LeftButtonUp")
+		button:SetAttribute("useOnKeyDown", false)
+		button:SetAttribute("type1", "macro")
+		button:SetAttribute("macrotext1", MACRO)
+		Perf.SetScript(button, "PreClick", PreClick)
+		Perf.SetScript(button, "PostClick", PostClick)
+		Perf.SetScript(button, "OnEnter", Enter)
+		Perf.SetScript(button, "OnLeave", Leave)
+		return button
+	end
+
+	-- laid over Keep above it, and shown: by measure on UIParent, out of combat only (Reminders.OverlayPlace, the one
+	-- way a secure overlay is laid over a button of ours)
+	local function Lay(keep)
+		local place = MelloUI.Reminders and MelloUI.Reminders.OverlayPlace
+		local o = place and Make()
+		if not (o and place(o, keep)) then
+			return
+		end
+		if o:GetAttribute("type1") ~= "macro" then
+			o:SetAttribute("type1", "macro")
+		end
+		o:SetFrameStrata(keep:GetFrameStrata())
+		o:SetFrameLevel(keep:GetFrameLevel() + OVER_LEVEL)
+		o:Show()
+	end
+
+	-- the pointer on Keep: the secure button over it
+	Reload.KeepEnter = Shared("OnEnter on the installer's Keep (its reload button)", function(keep)
+		if not forwarding and Keepable(keep) then
+			Lay(keep)
+		end
+	end, "script")
+
+	-- the pointer gone from Keep: the secure button too, unless the pointer went onto it
+	Reload.KeepLeave = Shared("OnLeave on the installer's Keep (its reload button)", function()
+		if forwarding or (button and button:IsShown() and button:IsMouseOver()) then
+			return
+		end
+		Reload.Hide()
+	end, "script")
+
+	-- (the countdown's refresh, a fight's or Edit Mode's end) laid again where Keep stands while the pointer is on
+	-- it; hidden once Keep cannot be taken or the pointer is gone
+	function Reload.Sync()
+		if clicking or InCombat() then
+			return
+		end
+		local keep = KeepButton()
+		if Keepable(keep) and (keep:IsMouseOver() or (button and button:IsShown() and button:IsMouseOver())) then
+			Lay(keep)
+		else
+			Reload.Hide()
+		end
+	end
+end
+
 local function BuildKeep(page)
 	local shell = win.shell
 	-- the ring (RING across) with the emblem, the seconds in gold over it
@@ -1344,7 +1497,10 @@ local function BuildKeep(page)
 	count.question = W.Text(count, "GameFontHighlightLarge", MelloUI.Lang.T(TEXT.keepQuestion), "text")
 	count.question:SetJustifyH("CENTER")
 	count.question:SetPoint("TOP", page, "TOP", 0, -(20 + RING + 12))
-	count.line = W.Text(count, "GameFontHighlight", MelloUI.Lang.T(TEXT.keepLine), "text")
+	-- (1.2.4) the line, and that Keep reloads the UI while Keep is there (RefreshKeep picks)
+	count.lineKeep = MelloUI.Lang.T(TEXT.keepLine) .. "\n" .. MelloUI.Lang.T(TEXT.keepReload)
+	count.lineOnly = MelloUI.Lang.T(TEXT.keepLine)
+	count.line = W.Text(count, "GameFontHighlight", count.lineKeep, "text")
 	count.line:SetJustifyH("CENTER")
 	count.line:SetWidth(TEXT_W)
 	count.line:SetPoint("TOP", count.question, "BOTTOM", 0, -8)
@@ -1356,13 +1512,16 @@ local function BuildKeep(page)
 	count.keep = Button(count, TEXT.keep, BUTTON_W, "keep")
 	count.revert:SetPoint("TOPRIGHT", count.status, "BOTTOM", -6, -12)
 	count.keep:SetPoint("TOPLEFT", count.status, "BOTTOM", 6, -12)
-	return 20 + RING + 12 + 130
+	-- (1.2.4) Keep reloads the UI: the secure button over it while the pointer is on it (Reload, above)
+	Perf.HookScript(count.keep, "OnEnter", Reload.KeepEnter)
+	Perf.HookScript(count.keep, "OnLeave", Reload.KeepLeave)
+	return 20 + RING + 12 + 144
 end
 
--- the Done content, made the first time it is needed (no Reload button: the
--- game blocks a reload MelloUI's code asks for, "MelloUI blocked by the game:
--- Reload()", 0.19.9; the line says to type /reload)
-local DONE_ACTS = { "tour", "open", "again", "close" }
+-- the Done content (after a revert), made the first time it is needed (no
+-- Reload button: the game blocks a reload MelloUI's code asks for, "MelloUI
+-- blocked by the game: Reload()", 0.19.9; the line says to type /reload)
+local DONE_ACTS = { "again", "close" }
 local function DoneGroup(page)
 	local done = page.done
 	if done then
@@ -1381,14 +1540,14 @@ local function DoneGroup(page)
 	for _, act in ipairs(DONE_ACTS) do
 		done.buttons[act] = Button(done, TEXT[act], DONE_BUTTON_W, act)
 	end
-	done.shown = {}
 	page.done = done
 	return done
 end
 
--- the countdown's number, its pause, Revert held in combat and while Edit
--- Mode is open, Keep gone for an install that could not be put back or a
--- revert that only partly worked (the engine's `failed`)
+-- the countdown's number, its pause, Revert and Keep held in combat and while
+-- Edit Mode is open (1.2.4: Keep reloads the UI), Keep gone for an install
+-- that could not be put back or a revert that only partly worked (the
+-- engine's `failed`); Keep's reload button laid again or gone
 RefreshKeep = function()
 	local page = win and win.pages.keep
 	if not page or state.phase ~= "keep" then
@@ -1410,10 +1569,17 @@ RefreshKeep = function()
 	end
 	count.status:SetText(MelloUI.Lang.T(line or ""))
 	count.revert:SetEnabled(not held)
+	count.keep:SetEnabled(not held)
 	local pending = Pending()
-	count.keep:SetShown(not (pending and pending.failed))
+	local keepable = not (pending and pending.failed)
+	count.keep:SetShown(keepable)
+	local text = keepable and count.lineKeep or count.lineOnly
+	if count.line:GetText() ~= text then
+		count.line:SetText(text)
+	end
 	-- only Keep or Revert while the countdown runs
 	SetClosable(not running)
+	Reload.Sync()
 end
 
 local function RefreshKeepPage(page)
@@ -1442,11 +1608,12 @@ ShowKeep = function(dir)
 	Present("keep", dir)
 end
 
--- Done, on the Keep page: kept (the line to type /reload when the fonts
--- over heads changed) or reverted (Type /reload to finish when owed); the
--- tour, the configurator, Choose again, Close
+-- Done, on the Keep page, after a revert (1.2.4: a kept setup reloads the
+-- UI, so this is the one Done page; the user, 2026-10-28: "Drop it"): back
+-- to 'Before install', Type /reload to finish when owed; Choose again, Close
 ShowDone = function()
 	state.phase, state.step = "done", "keep"
+	Reload.Hide()   -- (Keep's reload button: after its own click, at its PostClick)
 	local page = PageOf("keep")
 	page.count:Hide()
 	page.numeral:Hide()
@@ -1455,50 +1622,22 @@ ShowDone = function()
 		page.emblem:SetAlpha(1)
 	end
 	local done = DoneGroup(page)
-	local kept = state.doneMode == "kept"
-	local option = Option()
 	local lines = {}
-	if kept then
-		done.title:SetText(MelloUI.Lang.T(option.refit and TEXT.doneRefit or TEXT.doneTitle))
-		if state.needsReload then
-			lines[#lines + 1] = TEXT.doneReload
-		end
-		lines[#lines + 1] = TEXT.doneWhere
-	else
-		done.title:SetText(MelloUI.Lang.T(TEXT.revertedTitle))
-		if state.reason == "error" then
-			lines[#lines + 1] = I.TEXT.failed
-		end
-		if state.reloadOwed then
-			lines[#lines + 1] = TEXT.revertedReload
-		end
+	done.title:SetText(MelloUI.Lang.T(TEXT.revertedTitle))
+	if state.reason == "error" then
+		lines[#lines + 1] = I.TEXT.failed
+	end
+	if state.reloadOwed then
+		lines[#lines + 1] = TEXT.revertedReload
 	end
 	for i = 1, #lines do
 		lines[i] = MelloUI.Lang.T(lines[i])
 	end
 	done.lines:SetText(concat(lines, "\n"))
-	-- the buttons of this ending, in a centred row
-	local shown = done.shown
-	for i = #shown, 1, -1 do
-		shown[i] = nil
-	end
-	for _, act in ipairs(DONE_ACTS) do
-		local want
-		if act == "tour" or act == "open" then
-			want = kept
-		elseif act == "again" then
-			want = not kept
-		else
-			want = true
-		end
+	-- its buttons, in a centred row
+	local total = #DONE_ACTS * DONE_BUTTON_W + (#DONE_ACTS - 1) * 8
+	for i, act in ipairs(DONE_ACTS) do
 		local b = done.buttons[act]
-		b:SetShown(want and true or false)
-		if want then
-			shown[#shown + 1] = b
-		end
-	end
-	local total = #shown * DONE_BUTTON_W + (#shown - 1) * 8
-	for i, b in ipairs(shown) do
 		b:ClearAllPoints()
 		b:SetPoint("TOPLEFT", done.lines, "BOTTOM", -total / 2 + (i - 1) * (DONE_BUTTON_W + 8), -16)
 	end
@@ -1724,7 +1863,9 @@ local function SetupSteps()
 			return
 		end
 		page.getShown = false
+		local was = Skin()
 		Picks().skin = card.key
+		I:SkinPicked(Picks(), was)   -- (an answer that follows the skin, the sound step's, moves along)
 		Changed()
 	end
 
@@ -1949,7 +2090,14 @@ local function SetupSteps()
 			for _, c in ipairs(Offered(st.choices)) do
 				keys[#keys + 1] = c.key
 			end
-			CardRow(page, key, keys, CARD_H, { [st.pick] = TEXT.recommended }, OnePick)
+			local tags = { [st.pick] = TEXT.recommended }
+			if st.pickFor then
+				-- (a recommendation that follows the skin: every card has the tag, RefreshStep shows one)
+				for _, k in ipairs(keys) do
+					tags[k] = TEXT.recommended
+				end
+			end
+			CardRow(page, key, keys, CARD_H, tags, OnePick)
 			for _, e in ipairs(Offered(st.extras)) do
 				local row = Switch(page, e.key, function()
 					return picks.x[e.key] and true or false
@@ -1982,6 +2130,12 @@ local function SetupSteps()
 			y = LaySwitches(page, y)
 		else
 			y = LayCards(page, y, picks[key]) + 10
+			if st.pickFor then
+				local recommended = I:RecommendedPick(st, Skin())
+				for _, card in ipairs(page.cards) do
+					W.TagShown(card.tag, card.key == recommended)
+				end
+			end
 			local picked = picks[key]
 			y = LaySwitches(page, y, function(row)
 				return row.melloOnly == nil or row.melloOnly == picked
@@ -2116,16 +2270,18 @@ local function OnInstaller(what, a, b)
 		end
 	elseif what == "kept" or what == "reverted" then
 		DropFits(true)
-		if not shown then
-			state.phase, state.step, state.doneMode, state.keepLine, state.footLine = "choose", Option().steps[1], nil, nil, nil
-			state.installed = false
-		elseif what == "kept" then
-			state.doneMode, state.needsReload, state.keepLine = "kept", a and true or false, nil
-			ShowDone()
-		else
+		if shown and what == "reverted" then
 			state.doneMode, state.reason, state.reloadOwed, state.keepLine = "reverted", a, b and true or false, nil
 			ShowDone()
+			return
 		end
+		-- (kept: the window closes, no Done page -- the user, 2026-10-28: "Drop it" -- as the UI reloads through
+		-- Keep's secure button; closed while the Keep page is still the phase, so no "closed early" line)
+		if shown then
+			win.frame:Hide()
+		end
+		state.phase, state.step, state.doneMode, state.keepLine, state.footLine = "choose", Option().steps[1], nil, nil, nil
+		state.installed = false
 	elseif what == "revertFailed" then
 		state.keepLine = b
 		if not shown then
@@ -2199,6 +2355,7 @@ local Window_OnHide = Shared("OnHide on the installer window", function(frame)
 	end
 	frame:UnregisterAllEvents()
 	MelloUI:Off(OWNER_SHOWN)
+	Reload.Hide()   -- (Keep's reload button goes with the window)
 	-- (its first run over: from now on its look is the reskin's)
 	if MelloUI.Kit and MelloUI.Kit.Showcase then
 		MelloUI.Kit:Showcase(false)

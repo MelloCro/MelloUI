@@ -37,11 +37,13 @@ Core\Fader.lua
 Core\Preview.lua
 Core\FrameFX.lua
 Core\FrameFXBold.lua
+Core\FrameHalo.lua
 Core\FrameHover.lua
 Core\SwingBadge.lua
 Core\Config.lua
 Core\ConfigLayout.lua
 Core\ConfigPreview.lua
+Core\ConfigMotion.xml
 Core\ConfigMotion.lua
 Core\Tutorial.lua
 Core\Backup.lua

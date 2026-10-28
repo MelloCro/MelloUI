@@ -32,6 +32,10 @@
 --   Headers:Repaint()          every button painted again (bus groupframes "paint": the made-up ones too)
 --   Headers:Blizzard()         the game's frames hidden or given back
 --   Headers:Buttons() -> list  every button made
+--   Headers.Aside(on)          your own frame in the party's place (you while solo) away while the Preview's made-up
+--                              raid shows, as in a raid; back after (fr-04)
+-- The Preview's party host (Core/Preview.lua's PartyHost): the look your party wears, your own frame the portraits'
+-- stand-ins stand under, the party's spacing.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -124,14 +128,13 @@ local OnAttribute = Shared("OnAttributeChanged on a group frame", function(b, na
 	end
 end, "script")
 
--- `kind`: its header's ("party": our Group Frames party, laid by its own
--- parts layout -- one look C9 -- "raid": the raid's)
-local function Dress(b, kind)
+-- (1.2.4; the user, 2026-10-28: one look for the raid and a party in raid frames) every button of ours, the party's
+-- and the raid's, is laid by the raid's parts and shows the raid's list (its parts layout: the raid's when it has none)
+local function Dress(b)
 	if b.melloDressed then
 		return
 	end
 	b.melloDressed = true
-	b.partsLayout = kind == "party" and "groupParty" or nil
 	b:RegisterForClicks("AnyUp")
 	Button.Build(b)
 	Perf.HookScript(b, "OnAttributeChanged", OnAttribute)
@@ -157,8 +160,7 @@ local function Dress(b, kind)
 		pcall(hf.Glow, hf, b)
 	end
 	if ns.Indicators then
-		-- (one look C9b: our party's buttons show the party's own list)
-		ns.Indicators:Host(b, nil, Looks.Fill(b.healthBar), b.partsLayout == "groupParty" and "groupParty" or nil)
+		ns.Indicators:Host(b, nil, Looks.Fill(b.healthBar))
 	end
 	SetUnit(b, b:GetAttribute("unit"))
 end
@@ -238,21 +240,85 @@ local function Footprint(kind)
 	return lines * w + (lines - 1) * (db.raidGap or 0), per * h + (per - 1) * sp
 end
 
--- where the game's own frames stand (a place to start from)
+-- (1.2.4, fr-03; the user, 2026-10-28: "switching between those options should only modify the Look but not the
+-- placement of the Party Frames") a plate's place kept by the corner its frames hang from -- the raid's top left; the
+-- party's top left, its top right while Flip Horizontally mirrors the portraits (Unit Frames' M:PartyFlipped) -- so
+-- the plate's size, which the look and the layout settings change, never moves where the frames start
+local movers = {}   -- [kind] = its mover entry (Core's RegisterMover: `key`, `anchor`)
+local MIRROR = { TOPLEFT = "TOPRIGHT", TOPRIGHT = "TOPLEFT", BOTTOMLEFT = "BOTTOMRIGHT", BOTTOMRIGHT = "BOTTOMLEFT" }
+
+local function Flipped()
+	local uf = MelloUI:GetModule("UnitFrames")
+	return (uf and uf.PartyFlipped and uf:PartyFlipped()) and true or false
+end
+
+local function Corner(kind)
+	return (kind == "party" and Flipped()) and "TOPRIGHT" or "TOPLEFT"
+end
+H.Corner = Corner
+
+-- a plate hung by `corner` where it stands now (its default place: nothing written)
+local function AnchorInPlace(c, corner)
+	local okP, p = pcall(c.GetPoint, c, 1)
+	if okP and p == corner and c:GetNumPoints() == 1 then
+		return
+	end
+	local l, _, r, t = ScreenRect(c)
+	local us = UIParent:GetEffectiveScale()
+	if not (l and t and us and us > 0) then
+		return
+	end
+	c:ClearAllPoints()
+	c:SetPoint(corner, UIParent, "BOTTOMLEFT", (corner == "TOPRIGHT" and r or l) / us, t / us)
+end
+
+-- A plate kept by its corner. A place stored by another -- a store from before 1.2.4 (its bottom left), the party's
+-- other side after Flip changed -- measured again where the plate stands now and saved ONCE, then laid from the
+-- store, so the look in use now keeps its place; after that it is kept by its corner (no write again). A plate never
+-- moved keeps its default place, hung by its corner. Run after the frames' size is final (Attributes, PlaceParty),
+-- out of a fight (the callers' Later), never inside an Edit Layout session (it holds the places it moves)
+local function Recorner(kind)
+	local entry, c = movers[kind], containers[kind]
+	if not (entry and c) or InCombatLockdown() then
+		return
+	end
+	local corner = Corner(kind)
+	entry.anchor = corner
+	local LS = MelloUI.LayoutSession
+	if LS and LS.Active and LS.Active() then
+		return
+	end
+	local pos = MelloUI:GetPosition(entry.key)
+	if type(pos) ~= "table" then
+		AnchorInPlace(c, corner)
+		return
+	end
+	if (pos.point or "BOTTOMLEFT") == corner and (pos.relPoint or "CENTER") == corner then
+		return
+	end
+	if MelloUI:SavePosition(entry.key, c) then
+		MelloUI:RestorePosition(entry.key, c)
+	end
+end
+H.Recorner = Recorner
+
+-- where the game's own frames stand (a place to start from), hung by the plate's corner
 local function Home(kind)
 	return function(c)
 		c:ClearAllPoints()
 		local us = UIParent:GetEffectiveScale()
+		local corner = Corner(kind)
 		local names = kind == "party" and { "CompactPartyFrame", "PartyFrame" } or { "CompactRaidFrameContainer" }
 		for _, name in ipairs(names) do
 			local f = rawget(_G, name)
-			local l, _, _, t = ScreenRect(f)
+			local l, _, r, t = ScreenRect(f)
 			if l and t then
-				c:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l / us, t / us)
+				c:SetPoint(corner, UIParent, "BOTTOMLEFT", (corner == "TOPRIGHT" and r or l) / us, t / us)
 				return true
 			end
 		end
-		c:SetPoint("TOPLEFT", UIParent, "LEFT", 20, kind == "party" and 220 or 0)
+		local w = corner == "TOPRIGHT" and (c.GetWidth and c:GetWidth() or 0) or 0
+		c:SetPoint(corner, UIParent, "LEFT", 20 + w, kind == "party" and 220 or 0)
 		return true
 	end
 end
@@ -265,8 +331,9 @@ local function MakeContainer(kind)
 	local key = kind == "party" and "GroupFramesParty" or "GroupFramesRaid"
 	-- (0.20.2 - 0.24: the box held the party's spacing, the raid's and its groups' gap; one look C4: they are the
 	-- configurator's, its "Design >" link)
-	MelloUI:RegisterMover(c, c, { key = key, default = Home(kind), label = TEXT[kind], page = RD.module.name,
-		category = "frames", placeholder = true, when = function()
+	-- (fr-03: its place kept by its corner -- Recorner)
+	movers[kind] = MelloUI:RegisterMover(c, c, { key = key, anchor = Corner(kind), default = Home(kind),
+		label = TEXT[kind], page = RD.module.name, category = "frames", placeholder = true, when = function()
 			return RD.module.isEnabled and true or false
 		end, note = kind == "party" and function()
 			return DB().partyStyle == "party" and TEXT.partyNote or nil
@@ -333,7 +400,7 @@ local function Attributes(kind)
 		Set(h, "showParty", true)
 		Set(h, "showRaid", false)
 		Set(h, "showPlayer", db.showPlayer and true or false)
-		Set(h, "showSolo", db.solo and true or false)
+		Set(h, "showSolo", (db.solo and not S.aside) and true or false)
 		local point = (g == "DOWN" and "TOP") or (g == "UP" and "BOTTOM") or (g == "RIGHT" and "LEFT") or "RIGHT"
 		Set(h, "point", point)
 		Set(h, "xOffset", (g == "RIGHT" and sp) or (g == "LEFT" and -sp) or 0)
@@ -342,6 +409,10 @@ local function Attributes(kind)
 		Set(h, "maxColumns", 1)
 		h:ClearAllPoints()
 		local a = ANCHOR[g] or "TOPLEFT"
+		-- (fr-03: Flip Horizontally -- the plate kept by its top right -- the header from that side)
+		if Corner("party") == "TOPRIGHT" then
+			a = MIRROR[a] or a
+		end
 		h:SetPoint(a, c, a, 0, 0)
 	else
 		local per = math.max(1, db.raidPerLine or 5)
@@ -368,6 +439,10 @@ local function Attributes(kind)
 	end
 	Sorting(h, kind)
 	c:SetSize(Footprint(kind))
+	-- (fr-03: the raid's size is final here; the party's after PlaceParty)
+	if kind == "raid" then
+		Recorner(kind)
+	end
 end
 
 -- every button's size and dressing as the settings say
@@ -401,13 +476,13 @@ local function MakeHeader(kind)
 		if not b then
 			break
 		end
-		Dress(b, kind)
+		Dress(b)
 		i = i + 1
 	end
 	return h
 end
 
--- (In A Party: Group Frames -- ours in a party and solo -- or Party Frames: the
+-- (In A Party: Raid Frames -- ours in a party and solo -- or Party Frames: the
 -- game's normal party frames in a party, and solo the normal party frame of
 -- ours, GroupSolo.lua: this header never)
 local function PartyRule()
@@ -573,10 +648,10 @@ end
 -- normal Party Frames with Edit mode, both of them need to be only moveable
 -- with Edit Layout")
 -- While they are the choice for a party, the game's party frame stands at the
--- party container's top left -- Edit Layout's "Party Frames" plate, one place
--- for the party whichever frames show it (the solo frame of ours there too,
--- GroupSolo.lua) -- and the container takes their size, so the plate is what
--- shows. Laid with the plain methods Edit Mode keeps aside (ClearAllPointsBase
+-- party container's top left (its top right with Flip Horizontally: fr-03's
+-- Corner) -- Edit Layout's "Party Frames" plate, one place for the party
+-- whichever frames show it (the solo frame of ours there too, GroupSolo.lua)
+-- -- and the container takes their size, so the plate is what shows. Laid with the plain methods Edit Mode keeps aside (ClearAllPointsBase
 -- / SetPointBase: hard rule 2, nothing of Edit Mode's runs), at the
 -- container's place on the screen (hung from UIParent, never from a frame of
 -- ours: Edit Mode reads its anchor back); laid again after the container
@@ -697,13 +772,15 @@ local function HoldGameParty()
 			held.home = { Text(p), type(rel) == "table" and rel or UIParent, Text(rp), Num(x), Num(y) }
 		end
 	end
-	local l, _, _, t = ScreenRect(c)
+	local l, _, r, t = ScreenRect(c)
 	local s = Scale(pf)
 	if not (l and t and s) then
 		return
 	end
 	held.on = true
-	LayGame(pf, "TOPLEFT", UIParent, "BOTTOMLEFT", l / s, t / s)
+	-- (fr-03: at the plate's corner -- its top right while Flip Horizontally mirrors the portraits)
+	local corner = Corner("party")
+	LayGame(pf, corner, UIParent, "BOTTOMLEFT", (corner == "TOPRIGHT" and r or l) / s, t / s)
 	StackMembers(pf, Spacing("party"), true)
 	if not held.hooked then
 		held.hooked = true
@@ -749,6 +826,14 @@ PlaceParty = function()
 	end
 	if c then
 		c:SetSize(Footprint("party"))
+		-- (fr-03: the size final -- the plate kept by its corner, before the frames hang from it; its own lay, not
+		-- a move to answer: OnGameLaid stays out, the game's frame is laid right below)
+		held.placing = true
+		local ok, err = pcall(Recorner, "party")
+		held.placing = false
+		if not ok then
+			geterrorhandler()(err)
+		end
 	end
 	if holding then
 		HoldGameParty()
@@ -1160,6 +1245,18 @@ local function Listen()
 			H:Repaint()
 		end
 	end, "GroupFrames.health")
+	-- (fr-03) Flip Horizontally switched -- or Unit Frames, which flip the portraits: the party kept by its other
+	-- corner from now on (measured where it stands, saved once: Recorner), its header and frames hung from it
+	MelloUI:On("setting", function(module, key)
+		if module == "UnitFrames" and key == "partyFlip" then
+			H:Layout()
+		end
+	end, "GroupFrames.flip")
+	MelloUI:On("module", function(name)
+		if name == "UnitFrames" then
+			H:Layout()
+		end
+	end, "GroupFrames.flip")
 	-- the raid frames' border changed (Raid Frame Border, its placement): the
 	-- bars inside it again (Kit:RaidFrameInset; the kit lays borders out of a fight)
 	MelloUI:On("raidborder", function()
@@ -1259,6 +1356,38 @@ function H:Stop()
 		end
 		MembersBack()
 	end, "Group Frames: the headers off")
+end
+
+-- (fr-04, the Preview's Raid Fight) a made-up raid shows: your own frame in the party's place steps aside, as it
+-- does in a raid (the header's you while solo, the normal party frame of ours: GroupSolo.lua), and comes back after.
+-- Out of a fight: the Preview plays out of one (a fight's start ends it; Layout waits for its end)
+function H.Aside(on)
+	on = on and true or false
+	if (S.aside or false) == on then
+		return
+	end
+	S.aside = on
+	if ns.Solo then
+		ns.Solo.aside = on
+	end
+	H:Layout()
+end
+
+-- the Preview's party (Core/Preview.lua's PartyHost), asked at a party scene's start: the look your party wears, and
+-- while that is the game's normal party frames (held here) your own frame of ours the stand-ins stand under and the
+-- party's spacing between them
+if MelloUI.Preview then
+	MelloUI.Preview.PartyHost = {
+		Look = function()
+			return (S.on and not GameParty()) and "groupparty" or "party"
+		end,
+		Top = function()
+			return (S.on and GameParty() and ns.Solo and ns.Solo:Shown()) or nil
+		end,
+		Gap = function()
+			return (S.on and GameParty()) and Spacing("party") or nil
+		end,
+	}
 end
 
 -- (the tests')

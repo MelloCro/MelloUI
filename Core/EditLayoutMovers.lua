@@ -12,9 +12,9 @@
 -- detent at 100 %), a click (selected: the arrow keys nudge it), a
 -- right-click (the box, Core/EditLayout.lua) and Ctrl+right-click (its
 -- pending reset). The look, the guide lines, the readout, the veil, the
--- scrim, the outer glow and the lit rail are here too (Unlock the Windows'
--- SizeTip, OuterGlow, Veil and grid, re-made on palette keys). The spec is
--- v150/editspec/SPEC.md (sections 2.4-2.8, 2.13's nudge, 4 and 5).
+-- scrim and the halo are here too (Unlock the Windows' SizeTip, Veil and
+-- grid, re-made on palette keys). The spec is v150/editspec/SPEC.md
+-- (sections 2.4-2.8, 2.13's nudge, 4 and 5).
 --
 --   P = MelloUI.EditLayout.Movers, for Core/EditLayout.lua:
 --     P.Setup()            the first Open (the palette listener)
@@ -52,7 +52,7 @@
 -- (LayoutSession.Set) and hangs the element by its own anchor again.
 -- No colour number: every colour is a palette key painted through W.Paint,
 -- or the selected trim lit to full brightness for the added light (the
--- glow, the guide lines), painted again on 'palette'.
+-- guide lines), painted again on 'palette'.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -72,7 +72,6 @@ E.Movers = P
 
 local abs, floor, ceil, max, min = math.abs, math.floor, math.ceil, math.max, math.min
 
-local WHITE = "Interface\\Buttons\\WHITE8x8"
 local MINUS = "\226\136\146"   -- (U+2212: a readout's minus)
 local LEVEL0, LEVEL_STEP = 10, 3          -- the plates' levels on FULLSCREEN: the largest at 10 (a plate, its chip, a glow under it)
 local DIALOG_MIN, DIALOG_MAX = 2, 8       -- on FULLSCREEN_DIALOG (an element that stands that high): under the bar and box
@@ -85,9 +84,6 @@ local RANGE_MIN, RANGE_MAX = 0.5, 2        -- the size's range, of the standard 
 local DETENT = 0.3                         -- s: the wheel holds at 100 %
 local HOLD, FADE = 1.2, 0.4                -- s: the readout after a drop, then its fade
 local PLATE_FADE = 0.12
--- the outer glow's reach and its strength at the plate (2026-10-04, the user: "kind of too big" while
--- dragging: 28 and 0.7 before)
-local GLOW, GLOW_ALPHA = 14, 0.5
 local MAX_PLATES, FIRST_BATCH = 64, 32     -- the pool, and the plates made in one frame
 local SYNC_KEY = "EditLayout sync"
 local HIGH_STRATA = { FULLSCREEN = true, FULLSCREEN_DIALOG = true, TOOLTIP = true }
@@ -99,15 +95,18 @@ local POINT_Y = { TOPLEFT = 1, TOP = 1, TOPRIGHT = 1, LEFT = 0.5, CENTER = 0.5, 
 -- the states' looks (SPEC 2.4): fill key and alpha, edge key and alpha,
 -- edge width in physical pixels (1.2.4, the user: the plates "hard to spot" --
 -- every fill 0.2 stronger, the edges whole: idle was 0.35 in trim at 0.8)
+-- (1.2.4; the user, 2026-10-28: "the selected highlight should be the only highlight that we use, remove the
+-- "Draging" highlight ... i only wanted the border and outer glow effect, not the whole frame highlight") selected:
+-- idle's ground (no gold wash), its 2 px gold edge and the halo; a drag wears the very same
 local LOOK = {
 	idle = { "innerPanel", 0.55, "trim", 1, 1 },
 	hover = { "hover", 0.65, "selectedTrim", 1, 1 },
-	selected = { "selectedTab", 0.60, "selectedTrim", 1, 2 },
-	dragging = { "hover", 0.65, "selectedTrim", 1, 1 },
+	selected = { "innerPanel", 0.55, "selectedTrim", 1, 2 },
 	locked = { "mainWindow", 0.55, "border", 1, 1 },
 	placeholder = { "innerPanel", 0.40, "trim", 0.7, 1 },
 	bridge = { "mainWindow", 0.55, "border", 1, 1 },
 }
+LOOK.dragging = LOOK.selected
 
 local TEXT = {
 	hidden = "%s (hidden)",
@@ -616,10 +615,10 @@ end
 
 --------------------------------------------------------------------------------
 -- The pieces around the plates: the scrim, the veil, the guides and grid,
--- the outer glow, the readout
+-- the halo, the readout
 --------------------------------------------------------------------------------
 
-local scrim, veil, guides, glow, readout
+local scrim, veil, guides, readout
 local guideLevel = LEVEL0   -- the guides' level: over the highest plate on FULLSCREEN (Rank)
 
 local function MakeScrim()
@@ -797,82 +796,13 @@ local function GuidesOff(all)
 	guides:Hide()
 end
 
--- the outer glow: four additive bands out from the PLATE's edges, fading
--- away from it, one level under it (never on the element)
-local function PaintGlow()
-	if not glow then
-		return
-	end
-	local r, g, b = Lit("selectedTrim")
-	local inner, outer = glow.inner, glow.outer
-	inner.r, inner.g, inner.b, inner.a = r, g, b, GLOW_ALPHA
-	outer.r, outer.g, outer.b, outer.a = r, g, b, 0
-	for i = 1, 4 do
-		local band = glow.bands[i]
-		if band.fromInner then
-			band.tex:SetGradient(band.orientation, inner, outer)
-		else
-			band.tex:SetGradient(band.orientation, outer, inner)
-		end
-	end
-end
-
-local function MakeGlow()
-	glow = CreateFrame("Frame", nil, UIParent)
-	glow:Hide()
-	glow:EnableMouse(false)
-	glow.bands = {}
-	local r, g, b = Lit("selectedTrim")
-	glow.inner, glow.outer = CreateColor(r, g, b, GLOW_ALPHA), CreateColor(r, g, b, 0)
-	for i = 1, 4 do
-		local tex = glow:CreateTexture(nil, "BACKGROUND")
-		tex:SetTexture(WHITE)
-		tex:SetBlendMode("ADD")
-		glow.bands[i] = { tex = tex, orientation = (i <= 2) and "VERTICAL" or "HORIZONTAL", fromInner = (i == 1 or i == 4) }
-	end
-	PaintGlow()
-end
-
-local function GlowOn(plate)
-	if not glow then
-		MakeGlow()
-	end
-	glow:SetFrameStrata(plate:GetFrameStrata())
-	glow:SetFrameLevel(max((plate:GetFrameLevel() or 1) - 1, 0))
-	-- (the frame round the plate, the bands on its edges: on our own plate)
-	glow:ClearAllPoints()
-	glow:SetPoint("TOPLEFT", plate, "TOPLEFT", -GLOW, GLOW)
-	glow:SetPoint("BOTTOMRIGHT", plate, "BOTTOMRIGHT", GLOW, -GLOW)
-	local bands = glow.bands
-	-- top upward, bottom downward, left leftward, right rightward
-	local t, bo, le, ri = bands[1].tex, bands[2].tex, bands[3].tex, bands[4].tex
-	t:ClearAllPoints()
-	t:SetPoint("BOTTOMLEFT", plate, "TOPLEFT", 0, 0)
-	t:SetPoint("TOPRIGHT", plate, "TOPRIGHT", 0, GLOW)
-	bo:ClearAllPoints()
-	bo:SetPoint("TOPLEFT", plate, "BOTTOMLEFT", 0, 0)
-	bo:SetPoint("BOTTOMRIGHT", plate, "BOTTOMRIGHT", 0, -GLOW)
-	le:ClearAllPoints()
-	le:SetPoint("TOPRIGHT", plate, "TOPLEFT", 0, 0)
-	le:SetPoint("BOTTOMLEFT", plate, "BOTTOMLEFT", -GLOW, 0)
-	ri:ClearAllPoints()
-	ri:SetPoint("TOPLEFT", plate, "TOPRIGHT", 0, 0)
-	ri:SetPoint("BOTTOMRIGHT", plate, "BOTTOMRIGHT", GLOW, 0)
-	glow:Show()
-end
-
-local function GlowOff()
-	if glow then
-		glow:Hide()
-	end
-end
-
 -- (1.2.4) the sketch's glow (editlayout_dock_sketch: a hovered row's plate
 -- in a soft gold box-shadow, a picked one in a softer one, a pick's two
 -- pulses; the user: "you already made the glow that i want in the sketch
 -- ... i want that one"): MelloUI.Shade's soft band, hollow, in the
 -- palette's gold, laid round the plate. It follows the row under the mouse,
--- else the picked plate; none under a drag (the drag's own glow)
+-- else the picked plate; under a drag the dragged one, at the picked
+-- strength (the selected look: the one highlight)
 local HALO = { hover = 0.55, picked = 0.45, flash = 0.9, feather = 18, pulse = 1.2 }
 local halo                      -- { holder, band }, made at its first need
 local peeked = nil
@@ -902,42 +832,6 @@ local function HaloOff()
 	if halo then
 		halo.holder:Hide()
 	end
-end
-
--- a kit-dressed window's outer rail lit while it moves: our own rep's art
--- drawn additively in the lit gold, put back as it was after
-local railLit = { n = 0, tex = {}, blend = {}, r = {}, g = {}, b = {}, a = {} }
-
-local function RailOn(frame)
-	local Kit = MelloUI.Kit
-	local known = Kit and Kit.shells and Kit.shells[frame]
-	local outer = known and known.outer
-	local art = type(outer) == "table" and outer.skin and outer.skin.art
-	if type(art) ~= "table" then
-		return
-	end
-	local r, g, b = Lit("selectedTrim")
-	local L = railLit
-	for i = 1, #art do
-		local tex = art[i]
-		L.n = L.n + 1
-		local n = L.n
-		L.tex[n], L.blend[n] = tex, tex:GetBlendMode()
-		L.r[n], L.g[n], L.b[n], L.a[n] = tex:GetVertexColor()
-		tex:SetBlendMode("ADD")
-		tex:SetVertexColor(r, g, b)
-	end
-end
-
-local function RailOff()
-	local L = railLit
-	for i = 1, L.n do
-		local tex = L.tex[i]
-		tex:SetBlendMode(L.blend[i] or "BLEND")
-		tex:SetVertexColor(L.r[i], L.g[i], L.b[i], L.a[i])
-		L.tex[i] = nil
-	end
-	L.n = 0
 end
 
 -- The size and place readout (Unlock the Windows' SizeTip): above the
@@ -1370,7 +1264,6 @@ end
 local DragUpdate, PressWatch   -- below
 
 local function StartDrag()
-	HaloOff()   -- (1.2.4: the Elements list's halo gives way to the drag's own glow)
 	local plate, entry = drag.plate, drag.entry
 	local l, b, w, h = MelloUI:EntryRect(entry)
 	if not l then
@@ -1395,9 +1288,8 @@ local function StartDrag()
 	local ok, strata = pcall(entry.frame.GetFrameStrata, entry.frame)
 	VeilOn(ok and not Secret(strata) and strata or nil)
 	GuidesOn(drag.mode == "grid")
-	GlowOn(plate)
-	RailOn(entry.frame)
 	Paint(plate)
+	HaloRefresh()   -- (the halo on the dragged plate: it moves with it)
 	ReadoutShow(entry, l, b, w, h, true, true)
 	SetDriver(DragUpdate)
 end
@@ -1571,8 +1463,6 @@ local function Drop()
 	entry.moving = nil
 	VeilOff()
 	GuidesOff()
-	GlowOff()
-	RailOff()
 	Unlight(drag.lit)
 	drag.lit = nil
 	DropRelease()
@@ -1584,6 +1474,7 @@ local function Drop()
 	if plate then
 		Paint(plate)
 	end
+	HaloRefresh()   -- (back on the picked plate, or none)
 	Changed(entry)
 	-- (every plate again: what hung on it moved with it)
 	P.SyncSoon()
@@ -2127,9 +2018,7 @@ function P.HideAll()
 	end
 	VeilOff()
 	GuidesOff(true)
-	GlowOff()
 	HaloOff()
-	RailOff()
 	ReadoutOff()
 	if scrim then
 		scrim:Hide()
@@ -2140,7 +2029,6 @@ end
 function P.Setup()
 	MelloUI:On("palette", function()
 		PaintGuides()
-		PaintGlow()
 	end, "Edit Layout movers")
 end
 
@@ -2215,11 +2103,16 @@ function P.PlateOf(entry)
 	return plate and plate:IsShown() and plate or nil
 end
 
--- the halo where it belongs now: the row under the mouse's plate, else the
--- picked one's; none under a drag
+-- the halo where it belongs now: the dragged plate under a drag, else the
+-- row under the mouse's plate, else the picked one's
 HaloRefresh = function()
 	if drag.started then
-		HaloOff()
+		local plate = drag.plate
+		if plate and plate:IsShown() then
+			HaloOn(plate, false)
+		else
+			HaloOff()
+		end
 		return
 	end
 	local hover = peeked ~= nil

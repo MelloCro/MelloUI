@@ -514,6 +514,12 @@ local function RegisterNamed(name, frame)
 		local entry = MelloUI:RegisterMover(frame, frame, opts)
 		if entry then
 			mine[entry] = true
+			-- (1.2.4, el-03) one of the four the game hides at times (its damage meter): its plate while hidden, as
+			-- the bridge sets up Edit Mode's other systems
+			local Bridge = MelloUI.EditLayout and MelloUI.EditLayout.Bridge
+			if SHARED[name] and Bridge and Bridge.Placeholder then
+				Bridge.Placeholder(entry)
+			end
 			if entry.box and not boxed[entry] then
 				if next(boxed) == nil then
 					MelloUI:On("column", BoxedRelay, "UI Modifications: boxed entries")

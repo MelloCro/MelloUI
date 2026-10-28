@@ -158,14 +158,12 @@ local function Member(i)
 	return s
 end
 
--- (`layout`, one look C9: the parts layout it is laid by -- "groupParty" for
--- our party's; nil the raid's)
-local function SampleFrame(parent, sample, layout)
+-- (laid by the raid's parts: 1.2.4, one look for the raid and a party in raid frames)
+local function SampleFrame(parent, sample)
 	local f = CreateFrame("Frame", nil, parent)
 	local db = RD.DB()
 	f:SetSize(db.width, db.height)
 	f.marks = {}   -- [i] = { b, p }
-	f.partsLayout = layout
 	Button.Sample(f, sample)
 	-- dressed as the frames are (the kit's rail and stone while the painted
 	-- skin is on), its bars laid again inside that border: the preview is the
@@ -305,23 +303,17 @@ end
 --------------------------------------------------------------------------------
 -- Your Indicators (one look C10: the canvas row on the Unit & Group Frames
 -- designer's Party and Raid frames, Indicators): the list of the spec you
--- play -- the raid's, or your party's (its Portraits style's own while the
--- stage shows that) -- and the picked one's settings. Its place and size are
--- the designer stage's too (drag it there); a pick here picks it there.
+-- play -- the raid's (a party in raid frames shows it too), or the party
+-- frames with portraits' own -- and the picked one's settings. Its place and
+-- size are the designer stage's too (drag it there); a pick here picks it there.
 --------------------------------------------------------------------------------
 
 -- every canvas on show (one per frame's Indicators part), by its canvas
 Page.canvases = setmetatable({}, { __mode = "k" })   -- [canvas] = { canvas, el, kind, spec, ind, Pick }
 
--- the list a canvas shows: the raid's, or the party's in the style the
--- stage shows (the portraits' own list while it shows them)
+-- the list a canvas shows: Raid's the raid frames' (the party's too in them), Party's the portraits' own (1.2.4)
 local function KindOf(inst)
-	if inst.el == "raid" then
-		return "group"
-	end
-	local CP = MelloUI.ConfigPreview
-	local stage = CP and CP.Shown and CP.Shown("raidframe")
-	return (stage and stage.pick == "portrait") and "party" or "groupParty"
+	return inst.el == "raid" and "group" or "party"
 end
 Page.KindOf = KindOf
 
@@ -332,8 +324,9 @@ function Page.Build(canvas, width)
 end
 
 --------------------------------------------------------------------------------
--- The fake raid on screen (the Preview's part "raid"): the samples where your
--- raid frames stand, hurt and healed with the scene, until it stops
+-- The fake raid on screen (the Preview's Raid Fight, or its part "raid"
+-- alone): the samples where your raid frames stand, hurt and healed with the
+-- scene, until it stops
 --------------------------------------------------------------------------------
 
 local fake = { holder = nil, frames = {} }
@@ -384,13 +377,16 @@ local function FakeShow()
 	h:Show()
 end
 
--- (one look, F-v3's needs_user 7, the user's yes) the made-up Group Frames party (the Preview's part
--- "groupparty", played alone): five samples where your party stands, laid in your party's own places
--- ("groupParty") and growth, its own list's indicators on them
+-- (one look, F-v3's needs_user 7, the user's yes) the made-up party in raid frames (the Party Fight while your party
+-- wears the raid frames, fr-04; or that part alone): the made-up four (Preview.PARTY) where your party's members
+-- stand -- after your own frame while the header shows you (you while solo), as a party's members stand after you --
+-- in its growth and spacing, hung from the plate's corner as the header is (its top right while Flip Horizontally
+-- mirrors the party: fr-03), in the raid frames' look and with their indicators (1.2.4: one look for both)
 local fakeParty = { holder = nil, frames = {} }
-local FAKE_PARTY = 5
+local FAKE_PARTY = 4
 local GROW = { DOWN = { 0, -1, "TOPLEFT" }, UP = { 0, 1, "BOTTOMLEFT" }, RIGHT = { 1, 0, "TOPLEFT" },
 	LEFT = { -1, 0, "TOPRIGHT" } }
+local MIRROR = { TOPLEFT = "TOPRIGHT", TOPRIGHT = "TOPLEFT", BOTTOMLEFT = "BOTTOMRIGHT", BOTTOMRIGHT = "BOTTOMLEFT" }
 
 local function FakePartyShow()
 	if not fakeParty.holder then
@@ -400,27 +396,41 @@ local function FakePartyShow()
 	local h = fakeParty.holder
 	local db = RD.DB()
 	local g = GROW[db.partyGrowth or "DOWN"] or GROW.DOWN
-	h:ClearAllPoints()
-	local party = ns.Headers and ns.Headers.containers and ns.Headers.containers.party
-	if party then
-		h:SetPoint(g[3], party, g[3], 0, 0)
-	elseif ns.Headers and ns.Headers.Home then
-		ns.Headers.Home("party")(h)
+	local H = ns.Headers
+	local sp = H and H.Spacing and H.Spacing("party") or db.spacing or 0
+	-- (your own frame in the header now: the first place is yours)
+	local header = H and H.headers and H.headers.party
+	local you = header and header:GetAttribute("child1")
+	local skip = (you and you:IsVisible()) and 1 or 0
+	local slots = skip + FAKE_PARTY
+	-- (the block the header lays, held by the same corner)
+	local across = g[1] ~= 0
+	h:SetSize(across and (slots * db.width + (slots - 1) * sp) or db.width,
+		across and db.height or (slots * db.height + (slots - 1) * sp))
+	local corner = g[3]
+	if H and H.Corner and H.Corner("party") == "TOPRIGHT" then
+		corner = MIRROR[corner] or corner
 	end
-	h:SetSize(1, 1)
-	local list = RD:List(RD:KeyOf(nil, "groupParty"))
-	local sp = ns.Headers and ns.Headers.Spacing and ns.Headers.Spacing("party") or db.spacing or 0
+	h:ClearAllPoints()
+	local party = H and H.containers and H.containers.party
+	if party then
+		h:SetPoint(corner, party, corner, 0, 0)
+	elseif H and H.Home then
+		H.Home("party")(h)
+	end
+	local list = RD:List()
 	for n = 1, FAKE_PARTY do
 		local f = fakeParty.frames[n]
 		if not f then
-			f = SampleFrame(h, Member(n), "groupParty")
+			f = SampleFrame(h, Member(n))
 			f.base = f.sample.health
 			fakeParty.frames[n] = f
 		else
 			Resample(f)
 		end
+		local at = n - 1 + skip
 		f:ClearAllPoints()
-		f:SetPoint(g[3], h, g[3], g[1] * (n - 1) * (db.width + sp), g[2] * (n - 1) * (db.height + sp))
+		f:SetPoint(g[3], h, g[3], g[1] * at * (db.width + sp), g[2] * at * (db.height + sp))
 		SampleMarks(f, list, f.sample.frac, function(j, e)
 			return e.kind == "group" or e.kind == "buff" and (n + j) % 2 == 0 or (e.kind == "debuff" and n % 4 == 2)
 		end)
@@ -450,16 +460,24 @@ local PreviewBeat = function(beat, _, n)
 		if fakeParty.holder then
 			fakeParty.holder:Hide()
 		end
+		if ns.Headers and ns.Headers.Aside then
+			ns.Headers.Aside(false)
+		end
 		return
 	end
-	-- (the fake party only while its part plays alone: the whole Party Fight has its stand-ins)
+	-- (the scene's own, Core/Preview.lua's Plays: the made-up raid in the Raid Fight, the party in raid frames in the
+	-- Party Fight while that is the look your party wears -- or either one played alone)
 	local raid = Pv and Pv:Plays("raid")
-	local party = Pv and Pv.Part and Pv:Part() == "groupparty"
+	local party = Pv and Pv:Plays("groupparty")
 	if not (RD.module.isEnabled and (raid or party)) then
 		return
 	end
 	if beat == "start" then
 		if raid then
+			-- (your own frame in the party's place away, as in a raid)
+			if ns.Headers and ns.Headers.Aside then
+				ns.Headers.Aside(true)
+			end
 			FakeShow()
 		end
 		if party then
@@ -499,9 +517,10 @@ end
 --------------------------------------------------------------------------------
 -- The designer stage (one look C10: F-v3's F5b, docs/plans/onelook-designer):
 -- the 'raidframe' kind of the configurator's stage (Core/ConfigPreview.lua's
--- wide stage) -- our raid frames ("raid"), our Group Frames party
--- ("groupParty") and the game's normal party frames ("portrait"), each laid by
--- its own parts layout (GroupParts.lua) and showing its own indicator list.
+-- wide stage) -- our raid frames ("raid": the raid's, and a party's in raid
+-- frames, 1.2.4) and the game's normal party frames ("portrait": Party's,
+-- asleep while the party wears the raid frames), each laid by its own parts
+-- layout (GroupParts.lua) and showing its own indicator list.
 -- Registered at load (tables only); its samples made by the stage that shows
 -- them. Parts: the frame's (name, health text, icons: placed, sized, shown),
 -- the bars (picked for their colours, never moved), each indicator of the
@@ -510,18 +529,18 @@ end
 --------------------------------------------------------------------------------
 
 local Stage = {
-	LAYOUT = { raid = "raid", groupParty = "groupParty", portrait = "portrait" },
-	LIST = { raid = "group", groupParty = "groupParty", portrait = "party" },
-	MOVER = { raid = "GroupFramesRaid", groupParty = "GroupFramesParty", portrait = "GroupFramesParty" },
+	LAYOUT = { raid = "raid", portrait = "portrait" },
+	LIST = { raid = "group", portrait = "party" },
+	MOVER = { raid = "GroupFramesRaid", portrait = "GroupFramesParty" },
 	BAR_SPOTS = { "TOPLEFT", "TOP", "TOPRIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" },
 	SIDE_SPOTS = { "LEFT", "RIGHT" },
 	BAR_PLUS = { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" },
 	BARS = { { key = "bar.health", label = "Health bar", field = "healthBar" },
 		{ key = "bar.power", label = "Power bar", field = "powerBar" },
 		{ key = "bar.background", label = "Background", field = "background" } },
-	STYLES = { { key = "groupParty", label = "Group Frames" }, { key = "portrait", label = "Portraits" } },
 	TEXT = { empty = "Switch on Group Frames first.", healthLocked = "It tints the health bar: nothing to move.",
-		home = "Default place", gameHome = "The game's place" },
+		home = "Default place", gameHome = "The game's place",
+		raidLook = "Your party uses the raid frames: their look is set on Raid." },
 	TRY_TYPES = { dropdown = true, picture = true },
 	-- (F-v3's F5b, shell-plan 6.1 item 5: "Normal | Dead / Offline") the state chips over your own frames' picks:
 	-- the member as it is, or fallen -- the health text's Dead word and the grey, as a real member shows them; the
@@ -542,7 +561,7 @@ function Stage.Main(stage, pick)
 	s.class = RD:Class()
 	s.health, s.frac, s.power = 0.85, 0.6, 0.7
 	s.mark, s.ready, s.role = 1, "ready", s.role or "HEALER"
-	local f = SampleFrame(stage.holder, s, pick == "groupParty" and "groupParty" or nil)
+	local f = SampleFrame(stage.holder, s)
 	Page.samples[pick] = f
 	return f
 end
@@ -558,6 +577,7 @@ function Stage.Paint(f, pick, _, ctx)
 		end
 		Parts:Lay(f, "party", true)
 		SampleMarks(f, RD:List(nil, "party"), 0.6, ctx.only)
+		f:SetAlpha(Stage.Dim(pick) and Stage.ASLEEP_ALPHA or 1)
 		return
 	end
 	local s = f.sample
@@ -574,39 +594,23 @@ function Stage.Paint(f, pick, _, ctx)
 	SampleMarks(f, RD:List(nil, Stage.LIST[pick]), 0.6, ctx.only)
 end
 
--- the party's two styles (Group Frames | Portraits) over the stage
-function Stage.Furnish(stage, holder)
-	local chips = W.Chips(holder, { width = 220, onPick = function(_, key)
-		stage:Pick(key)
-	end })
-	chips:SetItems(Stage.STYLES)
-	chips:SetPoint("TOPLEFT", holder, "TOPLEFT", 8, -8)
-	stage.styleChips = chips
-	-- (a chip row over the stage's top: the sample laid under it -- the engine's E.Room)
-	if stage.topRows then
-		stage.topRows[#stage.topRows + 1] = chips
-	end
-end
-
 function Stage.Refresh(stage)
-	local chips = stage.styleChips
-	if chips then
-		local party = stage.pick ~= "raid"
-		chips:SetShown(party)
-		if party and chips:Selected() ~= stage.pick then
-			chips:Select(stage.pick)
-		end
-	end
 	-- (the state chips over your own frames only: the Portraits pick is the game's frame)
 	if stage.chips then
 		stage.chips:SetShown(stage.pick ~= "portrait")
 	end
-	-- (the party's style switched: its canvases show that style's list)
-	for canvas, inst in pairs(Page.canvases) do
-		if inst.kind ~= Page.KindOf(inst) then
-			canvas:Refresh()
-		end
+end
+
+-- (1.2.4; the user, 2026-10-28: "if the Person selects that he wants to see the Raid Frames, then he should get the
+-- Look under the "Raid" category") Party's portraits asleep while the party wears the raid frames: the sample faded
+-- (Paint: the sample alone -- the stage's own ground stays whole, so the rows it is pinned over never show through
+-- it) and this line its caption (Empty)
+Stage.ASLEEP_ALPHA = 0.4
+function Stage.Dim(pick)
+	if pick == "portrait" and RD.module.isEnabled and RD.DB().partyStyle ~= "party" then
+		return Stage.TEXT.raidLook
 	end
+	return nil
 end
 
 function Page.ListKind(pick)
@@ -851,7 +855,7 @@ end
 -- the pick's parts with no sample (the Parts line, the search)
 function Stage.PartKeys(pick)
 	local out = {}
-	for _, part in ipairs(Stage.Parts(pick or "groupParty")) do
+	for _, part in ipairs(Stage.Parts(pick or "raid")) do
 		out[#out + 1] = { key = part.key, label = part.label, class = part.class, size = part.size ~= nil,
 			hide = part.hide and true or false, drag = part.drag ~= false and not part.locked, locked = part.locked }
 	end
@@ -872,8 +876,9 @@ function Stage.Tries(id)
 	return false
 end
 
-function Stage.Empty()
-	return not RD.module.isEnabled and Stage.TEXT.empty or nil
+-- the stage's caption when it has nothing to pick: Group Frames off, or (1.2.4) the portraits asleep
+function Stage.Empty(pick)
+	return not RD.module.isEnabled and Stage.TEXT.empty or Stage.Dim(pick)
 end
 
 function Stage.Moved(pick)
@@ -894,11 +899,11 @@ do
 	if CP and CP.Register then
 		CP.Register("raidframe", {
 			place = "wide", height = 214, maxScale = 3,
-			picks = { raid = true, groupParty = true, portrait = true }, first = "groupParty",
+			picks = { raid = true, portrait = true }, first = "raid",
 			watch = { GroupFrames = true, BarTextures = true, Fonts = true, UnitFrames = true },
 			topics = { "groupframes" },
-			reset = { { "GroupFrames", "parts" }, { "GroupFrames", "partyParts" } },
-			Furnish = Stage.Furnish, Main = Stage.Main, Refresh = Stage.Refresh, Paint = Stage.Paint,
+			reset = { { "GroupFrames", "parts" } },
+			Main = Stage.Main, Refresh = Stage.Refresh, Paint = Stage.Paint,
 			parts = Stage.Parts, PartKeys = Stage.PartKeys, Tries = Stage.Tries, Empty = Stage.Empty, states = Stage.STATES,
 			Moved = Stage.Moved, ResetAll = Stage.ResetAll, mover = Stage.Mover, OnSelect = Stage.OnSelect,
 			templates = { ["ind:"] = Stage.IND_TEMPLATE },

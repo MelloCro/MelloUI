@@ -61,7 +61,9 @@
 -- resume, 'mover', 'scale', a drop) and one frame after Edit Mode closes.
 --
 --   E.Bridge (MelloUI.EditLayout.Bridge): the layer ({ Sync, Hide, Dump }),
---   TEXT (its in-game strings), Label(frame) (a system's plate name)
+--   TEXT (its in-game strings), Label(frame) (a system's plate name),
+--   Gate(system, index) -> { cvar, inverted, label } | nil (1.2.4: the
+--   game's switch of a system, for its box)
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -281,12 +283,12 @@ end
 -- The systems read (read only: the list, their fields, their rects)
 --------------------------------------------------------------------------------
 
-local enumNames   -- [Enum.EditModeSystem value] = its name (made at the first use)
+local enumNames, enumOf   -- [Enum.EditModeSystem value] = its name, made at the first use (again for another table)
 
 local function SystemName(value)
-	if not enumNames then
-		enumNames = {}
-		local enum = type(Enum) == "table" and Enum.EditModeSystem
+	local enum = type(Enum) == "table" and Enum.EditModeSystem or nil
+	if not enumNames or enumOf ~= enum then
+		enumNames, enumOf = {}, enum
 		if type(enum) == "table" then
 			for name, v in pairs(enum) do
 				enumNames[v] = name
@@ -1124,6 +1126,230 @@ local function AtTimes(system, index)
 	return v == true
 end
 
+-- (1.2.4, el-03; the user, 2026-10-28: "The Edit Layout, still does have some elements from the Blizzard Edit Mode
+-- which are not shown and cant be shown or modified in the Edit Layout") every system the game's own Edit Mode lets
+-- the player show while the game hides it: its "Show" list, read at each Edit Layout open from the manager (read
+-- only: EditModeManagerFrame.AccountSettings.settingsCheckButtons, each one's shouldHide -- the client's own choice
+-- -- and its CVar gate, plain fields), so each client follows itself. Such a system gets its plate at its place while
+-- hidden (Core's `placeholder`); AT_TIMES above is the list while the manager cannot be read. Its plate shows (the
+-- Elements list's eye, its default) while the game shows the system or the player's own Edit Mode box for it is on
+-- (C_EditMode.GetAccountSettings, read); AT_TIMES's systems keep showing theirs as before. The game's previews of a
+-- hidden system (sample members, a loot window) are its own code on its frame (hard rule 1): the plate stands in for
+-- them, named, at the system's size -- its own while hidden, else its members' (the party's, the bosses'), else a
+-- stand-in. A gated one (B.Gate: its CVar, `shouldEnableCVarName`) is switched in its box (EditLayoutSettings.lua).
+local HIDDEN = {}
+do
+	-- the game's show-list names, to its systems: { enum name, its indices (none: every index) }
+	local SHOW_LIST = {
+		TargetAndFocus = { "UnitFrame", 2, 3 }, PetFrame = { "UnitFrame", 8 }, PartyFrames = { "UnitFrame", 4 },
+		BossFrames = { "UnitFrame", 6 }, RaidFrames = { "UnitFrame", 5 }, ArenaFrames = { "UnitFrame", 7 },
+		BuffsAndDebuffs = { "AuraFrame", 1, 2 }, ExternalDefensives = { "AuraFrame", 3 }, CastBar = { "CastBar" },
+		StanceBar = { "ActionBar", 11 }, PetActionBar = { "ActionBar", 12 }, PossessActionBar = { "ActionBar", 13 },
+		ExtraAbilities = { "ExtraAbilities" }, EncounterBar = { "EncounterBar" }, CooldownViewer = { "CooldownViewer" },
+		PersonalResourceDisplay = { "PersonalResourceDisplay" }, EncounterEvents = { "EncounterEvents" },
+		DamageMeter = { "DamageMeter" }, TotemActionBar = { "TotemActionBar" }, LossOfControl = { "LossOfControl" },
+		SwingTimer = { "SwingTimer" }, TalkingHeadFrame = { "TalkingHeadFrame" },
+		StatusTrackingBar2 = { "StatusTrackingBar", 2 }, VehicleLeaveButton = { "VehicleLeaveButton" },
+		HudTooltip = { "HudTooltip" }, DurabilityFrame = { "DurabilityFrame" }, TimerBars = { "TimerBars" },
+		VehicleSeatIndicator = { "VehicleSeatIndicator" }, ArchaeologyBar = { "ArchaeologyBar" },
+		LootFrame = { "LootFrame" }, RaidWarning = { "RaidWarning" }, GroupFinder = { "GroupFinder" },
+	}
+	local listed = nil   -- [enum name] = { [index or 0] = spec, any = spec }; nil: the manager not read
+	local account = {}   -- [Enum.EditModeAccountSetting value] = its value (the player's own Edit Mode boxes)
+
+	local function Field(t, key)
+		local ok, v = pcall(ReadField, t, key)
+		return ok and v or nil
+	end
+
+	-- the show-list and the account settings, read again (each Edit Layout open)
+	function HIDDEN.Read()
+		local manager = _G.EditModeManagerFrame
+		local settings = type(manager) == "table" and Field(manager, "AccountSettings")
+		local checks = type(settings) == "table" and Field(settings, "settingsCheckButtons")
+		if type(checks) ~= "table" then
+			listed = nil
+			return
+		end
+		listed = {}
+		local enum = type(Enum) == "table" and Enum.EditModeAccountSetting or nil
+		for name, sys in pairs(SHOW_LIST) do
+			local check = Field(checks, name)
+			if type(check) == "table" and Field(check, "shouldHide") ~= true then
+				local cvar = Field(check, "shouldEnableCVarName")
+				local label = Field(check, "labelText")
+				local spec = { check = name, setting = enum and enum["Show" .. name] or nil,
+					cvar = type(cvar) == "string" and not Secret(cvar) and cvar or nil,
+					inverted = Field(check, "shouldEnableCVarInverted") == true,
+					label = type(label) == "string" and not Secret(label) and label or nil }
+				local t = listed[sys[1]] or {}
+				listed[sys[1]] = t
+				if #sys == 1 then
+					t.any = spec
+				end
+				for i = 2, #sys do
+					t[sys[i]] = spec
+				end
+			end
+		end
+		wipe(account)
+		local api = _G.C_EditMode
+		local ok, list = false, nil
+		if type(api) == "table" and type(api.GetAccountSettings) == "function" then
+			ok, list = pcall(api.GetAccountSettings)
+		end
+		for _, a in ipairs(ok and type(list) == "table" and list or EMPTY) do
+			if type(a) == "table" and Num(a.setting) and Num(a.value) then
+				account[a.setting] = a.value
+			end
+		end
+	end
+
+	-- a system's entry on the client's show-list, or nil (not on it, or the list not read)
+	function HIDDEN.Spec(system, index)
+		local t = listed and listed[SystemName(system)]
+		return t and (t[index or 0] or t.any) or nil
+	end
+
+	-- a frame's own size in UI units, plain and at least MIN_SIZE each way, else nil
+	local function SizeOf(frame)
+		if type(frame) ~= "table" then
+			return nil
+		end
+		local ok, w, h = pcall(frame.GetSize, frame)
+		w, h = ok and Finite(w), ok and Finite(h)
+		local okS, fs = pcall(frame.GetEffectiveScale, frame)
+		fs = okS and Finite(fs)
+		if not (w and h and fs) or w < MIN_SIZE or h < MIN_SIZE or fs <= 0 then
+			return nil
+		end
+		local k = fs / UIScale()
+		return w * k, h * k
+	end
+	HIDDEN.SizeOf = SizeOf
+
+	-- members stacked one under the other (the layout containers, laid by the game only while they show)
+	local function Stack(frames, n)
+		local w, h = 0, 0
+		for i = 1, n do
+			local fw, fh = SizeOf(frames[i] or frames[1])
+			if fw then
+				w, h = math.max(w, fw), h + fh
+			end
+		end
+		if w > 0 then
+			return w, h
+		end
+		return nil
+	end
+	local function Members(frame, prefix, n)
+		local out = {}
+		for i = 1, n do
+			out[i] = Field(frame, prefix .. i)
+		end
+		return out
+	end
+	local function Globals(pattern, n)
+		local out = {}
+		for i = 1, n do
+			out[i] = rawget(_G, pattern:format(i))
+		end
+		return out
+	end
+	local function Count(name, default)
+		local n = Num(rawget(_G, name))
+		return (n and n >= 1 and n <= 40) and math.floor(n) or default
+	end
+	-- a container's size from its members (by its enum name and index), when it has none of its own while hidden
+	local MEMBERS = {
+		UnitFrame = {
+			[4] = function(frame) return Stack(Members(frame, "MemberFrame", 4), 4) end,
+			[5] = function() return Stack({ rawget(_G, "CompactPartyFrameMember1") }, Count("MEMBERS_PER_RAID_GROUP", 5)) end,
+			[6] = function() local n = Count("MAX_BOSS_FRAMES", 5) return Stack(Globals("Boss%dTargetFrame", n), n) end,
+			[7] = function() return Stack({ rawget(_G, "CompactPartyFrameMember1") }, Count("MAX_ARENA_ENEMIES", 3)) end,
+		},
+	}
+	local STAND_IN = { 200, 40 }   -- UI units: a system with no size to read (an empty bar, a cooldown viewer)
+
+	-- the size its plate stands at while the game hides it (UI units)
+	function HIDDEN.Size(frame, system, index)
+		local w, h = SizeOf(frame)
+		if w then
+			return w, h
+		end
+		local kind = MEMBERS[SystemName(system)]
+		local fn = kind and kind[index or 0]
+		if fn then
+			local ok, mw, mh = pcall(fn, frame)
+			if ok and Finite(mw) and Finite(mh) then
+				return mw, mh
+			end
+		end
+		return STAND_IN[1], STAND_IN[2]
+	end
+
+	-- a frame of some size, yet smaller than a plate (an empty container the game laid a pixel or two): its plate is
+	-- laid by `box` from its own anchor point at the placeholder's size (a frame of no size is Core's placeholder's)
+	function HIDDEN.Tiny(frame)
+		local ok, w, h = pcall(frame.GetSize, frame)
+		w, h = ok and Finite(w), ok and Finite(h)
+		return (w and h and w > 0 and h > 0 and (w < MIN_SIZE or h < MIN_SIZE)) and true or false
+	end
+
+	local POINT_X = { TOPLEFT = 0, LEFT = 0, BOTTOMLEFT = 0, TOP = 0.5, CENTER = 0.5, BOTTOM = 0.5,
+		TOPRIGHT = 1, RIGHT = 1, BOTTOMRIGHT = 1 }
+	local POINT_Y = { TOPLEFT = 1, TOP = 1, TOPRIGHT = 1, LEFT = 0.5, CENTER = 0.5, RIGHT = 0.5,
+		BOTTOMLEFT = 0, BOTTOM = 0, BOTTOMRIGHT = 0 }
+
+	-- Core's `box` (screen px): the placeholder's size grown from the frame's own anchor point, while the frame is
+	-- tiny; nil otherwise (its own rect, or Core's placeholder for a frame of no size)
+	function HIDDEN.Box(entry)
+		local frame, ph = entry.frame, entry.placeholder
+		if type(ph) ~= "table" or not HIDDEN.Tiny(frame) then
+			return nil
+		end
+		local l, b, r, t = Safe.ScreenRect(frame)
+		if not l then
+			return nil
+		end
+		local ok, p = pcall(frame.GetPoint, frame, 1)
+		if not ok or Secret(p) or POINT_X[p] == nil then
+			p = "TOPLEFT"
+		end
+		local us = UIScale()
+		local w, h = ph[1] * us, ph[2] * us
+		local ax, ay = l + POINT_X[p] * (r - l), b + POINT_Y[p] * (t - b)
+		local bl, bb = ax - POINT_X[p] * w, ay - POINT_Y[p] * h
+		return bl, bb, bl + w, bb + h
+	end
+
+	-- shown by the game and of a size (an empty container the game shows at no size -- the encounter bar, the timer
+	-- bars, the party frame while alone -- is hidden as far as a plate goes)
+	function HIDDEN.Visible(entry)
+		return Shown(entry.frame) and SizeOf(entry.frame) ~= nil
+	end
+
+	-- the Elements list's default for its plate (D1): shown while the game shows it, or while the player's own Edit
+	-- Mode box for it is on
+	function HIDDEN.DefaultShows(entry, system, index)
+		if HIDDEN.Visible(entry) then
+			return true
+		end
+		local spec = HIDDEN.Spec(system, index)
+		return spec ~= nil and spec.setting ~= nil and account[spec.setting] == 1
+	end
+end
+
+-- (1.2.4, el-03) a system's CVar gate on this client, for its box's switch (EditLayoutSettings.lua): { cvar,
+-- inverted, label } from the game's own show-list box, or nil
+function B.Gate(system, index)
+	local spec = HIDDEN.Spec(system, index)
+	if not (spec and spec.cvar) then
+		return nil
+	end
+	return spec
+end
+
 local function Others(system, index)
 	local name = SystemName(system)
 	if OTHERS[name] then
@@ -1207,20 +1433,78 @@ function MelloUI:EditLayoutCover(frame, spec)
 	end
 end
 
-local function RegisterSystem(frame)
-	if MelloUI:MoverEntry(frame) then
-		return nil
+-- (1.2.4, el-03) a system's placeholder now: on the client's show-list (or AT_TIMES while it cannot be read), its
+-- size (UI units) in the entry's own table, kept by Core and laid again at each Edit Layout open; shown as far as a
+-- plate goes while shown and of a size (`visible`); its plate's default (D1) for the newly listed ones --
+-- AT_TIMES's keep theirs shown, as the user asked for the cast bar. Also on the movers of the four
+-- (EditLayoutWindows: the game's damage meter while it hides), fields of ours only, none of a cover's
+local showOf = setmetatable({}, { __mode = "k" })   -- [entry] = { system, index }: the entries set up here
+
+local function DefaultShows(entry)
+	local s = showOf[entry]
+	return s ~= nil and HIDDEN.DefaultShows(entry, s.system, s.index)
+end
+
+local function Placeholder(entry, frame, system, index)
+	local listed = HIDDEN.Spec(system, index) ~= nil
+	local before = AtTimes(system, index)
+	if not (listed or before) then
+		if showOf[entry] then
+			showOf[entry] = nil
+			entry.placeholder, entry.showDefault = nil, nil
+			if not entry.covered then
+				entry.visible = nil
+			end
+		end
+		return
+	end
+	local s = showOf[entry] or {}
+	s.system, s.index = system, index
+	showOf[entry] = s
+	local ph = type(entry.placeholder) == "table" and entry.placeholder or {}
+	ph[1], ph[2] = HIDDEN.Size(frame, system, index)
+	entry.placeholder = ph
+	entry.showDefault = (listed and not before) and DefaultShows or nil
+	if not entry.covered then
+		entry.visible = HIDDEN.Visible
+	end
+end
+
+-- (el-03) a mover of the four's, set up as it registers (EditLayoutWindows loads after this file: its movers come
+-- after this file's mover source has run)
+function B.Placeholder(entry)
+	local frame = type(entry) == "table" and entry.frame
+	if type(frame) ~= "table" then
+		return
 	end
 	local system, index = SystemOf(frame)
+	if system and OTHERS[SystemName(system)] then
+		Placeholder(entry, frame, system, index)
+	end
+end
+
+local function RegisterSystem(frame)
+	local had = MelloUI:MoverEntry(frame)
+	local system, index = SystemOf(frame)
+	if had then
+		if system and (sysOf[had] or OTHERS[SystemName(system)]) then
+			Placeholder(had, frame, system, index)
+		end
+		return nil
+	end
 	if not system or Others(system, index) then
 		return nil
 	end
+	local listed = HIDDEN.Spec(system, index) ~= nil or AtTimes(system, index)
 	local entry = MelloUI:RegisterMover(frame, frame, { key = SysKey(system, index), group = "hud", follow = true,
 		resize = false, label = B.Label(frame), page = PageOf(frame), default = SysHome(system, index),
-		resetLabel = TEXT.sysReset, note = SysNote, when = SysLive, placeholder = AtTimes(system, index) or nil,
+		resetLabel = TEXT.sysReset, note = SysNote, when = SysLive,
+		placeholder = listed and { HIDDEN.Size(frame, system, index) } or nil,
+		box = (listed and HIDDEN.Tiny(frame)) and HIDDEN.Box or nil,
 		category = CATEGORY_OF[SystemName(system)] })
 	if entry then
 		sysOf[entry] = { system = system, index = index }
+		Placeholder(entry, frame, system, index)
 		if covers[frame] then
 			ApplyCover(entry, covers[frame])
 		end
@@ -1237,6 +1521,10 @@ local function RegisterSystems()
 	end
 	if not SYS.snap and StoredSystems then
 		SYS.snap = StoredSystems()
+	end
+	local okR, errR = pcall(HIDDEN.Read)   -- (el-03: the game's show-list and the player's own boxes, read again)
+	if not okR then
+		Report(errR)
 	end
 	for _, frame in ipairs(Systems() or EMPTY) do
 		local ok, err = pcall(RegisterSystem, frame)

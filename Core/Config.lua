@@ -171,17 +171,17 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "1.2.4", lines = {
-		"Heal and cooldown effects: bolder and across the whole frame; the portrait and the bars each play their own part, the gold border lit all round.",
+		"Heal and cooldown effects: bolder, across the whole frame, the gold border lit all round; a threat halo fitted to each frame (untick Hide Combat Flash).",
 		"A heal bursts, a heal over time seals onto the portrait, a shield closes round the frame, a resurrection unfolds wings, a group heal runs through the group.",
-		"Cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards for Shield Wall, a heartbeat for Last Stand, a golden barrier for Divine Shield, afterimages for Evasion.",
-		"Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse.",
+		"Cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards for Shield Wall, a golden barrier for Divine Shield, afterimages for Evasion.",
+		"Frames: Hide Heal Numbers on your portrait; party: Flip Horizontally, Mouseover Highlight, raid frames wear Raid's look and stay in place when you switch.",
 		"Previews: a dragged part stays inside; indicators: right-click to remove, spell groups to drag onto your frame (heals over time, defensives ...).",
-		"Skin (Look > General): Default dresses MelloUI's own windows, raid frames and marks in the game's own look; the effects painted in each skin's style; one Game Menu for all.",
-		"A new installer: your skin first, then each part of the UI step by step, with a picture of every choice.",
-		"Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles.",
-		"The configurator: one painted window per skin that moves a little while open (Oldschool's in ink on parchment); Quality of Life holds Automation, Screen Text, Reminders and Tooltip.",
-		"Options two to a line, none greyed out (a switch's own settings behind its cog); Look holds every font, bar texture, background and border.",
-		"Edit Layout: a dock at the top, the Elements list to show, hide, lock or single out any part, and the game's Edit Mode settings in each part's box.",
+		"Skin (Look > General): Default dresses MelloUI's windows, raid frames and marks in the game's look; effects in each skin's style; Modern's own sounds (Default: the game's).",
+		"A new installer: your skin first, then each part step by step, with a picture of every choice; Preview: Solo, Party and Raid Fight.",
+		"Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles; your text size stays after a /reload.",
+		"The configurator: one painted window per skin that moves a little while open; plain one-row tabs, the designers' frames too; Quality of Life holds Automation, Screen Text, Reminders.",
+		"Options two to a line, none greyed out (a switch's settings behind its cog); Look holds every font, texture and border; profiles keep every setting exactly.",
+		"Edit Layout: a top dock; every part of Edit Mode, hidden ones too, to show, hide, lock or move; the game's settings and switches in each box (bars: On Mouseover); one gold highlight.",
 		"Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS too); Dark Mode: one Brightness for the whole UI, icons and text untouched.",
 	} },
 	{ version = "1.2.3", lines = {
@@ -1038,6 +1038,21 @@ local TabClick = Shared("OnClick on the configurator's tabs", function(self)
 	end
 end, "script")
 
+-- a page's tab, on its row's strip (CONFIG.TabRow): the game's top tab as text (W.FlatTab), its section's page opening
+-- it, its select bringing it into view on a row that scrolls; `new`: a tab holding an option new in the running
+-- update, its New tag on the tab's top edge (W.Badge). Sized and laid by CONFIG.LayTabs. -> the tab (in page.tabs)
+function CONFIG.NewTab(page, label, sec, new)
+	local tab = CreateFrame("Button", nil, CONFIG.TabRow(page).strip, "PanelTopTabButtonTemplate")
+	tab:SetText(label)
+	tab.section = sec
+	W.FlatTab(tab, SKIN)
+	tab.melloOnSelect = CONFIG.TabShown
+	Perf.SetScript(tab, "OnClick", TabClick)
+	tab.newTag = new and W.Badge(tab, true) or nil
+	page.tabs[#page.tabs + 1] = tab
+	return tab
+end
+
 -- A tab switch (configurator build, 2026-09-25): the tab going fades out
 -- as the one coming fades in, alpha only (instant under Reduce Motion). One
 -- table for every switch; `instant` and `outInstant` are set per call.
@@ -1151,8 +1166,8 @@ local function NewPage(name, width)
 	end
 
 	-- A picker page's picker line under the header's texts, the tab row
-	-- (wrapped onto a second row where the tabs do not fit the section's
-	-- width) and the sections under it, each by one TOPLEFT point.
+	-- (one row, CONFIG.LayTabs) and the sections under it, each by one
+	-- TOPLEFT point.
 	-- At Finish (`measured`: the tabs were just sized), and again after a
 	-- font change: the 'fonts' topic marks the built pages (tabsStale), laid
 	-- again on their next show or tab click, the page on show at once. The
@@ -1194,22 +1209,15 @@ local function NewPage(name, width)
 	function page:Finish()
 		self.baseHeight = self.headerHeight
 		if self.dui then
-			self.dui.Chips(self)   -- (one look, a designer: chips in the tab row's place)
+			-- (one look, a designer: its frames the page's tabs -- 1.2.4, the user's pick A of the chips sketch -- the
+			-- stage and the Parts line under the header)
+			self.tabs = {}
+			self.dui.Chips(self)
 		elseif #self.sections > 1 then
+			-- (1.2.4, text tabs: the label alone, the selected one gold over a gold line -- CONFIG.NewTab)
 			self.tabs = {}
 			for _, sec in ipairs(self.sections) do
-				local tab = CreateFrame("Button", nil, self.head, "PanelTopTabButtonTemplate")
-				tab:SetText(MelloUI.Lang.T(sec.name))
-				PanelTemplates_TabResize(tab, 8)
-				tab.section = sec
-				-- (flat in both looks, 0.15.0; the selected one wears the
-				-- kit's active look in the kit's: tab:SetSelected)
-				W.FlatTab(tab, SKIN)
-				Perf.SetScript(tab, "OnClick", TabClick)
-				-- a tab holding an option new in the running update: its New
-				-- tag on the tab's top edge (W.Badge)
-				tab.newTag = sec.hasNew and W.Badge(tab, true) or nil
-				self.tabs[#self.tabs + 1] = tab
+				CONFIG.NewTab(self, MelloUI.Lang.T(sec.name), sec, sec.hasNew)
 			end
 		end
 		self:LayTabs(true)
@@ -3945,19 +3953,23 @@ end
 --------------------------------------------------------------------------------
 
 -- (one look, the designers: docs/plans/onelook-designer/c7-lite.md) the
--- element chips and the Parts line in the tab row's place: made at the
+-- frames as the page's tabs and the Parts line under them: made at the
 -- page's Finish, laid by its LayTabs, following its Select (page.dui).
+-- (1.2.4, the user's pick A of the chips sketch, 2026-10-28: "A: frames as
+-- tabs") each frame a text tab on the header's line, as every page's tabs
+-- (CONFIG.NewTab, CONFIG.LayTabs); the Parts the quiet chips in one row.
 -- (One look C10) an element with a `stage` shows the designer stage under
--- the chips (Core/ConfigPreview.lua's wide stage, its kind registered by its
--- module): the chips ride on it and both stay under the view's top as the
--- page scrolls (Pin, from the page scroll's hook: one SetPoint when the
--- place changes); the element picks its pick; a part picked on the stage
--- opens its part's tab and a part's tab picks it there (a part's `stage`)
+-- the header (Core/ConfigPreview.lua's wide stage, its kind registered by
+-- its module): it stays under the view's top as the page scrolls (Pin,
+-- from the page scroll's hook: one SetPoint when the place changes); the
+-- element picks its pick; a part picked on the stage opens its part's tab
+-- and a part's tab picks it there (a part's `stage`)
 Lay.DesignerUI = {}
 do
 	local DUI = Lay.DesignerUI
 	local PARTS_W = 54   -- the "Parts:" label's room
-	DUI.HEAD_GAP = 6   -- the chips to the stage, the stage to the Parts line (fields: the main chunk's locals)
+	DUI.HEAD_GAP = 6   -- the stage to the Parts line (fields: the main chunk's locals)
+	DUI.OFF_ALPHA = 0.5   -- a frame whose module is off: its tab dimmed, still clickable
 
 	-- the stage's picks and parts against the page's elements and parts
 	-- (2026-10-20, the user: drag the name and the values on the frames too) a page's stage kinds, one stage each:
@@ -4053,42 +4065,12 @@ do
 				page.stage = page.stage or stage
 			end
 		end
-		if page.stage then
-			DUI.StageHead(page)
-		end
-	end
-
-	-- the chips' ground while the head is pinned: the rows pass under it
-	-- (made once, for the stage or the slot)
-	function DUI.StageHead(page)
-		if not page.stageHead then
-			page.stageHead = CreateFrame("Frame", nil, page)
-			if SKIN then
-				-- (1.2.4, Oldschool -- the user's pick 1 of oldschool_readable_sketch: the chips in ink on the
-				-- parchment) the window's own painting cut to the head's place, laid again as it moves (DUI.PatchHead)
-				page.stageGround = page.stageHead:CreateTexture(nil, "BACKGROUND")
-				page.stageGround:SetAllPoints(page.stageHead)
-			else
-				-- (every designer preview on one dark ground, its head row too -- the user, 2026-10-16: "we want
-				-- visual consistency, and not that every preview window looks different")
-				W.Solid(page.stageHead, "BACKGROUND", "innerPanel", 1):SetAllPoints(page.stageHead)
-			end
-			page.stageHead:Hide()
-		end
-	end
-
-	-- the head's painted ground cut again to where it stands now (Oldschool's; nothing on the other looks)
-	function DUI.PatchHead(page)
-		local g = page.stageGround
-		if g and SKIN and page.stageHead:IsShown() then
-			SKIN:Patch(g, page.stageHead)
-		end
 	end
 
 	-- (shell-plan 1 item 2) the corner sample's slot: a frame with no stage
 	-- but a `sample` (Player, Target, Focus, Pet) shows the corner preview's
-	-- pick there at 1.5x, the stage's ground and edge round it; pinned with
-	-- the chips as the stage is. Made with the page (its first open)
+	-- pick there at 1.5x, the stage's ground and edge round it; pinned as
+	-- the stage is. Made with the page (its first open)
 	DUI.SLOT_SCALE, DUI.SLOT_PAD = 1.5, 8
 	function DUI.MakeSlot(page, pl)
 		page.sampleEl = {}
@@ -4123,7 +4105,6 @@ do
 		slot.def, slot.hits = CP.Kind(kind), {}
 		slot:Hide()
 		page.slot = slot
-		DUI.StageHead(page)
 	end
 
 	-- pinned at the page's top as it scrolls: one SetPoint when the place
@@ -4137,7 +4118,7 @@ do
 		end
 	end
 
-	-- what the chips ride on: the stage or the slot on show (nil: none)
+	-- what is pinned under the header: the stage or the slot on show (nil: none)
 	function DUI.Top(page)
 		local stage, slot = page.stage, page.slot
 		if stage and stage:IsShown() then
@@ -4639,13 +4620,11 @@ do
 		return list
 	end
 
-	-- the pinned head under the view's top (the stage or the slot carries
-	-- the chips)
+	-- the stage or the slot pinned under the view's top
 	function DUI.Pin(page, scroll)
 		local top = DUI.Top(page)
 		if top then
-			top:Stick((Num(scroll:GetVerticalScroll()) or 0) + (top.pinAbove or 0))
-			DUI.PatchHead(page)
+			top:Stick(Num(scroll:GetVerticalScroll()) or 0)
 		end
 	end
 
@@ -4663,24 +4642,35 @@ do
 		return items
 	end
 
+	-- the frames: the page's tabs (CONFIG.NewTab), each opening its frame's own tab (a family's: its tab), its line
+	-- (el.line) its tooltip, dimmed while its module is off; the Parts line's quiet chips in one row (W.Chips' `row`;
+	-- Oldschool: in ink on the parchment -- the user's pick 1 of oldschool_readable_sketch); then the stage and the slot
 	function DUI.Chips(page)
 		local pl = page.lay
 		page.secByName = {}
 		for _, sec in ipairs(page.sections) do
 			page.secByName[sec.name] = sec
 		end
-		-- (1.2.4, Oldschool: the chips in ink on the parchment -- the user's pick 1 of oldschool_readable_sketch)
-		page.elChips = W.Chips(page, { width = page.width - PAD * 2, ink = KIT and "tab" or nil, onPick = function(_, key)
-			local sec = page.secByName[key .. ":element"] or page.secByName[key]
-			if sec and sec ~= page.current then
-				page:Select(sec, true)
+		for _, item in ipairs(ElementItems(pl)) do
+			local sec = page.secByName[item.key .. ":element"] or page.secByName[item.key]
+			if sec then
+				local label = W.Tr(item.label)
+				local tab = CONFIG.NewTab(page, label, sec)
+				tab.melloElement = item.key
+				if item.tip then
+					PageTip(tab, label, item.tip)
+				end
+				if item.state == "off" then
+					tab:SetAlpha(DUI.OFF_ALPHA)
+				end
 			end
-		end })
+		end
+		page.elChips = page.tabRow and page.tabRow.clip   -- (the Tutorial's pointer: the frames' row)
 		page.partsLabel = Text(page, "GameFontHighlight", TEXT.parts)
 		if KIT then
 			CONFIG.InkOn(page.partsLabel, "title")   -- (1.2.4, stage 5: on the parchment, CONFIG.Paper)
 		end
-		page.partChips = W.Chips(page, { width = page.width - PAD * 2 - PARTS_W, ink = KIT and "box" or nil,
+		page.partChips = W.Chips(page, { width = page.width - PAD * 2 - PARTS_W, ink = KIT and "box" or nil, row = true,
 			onPick = function(_, key)
 			local sec = page.dEl and page.secByName[page.dEl .. ":" .. key]
 			if sec and sec ~= page.current then
@@ -4688,39 +4678,21 @@ do
 			end
 		end })
 		page.partsHint = Text(page, "GameFontDisable", TEXT.pickPart)
-		page.elChips:SetItems(ElementItems(pl))
 		DUI.MakeStage(page, pl)
 		DUI.MakeSlot(page, pl)
 	end
 
-	-- under the header: the element chips (on the stage or the slot while
-	-- one shows: one pinned head), then the Parts line; the y the sections
+	-- under the header (the frames: its tabs, CONFIG.LayTabs): the stage or the slot while one shows, then the Parts
+	-- line -- its chips measured again, as the tabs are at every lay (a text size or a skin since); the y the sections
 	-- start at
 	function DUI.Lay(page, y)
-		local stage = DUI.Top(page)
-		local chipsH = page.elChips:Height()
-		page.elChips:ClearAllPoints()
-		if stage then
-			local level = stage:GetFrameLevel()
-			stage.y0, stage.stuckY, stage.pinAbove = y + chipsH + DUI.HEAD_GAP, nil, chipsH + DUI.HEAD_GAP
-			stage:Stick((window and window.scroll and Num(window.scroll:GetVerticalScroll()) or 0) + stage.pinAbove)
-			page.stageHead:ClearAllPoints()
-			page.stageHead:SetPoint("BOTTOMLEFT", stage, "TOPLEFT", -PAD, 0)
-			page.stageHead:SetPoint("BOTTOMRIGHT", stage, "TOPRIGHT", PAD, 0)
-			page.stageHead:SetHeight(chipsH + DUI.HEAD_GAP + 2)
-			page.stageHead:SetFrameLevel(level)
-			page.stageHead:Show()
-			DUI.PatchHead(page)
-			page.elChips:SetPoint("BOTTOMLEFT", stage, "TOPLEFT", 0, DUI.HEAD_GAP)
-			page.elChips:SetFrameLevel(level + 2)
-			y = stage.y0 + stage:GetHeight() + DUI.HEAD_GAP
-		else
-			if page.stageHead then
-				page.stageHead:Hide()
-			end
-			page.elChips:SetPoint("TOPLEFT", page, "TOPLEFT", PAD, -y)
-			y = y + chipsH + 8
+		local top = DUI.Top(page)
+		if top then
+			top.y0, top.stuckY = y, nil
+			top:Stick(window and window.scroll and Num(window.scroll:GetVerticalScroll()) or 0)
+			y = y + top:GetHeight() + DUI.HEAD_GAP
 		end
+		page.partChips:Refit()
 		page.partsLabel:ClearAllPoints()
 		page.partsLabel:SetPoint("TOPLEFT", page, "TOPLEFT", PAD + 2, -(y + 4))
 		page.partChips:ClearAllPoints()
@@ -4730,15 +4702,23 @@ do
 		return y + math.max(page.partChips:Height(), 22) + 12
 	end
 
-	-- a section selected: the chips follow it; the Parts line is its
-	-- element's (laid again when its rows change)
+	-- a section selected: the frames' tabs follow it -- its frame's the picked one while one of its parts is open too,
+	-- a click on it then back to the frame's own (page:Select picked only the section's own tab); the Parts line is
+	-- its element's
 	function DUI.Follow(page, sec)
 		local t = page.lay.tabOf[sec.name]
 		if not t then
 			return
 		end
 		local el = t.el and t.el.key or nil
-		page.elChips:Select(el or (t.family and t.family.key))
+		local pick = el or (t.family and t.family.key)
+		for _, tab in ipairs(page.tabs) do
+			local on = tab.melloElement == pick
+			tab:SetSelected(on)
+			if on and tab.section ~= sec then
+				tab:SetEnabled(true)
+			end
+		end
 		if el ~= page.dEl then
 			page.dEl = el
 			local items = {}
@@ -4751,11 +4731,7 @@ do
 						state = part.locked and "locked" or nil }
 				end
 			end
-			local before = page.partChips:Height()
 			page.partChips:SetItems(items)
-			if page.partChips:Height() ~= before then
-				page:LayTabs(true)
-			end
 		end
 		page.partChips:Select(t.part and t.part.key or nil)
 		local parts = el ~= nil and page.partChips.count > 0
@@ -7374,44 +7350,54 @@ do
 		end
 	end
 
-	-- a page's tabs: one row along the painted header's line, from the title's left; a row too long for the header
-	-- (Quality of Life's eleven) tightens its tabs' padding a little (CONFIG.TAB_PADS), and when that is not enough
-	-- wraps into two even rows at the full padding: the first half over the second, the second on the line
-	CONFIG.TAB_PADS = { 8, 5 }
-	local function TabsWidth(tabs, pad, gap)
-		local width = -gap
+	-- a page's tabs (1.2.4, text tabs: the user's pick A of the tabs sketch, 2026-10-28; the user: "keep them in 1
+	-- row"): ONE row from the title's left along the painted header's line, each tab as wide as its label and its
+	-- padding (W.TabFit), side by side, its foot -- the selected one's gold line -- on the painting's own line
+	-- (CONFIG.TAB_LINE: over the header's foot, each look's painting's, measured on it). A row too long for the header
+	-- tightens its tabs' padding (CONFIG.TAB_PADS); one still too long at the last scrolls (the user's pick: "Tighten,
+	-- then scroll"): the row is a W.ScrollRow (CONFIG.TabRow, made with the page's tabs), its selected tab always in
+	-- view (its select -- tab.melloOnSelect, W.FlatTab's -- and every lay: a page built, a language or Font Style
+	-- change, a /reload). Never a second row. A designer page's tabs are its frames (DUI.Chips)
+	CONFIG.TAB_PADS = { 8, 6, 5 }
+	CONFIG.TAB_LINE = { modern = 4, default = 5, oldschool = 11 }
+	local function TabsWidth(tabs, pad)
+		local width = 0
 		for _, tab in ipairs(tabs) do
-			PanelTemplates_TabResize(tab, pad)
-			width = width + tab:GetWidth() + gap
+			width = width + W.TabFit(tab, pad)
 		end
 		return width
 	end
+	-- the page's row of tabs (its arrows on the labels' middle: W.FlatTab's, 3 over the tab's)
+	function CONFIG.TabRow(page)
+		local row = page.tabRow
+		if not row then
+			row = W.ScrollRow(page.head, { arrowY = (6 - 14) / 2 + 3 })
+			page.tabRow = row
+		end
+		return row
+	end
+	-- the selected tab in view on a row that scrolls
+	function CONFIG.TabShown(tab)
+		local page = tab and tab.section and tab.section.page
+		local row = page and page.tabRow
+		if row then
+			row:Show(tab)
+		end
+	end
 	function CONFIG.LayTabs(page)
 		local tabs = page.tabs
-		local room = WINDOW_WIDTH - (shell and shell:PaintingSpec() or CONFIG.PAINTING.modern).side - CONFIG.HEAD_IN
-			- CONFIG.HEAD_RIGHT
-		local gap, fits = CONFIG.TAB_GAP, false
+		local spec = shell and shell:PaintingSpec() or CONFIG.PAINTING.modern
+		local room = WINDOW_WIDTH - spec.side - CONFIG.HEAD_IN - CONFIG.HEAD_RIGHT
 		for _, pad in ipairs(CONFIG.TAB_PADS) do
-			if TabsWidth(tabs, pad, gap) <= room then
-				fits = true
+			if TabsWidth(tabs, pad) <= room then
 				break
 			end
 		end
-		local split = #tabs + 1
-		if not fits then
-			TabsWidth(tabs, CONFIG.TAB_PADS[1], gap)
-			split = math.ceil(#tabs / 2) + 1
-		end
-		local rowHigh = tabs[1] and tabs[1]:GetHeight() or 24
-		local x, up = CONFIG.HEAD_IN, fits and CONFIG.TABS_UP or (CONFIG.TABS_UP + rowHigh + 2)
-		for i, tab in ipairs(tabs) do
-			if i == split then
-				x, up = CONFIG.HEAD_IN, CONFIG.TABS_UP
-			end
-			tab:ClearAllPoints()
-			tab:SetPoint("BOTTOMLEFT", page.head, "BOTTOMLEFT", x, up)
-			x = x + tab:GetWidth() + gap
-		end
+		local row = CONFIG.TabRow(page)
+		local up = CONFIG.TAB_LINE[shell and shell:Look() or "modern"] or CONFIG.TABS_UP
+		row.clip:ClearAllPoints()
+		row.clip:SetPoint("BOTTOMLEFT", page.head, "BOTTOMLEFT", CONFIG.HEAD_IN - row.pad, up - row.below)
+		row:Lay(tabs, room, tabs[1] and tabs[1]:GetHeight() or 24)
 	end
 
 	-- The shell laid as the look on show has it (the build, every show, every look switch): the side column's fixed

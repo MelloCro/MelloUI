@@ -2006,6 +2006,17 @@ function FX.Split(frame)
 		return nil
 	end
 	local portrait, health, mana, _, circle, number = panel:PartsOf(frame)
+	if not portrait then
+		-- (1.2.4, the threat halo: MelloUI.FrameHalo) a unit frame Unit Frames' PartsOf leaves -- the target, the focus,
+		-- the pets: the parts the game's UnitFrame_Initialize keeps on every unit frame, and the target's and focus's
+		-- level circle (read, never written)
+		portrait, health, mana = rawget(frame, "portrait"), rawget(frame, "healthbar"), rawget(frame, "manabar")
+		local content = rawget(frame, "TargetFrameContent")
+		local main = type(content) == "table" and rawget(content, "TargetFrameContentMain") or nil
+		if type(main) == "table" then
+			circle, number = rawget(main, "LevelBackgroundCircle"), rawget(main, "LevelText")
+		end
+	end
 	local pl, pb, pr, pt
 	if portrait then
 		pl, pb, pr, pt = FX.Rect(portrait)
@@ -2043,6 +2054,7 @@ function FX.Split(frame)
 	if panel.CoverOf then
 		split.ring, split.orb, split.disc, split.number = panel:CoverOf(frame, portrait, circle, number)
 	end
+	split.kit = kitRing   -- (the painted kit's frame: its name on the stone, no plate round it -- FX.Shape)
 	-- (the game's ring: 70425's frames start their bars clear of it -- the player's at 87, its ring to 87.4; the
 	-- party's at 47, its ring to 46.2 -- so nothing of the bars' light is under it, and no copy of the frame's whole
 	-- art is laid over the light: a copy laid its dark plates over the bars, a cut of it a scrap over the portrait --

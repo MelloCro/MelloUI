@@ -505,11 +505,15 @@ local function Clamp(v)
 	return max(0, min(1, v))
 end
 
--- a frame's name's top (Unit Frames' M:PartsOf): the plate's top on a frame with no picture of its plate
+-- a frame's name's top (Unit Frames' M:PartsOf; a frame it leaves -- the target, the focus -- the name the game's
+-- UnitFrame_Initialize keeps on it): the plate's top on a frame with no picture of its plate
 local function NameTop(frame)
 	local panel = MelloUI:GetModule("UnitFrames")
 	if panel and panel.PartsOf and type(frame) == "table" then
 		local ok, _, _, _, name = pcall(panel.PartsOf, panel, frame)
+		if not (ok and name) then
+			ok, name = true, rawget(frame, "name")
+		end
 		if ok and type(name) == "table" and FX.Visible(name) then
 			local _, _, _, top = FX.Rect(name)
 			return top and top + 1
@@ -1000,9 +1004,10 @@ local OUTLINE = { line = 0.5, min = 0 }
 -- the name over them), else its own box. A mirrored party frame (Flip Horizontally) read the game's way round, S.mx its
 -- middle (Put turns its sprites back)
 local function ShapeOf(frame, S)
-	S.mx = nil
+	S.mx, S.orb, S.kit = nil, nil, nil
 	local sp = FX.Split(frame)
 	if sp then
+		S.orb, S.kit = sp.orb, sp.kit   -- (its level badge, the region: FrameHalo's glow round it; the kit's frame)
 		local pl, pb, pr, pt = sp.pl, sp.pb, sp.pr, sp.pt
 		if not pl then
 			pl, pb, pr, pt = sp.bl, sp.bb, sp.br, max(sp.bt, NameTop(frame) or sp.bt)
@@ -1098,6 +1103,28 @@ local function OutlineOf(f, n, S, rgb)
 		n = Bar(f, n, xl + px, yb + px, xl + 2 * px, yt - px)
 	end
 	return n
+end
+
+-- (1.2.4: MelloUI.FrameHalo) `frame`'s shape as it stands on the screen -- ShapeOf's fields, `orb` its level badge --
+-- (read it at once: reused), or nil. The painted kit's frame (Oldschool) has no plate round its name -- the name lies
+-- on the stone over the bars' bracket -- so its plate is the bars' box (the halo's band round the art, not the stone),
+-- its ring-side end run in under the ring (the bracket stops short of the ring: no end of the band in the gap)
+local onScreen = {}
+function FX.Shape(frame)
+	if frame and ShapeOf(frame, onScreen) then
+		Unmirror(onScreen)
+		local S = onScreen
+		if S.kit and S.al then
+			S.pl, S.pb, S.pr, S.pt = S.al, S.ab, S.ar, S.at
+			if S.rx and S.rx < S.pl then
+				S.pl = S.rx
+			elseif S.rx and S.rx > S.pr then
+				S.pr = S.rx
+			end
+		end
+		return S
+	end
+	return nil
 end
 
 -- `frame`'s outline on `f` (its sprites its own), `rgb` outside (white); `frame` nil: hidden. -> its shape as it stands

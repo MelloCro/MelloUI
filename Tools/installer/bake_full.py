@@ -2,6 +2,20 @@
 (the installer's Full setup and the Profiles page's "MelloUI").
 
   python Tools/installer/bake_full.py [--snapshot PATH] [--check] [--write] [--deps] [--tries N] [--wait S]
+  python Tools/installer/bake_full.py --string FILE | --clipboard [--fill-missing] [--write]
+
+From a profile share string (1.2.4): Save the setup as a profile in game, Export it (the Profiles page, or
+/mello profile export <name>), copy the string into a file (or leave it on the clipboard), then
+  python Tools/installer/bake_full.py --string FILE            a look: what would ship, every entry accounted for
+  python Tools/installer/bake_full.py --string FILE --write    ship it: the "MelloUI" entry, and the string's
+                                                               snapshot recorded for --check and the release
+The string is decoded and checked (a damaged or foreign one is refused), read into a fresh saved variable by the
+addon's own reader -- that file, with the string and its text beside it, is kept in the build data
+(installer/full_string_<date>/) and recorded in full_snapshot.txt -- then baked as below. Every entry of the string
+is listed as shipped, shipped changed (the fitter's places, a login step) or left out with its reason (a player's
+own key, a one-time mark, an old key, a module the string's client has and this one has not ...); one left out for
+no known reason stops the --write. A module the shipped Full has settings for and the string none (a feature addon
+the client it came from lacks) is named; --fill-missing carries the shipped Full's own entries for it.
 
 The text is made by the addon's own code, in a Lua 5.1 world with the REAL
 Core, Backup and every TOC file of the working tree:
@@ -751,9 +765,283 @@ def text_diff(old, new):
     return out
 
 
+# ---------------------------------------------------------------------------------------------------------------
+# A profile share string as the source (1.2.4; the user, 2026-10-28: "i will then make a new MelloUI Profile export
+# string and that is going to be shipped as Default when people decide to use MelloUI Layout in the Installer").
+# The string (the Profiles page's Export, or /mello profile export <name>) is decoded here as the game decodes it
+# (Base64, then Deflate), checked as Core's MelloUI:DecodeProfileString checks it, and read into a fresh saved
+# variable by the addon's own reader (MelloUI:DeserializeSettings): that file is the bake's snapshot from then on, in
+# the build data like any other (full_snapshot.txt records it, so --check and the release bake it again), with the
+# string and its text beside it. Every entry of the string is then accounted for against the baked text: shipped as
+# it is, shipped changed (the fitter's places, a login step) or left out, each with its reason. One left out for no
+# known reason stops a --write.
+
+SHARE_TAG = "!MelloUI1!"
+SHARE_LETTERS, SHARE_TEXT = 131072, 1048576   # (Core/Core.lua's limits for an import)
+STRING_FILE, TEXT_FILE = "profile_string.txt", "profile_text.txt"
+
+
+def read_share(path=None, clipboard=False):
+    """The share string from a file or the clipboard."""
+    if path:
+        with open(path, encoding="utf-8-sig") as fh:
+            return fh.read()
+    try:
+        import tkinter
+        root = tkinter.Tk()
+        root.withdraw()
+        try:
+            return root.clipboard_get()
+        finally:
+            root.destroy()
+    except Exception:  # noqa: BLE001  (no Tk: Windows' own clipboard)
+        import subprocess
+        out = subprocess.run(["powershell", "-NoProfile", "-Command", "Get-Clipboard -Raw"], capture_output=True,
+                             text=True, encoding="utf-8")
+        if out.returncode != 0:
+            raise SystemExit("the clipboard could not be read: %s" % out.stderr.strip()[:200])
+        return out.stdout
+
+
+def decode_share(s):
+    """The settings text inside a share string; SystemExit with the reason when it is not one."""
+    import base64
+    import zlib
+    if not isinstance(s, str) or len(s) > 4 * SHARE_LETTERS:
+        raise SystemExit("not a MelloUI profile string (nothing, or far longer than any profile)")
+    s = re.sub(r"\s+", "", s)
+    if not s.startswith(SHARE_TAG):
+        raise SystemExit("not a MelloUI profile string (it starts with %s): copy the whole string from the Profiles "
+                         "page's Export" % SHARE_TAG)
+    letters = s[len(SHARE_TAG):]
+    if len(letters) > SHARE_LETTERS:
+        raise SystemExit("the string is far longer than any MelloUI profile")
+    packed = None
+    for decode in (base64.b64decode, base64.urlsafe_b64decode):
+        try:
+            packed = decode(letters + "=" * (-len(letters) % 4))
+            break
+        except ValueError:
+            continue
+    if not packed:
+        raise SystemExit("the string is damaged (cut short while copying?): its letters are not Base64")
+    text = None
+    for wbits in (-15, 47):   # (the game's Deflate is raw; a zlib or gzip header is read too)
+        try:
+            d = zlib.decompressobj(wbits)
+            out = d.decompress(packed, SHARE_TEXT + 1)
+            if len(out) > SHARE_TEXT:
+                raise SystemExit("the string unpacks to far more than any MelloUI profile")
+            if d.eof:
+                text = out.decode("utf-8", errors="surrogateescape")
+                break
+        except zlib.error:
+            continue
+    if text is None:
+        raise SystemExit("the string is damaged (cut short while copying?): it does not unpack")
+    for e in text.split(";"):
+        if e and not re.match(r"^[^=]+=.", e):
+            raise SystemExit("the string holds something that is not a MelloUI setting: %r" % e[:80])
+    return text
+
+
+# the decoded text read into a fresh saved variable by the addon's own reader, each entry checked, the result as a
+# saved-variables file (Lua source: the bake's snapshot)
+STRING_STEPS = r'''
+local M = MelloUI
+local function Num(v)
+    if v ~= v or v == math.huge or v == -math.huge then return nil end
+    local s = tostring(v)
+    if tonumber(s) ~= v then s = string.format("%.17g", v) end
+    return s
+end
+local function Dump(v, indent)
+    local t = type(v)
+    if t == "string" then return string.format("%q", v) end
+    if t == "number" then return Num(v) end
+    if t == "boolean" then return tostring(v) end
+    if t ~= "table" then return nil end
+    local keys = {}
+    for k in pairs(v) do
+        if type(k) == "string" or (type(k) == "number" and Num(k)) then keys[#keys + 1] = k end
+    end
+    table.sort(keys, function(a, b)
+        if type(a) ~= type(b) then return type(a) == "number" end
+        return a < b
+    end)
+    local parts = {}
+    for _, k in ipairs(keys) do
+        local inner = Dump(v[k], indent .. "\t")
+        if inner then parts[#parts + 1] = indent .. "\t[" .. Dump(k, "") .. "] = " .. inner .. "," end
+    end
+    if #parts == 0 then return "{}" end
+    return "{\n" .. table.concat(parts, "\n") .. "\n" .. indent .. "}"
+end
+-- each entry: its owner known (a module, or a feature addon the world leaves out), readable (the reader takes it)
+function CheckEntries(text)
+    local out = {}
+    for entry in text:gmatch("[^;]+") do
+        local key = entry:match("^([^=]+)=") or entry
+        local owner = key:match("^!?([^.]+)")
+        local known = owner and (M.modules[owner] ~= nil or (M.Features and M.Features[owner]) ~= nil) or false
+        local applied = known and M:DeserializeSettings(entry, { modules = {}, enabled = {} }) or 0
+        out[#out + 1] = { key = key, known = known, readable = applied > 0 }
+    end
+    return out
+end
+-- (the save's own merge marks, MelloUIDB.merged, as a new player's first login lays them with nothing to carry: a
+-- profile never holds them, and without them the bake's login takes the string's settings for an old save's and
+-- carries them again -- Chat's Background "dark" came back as no pick. Only the marks: what those merges write
+-- into the modules on an empty save -- Buffs & Debuffs' rows off -- the installer's target replaces in the game)
+function StringSnapshot(text)
+    local saved = M.db
+    local scratch = { enabled = {}, modules = {}, profiles = {} }
+    M.db = scratch
+    if M.MergeSettings then M:MergeSettings() end
+    local db = { enabled = {}, modules = {}, profiles = {}, merged = scratch.merged }
+    M.db = db
+    local applied = M:DeserializeSettings(text)
+    M.db = saved
+    return "MelloUIDB = " .. Dump(db, "") .. "\n", applied
+end
+'''
+
+
+def string_snapshot(text, tries=5, wait=60, log=print):
+    """(saved-variables source, [entry checks]) of a settings text, by the addon's own reader."""
+    lua, _, _, _ = B.make_world_retry(tries, wait, log, without=B.FULL_WITHOUT)
+    lua.execute(STRING_STEPS)
+    g = lua.globals()
+    checks = [B.py(lua, c) for c in B.py(lua, g.CheckEntries(text)).values()]
+    src, applied = g.StringSnapshot(text)
+    return src, checks, applied
+
+
+def missing_modules(text, shipped):
+    """The modules the shipped Full carries entries for and the string carries none for (its flag included): a
+    feature addon not in the client the string came from (the retail copy has no Route, Quest List, Map, Dungeon
+    Info or Voice Over) -- {module: [entries]}."""
+    have = {k if m == "!" else m for m, k, _ in B.entries(text)}
+    out = {}
+    for m, k, v in B.entries(shipped or ""):
+        name = k if m == "!" else m
+        if name not in have:
+            out.setdefault(name, []).append(("!" + k if m == "!" else m + "." + k) + "=" + v)
+    return out
+
+
+# where a string entry's value changed or went in the bake, by its key (the fitter's places, the documented login
+# steps and moves); anything else changed is named as such
+FITTED = {"UIModifications.positions", "QuestTracker.pos", "QuestTracker.maxHeight", "QuestTracker.width",
+          "Auras.playerPerRow", "Auras.playerSize"}
+
+
+def account(text, full, report, lua, checks):
+    """Every entry of the string, sorted: {"same": [...], "changed": [(key, why)], "dropped": [(key, why)],
+    "unexplained": [key], "added": [key]}."""
+    M = lua.globals().MelloUI
+    src, out = B.entry_map(text), B.entry_map(full)
+    check = {c["key"]: c for c in checks}
+    registered = lua.eval("(function(n) return MelloUI.modules[n] ~= nil end)")
+    login = {c["key"] for c in report.get("loginChanges", []) + report.get("migrationChanges", [])}
+    absent = set(report.get("notLoadedDropped", []))
+    res = {"same": [], "changed": [], "dropped": [], "unexplained": [], "added": sorted(set(out) - set(src))}
+    for key, value in sorted(src.items()):
+        if key in out:
+            if out[key] == value:
+                res["same"].append(key)
+            elif key in FITTED:
+                res["changed"].append((key, "fitted to the design size (the installer fits it again to each screen)"))
+            elif key in login or key in LOGIN_STEPS:
+                res["changed"].append((key, "a login step of the current code"))
+            else:
+                res["changed"].append((key, "changed by the bake"))
+            continue
+        name, _, sub = key.lstrip("!").partition(".")
+        c = check.get(key, {})
+        if not c.get("known", True):
+            why = "not a MelloUI module (an addon or a version this one does not have)"
+        elif not c.get("readable", True):
+            why = "a value the reader cannot take (damaged?)"
+        elif not key.startswith("!") and M.IsPersonalKey(M, name, sub):
+            why = "a player's own key (the module's keep list): never shipped"
+        elif not key.startswith("!") and extra_personal(name, sub):
+            why = "a one-time mark (the bake's own rule): never shipped"
+        elif key in FULL_DROP:
+            why = "an old key the current code no longer reads (FULL_DROP)"
+        elif not registered(name) or key in absent:
+            why = "%s's (a module of it, or a setting it brings): the shipped Full leaves it out, it ships its own" \
+                % ", ".join(B.FULL_WITHOUT)
+        elif key in login or key in LOGIN_STEPS or key in [k for spec in MOVES.values() for k in spec["old"]]:
+            why = "taken out by a login step of the current code (a merge or a move)"
+        elif key in FITTED:
+            why = "taken out by the fitter (the layout places it)"
+        else:
+            res["unexplained"].append(key)
+            continue
+        res["dropped"].append((key, why))
+    return res
+
+
+def ship_string(args):
+    """--string / --clipboard: the string becomes the bake's snapshot, then the bake runs as for any snapshot."""
+    raw = read_share(args.string, args.clipboard)
+    text = decode_share(raw)
+    print("the string: %d letters, its text %d characters, %d entries" % (len(re.sub(r"\s+", "", raw)), len(text),
+                                                                         len([e for e in text.split(";") if e])))
+    src, _ = current_entry()
+    shipped = shipped_text(src)
+    missing = missing_modules(text, shipped)
+    if missing:
+        print("modules the shipped Full has settings for and the string has none for (not in the client it came "
+              "from?):")
+        for name, es in sorted(missing.items()):
+            print("  %-22s %3d entries%s" % (name, len(es), "  -> carried over from the shipped Full (--fill-missing)"
+                                             if args.fill_missing else ""))
+        if args.fill_missing:
+            text = ";".join([e for e in text.split(";") if e] + [e for es in missing.values() for e in es])
+        else:
+            print("  (they ship at their defaults; --fill-missing carries the shipped Full's own entries for them)")
+    sv, checks, applied = string_snapshot(text, args.tries, args.wait)
+    print("read by the addon's own reader: %d of %d entries applied" % (applied, len(checks)))
+    # (a --write keeps it in the build data, where --check and the release bake it again; a look only, in a
+    # folder of its own that goes with the run)
+    if args.write:
+        folder = B.build_data("installer", "full_string_" + time.strftime("%Y-%m-%d_%H%M%S"))
+        os.makedirs(folder, exist_ok=True)
+    else:
+        import tempfile
+        folder = tempfile.mkdtemp(prefix="bake_string_")
+    snapshot = os.path.join(folder, "MelloUI.SavedVariables.lua")
+    for name, body in ((snapshot, sv), (os.path.join(folder, STRING_FILE), re.sub(r"\s+", "", raw) + "\n"),
+                       (os.path.join(folder, TEXT_FILE), text + "\n")):
+        with open(name, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(body)
+    print("the string's snapshot: %s" % snapshot)
+    return snapshot, text, checks
+
+
+def print_account(acc):
+    print("every entry of the string: %d shipped as it is, %d shipped changed, %d left out, %d added by the bake"
+          % (len(acc["same"]), len(acc["changed"]), len(acc["dropped"]), len(acc["added"])))
+    for key, why in acc["changed"]:
+        print("  changed   %-48s %s" % (key, why))
+    for key, why in acc["dropped"]:
+        print("  left out  %-48s %s" % (key, why))
+    for key in acc["added"]:
+        print("  added     %s" % key)
+    for key in acc["unexplained"]:
+        print("  LEFT OUT FOR NO KNOWN REASON  %s" % key)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--snapshot", default=SNAP)
+    ap.add_argument("--string", metavar="FILE", help="bake from a profile share string in this file (the Profiles "
+                    "page's Export): it becomes the bake's snapshot")
+    ap.add_argument("--clipboard", action="store_true", help="as --string, the string read from the clipboard")
+    ap.add_argument("--fill-missing", action="store_true", help="with --string: a module the string has no entry "
+                    "for (a feature addon its client lacks) keeps the shipped Full's own entries")
     ap.add_argument("--check", action="store_true", help="exit 1 unless Media/Profiles.lua holds this bake and only it")
     ap.add_argument("--write", action="store_true", help="write the \"MelloUI\" entry of Media/Profiles.lua")
     ap.add_argument("--deps", action="store_true", help="list the files this bake reads, then exit")
@@ -767,7 +1055,13 @@ def main():
     gone = missing_dependencies()
     if gone:
         raise SystemExit("the bake's files are missing: %s" % gone)
-    full, report, _ = bake(a.snapshot, a.tries, a.wait)
+    acc = None
+    if a.string or a.clipboard:
+        a.snapshot, source_text, checks = ship_string(a)
+    full, report, lua = bake(a.snapshot, a.tries, a.wait)
+    if a.string or a.clipboard:
+        acc = account(source_text, full, report, lua, checks)
+        report["stringAccount"] = acc
     os.makedirs(OUT, exist_ok=True)
     open(os.path.join(OUT, "full.txt"), "w", encoding="utf-8", newline="\n").write(full)
     open(os.path.join(OUT, "entry.txt"), "w", encoding="utf-8", newline="\n").write(entry_line(full) + "\n")
@@ -798,6 +1092,11 @@ def main():
     print("Media/Profiles.lua holds this text:", same and not problems)
     for p in problems:
         print("  - " + p)
+    if acc is not None:
+        print_account(acc)
+        if acc["unexplained"]:
+            raise SystemExit("%d entries of the string were left out for no known reason (listed above): nothing "
+                             "written" % len(acc["unexplained"]))
     if a.write:
         if not m:
             raise SystemExit('no ["MelloUI"] line in Media/Profiles.lua')

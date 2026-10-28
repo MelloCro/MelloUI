@@ -1,0 +1,14 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<!--
+	MelloUI - Config motion's flame runs (1.2.4, Core/ConfigMotion.lua): a flame strip's picture run a tile through it,
+	one way or the other, while the strip lies still on its painted line. A TextureCoordTranslation, a kind of animation
+	the client makes only from XML (its Lua CreateAnimation hands a plain Animation for it, with no SetOffset): made on a
+	strip with MelloUI.Anim:Group(strip, "REPEAT", <name>), the run's seconds set from Lua (group.run).
+	-->
+	<AnimationGroup name="MelloUIConfigFlameOn" looping="REPEAT" virtual="true">
+		<TextureCoordTranslation parentKey="run" offsetU="-1" offsetV="0" duration="1" order="1"/>
+	</AnimationGroup>
+	<AnimationGroup name="MelloUIConfigFlameBack" looping="REPEAT" virtual="true">
+		<TextureCoordTranslation parentKey="run" offsetU="1" offsetV="0" duration="1" order="1"/>
+	</AnimationGroup>
+</Ui>

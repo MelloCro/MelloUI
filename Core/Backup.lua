@@ -25,9 +25,14 @@
 -- Format (one line, ';' separated, values type-prefixed):
 --   Module.key=b1      boolean true      Module.key=b0   boolean false
 --   Module.key=n0.25   number            Module.key=sText string (escaped)
---   Module.key=t...    a table, two levels deep at most (below)
---   Module.key=T{...}  a declared deep table (DEEP, below), any depth to 8
+--   Module.key=t...    a table the 't' form carries whole (below): string
+--                      keys, two levels deep at most
+--   Module.key=T{...}  any other table (number keys, deeper, keys the 't'
+--                      form cannot hold), and a declared deep table (DEEP,
+--                      below), any depth to 8
 --   !Module=b1         module enabled flag
+-- A number is written so it reads back as the same number (tostring keeps 14
+-- digits: a place of -294.40008868753... came back moved, 1.2.4).
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -56,14 +61,30 @@ local function Escape(s)
 	return (s:gsub("\\", "\\\\"):gsub(";", "\\s"):gsub("=", "\\e"):gsub("|", "\\p"):gsub("\n", "\\n"))
 end
 
+-- Every escape at once, in one pass: Escape's (\s \e \p \n, a doubled
+-- backslash) and the 't' form's (\c \m \o \k for : , { }). One pass, or a
+-- string's own backslash before one of those letters (a texture path's
+-- "\minimap") came back as the character it stands for.
+local UNESCAPE = { s = ";", e = "=", p = "|", n = "\n", c = ":", m = ",", o = "{", k = "}" }
 local function Unescape(s)
-	return (s:gsub("\\(.)", function(c)
-		if c == "s" then return ";" end
-		if c == "e" then return "=" end
-		if c == "p" then return "|" end
-		if c == "n" then return "\n" end
-		return c
-	end))
+	return (s:gsub("\\(.)", function(c) return UNESCAPE[c] or c end))
+end
+
+-- a number as text that reads back as the same number: tostring's 14 digits,
+-- else the fewest of 15, 16 and 17 that do (17 always does)
+local DIGITS = { "%.15g", "%.16g" }
+local function NumberText(v)
+	local s = tostring(v)
+	if tonumber(s) == v then
+		return s
+	end
+	for i = 1, #DIGITS do
+		s = DIGITS[i]:format(v)
+		if tonumber(s) == v then
+			return s
+		end
+	end
+	return ("%.17g"):format(v)
 end
 
 -- A table setting (the window positions: [name] = { point, x, y ... }) is
@@ -78,7 +99,7 @@ local function EncodeScalar(v)
 	if t == "boolean" then
 		return "b" .. (v and "1" or "0")
 	elseif t == "number" then
-		return "n" .. tostring(v)
+		return "n" .. NumberText(v)
 	elseif t == "string" then
 		return "s" .. Escape(v)
 	end
@@ -123,10 +144,6 @@ EncodeValue = function(v)
 	return "t" .. table.concat(items, "|")
 end
 
-local function UnescapeKey(s)
-	return Unescape((s:gsub("\\c", ":"):gsub("\\m", ","):gsub("\\o", "{"):gsub("\\k", "}")))
-end
-
 local function DecodeScalar(s)
 	local kind, rest = s:sub(1, 1), s:sub(2)
 	if kind == "b" then
@@ -146,25 +163,27 @@ local function DecodeValue(s)
 	end
 	local tbl = {}
 	for item in rest:gmatch("[^|]+") do
-		local key, body = item:match("^(.-)%{(.*)%}$")
+		-- (a nested table's key holds no raw ':' -- the writer escapes it --, so
+		-- "k:s{x}", a value that only looks like one, stays a value)
+		local key, body = item:match("^([^:]-)%{(.*)%}$")
 		if key then
 			local inner = {}
 			for field in body:gmatch("[^,]+") do
 				local fk, fv = field:match("^(.-):(.*)$")
 				if fk then
-					local decoded = DecodeScalar((fv:gsub("\\m", ","):gsub("\\k", "}")))
+					local decoded = DecodeScalar(fv)
 					if decoded ~= nil then
 						inner[Unescape(fk)] = decoded
 					end
 				end
 			end
-			tbl[UnescapeKey(key)] = inner
+			tbl[Unescape(key)] = inner
 		else
 			local k, v = item:match("^(.-):(.*)$")
 			if k then
-				local decoded = DecodeScalar((v:gsub("\\p", "|")))
+				local decoded = DecodeScalar(v)
 				if decoded ~= nil then
-					tbl[UnescapeKey(k)] = decoded
+					tbl[Unescape(k)] = decoded
 				end
 			end
 		end
@@ -182,8 +201,11 @@ end
 -- per key names its companions: the settings that belong with it and are
 -- kept or replaced with it (started: the lists the player made his own;
 -- nextId: the next indicator's id, so new ids never meet a kept one's).
--- Add an entry when a table setting grows past two levels (the tests scan
--- for one). A declared key is always written as 'T', whatever its depth:
+-- (1.2.4) Every other table the 't' form cannot carry whole -- number keys
+-- (the bag window's seen items came back as text keys), a third level, a
+-- field key holding : , { } -- is written as 'T' too, by its shape (WholeInT,
+-- below): no list to keep. A declared key is always written as 'T', whatever
+-- its depth:
 --   T{entry,entry,...}      entry = key ':' value
 --   key    n<number> | s<escaped>      (number keys come back as numbers)
 --   value  b1 | b0 | n<finite number> | s<escaped> | a nested {...}
@@ -210,11 +232,6 @@ end
 
 local function DeepString(s)
 	return (Escape(s):gsub(":", "\\c"):gsub(",", "\\m"):gsub("{", "\\o"):gsub("}", "\\k"))
-end
-
-local DEEP_UNESCAPE = { s = ";", e = "=", p = "|", n = "\n", c = ":", m = ",", o = "{", k = "}" }
-local function DeepUnescape(s)
-	return (s:gsub("\\(.)", function(c) return DEEP_UNESCAPE[c] or c end))
 end
 
 -- the numbers first, in order, then the strings
@@ -247,12 +264,12 @@ local function EncodeDeepTable(t, depth)
 		elseif kind == "boolean" then
 			enc = v and "b1" or "b0"
 		elseif kind == "number" then
-			enc = Finite(v) and ("n" .. tostring(v)) or nil
+			enc = Finite(v) and ("n" .. NumberText(v)) or nil
 		elseif kind == "string" then
 			enc = "s" .. DeepString(v)
 		end
 		if enc then
-			items[#items + 1] = (type(k) == "number" and ("n" .. tostring(k)) or ("s" .. DeepString(k))) .. ":" .. enc
+			items[#items + 1] = (type(k) == "number" and ("n" .. NumberText(k)) or ("s" .. DeepString(k))) .. ":" .. enc
 		end
 	end
 	return "{" .. table.concat(items, ",") .. "}"
@@ -276,7 +293,7 @@ local function DeepScalar(tok)
 			return n
 		end
 	elseif kind == "s" and not rest:find("[:{=|]") then
-		return DeepUnescape(rest)
+		return Unescape(rest)
 	end
 	return nil
 end
@@ -308,7 +325,7 @@ local function DeepTable(s, i, depth)
 				return nil
 			end
 		elseif ktok:sub(1, 1) == "s" then
-			key = DeepUnescape(ktok:sub(2))
+			key = Unescape(ktok:sub(2))
 		else
 			return nil
 		end
@@ -353,13 +370,45 @@ local function DecodeDeep(value)
 	return t
 end
 
--- (one setting's text: a declared deep key as 'T', the others as before; nil
--- when it is not written)
+-- true when the 't' form carries the table whole: string keys only, each
+-- value a scalar or a table of scalars under string keys that hold none of
+-- : , { } (the 't' form's own marks, which it does not escape in a field's key)
+local function WholeInT(v)
+	for k, inner in pairs(v) do
+		if type(k) ~= "string" then
+			return false
+		end
+		if type(inner) == "table" then
+			for fk, fv in pairs(inner) do
+				if type(fk) ~= "string" or type(fv) == "table" or fk:find("[:,{}]") then
+					return false
+				end
+			end
+		end
+	end
+	return true
+end
+
+-- (one setting's text: a declared deep key as 'T', a table the 't' form
+-- would not carry whole as 'T', the others as before; nil when it is not
+-- written)
 local function EncodeSetting(name, k, v)
 	if IsDeep(name, k) then
 		return type(v) == "table" and EncodeDeep(v) or nil
 	end
+	if type(v) == "table" and not WholeInT(v) then
+		return EncodeDeep(v)
+	end
 	return EncodeValue(v)
+end
+
+-- one setting's value read: 'T' by the deep reader, a declared deep key only
+-- so (its old 't' carried the lists empty), the others as before
+local function DecodeSetting(owner, setting, value)
+	if IsDeep(owner, setting) or value:sub(1, 1) == "T" then
+		return DecodeDeep(value)
+	end
+	return DecodeValue(value)
 end
 
 -- The deep settings a load of `text` must leave as they are, with their
@@ -367,7 +416,9 @@ end
 -- key is held when the text carries it only in a form the reader does not
 -- take (the old 't', which carried the lists empty, or a 'T' that is not
 -- whole). Absent from a profile it is not held: a profile saved with no
--- lists means the starters.
+-- lists means the starters. (1.2.4) Any other table setting the text carries
+-- as a 'T' that is not whole is held too, alone: a load never trades a
+-- setting it cannot read for its default.
 -- Core's ApplySettingsText keeps the held keys and hands the hold to
 -- DeserializeSettings, which skips their entries.
 function MelloUI:HoldDeep(text)
@@ -375,6 +426,15 @@ function MelloUI:HoldDeep(text)
 		return nil
 	end
 	local hold
+	for entry in text:gmatch("[^;]+") do
+		local owner, setting, value = entry:match("^([^!=.][^=.]*)%.([^=]+)=(T.*)$")
+		if owner and not IsDeep(owner, setting) and DecodeDeep(value) == nil then
+			hold = hold or {}
+			local held = hold[owner] or {}
+			hold[owner] = held
+			held[setting] = true
+		end
+	end
 	for moduleName, keys in pairs(DEEP) do
 		for key, companions in pairs(keys) do
 			local prefix = moduleName .. "." .. key .. "="
@@ -508,16 +568,18 @@ function MelloUI:DeserializeSettings(text, into, hold)
 		local key, value = entry:match("^([^=]+)=(.*)$")
 		if key and value then
 			local owner, setting = key:match("^([^.]+)%.(.+)$")
+			local flagName = key:match("^!(.+)$")
 			local decoded
-			if not (owner and hold and hold[owner] and hold[owner][setting]) then   -- (held: the player's own stays)
-				if IsDeep(owner, setting) then
-					decoded = DecodeDeep(value)
-				else
-					decoded = DecodeValue(value)
+			if flagName then
+				-- (a switch is on or off: anything else a string brings is no switch)
+				decoded = DecodeValue(value)
+				if type(decoded) ~= "boolean" then
+					decoded = nil
 				end
+			elseif owner and not (hold and hold[owner] and hold[owner][setting]) then   -- (held: the player's own stays)
+				decoded = DecodeSetting(owner, setting, value)
 			end
 			if decoded ~= nil then
-				local flagName = key:match("^!(.+)$")
 				if flagName then
 					-- An older backup or profile carries the flag of a module
 					-- that UI Modifications drives now: it lands on the
@@ -563,6 +625,53 @@ function MelloUI:DeserializeSettings(text, into, hold)
 		end
 	end
 	return applied
+end
+
+--------------------------------------------------------------------------------
+-- The personal keys of a feature addon turned off (1.2.4). A feature's saved
+-- settings go into every profile while its addon is turned off in the game's
+-- AddOns list (SerializeSettings, above), but its module's `keep` -- the keys
+-- that are its player's own, never in a profile: Route's flight points of
+-- each character, Chat's game settings to give back -- is not there to leave
+-- them out. So each loaded feature's list is remembered in the saved
+-- variables (MelloUIDB.featureKeep[module]), once a session when the world
+-- is entered, and Core's MelloUI:IsPersonalKey reads it for a feature that is
+-- not loaded. Written only when it changed.
+--------------------------------------------------------------------------------
+
+local function SameList(a, b)
+	if type(a) ~= "table" or #a ~= #b then
+		return false
+	end
+	for i = 1, #b do
+		if a[i] ~= b[i] then
+			return false
+		end
+	end
+	return true
+end
+
+local function RememberKeep()
+	local M = MelloUI
+	local db = M.db
+	if type(db) ~= "table" or M.dbIsTemporary or type(M.Features) ~= "table" then
+		return
+	end
+	for name in pairs(M.Features) do
+		local module = M.modules[name]
+		local keep = module and module.keep
+		if type(keep) == "table" then
+			local known = type(db.featureKeep) == "table" and db.featureKeep[name] or nil
+			if not SameList(known, keep) then
+				local copy = {}
+				for i = 1, #keep do
+					copy[i] = keep[i]
+				end
+				db.featureKeep = type(db.featureKeep) == "table" and db.featureKeep or {}
+				db.featureKeep[name] = copy
+			end
+		end
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -746,6 +855,7 @@ Perf.SetScript(frame, "OnEvent", function(self, event)
 		if not settled then
 			MelloUI:SettingsSettled()
 		end
+		RememberKeep()
 	elseif event == "PLAYER_REGEN_ENABLED" then
 		self:UnregisterEvent("PLAYER_REGEN_ENABLED")
 	end

@@ -19,6 +19,13 @@
 -- it. A setting another mirrors (the cast bar's Lock to Player Frame and the
 -- player frame's Cast Bar Underneath) is written on both; the chat window's
 -- width and height go in as the game keeps them (hundreds, tens and ones).
+-- An action bar's Bar Visible offers the Fader's On Mouseover too (the game
+-- has none; the Fader's "show_barN" its one store, set at once). A system
+-- the game switches with a setting of its own (Edit Mode's gated "Show"
+-- boxes: the cooldown viewer, the damage meter, the loot window ...; the
+-- bridge's Gate) gets that switch on top: the game's CVar, set at once as
+-- Edit Mode's shift-click sets it; off and locked while a MelloUI part holds
+-- it (MelloUI:CVarHeldBy), with that part's page.
 --
 --   ES = MelloUI.EditLayout.Settings
 --     ES.For(entry) -> system, index | nil   an Edit Mode system's entry
@@ -33,6 +40,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("EditLayoutSettings")
+local C_Timer = Perf.C_Timer
 local Safe = MelloUI.Safe
 local Secret = Safe.IsSecret
 local Num = Safe.Number
@@ -49,6 +58,10 @@ local TEXT = {
 	heading = "Edit Mode settings",
 	note = "Sizes and opacity show at once; the others after a /reload. Saved with Save.",
 	none = "This element has no settings in Edit Mode.",
+	-- (1.2.4, el-03) a game feature's own switch (its setting, as Edit Mode's shift-click turns it on)
+	gateTip = "Turns the game's %s on or off now, as the game's own setting does. Discard does not undo it.",
+	held = "MelloUI's %s stands in for it.",
+	heldLink = "%s >",
 }
 ES.TEXT = TEXT
 
@@ -338,6 +351,59 @@ local rows, used = {}, 0
 local heading, note
 local cur = { system = nil, index = nil, frame = nil }
 
+-- (1.2.4; the user, 2026-10-28: "Action Bars are missing the Bar Visibility option "Mouseover"") the game has no
+-- such choice; the Fader has (Modules/Fader.lua: its "show_barN", the one store -- no second fade, no key of ours).
+-- An action bar's Bar Visible offers it where the Fader offers it for that bar (Edit Mode's bar N the Fader's
+-- "barN"), in the Fader's own words: shown while the Fader's bar is on it; picked, the game's value goes to Always
+-- (the bar must be there to fade: held with the session's others, at Save) and the Fader's bar on it at once;
+-- another pick puts a bar that was on it back to Always.
+local MOUSEOVER = "mouseover"   -- (the Fader's value)
+
+-- the Fader's key for a setting's row and the choice's label, nil for every other setting
+local function FadeKey(system, index, info)
+	local S, A = Enum and Enum.EditModeSystem, Enum and Enum.EditModeActionBarSetting
+	if not (S and A and system == S.ActionBar and info.setting == A.VisibleSetting and type(index) == "number") then
+		return nil
+	end
+	local F = MelloUI:GetModule("Fader")
+	local name = "show_bar" .. index
+	for _, o in ipairs(F and F.options or {}) do
+		if o.key == name then
+			for _, v in ipairs(type(o.values) == "table" and o.values or {}) do
+				if v.value == MOUSEOVER then
+					return "bar" .. index, v.label
+				end
+			end
+		end
+	end
+	return nil
+end
+
+local function FadeValue(key)
+	local db = MelloUI:GetModuleDB("Fader")
+	return db and db["show_" .. key]
+end
+
+-- a pick on a row the Fader shares
+local function SetFade(row, v)
+	local name, was = "show_" .. row.fade, FadeValue(row.fade)
+	if v ~= MOUSEOVER then
+		SetDisplay(cur.system, cur.index, row.info, v)
+		if was == MOUSEOVER then
+			MelloUI:NotifySettingChanged("Fader", name, "always")
+		end
+		return
+	end
+	local always = Enum.ActionBarVisibleSetting and Enum.ActionBarVisibleSetting.Always
+	local raw = Raw(cur.system, cur.index)
+	if always and raw and raw[row.info.setting] ~= always then
+		SetDisplay(cur.system, cur.index, row.info, always)
+	end
+	if was ~= MOUSEOVER then
+		MelloUI:NotifySettingChanged("Fader", name, MOUSEOVER)
+	end
+end
+
 local function Changed(row)
 	E:Refresh()
 	if row.kind ~= "check" then
@@ -350,6 +416,9 @@ local function Changed(row)
 end
 
 local function RowGet(row)
+	if row.fade and FadeValue(row.fade) == MOUSEOVER then
+		return MOUSEOVER
+	end
 	local raw = Raw(cur.system, cur.index)
 	local v = raw and DisplayOf(row.info, raw)
 	if row.kind == "check" then
@@ -362,8 +431,12 @@ local function RowSet(row, v)
 	if row.kind == "check" then
 		v = v and 1 or 0
 	end
-	SetDisplay(cur.system, cur.index, row.info, v)
-	Preview(cur.frame, cur.system, cur.index, row.info, v)
+	if row.fade then
+		SetFade(row, v)
+	else
+		SetDisplay(cur.system, cur.index, row.info, v)
+		Preview(cur.frame, cur.system, cur.index, row.info, v)
+	end
 	Changed(row)
 end
 
@@ -398,6 +471,21 @@ local function ChoicesOf(info)
 			end
 		end
 		choices[info] = c
+	end
+	return c
+end
+
+-- the game's choices and the Fader's On Mouseover after them (one list: the setting is the same on every bar)
+local fadeChoices = setmetatable({}, { __mode = "k" })
+local function FadeChoicesOf(info, label)
+	local c = fadeChoices[info]
+	if not c then
+		c = {}
+		for i, o in ipairs(ChoicesOf(info)) do
+			c[i] = o
+		end
+		c[#c + 1] = { value = MOUSEOVER, label = label }
+		fadeChoices[info] = c
 	end
 	return c
 end
@@ -445,6 +533,136 @@ local function TakeRow(box)
 	return row
 end
 
+--------------------------------------------------------------------------------
+-- (1.2.4, el-03) A game feature's own switch: one row, made at its first need
+--------------------------------------------------------------------------------
+
+local gate = { row = nil, spec = nil, owner = nil }
+
+local function GateGet()
+	local spec, api = gate.spec, _G.C_CVar
+	if not (spec and api and api.GetCVarBool) then
+		return false
+	end
+	local ok, on = pcall(api.GetCVarBool, spec.cvar)
+	on = ok and not Secret(on) and on and true or false
+	return on ~= spec.inverted
+end
+
+local function GateSync()
+	local P = E.Movers
+	if P and P.SyncSoon then
+		P.SyncSoon()   -- (the feature shown or gone: the plates again)
+	end
+end
+
+local function GateSet(on)
+	local spec, api = gate.spec, _G.C_CVar
+	if spec and api and api.SetCVar and not gate.owner and not InCombatLockdown() then
+		pcall(api.SetCVar, spec.cvar, ((on and true or false) ~= spec.inverted) and "1" or "0")
+		GateSync()
+		C_Timer.After(0.5, GateSync)   -- (the game shows a feature a moment after its setting: one look more)
+	end
+	if gate.row then
+		gate.row.switch:Refresh()
+	end
+end
+
+local GateEnter = Perf.Shared("OnEnter on Edit Layout's feature switch", function(self)
+	local label = gate.spec and (gate.spec.label or gate.spec.cvar) or ""
+	E:Tooltip(self, label, TEXT.gateTip:format(label))
+end, "script")
+local GateLeave = Perf.Shared("OnLeave on Edit Layout's feature switch", function(self)
+	E:TooltipHide(self)
+end, "script")
+local HeldClick = Perf.Shared("OnClick on Edit Layout's feature switch's page link", function()
+	local owner = gate.owner
+	E:CloseBox()
+	if owner then
+		MelloUI:OpenConfig(owner)
+	end
+end, "script")
+local HeldEnter = Perf.Shared("OnEnter on Edit Layout's feature switch's page link", function(self)
+	self.underline:Show()
+end, "script")
+local HeldLeave = Perf.Shared("OnLeave on Edit Layout's feature switch's page link", function(self)
+	self.underline:Hide()
+end, "script")
+
+local function GateRow(box)
+	local row = gate.row
+	if row then
+		return row
+	end
+	row = CreateFrame("Frame", nil, box)
+	row:SetHeight(ROW_H)
+	row.label = W.Text(row, "GameFontHighlight", nil, "text")
+	row.label:SetJustifyH("LEFT")
+	row.label:SetWordWrap(true)
+	row.label:SetWidth(LABEL_W)
+	row.label:SetPoint("LEFT", row, "LEFT", 12, 0)
+	row.switch = W.Switch(row, GateGet, GateSet)
+	row.switch:SetPoint("LEFT", row, "LEFT", 12 + LABEL_W + GAP, 0)
+	Perf.HookScript(row.switch, "OnEnter", GateEnter)
+	Perf.HookScript(row.switch, "OnLeave", GateLeave)
+	row.held = W.Text(box, "GameFontHighlight", nil, "text")
+	row.held:SetJustifyH("LEFT")
+	row.held:SetWordWrap(true)
+	local link = CreateFrame("Button", nil, box)
+	link:SetSize(100, 20)
+	link.text = W.Text(link, "GameFontHighlight", nil, "selectedTrim")
+	link.text:SetPoint("LEFT", link, "LEFT", 0, 0)
+	link.underline = W.Solid(link, "ARTWORK", "selectedTrim", 1)
+	link.underline:SetHeight(1)
+	link.underline:SetPoint("TOPLEFT", link.text, "BOTTOMLEFT", 0, -1)
+	link.underline:SetPoint("TOPRIGHT", link.text, "BOTTOMRIGHT", 0, -1)
+	link.underline:Hide()
+	Perf.SetScript(link, "OnClick", HeldClick)
+	Perf.SetScript(link, "OnEnter", HeldEnter)
+	Perf.SetScript(link, "OnLeave", HeldLeave)
+	row.link = link
+	gate.row = row
+	return row
+end
+
+-- the switch laid into the box from y; y after it
+local function LayGate(box, spec, y, width)
+	local row = GateRow(box)
+	gate.spec = spec
+	local owner = MelloUI.CVarHeldBy and MelloUI:CVarHeldBy(spec.cvar) or nil
+	gate.owner = owner
+	row.label:SetText(spec.label or spec.cvar)
+	row.switch:Refresh()
+	row.switch:SetEnabled(owner == nil)
+	row:SetWidth(width)
+	row:ClearAllPoints()
+	row:SetPoint("TOPLEFT", box, "TOPLEFT", 0, -y)
+	row:Show()
+	local h = math.max(ROW_H, math.ceil(Num(row.label:GetStringHeight()) or 14) + 8)
+	row:SetHeight(h)
+	y = y + h
+	if not owner then
+		row.held:Hide()
+		row.link:Hide()
+		return y + 2
+	end
+	local module = MelloUI:GetModule(owner)
+	local title = module and module.title or owner
+	row.held:SetText(TEXT.held:format(title))
+	row.held:SetWidth(width - 24)
+	row.held:ClearAllPoints()
+	row.held:SetPoint("TOPLEFT", box, "TOPLEFT", 12, -y)
+	row.held:Show()
+	y = y + math.ceil(Num(row.held:GetStringHeight()) or 14) + 2
+	local link = row.link
+	link.text:SetText(TEXT.heldLink:format(title))
+	link:SetWidth(math.ceil(Num(link.text:GetStringWidth()) or 80) + 4)
+	link:ClearAllPoints()
+	link:SetPoint("TOPLEFT", box, "TOPLEFT", 12, -y)
+	link:Show()
+	return y + 24
+end
+
 function ES.Hide()
 	for i = 1, #rows do
 		rows[i]:Hide()
@@ -454,6 +672,13 @@ function ES.Hide()
 		heading:Hide()
 		note:Hide()
 	end
+	local row = gate.row
+	if row then
+		row:Hide()
+		row.held:Hide()
+		row.link:Hide()
+	end
+	gate.spec, gate.owner = nil, nil
 end
 
 -- the box's Edit Mode part from y (UI units from its top); y after it
@@ -462,7 +687,9 @@ function ES.Lay(box, entry, y, width)
 	local system, index = ES.For(entry)
 	local infos = system and Infos(system)
 	local raw = infos and Raw(system, index)
-	if not raw then
+	local Bridge = E.Bridge
+	local spec = system and Bridge and Bridge.Gate and Bridge.Gate(system, index) or nil
+	if not (raw or spec) then
 		return y
 	end
 	cur.system, cur.index, cur.frame = system, index, entry.frame
@@ -482,14 +709,21 @@ function ES.Lay(box, entry, y, width)
 	note:SetPoint("TOPLEFT", box, "TOPLEFT", 12, -y)
 	note:Show()
 	y = y + math.ceil(Num(note:GetStringHeight()) or 14) + 4
+	if spec then
+		y = LayGate(box, spec, y, width)
+	end
 	local controlW = width - 12 - LABEL_W - GAP - 12
 	local any = false
-	for _, info in ipairs(infos) do
+	for _, info in ipairs(raw and infos or {}) do
 		local kind = type(info) == "table" and KindOf(info)
 		if kind and Has(entry.frame, info, raw) then
 			any = true
 			local row = TakeRow(box)
-			row.info, row.kind = info, kind
+			local fade, fadeLabel
+			if kind == "dropdown" then
+				fade, fadeLabel = FadeKey(system, index, info)
+			end
+			row.info, row.kind, row.fade = info, kind, fade
 			row.label:SetText(tostring(info.name or "?"))
 			for _, k in ipairs({ "dropdown", "slider", "check" }) do
 				if row[k] then
@@ -498,7 +732,7 @@ function ES.Lay(box, entry, y, width)
 			end
 			local c = Control(row, kind, controlW)
 			if kind == "dropdown" then
-				c:SetValues(ChoicesOf(info))
+				c:SetValues(fade and FadeChoicesOf(info, fadeLabel) or ChoicesOf(info))
 			elseif kind == "slider" then
 				c:SetRange(Num(info.minValue) or 0, Num(info.maxValue) or 1, Num(info.stepSize) or 1, false, FormatOf(info))
 			end

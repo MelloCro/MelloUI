@@ -27,7 +27,18 @@ Checks (the installer build's spec, sections 1.1 and 1.4):
     key in its module's defaults or the declared nil-default list, every flag
     a registered module that is not driven by UI Modifications;
   - the snapshot record (in a temporary build data folder): a snapshot in
-    the build data is recorded as it is, a live saved file is copied in first.
+    the build data is recorded as it is, a live saved file is copied in first;
+  - a share string as the source (1.2.4, --string): one as the game makes it
+    decodes to its text (raw Deflate or zlib, spaces a copy gained taken out);
+    another tag, one cut short, not Base64, one too long, one that is no
+    settings text and one that unpacks to far more than a profile are refused;
+    a module the string has nothing for (a feature addon its client lacks) is
+    named, and --fill-missing carries the shipped Full's own entries for it;
+    the shipped Full's own string bakes back to the same text, every entry
+    shipped as it is; a --write (into copies: the file, the record, the build
+    data) writes that entry, keeps the string's snapshot with the string and
+    its text in the build data and records it, and --check's bake of the
+    recorded snapshot gives the entry again.
 """
 import hashlib
 import os
@@ -96,6 +107,9 @@ NIL_DEFAULTS = {"QuestTracker.pos", "UIModifications.qol_Auras", "UIModification
 # own kinds' count, the chat's Background pick, Group Frames' Hide The Game's Frames -- keys with no default)
 NIL_DEFAULTS |= {"Auras.qolFolded", "BarText.qolFolded", "ClassIcons.qolFolded", "CooldownText.qolFolded",
                  "BagWindow.kindOrder", "BagWindow.ownN", "Chat.background", "GroupFrames.hideBlizzard"}
+# (1.2.4: Edit Layout's own choices -- the elements hidden and locked, the grid, the dim, the coordinates -- one table
+# with no default, Core/EditLayoutPicker.lua)
+NIL_DEFAULTS |= {"UIModifications.editLayout"}
 ANCHORS = {"TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT"}
 
 
@@ -260,6 +274,17 @@ def main():
         end
         return t end''')
     personal_before = B.py(lua2, personal_of())
+    if not any(k.startswith("Route.flights_") for k in personal_before):
+        # (1.2.4: a snapshot made from a share string holds none of a player's own data -- a string never carries
+        # it; the login's one-time steps write the rest -- so a player's own are laid in first: a character's flight
+        # points, a borrowed game setting, a one-time step)
+        lua2.execute('''
+            local M = MelloUI
+            if M.modules.Route then M:GetModuleDB("Route")["flights_Player-1234-0ABCDEF0"] = "1,2,3" end
+            if M.modules.Chat then M:GetModuleDB("Chat").savedWhisperMode = "inline" end
+            M:GetModuleDB("UIModifications").layoutApplied = true
+        ''')
+        personal_before = B.py(lua2, personal_of())
     M2.ApplySettingsText(M2, text)
     M2.SaveProfile(M2, "Over")
     over = strip_extra(lua2.eval("MelloUI.db.profiles.Over"), report["notLoadedDropped"])
@@ -442,9 +467,97 @@ def main():
                 os.environ["MELLOUI_BUILD_DATA"] = env
     check(os.path.normcase(F.recorded_snapshot()) == os.path.normcase(F.SNAP), "the repository's record is untouched")
 
+    print("== a profile share string as the source (1.2.4: --string / --clipboard)")
+    string_checks(full)
+
     print()
     print("%d checks failed" % len(fails) if fails else "all checks pass")
     sys.exit(1 if fails else 0)
+
+
+def share(text, header=False):
+    """a share string as the game makes one: Deflate (raw; `header`: with zlib's), then Base64, behind the tag"""
+    import base64
+    import zlib
+    if header:
+        packed = zlib.compress(text.encode("utf-8"))
+    else:
+        c = zlib.compressobj(9, zlib.DEFLATED, -15)
+        packed = c.compress(text.encode("utf-8")) + c.flush()
+    return F.SHARE_TAG + base64.b64encode(packed).decode("ascii")
+
+
+def refused(s):
+    try:
+        F.decode_share(s)
+    except SystemExit:
+        return True
+    return False
+
+
+def string_checks(full):
+    s = share(full)
+    check(F.decode_share(s) == full, "a string as the game makes one decodes to its text (raw Deflate, Base64)")
+    check(F.decode_share(share(full, header=True)) == full, "one with a zlib header too")
+    check(F.decode_share(s[:40] + "\n  " + s[40:] + "\n") == full, "spaces and line breaks a copy gained are taken out")
+    for label, bad in (("another tag", "!WA:2!" + s[len(F.SHARE_TAG):]), ("cut short", s[:len(s) // 2]),
+                       ("not Base64", F.SHARE_TAG + "%%%%"), ("too long", F.SHARE_TAG + "A" * (F.SHARE_LETTERS + 4)),
+                       ("no settings text", share("hello world")), ("unpacks to far more than a profile",
+                                                                      share("x" * (F.SHARE_TEXT + 10)))):
+        check(refused(bad), "refused: %s" % label)
+    lost = ";".join(e for e in full.split(";") if not e.startswith(("Route.", "!Route=")))
+    miss = F.missing_modules(lost, full)
+    check(list(miss) == ["Route"] and len(miss["Route"]) == len([e for e in full.split(";") if e.startswith("Route.")
+                                                                 or e.startswith("!Route=")]),
+          "a module the string has nothing for is named with the shipped Full's entries for it: %s" % list(miss))
+
+    print("   (the shipped Full's own string through --string --write, into copies)")
+    record, env, out, profiles, argv = F.SNAPSHOT_RECORD, os.environ.get("MELLOUI_BUILD_DATA"), F.OUT, F.PROFILES, sys.argv
+    with tempfile.TemporaryDirectory(prefix="bake_string_test_") as tmp:
+        data = os.path.join(tmp, "BuildData")
+        os.makedirs(data)
+        path = os.path.join(tmp, "string.txt")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(s + "\n")
+        copy = os.path.join(tmp, "Profiles.lua")
+        shutil.copyfile(F.PROFILES, copy)
+        os.environ["MELLOUI_BUILD_DATA"] = data
+        F.SNAPSHOT_RECORD, F.OUT, F.PROFILES = os.path.join(tmp, "full_snapshot.txt"), os.path.join(tmp, "out"), copy
+        sys.argv = ["bake_full.py", "--string", path, "--write", "--tries", "1"]
+        try:
+            try:
+                F.main()
+                ran = True
+            except SystemExit as e:
+                ran = e.code in (None, 0)
+                print("   (main stopped: %s)" % e)
+            check(ran, "--string --write runs to its end")
+            report = __import__("json").load(open(os.path.join(F.OUT, "bake_report.json"), encoding="utf-8"))
+            acc = report.get("stringAccount") or {}
+            check(report.get("text") == full, "the shipped Full's own string bakes back to the same text")
+            check(not acc.get("unexplained") and not acc.get("dropped") and not acc.get("added")
+                  and len(acc.get("same", [])) == len([e for e in full.split(";") if e]),
+                  "every entry of the string shipped as it is (%d)" % len(acc.get("same", [])))
+            src = open(copy, encoding="utf-8").read()
+            check(F.shipped_text(src) == full, "the --write wrote that entry")
+            rel = open(F.SNAPSHOT_RECORD, encoding="utf-8").read().strip()
+            snap = os.path.join(data, *rel.split("/"))
+            folder = os.path.dirname(snap)
+            check(rel.startswith("installer/full_string_") and os.path.isfile(snap)
+                  and open(os.path.join(folder, F.STRING_FILE), encoding="utf-8").read().strip() == s
+                  and open(os.path.join(folder, F.TEXT_FILE), encoding="utf-8").read().strip() == full,
+                  "the string's snapshot, the string and its text kept in the build data and recorded (%s)" % rel)
+            again, _, _ = F.bake(snap, 1, 1, log=lambda *a: None)
+            check(again == full, "--check's bake of the recorded snapshot gives the entry again")
+        finally:
+            F.SNAPSHOT_RECORD, F.OUT, F.PROFILES, sys.argv = record, out, profiles, argv
+            if env is None:
+                os.environ.pop("MELLOUI_BUILD_DATA", None)
+            else:
+                os.environ["MELLOUI_BUILD_DATA"] = env
+    check(F.shipped_text(open(F.PROFILES, encoding="utf-8").read()) == full and
+          os.path.normcase(F.recorded_snapshot()) == os.path.normcase(F.SNAP),
+          "the repository's Media/Profiles.lua and record are untouched")
 
 
 if __name__ == "__main__":

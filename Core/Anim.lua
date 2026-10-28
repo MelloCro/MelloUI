@@ -62,9 +62,12 @@
 --       :StopTimer(bar[, full])   a StatusBar counting seconds away, run by
 --       the engine with its seconds' text (0.17.1, the swing timers; below)
 --   MelloUI.Anim:Busy() -> tweens, glides     what runs (tests, /melloperf)
---   MelloUI.Anim:Group(region[, looping]) -> group   (1.2.4, the configurator's motion) a new AnimationGroup on
---       region ("REPEAT" / "BOUNCE": looping), its animations the caller's; played through PlayGroup, stopped
---       through StopGroup -- the one place a group of MelloUI's own is made
+--   MelloUI.Anim:Group(region[, looping[, template]]) -> group   (1.2.4, the configurator's motion) a new
+--       AnimationGroup on region ("REPEAT" / "BOUNCE": looping), its animations the caller's; played through
+--       PlayGroup, stopped through StopGroup -- the one place a group of MelloUI's own is made. template: a virtual
+--       group of an XML file, for a kind of animation the client makes only from XML (TextureCoordTranslation: Lua's
+--       CreateAnimation hands a plain Animation for it). A template the client lacks (one not restarted since its
+--       file came) gives the plain group: the caller finds none of its parts
 --   MelloUI.Anim:PlayGroup(group, settle)
 --       plays an AnimationGroup (one already playing goes on: Stop it first
 --       to restart it) and returns true. Under Reduce Motion it is not
@@ -809,8 +812,13 @@ local function Settle(group, settle)
 	end
 end
 
-function Anim:Group(region, looping)
-	local group = region:CreateAnimationGroup()
+function Anim:Group(region, looping, template)
+	local group
+	if template then
+		local ok, made = pcall(region.CreateAnimationGroup, region, nil, template)
+		group = ok and made or nil
+	end
+	group = group or region:CreateAnimationGroup()
 	if looping then
 		group:SetLooping(looping)
 	end

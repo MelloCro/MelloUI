@@ -13,21 +13,36 @@
 -- own samples where it has them), then puts its own state back at the stop.
 --
 --   local Preview = MelloUI.Preview
---   Preview:Start(mode[, part]) -> true | false[, why]   mode "solo" or
---       "party"; part: one part alone (Preview.PARTS), nil: all of them. A
---       scene playing is stopped first ("restart"). Not in a fight
+--   Preview:Start(scene[, part]) -> true | false[, why]   scene "solo",
+--       "party" or "raid" (1.2.4, the user: "We need 3 Options in the Preview
+--       drop down, Solo Fight, Party Fight and Raid Fight and the Party/Raid
+--       Frames only showing in those circumstances"); part: one part alone (a
+--       module's own button: the fake raid, the fake party), nil: the whole
+--       scene. A scene playing is stopped first ("restart"). Not in a fight
 --       ("combat"), not while Edit Layout shows ("editlayout"). The
 --       configurator steps aside while it plays (the Fader shows everything
 --       while it is open) and comes back after.
 --   Preview:Stop([reason])  the scene ends now: "user" (the default),
 --       "combat", "editlayout", "done", "restart"
---   Preview:On() -> the mode playing, or nil; Preview:Part() -> its part or nil
---   Preview:Plays(part) -> true while a scene plays that part (all of them,
---       or that one alone): a module asks before it shows anything
+--   Preview:On() -> the bus's mode playing ("solo", or "party" for the party
+--       and the raid scenes: a group's meter, widgets and reminders), or nil
+--   Preview:Scene() -> the scene playing, or nil; Preview:Part() -> its part or nil
+--   Preview:Plays(part) -> true while a scene plays that part: a module asks
+--       before it shows anything. A whole scene plays every part but the
+--       group frames: the party ("party": the game's normal party frames'
+--       stand-ins, or "groupparty": the party in raid frames, whichever look
+--       your party wears) in the Party Fight only, the raid ("raid") in the
+--       Raid Fight only. A part alone: that one only
 --   Preview:Fighting() -> true between the pull and the kill
 --   Preview:ToggleMenu(anchor[, skin])   the Preview list under a button (the
---       configurator's top bar): the two whole scenes, then each part alone
+--       configurator's top bar): the three scenes
 --   Preview.PARTY  the made-up group (the stand-ins, the meter, the widgets)
+--   Preview.PartyHost  set by the addon that holds your party frames
+--       (MelloUI_GroupFrames), asked at a party scene's start: Look() ->
+--       "groupparty" or "party" (the look your party wears), Top() -> your own
+--       frame the stand-ins stand under while it shows (or nil), Gap() -> the
+--       room between two members (or nil: the game's). Without it: the game's
+--       normal party frames where the game shows them
 -- Bus 'preview' (beat, mode, n):
 --   "start"  the scene begins: sample rows and reminders up, the stand-ins
 --   "pull"   a pretend fight starts: what reacts to combat reacts
@@ -71,52 +86,29 @@ Preview.TEXT = {
 	inCombat = "The preview plays out of combat only.",
 	editing = "Close Edit Layout first: the preview plays without it.",
 	off = "%s is switched off.",
-	alone = "One at a time",
-	usage = "/mello preview solo | party | %s | stop",
+	usage = "/mello preview solo | party | raid | stop",
 }
 local TEXT = Preview.TEXT
 
--- The list: the two whole scenes, then each part alone (its scene's mode:
--- party where it has something to show in a group). module: the module it
--- needs on (the row dimmed while it is off)
+-- The list: the three scenes (1.2.4: the parts alone are gone from it). mode:
+-- the bus's (the raid's a group's too: the meter's race, the widgets' healer,
+-- the group reminders); module: the module it needs on (the row dimmed while
+-- it is off: the Raid Fight's raid frames are Group Frames')
 Preview.ITEMS = {
 	{ key = "solo", mode = "solo", name = "Solo Fight",
 		desc = "Everything while you fight alone." },
 	{ key = "party", mode = "party", name = "Party Fight",
 		desc = "Everything in a group, with stand-in party frames." },
-	{ key = "fader", part = "fader", mode = "solo", name = "Fader", module = "Fader",
-		desc = "What you set to fade: away at rest, back in a fight." },
-	{ key = "reminders", part = "reminders", mode = "party", name = "Reminders", module = "Widgets",
-		desc = "The round reminders by your portrait." },
-	{ key = "widgets", part = "widgets", mode = "party", name = "Widget Column", module = "Widgets",
-		desc = "Quest items, a healer drinking, a loot roll." },
-	{ key = "partyframes", part = "party", mode = "party", name = "Party Frames",
-		desc = "Stand-ins where your party frames sit, hurt and healed." },
-	-- (0.19.0; the user, 2026-10-04: "how can i simulate and see how it works ingame?")
-	{ key = "healer", part = "healer", mode = "party", name = "Healer Frames", module = "HealerFrames",
-		desc = "Heals coming in and debuffs to remove: on the stand-in party and your own frame." },
-	-- (0.20.0) the Group Frames's fake raid (MelloUI_GroupFrames): its own samples
-	{ key = "raidframes", part = "raid", mode = "party", name = "Raid Frames", module = "GroupFrames",
-		desc = "A made-up raid where your raid frames stand, with your indicators on it." },
-	-- (one look, F-v3's needs_user 7, the user's yes: the Group Frames party's own made-up party -- this part played
-	-- alone only; the whole Party Fight keeps its stand-ins)
-	{ key = "groupparty", part = "groupparty", mode = "party", name = "Group Frames Party", module = "GroupFrames",
-		desc = "A made-up party where your Group Frames party stands, with its own indicators on it." },
-	{ key = "meter", part = "meter", mode = "party", name = "Damage Meter", module = "Meter",
-		desc = "Your numbers, the group's race bar, the summary." },
-	{ key = "combattext", part = "combattext", mode = "solo", name = "Combat Text", module = "CombatText",
-		desc = "The text over you, and your damage at your target." },
-	{ key = "gains", part = "gains", mode = "solo", name = "Gains", module = "Gains",
-		desc = "What a kill brings: experience, loot and money." },
-	-- (0.21.0) the Personal Display's made-up shield and casts (MelloUI_PersonalDisplay)
-	{ key = "personal", part = "personal", mode = "solo", name = "Personal Display", module = "PersonalDisplay",
-		desc = "A shield going up on you, hit until it is low and breaks, and your casts." },
+	{ key = "raid", mode = "party", name = "Raid Fight", module = "GroupFrames",
+		desc = "Everything in a raid, with stand-in raid frames." },
 }
 local ITEMS = Preview.ITEMS
 local BY_KEY = {}
 for _, item in ipairs(ITEMS) do
 	BY_KEY[item.key] = item
 end
+-- the group frames a whole scene shows, each in its own scene only (Plays)
+local FRAMES_OF = { party = "party", groupparty = "party", raid = "raid" }
 
 -- the made-up group, one list for every part that shows it (the stand-ins,
 -- the meter, the widgets): the meter's own sample members (/mello meter test)
@@ -142,19 +134,44 @@ Beat(T.DONE, "stop", "done")
 
 local PHASE = { start = "rest", pull = "fight", kill = "after" }
 
-local S = { mode = nil, part = nil, t0 = 0, idx = 0, fighting = false, configBack = false, heard = false }
+local S = { mode = nil, scene = nil, part = nil, t0 = 0, idx = 0, fighting = false, configBack = false, heard = false }
 local driver, strip, menu   -- made when first needed
 
 function Preview:On()
 	return S.mode
 end
 
+function Preview:Scene()
+	return S.mode and S.scene
+end
+
 function Preview:Part()
 	return S.part
 end
 
+-- the look your party wears (the host's: Group Frames' raid frames, "groupparty"), else the game's normal party
+-- frames ("party")
+local function PartyLook()
+	local host = Preview.PartyHost
+	local ok, look = false, nil
+	if host and host.Look then
+		ok, look = pcall(host.Look)
+	end
+	return (ok and look == "groupparty") and "groupparty" or "party"
+end
+
 function Preview:Plays(part)
-	return S.mode ~= nil and (S.part == nil or S.part == part)
+	if S.mode == nil then
+		return false
+	end
+	if S.part ~= nil then
+		return S.part == part
+	end
+	local scene = FRAMES_OF[part]
+	if scene == nil then
+		return true
+	end
+	return scene == S.scene and (part == "raid" or part == PartyLook())
 end
 
 function Preview:Fighting()
@@ -194,9 +211,46 @@ local STAND_GAP = 10                     -- the game's gap between two members (
 -- without a group -- stay on that top-left, one on the other (the user's
 -- test, 2026-10-01: the four stand-ins drawn on one spot, their names on
 -- each other). So: the first member's top-left (or the party frame's) at its
--- scale, then each one its height and the game's spacing lower.
+-- scale, then each one its height and the game's spacing lower -- under your
+-- own frame while it shows in the first member's place (the host's Top: Group
+-- Frames' you as a party frame, the members stacked under it as in a party).
+
+-- the host's answer (Preview.PartyHost), nil without one
+local function Host(key)
+	local host = Preview.PartyHost
+	local fn = host and host[key]
+	if type(fn) ~= "function" then
+		return nil
+	end
+	local ok, v = pcall(fn)
+	return ok and v or nil
+end
+
+-- the gap between two members: the host's (the party's spacing it holds), else the game's own (read, never written)
+local function StandGap()
+	local gap = Host("Gap")
+	if type(gap) == "number" and gap >= 0 then
+		return gap
+	end
+	local pf = rawget(_G, "PartyFrame")
+	gap = type(pf) == "table" and pf.spacing
+	if type(gap) == "number" and not Secret(gap) and gap >= 0 then
+		return gap
+	end
+	return STAND_GAP
+end
+
 local function StandOrigin(w)
 	local us = UIParent:GetEffectiveScale()
+	-- (your own frame in the first member's place: the members under it, at its side and scale -- the same replica)
+	local top = Host("Top")
+	if type(top) == "table" then
+		local tl, tb, tr = ScreenRect(top)
+		if tl and tr > tl then
+			local k = (tr - tl) / us / w
+			return tl / us, tb / us - StandGap() * k, k
+		end
+	end
 	local pf = rawget(_G, "PartyFrame")
 	local mf = type(pf) == "table" and pf.MemberFrame1
 	local l, _, r, t = nil, nil, nil, nil
@@ -214,16 +268,6 @@ local function StandOrigin(w)
 		return pl / us, pt / us, k
 	end
 	return 20, UIParent:GetHeight() * 0.72, k
-end
-
--- the game's own gap between two members (read, never written)
-local function StandGap()
-	local pf = rawget(_G, "PartyFrame")
-	local gap = type(pf) == "table" and pf.spacing
-	if type(gap) == "number" and not Secret(gap) and gap >= 0 then
-		return gap
-	end
-	return STAND_GAP
 end
 
 local function PlaceStand(f, i, x, y, k)
@@ -306,8 +350,9 @@ end
 -- its party numbers on them)
 local function Stand(b)
 	if b.beat == "start" then
-		-- (the healer part shows its heals and glows on them too)
-		if S.mode == "party" and (Preview:Plays("party") or Preview:Plays("healer")) then
+		-- (the Party Fight while your party wears the normal party frames, or that part alone: Healer Frames' heals
+		-- and glows go on them)
+		if S.mode == "party" and Preview:Plays("party") then
 			StandShow()
 		end
 	elseif not stand.on then
@@ -384,18 +429,9 @@ local function Make()
 	strip:Hide()
 end
 
--- the item a mode and a part play (the strip's name)
-local function ItemOf(mode, part)
-	for _, item in ipairs(ITEMS) do
-		if item.part == part and (part ~= nil or item.mode == mode) then
-			return item
-		end
-	end
-	return nil
-end
-
-function Preview:Start(mode, part)
-	if mode ~= "solo" and mode ~= "party" then
+function Preview:Start(scene, part)
+	local item = BY_KEY[scene]
+	if not item then
 		return false, "mode"
 	end
 	if MelloUI.InCombat() then
@@ -423,9 +459,8 @@ function Preview:Start(mode, part)
 	if S.configBack then
 		cfg:Hide()
 	end
-	S.mode, S.part, S.t0, S.idx, S.fighting = mode, part, GetTime(), 0, false
-	local item = ItemOf(mode, part)
-	strip.title:SetText(TEXT.title:format(item and item.name or mode))
+	S.mode, S.scene, S.part, S.t0, S.idx, S.fighting = item.mode, scene, part, GetTime(), 0, false
+	strip.title:SetText(TEXT.title:format(item.name))
 	Phase("rest")
 	strip:Show()
 	driver:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -440,7 +475,7 @@ function Preview:Stop(reason)
 		return
 	end
 	reason = reason or "user"
-	S.mode, S.part, S.fighting = nil, nil, false
+	S.mode, S.scene, S.part, S.fighting = nil, nil, nil, false
 	Perf.SetScript(driver, "OnUpdate", nil)
 	driver:UnregisterEvent("PLAYER_REGEN_DISABLED")
 	strip:Hide()
@@ -466,18 +501,18 @@ local function Play(item)
 		MelloUI:Announce(TEXT.off:format((m and m.title) or (f and f.title) or name), "info")
 		return false
 	end
-	return Preview:Start(item.mode, item.part)
+	return Preview:Start(item.key)
 end
 Preview.Play = Play
 
 --------------------------------------------------------------------------------
 -- The list (the configurator's Preview button): a small list in the widget
--- set's tray box under the button, a row per item -- its name, what it shows
--- -- a line between the two whole scenes and the parts. Made on its first
--- open; a row whose module is off is dimmed (its click says so).
+-- set's tray box under the button, a row per scene -- its name, what it
+-- shows. Made on its first open; a row whose module is off is dimmed (its
+-- click says so).
 --------------------------------------------------------------------------------
 
-local ROW_H, MENU_W, PAD, GAP = 42, 320, 6, 10
+local ROW_H, MENU_W, PAD = 42, 320, 6
 local DIM = 0.45
 
 local ItemClick = Shared("OnClick on a preview list row", function(row)
@@ -490,16 +525,6 @@ local function MakeMenu(parent, skin)
 	menu.rows = {}
 	local y = -PAD
 	for i, item in ipairs(ITEMS) do
-		if i == 3 then
-			-- (the parts, one at a time, under a line)
-			local line = W.Solid(menu, "ARTWORK", "border", 1)
-			line:SetHeight(1)
-			line:SetPoint("TOPLEFT", menu, "TOPLEFT", PAD, y - GAP / 2)
-			line:SetPoint("TOPRIGHT", menu, "TOPRIGHT", -PAD, y - GAP / 2)
-			local head = W.Text(menu, "GameFontNormal", TEXT.alone, "selectedTrim")
-			head:SetPoint("TOPLEFT", menu, "TOPLEFT", PAD + 8, y - GAP)
-			y = y - GAP - 20
-		end
 		local row = CreateFrame("Button", nil, menu)
 		row:SetHeight(ROW_H)
 		row:SetPoint("TOPLEFT", menu, "TOPLEFT", PAD, y)
@@ -550,8 +575,7 @@ function Preview:ToggleMenu(anchor, skin)
 	menu:Show()
 end
 
--- /mello preview [solo | party | <a part> | stop]: a part's key from the list
--- (fader, reminders, widgets, partyframes, meter, combattext, gains)
+-- /mello preview [solo | party | raid | stop]
 function Preview.Slash(rest)
 	rest = type(rest) == "string" and rest:lower():match("^%s*(%S*)") or ""
 	local item = BY_KEY[rest]
@@ -560,10 +584,6 @@ function Preview.Slash(rest)
 	elseif rest == "stop" then
 		Preview:Stop("user")
 	else
-		local keys = {}
-		for i = 3, #ITEMS do
-			keys[#keys + 1] = ITEMS[i].key
-		end
-		MelloUI:Print(TEXT.usage:format(table.concat(keys, " | ")))
+		MelloUI:Print(TEXT.usage)
 	end
 end

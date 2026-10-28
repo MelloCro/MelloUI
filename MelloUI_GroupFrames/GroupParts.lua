@@ -16,10 +16,10 @@
 --                                normal party frames' texts wear the unit
 --                                frames' names' face (UnitFrames.nameFont)
 --   Parts.LAYOUTS (one look C9)  each layout's parts and table: "raid" (our
---                                raid frames: db.parts), "groupParty" (our
---                                Group Frames party: db.partyParts, split off
---                                the raid's once), "portrait" (the game's normal
---                                party frames: Parts.PARTY's keys in db.parts)
+--                                raid frames, and our party when it wears
+--                                them: db.parts -- 1.2.4, one look for both),
+--                                "portrait" (the game's normal party frames:
+--                                Parts.PARTY's keys in db.parts)
 --   Parts:ListOfLayout(layout)   a layout's parts
 --   Parts:Of(key[, layout]) -> settings    a part's own settings (nil: its
 --                                default); no layout: "raid" for our parts,
@@ -29,14 +29,12 @@
 --                                default): ONE write, ONE 'setting'
 --   Parts:Set(key, field, value[, layout]), Parts:SetSpot(key, point[, layout]),
 --   Parts:Reset(key[, layout]), Parts:ResetLayout(layout), Parts:Moved(layout)
---   Parts:Split(db)              the Group Frames party's own places, copied
---                                from the raid's once (then `split` marks it)
 --   Parts:Lay(frame, kind, own)  a frame's parts laid (kind "party": a normal
 --                                party frame's; `own`: one of ours built as one);
 --                                one of ours by its frame.partsLayout ("raid"
 --                                when it has none)
 --   Parts.LayAll()               every frame laid again (GroupFrames.lua's
---                                OnSettingChanged for 'parts' / 'partyParts')
+--                                OnSettingChanged for 'parts')
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -116,12 +114,12 @@ function Parts:ListOf(kind)
 	return kind == "party" and Parts.PARTY or Parts.LIST
 end
 
--- (one look C9: the user's "party and raid keep their own places") the
--- layouts: our raid frames, our Group Frames party, the game's normal party
--- frames; 'party' keeps meaning the portrait frames everywhere
+-- (one look C9) the layouts: our frames, the game's normal party frames; 'party' keeps meaning the portrait frames
+-- everywhere. (1.2.4; the user, 2026-10-28: "we are modifying the Party "Group Frames" and Raid Frames separatelly
+-- even tho they are the same" -- our party wears the raid's places again; its old own ones, `partyParts`, are kept
+-- in the settings unread)
 Parts.LAYOUTS = {
 	raid = { list = Parts.LIST, store = "parts" },
-	groupParty = { list = Parts.LIST, store = "partyParts" },
 	portrait = { list = Parts.PARTY, store = "parts" },
 }
 
@@ -139,13 +137,9 @@ local function LayoutOf(key, layout)
 	return (type(key) == "string" and key:sub(1, 6) == "party.") and "portrait" or "raid"
 end
 
--- the table a layout's parts are read from: the Group Frames party's own
--- once split off, the raid's before (a getter never writes)
+-- the table a layout's parts are read from (a getter never writes)
 local function StoreOf(db, layout)
 	local t = db[Parts.LAYOUTS[layout].store]
-	if layout == "groupParty" and not (type(t) == "table" and t.split == true) then
-		t = db.parts
-	end
 	return type(t) == "table" and t or nil
 end
 Parts.SIZE = { textMin = 6, textMax = 24, iconMin = 6, iconMax = 40 }
@@ -376,40 +370,11 @@ local function Changed(layout, key)
 	MelloUI:Fire("groupframes", "part", key)
 end
 
--- (one look C9) the Group Frames party's own places, split off the raid's
--- once: each part the player moved copied whole (a copy: Place writes the
--- party's own), then marked; true when it split now. A profile loaded from
--- before (no marker) splits again on the module's next enable
-function Parts:Split(db)
-	db = db or RD.DB()
-	local pp = db.partyParts
-	if type(pp) ~= "table" then
-		pp = {}
-		db.partyParts = pp
-	end
-	if pp.split == true then
-		return false
-	end
-	local from = type(db.parts) == "table" and db.parts or {}
-	local Copy = RD.Copy
-	for _, p in ipairs(Parts.LIST) do
-		local s = from[p.key]
-		if type(s) == "table" and s.set and Copy then
-			pp[p.key] = Copy(s)
-		end
-	end
-	pp.split = true
-	return true
-end
-
 -- a part's whole settings in its layout (nil: back to its default): one
--- write, one 'setting' (the Group Frames party split off first)
+-- write, one 'setting'
 function Parts:Place(layout, key, t)
 	layout = LayoutOf(key, layout)
 	local db = RD.DB()
-	if layout == "groupParty" then
-		self:Split(db)
-	end
 	local store = Parts.LAYOUTS[layout].store
 	db[store] = type(db[store]) == "table" and db[store] or {}
 	if type(t) == "table" then
@@ -451,14 +416,10 @@ function Parts:Reset(key, layout)
 	self:Place(layout, key, nil)
 end
 
--- every part of a layout back to its default: one write (the Group Frames
--- party keeps its split marker: never copied from the raid's again)
+-- every part of a layout back to its default: one write
 function Parts:ResetLayout(layout)
 	layout = Parts.LAYOUTS[layout] and layout or "raid"
 	local db = RD.DB()
-	if layout == "groupParty" then
-		self:Split(db)
-	end
 	local all = db[Parts.LAYOUTS[layout].store]
 	if type(all) == "table" then
 		for _, p in ipairs(Parts.LAYOUTS[layout].list) do

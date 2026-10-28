@@ -635,9 +635,9 @@ What a healer reads off the frames (0.19.0; on by default, both looks):
 - Both work in a fight: the numbers and colours come from the game as they are, and MelloUI
   never reads them.
 - `/ufdump heals` lists each frame's unit, its glow and its heal bars.
-- **See it without a fight:** the configurator's Preview > Healer Frames (or `/mello preview healer`): the
-  stand-in party takes heals as it is hurt and healed, each member glowing in one of the four colours, and your
-  own frame's glow goes through all four.
+- **See it without a fight:** the configurator's Preview > Party Fight (or `/mello preview party`) while your
+  party wears the normal party frames (In A Party: Party Frames): the stand-in party takes heals as it is hurt and
+  healed, each member glowing in one of the four colours, and your own frame's glow goes through all four.
 
 ### Group Frames
 

@@ -54,7 +54,7 @@
 --       the fitter (LayoutFit:Run: a frame's share at a time) on the setup's
 --       own target, from the next frame on; done(fit) on a later frame,
 --       fit = { option, W, H, done, fitted, places, report }
---   I:Apply(target, exact) -> changed, needsReload
+--   I:Apply(target, exact) -> changed
 --   I:PlaceWindows() -> placed
 --   I:LayoutRoom(fit[, fresh]) -> room, most   Edit Mode keeps one more
 --                                       layout for the fitted one (one of its
@@ -79,7 +79,9 @@
 --                                       TEXT.revertFailed when nothing worked:
 --                                       the pending answer then failed too,
 --                                       revertFailed = true)
---   I:Keep() -> needsReload[, why]      (refused for a failed pending:
+--   I:Keep() -> kept[, why]             (1.2.4: the window's Keep then
+--                                       reloads the UI; false with no answer
+--                                       owed; refused for a failed pending:
 --                                       false, TEXT.keepFailed, or
 --                                       TEXT.keepHalf after a failed revert)
 --   I:StartCountdown([seconds]); I:Countdown() -> running, seconds, paused, why
@@ -102,8 +104,8 @@
 --                                       this screen: the layout was fitted,
 --                                       nothing "installed")
 -- The bus topic "installer" tells the window what happened:
---   ("installed", optionKey, needsReload)   ("countdown", seconds, paused, why)
---   ("kept", needsReload)                   ("reverted", reason, reloadOwed)
+--   ("installed", optionKey)                ("countdown", seconds, paused, why)
+--   ("kept")                                ("reverted", reason, reloadOwed)
 --   ("revertFailed", reason, why)
 -- A draft is { ["Module.key"] = value, ["!Module"] = on, layout = on,
 -- skin = name }: nothing is written until Install. A personal key a draft
@@ -243,7 +245,9 @@ I.SETUP = {
 	  extras = { { key = "gains", on = true, modules = { "Gains" } },
 		{ key = "restock", on = true, modules = { "Restock" }, needs = { "minimap", "reminders" } },
 		{ key = "discard", on = true, modules = { "Discard" } } } },
-	{ key = "sound", kind = "one", pick = "melloSound", choices = {
+	-- (1.2.4, the user, 2026-10-28: "The Default Profile should use games own sounds so nothing changes there": the
+	-- recommended card follows the skin, `pickFor`; Custom Sounds plays nothing under the Default skin either way)
+	{ key = "sound", kind = "one", pick = "melloSound", pickFor = { default = "gameSound" }, choices = {
 		{ key = "melloSound", set = { ["!CustomSounds"] = true }, modules = { "CustomSounds" } },
 		{ key = "gameSound", set = { ["!CustomSounds"] = false }, modules = { "CustomSounds" } } } },
 }
@@ -583,6 +587,8 @@ end
 --   I.SkinOf(draft) -> skin        the draft's skin: Oldschool only while MelloUI_Oldschool is there, Modern otherwise
 --   I:Offered(choice) -> on        a choice's modules are all there (a feature addon off: not offered)
 --   I:DefaultPicks() -> picks      every step at its first answer: Modern, Mello's layout, every feature on
+--   I:RecommendedPick(st, skin) -> key   a "one" step's recommended card under a skin (the sound step: the game's
+--                                  own under Default); I:SkinPicked(picks, was) moves the answers that follow it
 --   I:SetupDraft(picks) -> draft   the picks as the setup's draft (draft.skin, draft.layout and the settings)
 local SKIN_OF = { default = "default", modern = "modern", oldschool = "oldschool" }
 
@@ -601,6 +607,22 @@ function I:Offered(choice)
 		end
 	end
 	return true
+end
+
+-- a "one" step's recommended card under a skin: its `pickFor` for that skin, else its `pick`
+function I:RecommendedPick(st, skin)
+	return st.pickFor and st.pickFor[skin] or st.pick
+end
+
+-- the skin picked (`was`: the skin before): each step whose recommendation follows the skin moves its answer along,
+-- unless the player had picked another card (an answer that is not the old recommendation stays)
+function I:SkinPicked(picks, was)
+	local skin = self.SkinOf(picks)
+	for _, st in ipairs(self.SETUP) do
+		if st.pickFor and picks[st.key] == self:RecommendedPick(st, was) then
+			picks[st.key] = self:RecommendedPick(st, skin)
+		end
+	end
 end
 
 function I:DefaultPicks()
@@ -1389,15 +1411,14 @@ local function DoApply(self, target, exact, out)
 	end
 end
 
--- Returns how many settings and switches were written, and whether a
--- value the game reads at start-up changed (a reload is owed then). Quiet
+-- Returns how many settings and switches were written (1.2.4: no reload
+-- answer -- Keep reloads the UI; Revert reads its own, I:Revert). Quiet
 -- while it runs: `applying` for the modules that ask, and the chat lines
 -- held for the log (MelloUI.printHold).
 function I:Apply(target, exact)
 	assert(type(target) == "table" and type(target.modules) == "table" and type(target.enabled) == "table",
 		"MelloUI.Installer:Apply needs a state")
 	local out = { changed = 0, reconcile = 0, lookRefresh = {} }
-	local was = StartupValues()
 	self.applying = true
 	MelloUI.printHold = (tonumber(MelloUI.printHold) or 0) + 1
 	local ok, err = pcall(DoApply, self, target, exact, out)
@@ -1407,7 +1428,7 @@ function I:Apply(target, exact)
 		error(err, 0)
 	end
 	self.lastApply = out
-	return out.changed, NeedsReload(was)
+	return out.changed
 end
 
 -- An Edit Layout session (Core's MelloUI.LayoutSession) ended with nothing
@@ -1801,7 +1822,7 @@ local function DoInstall(self, rp, option, target, fit, layoutOn, out)
 	MelloUI:SaveProfile(BEFORE_PROFILE)
 	rp.text = MelloUI:Profiles()[BEFORE_PROFILE]
 	MelloUI:Batch(function()
-		out.changed, out.needsReload = self:Apply(target)
+		out.changed = self:Apply(target)
 		SetOwn("seenVersion", MelloUI.version)
 		if layoutOn then
 			-- (layoutWritten: handed to Edit Mode, so a revert puts its state
@@ -1891,7 +1912,7 @@ function I:Install(option, draft, fit)
 		-- point guarded: Install and Keep refused, the Keep page and its
 		-- Revert after a /reload (a second install would take the half
 		-- state as its restore point)
-		rp.pending = { option = option.key, needsReload = false, reloadedSince = false, failed = true }
+		rp.pending = { option = option.key, reloadedSince = false, failed = true }
 		local rok, reverted, rwhy = pcall(self.Revert, self, "error")
 		if not rok then
 			Report(reverted)
@@ -1902,16 +1923,16 @@ function I:Install(option, draft, fit)
 		end
 		return false, TEXT.failedStuck
 	end
-	local changed, needsReload = out.changed, out.needsReload
+	local changed = out.changed
 	-- 7. the answer the countdown waits for
-	rp.pending = { option = option.key, needsReload = needsReload and true or false, reloadedSince = false }
+	rp.pending = { option = option.key, reloadedSince = false }
 	if option.refit then
 		MelloUI:Print(TEXT.refitted)
 	else
 		MelloUI:Print(TEXT.installed, option.title)
 	end
 	self:StartCountdown(KEEP_SECONDS)
-	MelloUI:Fire("installer", "installed", option.key, rp.pending.needsReload)
+	MelloUI:Fire("installer", "installed", option.key)
 	NoteCost("install", "Install", t0)   -- (the window's Keep page drawn on the Fire included)
 	return true, nil, changed
 end
@@ -2096,9 +2117,8 @@ function I:Revert(reason)
 	return true, nil, reloadOwed
 end
 
--- The setup kept: the countdown ends; whether a reload is owed (the names
--- over heads read their font at start-up; none once the game has read the
--- installed fonts: a /reload or a restart since the install). An install that faulted half
+-- The setup kept: the countdown ends, true (1.2.4: the window's Keep then
+-- reloads the UI, so nothing is owed). An install that faulted half
 -- way and could not be put back, or one a Revert only partly put back, is
 -- never kept (Revert only): refused, the countdown left running.
 function I:Keep()
@@ -2113,9 +2133,8 @@ function I:Keep()
 	end
 	rp.pending = nil
 	rp.reloadedSince = rp.reloadedSince or pending.reloadedSince
-	local needsReload = (pending.needsReload and not pending.reloadedSince) and true or false
-	MelloUI:Fire("installer", "kept", needsReload)
-	return needsReload
+	MelloUI:Fire("installer", "kept")
+	return true
 end
 
 --------------------------------------------------------------------------------
@@ -2161,8 +2180,7 @@ end
 --                             loading or Edit Mode is open; in combat it
 --                             says so and opens when the fight ends; on the
 --                             Keep page while an answer is owed. Marks the
---                             game menu button's one-time tip shown (the
---                             Done page says where the settings live).
+--                             game menu button's one-time tip shown.
 --   I:Busy() -> busy          the window shows, a countdown runs, or the
 --                             first-login check (or an open it owes) has
 --                             not finished: the menu button's tip yields

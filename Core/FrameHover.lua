@@ -49,30 +49,18 @@ end
 -- (2026-10-25, the user, after B in the game: "i would also like to add the A version with it aswell to work together
 -- with B" -- A of the sketch, "Lit rim: the frame's gold lights up, a soft glow behind it") the frame's own picture
 -- once more over it as light (its gold brightens; its dark plate hardly), and behind the frame a soft glow in the
--- trim: Shade's round glow round the portrait's ring, a hollow soft band round the plate (a raid cell's box: the band
--- alone). Under the frame: the strata below its (the heroes' way, FrameFXHeroes.lua)
+-- trim: the frame halo (MelloUI.FrameHalo: Shade's round glow round the portrait's ring, a hollow soft band round the
+-- plate -- a raid cell's box: the band alone -- under the frame, at the strata below its)
 local LIT = 0.45                                     -- the picture's light over it
-local GLOW = { band = 0.55, feather = 10, featherY = 8 }
-local STRATA_BELOW = { LOW = "BACKGROUND", MEDIUM = "LOW", HIGH = "MEDIUM", DIALOG = "HIGH" }
-local A = {}   -- the light's parts: lit (texture on the board), back (the frame behind), ring, plate (holders), glow, band
+local A = {}   -- the light's parts: lit (texture on the board) and the halo's (FrameHalo.Make's: back, ring, plate, glow, band)
 
 local function MakeLight()
 	A.lit = board:CreateTexture(nil, "ARTWORK")
-	A.back = CreateFrame("Frame", nil, UIParent)
-	A.back:EnableMouse(false)
-	A.ring = CreateFrame("Frame", nil, A.back)
-	A.plate = CreateFrame("Frame", nil, A.back)
-	local Shade = MelloUI.Shade
-	A.glow = Shade:Glow(A.back, { key = "selectedTrim", region = A.ring, size = 40, strength = "near" })
-	if A.glow then
-		A.glow:Still()
-	end
-	A.band = Shade:Band(A.back, { colour = "selectedTrim", alpha = GLOW.band, feather = GLOW.feather,
-		featherY = GLOW.featherY, blend = "ADD", hollow = true, region = A.plate })
+	MelloUI.FrameHalo.Make({ key = "selectedTrim" }, A)
 end
 
 -- the light on `frame`, its shape S (FX.Outline's); nil: away
-local function Light(frame, S, strata, level)
+local function Light(frame, S)
 	if not S then
 		A.lit:Hide()
 		A.back:Hide()
@@ -99,28 +87,8 @@ local function Light(frame, S, strata, level)
 	else
 		A.lit:Hide()
 	end
-	-- the glow behind: under the frame's strata
-	local below = STRATA_BELOW[strata]
-	A.back:SetFrameStrata(below or strata)
-	A.back:SetFrameLevel(below and 1 or math.max(0, level - 1))
-	A.back:Show()
-	A.plate:ClearAllPoints()
-	A.plate:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", S.pl, S.pb)
-	A.plate:SetSize(math.max(1, S.pr - S.pl), math.max(1, S.pt - S.pb))
-	if A.band then
-		A.band:SetShown(true)
-	end
-	if A.glow then
-		if S.rr then
-			A.ring:ClearAllPoints()
-			A.ring:SetPoint("CENTER", UIParent, "BOTTOMLEFT", S.rx, S.ry)
-			A.ring:SetSize(2 * S.rr, 2 * S.rr)
-			A.glow:Anchor(A.ring, 2 * S.rr)
-			A.glow:SetShown(true)
-		else
-			A.glow:SetShown(false)
-		end
-	end
+	-- the glow behind: the frame halo round the shape, under the frame's strata
+	A.back:SetShown(MelloUI.FrameHalo.Lay(A, frame, S))
 end
 
 local function Show(frame)
@@ -140,7 +108,7 @@ local function Show(frame)
 	board:SetFrameLevel(level + 20)
 	board:Show()
 	over = frame
-	Light(frame, FX.Outline(board, frame, Trim()), strata, level)
+	Light(frame, FX.Outline(board, frame, Trim()))
 end
 
 local function Gone(frame)

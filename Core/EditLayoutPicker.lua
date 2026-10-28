@@ -14,7 +14,10 @@
 -- that group alone (the dock says so, with a way back); a double-click shows
 -- one element alone. Hidden plates and locks are kept (UI Modifications'
 -- `editLayout`: { hidden = { [key] = true }, locked = { [key] = true },
--- pinned }); a solo lasts the session.
+-- pinned }); a solo lasts the session. (1.2.4, el-03) An eye's default is
+-- shown, but a system the game hides that the bridge plates (Edit Mode's
+-- "Show" list) shows by its `showDefault`; `hidden[key] = false` keeps such
+-- a one shown against its default.
 --
 --   K = MelloUI.EditLayout.Picker
 --     K.Category(entry) -> "frames" | "bars" | ... | "misc"
@@ -88,6 +91,8 @@ local TEXT = {
 	groupEyeBody = "Click to hide them all, or to show them all again.",
 	row = "Click: pick it on the screen. Right-click: its settings. Double-click: it alone.",
 	gameHidden = "The game hides it right now: its plate shows while the game shows it.",
+	-- (1.2.4, el-03) a hidden one with a plate of its own: Edit Mode's "Show" list
+	gameHiddenPlate = "The game hides it right now. The eye shows its plate where it appears, so you can move it.",
 	locked = "Locked in the Elements list.",
 	soloOf = "Solo: %s",
 	pinTip = "Keep the list open while you move things: a click on the screen leaves it open.",
@@ -176,9 +181,39 @@ local function Label(entry)
 	return P and P.Label(entry) or tostring(entry.key or "?")
 end
 
-local function Hidden(key)
-	local h = Prefs().hidden
-	return key ~= nil and type(h) == "table" and h[key] == true
+-- (1.2.4, el-03: D1) an eye's default: shown, unless the element says otherwise -- a system the game hides that
+-- the bridge plates (its `showDefault`: while the game shows it, or the player's own Edit Mode box for it is on)
+local function DefaultShows(entry)
+	local fn = type(entry) == "table" and entry.showDefault
+	if type(fn) ~= "function" then
+		return true
+	end
+	local ok, shows = pcall(fn, entry)
+	return not ok or shows and true or false
+end
+
+-- an element's eye (the solo aside): the kept choice -- true hidden, false shown even while the game hides it --
+-- else its default
+local function Eye(entry)
+	local h, v = Prefs().hidden, nil
+	if type(entry) == "table" and entry.key ~= nil and type(h) == "table" then
+		v = h[entry.key]   -- (false kept: an and / or would turn it into nil)
+	end
+	if v == true then
+		return false
+	elseif v == false then
+		return true
+	end
+	return DefaultShows(entry)
+end
+
+-- the kept value for an eye set to `show`: nothing while that is its default (a default may change: the game shows
+-- it, the player's own box), else the choice
+local function EyeValue(entry, show)
+	if not show then
+		return true
+	end
+	return (not DefaultShows(entry)) and false or nil
 end
 
 local function LockedKey(key)
@@ -204,7 +239,7 @@ function K.Shows(entry)
 		end
 		return entry.key ~= nil and entry.key == solo.id
 	end
-	return not Hidden(entry.key)
+	return Eye(entry)
 end
 
 -- the listed elements: one per key, live, no tool; read into `items` (each
@@ -304,12 +339,13 @@ local function Changed()
 	E:Refresh()
 end
 
-local function SetHidden(key, hide)
+local function SetEye(entry, show)
 	local t = Edit()
+	local key = type(entry) == "table" and entry.key or nil
 	if not t or key == nil then
 		return
 	end
-	t.hidden[key] = hide and true or nil
+	t.hidden[key] = EyeValue(entry, show)
 	Save(t)
 end
 
@@ -345,7 +381,7 @@ local function SetAll(how)
 	for i = 1, #items do
 		local it = items[i]
 		local hide = how == false or (how == "game" and it.gameHidden)
-		t.hidden[it.key] = hide and true or nil
+		t.hidden[it.key] = EyeValue(it.entry, not hide)
 	end
 	Save(t)
 	MelloUI:PlayUISound("tick")
@@ -424,7 +460,7 @@ local EyeClick = Shared("OnClick on an Elements list eye", function(self)
 		S.solo = nil
 		for i = 1, #items do
 			if items[i].cat == it.cat then
-				t.hidden[items[i].key] = any and true or nil
+				t.hidden[items[i].key] = EyeValue(items[i].entry, not any)
 			end
 		end
 		Save(t)
@@ -433,7 +469,7 @@ local EyeClick = Shared("OnClick on an Elements list eye", function(self)
 			-- (a solo: the eyes stand for the saved choice; it is let go first)
 			S.solo = nil
 		end
-		SetHidden(it.key, not Hidden(it.key))
+		SetEye(it.entry, not Eye(it.entry))
 	end
 	MelloUI:PlayUISound("tick")
 	Changed()
@@ -476,7 +512,7 @@ local function Pick(it, open)
 		if S.solo then
 			S.solo = nil
 		end
-		SetHidden(it.key, false)
+		SetEye(it.entry, true)
 		Changed()
 	end
 	P.SelectKey(it.key)
@@ -520,7 +556,8 @@ local RowEnter = Shared("OnEnter on an Elements list row", function(self)
 		return
 	end
 	if not self.head then
-		Tip(self, it.label, it.gameHidden and (TEXT.row .. "\n" .. TEXT.gameHidden) or TEXT.row)
+		local why = type(it.entry) == "table" and it.entry.placeholder ~= nil and TEXT.gameHiddenPlate or TEXT.gameHidden
+		Tip(self, it.label, it.gameHidden and (TEXT.row .. "\n" .. why) or TEXT.row)
 	end
 	local P = Movers()
 	if P and P.Peek and not self.head then

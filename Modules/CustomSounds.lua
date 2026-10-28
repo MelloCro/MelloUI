@@ -28,6 +28,13 @@
 -- the library's scroll loop is unused. Sounds the library has no
 -- counterpart for stay the game's.
 --
+-- The sound set follows the skin (1.2.4, the user, 2026-10-28: "The Default
+-- Profile should use games own sounds so nothing changes there, but we need
+-- the custom sounds for the Modern theme"): Modern plays the Modern set
+-- (Media/Sounds/SFX/Modern_<name>.ogg), Oldschool's reskin the library
+-- above, and the Default skin none at all (the game's own sounds, unmuted).
+-- ChosenSet is the ONE place that answers; a Sound Set choice plugs in there.
+--
 -- /sfx shows the state, /sfx log prints every kit the game plays and what
 -- was done with it (the verification), /sfx play <name> auditions a file,
 -- /sfxdump lists the last events as copyable text.
@@ -87,13 +94,13 @@ local options = {
 	{ type = "toggle", key = "targets", name = "Targets",
 	  desc = "A click when you pick or lose a target." },
 	{ type = "toggle", key = "levelUp", name = "Level Up",
-	  desc = "A seal stamped when you level up." },
+	  desc = "A jingle when you level up." },
 	{ type = "toggle", key = "loot", name = "Loot Coins",
 	  desc = "Coins when you loot money." },
 	{ type = "toggle", key = "spells", name = "Spell Icons",
 	  desc = "Sounds when you drag and place spells." },
 	{ type = "toggle", key = "map", name = "Map Ping",
-	  desc = "A pin into parchment for a minimap ping." },
+	  desc = "A clear sound for a minimap ping." },
 	{ type = "toggle", key = "scrollWheel", name = "Scroll Wheel",
 	  desc = "A soft tick for each mouse-wheel step." },
 	{ type = "toggle", key = "hover", name = "Hover Ticks",
@@ -155,9 +162,9 @@ end
 
 local M = MelloUI:RegisterModule("CustomSounds", {
 	title = "Custom Sounds",
-	desc = "Replaces the interface's sounds with MelloUI's own: clicks, windows, bags, gear, vendors and more.",
+	desc = "Replaces the interface's sounds with MelloUI's own, in the set of your skin: clicks, windows, bags, gear, vendors and more. The Default skin keeps the game's own sounds.",
 	icon = "Interface\\Icons\\INV_Misc_Bell_01",
-	flavour = "Iron, leather, parchment and stone. Every click, page, pouch and buckle of the interface, re-recorded.",
+	flavour = "Every click, page, pouch and latch of the interface, re-recorded: light and clean for Modern, iron and leather for Oldschool.",
 	group = "Chat and sound", navOrder = 3,
 	enabledByDefault = false,
 	defaults = defaults,
@@ -178,7 +185,12 @@ local SOUNDS = {
 	DungeonFinder_Queue = 0.5, DungeonFinder_QueueDropped = 0.5, DungeonFinder_Ready = 0.5,
 	UI_TargetSelect = 0.05, Character_LevelUp = 2.5, Loot_Coins = 0.15, SpellIcon_Drag = 0.05, SpellIcon_Place = 0.05,
 	Map_Ping = 0.2, Scroll_Wheel = 0.03,
+	-- the Modern set's alone (1.2.4): MelloUI's own clicks, the on-screen notice's chimes
+	Check_On = 0.03, Check_Off = 0.03, Tab = 0.03, Page = 0.1,
+	Notice_Track = 0.3, Notice_Arrive = 0.3, Notice_Learn = 0.3, Notice_Fail = 0.3,
 }
+local MODERN_ONLY = { Check_On = true, Check_Off = true, Tab = true, Page = true,
+	Notice_Track = true, Notice_Arrive = true, Notice_Learn = true, Notice_Fail = true }
 
 --------------------------------------------------------------------------------
 -- The game's sound kits: kit -> { replacement, group }. The file each kit
@@ -399,8 +411,12 @@ end
 -- The kit names are now looked up only when a line is written.
 --------------------------------------------------------------------------------
 
--- each file's path, made once, and when it last played (false: not yet)
-local PATHS = {}
+-- each set's files, every path made once: the library under its own names, the
+-- Modern set's with its prefix. PATHS is the playing set's (CurrentSet); under
+-- the Default skin, which plays none, the Modern set's (the Preview's buttons).
+-- And when each sound last played (false: not yet)
+local GOTHIC_PATHS, MODERN_PATHS = {}, {}
+local PATHS = MODERN_PATHS
 local lastPlayed = {}
 -- How long the game's own PlaySoundFile took, per file: its first call, its
 -- slowest and how many (/sfx). The one-off 8-58 ms calls of the 2026-09-24
@@ -410,7 +426,10 @@ local lastPlayed = {}
 -- 3 ms. This shows the game's own share.
 local calls, firstMs, slowestMs = {}, {}, {}
 for name in pairs(SOUNDS) do
-	PATHS[name] = SOUND_PATH .. name .. ".ogg"
+	if not MODERN_ONLY[name] then
+		GOTHIC_PATHS[name] = SOUND_PATH .. name .. ".ogg"
+	end
+	MODERN_PATHS[name] = SOUND_PATH .. "Modern_" .. name .. ".ogg"
 	lastPlayed[name] = false
 	calls[name], firstMs[name], slowestMs[name] = 0, 0, 0
 end
@@ -475,8 +494,41 @@ local function Note(fmt, ...)
 	end
 end
 
+-- The set that plays (1.2.4), ONE answer from the skin: "game", the Default
+-- skin (nothing replaced: every group reads off below, so the files are
+-- unmuted and the hooks and events stand down); "gothic", while Oldschool's
+-- reskin dresses (MelloUI.Skin, Kit's 'copy' area); "modern", the rest. A
+-- Sound Set choice would be read here. Read when asked, again when the skin
+-- or the reskin switches or the world loads (ApplySet): no poller.
+local set = nil   -- as last read (nil: not read yet, or to be read again)
+local ApplySet   -- (below: it re-applies the mutes and the hooks)
+local function ChosenSet()
+	local skin = MelloUI.Skin
+	if type(skin) == "table" and type(skin.IsDefault) == "function" and skin.IsDefault() then
+		return "game"
+	end
+	local Kit = MelloUI.Kit
+	if type(Kit) == "table" and type(Kit.IsOn) == "function" and Kit:IsOn("copy") == true then
+		return "gothic"
+	end
+	return "modern"
+end
+
+local function CurrentSet()
+	if set == nil then
+		set = ChosenSet()
+		PATHS = set == "gothic" and GOTHIC_PATHS or MODERN_PATHS
+	end
+	return set
+end
+
+-- (Core's PlayUISound asks too, whether the module is on or not: under "game" MelloUI's soft clicks are the game's kit)
+function MelloUI:SoundSet()
+	return CurrentSet()
+end
+
 local function GroupOn(group)
-	return M.isEnabled and M.db and M.db[group] and true or false
+	return M.isEnabled and M.db and M.db[group] and CurrentSet() ~= "game" and true or false
 end
 
 -- an event's format with the reason joined on, made once for each pair
@@ -495,10 +547,15 @@ local function Joined(head, why)
 	return fmt
 end
 
--- The game's PlaySoundFile for the named file, timed.
+-- The game's PlaySoundFile for the named file of the playing set, timed.
 local function PlayFile(name, channel)
+	CurrentSet()
+	local path = PATHS[name]
+	if not path then
+		return false, "not in this set"
+	end
 	local t0 = debugprofilestop()
-	local ok, willPlay = pcall(PlaySoundFile, PATHS[name] or (SOUND_PATH .. name .. ".ogg"), channel)
+	local ok, willPlay = pcall(PlaySoundFile, path, channel)
 	local ms = debugprofilestop() - t0
 	local n = calls[name]
 	if n then
@@ -517,8 +574,8 @@ local PLAYED, SKIPPED, FAILED = "%s played ", "%s skipped (%.2fs after the last)
 
 -- The named file, once per its gap; returns whether it started. `why` says
 -- what set it off: a format for `a` and `b`, filled in only when the log is
--- read.
-local function Play(name, why, a, b)
+-- read. `channel`: the module's own unless given (the notice's chimes).
+local function Play(name, why, a, b, channel)
 	local gap = SOUNDS[name]
 	if not gap then
 		return false
@@ -530,7 +587,7 @@ local function Play(name, why, a, b)
 		Note(Joined(SKIPPED, why), name, now - last, a, b)
 		return false
 	end
-	local ok, willPlay = PlayFile(name, (M.db and M.db.channel) or "SFX")
+	local ok, willPlay = PlayFile(name, channel or (M.db and M.db.channel) or "SFX")
 	if ok and willPlay then
 		lastPlayed[name] = now
 		Note(Joined(PLAYED, why), name, a, b)
@@ -913,6 +970,7 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, ...)
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		enteredWorld = GetTime()
 		lastQueued = Queued()
+		ApplySet()   -- (the skin as the world shows it: the reskin's answer is settled by now)
 	end
 end)
 
@@ -1355,17 +1413,62 @@ local function ApplyWheel()
 end
 
 --------------------------------------------------------------------------------
--- The configurator's own clicks (Core/Config.lua asks here first)
+-- The set follows the skin (1.2.4): re-read at a switch of the skin or of the
+-- reskin and when the world loads, so the files are muted, unmuted and the
+-- hover and wheel hooks started or dropped for the set that plays now
 --------------------------------------------------------------------------------
 
-local CONFIG_SOUNDS = { check_on = "UI_Click_Light", check_off = "UI_Click_Light", tab = "UI_Click_Light", page = "Page_Turn" }
+function ApplySet()
+	local was = set
+	set = nil
+	if CurrentSet() ~= was then
+		ApplyMutes()
+		ApplyHover()
+		ApplyWheel()
+	end
+end
+
+-- (while the module is off nothing is applied: OnEnable reads the set anew)
+local SkinSwitched = Perf.Shared("'skin' / 'look:copy' on the bus: the sound set follows the skin", function()
+	if M.isEnabled then
+		ApplySet()
+	else
+		set = nil
+	end
+end)
+
+MelloUI:On("skin", SkinSwitched, M)
+MelloUI:On("look:copy", SkinSwitched, M)
+
+--------------------------------------------------------------------------------
+-- MelloUI's own sounds (Core.lua's MelloUI:PlayUISound asks here first): its
+-- clicks become the playing set's, and the on-screen notice's chimes the
+-- Modern set's, on the Master channel as the game's chimes were (the Gothic
+-- set has none: the game's stay; the Default skin has no set: every kind is
+-- the game's own)
+--------------------------------------------------------------------------------
+
+local OWN_SOUNDS = {
+	gothic = { check_on = "UI_Click_Light", check_off = "UI_Click_Light", tab = "UI_Click_Light", page = "Page_Turn" },
+	modern = { check_on = "Check_On", check_off = "Check_Off", tab = "Tab", page = "Page",
+		notice_track = "Notice_Track", notice_arrive = "Notice_Arrive", notice_learn = "Notice_Learn",
+		notice_fail = "Notice_Fail" },
+}
+local NOTICE = { notice_track = true, notice_arrive = true, notice_learn = true, notice_fail = true }
 
 function MelloUI:PlayCustomUISound(kind)
-	if not GroupOn("clicks") then
+	if not M.isEnabled then
 		return false
 	end
-	local name = CONFIG_SOUNDS[kind]
-	return name and Play(name, "configurator %s", kind) or false
+	local own = OWN_SOUNDS[CurrentSet()]
+	local name = own and own[kind]
+	if not name then
+		return false
+	end
+	if NOTICE[kind] then
+		return Play(name, "notice %s", kind, nil, "Master")
+	end
+	return GroupOn("clicks") and Play(name, "configurator %s", kind) or false
 end
 
 --------------------------------------------------------------------------------
@@ -1384,6 +1487,7 @@ end
 
 function M:OnEnable(db)
 	self.db = db
+	set = nil   -- (the skin's set, read anew: it may have switched while the module was off)
 	HookPlaySound()
 	HookMerchant()
 	for _, event in ipairs(EVENTS) do
@@ -1427,8 +1531,8 @@ local function Status()
 	for _ in pairs(muted) do
 		count = count + 1
 	end
-	MelloUI:Print("Custom Sounds: module %s, MuteSoundFile %s, %d files muted, channel %s, hook %s, %d wheel hooks, live log %s",
-		M.isEnabled and "on" or "off", CanMute() and "present" or "MISSING", count, (M.db and M.db.channel) or "SFX",
+	MelloUI:Print("Custom Sounds: module %s, set %s, MuteSoundFile %s, %d files muted, channel %s, hook %s, %d wheel hooks, live log %s",
+		M.isEnabled and "on" or "off", CurrentSet(), CanMute() and "present" or "MISSING", count, (M.db and M.db.channel) or "SFX",
 		hooked and "installed" or "not installed", wheelHooks, live and "on" or "off")
 	local groups = {}
 	for _, opt in ipairs(options) do

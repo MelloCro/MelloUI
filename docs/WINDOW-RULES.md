@@ -746,8 +746,11 @@ Lint workflow) fails when a copy is added and names the system to use.
   alone: only that one), shows its own sample state from its own code, and
   undoes only what it did at "stop" (on "combat" it leaves its combat state
   to the real fight). `Preview.PARTY` is the one made-up group; the stand-in
-  party frames are ConfigPreview's sample frames. A new part: an entry in
-  `Preview.ITEMS` and the module's own listener -- never a scene of its own.
+  party frames are ConfigPreview's sample frames. The list holds the three
+  scenes only (Solo, Party and Raid Fight, 1.2.4): the party's frames show in
+  the Party Fight only, in the look the party wears, the raid's in the Raid
+  Fight only. A new part: the module's own listener asking `Plays(part)` --
+  never a row or a scene of its own.
 - **Never fight the game's per-frame writes: COVER (0.17.0; the user's FPS in
   combat, 160 down to 66, docs/plans/fps-portrait-fix.md).** Never undo a
   game write on a path the game runs every frame or every update (the target

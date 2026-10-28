@@ -36,6 +36,7 @@
 --   Solo:Shown() -> frame    the frame while it shows, else nil
 --   Solo.InParty() -> bool   it stands at the top of your party now (the settings and the group's state)
 --   Solo.frame               the frame (nil until made)
+--   Solo.aside               true while the Preview's made-up raid shows (GroupHeaders.lua's Aside): away
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -49,7 +50,7 @@ local RD = ns.RD
 local Looks = ns.Looks
 local Button = ns.Button
 
-local Solo = { frame = nil, driven = false, rule = nil, listening = false, editing = false }
+local Solo = { frame = nil, driven = false, rule = nil, listening = false, editing = false, aside = false }
 ns.Solo = Solo
 
 local UNIT = "player"
@@ -106,7 +107,7 @@ end
 function Solo.InParty()
 	local okG, grouped = pcall(IsInGroup)
 	local okR, raid = pcall(IsInRaid)
-	return (Wanted() and RD.DB().showPlayer and not Solo.editing and okG and grouped == true
+	return (Wanted() and RD.DB().showPlayer and not Solo.editing and not Solo.aside and okG and grouped == true
 		and not (okR and raid == true)) and true or false
 end
 
@@ -368,6 +369,14 @@ local function Place(f)
 	local top = type(pf) == "table" and Num(rawget(pf, "topPadding")) or 0
 	f:SetScale(want / pe)
 	f:ClearAllPoints()
+	-- (fr-03: the party plate's corner -- its top right while Flip Horizontally mirrors the portraits, the game's
+	-- frame laid from there too: GroupHeaders.lua's Corner)
+	local H = ns.Headers
+	if H and H.Corner and H.Corner("party") == "TOPRIGHT" then
+		local right = type(pf) == "table" and Num(rawget(pf, "rightPadding")) or left
+		f:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -right, -top)
+		return
+	end
 	f:SetPoint("TOPLEFT", parent, "TOPLEFT", left, -top)
 end
 
@@ -571,7 +580,8 @@ local function UpdateNow()
 	if not f then
 		return
 	end
-	local on = want and not Solo.editing
+	-- (away while Edit Mode is open, and while the Preview's made-up raid shows: GroupHeaders.lua's Aside)
+	local on = want and not Solo.editing and not Solo.aside
 	if on then
 		Place(f)
 	end

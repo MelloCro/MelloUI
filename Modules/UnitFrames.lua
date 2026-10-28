@@ -49,6 +49,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		hideCombatGlow = true,
 		hideStatusGlow = true,
 		hidePvPBadge = true,
+		hideHealNumbers = false,
 		nameFont = "shared",
 		frames = true,
 		partyFlip = false,
@@ -66,7 +67,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		  desc = "The font of names on the unit frames and party portraits. Shared: the interface font." },
 		{ type = "header", name = "Glows" },
 		{ type = "toggle", key = "hideCombatGlow", name = "Hide Combat Flash",
-		  desc = "Hides the red flash around unit frames in combat." },
+		  desc = "Hides the threat glow on the unit frames. Off: a soft halo round each frame's own shape while it has threat, amber when close to pulling, red while holding the enemy." },
 		{ type = "toggle", key = "hideStatusGlow", name = "Hide Status Glow",
 		  desc = "Hides the resting and combat glow around your portrait, and your pet's attack glow." },
 		-- (the user, 2026-10-09: "remove that awfull diamond icon and its border
@@ -74,6 +75,10 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		-- flagged for PvP)
 		{ type = "toggle", key = "hidePvPBadge", name = "Hide PvP Badge",
 		  desc = "Hides the PvP badge beside the portraits." },
+		-- (1.2.4; the user, 2026-10-28: "we are currently lacking the option to hide the incoming heals numbers on my
+		-- own Player Unitframe") HealNumbers below
+		{ type = "toggle", key = "hideHealNumbers", name = "Hide Heal Numbers", new = "1.2.4",
+		  desc = "Your portrait no longer shows the green numbers of the heals you take. Damage, misses and mana gains still show." },
 		{ type = "header", name = "Frame Art" },
 		-- (one-look D5: the two below moved from the Unit Frames Kit, keys and
 		-- rows kept -- Core.lua's MERGES carries a saved "off"; no header row
@@ -616,9 +621,14 @@ local function ApplyGlows()
 	for _, tex in ipairs(PvPBadgeTextures()) do
 		SetHidden(tex, hidePvP)
 	end
-	local hideCombat = M.isEnabled and M.db.hideCombatGlow
+	-- (1.2.4: the game's threat indicator -- its combat flash -- never shown while the module is on; unticked, the
+	-- threat halo fits the frames in its place: Core/FrameHalo.lua)
 	for _, tex in ipairs(CombatFlashTextures()) do
-		SetHidden(tex, hideCombat)
+		SetHidden(tex, M.isEnabled)
+	end
+	local halo = rawget(MelloUI, "FrameHalo")
+	if halo and halo.Threat then
+		halo.Threat(M.isEnabled and not M.db.hideCombatGlow)
 	end
 	local hideStatus = M.isEnabled and M.db.hideStatusGlow
 	for _, tex in ipairs(StatusGlowTextures()) do
@@ -719,6 +729,48 @@ if MelloUI.Kit and MelloUI.Kit.OnCover then
 			M:HoldStatusGlows()
 		end
 	end)
+end
+
+--------------------------------------------------------------------------------
+-- Hide Heal Numbers (1.2.4): every number on your portrait -- a hit, a heal, a
+-- mana gain, a miss's word -- is one text of the game's (PlayerFrame's
+-- HitIndicator.HitText), written on UNIT_COMBAT by CombatFeedback_OnCombatEvent
+-- (its Show at every event), then faded in and out by the frame's OnUpdate
+-- while it is shown. After a heal (UNIT_COMBAT's event "HEAL": a plain string
+-- on Forever and retail; a secret one is left as the game shows it) the text
+-- the game has just shown is hidden before it draws, and its OnUpdate leaves it
+-- be; the next hit, miss or gain the game shows itself. A post-hook on the
+-- game's function, made with the option's first switch-on: one Hide a heal,
+-- never a frame. A text region: Hide works in combat. Your portrait only (the
+-- pet's frame calls the same function). (In a do-block: no top-level local.)
+--   M:HealNumbers()   the hook made once the option is on (the switch-on, the setting)
+--------------------------------------------------------------------------------
+
+do
+	local hooked = false
+
+	local function HealHidden()
+		return M.isEnabled and M.db and M.db.hideHealNumbers and true or false
+	end
+
+	local OnFeedback = Shared("CombatFeedback_OnCombatEvent on your portrait", function(frame, event)
+		if frame ~= PlayerFrame or not HealHidden() or Secret(event) or event ~= "HEAL" then
+			return
+		end
+		local text = frame.feedbackText
+		if text and text.Hide then
+			WriteBack("UnitFrames: a heal's number hidden on your portrait")
+			text:Hide()
+		end
+	end)
+
+	function M:HealNumbers()
+		if hooked or not HealHidden() or type(_G.CombatFeedback_OnCombatEvent) ~= "function" then
+			return
+		end
+		hooked = true
+		hooksecurefunc("CombatFeedback_OnCombatEvent", OnFeedback)
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -3119,6 +3171,7 @@ function M:OnEnable(db)
 	end
 	ApplyAll()
 	ApplyParts()
+	M:HealNumbers()
 	-- (MelloUI Frames: the painted skin's cover as it stands now, then laid)
 	local K = MelloUI.Kit
 	Frames.covered = (type(K) == "table" and type(K.IsOn) == "function" and K:IsOn("unitframes")) and true or false
@@ -3148,6 +3201,10 @@ function M:OnSettingChanged(key, value, db)
 	end
 	if key == "partyFlip" then
 		Party.Due()
+		return
+	end
+	if key == "hideHealNumbers" then
+		M:HealNumbers()   -- (off: the hook stays, asking one question a UNIT_COMBAT)
 		return
 	end
 	if key == "parts" then

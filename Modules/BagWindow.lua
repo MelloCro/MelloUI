@@ -99,6 +99,7 @@ M = MelloUI:RegisterModule("BagWindow", {
 	flavour = "A place for everything, and everything under its heading.",
 	-- (no group: its rows sit on the Windows page, the bag window's)
 	enabledByDefault = true,
+	keep = { "seen", "seenN" },   -- (1.2.4, pr-01's G1) the player's own record of the items seen: never in a profile
 	defaults = { recentFor = "close", columns = 10, itemSize = 37, foldEmpty = true, sortBy = "quality", bank = true,
 		lootFlight = true, itemsGlide = true, moneyRoll = true, fullWarning = true },
 	options = {

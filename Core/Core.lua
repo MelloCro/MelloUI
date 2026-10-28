@@ -1031,6 +1031,9 @@ end
 -- true when it wrote the CVar.
 --   MelloUI:HoldCVar(db, name, savedKey, on, want)
 --   MelloUI:CVarText(name) -> the CVar's value as text (nil: unknown)
+--   MelloUI:CVarHeldBy(name) -> the module holding it now, or nil (1.2.4:
+--     read only, from the holds HoldCVar makes; Edit Layout's switches of
+--     the game's features stand back from a held one)
 function MelloUI:CVarText(name)
 	local api = C_CVar
 	if not (api and api.GetCVar) then
@@ -1040,10 +1043,22 @@ function MelloUI:CVarText(name)
 	return ok and Safe.Text(v) or nil
 end
 
+local cvarHolds = {}   -- [name] = { [a module's db] = true } while it holds the CVar (weak keys)
+
 function MelloUI:HoldCVar(db, name, savedKey, on, want)
 	local api = C_CVar
 	if not (db and api and api.SetCVar) then
 		return false
+	end
+	local holders = cvarHolds[name]
+	if on then
+		if not holders then
+			holders = setmetatable({}, { __mode = "k" })
+			cvarHolds[name] = holders
+		end
+		holders[db] = true
+	elseif holders then
+		holders[db] = nil
 	end
 	if on then
 		local now = self:CVarText(name)
@@ -1061,6 +1076,21 @@ function MelloUI:HoldCVar(db, name, savedKey, on, want)
 		return true
 	end
 	return false
+end
+
+function MelloUI:CVarHeldBy(name)
+	local mods, holders = self.db and self.db.modules, cvarHolds[name]
+	if type(mods) ~= "table" or not holders then
+		return nil
+	end
+	for db in pairs(holders) do
+		for module, t in pairs(mods) do
+			if t == db then
+				return module
+			end
+		end
+	end
+	return nil
 end
 
 -- an error in a listener or a callback: to the game's error handler, and on
@@ -1153,9 +1183,9 @@ end
 --                                          entry) when an Edit Layout session lets
 --                                          go of an entry it held
 --   "installer"    what, ...               the installer (Core/Installer.lua):
---                    "installed", setupKey, needsReload   a setup went in
+--                    "installed", setupKey                a setup went in
 --                    "countdown", seconds, paused, why    the Keep countdown
---                    "kept", needsReload                  Keep pressed
+--                    "kept"                               Keep pressed
 --                    "reverted", reason, reloadOwed       back to 'Before
 --                                          install' (reason "button",
 --                                          "timeout" or "error")
@@ -1337,7 +1367,8 @@ end
 -- UI sounds (moved from the configurator, audit 2026-09-24: its sounds are
 -- for every MelloUI window, and the configurator is being rebuilt). The soft
 -- clicks made by Tools\make_ui_sounds.py; the game's own sounds if a file is
--- missing; the Custom Sounds module's own click when it is on.
+-- missing or while the Default skin shows (1.2.4); the Custom Sounds module's
+-- own click when it is on (the set of the skin: Modern's, Oldschool's).
 --   MelloUI:PlayUISound(kind)
 --     the soft clicks:  "page", "tab", "check_on", "check_off"; "click" (a
 --                       plain button: the same as "tab")
@@ -1364,10 +1395,11 @@ do
 	-- sound the window played before, id for id; Custom Sounds' PlaySound hook
 	-- swaps it as it does any game click.
 	local SOUNDS = {
-		check_on  = { file = "check_on.ogg",  kit = "IG_MAINMENU_OPTION_CHECKBOX_ON" },
-		check_off = { file = "check_off.ogg", kit = "IG_MAINMENU_OPTION_CHECKBOX_OFF" },
-		tab       = { file = "tab.ogg",       kit = "IG_CHARACTER_INFO_TAB" },
-		page      = { file = "page.ogg",      kit = "IG_MAINMENU_OPTION" },
+		-- (soft: MelloUI's own click, which the Default skin leaves to the game's kit, see PlayUISound)
+		check_on  = { file = "check_on.ogg",  kit = "IG_MAINMENU_OPTION_CHECKBOX_ON", soft = true },
+		check_off = { file = "check_off.ogg", kit = "IG_MAINMENU_OPTION_CHECKBOX_OFF", soft = true },
+		tab       = { file = "tab.ogg",       kit = "IG_CHARACTER_INFO_TAB", soft = true },
+		page      = { file = "page.ogg",      kit = "IG_MAINMENU_OPTION", soft = true },
 		option_on      = { kit = "IG_MAINMENU_OPTION_CHECKBOX_ON" },
 		option_off     = { kit = "IG_MAINMENU_OPTION_CHECKBOX_OFF" },
 		menu_open      = { kit = "IG_MAINMENU_OPEN" },
@@ -1422,7 +1454,12 @@ do
 		if self.PlayCustomUISound and self:PlayCustomUISound(kind) then
 			return
 		end
-		if sound.path then
+		-- (1.2.4, the user, 2026-10-28: "The Default Profile should use games own sounds so nothing changes there")
+		-- while the sound set is the game's own (the Default skin: Custom Sounds' SoundSet, its one answer) MelloUI's
+		-- soft clicks give way to the kit they stand for: the game's own click (Custom Sounds, which plays nothing
+		-- then, leaves the kit be)
+		local game = sound.soft and self.SoundSet and self:SoundSet() == "game"
+		if sound.path and not game then
 			local ok, played = pcall(PlaySoundFile, sound.path, "SFX")
 			if ok and played then
 				return
@@ -3595,7 +3632,7 @@ end
 -- variables, never by a profile). It
 -- yields to the installer (its window shows, its countdown runs, or its
 -- first-login check has not decided yet): the installer marks the tip shown
--- when it opens, and its Done page says where the settings live.
+-- when it opens.
 function MelloUI:ShowMenuButtonTip()
 	local tweaks = self.db and self.db.modules and self.db.modules.Tweaks
 	if not tweaks or tweaks.menuTipShown then
@@ -5314,15 +5351,21 @@ end
 -- string held the sharer's character IDs, and a layoutApplied in it kept
 -- the importer's reskin from ever placing its layout. Loading a profile
 -- leaves them as they are: it used to wipe every character's flight points.
+-- (1.2.4) A feature addon turned off has no module to ask: its list as
+-- remembered while it was loaded (MelloUIDB.featureKeep, Core/Backup.lua).
 function MelloUI:IsPersonalKey(moduleName, key)
 	local module = self.modules[moduleName]
 	local keep = module and module.keep
+	if not module and self.Features and self.Features[moduleName] then
+		local known = type(self.db) == "table" and type(self.db.featureKeep) == "table" and self.db.featureKeep[moduleName]
+		keep = type(known) == "table" and known or nil
+	end
 	if not keep or type(key) ~= "string" then
 		return false
 	end
 	for i = 1, #keep do
 		local entry = keep[i]
-		if entry == key or (entry:sub(1, 1) == "^" and key:find(entry)) then
+		if entry == key or (type(entry) == "string" and entry:sub(1, 1) == "^" and key:find(entry)) then
 			return true
 		end
 	end
@@ -5466,6 +5509,11 @@ end
 --------------------------------------------------------------------------------
 
 local SHARE_TAG = "!MelloUI1!"
+-- (1.2.4) the most a string is read from: 128 KB of letters (the largest
+-- profile -- every class's indicator lists, 52 KB, and the rest -- packs to a
+-- tenth of that) and 1 MB of settings text once unpacked; anything longer is
+-- no profile of ours, and the game's unpacking is never asked to make more
+local SHARE_LETTERS, SHARE_TEXT = 131072, 1048576
 
 local function Deflate()
 	return Enum and Enum.CompressionMethod and Enum.CompressionMethod.Deflate
@@ -5505,10 +5553,16 @@ function MelloUI:DecodeProfileString(str)
 	if type(str) ~= "string" then
 		return nil, "nothing to import"
 	end
+	if #str > 4 * SHARE_LETTERS then
+		return nil, "the string is far longer than any MelloUI profile"
+	end
 	-- copied from a chat or a web page it may have gained spaces or line breaks
 	str = str:gsub("%s+", "")
 	if str:sub(1, #SHARE_TAG) ~= SHARE_TAG then
 		return nil, "not a MelloUI profile string (it starts with " .. SHARE_TAG .. ")"
+	end
+	if #str > SHARE_LETTERS then
+		return nil, "the string is far longer than any MelloUI profile"
 	end
 	local enc = C_EncodingUtil
 	if not (enc and enc.DecodeBase64 and enc.DecompressString) then
@@ -5528,6 +5582,9 @@ function MelloUI:DecodeProfileString(str)
 	if not (okD and type(text) == "string") then
 		return nil, "the string is damaged (cut short while copying?)"
 	end
+	if #text > SHARE_TEXT then
+		return nil, "the string is far longer than any MelloUI profile"
+	end
 	-- never taken in: another player's personal keys (their characters' flight
 	-- points, a game setting of theirs to give back, their one-time flags),
 	-- which strings posted before profiles left them out still carry
@@ -5544,7 +5601,8 @@ function MelloUI:DecodeProfileString(str)
 			return nil, "the string holds something that is not a MelloUI setting"
 		end
 		local module = key:match("^!?([^.]+)")
-		if module and self.modules[module] then
+		-- (a feature addon turned off here is still ours: its settings are kept for it)
+		if module and (self.modules[module] or (self.Features and self.Features[module])) then
 			known = known + 1
 		end
 	end
