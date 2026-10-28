@@ -84,7 +84,7 @@ NPC_VOICES_CSV = os.path.join(HERE, "voice_v2", "npc_voices.csv")
 RESEARCH = os.environ.get("MELLOUI_VOICE_RESEARCH", os.path.join(
     os.path.expanduser("~"), "AppData", "Local", "Temp", "claude", "F--Download-Backup-Project-Web-MelloUI-Test",
     "4d7e610c-71a7-442c-9c0f-b0e61551b191", "scratchpad", "voice"))
-DB2 = os.environ.get("MELLOUI_DB2_160", r"F:\Download-Backup\WoWExport\db2_1.60")
+DB2 = os.environ.get("MELLOUI_DB2_160", r"F:\Download-Backup\Project Web\MelloUI\Workspace\GameData\WoWExport\db2_1.60")
 LISTFILE = os.path.join(CACHE, "verified-listfile.csv")
 WOW = os.environ.get("MELLOUI_WOW", r"F:\World of Warcraft")
 PRODUCT = "wow_classic_beta"

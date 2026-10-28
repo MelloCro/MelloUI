@@ -7,7 +7,7 @@ SpellEffect (effect 54 "enchant item temporary", and 360, this client's poisons)
 Duration: a timed one), ItemEffect + ItemXItemEffect (the item whose use casts the spell) and ItemSparse (only items
 this client has). Left out: fishing lures, a recipe's imbue, the runecarving test items and a shield's coating.
 
-    python Tools/weapon_enchants.py [--db2 F:/Download-Backup/WoWExport/db2]   prints the Lua table
+    python Tools/weapon_enchants.py [--db2 F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/db2]   prints the Lua table
 """
 import argparse
 import collections
@@ -52,7 +52,7 @@ def lua(t, names):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--db2", default=r"F:/Download-Backup/WoWExport/db2")
+    ap.add_argument("--db2", default=r"F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/db2")
     a = ap.parse_args()
     t, names = table(a.db2)
     print(lua(t, names))

@@ -2458,8 +2458,9 @@ end
 -- `pad` in from its left and their foot `below` over its bottom. The edges' parts are made at the row's first scroll;
 -- a row that fits makes none and lies still.
 --   W.ScrollRow(parent[, spec]) -> row   spec (read once): pad (8), below (6), above (14), cover (32), edge (24),
---       arrow (18), arrowY (the arrows' middle over the clip's: 0), step (80), wheel (60), fade (0.9; false: no band,
---       the arrows alone -- a row on parchment)
+--       arrow (18), arrowY (the arrows' middle over the clip's: 0), step (80), wheel (60), fade (the band's strength:
+--       0.9; false: no band, the arrows alone), paper (the picture the row lies on, a texture: the band that picture
+--       itself rather than the dark shade -- PaperBand)
 --   row:Lay(frames, room, high[, gap]) -> width   the frames (made on row.strip) from its left, `gap` apart
 --   row:Show(frame)   that frame brought into view, and kept so at the next lays
 --   row.clip, row.strip, row.room, row.max (its reach: the width past the room), row.scroll, row.xs[frame],
@@ -2468,7 +2469,7 @@ end
 
 do
 	local ROW = { pad = 8, below = 6, above = 14, cover = 32, edge = 24, arrow = 18, arrowY = 0, step = 80, wheel = 60,
-		fade = 0.9 }
+		fade = 0.9, paper = false }
 
 	local function Scroll(row, s)
 		s = math.max(0, math.min(row.max, s or 0))
@@ -2498,12 +2499,40 @@ do
 		end
 	end, "script")
 
-	-- a cut edge's parts, `side` -1 the left, 1 the right: its soft band (none without `fade`) and its arrow, hidden
+	-- (1.2.4, Oldschool -- the user's pick "b: parchment band" of MelloUI-BuildData/output/oldschool_edge_sketch, and
+	-- "The parchment itself") a row on a picture (`paper`: the configurator's painting under the kit's look) bands a cut
+	-- edge with that picture: its file and crop on its own points, so the band lies on it wherever the row goes, at
+	-- `fade`, cut by the shade's soft end (Shade:EdgeMask) -- solid `cover` from the edge, fading over `edge` toward
+	-- the text. No colour of its own, nothing to paint again; nil with no picture there yet
+	local function PaperBand(row, inner, Shade)
+		local paper = row.paper
+		local file = paper.GetTexture and paper:GetTexture()
+		if not file then
+			return nil
+		end
+		local band = row.cover:CreateTexture(nil, "ARTWORK")
+		band:SetTexture(file)
+		band:SetTexCoord(paper:GetTexCoord())
+		band:SetVertexColor(paper:GetVertexColor())
+		band:SetAllPoints(paper)
+		band:SetAlpha(row.fade)
+		local mask = Shade:EdgeMask(row.cover, inner, row.coverW, row.edge)
+		mask:SetPoint("TOP" .. inner, row.clip, "TOP" .. inner)
+		mask:SetPoint("BOTTOM" .. inner, row.clip, "BOTTOM" .. inner)
+		band:AddMaskTexture(mask)
+		band:Hide()
+		return band
+	end
+
+	-- a cut edge's parts, `side` -1 the left, 1 the right: its band (the dark shade, or the picture the row lies on;
+	-- none without `fade`) and its arrow, hidden
 	local function Edge(row, side)
 		local inner = side < 0 and "LEFT" or "RIGHT"
 		local band
 		local Shade = rawget(MelloUI, "Shade")
-		if row.fade and Shade and Shade.Band then
+		if row.fade and row.paper and Shade and Shade.EdgeMask then
+			band = PaperBand(row, inner, Shade)
+		elseif row.fade and Shade and Shade.Band then
 			-- (the band's full middle the clip's edge, `cover` wide: the arrow on it)
 			local spot = row.cover:CreateTexture(nil, "ARTWORK")
 			spot:SetPoint("TOP" .. inner, row.clip, "TOP" .. inner)
@@ -6718,7 +6747,8 @@ end
 --   W.Chips(parent, spec) -> chips   spec: height (22), gap (6; a row's tightens to 4), width (the room; nil: one
 --     line; a row's must be given), row (true: one row in `width` -- its padding and gaps tightened, CHIP_PADS and
 --     CHIP_GAPS in turn, then scrolled, the picked one kept in view), select (false: no pick kept), onPick fn(chips,
---     key, item), ink ("box": in ink on parchment, Oldschool's configurator -- InkLook)
+--     key, item), ink ("box": in ink on parchment, Oldschool's configurator -- InkLook), paper (a row in ink: the
+--     picture it lies on, its cut edges banded with it -- W.ScrollRow's paper)
 --   chips:SetItems(items)   items { key, label, state (nil, "off" or "locked": dimmed, still clickable), new (its New
 --     tag), tip }; the buttons come from the chips' own pool (a set again makes none after the first); a pick no
 --     longer among them is let go; a row back at its start
@@ -6737,7 +6767,7 @@ do
 	-- `selectedTab` the game's full gold and its `hover` its grey: a faint touch of each, the sketch's)
 	local QUIET = { edge = 0.45, fill = 0.55, hover = 1, gameEdge = 0.7, gameFill = 0.08, gameHover = 0.2 }
 	-- a row's scroll (W.ScrollRow): nothing round a chip to keep clear (a hairline box, a New tag inside it); on
-	-- parchment the arrows alone
+	-- parchment the arrows alone, or banded with the parchment itself where the chips name it (spec.paper)
 	local ROW_SPEC = { pad = 2, below = 2, above = 2 }
 	local ROW_INK = { pad = 2, below = 2, above = 2, fade = false }
 
@@ -7148,7 +7178,11 @@ do
 		chips.Refit = Refit
 		chips:SetSize(1, 1)   -- (a rect from the start: Lay)
 		if chips.spec.row then
-			local row = W.ScrollRow(chips, chips.spec.ink and ROW_INK or ROW_SPEC)
+			local rowSpec = ROW_SPEC
+			if chips.spec.ink then
+				rowSpec = chips.spec.paper and { pad = 2, below = 2, above = 2, paper = chips.spec.paper } or ROW_INK
+			end
+			local row = W.ScrollRow(chips, rowSpec)
 			row.clip:SetPoint("BOTTOMLEFT", chips, "BOTTOMLEFT", -row.pad, -row.below)
 			chips.row = row
 		end

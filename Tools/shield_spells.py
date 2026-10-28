@@ -10,7 +10,7 @@ times ten, plus its colour's school:
     0 none of these (the shield's blue)   1 holy   2 fire   3 nature   4 frost   5 shadow   6 arcane
 the one school it absorbs when it is one (EffectMiscValue_0: Fire Ward, a Fire Protection Potion -> fire), else the
 spell's own school (SpellMisc.SchoolMask: Power Word: Shield holy, Ice Barrier frost, Mana Shield arcane), physical or
-several -> 0. Read from the client's tables as wow.export wrote them (F:/Download-Backup/WoWExport/db2); written to
+several -> 0. Read from the client's tables as wow.export wrote them (F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/db2); written to
 MelloUI_PersonalDisplay/ShieldSpells.lua.
 
     python Tools/shield_spells.py
@@ -19,7 +19,7 @@ import csv
 import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB2 = r"F:/Download-Backup/WoWExport/db2/"
+DB2 = r"F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/db2/"
 OUT = os.path.join(ROOT, "MelloUI_PersonalDisplay", "ShieldSpells.lua")
 
 ABSORB_AURAS = {69, 97}

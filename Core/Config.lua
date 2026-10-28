@@ -4670,8 +4670,10 @@ do
 		if KIT then
 			CONFIG.InkOn(page.partsLabel, "title")   -- (1.2.4, stage 5: on the parchment, CONFIG.Paper)
 		end
+		-- (1.2.4, Oldschool: the row's cut edges banded with the painting's own parchment -- the user's "b: parchment
+		-- band", "The parchment itself")
 		page.partChips = W.Chips(page, { width = page.width - PAD * 2 - PARTS_W, ink = KIT and "box" or nil, row = true,
-			onPick = function(_, key)
+			paper = KIT and shell.ground or nil, onPick = function(_, key)
 			local sec = page.dEl and page.secByName[page.dEl .. ":" .. key]
 			if sec and sec ~= page.current then
 				page:Select(sec, true)

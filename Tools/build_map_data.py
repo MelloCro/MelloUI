@@ -1,6 +1,6 @@
 """MelloUI Map's data (docs/plans/seamless-map.md, stage M2; the user's picks 2026-10-20: C soft outlines, H places
 not explored yet dimmed; then B of the zoom sketch: the world painting under everything, each continent's painting cut
-to its land), made from the client's own tables as wow.export wrote them (F:/Download-Backup/WoWExport/db2): numbers
+to its land), made from the client's own tables as wow.export wrote them (F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/db2): numbers
 only, never a picture of the game's.
 
   MelloUI_Map/MapData.lua
@@ -66,7 +66,7 @@ from collections import defaultdict
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB2 = r"F:/Download-Backup/WoWExport/db2/"
+DB2 = r"F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/db2/"
 MAP = os.path.join(ROOT, "MelloUI_Map")
 DATA = os.path.join(MAP, "MapData.lua")
 OUTLINES = os.path.join(MAP, "Media", "Outlines")
@@ -95,11 +95,11 @@ HOLE_AREA, HOLE_RINGED = 600, 0.6   # uncovered land this big (continent art px)
 CONTINENT, ZONE = 2, 3          # UIMapType
 LAND_SIZE = 256                 # a continent's land mask's side (its zones' outlines need more than a zone's 128)
 LAND_GROW, LAND_BLUR = 3, 2     # its zones' outlines joined, then widened and softened (quarter px)
-TERRAIN = r"F:/Download-Backup/WoWExport/terrain_raw/"
+TERRAIN = r"F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/terrain_raw/"
 WDT = {0: 775971, 1: 782779}    # each continent's world map (Map.ID): its WDT's file ID (Map.WdtFileDataID)
 TILE = 1600.0 / 3.0             # yards a terrain tile
 WATER_TILE = (0, 28, 48)        # an Eastern Kingdoms tile that is all open sea (west of Stormwind's harbour)
-EXPORT = r"F:/Download-Backup/WoWExport/"
+EXPORT = r"F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/"
 CAVE_SHARE = 0.5                # a model is a cave when more than this share of its pictured rooms (by area) is under
                                 # the ground: 676 placed models at 0, 298 at 1, a handful between (Sunken Hollow .59)
 CAVE_BLOCK = 128                # the model's units a picture's block (256 px at 2 px a unit)
@@ -396,7 +396,7 @@ def terrain_land(assign, cont, scale=1):
     # under the tiles' list and the reading's numbers)
     import hashlib
     key = hashlib.sha1(repr((got[1], TILE_PX, WATER_LUM)).encode()).hexdigest()[:12]
-    cache = os.path.join(os.path.dirname(ROOT), "MelloUI-BuildData", "cache", "terrain_land_%d_%s.png" % (TERRAIN_MAP[cont], key))
+    cache = os.path.join(ROOT, "Workspace", "BuildData", "cache", "terrain_land_%d_%s.png" % (TERRAIN_MAP[cont], key))
     if os.path.isfile(cache):
         grid = Image.open(cache).convert("L")
     else:

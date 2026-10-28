@@ -777,7 +777,7 @@ on a list row never switches off the row's selected plate's); a flag that reads 
 
 ## Adding a mapping
 
-1. Read the template in `%TEMP%\wowui-src` (Camelot file first, then Mainline): find the region, its atlas,
+1. Read the template in `F:\Download-Backup\Project Web\MelloUI\Workspace\GameData\wowui-src` (Camelot file first, then Mainline): find the region, its atlas,
    its anchors (useAtlasSize? centred? a 1 × 1 holder frame?), and every method that shows / hides / re-skins it.
 2. Add the atlas to `Kit.Replacements` with the kind that matches what the art *is* (a frame, a line, a plate,
    a rim), never what would look nicer.

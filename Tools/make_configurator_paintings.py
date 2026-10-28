@@ -13,7 +13,7 @@ import os
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SOURCE = os.path.join(os.path.dirname(ROOT), "MelloUI-BuildData", "output", "ai_art", "configurator_bg")
+SOURCE = os.path.join(ROOT, "Workspace", "BuildData", "output", "ai_art", "configurator_bg")
 OUT = os.path.join(ROOT, "Media", "Textures", "Configurator")
 PAINTINGS = {
     "Modern": "configurator_bg_modern_v3_calm.png",

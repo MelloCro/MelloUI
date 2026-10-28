@@ -31,7 +31,7 @@ files are removed (they are rebuilt by their tools if ever wanted).
    rail junctions; on MelloUI's own windows the configurator's crest and its
    short title plate).
 2. **Research before touching.** Read the window's XML and Lua in
-   `%TEMP%\wowui-src` first: which atlas each region uses, its anchors and size,
+   `F:\Download-Backup\Project Web\MelloUI\Workspace\GameData\wowui-src` first: which atlas each region uses, its anchors and size,
    who shows / hides / re-atlases it and when. Never guess a rect, a level or a
    behaviour from a screenshot. If the sources are missing, `/cpdump regions`
    (art name, rect, layer, alpha of every visible texture) is the second source.

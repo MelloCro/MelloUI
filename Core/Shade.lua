@@ -357,6 +357,28 @@ function Shade:Band(parent, opts)
 end
 
 --------------------------------------------------------------------------------
+-- (1.2.4) a band's soft end as a mask, for a picture banded at one side (W.ScrollRow's paper band): the band's own
+-- file, its soft top and bottom a Band's; solid for `solid` from its `from` side ("LEFT" or "RIGHT"), fading out over
+-- `feather` after it (at most twice the feather solid: the file's flat middle). Its width solid + feather; the caller
+-- places it (its side's points and the height) and adds it to the picture.
+--   Shade:EdgeMask(parent, from, solid, feather) -> mask
+--------------------------------------------------------------------------------
+function Shade:EdgeMask(parent, from, solid, feather)
+	solid, feather = Num(solid) or 0, Num(feather) or DEFAULT_FEATHER
+	local mask = parent:CreateMaskTexture()
+	mask:SetTexture(Shade.FILE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	-- (the solid part's share of the file at the fade's own rate: one feather over CAP of it)
+	local flat = math.min(solid * CAP / feather, 1 - 2 * CAP)
+	if from == "RIGHT" then
+		mask:SetTexCoord(0, CAP + flat, 0, 1)
+	else
+		mask:SetTexCoord(1 - CAP - flat, 1, 0, 1)
+	end
+	mask:SetWidth(solid + feather)
+	return mask
+end
+
+--------------------------------------------------------------------------------
 -- The text look (0.14.0, the centre texts: one look for every soft-shaded
 -- line of text, where the notice, the zone text and the centre texts each
 -- kept a copy)

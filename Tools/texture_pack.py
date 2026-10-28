@@ -2575,7 +2575,8 @@ def lua_refs(root=None):
     for dp, dns, fns in os.walk(root):
         rd = os.path.relpath(dp, root).replace(os.sep, "/")
         top = rd.split("/")[0]
-        if top in ("Tools", "docs", ".git", ".github", ".claude") or "__pycache__" in rd:
+        # (Workspace, 2026-10-28: every outside folder MelloUI uses, ~60 GB, never shipped)
+        if top in ("Tools", "docs", ".git", ".github", ".claude", "Workspace") or "__pycache__" in rd:
             dns[:] = []
             continue
         for fn in fns:
@@ -2798,8 +2799,11 @@ def ship_install(stage, rows, report, refs, check_only, record_path):
     problems = []
     if not _inside(media, ROOT) or os.path.basename(media) != "Media":
         sys.exit("ship: %s is not the addon's Media" % media)
-    if _inside(MEDIA, ROOT) or _inside(media, MEDIA):
-        sys.exit("ship: the masters (%s) must be outside the addon, and Media outside them" % MEDIA)
+    # (2026-10-28) the masters may sit in the addon's own Workspace: git never sees it and nothing in it ships
+    shipped_tree = _inside(MEDIA, ROOT) and not _inside(MEDIA, os.path.join(ROOT, "Workspace"))
+    if shipped_tree or _inside(media, MEDIA):
+        sys.exit("ship: the masters (%s) must be outside the addon's shipped files (its Workspace is fine), "
+                 "and Media outside them" % MEDIA)
     prev = {}
     if os.path.exists(record_path):
         try:

@@ -13,7 +13,7 @@ import numpy as np
 from PIL import Image
 import name_kit as nk   # seam helpers
 
-KIT = r"C:\Users\mortu\Downloads\UITest\kit"
+KIT = r"F:\Download-Backup\Project Web\MelloUI\Workspace\ArtSources\UITest\kit"
 variant = sys.argv[1] if len(sys.argv) > 1 else "v2"
 SRC, DST = os.path.join(KIT, variant), os.path.join(KIT, variant + "_2x")
 

@@ -24,7 +24,7 @@ sys.path.insert(0, TOOLS)
 try:
     from paths import CACHE  # noqa: E402
 except Exception:  # pragma: no cover
-    CACHE = os.path.join(os.path.dirname(os.path.dirname(TOOLS)), "MelloUI-BuildData", "cache")
+    CACHE = os.path.join(os.path.dirname(TOOLS), "Workspace", "BuildData", "cache")
 
 BUILD = "1.60.1.70425"
 LOCALES = ["enUS", "deDE", "frFR", "esES", "esMX", "ptBR", "ruRU", "zhCN", "koKR"]

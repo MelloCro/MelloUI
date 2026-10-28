@@ -32,7 +32,7 @@ from hud import GAP, EPS  # noqa: E402
 # build data beside it (MELLOUI_BUILD_DATA when set, as Tools/paths.py has it)
 REPO = os.path.normpath(os.path.join(HERE, "..", "..", "..")).replace("\\", "/")
 BD = (os.environ.get("MELLOUI_BUILD_DATA", "").strip()
-      or os.path.join(os.path.dirname(REPO), "MelloUI-BuildData")).replace("\\", "/") + "/installer"
+      or os.path.join(REPO, "Workspace", "BuildData")).replace("\\", "/") + "/installer"
 SV_21 = BD + "/2026-09-24_21x9_3440x1440/MelloUI.SavedVariables.lua"
 SV_16 = BD + "/2026-09-24_16x9_2560x1440/MelloUI.SavedVariables.lua"
 FINAL_TXT = BD + "/2026-09-26_21x9_immersive/EditModeLayout.final.txt"

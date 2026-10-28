@@ -19,7 +19,7 @@ import os, json
 import numpy as np
 from PIL import Image
 
-KIT = r"C:\Users\mortu\Downloads\UITest\kit"
+KIT = r"F:\Download-Backup\Project Web\MelloUI\Workspace\ArtSources\UITest\kit"
 SRC = os.path.join(KIT, "v2", "window")
 OUT = os.path.join(KIT, "v2_2x", "window")
 OVERHANG = 12          # px at 2x: the gem past the rails' outer edge

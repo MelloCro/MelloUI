@@ -14,7 +14,7 @@ import os, json
 import numpy as np
 from PIL import Image
 
-KIT = r"C:\Users\mortu\Downloads\UITest\kit\v2_2x"
+KIT = r"F:\Download-Backup\Project Web\MelloUI\Workspace\ArtSources\UITest\kit\v2_2x"
 CAP = 46            # px at 2x: the gem cap of the 152 px thumb (gem + bezel)
 THUMBS = { "normal": "scrollthumb_normal", "hover": "scrollthumb_hover_b" }
 

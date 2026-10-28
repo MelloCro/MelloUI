@@ -7,7 +7,7 @@ MelloUI-BuildData/output/newui2_library_sketch/newui2_parts.py: the kit_v3 magen
 taking the nearest solid one's colour, the dust round a piece dropped), in the sheets' own colours (the kit's
 recolouring makes each look's from them, Tools/kit_palette.py).
 
-The glyph sheet (C:/Users/mortu/Downloads/NewUI2/a4de1ef6...png): square plates with gold corner studs, each glyph in
+The glyph sheet (F:/Download-Backup/Project Web/MelloUI/Workspace/ArtSources/NewUI2/a4de1ef6...png): square plates with gold corner studs, each glyph in
 its states left to right (steel = normal, gold = hover, dim = pressed):
     row 1  arrow up x 3, arrow down x 3          row 3  check box off, on, hover (gold empty); cog x 3
     row 2  arrow left x 3, arrow right x 3       row 4  plus normal, hover; minus normal, hover

@@ -34,8 +34,8 @@ from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
-BUILD = os.path.join(os.path.dirname(REPO), "MelloUI-BuildData", "cache")
-DB2 = "F:/Download-Backup/WoWExport/db2"
+BUILD = os.path.join(REPO, "Workspace", "BuildData", "cache")
+DB2 = "F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/db2"
 OUT = os.path.join(REPO, "MelloUI_DungeonInfo", "DungeonInfoData.lua")
 SQL = os.path.join(BUILD, "ClassicDB.sql.gz")
 LISTFILE = os.path.join(BUILD, "verified-listfile.csv")
@@ -103,7 +103,7 @@ def door_keys():
     return {int(k): int(c) for k, c in re.findall(r'\{(\d+),"(?:[^"\\]|\\.)*",(-?\d+),', text[i:j])}
 
 
-SEEN_DIR = os.path.join(os.path.dirname(REPO), "MelloUI-BuildData", "dungeoninfo_seen")
+SEEN_DIR = os.path.join(REPO, "Workspace", "BuildData", "dungeoninfo_seen")
 
 # (1.2.2, the user: "the new dungeons still dont have their loot drops"; Forever's dungeon loot is in neither client
 # nor hotfix: every list is collected from players. Their pick: Everloot, with its credit) Everloot's open data

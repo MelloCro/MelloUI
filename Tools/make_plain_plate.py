@@ -13,7 +13,7 @@ import os, json
 import numpy as np
 from PIL import Image
 
-KIT = r"C:\Users\mortu\Downloads\UITest\kit\v2_2x"
+KIT = r"F:\Download-Backup\Project Web\MelloUI\Workspace\ArtSources\UITest\kit\v2_2x"
 LISTS = os.path.join(KIT, "lists")
 BUTTONS = os.path.join(KIT, "buttons")
 CAP_W = 14          # cap width in piece px (2x): the rail plus a little slab

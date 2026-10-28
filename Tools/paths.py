@@ -4,10 +4,12 @@
 `Tools/cache` (the downloaded cmangos dump and wago tables, ~350 MB) used to sit
 inside the addon folder. They are generated, gitignored and enormous, and the
 addon folder is something the user backs up and syncs, so they were moved out
-(user, 2026-09-22) to a sibling folder:
+(user, 2026-09-22) to a sibling folder, and on 2026-10-28 (the user: "group
+everything into the MelloUI folder") into the addon folder's own Workspace,
+which git never sees (.git/info/exclude) and the game sync skips:
 
-    Project Web/MelloUI/            the addon and its tools
-    Project Web/MelloUI-BuildData/  output/ and cache/
+    Project Web/MelloUI/                      the addon and its tools
+    Project Web/MelloUI/Workspace/BuildData/  output/, cache/, masters/
 
 Nothing about the addon or the release depends on them. `.pkgmeta` already kept
 `Tools` out of the zip, so this changes what is on disk, not what ships.
@@ -18,10 +20,11 @@ Resolution order, so that a machine which never moved them still works:
 
     1. MELLOUI_BUILD_DATA, if it is set
     2. the old Tools/output, Tools/cache, if they are still there
-    3. the sibling MelloUI-BuildData folder  (created on demand)
+    3. Workspace/BuildData of the main checkout (a session's worktree under
+       .claude/worktrees uses its main checkout's)  (created on demand)
 
 `pack_sources` deliberately did NOT move: it is the kit's source art, and
-kitforge (in `MelloUI Test/tools/kitforge`) points straight at
+kitforge (in `Workspace/Test/tools/kitforge`) points straight at
 `Tools/pack_sources/kit/v2_2x`.
 
 The texture MASTERS moved out too (user, 2026-09-24: the compressed textures
@@ -49,7 +52,10 @@ import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ADDON = os.path.dirname(HERE)
-SIBLING = os.path.join(os.path.dirname(ADDON), "MelloUI-BuildData")
+# (2026-10-28) the main checkout's Workspace: a worktree under .claude/worktrees has none of its own
+MAIN = ADDON.split(os.sep + ".claude" + os.sep)[0]
+WORKSPACE = os.path.join(MAIN, "Workspace")
+SIBLING = os.path.join(WORKSPACE, "BuildData")
 
 
 def _resolve(name: str) -> str:

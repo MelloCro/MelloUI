@@ -24,7 +24,7 @@ import soundfile as sf
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "Media", "Sounds", "SFX")
-DEFAULT_SOURCE = r"F:\Download-Backup\Project Web\MelloUI Test\SFX"
+DEFAULT_SOURCE = r"F:\Download-Backup\Project Web\MelloUI\Workspace\Test\SFX"
 
 
 def read_picks(path):

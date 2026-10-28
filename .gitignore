@@ -1,6 +1,6 @@
 # Tools/cache and Tools/output moved OUT of the addon folder (2026-09-22): they
 # are generated, gitignored and ~3.5 GB, and this folder gets backed up and
-# synced. They live in ../MelloUI-BuildData now; Tools/paths.py finds them, and
+# synced. They live in Workspace/BuildData now; Tools/paths.py finds them, and
 # still finds them here if a machine never moved them.
 Tools/cache/
 Tools/output/

@@ -51,7 +51,7 @@ tie: PRIORITY's first); every aura of that name is tracked there.
 "yours", "hot", "shield" are your own groups; the rest are everyone's (a group frame shows a member's defensives
 whatever their class), listed per class so a player can switch single spells off.
 
-Read from Forever's tables as wow.export wrote them (F:/Download-Backup/WoWExport/forever_70532/db2, product wowf);
+Read from Forever's tables as wow.export wrote them (F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/forever_70532/db2, product wowf);
 written to MelloUI_GroupFrames/GroupSpells.lua.
 
     python Tools/group_spells_forever.py [--report] [--check]
@@ -63,7 +63,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB2 = r"F:/Download-Backup/WoWExport/forever_70532/db2/"
+DB2 = r"F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/forever_70532/db2/"
 BUILD = "1.60.1.70532"
 OUT = os.path.join(ROOT, "MelloUI_GroupFrames", "GroupSpells.lua")
 

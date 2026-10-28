@@ -19,7 +19,7 @@ import os, glob, json
 import numpy as np
 from PIL import Image
 
-SRC = r"C:\Users\mortu\Downloads\UITest"
+SRC = r"F:\Download-Backup\Project Web\MelloUI\Workspace\ArtSources\UITest"
 KIT = os.path.join(SRC, "kit", "v2_2x")
 
 WIDE = ["alchemy", "blacksmithing", "enchanting", "engineering", "herbalism", "leatherworking", "skinning", "tailoring"]

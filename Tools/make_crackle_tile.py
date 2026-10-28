@@ -14,7 +14,7 @@ import os, json
 import numpy as np
 from PIL import Image
 
-KIT = r"C:\Users\mortu\Downloads\UITest\kit\v2_2x"
+KIT = r"F:\Download-Backup\Project Web\MelloUI\Workspace\ArtSources\UITest\kit\v2_2x"
 SRC = os.path.join(KIT, "cards", "alchemy.png")
 REGION = (0, 0, 430, 215)       # plain stone, left of the still-life
 BAND = 48                       # px of cross-fade either side of the seam

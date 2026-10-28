@@ -5,7 +5,7 @@ sheet for ChatGPT's image editing: the neighbouring zones' own art around it at 
 gap cut out transparent, in one of the sizes ChatGPT paints (1536 x 1024, 1024 x 1536, 1024 x 1024) so the painting
 comes back on the same canvas; a contact sheet of them all; prompts.md, a prompt per gap.
 
-Local only: the sheets hold the game's art (wow.export's files in F:/Download-Backup/WoWExport), so they go to
+Local only: the sheets hold the game's art (wow.export's files in F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport), so they go to
 MelloUI-BuildData/output/map_gaps, never into the repository or a release.
     python Tools/map_gaps.py                every gap of Kalimdor and the Eastern Kingdoms
     python Tools/map_gaps.py --debug        also each continent's land, cover and gap masks
@@ -24,9 +24,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import build_map_data as B  # noqa: E402  (the tables, the zones' places and their soft outlines)
 
-EXPORT = "F:/Download-Backup/WoWExport/"
+EXPORT = "F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/"
 ART_DIRS = (("map_m2_png", ".png"), ("map_m3_png", ".png"), ("map_zoom_png", ".png"), ("map_gap_raw", ".blp"))
-OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), "MelloUI-BuildData", "output", "map_gaps")
+OUT = os.path.join(os.path.dirname(HERE), "Workspace", "BuildData", "output", "map_gaps")
 CONTINENTS = {1414: "Kalimdor", 1415: "Eastern Kingdoms"}
 AW, AH = B.ART_W, B.ART_H       # a map's art (1002 x 668): the continents' masks are worked out at this size
 COVER = 0.5                     # a zone's outline covers its land from this alpha

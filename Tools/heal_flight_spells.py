@@ -14,7 +14,7 @@ hand: one rule for the whole class of spells.
 in that order (a spell that heals and leaves a heal over time, Regrowth, is a heal). Only what is put on an ally
 counts (implicit targets 21 TARGET_ALLY, 25 TARGET_ANY, 57 TARGET_RAID, or the group's): a spell on yourself alone
 (a potion, Divine Shield, Ice Block) is none. Read from the client's tables as wow.export wrote them
-(F:/Download-Backup/WoWExport/db2/SpellEffect.csv); written to MelloUI_FrameEffects/HealFlightSpells.lua.
+(F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/db2/SpellEffect.csv); written to MelloUI_FrameEffects/HealFlightSpells.lua.
 
 A heal over time's ticks (the user, 2026-10-09: "Heal over Time Ticks effect"): every spell that puts an aura 8
 PERIODIC_HEAL on an ally (Renew, Rejuvenation, Regrowth's own) gets its tick period (SpellEffect.EffectAuraPeriod)
@@ -27,7 +27,7 @@ import csv
 import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB2 = r"F:/Download-Backup/WoWExport/db2/"
+DB2 = r"F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/db2/"
 SOURCE = DB2 + "SpellEffect.csv"
 OUT = os.path.join(ROOT, "MelloUI_FrameEffects", "HealFlightSpells.lua")
 EFFECTS_OUT = os.path.join(ROOT, "MelloUI_FrameEffects", "FrameEffectsSpells.lua")

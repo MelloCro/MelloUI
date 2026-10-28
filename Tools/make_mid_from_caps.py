@@ -13,7 +13,7 @@ import os, sys, json
 import numpy as np
 from PIL import Image
 
-KIT = r"C:\Users\mortu\Downloads\UITest\kit\v2_2x"
+KIT = r"F:\Download-Backup\Project Web\MelloUI\Workspace\ArtSources\UITest\kit\v2_2x"
 PROFILE = 4     # columns taken from the cap's joint end (past the glyphs)
 MID_W = 128     # width of the rebuilt middle
 
