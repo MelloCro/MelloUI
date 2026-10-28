@@ -85,7 +85,7 @@ local type, pcall, tonumber, tostring = type, pcall, tonumber, tostring
 
 local M = MelloUI:RegisterModule("Restock", {
 	title = "Restock",
-	desc = "Keeps drink, food, ammunition and reagents in your bags: a reminder when one runs low (with Reminders on), and at a shop a list of what to buy, bought only when you click Buy.",
+	desc = "Keeps food, drink, ammo and reagents stocked: a reminder when low, and a shopping list at merchants.",
 	icon = "Interface\\Icons\\INV_Drink_07",
 	flavour = "Water, bread and arrows, topped up before they run out.",
 	-- (no group: its rows sit on the Reminders page, Modules/Reminders.lua)
@@ -100,11 +100,11 @@ local M = MelloUI:RegisterModule("Restock", {
 	-- the reminder's too)
 	options = {
 		{ type = "slider", key = "below", name = "Remind Below", min = 0.25, max = 0.75, step = 0.05, percent = true,
-		  desc = "You are reminded when a line drops below this share of its amount: at 50 %, a line of 20 water reminds you at 9. At a shop it is bought back up to the full amount. The reminder needs Reminders on; the Restock List marks the low lines either way." },
+		  desc = "Reminds you when an item drops below this share of its amount." },
 		{ type = "toggle", key = "shopPanel", name = "Shopping List At The Shop",
-		  desc = "At a merchant who sells what you are low on, a small list beside the shop window: each item, how many and the price, and the total. Nothing is bought until you click Buy." },
+		  desc = "At a merchant, a shopping list of what you are low on. Nothing is bought until you click Buy." },
 		{ type = "button", name = "Restock List", text = "Edit",
-		  desc = "What to keep in your bags and how many. Each character has its own list; a new one starts with suggestions for its class. Also /restock.",
+		  desc = "What to keep in your bags, and how many. Each character has its own list. /restock opens it too.",
 		  onClick = function(module) module:OpenList() end },
 	},
 })

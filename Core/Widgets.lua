@@ -226,11 +226,13 @@ do
 		border = setmetatable({}, weak),
 	}
 	local paintedFrom, listening = nil, false
+	local paintedDim = 0   -- (1.2.4) Dark Mode's dim painted last (Look.DimStamp)
 
-	-- the palette as the look shows it now (MelloUI.Look; without it, the palette)
-	local function Colours()
+	-- the palette as the look shows it now (MelloUI.Look; without it, the palette); `text`: for text, never
+	-- dimmed by Dark Mode (Look.Palette's own)
+	local function Colours(text)
 		local Look = MelloUI.Look
-		return type(Look) == "table" and type(Look.Palette) == "function" and Look.Palette() or MelloUI.Palette
+		return type(Look) == "table" and type(Look.Palette) == "function" and Look.Palette(nil, text) or MelloUI.Palette
 	end
 
 	-- (1.2.4) a hairline (P.Hair) under the Default skin: the game's own line (MelloUI.Skin); back in a colour, its
@@ -255,7 +257,7 @@ do
 	end
 
 	local function Apply(region, key, how, alpha, e)
-		local c = Colours()[key]
+		local c = Colours(how == "text")[key]
 		if not c then
 			return
 		end
@@ -297,10 +299,12 @@ do
 
 	local function OnPalette()
 		local palette = MelloUI.Palette
-		if palette == paintedFrom then
+		local Look = MelloUI.Look
+		local stamp = type(Look) == "table" and Look.DimStamp and Look.DimStamp() or 0
+		if palette == paintedFrom and stamp == paintedDim then
 			return
 		end
-		paintedFrom = palette
+		paintedFrom, paintedDim = palette, stamp
 		RepaintAll()
 	end
 
@@ -753,6 +757,111 @@ function W.Panel(parent, opts)
 		Rims:Add(panel, { area = type(opts.rim) == "string" and opts.rim or nil })
 	end
 	return panel
+end
+
+--------------------------------------------------------------------------------
+-- RoundPlate (1.2.4, Edit Layout's dock -- the user's pick A of
+-- MelloUI-BuildData/output/editlayout_dock_sketch): a plate with round
+-- corners in palette colours, drawn from the round mask (no art of its own):
+-- a fill inside an edge. Its corners are quarters of the mask's disc, its
+-- straight parts plain rects; one system for every round plate: the dock (its
+-- bottom corners round, flush with the screen's top: no top edge), its round
+-- buttons (a circle) and the pills under it.
+--   W.RoundPlate(frame, spec) -> plate   on `frame`, sized by the caller once
+--     (the corners keep spec.radius); spec: shape ("rounded" | "bottom":
+--     only the bottom corners round, the top open | "pill": radius half the
+--     height | "circle"), radius (6; a pill's and a circle's from the size),
+--     fill ("innerPanel"), edge ("border"), edgeWidth (1), fillAlpha (1),
+--     edgeAlpha (1), layer ("BACKGROUND"), sub (-7: the edge, the fill one up)
+--   plate:Paint(fill, edge[, fillAlpha, edgeAlpha])   its colours by key
+--------------------------------------------------------------------------------
+
+do   -- (in a block: the main chunk is near Lua's 200 locals)
+	local QUAD = {
+		TOPLEFT = { 0, 0.5, 0, 0.5 }, TOPRIGHT = { 0.5, 1, 0, 0.5 },
+		BOTTOMLEFT = { 0, 0.5, 0.5, 1 }, BOTTOMRIGHT = { 0.5, 1, 0.5, 1 },
+	}
+	local CENTRE = { TOPLEFT = "BOTTOMRIGHT", TOPRIGHT = "BOTTOMLEFT", BOTTOMLEFT = "TOPRIGHT", BOTTOMRIGHT = "TOPLEFT" }
+	local SIGN = { TOPLEFT = { 1, -1 }, TOPRIGHT = { -1, -1 }, BOTTOMLEFT = { 1, 1 }, BOTTOMRIGHT = { -1, 1 } }
+	local ALL_CORNERS = { "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }
+	local BOTTOM_CORNERS = { "BOTTOMLEFT", "BOTTOMRIGHT" }
+
+	local function Rect(frame, layer, sub, list, p1, x1, y1, p2, x2, y2)
+		local t = frame:CreateTexture(nil, layer, nil, sub)
+		t:SetPoint("TOPLEFT", frame, p1, x1, y1)
+		t:SetPoint("BOTTOMRIGHT", frame, p2, x2, y2)
+		list[#list + 1] = t
+	end
+
+	-- one shape (the edge's, or the fill's inset by `i`): its discs and its rects
+	local function Shape(frame, spec, r, i, sub)
+		local layer = spec.layer or "BACKGROUND"
+		local s = { discs = {}, rects = {} }
+		if spec.shape == "circle" then
+			local t = frame:CreateTexture(nil, layer, nil, sub)
+			t:SetTexture(ROUND_MASK)
+			t:SetPoint("TOPLEFT", frame, "TOPLEFT", i, -i)
+			t:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -i, i)
+			s.discs[1] = t
+			return s
+		end
+		local open = spec.shape == "bottom"
+		for _, c in ipairs(open and BOTTOM_CORNERS or ALL_CORNERS) do
+			local t = frame:CreateTexture(nil, layer, nil, sub)
+			t:SetTexture(ROUND_MASK)
+			local q = QUAD[c]
+			t:SetTexCoord(q[1], q[2], q[3], q[4])
+			t:SetSize(r - i, r - i)
+			local sx, sy = SIGN[c][1], SIGN[c][2]
+			t:SetPoint(CENTRE[c], frame, c, sx * r, sy * r)
+			s.discs[#s.discs + 1] = t
+		end
+		if open then
+			Rect(frame, layer, sub, s.rects, "TOPLEFT", i, 0, "BOTTOMRIGHT", -i, r)
+			Rect(frame, layer, sub, s.rects, "BOTTOMLEFT", r, r, "BOTTOMRIGHT", -r, i)
+		else
+			Rect(frame, layer, sub, s.rects, "TOPLEFT", r, -i, "BOTTOMRIGHT", -r, i)
+			if spec.shape ~= "pill" then
+				Rect(frame, layer, sub, s.rects, "TOPLEFT", i, -r, "BOTTOMLEFT", r, r)
+				Rect(frame, layer, sub, s.rects, "TOPRIGHT", -r, -r, "BOTTOMRIGHT", -i, r)
+			end
+		end
+		return s
+	end
+
+	local function PaintShape(s, key, alpha)
+		for _, t in ipairs(s.discs) do
+			W.Paint(t, key, "vertex", alpha)
+		end
+		for _, t in ipairs(s.rects) do
+			W.Paint(t, key, "fill", alpha)
+		end
+	end
+
+	local function PlatePaint(plate, fill, edge, fillAlpha, edgeAlpha)
+		PaintShape(plate.edgeShape, edge or plate.edgeKey, edgeAlpha or plate.edgeAlpha)
+		PaintShape(plate.fillShape, fill or plate.fillKey, fillAlpha or plate.fillAlpha)
+	end
+
+	function W.RoundPlate(frame, spec)
+		spec = type(spec) == "table" and spec or NO_OPTS
+		local w, h = Num(frame:GetWidth()) or 0, Num(frame:GetHeight()) or 0
+		local r = spec.radius or 6
+		if spec.shape == "pill" then
+			r = h / 2
+		end
+		local sub = spec.sub or -7
+		local edgeW = spec.edgeWidth or 1
+		local plate = {
+			fillKey = spec.fill or "innerPanel", edgeKey = spec.edge or "border",
+			fillAlpha = spec.fillAlpha or 1, edgeAlpha = spec.edgeAlpha or 1,
+			Paint = PlatePaint,
+		}
+		plate.edgeShape = Shape(frame, spec, math.min(r, w / 2), 0, sub)
+		plate.fillShape = Shape(frame, spec, math.min(r, w / 2), edgeW, sub + 1)
+		plate:Paint()
+		return plate
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -1893,7 +2002,8 @@ end
 -- (Kit:SweepControls, Kit:SkinRedButton) passes it by, whatever window it
 -- is in.
 --   W.Button(parent, text, width, skin, opts) -> button
---     opts: height (22), onClick (a shared handler), gold
+--     opts: height (22), onClick (a shared handler), gold, filled (1.2.4:
+--     with gold, the gold on the selected fill, its label the text colour)
 --     (`skin` kept for the callers: a flat button has nothing to dress)
 --   W.FlatButton(button, gold) -> button   the same look on a button made
 --     by hand from UIPanelButtonTemplate (its creation line kept); once
@@ -1916,6 +2026,7 @@ do
 	local PLATE_PARTS = { "Left", "Middle", "Right", "Center" }   -- the template's plate (the older and the 128 red one)
 	local PLATE_TEXTURES = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }
 	local flatGold = setmetatable({}, weakKeys)    -- [button] = true: the main action's
+	local flatFilled = setmetatable({}, weakKeys)  -- [button] = true: (1.2.4) its gold filled, not outlined
 	local CLOSE = 22                               -- the close button
 	local closeDown = setmetatable({}, weakKeys)   -- [close button] = true while the mouse is down on it
 
@@ -2014,7 +2125,10 @@ do
 			end
 			return
 		end
-		W.Paint(b.melloFill, lit and "hover" or "raisedPanel", "fill", alpha)
+		-- (1.2.4, Edit Layout's dock: the user's pick A of editlayout_dock_sketch) a filled gold one, the main action
+		-- on a bar of its own: the selected fill under its gold edge, its label in the text colour
+		local filled = gold and flatFilled[b]
+		W.Paint(b.melloFill, (lit and "hover") or (filled and "selectedTab") or "raisedPanel", "fill", alpha)
 		if edges then
 			local key = gold and "selectedTrim" or "border"
 			for i = 1, 4 do
@@ -2023,7 +2137,7 @@ do
 		end
 		local fs = b:GetFontString()
 		if fs then
-			W.Paint(fs, (not on and "mutedText") or (gold and not lit and "selectedTrim") or "text", "text")
+			W.Paint(fs, (not on and "mutedText") or (gold and not lit and not filled and "selectedTrim") or "text", "text")
 		end
 	end
 
@@ -2076,6 +2190,9 @@ do
 		W.FitButton(b)
 		if opts and opts.onClick then
 			Perf.SetScript(b, "OnClick", opts.onClick)
+		end
+		if opts and opts.gold and opts.filled then
+			flatFilled[b] = true
 		end
 		return W.FlatButton(b, opts and opts.gold)
 	end
@@ -3604,9 +3721,10 @@ end
 
 --------------------------------------------------------------------------------
 -- Glyph (0.16.0): the widget glyphs, one sheet (Media/Textures/WidgetGlyphs,
--- 8 x 4 cells of 32 px, white: made by Tools/make_widget_art.py; 8 x 2 until
--- 0.17.0) for the widget column's buttons, the whisper window's header
--- buttons and the chat column's (0.17.0); painted by the caller (the
+-- 8 x 6 cells of 32 px, white: made by Tools/make_widget_art.py; 8 x 2 until
+-- 0.17.0, 8 x 4 until 1.2.4) for the widget column's buttons, the whisper
+-- window's header buttons, the chat column's (0.17.0) and Edit Layout's dock
+-- and Elements picker (1.2.4); painted by the caller (the
 -- palette's text, its gold on hover). Cell 15 is empty: Report's link.
 --   W.Glyph(tex, name) -> true   the glyph's cell on the texture; false for a
 --                                name the sheet has not (nothing set)
@@ -3632,8 +3750,12 @@ do
 		-- (0.18.2: the Discard button on the bag and loot windows)
 		bin = 27,
 		-- (0.19.5: the Quest List's objective marks: collect, use, explore; kill is the sword)
-		bag = 28, cog = 29, flag = 30 }
-	local ROWS = 4
+		bag = 28, cog = 29, flag = 30,
+		-- (1.2.4: Edit Layout's dock and Elements picker)
+		grid = 31, magnet = 32, moon = 33, crosshair = 34, layers = 35, keys = 36, reset = 37, question = 38,
+		eye = 39, eyeOff = 40, solo = 41, search = 42, pin = 43 }
+	local ROWS = 6
+	W.GLYPH_ROWS = ROWS   -- (the sheet's rows of cells: its height is ROWS x 32 px)
 
 	-- (share, 0.21.3: only the glyph's left part, a share of its width -- a
 	-- tick drawn in; the texture as wide as that share)

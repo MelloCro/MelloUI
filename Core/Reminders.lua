@@ -1079,7 +1079,7 @@ Build = function()
 	-- drag of its own -- the buttons keep their mouse
 	ui.entry = MelloUI:RegisterMover(holder, holder, { key = MOVER_KEY, anchor = "CENTER", save = SaveFree,
 		reset = ForgetFree, default = PlaceHome, label = "Reminders", page = SETTINGS, when = RemindersOn,
-		locked = Locked })
+		locked = Locked, category = "text" })
 	MelloUI:On("mover", OnMover, OWNER)
 	-- placed again when the player frame shows or hides, the kit's unit
 	-- frames switch, or Edit Mode closes (hooks on the game's frame)
@@ -2297,7 +2297,7 @@ local function Column()
 		-- no mouse (its empty parts stay the world's)
 		col.entry = MelloUI:RegisterMover(holder, holder, { key = COL_KEY, anchor = "BOTTOM", default = ColHome,
 			label = TEXT.colTitle, page = SETTINGS, when = ColOn, locked = ColLocked, placeholder = { ROW_W, ROW_H },
-			min = 0.6, max = 1.6, plainDrag = "always" })
+			min = 0.6, max = 1.6, plainDrag = "always", category = "text" })
 		holder:EnableMouse(false)
 		MelloUI:RestorePosition(COL_KEY, holder)
 		MelloUI:On("look:unitframes", OnLookCol, OWNER .. " column")

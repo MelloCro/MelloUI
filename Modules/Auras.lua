@@ -71,30 +71,30 @@ local M = MelloUI:RegisterModule("Auras", {
 	options = {
 		{ type = "header", name = "Your Buffs" },
 		{ type = "toggle", key = "player", name = "Your Buffs And Debuffs",
-		  desc = "Your buffs, then your debuffs on a row of their own. Right-click a buff to cancel it. Beside the minimap, or where the game's buff bar is: that bar comes back while Edit Mode is open, so it can still be moved, and these follow it." },
+		  desc = "MelloUI's rows for your buffs and debuffs, beside the minimap or where the game's buff bar is. Right-click a buff to cancel it." },
 		{ type = "toggle", key = "playerColumn", parent = "player", name = "Attach To The Minimap Column",
-		  desc = "Your buffs in a line beside the minimap, level with the map's top and growing away from it, your debuffs on the line under them. They follow the minimap when it moves or changes size. Needs the Minimap Kit; off, they stand where the game's buff bar is." },
+		  desc = "Your buffs line up beside the minimap and follow it. Off: they stand where the game's buff bar is." },
 		{ type = "toggle", key = "playerFrame", parent = "player", name = "Attach To The Player Frame",
-		  desc = "Your debuffs, then your buffs and weapon buffs, under your player frame, as the target's are under the target frame: the same icons, spiral and timers. Right-click a buff to cancel it. They move with the player frame. Off, they stand beside the minimap or where the game's buff bar is." },
+		  desc = "Your buffs and debuffs under your player frame, like the target's. They move with the frame." },
 		{ type = "dropdown", key = "playerFrameGrow", parent = "playerFrame", name = "Direction",
 		  values = { { value = "right", label = "Left To Right" }, { value = "left", label = "Right To Left" } },
-		  desc = "Which way your icons run under the player frame: from the bars' left end rightwards, or from their right end leftwards." },
+		  desc = "Which way your icons run under the player frame." },
 		{ type = "slider", key = "playerFrameSize", parent = "playerFrame", name = "Icon Size On The Frame", min = 14, max = 36, step = 1,
-		  desc = "The size of your buff and debuff icons under the player frame, in pixels (the target's are 22 by default). The rows keep one width, so a smaller size fits more in a row." },
+		  desc = "The size of your buff and debuff icons under the player frame." },
 		{ type = "header", name = "Target" },
 		{ type = "toggle", key = "target", name = "Target Frame",
-		  desc = "Your target's debuffs, then its buffs, under the target frame, in place of the game's." },
+		  desc = "Your target's debuffs and buffs under the target frame, in MelloUI's look." },
 		{ type = "slider", key = "targetSize", parent = "target", name = "Icon Size", min = 14, max = 36, step = 1,
-		  desc = "The size of your target's debuff and buff icons under its frame, in pixels. The rows keep one width, so a smaller size fits more in a row." },
+		  desc = "The size of your target's buff and debuff icons." },
 		{ type = "toggle", key = "targetOnlyMine", parent = "target", name = "Only My Debuffs",
-		  desc = "On the target, show only the debuffs you put on it." },
+		  desc = "Only the debuffs you put on your target." },
 		{ type = "header", name = "Nameplates" },
 		{ type = "toggle", key = "nameplates", name = "Enemy Nameplates",
-		  desc = "Your debuffs on enemy nameplates, in place of the game's row. Crowd control stays with the game (and the Nameplates module)." },
+		  desc = "Your debuffs on enemy nameplates, in MelloUI's look." },
 		{ type = "slider", key = "nameplateSize", parent = "nameplates", name = "Icon Size", min = 12, max = 32, step = 1,
-		  desc = "The size of your debuff icons on enemy nameplates, in pixels." },
+		  desc = "The size of your debuff icons on nameplates." },
 		{ type = "dropdown", key = "textFont", name = "Buff Numbers Font", values = MelloUI.FontFaces,
-		  desc = "The face of the time and stacks on MelloUI's buffs and debuffs: yours, the target's and the nameplates'. Shared: the Chat & numbers face (Look > Fonts)." },
+		  desc = "The font of timers and stacks on MelloUI's buffs and debuffs. Shared: the numbers font." },
 	},
 })
 
@@ -1085,8 +1085,89 @@ M.WeaponCount = function()
 	return Weapon.n
 end
 
+-- (1.2.4) Edit Layout: the rows stand in for the game's Buffs (hidden for them), so its plate lies over them --
+-- dragged, it moves the game's buff bar, which the rows hang from (GamePlace); attached to the minimap column or the
+-- player frame, the plate is locked and says what they move with (MelloUI:EditLayoutCover)
+local COVER_TEXT = {
+	label = "Your buffs & debuffs",
+	column = "They stand by the minimap column and move with it (Buffs & Debuffs: Attach To The Minimap Column).",
+	frame = "They hang under your player frame and move with it (Unit Frames: Attach Your Buffs And Debuffs).",
+}
+
+-- the rows shown now (the player frame's or these), and whether they are the player frame's
+local function ShownRows()
+	local framed = rawget(M, "FrameRows") and M.FrameRows()
+	local c = framed or playerRows
+	if not (M.isEnabled and c) then
+		return nil
+	end
+	local ok, shown = pcall(c.IsShown, c)
+	if not ok or Secret(shown) or not shown then
+		return nil
+	end
+	return c, framed ~= nil
+end
+
+-- the rows' rect: the container's, grown round its shown buttons and (these rows, not the player frame's) to their
+-- whole room -- a line long, two rows high, out from the corner they grow from -- so the plate can be taken hold of
+-- with no aura up (screen px)
+local function RowsRect(c, framed)
+	local Rect = MelloUI.Safe.ScreenRect
+	local l, b, r, t = Rect(c)
+	if l and not framed then
+		local corner, gx, gy = FlowOf(placedSide)
+		local okS, s = pcall(c.GetEffectiveScale, c)
+		s = okS and not Secret(s) and s or 1
+		local size, spacing = M.db.playerSize or 30, M.db.playerSpacing or 6
+		local w, h = PlayerLine() * s, (2 * size + spacing + 10) * s
+		local x = corner:find("LEFT") and l or r
+		local y = corner:find("TOP") and t or b
+		local rl, rb = gx > 0 and x or x - w, gy > 0 and y or y - h
+		l, b, r, t = math.min(l, rl), math.min(b, rb), math.max(r, rl + w), math.max(t, rb + h)
+	end
+	for i = 1, select("#", c:GetChildren()) do
+		local child = select(i, c:GetChildren())
+		local ok, shown = pcall(child.IsShown, child)
+		if ok and not Secret(shown) and shown then
+			local cl, cb, cr, ct = Rect(child)
+			if cl then
+				if l then
+					l, b, r, t = math.min(l, cl), math.min(b, cb), math.max(r, cr), math.max(t, ct)
+				else
+					l, b, r, t = cl, cb, cr, ct
+				end
+			end
+		end
+	end
+	return l, b, r, t
+end
+
+local coverSpec = {
+	label = COVER_TEXT.label, page = "Auras",
+	visible = function()
+		return ShownRows() ~= nil
+	end,
+	box = function()
+		local c, framed = ShownRows()
+		if c then
+			return RowsRect(c, framed)
+		end
+		return nil
+	end,
+	locked = function()
+		local c, framed = ShownRows()
+		if not c then
+			return nil
+		end
+		return (framed and COVER_TEXT.frame) or (placedSide ~= nil and COVER_TEXT.column) or nil
+	end,
+}
+
 local function SetPlayer(on)
 	on = on and not inEditMode
+	if BuffFrame and MelloUI.EditLayoutCover then
+		MelloUI:EditLayoutCover(BuffFrame, coverSpec)
+	end
 	-- (0.20.1) Attach To The Player Frame: those rows in place of these
 	local onFrame = on and M.db.playerFrame and true or false
 	SetFrameRows(onFrame)

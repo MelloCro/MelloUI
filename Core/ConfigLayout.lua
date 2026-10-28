@@ -119,10 +119,10 @@ L.pages = {
 	-- is UI Modifications', which takes the reskin and every folded feature
 	-- with it)
 	Look = { title = "Look", icon = "module:UIModifications", set = "page_look", module = "UIModifications",
-		flavour = "The look of the whole interface: its skin, the soft shade, every font and texture, the colours, icons, Dark Mode and fading. The painted reskin and its palettes are on the Oldschool page.",
+		flavour = "The look of the whole interface: its skin, the soft shade, every font and texture, the colours, icons and Dark Mode. The painted reskin and its palettes are on the Oldschool page.",
 		switchLabel = "UI Modifications",
-		switchDesc = "The painted reskin AND every feature of UI Modifications: Vendor, Error Messages, Cooldown Timers, Nameplate Tweaks, Chat, Tooltip, Fonts, Dark Mode, Bar Textures, Buffs & Debuffs, Unit Frame Tweaks, FPS / Latency, Class Icons, Bar Values, the game windows' skins, hiding the micro menu, the bag bar and the minimap coordinates, and the world text scale. Off: all of them are off, Edit Layout lets go of the game's windows (they go back to the game's own places), Windows Fade In stops, names are shown in full and Class Coloured Names stops. The palette, the UI Shade, Reduce Motion and MelloUI's notices keep working.",
-		tabs = { "General", "Fonts", "Textures", "Colours", "Icons", "Dark Mode", "Fading" },
+		switchDesc = "The painted reskin and MelloUI's interface features: Vendor, Error Messages, Nameplate Tweaks, Unit Frame Tweaks, Chat, Tooltip, Fonts, Dark Mode, Bar Textures and FPS / Latency, and hiding the micro menu, bag bar and minimap coordinates. Off: all of them stop, and Edit Layout lets go of the game's windows; the palette, the UI Shade, Reduce Motion and the notices keep working.",
+		tabs = { "General", "Fonts", "Textures", "Colours", "Icons", "Dark Mode" },
 		-- (1.2.4, Look's homes: every font and every bar texture, background and border here, a card per part of the
 		-- interface after the tab's own sections -- Core/Config.lua's Lay.Card; the frames' pages link here)
 		cards = { Fonts = { "Unit Frames", "Party & Raid", "Buffs & Debuffs", "Personal Display", "Quest Tracker",
@@ -142,10 +142,12 @@ L.pages = {
 			{ "StackSplitPanel", "Split stack", "The split box's mouse wheel and half button." } } } },
 	-- (0.17.0) which parts fade away, and when they come back (one look: no
 	-- header switch -- the Fader runs while any element fades)
+	-- (1.2.4, the configurator audit -- the user, 2026-10-28: "we have a Fader Category, and even tho most of our
+	-- windows can be faded only a few show up there") every fading part here, on the tab of its kind (Fader.lua's
+	-- LIST), and how they fade (General: Look's Fading tab until then); each element's page links to its Fade
 	Fader = { title = "Fader", icon = "module:Fader", set = "page_fader",
-		-- (one look, Q5: each frame's and bar's Fade is its own element's last Behaviour row now -- the designers'
-		-- and the Reminders page's; the chat's and the map's here until stage H)
-		tabs = { "Chat & Map" } },
+		flavour = "Fade parts of the interface while you don't need them: pick when each one shows.",
+		tabs = { "General", "Frames", "Bars", "Chat, Map & More" } },
 	-- (one look C8, the user 2026-10-15: one designer per family) the player, target, focus, pet, your buffs, the
 	-- party and raid frames (MelloUI's own) and the Personal Display: pick a frame, then a part of it; its own
 	-- options under the part's (docs/plans/onelook-designer/c7-lite.md, ugf-audit.md)
@@ -279,12 +281,12 @@ L.pages = {
 	Minimap = { title = "Minimap", icon = "module:MinimapPanel", set = "page_minimap", module = "MinimapPanel", designer = true,
 		flavour = "The minimap and the Services bar under it: pick one, click a part, change it.",
 		switchLabel = "MelloUI Minimap",
-		switchDesc = "MelloUI's minimap: its Width and Height, the square shape in the Chat panel, the Services bar merged under it, and the column under it that the Quest Tracker follows. Off: the game's own minimap, Edit Mode's Size sizes it again, and the Painted Skin is off with it.",
+		switchDesc = "MelloUI's minimap: its size, square shape and the Services bar under it. Off: the game's own minimap.",
 		elements = {
 			{ key = "minimap", label = "Minimap", line = "The map, its size and its border",
 				parts = { { key = "coords", label = "Coordinates" }, { key = "border", label = "Border" },
 				{ key = "route", label = "Route trail", locked = "Its settings: Route (Quests and travel)" },
-				{ key = "marks", label = "Objective marks", locked = "Its settings: the World Map page" } } },
+				{ key = "marks", label = "Objective marks", locked = "Its settings: Quest List, its Map tab" } } },
 			{ key = "services", label = "Services", module = "Services", line = "The Services bar under the map",
 				parts = { { key = "button", label = "Services button" }, { key = "tray", label = "Tray" } } },
 		} },
@@ -342,12 +344,12 @@ L.words = {
 	reminders = { "QualityOfLife", "Reminders" },
 	remindersandwidgets = { "QualityOfLife", "Reminders" },
 	tooltip = { "QualityOfLife", "Tooltip" },
-	fade = { "Look", "Fading" },
+	fade = { "Fader", "General" },
 	groupframes = { "UnitGroupFrames", "raid:element" },
 	partyframes = { "UnitGroupFrames", "party:element" },
 	raidframes = { "UnitGroupFrames", "raid:element" },
 	indicators = { "UnitGroupFrames", "raid:indicators" },
-	mouseover = { "Look", "Fading" },
+	mouseover = { "Fader", "General" },
 	uimodifications = { "Look" },
 	palette = { "Oldschool", "General" },   -- (0.25.0: the reskin's palettes; the modern look has Gilded Slate alone)
 	uishade = { "Look", "General" },
@@ -359,7 +361,7 @@ L.words = {
 	colours = { "Look", "Colours" },
 	colors = { "Look", "Colours" },
 	parchment = { "Oldschool", "Parchment" },
-	fading = { "Look", "Fading" },
+	fading = { "Fader", "General" },
 	characterpanel = { "Windows", pick = "CharacterPanel" },
 	buffs = { "UnitGroupFrames", "buffs:element" },
 	debuffs = { "UnitGroupFrames", "buffs:element" },
@@ -464,7 +466,6 @@ function L.Define(R, Link)
 	R("Look", "General", "Look", "UIModifications.shade_minimap", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_icons", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_tracker", { free = true })
-	R("Look", "General", "Look", "UIModifications.shade_buffs", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_widgets", { free = true })
 	R("Look", "General", "Text", "UIModifications.nameFormat")
 	R("Look", "General", "Text", "UIModifications.classNames", { free = true })
@@ -488,9 +489,6 @@ function L.Define(R, Link)
 		when = { key = "UIModifications.CastBarPanel", value = true, line = "Only with the cast bars' Painted Skin" } })
 	-- (0.21.0: the Personal Display's bars, a module of its own -- no skin gate)
 	R("Oldschool", "Borders", "Look", "UIModifications.personalBarBorder", { picture = true })
-	-- (0.20.1: the swing timers' frame, a choice of its own)
-	R("Oldschool", "Borders", "Look", "UIModifications.swingTimerBorder", { picture = true,
-		when = { key = "UIModifications.CastBarPanel", value = true, line = "Only with the cast bars' Painted Skin" } })
 	R("Oldschool", "Borders", "Look", "UIModifications.roundBorder", { picture = true })
 	-- (0.19.8, the border library's stage 4: the unit frames' portrait ring a choice of its own, decision 8)
 	R("Oldschool", "Borders", "Look", "UIModifications.portraitRing", { picture = true,
@@ -548,8 +546,28 @@ function L.Define(R, Link)
 	R("Look", "Fonts", "Advanced", "Fonts.fontDamage")
 	R("Look", "Dark Mode", "General", "UIModifications.qol_DarkMode")
 	R("Look", "Dark Mode", "Look", "DarkMode.shade")
-	R("Oldschool", "General", "Look", "DarkMode.kitShade")
 	R("Look", "Dark Mode", "Look", "DarkMode.desaturate")
+	-- (1.2.4, the configurator audit) where Dark Mode dims: every area here (their elements' pages link to them),
+	-- each greyed where the painted skin covers it (Uncovered: its own art then)
+	local DARK = {
+		{ "DarkMode.unitframes", "Unit Frames", Uncovered("UnitFramePanel", "unit frames") },
+		{ "DarkMode.personal", "Personal Display" },
+		{ "DarkMode.auras", "Buffs & Debuffs", { any = GAME_AURAS.any, line = "Only on the game's own icons (Your Buffs And Debuffs off)" } },
+		{ "DarkMode.nameplates", "Nameplates", Uncovered("NameplatePanel", "nameplates") },
+		{ "DarkMode.actionbars", "Action Bars", Uncovered("ActionBarPanel", "action bars") },
+		{ "DarkMode.gryphons", "Action Bar End Caps", Uncovered("ActionBarPanel", "action bars") },
+		{ "DarkMode.micromenu", "Micro Menu & Bag Bar", Uncovered("ActionBarPanel", "action bars") },
+		{ "DarkMode.castbar", "Cast Bars", Uncovered("CastBarPanel", "cast bars") },
+		{ "DarkMode.statusbars", "Experience & Reputation Bars", Uncovered("ActionBarPanel", "action bars") },
+		{ "DarkMode.cooldowns", "Cooldown Manager" },
+		{ "DarkMode.minimap", "Minimap", Uncovered("MinimapKit", "minimap") },
+	}
+	for _, d in ipairs(DARK) do
+		R("Look", "Dark Mode", "General", d[1], { name = d[2], when = d[3] })
+	end
+	R("Look", "Dark Mode", "Look", "DarkMode.keepDispelColor",
+		{ when = { any = { GAME_AURAS, { key = "DarkMode.cooldowns", value = true } },
+			line = "Only on the game's own icons (Your Buffs And Debuffs off) or the Cooldown Manager's" } })
 	R("Look", "Textures", "General", "UIModifications.qol_BarTextures")
 	R("Look", "Textures", "Look", "BarTextures.texture", { name = "Every Bar", card = "Bars" })
 	-- the health bars' colour reaches the unit frames AND the nameplates
@@ -658,9 +676,12 @@ function L.Define(R, Link)
 	R("Oldschool", "Painted Skins", "Look", "UIModifications.UnitFramePanel", { name = "Unit Frames" })
 	R("Oldschool", "Painted Skins", "Look", "UIModifications.RaidFramePanel", { name = "Raid Frames" })
 	R("Oldschool", "Painted Skins", "Look", "UIModifications.CastBarPanel", { name = "Cast Bars" })
-	UGF(GAME4, "Look", "DarkMode.unitframes", { name = "Dark Mode", also = { ["DarkMode.unitframes"] = "boss and target of target" },
-		when = Uncovered("UnitFramePanel", "unit frames"), plus = "Party portraits" })
-	R("UnitGroupFrames", "personal:element", "Look", "DarkMode.personal", { name = "Dark Mode" })
+	-- (1.2.4, the configurator audit) Dark Mode's areas: their one place is Look > Dark Mode (DARK, below), a Link row
+	-- on each element's page
+	for _, tab in ipairs(GAME4) do
+		Link("UnitGroupFrames", tab, "Look", "DarkMode.unitframes", "Dark Mode", { when = Uncovered("UnitFramePanel", "unit frames") })
+	end
+	Link("UnitGroupFrames", "personal:element", "Look", "DarkMode.personal", "Dark Mode")
 	-- (0.19.4, the options audit: the unit frame skin fades or replaces the
 	-- same art and puts the writes back)
 	local UF = Uncovered("UnitFramePanel", "unit frames")
@@ -732,11 +753,8 @@ function L.Define(R, Link)
 	-- (0.19.4: Dark Mode reaches the game's own icons of yours, never the
 	-- target's; with MelloUI's rows in their place it has nothing to darken.
 	-- Keep Dispel Colours also serves the Cooldown Manager's icons)
-	R("UnitGroupFrames", "buffs:element", "Look", "DarkMode.auras",
+	Link("UnitGroupFrames", "buffs:element", "Look", "DarkMode.auras", "Dark Mode",
 		{ when = { any = GAME_AURAS.any, line = "Only on the game's own icons (Your Buffs And Debuffs off)" } })
-	R("UnitGroupFrames", "buffs:element", "Look", "DarkMode.keepDispelColor",
-		{ when = { any = { GAME_AURAS, { key = "DarkMode.cooldowns", value = true } },
-			line = "Only on the game's own icons (Your Buffs And Debuffs off) or the Cooldown Manager's" } })
 	-- (0.19.9: one set of rows for your buffs -- MelloUI's own rows while
 	-- they show, else the game's buff and debuff bars in the Edit Mode
 	-- layout: Tweaks' Buff Layout; the size in pixels on both picks)
@@ -760,7 +778,7 @@ function L.Define(R, Link)
 	-- Nameplates (one look stage G: the designer; np-audit.md's table)
 	-- Enemies: Nameplate Tweaks (the Nameplates module's switch) first, Dark Mode; each part's own rows
 	R("Nameplates", "enemies:element", "General", "UIModifications.qol_Nameplates")
-	R("Nameplates", "enemies:element", "Look", "DarkMode.nameplates", { name = "Dark Mode", when = Uncovered("NameplatePanel", "nameplates") })
+	Link("Nameplates", "enemies:element", "Look", "DarkMode.nameplates", "Dark Mode", { when = Uncovered("NameplatePanel", "nameplates") })
 	-- (0.25.0, the user's "yes build it" to the Nameplate Impact page: the target's plate answers the fight)
 	R("Nameplates", "enemies:element", "General", "PlateImpact.!enabled", { name = "Impact Effects" })
 	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.flash")
@@ -808,8 +826,8 @@ function L.Define(R, Link)
 	-- Bars (one look stage G, bars-audit.md, the user's yes): each element's rows, its parts' rows
 	-- Action Bars: every bar's (Dark Mode, the backdrops, the layout of the bar picked on the stage's strips --
 	-- Which Bar), the parts shared by every bar
-	R("ActionBars", "actionbars:element", "Look", "DarkMode.actionbars", { name = "Dark Mode",
-		when = Uncovered("ActionBarPanel", "action bars") })
+	Link("ActionBars", "actionbars:element", "Look", "DarkMode.actionbars", "Dark Mode",
+		{ when = Uncovered("ActionBarPanel", "action bars") })
 	-- (0.18.5) each bar's backdrop (onelook stage D4: the core's, Modules/ActionBars.lua, whatever the look)
 	for _, key in ipairs({ "Bar1", "Bar2", "Bar3", "Bar4", "Bar5", "Bar6", "Bar7", "Bar8", "Stance", "Pet", "Possess", "Totem" }) do
 		R("ActionBars", "actionbars:element", "Look", "ActionBars.backdrop" .. key)
@@ -830,12 +848,12 @@ function L.Define(R, Link)
 	-- (the Bars audit's point 1: On Action Bars is Cooldown Timers' switch here)
 	R("ActionBars", "actionbars:cooldown", "General", "CooldownText.actionBars", { name = "Cooldown Timers" })
 	R("ActionBars", "actionbars:caps", "General", "ActionBars.hideBarArt")
-	R("ActionBars", "actionbars:caps", "Look", "DarkMode.gryphons", { name = "Dark Mode",
-		when = Uncovered("ActionBarPanel", "action bars") })
+	Link("ActionBars", "actionbars:caps", "Look", "DarkMode.gryphons", "Dark Mode",
+		{ when = Uncovered("ActionBarPanel", "action bars") })
 	R("ActionBars", "actionbars:arrows", "General", "ActionBars.hidePageArrows")
 	-- Menu & Bags: each bar a part (Hide This Bar, its backdrop; the bag bar's fold), Dark Mode for both
-	R("ActionBars", "menubags:element", "Look", "DarkMode.micromenu", { name = "Dark Mode",
-		when = Uncovered("ActionBarPanel", "action bars") })
+	Link("ActionBars", "menubags:element", "Look", "DarkMode.micromenu", "Dark Mode",
+		{ when = Uncovered("ActionBarPanel", "action bars") })
 	R("ActionBars", "menubags:micro", "General", "Tweaks.hideMicroMenu", { name = "Hide This Bar" })
 	R("ActionBars", "menubags:micro", "Look", "ActionBars.backdropMicro", { name = "Backdrop" })
 	R("ActionBars", "menubags:bags", "General", "Tweaks.hideBagBar", { name = "Hide This Bar" })
@@ -845,7 +863,7 @@ function L.Define(R, Link)
 	-- Cast Bar: its look (its parts the game's: nothing to set yet)
 	R("Look", "Textures", "Look", "BarTextures.castbarsTexture", { name = "Cast Bars", card = "Bars" })
 	Link("ActionBars", "castbar:element", "Look", "BarTextures.castbarsTexture", "Bar Texture")
-	R("ActionBars", "castbar:element", "Look", "DarkMode.castbar", { name = "Dark Mode", when = Uncovered("CastBarPanel", "cast bars") })
+	Link("ActionBars", "castbar:element", "Look", "DarkMode.castbar", "Dark Mode", { when = Uncovered("CastBarPanel", "cast bars") })
 	-- (0.17.1) Swing Timers: its switch (the module's, off by default), each bar's, the seconds, the size, when
 	R("ActionBars", "swing:element", "General", "SwingTimers.!enabled", { name = "Swing Timers" })
 	R("ActionBars", "swing:shot", "General", "SwingTimers.shot")
@@ -856,7 +874,7 @@ function L.Define(R, Link)
 	R("ActionBars", "xprep:element", "Look", "ActionBars.statusFrame")
 	R("Look", "Textures", "Look", "BarTextures.statusbarsTexture", { name = "Experience & Reputation", card = "Bars" })
 	Link("ActionBars", "xprep:element", "Look", "BarTextures.statusbarsTexture", "Bar Texture")
-	R("ActionBars", "xprep:element", "Look", "DarkMode.statusbars", { name = "Dark Mode", when = Uncovered("ActionBarPanel", "action bars") })
+	Link("ActionBars", "xprep:element", "Look", "DarkMode.statusbars", "Dark Mode", { when = Uncovered("ActionBarPanel", "action bars") })
 	-- (0.22.1, the animations: the stretch of the XP bar just gained lit)
 	R("ActionBars", "xprep:xp", "Look", "Tweaks.xpGain")
 	R("ActionBars", "xprep:xp", "Look", "Tweaks.levelUp")
@@ -866,7 +884,7 @@ function L.Define(R, Link)
 	-- Cooldowns (0.19.8, Cooldown Tweaks: Modules/CooldownTweaks.lua -- the addon study's item 7)
 	R("Look", "Textures", "Look", "BarTextures.cooldownsTexture", { name = "Cooldown Bars", card = "Bars" })
 	Link("ActionBars", "cooldowns:element", "Look", "BarTextures.cooldownsTexture", "Bar Texture")
-	R("ActionBars", "cooldowns:element", "Look", "DarkMode.cooldowns", { name = "Dark Mode" })
+	Link("ActionBars", "cooldowns:element", "Look", "DarkMode.cooldowns", "Dark Mode")
 	R("ActionBars", "cooldowns:element", "Layout", "CooldownTweaks.centreRows")
 	R("ActionBars", "cooldowns:icon", "Look", "CooldownTweaks.pressLight")
 	R("ActionBars", "cooldowns:keybind", "General", "CooldownTweaks.keybinds")
@@ -894,7 +912,7 @@ function L.Define(R, Link)
 	local SQUARE = { any = { { key = "MinimapPanel.shape", value = "square" }, { key = "UIModifications.MinimapKit", value = false },
 		{ key = "UIModifications.reskin", value = false } }, line = "Only for the square map (Oldschool's painted Minimap is set to Round)" }
 	R("Minimap", "minimap:coords", "General", "Tweaks.hideMinimapCoords")
-	R("Minimap", "minimap:element", "Look", "DarkMode.minimap", { name = "Dark Mode", when = Uncovered("MinimapKit", "minimap") })
+	Link("Minimap", "minimap:element", "Look", "DarkMode.minimap", "Dark Mode", { when = Uncovered("MinimapKit", "minimap") })
 	R("Minimap", "minimap:element", "Layout", "MinimapPanel.width")
 	R("Minimap", "minimap:element", "Layout", "MinimapPanel.height", { when = SQUARE })
 	-- (the frame round the square map: only the minimap wears it -- a link on Oldschool > Borders)
@@ -1043,18 +1061,16 @@ function L.Define(R, Link)
 			key:sub(1, 5) ~= "enemy" and { when = MELLO_STYLES } or nil)
 	end
 
-	-- (0.17.0) The Fader (header: its module's switch): how it fades, then
-	-- the elements, each one Show choice; Unit Frames' Fade Out Of Combat
-	-- (carried over: Core.lua's MergeSettings) and the chat's Tabs Only On
-	-- Mouseover moved here, a Link row where it was (Windows Fade In went
-	-- back to Windows in 0.19.4: it works without the Fader; linked here)
-	R("Look", "Fading", "General", "Fader.#Fade Everything")
-	R("Look", "Fading", "General", "Fader.#Fade Nothing")
-	R("Look", "Fading", "Look", "Fader.alpha")
-	R("Look", "Fading", "Behaviour", "Fader.after")
-	R("Look", "Fading", "Behaviour", "Fader.speed")
-	R("Look", "Fading", "Behaviour", "Fader.target")
-	R("Look", "Fading", "Behaviour", "Fader.mouse")
+	-- (0.17.0) The Fader: how it fades, then the elements, each one Show choice (Unit Frames' Fade Out Of Combat
+	-- carried over: Core.lua's MergeSettings). (1.2.4, the configurator audit) every element on the Fader page, on
+	-- its kind's tab; how it fades on its General tab (Look's Fading tab until then)
+	R("Fader", "General", "General", "Fader.#Fade Everything")
+	R("Fader", "General", "General", "Fader.#Fade Nothing")
+	R("Fader", "General", "Look", "Fader.alpha")
+	R("Fader", "General", "Behaviour", "Fader.after")
+	R("Fader", "General", "Behaviour", "Fader.speed")
+	R("Fader", "General", "Behaviour", "Fader.target")
+	R("Fader", "General", "Behaviour", "Fader.mouse")
 	-- (0.21.0, the settings audit: a row for a module's own part dimmed while that module is off, as the Objective
 	-- Tracker's is while MelloUI's Quest Tracker stands in for it)
 	local OWNED = {
@@ -1064,12 +1080,20 @@ function L.Define(R, Link)
 		objectives = { when = GAME_TRACKER },
 		widgets = { when = { key = "Widgets.!enabled", value = true, line = "Only with the Widgets on" } },
 		route = { when = { key = "Route.!enabled", value = true, line = "Only with Route on" } },
+		-- (0.19.4: a bar Hide This Bar parks has nothing to fade)
+		micro = { when = { key = "Tweaks.hideMicroMenu", value = false, line = "Hidden (Hide This Bar)" } },
+		bags = { when = { key = "Tweaks.hideBagBar", value = false, line = "Hidden (Hide This Bar)" } },
+		stats = { when = { key = "UIModifications.qol_Stats", value = true, line = "Only with FPS / Latency on" } },
 	}
-	-- (the frames' and the bars' Fade rows: each element's last Behaviour row, at the end of the rows -- one look Q5)
-	R("Fader", "Chat & Map", "General", "Fader.show_chat")
-	R("Fader", "Chat & Map", "General", "Chat.tabsOnMouseover", { when = Uncovered("ChatPanel", "chat") })
-	for _, key in ipairs({ "tracker", "objectives", "route" }) do   -- (the minimap's: its own page, Q5)
-		R("Fader", "Chat & Map", "General", "Fader.show_" .. key, OWNED[key])
+	local FADES = {
+		Frames = { "player", "petToo", "target", "focus", "party", "raid", "buffs", "personal", "reminders" },
+		Bars = { "bar1", "bar2", "bar3", "bar4", "bar5", "bar6", "bar7", "bar8", "stance", "micro", "bags", "xp" },
+		["Chat, Map & More"] = { "chat", "minimap", "tracker", "objectives", "widgets", "route", "stats" },
+	}
+	for _, tab in ipairs({ "Frames", "Bars", "Chat, Map & More" }) do
+		for _, key in ipairs(FADES[tab]) do
+			R("Fader", tab, "General", key == "petToo" and "Fader.petToo" or "Fader.show_" .. key, OWNED[key])
+		end
 	end
 
 	-- (0.20.0) the Group Frames (header: its module's switch): the
@@ -1380,31 +1404,26 @@ function L.Define(R, Link)
 	R("CustomSounds", "Sounds", "Sound", "CustomSounds.channel")
 	R("CustomSounds", "Preview", "Sound", { prefix = "CustomSounds.#" })   -- (the Play buttons, in the module's order)
 
-	-- (one look, Q5 -- ugf-audit.md section 14, bars-audit.md: the user's yes) each frame's and bar's Fade (the
-	-- Fader's Show: Always / In Combat / Mouseover ...) is its own element's last Behaviour row, here at the end so it
-	-- is the last; the Fader page keeps how it fades and the chat's and the map's rows (stage H's)
-	R("UnitGroupFrames", "player:element", "Behaviour", "Fader.show_player", { name = "Fade" })
-	R("UnitGroupFrames", "target:element", "Behaviour", "Fader.show_target", { name = "Fade" })
-	R("UnitGroupFrames", "pet:element", "Behaviour", "Fader.petToo", { name = "Fades With The Player", when = OWNED.petToo.when })
-	R("UnitGroupFrames", "buffs:element", "Behaviour", "Fader.show_buffs", { name = "Fade" })
-	R("UnitGroupFrames", "party:element", "Behaviour", "Fader.show_party", { name = "Fade" })
-	R("UnitGroupFrames", "raid:element", "Behaviour", "Fader.show_raid", { name = "Fade" })
-	R("UnitGroupFrames", "personal:element", "Behaviour", "Fader.show_personal", { name = "Fade", when = OWNED.personal.when })
-	-- (each bar's own Fade in the Action Bars' list until the stage's strip picks it: bars-audit "This bar")
-	R("ActionBars", "actionbars:element", "Behaviour", "Fader.show_bar1", { name = "Fade: Main Action Bar" })
-	for n = 2, 8 do
-		R("ActionBars", "actionbars:element", "Behaviour", "Fader.show_bar" .. n, { name = "Fade: Action Bar " .. n })
+	-- (one look, Q5 -- ugf-audit.md section 14, bars-audit.md: the user's yes) each frame's and bar's Fade is found on
+	-- its own element's page; (1.2.4, the configurator audit) its one place is the Fader page, a Link row here at the
+	-- element's end
+	local function Fade(page, tab, key, label)
+		Link(page, tab, "Behaviour", "Fader." .. (key == "petToo" and key or "show_" .. key), label or "Fade", OWNED[key])
 	end
-	R("ActionBars", "actionbars:element", "Behaviour", "Fader.show_stance", { name = "Fade: Stance & Pet Bar" })
-	-- (0.19.4: a bar Hide This Bar parks has nothing to fade)
-	R("ActionBars", "menubags:micro", "Behaviour", "Fader.show_micro", { name = "Fade",
-		when = { key = "Tweaks.hideMicroMenu", value = false, line = "Hidden (Hide This Bar)" } })
-	R("ActionBars", "menubags:bags", "Behaviour", "Fader.show_bags", { name = "Fade",
-		when = { key = "Tweaks.hideBagBar", value = false, line = "Hidden (Hide This Bar)" } })
-	R("ActionBars", "xprep:element", "Behaviour", "Fader.show_xp", { name = "Fade" })
-	R("QualityOfLife", "Reminders", "Behaviour", "Fader.show_reminders", { name = "Fade" })
-	R("QualityOfLife", "Widgets", "Behaviour", "Fader.show_widgets", { name = "Fade", when = { key = "Widgets.!enabled", value = true, line = "Only with the Widgets on" } })
-	R("Minimap", "minimap:element", "Behaviour", "Fader.show_minimap", { name = "Fade" })
+	for _, key in ipairs({ "player", "target", "focus", "buffs", "party", "raid", "personal" }) do
+		Fade("UnitGroupFrames", key .. ":element", key)
+	end
+	Fade("UnitGroupFrames", "pet:element", "petToo", "Fades With The Player")
+	Fade("ActionBars", "actionbars:element", "bar1", "Fade: Main Action Bar")
+	Fade("ActionBars", "menubags:micro", "micro")
+	Fade("ActionBars", "menubags:bags", "bags")
+	Fade("ActionBars", "xprep:element", "xp")
+	Fade("QualityOfLife", "Reminders", "reminders")
+	Fade("QualityOfLife", "Widgets", "widgets")
+	Fade("QualityOfLife", "FPS / Latency", "stats")
+	Fade("Minimap", "minimap:element", "minimap")
+	Fade("QuestTracker", "Quest Tracker", "tracker")
+	Fade("Chat", "Chat Frame", "chat")
 
 	-- the link rows: a setting whose one place is another page (the global
 	-- look on Look; the map's width on Minimap; the quest log's skin on
@@ -1423,8 +1442,10 @@ function L.Define(R, Link)
 	Link("Windows", "Windows", "Look", "UIModifications.windowTitle", "Window Title")
 	Link("VoiceOver", "Widget", "Layout", "Reminders.widgetLock", "Lock The Widgets")
 	Link("QualityOfLife", "Widgets", "General", "Meter.summary", "Fight Summary")
-	-- (0.17.0: the fades moved to the Fader)
-	Link("Chat", "Chat Frame", "Behaviour", "Chat.tabsOnMouseover", "Tabs Only On Mouseover",
+	-- (0.17.0: the fades moved to the Fader; 1.2.4, the configurator audit: Tabs Only On Mouseover is the chat's own,
+	-- on its page, linked from the Fader's chat row)
+	R("Chat", "Chat Frame", "Behaviour", "Chat.tabsOnMouseover", { when = Uncovered("ChatPanel", "chat") })
+	Link("Fader", "Chat, Map & More", "General", "Chat.tabsOnMouseover", "Chat: Tabs Only On Mouseover",
 		{ when = Uncovered("ChatPanel", "chat") })
 	-- (0.16.0: the merged settings, from where their members were)
 	Link("Chat", "Messages", "Text", "UIModifications.nameFormat", "Names")
@@ -1453,7 +1474,7 @@ function L.Define(R, Link)
 	Link("Nameplates", "enemies:name", "Text", "UIModifications.nameFormat", "Names")
 	Link("Nameplates", "enemies:debuffs", "Text", "Auras.textFont", "Numbers Font")
 	Link("Minimap", "minimap:element", "Look", "UIModifications.shade_minimap", "UI Shade")
-	Link("ActionBars", "cooldowns:element", "Look", "DarkMode.keepDispelColor", "Keep Dispel Colours")
+
 	-- (the swing bars wear the cast bar's Bar Texture)
 	Link("ActionBars", "swing:element", "Look", "BarTextures.castbarsTexture", "Bar Texture (Cast Bar)")
 	Link("Chat", "Chat Frame", "Look", "UIModifications.shade_chat", "UI Shade")

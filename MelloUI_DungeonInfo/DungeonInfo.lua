@@ -46,7 +46,7 @@ local TEXT = J.TEXT
 
 local M = MelloUI:RegisterModule("DungeonInfo", {
 	title = "Dungeon Info",
-	desc = "Every dungeon and raid on the map: its bosses in order and what each one drops, your own list of items to look out for (the loot roll marks them), and a trip that picks up a dungeon's quests in the fastest order.",
+	desc = "Every dungeon and raid: its bosses, what they drop, and your own list of items to watch for.",
 	icon = "Interface\\Icons\\INV_Misc_Book_09",
 	flavour = "Every dungeon's bosses and their loot beside the map; star the items you want and a loot roll tells you when one drops.",
 	group = "Quests and travel", navOrder = 4,
@@ -56,10 +56,10 @@ local M = MelloUI:RegisterModule("DungeonInfo", {
 	},
 	options = {
 		{ type = "button", name = "Open Dungeon Info", text = "Open",
-		  desc = "Open Dungeon Info beside MelloUI's map: the door button over the map, a click on a dungeon's door on the map, /dungeoninfo and the key you give it in the game's Key Bindings open it too.",
+		  desc = "Opens Dungeon Info beside the map. /dungeoninfo opens it too.",
 		  onClick = function() J.Open() end },
 		{ type = "toggle", key = "doorRow", name = "At A Dungeon's Door",
-		  desc = "When you walk up to a dungeon's door (or into it), a row in the widget column: its bosses, how many of your items drop there, and its page in Dungeon Info and its quests one click away." },
+		  desc = "At a dungeon's door, a row in the widget column with its bosses, your drops there and its quests." },
 	},
 })
 J.M = M

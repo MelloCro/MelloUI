@@ -158,7 +158,9 @@ Kit:AddShadeArea("minimap", "Minimap", { order = 7 })
 -- (0.25.0) the glow and shade under the icon set's marks on the maps and the minimap (MelloUI.Shade:Lift)
 Kit:AddShadeArea("icons", "Map Icons", { order = 7.5 })
 Kit:AddShadeArea("tracker", "Tracker", { order = 8 })
-Kit:AddShadeArea("buffs", "Buffs", { order = 9 })
+-- (1.2.4, the configurator audit: its switch showed nothing -- at the rows' default spacing the shade has no room
+-- between the icons (Auras.lua's FitPartner) -- so the buffs' shade follows the UI Shade alone)
+Kit:AddShadeArea("buffs", "Buffs", { order = 9, noSwitch = true })
 Kit.shadeAreas = AREAS
 Kit.shadeSettings = { master = MASTER_KEY, strength = STRENGTH_KEY, default = DEFAULT, min = MIN, max = MAX, step = 0.05 }
 

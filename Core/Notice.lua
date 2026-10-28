@@ -455,7 +455,7 @@ local function Build()
 	-- on each show (it sets no script of its own); "All options >" opens the
 	-- page of the notice's settings (Tweaks')
 	state.entry = MelloUI:RegisterMover(frame, frame, { key = KEY, anchor = "TOP", default = Home,
-		min = 0.5, max = 2, base = 1, label = "Centre notices", page = "Tweaks" })
+		min = 0.5, max = 2, base = 1, label = "Centre notices", page = "Tweaks", category = "text" })
 	return frame
 end
 
@@ -516,6 +516,11 @@ local function Preview()
 		Put(PREVIEW, "info")
 	elseif frame and frame:IsShown() and state.holds <= 0 and not state.wait then
 		Anim:FadeOut(frame, FADE, "linear")
+	end
+	-- (1.2.4) under Edit Layout's dock, its Elements list and its box while it shows (FULLSCREEN_DIALOG): its sample
+	-- sits where they open; over every window again after
+	if frame then
+		frame:SetFrameStrata(on and "FULLSCREEN" or "TOOLTIP")
 	end
 end
 

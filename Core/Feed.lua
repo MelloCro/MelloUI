@@ -244,7 +244,7 @@ function FeedMixin:Build()
 	-- one mover entry: moved in Edit Layout while its owner is on, its place
 	-- in the store, put back on each show (it sets no script of its own)
 	self.ui.entry = MelloUI:RegisterMover(holder, holder, { key = opts.key, anchor = self.anchor, default = opts.home,
-		min = 0.5, max = 2, base = 1, label = opts.label, page = opts.page, when = opts.when })
+		min = 0.5, max = 2, base = 1, label = opts.label, page = opts.page, when = opts.when, category = opts.category })
 	self:Place()
 	return self.ui
 end

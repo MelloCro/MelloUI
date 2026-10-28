@@ -27,6 +27,14 @@
 - Look holds every font and every bar texture. Fonts: the Font Style, its sizes and faces, then a card for each part with fonts of its own (Unit Frames, Party & Raid, Buffs & Debuffs, Personal Display, Quest Tracker, Combat Text, FPS / Latency). Textures: Every Bar, then each kind of bar (Same as Every Bar until you pick one), the tooltip's and the chat's backgrounds and borders. Colours: the health bar colours and the execute range. The frames' pages show a link to each.
 - Oldschool's configurator is easier to read: the stone under the page list is quieter, and on the frame designers the frames and their parts are written in ink on the parchment (the picked one in red, underlined), the preview on a warm dark in a bronze edge.
 - One Game Menu for every skin: MelloUI Oldschool no longer paints its own menu.
+- Edit Layout: a slim dock across the top of the screen in place of the bar in the middle: Elements, Grid, Snap, Dim the world, Coordinates, Keybind Mode, Reset all, How it works, Exit and Save & Exit. Right-click Grid for its spacing, Snap for the gap it keeps.
+- Edit Layout's Elements list: every part you can move, in groups (Frames, Action Bars, Combat, Text & Notices, Map & Quests, Chat, Windows, Misc), with a search. Show or hide each part's box, lock a part in place, or show one group or one part alone; the part under your mouse lights up. Your choices are kept.
+- A part's box in Edit Layout (right-click) holds the game's Edit Mode settings for it: the action bars' rows, icons and size, the unit frames' sizes, the cast bar, buffs and debuffs, the chat window's width and height, the minimap and the rest. They are saved with Save and show after a /reload.
+- Dark Mode: one Brightness for the whole interface: MelloUI's own windows and frames too, the game's art and the painted reskin. Icons and text keep their colours; the micro menu's and bag bar's icons are no longer darkened. Reskin Brightness is gone.
+- Dark Mode's areas (unit frames, nameplates, bars, the minimap ...) are listed on its own tab (Look > Dark Mode); each part's page links there.
+- The Fader lists everything that fades, on four tabs (General, Frames, Bars, Chat, Map & More); the Focus Frame and the FPS / Latency readout can fade too. Each part's page links to its Fade.
+- Every option's description is shorter and plainer.
+- Removed: Swing Timer Border (unused since the swing badge) and Shade: Buffs (it showed nothing at the default spacing; the buffs' shade follows the UI Shade).
 
 ## 1.2.3
 

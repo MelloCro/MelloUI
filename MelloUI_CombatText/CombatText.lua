@@ -257,7 +257,7 @@ end
 
 M = MelloUI:RegisterModule("CombatText", {
 	title = "Combat Text",
-	desc = "The text that floats over your character in a fight (damage taken, heals, Dodge and Parry, procs, resources gained) in MelloUI's look, in one of three styles, or the game's own.",
+	desc = "The text around your character in a fight (damage taken, heals, procs) in MelloUI's look, or the game's own.",
 	icon = "Interface\\Icons\\Ability_Warrior_BattleShout",
 	flavour = "Your hits taken, heals and procs in MelloUI's soft look, or the game's own text.",
 	enabledByDefault = true,
@@ -283,54 +283,54 @@ M = MelloUI:RegisterModule("CombatText", {
 	},
 	options = {
 		{ type = "dropdown", key = "style", name = "Combat Text Style", values = STYLES,
-		  desc = "Who draws the text over your character. Game: the game's own, as it always was. Lanes: damage taken falls on your left, healing rises on your right, procs and Dodge / Parry above your head, resources under your feet. Feed: one column over your portrait, the newest on top. Classic: one stream over your head, like the game's, in MelloUI's font and soft shade." },
+		  desc = "How the text around your character is shown. Game: the game's own. Lanes: damage taken left, healing right. Feed: one column over your portrait. Classic: one stream over your head." },
 		{ type = "dropdown", key = "dealt", name = "Your Damage", values = DEALT.styles,
-		  desc = "The numbers of the damage you deal, over the enemies. Game: the game's own numbers, as always. Rise, Beside, Fan or Stack: drawn by MelloUI at each enemy's nameplate in its soft look, the game's numbers switched off meanwhile: crits gold and bigger, spells violet, a dodge or parry as a word, about a second and a half each, only on enemies you or your pet are fighting. Beside starts them at the plate's right end, so the name stays readable. Rise, Beside, Fan and Stack draw your hits while you play solo. In a group, or where the game keeps threat hidden, the game's own numbers show, because only they know whose hit it is. With enemy nameplates off, the game's own numbers show too (the plates are where MelloUI draws)." },
+		  desc = "How your damage numbers over enemies look. Game: the game's own. Rise, Beside, Fan or Stack: MelloUI's, shown solo; in a group the game's show." },
 		-- (0.25.0; the user, 2026-10-20: "our custom damage font can not be scaled down, people complain its too big":
 		-- this client has no World Text Scale, so nothing sized them)
 		{ type = "slider", key = "dealtScale", name = "Your Damage Size", min = 0.3, max = 1.5, step = 0.05, percent = true,
-		  desc = "The size of Your Damage's numbers over the enemies (Rise, Beside, Fan and Stack), whatever the text around you. 70% by default." },
+		  desc = "The size of your damage numbers over enemies." },
 		{ type = "button", name = "Preview", text = "Play",
 		  hint = "a short burst in the chosen style",
-		  desc = "Plays a few made-up lines (hits, a crit, heals, a Dodge, a proc) in the chosen style, so you can compare them without a fight. Also /mello combattext test.",
+		  desc = "Plays sample lines in the chosen style.",
 		  onClick = function() M.Preview() end },
 		{ type = "slider", key = "size", name = "Text Around You", min = T.sizeMin, max = T.sizeMax, step = 1,
 		  search = "combat text size",
-		  desc = "The size of the text around your character in the Lanes, Feed and Classic styles. Crits are a third bigger. The Fonts' Interface text and Titles & headers sizes do not change it (only their faces). The numbers over the enemies have their own size: Numbers Over Enemies." },
+		  desc = "The size of the text around your character. Crits are a third bigger." },
 		{ type = "toggle", key = "titleNotices", name = "Notices In Title Font",
-		  desc = "Procs and auras in the title font, as the window titles. Off: in the text font, as the numbers." },
+		  desc = "Procs and auras in the title font. Off: the text font." },
 		{ type = "slider", key = "shadeSize", name = "Shade Size", min = 0, max = 1, step = 0.1, percent = true,
-		  desc = "The size of the soft shade behind the combat text, the text over you and Your Damage alike. 100% is the notices' shade; less hugs the numbers closer; 0% shows none." },
+		  desc = "The size of the soft shadow behind combat text. 0: none." },
 		{ type = "slider", key = "spread", name = "Lane Spread", min = T.spreadMin, max = T.spreadMax, step = 5,
-		  desc = "How far from your character the damage and healing lanes run, left and right. Move the whole text in Edit Layout." },
+		  desc = "How far left and right of your character the damage and healing lanes run." },
 		{ type = "slider", key = "lines", name = "Most Lines", min = T.linesMin, max = T.linesMax, step = 1,
-		  desc = "The most lines around your character at once: per lane for Lanes, in the stream for Classic, in the column for Feed. The oldest goes first. Your Damage keeps its own count per enemy." },
+		  desc = "The most lines shown at once. The oldest goes first." },
 		{ type = "toggle", key = "taken", name = "Damage Taken",
-		  desc = "The damage you take, crits bigger." },
+		  desc = "Damage you take." },
 		{ type = "toggle", key = "heals", name = "Healing",
-		  desc = "The healing you get, and shields put on you." },
+		  desc = "Healing and shields you get." },
 		{ type = "toggle", key = "notices", name = "Procs & Auras",
-		  desc = "Abilities that light up (Overpower!), auras you gain or lose, interrupts and dispels." },
+		  desc = "Procs, auras gained or lost, interrupts and dispels." },
 		{ type = "toggle", key = "avoid", name = "Dodge, Parry & Block",
-		  desc = "Attacks that miss you: misses, dodges, parries, blocks, absorbs, resists and immunes." },
+		  desc = "Attacks that miss you: dodge, parry, block, absorb, resist and immune." },
 		{ type = "toggle", key = "resource", name = "Resources Gained",
-		  desc = "Mana, rage, energy and focus you gain (+12 Rage)." },
+		  desc = "Mana, rage, energy and focus you gain." },
 		{ type = "toggle", key = "combat", name = "Entering & Leaving Combat",
-		  desc = "A short line when a fight starts and when it ends." },
+		  desc = "A short line when a fight starts and ends." },
 		{ type = "toggle", key = "reputation", name = "Reputation & Honor",
 		  desc = "Reputation and honor you gain." },
 		{ type = "toggle", key = "enemyDamage", name = "Damage Over Enemies",
 		  get = function() return Enemy.Get("enemyDamage") end, missing = function() return Enemy.Missing("enemyDamage") end,
-		  desc = "The numbers of your damage over the enemies (the game's own setting: drawn by the game in the Game Numbers Font, at Numbers Over Enemies' size)." },
+		  desc = "Your damage numbers over enemies (the game's own)." },
 		{ type = "toggle", key = "enemyPeriodic", name = "DoT Ticks Over Enemies",
 		  get = function() return Enemy.Get("enemyPeriodic") end, missing = function() return Enemy.Missing("enemyPeriodic") end,
-		  desc = "Your damage over time ticks over the enemies (the game's own setting)." },
+		  desc = "Your damage over time ticks over enemies (the game's own)." },
 		{ type = "toggle", key = "enemyPet", name = "Pet Damage Over Enemies",
 		  get = function() return Enemy.Get("enemyPet") end, missing = function() return Enemy.Missing("enemyPet") end,
-		  desc = "Your pet's damage over the enemies (the game's own setting)." },
+		  desc = "Your pet's damage over enemies (the game's own)." },
 		{ type = "toggle", key = "enemyHealing", name = "Healing Over Friends",
 		  get = function() return Enemy.Get("enemyHealing") end, missing = function() return Enemy.Missing("enemyHealing") end,
-		  desc = "The numbers of your healing over the ones you heal (the game's own setting)." },
+		  desc = "Your healing numbers over friends (the game's own)." },
 	},
 })
 
@@ -1002,7 +1002,8 @@ local function Holder(style)
 	f = { holder = holder, lanes = {} }
 	float[style] = f
 	f.entry = MelloUI:RegisterMover(holder, holder, { key = lanes and "combatlanes" or "combatstream",
-		default = FloatHome, min = 0.5, max = 2, base = 1, label = "Combat Text", page = OWNER, when = FloatOn(style) })
+		default = FloatHome, min = 0.5, max = 2, base = 1, label = "Combat Text", page = OWNER, when = FloatOn(style),
+		category = "combat" })
 	if not MelloUI:RestorePosition(f.entry.key, holder) then
 		FloatHome(holder)
 	end
@@ -1417,7 +1418,7 @@ local function ApplyFeed(row, new, e)
 	Fill(row, e, "LEFT")
 end
 
-feed = MelloUI.Feed:New({ name = "MelloUICombatFeed", key = "combatfeed", label = "Combat Text", page = OWNER,
+feed = MelloUI.Feed:New({ name = "MelloUICombatFeed", key = "combatfeed", label = "Combat Text", page = OWNER, category = "combat",
 	when = FeedOn, width = T.feedWidth, pitch = 30, max = MostLines, home = FeedHome, newRow = NewFeedRow,
 	from = "bottom", fadeIn = 0.12, fadeOut = 1.0, slide = 0.15 })
 

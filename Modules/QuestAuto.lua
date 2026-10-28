@@ -50,18 +50,14 @@ local M = MelloUI:RegisterModule("QuestAuto", {
 	},
 	options = {
 		{ type = "toggle", key = "accept", name = "Auto Accept Quests",
-		  desc = "Accept a quest as soon as its giver shows it, and open a giver's only quest from its list. Grey, "
-			.. "repeatable, daily and ignored quests are left to you, and so is an escort's or a shared quest's question." },
+		  desc = "Accepts quests as soon as a giver offers them. Repeatable, daily and shared quests are left to you." },
 		{ type = "toggle", key = "handIn", name = "Auto Hand In",
-		  desc = "Hand a finished quest in as soon as you talk to whoever takes it, and pick it from their list first. "
-			.. "A choice of rewards waits for you (unless Take The Upgrade is on), and so do a hand-in that costs money "
-			.. "and repeatable turn-ins." },
+		  desc = "Hands in finished quests as soon as you talk to the NPC. A choice of rewards waits for you." },
 		{ type = "toggle", key = "takeUpgrade", name = "Take The Upgrade", parent = "handIn",
-		  desc = "With a choice of rewards: take the one with the highest item level over what you wear in its slot, "
-			.. "among those you can use; when none is better, the one that sells for the most." },
+		  desc = "With a choice of rewards, takes the best upgrade you can use, or the one that sells for the most." },
 		{ type = "dropdown", key = "skipKey", name = "Skip Key",
 		  values = { { value = "shift", label = "Shift" }, { value = "ctrl", label = "Ctrl" }, { value = "alt", label = "Alt" } },
-		  desc = "Hold it as you talk to a giver to see its dialog as usual: nothing is accepted or handed in there." },
+		  desc = "Hold this key while talking to an NPC to stop the automatic accept and hand-in." },
 	},
 })
 

@@ -43,8 +43,9 @@
 --   E:OpenBox(spec)   the right-click box for a plate that is no entry: spec
 --                   = { title, note, plate, button = { text, onHover =
 --                   fn(button) }, link = { text, page } }
---   E:Shows(group)  whether the bar's Show filter shows that group ("own",
---                   "window", "hud", "editmode")
+--   E:Shows(entry)  (1.2.4) whether its plate shows: the Elements list's
+--                   eyes and solo (Core/EditLayoutPicker.lua); a layer's
+--                   group name ("editmode") unless a solo holds the screen
 -- The states (SPEC 2.1): CLOSED; OPEN (showing: plates, the bar, the scrim
 -- and the key frame); PAUSED by one or more reasons (everything hidden, the
 -- session kept); ASKING (the bar is the leave prompt); a queued open. Core
@@ -93,7 +94,7 @@ local TEXT = {
 	moduleOff = "UI Modifications is off: the game's windows keep the game's places, and the minimap, chat and "
 		.. "trackers move in Edit Mode.",
 	bridgeHidden = "Hidden elements (party frames and others) show in Edit Mode.",
-	show = "Show", snap = "Snap", gap = "Gap", keybind = "Keybind Mode",
+	snap = "Snap", gap = "Gap", keybind = "Keybind Mode",
 	resetAll = "Reset all", discard = "Discard", save = "Save", done = "Done", cancel = "Cancel",
 	keep = "Keep editing",
 	one = "1 unsaved change", many = "%d unsaved changes",
@@ -101,6 +102,7 @@ local TEXT = {
 	askOne = "You have 1 unsaved change.", askMany = "You have %d unsaved changes.",
 	size = "Size", position = "Position", snapTo = "Snap to", reset = "Reset", options = "Design >",
 	sizeOff = "Its size is set on its page.",
+	sizeEditMode = "Its size is among its Edit Mode settings below.",
 	paused = "Edit Layout is paused for combat. It comes back when the fight is over.",
 	queuedCombat = "Edit Layout opens when the fight is over.",
 	queuedEditMode = "Edit Layout opens when you close Edit Mode.",
@@ -111,12 +113,44 @@ local TEXT = {
 		.. "dropped.",
 }
 
-local FILTERS = {
-	{ value = "all", label = "All" },
-	{ value = "own", label = "MelloUI" },
-	{ value = "window", label = "Windows" },
-	{ value = "hud", label = "HUD" },
-	{ value = "editmode", label = "Edit Mode" },
+-- (1.2.4) the dock: its measures, its toggles and their texts
+local DOCK = {
+	logo = "Interface\\AddOns\\MelloUI\\Media\\Textures\\LogoIcon.tga",
+	-- (UI units, as the sketch has them) the dock's height and its corners' radius, the crest hanging below it and
+	-- its lock's badge, a round button and its glyph, a text button, a pill under the dock and the room above it, the
+	-- room between round buttons
+	height = 46, radius = 14, crest = 52, badge = 20, toggleSize = 32, glyph = 17, buttonH = 30, pillH = 26,
+	underGap = 8, roundGap = 6, popW = 240,
+	order = { "grid", "snap", "dim", "coords" },
+	default = { grid = false, dim = true, coords = true, help = false },
+	gridMin = 10, gridMax = 100, gridDefault = 50,
+	toggle = {
+		grid = { glyph = "grid", title = "Grid",
+			on = "The grid shows. Click to hide it; right-click for its spacing.",
+			off = "Click to show the grid (Snap to Grid follows it); right-click for its spacing." },
+		snap = { glyph = "magnet", title = "Snap",
+			on = "What you drag snaps to the other elements and the screen's edges and centre. Click to turn it "
+				.. "off; right-click for the gap kept between snapped elements.",
+			off = "Click to snap what you drag to the other elements and the screen's edges and centre." },
+		dim = { glyph = "moon", title = "Dim the world",
+			on = "The world is dimmed under the plates. Click to see it as it is.",
+			off = "Click to dim the world under the plates." },
+		coords = { glyph = "crosshair", title = "Coordinates",
+			on = "The picked element's place and size show under the bar. Click to hide them.",
+			off = "Click to show the picked element's place and size under the bar." },
+	},
+	crestTip = "Click for the Elements list: which plates show, which are locked.",
+	elements = "Elements", elementsOf = "/ %d", elementsTitle = "Elements",
+	elementsTip = "Every element you can move, in groups. Show or hide their plates, lock them, find one by name, "
+		.. "or show one group alone.",
+	keybindTip = "Bind keys to your action buttons: hover a button and press a key. Leaves Edit Layout first.",
+	resetTip = "Every element back to its standard place and size (it asks first).",
+	helpTitle = "How it works", helpTip = "Shows the mouse and keyboard controls under the bar.",
+	exit = "Exit", saveExit = "Save & Exit",
+	unsoloTitle = "Show all again", unsoloTip = "Back to the plates your Elements list shows.",
+	gridSize = "Grid spacing", gapSize = "Gap between snapped elements",
+	gridUnits = "%d", gapUnits = "%d px",
+	coordsLine = "%s  \194\183  X %d  Y %d  \194\183  %d \195\151 %d",
 }
 local SNAP_FIXED = {
 	{ value = "nearest", label = "Nearest element" },
@@ -128,11 +162,10 @@ local SNAP_FIXED = {
 -- the mode's own pieces on FULLSCREEN_DIALOG: over the plates (FULLSCREEN,
 -- and 2-9 there for elements that stand that high themselves)
 local KEYS_LEVEL, CATCH_LEVEL, BOX_LEVEL, BAR_LEVEL = 1, 20, 30, 40
-local BAR_KEY = "editLayoutBar"
-local BAR_Y = -150            -- its place: the screen's top centre, this far down (where the unlock banner was)
 local PAD, GAP = 12, 10       -- the bar's inset and the room between its parts
-local ROW_H, LINE_H = 32, 16  -- the bar's row, and each of its hint lines
-local BOX_W, BOX_ROW, BOX_LABEL = 280, 28, 80   -- the box's width, a row's height, the controls' left
+local LINE_H = 16             -- each of the dock's lines under it
+local BOX_W, BOX_ROW, BOX_LABEL = 360, 28, 80   -- the box's width (280 until 1.2.4's Edit Mode settings), a row's
+                                                -- height, the controls' left
 local GATE = 0.4              -- a dimmed row
 local TIP_DELAY = 0.4         -- s: a hover before the tooltip
 local BAR_FADE = 0.15
@@ -146,7 +179,6 @@ local S = {
 	asking = false,     -- the bar is the leave prompt
 	confirm = false,    -- the bar is Reset all's confirm
 	queued = nil,       -- "combat" | "editmode" | "login": an open that waits
-	filter = "all",
 	ending = 0,         -- the count at Save (its chat line)
 	quiet = false,      -- a close with nothing changed: no chat line
 	first = false,      -- the first Open's set-up done
@@ -255,8 +287,12 @@ function E:SetSnapTarget(key, value)
 	MelloUI:NotifySettingChanged(UIMOD, "snapTargets", t)
 end
 
-function E:Shows(group)
-	return S.filter == "all" or S.filter == group
+-- (1.2.4) whether an element's plate shows now: the Elements list's eyes and
+-- solo (Core/EditLayoutPicker.lua); a layer's group name (the bridge's
+-- "editmode") unless a solo holds the screen
+function E:Shows(entry)
+	local K = E.Picker
+	return not K or K.Shows(entry)
 end
 
 --------------------------------------------------------------------------------
@@ -348,14 +384,23 @@ local function RunSources()
 end
 
 --------------------------------------------------------------------------------
--- The control bar (SPEC 2.10): one row -- the title, Show, Snap, the change
--- count, Reset all, then Done or Discard and Save -- and the hint lines under
--- it. The row turns into Reset all's confirm or the leave prompt. A W.Panel
--- plate with the UI shade; a "tool" mover (dragged by itself at any time, its
--- place saved at once: D10).
+-- The dock (1.2.4; SPEC 2.10's control bar until then): the user's pick A of
+-- MelloUI-BuildData/output/editlayout_dock_sketch, drawn as the sketch draws
+-- it -- one slim tab hanging from the screen's top centre (its bottom
+-- corners round, no top edge: W.RoundPlate), the crest in its gold ring
+-- hanging below it with the lock's badge, the title, Elements (the picker,
+-- Core/EditLayoutPicker.lua: the layers glyph, the plates shown in gold of
+-- all), the round toggles (Grid, Snap, Dim, Coordinates: a gold ring and
+-- glyph on the selected fill while on; a right-click on Grid or Snap sets the
+-- grid's spacing or the gap kept), Keybind Mode, Reset all, How it works, the
+-- change count, Exit and Save & Exit (filled gold). Under it, centred, the
+-- pills that apply (the solo with its way back, the picked element's place)
+-- and a small panel with the lines that apply (how it works, UI
+-- Modifications off, the bridge's hidden elements). The row turns into Reset
+-- all's confirm or the leave prompt. Never moved (a "tool" mover until 1.2.4).
 --------------------------------------------------------------------------------
 
-local bar
+local bar, pop
 
 local function Bar()
 	return bar
@@ -370,14 +415,14 @@ end
 
 local function BarDefault(frame)
 	frame:ClearAllPoints()
-	frame:SetPoint("TOP", UIParent, "TOP", 0, BAR_Y)
+	frame:SetPoint("TOP", UIParent, "TOP", 0, 0)
 end
 
 -- a button of the bar, its width from its text
-local function BarButton(parent, text, onClick, gold)
-	local b = W.Button(parent, text, 80, nil, { onClick = onClick, gold = gold })
+local function BarButton(parent, text, onClick, gold, filled)
+	local b = W.Button(parent, text, 80, nil, { onClick = onClick, gold = gold, filled = filled, height = DOCK.buttonH })
 	local fs = b:GetFontString()
-	b:SetWidth(math.max(72, math.ceil((fs and TextWidth(fs) or 0) + 24)))
+	b:SetWidth(math.max(72, math.ceil((fs and TextWidth(fs) or 0) + 28)))
 	return b
 end
 
@@ -394,6 +439,14 @@ local DoneClick = Shared("OnClick on Edit Layout's Done", function()
 end, "script")
 local KeepClick = Shared("OnClick on Edit Layout's Keep editing", function()
 	KeepEditing()
+end, "script")
+-- (1.2.4) Save & Exit: what changed saved, or (nothing changed) a quiet close
+local SaveExitClick = Shared("OnClick on Edit Layout's Save & Exit", function()
+	if E:Pending() > 0 then
+		Save()
+	else
+		Done()
+	end
 end, "script")
 -- (0.19.9) Keybind Mode: it closes Edit Layout first (its question if anything is unsaved)
 local KeybindClick = Shared("OnClick on Edit Layout's Keybind Mode", function()
@@ -419,16 +472,6 @@ local CancelClick = Shared("OnClick on Edit Layout's Cancel", function()
 	LayBar()
 end, "script")
 
-local function GetFilter()
-	return S.filter
-end
-local function SetFilter(v)
-	S.filter = v or "all"
-	local P = Movers()
-	if P and E:IsShowing() then
-		P.SyncAll()
-	end
-end
 local function GetSnap()
 	return E:SnapOn()
 end
@@ -446,6 +489,190 @@ local function SetGap(v)
 		MelloUI:NotifySettingChanged(UIMOD, "snapGap", math.max(0, math.min(GAP_MAX, math.floor(v + 0.5))))
 	end
 end
+
+-- the dock's toggles, kept with the Elements list's choices (Picker.Prefs);
+-- Snap is UI Modifications' autoSnap, as it always was
+local function Toggle(name)
+	if name == "snap" then
+		return GetSnap()
+	end
+	local K = E.Picker
+	local v = K and K.Prefs()[name]
+	if v == nil then
+		return DOCK.default[name] and true or false
+	end
+	return v and true or false
+end
+
+local function GridSize()
+	local K = E.Picker
+	local v = K and Num(K.Prefs().gridSize)
+	if not v or v ~= v then
+		return DOCK.gridDefault
+	end
+	return math.max(DOCK.gridMin, math.min(DOCK.gridMax, math.floor(v + 0.5)))
+end
+
+local function SetToggle(name, on)
+	if name == "snap" then
+		SetSnap(on)
+		return
+	end
+	local K = E.Picker
+	local t = K and K.EditPrefs()
+	if t then
+		t[name] = on and true or false
+		K.SavePrefs(t)
+	end
+end
+
+-- the toggles put to work: the plates' grid and the world's dim
+local function ApplyToggles()
+	local P = Movers()
+	if P then
+		P.SetGrid(Toggle("grid"), GridSize())
+		P.SetDim(Toggle("dim"))
+	end
+end
+E.ApplyToggles = ApplyToggles
+
+-- a round button's look: its fill and ring, its glyph -- gold on the selected
+-- fill while on, the hover fill under the mouse
+local function RoundLook(b)
+	local on, hover = b.melloOn, b.melloHover
+	b.plate:Paint((hover and "hover") or (on and "selectedTab") or "raisedPanel", on and "selectedTrim" or "border")
+	W.Paint(b.icon, (on and "selectedTrim") or (hover and "text") or "mutedText", "vertex")
+end
+
+-- the dock's tooltips: a toggle's line says what a click does now
+local DockEnter = Shared("OnEnter on Edit Layout's dock", function(self)
+	if self.plate and self.icon then
+		self.melloHover = true
+		RoundLook(self)
+	end
+	local name = self.melloToggle
+	if name then
+		local t = DOCK.toggle[name]
+		E:Tooltip(self, t.title, Toggle(name) and t.on or t.off)
+	elseif self.melloTitle then
+		E:Tooltip(self, self.melloTitle, self.melloBody)
+	end
+end, "script")
+local DockLeave = Shared("OnLeave on Edit Layout's dock", function(self)
+	if self.plate and self.icon then
+		self.melloHover = nil
+		RoundLook(self)
+	end
+	E:TooltipHide(self)
+end, "script")
+
+-- Grid's spacing and Snap's gap: a small panel under the toggle
+local function PopGet()
+	return pop and pop.kind == "grid" and GridSize() or GetGap()
+end
+local function PopSet(v)
+	v = Num(v)
+	if not (pop and v) then
+		return
+	end
+	if pop.kind == "grid" then
+		local K = E.Picker
+		local t = K and K.EditPrefs()
+		if t then
+			t.gridSize = math.max(DOCK.gridMin, math.min(DOCK.gridMax, math.floor(v + 0.5)))
+			K.SavePrefs(t)
+		end
+		ApplyToggles()
+	else
+		SetGap(v)
+	end
+end
+local function GridText(v)
+	return string.format(DOCK.gridUnits, Num(v) or 0)
+end
+local function GapText(v)
+	return string.format(DOCK.gapUnits, Num(v) or 0)
+end
+
+local function ClosePop()
+	if pop and pop:IsShown() then
+		pop:Hide()
+		return true
+	end
+	return false
+end
+
+local function OpenPop(button, kind)
+	if not pop then
+		pop = CreateFrame("Frame", nil, UIParent)
+		pop:Hide()
+		pop:SetFrameStrata("FULLSCREEN_DIALOG")
+		pop:SetFrameLevel(BAR_LEVEL + 4)
+		pop:SetClampedToScreen(true)
+		pop:EnableMouse(true)
+		pop:SetSize(DOCK.popW, 64)
+		pop.plate = W.RoundPlate(pop, { radius = 8, fill = "mainWindow", edge = "trim" })
+		MelloUI.Kit:ShadeElement(pop, "windows"):Add(pop, SQUARE_SHADE)
+		pop.title = W.Text(pop, "GameFontHighlight", nil, "text")
+		pop.title:SetPoint("TOPLEFT", pop, "TOPLEFT", PAD, -10)
+		pop.slider = W.Slider(pop, DOCK.popW - 2 * PAD, PopGet, PopSet, { min = 0, max = GAP_MAX, step = 1 })
+		pop.slider:SetPoint("TOPLEFT", pop, "TOPLEFT", PAD, -32)
+	end
+	if pop:IsShown() and pop.kind == kind then
+		pop:Hide()
+		return
+	end
+	pop.kind = kind
+	if kind == "grid" then
+		pop.title:SetText(DOCK.gridSize)
+		pop.slider:SetRange(DOCK.gridMin, DOCK.gridMax, 5, false, GridText)
+	else
+		pop.title:SetText(DOCK.gapSize)
+		pop.slider:SetRange(0, GAP_MAX, 1, false, GapText)
+	end
+	pop.slider:Refresh()
+	pop:ClearAllPoints()
+	pop:SetPoint("TOP", button, "BOTTOM", 0, -12)
+	pop:Show()
+end
+
+local ToggleClick = Shared("OnClick on Edit Layout's dock toggles", function(self, button)
+	local name = self.melloToggle
+	if button == "RightButton" then
+		if name == "grid" or name == "snap" then
+			OpenPop(self, name)
+		end
+		return
+	end
+	SetToggle(name, not Toggle(name))
+	MelloUI:PlayUISound("tick")
+	ApplyToggles()
+	LayBar()
+	if self:IsMouseOver() then
+		local t = DOCK.toggle[name]
+		W.ShowTooltip(self, t.title, Toggle(name) and t.on or t.off)
+	end
+end, "script")
+
+local ElementsClick = Shared("OnClick on Edit Layout's Elements", function()
+	local K = E.Picker
+	if K then
+		K.Toggle()
+	end
+end, "script")
+
+local HelpClick = Shared("OnClick on Edit Layout's How it works", function()
+	SetToggle("help", not Toggle("help"))
+	MelloUI:PlayUISound("tick")
+	LayBar()
+end, "script")
+
+local UnsoloClick = Shared("OnClick on Edit Layout's solo pill", function()
+	local K = E.Picker
+	if K then
+		K.Unsolo()
+	end
+end, "script")
 
 -- the bar's parts laid left to right from x; the row's width
 local function Lay(parts, n, x)
@@ -469,6 +696,96 @@ local function Put(i, part, row, w, gap)
 	return i
 end
 
+-- a round button of the dock: a circle (W.RoundPlate) and its glyph
+local function RoundButton(parent, glyph, title, body, onClick)
+	local b = CreateFrame("Button", nil, parent)
+	b:SetSize(DOCK.toggleSize, DOCK.toggleSize)
+	b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+	b.plate = W.RoundPlate(b, { shape = "circle" })
+	b.icon = b:CreateTexture(nil, "ARTWORK")
+	b.icon:SetSize(DOCK.glyph, DOCK.glyph)
+	b.icon:SetPoint("CENTER")
+	W.Glyph(b.icon, glyph)
+	b.melloTitle, b.melloBody = title, body
+	Perf.SetScript(b, "OnClick", onClick)
+	Perf.SetScript(b, "OnEnter", DockEnter)
+	Perf.SetScript(b, "OnLeave", DockLeave)
+	RoundLook(b)
+	return b
+end
+
+-- the crest: the logo's emblem in its gold ring, hanging below the dock, the
+-- lock's badge on it (open: the layout is being edited); a click opens Elements
+local function MakeCrest(parent)
+	local c = CreateFrame("Button", nil, parent)
+	c:SetSize(DOCK.crest, DOCK.crest)
+	c:SetFrameLevel(parent:GetFrameLevel() + 3)
+	c.plate = W.RoundPlate(c, { shape = "circle", fill = "innerPanel", edge = "trim", edgeWidth = 2 })
+	c.logo = c:CreateTexture(nil, "ARTWORK")
+	c.logo:SetSize(DOCK.crest - 12, DOCK.crest - 12)
+	c.logo:SetPoint("CENTER")
+	c.logo:SetTexture(DOCK.logo)
+	local badge = CreateFrame("Frame", nil, c)
+	badge:SetSize(DOCK.badge, DOCK.badge)
+	badge:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", 3, -2)
+	badge:SetFrameLevel(c:GetFrameLevel() + 2)
+	badge.plate = W.RoundPlate(badge, { shape = "circle", fill = "selectedTab", edge = "selectedTrim" })
+	badge.icon = badge:CreateTexture(nil, "ARTWORK")
+	badge.icon:SetSize(DOCK.badge - 8, DOCK.badge - 8)
+	badge.icon:SetPoint("CENTER")
+	W.Glyph(badge.icon, "padlockOpen")
+	W.Paint(badge.icon, "selectedTrim", "vertex")
+	c.badge = badge
+	c.melloTitle, c.melloBody = E.TEXT.name, DOCK.crestTip
+	Perf.SetScript(c, "OnClick", ElementsClick)
+	Perf.SetScript(c, "OnEnter", DockEnter)
+	Perf.SetScript(c, "OnLeave", DockLeave)
+	return c
+end
+
+-- Elements: the layers glyph, its word, the plates shown in gold and of how many
+local function MakeElements(row)
+	local b = W.Button(row, "", 120, nil, { onClick = ElementsClick, height = DOCK.buttonH })
+	b.glyph = b:CreateTexture(nil, "ARTWORK")
+	b.glyph:SetSize(15, 15)
+	W.Glyph(b.glyph, "layers")
+	W.Paint(b.glyph, "text", "vertex")
+	b.word = W.Text(b, "GameFontHighlight", DOCK.elements, "text")
+	b.count = W.Text(b, "GameFontHighlight", nil, "selectedTrim")
+	b.total = W.Text(b, "GameFontHighlight", nil, "mutedText")
+	b.glyph:SetPoint("LEFT", b, "LEFT", 10, 0)
+	b.word:SetPoint("LEFT", b.glyph, "RIGHT", 6, 0)
+	b.count:SetPoint("LEFT", b.word, "RIGHT", 6, 0)
+	b.total:SetPoint("LEFT", b.count, "RIGHT", 4, 0)
+	b.melloTitle, b.melloBody = DOCK.elementsTitle, DOCK.elementsTip
+	Perf.HookScript(b, "OnEnter", DockEnter)
+	Perf.HookScript(b, "OnLeave", DockLeave)
+	return b
+end
+
+-- a pill under the dock: its plate, its text (and the solo's cross)
+local function MakePill(parent, onClick)
+	local p = CreateFrame("Button", nil, parent)
+	p:SetSize(100, DOCK.pillH)
+	p.plate = W.RoundPlate(p, { shape = "pill", fill = "innerPanel", edge = "border", fillAlpha = 0.94 })
+	p.text = W.Text(p, "GameFontHighlight", nil, "text")
+	p.text:SetPoint("LEFT", p, "LEFT", 12, 0)
+	if onClick then
+		p.cross = p:CreateTexture(nil, "ARTWORK")
+		p.cross:SetSize(10, 10)
+		p.cross:SetPoint("RIGHT", p, "RIGHT", -10, 0)
+		W.Glyph(p.cross, "cross")
+		W.Paint(p.cross, "text", "vertex")
+		p.melloTitle, p.melloBody = DOCK.unsoloTitle, DOCK.unsoloTip
+		Perf.SetScript(p, "OnClick", onClick)
+		Perf.SetScript(p, "OnEnter", DockEnter)
+		Perf.SetScript(p, "OnLeave", DockLeave)
+	else
+		p:EnableMouse(false)
+	end
+	return p
+end
+
 local function MakeBar()
 	bar = CreateFrame("Frame", "MelloUIEditLayoutBar", UIParent)
 	bar:Hide()
@@ -476,43 +793,62 @@ local function MakeBar()
 	bar:SetFrameLevel(BAR_LEVEL)
 	bar:SetClampedToScreen(true)
 	bar:EnableMouse(true)
-	bar:SetSize(600, ROW_H + LINE_H + 2 * 8)
-	W.Panel(bar, { on = true })
-	-- (the UI shade: the square partner of a plain plate)
+	bar:SetSize(600, DOCK.height)
+	-- the tab: flush with the screen's top, its bottom corners round, its
+	-- edge the trim (its shade the square partner of a plain plate)
+	bar.plate = W.RoundPlate(bar, { shape = "bottom", radius = DOCK.radius, fill = "mainWindow", edge = "trim" })
 	local Kit = MelloUI.Kit
 	Kit:ShadeElement(bar, "windows"):Add(bar, SQUARE_SHADE)
 	-- the main row
 	local row = CreateFrame("Frame", nil, bar)
 	row:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
-	row:SetPoint("RIGHT", bar, "RIGHT", 0, 0)
-	row:SetHeight(ROW_H)
+	row:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
 	bar.row = row
-	bar.title = W.Text(row, "GameFontNormalLarge", E.TEXT.name, "selectedTrim")
+	bar.crest = MakeCrest(bar)
+	bar.crest:SetPoint("TOPLEFT", bar, "TOPLEFT", 8, -2)
+	bar.title = W.Text(row, "GameFontNormalLarge", E.TEXT.name, "text")
 	Kit:TitleFont(bar.title, true)
-	bar.divider = W.Solid(row, "ARTWORK", "border", 1)
-	bar.divider:SetSize(1, 18)
-	bar.showLabel = W.Text(row, "GameFontHighlight", TEXT.show, "text")
-	bar.filter = W.Dropdown(row, 110, GetFilter, SetFilter, FILTERS)
-	bar.snap = W.Switch(row, GetSnap, SetSnap)
-	bar.snapLabel = W.Text(row, "GameFontHighlight", TEXT.snap, "text")
-	-- (0.19.9) the room kept between elements snapped side by side
-	bar.gapLabel = W.Text(row, "GameFontHighlight", TEXT.gap, "text")
-	bar.gap = W.NumberBox(row, 56, GetGap, SetGap, { min = 0, max = GAP_MAX, step = 1, suffix = " px" })
+	bar.dividers = {}
+	for i = 1, 4 do
+		local d = W.Solid(row, "ARTWORK", "trim", 0.45)
+		d:SetSize(1, 24)
+		bar.dividers[i] = d
+	end
+	bar.elements = MakeElements(row)
+	bar.toggles = {}
+	for i, name in ipairs(DOCK.order) do
+		local t = DOCK.toggle[name]
+		local b = RoundButton(row, t.glyph, t.title, nil, ToggleClick)
+		b.melloToggle = name
+		bar.toggles[i] = b
+	end
+	bar.keybind = RoundButton(row, "keys", TEXT.keybind, DOCK.keybindTip, KeybindClick)
+	bar.resetAll = RoundButton(row, "reset", TEXT.resetAll, DOCK.resetTip, ResetAllClick)
+	bar.help = RoundButton(row, "question", DOCK.helpTitle, DOCK.helpTip, HelpClick)
 	bar.count = W.Text(row, "GameFontHighlight", nil, "text")
 	bar.count:SetText(string.format(TEXT.many, 99))
 	bar.countW = TextWidth(bar.count)
-	bar.keybind = BarButton(row, TEXT.keybind, KeybindClick)
-	bar.resetAll = BarButton(row, TEXT.resetAll, ResetAllClick)
-	bar.done = BarButton(row, TEXT.done, DoneClick, true)
-	bar.discard = BarButton(row, TEXT.discard, DiscardClick)
-	bar.save = BarButton(row, TEXT.save, SaveClick, true)
+	bar.exit = BarButton(row, DOCK.exit, DoneClick)
+	bar.saveExit = BarButton(row, DOCK.saveExit, SaveExitClick, true, true)
+	-- (the check before its words, the pair centred)
+	local fs = bar.saveExit:GetFontString()
+	bar.saveExit.check = bar.saveExit:CreateTexture(nil, "ARTWORK")
+	bar.saveExit.check:SetSize(13, 13)
+	W.Glyph(bar.saveExit.check, "check")
+	W.Paint(bar.saveExit.check, "text", "vertex")
+	if fs then
+		fs:ClearAllPoints()
+		fs:SetPoint("CENTER", bar.saveExit, "CENTER", 9, 0)
+		bar.saveExit.check:SetPoint("RIGHT", fs, "LEFT", -6, 0)
+	end
+	bar.saveExit:SetWidth(bar.saveExit:GetWidth() + 18)
 	-- Reset all's confirm
 	local confirm = CreateFrame("Frame", nil, bar)
 	confirm:SetAllPoints(row)
 	confirm:Hide()
 	bar.confirmRow = confirm
 	bar.confirmText = W.Text(confirm, "GameFontHighlight", TEXT.confirm, "text")
-	bar.confirmReset = BarButton(confirm, TEXT.resetAll, ConfirmResetClick, true)
+	bar.confirmReset = BarButton(confirm, TEXT.resetAll, ConfirmResetClick, true, true)
 	bar.confirmCancel = BarButton(confirm, TEXT.cancel, CancelClick)
 	-- the leave prompt
 	local prompt = CreateFrame("Frame", nil, bar)
@@ -520,28 +856,34 @@ local function MakeBar()
 	prompt:Hide()
 	bar.promptRow = prompt
 	bar.promptText = W.Text(prompt, "GameFontHighlight", nil, "text")
-	bar.promptSave = BarButton(prompt, TEXT.save, SaveClick, true)
+	bar.promptSave = BarButton(prompt, TEXT.save, SaveClick, true, true)
 	bar.promptDiscard = BarButton(prompt, TEXT.discard, DiscardClick)
 	bar.promptKeep = BarButton(prompt, TEXT.keep, KeepClick)
-	-- the hint lines (full body size on the panel: the no-eye-strain rule)
+	-- under the dock: the pills (the solo with its way back, the picked
+	-- element's place), then the lines on a small panel (full body size: the
+	-- no-eye-strain rule)
+	local under = CreateFrame("Frame", nil, bar)
+	under:SetSize(1, 1)
+	under:SetPoint("TOP", bar, "BOTTOM", 0, -DOCK.underGap)
+	bar.under = under
+	bar.solo = MakePill(under, UnsoloClick)
+	bar.solo.plate:Paint(nil, "selectedTrim")
+	bar.coords = MakePill(under)
+	local notes = CreateFrame("Frame", nil, under)
+	notes:SetSize(200, 40)
+	notes.plate = W.RoundPlate(notes, { radius = 8, fill = "innerPanel", edge = "border", fillAlpha = 0.94 })
+	bar.notes = notes
 	bar.hints = {}
 	for i = 1, 3 do
-		local fs = W.Text(bar, "GameFontHighlight", nil, "text")
-		fs:SetWordWrap(false)
-		bar.hints[i] = fs
+		local hint = W.Text(notes, "GameFontHighlight", nil, "text")
+		hint:SetWordWrap(false)
+		bar.hints[i] = hint
 	end
 	bar.hints[1]:SetText(TEXT.hint)
-	-- its place: Core's store, dragged by itself at any time (a "tool")
-	-- (hung by its top centre, as its default: its hint lines come and go
-	-- under the row, which stays where the player put it)
-	MelloUI:RegisterMover(bar, bar, { key = BAR_KEY, group = "tool", plainDrag = "always", label = E.TEXT.name,
-		anchor = "TOP", default = BarDefault })
-	if bar:GetNumPoints() == 0 then
-		BarDefault(bar)
-	end
+	BarDefault(bar)
 end
 
--- the change count on the bar and which of Done / Discard + Save shows
+-- the change count, the Elements count, the toggles' looks
 local function RefreshBar()
 	if not bar then
 		return
@@ -551,12 +893,103 @@ local function RefreshBar()
 	if n > 0 then
 		bar.count:SetText(n == 1 and TEXT.one or string.format(TEXT.many, n))
 	end
-	bar.done:SetShown(n == 0)
-	bar.discard:SetShown(n > 0)
-	bar.save:SetShown(n > 0)
 	bar.promptText:SetText(n == 1 and TEXT.askOne or string.format(TEXT.askMany, n))
-	bar.snap:Refresh()
-	bar.filter:Refresh()
+	local K = E.Picker
+	if K then
+		local shown, total = K.Counts()
+		local b = bar.elements
+		b.count:SetText(tostring(shown))
+		b.total:SetText(string.format(DOCK.elementsOf, total))
+		b:SetWidth(math.ceil(10 + 15 + 6 + TextWidth(b.word) + 6 + TextWidth(b.count) + 4 + TextWidth(b.total) + 14))
+		W.FlatGold(b, K.IsOpen())
+		local open = K.IsOpen()
+		bar.crest.plate:Paint(nil, open and "selectedTrim" or "trim")
+	end
+	for i, name in ipairs(DOCK.order) do
+		local b = bar.toggles[i]
+		b.melloOn = Toggle(name)
+		RoundLook(b)
+	end
+	bar.help.melloOn = Toggle("help")
+	RoundLook(bar.help)
+end
+
+-- the picked element's place: its centre from the screen's centre, its size
+local function CoordsText()
+	local P = Movers()
+	local entry = P and P.Selected()
+	if not (entry and Toggle("coords")) then
+		return nil
+	end
+	local x, y = P.CentreOffset(entry)
+	local _, _, w, h = MelloUI:EntryRect(entry)
+	if not (x and y and w and h) then
+		return nil
+	end
+	return string.format(DOCK.coordsLine, P.Label(entry), math.floor(x + 0.5), math.floor(y + 0.5),
+		math.floor(w + 0.5), math.floor(h + 0.5))
+end
+
+-- under the dock: the pills that apply side by side, centred, the lines that
+-- apply on their panel under them; the whole hidden when none applies
+local function LayUnder(asking, confirm)
+	local K = E.Picker
+	local soloText = not asking and not confirm and K and K.SoloLabel() or nil
+	local coords = not asking and not confirm and CoordsText() or nil
+	local under = bar.under
+	local pills, width, y = 0, 0, 0
+	for _, pair in ipairs({ { bar.solo, soloText, 30 }, { bar.coords, coords, 24 } }) do
+		local p, text, room = pair[1], pair[2], pair[3]
+		p:SetShown(text ~= nil)
+		if text then
+			p.text:SetText(text)
+			p:SetWidth(math.ceil(12 + TextWidth(p.text) + room))
+			width = width + (pills > 0 and 8 or 0) + p:GetWidth()
+			pills = pills + 1
+		end
+	end
+	local x = -width / 2
+	for _, p in ipairs({ bar.solo, bar.coords }) do
+		if p:IsShown() then
+			p:ClearAllPoints()
+			p:SetPoint("TOPLEFT", under, "TOP", x, 0)
+			x = x + p:GetWidth() + 8
+		end
+	end
+	if pills > 0 then
+		y = DOCK.pillH + 6
+	end
+	-- the lines: how it works (the help toggle); UI Modifications off (D6);
+	-- the bridge's hidden elements
+	local P = Movers()
+	bar.hints[2]:SetText(TEXT.moduleOff)
+	bar.hints[3]:SetText(TEXT.bridgeHidden)
+	local off = not MelloUI:IsModuleEnabled(UIMOD)
+	local bridged = P and P.BridgeCount and P.BridgeCount() > 0
+	bar.hints[1]:SetShown(Toggle("help") and not asking and not confirm)
+	bar.hints[2]:SetShown(off)
+	bar.hints[3]:SetShown(bridged and true or false)
+	local notes = bar.notes
+	local ny, nw = 8, 0
+	for i = 1, 3 do
+		local fs = bar.hints[i]
+		if fs:IsShown() then
+			fs:ClearAllPoints()
+			fs:SetPoint("TOPLEFT", notes, "TOPLEFT", PAD, -ny)
+			ny = ny + LINE_H + 2
+			nw = math.max(nw, TextWidth(fs))
+		end
+	end
+	notes:SetShown(nw > 0)
+	if nw > 0 then
+		notes:SetSize(math.ceil(nw + 2 * PAD), ny + 6)
+		notes:ClearAllPoints()
+		notes:SetPoint("TOP", under, "TOP", 0, -y)
+		y = y + ny + 6
+		width = math.max(width, nw + 2 * PAD)
+	end
+	under:SetSize(math.max(1, width), math.max(1, y))
+	under:SetShown(y > 0)
 end
 
 LayBar = function()
@@ -568,6 +1001,7 @@ LayBar = function()
 	bar.row:SetShown(not asking and not confirm)
 	bar.confirmRow:SetShown(confirm)
 	bar.promptRow:SetShown(asking)
+	local left = 8 + DOCK.crest + 10   -- (the crest's room)
 	local width
 	if asking then
 		local row = bar.promptRow
@@ -575,64 +1009,60 @@ LayBar = function()
 		n = Put(n + 1, bar.promptSave, row, bar.promptSave:GetWidth())
 		n = Put(n + 1, bar.promptDiscard, row, bar.promptDiscard:GetWidth())
 		n = Put(n + 1, bar.promptKeep, row, bar.promptKeep:GetWidth(), 0)
-		width = Lay(laid, n, PAD)
+		width = Lay(laid, n, left)
 	elseif confirm then
 		local row = bar.confirmRow
 		local n = Put(1, bar.confirmText, row, TextWidth(bar.confirmText), GAP * 2)
 		n = Put(n + 1, bar.confirmReset, row, bar.confirmReset:GetWidth())
 		n = Put(n + 1, bar.confirmCancel, row, bar.confirmCancel:GetWidth(), 0)
-		width = Lay(laid, n, PAD)
+		width = Lay(laid, n, left)
 	else
 		local row = bar.row
-		local pending = E:Pending() > 0
-		bar.gap:Refresh()
+		local d = bar.dividers
 		local n = Put(1, bar.title, row, TextWidth(bar.title))
-		n = Put(n + 1, bar.divider, row, 1)
-		n = Put(n + 1, bar.showLabel, row, TextWidth(bar.showLabel), 6)
-		n = Put(n + 1, bar.filter, row, bar.filter:GetWidth())
-		n = Put(n + 1, bar.snap, row, bar.snap:GetWidth(), 2)
-		n = Put(n + 1, bar.snapLabel, row, TextWidth(bar.snapLabel))
-		n = Put(n + 1, bar.gapLabel, row, TextWidth(bar.gapLabel), 6)
-		n = Put(n + 1, bar.gap, row, bar.gap:GetWidth())
+		n = Put(n + 1, d[1], row, 1)
+		n = Put(n + 1, bar.elements, row, bar.elements:GetWidth())
+		n = Put(n + 1, d[2], row, 1)
+		for i = 1, #bar.toggles do
+			n = Put(n + 1, bar.toggles[i], row, DOCK.toggleSize, i < #bar.toggles and DOCK.roundGap or nil)
+		end
+		n = Put(n + 1, d[3], row, 1)
+		n = Put(n + 1, bar.keybind, row, DOCK.toggleSize, DOCK.roundGap)
+		n = Put(n + 1, bar.resetAll, row, DOCK.toggleSize, DOCK.roundGap)
+		n = Put(n + 1, bar.help, row, DOCK.toggleSize)
+		n = Put(n + 1, d[4], row, 1)
 		-- (the count in the row only while it shows; its room then the
 		-- widest count's, so the buttons stay put as it counts)
-		if pending then
+		if E:Pending() > 0 then
 			n = Put(n + 1, bar.count, row, bar.countW)
 		end
-		n = Put(n + 1, bar.keybind, row, bar.keybind:GetWidth())
-		n = Put(n + 1, bar.resetAll, row, bar.resetAll:GetWidth())
-		if pending then
-			n = Put(n + 1, bar.discard, row, bar.discard:GetWidth())
-			n = Put(n + 1, bar.save, row, bar.save:GetWidth(), 0)
-		else
-			n = Put(n + 1, bar.done, row, bar.done:GetWidth(), 0)
-		end
-		width = Lay(laid, n, PAD)
+		n = Put(n + 1, bar.exit, row, bar.exit:GetWidth(), 8)
+		n = Put(n + 1, bar.saveExit, row, bar.saveExit:GetWidth(), 0)
+		width = Lay(laid, n, left)
 	end
 	for i = 1, #laid do
 		laid[i].part, laid[i].row = nil, nil
 	end
-	-- the hint lines: always the first; UI Modifications off (D6); the
-	-- bridge's hidden elements
-	local P = Movers()
-	bar.hints[2]:SetText(TEXT.moduleOff)
-	bar.hints[3]:SetText(TEXT.bridgeHidden)
-	local off = not MelloUI:IsModuleEnabled(UIMOD)
-	local bridged = P and P.BridgeCount and P.BridgeCount() > 0
-	bar.hints[2]:SetShown(off)
-	bar.hints[3]:SetShown(bridged and true or false)
-	local y = -(ROW_H + 2)
-	width = width + PAD
-	for i = 1, 3 do
-		local fs = bar.hints[i]
-		if fs:IsShown() then
-			fs:ClearAllPoints()
-			fs:SetPoint("TOPLEFT", bar, "TOPLEFT", PAD, y)
-			y = y - LINE_H
-			width = math.max(width, PAD + TextWidth(fs) + PAD)
-		end
+	bar:SetSize(math.ceil(math.max(width + PAD, 200)), DOCK.height)
+	LayUnder(asking, confirm)
+	-- (the Elements list hangs under the dock and what shows under it)
+	local K = E.Picker
+	if K and K.Place then
+		K.Place()
 	end
-	bar:SetSize(math.ceil(math.max(width, 200)), 8 - y)
+end
+
+-- (the Elements list's place: under the dock, under its pills and lines too)
+function E.DockDepth()
+	if not bar then
+		return 0
+	end
+	local under = bar.under
+	local d = Num(bar:GetHeight()) or 0
+	if under:IsShown() then
+		d = d + DOCK.underGap + (Num(under:GetHeight()) or 0)
+	end
+	return d
 end
 
 local function ShowBar()
@@ -647,6 +1077,7 @@ local function ShowBar()
 end
 
 local function HideBar(fade)
+	ClosePop()
 	if not bar or not bar:IsShown() then
 		return
 	end
@@ -662,6 +1093,10 @@ end
 function E:Refresh()
 	if bar and bar:IsShown() then
 		LayBar()
+	end
+	-- (the picked element's row in the Elements list follows a pick)
+	if E.Picker then
+		E.Picker.MarkSelected()
 	end
 end
 
@@ -889,6 +1324,7 @@ local function Dim(row, dim, why, controls)
 end
 
 local dimSize, dimPos = {}, {}   -- (the controls each row dims, filled once)
+local bridgeTarget = {}          -- (1.2.4: a bridge plate's system, as the Edit Mode settings read an element)
 
 -- the box laid from the top: the header, the note, the rows shown, then
 -- Reset / the bridge's button and the link
@@ -906,6 +1342,22 @@ local function LayBox()
 			row:ClearAllPoints()
 			row:SetPoint("TOPLEFT", box, "TOPLEFT", 0, -y)
 			y = y + BOX_ROW
+		end
+	end
+	-- (1.2.4) an Edit Mode system's own settings (Core/EditLayoutSettings.lua): an element's, or the system a
+	-- bridge plate ("Move via Edit Mode") stands over
+	local ES = E.Settings
+	if ES then
+		local target = box.entry
+		local plate = not target and box.spec and box.spec.plate
+		if plate and type(plate.frame) == "table" then
+			bridgeTarget.frame = plate.frame
+			target = bridgeTarget
+		end
+		if target then
+			y = ES.Lay(box, target, y, BOX_W)
+		else
+			ES.Hide()
 		end
 	end
 	y = y + 8
@@ -981,7 +1433,9 @@ local function OpenBoxFor(plate)
 	local max = (Num(entry.max) or 2 * base) / base
 	box.size.slider:SetRange(min, max, 0.01, true)
 	box.size:Show()
-	Dim(box.size, locked ~= nil or entry.resize == false, locked or TEXT.sizeOff, dimSize)
+	local ES = E.Settings
+	local sizeWhy = (ES and ES.For(entry) and TEXT.sizeEditMode) or TEXT.sizeOff
+	Dim(box.size, locked ~= nil or entry.resize == false, locked or sizeWhy, dimSize)
 	box.pos:Show()
 	Dim(box.pos, locked ~= nil, locked, dimPos)
 	box.pos.x:Refresh()
@@ -1058,6 +1512,9 @@ function E:BoxButton()
 end
 
 CloseBox = function()
+	if E.Settings then
+		E.Settings.Hide()
+	end
 	if box and box:IsShown() then
 		box:Hide()   -- (a field's own OnHide puts its value back: a half-typed number is dropped)
 		box.entry, box.plate, box.spec = nil, nil, nil
@@ -1072,6 +1529,19 @@ end
 
 function E:CloseBox()
 	CloseBox()
+end
+
+-- (1.2.4) the box laid again where it stands (a switch among its Edit Mode
+-- settings brought another in or out)
+function E.RelayBox()
+	if box and box:IsShown() then
+		local top = box:GetTop()
+		LayBox()
+		if Num(top) then
+			box:ClearAllPoints()
+			box:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", Num(box:GetLeft()) or 0, top)
+		end
+	end
 end
 
 function E:BoxOpen()
@@ -1148,12 +1618,17 @@ local keys
 
 local ARROWS = { UP = true, DOWN = true, LEFT = true, RIGHT = true }
 
--- Escape, one step each press: the box, the confirm or the prompt, the
--- selection, then leaving
+-- Escape, one step each press: the dock's small panel, the box, the
+-- Elements list, the confirm or the prompt, the selection, then leaving
 local function Escape()
 	local P = Movers()
-	if E:BoxOpen() then
+	local K = E.Picker
+	if ClosePop() then
+		return
+	elseif E:BoxOpen() then
 		CloseBox()
+	elseif K and K.IsOpen() then
+		K.Close()
 	elseif S.confirm then
 		S.confirm = false
 		LayBar()
@@ -1322,6 +1797,7 @@ local events   -- the event frame (below)
 
 local function ShowPieces()
 	RunSources()
+	ApplyToggles()
 	local P = Movers()
 	if P then
 		P.ShowAll()
@@ -1334,6 +1810,9 @@ local function ShowPieces()
 		S.focus = nil
 	end
 	ShowBar()
+	if E.Picker then
+		E.Picker.Resume()
+	end
 	KeyboardOn()
 	if events then
 		pcall(events.RegisterEvent, events, "GLOBAL_MOUSE_DOWN")
@@ -1350,6 +1829,9 @@ local function HidePieces(fade)
 	end
 	E.EachLayer("Hide")
 	CloseBox()
+	if E.Picker then
+		E.Picker.Hide()
+	end
 	E:TooltipHide()
 	HideBar(fade)
 	if events then
@@ -1427,6 +1909,10 @@ local function OnEvent(_, event)
 		local P = Movers()
 		if P and E:IsShowing() then
 			P.ClickedElsewhere()
+			-- (1.2.4) the Elements list closes on a click outside it, unless kept open
+			if E.Picker then
+				E.Picker.ClickedOutside()
+			end
 		end
 	end
 end
@@ -1569,7 +2055,10 @@ local function OnEnd(reason, extra)
 	if not S.open then
 		return
 	end
-	local n, quiet = (reason == "saved" and Num(extra)) or S.ending, S.quiet
+	local n, quiet = (reason == "saved" and math.max(Num(extra) or 0, S.ending)) or S.ending, S.quiet
+	if reason == "abandoned" and E.Settings then
+		E.Settings.Discard()
+	end
 	-- (every piece away while the state still says what it was: the
 	-- keyboard's last call is made before it is closed)
 	HidePieces(reason ~= "abandoned")
@@ -1578,6 +2067,9 @@ local function OnEnd(reason, extra)
 		P.Deselect()
 	end
 	S.open, S.asking, S.confirm, S.quiet, S.ending = false, false, false, false, 0
+	if E.Picker then
+		E.Picker.EndSession()
+	end
 	wipe(S.reasons)
 	S.nReasons = 0
 	SessionEvents(false)
@@ -1607,7 +2099,6 @@ local function Begin()
 		return
 	end
 	S.ending, S.quiet, S.asking, S.confirm = 0, false, false, false
-	S.filter = "all"   -- (the Show filter lasts one session)
 	wipe(S.reasons)
 	S.nReasons = 0
 	-- (Core refuses a session only with no settings to hold the places)
@@ -1636,6 +2127,15 @@ local function Finish(how)
 	CloseBox()
 	if P then
 		P.EndDrag()
+	end
+	-- (1.2.4) the Edit Mode settings held: written (the active layout, from the next reload) or dropped
+	local ES = E.Settings
+	if ES then
+		if how == "save" then
+			ES.Save()
+		else
+			ES.Discard()
+		end
 	end
 	local fn = LS and ((how == "save" and LS.Commit) or LS.Discard)
 	if fn then
@@ -1754,7 +2254,8 @@ function E:Pending()
 		return 0
 	end
 	local ok, n = pcall(LS.Count)
-	return ok and Num(n) or 0
+	local ES = E.Settings
+	return (ok and Num(n) or 0) + (ES and ES.Count() or 0)
 end
 
 function E:Open()
@@ -1841,9 +2342,10 @@ function E:Dump()
 			reasons[#reasons + 1] = r
 		end
 		table.sort(reasons)
-		MelloUI:Print("Edit Layout: %s%s, filter %s, %d pending, queued %s", S.open and "open" or "closed",
-			#reasons > 0 and (" (paused: " .. table.concat(reasons, ", ") .. ")") or "", S.filter, E:Pending(),
-			tostring(S.queued))
+		local K = E.Picker
+		MelloUI:Print("Edit Layout: %s%s, %s, %d pending, queued %s", S.open and "open" or "closed",
+			#reasons > 0 and (" (paused: " .. table.concat(reasons, ", ") .. ")") or "",
+			K and K.SoloLabel() or "no solo", E:Pending(), tostring(S.queued))
 		local P = Movers()
 		if P then
 			P.Dump(function(...)

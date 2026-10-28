@@ -43,7 +43,7 @@ local M = MelloUI:RegisterModule("ClassIcons", {
 	},
 	options = {
 		{ type = "toggle", key = "portraits", name = "Player Portraits",
-		  desc = "Replace player portraits (yourself, target, focus, party) with the player's class portrait: in MelloUI's modern look its own class emblems, in the painted look the class medallions. NPC portraits are never touched." },
+		  desc = "Players' portraits show their class emblem instead of their face. NPCs keep theirs." },
 	},
 })
 

@@ -5580,24 +5580,24 @@ end
 do
 	local before = {
 		{ kind = "window", key = "windowBorder", default = "stone", name = "Window Border", values = Kit.windowFrameLooks,
-		  desc = "The frame round every window: a thin stone rail on the window's edge, or the double rail with gem corners. Windows already opened change after a /reload." },
+		  desc = "The frame around every window: a thin stone rail, or a double rail with gem corners. Open windows change after a /reload." },
 		{ kind = "windowtitle", key = "windowTitle", default = "ribbon", name = "Window Title", values = Kit.windowTitleLooks,
-		  desc = "The title bar of every window, at the game's own size: a red ribbon, or a plain band with a rail line under it. The red plate riding the rail goes with the double rail. Windows already opened change after a /reload." },
+		  desc = "The title bar of every window: a red ribbon, or a plain band. Open windows change after a /reload." },
 		{ kind = "button", key = "buttonBorder", default = "thin", name = "Button Border", values = Kit.buttonLooks.borders, preview = "rim",
-		  desc = "The rim on every square button: the action bars, the micro menu, the bag bar, your bags, the equipment slots and the spell book's spells." },
+		  desc = "The rim on square buttons: action bars, micro menu, bags, equipment slots and spells." },
 		{ kind = "sidetab", key = "sideTabBorder", default = "slot", name = "Side Tab Border", values = Kit.sideTabLooks, preview = "rim",
-		  desc = "The rim on every window's side tabs and the spell book's category tabs, all at the character window's size." },
+		  desc = "The rim on the windows' side tabs and the spellbook's tabs." },
 		{ kind = "bar", key = "barBorder", default = "frame", name = "Progress Bar Border", values = Kit.buttonLooks.barBorders, preview = "bar",
-		  desc = "The frame round every progress bar: reputation and skills, the professions' ranks, legacy, guild, experience, the tracker's, the tooltip's and the damage meter's. The unit frames, the nameplates, the cast bar, the swing timers and the Personal Display have a border of their own." },
+		  desc = "The frame around progress bars: reputation, skills, professions, experience, tooltips and the damage meter." },
 		{ kind = "nameplate", key = "nameplateBorder", default = "frame", name = "Nameplate Border", values = Kit.buttonLooks.barBorders, preview = "bar",
-		  desc = "The frame round the nameplates' health bars." },
+		  desc = "The frame around the nameplates' health bars." },
 	}
 	for _, k in ipairs(before) do
 		Kit:AddBorderKind(k, nil, "round")
 	end
 	Kit:AddBorderKind(
 		{ kind = "aura", key = "auraBorder", default = "thin", name = "Aura Border", values = Kit.auraLooks, preview = "rim",
-		  desc = "The rim round your buffs and debuffs, the target's and the nameplates' (Buffs & Debuffs): a plain black edge or one of the thin rims the buttons wear. The debuff colour stays round the icon. Only MelloUI's own aura rows wear it (Buffs & Debuffs, off by default): the game's own buff and debuff icons keep their edge, which Dark Mode's Buffs & Debuffs darkens." }, "round")
+		  desc = "The rim around MelloUI's buff and debuff icons. Debuff colours stay." }, "round")
 end
 
 local buttonRims = setmetatable({}, { __mode = "k" })   -- [button] = true: a skinned button whose rim is a thin look

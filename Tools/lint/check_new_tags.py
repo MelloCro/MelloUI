@@ -118,6 +118,11 @@ NOT_CONFIGURATOR = {
                                  "buttons record roads, not options",
     "Core/EditLayout.lua": "Edit Layout's own control bar and right-click box: a mode's controls, not options",
     "Core/EditLayoutMovers.lua": "Edit Layout's plates: a mode's controls, not options",
+    "Core/EditLayoutPicker.lua": "Edit Layout's Elements list (1.2.4): which plates show and are locked in a "
+                                 "mode, not options",
+    "Core/EditLayoutSettings.lua": "the game's own Edit Mode settings in Edit Layout's box (1.2.4): Edit Mode's "
+                                   "options as the game names them, held with the mode's changes; never "
+                                   "MelloUI's own options",
     "Core/EditLayoutBridge.lua": "the Edit Mode bridge's buttons (Move via Edit Mode, the button on Edit Mode): a mode's "
                                  "controls, not options",
     "Modules/MeterHistory.lua": "the Fight History window's Clear button and tabs (the Damage Meter page's Fight History "

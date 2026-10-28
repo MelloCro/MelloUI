@@ -97,15 +97,16 @@ local POINT_Y = { TOPLEFT = 1, TOP = 1, TOPRIGHT = 1, LEFT = 0.5, CENTER = 0.5, 
 	BOTTOMLEFT = 0, BOTTOM = 0, BOTTOMRIGHT = 0 }
 
 -- the states' looks (SPEC 2.4): fill key and alpha, edge key and alpha,
--- edge width in physical pixels
+-- edge width in physical pixels (1.2.4, the user: the plates "hard to spot" --
+-- every fill 0.2 stronger, the edges whole: idle was 0.35 in trim at 0.8)
 local LOOK = {
-	idle = { "innerPanel", 0.35, "trim", 0.8, 1 },
-	hover = { "hover", 0.45, "selectedTrim", 1, 1 },
-	selected = { "selectedTab", 0.40, "selectedTrim", 1, 2 },
-	dragging = { "hover", 0.45, "selectedTrim", 1, 1 },
-	locked = { "mainWindow", 0.35, "border", 1, 1 },
-	placeholder = { "innerPanel", 0.25, "trim", 0.5, 1 },
-	bridge = { "mainWindow", 0.35, "border", 1, 1 },
+	idle = { "innerPanel", 0.55, "trim", 1, 1 },
+	hover = { "hover", 0.65, "selectedTrim", 1, 1 },
+	selected = { "selectedTab", 0.60, "selectedTrim", 1, 2 },
+	dragging = { "hover", 0.65, "selectedTrim", 1, 1 },
+	locked = { "mainWindow", 0.55, "border", 1, 1 },
+	placeholder = { "innerPanel", 0.40, "trim", 0.7, 1 },
+	bridge = { "mainWindow", 0.55, "border", 1, 1 },
 }
 
 local TEXT = {
@@ -199,8 +200,13 @@ local function Ask(entry, field)
 	return type(text) == "string" and not Secret(text) and text or nil
 end
 
+-- the owner's reason, else (1.2.4) the Elements list's lock
 function P.LockedReason(entry)
-	return Ask(entry, "locked")
+	local why = Ask(entry, "locked")
+	if why == nil and E.Picker then
+		why = E.Picker.LockedReason(entry)
+	end
+	return why
 end
 
 function P.Note(entry)
@@ -407,7 +413,7 @@ Paint = function(plate)
 	local look = LOOK[StateOf(plate)]
 	W.Paint(plate.fill, look[1], "fill", look[2])
 	local edgeKey, edgeAlpha, px = look[3], look[4], look[5]
-	if plate.target then
+	if plate.target or (plate.lit and plate.kind == "entry") then
 		edgeKey, edgeAlpha, px = "selectedTrim", 1, 2
 	end
 	local e = plate.edges
@@ -591,7 +597,7 @@ Release = function(plate)
 	plate.entry, plate.frame, plate.key, plate.group, plate.kind = nil, nil, nil, nil, nil
 	plate.hover, plate.lit, plate.target, plate.changed, plate.hidden, plate.locked = nil, nil, nil, nil, nil, nil
 	plate.bridge, plate.line, plate.label, plate.dialog, plate.faded = nil, nil, nil, nil, nil
-	plate.detent, plate.landed = nil, nil
+	plate.detent, plate.landed, plate.peekFaded = nil, nil, nil
 	local r = plate.rect
 	r.l, r.b, r.w, r.h = 0, 0, 0, 0
 	pool[#pool + 1] = plate
@@ -624,7 +630,8 @@ local function MakeScrim()
 	scrim:SetFrameLevel(0)
 	scrim:SetAllPoints(UIParent)
 	scrim:EnableMouse(false)
-	scrim.tex = W.Solid(scrim, "BACKGROUND", "innerPanel", 0.25)
+	-- (1.2.4, the user: the dock's Dim "needs to dim it 40% more" (0.25 -> 0.35), then "by another 50%")
+	scrim.tex = W.Solid(scrim, "BACKGROUND", "innerPanel", 0.525)
 	scrim.tex:SetAllPoints(scrim)
 end
 
@@ -760,6 +767,10 @@ local function ShowGrid(on)
 	end
 end
 
+-- (1.2.4) the dock's Grid: the grid and the centre lines shown the whole
+-- session, not only under a drag in grid mode
+local gridAlways = false
+
 local function GuidesOn(gridMode)
 	if not guides then
 		MakeGuides()
@@ -769,14 +780,21 @@ local function GuidesOn(gridMode)
 	guides.x:Hide()
 	guides.y:Hide()
 	guides.axis:Hide()
-	ShowGrid(gridMode)
+	ShowGrid(gridMode or gridAlways)
 	guides:Show()
 end
 
-local function GuidesOff()
-	if guides then
-		guides:Hide()
+-- a drag's guides away (the grid kept while the dock's Grid is on); `all`:
+-- everything, the grid too (a pause, the end)
+local function GuidesOff(all)
+	if not guides then
+		return
 	end
+	if gridAlways and not all then
+		GuidesOn(true)
+		return
+	end
+	guides:Hide()
 end
 
 -- the outer glow: four additive bands out from the PLATE's edges, fading
@@ -846,6 +864,43 @@ end
 local function GlowOff()
 	if glow then
 		glow:Hide()
+	end
+end
+
+-- (1.2.4) the sketch's glow (editlayout_dock_sketch: a hovered row's plate
+-- in a soft gold box-shadow, a picked one in a softer one, a pick's two
+-- pulses; the user: "you already made the glow that i want in the sketch
+-- ... i want that one"): MelloUI.Shade's soft band, hollow, in the
+-- palette's gold, laid round the plate. It follows the row under the mouse,
+-- else the picked plate; none under a drag (the drag's own glow)
+local HALO = { hover = 0.55, picked = 0.45, flash = 0.9, feather = 18, pulse = 1.2 }
+local halo                      -- { holder, band }, made at its first need
+local peeked = nil
+local HaloRefresh               -- below
+
+local function HaloOn(plate, hover)
+	if not halo then
+		local holder = CreateFrame("Frame", nil, UIParent)
+		holder:Hide()
+		holder:EnableMouse(false)
+		holder:SetAllPoints(UIParent)
+		local band = MelloUI.Shade:Band(holder, { colour = "selectedTrim", alpha = HALO.hover, feather = HALO.feather,
+			featherY = HALO.feather, blend = "BLEND", hollow = true })
+		halo = { holder = holder, band = band }
+	end
+	halo.holder:SetFrameStrata(plate:GetFrameStrata())
+	halo.holder:SetFrameLevel(max((plate:GetFrameLevel() or 1) - 1, 0))
+	halo.band:Anchor(plate)
+	-- (a pulse under way keeps its own strength)
+	if not MelloUI.Anim:IsRunning(halo.holder, "drive") then
+		halo.band:SetStrength(hover and HALO.hover or HALO.picked)
+	end
+	halo.holder:Show()
+end
+
+local function HaloOff()
+	if halo then
+		halo.holder:Hide()
 	end
 end
 
@@ -1315,6 +1370,7 @@ end
 local DragUpdate, PressWatch   -- below
 
 local function StartDrag()
+	HaloOff()   -- (1.2.4: the Elements list's halo gives way to the drag's own glow)
 	local plate, entry = drag.plate, drag.entry
 	local l, b, w, h = MelloUI:EntryRect(entry)
 	if not l then
@@ -1693,6 +1749,11 @@ function P.Select(entry)
 	if plate then
 		Paint(plate)
 	end
+	-- (1.2.4) the dock's Coordinates line and the halo follow the pick
+	E:Refresh()
+	if HaloRefresh then
+		HaloRefresh()
+	end
 end
 
 function P.Deselect()
@@ -1967,7 +2028,7 @@ function P.SyncAll()
 		else
 			wanted = Wanted(entry)
 		end
-		if wanted and E:Shows(entry.group or "own") then
+		if wanted and E:Shows(entry) then
 			local more
 			made, more = LayEntry(entry, made)
 			later = later or more
@@ -1984,6 +2045,7 @@ function P.SyncAll()
 	end
 	E.EachLayer("Sync")
 	Rank()
+	HaloRefresh()
 	E:Refresh()
 	if later then
 		P.SyncSoon()
@@ -2005,13 +2067,48 @@ function P.Redraw()
 	end
 end
 
+-- (1.2.4) the dock's Dim: the world dimmed under the plates (the scrim)
+local dimOn = true
+
 function P.ShowAll()
 	ReadScreen()
 	if not scrim then
 		MakeScrim()
 	end
-	scrim:Show()
+	scrim:SetShown(dimOn)
 	P.SyncAll()
+	if gridAlways then
+		GuidesOn(true)
+	end
+end
+
+-- (1.2.4) the dock's toggles: the grid all session (its spacing, UI units,
+-- the snapping's too), the world dimmed
+function P.SetGrid(on, size)
+	gridAlways = on and true or false
+	size = Num(size)
+	if size and size > 0 and size ~= Snap.GRID then
+		Snap.GRID = size
+		if guides then
+			guides.gridW = -1   -- (drawn again at the new spacing)
+		end
+	end
+	if not E:IsShowing() then
+		return
+	end
+	if gridAlways then
+		ReadScreen()
+		GuidesOn(drag.started and drag.mode == "grid")
+	elseif not drag.started then
+		GuidesOff(true)
+	end
+end
+
+function P.SetDim(on)
+	dimOn = on and true or false
+	if scrim and E:IsShowing() then
+		scrim:SetShown(dimOn)
+	end
 end
 
 -- a drag dropped where it is (no last snap), a held arrow let go, every
@@ -2029,13 +2126,15 @@ function P.HideAll()
 		end
 	end
 	VeilOff()
-	GuidesOff()
+	GuidesOff(true)
 	GlowOff()
+	HaloOff()
 	RailOff()
 	ReadoutOff()
 	if scrim then
 		scrim:Hide()
 	end
+	P.Peek(nil)
 end
 
 function P.Setup()
@@ -2087,6 +2186,73 @@ function P.SnapChoices(entry, values)
 	end
 end
 
+-- (1.2.4) the Elements list (Core/EditLayoutPicker.lua): the row under the
+-- mouse lights its plate and every other goes faint; nil: all back
+local PEEK_ALPHA = 0.2
+function P.Peek(entry)
+	if peeked == entry then
+		return
+	end
+	peeked = entry
+	for i = 1, #active do
+		local p = active[i]
+		local mine = entry ~= nil and p.entry == entry
+		local faint = entry ~= nil and not mine
+		if (p.peekFaded and true or false) ~= faint then
+			p.peekFaded = faint or nil
+			p:SetAlpha(faint and PEEK_ALPHA or 1)
+		end
+		if p.kind == "entry" and (p.lit and true or false) ~= mine then
+			PlateLit(p, mine)
+		end
+	end
+	HaloRefresh()
+end
+
+-- an element's plate while it shows (nil: none)
+function P.PlateOf(entry)
+	local plate = entry and plateOf[entry]
+	return plate and plate:IsShown() and plate or nil
+end
+
+-- the halo where it belongs now: the row under the mouse's plate, else the
+-- picked one's; none under a drag
+HaloRefresh = function()
+	if drag.started then
+		HaloOff()
+		return
+	end
+	local hover = peeked ~= nil
+	local e = peeked or selected
+	local plate = e and plateOf[e]
+	if plate and plate:IsShown() then
+		HaloOn(plate, hover)
+	else
+		HaloOff()
+	end
+end
+
+-- a picked row's plate: its halo pulses twice (the sketch's flash), then
+-- rests at the picked strength
+local function PulseStep(_, e)
+	if halo then
+		local wave = math.abs(math.sin(e * math.pi * 2))
+		halo.band:SetStrength(HALO.picked + (HALO.flash - HALO.picked) * wave)
+	end
+end
+local function PulseDone()
+	HaloRefresh()
+end
+function P.Flash(plate)
+	if not (plate and plate:IsShown()) or drag.started then
+		return
+	end
+	HaloRefresh()
+	if halo and halo.holder:IsShown() then
+		MelloUI.Anim:Drive(halo.holder, PulseStep, HALO.pulse, "linear", PulseDone)
+	end
+end
+
 function P.BridgeCount()
 	local n = 0
 	for i = 1, #active do
@@ -2118,8 +2284,8 @@ function P.Dump(print)
 			why = "not live"
 		elseif not (MelloUI:EntryShown(entry) or entry.placeholder) then
 			why = "hidden, no placeholder"
-		elseif not E:Shows(entry.group or "own") then
-			why = "filtered out"
+		elseif not E:Shows(entry) then
+			why = "hidden in the Elements list"
 		elseif not MelloUI:EntryRect(entry) then
 			why = "no readable rect (secret or not laid out)"
 		else

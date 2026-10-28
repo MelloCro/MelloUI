@@ -266,7 +266,7 @@ local function MakeContainer(kind)
 	-- (0.20.2 - 0.24: the box held the party's spacing, the raid's and its groups' gap; one look C4: they are the
 	-- configurator's, its "Design >" link)
 	MelloUI:RegisterMover(c, c, { key = key, default = Home(kind), label = TEXT[kind], page = RD.module.name,
-		placeholder = true, when = function()
+		category = "frames", placeholder = true, when = function()
 			return RD.module.isEnabled and true or false
 		end, note = kind == "party" and function()
 			return DB().partyStyle == "party" and TEXT.partyNote or nil

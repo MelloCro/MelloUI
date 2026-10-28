@@ -5261,9 +5261,9 @@ Kit.roundLooks = {
 -- (Kit:AddBorderKind), the window's and title's, the buttons', side tabs', bars', nameplates' and auras'.
 Kit.borderKinds = {
 	{ kind = "round", key = "roundBorder", default = "roundslot", name = "Round Border", values = Kit.roundLooks, preview = "rim",
-	  desc = "The rim round every round icon: passive spells, the legacy, guild and group finder windows' rings, the auction house's item, the Services bar's round buttons." },
+	  desc = "The rim around round icons: passive spells, window rings and the Services bar's buttons." },
 	{ kind = "colours", key = "kitColours", default = "warm", name = "Kit Colours", values = Kit.colourLooks,
-	  desc = "The colours of all the painted art (frames, headers, rows, buttons, slots, bars). With the Ember and Ember Vibrant palettes: Warm iron (the metal in warm browns), Bronze (warm browns with gold bevels), or the Original painted grey iron and bright red. With any other palette: that palette's own colours, or the Original. Pictures keep their own colours." },
+	  desc = "The colour of the painted metal and frames. Ember palettes: Warm iron, Bronze or the Original grey and red. Other palettes: their own colours or the Original. Pictures keep theirs." },
 }
 local BORDER_KIND = {}
 for _, k in ipairs(Kit.borderKinds) do

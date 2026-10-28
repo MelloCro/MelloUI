@@ -8,18 +8,22 @@
 -- Fade Everything puts every element on In Combat, Fade Nothing on Always.
 -- The engine is Core/Fader.lua (MelloUI.Fader: one fader for all); this
 -- module holds its settings and the element list, each element's frames
--- found by name when first needed (none at login):
---   Frames      Player Frame (+ Pet Frame Too), Target Frame, Party Frames,
---               Raid Frames, Buffs & Debuffs (the game's, and MelloUI's own
---               rows by the minimap column)
+-- found by name when first needed (none at login), each on its tab of the
+-- Fader page (1.2.4, the configurator audit: every fading part there, a Link
+-- row to it on its own element's page):
+--   Frames      Player Frame (+ Pet Frame Too), Target Frame, Focus Frame,
+--               Party Frames, Raid Frames, Buffs & Debuffs (the game's, and
+--               MelloUI's own rows by the minimap column), the Personal
+--               Display, the reminders by the portrait
 --   Bars        Main Action Bar, Action Bar 2 to 8 (one row each), Stance &
 --               Pet Bar, Micro Menu, Bag Bar, Experience & Reputation Bars
---   Chat & Map  the chat windows (their tabs on the dock, their buttons and
---               edit boxes are their children), the minimap (its cluster: the
---               Services row is the map's), the Quest Tracker, the game's
---               Objective Tracker
--- Also (the user's test, 2026-10-01): the reminders by the portrait, the
--- widget column and Route's arrow and World Marker, on hosts (Fader:Host).
+--   Chat, Map & More  the chat windows (their tabs on the dock, their
+--               buttons and edit boxes are their children), the minimap (its
+--               cluster: the Services row is the map's), the Quest Tracker,
+--               the game's Objective Tracker, the widget column, Route's World
+--               Marker, the FPS / latency readout
+-- The reminders, the widget column and Route's arrow and World Marker fade on
+-- hosts (Fader:Host; the user's test, 2026-10-01).
 -- Left out on purpose (they only come up when they matter): Gains, the cast
 -- bar, the damage meter's race bar and summary, Combat Text, the notices.
 --
@@ -50,41 +54,44 @@ local Fader = MelloUI.Fader
 local pcall, type, ipairs = pcall, type, ipairs
 
 -- the elements, in the page's order: key, label, tab, desc (, the version a later one came with)
+local MORE = "Chat, Map & More"
 local LIST = {
-	{ "player", "Player Frame", "Frames", "Your own frame. In Combat, it also comes back while your health or mana is below full and when you are dead; On Mouseover, it stays faded until you point at it." },
-	{ "target", "Target Frame", "Frames", "Your target's frame (and its target's)." },
-	{ "party", "Party Frames", "Frames", "The party frames, the game's and the raid-style ones." },
+	{ "player", "Player Frame", "Frames", "Your own frame. In Combat, it also returns while you are hurt, low on mana or dead." },
+	{ "target", "Target Frame", "Frames", "Your target's frame and its target." },
+	{ "focus", "Focus Frame", "Frames", "Your focus's frame.", "1.2.4" },   -- (1.2.4, the configurator audit: every fading part)
+	{ "party", "Party Frames", "Frames", "The party frames." },
 	{ "raid", "Raid Frames", "Frames", "The raid frames." },
-	{ "buffs", "Buffs & Debuffs", "Frames", "Your own buffs and debuffs, the game's or MelloUI's rows by the minimap." },
-	{ "reminders", "Reminders", "Frames", "The round reminders beside your portrait (restock, mail, your buffs, the weapon's poison...). A new reminder does not bring them back: In Combat keeps it faded until a fight, On Mouseover until you point at them." },
+	{ "buffs", "Buffs & Debuffs", "Frames", "Your buffs and debuffs." },
+	{ "reminders", "Reminders", "Frames", "The reminder buttons beside your portrait. A new reminder doesn't bring them back." },
 	-- (0.21.0, the user: "a option in the fader to fade out of combat"; its pick: back while casting)
-	{ "personal", "Personal Display", "Frames", "The bars under your character and the shield column beside it (Personal Display). In Combat, they also come back while you cast. (No On Mouseover: the pointer passes through them to the world.)", nil, "noMouse" },   -- (its 0.21.0 New tag taken out by hand at the 0.21.1 release: a version by position)
-	{ "bar1", "Main Action Bar", "Bars", "Action Bar 1. Its keys work while it is faded." },
-	{ "bar2", "Action Bar 2", "Bars", "Its keys work while it is faded." },
-	{ "bar3", "Action Bar 3", "Bars", "Its keys work while it is faded." },
-	{ "bar4", "Action Bar 4", "Bars", "Its keys work while it is faded." },
-	{ "bar5", "Action Bar 5", "Bars", "Its keys work while it is faded." },
-	{ "bar6", "Action Bar 6", "Bars", "Its keys work while it is faded." },
-	{ "bar7", "Action Bar 7", "Bars", "Its keys work while it is faded." },
-	{ "bar8", "Action Bar 8", "Bars", "Its keys work while it is faded." },
-	{ "stance", "Stance & Pet Bar", "Bars", "The stance, form and aura bar, and your pet's bar." },
-	{ "micro", "Micro Menu", "Bars", "The small buttons for the game's windows." },
-	{ "bags", "Bag Bar", "Bars", "Your bags' buttons." },
-	{ "xp", "Experience & Reputation Bars", "Bars", "The bars of your experience and the reputation you watch." },
-	{ "chat", "Chat", "Chat & Map", "The chat windows with their tabs, buttons, the Friends button and the line you type in. They come back while you type." },
-	{ "minimap", "Minimap", "Chat & Map", "The minimap with its zone band and the Services row." },
-	{ "tracker", "Quest Tracker", "Chat & Map", "MelloUI's Quest Tracker." },
-	{ "objectives", "Objective Tracker", "Chat & Map", "The game's own objective tracker." },
-	{ "widgets", "Widget Column", "Chat & Map", "The column of widgets: loot rolls, summons, Voice Over, whispers and the rest. A new one does not bring the column back: In Combat keeps a loot roll, a summons or a whisper faded out of combat, On Mouseover until you point at the column." },
-	{ "route", "World Marker", "Chat & Map", "Route's World Marker over the destination." },
+	{ "personal", "Personal Display", "Frames", "The Personal Display's bars. In Combat, they also return while you cast.", nil, "noMouse" },   -- (its 0.21.0 New tag taken out by hand at the 0.21.1 release: a version by position)
+	{ "bar1", "Main Action Bar", "Bars", "The main action bar. Its keys still work while faded." },
+	{ "bar2", "Action Bar 2", "Bars", "Its keys still work while faded." },
+	{ "bar3", "Action Bar 3", "Bars", "Its keys still work while faded." },
+	{ "bar4", "Action Bar 4", "Bars", "Its keys still work while faded." },
+	{ "bar5", "Action Bar 5", "Bars", "Its keys still work while faded." },
+	{ "bar6", "Action Bar 6", "Bars", "Its keys still work while faded." },
+	{ "bar7", "Action Bar 7", "Bars", "Its keys still work while faded." },
+	{ "bar8", "Action Bar 8", "Bars", "Its keys still work while faded." },
+	{ "stance", "Stance & Pet Bar", "Bars", "The stance, form and pet bars." },
+	{ "micro", "Micro Menu", "Bars", "The micro menu." },
+	{ "bags", "Bag Bar", "Bars", "The bag bar." },
+	{ "xp", "Experience & Reputation Bars", "Bars", "The experience and reputation bars." },
+	{ "chat", "Chat", MORE, "The chat windows, tabs and buttons. They return while you type." },
+	{ "minimap", "Minimap", MORE, "The minimap and the Services bar." },
+	{ "tracker", "Quest Tracker", MORE, "MelloUI's Quest Tracker." },
+	{ "objectives", "Objective Tracker", MORE, "The game's objective tracker." },
+	{ "widgets", "Widget Column", MORE, "The widget column. A new widget doesn't bring it back." },
+	{ "route", "World Marker", MORE, "Route's World Marker." },
+	{ "stats", "FPS / Latency", MORE, "The FPS and latency readout.", "1.2.4" },
 }
 
 local SHOW = { { value = "always", label = "Always" }, { value = "combat", label = "In Combat" },
 	{ value = "mouseover", label = "On Mouseover" } }
-local SHOW_TIP = " Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."
+local SHOW_TIP = " Always: never faded. In Combat: faded out of combat. On Mouseover: faded until you point at it."
 -- (0.21.0) an element the pointer passes through (the Personal Display): Always or In Combat
 local SHOW_NO_MOUSE = { SHOW[1], SHOW[2] }
-local SHOW_NO_MOUSE_TIP = " Always: never faded. In Combat: faded out of combat, back in a fight."
+local SHOW_NO_MOUSE_TIP = " Always: never faded. In Combat: faded out of combat."
 
 -- (switchGone: one look's merge of the old switch done -- Core.lua's MERGES;
 -- a new player's table is born with it)
@@ -142,38 +149,38 @@ end
 
 options[#options + 1] = { type = "button", name = "Fade Everything", text = "Fade",
 	search = "hide out of combat whole ui",
-	desc = "Every element on the Frames, Bars and Chat & Map tabs on In Combat: the whole interface fades away out of combat and comes back in a fight.",
+	desc = "Sets every part below to In Combat: the interface fades out of combat and comes back in a fight.",
 	onClick = function() SetAll("combat") end }
 options[#options + 1] = { type = "button", name = "Fade Nothing", text = "Reset",
-	desc = "Every element on the Frames, Bars and Chat & Map tabs on Always: nothing fades.",
+	desc = "Sets every part below to Always: nothing fades.",
 	onClick = function() SetAll("always") end }
 options[#options + 1] = { type = "slider", key = "alpha", name = "Faded Opacity", min = 0, max = Fader.T.MAX, step = 0.05,
 	percent = true,
-	desc = "How much of an element stays while it is faded. At 0 % it is gone until it is needed (an On Mouseover bar at 0 % still shows when you point at it)." }
+	desc = "How visible a faded part stays. 0%: hidden until needed." }
 options[#options + 1] = { type = "slider", key = "after", name = "Fade After", min = 0, max = 10, step = 0.5,
 	format = function(v) return string.format("%.1f s", v) end,
-	desc = "How long an element waits before it fades: after a fight ends, after you let go of your target or point away." }
+	desc = "How long a part waits before fading, after a fight or after your mouse leaves." }
 options[#options + 1] = { type = "slider", key = "speed", name = "Fade Speed", min = 0.2, max = 3, step = 0.1,
 	format = function(v) return string.format("%.1f s", v) end,
-	desc = "How long the fade itself takes. Coming back is always quick. Reduce Motion: at once." }
+	desc = "How long the fade takes. Coming back is always quick." }
 options[#options + 1] = { type = "toggle", key = "target", name = "Show With A Target",
-	desc = "In Combat elements come back while you have a target, a friend too." }
+	desc = "In Combat parts also come back while you have a target." }
 options[#options + 1] = { type = "toggle", key = "mouse", name = "Also Show On Mouseover",
 	search = "show on hover",
-	desc = "In Combat elements come back while you point at them, too. (On Mouseover elements always do.)" }
+	desc = "In Combat parts also come back while your mouse is over them." }
 for _, e in ipairs(LIST) do
 	local still = e[6] == "noMouse"
 	options[#options + 1] = { type = "dropdown", key = "show_" .. e[1], name = e[2], values = still and SHOW_NO_MOUSE or SHOW,
 		new = e[5], desc = e[4] .. (still and SHOW_NO_MOUSE_TIP or SHOW_TIP) }
 	if e[1] == "player" then
 		options[#options + 1] = { type = "toggle", key = "petToo", name = "Pet Frame Too",
-			desc = "Your pet's frame fades and comes back with the player frame, and also comes back while your pet is hurt. Off: the pet frame always stays." }
+			desc = "Your pet's frame fades with the player frame and returns while your pet is hurt." }
 	end
 end
 
 M = MelloUI:RegisterModule("Fader", {
 	title = "Fader",
-	desc = "Fade parts of the interface away while you do not need them: out of combat, or until you point at them. Pick for each frame, bar, the chat, the minimap and the trackers.",
+	desc = "Fades parts of the interface while you don't need them: out of combat, or until you point at them.",
 	icon = "Interface\\Icons\\Spell_Magic_LesserInvisibilty",
 	flavour = "Your interface, only when you need it.",
 	-- (one look: on for everyone, no switch of its own -- its engine runs
@@ -564,6 +571,10 @@ local function Register()
 	F:Register({ key = "target",
 		frames = function() return Add({}, G("TargetFrame")) end,
 		mouse = function() return Mice({}, G("TargetFrame"), 4) end })
+	-- (1.2.4, the configurator audit: every fading part) the focus frame, as the target's
+	F:Register({ key = "focus",
+		frames = function() return Add({}, G("FocusFrame")) end,
+		mouse = function() return Mice({}, G("FocusFrame"), 4) end })
 	-- (0.20.0) MelloUI's own group frames (MelloUI_GroupFrames) fade as the
 	-- game's do; while they hide the game's (by their alpha), the game's are
 	-- left to them -- the Fader's write would show them again
@@ -666,6 +677,11 @@ local function Register()
 		frames = function() return Add({}, F:Host("personal")) end,
 		mouse = function() return {} end,
 		needed = PersonalNeeded, neededIn = "combat" })
+	-- (1.2.4, the configurator audit: every fading part) the FPS / latency readout (Stats.lua's one frame, shown while
+	-- its feature is on; it sets no alpha of its own)
+	F:Register({ key = "stats",
+		frames = function() return Add({}, G("MelloUIStatsFrame")) end,
+		mouse = function() return Mice({}, G("MelloUIStatsFrame"), 1) end })
 end
 
 --------------------------------------------------------------------------------

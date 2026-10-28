@@ -210,7 +210,7 @@ end
 
 local M = MelloUI:RegisterModule("Gains", {
 	title = "Gains",
-	desc = "Short lines beside your character show what you just gained: a skill point, the items you loot or receive, and what you buy. You can move them in Edit Layout.",
+	desc = "Short lines beside your character for what you just gained: skill ups, items and money. Move them in Edit Layout.",
 	icon = "Interface\\Icons\\INV_Misc_Bag_08",
 	flavour = "Every skill point and every new item, told softly beside your character, then gone.",
 	group = "Quests and travel", navOrder = 6,
@@ -229,24 +229,24 @@ local M = MelloUI:RegisterModule("Gains", {
 	options = {
 		{ type = "header", name = "Show" },
 		{ type = "toggle", key = "skills", name = "Skill Ups",
-		  desc = "A line when one of your skills goes up: weapon skills, Defense, professions, secondary skills and languages." },
+		  desc = "A line when a skill goes up: weapons, Defense, professions and languages." },
 		{ type = "toggle", key = "values", parent = "skills", name = "Show Skill Values",
-		  desc = "The skill's new value and its cap after its name, such as 57 / 80." },
+		  desc = "The skill's new value and its cap, such as 57 / 80." },
 		{ type = "toggle", key = "items", name = "Looted & Received Items",
-		  desc = "A line for each item that comes into your bags: loot, quest rewards, crafted items, mail and trades. Moving items between your bags, the bank and your gear never counts." },
+		  desc = "A line for each item you get: loot, quest rewards, crafts, mail and trades." },
 		{ type = "toggle", key = "bought", name = "Bought Items",
-		  desc = "A line for what you buy from a merchant, buybacks too, marked as bought." },
+		  desc = "A line for what you buy from a merchant." },
 		{ type = "toggle", key = "junk", name = "Junk Items",
-		  desc = "Also show junk (grey) items. Off: they are left out." },
+		  desc = "Also shows junk items." },
 		{ type = "toggle", key = "money", name = "Money",
-		  desc = "A line when your money goes up: loot, quest rewards, sales, mail and trades, with the game's coins. Several gains in a row add up on one line. Spending makes no line." },
+		  desc = "A line when you gain money. Gains in a row add up on one line." },
 		{ type = "toggle", key = "currencies", name = "Currencies",
-		  desc = "A line for the other currencies you gain (honor, tokens, marks), with the currency's own icon." },
+		  desc = "A line for other currencies you gain: honor, tokens and marks." },
 		{ type = "toggle", key = "qualityNames", name = "Item Names In Quality Colour",
-		  desc = "Item names in their quality colour (green, blue, purple) beside the quality gem. Blue and purple read less well over bright ground. Off: the names in the text colour." },
+		  desc = "Item names in their quality colour. Off: in the text colour, easier to read on bright ground." },
 		{ type = "header", name = "Lines" },
 		{ type = "slider", key = "hold", name = "Show For", min = HOLD_MIN, max = HOLD_MAX, step = 1, format = Seconds,
-		  desc = "How long each line stays before it fades. Gaining the same skill or item again adds to its line and starts it over." },
+		  desc = "How long each line stays before it fades." },
 	},
 })
 
@@ -645,7 +645,7 @@ local function OnBuild()
 	Preview()
 end
 
-feed = MelloUI.Feed:New({ name = "MelloUIGains", key = MOVER_KEY, label = "Gains", page = "Gains", when = ModuleOn,
+feed = MelloUI.Feed:New({ name = "MelloUIGains", key = MOVER_KEY, label = "Gains", page = "Gains", when = ModuleOn, category = "text",
 	width = WIDTH, pitch = PITCH, max = MAX_LINES, home = Home, newRow = NewRow, onBuild = OnBuild,
 	fadeIn = FADE_IN, fadeOut = FADE_OUT, slide = SLIDE })
 

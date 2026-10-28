@@ -31,7 +31,7 @@ local repOf = MelloUI.Kept.repOf
 local M = MelloUI:RegisterModule("DamageMeterPanel", {
 	title = "Damage Meter Kit",
 	desc = "The game's damage meter (window, header, entry bars, breakdown windows) dressed in the painted kit on its own layout.",
-	window = { label = "Damage meter", desc = "The damage meter and its breakdown window in the kit.", tab = "HUD", addon = "Blizzard_DamageMeter" },
+	window = { label = "Damage meter", desc = "The damage meter and its breakdown window in the painted art.", tab = "HUD", addon = "Blizzard_DamageMeter" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

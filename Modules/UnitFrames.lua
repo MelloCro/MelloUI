@@ -39,7 +39,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 	icon = "Interface\\Icons\\INV_Misc_GroupLooking",
 	flavour = "Player, target and focus, centred and calm.",
 	group = "Frames and bars", navOrder = 1,
-	tweak = { label = "Unit Frame Tweaks", desc = "Name and glow tweaks on the unit frames, the party's levels and the names' soft bands (they step aside where the reskin covers them).", order = 5 },
+	tweak = { label = "Unit Frame Tweaks", desc = "MelloUI's tweaks to the unit frames: names, glows and the party's levels.", order = 5 },
 	-- (one look C13, the user's yes to the audit's drops, 2026-10-15: the names
 	-- centred and the target's and focus's name band transparent while this
 	-- module is on, the frame art at its full opacity -- MelloUI's choices,
@@ -56,24 +56,24 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 	options = {
 		-- (2026-10-20, the user: the game's frames as they are, in the set's borders, one picture each; the Frames section)
 		{ type = "toggle", key = "frames", name = "MelloUI Frames",
-		  desc = "The player, target, focus, target of target, pet and party frames in MelloUI's look, exactly as the game lays them out: a gold ring round the portrait, a dark level badge, and gold-lined iron borders round the name, health and power; the elite's and boss's golden dragon and the rare's silver one round the target. Off: the game's own frame art. The painted skin's frames keep their own (Oldschool)." },
+		  desc = "The unit frames in MelloUI's look: a gold portrait ring, a level badge and gold-lined borders. Off: the game's own art." },
 		-- (1.2.4; the user, 2026-10-26: "to have the option to flip the party frames horizontally, i like to have them
 		-- on the right side of the screen and not the left side") Party.Flip
 		{ type = "toggle", key = "partyFlip", name = "Flip Horizontally", new = "1.2.4",
-		  desc = "The party portraits mirrored, for a party on the right side of the screen: the portrait on the right, the name, level, bars, icons and buffs to its left. The health and power bars still fill from the left, as on the target frame." },
+		  desc = "Mirrors the party frames for a party on the right of the screen: portraits on the right." },
 		{ type = "header", name = "Names" },
 		{ type = "dropdown", key = "nameFont", name = "Name Font", values = MelloUI.FontFaces,
-		  desc = "The face of the names on the player, target, focus and pet frames, their targets' and the party portraits' (their level follows). Shared: the Interface text's face (Look > Fonts)." },
+		  desc = "The font of names on the unit frames and party portraits. Shared: the interface font." },
 		{ type = "header", name = "Glows" },
 		{ type = "toggle", key = "hideCombatGlow", name = "Hide Combat Flash",
-		  desc = "Hide the red flash around the player, target, focus, pet and party frames while in combat or when a target attacks." },
+		  desc = "Hides the red flash around unit frames in combat." },
 		{ type = "toggle", key = "hideStatusGlow", name = "Hide Status Glow",
-		  desc = "Hide the glow around the player portrait and name that shows resting (yellow) and combat (red), and the pet frame's glow while your pet attacks." },
+		  desc = "Hides the resting and combat glow around your portrait, and your pet's attack glow." },
 		-- (the user, 2026-10-09: "remove that awfull diamond icon and its border
 		-- and background from the frames": the game's honour badge while
 		-- flagged for PvP)
 		{ type = "toggle", key = "hidePvPBadge", name = "Hide PvP Badge",
-		  desc = "Hide the PvP badge beside the portrait of the player, target and focus frames: the diamond with your honour rank, or the faction icon, that shows while you or they are flagged for PvP." },
+		  desc = "Hides the PvP badge beside the portraits." },
 		{ type = "header", name = "Frame Art" },
 		-- (one-look D5: the two below moved from the Unit Frames Kit, keys and
 		-- rows kept -- Core.lua's MERGES carries a saved "off"; no header row

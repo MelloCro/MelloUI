@@ -52,6 +52,8 @@ Core\EditModeLayout.lua
 Core\EditLayoutSnap.lua
 Core\EditLayout.lua
 Core\EditLayoutMovers.lua
+Core\EditLayoutPicker.lua
+Core\EditLayoutSettings.lua
 Core\EditLayoutBridge.lua
 Core\EditLayoutWindows.lua
 

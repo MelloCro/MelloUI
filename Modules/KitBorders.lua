@@ -794,8 +794,7 @@ end
 -- reskin's, their rows its part's)
 Kit:AddBorderKind({ kind = "cooldown", key = "cooldownBorder", default = "game", name = "Cooldown Manager Border",
 	values = Kit.cooldownLooks, preview = "rim", core = true,
-	desc = "The rim round the icons of the game's Cooldown Manager: the game's own bevel, or one of the border styles "
-		.. "the buttons wear." }, nil, "colours")
+	desc = "The rim around the Cooldown Manager's icons: the game's own, or one of the button rims." }, nil, "colours")
 
 Kit.cooldownIcons = setmetatable({}, { __mode = "k" })   -- [item] = { icon = texture, overlays = { bevel ... }, border }
 

@@ -54,9 +54,7 @@ local Kit = MelloUI.Kit
 do
 	local tooltip = MelloUI.modules and MelloUI.modules.Tooltip
 	if tooltip and tooltip.PaintedBackgrounds then
-		tooltip.PaintedBackgrounds("The tooltips' background: the painted kit (Painted), the kit with a parchment sheet "
-			.. "whose text is dark ink (Parchment), a flat near-black box with a dark border in your palette's colours "
-			.. "(Dark), or the game's own. Painted and Parchment need the reskin on (Oldschool).")
+		tooltip.PaintedBackgrounds("The tooltips' background: Dark, the game's own, or (with Oldschool) Painted or Parchment.")
 	end
 end
 

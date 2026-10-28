@@ -122,7 +122,11 @@ FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPan
              "Meter.barHeight",
              # (one look, stage E, the user 2026-10-15: the Quest Tracker's Painted Skin removed; the login's
              # MelloUI:MergeSettings drops a saved key, its one-time flag stays personal: EXTRA_PERSONAL)
-             "UIModifications.questTrackerKit"]
+             "UIModifications.questTrackerKit",
+             # (1.2.4: Oldschool's painted Game Menu removed -- one Game Menu for every skin; the configurator audit:
+             # Reskin Brightness folded into Dark Mode's one Brightness, Shade: Buffs and Swing Timer Border removed)
+             "UIModifications.GameMenuPanel", "DarkMode.kitShade", "UIModifications.shade_buffs",
+             "UIModifications.swingTimerBorder"]
 EDIT_MODE_FRAMES = ["MinimapCluster", "DamageMeter", "ChatFrame1", "ObjectiveTrackerFrame"]
 # the installer's additions to the keep lists and the one-time flag name rule
 # (the installer build's test_options.py name check)

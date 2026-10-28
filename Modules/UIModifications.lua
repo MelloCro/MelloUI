@@ -128,7 +128,9 @@ local defaults, options = { fadeWindows = true, reduceMotion = false,
 -- `autoSnap` its bar's Snap switch, `snapGap` (0.19.9) its Gap (the pixels
 -- kept between elements snapped side by side, 0 - 10); `snapTargets` ({ [key] = "screen" |
 -- "grid" | "off" | another element's key }, nil: the nearest element) is
--- no default (read as {}): profiles carry it, the installer never sets it
+-- no default (read as {}): profiles carry it, the installer never sets it;
+-- (1.2.4) `editLayout` ({ hidden, locked, pinned, grid, gridSize, dim, coords,
+-- help }: the Elements list's and the dock's choices) the same
 -- (the core border kinds, `core`: the Cooldown Manager Border; the painted
 -- reskin's part brings the others' defaults)
 for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
@@ -244,7 +246,7 @@ defaults.skin = "modern"
 Add({ type = "dropdown", key = "skin", name = "Skin", free = true, new = "1.2.4", width = 260, values = {
 	{ value = "modern", label = "Modern (MelloUI's own look)" },
 	{ value = "default", label = "Default (the game's own look)" },
-}, desc = "How MelloUI's own windows and parts look: Modern, MelloUI's own art; or Default, the game's own borders, buttons, icons and fonts in the very same places -- the quest tracker, the map column, the chat, the bags, the configurator and every other window. Nothing moves; only the look changes, at once. Oldschool's painted look, while it is on, dresses on top." })
+}, desc = "How MelloUI looks. Modern: MelloUI's own art. Default: the game's own borders, buttons and fonts in the same places. Only the look changes; nothing moves." })
 
 -- The palette (0.14.0): Core applies it (MelloUI:SetPalette), this module on
 -- or off; its choices are the widget set's one list, every palette by its
@@ -255,7 +257,7 @@ do
 	local W = MelloUI.Widgets
 	Add({ type = "dropdown", key = "palette", name = "Palette", free = true,
 		values = type(W) == "table" and type(W.PaletteValues) == "function" and W.PaletteValues() or {},
-		desc = "The painted reskin's colours: its art, and MelloUI's own windows and parts while it dresses. Without it MelloUI wears its modern palette, Gilded Slate. Your choice applies at once." })
+		desc = "The painted reskin's colours, also worn by MelloUI's windows while the reskin is on. Without it, MelloUI uses Gilded Slate." })
 end
 
 -- The borders, one choice per kind for every window (Kit.borderKinds; the
@@ -278,10 +280,10 @@ do
 	local shade = Kit and Kit.shadeSettings
 	if type(shade) == "table" and type(shade.master) == "string" and type(shade.strength) == "string" then
 		Add({ type = "toggle", key = shade.master, name = "UI Shade", free = true,
-			desc = "A soft dark shade round the kit's outlines, so windows, bars and frames stand out from the world. Each area has its own switch under it." })
+			desc = "A soft dark shadow around windows, bars and frames, so they stand out from the world. Each area can be turned off below." })
 		SHADE_ROW[shade.strength] = Add({ type = "slider", key = shade.strength, name = "Shade Strength", parent = shade.master, free = true,
 			min = shade.min, max = shade.max, step = shade.step, percent = true,
-			desc = "How dark the UI Shade round the kit's outlines is, the nameplates' Whole plate shade too. The bands behind unit frame and nameplate names keep their own." })
+			desc = "How dark the UI Shade is." })
 	end
 end
 -- An area's default (on) and its switch, once per area (Kit:AddShadeArea,
@@ -305,7 +307,7 @@ local function ShadeRow(a)
 	defaults[a.key] = true
 	if type(shade.strength) == "string" then
 		local opt = { type = "toggle", key = a.key, name = "Shade: " .. a.label, requires = shade.master, free = true,
-			new = a.new, desc = "The UI Shade round the " .. a.label:lower() .. ". Off: no shade there; the other areas keep theirs." }
+			new = a.new, desc = "The UI Shade around the " .. a.label:lower() .. "." }
 		local prev = SHADE_ROW[shade.strength]
 		for _, b in ipairs(Kit.shadeAreas) do
 			if b == a then
@@ -348,10 +350,10 @@ local PARCHMENTS = {
 }
 MelloUI.ParchmentAreas = PARCHMENTS
 local PARCHMENT_DESC = {
-	parchment_questTracker = "MelloUI's Quest Tracker on a parchment sheet, its text in dark ink. Works with the reskin on or off.",
-	parchment_chat = "The chat on a parchment sheet, its text in dark ink: the Minimal Chat View and its whisper window with the reskin on or off; the game's chat windows with the painted chat (its Painted Skin, the reskin on).",
-	parchment_whisper = "The whisper popup on a parchment sheet, its text in dark ink.",
-	parchment_meter = "The damage meter on a parchment sheet, its text in dark ink.",
+	parchment_questTracker = "MelloUI's Quest Tracker on parchment, in dark ink.",
+	parchment_chat = "The chat on parchment, in dark ink.",
+	parchment_whisper = "The whisper popup on parchment, in dark ink.",
+	parchment_meter = "The damage meter on parchment, in dark ink.",
 }
 -- (1.2.4) a paper the Default skin lays none of (Kit.skinlessParchments): its row says so while that skin shows
 local function SkinlessLine()
@@ -374,9 +376,9 @@ for _, entry in ipairs(PARCHMENTS) do
 end
 
 Add({ type = "toggle", key = "fadeWindows", name = "Windows Fade In",
-	desc = "Every window fades in over a fifth of a second when it opens, instead of appearing at once: the character window, talents and spells, professions, the bags, social, guild, group finder, collections, the map, the game menu and the rest. Works with the reskin on or off. Reduce Motion: at once." })
+	desc = "Windows fade in briefly when they open, instead of appearing at once." })
 Add({ type = "toggle", key = "reduceMotion", name = "Reduce Motion", free = true,
-	desc = "Every MelloUI animation ends at once: windows open without fading, the whisper popup appears in place, the quest tracker's lines do not flash, the configurator jumps instead of gliding. For anyone who finds moving interface parts distracting. Works with UI Modifications switched off as well." })
+	desc = "Stops MelloUI's animations: windows and popups appear at once, nothing slides or flashes." })
 -- Names (user, 2026-09-22: "make that option global for all of the 3
 -- things at the same time"): one dropdown for the unit frames, the
 -- nameplates and the name over your own head. Characters here have a first
@@ -394,16 +396,16 @@ Add({ type = "dropdown", key = "nameFormat", name = "Show Names As", width = 260
 	{ value = "firstinitial", label = "Name and initial (Professor S.)" },
 	{ value = "first", label = "First name (Professor)" },
 	{ value = "last", label = "Surname (Skillybones)" },
-}, desc = "How a character's name is written, everywhere at once: the player, target, focus, pet, party and raid frames, the nameplates, the chat and whisper windows, and the name over your own head (the game's own setting for it: only First name leaves out the surname there). A character with no surname shows the name it has; in the chat the name is still a link to the player. Names over other players' heads without a nameplate are the engine's and have no setting." })
+}, desc = "How character names are written everywhere: unit frames, nameplates, chat and over your own head." })
 -- (0.16.0: chat's and the tooltip's Class Coloured Names merged: one
 -- switch, read by both as saved; it acts only while Chat Tweaks and Tooltip
 -- Tweaks run, so not with UI Modifications off: options audit, 2026-10-05)
 Add({ type = "toggle", key = "classNames", name = "Class Coloured Names", free = true,
-	desc = "Players' names in their class colour: in every chat type (the game's own setting for it) and in the tooltip. On the parchment sheet a chat name is in dark ink with a gem in its class colour before it instead. It works through Chat Tweaks and Tooltip Tweaks: with UI Modifications off (or one of the two), the names there keep the game's own colours." })
+	desc = "Players' names in their class colour, in chat and in tooltips." })
 
 local M = MelloUI:RegisterModule("UIModifications", {
 	title = "UI Modifications",
-	desc = "The painted kit reskin, area by area, and the interface's features: buffs and debuffs, error messages, cooldowns, unit frames, chat, tooltips, fonts, dark mode and more. The look is chosen on the Look page and on each element's own page.",
+	desc = "The painted reskin and most of MelloUI's interface changes: fonts, Dark Mode, chat, tooltips, buffs, bar textures and more.",
 	enabledByDefault = true,
 	important = true,
 	-- it drives every reskin panel and folded tweak, so its OFF state has to
@@ -1089,7 +1091,7 @@ function M:OnSettingChanged(key, value, db)
 	-- (autoSnap, snapGap and snapTargets: Edit Layout's, read when it snaps;
 	-- positions: Core's store, the bus's 'setting' in Core/EditLayoutWindows.lua)
 	if key == "autoSnap" or key == "snapGap" or key == "snapTargets" or key == "positions" or key == "layoutApplied" or key == "welcomeAsked"
-		or key == "savedSurnameOwn" or key == "featuresFolded" then
+		or key == "savedSurnameOwn" or key == "featuresFolded" or key == "editLayout" then
 		return
 	elseif key == "nameFormat" then
 		ApplyNameFormat(db, true)

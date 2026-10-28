@@ -114,13 +114,13 @@ end
 -- change there shows after /reload.
 local ROLES = {
 	{ key = "fontText",   match = "frizqt",   name = "Interface text (Friz Quadrata)",
-	  desc = "Window text, buttons, tooltips, the quest log, nameplate names and the names above characters in the world (those after /reload)." },
+	  desc = "The font of window text, buttons, tooltips and names. Names over characters change after a /reload." },
 	{ key = "fontChat",   match = "arialn",   name = "Chat & numbers (Arial Narrow)",
-	  desc = "The numbers: cooldown counts, stack counts; and the chat windows while Chat text and Interface text both keep the game's. The value text on the unit frames' bars follows the Interface text, the hit numbers on the portraits the Game Numbers Font." },
+	  desc = "The font of numbers: cooldowns, stacks and counts." },
 	{ key = "fontTitle",  match = "morpheus", name = "Titles & headers (Morpheus)",
-	  desc = "Window titles, quest and item names in dialogs, mail and book text, and the kit's title plates and headers while the reskin is on. Enchanted Land unless you choose otherwise. Keep the game's leaves each string in the game's own face: Morpheus where the game uses it, the interface face on the strings that start in it (the Quest Tracker's headers, Combat Text's notices)." },
+	  desc = "The font of window titles, dialog headings, mail and books." },
 	{ key = "fontDamage", match = "skurri",   name = "Game Numbers Font (Skurri)",
-	  desc = "The numbers over the enemies: the game's own (after /reload) and Your Damage's (at once); and the hit numbers on the unit frames' portraits. The game's text around you (Combat Text's Game style) and MelloUI's are drawn in the Interface text face." },
+	  desc = "The font of damage numbers over enemies and hit numbers on portraits. The game's own numbers change after a /reload." },
 }
 
 local KEEP = "default"
@@ -173,19 +173,19 @@ local STYLES = {
 	-- it, 2026-10-20)
 	{ value = "fredoka", paper = "Fredoka\\Fredoka-SemiBold.ttf", label = "Fredoka", title = "Fredoka\\Fredoka-SemiBold.ttf",
 	  titleScale = 0.7, text = "Fredoka\\Fredoka-Medium.ttf", textScale = 1, damage = "Fredoka\\Fredoka-SemiBold.ttf",
-	  desc = "MelloUI's own face: Fredoka's round letters for the titles, the text and the damage numbers, to fit MelloUI's icons. The default." },
+	  desc = "MelloUI's own round letters, made to fit its icons. The default." },
 	{ value = "scriptorium", paper = "Alegreya\\Alegreya-SemiBold.ttf", label = "Scriptorium", title = "Cinzel\\Cinzel-Bold.ttf", titleScale = 0.7,
-	  text = "Alegreya\\Alegreya-Regular.ttf", textScale = 1.1, desc = "Cinzel's carved capitals over Alegreya, a warm book face." },
+	  text = "Alegreya\\Alegreya-Regular.ttf", textScale = 1.1, desc = "Carved capitals over a warm book face." },
 	{ value = "chronicle", paper = "SourceSerif4\\SourceSerif4-SemiBold.ttf", label = "Chronicle", title = "AlegreyaSC\\AlegreyaSC-Bold.ttf", titleScale = 0.75,
-	  text = "SourceSerif4\\SourceSerif4-Regular.ttf", textScale = 1.05, desc = "Alegreya SC's small capitals over Source Serif 4, the most readable serif." },
+	  text = "SourceSerif4\\SourceSerif4-Regular.ttf", textScale = 1.05, desc = "Small capitals over the most readable book face." },
 	{ value = "oldtome", paper = "Spectral\\Spectral-SemiBold.ttf", label = "Old Tome", title = "IMFellEnglish\\IMFellEnglish-Regular.ttf", titleScale = 0.8,
-	  text = "Spectral\\Spectral-Regular.ttf", textScale = 1.2, desc = "IM Fell English's aged print over Spectral." },
+	  text = "Spectral\\Spectral-Regular.ttf", textScale = 1.2, desc = "Aged print, like an old book." },
 	{ value = "warband", paper = "CrimsonPro\\CrimsonPro-SemiBold.ttf", label = "Warband", title = "PirataOne\\PirataOne-Regular.ttf", titleScale = 0.85,
-	  text = "CrimsonPro\\CrimsonPro-SemiBold.ttf", textScale = 1.25, desc = "Pirata One's blackletter over Crimson Pro SemiBold: the boldest look." },
+	  text = "CrimsonPro\\CrimsonPro-SemiBold.ttf", textScale = 1.25, desc = "Bold blackletter: the boldest look." },
 	{ value = "clarity", paper = "NotoSans\\NotoSans-SemiBold.ttf", label = "Clarity", title = "Cinzel\\Cinzel-Bold.ttf", titleScale = 0.7,
-	  text = "NotoSans\\NotoSans-Regular.ttf", textScale = 1, desc = "Cinzel titles, Noto Sans everywhere else: the easiest to read at small sizes." },
+	  text = "NotoSans\\NotoSans-Regular.ttf", textScale = 1, desc = "Plain letters: the easiest to read at small sizes." },
 	{ value = "gothic", paper = "Alegreya\\Alegreya-SemiBold.ttf", label = "Gothic", title = "EnchantedLand.ttf", titleScale = 1,
-	  text = "Alegreya\\Alegreya-Regular.ttf", textScale = 1.1, desc = "Enchanted Land's gothic titles kept, over Alegreya." },
+	  text = "Alegreya\\Alegreya-Regular.ttf", textScale = 1.1, desc = "Gothic titles over a book face." },
 }
 local STYLE = {}
 local styleValues = { { value = "custom", label = "Custom" } }
@@ -255,7 +255,7 @@ MelloUI.FontStyleSettings = function(value)
 end
 
 local defaults = { outline = "OUTLINE", style = "custom" }
-local styleDesc = { "A preset: choosing a style changes every font at once -- the titles, the interface text, the chat and numbers, the chat text and the chat on parchment, the sizes back to 100% (each face brings its own size correction) -- each pairing themed with readability first. Fine-tune any of them afterwards (the style then shows Custom). The damage numbers keep their own choice, but for Fredoka's: one face for everything." }
+local styleDesc = { "A preset that sets every font and text size at once. Change any font afterwards and the style shows Custom." }
 for _, s in ipairs(STYLES) do
 	styleDesc[#styleDesc + 1] = s.label .. ": " .. s.desc
 end
@@ -285,7 +285,7 @@ do
 	local values = BuildRoleList()
 	values[1] = { value = KEEP, label = "Same as Interface text" }
 	options[#options + 1] = { type = "dropdown", key = "fontChatText", name = "Chat text", values = values,
-		desc = "The chat windows' messages, the chat's input box and the whisper windows. The same face as the Interface text unless you choose otherwise (the Chat & numbers face while that is the game's), so the chat follows the Font Styles and your own choice of reading face. The size stays the chat's own (Chat & numbers size)." }
+		desc = "The font of chat messages, the chat's input line and whisper windows." }
 end
 -- Chat on parchment (user, 2026-09-24: the chat's font did not fit the
 -- parchment): the chat windows and the whisper windows lying on their
@@ -301,7 +301,7 @@ do
 	local values = BuildRoleList()
 	values[1] = { value = KEEP, label = "Chat text, semibold" }
 	options[#options + 1] = { type = "dropdown", key = "fontChatParchment", name = "Chat on parchment", values = values,
-		desc = "The chat windows and whisper windows while they lie on their parchment sheet (Oldschool > Parchment). By default the chat text's face in its semibold cut where it has one, heavier so the dark ink reads on the paper; each Font Style sets that cut of its reading face." }
+		desc = "The font of chat and whispers on parchment. A heavier cut reads better on paper." }
 end
 -- (2026-10-20) the Fredoka style is what a player who never chose gets: its faces and sizes are the defaults (a
 -- player's own choice, saved, stays theirs)
@@ -313,19 +313,19 @@ do
 end
 options[#options + 1] = { type = "subheader", name = "Size and outline" }
 options[#options + 1] = { type = "slider", key = "sizeText", name = "Interface text size", min = 0.7, max = 1.5, step = 0.05, percent = true,
-	desc = "Every font drawn with the interface face, relative to its normal size; a Font Style puts it back to 100% (its faces bring their own correction). Not the text with a size of its own: the Quest Tracker, Combat Text, the chat (Chat & numbers size), FPS / Latency, Cooldown Timers, and the bar values while their size is set." }
+	desc = "The size of the interface text. Text with its own size (Quest Tracker, Combat Text, chat, timers) keeps it." }
 options[#options + 1] = { type = "slider", key = "scaleChat", name = "Chat & numbers size", min = 0.7, max = 1.5, step = 0.05, percent = true,
-	desc = "The chat windows (on top of the game's own chat font size) and every number." }
+	desc = "The size of the chat text and of numbers." }
 options[#options + 1] = { type = "slider", key = "sizeTitle", name = "Titles & headers size", min = 0.7, max = 1.5, step = 0.05, percent = true,
-	desc = "Titles, headers, dialog names, mail and book text, and the kit's title face on the painted plates; a Font Style puts it back to 100% (its faces bring their own correction). Not the Quest Tracker's title and section headers or Combat Text's notices: they have sizes of their own." }
+	desc = "The size of titles and headers. The Quest Tracker and Combat Text keep their own sizes." }
 options[#options + 1] = { type = "slider", key = "scaleChatParchment", name = "Chat on parchment size", min = 0.7, max = 1.5, step = 0.05, percent = true,
-	desc = "The chat and whisper windows' text on their parchment sheet, relative to the chat's own size." }
+	desc = "The size of chat and whisper text on parchment, relative to the chat's size." }
 options[#options + 1] = { type = "dropdown", key = "outline", name = "Outline", values = {
 		{ value = "NONE", label = "Keep original" },
 		{ value = "OUTLINE", label = "Thin outline" },
 		{ value = "THICKOUTLINE", label = "Thick outline" },
 	},
-	desc = "Force an outline on every light-coloured font. Dark text on parchment (quests, spellbook, dialogs) keeps its original look. MelloUI's own text in the world (notices, combat text, Gains lines) takes its outline from Notices: Outlined Text; this sets only how thick it is." }
+	desc = "An outline on light text. Dark text on parchment keeps its look." }
 
 local M = MelloUI:RegisterModule("Fonts", {
 	title = "Fonts",
@@ -333,7 +333,7 @@ local M = MelloUI:RegisterModule("Fonts", {
 	icon = "Interface\\Icons\\INV_Scroll_03",
 	flavour = "One font for all of Azeroth. Pick it, scale it, outline it.",
 	group = "The look", navOrder = 3,
-	tweak = { label = "Custom Fonts", desc = "The fonts and sizes used by the whole interface. Off: the game's own fonts.", order = 11 },
+	tweak = { label = "Custom Fonts", desc = "MelloUI's fonts and text sizes for the whole interface. Off: the game's own fonts.", order = 11 },
 	enabledByDefault = true,   -- every role "default" changes nothing; UI Modifications drives the switch
 	keep = { "paperFollows" },   -- a one-time step that was done: never in a profile
 	defaults = defaults,

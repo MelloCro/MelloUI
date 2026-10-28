@@ -37,7 +37,7 @@ local C_Timer = Perf.C_Timer
 local M = MelloUI:RegisterModule("Services", {
 	title = "Services",
 	keep = { "learned" },   -- services recorded by hand (when Route's store is missing): never in a profile
-	desc = "Service icons under the minimap that route you to the nearest repair, mailbox, innkeeper, flight master, auction house, bank, trainer, barber or transmogrifier.",
+	desc = "Buttons under the minimap that route you to the nearest repair, mailbox, inn, flight master, bank or trainer.",
 	icon = "Interface\\Icons\\Ability_Repair",
 	flavour = "Repair, mailbox, innkeeper, bank... the nearest one is a click under the minimap.",
 	group = "Quests and travel", navOrder = 3,
@@ -55,26 +55,26 @@ local M = MelloUI:RegisterModule("Services", {
 	},
 	options = {
 		{ type = "toggle", key = "showBar", name = "Icon Bar Under The Minimap",
-		  desc = "Service buttons under the minimap; they move with the minimap in Edit Mode. Groups: one row of group buttons as wide as the map; click one to open its services with their distances, then click a service to route to the nearest one by road. All Buttons: two rows with an icon for every service; click one to route there. Right-click stops the route. A grey button has none known on this continent yet. With the square minimap and \"Merge With Services\" on (the Minimap page, Services), the buttons sit inside the minimap's frame." },
+		  desc = "Buttons for nearby services (repair, trainers, flights...) under the minimap. Click one to get a route there; right-click stops it." },
 		{ type = "dropdown", key = "buttonLayout", parent = "showBar", name = "Button Layout",
 		  values = {
 			{ value = "groups", label = "Groups" },
 			{ value = "all", label = "All Buttons" },
 		  },
-		  desc = "Groups: one row of buttons as wide as the map (Travel, Trade, Repair, Trainers, Looks, Errands, and AddOns while your addons have minimap buttons). Click a group for a small list of its services, each with the distance to the nearest one; click a service to route there. Repair routes at once. Errands lists your reminders (Restock, Mail, Repair Gear, Trainer) and how each stands; click one to route to the nearest place for it. All Buttons: two rows with an icon for every service." },
+		  desc = "Groups: one row of group buttons, each opening a list of services with distances. All Buttons: two rows, one icon per service." },
 		-- (0.22.0, a player's request "Minimap bar for addon icons"; the user's pick A of addon_bar_sketch)
 		{ type = "toggle", key = "addonButtons", parent = "showBar", name = "AddOns Group",
 		  search = "addon addons minimap buttons icons libdbicon questie tidy gather",
-		  desc = "Your addons' minimap buttons (Questie and the others that put a round button on the minimap's edge) taken off the minimap and gathered into one more group in the Services row, AddOns: click it for a list of them. A click on an addon there is that addon's own (left, right or middle), and pointing at it shows its own tooltip. Only with Button Layout's Groups. Off: the buttons go back on the minimap." },
+		  desc = "Gathers other addons' minimap buttons into an AddOns group on the Services bar. Off: they go back on the minimap." },
 		{ type = "slider", key = "barOffset", parent = "showBar", name = "Bar Distance From The Minimap", min = -80, max = 20, step = 2,
-		  desc = "How far under the minimap the buttons sit. Not used while they are merged into the square minimap's frame." },
+		  desc = "How far below the minimap the Services bar sits." },
 		{ type = "toggle", key = "roundIcons", parent = "showBar", name = "Round Icons",
-		  desc = "Show the service icons as round medallions in a round rim instead of squares." },
+		  desc = "Service icons as round medallions instead of squares." },
 		-- (0.22.1; the user, 2026-10-14: "build all 5" to the animation previews)
 		{ type = "toggle", key = "trayDrawer", parent = "showBar", name = "Trays Slide Out",
-		  desc = "A group's list slides out from the minimap column like a drawer when you click its button, its rows one after another, and slides back in as it closes. Not with Reduce Motion: then it shows at once." },
+		  desc = "A group's list slides out like a drawer." },
 		{ type = "toggle", key = "showButton", name = "Minimap Button",
-		  desc = "Also show a round button on the minimap's edge that opens the list of the nearest services; drag it to move it, right-click it to stop the route. /services opens the same list." },
+		  desc = "A round button on the minimap's edge that opens the list of the nearest services. /services does the same." },
 	},
 })
 

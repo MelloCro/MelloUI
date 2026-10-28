@@ -1478,6 +1478,11 @@ end
 --                    module name, as MelloUI:OpenConfig takes)
 --         group      "own" (default) | "window" | "hud" | "tool" (never a
 --                    plate, never in Reset all or the change count)
+--         category   (1.2.4) its group in Edit Layout's Elements list:
+--                    "frames" | "bars" | "combat" | "text" | "quests" |
+--                    "chat" | "windows" | "misc" (default: "windows" for
+--                    the "window" group, else "misc"; Edit Mode's systems
+--                    are sorted by the bridge)
 --         placeholder true (its own size) or { w, h } (UI units): a plate
 --                    even while it is hidden or 0 x 0, at its anchored place
 --         visible    function(entry) -> shown: the plate's own test (default:
@@ -2499,6 +2504,7 @@ do
 			label = label,
 			page = type(opts.page) == "string" and opts.page or nil,
 			group = GROUPS[opts.group] and opts.group or "own",
+			category = type(opts.category) == "string" and opts.category or nil,
 			placeholder = placeholder,
 			visible = type(opts.visible) == "function" and opts.visible or nil,
 			follow = opts.follow and true or nil,

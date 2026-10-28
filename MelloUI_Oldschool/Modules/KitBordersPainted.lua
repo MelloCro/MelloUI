@@ -134,7 +134,7 @@ end
 --------------------------------------------------------------------------------
 Kit:AddBorderKind({ kind = "raid", key = "raidFrameBorder", default = "single",
 	name = "Raid Frame Border", values = Kit.squareLooks, preview = "rim",
-	desc = "The border on each raid frame and raid-style party frame: the Single rail they wear today, one of the thin rims the buttons wear, or the Backdrop, its corner gems in the colour of the action bars' Backdrop." }, "aura")
+	desc = "The border on each raid frame and raid-style party frame." }, "aura")
 
 Kit.raidBorders = setmetatable({}, { __mode = "k" })   -- [compact frame] = { border = , rails = F1's skin }
 
@@ -330,10 +330,10 @@ end
 
 Kit:AddBorderKind({ kind = "unitframe", key = "unitFrameBorder", default = "frame", name = "Unit Frame Border",
 	values = Kit.buttonLooks.barBorders, preview = "bar",
-	desc = "The frame round the unit frames' health and power bars (player, target, focus, pet, party): the Ornate bracket they wear by default, the cast bar's, a thin rim, the Single rail or the Backdrop." }, "bar")
+	desc = "The frame around the health and power bars of the player, target, focus, pet and party frames." }, "bar")
 Kit:AddBorderKind({ kind = "castbar", key = "castBarBorder", default = "castbar", name = "Cast Bar Border",
 	values = CastLooks(), preview = "bar",
-	desc = "The frame round your cast bar: the Cast bar bracket with its gem clusters (today's), a thin rim, the Single rail or the Backdrop. A frame laid round the bar leaves it its whole width." }, "nameplate")
+	desc = "The frame around your cast bar." }, "nameplate")
 
 local PERSONAL_LOOKS = {}
 for _, v in ipairs(Kit.buttonLooks.barBorders) do
@@ -345,10 +345,9 @@ Kit.personalLooks = PERSONAL_LOOKS
 -- left the Personal Display bare; Core's MergeSettings carries a pick made there)
 Kit:AddBorderKind({ kind = "personal", key = "personalBarBorder", default = "frame", name = "Personal Display Border",
 	values = PERSONAL_LOOKS, preview = "bar",
-	desc = "The frame round the Personal Display's bars and its shield column (the bars under your character): the Ornate bracket the unit frames wear (the default), the cast bar's, a thin rim, the Single rail, the Stone rail, the Backdrop or none. The game's own personal resource display, while the Personal Display is off and the unit frames wear their Painted Skin, takes one frame round its bars: a thin rim or one of the library's styles." }, "castbar")
--- (0.20.1, the user: "our swing timers, also need to be able to change their borders to the library selection") the
--- swing timers' frame a choice of its own (their Framed look). (one look, stage B: the swing timers wear the round
--- rim and a flat bar, no frame, so nothing reads this any more: a removal candidate for the options audit, stage H)
+	desc = "The frame around the Personal Display's bars and shield column." }, "castbar")
+-- (1.2.4, the configurator audit) Swing Timer Border (0.20.1) removed: the swing timers became the swing badge
+-- (1.2.0), which wears no frame -- nothing read it
 -- (the user's retail test, 2026-10-27: the Default skin "loaded from the Oldschool") the Personal Display's look as
 -- the painted reskin answers it: the Personal Display Border's choice while the reskin is on, else MelloUI's own
 -- gilded strip (its Dress.Value asks here: the reskin's say stays the reskin's); its 'border' told again at the
@@ -359,9 +358,6 @@ end
 MelloUI:On("look:copy", function()
 	MelloUI:Fire("border", "personal", Kit:PersonalLook())
 end, "Oldschool: the Personal Display's look")
-Kit:AddBorderKind({ kind = "swing", key = "swingTimerBorder", default = "castbar", name = "Swing Timer Border",
-	values = CastLooks(), preview = "bar",
-	desc = "No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing." }, "personal")
 
 -- (0.20.1, /abdump xp in game: the experience bar's bracket caps back at alpha 1 under its library border -- the
 -- ornate bracket over the Stone rail -- something writing our pieces after the library hid them) the caps kept
@@ -771,9 +767,7 @@ for _, id in ipairs(Kit.RingStyleOrder) do
 end
 Kit:AddBorderKind({ kind = "portrait", key = "portraitRing", default = "gem", name = "Portrait Ring",
 	values = Kit.portraitLooks, preview = "rim",
-	desc = "The ring round the portraits of the unit frames: the player, target, focus, pet, target of target and "
-		.. "party. The gem ring, a ring with four diamond studs, a plain heavy ring, or the winged border the windows "
-		.. "wear. An elite, rare or boss shows the ring in its metal with its crest (Elite and Rare Marks)." }, "round")
+	desc = "The ring around the unit frames' portraits. Elites, rares and bosses show it in their own metal, with a crest." }, "round")
 
 -- (0.20.1, the user: "the around the skull border and its background for us to use for unitframes and nameplates, we
 -- dont need the skull we have our own" -- Tools/make_rpg_frames.py) Level Orb: the kit's orb, or the RPG pack's stone
@@ -787,8 +781,7 @@ Kit.orbLooks = {
 }
 Kit:AddBorderKind({ kind = "orb", key = "levelOrb", default = "kit", name = "Level Orb", values = Kit.orbLooks,
 	preview = "rim",
-	desc = "The round badge round the level on the unit frames and the nameplates: the kit's orb, or a stone badge "
-		.. "with its own dark ground. Frames already shown change after a /reload." }, "portrait")
+	desc = "The badge around the level on unit frames and nameplates. Frames already shown change after a /reload." }, "portrait")
 
 function Kit:OrbLook()
 	local v = self:BorderValue("orb")

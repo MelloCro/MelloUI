@@ -38,7 +38,7 @@ local M = MelloUI:RegisterModule("Chat", {
 	icon = "Interface\\Icons\\Ability_Warrior_BattleShout",
 	flavour = "Less frame, more talk. Short channel tags and class colours keep the log readable.",
 	group = "Chat and sound", navOrder = 1,
-	tweak = { label = "Chat Tweaks", desc = "Short channel names, class-coloured names, the whisper popup, the chat buttons, smooth scrolling, the names' form (Show Names As), the Background dropdown and the art-hiding switches (which only apply while the chat reskin is off). Off: every one of them goes.", order = 9 },
+	tweak = { label = "Chat Tweaks", desc = "MelloUI's chat changes: short channel tags, class-coloured names, the whisper popup, chat buttons and smooth scrolling.", order = 9 },
 	area = { key = "whisper", follows = "ChatPanel" },   -- the whisper popups: as the chat windows
 	keep = { "savedWhisperMode", "savedClassColorCVar", "savedChatStyle",   -- the player's own game settings, given back when off: never in a profile
 		-- (0.23.0) the Chat View rail's order: window numbers are a character's
@@ -73,7 +73,7 @@ local M = MelloUI:RegisterModule("Chat", {
 			{ value = "game", label = "Game Windows" },
 			{ value = "minimal", label = "Minimal" },
 		  },
-		  desc = "How the chat is shown. Game Windows: the game's chat windows and tabs. Minimal: one panel with a rail of round tabs on its left (one per chat window, a count of the lines you have not seen; Whispers last), each line under its sender's name, channel and time, and a row of round buttons under the lines: Say, Party, Raid, Instance, Guild, Yell, Whisper and Emote open the line you type in on that chat, then Channels, Friends, the fight history and these settings. A whisper puts a count on the Whispers tab and shows the Whispers widget; either opens one whisper window above the chat with every conversation in it, theirs left and yours right. Parchment (its own switch) puts both on the parchment sheet." },
+		  desc = "How the chat looks. Game Windows: the game's windows and tabs. Minimal: one panel with round tabs, each message under its sender, and buttons to pick a channel." },
 		-- (0.16.0: the chat windows' look in one: Dark Mode's, the game's or
 		-- none; the settings it sets keep their own keys -- Dark Mode's chat,
 		-- hideBackground -- read by `get`, written by OnSettingChanged. One
@@ -86,39 +86,39 @@ local M = MelloUI:RegisterModule("Chat", {
 			{ value = "game", label = "Game" },
 			{ value = "none", label = "None" },
 		  }, get = function(db) return Background(db) end,
-		  desc = "The chat windows' background: a dark panel of the palette behind the window, its tabs and its input box (Dark), the game's own (Game), or none at all (None). Under the painted chat (its Painted Skin, the reskin on) its stone instead. With the Minimal Chat View: None leaves its panel clear, Dark and Game keep its dark panel; Parchment lays the parchment sheet over it." },
+		  desc = "The chat's background: Dark, the game's own, or none." },
 		{ type = "toggle", key = "windowAlphaOn", name = "Set The Background Opacity",
-		  desc = "Give every chat window the same background opacity, kept in your profile. Off, each window keeps the opacity set in its tab's menu." },
+		  desc = "Every chat window uses the same background opacity. Off: each keeps its own." },
 		{ type = "slider", key = "windowAlpha", parent = "windowAlphaOn", name = "Background Opacity", min = 0, max = 1, step = 0.05, percent = true,
-		  desc = "How solid the chat windows' background is. Moving the Background slider in a chat tab's menu changes this too." },
+		  desc = "How solid the chat windows' background is." },
 		-- (user, 2026-10-04: "can we also make a Border opacity aswell?" -- the painted rails: MelloUI_Oldschool/Modules/ChatPanel.lua)
 		{ type = "slider", key = "borderAlpha", name = "Border Opacity", min = 0, max = 1, step = 0.05, percent = true,
-		  desc = "How solid the painted border round the chat windows and their button column is, and its shade (the painted chat: its Painted Skin, the reskin on)." },
+		  desc = "How solid the painted border around the chat is." },
 		{ type = "toggle", key = "hideEditBox", name = "Hide Input Box Art",
-		  desc = "Hide the border and background art of the chat input box." },
+		  desc = "Hides the border and background of the chat's input line." },
 		{ type = "toggle", key = "hideTabs", name = "Hide Tab Background",
-		  desc = "Hide the background art behind the chat tabs. The tab text stays." },
+		  desc = "Hides the background behind the chat tabs. Their names stay." },
 		{ type = "toggle", key = "tabsOnMouseover", name = "Tabs Only On Mouseover",
-		  desc = "Chat tab names are invisible until the mouse is over the chat. Tabs flashing with new whispers stay visible. It adds to the Fader's Chat fade: both fade the tabs, so with both on the two fades multiply. Does nothing under the painted chat (its Painted Skin, the reskin on), which keeps its tabs shown." },
+		  desc = "The chat tab names show only while your mouse is over the chat. Flashing tabs stay visible." },
 		{ type = "toggle", key = "editBoxTop", name = "Input Box On Top",
-		  desc = "Move the chat input box above the chat window and its tabs instead of below it." },
+		  desc = "The input line sits above the chat instead of below it." },
 		-- (0.20.4, the user 2026-10-11: "the Chat editbox is always shown, it needs to be hidden and as soon as you
 		-- start typing it should apprear, and then again disappear once you are done typing": the game's own Classic
 		-- chat style, SetTypingOnly)
 		{ type = "toggle", key = "editBoxWhileTyping", name = "Input Box Only While Typing",
-		  desc = "The chat input box shows only while you type: Enter (or /) brings it up, and it goes again once you send the line or press Escape. It sets the game's Chat Style to Classic while on, and gives your own back when off. The change shows from the next line you type." },
+		  desc = "The input line shows only while you type." },
 		{ type = "toggle", key = "chatButtons", name = "Chat Buttons",
-		  desc = "The game's chat buttons in their column left of the chat: Friends at the top, Channels, the chat menu (Say, Party, Guild, Yell, whisper and reply, emotes, and the language you speak). While you speak more than one language, the one you speak shows at the right end of the line you type in. Off: the column is hidden." },
+		  desc = "The column of chat buttons beside the chat: Friends, Channels and the chat menu." },
 		{ type = "toggle", key = "smoothScroll", name = "Smooth Scrolling",
-		  desc = "The mouse wheel glides the chat text up and down instead of jumping a line at a time, in the chat windows and the whisper windows. Off, or with Reduce Motion on, it jumps as before." },
+		  desc = "The mouse wheel scrolls the chat smoothly instead of a line at a time." },
 		{ type = "header", name = "Channels" },
 		{ type = "toggle", key = "shortChannels", name = "Short Channel Tags",
-		  desc = "Replace [Guild], [Party], [1. General] and so on with short, saturated coloured tags." },
+		  desc = "Short coloured tags instead of [Guild], [Party], [1. General] and so on." },
 		{ type = "toggle", key = "hideBrackets", parent = "shortChannels", name = "Hide Brackets",
-		  desc = "Also remove the square brackets around the short channel tags." },
+		  desc = "Removes the brackets around the short tags." },
 		{ type = "header", name = "Whispers" },
 		{ type = "toggle", key = "whisperPopup", name = "Whisper Popup Window",
-		  desc = "A whisper opens a small window of its own, one per person, with the conversation and a box to answer in, instead of a new chat tab. Whispers still show in the main chat. Switching it off puts the game's own whisper setting back." },
+		  desc = "Each whisper opens a small window for that person, with a box to answer in. Whispers still show in the chat." },
 	},
 })
 
@@ -2852,7 +2852,7 @@ end
 -- saves is for the next window, which opens at that size)
 local POPUP_MOVER = { key = WHISPER_PLACE, anchor = "BOTTOMLEFT", plainDrag = "always",
 	save = SavePopupPlace, reset = ForgetPopupPlace, default = PlacePopup, min = 1, max = 1,
-	label = "Whisper popups", page = "Chat", resize = false,
+	label = "Whisper popups", page = "Chat", resize = false, category = "chat",
 	when = function()
 		return M.isEnabled and popupOn and true or false
 	end }
@@ -3089,7 +3089,7 @@ local IGNORE_ASK = "Ignore %s? Their whispers and chat no longer reach you."
 -- Report's link: an empty cell of the glyph sheet at the button's size (the
 -- link's area, drawn nothing), in the game's "report this line" link
 local REPORT_LINK = "|Hreportcensoredmessage:%.0f|h|TInterface\\AddOns\\MelloUI\\Media\\Textures\\WidgetGlyphs:"   -- look-ok: the report icon in a chat line (content)
-	.. ACTION_SIZE .. ":" .. ACTION_SIZE .. ":0:0:256:128:224:256:32:64|t|h"   -- (the sheet 256 x 128 since 0.17.0)
+	.. ACTION_SIZE .. ":" .. ACTION_SIZE .. ":0:0:256:192:224:256:32:64|t|h"   -- (the sheet 256 x 192 since 1.2.4, 256 x 128 since 0.17.0)
 
 -- a call's first result, or nil when it raised or that is secret
 local function Ask(fn, ...)

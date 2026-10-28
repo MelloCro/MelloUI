@@ -179,12 +179,13 @@ local function ChatBox()
 	return nil
 end
 local SHARED = {
-	MinimapCluster = { label = "Minimap", page = "MinimapPanel", system = "Minimap", box = MinimapBox },
-	ChatFrame1 = { label = "Chat", page = "Chat", system = "ChatFrame", box = ChatBox },
+	MinimapCluster = { label = "Minimap", page = "MinimapPanel", system = "Minimap", box = MinimapBox, category = "quests" },
+	ChatFrame1 = { label = "Chat", page = "Chat", system = "ChatFrame", box = ChatBox, category = "chat" },
 	-- (its options are the Objective Tracker panel's: the Quest Tracker page's
 	-- Objective Tracker tab, not MelloUI's own tracker's first one)
-	ObjectiveTrackerFrame = { label = "Objective tracker", page = "TrackerPanel", system = "ObjectiveTracker" },
-	DamageMeter = { label = "Damage meter", page = "DamageMeterPanel", system = "DamageMeter" },
+	ObjectiveTrackerFrame = { label = "Objective tracker", page = "TrackerPanel", system = "ObjectiveTracker",
+		category = "quests" },
+	DamageMeter = { label = "Damage meter", page = "DamageMeterPanel", system = "DamageMeter", category = "combat" },
 }
 local function SharedNames()
 	local fit = MelloUI.LayoutFit
@@ -462,12 +463,12 @@ local function CandidateOpts(frame, name)
 	if shared then
 		return { key = name, follow = true, when = Live, group = "hud", label = shared.label, page = shared.page,
 			default = EditModeHome, resetLabel = EDIT_TEXT.sharedReset, note = SharedNote,
-			visible = name == "ChatFrame1" and DockShown or nil, box = shared.box }
+			visible = name == "ChatFrame1" and DockShown or nil, box = shared.box, category = shared.category }
 	end
 	local n = ChatNumber(name)
 	if n then
 		return { key = name, follow = true, when = ChatLive, group = "window", label = ChatLabel(frame, n),
-			page = "Chat", default = ChatHome }
+			page = "Chat", default = ChatHome, category = "chat" }
 	end
 	if IsEditModeSystem(frame) then
 		return nil

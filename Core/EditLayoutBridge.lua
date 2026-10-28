@@ -86,9 +86,9 @@ local TEXT = {
 	line = "Move via Edit Mode",
 	fallback = "Set in Edit Mode (game menu)",
 	tip = "Its place is set in the game's Edit Mode.",
-	note = "Its place and size are set in the game's Edit Mode.",
+	note = "Its place is set in the game's Edit Mode: the button below.",
 	-- (0.20.2: D)
-	sysNote = "Moved here, its place goes into your Edit Mode layout too; Edit Mode shows it there after a /reload. Its size and other settings stay in Edit Mode.",
+	sysNote = "Moved here, its place goes into your Edit Mode layout too; the game shows it there after a /reload.",
 	sysReset = "Edit Mode's place",
 	sysLater = "It goes back to Edit Mode's place after a /reload.",
 	button = "Move via Edit Mode",
@@ -644,7 +644,7 @@ function layer:Sync()
 	for i = #skipped, 1, -1 do
 		skipped[i] = nil
 	end
-	local list = E:Shows("editmode") and Systems() or nil
+	local list = Systems()
 	if not list then
 		DropAll()
 		return
@@ -653,6 +653,10 @@ function layer:Sync()
 	for i = 1, #list do
 		local frame = list[i]
 		local why, l, b, w, h = Look(frame)
+		-- (1.2.4) a plate the Elements list hides (its eye, a solo): none, as an element's
+		if not why and not E:Shows(B.StandIn(frame)) then
+			why = "hidden in the Elements list"
+		end
 		if why then
 			Skip(frame, why)
 		else
@@ -1132,6 +1136,77 @@ local function Others(system, index)
 	return false
 end
 
+-- (1.2.4) each system's group in Edit Layout's Elements list (Core/EditLayoutPicker.lua), by its enum name; one
+-- not named here is "misc"
+local CATEGORY_OF = {
+	UnitFrame = "frames",
+	ActionBar = "bars", ExtraAbilities = "bars", VehicleLeaveButton = "bars", StatusTrackingBar = "bars",
+	TotemActionBar = "bars", MainActionBarEndCap = "bars", GamepadMainActionBar = "bars",
+	CastBar = "combat", EncounterBar = "combat", AuraFrame = "combat", CooldownViewer = "combat",
+	PersonalResourceDisplay = "combat", EncounterEvents = "combat", DamageMeter = "combat", LossOfControl = "combat",
+	SwingTimer = "combat",
+	TalkingHeadFrame = "text", RaidWarning = "text",
+	Minimap = "quests", ObjectiveTracker = "quests",
+	ChatFrame = "chat",
+}
+
+-- (1.2.4) a system Edit Layout bridges (no mover of its own: A's "Move via Edit Mode" plate) as the Elements list
+-- reads an element: its key, group, name, and whether the game shows it; one stand-in a frame, kept
+local standIns = setmetatable({}, { __mode = "k" })
+function B.StandIn(frame)
+	local p = standIns[frame]
+	if not p then
+		p = { group = "hud", bridged = true, frame = frame }
+		standIns[frame] = p
+	end
+	local system, index = SystemOf(frame)
+	p.key = system and SysKey(system, index) or nil
+	p.category = system and CATEGORY_OF[SystemName(system)] or nil
+	p.label = B.Label(frame)
+	p.shown = Shown(frame)
+	return p
+end
+
+-- every bridged system's stand-in into `out` (the Elements list): no live mover holds it, it is not forbidden
+function B.StandIns(out)
+	for _, frame in ipairs(Systems() or EMPTY) do
+		local entry = MelloUI:MoverEntry(frame)
+		local why = Look(frame)
+		if not (entry and MelloUI:EntryLive(entry)) and why ~= "forbidden" and why ~= "not a frame" then
+			out[#out + 1] = B.StandIn(frame)
+		end
+	end
+	return out
+end
+
+-- (1.2.4) a MelloUI part standing in for a system the game hides for it (MelloUI's own buff rows where the game's
+-- Buffs stood -- the user: "Our Custom Buffs and Debuffs in the Edit Layout cant be selected or edited"): the
+-- system's plate lies over the part (its `box`, shown by its `visible`), named for it, its lock and its page the
+-- part's; dragged, it moves the system, which the part hangs from. The system's own Edit Mode settings are not shown
+-- for it (they are the game's hidden frame's). MelloUI:EditLayoutCover(frame, spec): spec { label, page,
+-- visible = fn(entry) -> shown, box = fn(entry) -> l, b, r, t (screen px) | nil, locked = fn(entry) -> reason | nil }
+local covers = setmetatable({}, { __mode = "k" })
+
+local function ApplyCover(entry, cover)
+	entry.label = cover.label or entry.label
+	entry.page = cover.page or entry.page
+	entry.visible = cover.visible
+	entry.box = cover.box
+	entry.locked = cover.locked
+	entry.covered = true
+end
+
+function MelloUI:EditLayoutCover(frame, spec)
+	if type(frame) ~= "table" or type(spec) ~= "table" then
+		return
+	end
+	covers[frame] = spec
+	local entry = MelloUI:MoverEntry(frame)
+	if entry then
+		ApplyCover(entry, spec)
+	end
+end
+
 local function RegisterSystem(frame)
 	if MelloUI:MoverEntry(frame) then
 		return nil
@@ -1142,9 +1217,13 @@ local function RegisterSystem(frame)
 	end
 	local entry = MelloUI:RegisterMover(frame, frame, { key = SysKey(system, index), group = "hud", follow = true,
 		resize = false, label = B.Label(frame), page = PageOf(frame), default = SysHome(system, index),
-		resetLabel = TEXT.sysReset, note = SysNote, when = SysLive, placeholder = AtTimes(system, index) or nil })
+		resetLabel = TEXT.sysReset, note = SysNote, when = SysLive, placeholder = AtTimes(system, index) or nil,
+		category = CATEGORY_OF[SystemName(system)] })
 	if entry then
 		sysOf[entry] = { system = system, index = index }
+		if covers[frame] then
+			ApplyCover(entry, covers[frame])
+		end
 	end
 	return entry
 end

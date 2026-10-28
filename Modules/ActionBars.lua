@@ -99,26 +99,19 @@ local defaults = { hidePageArrows = true, hideBarArt = true, statusFrame = true 
 local options = {
 	-- (2026-10-20, the user's sheet: "a custom ... progress bar border to fit") the Status section below
 	{ type = "toggle", key = "statusFrame", name = "MelloUI Frames",
-	  desc = "The experience and reputation bars in MelloUI's look: a slim iron frame with gold diamond ends, a dark "
-		.. "track, the notches between the bar's parts and a soft light on the filling edge. Off: the game's own frame. "
-		.. "The painted skin's bars keep their own (Oldschool)." },
+	  desc = "The experience and reputation bars in MelloUI's look. Off: the game's own frame." },
 	{ type = "toggle", key = "hidePageArrows", name = "Hide Page Arrows",
-	  desc = "Hide the main bar's page number and its up / down arrows (the bar still pages with the keybinds)." },
+	  desc = "Hides the main bar's page number and arrows. Paging keys still work." },
 	-- (0.25.0; the user, 2026-10-15: "MelloUI hides it") the game's own Edit Mode setting (Hide Bar Art, below)
 	{ type = "toggle", key = "hideBarArt", name = "Hide Bar Art",
-	  desc = "Action Bar 1 without the game's bar art (its frame, dividers and the art of empty slots), like "
-		.. "the other bars: MelloUI ticks Edit Mode's own Hide Bar Art for it. Only on your own Edit Mode layouts: a "
-		.. "preset such as Modern can't be changed. Shows after a /reload. Off: the art back on the layouts MelloUI "
-		.. "changed (or set it yourself in Edit Mode)." },
+	  desc = "Hides the main bar's art, like the other bars. Only on your own Edit Mode layouts, not the presets; shows after a /reload." },
 }
 for _, e in ipairs(ELEMENTS) do
 	defaults[e.key] = false
 	-- (0.20.2, the user: "Checkbox on, the Bar gets its backdrop and merges seamlessly, Checkbox off, no backdrop and
 	-- no merging")
 	options[#options + 1] = { type = "toggle", key = e.key, name = e.name, new = e.new,
-		desc = "A backdrop round " .. e.what .. ", merged into one with the other switched-on elements placed next to it"
-			.. (e.status and " (this bar then takes their width, within a limit)" or "") .. ". Off: no backdrop, and it "
-			.. "joins none." }
+		desc = "A backdrop around " .. e.what .. ". Neighbours with a backdrop share one." }
 end
 
 local M = MelloUI:RegisterModule("ActionBars", {

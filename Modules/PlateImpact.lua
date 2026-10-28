@@ -40,7 +40,7 @@ local Secret = MelloUI.Safe.IsSecret
 
 local M = MelloUI:RegisterModule("PlateImpact", {
 	title = "Impact Effects",
-	desc = "Your target's nameplate answers the fight: hits flash its bar, the part a hit took drains away, crits glow gold, a dodge or a miss flicks off its edge, an enemy's cast glows hotter towards its end and shatters when you interrupt it, and the killing blow flashes the bar out.",
+	desc = "Your target's nameplate reacts to the fight: hits flash, crits glow, interrupted casts shatter.",
 	icon = "Interface\\Icons\\Ability_Warrior_Revenge",
 	flavour = "Every hit lands on the plate, not only in a number.",
 	enabledByDefault = true,
@@ -55,20 +55,20 @@ local M = MelloUI:RegisterModule("PlateImpact", {
 	},
 	options = {
 		{ type = "toggle", key = "flash", name = "Hit Flash",
-		  desc = "Your target's health bar flashes a moment when it is hit; a critical hit flashes gold." },
+		  desc = "Your target's bar flashes when it is hit; gold for a critical hit." },
 		{ type = "toggle", key = "chunk", name = "Damage Chunk",
-		  desc = "The part of the bar a hit took stays lit for a moment, then drains away, so you see how big each hit was." },
+		  desc = "The part of the bar a hit took stays lit for a moment before it drains, so you see each hit's size." },
 		{ type = "toggle", key = "crit", name = "Crit Glow",
-		  desc = "A soft gold glow bursts round your target's bar on a critical hit." },
+		  desc = "A gold glow bursts around your target's bar on a critical hit." },
 		{ type = "toggle", key = "kill", name = "Kill Flash",
-		  desc = "The killing blow flashes the bar out where the plate stood, instead of the plate simply vanishing." },
+		  desc = "A killing blow flashes the bar out instead of the plate just vanishing." },
 		{ type = "toggle", key = "evade", name = "Dodge And Miss",
-		  desc = "When your target dodges, parries or is missed, the word flicks off the side of its plate." },
+		  desc = "Dodge, parry and miss words flick off the side of your target's plate." },
 		{ type = "toggle", key = "cast", name = "Cast Warning",
-		  desc = "Your target's cast bar glows hotter as its cast nears the end, and shatters when the cast is interrupted." },
+		  desc = "Your target's cast bar glows hotter near the end, and shatters when interrupted." },
 		-- (1.2.0, animations round 4; the user, 2026-10-22: "all of them" to the round 4 previews)
 		{ type = "toggle", key = "targetFrame", name = "On Your Target Frame",
-		  desc = "Your target frame's health bar answers the hits too: the flash, the part a hit took draining away, the gold glow of a critical hit and the killing blow's flash, as on your target's nameplate." },
+		  desc = "Your target frame's health bar shows the same hit effects." },
 	},
 })
 

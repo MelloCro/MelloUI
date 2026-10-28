@@ -190,10 +190,10 @@ local SHEETS_AFTER = {
 	{ "parchment_dialog", "Dialogs" },     -- (user, 2026-09-24: the popup dialogs, "add a parchment to it")
 }
 local SHEET_DESC = {
-	parchment_tracker = "The game's objective tracker on a parchment sheet, its text in dark ink.",
-	parchment_character = "The character window on a parchment sheet, its text in dark ink: Right pane lays it under the right pane (the stats, reputation, skills and the other lists); Whole window over the whole window inside its frame, the window's own stone round its edge. Off: no parchment; the window shows its Window Background (Windows > Character window).",
-	parchment_tooltip = "The tooltips on a parchment sheet, their text in dark ink.",
-	parchment_dialog = "The popup dialogs, the colour picker, ready checks and split stack on a parchment sheet, their text in dark ink.",
+	parchment_tracker = "The game's objective tracker on parchment, in dark ink.",
+	parchment_character = "The character window on parchment: under the right pane, or over the whole window.",
+	parchment_tooltip = "Tooltips on parchment, in dark ink.",
+	parchment_dialog = "Popups, the colour picker, ready checks and the split box on parchment.",
 }
 do
 	local list = MelloUI.ParchmentAreas
@@ -219,12 +219,12 @@ part.defaults = { reskin = true, preloadArt = true, raidBorderPlace = "both", pa
 	parchment_character = "off", parchment_tooltip = false, parchment_dialog = false, parchmentStyle = "paper" }
 local opts = {}
 opts[#opts + 1] = { type = "toggle", key = "reskin", name = "Painted Kit Reskin", important = true, before = "palette",
-	desc = "The game's windows and HUD dressed in the painted kit, and the frame of MelloUI's own windows. Off: the game's windows and HUD keep the game's own art; MelloUI's own parts (the Quest Tracker, the widget column, the reminders, the race bar ...) keep MelloUI's look either way, and every feature keeps working. Switching it on also switches Custom Sounds on, and the first time puts in the Edit Mode layout the reskin is drawn for, fitted to your screen. Switching it off leaves Custom Sounds on." }
+	desc = "Dresses the game's windows and HUD in the painted art. Off: the game's own art; every feature keeps working. Turning it on also turns on Custom Sounds and, the first time, sets up the Edit Mode layout it is made for." }
 opts[#opts + 1] = { type = "toggle", key = "preloadArt", name = "Preload Artwork", requires = "reskin",
-	desc = "Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 13 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it." }
+	desc = "Loads the reskin's art during the loading screen, so windows show it at once. Uses about 13 MB of memory. Off: the art loads the first time a window needs it." }
 opts[#opts + 1] = { type = "button", name = "Switch every area on", hint = "when nothing is reskinned any more",
 	text = "Switch on", requires = "reskin",
-	desc = "Every window and HUD area of the reskin back on, and every feature of UI Modifications that is on by default.",
+	desc = "Turns every reskinned area back on, with every UI Modifications feature that is on by default.",
 	onClick = function(_, db)
 		local ok, count = UM.RestoreAreas(db)
 		if not ok then
@@ -265,7 +265,7 @@ end
 opts[#opts + 1] = { type = "dropdown", key = "raidBorderPlace", name = "Raid Border Placement", requires = "reskin",
 	values = { { value = "both", label = "On each frame and round the group" }, { value = "frame", label = "On each frame" },
 		{ value = "group", label = "Round the group" } },
-	desc = "Where Raid Frame Border goes: on each raid frame, round each raid group, or both. A group's border shows while Edit Mode's Display Border is on for the raid frames." }
+	desc = "Where the raid border goes: around each frame, around each group, or both. Group borders need Edit Mode's Display Border." }
 -- the game windows' sheets round the core's own
 opts[#opts + 1] = SheetOption(SHEET_FIRST, { before = "parchment_questTracker" })
 for i, entry in ipairs(SHEETS_AFTER) do
@@ -275,7 +275,7 @@ end
 -- one looked aswell"): every sheet and page, live (Kit:SetParchmentStyle)
 opts[#opts + 1] = { type = "dropdown", key = "parchmentStyle", name = "Parchment Style", requires = "reskin",
 	values = { { value = "paper", label = "Burnt paper" }, { value = "classic", label = "Classic vellum" } },
-	desc = "How the parchment looks wherever it shows: the sheets switched on below, and the quest log, quest and spell book pages. Burnt paper: warm paper with burnt edges, big pages with curled corners. Classic vellum: the vellum with painted brush-stroke edges from before 0.20.1." }
+	desc = "How parchment looks everywhere: burnt paper, or classic vellum." }
 part.options = opts
 
 -- the panel switches: their rows need the reskin, and with it off no panel

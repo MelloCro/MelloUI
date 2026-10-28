@@ -43,7 +43,7 @@ local C_Timer = Perf.C_Timer
 local M = MelloUI:RegisterModule("QuestTracker", {
 	title = "Quest Tracker",
 	slash = "tracker",   -- (0.21.3: /mello tracker progress)
-	desc = "A quest tracker in the game's tracker's place that scrolls with the mouse wheel, so every watched quest can be reached.",
+	desc = "MelloUI's quest tracker in the game's tracker's place. It scrolls, so every quest fits.",
 	icon = "Interface\\Icons\\INV_Misc_Book_08",
 	flavour = "Every watched quest within reach: the tracker scrolls when the list runs long.",
 	group = "Quests and travel", navOrder = 4,
@@ -82,34 +82,35 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		{ type = "header", name = "Tracker" },
 		{ type = "slider", key = "maxHeight", name = "Height", min = 0, max = 900, step = 20,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Edit Mode's" or tostring(v) end,
-		  desc = "How tall the tracker may grow before it scrolls (at least 88, room for the title and a few lines). Edit Mode's: the height set for the game's tracker in Edit Mode. The grip in its bottom-left corner sets it by dragging." },
+		  desc = "How tall the tracker grows before it scrolls. You can also drag its corner." },
 		{ type = "toggle", key = "matchMinimap", name = "Match The Minimap's Width",
-		  desc = "The tracker as wide on the screen as the minimap (the round map's width, or the square map's frame) and, unless you moved it yourself, right under it: it moves and changes size with the map (the Minimap Kit's Width and Height). Needs the Minimap Kit. Off: the Width below, under the game's tracker's place." },
+		  desc = "The tracker is as wide as the minimap and sits right under it, following it. Off: use Width below." },
 		{ type = "slider", key = "width", name = "Width", min = 0, max = 600, step = 10,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Edit Mode's" or tostring(v) end,
-		  desc = "How wide the tracker is when it does not match the minimap's width (at least 60). Edit Mode's: as wide as the game's tracker. The grip in its bottom-left corner sets width and height by dragging (only the height while it matches the minimap)." },
+		  desc = "How wide the tracker is when it doesn't match the minimap. You can also drag its corner." },
 		{ type = "slider", key = "textSize", name = "Text Size", min = 10, max = 20, step = 1,
 		  format = function(v) return tostring(math.floor(v + 0.5)) end,
-		  desc = "The size of the quest titles and the section headers (the headers in the Fonts module's title face, which draws them larger); the objectives are one size smaller. The Fonts' Titles & headers size does not change it." },
+		  desc = "The size of quest titles and section headers. Objectives are one size smaller." },
 		{ type = "slider", key = "headerSize", name = "Header Text Size", min = 10, max = 24, step = 1,
 		  format = function(v) return tostring(math.floor(v + 0.5)) end,
-		  desc = "The size of the tracker's title, Objectives (in the Fonts module's title face, which draws it larger). The Fonts' Titles & headers size does not change it." },
+		  desc = "The size of the tracker's title." },
 		{ type = "slider", key = "scrollStep", name = "Scroll Step", min = 10, max = 120, step = 5,
 		  format = function(v) return tostring(math.floor(v + 0.5)) end,
 		  desc = "How far one turn of the mouse wheel scrolls." },
 		{ type = "toggle", key = "itemButtons", name = "Quest Items",
-		  desc = "Show a quest's usable item beside it. A click uses it out of combat." },
+		  desc = "A quest's usable item beside it. Click to use it out of combat." },
 		{ type = "toggle", key = "progressMotion", name = "Progress Motion",
-		  desc = "A count going up rolls over to its new number as a soft light runs along its line; a finished objective gets a tick drawn in its dash's place; a finished quest's last count rolls first, then a light runs over its title, its mark turns over to the hand-in ? and its turn-in line comes in. Off: the lines change at once, with their dashes. Not with Reduce Motion." },
+		  desc = "Counts roll to their new number, finished objectives get a tick, and a finished quest lights up." },
 		{ type = "header", name = "Nearest First" },
 		{ type = "toggle", key = "nearestFirst", name = "Nearest Quest First",
-		  desc = "The nearest quest on top, the one you follow above it; quests with no place known after them. The arrow by the tracker's title switches it too. Needs Route." },
+		  desc = "The nearest quest on top, after the one you follow. Needs Route." },
 		{ type = "toggle", key = "showDistance", name = "Distances",
-		  desc = "How far each quest is, beside its name: its objectives, or the one who takes it once it is done. The quest you follow shows the way along its route. Needs Route." },
+		  desc = "How far each quest is, beside its name. Needs Route." },
 		{ type = "toggle", key = "turnInLine", name = "Turn-in Line",
-		  desc = "A quest ready to turn in says who takes it and where, for example: Turn in: Gryan Stoutmantle, Sentinel Hill." },
+		  desc = "A finished quest says who takes it and where." },
 		{ type = "button", name = "Reset Position", text = "Reset",
 		  hint = "back under the minimap (or on the game's tracker's place)",
+		  desc = "Puts the tracker back in its starting place.",
 		  onClick = function(_, db)
 			db.pos = nil
 			MelloUI:NotifySettingChanged("QuestTracker", "pos", nil)
@@ -2201,7 +2202,7 @@ local function StoneColour(block, r, g, b)
 	if block.ink then
 		return r, g, b
 	end
-	local P = MelloUI.Look.Palette()
+	local P = MelloUI.Look.Palette(nil, true)   -- (text: never dimmed by Dark Mode)
 	if r == 1 and g == 0.82 and b == 0 then
 		return P.selectedTrim[1], P.selectedTrim[2], P.selectedTrim[3]
 	elseif r == g and g == b and r >= 0.8 then
@@ -3913,7 +3914,7 @@ local function Build()
 	-- "(hidden)" plate where it would show; switched off, none (`when`).
 	if MelloUI.RegisterMover then
 		moverEntry = MelloUI:RegisterMover(frame, header, {
-			label = "Quest Tracker", page = "QuestTracker", anchor = "TOPRIGHT", placeholder = true,
+			label = "Quest Tracker", page = "QuestTracker", anchor = "TOPRIGHT", placeholder = true, category = "quests",
 			min = 0.6, max = 1.6,   -- (its size: this wheel's, kept in M.db.scale; 0.16.0: the Scale slider is gone)
 			when = function()
 				return M.isEnabled and true or false

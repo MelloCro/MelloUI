@@ -101,30 +101,30 @@ local defaults = {
 local options = {
 	{ type = "header", name = "Read Aloud" },
 	{ type = "toggle", key = "gossip", name = "NPC Greetings",
-	  desc = "The text an NPC greets you with when you talk to them." },
+	  desc = "What an NPC says when you talk to them." },
 	{ type = "toggle", key = "questDetail", name = "Quest Offers",
-	  desc = "The quest description when a quest is offered." },
+	  desc = "The quest's description when it is offered." },
 	{ type = "toggle", key = "recordedObjectives", name = "Quest Objectives",
-	  desc = "After a quest offer, and after the description the quest log's Read button reads, play the quest's objectives when the voice pack (MelloUI_VoicePack) has them recorded: the Forever Narrator reads them. Text-to-speech never reads the objectives or their counts." },
+	  desc = "The quest's objectives after its description, when the voice pack has them recorded." },
 	{ type = "toggle", key = "questProgress", name = "Quest Progress",
 	  desc = "What the NPC says when you return with an unfinished quest." },
 	{ type = "toggle", key = "questComplete", name = "Quest Turn-In",
-	  desc = "What the NPC says when you hand in a completed quest." },
+	  desc = "What the NPC says when you hand in a quest." },
 	{ type = "toggle", key = "readBooks", name = "Read Books And Letters Aloud",
-	  desc = "Read a book, letter, note, plaque or sign aloud when you open it: the whole book, from the page you open to the last, with no page turning, and it goes on when you close it or walk away. Turning a page reads on from that page; Stop ends it. The narrator's recordings come from the voice pack (MelloUI_VoicePack); without it only the page you see is read, with text-to-speech when Read Unvoiced Lines is on." },
+	  desc = "Books, letters, notes and signs read aloud when you open them." },
 	-- (text-to-speech only: a recorded line keeps its own voice, pace and
 	-- volume, so the Configurator dims these while Read Unvoiced Lines is off)
 	{ type = "header", name = "Text-to-Speech" },
 	{ type = "dropdown", key = "maleVoice", name = "Male NPCs", values = VOICE_VALUES,
-	  desc = "The text-to-speech voice for male and genderless NPCs; recorded lines keep their own voice. Install more voices in Windows speech settings." },
+	  desc = "The text-to-speech voice for male NPCs. Add voices in Windows' speech settings." },
 	{ type = "dropdown", key = "femaleVoice", name = "Female NPCs", values = VOICE_VALUES,
-	  desc = "The text-to-speech voice for female NPCs; recorded lines keep their own voice." },
+	  desc = "The text-to-speech voice for female NPCs." },
 	{ type = "slider", key = "rate", name = "Speed", min = -10, max = 10, step = 1,
 	  format = function(v) return v > 0 and ("+" .. v) or tostring(v) end,
-	  desc = "How fast text-to-speech reads; 0 is the voice's normal pace. Recorded lines always play at their own pace." },
+	  desc = "How fast text-to-speech reads. 0: the voice's normal pace." },
 	{ type = "slider", key = "volume", name = "Volume", min = 0, max = 100, step = 5,
 	  format = function(v) return string.format("%d%%", v) end,
-	  desc = "How loud text-to-speech reads. Recorded lines follow the Sound Channel's volume in the game's sound settings." },
+	  desc = "How loud text-to-speech reads. Recorded lines follow the game's Sound Channel volume." },
 	{ type = "header", name = "Voice Per Race (optional)" },
 }
 for _, group in ipairs(RACE_GROUPS) do
@@ -134,42 +134,42 @@ for _, group in ipairs(RACE_GROUPS) do
 end
 options[#options + 1] = { type = "header", name = "Sound Packs" }
 options[#options + 1] = { type = "toggle", key = "soundPacks", name = "Use Voice Packs",
-	desc = "Play the recorded lines of the voice pack, MelloUI_VoicePack (a separate download in two parts that replaces the old pack), when it has one for the quest, greeting or page; the rest is read with text-to-speech unless Read Unvoiced Lines is off. Tick the pack in the addon list; it loads when needed." }
+	desc = "Plays recorded lines from the voice pack (MelloUI_VoicePack, a separate download) where it has them." }
 options[#options + 1] = { type = "toggle", key = "speakUnrecorded", parent = "soundPacks", name = "Read Unvoiced Lines",
-	desc = "Read a quest or greeting the voice pack has no recording of with a text-to-speech voice. Off: only recorded lines are heard and the rest stay silent." }
+	desc = "Lines the voice pack doesn't have are read with text-to-speech. Off: they stay silent." }
 options[#options + 1] = { type = "toggle", key = "preferRecordings", parent = "soundPacks", name = "Prefer Recordings",
-	desc = "When an NPC's greeting text was changed but the pack has exactly one recorded greeting for that NPC, play the recording anyway instead of reading the new text aloud. The words will not match what is on screen." }
+	desc = "Plays an NPC's recorded greeting even when the game changed its text. The words may not match." }
 options[#options + 1] = { type = "dropdown", key = "soundChannel", name = "Sound Channel", values = {
 		{ value = "Master", label = "Master" },
 		{ value = "Dialog", label = "Dialog" },
 		{ value = "SFX", label = "Sound Effects" },
 		{ value = "Ambience", label = "Ambience" },
 	},
-	desc = "Channel the recorded lines play on; its volume slider in the game's sound settings controls them." }
+	desc = "The game volume slider recorded lines follow." }
 options[#options + 1] = { type = "toggle", key = "collectLines", name = "Record Dialog Lines",
 	desc = "For making new voice lines: keep the greetings and quest lines Voice Over picks up (read aloud or left silent), with the NPC and whether a recording existed, so the lines this client added or changed can be voiced for the pack. Lines of a kind switched off, repeats and greetings passed over behind a quest line are not kept. Saved and kept from one session to the next. Off by default." }
 options[#options + 1] = { type = "header", name = "Playback" }
 options[#options + 1] = { type = "toggle", key = "queueLines", name = "Queue Lines",
-	desc = "Read lines one after another: a greeting finishes before the quest offer that follows it. Off makes every new dialog interrupt the previous one." }
+	desc = "Lines are read one after another. Off: a new dialog interrupts the last one." }
 options[#options + 1] = { type = "toggle", key = "stopOnClose", name = "Stop When Window Closes",
-	desc = "Cut the speech off when you close the dialog. Off by default so the NPC keeps talking while you walk away." }
+	desc = "Stops reading when you close the dialog." }
 options[#options + 1] = { type = "toggle", key = "questLog", name = "Read Button In The Quest Log",
-	desc = "A Read button on the quest log's details view: the quest's description in the giver's voice (the recorded offer line when a pack has it), then the recorded objectives when the voice pack has them (Quest Objectives). Also /vo read." }
+	desc = "A Read button in the quest log that reads the quest aloud. /vo read does the same." }
 options[#options + 1] = { type = "toggle", key = "stopOnMove", name = "Stop When Target Changes",
-	desc = "Cut the speech off when you change target." }
+	desc = "Stops reading when you change target." }
 options[#options + 1] = { type = "header", name = "Widget" }
 options[#options + 1] = { type = "toggle", key = "overlay", name = "Show The Widget",
-	desc = "Show the speaker in MelloUI's widget column while a line is read: their face, the line, a gold ring that fills as it plays and the lines waiting. Hover it for Pause, Skip, Lines and the padlock; right-click stops. Move and size the column in Edit Layout; /vo reset puts it back." }
+	desc = "Shows the speaker in the widget column while a line is read, with Pause, Skip and Stop." }
 options[#options + 1] = { type = "toggle", key = "overlayPortrait", parent = "overlay", name = "3D Portrait",
-	desc = "The speaker's animated 3D face in the widget. Off: the book." }
+	desc = "The speaker's animated face in the widget. Off: a book." }
 options[#options + 1] = { type = "toggle", key = "overlaySubtitles", parent = "overlay", name = "Subtitles",
-	desc = "Also show the text being read under the line, page by page as the voice goes on." }
+	desc = "Also shows the text being read." }
 options[#options + 1] = { type = "toggle", key = "overlayCompact", parent = "overlay", name = "Compact In Combat",
-	desc = "In a fight the widget shrinks to the speaker's face and its ring, and the reading goes on (a book too). The name and the line come back when the fight is over." }
+	desc = "In a fight, the widget shrinks to the speaker's face." }
 
 local M = MelloUI:RegisterModule("VoiceOver", {
 	title = "Voice Over",
-	desc = "Read NPC dialog and quest text aloud with the built in text-to-speech voices, picked by the NPC's race and gender.",
+	desc = "Reads NPC dialog, quests and books aloud: recorded voices from the voice pack, or text-to-speech.",
 	icon = "Interface\\Icons\\INV_Misc_Horn_01",
 	flavour = "Every quest giver speaks. Recorded voices with the pack, text-to-speech without it.",
 	group = "Chat and sound", navOrder = 2,

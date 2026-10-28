@@ -117,7 +117,7 @@ end
 -- the installer's Full and Reskin only take it, as they took the panel
 local M = MelloUI:RegisterModule("MinimapPanel", {
 	title = "Minimap",
-	desc = "MelloUI's minimap: its size, the square shape in the Chat panel, the Services bar merged under it and the column under it the Quest Tracker follows. Off: the game's own minimap.",
+	desc = "MelloUI's minimap: its size, square shape and the Services bar under it. Off: the game's own minimap.",
 	enabledByDefault = true,
 	defaults = { shape = "round", squareBorder = "window", servicesMerge = true, width = MAP_BASE, height = MAP_BASE },
 	-- the old Size taken over once (Size.Migrate): this machine's step, never
@@ -125,17 +125,17 @@ local M = MelloUI:RegisterModule("MinimapPanel", {
 	keep = { "sizeMigrated" },
 	options = {
 		{ type = "dropdown", key = "shape", name = "Shape", values = SHAPES,
-		  desc = "The painted Minimap skin's shape (Oldschool): Round, the map in the painted ring, or Square, the whole square map in the border Square Border picks. Without the painted skin the map is square." },
+		  desc = "The painted minimap's shape: round in its ring, or square in the Square Border." },
 		{ type = "dropdown", key = "squareBorder", name = "Square Border", values = BORDERS,
-		  desc = "The border round the square map: the windows' frame with its gem corners, a single iron rail, the action bars' heavy frame with red or iron gems, one of the thin rims the buttons wear (drawn heavier, at the map's size), or none. Picked with pictures on the Minimap page, its Border part. The painted borders need the painted Minimap skin (Oldschool); without it the map wears the Chat panel." },
+		  desc = "The border around the square minimap. Painted borders need Oldschool's painted Minimap." },
 		{ type = "toggle", key = "servicesMerge", name = "Merge With Services",
-		  desc = "The square map, its zone header and the Services bar in one frame: the zone name on the frame's top rail, and under the map a divider rail named Services over the Services bar (with the row of group buttons, the clock beside the zone name). For the square shape with the window frame or the single rail." },
+		  desc = "The square minimap, its zone name and the Services bar share one frame." },
 		{ type = "slider", key = "width", name = "Width", min = MAP_MIN, max = MAP_MAX, step = MAP_STEP,
 		  format = MapSizeText,
-		  desc = "How wide the map is. The round map is as tall as it is wide, and its painted ring grows and shrinks with it. The square map's border and the zone name keep their size, the Services buttons too (smaller only on a map too narrow for them), and the Quest Tracker under the map follows its width. Edit Mode's minimap Size no longer sizes the map while the Minimap Kit is on." },
+		  desc = "How wide the minimap is. The Quest Tracker under it follows its width." },
 		{ type = "slider", key = "height", name = "Height", min = MAP_MIN, max = MAP_MAX, step = MAP_STEP,
 		  format = MapSizeText,
-		  desc = "How tall the square map is (the round map takes its Width). The shorter side is at least half the longer one." },
+		  desc = "How tall the square minimap is." },
 	},
 })
 

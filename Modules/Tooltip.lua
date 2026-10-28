@@ -26,7 +26,7 @@ local M = MelloUI:RegisterModule("Tooltip", {
 	icon = "Interface\\Icons\\INV_Misc_Book_09",
 	flavour = "Dark, flat and out of the way, with names in the colour of their class.",
 	group = "Frames and bars", navOrder = 3,
-	tweak = { label = "Tooltip Tweaks", desc = "Class and reaction colours, the health bar and placement of tooltips. The dark backdrop only applies while the tooltip reskin is off.", order = 10 },
+	tweak = { label = "Tooltip Tweaks", desc = "MelloUI's tooltip changes: colours, the health bar and placement.", order = 10 },
 	defaults = {
 		darkBackdrop = true,
 		backdropAlpha = 0.9,
@@ -56,24 +56,22 @@ local M = MelloUI:RegisterModule("Tooltip", {
 		  }, get = function(db) return Background(db) end,
 		  desc = "The tooltips' background: a flat near-black box with a dark border in your palette's colours (Dark), or the game's own." },
 		{ type = "slider", key = "backdropAlpha", name = "Backdrop Opacity", min = 0.3, max = 1, step = 0.05, percent = true,
-		  desc = "Opacity of the Dark background." },
+		  desc = "How solid the Dark background is." },
 		{ type = "toggle", key = "classBorder", name = "Class / Reaction Border",
-		  desc = "Colour the border of unit tooltips by class (players) or reaction (NPCs)." },
+		  desc = "Colours a unit tooltip's border by class (players) or reaction (NPCs)." },
 		{ type = "header", name = "Units" },
 		{ type = "toggle", key = "classHealth", name = "Class / Reaction Health Colour",
-		  desc = "Colour the tooltip health bar by class or reaction instead of green." },
-		{ type = "toggle", key = "hideHealthBar", name = "Hide Health Bar", desc = "Hide the health bar under unit tooltips (on by default). Bar Texture and Class / Reaction Health Colour only matter while the bar is shown." },
+		  desc = "The tooltip's health bar in the class or reaction colour instead of green." },
+		{ type = "toggle", key = "hideHealthBar", name = "Hide Health Bar", desc = "Hides the health bar under unit tooltips." },
 		{ type = "toggle", key = "hideIssueLine", name = "Hide Issue Report Line",
-		  desc = "Leave out the beta's \"Press F6 to submit an issue for this ...\" line, and the gap above it, from creature, item, spell and quest tooltips. The key still opens the issue report while the tooltip shows." },
+		  desc = "Hides the beta's \"Press F6 to submit an issue\" line in tooltips." },
 		-- (2026-10-20, the user: "more colors for example for factions, Guilds etc", "quest objectives")
 		{ type = "toggle", key = "colourLines", name = "Coloured Lines",
-		  desc = "A unit's tooltip in colours that tell you at a glance: the guild green, Alliance blue and Horde red, "
-			.. "the level line in the colour of how hard the unit is for you, a quest's title gold and its objectives "
-			.. "cream while still to do, green once done." },
-		{ type = "toggle", key = "hideInCombat", name = "Hide Unit Tooltips In Combat", desc = "Do not show tooltips for units while in combat." },
+		  desc = "Colours tooltip lines: guild, faction, level difficulty and quest progress." },
+		{ type = "toggle", key = "hideInCombat", name = "Hide Unit Tooltips In Combat", desc = "No unit tooltips in combat." },
 		{ type = "slider", key = "fadeDelay", name = "Fade Delay", min = 0.1, max = 1, step = 0.05,
 		  format = function(v) return string.format("%.2f s", v) end,
-		  desc = "How long the tooltip of a creature or an object stays fully visible after your cursor leaves it, before it fades out (the fade itself takes a quarter of a second)." },
+		  desc = "How long a tooltip stays after your mouse leaves." },
 		{ type = "header", name = "Placement" },
 		{ type = "dropdown", key = "anchor", name = "Anchor", width = 230, desc = "Where tooltips appear.",
 		  values = {
@@ -82,7 +80,7 @@ local M = MelloUI:RegisterModule("Tooltip", {
 			{ value = "cursor_right", label = "Right of the cursor" },
 		  } },
 		{ type = "slider", key = "scale", name = "Scale", min = 0.5, max = 1.5, step = 0.05, percent = true,
-		  desc = "Scale of the game tooltip, the comparison tooltips beside it and a linked item's tooltip." },
+		  desc = "The size of tooltips." },
 	},
 })
 

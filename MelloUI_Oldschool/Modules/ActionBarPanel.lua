@@ -80,24 +80,20 @@ for _, g in ipairs(GROUPS) do
 	if g.id ~= "bars" then
 		options[#options + 1] = { type = "subheader", name = g.title }
 	end
-	local what = g.id == "bars" and "the action bars (and the experience and reputation bars)"
-		or (g.id == "micro" and "the micro menu" or "the bag bar")
+	local what = g.id == "bars" and "the action bars'" or (g.id == "micro" and "the micro menu's" or "the bag bar's")
 	-- (the buttons' rim: UI Modifications' Button Border, every window's)
 	options[#options + 1] = { type = "dropdown", key = g.keys.backdrop, name = "Backdrop", values = BACKDROP_VALUES,
-		desc = "The border of the backdrop round " .. what .. ": the red or iron gems on its corners, or one of the border "
-			.. "styles of Oldschool > Borders (drawn heavy, its inner corners mitred). Each element's backdrop is switched on "
-			.. "on Bars (its Backdrop); switched-on elements placed together share one backdrop, in the look of the first of them: "
-			.. "Action Bar 1, the other bars, the micro menu, the bag bar." }
+		desc = "The border of " .. what .. " backdrop: red or iron gems, or a border style. Turn the backdrop on in Bars." }
 	options[#options + 1] = { type = "dropdown", key = g.keys.background, name = "Backdrop Background", values = BACKGROUND_VALUES,
-		desc = "What lies behind the buttons inside the backdrop. All three are chosen with pictures on Oldschool > Frame Art." }
+		desc = "What shows behind the buttons inside the backdrop." }
 	options[#options + 1] = { type = "dropdown", key = g.keys.buttonBackground, name = "Button Background", values = BACKGROUND_VALUES,
-		desc = "What a button shows inside its rim where it has no icon." }
+		desc = "What an empty button shows." }
 end
 
 local M = MelloUI:RegisterModule("ActionBarPanel", {
 	title = "Action Bars Kit",
 	desc = "The action bars, micro menu, bag bar and experience bars dressed in the painted kit on the game's own layout.",
-	window = { label = "Action bars", desc = "Action bars, stance and pet bars, micro menu, bag bar, experience and reputation bars in the kit.", tab = "HUD" },
+	window = { label = "Action bars", desc = "The action, stance and pet bars, micro menu, bag bar and experience bars in the painted art.", tab = "HUD" },
 	enabledByDefault = true,
 	defaults = defaults,
 	options = options,

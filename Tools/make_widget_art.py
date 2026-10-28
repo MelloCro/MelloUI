@@ -45,7 +45,7 @@ dark edge lines, its shadow), so a gold tint reads as a gilt rim with dark
 edges. Drawn by the swipe over a frame RING_FRAME times the face's size,
 the band lies just outside the face's round rim.
 
-The glyphs (256 x 128: 8 x 4 cells of 32 px, in GLYPHS order, left to right,
+The glyphs (256 x 192: 8 x 6 cells of 32 px; 8 x 4 until 1.2.4, in GLYPHS order, left to right,
 top row first; 0.17.0 grew it from 8 x 2 for the chat column's buttons):
 drawn at 8 times the size with PIL and averaged down, so their edges are
 smooth at any size. Cell 15 stays empty on purpose: the whisper window's
@@ -124,7 +124,11 @@ GLYPHS = ("pause", "play", "skip", "stop", "list", "padlock", "padlockOpen", "ch
           # (0.19.5: the Quest List's objective marks, one mark per kind -- the user's pick, C's behaviour with D's
           # marks of BuildData/output/objective_marks_sketch: a bag to collect, a cog to use, a flag to explore; the
           # sword to kill is the meter's)
-          "bag", "cog", "flag")
+          "bag", "cog", "flag",
+          # (1.2.4: Edit Layout's dock and Elements picker -- the user's pick A + C's settings panel of
+          # BuildData/output/editlayout_dock_sketch: the dock's toggles, its buttons, the picker's rows)
+          "grid", "magnet", "moon", "crosshair", "layers", "keys", "reset", "question",
+          "eye", "eyeOff", "solo", "search", "pin")
 
 
 def smootherstep(t):
@@ -321,13 +325,81 @@ def glyph(name):
         # explore: a flag on its pole, the cloth waving
         line([(8.5, 4.5), (8.5, 28.5)], 3.2)
         d.polygon(P((10, 5), (16, 3.5), (22, 6), (27.5, 5), (27.5, 16.5), (22, 17.5), (16, 15), (10, 16.5)), fill=255)
+    elif name == "grid":
+        # the grid: a frame and two lines each way
+        d.rounded_rectangle((4.5 * k, 4.5 * k, 27.5 * k, 27.5 * k), radius=2.5 * k, outline=255, width=int(2.6 * k))
+        for at in (12.2, 19.8):
+            box(at - 1.15, 5, at + 1.15, 27)
+            box(5, at - 1.15, 27, at + 1.15)
+    elif name == "magnet":
+        # snap: a horseshoe magnet, poles up, their caps cut off by a line
+        d.arc((5 * k, 7.5 * k, 27 * k, 29.5 * k), 0, 180, fill=255, width=int(5.4 * k))
+        box(5, 4, 10.4, 19)
+        box(21.6, 4, 27, 19)
+        d.rectangle((4 * k, 8.6 * k, 28 * k, 10.2 * k), fill=0)
+    elif name == "moon":
+        # dim the world: a crescent moon
+        d.ellipse((4 * k, 4 * k, 28 * k, 28 * k), fill=255)
+        d.ellipse((11 * k, 0.5 * k, 33 * k, 22.5 * k), fill=0)
+    elif name == "crosshair":
+        # coordinates: a ring with four ticks out of it and a dot in its middle
+        d.ellipse((7.5 * k, 7.5 * k, 24.5 * k, 24.5 * k), outline=255, width=int(2.6 * k))
+        for (x0, y0, x1, y1) in ((16, 2.5, 16, 9), (16, 23, 16, 29.5), (2.5, 16, 9, 16), (23, 16, 29.5, 16)):
+            line([(x0, y0), (x1, y1)], 2.6)
+        d.ellipse((13.6 * k, 13.6 * k, 18.4 * k, 18.4 * k), fill=255)
+    elif name == "layers":
+        # the Elements: two layers, the top one whole, the one under it its edge
+        d.polygon(P((16, 3.5), (29, 10.5), (16, 17.5), (3, 10.5)), fill=255)
+        line([(4, 17), (16, 23.5), (28, 17)], 2.8)
+        line([(4, 23), (16, 29.5), (28, 23)], 2.8)
+    elif name == "keys":
+        # Keybind Mode: a keyboard, its keys and the space bar
+        d.rounded_rectangle((2.5 * k, 7.5 * k, 29.5 * k, 25.5 * k), radius=3 * k, outline=255, width=int(2.4 * k))
+        for row, y in ((0, 11.2), (1, 15.4)):
+            for x in (7, 11.5, 16, 20.5, 25) if row == 0 else (9.25, 13.75, 18.25, 22.75):
+                box(x - 1.4, y - 1.2, x + 1.4, y + 1.2, 0.4)
+        box(9, 19.4, 23, 21.8, 0.8)
+    elif name == "reset":
+        # Reset all: an arrow going round, back to its start
+        d.arc((5 * k, 5 * k, 27 * k, 27 * k), 200, 500, fill=255, width=int(3.2 * k))
+        d.polygon(P((2.5, 7), (12, 7.5), (6.2, 15.8)), fill=255)
+    elif name == "question":
+        # how it works: a question mark
+        d.arc((9 * k, 3.5 * k, 23 * k, 17.5 * k), 190, 420, fill=255, width=int(3.4 * k))
+        line([(16, 16.5), (16, 20.5)], 3.4)
+        d.ellipse((13.8 * k, 23.8 * k, 18.2 * k, 28.2 * k), fill=255)
+    elif name in ("eye", "eyeOff"):
+        # a plate shown (an open eye) or not (the eye struck through)
+        d.chord((2 * k, 6 * k, 30 * k, 30 * k), 200, 340, fill=255)
+        d.chord((2 * k, 2 * k, 30 * k, 26 * k), 20, 160, fill=255)
+        d.chord((5.5 * k, 9 * k, 26.5 * k, 26.5 * k), 205, 335, fill=0)
+        d.chord((5.5 * k, 5.5 * k, 26.5 * k, 23 * k), 25, 155, fill=0)
+        d.ellipse((11 * k, 11 * k, 21 * k, 21 * k), fill=255)
+        if name == "eyeOff":
+            line([(5, 27), (27, 5)], 5.6)
+            d.line(P((5, 27), (27, 5)), fill=0, width=int(2.2 * k))
+            line([(6, 28), (28, 6)], 2.4)
+    elif name == "solo":
+        # shown alone: a target, its ring and its middle
+        d.ellipse((3.5 * k, 3.5 * k, 28.5 * k, 28.5 * k), outline=255, width=int(2.8 * k))
+        d.ellipse((10 * k, 10 * k, 22 * k, 22 * k), fill=255)
+    elif name == "search":
+        # find: a magnifying glass
+        d.ellipse((4 * k, 4 * k, 21 * k, 21 * k), outline=255, width=int(3.2 * k))
+        line([(19, 19), (27, 27)], 4.2)
+    elif name == "pin":
+        # keep open: a pin, its head, its collar and the point
+        box(10, 3, 22, 7, 1.5)
+        d.polygon(P((12, 7), (20, 7), (21, 15), (11, 15)), fill=255)
+        box(7, 15, 25, 18.5, 1.2)
+        line([(16, 18.5), (16, 29)], 2.4)
     else:
         raise ValueError(name)
     return im.resize((CELL, CELL), Image.BOX)
 
 
 def glyph_sheet():
-    cols, rows = 8, 4
+    cols, rows = 8, 6
     sheet = np.zeros((rows * CELL, cols * CELL, 4), np.uint8)
     sheet[..., :3] = 255
     for i, name in enumerate(GLYPHS):

@@ -161,7 +161,7 @@ end
 
 M = MelloUI:RegisterModule("FrameEffects", {
 	title = "Cooldown Effects",   -- (0.21.0, the user: the page's switch name, every text alike)
-	desc = "Your group's frames show their big moments: a roar's square ripples, a taunt, Shield Wall's steel, Last Stand's heartbeat, an immunity's barrier, an evasion's afterimages -- on your own frame when you use one, on a group mate's when they do.",
+	desc = "Your group's frames show their big moments: taunts, Shield Wall, immunities, evasion and more.",
 	icon = "Interface\\Icons\\Ability_Warrior_ShieldWall",
 	flavour = "Shield Wall, Last Stand, a roar: your group's frames show their big moments.",
 	enabledByDefault = true,
@@ -171,12 +171,12 @@ M = MelloUI:RegisterModule("FrameEffects", {
 	options = {
 		{ type = "button", name = "Every Effect", text = "Play",
 		  hint = "each kind on your own frame",
-		  desc = "Plays each kind on your own frame, one after another, its name and an example on the screen: a roar (Challenging Shout), a taunt, damage taken down (Shield Wall), more health (Last Stand), an immunity, a dodge or parry (Evasion).",
+		  desc = "Plays each kind of big moment on your own frame.",
 		  onClick = function() PreviewAll() end },
 		{ type = "dropdown", key = "whose", name = "Whose",
 		  values = { { value = "both", label = "Yours And Your Group's" }, { value = "mine", label = "Yours" },
 			{ value = "group", label = "Your Group's" } },
-		  desc = "Whose big moments play on the frames. Yours: when you use one (Challenging Shout, Shield Wall, Last Stand, Divine Shield, Evasion ...), your own frame in your party or raid frames plays its effect for as long as it lasts (a roar: 2 seconds). Your group's: when someone of your party or raid uses one, their frame plays it -- you see at a glance who just used Shield Wall or Divine Shield, and whose roar just pulled." },
+		  desc = "Whose big moments (Shield Wall, Divine Shield, Evasion...) play on the frames: yours, your group's, or both." },
 	},
 })
 

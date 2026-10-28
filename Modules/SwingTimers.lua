@@ -45,7 +45,7 @@ local SB = MelloUI.SwingBadge
 
 local M = MelloUI:RegisterModule("SwingTimers", {
 	title = "Swing Timers",
-	desc = "Your swing timer as a badge on your target's nameplate, or above your cast bar while its plate is not there: your weapon in a gold ring with the next swing's sweep over it, a wind-up and a strike, a crit flashing gold, a dodge or parry bounced back; Auto Shot's aim and a wand's bolt. The game's own swing timers are switched off while this is on, and come back as you had them when it is off. While the Personal Display shows its Swing Badge, that one shows your swings.",
+	desc = "Your swing timer as a badge on your target's nameplate. Replaces the game's swing timers.",
 	icon = "Interface\\Icons\\Ability_Marksmanship",
 	flavour = "Every swing and shot at a glance.",
 	slash = "swing",
@@ -57,11 +57,11 @@ local M = MelloUI:RegisterModule("SwingTimers", {
 	defaults = { shot = true, melee = true, offhand = true },
 	options = {
 		{ type = "toggle", key = "shot", name = "Shots",
-		  desc = "Your Auto Shot with a bow, gun, crossbow or thrown weapon on the badge: the reload, then the aim in red with four chevrons closing in while you stand still (moving holds the shot back), the shot a recoil." },
+		  desc = "Your Auto Shot on the swing badge: reload, then aim." },
 		{ type = "toggle", key = "melee", name = "Melee Swings",
-		  desc = "Your main hand's swings on the badge: the next swing's sweep, the wind-up and the strike. A wand's shots show here too." },
+		  desc = "Your main hand's swings on the swing badge. Wand shots too." },
 		{ type = "toggle", key = "offhand", name = "Off Hand",
-		  desc = "Your off-hand weapon's swings on a smaller badge beside the main one, while you carry one." },
+		  desc = "Your off hand's swings on a smaller badge." },
 	},
 })
 
@@ -126,7 +126,7 @@ local function Holder()
 	h:SetSize(d + B.PAIR + d * SB.T.badgeOff, d)
 	S.holder = h
 	S.entry = MelloUI:RegisterMover(h, h, { key = MOVER, default = Home, min = 0.5, max = 2, base = 1,
-		label = TEXT.mover, page = "SwingTimers", when = On, placeholder = true })
+		label = TEXT.mover, page = "SwingTimers", when = On, placeholder = true, category = "combat" })
 	if not MelloUI:RestorePosition(MOVER, h) then
 		Home(h)
 	end

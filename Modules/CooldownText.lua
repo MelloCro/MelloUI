@@ -37,16 +37,16 @@ local M = MelloUI:RegisterModule("CooldownText", {
 	},
 	options = {
 		{ type = "header", name = "Show On" },
-		{ type = "toggle", key = "actionBars", name = "Action Bars", desc = "Action, pet, stance and flyout buttons." },
-		{ type = "toggle", key = "nameplates", name = "Nameplate Auras", desc = "Buff, debuff and crowd control icons on nameplates. While Buffs & Debuffs puts your debuffs on enemy nameplates, those icons are MelloUI's own and show their own time: this switch does not reach them." },
+		{ type = "toggle", key = "actionBars", name = "Action Bars", desc = "Timers on action, pet and stance buttons." },
+		{ type = "toggle", key = "nameplates", name = "Nameplate Auras", desc = "Timers on the game's nameplate auras." },
 		{ type = "header", name = "Timer" },
 		{ type = "slider", key = "minDuration", name = "Minimum Duration", min = 1, max = 10, step = 0.5,
 		  format = function(v) return string.format("%.1fs", v) end,
-		  desc = "Cooldowns shorter than this show no text (2 s skips the global cooldown)." },
+		  desc = "Cooldowns shorter than this show no timer. 2 seconds skips the global cooldown." },
 		{ type = "slider", key = "fontRatio", name = "Text Size", min = 0.3, max = 0.8, step = 0.05, percent = true,
-		  desc = "Text height relative to the icon size." },
-		{ type = "toggle", key = "tenths", name = "Show Tenths Below 5s", desc = "Show 4.3 instead of 5 when the cooldown is about to finish." },
-		{ type = "toggle", key = "colorByTime", name = "Colour And Size By Time Left", desc = "Red and larger under 5 s (1.3 times the Text Size), yellow under a minute, dim white and smaller for minutes (0.8 times), grey and smaller still for hours (0.75 times). Off: every timer is white at the Text Size." },
+		  desc = "Timer text size, relative to the icon." },
+		{ type = "toggle", key = "tenths", name = "Show Tenths Below 5s", desc = "Shows 4.3 instead of 5 in a cooldown's last seconds." },
+		{ type = "toggle", key = "colorByTime", name = "Colour And Size By Time Left", desc = "Timers turn red and larger under 5 seconds, yellow under a minute, and smaller for minutes and hours. Off: all white." },
 	},
 })
 

@@ -810,8 +810,61 @@ end
 -- switch (its colours are the game's globals).
 local gamePalette = {}   -- (gameFilled: declared with Refresh, which clears it)
 
-function Look.Palette(area)
+-- (1.2.4) Dark Mode's one Brightness over MelloUI's own UI: every fill and edge colour of the palette darkened by
+-- it, the text colours kept (readable); Look.SetDim(v) (1: none) repaints every palette part (the bus's 'palette');
+-- Look.DimStamp() changes with each new dim (the painter repaints on it). One table, its colours reused. Text in a
+-- palette colour (a gold header) is text too: Look.Palette(area, true) is the palette undimmed, for text
+local DIM_KEEP = { text = true, mutedText = true }
+local dim, dimStamp, dimmed, dimFrom, dimAt = 1, 0, {}, nil, nil
+
+local function Dimmed()
+	local palette = MelloUI.Palette
+	if dimFrom == palette and dimAt == dim then
+		return dimmed
+	end
+	dimFrom, dimAt = palette, dim
+	for k in pairs(dimmed) do
+		if palette[k] == nil then
+			dimmed[k] = nil
+		end
+	end
+	for k, c in pairs(palette) do
+		if type(c) == "table" and type(c[1]) == "number" and not DIM_KEEP[k] then
+			local t = dimmed[k]
+			if type(t) ~= "table" or t == c then
+				t = {}
+				dimmed[k] = t
+			end
+			t[1], t[2], t[3] = c[1] * dim, c[2] * dim, c[3] * dim
+			t.hex = string.format("%02X%02X%02X", math.floor(t[1] * 255 + 0.5), math.floor(t[2] * 255 + 0.5),
+				math.floor(t[3] * 255 + 0.5))
+		else
+			dimmed[k] = c
+		end
+	end
+	return dimmed
+end
+
+function Look.SetDim(v)
+	v = tonumber(v) or 1
+	v = math.max(0, math.min(1, v))
+	if v == dim then
+		return
+	end
+	dim = v
+	dimStamp = dimStamp + 1
+	MelloUI:Fire("palette")
+end
+
+function Look.DimStamp()
+	return dimStamp
+end
+
+function Look.Palette(area, text)
 	if Look:On(area) then
+		if dim < 1 and not text then
+			return Dimmed()
+		end
 		return MelloUI.Palette
 	end
 	if gameFilled then

@@ -129,7 +129,8 @@ OWN = {
 # to 0); families 1, 3 and 5 still read them. Their cover reads are D5's handshakes.
 ENHANCERS = ["Modules/UnitFrames.lua", "Modules/ActionBars.lua", "Core/Backdrop.lua", "Modules/MinimapPanel.lua",
              "Modules/QuestPages.lua", "Core/EditLayoutWindows.lua", "Modules/Nameplates.lua",
-             "Modules/PlateImpact.lua"]   # (0.25.0: Impact Effects on the game's nameplates, beside Nameplates.lua)
+             "Modules/PlateImpact.lua",   # (0.25.0: Impact Effects on the game's nameplates, beside Nameplates.lua)
+             "Modules/DarkMode.lua"]   # (1.2.4: Dark Mode dims the game's art, and MelloUI's own UI through Look.SetDim)
 
 # the shared files family 2 reads beside the own parts (Kit.lua and the kit's panels never: the painted skins of the
 # game's windows name the game's art by design)
@@ -138,8 +139,9 @@ ART_TOO = ["Core/GameLook.lua", "Core/Widgets.lua", "Modules/KitWindow.lua"]
 # ------------------------------------------------------------------------------------------------------------ the rules
 # MelloUI.Look's keys after stage E: onelook/lookcore K1's set (docs/plans/onelook-e-plans/E1v2.md: no AREA, On, Watch,
 # Hide, Show, Only, Pieces, Panel, Bar, GameFrame(Shown), GameBar(Parts), GameSwing(Parts), ColumnButton(Plate) ...)
+# (1.2.4, Dark Mode's one Brightness over MelloUI's own UI: SetDim / DimStamp, the palette's dimmed copy -- Palette's)
 FINAL = ("Art", "ART", "Palette", "Text", "Tint", "RoleColour", "Colour", "Paint", "Unpaint", "Solid", "Mark", "Plate",
-         "Ring", "RingState", "Count", "CountShown", "ClassIcon", "Outline", "Shadow")
+         "Ring", "RingState", "Count", "CountShown", "ClassIcon", "Outline", "Shadow", "SetDim", "DimStamp")
 KEPT_ART = ("rareMark", "rareEliteMark")   # (the Rare Alert's crest: the game's own rank icons)
 DEAD_AREAS = ("own", "questTracker", "questList", "loot")   # (always on since stage C; their entries go in stage I)
 

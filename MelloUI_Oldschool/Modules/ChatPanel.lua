@@ -43,7 +43,7 @@ local steadyingOf = MelloUI.Kept.steadyingOf
 local M = MelloUI:RegisterModule("ChatPanel", {
 	title = "Chat Panel Kit",
 	desc = "The chat windows (frame, tabs, edit box, buttons) dressed in the painted kit on the game's own layout.",
-	window = { label = "Chat windows", desc = "Chat frames, tabs, edit box and buttons in the kit (no fade).", tab = "HUD" },
+	window = { label = "Chat windows", desc = "The chat windows, tabs and input line in the painted art.", tab = "HUD" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

@@ -16,11 +16,14 @@
 -- which uses the retail (Dragonflight style) HUD with Camelot specific overrides.
 --
 -- (onelook D9) Dark Mode is core: it darkens the game's own art. The painted
--- reskin's brightness under it (Reskin Brightness, kitShade, Kit:SetShade) is
--- a part of this module's settings (M:AddPart, UI Modifications' one contract
--- MelloUI.ModuleParts: the same key and option id), in
+-- reskin under it (Kit:SetShade) is a part of this module (M:AddPart, UI
+-- Modifications' one contract MelloUI.ModuleParts), in
 -- MelloUI_Oldschool/Modules/DarkModePainted.lua (one look stage I); its hooks Enabled,
--- Disabled and Setting are asked where ShadeKit ran.
+-- Disabled and Setting are asked where ShadeKit ran. (1.2.4, the user: "1
+-- slider that dims all UI elements") one Brightness (`shade`) for all of it:
+-- the game's art, the painted reskin (Reskin Brightness, kitShade, is gone)
+-- and MelloUI's own UI -- the palette's fills and edges (Look.SetDim), its
+-- text kept -- and never an icon (the micro menu's and bag bar's pictures).
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -31,12 +34,12 @@ local hooksecurefunc = Perf.hooksecurefunc
 
 local M = MelloUI:RegisterModule("DarkMode", {
 	title = "Dark Mode",
-	desc = "Darkens the Blizzard artwork of unit frames, cast bars, action bars, nameplates, cooldown manager, auras and menu bars.",
+	desc = "Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours.",
 	icon = "Interface\\Icons\\Spell_Shadow_Twilight",
 	flavour = "Dim the gold and the glare. The interface steps back, the world steps forward.",
 	group = "The look", navOrder = 2,
 	-- (off until switched on: a personal preference, never on by default)
-	tweak = { label = "Dark Mode", desc = "Darkens the painted reskin (its brightness below) and, where the reskin is off, the game's own art of unit frames, bars, nameplates, auras and menus.", order = 12, off = true },
+	tweak = { label = "Dark Mode", desc = "Dims the whole interface. Icons and text keep their colours.", order = 12, off = true },
 	-- Dark Mode's switch is the player's own preference (user, 2026-09-26:
 	-- "Dark mode ... should be a personal preference"): no profile, share
 	-- string or setup carries it, and loading one leaves it as it is (it is
@@ -45,8 +48,9 @@ local M = MelloUI:RegisterModule("DarkMode", {
 	-- settings travel in profiles; it stays off until a player turns it on)
 	keep = {},
 	defaults = {
-		shade = 0.25,        -- brightness of the darkened art (0 = black, 1 = untouched)
-		-- (kitShade, the painted reskin's brightness: its part's, the end of this file)
+		-- (1.2.4) THE brightness under Dark Mode: the game's art, the painted reskin (Kit:SetShade) and MelloUI's own
+		-- UI (the palette's fills and edges: Look.SetDim) -- one slider (it was the game's art's alone, 0.25)
+		shade = 0.5,
 		desaturate = true,   -- remove the gold / bronze tint
 		unitframes = true,
 		castbar = true,
@@ -64,41 +68,41 @@ local M = MelloUI:RegisterModule("DarkMode", {
 	},
 	options = {
 		{ type = "header", name = "Appearance" },
-		{ type = "slider", key = "shade", name = "Default UI Brightness", min = 0, max = 1, step = 0.05, percent = true,
-		  desc = "How bright the game's own artwork is where Dark Mode darkens it (the parts the reskin does not cover, or everything with the reskin off). Lower values are darker. The reskin's own art has Reskin Brightness below." },
+		{ type = "slider", key = "shade", name = "Brightness", min = 0.2, max = 1, step = 0.05, percent = true,
+		  desc = "How bright the interface is with Dark Mode on. Lower is darker." },
 		{ type = "toggle", key = "desaturate", name = "Desaturate",
-		  desc = "Remove the gold and bronze colours so the art becomes grey before it is darkened." },
+		  desc = "Turns the gold and bronze art grey before dimming it." },
 		-- (Reskin Brightness: the painted reskin's part puts it here, after Desaturate)
 		{ type = "header", name = "Components" },
 		{ type = "toggle", key = "unitframes", name = "Unit Frames",
-		  desc = "Player, target, focus, pet, party, boss and target-of-target frames." },
+		  desc = "Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target." },
 		{ type = "toggle", key = "castbar", name = "Cast Bars",
-		  desc = "Player, pet, target, focus and boss cast bars." },
+		  desc = "Dark Mode on the cast bars." },
 		{ type = "toggle", key = "actionbars", name = "Action Bars",
-		  desc = "All action bar buttons, the stance bar, pet bar, possess bar and extra action button." },
+		  desc = "Dark Mode on the action buttons and the stance, pet, possess and extra action bars." },
 		{ type = "toggle", key = "gryphons", parent = "actionbars", name = "Action Bar End Caps",
-		  desc = "Also darken the gryphons / end caps and border art of the main action bar." },
+		  desc = "Dark Mode on the main bar's end caps and art." },
 		{ type = "toggle", key = "nameplates", name = "Nameplates",
-		  desc = "Health bar backgrounds/borders and cast bars on nameplates." },
+		  desc = "Dark Mode on the nameplates' bars and cast bars." },
 		{ type = "toggle", key = "personal", name = "Personal Display",
-		  desc = "The health and power bars shown under your character." },
+		  desc = "Dark Mode on the Personal Display's bars." },
 		{ type = "toggle", key = "statusbars", name = "Experience & Reputation Bars",
-		  desc = "Frame, background and segment dividers of the experience, reputation and honor bars." },
+		  desc = "Dark Mode on the experience, reputation and honor bars." },
 		{ type = "toggle", key = "cooldowns", name = "Cooldown Manager",
-		  desc = "Icon frames and bar backgrounds of the Essential, Utility and Buff cooldown viewers." },
+		  desc = "Dark Mode on the Cooldown Manager's icons and bars." },
 		{ type = "toggle", key = "micromenu", name = "Micro Menu & Bag Bar",
-		  desc = "The menu buttons (character, spellbook, ...) and the bag buttons." },
+		  desc = "Dark Mode on the micro menu's and bag bar's frames. Their icons stay as they are." },
 		{ type = "toggle", key = "minimap", name = "Minimap",
-		  desc = "Minimap ring, zone text header, day/night indicator frame, tracking, calendar, zoom and addon buttons." },
+		  desc = "Dark Mode on the minimap's ring, header and buttons." },
 		{ type = "toggle", key = "chat", name = "Chat Frame",
 		  desc = "Chat tabs, the chat input box and the chat buttons. Window background colours stay as configured in the chat settings." },
 		{ type = "header", name = "Buffs & Debuffs" },
 		{ type = "toggle", key = "auras", name = "Buffs & Debuffs",
-		  desc = "Darken the borders of your buff and debuff icons, with a thin dark edge round each icon (0.16.0: the Icon Border switch is part of this). The game's own icons: while Buffs & Debuffs shows MelloUI's rows in their place, there is nothing here to darken (those rows take the Aura Border)." },
+		  desc = "Dark Mode on the game's buff and debuff icons." },
 		-- (no parent: it serves the Cooldown Manager's icons as well as the
 		-- buffs and debuffs, and must not dim while only that one is on)
 		{ type = "toggle", key = "keepDispelColor", name = "Keep Dispel Colours",
-		  desc = "Leave the coloured magic / curse / poison / disease debuff borders untouched: on your buff and debuff icons (Buffs & Debuffs) and on the Cooldown Manager's icons (its Dark Mode)." },
+		  desc = "Dark Mode leaves the coloured debuff borders (magic, curse, poison, disease) alone." },
 	},
 })
 
@@ -697,19 +701,18 @@ local function ApplyMicroMenu()
 		list[#list + 1] = MicroMenu.BorderArt
 		list[#list + 1] = MicroMenu.BackgroundArt
 	end
+	-- (1.2.4, the user: Dark Mode must "not touch the icons like it currently does on the Micro Bar and Bag Bar") a
+	-- micro button's own pictures (its normal, pushed and lit art: the icon) and the bag buttons' are left as they are;
+	-- the round backgrounds under the micro buttons and the bars' frames are darkened
 	for _, name in ipairs(MICRO_BUTTONS) do
 		local button = _G[name]
 		if button then
-			CollectButtonStateTextures(button, list)
 			list[#list + 1] = button.Background
 			list[#list + 1] = button.PushedBackground
 		end
 	end
 	if BagsBar then
 		list[#list + 1] = BagsBar.BorderArt
-	end
-	for _, name in ipairs(BAG_BUTTONS) do
-		CollectButtonStateTextures(_G[name], list)
 	end
 	ShadeAll("micromenu", list)
 end
@@ -976,8 +979,17 @@ local function RunParts(hook, ...)
 	return Parts ~= nil and Parts.Run(M, hook, ...)
 end
 
+-- (1.2.4) MelloUI's own UI (the palette's fills and edges) dimmed by the one Brightness while Dark Mode is on
+local function DimOwn(on, db)
+	local Look = MelloUI.Look
+	if type(Look) == "table" and Look.SetDim then
+		Look.SetDim(on and db and tonumber(db.shade) or 1)
+	end
+end
+
 function M:OnEnable(db)
 	self.db = db
+	DimOwn(true, db)
 	InstallHooks()
 	WatchCovers()
 	RunParts("Enabled", db)
@@ -1003,13 +1015,17 @@ function M:OnDisable(db)
 		RestoreGroup(component)
 	end
 	RunParts("Disabled", db)
+	DimOwn(false)
 end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
 	-- (synchronous, inside a Batch too: never through the bus)
-	if RunParts("Setting", key, value, db) then
+	if key ~= "shade" and RunParts("Setting", key, value, db) then
 		return
+	end
+	if key == "shade" then
+		RunParts("Setting", key, value, db)   -- (the painted reskin's shade follows the one Brightness too)
 	end
 	if appliers[key] then
 		if value and not Covered(key) then
@@ -1031,6 +1047,9 @@ function M:OnSettingChanged(key, value, db)
 			if db[component] then
 				ReapplyGroup(component)
 			end
+		end
+		if key == "shade" then
+			DimOwn(true, db)
 		end
 	end
 end

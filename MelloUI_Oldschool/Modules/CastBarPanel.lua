@@ -32,7 +32,7 @@ local repOf = MelloUI.Kept.repOf
 local M = MelloUI:RegisterModule("CastBarPanel", {
 	title = "Cast Bars Kit",
 	desc = "The cast bars dressed in the painted kit on the game's own layout.",
-	window = { label = "Cast bars", desc = "Player, pet, target and focus cast bars in the kit.", tab = "HUD" },
+	window = { label = "Cast bars", desc = "The cast bars in the painted art.", tab = "HUD" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

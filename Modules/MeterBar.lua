@@ -305,7 +305,7 @@ local function Build()
 	-- its place: the one mover (Width and Thickness are the configurator's,
 	-- its box's "Design >")
 	ui.entry = MelloUI:RegisterMover(holder, holder, { key = MOVER_KEY, default = Home, min = 0.5, max = 2, base = 1,
-		label = TEXT.label, page = "BarsMeters", when = On })
+		label = TEXT.label, page = "BarsMeters", when = On, category = "combat" })
 	if not MelloUI:RestorePosition(MOVER_KEY, holder) then
 		Home(holder)
 	end

@@ -49,7 +49,7 @@ local CAP_GEM_X = 48
 local M = MelloUI:RegisterModule("MinimapKit", {
 	title = "Minimap Kit",
 	desc = "The minimap dressed in the painted kit: the ring round the map (or the square map's painted border), the zone plate, the tracking button's rim and the zoom buttons.",
-	window = { label = "Minimap", desc = "The minimap ring (or a square map in a painted border of your choosing), zone band and buttons in the kit.", tab = "HUD" },
+	window = { label = "Minimap", desc = "The minimap's ring, zone band and buttons in the painted art.", tab = "HUD" },
 	enabledByDefault = true,
 })
 

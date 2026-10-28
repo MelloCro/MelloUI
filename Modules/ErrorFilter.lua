@@ -46,7 +46,7 @@ local M = MelloUI:RegisterModule("ErrorFilter", {
 	desc = "Hide the red error messages you choose, such as \"Not enough energy\" or \"Spell is not ready yet\", from the middle of the screen.",
 	icon = "Interface\\Icons\\Spell_Holy_Silence",
 	flavour = "Quiet, please. The red shouts in the middle of the screen, a kind at a time.",
-	tweak = { label = "Error Messages", desc = "Hides the red error messages you choose (not enough energy, not ready yet, out of range...) from the middle of the screen.", order = 2, off = true },
+	tweak = { label = "Error Messages", desc = "Hides the red error messages you pick below from the middle of the screen.", order = 2, off = true },
 	enabledByDefault = false,
 	defaults = {
 		resources = true,
@@ -58,15 +58,15 @@ local M = MelloUI:RegisterModule("ErrorFilter", {
 	options = {
 		{ type = "header", name = "Hide" },
 		{ type = "toggle", key = "resources", name = "Not Enough Resources",
-		  desc = "Not enough energy, rage, mana or focus, and no combo points." },
+		  desc = "Not enough energy, rage, mana or combo points." },
 		{ type = "toggle", key = "cooldowns", name = "Not Ready Yet",
-		  desc = "Ability, spell or item is not ready yet." },
+		  desc = "An ability, spell or item is not ready yet." },
 		{ type = "toggle", key = "range", name = "Out Of Range",
-		  desc = "Out of range, too far away, too close." },
+		  desc = "Out of range, too far or too close." },
 		{ type = "toggle", key = "targeting", name = "Facing And Target",
-		  desc = "Facing the wrong way, target needs to be in front of you, no target, invalid target, target not in line of sight." },
+		  desc = "Wrong facing, no target, invalid target or out of sight." },
 		{ type = "toggle", key = "busy", name = "Busy Or Moving",
-		  desc = "Another action is in progress, can't do that while moving, while stunned or while mounted." },
+		  desc = "Busy, moving, stunned or mounted." },
 	},
 })
 

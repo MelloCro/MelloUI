@@ -46,13 +46,11 @@ local M = MelloUI:RegisterModule("CooldownTweaks", {
 	},
 	options = {
 		{ type = "toggle", key = "centreRows", name = "Centre Rows",
-		  desc = "A row with fewer icons than the others sits centred under them, so the icons grow from the middle. "
-			.. "The essential and utility cooldowns and the buff icons." },
+		  desc = "A shorter row of cooldown icons sits centred under the others." },
 		{ type = "toggle", key = "keybinds", name = "Key Bindings",
-		  desc = "The key of the action button that holds a cooldown's spell, on the icon's corner." },
+		  desc = "The key bound to a cooldown's spell, on the icon's corner." },
 		{ type = "toggle", key = "pressLight", name = "Light While Pressed",
-		  desc = "A cooldown's icon lights up while you press the action button with its spell, as the button does "
-			.. "(Action Buttons)." },
+		  desc = "A cooldown's icon lights up while you press its action button." },
 		{ type = "slider", key = "countSize", name = "Count Size", min = 70, max = 160, step = 5,
 		  format = function(v) return math.floor(v + 0.5) .. "%" end,
 		  desc = "The size of the charges and stacks numbers on the icons." },

@@ -139,7 +139,7 @@ Meter.TEXT = TEXT
 
 local M = MelloUI:RegisterModule("Meter", {
 	title = "Damage Meter",
-	desc = "MelloUI's damage meter in place of the game's: three numbers by every frame (this fight, this run, healing), a race bar for the group in a fight, a summary after it and a Fight History window. The game's own damage meter is switched off while it is on, and comes back as you had it when it is off.",
+	desc = "MelloUI's damage meter: numbers on your frames, a race bar in fights, a summary after, and a fight history. Replaces the game's meter.",
 	icon = "Interface\\Icons\\Ability_DualWield",
 	flavour = "How the fight went, where you already look.",
 	enabledByDefault = true,
@@ -164,28 +164,28 @@ local M = MelloUI:RegisterModule("Meter", {
 	},
 	options = {
 		{ type = "toggle", key = "values", name = "Your Values",
-		  desc = "Three numbers on top of your frame: the sword this fight's damage per second, the hourglass this run's, the cross your healing per second. Live in a fight, the last fight's after it. Move them in Edit Layout (Your Values)." },
+		  desc = "Your damage per second, run total and healing per second above your player frame." },
 		{ type = "toggle", key = "party", name = "Party Values",
-		  desc = "The same three numbers on top of each party frame. To make room, the game's own Show Party Pets setting is switched on while this is on (the party frames stand a little further apart, and party pets show under them); your own setting comes back when it is off. With raid-style party frames: On Raid-Style Frames." },
+		  desc = "The same numbers above each party frame. Turns on the game's Show Party Pets to make room." },
 		{ type = "toggle", key = "raid", name = "On Raid-Style Frames",
-		  desc = "A small DPS or healing number on the right of each raid-style or raid frame, beside the health. In a fight, players MelloUI cannot tell apart stay empty until it ends. Point at a frame for all three numbers." },
+		  desc = "A damage or healing number on each raid-style frame. Point at a frame for all three." },
 		{ type = "toggle", key = "bar", name = "Race Bar",
-		  desc = "In a fight, one line for the group: the top player at its right end with their value, everyone else a class icon at their share of the top, you the bigger icon with the line filled up to you in your class colour. It fades in when the fight starts and out when it ends. The pointer on it lists everyone. Move it in Edit Layout." },
+		  desc = "In a fight, a race bar of your group's damage, with you highlighted. Point at it for everyone's numbers." },
 		{ type = "dropdown", key = "metric", name = "Race Bar Shows",
 		  values = { { value = "auto", label = "Auto" }, { value = "dps", label = "Damage" }, { value = "hps", label = "Healing" } },
-		  desc = "What the race bar races. Auto: healing while your group role is healer, else damage." },
+		  desc = "What the race bar compares. Auto: healing as a healer, damage otherwise." },
 		{ type = "slider", key = "pins", name = "Race Bar Pins", min = T.PINS_MIN, max = T.PINS_MAX, step = 1,
-		  desc = "The most players on the race bar: the best ones, and always you." },
+		  desc = "How many players the race bar shows. You are always on it." },
 		{ type = "slider", key = "barWidth", name = "Race Bar Width", min = 150, max = 600, step = 10,
-		  desc = "How wide the race bar is. Also in Edit Layout: right-click the race bar." },
+		  desc = "How wide the race bar is." },
 		{ type = "slider", key = "railHeight", name = "Race Bar Thickness", min = 2, max = 8, step = 1,
-		  desc = "How thick your share is on the race bar's line (its pins and labels keep their size). Also in Edit Layout: right-click the race bar." },
+		  desc = "How thick the race bar's line is." },
 		{ type = "toggle", key = "summary", name = "Fight Summary",
-		  desc = "After a fight, for a few seconds in the widget column (longer while you point at it): won or lost and its length, your damage, DPS and rank, the ring your share of the group. The pointer on it shows the top five; a click opens the fight in the Fight History." },
+		  desc = "After a fight, a short summary in the widget column: your damage, DPS and rank. Click it for the full fight." },
 		{ type = "toggle", key = "history", name = "Fight History",
-		  desc = "The Fight History window: every fight of this session, grouped by run, with the damage, healing and your spells of each. It opens from its button in the chat's button column and from the summary. It takes the place of the game's meter windows." },
+		  desc = "A window with every fight of this session: damage, healing and your spells. Opens from the chat's buttons." },
 		{ type = "slider", key = "historySize", name = "Fights Kept", min = T.HISTORY_MIN, max = T.HISTORY_MAX, step = 10,
-		  desc = "How many fights the history keeps, the oldest dropped first. Kept over a /reload; a new login starts it empty." },
+		  desc = "How many fights the history keeps. It starts empty at each login." },
 	},
 })
 Meter.M = M
@@ -1095,7 +1095,7 @@ local function MakeMine()
 	Lines.me = line
 	MineHome(line.frame)
 	line.entry = MelloUI:RegisterMover(line.frame, line.frame, { key = "metervalues", default = MineHome,
-		min = 0.5, max = 2, base = 1, label = TEXT.mineLabel, page = "BarsMeters", when = MineWanted })
+		min = 0.5, max = 2, base = 1, label = TEXT.mineLabel, page = "BarsMeters", when = MineWanted, category = "combat" })
 	if not MelloUI:RestorePosition("metervalues", line.frame) then
 		MineHome(line.frame)
 	end

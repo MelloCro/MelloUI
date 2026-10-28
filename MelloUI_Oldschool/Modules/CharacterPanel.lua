@@ -64,7 +64,7 @@ local M = MelloUI:RegisterModule("CharacterPanel", {
 	},
 	options = {
 		{ type = "dropdown", key = "windowBackground", name = "Window Background", values = WINDOW_BACKGROUNDS,
-		  desc = "What the character window shows behind everything: its own stone, or stone, cracked concrete, iron plate, leather or dark. Parchment is Oldschool > Parchment's Character Window: under the right pane, or over the whole window (on its own stone, whatever this shows). The equipment slots, the progress bars and the side tabs wear the borders of Oldschool > Borders (every window's)." },
+		  desc = "The character window's background." },
 	},
 })
 

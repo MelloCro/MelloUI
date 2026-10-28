@@ -94,7 +94,7 @@ local M   -- (the Kinds row's build reads it)
 M = MelloUI:RegisterModule("BagWindow", {
 	title = "Bags by Kind",
 	slash = "bags",   -- (0.21.3: /mello bags loot, /mello bags coins)
-	desc = "Your bags in one window of MelloUI's own, sorted by kind: what you picked up lately, gear, quest items, consumables, junk, trade goods and the rest, each under its own heading. The empty slots fold into one slot with their count.",
+	desc = "Your bags in one window, sorted by kind: new items, gear, quest items, consumables, junk and more.",
 	icon = "Interface\\Icons\\INV_Misc_Bag_08",
 	flavour = "A place for everything, and everything under its heading.",
 	-- (no group: its rows sit on the Windows page, the bag window's)
@@ -107,7 +107,7 @@ M = MelloUI:RegisterModule("BagWindow", {
 		-- a tick each -- the Recent / Gear / Quest / Consumables / Junk / Trade Goods Kind switches folded in)
 		{ type = "canvas", key = "kinds", name = "Kinds", height = KINDS_H,
 		  search = "kinds order categories priority hearthstone groups lines separator equipment crafting recent junk own custom new add rename subcategories split type subtype rule",
-		  desc = "Your bag window's kinds in the order they show, the top first: drag a row to move it. A line draws a line across the window between the kinds over and under it; a group puts the kinds under it, to the next line, under one heading you can fold. Untick a kind and its items go to their own type, or to Other. Add kind makes one of your own: it takes the items you drop on its + slot and the ones its rule matches (an item type, a word in the name, a quality), before the game's kinds. Double-click a name to rename it; a kind's cog opens its settings: its name, Split By Type (a heading for each item type, in its place) and an own kind's rule.",
+		  desc = "The kinds your bag window sorts items into, top first. Drag to reorder, untick to hide, Add kind to make your own; double-click a name to rename it, its cog opens its settings.",
 		  build = function(canvas, width)
 			M.BuildKindList(canvas, width)
 		  end },
@@ -115,39 +115,39 @@ M = MelloUI:RegisterModule("BagWindow", {
 		-- that item into a group") the + slots while an item is held; the placed items forgotten here
 		{ type = "button", name = "Items You Placed", text = "Forget",
 		  search = "place drop plus slot item kind assign",
-		  desc = "While you hold an item, every kind in your bag window shows a + slot: drop the item there and it always goes under that kind (drop it on its own kind's + to put it back). Forget puts every item you placed back under its own kind.",
+		  desc = "While you hold an item, drop it on a kind's + to always sort it there. Forget puts every placed item back.",
 		  onClick = function()
 			MelloUI:NotifySettingChanged("BagWindow", "placed", nil)
 		  end },
 		-- (0.21.1; the user, 2026-10-13: "modification to bank aswell" -- the kinds inside the game's bank window)
 		{ type = "toggle", key = "bank", name = "Bank by Kind",
 		  search = "bank kinds sorted categories banker",
-		  desc = "Your bank in the same kinds as your bags, inside the game's bank window: its items under their headings, the lines and groups of the Kinds list, the empty slots folded into one, a + slot in every kind while you hold an item. Deposit and take out as always (right-click, drag). Off: the game's own grid." },
+		  desc = "Your bank sorted by the same kinds as your bags. Off: the game's grid." },
 		{ type = "dropdown", key = "recentFor", name = "Recent Lasts", values = RECENT_FOR,
-		  desc = "How long an item stays under Recent: until you close your bags, only until you point at it (it moves to its own kind as the pointer leaves it), or for 5 minutes after you got it." },
+		  desc = "How long new items stay under Recent: until you close your bags, until you point at them, or 5 minutes." },
 		{ type = "slider", key = "columns", name = "Columns", min = 8, max = 16, step = 1,
-		  desc = "How many slots across the bag window is: more makes it wider and shorter." },
+		  desc = "How many slots wide the bag window is." },
 		{ type = "slider", key = "itemSize", name = "Item Size", min = 30, max = 46, step = 1,
-		  desc = "How big the item slots are (37 is the game's own size)." },
+		  desc = "The size of the item slots. 37 is the game's size." },
 		{ type = "toggle", key = "foldEmpty", name = "Fold Empty Slots",
-		  desc = "All your empty slots as one slot with their count (drop an item on it to put it in a free slot). Off: every empty slot shows." },
+		  desc = "All empty slots shown as one, with their count." },
 		{ type = "dropdown", key = "sortBy", name = "Sort Items By", values = SORT_BY,
-		  desc = "The order inside each kind: better quality first, by name, the ones you picked up last first, or the highest item level first." },
+		  desc = "How items are ordered inside each kind." },
 		-- (0.21.3; the user, 2026-10-13: "Yes to all" to the animation previews, and "more impactfull animations
 		-- depending on the rarity of the item")
 		{ type = "toggle", key = "lootFlight", name = "Loot Flight",
 		  search = "loot animation fly flight rarity quality legendary epic",
-		  desc = "An item you loot flies from where you picked it up into its slot in your bag window (with the bags closed, onto the bag button) and lands with a light across it. The rarer it is, the more it does: green leaves a streak, blue bursts into rays and lands in a ring, purple throws sparks and a shockwave, and a legendary rises in a pillar of light, flashes your bag window's border and says its name on the screen. Turning in a quest, its reward item flies the same way, and its money flies as coins into the bag window's money, which counts up as they land; coins you loot fly in the same way while the bag window is open. Only loot and quest rewards, never what you buy, craft or take from the mail. Not with Reduce Motion." },
+		  desc = "Looted items fly into your bag window; the rarer the item, the bigger the effect." },
 		-- (0.22.1; the user, 2026-10-14: "make a preview on 1, 2, 3, 4 aand 5", then "build all 5" -- previews round 2)
 		{ type = "toggle", key = "itemsGlide", name = "Items Glide",
 		  search = "animation glide slide move items slots reorder sort tab fade",
-		  desc = "When an item comes into your bag window or leaves it, the others glide to their new slots instead of jumping there; one that moves to the next row slides in at its start, and a new one fades in. Switching between the Backpack and the Reagent Bag fades the window's items over. Not while you hold an item (its + slots come and go at once), not with Reduce Motion." },
+		  desc = "Items glide to their new slots instead of jumping." },
 		{ type = "toggle", key = "moneyRoll", name = "Rolling Money",
 		  search = "animation money gold count roll counter",
-		  desc = "The bag window's money rolls to its new sum when it changes (selling, buying, a repair, a quest) instead of jumping there: warm while it goes up, red while it goes down. Not with Reduce Motion." },
+		  desc = "Your money counts up or down to its new amount." },
 		{ type = "toggle", key = "fullWarning", name = "Bags Full Warning",
 		  search = "bags full inventory space empty slots warning shake red",
-		  desc = "When something does not fit because your bags are full, the bag window's Empty slot (it shows 0 then) gives one short shake and a red flash; with the bags closed, the backpack button flashes red. Once each time, as the game's own \"Inventory is full.\" line comes. Not with Reduce Motion." },
+		  desc = "The bag window shakes and flashes red when your bags are full." },
 	},
 })
 

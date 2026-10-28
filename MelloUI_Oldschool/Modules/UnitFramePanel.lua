@@ -73,28 +73,26 @@ local M = MelloUI:RegisterModule("UnitFramePanel", {
 	title = "Unit Frames Kit",
 	desc = "The player, target, focus and pet frames dressed in the painted kit on the game's own layout.",
 	-- (include: the option below sits under this row on UI Modifications' HUD tab)
-	window = { label = "Unit frames", desc = "Player, target, focus, pet and party frames in the kit.", tab = "HUD", include = true },
+	window = { label = "Unit frames", desc = "The player, target, focus, pet and party frames in the painted art.", tab = "HUD", include = true },
 	enabledByDefault = true,
 	defaults = { marks = true, barBackground = "kit", barBackgroundAlpha = 100, backdrop = "none", backdropBackground = "stone" },
 	options = {
 		{ type = "toggle", key = "marks", name = "Elite and Rare Marks",
-		  desc = "The target's and focus's portrait ring and level circle in gold for an elite, silver for a rare or rare elite and red-bronze for a boss, with a small crest on the ring's top gem: a crown, a silver star, a gold star or a skull. Their target's ring too." },
+		  desc = "The target's and focus's ring and level in gold for elites, silver for rares and bronze for bosses, with a small crest." },
 		{ type = "dropdown", key = "barBackground", name = "Bar Background", values = {
 			{ value = "kit", label = "Painted Trough" },
 			{ value = "dark", label = "Dark" },
 			{ value = "texture", label = "Bar Texture, Dark" },
 			{ value = "none", label = "None" },
 		  },
-		  desc = "What lies behind the health and power bars, under the fill, the heals coming in and the bars' borders: the painted dark trough, a flat dark, the Bar Texture's finish in the dark, or nothing. Every unit frame: the player, target, focus, pet, target of target and party." },
+		  desc = "What shows behind the empty part of the unit frames' bars." },
 		{ type = "slider", key = "barBackgroundAlpha", name = "Bar Background Opacity", min = 0, max = 100, step = 5,
 		  format = function(v) return math.floor(v + 0.5) .. "%" end,
-		  desc = "How solid the bars' background is: lower lets the world show through the empty part of a bar." },
+		  desc = "How solid the bars' background is. Lower lets the world show through." },
 		{ type = "dropdown", key = "backdrop", name = "Frame Backdrop", values = BACKDROP_LOOKS,
-		  desc = "A backdrop round the player, target and focus frames: stone behind the portrait, the name and the bars, "
-			.. "framed by the red or iron gems of the action bars' backdrops or by one of the border styles of Look > "
-			.. "Borders (its inner corners mitred)." },
+		  desc = "A stone backdrop behind the player, target and focus frames, with a border of your choice." },
 		{ type = "dropdown", key = "backdropBackground", name = "Frame Backdrop Background", values = Kit.buttonLooks.backgrounds,
-		  desc = "What lies behind the player, target and focus frames inside their backdrop." },
+		  desc = "What shows inside the unit frames' backdrop." },
 		-- (Level Up and XP Gain: the Unit Frames module's since one-look D5)
 	},
 })

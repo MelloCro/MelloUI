@@ -35,21 +35,21 @@ local options = {
 	{ type = "dropdown", key = "who", name = "Mark", values = {
 		{ value = "group", label = "Party and raid members" },
 		{ value = "friends", label = "Every friendly player" },
-	}, desc = "Whose nameplate gets the class medallion above the name." },
+	}, desc = "Whose nameplate gets a class medallion." },
 	{ type = "slider", key = "size", name = "Marker Size", min = 16, max = 150, step = 2,
 	  format = function(v) return string.format("%d px", v) end,
-	  desc = "The medallion's size above the name." },
+	  desc = "The medallion's size." },
 	{ type = "slider", key = "offset", name = "Height Above The Name", min = 0, max = 20, step = 1,
 	  format = function(v) return string.format("%d px", v) end,
-	  desc = "The gap between the name and the medallion." },
+	  desc = "The space between the name and the medallion." },
 	{ type = "toggle", key = "roleRing", name = "Role Ring",
-	  desc = "A coloured ring around the medallion for the member's assigned role: green healer, blue tank, red damage. Only when the group has roles set (the group finder sets them; a party can set them by hand)." },
+	  desc = "A ring in the member's role colour around the medallion: green healer, blue tank, red damage." },
 	{ type = "subheader", name = "Open world only: inside instances the game keeps friendly nameplates to itself" },
 }
 
 local M = MelloUI:RegisterModule("PartyMarkers", {
 	title = "Party Markers",
-	desc = "A class medallion above every party member's friendly nameplate, with a ring in their role's colour. In the open world; inside instances the game keeps friendly nameplates to itself.",
+	desc = "A class medallion over your party members' nameplates, ringed in their role's colour. Open world only.",
 	icon = "Interface\\Icons\\INV_Misc_GroupNeedMore",
 	flavour = "A class medallion over every party member's head, ringed in their role's colour: the healer, found at a glance.",
 	group = "Frames and bars", navOrder = 4,

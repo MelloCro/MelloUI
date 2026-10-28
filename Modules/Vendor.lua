@@ -28,7 +28,7 @@ local M = MelloUI:RegisterModule("Vendor", {
 	desc = "Automatically repair your gear and sell junk items when visiting a merchant.",
 	icon = "Interface\\Icons\\INV_Misc_Coin_02",
 	flavour = "Sell the grey, mend the steel. Every merchant visit handled before the window opens.",
-	tweak = { label = "Vendor Automation", desc = "Repair your gear and sell junk automatically at a merchant.", order = 13 },
+	tweak = { label = "Vendor Automation", desc = "Repairs your gear and sells junk at merchants.", order = 13 },
 	defaults = {
 		autoRepair = true,
 		guildRepair = false,
@@ -38,15 +38,15 @@ local M = MelloUI:RegisterModule("Vendor", {
 	options = {
 		{ type = "header", name = "Repair" },
 		{ type = "toggle", key = "autoRepair", name = "Auto Repair",
-		  desc = "Repair all equipped and carried items when a merchant that can repair is opened." },
+		  desc = "Repairs everything at a merchant who can repair." },
 		{ type = "toggle", key = "guildRepair", parent = "autoRepair", name = "Use Guild Funds",
-		  desc = "Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost." },
+		  desc = "Pays repairs from the guild bank when allowed." },
 		{ type = "header", name = "Selling" },
 		{ type = "toggle", key = "autoSell", name = "Auto Sell Junk",
-		  desc = "Sell all grey quality items in your bags when a merchant is opened." },
+		  desc = "Sells grey items at a merchant." },
 		{ type = "header", name = "Chat" },
 		{ type = "toggle", key = "report", name = "Report In Chat",
-		  desc = "Print the repair cost, the gold gained from selling junk and what Restock bought for you." },
+		  desc = "Writes the repair cost and the gold from junk in the chat." },
 	},
 })
 

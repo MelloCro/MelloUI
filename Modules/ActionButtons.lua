@@ -66,19 +66,14 @@ local M = MelloUI:RegisterModule("ActionButtons", {
 	},
 	options = {
 		{ type = "toggle", key = "frames", name = "MelloUI Frames",
-		  desc = "Every action button in MelloUI's frame: a dark iron rim with a gold line, brighter under the pointer, "
-			.. "bright gold while its aura or stance is on, red out of range, a dark slot when the button is empty. "
-			.. "Off: the game's own frames. The painted skin's bars keep their own (Oldschool)." },
+		  desc = "Action buttons in MelloUI's frame: gold when active, red out of range. Off: the game's own frames." },
 		-- (2026-10-20, the user: the golden frame animation "to notify when something comes off cooldown")
 		{ type = "toggle", key = "readyFlash", name = "Cooldown Ready Flash",
-		  desc = "When an action's cooldown runs out, a golden light runs once round its button, so you see it is "
-			.. "ready again. Never for the global cooldown." },
+		  desc = "A gold light runs around a button when its cooldown ends." },
 		{ type = "toggle", key = "pressLight", name = "Light While Pressed",
-		  desc = "While you hold an action button's key, or press it with the mouse, the whole button lights up in "
-			.. "the colour scheme's highlight colour, so you can see which button you are pressing." },
+		  desc = "A button lights up while you press it." },
 		{ type = "toggle", key = "rangeColours", name = "Range And Resource Colours",
-		  desc = "An action's icon turns red while your target is out of its range, deep blue while you lack the mana "
-			.. "(or other resource) for it, and grey while it cannot be used. Its key already turns red out of range." },
+		  desc = "Icons turn red out of range, blue without enough mana, and grey when unusable." },
 	},
 })
 

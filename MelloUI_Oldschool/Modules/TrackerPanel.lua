@@ -36,7 +36,7 @@ local repOf = MelloUI.Kept.repOf
 local M = MelloUI:RegisterModule("TrackerPanel", {
 	title = "Objective Tracker Kit",
 	desc = "The objective tracker dressed in the painted kit on the game's own layout.",
-	window = { label = "Objective tracker", desc = "The tracker's headers and backdrop in the kit.", tab = "HUD" },
+	window = { label = "Objective tracker", desc = "The game's objective tracker's headers and background in the painted art.", tab = "HUD" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
