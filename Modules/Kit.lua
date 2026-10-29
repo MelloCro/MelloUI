@@ -1146,44 +1146,57 @@ end
 -- (a lit tab, the target's gold bracket, a hover) go through the same
 -- multiplier: a SetVertexColor post-hook remembers the tint as the BASE and
 -- re-applies it shaded. Only the brightness is touched, never the hue: the
--- red gems stay red.
+-- red gems stay red. (1.2.4, lk-11) Dark Mode's register for every picture
+-- MelloUI draws as a frame's art, painted or not (a Modern frame picture, an
+-- action button's frame, the Default skin's borders): Dark Mode drives the
+-- shade (Kit:SetShade, its one Brightness), and a texture whose Dark Mode area
+-- is switched off stays bright (Kit.Lit(tex), Modules/DarkMode.lua);
+-- Kit:Reshade() lays every one again after an area's switch.
 Kit.shade = 1
 local SHADED = setmetatable({}, { __mode = "k" })
 
 local function ShadeTexture(tex)
 	local base = Kit.tintBaseOf[tex]
-	local r, g, b = 1, 1, 1
+	local r, g, b, a = 1, 1, 1, nil
 	if base then
-		r, g, b = base[1], base[2], base[3]
+		r, g, b, a = base[1], base[2], base[3], base[4]
 	end
 	local k = Kit.shade
+	if k < 1 and Kit.Lit and Kit.Lit(tex) then
+		k = 1
+	end
 	Kit.shadingNow[tex] = true
-	tex:SetVertexColor(r * k, g * k, b * k)
+	-- (lk-11: the tint's own alpha kept -- a Group Frames background at its Background Alpha)
+	if a then
+		tex:SetVertexColor(r * k, g * k, b * k, a)
+	else
+		tex:SetVertexColor(r * k, g * k, b * k)
+	end
 	Kit.shadingNow[tex] = nil
 end
 
 -- The tint a module gives a kit texture, kept as its base and shaded. One
 -- handler for every kit texture: all it keeps is beside it (Kit.tintBaseOf,
 -- Kit.shadingNow), never on it
-local OnKitVertexColour = Shared("SetVertexColor on every kit texture", function(t, r, g, b)
+local OnKitVertexColour = Shared("SetVertexColor on every kit texture", function(t, r, g, b, a)
 	if Kit.shadingNow[t] then
 		return
 	end
 	-- (0.19.0) a colour that is secret (a debuff's dispel colour in a fight,
 	-- Kit:TintSkin): shown as it is, neither kept as the base nor shaded --
 	-- no arithmetic on a secret
-	if Secret(r) or Secret(g) or Secret(b) then
+	if Secret(r) or Secret(g) or Secret(b) or Secret(a) then
 		return
 	end
 	-- kept in the one table (a hover tints a whole skin's pieces: no new
 	-- table per piece per hover)
 	local base = Kit.tintBaseOf[t]
 	if base then
-		base[1], base[2], base[3] = r or 1, g or 1, b or 1
+		base[1], base[2], base[3], base[4] = r or 1, g or 1, b or 1, a
 	else
-		Kit.tintBaseOf[t] = { r or 1, g or 1, b or 1 }
+		Kit.tintBaseOf[t] = { r or 1, g or 1, b or 1, a }
 	end
-	if Kit.shade < 1 then
+	if Kit.shade < 1 and not (Kit.Lit and Kit.Lit(t)) then
 		ShadeTexture(t)
 	end
 end)
@@ -1193,6 +1206,15 @@ function Kit:RegisterTexture(tex)
 		return
 	end
 	SHADED[tex] = true
+	-- (lk-11) a tint it wears already kept as its base: a frame picture its module coloured before it was registered,
+	-- a game border's own grey (none kept for plain white: most pieces)
+	if not Kit.tintBaseOf[tex] and tex.GetVertexColor then
+		local ok, r, g, b, a = pcall(tex.GetVertexColor, tex)
+		if ok and type(r) == "number" and not (Secret(r) or Secret(g) or Secret(b) or Secret(a))
+			and (r ~= 1 or g ~= 1 or b ~= 1 or (a or 1) ~= 1) then
+			Kit.tintBaseOf[tex] = { r, g, b, a }
+		end
+	end
 	hooksecurefunc(tex, "SetVertexColor", OnKitVertexColour)
 	if self.shade < 1 then
 		ShadeTexture(tex)
@@ -1210,6 +1232,10 @@ function Kit:SetShade(shade)
 		return
 	end
 	self.shade = shade
+	self:Reshade()
+end
+
+function Kit:Reshade()
 	for tex in pairs(SHADED) do
 		ShadeTexture(tex)
 	end

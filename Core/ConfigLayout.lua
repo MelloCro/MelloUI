@@ -409,7 +409,6 @@ L.words = {
 -- sets either)
 L.unplaced = {
 	["UIModifications.TooltipPanel"] = "Tooltip > Background",
-	["DarkMode.chat"] = "Chat > Chat Frame > Background",
 	-- (one look stage G, the Bars designer: Which Bar is the Action Bars stage's strips)
 	["Tweaks.barLayoutBar"] = "Bars > Action Bars: the strips pick the bar",
 }
@@ -550,20 +549,24 @@ function L.Define(R, Link)
 	R("Look", "Dark Mode", "General", "UIModifications.qol_DarkMode")
 	R("Look", "Dark Mode", "Look", "DarkMode.shade")
 	R("Look", "Dark Mode", "Look", "DarkMode.desaturate")
-	-- (1.2.4, the configurator audit) where Dark Mode dims: every area here (their elements' pages link to them),
-	-- each greyed where the painted skin covers it (Uncovered: its own art then)
+	-- (1.2.4, the configurator audit) where Dark Mode dims: every area here, and only here (lk-11; the user,
+	-- 2026-10-28: "Keep the Dark Mode settings in the Dark Mode Tab, dont spread settings around anymore"). Each row
+	-- reaches MelloUI's own frames in its area too, the painted skin's pieces included (Modules/DarkMode.lua); the end
+	-- caps are the game's art alone (none while the painted bars stand there), the buffs the game's own icons
 	local DARK = {
-		{ "DarkMode.unitframes", "Unit Frames", Uncovered("UnitFramePanel", "unit frames") },
+		{ "DarkMode.unitframes", "Unit Frames" },
 		{ "DarkMode.personal", "Personal Display" },
-		{ "DarkMode.auras", "Buffs & Debuffs", { any = GAME_AURAS.any, line = "Only on the game's own icons (Your Buffs And Debuffs off)" } },
-		{ "DarkMode.nameplates", "Nameplates", Uncovered("NameplatePanel", "nameplates") },
-		{ "DarkMode.actionbars", "Action Bars", Uncovered("ActionBarPanel", "action bars") },
+		{ "DarkMode.castbar", "Cast Bars" },
+		{ "DarkMode.actionbars", "Action Bars" },
 		{ "DarkMode.gryphons", "Action Bar End Caps", Uncovered("ActionBarPanel", "action bars") },
-		{ "DarkMode.micromenu", "Micro Menu & Bag Bar", Uncovered("ActionBarPanel", "action bars") },
-		{ "DarkMode.castbar", "Cast Bars", Uncovered("CastBarPanel", "cast bars") },
-		{ "DarkMode.statusbars", "Experience & Reputation Bars", Uncovered("ActionBarPanel", "action bars") },
+		{ "DarkMode.micromenu", "Micro Menu & Bag Bar" },
+		{ "DarkMode.statusbars", "Experience & Reputation Bars" },
+		{ "DarkMode.auras", "Buffs & Debuffs", { any = GAME_AURAS.any, line = "Only on the game's own icons (Your Buffs And Debuffs off)" } },
 		{ "DarkMode.cooldowns", "Cooldown Manager" },
-		{ "DarkMode.minimap", "Minimap", Uncovered("MinimapKit", "minimap") },
+		{ "DarkMode.nameplates", "Nameplates" },
+		{ "DarkMode.minimap", "Minimap" },
+		{ "DarkMode.chat", "Chat Frame" },
+		{ "DarkMode.windows", "Windows" },
 	}
 	for _, d in ipairs(DARK) do
 		R("Look", "Dark Mode", "General", d[1], { name = d[2], when = d[3] })
@@ -679,12 +682,8 @@ function L.Define(R, Link)
 	R("Oldschool", "Painted Skins", "Look", "UIModifications.UnitFramePanel", { name = "Unit Frames" })
 	R("Oldschool", "Painted Skins", "Look", "UIModifications.RaidFramePanel", { name = "Raid Frames" })
 	R("Oldschool", "Painted Skins", "Look", "UIModifications.CastBarPanel", { name = "Cast Bars" })
-	-- (1.2.4, the configurator audit) Dark Mode's areas: their one place is Look > Dark Mode (DARK, below), a Link row
-	-- on each element's page
-	for _, tab in ipairs(GAME4) do
-		Link("UnitGroupFrames", tab, "Look", "DarkMode.unitframes", "Dark Mode", { when = Uncovered("UnitFramePanel", "unit frames") })
-	end
-	Link("UnitGroupFrames", "personal:element", "Look", "DarkMode.personal", "Dark Mode")
+	-- (1.2.4, the configurator audit) Dark Mode's areas: their one place is Look > Dark Mode (DARK, below), no link
+	-- elsewhere (lk-11, the user: "Keep the Dark Mode settings in the Dark Mode Tab")
 	-- (0.19.4, the options audit: the unit frame skin fades or replaces the
 	-- same art and puts the writes back)
 	local UF = Uncovered("UnitFramePanel", "unit frames")
@@ -762,8 +761,6 @@ function L.Define(R, Link)
 	-- (0.19.4: Dark Mode reaches the game's own icons of yours, never the
 	-- target's; with MelloUI's rows in their place it has nothing to darken.
 	-- Keep Dispel Colours also serves the Cooldown Manager's icons)
-	Link("UnitGroupFrames", "buffs:element", "Look", "DarkMode.auras", "Dark Mode",
-		{ when = { any = GAME_AURAS.any, line = "Only on the game's own icons (Your Buffs And Debuffs off)" } })
 	-- (0.19.9: one set of rows for your buffs -- MelloUI's own rows while
 	-- they show, else the game's buff and debuff bars in the Edit Mode
 	-- layout: Tweaks' Buff Layout; the size in pixels on both picks)
@@ -787,7 +784,6 @@ function L.Define(R, Link)
 	-- Nameplates (one look stage G: the designer; np-audit.md's table)
 	-- Enemies: Nameplate Tweaks (the Nameplates module's switch) first, Dark Mode; each part's own rows
 	R("Nameplates", "enemies:element", "General", "UIModifications.qol_Nameplates")
-	Link("Nameplates", "enemies:element", "Look", "DarkMode.nameplates", "Dark Mode", { when = Uncovered("NameplatePanel", "nameplates") })
 	-- (0.25.0, the user's "yes build it" to the Nameplate Impact page: the target's plate answers the fight)
 	R("Nameplates", "enemies:element", "General", "PlateImpact.!enabled", { name = "Impact Effects" })
 	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.flash")
@@ -835,8 +831,6 @@ function L.Define(R, Link)
 	-- Bars (one look stage G, bars-audit.md, the user's yes): each element's rows, its parts' rows
 	-- Action Bars: every bar's (Dark Mode, the backdrops, the layout of the bar picked on the stage's strips --
 	-- Which Bar), the parts shared by every bar
-	Link("ActionBars", "actionbars:element", "Look", "DarkMode.actionbars", "Dark Mode",
-		{ when = Uncovered("ActionBarPanel", "action bars") })
 	-- (0.18.5) each bar's backdrop (onelook stage D4: the core's, Modules/ActionBars.lua, whatever the look)
 	for _, key in ipairs({ "Bar1", "Bar2", "Bar3", "Bar4", "Bar5", "Bar6", "Bar7", "Bar8", "Stance", "Pet", "Possess", "Totem" }) do
 		R("ActionBars", "actionbars:element", "Look", "ActionBars.backdrop" .. key)
@@ -857,12 +851,8 @@ function L.Define(R, Link)
 	-- (the Bars audit's point 1: On Action Bars is Cooldown Timers' switch here)
 	R("ActionBars", "actionbars:cooldown", "General", "CooldownText.actionBars", { name = "Cooldown Timers" })
 	R("ActionBars", "actionbars:caps", "General", "ActionBars.hideBarArt")
-	Link("ActionBars", "actionbars:caps", "Look", "DarkMode.gryphons", "Dark Mode",
-		{ when = Uncovered("ActionBarPanel", "action bars") })
 	R("ActionBars", "actionbars:arrows", "General", "ActionBars.hidePageArrows")
 	-- Menu & Bags: each bar a part (Hide This Bar, its backdrop; the bag bar's fold), Dark Mode for both
-	Link("ActionBars", "menubags:element", "Look", "DarkMode.micromenu", "Dark Mode",
-		{ when = Uncovered("ActionBarPanel", "action bars") })
 	R("ActionBars", "menubags:micro", "General", "Tweaks.hideMicroMenu", { name = "Hide This Bar" })
 	R("ActionBars", "menubags:micro", "Look", "ActionBars.backdropMicro", { name = "Backdrop" })
 	R("ActionBars", "menubags:bags", "General", "Tweaks.hideBagBar", { name = "Hide This Bar" })
@@ -872,7 +862,6 @@ function L.Define(R, Link)
 	-- Cast Bar: its look (its parts the game's: nothing to set yet)
 	R("Look", "Textures", "Look", "BarTextures.castbarsTexture", { name = "Cast Bars", card = "Bars" })
 	Link("ActionBars", "castbar:element", "Look", "BarTextures.castbarsTexture", "Bar Texture")
-	Link("ActionBars", "castbar:element", "Look", "DarkMode.castbar", "Dark Mode", { when = Uncovered("CastBarPanel", "cast bars") })
 	-- (0.17.1) Swing Timers: its switch (the module's, off by default), each bar's, the seconds, the size, when
 	R("ActionBars", "swing:element", "General", "SwingTimers.!enabled", { name = "Swing Timers" })
 	R("ActionBars", "swing:shot", "General", "SwingTimers.shot")
@@ -883,7 +872,6 @@ function L.Define(R, Link)
 	R("ActionBars", "xprep:element", "Look", "ActionBars.statusFrame")
 	R("Look", "Textures", "Look", "BarTextures.statusbarsTexture", { name = "Experience & Reputation", card = "Bars" })
 	Link("ActionBars", "xprep:element", "Look", "BarTextures.statusbarsTexture", "Bar Texture")
-	Link("ActionBars", "xprep:element", "Look", "DarkMode.statusbars", "Dark Mode", { when = Uncovered("ActionBarPanel", "action bars") })
 	-- (0.22.1, the animations: the stretch of the XP bar just gained lit)
 	R("ActionBars", "xprep:xp", "Look", "Tweaks.xpGain")
 	R("ActionBars", "xprep:xp", "Look", "Tweaks.levelUp")
@@ -893,7 +881,6 @@ function L.Define(R, Link)
 	-- Cooldowns (0.19.8, Cooldown Tweaks: Modules/CooldownTweaks.lua -- the addon study's item 7)
 	R("Look", "Textures", "Look", "BarTextures.cooldownsTexture", { name = "Cooldown Bars", card = "Bars" })
 	Link("ActionBars", "cooldowns:element", "Look", "BarTextures.cooldownsTexture", "Bar Texture")
-	Link("ActionBars", "cooldowns:element", "Look", "DarkMode.cooldowns", "Dark Mode")
 	R("ActionBars", "cooldowns:element", "Layout", "CooldownTweaks.centreRows")
 	R("ActionBars", "cooldowns:icon", "Look", "CooldownTweaks.pressLight")
 	R("ActionBars", "cooldowns:keybind", "General", "CooldownTweaks.keybinds")
@@ -921,7 +908,6 @@ function L.Define(R, Link)
 	local SQUARE = { any = { { key = "MinimapPanel.shape", value = "square" }, { key = "UIModifications.MinimapKit", value = false },
 		{ key = "UIModifications.reskin", value = false } }, line = "Only for the square map (Oldschool's painted Minimap is set to Round)" }
 	R("Minimap", "minimap:coords", "General", "Tweaks.hideMinimapCoords")
-	Link("Minimap", "minimap:element", "Look", "DarkMode.minimap", "Dark Mode", { when = Uncovered("MinimapKit", "minimap") })
 	R("Minimap", "minimap:element", "Layout", "MinimapPanel.width")
 	R("Minimap", "minimap:element", "Layout", "MinimapPanel.height", { when = SQUARE })
 	-- (the frame round the square map: only the minimap wears it -- a link on Oldschool > Borders)

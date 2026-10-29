@@ -305,7 +305,7 @@ Lang:Add("esES", {
 	["Turns the gold and bronze art grey before dimming it."] = "Vuelve gris el arte dorado y bronce antes de oscurecerlo.", -- draft
 	["Components"] = "Componentes", -- draft
 	["Unit Frames"] = "Marcos de unidad", -- draft
-	["Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target."] = "Modo oscuro en los marcos de unidad: jugador, objetivo, foco, mascota, grupo, jefe y objetivo del objetivo.", -- draft
+	["Dark Mode on the unit frames: player, target, focus, pet, boss, target of target, and the party and raid frames."] = "Modo oscuro en los marcos de unidad: jugador, objetivo, foco, mascota, jefe, objetivo del objetivo y los marcos de grupo y de banda.", -- draft
 	["Cast Bars"] = "Barras de lanzamiento", -- draft
 	["Dark Mode on the cast bars."] = "Modo oscuro en las barras de lanzamiento.", -- draft
 	["Action Bars"] = "Barras de acción", -- draft
@@ -324,6 +324,8 @@ Lang:Add("esES", {
 	["Dark Mode on the minimap's ring, header and buttons."] = "Modo oscuro en el anillo, el encabezado y los botones del minimapa.", -- draft
 	["Chat Frame"] = "Marco de chat", -- draft
 	["Chat tabs, the chat input box and the chat buttons. Window background colours stay as configured in the chat settings."] = "Las pestañas del chat, el cuadro de texto y los botones del chat. Los colores de fondo de las ventanas se quedan como estén en los ajustes del chat.", -- draft
+	["Windows"] = "Ventanas", -- draft
+	["Dark Mode on MelloUI's windows and panels: the bags, the map, the Quest Tracker, the configurator and the rest."] = "Modo oscuro en las ventanas y paneles de MelloUI: las bolsas, el mapa, el rastreador de misiones, el configurador y el resto.", -- draft
 	["Buffs & Debuffs"] = "Beneficios y perjuicios", -- draft
 	["Dark Mode on the game's buff and debuff icons."] = "Modo oscuro en los iconos de beneficios y perjuicios del juego.", -- draft
 	["Keep Dispel Colours"] = "Mantener colores de disipación", -- draft
@@ -825,7 +827,6 @@ Lang:Add("esES", {
 	["Sounds"] = "Sonidos", -- draft
 	["Clicks"] = "Clics", -- draft
 	["Clicks on buttons, checkboxes and tabs."] = "Clics en botones, casillas y pestañas.", -- draft
-	["Windows"] = "Ventanas", -- draft
 	["Page turns and latches when windows open and close."] = "Páginas que pasan y cerrojos al abrir y cerrar ventanas.", -- draft
 	["Inventory"] = "Inventario", -- draft
 	["Picking up, moving and looting items. Needed for the Equipment and Vendor sounds."] = "Recoger, mover y saquear objetos. Necesario para los sonidos de Equipo y Vendedor.", -- draft
@@ -2080,12 +2081,8 @@ Lang:Add("esES", {
 	["Chat Border Opacity"] = "Opacidad del borde del chat", -- draft
 	["Timer Text Size"] = "Tamaño del texto del temporizador", -- draft
 	["Only with Cooldown Timers on"] = "Solo con Temporizadores de reutilización activo", -- draft
-	["Only without the painted unit frames"] = "Solo sin los marcos de unidad pintados", -- draft
-	["Only on the game's own icons (Your Buffs And Debuffs off)"] = "Solo en los iconos del juego (Tus beneficios y perjuicios desactivado)", -- draft
-	["Only without the painted nameplates"] = "Solo sin las placas de nombre pintadas", -- draft
 	["Only without the painted action bars"] = "Solo sin las barras de acción pintadas", -- draft
-	["Only without the painted cast bars"] = "Solo sin las barras de lanzamiento pintadas", -- draft
-	["Only without the painted minimap"] = "Solo sin el minimapa pintado", -- draft
+	["Only on the game's own icons (Your Buffs And Debuffs off)"] = "Solo en los iconos del juego (Tus beneficios y perjuicios desactivado)", -- draft
 	["Only on the game's own icons (Your Buffs And Debuffs off) or the Cooldown Manager's"] = "Solo en los iconos del juego (Tus beneficios y perjuicios desactivado) o los del gestor de tiempos de reutilización", -- draft
 	["Every Bar"] = "Cada barra", -- draft
 	["Only with My Colour"] = "Solo con Mi color", -- draft
@@ -2096,6 +2093,7 @@ Lang:Add("esES", {
 	["Not with the whole window on parchment"] = "No con toda la ventana sobre pergamino", -- draft
 	["Item Slot Background"] = "Fondo de casillas de objeto", -- draft
 	["Party portraits"] = "Retratos del grupo", -- draft
+	["Only without the painted unit frames"] = "Solo sin los marcos de unidad pintados", -- draft
 	["Only with Party Frames (Portraits), not the painted unit frames"] = "Solo con Marcos de grupo (retratos), no con los marcos de unidad pintados", -- draft
 	["Only with a Frame Backdrop"] = "Solo con un Fondo del marco", -- draft
 	["Names Font"] = "Fuente de nombres", -- draft
@@ -2206,7 +2204,7 @@ Lang:Add("esES", {
 	["The configurator: one painted window per skin that moves a little while open; plain one-row tabs, the designers' frames too; Quality of Life holds Automation, Screen Text, Reminders."] = "El configurador: una ventana pintada por apariencia que se mueve un poco al estar abierta; pestañas sencillas en una fila, también los marcos de los diseñadores; Comodidad reúne Automatización, Texto en pantalla, Recordatorios.", -- draft
 	["Options two to a line, none greyed out (a switch's settings behind its cog); Look holds every font, texture and border; profiles keep every setting exactly."] = "Opciones de dos en dos por línea, ninguna en gris (los ajustes de un interruptor tras su engranaje); Aspecto reúne cada fuente, textura y borde; los perfiles conservan cada ajuste exacto.", -- draft
 	["Edit Layout: a top dock; every part of Edit Mode, hidden ones too, to show, hide, lock or move; the game's settings and switches in each box (bars: On Mouseover); one gold highlight."] = "Editar diseño: una barra arriba; cada parte del modo Edición, también las ocultas, para mostrar, ocultar, bloquear o mover; los ajustes e interruptores del juego en cada caja (barras: Al pasar el ratón); un resaltado dorado.", -- draft
-	["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS too); Dark Mode: one Brightness for all, icons and text untouched."] = "Opciones: descripciones más cortas y claras; Desvanecer lista todo lo que se desvanece (Marco de foco, también FPS); Modo oscuro: un solo Brillo para todo, iconos y texto intactos.", -- draft
+	["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS); Dark Mode: one Brightness for all of MelloUI, all switches on its tab, new: Windows."] = "Opciones: descripciones más cortas y claras; Desvanecer lista todo lo que se desvanece (Marco de foco, FPS); Modo oscuro: un solo Brillo para todo MelloUI, todos sus interruptores en su pestaña, nuevo: Ventanas.", -- draft
 	["Route: the service buttons (Repair, Innkeeper, Flight Master ...) route to the nearest one at once again."] = "Route: los botones de servicios (Reparación, Tabernero, Maestro de vuelo...) vuelven a guiar al más cercano al instante.", -- draft
 	["Route: routes to the other continent are found faster and show Loading navigation... with its bar while they are."] = "Route: las rutas al otro continente se encuentran más rápido y muestran Cargando navegación... con su barra mientras tanto.", -- draft
 	["Route: a route to a place the roads don't reach starts at once; one such spot no longer blocks routes to the other continent."] = "Route: una ruta a un lugar al que no llegan los caminos empieza al instante; un punto así ya no bloquea rutas al otro continente.", -- draft
@@ -2762,6 +2760,7 @@ Lang:Add("esES", {
 -- stale: ["Copy from a spec"] = "Copiar de una especialización", -- draft
 -- stale: ["Cut the speech off when you change target."] = "Corta la voz al cambiar de objetivo.", -- draft
 -- stale: ["Cut the speech off when you close the dialog. Off by default so the NPC keeps talking while you walk away."] = "Corta la voz al cerrar el diálogo. Desactivado por defecto para que el PNJ siga hablando mientras te alejas.", -- draft
+-- stale: ["Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target."] = "Modo oscuro en los marcos de unidad: jugador, objetivo, foco, mascota, grupo, jefe y objetivo del objetivo.", -- draft
 -- stale: ["Dark mode"] = "Modo oscuro", -- draft
 -- stale: ["Darken the borders of your buff and debuff icons, with a thin dark edge round each icon (0.16.0: the Icon Border switch is part of this). The game's own icons: while Buffs & Debuffs shows MelloUI's rows in their place, there is nothing here to darken (those rows take the Aura Border)."] = "Oscurece los bordes de tus iconos de beneficios y perjuicios, con un fino borde oscuro alrededor de cada icono (0.16.0: el interruptor Borde de icono forma parte de esto). Los iconos del juego: mientras Beneficios y perjuicios muestra las filas de MelloUI en su lugar, aquí no hay nada que oscurecer (esas filas usan el Borde de auras).", -- draft
 -- stale: ["Darkens the Blizzard artwork of unit frames, cast bars, action bars, nameplates, cooldown manager, auras and menu bars."] = "Oscurece el arte de Blizzard de los marcos de unidad, barras de lanzamiento, barras de acción, placas de nombre, gestor de tiempos de reutilización, auras y barras de menú.", -- draft
@@ -2988,11 +2987,15 @@ Lang:Add("esES", {
 -- stale: ["One look: its own look, Gilded Slate colours, the Fredoka font and a new logo, reskin or not; the installer sets up the new layout. The painted reskin is MelloUI Oldschool."] = "Un aspecto: su propio aspecto, los colores Gilded Slate, la fuente Fredoka y un logo nuevo, con o sin aspecto pintado; el instalador configura el nuevo diseño. El aspecto pintado es MelloUI Oldschool.", -- draft
 -- stale: ["One seamless map of the whole world: zoom from Azeroth down to a zone with the mouse wheel and drag to look around."] = "Un mapa continuo del mundo entero: haz zoom desde Azeroth hasta una zona con la rueda del ratón y arrastra para mirar alrededor.", -- draft
 -- stale: ["One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Move it in Edit Layout."] = "Una línea corta en el tercio superior de la pantalla cuando MelloUI tiene novedades para ti: una ruta fijada o terminada, un servicio recordado, las misiones de una mazmorra listadas. Se desvanece tras unos segundos. Muévela en Editar diseño.", -- draft
+-- stale: ["Only without the painted cast bars"] = "Solo sin las barras de lanzamiento pintadas", -- draft
+-- stale: ["Only without the painted minimap"] = "Solo sin el minimapa pintado", -- draft
+-- stale: ["Only without the painted nameplates"] = "Solo sin las placas de nombre pintadas", -- draft
 -- stale: ["Opacity of the Dark background."] = "La opacidad del fondo Oscuro.", -- draft
 -- stale: ["Open MelloUI"] = "Abrir MelloUI", -- draft
 -- stale: ["Open MelloUI's map: the wheel zooms toward the cursor, a drag looks around, a click glides into the zone under the cursor and a right-click goes out again. Your map key (M) opens it, your quest log key (L) opens it with your quests beside it; /mellomap opens it too."] = "Abre el mapa de MelloUI: la rueda hace zoom hacia el cursor, arrastrar mira alrededor, un clic se desliza a la zona bajo el cursor y un clic derecho vuelve a salir. Tu tecla del mapa (M) lo abre, tu tecla del registro de misiones (L) lo abre con tus misiones al lado; /mellomap también lo abre.", -- draft
 -- stale: ["Options two to a line, none greyed out (a switch's own settings behind its cog); Look holds every font, bar texture, background and border."] = "Opciones de dos en dos por línea, ninguna en gris (los ajustes de un interruptor tras su engranaje); Aspecto contiene cada fuente, textura de barra, fondo y borde.", -- draft
 -- stale: ["Options, macros, Edit Mode, AddOn list"] = "Opciones, macros, Modo edición, lista de addons", -- draft
+-- stale: ["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS too); Dark Mode: one Brightness for all, icons and text untouched."] = "Opciones: descripciones más cortas y claras; Desvanecer lista todo lo que se desvanece (Marco de foco, también FPS); Modo oscuro: un solo Brillo para todo, iconos y texto intactos.", -- draft
 -- stale: ["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS too); Dark Mode: one Brightness for the whole UI, icons and text untouched."] = "Opciones: descripciones más cortas y claras; el Desvanecedor lista todo lo que se desvanece (marco de foco, FPS también); modo oscuro: un solo brillo para toda la interfaz, iconos y texto intactos.", -- draft
 -- stale: ["Out of range, too far away, too close."] = "Fuera de alcance, demasiado lejos, demasiado cerca.", -- draft
 -- stale: ["Outbid, sold, won and expired at the auction house, in one list. Click it for the way to the nearest mailbox."] = "Pujas superadas, ventas, victorias y caducadas en la casa de subastas, en una lista. Púlsalo para ver el camino al buzón más cercano.", -- draft

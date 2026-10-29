@@ -1320,11 +1320,20 @@ function Status.On()
 	return not (type(Kit) == "table" and type(Kit.IsOn) == "function" and Kit:IsOn("statusbars"))
 end
 
+-- (1.2.4, lk-11) a piece of the bars' frame art under Dark Mode: the kit's shade, at the Experience & Reputation Bars
+-- row's brightness (the area of the frame it hangs on, Modules/DarkMode.lua); the fills never
+function Status.Shaded(t)
+	if type(Kit) == "table" and Kit.RegisterTexture then
+		Kit:RegisterTexture(t)
+	end
+	return t
+end
+
 -- three textures on `parent` for a piece's three slices
 function Status.Slices(parent, layer, sub)
 	local s = {}
 	for i = 1, 3 do
-		s[i] = parent:CreateTexture(nil, layer, nil, sub)
+		s[i] = Status.Shaded(parent:CreateTexture(nil, layer, nil, sub))
 	end
 	return s
 end
@@ -1450,7 +1459,7 @@ function Status.Notches(c, shown)
 		if game then
 			local parts = Status.cover[game]
 			if not parts and shown then
-				local t = divider:CreateTexture(nil, "OVERLAY", nil, 2)
+				local t = Status.Shaded(divider:CreateTexture(nil, "OVERLAY", nil, 2))
 				t:SetTexture(Status.DIR .. "piece_bar_notch")
 				t:SetTexCoord(0, 1, 0, 63 / 64)
 				t:SetPoint("TOPLEFT", game, "TOPLEFT", -1, 1)

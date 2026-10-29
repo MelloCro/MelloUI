@@ -249,6 +249,12 @@ local function Separators(f, Skin)
 		down:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, 0)
 		s = { across, down }
 		f.separators = s
+		-- (1.2.4, lk-11: the game's edges under Dark Mode as the frame's own, the kit's shade)
+		local Kit = MelloUI.Kit
+		if Kit and Kit.RegisterTexture then
+			Kit:RegisterTexture(across)
+			Kit:RegisterTexture(down)
+		end
 	end
 	SeparatorsFit(f)
 	s[1]:Show()
@@ -273,6 +279,12 @@ function Button.Build(f)
 	f.background = f:CreateTexture(nil, "BACKGROUND")
 	f.background:SetAllPoints(f)
 	f.background:SetTexture(WHITE)
+	-- (1.2.4, lk-11) the frame's ground under Dark Mode, in its colours: the kit's shade at the Unit Frames area's
+	-- brightness (a kit piece on it is registered the same way, Kit:Apply)
+	local Kit = MelloUI.Kit
+	if Kit and Kit.RegisterTexture then
+		Kit:RegisterTexture(f.background)
+	end
 	f:HookScript("OnSizeChanged", Background_OnSize)
 	f.healthBar = Bar(f)
 	f.healthBar:SetMinMaxValues(0, 100)

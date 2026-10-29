@@ -51,7 +51,7 @@
 - Edit Layout shows every part of the game's Edit Mode, the ones the game hides right now too (party, raid and boss frames, the loot window, durability, timer bars, the cooldown viewer, the damage meter and the rest of Edit Mode's own list): turn on a part's eye in the Elements list to show, move and set it. The game's own switches (Cooldown Viewer, Damage Meter, Loot window under the mouse ...) are in their boxes.
 - Edit Layout: one highlight. The part you pick, and the part you drag, shows a gold border and a soft glow; the gold wash over it is gone, so the part shows through.
 - Dark Mode: one Brightness for the whole interface: MelloUI's own windows and frames too, the game's art and the painted reskin. Icons and text keep their colours; the micro menu's and bag bar's icons are no longer darkened. Reskin Brightness is gone.
-- Dark Mode's areas (unit frames, nameplates, bars, the minimap ...) are listed on its own tab (Look > Dark Mode); each part's page links there.
+- Dark Mode reaches MelloUI's own unit, party and raid frames, action bars, experience bars, the Personal Display's bars and shield, the cast bar and every window, in each skin. All its switches are on its own tab (Look > Dark Mode), with a new Windows switch; the chat's Background no longer turns it on or off.
 - The Fader lists everything that fades, on four tabs (General, Frames, Bars, Chat, Map & More); the Focus Frame and the FPS / Latency readout can fade too. Each part's page links to its Fade.
 - Every option's description is shorter and plainer.
 - Removed: Swing Timer Border (unused since the swing badge) and Shade: Buffs (it showed nothing at the default spacing; the buffs' shade follows the UI Shade).

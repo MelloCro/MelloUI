@@ -305,7 +305,7 @@ Lang:Add("zhCN", {
 	["Turns the gold and bronze art grey before dimming it."] = "在调暗前把金色和青铜色美术变为灰色。", -- draft
 	["Components"] = "组件", -- draft
 	["Unit Frames"] = "单位框体", -- draft
-	["Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target."] = "单位框体上的暗色模式：玩家、目标、焦点、宠物、小队、首领和目标的目标。", -- draft
+	["Dark Mode on the unit frames: player, target, focus, pet, boss, target of target, and the party and raid frames."] = "单位框体上的暗色模式：玩家、目标、焦点、宠物、首领、目标的目标，以及小队和团队框体。", -- draft
 	["Cast Bars"] = "施法条", -- draft
 	["Dark Mode on the cast bars."] = "施法条上的暗色模式。", -- draft
 	["Action Bars"] = "动作条", -- draft
@@ -324,6 +324,8 @@ Lang:Add("zhCN", {
 	["Dark Mode on the minimap's ring, header and buttons."] = "微缩地图的圆环、标题和按钮上的暗色模式。", -- draft
 	["Chat Frame"] = "聊天框", -- draft
 	["Chat tabs, the chat input box and the chat buttons. Window background colours stay as configured in the chat settings."] = "聊天标签、聊天输入框和聊天按钮。窗口背景颜色保持聊天设置中的配置。", -- draft
+	["Windows"] = "窗口", -- draft
+	["Dark Mode on MelloUI's windows and panels: the bags, the map, the Quest Tracker, the configurator and the rest."] = "MelloUI 窗口和面板上的暗色模式：背包、地图、任务追踪器、配置界面等。", -- draft
 	["Buffs & Debuffs"] = "增益和减益效果", -- draft
 	["Dark Mode on the game's buff and debuff icons."] = "游戏增益和减益图标上的暗色模式。", -- draft
 	["Keep Dispel Colours"] = "保留驱散颜色", -- draft
@@ -825,7 +827,6 @@ Lang:Add("zhCN", {
 	["Sounds"] = "音效", -- draft
 	["Clicks"] = "点击", -- draft
 	["Clicks on buttons, checkboxes and tabs."] = "按钮、复选框和标签的点击声。", -- draft
-	["Windows"] = "窗口", -- draft
 	["Page turns and latches when windows open and close."] = "窗口打开和关闭时的翻页和门闩声。", -- draft
 	["Inventory"] = "物品栏", -- draft
 	["Picking up, moving and looting items. Needed for the Equipment and Vendor sounds."] = "拾起、移动和拾取物品的声音。装备和商人声音需要它。", -- draft
@@ -2080,12 +2081,8 @@ Lang:Add("zhCN", {
 	["Chat Border Opacity"] = "聊天边框不透明度", -- draft
 	["Timer Text Size"] = "计时文字大小", -- draft
 	["Only with Cooldown Timers on"] = "仅在开启冷却计时时", -- draft
-	["Only without the painted unit frames"] = "仅在不使用手绘单位框体时", -- draft
-	["Only on the game's own icons (Your Buffs And Debuffs off)"] = "仅用于游戏自己的图标（“你的增益和减益效果”关闭）", -- draft
-	["Only without the painted nameplates"] = "仅在不使用手绘姓名板时", -- draft
 	["Only without the painted action bars"] = "仅在不使用手绘动作条时", -- draft
-	["Only without the painted cast bars"] = "仅在不使用手绘施法条时", -- draft
-	["Only without the painted minimap"] = "仅在不使用手绘小地图时", -- draft
+	["Only on the game's own icons (Your Buffs And Debuffs off)"] = "仅用于游戏自己的图标（“你的增益和减益效果”关闭）", -- draft
 	["Only on the game's own icons (Your Buffs And Debuffs off) or the Cooldown Manager's"] = "仅用于游戏自己的图标（“你的增益和减益效果”关闭）或冷却管理器的图标", -- draft
 	["Every Bar"] = "所有条", -- draft
 	["Only with My Colour"] = "仅在选择“我的颜色”时", -- draft
@@ -2096,6 +2093,7 @@ Lang:Add("zhCN", {
 	["Not with the whole window on parchment"] = "整个窗口铺羊皮纸时不适用", -- draft
 	["Item Slot Background"] = "物品栏位背景", -- draft
 	["Party portraits"] = "小队头像", -- draft
+	["Only without the painted unit frames"] = "仅在不使用手绘单位框体时", -- draft
 	["Only with Party Frames (Portraits), not the painted unit frames"] = "仅限小队框体（头像），不适用于绘制的单位框体", -- draft
 	["Only with a Frame Backdrop"] = "仅在有框体底板时", -- draft
 	["Names Font"] = "名字字体", -- draft
@@ -2206,7 +2204,7 @@ Lang:Add("zhCN", {
 	["The configurator: one painted window per skin that moves a little while open; plain one-row tabs, the designers' frames too; Quality of Life holds Automation, Screen Text, Reminders."] = "配置界面：每种外观风格一个手绘窗口，打开时会轻微动态；简洁的单行标签页，设计器的框体也是；便捷功能包含自动化、屏幕文字、提醒。", -- draft
 	["Options two to a line, none greyed out (a switch's settings behind its cog); Look holds every font, texture and border; profiles keep every setting exactly."] = "选项每行两个，不再变灰（开关的设置在其齿轮后面）；外观包含所有字体、材质和边框；配置精确保留每项设置。", -- draft
 	["Edit Layout: a top dock; every part of Edit Mode, hidden ones too, to show, hide, lock or move; the game's settings and switches in each box (bars: On Mouseover); one gold highlight."] = "编辑布局：顶部停靠栏；编辑模式的每个部分（包括隐藏的）都可显示、隐藏、锁定或移动；每个框中都有游戏的设置和开关（动作条：鼠标悬停）；统一的金色高亮。", -- draft
-	["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS too); Dark Mode: one Brightness for all, icons and text untouched."] = "选项：更短、更直白的说明；淡出列出所有会淡出的部分（焦点框体和 FPS 也在内）；暗色模式：统一的亮度，图标和文字不受影响。", -- draft
+	["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS); Dark Mode: one Brightness for all of MelloUI, all switches on its tab, new: Windows."] = "选项：更短、更直白的说明；淡出列出所有会淡出的部分（焦点框体、FPS）；暗色模式：整个 MelloUI 统一亮度，所有开关都在其标签页，新增：窗口。", -- draft
 	["Route: the service buttons (Repair, Innkeeper, Flight Master ...) route to the nearest one at once again."] = "Route：服务按钮（修理、旅店老板、飞行管理员……）又能立即引导到最近的一个。", -- draft
 	["Route: routes to the other continent are found faster and show Loading navigation... with its bar while they are."] = "Route：前往另一大陆的路线找得更快，寻找时显示“导航读取中……”及进度条。", -- draft
 	["Route: a route to a place the roads don't reach starts at once; one such spot no longer blocks routes to the other continent."] = "Route：前往道路无法到达之处的路线立即开始；此类地点不再阻挡前往另一大陆的路线。", -- draft
@@ -2762,6 +2760,7 @@ Lang:Add("zhCN", {
 -- stale: ["Copy from a spec"] = "从某个专精复制", -- draft
 -- stale: ["Cut the speech off when you change target."] = "更换目标时切断语音。", -- draft
 -- stale: ["Cut the speech off when you close the dialog. Off by default so the NPC keeps talking while you walk away."] = "关闭对话时切断语音。默认关闭，这样你走开时NPC还会继续说。", -- draft
+-- stale: ["Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target."] = "单位框体上的暗色模式：玩家、目标、焦点、宠物、小队、首领和目标的目标。", -- draft
 -- stale: ["Dark mode"] = "暗色模式", -- draft
 -- stale: ["Darken the borders of your buff and debuff icons, with a thin dark edge round each icon (0.16.0: the Icon Border switch is part of this). The game's own icons: while Buffs & Debuffs shows MelloUI's rows in their place, there is nothing here to darken (those rows take the Aura Border)."] = "调暗你的增益和减益图标的边框，每个图标周围加一道细暗边（0.16.0：“图标边框”开关属于此项）。游戏自己的图标：当“增益和减益效果”用MelloUI的行代替它们时，这里没有要调暗的东西（那些行使用“光环边框”）。", -- draft
 -- stale: ["Darkens the Blizzard artwork of unit frames, cast bars, action bars, nameplates, cooldown manager, auras and menu bars."] = "调暗单位框体、施法条、动作条、姓名板、冷却管理器、光环和菜单栏的暴雪美术。", -- draft
@@ -2988,11 +2987,15 @@ Lang:Add("zhCN", {
 -- stale: ["One look: its own look, Gilded Slate colours, the Fredoka font and a new logo, reskin or not; the installer sets up the new layout. The painted reskin is MelloUI Oldschool."] = "统一外观：自己的样式、Gilded Slate配色、Fredoka字体和新标志，换肤与否均可；安装器会设置新布局。手绘换肤即MelloUI Oldschool。", -- draft
 -- stale: ["One seamless map of the whole world: zoom from Azeroth down to a zone with the mouse wheel and drag to look around."] = "一张无缝的全世界地图：用鼠标滚轮从艾泽拉斯一直缩放到某个区域，拖动查看四周。", -- draft
 -- stale: ["One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Move it in Edit Layout."] = "当MelloUI有消息告诉你时，在屏幕上方三分之一处显示一行短文字：设定或完成了路线、记住了一个服务、列出了地下城的任务。几秒后淡出。可在“编辑布局”中移动。", -- draft
+-- stale: ["Only without the painted cast bars"] = "仅在不使用手绘施法条时", -- draft
+-- stale: ["Only without the painted minimap"] = "仅在不使用手绘小地图时", -- draft
+-- stale: ["Only without the painted nameplates"] = "仅在不使用手绘姓名板时", -- draft
 -- stale: ["Opacity of the Dark background."] = "深色背景的不透明度。", -- draft
 -- stale: ["Open MelloUI"] = "打开MelloUI", -- draft
 -- stale: ["Open MelloUI's map: the wheel zooms toward the cursor, a drag looks around, a click glides into the zone under the cursor and a right-click goes out again. Your map key (M) opens it, your quest log key (L) opens it with your quests beside it; /mellomap opens it too."] = "打开MelloUI的地图：滚轮朝光标缩放，拖动查看四周，点击滑入光标下的区域，右键再退出。你的地图键（M）打开它，任务日志键（L）打开它并在旁边显示你的任务；/mellomap也可以打开。", -- draft
 -- stale: ["Options two to a line, none greyed out (a switch's own settings behind its cog); Look holds every font, bar texture, background and border."] = "选项每行两个，不再变灰（开关自己的设置在齿轮后）；“外观”包含所有字体、条材质、背景和边框。", -- draft
 -- stale: ["Options, macros, Edit Mode, AddOn list"] = "设置、宏命令、编辑模式、插件列表", -- draft
+-- stale: ["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS too); Dark Mode: one Brightness for all, icons and text untouched."] = "选项：更短、更直白的说明；淡出列出所有会淡出的部分（焦点框体和 FPS 也在内）；暗色模式：统一的亮度，图标和文字不受影响。", -- draft
 -- stale: ["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS too); Dark Mode: one Brightness for the whole UI, icons and text untouched."] = "选项：描述更简短清晰；淡出列出所有可淡出的部分（焦点框体、帧数也在内）；暗色模式：一个亮度控制整个界面，图标和文字不变。", -- draft
 -- stale: ["Out of range, too far away, too close."] = "超出范围、距离太远、距离太近。", -- draft
 -- stale: ["Outbid, sold, won and expired at the auction house, in one list. Click it for the way to the nearest mailbox."] = "拍卖行的被超出出价、已售出、已赢得和已过期，汇在一个列表里。点击查看前往最近邮箱的路线。", -- draft

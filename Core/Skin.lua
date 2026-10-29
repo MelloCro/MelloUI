@@ -153,6 +153,9 @@ Skin.ART = {
 --------------------------------------------------------------------------------
 
 local LAYOUT = { tooltip = "TooltipDefaultLayout", window = "Dialog", bubble = "ChatBubble" }
+-- (NineSliceUtil's pieces by their keys on the border)
+local BORDER_PIECES = { "TopLeftCorner", "TopRightCorner", "BottomLeftCorner", "BottomRightCorner", "TopEdge",
+	"BottomEdge", "LeftEdge", "RightEdge" }
 -- how far the border lies outside its rect: the dialog's diamond metal outside the window's edge, its inner edge on it
 -- (the metal band is rows 16-49 of the 128 px pieces, so it ends 24.5 into the 64-unit piece)
 local OUT = { tooltip = 0, window = 24, bubble = 3 }
@@ -188,6 +191,16 @@ function Skin.Border(frame, kind, first, last)
 	if centre and centre.Hide then
 		centre:Hide()
 	end
+	-- (1.2.4, lk-11) its pieces under Dark Mode as MelloUI's own frame art: the kit's shade (Kit:RegisterTexture)
+	local Kit = MelloUI.Kit
+	if type(Kit) == "table" and Kit.RegisterTexture then
+		for _, key in ipairs(BORDER_PIECES) do
+			local piece = rawget(border, key)
+			if type(piece) == "table" and piece.SetVertexColor then
+				Kit:RegisterTexture(piece)
+			end
+		end
+	end
 	Skin.LayBorder(border, first or frame, last)
 	return border
 end
@@ -219,7 +232,16 @@ function Skin.LayHair(tex, alpha)
 	else
 		tex:SetAtlas(name)   -- (no sheet to read: the divider whole)
 	end
-	tex:SetVertexColor(1, 1, 1, alpha or 1)
+	-- (1.2.4, lk-11: at its Dark Mode brightness, as the palette's lines; laid again with the palette)
+	local k = Skin.Dim(tex)
+	tex:SetVertexColor(k, k, k, alpha or 1)
+end
+
+-- (lk-11) a piece's brightness under Dark Mode: its area's (Dark Mode's LevelOf, Modules/DarkMode.lua), 1 without it
+function Skin.Dim(region)
+	local modules = MelloUI.modules
+	local dark = type(modules) == "table" and modules.DarkMode
+	return type(dark) == "table" and dark.LevelOf and dark.LevelOf(region) or 1
 end
 
 -- (1.2.4, the whisper window's bubbles: BuildData/output/chat_room_sketch) a chat bubble's ground: the game's bubble

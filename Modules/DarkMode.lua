@@ -24,12 +24,16 @@
 -- the game's art, the painted reskin (Reskin Brightness, kitShade, is gone)
 -- and MelloUI's own UI -- the palette's fills and edges (Look.SetDim), its
 -- text kept -- and never an icon (the micro menu's and bag bar's pictures).
+-- (lk-11) MelloUI's own frames and windows by the same areas as the game's
+-- art: each part follows the switch of the frame it hangs on (the section
+-- "MelloUI's own frames and windows"), Windows for the rest.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("DarkMode")
 local hooksecurefunc = Perf.hooksecurefunc
+local Secret = MelloUI.Safe.IsSecret
 -- ONELOOK HEADER END (the painted reskin's part, MelloUI_Oldschool/Modules/DarkModePainted.lua, uses only public tables)
 
 local M = MelloUI:RegisterModule("DarkMode", {
@@ -65,6 +69,7 @@ local M = MelloUI:RegisterModule("DarkMode", {
 		micromenu = true,    -- micro menu and bag bar
 		minimap = true,      -- minimap ring, header and buttons
 		chat = true,         -- chat tabs, edit box and buttons
+		windows = true,      -- (1.2.4, lk-11) MelloUI's windows and panels: every own part in no other area
 	},
 	options = {
 		{ type = "header", name = "Appearance" },
@@ -75,7 +80,7 @@ local M = MelloUI:RegisterModule("DarkMode", {
 		-- (Reskin Brightness: the painted reskin's part puts it here, after Desaturate)
 		{ type = "header", name = "Components" },
 		{ type = "toggle", key = "unitframes", name = "Unit Frames",
-		  desc = "Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target." },
+		  desc = "Dark Mode on the unit frames: player, target, focus, pet, boss, target of target, and the party and raid frames." },
 		{ type = "toggle", key = "castbar", name = "Cast Bars",
 		  desc = "Dark Mode on the cast bars." },
 		{ type = "toggle", key = "actionbars", name = "Action Bars",
@@ -96,6 +101,8 @@ local M = MelloUI:RegisterModule("DarkMode", {
 		  desc = "Dark Mode on the minimap's ring, header and buttons." },
 		{ type = "toggle", key = "chat", name = "Chat Frame",
 		  desc = "Chat tabs, the chat input box and the chat buttons. Window background colours stay as configured in the chat settings." },
+		{ type = "toggle", key = "windows", name = "Windows", new = "1.2.4",
+		  desc = "Dark Mode on MelloUI's windows and panels: the bags, the map, the Quest Tracker, the configurator and the rest." },
 		{ type = "header", name = "Buffs & Debuffs" },
 		{ type = "toggle", key = "auras", name = "Buffs & Debuffs",
 		  desc = "Dark Mode on the game's buff and debuff icons." },
@@ -764,10 +771,7 @@ local function ApplyMinimap()
 	CollectButtonStateTextures(AddonCompartmentFrame, list)
 	CollectButtonStateTextures(ExpansionLandingPageMinimapButton, list)
 
-	-- MelloUI's own minimap stand and the medallion rims of the services bar.
-	if MelloUIMinimapStand and MelloUIMinimapStand.tex then
-		list[#list + 1] = MelloUIMinimapStand.tex
-	end
+	-- the medallion rims of MelloUI's services bar
 	if MelloUIServicesBar and MelloUIServicesBar.buttons then
 		for _, b in ipairs(MelloUIServicesBar.buttons) do
 			if b.rim then
@@ -846,6 +850,167 @@ local function ApplyChat()
 		CollectButtonStateTextures(GeneralDockManager.overflowButton, list)
 	end
 	ShadeAll("chat", list)
+end
+
+--------------------------------------------------------------------------------
+-- MelloUI's own frames and windows (1.2.4, lk-11)
+--------------------------------------------------------------------------------
+-- (the user, 2026-10-28: Dark Mode "only covers some of the windows, it ignores almost every custom made window,
+-- Unitframes, Party Unitframes, Raid Unitframe Borders etc." -- "and dont forget cast bar, action bars, personal
+-- reource hp, power bar and cast bar aswell as the shield bar") One rule for everything MelloUI draws: a part belongs
+-- to the area of the frame it hangs on -- one of the game's frames this module darkens (by its name), one of MelloUI's
+-- own (by its name, or given by M:Area) -- and anything else to Windows. Its frame art takes that area's switch at the
+-- one Brightness through the two shared paths it is drawn by: the palette's fills and edges (MelloUI.Look: Look.Palette
+-- by the region, asking M.Lit) and the pictures under the kit's shade (Kit:RegisterTexture: the kit's pieces and every
+-- frame picture of MelloUI's own, Kit.Lit). Never a bar's fill, an icon or a text, as on the game's art; the hue kept
+-- (Desaturate is the game's art's). The painted reskin's pieces are MelloUI's own art on the game's frames: each row
+-- reaches them too (the user, 2026-10-28: "Keep the Dark Mode settings in the Dark Mode Tab", every row live there).
+
+local OWN_AREAS = {
+	-- the game's frames (MelloUI's parts on them: the Modern frame pictures, the party's sharp art, the action
+	-- buttons' frames ...)
+	PlayerFrame = "unitframes", TargetFrame = "unitframes", FocusFrame = "unitframes", PetFrame = "unitframes",
+	TargetFrameToT = "unitframes", FocusFrameToT = "unitframes", PartyFrame = "unitframes",
+	PlayerCastingBarFrame = "castbar", PetCastingBarFrame = "castbar", TargetFrameSpellBar = "castbar",
+	FocusFrameSpellBar = "castbar",
+	MainActionBar = "actionbars", MainMenuBar = "actionbars", MultiBarBottomLeft = "actionbars",
+	MultiBarBottomRight = "actionbars", MultiBarRight = "actionbars", MultiBarLeft = "actionbars",
+	MultiBar5 = "actionbars", MultiBar6 = "actionbars", MultiBar7 = "actionbars", StanceBar = "actionbars",
+	PetActionBar = "actionbars", PossessActionBar = "actionbars", ExtraActionBarFrame = "actionbars",
+	MicroMenu = "micromenu", MicroMenuContainer = "micromenu", BagsBar = "micromenu",
+	StatusTrackingBarManager = "statusbars", MainStatusTrackingBarContainer = "statusbars",
+	SecondaryStatusTrackingBarContainer = "statusbars", BuffFrame = "auras", DebuffFrame = "auras",
+	MinimapCluster = "minimap", PersonalResourceDisplayFrame = "personal", GeneralDockManager = "chat",
+	-- MelloUI's own (the party and raid frames with the unit frames, as the game's party frames are)
+	MelloUIGroupParty = "unitframes", MelloUIGroupRaid = "unitframes", MelloUIGroupSoloParty = "unitframes",
+	MelloUIGroupFramesFake = "unitframes", MelloUIGroupFramesFakeParty = "unitframes",
+	MelloUIPersonalDisplay = "personal", MelloUIPersonalShield = "personal",
+	MelloUIChatView = "chat", MelloUIWhispers = "chat",
+}
+for i = 1, 5 do
+	OWN_AREAS["Boss" .. i .. "TargetFrame"] = "unitframes"
+end
+for _, name in ipairs(COOLDOWN_VIEWERS) do
+	OWN_AREAS[name] = "cooldowns"
+end
+local OWN_PATTERNS = { { "^ChatFrame%d", "chat" }, { "^MelloUIWhisperPopup", "chat" }, { "^NamePlate%d", "nameplates" } }
+
+local ownRoots = setmetatable({}, { __mode = "k" })   -- [frame] = its area (M:Area)
+-- [frame] = the area it names itself (by its name, M:Area), or false: read once a frame (its name never changes);
+-- the frames above it are walked each time, so a part made later or moved to another parent is in its area now
+local ownTag = setmetatable({}, { __mode = "k" })
+local byGlobal, globalsRead = setmetatable({}, { __mode = "k" }), false   -- [the frame a name above is] = its area
+
+-- the frames named above, as the globals they are now (read again with the areas: a frame made since)
+local function Globals()
+	globalsRead = true
+	for name, area in pairs(OWN_AREAS) do
+		local f = rawget(_G, name)
+		if type(f) == "table" then
+			byGlobal[f] = area
+		end
+	end
+end
+
+local function NameArea(f)
+	local ok, name = pcall(f.GetName, f)
+	if not ok or type(name) ~= "string" or Secret(name) then
+		return nil
+	end
+	local area = OWN_AREAS[name]
+	if area then
+		return area
+	end
+	for i = 1, #OWN_PATTERNS do
+		if name:find(OWN_PATTERNS[i][1]) then
+			return OWN_PATTERNS[i][2]
+		end
+	end
+	return nil
+end
+
+local function Tag(f)
+	local tag = ownTag[f]
+	if tag == nil then
+		tag = ownRoots[f] or byGlobal[f] or NameArea(f) or false
+		ownTag[f] = tag
+	end
+	return tag
+end
+
+-- the area a region of MelloUI's own belongs to: the first frame up from it with one (itself first), else Windows
+local function AreaOf(region)
+	if not globalsRead then
+		Globals()
+	end
+	local f = region
+	for _ = 1, 40 do
+		local tag = Tag(f)
+		if tag then
+			return tag
+		end
+		local ok, parent = pcall(f.GetParent, f)
+		if not ok or type(parent) ~= "table" then
+			break
+		end
+		f = parent
+	end
+	return "windows"
+end
+
+-- a part of MelloUI's own kept at full brightness under Dark Mode: its area switched off -- the painted reskin's
+-- pieces too (they stand where the game's art stood, on its frames); no region: the windows'
+local function OwnLit(region)
+	local db = M.db
+	if not db then
+		return false
+	end
+	return db[type(region) == "table" and AreaOf(region) or "windows"] == false
+end
+
+-- (asked by the palette, Core/GameLook.lua's Look.Palette, and the kit's shade, Modules/Kit.lua: whether a region
+-- keeps its colours)
+M.Lit = OwnLit
+if type(MelloUI.Kit) == "table" then
+	MelloUI.Kit.Lit = OwnLit
+end
+
+-- a region's brightness under Dark Mode now: the one Brightness, 1 while Dark Mode or its area is off (the Default
+-- skin's lines, Core/Skin.lua's Skin.LayHair)
+function M.LevelOf(region)
+	local db = M.db
+	if not (M.isEnabled and db) or OwnLit(region) then
+		return 1
+	end
+	return tonumber(db.shade) or 1
+end
+
+-- every own part laid again at its area's brightness (an area's switch moved, a frame given its area); their areas
+-- found again too (a frame moved to another parent since)
+local function OwnRelit()
+	ownTag = setmetatable({}, { __mode = "k" })
+	globalsRead = false
+	local Look, Kit = MelloUI.Look, MelloUI.Kit
+	if type(Look) == "table" and Look.SetDim then
+		Look.SetDim(M.isEnabled and M.db and tonumber(M.db.shade) or 1, true)
+	end
+	if type(Kit) == "table" and Kit.Reshade then
+		Kit:Reshade()
+	end
+end
+
+-- (lk-11) a frame of MelloUI's own given its Dark Mode area (one of COMPONENTS, or "windows"): every part on it follows
+-- that area's switch. Its module calls it once, as it makes the frame
+function M:Area(frame, area)
+	if type(frame) ~= "table" or type(area) ~= "string" or ownRoots[frame] == area then
+		return
+	end
+	ownRoots[frame] = area
+	if self.isEnabled then
+		OwnRelit()
+	else
+		ownTag, globalsRead = setmetatable({}, { __mode = "k" }), false
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -979,11 +1144,17 @@ local function RunParts(hook, ...)
 	return Parts ~= nil and Parts.Run(M, hook, ...)
 end
 
--- (1.2.4) MelloUI's own UI (the palette's fills and edges) dimmed by the one Brightness while Dark Mode is on
+-- (1.2.4) MelloUI's own UI dimmed by the one Brightness while Dark Mode is on: the palette's fills and edges, and
+-- (lk-11) the pictures under the kit's shade -- the painted kit's pieces and MelloUI's own frame art, in every skin
+-- (the painted reskin's part drove the kit's shade alone until then)
 local function DimOwn(on, db)
-	local Look = MelloUI.Look
+	local v = on and db and tonumber(db.shade) or 1
+	local Look, Kit = MelloUI.Look, MelloUI.Kit
 	if type(Look) == "table" and Look.SetDim then
-		Look.SetDim(on and db and tonumber(db.shade) or 1)
+		Look.SetDim(v)
+	end
+	if type(Kit) == "table" and Kit.SetShade then
+		Kit:SetShade(v)
 	end
 end
 
@@ -1002,7 +1173,7 @@ function M:OnEnable(db)
 end
 
 -- Other modules call this after creating art that belongs to a component
--- (the Services module's minimap stand), so it is shaded right away.
+-- (the Services bar's rims), so it is shaded right away.
 function M:Reapply(component)
 	if Active(component) and appliers[component] then
 		appliers[component]()
@@ -1027,12 +1198,14 @@ function M:OnSettingChanged(key, value, db)
 	if key == "shade" then
 		RunParts("Setting", key, value, db)   -- (the painted reskin's shade follows the one Brightness too)
 	end
-	if appliers[key] then
-		if value and not Covered(key) then
+	-- (lk-11: Windows is MelloUI's own parts alone, no game art)
+	if appliers[key] or key == "windows" then
+		if appliers[key] and value and not Covered(key) then
 			appliers[key]()
-		else
+		elseif appliers[key] then
 			RestoreGroup(key)
 		end
+		OwnRelit()   -- (lk-11) MelloUI's own parts in that area, at its brightness now
 	elseif subOptions[key] then
 		local parents = subOptions[key]
 		if type(parents) == "string" then

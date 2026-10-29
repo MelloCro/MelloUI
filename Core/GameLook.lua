@@ -727,6 +727,7 @@ local NEUTRAL = {
 -- a backdrop's fill and edge in the game's look: the tooltip's own colours
 local BACKDROP = { fill = "GAME_GROUND", border = "TOOLTIP_DEFAULT_COLOR" }
 local paints = setmetatable({}, weak)   -- [region] = { key, how, alpha, area }
+local DimOf   -- (lk-11: a region's brightness under Dark Mode -- with the palette's dim, below)
 
 local function ApplyPaint(region, painted)
 	local e = paints[region]
@@ -760,6 +761,12 @@ local function ApplyPaint(region, painted)
 			name = BACKDROP.border
 		end
 		r, g, b = GameColour(name)
+		-- (1.2.4, lk-11) its fills and edges at Dark Mode's Brightness, as the palette's (Look.Palette); a text and a
+		-- meaning's colour as they are
+		if e.how ~= "text" and not (role and role.meaning) then
+			local k = DimOf(region)
+			r, g, b = r * k, g * k, b * k
+		end
 	end
 	local a = e.alpha or 1
 	if e.how == "vertex" then
@@ -813,16 +820,22 @@ local gamePalette = {}   -- (gameFilled: declared with Refresh, which clears it)
 -- (1.2.4) Dark Mode's one Brightness over MelloUI's own UI: every fill and edge colour of the palette darkened by
 -- it, the text colours kept (readable); Look.SetDim(v) (1: none) repaints every palette part (the bus's 'palette');
 -- Look.DimStamp() changes with each new dim (the painter repaints on it). One table, its colours reused. Text in a
--- palette colour (a gold header) is text too: Look.Palette(area, true) is the palette undimmed, for text
+-- palette colour (a gold header) is text too: Look.Palette(area, true) is the palette undimmed, for text.
+-- (1.2.4, lk-11; the user: Dark Mode "ignores almost every custom made window, Unitframes, Party Unitframes, Raid
+-- Unitframe Borders etc.") the Default skin's colours too (the game's palette, dimmed alike), and by the region: a part
+-- whose Dark Mode area is switched off keeps its colours (Dark Mode's own Lit(region), Modules/DarkMode.lua: the area
+-- of the frame it hangs on); Look.SetDim(v, true) paints every part again after an area's switch (the same v)
 local DIM_KEEP = { text = true, mutedText = true }
-local dim, dimStamp, dimmed, dimFrom, dimAt = 1, 0, {}, nil, nil
+local dim, dimStamp = 1, 0
+local DIMS = { own = { t = {} }, game = { t = {} } }   -- MelloUI's palette dimmed, and the game's: t, from, gen, at
+local gameGen = 0   -- (the game's palette filled again: its table is the same one)
 
-local function Dimmed()
-	local palette = MelloUI.Palette
-	if dimFrom == palette and dimAt == dim then
+local function Dimmed(d, palette, gen)
+	local dimmed = d.t
+	if d.from == palette and d.gen == gen and d.at == dim then
 		return dimmed
 	end
-	dimFrom, dimAt = palette, dim
+	d.from, d.gen, d.at = palette, gen, dim
 	for k in pairs(dimmed) do
 		if palette[k] == nil then
 			dimmed[k] = nil
@@ -845,32 +858,53 @@ local function Dimmed()
 	return dimmed
 end
 
-function Look.SetDim(v)
+-- (lk-11) every palette part painted again: the game look's here (Look.Paint's), the rest on the bus's 'palette' (the
+-- painter repaints on the new stamp) -- after a new Brightness, or an area's Dark Mode switch
+local function Relit()
+	dimStamp = dimStamp + 1
+	for region, e in pairs(paints) do
+		if not Look:On(e.area) then
+			ApplyPaint(region, false)
+		end
+	end
+	MelloUI:Fire("palette")
+end
+
+-- (lk-11: `again`, every part painted again at the same Brightness -- an area's Dark Mode switch moved)
+function Look.SetDim(v, again)
 	v = tonumber(v) or 1
 	v = math.max(0, math.min(1, v))
-	if v == dim then
+	if v == dim and not again then
 		return
 	end
 	dim = v
-	dimStamp = dimStamp + 1
-	MelloUI:Fire("palette")
+	Relit()
 end
 
 function Look.DimStamp()
 	return dimStamp
 end
 
-function Look.Palette(area, text)
-	if Look:On(area) then
-		if dim < 1 and not text then
-			return Dimmed()
-		end
-		return MelloUI.Palette
+-- (lk-11) a region's brightness under Dark Mode now: the one Brightness, or 1 (Dark Mode off, or the region's area
+-- switched off: Dark Mode's Lit, Modules/DarkMode.lua; no region: MelloUI's windows)
+DimOf = function(region)
+	if dim >= 1 then
+		return 1
 	end
+	local modules = MelloUI.modules
+	local dark = type(modules) == "table" and modules.DarkMode
+	if type(dark) == "table" and dark.Lit and dark.Lit(region) then
+		return 1
+	end
+	return dim
+end
+
+local function GamePalette()
 	if gameFilled then
 		return gamePalette
 	end
 	gameFilled = true
+	gameGen = gameGen + 1
 	for key, name in pairs(NEUTRAL) do
 		local t = gamePalette[key]
 		if not t then
@@ -882,6 +916,19 @@ function Look.Palette(area, text)
 		t.hex = string.format("%02X%02X%02X", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
 	end
 	return gamePalette
+end
+
+-- (lk-11: `region`, the part the colours are for -- its Dark Mode area's brightness, DimOf)
+function Look.Palette(area, text, region)
+	local own = Look:On(area)
+	local palette = own and MelloUI.Palette or GamePalette()
+	if text or DimOf(region) >= 1 then
+		return palette
+	end
+	if own then
+		return Dimmed(DIMS.own, palette, 0)
+	end
+	return Dimmed(DIMS.game, palette, gameGen)
 end
 
 function Look.Paint(region, key, how, alpha, area)

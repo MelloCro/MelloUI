@@ -2930,6 +2930,11 @@ function Frames.Make(region)
 	end
 	local ours = parent:CreateTexture(nil, layer, nil, sub)
 	ours:Hide()
+	-- (1.2.4, lk-11) the frame's art under Dark Mode, as the game's picture it stands on: the kit's shade, the Unit
+	-- Frames area's brightness (Modules/DarkMode.lua)
+	if MelloUI.Kit and MelloUI.Kit.RegisterTexture then
+		MelloUI.Kit:RegisterTexture(ours)
+	end
 	Frames.cover[region] = ours
 	Frames.Watch(region)
 	return ours

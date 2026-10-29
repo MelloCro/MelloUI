@@ -231,10 +231,12 @@ do
 	local paintedDim = 0   -- (1.2.4) Dark Mode's dim painted last (Look.DimStamp)
 
 	-- the palette as the look shows it now (MelloUI.Look; without it, the palette); `text`: for text, never
-	-- dimmed by Dark Mode (Look.Palette's own)
-	local function Colours(text)
+	-- dimmed by Dark Mode (Look.Palette's own); (1.2.4, lk-11) `region`: the part painted, at its Dark Mode area's
+	-- brightness (the area of the frame it hangs on)
+	local function Colours(text, region)
 		local Look = MelloUI.Look
-		return type(Look) == "table" and type(Look.Palette) == "function" and Look.Palette(nil, text) or MelloUI.Palette
+		return type(Look) == "table" and type(Look.Palette) == "function" and Look.Palette(nil, text, region)
+			or MelloUI.Palette
 	end
 
 	-- (1.2.4) a hairline (P.Hair) under the Default skin: the game's own line (MelloUI.Skin); back in a colour, its
@@ -259,7 +261,7 @@ do
 	end
 
 	local function Apply(region, key, how, alpha, e)
-		local c = Colours(how == "text")[key]
+		local c = Colours(how == "text", region)[key]
 		if not c then
 			return
 		end
@@ -3498,6 +3500,11 @@ do
 	local FRAME_CORNER = 22
 	function W.FrameArt(t, state, band)
 		t:SetTexture(DIR .. "frame_" .. state)
+		-- (1.2.4, lk-11) a frame's art: under Dark Mode, at its area's brightness (the kit's shade)
+		local Kit = MelloUI.Kit
+		if Kit and Kit.RegisterTexture then
+			Kit:RegisterTexture(t)
+		end
 		if t.SetTextureSliceMargins and t.SetTextureSliceMode and t.SetScale then
 			t:SetTextureSliceMargins(FRAME_CORNER, FRAME_CORNER, FRAME_CORNER, FRAME_CORNER)
 			t:SetTextureSliceMode(Enum and Enum.UITextureSliceMode and Enum.UITextureSliceMode.Stretched or 0)

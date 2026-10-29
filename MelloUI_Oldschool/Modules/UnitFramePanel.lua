@@ -796,6 +796,23 @@ local function RingCover(ring, bars, mirrored, container)
 	-- cover: again when the ring wears another piece (an Elite / Rare mark's
 	-- metal twin, the same shape): texture calls only, so in a fight too
 	local fx0, fx1, fy0, fy1
+	-- (1.2.4, lk-11) the ring's own tint, before Dark Mode's shade (the kit's base, Kit.tintBaseOf): the cover is a kit
+	-- piece the kit shades itself -- the shaded colour copied was shaded twice (a quarter at Brightness 0.5); a secret
+	-- one (neither kept nor shaded) as it is
+	local function Tint()
+		local r, g, b = tex:GetVertexColor()
+		if Secret(r) or Secret(g) or Secret(b) then
+			return r, g, b
+		end
+		local base = Kit.tintBaseOf[tex]
+		if base then
+			return base[1], base[2], base[3]
+		end
+		if Kit.__ and Kit.__.SHADED and Kit.__.SHADED[tex] then
+			return 1, 1, 1
+		end
+		return r or 1, g or 1, b or 1
+	end
 	local function Crop()
 		if pieceNameOf[cover] ~= pieceNameOf[tex] then
 			Kit:Apply(cover, pieceNameOf[tex])
@@ -844,8 +861,7 @@ local function RingCover(ring, bars, mirrored, container)
 		fx0, fx1 = (cl - rl) / rw, (cr - rl) / rw
 		fy0, fy1 = (rb + rh - ct) / rh, (rb + rh - cb) / rh
 		Crop()
-		local r, g, b = tex:GetVertexColor()
-		cover:SetVertexColor(r or 1, g or 1, b or 1)
+		cover:SetVertexColor(Tint())
 		holder:Show()
 	end
 	local function Refit()
@@ -864,8 +880,7 @@ local function RingCover(ring, bars, mirrored, container)
 		end)
 	end
 	local function Paint()
-		local r, g, b = tex:GetVertexColor()
-		cover:SetVertexColor(r or 1, g or 1, b or 1)
+		cover:SetVertexColor(Tint())
 	end
 	hooksecurefunc(tex, "SetVertexColor", function()
 		if holder:IsShown() then

@@ -305,7 +305,7 @@ Lang:Add("koKR", {
 	["Turns the gold and bronze art grey before dimming it."] = "금색·청동색 아트를 어둡게 하기 전에 회색으로 바꿉니다.", -- draft
 	["Components"] = "구성 요소", -- draft
 	["Unit Frames"] = "개체창", -- draft
-	["Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target."] = "개체창의 다크 모드: 플레이어, 대상, 주시 대상, 소환수, 파티, 우두머리, 대상의 대상.", -- draft
+	["Dark Mode on the unit frames: player, target, focus, pet, boss, target of target, and the party and raid frames."] = "개체창의 다크 모드: 플레이어, 대상, 주시 대상, 소환수, 우두머리, 대상의 대상, 그리고 파티 창과 공격대 창.", -- draft
 	["Cast Bars"] = "시전바", -- draft
 	["Dark Mode on the cast bars."] = "시전 바의 다크 모드.", -- draft
 	["Action Bars"] = "행동 단축바", -- draft
@@ -324,6 +324,8 @@ Lang:Add("koKR", {
 	["Dark Mode on the minimap's ring, header and buttons."] = "미니맵 고리, 머리말, 버튼의 다크 모드.", -- draft
 	["Chat Frame"] = "대화창", -- draft
 	["Chat tabs, the chat input box and the chat buttons. Window background colours stay as configured in the chat settings."] = "대화 탭, 대화 입력 상자, 대화 버튼. 창 배경 색은 대화 설정에서 정한 대로 둡니다.", -- draft
+	["Windows"] = "창", -- draft
+	["Dark Mode on MelloUI's windows and panels: the bags, the map, the Quest Tracker, the configurator and the rest."] = "MelloUI의 창과 패널의 다크 모드: 가방, 지도, 퀘스트 추적기, 구성 창 등.", -- draft
 	["Buffs & Debuffs"] = "강화 및 약화 효과", -- draft
 	["Dark Mode on the game's buff and debuff icons."] = "게임의 강화·약화 효과 아이콘의 다크 모드.", -- draft
 	["Keep Dispel Colours"] = "해제 색상 유지", -- draft
@@ -825,7 +827,6 @@ Lang:Add("koKR", {
 	["Sounds"] = "소리", -- draft
 	["Clicks"] = "클릭", -- draft
 	["Clicks on buttons, checkboxes and tabs."] = "버튼, 체크 상자, 탭 클릭.", -- draft
-	["Windows"] = "창", -- draft
 	["Page turns and latches when windows open and close."] = "창을 열고 닫을 때 책장 넘김과 걸쇠.", -- draft
 	["Inventory"] = "소지품", -- draft
 	["Picking up, moving and looting items. Needed for the Equipment and Vendor sounds."] = "아이템을 집고 옮기고 줍는 소리. 장비·상인 소리에 필요합니다.", -- draft
@@ -2080,12 +2081,8 @@ Lang:Add("koKR", {
 	["Chat Border Opacity"] = "대화 테두리 불투명도", -- draft
 	["Timer Text Size"] = "타이머 글자 크기", -- draft
 	["Only with Cooldown Timers on"] = "재사용 대기시간 타이머가 켜져 있을 때만", -- draft
-	["Only without the painted unit frames"] = "페인팅 개체창이 없을 때만", -- draft
-	["Only on the game's own icons (Your Buffs And Debuffs off)"] = "게임 자체 아이콘에서만(내 강화 및 약화 효과 꺼짐)", -- draft
-	["Only without the painted nameplates"] = "페인팅 이름표가 없을 때만", -- draft
 	["Only without the painted action bars"] = "페인팅 행동 단축바가 없을 때만", -- draft
-	["Only without the painted cast bars"] = "페인팅 시전바가 없을 때만", -- draft
-	["Only without the painted minimap"] = "페인팅 미니맵이 없을 때만", -- draft
+	["Only on the game's own icons (Your Buffs And Debuffs off)"] = "게임 자체 아이콘에서만(내 강화 및 약화 효과 꺼짐)", -- draft
 	["Only on the game's own icons (Your Buffs And Debuffs off) or the Cooldown Manager's"] = "게임 자체 아이콘(내 강화 및 약화 효과 꺼짐) 또는 재사용 대기시간 관리자 아이콘에서만", -- draft
 	["Every Bar"] = "모든 바", -- draft
 	["Only with My Colour"] = "내 색일 때만", -- draft
@@ -2096,6 +2093,7 @@ Lang:Add("koKR", {
 	["Not with the whole window on parchment"] = "창 전체가 양피지일 때는 아님", -- draft
 	["Item Slot Background"] = "아이템 칸 배경", -- draft
 	["Party portraits"] = "파티 초상화", -- draft
+	["Only without the painted unit frames"] = "페인팅 개체창이 없을 때만", -- draft
 	["Only with Party Frames (Portraits), not the painted unit frames"] = "파티 창(초상화)에서만, 그려진 개체창 제외", -- draft
 	["Only with a Frame Backdrop"] = "창 배경판이 있을 때만", -- draft
 	["Names Font"] = "이름 글꼴", -- draft
@@ -2206,7 +2204,7 @@ Lang:Add("koKR", {
 	["The configurator: one painted window per skin that moves a little while open; plain one-row tabs, the designers' frames too; Quality of Life holds Automation, Screen Text, Reminders."] = "구성 창: 스킨마다 하나의 그림 창, 열려 있는 동안 조금 움직임; 한 줄의 단순한 탭, 디자이너의 창도; 편의 기능에 자동화, 화면 문구, 알림.", -- draft
 	["Options two to a line, none greyed out (a switch's settings behind its cog); Look holds every font, texture and border; profiles keep every setting exactly."] = "옵션은 한 줄에 둘씩, 회색 처리 없음(스위치의 설정은 톱니바퀴 뒤에); 외형에 모든 글꼴, 텍스처, 테두리; 프로필은 모든 설정을 정확히 유지.", -- draft
 	["Edit Layout: a top dock; every part of Edit Mode, hidden ones too, to show, hide, lock or move; the game's settings and switches in each box (bars: On Mouseover); one gold highlight."] = "레이아웃 편집: 상단 도크; 편집 모드의 모든 부분을 숨겨진 것까지 표시, 숨기기, 잠금, 이동; 각 상자에 게임의 설정과 스위치(바: 마우스를 올리면); 하나의 금색 강조.", -- draft
-	["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS too); Dark Mode: one Brightness for all, icons and text untouched."] = "옵션: 더 짧고 쉬운 설명; 흐리게 하기가 흐려지는 모든 것을 나열(주시 대상 창, FPS도); 어두운 모드: 모두에 하나의 밝기, 아이콘과 글자는 그대로.", -- draft
+	["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS); Dark Mode: one Brightness for all of MelloUI, all switches on its tab, new: Windows."] = "옵션: 더 짧고 쉬운 설명; 흐리게 하기가 흐려지는 모든 것을 나열(주시 대상 창, FPS); 어두운 모드: MelloUI 전체에 하나의 밝기, 모든 스위치는 해당 탭에, 새로 추가: 창.", -- draft
 	["Route: the service buttons (Repair, Innkeeper, Flight Master ...) route to the nearest one at once again."] = "Route: 서비스 버튼(장비 수리, 여관주인, 비행 조련사...)이 다시 바로 가장 가까운 곳으로 안내합니다.", -- draft
 	["Route: routes to the other continent are found faster and show Loading navigation... with its bar while they are."] = "Route: 다른 대륙 경로를 더 빨리 찾고, 찾는 동안 '내비게이션 불러오는 중...'과 바를 보여 줍니다.", -- draft
 	["Route: a route to a place the roads don't reach starts at once; one such spot no longer blocks routes to the other continent."] = "Route: 길이 닿지 않는 곳으로 가는 경로가 바로 시작되고, 그런 지점이 다른 대륙 경로를 더는 막지 않습니다.", -- draft
@@ -2762,6 +2760,7 @@ Lang:Add("koKR", {
 -- stale: ["Copy from a spec"] = "전문화에서 복사", -- draft
 -- stale: ["Cut the speech off when you change target."] = "대상을 바꾸면 말을 끊습니다.", -- draft
 -- stale: ["Cut the speech off when you close the dialog. Off by default so the NPC keeps talking while you walk away."] = "대화를 닫으면 말을 끊습니다. 기본 꺼짐이라 떠나는 동안에도 NPC가 계속 말합니다.", -- draft
+-- stale: ["Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target."] = "개체창의 다크 모드: 플레이어, 대상, 주시 대상, 소환수, 파티, 우두머리, 대상의 대상.", -- draft
 -- stale: ["Dark mode"] = "어두운 모드", -- draft
 -- stale: ["Darken the borders of your buff and debuff icons, with a thin dark edge round each icon (0.16.0: the Icon Border switch is part of this). The game's own icons: while Buffs & Debuffs shows MelloUI's rows in their place, there is nothing here to darken (those rows take the Aura Border)."] = "강화 및 약화 효과 아이콘의 테두리를 어둡게 하고, 각 아이콘 둘레에 얇고 어두운 가장자리를 둡니다(0.16.0: 아이콘 테두리 스위치가 여기에 포함됨). 게임의 아이콘: 강화 및 약화 효과가 그 자리에 MelloUI의 줄을 보여 주는 동안에는 여기서 어둡게 할 것이 없습니다(그 줄은 효과 테두리를 씁니다).", -- draft
 -- stale: ["Darkens the Blizzard artwork of unit frames, cast bars, action bars, nameplates, cooldown manager, auras and menu bars."] = "개체창, 시전바, 행동 단축바, 이름표, 재사용 대기시간 관리자, 효과, 메뉴 바의 블리자드 그림을 어둡게 합니다.", -- draft
@@ -2988,11 +2987,15 @@ Lang:Add("koKR", {
 -- stale: ["One look: its own look, Gilded Slate colours, the Fredoka font and a new logo, reskin or not; the installer sets up the new layout. The painted reskin is MelloUI Oldschool."] = "하나의 외형: 자체 외형, Gilded Slate 색, Fredoka 글꼴과 새 로고, 스킨과 상관없이. 설치기가 새 레이아웃을 설정합니다. 페인팅 스킨은 MelloUI Oldschool입니다.", -- draft
 -- stale: ["One seamless map of the whole world: zoom from Azeroth down to a zone with the mouse wheel and drag to look around."] = "온 세상을 잇는 하나의 지도: 마우스 휠로 아제로스에서 지역까지 확대하고, 끌어서 둘러봅니다.", -- draft
 -- stale: ["One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Move it in Edit Layout."] = "MelloUI가 전할 소식이 있을 때 화면 위쪽 3분의 1에 나타나는 짧은 한 줄: 경로 설정 또는 완료, 기억된 서비스, 목록에 오른 던전 퀘스트. 몇 초 뒤 사라집니다. 레이아웃 편집에서 옮길 수 있습니다.", -- draft
+-- stale: ["Only without the painted cast bars"] = "페인팅 시전바가 없을 때만", -- draft
+-- stale: ["Only without the painted minimap"] = "페인팅 미니맵이 없을 때만", -- draft
+-- stale: ["Only without the painted nameplates"] = "페인팅 이름표가 없을 때만", -- draft
 -- stale: ["Opacity of the Dark background."] = "어두운 배경의 불투명도.", -- draft
 -- stale: ["Open MelloUI"] = "MelloUI 열기", -- draft
 -- stale: ["Open MelloUI's map: the wheel zooms toward the cursor, a drag looks around, a click glides into the zone under the cursor and a right-click goes out again. Your map key (M) opens it, your quest log key (L) opens it with your quests beside it; /mellomap opens it too."] = "MelloUI의 지도를 엽니다: 휠은 커서 쪽으로 확대하고, 끌면 둘러보고, 클릭하면 커서 아래 지역으로 미끄러져 들어가며, 오른쪽 클릭하면 다시 나옵니다. 지도 키(M)로 열고, 퀘스트 목록 키(L)로 열면 퀘스트가 옆에 나옵니다. /mellomap 으로도 엽니다.", -- draft
 -- stale: ["Options two to a line, none greyed out (a switch's own settings behind its cog); Look holds every font, bar texture, background and border."] = "한 줄에 옵션 둘, 회색 처리 없음(스위치 설정은 톱니바퀴 뒤); 외관에 모든 글꼴, 바 텍스처, 배경, 테두리.", -- draft
 -- stale: ["Options, macros, Edit Mode, AddOn list"] = "설정, 매크로, 편집 모드, 애드온 목록", -- draft
+-- stale: ["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS too); Dark Mode: one Brightness for all, icons and text untouched."] = "옵션: 더 짧고 쉬운 설명; 흐리게 하기가 흐려지는 모든 것을 나열(주시 대상 창, FPS도); 어두운 모드: 모두에 하나의 밝기, 아이콘과 글자는 그대로.", -- draft
 -- stale: ["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS too); Dark Mode: one Brightness for the whole UI, icons and text untouched."] = "옵션: 더 짧고 명확한 설명; 흐리기가 흐려지는 모든 것을 보여 줌(주시 대상, FPS 포함); 다크 모드: 전체 UI에 밝기 하나, 아이콘과 글자는 그대로.", -- draft
 -- stale: ["Out of range, too far away, too close."] = "사거리 밖, 너무 멂, 너무 가까움.", -- draft
 -- stale: ["Outbid, sold, won and expired at the auction house, in one list. Click it for the way to the nearest mailbox."] = "경매장의 상회 입찰, 판매, 낙찰, 만료를 한 목록에. 누르면 가장 가까운 우체통으로 가는 길.", -- draft

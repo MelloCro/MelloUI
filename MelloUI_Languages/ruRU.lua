@@ -305,7 +305,7 @@ Lang:Add("ruRU", {
 	["Turns the gold and bronze art grey before dimming it."] = "Делает золотую и бронзовую графику серой перед затемнением.", -- draft
 	["Components"] = "Компоненты", -- draft
 	["Unit Frames"] = "Рамки", -- draft
-	["Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target."] = "Тёмный режим на рамках юнитов: игрок, цель, фокус, питомец, группа, босс и цель цели.", -- draft
+	["Dark Mode on the unit frames: player, target, focus, pet, boss, target of target, and the party and raid frames."] = "Тёмный режим на рамках юнитов: игрок, цель, фокус, питомец, босс, цель цели, а также рамки группы и рейда.", -- draft
 	["Cast Bars"] = "Индикаторы заклинаний", -- draft
 	["Dark Mode on the cast bars."] = "Тёмный режим на полосах заклинаний.", -- draft
 	["Action Bars"] = "Панели команд", -- draft
@@ -324,6 +324,8 @@ Lang:Add("ruRU", {
 	["Dark Mode on the minimap's ring, header and buttons."] = "Тёмный режим на кольце, заголовке и кнопках мини-карты.", -- draft
 	["Chat Frame"] = "Окно чата", -- draft
 	["Chat tabs, the chat input box and the chat buttons. Window background colours stay as configured in the chat settings."] = "Вкладки чата, поле ввода и кнопки чата. Цвета фона окон остаются такими, как заданы в настройках чата.", -- draft
+	["Windows"] = "Окна", -- draft
+	["Dark Mode on MelloUI's windows and panels: the bags, the map, the Quest Tracker, the configurator and the rest."] = "Тёмный режим на окнах и панелях MelloUI: сумки, карта, отслеживание заданий, конфигуратор и остальное.", -- draft
 	["Buffs & Debuffs"] = "Баффы и дебаффы", -- draft
 	["Dark Mode on the game's buff and debuff icons."] = "Тёмный режим на значках положительных и отрицательных эффектов игры.", -- draft
 	["Keep Dispel Colours"] = "Сохранять цвета рассеивания", -- draft
@@ -825,7 +827,6 @@ Lang:Add("ruRU", {
 	["Sounds"] = "Звуки", -- draft
 	["Clicks"] = "Щелчки", -- draft
 	["Clicks on buttons, checkboxes and tabs."] = "Щелчки кнопок, флажков и вкладок.", -- draft
-	["Windows"] = "Окна", -- draft
 	["Page turns and latches when windows open and close."] = "Перелистывание и защёлки при открытии и закрытии окон.", -- draft
 	["Inventory"] = "Инвентарь", -- draft
 	["Picking up, moving and looting items. Needed for the Equipment and Vendor sounds."] = "Подбор, перемещение и добыча предметов. Нужно для звуков снаряжения и торговца.", -- draft
@@ -2080,12 +2081,8 @@ Lang:Add("ruRU", {
 	["Chat Border Opacity"] = "Непрозрачность каймы чата", -- draft
 	["Timer Text Size"] = "Размер текста таймера", -- draft
 	["Only with Cooldown Timers on"] = "Только с включёнными «Таймерами восстановления»", -- draft
-	["Only without the painted unit frames"] = "Только без рисованных рамок", -- draft
-	["Only on the game's own icons (Your Buffs And Debuffs off)"] = "Только на значках игры («Ваши положительные и отрицательные эффекты» выкл.)", -- draft
-	["Only without the painted nameplates"] = "Только без рисованных индикаторов здоровья", -- draft
 	["Only without the painted action bars"] = "Только без рисованных панелей команд", -- draft
-	["Only without the painted cast bars"] = "Только без рисованных индикаторов заклинаний", -- draft
-	["Only without the painted minimap"] = "Только без рисованной мини-карты", -- draft
+	["Only on the game's own icons (Your Buffs And Debuffs off)"] = "Только на значках игры («Ваши положительные и отрицательные эффекты» выкл.)", -- draft
 	["Only on the game's own icons (Your Buffs And Debuffs off) or the Cooldown Manager's"] = "Только на значках игры («Ваши положительные и отрицательные эффекты» выкл.) или менеджера восстановления", -- draft
 	["Every Bar"] = "Каждая полоса", -- draft
 	["Only with My Colour"] = "Только с «Моим цветом»", -- draft
@@ -2096,6 +2093,7 @@ Lang:Add("ruRU", {
 	["Not with the whole window on parchment"] = "Не при всём окне на пергаменте", -- draft
 	["Item Slot Background"] = "Фон ячеек предметов", -- draft
 	["Party portraits"] = "Портреты группы", -- draft
+	["Only without the painted unit frames"] = "Только без рисованных рамок", -- draft
 	["Only with Party Frames (Portraits), not the painted unit frames"] = "Только с «Рамки группы (портреты)», не с нарисованными рамками юнитов", -- draft
 	["Only with a Frame Backdrop"] = "Только с «Подложкой рамок»", -- draft
 	["Names Font"] = "Шрифт имён", -- draft
@@ -2206,7 +2204,7 @@ Lang:Add("ruRU", {
 	["The configurator: one painted window per skin that moves a little while open; plain one-row tabs, the designers' frames too; Quality of Life holds Automation, Screen Text, Reminders."] = "Конфигуратор: одно нарисованное окно на облик, слегка оживающее, пока открыто; простые вкладки в один ряд, также рамки конструкторов; «Удобство» объединяет автоматизацию, текст на экране, напоминания.", -- draft
 	["Options two to a line, none greyed out (a switch's settings behind its cog); Look holds every font, texture and border; profiles keep every setting exactly."] = "Параметры по два в строке, без серых (настройки переключателя за его шестерёнкой); «Облик» хранит каждый шрифт, текстуру и рамку; профили точно сохраняют каждую настройку.", -- draft
 	["Edit Layout: a top dock; every part of Edit Mode, hidden ones too, to show, hide, lock or move; the game's settings and switches in each box (bars: On Mouseover); one gold highlight."] = "Изменить раскладку: панель сверху; каждая часть режима редактирования, и скрытые тоже: показать, скрыть, закрепить или передвинуть; настройки и переключатели игры в каждом окошке (панели: «При наведении»); одна золотая подсветка.", -- draft
-	["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS too); Dark Mode: one Brightness for all, icons and text untouched."] = "Параметры: описания короче и проще; «Угасание» перечисляет всё, что угасает (рамка фокуса, FPS тоже); «Тёмный режим»: одна яркость для всего, значки и текст не затронуты.", -- draft
+	["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS); Dark Mode: one Brightness for all of MelloUI, all switches on its tab, new: Windows."] = "Параметры: описания короче и проще; «Угасание» перечисляет всё, что угасает (рамка фокуса, FPS); «Тёмный режим»: одна яркость для всего MelloUI, все переключатели на его вкладке, новое: «Окна».", -- draft
 	["Route: the service buttons (Repair, Innkeeper, Flight Master ...) route to the nearest one at once again."] = "Route: кнопки услуг (Ремонт, Хозяин таверны, Распорядитель полетов...) снова сразу ведут к ближайшему.", -- draft
 	["Route: routes to the other continent are found faster and show Loading navigation... with its bar while they are."] = "Route: маршруты на другой континент находятся быстрее и показывают «Загрузка навигации...» с полосой.", -- draft
 	["Route: a route to a place the roads don't reach starts at once; one such spot no longer blocks routes to the other continent."] = "Route: маршрут туда, куда не ведут дороги, начинается сразу; такое место больше не блокирует маршруты на другой континент.", -- draft
@@ -2762,6 +2760,7 @@ Lang:Add("ruRU", {
 -- stale: ["Copy from a spec"] = "Скопировать из специализации", -- draft
 -- stale: ["Cut the speech off when you change target."] = "Обрывает речь, когда вы меняете цель.", -- draft
 -- stale: ["Cut the speech off when you close the dialog. Off by default so the NPC keeps talking while you walk away."] = "Обрывает речь, когда вы закрываете диалог. По умолчанию выкл., чтобы NPC продолжал говорить, пока вы уходите.", -- draft
+-- stale: ["Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target."] = "Тёмный режим на рамках юнитов: игрок, цель, фокус, питомец, группа, босс и цель цели.", -- draft
 -- stale: ["Dark mode"] = "Тёмный режим", -- draft
 -- stale: ["Darken the borders of your buff and debuff icons, with a thin dark edge round each icon (0.16.0: the Icon Border switch is part of this). The game's own icons: while Buffs & Debuffs shows MelloUI's rows in their place, there is nothing here to darken (those rows take the Aura Border)."] = "Затемняет рамки значков ваших положительных и отрицательных эффектов, с тонким тёмным краем вокруг каждого значка (0.16.0: сюда входит переключатель «Рамка значка»). Собственные значки игры: пока «Баффы и дебаффы» показывает вместо них ряды MelloUI, здесь нечего затемнять (эти ряды носят «Рамку эффектов»).", -- draft
 -- stale: ["Darkens the Blizzard artwork of unit frames, cast bars, action bars, nameplates, cooldown manager, auras and menu bars."] = "Затемняет оформление Blizzard у рамок, индикаторов заклинаний, панелей команд, индикаторов здоровья, менеджера восстановления, эффектов и панелей меню.", -- draft
@@ -2988,11 +2987,15 @@ Lang:Add("ruRU", {
 -- stale: ["One look: its own look, Gilded Slate colours, the Fredoka font and a new logo, reskin or not; the installer sets up the new layout. The painted reskin is MelloUI Oldschool."] = "Единый облик: собственный вид, цвета Gilded Slate, шрифт Fredoka и новый логотип, с рисованным обликом или без; установщик ставит новую раскладку. Рисованный облик — это MelloUI Oldschool.", -- draft
 -- stale: ["One seamless map of the whole world: zoom from Azeroth down to a zone with the mouse wheel and drag to look around."] = "Одна бесшовная карта всего мира: приближайте от Азерота до зоны колёсиком мыши и перетаскивайте, чтобы оглядеться.", -- draft
 -- stale: ["One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Move it in Edit Layout."] = "Одна короткая строка в верхней трети экрана, когда у MelloUI есть для вас новости: маршрут задан или пройден, услуга запомнена, задания подземелья перечислены. Она гаснет через несколько секунд. Переместите её в «Изменить раскладку».", -- draft
+-- stale: ["Only without the painted cast bars"] = "Только без рисованных индикаторов заклинаний", -- draft
+-- stale: ["Only without the painted minimap"] = "Только без рисованной мини-карты", -- draft
+-- stale: ["Only without the painted nameplates"] = "Только без рисованных индикаторов здоровья", -- draft
 -- stale: ["Opacity of the Dark background."] = "Непрозрачность «Тёмного» фона.", -- draft
 -- stale: ["Open MelloUI"] = "Открыть MelloUI", -- draft
 -- stale: ["Open MelloUI's map: the wheel zooms toward the cursor, a drag looks around, a click glides into the zone under the cursor and a right-click goes out again. Your map key (M) opens it, your quest log key (L) opens it with your quests beside it; /mellomap opens it too."] = "Открывает карту MelloUI: колёсико приближает к курсору, перетаскивание осматривает окрестности, щелчок плавно входит в зону под курсором, правый щелчок выходит обратно. Ваша клавиша карты (M) открывает её, клавиша журнала заданий (L) открывает её с заданиями рядом; /mellomap тоже открывает.", -- draft
 -- stale: ["Options two to a line, none greyed out (a switch's own settings behind its cog); Look holds every font, bar texture, background and border."] = "Настройки по две в строке, без серых (настройки переключателя за его шестерёнкой); «Вид» хранит каждый шрифт, текстуру полос, фон и кайму.", -- draft
 -- stale: ["Options, macros, Edit Mode, AddOn list"] = "Параметры, макросы, раскладка, модификации", -- draft
+-- stale: ["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS too); Dark Mode: one Brightness for all, icons and text untouched."] = "Параметры: описания короче и проще; «Угасание» перечисляет всё, что угасает (рамка фокуса, FPS тоже); «Тёмный режим»: одна яркость для всего, значки и текст не затронуты.", -- draft
 -- stale: ["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS too); Dark Mode: one Brightness for the whole UI, icons and text untouched."] = "Настройки: короче и понятнее описания; «Затухание» перечисляет всё, что тускнеет (рамка фокуса, FPS тоже); тёмный режим: одна яркость для всего интерфейса, значки и текст не трогаются.", -- draft
 -- stale: ["Out of range, too far away, too close."] = "Вне досягаемости, слишком далеко, слишком близко.", -- draft
 -- stale: ["Outbid, sold, won and expired at the auction house, in one list. Click it for the way to the nearest mailbox."] = "Перебитые ставки, продажи, выигрыши и истёкшие лоты аукционного дома в одном списке. Нажмите, чтобы увидеть путь к ближайшему почтовому ящику.", -- draft

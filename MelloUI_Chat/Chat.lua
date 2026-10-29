@@ -45,8 +45,8 @@ local M = MelloUI:RegisterModule("Chat", {
 		"viewOrder",
 		-- (1.0, the user, 2026-10-20: the Full experience carries "Chat
 		-- Background: Dark" -- the dropdown's own pick, background, travels in
-		-- a profile with the keys it sets, hideBackground and Dark Mode's chat,
-		-- no longer personal)
+		-- a profile with the key it sets, hideBackground, no longer personal;
+		-- Dark Mode's chat travels with Dark Mode's settings)
 	},
 	defaults = {
 		hideBackground = true,
@@ -3930,30 +3930,24 @@ function M:OnInit(db)
 	MelloUI:On("setting", function(module, key, value)
 		if module == "UIModifications" and key == "classNames" and M.isEnabled then
 			ApplyClassColors(value ~= false)
-		elseif M.isEnabled and ((module == "DarkMode" and key == "chat") or (module == "UIModifications" and key == "ChatPanel")) then
-			ApplyArt()   -- (the Background they make up: the Dark look on or off)
+		elseif M.isEnabled and module == "UIModifications" and key == "ChatPanel" then
+			ApplyArt()   -- (the Background it makes up: the Dark look on or off)
 		end
 	end, "Chat: class names")
 end
 
 -- The Background dropdown (0.16.0): what the settings it stands for say now,
--- and setting them. None is this module's hideBackground, Dark Dark Mode's
--- chat (and this module's own plates, M.Dark). One look (2026-10-15): the
--- painted skin (UI Modifications' ChatPanel, Oldschool's Painted Skin row)
--- and its parchment (parchment_chat, the page's Parchment switch) are no
--- longer its to read or to set. Their default (the painted skin on) stood
--- over two defaults that would now read as a choice -- Hide Background on,
--- Dark Mode's chat on -- so Dark, and None in the Minimal Chat View (its
--- panel clear), are the player's own pick (db.background, the dropdown's
--- copy; false: no pick -- Core's MergeSettings carried an old reading once);
--- for the game's windows the keys are the truth: Hide Background on is None
--- there, whoever set it.
-local function Saved(module)
-	local mods = MelloUI.db and MelloUI.db.modules
-	local t = type(mods) == "table" and mods[module]
-	return type(t) == "table" and t or nil
-end
-
+-- and setting them. None is this module's hideBackground, Dark this module's
+-- own plates (M.Dark). One look (2026-10-15): the painted skin (UI
+-- Modifications' ChatPanel, Oldschool's Painted Skin row) and its parchment
+-- (parchment_chat, the page's Parchment switch) are no longer its to read or
+-- to set. (1.2.4, lk-11; the user, 2026-10-28: "Keep the Dark Mode settings
+-- in the Dark Mode Tab, dont spread settings around anymore") nor Dark Mode's
+-- chat (its Chat Frame row on Look > Dark Mode alone; a saved value kept as
+-- it is). Dark, and None in the Minimal Chat View (its panel clear), are the
+-- player's own pick (db.background, the dropdown's copy; false: no pick --
+-- Core's MergeSettings carried an old reading once); for the game's windows
+-- the keys are the truth: Hide Background on is None there, whoever set it.
 Background = function(db)
 	local pick = db and db.background
 	if db and db.hideBackground then
@@ -3963,30 +3957,18 @@ Background = function(db)
 		end
 		return "game"
 	end
-	local dm = Saved("DarkMode")
-	if pick == "dark" and dm and dm.chat == true then
+	if pick == "dark" then
 		return "dark"
 	end
 	return "game"
 end
 M.Background = Background   -- (read only: the tests)
 
--- one setting written through its module (only a change: its module
--- applies it)
-local function Put(module, key, value)
-	local t = Saved(module)
-	if t and t[key] == value then
-		return
-	end
-	MelloUI:NotifySettingChanged(module, key, value)
-end
-
 function M.SetBackground(value)
 	-- (one look: Dark, Game or None; the painted skin and its paper are switches of their own)
 	if value ~= "dark" and value ~= "game" and value ~= "none" then
 		return
 	end
-	Put("DarkMode", "chat", value == "dark")
 	if M.db and (M.db.hideBackground and true or false) ~= (value == "none") then
 		M.db.hideBackground = value == "none"
 	end
