@@ -26,6 +26,13 @@
 -- bridge's Gate) gets that switch on top: the game's CVar, set at once as
 -- Edit Mode's shift-click sets it; off and locked while a MelloUI part holds
 -- it (MelloUI:CVarHeldBy), with that part's page.
+-- (1.2.4, el-07) A MelloUI part that stands in for an Edit Mode system with a
+-- frame of its own (the Quest Tracker for the game's objective tracker) is no
+-- system: its box lists its module's own counterparts of that system's
+-- settings instead (MelloUI:EditLayoutOptions), drawn from the module's
+-- schema -- the module's setting the one store. Such a change shows at once
+-- (the settings bus), counts with the session's others, stays at Save and is
+-- put back at Discard.
 --
 --   ES = MelloUI.EditLayout.Settings
 --     ES.For(entry) -> system, index | nil   an Edit Mode system's entry
@@ -34,6 +41,10 @@
 --     ES.Hide()                              the rows away (the box closed)
 --     ES.Count()                             the settings changed, unsaved
 --     ES.Save(), ES.Discard()                at the session's end
+--   MelloUI:EditLayoutOptions(frame, spec)   (el-07) frame's box lists those
+--     settings of a module: spec { module = name, keys = { key, ... } }, in
+--     that order (a slider or a toggle of its schema; another kind is left
+--     out)
 -- Nothing at load: the rows are made at the first box that needs them.
 -- No colour number: palette keys through W.Paint.
 --------------------------------------------------------------------------------
@@ -62,6 +73,8 @@ local TEXT = {
 	gateTip = "Turns the game's %s on or off now, as the game's own setting does. Discard does not undo it.",
 	held = "MelloUI's %s stands in for it.",
 	heldLink = "%s >",
+	-- (1.2.4, el-07) a MelloUI part's own settings (MelloUI:EditLayoutOptions)
+	own = "Settings",
 }
 ES.TEXT = TEXT
 
@@ -71,6 +84,10 @@ local GAP = 8
 
 -- the changes waiting: [system .. ":" .. index] = { system, index, values = { [setting] = raw } }
 local pend = {}
+-- (1.2.4, el-07) the parts' own settings: [frame] = spec (MelloUI:EditLayoutOptions); and what each changed one was
+-- before the session's first change of it: [module .. "." .. key] = { module, key, value }
+local own = setmetatable({}, { __mode = "k" })
+local ownWas = {}
 
 local function Key(system, index)
 	return tostring(system) .. ":" .. tostring(index)
@@ -314,10 +331,24 @@ local function Has(frame, info, raw)
 	return true
 end
 
+-- (el-07) a part's own setting as it is now
+local function OwnValue(module, key)
+	local db = MelloUI:GetModuleDB(module)
+	if type(db) ~= "table" then
+		return nil
+	end
+	return db[key]
+end
+
 function ES.Count()
 	local n = 0
 	for _, p in pairs(pend) do
 		for _ in pairs(p.values) do
+			n = n + 1
+		end
+	end
+	for _, was in pairs(ownWas) do
+		if OwnValue(was.module, was.key) ~= was.value then
 			n = n + 1
 		end
 	end
@@ -329,6 +360,7 @@ end
 -- layout is one; the reload line once)
 function ES.Save()
 	wipe(orig)   -- (the look kept: the reload shows the same, drawn by the game)
+	wipe(ownWas)   -- (a part's own settings: set already)
 	for key, p in pairs(pend) do
 		pend[key] = nil
 		if next(p.values) and MelloUI.EditModeSettingsSoon then
@@ -340,6 +372,13 @@ end
 function ES.Discard()
 	wipe(pend)
 	Unpreview()
+	-- (el-07) a part's own settings back as they were
+	for id, was in pairs(ownWas) do
+		ownWas[id] = nil
+		if OwnValue(was.module, was.key) ~= was.value then
+			MelloUI:NotifySettingChanged(was.module, was.key, was.value)
+		end
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -415,7 +454,28 @@ local function Changed(row)
 	end
 end
 
+-- (el-07) a row of a part's own setting: the module's value, set at once (what it was kept for Discard)
+local function OwnSet(row, v)
+	local module, key = row.ownModule, row.own.key
+	local id = module .. "." .. key
+	if not ownWas[id] then
+		ownWas[id] = { module = module, key = key, value = OwnValue(module, key) }
+	end
+	MelloUI:NotifySettingChanged(module, key, v)
+	local P = E.Movers
+	if P and P.SyncSoon then
+		P.SyncSoon()   -- (its plate laid again over a new size)
+	end
+end
+
 local function RowGet(row)
+	if row.own then
+		local v = OwnValue(row.ownModule, row.own.key)
+		if row.kind == "check" then
+			return v == true
+		end
+		return v
+	end
 	if row.fade and FadeValue(row.fade) == MOUSEOVER then
 		return MOUSEOVER
 	end
@@ -428,6 +488,11 @@ local function RowGet(row)
 end
 
 local function RowSet(row, v)
+	if row.own then
+		OwnSet(row, row.kind == "check" and (v and true or false) or v)
+		Changed(row)
+		return
+	end
 	if row.kind == "check" then
 		v = v and 1 or 0
 	end
@@ -681,29 +746,119 @@ function ES.Hide()
 	gate.spec, gate.owner = nil, nil
 end
 
--- the box's Edit Mode part from y (UI units from its top); y after it
-function ES.Lay(box, entry, y, width)
-	ES.Hide()
-	local system, index = ES.For(entry)
-	local infos = system and Infos(system)
-	local raw = infos and Raw(system, index)
-	local Bridge = E.Bridge
-	local spec = system and Bridge and Bridge.Gate and Bridge.Gate(system, index) or nil
-	if not (raw or spec) then
-		return y
-	end
-	cur.system, cur.index, cur.frame = system, index, entry.frame
+-- the part's heading at y (made at its first need); y under it
+local function LayHeading(box, text, y)
 	if not heading then
 		heading = W.Text(box, "GameFontNormal", TEXT.heading, "selectedTrim")
 		note = W.Text(box, "GameFontHighlight", TEXT.note, "text")
 		note:SetJustifyH("LEFT")
 		note:SetWordWrap(true)
 	end
-	y = y + 6
+	heading:SetText(text)
 	heading:ClearAllPoints()
 	heading:SetPoint("TOPLEFT", box, "TOPLEFT", 12, -y)
 	heading:Show()
-	y = y + 18
+	return y + 18
+end
+
+-- a row taken, its controls hidden (its fields are set before its control is made: a new control reads its value)
+local function FreshRow(box)
+	local row = TakeRow(box)
+	for _, k in ipairs({ "dropdown", "slider", "check" }) do
+		if row[k] then
+			row[k]:Hide()
+		end
+	end
+	return row
+end
+
+-- a row shown at y, as tall as its label; y under it
+local function LayRow(box, row, c, y, width)
+	c:Show()
+	c:Refresh()
+	row:SetWidth(width)
+	row:ClearAllPoints()
+	row:SetPoint("TOPLEFT", box, "TOPLEFT", 0, -y)
+	row:Show()
+	local lh = Num(row.label:GetStringHeight()) or 14
+	local h = math.max(ROW_H, math.ceil(lh) + 8)
+	row:SetHeight(h)
+	return y + h
+end
+
+--------------------------------------------------------------------------------
+-- (1.2.4, el-07) A MelloUI part's own settings (the header: MelloUI:EditLayoutOptions)
+--------------------------------------------------------------------------------
+
+function MelloUI:EditLayoutOptions(frame, spec)
+	if type(frame) ~= "table" or type(spec) ~= "table" or type(spec.module) ~= "string" or type(spec.keys) ~= "table" then
+		return
+	end
+	own[frame] = spec
+end
+
+-- the schema's controls a row shows
+local OWN_KIND = { slider = "slider", toggle = "check" }
+
+-- a module's option of that key (its schema's own table, read only)
+local function OptionOf(module, key)
+	for _, o in ipairs(type(module.options) == "table" and module.options or {}) do
+		if type(o) == "table" and o.key == key then
+			return o
+		end
+	end
+	return nil
+end
+
+-- the part's own rows from y; y after them (y when it has none)
+local function LayOwn(box, entry, y, width)
+	local frame = type(entry) == "table" and entry.frame or nil
+	local spec = frame and own[frame]
+	local module = spec and MelloUI:GetModule(spec.module)
+	if not module then
+		return y
+	end
+	local controlW = width - 12 - LABEL_W - GAP - 12
+	local any = false
+	for _, key in ipairs(spec.keys) do
+		local o = OptionOf(module, key)
+		local kind = o and OWN_KIND[o.type]
+		if kind then
+			if not any then
+				any = true
+				y = LayHeading(box, TEXT.own, y + 6)
+			end
+			local row = FreshRow(box)
+			row.info, row.kind, row.fade = nil, kind, nil
+			row.own, row.ownModule = o, spec.module
+			local c = Control(row, kind, controlW)
+			row.label:SetText(W.Tr(tostring(o.name or key)))
+			if kind == "slider" then
+				c:SetRange(Num(o.min) or 0, Num(o.max) or 1, Num(o.step) or 0.05, o.percent and true or false,
+					type(o.format) == "function" and o.format or nil)
+			end
+			y = LayRow(box, row, c, y, width)
+		end
+	end
+	return any and y + 4 or y
+end
+
+-- the box's Edit Mode part from y (UI units from its top); y after it
+function ES.Lay(box, entry, y, width)
+	ES.Hide()
+	local system, index = ES.For(entry)
+	if not system then
+		return LayOwn(box, entry, y, width)
+	end
+	local infos = Infos(system)
+	local raw = infos and Raw(system, index)
+	local Bridge = E.Bridge
+	local spec = Bridge and Bridge.Gate and Bridge.Gate(system, index) or nil
+	if not (raw or spec) then
+		return y
+	end
+	cur.system, cur.index, cur.frame = system, index, entry.frame
+	y = LayHeading(box, TEXT.heading, y + 6)
 	note:SetWidth(width - 24)
 	note:ClearAllPoints()
 	note:SetPoint("TOPLEFT", box, "TOPLEFT", 12, -y)
@@ -718,34 +873,21 @@ function ES.Lay(box, entry, y, width)
 		local kind = type(info) == "table" and KindOf(info)
 		if kind and Has(entry.frame, info, raw) then
 			any = true
-			local row = TakeRow(box)
 			local fade, fadeLabel
 			if kind == "dropdown" then
 				fade, fadeLabel = FadeKey(system, index, info)
 			end
+			local row = FreshRow(box)
 			row.info, row.kind, row.fade = info, kind, fade
-			row.label:SetText(tostring(info.name or "?"))
-			for _, k in ipairs({ "dropdown", "slider", "check" }) do
-				if row[k] then
-					row[k]:Hide()
-				end
-			end
+			row.own, row.ownModule = nil, nil
 			local c = Control(row, kind, controlW)
+			row.label:SetText(tostring(info.name or "?"))
 			if kind == "dropdown" then
 				c:SetValues(fade and FadeChoicesOf(info, fadeLabel) or ChoicesOf(info))
 			elseif kind == "slider" then
 				c:SetRange(Num(info.minValue) or 0, Num(info.maxValue) or 1, Num(info.stepSize) or 1, false, FormatOf(info))
 			end
-			c:Show()
-			c:Refresh()
-			row:SetWidth(width)
-			row:ClearAllPoints()
-			row:SetPoint("TOPLEFT", box, "TOPLEFT", 0, -y)
-			row:Show()
-			local lh = Num(row.label:GetStringHeight()) or 14
-			local h = math.max(ROW_H, math.ceil(lh) + 8)
-			row:SetHeight(h)
-			y = y + h
+			y = LayRow(box, row, c, y, width)
 		end
 	end
 	if not any then

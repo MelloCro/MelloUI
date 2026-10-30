@@ -52,7 +52,11 @@ Core, Backup and every TOC file of the working tree:
      store places of the four Edit Mode frames and Edit Layout's EditMode.*
      copies KEPT, the window places and QuestTracker.pos as fitted (at the
      design size: the snapshot's own unless one leaves the screen), the
-     tracker's and Quest List's sizes as fitted; layoutFitFor NOT baked. The
+     tracker's and Quest List's sizes as fitted; layoutFitFor NOT baked;
+     (el-11) the screen the places were made on, UIModifications.placesFor,
+     shipped with them and never converted here: the snapshot's own (a share
+     string exported since carries it), else full_snapshot.txt's "placesFor
+     WxH" line (the installer lays them out for each screen). The
      moved places the fitter does not place are checked on the screen at the
      design size: every whisper window (the popup's size, all six cascade
      places) and the anchors of the other two;
@@ -108,13 +112,29 @@ SNAPSHOT_RECORD = os.path.join(B.HERE, "full_snapshot.txt")
 DEFAULT_SNAPSHOT = "installer/2026-09-24_21x9_3440x1440/MelloUI.SavedVariables.lua"
 
 
-def recorded_snapshot():
+def _record_lines():
     try:
         with open(SNAPSHOT_RECORD, encoding="utf-8") as fh:
-            rel = fh.read().strip() or DEFAULT_SNAPSHOT
+            return [line.strip() for line in fh.read().splitlines() if line.strip()]
     except OSError:
-        rel = DEFAULT_SNAPSHOT
+        return []
+
+
+def recorded_snapshot():
+    lines = _record_lines()
+    rel = lines[0] if lines else DEFAULT_SNAPSHOT
     return B.build_data(*rel.replace("\\", "/").split("/"))
+
+
+def recorded_places_for():
+    """(el-11) The screen the recorded snapshot's places were made on, "WxH" in UI units: full_snapshot.txt's
+    "placesFor WxH" line, for a snapshot made before exports said so themselves (a share string exported since
+    carries UIModifications.placesFor, and a --write from it records its path alone); None without one."""
+    for line in _record_lines()[1:]:
+        m = re.match(r"^placesFor\s+(\d+(?:\.\d+)?x\d+(?:\.\d+)?)$", line)
+        if m:
+            return m.group(1)
+    return None
 
 
 SNAP = recorded_snapshot()
@@ -365,10 +385,14 @@ end
 
 -- the fitter at the design size, fed the live (migrated) settings as the
 -- installer feeds it; its places laid over the settings
-function DesignPlaces(info, sw, sh)
+function DesignPlaces(info, sw, sh, placesFor)
     local LF = rawget(M, "LayoutFit")
     local W, H = LF.DESIGN_W, LF.DESIGN_H
     local inputs = LF:Inputs()
+    -- (el-11) the places ship as they were made, with the screen they were made on (UIModifications.placesFor:
+    -- the snapshot's own, else placesFor, full_snapshot.txt's line): the installer lays them out for each screen
+    -- (LayoutFit's F0s), so this fit never moves them for it
+    inputs.placesFor = nil
     local fitted, places, report = LF:Fit(info, W, H, inputs, { screenW = sw, screenH = sh })
     if not fitted or not report.pass then
         -- what failed, named (the checks' lists and the unsolved flags)
@@ -388,6 +412,7 @@ function DesignPlaces(info, sw, sh)
         error("the design-size fit did not pass: " .. tostring(report and report.verdict) .. "\n  " .. table.concat(why, "\n  "))
     end
     local um = M:GetModuleDB("UIModifications")
+    if um.placesFor == nil and placesFor then um.placesFor = placesFor end
     if type(um.positions) ~= "table" then um.positions = {} end
     for _, k in ipairs(places.remove or {}) do um.positions[k] = nil end
     for k, p in pairs(places.windows or {}) do um.positions[k] = Copy(p) end
@@ -723,7 +748,9 @@ def bake(snapshot=SNAP, tries=5, wait=60, log=print):
         e = loadf(open(B.ROOT + "Core/LayoutFit.lua", encoding="utf-8").read(), "@Core/LayoutFit.lua", ns)
         if e:
             raise SystemExit("Core/LayoutFit.lua did not load: " + e)
-    fit = g.DesignPlaces(design_info(lua), 3440, 1440)
+    # (el-11: the record's screen of the places belongs to the recorded snapshot alone)
+    same = os.path.normcase(os.path.abspath(snapshot)) == os.path.normcase(os.path.abspath(SNAP))
+    fit = g.DesignPlaces(design_info(lua), 3440, 1440, recorded_places_for() if same else None)
     g.DropPlaces(B.to_lua(lua, STALE_PLACES))
     fit_py = B.py(lua, fit)
     fitted_store = B.py(lua, g.STORE_FITTED)

@@ -87,6 +87,7 @@ local M = MelloUI:RegisterModule("Services", {
 local IsSecret = MelloUI.Safe.IsSecret
 local Plain = MelloUI.Safe.Value
 local Num = MelloUI.Safe.Number
+local Safe = MelloUI.Safe
 
 -- the minimap's shown part (MinimapPanel's Width x Height, 0.15.0: its
 -- square map cropped): what the row lines up with and the minimap button
@@ -230,17 +231,35 @@ local ERRANDS = {
 -- its own. A new group is one entry; LayoutFit's Column.ROW_GROUPS models the
 -- row's height (Core/LayoutFit.lua: change it with the count). (0.22.0) The
 -- AddOns group (`addons`) shows only while there are addon buttons for it;
--- its kinds are Addon.list, filled from LibDBIcon (the AddOns section). The
+-- its kinds are Addon.list, the other addons' minimap buttons (the AddOns
+-- section: LibDBIcon's and their own, 1.2.4). The
 -- row's buttons keep the six's size where the map has room for a seventh
 -- (GroupRow): the model's six-button row stays the taller, the safe one.
 -- AddOns (0.22.0): the entries its tray lists, one per addon button (the
 -- section of its own below, before the menu)
 local Addon = {
 	ICON = MelloUI.Widgets.IconPath("svc_addons"),   -- (0.25.0: the set's; the game's gear before)
-	list = {},      -- the tray's entries, in name order: { addon = true, name, label, icon, obj, button }
+	list = {},      -- the tray's entries, in name order: { addon = true, name, label, icon, obj, button, tex }
+	                -- (an own button's: own = true, no obj; atlas when its icon is one)
 	byName = {},    -- [LibDBIcon name] = its entry (reused)
+	byButton = {},  -- (1.2.4) [an own button] = its entry (reused)
 	parent = {},    -- [button] = the parent it had, given back
+	level = {},     -- [button] = its frame level then, and
+	strata = {},    -- its strata, given back with it
+	keep = {},      -- [button] = true: listed this time (Collect; reused)
+	libs = {},      -- [button] = true: the library's (Collect; reused)
+	last = {},      -- the list the bar was laid with (Same; reused)
+	hooked = setmetatable({}, { __mode = "k" }),   -- [own button] = true: its Show / Hide / SetShown watched
 	shown = {},     -- the group buttons that show (UseButtons; reused)
+	-- where other addons' own buttons stand (globals of the game's minimap)
+	ON = { "Minimap", "MinimapBackdrop", "MinimapCluster" },
+	-- a minimap button's size, smallest side to biggest (LibDBIcon's 31, the game's template's usual 32-33; map pins
+	-- are 12-16)
+	SIZE = { 20, 48 },
+	SHOWS = { "Show", "Hide", "SetShown" },
+	-- the standard minimap-button art, never a button's icon: the ring, its background, the highlight
+	ART = { [136430] = true, [136467] = true, [136477] = true, ["interface\\minimap\\minimap-trackingborder"] = true,
+		["interface\\minimap\\ui-minimap-background"] = true, ["interface\\minimap\\ui-minimap-zoombutton-highlight"] = true },
 }
 
 local GROUPS = {
@@ -1157,8 +1176,13 @@ local function Remember(kindKey, name, sub)
 end
 
 local eventFrame = CreateFrame("Frame")
-Perf.SetScript(eventFrame, "OnEvent", function(_, event)
-	if event == "MERCHANT_SHOW" then
+Perf.SetScript(eventFrame, "OnEvent", function(_, event, a1, a2)
+	if event == "ADDON_LOADED" or (event == "PLAYER_ENTERING_WORLD" and (a1 or a2)) then
+		-- (1.2.4) an addon loaded, the login or a reload: its minimap button may be new (the AddOns group)
+		if Addon.Wanted() then
+			Addon.Soon()
+		end
+	elseif event == "MERCHANT_SHOW" then
 		local ok, can = pcall(CanMerchantRepair)
 		if ok and can then
 			Remember("repair", NPCName(), NPCSubName())
@@ -1196,27 +1220,42 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event)
 end)
 
 local EVENTS = { "MERCHANT_SHOW", "MAIL_SHOW", "GOSSIP_SHOW", "TAXIMAP_OPENED", "AUCTION_HOUSE_SHOW", "BANKFRAME_OPENED",
-	"TRAINER_SHOW", "BARBER_SHOP_OPEN", "TRANSMOGRIFY_OPEN" }
+	"TRAINER_SHOW", "BARBER_SHOP_OPEN", "TRANSMOGRIFY_OPEN", "ADDON_LOADED", "PLAYER_ENTERING_WORLD" }
 
 --------------------------------------------------------------------------------
 -- AddOns (0.22.0; a player's request, 2026-10-10, "Minimap bar for addon icons": "Would be awesome to have a minimap
 -- bar like "Services" but for addon icons. They currently just float on my minimap."; the user's pick A of
--- MelloUI-BuildData/output/addon_bar_sketch: a seventh group, AddOns, its tray listing them). Other addons' minimap
--- buttons are LibDBIcon's on this client (Questie, Naowh ...; the game's Addon Compartment loads on retail only; the
--- minimap's other children -- map pins among them -- are never taken). While the group is wanted (Services on, its
--- bar with Groups, AddOns Group on) each button its addon shows is held under a hidden frame of ours (a re-parent:
--- the library's Show and Refresh cannot bring it back on the map), and a row of the tray stands for it, its icon and
--- name; a click (any button), the hover and its leaving are the addon's data object's own (LibDataBroker's OnClick,
--- OnTooltipShow or OnEnter, OnLeave: as the library's button calls them), on the row. Wanted no more, each goes back
--- to the parent it had. Nothing of an addon's own settings is written.
+-- MelloUI-BuildData/output/addon_bar_sketch: a seventh group, AddOns, its tray listing them). While the group is
+-- wanted (Services on, its bar with Groups, AddOns Group on) each button its addon shows is held under a hidden frame
+-- of ours (a re-parent: the addon's own Show cannot bring it back on the map), and a row of the tray stands for it,
+-- its icon and name. Wanted no more, each goes back to the parent it had (unless its addon has moved it since).
+-- Nothing of an addon's own settings is written.
+-- (1.2.4; the user, 2026-10-30: "users report that a lot of addons dont appear there, can you investigate and make
+-- sure that every other addon that has that appears there?") Two kinds, each found by what the game tells, never by
+-- an addon's name (0.22.0 took the first only; the game's Addon Compartment loads on retail only):
+--  * LibDBIcon-1.0's buttons (its `objects`): the click (any button), the hover and its leaving are the addon's data
+--    object's own (LibDataBroker's OnClick, OnTooltipShow or OnEnter, OnLeave: as the library's button calls them),
+--    on the row.
+--  * an addon's own button (CreateFrame or XML, on the game's MiniMapButtonTemplate or not): a frame on the Minimap,
+--    MinimapBackdrop or MinimapCluster (or held by us) whose global name an addon made (issecurevariable: the game's
+--    own buttons are secure and stay; MelloUI's stay), shown, not protected, clickable (OnClick or OnMouseUp), as big
+--    as a minimap button and square (pins are smaller), neither the library's nor a pin of HereBeDragons-Pins-2.0.
+--    Its row: its icon (its `icon`, <name>Icon, its normal texture, else its biggest picture that is not the
+--    minimap ring's art), its addon's title; the click, the hover and its leaving are the button's own scripts, on
+--    the button, the game's tooltip it shows moved beside the row. An unnamed frame is never taken (nothing tells an
+--    addon's from the game's).
+-- Looked at again (Addon.Soon): the library's callback, Show and Hide; an own button's Show, Hide or SetShown
+-- (post-hooks on the addon's frame); an addon loaded; the login, and once 5 s after it (buttons made on a timer).
+-- The bar is laid again only when the list changed (Addon.Changed).
 --------------------------------------------------------------------------------
 
-function Addon.Lib()
+-- a library by its major name (LibDBIcon-1.0 when none given), nil when not loaded
+function Addon.Lib(major)
 	local LS = rawget(_G, "LibStub")
 	if type(LS) ~= "table" then
 		return nil
 	end
-	local ok, lib = pcall(LS.GetLibrary, LS, "LibDBIcon-1.0", true)
+	local ok, lib = pcall(LS.GetLibrary, LS, major or "LibDBIcon-1.0", true)
 	return ok and type(lib) == "table" and lib or nil
 end
 
@@ -1236,16 +1275,46 @@ function Addon.Holder()
 	return h
 end
 
--- every button taken given back to the parent it had (the minimap)
-function Addon.GiveAll()
-	for button, parent in pairs(Addon.parent) do
+-- a button held (its parent, level and strata kept to give back)
+function Addon.Take(button)
+	local had = Addon.parent[button]
+	if had then
+		if Safe.Call(button, "GetParent") == had then
+			button:SetParent(Addon.holder)   -- (its addon put it back on the map itself; never taken from another addon)
+		end
+		return
+	end
+	Addon.parent[button] = Safe.Call(button, "GetParent") or Minimap
+	Addon.level[button] = Safe.Call(button, "GetFrameLevel")
+	Addon.strata[button] = Safe.Call(button, "GetFrameStrata")
+	button:SetParent(Addon.Holder())
+end
+
+-- a button given back to the parent it had, as it stood -- unless its addon has moved it out of our frame since
+function Addon.Give(button)
+	local parent, level, strata = Addon.parent[button], Addon.level[button], Addon.strata[button]
+	Addon.parent[button], Addon.level[button], Addon.strata[button] = nil, nil, nil
+	if Safe.Call(button, "GetParent") == Addon.holder then
 		pcall(button.SetParent, button, parent)
-		Addon.parent[button] = nil
+		if strata then
+			pcall(button.SetFrameStrata, button, strata)
+		end
+		if level then
+			pcall(button.SetFrameLevel, button, level)
+		end
 	end
 end
 
--- the library's own changes looked at once on the next frame: a button made (its callback), shown or hidden (its
--- addon's switch): the bar laid again (Addon.Changed, set with the bar's code below)
+-- every button taken given back
+function Addon.GiveAll()
+	for button in pairs(Addon.parent) do
+		Addon.Give(button)
+	end
+end
+
+-- the buttons' own changes looked at once on the next frame: a button made (the library's callback), shown or hidden
+-- (its addon's switch), an addon loaded: the bar laid again when the list changed (Addon.Changed, set with the bar's
+-- code below)
 function Addon.Soon()
 	if Addon.due then
 		return
@@ -1274,6 +1343,185 @@ function Addon.Watch(lib)
 	end
 end
 
+-- an own button shown or hidden by its addon (its Show, Hide, SetShown): looked at again only when that changes
+-- whether it is held (an addon showing its button every frame costs nothing). (A pooled frame hooked while hidden
+-- and later shown as a HereBeDragons pin -- its library shows its pins on every update -- is never looked at for it.)
+Addon.Toggled = Perf.Shared("an addon's own minimap button shown or hidden", function(button)
+	if Addon.Wanted() and (Safe.Call(button, "IsShown") and true or false) ~= (Addon.parent[button] ~= nil) then
+		local pins = Addon.Lib("HereBeDragons-Pins-2.0")
+		if pins and type(pins.minimapPins) == "table" and pins.minimapPins[button] then
+			return
+		end
+		Addon.Soon()
+	end
+end, "hook")
+
+-- (once per button: post-hooks on the addon's frame, never on one of the game's)
+function Addon.Hook(button)
+	if Addon.hooked[button] then
+		return
+	end
+	Addon.hooked[button] = true
+	for _, method in ipairs(Addon.SHOWS) do
+		if type(button[method]) == "function" then
+			Perf.hooksecurefunc(button, method, Addon.Toggled)
+		end
+	end
+end
+
+-- the addon that made a global name (issecurevariable's taint; "" when it names none), nil for the game's own (a
+-- secure name) and for none
+function Addon.Maker(name)
+	local check = rawget(_G, "issecurevariable")
+	if type(check) ~= "function" then
+		return nil
+	end
+	local ok, secure, taint = pcall(check, name)
+	if not ok or secure ~= false then
+		return nil
+	end
+	return Safe.Text(taint) or ""
+end
+
+-- what an addon's own minimap button `f` is: its maker (Addon.Maker) when it is one by the rule above, else nil; a
+-- frame of the right make that is hidden is watched (its Show), not listed
+function Addon.Own(f, pins)
+	local name = Safe.Text(Safe.Call(f, "GetName"))
+	if not name or Addon.libs[f] or (pins and pins[f]) or Safe.Call(f, "IsForbidden") or Safe.Call(f, "IsProtected") then
+		return nil
+	end
+	local maker = Addon.Maker(name)
+	if not maker or maker:sub(1, 7) == "MelloUI" then
+		return nil
+	end
+	if not (Safe.Call(f, "GetScript", "OnClick") or Safe.Call(f, "GetScript", "OnMouseUp")) then
+		return nil
+	end
+	local scale = Num(Safe.Call(f, "GetScale")) or 1
+	local w, h = Num(Safe.Call(f, "GetWidth")), Num(Safe.Call(f, "GetHeight"))
+	if not (w and h) then
+		return nil
+	end
+	w, h = w * scale, h * scale
+	local big, small = math.max(w, h), math.min(w, h)
+	if small < Addon.SIZE[1] or big > Addon.SIZE[2] or big - small > big * 0.25 then
+		return nil
+	end
+	return maker
+end
+
+-- a texture's picture: its file (a file id or a path) or its atlas, nil when it shows none, the standard minimap
+-- button art (the ring, its background, the highlight) or a secret
+function Addon.Picture(tex)
+	local atlas = Safe.Text(Safe.Call(tex, "GetAtlas"))
+	if atlas and atlas ~= "" then
+		return nil, atlas
+	end
+	local file = Safe.Call(tex, "GetTexture")
+	if type(file) == "string" then
+		local key = file:lower():gsub("/", "\\"):gsub("%.blp$", "")
+		if file == "" or Addon.ART[key] then
+			return nil
+		end
+		return file
+	end
+	if type(file) == "number" and not Addon.ART[file] then
+		return file
+	end
+	return nil
+end
+
+-- the biggest of a button's own pictures (its regions after `button`, `limit`) that is not the standard art, the
+-- highlight, nor bigger than the button (the ring is)
+function Addon.Biggest(button, limit, best, area, region, ...)
+	if region == nil then
+		return best
+	end
+	if Safe.Call(region, "GetObjectType") == "Texture" and region ~= Safe.Call(button, "GetHighlightTexture") then
+		local file, atlas = Addon.Picture(region)
+		local w, h = Num(Safe.Call(region, "GetWidth")), Num(Safe.Call(region, "GetHeight"))
+		if (file or atlas) and w and h and w <= limit and h <= limit and w * h > area then
+			best, area = region, w * h
+		end
+	end
+	return Addon.Biggest(button, limit, best, area, ...)
+end
+
+-- an own button's icon: the texture, its file, its atlas
+function Addon.IconOf(button, name)
+	for i = 1, 4 do
+		local tex
+		if i == 1 then
+			tex = rawget(button, "icon") or rawget(button, "Icon")
+		elseif i == 2 then
+			tex = rawget(_G, name .. "Icon")
+		elseif i == 3 then
+			tex = Safe.Call(button, "GetNormalTexture")
+		else
+			local w, h = Num(Safe.Call(button, "GetWidth")) or 0, Num(Safe.Call(button, "GetHeight")) or 0
+			tex = Addon.Biggest(button, math.max(w, h), nil, 0, button:GetRegions())
+		end
+		if type(tex) == "table" and Safe.Call(tex, "GetObjectType") == "Texture" then
+			local file, atlas = Addon.Picture(tex)
+			if file or atlas then
+				return tex, file, atlas
+			end
+		end
+	end
+	return nil, Addon.ICON, nil
+end
+
+-- an addon's title from its TOC, its colour and picture codes taken out (its folder's name, else the button's)
+function Addon.Title(addon, name)
+	local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or rawget(_G, "GetAddOnMetadata")
+	local title
+	if addon ~= "" and type(get) == "function" then
+		local ok, t = pcall(get, addon, "Title")
+		title = ok and Safe.Text(t) or nil
+	end
+	if title then
+		title = title:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|cn[^:]*:", ""):gsub("|r", ""):gsub("|T.-|t", "")
+			:gsub("|A.-|a", "")
+		title = strtrim(title)
+	end
+	if title and title ~= "" then
+		return title
+	end
+	return addon ~= "" and addon or name
+end
+
+-- one of the minimap's frames' children (and ours) looked at: an addon's own shown button held and listed
+function Addon.Consider(f, pins)
+	local maker = Addon.Own(f, pins)
+	if not maker then
+		return
+	end
+	Addon.Hook(f)
+	if not Safe.Call(f, "IsShown") then
+		return   -- (hidden by its addon: not listed, given back by the caller)
+	end
+	local e = Addon.byButton[f]
+	if not e then
+		local name = f:GetName()
+		e = { addon = true, own = true, name = name, label = Addon.Title(maker, name), button = f }
+		Addon.byButton[f] = e
+	end
+	e.tex, e.icon, e.atlas = Addon.IconOf(f, e.name)
+	local list = Addon.list
+	list[#list + 1] = e
+	Addon.keep[f] = true
+	Addon.Take(f)
+end
+
+-- (a frame's children one by one, no table made)
+function Addon.Walk(pins, f, ...)
+	if f == nil then
+		return
+	end
+	Addon.Consider(f, pins)
+	return Addon.Walk(pins, ...)
+end
+
 local function ByLabel(a, b)
 	return a.label < b.label
 end
@@ -1284,49 +1532,82 @@ function Addon.Collect()
 	for i = #list, 1, -1 do
 		list[i] = nil
 	end
-	local lib = Addon.Lib()
-	if not (lib and Addon.Wanted()) then
+	if not Addon.Wanted() then
 		Addon.GiveAll()
 		return 0
 	end
-	Addon.Watch(lib)
-	local objects = type(lib.objects) == "table" and lib.objects or {}
-	local keep = Addon.keep or {}
-	Addon.keep = keep
+	local keep, libs = Addon.keep, Addon.libs
 	wipe(keep)
-	for name, button in pairs(objects) do
-		local db = type(button) == "table" and button.db
-		local hidden = type(db) == "table" and db.hide == true   -- (the player hid it in its addon's options)
-		local obj = type(button) == "table" and button.dataObject
-		if type(name) == "string" and button.GetParent and not hidden and type(obj) == "table" then
-			local e = Addon.byName[name]
-			if not e then
-				e = { addon = true, name = name }
-				Addon.byName[name] = e
+	wipe(libs)
+	local lib = Addon.Lib()
+	if lib then
+		Addon.Watch(lib)
+		for name, button in pairs(type(lib.objects) == "table" and lib.objects or {}) do
+			local db = type(button) == "table" and button.db
+			local hidden = type(db) == "table" and db.hide == true   -- (the player hid it in its addon's options)
+			local obj = type(button) == "table" and button.dataObject
+			if type(button) == "table" then
+				libs[button] = true
 			end
-			local label = obj.label
-			e.label = (type(label) == "string" and label ~= "" and not IsSecret(label)) and label or name
-			local icon = obj.icon
-			if not (type(icon) == "string" or type(icon) == "number") then
-				icon = button.icon and button.icon:GetTexture()
-			end
-			e.icon, e.obj, e.button = icon, obj, button
-			list[#list + 1] = e
-			keep[button] = true
-			if not Addon.parent[button] then
-				Addon.parent[button] = button:GetParent() or Minimap
-				button:SetParent(Addon.Holder())
+			if type(name) == "string" and button.GetParent and not hidden and type(obj) == "table" then
+				local e = Addon.byName[name]
+				if not e then
+					e = { addon = true, name = name }
+					Addon.byName[name] = e
+				end
+				local label = obj.label
+				e.label = (type(label) == "string" and label ~= "" and not IsSecret(label)) and label or name
+				local icon = obj.icon
+				if not (type(icon) == "string" or type(icon) == "number") then
+					icon = button.icon and button.icon:GetTexture()
+				end
+				e.icon, e.obj, e.button, e.tex = icon, obj, button, button.icon
+				list[#list + 1] = e
+				keep[button] = true
+				Addon.Take(button)
 			end
 		end
 	end
-	for button, parent in pairs(Addon.parent) do
+	-- an addon's own buttons: on the minimap's frames, and those we hold
+	local pins = Addon.Lib("HereBeDragons-Pins-2.0")
+	pins = pins and type(pins.minimapPins) == "table" and pins.minimapPins or nil
+	for _, key in ipairs(Addon.ON) do
+		local f = rawget(_G, key)
+		if type(f) == "table" and f.GetChildren then
+			Addon.Walk(pins, f:GetChildren())
+		end
+	end
+	if Addon.holder then
+		Addon.Walk(pins, Addon.holder:GetChildren())
+	end
+	for button in pairs(Addon.parent) do
 		if not keep[button] then
-			pcall(button.SetParent, button, parent)
-			Addon.parent[button] = nil
+			Addon.Give(button)
 		end
 	end
 	table.sort(list, ByLabel)
 	return #list
+end
+
+-- the list read again, true when it is the one the bar was laid with (the same entries in the same order)
+function Addon.Same()
+	local list, last = Addon.list, Addon.last
+	for i = #last, 1, -1 do
+		last[i] = nil
+	end
+	for i, e in ipairs(list) do
+		last[i] = e
+	end
+	Addon.Collect()
+	if #list ~= #last then
+		return false
+	end
+	for i, e in ipairs(list) do
+		if last[i] ~= e then
+			return false
+		end
+	end
+	return true
 end
 
 -- the group buttons that show (`all`: GroupButtons'): the AddOns one only with addon buttons to list
@@ -1348,8 +1629,10 @@ end
 -- a row for an addon: its icon (as its button crops it), its name
 function Addon.Fill(row, e)
 	row.kind = e
-	local tex = e.button and e.button.icon
-	if tex and tex.GetTexCoord and not MelloUI.Icons.Has(e.icon) then
+	local tex = e.tex
+	if e.atlas then
+		row.icon:SetAtlas(e.atlas)
+	elseif tex and tex.GetTexCoord and not MelloUI.Icons.Has(e.icon) then
 		row.icon:SetTexture(e.icon)
 		row.icon:SetTexCoord(tex:GetTexCoord())
 	else
@@ -1373,14 +1656,44 @@ local function Run(fn, a, b)
 	end
 end
 
+-- a click on a row: the data object's OnClick on the row, or an own button's OnClick on the button (else its
+-- OnMouseDown and OnMouseUp, as a click runs them)
 function Addon.Click(e, row, mouse)
-	Run(e.obj.OnClick, row, mouse)
+	if not e.own then
+		Run(e.obj.OnClick, row, mouse)
+		return
+	end
+	local b = e.button
+	local click = Safe.Call(b, "GetScript", "OnClick")
+	if click then
+		Run(click, b, mouse)
+	else
+		Run(Safe.Call(b, "GetScript", "OnMouseDown"), b, mouse)
+		Run(Safe.Call(b, "GetScript", "OnMouseUp"), b, mouse)
+	end
 end
 
--- its tooltip as the library's button shows it, owned by the row: true when it is the game's tooltip (placed off
--- the tray's far side by the caller)
+-- its tooltip as its button shows it, by the row: true when it is the game's tooltip (placed off the tray's far side
+-- by the caller). An own button's OnEnter runs on the button; the game's tooltip it owns is moved beside the row
+-- (shown, as its button is hidden); one without an OnEnter gets its name
 function Addon.Enter(e, row)
 	local obj = e.obj
+	if e.own then
+		local b = e.button
+		local enter = Safe.Call(b, "GetScript", "OnEnter")
+		Run(enter, b)
+		if Safe.Call(GameTooltip, "GetOwner") == b then
+			GameTooltip:ClearAllPoints()
+			GameTooltip:SetPoint("BOTTOMRIGHT", row, "TOPLEFT", 0, 0)
+			GameTooltip:Show()
+			return true
+		end
+		if enter then
+			return false   -- (its own frame, or nothing: as on the minimap)
+		end
+		MelloUI.Widgets.ShowTooltip(row, e.label, nil, nil, "ANCHOR_LEFT")
+		return true
+	end
 	if type(obj.OnTooltipShow) == "function" then
 		GameTooltip:SetOwner(row, "ANCHOR_LEFT")
 		Run(obj.OnTooltipShow, GameTooltip)
@@ -1392,6 +1705,10 @@ function Addon.Enter(e, row)
 end
 
 function Addon.Leave(e, row)
+	if e.own then
+		Run(Safe.Call(e.button, "GetScript", "OnLeave"), e.button)
+		return
+	end
 	Run(e.obj.OnLeave, row)
 end
 
@@ -3110,9 +3427,13 @@ local function ApplyBar()
 	LayoutBar()
 	TellColumn()
 end
--- (0.22.0) the addon buttons changed (made, shown, hidden): the bar laid again with them (Addon.Soon)
+-- (0.22.0) the addon buttons changed (made, shown, hidden): the bar laid again with them (Addon.Soon); (1.2.4) only
+-- when the list changed, as an addon's load or the login's later look mostly finds the same
 function Addon.Changed()
 	if bar or Addon.Wanted() then
+		if bar and Addon.Same() then
+			return
+		end
 		ApplyBar()
 	end
 end
@@ -3309,6 +3630,10 @@ function M:OnEnable(db)
 	end
 	for _, event in ipairs(EVENTS) do
 		pcall(eventFrame.RegisterEvent, eventFrame, event)
+	end
+	if not Addon.later then
+		Addon.later = true
+		C_Timer.After(5, Addon.Soon)   -- (1.2.4) once, for the addon buttons made on a timer after the login
 	end
 end
 

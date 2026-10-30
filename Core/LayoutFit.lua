@@ -64,7 +64,14 @@
 --               the Quest Tracker's own place -- are kept (F0 removes
 --               nothing), modelled where they put the frame (its own scale),
 --               and fitted as the windows are (W1, W2); without it they are
---               taken out, as before
+--               taken out, as before; placesFor (el-11, the user 2026-10-30: a
+--               profile made on a 16:9 screen kept its 16:9 shape on a 21:9
+--               one): the screen the places (and the tracker's own) were made
+--               on, "WxH" UI units or { w, h } -- each then keeps its distance
+--               from the side of the screen it stands in (F0s); nil: made for
+--               this screen (Inputs reads UIModifications.placesFor);
+--               sizes ([key] = { w, h }, the frames' own units: the
+--               installer's measure of the registered ones, for F0s)
 --       opts    screenW / screenH (the physical size, for the layout's name;
 --               read from the game when not given), baseName ("MelloUI")
 --     fitted   the fitted layout info: anchorInfo points (strings) and
@@ -963,6 +970,22 @@ local function MelloFrom(inputs)
 		end
 		return v
 	end
+	-- (el-11) the screen the places were made for: "WxH" in UI units (as layoutFitFor writes it) or { w, h }
+	local made, madeW, madeH = inputs.placesFor, nil, nil
+	if type(made) == "string" and not Secret(made) then
+		madeW, madeH = made:match("^(%d+%.?%d*)x(%d+%.?%d*)$")
+		madeW, madeH = tonumber(madeW), tonumber(madeH)
+	elseif type(made) == "table" then
+		madeW, madeH = Num(made.w), Num(made.h)
+	end
+	-- and the frames' own sizes the caller measured, [key] = { w, h } (plain and positive only)
+	local sizes = {}
+	for key, sz in pairs(type(inputs.sizes) == "table" and inputs.sizes or EMPTY) do
+		local w, h = type(sz) == "table" and Num(sz[1]), type(sz) == "table" and Num(sz[2])
+		if w and h and w > 0 and h > 0 then
+			sizes[key] = { w, h }
+		end
+	end
 	local border = Str(c.border, D.border)
 	local size, perRow = Num(a.size), Num(a.perRow)
 	perRow = perRow and floor(perRow)
@@ -984,7 +1007,11 @@ local function MelloFrom(inputs)
 			size = (size and size > 0) and size or DA.size, perRow = (perRow and perRow > 0) and perRow or DA.perRow,
 			fit = Bool(a.fitRows, false) },
 		positions = positions,
-		tracker = { pos = type(pos) == "table" and { x = pos.x, y = pos.y } or nil, width = width or 300, maxHeight = height or 440,
+		placesFor = (madeW and madeH and madeW > 0 and madeH > 0) and { w = madeW, h = madeH } or nil,
+		sizes = sizes,
+		-- (el-12: relPoint, the screen's point its own place hangs from -- the side its corner stood in; none: the top-right)
+		tracker = { pos = type(pos) == "table" and { x = pos.x, y = pos.y, relPoint = AXX[Str(pos.relPoint, "")] and pos.relPoint or nil }
+			or nil, width = width or 300, maxHeight = height or 440,
 			gameW = width ~= nil and width <= 0, gameH = height ~= nil and height <= 0, scale = (scale and scale > 0) and scale or 1 },
 		hideBagBar = inputs.hideBagBar and true or false,
 		statsOn = inputs.statsOn and true or false,
@@ -996,6 +1023,22 @@ end
 --------------------------------------------------------------------------------
 -- Sizes and rects (UIParent units, origin top-left, y down)
 --------------------------------------------------------------------------------
+
+-- The store entry's own scale (the mover's size) when it has one: PlaceSaved
+-- sets it and places the window in its own units, and a later SetScale by
+-- the panel manager's fit puts it back (UIModifications' SetScale hook), so
+-- it replaces the game's fit. Else the game's fit (checkFit) or 1.
+local function WindowScale(win, W, H, p)
+	local own = p and Num(p.scale)
+	if own and own > 0 then
+		return own, true
+	end
+	if not (win and win[3]) then
+		return 1, false
+	end
+	local d = win.dress or EMPTY
+	return min(1, (W - win[3]) / (win[1] + (d[1] or 0) + (d[2] or 0)), (H - win[4]) / (win[2] + (d[3] or 0) + (d[4] or 0))), false
+end
 
 local function Managed(m)
 	local v = MANAGED[m.name]
@@ -1577,8 +1620,10 @@ local function TrackerRect(f)
 		local r = f.R["12:-1"]
 		return r[3] - w, r[2], r[3], r[2] + h
 	end
-	local x, y = pos.x * s, pos.y * s
-	return f.W + x - w, -y, f.W + x, -y + h
+	-- (el-12) hung by its top right from the screen's point its place names (none: the top-right)
+	local rp = pos.relPoint or "TOPRIGHT"
+	local r, top = AXX[rp] * f.W + pos.x * s, AXY[rp] * f.H - pos.y * s
+	return r - w, top, r, top + h
 end
 
 local function Add(f, name, cat, unit, key, l, t, r, b)
@@ -1940,61 +1985,206 @@ end
 -- (1.2.4, ownPlaces: MelloUI's places win) Nothing is taken out: each of
 -- those places pins its record where it puts the frame (f.pins, Solve), the
 -- tracker keeps its own place, and F1Zone fits them as the windows are.
-local function F0Store(f)
-	local P = f.mello.positions
-	f.removed = {}
-	f.pins = nil
-	if f.mello.own then
-		local pins = {}
+-- F0s (1.2.4, el-11; the user 2026-10-30, after installing on a 21:9 screen
+-- a profile made on a 16:9 one: "the Profile does not adjust the MelloUI
+-- Layout Depending on your Aspect Ratio"). The store keeps a place as an
+-- offset from the screen point its relPoint names (by default the frame's
+-- BOTTOMLEFT from the screen's CENTER), the Quest Tracker's own from the
+-- top-right corner, so places made on one screen kept as they are hold a
+-- zone of that screen's shape on another, and the tracker leaves the
+-- minimap. First, then: places made for another screen (inputs.placesFor)
+-- each keep their distance from the side of the HUD's zone (the whole
+-- screen up to 21:9, the centred 21:9 zone past it, as F1) they stand in
+-- there -- the third the frame's middle is in, across and down: the left
+-- third's from the zone's left edge, the middle third's from its middle, the
+-- right third's from its right edge. The minimap and the tracker under it,
+-- both on the right, stay together on every screen, and every place still
+-- wins. The frame's size: the layout's for a record its place pins (as
+-- Solve lays it), a window's own (WINDOWS), the caller's measure
+-- (inputs.sizes), else its anchor point alone (moved only when that point
+-- settles its side; else as stored). The store's form of a place
+-- (point, relPoint, scale) is kept: only x and y change. (el-12) A place
+-- already held from the side of the screen its frame stands in -- every place
+-- Core saves since 1.2.4 -- follows any screen by itself: kept as it is, each
+-- way it is so held. f.inZone[place]: its x laid in this screen's zone here
+-- (W1 stands back for it).
+local F0Store
+do
+	local ACROSS = { [0] = "left", [0.5] = "middle", [1] = "right" }
+	local DOWN = { [0] = "top", [0.5] = "middle", [1] = "bottom" }
+
+	-- the record an Edit Layout copy of an Edit Mode system's place pins, "EditMode.<system>.<index>" (the copy's
+	-- index is the game's systemIndex, 0 for none: Core/EditLayoutBridge.lua's SysKey)
+	local function CopyRec(f, key)
+		local sys, idx = nil, nil
+		if type(key) == "string" then
+			sys, idx = key:match("^EditMode%.(%-?%d+)%.(%-?%d+)$")
+		end
+		idx = tonumber(idx)
+		local rec = sys and idx and (sys .. ":" .. (idx == 0 and -1 or idx - 1))
+		return (rec and f.rec[rec]) and rec or nil
+	end
+
+	-- a place's frame on a W x H screen: its size in its own units (0 x 0 when not known), its scale, whether the
+	-- size is known
+	local function Frame(f, key, p, W, H, rec)
+		local ps = Num(p.scale)
+		if rec then
+			local s = f.rec[rec]
+			local m = f.meta[s]
+			local w, h = SizeOf(f, s, m)
+			local own = m.name == "Minimap" and (Disp(f, s, "Size") or 100) / 100 or 1
+			if w and h then
+				return w / own, h / own, (ps and ps > 0) and ps or own, true
+			end
+		end
+		local win = WINDOWS[key]
+		if win then
+			return win[1], win[2], (WindowScale(win, W, H, p)), true
+		end
+		local sz = f.mello.sizes[key]
+		return sz and sz[1] or 0, sz and sz[2] or 0, (ps and ps > 0) and ps or 1, sz ~= nil
+	end
+
+	-- One axis. A frame `size` long (its own units) at scale s0, hung by its point at fraction pt of it from the
+	-- screen's point at fraction rel of span0, `o` out (sign 1 across; -1 down, the store's y grows upward); the
+	-- HUD's zone a0 .. b0. Its offset on a span1-long screen with the zone a1 .. b1, at scale s1, that keeps it as
+	-- far from the same side (k: 0, 0.5, 1) of the zone. A frame of unknown size is its anchor point: its middle
+	-- lies past that point, away from the side it hangs by, so unless every such middle is in one third it keeps
+	-- the side its place is stored from (rel: as it is, in this screen's zone) -- never moved by a guess (a frame
+	-- MelloUI has not made yet, at a first install).
+	-- (el-12) A place held from the side of the screen its frame stands in there already (Core's Measure saves every
+	-- place so since 1.2.4, by the third of the whole screen its middle is in, or its corner for one hung by the corner
+	-- it grows from; byCorner: not the old form, the frame's BOTTOMLEFT from the screen's CENTER) follows this screen
+	-- by itself: kept as it is (nil k).
+	local function Axis(o, sign, rel, pt, size, known, span0, a0, b0, s0, span1, a1, b1, s1, byCorner)
+		local corner = rel * span0 + sign * o * s0
+		local lo = corner - pt * size * s0
+		local mid = lo + size * s0 / 2
+		if rel == ((mid < span0 / 3 and 0) or (mid > 2 * span0 / 3 and 1) or 0.5)
+			or (byCorner and rel == ((corner < span0 / 3 and 0) or (corner > 2 * span0 / 3 and 1) or 0.5)) then
+			return o, nil
+		end
+		local third = (b0 - a0) / 3
+		local k = (mid < a0 + third and 0) or (mid > b0 - third and 1) or 0.5
+		if not known and pt ~= 0.5 and k ~= 1 - pt then
+			k = rel
+		end
+		local at = lo + k * size * s0 - (a0 + k * (b0 - a0)) + a1 + k * (b1 - a1)
+		return sign * (at - k * size * s1 + pt * size * s1 - rel * span1) / s1, k
+	end
+
+	local function Shape(f)
+		f.inZone = {}
+		local made = f.mello.placesFor
+		local W, H = f.W, f.H
+		if not made or (abs(made.w - W) < EPS and abs(made.h - H) < EPS) then
+			return
+		end
+		local W0, H0 = made.w, made.h
+		local i0, i1 = (W0 - min(W0, DESIGN_ASPECT * H0)) / 2, (W - min(W, DESIGN_ASPECT * H)) / 2
+		-- (el-12) a way the place is held from its side already is kept exactly (nil k); f.inZone[p]: its x laid in
+		-- this screen's zone here (W1 stands back for it; a place held from the screen's side gets W1 as before)
+		local function Place(name, p, point, relPoint, w, h, s0, s1, known)
+			local before = CopyPlace(p)
+			local byCorner = not (point == "BOTTOMLEFT" and relPoint == "CENTER")
+			local x, kx = Axis(Num(p.x) or 0, 1, AXX[relPoint], AXX[point], w, known, W0, i0, W0 - i0, s0, W, i1, W - i1, s1,
+				byCorner)
+			local y, ky = Axis(Num(p.y) or 0, -1, AXY[relPoint], AXY[point], h, known, H0, 0, H0, s0, H, 0, H, s1, byCorner)
+			if kx ~= nil then
+				p.x = Round1(x)
+				f.inZone[p] = true
+			end
+			if ky ~= nil then
+				p.y = Round1(y)
+			end
+			if p.x ~= before.x or p.y ~= before.y then
+				local from = (kx ~= nil and ky ~= nil) and format("the %s and the %s", DOWN[ky], ACROSS[kx])
+					or format("the %s (the other way held from its side already)", ky ~= nil and DOWN[ky] or ACROSS[kx])
+				Log(f, "F0 shape", name, PlaceText(before) .. " -> " .. PlaceText(p),
+					format("made for a %.1f x %.1f screen: kept as far from %s of this screen's zone", W0, H0, from))
+			end
+		end
+		local P = f.mello.positions
+		local recOf = {}
 		for _, name in ipairs(EDIT_MODE_FRAMES) do
 			local s = f.byFrame[name]
-			if P[name] ~= nil and s then
-				pins[f.meta[s].key] = name
-			end
+			recOf[name] = s and f.meta[s].key or nil
 		end
+		local keys = {}
 		for key in pairs(P) do
-			-- (the copy's index is the game's systemIndex, 0 for none: Core/EditLayoutBridge.lua's SysKey)
-			local sys, idx = nil, nil
-			if type(key) == "string" then
-				sys, idx = key:match("^EditMode%.(%-?%d+)%.(%-?%d+)$")
-			end
-			idx = tonumber(idx)
-			local rec = sys and idx and (sys .. ":" .. (idx == 0 and -1 or idx - 1))
-			if rec and f.rec[rec] and not pins[rec] then
-				pins[rec] = key
+			keys[#keys + 1] = key
+		end
+		sort(keys, ByteLess)
+		for _, key in ipairs(keys) do
+			local p = P[key]
+			local point, relPoint = p.point or "BOTTOMLEFT", p.relPoint or "CENTER"
+			if AXX[point] and AXX[relPoint] then
+				local rec = recOf[key] or CopyRec(f, key)
+				local w, h, s0, known = Frame(f, key, p, W0, H0, rec)
+				local _, _, s1 = Frame(f, key, p, W, H, rec)
+				Place("positions." .. key, p, point, relPoint, w, h, s0, s1, known)
 			end
 		end
-		f.pins, f.pinPull = pins, {}
+		local t = f.mello.tracker
+		if t.pos then
+			Place("QuestTracker.pos", t.pos, "TOPRIGHT", t.pos.relPoint or "TOPRIGHT", t.width, t.maxHeight, t.scale, t.scale, true)
+		end
+		Note(f, format("the places were made for a %.1f x %.1f screen: each keeps its distance from the side of the screen it stands in", W0, H0))
 		Bump(f)
-		return
 	end
-	for _, key in ipairs(EDIT_MODE_FRAMES) do
-		local old = P[key]
-		if old ~= nil then
+
+	function F0Store(f)
+		Shape(f)
+		local P = f.mello.positions
+		f.removed = {}
+		f.pins = nil
+		if f.mello.own then
+			local pins = {}
+			for _, name in ipairs(EDIT_MODE_FRAMES) do
+				local s = f.byFrame[name]
+				if P[name] ~= nil and s then
+					pins[f.meta[s].key] = name
+				end
+			end
+			for key in pairs(P) do
+				local rec = CopyRec(f, key)
+				if rec and not pins[rec] then
+					pins[rec] = key
+				end
+			end
+			f.pins, f.pinPull = pins, {}
+			Bump(f)
+			return
+		end
+		for _, key in ipairs(EDIT_MODE_FRAMES) do
+			local old = P[key]
+			if old ~= nil then
+				P[key] = nil
+				Log(f, "F0 store", "positions." .. key, "removed (was " .. PlaceText(old) .. ")",
+					"Edit Mode places this frame; one store per place (a reset in Edit Layout then returns it to the fitted place)")
+			end
+		end
+		local copies = {}
+		for key in pairs(P) do
+			if type(key) == "string" and find(key, "^EditMode%.%-?%d+%.%-?%d+$") then
+				copies[#copies + 1] = key
+			end
+		end
+		sort(copies)
+		for _, key in ipairs(copies) do
+			Log(f, "F0 store", "positions." .. key, "removed (was " .. PlaceText(P[key]) .. ")",
+				"Edit Layout's copy of an Edit Mode system's place: the layout carries it, fitted to this screen")
 			P[key] = nil
-			Log(f, "F0 store", "positions." .. key, "removed (was " .. PlaceText(old) .. ")",
-				"Edit Mode places this frame; one store per place (a reset in Edit Layout then returns it to the fitted place)")
+			f.removed[#f.removed + 1] = key
 		end
-	end
-	local copies = {}
-	for key in pairs(P) do
-		if type(key) == "string" and find(key, "^EditMode%.%-?%d+%.%-?%d+$") then
-			copies[#copies + 1] = key
+		local t = f.mello.tracker
+		if t.pos ~= nil then
+			Log(f, "F0 store", "QuestTracker.pos", "removed (was " .. PlaceText(t.pos) .. ")",
+				"the tracker hangs on the game's tracker, placed by Edit Mode 12:-1 (QuestTracker.lua:302-310)")
+			t.pos = nil
+			Bump(f)
 		end
-	end
-	sort(copies)
-	for _, key in ipairs(copies) do
-		Log(f, "F0 store", "positions." .. key, "removed (was " .. PlaceText(P[key]) .. ")",
-			"Edit Layout's copy of an Edit Mode system's place: the layout carries it, fitted to this screen")
-		P[key] = nil
-		f.removed[#f.removed + 1] = key
-	end
-	local t = f.mello.tracker
-	if t.pos ~= nil then
-		Log(f, "F0 store", "QuestTracker.pos", "removed (was " .. PlaceText(t.pos) .. ")",
-			"the tracker hangs on the game's tracker, placed by Edit Mode 12:-1 (QuestTracker.lua:302-310)")
-		t.pos = nil
-		Bump(f)
 	end
 end
 
@@ -2002,13 +2192,14 @@ end
 -- held to the left / right edge is held to the zone's edge instead.
 -- (ownPlaces) Then MelloUI's own places of what the layout places, fitted as
 -- F12 fits the windows': W1, on a screen wider than 21:9 one held to the left
--- / right edge is held to the 21:9 zone's edge (written into the place); W2,
+-- / right edge is held to the 21:9 zone's edge (written into the place; not
+-- one F0s laid in the zone already, f.inZone); W2,
 -- one whose shown pieces would leave the screen is pulled back by what is
 -- missing -- in game Core's put-back does that with the frame's real size,
 -- so the place is left as it is and only the model moves it (f.pinPull). The
--- Quest Tracker's own place as a window's (its TOPRIGHT, its own scale; W2
--- with GAP, written). Before the other rules: each sees them where they will
--- be.
+-- Quest Tracker's own place as a window's (its TOPRIGHT from the point its
+-- place names, its own scale; W2 with GAP, written). Before the other rules:
+-- each sees them where they will be.
 local function F1Zone(f)
 	local zone = min(f.W, DESIGN_ASPECT * f.H)
 	local inset = (f.W - zone) / 2
@@ -2035,7 +2226,7 @@ local function F1Zone(f)
 	local W, H = f.W, f.H
 	local function Fit(name, p, s, edge, l, t, r, b, rec)
 		local before = CopyPlace(p)
-		if f.inset ~= 0 and (edge == 0 or edge == 1) then
+		if f.inset ~= 0 and (edge == 0 or edge == 1) and not f.inZone[p] then
 			local d = edge == 0 and f.inset or -f.inset
 			p.x = Round1((p.x or 0) + d / s)
 			l, r = l + d, r + d
@@ -2086,7 +2277,7 @@ local function F1Zone(f)
 	local t = f.mello.tracker
 	if t.pos then
 		local l, tt, r, b = TrackerRect(f)
-		Fit("QuestTracker.pos", t.pos, t.scale, 1, l, tt, r, b)
+		Fit("QuestTracker.pos", t.pos, t.scale, AXX[t.pos.relPoint or "TOPRIGHT"], l, tt, r, b)
 	end
 end
 
@@ -3262,22 +3453,6 @@ local function F10Popups(f)
 	end
 end
 
--- The store entry's own scale (the mover's size) when it has one: PlaceSaved
--- sets it and places the window in its own units, and a later SetScale by
--- the panel manager's fit puts it back (UIModifications' SetScale hook), so
--- it replaces the game's fit. Else the game's fit (checkFit) or 1.
-local function WindowScale(win, W, H, p)
-	local own = p and Num(p.scale)
-	if own and own > 0 then
-		return own, true
-	end
-	if not (win and win[3]) then
-		return 1, false
-	end
-	local d = win.dress or EMPTY
-	return min(1, (W - win[3]) / (win[1] + (d[1] or 0) + (d[2] or 0)), (H - win[4]) / (win[2] + (d[3] or 0) + (d[4] or 0))), false
-end
-
 -- a window at its stored place: the store's compact form (point nil =
 -- BOTTOMLEFT, relPoint nil = CENTER), offsets and size times its scale, its
 -- dressing round it (the screen's y grows downward)
@@ -3323,7 +3498,8 @@ local function SortedWindows(P)
 end
 
 -- F12. The window places: W1, on a screen wider than 21:9 a window held to
--- the left / right edge is held to the 21:9 zone's edge instead; W2, a window
+-- the left / right edge is held to the 21:9 zone's edge instead (not one
+-- F0s laid in the zone already, f.inZone); W2, a window
 -- that would leave the screen at its size (times its scale: its store entry's
 -- own, else the game's checkFit) is pulled back by what is missing plus GAP,
 -- keeping its anchor. Then the world map stays on the screen, with its
@@ -3338,7 +3514,8 @@ local function F12Windows(f)
 		local edge = AXX[p.relPoint or "CENTER"]
 		local win = WINDOWS[name]
 		local s, own = WindowScale(win, W, H, p)
-		local zoned = f.inset ~= 0 and (edge == 0 or edge == 1)
+		-- (F0s: a place it laid for this screen stands in its zone already)
+		local zoned = f.inset ~= 0 and (edge == 0 or edge == 1) and not f.inZone[p]
 		if zoned then
 			p.x = Round1((p.x or 0) + (edge == 0 and f.inset or -f.inset) / s)
 		end
@@ -3836,7 +4013,13 @@ local function KeyOf(info, W, H, inputs, opts, job)
 	for _, name in ipairs(names) do
 		local p = m.positions[name]
 		parts[#parts + 1] = format("%s:%s:%s:%s:%s:%s", name, tostring(p.point), tostring(p.relPoint), tostring(p.x), tostring(p.y), tostring(p.scale))
+		local sz = m.sizes[name]
+		if sz then
+			parts[#parts + 1] = format("%s=%sx%s", name, tostring(sz[1]), tostring(sz[2]))
+		end
 	end
+	local made = m.placesFor
+	parts[#parts + 1] = made and format("for %sx%s", tostring(made.w), tostring(made.h)) or "for this"
 	return concat(parts, ";")
 end
 
@@ -4024,6 +4207,8 @@ function LayoutFit:Inputs(read)
 			size = tonumber(read("Auras", "playerSize")), perRow = tonumber(read("Auras", "playerPerRow")) },
 		tracker = { pos = type(pos) == "table" and { x = pos.x, y = pos.y } or nil, width = tonumber(read("QuestTracker", "width")),
 			maxHeight = tonumber(read("QuestTracker", "maxHeight")), scale = tonumber(read("QuestTracker", "scale")) },
+		-- (el-11) the screen the profile's places were made on, when it says (F0s)
+		placesFor = read("UIModifications", "placesFor"),
 		hideBagBar = (read("Tweaks") and read("Tweaks", "hideBagBar")) and true or false,
 		statsOn = read("Stats") and true or false,
 		actionSlots = self:ActionSlots(),

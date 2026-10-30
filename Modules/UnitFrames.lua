@@ -1340,6 +1340,7 @@ end
 -- out of combat); the game's own layout (ArtLayoutInfo.Player) back when no longer wanted. Kept per member here
 -- (Party.art), nothing written as a key on the game's frames. A preview's stand-in (ours) the same
 Party.art = setmetatable({}, { __mode = "k" })
+Party.sweepList = {}   -- (Party.Sweep's scratch: the made members and stand-ins, one pass)
 -- the art's holes, from the frame's top left (the art at the game's 1, -2): measured on client 70425's art
 -- (ui-hud-unitframe-characterframeonparty-portraiton-c60-2x, 240 x 98 px for its 120 x 49): the health hole's inner
 -- edges 92-227 x 38-54 px, the mana hole's 92-227 x 61-70 px; the portrait's ring hole 13-77 x 14-77 px (its centre
@@ -1361,6 +1362,18 @@ Party.ART = {
 -- picture only, the game's own atlases beneath it (the same 120 x 49 art; the player's portrait mask)
 function Party.Sharp()
 	return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(Party.ART.Character.frame) ~= nil or false
+end
+
+-- (1.2.4, the Default skin -- the user's pick 8A, 2026-10-29: "the unitframes and party unitframes need to have the
+-- default forever look") under the Default skin the members wear the game's own party frame (ToPlayerArt's: the
+-- small ring, the name on its row, the thin bars), never the sharp art; `frame`: a member or stand-in in that art now
+-- (not its vehicle's, not the health-only art) -- the art Flip Horizontally mirrors then
+function Party.GameArt(frame)
+	local skin = rawget(MelloUI, "Skin")
+	if not (skin and skin.IsDefault()) then
+		return false
+	end
+	return frame == nil or (rawget(frame, "state") ~= "vehicle" and not rawget(_G, "UNIT_FRAME_SHOW_HEALTH_ONLY"))
 end
 
 function Party.ArtOf(style)
@@ -1481,6 +1494,7 @@ end
 function Party.Art(frame)
 	local want = Party.Wanted() and rawget(frame, "state") ~= "vehicle" and not rawget(_G, "UNIT_FRAME_SHOW_HEALTH_ONLY")
 		and Party.Layout("Character") ~= nil and (Party.Sharp() or (M.Frames ~= nil and M.Frames.On()))
+		and not Party.GameArt()
 	-- (each lay told on the bus: Dark Mode shades the art again)
 	if want then
 		if not Party.art[frame] and Party.Lay(frame, "Character") then
@@ -1494,9 +1508,92 @@ function Party.Art(frame)
 			MelloUI:Fire("partyart", frame)
 		end
 	end
+	Party.Sharpen(frame)
 	-- (MelloUI Frames: its picture on the sharp art, the game's on its own; made below)
 	if M.Frames then
 		M.Frames.Party(frame)
+	end
+end
+
+-- (1.2.4, fr-07 -- the user, 2026-10-29: "just use the ingame Art from forever, make sure it stays sharp at 200%
+-- scale") the Default skin's party picture sharp: the game's own (UI-HUD-UnitFrame-Party-PortraitOn) has a 1x
+-- member only, on both clients; Forever draws the very same picture for the party's Character style with a 2x
+-- member too (UiTextureAtlasMember 43919, ui-hud-unitframe-characterframeonparty-portraiton-c60-2x: 240 x 98 px at
+-- 1, 451 on uiunitframe2xc60, 2048 x 1024 -- the party's own drawing at 1x, the same layout to half a pixel). A
+-- member (or stand-in) in the game's party art wears it on the game's own picture, as its file and coordinates
+-- (mirrored under Flip Horizontally; Party.FlipCoords leaves it to Party.SharpLay); the game laying its atlas again
+-- (ToPlayerArt) meets the next pass; the game's atlas back when no longer wanted. The effects read it as the party's
+-- picture (Frames.GameShown: Party.sharp). On retail (no such member) only from the local, never-shipped
+-- MelloUI_ForeverArt (the retail copy's Forever pictures: Modules/Nameplates.lua M.ForeverArt) when its TOC says it
+-- holds the piece (## X-PartyFrame), else the game's own art stays
+Party.SHARP = { atlas = "ui-hud-unitframe-party-portraiton", file = 8036209,
+	coords = { 1 / 2048, 241 / 2048, 451 / 1024, 549 / 1024 },
+	retail = { file = "Interface\\AddOns\\MelloUI_ForeverArt\\PartyFrame", coords = { 0, 240 / 256, 0, 98 / 128 } } }
+Party.sharp = setmetatable({}, { __mode = "k" })   -- [the game's picture] = the atlas ours stands for
+
+-- the sharp picture this client has: its file and coordinates (left, right, top, bottom), or nil. Asked once the
+-- login is over (every addon loaded by then)
+function Party.SharpArt()
+	local S = Party.SHARP
+	if S.can == nil then
+		local can = false
+		if Party.Sharp() then
+			can = S
+		elseif MelloUI.Retail and C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.GetAddOnMetadata then
+			local okL, loaded = pcall(C_AddOns.IsAddOnLoaded, "MelloUI_ForeverArt")
+			local okM, piece = pcall(C_AddOns.GetAddOnMetadata, "MelloUI_ForeverArt", "X-PartyFrame")
+			can = (okL and loaded == true and okM and piece ~= nil and piece ~= "") and S.retail or false
+		end
+		if not _G.IsLoggedIn() then
+			return can and can.file, can and can.coords
+		end
+		S.can = can
+	end
+	return S.can and S.can.file, S.can and S.can.coords
+end
+
+-- ours laid again on its picture, mirrored (on) or not; false when the picture is no longer ours (an atlas laid)
+function Party.SharpLay(tex, on)
+	local okA, atlas = pcall(tex.GetAtlas, tex)
+	local file, c = Party.SharpArt()
+	if not file or (okA and not Secret(atlas) and type(atlas) == "string" and atlas ~= "") then
+		return false
+	end
+	if on then
+		tex:SetTexCoord(c[2], c[1], c[3], c[4])
+	else
+		tex:SetTexCoord(c[1], c[2], c[3], c[4])
+	end
+	return true
+end
+
+-- a member's picture as wanted now (out of combat): the sharp one on the game's party picture under the Default
+-- skin, the game's atlas back else
+function Party.Sharpen(frame)
+	local tex = rawget(frame, "Texture")
+	if type(tex) ~= "table" or type(tex.GetAtlas) ~= "function" then
+		return
+	end
+	local okA, atlas = pcall(tex.GetAtlas, tex)
+	atlas = (okA and not Secret(atlas) and type(atlas) == "string" and atlas ~= "") and atlas:lower() or nil
+	-- (laid as its sheet by Flip Horizontally: Party.FlipCoords's record)
+	local rec = Party.flip.coords[tex]
+	local sheet = atlas == nil and type(rec) == "table" and type(rec.atlas) == "string" and rec.atlas:lower() or nil
+	local S = Party.SHARP
+	local file = Party.SharpArt()
+	if file and Party.Wanted() and Party.GameArt(frame) and not Party.art[frame]
+		and (atlas == S.atlas or sheet == S.atlas or (atlas == nil and Party.sharp[tex])) then
+		if sheet then
+			Party.flip.coords[tex] = nil
+		end
+		tex:SetTexture(file)
+		Party.sharp[tex] = S.atlas
+		Party.SharpLay(tex, Party.Flipped(frame))
+	elseif Party.sharp[tex] then
+		Party.sharp[tex] = nil
+		if atlas == nil then
+			tex:SetAtlas(Party.ART.Player.frame)
+		end
 	end
 end
 
@@ -1803,6 +1900,17 @@ function Party.Sweep()
 			end
 		end
 	end
+	-- (1.2.4: a stand-in -- Group Frames' solo frame, a preview's -- in its art as wanted now too: the skin switched
+	-- under it; a member of the pool asked again changes nothing. Listed first: a lay is told on the bus)
+	local list = Party.sweepList
+	wipe(list)
+	for frame in pairs(Party.of) do
+		list[#list + 1] = frame
+	end
+	for _, frame in ipairs(list) do
+		Party.Art(frame)
+	end
+	wipe(list)
 	-- (one look C11: a member's name in the names' face, before its level
 	-- copies it)
 	for _, frame in ipairs(Party.Members()) do
@@ -1921,9 +2029,10 @@ Party.flip = {
 	list = {}, set = {}, keep = {},                -- (one pass's scratch)
 }
 
--- a member mirrored now: the setting on, the level and band wanted, its sharp art laid
+-- a member mirrored now: the setting on, the level and band wanted, its sharp art laid (the Default skin: the game's
+-- own art)
 function Party.Flipped(frame)
-	return (M.db and M.db.partyFlip and Party.Wanted() and Party.art[frame]) and true or false
+	return (M.db and M.db.partyFlip and Party.Wanted() and (Party.art[frame] or Party.GameArt(frame))) and true or false
 end
 
 function Party.FlipNear(a, b)
@@ -2037,13 +2146,60 @@ function Party.FlipJustify(fs, on)
 	end
 end
 
--- a picture flipped left for right (on: its coordinates as laid since ours, the upper and lower left corners swapped
--- for the right ones), or back (off)
+-- (1.2.4) an atlas's piece on its sheet -- the sheet's file and the piece's coordinates, the game's own answer --
+-- or nil
+function Party.SheetOf(atlas)
+	local CT = rawget(_G, "C_Texture")
+	local ok, info = false, nil
+	if type(CT) == "table" and type(CT.GetAtlasInfo) == "function" then
+		ok, info = pcall(CT.GetAtlasInfo, atlas)
+	end
+	if not (ok and type(info) == "table") then
+		return nil
+	end
+	local file = info.file or info.filename
+	local l, r, t, b = Num(info.leftTexCoord), Num(info.rightTexCoord), Num(info.topTexCoord), Num(info.bottomTexCoord)
+	if file == nil or Secret(file) or not (l and r and t and b) then
+		return nil
+	end
+	return file, l, r, t, b
+end
+
+-- a picture flipped left for right (on), or back (off). An atlas (the game's own pictures, the Default skin's party:
+-- 1.2.4) is laid as its sheet's file and its piece's coordinates turned, as the game's NineSlice crops an atlas --
+-- never coordinates written after SetAtlas, which the client and the simulator read in two spaces; turned back, the
+-- atlas again; the game laying its atlas again (ToPlayerArt) is met by the next pass. A file: its coordinates as laid
+-- since ours, the upper and lower left corners swapped for the right ones
 function Party.FlipCoords(tex, on)
 	if type(tex) ~= "table" or type(tex.GetTexCoord) ~= "function" then
 		return
 	end
+	-- (fr-07: the Default skin's sharp picture mirrors itself)
+	if Party.sharp[tex] and Party.SharpLay(tex, on) then
+		return
+	end
 	local F = Party.flip
+	local okA, atlas = pcall(tex.GetAtlas, tex)
+	atlas = (okA and not Secret(atlas) and type(atlas) == "string" and atlas ~= "") and atlas or nil
+	local had = F.coords[tex]
+	had = type(had) == "table" and had.atlas or nil
+	if on and atlas then
+		local file, l, r, t, b = Party.SheetOf(atlas)
+		if file then
+			tex:SetTexture(file)
+			tex:SetTexCoord(r, l, t, b)
+			F.coords[tex] = { atlas = atlas }
+			return
+		end
+	elseif had then
+		if not on then
+			if not atlas then
+				tex:SetAtlas(had)
+			end
+			F.coords[tex] = nil
+		end
+		return
+	end
 	local ok, a, b, c, d, e, f, g, h = pcall(tex.GetTexCoord, tex)
 	if not ok then
 		return
@@ -2132,6 +2288,14 @@ function Party.FlipAll()
 	for frame in pairs(Party.flip.frames) do
 		if not Party.art[frame] then
 			Party.Flip(frame)
+		end
+	end
+	-- (the Default skin: every member and stand-in made, in the game's own art)
+	if Party.GameArt() then
+		for frame in pairs(Party.of) do
+			if not (Party.art[frame] or Party.flip.frames[frame]) then
+				Party.Flip(frame)
+			end
 		end
 	end
 end
@@ -2511,10 +2675,12 @@ function Frames.On()
 	local skin = rawget(MelloUI, "Skin")
 	return M.isEnabled and M.db and M.db.frames ~= false and not Frames.covered and not (skin and skin.IsDefault())
 end
--- (the skin switched: the frame pictures in its look)
+-- (the skin switched: the frame pictures in its look, the party members in their art -- the game's own under the
+-- Default skin -- out of combat)
 MelloUI:On("skin", function()
 	if M.isEnabled then
 		Frames.Lay()
+		Party.Due()
 	end
 end, Frames)
 
@@ -3056,12 +3222,108 @@ function Frames.Mirrored(shares)
 	return m
 end
 
+-- (1.2.4, the Default skin -- the user, 2026-10-29: "its healing animations need to fit that specific unitframe") the
+-- game's own frame pictures, measured on the Forever client's art (1.60.1's c60 set: a texel a unit), from the
+-- picture's top left: its size; its ring's middle and size round the gold's dark rim (the effects' ring, as FX.Split
+-- reads one round a portrait); its plate's gold rim round the name and the bars; that plate's outer edge (left, top,
+-- right, bottom). The game's portrait is not in its ring's middle on every frame -- the player's 2 units right of it,
+-- a party member's 2.5, the target of target's and the pet's 1.5 right and down; the target's and focus's in it --
+-- so the effects take the ring from the picture. The same names draw retail's art on the retail client (its layout
+-- the same sizes); a picture not listed (a vehicle's, a rare's) leaves FX.Split's reading as it was
+Frames.GAME = {
+	["ui-hud-unitframe-party-portraiton"] = { 120, 49, ring = { 22, 22, 42 }, plate = { 35, 4, 117, 38 },
+		edge = { 35, 4, 117, 39 } },
+	["ui-hud-unitframe-player-portraiton"] = { 198, 71, ring = { 35, 34, 67 }, plate = { 57, 12, 195, 61 },
+		edge = { 57, 11, 196, 61 } },
+	["ui-hud-unitframe-player-portraiton-classresource"] = { 198, 74, ring = { 35, 34, 67 }, plate = { 57, 12, 195, 69 },
+		edge = { 57, 11, 196, 71 } },
+	["ui-hud-unitframe-target-portraiton"] = { 194, 68, ring = { 158, 32, 65 }, plate = { 2, 8, 135, 55 },
+		edge = { 1, 8, 135, 57 } },
+	["ui-hud-unitframe-target-minusmob-portraiton"] = { 163, 57, ring = { 135, 27, 55 }, plate = { 1, 7, 115, 47 },
+		edge = { 1, 7, 115, 49 } },
+}
+-- (the target of target's and the pet's picture: the party's own layout, measured the same to the texel)
+Frames.GAME["ui-hud-unitframe-targetoftarget-portraiton"] = Frames.GAME["ui-hud-unitframe-party-portraiton"]
+-- [an entry] = { plate, edge, ring } as shares of its picture (the ring: x, y, its size of the width), and mirrored
+Frames.gameShares = {}
+
+function Frames.GameShares(e)
+	local s = Frames.gameShares[e]
+	if not s then
+		local w, h = e[1], e[2]
+		local function Box(q)
+			return { q[1] / w, q[2] / h, q[3] / w, q[4] / h }
+		end
+		s = { Box(e.plate), Box(e.edge), { e.ring[1] / w, e.ring[2] / h, e.ring[3] / w } }
+		s.mirror = { Frames.Mirrored(s[1]), Frames.Mirrored(s[2]), { 1 - s[3][1], s[3][2], s[3][3] } }
+		Frames.gameShares[e] = s
+	end
+	return s
+end
+
+-- a frame's game pictures, two at most (the player's art and its class resource art; a target of target's or the
+-- pet's; a party member's or a stand-in's): read, nothing made
+function Frames.GamePictures(frame)
+	if frame == PlayerFrame then
+		local c = rawget(frame, "PlayerFrameContainer")
+		return c and rawget(c, "FrameTexture"), c and rawget(c, "AlternatePowerFrameTexture")
+	end
+	local c = rawget(frame, "TargetFrameContainer")
+	if type(c) == "table" then
+		return rawget(c, "FrameTexture")
+	end
+	return frame == rawget(_G, "PetFrame") and rawget(_G, "PetFrameTexture") or rawget(frame, "FrameTexture"),
+		rawget(frame, "Texture")
+end
+
+-- a game picture's measured shares while it shows (Frames.GAME's by its atlas -- a mirrored party member's the one
+-- Party.FlipCoords laid as its sheet, the Default skin's sharp party picture the one it stands for; a secret or
+-- unlisted one: nil)
+function Frames.GameShown(tex)
+	if type(tex) ~= "table" or type(tex.GetAtlas) ~= "function" or not Shown(tex) then
+		return nil
+	end
+	local ok, atlas = pcall(tex.GetAtlas, tex)
+	if not (ok and not Secret(atlas) and type(atlas) == "string" and atlas ~= "") then
+		local rec = Party.flip.coords[tex]
+		atlas = (type(rec) == "table" and rec.atlas) or Party.sharp[tex]
+	end
+	local e = type(atlas) == "string" and Frames.GAME[atlas:lower()]
+	return e and Frames.GameShares(e) or nil
+end
+
+-- the game's own picture `frame` wears now, while the Default skin shows it -- the picture, its plate, edge and ring
+-- (shares of it: Frames.GAME's; a party member Flip Horizontally mirrors, mirrored) -- or nil. Its atlas read, never
+-- written
+function Frames.GameOf(frame)
+	local skin = rawget(MelloUI, "Skin")
+	if not (skin and skin.IsDefault()) then
+		return nil
+	end
+	local a, b = Frames.GamePictures(frame)
+	local tex, s = a, Frames.GameShown(a)
+	if not s then
+		tex, s = b, Frames.GameShown(b)
+	end
+	if not s then
+		return nil
+	end
+	if Party.flip.frames[frame] then
+		s = s.mirror
+	end
+	return tex, s[1], s[2], s[3]
+end
+
 -- (1.2.4, the frames' bold landings) a frame's picture of ours with a plate -- the picture, its plate's rim and outer
 -- edge (shares of it: ART's plate, edge) -- or nil: FX.Split's plate (its border lit on that rim, the bold parts on
--- the whole frame) and the afterimages' copy (Core/FrameFXBold.lua)
+-- the whole frame) and the afterimages' copy (Core/FrameFXBold.lua). The Default skin: the game's own picture
+-- (Frames.GameOf), its ring's shares a fourth answer
 function M:PlateOf(frame)
-	if type(frame) ~= "table" or not Frames.On() then
+	if type(frame) ~= "table" then
 		return nil
+	end
+	if not Frames.On() then
+		return Frames.GameOf(frame)
 	end
 	local regions = Party.art[frame] and { { rawget(frame, "Texture"), "small" } } or Frames.Regions(frame)
 	for _, pair in ipairs(regions) do

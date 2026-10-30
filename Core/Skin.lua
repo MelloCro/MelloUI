@@ -21,6 +21,12 @@
 --       (first), a child frame of `frame`: kind "tooltip" (the tooltip's edge on the rect), "window" (the dialog's
 --       diamond metal, its inner edge on the rect) or "bubble" (the chat bubble's); no picture in its middle (a fill
 --       is the caller's). Skin.LayBorder(border, first[, last]) lays it again round another rect
+--   Skin.Window(frame[, opts]) -> win   (lk-12) the game's portrait window frame round an own window (the shell, the
+--       whisper window, the minimap panel); Skin.WindowTitle / Skin.WindowClose lay its owner's title and close;
+--       Skin.CoinBox(parent) the game's coin box (the bag window's money); Skin.ChatTab(button) the game's chat tab
+--       (Chat View's channels under Default), Skin.ChatAlpha([id]) its see-through chat box's alpha (Chat View's box, the
+--       damage meter's list); Skin.ListGround / Skin.ListRow / Skin.Inset the game's Communities
+--       pieces (the whisper window). Their own blocks below
 --   Skin.LayHair(tex, alpha)   a hairline (W.Hairline's) in the game's own line: the Settings divider's colour, one
 --       texel of it drawn at any length (MelloUI.Painter's, for a hairline under the Default skin)
 --   Skin.Icon(name) -> spec | nil   the game's picture for an icon of MelloUI's set (a name, or its path in the
@@ -146,6 +152,10 @@ Skin.ART = {
 	-- 8 x 128: the line the outer 2 texels, tiled along its length)
 	raidFill = "RaidFrame-Hp-Fill", raidGround = "RaidFrame-Hp-Bg", raidPower = "_RaidFrame-Resource-Fill",
 	raidSepH = "Interface\\RaidFrame\\Raid-HSeparator", raidSepV = "Interface\\RaidFrame\\Raid-VSeparator",
+	-- (lk-12, stage 4) the game's tracker headers (Blizzard_ObjectiveTracker): the container's bar behind the title
+	-- row (300 x 40) and a module's behind a section's heading (300 x 30), each drawn at its own size
+	trackerHead = "UI-QuestTracker-Primary-Objective-Header",
+	trackerSection = "UI-QuestTracker-Secondary-Objective-Header",
 }
 
 --------------------------------------------------------------------------------
@@ -242,6 +252,261 @@ function Skin.Dim(region)
 	local modules = MelloUI.modules
 	local dark = type(modules) == "table" and modules.DarkMode
 	return type(dark) == "table" and dark.LevelOf and dark.LevelOf(region) or 1
+end
+
+--------------------------------------------------------------------------------
+-- The game's window frame (lk-12, 2026-10-29; the user: "all of the custom windows that we made, the bags, chat,
+-- quest tracker, whisper window etc needs to have its default look but retain the functionality"; their pick 6A of
+-- default_windows_sketch): the game's portrait window, PortraitFrameBaseTemplate's NineSlice by its layout's name (the
+-- bronze metal, the portrait's ring at the top left, the title bar along the top) and its round portrait under the
+-- ring's edge, masked where the template masks it. ONE function for every own window that wears it: the own-window
+-- shell (Kit:OwnWindow), the whisper window, the minimap panel. The owner keeps its own ground, title and close and
+-- lays them where the template has its own (Skin.WindowTitle, Skin.WindowClose): never the game's UIPanelCloseButton,
+-- which hides its parent through the game's panel system.
+--   Skin.Window(frame[, opts]) -> win   a child frame of `frame` over its parts; opts.portrait false: the game's window
+--       without a portrait (ButtonFrameTemplateNoPortrait); opts.level: its level over `frame`'s (Skin.WINDOW.level:
+--       over the window's parts). win.portrait: the texture in the ring (nil without one)
+--   Skin.WindowTitle(fs, frame)   a title on the bar, centred as the template's TitleText
+--   Skin.WindowClose(button, frame)   a close button on the template's close's middle
+--   Skin.WINDOW   the template's numbers, in UI units from the window's top left
+--   Skin.CoinBox(parent) -> box   the game's coin box (the bag window's money frame), Skin.COIN its numbers
+--------------------------------------------------------------------------------
+Skin.WINDOW = {
+	level = 60,                -- the border over the window's parts (the rims' level, MelloUI.Rims.T); the portrait one under
+	bar = 26,                  -- the title bar's foot under the window's top (the top edge's dark band ends there)
+	title = { 58, -24, -12 },  -- the title's left and right (TitleContainer, 58 / -24) and its middle under the top
+	close = { -11, -12 },      -- the close's middle from the top right (UIPanelCloseButtonDefaultAnchors: 24 square at 1, 0)
+	portrait = { size = 62, x = -5, y = 7, maskIn = 2, maskUp = 4 },   -- (PortraitContainer's portrait and CircleMask)
+	clear = 59,                -- the portrait's foot under the window's top and a little room: content below it is clear
+	out = { 13, 2, 16, 8 },    -- how far the corners reach past the window: left, right, top, bottom (the client's offsets)
+}
+local WINDOW_LAYOUT = { portrait = "PortraitFrameTemplate", plain = "ButtonFrameTemplateNoPortrait" }
+local PORTRAIT_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+
+function Skin.Window(frame, opts)
+	local T = Skin.WINDOW
+	local portrait = not (opts and opts.portrait == false)
+	local win = CreateFrame("Frame", nil, frame)
+	win:SetAllPoints(frame)
+	win:SetFrameLevel(frame:GetFrameLevel() + (opts and tonumber(opts.level) or T.level))
+	win:EnableMouse(false)
+	local Util = _G.NineSliceUtil
+	if type(Util) == "table" and Util.ApplyLayoutByName then
+		Util.ApplyLayoutByName(win, WINDOW_LAYOUT[portrait and "portrait" or "plain"])
+	end
+	-- (its pieces under Dark Mode as MelloUI's own frame art, as Skin.Border's)
+	local Kit = MelloUI.Kit
+	if type(Kit) == "table" and Kit.RegisterTexture then
+		for _, key in ipairs(BORDER_PIECES) do
+			local piece = rawget(win, key)
+			if type(piece) == "table" and piece.SetVertexColor then
+				Kit:RegisterTexture(piece)
+			end
+		end
+	end
+	if portrait then
+		-- (under the ring's edge: a layer under the NineSlice's OVERLAY pieces, as the template's PortraitContainer
+		-- under its NineSlice)
+		-- (by its middle, so a game picture drawn smaller than the portrait -- never bigger than its own size,
+		-- MelloUI.Icons -- stays in the ring's middle; the mask on the portrait's own rect)
+		local p = T.portrait
+		local tex = win:CreateTexture(nil, "ARTWORK")
+		tex:SetSize(p.size, p.size)
+		tex:SetPoint("CENTER", frame, "TOPLEFT", p.x + p.size / 2, p.y - p.size / 2)
+		local mask = win:CreateMaskTexture()
+		mask:SetTexture(PORTRAIT_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		mask:SetPoint("TOPLEFT", frame, "TOPLEFT", p.x + p.maskIn, p.y)
+		mask:SetPoint("BOTTOMRIGHT", frame, "TOPLEFT", p.x + p.size - p.maskIn, p.y - p.size + p.maskUp)
+		tex:AddMaskTexture(mask)
+		win.portrait = tex
+	end
+	return win
+end
+
+function Skin.WindowTitle(fs, frame)
+	local t = Skin.WINDOW.title
+	fs:ClearAllPoints()
+	fs:SetPoint("LEFT", frame, "TOPLEFT", t[1], t[3])
+	fs:SetPoint("RIGHT", frame, "TOPRIGHT", t[2], t[3])
+	fs:SetJustifyH("CENTER")
+end
+
+function Skin.WindowClose(button, frame)
+	local c = Skin.WINDOW.close
+	button:ClearAllPoints()
+	button:SetPoint("CENTER", frame, "TOPRIGHT", c[1], c[2])
+end
+
+-- (lk-12, stage 2: the user's pick 1A, the bag window) the game's coin box: the bag window's money frame border
+-- (ContainerFrameCurrencyBorderTemplate: its two ends 8 x 17, the middle between them, each laid as the game lays
+-- them -- SetAtlas, no texel snapping bias -- the 2x art drawn at half). A child frame of `parent` the owner places;
+-- Skin.COIN its height and where the game puts it on its window (8 in from the sides and the bottom)
+Skin.COIN = { height = 17, cap = 8, inset = 8 }
+local COIN_ART = { Left = "common-coinbox-left", Right = "common-coinbox-right", Middle = "_common-coinbox-center" }
+
+function Skin.CoinBox(parent)
+	local T = Skin.COIN
+	local box = CreateFrame("Frame", nil, parent)
+	box:SetHeight(T.height)
+	box:EnableMouse(false)
+	for key, atlas in pairs(COIN_ART) do
+		local piece = box:CreateTexture(nil, "BACKGROUND")
+		if piece.SetTexelSnappingBias then
+			piece:SetTexelSnappingBias(0)
+		end
+		piece:SetAtlas(atlas)
+		box[key] = piece
+	end
+	box.Left:SetSize(T.cap, T.height)
+	box.Left:SetPoint("LEFT")
+	box.Right:SetSize(T.cap, T.height)
+	box.Right:SetPoint("RIGHT")
+	box.Middle:SetPoint("TOPLEFT", box.Left, "TOPRIGHT")
+	box.Middle:SetPoint("BOTTOMRIGHT", box.Right, "BOTTOMLEFT")
+	return box
+end
+
+-- (lk-12, stage 5: the user's pick 2A, Chat View's channels as the game's chat tabs) the game's chat tab
+-- (ChatTabArtTemplate, by its files): its two ends 16 x 32 and the middle between them tiled along, at the button's
+-- foot as the template lays them; the selected three over them (ADD) while it is the open one; the highlight three in
+-- the button's own HIGHLIGHT layer; the new-message glow along its foot (hidden: the owner flashes it). The art at the
+-- game's own alphas: a selected tab's and another's under the pointer (CHAT_FRAME_TAB_*_MOUSEOVER_ALPHA)
+--   Skin.ChatTab(button) -> art   on a Button of the owner's (its size the owner's, CHAT_TAB.height high);
+--       art.Select(on), art.glow (the new-message glow texture), art.ground / art.on / art.lit (each its three pieces:
+--       the owner hides them while its button is something else)
+Skin.CHAT_TAB = { height = 32, cap = 16, glowIn = 8, labelY = -5 }
+
+-- (lk-12, stages 5 and 6A's meter) the game's see-through chat box: its ground's alpha as the game draws its chat --
+-- the player's own General window's (GetChatWindowInfo), else the game's default; nil where the client tells neither.
+-- Chat View's box and the damage meter's list wear it under the Default skin. (ch-02) `id` another chat window's
+-- (Chat View's open tab: each window its own, as the game's dock shows them); General's (1) when none is given
+function Skin.ChatAlpha(id)
+	local get = rawget(_G, "FCF_GetChatWindowInfo") or rawget(_G, "GetChatWindowInfo")
+	local Num = MelloUI.Safe.Number
+	local alpha
+	if type(get) == "function" then
+		local ok, _, _, _, _, _, a = pcall(get, id or 1)
+		alpha = ok and Num(a) or nil
+	end
+	return alpha or Num(rawget(_G, "DEFAULT_CHATFRAME_ALPHA"))
+end
+local CHAT_TAB_FILE = "Interface\\ChatFrame\\ChatFrameTab-"
+
+local function ChatTabThree(button, layer, kind, blend)
+	local T = Skin.CHAT_TAB
+	local l, m, r = button:CreateTexture(nil, layer), button:CreateTexture(nil, layer), button:CreateTexture(nil, layer)
+	l:SetTexture(CHAT_TAB_FILE .. kind .. "Left")
+	r:SetTexture(CHAT_TAB_FILE .. kind .. "Right")
+	m:SetTexture(CHAT_TAB_FILE .. kind .. "Mid", "REPEAT", "CLAMP")
+	m:SetHorizTile(true)
+	l:SetSize(T.cap, T.height)
+	r:SetSize(T.cap, T.height)
+	m:SetHeight(T.height)
+	l:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", -2, 0)
+	r:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 2, 0)
+	m:SetPoint("LEFT", l, "RIGHT")
+	m:SetPoint("RIGHT", r, "LEFT")
+	if blend then
+		l:SetBlendMode(blend)
+		m:SetBlendMode(blend)
+		r:SetBlendMode(blend)
+	end
+	return { l, m, r }
+end
+
+function Skin.ChatTab(button)
+	local T = Skin.CHAT_TAB
+	local art = { ground = ChatTabThree(button, "BACKGROUND", "BG") }
+	art.on = ChatTabThree(button, "BORDER", "Selected", "ADD")
+	art.lit = ChatTabThree(button, "HIGHLIGHT", "Highlight", "ADD")
+	local glow = button:CreateTexture(nil, "BORDER")
+	glow:SetTexture(CHAT_TAB_FILE .. "NewMessage")
+	glow:SetBlendMode("ADD")
+	glow:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", T.glowIn, 0)
+	glow:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -T.glowIn, 0)
+	glow:Hide()
+	art.glow = glow
+	local onAlpha = tonumber(rawget(_G, "CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA")) or 1
+	local offAlpha = tonumber(rawget(_G, "CHAT_FRAME_TAB_NORMAL_MOUSEOVER_ALPHA")) or onAlpha
+	function art.Select(on)
+		for _, piece in ipairs(art.on) do
+			piece:SetShown(on and true or false)
+		end
+		for _, piece in ipairs(art.ground) do
+			piece:SetAlpha(on and onAlpha or offAlpha)
+		end
+	end
+	art.Select(false)
+	return art
+end
+
+-- (lk-12, stage 6: the user's pick 3A, "A: Communities") the game's Guild & Communities pieces for the whisper window,
+-- by name: the list column's ground (CommunitiesListFrameTemplate's Bg, its part of Interface\Common\bluemenu-main,
+-- drawn into the column -- never bigger than its part -- and its foot's filigree at the column's width, its own
+-- shape kept), a chosen row (the game's green nav button, pressed: CommunitiesListEntryMixin's Selection) and the
+-- talk's inset (InsetFrameTemplate: the marble tiled at its own size, the inner border by its layout's name)
+--   Skin.ListGround(frame, left, right) -> ground   textures on `frame` (BACKGROUND, over a fill at -8) between the
+--       regions `left` (its top left) and `right` (its bottom right): ground.bg, ground.foot
+--   Skin.ListRow(row) -> tex   the chosen row's picture on `row`, its own shape kept across the row's width
+--   Skin.Inset(frame) -> inset   a child frame of `frame` (the owner places it) with the inner border; inset.marble
+--       the marble on `frame` across it (shown and hidden by the owner with the inset)
+Skin.LIST = {
+	file = "Interface\\Common\\bluemenu-main",
+	ground = { 0.00390625, 0.82421875, 0.18554688, 0.58984375 },   -- (211 x 414 px)
+	foot = { 0.26171875, 0.984375, 0.06542969, 0.11914063 }, footW = 155, footH = 55, footIn = 14,
+	row = "communities-nav-button-green-pressed", rowW = 224, rowH = 80,
+	marble = "Interface\\FrameGeneral\\UI-Background-Marble",
+}
+
+function Skin.ListGround(frame, left, right)
+	local T = Skin.LIST
+	local bg = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
+	bg:SetTexture(T.file)
+	bg:SetTexCoord(T.ground[1], T.ground[2], T.ground[3], T.ground[4])
+	bg:SetPoint("TOPLEFT", left, "TOPLEFT")
+	bg:SetPoint("BOTTOMRIGHT", right, "BOTTOMRIGHT")
+	local foot = frame:CreateTexture(nil, "BACKGROUND", nil, -6)
+	foot:SetTexture(T.file)
+	foot:SetTexCoord(T.foot[1], T.foot[2], T.foot[3], T.foot[4])
+	foot:SetPoint("BOTTOM", bg, "BOTTOM", 0, 1)
+	-- (its shape kept, at the column's width or its own, whichever is less)
+	function foot.Fit(width)
+		local w = math.min(T.footW, math.max(1, (tonumber(width) or T.footW) - 2 * T.footIn))
+		foot:SetSize(w, w * T.footH / T.footW)
+	end
+	foot.Fit()
+	return { bg = bg, foot = foot }
+end
+
+function Skin.ListRow(row)
+	local T = Skin.LIST
+	local tex = row:CreateTexture(nil, "BACKGROUND", nil, 1)
+	tex:SetAtlas(T.row)
+	tex:SetPoint("LEFT", row, "LEFT")
+	tex:SetPoint("RIGHT", row, "RIGHT")
+	function tex.Fit(width)
+		tex:SetHeight(math.min(T.rowH, (tonumber(width) or T.rowW) * T.rowH / T.rowW))
+	end
+	tex.Fit()
+	tex:Hide()
+	return tex
+end
+
+function Skin.Inset(frame)
+	local inset = CreateFrame("Frame", nil, frame)
+	inset:EnableMouse(false)
+	-- (the marble on `frame` itself, over its fill and under all its children; the border on the inset's own frame)
+	local marble = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
+	marble:SetTexture(Skin.LIST.marble, "REPEAT", "REPEAT")
+	marble:SetHorizTile(true)
+	marble:SetVertTile(true)
+	marble:SetAllPoints(inset)
+	inset.marble = marble
+	local Util = _G.NineSliceUtil
+	if type(Util) == "table" and Util.ApplyLayoutByName then
+		Util.ApplyLayoutByName(inset, "InsetFrameTemplate")
+	end
+	return inset
 end
 
 -- (1.2.4, the whisper window's bubbles: BuildData/output/chat_room_sketch) a chat bubble's ground: the game's bubble

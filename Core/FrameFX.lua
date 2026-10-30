@@ -2066,7 +2066,7 @@ function FX.Split(frame)
 	-- (Unit Frames' M:PlateOf: its rim as shares of the picture): its border lit there (Flare), the bold parts on it
 	split.pl, split.pb, split.pr, split.pt = nil, nil, nil, nil
 	if panel.PlateOf then
-		local ok, pic, plate = pcall(panel.PlateOf, panel, frame)
+		local ok, pic, plate, _, ringAt = pcall(panel.PlateOf, panel, frame)
 		local l, b, r, t
 		if ok and pic and type(plate) == "table" then
 			l, b, r, t = FX.Rect(pic)
@@ -2075,6 +2075,12 @@ function FX.Split(frame)
 			local w, h = r - l, t - b
 			split.pl, split.pr = l + plate[1] * w, l + plate[3] * w
 			split.pt, split.pb = t - plate[2] * h, t - plate[4] * h
+			-- (1.2.4, the Default skin: the game's own picture's ring, measured -- its portrait is not in the ring's
+			-- middle on every frame -- in place of the one read round the portrait)
+			if type(ringAt) == "table" and not kitRing then
+				local rx, ry, rd = l + ringAt[1] * w, t - ringAt[2] * h, ringAt[3] * w
+				split.rl, split.rb, split.rr, split.rt = rx - rd / 2, ry - rd / 2, rx + rd / 2, ry + rd / 2
+			end
 		end
 	end
 	return split

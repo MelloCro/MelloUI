@@ -10,11 +10,13 @@
 --                             four and three quarter minutes, opposite ways: the user, 2026-10-28, "the compas should
 --                             spin 100% faster"), their outer rings staying painted; at a page switch
 --                             they swing and settle (about four seconds), the next switch the other way
---   Default    Metal glints   now and then a lamp's light running along one of the rails (each 7 to 16 s apart)
---              Ring glint     now and then a glint once round the crest's metal ring (9 to 17 s apart)
---   Oldschool  Candlelight    two warm lights from the corners, flickering unevenly
---              Smouldering cracks  the painting's own ember-lit cracks glowing up and fading, a patch at a time
---              Embers         a few rising from the stone of the footer and the side column's foot
+--   Default    Metal glints   a lamp's light running along each of the rails, a rail's next 2 to 4 s after its last
+--                             (1.2.4, the user's pick B of 2026-10-29: "as present as Modern's"; was 7 to 16 s)
+--              Ring glint     a glint once round the crest's metal ring, 4 to 6 s apart
+--   Oldschool  Candlelight    two warm lights from the corners, flickering strongly and unevenly
+--              Smouldering cracks  the painting's own ember-lit cracks glowing up and fading in patches of light that
+--                             drift slowly over them (the sketch's)
+--              Embers         a few rising from the stone of the footer and the side column's foot to about the middle
 -- The engine runs it: animation groups, no OnUpdate; a few Lua calls a second at most (a spark or an ember moved to
 -- where it starts again, a glint's next wait). Made at the look's first show (Media/Textures/Configurator, baked by
 -- Tools/make_configurator_motion.py), played while the window is open, stopped and hidden when it closes or the look
@@ -68,9 +70,12 @@ local G = {
 		ring = { x = 55, y = 55, size = 100 },
 	},
 	oldschool = {
-		candles = { { x = -40, y = -40, size = 1120, alpha = 0.22 }, { x = 1180, y = 800, size = 1200, alpha = 0.17 } },
-		-- the cracks' patches: a centre each (the sketch's drifting blobs, where the cracks are)
-		patches = { { 120, 130 }, { 60, 480 }, { 400, 60 }, { 980, 70 }, { 700, 730 }, { 190, 700 }, { 1050, 720 } },
+		candles = { { x = -40, y = -40, size = 1120, alpha = 0.28 }, { x = 1180, y = 800, size = 1200, alpha = 0.22 } },
+		-- the cracks' patches, the sketch's drifting blobs (where the cracks are): a centre each, its drift's speeds
+		-- across and down (radians a second) and its phase
+		patches = { { 120, 130, 0.11, 0.07, 0 }, { 60, 480, 0.08, 0.1, 1.3 }, { 400, 60, 0.07, 0.09, 2.1 },
+			{ 980, 70, 0.09, 0.06, 0.7 }, { 700, 730, 0.1, 0.08, 2.7 }, { 190, 700, 0.06, 0.11, 3.4 },
+			{ 1050, 720, 0.08, 0.07, 4.2 } },
 		embers = 14,
 	},
 }
@@ -82,9 +87,10 @@ local STRIPS = { { row = 0, alpha = 0.30, speed = 62 }, { row = 1, alpha = 0.22,
 -- the crest ring's flicker: its alpha at each step and the seconds to it (uneven, so it never pulses)
 local FLICKER = { 0.28, 0.38, 0.24, 0.41, 0.30, 0.36, 0.22, 0.33 }
 local FLICKER_T = { 0.35, 0.5, 0.27, 0.6, 0.4, 0.3, 0.55, 0.45 }
--- a candle's flicker: its light's share at each step (of the candle's own alpha) and the seconds to it
-local CANDLE = { 0.80, 0.92, 0.74, 0.95, 0.83, 0.88, 0.70, 0.90, 0.78 }
-local CANDLE_T = { 0.6, 0.45, 0.8, 0.5, 0.7, 0.4, 0.65, 0.55, 0.5 }
+-- a candle's flicker: its light's share at each step (of the candle's own alpha) and the seconds to it (1.2.4, the
+-- user's pick B: a stronger flicker, about three times the swing)
+local CANDLE = { 0.62, 1.0, 0.48, 0.94, 0.7, 0.98, 0.42, 0.88, 0.56 }
+local CANDLE_T = { 0.35, 0.25, 0.5, 0.3, 0.45, 0.22, 0.4, 0.3, 0.38 }
 
 -- a look's pieces (Layer): the window's regions it made, shown and hidden together, and the groups it plays while shown
 local Pieces = {}
@@ -314,44 +320,59 @@ end
 -- Default
 --------------------------------------------------------------------------------
 
--- a lamp's light along a rail: once, then a wait of 7 to 16 s (a timer of the layer's session) before the next
+-- a lamp's light along a rail: once, then a wait of its own (g.melloWait: at least, and up to this much more; a timer
+-- of the layer's session) before the next, its core (g.melloWith) with it
 local function Glint_OnFinished(g)
 	local layer = g.melloLayer
 	if layer:IsShown() then
 		local token = M.token
-		C_Timer.After(7 + random() * 9, function()
+		local wait = g.melloWait
+		C_Timer.After(wait[1] + random() * wait[2], function()
 			if M.token == token and layer:IsShown() then
 				g:Play()
+				if g.melloWith then
+					g.melloWith:Play()
+				end
 			end
 		end)
 	end
 end
 
--- the lamp's light: a streak STREAK long, its run inside the rail's ends by its own half (the light never leaves the
--- rail, nor the window)
-local STREAK = 96
+-- the lamp's light (1.2.4, the user's pick B of 2026-10-29: "as present as Modern's"): a streak at Streak.tga's own
+-- size (never drawn bigger than its file), a narrower core over it doubling its light on the rail, its run inside the
+-- rail's ends by its own half (the light never leaves the rail, nor the window); a rail's next glint 2 to 4 s after
+-- the last, the ring's 4 to 6 s
+local STREAK, STREAK_H, CORE_H = 128, 16, 8
+local GLINT_WAIT, RING_WAIT = { 2, 2 }, { 4, 2 }
+
+local function Streak(layer, R, height)
+	local vertical = R.x0 == R.x1
+	local t = Tex(layer, "Streak", SUB.light)
+	t:SetSize(STREAK, height)
+	if vertical then
+		t:SetRotation(pi / 2)
+	end
+	local inX, inY = vertical and 0 or STREAK / 2, vertical and STREAK / 2 or 0
+	At(t, layer.window, R.x0 + inX, R.y0 + inY)
+	local g = Group(t)
+	local run = g:CreateAnimation("Translation")
+	run:SetOffset(R.x1 - R.x0 - 2 * inX, R.y0 - R.y1 + 2 * inY)
+	run:SetDuration(1.5)
+	run:SetSmoothing("IN_OUT")
+	Fade(g, 0, 1, 0.75, 1, nil, "OUT")
+	Fade(g, 1, 0, 0.75, 1, 0.75, "IN")
+	return g
+end
 
 local function Glints(layer, P)
 	local window = layer.window
 	for i, R in ipairs(P.rails) do
-		local vertical = R.x0 == R.x1
-		local t = Tex(layer, "Streak", SUB.light)
-		t:SetSize(STREAK, 10)
-		if vertical then
-			t:SetRotation(pi / 2)
-		end
-		local inX, inY = vertical and 0 or STREAK / 2, vertical and STREAK / 2 or 0
-		At(t, window, R.x0 + inX, R.y0 + inY)
-		local g = Group(t)
-		local run = g:CreateAnimation("Translation")
-		run:SetOffset(R.x1 - R.x0 - 2 * inX, R.y0 - R.y1 + 2 * inY)
-		run:SetDuration(1.5)
-		run:SetSmoothing("IN_OUT")
-		Fade(g, 0, 0.85, 0.75, 1, nil, "OUT")
-		Fade(g, 0.85, 0, 0.75, 1, 0.75, "IN")
-		g.melloLayer = layer
+		local g, core = Streak(layer, R, STREAK_H), Streak(layer, R, CORE_H)
+		g.melloLayer, g.melloWait, g.melloWith = layer, GLINT_WAIT, core
 		g:SetScript("OnFinished", Glint_OnFinished)
-		Keep(layer, g, 1.5 + (i - 1) * 2.3)
+		local start = 0.8 + (i - 1) * 0.9
+		Keep(layer, g, start)
+		Keep(layer, core, start)
 	end
 	local ring = Tex(layer, "RingGlint", SUB.glow)
 	ring:SetSize(P.ring.size, P.ring.size)
@@ -363,21 +384,62 @@ local function Glints(layer, P)
 	turn:SetSmoothing("IN_OUT")
 	Fade(g, 0, 0.9, 0.9, 1, nil, "OUT")
 	Fade(g, 0.9, 0, 0.9, 1, 0.9, "IN")
-	g.melloLayer = layer
+	g.melloLayer, g.melloWait = layer, RING_WAIT
 	g:SetScript("OnFinished", Glint_OnFinished)
-	Keep(layer, g, 4)
+	Keep(layer, g, 2)
 end
 
 --------------------------------------------------------------------------------
 -- Oldschool
 --------------------------------------------------------------------------------
 
--- an ember: rises from the window's foot (its own half above the edge), fades; where it starts again is picked at
--- each loop
+-- an ember: rises from the window's foot (its own half above the edge) to about the window's middle (1.2.4, the
+-- user's pick B), fades; where it starts again is picked at each loop
 local function Ember_OnLoop(g)
 	local e = g.melloEmber
 	local side = random() < 0.35
 	At(e.tex, e.window, side and (20 + random() * 220) or (280 + random() * 840), e.foot)
+end
+
+-- the window-wide picture (laid as the painting: the left PICTURE_U of its file) on one part of the window only,
+-- l..r by top..bottom cut to the window, its texture coordinates cut to match (a patch's light reaches no further)
+local PICTURE_U = 0.75
+local function Part(layer, t, l, top, r, bottom)
+	local W, H = layer.window:GetSize()
+	l, r, top, bottom = math.max(l, 0), math.min(r, W), math.max(top, 0), math.min(bottom, H)
+	t:ClearAllPoints()
+	t:SetPoint("TOPLEFT", layer.window, "TOPLEFT", l, -top)
+	t:SetSize(r - l, bottom - top)
+	t:SetTexCoord(PICTURE_U * l / W, PICTURE_U * r / W, top / H, bottom / H)
+end
+
+-- a patch's light (the sketch's blob: PATCH across) drifting round its centre on a slow ellipse DRIFT_X by DRIFT_Y,
+-- once in 2 pi over its mean speed seconds, from its phase on, `way` round: the engine moves the mask (as the game's
+-- cast bar moves its wisp's mask) while the cracks under it lie still -- DRIFT_LEGS straight legs ending where it began
+local PATCH, DRIFT_X, DRIFT_Y, DRIFT_LEGS = 460, 140, 90, 8
+
+local function Drift(layer, mask, at, way)
+	local x, y, phase = at[1], at[2], at[5]
+	local function Point(k)
+		local a = phase + way * (k % DRIFT_LEGS) * 2 * pi / DRIFT_LEGS
+		return x + DRIFT_X * math.cos(a), y + DRIFT_Y * math.sin(a)
+	end
+	local px, py = Point(0)
+	At(mask, layer.window, px, py)
+	local ok, g = pcall(Group, mask, "REPEAT")
+	if not ok then
+		return   -- (a client without animated masks: the patch glows where it starts)
+	end
+	local leg = 2 * pi / ((at[3] + at[4]) / 2) / DRIFT_LEGS
+	for k = 1, DRIFT_LEGS do
+		local nx, ny = Point(k)
+		local step = g:CreateAnimation("Translation")
+		step:SetOffset(nx - px, py - ny)   -- (the engine's y is up)
+		step:SetDuration(leg)
+		step:SetOrder(k)
+		px, py = nx, ny
+	end
+	Keep(layer, g)
 end
 
 local function BuildOldschool(layer, P)
@@ -387,21 +449,24 @@ local function BuildOldschool(layer, P)
 		Inside(layer, t, C.x, C.y, C.size)
 		Flicker(layer, Group(t), CANDLE, CANDLE_T, C.alpha)
 	end
+	local reachX, reachY = PATCH / 2 + DRIFT_X, PATCH / 2 + DRIFT_Y
 	for i, at in ipairs(P.patches) do
-		local t = Tex(layer, "Cracks_Oldschool", SUB.light)
-		t:SetAllPoints(window)
-		t:SetTexCoord(0, 0.75, 0, 1)
 		local mask = window:CreateMaskTexture()
 		mask:SetTexture(TEX .. "PatchMask.tga", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-		mask:SetSize(460, 460)
-		At(mask, window, at[1], at[2])
-		t:AddMaskTexture(mask)
-		-- (glowing up and fading, each patch at its own pace: 11 to 17 s)
-		local period = 11 + (i * 0.97) % 6
-		local g = Group(t, "REPEAT")
-		Fade(g, 0.1, 0.95, period / 2, 1, nil, "IN_OUT")
-		Fade(g, 0.95, 0.1, period / 2, 2, nil, "IN_OUT")
-		Keep(layer, g, (i - 1) * 1.3)
+		mask:SetSize(PATCH, PATCH)
+		Drift(layer, mask, at, i % 2 == 0 and -1 or 1)
+		-- (glowing up and fading at the sketch's pace, 14 to 15 s; two layers of the cracks under the one light, the
+		-- user's pick B: brighter)
+		local period = 2 * pi / (0.35 + at[3])
+		for _ = 1, 2 do
+			local t = Tex(layer, "Cracks_Oldschool", SUB.light)
+			Part(layer, t, at[1] - reachX, at[2] - reachY, at[1] + reachX, at[2] + reachY)
+			t:AddMaskTexture(mask)
+			local g = Group(t, "REPEAT")
+			Fade(g, 0.1, 1, period / 2, 1, nil, "IN_OUT")
+			Fade(g, 1, 0.1, period / 2, 2, nil, "IN_OUT")
+			Keep(layer, g, (i - 1) * 1.3)
+		end
 	end
 	local _, H = window:GetSize()
 	for i = 1, P.embers do
@@ -409,16 +474,16 @@ local function BuildOldschool(layer, P)
 		local r = 1.2 + random() * 1.3
 		t:SetSize(r * 8, r * 8)
 		local g = Group(t, "REPEAT")
-		local life = 2.6 + random() * 2
+		local life = 5.5 + random() * 2.5
 		local rise = g:CreateAnimation("Translation")
-		rise:SetOffset((random() - 0.5) * 18, (16 + random() * 18) * life)
+		rise:SetOffset((random() - 0.5) * 18, 300 + random() * 80)
 		rise:SetDuration(life)
-		Fade(g, 0, 1, 0.5)
-		Fade(g, 1, 0, 0.8, 1, life - 0.8)
+		Fade(g, 0, 1, 0.6)
+		Fade(g, 1, 0, 1.4, 1, life - 1.4)
 		g.melloEmber = { tex = t, window = window, foot = H - r * 4 }
 		g:SetScript("OnLoop", Ember_OnLoop)
 		Ember_OnLoop(g)
-		Keep(layer, g, (i - 1) * 0.33)
+		Keep(layer, g, (i - 1) * 0.45)
 	end
 end
 

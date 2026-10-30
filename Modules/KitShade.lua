@@ -64,6 +64,9 @@
 --       partners: a skin's own, for its mask), ringCut (the window's ring
 --       cut as mask)
 --   element:Host() -> the frame that draws its partners (made when asked)
+--   element:SetAlpha(alpha) -> element   (1.2.4) its shade frame see-through
+--       by alpha (0..1), kept for a frame made later: a background that
+--       fades takes its shade along (the Quest Tracker's Background Opacity)
 -- The settings are UI Modifications' (its defaults: uiShade on,
 -- uiShadeStrength 0.7, every shade_<area> on), chosen in Dynamic UI
 -- Modification: switched on the bus's 'setting' with the module on or off, and
@@ -622,8 +625,31 @@ function Element:Host()
 	host:SetAllPoints(self.anchor or root)
 	host.ignoreInLayout = true   -- (never part of a layout frame's size, as the kit's holders)
 	host.kitShadeHost = true
+	if self.alpha then
+		host:SetAlpha(self.alpha)   -- (el-09: made late, at its element's see-through: Element:SetAlpha)
+	end
 	self.host = host
 	return host
+end
+
+-- (1.2.4, el-09; the user, 2026-10-29: the Quest Tracker's Background Opacity at 0% left "another background there",
+-- and it came back a second after a /reload) the element's shade frame see-through by `alpha` (0..1): an element that
+-- is a background its frame fades (the Quest Tracker's Background Opacity) takes its shade along. The frame's own alpha,
+-- never the partners' strength (the area's switch and the UI Shade's strength stay theirs, Kit:ShadowAreaSet); kept
+-- and laid on the frame when it is made (Host: the partners come after the login's frames), so no later pass undoes
+-- it. A part drawn by a host of its own (opts.host) keeps its own; nothing is made here
+function Element:SetAlpha(alpha)
+	alpha = Num(alpha)
+	if not alpha then
+		return self
+	end
+	alpha = alpha < 0 and 0 or alpha > 1 and 1 or alpha
+	self.alpha = alpha
+	local host = self.host
+	if host and host.kitShadeHost then
+		host:SetAlpha(alpha)
+	end
+	return self
 end
 
 function Element:Add(obj, opts)

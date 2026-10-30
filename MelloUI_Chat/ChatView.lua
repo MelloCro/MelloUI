@@ -57,6 +57,16 @@ local RAIL_W, ROW_H, ICON, LETTER, PAD = 112, 34, 24, 24, 6
 -- 12 off the top and the right, 10 over the buttons; a wrapped line's own lines 1 apart)
 local GAP_RUN, GAP_LINE, GAP_PLAIN, INDENT, RUN_SECONDS = 10, 2, 3, 10, 120
 View.RAIL_W = RAIL_W   -- (the whisper window's people list as wide: its divider under the rail's, ChatWhispers.lua)
+-- (lk-12, stage 5; the user's pick 2A of default_windows_sketch, 2026-10-29: "the four channels as the game's tabs on
+-- top; the twelve buttons in one row under the typing box") Under the Default skin the rail's tabs are the game's chat
+-- tabs (MelloUI.Skin.ChatTab) in a row along the view's top, the lines and the line you type in across the whole
+-- width, the box the game's see-through chat box (no gold rim, its alpha the game's chat window's unless the chat's
+-- own Background Opacity is set: the open tab's window's, live as the game's Background picker moves it, ch-02);
+-- every tab's click, right click (its stand-in), drag and count as on the rail.
+-- Modern and Oldschool keep the rail. UI units: the row's inset from the view's sides (the lines' too), the gap
+-- between two tabs, a tab's least width, a tab's room each side of its name, a count's place on a tab's top right, the
+-- height of a tab's art that shows (its foot's 21 of the 32)
+View.TOP = { inset = 12, gap = 1, least = 56, pad = 12, countX = -6, countY = -13, art = 21 }
 View.FOOT = 4          -- the newest line over the area's foot (the lay's and the glide's)
 local CAP, LAY = 300, 40          -- lines kept per tab; rows laid at most (the holder clips what does not fit)
 local SEED = 60                   -- the game's own lines a tab starts with when the view comes on
@@ -925,6 +935,7 @@ end
 
 function View.SetCount(b, n)
 	local holder, fs = Count(b)
+	View.CountHome(b)
 	local show = n and n > 0
 	holder:SetShown(show)
 	fs:SetShown(show)
@@ -932,6 +943,28 @@ function View.SetCount(b, n)
 		fs:SetText(n > 99 and "99" or n)
 	end
 	return show
+end
+
+-- (lk-12) a count's place: on its tab's top right corner while the tabs are the game's along the top (the round
+-- button hidden there), on the round button's rim else
+function View.CountHome(b)
+	local holder = b.countFrame
+	if not holder then
+		return
+	end
+	local t = b.entry
+	local top = View.topLaid and t and t.hit
+	local owner = top or b
+	if holder:GetParent() ~= owner then
+		holder:SetParent(owner)
+	end
+	holder:ClearAllPoints()
+	if top then
+		holder:SetPoint("CENTER", top, "TOPRIGHT", View.TOP.countX, View.TOP.countY)
+	else
+		holder:SetPoint("CENTER", b, "TOPRIGHT", -3, -3)
+	end
+	holder:SetFrameLevel(owner:GetFrameLevel() + 6)
 end
 
 -- a tab's name in the chat's font (General's: the Chat Size slider's, the game's size of its window)
@@ -1023,10 +1056,27 @@ end, "script")
 
 -- the gap the pointer is at (0: before the first tab, #order: after the last) and its depth below the rail's top
 local function DropSlot(rail, step)
-	local okC, _, cy = pcall(GetCursorPosition)
+	local okC, cx, cy = pcall(GetCursorPosition)
 	local okS, s = pcall(rail.GetEffectiveScale, rail)
 	local okT, top = pcall(rail.GetTop, rail)
 	cy, s, top = okC and Num(cy), okS and Num(s), okT and Num(top)
+	if View.topLaid then
+		-- (lk-12: the tabs along the top -- the gap left of the first tab whose middle is right of the pointer, and the
+		-- pointer's x in the row)
+		local okL, left = pcall(rail.GetLeft, rail)
+		cx, left = okC and Num(cx), okL and Num(left)
+		if not (cx and s and left and s > 0) then
+			return nil
+		end
+		local x = cx / s - left
+		local slot = 0
+		for i, o in ipairs(View.order) do
+			if o ~= drag.t and o.topX and o.topX + o.topW / 2 < x then
+				slot = i
+			end
+		end
+		return slot, x
+	end
 	if not (cy and s and top and s > 0) then
 		return nil
 	end
@@ -1047,10 +1097,22 @@ local DragMove = Perf.Shared("OnUpdate on the chat view's rail while a tab is dr
 		return
 	end
 	drag.slot = slot
-	t.button:ClearAllPoints()
-	t.button:SetPoint("TOPLEFT", rail, "TOPLEFT", 6, -(y - ICON / 2))
 	local line = View.dropLine
 	line:ClearAllPoints()
+	if View.topLaid then
+		-- (the tab follows the pointer along the row, a gold line upright in the gap it will land in)
+		t.hit:ClearAllPoints()
+		t.hit:SetPoint("BOTTOMLEFT", rail, "BOTTOMLEFT", y - (t.topW or 0) / 2, 0)
+		local before = View.order[slot]
+		local at = (slot > 0 and before and before.topX) and (before.topX + before.topW) or 0
+		line:SetSize(2, View.TOP.art)
+		line:SetPoint("BOTTOMLEFT", rail, "BOTTOMLEFT", at, 0)
+		line:Show()
+		return
+	end
+	t.button:ClearAllPoints()
+	t.button:SetPoint("TOPLEFT", rail, "TOPLEFT", 6, -(y - ICON / 2))
+	line:SetHeight(2)
 	line:SetPoint("TOPLEFT", rail, "TOPLEFT", 4, -(4 + (slot - View.railOffset) * step) + 1)
 	line:SetPoint("RIGHT", rail, "RIGHT", -8, 0)
 	line:Show()
@@ -1067,6 +1129,7 @@ function View.DragStart(t)
 	drag.t, drag.slot = t, nil
 	justDragged = true
 	t.button:SetAlpha(0.75)
+	t.hit:SetAlpha(View.topLaid and 0.75 or 1)   -- (lk-12: a game tab dragged along the top)
 	Perf.SetScript(View.rail, "OnUpdate", DragMove)
 end
 
@@ -1079,6 +1142,7 @@ function View.DragStop()
 	View.rail:SetScript("OnUpdate", nil)
 	View.dropLine:Hide()
 	t.button:SetAlpha(1)
+	t.hit:SetAlpha(1)
 	local order = View.order
 	local from
 	for i, o in ipairs(order) do
@@ -1262,6 +1326,9 @@ function View.PlaceRail()
 	if not rail then
 		return
 	end
+	if View.topLaid then
+		return View.PlaceTop()
+	end
 	local step = Step()
 	local okH, height = pcall(rail.GetHeight, rail)
 	height = okH and Num(height) or 120
@@ -1276,6 +1343,9 @@ function View.PlaceRail()
 		if t ~= drag.t then   -- (the one dragged follows the pointer)
 			t.button:ClearAllPoints()
 			t.button:SetPoint("TOPLEFT", rail, "TOPLEFT", 6, -(4 + slot * step + (step - ICON) / 2))
+		end
+		if t.topArt then
+			View.UnTop(t)   -- (lk-12: back from the game's tabs along the top)
 		end
 		t.label:ClearAllPoints()
 		t.label:SetPoint("LEFT", t.button, "RIGHT", 6, 0)
@@ -1309,9 +1379,95 @@ function View.PlaceRail()
 	View.PlaceStands()
 end
 
--- the wheel over the rail, its bar: not in a fight (the stand-ins cannot follow)
+-- (lk-12, stage 5) The tabs along the view's top as the game's chat tabs (View.TOP), in the rail's order: each as wide
+-- as its name and its room (never under the least), its name on its middle and the art's foot, its count on its top
+-- right; a tab that would pass the row's end hidden (as one scrolled out of the rail). The strip that takes the mouse
+-- is the tab itself, its name drawn on it (the art under the name); the round button stands down. Laid again with the
+-- rail (a window, a channel, a drag, a font)
+function View.TabArt(t)
+	local art = t.topArt
+	if not art then
+		art = MelloUI.Skin.ChatTab(t.hit)
+		t.topArt = art
+	end
+	for _, group in ipairs({ art.ground, art.lit }) do
+		for _, piece in ipairs(group) do
+			piece:Show()
+		end
+	end
+	return art
+end
+
+function View.PlaceTop()
+	local rail, T = View.rail, View.TOP
+	local tab = MelloUI.Skin.CHAT_TAB
+	local okW, width = pcall(rail.GetWidth, rail)
+	width = okW and Num(width) or 300
+	local x = 0
+	wipe(placed)
+	for _, t in ipairs(View.order) do
+		placed[t] = true
+		View.TabArt(t)
+		local label = t.label
+		if label:GetParent() ~= t.hit then
+			label:SetParent(t.hit)
+		end
+		label:ClearAllPoints()
+		label:SetPoint("CENTER", t.hit, "CENTER", 0, tab.labelY)
+		local okS, sw = pcall(label.GetStringWidth, label)
+		local w = math.max(T.least, math.ceil((okS and Num(sw) or 0) + 2 * T.pad))
+		local shown = x == 0 or x + w <= width
+		if t ~= drag.t then
+			t.hit:ClearAllPoints()
+			t.hit:SetPoint("BOTTOMLEFT", rail, "BOTTOMLEFT", x, 0)
+		end
+		t.hit:SetSize(w, tab.height)
+		t.topX, t.topW = x, w
+		t.button:Hide()
+		label:SetShown(shown or t == drag.t)
+		t.hit:SetShown(shown or t == drag.t)
+		View.CountHome(t.button)
+		x = x + w + T.gap
+	end
+	for _, t in pairs(View.tabs) do
+		if not placed[t] then
+			t.button:Hide()
+			t.label:Hide()
+			t.hit:Hide()
+		end
+	end
+	if View.bar then
+		View.bar:Hide()
+	end
+	View.Lit()
+	View.PlaceStands()
+end
+
+-- a tab back on the rail (Modern, Oldschool): the game's art hidden, its name on the rail again, its strip over its
+-- round button, its count on the button's rim
+function View.UnTop(t)
+	local art = t.topArt
+	for _, group in ipairs({ art.ground, art.on, art.lit }) do
+		for _, piece in ipairs(group) do
+			piece:Hide()
+		end
+	end
+	art.glow:Hide()
+	if t.label:GetParent() ~= View.rail then
+		t.label:SetParent(View.rail)
+	end
+	local hit, b = t.hit, t.button
+	hit:ClearAllPoints()
+	hit:SetPoint("TOPLEFT", b, "TOPLEFT", -2, 2)
+	hit:SetPoint("BOTTOMLEFT", b, "BOTTOMLEFT", -2, -2)
+	hit:SetWidth(RAIL_W - 18)
+	t.topX, t.topW = nil, nil
+	View.CountHome(b)
+end
+
+-- the wheel over the rail, its bar: not in a fight (the stand-ins cannot follow); nothing to scroll along the top
 function View.ScrollRail(delta)
-	if InFight() then
+	if InFight() or View.topLaid then
 		return
 	end
 	View.railOffset = View.railOffset - delta
@@ -1415,6 +1571,7 @@ function View.Rail()
 				View.tab = t.bufKey
 			end
 		end
+		View.Ground()
 	end
 	View.PlaceRail()
 	View.Counts()
@@ -1440,6 +1597,13 @@ local function Lit(t, on)
 	View.Colour(t.label, on and "selectedTrim" or "text")
 	View.Shadow(t.label)
 	W.Paint(t.button.icon, on and "selectedTrim" or "text", "vertex")
+	if View.topLaid then
+		-- (lk-12: a game tab along the top: its selected art, no mark on a divider)
+		if t.topArt then
+			t.topArt.Select(on)
+		end
+		return false
+	end
 	if on and t.button:IsShown() then
 		View.mark:ClearAllPoints()
 		View.mark:SetPoint("TOP", t.button, "TOP", 0, 0)
@@ -1491,7 +1655,8 @@ function View.WhisperCount(pop)
 		return
 	end
 	Anim:Pop(t.button.countFrame, 0.25, 6)
-	local glow = t.glow
+	-- (lk-12: a game tab along the top lights with the game's own new-message glow)
+	local glow = (View.topLaid and t.topArt) and t.topArt.glow or t.glow
 	glow:SetAlpha(0.9)
 	glow:Show()
 	Anim:To(glow, "alpha", 0, 0.7, "outQuad")
@@ -1505,6 +1670,7 @@ function View.Select(key)
 	View.tab, View.offset = key, 0
 	View.Settle(View.scroller)
 	View.unread[key] = 0
+	View.Ground()   -- (ch-02: the box at the open window's background)
 	View.Lit()
 	View.Counts()
 	View.Fonts()   -- (each window its own size)
@@ -1728,6 +1894,36 @@ function View.Fit()
 	area:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -12, ROW_H + 10 + lift)
 end
 
+-- (lk-12, stage 5) the frame's parts as the skin has them: the rail down the left (Modern, Oldschool), or the game's
+-- chat tabs along the view's top over it (Default: View.topLaid) with the lines across the whole width, no divider and
+-- no mark, the box's edges down (the game's chat box has none; its gold rim stands down there too: Rims:OwnEdge)
+function View.LayFrame()
+	local frame, rail, area = View.frame, View.rail, View.area
+	if not (frame and rail and area) then
+		return
+	end
+	local Skin = rawget(MelloUI, "Skin")
+	local top = (type(Skin) == "table" and Skin.ChatTab and Skin.IsDefault()) and true or false
+	View.topLaid = top
+	rail:ClearAllPoints()
+	if top then
+		rail:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", View.TOP.inset, 0)
+		rail:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -View.TOP.inset, 0)
+		rail:SetHeight(Skin.CHAT_TAB.height)
+	else
+		rail:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, -4)
+		rail:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", RAIL_W - 2, ROW_H + 4)
+	end
+	area:SetPoint("TOPLEFT", frame, "TOPLEFT", top and View.TOP.inset or (RAIL_W + 16), -12)
+	View.divider:SetShown(not top)
+	if top then
+		View.mark:Hide()
+	end
+	for _, edge in ipairs(frame.panelEdges or {}) do
+		edge:SetShown(not top)
+	end
+end
+
 local function Build()
 	if View.frame then
 		return
@@ -1823,6 +2019,16 @@ local function Build()
 	View.area = area
 	ButtonRow(frame)
 	PlaceButtons()
+	-- (lk-12) no gold rim under Default (the game's chat box); the frame laid for the skin, and again at a switch
+	local Rims = rawget(MelloUI, "Rims")
+	if type(Rims) == "table" and Rims.OwnEdge then
+		Rims:OwnEdge(frame)
+	end
+	View.LayFrame()
+	local Skin = rawget(MelloUI, "Skin")
+	if type(Skin) == "table" and Skin.Follow then
+		Skin.Follow(View, View.SkinFollow)
+	end
 	-- the combat log adds its lines through its own window, which the Chat module's hook leaves out
 	local log = rawget(_G, "COMBATLOG")
 	if log and log.AddMessage then
@@ -1844,6 +2050,10 @@ local function Build()
 		if type(rawget(_G, fn)) == "function" then
 			hooksecurefunc(fn, WindowsChanged)
 		end
+	end
+	-- (ch-02) a window's Background in its tab's menu (the stand-ins' right click: the game's colour picker), live: the box
+	if type(rawget(_G, "FCF_SetWindowAlpha")) == "function" then
+		hooksecurefunc("FCF_SetWindowAlpha", View.WindowAlpha)
 	end
 	-- the history written as the game logs out or reloads (the view on this session)
 	local logout = CreateFrame("Frame")
@@ -1878,6 +2088,21 @@ local function Build()
 	end
 end
 
+-- (ch-02) the chat window whose background the box shows, and its id: the open tab's (each window its own, as the
+-- game's dock shows them); General's for a channel's tab or a window past the numbered ones (no opacity kept for it)
+function View.BoxWindow()
+	local key = View.tab
+	local t = key and View.tabs[key]
+	if t and t.kind == "window" and type(key) == "table" and key.GetID then
+		local ok, id = pcall(key.GetID, key)
+		id = ok and Num(id)
+		if id and id >= 1 and id <= (tonumber(rawget(_G, "NUM_CHAT_WINDOWS")) or 10) then
+			return key, id
+		end
+	end
+	return rawget(_G, "ChatFrame1"), 1
+end
+
 -- the panel's ground, from the chat's Background (None: clear) and Background Opacity
 local function PanelAlpha()
 	local db = M.db
@@ -1887,7 +2112,42 @@ local function PanelAlpha()
 	if db and db.windowAlphaOn and Num(db.windowAlpha) then
 		return db.windowAlpha
 	end
+	-- (lk-12: the game's see-through chat box under Default -- its own chat window's alpha, as the game draws it)
+	local Skin = rawget(MelloUI, "Skin")
+	local _, id = View.BoxWindow()
+	local alpha = View.topLaid and type(Skin) == "table" and Skin.ChatAlpha and Skin.ChatAlpha(id)
+	if alpha then
+		return alpha
+	end
 	return 0.82
+end
+
+-- (ch-02; the user, 2026-10-29: the background opacity set in the game's own sliders "does not update the background
+-- opacity in real time") the box's ground at its alpha: View.Style's, and again as that alpha's source changes -- the
+-- open tab, the game's Background picker on the shown window, MelloUI's own Background Opacity (Chat.lua)
+function View.Ground()
+	local frame = View.frame
+	if frame and frame.panelFill then
+		W.Paint(frame.panelFill, "innerPanel", "fill", PanelAlpha())
+	end
+end
+
+local groundPending = false
+local function GroundNow()
+	groundPending = false
+	if View.on then
+		View.Ground()
+	end
+end
+
+-- the game set a chat window's background opacity (FCF_SetWindowAlpha: its Background picker live as the slider moves,
+-- its Cancel putting the old value back, a reset, MelloUI's own Background Opacity -- every window in a row): the box's
+-- ground again on the next frame, once, when that window is the one it shows (read again then: the game saved it)
+function View.WindowAlpha(f)
+	if View.on and not groundPending and f ~= nil and f == View.BoxWindow() then
+		groundPending = true
+		C_Timer.After(0, GroundNow)
+	end
 end
 
 -- the look: the paper or the dark panel, the rims, every colour
@@ -1907,9 +2167,7 @@ function View.Style()
 	if View.sheet then
 		View.sheet:SetShown(paper)
 	end
-	if frame.panelFill then
-		W.Paint(frame.panelFill, "innerPanel", "fill", PanelAlpha())
-	end
+	View.Ground()
 	-- the paper switched: the fonts again (its face, no outline; View.Font) -- the painted chat's windows tell it by
 	-- their own font's change, the view on its own paper by nobody else
 	if turned then
@@ -1951,7 +2209,7 @@ local function PlaceEditBoxes(on)
 			end
 			box:SetFrameLevel(View.frame:GetFrameLevel() + 20)
 			box:ClearAllPoints()
-			box:SetPoint("BOTTOMLEFT", View.frame, "BOTTOMLEFT", RAIL_W + 4, ROW_H + 2)
+			box:SetPoint("BOTTOMLEFT", View.frame, "BOTTOMLEFT", (View.topLaid and 0 or RAIL_W) + 4, ROW_H + 2)
 			box:SetPoint("BOTTOMRIGHT", View.frame, "BOTTOMRIGHT", -4, ROW_H + 2)
 			if not boxHooked[box] then
 				boxHooked[box] = true
@@ -1969,6 +2227,22 @@ local function PlaceEditBoxes(on)
 	end)
 	if not on and M.SetEditBoxOnTop then
 		M.SetEditBoxOnTop(M.db and M.db.editBoxTop)   -- (the Chat module's own place again)
+	end
+end
+
+-- (lk-12) MelloUI.Skin's follower: a Default / Modern switch lays the frame again for the skin (the tabs along the top,
+-- or the rail), the line you type in, the box's alpha and the lines with it
+function View.SkinFollow()
+	if not View.frame then
+		return
+	end
+	View.LayFrame()
+	if View.on then
+		PlaceEditBoxes(true)
+		View.PlaceRail()
+		View.Fit()
+		View.Style()
+		View.Soon()
 	end
 end
 

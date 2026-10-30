@@ -172,13 +172,13 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "1.2.4", lines = {
 		"Heal and cooldown effects: bolder, across the whole frame, the gold border lit all round; a threat halo fitted to each frame (untick Hide Combat Flash).",
-		"A heal bursts, a heal over time seals onto the portrait, a shield closes round the frame, a resurrection unfolds wings, a group heal runs through the group.",
-		"Cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards for Shield Wall, a golden barrier for Divine Shield, afterimages for Evasion.",
+		"Heals burst, seal onto the portrait or close round the frame as a shield; cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards, golden barriers, afterimages.",
 		"Frames: Hide Heal Numbers on your portrait; party: Flip Horizontally, Mouseover Highlight, raid frames wear Raid's look and stay in place when you switch.",
 		"Previews: a dragged part stays inside; indicators: right-click to remove, spell groups to drag onto your frame (heals over time, defensives ...).",
-		"Skin (Look > General): Default dresses MelloUI's windows, raid frames and marks in the game's look; effects, sounds and icons in each skin's own style.",
-		"A new installer: your skin first, then each part; one setup for every skin, reloaded when you keep it. Preview: Solo, Party and Raid Fight.",
+		"Skin (Look > General): Default gives MelloUI's windows, bags, chat, whispers, tracker, minimap and party frames the game's look; effects per skin.",
+		"A new installer: skin first, then each part; one setup for every skin, fitted to your screen, reloaded on Keep; moved frames keep their screen edges. Preview: Solo, Party, Raid Fight.",
 		"Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles; your text size stays after a /reload.",
+		"Services: the AddOns group finds every addon's minimap button, not only LibDBIcon's.",
 		"The configurator: one painted window per skin that moves a little while open; plain one-row tabs, the designers' frames too; Quality of Life holds Automation, Screen Text, Reminders.",
 		"Options two to a line, none greyed out (a switch's settings behind its cog); Look holds every font, texture and border; profiles keep every setting exactly.",
 		"Edit Layout: a top dock; every part of Edit Mode, hidden ones too, to show, hide, lock or move; the game's settings and switches in each box (bars: On Mouseover); one gold highlight.",

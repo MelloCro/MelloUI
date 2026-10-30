@@ -766,10 +766,14 @@ local function Lay(sh)
 	body:ClearAllPoints()
 	body:SetPoint("TOPLEFT", win.frame, "TOPLEFT", edge, top)
 	body:SetPoint("BOTTOMRIGHT", win.frame, "BOTTOMRIGHT", -edge, edge)
-	local modern = not sh.kit
+	-- (lk-12: the brand at the list column's head only while the shell has it there -- the modern look; under the
+	-- Default skin's game window frame the brand is the frame's portrait and title bar, as the painted look's ring)
+	local modern = sh:Branded()
+	-- (the list under the brand row, else clear of the game frame's portrait where the column starts under it)
+	local room = modern and win.room or max(0, sh:PortraitFoot() + top - H.IN)
 	local runRow = win.runRow
 	runRow:ClearAllPoints()
-	runRow:SetPoint("TOPLEFT", win.left, "TOPLEFT", 0, modern and -win.room or 0)
+	runRow:SetPoint("TOPLEFT", win.left, "TOPLEFT", 0, -room)
 	runRow:SetPoint("RIGHT", win.left, "RIGHT", 0, 0)
 	name:ClearAllPoints()
 	if modern then

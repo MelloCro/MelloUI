@@ -1248,6 +1248,8 @@ Lang:Add("zhCN", {
 	["The size of quest titles and section headers. Objectives are one size smaller."] = "任务标题和分区标题的字号。目标小一号。", -- draft
 	["Header Text Size"] = "标题文字大小", -- draft
 	["The size of the tracker's title."] = "追踪器标题的字号。", -- draft
+	["Background Opacity"] = "背景不透明度", -- draft
+	["How solid the tracker's background is. At 0% its lines stand on the world, as the game's tracker's do."] = "追踪器背景的不透明程度。为 0% 时，文字直接显示在游戏世界上，与游戏自带的追踪器一样。", -- draft
 	["Scroll Step"] = "滚动步长", -- draft
 	["How far one turn of the mouse wheel scrolls."] = "鼠标滚轮滚一格滚动多远。", -- draft
 	["A quest's usable item beside it. Click to use it out of combat."] = "任务旁显示可使用的任务物品。非战斗中点击使用。", -- draft
@@ -1603,7 +1605,6 @@ Lang:Add("zhCN", {
 	["The chat's background: Dark, the game's own, or none."] = "聊天背景：暗色、游戏自带，或无。", -- draft
 	["Set The Background Opacity"] = "统一背景不透明度", -- draft
 	["Every chat window uses the same background opacity. Off: each keeps its own."] = "所有聊天窗口使用相同的背景不透明度。关闭：各自保留自己的。", -- draft
-	["Background Opacity"] = "背景不透明度", -- draft
 	["How solid the chat windows' background is."] = "聊天窗口背景的不透明度。", -- draft
 	["Border Opacity"] = "边框不透明度", -- draft
 	["How solid the painted border around the chat is."] = "聊天周围手绘边框的不透明度。", -- draft
@@ -2194,13 +2195,13 @@ Lang:Add("zhCN", {
 	["Module based interface tweaks for World of Warcraft: Forever."] = "为《魔兽世界：Forever》打造的模块化界面调整。", -- draft
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Heal and cooldown effects: bolder, across the whole frame, the gold border lit all round; a threat halo fitted to each frame (untick Hide Combat Flash)."] = "治疗和冷却效果：更醒目，覆盖整个框体，金色边框四周点亮；贴合每个框体的威胁光环（取消勾选“隐藏战斗闪光”）。", -- draft
-	["A heal bursts, a heal over time seals onto the portrait, a shield closes round the frame, a resurrection unfolds wings, a group heal runs through the group."] = "治疗迸发，持续治疗封印在头像上，护盾包住框体，复活展开羽翼，群体治疗传遍小队。", -- draft
-	["Cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards for Shield Wall, a golden barrier for Divine Shield, afterimages for Evasion."] = "冷却：咆哮有冲击波，嘲讽有红色 !，盾墙有钢铁护卫，圣盾术有金色屏障，闪避有残影。", -- draft
+	["Heals burst, seal onto the portrait or close round the frame as a shield; cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards, golden barriers, afterimages."] = "治疗迸发、封印在头像上或化作护盾包住框体；冷却：咆哮有冲击波，嘲讽有红色 !，还有钢铁护卫、金色屏障与残影。", -- draft
 	["Frames: Hide Heal Numbers on your portrait; party: Flip Horizontally, Mouseover Highlight, raid frames wear Raid's look and stay in place when you switch."] = "框体：在头像上隐藏治疗数字；小队：水平翻转、鼠标悬停高亮，团队框体使用“团队”的外观，切换时保持原位。", -- draft
 	["Previews: a dragged part stays inside; indicators: right-click to remove, spell groups to drag onto your frame (heals over time, defensives ...)."] = "预览：拖动的部分留在框内；指示器：右键移除，可把法术分组拖到框体上（持续治疗、防御……）。", -- draft
-	["Skin (Look > General): Default dresses MelloUI's windows, raid frames and marks in the game's look; effects, sounds and icons in each skin's own style."] = "外观风格（外观 > 常规）：默认以游戏的外观装扮 MelloUI 的窗口、团队框体和标记；特效、音效和图标采用各外观风格自己的样式。", -- draft
-	["A new installer: your skin first, then each part; one setup for every skin, reloaded when you keep it. Preview: Solo, Party and Raid Fight."] = "全新安装程序：先选外观风格，再逐项设置；所有外观风格使用同一套设置，保留时重新载入。预览：单人、小队和团队战斗。", -- draft
+	["Skin (Look > General): Default gives MelloUI's windows, bags, chat, whispers, tracker, minimap and party frames the game's look; effects per skin."] = "外观风格（外观 > 常规）：默认让 MelloUI 的窗口、背包、聊天、密语、追踪器、小地图和小队框体呈现游戏的外观；特效随外观风格而定。", -- draft
+	["A new installer: skin first, then each part; one setup for every skin, fitted to your screen, reloaded on Keep; moved frames keep their screen edges. Preview: Solo, Party, Raid Fight."] = "全新安装程序：先选外观风格，再逐项设置；所有外观风格同一套设置，按你的屏幕排布，保留时重新载入；移动过的框体会贴住各自的屏幕边缘。预览：单人、小队、团队。", -- draft
 	["Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles; your text size stays after a /reload."] = "聊天：为你的消息留出更多空间：更小的文字，更高的聊天和密语窗口，行与气泡周围更宽松；/reload 后文字大小保持不变。", -- draft
+	["Services: the AddOns group finds every addon's minimap button, not only LibDBIcon's."] = "服务：“插件”分组会找到每个插件的微缩地图按钮，不只是 LibDBIcon 的。", -- draft
 	["The configurator: one painted window per skin that moves a little while open; plain one-row tabs, the designers' frames too; Quality of Life holds Automation, Screen Text, Reminders."] = "配置界面：每种外观风格一个手绘窗口，打开时会轻微动态；简洁的单行标签页，设计器的框体也是；便捷功能包含自动化、屏幕文字、提醒。", -- draft
 	["Options two to a line, none greyed out (a switch's settings behind its cog); Look holds every font, texture and border; profiles keep every setting exactly."] = "选项每行两个，不再变灰（开关的设置在其齿轮后面）；外观包含所有字体、材质和边框；配置精确保留每项设置。", -- draft
 	["Edit Layout: a top dock; every part of Edit Mode, hidden ones too, to show, hide, lock or move; the game's settings and switches in each box (bars: On Mouseover); one gold highlight."] = "编辑布局：顶部停靠栏；编辑模式的每个部分（包括隐藏的）都可显示、隐藏、锁定或移动；每个框中都有游戏的设置和开关（动作条：鼠标悬停）；统一的金色高亮。", -- draft
@@ -2632,6 +2633,7 @@ Lang:Add("zhCN", {
 -- stale: ["A critical or crushing blow on you flashes the bars' rim red and dips them a hair, once."] = "你受到暴击或碾压时，条的边缘闪一次红光并下沉一点点。", -- draft
 -- stale: ["A font style is a preset: it changes every font at once. Each card shows its title face and its reading face."] = "字体风格是一个预设：一次改变所有字体。每张卡片显示它的标题字体和阅读字体。", -- draft
 -- stale: ["A group's list slides out from the minimap column like a drawer when you click its button, its rows one after another, and slides back in as it closes. Not with Reduce Motion: then it shows at once."] = "点击分组按钮时，它的列表像抽屉一样从小地图栏滑出，一行接一行，关闭时滑回去。“减少动态效果”开启时不会：直接显示。", -- draft
+-- stale: ["A heal bursts, a heal over time seals onto the portrait, a shield closes round the frame, a resurrection unfolds wings, a group heal runs through the group."] = "治疗迸发，持续治疗封印在头像上，护盾包住框体，复活展开羽翼，群体治疗传遍小队。", -- draft
 -- stale: ["A heal lights the health it gives at once; the bar then grows into it."] = "治疗会立即点亮它给予的生命；然后条再长到那里。", -- draft
 -- stale: ["A line for each item that comes into your bags: loot, quest rewards, crafted items, mail and trades. Moving items between your bags, the bank and your gear never counts."] = "每件进入背包的物品一行：拾取、任务奖励、制造物品、邮件和交易。在背包、银行和装备之间移动物品从不计入。", -- draft
 -- stale: ["A line for the other currencies you gain (honor, tokens, marks), with the currency's own icon."] = "你获得的其他货币一行（荣誉、徽章、印记），带该货币自己的图标。", -- draft
@@ -2642,6 +2644,8 @@ Lang:Add("zhCN", {
 -- stale: ["A muted knock for the game's red error messages (\"You can't do that yet\"), at most one every half second; none for a message Error Messages hides."] = "游戏红色错误信息（“你还不能那么做”）用一声闷响，每半秒最多一次；被“错误信息”隐藏的消息不发声。", -- draft
 -- stale: ["A new icon set, sharp at every size, map pins glowing and marks shaded; MelloUI Frames on buttons, XP bars and unit frames; Heal Flight and Frame Effects in soft light."] = "一套新图标，任何尺寸都清晰，地图标记发光，标记带阴影；按钮、经验条和单位框体使用MelloUI框体；治疗效果和框体效果以柔光呈现。", -- draft
 -- stale: ["A new installer: your skin first, then each part of the UI step by step, with a picture of every choice."] = "全新安装向导：先选风格，再一步步设置界面各部分，每个选项都有图片。", -- draft
+-- stale: ["A new installer: your skin first, then each part; one setup for every skin, fitted to your screen's shape, reloaded when you keep it. Preview: Solo, Party and Raid Fight."] = "全新安装程序：先选外观风格，再逐项设置；所有外观风格使用同一套设置，按你的屏幕比例排布，保留时重新载入。预览：单人、小队和团队战斗。", -- draft
+-- stale: ["A new installer: your skin first, then each part; one setup for every skin, reloaded when you keep it. Preview: Solo, Party and Raid Fight."] = "全新安装程序：先选外观风格，再逐项设置；所有外观风格使用同一套设置，保留时重新载入。预览：单人、小队和团队战斗。", -- draft
 -- stale: ["A new route grows from you to the destination in about a second instead of appearing whole, on the world map and the minimap at once: the beads pop in one after another, the line and the dashes are drawn with a small light at their head, and the destination's flag pops in as the trail reaches it. A re-plan of the same route (you strayed off it) swaps at once. Not with Reduce Motion."] = "新路线用约一秒从你延伸到目的地，而不是整条直接出现，世界地图和小地图同时：珠子一颗颗出现，线和虚线由头部一点小光画出，路线到达时目的地的旗帜出现。同一路线的重新规划（你偏离了路线）立即切换。“减少动态效果”开启时不会。", -- draft
 -- stale: ["A new whisper: the sender in their class colour, the last line and how many are unread. Reply opens their whisper window. Needs Chat's Whisper Popup Window."] = "新悄悄话：发送者显示为职业颜色、最后一行以及未读条数。“回复”打开他的悄悄话窗口。需要聊天的“悄悄话弹窗”。", -- draft
 -- stale: ["A note under the door for a whisper, two knocks for a group invite."] = "悄悄话是门下塞进的纸条，组队邀请是两声敲门。", -- draft
@@ -2756,6 +2760,7 @@ Lang:Add("zhCN", {
 -- stale: ["Compact raid frames, group borders and totems in the kit."] = "紧凑团队框体、小组边框和图腾使用套件外观。", -- draft
 -- stale: ["Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, then a part, drag names and values; a new Automation page."] = "配置器：单位和小队框体、姓名板、动作条和小地图都变成设计器：选一个框体，再选一个部分，拖动名字和数值；新增自动化页面。", -- draft
 -- stale: ["Cooldowns shorter than this show no text (2 s skips the global cooldown)."] = "短于此值的冷却不显示文字（2秒会跳过公共冷却）。", -- draft
+-- stale: ["Cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards for Shield Wall, a golden barrier for Divine Shield, afterimages for Evasion."] = "冷却：咆哮有冲击波，嘲讽有红色 !，盾墙有钢铁护卫，圣盾术有金色屏障，闪避有残影。", -- draft
 -- stale: ["Cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards for Shield Wall, a heartbeat for Last Stand, a golden barrier for Divine Shield, afterimages for Evasion."] = "冷却：怒吼放出冲击波，嘲讽弹出红色 !，盾墙装上钢甲，破釜沉舟有心跳，圣盾术升起金色屏障，闪避留下残影。", -- draft
 -- stale: ["Copy from a spec"] = "从某个专精复制", -- draft
 -- stale: ["Cut the speech off when you change target."] = "更换目标时切断语音。", -- draft
@@ -3063,6 +3068,7 @@ Lang:Add("zhCN", {
 -- stale: ["Service buttons under the minimap; they move with the minimap in Edit Mode. Groups: one row of group buttons as wide as the map; click one to open its services with their distances, then click a service to route to the nearest one by road. All Buttons: two rows with an icon for every service; click one to route there. Right-click stops the route. A grey button has none known on this continent yet. With the square minimap and \"Merge With Services\" on (the Minimap page, Services), the buttons sit inside the minimap's frame."] = "小地图下方的服务按钮；在编辑模式中随小地图移动。分组：一排与地图同宽的分组按钮；点击一个打开它的服务及距离，再点击一个服务按道路规划去最近那个的路线。全部按钮：两排，每个服务一个图标；点击一个即规划路线。右键停止路线。灰色按钮表示在这块大陆上还不知道任何一处。使用方形小地图并开启“与服务合并”（小地图页，服务）时，按钮位于小地图的边框内。", -- draft
 -- stale: ["Service icons under the minimap that route you to the nearest repair, mailbox, innkeeper, flight master, auction house, bank, trainer, barber or transmogrifier."] = "小地图下方的服务图标，带你前往最近的修理、邮箱、旅店老板、飞行管理员、拍卖行、银行、训练师、理发师或幻化师。", -- draft
 -- stale: ["Services: Trays Slide Out -- a group's list slides out from the minimap column like a drawer, and back in."] = "服务：托盘滑出——分组的列表像抽屉一样从小地图栏滑出，再滑回去。", -- draft
+-- stale: ["Services: the AddOns group finds every addon's minimap button, not only LibDBIcon's; map pins and the game's own buttons stay on the map."] = "服务：“插件”分组会找到每个插件的微缩地图按钮，不只是 LibDBIcon 的；地图标记和游戏自带的按钮留在地图上。", -- draft
 -- stale: ["Setup"] = "方案", -- draft
 -- stale: ["Shade behind text"] = "文字背后的阴影", -- draft
 -- stale: ["Shade: Buffs"] = "阴影：增益效果", -- draft
@@ -3089,6 +3095,7 @@ Lang:Add("zhCN", {
 -- stale: ["Size of the crowd-control icon in pixels."] = "控制图标的大小（像素）。", -- draft
 -- stale: ["Size of the quest marker in pixels."] = "任务标记的大小（像素）。", -- draft
 -- stale: ["Skin (Look > General): Default dresses MelloUI's own windows, raid frames and marks in the game's own look; the effects painted in each skin's style; one Game Menu for all."] = "外观风格（外观 > 综合）：默认让 MelloUI 的窗口、团队框体和标记使用游戏外观；效果按各风格绘制；所有风格共用一个主菜单。", -- draft
+-- stale: ["Skin (Look > General): Default dresses MelloUI's windows, raid frames and marks in the game's look; effects, sounds and icons in each skin's own style."] = "外观风格（外观 > 常规）：默认以游戏的外观装扮 MelloUI 的窗口、团队框体和标记；特效、音效和图标采用各外观风格自己的样式。", -- draft
 -- stale: ["Small live widgets in one column: loot rolls, the way back to your corpse, timed quests, summons, resurrect offers, ready checks, whispers, your pet, the auction house, crafting batches, profession cooldowns, quest items and a healer drinking. And more reminders by your portrait: bags, talents, Well Fed, weapon poisons and oils, your buffs."] = "一栏中的实时小部件：拾取掷骰、回到尸体的路、限时任务、召唤、复活邀请、就位确认、悄悄话、你的宠物、拍卖行、批量制造、专业冷却、任务物品以及正在喝水的治疗者。头像旁还有更多提醒：背包、天赋、进食充分、武器毒药和油、你的增益效果。", -- draft
 -- stale: ["Social, guild, group finder"] = "社交、公会、队伍查找器", -- draft
 -- stale: ["Soft clicks, a chime for a waypoint, a quest done."] = "柔和的点击声，路径点和完成任务的提示音。", -- draft

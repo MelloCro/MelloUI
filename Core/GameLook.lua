@@ -258,11 +258,18 @@ end
 -- (the user's retail test, 2026-10-27: "why does every single default looking window have a blue background" -- their
 -- pick, the game's dark charcoal) GAME_GROUND: the grounds of the Default skin's windows and panels -- the game's own
 -- tooltip ground without its blue (each channel its darkest), the game's dark in grey
+-- (el-06, the user's retail test, 2026-10-29: Edit Layout's lit buttons "missing" -- a gold glyph on a gold disc)
+-- GAME_SELECTED: a selection's ground, the game's gold darkened as the modern palette's own selectedTab is its
+-- selectedTrim (Gilded Slate: #4A3A17 = #E0B53A x 0.33), so the gold trim and the white text read on it
 local function GameColour(name)
 	if name == "GAME_GROUND" then
 		local r, g, b = GameColour("TOOLTIP_DEFAULT_BACKGROUND_COLOR")
 		local m = math.min(r, g, b)
 		return m, m, m
+	end
+	if name == "GAME_SELECTED" then
+		local r, g, b = GameColour("NORMAL_FONT_COLOR")
+		return r * 0.33, g * 0.33, b * 0.33
 	end
 	local c = rawget(_G, name)
 	if type(c) == "table" then
@@ -718,8 +725,9 @@ local NEUTRAL = {
 	-- sketch's navy until the user's retail test, 2026-10-27)
 	mainWindow = "GAME_GROUND", innerPanel = "GAME_GROUND", raisedPanel = "GAME_GROUND",
 	border = "GRAY_FONT_COLOR", trim = "NORMAL_FONT_COLOR", selectedTrim = "NORMAL_FONT_COLOR",
-	-- (wave 4: a selection in the game's gold, as its lists' highlights, not its red)
-	text = "HIGHLIGHT_FONT_COLOR", mutedText = "GRAY_FONT_COLOR", selectedTab = "NORMAL_FONT_COLOR",
+	-- (wave 4: a selection in the game's gold, as its lists' highlights, not its red; el-06: its ground the gold
+	-- darkened, GAME_SELECTED -- the full gold was selectedTrim's own, so a gold glyph or ring on it vanished)
+	text = "HIGHLIGHT_FONT_COLOR", mutedText = "GRAY_FONT_COLOR", selectedTab = "GAME_SELECTED",
 	-- (a hover a quiet grey lift, never the text's white: Edit Layout's lit
 	-- plates; review 2026-10-02 -- the lists' hover is the game's own mark)
 	hover = "GRAY_FONT_COLOR",

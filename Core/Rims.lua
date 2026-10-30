@@ -17,6 +17,7 @@
 --       two others in line, at most the snap gap (Edit Layout's) apart -- wear one rim round them all: the first of
 --       them (top, then left) carries it, the gap between them filled as the window (the Personal Display's joint)
 --   MelloUI.Rims:Lay()    laid again on the next frame (a window moved, slid out, its look switched)
+--   MelloUI.Rims:OwnEdge(frame)   (lk-12) no rim round `frame` under the Default skin: it wears its own edge there
 --   MelloUI.Rims.T        the rail and the room it takes
 -- Laid again on a rimmed window's show, hide and size change, Edit Layout's open and close, the bus's 'mover' and its
 -- look areas' switches; nothing at login but the windows' own; nothing each frame.
@@ -47,6 +48,13 @@ local function Shown(e)
 	local Kit = MelloUI.Kit
 	if e.area and Kit and Kit.IsOn and Kit:IsOn(e.area) then
 		return false
+	end
+	-- (lk-12) a window that wears its own edge under the Default skin (Rims:OwnEdge)
+	if e.ownDefault then
+		local Skin = rawget(MelloUI, "Skin")
+		if Skin and Skin.IsDefault() then
+			return false
+		end
 	end
 	if e.shown then
 		local ok, on = pcall(e.shown, f)
@@ -257,7 +265,8 @@ local function Listen()
 	MelloUI:On("column", Again, "Rims")
 	MelloUI:On("skin", Again, "Rims")
 	local Kit = MelloUI.Kit
-	for name in pairs(Kit and Kit.Areas or {}) do
+	local areas = type(Kit) == "table" and rawget(Kit, "Areas")
+	for name in pairs(type(areas) == "table" and areas or {}) do
 		MelloUI:On("look:" .. name, Again, "Rims")
 	end
 end
@@ -284,5 +293,18 @@ function Rims:Add(frame, opts)
 	Perf.SetScript(watch, "OnSizeChanged", OnWindow)
 	e.watch = watch
 	Rims:Lay()
+	return e
+end
+
+-- (lk-12, 2026-10-29; the user's picks of default_windows_sketch) a rimmed window that wears its own edge under the
+-- Default skin -- the game's window frame (the minimap column, the whisper window), the game's see-through chat box, the
+-- Quest Tracker's header bars without a box: no rim of ours there (the gold rim in Modern as before). `frame` is one
+-- Rims:Add took (W.Panel's `rim`); laid again at once
+function Rims:OwnEdge(frame)
+	local e = Rims.byFrame[frame]
+	if e and not e.ownDefault then
+		e.ownDefault = true
+		Rims:Lay()
+	end
 	return e
 end

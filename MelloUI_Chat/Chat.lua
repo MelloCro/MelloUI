@@ -4039,6 +4039,9 @@ function M:OnSettingChanged(key, value, db)
 		-- on or a new value: every window to it; off: left as they are
 		Alpha.Apply()
 		M.Dark.Apply(M.Dark.Active())   -- (the Dark look's fill takes it too)
+		if M.View and M.View.on then
+			M.View.Ground()   -- (ch-02: Chat View's box at once, switched off too)
+		end
 	elseif key == "tabsOnMouseover" then
 		SetTabsOnMouseover(value)
 	elseif key == "chatButtons" then

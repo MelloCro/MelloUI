@@ -500,6 +500,7 @@ end
 --------------------------------------------------------------------------------
 
 local list = nil
+local LIST_ALPHA = 0.92   -- (the box's ground in the own windows' panel; the game's chat box's under Default)
 
 local function BuildList()
 	if list then
@@ -511,7 +512,7 @@ local function BuildList()
 	f:Hide()
 	-- (onelook B: the own windows' one panel, its border edge; Look.Panel's
 	-- trim edge before)
-	W.Panel(f, { on = true, alpha = 0.92 })
+	W.Panel(f, { on = true, alpha = LIST_ALPHA })   -- (its box laid again at every show: Bar.ListLook)
 	list = { frame = f, rows = {} }
 	Bar.listFrame = f   -- (read only: the tests')
 	return list
@@ -589,8 +590,27 @@ ListShow = Shared("OnEnter on the race bar", function(holder)
 		f:SetPoint("TOP", holder, "BOTTOM", 0, -6)
 	end
 	MelloUI:FitOnScreen(f)
+	Bar.ListLook()
 	f:Show()
 end, "script")
+
+-- (lk-12; the user's pick 6A of default_windows_sketch, 2026-10-29: "The damage meter's bars take the chat's
+-- see-through box") the list's box as the skin has it, at every show: under the Default skin the game's see-through
+-- chat box (its ground at the game's chat window's alpha, MelloUI.Skin.ChatAlpha; no edge lines), the own windows'
+-- panel else
+function Bar.ListLook()
+	local f = list and list.frame
+	if not (f and f.panelFill) then
+		return
+	end
+	local Skin = rawget(MelloUI, "Skin")
+	local game = type(Skin) == "table" and Skin.ChatAlpha and Skin.IsDefault()
+	local alpha = game and Skin.ChatAlpha() or nil
+	W.Paint(f.panelFill, "innerPanel", "fill", alpha or LIST_ALPHA)
+	for _, edge in ipairs(f.panelEdges or {}) do
+		edge:SetShown(not alpha)
+	end
+end
 
 ListHide = Shared("OnLeave on the race bar", function()
 	if list then

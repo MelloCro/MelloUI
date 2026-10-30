@@ -951,6 +951,8 @@ function I:PlacesToTarget(target, fit, option, draft, cur)
 	end
 	local store = type(um.positions) == "table" and um.positions or {}
 	um.positions = store
+	-- (el-11) the places are this screen's now: the profile's screen of origin goes (a later refit reads layoutFitFor)
+	um.placesFor = nil
 	if option.places then
 		for key, p in pairs(type(places.windows) == "table" and places.windows or EMPTY) do
 			store[key] = DeepCopy(p)
@@ -1056,14 +1058,48 @@ local function Fitted(fit, fitted, places, report)
 	end
 end
 
+-- (el-11) the own sizes of the registered frames the places name, [key] =
+-- { w, h }: the fitter keeps each place as far from its side of the screen
+-- (LayoutFit's F0s), which needs the frame's middle; one it cannot read
+-- plainly is left out (it then counts as its anchor point)
+local function PlaceSizes(positions)
+	local sizes = {}
+	if type(positions) ~= "table" or not MelloUI.MoverEntries then
+		return sizes
+	end
+	for _, entry in ipairs(MelloUI:MoverEntries() or EMPTY) do
+		local frame = entry.key ~= nil and positions[entry.key] ~= nil and entry.frame
+		if frame and frame.GetSize then
+			local ok, w, h = pcall(frame.GetSize, frame)
+			w, h = ok and Num(w) or nil, ok and Num(h) or nil
+			if w and h and w > 0 and h > 0 then
+				sizes[entry.key] = { w, h }
+			end
+		end
+	end
+	return sizes
+end
+
 -- the frame after StartFit: the setup's target read into the fitter's inputs
--- (1-2 ms, kept out of the click's frame), then the fitter's own frames
+-- (1-2 ms, kept out of the click's frame), then the fitter's own frames.
+-- (el-11) Places made on another screen follow this one's shape: the shipped
+-- profile's say where they were made (UIModifications.placesFor, read by
+-- LayoutFit:Inputs); the refit's are the player's own, fitted for the screen
+-- their layout went in for (layoutFitFor)
 local function BeginFit(fit)
 	if fit.cancelled then
 		return
 	end
 	local LayoutFit = MelloUI.LayoutFit
-	local inputs = LayoutFit:Inputs(Reader(I, Target(I, fit.option, fit.draft, nil, nil, true)))
+	local read = Reader(I, Target(I, fit.option, fit.draft, nil, nil, true))
+	local inputs = LayoutFit:Inputs(read)
+	if type(inputs) == "table" then
+		local option = I:Option(fit.option)
+		if inputs.placesFor == nil and option and option.refit then
+			inputs.placesFor = read(UMB, "layoutFitFor")
+		end
+		inputs.sizes = PlaceSizes(inputs.positions)
+	end
 	-- (the installer writes the buff rows the fit wraps and the minimap's
 	-- Width and Height it steps down: I:PlacesToTarget)
 	if type(inputs) == "table" and type(inputs.auras) == "table" then

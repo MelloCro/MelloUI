@@ -6771,8 +6771,9 @@ do
 	local CHIP_MIN = 36           -- the narrowest chip
 	local CHIP_DIM = 0.5          -- an "off" or "locked" chip's alpha
 	-- the colours' strengths: the box at rest, the picked one's fill, the hover's; the Default skin's own (its
-	-- `selectedTab` the game's full gold and its `hover` its grey: a faint touch of each, the sketch's)
-	local QUIET = { edge = 0.45, fill = 0.55, hover = 1, gameEdge = 0.7, gameFill = 0.08, gameHover = 0.2 }
+	-- `selectedTab` the game's gold darkened (el-06: 0.3 of it the sketch's 0.08 of the full gold) and its `hover`
+	-- its grey: a faint touch of each, the sketch's)
+	local QUIET = { edge = 0.45, fill = 0.55, hover = 1, gameEdge = 0.7, gameFill = 0.3, gameHover = 0.2 }
 	-- a row's scroll (W.ScrollRow): nothing round a chip to keep clear (a hairline box, a New tag inside it); on
 	-- parchment the arrows alone, or banded with the parchment itself where the chips name it (spec.paper)
 	local ROW_SPEC = { pad = 2, below = 2, above = 2 }

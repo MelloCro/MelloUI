@@ -293,7 +293,7 @@ local function Recorner(kind)
 		AnchorInPlace(c, corner)
 		return
 	end
-	if (pos.point or "BOTTOMLEFT") == corner and (pos.relPoint or "CENTER") == corner then
+	if (pos.point or "BOTTOMLEFT") == corner then
 		return
 	end
 	if MelloUI:SavePosition(entry.key, c) then
@@ -687,7 +687,8 @@ end
 -- and they are miniature" -- their pick, bigger by default) the game's party frames held at Edit Mode's own size
 -- times Edit Layout's (the party container's scale) times PORTRAIT_BASE: about the player frame's height at 100% and
 -- 100%; Edit Mode's size read from its own writes (held.gameScale, the post-hooks below), put back when let go. Out
--- of a fight only (the frame's geometry is the game's protected party's)
+-- of a fight only (the frame's geometry is the game's protected party's). Every skin: the Default skin's game party
+-- frame too (the user, 2026-10-29: "the Party Portrait unitframes are very small" at the game's own size)
 held.PORTRAIT_BASE = 1.4
 local function ScaleGame(pf, c)
 	local set = Base(pf, "SetScale")
@@ -1264,9 +1265,11 @@ local function Listen()
 			Button.Lay(b)
 		end
 	end, "GroupFrames.border")
-	-- (1.2.4) the skin switched (MelloUI.Skin): the cells in its look (the Default skin's: the game's raid frame)
+	-- (1.2.4) the skin switched (MelloUI.Skin): the cells in its look (the Default skin's: the game's raid frame), the
+	-- game's party frames and everything hung from them laid again (out of a fight)
 	MelloUI:On("skin", function()
 		H:Repaint()
+		H:Layout()
 	end, "GroupFrames.skin")
 end
 

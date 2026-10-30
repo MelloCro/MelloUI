@@ -1149,6 +1149,28 @@ local function PanelParts(f)
 	end
 	p.hair = W.HairSolid(f, "ARTWORK")
 	p.hair:SetHeight(1)
+	-- (lk-12, stage 3; the user's pick 5A of default_windows_sketch, 2026-10-29: "keep the square map and Services,
+	-- framed in the game's window border") under the Default skin the game's window frame round the panel, without a
+	-- portrait (MelloUI.Skin.Window): its title bar behind the zone row, its metal at the panel's edges, one level over
+	-- the fill and under the map's zone row (lifted over the map: ZoneRow); the gold rim stands down there. Laid again
+	-- at a Default / Modern switch (MelloUI.Skin's follower); the sizes and places as they were
+	local Rims = rawget(MelloUI, "Rims")
+	if type(Rims) == "table" and Rims.OwnEdge then
+		Rims:OwnEdge(bg)
+	end
+	local Skin = rawget(MelloUI, "Skin")
+	if type(Skin) == "table" and Skin.Follow and Skin.Window then
+		Skin.Follow(p, function(parts, isDefault)
+			if isDefault and not parts.game then
+				parts.game = Skin.Window(parts.bg, { portrait = false, level = 1 })
+			end
+			if parts.game then
+				parts.game:SetShown(isDefault and true or false)
+			end
+			-- (the zone row's hairline: the title bar's own foot under Default)
+			parts.hair:SetShown(parts.bg:IsShown() and not isDefault)
+		end)
+	end
 	f.panelParts = p
 	return p
 end
@@ -1159,7 +1181,9 @@ local function PanelShown(f, on)
 		return
 	end
 	p.bg:SetShown(on)
-	p.hair:SetShown(on)
+	-- (lk-12: under the Default skin the game's title bar's foot is the zone row's line)
+	local Skin = rawget(MelloUI, "Skin")
+	p.hair:SetShown(on and not (Skin and Skin.IsDefault()))
 	for _, t in ipairs(p.lines) do
 		t:SetShown(on)
 	end

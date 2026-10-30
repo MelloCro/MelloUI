@@ -1217,6 +1217,9 @@ function L.Define(R, Link)
 	R("QuestTracker", "Quest Tracker", "Look", "UIModifications.parchment_questTracker", { name = "Parchment", free = true,
 		when = { key = "QuestTracker.!enabled", value = true, line = "Only with MelloUI's Quest Tracker on" } })
 	R("QuestTracker", "Quest Tracker", "Look", "QuestTracker.progressMotion")
+	-- (el-07, the user, 2026-10-29: "the objective tracker by either clicking on it in edit mode or edit layout does
+	-- not have the opacity slider") the tracker's backing, also in its Edit Layout box with Height and Text Size
+	R("QuestTracker", "Quest Tracker", "Look", "QuestTracker.opacity")
 	-- (0.19.4: Match Minimap needs MelloUI's minimap -- onelook D7: the core
 	-- module MinimapPanel, painted or not; Width is live while it is off)
 	R("QuestTracker", "Quest Tracker", "Layout", "QuestTracker.matchMinimap",

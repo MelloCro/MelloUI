@@ -1064,7 +1064,11 @@ end
 
 -- Core's place (its anchor's form: point nil = BOTTOMLEFT, relPoint nil =
 -- CENTER, the offsets in the frame's units on UIParent) as Edit Mode's anchor
--- (the offsets at scale 1)
+-- (the offsets at scale 1). Its form as stored: a place saved since 1.2.4
+-- (el-12) is held from the side of the screen its frame stands in, the
+-- frame's point the screen's (Core's Measure), as Edit Mode keeps a frame it
+-- moved, so the layout's record follows any screen's shape; an older copy
+-- (from the screen's centre) is written as it is
 local function AnchorOf(pos, frame)
 	local x, y = Finite(pos.x), Finite(pos.y)
 	if not (x and y) then

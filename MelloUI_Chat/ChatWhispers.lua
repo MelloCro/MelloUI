@@ -438,8 +438,7 @@ function WV.LayList()
 			row:SetPoint("RIGHT", list, "RIGHT", 0, 0)
 			local on = c == WV.current
 			row.fill:SetAlpha(0.6)
-			row.fill:SetShown(on)
-			row.mark:SetShown(on)
+			WV.RowLook(row, on)
 			Picture(row.face.icon, c)
 			View.SetCount(row.face, c.unread)
 			local _, online = P().Where(c.kind, c.target, c.guid)
@@ -838,6 +837,7 @@ function WV.Select(c)
 	WV.offset = 0
 	View.Settle(WV.scroller)
 	WV.Head()
+	WV.Portrait()   -- (lk-12: the game's frame's portrait under Default)
 	WV.LayList()
 	WV.LayTalk()
 	if WV.box then
@@ -866,6 +866,11 @@ local function Build()
 	f:SetHeight(WIN_H)
 	f:EnableMouse(true)
 	W.Panel(f, { on = true, alpha = 0.94, rim = "whisper" })   -- (1.2.0: the gold rim, the chat's with it when out)
+	-- (lk-12: no gold rim under Default -- the game's window frame there, WV.GameLook)
+	local Rims = rawget(MelloUI, "Rims")
+	if type(Rims) == "table" and Rims.OwnEdge then
+		Rims:OwnEdge(f)
+	end
 	WV.holder, WV.frame = holder, f
 	-- the title, the close cross, the title's hairline
 	local title = f:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
@@ -880,10 +885,12 @@ local function Build()
 	Perf.SetScript(close, "OnClick", function()
 		WV.Close()
 	end)
+	WV.close, WV.closeLevel = close, close:GetFrameLevel()
 	local hair = W.HairSolid(f, "ARTWORK")
 	hair:SetHeight(1)
 	hair:SetPoint("TOPLEFT", f, "TOPLEFT", 6, -TITLE_H)
 	hair:SetPoint("TOPRIGHT", f, "TOPRIGHT", -6, -TITLE_H)
+	WV.hair = hair
 	-- the people: clipped, the wheel scrolls them
 	local list = CreateFrame("Frame", nil, f)
 	list:SetPoint("TOPLEFT", f, "TOPLEFT", 4, -(TITLE_H + 4))
@@ -914,6 +921,7 @@ local function Build()
 	divider:SetWidth(1)
 	divider:SetPoint("TOPLEFT", f, "TOPLEFT", LIST_W + 2, -(TITLE_H + 6))
 	divider:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", LIST_W + 2, 6)
+	WV.divider = divider
 	-- the person's header: the name, what is known of them, the four buttons
 	local head = CreateFrame("Frame", nil, f)
 	head:SetPoint("TOPLEFT", f, "TOPLEFT", LIST_W + 3, -TITLE_H)
@@ -931,6 +939,7 @@ local function Build()
 	WV.info:SetJustifyH("LEFT")
 	WV.info:SetWordWrap(false)
 	local headLine = W.HairSolid(f, "ARTWORK")
+	WV.headLine = headLine
 	headLine:SetHeight(1)
 	headLine:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 6, 0)
 	headLine:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -8, 0)
@@ -1039,12 +1048,121 @@ local function Build()
 	WV.Restyle()
 end
 
+-- (lk-12, stage 6; the user's pick 3A of default_windows_sketch, 2026-10-29: "A: Communities") Under the Default skin
+-- the window is the game's Guild & Communities look: the game's window frame (MelloUI.Skin.Window) with the chosen
+-- person's class picture in its portrait and "Whispers" on its bar, the close on the game's place; the people on the
+-- Communities list column's ground (Skin.ListGround) under the portrait, the chosen one on the game's green row
+-- (Skin.ListRow); the header, the talk in the game's chat bubbles and the answer box on the game's marble inset
+-- (Skin.Inset); the gold rim, the title's hairline and the divider stand down. It still grows up out of the chat
+-- (above the chat's tabs there), its drawer's room wide enough for the frame's corners. Made at the first need; laid
+-- again at every Restyle (a switch, an open). Modern and Oldschool as they were.
+WV.GAME = { listTop = 60, side = 6, foot = 6 }   -- (the list under the portrait's foot; the inset inside the metal)
+
+function WV.GameLook()
+	local f = WV.frame
+	local Skin = rawget(MelloUI, "Skin")
+	if not (f and type(Skin) == "table" and Skin.Window) then
+		return
+	end
+	local game = Skin.IsDefault() and true or false
+	WV.gameOn = game
+	local T, G = Skin.WINDOW, WV.GAME
+	if game and not WV.gameWin then
+		WV.gameWin = Skin.Window(f)
+		local top = CreateFrame("Frame", nil, f)
+		top:SetAllPoints(f)
+		top:SetFrameLevel(WV.gameWin:GetFrameLevel() + 1)
+		top:EnableMouse(false)
+		WV.gameTop = top
+		local column = CreateFrame("Frame", nil, f)
+		column:SetPoint("TOPLEFT", f, "TOPLEFT", 2, -T.bar)
+		column:SetPoint("BOTTOMRIGHT", f, "BOTTOMLEFT", LIST_W + 2, G.foot)
+		column:EnableMouse(false)
+		WV.listGround = Skin.ListGround(f, column, column)
+		local inset = Skin.Inset(f)
+		inset:SetPoint("TOPLEFT", f, "TOPLEFT", LIST_W + 3, -T.bar)
+		inset:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -G.side, G.foot)
+		WV.inset = inset
+	end
+	if WV.gameWin then
+		WV.gameWin:SetShown(game)
+		WV.inset:SetShown(game)
+		WV.inset.marble:SetShown(game)
+		WV.listGround.bg:SetShown(game)
+		WV.listGround.foot:SetShown(game)
+		WV.listGround.foot.Fit(LIST_W)
+	end
+	for _, edge in ipairs(f.panelEdges or {}) do
+		edge:SetShown(not game)
+	end
+	WV.hair:SetShown(not game)
+	WV.divider:SetShown(not game)
+	-- the title on the bar over the frame's metal, the close on the game's place over it; back on the window else
+	local title, close = WV.title, WV.close
+	title:SetParent(game and WV.gameTop or f)
+	if game then
+		Skin.WindowTitle(title, f)
+		Skin.WindowClose(close, f)
+		close:SetFrameLevel(WV.gameWin:GetFrameLevel() + 2)
+	else
+		title:ClearAllPoints()
+		title:SetPoint("LEFT", f, "TOPLEFT", 10, -TITLE_H / 2)
+		title:SetJustifyH("LEFT")
+		close:ClearAllPoints()
+		close:SetPoint("RIGHT", f, "TOPRIGHT", -6, -TITLE_H / 2)
+		close:SetFrameLevel(WV.closeLevel)
+	end
+	-- the people under the portrait, the header under the bar
+	local list, head = WV.list, WV.head
+	list:ClearAllPoints()
+	list:SetPoint("TOPLEFT", f, "TOPLEFT", 4, -(game and G.listTop or (TITLE_H + 4)))
+	list:SetPoint("BOTTOMRIGHT", f, "BOTTOMLEFT", LIST_W, 4)
+	head:ClearAllPoints()
+	head:SetPoint("TOPLEFT", f, "TOPLEFT", LIST_W + 3, -(game and T.bar or TITLE_H))
+	head:SetPoint("TOPRIGHT", f, "TOPRIGHT", game and -G.side or 0, -(game and T.bar or TITLE_H))
+	-- the drawer: up out of the chat (above its tabs along the top there), room for the frame's corners
+	-- (the chat's own tabs follow the same skin: View.LayFrame, told after this on a switch)
+	local job = WV.job
+	job.rel = (game and View.rail) or View.frame
+	job.pad = game and T.out[3] or 6
+	if WV.open and not job.moving and f:IsShown() then
+		f:ClearAllPoints()
+		f:SetPoint(job.p, job.rel, job.rp, job.x, job.y)
+	end
+	WV.Portrait()
+end
+
+-- the chosen person's class picture in the game's frame's portrait (the whisper picture while none is chosen)
+function WV.Portrait()
+	local win = WV.gameWin
+	if win and win.portrait and WV.gameOn then
+		Picture(win.portrait, WV.current)
+	end
+end
+
+-- a person's row: the game's green row under the chosen one under Default (the hover fill and the mark down), the
+-- palette's fill and the gold mark else
+function WV.RowLook(row, on)
+	local game = WV.gameOn
+	if game and not row.game then
+		row.game = MelloUI.Skin.ListRow(row)
+	end
+	if row.game then
+		-- (the list's own width: a row's own reads 0 before its window is first laid)
+		row.game.Fit(LIST_W - 4)
+		row.game:SetShown(game and on or false)
+	end
+	row.fill:SetShown(on and not game)
+	row.mark:SetShown(on and not game)
+end
+
 -- the window's colours and paper again (the chat's parchment, a new palette, the kit's look)
 function WV.Restyle()
 	local f = WV.frame
 	if not f then
 		return
 	end
+	WV.GameLook()
 	local paper = View.paper
 	if paper and not WV.sheet and MelloUI.Kit and MelloUI.Kit.ParchmentSheet then
 		WV.sheet = MelloUI.Kit:ParchmentSheet(f, f, { rect = f, margin = 3 })

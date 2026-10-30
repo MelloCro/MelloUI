@@ -114,6 +114,9 @@ NIL_DEFAULTS |= {"Auras.qolFolded", "BarText.qolFolded", "ClassIcons.qolFolded",
 # (1.2.4: Edit Layout's own choices -- the elements hidden and locked, the grid, the dim, the coordinates -- one table
 # with no default, Core/EditLayoutPicker.lua)
 NIL_DEFAULTS |= {"UIModifications.editLayout"}
+# (1.2.4, el-11: the screen the places were made on, "WxH" UI units -- no default: a profile without it is laid out as
+# made for the screen it is loaded on, Core/LayoutFit.lua's F0s)
+NIL_DEFAULTS |= {"UIModifications.placesFor"}
 ANCHORS = {"TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT"}
 
 

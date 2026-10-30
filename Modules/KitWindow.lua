@@ -153,6 +153,13 @@
 --                                content starts there. The brand stands over
 --                                the column's level (a column in a body panel
 --                                hides nothing of it)
+--   shell:Branded()              true while the brand stands at its column's
+--                                head (the modern look; under the game's
+--                                window frame it is the frame's)
+--   shell:PortraitFoot()         how far under the top the game frame's
+--                                portrait reaches (0 in the other looks)
+-- (lk-12) shell.game: true while the game's window frame dresses it;
+-- shell.gameWin: that frame (MelloUI.Skin.Window, made at its first need)
 -- The switch: the plain look is the window's own regions, which the kit's
 -- replacements fade while they are enabled; switched off, every recorded rep
 -- is disabled and they come back. Colours are palette keys (Kit:Paint), so a
@@ -171,6 +178,16 @@
 -- FLAT.TOP. The drag band runs full width from the top; nothing pokes out
 -- of the window (no overhang). The kit's anchors (the rock, the tint, the
 -- calm ground, the plate's box, the crest) hide in it (shell.paintedOnly).
+--
+-- The game's window frame (lk-12, 2026-10-29; the user's pick 6A of default_windows_sketch: "all of the custom windows
+-- that we made ... needs to have its default look but retain the functionality"): under the Default skin, while the kit
+-- does not dress the window, the shell wears the game's portrait window (MelloUI.Skin.Window: the bronze metal, the
+-- round portrait at the top left with what the window's rim shows, the title on the bar, the close on the game's
+-- place) round the modern look's flat ground (the palette's: the game's grey under Default); the modern look's edge
+-- lines, rim and gold rim stand down (shell.game; shell:Branded() false: a brand column's head is the content's). The
+-- content lies where the painted look lays it under its corner ring (shell:Inset: the caller's painted top) on the
+-- modern look's one inset. A Default / Modern switch lays it again (MelloUI.Skin's follower), the window's OnKit
+-- listeners with it.
 --
 -- The painted dressing (the outer rail and page stone, the ring, the plate),
 -- Kit:ChoicePicture (a look choice's picture for the picture rows, W.PictureRow
@@ -236,6 +253,12 @@ local LEVEL_GAME_PORTRAIT = 9
 local GAME_MASK_IN, GAME_MASK_UP = 2, 4
 -- (the two the painted dressing shares, MelloUI_Oldschool/Modules/KitWindowPainted.lua)
 Kit.__.ShellPlateFit, Kit.__.RoundMask = PLATE_FIT, ROUND_MASK
+
+-- the game's window frame on show: the Default skin (MelloUI.Skin, read when asked)
+local function SkinDefault()
+	local Skin = rawget(MelloUI, "Skin")
+	return (type(Skin) == "table" and Skin.IsDefault and Skin.IsDefault()) and true or false
+end
 
 local shells = setmetatable({}, { __mode = "k" })   -- [frame] = its shell
 -- the confirm dialog's shell while its question holds the other shells'
@@ -447,7 +470,11 @@ function Shell:LayClose()
 		return
 	end
 	close:ClearAllPoints()
-	if self.kit then
+	if self.game then
+		-- (the game's window frame: on the template's close's middle, at its own size)
+		close:SetSize(self.closeSize, self.closeSize)
+		MelloUI.Skin.WindowClose(close, self.frame)
+	elseif self.kit then
 		close:SetSize(PLATE_FIT, PLATE_FIT)
 		close:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -2, -1)
 		-- (0.20.1) a plate on the rail takes it inside, left of its right cap, as a game window's (its Refit)
@@ -476,12 +503,23 @@ function Shell:Painted(region)
 	return region
 end
 
+-- a modern-look-only region (its edge lines, the rim, a brand row's hairline): hidden while the kit or the game's
+-- window frame dresses the window
+function Shell:Modern(region)
+	if region then
+		self.modernOnly[#self.modernOnly + 1] = region
+		region:SetShown(not self.kit and not self.game)
+	end
+	return region
+end
+
 -- The modern look's own parts, made the first time it shows (a window opened
 -- in the painted look makes none until a switch): the flat ground in its
 -- edge, the soft shade round the window, the emblem in the kit's round rim on
 -- its dark disc (mouse off: it never lights or takes a drag), a brand row's
--- hairline. Each is a plain-look region (shell:Plain): hidden with the kit;
--- the shade also with UI Shade's Windows area (ShadeWindow).
+-- hairline. The ground is a plain-look region (shell:Plain): hidden with the
+-- kit, the game's window frame's ground too; the rest modern-look-only
+-- (shell:Modern); the shade also with UI Shade's Windows area (ShadeWindow).
 function Shell:BuildModern()
 	if self.modernBuilt then
 		return
@@ -494,15 +532,15 @@ function Shell:BuildModern()
 	self.ground = self:Plain(ground)
 	-- (1.2.0, the user's pick C of gilded_windows_sketch) the edge the windows' gold hairline (the seam where a
 	-- snapped window meets it), the gold rim round the window (MelloUI.Rims: the modern look's, none while the kit
-	-- dresses the window)
+	-- or the game's window frame dresses the window)
 	self.groundEdges = W.HairEdges(frame)
 	for i = 1, #self.groundEdges do
-		self:Plain(self.groundEdges[i])
+		self:Modern(self.groundEdges[i])
 	end
 	local Rims = rawget(MelloUI, "Rims")
 	if type(Rims) == "table" and Rims.Add then
 		local shell = self
-		Rims:Add(frame, { kind = "window", shown = function() return not shell.kit end })
+		Rims:Add(frame, { kind = "window", shown = function() return not shell.kit and not shell.game end })
 	end
 	local shade = MelloUI.Shade and MelloUI.Shade:Band(frame, FLAT.SHADE)
 	if shade then
@@ -528,7 +566,7 @@ function Shell:BuildModern()
 			pcall(C.SetBagPortraitTexture, rim.icon, self.bagPortrait)
 		end
 		rim:SetKit(Kit)
-		self.rim = self:Plain(rim)
+		self.rim = self:Modern(rim)
 	end
 	if self.brandShape == "row" then
 		-- (on a holder of its own over the column, LevelBrand: a region of the
@@ -539,7 +577,98 @@ function Shell:BuildModern()
 		local line = W.HairSolid(holder, "ARTWORK")
 		line:SetHeight(1)
 		self.brandHolder = holder
-		self.brandLine = self:Plain(line)
+		self.brandLine = self:Modern(line)
+	end
+end
+
+-- (lk-12) The game's window frame, made the first time it shows (MelloUI.Skin.Window), the portrait filled with what
+-- the window's rim shows (never empty): the bag's own portrait for a bag window (ring.bag, as the game's bag window
+-- draws it), else the emblem (MelloUI.Icons: the game's picture for one of the set's icons under Default)
+function Shell:BuildGame()
+	if self.gameWin then
+		return
+	end
+	local Skin = rawget(MelloUI, "Skin")
+	if not (type(Skin) == "table" and Skin.Window) then
+		return
+	end
+	local win = Skin.Window(self.frame)
+	self.gameWin = win
+	local tex = win.portrait
+	if tex then
+		local C = self.bagPortrait ~= nil and rawget(_G, "C_Container")
+		local set = false
+		if type(C) == "table" and C.SetBagPortraitTexture then
+			pcall(C.SetBagPortraitTexture, tex, self.bagPortrait)
+			local ok, file = pcall(tex.GetTexture, tex)
+			set = ok and file ~= nil
+		end
+		-- (the emblem where the game set no picture: never an empty portrait)
+		if not set then
+			MelloUI.Icons.Set(tex, self.emblemTexture or LOGO, Skin.WINDOW.portrait.size)
+		end
+	end
+end
+
+-- the frame levels the title's plate and the close were made at (back from over the game's frame)
+function Shell:LevelOwn()
+	local base = self.frame:GetFrameLevel()
+	if self.plate then
+		self.plate:SetFrameLevel(base + LEVEL_PLATE)
+	end
+	if self.close then
+		self.close:SetFrameLevel(base + LEVEL_CLOSE)
+	end
+end
+
+-- The game's window frame laid: the title on its bar in the title face, the title's plate and the close over the
+-- frame's metal (as the template's TitleContainer and close over its NineSlice)
+function Shell:LayGame()
+	local Skin = rawget(MelloUI, "Skin")
+	local frame, title = self.frame, self.title
+	local over = frame:GetFrameLevel() + Skin.WINDOW.level
+	if self.plate then
+		self.plate:SetFrameLevel(over + 1)
+	end
+	if self.close then
+		self.close:SetFrameLevel(over + 2)
+	end
+	if title then
+		Kit:TitleFont(title, true)
+		Skin.WindowTitle(title, frame)
+	end
+end
+
+-- the look's parts shown as it has them: the modern-look-only ones, the game's window frame
+function Shell:ShowLook()
+	local modern = not self.kit and not self.game
+	for i = 1, #self.modernOnly do
+		self.modernOnly[i]:SetShown(modern)
+	end
+	if self.gameWin then
+		self.gameWin:SetShown(self.game and true or false)
+	end
+end
+
+function Shell:Branded()
+	return self.brandShape ~= nil and not self.kit and not self.game
+end
+
+-- how far under the window's top the game's window frame's portrait reaches (with a little room): content of the
+-- window's left that starts higher lies under it; 0 in the other looks
+function Shell:PortraitFoot()
+	return self.game and MelloUI.Skin.WINDOW.clear or 0
+end
+
+-- MelloUI.Skin's follower (the own windows'): a Default / Modern switch while the window shows lays it again in the
+-- new look (a hidden one reads it on its next show: Showing)
+function Shell.SkinFollow(shell, isDefault)
+	if shell.kit or not shell.frame:IsShown() or (shell.game or false) == (isDefault and true or false) then
+		return
+	end
+	shell:Switch(false)
+	if shell.fit then
+		shell:Fit()
 	end
 end
 
@@ -661,6 +790,9 @@ function Shell:LayGrab()
 	grab:ClearAllPoints()
 	grab:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 0, 0)
 	local foot = self.kit and self.grabBottom or self.flatGrab
+	if self.game then
+		foot = -MelloUI.Skin.WINDOW.bar   -- (the game's window frame: its title bar)
+	end
 	if self.painting then
 		foot = -(tonumber(self:PaintingSpec().grab) or -GRAB_BOTTOM)
 	end
@@ -785,12 +917,17 @@ function Shell:Inset(edge, top)
 	if self.kit then
 		return edge, top
 	end
+	if self.game then
+		-- (the game's window frame: the content under its portrait as the painted look has it under its corner ring,
+		-- never over the title bar; the modern look's one inset at the sides)
+		return self.inset, math.min(tonumber(top) or -FLAT.TOP, -FLAT.TOP)
+	end
 	return self.inset, self.brandShape and -self.inset or -FLAT.TOP
 end
 
 function Shell:Brand(column)
 	self.brandColumn = column
-	if not self.kit then
+	if self:Branded() then
 		self:LayModern()
 		self:LayClose()
 	end
@@ -798,11 +935,16 @@ function Shell:Brand(column)
 	return spec and spec.room or 0
 end
 
--- the look switched (the shell's own state, then its listeners)
+-- the look switched (the shell's own state, then its listeners): the kit's, else the game's window frame under the
+-- Default skin (lk-12), else the modern look
 function Shell:Switch(on)
 	self.kit = on
+	self.game = (not on and not self.painting and SkinDefault()) or false
 	self:Lay()
 	local reps, painted = self.reps, self.paintedOnly
+	if not self.game then
+		self:LevelOwn()
+	end
 	if on then
 		-- (the kit's anchors shown first: its reps and its dressing stand on them)
 		for i = 1, #painted do
@@ -827,7 +969,12 @@ function Shell:Switch(on)
 		if not self.painting then
 			self:BuildModern()
 			-- (after the plates' own switch -- off, the title and the close back where they found them: 0.20.1)
-			self:LayModern()
+			if self.game then
+				self:BuildGame()
+				self:LayGame()
+			else
+				self:LayModern()
+			end
 		end
 	end
 	self:LayPainting()
@@ -836,6 +983,7 @@ function Shell:Switch(on)
 	for i = 1, #self.plains do
 		self.plains[i]:SetShown(not on)
 	end
+	self:ShowLook()
 	self:ShadeWindow()
 	local Rims = rawget(MelloUI, "Rims")
 	if type(Rims) == "table" and Rims.Lay then
@@ -887,7 +1035,9 @@ end
 -- again around the open window)
 function Shell:Showing(opened)
 	local want = Kit:IsOn(self.area) and true or false
-	if want ~= self.kit then
+	-- (lk-12: a Default / Modern switch made while it was hidden, the game's window frame with it)
+	local game = not want and not self.painting and SkinDefault()
+	if want ~= self.kit or game ~= self.game then
 		self:Switch(want)
 	elseif want then
 		-- (a choice made while it was hidden: a profile loaded, ...)
@@ -903,9 +1053,13 @@ end
 
 -- how far the window's dressing reaches past its edges (left, right, top,
 -- bottom, in its own units): the outer rail with the kit, the crest or the
--- corner ring, the plate riding the rail; nothing in the modern look (its
--- shade is no part to keep on the screen)
+-- corner ring, the plate riding the rail; the game's window frame's corners;
+-- nothing in the modern look (its shade is no part to keep on the screen)
 function Shell:Overhang()
+	if self.game then
+		local out = MelloUI.Skin.WINDOW.out
+		return out[1], out[2], out[3], out[4]
+	end
 	if not self.kit then
 		return 0, 0, 0, 0
 	end
@@ -1023,7 +1177,7 @@ function Kit:OwnWindow(frame, opts)
 	opts = opts or {}
 	local shell = setmetatable({
 		frame = frame, area = opts.area, kit = self:IsOn(opts.area) and true or false,
-		reps = {}, queue = {}, plains = {}, onKit = {}, bounds = {}, paintedOnly = {},
+		reps = {}, queue = {}, plains = {}, onKit = {}, bounds = {}, paintedOnly = {}, modernOnly = {}, game = false,
 		fit = opts.fit and true or false, sounds = opts.sounds and true or false,
 		background = opts.background,
 		-- (the modern look's: its content inset, the drag band of each look)
@@ -1046,6 +1200,8 @@ function Kit:OwnWindow(frame, opts)
 	if opts.painting then
 		return self:OwnPaintedWindow(shell, opts)
 	end
+	-- (lk-12) the game's window frame while the kit is off under the Default skin
+	shell.game = not shell.kit and SkinDefault()
 
 	-- the page: the game's rock, the region the kit's page stone replaces
 	-- (DressFrame; it shows only if the stone is missing)
@@ -1205,7 +1361,18 @@ function Kit:OwnWindow(frame, opts)
 	end
 	if not shell.kit then
 		shell:BuildModern()
-		shell:LayModern()
+		if shell.game then
+			shell:BuildGame()
+			shell:LayGame()
+		else
+			shell:LayModern()
+		end
+		shell:ShowLook()
+	end
+	-- (lk-12: a Default / Modern switch lays it again)
+	local Skin = rawget(MelloUI, "Skin")
+	if type(Skin) == "table" and Skin.Follow then
+		Skin.Follow(shell, Shell.SkinFollow)
 	end
 	return shell
 end

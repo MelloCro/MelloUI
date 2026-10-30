@@ -1561,8 +1561,11 @@ end
 --       "uiscale"). Every entry's OnShow / OnHide are hooked, so set them
 --       BEFORE registering (SetScript drops hooks).
 --   MelloUI:SavePosition(key, frame[, scale]) -> saved
---       the frame's place under key, by its entry's anchor; scale: a number
---       is kept with it (to a hundredth), false drops it, nil leaves it.
+--       the frame's place under key: hung by its entry's anchor (else by the
+--       screen's point), from the side of the screen it stands in (1.2.4:
+--       the third its middle is in -- an anchored one's: its anchor corner --
+--       across and down, as Edit Mode keeps a frame); scale: a number is
+--       kept with it (to a hundredth), false drops it, nil leaves it.
 --       Always the store; a key an Edit Layout session holds leaves the
 --       session (the outside write wins: LayoutSession.Release)
 --   MelloUI:ForgetPosition(key)          the same rule
@@ -1571,10 +1574,17 @@ end
 --       nothing is saved, or for a protected frame in combat
 --   MelloUI:GetPosition(key) -> { point, relPoint, x, y, scale } or nil
 --       point nil = BOTTOMLEFT, relPoint nil = CENTER; x, y in the frame's
---       own units. While a session holds the key: its pending place (nil
+--       own units (a place saved before 1.2.4: the frame's BOTTOMLEFT from
+--       the screen's CENTER, or its anchor from the same point; it loads as
+--       it is). While a session holds the key: its pending place (nil
 --       for a pending reset), so every put-back places pending values
 --       without knowing it. Read only: change it through Save / Forget.
 --       (A reset is Edit Layout's: LayoutSession.Reset, then Commit.)
+--   MelloUI:MeasurePlace(frame[, anchor]) -> point, relPoint, x, y | nil
+--       (1.2.4, el-12) the store's measure of a frame, for an owner that
+--       keeps its place in its own settings (the Quest Tracker): hung by
+--       anchor (else the screen's point), from the side of the screen it
+--       stands in; the points always named; nil when it cannot be read
 --   MelloUI:MoverEntries()             the entries, in registration order
 --   MelloUI:AddMoverHandle(frame, handle) -> added
 --       one more handle a registered plainDrag "always" frame is dragged by
@@ -1976,10 +1986,35 @@ do
 		return math.floor(v * step + 0.5) / step
 	end
 
-	-- where a frame sits, by `anchor`: point, relPoint, x, y (its own units,
-	-- to a tenth; the store's measure); nil when it cannot be read
+	-- (1.2.4, el-12; the user 2026-10-30, a profile made on 16:9 installed on
+	-- a wide screen: "the Profile does not adjust the MelloUI Layout
+	-- Depending on your Aspect Ratio") the screen's point a place is kept
+	-- from: the side of the screen the frame stands in, by the third its
+	-- middle is in, across and down -- the left third's from the left edge,
+	-- the middle's from the middle, the right third's from the right edge --
+	-- as the game keeps a frame its Edit Mode moved. So a saved place follows
+	-- the screen's sides on any shape by itself. A frame that grows from a
+	-- corner (its `anchor`: the tracker's list, a feed's lines, the group
+	-- plates) stands where that corner is: the part that stays put, whatever
+	-- its length now. px, py: that point (else the frame's middle), sw x sh:
+	-- the screen, both in the frame's own units
+	local SIDE = { [0] = { [0] = "BOTTOMLEFT", [0.5] = "LEFT", [1] = "TOPLEFT" },
+		[0.5] = { [0] = "BOTTOM", [0.5] = "CENTER", [1] = "TOP" },
+		[1] = { [0] = "BOTTOMRIGHT", [0.5] = "RIGHT", [1] = "TOPRIGHT" } }
+	local function Side(px, py, sw, sh)
+		local across = (px < sw / 3 and 0) or (px > 2 * sw / 3 and 1) or 0.5
+		local down = (py < sh / 3 and 0) or (py > 2 * sh / 3 and 1) or 0.5
+		return SIDE[across][down]
+	end
+
+	-- where a frame sits: point, relPoint, x, y (its own units, to a tenth;
+	-- the store's measure); nil when it cannot be read. The frame hangs by
+	-- its `anchor` (the corner it grows from), else by the same point as the
+	-- screen's; the screen's point is the side it stands in (Side). A place
+	-- stored before 1.2.4's side form (the frame's BOTTOMLEFT from the
+	-- screen's CENTER; an anchor's from the same point) loads as it is and
+	-- takes this form only when it is saved again.
 	local function Measure(frame, anchor)
-		local point, relPoint = anchor or "BOTTOMLEFT", anchor or "CENTER"
 		local fs, us, sw, sh = Screen(frame)
 		local l, b, w, h = Rect(frame)
 		if not (fs and l) then
@@ -1987,9 +2022,23 @@ do
 		end
 		-- the screen in the frame's own units
 		local k = us / fs
-		local x = l + POINT_X[point] * w - POINT_X[relPoint] * sw * k
-		local y = b + POINT_Y[point] * h - POINT_Y[relPoint] * sh * k
+		sw, sh = sw * k, sh * k
+		local ax, ay = 0.5, 0.5
+		if anchor then
+			ax, ay = POINT_X[anchor], POINT_Y[anchor]
+		end
+		local relPoint = Side(l + ax * w, b + ay * h, sw, sh)
+		local point = anchor or relPoint
+		local x = l + POINT_X[point] * w - POINT_X[relPoint] * sw
+		local y = b + POINT_Y[point] * h - POINT_Y[relPoint] * sh
 		return point, relPoint, Round(x, 10), Round(y, 10)
+	end
+
+	function MelloUI:MeasurePlace(frame, anchor)
+		if type(frame) ~= "table" or not frame.GetRect then
+			return nil
+		end
+		return Measure(frame, POINT_X[anchor] and anchor or nil)
 	end
 
 	-- the scale set with its plain SetScale (Raw), its backgrounds laid
@@ -3089,16 +3138,40 @@ do
 		end
 	end
 
-	-- two places alike: the same anchor, x and y within 0.05 units, the
-	-- scale within 0.005 (none: its 100 %)
-	local function Alike(a, b, base)
+	-- (el-12) where a place puts its frame on this screen: the frame's left
+	-- and bottom from the screen's, in its own units; nil when unreadable
+	local function Where(pos, frame)
+		local point, relPoint = pos.point or "BOTTOMLEFT", pos.relPoint or "CENTER"
+		local fs, us, sw, sh = Screen(frame)
+		local w, h = Size(frame)
+		if not (fs and w and h and POINT_X[point] and POINT_X[relPoint]) then
+			return nil
+		end
+		local k = us / fs
+		return (Num(pos.x) or 0) + POINT_X[relPoint] * sw * k - POINT_X[point] * w,
+			(Num(pos.y) or 0) + POINT_Y[relPoint] * sh * k - POINT_Y[point] * h
+	end
+
+	-- two places alike: x and y within 0.05 units, the scale within 0.005
+	-- (none: its 100 %). Two of one anchor compare as stored; two of
+	-- different anchors (one stored before the side form, Measure) by where
+	-- they put the frame on this screen, so one moved back exactly is alike
+	local function Alike(a, b, base, frame)
 		if a == nil or b == nil then
 			return a == b
 		end
+		local ax, ay, bx, by = Num(a.x) or 0, Num(a.y) or 0, Num(b.x) or 0, Num(b.y) or 0
 		if (a.point or "BOTTOMLEFT") ~= (b.point or "BOTTOMLEFT") or (a.relPoint or "CENTER") ~= (b.relPoint or "CENTER") then
-			return false
+			if not frame then
+				return false
+			end
+			ax, ay = Where(a, frame)
+			bx, by = Where(b, frame)
+			if not (ax and bx) then
+				return false
+			end
 		end
-		if math.abs((Num(a.x) or 0) - (Num(b.x) or 0)) > 0.05 or math.abs((Num(a.y) or 0) - (Num(b.y) or 0)) > 0.05 then
+		if math.abs(ax - bx) > 0.05 or math.abs(ay - by) > 0.05 then
 			return false
 		end
 		return math.abs((Num(a.scale) or base) - (Num(b.scale) or base)) <= 0.005
@@ -3292,7 +3365,7 @@ do
 		end
 		local entry = rec.entry
 		local was = (entry.key ~= nil and not entry.save and Stored(entry.key)) or rec.snap.pos
-		return not Alike(rec.pos, was, MelloUI:EntryBase(entry))
+		return not Alike(rec.pos, was, MelloUI:EntryBase(entry), entry.frame)
 	end
 
 	function LayoutSession.Count()
@@ -5511,6 +5584,19 @@ function MelloUI:ExportProfile(name)
 	end
 	-- a profile saved before they were left out may still hold personal keys
 	text = StripPersonal(self, text)
+	-- (1.2.4, el-11) the screen its places were made on goes with them (UI Modifications' placesFor, "WxH" UI
+	-- units: the installer and the refit lay them out for the receiver's screen shape, Core/LayoutFit.lua's F0s);
+	-- one that already says keeps its own, one with no places needs none, and a profile without it works as before
+	local entries = ";" .. text
+	if not entries:find(";UIModifications.placesFor=", 1, true)
+		and (entries:find(";UIModifications.positions=", 1, true) or entries:find(";QuestTracker.pos=", 1, true)) then
+		local Num = self.Safe and self.Safe.Number
+		local okS, w, h = pcall(UIParent.GetSize, UIParent)
+		w, h = okS and Num and Num(w) or nil, okS and Num and Num(h) or nil
+		if w and h and w > 0 and h > 0 then
+			text = text .. (text == "" and "" or ";") .. string.format("UIModifications.placesFor=s%.1fx%.1f", w, h)
+		end
+	end
 	local enc = C_EncodingUtil
 	if not (enc and enc.CompressString and enc.EncodeBase64) then
 		return nil, "this client cannot make share strings"

@@ -42,8 +42,8 @@
 -- what it reads, and Install waits for it. The UI scale is only shown, never
 -- changed.
 -- (1.2.4) Keep reloads the UI: the game's own /reload, run by the player's
--- click on a secure button laid over Keep (MelloUIInstallerReload, made at
--- Keep's first hover; never in a fight). Revert reloads nothing.
+-- click on a secure button laid over Keep (MelloUIInstallerReload, made when
+-- the Keep page first shows; never in a fight). Revert reloads nothing.
 --
 -- The setup's pages (SetupSteps, below) are all the same: a lead, the
 -- choices -- cards for one of several and switches for several, each
@@ -1301,14 +1301,27 @@ end
 -- Keep reloads the UI (1.2.4; the user, 2026-10-28: "after the installer process is done, it should automatically
 -- after the last step do a /reload for everything to update"). The game blocks a reload MelloUI's code asks for
 -- ("MelloUI blocked by the game: Reload()", 0.19.9), so it is the game's own /reload, run by the player's click on a
--- secure button: MelloUIInstallerReload (made at the first hover, out of combat), laid over Keep while the pointer is
--- on it, its macro "/stopmacro [combat]" then "/reload" (Edit Layout's bridge reaches /editmode the same way). Its
--- PreClick, ours and run before the macro, keeps the setup (ACTIONS.keep); a click Keep cannot take sets no action,
--- so nothing reloads. It acts on the release, as every button (useOnKeyDown false). In a fight it is never laid and
--- Keep is held, as Revert; one laid before the fight does nothing on a click (no attribute is set in a fight, and the
--- macro stops itself). Gone when the pointer leaves, the Keep page ends or the window closes (in a fight: when it
--- ends); the countdown's refresh lays it again where Keep stands (the window dragged, the pointer resting on Keep as a
--- fight ended). Revert reloads nothing: in the session of the install it puts everything back as it was.
+-- secure button: MelloUIInstallerReload (made when the Keep page first shows, out of combat), its macro
+-- "/stopmacro [combat]" then "/reload" (Edit Layout's bridge reaches /editmode the same way). Its PreClick, ours and
+-- run before the macro, keeps the setup (ACTIONS.keep); a click Keep cannot take sets no action, so nothing reloads.
+-- It acts on the release (useOnKeyDown false), registered for both phases as every secure button of ours (the down
+-- does nothing). In a fight it is never laid and Keep is held, as Revert; one laid before the fight does nothing on a
+-- click (no attribute is set in a fight, and the macro stops itself). Revert reloads nothing: in the session of the
+-- install it puts everything back as it was.
+-- (el-08, the user on the retail client, 2026-10-29: "the question to /reload after the last step in the installer
+-- does not appear nor does it reload the game": Keep's own click ran, the window closed and the chat said to type
+-- /reload.) It was laid only while the pointer was on Keep, from Keep's OnEnter, and went on any leave: under the
+-- pointer at the click only if the game had moved its focus onto the new button in between. Now it lies over Keep
+-- for as long as Keep can be taken -- laid as the Keep page shows, again at each refresh of its countdown, at the
+-- pointer's arrival on Keep or on it (the window dragged, raised over it: laid where Keep stands, over its level) --
+-- and goes only when Keep cannot be taken (held in a fight or by Edit Mode, the page ended, the window closed; in a
+-- fight: when it ends), never on a leave.
+-- (el-10, the user's readout on the retail client, 2026-10-29: the button shown, level 17 over Keep's 7, yet the
+-- mouse on Keep itself.) The window is a toplevel one: a click in it (Install's) raises it over every frame of its
+-- strata, and the client keeps that raise apart from the frame level (GetRaisedFrameLevel, 10.2.5), so a level over
+-- Keep's alone left the button under the raised window. The button is raised in its turn: as it is laid where it was
+-- not shown, and at the pointer's arrival on Keep itself (the window raised over it since). Never at the countdown's
+-- refresh, so a window raised over Keep keeps its own click.
 --------------------------------------------------------------------------------
 
 local Reload = {}
@@ -1372,8 +1385,9 @@ do
 		button:ClearAllPoints()
 	end
 
-	local PreClick = Shared("PreClick on MelloUIInstallerReload", function(self)
-		if InCombat() then
+	-- (the down phase does nothing: the macro acts on the release)
+	local PreClick = Shared("PreClick on MelloUIInstallerReload", function(self, _, down)
+		if down or InCombat() then
 			return
 		end
 		clicking = true
@@ -1387,18 +1401,23 @@ do
 		end
 	end, "script")
 
-	local PostClick = Shared("PostClick on MelloUIInstallerReload", function()
+	local PostClick = Shared("PostClick on MelloUIInstallerReload", function(_, _, down)
+		if down then
+			return
+		end
 		clicking = false
 		Reload.Sync()
 	end, "script")
 
+	-- the pointer on it: Keep's hover look, and laid again where Keep stands (the window dragged meanwhile)
 	local Enter = Shared("OnEnter on MelloUIInstallerReload", function()
 		Forward("OnEnter")
+		Reload.Sync()
 	end, "script")
 
+	-- the pointer gone: Keep's look at rest; the button stays over Keep
 	local Leave = Shared("OnLeave on MelloUIInstallerReload", function()
 		Forward("OnLeave")
-		Reload.Hide()
 	end, "script")
 
 	local function Make()
@@ -1409,7 +1428,9 @@ do
 		end
 		button = CreateFrame("Button", "MelloUIInstallerReload", UIParent, "SecureActionButtonTemplate")
 		button:Hide()
-		button:RegisterForClicks("LeftButtonUp")
+		button:SetToplevel(true)   -- (raised as the window it lies on is: Lay)
+		button:EnableMouse(true)
+		button:RegisterForClicks("LeftButtonUp", "LeftButtonDown")
 		button:SetAttribute("useOnKeyDown", false)
 		button:SetAttribute("type1", "macro")
 		button:SetAttribute("macrotext1", MACRO)
@@ -1421,8 +1442,10 @@ do
 	end
 
 	-- laid over Keep above it, and shown: by measure on UIParent, out of combat only (Reminders.OverlayPlace, the one
-	-- way a secure overlay is laid over a button of ours)
-	local function Lay(keep)
+	-- way a secure overlay is laid over a button of ours); on Keep's strata, over its level, and raised over the
+	-- raised window when it was not shown or `lift` says the window came over it (el-10). The strata and the level
+	-- are set only when they are not so already: a raised button stays raised.
+	local function Lay(keep, lift)
 		local place = MelloUI.Reminders and MelloUI.Reminders.OverlayPlace
 		local o = place and Make()
 		if not (o and place(o, keep)) then
@@ -1431,35 +1454,38 @@ do
 		if o:GetAttribute("type1") ~= "macro" then
 			o:SetAttribute("type1", "macro")
 		end
-		o:SetFrameStrata(keep:GetFrameStrata())
-		o:SetFrameLevel(keep:GetFrameLevel() + OVER_LEVEL)
+		local strata = keep:GetFrameStrata()
+		if o:GetFrameStrata() ~= strata then
+			o:SetFrameStrata(strata)
+		end
+		local level = keep:GetFrameLevel() + OVER_LEVEL
+		if o:GetFrameLevel() < level then
+			o:SetFrameLevel(level)
+		end
+		local shown = o:IsShown()
 		o:Show()
+		if lift or not shown then
+			o:Raise()
+		end
 	end
 
-	-- the pointer on Keep: the secure button over it
-	Reload.KeepEnter = Shared("OnEnter on the installer's Keep (its reload button)", function(keep)
-		if not forwarding and Keepable(keep) then
-			Lay(keep)
+	-- the pointer on Keep itself (the button not over it: the window dragged, or raised over it by a click in it):
+	-- laid again over it, and raised
+	Reload.KeepEnter = Shared("OnEnter on the installer's Keep (its reload button)", function()
+		if not forwarding then
+			Reload.Sync(true)
 		end
 	end, "script")
 
-	-- the pointer gone from Keep: the secure button too, unless the pointer went onto it
-	Reload.KeepLeave = Shared("OnLeave on the installer's Keep (its reload button)", function()
-		if forwarding or (button and button:IsShown() and button:IsMouseOver()) then
-			return
-		end
-		Reload.Hide()
-	end, "script")
-
-	-- (the countdown's refresh, a fight's or Edit Mode's end) laid again where Keep stands while the pointer is on
-	-- it; hidden once Keep cannot be taken or the pointer is gone
-	function Reload.Sync()
+	-- (the Keep page shown, its countdown's refresh, a fight's or Edit Mode's end, the pointer's arrival) laid where
+	-- Keep stands while Keep can be taken; hidden once it cannot. lift: the pointer is on Keep itself (Lay)
+	function Reload.Sync(lift)
 		if clicking or InCombat() then
 			return
 		end
 		local keep = KeepButton()
-		if Keepable(keep) and (keep:IsMouseOver() or (button and button:IsShown() and button:IsMouseOver())) then
-			Lay(keep)
+		if Keepable(keep) then
+			Lay(keep, lift)
 		else
 			Reload.Hide()
 		end
@@ -1512,9 +1538,8 @@ local function BuildKeep(page)
 	count.keep = Button(count, TEXT.keep, BUTTON_W, "keep")
 	count.revert:SetPoint("TOPRIGHT", count.status, "BOTTOM", -6, -12)
 	count.keep:SetPoint("TOPLEFT", count.status, "BOTTOM", 6, -12)
-	-- (1.2.4) Keep reloads the UI: the secure button over it while the pointer is on it (Reload, above)
+	-- (1.2.4) Keep reloads the UI: the secure button over it while it can be taken (Reload, above)
 	Perf.HookScript(count.keep, "OnEnter", Reload.KeepEnter)
-	Perf.HookScript(count.keep, "OnLeave", Reload.KeepLeave)
 	return 20 + RING + 12 + 144
 end
 
@@ -1606,6 +1631,7 @@ STEPS.keep.build, STEPS.keep.refresh = BuildKeep, RefreshKeepPage
 ShowKeep = function(dir)
 	state.phase, state.step, state.doneMode, state.footLine = "keep", "keep", nil, nil
 	Present("keep", dir)
+	Reload.Sync()   -- (Keep's reload button over it as the page shows: its refresh ran before the page was shown)
 end
 
 -- Done, on the Keep page, after a revert (1.2.4: a kept setup reloads the
@@ -2545,6 +2571,7 @@ function IW:Open(page)
 		frame:Show()
 	end
 	Present(state.step, 0, true)
+	Reload.Sync()   -- (the Keep page of an answer owed: Keep's reload button over it at once)
 	return true
 end
 

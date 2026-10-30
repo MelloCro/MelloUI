@@ -67,6 +67,8 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		scale = 1,
 		textSize = 13,
 		headerSize = 16,
+		-- (1.2.4, el-07) its background as the skin lays it (Art.Opacity)
+		opacity = 1,
 		scrollStep = 25,
 		itemButtons = true,
 		collapsed = false,
@@ -94,6 +96,12 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		{ type = "slider", key = "headerSize", name = "Header Text Size", min = 10, max = 24, step = 1,
 		  format = function(v) return tostring(math.floor(v + 0.5)) end,
 		  desc = "The size of the tracker's title." },
+		-- (1.2.4, el-07; the user, 2026-10-29: "the objective tracker by either clicking on it in edit mode or edit
+		-- layout does not have the opacity slider aswell") the game's tracker's Edit Mode Opacity, for this one: how
+		-- much of its background shows (Art.Opacity); also in its Edit Layout box
+		{ type = "slider", key = "opacity", name = "Background Opacity", min = 0, max = 1, step = 0.05, percent = true,
+		  new = "1.2.4",
+		  desc = "How solid the tracker's background is. At 0% its lines stand on the world, as the game's tracker's do." },
 		{ type = "slider", key = "scrollStep", name = "Scroll Step", min = 10, max = 120, step = 5,
 		  format = function(v) return tostring(math.floor(v + 0.5)) end,
 		  desc = "How far one turn of the mouse wheel scrolls." },
@@ -278,7 +286,7 @@ end
 -- so a Place that stopped part way, or a frame put elsewhere or scaled by
 -- anything else, is laid again by the next setting, as before (review,
 -- 2026-09-24). A frame whose point cannot be read plainly is always laid.
--- scale, set, x, y, to, us, sw, sh, gw, drop: the inputs it was laid by; p,
+-- scale, set, x, y, side, to, us, sw, sh, gw, drop: the inputs it was laid by; p,
 -- rel, rp, ax, ay, got: its first point and its scale, read back once laid
 local last = { valid = false }
 
@@ -515,6 +523,11 @@ end
 -- its entry in Core's mover registry (Build): Edit Layout moves it
 local moverEntry = nil
 
+-- (el-12) where a screen point sits: across, up (0 .. 1); its own place
+-- hangs from one of them (relPoint, none: the top-right)
+local SIDE = { TOPLEFT = { 0, 1 }, TOP = { 0.5, 1 }, TOPRIGHT = { 1, 1 }, LEFT = { 0, 0.5 }, CENTER = { 0.5, 0.5 },
+	RIGHT = { 1, 0.5 }, BOTTOMLEFT = { 0, 0 }, BOTTOM = { 0.5, 0 }, BOTTOMRIGHT = { 1, 0 } }
+
 -- the frame sits where the game's tracker is, as wide as it, from its top;
 -- home: where it sits with no place of its own, at its standard size (its
 -- own place and Scale passed by, nothing written: the mover's default,
@@ -535,6 +548,9 @@ local function LayFrame(home)
 		pos = M.db and M.db.pos
 	end
 	local px, py = pos and pos.x, pos and pos.y
+	-- (el-12) the screen's point it hangs from: the side of the screen its
+	-- corner stood in when it was saved (none: the top-right)
+	local side = pos and type(pos.relPoint) == "string" and SIDE[pos.relPoint] and pos.relPoint or "TOPRIGHT"
 	-- a place of its own is kept on the screen by the screen's size and
 	-- scale, and takes the game's tracker's width when none is set
 	local us, sw, sh, gw
@@ -557,7 +573,8 @@ local function LayFrame(home)
 	if not (px and py) and not glue then
 		drop = ColumnDrop(f, scale, set)
 	end
-	if last.valid and last.scale == scale and last.set == set and last.x == px and last.y == py and last.to == f
+	if last.valid and last.scale == scale and last.set == set and last.x == px and last.y == py and last.side == side
+		and last.to == f
 		and last.us == us and last.sw == sw and last.sh == sh and last.gw == gw and last.drop == drop
 		and last.glue == glue and last.glueP == glueP and last.glueY == glueY
 		and frame:GetScale() == last.got and SamePoint() then
@@ -596,10 +613,13 @@ local function LayFrame(home)
 		if fs and us and sw and sh and fs > 0 and us > 0 then
 			local k = us / fs
 			local w = set > 0 and set or FrameWidth()
-			x = math.min(0, math.max(x, -(sw * k - w)))
-			y = math.min(0, math.max(y, -(sh * k - HEADER_H)))
+			-- (its right edge and its top from the screen's left and bottom:
+			-- the point it hangs from plus its offsets)
+			local ox, oy = SIDE[side][1] * sw * k, SIDE[side][2] * sh * k
+			x = math.min(sw * k, math.max(ox + x, w)) - ox
+			y = math.min(sh * k, math.max(oy + y, HEADER_H)) - oy
 		end
-		frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", x, y)
+		frame:SetPoint("TOPRIGHT", UIParent, side, x, y)
 		if set > 0 then
 			frame:SetWidth(set)
 		else
@@ -634,7 +654,7 @@ local function LayFrame(home)
 	-- back (not kept when they cannot be read plainly)
 	local ok, p, rel, rp, ax, ay = pcall(frame.GetPoint, frame, 1)
 	if ok and not (Secret(p) or Secret(rel) or Secret(rp) or Secret(ax) or Secret(ay)) then
-		last.scale, last.set, last.x, last.y, last.to = scale, set, px, py, f
+		last.scale, last.set, last.x, last.y, last.side, last.to = scale, set, px, py, side, f
 		last.us, last.sw, last.sh, last.gw, last.drop = us, sw, sh, gw, drop
 		last.glue, last.glueP, last.glueY = glue, glueP, glueY
 		last.p, last.rel, last.rp, last.ax, last.ay = p, rel, rp, ax, ay
@@ -779,7 +799,10 @@ end
 
 -- The tracker's one look (0.24.0, the chat's look; the only one since the
 -- one look, whatever the reskin -- stage E took the game's tracker look and
--- the Painted Skin away): made once; false where the widget set is missing
+-- the Painted Skin away): made once; false where the widget set is missing.
+-- Its panel's fill: Art.PANEL_ALPHA (times Background Opacity: Art.Opacity)
+Art.PANEL_ALPHA = 0.94
+
 local function BuildKitLook()
 	if looks.kit ~= nil then
 		return looks.kit
@@ -797,7 +820,7 @@ local function BuildKitLook()
 	holder:SetAllPoints(frame)
 	holder:SetFrameLevel(frame:GetFrameLevel())
 	holder:EnableMouse(false)
-	W.Panel(holder, { on = true, alpha = 0.94, rim = true })   -- (1.2.0: the gold rim, MelloUI.Rims)
+	W.Panel(holder, { on = true, alpha = Art.PANEL_ALPHA, rim = true })   -- (1.2.0: the gold rim, MelloUI.Rims)
 	local sheet = Kit.ParchmentSheet and Kit:ParchmentSheet(holder, frame, { rect = frame, margin = 3, area = "questTracker" })
 	local hair = W.HairSolid(holder, "ARTWORK")
 	hair:SetHeight(1)
@@ -811,7 +834,115 @@ local function BuildKitLook()
 		Kit:ShadeElement(frame, "tracker"):Add(holder, { shape = "shade/square" })
 	end
 	looks.kit = { holder = holder, sheet = sheet, hair = hair }
+	-- (lk-12, stage 4) the Default skin's look laid now and at every Default / Modern switch (Art.GameLook); no gold
+	-- rim there (the game's tracker has no box)
+	local Rims = rawget(MelloUI, "Rims")
+	if type(Rims) == "table" and Rims.OwnEdge then
+		Rims:OwnEdge(holder)
+	end
+	local Skin = rawget(MelloUI, "Skin")
+	if type(Skin) == "table" and Skin.Follow then
+		Skin.Follow(looks.kit, Art.GameLook)
+	end
 	return looks.kit
+end
+
+-- (lk-12, stage 4; the user's pick 4B of default_windows_sketch, 2026-10-29: "the game's headers, MelloUI's lines" with
+-- "a soft dark backing so the text stays easy to read over bright ground") Under the Default skin the tracker wears the
+-- game's tracker headers (Blizzard_ObjectiveTracker: the container's header bar behind the title row,
+-- ObjectiveTrackerContainerHeaderTemplate's; the module header's bar behind each section's heading,
+-- ObjectiveTrackerModuleHeaderTemplate's -- each at its own size, centred on its row, as the game lays them; the names
+-- from MelloUI.Skin.ART), MelloUI's lines on a soft dark backing (MelloUI.Shade's band from under the title row to the
+-- foot: the readability rule, not the game's) and no box: the panel's fill and edges, the title's hairline and the
+-- sections' lines stand down. Modern as before. Made at the first need, laid again at a switch and at every heading's
+-- lay (Art.SectionLook)
+Art.BACKING = { colour = "innerPanel", alpha = 0.7, feather = 8, featherY = 8, sublevel = -7 }
+
+function Art.GameLook(k, isDefault)
+	local game = isDefault and true or false
+	local Skin = MelloUI.Skin
+	k.game = game
+	local holder = k.holder
+	if holder.panelFill then
+		holder.panelFill:SetShown(not game)
+	end
+	for _, edge in ipairs(holder.panelEdges or {}) do
+		edge:SetShown(not game)
+	end
+	k.hair:SetShown(not game)
+	if game and not k.headArt and header and Skin and Skin.ART then
+		local art = header:CreateTexture(nil, "BACKGROUND")
+		art:SetAtlas(Skin.ART.trackerHead, true)
+		art:SetPoint("CENTER", header, "CENTER", 0, 0)
+		k.headArt = art
+		local rect = CreateFrame("Frame", nil, holder)
+		rect:SetPoint("TOPLEFT", header, "BOTTOMLEFT", Art.BACKING.feather, 0)
+		rect:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -Art.BACKING.feather, Art.BACKING.featherY)
+		rect:EnableMouse(false)
+		local band = MelloUI.Shade and MelloUI.Shade:Band(holder, Art.BACKING)
+		if band then
+			band:Anchor(rect)
+		end
+		k.backing = band
+	end
+	if k.headArt then
+		k.headArt:SetShown(game)
+	end
+	if k.backing then
+		k.backing:SetShown(game)
+	end
+	for _, row in ipairs(Art.sectionRows) do
+		Art.SectionLook(row)
+	end
+	Art.Opacity(k)
+end
+
+-- (1.2.4, el-07) Background Opacity: how much of the tracker's background shows -- the skin's own at 100% (Default:
+-- the soft backing band at Art.BACKING's strength; Modern's and Oldschool's: the panel's fill at Art.PANEL_ALPHA), none
+-- at 0%, where the lines stand on the world with the game font's shadow, as the game's own tracker's at its Edit Mode
+-- Opacity of 0. The frame round it (the panel's hairlines, the gold rim, the game's header bars) and the parchment
+-- sheet (the ink needs its paper) stay as they are. Laid with the look and at every change of the setting.
+-- (el-09; the user, 2026-10-29: at 0% "there is another background there", back a second after a /reload) the UI
+-- Shade's square behind the panel is background too: its shade frame fades with the rest (Element:SetAlpha,
+-- Modules/KitShade.lua -- kept for the partners made after the login's frames); the UI Shade's switch still decides
+-- whether it is there at all. The item trays' shade is their own (drawn by each tray)
+function Art.Opacity(k)
+	local o = Plain(M.db and M.db.opacity)
+	o = type(o) == "number" and math.max(0, math.min(1, o)) or 1
+	if k.backing then
+		k.backing:SetStrength(Art.BACKING.alpha * o)
+	end
+	if k.holder.panelFill then
+		MelloUI.Widgets.Paint(k.holder.panelFill, "innerPanel", "fill", Art.PANEL_ALPHA * o)
+	end
+	local Kit = MelloUI.Kit
+	if Kit and Kit.ShadeElement then
+		local el = Kit:ShadeElement(frame, "tracker")
+		if el.SetAlpha then
+			el:SetAlpha(o)
+		end
+	end
+end
+
+-- (the sections' heading rows, as Section makes them: laid again at a switch)
+Art.sectionRows = {}
+
+-- a section's heading in the skin's look: the game's module header bar behind it under Default (made at its first
+-- need), the hairline under it otherwise
+function Art.SectionLook(row)
+	local k = looks.kit
+	local game = k and k.game or false
+	local Skin = MelloUI.Skin
+	if game and not row.gameArt and Skin and Skin.ART then
+		local art = row:CreateTexture(nil, "BACKGROUND")
+		art:SetAtlas(Skin.ART.trackerSection, true)
+		art:SetPoint("CENTER", row, "CENTER", 0, 0)
+		row.gameArt = art
+	end
+	if row.gameArt then
+		row.gameArt:SetShown(game)
+	end
+	row.line:SetShown(not game)
 end
 
 -- A toggle at its row's edge: `x` from the right (`left`: from the left)
@@ -1459,6 +1590,7 @@ local function ApplyLook()
 	local kitOn = BuildKitLook()
 	if kitOn then
 		kitOn.holder:Show()
+		Art.Opacity(kitOn)
 	end
 	-- the title at Header Text Size: the base font first, then the title face
 	-- over it (the face keeps the size it was given, as the section headers)
@@ -3238,20 +3370,18 @@ end
 -- where the frame is built)
 --------------------------------------------------------------------------------
 
--- where it was dropped, as offsets of its top-right corner from the screen's
--- top-right, in its own units (it hangs from that corner, growing downward);
--- false when the frame cannot be measured
+-- where it was dropped, as offsets of its top-right corner (it hangs from
+-- that corner, growing downward) in its own units. (1.2.4, el-12) From the
+-- side of the screen that corner stands in, as every place MelloUI saves
+-- (Core's measure, MelloUI:MeasurePlace): relPoint, the screen's point --
+-- none for its top-right, the one form every place saved before had; false
+-- when the frame cannot be measured
 local function SavePosition()
-	local fs = frame:GetEffectiveScale()
-	local us = UIParent:GetEffectiveScale()
-	local right, top = frame:GetRight(), frame:GetTop()
-	if not (right and top and fs and fs > 0) then
+	local _, relPoint, x, y = MelloUI:MeasurePlace(frame, "TOPRIGHT")
+	if not x then
 		return false
 	end
-	M.db.pos = {
-		x = (right * fs - UIParent:GetRight() * us) / fs,
-		y = (top * fs - UIParent:GetTop() * us) / fs,
-	}
+	M.db.pos = { x = x, y = y, relPoint = relPoint ~= "TOPRIGHT" and relPoint or nil }
 	return true
 end
 
@@ -3638,7 +3768,9 @@ local function Section(key, label, count)
 			MelloUI:NotifySettingChanged(M.name, "collapsedSections", c)
 		end)
 		sections[key] = row
+		Art.sectionRows[#Art.sectionRows + 1] = row
 	end
+	Art.SectionLook(row)   -- (lk-12: the skin's heading look)
 	local paper = Art.Paper()
 	-- the line: the whisper window's hairline (the palette's border)
 	PaintKey(row.line, "border", "fill", 1)
@@ -3919,13 +4051,15 @@ local function Build()
 			when = function()
 				return M.isEnabled and true or false
 			end,
-			-- (pos: Edit Layout's pending place, its TOPRIGHT offsets exactly:
-			-- taken when the frame cannot be measured)
+			-- (pos: Edit Layout's pending place, its TOPRIGHT from the side of
+			-- the screen it stands in, in Core's form -- relPoint none: the
+			-- screen's CENTER -- taken when the frame cannot be measured)
 			save = function(_, pos)
 				if KeepsGlue() then
 					M.db.pos = nil
 				elseif not SavePosition() and type(pos) == "table" and tonumber(pos.x) and tonumber(pos.y) then
-					M.db.pos = { x = tonumber(pos.x), y = tonumber(pos.y) }
+					local rp = SIDE[pos.relPoint] and pos.relPoint or "CENTER"
+					M.db.pos = { x = tonumber(pos.x), y = tonumber(pos.y), relPoint = rp ~= "TOPRIGHT" and rp or nil }
 				end
 				M.db.scale = math.floor(frame:GetScale() * 100 + 0.5) / 100
 				last.valid = false   -- (dragged and scaled by the mover: laid again)
@@ -3951,6 +4085,11 @@ local function Build()
 				return nil
 			end,
 		})
+	end
+	-- (1.2.4, el-07) its box in Edit Layout: its own counterparts of the game's tracker's Edit Mode settings, in that
+	-- dialog's order (Height, Opacity, Text Size)
+	if MelloUI.EditLayoutOptions then
+		MelloUI:EditLayoutOptions(frame, { module = M.name, keys = { "maxHeight", "opacity", "textSize" } })
 	end
 	-- (the header is no handle: its mouse off, clicks go through as over
 	-- the rest of the frame -- its buttons keep theirs)
@@ -4098,6 +4237,98 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 	MarkDirty()
 end)
 
+-- (1.2.4, el-07; the user, 2026-10-29: "the objective tracker by either clicking on it in edit mode or edit layout
+-- does not have the opacity slider aswell") While Edit Mode is open the game's tracker stands in this one's place, and
+-- a click on it opens the game's own dialog: Height, Opacity, Text Size. Its Height reaches this tracker already (a
+-- Height of "Edit Mode's"); an Opacity or a Text Size the player changed there and saved is taken over when Edit Mode
+-- has closed, into this tracker's own Background Opacity and Text Size (the one store). The active layout's values are
+-- read as Edit Mode opens and again a frame after it closed (its saved layouts, MelloUI:EditModeSystemSettings: never
+-- written, none of Edit Mode's code run), in the dialog's own terms (the game's display table); a value that changed
+-- is set when the layout is the same or one saved there (a preset's changes are saved as a new layout: wowsim,
+-- 2026-10-29); a switch to a layout that was there already gives nothing.
+Art.EDIT_MODE = { Opacity = "opacity", TextSize = "textSize" }
+
+-- the saved layouts' names as a set (the presets are not among them); nil when they cannot be read plainly
+function Art.LayoutNames()
+	local get = C_EditMode and C_EditMode.GetLayouts
+	local ok, info = false, nil
+	if get then
+		ok, info = pcall(get)
+	end
+	if not (ok and type(info) == "table" and type(info.layouts) == "table") then
+		return nil
+	end
+	local names = {}
+	for _, layout in ipairs(info.layouts) do
+		local name = type(layout) == "table" and Plain(layout.layoutName)
+		if type(name) == "string" then
+			names[name] = true
+		end
+	end
+	return names
+end
+
+-- the game's tracker's Opacity (0..100) and Text Size (12..20) in the active layout, as Edit Mode's dialog shows them,
+-- and that layout's name; nil when they cannot be read plainly
+function Art.EditModeValues()
+	local S, T = Enum and Enum.EditModeSystem, Enum and Enum.EditModeObjectiveTrackerSetting
+	local system = S and S.ObjectiveTracker
+	if Secret(system) or type(system) ~= "number" or type(T) ~= "table" or not MelloUI.EditModeSystemSettings then
+		return nil
+	end
+	local ok, values, _, name = pcall(MelloUI.EditModeSystemSettings, MelloUI, system)
+	if not (ok and type(values) == "table") then
+		return nil
+	end
+	local DI = rawget(_G, "EditModeSettingDisplayInfoManager")
+	local infos = type(DI) == "table" and type(DI.systemSettingDisplayInfo) == "table" and DI.systemSettingDisplayInfo[system]
+	local out = { name = Plain(name) }
+	for setting, key in pairs(Art.EDIT_MODE) do
+		local id = T[setting]
+		local raw = id ~= nil and Plain(values[id]) or nil
+		if type(raw) == "number" then
+			local shown = raw
+			for _, info in ipairs(type(infos) == "table" and infos or {}) do
+				if type(info) == "table" and info.setting == id and info.ConvertValueForDisplay then
+					local okD, d = pcall(info.ConvertValueForDisplay, info, raw)
+					shown = okD and type(Plain(d)) == "number" and d or raw
+				end
+			end
+			out[key] = shown
+		end
+	end
+	return out
+end
+
+-- Edit Mode closed: what changed there since `was` (its values and saved layouts as it opened), taken over
+function Art.TakeEditMode(was)
+	local now = Art.EditModeValues()
+	if not (was and now) then
+		return
+	end
+	local saved = type(now.name) == "string" and type(was.layouts) == "table" and not was.layouts[now.name]
+	if was.name ~= now.name and not saved then
+		return   -- (another layout picked there)
+	end
+	if type(now.opacity) == "number" and now.opacity ~= was.opacity then
+		MelloUI:NotifySettingChanged(M.name, "opacity", math.max(0, math.min(1, now.opacity / 100)))
+	end
+	if type(now.textSize) == "number" and now.textSize ~= was.textSize then
+		MelloUI:NotifySettingChanged(M.name, "textSize", math.max(10, math.min(20, math.floor(now.textSize + 0.5))))
+	end
+end
+
+function Art.AfterEditMode()
+	if inEditMode then
+		return   -- (open again already: its next close takes over)
+	end
+	local was = Art.editWas
+	Art.editWas = nil
+	if M.isEnabled then
+		Art.TakeEditMode(was)
+	end
+end
+
 -- Edit Mode: the game's tracker comes back to be moved and sized; ours
 -- steps aside, then takes the new place and height (told through the kit's
 -- one Edit Mode registration, the bus's 'editmode'; audit, 2026-09-24)
@@ -4128,6 +4359,15 @@ local function HookEditMode()
 	MelloUI:On("editmode", function(entering)
 		inEditMode = entering
 		if M.isEnabled then
+			-- (el-07) the game's dialog's Opacity and Text Size, taken over a frame after Edit Mode closed
+			if entering then
+				Art.editWas = Art.EditModeValues()
+				if Art.editWas then
+					Art.editWas.layouts = Art.LayoutNames()
+				end
+			elseif Art.editWas then
+				C_Timer.After(0, Art.AfterEditMode)
+			end
 			SetGameTracker(not entering)
 			if frame then
 				if entering then
@@ -4412,6 +4652,13 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
+	-- (1.2.4, el-07) Background Opacity: the look's alpha alone (dragged in Edit Layout's box: no rebuild a step)
+	if key == "opacity" then
+		if looks.kit then
+			Art.Opacity(looks.kit)
+		end
+		return
+	end
 	-- its place or Scale set from outside Edit Layout (its page's Scale or
 	-- Reset Position while the mode waits for the Configurator): that wins,
 	-- Edit Layout's pending change of it is dropped (Core's rule for a place

@@ -1,1 +1,2 @@
 installer/full_string_2026-10-28_130304/MelloUI.SavedVariables.lua
+placesFor 2133.3x1200.0

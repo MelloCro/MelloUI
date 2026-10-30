@@ -948,6 +948,28 @@ local SlotLeft = Shared("OnLeave on a bag window slot", function(self)
 	end
 end, "script")
 
+-- an empty slot's own picture: the one the game's combined bags give their buttons (its Initialize, which is not
+-- called here), by the game's template. (2026-10-30: a client whose UI files lack the template -- the user's test
+-- client: "Couldn't find inherited node" -- gets the same picture by its file and the template's crop; whether the
+-- template is there is asked once, as a missing one is reported, not thrown)
+function G.SlotBack(b)
+	if G.slotTemplate == nil then
+		local XML = rawget(_G, "C_XMLUtil")
+		local ok, info = pcall(XML and XML.GetTemplateInfo or error, "ItemSlotBackgroundCombinedBagsTemplate")
+		G.slotTemplate = (ok and info ~= nil) and true or false
+	end
+	local tex
+	if G.slotTemplate then
+		tex = b:CreateTexture(nil, "BACKGROUND", "ItemSlotBackgroundCombinedBagsTemplate", -6)
+	else
+		tex = b:CreateTexture(nil, "BACKGROUND", nil, -6)
+		tex:SetTexture("Interface\\ContainerFrame\\UI-Bag-Components")
+		tex:SetTexCoord(0.64453125, 0.7890625, 0.42578125, 0.498046875)
+	end
+	tex:SetAllPoints(b)
+	b.ItemSlotBackground = tex
+end
+
 local function Holder(bag)
 	local h = S.holders[bag]
 	if not h then
@@ -975,10 +997,7 @@ local function SlotButton(bag, slot)
 		b = CreateFrame("ItemButton", nil, Holder(bag), "ContainerFrameItemButtonTemplate")
 		b:SetID(slot)
 		b:SetSize(G.BASE, G.BASE)   -- (Item Size scales it: Place)
-		-- an empty slot's own picture: the one the game's combined bags give
-		-- their buttons (its Initialize, which is not called here)
-		b.ItemSlotBackground = b:CreateTexture(nil, "BACKGROUND", "ItemSlotBackgroundCombinedBagsTemplate", -6)
-		b.ItemSlotBackground:SetAllPoints(b)
+		G.SlotBack(b)
 		Perf.HookScript(b, "OnLeave", SlotLeft)
 		list[slot] = b
 		S.made[#S.made + 1] = b
@@ -1435,7 +1454,8 @@ end
 local function FitSearch()
 	local d = win.discard
 	local to = (d and d:IsShown()) and d or win.sort
-	local x = win.shell:Inset(G.SEARCH_X - G.FIELD_IN) + G.FIELD_IN
+	-- (lk-12: under the game's window frame past its portrait, as the painted look)
+	local x = win.shell.game and G.SEARCH_X or (win.shell:Inset(G.SEARCH_X - G.FIELD_IN) + G.FIELD_IN)
 	if win.searchTo ~= to or win.searchX ~= x then
 		win.searchTo, win.searchX = to, x
 		win.settings:ClearAllPoints()
@@ -1473,6 +1493,38 @@ local function Insets()
 	if win.money then
 		win.money:ClearAllPoints()
 		win.money:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -side + 4, moneyY)
+	end
+	M.GameLook()
+end
+
+-- (lk-12, stage 2; the user's pick 1A of default_windows_sketch, 2026-10-29: "MelloUI's categories inside the game's
+-- bag frame") Under the game's window frame (the Default skin, shell.game): the money in the game's coin box where the
+-- game's bag window keeps it (Skin.CoinBox, made at its first need: 8 in from the sides and the bottom, the money's
+-- right on the box's), the items on the window's own ground as the game's bag slots lie (the dark panel round them
+-- stands down); the other looks as they were
+function M.GameLook()
+	local shell, f = win.shell, win.frame
+	if not (shell and f) then
+		return
+	end
+	local game = shell.game and true or false
+	local Skin = MelloUI.Skin
+	if game and not win.coins and Skin.CoinBox then
+		local box = Skin.CoinBox(f)
+		local c = Skin.COIN
+		box:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", c.inset, c.inset)
+		box:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -c.inset, c.inset)
+		win.coins = box
+	end
+	if win.coins then
+		win.coins:SetShown(game)
+	end
+	if game and win.money and win.coins then
+		win.money:ClearAllPoints()
+		win.money:SetPoint("RIGHT", win.coins, "RIGHT", 0, 0)
+	end
+	if win.panel then
+		win.panel:SetShown(not game)
 	end
 end
 
@@ -3811,8 +3863,7 @@ function Move.ZeroButton()
 		b = CreateFrame("ItemButton", nil, holder, "ContainerFrameItemButtonTemplate")
 		b:SetID(0)
 		b:SetSize(G.BASE, G.BASE)
-		b.ItemSlotBackground = b:CreateTexture(nil, "BACKGROUND", "ItemSlotBackgroundCombinedBagsTemplate", -6)
-		b.ItemSlotBackground:SetAllPoints(b)
+		G.SlotBack(b)
 		b:EnableMouse(false)
 		BAGS.made[#BAGS.made + 1] = b
 		BAGS.undressed = BAGS.undressed + 1
