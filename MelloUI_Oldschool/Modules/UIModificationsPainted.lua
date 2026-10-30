@@ -218,8 +218,21 @@ end
 part.defaults = { reskin = true, preloadArt = true, raidBorderPlace = "both", parchment_tracker = false,
 	parchment_character = "off", parchment_tooltip = false, parchment_dialog = false, parchmentStyle = "paper" }
 local opts = {}
+-- (el-13, the user 2026-10-30: "One row for all skins") the reskin's switch has no row of its own: Look > General's
+-- Skin picks it (`setBy`: Oldschool there, MelloUI.Skin.Pick -- the reskin on, UI Modifications on; Default or
+-- Modern takes it off); the rows that need it point there
 opts[#opts + 1] = { type = "toggle", key = "reskin", name = "Painted Kit Reskin", important = true, before = "palette",
+	setBy = { key = "skin", value = "oldschool", label = "Oldschool" },
 	desc = "Dresses the game's windows and HUD in the painted art. Off: the game's own art; every feature keeps working. Turning it on also turns on Custom Sounds and, the first time, sets up the Edit Mode layout it is made for." }
+-- Oldschool, a choice of the Skin row while this addon is loaded and of this release (Oldschool.lua's guard ran first)
+if MelloUI:OldschoolShipped() then
+	for _, o in ipairs(UM.options) do
+		if o.key == "skin" and type(o.values) == "table" then
+			o.values[#o.values + 1] = { value = "oldschool", label = "Oldschool (the painted look)" }
+			o.desc = "How MelloUI looks. Default: the game's own borders, buttons and fonts. Modern: MelloUI's own art. Oldschool: the painted art on the game's windows and HUD (it switches UI Modifications on). Only the look changes; nothing moves."
+		end
+	end
+end
 opts[#opts + 1] = { type = "toggle", key = "preloadArt", name = "Preload Artwork", requires = "reskin",
 	desc = "Loads the reskin's art during the loading screen, so windows show it at once. Uses about 13 MB of memory. Off: the art loads the first time a window needs it." }
 opts[#opts + 1] = { type = "button", name = "Switch every area on", hint = "when nothing is reskinned any more",

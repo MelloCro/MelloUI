@@ -17,13 +17,14 @@
 --   * the values by the frames: three numbers per player -- the sword this
 --     fight's damage per second (gold), the hourglass this run's (the text
 --     colour), the cross healing per second (green); a zero a dim dash.
---     Yours on top of your frame, over its name plate (the user, 2026-10-01:
---     "on top of the Unitframe, or at least be moveable"), on MelloUI's one
---     mover ("metervalues", Your Values: Edit Layout moves it, Reset puts it
---     back on the frame); the party's ON TOP of each party frame, from the
---     room of the game's own spacing: Party Values switches the game's Show
---     Party Pets on (26 px between the frames instead of 10; the user's value
---     put back when off). MelloUI never moves or spaces the frames itself
+--     Stacked in a tab on a frame's plate end: the party's (Party Values;
+--     1.2.4, fr-10: the user's pick A) on each party frame, your own party
+--     frame's too (Group Frames' Show Yourself In Your Party) -- no room
+--     between the frames needed, so the game's Show Party Pets is the
+--     player's own (a value held for the old rows given back once); yours
+--     (Your Values; fr-11, the user: "Fixed to the frame") on your player
+--     frame, moved, scaled and faded with it. Its old row's own mover
+--     ("metervalues") is gone: a place stored for it is no longer read
 --   * the race bar in a fight (Modules/MeterBar.lua), the summary in the
 --     widget column after it, and the Fight History window with its chat
 --     button (Modules/MeterHistory.lua)
@@ -53,7 +54,7 @@
 -- Kept per character (MelloUIFights, SavedVariablesPerCharacter): the last
 -- Fights Kept fights of THIS login, over a /reload, dropped at the next login
 -- (isInitialLogin, and the login's own stamp for a module switched on later).
--- Nothing is made at login: one event frame with OnEnable; the lines with
+-- Nothing is made at login: one event frame with OnEnable; the tabs with
 -- the first placement after login (your frame) or in a group (the party's);
 -- the race bar with the first fight; the History with its first open.
 --
@@ -99,13 +100,23 @@ local T = {
 	SUMMARY_HOLD = 8,       -- the summary's time in the column after a fight (user, 2026-10-01: "only few seconds
 	                        -- before fading"); longer while the pointer is on it or its list is open
 	LOGIN_SLACK = 10,       -- the login's stamp read again: within this, the same login
-	-- the values lines
-	SIZE = 11, GLYPH = 10, GAP = 6, INNER = 2, HEIGHT = 12, DIM = 0.45,
-	-- yours on top of your frame (user, 2026-10-01): over the name plate,
-	-- from the name's left; the row's width (its plate in Edit Layout)
-	ME_Y = 6, ME_X = 46, MINE_W = 150,
-	-- the party's on top of each member frame: from the name's left (46)
-	PARTY_X = 46, PARTY_Y = 1,
+	-- the values: a zero's dash this dim
+	DIM = 0.45,
+	-- (fr-10) the tab on a frame's plate end: its width (the widest value, "999.9", with its icon), its rows' text
+	-- and icons, the icons' inset from the plate's side, the number's gap, its rims' depth
+	TAB_W = 42, TAB_SIZE = 10, TAB_GLYPH = 9, TAB_INSET = 4, TAB_GAP = 2, TAB_RIM = 3.5,
+	-- the game's party picture on its 120 x 53 member (PartyFrameTemplates.xml: 120 wide, 1 in from its side) and
+	-- its plate's end and edge on the member, for a frame with no picture to read (the game's own art); OLD_X: past
+	-- the painted skin's bars (their painted ends reach 9.2 past the member's side, their shadows 15: measured in
+	-- wowsim, fr-10); ASIDE_GAP: the tab's gap past the game's own icons there
+	PIC_W = 120, PIC_IN = 1, PLATE_END = 118, PLATE_TOP = 5, PLATE_BOTTOM = 40.5, OLD_X = 14,
+	ASIDE_GAP = 2,
+	-- (fr-11) yours on your player frame: the game's player picture (PlayerFrame.xml: 198 x 71 in the middle of the
+	-- 232 x 100 frame) its plate's end and edge on the frame, for a frame with no picture to read; ME_OLD: past the
+	-- painted skin's bars there (the health bar's gem cap reaches 12.5 past the frame's side, its shadow 27: measured
+	-- in wowsim, fr-11; the same gap past the paint as the party's OLD_X)
+	ME_END = 213, ME_TOP = 25.5, ME_BOTTOM = 75.5, ME_OLD = 249,
+	PLACE_WAIT = 0.2,       -- the tabs laid again this long after the look, the flip or your party frame changed
 }
 Meter.T = T
 
@@ -116,7 +127,6 @@ local TEXT = {
 	lost = "You died",
 	you = "You",
 	summaryLabel = "Fight summary",
-	mineLabel = "Your Values",
 	summaryHint = "Click: this fight in the Fight History",
 	summaryText = "You %s \194\183 %s/s \194\183 #%d of %d",
 	summarySolo = "You %s \194\183 %s/s",
@@ -143,8 +153,8 @@ local M = MelloUI:RegisterModule("Meter", {
 	icon = "Interface\\Icons\\Ability_DualWield",
 	flavour = "How the fight went, where you already look.",
 	enabledByDefault = true,
-	-- the player's own game settings, given back when off (the game's meter,
-	-- the party's pets): never in a profile
+	-- the player's own game settings, given back when off (the game's meter;
+	-- the party's pets, given back once since fr-10): never in a profile
 	keep = { "savedMeter", "savedPets" },
 	defaults = {
 		values = true,
@@ -164,9 +174,9 @@ local M = MelloUI:RegisterModule("Meter", {
 	},
 	options = {
 		{ type = "toggle", key = "values", name = "Your Values",
-		  desc = "Your damage per second, run total and healing per second above your player frame." },
+		  desc = "Your damage per second, run total and healing per second beside your player frame." },
 		{ type = "toggle", key = "party", name = "Party Values",
-		  desc = "The same numbers above each party frame. Turns on the game's Show Party Pets to make room." },
+		  desc = "The same numbers beside each party frame, and beside your own when it shows in your party." },
 		{ type = "toggle", key = "raid", name = "On Raid-Style Frames",
 		  desc = "A damage or healing number on each raid-style frame. Point at a frame for all three." },
 		{ type = "toggle", key = "bar", name = "Race Bar",
@@ -753,9 +763,10 @@ Record = function(fight)
 end
 
 --------------------------------------------------------------------------------
--- The game's meter switched off while ours is on (its own CVar), and the
--- party frames' room (the game's Show Party Pets) while Party Values is on.
--- Both out of combat only: in a fight they wait for its end.
+-- The game's meter switched off while ours is on (its own CVar). Out of
+-- combat only: in a fight it waits for its end. (Until fr-10 Party Values
+-- held the game's Show Party Pets on for its rows' room; a value noted then
+-- is given back once.)
 --------------------------------------------------------------------------------
 
 local CVAR = { meter = "damageMeterEnabled", pets = "showPartyPets" }
@@ -778,16 +789,34 @@ function Meter.Switches()
 	S.cvarDue = false
 	local on = M.isEnabled and true or false
 	Hold(CVAR.meter, "savedMeter", on, "0")
-	Hold(CVAR.pets, "savedPets", on and M.db and M.db.party ~= false or false, "1")
+	-- (fr-10, the user 2026-10-30: Show Party Pets "back to your own setting" -- the tabs need no room: never held)
+	Hold(CVAR.pets, "savedPets", false, "1")
 end
 
 --------------------------------------------------------------------------------
--- The values lines: yours under your frame's stack, the party's on top of
--- each party frame. Anchors only (laid by one pass at the events that move
--- the stack); the texts set at most 4 times a second in a fight
+-- The values: a tab on each party frame's plate end (1.2.4, fr-10, the user's
+-- pick A of 2026-10-30 -- "rework how the party members damage meters are
+-- displayed and where they are positioned"; the sketch in
+-- MelloUI-BuildData/output/meter_values_sketch) and on your player frame's
+-- (fr-11, the user, 2026-10-30: "you forgot the DPS meter numbers on the
+-- Player Unitframe", then "Fixed to the frame": it replaced the row over your
+-- frame on its own mover): the three values stacked, the sword on the
+-- name's row, in a box cut from the plate's own picture (its rims and a bar
+-- slot's fill: MelloUI Frames' picture, the Default skin's the game's own)
+-- joined to the plate's free end -- its right, its left while Flip
+-- Horizontally mirrors a party member; under the painted skin (no picture of
+-- the plate to cut) the soft shade band past its painted bars. Your own party
+-- frame (Group Frames' Show Yourself In Your Party) wears one too: yours on
+-- both frames then, each its own frame's. The game's own icons on a party
+-- frame's side shown (its "not here" eye, a boss's power bar): the tab past
+-- them. Each a child of its frame: moved, scaled, shown and faded with it. A
+-- tab shows once it has a number (a fight's, the run's) or in a fight.
+-- Anchors only (laid by one pass at the events that move the frames or
+-- change their look; yours also as your frame's picture swaps); the texts set
+-- at most 4 times a second in a fight
 --------------------------------------------------------------------------------
 
-local Lines = { me = nil, party = {} }
+local Lines = { me = nil, party = {}, self = nil }
 Meter.Lines = Lines
 local PARTS = { "sword", "hourglass", "heal" }
 -- (0.25.0, the user's Batch 13: MelloUI's icon set) a part's mark, its own colours: the sword, the hourglass, the
@@ -805,57 +834,244 @@ Meter.PaintPart = PaintPart   -- (the raid-style frames' number: Modules/MeterRa
 
 local BAND = { alpha = 0.6, feather = 10 }
 
-local function NewLine(parent, align)
-	local f = CreateFrame("Frame", nil, parent)
-	f:SetSize(1, T.HEIGHT)
+-- The tab. Cut from the plate's picture by its plain parts (Unit Frames' Frames.CUT, in texels of the picture drawn
+-- two a unit): a bar slot's fill, the top and bottom rims' runs (stretched along: a rim is the same all along), the
+-- plate's end (its rim stretched down: the same all down) and its two corners. Made once per frame, laid at a
+-- placement. Its host: the frame kind it stands on -- where the plate ends on a frame with no picture to cut (the
+-- game's own art with MelloUI Frames off) and past the painted skin's bars, and the game's own icons on the plate's
+-- side, followed by their Show / Hide (PartyMemberFrameTemplate: its "not here" eye -- another group, a summons,
+-- phased -- and a boss's power bar; the player frame has none there)
+local Tab = {
+	PIECES = { "fill", "top", "bottom", "edge", "topEnd", "bottomEnd" },
+	HOST = {
+		party = { x = T.PLATE_END, top = T.PLATE_TOP, bottom = T.PLATE_BOTTOM, painted = T.PIC_W + T.OLD_X,
+			aside = { "NotPresentIcon", "PowerBarAlt" } },
+		player = { x = T.ME_END, top = T.ME_TOP, bottom = T.ME_BOTTOM, painted = T.ME_OLD },
+	},
+	lineOf = setmetatable({}, { __mode = "k" }),   -- [a frame] = its tab
+	hooked = setmetatable({}, { __mode = "k" }),   -- [one of the game's icons] = true
+}
+Meter.Tab = Tab   -- (the tests)
+
+function Tab.New(member, host)
+	host = host or Tab.HOST.party
+	local f = CreateFrame("Frame", nil, member)
+	f:SetSize(T.TAB_W, host.bottom - host.top)
 	f:EnableMouse(false)
-	local line = { frame = f, align = align, parts = {} }
+	f:Hide()
+	local line = { frame = f, tab = true, member = member, host = host, parts = {}, cut = {}, want = false,
+		data = false }
+	local Kit = MelloUI.Kit
+	for _, piece in ipairs(Tab.PIECES) do
+		local t = f:CreateTexture(nil, "BACKGROUND", nil, piece == "fill" and 0 or 1)
+		t:Hide()
+		-- (Dark Mode: the kit's shade, as MelloUI Frames' own pictures wear it)
+		if Kit and Kit.RegisterTexture then
+			Kit:RegisterTexture(t)
+		end
+		line.cut[piece] = t
+	end
 	for i, kind in ipairs(PARTS) do
 		local g = f:CreateTexture(nil, "ARTWORK")
 		W.Icon(g, Meter.ICON[kind])
-		g:SetSize(T.GLYPH, T.GLYPH)
+		g:SetSize(T.TAB_GLYPH, T.TAB_GLYPH)
 		local fs = f:CreateFontString(nil, "OVERLAY")
-		Look.Text(fs, "text", T.SIZE)
+		Look.Text(fs, "text", T.TAB_SIZE)
 		fs:SetShadowOffset(1, -1)
 		fs:SetText(TEXT.dash)
 		local p = { glyph = g, text = fs, kind = kind }
 		PaintPart(p)
 		line.parts[i] = p
 	end
-	-- chained by anchors: a secret text has no width to read, the engine
-	-- lays it
-	local prev = nil
-	if align == "LEFT" then
-		for _, p in ipairs(line.parts) do
-			if prev then
-				p.glyph:SetPoint("LEFT", prev.text, "RIGHT", T.GAP, 0)
-			else
-				p.glyph:SetPoint("LEFT", f, "LEFT", 0, 0)
-			end
-			p.text:SetPoint("LEFT", p.glyph, "RIGHT", T.INNER, 0)
-			prev = p
-		end
-	else
-		for i = #line.parts, 1, -1 do
-			local p = line.parts[i]
-			if prev then
-				p.text:SetPoint("RIGHT", prev.glyph, "LEFT", -T.GAP, 0)
-			else
-				p.text:SetPoint("RIGHT", f, "RIGHT", 0, 0)
-			end
-			p.glyph:SetPoint("RIGHT", p.text, "LEFT", -T.INNER, 0)
-			prev = p
-		end
-	end
 	local band = MelloUI.Shade:Band(f, BAND)
 	if band then
-		band:Anchor(line.parts[1].glyph, line.parts[#line.parts].text, 6, MelloUI.Shade:LinePadY(T.SIZE))
+		band:Anchor(f, 0, 0)
+		band:SetShown(false)
 	end
 	line.band = band
+	Tab.lineOf[member] = line
 	return line
 end
 
--- a value: a plain or secret number, nil for "none" (a dim dash)
+-- the box cut from the plate's picture (`file` and the picture's place in it, `cut` its plain parts), its end on the
+-- right or (mirror) the left; no file: the soft shade band. Its anchors laid again only when its side changed
+function Tab.Art(line, file, l, r, t, b, mirror, cut)
+	local on = file ~= nil and type(cut) == "table"
+	for _, piece in ipairs(Tab.PIECES) do
+		local tex, c = line.cut[piece], on and cut[piece]
+		if c then
+			local x0, x1 = l + (r - l) * c[1] / cut[1], l + (r - l) * c[2] / cut[1]
+			if mirror then
+				x0, x1 = x1, x0
+			end
+			MelloUI.Icons.Set(tex, file, nil, x0, x1, t + (b - t) * c[3] / cut[2], t + (b - t) * c[4] / cut[2])
+		end
+		tex:SetShown(c and true or false)
+	end
+	if line.band then
+		line.band:SetShown(not on)
+	end
+	if not on or line.artSide == mirror then
+		return
+	end
+	line.artSide = mirror
+	local f, R = line.frame, T.TAB_RIM
+	local out, inn = mirror and "LEFT" or "RIGHT", mirror and "RIGHT" or "LEFT"
+	local back = mirror and R or -R   -- (from the end toward the plate)
+	local pieces = line.cut
+	pieces.fill:ClearAllPoints()
+	pieces.fill:SetAllPoints(f)
+	for _, row in ipairs({ { pieces.top, "TOP" }, { pieces.bottom, "BOTTOM" } }) do
+		local tex, side = row[1], row[2]
+		tex:ClearAllPoints()
+		tex:SetPoint(side .. inn, f, side .. inn, 0, 0)
+		tex:SetPoint(side .. out, f, side .. out, back, 0)
+		tex:SetHeight(R)
+	end
+	for _, row in ipairs({ { pieces.topEnd, "TOP" }, { pieces.bottomEnd, "BOTTOM" } }) do
+		row[1]:ClearAllPoints()
+		row[1]:SetPoint(row[2] .. out, f, row[2] .. out, 0, 0)
+		row[1]:SetSize(R, R)
+	end
+	pieces.edge:ClearAllPoints()
+	pieces.edge:SetPoint("TOP" .. out, f, "TOP" .. out, 0, -R)
+	pieces.edge:SetPoint("BOTTOM" .. out, f, "BOTTOM" .. out, 0, R)
+	pieces.edge:SetWidth(R)
+end
+
+-- the three rows between the rims: the icons by the plate, the numbers after them (a secret text has no width to
+-- read: the engine lays it); laid again only when the side or the height changed
+function Tab.Rows(line, mirror, height)
+	if line.rowSide == mirror and line.rowHeight == height then
+		return
+	end
+	line.rowSide, line.rowHeight = mirror, height
+	local f, R = line.frame, T.TAB_RIM
+	local step = (height - 2 * R) / #line.parts
+	for k, p in ipairs(line.parts) do
+		local y = -(R + step * (k - 0.5))
+		p.glyph:ClearAllPoints()
+		p.text:ClearAllPoints()
+		if mirror then
+			p.glyph:SetPoint("RIGHT", f, "TOPRIGHT", -T.TAB_INSET, y)
+			p.text:SetPoint("RIGHT", p.glyph, "LEFT", -T.TAB_GAP, 0)
+		else
+			p.glyph:SetPoint("LEFT", f, "TOPLEFT", T.TAB_INSET, y)
+			p.text:SetPoint("LEFT", p.glyph, "RIGHT", T.TAB_GAP, 0)
+		end
+	end
+end
+
+-- how far the game's own icons on the plate's side (its host's `aside`) reach past the member's side now (its units;
+-- 0: none shown)
+function Tab.Aside(member, keys)
+	local far = 0
+	for _, key in ipairs(keys or {}) do
+		local r = rawget(member, key)
+		local okS, shown = false, nil
+		if IsFrame(r) then
+			okS, shown = pcall(r.IsShown, r)
+		end
+		if okS and shown == true then
+			local okP, _, _, _, x = pcall(r.GetPoint, r, 1)
+			local okW, w = pcall(r.GetWidth, r)
+			local okC, s = pcall(r.GetScale, r)
+			x, w, s = okP and Num(x), okW and Num(w), okC and Num(s) or 1
+			if x and w then
+				far = max(far, abs(x) + w * s)
+			end
+		end
+	end
+	return far
+end
+
+-- the picture's size on the member (the game's picture's own; a secret or refused answer: its cut's, two texels a
+-- unit)
+local function PictureSize(tex, cut)
+	local ok, w, h = pcall(tex.GetSize, tex)
+	w, h = ok and Num(w), ok and Num(h)
+	if not (w and h and w > 0 and h > 0) then
+		return cut[1] / 2, cut[2] / 2
+	end
+	return w, h
+end
+
+-- the game's icon on the side shown or hidden: its member's tab laid past it, or back on the plate
+Tab.OnAside = Perf.Shared("Show / Hide of a party frame's 'not here' eye or power bar: the meter's tab", function(icon)
+	local okP, member = pcall(icon.GetParent, icon)
+	local line = okP and Tab.lineOf[member]
+	if line and line.want and line.aside ~= Tab.Aside(member, line.host.aside) then
+		Tab.Place(line)
+	end
+end)
+
+-- laid on its frame's plate as the frame wears it now (Unit Frames' M:PlateCut)
+function Tab.Place(line)
+	local member, f, host = line.member, line.frame, line.host
+	local uf = MelloUI:GetModule("UnitFrames")
+	local tex, edge, mirror, file, l, r, t, b, cut, painted
+	if uf and uf.PlateCut then
+		local ok, a1, a2, a3, a4, a5, a6, a7, a8, a9 = pcall(uf.PlateCut, uf, member)
+		if ok and a1 then
+			tex, edge, mirror, file, l, r, t, b, cut = a1, a2, a3 and true or false, a4, a5, a6, a7, a8, a9
+		elseif ok then
+			painted = a2 and true or false
+		end
+	end
+	local far = Tab.Aside(member, host.aside)
+	line.aside = far
+	local height
+	f:ClearAllPoints()
+	if tex and type(cut) == "table" and type(edge) == "table" and Num(edge[1]) and Num(edge[2]) and Num(edge[3])
+		and Num(edge[4]) then
+		local w, h = PictureSize(tex, cut)
+		height = (edge[4] - edge[2]) * h
+		if mirror then
+			local x = edge[1] * w
+			if far > 0 then
+				x = min(x, T.PIC_IN - far - T.ASIDE_GAP)
+			end
+			f:SetPoint("TOPRIGHT", tex, "TOPLEFT", x, -edge[2] * h)
+		else
+			local x = edge[3] * w
+			if far > 0 then
+				x = max(x, w - T.PIC_IN + far + T.ASIDE_GAP)
+			end
+			f:SetPoint("TOPLEFT", tex, "TOPLEFT", x, -edge[2] * h)
+		end
+	else
+		file, mirror = nil, false
+		height = host.bottom - host.top
+		local x = painted and host.painted or host.x
+		if far > 0 then
+			x = max(x, T.PIC_W + far + T.ASIDE_GAP)
+		end
+		f:SetPoint("TOPLEFT", member, "TOPLEFT", x, -host.top)
+	end
+	f:SetHeight(height)
+	Tab.Art(line, file, l, r, t, b, mirror, cut)
+	Tab.Rows(line, mirror, height)
+	for _, key in ipairs(host.aside or {}) do
+		local icon = rawget(member, key)
+		if IsFrame(icon) and not Tab.hooked[icon] then
+			Tab.hooked[icon] = true
+			for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
+				Perf.hooksecurefunc(icon, method, Tab.OnAside)
+			end
+		end
+	end
+end
+
+-- shown while wanted and holding a number (or in a fight); written only when it changes
+function Tab.Show(line)
+	local on = (line.want and (line.data or S.fighting)) and true or false
+	if line.on ~= on then
+		line.on = on
+		line.frame:SetShown(on)
+	end
+end
+
+-- a value: a plain or secret number, nil for "none" (a dim dash). Whether it is a number
 local function SetPart(p, v)
 	if v ~= nil and not Secret(v) and (Finite(v) or 0) <= 0 then
 		v = nil
@@ -864,19 +1080,24 @@ local function SetPart(p, v)
 	if text == nil then
 		p.text:SetText(TEXT.dash)
 		p.text:SetAlpha(T.DIM)
-	else
-		p.text:SetText(text)
-		p.text:SetAlpha(1)
+		return false
 	end
+	p.text:SetText(text)
+	p.text:SetAlpha(1)
+	return true
 end
 
 local function SetLine(line, fight, run, heal)
 	if not line then
 		return
 	end
-	SetPart(line.parts[1], fight)
-	SetPart(line.parts[2], run)
-	SetPart(line.parts[3], heal)
+	local a = SetPart(line.parts[1], fight)
+	local b = SetPart(line.parts[2], run)
+	local c = SetPart(line.parts[3], heal)
+	if line.tab then
+		line.data = a or b or c
+		Tab.Show(line)
+	end
 end
 
 -- the last fight's entry for a key (plain), or nil (Meter.LastEntry)
@@ -926,10 +1147,33 @@ local function PartyLine(i)
 	if not member then
 		return nil
 	end
-	line = NewLine(member, "LEFT")
-	line.frame:SetPoint("BOTTOMLEFT", member, "TOPLEFT", T.PARTY_X, T.PARTY_Y)
+	line = Tab.New(member)
 	Lines.party[i] = line
 	return line
+end
+
+-- your own party frame's tab: on Group Frames' frame for you while it shows in your party (its Show Yourself In Your
+-- Party: MelloUI.GroupFrames:HostOf("player") a "party" frame), made the first time; it shows and hides with it
+local function SelfLine()
+	local GF = MelloUI.GroupFrames
+	local frame = nil
+	if GF and GF.HostOf then
+		local ok, e = pcall(GF.HostOf, GF, "player")
+		if ok and type(e) == "table" and e.kind == "party" and IsFrame(e.frame) then
+			frame = e.frame
+		end
+	end
+	if not frame then
+		return Lines.self
+	end
+	if not (Lines.self and Lines.self.member == frame) then
+		if Lines.self then
+			Lines.self.want = false
+			Tab.Show(Lines.self)
+		end
+		Lines.self = Tab.New(frame)
+	end
+	return Lines.self
 end
 
 -- after a fight (and at a placement): every line from the records
@@ -943,6 +1187,9 @@ function Meter.LinesAfter()
 	local me = MyGUID()
 	if Lines.me and M.db.values ~= false then
 		LineFromRecord(Lines.me, me)
+	end
+	if Lines.self then
+		LineFromRecord(Lines.self, me)
 	end
 	if S.partyOn then
 		for i = 1, #PARTY_UNITS do
@@ -1042,6 +1289,9 @@ local function LinesLive(dmg, heal)
 	if not S.partyOn then
 		return
 	end
+	if Lines.self then
+		SetLine(Lines.self, mine and mine.amountPerSecond, RunRate(MyGUID(), false), myHeal and myHeal.amountPerSecond)
+	end
 	for i, unit in ipairs(PARTY_UNITS) do
 		local line = Lines.party[i]
 		if line then
@@ -1051,85 +1301,63 @@ local function LinesLive(dmg, heal)
 	end
 end
 
--- yours: on top of your frame, over its name plate, from the name's left as
--- the party's are (the home of its mover: Edit Layout moves it)
-local function MineHome(f)
-	f:ClearAllPoints()
-	local name, pf = _G.PlayerName, _G.PlayerFrame
-	if IsFrame(name) then
-		f:SetPoint("BOTTOMLEFT", name, "TOPLEFT", 0, T.ME_Y)
-	elseif IsFrame(pf) then
-		f:SetPoint("BOTTOMLEFT", pf, "TOPLEFT", T.ME_X, 0)
-	else
-		f:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
-	end
-end
-
 local function MineWanted()
 	return M.isEnabled and M.db and M.db.values ~= false or false
 end
 
--- a frame of ours on UIParent (so Edit Layout can move it), following your
--- frame: shown with it, faded with it (post-hooks on the player frame,
--- copying only)
-local function MineFollow()
+-- your frame's picture swapped (the class bar's art, a vehicle's): your tab laid on the one it wears now, at once --
+-- in a fight too (our own frame's anchors only)
+Tab.OnPlayerArt = Perf.Shared("PlayerFrame_ToPlayerArt / ToVehicleArt: the meter's tab on your frame", function()
 	local line = Lines.me
+	if line and line.want then
+		Tab.Place(line)
+	end
+end)
+
+-- yours: the tab on your player frame, made the first time it is wanted
+local function MineLine()
 	local pf = _G.PlayerFrame
-	if not (line and IsFrame(pf)) then
-		return
+	if Lines.me or not IsFrame(pf) then
+		return Lines.me
 	end
-	local ok, shown = pcall(pf.IsVisible, pf)
-	line.frame:SetShown(S.linesOn and MineWanted() and (not ok or shown ~= false))
-	local okA, a = pcall(pf.GetAlpha, pf)
-	a = okA and Num(a) or 1
-	if line.alpha ~= a then
-		line.alpha = a
-		line.frame:SetAlpha(a)
+	Lines.me = Tab.New(pf, Tab.HOST.player)
+	for _, name in ipairs({ "PlayerFrame_ToPlayerArt", "PlayerFrame_ToVehicleArt" }) do
+		if type(rawget(_G, name)) == "function" then
+			Perf.hooksecurefunc(name, Tab.OnPlayerArt)
+		end
 	end
+	return Lines.me
 end
 
-local function MakeMine()
-	local line = NewLine(UIParent, "LEFT")
-	line.frame:SetSize(T.MINE_W, T.HEIGHT)
-	line.frame:SetFrameStrata("LOW")
-	Lines.me = line
-	MineHome(line.frame)
-	line.entry = MelloUI:RegisterMover(line.frame, line.frame, { key = "metervalues", default = MineHome,
-		min = 0.5, max = 2, base = 1, label = TEXT.mineLabel, page = "BarsMeters", when = MineWanted, category = "combat" })
-	if not MelloUI:RestorePosition("metervalues", line.frame) then
-		MineHome(line.frame)
-	end
-	local pf = _G.PlayerFrame
-	if IsFrame(pf) then
-		Perf.HookScript(pf, "OnShow", MineFollow)
-		-- (hidden with it: told directly, a frame may still read shown in
-		-- its own OnHide)
-		Perf.HookScript(pf, "OnHide", function()
-			if Lines.me then
-				Lines.me.frame:Hide()
-			end
-		end)
-		Perf.hooksecurefunc(pf, "SetAlpha", MineFollow)
-	end
-	return line
-end
-
--- the one placement pass: the lines made where wanted, shown or hidden, laid
+-- the one placement pass: the tabs made where wanted, shown or hidden, laid
 function Meter.PlaceLines()
 	if not S.linesOn then
 		return
 	end
-	local db = M.db
-	if db.values ~= false and not Lines.me and IsFrame(_G.PlayerFrame) then
-		MakeMine()
+	local mine = MineWanted()
+	local me = mine and MineLine() or Lines.me
+	if me then
+		me.want = mine
+		if mine then
+			Tab.Place(me)
+		end
+		Tab.Show(me)
 	end
-	MineFollow()
 	local grouped = Ask(_G.IsInGroup) == true and Ask(_G.IsInRaid) ~= true
-	for i = 1, #PARTY_UNITS do
-		local want = S.partyOn and grouped
-		local line = want and PartyLine(i) or Lines.party[i]
+	local want = (S.partyOn and grouped) and true or false
+	for i = 1, #PARTY_UNITS + 1 do
+		local line
+		if i > #PARTY_UNITS then
+			line = want and SelfLine() or Lines.self
+		else
+			line = want and PartyLine(i) or Lines.party[i]
+		end
 		if line then
-			line.frame:SetShown(want and true or false)
+			line.want = want
+			if want then
+				Tab.Place(line)
+			end
+			Tab.Show(line)
 		end
 	end
 	if S.fighting then
@@ -1143,10 +1371,15 @@ end
 
 local function HideLines()
 	if Lines.me then
-		Lines.me.frame:Hide()
+		Lines.me.want = false
+		Tab.Show(Lines.me)
 	end
-	for _, line in pairs(Lines.party) do
-		line.frame:Hide()
+	for i = 1, #PARTY_UNITS + 1 do
+		local line = Lines.party[i] or (i > #PARTY_UNITS and Lines.self) or nil
+		if line then
+			line.want = false
+			Tab.Show(line)
+		end
 	end
 end
 
@@ -1159,8 +1392,42 @@ local function Repaint()
 	if Lines.me then
 		Each(Lines.me)
 	end
+	if Lines.self then
+		Each(Lines.self)
+	end
 	for _, line in pairs(Lines.party) do
 		Each(line)
+	end
+end
+
+-- the tabs laid again a moment after the frames' look changed (the skin, MelloUI Frames, Flip Horizontally, a
+-- member's art) or your party frame came or went (Group Frames' layout and settings): out of combat, once a burst
+local function PlaceDue()
+	S.placeDue = false
+	if M.isEnabled and S.ready and not MelloUI.InCombat() then
+		Meter.PlaceLines()
+	end
+end
+
+local function PlaceSoon()
+	if not S.placeDue then
+		S.placeDue = true
+		C_Timer.After(T.PLACE_WAIT, PlaceDue)
+	end
+end
+
+-- [module] = true (any setting) or { [key] = true }: the settings that change the party frames' look or your frame
+local PLACE_KEYS = { UnitFrames = { partyFlip = true, frames = true }, GroupFrames = true }
+local function OnSetting(name, key)
+	local keys = PLACE_KEYS[name]
+	if keys == true or (type(keys) == "table" and keys[key]) then
+		PlaceSoon()
+	end
+end
+
+local function OnGroupFrames(what)
+	if what == "layout" then
+		PlaceSoon()
 	end
 end
 
@@ -1448,8 +1715,7 @@ end
 
 local function OnEvent(_, event, a1, a2)
 	if not M.isEnabled then
-		-- (switched off in a fight: the game's meter and Show Party Pets
-		-- back at its end)
+		-- (switched off in a fight: the game's meter back at its end)
 		if event == "PLAYER_REGEN_ENABLED" and S.cvarDue then
 			Meter.Switches()
 			Events()
@@ -1497,9 +1763,9 @@ local function OnEvent(_, event, a1, a2)
 	elseif event == "DAMAGE_METER_RESET" then
 		LiveSoon()
 	elseif event == "CVAR_UPDATE" then
-		-- the game's meter switched on again (its settings), or Show Party
-		-- Pets off, while ours holds them: held again (out of combat)
-		if (a1 == CVAR.meter or a1 == CVAR.pets) and not MelloUI.InCombat() then
+		-- the game's meter switched on again (its settings) while ours holds
+		-- it off: held again (out of combat)
+		if a1 == CVAR.meter and not MelloUI.InCombat() then
 			Meter.Switches()
 		end
 	end
@@ -1617,35 +1883,44 @@ local function PvAt(n)
 	sort(f.src, ByDamage)
 end
 
--- a stand-in's line (Core/Preview.lua's), as a party frame's (PartyLine), on
--- the stand-ins' holder
-local function PvLine(i)
+-- a stand-in's tab (Core/Preview.lua's), as a party frame's (PartyLine): laid
+-- on its plate at the pull
+local function PvLine(i, place)
 	local P = MelloUI.Preview
 	local stand = P and P.StandIn and P:StandIn(i)
 	if not stand then
 		return nil
 	end
 	local line = pv.lines[i]
-	if not line then
-		line = NewLine(stand:GetParent(), "LEFT")
+	if not (line and line.member == stand) then
+		if line then
+			line.want = false
+			Tab.Show(line)
+		end
+		line = Tab.New(stand)
 		pv.lines[i] = line
+		place = true
 	end
-	line.frame:ClearAllPoints()
-	line.frame:SetPoint("BOTTOMLEFT", stand, "TOPLEFT", T.PARTY_X * stand:GetScale(), T.PARTY_Y)
-	line.frame:Show()
+	line.want = true
+	if place then
+		Tab.Place(line)
+	end
 	return line
 end
 
 -- the numbers on every line, and the race bar's pins
-local function PvShow(mode)
+local function PvShow(mode, place)
 	local f = pv.fight
 	for _, s in ipairs(f.src) do
 		if s.me then
 			if Lines.me and M.db.values ~= false then
 				SetLine(Lines.me, s.dps, s.dps, s.hps)
 			end
+			if Lines.self and mode == "party" and S.partyOn then
+				SetLine(Lines.self, s.dps, s.dps, s.hps)
+			end
 		elseif s.party and mode == "party" and S.partyOn then
-			local line = PvLine(s.party)
+			local line = PvLine(s.party, place)
 			if line then
 				SetLine(line, s.dps, s.dps, s.hps)
 			end
@@ -1681,7 +1956,7 @@ local function OnPreview(beat, mode, n)
 		return
 	elseif beat == "pull" then
 		PvAt(0)
-		PvShow(mode)
+		PvShow(mode, true)
 	elseif beat == "hit" then
 		PvAt(n)
 		PvShow(mode)
@@ -1694,7 +1969,8 @@ local function OnPreview(beat, mode, n)
 	elseif beat == "stop" then
 		pv.fight = nil
 		for _, line in pairs(pv.lines) do
-			line.frame:Hide()
+			line.want = false
+			Tab.Show(line)
 		end
 		if Meter.Bar and Meter.Bar.Preview then
 			Meter.Bar.Preview(false)
@@ -1770,6 +2046,11 @@ function M:OnEnable(db)
 	self.db = db
 	MelloUI:On("palette", Repaint, OWNER)
 	MelloUI:On("editlayout", OnEditLayout, OWNER)
+	-- (fr-10) the party's tabs laid again as the frames' look, their flip or your party frame change
+	MelloUI:On("setting", OnSetting, OWNER)
+	MelloUI:On("skin", PlaceSoon, OWNER)
+	MelloUI:On("partyart", PlaceSoon, OWNER)
+	MelloUI:On("groupframes", OnGroupFrames, OWNER)
 	-- (the events now: the login's PLAYER_ENTERING_WORLD drops the last
 	-- login's fights; the rest waits for Ready)
 	Events()
@@ -1778,7 +2059,16 @@ end
 
 function M:OnDisable()
 	MelloUI:Off(OWNER)
-	Apply()   -- (the game's meter and Show Party Pets back as they were)
+	Apply()   -- (the game's meter back as it was)
+end
+
+-- (fr-10; Group Frames' party plate, MelloUI_GroupFrames/GroupHeaders.lua GameFootprint) how far the party's values
+-- reach past a party frame's side, in its units: its tab while Party Values is on, else 0
+function M:PartyReach()
+	if not (self.isEnabled and self.db and self.db.party ~= false) then
+		return 0
+	end
+	return T.PLATE_END - T.PIC_W + T.TAB_W
 end
 
 function M:OnSettingChanged(key, value, db)

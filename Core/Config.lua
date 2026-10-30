@@ -171,14 +171,14 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "1.2.4", lines = {
-		"Heal and cooldown effects: bolder, across the whole frame, the gold border lit all round; a threat halo fitted to each frame (untick Hide Combat Flash).",
+		"Effects: bolder heals and cooldowns across the whole frame; Buff Landings in each school's colour; a threat halo (untick Hide Combat Flash).",
 		"Heals burst, seal onto the portrait or close round the frame as a shield; cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards, golden barriers, afterimages.",
-		"Frames: Hide Heal Numbers on your portrait; party: Flip Horizontally, Mouseover Highlight, raid frames wear Raid's look and stay in place when you switch.",
+		"Frames: Hide Heal Numbers on your portrait; the meter's numbers in a tab on your frame and each party frame; party: Flip, Mouseover Highlight, Raid's look in raid frames.",
 		"Previews: a dragged part stays inside; indicators: right-click to remove, spell groups to drag onto your frame (heals over time, defensives ...).",
-		"Skin (Look > General): Default gives MelloUI's windows, bags, chat, whispers, tracker, minimap and party frames the game's look; effects per skin.",
+		"Skin (Look > General): Default, Modern or Oldschool in one row; Default gives MelloUI's windows, bags, chat, tracker and party frames the game's look.",
 		"A new installer: skin first, then each part; one setup for every skin, fitted to your screen, reloaded on Keep; moved frames keep their screen edges. Preview: Solo, Party, Raid Fight.",
 		"Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles; your text size stays after a /reload.",
-		"Services: the AddOns group finds every addon's minimap button, not only LibDBIcon's.",
+		"Level Up Card: what each level gave you, and the spells now waiting at your trainer.",
 		"The configurator: one painted window per skin that moves a little while open; plain one-row tabs, the designers' frames too; Quality of Life holds Automation, Screen Text, Reminders.",
 		"Options two to a line, none greyed out (a switch's settings behind its cog); Look holds every font, texture and border; profiles keep every setting exactly.",
 		"Edit Layout: a top dock; every part of Edit Mode, hidden ones too, to show, hide, lock or move; the game's settings and switches in each box (bars: On Mouseover); one gold highlight.",
@@ -249,7 +249,7 @@ local COMMANDS = {
 	{ "/mello tracker progress", "the tracker's count roll, tick and quest-done light" },
 	{ "/mello bags loot <kind>", "a Loot Flight: poor .. legendary, or all" },
 	{ "/mello bags coins", "a quest's money flying into the bag window" },
-	{ "/mello player level", "the level-up: your XP bar's light and the notice" },
+	{ "/mello player level", "the level-up: your XP bar's light, the notice and the Level Up Card" },
 	{ "/mello player xp", "XP Gain's light on your experience bar" },
 	{ "/mello bags money", "the bag window's money rolling up (bags open)" },
 	{ "/mello bags full", "the Bags Full Warning on the Empty slot or bag button" },
@@ -2230,6 +2230,8 @@ local TEXT = {
 	notFor = "Not for %s",
 	switchOn = "Switch on \"%s\" first.",
 	switchOnAt = "Switch on \"%s\" first (%s).",
+	pickIn = "Pick \"%s\" in \"%s\" first.",
+	pickAt = "Pick \"%s\" in \"%s\" first (%s).",
 	slotPart = "Click to open its settings.",
 	tabWhere = "%s tab",
 	uim = "UI Modifications",
@@ -2435,6 +2437,26 @@ local function SwitchLine(why, where)
 	end
 	return line
 end
+-- (el-13) a setting with no row of its own whose value another row picks: its schema's `setBy` ({ key, value,
+-- label }: the painted reskin, picked as Oldschool in Look > General's Skin). One table (Config.lua is near Lua's
+-- 200 locals): SetBy.lines[setBy][where or ""] = the line, SetBy.of[id] = the setBy, the picking row's id kept on it
+-- (false for any other: found once per id)
+local SetBy = { lines = {}, of = {} }
+function SetBy.Line(by, why, where)
+	local byWhere = SetBy.lines[by]
+	if not byWhere then
+		byWhere = {}
+		SetBy.lines[by] = byWhere
+	end
+	local w = where or ""
+	local line = byWhere[w]
+	if not line then
+		local T = MelloUI.Lang.T
+		line = where and MelloUI.Lang.F(TEXT.pickAt, T(by.label), why, where) or MelloUI.Lang.F(TEXT.pickIn, T(by.label), why)
+		byWhere[w] = line
+	end
+	return line
+end
 local notFor = {}   -- [pick label] = "Not for <pick>"
 local function NotFor(label)
 	local line = notFor[label]
@@ -2455,6 +2477,7 @@ local farWhere, tabWhere = {}, {}   -- [place] / [tab name] = the text (made onc
 -- (the languages: these lines are made in the language in use, so a switch lets them go)
 function Lay.WipeLines()
 	wipe(lines)
+	wipe(SetBy.lines)
 	wipe(notFor)
 	wipe(farWhere)
 	wipe(tabWhere)
@@ -2491,10 +2514,33 @@ local function WhereOf(page, place, row)
 	return nil, nil
 end
 
--- a switch that is off, by its id: its row's label where it is placed
+function SetBy.Of(id)
+	local by = SetBy.of[id]
+	if by == nil then
+		local name, key = id:match("^([^.]+)%.(.+)$")
+		local m = name and MelloUI.modules[name]
+		local o = m and OptionOf(m, key)
+		by = (o and type(o.setBy) == "table") and o.setBy or false
+		if by then
+			by.id = name .. "." .. by.key
+		end
+		SetBy.of[id] = by
+	end
+	return by
+end
+
+-- a switch that is off, by its id: its row's label where it is placed (one with no row of its own: the row that
+-- picks it, and its choice)
 local function Off(page, row, id, fallback)
 	local place = Lay.Get().place[id]
 	if not place then
+		local by = SetBy.Of(id)
+		local at = by and Lay.Get().place[by.id]
+		if at then
+			local why = at.r.name
+			local where, pick = WhereOf(page, at, row)
+			return false, why, SetBy.Line(by, why, where), by.id, pick
+		end
 		return false, fallback, SwitchLine(fallback), nil
 	end
 	local why = place.r.name

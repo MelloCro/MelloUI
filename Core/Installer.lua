@@ -592,14 +592,9 @@ end
 --   I:RecommendedPick(st, skin) -> key   a "one" step's recommended card under a skin (the sound step: the game's
 --                                  own under Default); I:SkinPicked(picks, was) moves the answers that follow it
 --   I:SetupDraft(picks) -> draft   the picks as the setup's draft (draft.skin, draft.layout and the settings)
-local SKIN_OF = { default = "default", modern = "modern", oldschool = "oldschool" }
-
 function I.SkinOf(draft)
-	local skin = SKIN_OF[type(draft) == "table" and draft.skin or "modern"] or "modern"
-	if skin == "oldschool" and not MelloUI:OldschoolShipped() then
-		return "modern"
-	end
-	return skin
+	local skin = type(draft) == "table" and draft.skin or "modern"
+	return MelloUI.Skin.Offered(skin) and skin or "modern"
 end
 
 function I:Offered(choice)
@@ -661,10 +656,10 @@ function I:SetupDraft(picks)
 	local d = { skin = picks.skin, layout = picks.layout == "own" and false or nil }
 	local skin = self.SkinOf(d)
 	d.skin = skin
-	-- the skin: MelloUI's own parts in the game's look (Default) or its own (Modern, Oldschool); Oldschool's painted
-	-- reskin on only with Oldschool picked (its switch is MelloUI_Oldschool's: false is off, the panels' rule)
-	d[UMB .. ".skin"] = skin == "default" and "default" or "modern"
-	d[UMB .. ".reskin"] = skin == "oldschool"
+	-- the skin, whole: its settings and the switches it needs (MelloUI.Skin.SETS, the same as Look > General's Skin)
+	for spec, v in pairs(MelloUI.Skin.SETS[skin]) do
+		d[spec] = v
+	end
 	local x = type(picks.x) == "table" and picks.x or EMPTY
 	for _, st in ipairs(self.SETUP) do
 		local answer = picks[st.key]

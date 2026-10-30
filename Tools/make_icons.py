@@ -335,7 +335,10 @@ def flipbook(name):
 # heal_flight_art.py's are (no master: texture_pack.py leaves Media/FrameFX as it is)
 FX_OUT = ("FrameFX", "Light")
 # the sheets' own colours (the prompts'): hue in degrees, None keeps it; then the saturation's share
-TINT = {"gold": (44, 1.0), "blue": (211, 0.8), "green": (138, 1.0), "red": (4, 1.0), "white": (None, 0.08)}
+TINT = {"gold": (44, 1.0), "blue": (211, 0.8), "green": (138, 1.0), "red": (4, 1.0), "white": (None, 0.08),
+        # (1.2.4, Buff Landings' school looks -- the user's pick "By school": shadow violet, physical amber -- the gold
+        # star turned; arcane wears the blue one)
+        "violet": (268, 0.8), "amber": (26, 1.0)}
 # (name, art, canvas, colour or None, how): "fit" its shape on the middle, "fill" stretched over the canvas, "level"
 # turned level first, "upright" its biggest piece alone, turned upright
 FX_LIGHT = [("plus_green", "heal_cross", 64, None, "fit"), ("plus_gold", "heal_cross", 64, "gold", "fit"),
@@ -365,7 +368,10 @@ FX_LIGHT += [("spark_white", "holy_spark", 64, "white", "fit"), ("rays_white", "
              ("seal_gold", "bold_seal_ring", 128, None, "fit"), ("seal_green", "bold_seal_ring", 128, "green", "fit"),
              ("seal_blue", "bold_seal_ring", 128, "blue", "fit"), ("shock_white", "bold_shockwave", 128, "white", "fit"),
              ("bang", "bold_taunt_mark", (64, 128), None, "fit"), ("guard_round", "bold_guard_curved", (64, 128), None, "fit"),
-             ("guard_side", "bold_guard_straight", (32, 128), None, "fit"), ("heart", "heart", 64, None, "fit")]
+             ("guard_side", "bold_guard_straight", (32, 128), None, "fit"), ("heart", "heart", 64, None, "fit"),
+             # (1.2.4, Buff Landings: the school looks' stars, Core/FrameFXBold.lua LOOKS shadow and physical)
+             ("star_violet", "bold_impact_star", 128, "violet", "fit"),
+             ("star_amber", "bold_impact_star", 128, "amber", "fit")]
 # (1.2.4) drawn here, white: a soft line of light, its glow across it and none along it (laid end to end: the bold
 # landings' barrier box and the roar's shockwaves), across and upright; the barrier's round part, a ring of light whose
 # line stands at FX_RING_LINE of its half (its glow inside the square), a faint fill within (Core/FrameFXBold.lua)
@@ -384,6 +390,9 @@ FX_DEFAULT = [("spark_white", "default_holy_mote", 64, "white", "fit"), ("spark_
               ("plus_blue", "default_heal_sign", 64, "blue", "fit"),
               ("star_gold", "default_holy_star", 128, None, "fit"), ("star_green", "default_holy_star", 128, "green", "fit"),
               ("star_blue", "default_holy_star", 128, "blue", "fit"),
+              # (1.2.4, Buff Landings' school looks: shadow violet, physical amber)
+              ("star_violet", "default_holy_star", 128, "violet", "fit"),
+              ("star_amber", "default_holy_star", 128, "amber", "fit"),
               ("shock_white", "default_shockwave", 128, "white", "fit"),
               ("halo_white", "default_shockwave", 128, "white", "fit"),
               ("rays_white", "default_light_rays", 256, "white", "fit"), ("rays_gold", "default_light_rays", 256, None, "fit"),

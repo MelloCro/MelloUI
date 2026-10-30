@@ -43,7 +43,7 @@ local SENT_MAX = 1        -- s from a cast's SENT to its START
 local CAST_MAX = 15       -- s from a cast's SENT to its end
 local WATCH_AFTER = 0.25  -- s past a cast's end before its charge is looked at (its end's events come first)
 local HOP_WINDOW = 1.0    -- s after a Chain Heal's end: its hops, as the game reports them
-local SHOWCASE = { "o", "t", "s", "p", "b", "r" }   -- Every Kind's order
+local SHOWCASE = { "o", "t", "s", "p", "b", "r", "u" }   -- Every Kind's order (1.2.4: u a buff's landing)
 local SHOW_GAP = 1.9      -- s between them
 local ICON = { fallback = 16, min = 12, max = 28 }
 local PREVIEW_CAST = 1.2
@@ -57,7 +57,7 @@ local TEXT = {
 	usage = "/mellofx: every heal kind on your frame. /mellofx heal: a heal from your cast bar to your frame. "
 		.. "/mellofx fx: every Frame Effect. /mellofx stop: clears them.",
 	kinds = { o = "Heal over time", t = "A heal over time's tick", s = "Shield", p = "Protection", b = "Heal to full",
-		r = "Resurrection" },
+		r = "Resurrection", u = "A buff (Power Word: Fortitude)" },
 }
 
 local LOOK_VALUES = {
@@ -85,6 +85,8 @@ local P = {
 	group = {}, show = 0, due = 0,   -- a group heal's units (reused); Every Kind's step, its next one's time
 	spell = nil,              -- the last cast's spell (its ticks, when it heals over time)
 	ticking = {}, spare = {}, -- your heals over time still ticking (their tables reused)
+	buffRead = nil,           -- (Buff Landings) when the group was last read for a landing
+	casterAt = nil, caster = nil, casterFrame = nil,   -- (Buff Landings) a wave's caster's frame, read once a moment
 }
 local chargeLayer
 local KINDS = ns.SpellKinds or {}
@@ -673,8 +675,138 @@ local function OnTarget()
 	P.click = unit
 end
 
+--------------------------------------------------------------------------------
+-- Buff Landings (1.2.4; the user, 2026-10-30: "the animation for power word
+-- Fortitude is not happening", then the picks of the buff landings sketch,
+-- BuildData/output/buff_landings_sketch: "B Spiral", by school, anyone's, a
+-- quiet glint in a raid, a wave for group forms, nothing for self-only buffs,
+-- the target frame too, on by default). A buff is heard where it lands:
+-- UNIT_AURA's added auras on your group's units and your target, the spell
+-- one of Forever's class buffs (HealFlightSpells.lua's BuffForms, from the
+-- client's own spell data), cast by anyone. Nothing for a refresh (the game
+-- tells a renewed aura as updated, not added), a full update (a login, a zone,
+-- a new target), an aura put on a while ago (a mate coming into sight), a
+-- self-only buff, a secret spell or caster. A group form lands as a wave out
+-- of its caster's frame; in a raid each frame glints. Its look is the buff's
+-- school's, whatever the heals' Look. Reduce Motion: nothing.
+--------------------------------------------------------------------------------
+
+local BUFF_FORMS = ns.BuffForms or {}
+local BUFF_SCHOOLS = ns.BuffSchools or {}
+local BUFF_FRESH = 2      -- s: an aura put on longer ago than this is not landing now
+local BUFF_SAME = 0.2     -- s: the same buff told again on the same frame (player and raid3) is one landing
+-- By school (the user's pick): holy gold, nature green, arcane blue, shadow violet, physical amber
+local SCHOOL_LOOK = { holy = "holy", nature = "nature", arcane = "water", frost = "water", shadow = "shadow",
+	physical = "physical", fire = "physical" }
+-- the unit tokens a landing is heard on (any other -- a nameplate's, your focus -- passed over at once)
+local BUFF_UNITS = { player = true, target = true }
+for i = 1, 4 do
+	BUFF_UNITS["party" .. i] = true
+end
+for i = 1, 40 do
+	BUFF_UNITS["raid" .. i] = true
+end
+local buffAt = setmetatable({}, { __mode = "k" })   -- [frame] = when a buff last landed on it
+local buffOf = setmetatable({}, { __mode = "k" })   -- [frame] = that buff's spell
+
+-- the frame a group form's wave runs out of: its caster's, by the token the game names, else the member that is the
+-- caster (in a raid the game may name a mate of your own group by its party token, which shows no frame there); read
+-- once a moment and caster
+local function CasterFrame(caster, now)
+	if P.casterAt == now and P.caster == caster then
+		return P.casterFrame
+	end
+	local frame = FrameOf(Canon(caster))
+	if not frame then
+		for _, u in ipairs(P.members) do
+			if Ask(UnitIsUnit, caster, u) then
+				frame = FrameOf(u)
+				break
+			end
+		end
+	end
+	P.casterAt, P.caster, P.casterFrame = now, caster, frame
+	return frame
+end
+
+local function BuffLand(unit, aura, id, form)
+	-- (its caster secret: nothing, never hung on a secret; not told -- out of sight -- the landing comes at once)
+	local source = aura.sourceUnit
+	if Secret(source) then
+		return
+	end
+	-- (put on just now: its start -- its end less its length -- within BUFF_FRESH; times not plain or none: trusted)
+	local ends, length = Num(aura.expirationTime), Num(aura.duration)
+	if ends and length and ends > 0 and length > 0 and GetTime() - (ends - length) > BUFF_FRESH then
+		return
+	end
+	local frame
+	local now = GetTime()
+	-- (the group read once a moment: a prayer tells each of the raid's 40 in one)
+	if P.buffRead ~= now then
+		P.buffRead = now
+		Members()
+	end
+	if unit == "target" then
+		frame = Looks.TargetFrame()
+	else
+		unit = Canon(unit)
+		if not P.set[unit] then
+			return   -- (another token of a member: party1 in a raid -- its raid unit tells it)
+		end
+		frame = FrameOf(unit)
+	end
+	if not frame then
+		return
+	end
+	if buffOf[frame] == id and now - (buffAt[frame] or 0) < BUFF_SAME then
+		return
+	end
+	buffAt[frame], buffOf[frame] = now, id
+	-- (a group form, a Greater Blessing: the wave out of its caster's frame)
+	local from
+	local caster = form ~= "o" and Text(source)
+	if caster then
+		from = CasterFrame(caster, now)
+	end
+	Looks.Show(unit, Quiet() and "q" or "u", SCHOOL_LOOK[BUFF_SCHOOLS[id]] or "holy", false, nil, from, frame)
+end
+
+-- a table this code may read: a plain one (UNIT_AURA's payload can be secret in a fight, its tables and its
+-- isFullUpdate: never tested or indexed then)
+local issecrettable, canaccesstable = rawget(_G, "issecrettable"), rawget(_G, "canaccesstable")
+local function Readable(t)
+	return type(t) == "table" and not Secret(t) and not (issecrettable and issecrettable(t))
+		and (not canaccesstable or canaccesstable(t))
+end
+
+-- (the unit first: most of the game's UNIT_AURA are the nameplates', passed over before their payload is looked at --
+-- the user, 2026-10-30: "attempt to perform boolean test on field 'isFullUpdate' (a secret boolean value ...)" on
+-- nameplate2 in a fight; then a change with nothing added)
+local function OnAura(unit, info)
+	unit = Text(unit)
+	if Anim.reduceMotion or not (unit and BUFF_UNITS[unit]) or not Readable(info) then
+		return
+	end
+	local full, added = info.isFullUpdate, info.addedAuras
+	if Secret(full) or full or not Readable(added) then
+		return
+	end
+	for i = 1, #added do
+		local aura = added[i]
+		local id = Readable(aura) and Num(aura.spellId) or nil
+		local form = id and BUFF_FORMS[id]
+		-- (a self-only buff -- Inner Fire, the armors -- lands on nothing: the user's pick)
+		if form and form ~= "s" then
+			BuffLand(unit, aura, id, form)
+		end
+	end
+end
+
 local OnEvent = Perf.Shared("Heal Flight's events", function(_, event, unit, a1, a2, a3)
-	if event == "UNIT_SPELLCAST_SENT" then
+	if event == "UNIT_AURA" then
+		OnAura(unit, a1)
+	elseif event == "UNIT_SPELLCAST_SENT" then
 		OnSent(a1, a2, a3)
 	elseif event == "UNIT_SPELLCAST_START" then
 		OnStart(a1)
@@ -708,6 +840,10 @@ local function Listen(on)
 		end
 		events:RegisterEvent("UNIT_COMBAT")
 		events:RegisterEvent("PLAYER_TARGET_CHANGED")
+		-- (Buff Landings: every unit's, the group's and your target's kept -- RegisterUnitEvent takes two units)
+		if M.db.buffs then
+			events:RegisterEvent("UNIT_AURA")
+		end
 	end
 end
 
@@ -770,11 +906,16 @@ local function ShowNext()
 	end
 	P.show = P.show + 1
 	local kind = SHOWCASE[P.show]
-	if not (kind and M.isEnabled) then
+	if not (kind and M.isEnabled) or (kind == "u" and not M.db.buffs) then
 		return
 	end
 	MelloUI:Announce(TEXT.kinds[kind], "info")
-	Shoot(Canon("player"), kind)
+	if kind == "u" then
+		-- (Buff Landings: Power Word: Fortitude's, in its school's look -- holy -- whatever the heals' Look)
+		Looks.Show(Canon("player"), Quiet() and "q" or "u", "holy")
+	else
+		Shoot(Canon("player"), kind)
+	end
 	P.due = GetTime() + SHOW_GAP
 	C_Timer.After(SHOW_GAP, ShowNext)
 end
@@ -801,6 +942,7 @@ M = MelloUI:RegisterModule("HealFlight", {
 		look = "class",
 		flight = true,
 		hotTicks = true,
+		buffs = true,
 	},
 	options = {
 		{ type = "dropdown", key = "look", name = "Look", width = 240, values = LOOK_VALUES,
@@ -809,13 +951,17 @@ M = MelloUI:RegisterModule("HealFlight", {
 		  desc = "A light flies from your cast bar to the healed frame. Off: the heal lands at once; the other effects stay." },
 		{ type = "toggle", key = "hotTicks", name = "Heal Over Time Ticks",
 		  desc = "Each tick of your heals over time plays a small pulse on the frame." },
+		{ type = "toggle", key = "buffs", name = "Buff Landings", new = "1.2.4",
+		  desc = "A buff landing on your group or your target plays a spiral of light on the frame, in its school's colour "
+			.. "(Fortitude, Mark of the Wild, Arcane Intellect, the blessings ...), whoever cast it. A group buff runs "
+			.. "out from the caster's frame; in a raid, a small glint. Buffs you can only cast on yourself play nothing." },
 		{ type = "button", name = "Preview", text = "Play",
 		  hint = "a made-up heal on you",
 		  desc = "Plays the chosen heal look once on your own frame.",
 		  onClick = function() Preview() end },
 		{ type = "button", name = "Every Kind", text = "Play",
 		  hint = "each kind's landing on your frame",
-		  desc = "Plays each kind of heal landing on your frame: heal over time, shield, protection, full heal, resurrection.",
+		  desc = "Plays each kind of heal landing on your frame: heal over time, shield, protection, full heal, resurrection, a buff.",
 		  onClick = function() PreviewKinds() end },
 	},
 })
@@ -843,6 +989,8 @@ function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if key == "hotTicks" and not value then
 		StopTicks()
+	elseif key == "buffs" and self.isEnabled then
+		Listen(true)
 	end
 end
 

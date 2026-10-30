@@ -20,14 +20,23 @@ A heal over time's ticks (the user, 2026-10-09: "Heal over Time Ticks effect"): 
 PERIODIC_HEAL on an ally (Renew, Rejuvenation, Regrowth's own) gets its tick period (SpellEffect.EffectAuraPeriod)
 and its length (SpellMisc.DurationIndex -> SpellDuration.Duration, exported from the client 2026-10-09).
 
-    python Tools/heal_flight_spells.py
+Buff Landings (1.2.4; the user, 2026-10-30: "the animation for power word Fortitude is not happening", then the picks
+of the buff landings sketch): Forever's class buffs by one rule (buffs(), below), written as ns.BuffForms (one, group,
+class, self) and ns.BuffSchools (the family's school) into HealFlightSpells.lua.
+
+    python Tools/heal_flight_spells.py            write the tables
+    python Tools/heal_flight_spells.py --check    exit 1 unless both files are what the client's data gives
 """
 import collections
 import csv
 import os
+import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB2 = r"F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/db2/"
+# (Forever's own client export, 1.60.1.70532: its Talent and TalentTab tables -- the 70338 export above has none; the
+# buff rule reads every table there but the item tables, which only the 70338 export has)
+DB2_FOREVER = r"F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/forever_70532/db2/"
 SOURCE = DB2 + "SpellEffect.csv"
 OUT = os.path.join(ROOT, "MelloUI_FrameEffects", "HealFlightSpells.lua")
 EFFECTS_OUT = os.path.join(ROOT, "MelloUI_FrameEffects", "FrameEffectsSpells.lua")
@@ -163,7 +172,177 @@ def passives():
     return out
 
 
+# Buff Landings (1.2.4; an-04's census, BuildData/output/buff_landings_sketch/buff_census.py, the same rule):
+#   the pool   Forever's own player spells only: a class skill line's trainer spells (SkillLineAbility on the class
+#              lines, spell IDs under 30000) and Forever's Talent table (its ranks' spells, the class from
+#              TalentTab.ClassMask); a class spell that makes an item (Effect 24 CREATE_ITEM) brings the item's use
+#              spell (ItemXItemEffect, ItemEffect: the Soulstone)
+#   a buff     an active spell (SpellMisc Attributes_0 0x40 passive: none) putting an aura (Effect 6 APPLY_AURA, 35 / 65
+#              the area auras) on an ally or the group, lasting 60 s or more, an aura the game does not call a debuff
+#              (Attributes_0 0x04000000: Hunter's Mark, Mind Vision), and not one of Heal Flight's kinds (kind())
+#   its form   o one ally (implicit targets 21, 25, 57); g the group (56 the raid round the caster, 20 / 30 / 31 / 33 /
+#              61 / 132 the party, an area aura on the caster); c a Greater Blessing (153: the target's class in the
+#              raid); s on the caster alone (target 1), lasting 10 min or more (the armors, Inner Fire: they land on
+#              nothing -- the user's pick, "Self-only buffs: Nothing")
+#   its school the family's (a class's spells of one name, and a single form with the group form of the same aura --
+#              Power Word: Fortitude and Prayer of Fortitude): SpellMisc.SchoolMask, the most common of its members
+BUFF_ALLY = {21, 25, 57}
+BUFF_GROUP = {56, 153, 20, 30, 31, 33, 61, 132}
+BUFF_CASTER = {1}
+BUFF_AURAS = {6, 35, 65}
+BUFF_AREA = {35, 65}
+BUFF_LONG = 60000        # ms: a buff lasts a minute or more (a cooldown's boon -- Power Infusion, Innervate -- does not)
+BUFF_SELF_LONG = 600000  # ms: a self-only buff ten minutes or more (not a minute's trick: Levitate, Ice Barrier)
+BUFF_DEBUFF = 0x04000000
+TRAINER_MAX = 30000
+SCHOOL = {1: "physical", 2: "holy", 4: "fire", 8: "nature", 16: "frost", 32: "shadow", 64: "arcane"}
+BUFF_CODES = [("o", "one"), ("g", "group"), ("c", "class"), ("s", "self")]
+
+
+def rows(db2, table):
+    with open(db2 + table + ".csv", encoding="utf-8") as f:
+        yield from csv.DictReader(f)
+
+
+def num(v):
+    try:
+        return int(float(v or 0))
+    except ValueError:
+        return 0
+
+
+def buff_spells():
+    """every buff of the rule: { id, name, class, form ("one", "group", "class", "self"), last (ms), school, auras }"""
+    db2 = DB2_FOREVER
+    line_class = {sl: c for c, lines in CLASS_LINES.items() for sl in lines}
+    cls_of = {}
+    for r in rows(db2, "SkillLineAbility"):
+        sid, sl = num(r["Spell"]), num(r["SkillLine"])
+        if sl in line_class and sid < TRAINER_MAX:
+            cls_of[sid] = line_class[sl]
+    tab_class = {num(r["ID"]): CLASS_MASK.get(num(r["ClassMask"])) for r in rows(db2, "TalentTab")}
+    for r in rows(db2, "Talent"):
+        cls = tab_class.get(num(r["TabID"]))
+        if cls:
+            for i in range(9):
+                sid = num(r["SpellRank_%d" % i])
+                if sid:
+                    cls_of.setdefault(sid, cls)
+    makes = collections.defaultdict(set)
+    for r in rows(db2, "SpellEffect"):
+        sid = num(r["SpellID"])
+        if sid in cls_of and r["Effect"] == "24" and num(r["EffectItemType"]):
+            makes[num(r["EffectItemType"])].add(sid)
+    effect_spell = {num(r["ID"]): num(r["SpellID"]) for r in rows(DB2, "ItemEffect")}
+    for r in rows(DB2, "ItemXItemEffect"):
+        item = num(r["ItemID"])
+        use = effect_spell.get(num(r["ItemEffectID"]))
+        if item in makes and use and use not in cls_of:
+            cls_of[use] = cls_of[min(makes[item])]
+    names = {num(r["ID"]): r["Name_lang"] for r in rows(db2, "SpellName")}
+    lengths = {num(r["ID"]): num(r["Duration"]) for r in rows(db2, "SpellDuration")}
+    misc = {}
+    for r in rows(db2, "SpellMisc"):
+        sid = num(r["SpellID"])
+        if sid in misc and r["DifficultyID"] != "0":
+            continue
+        a0 = num(r["Attributes_0"])
+        misc[sid] = (bool(a0 & 0x40), bool(a0 & BUFF_DEBUFF), lengths.get(num(r["DurationIndex"]), 0),
+                     num(r["SchoolMask"]))
+    effects = collections.defaultdict(list)
+    for r in rows(db2, "SpellEffect"):
+        sid = num(r["SpellID"])
+        if sid in cls_of and r["DifficultyID"] == "0":
+            effects[sid].append((num(r["Effect"]), num(r["EffectAura"]), num(r["ImplicitTarget_0"]),
+                                 num(r["ImplicitTarget_1"]), num(r["EffectMiscValue_0"])))
+    out = []
+    for sid, cls in cls_of.items():
+        m, eff = misc.get(sid), effects.get(sid)
+        if not m or not eff or m[0] or m[1] or kind(eff):
+            continue
+        auras = [e for e in eff if e[0] in BUFF_AURAS and e[1]]
+        if not auras:
+            continue
+        on = lambda e, t: e[2] in t or e[3] in t   # noqa: E731
+        if any(on(e, {153}) for e in auras):
+            form = "class"
+        elif any(on(e, BUFF_GROUP) or (e[0] in BUFF_AREA and on(e, BUFF_CASTER)) for e in auras):
+            form = "group"
+        elif any(on(e, BUFF_ALLY) for e in auras):
+            form = "one"
+        elif all(on(e, BUFF_CASTER) for e in auras):
+            form = "self"
+        else:
+            continue   # (on an enemy: not a help)
+        if m[2] < (BUFF_SELF_LONG if form == "self" else BUFF_LONG):
+            continue
+        out.append({"id": sid, "name": names.get(sid, "?"), "class": cls, "form": form,
+                    "school": SCHOOL.get(m[3], "mixed"), "auras": {(e[1], e[4]) for e in auras}})
+    return out
+
+
+def buff_families(spells):
+    """{ spell: its family's school }: a class's spells of one name, then a single form and a group form of one aura"""
+    side = {"one": "single", "group": "group", "class": "group", "self": "self"}
+    by_name = collections.defaultdict(list)
+    for s in spells:
+        by_name[(s["class"], s["name"])].append(s)
+    fams = []
+    for (cls, _), ms in sorted(by_name.items(), key=lambda kv: min(m["id"] for m in kv[1])):
+        sig = set().union(*(m["auras"] for m in ms))
+        sides = {side[m["form"]] for m in ms}
+        hit = next((f for f in fams if f["class"] == cls and f["sig"] & sig and f["sides"] | sides == {"single", "group"}
+                    and not (f["sides"] & sides)), None)
+        if hit:
+            hit["members"] += ms
+            hit["sig"] |= sig
+            hit["sides"] |= sides
+        else:
+            fams.append({"class": cls, "members": list(ms), "sig": sig, "sides": sides})
+    school = {}
+    for f in fams:
+        # (the most common of its members', the single form's first on a tie: Prayer of Shadow Protection is holy in
+        # the data, Shadow Protection shadow)
+        ms = sorted(f["members"], key=lambda m: (side[m["form"]] == "group", m["id"]))
+        pick = collections.Counter(m["school"] for m in ms).most_common(1)[0][0]
+        for m in ms:
+            school[m["id"]] = pick
+    return school, len(fams)
+
+
+def buffs_text():
+    spells = buff_spells()
+    school, families = buff_families(spells)
+    form = {s["id"]: dict((n, c) for c, n in BUFF_CODES)[s["form"]] for s in spells}
+    counts = collections.Counter(form.values())
+    schools = collections.Counter(school[s] for s in form if form[s] != "s")
+    lines = [
+        "",
+        "-- Buff Landings (1.2.4): Forever's class buffs by the rule in Tools/heal_flight_spells.py (%d spells, %d" % (
+            len(form), families),
+        "-- families): each buff's form -- " + ", ".join("%s %s (%d)" % (c, n, counts.get(c, 0)) for c, n in BUFF_CODES),
+        "ns.BuffForms = {",
+    ]
+    ids = sorted(form)
+    for i in range(0, len(ids), 8):
+        lines.append("\t" + " ".join('[%d] = "%s",' % (sid, form[sid]) for sid in ids[i:i + 8]))
+    lines.append("}")
+    lines += ["", "-- each buff's family's school (SpellMisc.SchoolMask): the look it lands in -- "
+              + ", ".join("%s (%d)" % (s, n) for s, n in sorted(schools.items())) + " cast on others",
+              "ns.BuffSchools = {"]
+    for i in range(0, len(ids), 6):
+        lines.append("\t" + " ".join('[%d] = "%s",' % (sid, school[sid]) for sid in ids[i:i + 6]))
+    lines.append("}")
+    return lines, len(form), dict(counts)
+
+
 def main():
+    check = "--check" in sys.argv[1:]
+    bad = [a for a in sys.argv[1:] if a != "--check"]
+    if bad:
+        print("unknown argument: %s (nothing written)" % " ".join(bad))
+        print(__doc__[__doc__.index("    python Tools/"):].rstrip())
+        return 2
     spells = collections.defaultdict(list)
     full = collections.defaultdict(list)
     periods = {}
@@ -229,9 +408,10 @@ def main():
         lines.append("\t" + " ".join("[%d] = { %g, %g }," % (sid, ticks[sid][0] / 1000, ticks[sid][1] / 1000)
                                      for sid in ids[i:i + 6]))
     lines.append("}")
-    with open(OUT, "w", encoding="utf-8", newline="\n") as f:
-        f.write("\n".join(lines) + "\n")
-    print(OUT, len(kinds), dict(counts), len(ticks), "with ticks")
+    buff_lines, nbuffs, bcounts = buffs_text()
+    lines += buff_lines
+    texts = [(OUT, "\n".join(lines) + "\n")]
+    print(OUT, len(kinds), dict(counts), len(ticks), "with ticks;", nbuffs, "buffs", bcounts)
 
     # Frame Effects' own table (the user, 2026-10-09: a feature of its own): the tanks' tools and defensives
     ecounts = collections.Counter(effect_kinds.values())
@@ -264,10 +444,27 @@ def main():
             seen.add(code)
             lines.append('\t{ "%s", "%s", "%s", %d },' % (code, cls, name.replace('"', '\\"'), sid))
     lines.append("}")
-    with open(EFFECTS_OUT, "w", encoding="utf-8", newline="\n") as f:
-        f.write("\n".join(lines) + "\n")
+    texts.append((EFFECTS_OUT, "\n".join(lines) + "\n"))
     print(EFFECTS_OUT, len(effect_kinds), dict(ecounts), len(lasts), "lasting")
+    stale = []
+    for path, text in texts:
+        if check:
+            try:
+                with open(path, encoding="utf-8", newline="") as f:
+                    if f.read() != text:
+                        stale.append(path)
+            except OSError:
+                stale.append(path)
+            continue
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+    if check:
+        for path in stale:
+            print("stale:", os.path.normpath(path))
+        print("ok" if not stale else "STALE")
+        return 1 if stale else 0
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

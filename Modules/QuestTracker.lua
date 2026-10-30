@@ -4359,15 +4359,8 @@ local function HookEditMode()
 	MelloUI:On("editmode", function(entering)
 		inEditMode = entering
 		if M.isEnabled then
-			-- (el-07) the game's dialog's Opacity and Text Size, taken over a frame after Edit Mode closed
-			if entering then
-				Art.editWas = Art.EditModeValues()
-				if Art.editWas then
-					Art.editWas.layouts = Art.LayoutNames()
-				end
-			elseif Art.editWas then
-				C_Timer.After(0, Art.AfterEditMode)
-			end
+			-- (the step-aside first: the game's tracker in, ours out, and back; 2026-10-30, the bus test found el-07's
+			-- reads ahead of it, where a failing read would have stopped it)
 			SetGameTracker(not entering)
 			if frame then
 				if entering then
@@ -4377,6 +4370,15 @@ local function HookEditMode()
 					Place()
 					MarkDirty()
 				end
+			end
+			-- (el-07) the game's dialog's Opacity and Text Size, taken over a frame after Edit Mode closed
+			if entering then
+				Art.editWas = Art.EditModeValues()
+				if Art.editWas then
+					Art.editWas.layouts = Art.LayoutNames()
+				end
+			elseif Art.editWas then
+				C_Timer.After(0, Art.AfterEditMode)
 			end
 		end
 	end, M)

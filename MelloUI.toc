@@ -39,6 +39,7 @@ Core\FrameFX.lua
 Core\FrameFXBold.lua
 Core\FrameHalo.lua
 Core\FrameHover.lua
+Core\LevelCard.lua
 Core\SwingBadge.lua
 Core\Config.lua
 Core\ConfigLayout.lua
@@ -62,6 +63,7 @@ Core\EditLayoutWindows.lua
 Media\CustomFonts.lua
 Media\CustomTextures.lua
 Media\QuestListData.lua
+Media\TrainerSpells.lua
 Media\PlaceData.lua
 Media\ClassIcons.lua
 Media\IconSizes.lua

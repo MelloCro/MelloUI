@@ -241,12 +241,15 @@ end
 -- lead the list: its part puts them before the palette)
 
 -- (1.2.4; docs/plans/default-skin.md) The skin: MelloUI's own art, or the game's own in exactly the same places.
--- Core/Skin.lua (MelloUI.Skin) reads it, this module on or off, and tells every part at a switch
+-- Core/Skin.lua (MelloUI.Skin) reads it, this module on or off, and tells every part at a switch. (el-13, the user
+-- 2026-10-30: "One row for all skins") The row shows the skin in use and lays a pick whole (Skin.Current, Skin.Pick:
+-- the installer's own); Oldschool is a choice of MelloUI_Oldschool's, added by its part
 defaults.skin = "modern"
 Add({ type = "dropdown", key = "skin", name = "Skin", free = true, new = "1.2.4", width = 260, values = {
-	{ value = "modern", label = "Modern (MelloUI's own look)" },
 	{ value = "default", label = "Default (the game's own look)" },
-}, desc = "How MelloUI looks. Modern: MelloUI's own art. Default: the game's own borders, buttons and fonts in the same places. Only the look changes; nothing moves." })
+	{ value = "modern", label = "Modern (MelloUI's own look)" },
+}, get = function() return MelloUI.Skin.Current() end, set = function(value) MelloUI.Skin.Pick(value) end,
+	desc = "How MelloUI looks. Modern: MelloUI's own art. Default: the game's own borders, buttons and fonts in the same places. Only the look changes; nothing moves." })
 
 -- The palette (0.14.0): Core applies it (MelloUI:SetPalette), this module on
 -- or off; its choices are the widget set's one list, every palette by its

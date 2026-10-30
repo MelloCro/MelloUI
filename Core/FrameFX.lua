@@ -22,7 +22,8 @@
 -- s shield, p protection, b big heal (heal to full), r resurrection, g group
 -- heal, c chain heal, t a heal over time's tick; the tanks' tools and
 -- defensives: W roar, U taunt, F fortify, L more health, I immunity, E
--- evasion. Every look but Quiet lands them bold (Core/FrameFXBold.lua), in the
+-- evasion; (1.2.4) a buff's landing: u its spiral, q its glint in a raid.
+-- Every look but Quiet lands them bold (Core/FrameFXBold.lua), in the
 -- skin's own pieces; Quiet keeps its own small landings (LANDINGS.quiet).
 -- A layer is one frame of ours with its own pooled sprites and up to two
 -- border glows; its state lives in this file's tables, never on a frame.
@@ -31,8 +32,11 @@
 --   FX.Charge(layer, look) / FX.Stop(layer)
 --   FX.Land(layer, look, kind, quiet[, hop])   fly, then land
 --   FX.Strike(layer, look, kind, quiet[, dur]) land at once (an instant)
---   FX.Show(unit, kind, look, quiet, dur) -> layer   a kind's landing on the
---                                  unit's frame (nil: none of its shown)
+--   FX.Show(unit, kind, look, quiet, dur[, from[, frame]]) -> layer   a kind's
+--                                  landing on the unit's frame (nil: none of
+--                                  its shown); `from` a wave's origin frame,
+--                                  `frame` one to play on in place of the
+--                                  unit's (1.2.4, Buff Landings)
 --   FX.Loot(x0, y0, target, tier, icon, tint[, spill[, coin]]) -> layer
 --                                  (0.21.3) an item's flight from a point to
 --                                  its slot, the rarer the more; `coin`: a
@@ -80,7 +84,9 @@ do
 		.. "bang barrier_round guard_round guard_side heart line_h line_v rays_white res_wings res_wings_blue "
 		.. "outline_edge outline_round "
 		.. "res_wings_green seal_blue seal_gold seal_green shock_white spark_white star_blue star_gold "
-		.. "star_green"):gmatch("%S+") do
+		.. "star_green "
+		-- (1.2.4, Buff Landings' school looks: Core/FrameFXBold.lua LOOKS shadow and physical)
+		.. "star_violet star_amber"):gmatch("%S+") do
 		NAMES[name .. ".tga"] = true
 	end
 	-- (1.2.4, the skins; the user, 2026-10-27: "use chatgpt to generate WoW Accurate effects", "now the old school
@@ -96,7 +102,7 @@ do
 		.. "pillar_blue pillar_gold pillar_green plus_blue plus_gold plus_green rays_gold rays_gold_small rays_white "
 		.. "res_wings res_wings_blue res_wings_green seal_blue seal_gold seal_green shard_blue shock_white spark_gold "
 		.. "spark_white star_blue star_gold star_green streak_blue streak_gold streak_green "
-		.. "streak_white"):gmatch("%S+") do
+		.. "streak_white star_violet star_amber"):gmatch("%S+") do
 		DEFAULT_NAMES[name .. ".tga"] = true
 	end
 	local made = { light = {}, default = {}, old = {} }
@@ -1617,6 +1623,7 @@ local function Mate(layer, S, sp)
 	M.frame, M.Rect, M.unit = nil, nil, S.unit
 	M.round, M.bars, M.cut, M.owner, M.mate = true, false, false, layer, nil
 	M.look, M.kind, M.quiet, M.dur, M.stage = S.look, S.kind, S.quiet, S.dur, "strike"
+	M.from = nil   -- (a wave's origin: its owner's)
 	M.spillX, M.spillY = nil, nil   -- (a pooled layer: the Personal Display's spill left from its last light)
 	S.mate = mate
 	Anim:Stop(mate, "alpha")
@@ -1751,7 +1758,7 @@ end
 function FX.Land(layer, look, kind, quiet, hop)
 	local S = state[layer]
 	S.look, S.kind, S.quiet, S.hop, S.stage = look, kind, quiet, hop and true or false, "launch"
-	S.round, S.bars, S.cut, S.mate, S.owner, S.also = nil, nil, nil, nil, nil, nil
+	S.round, S.bars, S.cut, S.mate, S.owner, S.also, S.from = nil, nil, nil, nil, nil, nil, nil
 	S.ring, S.orb, S.disc, S.number = nil, nil, nil, nil
 	S.spillX, S.spillY = nil, nil
 	-- (a portrait-and-bars frame's: to its portrait)
@@ -1768,11 +1775,12 @@ end
 -- lasting one (a tank's tool, a defensive) stays; `also`: the copy on your
 -- player frame (FX.Also); `spill` (0.21.0, a frame of MelloUI's own: FX.ShowOn)
 -- { x, y }: how far (UI px) the light may reach past the frame's sides, in
--- place of a unit frame's 10 %
-function FX.Strike(layer, look, kind, quiet, dur, also, spill)
+-- place of a unit frame's 10 %; `from` (1.2.4) a wave's origin frame (a buff's
+-- caster's: FX.Show)
+function FX.Strike(layer, look, kind, quiet, dur, also, spill, from)
 	local S = state[layer]
 	S.look, S.kind, S.quiet, S.stage, S.dur = look, kind, quiet, "strike", dur
-	S.round, S.bars, S.cut, S.mate, S.owner, S.also = nil, nil, nil, nil, nil, also
+	S.round, S.bars, S.cut, S.mate, S.owner, S.also, S.from = nil, nil, nil, nil, nil, also, from
 	S.ring, S.orb, S.disc, S.number = nil, nil, nil, nil
 	S.spillX, S.spillY = spill and spill[1] or nil, spill and spill[2] or nil
 	Begin(layer)
@@ -1967,6 +1975,13 @@ function FX.FrameOf(unit)
 	return nil
 end
 
+-- (1.2.4, Buff Landings: a buff on your target lands on its frame too) your target's frame on the screen -- the
+-- game's, as MelloUI's Unit Frames dress it -- or nil (hidden, no target)
+function FX.TargetFrame()
+	local f = rawget(_G, "TargetFrame")
+	return type(f) == "table" and Seen(f) and f or nil
+end
+
 -- A portrait-and-bars frame (the player's, a party member's of the game's;
 -- Unit Frames' M:PartsOf, core since one-look D5, the kit's look on or off): its effects split, a
 -- round form on the portrait's ring and the square one on its bars (the user,
@@ -2117,7 +2132,10 @@ end
 -- The host and its layers (one pool for every feature)
 --------------------------------------------------------------------------------
 
-local LAYERS_MAX = 12     -- effects at once (a group heal's five, the next while they fade)
+-- effects at once (a group heal's five, the next while they fade); (1.2.4) a raid's: a group buff (Prayer of
+-- Fortitude, Arcane Brilliance) reaches the raid round its caster, a glint on each of up to 40 cells -- made only as
+-- many as play at once
+local LAYERS_MAX = 48
 local host
 local layers, oldest = {}, 0
 
@@ -2223,7 +2241,7 @@ function FX.Loot(x0, y0, target, tier, icon, tint, spill, coin)
 		FX.Clear(layer)
 	end
 	local S = state[layer]
-	S.round, S.bars, S.cut, S.mate, S.owner, S.also = nil, nil, nil, nil, nil, nil
+	S.round, S.bars, S.cut, S.mate, S.owner, S.also, S.from = nil, nil, nil, nil, nil, nil, nil
 	S.ring, S.orb, S.disc, S.number = nil, nil, nil, nil
 	S.fl, S.fb, S.fr, S.ft = l, b, r, t
 	S.frame, S.Rect, S.unit = target, FX.Rect, nil
@@ -2249,9 +2267,11 @@ function FX.Loot(x0, y0, target, tier, icon, tint, spill, coin)
 end
 
 -- a kind's landing on the unit's frame, at once, as long as `dur` (a lasting
--- one's); the layer, or nil when no frame of the unit's is shown
-function FX.Show(unit, kind, look, quiet, dur)
-	local frame = FX.FrameOf(unit)
+-- one's); the layer, or nil when no frame of the unit's is shown. (1.2.4, Buff
+-- Landings) `from`: the frame a wave runs out of (its caster's); `frame`: the
+-- frame to play on (your target's: FX.TargetFrame), in place of the unit's
+function FX.Show(unit, kind, look, quiet, dur, from, frame)
+	frame = frame or FX.FrameOf(unit)
 	local l, b, r, t
 	if frame then
 		l, b, r, t = FX.Rect(frame)
@@ -2263,6 +2283,6 @@ function FX.Show(unit, kind, look, quiet, dur)
 	local S = FX.state[layer]
 	S.fl, S.fb, S.fr, S.ft = l, b, r, t
 	S.frame, S.Rect, S.unit = frame, FX.Rect, unit
-	FX.Strike(layer, look or "holy", kind, quiet, dur)
+	FX.Strike(layer, look or "holy", kind, quiet, dur, nil, nil, from)
 	return layer
 end

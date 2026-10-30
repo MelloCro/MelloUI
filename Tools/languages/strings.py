@@ -43,6 +43,8 @@ FILES = {
     "Modules/ActionButtons.lua": ("TEXT",),
     "Modules/Nameplates.lua": ("TEXT",),
     "MelloUI_GroupFrames/GroupFrames.lua": (),
+    # (1.2.4, an-06: the Level Up Card's window draws its texts through Tr)
+    "Core/LevelCard.lua": (),
 }
 # a section of a file the windows never draw (the slash commands' chat output, the probes): left out
 SKIP_FROM = {
@@ -80,7 +82,9 @@ ESC = {"n": "\n", "t": "\t", "\\": "\\", '"': '"', "'": "'", "r": "\r", "a": "\a
 
 
 def unquote(lit):
-    body, out, i = lit[1:-1], [], 0
+    # (2026-10-30: a decimal escape is one byte, as Lua reads it -- "\226\128\186" is the UTF-8 of one "›", never three
+    # Latin-1 letters -- so the line is gathered as bytes and read as UTF-8 at the end)
+    body, out, i = lit[1:-1], bytearray(), 0
     while i < len(body):
         c = body[i]
         if c == "\\" and i + 1 < len(body):
@@ -89,15 +93,15 @@ def unquote(lit):
                 j = i + 1
                 while j < len(body) and j < i + 4 and body[j].isdigit():
                     j += 1
-                out.append(chr(int(body[i + 1:j])))
+                out.append(int(body[i + 1:j]) & 0xFF)
                 i = j
                 continue
-            out.append(ESC.get(d, d))
+            out += ESC.get(d, d).encode("utf-8")
             i += 2
             continue
-        out.append(c)
+        out += c.encode("utf-8")
         i += 1
-    return "".join(out)
+    return out.decode("utf-8", errors="replace")
 
 
 def tokens(src):

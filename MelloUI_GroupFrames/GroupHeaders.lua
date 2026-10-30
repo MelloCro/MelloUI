@@ -209,7 +209,14 @@ local function GameFootprint(sp)
 	if DB().showPlayer then
 		h = h + GAME_MEMBER.h + sp
 	end
-	return GAME_MEMBER.w * ratio, h * ratio
+	-- (1.2.4, fr-10: the damage meter's tab on each frame's plate end -- Modules/Meter.lua -- inside the plate too)
+	local meter = MelloUI:GetModule("Meter")
+	local ok, reach = false, nil
+	if meter and meter.PartyReach then
+		ok, reach = pcall(meter.PartyReach, meter)
+	end
+	reach = ok and Num(reach) or 0
+	return (GAME_MEMBER.w + math.max(0, reach)) * ratio, h * ratio
 end
 
 -- the room between two frames: the party's, or the raid's own (0.20.2)

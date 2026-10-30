@@ -48,6 +48,11 @@ local LOOKS = {
 		seal = "seal_green", wings = "res_wings_green", pillar = "pillar_green" },
 	water = { main = "6FC8FF", heal = "C8ECFF", plus = "plus_blue", sign = "crest_blue", star = "star_blue",
 		seal = "seal_blue", wings = "res_wings_blue", pillar = "pillar_blue" },
+	-- (1.2.4, Buff Landings' school looks -- the user's pick "By school": holy gold, nature green, arcane blue (Water's),
+	-- shadow violet, physical amber -- only a buff's landing wears these two: its star the gold one turned,
+	-- Tools/make_icons.py TINT)
+	shadow = { main = "A47BFF", heal = "DCCBFF", star = "star_violet" },
+	physical = { main = "FFA040", heal = "FFD9AE", star = "star_amber" },
 }
 local NAMED = { white = "FFFFFF", blue = "7FD0FF", steel = "C8D4E6", red = "FF4A3A", gold = "FFC83A", orange = "FF8A2A" }
 local WHITE = { 1, 1, 1 }
@@ -215,6 +220,22 @@ local LISTS = {
 		Rim("white", 0, 0.6, 1, "flash"),
 		Held(Rim("steel", 0.6, nil, 0.5, nil, nil, 2)),
 	},
+	-- (1.2.4, Buff Landings; the user's picks of BuildData/output/buff_landings_sketch, 2026-10-30: "B Spiral") a buff
+	-- landing: motes spiral up round the portrait and meet in the buff's star on its top; a light runs along the
+	-- plate's rim, top and foot, from the portrait's side to the far end; the border lit as they meet. A group form's
+	-- landings wave out of its caster's frame (`from`: the wave's origin is S.from -- FX.Show's -- none: at once)
+	u = { wave = 0.12, from = true,
+		P("spiral", 0, 1.15, { c = "main", n = 8, size = 12, turns = 1.25, env = "hold" }),
+		P("crown", 0.95, 1.7, { s = "star", size = 13, peak = 1.6, env = "hold" }),
+		P("trace", 0.1, 1.0, { c = "main", size = 8, env = "hold", a = 0.95 }),
+		Rim("main", 0.9, 1.65, 0.7),
+	},
+	-- (the sketch's C Glint, the user's pick "In a raid: Quiet glint") a buff landing in a raid: the border lit once,
+	-- three motes rising off the plate
+	q = { wave = 0.12, from = true,
+		Rim("main", 0, 1.05, 0.6, "pulse"),
+		P("rise", 0.05, 1.2, { s = "spark_white", c = "main", at = "plate", n = 3, height = 20, size = 6, env = "hold" }),
+	},
 }
 for _, list in pairs(LISTS) do
 	list.bold = true
@@ -303,13 +324,24 @@ function FX.WaveSteps(origin)
 	return wave.steps
 end
 
--- a group heal's landing on S's frame (a split frame's ring half: its owner's): its step out of your own frame
-local function WaveStep(S)
-	local frame = S and (S.frame or (S.owner and FX.state[S.owner] and FX.state[S.owner].frame))
+-- a wave's landing on S's frame (a split frame's ring half: its owner's): its step out of the wave's origin -- a group
+-- heal's your own frame; (1.2.4) a list `from` its caster's, S.from (FX.Show's), none: at once
+local function WaveStep(S, list)
+	local owner = S and S.owner and FX.state[S.owner]
+	local frame = S and (S.frame or (owner and owner.frame))
 	if not frame then
 		return 0
 	end
-	return FX.WaveSteps(FX.FrameOf(FX.Canon("player")))[frame] or 0
+	local origin
+	if list.from then
+		origin = S.from or (owner and owner.from)
+		if not origin then
+			return 0
+		end
+	else
+		origin = FX.FrameOf(FX.Canon("player"))
+	end
+	return FX.WaveSteps(origin)[frame] or 0
 end
 
 -- the bold list for a look and kind on S's frame, or nil (none: the look's own)
@@ -329,7 +361,7 @@ function FX.BoldLanding(look, kind, S)
 		out = Resolve(list, L)
 		byKind[kind] = out
 	end
-	local step = list.wave and WaveStep(S) or 0
+	local step = list.wave and WaveStep(S, list) or 0
 	if step > 0 then
 		local key = kind .. step
 		local late = byKind[key]
@@ -985,6 +1017,67 @@ function DRAW.sheen(f, n, p, v, a)
 	local l, r = G.pl + cur.ox, G.pr + cur.ox
 	Sweep("plateSweep", l, G.pb + cur.oy, r, G.pt + cur.oy, l - 12 * k + (r - l + 24 * k) * v, 16 * k,
 		(G.pt - G.pb) * 2.2, a, -0.3)
+	return n
+end
+
+-- (1.2.4, Buff Landings' spiral) `n` motes spiralling up round the portrait from its foot to its top, `turns` times
+-- round, one after another (a frame with no portrait: round its middle); nearer ones bigger and brighter
+function DRAW.spiral(f, n, p, v, a)
+	local k = G.k
+	local r = (G.rr or G.h * 0.42) * 1.02
+	local cx, cy = (G.rx or G.x) + cur.ox, (G.ry or G.y) + cur.oy
+	local turns = p.turns or 1.25
+	local tint = Col(p.c)
+	for i = 0, p.n - 1 do
+		local q = Clamp((v - i / p.n * 0.3) / 0.7)
+		if q > 0 and q < 1 then
+			local ang = q * TAU * turns + i * TAU / p.n
+			local depth = sin(ang)
+			local x, y = cx + cos(ang) * r, cy - r * 0.95 + q * r * 1.9
+			local fa = a * sin(PI * q) * (0.5 + 0.5 * depth)
+			local s = p.size * k * (0.85 + 0.3 * depth)
+			n = Put(f, n, "glow_white", x, y, s * 2.2, s * 2.2, fa * 0.75, 0, tint)
+			n = Put(f, n, "spark_white", x, y, s, s, fa, 0, tint)
+		end
+	end
+	return n
+end
+
+-- (Buff Landings) the buff's star on the portrait's top edge (a frame with none: its top middle), popping past its
+-- size (`peak`) and settling, a glow in the look's light behind it
+function DRAW.crown(f, n, p, v, a)
+	local x = (G.rx or G.x) + cur.ox
+	local y = (G.rr and G.ry + G.rr or G.t - 3 * G.k) + cur.oy
+	local peak = p.peak or 1.6
+	local g = v < 0.14 and peak * Out(v / 0.14) or v < 0.3 and peak + (1 - peak) * Out((v - 0.14) / 0.16) or 1
+	local s = p.size * G.k * max(0.05, g)
+	n = Put(f, n, "glow_white", x, y, s * 2.2, s * 2.2, a * 0.55 * (1 - v), 0, Col("heal"))
+	local file, tint = Spr(p)
+	return Put(f, n, file, x, y, s, s, a, 0, tint)
+end
+
+-- (Buff Landings) a light running along the plate's rim, its top and its foot together, from the portrait's side to
+-- the far end, a short tail behind it
+function DRAW.trace(f, n, p, v, a)
+	local l, r = G.pl, G.pr
+	local flip = G.rx ~= nil and G.rx > (l + r) / 2
+	local q = Out(v)
+	local fade = v > 0.82 and (1 - v) / 0.18 or 1
+	local tint = Col(p.c)
+	for e = 1, 2 do
+		local y = (e == 1 and G.pt or G.pb) + cur.oy
+		for j = 0, 5 do
+			local share = q - j * 0.035
+			if share >= 0 then
+				local x = (flip and r + (l - r) * share or l + (r - l) * share) + cur.ox
+				local s = p.size * G.k * (1 - j * 0.12)
+				n = Put(f, n, "glow_white", x, y, s * 1.6, s * 0.7, a * (1 - j * 0.16) * fade, 0, tint)
+				if j == 0 then
+					n = Put(f, n, "glow_white", x, y, s * 0.6, s * 0.45, a * fade)
+				end
+			end
+		end
+	end
 	return n
 end
 

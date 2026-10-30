@@ -1165,8 +1165,10 @@ end
 -- never moves it (the configurator audit: one size per thing on screen)
 local function DealtScale(look)
 	local world = 1
-	if C_CVar and C_CVar.GetCVar then
-		local ok, v = pcall(C_CVar.GetCVar, "WorldTextScale")
+	-- (2026-10-30: the client's own name for it, Forever's WorldTextScale_v2: Tweaks' MelloUI.WorldTextCVar)
+	local name = MelloUI.WorldTextCVar and MelloUI.WorldTextCVar()
+	if name and C_CVar and C_CVar.GetCVar then
+		local ok, v = pcall(C_CVar.GetCVar, name)
 		world = ok and tonumber(Text(v)) or 1
 		if world < 0.5 then
 			world = 0.5

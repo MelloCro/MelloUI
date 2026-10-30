@@ -411,6 +411,9 @@ L.unplaced = {
 	["UIModifications.TooltipPanel"] = "Tooltip > Background",
 	-- (one look stage G, the Bars designer: Which Bar is the Action Bars stage's strips)
 	["Tweaks.barLayoutBar"] = "Bars > Action Bars: the strips pick the bar",
+	-- (el-13, the user 2026-10-30: "One row for all skins") the painted reskin is picked as Oldschool in Look >
+	-- General's Skin (its schema's setBy: the rows that need it point there)
+	["UIModifications.reskin"] = "Look > General: the Skin row's Oldschool",
 }
 
 function L.Define(R, Link)
@@ -452,7 +455,6 @@ function L.Define(R, Link)
 		CHAT_PAINTED },
 		line = "Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)" }
 	-- Look: the global look, only here (every element's page links to it)
-	R("Oldschool", "General", "General", "UIModifications.reskin")
 	R("Oldschool", "General", "General", "UIModifications.preloadArt")
 	R("Oldschool", "General", "General", "UIModifications.#Switch every area on")
 	-- (free: applied with UI Modifications on or off, its OnSettingChanged; 0.25.0: the painted reskin's palettes, so its
@@ -533,8 +535,8 @@ function L.Define(R, Link)
 	-- Scale Damage gone in 0.19.4)
 	-- (0.20.1) Numbers Over Enemies only where the client has the cvar it writes (the user, 2026-10-10: this
 	-- client has none, the slider moved nothing and Combat Text reads the same cvar): else left out on purpose
-	local okWorld, worldText = pcall(function() return C_CVar and C_CVar.GetCVar and C_CVar.GetCVar("WorldTextScale") end)
-	local hasWorldText = okWorld and type(worldText) == "string"
+	-- (2026-10-30: Forever's is WorldTextScale_v2; Tweaks' MelloUI.WorldTextCVar finds the client's own name)
+	local hasWorldText = MelloUI.WorldTextCVar and MelloUI.WorldTextCVar() ~= nil
 	if hasWorldText then
 		R("QualityOfLife", "Combat Text", "Text", "Tweaks.worldTextScale")
 	else
@@ -875,6 +877,8 @@ function L.Define(R, Link)
 	-- (0.22.1, the animations: the stretch of the XP bar just gained lit)
 	R("ActionBars", "xprep:xp", "Look", "Tweaks.xpGain")
 	R("ActionBars", "xprep:xp", "Look", "Tweaks.levelUp")
+	-- (an-06, the user, 2026-10-30: "study it and i would want us to implement something similar", then the picks)
+	R("ActionBars", "xprep:xp", "Look", "Tweaks.levelCard")
 	R("ActionBars", "xprep:xp", "Look", "ActionBars.backdropXP", { name = "Backdrop" })
 	R("ActionBars", "xprep:rep", "Look", "Tweaks.repGain")
 	R("ActionBars", "xprep:rep", "Look", "ActionBars.backdropXP2", { name = "Backdrop" })
@@ -1169,6 +1173,8 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "all", "General", "HealFlight.#Every Kind")
 	R("UnitGroupFrames", "all", "General", "HealFlight.flight")
 	R("UnitGroupFrames", "all", "General", "HealFlight.hotTicks")
+	-- (an-05, the user, 2026-10-30: "Yes, sketch first", then the picks) a buff landing on the group's frames
+	R("UnitGroupFrames", "all", "General", "HealFlight.buffs")
 	R("UnitGroupFrames", "all", "Look", "HealFlight.look")
 
 	-- (0.20.0) Frame Effects, Cooldowns: its switch, whose, and every kind to see

@@ -67,6 +67,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		-- (one look C13b: Unit Frames' until then, under Unit Frame Tweaks;
 		-- Core.lua's MergeSettings carries a saved off) Level Up and XP Gain
 		levelUp = true,
+		levelCard = true,
 		xpGain = true,
 		repGain = true,
 	},
@@ -173,6 +174,9 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		-- (0.21.3; the user, 2026-10-13: "Yes to all" to the animation previews; one look C13b: Unit Frames' until then)
 		{ type = "toggle", key = "levelUp", name = "Level Up",
 		  desc = "A level up fills the bar with light and announces your new level." },
+		-- (1.2.4, an-06; the user, 2026-10-30: "Yes, on by default" to BuildData/output/levelup_sketch)
+		{ type = "toggle", key = "levelCard", name = "Level Up Card", new = "1.2.4",
+		  desc = "A level up shows a small window with the stats you gained and the spells now at your class trainer." },
 		-- (0.22.1; the user, 2026-10-14: "build all 5" to the animation previews)
 		{ type = "toggle", key = "xpGain", name = "XP Gain",
 		  desc = "The part of the experience bar you just gained lights up." },
@@ -917,7 +921,25 @@ M.Split = Split   -- (the tests')
 -- World text scale
 --------------------------------------------------------------------------------
 
-local WORLD_TEXT_CVAR = "WorldTextScale"
+-- (2026-10-30, the user on Forever: "/run SetCVar("WorldTextScale_v2", X" sizes the numbers) the client's own name
+-- for the cvar: the first of these it answers for, nil when it has none (a name found is kept; Combat Text and the
+-- configurator's row ask here too). Forever has only the _v2 one, so 0.20.1 found "no cvar" and left the row out.
+local WORLD_TEXT_CVARS = { "WorldTextScale_v2", "WorldTextScale" }
+function MelloUI.WorldTextCVar()
+	local found = M.worldTextCVar
+	if found then
+		return found
+	end
+	local get = C_CVar and C_CVar.GetCVar
+	for _, name in ipairs(get and WORLD_TEXT_CVARS or {}) do
+		local ok, v = pcall(get, name)
+		if ok and type(v) == "string" and not (issecretvalue and issecretvalue(v)) then
+			M.worldTextCVar = name
+			return name
+		end
+	end
+	return nil
+end
 local worldTextWarned = false
 
 -- The player's own WorldTextScale is kept in the saved settings
@@ -937,10 +959,11 @@ local worldTextWarned = false
 local keptWorldTextScale = nil
 
 local function ReadWorldTextScale()
-	if not (C_CVar and C_CVar.GetCVar) then
+	local name = MelloUI.WorldTextCVar()
+	if not name then
 		return nil
 	end
-	local ok, current = pcall(C_CVar.GetCVar, WORLD_TEXT_CVAR)
+	local ok, current = pcall(C_CVar.GetCVar, name)
 	if not ok or type(current) ~= "string" or (issecretvalue and issecretvalue(current)) then
 		return nil
 	end
@@ -968,10 +991,11 @@ local function ApplyWorldTextScale(value)
 	if math.abs((tonumber(current) or -1) - value) < 0.001 then
 		return   -- already so
 	end
-	local okS, done = pcall(C_CVar.SetCVar, WORLD_TEXT_CVAR, string.format("%.2f", value))
+	local name = MelloUI.WorldTextCVar()
+	local okS, done = pcall(C_CVar.SetCVar, name, string.format("%.2f", value))
 	if not (okS and done) and not worldTextWarned then
 		worldTextWarned = true
-		MelloUI:Print("Tweaks: the client refused '%s'; the World Text Scale slider cannot work on it.", WORLD_TEXT_CVAR)
+		MelloUI:Print("Tweaks: the client refused '%s'; the World Text Scale slider cannot work on it.", name)
 	end
 end
 
@@ -991,8 +1015,9 @@ local function RestoreWorldTextScale()
 	if db then
 		db.savedWorldTextScale = nil
 	end
-	if saved ~= nil and C_CVar and C_CVar.SetCVar then
-		pcall(C_CVar.SetCVar, WORLD_TEXT_CVAR, saved)
+	local name = MelloUI.WorldTextCVar()
+	if saved ~= nil and name and C_CVar and C_CVar.SetCVar then
+		pcall(C_CVar.SetCVar, name, saved)
 	end
 end
 
@@ -1222,21 +1247,39 @@ M.Layout = Layout   -- (the tests')
 
 local Level = { NOTICE_AT = 0.95, ORB_SPILL = { 70, 70 }, BAR_SPILL = { 8, 12 }, BEFORE = 2, new = nil }
 
-function Level.Notice()
-	local new = Level.new
-	if not new then
-		return
-	end
-	local sub
+-- the quests the level opened in the player's zone, as the notice's second line (nil: none, or no Quest List)
+function Level.Sub(new)
 	local ql = MelloUI:GetModule("QuestList")
 	if ql and ql.isEnabled and type(ql.NewQuestsAt) == "function" then
 		local ok, n = pcall(ql.NewQuestsAt, ql, new)
 		n = ok and Num(n) or nil
 		if n and n > 0 then
-			sub = n .. (n == 1 and " new quest nearby" or " new quests nearby")
+			return n .. (n == 1 and " new quest nearby" or " new quests nearby")
 		end
 	end
-	MelloUI:AnnounceMoment("Level " .. new, sub)
+	return nil
+end
+
+-- (1.2.4) the Level Up Card (Core/LevelCard.lua) wanted: its option and the card's file
+function Level.CardOn()
+	return M.isEnabled and M.db ~= nil and M.db.levelCard ~= false and type(rawget(MelloUI, "LevelCard")) == "table"
+end
+
+function Level.Notice()
+	local new = Level.new
+	if not new then
+		return
+	end
+	local sub = Level.Sub(new)
+	-- (the card shows the level: the line steps aside, its quests line goes to the card)
+	local card = rawget(MelloUI, "LevelCard")
+	if card and card.Shown() then
+		card.Sub(sub)
+		return
+	end
+	if M.db and M.db.levelUp ~= false then
+		MelloUI:AnnounceMoment("Level " .. new, sub)
+	end
 end
 
 -- the bar's share now (nil: secret, none)
@@ -1273,9 +1316,33 @@ function Level.From()
 	return Level.share or 0
 end
 
-function Level.Up(new)
+-- (1.2.4) PLAYER_LEVEL_UP's own gains: level, healthDelta, powerDelta, numNewTalents, numNewPvpTalentSlots,
+-- strengthDelta, agilityDelta, staminaDelta, intellectDelta (the client's API docs) and, on Forever, the spirit's
+-- after them (the game's own level-up lines read it: Blizzard_ChatFrameBase/Camelot/ChatFrameUtilOverrides.lua),
+-- plain numbers or nil, in the Level Up Card's keys; one table, filled again
+Level.gains = {}
+function Level.Gains(health, power, talents, _, str, agi, sta, int, spi)
+	local g = Level.gains
+	g.health, g.power, g.talents = Num(health), Num(power), Num(talents)
+	g.str, g.agi, g.sta, g.int, g.spi = Num(str), Num(agi), Num(sta), Num(int), Num(spi)
+	return g
+end
+
+function Level.Up(new, ...)
 	new = Num(new)
-	if not (new and M.isEnabled and M.db and M.db.levelUp ~= false) then
+	if not (new and M.isEnabled and M.db) then
+		return
+	end
+	-- (the preview, /mello player level, shows its own card first)
+	if Level.CardOn() and not Level.preview then
+		MelloUI.LevelCard.Level(new, Level.Gains(...), nil)
+	end
+	if M.db.levelUp == false then
+		-- (the card alone: its quests line in its moment)
+		if Level.CardOn() then
+			Level.new = new
+			Perf.C_Timer.After(Level.NOTICE_AT, Level.Notice)
+		end
 		return
 	end
 	Level.new = new
@@ -1308,17 +1375,21 @@ function Level.Up(new)
 	Perf.C_Timer.After(motion and Level.NOTICE_AT or 0, Level.Notice)
 end
 
-Level.OnEvent = Perf.Shared("OnEvent of Level Up", function(_, event, level)
+Level.OnEvent = Perf.Shared("OnEvent of Level Up", function(_, event, ...)
 	if event == "PLAYER_XP_UPDATE" then
 		Level.Track()
+		-- (the card's Spirit: its base value now, its change at the level the gain)
+		if Level.CardOn() then
+			MelloUI.LevelCard.Note()
+		end
 	else
-		Level.Up(level)
+		Level.Up(...)
 	end
 end, "event")
 
--- its event while the option is on (and the module)
+-- its event while the option is on (and the module): Level Up's or the Level Up Card's
 function Level.Listen()
-	local on = M.isEnabled and M.db ~= nil and M.db.levelUp ~= false
+	local on = M.isEnabled and M.db ~= nil and (M.db.levelUp ~= false or M.db.levelCard ~= false)
 	if not (on or Level.frame) then
 		return
 	end
@@ -1330,6 +1401,9 @@ function Level.Listen()
 		Level.frame:RegisterEvent("PLAYER_LEVEL_UP")
 		Level.frame:RegisterUnitEvent("PLAYER_XP_UPDATE", "player")
 		Level.Track()
+		if Level.CardOn() then
+			MelloUI.LevelCard.Note()
+		end
 	else
 		Level.frame:UnregisterAllEvents()
 	end
@@ -1549,13 +1623,21 @@ M.Rep = Rep   -- (the tests)
 -- level gained): Unit Frames' word, its doorway (one look C13b)
 function M.SlashLevel()
 	local lv = Num(UnitLevel("player"))
-	if not (lv and M.isEnabled and M.db and M.db.levelUp ~= false) then
-		MelloUI:Print("Level Up is off (Bars > XP & Rep).")
+	local up = lv and M.isEnabled and M.db and M.db.levelUp ~= false
+	local card = lv and Level.CardOn()
+	if not (up or card) then
+		MelloUI:Print("Level Up and the Level Up Card are off (Bars > XP & Rep).")
 		return
 	end
-	Level.preview = true
-	Level.Up(lv)
-	Level.preview = nil
+	if card then
+		-- (1.2.4) the card for the level you have, with a small level's gains
+		MelloUI.LevelCard.Preview(lv)
+	end
+	if up then
+		Level.preview = true
+		Level.Up(lv)
+		Level.preview = nil
+	end
 end
 
 -- (/mello player xp, 0.22.1) XP Gain's light on the bar as for a gain of
@@ -2177,8 +2259,12 @@ function M:OnSettingChanged(key, value, db)
 		ApplyWorldTextScale(value)
 	elseif key == "splitWheel" or key == "splitHalf" then
 		Split.Lay()
-	elseif key == "levelUp" then
+	elseif key == "levelUp" or key == "levelCard" then
 		Level.Listen()
+		local card = rawget(MelloUI, "LevelCard")
+		if key == "levelCard" and value == false and card then
+			card.Hide()
+		end
 	elseif key == "xpGain" then
 		XP.Listen()
 	elseif key == "repGain" then

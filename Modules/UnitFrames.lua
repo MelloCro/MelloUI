@@ -2643,14 +2643,15 @@ local Frames = {
 	ART = {
 		-- (1.2.4, the frames' bold landings -- Core/FrameFXBold.lua: the user, 2026-10-26, "across the whole unitframe
 		-- border, that means also on the top border where the name is") `plate`: its gold rim round the name and the
-		-- bars, `edge` its outer edge, as shares of the picture (left, top, right, bottom): M:PlateOf
+		-- bars, `edge` its outer edge, as shares of the picture (left, top, right, bottom): M:PlateOf; `cut` its plate's
+		-- plain parts (Frames.CUT: M:PlateCut)
 		player = { "uf_frame_player", 396 / 512, 142 / 256, plate = { 140 / 396, 26 / 142, 387 / 396, 115.5 / 142 },
-			edge = { 140 / 396, 22 / 142, 391 / 396, 120 / 142 } },
+			edge = { 140 / 396, 22 / 142, 391 / 396, 120 / 142 }, cut = "player" },
 		res = { "uf_frame_player_res", 396 / 512, 148 / 256, plate = { 140 / 396, 26.5 / 148, 388 / 396, 135.5 / 148 },
-			edge = { 140 / 396, 23 / 148, 391 / 396, 140 / 148 } },
+			edge = { 140 / 396, 23 / 148, 391 / 396, 140 / 148 }, cut = "res" },
 		target = { "uf_frame_target", 388 / 512, 136 / 256 },
 		small = { "uf_frame_small", 240 / 256, 98 / 128, plate = { 88 / 240, 9.5 / 98, 231 / 240, 72.5 / 98 },
-			edge = { 88 / 240, 6 / 98, 234 / 240, 77 / 98 } },
+			edge = { 88 / 240, 6 / 98, 234 / 240, 77 / 98 }, cut = "party" },
 		badge = { "uf_badge", 1, 1 },
 		-- (the dragon round the target's ring: its art 256 texels for 128 units, the ring's centre 159.25 x 33.75 units
 		-- into the target's picture, as on its 2x art, 318.5 x 67.5 px)
@@ -3229,14 +3230,15 @@ end
 -- right, bottom). The game's portrait is not in its ring's middle on every frame -- the player's 2 units right of it,
 -- a party member's 2.5, the target of target's and the pet's 1.5 right and down; the target's and focus's in it --
 -- so the effects take the ring from the picture. The same names draw retail's art on the retail client (its layout
--- the same sizes); a picture not listed (a vehicle's, a rare's) leaves FX.Split's reading as it was
+-- the same sizes); a picture not listed (a vehicle's, a rare's) leaves FX.Split's reading as it was. `cut`: its plate's
+-- plain parts (Frames.CUT: M:PlateCut)
 Frames.GAME = {
 	["ui-hud-unitframe-party-portraiton"] = { 120, 49, ring = { 22, 22, 42 }, plate = { 35, 4, 117, 38 },
-		edge = { 35, 4, 117, 39 } },
+		edge = { 35, 4, 117, 39 }, cut = "party" },
 	["ui-hud-unitframe-player-portraiton"] = { 198, 71, ring = { 35, 34, 67 }, plate = { 57, 12, 195, 61 },
-		edge = { 57, 11, 196, 61 } },
+		edge = { 57, 11, 196, 61 }, cut = "gamePlayer" },
 	["ui-hud-unitframe-player-portraiton-classresource"] = { 198, 74, ring = { 35, 34, 67 }, plate = { 57, 12, 195, 69 },
-		edge = { 57, 11, 196, 71 } },
+		edge = { 57, 11, 196, 71 }, cut = "gameRes" },
 	["ui-hud-unitframe-target-portraiton"] = { 194, 68, ring = { 158, 32, 65 }, plate = { 2, 8, 135, 55 },
 		edge = { 1, 8, 135, 57 } },
 	["ui-hud-unitframe-target-minusmob-portraiton"] = { 163, 57, ring = { 135, 27, 55 }, plate = { 1, 7, 115, 47 },
@@ -3244,6 +3246,23 @@ Frames.GAME = {
 }
 -- (the target of target's and the pet's picture: the party's own layout, measured the same to the texel)
 Frames.GAME["ui-hud-unitframe-targetoftarget-portraiton"] = Frames.GAME["ui-hud-unitframe-party-portraiton"]
+-- (1.2.4, fr-10 / fr-11: the meter's tab on the party's and the player's plate end, Modules/Meter.lua) a plate's plain
+-- parts, in texels of its picture drawn two a unit (W x H; MelloUI Frames' pictures and Forever's sharp c60 members --
+-- the party's 2x twin, uiunitframe2xc60's player pictures -- measured): a bar slot's fill, the top and bottom rims'
+-- runs (a rim the same all along), the free end's rim run (the same all down) and its two corners -- each a box (left,
+-- right, top, bottom). The game's own party picture and its sharp twin are cut as MelloUI Frames' (their one layout)
+Frames.CUT = {
+	party = { 240, 98, fill = { 150, 152, 44, 48 }, top = { 150, 152, 6, 13 }, bottom = { 150, 152, 70, 77 },
+		edge = { 227, 234, 16, 29 }, topEnd = { 227, 234, 6, 13 }, bottomEnd = { 227, 234, 70, 77 } },
+	player = { 396, 142, fill = { 250, 252, 78, 86 }, top = { 250, 252, 22, 29 }, bottom = { 250, 252, 113, 120 },
+		edge = { 384, 391, 34, 47 }, topEnd = { 384, 391, 22, 29 }, bottomEnd = { 384, 391, 113, 120 } },
+	res = { 396, 148, fill = { 250, 252, 78, 86 }, top = { 250, 252, 23, 30 }, bottom = { 250, 252, 133, 140 },
+		edge = { 384, 391, 34, 47 }, topEnd = { 384, 391, 23, 30 }, bottomEnd = { 384, 391, 133, 140 } },
+	gamePlayer = { 396, 142, fill = { 250, 252, 78, 86 }, top = { 250, 252, 22, 29 }, bottom = { 250, 252, 115, 122 },
+		edge = { 385, 392, 34, 47 }, topEnd = { 385, 392, 22, 29 }, bottomEnd = { 385, 392, 115, 122 } },
+	gameRes = { 396, 148, fill = { 250, 252, 78, 86 }, top = { 250, 252, 22, 29 }, bottom = { 250, 252, 134, 141 },
+		edge = { 385, 392, 34, 47 }, topEnd = { 385, 392, 22, 29 }, bottomEnd = { 385, 392, 134, 141 } },
+}
 -- [an entry] = { plate, edge, ring } as shares of its picture (the ring: x, y, its size of the width), and mirrored
 Frames.gameShares = {}
 
@@ -3278,7 +3297,7 @@ end
 
 -- a game picture's measured shares while it shows (Frames.GAME's by its atlas -- a mirrored party member's the one
 -- Party.FlipCoords laid as its sheet, the Default skin's sharp party picture the one it stands for; a secret or
--- unlisted one: nil)
+-- unlisted one: nil) and that atlas (lower case: its Frames.GAME key)
 function Frames.GameShown(tex)
 	if type(tex) ~= "table" or type(tex.GetAtlas) ~= "function" or not Shown(tex) then
 		return nil
@@ -3288,22 +3307,28 @@ function Frames.GameShown(tex)
 		local rec = Party.flip.coords[tex]
 		atlas = (type(rec) == "table" and rec.atlas) or Party.sharp[tex]
 	end
-	local e = type(atlas) == "string" and Frames.GAME[atlas:lower()]
-	return e and Frames.GameShares(e) or nil
+	atlas = type(atlas) == "string" and atlas:lower() or nil
+	local e = atlas and Frames.GAME[atlas]
+	if not e then
+		return nil
+	end
+	return Frames.GameShares(e), atlas
 end
 
 -- the game's own picture `frame` wears now, while the Default skin shows it -- the picture, its plate, edge and ring
--- (shares of it: Frames.GAME's; a party member Flip Horizontally mirrors, mirrored) -- or nil. Its atlas read, never
--- written
+-- (shares of it: Frames.GAME's; a party member Flip Horizontally mirrors, mirrored) and its atlas (Frames.GAME's key)
+-- -- or nil. Its atlas read, never written
 function Frames.GameOf(frame)
 	local skin = rawget(MelloUI, "Skin")
 	if not (skin and skin.IsDefault()) then
 		return nil
 	end
 	local a, b = Frames.GamePictures(frame)
-	local tex, s = a, Frames.GameShown(a)
+	local tex = a
+	local s, atlas = Frames.GameShown(a)
 	if not s then
-		tex, s = b, Frames.GameShown(b)
+		tex = b
+		s, atlas = Frames.GameShown(b)
 	end
 	if not s then
 		return nil
@@ -3311,13 +3336,13 @@ function Frames.GameOf(frame)
 	if Party.flip.frames[frame] then
 		s = s.mirror
 	end
-	return tex, s[1], s[2], s[3]
+	return tex, s[1], s[2], s[3], atlas
 end
 
 -- (1.2.4, the frames' bold landings) a frame's picture of ours with a plate -- the picture, its plate's rim and outer
 -- edge (shares of it: ART's plate, edge) -- or nil: FX.Split's plate (its border lit on that rim, the bold parts on
 -- the whole frame) and the afterimages' copy (Core/FrameFXBold.lua). The Default skin: the game's own picture
--- (Frames.GameOf), its ring's shares a fourth answer
+-- (Frames.GameOf), its ring's shares a fourth answer, its atlas a fifth
 function M:PlateOf(frame)
 	if type(frame) ~= "table" then
 		return nil
@@ -3336,6 +3361,53 @@ function M:PlateOf(frame)
 			end
 			return ours, art.plate, art.edge
 		end
+	end
+	return nil
+end
+
+-- (1.2.4, fr-10 / fr-11: the meter's values in a tab on a frame's plate end, Modules/Meter.lua -- the user's pick A,
+-- 2026-10-30, for the party; "you forgot the DPS meter numbers on the Player Unitframe", for yours) a party member's,
+-- a stand-in's or the player's plate as its picture shows it now: the picture, its plate's outer edge (shares of it:
+-- left, top, right, bottom; mirrored while Flip Horizontally mirrors the member), whether mirrored, the file that
+-- picture is drawn from with its place there (left, right, top, bottom; never mirrored) and its plate's plain parts
+-- in it (Frames.CUT), so the tab is cut from the very same rims. Else nil, and true while the painted skin draws the
+-- frame itself (its bars have no picture of a plate to read). Read, nothing written
+function M:PlateCut(frame)
+	local tex, _, edge, _, atlas = self:PlateOf(frame)
+	if not (tex and edge) then
+		return nil, Covered(frame == PlayerFrame and "unitframes" or "partyframes")
+	end
+	local mirrored = Party.flip.frames[frame] and true or false
+	if Frames.On() then
+		local art = Frames.ART[Frames.dressed[tex]]
+		local cut = art and Frames.CUT[art.cut]
+		if not cut then
+			return nil
+		end
+		return tex, edge, mirrored, Frames.DIR .. art[1], 0, art[2], 0, art[3], cut
+	end
+	-- (the Default skin: the game's own picture -- the party's sharp twin while laid, else the game's atlas)
+	local e = atlas and Frames.GAME[atlas]
+	local cut = e and Frames.CUT[e.cut]
+	if not cut then
+		return nil
+	end
+	local file, c = nil, nil
+	if Party.sharp[tex] then
+		file, c = Party.SharpArt()
+	end
+	if file then
+		return tex, edge, mirrored, file, c[1], c[2], c[3], c[4], cut
+	end
+	local get = C_Texture and C_Texture.GetAtlasInfo
+	local ok, info = false, nil
+	if get then
+		ok, info = pcall(get, atlas)
+	end
+	if ok and type(info) == "table" and info.file and Num(info.leftTexCoord) and Num(info.rightTexCoord)
+		and Num(info.topTexCoord) and Num(info.bottomTexCoord) then
+		return tex, edge, mirrored, info.file, info.leftTexCoord, info.rightTexCoord, info.topTexCoord,
+			info.bottomTexCoord, cut
 	end
 	return nil
 end

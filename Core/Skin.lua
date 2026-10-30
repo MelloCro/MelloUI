@@ -9,13 +9,17 @@
 -- ONE switch for the look of MelloUI's own parts: UI Modifications' Skin, "modern" (MelloUI's own art, the default)
 -- or "default" (the game's own art -- WoW Forever's atlases and files by name, its fonts and colours -- in exactly the
 -- places Modern has its own: nothing moves, nothing is added or taken away). Oldschool's painted look is its reskin
--- on top (Kit.Areas): while it dresses, the skin reads Modern (folded into this setting with the installer's skin
--- step, wave D). The shared systems ask here and lay their own pieces: the palette (MelloUI.Look.Palette), the
+-- on top (Kit.Areas): while it dresses, the skin reads Modern. The three are picked in one place, the skin whole
+-- (Skin.SETS, Skin.Pick: the installer's Skin step and Look > General's Skin row, el-13). The shared systems ask
+-- here and lay their own pieces: the palette (MelloUI.Look.Palette), the
 -- controls (Widgets), the rims (MelloUI.Rims), the icons (MelloUI.Icons), the fonts (the widgets' own font objects,
 -- the Fonts module), MelloUI Frames. Every game piece at its own size or smaller.
 --
 --   Skin.Name() -> "default" | "modern"   (the setting as saved; any other value reads "modern")
 --   Skin.IsDefault() -> true while the Default skin shows (the setting "default", and Oldschool's reskin off)
+--   Skin.SETS[skin] -> { ["Module.key"] = value, ["!Module"] = true }   each skin's settings and the switches it needs
+--   Skin.Offered(skin), Skin.Current() -> "default" | "modern" | "oldschool"   pickable; the skin in use
+--   Skin.Pick(skin) -> laid   a player's pick: the set written, what it needs turned on (never a module off)
 --   Skin.Follow(obj, apply)   apply(obj, isDefault) now, and again at every switch (weak: obj is its owner's)
 --   Skin.Border(frame, kind[, first[, last]]) -> border   the game's border round `first` (frame) to `last`
 --       (first), a child frame of `frame`: kind "tooltip" (the tooltip's edge on the rect), "window" (the dialog's
@@ -78,6 +82,80 @@ end
 function Skin.Follow(obj, apply)
 	Skin.followers[obj] = apply
 	apply(obj, Skin.IsDefault())
+end
+
+--------------------------------------------------------------------------------
+-- (1.2.4, el-13) The skins, each picked whole, the same wherever it is picked (the installer's Skin step, Look >
+-- General's Skin): its settings and the module switches it needs to show. Default and Modern are UI Modifications'
+-- Skin, applied with the module on or off; Oldschool is MelloUI_Oldschool's painted reskin over Modern's parts, drawn
+-- only while UI Modifications runs (Kit's Reskin), so that pick turns it on. A pick never turns a module off, and only
+-- a pick lays a skin: a switch the player throws afterwards stays theirs. The user, 2026-10-30, on the Skin row: "One
+-- row for all skins".
+--------------------------------------------------------------------------------
+
+Skin.SETS = {
+	default = { [SWITCHES .. ".skin"] = "default", [SWITCHES .. ".reskin"] = false },
+	modern = { [SWITCHES .. ".skin"] = "modern", [SWITCHES .. ".reskin"] = false },
+	oldschool = { [SWITCHES .. ".skin"] = "modern", [SWITCHES .. ".reskin"] = true, ["!" .. SWITCHES] = true },
+}
+
+-- a skin that can be picked: Oldschool only while MelloUI_Oldschool is loaded and of this release
+function Skin.Offered(name)
+	if Skin.SETS[name] == nil then
+		return false
+	end
+	return name ~= "oldschool" or MelloUI:OldschoolShipped() ~= nil
+end
+
+-- the skin in use: Oldschool while its painted reskin dresses, else the setting
+function Skin.Current()
+	return Reskinned() and "oldschool" or Skin.Name()
+end
+
+-- A player's pick: the set's settings that differ written in one Batch (a module that is off has its settings
+-- written for its OnEnable to read), then the switches it needs turned on. Refused in a fight when it would switch
+-- the painted reskin or a module (every painted skin at once: UI Modifications' SetAreas refuses that too). Returns
+-- whether the skin was laid
+function Skin.Pick(name)
+	if not Skin.Offered(name) then
+		return false
+	end
+	local set, writes, switches = Skin.SETS[name], {}, {}
+	for spec, value in pairs(set) do
+		local flag = spec:match("^!(.+)$")
+		if flag then
+			if value and not MelloUI:IsModuleEnabled(flag) then
+				switches[#switches + 1] = flag
+			end
+		else
+			local module, key = spec:match("^([^.]+)%.(.+)$")
+			local db = MelloUI:GetModuleDB(module)
+			if db and db[key] ~= value then
+				writes[#writes + 1] = { module, key, value }
+			end
+		end
+	end
+	local refused = false
+	if InCombatLockdown() then
+		refused = #switches > 0
+		for _, w in ipairs(writes) do
+			refused = refused or (w[1] == SWITCHES and w[2] == "reskin")
+		end
+	end
+	if refused then
+		local um = MelloUI.modules[SWITCHES]
+		MelloUI:Print(um and um.areasRefused or "Not in combat.")
+		return false
+	end
+	MelloUI:Batch(function()
+		for _, w in ipairs(writes) do
+			MelloUI:NotifySettingChanged(w[1], w[2], w[3])
+		end
+	end)
+	for _, flag in ipairs(switches) do
+		MelloUI:SetModuleEnabled(flag, true)
+	end
+	return true
 end
 
 --------------------------------------------------------------------------------

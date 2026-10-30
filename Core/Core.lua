@@ -5283,8 +5283,15 @@ function MelloUI:FreshProfileText()
 	local parts = {}
 	for name, module in self:IterateModules() do
 		-- (a module with no switch of its own -- noSwitch, the Fader -- has no
-		-- flag to turn off)
-		if module.enabledByDefault and not module.hidden and not module.noSwitch then
+		-- flag to turn off; one UI Modifications drives, a kit panel's
+		-- `window` or a folded feature's `tweak`, is its switch's below, told
+		-- by those tables as the configurator tells it -- never by `hidden`,
+		-- which UI Modifications' OnInit sets only after the login has read
+		-- this text: with MelloUI_Oldschool every painted panel's flag went in
+		-- then and landed on its switch, off, so a new player got no installer
+		-- and the umbrella switched on ran no panel. el-13, 2026-10-30)
+		local driven = type(module.window) == "table" or type(module.tweak) == "table"
+		if module.enabledByDefault and not module.hidden and not driven and not module.noSwitch then
 			parts[#parts + 1] = "!" .. name .. "=b0"
 		end
 		-- the tweak modules folded under UI Modifications follow its qol_
