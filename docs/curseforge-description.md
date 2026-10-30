@@ -1,40 +1,65 @@
-# **MelloUI – One Clean UI, a World Map of Its Own & Voiced NPCs**
+# **MelloUI – An All-in-One UI for World of Warcraft: Forever**
 
-_Hey! MelloUI is my all-in-one UI for World of Warcraft: Forever. Everything is a switch, and on your first login the installer walks you through it step by step: your skin (the game's own look, Modern or Oldschool), then the features you want, fitted to your screen. Type `/mello` for the settings any time._
+_Everything is a switch. On your first login the installer sets MelloUI up with you, fitted to your screen. Type `/mello` for the settings any time._
 
-## What's in it
+## The look
 
-*   **A world map of its own:** one seamless map of the whole world, from Azeroth down to a village. You, your party, your route, flight masters, boats, dungeons, quest givers and your quests' objectives are all on it, with your quest log beside it. Questie, HandyNotes and GatherMate2 pins show up on it too. Press **M**.
-*   **Smart navigation:** Route finds the quickest way over roads, open ground and flights, and the World Marker shows it in the world.
-*   **RestedXP Compatibility:** MelloUI follows RestedXP Guides' steps on the map, the World Marker and the Quest Tracker.
-*   **One clean look:** MelloUI's own windows, bars and frames in Gilded Slate colours and the Fredoka font, with an icon set that stays sharp at every size.
-*   **Quests:** a Quest Tracker in the chat's look, the Quest List with every quest near you, and voiced quest givers with subtitles.
-*   **Frames, nameplates and bars:** party and raid frames of MelloUI's own, nameplates that answer the fight, and designers in the settings: click a part on the preview and drag it where you want it.
-*   **Reminders:** low supplies, new mail, worn gear, new training. One click shows the way; Restock refills your bags when you say Buy.
-*   **And more:** a chat view of its own, combat text, a damage meter, bags by kind, party markers, cooldown numbers, auto-vendor, dark mode and new UI sounds.
-*   **Prefer the painted look?** The painted stone-and-parchment reskin lives on in **MelloUI Oldschool**, a separate download that runs beside MelloUI.
+*   **Three skins:** Default (the game's own look), Modern (MelloUI's own) and Oldschool (painted RPG art, a separate download).
+*   **Fonts, bar textures, colours and icons** in one place, and **Dark Mode** for the whole UI.
+*   **The game's windows** dressed to match, and a **Fader** that hides parts of the UI until you need them.
+
+## Frames and bars
+
+*   **Unit frames** for you, your target, focus and pet, with a designer: click a part, drag it.
+*   **Party and raid frames** with indicators for heals, shields and debuffs.
+*   **Frame effects:** heals, shields, cooldowns and buffs land on the frames, and a halo shows who has aggro.
+*   **Personal Display:** your health, power and big cooldowns under your character, and a swing timer.
+*   **Nameplates** with threat, combo points, crowd control, quest marks and your debuffs; class medallions over your party; glints on herbs, veins and quest items.
+*   **Action bars, cast bar, XP and reputation bars,** and a **Level Up Card** with your gains and new spells at every level.
+*   **Minimap** with a Services row (the nearest repair, inn, flight master and more) and one tidy group for other addons' buttons.
+*   **Damage meter:** a race bar in fights, numbers on your frames and a fight history.
+
+## Chat
+
+*   A cleaner chat with channel tabs, chat buttons and a whisper window.
+
+## Quests and travel
+
+*   **A world map of its own:** one seamless map with your quests, party, route, dungeons and other addons' pins.
+*   **Route** finds the quickest way over roads and flights; an arrow and a marker in the world lead you.
+*   **Quest Tracker** and a **Quest List** of every quest near you.
+*   **Dungeon Info:** every dungeon's bosses, loot and drop rates.
+*   **RestedXP** guide steps on the map, the marker and the tracker.
+
+## Quality of life
+
+*   Auto repair and junk selling, **Restock** for your supplies, quests accepted and handed in for you.
+*   **Reminders** for low supplies, mail, repairs, training and missing buffs.
+*   Bags sorted by kind, item quality gems, a junk Discard button and cooldown numbers.
+*   Combat text, gains beside your character, on-screen notices, quieter error messages, FPS and latency, and dark tooltips.
+
+## Sound
+
+*   **Voice Over:** quest givers read their text aloud, with subtitles.
+*   **Custom Sounds** for clicks, windows and alerts, in each skin's style.
+
+## And
+
+*   **Edit Layout:** move and size anything, the game's Edit Mode parts too. Your layout follows your screen's shape.
+*   **Profiles** to save, share and import your setup.
+*   The settings in English, German, French, Spanish, Portuguese, Russian, Chinese and Korean.
 
 ## Install
 
-The CurseForge app installs everything for you. By hand: download the release zip and copy every folder in it, `MelloUI` and each `MelloUI_` folder beside it, into `World of Warcraft\_forever_\Interface\AddOns\`. Then restart the game fully once (`/reload` doesn't find new folders). Each `MelloUI_` folder is one part of MelloUI (the map, Route, the Quest List, the chat ...) and can be switched off in the game's addon list.
+The CurseForge app installs everything. By hand: copy every folder from the zip into `World of Warcraft\_forever_\Interface\AddOns\`, then restart the game.
 
-**Voice pack (optional, 2.5 GB in two parts, remade for 0.18.3):** download [part 1](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part1.zip) and [part 2](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part2.zip). Had an earlier voice pack? Delete its `MelloUI_VoicePack` folder first. Then unzip both parts into the same `AddOns` folder: they make one `MelloUI_VoicePack` folder next to MelloUI. Tick it in the addon list. It replaces the old `MelloUI_VoiceOverData` pack, so delete that one too. No pack? The game's text-to-speech reads instead.
-
-## Good to know
-
-*   The game keeps your settings, and the Profiles page saves and shares them.
-*   After an update, restart the game once. `/reload` isn't enough for new files.
-*   Changed your mind? `/mello install` runs the installer again.
+**Voice pack (optional, 2.5 GB):** [part 1](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part1.zip) and [part 2](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part2.zip): unzip both into the same `AddOns` folder. Without it, the game's text-to-speech reads instead.
 
 ## Credits
 
-Parts of the configurator's design come from [EllesmereUI](https://www.curseforge.com/wow/addons/ellesmereui), used with its author's kind permission. Thank you!
-
-Dungeon Info's boss loot for WoW: Forever's own dungeons, and for the classic dungeons Forever changed, comes from the lists of [DungeonMaster](https://www.curseforge.com/wow/addons/dungeonmaster) by MalkDev (GPL-3.0). Thank you!
-
-Dungeon Info's drop rates for WoW: Forever's own dungeons are players' data: Data from [Everloot](https://everloot.app), [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
-
-The classic quests, NPCs and dungeon drops come from the [cmangos classic-db](https://github.com/cmangos/classic-db) (GPL-3.0): the data files made from it are under the GPL-3.0 too (LICENSE and LICENSE-GPL-3.0.txt in the MelloUI folder).
+*   Parts of the configurator's design come from [EllesmereUI](https://www.curseforge.com/wow/addons/ellesmereui), used with its author's kind permission. Thank you!
+*   Dungeon Info's Forever loot: [DungeonMaster](https://www.curseforge.com/wow/addons/dungeonmaster) by MalkDev (GPL-3.0). Drop rates: Data from [Everloot](https://everloot.app), [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+*   Classic quests, NPCs and drops: the [cmangos classic-db](https://github.com/cmangos/classic-db) (GPL-3.0); the data files made from it are GPL-3.0 too.
 
 ## Links
 

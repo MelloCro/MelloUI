@@ -100,7 +100,7 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		-- layout does not have the opacity slider aswell") the game's tracker's Edit Mode Opacity, for this one: how
 		-- much of its background shows (Art.Opacity); also in its Edit Layout box
 		{ type = "slider", key = "opacity", name = "Background Opacity", min = 0, max = 1, step = 0.05, percent = true,
-		  new = "1.2.4",
+		  new = "2.0.0",
 		  desc = "How solid the tracker's background is. At 0% its lines stand on the world, as the game's tracker's do." },
 		{ type = "slider", key = "scrollStep", name = "Scroll Step", min = 10, max = 120, step = 5,
 		  format = function(v) return tostring(math.floor(v + 0.5)) end,

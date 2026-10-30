@@ -64,7 +64,7 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		{ type = "slider", key = "ccGap", parent = "bigCC", name = "Gap Above Name", min = 0, max = 30, step = 1,
 		  format = function(v) return string.format("%d px", v) end,
 		  desc = "The space between the name and the crowd-control icon." },
-		{ type = "toggle", key = "hover", name = "Mouseover Highlight", new = "1.2.4",
+		{ type = "toggle", key = "hover", name = "Mouseover Highlight", new = "2.0.0",
 		  desc = "A crisp outline on the plate under your mouse." },
 		{ type = "header", name = "Quest Icon" },
 		{ type = "toggle", key = "questIcon", name = "Quest Icon",

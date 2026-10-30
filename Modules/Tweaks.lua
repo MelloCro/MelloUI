@@ -175,7 +175,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		{ type = "toggle", key = "levelUp", name = "Level Up",
 		  desc = "A level up fills the bar with light and announces your new level." },
 		-- (1.2.4, an-06; the user, 2026-10-30: "Yes, on by default" to BuildData/output/levelup_sketch)
-		{ type = "toggle", key = "levelCard", name = "Level Up Card", new = "1.2.4",
+		{ type = "toggle", key = "levelCard", name = "Level Up Card", new = "2.0.0",
 		  desc = "A level up shows a small window with the stats you gained and the spells now at your class trainer." },
 		-- (0.22.1; the user, 2026-10-14: "build all 5" to the animation previews)
 		{ type = "toggle", key = "xpGain", name = "XP Gain",

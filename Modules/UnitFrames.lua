@@ -60,7 +60,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		  desc = "The unit frames in MelloUI's look: a gold portrait ring, a level badge and gold-lined borders. Off: the game's own art." },
 		-- (1.2.4; the user, 2026-10-26: "to have the option to flip the party frames horizontally, i like to have them
 		-- on the right side of the screen and not the left side") Party.Flip
-		{ type = "toggle", key = "partyFlip", name = "Flip Horizontally", new = "1.2.4",
+		{ type = "toggle", key = "partyFlip", name = "Flip Horizontally", new = "2.0.0",
 		  desc = "Mirrors the party frames for a party on the right of the screen: portraits on the right." },
 		{ type = "header", name = "Names" },
 		{ type = "dropdown", key = "nameFont", name = "Name Font", values = MelloUI.FontFaces,
@@ -77,7 +77,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		  desc = "Hides the PvP badge beside the portraits." },
 		-- (1.2.4; the user, 2026-10-28: "we are currently lacking the option to hide the incoming heals numbers on my
 		-- own Player Unitframe") HealNumbers below
-		{ type = "toggle", key = "hideHealNumbers", name = "Hide Heal Numbers", new = "1.2.4",
+		{ type = "toggle", key = "hideHealNumbers", name = "Hide Heal Numbers", new = "2.0.0",
 		  desc = "Your portrait no longer shows the green numbers of the heals you take. Damage, misses and mana gains still show." },
 		{ type = "header", name = "Frame Art" },
 		-- (one-look D5: the two below moved from the Unit Frames Kit, keys and

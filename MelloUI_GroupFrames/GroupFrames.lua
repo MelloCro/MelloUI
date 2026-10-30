@@ -250,7 +250,7 @@ local M = MelloUI:RegisterModule(OWNER, {
 		  desc = "In a party: the raid frames (their look is set on Raid), or the party frames with portraits. In a raid, the raid frames always show." },
 		-- (1.2.4; the user, 2026-10-28: "if the Person selects that he wants to see the Raid Frames, then he should get
 		-- the Look under the "Raid" category") the party in raid frames wears the raid's look: to Raid
-		{ type = "button", name = "Raid Frames' Look", text = "Raid", new = "1.2.4",
+		{ type = "button", name = "Raid Frames' Look", text = "Raid", new = "2.0.0",
 		  desc = "Your party wears the raid frames' look: set it on Raid.",
 		  onClick = function() MelloUI:OpenConfig("raidframes") end },
 		{ type = "toggle", key = "showPlayer", name = "Show Yourself In Your Party",
@@ -289,7 +289,7 @@ local M = MelloUI:RegisterModule(OWNER, {
 		  desc = "Which way the health and power bars fill." },
 		{ type = "toggle", key = "smooth", name = "Smooth Bars",
 		  desc = "Bars glide to new values instead of jumping." },
-		{ type = "toggle", key = "hover", name = "Mouseover Highlight", new = "1.2.4",
+		{ type = "toggle", key = "hover", name = "Mouseover Highlight", new = "2.0.0",
 		  desc = "A glow and an outline on the frame under your mouse." },
 		{ type = "dropdown", key = "backgroundTexture", name = "Background", values = RD.BackgroundTextures(),
 		  desc = "What shows behind the health bar: a flat colour, a texture, or nothing." },

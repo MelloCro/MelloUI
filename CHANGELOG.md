@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.4
+## 2.0.0
 
 - Heal and cooldown effects on the unit frames are bolder and play across the whole frame: the portrait and the bars each get their own part of the moment, and the gold border lights all round the frame, its top where the name is too.
 - A heal bursts with a shockwave and stars flung off the frame, a heal over time seals onto the portrait, a shield's barrier closes round the frame in its own shape, Blessing of Protection stamps its crest onto the portrait, Lay on Hands drops a column of light, a resurrection unfolds wings behind the frame, a group heal runs through the group as a wave, Chain Heal bursts along the bars of every frame it reaches.

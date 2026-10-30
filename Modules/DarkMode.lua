@@ -101,7 +101,7 @@ local M = MelloUI:RegisterModule("DarkMode", {
 		  desc = "Dark Mode on the minimap's ring, header and buttons." },
 		{ type = "toggle", key = "chat", name = "Chat Frame",
 		  desc = "Chat tabs, the chat input box and the chat buttons. Window background colours stay as configured in the chat settings." },
-		{ type = "toggle", key = "windows", name = "Windows", new = "1.2.4",
+		{ type = "toggle", key = "windows", name = "Windows", new = "2.0.0",
 		  desc = "Dark Mode on MelloUI's windows and panels: the bags, the map, the Quest Tracker, the configurator and the rest." },
 		{ type = "header", name = "Buffs & Debuffs" },
 		{ type = "toggle", key = "auras", name = "Buffs & Debuffs",
