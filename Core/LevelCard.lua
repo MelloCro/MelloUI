@@ -872,6 +872,12 @@ function Card.Preview(level)
 	for k, v in pairs(PREVIEW) do
 		S.gains[k] = v
 	end
+	-- (2026-10-30: a level gives power only to a mana user -- the game's event names none for rage or energy -- so a
+	-- warrior's or a rogue's preview shows no "Rage +31")
+	local okT, kind = pcall(UnitPowerType, "player")
+	if not (okT and Num(kind) == 0) then
+		S.gains.power = nil
+	end
 	-- (the spells of the level, or of the last level before it that has some)
 	local at = level
 	while at > 1 and #Card.Spells(at - 1, at, true) == 0 do
