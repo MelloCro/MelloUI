@@ -46,6 +46,10 @@
 --   E:Shows(entry)  (1.2.4) whether its plate shows: the Elements list's
 --                   eyes and solo (Core/EditLayoutPicker.lua); a layer's
 --                   group name ("editmode") unless a solo holds the screen
+--   E:ResetEntry(entry[, toDefault])   its standard place (an Edit Mode
+--                   system: Edit Mode's saved place; toDefault, 2.1.0: the
+--                   game's own default place, the bridge's Default place)
+--   E:RevertEntry(entry)   (2.1.0) back where it was when the session opened
 -- The states (SPEC 2.1): CLOSED; OPEN (showing: plates, the bar, the scrim
 -- and the key frame); PAUSED by one or more reasons (everything hidden, the
 -- session kept); ASKING (the bar is the leave prompt); a queued open. Core
@@ -101,6 +105,15 @@ local TEXT = {
 	confirm = "Reset every element to its standard place and size?",
 	askOne = "You have 1 unsaved change.", askMany = "You have %d unsaved changes.",
 	size = "Size", position = "Position", snapTo = "Snap to", reset = "Reset", options = "Design >",
+	-- (2.1.0, el-14) Edit Mode's per-element Revert Changes and Reset To Default Position
+	revert = "Revert", revertTip = "Back to where it was when you opened Edit Layout, with its Edit Mode settings.",
+	default = "Default place", defaultTip = "Back to the game's own default place, as Edit Mode's Reset To Default "
+		.. "Position does. Saved with Save; the game shows it there after a /reload.",
+	-- (2.1.0, el-14) one of the game's elements attached to another, as in Edit Mode
+	attachedTo = "Attached to %s",
+	attachTip = "It moves with %s: your Edit Mode layout keeps it attached to it.",
+	attachSoonTip = "Dropped against %s, it attaches to it. Saved with Save; it follows it from the next /reload.",
+	detach = "Detach", detachTip = "It lets go of the other element and keeps its place on the screen. Saved with Save.",
 	sizeOff = "Its size is set on its page.",
 	sizeEditMode = "Its size is among its Edit Mode settings below.",
 	paused = "Edit Layout is paused for combat. It comes back when the fight is over.",
@@ -143,6 +156,10 @@ local DOCK = {
 	elements = "Elements", elementsOf = "/ %d", elementsTitle = "Elements",
 	elementsTip = "Every element you can move, in groups. Show or hide their plates, lock them, find one by name, "
 		.. "or show one group alone.",
+	-- (2.1.0, el-14) Edit Mode's layouts
+	layout = "Layout", layoutTitle = "Layouts", layoutNameW = 140,
+	layoutTip = "The Edit Mode layout in use. Click for the list: use another, make a new one or a copy, rename, "
+		.. "delete, import or share one.",
 	keybindTip = "Bind keys to your action buttons: hover a button and press a key. Leaves Edit Layout first.",
 	resetTip = "Every element back to its standard place and size (it asks first).",
 	helpTitle = "How it works", helpTip = "Shows the mouse and keyboard controls under the bar.",
@@ -390,7 +407,8 @@ end
 -- corners round, no top edge: W.RoundPlate), the crest in its gold ring
 -- hanging below it with the lock's badge, the title, Elements (the picker,
 -- Core/EditLayoutPicker.lua: the layers glyph, the plates shown in gold of
--- all), the round toggles (Grid, Snap, Dim, Coordinates: a gold ring and
+-- all), Layout (2.1.0, el-14: the active Edit Mode layout's name; its list,
+-- the picker's Layouts), the round toggles (Grid, Snap, Dim, Coordinates: a gold ring and
 -- glyph on the selected fill while on; a right-click on Grid or Snap sets the
 -- grid's spacing or the gap kept), Keybind Mode, Reset all, How it works, the
 -- change count, Exit and Save & Exit (filled gold). Under it, centred, the
@@ -661,6 +679,14 @@ local ElementsClick = Shared("OnClick on Edit Layout's Elements", function()
 	end
 end, "script")
 
+-- (2.1.0, el-14) Layout: Edit Mode's layouts (the picker's Layouts list)
+local LayoutClick = Shared("OnClick on Edit Layout's Layout", function()
+	local K = E.Picker
+	if K and K.ToggleLayouts then
+		K.ToggleLayouts()
+	end
+end, "script")
+
 local HelpClick = Shared("OnClick on Edit Layout's How it works", function()
 	SetToggle("help", not Toggle("help"))
 	MelloUI:PlayUISound("tick")
@@ -763,6 +789,25 @@ local function MakeElements(row)
 	return b
 end
 
+-- (2.1.0, el-14) Layout: the list glyph, its word, the active Edit Mode layout's name in gold
+local function MakeLayout(row)
+	local b = W.Button(row, "", 120, nil, { onClick = LayoutClick, height = DOCK.buttonH })
+	b.glyph = b:CreateTexture(nil, "ARTWORK")
+	b.glyph:SetSize(15, 15)
+	W.Glyph(b.glyph, "list")
+	W.Paint(b.glyph, "text", "vertex")
+	b.word = W.Text(b, "GameFontHighlight", DOCK.layout, "text")
+	b.name = W.Text(b, "GameFontHighlight", nil, "selectedTrim")
+	b.name:SetWordWrap(false)
+	b.glyph:SetPoint("LEFT", b, "LEFT", 10, 0)
+	b.word:SetPoint("LEFT", b.glyph, "RIGHT", 6, 0)
+	b.name:SetPoint("LEFT", b.word, "RIGHT", 6, 0)
+	b.melloTitle, b.melloBody = DOCK.layoutTitle, DOCK.layoutTip
+	Perf.HookScript(b, "OnEnter", DockEnter)
+	Perf.HookScript(b, "OnLeave", DockLeave)
+	return b
+end
+
 -- a pill under the dock: its plate, its text (and the solo's cross)
 local function MakePill(parent, onClick)
 	local p = CreateFrame("Button", nil, parent)
@@ -815,6 +860,7 @@ local function MakeBar()
 		bar.dividers[i] = d
 	end
 	bar.elements = MakeElements(row)
+	bar.layout = MakeLayout(row)
 	bar.toggles = {}
 	for i, name in ipairs(DOCK.order) do
 		local t = DOCK.toggle[name]
@@ -904,6 +950,15 @@ local function RefreshBar()
 		W.FlatGold(b, K.IsOpen())
 		local open = K.IsOpen()
 		bar.crest.plate:Paint(nil, open and "selectedTrim" or "trim")
+		-- (el-14) the active Edit Mode layout's name, cut to its room
+		local l = bar.layout
+		local name = K.ActiveLayoutName and K.ActiveLayoutName() or nil
+		l.name:SetText(name or "")
+		l.name:SetWidth(0)
+		local nw = math.min(TextWidth(l.name), DOCK.layoutNameW)
+		l.name:SetWidth(math.max(1, nw))
+		l:SetWidth(math.ceil(10 + 15 + 6 + TextWidth(l.word) + (name and (6 + nw) or 0) + 14))
+		W.FlatGold(l, K.LayoutsOpen and K.LayoutsOpen() or false)
 	end
 	for i, name in ipairs(DOCK.order) do
 		local b = bar.toggles[i]
@@ -1022,6 +1077,7 @@ LayBar = function()
 		local n = Put(1, bar.title, row, TextWidth(bar.title))
 		n = Put(n + 1, d[1], row, 1)
 		n = Put(n + 1, bar.elements, row, bar.elements:GetWidth())
+		n = Put(n + 1, bar.layout, row, bar.layout:GetWidth())
 		n = Put(n + 1, d[2], row, 1)
 		for i = 1, #bar.toggles do
 			n = Put(n + 1, bar.toggles[i], row, DOCK.toggleSize, i < #bar.toggles and DOCK.roundGap or nil)
@@ -1068,6 +1124,10 @@ end
 local function ShowBar()
 	if not bar then
 		MakeBar()
+	end
+	-- (el-14: the Layout button's name read again at each show)
+	if E.Picker and E.Picker.ReadLayouts then
+		E.Picker.ReadLayouts()
 	end
 	LayBar()
 	-- (hidden, or still fading out from a close a moment ago: it turns back)
@@ -1183,6 +1243,37 @@ local BoxReset = Shared("OnClick on Edit Layout's box Reset", function()
 		CloseBox()
 	end
 end, "script")
+-- (2.1.0, el-14) Revert: back to its place when Edit Layout opened; Default place: the game's own (an Edit Mode system)
+local BoxRevert = Shared("OnClick on Edit Layout's box Revert", function()
+	local entry = box and box.entry
+	if entry then
+		E:RevertEntry(entry)
+		CloseBox()
+	end
+end, "script")
+local BoxDefault = Shared("OnClick on Edit Layout's box Default place", function()
+	local entry = box and box.entry
+	if entry then
+		E:ResetEntry(entry, true)
+		CloseBox()
+	end
+end, "script")
+-- (el-14) Detach: an attached element lets go of the other one, keeping its place
+local BoxDetach = Shared("OnClick on Edit Layout's box Detach", function()
+	local entry = box and box.entry
+	if entry then
+		E:DetachEntry(entry)
+		CloseBox()
+	end
+end, "script")
+local BoxTipEnter = Shared("OnEnter on Edit Layout's box buttons", function(self)
+	if self.melloTitle then
+		E:Tooltip(self, self.melloTitle, self.melloBody)
+	end
+end, "script")
+local BoxTipLeave = Shared("OnLeave on Edit Layout's box buttons", function(self)
+	E:TooltipHide(self)
+end, "script")
 
 local LinkClick = Shared("OnClick on Edit Layout's box All options >", function(self)
 	local page = self.page
@@ -1288,9 +1379,33 @@ local function MakeBox()
 	snap.dd = W.Dropdown(snap, BOX_W - BOX_LABEL - PAD, SnapGet, SnapSet, SNAP_FIXED)
 	snap.dd:SetPoint("LEFT", snap, "LEFT", BOX_LABEL, 0)
 	box.snap = snap
+	-- (el-14) Attached to <name>, and Detach on its right
+	local attach = BoxRow(box, "")
+	attach.detach = W.Button(attach, TEXT.detach, 90, nil, { onClick = BoxDetach })
+	local dfs = attach.detach:GetFontString()
+	attach.detach:SetWidth(math.max(80, math.ceil((dfs and TextWidth(dfs) or 0) + 24)))
+	attach.detach:SetPoint("RIGHT", attach, "RIGHT", -PAD, 0)
+	attach.detach.melloTitle, attach.detach.melloBody = TEXT.detach, TEXT.detachTip
+	Perf.HookScript(attach.detach, "OnEnter", BoxTipEnter)
+	Perf.HookScript(attach.detach, "OnLeave", BoxTipLeave)
+	attach.label:SetPoint("RIGHT", attach.detach, "LEFT", -8, 0)
+	attach.label:SetJustifyH("LEFT")
+	attach.label:SetWordWrap(false)
+	box.attach = attach   -- (laid under the rows: never one of them, which stay Size, Position, Snap to)
 	box.rows = { size, pos, snap }
 	-- Reset, and the link to its page
 	box.reset = W.Button(box, TEXT.reset, 90, nil, { onClick = BoxReset })
+	-- (el-14) Revert, and an Edit Mode system's Default place
+	box.revert = W.Button(box, TEXT.revert, 90, nil, { onClick = BoxRevert })
+	box.revert.melloTitle, box.revert.melloBody = TEXT.revert, TEXT.revertTip
+	box.default = W.Button(box, TEXT.default, 110, nil, { onClick = BoxDefault })
+	box.default.melloTitle, box.default.melloBody = TEXT.default, TEXT.defaultTip
+	for _, b in ipairs({ box.revert, box.default }) do
+		local fs = b:GetFontString()
+		b:SetWidth(math.max(80, math.ceil((fs and TextWidth(fs) or 0) + 24)))
+		Perf.HookScript(b, "OnEnter", BoxTipEnter)
+		Perf.HookScript(b, "OnLeave", BoxTipLeave)
+	end
 	local link = CreateFrame("Button", nil, box)
 	link:SetSize(100, 20)
 	link.text = W.Text(link, "GameFontHighlight", TEXT.options, "selectedTrim")
@@ -1308,6 +1423,7 @@ local function MakeBox()
 	-- the bridge's button (a plate that is no entry)
 	box.bridge = W.Button(box, "", 160, nil, { gold = true })
 	Perf.HookScript(box.bridge, "OnEnter", BridgeEnter)
+	box.buttons = { box.reset, box.revert, box.default, box.bridge }
 end
 
 -- a row dimmed: its controls take no mouse, the row gives the reason
@@ -1344,6 +1460,12 @@ local function LayBox()
 			y = y + BOX_ROW
 		end
 	end
+	-- (el-14) Attached to <name>, under them
+	if box.attach:IsShown() then
+		box.attach:ClearAllPoints()
+		box.attach:SetPoint("TOPLEFT", box, "TOPLEFT", 0, -y)
+		y = y + BOX_ROW
+	end
 	-- (1.2.4) an Edit Mode system's own settings (Core/EditLayoutSettings.lua): an element's, or the system a
 	-- bridge plate ("Move via Edit Mode") stands over
 	local ES = E.Settings
@@ -1361,11 +1483,20 @@ local function LayBox()
 		end
 	end
 	y = y + 8
-	box.reset:ClearAllPoints()
-	box.reset:SetPoint("TOPLEFT", box, "TOPLEFT", PAD, -y)
-	box.bridge:ClearAllPoints()
-	box.bridge:SetPoint("TOPLEFT", box, "TOPLEFT", PAD, -y)
+	-- the buttons shown side by side (Reset, Revert, Default place; or the bridge's), the link on their right --
+	-- under them when they leave it no room (el-14)
+	local x = PAD
+	for _, b in ipairs(box.buttons) do
+		if b:IsShown() then
+			b:ClearAllPoints()
+			b:SetPoint("TOPLEFT", box, "TOPLEFT", x, -y)
+			x = x + (Num(b:GetWidth()) or 0) + 6
+		end
+	end
 	box.link:ClearAllPoints()
+	if box.link:IsShown() and x + 6 + (Num(box.link:GetWidth()) or 0) > BOX_W - PAD then
+		y = y + 22 + 6
+	end
 	box.link:SetPoint("TOPRIGHT", box, "TOPRIGHT", -PAD, -y - 1)
 	box:SetHeight(y + 22 + 10)
 end
@@ -1453,12 +1584,35 @@ local function OpenBoxFor(plate)
 	box.snap:SetShown(entry.key ~= nil)
 	box.snap.values = values
 	box.snap.dd:SetValues(values)
+	-- (el-14) attached to another of the game's elements: its name, and Detach
+	local B = E.Bridge
+	local onto, soon = nil, false
+	if B and B.AttachedTo then
+		onto, soon = B.AttachedTo(entry)
+	end
+	local attach = box.attach
+	attach:SetShown(onto ~= nil)
+	if onto then
+		attach.label:SetText(TEXT.attachedTo:format(onto))
+		attach.tipTitle = TEXT.attachedTo:format(onto)
+		attach.tipBody = (soon and TEXT.attachSoonTip or TEXT.attachTip):format(onto)
+		attach:EnableMouse(true)
+		attach.detach:SetEnabled(locked == nil)
+	end
 	-- Reset (its own label for the shared four) and the link
 	box.reset:SetText(entry.resetLabel or TEXT.reset)
 	local fs = box.reset:GetFontString()
 	box.reset:SetWidth(math.max(90, math.ceil((fs and TextWidth(fs) or 0) + 24)))
 	box.reset:Show()
 	box.reset:SetEnabled(locked == nil)
+	-- (el-14) Revert while this session holds a change of it; Default place for an Edit Mode system
+	local LS = Session()
+	local held = (LS and LS.Holds and LS.Holds(entry)) or (ES and ES.Holds and ES.Holds(entry))
+		or (B and B.AttachHeld and B.AttachHeld(entry))
+	box.revert:Show()
+	box.revert:SetEnabled(locked == nil and held and true or false)
+	box.default:SetShown(B ~= nil and B.DefaultFor ~= nil and B.DefaultFor(entry) and true or false)
+	box.default:SetEnabled(locked == nil)
 	box.bridge:Hide()
 	box.link.page = entry.page
 	box.link:SetShown(entry.page ~= nil)
@@ -1484,7 +1638,10 @@ function E:OpenBox(spec)
 	box.size:Hide()
 	box.pos:Hide()
 	box.snap:Hide()
+	box.attach:Hide()
 	box.reset:Hide()
+	box.revert:Hide()
+	box.default:Hide()
 	local button = spec.button
 	if type(button) == "table" then
 		box.bridge:SetText(button.text or "")
@@ -1562,15 +1719,81 @@ end
 -- Changes: one element's reset, Reset all (SPEC 2.11)
 --------------------------------------------------------------------------------
 
-function E:ResetEntry(entry)
+-- (el-14: toDefault, an Edit Mode system to the game's own default place -- the bridge's "Default place"; any other
+-- reset puts it at Edit Mode's saved place, as before)
+function E:ResetEntry(entry, toDefault)
 	local LS, P = Session(), Movers()
 	if not (LS and S.open and entry) or P.LockedReason(entry) then
 		return
+	end
+	local B = E.Bridge
+	if B and B.MarkDefault then
+		B.MarkDefault(entry, toDefault)
+	end
+	if B and B.DropAttach then
+		B.DropAttach(entry)   -- (el-14: an attach of this session goes with it)
 	end
 	local ok, err = pcall(LS.Reset, entry)
 	if not ok then
 		Report(err)
 	end
+	MelloUI:PlayUISound("tick")
+	E:BoxFollow(entry)
+	P.SyncSoon()
+	E:Refresh()
+end
+
+-- (2.1.0, el-14; Edit Mode's per-system Revert Changes) one element back where it was when this session opened: its
+-- place and size (Core's session lets its record go, the frame unwound), its held Edit Mode settings dropped
+function E:RevertEntry(entry)
+	local LS, P = Session(), Movers()
+	if not (LS and S.open and entry) or P.LockedReason(entry) then
+		return
+	end
+	local B = E.Bridge
+	if B and B.MarkDefault then
+		B.MarkDefault(entry, false)
+	end
+	local did = false
+	if B and B.AttachHeld and B.AttachHeld(entry) then
+		B.DropAttach(entry)   -- (el-14: an attach or detach of this session)
+		did = true
+	end
+	if LS.Holds and LS.Holds(entry) and LS.Drop then
+		local ok, r = pcall(LS.Drop, entry)
+		if not ok then
+			Report(r)
+		end
+		did = ok and r and true or false
+	end
+	local ES = E.Settings
+	if ES and ES.DropFor and ES.DropFor(entry) then
+		did = true
+	end
+	if did then
+		MelloUI:PlayUISound("tick")
+	end
+	E:BoxFollow(entry)
+	P.SyncSoon()
+	E:Refresh()
+end
+
+-- (2.1.0, el-14; Edit Mode's break of a snap) an element attached to another lets go of it: its place on the screen
+-- now made its pending one (hung from the screen again), written into the layout as a screen place at Save
+function E:DetachEntry(entry)
+	local LS, P = Session(), Movers()
+	local B = E.Bridge
+	if not (LS and S.open and entry and B and B.Detach) or P.LockedReason(entry) then
+		return
+	end
+	local ok, err = pcall(LS.Set, entry, nil)
+	if ok then
+		ok, err = pcall(LS.Hang, entry)
+	end
+	if not ok then
+		Report(err)
+	end
+	B.Detach(entry)
 	MelloUI:PlayUISound("tick")
 	E:BoxFollow(entry)
 	P.SyncSoon()
@@ -1584,6 +1807,14 @@ ResetAll = function()
 	local LS, P = Session(), Movers()
 	if not (LS and S.open) then
 		return
+	end
+	-- (el-14: every Edit Mode system to Edit Mode's saved place, as before -- none to the game's default)
+	local B = E.Bridge
+	if B and B.ClearDefaults then
+		B.ClearDefaults()
+	end
+	if B and B.DropAttach then
+		B.DropAttach()   -- (el-14: every attach of this session)
 	end
 	local list = MelloUI:MoverEntries()
 	local seen = {}
@@ -1627,6 +1858,8 @@ local function Escape()
 		return
 	elseif E:BoxOpen() then
 		CloseBox()
+	elseif K and K.LayoutsOpen and K.LayoutsOpen() then
+		K.CloseLayouts()
 	elseif K and K.IsOpen() then
 		K.Close()
 	elseif S.confirm then
@@ -2059,6 +2292,10 @@ local function OnEnd(reason, extra)
 	if reason == "abandoned" and E.Settings then
 		E.Settings.Discard()
 	end
+	-- (el-14) the session's attaches: written at its close when it was saved (the bridge's 'editlayout'), else gone
+	if reason ~= "saved" and E.Bridge and E.Bridge.DropAttach then
+		E.Bridge.DropAttach()
+	end
 	-- (every piece away while the state still says what it was: the
 	-- keyboard's last call is made before it is closed)
 	HidePieces(reason ~= "abandoned")
@@ -2254,8 +2491,8 @@ function E:Pending()
 		return 0
 	end
 	local ok, n = pcall(LS.Count)
-	local ES = E.Settings
-	return (ok and Num(n) or 0) + (ES and ES.Count() or 0)
+	local ES, B = E.Settings, E.Bridge
+	return (ok and Num(n) or 0) + (ES and ES.Count() or 0) + (B and B.AttachCount and B.AttachCount() or 0)
 end
 
 function E:Open()

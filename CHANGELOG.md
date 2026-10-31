@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.1.0
+
+- Edit Layout: Revert puts one element back where it was when you opened Edit Layout, and Default place puts a game element back where the game puts it, as Edit Mode does.
+- Edit Layout: a Layout list in the bar to switch Edit Mode layouts and to make, copy, rename, delete, import and share them. A change shows after a /reload.
+- Edit Layout: drop one of the game's elements snapped against another and it attaches to it, as in Edit Mode: it follows the other one after a /reload. Its box says what it is attached to, with Detach.
+- Edit Layout: the game's damage meter's Frame Width and Height show at once while you change them.
+- Edit Layout: the player frame's box takes in the damage meter's tab on its side, so it moves and snaps with the tab; under Oldschool the party frames' box reaches over their tabs too.
+- Default skin: the player frame wears the Forever client's own high-resolution pictures (the frame, its class-resource and vehicle frames, the rest glow and the level circle), so it stays sharp when scaled up.
+- Loading a profile made on a screen of another size or shape offers Fit to this screen, so a shared layout lands right on your screen. A saved profile remembers the screen it was saved on.
+- The map zoomed out to the whole world shows the capitals with a gold seal and their name, the boat and zeppelin docks, the dungeon and raid entrances and your quests. Towns show as small seals once you zoom into a continent.
+- Every boat and zeppelin connection is drawn on the map as a soft gold trail from dock to dock.
+- Map pins of one kind that touch become one with a count; click it to zoom in. The map's layers menu can hide Cities and towns.
+
 ## 2.0.0
 
 - Heal and cooldown effects on the unit frames are bolder and play across the whole frame: the portrait and the bars each get their own part of the moment, and the gold border lights all round the frame, its top where the name is too.

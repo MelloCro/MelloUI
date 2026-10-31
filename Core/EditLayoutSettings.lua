@@ -41,6 +41,9 @@
 --     ES.Hide()                              the rows away (the box closed)
 --     ES.Count()                             the settings changed, unsaved
 --     ES.Save(), ES.Discard()                at the session's end
+--     ES.Holds(entry), ES.DropFor(entry)     (2.1.0) one element's held
+--                                            settings: any? dropped (its
+--                                            Revert), its look put back
 --   MelloUI:EditLayoutOptions(frame, spec)   (el-07) frame's box lists those
 --     settings of a module: spec { module = name, keys = { key, ... } }, in
 --     that order (a slider or a toggle of its schema; another kind is left
@@ -173,7 +176,12 @@ end
 -- shows now; the rest show after a /reload. Discard puts every frame back as it was; Save keeps the look (the reload
 -- then shows the same, drawn by the game).
 local PREVIEW = { Size = "scale", FrameSize = "scale", BarSize = "scale", IconSize = "scale", Scale = "scale",
-	Opacity = "alpha", Width = "width", Height = "height" }
+	Opacity = "alpha", Width = "width", Height = "height",
+	-- (2.1.0, el-14) a system's own, where the game sizes that system's frame with a plain SetSize: the game's damage
+	-- meter's Frame Width / Height (EditModeDamageMeterSystemMixin:UpdateSystemSettingFrameWidth / Height) -- never
+	-- another system's FrameWidth (the raid-style party frames re-lay their members: after a /reload). (The chat
+	-- window's Width and Height show at once already: their display-only names are Width and Height.)
+	DamageMeter = { FrameWidth = "width", FrameHeight = "height" } }
 local orig = {}    -- [frame] = { scale, alpha, w, h }: as it was before the session's first preview
 
 -- a setting's name in its system's enum ("IconSize"), read once a setting
@@ -207,6 +215,34 @@ local function SettingName(system, setting)
 	return v or nil
 end
 
+-- (el-14) a system's enum name ("ChatFrame"), read once a system
+local sysNames = {}
+local function SystemName(system)
+	local v = sysNames[system]
+	if v == nil then
+		v = false
+		local systems = Enum and Enum.EditModeSystem
+		for k, n in pairs(type(systems) == "table" and systems or {}) do
+			if n == system then
+				v = k
+			end
+		end
+		sysNames[system] = v
+	end
+	return v or nil
+end
+
+-- how a setting shows at once on its system's frame ("scale", "alpha", "width", "height"), or nil
+local function PreviewKind(system, setting)
+	local name = SettingName(system, setting) or ""
+	local mine = PREVIEW[SystemName(system) or ""]
+	if type(mine) == "table" and mine[name] then
+		return mine[name]
+	end
+	local kind = PREVIEW[name]
+	return type(kind) == "string" and kind or nil
+end
+
 local function Call(frame, method, ...)
 	local fn = frame[method .. "Base"] or frame[method]
 	if type(fn) == "function" then
@@ -215,7 +251,7 @@ local function Call(frame, method, ...)
 end
 
 local function Preview(frame, system, index, info, value)
-	local kind = PREVIEW[SettingName(system, info.setting) or ""]
+	local kind = PreviewKind(system, info.setting)
 	if not (kind and type(frame) == "table") or InCombatLockdown() then
 		return false
 	end
@@ -367,6 +403,54 @@ function ES.Save()
 			MelloUI:EditModeSettingsSoon(p.system, p.index, p.values)
 		end
 	end
+end
+
+-- (2.1.0, el-14) one element's held settings dropped and its frame's look put back (the box's Revert); true when it
+-- had any
+function ES.DropFor(entry)
+	local system, index = ES.For(entry)
+	local had = false
+	if system then
+		local key = Key(system, index)
+		local p = pend[key]
+		had = p ~= nil and next(p.values) ~= nil
+		pend[key] = nil
+		-- (a mirror's held copy goes with it: the cast bar's lock on the player frame)
+		local M = _G.EditModeSettingDisplayInfoManager
+		for setting in pairs(p and p.values or {}) do
+			local okM, mirrors = false, nil
+			if type(M) == "table" and M.GetMirroredSettings then
+				okM, mirrors = pcall(M.GetMirroredSettings, M, system, index, setting)
+			end
+			for _, m in ipairs(okM and type(mirrors) == "table" and mirrors or {}) do
+				local q = type(m) == "table" and pend[Key(m.system, m.systemIndex)]
+				if q then
+					q.values[m.setting] = nil
+					if not next(q.values) then
+						pend[Key(m.system, m.systemIndex)] = nil
+					end
+				end
+			end
+		end
+		local frame = entry.frame
+		local o = orig[frame]
+		if o and not InCombatLockdown() then
+			Call(frame, "SetScale", o.scale)
+			Call(frame, "SetAlpha", o.alpha)
+			if o.w and o.h then
+				Call(frame, "SetSize", o.w, o.h)
+			end
+			orig[frame] = nil
+		end
+	end
+	return had
+end
+
+-- (el-14) whether one element has settings held (its Revert has something to undo)
+function ES.Holds(entry)
+	local system, index = ES.For(entry)
+	local p = system and pend[Key(system, index)]
+	return p ~= nil and next(p.values) ~= nil
 end
 
 function ES.Discard()

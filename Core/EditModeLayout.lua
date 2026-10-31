@@ -91,7 +91,12 @@
 --       anchor = { point, relativeTo (a frame's name), relativePoint,
 --       offsetX, offsetY } at scale 1, as Edit Mode keeps it; written as its
 --       anchorInfo, its second anchor dropped, isInDefaultPosition false (Edit
---       Layout's moves of Edit Mode's systems: Core/EditLayoutBridge.lua D)
+--       Layout's moves of Edit Mode's systems: Core/EditLayoutBridge.lua D);
+--       (2.1.0) anchor.inDefault: isInDefaultPosition true instead (the game's
+--       default anchor: Edit Layout's "Default place")
+--   MelloUI:EditModeHeldAnchor(system, index) -> as EditModeSystemAnchor (2.1.0)
+--       the place held to be written (above), nil when none is held: a place
+--       Edit Layout saved a moment ago (its box's "Attached to")
 --   MelloUI:SetEditModeSystemSettings(system, index, values, copy, done)
 --       -> ok, why, saved
 --       values saved into the active layout's system (0.19.9); the game
@@ -1137,13 +1142,14 @@ WriteSettings = function(entries, copy)
 				end
 			end
 			-- (0.20.2) its place, as Edit Mode's own drag keeps one (EditModeManager UpdateSystemAnchorInfo): the
-			-- anchor at scale 1, no second anchor, out of its default place
+			-- anchor at scale 1, no second anchor, out of its default place; (2.1.0, el-14) `inDefault`: the game's
+			-- default anchor, in its default place, as Edit Mode's Reset To Default Position keeps it
 			local a = entry.anchor
 			if type(a) == "table" then
 				sys.anchorInfo = { point = a.point, relativeTo = a.relativeTo, relativePoint = a.relativePoint,
 					offsetX = a.offsetX, offsetY = a.offsetY }
 				sys.anchorInfo2 = nil
-				sys.isInDefaultPosition = false
+				sys.isInDefaultPosition = a.inDefault == true
 				changed = true
 			end
 		end
@@ -1416,8 +1422,21 @@ function MelloUI:EditModeAnchorSoon(system, index, anchor, done)
 	local h = held[Key(system, index)]
 	if h then
 		h.anchor = { point = anchor.point, relativeTo = anchor.relativeTo or "UIParent",
-			relativePoint = anchor.relativePoint, offsetX = anchor.offsetX, offsetY = anchor.offsetY }
+			relativePoint = anchor.relativePoint, offsetX = anchor.offsetX, offsetY = anchor.offsetY,
+			inDefault = anchor.inDefault == true or nil }
 	end
+end
+
+-- (2.1.0, el-14) A system's place held to be written (above), as MelloUI:EditModeSystemAnchor answers one: point,
+-- relativeTo (a frame's name), relativePoint, offsetX, offsetY, inDefault; nil when none is held (Edit Layout's box
+-- reads it first: a place saved a moment ago is not in the saved layout yet)
+function MelloUI:EditModeHeldAnchor(system, index)
+	local h = held[Key(system, index)]
+	local a = h and h.anchor
+	if type(a) ~= "table" then
+		return nil
+	end
+	return a.point, a.relativeTo or "UIParent", a.relativePoint, a.offsetX, a.offsetY, a.inDefault == true
 end
 
 function MelloUI:EditModeLayoutStatus()
@@ -1499,4 +1518,260 @@ function MelloUI:DeleteEditModeLayout(name)
 	end
 	LogOnly("Edit Mode layout '%s' deleted (the installer, at the player's word)", name)
 	return true
+end
+
+--------------------------------------------------------------------------------
+-- (2.1.0, el-14; the user's rule, 2026-10-27: everything Edit Mode does in Edit Layout) Edit Mode's layout list from
+-- Edit Layout (its Layouts list, Core/EditLayoutPicker.lua): use, new, copy, rename, delete, import, share. Each
+-- change is ONE SaveLayouts of the full list (the presets in front, as the manager saves it), the active layout saved
+-- as info.activeLayout -- as the preset's copy has been since 0.19.9 (WriteSettings). Never SetActiveLayout,
+-- OnLayoutAdded or OnLayoutDeleted from here: the game answers them with its synchronous EDIT_MODE_LAYOUTS_UPDATED, its
+-- whole re-layout run inside MelloUI's call (0.19.9: past the script budget; Blizzard's layout code from addon code,
+-- hard rule 1). The game shows the change from the next /reload. The saved list read back at once: a client that kept
+-- another active layout than the one saved is told ("kept" and the name it kept), so the player is never left
+-- guessing. Never in combat, never while Edit Mode is open (its own Save would put its old list back): refused, not
+-- waited -- these are the player's clicks. A name follows Edit Mode's own dialog: not empty, at most 30 letters, no
+-- other layout (a preset included) of that name, the game's IsValidLayoutName. Each type keeps at most
+-- Constants.EditModeConsts.EditModeMaxLayoutsPerType.
+--   MelloUI:EditModeLayouts() -> list | nil, why                                                       read only
+--       { { name, kind = "preset" | "account" | "character", active }, ... } in Edit Mode's order
+--   MelloUI:ManageEditModeLayout(action, spec) -> ok, why, kept
+--       "use"    { name, kind }                     that layout active
+--       "new"    { name, kind }                     the game's default preset copied as a new layout, made active
+--       "copy"   { from, fromKind, name, kind }     that layout copied, made active
+--       "rename" { name, kind, to }                 (never a preset)
+--       "delete" { name, kind }                     (never a preset) the active one deleted: the default preset active
+--       "import" { text, name, kind }               a share string as a new layout, made active
+--       kind of a new one: "account" (default) or "character". why "kept": the game kept `kept` active.
+--   MelloUI:ShareEditModeLayout(name, kind) -> text | nil, why                                         read only
+--------------------------------------------------------------------------------
+do
+	local NAME_LETTERS = 30   -- (EditModeDialogs.xml: the name box's letters)
+	local KINDS = { preset = "Preset", account = "Account", character = "Character" }
+	local MG = {
+		combat = "Not during a fight.",
+		editMode = "Close the game's Edit Mode first.",
+		noName = "Type a name first.",
+		long = "A name can have at most 30 letters.",
+		taken = "A layout is already called that.",
+		badName = "The game does not take that name.",
+		full = "Edit Mode keeps at most %d layouts of this kind: delete one first.",
+		gone = "That layout is no longer there.",
+		preset = "The game's own layouts can't be renamed or deleted.",
+		badString = "That is not an Edit Mode layout string.",
+		noShare = "The game could not turn that layout into a string.",
+	}
+	MelloUI.EditModeLayoutText = MG
+
+	local function KindOf(layout)
+		local t = TypeOf(layout)
+		for kind, enumName in pairs(KINDS) do
+			if t ~= nil and t == LayoutType(enumName) then
+				return kind
+			end
+		end
+		return nil
+	end
+
+	-- the index of the layout of that name and kind (a preset too)
+	local function At(full, name, kind)
+		for i, layout in ipairs(full) do
+			if NameOf(layout) == name and (kind == nil or KindOf(layout) == kind) then
+				return i
+			end
+		end
+		return nil
+	end
+
+	-- a name as Edit Mode's dialog takes it, or nil and why (`skip`: the layout being renamed)
+	local function Named(full, name, skip)
+		name = type(name) == "string" and name:gsub("^%s+", ""):gsub("%s+$", "") or ""
+		if name == "" then
+			return nil, MG.noName
+		elseif #name > NAME_LETTERS then
+			return nil, MG.long
+		end
+		for i, layout in ipairs(full) do
+			if i ~= skip and NameOf(layout) == name then
+				return nil, MG.taken
+			end
+		end
+		local api = C_EditMode
+		if api.IsValidLayoutName then
+			local ok, valid = pcall(api.IsValidLayoutName, name)
+			if ok and not Secret(valid) and valid == false then
+				return nil, MG.badName
+			end
+		end
+		return name
+	end
+
+	-- the default preset's index in the full list (the one C_EditMode.GetEditModeDefaultLayout names; else the first)
+	local function DefaultIndex(full, presets)
+		local want
+		if C_EditMode.GetEditModeDefaultLayout then
+			local ok, v = pcall(C_EditMode.GetEditModeDefaultLayout)
+			want = ok and not Secret(v) and v or nil
+		end
+		for i = 1, presets do
+			local layout = full[i]
+			if want ~= nil and type(layout) == "table" and layout.layoutIndex == want then
+				return i
+			end
+		end
+		return presets > 0 and 1 or nil
+	end
+
+	-- the list saved with `active` as the active one; then read back: ok, nil | "kept", the name the game kept
+	local function SaveAs(full, info, active, what)
+		info.layouts = full
+		info.activeLayout = active
+		local ok, err = pcall(C_EditMode.SaveLayouts, info)
+		if not ok then
+			return false, TEXT.noSave:format(tostring(err))
+		end
+		readFull = nil
+		local wanted = full[active] and NameOf(full[active]) or "?"
+		LogOnly("Edit Mode layouts: %s; '%s' saved as the active one; shows after a reload", what, wanted)
+		local back, backInfo = FullList()
+		local now = back and backInfo and backInfo.activeLayout
+		if back and not Secret(now) and type(now) == "number" and now ~= active then
+			local kept = NameOf(back[now]) or "?"
+			LogOnly("Edit Mode layouts: the game kept '%s' active (index %s, not %s)", kept, tostring(now), tostring(active))
+			return true, "kept", kept
+		end
+		return true
+	end
+
+	-- a new layout (a copy of `source`) of that name and kind into the list, made active
+	local function AddNew(full, info, presets, source, name, kind, what)
+		local layoutType = LayoutType(KINDS[kind == "character" and "character" or "account"])
+		local room, most = RoomFor(full, layoutType)
+		if not room then
+			return false, MG.full:format(most or 5)
+		end
+		local new = PlainCopy(source, 0)
+		if type(new) ~= "table" then
+			return false, MG.gone
+		end
+		new.layoutType = layoutType
+		new.layoutName = name
+		FixStyle(new)
+		local at = InsertAt(full, presets, layoutType)
+		tinsert(full, at, new)
+		return SaveAs(full, info, at, what)
+	end
+
+	function MelloUI:EditModeLayouts()
+		if not Api() then
+			return nil, TEXT.noApi
+		end
+		local full, info = FullList()
+		if not full then
+			return nil, TEXT.noRead
+		end
+		local active = info.activeLayout
+		local out = {}
+		for i, layout in ipairs(full) do
+			local name, kind = NameOf(layout), KindOf(layout)
+			if name and kind then
+				out[#out + 1] = { name = name, kind = kind, active = (not Secret(active) and active == i) }
+			end
+		end
+		return out
+	end
+
+	function MelloUI:ManageEditModeLayout(action, spec)
+		if not Api() then
+			return false, TEXT.noApi
+		end
+		local why = Blocked()
+		if why then
+			return false, why == "combat" and MG.combat or MG.editMode
+		end
+		spec = type(spec) == "table" and spec or EMPTY
+		local full, info, presets = FullList()
+		if not full then
+			return false, TEXT.noRead
+		end
+		local active = info.activeLayout
+		if Secret(active) or type(active) ~= "number" then
+			return false, TEXT.noActive
+		end
+		if action == "use" then
+			local at = At(full, spec.name, spec.kind)
+			if not at then
+				return false, MG.gone
+			end
+			if at == active then
+				return true
+			end
+			return SaveAs(full, info, at, "use '" .. tostring(spec.name) .. "'")
+		elseif action == "new" or action == "copy" or action == "import" then
+			local name, bad = Named(full, spec.name)
+			if not name then
+				return false, bad
+			end
+			local source
+			if action == "new" then
+				local d = DefaultIndex(full, presets)
+				source = d and full[d]
+			elseif action == "copy" then
+				local from = At(full, spec.from, spec.fromKind)
+				source = from and full[from]
+			else
+				local ok, layout = false, nil
+				if type(spec.text) == "string" and spec.text:find("%S") then
+					ok, layout = pcall(C_EditMode.ConvertStringToLayoutInfo, (spec.text:gsub("^%s+", ""):gsub("%s+$", "")))
+				end
+				if not (ok and type(layout) == "table") then
+					return false, MG.badString
+				end
+				source = layout
+			end
+			if not source then
+				return false, MG.gone
+			end
+			return AddNew(full, info, presets, source, name, spec.kind, action .. " '" .. name .. "'")
+		elseif action == "rename" or action == "delete" then
+			local at = At(full, spec.name, spec.kind)
+			if not at then
+				return false, MG.gone
+			elseif at <= presets or KindOf(full[at]) == "preset" then
+				return false, MG.preset
+			end
+			if action == "rename" then
+				local name, bad = Named(full, spec.to, at)
+				if not name then
+					return false, bad
+				end
+				full[at].layoutName = name
+				return SaveAs(full, info, active, "rename '" .. tostring(spec.name) .. "' to '" .. name .. "'")
+			end
+			tremove(full, at)
+			if at == active then
+				active = DefaultIndex(full, presets) or 1
+			elseif at < active then
+				active = active - 1
+			end
+			return SaveAs(full, info, active, "delete '" .. tostring(spec.name) .. "'")
+		end
+		return false, "unknown action " .. tostring(action)
+	end
+
+	function MelloUI:ShareEditModeLayout(name, kind)
+		if not (Api() and C_EditMode.ConvertLayoutInfoToString) then
+			return nil, TEXT.noApi
+		end
+		local full = FullList()
+		local at = full and At(full, name, kind)
+		if not at then
+			return nil, MG.gone
+		end
+		local ok, text = pcall(C_EditMode.ConvertLayoutInfoToString, full[at])
+		if not (ok and not Secret(text) and type(text) == "string" and text ~= "") then
+			return nil, MG.noShare
+		end
+		return text
+	end
 end

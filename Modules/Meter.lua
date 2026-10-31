@@ -1314,6 +1314,35 @@ Tab.OnPlayerArt = Perf.Shared("PlayerFrame_ToPlayerArt / ToVehicleArt: the meter
 	end
 end)
 
+-- (after 2.0.0, fr-12; the user's pick: "The Edit Layout box over the player frame covers the meter tab") Edit
+-- Layout's box for your player frame -- the mover Edit Layout's bridge makes for Edit Mode's Player system -- takes in
+-- your tab while it is laid on the frame (Your Values on; shown or waiting for its first number): Core's mover `box`,
+-- the frame's rect and the tab's (screen px), so the plate, its snapping and its drag go by both. Only the box: where
+-- the frame is saved, its scale and its anchors stay as they were (the tab hangs right of the frame, the box's left
+-- and bottom are the frame's). Nil -- the frame's own rect -- without a tab, and in a fight (Core clamps the frame by
+-- its box: a protected call on the game's secure frame)
+function Tab.Box(entry)
+	local line = Lines.me
+	local frame = type(entry) == "table" and entry.frame
+	if not (line and line.want and frame == line.member) or InCombatLockdown() then
+		return nil
+	end
+	local l, b, r, t = Safe.ScreenRect(frame)
+	local tl, tb, tr, tt = Safe.ScreenRect(line.frame)
+	if not (l and tl) then
+		return nil
+	end
+	return min(l, tl), min(b, tb), max(r, tr), max(t, tt)
+end
+
+-- the box given to your frame's mover as Edit Layout registers it (the bus's "mover"), or at once when it is there;
+-- never one some other part gave it
+function Tab.OnMover(what, entry)
+	if what == "registered" and type(entry) == "table" and entry.frame == _G.PlayerFrame and entry.box == nil then
+		entry.box = Tab.Box
+	end
+end
+
 -- yours: the tab on your player frame, made the first time it is wanted
 local function MineLine()
 	local pf = _G.PlayerFrame
@@ -2051,6 +2080,9 @@ function M:OnEnable(db)
 	MelloUI:On("skin", PlaceSoon, OWNER)
 	MelloUI:On("partyart", PlaceSoon, OWNER)
 	MelloUI:On("groupframes", OnGroupFrames, OWNER)
+	-- (fr-12) Edit Layout's box over your player frame takes in your tab
+	MelloUI:On("mover", Tab.OnMover, OWNER)
+	Tab.OnMover("registered", MelloUI:MoverEntry(_G.PlayerFrame))
 	-- (the events now: the login's PLAYER_ENTERING_WORLD drops the last
 	-- login's fights; the rest waits for Ready)
 	Events()
@@ -2063,12 +2095,20 @@ function M:OnDisable()
 end
 
 -- (fr-10; Group Frames' party plate, MelloUI_GroupFrames/GroupHeaders.lua GameFootprint) how far the party's values
--- reach past a party frame's side, in its units: its tab while Party Values is on, else 0
+-- reach past a party frame's side, in its units: its tab while Party Values is on, else 0 -- at the plate's end (a
+-- picture's plate ends there too: 118), or (fr-12) past the painted skin's bars while it draws the party frames
+-- (Tab.Place's band, OLD_X past the frame: 56; asked as Tab.Place asks it, Unit Frames' M:PlateCut on a member)
 function M:PartyReach()
 	if not (self.isEnabled and self.db and self.db.party ~= false) then
 		return 0
 	end
-	return T.PLATE_END - T.PIC_W + T.TAB_W
+	local host, uf, member = Tab.HOST.party, MelloUI:GetModule("UnitFrames"), MemberFrame(1)
+	local painted = false
+	if member and uf and uf.PlateCut then
+		local ok, tex, covered = pcall(uf.PlateCut, uf, member)
+		painted = ok and not tex and covered and true or false
+	end
+	return (painted and host.painted or host.x) + T.TAB_W - T.PIC_W
 end
 
 function M:OnSettingChanged(key, value, db)

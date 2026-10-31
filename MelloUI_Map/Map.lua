@@ -49,6 +49,7 @@ local W = MelloUI.Widgets
 local Kit = MelloUI.Kit
 local Canvas, Pins, Layers, Log, Search = ns.Canvas, ns.Pins, ns.Layers, ns.QuestLog, ns.Search
 local AddonPins, Objectives = ns.AddonPins, ns.Objectives
+local Trails = ns.Trails   -- (2.1.0: the boats' and the zeppelins' trails, MapTrails.lua)
 local floor, max, min = math.floor, math.max, math.min
 
 local ICON = "Interface\\Icons\\INV_Misc_Map_01"
@@ -83,10 +84,12 @@ local TEXT = {
 -- shows: a check per layer, kept in the module's settings (db.layers[key] = false: off; every one on until switched)
 local SWITCHES = {
 	{ key = "quests", label = "Quest givers", layers = { "quests" } },
-	{ key = "objectives", label = "Your quests' objectives", layers = { "objectives", "objective_dots" } },
+	{ key = "objectives", label = "Your quests' objectives", layers = { "objectives", "objective_dots", "objective_quests" } },
 	{ key = "flights", label = "Flight masters", layers = { "flights" } },
-	{ key = "transports", label = "Boats, zeppelins and portals", layers = { "transports" } },
+	{ key = "transports", label = "Boats, zeppelins and portals", layers = { "transports" }, trails = true },
 	{ key = "entrances", label = "Dungeons and raids", layers = { "entrances" } },
+	-- (2.1.0, qu-01) the capitals and the towns the world map names
+	{ key = "places", label = "Cities and towns", layers = { "places", "towns" } },
 	{ key = "group", label = "Your party and raid", layers = { "group" } },
 	{ key = "names", label = "Zone names", layers = { "names" } },
 	{ key = "addons", label = "Other addons' pins", layers = { "addons", "addons_continent", "addons_world" } },
@@ -388,6 +391,9 @@ local function ApplyLayers()
 				pins:Show(name, on)
 			end
 		end
+		if s.trails and Trails then
+			Trails.Show(on)   -- (2.1.0: the docks' trails with the docks)
+		end
 	end
 end
 
@@ -491,6 +497,30 @@ local function ClearPin()
 	MelloUI:PlayUISound("waypoint_clear")
 end
 
+-- (2.1.0, qu-01) a click on a pin that holds others (MapPins' merge): a glide to their middle, in until the nearest
+-- one stands apart (half as far again as the merge's reach), at least a notch and a half
+local SPREAD = { APART = 1.5, AT_LEAST = 1.6 }
+local function Spread(pin)
+	local c = win.canvas
+	local members, reach = pin.members, pin.layer.merge or 16
+	local sx, sy, near = 0, 0, nil
+	for _, m in ipairs(members) do
+		sx, sy = sx + m.wx, sy + m.wy
+		if m ~= pin then
+			local d = math.sqrt((m.wx - pin.wx) ^ 2 + (m.wy - pin.wy) ^ 2)
+			if d > 0 and (not near or d < near) then
+				near = d
+			end
+		end
+	end
+	local z = c.z * SPREAD.AT_LEAST
+	if near then
+		z = max(z, reach * SPREAD.APART / (near * c.k1))
+	end
+	MelloUI:PlayUISound("click")
+	c:Glide(sx / #members, sy / #members, min(z, c.zMax or z))
+end
+
 local function Canvas_OnMouseUp(_, button)
 	local c = win.canvas
 	if button == "RightButton" then
@@ -530,6 +560,8 @@ local function Canvas_OnMouseUp(_, button)
 		local pin = win.pins:At(d.x, d.y)
 		if IsControlKeyDown() then
 			SetPin(d.x, d.y)
+		elseif pin and pin.members then
+			Spread(pin)   -- (2.1.0: a pin that holds others: in until they part)
 		elseif pin and pin.spec.click then
 			pin.spec.click(pin, button, pin.spec.enter and PinAnchor(pin) or nil)
 		else
@@ -616,6 +648,9 @@ local function Shown()
 	c:Layout()
 	Refit(true)   -- (on the player)
 	Layers.Open()
+	if Trails then
+		Trails.Open()   -- (2.1.0: the trails worked out at the first open, laid at the view)
+	end
 	AddonPins.Open()   -- (nothing while its switch is off: other addons' icons left to the game's map)
 	Objectives.Open()
 	Log.Shown()
@@ -634,6 +669,9 @@ end
 
 local function Hidden()
 	Layers.Close()
+	if Trails then
+		Trails.Close()
+	end
 	AddonPins.Close()
 	Objectives.Close()
 	Log.Hidden()
@@ -710,10 +748,16 @@ local function Build()
 		Objectives.View()   -- (1.2.0: the quest areas' edge width and the ones in view)
 		Layers.Route()
 		Layers.Labels()
+		if Trails then
+			Trails.View()   -- (2.1.0: the trails' width and the stretches in view)
+		end
 		Log.ViewChanged()   -- (the Quest List's tab: its Current zone the zone under the view)
 		AddonPins.View()    -- (other addons' OnViewChanged)
 	end
 	Layers.Init(canvas, pins)
+	if Trails then
+		Trails.Init(canvas)
+	end
 	AddonPins.Init(canvas, pins)
 	Objectives.Init(canvas, pins)
 	pins:Layer("names", Layers.T.ORDER.names)   -- (made here: its switch applies before the first names are laid)

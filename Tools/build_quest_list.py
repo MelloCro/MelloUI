@@ -1107,6 +1107,149 @@ def transport_pace(nodes, cycles):
     return paces[len(paces) // 2] if paces else 23.0
 
 
+# (2.1.0, qu-01: the map's trails, MelloUI_Map/MapTrails.lua -- the user's pick of BuildData/output/qu01_map_sketch)
+# each boat's and zeppelin's course to its next dock, and where it has none on one map the side its arc over the sea
+# bends to
+COURSE_JUMP = 2000.0   # yards: two nodes of a path this far apart are a jump (the transport is carried there unseen)
+ARC_BULGE = 0.12       # the map's arc from dock to dock: its middle this share of its length aside (MapTrails' BULGE)
+ARC_POINTS = 64        # ... drawn in this many stretches; the land under it counted past ARC_END of them at each end
+ARC_END = 6
+LAND_LEVEL = 110       # a continent's outline mask (MelloUI_Map/Media/Outlines) over this is land
+OUTLINES = os.path.join(HERE, "..", "MelloUI_Map", "Media", "Outlines")
+WORLD_UI, WORLD_W, WORLD_H = 947, 1002, 668   # Azeroth's world map and its art's size (the map's world units)
+
+
+def transport_course(path_nodes, here, there):
+    """the way a transport goes from its dock `here` (cont, x, y) toward its next dock `there`: its path's nodes from
+    the last one it waits at in this dock, in the path's order, while they stay on this dock's map with no jump (a
+    teleport node, or a step past COURSE_JUMP yards), up to the first one it waits at in the next dock. Returns
+    ([x, y, ...] world yards of this dock's map, whether it reaches the next dock): the whole way, else the way out of
+    the harbour; ([], False) when the path never waits here"""
+    ns = sorted(path_nodes, key=lambda n: int(n["NodeIndex"]))
+    pts = [(int(n["ContinentID"]), float(n["Loc_0"]), float(n["Loc_1"]), int(n["Flags"] or 0), int(n["Delay"] or 0))
+           for n in ns]
+    n = len(pts)
+
+    def waits_at(p, d):
+        return p[4] > 0 and p[0] == d[0] and math.hypot(p[1] - d[1], p[2] - d[2]) < TRANSPORT_DOCK
+    # (the dock's last waiting node: a path's wrap may split one wait in two -- the one the next node leaves)
+    start = next((i for i in range(n) if waits_at(pts[i], here) and not waits_at(pts[(i + 1) % n], here)), None)
+    if start is None:
+        return [], False
+    out = [round(pts[start][1], 1), round(pts[start][2], 1)]
+    prev = pts[start]
+    for step in range(1, n):
+        p = pts[(start + step) % n]
+        if p[0] != here[0] or p[3] & 1 or math.hypot(p[1] - prev[1], p[2] - prev[2]) > COURSE_JUMP:
+            return out, False
+        out += [round(p[1], 1), round(p[2], 1)]
+        if waits_at(p, there):
+            return out, True
+        prev = p
+    return out, False
+
+
+_land = {}
+
+
+def world_land():
+    """(the land test) both continents' land on Azeroth's world map, as MelloUI's map draws it: each continent's outline
+    mask (MelloUI_Map/Media/Outlines/<uiMapID>.tga, Tools/build_map_data.py) laid where the client places the
+    continent on 947 (carried through one of its zones when the tables give the continent no place there: the map's
+    own ViaChild); and the world yards -> 947 placing of each world map"""
+    if _land:
+        return _land
+    from PIL import Image, ImageChops
+    assign = defaultdict(list)
+    for r in db2("UiMapAssignment"):
+        assign[int(r["UiMapID"])].append(r)
+    uimaps = {int(r["ID"]): r for r in db2("UiMap")}
+
+    def region(a):
+        return float(a["Region_0"]), float(a["Region_1"]), float(a["Region_3"]), float(a["Region_4"])
+
+    def to_ui(a, wx, wy):
+        x0, y0, x1, y1 = region(a)
+        u0, v0, u1, v1 = float(a["UiMin_0"]), float(a["UiMin_1"]), float(a["UiMax_0"]), float(a["UiMax_1"])
+        return u0 + (y1 - wy) / (y1 - y0) * (u1 - u0), v0 + (x1 - wx) / (x1 - x0) * (v1 - v0)
+
+    def rect_on(child, top):
+        own = [a for a in assign.get(child, []) if a["OrderIndex"] == "0"] or assign.get(child, [])
+        if not own:
+            return None
+        a = own[0]
+        x0, y0, x1, y1 = region(a)
+        for t in assign.get(top, []):
+            if t["MapID"] == a["MapID"]:
+                tx0, ty0, tx1, ty1 = region(t)
+                if tx0 <= x0 and x1 <= tx1 and ty0 <= y0 and y1 <= ty1:
+                    ua, va = to_ui(t, x1, y1)
+                    ub, vb = to_ui(t, x0, y0)
+                    return min(ua, ub), max(ua, ub), min(va, vb), max(va, vb)
+        return None
+
+    def placed(cont_ui):
+        r = rect_on(cont_ui, WORLD_UI)
+        if r:
+            return r
+        for zid in sorted(i for i, u in uimaps.items() if u["ParentUiMapID"] == str(cont_ui) and u["Type"] == "3"):
+            a, w = rect_on(zid, cont_ui), rect_on(zid, WORLD_UI)
+            if a and w:
+                sx, sy = (w[1] - w[0]) / (a[1] - a[0]), (w[3] - w[2]) / (a[3] - a[2])
+                x0, y0 = w[0] - a[0] * sx, w[2] - a[2] * sy
+                return x0, x0 + sx, y0, y0 + sy
+        return None
+    land = Image.new("L", (WORLD_W, WORLD_H), 0)
+    for name in sorted(os.listdir(OUTLINES)):
+        cont_ui = int(name[:-4]) if name[:-4].isdigit() else None
+        if cont_ui is None or uimaps.get(cont_ui, {}).get("Type") != "2":
+            continue
+        r = placed(cont_ui)
+        if not r:
+            continue
+        m = Image.open(os.path.join(OUTLINES, name)).getchannel("A")
+        w, h = int(round((r[1] - r[0]) * WORLD_W)), int(round((r[3] - r[2]) * WORLD_H))
+        tmp = Image.new("L", (WORLD_W, WORLD_H), 0)
+        tmp.paste(m.resize((w, h), Image.BILINEAR), (int(round(r[0] * WORLD_W)), int(round(r[2] * WORLD_H))))
+        land = ImageChops.lighter(land, tmp)
+    _land["img"] = land
+    _land["on947"] = {a["MapID"]: a for a in assign.get(WORLD_UI, [])}
+    _land["to_ui"] = to_ui
+    return _land
+
+
+def arc_side(here, there):
+    """the side (1 or -1: the arc's middle at + or - the left normal of here -> there, y down) of the map's arc over
+    the sea from dock to dock, the one with less land under it (1 when even)"""
+    L = world_land()
+    pa, pb = L["on947"].get(str(here[0])), L["on947"].get(str(there[0]))
+    if not (pa and pb):
+        return 0   # (a dock on a map the world map does not show: no arc)
+    ax, ay = L["to_ui"](pa, here[1], here[2])
+    bx, by = L["to_ui"](pb, there[1], there[2])
+    ax, ay, bx, by = ax * WORLD_W, ay * WORLD_H, bx * WORLD_W, by * WORLD_H
+    dx, dy = bx - ax, by - ay
+    d = math.hypot(dx, dy)
+    if d <= 0:
+        return 1
+    nx, ny = -dy / d, dx / d
+    img = L["img"]
+    best = None
+    for s in (1, -1):
+        cx, cy = (ax + bx) / 2 + s * nx * d * ARC_BULGE, (ay + by) / 2 + s * ny * d * ARC_BULGE
+        land = 0
+        for i in range(ARC_END, ARC_POINTS + 1 - ARC_END):
+            t = i / ARC_POINTS
+            x = (1 - t) ** 2 * ax + 2 * (1 - t) * t * cx + t * t * bx
+            y = (1 - t) ** 2 * ay + 2 * (1 - t) * t * cy + t * t * by
+            px, py = int(x), int(y)
+            if 0 <= px < WORLD_W and 0 <= py < WORLD_H and img.getpixel((px, py)) > LAND_LEVEL:
+                land += 1
+        if best is None or land < best[0]:
+            best = (land, s)
+    return best[1]
+
+
 def add_entrance(entrances, zones, used_dungeons, area_of_map, dungeon_by_name, inst, name, cont, wx, wy, kind, side):
     """One door: its dungeon (the map's area, else its name), a build-time zone guess, its side (0 both)."""
     did = area_of_map.get(inst, 0)
@@ -1234,6 +1377,7 @@ def build_map_points(sql, zones, used_dungeons, raids):
     pace = transport_pace(nodes, cycles)
     log(f"  transports: {len(cycles)} cycles from cmangos, the rest at {pace:.1f} yd/s")
     transports = []
+    pair_side = {}   # (2.1.0) (here, there) -> the arc's side: a dock pair's two rows bend one way
     for stops, zeppelin_hint, pid in routes:
         secs = transport_seconds(nodes.get(pid, []), cycles.get(pid), pace)
         docks, _ = transport_docks(nodes.get(pid, []))
@@ -1263,10 +1407,22 @@ def build_map_points(sql, zones, used_dungeons, raids):
             other = stops[nxt]
             # (its dock in the path's own order: transport_docks merges as stops_of does)
             k = next((j for j, d in enumerate(docks) if d[0] == cont and math.hypot(d[1] - x, d[2] - y) < TRANSPORT_DOCK), None)
+            # (2.1.0) its course to the next dock (or its way out of the harbour) and, with no whole course, the side
+            # its arc over the sea bends to: the other row of the pair the same arc
+            course, whole = transport_course(nodes.get(pid, []), (cont, x, y), other)
+            side = 0
+            if not whole:
+                key = ((cont, round(x, 1), round(y, 1)), (other[0], round(other[1], 1), round(other[2], 1)))
+                if key[::-1] in pair_side:
+                    side = -pair_side[key[::-1]]
+                else:
+                    side = arc_side((cont, round(x, 1), round(y, 1)), (other[0], round(other[1], 1), round(other[2], 1)))
+                pair_side[key] = side
             transports.append((kind, faction, label, here,
                                cont, round(x, 1), round(y, 1),
                                loc[0]["areaID"] if loc else 0, loc[1] if loc else 0, loc[2] if loc else 0,
-                               other[0], round(other[1], 1), round(other[2], 1), secs[k] if k is not None else 0))
+                               other[0], round(other[1], 1), round(other[2], 1), secs[k] if k is not None else 0,
+                               course, side))
     log(f"  {len(transports)} boat / zeppelin docks")
     # (2026-10-03) the portal between Darnassus and Rut'theran Village and the Deeprun Tram between Stormwind and
     # Ironforge: no transport path in the data. Their ends where the road recorder marked them in game (the user's
@@ -1792,9 +1948,14 @@ def build_restock(sql, zones, pages):
 
 
 def transport_row(t):
-    kind, faction, label, here, cont, wx, wy, zone, px, py, dcont, dx, dy, secs = t
+    kind, faction, label, here, cont, wx, wy, zone, px, py, dcont, dx, dy, secs = t[:14]
+    # (2.1.0) a boat's or a zeppelin's course to its next dock and its arc's side (the map's trails); none for a portal
+    # or the tram
+    more = ""
+    if len(t) > 14 and t[14]:
+        more = ",{%s},%d" % (",".join(str(v) for v in t[14]), t[15])
     return (f"\t\t{{{kind},{faction},{lua_str(label)},{lua_str(here)},{cont},{wx},{wy},{zone},{px},{py},{dcont},{dx},{dy},"
-            f"{secs}}},\n")
+            f"{secs}{more}}},\n")
 
 
 def lua_str(s):
@@ -2080,7 +2241,11 @@ def main():
         fh.write("\t-- transports: kind (1 boat, 2 zeppelin, 3 portal, 4 tram), faction (0 neutral, 1 Alliance, 2 Horde),\n")
         fh.write("\t-- label, dock name,\n")
         fh.write("\t-- continent, world x, world y, zone (build-time guess), map x, map y, destination continent, world x, world y,\n")
-        fh.write("\t-- expected seconds to the next dock, the wait included (0: not known -- a portal, the tram)\n\ttransports = {\n")
+        fh.write("\t-- expected seconds to the next dock, the wait included (0: not known -- a portal, the tram);\n")
+        fh.write("\t-- (a boat, a zeppelin) its course { x, y, ... }: the path's world yards from this dock while it stays on\n")
+        fh.write("\t-- this map with no jump, to the next dock or out of the harbour; the side its arc over the sea bends\n")
+        fh.write("\t-- to without a whole course (1, -1: the left normal of the way to the next dock, y down; 0 none)\n")
+        fh.write("\ttransports = {\n")
         for t in transports:
             fh.write(transport_row(t))
         fh.write("\t},\n")

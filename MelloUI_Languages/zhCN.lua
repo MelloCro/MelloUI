@@ -2199,6 +2199,12 @@ Lang:Add("zhCN", {
 	-- Core/Config.lua
 	["Module based interface tweaks for World of Warcraft: Forever."] = "为《魔兽世界：Forever》打造的模块化界面调整。", -- draft
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
+	["Edit Layout: Revert and Default place for each element; switch, make, copy, rename, delete and share Edit Mode layouts from the bar."] = "编辑布局：每个元素都有还原和默认位置；在工具栏中切换、新建、复制、重命名、删除和分享编辑模式布局。", -- draft
+	["Edit Layout: attach the game's elements to each other, as in Edit Mode."] = "编辑布局：像编辑模式一样，将游戏的元素彼此吸附。", -- draft
+	["Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab."] = "编辑布局：调整伤害统计的大小时立即可见；玩家框的方框包含统计标签。", -- draft
+	["The map zoomed out: capitals, docks with their boat and zeppelin trails, dungeons, raids and your quests."] = "地图完全缩小时：主城、码头及船只和飞艇的航线、地下城、团队副本和你的任务。", -- draft
+	["Default skin: the player frame stays sharp when scaled up."] = "默认皮肤：玩家框放大后依然清晰。", -- draft
+	["Loading a profile made for another screen offers Fit to this screen."] = "载入为其他屏幕制作的配置文件时，会提供适配此屏幕。", -- draft
 	["Effects: bolder heals and cooldowns across the whole frame; Buff Landings in each school's colour; a threat halo (untick Hide Combat Flash)."] = "效果：治疗和冷却更醒目，覆盖整个框体；增益落下按法术派系着色；威胁光环（取消勾选“隐藏战斗闪光”）。", -- draft
 	["Heals burst, seal onto the portrait or close round the frame as a shield; cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards, golden barriers, afterimages."] = "治疗迸发、封印在头像上或化作护盾包住框体；冷却：咆哮有冲击波，嘲讽有红色 !，还有钢铁护卫、金色屏障与残影。", -- draft
 	["Frames: Hide Heal Numbers on your portrait; the meter's numbers in a tab on your frame and each party frame; party: Flip, Mouseover Highlight, Raid's look in raid frames."] = "框体：在头像上隐藏治疗数字；统计数字显示在你的框体和每个小队框体旁的小标签里；小队：翻转、鼠标悬停高亮，团队框体使用“团队”的外观。", -- draft
@@ -2226,18 +2232,6 @@ Lang:Add("zhCN", {
 	["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "修复：只是你自己的某些设置放不下时，安装向导不再说你的屏幕太小。", -- draft
 	["Combat Text: an aura that comes and goes every few seconds (Demonic Knowledge with your pet) is shown once."] = "战斗文字：每隔几秒出现又消失的光环（与宠物一起的恶魔知识）只显示一次。", -- draft
 	["Fixed (Oldschool): popups that ask you to type, such as renaming a hunter pet, show their text box again."] = "修复（Oldschool）：需要输入文字的弹窗（如给猎人宠物改名）重新显示输入框。", -- draft
-	["Dungeon Info: every dungeon and raid, its bosses in order and what each one drops. Open it with the door button over the map, a dungeon's door on it, or /dungeoninfo."] = "地下城信息：每个地下城和团队副本，按顺序列出首领及其掉落。通过地图上方的门按钮、地图上地下城的门或 /dungeoninfo 打开。", -- draft
-	["Star the items you want: a loot roll for one shines gold and lights Need. Pick Up Quests: Route takes you to all of a dungeon's quests in the fastest order."] = "为想要的物品加星：它的掉落掷骰会发出金光并突出“需求”。接取任务：Route 按最快顺序带你接取地下城的所有任务。", -- draft
-	["Route follows Follow The Arrow, Azeroth Pilot Reloaded, TomTom's arrow and Guidelime through it, as it follows RestedXP. Several guides on? MelloUI asks which to keep."] = "Route 像跟随 RestedXP 一样跟随 Follow The Arrow、Azeroth Pilot Reloaded、TomTom 的箭头和 Guidelime。开了多个指南？MelloUI 会问保留哪个。", -- draft
-	["Route: Loading navigation... shows a loading bar, and the roads take about 20 MB less memory; notices show above the world map."] = "Route：“导航读取中……”显示读取进度条，道路少占约 20 MB 内存；通知显示在世界地图上方。", -- draft
-	["The Swing Badge, your swing timer on your target's nameplate: it winds up, strikes, flashes gold on crits; it replaces the Swing Timers' bars too."] = "挥击徽章，即目标姓名板上的挥击计时器：蓄力、挥击、暴击时闪金光；它也取代了挥击计时器的条。", -- draft
-	["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "新动效：重要冷却、任务进度、升级、暴击、连击点、提醒、区域名、声望获得；冲击效果也作用于目标框体。", -- draft
-	["Windows framed in gold, snapped ones sharing one rim; the widget column's rows on gold cards, in motion; new class portraits; the Personal Display in gold and in motion."] = "窗口加上金框，吸附的窗口共用一个边框；小部件栏的行置于金色卡片上并有动效；新的职业头像；个人显示采用金色并有动效。", -- draft
-	["Icons stay smooth and sharp at every size and UI scale: each one is drawn from a copy made for its size on your screen."] = "图标在任何大小和缩放下都平滑清晰：每个图标都由按其屏幕尺寸制作的副本绘制。", -- draft
-	["Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast."] = "地图：区域之间的土地已补绘，包括安其拉和丹莫罗以西；沿海区域延伸到海岸。", -- draft
-	["Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on."] = "地图：放大时保留手绘地图；只有很近时才在其上淡入微缩地图地面。滚轮平滑缩放，拖动会继续滑行。", -- draft
-	["Quest areas: smooth gold areas that follow the spawns, on both maps and the minimap; their marks pop in, lift, ring on progress and tick off."] = "任务区域：柔和的金色区域跟随刷新点，在两张地图和微缩地图上；其标记弹出、升起、进度时鸣响并打勾。", -- draft
-	["Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat."] = "修复：希利苏斯和另外六个区域不再从地图上被裁掉；编辑布局中的聊天框覆盖整个简约聊天。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2260,7 +2254,7 @@ Lang:Add("zhCN", {
 	["the tracker's count roll, tick and quest-done light"] = "追踪器的计数翻动、对勾和任务完成之光", -- draft
 	["a Loot Flight: poor .. legendary, or all"] = "一次拾取飞行：粗糙……传说，或全部", -- draft
 	["a quest's money flying into the bag window"] = "任务金钱飞进背包窗口", -- draft
-	["the level-up: your XP bar's light, the notice and the Level Up Card"] = "升级：经验条的光芒、提示和升级卡片", -- draft
+	["the level-up: XP bar light, notice and Level Up Card"] = "升级：经验条光芒、提示和升级卡片", -- draft
 	["XP Gain's light on your experience bar"] = "经验条上的获得经验之光", -- draft
 	["the bag window's money rolling up (bags open)"] = "背包窗口的金钱滚动增加（背包打开时）", -- draft
 	["the Bags Full Warning on the Empty slot or bag button"] = "“空”栏位或背包按钮上的背包已满警告", -- draft
@@ -2338,6 +2332,8 @@ Lang:Add("zhCN", {
 	["installed"] = "已安装", -- draft
 	["old pack: the new one is under Help"] = "旧包：新包在帮助下", -- draft
 	["not installed (the link is under Help)"] = "未安装（链接在帮助下）", -- draft
+	["Fit to this screen"] = "适配此屏幕", -- draft
+	["Not now"] = "现在不", -- draft
 	["Profile '%s' loaded."] = "配置“%s”已载入。", -- draft
 	["Load"] = "载入", -- draft
 	["Go back to how MelloUI was before the installer ran ('Before install')? Your settings return to what they were then, and Edit Mode's layouts too if the installer changed them."] = "回到安装器运行之前的MelloUI（“Before install”）？你的设置会恢复到当时的样子，如果安装器改过编辑模式布局，布局也会恢复。", -- draft
@@ -2356,7 +2352,6 @@ Lang:Add("zhCN", {
 	["Installer"] = "安装器", -- draft
 	["Your setup"] = "你的设置", -- draft
 	["Change…"] = "更改…", -- draft
-	["Fit to this screen"] = "适配此屏幕", -- draft
 	["Install again"] = "重新安装", -- draft
 	["Revert…"] = "还原…", -- draft
 	["Palette: %s"] = "配色：%s", -- draft
@@ -2419,7 +2414,6 @@ Lang:Add("zhCN", {
 	["Version %s. /mello shows what's new; Install... there sets MelloUI up again."] = "版本%s。/mello显示更新内容；在那里点“安装...”可重新设置MelloUI。", -- draft
 	["Use MelloUI's Edit Mode layout on this character too?\n\nYour own layouts stay in Edit Mode's list. Later: /mello layout apply."] = "在这个角色上也使用MelloUI的编辑模式布局吗？\n\n你自己的布局仍保留在编辑模式的列表中。以后可用：/mello layout apply。", -- draft
 	["Use it"] = "使用", -- draft
-	["Not now"] = "现在不", -- draft
 	["MelloUI's Edit Mode layout is not active on this character: pick it in Edit Mode's layout list, or log in without the Gamepad UI to be asked."] = "MelloUI的编辑模式布局在这个角色上未启用：在编辑模式的布局列表中选择它，或不开启手柄界面登录以便被询问。", -- draft
 	-- Core/InstallerWindow.lua
 	["Screen: %s"] = "屏幕：%s", -- draft
@@ -2799,6 +2793,7 @@ Lang:Add("zhCN", {
 -- stale: ["Draw the route to the waypoint on the world map, and its destination as a flag in a gold ring. A stretch where no road is known is a paler, straight guess."] = "在世界地图上画出通往路径点的路线，目的地显示为金环中的旗帜。没有已知道路的一段显示为较淡的直线估计。", -- draft
 -- stale: ["Draw the text MelloUI shows on the world with an outline: the on-screen notice's lines, Combat Text's lines and the Gains lines, and, while Text Shade is on, the zone text and the game's messages in the middle of the screen. Off: soft text on a dark shade."] = "为MelloUI显示在世界上的文字加描边：屏幕通知的行、战斗文字的行和收获行，以及“文字阴影”开启时的区域文字和屏幕中央的游戏消息。关闭：暗影上的柔和文字。", -- draft
 -- stale: ["Draws the way to your map waypoint on the world map and the minimap, along roads you have walked before."] = "在世界地图和小地图上沿你走过的道路画出通往地图路径点的路线。", -- draft
+-- stale: ["Dungeon Info: every dungeon and raid, its bosses in order and what each one drops. Open it with the door button over the map, a dungeon's door on it, or /dungeoninfo."] = "地下城信息：每个地下城和团队副本，按顺序列出首领及其掉落。通过地图上方的门按钮、地图上地下城的门或 /dungeoninfo 打开。", -- draft
 -- stale: ["Each frame's height (the game's raid frame: 36)."] = "每个框体的高度（游戏的团队框体：36）。", -- draft
 -- stale: ["Each frame's width (the game's raid frame: 72)."] = "每个框体的宽度（游戏的团队框体：72）。", -- draft
 -- stale: ["Edit Layout, bags and groups: more windows move without the reskin; quality gems and junk on every slot; party and raid frames keep their own places and indicators."] = "编辑布局、背包和队伍：不换肤也能移动更多窗口；每个栏位都有品质宝石和垃圾标记；小队和团队框体保留各自的位置和指示器。", -- draft
@@ -2832,6 +2827,7 @@ Lang:Add("zhCN", {
 -- stale: ["Features stay off; chat on parchment needs Chat tweaks, so it stays off"] = "功能保持关闭；羊皮纸上的聊天需要聊天调整，所以保持关闭", -- draft
 -- stale: ["Features stay off; switch them on in /mello any time"] = "功能保持关闭；随时在/mello中开启", -- draft
 -- stale: ["Fill texture for every bar whose own Bar Texture is Shared (each sits with its bars, on their own page). Custom files go into MelloUI\\Media\\Textures and are listed in Media\\CustomTextures.lua."] = "每个自身“条材质”为“共享”的条的填充材质（每项都和它的条在同一页面上）。自定义文件放进MelloUI\\Media\\Textures，并列在Media\\CustomTextures.lua中。", -- draft
+-- stale: ["Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat."] = "修复：希利苏斯和另外六个区域不再从地图上被裁掉；编辑布局中的聊天框覆盖整个简约聊天。", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "盗贼以及猎豹形态的德鲁伊：你的五个连击点数排在目标生命条的上沿，攒起来之前是空的。名字会稍微上移让出位置。", -- draft
 -- stale: ["Force an outline on every light-coloured font. Dark text on parchment (quests, spellbook, dialogs) keeps its original look. MelloUI's own text in the world (notices, combat text, Gains lines) takes its outline from Notices: Outlined Text; this sets only how thick it is."] = "强制给每种浅色字体加描边。羊皮纸上的深色文字（任务、法术书、对话）保持原样。MelloUI在世界中的文字（通知、战斗文字、收获行）的描边取自“通知：描边文字”；这里只设置粗细。", -- draft
 -- stale: ["Frame, background and segment dividers of the experience, reputation and honor bars."] = "经验条、声望条和荣誉条的边框、背景和分段线。", -- draft
@@ -2914,6 +2910,7 @@ Lang:Add("zhCN", {
 -- stale: ["How wide the tracker is when it does not match the minimap's width (at least 60). Edit Mode's: as wide as the game's tracker. The grip in its bottom-left corner sets width and height by dragging (only the height while it matches the minimap)."] = "不与小地图同宽时追踪器的宽度（至少60）。“编辑模式的”：与游戏追踪器同宽。拖动左下角的把手可设置宽度和高度（与小地图同宽时只能设置高度）。", -- draft
 -- stale: ["How your heals look. By Class: Holy for priests and paladins, Nature for druids, Water for shamans (Holy for anyone else). Water: water circles your cast bar, a winding stream throws off droplets, a splash lands; a shield is a water bubble, a heal to full a geyser. Holy: gold sparks spiral into your spell's icon, a gold comet flies, a white flash and a burst of rays land, rune marks linger round the frame. Nature: green and gold ribbons circle your cast bar, ribbons fly shedding leaves, leaves burst and rise. Quiet: your cast bar's fill glows, a thin thread of light flies, the frame's border flares. Each kind lands its own way in each look: a heal over time sinks in, a shield wraps the frame in a barrier, protection puts a crest over it, a heal to full raises a column of light, a resurrection lights the fallen one's frame."] = "你的治疗看起来的样子。按职业：牧师和圣骑士为神圣，德鲁伊为自然，萨满为水（其他职业为神圣）。水：水流环绕你的施法条，一道蜿蜒的水流甩出水滴，落下一片水花；护盾是一个水泡，满血治疗是一道间歇泉。神圣：金色火花螺旋汇入你的法术图标，一颗金色彗星飞出，落下白色闪光和一束光芒，符文印记在框体周围停留。自然：绿金丝带环绕你的施法条，丝带一路洒落树叶飞去，树叶迸开升起。低调：施法条的填充发光，一缕细光飞出，框体边框亮起。每种类型在每种外观中都有自己的落点：持续治疗渗入，护盾用屏障包住框体，保护在其上放一个纹章，满血治疗升起一道光柱，复活点亮倒下之人的框体。", -- draft
 -- stale: ["Icon frames and bar backgrounds of the Essential, Utility and Buff cooldown viewers."] = "重要技能、效能技能和增益效果冷却查看器的图标框和条背景。", -- draft
+-- stale: ["Icons stay smooth and sharp at every size and UI scale: each one is drawn from a copy made for its size on your screen."] = "图标在任何大小和缩放下都平滑清晰：每个图标都由按其屏幕尺寸制作的副本绘制。", -- draft
 -- stale: ["In Combat elements come back while you have a target, a friend too."] = "“战斗中”的元素在你有目标时回来，友方目标也算。", -- draft
 -- stale: ["In Combat elements come back while you point at them, too. (On Mouseover elements always do.)"] = "“战斗中”的元素在你指向它们时也会回来。（“鼠标悬停”的元素总是如此。）", -- draft
 -- stale: ["In Combat: a bar shows in a fight once it swings or shoots, and fades out when the fight ends (the shot bar also when Auto Shot stops). Always: each bar shows while you carry a weapon for it, at rest between swings."] = "战斗中：条在战斗中一挥击或射击就显示，战斗结束时淡出（射击条在自动射击停止时也会）。总是：携带相应武器时每条都显示，挥击间隙保持静止。", -- draft
@@ -2960,6 +2957,8 @@ Lang:Add("zhCN", {
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "在你的小队框体位置显示虚构的成员，带上此列表的指示器，直到预览结束。仅限脱离战斗。", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "在你的团队框体位置显示虚构的成员，带上你的指示器，直到预览结束。仅限脱离战斗。", -- draft
 -- stale: ["Mana, rage, energy and focus you gain (+12 Rage)."] = "你获得的法力、怒气、能量和集中值（+12怒气）。", -- draft
+-- stale: ["Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast."] = "地图：区域之间的土地已补绘，包括安其拉和丹莫罗以西；沿海区域延伸到海岸。", -- draft
+-- stale: ["Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on."] = "地图：放大时保留手绘地图；只有很近时才在其上淡入微缩地图地面。滚轮平滑缩放，拖动会继续滑行。", -- draft
 -- stale: ["Map: your quest log and the Quest List beside it (L), search, a pin to share in chat, layer switches; Questie, HandyNotes and GatherMate2 pins on it too."] = "地图：任务日志和旁边的任务列表（L）、搜索、可在聊天中分享的标记、图层开关；Questie、HandyNotes和GatherMate2的标记也会显示。", -- draft
 -- stale: ["Mark every known quest giver on the zone map with a ! or ? coloured by what you can do there. Hover for the quests, click to track the giver. The List tab's choices apply to the pins too: where quests start (for quests not taken yet), the other faction's and other classes' quests, the levels above yours, and Events (a holiday's givers show while the list shows Events or the quest is in your log)."] = "在区域地图上用!或?标出每个已知的任务给予者，颜色表示你在那里能做什么。悬停查看任务，点击追踪该给予者。“列表”标签的选项也作用于地图标记：任务从哪里开始（对尚未接的任务）、另一阵营和其他职业的任务、高出你的等级，以及活动（节日的任务给予者在列表显示活动或任务在你的日志中时显示）。", -- draft
 -- stale: ["Mark instance entrances on the zone maps. Hover for the level range and your quest progress, click to list its quests. Entrances of new instances are learned the first time you walk in."] = "在区域地图上标出副本入口。悬停查看等级范围和你的任务进度，点击列出它的任务。新副本的入口在你第一次走进去时记录。", -- draft
@@ -2995,6 +2994,7 @@ Lang:Add("zhCN", {
 -- stale: ["Nameplate health and cast bars in the kit."] = "姓名板的生命条和施法条使用套件外观。", -- draft
 -- stale: ["Nameplates and Personal Display answer the fight: lit chunks on hits, flashing crits, cast warnings; dodges and stuns on your bars. Combat Text has a Beside look."] = "姓名板和个人显示回应战斗：命中时亮起的伤害块、闪烁的暴击、施法警告；躲闪和昏迷显示在你的条上。战斗文字新增“侧边”样式。", -- draft
 -- stale: ["Names in chat"] = "聊天中的名字", -- draft
+-- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "新动效：重要冷却、任务进度、升级、暴击、连击点、提醒、区域名、声望获得；冲击效果也作用于目标框体。", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "新获得的能量在条的前方亮起，条再长到那里；大量获得时在边缘迸出火花（能量的稳定恢复不会）。", -- draft
 -- stale: ["No Edit Mode change"] = "编辑模式不变", -- draft
 -- stale: ["No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing."] = "不再使用：挥击计时条是圆形边缘加扁平条，没有边框，所以这一项不会改变任何东西。", -- draft
@@ -3051,6 +3051,7 @@ Lang:Add("zhCN", {
 -- stale: ["Pulse, then steady"] = "先脉动，后常亮", -- draft
 -- stale: ["Quest Tracker: Header Text Size"] = "任务追踪器：标题文字大小", -- draft
 -- stale: ["Quest Tracker: Text Size"] = "任务追踪器：文字大小", -- draft
+-- stale: ["Quest areas: smooth gold areas that follow the spawns, on both maps and the minimap; their marks pop in, lift, ring on progress and tick off."] = "任务区域：柔和的金色区域跟随刷新点，在两张地图和微缩地图上；其标记弹出、升起、进度时鸣响并打勾。", -- draft
 -- stale: ["Quests, travel and your group"] = "任务、旅行和你的队伍", -- draft
 -- stale: ["Quests: the Quest Tracker in the chat's look with the game's clicks, round marks, one gem per title, short Quest List and map tips; Parchment is its own switch."] = "任务：任务追踪器采用聊天的外观和游戏的点击方式，圆形标记，每个标题一颗宝石，简短的任务列表和地图提示；羊皮纸有独立开关。", -- draft
 -- stale: ["Raid Frames: indicators for %s"] = "团队框体：%s的指示器", -- draft
@@ -3081,7 +3082,9 @@ Lang:Add("zhCN", {
 -- stale: ["Reskin Brightness"] = "换肤亮度", -- draft
 -- stale: ["Reskin only"] = "仅换肤", -- draft
 -- stale: ["Round borders are sharp at small sizes: the Services buttons' and Round Border styles' rings are solid, not dotted."] = "圆形边框在小尺寸下清晰：服务按钮和圆形边框样式的圆环是实心的，不再是点状。", -- draft
+-- stale: ["Route follows Follow The Arrow, Azeroth Pilot Reloaded, TomTom's arrow and Guidelime through it, as it follows RestedXP. Several guides on? MelloUI asks which to keep."] = "Route 像跟随 RestedXP 一样跟随 Follow The Arrow、Azeroth Pilot Reloaded、TomTom 的箭头和 Guidelime。开了多个指南？MelloUI 会问保留哪个。", -- draft
 -- stale: ["Route's World Marker over the destination. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "路线在目的地上方的世界标记。总是：从不淡出。战斗中：脱离战斗时淡出，战斗时回来。鼠标悬停：一直淡出，指向时显示。", -- draft
+-- stale: ["Route: Loading navigation... shows a loading bar, and the roads take about 20 MB less memory; notices show above the world map."] = "Route：“导航读取中……”显示读取进度条，道路少占约 20 MB 内存；通知显示在世界地图上方。", -- draft
 -- stale: ["Route: shorter ways over open ground, out of rough hills and capitals' cliffs, never turned round mid-walk; the World Marker shows the way and follows RestedXP Guides."] = "路线：开阔地上走更短的路，避开崎岖丘陵和主城的悬崖，途中绝不掉头；世界标记指示方向并跟随RestedXP指南。", -- draft
 -- stale: ["Scale of the game tooltip, the comparison tooltips beside it and a linked item's tooltip."] = "游戏鼠标提示、旁边的对比提示以及链接物品提示的缩放。", -- draft
 -- stale: ["Screen Text"] = "屏幕文字", -- draft
@@ -3129,6 +3132,7 @@ Lang:Add("zhCN", {
 -- stale: ["Space between the name / debuff row and the crowd-control icon."] = "名字 / 减益行与控制图标之间的距离。", -- draft
 -- stale: ["Spell name or ID"] = "法术名称或ID", -- draft
 -- stale: ["Spot"] = "位置", -- draft
+-- stale: ["Star the items you want: a loot roll for one shines gold and lights Need. Pick Up Quests: Route takes you to all of a dungeon's quests in the fastest order."] = "为想要的物品加星：它的掉落掷骰会发出金光并突出“需求”。接取任务：Route 按最快顺序带你接取地下城的所有任务。", -- draft
 -- stale: ["Strength"] = "强度", -- draft
 -- stale: ["Supplies, mail, repairs and training: a gentle nudge beside your portrait, never a nag. With the widgets for loot rolls, summons and the rest, and the FPS / latency readout."] = "补给、邮件、修理和训练：头像旁轻轻一点，从不唠叨。还有拾取掷骰、召唤等小部件，以及FPS / 延迟读数。", -- draft
 -- stale: ["Swing On The Rails"] = "轨道上的挥击", -- draft
@@ -3141,6 +3145,7 @@ Lang:Add("zhCN", {
 -- stale: ["Text size. Default follows the status bar text font of the game (and the Fonts module)."] = "文字大小。默认跟随游戏的状态栏数值字体（以及字体模块）。", -- draft
 -- stale: ["The Fight History window: every fight of this session, grouped by run, with the damage, healing and your spells of each. It opens from its button in the chat's button column and from the summary. It takes the place of the game's meter windows."] = "战斗历史窗口：本次游戏的每场战斗，按副本分组，带每场的伤害、治疗和你的法术。可从聊天按钮栏中的按钮和总结打开。它取代游戏的统计窗口。", -- draft
 -- stale: ["The HUD"] = "HUD", -- draft
+-- stale: ["The Swing Badge, your swing timer on your target's nameplate: it winds up, strikes, flashes gold on crits; it replaces the Swing Timers' bars too."] = "挥击徽章，即目标姓名板上的挥击计时器：蓄力、挥击、暴击时闪金光；它也取代了挥击计时器的条。", -- draft
 -- stale: ["The UI Shade also follows the painted plate's own shape: round the level circle, round each end gem and along the bar, in every Nameplate Border look. It needs the UI Shade on (Look); its Shade Strength sets how dark it is. The name's own band is Nameplates' Name Shade."] = "界面阴影也会跟随手绘牌子自身的形状：环绕等级圆圈、环绕两端的每颗宝石并沿着条，适用于每种姓名板边框外观。需要开启界面阴影（外观）；它的阴影强度决定有多暗。名字自己的横带是姓名板的“名字阴影”。", -- draft
 -- stale: ["The UI Shade round the action bars. Off: no shade there; the other areas keep theirs."] = "动作条周围的界面阴影。关闭：那里没有阴影；其他区域保留各自的阴影。", -- draft
 -- stale: ["The UI Shade round the bags. Off: no shade there; the other areas keep theirs."] = "背包周围的界面阴影。关闭：那里没有阴影；其他区域保留各自的阴影。", -- draft
@@ -3392,6 +3397,7 @@ Lang:Add("zhCN", {
 -- stale: ["Whose nameplate gets the class medallion above the name."] = "谁的姓名板在名字上方显示职业徽章。", -- draft
 -- stale: ["Window text, buttons, tooltips, the quest log, nameplate names and the names above characters in the world (those after /reload)."] = "窗口文字、按钮、鼠标提示、任务日志、姓名板名字以及世界中角色头顶的名字（这些在/reload后）。", -- draft
 -- stale: ["Window titles, quest and item names in dialogs, mail and book text, and the kit's title plates and headers while the reskin is on. Enchanted Land unless you choose otherwise. Keep the game's leaves each string in the game's own face: Morpheus where the game uses it, the interface face on the strings that start in it (the Quest Tracker's headers, Combat Text's notices)."] = "窗口标题、对话中的任务和物品名称、邮件和书籍文字，以及换肤开启时套件的标题牌匾和题头。默认Enchanted Land，除非你另选。“保留游戏的”让每段文字使用游戏自己的字体：游戏使用Morpheus的地方用Morpheus，原本用界面字体的文字用界面字体（任务追踪器的标题、战斗文字的通知）。", -- draft
+-- stale: ["Windows framed in gold, snapped ones sharing one rim; the widget column's rows on gold cards, in motion; new class portraits; the Personal Display in gold and in motion."] = "窗口加上金框，吸附的窗口共用一个边框；小部件栏的行置于金色卡片上并有动效；新的职业头像；个人显示采用金色并有动效。", -- draft
 -- stale: ["With Heal Effects on (Frame Effects > Heals): the light of a heal you cast gathers at your character's middle instead of on the cast bar, and flies from there to the party or raid frame of the one you heal. It follows the display's place and the camera's zoom."] = "开启治疗效果时（框体效果 > 治疗）：你施放的治疗之光在角色身体中间汇聚，而不是在施法条上，然后从那里飞向你治疗对象的小队或团队框体。它跟随显示的位置和镜头缩放。", -- draft
 -- stale: ["With a choice of rewards: take the one with the highest item level over what you wear in its slot, among those you can use; when none is better, the one that sells for the most."] = "有奖励可选时：在你能用的奖励中，选物品等级比你该栏位所穿装备高出最多的；都不更好时，选卖价最高的。", -- draft
 -- stale: ["Write these lines in the chat instead of showing them on the screen. They show there even while Chat Notices is off."] = "把这些行写进聊天，而不是显示在屏幕上。即使“聊天通知”关闭，它们也会显示在那里。", -- draft
@@ -3437,5 +3443,6 @@ Lang:Add("zhCN", {
 -- stale: ["Your target's nameplate answers the fight: hits flash its bar, the part a hit took drains away, crits glow gold, a dodge or a miss flicks off its edge, an enemy's cast glows hotter towards its end and shatters when you interrupt it, and the killing blow flashes the bar out."] = "你目标的姓名板会回应战斗：命中让条闪一下，被打掉的部分慢慢流走，暴击泛起金光，躲闪或未命中从边上弹出，敌人的施法越接近结束越炽热、被你打断时碎裂，致命一击让条炸开。", -- draft
 -- stale: ["boss and target of target"] = "首领和目标的目标", -- draft
 -- stale: ["the level-up: your XP bar's light and the notice"] = "升级：经验条之光和通知", -- draft
+-- stale: ["the level-up: your XP bar's light, the notice and the Level Up Card"] = "升级：经验条的光芒、提示和升级卡片", -- draft
 -- stale: ["the nameplates' debuffs"] = "姓名板的减益", -- draft
 -- stale: ["with Services on"] = "开启服务时", -- draft

@@ -63,7 +63,12 @@
 --   E.Bridge (MelloUI.EditLayout.Bridge): the layer ({ Sync, Hide, Dump }),
 --   TEXT (its in-game strings), Label(frame) (a system's plate name),
 --   Gate(system, index) -> { cvar, inverted, label } | nil (1.2.4: the
---   game's switch of a system, for its box)
+--   game's switch of a system, for its box); (2.1.0) DefaultFor(entry),
+--   MarkDefault(entry, on), ClearDefaults(): Edit Mode's Reset To Default
+--   Position for the box's "Default place" (section D); Moved(entry,
+--   dropped, onto), AttachedTo(entry) -> name, soon | nil, Detach(entry),
+--   DropAttach(entry | nil), AttachHeld(entry), AttachCount(): one game
+--   element attached to another, as Edit Mode does (section D, ATTACH)
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -93,6 +98,8 @@ local TEXT = {
 	sysNote = "Moved here, its place goes into your Edit Mode layout too; the game shows it there after a /reload.",
 	sysReset = "Edit Mode's place",
 	sysLater = "It goes back to Edit Mode's place after a /reload.",
+	-- (2.1.0, el-14) Edit Mode's Reset To Default Position
+	sysDefaultLater = "It goes to the game's default place after a /reload.",
 	button = "Move via Edit Mode",
 	side = "MelloUI Edit Layout",
 	sideTip = "Close Edit Mode and open Edit Layout, where you move and resize MelloUI's windows and trackers, the "
@@ -1087,12 +1094,111 @@ local function SameAsEditMode(system, index, pos, frame)
 		and math.abs(x - want.offsetX) < 0.5 and math.abs(y - want.offsetY) < 0.5
 end
 
+-- (2.1.0, el-14; the user's rule: everything Edit Mode does in Edit Layout -- Edit Mode's own "Reset To Default
+-- Position", EditModeSystemMixin:ResetToDefaultPosition) a system put back where the game itself puts it: the game's
+-- default preset's anchor (EditModePresetLayoutManager.presetLayoutInfo, the preset C_EditMode.GetEditModeDefaultLayout
+-- names; read only, plain values), no second anchor, in its default place -- so the game's containers lay it again
+-- where they lay it (the boss frames, durability ... in their column; the bottom and side action bars in their
+-- stacks). Picked in the box ("Default place"), it is a reset of the session (Core's LayoutSession.Reset: counted,
+-- Discard undoes it), previewed at that anchor where the game lays the frame by its anchor alone; at Save the store's
+-- place goes (as any reset) and the layout gets the default (MelloUI:EditModeAnchorSoon with `inDefault`), the cast
+-- bar unlocked from the player frame as Edit Mode's own reset does (EditModeCastBarSystemMixin). The game shows it
+-- from the next /reload.
+local DEFAULT = { keys = {} }   -- [key] = true: this session's resets to the game's default place
+do
+	-- the bars and frames the game lays itself while in their default place (EditModeSystemMixin:ApplySystemAnchor:
+	-- the managed containers; EditModeUtil's bottom and right action bars, Camelot's list): no preview of ours
+	local STACKED = { "MainActionBar", "MultiBarBottomLeft", "MultiBarBottomRight", "MultiBarRight", "MultiBarLeft",
+		"StanceBar", "PetActionBar", "PossessActionBar", "MainMenuBarVehicleLeaveButton",
+		"MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" }
+
+	local function Field(t, key)
+		local ok, v = pcall(ReadField, t, key)
+		if not ok or Secret(v) then
+			return nil
+		end
+		return v
+	end
+
+	-- the default preset's systems (read only), or nil
+	local function PresetSystems()
+		local manager = rawget(_G, "EditModePresetLayoutManager")
+		local list = type(manager) == "table" and Field(manager, "presetLayoutInfo")
+		if type(list) ~= "table" then
+			return nil
+		end
+		local api = _G.C_EditMode
+		local want = nil
+		if type(api) == "table" and type(api.GetEditModeDefaultLayout) == "function" then
+			local ok, v = pcall(api.GetEditModeDefaultLayout)
+			want = ok and Num(v) or nil
+		end
+		local first
+		for _, preset in ipairs(list) do
+			if type(preset) == "table" then
+				first = first or preset
+				if want ~= nil and Field(preset, "layoutIndex") == want then
+					return Field(preset, "systems")
+				end
+			end
+		end
+		return first and Field(first, "systems") or nil
+	end
+
+	-- the game's default anchor of a system: { point, relativeTo (a frame's name), relativePoint, offsetX, offsetY }
+	-- at scale 1, or nil when it cannot be read plainly
+	function DEFAULT.Anchor(system, index)
+		for _, s in ipairs(PresetSystems() or EMPTY) do
+			if type(s) == "table" and Field(s, "system") == system and (Field(s, "systemIndex") or nil) == (index or nil) then
+				local a = Field(s, "anchorInfo")
+				if type(a) ~= "table" then
+					return nil
+				end
+				local p, to, rp = Field(a, "point"), Field(a, "relativeTo"), Field(a, "relativePoint")
+				local x, y = Finite(Field(a, "offsetX")), Finite(Field(a, "offsetY"))
+				if type(p) ~= "string" or type(rp) ~= "string" or not (x and y) then
+					return nil
+				end
+				return { point = p, relativeTo = (type(to) == "string" and to ~= "") and to or "UIParent", relativePoint = rp,
+					offsetX = x, offsetY = y }
+			end
+		end
+		return nil
+	end
+
+	-- whether the game lays this frame itself in its default place (no preview of ours: it goes there after a reload)
+	function DEFAULT.SelfLaid(frame)
+		local ok, managed = pcall(ReadField, frame, "isManagedFrame")
+		if ok and not Secret(managed) and managed then
+			return true
+		end
+		for _, name in ipairs(STACKED) do
+			if rawget(_G, name) == frame then
+				return true
+			end
+		end
+		return false
+	end
+end
+
 -- Reset's preview: the frame at Edit Mode's saved place (none readable -- a
 -- preset active, a place the game's containers lay -- false: it goes back
--- with the game's next layout, the latest the next reload)
+-- with the game's next layout, the latest the next reload). (el-14) A reset to
+-- the game's default place: at the default preset's anchor, where the game
+-- lays the frame by its anchor alone (else false and the line)
 local function SysHome(system, index)
+	local key = SysKey(system, index)
 	return function(frame)
 		local entry = MelloUI:MoverEntry(frame)
+		if DEFAULT.keys[key] then
+			local a = DEFAULT.Anchor(system, index)
+			if not (entry and a) or DEFAULT.SelfLaid(frame) then
+				return false, TEXT.sysDefaultLater
+			end
+			local s = ScaleOf(frame)
+			return MelloUI:PlaceEntryAt(entry, a.point, _G[a.relativeTo] or UIParent, a.relativePoint, a.offsetX / s,
+				a.offsetY / s)
+		end
 		local p, to, rp, x, y, inDefault = MelloUI:EditModeSystemAnchor(system, index)
 		if not (entry and p) or inDefault then
 			return false, TEXT.sysLater
@@ -1487,6 +1593,371 @@ function B.Placeholder(entry)
 	end
 end
 
+-- (el-14) a reset saved (Core's session at Save): one to the game's default place goes into the active layout as
+-- Edit Mode's own reset keeps it; any other leaves the layout's place as it is (the store's copy gone)
+local Unlock   -- (below)
+local function SysReset(system, index)
+	local key = SysKey(system, index)
+	return function()
+		if not DEFAULT.keys[key] then
+			return
+		end
+		local a = DEFAULT.Anchor(system, index)
+		if a and MelloUI.EditModeAnchorSoon then
+			a.inDefault = true
+			MelloUI:EditModeAnchorSoon(system, index, a)
+			if SystemName(system) == "CastBar" then
+				Unlock(system)
+			end
+		end
+	end
+end
+
+-- (el-14) the box's "Default place": an Edit Mode system's mover whose default anchor reads plainly
+function B.DefaultFor(entry)
+	local s = type(entry) == "table" and sysOf[entry] or nil
+	return s ~= nil and DEFAULT.Anchor(s.system, s.index) ~= nil
+end
+
+-- (el-14) the next reset of this entry is to the game's default place (on) or Edit Mode's saved place (off)
+function B.MarkDefault(entry, on)
+	if type(entry) == "table" and sysOf[entry] and entry.key ~= nil then
+		DEFAULT.keys[entry.key] = on and true or nil
+	end
+end
+
+function B.ClearDefaults()
+	wipe(DEFAULT.keys)
+end
+
+-- (2.1.0, el-14; the user's pick of 2026-10-30, "A: like Edit Mode": one of the game's elements dropped snapped
+-- against another of them attaches to it, its box says "Attached to <name>" with a Detach button, and it follows the
+-- other element after a /reload; MelloUI's own windows keep fixed places) Edit Mode's own attaching -- its drag's
+-- snap to another system's edge (EditModeMagnetismManager) keeps the anchor on that frame, by its name, and
+-- BreakFrameSnap lets go to a screen place -- through the saved layout only. A drop of an Edit Mode system's mover
+-- whose snap took another Edit Mode system's edge (that plate lit), the two side by side within the bar's gap and
+-- overlapping along that edge (never corner to corner), is held as an attach of the session: the anchor from the
+-- side they meet on (LEFT on RIGHT, TOP on BOTTOM ...; along the edge the edges or centres lined up, else the
+-- centres), its offsets from the two frames' own rects, so it names the place it was dropped at. At Save it goes
+-- into the active layout on that frame (MelloUI:EditModeAnchorSoon in WriteChanged): the game lays it there, on the
+-- other frame, from the next /reload (the login's Handover then lets go of the store's screen copy). A later change
+-- of it keeps the attach while it still stands against that frame (fresh offsets), else lets it go; Revert, Reset,
+-- Default place and Reset all drop it. Detach (the box): its place on the screen pended (EditLayout.lua) and written
+-- as a screen place at Save, as Edit Mode's break does. The game's own rules: never one Edit Mode lays from a corner
+-- of the screen once moved (alwaysUseTopLeftAnchor / alwaysUseTopRightAnchor: the party, raid, boss and arena
+-- frames), never onto one whose snapped frames it lets go at its save (breakSnappedFramesOnSave: those and the
+-- objective tracker), never onto one that hangs on it already (Edit Mode's IsFrameAnchoredToMe, with this session's
+-- attaches and the saved layout's anchors), only onto a frame with a global name (the layout keeps the name).
+local ATTACH = { keys = {} }   -- [key] = { entry, frame (the other one), anchor } | { entry, detach = true }
+do
+	local EPS_PX = 1.5   -- physical px: two edges meet within this (a drop lands on the pixel grid)
+	local STEPS = 12     -- an anchor chain followed this far
+
+	local function Field(t, key)
+		local ok, v = pcall(ReadField, t, key)
+		if not ok or Secret(v) then
+			return nil
+		end
+		return v
+	end
+
+	-- a frame's global name, when that name is this very frame (the layout keeps the name)
+	local function NameOf(frame)
+		local ok, name = pcall(frame.GetName, frame)
+		if ok and not Secret(name) and type(name) == "string" and name ~= "" and rawget(_G, name) == frame then
+			return name
+		end
+		return nil
+	end
+
+	-- the rect Edit Layout shows for a frame (its plate's: its mover's rect, a box with it), else its own (UI units)
+	local function ShownRect(frame)
+		local entry = MelloUI:MoverEntry(frame)
+		if entry and MelloUI.EntryRect then
+			local ok, l, b, w, h = pcall(MelloUI.EntryRect, MelloUI, entry)
+			if ok and Finite(l) and Finite(b) and Finite(w) and Finite(h) then
+				return l, b, w, h
+			end
+		end
+		return RectOf(frame)
+	end
+
+	-- a frame's own rect (the anchor's offsets), else the shown one
+	local function OwnRect(frame)
+		local l, b, w, h = RectOf(frame)
+		if l then
+			return l, b, w, h
+		end
+		return ShownRect(frame)
+	end
+
+	-- the snap's measures in UI units: two edges meet within `eps`; the bar's gap kept between snapped elements
+	local function Measures()
+		local ok, _, ph = pcall(GetPhysicalScreenSize)
+		local okH, uh = pcall(UIParent.GetHeight, UIParent)
+		local per = MelloUI.EditLayoutSnap.PerUnit(ok and Num(ph) or nil, okH and Num(uh) or nil)
+		local gap = E.SnapGap and Num(E:SnapGap()) or 0
+		return EPS_PX / per, math.max(0, gap) / per
+	end
+
+	-- the point a rect's parts name: x "LEFT" / "RIGHT" / "" (its centre), y "BOTTOM" / "TOP" / ""
+	local function At(l, b, w, h, xp, yp)
+		local x = (xp == "LEFT" and l) or (xp == "RIGHT" and l + w) or l + w / 2
+		local y = (yp == "BOTTOM" and b) or (yp == "TOP" and b + h) or b + h / 2
+		return x, y
+	end
+
+	local function PointOf(yp, xp)
+		local p = yp .. xp
+		return p ~= "" and p or "CENTER"
+	end
+
+	-- along the edge they meet on: the centres lined up, else the low or the high edges, else the centres (offset)
+	local function Along(dlo, dsize, tlo, tsize, eps, low, high)
+		if math.abs((dlo + dsize / 2) - (tlo + tsize / 2)) <= eps then
+			return "", ""
+		elseif math.abs(dlo - tlo) <= eps then
+			return low, low
+		elseif math.abs((dlo + dsize) - (tlo + tsize)) <= eps then
+			return high, high
+		end
+		return "", ""
+	end
+
+	-- how rect d stands against rect t: its x and y parts, then t's; nil when it does not stand against it (side by
+	-- side, the room between the facing edges within the gap, overlapping along them)
+	local function Relation(dl, db, dw, dh, tl, tb, tw, th, eps, gap)
+		local dr, dt, tr, tt = dl + dw, db + dh, tl + tw, tb + th
+		if math.min(dt, tt) - math.max(db, tb) > eps then
+			local left, right = tl - dr, dl - tr   -- (the room with d on t's left, on its right)
+			local xp, txp
+			if left >= -eps and left <= gap + eps then
+				xp, txp = "RIGHT", "LEFT"
+			elseif right >= -eps and right <= gap + eps then
+				xp, txp = "LEFT", "RIGHT"
+			end
+			if xp then
+				local yp, typ = Along(db, dh, tb, th, eps, "BOTTOM", "TOP")
+				return xp, yp, txp, typ
+			end
+		end
+		if math.min(dr, tr) - math.max(dl, tl) > eps then
+			local below, above = tb - dt, db - tt
+			local yp, typ
+			if below >= -eps and below <= gap + eps then
+				yp, typ = "TOP", "BOTTOM"
+			elseif above >= -eps and above <= gap + eps then
+				yp, typ = "BOTTOM", "TOP"
+			end
+			if yp then
+				local xp, txp = Along(dl, dw, tl, tw, eps, "LEFT", "RIGHT")
+				return xp, yp, txp, typ
+			end
+		end
+		return nil
+	end
+
+	local function Hundredth(v)
+		return math.floor(v * 100 + 0.5) / 100
+	end
+
+	-- the anchor of `frame` on `to` as they stand now (offsets at scale 1: UI units, as Edit Mode keeps them), or nil
+	-- when it does not stand against it
+	local function AnchorOn(frame, to)
+		local name = NameOf(to)
+		local dl, db, dw, dh = ShownRect(frame)
+		local tl, tb, tw, th = ShownRect(to)
+		if not (name and dl and tl) then
+			return nil
+		end
+		local eps, gap = Measures()
+		local xp, yp, txp, typ = Relation(dl, db, dw, dh, tl, tb, tw, th, eps, gap)
+		if not xp then
+			return nil
+		end
+		local fl, fb, fw, fh = OwnRect(frame)
+		local ol, ob, ow, oh = OwnRect(to)
+		if not (fl and ol) then
+			return nil
+		end
+		local fx, fy = At(fl, fb, fw, fh, xp, yp)
+		local ox, oy = At(ol, ob, ow, oh, txp, typ)
+		return { point = PointOf(yp, xp), relativeTo = name, relativePoint = PointOf(typ, txp),
+			offsetX = Hundredth(fx - ox), offsetY = Hundredth(fy - oy) }
+	end
+
+	-- a system's place as saved now: a place held to be written, else the active layout's
+	local function SavedAnchor(system, index)
+		if MelloUI.EditModeHeldAnchor then
+			local p, to, rp, x, y, inDefault = MelloUI:EditModeHeldAnchor(system, index)
+			if p then
+				return p, to, rp, x, y, inDefault
+			end
+		end
+		return MelloUI:EditModeSystemAnchor(system, index)
+	end
+
+	-- the frame a system's mover is attached to in the saved layout (none: a screen place, in the game's default
+	-- place, or reset to it in this session)
+	local function SavedOn(entry, s)
+		if DEFAULT.keys[entry.key] then
+			return nil
+		end
+		local p, to, _, _, _, inDefault = SavedAnchor(s.system, s.index)
+		if not p or inDefault or to == "UIParent" then
+			return nil
+		end
+		local frame = rawget(_G, to)
+		return type(frame) == "table" and frame or nil
+	end
+
+	-- moved in this session (a pending place: a screen place at Save unless attached)
+	local function Moved(entry)
+		local LS = MelloUI.LayoutSession
+		return entry ~= nil and LS ~= nil and LS.Pos ~= nil and LS.Pos(entry) ~= nil
+	end
+
+	-- the frame another hangs on after the next /reload: this session's attach (a detach, a move: none), else the
+	-- saved layout's anchor (an Edit Mode system), else its live first anchor
+	local function Parent(frame)
+		local system, index = SystemOf(frame)
+		if system then
+			local rec = ATTACH.keys[SysKey(system, index)]
+			if rec then
+				return rec.frame
+			end
+			if Moved(MelloUI:MoverEntry(frame)) then
+				return nil
+			end
+			local p, to = SavedAnchor(system, index)
+			if p then
+				return to ~= "UIParent" and rawget(_G, to) or nil
+			end
+		end
+		local ok, _, rel = pcall(frame.GetPoint, frame, 1)
+		if ok and type(rel) == "table" and not Secret(rel) then
+			return rel
+		end
+		return nil
+	end
+
+	-- `frame` hangs on `on`, a few steps up
+	local function HangsOn(frame, on)
+		local f = frame
+		for _ = 1, STEPS do
+			f = Parent(f)
+			if type(f) ~= "table" or f == UIParent then
+				return false
+			elseif f == on then
+				return true
+			end
+		end
+		return false
+	end
+
+	-- the game keeps it attached (never one it lays from a corner of the screen once moved) ...
+	local function CanHang(frame)
+		return not (Field(frame, "alwaysUseTopLeftAnchor") or Field(frame, "alwaysUseTopRightAnchor"))
+	end
+
+	-- ... onto an Edit Mode system with a name whose snapped frames it keeps, which Edit Mode places (a bridged one
+	-- or one of these movers): never one a MelloUI mover of its own holds at a place of MelloUI's (the minimap, chat,
+	-- objective tracker and damage meter while UI Modifications is on) -- MelloUI's places stay fixed
+	local function CanHold(frame)
+		local mover = MelloUI:MoverEntry(frame)
+		return SystemOf(frame) ~= nil and NameOf(frame) ~= nil and not Field(frame, "breakSnappedFramesOnSave")
+			and (mover == nil or sysOf[mover] ~= nil)
+	end
+
+	-- an Edit Mode system's mover changed in this session (EditLayoutMovers: a drop -- `onto`, the plate its snap
+	-- lit, or nil -- or a nudge, a typed place, a size): attached to the frame it stands against now (a drop: the lit
+	-- one; else the one it was attached to), else a screen place (one attached in the saved layout lets go at Save)
+	function B.Moved(entry, dropped, onto)
+		local s = type(entry) == "table" and sysOf[entry] or nil
+		if not s or entry.key == nil then
+			return
+		end
+		local key, frame = entry.key, entry.frame
+		local rec, saved = ATTACH.keys[key], SavedOn(entry, s)
+		local to
+		if dropped then
+			to = type(onto) == "table" and onto.frame or nil
+		elseif rec then
+			to = rec.frame
+		else
+			to = saved
+		end
+		local anchor = nil
+		if type(to) == "table" and to ~= frame and CanHang(frame) and CanHold(to) and not HangsOn(to, frame) then
+			anchor = AnchorOn(frame, to)
+		end
+		if anchor then
+			ATTACH.keys[key] = { entry = entry, frame = to, anchor = anchor }
+		elseif saved then
+			ATTACH.keys[key] = { entry = entry, detach = true }
+		else
+			ATTACH.keys[key] = nil
+		end
+	end
+
+	-- the box's "Attached to": the other element's name and whether it is this session's (saved with Save), or nil
+	function B.AttachedTo(entry)
+		local s = type(entry) == "table" and sysOf[entry] or nil
+		if not s or entry.key == nil then
+			return nil
+		end
+		local rec = ATTACH.keys[entry.key]
+		local to, soon = nil, false
+		if rec then
+			to, soon = rec.frame, true
+		elseif not Moved(entry) then
+			to = SavedOn(entry, s)
+		end
+		if type(to) ~= "table" then
+			return nil
+		end
+		local mover, P = MelloUI:MoverEntry(to), Movers()
+		return (mover and P and P.Label(mover)) or B.Label(to), soon
+	end
+
+	-- the box's Detach (its screen place pended by EditLayout.lua): written as a screen place at Save
+	function B.Detach(entry)
+		local s = type(entry) == "table" and sysOf[entry] or nil
+		if not s or entry.key == nil then
+			return false
+		end
+		ATTACH.keys[entry.key] = SavedOn(entry, s) and { entry = entry, detach = true } or nil
+		return true
+	end
+
+	-- this session's attach of an entry (or, with none, every one) let go: Revert, Reset, Default place, Reset all,
+	-- a session discarded
+	function B.DropAttach(entry)
+		if entry == nil then
+			wipe(ATTACH.keys)
+		elseif type(entry) == "table" and entry.key ~= nil and sysOf[entry] then
+			ATTACH.keys[entry.key] = nil
+		end
+	end
+
+	-- an attach or detach of this session (its plate's pending mark)
+	function B.AttachHeld(entry)
+		return type(entry) == "table" and entry.key ~= nil and sysOf[entry] ~= nil and ATTACH.keys[entry.key] ~= nil
+	end
+
+	-- the changes the count misses: an attach or detach of an element whose place Core's session does not count
+	function B.AttachCount()
+		local LS, n = MelloUI.LayoutSession, 0
+		for _, rec in pairs(ATTACH.keys) do
+			local ok, counted = pcall(LS.Differs, rec.entry)
+			if not (ok and counted) then
+				n = n + 1
+			end
+		end
+		return n
+	end
+end
+
 local function RegisterSystem(frame)
 	local had = MelloUI:MoverEntry(frame)
 	local system, index = SystemOf(frame)
@@ -1502,7 +1973,7 @@ local function RegisterSystem(frame)
 	local listed = HIDDEN.Spec(system, index) ~= nil or AtTimes(system, index)
 	local entry = MelloUI:RegisterMover(frame, frame, { key = SysKey(system, index), group = "hud", follow = true,
 		resize = false, label = B.Label(frame), page = PageOf(frame), default = SysHome(system, index),
-		resetLabel = TEXT.sysReset, note = SysNote, when = SysLive,
+		reset = SysReset(system, index), resetLabel = TEXT.sysReset, note = SysNote, when = SysLive,
 		placeholder = listed and { HIDDEN.Size(frame, system, index) } or nil,
 		box = (listed and HIDDEN.Tiny(frame)) and HIDDEN.Box or nil,
 		category = CATEGORY_OF[SystemName(system)] })
@@ -1553,7 +2024,7 @@ end
 -- the cast bar moved: Edit Mode's Lock To Player Frame off with it, and its mirror on the player frame (Cast Bar
 -- Underneath; EditModeSettingDisplayInfo's mirroredSettings) -- locked, the game hangs it under the player frame
 -- whatever its place says (EditModeCastBarSystemMixin:ApplySystemAnchor); Edit Mode's own drag turns it off too
-local function Unlock(system)
+Unlock = function(system)
 	local E2 = type(Enum) == "table" and Enum or nil
 	local cs, us = E2 and E2.EditModeCastBarSetting, E2 and E2.EditModeUnitFrameSetting
 	if cs and cs.LockToPlayerFrame ~= nil then
@@ -1567,20 +2038,37 @@ local function Unlock(system)
 end
 
 -- after an Edit Layout session: the places new or changed since it opened,
--- into the active Edit Mode layout
+-- into the active Edit Mode layout. (el-14) An element attached in it goes in
+-- on the other frame (ATTACH's anchor), one detached as its screen place
 local function WriteChanged(before)
+	if not MelloUI.EditModeAnchorSoon then
+		return
+	end
+	local function Put(system, index, anchor)
+		MelloUI:EditModeAnchorSoon(system, index, anchor)
+		if SystemName(system) == "CastBar" then
+			Unlock(system)
+		end
+	end
+	local done = {}
 	for key, pos in pairs(StoredSystems()) do
 		local was = before and before[key]
-		if not (was and was.point == pos.point and was.relPoint == pos.relPoint and was.x == pos.x and was.y == pos.y) then
+		local rec = ATTACH.keys[key]
+		if rec or not (was and was.point == pos.point and was.relPoint == pos.relPoint and was.x == pos.x and was.y == pos.y) then
 			local system, index = ParseKey(key)
 			local frame = FrameOf(system, index)
-			local anchor = frame and AnchorOf(pos, frame)
-			if anchor and MelloUI.EditModeAnchorSoon then
-				MelloUI:EditModeAnchorSoon(system, index, anchor)
-				if SystemName(system) == "CastBar" then
-					Unlock(system)
-				end
+			local anchor = frame and ((rec and rec.anchor) or AnchorOf(pos, frame))
+			if anchor then
+				Put(system, index, anchor)
+				done[key] = true
 			end
+		end
+	end
+	-- (an attach whose element left no place in the store: Core keeps one for every drop, so none is expected)
+	for key, rec in pairs(ATTACH.keys) do
+		if rec.anchor and not done[key] then
+			local system, index = ParseKey(key)
+			Put(system, index, rec.anchor)
 		end
 	end
 end
@@ -1684,6 +2172,10 @@ local function SysEditLayout(showing, state)
 		if not ok then
 			Report(err)
 		end
+		-- (el-14: the session's resets to the default place and its attaches, written at its Save or dropped --
+		-- EditLayout.lua lets the attaches go before this when the session was not saved)
+		wipe(DEFAULT.keys)
+		wipe(ATTACH.keys)
 	end
 end
 

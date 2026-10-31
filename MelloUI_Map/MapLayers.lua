@@ -18,9 +18,21 @@
 --                  your side's and the neutral ones; the Quest List's data when
 --                  the client lists none
 --   transports     boats, zeppelins, portals and the tram (the Quest List's
---                  data), one pin a dock with every way from it on hover
+--                  data), one pin a dock with every way from it on hover;
+--                  (2.1.0) from the world's zoom on, docks that touch one pin
+--                  (their trails: MapTrails.lua)
 --   entrances      dungeons and raids (the Quest List's data and the client's),
---                  their levels on hover in the colour of how hard they are
+--                  their levels on hover in the colour of how hard they are;
+--                  (2.1.0) from the world's zoom on, doors that touch one pin
+--                  with their count
+--   places         (2.1.0, qu-01: the user's picks W1 and P2 of BuildData/
+--                  output/qu01_map_sketch) the capitals the world map names
+--                  (MapData.towns: the client's AreaPOI), a gold seal with the
+--                  name beside it, from the world's zoom; the towns smaller,
+--                  named on hover, from a continent's; both to a zone's (the
+--                  zone names' NAMES_TO)
+-- The places, the docks, the doors and your quests (MapObjectives.lua) are
+-- kept apart from the world's zoom on (MapPins: merged, stepped aside, named)
 --   route          Route's trail and its goal flag (the World Marker's goal is
 --                  the same), by Route's own painter, across continents
 --   quests         the quest givers of every zone and city: the Quest List's own
@@ -63,8 +75,8 @@ local T = {
 	ARROW_ATLAS = "UI-WorldMapArrow",                 -- the game's own map arrow
 	ARROW_FILE = "Interface\\Minimap\\MinimapArrow",  -- (if the atlas is missing)
 	-- the stack (MapPins' layer order): the places under the group, the group under the player
-	ORDER = { names = 8, entrances = 10, transports = 12, flights = 14, quests = 20, route = 30, waypoint = 32, group = 40,
-		player = 50 },
+	ORDER = { towns = 7, names = 8, places = 9, entrances = 10, transports = 12, flights = 14, quests = 20, route = 30,
+		waypoint = 32, group = 40, player = 50 },
 	MEMBER_SIZE = 16,        -- a party member's class pin (the user, 2026-10-20: "in the theme", "enough just in the color")
 	PIN_GOAL = "goal_pin",   -- the game's waypoint, while Route is off
 	QUESTS_FROM = 2.5,       -- the quest givers from a zone's zoom on (a continent's: thousands)
@@ -73,8 +85,24 @@ local T = {
 	NAME_SHADE = 0.6,        -- the soft shade under a name
 	NAME_GAP = 6,            -- px kept free round a name
 	GIVER_SIZE = 20,
-	PLACES_FROM = 1.15,      -- flights, transports and entrances from a continent's zoom on (the world's: too many)
+	PLACES_FROM = 1.15,      -- the flight masters (2.1.0: and the towns) from a continent's zoom on (the world's: too many)
 	PIN_SIZE = 18,
+	-- (2.1.0, qu-01: the user's pick W1, "every kind at 16 px") the docks and the doors from the world's zoom on; pins of
+	-- one kind that touch become one (MapPins' merge: the docks of one harbour within DOCK_MERGE px)
+	PLACE_SIZE = 16,
+	DOCK_MERGE = 12,
+	-- (P2) a capital: a slate disc in a gold rim, its name beside it; a town the same, smaller. Drawn as the sketch drew
+	-- it, from the set's badge disc (sharp at every size): the gold disc, the slate core RIM px in, a dark EDGE px out
+	-- (it stands off the parchment as the set's pins do; the set's thin ring_gold read as a dark dot in wowsim, qu-01 sim)
+	CAPITAL_SIZE = 14,
+	TOWN_SIZE = 9,
+	CAPITAL_RIM = 2,
+	TOWN_RIM = 1,
+	SEAL_EDGE = 1,
+	SEAL = "badge_disc",
+	SEAL_GOLD = "selectedTrim",
+	SEAL_DISC = "raisedPanel",
+	SEAL_DARK = "innerPanel",
 	NEW_ALPHA = 0.45,        -- a flight master you have not learned
 	TRANSPORT_ICON = { "pin_boat", "pin_zeppelin", "pin_portal", "pin_tram" },
 	ENTRANCE_ICON = { "pin_dungeon", "pin_raid" },
@@ -99,6 +127,11 @@ local TEXT = {
 	-- (1.2.0: Dungeon Info's lines on a door's tooltip, the user's pick B of journal_placements)
 	bosses = "%d bosses: %s",
 	dungeonInfo = "Click: open it in Dungeon Info",
+	-- (2.1.0) a pin that holds others (MapPins' merge): its title, its click
+	dungeons = "%d dungeons",
+	raids = "%d raids",
+	doors = "%d dungeons and raids",
+	spread = "Click: zoom in",
 }
 
 --------------------------------------------------------------------------------
@@ -387,8 +420,9 @@ end
 Layers.WorldPoint = WorldPoint   -- (the quest log's Show: a quest's places)
 
 -- (lift: the set's icons the glow is baked for -- the docks' and the entrances' pins; not the flight master's)
-local function Icon(name, alpha, tip, lift)
-	return { icon = T.ICONS .. name, size = T.PIN_SIZE, alpha = alpha, tip = tip, sub = 1, lift = lift and name or nil }
+local function Icon(name, alpha, tip, lift, size)
+	return { icon = T.ICONS .. name, size = size or T.PIN_SIZE, alpha = alpha, tip = tip, sub = 1,
+		lift = lift and name or nil }
 end
 
 -- flights
@@ -439,15 +473,39 @@ local function Flights()
 	end
 end
 
--- transports: one pin a dock, every way from it on hover
+-- transports: one pin a dock, every way from it on hover (2.1.0: docks that touch, every way from each, the harbour
+-- named once)
+local tipLines = {}
 local function DockTip(pin)
-	return pin.data.title, table.concat(pin.data.lines, "\n")
+	if not pin.members then
+		return pin.data.title, table.concat(pin.data.lines, "\n")
+	end
+	wipe(tipLines)
+	for _, m in ipairs(pin.members) do
+		local d = m.data
+		local other = type(d) == "table" and d.title ~= pin.data.title and d.title
+		for _, line in ipairs(type(d) == "table" and d.lines or EMPTY) do
+			line = other and (other .. ": " .. line) or line
+			local said = false
+			for _, l in ipairs(tipLines) do
+				if l == line then
+					said = true
+					break
+				end
+			end
+			if not said then
+				tipLines[#tipLines + 1] = line
+			end
+		end
+	end
+	tipLines[#tipLines + 1] = TEXT.spread   -- (its click glides in until they part, as a door's and a quest's)
+	return pin.data.title, table.concat(tipLines, "\n")
 end
 local transportSpec = {}
 local function TransportSpec(kind)
 	local spec = transportSpec[kind]
 	if not spec then
-		spec = Icon(T.TRANSPORT_ICON[kind], nil, DockTip, true)
+		spec = Icon(T.TRANSPORT_ICON[kind], nil, DockTip, true, T.PLACE_SIZE)
 		transportSpec[kind] = spec
 	end
 	return spec
@@ -522,9 +580,37 @@ local function BossLine(inst)
 	return string.format(TEXT.bosses, n, table.concat(names, ", "))
 end
 
+-- (2.1.0) a pin that holds other doors: how many, each one's name and levels, a click zooms in
+local function DoorsTip(pin)
+	local dungeons, raids = 0, 0
+	wipe(tipLines)
+	for _, m in ipairs(pin.members) do
+		local d = m.data
+		if type(d) == "table" then
+			if d.kind == 2 then
+				raids = raids + 1
+			else
+				dungeons = dungeons + 1
+			end
+			tipLines[#tipLines + 1] = d.levels and (d.name .. "  " .. LevelText(d.levels)) or d.name
+		end
+	end
+	local title = raids == 0 and TEXT.dungeons:format(dungeons) or dungeons == 0 and TEXT.raids:format(raids)
+		or TEXT.doors:format(dungeons + raids)
+	tipLines[#tipLines + 1] = TEXT.spread
+	return title, table.concat(tipLines, "\n")
+end
+
 local function EntranceFill(tip, pin)
 	local QL = rawget(MelloUI, "QuestList")
 	if not (type(QL) == "table" and QL.MarkTip) then
+		return
+	end
+	if pin.members then
+		local title, body = DoorsTip(pin)
+		tip:SetText(title)
+		tip:AddLine(body, 1, 1, 1, true)
+		tip:Show()
 		return
 	end
 	local d = pin.data
@@ -544,6 +630,9 @@ local function EntranceFill(tip, pin)
 end
 
 local function EntranceTip(pin)
+	if pin.members then
+		return DoorsTip(pin)
+	end
 	local d = pin.data
 	local word = d.kind == 2 and TEXT.raid or TEXT.dungeon
 	local line = d.levels and string.format(TEXT.levels, word, LevelText(d.levels)) or word
@@ -564,7 +653,8 @@ local function EntranceClick(pin, button)
 	end
 end
 
-local ENTRANCE = { Icon(T.ENTRANCE_ICON[1], nil, EntranceTip, true), Icon(T.ENTRANCE_ICON[2], nil, EntranceTip, true) }
+local ENTRANCE = { Icon(T.ENTRANCE_ICON[1], nil, EntranceTip, true, T.PLACE_SIZE),
+	Icon(T.ENTRANCE_ICON[2], nil, EntranceTip, true, T.PLACE_SIZE) }
 ENTRANCE[1].click, ENTRANCE[2].click = EntranceClick, EntranceClick
 -- (with the Quest List: its own entrance tooltip, the quests done there with it)
 local function EntranceSpec(kind)
@@ -621,6 +711,35 @@ local function Entrances()
 	end
 end
 
+-- (2.1.0, qu-01: the user's picks W1 and P2) the capitals and the towns the world map names (MapData.towns, the
+-- client's AreaPOI): a capital's seal (a slate disc in a gold rim, a dark edge) with its name beside it, from the world's
+-- zoom; a town's smaller, named on hover, from a continent's; both to a zone's, where its own art takes over
+local function PlaceTip(pin)
+	return pin.name
+end
+
+local CAPITAL = { icon = T.ICONS .. T.SEAL, size = T.CAPITAL_SIZE, tint = T.SEAL_GOLD, core = T.SEAL_DISC,
+	rim = T.CAPITAL_RIM, disc = T.SEAL_DARK, edge = T.SEAL_EDGE, label = true, tip = PlaceTip, sub = 1 }
+local TOWN = { icon = T.ICONS .. T.SEAL, size = T.TOWN_SIZE, tint = T.SEAL_GOLD, core = T.SEAL_DISC, rim = T.TOWN_RIM,
+	disc = T.SEAL_DARK, edge = T.SEAL_EDGE, tip = PlaceTip, sub = 1 }
+
+local function Places()
+	local pins, data = S.pins, ns.MapData
+	pins:Clear("places")
+	pins:Clear("towns")
+	for i, row in ipairs(data and data.towns or EMPTY) do
+		local rank, name = row[1], row[2]
+		local wx, wy = WorldPoint(row[3], row[4], row[5])
+		if wx then
+			local capital = rank == 1
+			local pin = pins:Set(capital and "places" or "towns", i, wx, wy, capital and CAPITAL or TOWN)
+			if pin then
+				pin.name = name
+			end
+		end
+	end
+end
+
 -- the window opened: the places laid (the data's once; the flights each time: learned ones change)
 function Layers.Open()
 	if not S.pins then
@@ -631,6 +750,7 @@ function Layers.Open()
 		S.built = true
 		Transports()
 		Entrances()
+		Places()
 	end
 	-- (the givers: made again when the Quest List laid its marks again, or when they were last made without it)
 	WatchQuests()
@@ -794,6 +914,20 @@ function Layers.Labels()
 	local k = c.k1 * c.z
 	local x0, y0 = c.cx - c.cw / (2 * k), c.cy - c.ch / (2 * k)
 	local boxes, n = NAMES.boxes, 0
+	-- (2.1.0) the capitals' names laid with the pins (MapPins' names): a zone's name keeps clear of them
+	if on then
+		local lb = pins.labelBoxes
+		for i = 1, pins.nLabels or 0 do
+			local s = lb[i]
+			n = n + 1
+			local b = boxes[n]
+			if not b then
+				b = {}
+				boxes[n] = b
+			end
+			b[1], b[2], b[3], b[4] = s[1], s[2], s[3], s[4]
+		end
+	end
 	for _, p in ipairs(c.places) do
 		local at = p.label
 		if at then
@@ -956,10 +1090,13 @@ end
 function Layers.Init(canvas, pins)
 	S.canvas, S.pins = canvas, pins
 	ArrowLook()
-	local from = { minZ = T.PLACES_FROM }
-	pins:Layer("entrances", T.ORDER.entrances, from)
-	pins:Layer("transports", T.ORDER.transports, from)
-	pins:Layer("flights", T.ORDER.flights, from)
+	-- (2.1.0, W1) the doors, the docks and the capitals from the world's zoom on, kept apart (MapPins); the towns and
+	-- the flight masters from a continent's
+	pins:Layer("entrances", T.ORDER.entrances, { merge = T.PLACE_SIZE, nudge = true })
+	pins:Layer("transports", T.ORDER.transports, { merge = T.DOCK_MERGE, nudge = true })
+	pins:Layer("places", T.ORDER.places, { maxZ = T.NAMES_TO, nudge = true })
+	pins:Layer("towns", T.ORDER.towns, { minZ = T.PLACES_FROM, maxZ = T.NAMES_TO, nudge = true })
+	pins:Layer("flights", T.ORDER.flights, { minZ = T.PLACES_FROM })
 	pins:Layer("route", T.ORDER.route)
 	pins:Layer("quests", T.ORDER.quests, { minZ = T.QUESTS_FROM })
 	pins:Layer("group", T.ORDER.group)

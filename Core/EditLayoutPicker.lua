@@ -33,6 +33,11 @@
 --                       alone, for the session;  K.SoloLabel() -> text | nil,  K.Unsolo()
 --     K.EndSession()    the solo let go, the list put away (the session's end)
 --     K.Hide()          the list put away (a pause; it comes back pinned)
+--   (2.1.0, el-14) the Layouts list -- Edit Mode's layouts, from the dock's
+--   Layout button (Core/EditModeLayout.lua's MelloUI:ManageEditModeLayout):
+--     K.ToggleLayouts(), K.LayoutsOpen(), K.CloseLayouts()
+--     K.ActiveLayoutName() -> the active layout's name (the dock's), or nil
+-- Only one of the two lists shows at a time.
 -- Nothing at load: the list is made at its first open, a player's click.
 -- No colour number: palette keys through W.Paint.
 --------------------------------------------------------------------------------
@@ -924,6 +929,9 @@ function K.Open()
 	if not E:IsShowing() then
 		return
 	end
+	if K.CloseLayouts then
+		K.CloseLayouts()   -- (el-14: one list at a time)
+	end
 	if not panel then
 		Make()
 		S.pinned = Prefs().pinned == true
@@ -978,6 +986,9 @@ local function Over(frame)
 	return frame ~= nil and frame:IsShown() and frame:IsMouseOver()
 end
 function K.ClickedOutside()
+	if K.LayoutsClickedOutside then
+		K.LayoutsClickedOutside(Over)   -- (el-14: the Layouts list, its own rule)
+	end
 	if not (panel and panel:IsShown()) or S.pinned or Over(panel) then
 		return
 	end
@@ -996,6 +1007,9 @@ function K.Hide()
 	if panel and panel:IsShown() then
 		panel:Hide()
 	end
+	if K.CloseLayouts then
+		K.CloseLayouts()   -- (el-14: the Layouts list does not come back after a pause)
+	end
 end
 
 function K.Resume()
@@ -1011,5 +1025,495 @@ function K.EndSession()
 		panel:Hide()
 		panel.search:SetText("")
 		panel.chips:Select("all")
+	end
+	if K.EndLayouts then
+		K.EndLayouts()
+	end
+end
+
+--------------------------------------------------------------------------------
+-- (2.1.0, el-14; the user's rule, 2026-10-27: everything Edit Mode does in Edit Layout) The Layouts list: Edit Mode's
+-- layouts, dropped from the dock's Layout button as Elements drops its list (the same panel, rows and buttons). A row
+-- per layout in Edit Mode's order -- the game's own (its presets), the account's, this character's -- the active one
+-- checked; a click picks a row (a double-click uses it). Under them the name box (Edit Mode's dialog's: at most 30
+-- letters), "This character only" (Edit Mode's Character Specific Layout) and the buttons: Use, New (the game's default
+-- layout copied), Copy (the picked one copied), Rename, Delete (asks: MelloUI:Confirm), Import (a share string pasted:
+-- MelloUI:ShowPaste) and Share (its string to copy: MelloUI:ShowText). Each change is saved at once into Edit Mode's
+-- layouts (MelloUI:ManageEditModeLayout: one SaveLayouts, never the game's layout code) and shows after a /reload; the
+-- line under the buttons says what happened. A change waits for Edit Layout's own unsaved changes to be saved or
+-- discarded first (a session's places go into the active layout at Save). Nothing at load: made at its first open.
+--------------------------------------------------------------------------------
+do
+	local LT = {
+		title = "Layouts",
+		help = "Edit Mode's layouts. A change is saved at once and shows after a /reload.",
+		name = "Name", charOnly = "This character only",
+		charOnlyTip = "New, Copy and Import make a layout for this character only, as Edit Mode's Character Specific "
+			.. "Layout does; off, every character of the account has it.",
+		kinds = { preset = "Game's", account = "Account", character = "Character" },
+		afterReload = "%s  (after /reload)",
+		use = "Use", useTip = "Makes the picked layout the one the game uses (after a /reload). Double-click a row does "
+			.. "it too.",
+		new = "New", newTip = "A new layout under the name typed, from the game's own default layout.",
+		copy = "Copy", copyTip = "A copy of the picked layout under the name typed.",
+		rename = "Rename", renameTip = "Gives the picked layout the name typed.",
+		delete = "Delete", deleteTip = "Deletes the picked layout (it asks first). The game's own can't be deleted.",
+		import = "Import", importTip = "Paste a layout's share string; it comes in under the name typed.",
+		share = "Share", shareTip = "The picked layout's share string, to copy and give to someone.",
+		pending = "Save or discard your Edit Layout changes first.",
+		pickFirst = "Pick a layout in the list first.",
+		saved = "Saved. Type /reload to see it.",
+		used = "'%s' is the active layout after a /reload.",
+		kept = "The game kept '%s' as the active layout: pick it in the game's Edit Mode instead.",
+		deleteAsk = "Delete the Edit Mode layout '%s'? This can't be undone.",
+		deleteYes = "Delete", cancel = "Cancel",
+		pasteTitle = "Edit Mode layout",
+		shareTitle = "Edit Mode layout '%s'",
+	}
+	K.LAYOUT_TEXT = LT
+	local L_W, L_ROW = 360, 24
+	local NAME_LETTERS = 30
+	local lp                         -- the panel, made at its first open
+	local lrows, lused = {}, 0
+	local LS = { list = nil, pick = nil, char = false, line = nil, first = nil, name = nil }
+
+	local function Same(a, b)
+		return a ~= nil and b ~= nil and a.name == b.name and a.kind == b.kind
+	end
+
+	-- Edit Mode's layouts read again; the first read of this UI session is what the game shows now
+	local function Read()
+		local list = MelloUI.EditModeLayouts and MelloUI:EditModeLayouts() or nil
+		LS.list = list
+		LS.name = nil
+		for _, l in ipairs(list or {}) do
+			if l.active then
+				LS.name = l.name
+				if not LS.first then
+					LS.first = { name = l.name, kind = l.kind }
+				end
+			end
+		end
+		if LS.pick then
+			local found = false
+			for _, l in ipairs(list or {}) do
+				if Same(l, LS.pick) then
+					found = true
+				end
+			end
+			if not found then
+				LS.pick = nil
+			end
+		end
+		return list
+	end
+
+	function K.ActiveLayoutName()
+		if not LS.list then
+			Read()
+		end
+		return LS.name
+	end
+
+	-- the dock's name read again (Edit Layout's open)
+	function K.ReadLayouts()
+		Read()
+	end
+
+	local LayLayouts   -- below
+
+	local function Say(text)
+		LS.line = text
+		if lp then
+			LayLayouts()
+		end
+	end
+
+	-- a change through Core/EditModeLayout.lua, then the list, the dock and the line; true when it was saved
+	local function Do(action, spec, done)
+		if E:Pending() > 0 then
+			Say(LT.pending)
+			return false
+		end
+		local ok, why, kept = MelloUI:ManageEditModeLayout(action, spec)
+		-- (the layout made or renamed is the picked one then)
+		local made = action == "new" or action == "copy" or action == "import"
+		if ok and (made or action == "rename") then
+			local name = made and spec.name or spec.to
+			LS.pick = { name = type(name) == "string" and name:gsub("^%s+", ""):gsub("%s+$", "") or name,
+				kind = made and (spec.kind == "character" and "character" or "account") or spec.kind }
+		end
+		Read()
+		if ok then
+			if why == "kept" then
+				Say(LT.kept:format(tostring(kept)))
+			else
+				Say(done or LT.saved)
+				if MelloUI.SayEditModeReload then
+					MelloUI:SayEditModeReload()
+				end
+			end
+			MelloUI:PlayUISound("tick")
+		else
+			Say(why)
+		end
+		E:Refresh()
+		return ok and true or false
+	end
+
+	local function Typed()
+		local text = lp and lp.nameBox:GetText() or ""
+		return (text:gsub("^%s+", ""):gsub("%s+$", ""))
+	end
+
+	local function Kind()
+		return LS.char and "character" or "account"
+	end
+
+	local function Use()
+		local p = LS.pick
+		if not p then
+			Say(LT.pickFirst)
+			return
+		end
+		Do("use", { name = p.name, kind = p.kind }, LT.used:format(p.name))
+	end
+
+	local ACT = {
+		use = Use,
+		new = function()
+			Do("new", { name = Typed(), kind = Kind() })
+		end,
+		copy = function()
+			local p = LS.pick
+			if not p then
+				Say(LT.pickFirst)
+				return
+			end
+			Do("copy", { from = p.name, fromKind = p.kind, name = Typed(), kind = Kind() })
+		end,
+		rename = function()
+			local p = LS.pick
+			if not p then
+				Say(LT.pickFirst)
+				return
+			end
+			Do("rename", { name = p.name, kind = p.kind, to = Typed() })
+		end,
+		delete = function()
+			local p = LS.pick
+			if not p then
+				Say(LT.pickFirst)
+				return
+			end
+			if p.kind == "preset" then
+				Say(MelloUI.EditModeLayoutText and MelloUI.EditModeLayoutText.preset or LT.deleteTip)
+				return
+			end
+			if E:Pending() > 0 then
+				Say(LT.pending)
+				return
+			end
+			local name, kind = p.name, p.kind
+			MelloUI:Confirm({ text = LT.deleteAsk:format(name), accept = LT.deleteYes, cancel = LT.cancel,
+				onAccept = function()
+					Do("delete", { name = name, kind = kind })
+				end })
+		end,
+		import = function()
+			local name = Typed()
+			if name == "" then
+				Say(MelloUI.EditModeLayoutText and MelloUI.EditModeLayoutText.noName or LT.importTip)
+				if lp then
+					lp.nameBox:SetFocus()
+				end
+				return
+			end
+			if E:Pending() > 0 then
+				Say(LT.pending)
+				return
+			end
+			local kind = Kind()
+			-- (the paste window closes when it went in; else it stays for another try, the line says why)
+			MelloUI:ShowPaste(LT.pasteTitle, function(text)
+				return Do("import", { text = text, name = name, kind = kind })
+			end)
+		end,
+		share = function()
+			local p = LS.pick
+			if not p then
+				Say(LT.pickFirst)
+				return
+			end
+			local text, why = MelloUI:ShareEditModeLayout(p.name, p.kind)
+			if text then
+				MelloUI:ShowText(LT.shareTitle:format(p.name), text)
+			else
+				Say(why)
+			end
+		end,
+	}
+
+	local ActClick = Shared("OnClick on an Edit Layout Layouts button", function(self)
+		local fn = ACT[self.melloAct]
+		if fn then
+			fn()
+		end
+	end, "script")
+
+	local LRowClick = Shared("OnClick on an Edit Layout Layouts row", function(self)
+		if self.layout then
+			LS.pick = { name = self.layout.name, kind = self.layout.kind }
+			if lp and self.layout.kind ~= "preset" then
+				lp.nameBox:SetText(self.layout.name)
+			end
+			MelloUI:PlayUISound("tick")
+			LayLayouts()
+		end
+	end, "script")
+	local LRowDouble = Shared("OnDoubleClick on an Edit Layout Layouts row", function(self)
+		if self.layout then
+			LS.pick = { name = self.layout.name, kind = self.layout.kind }
+			Use()
+		end
+	end, "script")
+
+	local CharGet = function()
+		return LS.char
+	end
+	local CharSet = function(on)
+		LS.char = on and true or false
+	end
+
+	local function LNewRow(parent)
+		local row = CreateFrame("Button", nil, parent)
+		row:RegisterForClicks("LeftButtonUp")
+		row:SetHeight(L_ROW)
+		W.RowPlate(row)
+		row.sel = W.Solid(row, "BACKGROUND", "selectedTab", 1)
+		row.sel:SetAllPoints(row)
+		row.sel:Hide()
+		row.check = row:CreateTexture(nil, "ARTWORK")
+		row.check:SetSize(14, 14)
+		row.check:SetPoint("LEFT", row, "LEFT", 10, 0)
+		W.Glyph(row.check, "check")
+		W.Paint(row.check, "selectedTrim", "vertex")
+		row.kind = W.Text(row, "GameFontHighlight", nil, "text")
+		row.kind:SetPoint("RIGHT", row, "RIGHT", -10, 0)
+		row.label = W.Text(row, "GameFontHighlight", nil, "text")
+		row.label:SetWordWrap(false)
+		row.label:SetJustifyH("LEFT")
+		row.label:SetPoint("LEFT", row.check, "RIGHT", 8, 0)
+		row.label:SetPoint("RIGHT", row.kind, "LEFT", -8, 0)
+		Perf.SetScript(row, "OnClick", LRowClick)
+		Perf.SetScript(row, "OnDoubleClick", LRowDouble)
+		return row
+	end
+
+	local BUTTONS = { { "use", "new", "copy", "rename" }, { "delete", "import", "share" } }
+
+	local function LMake()
+		lp = CreateFrame("Frame", "MelloUIEditLayoutLayouts", UIParent)
+		lp:Hide()
+		lp:SetFrameStrata(PICK_STRATA)
+		lp:SetFrameLevel(PICK_LEVEL)
+		lp:SetClampedToScreen(true)
+		lp:EnableMouse(true)
+		lp:SetSize(L_W, 300)
+		lp.plate = W.RoundPlate(lp, { radius = 10, fill = "mainWindow", edge = "border" })
+		local top = W.Solid(lp, "BORDER", "trim", 1)
+		top:SetHeight(1)
+		top:SetPoint("TOPLEFT", lp, "TOPLEFT", 10, 0)
+		top:SetPoint("TOPRIGHT", lp, "TOPRIGHT", -10, 0)
+		MelloUI.Kit:ShadeElement(lp, "windows"):Add(lp, { shape = "shade/square" })
+		lp.title = W.Text(lp, "GameFontNormal", LT.title, "selectedTrim")
+		lp.title:SetPoint("TOPLEFT", lp, "TOPLEFT", PAD + 2, -PAD)
+		lp.help = W.Text(lp, "GameFontHighlight", LT.help, "text")
+		lp.help:SetWidth(L_W - 2 * PAD - 4)
+		lp.help:SetWordWrap(true)
+		lp.help:SetJustifyH("LEFT")
+		lp.help:SetPoint("TOPLEFT", lp.title, "BOTTOMLEFT", 0, -6)
+		-- the rows on a dark well
+		lp.well = W.Solid(lp, "BORDER", "innerPanel", 1)
+		lp.list = CreateFrame("Frame", nil, lp)
+		-- the name, the switch, the buttons, the line
+		lp.nameLabel = W.Text(lp, "GameFontHighlight", LT.name, "text")
+		lp.nameBox = CreateFrame("EditBox", nil, lp, "InputBoxTemplate")
+		lp.nameBox:SetSize(L_W - 2 * PAD - 70, 22)
+		lp.nameBox:SetAutoFocus(false)
+		lp.nameBox:SetMaxLetters(NAME_LETTERS)
+		W.Paint(lp.nameBox, "text", "text")
+		W.FlatField(lp.nameBox)
+		lp.char = W.Switch(lp, CharGet, CharSet)
+		lp.charLabel = W.Text(lp, "GameFontHighlight", LT.charOnly, "text")
+		lp.char.melloTitle, lp.char.melloBody = LT.charOnly, LT.charOnlyTip
+		Perf.HookScript(lp.char, "OnEnter", QuickEnter)
+		Perf.HookScript(lp.char, "OnLeave", QuickLeave)
+		lp.buttons = {}
+		for r, names in ipairs(BUTTONS) do
+			lp.buttons[r] = {}
+			for i, act in ipairs(names) do
+				local b = QuickButton(lp, LT[act], ActClick, LT[act .. "Tip"])
+				b.melloAct = act
+				lp.buttons[r][i] = b
+			end
+		end
+		lp.line = W.Text(lp, "GameFontHighlight", nil, "text")
+		lp.line:SetWidth(L_W - 2 * PAD - 4)
+		lp.line:SetWordWrap(true)
+		lp.line:SetJustifyH("LEFT")
+	end
+
+	LayLayouts = function()
+		if not lp then
+			return
+		end
+		local y = PAD + (Num(lp.title:GetStringHeight()) or 14) + 6 + (Num(lp.help:GetStringHeight()) or 14) + 10
+		for i = 1, lused do
+			lrows[i]:Hide()
+			lrows[i].layout = nil
+		end
+		lused = 0
+		local listTop = y
+		for _, l in ipairs(LS.list or {}) do
+			lused = lused + 1
+			local row = lrows[lused]
+			if not row then
+				row = LNewRow(lp.list)
+				lrows[lused] = row
+			end
+			row.layout = l
+			row.check:SetShown(l.active and true or false)
+			local after = l.active and LS.first and not Same(l, LS.first)
+			row.label:SetText(after and LT.afterReload:format(l.name) or l.name)
+			row.kind:SetText(LT.kinds[l.kind] or "")
+			row.sel:SetShown(Same(l, LS.pick))
+			row:ClearAllPoints()
+			row:SetPoint("TOPLEFT", lp, "TOPLEFT", PAD, -(y + 4))
+			row:SetWidth(L_W - 2 * PAD)
+			row:Show()
+			y = y + L_ROW
+		end
+		lp.well:ClearAllPoints()
+		lp.well:SetPoint("TOPLEFT", lp, "TOPLEFT", PAD - 4, -listTop)
+		lp.well:SetPoint("BOTTOMRIGHT", lp, "TOPRIGHT", -PAD + 4, -(y + 8))
+		y = y + 8 + 12
+		lp.nameLabel:ClearAllPoints()
+		lp.nameLabel:SetPoint("TOPLEFT", lp, "TOPLEFT", PAD + 2, -(y + 4))
+		lp.nameBox:ClearAllPoints()
+		lp.nameBox:SetPoint("TOPRIGHT", lp, "TOPRIGHT", -PAD, -y)
+		y = y + 22 + 8
+		lp.char:ClearAllPoints()
+		lp.char:SetPoint("TOPLEFT", lp, "TOPLEFT", PAD + 2, -y)
+		lp.char:Refresh()
+		lp.charLabel:ClearAllPoints()
+		lp.charLabel:SetPoint("LEFT", lp.char, "RIGHT", 8, 0)
+		y = y + (Num(lp.char:GetHeight()) or 20) + 10
+		local preset = LS.pick and LS.pick.kind == "preset"
+		for _, line in ipairs(lp.buttons) do
+			local x = PAD
+			for _, b in ipairs(line) do
+				b:ClearAllPoints()
+				b:SetPoint("TOPLEFT", lp, "TOPLEFT", x, -y)
+				x = x + (Num(b:GetWidth()) or 60) + 6
+				local act = b.melloAct
+				local needsPick = act ~= "new" and act ~= "import"
+				b:SetEnabled(not (needsPick and not LS.pick) and not (preset and (act == "rename" or act == "delete")))
+			end
+			y = y + 22 + 6
+		end
+		lp.line:SetText(LS.line or "")
+		lp.line:ClearAllPoints()
+		lp.line:SetPoint("TOPLEFT", lp, "TOPLEFT", PAD + 2, -(y + 2))
+		if LS.line then
+			y = y + (Num(lp.line:GetStringHeight()) or 14) + 6
+		end
+		lp:SetHeight(y + PAD)
+	end
+
+	-- under the dock, its left edge under the Layout button's
+	local function LPlace()
+		local bar = E.Bar and E.Bar()
+		local button = bar and bar.layout
+		lp:ClearAllPoints()
+		local bl, el = bar and Num(bar:GetLeft()), button and Num(button:GetLeft())
+		if bl and el then
+			local depth = E.DockDepth and E.DockDepth() or Num(bar:GetHeight()) or 0
+			lp:SetPoint("TOPLEFT", bar, "TOPLEFT", el - bl - 6, -(depth + 8))
+		else
+			lp:SetPoint("TOP", UIParent, "TOP", 0, -60)
+		end
+	end
+
+	function K.LayoutsOpen()
+		return lp ~= nil and lp:IsShown()
+	end
+
+	function K.CloseLayouts()
+		if lp and lp:IsShown() then
+			lp.nameBox:ClearFocus()
+			lp:Hide()
+			E:Refresh()
+		end
+	end
+
+	function K.OpenLayouts()
+		if not E:IsShowing() then
+			return
+		end
+		if K.IsOpen() then
+			K.Close()
+		end
+		if not lp then
+			LMake()
+		end
+		Read()
+		if not LS.pick then
+			for _, l in ipairs(LS.list or {}) do
+				if l.active then
+					LS.pick = { name = l.name, kind = l.kind }
+				end
+			end
+		end
+		LS.line = nil
+		LPlace()
+		lp:Show()
+		LayLayouts()
+		E:Refresh()
+	end
+
+	function K.ToggleLayouts()
+		if K.LayoutsOpen() then
+			K.CloseLayouts()
+		else
+			K.OpenLayouts()
+		end
+		MelloUI:PlayUISound("tick")
+	end
+
+	-- a click outside it closes it; the dock, the box, a question or the paste / copy window leave it
+	function K.LayoutsClickedOutside(over)
+		if not K.LayoutsOpen() or over(lp) then
+			return
+		end
+		local bar = E.Bar and E.Bar()
+		if bar and (over(bar) or over(bar.crest) or over(bar.under)) then
+			return
+		end
+		for _, name in ipairs({ "MelloUIConfirmDialog", "MelloUICopyFrame", "MelloUIEditLayoutBox" }) do
+			if over(rawget(_G, name)) then
+				return
+			end
+		end
+		K.CloseLayouts()
+	end
+
+	-- the session's end: put away, the line and the pick let go (the list is read again at the next open)
+	function K.EndLayouts()
+		if lp then
+			lp.nameBox:ClearFocus()
+			lp:Hide()
+		end
+		LS.line, LS.pick = nil, nil
 	end
 end

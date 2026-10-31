@@ -170,6 +170,14 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.0", lines = {
+		"Edit Layout: Revert and Default place for each element; switch, make, copy, rename, delete and share Edit Mode layouts from the bar.",
+		"Edit Layout: attach the game's elements to each other, as in Edit Mode.",
+		"Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab.",
+		"The map zoomed out: capitals, docks with their boat and zeppelin trails, dungeons, raids and your quests.",
+		"Default skin: the player frame stays sharp when scaled up.",
+		"Loading a profile made for another screen offers Fit to this screen.",
+	} },
 	{ version = "2.0.0", lines = {
 		"Effects: bolder heals and cooldowns across the whole frame; Buff Landings in each school's colour; a threat halo (untick Hide Combat Flash).",
 		"Heals burst, seal onto the portrait or close round the frame as a shield; cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards, golden barriers, afterimages.",
@@ -205,20 +213,6 @@ local CHANGELOG = {
 		"Combat Text: an aura that comes and goes every few seconds (Demonic Knowledge with your pet) is shown once.",
 		"Fixed (Oldschool): popups that ask you to type, such as renaming a hunter pet, show their text box again.",
 	} },
-	{ version = "1.2.0", lines = {
-		"Dungeon Info: every dungeon and raid, its bosses in order and what each one drops. Open it with the door button over the map, a dungeon's door on it, or /dungeoninfo.",
-		"Star the items you want: a loot roll for one shines gold and lights Need. Pick Up Quests: Route takes you to all of a dungeon's quests in the fastest order.",
-		"Route follows Follow The Arrow, Azeroth Pilot Reloaded, TomTom's arrow and Guidelime through it, as it follows RestedXP. Several guides on? MelloUI asks which to keep.",
-		"Route: Loading navigation... shows a loading bar, and the roads take about 20 MB less memory; notices show above the world map.",
-		"The Swing Badge, your swing timer on your target's nameplate: it winds up, strikes, flashes gold on crits; it replaces the Swing Timers' bars too.",
-		"New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame.",
-		"Windows framed in gold, snapped ones sharing one rim; the widget column's rows on gold cards, in motion; new class portraits; the Personal Display in gold and in motion.",
-		"Icons stay smooth and sharp at every size and UI scale: each one is drawn from a copy made for its size on your screen.",
-		"Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast.",
-		"Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on.",
-		"Quest areas: smooth gold areas that follow the spawns, on both maps and the minimap; their marks pop in, lift, ring on progress and tick off.",
-		"Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat.",
-	} },
 }
 local LINKS = {
 	{ "GitHub", "https://github.com/MelloCro/MelloUI" },
@@ -249,7 +243,7 @@ local COMMANDS = {
 	{ "/mello tracker progress", "the tracker's count roll, tick and quest-done light" },
 	{ "/mello bags loot <kind>", "a Loot Flight: poor .. legendary, or all" },
 	{ "/mello bags coins", "a quest's money flying into the bag window" },
-	{ "/mello player level", "the level-up: your XP bar's light, the notice and the Level Up Card" },
+	{ "/mello player level", "the level-up: XP bar light, notice and Level Up Card" },
 	{ "/mello player xp", "XP Gain's light on your experience bar" },
 	{ "/mello bags money", "the bag window's money rolling up (bags open)" },
 	{ "/mello bags full", "the Bags Full Warning on the Empty slot or bag button" },
@@ -5228,9 +5222,38 @@ end
 -- popups run the game's popup and gamepad code in MelloUI's execution, the
 -- Gamepad UI freeze of 0.15.0). Accepted, it does what Load always did. The
 -- typed /mello profile load stays without a question.
+-- (2.1.0, pr-03; the user picked "Profile fit on load") A profile loaded whose
+-- places were made for another screen size or shape, or that does not say
+-- (MelloUI:ProfileFitDue), then offers the installer's own Fit to this screen
+-- (MelloUI:OpenInstaller("fit"): its Screen step, Review, Keep or go back),
+-- once, right after that load, whichever way it was loaded (the typed one
+-- too); a load made for this screen asks nothing, and nothing is asked
+-- while the installer is busy (its window open, a countdown running). (A
+-- CONFIG function: the slash command's load reads it, no local of the file's.)
+local function FitAccepted()
+	MelloUI:OpenInstaller("fit")
+end
+function CONFIG.OfferProfileFit()
+	local I = MelloUI.Installer
+	if type(MelloUI.OpenInstaller) ~= "function" or (type(I) == "table" and I.Busy and I:Busy()) then
+		return
+	end
+	local due, made = MelloUI:ProfileFitDue()
+	if not due then
+		return
+	end
+	MelloUI:Confirm({
+		text = made and "This profile was made on a screen of another size or shape. Fit its layout to this screen? The installer fits it, and you can go back right after."
+			or "This profile does not say which screen it was made on. Fit its layout to this screen? The installer fits it, and you can go back right after.",
+		accept = "Fit to this screen",
+		cancel = "Not now",
+		onAccept = FitAccepted,
+	})
+end
 local function LoadAccepted(name)
 	if MelloUI:LoadProfile(name) then
 		MelloUI:Print("Profile '%s' loaded.", name)
+		CONFIG.OfferProfileFit()
 	end
 	MelloUI:RefreshConfig()
 end
@@ -8630,7 +8653,11 @@ SlashCmdList.MELLOUI = function(msg)
 			local ok, err = MelloUI:SaveProfile(name)
 			MelloUI:Print(ok and ("Profile '" .. name .. "' saved.") or err)
 		elseif sub == "load" and name ~= "" then
-			MelloUI:Print(MelloUI:LoadProfile(name) and ("Profile '" .. name .. "' loaded.") or ("No profile '" .. name .. "'."))
+			local loaded = MelloUI:LoadProfile(name)
+			MelloUI:Print(loaded and ("Profile '" .. name .. "' loaded.") or ("No profile '" .. name .. "'."))
+			if loaded then
+				CONFIG.OfferProfileFit()
+			end
 		elseif sub == "delete" and name ~= "" then
 			MelloUI:Print(MelloUI:DeleteProfile(name) and ("Profile '" .. name .. "' deleted.") or ("No profile '" .. name .. "'."))
 		elseif sub == "default" then

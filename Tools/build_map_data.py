@@ -45,6 +45,11 @@ only, never a picture of the game's.
                                          (degrees), its size, then each picture's file, anchor (the model's units) and
                                          file size (px; WoWExport/wmo_minimap_raw, its header)
 
+  MapData.towns                          (2.1.0, qu-01: the map zoomed out, the user's pick P2 of BuildData/output/
+                                         qu01_map_sketch) the capitals and towns the world map names: the client's
+                                         AreaPOI shown on it (Flags 1), its Icon 5 a capital, 4 a town; the rank, the
+                                         name, the world map and the world yards
+
   The caves' exports (wow.export's raw mode, by file ID): the obj0 files of every tile (MAID's 2nd field), the root
   files of the models they place, the WMOMinimapTexture table (db2) and the pictures of the caves found (their size
   only is read).
@@ -586,8 +591,34 @@ def build():
                 "%d, %s, %s, %d, %d" % pic for pic in pics)))
         out.append("\t\t},")
     out += ["\t},",
+            "\t-- (2.1.0, qu-01) the towns the world map names: the client's AreaPOI shown on it (Flags 1), a capital (its",
+            "\t-- Icon 5) or a town (Icon 4) -- { rank (1 a capital, 2 a town), name, world map (Map.ID), world x, world y }",
+            "\ttowns = {"]
+    for rank, name, cont, x, y in towns():
+        out.append("\t\t{ %d, %s, %d, %s, %s }," % (rank, lua_str(name), cont, x, y))
+    out += ["\t},",
             "}", ""]
     return "\n".join(out), files
+
+
+TOWN_RANK = {"5": 1, "4": 2}   # (2.1.0) AreaPOI's Icon -> the map's rank: a capital, a town
+
+
+def lua_str(s):
+    return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def towns():
+    """(2.1.0) the capitals and towns the world map names (AreaPOI Flags 1, Icon 5 or 4), in a fixed order: [(rank,
+    name, world map, world x, world y)], the yards to a tenth"""
+    out = []
+    for r in rows("AreaPOI"):
+        rank = TOWN_RANK.get(r["Icon"])
+        if rank and int(r["Flags"] or 0) & 1 and r["Name_lang"]:
+            out.append((rank, r["Name_lang"], int(r["ContinentID"]), round(float(r["Pos_0"]), 1),
+                        round(float(r["Pos_1"]), 1)))
+    out.sort(key=lambda t: (t[0], t[2], t[1], t[3], t[4]))
+    return out
 
 
 def main():

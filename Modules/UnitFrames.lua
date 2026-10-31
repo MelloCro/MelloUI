@@ -1529,7 +1529,9 @@ end
 Party.SHARP = { atlas = "ui-hud-unitframe-party-portraiton", file = 8036209,
 	coords = { 1 / 2048, 241 / 2048, 451 / 1024, 549 / 1024 },
 	retail = { file = "Interface\\AddOns\\MelloUI_ForeverArt\\PartyFrame", coords = { 0, 240 / 256, 0, 98 / 128 } } }
-Party.sharp = setmetatable({}, { __mode = "k" })   -- [the game's picture] = the atlas ours stands for
+-- [the game's picture] = the atlas ours stands for (lower case; a party member's, and the player frame's own sharp
+-- pictures -- fr-12, Frames.SHARP)
+Party.sharp = setmetatable({}, { __mode = "k" })
 
 -- the sharp picture this client has: its file and coordinates (left, right, top, bottom), or nil. Asked once the
 -- login is over (every addon loaded by then)
@@ -3036,10 +3038,16 @@ function Frames.SoftOf(kind, parts)
 	return list
 end
 
-Frames.OnPlayerArt = Shared("PlayerFrame_ToPlayerArt (MelloUI Frames' bars)", function()
+Frames.OnPlayerArt = Shared("PlayerFrame_ToPlayerArt (MelloUI Frames' bars, the Default skin's sharp pictures)", function()
 	if Frames.bars[PlayerFrame] then
 		Frames.Bars(PlayerFrame, true)
 	end
+	-- (fr-12: the game laid its pictures' atlases again -- the frame's, the glow's)
+	Frames.SharpPlayer()
+end)
+-- (fr-12: the vehicle's art -- the game lays the glow's atlas again; the vehicle's own picture stays as laid)
+Frames.OnVehicleArt = Shared("PlayerFrame_ToVehicleArt (the Default skin's sharp pictures)", function()
+	Frames.SharpPlayer()
 end)
 
 -- a frame's pictures and the kind each wears
@@ -3386,16 +3394,14 @@ function M:PlateCut(frame)
 		end
 		return tex, edge, mirrored, Frames.DIR .. art[1], 0, art[2], 0, art[3], cut
 	end
-	-- (the Default skin: the game's own picture -- the party's sharp twin while laid, else the game's atlas)
+	-- (the Default skin: the game's own picture -- its sharp one while laid -- the party's twin, the player's own 2x
+	-- member: Frames.SharpOf -- else the game's atlas)
 	local e = atlas and Frames.GAME[atlas]
 	local cut = e and Frames.CUT[e.cut]
 	if not cut then
 		return nil
 	end
-	local file, c = nil, nil
-	if Party.sharp[tex] then
-		file, c = Party.SharpArt()
-	end
+	local file, c = Frames.SharpOf(tex)
 	if file then
 		return tex, edge, mirrored, file, c[1], c[2], c[3], c[4], cut
 	end
@@ -3412,7 +3418,92 @@ function M:PlateCut(frame)
 	return nil
 end
 
+-- (after 2.0.0, fr-12; the user's pick, after fr-07's party: "Default's player frame drawn from the 2x art so it
+-- stays sharp")
+-- under the Default skin the player frame's own pictures wear their sharp member, as the party's do: the game's 1x
+-- c60 pictures drawn from the very same element's Forever c60-2x member on uiunitframe2xc60 (fileID 8036209, 2048 x
+-- 1024, the party's sheet; the client's UiTextureAtlasMember rows -- the same drawing at two texels a unit, measured
+-- against the 1x members in output/fr12_sketch), laid as its file and coordinates on the game's own picture, its size,
+-- place, layer and shown state the game's: the frame (43920), its class-resource twin (43921), the vehicle's (43923),
+-- the rest / combat glow (43994) and the level circle (43926). The other states keep the game's own picture (the
+-- vehicle's glow and the threat flash have no c60 member; the threat flash stays hidden while the module is on). Only
+-- on the Forever client (Party.Sharp: its c60 party atlases), while the module is on; the game's atlas back else. The
+-- effects and the meter's tab read a sharp picture as the atlas it stands for (Party.sharp: Frames.GameShown,
+-- Frames.SharpOf). Laid at once -- texture writes, never protected -- as the game lays its atlases again (ToPlayerArt /
+-- ToVehicleArt: an art swap, never per frame) and at each lay (the login, a skin switch, the module on / off)
+Frames.SHARP = {
+	["ui-hud-unitframe-player-portraiton"] = { "UI-HUD-UnitFrame-Player-PortraitOn",
+		{ 1203 / 2048, 1599 / 2048, 1 / 1024, 143 / 1024 } },
+	["ui-hud-unitframe-player-portraiton-classresource"] = { "UI-HUD-UnitFrame-Player-PortraitOn-ClassResource",
+		{ 805 / 2048, 1201 / 2048, 1 / 1024, 149 / 1024 } },
+	["ui-hud-unitframe-player-portraiton-vehicle"] = { "UI-HUD-UnitFrame-Player-PortraitOn-Vehicle",
+		{ 1 / 2048, 405 / 2048, 1 / 1024, 169 / 1024 } },
+	["ui-hud-unitframe-player-portraiton-status"] = { "UI-HUD-UnitFrame-Player-PortraitOn-Status",
+		{ 1 / 2048, 397 / 2048, 171 / 1024, 313 / 1024 } },
+	["ui-hud-unitframe-smallcircle"] = { "UI-HUD-UnitFrame-SmallCircle",
+		{ 1951 / 2048, 2029 / 2048, 171 / 1024, 249 / 1024 } },
+}
+-- the player frame's pictures that may wear one, by their keys from PlayerFrame (read, never written)
+Frames.SHARP_AT = { { "PlayerFrameContainer", "FrameTexture" }, { "PlayerFrameContainer", "AlternatePowerFrameTexture" },
+	{ "PlayerFrameContainer", "VehicleFrameTexture" }, { "PlayerFrameContent", "PlayerFrameContentMain", "StatusTexture" },
+	{ "PlayerFrameContent", "PlayerFrameContentMain", "LevelBackgroundCircle" } }
+
+-- one picture as wanted: its sharp member while wanted and its atlas has one (laid again after the game laid its
+-- atlas), the game's atlas back when it no longer is
+function Frames.SharpOne(tex, want)
+	if type(tex) ~= "table" or type(tex.GetAtlas) ~= "function" then
+		return
+	end
+	local okA, atlas = pcall(tex.GetAtlas, tex)
+	atlas = (okA and not Secret(atlas) and type(atlas) == "string" and atlas ~= "") and atlas:lower() or nil
+	local had = Party.sharp[tex]
+	local s = Frames.SHARP[atlas or had or ""]
+	if want and s then
+		if atlas then
+			local c = s[2]
+			tex:SetTexture(Party.SHARP.file)
+			tex:SetTexCoord(c[1], c[2], c[3], c[4])
+			Party.sharp[tex] = atlas
+		end
+	elseif had then
+		Party.sharp[tex] = nil
+		local back = Frames.SHARP[had]
+		if atlas == nil and back then
+			tex:SetAtlas(back[1])
+		end
+	end
+end
+
+function Frames.SharpPlayer()
+	if type(PlayerFrame) ~= "table" then
+		return
+	end
+	local skin = rawget(MelloUI, "Skin")
+	local want = (M.isEnabled and skin and skin.IsDefault() and Party.Sharp()) and true or false
+	for _, path in ipairs(Frames.SHARP_AT) do
+		local t = PlayerFrame
+		for _, key in ipairs(path) do
+			t = type(t) == "table" and rawget(t, key) or nil
+		end
+		Frames.SharpOne(t, want)
+	end
+end
+
+-- the sharp picture laid on a game picture -- its file and coordinates (left, right, top, bottom) -- or nil
+function Frames.SharpOf(tex)
+	local atlas = Party.sharp[tex]
+	local s = atlas and Frames.SHARP[atlas]
+	if s then
+		return Party.SHARP.file, s[2]
+	end
+	if atlas then
+		return Party.SharpArt()
+	end
+	return nil
+end
+
 function Frames.Lay()
+	Frames.SharpPlayer()
 	for _, frame in ipairs({ PlayerFrame, TargetFrame, FocusFrame, rawget(_G, "TargetFrameToT"),
 		rawget(_G, "FocusFrameToT"), rawget(_G, "PetFrame") }) do
 		if type(frame) == "table" then
@@ -3452,6 +3543,9 @@ function Frames.Start()
 		end
 		if type(rawget(_G, "PlayerFrame_ToPlayerArt")) == "function" then
 			hooksecurefunc("PlayerFrame_ToPlayerArt", Frames.OnPlayerArt)
+		end
+		if type(rawget(_G, "PlayerFrame_ToVehicleArt")) == "function" then
+			hooksecurefunc("PlayerFrame_ToVehicleArt", Frames.OnVehicleArt)
 		end
 	end
 	Frames.Lay()

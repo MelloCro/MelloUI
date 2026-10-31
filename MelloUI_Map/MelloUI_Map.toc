@@ -13,6 +13,7 @@ MapFills.lua
 MapCanvas.lua
 MapPins.lua
 MapLayers.lua
+MapTrails.lua
 MapAddonPins.lua
 MapObjectives.lua
 MapQuestLog.lua

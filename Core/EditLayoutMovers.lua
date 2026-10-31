@@ -1075,10 +1075,25 @@ local function Marked(entry)
 		return nil
 	end
 	local ok, on = pcall(fn, entry)
+	-- (2.1.0, el-14) an attach or detach the count's rule misses (the bridge's)
+	local B = E.Bridge
+	if not (ok and on) and B and B.AttachHeld then
+		on, ok = B.AttachHeld(entry), true
+	end
 	return ok and on and true or nil
 end
 
-local function Changed(entry)
+-- (el-14) `dropped`: a drop, `onto` the plate its snap lit (nil: none) -- the bridge attaches one of the game's
+-- elements to another it was dropped against, as Edit Mode does; any other change keeps an attach only while it still
+-- stands against that element
+local function Changed(entry, dropped, onto)
+	local B = E.Bridge
+	if B and B.Moved then
+		local ok, err = pcall(B.Moved, entry, dropped, onto)
+		if not ok then
+			Report(err)
+		end
+	end
 	local plate = plateOf[entry]
 	if plate then
 		plate.changed = Marked(entry)
@@ -1463,6 +1478,7 @@ local function Drop()
 	entry.moving = nil
 	VeilOff()
 	GuidesOff()
+	local onto = drag.lit   -- (el-14: the plate the snap lit, which it may attach to)
 	Unlight(drag.lit)
 	drag.lit = nil
 	DropRelease()
@@ -1475,7 +1491,7 @@ local function Drop()
 		Paint(plate)
 	end
 	HaloRefresh()   -- (back on the picked plate, or none)
-	Changed(entry)
+	Changed(entry, true, onto)
 	-- (every plate again: what hung on it moved with it)
 	P.SyncSoon()
 end

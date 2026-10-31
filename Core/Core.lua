@@ -5455,6 +5455,45 @@ local function StripPersonal(self, text)
 	return dropped and table.concat(parts, ";") or text
 end
 
+-- The screen a profile's places were made on (UI Modifications' placesFor, "WxH" in UI units, as the installer's
+-- layoutFitFor: the installer and its Fit to this screen lay them out for another screen's shape, Core/LayoutFit.lua's
+-- F0s). ScreenSize: this screen, as the fit reads it (secret-safe), nil while the client does not say. StampPlaces: a
+-- profile's text with this screen added (1.2.4, el-11: ExportProfile; 2.1.0, pr-03: SaveProfile too, so a profile
+-- saved here loads again without the question); one that already says keeps its own, one with no places needs none.
+local ScreenSize, StampPlaces
+do
+	local PLACES_FOR = ";UIModifications.placesFor="
+
+	function ScreenSize(self)
+		local LayoutFit = rawget(self, "LayoutFit")
+		if type(LayoutFit) == "table" and LayoutFit.ScreenSize then
+			return LayoutFit:ScreenSize()
+		end
+		local ok, w, h = pcall(UIParent.GetSize, UIParent)
+		w, h = ok and Safe.Number(w) or nil, ok and Safe.Number(h) or nil
+		if w and h and w > 0 and h > 0 then
+			return w, h
+		end
+		return nil
+	end
+
+	function StampPlaces(self, text)
+		if type(text) ~= "string" then
+			return text
+		end
+		local entries = ";" .. text
+		if entries:find(PLACES_FOR, 1, true)
+			or not (entries:find(";UIModifications.positions=", 1, true) or entries:find(";QuestTracker.pos=", 1, true)) then
+			return text
+		end
+		local w, h = ScreenSize(self)
+		if not w then
+			return text
+		end
+		return text .. (text == "" and "" or ";") .. string.format("UIModifications.placesFor=s%.1fx%.1f", w, h)
+	end
+end
+
 function MelloUI:SaveProfile(name)
 	name = type(name) == "string" and name:gsub("^%s+", ""):gsub("%s+$", "") or ""
 	if name == "" then
@@ -5463,7 +5502,7 @@ function MelloUI:SaveProfile(name)
 	if name == self.FRESH_PROFILE then
 		return false, "'" .. name .. "' is built in"
 	end
-	self:Profiles()[name] = StripPersonal(self, self:SerializeSettings())
+	self:Profiles()[name] = StampPlaces(self, StripPersonal(self, self:SerializeSettings()))
 	self.db.activeProfile = name
 	return true
 end
@@ -5591,19 +5630,10 @@ function MelloUI:ExportProfile(name)
 	end
 	-- a profile saved before they were left out may still hold personal keys
 	text = StripPersonal(self, text)
-	-- (1.2.4, el-11) the screen its places were made on goes with them (UI Modifications' placesFor, "WxH" UI
-	-- units: the installer and the refit lay them out for the receiver's screen shape, Core/LayoutFit.lua's F0s);
-	-- one that already says keeps its own, one with no places needs none, and a profile without it works as before
-	local entries = ";" .. text
-	if not entries:find(";UIModifications.placesFor=", 1, true)
-		and (entries:find(";UIModifications.positions=", 1, true) or entries:find(";QuestTracker.pos=", 1, true)) then
-		local Num = self.Safe and self.Safe.Number
-		local okS, w, h = pcall(UIParent.GetSize, UIParent)
-		w, h = okS and Num and Num(w) or nil, okS and Num and Num(h) or nil
-		if w and h and w > 0 and h > 0 then
-			text = text .. (text == "" and "" or ";") .. string.format("UIModifications.placesFor=s%.1fx%.1f", w, h)
-		end
-	end
+	-- (1.2.4, el-11) the screen its places were made on goes with them (StampPlaces: the installer and the refit
+	-- lay them out for the receiver's screen shape); one saved since 2.1.0 says already, and a profile without it
+	-- works as before
+	text = StampPlaces(self, text)
 	local enc = C_EncodingUtil
 	if not (enc and enc.CompressString and enc.EncodeBase64) then
 		return nil, "this client cannot make share strings"
@@ -5715,6 +5745,34 @@ function MelloUI:LoadProfile(name)
 	self:ApplySettingsText(text)
 	self.db.activeProfile = name
 	return true
+end
+
+-- (2.1.0, pr-03; the user picked "Profile fit on load": a shared layout lands right on any screen shape) Whether the
+-- places the settings now hold -- a profile just loaded -- were made for another screen, so the configurator's load
+-- offers the installer's Fit to this screen (Core/Config.lua; the fit reads the same placesFor). true and their screen
+-- ("WxH" UI units) when it is another size or shape; true and nil when they do not say (a profile saved before 2.1.0,
+-- a string shared before 2.0.0); false with no places, or made for this screen (to the tenth the screen is written
+-- in), or when they say a screen and this one's size cannot be read.
+function MelloUI:ProfileFitDue()
+	local um, qt = self:GetModuleDB("UIModifications"), self:GetModuleDB("QuestTracker")
+	local positions = um and um.positions
+	if not ((type(positions) == "table" and next(positions) ~= nil) or (qt and type(qt.pos) == "table")) then
+		return false
+	end
+	local made = um and um.placesFor
+	local mw, mh
+	if type(made) == "string" then
+		mw, mh = made:match("^(%d+%.?%d*)x(%d+%.?%d*)$")
+		mw, mh = tonumber(mw), tonumber(mh)
+	end
+	if not (mw and mh and mw > 0 and mh > 0) then
+		return true, nil
+	end
+	local w, h = ScreenSize(self)
+	if not w or (math.abs(mw - w) < 0.1 and math.abs(mh - h) < 0.1) then
+		return false
+	end
+	return true, made
 end
 
 -- Nothing configured at all (a fresh install, or the saved variables
