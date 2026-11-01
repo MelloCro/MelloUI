@@ -28,6 +28,13 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+
+-- (fr-17) the player frame on the screen -- MelloUI's own while it stands in (MelloUI.Units, Modules/UnitFramesOwn.lua),
+-- else the game's -- and the game's update hooks through it (a world without that file: the game's frame, a plain hook)
+local function ScreenPlayer()
+	local U = MelloUI.Units
+	return U and U.Player() or _G.PlayerFrame
+end
 local Perf = MelloUI.Perf:Scope("Auras")
 local hooksecurefunc = Perf.hooksecurefunc
 
@@ -788,7 +795,9 @@ local function BarsIn(pf, art)
 end
 
 local function PlaceOnFrame()
-	local c, pf = frameRows, PlayerFrame
+	-- (fr-17: laid on the player frame on the screen -- MelloUI's own while it stands in; its parent stays the game's
+	-- frame, which ours stands on and which is never faded)
+	local c, pf = frameRows, ScreenPlayer()
 	if not (c and pf) then
 		return
 	end
@@ -821,6 +830,12 @@ local function SetFrameRows(on)
 			return
 		end
 		frameRows = c
+		-- (fr-17) the player frame of ours come or gone: laid on the one that stands now
+		MelloUI:On("units", function()
+			if frameRows and frameRows:IsShown() then
+				MelloUI.Kit:WhenOutOfCombat(PlaceOnFrame, FRAME_PLACE_KEY)
+			end
+		end, "Auras: your rows on the player frame")
 	end
 	if frameRows then
 		if on then

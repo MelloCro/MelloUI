@@ -227,7 +227,7 @@ local function FrameOf(unit)
 			end
 		end
 	end
-	local player = rawget(_G, "PlayerFrame")
+	local player = MelloUI.Units and MelloUI.Units.Player() or rawget(_G, "PlayerFrame")
 	if unit == "player" and type(player) == "table" and Visible(player) then
 		return player, "the game's player"
 	end

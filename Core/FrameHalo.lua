@@ -180,10 +180,10 @@ Halo.threat = T   -- (the tests')
 -- the unit frames the game lights (UnitFrame_Initialize's threatIndicator: the textures Unit Frames' combat flash
 -- hides): the player, target, focus, pet, the party members and their pets
 local function Each(fn)
-	fn(rawget(_G, "PlayerFrame"))
-	fn(rawget(_G, "TargetFrame"))
-	fn(rawget(_G, "FocusFrame"))
-	fn(rawget(_G, "PetFrame"))
+	fn(MelloUI.Units and MelloUI.Units.Player() or rawget(_G, "PlayerFrame"))
+	fn(MelloUI.Units and MelloUI.Units.Target() or rawget(_G, "TargetFrame"))
+	fn(MelloUI.Units and MelloUI.Units.Focus() or rawget(_G, "FocusFrame"))
+	fn(MelloUI.Units and MelloUI.Units.Pet() or rawget(_G, "PetFrame"))
 	local party = rawget(_G, "PartyFrame")
 	if type(party) == "table" then
 		for i = 1, 4 do

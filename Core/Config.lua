@@ -159,6 +159,9 @@ local C = {
 local HOME_FLAVOUR = "Module based interface tweaks for World of Warcraft: Forever."
 local PROFILES_META = { icon = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\page_profiles", title = "Profiles",
 	flavour = "Your whole setup under one name. Save it, load it, or make it the default for a fresh install." }
+-- (2.1.0) the Supporters page under Profiles (CONFIG.BuildSupportersPage)
+CONFIG.SUPPORTERS_META = { icon = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\page_supporters",
+	title = "Supporters", flavour = "The people who help keep MelloUI going." }
 local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 
 -- Shown on the Home page under "What's new". A short list in a player's
@@ -172,11 +175,17 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "2.1.0", lines = {
 		"Edit Layout: Revert and Default place for each element; switch, make, copy, rename, delete and share Edit Mode layouts from the bar.",
-		"Edit Layout: attach the game's elements to each other, as in Edit Mode.",
+		"Edit Layout: attach elements as in Edit Mode; your other characters are asked again to use MelloUI's layout.",
 		"Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab.",
-		"The map zoomed out: capitals, docks with their boat and zeppelin trails, dungeons, raids and your quests.",
-		"Default skin: the player frame stays sharp when scaled up.",
-		"Loading a profile made for another screen offers Fit to this screen.",
+		"The map zoomed out: each capital in its own emblem, boat, zeppelin and airship trails, dungeons, raids, your quests, and Zephras Isle.",
+		"Route follows Polestar: its step in the tracker and on the map, one arrow and one route; its own features go first.",
+		"The World Marker and the route point at the same step again on quests that need an item first.",
+		"Level Up Card: its own place, movable in Edit Layout, bigger, everything fits.",
+		"Personal Display: the shield column keeps its colours, icons and amount; interrupted casts show only on its cast bar.",
+		"Oldschool's action bars keep their painted frames; Default's player frame stays sharp when scaled up.",
+		"Your unit, party and raid frames, the experience bars and the bag bar are MelloUI's own: placed by Edit Layout and your profiles.",
+		"A fresh Mello layout for wide screens, fitted to every other; Keep My Layout keeps your own places; profiles offer Fit to this screen.",
+		"The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going.",
 	} },
 	{ version = "2.0.0", lines = {
 		"Effects: bolder heals and cooldowns across the whole frame; Buff Landings in each school's colour; a threat halo (untick Hide Combat Flash).",
@@ -248,6 +257,8 @@ local COMMANDS = {
 	{ "/mello bags money", "the bag window's money rolling up (bags open)" },
 	{ "/mello bags full", "the Bags Full Warning on the Empty slot or bag button" },
 	{ "/mello layout apply", "Mello's Edit Mode layout, fitted to your screen" },
+	{ "/mello layout check", "your Edit Mode layout as the game holds it, to send" },
+	{ "/mello shield", "the shield column and its last events, to send" },
 	{ "/mello tutorial", "the guided tour of this window" },
 	{ "/melloperf", "what MelloUI costs: its time per frame, its slowest frames" },
 	{ "/melloperf record", "measure while you play (30 s, or /melloperf record 60)" },
@@ -2097,6 +2108,8 @@ local function PageMeta(key)
 		return LOGO, HOME_FLAVOUR
 	elseif key == "Profiles" then
 		return PROFILES_META.icon, PROFILES_META.flavour
+	elseif key == "Supporters" then
+		return CONFIG.SUPPORTERS_META.icon, CONFIG.SUPPORTERS_META.flavour
 	end
 	local L = MelloUI.ConfigLayout
 	local def = L and L.pages and L.pages[key]
@@ -5230,20 +5243,29 @@ end
 -- too); a load made for this screen asks nothing, and nothing is asked
 -- while the installer is busy (its window open, a countdown running). (A
 -- CONFIG function: the slash command's load reads it, no local of the file's.)
+-- (2.1.0, el-15; the user: "Loading Profiles ... does not work, the action bars arent placed where they should be, same
+-- thing with the exp bar, bag bar and micro bar") The action bars, the experience bar, the bags and the micro menu are
+-- the game's Edit Mode systems: a profile places them only through MelloUI's Edit Mode layout, which the same Fit puts
+-- in, fitted to this screen, and makes active (the installer's Install; Keep reloads). So the load offers it also when
+-- the profile was made for this screen but Mello's layout for this screen is not the active Edit Mode layout (a
+-- profile made here never asked: nothing moved). Never for "Everything Off" (MelloUI.FRESH_PROFILE).
 local function FitAccepted()
 	MelloUI:OpenInstaller("fit")
 end
-function CONFIG.OfferProfileFit()
+function CONFIG.OfferProfileFit(name)
 	local I = MelloUI.Installer
 	if type(MelloUI.OpenInstaller) ~= "function" or (type(I) == "table" and I.Busy and I:Busy()) then
 		return
 	end
 	local due, made = MelloUI:ProfileFitDue()
-	if not due then
+	local layoutDue = not due and name ~= MelloUI.FRESH_PROFILE and MelloUI.MelloLayoutActive
+		and MelloUI:MelloLayoutActive() == false
+	if not (due or layoutDue) then
 		return
 	end
 	MelloUI:Confirm({
-		text = made and "This profile was made on a screen of another size or shape. Fit its layout to this screen? The installer fits it, and you can go back right after."
+		text = layoutDue and "This profile places the action bars, the experience bar, the bags and the micro menu through MelloUI's Edit Mode layout, which is not the active one. Put it in, fitted to this screen? The installer does it, and you can go back right after."
+			or made and "This profile was made on a screen of another size or shape. Fit its layout to this screen? The installer fits it, and you can go back right after."
 			or "This profile does not say which screen it was made on. Fit its layout to this screen? The installer fits it, and you can go back right after.",
 		accept = "Fit to this screen",
 		cancel = "Not now",
@@ -5253,7 +5275,7 @@ end
 local function LoadAccepted(name)
 	if MelloUI:LoadProfile(name) then
 		MelloUI:Print("Profile '%s' loaded.", name)
-		CONFIG.OfferProfileFit()
+		CONFIG.OfferProfileFit(name)
 	end
 	MelloUI:RefreshConfig()
 end
@@ -6222,6 +6244,87 @@ end
 end   -- (the Profiles block)
 
 --------------------------------------------------------------------------------
+-- Supporters page (2.1.0; the user, 2026-10-31: "a Supporters page that lists them all in the Configurator"): the
+-- people who support MelloUI, by tier, from Media/SupportersData.lua (MelloUI_Supporters, written before each
+-- release by MBot's `npm run supporters` from the supporter roles on MelloUI's Discord). Names only: no link, no
+-- price, nothing that asks -- an add-on may not ask for donations (Blizzard's add-on policy; docs/plans/patreon.md).
+-- Made on its first open, like every page.
+--------------------------------------------------------------------------------
+
+-- the tiers top-down: the data's key, the heading over its names
+CONFIG.SUPPORTER_TIERS = {
+	{ key = "legend", heading = "Legends" },
+	{ key = "champion", heading = "Champions" },
+	{ key = "supporter", heading = "Supporters" },
+}
+CONFIG.SUPPORTER_COLS, CONFIG.SUPPORTER_ROW = 3, 20   -- names a line, a line's height
+
+function CONFIG.BuildSupportersPage(width)
+	local meta = CONFIG.SUPPORTERS_META
+	local page = NewPage("Supporters", width)
+	BuildPageHeader(page, meta.title, meta.flavour, nil)
+	local sec = NewSection(page, "Supporters")
+	SectionPanel(sec)
+	page.section = sec
+
+	local inner = width - PAD * 2 - 8
+	local desc = Text(sec, "GameFontHighlight",
+		"MelloUI is free for everyone and always will be. These are the people who help keep it going. Thank you, all of you!",
+		C.text)
+	desc:SetPoint("TOPLEFT", 4, -4)
+	desc:SetWidth(inner)
+	desc:SetWordWrap(true)
+	local y = 4 + WrappedHeight(desc, 16) + 14
+
+	local data = rawget(_G, "MelloUI_Supporters")
+	data = type(data) == "table" and data or {}
+	local cols = CONFIG.SUPPORTER_COLS
+	local colW = math.floor((inner - 8) / cols)
+	local heads = {}
+	for _, tier in ipairs(CONFIG.SUPPORTER_TIERS) do
+		local names = data[tier.key]
+		if type(names) == "table" and #names > 0 then
+			heads[#heads + 1] = W.Header(sec, y, tier.heading, { inset = SEC_INSET })
+			y = y + W.HEADER_HEIGHT + 6
+			for i, name in ipairs(names) do
+				local col = (i - 1) % cols
+				-- (a name as it is, never looked up in the language; a pipe would start the game's markup)
+				local fs = W.Text(sec, "GameFontHighlight", (tostring(name):gsub("|", "||")), C.text)
+				fs:SetPoint("TOPLEFT", 12 + col * colW, -y)
+				fs:SetWidth(colW - 8)
+				fs:SetJustifyH("LEFT")
+				fs:SetWordWrap(false)
+				if col == cols - 1 or i == #names then
+					y = y + CONFIG.SUPPORTER_ROW
+				end
+			end
+			y = y + 10
+		end
+	end
+	if #heads == 0 then
+		local empty = Text(sec, "GameFontHighlight", "No names here yet. They show up with each MelloUI update.", C.text)
+		empty:SetPoint("TOPLEFT", 4, -y)
+		y = y + 16 + 10
+	end
+	if type(data.updated) == "string" and data.updated ~= "" then
+		local when = W.Text(sec, "GameFontHighlight", MelloUI.Lang.F("As of %s", data.updated), C.sub)
+		when:SetPoint("TOPLEFT", 4, -y)
+		y = y + 16
+	end
+
+	CONFIG.PaperCard(sec)   -- (the kit look's parchment: the texts in ink, the headings too)
+	local QI = KIT and rawget(MelloUI, "QuestInk")
+	for _, h in ipairs(heads) do
+		if QI and QI.inkOn and not QI.inkOn[h.label] then
+			CONFIG.Paper(h)
+		end
+	end
+	sec.y = y + 12
+	page:Finish()
+	return page
+end
+
+--------------------------------------------------------------------------------
 -- Window (1.2.4, the shell; the user's sketch of 2026-10-27, docs/plans/configurator-shell.md): the painting, the
 -- side column (the brand, the fixed entries, the search box, the grouped list, the version line), the header (the
 -- page's title, flavour, switch and tabs; the close), the content (the page area) and the footer (Reset this page,
@@ -6236,8 +6339,8 @@ end   -- (the Profiles block)
 CONFIG.SHELL = { area = "config", painting = CONFIG.PAINTING, title = "MelloUI", emblem = LOGO, escape = true, fit = true,
 	sounds = true, mover = { key = "MelloUIConfigFrame", plainDrag = "always", group = "tool" } }
 -- the side column's fixed entries, over the search box (the sketch's: Edit Layout an action, the others pages)
-CONFIG.FIXED = { "EditLayout", "Look", "Home", "Profiles" }
-CONFIG.FIXED_KEY = { EditLayout = true, Look = true, Home = true, Profiles = true }
+CONFIG.FIXED = { "EditLayout", "Look", "Home", "Profiles", "Supporters" }
+CONFIG.FIXED_KEY = { EditLayout = true, Look = true, Home = true, Profiles = true, Supporters = true }
 
 -- The side list's groups (0.15.0: Core/ConfigLayout.lua's `groups`, the
 -- grouped rail the user picked; made once, at the first open): a header per
@@ -6523,8 +6626,8 @@ local function Build()
 			if nav.key == "Home" then
 				Entry({ kind = "page", key = "Home", new = new }, nav.text, nil, nav.tip)
 				HomeSearch(AddHome)
-			elseif nav.key == "Profiles" then
-				Entry({ kind = "page", key = "Profiles", new = new }, nav.text, nil, nav.tip)
+			elseif nav.key == "Profiles" or nav.key == "Supporters" then
+				Entry({ kind = "page", key = nav.key, new = new }, nav.text, nil, nav.tip)
 			elseif nav.key ~= "EditLayout" then   -- (Edit Layout: the entry below)
 				AddLayoutPage(nav.key, nav, g.title)
 			end
@@ -7132,7 +7235,7 @@ end
 -- made with the window (MelloUI:ConfigTour). A name that is not a page is
 -- taken as a /mello word (a module's name: the page it lives on)
 local function TourKey(name)
-	if pages[name] or name == "Home" or name == "Profiles" or Lay.Get().pages[name] then
+	if pages[name] or name == "Home" or name == "Profiles" or name == "Supporters" or Lay.Get().pages[name] then
 		return name
 	end
 	return Lay.Word(name) or name
@@ -7699,6 +7802,8 @@ local function GetPage(name)
 		page = BuildHomePage(window.pageWidth)
 	elseif name == "Profiles" then
 		page = BuildProfilesPage(window.pageWidth)
+	elseif name == "Supporters" then
+		page = CONFIG.BuildSupportersPage(window.pageWidth)
 	else
 		page = BuildElementPage(name, window.pageWidth)
 		if not page then
@@ -7942,7 +8047,10 @@ end
 -- its Game Menu Panel, is gone.
 do
 	local menuButton
-	local menuParts = {}   -- badge, glow (their frames), greeted (the first open's glow played)
+	local entry            -- (1.2.4) the entry inside the menu (PlaceEntry), made at the menu's first mouse-UI layout
+	-- badge, glow (the pill's frames), greeted (the first open's glow played); open (the menu shows, MenuShown ran),
+	-- placed (the entry stands in the menu's layout now), broken (its making failed once: the pill from then on)
+	local menuParts = {}
 	local MENU = {
 		W = 212, H = 38,     -- the pill
 		X = 12, Y = -10,     -- under the menu: the badge's overhang centred, its top at the menu's edge
@@ -7952,13 +8060,10 @@ do
 		LIGHT = 0.35,        -- the pill's light under the pointer
 		GLOW_IN = 0.35, GLOW_HOLD = 0.9, GLOW_OUT = 0.8,   -- the first open's glow, seconds
 	}
-	-- (1.2.4) the entry INSIDE the menu (MenuButtons, below) while MelloUI.GameMenuInside is true; OFF until proven:
-	-- the freeze tests (v150/freeze/taint, M5) find one mouse-UI open leaves MelloUI's taint in eight of the menu's own
-	-- slots (its layout OnUpdate, buttonCount, buttons, dirty, nextLayoutIndex, sectionSpacing, the button), the path of
-	-- 0.15.0's Gamepad UI freeze -- the pill under the menu stays the entry until the user weighs that and taintLog 2
-	-- in game says otherwise
+	-- (1.2.4) the entry INSIDE the menu (PlaceEntry, below) unless MelloUI.GameMenuInside is false; the pill under the
+	-- menu is the fallback (the switch off, or no place found in the menu's layout)
 	local function Inside()
-		return MelloUI.GameMenuInside == true
+		return MelloUI.GameMenuInside ~= false
 	end
 
 	-- the click: the menu closed through the game's panel manager (its gamepad
@@ -8033,8 +8138,10 @@ do
 	end
 
 	local function MenuShown(menu)
-		-- (1.2.4: the entry inside the menu -- MenuSection -- with the mouse UI; the pill only as the fallback)
-		if MelloUI.Safe.GamepadUI() or Inside() then
+		-- (1.2.4: the entry inside the menu -- PlaceEntry, from the menu's layout, which runs before this -- with the
+		-- mouse UI; the pill only as the fallback)
+		menuParts.open = true
+		if MelloUI.Safe.GamepadUI() or (Inside() and menuParts.placed) then
 			if menuButton then
 				menuButton:Hide()
 			end
@@ -8066,22 +8173,45 @@ do
 		end
 	end
 
-	local function MenuHidden()
-		if menuButton then
-			menuButton:Hide()
+	-- the entry out of the menu as it hides: hidden, and back under UIParent, so the Gamepad UI's walk of the menu's
+	-- frames never meets a frame of MelloUI's (its next show places it again)
+	local function EntryAway()
+		menuParts.placed = false
+		if entry then
+			entry:Hide()
+			if entry:GetParent() ~= UIParent then
+				entry:SetParent(UIParent)
+			end
 		end
 	end
 
+	local function MenuHidden()
+		menuParts.open = false
+		if menuButton then
+			menuButton:Hide()
+		end
+		EntryAway()
+	end
+
 	-- (1.2.4; the user's decision of 2026-10-27, docs/plans/configurator-shell.md -- hard rule 1's one exception,
-	-- CLAUDE.md) MelloUI's entry INSIDE the menu, as EllesmereUI's: the menu's own button, "Mello" in the palette's gold
-	-- and "UI" in its text colour, in a section of its own after Options and the Shop. The menu builds its list anew
-	-- at every show (InitButtons, from its Reset; its Layout after it): the entry goes in from a post-hook of
-	-- InitButtons -- after every button of the game's is made, so none of theirs (Edit Mode's among them) is made after
-	-- a write of MelloUI's -- through the menu's own AddButton, then moved up under Options / the Shop by its own
-	-- layout fields (its layoutIndex half a step after theirs, the section's room above it); nothing else written on the
-	-- menu, its pool or its buttons. With the mouse UI only (the Gamepad UI's freeze of 0.15.0, above: its buttons list
-	-- is walked on close with the Gamepad UI). To prove in game before it ships: /console taintLog 2, then Edit Mode, Log
-	-- Out and Exit from the menu, Logs/taint.log clean of MelloUI, then MelloUI.GameMenuInside = true (off: the pill)
+	-- CLAUDE.md) MelloUI's entry INSIDE the menu, as EllesmereUI's: a button of the menu's own template, "Mello" in the
+	-- palette's gold and "UI" in its text colour, in a section of its own under Options and the Shop.
+	-- Taint-free (gm-01, 2026-11-01). The first build asked the menu's own AddButton from a post-hook of InitButtons,
+	-- which ran MainMenuFrameMixin.AddButton in MelloUI's execution: every slot of the menu's it writes -- nextLayoutIndex,
+	-- sectionSpacing, buttonCount, buttons[n], the pooled button's layoutIndex / topPadding, MarkDirty's dirty and its
+	-- OnUpdate script -- carried MelloUI's taint; the Layout right after it read that layoutIndex and ran tainted (the
+	-- rest of the menu's OnShow with it), the OnUpdate started the next Layout tainted, and with the Gamepad UI the
+	-- menu's close walks buttons[n] (0.15.0's freeze). The freeze tests' eight slots (M5). Now nothing of the menu's is
+	-- written or called -- no key, no Blizzard function:
+	--   * the entry is MelloUI's own button, made at the menu's first mouse-UI layout under UIParent (the game's
+	--     CreateFrame hook walks a new frame's parent for the gamepad navigation), put under the menu while it shows
+	--     (it rises, fades and scales with it), back under UIParent as it hides (EntryAway)
+	--   * it carries no layout field, so the menu's Layout never takes it in: a post-hook of that Layout (MenuLaidOut)
+	--     places it under Options / the Shop, moves the menu's later buttons down by its height and the section's room
+	--     -- their anchors and the menu's height, C calls on the frames, as Oldschool's painted menu placed every button
+	--     from the same hook until 1.2.4 -- and the game's next Layout lays them back as it does every time
+	--   * never with the Gamepad UI (there: /mello); the pill under the menu when no place is found
+	-- In game: /console taintLog 2; the menu by mouse and by Escape; Edit Mode, Log Out, Exit; Logs/taint.log.
 	MENU.SECTION = 20   -- (the menu's own room between sections, MainMenuFrameMixin:AddSection's)
 	-- the menu's buttons shown now: Forever's menu keeps them in a list (GameMenuFrame.buttons); retail's keeps only its
 	-- pool (the user's retail test, 2026-10-27: "there is no game menu button" -- no list, so no place was found); one
@@ -8103,33 +8233,120 @@ do
 		end
 		return shownButtons
 	end
-	local function AddEntry(menu)
-		local after
-		for _, b in ipairs(ShownButtons(menu)) do
-			local text = b.GetText and b:GetText()
+	local SafeNumber = MelloUI.Safe.Number   -- (the section stands alone in the freeze tests: no file-level alias)
+	-- a button's one anchor, its offsets plain numbers (point, relative frame, relative point, x, y); nil for anything
+	-- else (no anchor, two, a secret)
+	local function OneAnchor(b)
+		if SafeNumber(b:GetNumPoints()) ~= 1 then
+			return nil
+		end
+		local point, rel, relPoint, x, y = b:GetPoint(1)
+		x, y = SafeNumber(x), SafeNumber(y)
+		point, relPoint = MelloUI.Safe.Text(point), MelloUI.Safe.Text(relPoint)
+		if not (x and y and point and relPoint) then
+			return nil
+		end
+		return point, rel, relPoint, x, y
+	end
+
+	-- the entry: a button of the menu's own template (its look in every skin: the menu is the game's in each), made
+	-- once, under UIParent; its label each placing (a palette switch shows at the next open)
+	local function MakeEntry(menu)
+		local template = MelloUI.Safe.Text(menu.buttonTemplate) or "MainMenuFrameButtonTemplate"
+		entry = CreateFrame("Button", "MelloUIGameMenuEntry", UIParent, template)
+		entry:Hide()
+		Perf.SetScript(entry, "OnClick", MenuButtonClick)
+	end
+
+	local later = {}   -- the menu's buttons after the entry, filled again at each placing (nothing made per layout)
+	-- the entry placed after the menu's own layout: true when it stands in the menu now
+	local function PlaceEntry(menu)
+		if not Inside() or menuParts.broken or MelloUI.Safe.GamepadUI() or not menu:IsShown() then
+			return false
+		end
+		local buttons = ShownButtons(menu)
+		-- under the last of Options and the Shop (the menu's first section)
+		local anchor, after
+		for _, b in ipairs(buttons) do
+			local text = b ~= entry and b:IsShown() and b:GetText()
 			if not MelloUI.Safe.IsSecret(text) and (text == GAMEMENU_OPTIONS or text == rawget(_G, "BLIZZARD_STORE")) then
-				local at = MelloUI.Safe.Number(b.layoutIndex)
+				local at = SafeNumber(b.layoutIndex)
 				if at and (not after or at > after) then
-					after = at
+					anchor, after = b, at
 				end
 			end
 		end
-		if not after then
+		if not anchor then
+			return false
+		end
+		local w, h, menuH = SafeNumber(anchor:GetWidth()), SafeNumber(anchor:GetHeight()), SafeNumber(menu:GetHeight())
+		local level, strata = SafeNumber(anchor:GetFrameLevel()), MelloUI.Safe.Text(menu:GetFrameStrata())
+		if not (w and h and menuH and level and strata) or h <= 0 then
+			return false
+		end
+		-- the buttons after it, each on its one plain anchor (all checked before any moves: all or nothing)
+		for i = #later, 1, -1 do
+			later[i] = nil
+		end
+		for _, b in ipairs(buttons) do
+			local at = b ~= entry and b:IsShown() and SafeNumber(b.layoutIndex)
+			if at and at > after then
+				if not OneAnchor(b) then
+					return false
+				end
+				later[#later + 1] = b
+			end
+		end
+		if not entry then
+			MakeEntry(menu)
+		end
+		if entry:GetParent() ~= menu then
+			entry:SetParent(menu)
+		end
+		entry:SetFrameStrata(strata)
+		entry:SetFrameLevel(level)
+		entry:SetSize(w, h)
+		entry:ClearAllPoints()
+		entry:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -MENU.SECTION)
+		entry:SetText(MelloUI:PaletteCode("selectedTrim") .. "Mello|r" .. MelloUI:PaletteCode("text") .. "UI|r")
+		local shift = h + MENU.SECTION
+		for _, b in ipairs(later) do
+			local point, rel, relPoint, x, y = OneAnchor(b)
+			b:ClearAllPoints()
+			b:SetPoint(point, rel, relPoint, x, y - shift)
+		end
+		menu:SetHeight(menuH + shift)
+		entry:Show()
+		return true
+	end
+
+	-- the menu's layout ran (at each show, from its OnShow before MenuShown; again when it was marked dirty)
+	local function MenuLaidOut(menu)
+		local ok, placed = pcall(PlaceEntry, menu)
+		if not ok then
+			menuParts.broken = true   -- (once: the pill from then on, the error said)
+			geterrorhandler()(placed)
+			placed = false
+		end
+		if placed then
+			menuParts.placed = true
+			if menuButton then
+				menuButton:Hide()
+			end
 			return
 		end
-		local label = MelloUI:PaletteCode("selectedTrim") .. "Mello|r" .. MelloUI:PaletteCode("text") .. "UI|r"
-		local entry = menu:AddButton(label, MenuButtonClick)
-		if entry then
-			entry.layoutIndex, entry.topPadding = after + 0.5, MENU.SECTION
+		local was = menuParts.placed
+		EntryAway()
+		if was and menuParts.open then
+			MenuShown(menu)   -- (no place now: the pill)
 		end
 	end
-	local function MenuButtons(menu)
-		if not Inside() or MelloUI.Safe.GamepadUI() then
-			return
-		end
-		local ok, err = pcall(AddEntry, menu)
-		if not ok then
-			geterrorhandler()(err)
+
+	-- the menu's buttons made anew (at each show, and on its events while open): the entry hidden until the layout
+	-- after it places it again (its anchor was one of the buttons just released)
+	local function MenuButtonsMade()
+		if entry and menuParts.placed then
+			entry:Hide()
 		end
 	end
 
@@ -8137,7 +8354,10 @@ do
 		Perf.HookScript(GameMenuFrame, "OnShow", MenuShown)
 		Perf.HookScript(GameMenuFrame, "OnHide", MenuHidden)
 		if type(GameMenuFrame.InitButtons) == "function" then
-			hooksecurefunc(GameMenuFrame, "InitButtons", MenuButtons)
+			hooksecurefunc(GameMenuFrame, "InitButtons", MenuButtonsMade)
+		end
+		if type(GameMenuFrame.Layout) == "function" then
+			hooksecurefunc(GameMenuFrame, "Layout", MenuLaidOut)
 		end
 	end
 end
@@ -8553,7 +8773,7 @@ end
 -- handler and its test read.
 local RESERVED = {}
 for _, word in ipairs({ "list", "enable", "disable", "profile", "profiles", "install", "layout", "edit", "perf", "cpu",
-	"secrets", "auras", "preload", "dump", "status", "tutorial", "tour", "help", "preview", "keybind", "alts" }) do
+	"secrets", "auras", "preload", "dump", "status", "tutorial", "tour", "help", "preview", "keybind", "alts", "shield" }) do
 	RESERVED[word] = true
 end
 
@@ -8656,7 +8876,7 @@ SlashCmdList.MELLOUI = function(msg)
 			local loaded = MelloUI:LoadProfile(name)
 			MelloUI:Print(loaded and ("Profile '" .. name .. "' loaded.") or ("No profile '" .. name .. "'."))
 			if loaded then
-				CONFIG.OfferProfileFit()
+				CONFIG.OfferProfileFit(name)
 			end
 		elseif sub == "delete" and name ~= "" then
 			MelloUI:Print(MelloUI:DeleteProfile(name) and ("Profile '" .. name .. "' deleted.") or ("No profile '" .. name .. "'."))
@@ -8710,6 +8930,15 @@ SlashCmdList.MELLOUI = function(msg)
 			bridge.Dump()
 			return
 		end
+		-- (2.1.0, el-15) what the game and MelloUI hold for the Edit Mode layout, read only, in the copy window
+		if rest == "check" and MelloUI.EditModeLayoutCheck then
+			MelloUI:ClearLog()
+			MelloUI:EditModeLayoutCheck(function(fmt, ...)
+				MelloUI:Print(fmt, ...)
+			end)
+			MelloUI:ShowLog("Edit Mode layout check")
+			return
+		end
 		if rest == "export" then
 			local text, name = MelloUI:ExportEditModeLayout()
 			if text then
@@ -8727,7 +8956,7 @@ SlashCmdList.MELLOUI = function(msg)
 			end
 		else
 			MelloUI:Print("Edit Mode layout: %s", MelloUI:EditModeLayoutStatus())
-			MelloUI:Print("/mello layout export (the active layout's share string, to copy) | apply (Mello's layout, fitted to your screen, into Edit Mode and made active)")
+			MelloUI:Print("/mello layout export (the active layout's share string, to copy) | apply (Mello's layout, fitted to your screen, into Edit Mode and made active) | check (what the game holds for the layout, to copy and send)")
 		end
 	elseif cmd == "edit" then
 		EditCommand(rest, msg)
@@ -8780,6 +9009,16 @@ SlashCmdList.MELLOUI = function(msg)
 			print(string.format("   %8.1f ms  %6d calls  %s: %s", row.ms, row.calls, row.module, row.label))
 		end
 		print("   Hooks and handlers not listed used less than half a millisecond. /mello cpu reset clears the counters.")
+	elseif cmd == "shield" then
+		-- (2.1.0, fr-19) the Personal Display's shield column as it stands and how it came to it, in the copy window
+		-- (its own word: /mello personal shield)
+		local module = ModuleByName("PersonalDisplay")
+		local fn = module and type(module.SlashWords) == "table" and module.SlashWords.shield
+		if type(fn) == "function" then
+			fn()
+		else
+			MelloUI:Print("The Personal Display is not loaded.")
+		end
 	elseif cmd == "secrets" then
 		MelloUI:SecretProbe()
 	elseif cmd == "auras" then

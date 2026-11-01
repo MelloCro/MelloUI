@@ -50,6 +50,13 @@ only, never a picture of the game's.
                                          AreaPOI shown on it (Flags 1), its Icon 5 a capital, 4 a town; the rank, the
                                          name, the world map and the world yards
 
+  MapData.isles[uiMapID]                 (2.1.0, qu-03: "currently zephras isle is missing from the map") a zone map the
+                                         client places on no continent of the world (Forever's Zephras Isle: its one
+                                         UiMapAssignment is on its own world map, 2991): its rectangle on Azeroth, at
+                                         the world's own scale (the continents' yards a unit), the middle of its outline
+                                         at ISLES' point (MelloUI's choice); its world map's minimap tiles are placed
+                                         through it (MapData.minimap[2991])
+
   The caves' exports (wow.export's raw mode, by file ID): the obj0 files of every tile (MAID's 2nd field), the root
   files of the models they place, the WMOMinimapTexture table (db2) and the pictures of the caves found (their size
   only is read).
@@ -101,7 +108,14 @@ CONTINENT, ZONE = 2, 3          # UIMapType
 LAND_SIZE = 256                 # a continent's land mask's side (its zones' outlines need more than a zone's 128)
 LAND_GROW, LAND_BLUR = 3, 2     # its zones' outlines joined, then widened and softened (quarter px)
 TERRAIN = r"F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/terrain_raw/"
-WDT = {0: 775971, 1: 782779}    # each continent's world map (Map.ID): its WDT's file ID (Map.WdtFileDataID)
+WDT = {0: 775971, 1: 782779, 2991: 7198644}   # each continent's world map (Map.ID): its WDT's file ID
+                                # (Map.WdtFileDataID); 2991 Forever's Zephras Isle, laid by ISLES
+# (2.1.0, qu-03; the user, 2026-10-31: "currently zephras isle is missing from the map") a zone map the client places
+# on no continent of the world: Forever's Zephras Isle (2521, on its own world map 2991; its airships jump there, and
+# the tables have no other placing of it). MelloUI's map lays it at the world's own scale, the middle of its outline
+# here (0..1 of Azeroth's painting): MelloUI's choice -- the user's pick B of BuildData/output/qu03_zephras_sketch
+# (2026-10-31, "Zephras Isle B"): the far north, open sea at the top of the world, where no trail crosses it
+ISLES = {2521: (0.455, 0.125)}
 TILE = 1600.0 / 3.0             # yards a terrain tile
 WATER_TILE = (0, 28, 48)        # an Eastern Kingdoms tile that is all open sea (west of Stormwind's harbour)
 EXPORT = r"F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/"
@@ -158,8 +172,37 @@ def rect_on(assign, child, top):
     return None
 
 
-def minimap_tiles(assign, mapID):
-    """the minimap's tiles of a continent's world map: its grid on Azeroth (x, y, w, h: 0..1) and [(tx, ty, file)]"""
+def world_scale(assign):
+    """(qu-03) the yards one world unit (a px of Azeroth's art) spans: the mean of the continents' own placing on 947"""
+    k = []
+    for a in assign.get(947, []):
+        x0, y0, x1, y1 = region(a)
+        u0, v0, u1, v1 = (float(a[f]) for f in ("UiMin_0", "UiMin_1", "UiMax_0", "UiMax_1"))
+        k += [(y1 - y0) / ((u1 - u0) * ART_W), (x1 - x0) / ((v1 - v0) * ART_H)]
+    return sum(k) / len(k)
+
+
+def isle_assign(assign, outline):
+    """(qu-03) each of ISLES' maps carried onto Azeroth: {uiMapID: its own UiMapAssignment row (its world map and
+    region) with UiMin / UiMax its rectangle on 947} -- at the world's scale, its outline's middle at ISLES' point"""
+    out = {}
+    k = world_scale(assign)
+    for mid, (cx, cy) in sorted(ISLES.items()):
+        own = [a for a in assign.get(mid, []) if a["OrderIndex"] == "0"] or assign.get(mid, [])
+        if not own or mid not in outline:
+            continue
+        x0, y0, x1, y1 = region(own[0])
+        w, h = round((y1 - y0) / k / ART_W, 7), round((x1 - x0) / k / ART_H, 7)
+        u0, v0 = round(cx - outline[mid][0] * w, 7), round(cy - outline[mid][1] * h, 7)
+        row = dict(own[0])
+        row.update(UiMin_0=u0, UiMin_1=v0, UiMax_0=round(u0 + w, 7), UiMax_1=round(v0 + h, 7))
+        out[mid] = row
+    return out
+
+
+def minimap_tiles(assign, mapID, isles=None):
+    """the minimap's tiles of a continent's world map: its grid on Azeroth (x, y, w, h: 0..1) and [(tx, ty, file)];
+    (qu-03) an isle's world map placed as isle_assign lays it"""
     path = TERRAIN + "%d.wdt" % WDT[mapID]
     if not os.path.isfile(path):
         return None
@@ -172,7 +215,7 @@ def minimap_tiles(assign, mapID):
             maid = pos + 8
         pos += 8 + size
     world = None
-    for a in assign.get(947, []):
+    for a in assign.get(947, []) + list((isles or {}).values()):
         if int(a["MapID"]) == mapID:
             x0, y0, x1, y1 = region(a)
             if world is None or (x1 - x0) * (y1 - y0) > world[0]:
@@ -345,12 +388,9 @@ def city_mask():
     return m.filter(ImageFilter.GaussianBlur(CITY_EDGE / 2))
 
 
-def zone_mask(ovs):
-    """a zone's soft outline on its art (quarter size): the union of its pieces' hit rectangles (WorldMapOverlay
-    HitRect*, in the art's own pixels), widened, blurred and faded before the art's edge; None when it has none
-    (also Tools/map_gaps.py's: the gaps are measured against the very masks the map draws)"""
-    mask = Image.new("L", (QW, QH), 0)
-    d = ImageDraw.Draw(mask)
+def hit_rects(ovs):
+    """a zone's pieces' hit rectangles (WorldMapOverlay HitRect*, in the art's own pixels): [(l, t, r, b)]"""
+    out = []
     for o in ovs:
         l, t, r, b = (int(o["HitRectLeft"]), int(o["HitRectTop"]), int(o["HitRectRight"]), int(o["HitRectBottom"]))
         if not (r > l and b > t):
@@ -360,7 +400,29 @@ def zone_mask(ovs):
             x, y, w, h = int(o["OffsetX"]), int(o["OffsetY"]), int(o["TextureWidth"]), int(o["TextureHeight"])
             l, t, r, b = x + w * PIECE_TRIM, y + h * PIECE_TRIM, x + w * (1 - PIECE_TRIM), y + h * (1 - PIECE_TRIM)
         if r > l and b > t:
-            d.rectangle((l / Q, t / Q, r / Q, b / Q), fill=255)
+            out.append((l, t, r, b))
+    return out
+
+
+def isle_land(ovs):
+    """(qu-03) an isle's land on its own map (0..1): its pieces' hit rectangles widened as its outline is (GROW), cut
+    at the art's edge -- what the map finds it by (the client has no shape for it on the world), a flat list"""
+    out = []
+    for l, t, r, b in hit_rects(ovs):
+        box = (max(0, l - GROW) / ART_W, max(0, t - GROW) / ART_H, min(ART_W, r + GROW) / ART_W,
+               min(ART_H, b + GROW) / ART_H)
+        out += [round(v, 4) for v in box]
+    return out
+
+
+def zone_mask(ovs):
+    """a zone's soft outline on its art (quarter size): the union of its pieces' hit rectangles (WorldMapOverlay
+    HitRect*, in the art's own pixels), widened, blurred and faded before the art's edge; None when it has none
+    (also Tools/map_gaps.py's: the gaps are measured against the very masks the map draws)"""
+    mask = Image.new("L", (QW, QH), 0)
+    d = ImageDraw.Draw(mask)
+    for l, t, r, b in hit_rects(ovs):
+        d.rectangle((l / Q, t / Q, r / Q, b / Q), fill=255)
     if not mask.getbbox():
         return None
     mask = mask.filter(ImageFilter.MaxFilter((GROW // Q) * 2 + 1)).filter(ImageFilter.GaussianBlur(BLUR / Q))
@@ -512,7 +574,7 @@ def build():
     assign = defaultdict(list)
     for r in rows("UiMapAssignment"):
         assign[int(r["UiMapID"])].append(r)
-    files, outline, pieces, zone_masks = {}, {}, {}, defaultdict(dict)
+    files, outline, pieces, zone_masks, land_of = {}, {}, {}, defaultdict(dict), {}
     for mid in sorted(maps):
         if int(maps[mid]["Type"]) != ZONE or mid not in art_of:
             continue
@@ -533,6 +595,8 @@ def build():
         bb = mask.point(lambda v: 255 if v > 128 else 0).getbbox() or mask.getbbox()
         outline[mid] = (round((bb[0] + bb[2]) / 2 / QW, 3), round((bb[1] + bb[3]) / 2 / QH, 3))
         pieces[art] = plist
+        if mid in ISLES:
+            land_of[mid] = isle_land(ovs)
     for cont in sorted(zone_masks):
         zone_masks[cont] = coast_extend(assign, cont, zone_masks[cont])
         for mid, mask in zone_masks[cont].items():
@@ -564,8 +628,9 @@ def build():
             "\t-- (M3) [mapID] = { x, y, w, h: the minimap's tile grid on Azeroth (947, 0..1), tiles: column, row, file ... }",
             "\tminimap = {"]
     water = None
+    isles = isle_assign(assign, outline)
     for mapID in sorted(WDT):
-        got = minimap_tiles(assign, mapID)
+        got = minimap_tiles(assign, mapID, isles)
         if not got:
             continue
         (x, y, w, h), tiles = got
@@ -594,8 +659,23 @@ def build():
             "\t-- (2.1.0, qu-01) the towns the world map names: the client's AreaPOI shown on it (Flags 1), a capital (its",
             "\t-- Icon 5) or a town (Icon 4) -- { rank (1 a capital, 2 a town), name, world map (Map.ID), world x, world y }",
             "\ttowns = {"]
-    for rank, name, cont, x, y in towns():
+    named = towns()
+    for rank, name, cont, x, y in named:
         out.append("\t\t{ %d, %s, %d, %s, %s }," % (rank, lua_str(name), cont, x, y))
+    laid = {int(a["MapID"]) for a in assign.get(947, [])} | {int(a["MapID"]) for a in isles.values()}
+    found = settlements(laid - {t[2] for t in named})
+    if found:
+        out.append("\t\t-- (2.1.0, qu-03) a laid world map the client names no town on: its settlements (towns, rank 2)")
+    for rank, name, cont, x, y in found:
+        out.append("\t\t{ %d, %s, %d, %s, %s }," % (rank, lua_str(name), cont, x, y))
+    out += ["\t},",
+            "\t-- (2.1.0, qu-03) [uiMapID] = { x0, x1, y0, y1, land = { l, t, r, b ... } }: a zone the client places on no",
+            "\t-- continent of the world (Forever's Zephras Isle): where MelloUI's map lays it on Azeroth (947, 0..1), at the",
+            "\t-- world's own scale; its land on its own map (0..1): its pieces' hit rectangles widened as its outline is",
+            "\tisles = {"]
+    for mid, a in sorted(isles.items()):
+        out.append("\t\t[%d] = { %.7f, %.7f, %.7f, %.7f, land = { %s } }," % (
+            mid, a["UiMin_0"], a["UiMax_0"], a["UiMin_1"], a["UiMax_1"], ", ".join(str(v) for v in land_of.get(mid, []))))
     out += ["\t},",
             "}", ""]
     return "\n".join(out), files
@@ -617,6 +697,50 @@ def towns():
         if rank and int(r["Flags"] or 0) & 1 and r["Name_lang"]:
             out.append((rank, r["Name_lang"], int(r["ContinentID"]), round(float(r["Pos_0"]), 1),
                         round(float(r["Pos_1"]), 1)))
+    out.sort(key=lambda t: (t[0], t[2], t[1], t[3], t[4]))
+    return out
+
+
+# (2.1.0, qu-03; the user, 2026-10-31: town seals on Zephras Isle, "Add them") a world map the map lays whose AreaPOI
+# names no town (Forever's Zephras Isle) has its settlements found from data: each place of the place data
+# (Media/PlaceData.lua, Tools/build_places.py: the client's AreaTable places, their middle and reach) that holds at
+# least SETTLEMENT_NPCS of the Quest List's service NPCs (Media/QuestListData.lua services: innkeepers, vendors,
+# trainers, repairers ...; each NPC counted once, at the nearest place whose reach holds it, as the place data is
+# read). The isle: Shen'dar Village 12, Valanaar 6, Thendal Village 6; Gustberry Lowlands (4: a hunter's camp at the
+# edge of a lowland) is no settlement. The client's AreaTable flags cannot tell them apart (every place of the isle
+# has the same)
+SETTLEMENT_NPCS = 5
+PLACE_DATA = os.path.join(ROOT, "Media", "PlaceData.lua")
+QUEST_DATA = os.path.join(ROOT, "Media", "QuestListData.lua")
+
+
+def settlements(maps):
+    """(qu-03) the settlements of those world maps (see SETTLEMENT_NPCS): [(2, name, world map, x, y)], in towns()'s
+    order"""
+    import re
+    if not maps or not (os.path.isfile(PLACE_DATA) and os.path.isfile(QUEST_DATA)):
+        return []
+    places = {}
+    for m in re.finditer(r"\n\t\[(\d+)\] = \{\n(.*?)\n\t\},", open(PLACE_DATA, encoding="utf-8").read(), re.S):
+        if int(m.group(1)) in maps:
+            places[int(m.group(1))] = [(float(x), float(y), float(r), n) for x, y, r, n in
+                                       re.findall(r'(-?[\d.]+),(-?[\d.]+),([\d.]+),"([^"]*)"', m.group(2))]
+    block = re.search(r"\n\tservices = \{\n(.*?)\n\t\},", open(QUEST_DATA, encoding="utf-8").read(), re.S)
+    held = defaultdict(set)
+    for line in (block.group(1).split("\n") if block else []):
+        m = re.match(r'\s*\{"\w+","([^"]*)","[^"]*",\d+,(-?\d+),(-?[\d.]+),(-?[\d.]+)', line)
+        if not m or int(m.group(2)) not in places:
+            continue
+        cont, x, y = int(m.group(2)), float(m.group(3)), float(m.group(4))
+        best = None
+        for px, py, reach, name in places[cont]:
+            d = math.hypot(px - x, py - y)
+            if d <= reach and (best is None or d < best[0]):
+                best = (d, name, px, py)
+        if best:
+            held[(cont, best[1], best[2], best[3])].add(m.group(1))
+    out = [(2, name, cont, round(px, 1), round(py, 1)) for (cont, name, px, py), npcs in held.items()
+           if len(npcs) >= SETTLEMENT_NPCS]
     out.sort(key=lambda t: (t[0], t[2], t[1], t[3], t[4]))
     return out
 

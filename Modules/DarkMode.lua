@@ -33,6 +33,42 @@ local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("DarkMode")
 local hooksecurefunc = Perf.hooksecurefunc
+
+-- (fr-17) the player frame on the screen -- MelloUI's own while it stands in (MelloUI.Units, Modules/UnitFramesOwn.lua),
+-- else the game's -- and the game's update hooks through it (a world without that file: the game's frame, a plain hook)
+local function ScreenPlayer()
+	local U = MelloUI.Units
+	return U and U.Player() or _G.PlayerFrame
+end
+-- (fr-17 stage 2) the target frame on the screen -- MelloUI's own while it stands in (Modules/UnitFramesTarget.lua)
+local function ScreenTarget()
+	local U = MelloUI.Units
+	return U and U.Target() or rawget(_G, "TargetFrame")
+end
+-- (fr-17 stage 3) the focus frame on the screen -- MelloUI's own while it stands in (Modules/UnitFramesTarget.lua)
+local function ScreenFocus()
+	local U = MelloUI.Units
+	return U and U.Focus() or rawget(_G, "FocusFrame")
+end
+-- (fr-17 stage 4) the pet frame's parts on the screen by the game's global names -- MelloUI's own while it stands in
+-- (Modules/UnitFramesPet.lua), else the game's
+local PET_GLOBALS = { texture = "PetFrameTexture", portrait = "PetPortrait", name = "PetName", health = "PetFrameHealthBar",
+	mana = "PetFrameManaBar", healthMask = "PetFrameHealthBarMask", flash = "PetFrameFlash", attack = "PetAttackModeTexture" }
+local function PetPart(key)
+	local U = MelloUI.Units
+	if U and U.PetPart then
+		return U.PetPart(key)
+	end
+	return rawget(_G, PET_GLOBALS[key])
+end
+local function UnitsHook(fname, fn)
+	local U = MelloUI.Units
+	if U then
+		U.Hook(fname, fn)
+	elseif type(rawget(_G, fname)) == "function" then
+		hooksecurefunc(fname, fn)
+	end
+end
 local Secret = MelloUI.Safe.IsSecret
 -- ONELOOK HEADER END (the painted reskin's part, MelloUI_Oldschool/Modules/DarkModePainted.lua, uses only public tables)
 
@@ -228,8 +264,10 @@ end
 --------------------------------------------------------------------------------
 
 local function CollectPlayerFrame(list)
-	local container = PlayerFrame and PlayerFrame.PlayerFrameContainer
-	local content = PlayerFrame and PlayerFrame.PlayerFrameContent
+	-- (fr-17: the player frame on the screen -- MelloUI's own while it stands in, else the game's)
+	local pf = ScreenPlayer()
+	local container = pf and pf.PlayerFrameContainer
+	local content = pf and pf.PlayerFrameContent
 	if container then
 		list[#list + 1] = container.FrameTexture
 		list[#list + 1] = container.AlternatePowerFrameTexture
@@ -326,7 +364,7 @@ local function HookMembers()
 end
 
 local function TargetLikeFrames()
-	local frames = { TargetFrame, FocusFrame }
+	local frames = { ScreenTarget(), ScreenFocus() }   -- (fr-17: the target and focus frames on the screen)
 	for i = 1, 5 do
 		frames[#frames + 1] = _G["Boss" .. i .. "TargetFrame"]
 	end
@@ -340,7 +378,7 @@ local function ApplyUnitFrames()
 		for _, frame in ipairs(TargetLikeFrames()) do
 			CollectTargetLikeFrame(frame, list)
 		end
-		list[#list + 1] = PetFrameTexture
+		list[#list + 1] = PetPart("texture")   -- (fr-17: the pet frame on the screen)
 	end
 	if not Covered("partyframes") then
 		HookMembers()
@@ -561,7 +599,9 @@ local function StyleStatusContainer(container)
 end
 
 local function ApplyStatusBars()
-	local manager = StatusTrackingBarManager
+	-- (fr-18: MelloUI's own status bars while they stand in, MelloUI.OwnBars -- their manager, the game's shape)
+	local OB = MelloUI.OwnBars
+	local manager = (OB and OB.Frame("StatusTrackingBarManager")) or StatusTrackingBarManager
 	if not manager then
 		return
 	end
@@ -718,8 +758,11 @@ local function ApplyMicroMenu()
 			list[#list + 1] = button.PushedBackground
 		end
 	end
-	if BagsBar then
-		list[#list + 1] = BagsBar.BorderArt
+	-- (fr-18: MelloUI's own bag bar while it stands in)
+	local OB = MelloUI.OwnBars
+	local bags = (OB and OB.Frame("BagsBar")) or BagsBar
+	if bags then
+		list[#list + 1] = bags.BorderArt
 	end
 	ShadeAll("micromenu", list)
 end
@@ -869,17 +912,20 @@ end
 local OWN_AREAS = {
 	-- the game's frames (MelloUI's parts on them: the Modern frame pictures, the party's sharp art, the action
 	-- buttons' frames ...)
-	PlayerFrame = "unitframes", TargetFrame = "unitframes", FocusFrame = "unitframes", PetFrame = "unitframes",
+	PlayerFrame = "unitframes", MelloUIPlayerFrame = "unitframes", TargetFrame = "unitframes", FocusFrame = "unitframes", PetFrame = "unitframes",
 	TargetFrameToT = "unitframes", FocusFrameToT = "unitframes", PartyFrame = "unitframes",
+	MelloUITargetFrame = "unitframes", MelloUITargetFrameToT = "unitframes", MelloUIFocusFrame = "unitframes",
+	MelloUIFocusFrameToT = "unitframes", MelloUIPetFrame = "unitframes",
 	PlayerCastingBarFrame = "castbar", PetCastingBarFrame = "castbar", TargetFrameSpellBar = "castbar",
 	FocusFrameSpellBar = "castbar",
 	MainActionBar = "actionbars", MainMenuBar = "actionbars", MultiBarBottomLeft = "actionbars",
 	MultiBarBottomRight = "actionbars", MultiBarRight = "actionbars", MultiBarLeft = "actionbars",
 	MultiBar5 = "actionbars", MultiBar6 = "actionbars", MultiBar7 = "actionbars", StanceBar = "actionbars",
 	PetActionBar = "actionbars", PossessActionBar = "actionbars", ExtraActionBarFrame = "actionbars",
-	MicroMenu = "micromenu", MicroMenuContainer = "micromenu", BagsBar = "micromenu",
+	MicroMenu = "micromenu", MicroMenuContainer = "micromenu", BagsBar = "micromenu", MelloUIBagBar = "micromenu",
 	StatusTrackingBarManager = "statusbars", MainStatusTrackingBarContainer = "statusbars",
 	SecondaryStatusTrackingBarContainer = "statusbars", BuffFrame = "auras", DebuffFrame = "auras",
+	MelloUIStatusBar1 = "statusbars", MelloUIStatusBar2 = "statusbars",
 	MinimapCluster = "minimap", PersonalResourceDisplayFrame = "personal", GeneralDockManager = "chat",
 	-- MelloUI's own (the party and raid frames with the unit frames, as the game's party frames are)
 	MelloUIGroupParty = "unitframes", MelloUIGroupRaid = "unitframes", MelloUIGroupSoloParty = "unitframes",
@@ -1026,17 +1072,19 @@ local function InstallHooks()
 	hooksInstalled = true
 
 	-- Player frame swaps art when entering / leaving vehicles.
-	for _, fname in ipairs({ "PlayerFrame_ToPlayerArt", "PlayerFrame_ToVehicleArt", "PlayerFrame_UpdateArt" }) do
-		if type(_G[fname]) == "function" then
-			hooksecurefunc(fname, function()
-				if Active("unitframes") then
-					local list = {}
-					CollectPlayerFrame(list)
-					ShadeAll("unitframes", list)
-				end
-			end)
+	-- (fr-17: through MelloUI.Units -- the game's frame kept away skipped, ours as it lays its art)
+	local function PlayerArt()
+		if Active("unitframes") then
+			local list = {}
+			CollectPlayerFrame(list)
+			ShadeAll("unitframes", list)
 		end
 	end
+	for _, fname in ipairs({ "PlayerFrame_ToPlayerArt", "PlayerFrame_ToVehicleArt", "PlayerFrame_UpdateArt" }) do
+		UnitsHook(fname, PlayerArt)
+	end
+	-- (fr-17) the player frame of ours come or gone: shaded as it stands now
+	MelloUI:On("units", PlayerArt, "Dark Mode: the player frame of ours")
 
 	-- The party's members: the game's pool acquires them as the group forms -- after this module's apply (the user,
 	-- 2026-10-16: "the Party Unitframes dont follow the same Dark mode setting"); shaded as they come.
@@ -1053,32 +1101,62 @@ local function InstallHooks()
 	end
 	MelloUI:On("partyart", ShadeMember, "Dark Mode: the party's art")
 
-	-- Target style frames swap atlases for elite / rare / boss classifications.
-	for _, frame in ipairs(TargetLikeFrames()) do
-		if frame and type(frame.CheckClassification) == "function" then
-			hooksecurefunc(frame, "CheckClassification", function(self)
-				if Active("unitframes") then
-					local list = {}
-					CollectTargetLikeFrame(self, list)
-					ShadeAll("unitframes", list)
-				end
-			end)
+	-- Target style frames swap atlases for elite / rare / boss classifications. (fr-17: each frame on the screen once --
+	-- the game's, or MelloUI's own target standing in -- and again as ours comes)
+	local classHooked = setmetatable({}, { __mode = "k" })
+	local function OnClassification(self)
+		if Active("unitframes") then
+			local list = {}
+			CollectTargetLikeFrame(self, list)
+			ShadeAll("unitframes", list)
 		end
 	end
+	local function HookClassification()
+		for _, frame in ipairs(TargetLikeFrames()) do
+			if frame and type(frame.CheckClassification) == "function" and not classHooked[frame] then
+				classHooked[frame] = true
+				hooksecurefunc(frame, "CheckClassification", OnClassification)
+			end
+		end
+	end
+	HookClassification()
+	MelloUI:On("units", function()
+		HookClassification()
+		if Active("unitframes") then
+			ApplyUnitFrames()
+		end
+	end, "Dark Mode: the target frame of ours")
 
-	-- Bag buttons re-set their atlases when bags change.
-	for _, name in ipairs(BAG_BUTTONS) do
-		local button = _G[name]
-		if button and type(button.UpdateTextures) == "function" then
-			hooksecurefunc(button, "UpdateTextures", function(self)
-				if Active("micromenu") then
-					local list = {}
-					CollectButtonStateTextures(self, list)
-					ShadeAll("micromenu", list)
-				end
-			end)
+	-- Bag buttons re-set their atlases when bags change. (fr-18: MelloUI's own bag buttons while they stand in --
+	-- hooked as they come, the bag bar and the status bars shaded again)
+	local bagsHooked = setmetatable({}, { __mode = "k" })
+	local function HookBagButtons()
+		local OB = MelloUI.OwnBars
+		for _, name in ipairs(BAG_BUTTONS) do
+			local button = (OB and OB.Frame(name)) or _G[name]
+			if button and not bagsHooked[button] and type(button.UpdateTextures) == "function" then
+				bagsHooked[button] = true
+				hooksecurefunc(button, "UpdateTextures", function(self)
+					if Active("micromenu") then
+						local list = {}
+						CollectButtonStateTextures(self, list)
+						ShadeAll("micromenu", list)
+					end
+				end)
+			end
 		end
 	end
+	HookBagButtons()
+	MelloUI:On("ownbars", function(part)
+		if part == "bags" then
+			HookBagButtons()
+			if Active("micromenu") then
+				ApplyMicroMenu()
+			end
+		elseif part == "status" and Active("statusbars") then
+			ApplyStatusBars()
+		end
+	end, "Dark Mode: the bars of ours")
 end
 
 --------------------------------------------------------------------------------

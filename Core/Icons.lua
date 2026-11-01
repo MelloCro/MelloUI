@@ -83,6 +83,10 @@
 --                                   this one's)
 --   Icons.Square(icon) -> true when the set showing it frames its buttons square
 --   Icons.HaloPath(name) -> the lift's file for the picture as it shows now
+--   Icons.Drawn(icon) -> true when the look on show draws a picture of its own for that name: the game's
+--                                   (MelloUI.Skin) or a look's set's. (2.1.0) A name only those draw -- the map's
+--                                   capitals, its count badge -- is asked here first: where none draws it, this set
+--                                   lays its own pieces instead (MelloUI_Map's seal: palette discs)
 -- The area switched ('look:<area>' on the bus): every held icon set again by
 -- its name, then 'icons' fired (the round buttons, the lifts follow it).
 --------------------------------------------------------------------------------
@@ -175,6 +179,14 @@ end
 function Icons.Square(icon)
 	local set = Icons.Showing(icon)
 	return set ~= nil and set.square == true
+end
+
+function Icons.Drawn(icon)
+	local Skin = rawget(MelloUI, "Skin")
+	if Skin and Skin.Icon(icon) then
+		return true
+	end
+	return Icons.Showing(icon) ~= nil
 end
 
 local HALO = DIR .. "Halo\\"

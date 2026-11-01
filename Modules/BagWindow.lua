@@ -2710,6 +2710,13 @@ end
 M.LayAll, M.BANK = LayAll, BANK   -- (the headings' clicks; the tests)
 
 -- (the bag slots' dock and others ask whether the window shows)
+-- (fr-18) the backpack's button on the screen: MelloUI's own while its bag bar stands in (MelloUI.OwnBars), else the
+-- game's
+function ns.BackpackButton()
+	local OB = MelloUI.OwnBars
+	return OB and OB.G("MainMenuBarBackpackButton") or rawget(_G, "MainMenuBarBackpackButton")
+end
+
 function ns.BagWindowShown()
 	local f = win.frame
 	return (M.isEnabled and captured and f and f:IsShown()) and f or nil
@@ -3412,7 +3419,7 @@ function Fly.Launch(r)
 			end
 		end
 	else
-		local bb = _G.MainMenuBarBackpackButton
+		local bb = ns.BackpackButton()
 		if bb and bb:IsVisible() then
 			target = bb
 		end
@@ -3458,7 +3465,7 @@ function Fly.Coins(money)
 	local frame = win.frame
 	local target = frame and frame:IsShown() and win.money or nil
 	if not target then
-		local bb = _G.MainMenuBarBackpackButton
+		local bb = ns.BackpackButton()
 		target = bb and bb:IsVisible() and bb or nil
 	end
 	local x, y = Fly.Pointer()
@@ -3931,7 +3938,7 @@ function Move.Warn()
 		b = Move.EmptyButton()
 		target = b
 	else
-		local bb = rawget(_G, "MainMenuBarBackpackButton")
+		local bb = ns.BackpackButton()
 		target = bb and bb:IsVisible() and bb or nil
 	end
 	if not target then

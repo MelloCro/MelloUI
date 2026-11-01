@@ -1316,7 +1316,9 @@ local LINE_QUEST_OBJECTIVE = (Enum and Enum.TooltipDataLineType and Enum.Tooltip
 local LINE_QUEST_TITLE = (Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.QuestTitle) or 17
 
 local function QuestActive()
-	return M.isEnabled and M.db and M.db.questIcon
+	-- (2.1.0; the user, 2026-10-31: "Polestar takes priority") not while another addon puts its own quest icon there
+	local O = MelloUI.Overlaps
+	return M.isEnabled and M.db and M.db.questIcon and not (O and O.By("nameplateQuest"))
 end
 
 -- Does the unit's tooltip list an unfinished objective of one of our quests? Its kind (QUEST_ICON's key), or false
@@ -2591,6 +2593,12 @@ end
 
 function M:OnInit(db)
 	self.db = db
+	-- (2.1.0) another addon took the quest icon over or gave it back (MelloUI.Overlaps): each plate's again
+	MelloUI:On("overlap", function(job)
+		if job == "nameplateQuest" and M.isEnabled and M.db and M.db.questIcon then
+			UpdateAllQuestIcons()
+		end
+	end, "Nameplates: quest icon")
 end
 
 -- (0.19.8) switched on after the login's PLAYER_ENTERING_WORLD (Core's

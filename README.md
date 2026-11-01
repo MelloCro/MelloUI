@@ -6,6 +6,8 @@
 
 **Discord:** [discord.gg/gdpQ6ep7bW](https://discord.gg/gdpQ6ep7bW) · help, bug reports and every new release
 
+**Support:** [patreon.com/Mello_UI](https://www.patreon.com/Mello_UI) · MelloUI stays free; supporters get a thank-you role on the Discord
+
 *Everything is a switch. On your first login the installer sets MelloUI up with you, fitted to your screen. Type `/mello` for the settings any time.*
 
 ## The look
@@ -35,7 +37,7 @@
 - **Route** finds the quickest way over roads and flights; an arrow and a marker in the world lead you.
 - **Quest Tracker** and a **Quest List** of every quest near you.
 - **Dungeon Info:** every dungeon's bosses, loot and drop rates.
-- **RestedXP** guide steps on the map, the marker and the tracker.
+- **Guide addons:** RestedXP, Follow The Arrow, APR and TomTom steps show on the map, the marker and the tracker, with one arrow at a time.
 
 ## Quality of life
 
@@ -65,10 +67,13 @@ Download the [release zip](https://github.com/MelloCro/MelloUI/releases/latest) 
 - Dungeon Info's Forever loot: [DungeonMaster](https://www.curseforge.com/wow/addons/dungeonmaster) by MalkDev (GPL-3.0). Drop rates: Data from [Everloot](https://everloot.app), [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
 - Classic quests, NPCs and drops: the [cmangos classic-db](https://github.com/cmangos/classic-db) (GPL-3.0); the data files made from it are GPL-3.0 too.
 
+<!-- legends:start (written by MBot's `npm run supporters`; empty until there is a Legend) -->
+<!-- legends:end -->
+
 ## License
 
 MelloUI's code is under the [MIT License](LICENSE). Route's road data is All Rights Reserved ([LICENSE-DATA](LICENSE-DATA)). The data files made from the cmangos classic-db are under the GPL-3.0 ([LICENSE-GPL-3.0.txt](LICENSE-GPL-3.0.txt)).
 
 ## Links
 
-[Discord](https://discord.gg/gdpQ6ep7bW) · [Changelog](CHANGELOG.md) · [Report a bug](https://github.com/MelloCro/MelloUI/issues) · [Every feature and command in detail](docs/GUIDE.md)
+[Discord](https://discord.gg/gdpQ6ep7bW) · [Patreon](https://www.patreon.com/Mello_UI) · [Changelog](CHANGELOG.md) · [Report a bug](https://github.com/MelloCro/MelloUI/issues) · [Every feature and command in detail](docs/GUIDE.md)

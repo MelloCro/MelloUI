@@ -35,6 +35,23 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+
+-- (fr-17) the player frame on the screen -- MelloUI's own while it stands in (MelloUI.Units, Modules/UnitFramesOwn.lua),
+-- else the game's -- and the game's update hooks through it (a world without that file: the game's frame, a plain hook)
+local function ScreenPlayer()
+	local U = MelloUI.Units
+	return U and U.Player() or _G.PlayerFrame
+end
+-- (fr-17 stage 2) the target frame on the screen -- MelloUI's own while it stands in (Modules/UnitFramesTarget.lua)
+local function ScreenTarget()
+	local U = MelloUI.Units
+	return U and U.Target() or rawget(_G, "TargetFrame")
+end
+-- (fr-17 stage 3) the focus frame on the screen -- MelloUI's own while it stands in (Modules/UnitFramesTarget.lua)
+local function ScreenFocus()
+	local U = MelloUI.Units
+	return U and U.Focus() or rawget(_G, "FocusFrame")
+end
 local Perf = MelloUI.Perf:Scope("HealerFrames")
 local hooksecurefunc = Perf.hooksecurefunc
 local Shared = Perf.Shared
@@ -102,24 +119,27 @@ end
 -- keeps one: the player frame's is the vehicle's while in one), portrait,
 -- health and mana bars; `heals`: their template has no heal prediction bars
 local UNIT_FRAMES = {
-	{ key = "player", unit = "player", heals = true, frame = function() return PlayerFrame end,
+	{ key = "player", unit = "player", heals = true, frame = function() return ScreenPlayer() end,
 	  portrait = function(f) local c = f.PlayerFrameContainer return c and c.PlayerPortrait end,
 	  health = function(f) local m = PlayerMain(f) return m and m.HealthBarsContainer and m.HealthBarsContainer.HealthBar end,
 	  mana = function(f) local m = PlayerMain(f) return m and m.ManaBarArea and m.ManaBarArea.ManaBar end },
-	{ key = "target", unit = "target", heals = true, frame = function() return TargetFrame end,
+	{ key = "target", unit = "target", heals = true, frame = function() return ScreenTarget() end,
 	  portrait = function(f) local c = f.TargetFrameContainer return c and c.Portrait end,
 	  health = function(f) local m = TargetMain(f) return m and m.HealthBarsContainer and m.HealthBarsContainer.HealthBar end,
 	  mana = function(f) local m = TargetMain(f) return m and m.ManaBar end },
-	{ key = "focus", unit = "focus", heals = true, frame = function() return FocusFrame end,
+	{ key = "focus", unit = "focus", heals = true, frame = function() return ScreenFocus() end,
 	  portrait = function(f) local c = f.TargetFrameContainer return c and c.Portrait end,
 	  health = function(f) local m = TargetMain(f) return m and m.HealthBarsContainer and m.HealthBarsContainer.HealthBar end,
 	  mana = function(f) local m = TargetMain(f) return m and m.ManaBar end },
-	{ key = "targettarget", unit = "targettarget", heals = true, frame = function() return TargetFrame and TargetFrame.totFrame end,
+	{ key = "targettarget", unit = "targettarget", heals = true, frame = function() local tf = ScreenTarget() return tf and tf.totFrame end,
 	  portrait = function(f) return f.Portrait end, health = function(f) return f.HealthBar end, mana = function(f) return f.ManaBar end },
-	{ key = "focustarget", unit = "focustarget", heals = true, frame = function() return FocusFrame and FocusFrame.totFrame end,
+	{ key = "focustarget", unit = "focustarget", heals = true, frame = function() local ff = ScreenFocus() return ff and ff.totFrame end,
 	  portrait = function(f) return f.Portrait end, health = function(f) return f.HealthBar end, mana = function(f) return f.ManaBar end },
-	{ key = "pet", unit = "pet", frame = function() return PetFrame end,
-	  portrait = function(f) return f.Portrait end, health = function() return _G.PetFrameHealthBar end, mana = function() return _G.PetFrameManaBar end },
+	-- (fr-17 stage 4: the pet frame on the screen; its template's heal prediction bars draw the game's own -- ours has
+	-- none: Healer Frames' heals on ours, "own")
+	{ key = "pet", unit = "pet", heals = "own", frame = function() local U = MelloUI.Units return U and U.Pet() or PetFrame end,
+	  portrait = function(f) return f.Portrait end, health = function(f) return f.healthbar or _G.PetFrameHealthBar end,
+	  mana = function(f) return f.manabar or _G.PetFrameManaBar end },
 }
 -- a party member's frame (the pool's) and its pet's
 local PARTY = {
@@ -420,9 +440,10 @@ local glows = {}             -- every glow made: { frame, unit (fallback), holde
 local glowOf = setmetatable({}, WEAK)   -- [frame] = its glow
 
 -- the curve from a debuff's dispel type to its colour: the game's own colours
--- (DEBUFF_TYPE_<TYPE>_COLOR; the type IDs of the client's SpellDispelType)
-local DISPEL_TYPES = { { 1, "MAGIC", "Magic" }, { 2, "CURSE", "Curse" }, { 3, "DISEASE", "Disease" }, { 4, "POISON", "Poison" },
-	{ 11, "BLEED", "Bleed" } }
+-- (DEBUFF_TYPE_<TYPE>_COLOR; the type IDs of the client's SpellDispelType;
+-- none, 0, the game's for a debuff of no type: AuraUtil.GetAuraBorderColor's)
+local DISPEL_TYPES = { { 0, "NONE", "none" }, { 1, "MAGIC", "Magic" }, { 2, "CURSE", "Curse" }, { 3, "DISEASE", "Disease" },
+	{ 4, "POISON", "Poison" }, { 11, "BLEED", "Bleed" } }
 local curve = nil
 local function Curve()
 	if curve == nil then
@@ -460,13 +481,13 @@ local function Friend(unit)
 	return Secret(v) or (v and true or false)
 end
 
--- the colour of the unit's first debuff the setting keeps: found, r, g, b
-local function DispelColour(unit)
+-- the colour of the unit's first debuff through `filter`: found, r, g, b
+local function DebuffColour(unit, filter)
 	local c = Curve()
 	if not c then
 		return false
 	end
-	local ok, ids = pcall(C_UnitAuras.GetUnitAuraInstanceIDs, unit, FILTER[M.db.debuffGlowShows] or FILTER.all, 1)
+	local ok, ids = pcall(C_UnitAuras.GetUnitAuraInstanceIDs, unit, filter, 1)
 	if not ok or type(ids) ~= "table" then
 		return false
 	end
@@ -484,6 +505,11 @@ local function DispelColour(unit)
 	end
 	local r, g, b = col:GetRGB()
 	return true, r, g, b
+end
+
+-- the colour of the unit's first debuff the setting keeps: found, r, g, b
+local function DispelColour(unit)
+	return DebuffColour(unit, FILTER[M.db.debuffGlowShows] or FILTER.all)
 end
 
 -- The round glow hugs the ring it lies under (user, 2026-10-04: "a lot of
@@ -622,7 +648,8 @@ local function SetUpUnitFrames()
 		local f = e.frame()
 		if type(f) == "table" and f.GetObjectType then
 			MakeGlow(f, e, e.unit)
-			if e.heals then
+			local U = MelloUI.Units
+			if e.heals == true or (e.heals == "own" and U and U.mine[f]) then
 				local health = e.health(f)
 				if health and health.GetStatusBarTexture then
 					local frame, fallback = f, e.unit
@@ -794,6 +821,12 @@ local function Hook()
 			end
 		end
 	end, M)
+	-- (fr-17) the player frame of ours come or gone (the game's given back): the heals and glow on the one that stands
+	MelloUI:On("units", function()
+		if active then
+			Kit:WhenOutOfCombat(SetUpAll)
+		end
+	end, M)
 end
 
 --------------------------------------------------------------------------------
@@ -873,14 +906,14 @@ PreviewBeat = function(beat, _, n)
 				end
 			end
 		end
-		local pg = glowOf[PlayerFrame]
+		local pg = glowOf[ScreenPlayer()]
 		if pg then
 			pg.sample = true
 			previewing.glows[#previewing.glows + 1] = pg
 			SampleGlow(pg, 1)
 		end
 	elseif beat == "hit" and previewing.on then
-		local pg = glowOf[PlayerFrame]
+		local pg = glowOf[ScreenPlayer()]
 		if pg and pg.sample then
 			SampleGlow(pg, math.floor(((n or 1) - 1) / HITS_PER_COLOUR) + 1)
 		end
@@ -928,6 +961,14 @@ function M:Glow(frame, shape)
 		end
 		return MakeGlow(frame, nil, nil, true)
 	end
+end
+
+-- (fr-16) the colour of the unit's first debuff through an aura filter, by the
+-- debuff glow's curve of the game's colours: found, r, g, b (a colour the
+-- client keeps secret handed on as it is). The module off too: Group Frames'
+-- portrait party members' status glow, the game's, reads it
+function M:DebuffColour(unit, filter)
+	return DebuffColour(unit, filter)
 end
 
 -- such a frame's heals and glow again (its unit changed)

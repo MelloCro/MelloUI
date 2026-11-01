@@ -94,7 +94,7 @@ local T = {
 	-- (P2) a capital: a slate disc in a gold rim, its name beside it; a town the same, smaller. Drawn as the sketch drew
 	-- it, from the set's badge disc (sharp at every size): the gold disc, the slate core RIM px in, a dark EDGE px out
 	-- (it stands off the parchment as the set's pins do; the set's thin ring_gold read as a dark dot in wowsim, qu-01 sim)
-	CAPITAL_SIZE = 14,
+	CAPITAL_SIZE = 22,   -- (qu-04: the seal holds the city's emblem, the size the user picked it at)
 	TOWN_SIZE = 9,
 	CAPITAL_RIM = 2,
 	TOWN_RIM = 1,
@@ -103,8 +103,14 @@ local T = {
 	SEAL_GOLD = "selectedTrim",
 	SEAL_DISC = "raisedPanel",
 	SEAL_DARK = "innerPanel",
+	CAPITAL_OWN = "map_capital",   -- (qu-04) the seal's picture where a look draws its own (Skin.ICON, a look's set)
+	TOWN_OWN = "map_town",
+	-- (qu-04; the user, 2026-10-31: "custom original themed icons for each city", their picks of qu04_map_icons_sketch)
+	-- each capital's emblem in its seal, by the data's name (MapData.towns)
+	EMBLEM = { Stormwind = "city_stormwind", Ironforge = "city_ironforge", Darnassus = "city_darnassus",
+		Orgrimmar = "city_orgrimmar", ["Thunder Bluff"] = "city_thunderbluff", ["The Undercity"] = "city_undercity" },
 	NEW_ALPHA = 0.45,        -- a flight master you have not learned
-	TRANSPORT_ICON = { "pin_boat", "pin_zeppelin", "pin_portal", "pin_tram" },
+	TRANSPORT_ICON = { "pin_boat", "pin_zeppelin", "pin_portal", "pin_tram", "pin_zeppelin" },   -- (5: an airship, qu-03)
 	ENTRANCE_ICON = { "pin_dungeon", "pin_raid" },
 	-- the client's FlightPathFaction (Neutral 0, Horde 1, Alliance 2) and the data's faction (0 both, 1 Alliance, 2 Horde)
 	CLIENT_SIDE = { Horde = 1, Alliance = 2 },
@@ -438,7 +444,7 @@ local function Flights()
 	local api = rawget(_G, "C_TaxiMap")
 	if api and api.GetTaxiNodesForMap then
 		for _, p in ipairs(S.canvas.places) do
-			if p.kind == "continent" then
+			if p.kind == "continent" or p.isle then   -- (qu-03: an isle is its own continent)
 				local ok, nodes = pcall(api.GetTaxiNodesForMap, p.id)
 				for _, n in ipairs(ok and type(nodes) == "table" and nodes or EMPTY) do
 					local id, f = Finite(n.nodeID), Finite(n.faction)
@@ -524,7 +530,7 @@ local function Transports()
 				local key = floor(wx * 4) .. ":" .. floor(wy * 4)
 				local dock = docks[key]
 				if not dock then
-					dock = { title = row[4], lines = {} }
+					dock = { title = row[4], lines = {}, kind = kind }
 					docks[key] = dock
 					local pin = pins:Set("transports", key, wx, wy, TransportSpec(kind))
 					if pin then
@@ -693,7 +699,7 @@ local function Entrances()
 		return
 	end
 	for _, p in ipairs(S.canvas.places) do
-		if p.kind == "continent" then
+		if p.kind == "continent" or p.isle then
 			local ok, list = pcall(api.GetDungeonEntrancesForMap, p.id)
 			for _, e in ipairs(ok and type(list) == "table" and list or EMPTY) do
 				local name = Text(e.name)
@@ -719,9 +725,29 @@ local function PlaceTip(pin)
 end
 
 local CAPITAL = { icon = T.ICONS .. T.SEAL, size = T.CAPITAL_SIZE, tint = T.SEAL_GOLD, core = T.SEAL_DISC,
-	rim = T.CAPITAL_RIM, disc = T.SEAL_DARK, edge = T.SEAL_EDGE, label = true, tip = PlaceTip, sub = 1 }
+	rim = T.CAPITAL_RIM, disc = T.SEAL_DARK, edge = T.SEAL_EDGE, label = true, tip = PlaceTip, sub = 1,
+	own = T.CAPITAL_OWN }
 local TOWN = { icon = T.ICONS .. T.SEAL, size = T.TOWN_SIZE, tint = T.SEAL_GOLD, core = T.SEAL_DISC, rim = T.TOWN_RIM,
-	disc = T.SEAL_DARK, edge = T.SEAL_EDGE, tip = PlaceTip, sub = 1 }
+	disc = T.SEAL_DARK, edge = T.SEAL_EDGE, tip = PlaceTip, sub = 1, own = T.TOWN_OWN }
+
+-- (qu-04) a capital's seal with its city's emblem (one spec a capital; the plain seal for a name with none)
+local capitals = {}
+local function CapitalSpec(name)
+	local spec = capitals[name]
+	if not spec then
+		local emblem = T.EMBLEM[name]
+		if not emblem then
+			return CAPITAL
+		end
+		spec = {}
+		for k, v in pairs(CAPITAL) do
+			spec[k] = v
+		end
+		spec.emblem = T.ICONS .. emblem
+		capitals[name] = spec
+	end
+	return spec
+end
 
 local function Places()
 	local pins, data = S.pins, ns.MapData
@@ -732,7 +758,7 @@ local function Places()
 		local wx, wy = WorldPoint(row[3], row[4], row[5])
 		if wx then
 			local capital = rank == 1
-			local pin = pins:Set(capital and "places" or "towns", i, wx, wy, capital and CAPITAL or TOWN)
+			local pin = pins:Set(capital and "places" or "towns", i, wx, wy, capital and CapitalSpec(name) or TOWN)
 			if pin then
 				pin.name = name
 			end
@@ -910,12 +936,13 @@ function Layers.Labels()
 		frame = layer.frame
 		NAMES.frame = frame
 	end
-	local on = c.z >= T.NAMES_FROM and c.z <= T.NAMES_TO
+	local to = c.z <= T.NAMES_TO
+	local on = c.z >= T.NAMES_FROM and to
 	local k = c.k1 * c.z
 	local x0, y0 = c.cx - c.cw / (2 * k), c.cy - c.ch / (2 * k)
 	local boxes, n = NAMES.boxes, 0
 	-- (2.1.0) the capitals' names laid with the pins (MapPins' names): a zone's name keeps clear of them
-	if on then
+	if to then
 		local lb = pins.labelBoxes
 		for i = 1, pins.nLabels or 0 do
 			local s = lb[i]
@@ -934,7 +961,8 @@ function Layers.Labels()
 			local label = NAMES.list[p]
 			local x = (p.left + at[1] * p.w - x0) * k
 			local y = (p.top + at[2] * p.h - y0) * k
-			local fits = on and x > -40 and x < c.cw + 40 and y > -20 and y < c.ch + 20
+			-- (qu-03) an isle's name from the world's zoom: the world's painting names the continents, never the isle
+			local fits = (on or (to and p.isle)) and x > -40 and x < c.cw + 40 and y > -20 and y < c.ch + 20
 			if fits then
 				label = label or NameOf(p)
 				local hw, hh = label.w / 2 + T.NAME_GAP, label.h / 2 + 2
@@ -987,7 +1015,7 @@ function Layers.Searchable(add)
 	end
 	for _, pin in pairs(pins.layers.transports and pins.layers.transports.pins or EMPTY) do
 		if type(pin.data) == "table" then
-			add("dock", pin.data.title, pin.spec and pin.spec.icon, pin.wx, pin.wy)
+			add(pin.data.kind == 5 and "airship" or "dock", pin.data.title, pin.spec and pin.spec.icon, pin.wx, pin.wy)
 		end
 	end
 	for _, pin in pairs(pins.layers.entrances and pins.layers.entrances.pins or EMPTY) do

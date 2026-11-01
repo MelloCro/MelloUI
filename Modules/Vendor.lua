@@ -442,10 +442,12 @@ end
 local eventFrame = CreateFrame("Frame")
 Perf.SetScript(eventFrame, "OnEvent", function(_, event)
 	if event == "MERCHANT_SHOW" then
-		if M.db.autoRepair then
+		-- (2.1.0; the user, 2026-10-31: "Polestar takes priority") another addon repairing or selling: left to it
+		local O = MelloUI.Overlaps
+		if M.db.autoRepair and not (O and O.By("repair")) then
 			Repair()
 		end
-		if M.db.autoSell then
+		if M.db.autoSell and not (O and O.By("sellJunk")) then
 			SellJunk()
 		end
 	elseif event == "MERCHANT_CLOSED" then

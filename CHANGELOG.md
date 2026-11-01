@@ -4,14 +4,48 @@
 
 - Edit Layout: Revert puts one element back where it was when you opened Edit Layout, and Default place puts a game element back where the game puts it, as Edit Mode does.
 - Edit Layout: a Layout list in the bar to switch Edit Mode layouts and to make, copy, rename, delete, import and share them. A change shows after a /reload.
+- Fixed: your other characters are asked again whether to use MelloUI's Edit Mode layout. Since 2.0.0 only Oldschool asked, so with the Modern or Default skin the others kept the game's own layout under MelloUI's windows.
+- Fixed: when the game turns MelloUI's Edit Mode layout down, the installer says so in the chat and over the Keep countdown instead of finishing quietly.
+- The game's Edit Mode tells you when it still shows your layout from before a MelloUI change: close it without saving to load the change. /mello layout apply says when a /reload is needed.
+- New: /mello layout check, a report of your Edit Mode layout to copy and send when it does not look right.
+- Fixed: MelloUI's Edit Mode layout now goes in on every screen and UI scale, from the installer and from every profile load. Where it can't fit exactly, it is fitted as close as the screen allows and the installer says which parts overlap; it never leaves the game's own layout.
+- Fixed: loading a profile on the screen it was made for now offers MelloUI's Edit Mode layout when it is not the active one, so the action bars, the experience bar, the bags and the micro menu go where the profile places them.
+- Fixed: a change in Edit Layout while the game's Modern or Classic preset is active uses MelloUI's copy of it made before, instead of making another copy ('Modern (MelloUI) 2', '3' ...) each time.
+- Edit Layout: switching, making or deleting an Edit Mode layout from the Layout list, or saving into a copy of the game's preset, now takes effect with the list's Reload now button (the game switches layouts only with a reload).
 - Edit Layout: drop one of the game's elements snapped against another and it attaches to it, as in Edit Mode: it follows the other one after a /reload. Its box says what it is attached to, with Detach.
 - Edit Layout: the game's damage meter's Frame Width and Height show at once while you change them.
 - Edit Layout: the player frame's box takes in the damage meter's tab on its side, so it moves and snaps with the tab; under Oldschool the party frames' box reaches over their tabs too.
 - Default skin: the player frame wears the Forever client's own high-resolution pictures (the frame, its class-resource and vehicle frames, the rest glow and the level circle), so it stays sharp when scaled up.
 - Loading a profile made on a screen of another size or shape offers Fit to this screen, so a shared layout lands right on your screen. A saved profile remembers the screen it was saved on.
+- A Supporters page in the settings, under Profiles, lists the people who help keep MelloUI going. Thank you, all of you!
 - The map zoomed out to the whole world shows the capitals with a gold seal and their name, the boat and zeppelin docks, the dungeon and raid entrances and your quests. Towns show as small seals once you zoom into a continent.
 - Every boat and zeppelin connection is drawn on the map as a soft gold trail from dock to dock.
 - Map pins of one kind that touch become one with a count; click it to zoom in. The map's layers menu can hide Cities and towns.
+- Zephras Isle is on the map: its land, its name from the widest zoom, its docks and quest givers, and the airship trails from Alterac and Mulgore ending at its docks. Your arrow, Find me and the search work there too. Its airships are called airships and wear the zeppelin pin, and its villages Shen'dar, Valanaar and Thendal show as towns.
+- Each capital on the zoomed-out map wears its own emblem in its seal: Stormwind's lion gate, Ironforge's mountain gate, Darnassus's tree under the moon, Orgrimmar's spiked gate, Thunder Bluff's mesa, the Undercity's ruined tower.
+- The map's icons follow the skin: the game's own map pictures under Default (the dungeon and raid doors drawn bigger), the painted ones under Oldschool. Switching the skin with the map open updates every map icon at once.
+- Oldschool: a lit square button glows square, no longer round.
+- Oldschool: the action bars keep their painted frames after a log-in, a reload or a profile load (they showed Modern's frames until hovered).
+- Route follows Polestar's guide steps too: its step in the Quest Tracker, its spot on the map, one arrow and one route on the minimap at a time.
+- With Polestar on, its own features go first: MelloUI's matching ones (selling, repairing, its guide's quests, the corpse run, rare alerts, the flight map's help and a few quest marks) step aside while Polestar's are on.
+- The map shows Polestar's step: the goals it does not show yet, as its own objective marks and areas; a click leads there.
+- A guide's new step always shows its own title in the Quest Tracker.
+- Quest marks on the minimap show their objective when you hover them, as on the map.
+- Route: on a quest that needs an item first, the World Marker points where the route goes, the item's source, also after picking the quest in the Quest Tracker or passing the spot (Marla's Last Wish).
+- Level Up Card: it has its own place at the top of the screen (it no longer moves with the on-screen notices), moves in Edit Layout as "Level Up Card", and is bigger, with everything inside it.
+- Personal Display: the shield column keeps each shield's school colour and icon in a fight, after a /reload, a zone change and the Preview; the shields' amount always shows under it.
+- Unit frames: your player, target, target of target, focus (with its target) and pet frames are MelloUI's own now, in every skin, with the same look and place, and the game's own never show through.
+- Bars: the experience, reputation and honour bars and the bag bar are MelloUI's own now, in every skin, with the same look and place: Edit Layout and your profiles place them, and the game's own never show through. The bag bar's Vertical and Bags On The Other Side are in its Edit Layout box.
+- Fixed: Gains, the on-screen notice and the widget column stand where the layout made them on any screen shape: Gains no longer lands in the middle of a wide screen after the installer.
+- Mello's layout is the new wide-screen arrangement: Action Bar 2 right above Action Bar 1, the party frames in toward the middle at the game's own size, the bag window on the right; fitted to every other screen.
+- Keep My Layout also keeps where you put MelloUI's own parts in Edit Layout: Gains, the notice, the widget column, Combat Text, the meter, the Personal Display, the group frames.
+- Fixed: the Personal Display's shield column keeps your shield's school colour and icon when you put it on yourself in a fight, whichever order the game reports it in, and stays down after the shield breaks.
+- New: /mello shield, a report of the shield column to copy and send when it does not look right.
+- The MelloUI button sits inside the Game Menu now, under Options, in the menu's own style.
+- Party frames with portraits stand closer together (Vertical Spacing, Unit & Group Frames > Party, sets the gap), and the installer puts them at the game's own size instead of larger.
+- Fixed: the installer said MelloUI Oldschool was switched off when it wasn't installed; now it offers the link to get it.
+- Party and raid frames: with MelloUI's on, the game's own never show, in any case (a fight, a roster change, a zone change, Edit Mode, a /reload). The portrait party frames are MelloUI's own now: the same look, steady in a fight, the members the game's own distance apart.
+- Personal Display: an interrupted or failed cast no longer shows on the game's cast bar while the game's cast bar is hidden; the display's own cast bar says "Interrupted" or "Failed", even with its text off.
 
 ## 2.0.0
 

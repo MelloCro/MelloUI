@@ -69,7 +69,9 @@ for n in ("ct_taken", "ct_heal", "ct_notice", "ct_avoid", "ct_gain"):
 # per category heading (Batches 15 to 17)
 for n in ("page_look", "page_windows", "page_fader", "page_oldschool", "page_frames", "page_nameplates", "page_bars",
           "page_minimap", "page_meter", "page_chat", "page_tooltip", "page_screentext", "page_tracker", "page_questlist",
-          "page_route", "page_reminders", "page_automation", "page_voice", "page_sounds", "page_profiles"):
+          "page_route", "page_reminders", "page_automation", "page_voice", "page_sounds", "page_profiles",
+          # (2.1.0, the user's pick of 2026-10-31: the winged heart, sheet_supporters.png)
+          "page_supporters"):
     SET.append(("pages", n, n, 64))
 for n in ("cat_look", "cat_frames", "cat_chat", "cat_quests", "cat_sound"):
     SET.append(("cats", n, n, 64))
@@ -83,6 +85,14 @@ for n in ("normal", "hover", "pressed", "active", "empty", "range"):
 SET.append(("pieces", "bar_spark", "bar_spark", (64, 48)))   # (Batch 24: the light on the fill's leading edge)
 # (Batch 25) the unit frames' level badge (the ring and the bar frames are drawn into UF_FRAMES' pictures)
 SET.append(("pieces", "uf_badge", "uf_badge", 64))
+# (2.1.0, qu-04; the user, 2026-10-31: "custom original themed icons for each city ... authentic how we would represent
+# those cities", their picks of BuildData/output/qu04_map_icons_sketch: "SW A, Org A, Thunder Bluff B, Iron Forge B,
+# Darnassus A, Undercity B, all on the map with the ring around it") the map's capitals' emblems, in the capital's
+# seal: Stormwind's gate under a lion, Ironforge's mountain gate, Darnassus's tree and moon, Orgrimmar's spiked gate,
+# Thunder Bluff's mesa with its tents, the Undercity's ruined tower (cut from the sketch's ai/ sheets; the Oldschool
+# set has its painted ones)
+for n in ("city_stormwind", "city_ironforge", "city_darnassus", "city_orgrimmar", "city_thunderbluff", "city_undercity"):
+    SET.append(("cities", n, n, 64))
 # (Batch 31, 2026-10-20, the user: "clean icons for party members ... in the theme" -- then "enough just in the
 # color, we dont need the icons in the middle of it, so they can be scaled down") a plain disc per class in the set's
 # pin style, its colour the sheet's disc's: CLASS_DISCS below, by the game's class file name
@@ -117,6 +127,9 @@ LOOK_SETS = {
 }
 LOOK_SKIP = ("map_dot", "route_bead")
 LOOK_OUT = ("Icons",)
+# (2.1.0, qu-04) names only a look draws: where MelloUI's look lays palette pieces (the map's capital seal and count
+# badge, a town's seal: MelloUI_Map/MapPins.lua's spec.own), a look's own picture -- (group, name, the file's size)
+LOOK_ONLY = (("controls", "map_capital", 64), ("controls", "map_count", 64), ("controls", "map_town", 64))
 
 
 def load(group, name):
@@ -716,7 +729,7 @@ def look_entries(look):
     """a look's own set: the set's pictures it has art for so far, [(group, name, the file's size, its art)]"""
     art = LOOK_SETS[look]["art"]
     out = []
-    for group, _art, name, size in SET:
+    for group, _art, name, size in SET + [(g, n, n, s) for g, n, s in LOOK_ONLY]:
         if group == "pieces" or name in LOOK_SKIP:
             continue
         path = os.path.join(art, "png128", name + ".png")
@@ -785,7 +798,7 @@ def look_main(look, check):
         print("ok" if not stale else "STALE")
         return 1 if stale else 0
     print("%s: %d of %d icons written (masters + %s), %d lifts, sha256 %s"
-          % (look, len(icons), sum(1 for g, _a, n, _s in SET if g != "pieces" and n not in LOOK_SKIP),
+          % (look, len(icons), sum(1 for g, _a, n, _s in SET if g != "pieces" and n not in LOOK_SKIP) + len(LOOK_ONLY),
              os.path.normpath(os.path.join(spec["addon"], *LOOK_OUT)), len(lifts), sums.hexdigest()[:16]))
     return 0
 

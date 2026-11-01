@@ -1132,22 +1132,37 @@ local function UnitKey(unit)
 	return Text((Ask(_G.UnitName, unit)))
 end
 
+-- party i's frame on the screen: Group Frames' portrait party frame of ours while those stand in (fr-16: the game's
+-- party frames never show then -- MelloUI.GroupFrames:PartyMember), else the game's own member
 local function MemberFrame(i)
+	local GF = MelloUI.GroupFrames
+	if GF and GF.PartyMember then
+		local ok, own = pcall(GF.PartyMember, GF, i)
+		if ok and IsFrame(own) then
+			return own
+		end
+	end
 	local pf = _G.PartyFrame
 	local f = IsFrame(pf) and pf["MemberFrame" .. i]
 	return IsFrame(f) and f or nil
 end
 
+-- party i's tab, on the frame that shows it now (made again when that frame changed: the old one's tab hidden)
 local function PartyLine(i)
 	local line = Lines.party[i]
-	if line then
+	local member = MemberFrame(i)
+	if line and line.member == member then
 		return line
 	end
-	local member = MemberFrame(i)
+	if line then
+		line.want = false
+		Tab.Show(line)
+		Lines.party[i] = nil
+	end
 	if not member then
 		return nil
 	end
-	line = Tab.New(member)
+	line = Tab.lineOf[member] or Tab.New(member)
 	Lines.party[i] = line
 	return line
 end
@@ -1324,7 +1339,8 @@ end)
 function Tab.Box(entry)
 	local line = Lines.me
 	local frame = type(entry) == "table" and entry.frame
-	if not (line and line.want and frame == line.member) or InCombatLockdown() then
+	-- (fr-17: the mover's frame is the game's player frame, which MelloUI's own stands on: either is yours)
+	if not (line and line.want and (frame == line.member or frame == _G.PlayerFrame)) or InCombatLockdown() then
 		return nil
 	end
 	local l, b, r, t = Safe.ScreenRect(frame)
@@ -1345,14 +1361,26 @@ end
 
 -- yours: the tab on your player frame, made the first time it is wanted
 local function MineLine()
-	local pf = _G.PlayerFrame
-	if Lines.me or not IsFrame(pf) then
+	-- (fr-17: the player frame on the screen -- MelloUI's own while it stands in, else the game's; the tab moves onto
+	-- the other one when it changes, the old one put away)
+	local U = MelloUI.Units
+	local pf = U and U.Player() or _G.PlayerFrame
+	if (Lines.me and Lines.me.member == pf) or not IsFrame(pf) then
 		return Lines.me
 	end
+	if Lines.me then
+		Lines.me.want = false
+		Tab.Show(Lines.me)
+	end
 	Lines.me = Tab.New(pf, Tab.HOST.player)
-	for _, name in ipairs({ "PlayerFrame_ToPlayerArt", "PlayerFrame_ToVehicleArt" }) do
-		if type(rawget(_G, name)) == "function" then
-			Perf.hooksecurefunc(name, Tab.OnPlayerArt)
+	if not Tab.artHooked then
+		Tab.artHooked = true
+		for _, name in ipairs({ "PlayerFrame_ToPlayerArt", "PlayerFrame_ToVehicleArt" }) do
+			if U then
+				U.Hook(name, Tab.OnPlayerArt)
+			elseif type(rawget(_G, name)) == "function" then
+				Perf.hooksecurefunc(name, Tab.OnPlayerArt)
+			end
 		end
 	end
 	return Lines.me
@@ -1455,7 +1483,8 @@ local function OnSetting(name, key)
 end
 
 local function OnGroupFrames(what)
-	if what == "layout" then
+	-- (fr-16, "game": the game's party frames hidden or given back -- the tabs on the frames that show now)
+	if what == "layout" or what == "game" then
 		PlaceSoon()
 	end
 end
@@ -2083,6 +2112,8 @@ function M:OnEnable(db)
 	-- (fr-12) Edit Layout's box over your player frame takes in your tab
 	MelloUI:On("mover", Tab.OnMover, OWNER)
 	Tab.OnMover("registered", MelloUI:MoverEntry(_G.PlayerFrame))
+	-- (fr-17) the player frame of ours come or gone: your tab laid on the one that stands now
+	MelloUI:On("units", PlaceSoon, OWNER)
 	-- (the events now: the login's PLAYER_ENTERING_WORLD drops the last
 	-- login's fights; the rest waits for Ready)
 	Events()

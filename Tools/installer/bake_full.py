@@ -1,7 +1,7 @@
 """Bake "Full experience": the shipped profile "MelloUI" in Media/Profiles.lua
 (the installer's Full setup and the Profiles page's "MelloUI").
 
-  python Tools/installer/bake_full.py [--snapshot PATH] [--check] [--write] [--deps] [--tries N] [--wait S]
+  python Tools/installer/bake_full.py [--snapshot PATH] [--places-for WxH] [--check] [--write] [--deps] [--tries N] [--wait S]
   python Tools/installer/bake_full.py --string FILE | --clipboard [--fill-missing] [--carry FILE] [--write]
 
 (1.2.4, the user 2026-10-28: "make sure that all 3 Themes follow the same Profiles, no more separate profiles
@@ -55,8 +55,12 @@ Core, Backup and every TOC file of the working tree:
      tracker's and Quest List's sizes as fitted; layoutFitFor NOT baked;
      (el-11) the screen the places were made on, UIModifications.placesFor,
      shipped with them and never converted here: the snapshot's own (a share
-     string exported since carries it), else full_snapshot.txt's "placesFor
-     WxH" line (the installer lays them out for each screen). The
+     string exported since carries it), else --places-for (2.1.0: a live
+     saved file made on a known screen; a --write records it as that line),
+     else full_snapshot.txt's "placesFor WxH" line (the installer lays them
+     out for each screen). (2.1.0, el-15) MelloUI's own elements' places
+     still in an old form are written in the side form at the same spot
+     (LayoutFit's F0s, inputs.sideForm): the profile ships none. The
      moved places the fitter does not place are checked on the screen at the
      design size: every whisper window (the popup's size, all six cascade
      places) and the anchors of the other two;
@@ -393,6 +397,7 @@ function DesignPlaces(info, sw, sh, placesFor)
     -- the snapshot's own, else placesFor, full_snapshot.txt's line): the installer lays them out for each screen
     -- (LayoutFit's F0s), so this fit never moves them for it
     inputs.placesFor = nil
+    inputs.sideForm = true   -- (2.1.0, el-15: own elements' old forms in the side form, the same spot)
     local fitted, places, report = LF:Fit(info, W, H, inputs, { screenW = sw, screenH = sh })
     if not fitted or not report.pass then
         -- what failed, named (the checks' lists and the unsolved flags)
@@ -729,7 +734,7 @@ def logged_in(snapshot, tries, wait, log, without=None):
     return lua
 
 
-def bake(snapshot=SNAP, tries=5, wait=60, log=print):
+def bake(snapshot=SNAP, tries=5, wait=60, log=print, places_for=None):
     text_saved = saved_text(snapshot, tries, wait, log)
     mods = raw_modules(snapshot)
     lua, errs, ns, tried = B.make_world_retry(tries, wait, log, without=B.FULL_WITHOUT)
@@ -750,7 +755,7 @@ def bake(snapshot=SNAP, tries=5, wait=60, log=print):
             raise SystemExit("Core/LayoutFit.lua did not load: " + e)
     # (el-11: the record's screen of the places belongs to the recorded snapshot alone)
     same = os.path.normcase(os.path.abspath(snapshot)) == os.path.normcase(os.path.abspath(SNAP))
-    fit = g.DesignPlaces(design_info(lua), 3440, 1440, recorded_places_for() if same else None)
+    fit = g.DesignPlaces(design_info(lua), 3440, 1440, places_for or (recorded_places_for() if same else None))
     g.DropPlaces(B.to_lua(lua, STALE_PLACES))
     fit_py = B.py(lua, fit)
     fitted_store = B.py(lua, g.STORE_FITTED)
@@ -872,7 +877,7 @@ def file_problems(src, m, full):
     return out
 
 
-def keep_snapshot(path):
+def keep_snapshot(path, places_for=None):
     """Record the snapshot a --write baked from, where --check (and the
     release) bakes again: a file in the build data folder is recorded as it
     is; any other (a live saved file, which the game rewrites at every
@@ -892,6 +897,8 @@ def keep_snapshot(path):
     rel = os.path.relpath(src, base).replace("\\", "/")
     with open(SNAPSHOT_RECORD, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(rel + "\n")
+        if places_for:
+            fh.write("placesFor %s\n" % places_for)
     return rel
 
 
@@ -1232,6 +1239,8 @@ def print_account(acc):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--snapshot", default=SNAP)
+    ap.add_argument("--places-for", metavar="WxH", help="the screen (UI units, as layoutFitFor writes it) the "
+                    "snapshot's places were made on, for one that does not say (a live saved file)")
     ap.add_argument("--string", metavar="FILE", help="bake from a profile share string in this file (the Profiles "
                     "page's Export): it becomes the bake's snapshot")
     ap.add_argument("--clipboard", action="store_true", help="as --string, the string read from the clipboard")
@@ -1258,7 +1267,9 @@ def main():
         raise SystemExit("--fill-missing and --carry go with --string or --clipboard")
     if a.string or a.clipboard:
         a.snapshot, source_text, carried, checks = ship_string(a)
-    full, report, lua = bake(a.snapshot, a.tries, a.wait)
+    if a.places_for and not re.match(r"^\d+(\.\d+)?x\d+(\.\d+)?$", a.places_for):
+        raise SystemExit("--places-for takes WxH in UI units, as layoutFitFor writes it (2866.7x1200.0)")
+    full, report, lua = bake(a.snapshot, a.tries, a.wait, places_for=a.places_for)
     if a.string or a.clipboard:
         acc = account(source_text, full, report, lua, checks, carried)
         report["stringAccount"] = acc
@@ -1305,9 +1316,9 @@ def main():
             new = src[:m.start()] + entry_line(full) + src[m.end():]
             open(PROFILES, "w", encoding="utf-8", newline="\n").write(new)
             print("wrote the \"MelloUI\" entry of Media/Profiles.lua")
-        if os.path.normcase(os.path.abspath(a.snapshot)) != os.path.normcase(os.path.abspath(SNAP)):
+        if a.places_for or os.path.normcase(os.path.abspath(a.snapshot)) != os.path.normcase(os.path.abspath(SNAP)):
             print("the bake's snapshot is now %s (Tools/installer/full_snapshot.txt, in the build data folder)"
-                  % keep_snapshot(a.snapshot))
+                  % keep_snapshot(a.snapshot, a.places_for))
     elif a.check and problems:
         sys.exit(1)
 

@@ -40,6 +40,12 @@ out of the files (its --fix; a dry run only lists them), and go into the release
 The configurator's What's new (Core/Config.lua's CHANGELOG table) holds CHANGELOG.md's five newest sections with the
 release's on top (the user, 2026-10-11: "keep it updated", "keep only the last 5"): the release runs
 `Tools/lint/check_whats_new.py --version <version>` and is refused otherwise.
+
+The Supporters page's names (Media/SupportersData.lua) and the README's Legends block are refreshed from the
+supporter roles on MelloUI's Discord (MBot's Workspace/Discord/src/supporters.js --no-wall) and go into the release
+commit, so every release ships the current list with nobody running anything (the user, 2026-10-31: "i dont want to
+have anything to do with it with updating"). It never refuses a release: without the bot folder, Node, the token or
+Discord the list stays as it is, and the run says so.
 """
 import argparse
 import os
@@ -54,6 +60,7 @@ PKGMETA = os.path.join(ROOT, ".pkgmeta")
 FULL_BAKE = os.path.join(HERE, "installer", "bake_full.py")
 NEW_TAGS = os.path.join(HERE, "lint", "check_new_tags.py")
 WHATS_NEW = os.path.join(HERE, "lint", "check_whats_new.py")
+SUPPORTERS = os.path.join(ROOT, "Workspace", "Discord", "src", "supporters.js")
 
 
 def git(*args, capture=True):
@@ -216,6 +223,23 @@ def check_whats_new(version):
     return r.returncode == 0, lines or [f"check_whats_new.py exited {r.returncode}"]
 
 
+def refresh_supporters(dry):
+    """The supporters list from the Discord roles into Media/SupportersData.lua and the README (MBot's supporters.js
+    --no-wall; with --dry-run in a dry run). Never refuses: returns (lines to print) whatever happens."""
+    if not os.path.isfile(SUPPORTERS):
+        return ["skipped: no Workspace/Discord here -- the list stays as it is"]
+    cmd = ["node", SUPPORTERS, "--no-wall"] + (["--dry-run"] if dry else [])
+    try:
+        r = subprocess.run(cmd, cwd=os.path.dirname(os.path.dirname(SUPPORTERS)), capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=180)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return [f"not refreshed ({exc}) -- the list stays as it is"]
+    lines = [line.rstrip() for line in ((r.stdout or "") + (r.stderr or "")).splitlines() if line.strip()]
+    if r.returncode != 0:
+        return ["not refreshed -- the list stays as it is:"] + lines[-4:]
+    return lines
+
+
 def write_tocs(edits, version, interface):
     """The Version and Interface lines of every TOC in `edits` ((path, label, text) each)."""
     for path, _, body in edits:
@@ -316,6 +340,8 @@ def main():
     if not tags_ok:
         sys.exit(f"the New tags are not ready for {version} (python Tools/lint/check_new_tags.py --version "
                  f"{version}):\n" + "\n".join("  " + line for line in tags_lines))
+    # the supporters list, fresh from the Discord roles (written before `pending`, so it goes into the commit)
+    supporter_lines = refresh_supporters(a.dry_run)
     pending = git("status", "--short")
 
     print(f"{'.'.join(map(str, current))} -> {version}  (tag {tag}, branch {branch})")
@@ -336,6 +362,7 @@ def main():
         print(f"{label}: Version {toc_field(body, 'Version')} -> {version}, Interface {toc_field(body, 'Interface')} -> {interface}")
     print(f"Full experience (Media/Profiles.lua \"MelloUI\"): the current bake, {full_lines[0]}")
     print("New tags: " + "\n  ".join(tags_lines))
+    print("Supporters: " + "\n  ".join(supporter_lines))
     if a.dry_run:
         print("dry run: nothing changed")
         return

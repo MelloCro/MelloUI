@@ -14,8 +14,10 @@
 --              from dock to dock, its middle BULGE of its length aside, to the
 --              side the data names (the side with less land under it:
 --              Tools/build_quest_list.py)
---   a stub     a way to a map the world does not show (Zephras Isle): the
---              ship's way out of the harbour, fading
+--   a stub     a way to a map the world does not show: the ship's way out of
+--              the harbour, fading (qu-03: Zephras Isle's airships were the
+--              stubs until the map laid the isle, MapData.isles; their ways
+--              are arcs now, their side the data's)
 -- The look (A): ONE Line a stretch in the quest areas' edge picture
 -- (QuestAreaEdge: a dark casing, the gold core, the casing; the same both
 -- ways, so the joints close), tinted the palette's selectedTrim
@@ -46,7 +48,7 @@ local Trails = {}
 ns.Trails = Trails
 
 local T = {
-	KINDS = { [1] = true, [2] = true },   -- the boats and the zeppelins (not the portal, not the tram)
+	KINDS = { [1] = true, [2] = true, [5] = true },   -- the boats, the zeppelins and the airships (not the portal, the tram)
 	BULGE = 0.12,        -- an arc's middle this share of its length aside (Tools/build_quest_list.py ARC_BULGE)
 	ARC_POINTS = 64,     -- an arc's points
 	SMOOTH = 4,          -- a course's rounds of corner cutting

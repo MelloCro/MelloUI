@@ -4929,6 +4929,14 @@ end
 -- first load on (its answers then, the late settings Core takes at that load
 -- included, are where it starts; nothing is told at login). Nothing polls; a
 -- Fire makes nothing.
+-- (lk-13, 2026-10-31; the user: Oldschool's action bars "keep reverting to the
+-- modern look, then mousing over them puts them back") ... but an answer
+-- Kit:IsOn handed out that the last tell does not carry is told: a reader who
+-- laid its look while the answer was another -- before the cover came on at
+-- login (Action Buttons' frames, up a slice before Oldschool's bars), or
+-- between a cover's off and on in one go -- hears the answer as it stands on
+-- the next pass, the world's first one included. An area nobody asked about
+-- stays quiet at login, a flip nobody saw tells nothing.
 --------------------------------------------------------------------------------
 Kit.Areas = {}
 
@@ -5033,31 +5041,45 @@ do
 		return false
 	end
 
+	-- each area's answer as last told (until the first pass: the first one a
+	-- reader was handed, nil while nobody asked); watched from the world's
+	-- first load on
+	local told = {}
+	-- (lk-13) [area] = true: a reader was handed the other answer since the
+	-- last pass (a flip in one go, seen half way)
+	local strayed = {}
+	local watching = false
+	local KEY = "Kit look areas"   -- the bus owner and the Kit:NextFrame key
+	local Later
+
 	function Kit:IsOn(area)
 		local entry = self.Areas[area]
 		if not entry then
 			return self.covers[area] == true
 		end
-		return AreaOn(entry)
+		local on = AreaOn(entry)
+		local name = entry.name
+		local was = told[name]
+		if was == nil then
+			told[name] = on
+		elseif was ~= on and not strayed[name] then
+			strayed[name] = true
+			Later()
+		end
+		return on
 	end
 
-	-- each area's answer as last told (nil until the first pass); watched
-	-- from the world's first load on
-	local told = {}
-	local watching, started = false, false
-	local KEY = "Kit look areas"   -- the bus owner and the Kit:NextFrame key
-
-	-- every area read again, a change told (in LIST's order); the first pass
-	-- only takes the answers down
+	-- every area read again, a change told (in LIST's order), or an answer
+	-- handed out since that the last tell did not carry; the first pass
+	-- takes down quietly the areas nobody asked about
 	local function Pass()
-		local tell = started
-		started = true
 		for i = 1, #LIST do
 			local area = LIST[i]
-			local on = AreaOn(area)
-			if told[area.name] ~= on then
-				told[area.name] = on
-				if tell then
+			local name = area.name
+			local on, was = AreaOn(area), told[name]
+			if was ~= on or strayed[name] then
+				told[name], strayed[name] = on, nil
+				if was ~= nil then
 					MelloUI:Fire(area.topic, on)
 				end
 			end
@@ -5069,7 +5091,7 @@ do
 	-- restart -- every profile load, the late settings at login -- told each
 	-- covered area off and on again). What a look listener switches is looked
 	-- at on the frame after, so a pass never runs inside another.
-	local function Later()
+	function Later()
 		if watching then
 			Kit:NextFrame(KEY, Pass)
 		end

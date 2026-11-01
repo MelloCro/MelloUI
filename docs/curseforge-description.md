@@ -29,7 +29,7 @@ _Everything is a switch. On your first login the installer sets MelloUI up with 
 *   **Route** finds the quickest way over roads and flights; an arrow and a marker in the world lead you.
 *   **Quest Tracker** and a **Quest List** of every quest near you.
 *   **Dungeon Info:** every dungeon's bosses, loot and drop rates.
-*   **RestedXP** guide steps on the map, the marker and the tracker.
+*   **Guide addons:** RestedXP, Follow The Arrow, APR and TomTom steps show on the map, the marker and the tracker, with one arrow at a time.
 
 ## Quality of life
 

@@ -67,6 +67,13 @@
 --                                    its edge (a seal: the gold rim round a slate core; the sketch's P2)
 --   spec.tint = key                  the picture painted in the palette's colour (MelloUI.Painter: again with the
 --                                    palette), not in its own
+--   spec.own = name                  (qu-04) a picture a look may draw for the pin whole (MelloUI.Icons.Drawn: the
+--                                    game's, a look's set's): shown alone in that look, without spec.tint, disc and
+--                                    core; MelloUI's look keeps those. The count's badge the same (T.COUNT). Both
+--                                    dressed again when the look switches (the bus's 'skin', 'icons')
+--   spec.emblem = icon               (qu-04) a picture in the pin's seal: over its core 1 px in (MelloUI's look), in
+--                                    a look's own seal picture at T.FRAME_EMBLEM of it (Oldschool's frame); none on
+--                                    a game picture (the Default skin: the game's own look)
 --   spec.many = icon                 the picture a pin shows that holds others with another picture than its own
 --                                    (the quests': the "!" while one of them is still to do, though the first by
 --                                    place is ready to hand in; all ready: the "?")
@@ -102,6 +109,8 @@ local T = {
 	RING_STEP = 0.8,    -- a pin stepping aside: rings this share of its size apart, two of them, eight places a ring
 	BADGE = 12,         -- the count's badge (px), its middle this share of the pin's size right and down of the pin's
 	BADGE_AT = { 0.38, 0.32 },
+	COUNT = "map_count",   -- (qu-04) the count's picture where a look draws its own (Skin.ICON, a look's set)
+	FRAME_EMBLEM = 0.72,   -- (qu-04) an emblem inside a look's own seal picture (Oldschool's frame): this share of it
 	LABEL_GAP = { 4, 14 },   -- px from a pin's edge a name may stand, the near ring first
 	LABEL_PAD = 3,
 	NAME_SHADE = 0.6,   -- the soft shade under a name (the zone names')
@@ -111,6 +120,8 @@ Pins.T = T
 local function CellOf(wx, wy)
 	return floor(wx / T.CELL) * 4096 + floor(wy / T.CELL)
 end
+
+local made = setmetatable({}, { __mode = "k" })   -- (qu-04) every pins object, for a look's switch
 
 function Pins.New(canvas)
 	local frame = CreateFrame("Frame", nil, canvas.frame)
@@ -124,6 +135,7 @@ function Pins.New(canvas)
 		-- worked out at, a pin of them set or gone since; the names' boxes shown now
 		apartLayers = {}, apart = { k = nil, cuts = nil, dirty = true }, labelBoxes = {}, nLabels = 0,
 	}, Pins)
+	made[self] = true
 	return self
 end
 
@@ -221,6 +233,9 @@ local function HideTex(pin)
 		if tex.core then
 			tex.core:Hide()
 		end
+		if tex.emblem then
+			tex.emblem:Hide()
+		end
 		if tex.badge then
 			tex.badge:Hide()
 		end
@@ -233,6 +248,30 @@ local function HideTex(pin)
 		end
 	end
 	pin.shown = false
+end
+
+-- (qu-04) the picture a look draws for the pin whole (spec.own, MelloUI.Icons.Drawn), or nil; and the pin's size on
+-- the screen in the look on show: its spec's, a game picture's `grow` applied (MelloUI.Skin: the Default skin's doors,
+-- the user's yes to "a little bigger") -- read by the dressing, the pins kept apart, the pointer and the moments alike;
+-- remembered per spec until the look switches (Restyle)
+local function OwnOf(spec)
+	local Icons = MelloUI.Icons
+	return spec.own and Icons.Drawn and Icons.Drawn(spec.own) and spec.own or nil
+end
+
+local sizes = setmetatable({}, { __mode = "k" })
+local function PinPx(spec)
+	local s = sizes[spec]
+	if not s then
+		s = spec.size or 16
+		local Skin = rawget(MelloUI, "Skin")
+		local pic = Skin and spec.icon and Skin.Icon(OwnOf(spec) or spec.icon)
+		if pic and pic.grow then
+			s = floor(s * pic.grow + 0.5)
+		end
+		sizes[spec] = s
+	end
+	return s
 end
 
 -- the pin's look on its texture (made from its layer's pool the first time it shows)
@@ -257,18 +296,19 @@ local function Dress(pin)
 		pin.dressed = true
 		return
 	end
-	local s = spec.size or 16
-	if spec.atlas then
-		tex:SetAtlas(spec.atlas)
-	elseif spec.icon then
-		MelloUI.Icons.Set(tex, spec.icon, s)   -- (2026-10-21: the copy for its size; a game icon as it is)
-	end
-	tex:SetSize(s, s)
-	tex.many = nil   -- (2.1.0: the picture for many set again by the lay's Extras)
-	-- (2.1.0) its colour: the palette's (spec.tint, painted again with the palette) or its own; a pooled texture painted
-	-- before lets go of the palette first
+	local s = PinPx(spec)
+	-- (2.1.0, qu-04) a look with a picture of its own for the pin (spec.own: the game's, a look's set's) shows that
+	-- alone, without the palette's pieces (the seal's tint and discs: MelloUI's look)
+	local Icons = MelloUI.Icons
+	local own = OwnOf(spec)
+	tex.own = own
+	local Skin = rawget(MelloUI, "Skin")
+	-- (2.1.0) its colour, first (a game picture with a colour of its own lays it over this: a member's class blip): the
+	-- palette's (spec.tint, painted again with the palette) or its own; a pooled texture painted before lets go of the
+	-- palette first
 	local W = MelloUI.Widgets
-	if tex.tint and tex.tint ~= spec.tint then
+	local tint = not own and spec.tint or nil
+	if tex.tint and tex.tint ~= tint then
 		local P = rawget(MelloUI, "Painter")
 		if P and P.Unpaint then
 			P.Unpaint(tex, "vertex")
@@ -276,14 +316,27 @@ local function Dress(pin)
 		tex.tint = nil
 	end
 	local c = spec.rgb
-	if spec.tint then
-		W.Paint(tex, spec.tint, "vertex")
-		tex.tint = spec.tint
+	if tint then
+		W.Paint(tex, tint, "vertex")
+		tex.tint = tint
 	elseif c then
 		tex:SetVertexColor(c[1], c[2], c[3])
 	else
 		tex:SetVertexColor(1, 1, 1)
 	end
+	if spec.atlas then
+		tex:SetAtlas(spec.atlas)
+	elseif spec.icon then
+		Icons.Set(tex, own or spec.icon, s)   -- (2026-10-21: the copy for its size; a game icon as it is)
+		-- (qu-04) a game picture with a wide clear margin without it (Skin.Inset: Default's doors); the icon system lets
+		-- go of the texture then, and the next look switch dresses it again here (Restyle)
+		local pic = Skin and Skin.Inset and Skin.Icon(own or spec.icon)
+		if pic and pic.inset then
+			Skin.Inset(tex, pic)
+		end
+	end
+	tex:SetSize(s, s)
+	tex.many = nil   -- (2.1.0: the picture for many set again by the lay's Extras)
 	tex:SetAlpha(spec.alpha or 1)
 	tex:SetRotation(pin.rotation or spec.rotation or 0)
 	tex:SetDrawLayer("ARTWORK", spec.sub or 0)
@@ -297,7 +350,7 @@ local function Dress(pin)
 	-- (spec.disc: the dark edge), over it spec.rim px in from its edge (spec.core: the slate core in the gold rim); both
 	-- follow the picture's size (its moments)
 	local disc = tex.disc
-	if spec.disc then
+	if spec.disc and not own then
 		if not disc then
 			disc = pin.layer.frame:CreateTexture(nil, "ARTWORK")
 			disc:Hide()
@@ -317,7 +370,7 @@ local function Dress(pin)
 		disc:Hide()
 	end
 	local core = tex.core
-	if spec.core then
+	if spec.core and not own then
 		if not core then
 			core = pin.layer.frame:CreateTexture(nil, "ARTWORK")
 			core:Hide()
@@ -336,12 +389,62 @@ local function Dress(pin)
 	elseif core then
 		core:Hide()
 	end
+	-- (qu-04) the emblem in the seal, following the picture's size (its moments)
+	local emblem = tex.emblem
+	local game = own and Skin and Skin.Icon(own)
+	tex.emblemOn = spec.emblem and not game or nil
+	if tex.emblemOn then
+		if not emblem then
+			emblem = pin.layer.frame:CreateTexture(nil, "ARTWORK")
+			emblem:Hide()
+			tex.emblem = emblem
+		end
+		local e = own and floor(s * T.FRAME_EMBLEM + 0.5) or (s - 2 * (spec.rim or 0) - 2)
+		local i = (s - e) / 2
+		emblem:ClearAllPoints()
+		emblem:SetPoint("TOPLEFT", tex, "TOPLEFT", i, -i)
+		emblem:SetPoint("BOTTOMRIGHT", tex, "BOTTOMRIGHT", -i, i)
+		Icons.Set(emblem, spec.emblem, e)
+		emblem:SetDrawLayer("ARTWORK", (spec.sub or 0) + 2)
+		if pin.shown then
+			emblem:Show()
+		end
+	elseif emblem then
+		emblem:Hide()
+	end
 	pin.dressed = true
 	pin.apartAt = nil   -- (its count and its name shown again on the lay)
 end
 
 -- (2.1.0) the count's badge on a pin's texture: the set's badge disc in the palette's innerPanel, its edge in the gold,
--- the number in the palette's text; made the first time a pin that holds others is laid on this texture
+-- the number in the palette's text -- or (qu-04) the look's own count picture (T.COUNT: the game's quest number disc,
+-- a look's set's) under the number; laid again when the look switched (every badge, a pooled texture's too: the icon
+-- system has set its disc again by a name the new look may not draw -- qu-04 sim: a magenta box). Made the first time a
+-- pin that holds others is laid on this texture
+local badges = setmetatable({}, { __mode = "k" })
+
+local function LayBadge(b, force)
+	local Icons = MelloUI.Icons
+	local own = Icons.Drawn and Icons.Drawn(T.COUNT) or false
+	if b.own == own and not force then
+		return
+	end
+	b.own = own
+	local P = rawget(MelloUI, "Painter")
+	if own then
+		if P and P.Unpaint then
+			P.Unpaint(b.disc, "vertex")
+		end
+		b.disc:SetVertexColor(1, 1, 1)
+		Icons.Set(b.disc, T.COUNT, T.BADGE)
+		b.edge:Hide()
+	else
+		Icons.Set(b.disc, "badge_disc", T.BADGE)
+		MelloUI.Widgets.Paint(b.disc, "innerPanel", "vertex")
+		b.edge:Show()
+	end
+end
+
 local function Badge(pin, tex)
 	local b = tex.badge
 	if not b then
@@ -351,21 +454,22 @@ local function Badge(pin, tex)
 		b:SetSize(T.BADGE, T.BADGE)
 		b:SetFrameLevel(lf:GetFrameLevel() + 1)
 		b:EnableMouse(false)
-		local disc = b:CreateTexture(nil, "ARTWORK", nil, 1)
-		disc:SetAllPoints()
-		MelloUI.Icons.Set(disc, "badge_disc", T.BADGE)
-		W.Paint(disc, "innerPanel", "vertex")
+		b.disc = b:CreateTexture(nil, "ARTWORK", nil, 1)
+		b.disc:SetAllPoints()
 		local edge = b:CreateTexture(nil, "ARTWORK", nil, 2)
 		edge:SetAllPoints()
 		MelloUI.Icons.Set(edge, "badge_edge", T.BADGE)
 		W.Paint(edge, "selectedTrim", "vertex")
+		b.edge = edge
 		local num = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		num:SetPoint("CENTER", 0, 0)
 		W.Paint(num, "text", "text")
 		b.num = num
 		b:Hide()
 		tex.badge = b
+		badges[b] = true
 	end
+	LayBadge(b)
 	return b
 end
 
@@ -432,11 +536,14 @@ end
 -- texture changed)
 local function Extras(self, pin, tex)
 	pin.apartAt = self.apartGen
-	if tex.disc and pin.spec.disc then
+	if tex.disc and pin.spec.disc and not tex.own then
 		tex.disc:Show()
 	end
-	if tex.core and pin.spec.core then
+	if tex.core and pin.spec.core and not tex.own then
 		tex.core:Show()
+	end
+	if tex.emblem and tex.emblemOn then
+		tex.emblem:Show()
 	end
 	local n = pin.members and #pin.members or 0
 	-- (a pin that holds others with another picture than its own: spec.many's, where it has one; its own again when
@@ -452,7 +559,7 @@ local function Extras(self, pin, tex)
 	end
 	if tex.many ~= many then
 		tex.many = many
-		MelloUI.Icons.Set(tex, many or pin.spec.icon, pin.spec.size or 16)
+		MelloUI.Icons.Set(tex, many or tex.own or pin.spec.icon, PinPx(pin.spec))
 	end
 	if n > 1 then
 		local b = Badge(pin, tex)
@@ -460,7 +567,7 @@ local function Extras(self, pin, tex)
 			b.n = n
 			b.num:SetText(n)
 		end
-		local s = pin.spec.size or 16
+		local s = PinPx(pin.spec)
 		b:ClearAllPoints()
 		b:SetPoint("CENTER", tex, "CENTER", s * T.BADGE_AT[1], -s * T.BADGE_AT[2])
 		b:Show()
@@ -697,7 +804,7 @@ local function Apart(self, k)
 		end
 		-- laid: where it stands, or (nudge) the nearest free place on a ring round it
 		for _, pin in ipairs(list) do
-			local s = (pin.spec.size or 16) / 2
+			local s = PinPx(pin.spec) / 2
 			local x, y = pin.wx * k + (pin.dx or 0), pin.wy * k
 			local ox, oy = 0, 0
 			if layer.nudge and Overlaps(boxes, n, x - s, y - s, x + s, y + s, T.GAP) then
@@ -730,7 +837,7 @@ local function Apart(self, k)
 	local pad = T.LABEL_PAD
 	for _, pin in ipairs(named) do
 		local w, h = Measure(self, pin.name)
-		local s = (pin.spec.size or 16) / 2
+		local s = PinPx(pin.spec) / 2
 		local x, y = pin.wx * k + (pin.dx or 0) + (pin.nx or 0), pin.wy * k + (pin.ny or 0)
 		for _, g in ipairs(T.LABEL_GAP) do
 			local e = s + g
@@ -857,7 +964,7 @@ function Pins:At(x, y)
 	for _, pin in ipairs(self.shownList) do
 		local spec = pin.spec
 		if pin.shown and (spec.tip or spec.fillTip or spec.click) then
-			local r = (spec.size or 16) / 2 + T.HIT
+			local r = PinPx(spec) / 2 + T.HIT
 			local dx, dy = pin.x - x, pin.y - y
 			if dx * dx + dy * dy <= r * r and (not bestOrder or pin.layer.order >= bestOrder) then
 				best, bestOrder = pin, pin.layer.order
@@ -876,7 +983,7 @@ end
 local function Size(pin, k)
 	local tex = pin.tex
 	if tex and pin.shown and not pin.spec.frame then
-		local s = (pin.spec.size or 16) * k
+		local s = PinPx(pin.spec) * k
 		tex:SetSize(s, s)
 	end
 end
@@ -935,7 +1042,7 @@ function Pins:Ring(pin)
 		end
 		pin.ring = ring
 	end
-	local s = (pin.spec.size or 16) * 1.3
+	local s = PinPx(pin.spec) * 1.3
 	ring:SetSize(s, s)
 	ring:ClearAllPoints()
 	ring:SetPoint("CENTER", layer.frame, "TOPLEFT", pin.x or 0, -(pin.y or 0))
@@ -953,7 +1060,7 @@ function Pins:Raise(pin, on)
 		return
 	end
 	local w = pin.tex and pin.tex:GetWidth()
-	pin.liftFrom = (type(w) == "number" and w > 0) and w / (pin.spec.size or 16) or 1
+	pin.liftFrom = (type(w) == "number" and w > 0) and w / PinPx(pin.spec) or 1
 	pin.lifted = on and true or false
 	if not Anim or Anim.reduceMotion then
 		Rest(pin)
@@ -961,6 +1068,30 @@ function Pins:Raise(pin, on)
 	end
 	Anim:Drive(pin, LiftStep, T.LIFT, "linear", Rest)
 end
+
+-- (qu-04) the look switched (the skin, a look's own icon set: the bus's 'skin' and 'icons', after MelloUI.Icons has
+-- set every held picture again): every count laid again now, every pin dressed again on the next lay (its own picture,
+-- its size: PinPx forgets the old look's) and the pins kept apart worked out again -- now while the map shows
+local function Restyle()
+	wipe(sizes)
+	for b in pairs(badges) do
+		LayBadge(b, true)
+	end
+	for self in pairs(made) do
+		for _, layer in pairs(self.layers) do
+			for _, pin in pairs(layer.pins) do
+				pin.dressed = false
+				pin.apartAt = nil
+			end
+		end
+		self.apart.dirty = true
+		if self.frame:IsVisible() then
+			self:Lay()
+		end
+	end
+end
+MelloUI:On("skin", Restyle, Pins)
+MelloUI:On("icons", Restyle, Pins)
 
 -- every pin of a layer (the tests and the dump)
 function Pins:Each(name, fn)

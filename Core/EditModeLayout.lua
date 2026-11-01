@@ -103,7 +103,8 @@
 --       shows them from the next reload (never told to lay out from here).
 --       A preset active: false, "preset", nothing changed -- unless `copy`:
 --       the preset copied first as an account layout "<preset> (MelloUI)",
---       saved as the active one. In combat or while Edit Mode is open: false
+--       saved as the active one ((2.1.0) the account's copy of it made
+--       before is used again, never a second one). In combat or while Edit Mode is open: false
 --       and why, saved when that ends. done(ok, why, saved) once; saved:
 --       something changed and the layouts were saved.
 --   MelloUI:SetEditModeLayoutSettings(entries, done) -> ok, why, saved
@@ -118,6 +119,11 @@
 --   MelloUI:SayEditModeReload()
 --       (0.25.0) the line to type /reload, once a session (the one the
 --       configurator's way in says), for a change the player asked for.
+--   MelloUI:EditModeLayoutCheck(add)                    (2.1.0) read only
+--       /mello layout check: the client's layouts, Edit Mode's own copy,
+--       Mello's layout, the last install's answer, this session's writes,
+--       each system's saved place against its frame's; add(fmt, ...) a line
+--       (the end of this file)
 --   MelloUI:EditModeSettingsSoon(system, index, values[, done])
 --       the configurator's way in: the values held (the readers show them),
 --       saved 0.4 s after the last change, every held one in one save; a
@@ -179,12 +185,61 @@ local TEXT = {
 	copyName = "%s (MelloUI)",
 	presetAsk = "Your active Edit Mode layout is the game's %s preset, which can't be changed. Make a copy called '%s' and use it?",
 	presetYes = "Make a copy",
+	-- (2.1.0, el-15) the copy made before (another character, an earlier session): used again, never a second one
+	presetUse = "Your active Edit Mode layout is the game's %s preset, which can't be changed. Use your copy '%s' for this change?",
+	presetUseYes = "Use it",
 	presetNo = "Cancel",
 	reloadSay = "Edit Mode layout saved: type /reload to see it.",
+	reloadPending = "Edit Mode layout saved into '%s'. The game switches to it only with a reload: Edit Layout > Layout > Reload now.",
 	-- (0.22.0: an older MelloUI layout deleted at the player's word)
 	deleteCombat = "not in a fight: delete it when the fight ends",
 	deleteEditMode = "close Edit Mode first",
+	-- (2.1.0, el-15) Edit Mode opened on its older copy of the list (Unread below)
+	unread = "Edit Mode still shows your layout from before MelloUI's last change. Close it without saving to load the change, or type /reload: saving here puts the older layout back.",
 }
+
+-- (2.1.0, el-15) what this session's writes did, newest first (the last JOURNAL_KEEP): read by /mello layout check
+-- only; nothing saved (an install's own answer is kept on its restore point, MelloUI.db.installer)
+local journal = {}
+local JOURNAL_KEEP = 8
+local function Note(fmt, ...)
+	local ok, line = pcall(string.format, fmt, ...)
+	tinsert(journal, 1, tostring(date("%H:%M:%S")) .. " " .. (ok and line or tostring(fmt)))
+	journal[JOURNAL_KEEP + 1] = nil
+end
+
+-- (2.1.0, el-15) Edit Mode keeps its own copy of the layouts, read at login, when the game is told to lay out
+-- (EDIT_MODE_LAYOUTS_UPDATED) and when Edit Mode CLOSES (ExitEditMode -> RevertAllChanges reads C_EditMode.GetLayouts
+-- and lays it out), never when it opens (EnterEditMode). After a save of ours the game was not told about, Edit Mode
+-- opens on the older list, and its own Save puts that list back over ours (el-14's finding; with it Edit Layout's
+-- copies of those places go too). Its first open since is told so, once: closed without saving, it loads ours.
+-- Listened to only while such a save waits (nothing at login).
+local UNREAD_OWNER = "Edit Mode layout: unread"
+local unread = false
+local function OnUnreadEditMode(entering)
+	if entering then
+		MelloUI:Announce(TEXT.unread, "info")
+		local look = MelloUI.CentreLook
+		if not (look and look.Setting and look.Setting("noticeToChat")) then
+			MelloUI:Print(TEXT.unread)
+		end
+	else
+		unread = false   -- (its close read the saved list)
+		MelloUI:Off(UNREAD_OWNER, "editmode")
+	end
+end
+
+local function Unread(on)
+	if on == unread then
+		return
+	end
+	unread = on
+	if on then
+		MelloUI:On("editmode", OnUnreadEditMode, UNREAD_OWNER)
+	else
+		MelloUI:Off(UNREAD_OWNER, "editmode")
+	end
+end
 
 local function Data(skin)
 	-- (1.0: the painted reskin's own while MelloUI_Oldschool is loaded; 1.2.4: a skin's own when the installer names it)
@@ -441,22 +496,35 @@ local function Put(quiet, source)
 	info.layouts = full
 	local okS, err = pcall(C_EditMode.SaveLayouts, info)
 	if not okS then
+		Note("put '%s': refused by SaveLayouts: %s", new.layoutName, tostring(err))
 		return false, TEXT.noSave:format(tostring(err))
 	end
+	-- (2.1.0, el-15) told: the game lays it out at once (its synchronous EDIT_MODE_LAYOUTS_UPDATED); a layout of
+	-- that name replaced while it was already the active one is only saved -- the game shows it from the next
+	-- reload, so the player is told to type it (the installer's Keep reloads by itself)
+	local told = true
 	if replaced then
 		if info.activeLayout ~= index and C_EditMode.SetActiveLayout then
 			pcall(C_EditMode.SetActiveLayout, index)
+		else
+			told = false
 		end
 	elseif C_EditMode.OnLayoutAdded then
 		pcall(C_EditMode.OnLayoutAdded, index, true, true)
 	elseif C_EditMode.SetActiveLayout then
 		pcall(C_EditMode.SetActiveLayout, index)
 	end
+	Note("put '%s' at %d (%s); the game told to lay it out: %s", new.layoutName, index, replaced and "replaced" or "added",
+		told and "yes" or "no (it was the active one already: after a reload)")
+	Unread(not told)
 	-- (told on the bus: the Quest Tracker records where it hangs the game's
 	-- tracker, whichever path put it in)
 	MelloUI:Fire("editmodelayout", "put", new.layoutName)
 	if not quiet then
 		MelloUI:Print("Edit Mode layout '%s' %s and made active.", new.layoutName, replaced and "updated" or "added")
+		if not told then
+			MelloUI:Print(TEXT.reloadSay)
+		end
 	end
 	return true, nil, replacedString
 end
@@ -530,8 +598,10 @@ local function Restore(state)
 		info.layouts = full
 		local ok, err = pcall(C_EditMode.SaveLayouts, info)
 		if not ok then
+			Note("restore '%s': refused by SaveLayouts: %s", name, tostring(err))
 			return false, TEXT.noSave:format(tostring(err))
 		end
+		Note("restore '%s': %s", name, removed and "removed" or "its old content back")
 		if removed and C_EditMode.OnLayoutDeleted then
 			pcall(C_EditMode.OnLayoutDeleted, removed)
 		elseif added and C_EditMode.OnLayoutAdded then
@@ -540,6 +610,11 @@ local function Restore(state)
 	end
 	if target and C_EditMode.SetActiveLayout and (changed or target ~= info.activeLayout) then
 		pcall(C_EditMode.SetActiveLayout, target)
+		Unread(false)
+	elseif changed and not (removed or added) then
+		Unread(true)   -- (the old content saved over the same index: the game reads it at the next reload)
+	elseif removed or added then
+		Unread(false)
 	end
 	return true, why
 end
@@ -559,11 +634,73 @@ local function Activate(name)
 	if info.activeLayout ~= at and C_EditMode.SetActiveLayout then
 		local ok, err = pcall(C_EditMode.SetActiveLayout, at)
 		if not ok then
+			Note("activate '%s': %s", name, tostring(err))
 			return false, tostring(err), false
 		end
 	end
+	Note("activate '%s' at %d", name, at)
+	if info.activeLayout ~= at then
+		Unread(false)
+	end
 	MelloUI:Fire("editmodelayout", "active", name)
 	return true, nil, false
+end
+
+--------------------------------------------------------------------------------
+-- (2.1.0, el-15; the user's switch test in the real client, 2026-10-31: "'Classic' saved as the active one", then
+-- "the game kept 'Modern (MelloUI)' active") The client does not take info.activeLayout from SaveLayouts. A layout
+-- MelloUI saved as the active one while the game kept another (the Layout list's Use / New / Copy / Import / Delete,
+-- a preset's copy) waits here, and is made active right before the reload the player asks for with the bridge's
+-- secure "Reload now" button (its PreClick: MelloUI:EditModeActivateNow), the installer's way: the manager's
+-- synchronous re-layout then runs in a session the reload ends at once, never in a live one. Out of combat, Edit
+-- Mode closed. One at a time (the newest wins); this session only.
+--   MelloUI:EditModeActivePending() -> name, layoutType | nil
+--   MelloUI:EditModeActivateNow() -> ok   (a secure /reload button's PreClick only)
+--------------------------------------------------------------------------------
+local pendingActive = nil   -- { name, kind = Enum.EditModeLayoutType }
+
+-- after a save that named `active` the active one: read back; the game kept another -> it waits (returns that name)
+local function ReadBackActive(full, active)
+	local back, backInfo = FullList()
+	local now = back and backInfo and backInfo.activeLayout
+	local wanted = full[active]
+	if not (back and wanted and not Secret(now) and type(now) == "number") then
+		return nil
+	end
+	if now == active then
+		pendingActive = nil
+		return nil
+	end
+	pendingActive = { name = NameOf(wanted), kind = TypeOf(wanted) }
+	return NameOf(back[now]) or "?", now
+end
+
+function MelloUI:EditModeActivePending()
+	if pendingActive then
+		return pendingActive.name, pendingActive.kind
+	end
+	return nil
+end
+
+function MelloUI:EditModeActivateNow()
+	local want = pendingActive
+	if not (want and Api() and C_EditMode.SetActiveLayout) or InCombatLockdown() or MelloUI.EditModeOpen() then
+		return false
+	end
+	pendingActive = nil
+	local full, info = FullList()
+	for i, layout in ipairs(full or EMPTY) do
+		if NameOf(layout) == want.name and TypeOf(layout) == want.kind then
+			if info.activeLayout == i then
+				return true
+			end
+			local ok, err = pcall(C_EditMode.SetActiveLayout, i)
+			Note("activate '%s' at %d right before the reload: %s", tostring(want.name), i, ok and "done" or tostring(err))
+			return ok
+		end
+	end
+	Note("activate '%s' before the reload: no longer in the list", tostring(want.name))
+	return false
 end
 
 --------------------------------------------------------------------------------
@@ -732,7 +869,8 @@ local function PutFitted(f)
 	end
 	fitting = nil
 	local report = f.report
-	if not (type(f.fitted) == "table" and type(report) == "table" and report.pass) then
+	-- (2.1.0, el-15) in like the installer's: a pass, the screen it is drawn for, or adapted to this one
+	if not (type(f.fitted) == "table" and type(report) == "table" and (report.pass or report.drawn or report.adapted)) then
 		local why = type(report) == "table" and (report.why or report.verdict) or TEXT.notFitted
 		if not f.quiet then
 			MelloUI:Print("Edit Mode layout: %s", tostring(why))
@@ -889,6 +1027,24 @@ function MelloUI:EditModeState(which)
 	return state
 end
 
+-- (2.1.0, el-15) Whether Mello's layout for this screen is the active Edit Mode layout on this character, read only:
+-- true / false, nil when it cannot be read (no API, no screen size). A profile load offers the installer's Fit when it
+-- is not (Core/Config.lua, CONFIG.OfferProfileFit): the action bars, the experience bar, the bags and the micro menu
+-- move only with the layout
+function MelloUI:MelloLayoutActive()
+	if not Api() then
+		return nil
+	end
+	local full, info = FullList()
+	local name = ScreenName()
+	local at = info and info.activeLayout
+	if not (full and name) or Secret(at) or type(at) ~= "number" then
+		return nil
+	end
+	local active = full[at]
+	return active ~= nil and NameOf(active) == name and TypeOf(active) ~= LayoutType("Preset")
+end
+
 -- One system's place in the active saved layout, read only (see the
 -- header): the layouts table is only read, no manager method is called
 function MelloUI:EditModeSystemAnchor(system, index)
@@ -994,7 +1150,8 @@ end
 -- settings the system has (a bar without an icon count keeps none). A preset
 -- cannot be changed (the game's own Save asks for a new layout first,
 -- EditModeManager SaveLayoutChanges): with `copy` the preset goes in as an
--- account layout "<preset> (MelloUI)" (a number after a name taken), saved as
+-- account layout "<preset> (MelloUI)" (a number after a character layout's name
+-- taken; (2.1.0) the account's copy made before used again), saved as
 -- the active one, and changed there. Never in combat or while Edit Mode is
 -- open: the change waits. MelloUI:EditModeSettingsSoon is the configurator's
 -- way in: a slider's every step held, written once it is let go (every held
@@ -1102,26 +1259,36 @@ WriteSettings = function(entries, copy)
 			return false, TEXT.noActive
 		end
 	end
-	local copied
+	local copied, reused
 	if layout and TypeOf(layout) == LayoutType("Preset") then
 		if not copy then
 			return false, "preset"
 		end
 		local account = LayoutType("Account")
-		local room, most = RoomFor(full, account)
-		if not room then
-			return false, TEXT.noRoom:format(most)
+		local base = TEXT.copyName:format(NameOf(layout) or "Layout")
+		-- (2.1.0, el-15; the user's /mello layout check: 'Modern (MelloUI)', '... 2', '... 3') the account's copy of
+		-- this preset, made before (on another character, which the game keeps on its own active layout, or in an
+		-- earlier session), is used again and made active: never one more copy -- each took one of the five account
+		-- layouts Edit Mode keeps, and the installer needs one for Mello's layout
+		local have = Find(full, base, account)
+		if have then
+			at, layout, reused = have, full[have], base
+		else
+			local room, most = RoomFor(full, account)
+			if not room then
+				return false, TEXT.noRoom:format(most)
+			end
+			-- (a copy: the preset is the game's own table, never changed)
+			local new = PlainCopy(layout, 0)
+			new.layoutType = account
+			new.layoutName = FreeName(full, base)
+			FixStyle(new)
+			at = InsertAt(full, presets, account)
+			tinsert(full, at, new)
+			layout, copied = new, new.layoutName
 		end
-		-- (a copy: the preset is the game's own table, never changed)
-		local new = PlainCopy(layout, 0)
-		new.layoutType = account
-		new.layoutName = FreeName(full, TEXT.copyName:format(NameOf(layout) or "Layout"))
-		FixStyle(new)
-		at = InsertAt(full, presets, account)
-		tinsert(full, at, new)
-		layout, copied = new, new.layoutName
 	end
-	local changed, found, names = copied ~= nil, false, {}
+	local changed, found, names = (copied or reused) ~= nil, false, {}
 	for _, entry in ipairs(entries) do
 		local target = layout
 		if entry.layout ~= nil then
@@ -1168,7 +1335,7 @@ WriteSettings = function(entries, copy)
 	-- client's 1 s burst after a Bar Layout slider (the user, 2026-10-08: the
 	-- micro menu's "attempt to call a nil value"). The saved layout shows from
 	-- the next reload (MelloUI:EditModeSettingsSoon says so once a session).
-	if copied then
+	if copied or reused then
 		info.activeLayout = at
 	end
 	info.layouts = full
@@ -1183,15 +1350,29 @@ WriteSettings = function(entries, copy)
 	local okS, err = pcall(C_EditMode.SaveLayouts, info)
 	watcher:UnregisterEvent("EDIT_MODE_LAYOUTS_UPDATED")
 	if not okS then
+		Note("settings %s: refused by SaveLayouts: %s", table.concat(names, ", "), tostring(err))
 		return false, TEXT.noSave:format(tostring(err))
 	end
 	readFull = nil
+	Unread(not laidOut)
+	-- (el-15) a preset's copy saved as the active one: the real client keeps the preset; the copy waits for Reload now
+	if copied or reused then
+		local kept = ReadBackActive(full, at)
+		if kept then
+			Note("settings: the game kept '%s' active; '%s' waits for Reload now", kept, tostring(NameOf(layout)))
+		end
+	end
+	Note("settings %s saved%s%s; laid out during the save: %s", table.concat(names, ", "),
+		layout and (" in '" .. tostring(NameOf(layout)) .. "'") or "", copied and " (a preset's copy, saved as the active one)"
+		or reused and " (the preset's copy made before, used again and saved as the active one)" or "",
+		laidOut and "yes" or "no")
 	-- (logged for the in-game check: whether the save itself made the game
 	-- lay out inside this call)
 	LogOnly("Edit Mode layout: %s saved%s%s; shows after a reload; laid out during the save: %s",
 		table.concat(names, ", "), layout and (" in '" .. tostring(NameOf(layout)) .. "'") or "",
-		copied and " (a copy of the preset, saved as the active one)" or "", laidOut and "yes" or "no")
-	return true, nil, copied, true
+		copied and " (a copy of the preset, saved as the active one)"
+		or reused and " (the preset's copy made before, saved as the active one)" or "", laidOut and "yes" or "no")
+	return true, nil, copied or reused, true
 end
 
 -- the readers' list, kept for the frame it was read in (a page's rows read
@@ -1296,15 +1477,25 @@ end
 -- Reload()", 0.19.9's in-game test); the player's own /reload is allowed
 local reloadAsked = false
 local function AskReload()
-	if reloadAsked then
+	-- (2.1.0, el-15) saved into a layout the game makes active only with a reload (a preset's copy): the way to it,
+	-- once for each such layout; a typed /reload would not switch it
+	local waiting = pendingActive and pendingActive.name
+	local text = TEXT.reloadSay
+	if waiting then
+		if reloadAsked == waiting then
+			return
+		end
+		reloadAsked, text = waiting, MelloUI.Lang.F(TEXT.reloadPending, waiting)
+	elseif reloadAsked then
 		return
+	else
+		reloadAsked = true
 	end
-	reloadAsked = true
-	MelloUI:Announce(TEXT.reloadSay, "info")
+	MelloUI:Announce(text, "info")
 	-- (and the chat keeps it after the line fades, unless notices go there)
 	local look = MelloUI.CentreLook
 	if not (look and look.Setting and look.Setting("noticeToChat")) then
-		MelloUI:Print(TEXT.reloadSay)
+		MelloUI:Print("%s", text)
 	end
 end
 
@@ -1317,11 +1508,11 @@ end
 -- the held changes written (the timer's end): the preset question first
 -- when the active layout is one
 local FlushHeld
-local function Ask(name)
+local function Ask(name, have)
 	asking = true
 	MelloUI:Confirm({
-		text = TEXT.presetAsk:format(name or "preset", TEXT.copyName:format(name or "Layout")),
-		accept = TEXT.presetYes,
+		text = (have and TEXT.presetUse or TEXT.presetAsk):format(name or "preset", TEXT.copyName:format(name or "Layout")),
+		accept = have and TEXT.presetUseYes or TEXT.presetYes,
 		cancel = TEXT.presetNo,
 		onAccept = function()
 			asking = false
@@ -1347,7 +1538,9 @@ FlushHeld = function(copy)
 		local full, info = FullList()
 		local layout = full and Active(full, info)
 		if layout and TypeOf(layout) == LayoutType("Preset") then
-			Ask(NameOf(layout))
+			-- (2.1.0, el-15) the account's copy of it there already: asked to use that one (WriteSettings reuses it)
+			local name = NameOf(layout)
+			Ask(name, Find(full, TEXT.copyName:format(name or "Layout"), LayoutType("Account")) ~= nil)
 			return
 		end
 	end
@@ -1628,16 +1821,20 @@ do
 		info.activeLayout = active
 		local ok, err = pcall(C_EditMode.SaveLayouts, info)
 		if not ok then
+			Note("layouts %s: refused by SaveLayouts: %s", what, tostring(err))
 			return false, TEXT.noSave:format(tostring(err))
 		end
 		readFull = nil
 		local wanted = full[active] and NameOf(full[active]) or "?"
 		LogOnly("Edit Mode layouts: %s; '%s' saved as the active one; shows after a reload", what, wanted)
-		local back, backInfo = FullList()
-		local now = back and backInfo and backInfo.activeLayout
-		if back and not Secret(now) and type(now) == "number" and now ~= active then
-			local kept = NameOf(back[now]) or "?"
+		Note("layouts %s: '%s' saved as the active one (index %d)", what, wanted, active)
+		Unread(true)
+		-- (el-15: the real client keeps its own; the wanted one then waits for the Reload now button)
+		local kept, now = ReadBackActive(full, active)
+		if kept then
 			LogOnly("Edit Mode layouts: the game kept '%s' active (index %s, not %s)", kept, tostring(now), tostring(active))
+			Note("layouts: the game kept '%s' active (index %s, not %s); '%s' waits for Reload now", kept, tostring(now),
+				tostring(active), wanted)
 			return true, "kept", kept
 		end
 		return true
@@ -1704,6 +1901,7 @@ do
 				return false, MG.gone
 			end
 			if at == active then
+				pendingActive = nil   -- (el-15: the game's own active one picked: nothing waits any more)
 				return true
 			end
 			return SaveAs(full, info, at, "use '" .. tostring(spec.name) .. "'")
@@ -1773,5 +1971,278 @@ do
 			return nil, MG.noShare
 		end
 		return text
+	end
+end
+
+--------------------------------------------------------------------------------
+-- (2.1.0, el-15; players: "the Edit Mode layout does not apply") /mello layout check: what the game and MelloUI hold
+-- for the Edit Mode layout, read only, for a player to copy and send (the log window). Never a layout call: the
+-- layouts and Edit Mode's own copy of them are read, the share string is made only to read its version, each system's
+-- frame is asked where it stands. Its lines are a report, in English (never translated).
+--   MelloUI:EditModeLayoutCheck(add)   add(fmt, ...) once a line
+--------------------------------------------------------------------------------
+do
+	local POINT_EPS = 1   -- units: a frame within this of its saved offsets stands where the layout says
+
+	local function Get(t, key)
+		return t[key]
+	end
+
+	local function Field(t, key)
+		local ok, v = pcall(Get, t, key)
+		if not ok or Secret(v) then
+			return nil
+		end
+		return v
+	end
+
+	local function Kind(layout)
+		local t = TypeOf(layout)
+		for _, name in ipairs({ "Preset", "Account", "Character" }) do
+			if t ~= nil and t == LayoutType(name) then
+				return name:lower()
+			end
+		end
+		return tostring(t)
+	end
+
+	-- a region's name, plain, or nil
+	local function NameOfRegion(r)
+		if type(r) ~= "table" then
+			return nil
+		end
+		local ok, n = pcall(r.GetName, r)
+		return (ok and not Secret(n) and type(n) == "string") and n or nil
+	end
+
+	local function Fmt(v)
+		local n = MelloUI.Safe.Finite(v)
+		return n and string.format("%.1f", n) or "?"
+	end
+
+	-- where a system frame stands: its first point (the offsets at scale 1, as the layout keeps them), or nil and why
+	local function PointNow(frame)
+		local ok, p, rel, rp, x, y = pcall(frame.GetPoint, frame, 1)
+		if not ok then
+			return nil, "unreadable"
+		end
+		if Secret(p) or Secret(rp) or Secret(x) or Secret(y) then
+			return nil, "secret"
+		end
+		if p == nil then
+			return nil, "no point"
+		end
+		local okS, s = pcall(frame.GetScale, frame)
+		s = (okS and MelloUI.Safe.Finite(s)) or 1
+		return { point = p, relativeTo = NameOfRegion(rel) or (rel == nil and "UIParent" or "?"), relativePoint = rp,
+			offsetX = (MelloUI.Safe.Finite(x) or 0) * s, offsetY = (MelloUI.Safe.Finite(y) or 0) * s }
+	end
+
+	local function Same(a, b)
+		local ax, ay = MelloUI.Safe.Finite(a.offsetX), MelloUI.Safe.Finite(a.offsetY)
+		return a.point == b.point and a.relativePoint == b.relativePoint and a.relativeTo == b.relativeTo
+			and ax ~= nil and ay ~= nil and math.abs(ax - b.offsetX) <= POINT_EPS and math.abs(ay - b.offsetY) <= POINT_EPS
+	end
+
+	local function Anchor(a)
+		return string.format("%s %s %s %s %s", tostring(a.point), tostring(a.relativeTo), tostring(a.relativePoint),
+			Fmt(a.offsetX), Fmt(a.offsetY))
+	end
+
+	local function Version(text)
+		return (type(text) == "string" and not Secret(text) and text:match("^%s*(%d+)")) or "?"
+	end
+
+	-- the client: its build, the screen, the baked layout as it reads it
+	local function Client(add)
+		local okB, build, buildNo = pcall(GetBuildInfo)
+		add("MelloUI %s, Edit Mode layout check, %s; client %s (%s)", tostring(MelloUI.version), tostring(date("%Y-%m-%d %H:%M")),
+			okB and tostring(build) or "?", okB and tostring(buildNo) or "?")
+		add("In combat: %s; Edit Mode open: %s", InCombat() and "yes" or "no", EditModeOpen() and "yes" or "no")
+		local okW, w, h = pcall(UIParent.GetSize, UIParent)
+		add("Screen: %s x %s UI units; Mello's layout for this screen is called '%s'", okW and Fmt(w) or "?",
+			okW and Fmt(h) or "?", tostring(ScreenName()))
+		local data = Data()
+		if not data then
+			add("Baked layout: none")
+			return
+		end
+		local okC, baked = pcall(C_EditMode.ConvertStringToLayoutInfo, data.layout)
+		local systems = okC and type(baked) == "table" and Field(baked, "systems")
+		add("Baked layout '%s': string version %s, %d characters; the client reads it: %s", tostring(data.name),
+			Version(data.layout), #data.layout, type(systems) == "table"
+			and string.format("yes, %d systems, input style %s", #systems, tostring(Field(baked, "interfaceStyle")))
+			or ("NO (" .. tostring(okC and "nothing" or baked) .. ")"))
+	end
+
+	-- the account's answer, this character's, the last install's (kept on its restore point) and this session's writes
+	local function Answers(add)
+		local um = MelloUI:GetModuleDB("UIModifications") or EMPTY
+		local I = MelloUI.Installer
+		local key = type(I) == "table" and I.AltKey and I.AltKey()
+		add("Account: layoutFitFor %s, skin %s, reskin %s, UI Modifications %s; took Mello's layout: %s",
+			tostring(um.layoutFitFor), tostring(um.skin), tostring(um.reskin),
+			MelloUI:IsModuleEnabled("UIModifications") and "on" or "off",
+			(type(I) == "table" and I.TookLayout) and (I.TookLayout(um) and "yes" or "no") or "?")
+		add("This character: asked about Mello's layout: %s", key and tostring(um[key]) or "?")
+		local rp = MelloUI.db and MelloUI.db.installer
+		if type(rp) == "table" and type(rp.at) == "number" then
+			-- (the answer: waiting, reverted -- its reason since 2.1.0; before, a setup's layout facts gone tell it --, kept)
+			local waiting = type(rp.pending) == "table"
+			local reverted = not waiting and (rp.reverted or (rp.option == "setup" and not rp.layoutFlags))
+			local answer = waiting and "waiting for Keep or Revert"
+				or reverted and ("reverted (" .. (rp.reverted and tostring(rp.reverted) or "no reason kept: an older MelloUI") .. ")")
+				or "kept"
+			local lay
+			if reverted then
+				lay = "taken back with the revert" .. (rp.layoutWanted == false and " (the player's own layout was picked)" or "")
+			elseif rp.layoutPut then
+				lay = "put in"
+			elseif rp.layoutWritten then
+				lay = "refused by the game"
+			elseif rp.layoutWanted == false then
+				lay = "the player's own kept (picked on the Layout step)"
+			elseif rp.layoutWanted then
+				lay = "picked, but NOT put in"
+			else
+				lay = "not put in (an older MelloUI kept no pick)"
+			end
+			add("Last install: %s, %s, %s; the layout: %s%s", tostring(date("%Y-%m-%d %H:%M", rp.at)), tostring(rp.option),
+				answer, lay, rp.layoutWhy and (" (" .. tostring(rp.layoutWhy) .. ")") or "")
+			-- (el-15) the fit's own answer, as the installer kept it
+			local lf = rp.layoutFit
+			if type(lf) == "table" then
+				add("  its fit: %s x %s UI units; %s; cause %s%s", tostring(lf.W), tostring(lf.H), tostring(lf.verdict),
+					tostring(lf.cause), lf.drawn and "; drawn for this screen: put in" or lf.adapted
+					and string.format("; adapted to this screen (scaled to %d%%): put in", math.floor((tonumber(lf.scaled) or 1) * 100 + 0.5))
+					or "")
+				for _, k in ipairs({ "flags", "hard", "off", "centre", "stores" }) do
+					for _, x in ipairs(type(lf[k]) == "table" and lf[k] or EMPTY) do
+						add("    %s: %s", k, tostring(x))
+					end
+				end
+			end
+		else
+			add("Last install: none kept")
+		end
+		add("This session's Edit Mode writes: %s", #journal > 0 and tostring(#journal) or "none")
+		for _, line in ipairs(journal) do
+			add("  %s", line)
+		end
+	end
+
+	-- each system: the active layout's place against where its frame stands
+	local function Systems(add, current, manager)
+		local bridge = MelloUI.EditLayout and MelloUI.EditLayout.Bridge
+		local list = (bridge and bridge.Systems and bridge.Systems())
+			or (type(manager) == "table" and Field(manager, "registeredSystemFrames"))
+		if type(list) ~= "table" or not current then
+			return
+		end
+		local differ, n = 0, 0
+		add("Systems ('%s'): saved place | where the frame stands", tostring(NameOf(current)))
+		for _, frame in ipairs(list) do
+			local sys, idx = Field(frame, "system"), Field(frame, "systemIndex")
+			local label = (bridge and bridge.Label and bridge.Label(frame)) or NameOfRegion(frame) or "?"
+			local saved = type(sys) == "number" and SystemOf(current, sys, idx)
+			local a = saved and Field(saved, "anchorInfo")
+			local now, why = PointNow(frame)
+			local okV, shown = pcall(frame.IsShown, frame)
+			-- (a frame MelloUI places from its own store -- the minimap, the chat, the tracker, the damage meter while UI
+			-- Modifications is on: Core/EditLayoutWindows.lua -- stands where MelloUI says, not where the layout does)
+			local entry = MelloUI.MoverEntry and MelloUI:MoverEntry(frame)
+			local own = type(entry) == "table" and type(entry.key) == "string" and entry.key:sub(1, 9) ~= "EditMode."
+				and (not MelloUI.EntryLive or MelloUI:EntryLive(entry)) and entry.key or nil
+			local tag
+			n = n + 1
+			if type(a) ~= "table" then
+				tag = "not in the layout"
+			elseif own then
+				tag = "MelloUI's own place (" .. own .. ")"
+			elseif not now then
+				tag = why
+			elseif Field(saved, "isInDefaultPosition") == true then
+				tag = "default place (the game lays it)"
+			elseif Same(a, now) then
+				tag = "same"
+			else
+				tag, differ = "DIFFERS", differ + 1
+			end
+			add("  %s:%s %s: %s | %s | %s%s", tostring(sys), tostring(idx), label,
+				type(a) == "table" and Anchor(a) or "-", now and Anchor(now) or "-", tag,
+				(okV and not Secret(shown) and shown == false) and ", hidden" or "")
+		end
+		add("%d systems, %d not where the active layout says (MelloUI's own places not counted)", n, differ)
+		local handed = bridge and bridge.handedOver
+		if type(handed) == "table" and next(handed) then
+			add("Edit Layout's copies at login (/mello layout places for more):")
+			for k, v in pairs(handed) do
+				add("  %s: %s", tostring(k), tostring(v))
+			end
+		end
+	end
+
+	function MelloUI:EditModeLayoutCheck(add)
+		Client(add)
+		if not Api() then
+			add("This client has no Edit Mode layout API.")
+			return
+		end
+		-- the client's list, and Edit Mode's own copy of it
+		local full, info, presets = FullList()
+		if not full then
+			add("The layouts could not be read.")
+			return
+		end
+		local active = info.activeLayout
+		active = (not Secret(active) and type(active) == "number") and active or nil
+		local names = {}
+		for i, layout in ipairs(full) do
+			names[#names + 1] = string.format("%d:%s(%s)%s", i, tostring(NameOf(layout)), Kind(layout), i == active and "*" or "")
+		end
+		add("Layouts (%d presets + %d saved), * active: %s", presets or 0, #full - (presets or 0), table.concat(names, " "))
+		local current = active and full[active]
+		add("Active: index %s, '%s' (%s)", tostring(active), tostring(current and NameOf(current)),
+			current and Kind(current) or "none")
+		if current and C_EditMode.ConvertLayoutInfoToString then
+			local okS, text = pcall(C_EditMode.ConvertLayoutInfoToString, current)
+			add("The client writes layout strings as version %s", okS and Version(text) or ("? (" .. tostring(text) .. ")"))
+		end
+		local manager = rawget(_G, "EditModeManagerFrame")
+		local mine = type(manager) == "table" and Field(manager, "layoutInfo")
+		if type(mine) == "table" then
+			local mActive = Field(mine, "activeLayout")
+			local mLayouts = Field(mine, "layouts")
+			local mName = type(mLayouts) == "table" and type(mActive) == "number" and NameOf(mLayouts[mActive]) or nil
+			add("Edit Mode's own copy: active index %s, '%s'%s", tostring(mActive), tostring(mName),
+				(mActive ~= active or mName ~= (current and NameOf(current)))
+				and " -- NOT the client's: Edit Mode shows an older list until a /reload (its Save would put that back)" or "")
+		end
+		-- Mello's layout for this screen, and the others of its name
+		local screen = ScreenName()
+		local at = screen and Find(full, screen)
+		local others = {}
+		for _, layout in ipairs(full) do
+			local n = NameOf(layout)
+			if n and n ~= screen and (n == BASE or n:sub(1, #BASE + 1) == BASE .. " ") then
+				others[#others + 1] = "'" .. n .. "'"
+			end
+		end
+		add("Mello's layout for this screen: %s%s%s", at and "in the list" or "NOT in the list",
+			at and (at == active and ", ACTIVE" or ", not active on this character") or "",
+			#others > 0 and ("; other MelloUI layouts: " .. table.concat(others, ", ")) or "")
+		local waiting = MelloUI:EditModeActivePending()
+		add("Waiting to be made active (Edit Layout > Layout > Reload now): %s", waiting and ("'" .. waiting .. "'") or "none")
+		Answers(add)
+		Systems(add, current, manager)
+		-- blocked actions kept (/mellobug)
+		local bug = type(MelloUI.Perf) == "table" and rawget(MelloUI.Perf, "bug")
+		local blocked = (type(bug) == "table" and type(bug.List) == "function" and bug.List()) or EMPTY
+		add("Blocked actions kept: %d", #blocked)
+		for i = 1, math.min(3, #blocked) do
+			local e = blocked[i]
+			add("  %s %s %s%s", tostring(e.when), tostring(e.func), e.combat and "in combat" or "out of combat",
+				(tonumber(e.count) or 1) > 1 and (" x" .. tostring(e.count)) or "")
+		end
 	end
 end

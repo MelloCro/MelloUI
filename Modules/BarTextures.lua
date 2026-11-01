@@ -19,6 +19,42 @@ local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("BarTextures")
 local hooksecurefunc = Perf.hooksecurefunc
+
+-- (fr-17) the player frame on the screen -- MelloUI's own while it stands in (MelloUI.Units, Modules/UnitFramesOwn.lua),
+-- else the game's -- and the game's update hooks through it (a world without that file: the game's frame, a plain hook)
+local function ScreenPlayer()
+	local U = MelloUI.Units
+	return U and U.Player() or _G.PlayerFrame
+end
+-- (fr-17 stage 2) the target frame on the screen -- MelloUI's own while it stands in (Modules/UnitFramesTarget.lua)
+local function ScreenTarget()
+	local U = MelloUI.Units
+	return U and U.Target() or rawget(_G, "TargetFrame")
+end
+-- (fr-17 stage 3) the focus frame on the screen -- MelloUI's own while it stands in (Modules/UnitFramesTarget.lua)
+local function ScreenFocus()
+	local U = MelloUI.Units
+	return U and U.Focus() or rawget(_G, "FocusFrame")
+end
+-- (fr-17 stage 4) the pet frame's parts on the screen by the game's global names -- MelloUI's own while it stands in
+-- (Modules/UnitFramesPet.lua), else the game's
+local PET_GLOBALS = { texture = "PetFrameTexture", portrait = "PetPortrait", name = "PetName", health = "PetFrameHealthBar",
+	mana = "PetFrameManaBar", healthMask = "PetFrameHealthBarMask", flash = "PetFrameFlash", attack = "PetAttackModeTexture" }
+local function PetPart(key)
+	local U = MelloUI.Units
+	if U and U.PetPart then
+		return U.PetPart(key)
+	end
+	return rawget(_G, PET_GLOBALS[key])
+end
+local function UnitsHook(fname, fn)
+	local U = MelloUI.Units
+	if U then
+		U.Hook(fname, fn)
+	elseif type(rawget(_G, fname)) == "function" then
+		hooksecurefunc(fname, fn)
+	end
+end
 -- (0.17.0) a write back onto a game region, counted for /melloperf
 local WriteBack = MelloUI.Perf.WriteBack or function() end
 
@@ -782,7 +818,7 @@ end
 --------------------------------------------------------------------------------
 
 local function TargetLikeFrames()
-	local frames = { TargetFrame, FocusFrame }
+	local frames = { ScreenTarget(), ScreenFocus() }   -- (fr-17: the target and focus frames on the screen)
 	for i = 1, 5 do
 		frames[#frames + 1] = _G["Boss" .. i .. "TargetFrame"]
 	end
@@ -808,8 +844,9 @@ local function AddPower(list, bar)
 end
 
 local function CollectUnitFrameBars(list)
-	if PlayerFrame and PlayerFrame.PlayerFrameContent then
-		local main = PlayerFrame.PlayerFrameContent.PlayerFrameContentMain
+	local pf = ScreenPlayer()   -- (fr-17: MelloUI's own while it stands in)
+	if pf and pf.PlayerFrameContent then
+		local main = pf.PlayerFrameContent.PlayerFrameContentMain
 		if main then
 			if main.HealthBarsContainer then
 				AddHealth(list, main.HealthBarsContainer.HealthBar)
@@ -845,8 +882,8 @@ local function CollectUnitFrameBars(list)
 			end
 		end
 	end
-	AddHealth(list, PetFrameHealthBar)
-	AddPower(list, PetFrameManaBar)
+	AddHealth(list, PetPart("health"))   -- (fr-17: the pet frame on the screen)
+	AddPower(list, PetPart("mana"))
 	if PartyFrame then
 		for i = 1, 4 do
 			local member = PartyFrame["MemberFrame" .. i]
@@ -1559,7 +1596,9 @@ end
 --------------------------------------------------------------------------------
 
 local function ApplyStatusBars()
-	local manager = StatusTrackingBarManager
+	-- (fr-18: MelloUI's own status bars while they stand in, MelloUI.OwnBars -- their manager, the game's shape)
+	local OB = MelloUI.OwnBars
+	local manager = (OB and OB.Frame("StatusTrackingBarManager")) or StatusTrackingBarManager
 	if not manager then
 		return
 	end
@@ -1642,21 +1681,28 @@ local function InstallHooks()
 		return
 	end
 	hooksInstalled = true
-	if type(UnitFrameManaBar_UpdateType) == "function" then
-		hooksecurefunc("UnitFrameManaBar_UpdateType", function(manaBar)
-			pcall(RecolorManaBar, manaBar)
-		end)
-	end
-	if type(UnitFrameManaBar_UpdateTypeOld) == "function" then
-		hooksecurefunc("UnitFrameManaBar_UpdateTypeOld", function(manaBar)
-			pcall(RecolorManaBar, manaBar)
-		end)
-	end
-	if type(UnitFrameHealthBar_Update) == "function" then
-		hooksecurefunc("UnitFrameHealthBar_Update", function(statusbar)
-			pcall(RecolorHealthBar, statusbar)
-		end)
-	end
+	-- (fr-17: through MelloUI.Units -- the game's player frame kept away skipped, ours as it updates its bars)
+	UnitsHook("UnitFrameManaBar_UpdateType", function(manaBar)
+		pcall(RecolorManaBar, manaBar)
+	end)
+	UnitsHook("UnitFrameManaBar_UpdateTypeOld", function(manaBar)
+		pcall(RecolorManaBar, manaBar)
+	end)
+	UnitsHook("UnitFrameHealthBar_Update", function(statusbar)
+		pcall(RecolorHealthBar, statusbar)
+	end)
+	-- (fr-17) the player frame of ours come or gone (the game's given back): the bars of the one that stands now
+	MelloUI:On("units", function()
+		if M.isEnabled and Active("unitframes") then
+			ApplyUnitFrames()
+		end
+	end, "Bar Textures: the player frame of ours")
+	-- (fr-18) MelloUI's own status bars come or gone (the game's given back): the bars of the ones that stand now
+	MelloUI:On("ownbars", function(part)
+		if part == "status" and M.isEnabled and Active("statusbars") then
+			ApplyStatusBars()
+		end
+	end, "Bar Textures: the status bars of ours")
 	-- Compact frames are (re)configured through these whenever they are created
 	-- or the raid layout changes.
 	for _, fname in ipairs({ "DefaultCompactUnitFrameSetup", "DefaultCompactMiniFrameSetup" }) do

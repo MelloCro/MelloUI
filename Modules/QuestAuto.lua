@@ -96,6 +96,18 @@ local function QuestID()
 	return Num(Call(GetQuestID))
 end
 
+-- (2.1.0; the user, 2026-10-31: "Polestar takes priority since those are its main features") a quest another addon
+-- takes or hands in itself now (MelloUI.Overlaps: Polestar's guide's quests), and its reward pick
+local function Theirs(verb, id)
+	local O = MelloUI.Overlaps
+	return O and O.Quest(verb, id) or nil
+end
+
+local function TheirPick()
+	local O = MelloUI.Overlaps
+	return O and O.By("rewardPick") or nil
+end
+
 local function Repeatable(id)
 	local log = C_QuestLog
 	return id ~= nil and log ~= nil and Yes(Call(log.IsRepeatableQuest, id))
@@ -216,7 +228,7 @@ local function Reward()
 		Call(GetQuestReward, 0)
 	elseif n == 1 then
 		Call(GetQuestReward, 1)
-	elseif M.db.takeUpgrade then
+	elseif M.db.takeUpgrade and not TheirPick() then
 		local i = BestChoice(n)
 		if i then
 			Call(GetQuestReward, i)
@@ -241,23 +253,50 @@ end
 
 local function OnDetail()
 	local id = QuestID()
-	if M.db.accept and id and not Repeatable(id) and not Grey(id) then
+	if M.db.accept and id and not Repeatable(id) and not Grey(id) and not Theirs("accept", id) then
 		Soon(Accept, id)
 	end
 end
 
 local function OnProgress()
 	local id = QuestID()
-	if M.db.handIn and id and not Repeatable(id) then
+	if M.db.handIn and id and not Repeatable(id) and not Theirs("turnin", id) then
 		Soon(Progress, id)
 	end
 end
 
 local function OnComplete()
 	local id = QuestID()
-	if M.db.handIn and id and not Repeatable(id) then
+	if M.db.handIn and id and not Repeatable(id) and not Theirs("turnin", id) then
 		Soon(Reward, id)
 	end
+end
+
+-- (2.1.0) a window with a quest another addon hands in or takes: all of it left to it (two picks in one window
+-- would fight; its next window comes back here)
+local function TheirWindow(active, available)
+	for _, id in ipairs(active) do
+		if Theirs("turnin", id) then
+			return true
+		end
+	end
+	for _, id in ipairs(available) do
+		if Theirs("accept", id) or Theirs("turnin", id) then
+			return true
+		end
+	end
+	return false
+end
+
+-- the quests' ids (finished ones only: done, a quest to hand in)
+local function Ids(list, done)
+	local ids = {}
+	for _, q in ipairs(list) do
+		if type(q) == "table" and (not done or Yes(q.isComplete)) then
+			ids[#ids + 1] = Plain(q.questID)
+		end
+	end
+	return ids
 end
 
 -- the gossip: a finished quest handed in first, else the only quest opened
@@ -266,8 +305,12 @@ local function OnGossip()
 	if not G then
 		return
 	end
+	local active, available = Call(G.GetActiveQuests) or {}, Call(G.GetAvailableQuests) or {}
+	if TheirWindow(Ids(active, true), Ids(available)) then
+		return
+	end
 	if M.db.handIn then
-		for _, q in ipairs(Call(G.GetActiveQuests) or {}) do
+		for _, q in ipairs(active) do
 			local id = Plain(q.questID)
 			if Yes(q.isComplete) and id and not handedGossip[id] and not Yes(q.repeatable) and not Secret(q.repeatable) then
 				handedGossip[id] = true
@@ -277,7 +320,6 @@ local function OnGossip()
 		end
 	end
 	if M.db.accept then
-		local available = Call(G.GetAvailableQuests) or {}
 		local only = #available == 1 and available[1]
 		if only and Plainly(only) then
 			Call(G.SelectAvailableQuest, only.questID)
@@ -287,6 +329,19 @@ end
 
 -- the old greeting panel (a giver with several quests and no gossip)
 local function OnGreeting()
+	local active, available = {}, {}
+	for i = 1, Num(Call(GetNumActiveQuests)) or 0 do
+		local _, done = Call(GetActiveTitle, i)
+		if Yes(done) then
+			active[#active + 1] = Num(Call(GetActiveQuestID, i))
+		end
+	end
+	for i = 1, Num(Call(GetNumAvailableQuests)) or 0 do
+		available[#available + 1] = Num(select(5, Call(GetAvailableQuestInfo, i)))
+	end
+	if TheirWindow(active, available) then
+		return
+	end
 	if M.db.handIn then
 		for i = 1, Num(Call(GetNumActiveQuests)) or 0 do
 			local _, done = Call(GetActiveTitle, i)

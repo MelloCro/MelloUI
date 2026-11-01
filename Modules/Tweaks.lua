@@ -24,6 +24,23 @@ local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Num = MelloUI.Safe.Number
 local W = MelloUI.Widgets
 
+-- (fr-18) the game's frame by its global name, or MelloUI's own standing in for it (the bag bar and its buttons, the
+-- status bars: MelloUI.OwnBars, Modules/OwnBars.lua)
+local function OwnG(name)
+	local OB = MelloUI.OwnBars
+	local own = OB and OB.Frame(name)
+	if own then
+		return own
+	end
+	return _G[name]
+end
+
+-- (the same, for a reader that took the game's frame with rawget)
+local function OwnRaw(name)
+	local OB = MelloUI.OwnBars
+	return (OB and OB.Frame(name)) or rawget(_G, name)
+end
+
 -- (0.19.9) the bars' and the buffs' layouts (below, after the module): the
 -- options' get / missing / set ask it (the registration names nothing else
 -- of the file's: its choices are written in it)
@@ -195,7 +212,7 @@ hiddenParent:Hide()
 
 local HIDE_TARGETS = {
 	hideMicroMenu = function() return MicroMenuContainer end,
-	hideBagBar = function() return BagsBar end,
+	hideBagBar = function() return OwnG("BagsBar") end,
 	hideMinimapCoords = function()
 		return (Minimap and Minimap.PlayerCoords)
 			or (MinimapCluster and MinimapCluster.MinimapContainer and MinimapCluster.MinimapContainer.PlayerCoords)
@@ -224,11 +241,17 @@ local function SetFrameHidden(frame, hidden)
 	end
 end
 
+local hiddenBy = {}   -- [key] = the frame hidden for it (fr-18: the bag bar's frame may change -- ours or the game's)
 local function UpdateHiddenFrames()
 	local db = M.db
 	for key, getter in pairs(HIDE_TARGETS) do
 		local frame = getter()
 		local shouldHide = M.isEnabled and db and db[key] and not editModeActive
+		local was = hiddenBy[key]
+		if was and was ~= frame then
+			SetFrameHidden(was, false)
+		end
+		hiddenBy[key] = shouldHide and frame or nil
 		SetFrameHidden(frame, shouldHide)
 	end
 	if UpdateBagSlots then
@@ -278,16 +301,18 @@ local bagHooksDone = false
 local function SlotButtons()
 	local list = {}
 	for _, name in ipairs(BAG_SLOT_NAMES) do
-		if _G[name] then
-			list[#list + 1] = _G[name]
+		local button = OwnG(name)
+		if button then
+			list[#list + 1] = button
 		end
 	end
 	local reagentSlots = Constants and Constants.InventoryConstants and Constants.InventoryConstants.NumReagentBagSlots
-	if CharacterReagentBag0Slot and reagentSlots and reagentSlots > 0 then
-		list[#list + 1] = CharacterReagentBag0Slot
+	local reagent, keyRing = OwnG("CharacterReagentBag0Slot"), OwnG("KeyRingButton")
+	if reagent and reagentSlots and reagentSlots > 0 then
+		list[#list + 1] = reagent
 	end
-	if KeyRingButton and KeyRingButton:IsShown() then
-		list[#list + 1] = KeyRingButton
+	if keyRing and keyRing:IsShown() then
+		list[#list + 1] = keyRing
 	end
 	return list
 end
@@ -384,13 +409,21 @@ local function HookBagFrames()
 			Perf.HookScript(frame, "OnHide", ScheduleBagSlotUpdate)
 		end
 	end
-	if BagsBar and BagsBar.Layout then
-		hooksecurefunc(BagsBar, "Layout", function()
+	-- (fr-18: the game's bar hooked only while it is the one on the screen; MelloUI's own tells its passes on the bus)
+	local OB = MelloUI.OwnBars
+	local gameBar = rawget(_G, "BagsBar")
+	if gameBar and gameBar.Layout and not (OB and OB.On("bags")) then
+		hooksecurefunc(gameBar, "Layout", function()
 			if slotsAttached then
 				LayoutBagSlots()
 			end
 		end)
 	end
+	MelloUI:On("ownbars:bags", function()
+		if slotsAttached then
+			LayoutBagSlots()
+		end
+	end, "Tweaks bag slots: the bag bar of ours laid out")
 	-- Picking something up expands the bag bar, which runs BagsBar:Layout()
 	-- through a callback registered with the original function at load time,
 	-- so the hook above never sees it. Re-anchor a frame later instead.
@@ -402,6 +435,7 @@ local function HookBagFrames()
 	if EventRegistry and EventRegistry.RegisterCallback then
 		EventRegistry:RegisterCallback("MainMenuBarManager.OnExpandChanged", Relayout, M)
 	end
+	MelloUI:On("ownbars:bagexpand", Relayout, "Tweaks bag slots: the bag bar of ours opened or folded")
 	local cursorFrame = CreateFrame("Frame")
 	cursorFrame:RegisterEvent("CURSOR_CHANGED")
 	cursorFrame:RegisterEvent("BAG_UPDATE_DELAYED")
@@ -486,6 +520,8 @@ Fold.SLOTS = { "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "C
 Fold.POOLS = { "HorizontalDividersPool", "VerticalDividersPool" }
 Fold.ART = { -6, 6, 5, -5 }   -- the frame art round the bar (BagsBar.BorderArt's own offsets)
 Fold.hid = setmetatable({}, { __mode = "k" })   -- [slot] = true: hidden by the fold (shown again by it alone)
+Fold.hooked = setmetatable({}, { __mode = "k" })     -- [bag bar] = true: its passes hooked (fr-18: ours or the game's)
+Fold.artPoints = setmetatable({}, { __mode = "k" })  -- [frame art] = its own points before the fold laid it
 Fold.list = {}
 Fold.on = false
 
@@ -502,7 +538,7 @@ end
 function Fold.Buttons()
 	local list = Fold.list
 	wipe(list)
-	local mgr = MainMenuBarBagManager
+	local mgr = OwnG("MainMenuBarBagManager")
 	if mgr and mgr.EnumerateBagButtons then
 		for _, button in mgr:EnumerateBagButtons() do
 			list[#list + 1] = button
@@ -516,7 +552,8 @@ function Fold.Active()
 	if not (M.isEnabled and db and db.bagBarFold and not db.hideBagBar and not slotsAttached) then
 		return false
 	end
-	if not (BagsBar and BagBarExpandToggle and MainMenuBarBackpackButton and MainMenuBarBagManager) then
+	if not (OwnG("BagsBar") and OwnG("BagBarExpandToggle") and OwnG("MainMenuBarBackpackButton")
+		and OwnG("MainMenuBarBagManager")) then
 		return false
 	end
 	local get = (C_CVar and C_CVar.GetCVar) or GetCVar
@@ -526,7 +563,7 @@ end
 
 -- the game's state: the player's (the CVar) or an item on the cursor
 function Fold.Open()
-	local mgr = MainMenuBarBagManager
+	local mgr = OwnG("MainMenuBarBagManager")
 	local ok, open = pcall(mgr.ShouldBarExpand, mgr)
 	if not ok then
 		return true
@@ -558,12 +595,12 @@ function Fold.FitArt(bar, pack, point, beyond)
 	if not (art and art.SetPoint) then
 		return
 	end
-	if not Fold.artPoints then
+	if not Fold.artPoints[art] then
 		local saved = {}
 		for i = 1, art:GetNumPoints() do
 			saved[i] = { art:GetPoint(i) }
 		end
-		Fold.artPoints = saved
+		Fold.artPoints[art] = saved
 	end
 	local A = Fold.ART
 	local l, t, r, b = A[1], A[2], A[3], A[4]
@@ -582,9 +619,9 @@ function Fold.FitArt(bar, pack, point, beyond)
 end
 
 function Fold.Lay(open)
-	local bar, toggle, pack = BagsBar, BagBarExpandToggle, MainMenuBarBackpackButton
+	local bar, toggle, pack = OwnG("BagsBar"), OwnG("BagBarExpandToggle"), OwnG("MainMenuBarBackpackButton")
 	for _, name in ipairs(Fold.SLOTS) do
-		local slot = _G[name]
+		local slot = OwnG(name)
 		if slot then
 			if open then
 				if Fold.hid[slot] then
@@ -657,7 +694,7 @@ end
 -- for the slots back from the bag window (Hide Bag Bar or Bag Slots on Bag
 -- Window off, Edit Mode opened).
 function Fold.Chain()
-	local bar, toggle, pack = BagsBar, BagBarExpandToggle, MainMenuBarBackpackButton
+	local bar, toggle, pack = OwnG("BagsBar"), OwnG("BagBarExpandToggle"), OwnG("MainMenuBarBackpackButton")
 	if not (bar and pack and bar.GetBagButtonAnchorPoints) then
 		return
 	end
@@ -694,13 +731,14 @@ function Fold.Release()
 		slot:Show()
 	end
 	wipe(Fold.hid)
-	local bar = BagsBar
-	BagBarExpandToggle:Hide()
+	local bar = OwnG("BagsBar")
+	OwnG("BagBarExpandToggle"):Hide()
 	Fold.Chain()
 	local art = rawget(bar, "BorderArt")
-	if art and Fold.artPoints then
+	local points = art and Fold.artPoints[art]
+	if points then
 		art:ClearAllPoints()
-		for _, p in ipairs(Fold.artPoints) do
+		for _, p in ipairs(points) do
 			art:SetPoint(unpack(p))
 		end
 	end
@@ -715,7 +753,8 @@ function Fold.Apply()
 	end
 	if not Fold.w then
 		-- the arrow's own size (10 x 16 on a row)
-		local ok, w, h = pcall(BagBarExpandToggle.GetSize, BagBarExpandToggle)
+		local toggle = OwnG("BagBarExpandToggle")
+		local ok, w, h = pcall(toggle.GetSize, toggle)
 		w, h = ok and Num(w), ok and Num(h)
 		Fold.w, Fold.h = (w and w > 0) and w or 10, (h and h > 0) and h or 16
 	end
@@ -756,23 +795,48 @@ Fold.PreClick = Perf.Shared("PreClick on the bag bar's arrow", function()
 	if not Fold.on then
 		return
 	end
-	local mgr = MainMenuBarBagManager
+	local mgr = OwnG("MainMenuBarBagManager")
 	local okU, user = pcall(mgr.IsBarUserExpanded, mgr)
 	Fold.Lay((okU and not user) or rawget(mgr, "expandBarAuto") == true)
 end, "script")
 
+-- (fr-18: per bar -- MelloUI's own bag bar, or the game's while it is the one on the screen; the expand state's change
+-- from the game's manager and from ours)
 function Fold.Hook()
-	if Fold.hooked then
+	local bar, toggle = OwnG("BagsBar"), OwnG("BagBarExpandToggle")
+	if Fold.hooked[bar] then
 		return
 	end
-	Fold.hooked = true
-	if BagsBar.Layout then
-		hooksecurefunc(BagsBar, "Layout", Fold.Changed)
+	Fold.hooked[bar] = true
+	if bar.Layout then
+		hooksecurefunc(bar, "Layout", Fold.Changed)
 	end
-	if EventRegistry and EventRegistry.RegisterCallback then
-		EventRegistry:RegisterCallback("MainMenuBarManager.OnExpandChanged", Fold.Changed, Fold)
+	if not Fold.listening then
+		Fold.listening = true
+		if EventRegistry and EventRegistry.RegisterCallback then
+			EventRegistry:RegisterCallback("MainMenuBarManager.OnExpandChanged", Fold.Changed, Fold)
+		end
+		MelloUI:On("ownbars:bagexpand", Fold.Changed, "Tweaks: the fold of the bag bar of ours")
 	end
-	Perf.HookScript(BagBarExpandToggle, "PreClick", Fold.PreClick)
+	Perf.HookScript(toggle, "PreClick", Fold.PreClick)
+end
+
+-- (fr-18) MelloUI's own bag bar came or went: the bag slots given back to the bar that went, then hiding, the dock and
+-- the fold laid on the one that stands now
+function Fold.OwnBars(part)
+	if part ~= "bags" then
+		return
+	end
+	if Fold.on then
+		Fold.on = false
+		for slot in pairs(Fold.hid) do
+			slot:Show()
+		end
+		wipe(Fold.hid)
+		Fold.told = nil
+	end
+	DetachBagSlots()
+	UpdateHiddenFrames()
 end
 
 --------------------------------------------------------------------------------
@@ -1351,7 +1415,7 @@ function Level.Up(new, ...)
 	local from = Level.From()
 	if motion then
 		-- (the badge's roll: the painted skin's disc, else the circle's stand-in -- 1.2.0, the modern look too)
-		local sp = FX.Split and FX.Split(PlayerFrame)
+		local sp = FX.Split and FX.Split(MelloUI.Units and MelloUI.Units.Player() or PlayerFrame)
 		if sp and FX.LevelRoll(sp, new - 1, new) then
 			local badge = sp.orb or sp.disc
 			if badge then
@@ -1366,7 +1430,7 @@ function Level.Up(new, ...)
 			to = 0
 		end
 		if not (sb and FX.LevelBar and FX.LevelBar(sb, from, to)) then
-			local bar = rawget(_G, "MainStatusTrackingBarContainer")
+			local bar = OwnRaw("MainStatusTrackingBarContainer")
 			if bar and bar:IsVisible() then
 				FX.ShowOn(bar, "level", "bar", Level.BAR_SPILL)
 			end
@@ -1427,7 +1491,7 @@ function XP.Bar(kind, fallback)
 	local info = rawget(_G, "StatusTrackingBarInfo")
 	local index = info and info.BarsEnum and info.BarsEnum[kind or "Experience"] or fallback or XP.EXPERIENCE
 	for _, name in ipairs(XP.ROWS) do
-		local row = rawget(_G, name)
+		local row = OwnRaw(name)
 		local bar = type(row) == "table" and type(row.bars) == "table" and row.bars[index]
 		local sb = type(bar) == "table" and bar.StatusBar
 		if sb and sb:IsVisible() then
@@ -2221,6 +2285,7 @@ function M:OnEnable(db)
 	Gems.Install()
 	Gems.Sync()
 	RegisterEditModeCallbacks()
+	MelloUI:On("ownbars", Fold.OwnBars, "Tweaks: the bag bar of ours")
 	if EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive then
 		editModeActive = EditModeManagerFrame:IsEditModeActive()
 	end

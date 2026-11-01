@@ -186,6 +186,90 @@ local function MarkSpec(kind)
 	return spec
 end
 
+-- (2.1.0; the user's pick P1 of qu05_polestar_sketch, 2026-10-31: "MelloUI's marks") the followed guide's goals the map
+-- does not show yet (Route's guide bridges, Guide.goals: Polestar's step), as this map's own marks and areas: their
+-- tooltip the guide's step, a click the guide's own aim there (Route follows the guide). A goal of a quest whose
+-- objectives are laid here, or whose giver or ender the quest givers show, is shown already: nothing twice.
+local NONE = {}
+
+-- a mark's goals (one, or several at one place; a mark holding touching ones, MapPins' merge: all of theirs): the
+-- first's words, the others' under them, then the step's lines (merged: a click zooms in)
+local GUIDE_ZOOM = "Click: zoom in"
+local function GuideTip(pin)
+	local goals = {}
+	for _, m in ipairs(pin.members or { pin }) do
+		for _, goal in ipairs(m.data and type(m.data.guide) == "table" and m.data.guide or NONE) do
+			goals[#goals + 1] = goal
+		end
+	end
+	local first = goals[1]
+	if type(first) ~= "table" then
+		return nil
+	end
+	local lines = {}
+	for i = 2, #goals do
+		lines[#lines + 1] = goals[i].text
+	end
+	if pin.members then
+		lines[#lines + 1] = first.lines and first.lines[1] or nil
+		lines[#lines + 1] = GUIDE_ZOOM
+	else
+		for _, line in ipairs(first.lines or NONE) do
+			lines[#lines + 1] = line
+		end
+	end
+	return first.text, table.concat(lines, "\n")
+end
+
+local function GuideClick(pin, button)
+	local goals = pin.data and pin.data.guide
+	local first = type(goals) == "table" and goals[1]
+	if button == "LeftButton" and type(first) == "table" and type(first.Aim) == "function" then
+		pcall(first.Aim)
+	end
+end
+
+local guideSpecs = {}
+local function GuideSpec(kind)
+	local icon = T.KIND_ICON[kind] or "obj_explore"
+	local spec = guideSpecs[icon]
+	if not spec then
+		spec = { icon = T.ICONS .. icon, size = T.MARK_SIZE, tip = GuideTip, click = GuideClick, sub = 1, lift = icon }
+		guideSpecs[icon] = spec
+	end
+	return spec
+end
+
+-- the followed guide's goals, nil without any
+local function GuideGoals()
+	local R = rawget(MelloUI, "Route")
+	local G = type(R) == "table" and rawget(R, "Guide")
+	local data = type(G) == "table" and G.goals
+	return type(data) == "table" and type(data.goals) == "table" and #data.goals > 0 and data.goals or nil
+end
+
+-- the quests the givers show a pin for: [questID] = { [state] = true } ("available", "locked", "ready", "progress")
+local function GiversShown()
+	local shown, QL = {}, QuestList()
+	local F = QL and QL.F_ID
+	if F and S.pins then
+		S.pins:Each("quests", function(pin)
+			local g = pin.data
+			for _, q in ipairs(type(g) == "table" and type(g.quests) == "table" and g.quests or NONE) do
+				local id = type(q) == "table" and type(q.row) == "table" and q.row[F]
+				if id then
+					shown[id] = shown[id] or {}
+					shown[id][q.state or "?"] = true
+				end
+			end
+		end)
+	end
+	return shown
+end
+
+-- forward: (Lay) each guide goal not shown yet, in a group by its shape (a quest's own when the same); its dots
+local GuideGroups
+
 -- (1.2.0) world yards to world units: the layers' own carrying (Layers.WorldPoint) at three points by a place, kept
 -- by continent: { x0, y0, dx/dwx, dy/dwx, dx/dwy, dy/dwy }, or false (no answer there: asked again at the next one)
 local carry = {}
@@ -212,6 +296,43 @@ end
 
 local function At(a, x, y)
 	return a[1] + a[3] * x + a[5] * y, a[2] + a[4] * x + a[6] * y
+end
+
+function GuideGroups(goals, byShape, n, QA)
+	local givers = GiversShown()
+	for _, goal in ipairs(goals or NONE) do
+		local q, places = goal.quest, goal.places
+		local giver = q and givers[q] or NONE
+		local shown = q and ((goal.verb == "objective" and S.first[q] ~= nil)
+			or (goal.verb == "accept" and (giver.available or giver.locked))
+			or (goal.verb == "turnin" and (giver.ready or giver.progress or S.first[q] ~= nil)))
+		if not shown and type(places) == "table" and #places >= 2 and goal.cont then
+			-- (its places as the objective data's entry: kind, name, -, continent, x, y, ...)
+			local entry = { goal.kind, goal.text, false, goal.cont }
+			for k = 1, #places do
+				entry[4 + k] = places[k]
+			end
+			local xs, ys, key = QA.Places(entry)
+			local a = #xs > 0 and Carry(goal.cont, xs[1], ys[1])
+			local shape = a and QA.Shape(key, xs, ys)
+			if shape then
+				local g = byShape[shape]
+				if not g then
+					g = { key = key, shape = shape, a = a, objs = {} }
+					byShape[shape] = g
+					S.groups[#S.groups + 1] = g
+					for i = 1, #xs do
+						local x, y = At(a, xs[i], ys[i])
+						n = n + 1
+						S.pins:Set("objective_dots", n, x, y, DOT)
+					end
+				end
+				g.guide = g.guide or {}
+				g.guide[#g.guide + 1] = goal
+			end
+		end
+	end
+	return n
 end
 
 -- (2.1.0) the middle value of a list (its median: a far place or two never drags it off the densest half)
@@ -513,6 +634,7 @@ function Objectives.Lay()
 		return
 	end
 	pins:Clear("objectives")
+	pins:Clear("objective_guide")
 	pins:Clear("objective_dots")
 	wipe(S.first)
 	S.wait = nil
@@ -527,11 +649,14 @@ function Objectives.Lay()
 	local QO = MelloUI.QuestObjectives
 	local QA = MelloUI.QuestAreas
 	local list = (layer and layer.on) and LogQuests() or S.quests
-	if layer and layer.on and #list > 0 and QO and QA and Objectives.Data() then
+	-- (2.1.0) the followed guide's goals: laid with the quests' (GuideGroups), with no quest in the log too
+	local guide = layer and layer.on and QA and GuideGoals() or nil
+	local quests = (layer and layer.on and #list > 0 and QO and QA and Objectives.Data()) and list or NONE
+	if #quests > 0 or guide then
 		local log = ns.QuestLog and ns.QuestLog.S
 		local showing = log and log.showID
 		local byShape, n = {}, 0
-		for _, questID in ipairs(list) do
+		for _, questID in ipairs(quests) do
 			local data = questID ~= showing and QO.Of(questID)
 			if type(data) == "table" then
 				local lines = QO.Lines(questID)
@@ -574,6 +699,7 @@ function Objectives.Lay()
 				end
 			end
 		end
+		GuideGroups(guide, byShape, n, QA)
 		local mx0, my0
 		if ns.Layers and ns.Layers.PlayerPoint then
 			mx0, my0 = ns.Layers.PlayerPoint()
@@ -647,6 +773,22 @@ function Objectives.Lay()
 						was[#was + 1] = { wx, wy, dx, entry[1] }
 					end
 				end
+				-- (2.1.0) the followed guide's goals in this area (GuideGroups): one mark, beside the quests' marks, on
+				-- a layer of its own whose touching marks merge (MapPins: zoomed in, they part; a click on one zooms in)
+				local goals = g.guide
+				if goals then
+					local pin = pins:Set("objective_guide", "guide:" .. tostring(goals[1].key) .. ":" .. mi, wx, wy,
+						GuideSpec(goals[1].kind))
+					if pin then
+						pin.dx = #g.objs > 0 and (#g.objs + 1 - (#g.objs + 2) / 2) * 2 * T.SIDE_PX or 0
+						local d = pin.data or {}
+						d.guide, d.area = goals, g.key
+						pin.data = d
+						if pop then
+							pin.moment = { pop = pop, at = now }
+						end
+					end
+				end
 			end
 			g.delay = delay or 0
 		end
@@ -687,7 +829,8 @@ end
 -- (Map.lua's PinTip) the pin under the cursor: an objective's mark lights its area, the other areas and their marks
 -- step back; none: all back
 function Objectives.Hover(pin)
-	local data = pin and pin.layer and pin.layer.name == "objectives" and pin.data
+	local name = pin and pin.layer and pin.layer.name
+	local data = (name == "objectives" or name == "objective_guide") and pin.data
 	local key = data and data.area or nil
 	local Anim = MelloUI.Anim
 	if key == S.hoverKey or not Anim then
@@ -732,12 +875,22 @@ end
 function Objectives.Init(canvas, pins)
 	S.canvas, S.pins = canvas, pins
 	pins:Layer("objectives", T.ORDER.marks, { minZ = T.MARKS_FROM })
+	-- (2.1.0) the followed guide's goals: its own, touching marks merged with their count
+	pins:Layer("objective_guide", T.ORDER.marks, { minZ = T.MARKS_FROM, merge = T.MARK_SIZE })
 	pins:Layer("objective_dots", T.ORDER.dots, { minZ = T.DOTS_FROM })
 	pins:Layer("objective_fx", T.ORDER.fx, { minZ = T.MARKS_FROM })
 	-- (2.1.0) one pin a quest zoomed out, touching ones merged, stepping aside from the docks and the doors (MapPins)
 	pins:Layer("objective_quests", T.ORDER.quests, { maxZ = T.QUESTS_TO, merge = T.QUEST_SIZE, nudge = true })
 	DOT = { icon = T.ICONS .. "map_dot", size = T.DOT_SIZE, sub = 0 }
 	TICK = { icon = T.ICONS .. "map_dot", size = T.MARK_SIZE * 0.7, sub = 4, look = TickLook }
+	-- (2.1.0) the followed guide's goals changed (Route's guide bridges): laid again on the beat, as for the log
+	if MelloUI.On then
+		MelloUI:On("guidegoals", function()
+			if S.shown then
+				Objectives.Soon()
+			end
+		end, "Map: a guide's goals")
+	end
 end
 
 function Objectives.Open()
@@ -752,6 +905,7 @@ function Objectives.Close()
 	S.hoverKey = nil
 	if S.pins then
 		S.pins:Clear("objectives")
+		S.pins:Clear("objective_guide")
 		S.pins:Clear("objective_dots")
 		S.pins:Clear("objective_fx")
 		S.pins:Clear("objective_quests")

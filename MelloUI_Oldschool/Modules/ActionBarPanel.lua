@@ -102,6 +102,7 @@ local M = MelloUI:RegisterModule("ActionBarPanel", {
 local skin = nil
 local active = false
 local hooked = false
+local HookStatusManager   -- (fr-18: below, before Hook)
 
 local BAR_NAMES = { "MainActionBar", "MultiBarBottomLeft", "MultiBarBottomRight", "MultiBarRight", "MultiBarLeft",
 	"MultiBar5", "MultiBar6", "MultiBar7", "StanceBar", "PetActionBar", "PossessActionBar" }
@@ -111,6 +112,17 @@ local BAG_BUTTONS = { "MainMenuBarBackpackButton", "CharacterBag0Slot", "Charact
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
 local Finite = MelloUI.Safe.Finite
+
+-- (fr-18) the game's frame by its global name, or MelloUI's own standing in for it (the status bars, the bag bar and
+-- its buttons: MelloUI.OwnBars, Modules/OwnBars.lua)
+local function OwnG(name)
+	local OB = MelloUI.OwnBars
+	local own = OB and OB.Frame(name)
+	if own then
+		return own
+	end
+	return _G[name]
+end
 
 local function Replace(region, opts)
 	if not region then
@@ -567,13 +579,13 @@ local MICRO_KEY = "Action bars: micro spacing"   -- (Kit:WhenOutOfCombat's key)
 -- The bag slots' size and the gap between them, in the bag bar's own units
 -- (Edit Mode Size 100 %)
 local function BagMetrics()
-	local bar = BagsBar
+	local bar = OwnG("BagsBar")
 	if not (bar and bar:IsShown()) then
 		return nil
 	end
 	local size, lefts, tops = nil, {}, {}
 	for _, name in ipairs(BAG_BUTTONS) do
-		local b = _G[name]
+		local b = OwnG(name)
 		if b and b:IsShown() and repOf[b] then
 			local ok, w, l, t = pcall(function() return b:GetWidth(), b:GetLeft(), b:GetTop() end)
 			if ok and w and l and t and not (Secret(w) or Secret(l) or Secret(t)) and w > 0 then
@@ -1155,16 +1167,16 @@ local function SkinMicroMenu()
 end
 
 local function SkinBagBar()
-	local bar = BagsBar
-	if not bar or skin.bags then
+	local bar = OwnG("BagsBar")
+	if not bar or skin.bags == bar then
 		return
 	end
-	skin.bags = true
+	skin.bags = bar   -- (fr-18: the bar dressed -- MelloUI's own, or the game's while it is the one on the screen)
 	if bar.BorderArt then
 		Replace(bar.BorderArt, { as = "UI-HUD-ActionBar-Frame" })
 	end
 	for _, name in ipairs(BAG_BUTTONS) do
-		local button = _G[name]
+		local button = OwnG(name)
 		if button and button.icon and button.GetNormalTexture then
 			local ok, w, h = pcall(button.GetSize, button)
 			local pitch = (ok and not Secret(w) and w and w > 0) and { w, h } or nil
@@ -1186,7 +1198,8 @@ local function SkinBagBar()
 	end
 	-- the fold's arrow (the game's BagBarExpandToggle, shown by Tweaks'
 	-- Collapse Arrow): the flat arrow on its rect, following the game's turns
-	local toggle = rawget(_G, "BagBarExpandToggle")
+	local OB = MelloUI.OwnBars
+	local toggle = (OB and OB.Frame("BagBarExpandToggle")) or rawget(_G, "BagBarExpandToggle")
 	local normal = toggle and toggle.GetNormalTexture and toggle:GetNormalTexture()
 	if normal then
 		Replace(normal, { as = "bag-arrow", button = toggle, rect = toggle,
@@ -1319,7 +1332,7 @@ end
 local dividersHooked = setmetatable({}, { __mode = "k" })   -- [status container] = true: UpdateDividers hooked
 local shownHooked = setmetatable({}, { __mode = "k" })      -- [status container] = true: ApplyPendingBarToShow hooked
 local function SkinStatusBars()
-	local manager = StatusTrackingBarManager
+	local manager = OwnG("StatusTrackingBarManager")
 	if not manager then
 		return
 	end
@@ -1328,8 +1341,9 @@ local function SkinStatusBars()
 		containers[#containers + 1] = container
 	end
 	for _, name in ipairs({ "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" }) do
-		if _G[name] then
-			containers[#containers + 1] = _G[name]
+		local c = OwnG(name)
+		if c then
+			containers[#containers + 1] = c
 		end
 	end
 	for _, container in ipairs(containers) do
@@ -1481,6 +1495,38 @@ function M:PickerGroups()
 	return out
 end
 
+-- the status bars' manager's passes hooked (fr-18: per manager -- MelloUI's own, or the game's while its bars are
+-- the ones on the screen)
+local managerHooked = setmetatable({}, { __mode = "k" })
+local function StatusPass()
+	if active then
+		Kit:WhenOutOfCombat(function()
+			SkinStatusBars()
+			ResyncStatus()   -- (0.20.1)
+			for container in pairs(skin.status) do
+				for _, rep in ipairs(skin.reps) do
+					if rep.kind == "bar" and rep.rect == container then
+						rep:Refit()
+					end
+				end
+			end
+		end)
+	end
+end
+
+function HookStatusManager()
+	local manager = OwnG("StatusTrackingBarManager")
+	if type(manager) ~= "table" or managerHooked[manager] then
+		return
+	end
+	managerHooked[manager] = true
+	for _, method in ipairs({ "LayoutBars", "UpdateBarsShown" }) do
+		if type(manager[method]) == "function" then
+			hooksecurefunc(manager, method, StatusPass)
+		end
+	end
+end
+
 local function Hook()
 	if hooked then
 		return
@@ -1496,29 +1542,28 @@ local function Hook()
 			C_Timer.After(0, RefitStaleMicros)
 		end
 	end, M)
-	-- the status bars appear and stack at runtime (a reputation watched, a
-	-- level gained): skin whatever the manager lays out
-	if StatusTrackingBarManager then
-		for _, method in ipairs({ "LayoutBars", "UpdateBarsShown" }) do
-			if StatusTrackingBarManager[method] then
-				hooksecurefunc(StatusTrackingBarManager, method, function()
-					if active then
-						Kit:WhenOutOfCombat(function()
-							SkinStatusBars()
-							ResyncStatus()   -- (0.20.1)
-							for container in pairs(skin.status) do
-								for _, rep in ipairs(skin.reps) do
-									if rep.kind == "bar" and rep.rect == container then
-										rep:Refit()
-									end
-								end
-							end
-						end)
-					end
-				end)
-			end
-		end
+end
+
+-- the status bars appear and stack at runtime (a reputation watched, a level gained): skin whatever the manager lays
+-- out (its passes hooked: StatusPass). (fr-18) MelloUI's own status bars or bag bar came or went: the ones that stand
+-- now dressed (out of combat), their manager's passes hooked
+local ownListening = false
+local function OwnBarsListen()
+	HookStatusManager()
+	if ownListening then
+		return
 	end
+	ownListening = true
+	MelloUI:On("ownbars", function()
+		HookStatusManager()
+		if active then
+			Kit:WhenOutOfCombat(function()
+				SkinBagBar()
+				SkinStatusBars()
+				ResyncStatus()
+			end, "Action bars: the bars of ours dressed")
+		end
+	end, "Action Bars Kit: the bars of ours")
 end
 
 function M:OnEnable(db)
@@ -1542,6 +1587,7 @@ function M:OnEnable(db)
 	-- runs first): the old keys go
 	db.buttonBorder, db.microBorder, db.bagBorder = nil, nil, nil
 	Hook()
+	OwnBarsListen()
 	Kit:WhenOutOfCombat(Activate)
 end
 
@@ -1642,7 +1688,7 @@ SlashCmdList.MELLOABDUMP = function(msg)
 		MelloUI:ShowLog("abdump states")
 		return
 	end
-	local roots = { bar = MainActionBar, micro = MicroMenu, bags = BagsBar, xp = MainStatusTrackingBarContainer }
+	local roots = { bar = MainActionBar, micro = MicroMenu, bags = OwnG("BagsBar"), xp = OwnG("MainStatusTrackingBarContainer") }
 	local root = roots[which ~= "" and which or "bar"]
 	if root == MicroMenu and root then
 		-- every micro button: the rim's own rect against the glyph's (the
@@ -1671,10 +1717,10 @@ SlashCmdList.MELLOABDUMP = function(msg)
 	else
 		MelloUI:Print("== %s  %s L%d %s", root:GetName() or "?", root:GetFrameStrata(), root:GetFrameLevel(), root:IsShown() and "shown" or "hidden")
 		Kit:DumpWindow(root, skin, mode ~= "" and mode or nil)
-		if root == MainStatusTrackingBarContainer then
+		if root == OwnG("MainStatusTrackingBarContainer") then
 			-- (0.20.1) both containers: the bar shown, its fill's strata and level against the trough's holder, the
 			-- border the container wears against the Progress Bar Border's
-			for _, c in ipairs({ MainStatusTrackingBarContainer, rawget(_G, "SecondaryStatusTrackingBarContainer") }) do
+			for _, c in ipairs({ root, OwnG("SecondaryStatusTrackingBarContainer") }) do
 				local sb = c.GetShownBar and c:GetShownBar()
 				local fill = sb and sb.StatusBar
 				local under = skin and skin.statusUnder and skin.statusUnder[c]

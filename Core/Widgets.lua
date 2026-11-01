@@ -3426,10 +3426,20 @@ do
 
 	-- (1.2.4) W.RoundGlow(t) -> t: the round light on `t` (sized and blended by its caller) -- a state's light round
 	-- a round button (a mode shown, a button lit): the set's glow, the game's round highlight under the Default skin
-	-- (MelloUI.Skin), laid again at a switch
+	-- (MelloUI.Skin), laid again at a switch. (2.1.0, qu-04; the user, 2026-10-31: the round lit glow over Oldschool's
+	-- square buttons, "Fix it?" -- "Yes") the square light, as its hover light is, while the button `t` lights wears its
+	-- look's square frame (W.RoundIcon's square mode, b.square: MelloUI.Icons.Square), laid again when the set switches
+	-- (the bus's 'icons', after the round buttons')
+	local glows = setmetatable({}, weakKeys)
+	local glowsHeard = false
+
 	local function RoundGlowLay(t)
+		local b = t:GetParent()
 		local Skin = rawget(MelloUI, "Skin")
-		if Skin and Skin.IsDefault() then
+		if type(b) == "table" and b.square then
+			t:SetTexture(LIGHT.square)
+			t:SetTexCoord(0, 1, 0, 1)
+		elseif Skin and Skin.IsDefault() then
 			t:SetAtlas(Skin.ART.roundLight)
 		else
 			t:SetTexture(LIGHT.round)
@@ -3438,11 +3448,20 @@ do
 	end
 
 	function W.RoundGlow(t)
+		glows[t] = true
+		if not glowsHeard and MelloUI.On then
+			glowsHeard = true
+			MelloUI:On("icons", function()
+				for g in pairs(glows) do
+					RoundGlowLay(g)
+				end
+			end, "the round lights (a look's own set)")
+		end
 		local Skin = rawget(MelloUI, "Skin")
 		if Skin then
 			Skin.Follow(t, RoundGlowLay)
 		else
-			t:SetTexture(LIGHT.round)
+			RoundGlowLay(t)
 		end
 		return t
 	end
@@ -3501,7 +3520,7 @@ do
 	function W.FrameArt(t, state, band)
 		t:SetTexture(DIR .. "frame_" .. state)
 		-- (1.2.4, lk-11) a frame's art: under Dark Mode, at its area's brightness (the kit's shade)
-		local Kit = MelloUI.Kit
+		local Kit = KitNow()
 		if Kit and Kit.RegisterTexture then
 			Kit:RegisterTexture(t)
 		end

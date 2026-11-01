@@ -44,6 +44,13 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+
+-- (fr-17) the player frame on the screen -- MelloUI's own while it stands in (MelloUI.Units, Modules/UnitFramesOwn.lua),
+-- else the game's -- and the game's update hooks through it (a world without that file: the game's frame, a plain hook)
+local function ScreenPlayer()
+	local U = MelloUI.Units
+	return U and U.Player() or _G.PlayerFrame
+end
 local Perf = MelloUI.Perf:Scope("FaderModule")
 local C_Timer = Perf.C_Timer
 local Shared = Perf.Shared
@@ -199,8 +206,10 @@ M.LIST = LIST
 -- Frames by name (looked up when the element needs them: never at login)
 --------------------------------------------------------------------------------
 
+-- (fr-18: MelloUI's own status bars and bag bar for the game's names while they stand in, MelloUI.OwnBars)
 local function G(name)
-	local f = rawget(_G, name)
+	local OB = MelloUI.OwnBars
+	local f = OB and OB.G(name) or rawget(_G, name)
 	return type(f) == "table" and type(f.SetAlpha) == "function" and f or nil
 end
 
@@ -554,7 +563,7 @@ local function Register()
 	F:Register({ key = "player",
 		frames = function() return Add({}, G("PlayerFrame")) end,
 		mouse = function()
-			local pf = G("PlayerFrame")
+			local pf = ScreenPlayer()   -- (fr-17: the frame under the mouse -- MelloUI's own while it stands in)
 			local main = pf and pf.PlayerFrameContent and pf.PlayerFrameContent.PlayerFrameContentMain
 			local bars = main and main.HealthBarsContainer
 			local mana = main and main.ManaBarArea
@@ -565,7 +574,15 @@ local function Register()
 		watch = function(on) Watch("player", on) end })
 	F:Register({ key = "pet", follows = "player", followsWhen = "petToo",
 		frames = function() return Add({}, G("PetFrame")) end,
-		mouse = function() return Add(Add(Add({}, G("PetFrame")), G("PetFrameHealthBar")), G("PetFrameManaBar")) end,
+		mouse = function()
+			-- (fr-17: the frame under the mouse -- MelloUI's own while it stands in, Modules/UnitFramesPet.lua)
+			local U = MelloUI.Units
+			local pet = U and U.Own("pet")
+			if pet then
+				return Add(Add(Add({}, pet), pet.HealthBar), pet.ManaBar)
+			end
+			return Add(Add(Add({}, G("PetFrame")), G("PetFrameHealthBar")), G("PetFrameManaBar"))
+		end,
 		needed = PetNeeded, neededIn = "combat",
 		watch = function(on) Watch("pet", on) end })
 	F:Register({ key = "target",
@@ -715,8 +732,18 @@ function M.Run(db)
 	end
 end
 
+-- (fr-18) MelloUI's own status bars or bag bar came or went: their element takes the frames that stand now
+local OWN_ELEMENT = { status = "xp", bags = "bags" }
+local function OwnBarsChanged(part)
+	local key = OWN_ELEMENT[part]
+	if key then
+		Fader:Regather(key)
+	end
+end
+
 function M:OnEnable(db)
 	self.db = db
+	MelloUI:On("ownbars", OwnBarsChanged, "Fader: the bars of ours")
 	M.Run(db)
 end
 

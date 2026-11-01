@@ -5957,6 +5957,15 @@ end
 -- for the session (StandIn.offGround): the pin on Route's own spot, so the
 -- marker stands on the ground and on the place the route goes to. Inside a
 -- quest's area the marker still hides (Beacon.InArea: s.spot).
+-- The game takes a map pin down itself when the player reaches it (its
+-- SuperTrackedFrame on NAVIGATION_DESTINATION_REACHED clears every super-
+-- track; 2026-10-31, the user's Marla's Last Wish: passing Samuel Fipps'
+-- place read as the player removing Route's pin, so it never came back and
+-- the marker sat on the grave under Samuel's name). A quest's own stand-in
+-- -- its needed item's source, its spot (s.step) -- reached so is not
+-- dismissed: held down while the player is near (the marker waits, as on
+-- arriving) and put up again once they are twice that far, or the step moves
+-- on (StandIn.Reached, held).
 --------------------------------------------------------------------------------
 
 -- in a block: its helpers stay out of the main chunk's 200 locals
@@ -5964,9 +5973,14 @@ do
 	local STAND_IN_MOVE = 30   -- yards: a new exit dock this far from the pin moves it
 	local SPOT_MOVE = 8        -- yards: a quest's place this far from its stand-in moves it
 	local OFF_GROUND = 15      -- yards: the game's point this far above or below the ground is off it
+	local REACHED_FOR = 3      -- seconds: the game's "reached" this recent took a quest's stand-in down (StandIn.Reached)
+	local REACHED_NEAR = 60    -- yards: ... only while the player is this near it (the game's word was for this pin)
 	-- the stand-in the player took away ("<questID>:<item>" for a needed
 	-- item's source, "<questID>:dock"): none put up for it again meanwhile
 	local dismissed = nil
+	-- a quest's stand-in the game took down as the player reached it: { key,
+	-- cont, x, y, far }, put up again once the player is `far` yards off it
+	local held = nil
 
 	-- Beside the settings, not in them: a journey's state has no place in the
 	-- settings backup
@@ -6115,11 +6129,12 @@ do
 	end
 
 	-- (`whole`: the marker's whole label, a needed item's source's; `spot`:
-	-- the quest's own place)
-	local function PlaceStandIn(dock, label, whole, spot)
+	-- the quest's own place; `step`: either, the quest's step's own place, not
+	-- a dock; `key`: what it stands for, Update's -- dismissed as that)
+	local function PlaceStandIn(dock, label, whole, spot, step, key)
 		local mapID, mx, my = MapPointOfYards(dock[1], dock[2], dock[3])
 		local before = standIn
-		local s = { cont = dock[1], x = dock[2], y = dock[3], spot = spot,
+		local s = { cont = dock[1], x = dock[2], y = dock[3], spot = spot, step = step, key = key,
 			label = whole or (M.IconMark("goal_pin", 16) .. " " .. (label or "the boat")) }
 		if before then
 			s.pin, s.questID = before.pin, before.questID
@@ -6188,8 +6203,42 @@ do
 		return true
 	end
 
+	-- The game said the player reached the place it navigates to
+	-- (NAVIGATION_DESTINATION_REACHED; `isWaypoint`, a step on the game's own
+	-- way there, it never clears for): heard as it comes, read by Update
+	StandIn.Reached = function(isWaypoint)
+		if standIn and Plain(isWaypoint) ~= true then
+			StandIn.reachedAt = GetTime()
+		end
+	end
+
+	-- A quest's stand-in the game just took down on reaching it (see the
+	-- top): ended without dismissing it, the quest it held tracked again so it
+	-- stays followed, and held down until the player is twice as far off it
+	-- (twice Arrived Within at least); a pin the game left there untracked
+	-- goes too, so the one put up again is tracked
+	local function TakenDownByGame(cont, px, py)
+		local at, s = StandIn.reachedAt, standIn
+		StandIn.reachedAt = nil
+		if not (at and s and s.step and GetTime() - at < REACHED_FOR and s.cont == cont and px) then
+			return
+		end
+		local away = Dist(px, py, s.x, s.y)
+		if away > REACHED_NEAR then
+			return
+		end
+		held = { key = s.key, cont = s.cont, x = s.x, y = s.y, far = 2 * math.max(tonumber(M.db.arrive) or 25, away) }
+		EndStandIn(false)
+		if IsPlace(s, WaypointYards()) and C_Map.ClearUserWaypoint then
+			pcall(C_Map.ClearUserWaypoint)
+		end
+		if not WaypointYards() and not SuperTrackState() then
+			TrackQuest(s.questID)
+		end
+	end
+
 	StandIn.Update = function()
-		local cont = PlayerYards()
+		local cont, px, py = PlayerYards()
 		if not cont then
 			return
 		end
@@ -6208,12 +6257,19 @@ do
 		local want = (crossContinent or atSource or atSpot) and M.isEnabled and M.db.worldMarker
 		-- what a stand-in would stand for, for a quest (`dismissed`)
 		local key = want and d.fromQuest and (d.questID .. ":" .. (atSource and d.source.gate.item or atSpot and "spot" or "dock")) or nil
+		-- (2026-10-31) taken down by the game on reaching it: not the player's doing
+		TakenDownByGame(cont, px, py)
 		-- the stand-in pin removed or replaced (by the player): no longer ours;
-		-- removed, with nothing else tracked, the quest it held is tracked again
+		-- removed, with nothing else tracked, the quest it held is tracked again.
+		-- Dismissed as what it stood for, not as what is wanted now (2026-10-31:
+		-- another quest picked in the tracker takes the last one's pin away,
+		-- DropPinForTrackedQuest, and the new quest's own was dismissed before it
+		-- ever went up -- the marker on the game's point for it, under its
+		-- needed item's source's name)
 		if standIn and not IsPlace(standIn, WaypointYards()) then
 			local s = standIn
 			EndStandIn(false)
-			dismissed = key
+			dismissed = s.key
 			if not WaypointYards() and not SuperTrackState() then
 				TrackQuest(s.questID)
 			end
@@ -6223,13 +6279,22 @@ do
 		if key and key == dismissed then
 			return
 		end
+		-- held down after the game's arrival: until the player walks off, or
+		-- the step is another (the item looted, another quest, the marker off)
+		if held then
+			if held.key ~= key or held.cont ~= cont or Dist(px, py, held.x, held.y) > held.far then
+				held = nil
+			else
+				return
+			end
+		end
 		if want and (atSource or atSpot) then
 			if standIn and standIn.cont == d.cont and Dist(standIn.x, standIn.y, d.x, d.y) < (atSpot and SPOT_MOVE or STAND_IN_MOVE)
 				and (standIn.spot or false) == (atSpot or false) then
-				standIn.label = d.label   -- (another source this near: its name)
+				standIn.label, standIn.key = d.label, key   -- (another source this near: its name)
 				return
 			end
-			PlaceStandIn({ d.cont, d.x, d.y }, nil, d.label, atSpot or nil)
+			PlaceStandIn({ d.cont, d.x, d.y }, nil, d.label, atSpot or nil, true, key)
 			return
 		end
 		local dock, label
@@ -6247,7 +6312,7 @@ do
 		if standIn and standIn.cont == dock[1] and Dist(standIn.x, standIn.y, dock[2], dock[3]) < STAND_IN_MOVE then
 			return
 		end
-		PlaceStandIn(dock, label)
+		PlaceStandIn(dock, label, nil, nil, nil, key)
 	end
 
 	-- The route cleared: the stand-in on the dock goes with it. A quest it
@@ -6257,6 +6322,7 @@ do
 	-- the quest, takes the game's tracking off it right after.
 	StandIn.Drop = function()
 		local s = standIn
+		held = nil
 		if s then
 			EndStandIn(false)
 			if IsPlace(s, WaypointYards()) then
@@ -7912,7 +7978,9 @@ end
 --   hidden    inside a quest's objective AREA (the game's quest blob, where
 --             the client can say so: Beacon.InArea) -- killing about a camp
 --             needs no mark over one of its spots; back when the player
---             leaves. Never for one spot, nor on Route's own pin.
+--             leaves. Never for one spot, nor on Route's own pin. Also
+--             while the way goes to a needed item's source and Route's pin
+--             is not on it (NavIsOurs, 2026-10-31): never on the objective.
 -- Its look (0.21.3, the user's pick A of BuildData/output/
 -- world_marker_clean_sketch, "Cleaner and smaller"): the 18-unit flag mark,
 -- a still 20 x 230 beam with a small glow at its foot, one still chevron
@@ -8253,7 +8321,12 @@ end
 -- The navigation frame follows whatever the game super-tracks; the marker
 -- hangs on it only while that is our destination: the map pin for a pin, the
 -- same quest for a quest. With nothing super-tracked the frame is left where
--- it last was (the arrow froze there, user 2026-09-23).
+-- it last was (the arrow froze there, user 2026-09-23). A needed item's
+-- source is never the game's point for the quest (that is the objective the
+-- item is for): only Route's own pin on it shows it, and without one the
+-- marker waits rather than stand on the objective under the source's name
+-- (2026-10-31, the user's Marla's Last Wish: the marker on the grave, the
+-- route to Samuel Fipps).
 local function NavIsOurs()
 	if not destination then
 		return false
@@ -8273,9 +8346,18 @@ local function NavIsOurs()
 		return pin ~= false
 	end
 	if destination.fromQuest then
-		return quest ~= nil and quest == destination.questID
+		return destination.source == nil and quest ~= nil and quest == destination.questID
 	end
 	return pin ~= false
+end
+
+-- Whether the game's own marker would point elsewhere than the destination:
+-- it follows the game's tracking of the quest while the way goes to a needed
+-- item's source with no pin of Route's on it (NavIsOurs). It stays faded
+-- then, as while ours shows (UpdateMarker)
+function Beacon.GameElsewhere()
+	local d = destination
+	return d ~= nil and d.fromQuest and d.source ~= nil and not standIn and M.isEnabled and M.db.worldMarker and true or false
 end
 
 local UpdateMarker   -- below: the tick hides the marker through it
@@ -10006,7 +10088,8 @@ UpdateMarker = function()
 		if not destination then
 			marker.soundKey = nil
 		end
-		FadeGameMarker(inArea)
+		-- (2026-10-31) nor the game's own on the objective while the way goes to its item's source
+		FadeGameMarker(inArea or Beacon.GameElsewhere())
 		return
 	end
 	-- the tick places it: over the destination or on the ring round the character
@@ -11088,6 +11171,13 @@ do
 	local Safe = MelloUI.Safe
 	local Clock = Travel.Clock   -- "1:16"
 
+	-- (2.1.0; the user, 2026-10-31: "Polestar takes priority") Flight Map Help on, and no other addon marking the
+	-- flight on the flight map itself (MelloUI.Overlaps: Polestar's flight master highlight)
+	function F.Helps()
+		local O = MelloUI.Overlaps
+		return M.db.flightHint and not (O and O.By("flightHelp")) or false
+	end
+
 	-- "Sentinel Hill" of "Sentinel Hill, Westfall"
 	function F.Short(name)
 		if type(name) ~= "string" or name == "" then
@@ -11386,7 +11476,7 @@ do
 	function F.Hint()
 		local tf = _G.TaxiFrame
 		local slot, rec
-		if M.isEnabled and M.db.flightHint and type(tf) == "table" and Safe.Call(tf, "IsShown") then
+		if M.isEnabled and F.Helps() and type(tf) == "table" and Safe.Call(tf, "IsShown") then
 			if F.readGen ~= F.openGen then
 				F.ReadMap()
 			end
@@ -11430,7 +11520,7 @@ do
 		F.ReadMap()
 		F.Hook()
 		F.HideHint()
-		if M.db.flightHint and destination then
+		if F.Helps() and destination then
 			M:WhenReady(F.PlanHint)
 		end
 	end
@@ -11456,7 +11546,7 @@ do
 	-- The game's TaxiNodeOnButtonEnter (a post-hook): the flight time in the
 	-- point's tooltip, and whether the route flies there
 	function F.OnEnter(button)
-		if not (M.isEnabled and M.db.flightHint) then
+		if not (M.isEnabled and F.Helps()) then
 			return
 		end
 		local slot = Safe.Number(Safe.Call(button, "GetID"))
@@ -11568,7 +11658,7 @@ do
 	-- an option changed
 	function F.Setting(key)
 		if key == "flightHint" then
-			if M.db.flightHint then
+			if F.Helps() then
 				F.Hint()
 			else
 				F.HideHint()
@@ -11577,6 +11667,13 @@ do
 			F.Bead(F.gem)   -- (the flight map's bead in the new look, the map open or not)
 		end
 	end
+
+	-- (2.1.0) another addon took the flight map's help over or gave it back: as the option moving
+	MelloUI:On("overlap", function(job)
+		if job == "flightHelp" and M.isEnabled and M.db then
+			F.Setting("flightHint")
+		end
+	end, "Route: flight map help")
 end
 
 --------------------------------------------------------------------------------
@@ -12225,6 +12322,12 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 			DropPinForTrackedQuest()
 		end
 		ReadWaypoint()
+	elseif event == "NAVIGATION_DESTINATION_REACHED" then
+		-- (2026-10-31) the game takes a reached pin down: a quest's stand-in is held, not dismissed
+		StandIn.Reached(unit)
+		if StandIn.reachedAt then
+			StandIn.Update()
+		end
 	elseif event == "QUEST_POI_UPDATE" or event == "QUEST_LOG_UPDATE" then
 		if destination and destination.fromQuest then
 			poiCache[destination.questID] = nil
@@ -12580,6 +12683,7 @@ function M:OnEnable(db)
 	eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 	pcall(eventFrame.RegisterEvent, eventFrame, "USER_WAYPOINT_UPDATED")
 	pcall(eventFrame.RegisterEvent, eventFrame, "SUPER_TRACKING_CHANGED")
+	pcall(eventFrame.RegisterEvent, eventFrame, "NAVIGATION_DESTINATION_REACHED")
 	pcall(eventFrame.RegisterEvent, eventFrame, "TAXIMAP_OPENED")
 	pcall(eventFrame.RegisterEvent, eventFrame, "QUEST_POI_UPDATE")
 	pcall(eventFrame.RegisterEvent, eventFrame, "QUEST_LOG_UPDATE")

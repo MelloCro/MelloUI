@@ -1968,7 +1968,7 @@ function FX.FrameOf(unit)
 			end
 		end
 	end
-	local player = rawget(_G, "PlayerFrame")
+	local player = MelloUI.Units and MelloUI.Units.Player() or rawget(_G, "PlayerFrame")
 	if unit == "player" and type(player) == "table" and Seen(player) then
 		return player
 	end
@@ -1978,7 +1978,8 @@ end
 -- (1.2.4, Buff Landings: a buff on your target lands on its frame too) your target's frame on the screen -- the
 -- game's, as MelloUI's Unit Frames dress it -- or nil (hidden, no target)
 function FX.TargetFrame()
-	local f = rawget(_G, "TargetFrame")
+	-- (fr-17: the target frame on the screen -- MelloUI's own while it stands in)
+	local f = MelloUI.Units and MelloUI.Units.Target() or rawget(_G, "TargetFrame")
 	return type(f) == "table" and Seen(f) and f or nil
 end
 
@@ -2110,7 +2111,7 @@ function FX.Also(layer, S)
 	if S.also or S.round or not S.frame or S.unit ~= FX.Canon("player") then
 		return
 	end
-	local pf = rawget(_G, "PlayerFrame")
+	local pf = MelloUI.Units and MelloUI.Units.Player() or rawget(_G, "PlayerFrame")
 	if type(pf) ~= "table" or pf == S.frame or not Seen(pf) then
 		return
 	end

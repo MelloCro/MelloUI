@@ -480,11 +480,11 @@ MelloUI_QuestListData = {
 		{1977,"Zul'Gurub",0,-11916.2,-1206.9,33,53.7,17.6,2},
 		{1977,"Zul'Gurub",0,-11915.8,-1236.4,33,54.2,17.6,2},
 	},
-	-- transports: kind (1 boat, 2 zeppelin, 3 portal, 4 tram), faction (0 neutral, 1 Alliance, 2 Horde),
+	-- transports: kind (1 boat, 2 zeppelin, 3 portal, 4 tram, 5 airship), faction (0 neutral, 1 Alliance, 2 Horde),
 	-- label, dock name,
 	-- continent, world x, world y, zone (build-time guess), map x, map y, destination continent, world x, world y,
 	-- expected seconds to the next dock, the wait included (0: not known -- a portal, the tram);
-	-- (a boat, a zeppelin) its course { x, y, ... }: the path's world yards from this dock while it stays on
+	-- (a boat, a zeppelin, an airship) its course { x, y, ... }: the path's world yards from this dock while it stays on
 	-- this map with no jump, to the next dock or out of the harbour; the side its arc over the sea bends
 	-- to without a whole course (1, -1: the left normal of the way to the next dock, y down; 0 none)
 	transports = {
@@ -507,10 +507,10 @@ MelloUI_QuestListData = {
 		{1,0,"Boat to Menethil Harbor, then Southshore","Auberdine",1,6406.2,823.1,361,14.2,19.0,0,-3709.5,-575.1,311,{6406.2,823.1,6417.1,893.4,6402.8,986.7,6339.0,1072.0,6240.0,1135.7,6113.5,1173.1,6010.0,1178.8,5868.7,1178.5},-1},
 		{1,0,"Boat to Powderfuse Port","Steamwheedle Port",1,-6932.6,-4950.8,440,68.6,23.0,0,-8232.3,-5800.8,190,{-6932.6,-4950.8,-6991.3,-4952.8,-7046.1,-4972.0,-7127.1,-5055.7,-7184.6,-5164.7,-7244.4,-5276.3,-7298.3,-5355.0,-7330.2,-5420.0,-7340.0,-5490.1,-7341.4,-5640.2,-7340.6,-5746.1},-1},
 		{1,0,"Boat to Steamwheedle Port","Powderfuse Port",0,-8232.3,-5800.8,16591,80.6,54.6,1,-6932.6,-4950.8,191,{-8232.3,-5800.8,-8280.1,-5781.1,-8343.4,-5783.3,-8418.9,-5808.6,-8477.8,-5833.6,-8570.7,-5877.0,-8689.6,-5940.5,-8805.9,-6038.9,-8885.7,-6155.3},1},
-		{1,0,"Boat to Zephras Isle","Alterac Mountains",0,544.8,424.2,36,12.8,51.2,2991,1848.3,569.1,296,{544.8,424.2,487.6,558.7,403.4,639.5,222.5,674.9,-10.6,778.6,-220.2,960.5,-472.0,1153.2},0},
-		{1,0,"Boat to Alterac Mountains","Zephras Isle",2991,1848.3,569.1,0,65.8,83.8,0,544.8,424.2,321,{1848.3,569.1,1815.5,618.3,1822.1,668.0,1871.7,773.7,1827.3,847.8,1735.6,849.0,1633.3,788.6,1459.8,644.7,1256.8,477.1},0},
-		{1,0,"Boat to Zephras Isle","Thunder Bluff",1,-802.0,366.5,405,86.0,41.8,2991,1952.5,1019.1,230,{-802.0,366.5,-1034.2,518.3,-1292.8,323.4},0},
-		{1,0,"Boat to Thunder Bluff","Zephras Isle",2991,1952.5,1019.1,0,57.7,81.0,1,-802.0,366.5,334,{1952.5,1019.1,1982.3,1132.2,2086.4,1188.7,2185.0,1142.4,2226.2,985.7,2125.8,851.6,1927.8,780.9,1779.6,717.9,1321.3,475.5},0},
+		{5,0,"Airship to Zephras Isle","Alterac Mountains",0,544.8,424.2,36,12.8,51.2,2991,1848.3,569.1,296,{544.8,424.2,487.6,558.7,403.4,639.5,222.5,674.9,-10.6,778.6,-220.2,960.5,-472.0,1153.2},-1},
+		{5,0,"Airship to Alterac Mountains","Zephras Isle",2991,1848.3,569.1,0,65.8,83.8,0,544.8,424.2,321,{1848.3,569.1,1815.5,618.3,1822.1,668.0,1871.7,773.7,1827.3,847.8,1735.6,849.0,1633.3,788.6,1459.8,644.7,1256.8,477.1},1},
+		{5,0,"Airship to Zephras Isle","Thunder Bluff",1,-802.0,366.5,405,86.0,41.8,2991,1952.5,1019.1,230,{-802.0,366.5,-1034.2,518.3,-1292.8,323.4},-1},
+		{5,0,"Airship to Thunder Bluff","Zephras Isle",2991,1952.5,1019.1,0,57.7,81.0,1,-802.0,366.5,334,{1952.5,1019.1,1982.3,1132.2,2086.4,1188.7,2185.0,1142.4,2226.2,985.7,2125.8,851.6,1927.8,780.9,1779.6,717.9,1321.3,475.5},1},
 		{1,0,"Boat to Stormwind City","Auberdine",1,6548.3,942.2,361,12.2,15.3,0,-8654.5,1344.4,184,{6548.3,942.2,6496.8,971.9,6447.8,1022.5,6405.0,1116.5,6397.1,1271.8,6445.6,1573.3,6484.8,1813.8},1},
 		{1,0,"Boat to Auberdine","Stormwind City",0,-8654.5,1344.4,1519,21.8,56.9,1,6548.3,942.2,172,{-8654.5,1344.4,-8611.7,1372.8,-8579.1,1423.5,-8544.8,1494.0,-8496.3,1605.1,-8444.3,1724.4},-1},
 		{3,1,"Portal to Rut'theran Village","Darnassus",1,9946.7,2617.9,1657,30.3,41.3,1,8785.6,966.9,0},

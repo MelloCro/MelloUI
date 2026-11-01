@@ -1025,6 +1025,18 @@ DOCK_LABELS = [(1, 1340.0, -4645.0, "Orgrimmar", 250.0), (0, 2062.0, 260.0, "Und
                (0, -8232.0, -5801.0, "Powderfuse Port", 300.0), (2991, 1848.0, 569.0, "Zephras Isle", 400.0),
                (2991, 1953.0, 1019.0, "Zephras Isle", 400.0)]
 ZEPPELIN_TOWERS = {"Orgrimmar", "Undercity", "Grom'gol Base Camp"}
+# (2.1.0, qu-03; the user, 2026-10-31: Zephras Isle's "boats" relabelled as airships) a transport whose path flies --
+# its nodes' middle height above this many yards; a boat's path lies on the sea (0), a zeppelin's flies (72 to 150
+# yards), Zephras Isle's from the Dalaran skydock and Mulgore (640 to 710) -- is an aircraft: a zeppelin where it docks
+# at a zeppelin tower, else an airship (kind 5, both factions)
+FLY_Z = 20.0
+TRANSPORT_WORD = {1: "Boat", 2: "Zeppelin", 5: "Airship"}
+
+
+def transport_flies(path_nodes):
+    """whether a transport's path flies: the middle height of its nodes over FLY_Z yards"""
+    zs = sorted(float(n["Loc_2"]) for n in path_nodes)
+    return bool(zs) and zs[len(zs) // 2] > FLY_Z
 
 
 TRANSPORT_DOCK = 100.0   # yards: stops of a transport path this near are one dock (a path's wrap splits one's wait)
@@ -1116,6 +1128,7 @@ ARC_POINTS = 64        # ... drawn in this many stretches; the land under it cou
 ARC_END = 6
 LAND_LEVEL = 110       # a continent's outline mask (MelloUI_Map/Media/Outlines) over this is land
 OUTLINES = os.path.join(HERE, "..", "MelloUI_Map", "Media", "Outlines")
+MAP_DATA = os.path.join(HERE, "..", "MelloUI_Map", "MapData.lua")   # (qu-03) MapData.isles, Tools/build_map_data.py
 WORLD_UI, WORLD_W, WORLD_H = 947, 1002, 668   # Azeroth's world map and its art's size (the map's world units)
 
 
@@ -1214,6 +1227,17 @@ def world_land():
         land = ImageChops.lighter(land, tmp)
     _land["img"] = land
     _land["on947"] = {a["MapID"]: a for a in assign.get(WORLD_UI, [])}
+    # (2.1.0, qu-03: Zephras Isle on the map) a zone the client places on no continent of the world lies where
+    # MelloUI's map lays it (MapData.isles: x0, x1, y0, y1 on 947): its own assignment, its world map's yards, carried
+    # onto that rectangle -- so its docks have a place and its ways an arc's side like every other
+    text = open(MAP_DATA, encoding="utf-8").read() if os.path.isfile(MAP_DATA) else ""
+    block = re.search(r"\n\tisles = \{\n(.*?)\n\t\},", text, re.S)
+    for m in re.finditer(r"\[(\d+)\] = \{ ([-0-9.]+), ([-0-9.]+), ([-0-9.]+), ([-0-9.]+)", block.group(1) if block else ""):
+        own = [a for a in assign.get(int(m.group(1)), []) if a["OrderIndex"] == "0"]
+        if own and own[0]["MapID"] not in _land["on947"]:
+            row = dict(own[0])
+            row.update(UiMin_0=m.group(2), UiMax_0=m.group(3), UiMin_1=m.group(4), UiMax_1=m.group(5))
+            _land["on947"][row["MapID"]] = row
     _land["to_ui"] = to_ui
     return _land
 
@@ -1385,7 +1409,10 @@ def build_map_points(sql, zones, used_dungeons, raids):
         for cont, x, y in stops:
             loc = locate(zones, cont, x, y)
             labels.append((dock_name(cont, x, y, loc), loc))
-        kind = 2 if any(l[0] in ZEPPELIN_TOWERS for l in labels) else 1
+        if any(l[0] in ZEPPELIN_TOWERS for l in labels):
+            kind = 2
+        else:
+            kind = 5 if transport_flies(nodes.get(pid, [])) else 1   # (qu-03) a path that flies: an airship
         if kind == 2:
             faction = 2
         elif forever_paths or any(l[0] in ("Booty Bay", "Ratchet") for l in labels):
@@ -1401,7 +1428,7 @@ def build_map_points(sql, zones, used_dungeons, raids):
                 nxt = (i + 1) % count
             here, loc = labels[i]
             dest = labels[nxt][0]
-            label = ("Zeppelin to " if kind == 2 else "Boat to ") + dest
+            label = TRANSPORT_WORD[kind] + " to " + dest
             if count >= 3:
                 label += ", then " + labels[(nxt + 1) % count][0]
             other = stops[nxt]
@@ -2238,11 +2265,11 @@ def main():
             side = f",{side}" if side else ""
             fh.write(f"\t\t{{{did},{lua_str(name)},{cont},{wx},{wy},{zone},{px},{py},{kind}{side}}},\n")
         fh.write("\t},\n")
-        fh.write("\t-- transports: kind (1 boat, 2 zeppelin, 3 portal, 4 tram), faction (0 neutral, 1 Alliance, 2 Horde),\n")
+        fh.write("\t-- transports: kind (1 boat, 2 zeppelin, 3 portal, 4 tram, 5 airship), faction (0 neutral, 1 Alliance, 2 Horde),\n")
         fh.write("\t-- label, dock name,\n")
         fh.write("\t-- continent, world x, world y, zone (build-time guess), map x, map y, destination continent, world x, world y,\n")
         fh.write("\t-- expected seconds to the next dock, the wait included (0: not known -- a portal, the tram);\n")
-        fh.write("\t-- (a boat, a zeppelin) its course { x, y, ... }: the path's world yards from this dock while it stays on\n")
+        fh.write("\t-- (a boat, a zeppelin, an airship) its course { x, y, ... }: the path's world yards from this dock while it stays on\n")
         fh.write("\t-- this map with no jump, to the next dock or out of the harbour; the side its arc over the sea bends\n")
         fh.write("\t-- to without a whole course (1, -1: the left normal of the way to the next dock, y down; 0 none)\n")
         fh.write("\ttransports = {\n")

@@ -62,6 +62,16 @@ local ScreenRect = Backdrop.ScreenRect   -- (the backdrops' one rect reader: Mel
 -- what the kit keeps beside the game's frames (weak-keyed, never keys on them)
 local repOf = MelloUI.Kept.repOf
 
+-- (fr-18) the game's frame by its global name, or MelloUI's own standing in for it (the status bars, the bag bar:
+-- MelloUI.OwnBars, Modules/OwnBars.lua)
+local function OwnG(name)
+	local OB = MelloUI.OwnBars
+	if OB then
+		return OB.G(name)
+	end
+	return rawget(_G, name)
+end
+
 -- The elements that can wear a backdrop (user, 2026-10-04: "Everything
 -- should have the option to have a backdrop, but not on by Default"), each
 -- by its own switch, in the order that makes a joined backdrop's leader
@@ -278,7 +288,7 @@ end
 local function BagButtons()
 	local n = 0
 	for _, name in ipairs(BAG_BUTTONS) do
-		local button = rawget(_G, name)
+		local button = OwnG(name)
 		if type(button) == "table" and button.icon and button.GetNormalTexture then
 			n = n + 1
 			bagList[n] = button
@@ -294,7 +304,7 @@ end
 local ANCHORS = {
 	bars = function() return rawget(_G, "MainActionBar") or rawget(_G, "MainMenuBar") end,
 	micro = function() return rawget(_G, "MicroMenu") end,
-	bags = function() return rawget(_G, "BagsBar") end,
+	bags = function() return OwnG("BagsBar") end,
 }
 
 function M.Anchor(id)
@@ -380,6 +390,15 @@ end
 -- its scale changed. Never in a fight.
 local function SetFit(container, k)
 	local fit = fits[container]
+	-- (fr-18: MelloUI's own status bars are movers of Core's, placed again at their own scale as they show -- a fit
+	-- whose scale is no longer on the container is laid again from the scale it has now)
+	if fit then
+		local okS, cur = pcall(container.GetScale, container)
+		cur = okS and MelloUI.Safe.Finite(cur)
+		if cur and math.abs(cur - fit.base * fit.k) > 0.001 then
+			fits[container], fit = nil, nil
+		end
+	end
 	local have = fit and fit.k or 1
 	if math.abs(have - k) < 0.001 or InCombatLockdown() then
 		return false
@@ -477,7 +496,7 @@ local function MemberRect(e, root, into)
 	local rect, size = ShownRect(e.group == "micro" and MicroButtons() or BagButtons(), into)
 	-- the bag bar's fold arrow (Tweaks' Collapse Arrow) inside it while it
 	-- shows: in the rect, never the size (the gap is a button's share)
-	local toggle = e.group == "bags" and rawget(_G, "BagBarExpandToggle")
+	local toggle = e.group == "bags" and OwnG("BagBarExpandToggle")
 	if rect and toggle and toggle:IsShown() then
 		local l, b, r, t = ScreenRect(toggle)
 		if l then
@@ -503,7 +522,7 @@ local function Members()
 	local n = 0
 	local db = M.db
 	for _, e in ipairs(ELEMENTS) do
-		local root = rawget(_G, e.frame)
+		local root = OwnG(e.frame)
 		if type(root) == "table" and root.GetObjectType and OnScreen(root) then
 			local m = members[n + 1]
 			local rect, size = MemberRect(e, root, m and m.rect)
@@ -754,7 +773,7 @@ local function Watch()
 	watching = true
 	WatchTotemBar()
 	for _, e in ipairs(ELEMENTS) do
-		local f = rawget(_G, e.frame)
+		local f = OwnG(e.frame)
 		if type(f) == "table" and f.GetObjectType then
 			WatchForBackdrop(f)
 		end
@@ -1236,6 +1255,20 @@ local function Hook()
 	-- re-laying or re-sizing any bar, so none of the bars' hooks fires. Laid
 	-- out again, out of combat, like any change.
 	MelloUI:On("scale", ScheduleBackdrop, M)
+	-- (fr-18) MelloUI's own status bars or bag bar came or went (MelloUI.OwnBars): the backdrops round the one that
+	-- stands now, watched as the game's was, and the status bars' look on it
+	MelloUI:On("ownbars", function()
+		if watching then
+			for _, e in ipairs(ELEMENTS) do
+				local f = OwnG(e.frame)
+				if type(f) == "table" and f.GetObjectType then
+					WatchForBackdrop(f)
+				end
+			end
+		end
+		ScheduleBackdrop()
+		M.Status.Again()
+	end, M)
 end
 
 -- (0.18.5) a Backdrop switch per element took over from the skin's Backdrop
@@ -1509,7 +1542,7 @@ end, "script")
 function Status.Lay()
 	local shown = Status.On()
 	for _, name in ipairs(Status.CONTAINERS) do
-		local c = rawget(_G, name)
+		local c = OwnG(name)
 		if type(c) == "table" then
 			Status.Frame(c, shown)
 			local bars = rawget(c, "bars")
@@ -1536,7 +1569,7 @@ MelloUI:On("skin", Status.Again, Status)   -- (1.2.4: the skin switched, MelloUI
 
 function Status.Start()
 	for _, name in ipairs(Status.CONTAINERS) do
-		local c = rawget(_G, name)
+		local c = OwnG(name)
 		if type(c) == "table" and not Status.hooked[c] then
 			Status.hooked[c] = true
 			if type(c.UpdateDividers) == "function" then

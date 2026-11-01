@@ -5,7 +5,11 @@
 -- on Azeroth (947) -- the world, the continents, the zones and the cities -- is
 -- laid once in world units (the pixels of 947's art layer) by the client's own
 -- C_Map.GetMapRectOnMap, read at runtime: a new client build needs no table of
--- ours. Its art is the client's own tiles by file ID
+-- ours. (2.1.0, qu-03) A zone the client places on no continent -- Forever's
+-- Zephras Isle, on a world map of its own -- lies where MapData.isles puts it
+-- (MelloUI's choice, at the world's scale): its land at every zoom, found by
+-- its pieces, the maps of its world carried through it. Its art is the
+-- client's own tiles by file ID
 -- (C_Map.GetMapArtLayerTextures) with the explored pieces over them
 -- (C_MapExplorationInfo), laid as Blizzard's map canvas lays them, cut at the
 -- art's edge.
@@ -175,6 +179,49 @@ local function ViaChild(id)
 	return nil
 end
 
+-- (2.1.0, qu-03; the user, 2026-10-31: "currently zephras isle is missing from the map") a map the client places on
+-- no continent of the world: where MelloUI lays it (MapData.isles, Tools/build_map_data.py: Forever's Zephras Isle,
+-- whose one placing is on its own world map), or nil. Only where the client gives no place: its own wins
+local function Isle(id)
+	local data = ns.MapData
+	local r = data and data.isles and data.isles[id]
+	if type(r) ~= "table" then
+		return nil
+	end
+	local x0, x1, y0, y1 = Finite(r[1]), Finite(r[2]), Finite(r[3]), Finite(r[4])
+	if not (x0 and x1 and y0 and y1) or x1 <= x0 or y1 <= y0 then
+		return nil
+	end
+	return x0, x1, y0, y1
+end
+
+-- an isle's land in world units: MapData.isles' land (its pieces' hit rectangles widened as its outline is: the
+-- shape its outline is made from) -- what a click or the cursor finds it by (the client has no shape for it on the
+-- world) -- and the box round them all, what a glide into it frames (p.land, as a continent's)
+local function IsleLand(p)
+	local data = ns.MapData
+	local row = data and data.isles and data.isles[p.id]
+	local list = type(row) == "table" and row.land
+	if type(list) ~= "table" then
+		return
+	end
+	local hit, land = {}, nil
+	for i = 1, #list - 3, 4 do
+		local l, t, r, b = Finite(list[i]), Finite(list[i + 1]), Finite(list[i + 2]), Finite(list[i + 3])
+		if l and t and r and b then
+			local box = { p.left + l * p.w, p.top + t * p.h, p.left + r * p.w, p.top + b * p.h }
+			hit[#hit + 1] = box
+			if not land then
+				land = { box[1], box[2], box[3], box[4] }
+			else
+				land[1], land[2] = min(land[1], box[1]), min(land[2], box[2])
+				land[3], land[4] = max(land[3], box[3]), max(land[4], box[4])
+			end
+		end
+	end
+	p.hit, p.land = hit, land
+end
+
 -- a city: the client's own flag, or a zone map the client gives no exploration pieces (UiMap's ShowOverlays flag, 2:
 -- every zone of this client has it, the six capitals alone have not)
 local function IsCity(id, flags)
@@ -217,7 +264,7 @@ function Canvas:Layout()
 	self.W = L and Finite(L.layerWidth) or 1002
 	self.H = L and Finite(L.layerHeight) or 668
 	self.root:SetSize(self.W, self.H)
-	local places, byID = {}, {}
+	local places, byID, isles = {}, {}, {}
 	local world = NewPlace(self, T.WORLD, "world", 0, 1, 0, 1)
 	places[1], byID[T.WORLD] = world, world
 	for _, m in ipairs(Children(T.WORLD, nil, true) or {}) do
@@ -227,9 +274,19 @@ function Canvas:Layout()
 			if not x0 and mt == T.MAP_TYPE.continent then
 				x0, x1, y0, y1 = ViaChild(id)
 			end
+			local isle = false
+			if not x0 then
+				x0, x1, y0, y1 = Isle(id)
+				isle = x0 ~= nil
+			end
 			if x0 then
 				local p = NewPlace(self, id, mt == T.MAP_TYPE.continent and "continent" or "zone", x0, x1, y0, y1)
-				if p.kind == "zone" and IsCity(id, p.flags) then
+				if isle then
+					-- (qu-03) a zone with no continent: its own land at every zoom, its name from the world's
+					p.isle = true
+					IsleLand(p)
+					isles[#isles + 1] = p
+				elseif p.kind == "zone" and IsCity(id, p.flags) then
 					p.kind = "city"
 				end
 				places[#places + 1], byID[id] = p, p
@@ -281,7 +338,7 @@ function Canvas:Layout()
 	-- how far a view may go: the world's painting, the ground (the continents' art reaches past it, but only its land
 	-- is drawn, and that lies on the world)
 	self.bounds = { 0, 0, self.W, self.H }
-	self.places, self.byID = places, byID
+	self.places, self.byID, self.isles = places, byID, isles
 	self.stats.layoutMs = debugprofilestop() - t0
 end
 
@@ -852,6 +909,8 @@ local function Detail(self, viewW)
 			a = cave
 		elseif p.kind == "city" then
 			a = Quant(min(zone, Ramp(p.w / viewW, T.CITY_IN[1], T.CITY_IN[2])))
+		elseif p.isle then
+			a = world   -- (qu-03: its own land at every zoom; no continent's painting stands in for it)
 		else
 			a = zone
 		end
@@ -972,6 +1031,14 @@ function Canvas:ToWorld(id, x, y)
 	if r == nil then
 		local x0, x1, y0, y1 = Rect(id, T.WORLD)
 		r = x0 and { left = x0 * self.W, top = y0 * self.H, w = (x1 - x0) * self.W, h = (y1 - y0) * self.H } or false
+		-- (qu-03) a map the client places on an isle (another map of Zephras Isle's world): carried through the isle
+		for _, q in ipairs(not r and self.isles or EMPTY) do
+			local a0, a1, b0, b1 = Rect(id, q.id)
+			if a0 then
+				r = { left = q.left + a0 * q.w, top = q.top + b0 * q.h, w = (a1 - a0) * q.w, h = (b1 - b0) * q.h }
+				break
+			end
+		end
 		self.rects[id] = r
 	end
 	if not r then
@@ -1202,8 +1269,23 @@ function Canvas:ViewMap()
 	end
 	local path = self.focusPath
 	for i = #path, 1, -1 do
-		if path[i].kind == "continent" then
+		if path[i].kind == "continent" or path[i].isle then   -- (qu-03: an isle is its own continent)
 			return path[i].id
+		end
+	end
+	return nil
+end
+
+-- (qu-03) the isle MelloUI lays on `top` (the world) under a world point: on its land (its pieces), or nil -- the
+-- client's shapes know no place for it
+local function IsleAt(self, top, wx, wy)
+	for _, p in ipairs(self.isles or EMPTY) do
+		if p.parent == top.id and p.hit and wx >= p.left and wx <= p.right and wy >= p.top and wy <= p.bottom then
+			for _, b in ipairs(p.hit) do
+				if wx >= b[1] and wx <= b[3] and wy >= b[2] and wy <= b[4] then
+					return p
+				end
+			end
 		end
 	end
 	return nil
@@ -1225,7 +1307,7 @@ function Canvas:PathWorld(wx, wy, out)
 		local u, v = (wx - p.left) / p.w, (wy - p.top) / p.h
 		local ok, info = pcall(C_Map.GetMapInfoAtPosition, p.id, u, v)
 		local id = ok and type(info) == "table" and Finite(info.mapID)
-		local nextP = id and id ~= p.id and self.byID[id]
+		local nextP = id and id ~= p.id and self.byID[id] or IsleAt(self, p, wx, wy)
 		-- (only a map that lies within the one before it: a step in, never sideways)
 		if nextP and nextP.area < p.area then
 			p = nextP

@@ -296,6 +296,13 @@ Lang:Add("koKR", {
 	["Repairs your gear and sells junk at merchants."] = "상인에게서 장비를 수리하고 잡동사니를 판매합니다.", -- draft
 	["FPS / Latency"] = "FPS / 지연 시간", -- draft
 	["A small FPS and latency readout in the bottom right corner."] = "오른쪽 아래의 작은 FPS·지연 시간 표시.", -- draft
+	-- OwnBars
+	["Own Bars"] = "자체 바", -- draft
+	["The experience and reputation bars and the bag bar as MelloUI's own: placed by Edit Layout and the profiles."] = "경험치·평판 바와 가방 바를 MelloUI의 자체 바로: 레이아웃 편집과 프로필이 배치합니다.", -- draft
+	["Vertical Bag Bar"] = "세로 가방 바", -- draft
+	["The bag bar stands upright instead of lying flat."] = "가방 바가 눕지 않고 세로로 섭니다.", -- draft
+	["Bags On The Other Side"] = "반대쪽 가방", -- draft
+	["The bag slots line up on the other side of the backpack (right instead of left, or down instead of up)."] = "가방 칸이 배낭의 반대쪽에 줄을 섭니다(왼쪽 대신 오른쪽, 또는 위 대신 아래).", -- draft
 	-- DarkMode
 	["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours."] = "인터페이스 전체를 어둡게 합니다: MelloUI 창과 개체창, 게임 아트, 그림 리스킨. 아이콘과 글자는 색을 유지합니다.", -- draft
 	["Dim the gold and the glare. The interface steps back, the world steps forward."] = "금빛과 눈부심을 낮추세요. 인터페이스는 물러나고 세상이 앞으로 나옵니다.", -- draft
@@ -1743,6 +1750,8 @@ Lang:Add("koKR", {
 	["The height of each frame."] = "각 개체창 높이.", -- draft
 	["Party Spacing"] = "파티 간격", -- draft
 	["The space between the party's frames."] = "파티 개체창 사이 간격.", -- draft
+	["Vertical Spacing"] = "세로 간격", -- draft
+	["The space between the party frames with portraits."] = "초상화가 있는 파티 프레임 사이의 간격입니다.", -- draft
 	["Party Grows"] = "파티 늘어나는 방향", -- draft
 	["Which way the party's frames line up."] = "파티 개체창이 늘어서는 방향.", -- draft
 	["Party Order"] = "파티 순서", -- draft
@@ -1842,7 +1851,7 @@ Lang:Add("koKR", {
 	["Big Cooldowns"] = "큰 재사용 대기시간", -- draft
 	["Your big defensive cooldowns (Shield Wall, Evasion, Ice Block...) as icons above the health bar."] = "큰 방어 재사용 대기시간(방패의 벽, 회피, 얼음 방패...)을 생명력 바 위 아이콘으로.", -- draft
 	["Percent And Spell Text"] = "백분율과 주문 글자", -- draft
-	["Health and power percent, spell names and times, and your shield's amount."] = "생명력·자원 백분율, 주문 이름과 시간, 보호막 양.", -- draft
+	["Health and power percent, spell names and times."] = "생명력과 자원 백분율, 주문 이름과 시간.", -- draft
 	["Text Font"] = "글자 글꼴", -- draft
 	["The font of the display's text. Shared: the interface font."] = "개인 화면 글자 글꼴. 공유: 인터페이스 글꼴.", -- draft
 	["Class Colours"] = "직업 색상", -- draft
@@ -2167,6 +2176,7 @@ Lang:Add("koKR", {
 	["Only with Route on"] = "경로가 켜져 있을 때만", -- draft
 	["Only with FPS / Latency on"] = "FPS / 지연 시간이 켜져 있을 때만", -- draft
 	["Only with Raid Frames"] = "공격대 창에서만", -- draft
+	["Only with Party Frames (Portraits)"] = "파티 프레임(초상화)에서만", -- draft
 	["Only with Flat colour"] = "단색일 때만", -- draft
 	["Only with Missing Health on"] = "잃은 생명력이 켜져 있을 때만", -- draft
 	["Only with Heal Flight on"] = "치유 효과가 켜져 있을 때만", -- draft
@@ -2199,12 +2209,20 @@ Lang:Add("koKR", {
 	-- Core/Config.lua
 	["Module based interface tweaks for World of Warcraft: Forever."] = "World of Warcraft: Forever를 위한 모듈식 인터페이스 조정.", -- draft
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
+	["Supporters"] = "후원자", -- draft
+	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Edit Layout: Revert and Default place for each element; switch, make, copy, rename, delete and share Edit Mode layouts from the bar."] = "레이아웃 편집: 요소마다 되돌리기와 기본 위치; 바에서 편집 모드 레이아웃을 전환, 생성, 복사, 이름 변경, 삭제, 공유.", -- draft
-	["Edit Layout: attach the game's elements to each other, as in Edit Mode."] = "레이아웃 편집: 편집 모드처럼 게임의 요소를 서로 붙입니다.", -- draft
+	["Edit Layout: attach elements as in Edit Mode; your other characters are asked again to use MelloUI's layout."] = "레이아웃 편집: 편집 모드처럼 요소를 붙이고, 다른 캐릭터에서도 MelloUI 레이아웃 사용 여부를 다시 묻습니다.", -- draft
 	["Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab."] = "레이아웃 편집: 미터기 크기를 바꾸는 동안 바로 보이고, 플레이어 상자가 미터기 탭을 포함합니다.", -- draft
-	["The map zoomed out: capitals, docks with their boat and zeppelin trails, dungeons, raids and your quests."] = "지도를 끝까지 축소하면: 수도, 배와 비행선 항로가 있는 선착장, 던전, 공격대, 그리고 내 퀘스트.", -- draft
-	["Default skin: the player frame stays sharp when scaled up."] = "기본 스킨: 플레이어 프레임이 확대해도 선명합니다.", -- draft
-	["Loading a profile made for another screen offers Fit to this screen."] = "다른 화면용으로 만든 프로필을 불러오면 이 화면에 맞추기를 제안합니다.", -- draft
+	["The map zoomed out: each capital in its own emblem, boat, zeppelin and airship trails, dungeons, raids, your quests, and Zephras Isle."] = "지도를 끝까지 축소하면: 수도마다 고유한 문장, 배·비행선·비공정 항로, 던전, 공격대, 내 퀘스트, 그리고 Zephras Isle.", -- draft
+	["Route follows Polestar: its step in the tracker and on the map, one arrow and one route; its own features go first."] = "Route가 Polestar를 따릅니다: 그 단계가 추적기와 지도에, 화살표 하나와 경로 하나; Polestar의 기능이 먼저입니다.", -- draft
+	["The World Marker and the route point at the same step again on quests that need an item first."] = "아이템이 먼저 필요한 퀘스트에서 월드 마커와 경로가 다시 같은 단계를 가리킵니다.", -- draft
+	["Level Up Card: its own place, movable in Edit Layout, bigger, everything fits."] = "레벨 업 카드: 자체 위치, 레이아웃 편집에서 이동 가능, 더 크고 모든 내용이 들어갑니다.", -- draft
+	["Personal Display: the shield column keeps its colours, icons and amount; interrupted casts show only on its cast bar."] = "개인 디스플레이: 보호막 기둥이 색, 아이콘, 수치를 유지하고, 차단된 시전은 그 시전 바에만 표시됩니다.", -- draft
+	["Oldschool's action bars keep their painted frames; Default's player frame stays sharp when scaled up."] = "Oldschool의 행동 단축바는 그려진 테두리를 유지하고, Default의 플레이어 프레임은 확대해도 선명합니다.", -- draft
+	["Your unit, party and raid frames, the experience bars and the bag bar are MelloUI's own: placed by Edit Layout and your profiles."] = "유닛, 파티, 공격대 프레임과 경험치 바, 가방 바가 MelloUI의 자체 프레임입니다: 레이아웃 편집과 프로필이 배치합니다.", -- draft
+	["A fresh Mello layout for wide screens, fitted to every other; Keep My Layout keeps your own places; profiles offer Fit to this screen."] = "와이드 화면용 새 Mello 레이아웃, 다른 모든 화면에 맞춰집니다. '내 레이아웃 유지'는 직접 둔 위치를 지키고, 프로필은 '이 화면에 맞추기'를 제안합니다.", -- draft
+	["The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going."] = "MelloUI 버튼이 게임 메뉴의 설정 아래에 있습니다. 프로필의 후원자 페이지는 MelloUI를 지켜 주는 분들께 감사를 전합니다.", -- draft
 	["Effects: bolder heals and cooldowns across the whole frame; Buff Landings in each school's colour; a threat halo (untick Hide Combat Flash)."] = "효과: 치유와 재사용 대기시간이 창 전체에 더 선명하게; 계열 색의 강화 효과 도착; 위협 후광(전투 번쩍임 숨기기 해제).", -- draft
 	["Heals burst, seal onto the portrait or close round the frame as a shield; cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards, golden barriers, afterimages."] = "치유가 터지고, 초상화에 봉인되거나 보호막으로 개체창을 감쌉니다. 재사용 대기시간: 포효에는 충격파, 도발에는 빨간 !, 강철 방어구, 황금 방벽, 잔상.", -- draft
 	["Frames: Hide Heal Numbers on your portrait; the meter's numbers in a tab on your frame and each party frame; party: Flip, Mouseover Highlight, Raid's look in raid frames."] = "창: 초상화의 치유 숫자 숨기기; 내 창과 각 파티 창 옆 탭에 미터 숫자; 파티: 뒤집기, 마우스오버 강조, 공격대 창은 공격대의 외형.", -- draft
@@ -2259,6 +2277,8 @@ Lang:Add("koKR", {
 	["the bag window's money rolling up (bags open)"] = "올라가는 가방 창의 돈(가방 열림)", -- draft
 	["the Bags Full Warning on the Empty slot or bag button"] = "빈 칸이나 가방 버튼의 가방 가득 참 경고", -- draft
 	["Mello's Edit Mode layout, fitted to your screen"] = "화면에 맞춘 Mello의 편집 모드 레이아웃", -- draft
+	["your Edit Mode layout as the game holds it, to send"] = "게임이 보관한 편집 모드 레이아웃(보내기용)", -- draft
+	["the shield column and its last events, to send"] = "보호막 막대와 최근 이벤트(보내기용)", -- draft
 	["the guided tour of this window"] = "이 창 둘러보기", -- draft
 	["what MelloUI costs: its time per frame, its slowest frames"] = "MelloUI의 비용: 프레임당 시간, 가장 느린 프레임", -- draft
 	["measure while you play (30 s, or /melloperf record 60)"] = "플레이하며 측정(30초, 또는 /melloperf record 60)", -- draft
@@ -2374,6 +2394,11 @@ Lang:Add("koKR", {
 	["Not imported: %s."] = "가져오지 못함: %s.", -- draft
 	["Profile '%s' imported (%d settings). Load it from the list to use it."] = "프로필 '%s'을(를) 가져왔습니다(설정 %d개). 쓰려면 목록에서 불러오세요.", -- draft
 	["No profiles yet. Type a name above and save the current settings."] = "아직 프로필이 없습니다. 위에 이름을 입력하고 현재 설정을 저장하세요.", -- draft
+	["Legends"] = "전설", -- draft
+	["Champions"] = "챔피언", -- draft
+	["MelloUI is free for everyone and always will be. These are the people who help keep it going. Thank you, all of you!"] = "MelloUI는 모두에게 무료이며 앞으로도 그렇습니다. 이분들이 MelloUI가 계속 나아가도록 도와주고 있습니다. 모두 감사합니다!", -- draft
+	["No names here yet. They show up with each MelloUI update."] = "아직 이름이 없습니다. MelloUI 업데이트마다 추가됩니다.", -- draft
+	["As of %s"] = "%s 기준", -- draft
 	["Search options"] = "설정 검색", -- draft
 	["Nothing found. Try another word."] = "찾지 못했습니다. 다른 단어를 써 보세요.", -- draft
 	["%d more. Type more letters to narrow it down."] = "%d개 더. 글자를 더 입력해 좁히세요.", -- draft
@@ -2401,6 +2426,8 @@ Lang:Add("koKR", {
 	["Paused while Edit Mode is open."] = "편집 모드가 열려 있는 동안 일시 정지.", -- draft
 	["%s installed. Keep it, or MelloUI goes back to 'Before install' when the timer runs out."] = "%s을(를) 설치했습니다. 유지하지 않으면 타이머가 끝날 때 MelloUI가 'Before install'로 돌아갑니다.", -- draft
 	["Your layout was fitted to this screen. Keep it, or MelloUI goes back to 'Before install' when the timer runs out."] = "레이아웃을 이 화면에 맞췄습니다. 유지하지 않으면 타이머가 끝날 때 MelloUI가 'Before install'로 돌아갑니다.", -- draft
+	["MelloUI's Edit Mode layout did not go in (%s). Your own layout stays; /mello layout check shows why."] = "MelloUI의 편집 모드 레이아웃이 적용되지 않았습니다(%s). 기존 레이아웃은 그대로이며, /mello layout check로 이유를 볼 수 있습니다.", -- draft
+	["the screen was not fitted"] = "화면이 맞춰지지 않았습니다", -- draft
 	["Back to 'Before install'."] = "'Before install'로 돌아왔습니다.", -- draft
 	["Something went wrong while installing, so MelloUI went back to 'Before install'."] = "설치 중 문제가 생겨 MelloUI가 'Before install'로 돌아갔습니다.", -- draft
 	["Something went wrong while installing. Use Revert to go back to 'Before install'."] = "설치 중 문제가 생겼습니다. 되돌리기로 'Before install'로 돌아가세요.", -- draft
@@ -2619,6 +2646,7 @@ Lang:Add("koKR", {
 -- stale: ["+ Buff"] = "+ 강화 효과", -- draft
 -- stale: ["+ Debuff (by kind)"] = "+ 약화 효과(종류별)", -- draft
 -- stale: ["A Read button on the quest log's details view: the quest's description in the giver's voice (the recorded offer line when a pack has it), then the recorded objectives when the voice pack has them (Quest Objectives). Also /vo read."] = "퀘스트 목록 상세 보기의 읽기 버튼: 제공자의 목소리로 퀘스트 설명(팩에 녹음된 제안 줄이 있으면 그것), 그다음 음성 팩에 있으면 녹음된 목표(퀘스트 목표). /vo read 도 됩니다.", -- draft
+-- stale: ["A Supporters page under Profiles: the people who help keep MelloUI going."] = "프로필 아래 후원자 페이지: MelloUI가 계속 나아가도록 돕는 분들.", -- draft
 -- stale: ["A backdrop round Action Bar 1, merged into one with the other switched-on elements placed next to it. Off: no backdrop, and it joins none."] = "행동 단축바 1 둘레의 배경판, 옆에 놓인 다른 켜진 요소와 하나로 합쳐집니다. 끄기: 배경판 없음, 어디에도 합쳐지지 않음.", -- draft
 -- stale: ["A backdrop round Action Bar 2, merged into one with the other switched-on elements placed next to it. Off: no backdrop, and it joins none."] = "행동 단축바 2 둘레의 배경판, 옆에 놓인 다른 켜진 요소와 하나로 합쳐집니다. 끄기: 배경판 없음, 어디에도 합쳐지지 않음.", -- draft
 -- stale: ["A backdrop round Action Bar 3, merged into one with the other switched-on elements placed next to it. Off: no backdrop, and it joins none."] = "행동 단축바 3 둘레의 배경판, 옆에 놓인 다른 켜진 요소와 하나로 합쳐집니다. 끄기: 배경판 없음, 어디에도 합쳐지지 않음.", -- draft
@@ -2785,6 +2813,7 @@ Lang:Add("koKR", {
 -- stale: ["Dead, Ghost or Offline written on a member's frame."] = "구성원 창에 쓰는 죽음, 유령, 오프라인.", -- draft
 -- stale: ["Default UI Brightness"] = "기본 UI 밝기", -- draft
 -- stale: ["Default UI brightness"] = "기본 UI 밝기", -- draft
+-- stale: ["Default skin: the player frame stays sharp when scaled up."] = "기본 스킨: 플레이어 프레임이 확대해도 선명합니다.", -- draft
 -- stale: ["Distance from the bottom edge of the screen."] = "화면 아래쪽 가장자리로부터의 거리.", -- draft
 -- stale: ["Distance from the right edge of the screen."] = "화면 오른쪽 가장자리로부터의 거리.", -- draft
 -- stale: ["Do not show tooltips for units while in combat."] = "전투 중에는 개체 툴팁을 표시하지 않습니다.", -- draft
@@ -2798,6 +2827,7 @@ Lang:Add("koKR", {
 -- stale: ["Each frame's width (the game's raid frame: 72)."] = "각 창의 폭(게임의 공격대 창: 72).", -- draft
 -- stale: ["Edit Layout, bags and groups: more windows move without the reskin; quality gems and junk on every slot; party and raid frames keep their own places and indicators."] = "레이아웃 편집, 가방, 그룹: 스킨 없이도 더 많은 창이 움직임. 모든 칸에 품질 보석과 잡동사니 표시. 파티와 공격대 창이 자체 위치와 표시기를 유지.", -- draft
 -- stale: ["Edit Layout: a dock at the top, the Elements list to show, hide, lock or single out any part, and the game's Edit Mode settings in each part's box."] = "배치 편집: 위쪽 도크, 요소 목록으로 부분을 보이기·숨기기·고정·단독 표시, 각 부분 상자에 게임 편집 모드 설정.", -- draft
+-- stale: ["Edit Layout: attach the game's elements to each other, as in Edit Mode."] = "레이아웃 편집: 편집 모드처럼 게임의 요소를 서로 붙입니다.", -- draft
 -- stale: ["Edit Mode already keeps %d account layouts, the most it can. Delete one in Edit Mode, or switch the layout off on the Screen step."] = "편집 모드에 이미 계정 레이아웃이 최대치인 %d개 있습니다. 편집 모드에서 하나를 지우거나 화면 단계에서 레이아웃을 끄세요.", -- draft
 -- stale: ["Elites, rares, rare elites and bosses stand out: a metal line over the name with a crest on it. Gold with a crown and wings for an elite, silver with a star for a rare, silver with a gold star and wings for a rare elite, and red-bronze scrollwork with a skull, winged at both ends, for a boss. The plate itself keeps its look."] = "정예, 희귀, 희귀 정예, 우두머리가 눈에 띕니다: 이름 위의 문장이 달린 금속 선. 정예는 왕관과 날개가 있는 금, 희귀는 별이 있는 은, 희귀 정예는 금별과 날개가 있는 은, 우두머리는 해골이 있고 양 끝에 날개가 달린 적동 소용돌이 장식. 판 자체는 외형을 유지합니다.", -- draft
 -- stale: ["Every MelloUI animation ends at once: windows open without fading, the whisper popup appears in place, the quest tracker's lines do not flash, the configurator jumps instead of gliding. For anyone who finds moving interface parts distracting. Works with UI Modifications switched off as well."] = "MelloUI의 모든 애니메이션이 즉시 끝납니다: 창은 서서히 나타나지 않고 열리며, 귓속말 팝업은 제자리에 나타나고, 퀘스트 추적기 줄은 깜빡이지 않고, 구성기는 미끄러지지 않고 바로 넘어갑니다. 움직이는 인터페이스가 신경 쓰이는 분을 위한 것입니다. UI 수정을 꺼도 작동합니다.", -- draft
@@ -2846,6 +2876,7 @@ Lang:Add("koKR", {
 -- stale: ["Hand a finished quest in as soon as you talk to whoever takes it, and pick it from their list first. A choice of rewards waits for you (unless Take The Upgrade is on), and so do a hand-in that costs money and repeatable turn-ins."] = "받는 사람과 대화하는 즉시 끝낸 퀘스트를 완료하며, 먼저 그 목록에서 고릅니다. 보상을 골라야 하면 기다립니다(개선품 선택이 켜져 있지 않으면). 돈이 드는 완료와 반복 완료도 마찬가지입니다.", -- draft
 -- stale: ["Heal and cooldown effects: bolder and across the whole frame; the portrait and the bars each play their own part, the gold border lit all round."] = "치유·재사용 대기시간 효과: 더 강렬하게 개체창 전체에; 초상화와 바가 각자 역할을 하고 금테가 둘레를 밝힙니다.", -- draft
 -- stale: ["Heal and cooldown effects: bolder, across the whole frame, the gold border lit all round; a threat halo fitted to each frame (untick Hide Combat Flash)."] = "치유 및 재사용 대기시간 효과: 더 선명하게, 창 전체에, 금색 테두리가 사방으로 빛남; 각 창에 맞춘 위협 후광(전투 번쩍임 숨기기 해제).", -- draft
+-- stale: ["Health and power percent, spell names and times, and your shield's amount."] = "생명력·자원 백분율, 주문 이름과 시간, 보호막 양.", -- draft
 -- stale: ["Health bar backgrounds/borders and cast bars on nameplates."] = "이름표의 생명력 막대 배경/테두리와 시전바.", -- draft
 -- stale: ["Hide Quests More Than N Levels Above Me"] = "N레벨 넘게 높은 퀘스트 숨기기", -- draft
 -- stale: ["Hide the PvP badge beside the portrait of the player, target and focus frames: the diamond with your honour rank, or the faction icon, that shows while you or they are flagged for PvP."] = "플레이어, 대상, 주시 대상 창 초상화 옆의 PvP 휘장을 숨깁니다: 나나 그들이 PvP 상태일 때 보이는 명예 계급 마름모 또는 진영 아이콘.", -- draft
@@ -2926,6 +2957,7 @@ Lang:Add("koKR", {
 -- stale: ["In silver: a stack worth this or more is never thrown away (selling it at a vendor still is). 100 silver = 1 gold."] = "실버 단위: 이 이상 가치의 묶음은 절대 버리지 않습니다(상인에게 파는 것은 됨). 100실버 = 1골드.", -- draft
 -- stale: ["In the box that splits a stack (Shift-click a stack), the mouse wheel changes the amount: up adds one, down takes one, ten at a time while you hold Shift."] = "묶음을 나누는 상자(묶음을 Shift-클릭)에서 마우스 휠로 수량을 바꿉니다: 위로 하나 더, 아래로 하나 빼기, Shift를 누르고 있으면 열 개씩.", -- draft
 -- stale: ["Indicators for %s"] = "%s 표시기", -- draft
+-- stale: ["Interrupted casts show only on the Personal Display's cast bar, with their word."] = "차단된 시전은 개인 디스플레이의 시전 바에만 문구와 함께 표시됩니다.", -- draft
 -- stale: ["Into a fight the bars rise into place; a moment after it they settle a little lower, until the next one. (To fade them out of combat: the Fader.)"] = "전투에 들어가면 막대가 제자리로 올라오고, 끝난 잠시 뒤 다음 전투까지 조금 낮게 자리 잡습니다. (전투 밖에서 흐리게 하려면: 흐리게 하기.)", -- draft
 -- stale: ["Iron in the palette's own colours"] = "색상표 색의 철", -- draft
 -- stale: ["Iron in warm browns"] = "따뜻한 갈색의 철", -- draft
@@ -2954,6 +2986,8 @@ Lang:Add("koKR", {
 -- stale: ["List quests whose giver or starting item is not known yet."] = "제공자나 시작 아이템을 아직 모르는 퀘스트를 표시합니다.", -- draft
 -- stale: ["List the quests you hid (Alt-click a quest giver's mark on the map, or a quest in the list), dimmed, so you can Alt-click them back. Hidden quests stay off the map either way. Hiding is kept per character."] = "숨긴 퀘스트(지도의 퀘스트 제공자 표시나 목록의 퀘스트를 Alt-클릭)를 흐리게 보여 주어 Alt-클릭으로 되돌릴 수 있게 합니다. 숨긴 퀘스트는 어느 쪽이든 지도에 나오지 않습니다. 숨김은 캐릭터마다 저장됩니다.", -- draft
 -- stale: ["Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 13 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it."] = "불러오기 화면에서 스킨의 모든 그림을 불러와, 재시작 후 처음 여는 창이 잠시 뒤가 아니라 곧바로 그림을 보여 줍니다. 한 번도 열지 않는 창의 그림까지 포함해 약 13 MB를 세션 내내 메모리에 둡니다. 끄기: 각 조각은 창이 처음 필요로 할 때 불러옵니다.", -- draft
+-- stale: ["Loading a profile made for another screen offers Fit to this screen."] = "다른 화면용으로 만든 프로필을 불러오면 이 화면에 맞추기를 제안합니다.", -- draft
+-- stale: ["Loading a profile made for another screen offers Fit to this screen; Gains keeps its place on a wide screen."] = "다른 화면용 프로필을 불러오면 '이 화면에 맞추기'를 제안하고, 획득 알림은 와이드 화면에서도 자리를 지킵니다.", -- draft
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "미리 보기가 끝날 때까지 파티 창 자리에 지어낸 구성원과 이 목록의 표시기를. 전투 밖에서만.", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "미리 보기가 끝날 때까지 공격대 창 자리에 지어낸 구성원과 내 표시기를. 전투 밖에서만.", -- draft
 -- stale: ["Mana, rage, energy and focus you gain (+12 Rage)."] = "얻는 마나, 분노, 기력, 집중(+12 분노).", -- draft
@@ -3004,6 +3038,7 @@ Lang:Add("koKR", {
 -- stale: ["Nudge the text left (negative) or right (positive) from where Blizzard places its own bar text."] = "블리자드가 막대 글자를 두는 위치에서 글자를 왼쪽(음수) 또는 오른쪽(양수)으로 옮깁니다.", -- draft
 -- stale: ["Off Hand Bar"] = "보조 장비 막대", -- draft
 -- stale: ["Off-hand bar"] = "보조 장비 막대", -- draft
+-- stale: ["Oldschool's action bars keep their painted frames."] = "Oldschool의 행동 단축바가 그림 테두리를 유지합니다.", -- draft
 -- stale: ["On a quest's tooltip in the Quest List, name your other characters who have done the quest or have it in their quest log. A character is noted each time it logs out; /mello alts lists them and forgets a deleted one."] = "퀘스트 리스트의 퀘스트 툴팁에 그 퀘스트를 했거나 목록에 가진 다른 캐릭터의 이름을 보여 줍니다. 캐릭터는 접속을 끊을 때마다 기록되며, /mello alts 가 목록을 보여 주고 지운 캐릭터를 잊습니다.", -- draft
 -- stale: ["On the game's nameplates: the large crowd-control icon above the name, the quest marker on enemies you still need, the threat line, the combo points on your target's plate, the names' form (Show Names As) and the soft shade behind the names (Name Shade). Off: all six go. Works with or without the reskin."] = "게임의 이름표에서: 이름 위의 큰 군중 제어 아이콘, 아직 필요한 적에게 붙는 퀘스트 표시, 위협 수준 선, 대상 이름표의 연계 점수, 이름 형식(이름 표시 방식), 이름 뒤의 부드러운 그림자(이름 그림자). 끄기: 여섯 가지 모두 사라집니다. 스킨과 관계없이 작동합니다.", -- draft
 -- stale: ["On the target, show only the debuffs you put on it."] = "대상에게 내가 건 약화 효과만 표시합니다.", -- draft
@@ -3030,6 +3065,7 @@ Lang:Add("koKR", {
 -- stale: ["Party Frames (Portraits): indicators for %s"] = "파티 창(초상화): %s 표시기", -- draft
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "파티 개체창: 오른쪽 파티를 위한 가로 뒤집기; 초상화 방식에서 '내 개체창 표시' 수정; 마우스오버 강조가 마우스 아래 개체창을 밝힙니다.", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "허용되면 길드 은행에서 수리비를 냅니다. 길드가 비용을 감당할 수 없으면 내 골드를 씁니다.", -- draft
+-- stale: ["Personal Display: the shield column keeps its colours, icons and amount in a fight."] = "개인 디스플레이: 보호막 기둥이 전투 중에도 색, 아이콘, 수치를 유지합니다.", -- draft
 -- stale: ["Pet, their targets, Party portraits"] = "소환수, 그 대상, 파티 초상화", -- draft
 -- stale: ["Pick \"%s\" first."] = "먼저 \"%s\"을(를) 고르세요.", -- draft
 -- stale: ["Pick an indicator above, or add one."] = "위에서 표시기를 고르거나 하나를 추가하세요.", -- draft
@@ -3241,6 +3277,7 @@ Lang:Add("koKR", {
 -- stale: ["The light that flies from your cast bar to the frame when a cast heal ends (Chain Heal's hops too). Off: the heal lands on the frame the moment the cast ends, as an instant one does; the glow on your cast bar while you cast and every effect on the frames stay."] = "시전 치유가 끝날 때 시전바에서 창으로 날아가는 빛(연쇄 치유의 튕김도). 끄기: 즉시 치유처럼 시전이 끝나는 순간 창에 내려앉습니다. 시전하는 동안 시전바의 빛과 창의 모든 효과는 남습니다.", -- draft
 -- stale: ["The look of the whole interface: the soft shade, fonts, icons, Dark Mode, the bar texture and fading. The painted reskin and its palettes are on the Oldschool page."] = "인터페이스 전체의 외형: 부드러운 그림자, 글꼴, 아이콘, 어두운 모드, 막대 질감, 흐리게 하기. 페인팅 스킨과 색상표는 Oldschool 페이지에 있습니다.", -- draft
 -- stale: ["The map in the painted ring."] = "페인팅 고리 안의 지도.", -- draft
+-- stale: ["The map zoomed out: capitals, docks with their boat and zeppelin trails, dungeons, raids and your quests."] = "지도를 끝까지 축소하면: 수도, 배와 비행선 항로가 있는 선착장, 던전, 공격대, 그리고 내 퀘스트.", -- draft
 -- stale: ["The mechanism engaging when a quest is turned in."] = "퀘스트를 완료하면 장치가 맞물리는 소리.", -- draft
 -- stale: ["The medallion's size above the name."] = "이름 위 메달의 크기.", -- draft
 -- stale: ["The melee bar: each swing of your main hand counted down, shrinking to the middle. A wand's shots (Shoot) count down on it too."] = "근접 막대: 주 장비의 각 공격을 가운데로 줄어들며 카운트다운. 마법봉 사격(사격)도 여기서 카운트다운합니다.", -- draft
@@ -3441,8 +3478,10 @@ Lang:Add("koKR", {
 -- stale: ["Your target's frame (and its target's). Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "대상 창(과 대상의 대상). 항상: 흐려지지 않음. 전투 중: 전투 밖에서 흐려지고 전투 때 돌아옴. 마우스를 올리면: 늘 흐리고 가리키는 동안 보임.", -- draft
 -- stale: ["Your target's health bar flashes a moment when it is hit; a critical hit flashes gold."] = "대상의 생명력 막대가 맞으면 잠깐 번쩍입니다. 치명타는 금빛으로.", -- draft
 -- stale: ["Your target's nameplate answers the fight: hits flash its bar, the part a hit took drains away, crits glow gold, a dodge or a miss flicks off its edge, an enemy's cast glows hotter towards its end and shatters when you interrupt it, and the killing blow flashes the bar out."] = "대상의 이름표가 전투에 반응합니다: 적중하면 막대가 번쩍이고, 타격이 깎은 부분이 빠져나가고, 치명타는 금빛으로 빛나고, 회피나 빗나감은 가장자리에서 튕겨 나가고, 적의 시전은 끝에 가까울수록 뜨거워지다가 차단하면 부서지며, 결정타는 막대를 터뜨립니다.", -- draft
+-- stale: ["Zephras Isle on the map, with its airship trails."] = "지도에 Zephras Isle과 비행선 항로가 표시됩니다.", -- draft
 -- stale: ["boss and target of target"] = "우두머리와 대상의 대상", -- draft
 -- stale: ["the level-up: your XP bar's light and the notice"] = "레벨 상승: 경험치 막대의 빛과 알림", -- draft
 -- stale: ["the level-up: your XP bar's light, the notice and the Level Up Card"] = "레벨 업: 경험치 바의 빛, 알림, 레벨 업 카드", -- draft
 -- stale: ["the nameplates' debuffs"] = "이름표의 약화 효과", -- draft
+-- stale: ["what the game holds for your Edit Mode layout, to copy and send"] = "게임이 편집 모드 레이아웃으로 보관한 내용(복사해서 보내기용)", -- draft
 -- stale: ["with Services on"] = "서비스 켜짐", -- draft

@@ -367,7 +367,8 @@ end
 
 -- (1.2.0) the target frame and its health bar while there is a target (nil: none, the option off)
 function FX.TargetFrame()
-	local tf = rawget(_G, "TargetFrame")
+	-- (fr-17: the target frame on the screen -- MelloUI's own while it stands in)
+	local tf = MelloUI.Units and MelloUI.Units.Target() or rawget(_G, "TargetFrame")
 	local content = type(tf) == "table" and tf.TargetFrameContent
 	local main = type(content) == "table" and content.TargetFrameContentMain
 	local bars = type(main) == "table" and main.HealthBarsContainer

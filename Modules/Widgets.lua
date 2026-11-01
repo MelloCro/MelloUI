@@ -159,8 +159,16 @@ local function Ask(f, ...)
 	return a, b, c, d
 end
 
+-- (2.1.0; the user, 2026-10-31: "Polestar takes priority") the uses another addon does too, off while it does
+-- (MelloUI.Overlaps: Polestar's death helper, its rare alerts)
+local OVERLAP = { corpse = "corpse", rare = "rare", rareSound = "rare" }
+
 local function On(key)
-	return M.isEnabled and M.db ~= nil and M.db[key] == true
+	if not (M.isEnabled and M.db ~= nil and M.db[key] == true) then
+		return false
+	end
+	local job, O = OVERLAP[key], MelloUI.Overlaps
+	return not (job and O and O.By(job))
 end
 
 local function Rem()
@@ -3446,6 +3454,12 @@ function M:OnInit(db)
 			Refresh("questItem")
 		end
 	end, qitem.OWNER .. ": a guide's")
+	-- (2.1.0) another addon took a use over or gave it back: as its switch moving (MelloUI.Overlaps)
+	MelloUI:On("overlap", function(job)
+		if M.isEnabled and M.db and M.db[job] == true and OVERLAP[job] == job then
+			M:OnSettingChanged(job, On(job), M.db)
+		end
+	end, "Widgets: overlaps")
 end
 
 function M:OnEnable(db)

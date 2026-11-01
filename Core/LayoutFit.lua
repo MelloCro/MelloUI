@@ -103,7 +103,9 @@
 --     report   verdict ("PASS" | "PASS, needs the user's eye" | "FAIL (...)"),
 --              pass; on a FAIL, cause "size" (tooSmall = true, suggest =
 --              "noReskin") or "settings" (the screen fits the design's
---              settings, not the player's), and why = the words to show
+--              settings, not the player's) -- (2.1.0) never "size" on the screen
+--              the layout is drawn for: drawn = true there, "settings", why
+--              DRAWN_FAIL, and the installer puts it in --, and why = the words to show
 --              (a layout or size that cannot be read: nil, nil and cause
 --              "input"); eye (what the player should look at), flags (unsolved),
 --              notes, checks, log (every change and why), layoutName, and
@@ -159,6 +161,11 @@ LayoutFit.DESIGN_W, LayoutFit.DESIGN_H = DESIGN_W, DESIGN_H
 LayoutFit.FIT_REV = 3
 LayoutFit.TOO_SMALL = "Your screen is too small for Mello's layout at your UI scale; your own Edit Mode layout stays."
 LayoutFit.SETTINGS_FAIL = "Mello's layout fits your screen, but not with some of your settings; your own Edit Mode layout stays."
+-- (2.1.0, el-15) a FAIL on the screen the layout is drawn for: never "too small" (the user, 2026-11-01, on that very
+-- screen: "everything is at its default position and not arranged the way i wanted it to"); it goes in as fitted
+-- (2.1.0, el-15) no try passes on this screen: the closest one goes in all the same (never the game's own layout left)
+LayoutFit.ADAPTED = "Mello's layout is fitted as close as this screen allows; a few parts overlap or sit near the edge, and Edit Layout moves them."
+LayoutFit.DRAWN_FAIL = "Mello's layout is drawn for this screen, so it goes in; some of your settings overlap it, and Edit Layout moves them."
 -- a screen inside this (UI units) is too small whatever fails; a FAIL on a
 -- larger one is 'too small' only when the design's own settings fail there too
 local SMALL_W, SMALL_H = 1400, 800
@@ -430,6 +437,23 @@ local WINDOWS = {
 	MelloUIConfigFrame = { 1000, 760, 16, 16, dress = { 15.75, 15.75, 52.546875, 15.75 } },
 	whisper = { 340, 210, nil, nil, 5 * 24 },
 }
+-- (2.1.0, el-15) whether a store key is the game's -- a window the fitter places (WINDOWS, the world map: F12) or a
+-- frame an Edit Mode system drives (FRAME) -- rather than MelloUI's own element: the installer's rule
+-- (Core/Installer.lua KeepOwnLayoutPlaces)
+do
+	local frames
+	function LayoutFit.IsGameKey(key)
+		if not frames then
+			frames = {}
+			for _, list in pairs(FRAME) do
+				for _, name in pairs(list) do
+					frames[name] = true
+				end
+			end
+		end
+		return WINDOWS[key] ~= nil or key == "WorldMapFrame" or frames[key] == true
+	end
+end
 -- The design's own MelloUI settings (the approved snapshot's, the tracker
 -- hung on 12:-1 as every fit leaves it). What the approved layout already
 -- overlaps at its screen with these is 'inherited'; a FAIL that these pass
@@ -604,8 +628,11 @@ local function Xov(al, ar, bl, br, g)
 	return min(ar, br) - max(al, bl) > -g + EPS
 end
 
+-- (2.1.0, el-15) off the screen: past an edge by more than half a unit -- under a pixel at any UI scale up to 1; a
+-- piece the user set flush to an edge (the shipped layout of 2026-11-01: the minimap column and the tracker at the
+-- right edge) is on it, whichever world measures it a tenth over
 local function Off(l, t, r, b, W, H)
-	return l < -EPS or t < -EPS or r > W + EPS or b > H + EPS
+	return l < -0.5 or t < -0.5 or r > W + 0.5 or b > H + 0.5
 end
 
 local function Tables()
@@ -1008,6 +1035,8 @@ local function MelloFrom(inputs)
 			fit = Bool(a.fitRows, false) },
 		positions = positions,
 		placesFor = (madeW and madeH and madeW > 0 and madeH > 0) and { w = madeW, h = madeH } or nil,
+		-- (2.1.0, el-15) the bake's: own elements' places in an old form take the side form on this screen too (F0s)
+		sideForm = inputs.sideForm == true or nil,
 		sizes = sizes,
 		-- (el-12: relPoint, the screen's point its own place hangs from -- the side its corner stood in; none: the top-right)
 		tracker = { pos = type(pos) == "table" and { x = pos.x, y = pos.y, relPoint = AXX[Str(pos.relPoint, "")] and pos.relPoint or nil }
@@ -2003,7 +2032,12 @@ end
 -- Solve lays it), a window's own (WINDOWS), the caller's measure
 -- (inputs.sizes), else its anchor point alone (moved only when that point
 -- settles its side; else as stored). The store's form of a place
--- (point, relPoint, scale) is kept: only x and y change. (el-12) A place
+-- (point, relPoint, scale) is kept: only x and y change -- but for (2.1.0,
+-- pr-04) MelloUI's own element hung by a point of its own (the corner it
+-- grows from: Gains' lines, the notice, the widget column) that stands in
+-- another third than the side its place names: that point keeps its
+-- distance from its own side, size or not, and the place takes that side
+-- (Core's side form, as Measure would save it there). (el-12) A place
 -- already held from the side of the screen its frame stands in -- every place
 -- Core saves since 1.2.4 -- follows any screen by itself: kept as it is, each
 -- way it is so held. f.inZone[place]: its x laid in this screen's zone here
@@ -2012,6 +2046,10 @@ local F0Store
 do
 	local ACROSS = { [0] = "left", [0.5] = "middle", [1] = "right" }
 	local DOWN = { [0] = "top", [0.5] = "middle", [1] = "bottom" }
+	-- (pr-04) the screen's point of a side, [across][down] (AXX, AXY: 0 the left / top)
+	local SIDES = { [0] = { [0] = "TOPLEFT", [0.5] = "LEFT", [1] = "BOTTOMLEFT" },
+		[0.5] = { [0] = "TOP", [0.5] = "CENTER", [1] = "BOTTOM" },
+		[1] = { [0] = "TOPRIGHT", [0.5] = "RIGHT", [1] = "BOTTOMRIGHT" } }
 
 	-- the record an Edit Layout copy of an Edit Mode system's place pins, "EditMode.<system>.<index>" (the copy's
 	-- index is the game's systemIndex, 0 for none: Core/EditLayoutBridge.lua's SysKey)
@@ -2057,7 +2095,14 @@ do
 	-- place so since 1.2.4, by the third of the whole screen its middle is in, or its corner for one hung by the corner
 	-- it grows from; byCorner: not the old form, the frame's BOTTOMLEFT from the screen's CENTER) follows this screen
 	-- by itself: kept as it is (nil k).
-	local function Axis(o, sign, rel, pt, size, known, span0, a0, b0, s0, span1, a1, b1, s1, byCorner)
+	-- (2.1.0, pr-04; the user 2026-11-01, MelloUI's Gains in the middle of a 21:9 screen from a profile made on 16:9:
+	-- "even tho i rearanged it and pasted the export") own: MelloUI's own element (no window of WINDOWS, no layout
+	-- record). One hung by a point of its own (byCorner: the corner it grows from, which Core's Measure holds it by)
+	-- whose point stands in another third than the side its place is held from -- a place stored before 1.2.4's side
+	-- form, the anchor from the screen's same point -- keeps that point as far from the side of the zone it stands in,
+	-- as Core saves it, whatever the frame's size (not made yet at a first install, or growing with its lines): the
+	-- offset is then from that side (third result true: the side form, k its side).
+	local function Axis(o, sign, rel, pt, size, known, span0, a0, b0, s0, span1, a1, b1, s1, byCorner, own)
 		local corner = rel * span0 + sign * o * s0
 		local lo = corner - pt * size * s0
 		local mid = lo + size * s0 / 2
@@ -2066,6 +2111,11 @@ do
 			return o, nil
 		end
 		local third = (b0 - a0) / 3
+		if own and byCorner then
+			local side = (corner < a0 + third and 0) or (corner > b0 - third and 1) or 0.5
+			local at = corner - (a0 + side * (b0 - a0)) + a1 + side * (b1 - a1)
+			return sign * (at - side * span1) / s1, side, true
+		end
 		local k = (mid < a0 + third and 0) or (mid > b0 - third and 1) or 0.5
 		if not known and pt ~= 0.5 and k ~= 1 - pt then
 			k = rel
@@ -2078,19 +2128,29 @@ do
 		f.inZone = {}
 		local made = f.mello.placesFor
 		local W, H = f.W, f.H
-		if not made or (abs(made.w - W) < EPS and abs(made.h - H) < EPS) then
+		-- (2.1.0, el-15; the brain, of the user's wide-screen arrangement baked as the shipped one: "so the shipped
+		-- profile carries no old-form TOPLEFT places any more") made for this screen, with inputs.sideForm (the bake):
+		-- only MelloUI's own elements, each in the side form at the same spot (Axis with this screen on both sides)
+		local same = not made or (abs(made.w - W) < EPS and abs(made.h - H) < EPS)
+		if same and not f.mello.sideForm then
 			return
+		end
+		if same then
+			made = { w = W, h = H }
 		end
 		local W0, H0 = made.w, made.h
 		local i0, i1 = (W0 - min(W0, DESIGN_ASPECT * H0)) / 2, (W - min(W, DESIGN_ASPECT * H)) / 2
 		-- (el-12) a way the place is held from its side already is kept exactly (nil k); f.inZone[p]: its x laid in
-		-- this screen's zone here (W1 stands back for it; a place held from the screen's side gets W1 as before)
-		local function Place(name, p, point, relPoint, w, h, s0, s1, known)
+		-- this screen's zone here (W1 stands back for it; a place held from the screen's side gets W1 as before).
+		-- (pr-04) own: MelloUI's own element (Axis); one that takes the side form gets the screen's point of its sides
+		-- (CENTER as the store writes it: none)
+		local function Place(name, p, point, relPoint, w, h, s0, s1, known, own)
 			local before = CopyPlace(p)
 			local byCorner = not (point == "BOTTOMLEFT" and relPoint == "CENTER")
-			local x, kx = Axis(Num(p.x) or 0, 1, AXX[relPoint], AXX[point], w, known, W0, i0, W0 - i0, s0, W, i1, W - i1, s1,
-				byCorner)
-			local y, ky = Axis(Num(p.y) or 0, -1, AXY[relPoint], AXY[point], h, known, H0, 0, H0, s0, H, 0, H, s1, byCorner)
+			local x, kx, sx = Axis(Num(p.x) or 0, 1, AXX[relPoint], AXX[point], w, known, W0, i0, W0 - i0, s0, W, i1, W - i1,
+				s1, byCorner, own)
+			local y, ky, sy = Axis(Num(p.y) or 0, -1, AXY[relPoint], AXY[point], h, known, H0, 0, H0, s0, H, 0, H, s1, byCorner,
+				own)
 			if kx ~= nil then
 				p.x = Round1(x)
 				f.inZone[p] = true
@@ -2098,7 +2158,11 @@ do
 			if ky ~= nil then
 				p.y = Round1(y)
 			end
-			if p.x ~= before.x or p.y ~= before.y then
+			if sx or sy then
+				local side = SIDES[sx and kx or AXX[relPoint]][sy and ky or AXY[relPoint]]
+				p.relPoint = side ~= "CENTER" and side or nil
+			end
+			if p.x ~= before.x or p.y ~= before.y or p.relPoint ~= before.relPoint then
 				local from = (kx ~= nil and ky ~= nil) and format("the %s and the %s", DOWN[ky], ACROSS[kx])
 					or format("the %s (the other way held from its side already)", ky ~= nil and DOWN[ky] or ACROSS[kx])
 				Log(f, "F0 shape", name, PlaceText(before) .. " -> " .. PlaceText(p),
@@ -2123,8 +2187,15 @@ do
 				local rec = recOf[key] or CopyRec(f, key)
 				local w, h, s0, known = Frame(f, key, p, W0, H0, rec)
 				local _, _, s1 = Frame(f, key, p, W, H, rec)
-				Place("positions." .. key, p, point, relPoint, w, h, s0, s1, known)
+				local own = not (rec or WINDOWS[key])
+				if own or not same then
+					Place("positions." .. key, p, point, relPoint, w, h, s0, s1, known, own)
+				end
 			end
+		end
+		if same then
+			Bump(f)
+			return
 		end
 		local t = f.mello.tracker
 		if t.pos then
@@ -2377,7 +2448,11 @@ local function ApplyCompact(f, level)
 	for i = 1, level do
 		local name, changes = COMPACT[i][1], COMPACT[i][2]
 		for _, c in ipairs(changes) do
-			Set(f, c[1], c[2], c[3], "F11 compact", format("compact step %d: %s", i, name))
+			-- (2.1.0, el-15) at most: a layout scaled to a smaller screen (LayoutFit.ScaledInfo) keeps its smaller sizes
+			local cur = Setting(f, f.rec[c[1]], c[2])
+			if cur == nil or c[3] < cur then
+				Set(f, c[1], c[2], c[3], "F11 compact", format("compact step %d: %s", i, name))
+			end
 		end
 		steps[i] = name
 	end
@@ -3726,6 +3801,12 @@ local function Verdict(f, rep)
 	return #f.eye > 0 and "PASS, needs the user's eye" or "PASS", true
 end
 
+-- (2.1.0, el-15) whether W x H (UI units) is the screen the layout is drawn for, to half a unit (its plain name)
+function LayoutFit:DrawnFor(W, H)
+	W, H = Num(W), Num(H)
+	return (W and H and abs(W - DESIGN_W) < 0.5 and abs(H - DESIGN_H) < 0.5) and true or false
+end
+
 -- One layout name per screen, so two machines sharing the account's layouts
 -- keep a fit each: plain `base` on the design screen, else "base WxH" with
 -- the physical size when known (the UI units otherwise)
@@ -3847,6 +3928,103 @@ local function FailCause(info, W, H, inh, job)
 	return pass and "settings" or "size"
 end
 
+--------------------------------------------------------------------------------
+-- (2.1.0, el-15; the user, 2026-11-01: "i dont want any other guy in discord complaining that their UI does not fit the
+-- Aspect ratio") A screen with less room than the layout is drawn for -- in UI units it is 768 / UI scale high, the
+-- layout 1200 (UI scale 0.64) -- gets the layout scaled to it before the rules run: every place's offsets and the
+-- systems' sizes (SIZE: each setting kept in its range and on its step; the unit frames never under the game's 100 %)
+-- times k, the rules then solving what is left. k from the screen's share of the room the layout needs (its own
+-- height, REF_W wide), then smaller in steps of 5 % (to SCALE_MIN) until a fit passes. The game's own 16:9 at UI scale
+-- 1 (1365 x 768) failed as "too small" before: a player there was left on the game's own layout.
+--   LayoutFit.ScaledInfo(info, k) -> a scaled copy;  LayoutFit:ScaleSteps(W, H) -> { k, ... }
+--------------------------------------------------------------------------------
+do
+	local SIZE = { ActionBar = { "IconSize", "IconPadding" }, CastBar = { "BarSize" }, Minimap = { "Size" },
+		UnitFrame = { "FrameWidth", "FrameHeight", "FrameSize" }, AuraFrame = { "IconSize", "IconPadding" },
+		DamageMeter = { "FrameWidth", "FrameHeight" }, ObjectiveTracker = { "Height" }, MicroMenu = { "Size" },
+		Bags = { "Size" }, StatusTrackingBar = { "Size" }, DurabilityFrame = { "Size" }, TimerBars = { "Size" },
+		VehicleSeatIndicator = { "Size" }, ArchaeologyBar = { "Size" }, GroupFinder = { "Size" }, LossOfControl = { "Size" },
+		SwingTimer = { "Scale", "Width", "Height" } }
+	-- ChatFrame's width and height, each in two settings (hundreds, tens and ones): its range
+	local CHAT = { { 0, 1, 250, 800 }, { 2, 3, 120, 800 } }
+	LayoutFit.REF_W = 1920      -- UI units: the narrowest screen the layout fits as drawn at its own height (16:10)
+	LayoutFit.SCALE_MIN = 0.45
+
+	local function ShownOf(def, raw)
+		if def.conv == "pct" then
+			return raw * def.step + def.lo
+		elseif def.conv == "diff" then
+			return raw + def.lo
+		end
+		return raw
+	end
+
+	local function RawOf(def, v)
+		v = min(max(v, def.lo), def.hi)
+		if def.conv == "pct" then
+			return floor((v - def.lo) / def.step + 0.5)
+		elseif def.conv == "diff" then
+			return floor(v - def.lo + 0.5)
+		end
+		return floor(v + 0.5)
+	end
+
+	local function Offset(v, k)
+		return (type(v) == "number" and not Secret(v)) and (floor(v * k * 10 + 0.5) / 10 + 0.0) or v
+	end
+
+	function LayoutFit.ScaledInfo(info, k)
+		local c = CopyInfo(info)
+		for _, sys in ipairs(type(c.systems) == "table" and c.systems or EMPTY) do
+			for _, key in ipairs({ "anchorInfo", "anchorInfo2" }) do
+				local a = sys[key]
+				if type(a) == "table" then
+					a.offsetX, a.offsetY = Offset(a.offsetX, k), Offset(a.offsetY, k)
+				end
+			end
+			local name = not Secret(sys.system) and SYSTEM_NAME[sys.system]
+			local defs = name and SETTINGS[name]
+			local byId = {}
+			for _, e in ipairs(type(sys.settings) == "table" and sys.settings or EMPTY) do
+				if type(e) == "table" and type(e.setting) == "number" and type(e.value) == "number" then
+					byId[e.setting] = e
+				end
+			end
+			for _, sname in ipairs(defs and SIZE[name] or EMPTY) do
+				local def = defs[sname]
+				local e = def and byId[def.id]
+				if e then
+					e.value = RawOf(def, ShownOf(def, e.value) * k)
+				end
+			end
+			if name == "ChatFrame" then
+				for _, part in ipairs(CHAT) do
+					local hs, ts = byId[part[1]], byId[part[2]]
+					if hs and ts then
+						local v = min(max(floor((hs.value * 100 + ts.value) * k + 0.5), part[3]), part[4])
+						hs.value, ts.value = floor(v / 100), v % 100
+					end
+				end
+			end
+		end
+		return c
+	end
+
+	function LayoutFit:ScaleSteps(W, H)
+		local k0 = min(1, H / DESIGN_H, W / LayoutFit.REF_W)
+		local steps = {}
+		if k0 >= 1 then
+			return steps   -- (all the room the layout needs: a FAIL there is the settings', smaller would not help)
+		end
+		local k = min(0.95, ceil(k0 * 20 - 1e-6) / 20)
+		while k >= LayoutFit.SCALE_MIN - 1e-6 do
+			steps[#steps + 1] = k
+			k = floor((k - 0.05) * 100 + 0.5) / 100
+		end
+		return steps
+	end
+end
+
 local function Core(info, W, H, inputs, opts, job)
 	W, H = Num(W), Num(H)
 	if not (W and H and W > 0 and H > 0) then
@@ -3874,6 +4052,82 @@ local function Core(info, W, H, inputs, opts, job)
 		end
 		if not passed then
 			rep, together, verdict, pass, tried = Rules(f, W, H, inputs)
+		end
+	end
+	-- (2.1.0, el-15) still a FAIL: the layout scaled to this screen, smaller step by step, the first that passes kept
+	-- (with its retries); none: the closest try, adapted (report.adapted: the installer puts it in all the same). Not on
+	-- the screen the layout is drawn for: it goes in as drawn there (report.drawn, below)
+	local scaled, adapted
+	if not pass and not LayoutFit:DrawnFor(W, H) then
+		-- (the closest try when none passes: the fewest pieces off the screen, then overlaps that show together, then
+		-- the centre third -- the unscaled try first, so a tie keeps the layout as drawn)
+		local function Score(r, g)
+			r = type(r) == "table" and r or EMPTY
+			return 100 * #(r.off or EMPTY) + 50 * #(r.windows or EMPTY) + 10 * #(r.hard or EMPTY) + 3 * #(r.centre or EMPTY)
+				+ #(g.flags or EMPTY)
+		end
+		local best = { f = f, tried = tried, k = nil, score = Score(rep, f) }
+		for _, k in ipairs(LayoutFit:ScaleSteps(W, H)) do
+			local g = NewState(LayoutFit.ScaledInfo(info, k), job)
+			if g then
+				Inherit(g)
+				local rep2, together2, verdict2, pass2, tried2 = Rules(g, W, H, inputs)
+				for _, retry in ipairs(pass2 and EMPTY or LayoutFit.RETRY) do
+					local rep3, together3, verdict3, pass3, tried3 = Rules(g, W, H, inputs, retry)
+					if pass3 then
+						rep2, together2, verdict2, pass2, tried2 = rep3, together3, verdict3, pass3, tried3
+						break
+					end
+				end
+				if pass2 then
+					f, rep, together, verdict, pass, tried, scaled = g, rep2, together2, verdict2, pass2, tried2, k
+					Eye(f, format("the layout scaled to %d%% for this screen", floor(k * 100 + 0.5)))
+					break
+				end
+				-- (its first try again, as the unscaled one: the state the report then describes)
+				local repK, _, _, _, triedK = Rules(g, W, H, inputs)
+				local score = Score(repK, g)
+				if score < best.score then
+					best = { f = g, tried = triedK, k = k, score = score }
+				end
+			end
+		end
+		if not pass then
+			f, tried, scaled = best.f, best.tried, best.k
+			if scaled then
+				Eye(f, format("the layout scaled to %d%% for this screen", floor(scaled * 100 + 0.5)))
+			end
+			-- what is still off the screen pulled onto it at its edge, one piece at a time (a piece anchored to another
+			-- moves with it): an overlap can be moved in Edit Layout, a piece cut by the edge is not seen at all
+			local pulled = {}
+			for _ = 1, 24 do
+				Elements(f)
+				local key, l, t, r, b
+				for i = 1, f.nOrder do
+					local k = f.order[i]
+					local rc = f.R[k]
+					if not key and (pulled[k] or 0) < 2 and Off(rc[1], rc[2], rc[3], rc[4], W, H) and not (f.pins and f.pins[k]) then
+						key, l, t, r, b = k, rc[1], rc[2], rc[3], rc[4]
+					end
+				end
+				for i = 1, key and 0 or f.nE do
+					local e = f.E[i]
+					if not key and e.key and f.rec[e.key] and (pulled[e.key] or 0) < 2 and Off(e.l, e.t, e.r, e.b, W, H)
+						and not (f.pins and f.pins[e.key]) then
+						key, l, t, r, b = e.key, e.l, e.t, e.r, e.b
+					end
+				end
+				if not key or r - l > W or b - t > H then
+					break
+				end
+				local dx = (l < 0 and -l + GAP or 0) - (r > W and r - W + GAP or 0)
+				local dy = (t < 0 and -t + GAP or 0) - (b > H and b - H + GAP or 0)
+				pulled[key] = (pulled[key] or 0) + 1
+				Shift(f, key, "adapted", "pulled onto the screen", dx, -dy)
+			end
+			rep, together = CheckAll(f)
+			verdict, pass = Verdict(f, rep)
+			adapted = not pass or nil
 		end
 	end
 	local fitted = f.info
@@ -3931,9 +4185,20 @@ local function Core(info, W, H, inputs, opts, job)
 			moved = (e.key and moved[e.key]) and true or false, together = together[e.name] or false }
 	end
 	local cause = not pass and FailCause(info, W, H, f.inh, job) or nil
+	-- (2.1.0, el-15) the screen the layout is drawn for has its room by definition: a FAIL there is never the screen's
+	-- (the user's real client called it "too small" there; the sim never did), and the layout goes in (drawn: the
+	-- installer's LayoutOn), the overlaps said
+	local drawn = not pass and LayoutFit:DrawnFor(W, H) or nil
+	if drawn then
+		cause = "settings"
+	end
 	local report = {
-		verdict = verdict, pass = pass, cause = cause, tooSmall = cause == "size", suggest = cause == "size" and "noReskin" or nil,
-		why = cause == "size" and LayoutFit.TOO_SMALL or cause == "settings" and LayoutFit.SETTINGS_FAIL or nil,
+		-- (an adapted layout goes in: never "too small", the player's own layout not suggested)
+		verdict = verdict, pass = pass, cause = cause, tooSmall = cause == "size" and not adapted,
+		suggest = (cause == "size" and not adapted) and "noReskin" or nil,
+		drawn = drawn, scaled = scaled, adapted = adapted,
+		why = drawn and LayoutFit.DRAWN_FAIL or adapted and LayoutFit.ADAPTED or cause == "size" and LayoutFit.TOO_SMALL
+			or cause == "settings" and LayoutFit.SETTINGS_FAIL or nil,
 		eye = f.eye, flags = f.flags, notes = f.notes, log = f.log, levelsTried = tried, level = f.level,
 		checks = rep, layoutName = name, W = W, H = H, inset = f.inset, third = rep.third, unitTop = rep.unitTop, pieces = pieces,
 		legend = { screen = "innerPanel", centreThird = "raisedPanel", centreThirdLines = "border", moved = "hover", together = "selectedTab", zoneEdge = "trim" },

@@ -1065,6 +1065,12 @@ do
 		saved = "Saved. Type /reload to see it.",
 		used = "'%s' is the active layout after a /reload.",
 		kept = "The game kept '%s' as the active layout: pick it in the game's Edit Mode instead.",
+		-- (2.1.0, el-15) the game switches only at a reload: the bridge's secure Reload now makes it active right before
+		waits = "'%s' becomes the active layout when you press Reload now.",
+		reloadNow = "Reload now",
+		reloadNowTip = "The game switches Edit Mode layouts only with a reload: this makes the waiting layout the active one "
+			.. "and reloads the interface.",
+		reloadLater = "After the fight, press Reload now again.",
 		deleteAsk = "Delete the Edit Mode layout '%s'? This can't be undone.",
 		deleteYes = "Delete", cancel = "Cancel",
 		pasteTitle = "Edit Mode layout",
@@ -1145,7 +1151,10 @@ do
 		end
 		Read()
 		if ok then
-			if why == "kept" then
+			local waiting = MelloUI.EditModeActivePending and MelloUI:EditModeActivePending()
+			if why == "kept" and waiting then
+				Say(LT.waits:format(tostring(waiting)))
+			elseif why == "kept" then
 				Say(LT.kept:format(tostring(kept)))
 			else
 				Say(done or LT.saved)
@@ -1176,8 +1185,34 @@ do
 			Say(LT.pickFirst)
 			return
 		end
+		-- (el-15: the user's switch test saved 'Classic' four times in a second, each answered "kept") the layout
+		-- already waiting for Reload now is not saved again
+		local waiting = MelloUI.EditModeActivePending and MelloUI:EditModeActivePending()
+		if waiting ~= nil and waiting == p.name then
+			Say(LT.waits:format(p.name))
+			return
+		end
 		Do("use", { name = p.name, kind = p.kind }, LT.used:format(p.name))
 	end
+
+	-- Reload now's own click: reached only while the bridge's secure button is not over it (in a fight)
+	local function ReloadClick()
+		local waiting = MelloUI.EditModeActivePending and MelloUI:EditModeActivePending()
+		Say(InCombatLockdown() and LT.reloadLater or (waiting and LT.waits:format(waiting)) or LT.saved)
+	end
+	local function ReloadSync()
+		local B = E.Bridge
+		if B and B.ReloadSync and lp then
+			B.ReloadSync(lp.reloadNow)
+		end
+	end
+	local ReloadEnter = Shared("OnEnter on the Layouts list's Reload now", ReloadSync, "script")
+	local LayoutsHidden = Shared("OnHide on the Layouts list (its Reload now)", function()
+		local B = E.Bridge
+		if B and B.ReloadHide then
+			B.ReloadHide()
+		end
+	end, "script")
 
 	local ACT = {
 		use = Use,
@@ -1358,6 +1393,10 @@ do
 				lp.buttons[r][i] = b
 			end
 		end
+		lp.reloadNow = QuickButton(lp, LT.reloadNow, ReloadClick, LT.reloadNowTip)
+		lp.reloadNow:Hide()
+		Perf.HookScript(lp.reloadNow, "OnEnter", ReloadEnter)
+		Perf.HookScript(lp, "OnHide", LayoutsHidden)
 		lp.line = W.Text(lp, "GameFontHighlight", nil, "text")
 		lp.line:SetWidth(L_W - 2 * PAD - 4)
 		lp.line:SetWordWrap(true)
@@ -1428,7 +1467,15 @@ do
 		if LS.line then
 			y = y + (Num(lp.line:GetStringHeight()) or 14) + 6
 		end
+		local waiting = MelloUI.EditModeActivePending and MelloUI:EditModeActivePending()
+		lp.reloadNow:SetShown(waiting ~= nil)
+		if waiting ~= nil then
+			lp.reloadNow:ClearAllPoints()
+			lp.reloadNow:SetPoint("TOPLEFT", lp, "TOPLEFT", PAD, -(y + 2))
+			y = y + 22 + 8
+		end
 		lp:SetHeight(y + PAD)
+		ReloadSync()
 	end
 
 	-- under the dock, its left edge under the Layout button's

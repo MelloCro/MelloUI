@@ -15,13 +15,14 @@
 --               engine counts it)
 --   the shield  an upright column of its own beside the character (Kit:VBar): the total absorb (UnitGetTotalAbsorbs,
 --               secret on this client: handed to the bars) against the amount it went up with, the engine's smooth
---               fill rising and draining, a pale bar of the part lost; its light (MelloUI.FrameFX's "shield" look)
+--               fill rising and draining, a pale bar of the part lost; in it a band for each shield in its school's
+--               colour, its icon on the right, the total under it; its light (MelloUI.FrameFX's "shield" look)
 --               at its events only: applied, a hit, low (only while the amount reads plain), broken, then faded out
 --               (no repeating pulse: the user, 2026-10-12, "this animation keeps flashing the whole time every few
 --               seconds" -- a shield whose end this client keeps secret pulsed on unseen)
 -- A plain amount tells it all; a secret one is read from the events around it (an aura added with it: applied, one
 -- taken with it: broken, else a hit) -- no feature hung on a secret. /mello personal secrets: what this client hands
--- over plain. Preview (Core/Preview.lua, part "personal"; /mello personal test): a made-up shield and casts on the
+-- over plain; /mello shield (/mello personal shield): the column, your shields and their last events, to send. Preview (Core/Preview.lua, part "personal"; /mello personal test): a made-up shield and casts on the
 -- solo scene's beats. The game's own Personal Resource Display is held off while this is on (its CVar, given back).
 -- Motion (0.25.0, the section after the hop): the bars answer the fight -- the part a hit or a cost took held lit and
 -- drained, a heal or a gain lit ahead of the bar, a heavy blow's red rim, the dodge's word, low health ember, a stun
@@ -71,9 +72,12 @@ local T = {
 	-- (the swing badge, 1.2.0: MelloUI.SwingBadge's, Core/SwingBadge.lua) its size under the display (its units) and
 	-- the gap to the health bar's end there
 	badgeHere = 22, badgeGap = 4,
-	-- (the shields in parts, the user's pick B of prd_multishield) at most this many parts (more: the one total), their
-	-- icons' size beside the column and the gap between them
-	partMax = 6, partIcon = 11, partGap = 2,
+	-- (the shields in parts, the user's pick B of prd_multishield) at most this many bands (more: the first ones), their
+	-- icons' size beside the column and the gap between them; your cast of a shield this close (either side) to a new
+	-- buff of yours read secret that came with the total's change: that buff its shield (2.1.0, fr-19: 0.5 and only
+	-- before it -- the user's sixth report, the three events of one cast up to a second apart in any order); after a
+	-- fight, a shield taken in it read again this long after
+	partMax = 6, partIcon = 11, partGap = 2, castLink = 1.2, reread = 1,
 	-- (Big Cooldowns) the icons above the health bar: their size as made (Big Cooldown Size scales them from it), the
 	-- gap between them, how far over the bar's painted top, at most this many; one lasting "until used" with no aura of
 	-- it seen, ended after this long
@@ -130,6 +134,7 @@ local TEXT = {
 	bars = "Personal Display",
 	column = "Shield Column",
 	secrets = "Personal Display: what this client hands over",
+	shieldLog = "Personal Display: the shield column",
 	plain = "plain",
 	secret = "secret",
 	none = "nothing",
@@ -175,10 +180,22 @@ local M   -- (the module, registered below)
 local S = {
 	ui = nil,
 	shieldOn = false, low = false, max = nil, value = nil,
-	auraAddedAt = 0, auraRemovedAt = 0, absorbAt = 0, lastKind = nil, lastAmount = nil,
-	added = {}, shieldIDs = {},   -- the last aura update's added auras (instances), the shield's own (adopted at its rise)
-	addedSure = {},               -- ... of them, the ones the client's spell data names shields (ShieldSpells.lua)
-	partsOn = false, previewParts = nil,   -- the column in parts (each shield its own); the preview's made-up ones
+	absorbAt = 0, lastKind = nil, lastAmount = nil,
+	-- (the shields in parts, known by their aura instances: Parts) your shields' instances in the order they went up;
+	-- by instance: its school (0..6, -1 not known yet), its icon (plain or secret), its share (a plain amount); your
+	-- buffs read plain and not shields; your buffs at the last look at the client's list (and the look's own, swapped);
+	-- new ones not told yet (when they came); your last cast of a shield; when a shield was last learned, a buff last gone
+	shieldIDs = {}, school = {}, icon = {}, weight = {}, notShield = {}, seen = {}, seenNow = {}, fresh = {},
+	castSpell = nil, castAt = 0, learnedAt = 0, goneAt = 0,
+	-- (2.1.0, fr-19: a shield of yours put up in a fight, its three events in any order) by instance: when a buff not
+	-- told came (a cast may still tell it), whether a shield's school was told by what came around it (read again when
+	-- its aura reads), its spell; the client's list as read now; no instance told at all (S.listless: a cast's own band,
+	-- made-up instances below S.pseudo), when such an update took a buff; when a shield of yours last went, the column
+	-- last broke; how the auras were read last (/mello shield) and the events' log
+	born = {}, guess = {}, spell = {}, listNow = {}, listless = false, pseudo = 0, removedAt = 0, shieldGoneAt = 0,
+	brokeAt = 0, lastRead = nil,
+	log = { at = {}, kind = {}, arg = {}, known = {}, unknown = {}, n = 0, pos = 0, size = 40 },
+	partsOn = false, previewParts = nil,   -- the column in bands (each shield its own); the preview's made-up ones
 	-- (Big Cooldowns) the ones up, in the order shown, their icons
 	cds = {}, cdOrder = {}, cdIcons = {}, cdSpare = {},   -- (cdIcons every icon made, cdSpare the free ones)
 	casting = false, hopping = false, hooked = false, preview = false, previewHealth = nil,
@@ -826,9 +843,10 @@ local function Build()
 	strip:SetHeight(T.colH + ins[3] + ins[4])
 	strip:SetPoint("CENTER", colFloat, "CENTER")
 	colHolder:SetSize(strip:GetWidth(), strip:GetHeight())
-	-- (the presence's fill covers the column, its rim and its number under it)
-	presence:SetPoint("TOPLEFT", strip, "TOPLEFT", -T.text, T.gap + T.rim)
-	presence:SetPoint("BOTTOMRIGHT", strip, "BOTTOMRIGHT", T.text, -(T.text + 6))
+	-- (the presence's fill covers the column, its rim and its number under it, and the shields' icons on its right --
+	-- 2.1.0, fr-19: at a secret 0 they go with the column, whatever Lua knows of the shields)
+	presence:SetPoint("TOPLEFT", strip, "TOPLEFT", -T.text, T.gap + T.rim + T.partIcon)
+	presence:SetPoint("BOTTOMRIGHT", strip, "BOTTOMRIGHT", T.text + T.partGap + T.partIcon, -(T.text + 6))
 	-- the part lost (pale, under the fill) and the fill, upright
 	local loss = CreateFrame("StatusBar", nil, strip.fill)
 	loss:SetAllPoints(strip.fill)
@@ -1187,7 +1205,9 @@ function CastFX.Play(cast, kind, text)
 			Gilded.Tint(g.cast, "combatTaken")
 		end
 		cast.name:SetAlpha(1)
-		cast.name:SetText(Db().text == false and "" or text)
+		-- (2.1.0, fr-13: the word part of the moment, shown with Percent And Spell Text off too; the next cast's
+		-- name follows that option again)
+		cast.name:SetText(text)
 		cast.time:SetShown(false)
 		Anim:Drive(cast.fx, CastFX.CutStep, T.dropAt + T.drop, "linear", CastFX.Gone)
 	else
@@ -1324,119 +1344,657 @@ end
 --------------------------------------------------------------------------------
 -- The shields in parts (the user's pick B of prd_multishield, 2026-10-12: "a single shield bar which includes all of
 -- the shields in the game, there are certain passives and active spells that give you a shield, also some items which
--- absorb certain damage types"): the column one part for each shield on you -- a spell's, a talent's, an item's --
--- stacked in the order they went up, each in its school's colour (ShieldSpells.lua: the client's own spell data), its
--- icon in a stack beside the column. Each part a StatusBar holding that shield's own amount (its aura's value: plain
--- or secret, the engine draws it) against the whole at the column's last rise, the next part laid on its fill's top.
--- A shield whose spell or amount cannot be read, or more than T.partMax: the column the game's one total, as before
+-- absorb certain damage types"; fixed for good on their fourth report, 2026-10-31: "i want this shield bar to always
+-- folow the school of magic color, i always want icons on the right side, and its spliting up depending on how many
+-- shields are active, with each shield type having its icon and color"): the column one band for each shield on you
+-- -- a spell's, a talent's, an item's -- stacked in the order they went up, each in its school's colour
+-- (ShieldSpells.lua: the client's own spell data), its icon in a stack on the column's right. Nothing hangs on a secret:
+--   which are shields  each known by its aura instance: UNIT_AURA's lists while they read plain, else the client's list
+--                      of your buffs (C_UnitAuras.GetUnitAuraInstanceIDs, no secret flag in the docs), else each buff
+--                      by its index. Its spell read once while its aura reads plain and kept by instance for the fight
+--                      (S.school, S.icon); one gone up in a fight with its aura secret is your own cast of a shield
+--                      around it (UNIT_SPELLCAST_SUCCEEDED's spell ID is plain for you; its three events in any order,
+--                      Parts.Settle), else a buff heard with the total's change -- the plain shield colour until its
+--                      aura reads again (the fight's end); no instance told at all: your cast's own band
+--                      (2.1.0, fr-19: the user's sixth report -- the cast between its aura and the total's change, or
+--                      the three half a second apart, left the column the one total in the plain blue, no icon)
+--   how full           the game's total (UnitGetTotalAbsorbs, secret on this client: handed to the column's bar as it
+--                      is), the bands in a frame clipped to that bar's fill: the newest drains first
+--   each band's share  its shield's amount where every one reads plain (AuraData.points), else an equal share
+-- More than T.partMax: the first T.partMax drawn. (Until 2.0.0 a shield whose spell or amount read secret -- every
+-- one in a fight -- put the column back to the game's one total in the plain blue, its icons gone.)
 --------------------------------------------------------------------------------
 local Parts = {}
 local SPELLS = ns and ns.ShieldSpells or {}
 local SCHOOL_KEY = { [0] = "personalShield", "personalShieldHoly", "personalShieldFire", "personalShieldNature",
 	"personalShieldFrost", "personalShieldShadow", "personalShieldArcane" }
+local UNKNOWN_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"   -- (a shield whose aura told nothing yet)
+local DRAW = { school = {}, icon = {}, weight = {} }   -- the bands to draw now (the live shields' or the preview's)
 
--- one shield's aura: its amount (plain or secret), its colour's school, its icon; nil when it cannot be read
-function Parts.Read(id)
+-- an aura of yours by its instance, asked guarded: answered, and its data (nil: gone)
+function Parts.Data(id)
 	local api = _G.C_UnitAuras
 	local get = api and api.GetAuraDataByAuraInstanceID
 	if type(get) ~= "function" then
-		return nil
+		return false, nil
 	end
 	local ok, aura = pcall(get, "player", id)
-	if not ok or Secret(aura) or type(aura) ~= "table" then
+	if not ok then
+		return false, nil
+	end
+	return true, aura
+end
+
+-- a field of an aura's data as the game handed it (plain or secret); a table that refuses an index: nil
+function Parts.Field(aura, key)
+	return aura[key]
+end
+
+function Parts.Read(aura, key)
+	local ok, v = pcall(Parts.Field, aura, key)
+	if ok then
+		return v
+	end
+	return nil
+end
+
+-- whether a buff of yours passes the client's filter (C_UnitAuras.IsAuraFilteredOutByInstanceID, its answer plain:
+-- "HELPFUL" not harmful, "HELPFUL|PLAYER" cast by you): true, false, or nil (not told)
+function Parts.Is(id, filter)
+	local api = _G.C_UnitAuras
+	local fn = api and api.IsAuraFilteredOutByInstanceID
+	if type(fn) ~= "function" then
 		return nil
 	end
-	local spell, points = aura.spellId, aura.points
-	if Secret(spell) or Secret(points) or type(points) ~= "table" then
+	local ok, out = pcall(fn, "player", id, filter)
+	if ok and not Secret(out) and type(out) == "boolean" then
+		return not out
+	end
+	return nil
+end
+
+-- a spell's icon (a plain spell ID: plain)
+function Parts.SpellIcon(spell)
+	local get = (_G.C_Spell and _G.C_Spell.GetSpellTexture) or rawget(_G, "GetSpellTexture")
+	if type(get) ~= "function" then
+		return nil
+	end
+	local ok, tex = pcall(get, spell)
+	return ok and tex or nil
+end
+
+-- its amount, where it reads plain and above 0 (the band's share), else nil
+function Parts.Share(points, code)
+	if Secret(points) or type(points) ~= "table" then
+		return nil
+	end
+	local v = Parts.Read(points, math.floor(code / 10))
+	if Secret(v) or type(v) ~= "number" or v <= 0 then
+		return nil
+	end
+	return v
+end
+
+-- a shield of yours kept by its instance: its school (0..6; -1 not known yet), its icon (plain or secret), its share,
+-- its spell where known; `guess`: told by what came around it (your cast, the total's change), not by its own aura --
+-- read again when that reads (the fight's end)
+function Parts.Keep(id, school, icon, share, now, guess, spell)
+	if S.school[id] == nil then
+		S.shieldIDs[#S.shieldIDs + 1] = id
+		S.learnedAt = now
+	end
+	S.school[id], S.icon[id], S.weight[id], S.spell[id] = school, icon, share, spell
+	S.guess[id] = guess or nil
+	S.fresh[id], S.notShield[id] = nil, nil
+	if school ~= -1 then
+		S.born[id] = nil
+	end
+end
+
+-- an instance no longer a shield of yours (its aura gone, or read plain and not one)
+function Parts.Drop(id)
+	for j = #S.shieldIDs, 1, -1 do
+		if S.shieldIDs[j] == id then
+			table.remove(S.shieldIDs, j)
+		end
+	end
+	S.school[id], S.icon[id], S.weight[id], S.spell[id], S.guess[id], S.born[id] = nil, nil, nil, nil, nil, nil
+end
+
+-- an aura of yours gone: off every list
+function Parts.Gone(id, now)
+	if S.school[id] ~= nil then
+		Parts.Drop(id)
+		S.shieldGoneAt = now
+	end
+	S.notShield[id], S.fresh[id], S.seen[id], S.born[id] = nil, nil, nil, nil
+	S.goneAt = now
+end
+
+-- everything known forgotten (the display off, the column switched off)
+function Parts.Forget()
+	wipe(S.shieldIDs)
+	wipe(S.school)
+	wipe(S.icon)
+	wipe(S.weight)
+	wipe(S.spell)
+	wipe(S.guess)
+	wipe(S.notShield)
+	wipe(S.seen)
+	wipe(S.fresh)
+	wipe(S.born)
+	S.castSpell, S.listless, S.removedAt = nil, false, 0
+end
+
+-- a buff of yours told by its data as the game handed it (UNIT_AURA's, or asked by instance): its spell read plain --
+-- a shield by the client's own spell data, or not one. -> true: a shield, false: not one, nil: not told (its data
+-- secret, nil, or a table that refuses an index; what came around it tells: Parts.Settle)
+function Parts.Learn(id, aura, now)
+	if type(aura) ~= "table" or Secret(aura) then
+		return nil
+	end
+	local spell = Parts.Read(aura, "spellId")
+	if Secret(spell) or spell == nil then
 		return nil
 	end
 	local code = SPELLS[spell]
 	if not code then
-		return nil
+		if S.school[id] ~= nil then
+			Parts.Drop(id)   -- (taken for a shield in a fight, read now: not one)
+		end
+		S.notShield[id], S.fresh[id], S.born[id] = true, nil, nil
+		return false
 	end
-	local v = points[math.floor(code / 10)]
-	if not Usable(v) then
-		return nil
+	local icon = Parts.Read(aura, "icon")
+	if not Secret(icon) and icon == nil then
+		icon = Parts.SpellIcon(spell)
 	end
-	return v, code % 10, aura.icon
+	Parts.Keep(id, code % 10, icon, Parts.Share(Parts.Read(aura, "points"), code), now, false, spell)
+	return true
 end
 
--- part i, made the first time a shield needs it and kept: a StatusBar on the one below's fill (the first on the
--- column's foot) in a frame clipping them to the column, its icon in the stack beside the column
+-- its icon as the game handed it (plain or secret), where its data reads at all
+function Parts.IconOf(aura)
+	if type(aura) == "table" and not Secret(aura) then
+		return Parts.Read(aura, "icon")
+	end
+	return nil
+end
+
+-- a new buff of yours not told (its data secret): kept a moment for what comes around it (Parts.Settle)
+function Parts.Fresh(id, now)
+	S.fresh[id] = S.fresh[id] or now
+	S.born[id] = S.born[id] or now
+end
+
+-- (no instance told at all: the client's list and UNIT_AURA's lists secret, no instance read by index) your cast of a
+-- shield that changed the total stands in as its band, by a made-up instance below 0; the same school again: that
+-- band (a recast). Taken at the next update that takes a buff with the total's change (Parts.Settle), the fight's end
+-- (the list read again) or the column's break
+function Parts.Stand(spell, now)
+	local school = SPELLS[spell] % 10
+	for _, id in ipairs(S.shieldIDs) do
+		if id < 0 and S.school[id] == school then
+			return
+		end
+	end
+	S.pseudo = S.pseudo - 1
+	Parts.Keep(S.pseudo, school, Parts.SpellIcon(spell), nil, now, true, spell)
+	Note("cast: its band stood in (no instance told)")
+end
+
+-- your buffs not told, matched with what came around them in ANY order (the user's sixth report, 2026-11-01: "when i
+-- place a shield onto myself in combat, the colour turns blue and there is no spell icon" -- the cast heard between
+-- its aura and the total's change, or the three half a second apart, never met: the plain blue, no icon):
+--   your cast of a shield (T.castLink either side) and a buff of yours that came with the total's change (or in the
+--   place of a shield of yours gone: a recast) -> that buff its shield, the cast's school and icon; one taken with its
+--   school not known gets them the same way; one the client's filter says another cast (HELPFUL|PLAYER) never
+--   the total's change alone (T.recent either side) -> a shield of unknown school: the plain colour, the aura's own
+--   icon (another's shield, an item's proc), read again at the fight's end
+--   no instance told at all: the cast's own band (Parts.Stand); an update taking a buff with the total's change takes
+--   the oldest of those
+-- -> whether the shields known changed
+function Parts.Settle(now)
+	local changed = false
+	local spell = S.castSpell
+	if spell and now - S.castAt > T.castLink then
+		spell, S.castSpell = nil, nil
+	end
+	if spell then
+		local best, bestGap, bestMine
+		for id, born in pairs(S.born) do
+			local gap = math.abs(born - S.castAt)
+			local pending = S.fresh[id] ~= nil
+			local tied = not pending or math.abs(S.absorbAt - born) <= T.castLink
+				or math.abs(S.shieldGoneAt - born) <= T.castLink
+			if gap <= T.castLink and tied and (pending or S.school[id] == -1) then
+				local mine = Parts.Is(id, "HELPFUL|PLAYER")
+				if mine ~= false then
+					mine = mine == true
+					if not best or (mine and not bestMine)
+							or (mine == bestMine and (gap < bestGap or (gap == bestGap and id > best))) then
+						best, bestGap, bestMine = id, gap, mine
+					end
+				end
+			end
+		end
+		if best then
+			S.castSpell = nil
+			Parts.Keep(best, SPELLS[spell] % 10, Parts.SpellIcon(spell), nil, now, true, spell)
+			Note("cast: its shield told by it")
+			changed = true
+		elseif S.listless and math.abs(S.absorbAt - S.castAt) <= T.castLink then
+			S.castSpell = nil
+			Parts.Stand(spell, now)
+			changed = true
+		end
+	end
+	for id, born in pairs(S.fresh) do
+		if math.abs(S.absorbAt - born) <= T.recent then
+			local _, aura = Parts.Data(id)
+			Parts.Keep(id, -1, Parts.IconOf(aura), nil, now, true)
+			Note("a buff with the total's change: a shield, its school not known")
+			changed = true
+		elseif now - born > T.castLink then
+			S.fresh[id], S.born[id] = nil, nil
+		end
+	end
+	for id, born in pairs(S.born) do
+		if not S.fresh[id] and now - born > T.castLink then
+			S.born[id] = nil
+		end
+	end
+	if S.listless and S.removedAt > 0 and math.abs(S.removedAt - S.absorbAt) <= T.recent then
+		S.removedAt = 0
+		for _, id in ipairs(S.shieldIDs) do
+			if id < 0 then
+				Parts.Drop(id)
+				S.goneAt, S.shieldGoneAt = now, now
+				Note("a buff taken with the total's change: a stood-in band gone")
+				changed = true
+				break
+			end
+		end
+	end
+	return changed
+end
+
+-- whether a buff of yours came in this very update, not told yet (a recast's new instance: the last shield's going
+-- waits for what tells it)
+function Parts.Waiting(now)
+	for _, born in pairs(S.fresh) do
+		if born == now then
+			return true
+		end
+	end
+	return false
+end
+
+-- whether an aura update took something (its removed list there, plain or secret: never read)
+function Parts.Took(info)
+	if Secret(info) or type(info) ~= "table" then
+		return false
+	end
+	local removed = Parts.Read(info, "removedAuraInstanceIDs")
+	return Secret(removed) or type(removed) == "table"
+end
+
+-- an aura update's lists read, where they read plain (in a fight they come as secret tables -- type() calls them a
+-- table, only ipairs refuses -- and a full update has none). -> whether they were read
+function Parts.News(info, now)
+	if Secret(info) or type(info) ~= "table" then
+		return false
+	end
+	local full = info.isFullUpdate
+	if Secret(full) or full then
+		return false
+	end
+	local added, removed, updated = info.addedAuras, info.removedAuraInstanceIDs, info.updatedAuraInstanceIDs
+	if Secret(added) or Secret(removed) or Secret(updated) then
+		return false
+	end
+	if type(removed) == "table" then
+		for _, r in ipairs(removed) do
+			if not Secret(r) then
+				Parts.Gone(r, now)
+			end
+		end
+	end
+	if type(added) == "table" then
+		for _, aura in ipairs(added) do
+			local id, harmful
+			if type(aura) == "table" and not Secret(aura) then
+				id, harmful = Parts.Read(aura, "auraInstanceID"), Parts.Read(aura, "isHarmful")
+			end
+			if not Secret(id) and type(id) == "number" then
+				-- (the harmful ones left out: Weakened Soul comes with Power Word: Shield; its flag read secret in a
+				-- fight, the client's filter asked)
+				if Secret(harmful) or harmful == nil then
+					harmful = Parts.Is(id, "HELPFUL") == false
+				end
+				if harmful ~= true then
+					S.seen[id] = true
+					if Parts.Learn(id, aura, now) == nil and S.school[id] == nil then
+						Parts.Fresh(id, now)
+					end
+				end
+			end
+		end
+	end
+	if type(updated) == "table" then
+		for _, id in ipairs(updated) do
+			if not Secret(id) and S.school[id] ~= nil then
+				local ok, aura = Parts.Data(id)
+				if ok and (Secret(aura) or aura ~= nil) then
+					Parts.Learn(id, aura, now)   -- (its amount changed: its share; a shield in a fight read now)
+				end
+			end
+		end
+	end
+	return true
+end
+
+-- the instances of a list the client handed, the plain ones, into S.listNow (a list whose contents are secret
+-- refuses its length or an index: the caller's pcall)
+function Parts.Copy(ids)
+	local out = S.listNow
+	for i = 1, #ids do
+		local id = ids[i]
+		if not Secret(id) and type(id) == "number" then
+			out[#out + 1] = id
+		end
+	end
+end
+
+-- your buffs' instances as the client lists them now, into S.listNow: its list of your buffs
+-- (C_UnitAuras.GetUnitAuraInstanceIDs, no secret flag in the client's docs), else each buff's instance by its index
+-- (C_UnitAuras.GetAuraDataByIndex) where its ID reads plain. -> "list", "index", or nil (none told)
+function Parts.List()
+	local api = _G.C_UnitAuras
+	local out = S.listNow
+	wipe(out)
+	local list = api and api.GetUnitAuraInstanceIDs
+	if type(list) == "function" then
+		local ok, ids = pcall(list, "player", "HELPFUL")
+		if ok and not Secret(ids) and type(ids) == "table" and pcall(Parts.Copy, ids) then
+			return "list"
+		end
+		wipe(out)
+	end
+	local get = api and api.GetAuraDataByIndex
+	if type(get) ~= "function" then
+		return nil
+	end
+	for i = 1, 255 do
+		local ok, aura = pcall(get, "player", i, "HELPFUL")
+		if not ok or Secret(aura) then
+			wipe(out)
+			return nil
+		end
+		if aura == nil then
+			return "index"
+		end
+		local id = type(aura) == "table" and Parts.Read(aura, "auraInstanceID") or nil
+		if Secret(id) or type(id) ~= "number" then
+			wipe(out)
+			return nil
+		end
+		out[#out + 1] = id
+	end
+	return "index"
+end
+
+-- your buffs as the client lists them now: the new ones told (or kept for what comes around them), the ones gone off
+-- every list, the ones told by what came around them read again; `reread` (a /reload, a new zone): the ones not told
+-- are your buffs from before, never new. -> how the list was read ("list", "index"), or nil
+function Parts.Scan(now, reread)
+	local how = Parts.List()
+	if not how then
+		return nil
+	end
+	local ids = S.listNow
+	local here, before = S.seenNow, S.seen
+	wipe(here)
+	for i = 1, #ids do
+		local id = ids[i]
+		here[id] = true
+		local school = S.school[id]
+		if (school == nil and not S.notShield[id]) or S.guess[id] then
+			local okD, aura = Parts.Data(id)
+			local told
+			if okD then
+				told = Parts.Learn(id, aura, now)
+			end
+			if told == nil and school == nil and not before[id] and not reread then
+				Parts.Fresh(id, now)
+			end
+		end
+	end
+	for id in pairs(before) do
+		if not here[id] then
+			S.goneAt = now
+		end
+	end
+	for j = #S.shieldIDs, 1, -1 do
+		local id = S.shieldIDs[j]
+		if not here[id] then
+			Parts.Drop(id)
+			S.goneAt, S.shieldGoneAt = now, now
+		end
+	end
+	for id in pairs(S.notShield) do
+		if not here[id] then
+			S.notShield[id] = nil
+		end
+	end
+	for id in pairs(S.fresh) do
+		if not here[id] then
+			S.fresh[id], S.born[id] = nil, nil
+		end
+	end
+	S.seen, S.seenNow = here, before   -- (the two kept and swapped: no table made)
+	return how
+end
+
+-- (a full update with no list to read) the shields no longer on taken off (one that cannot be told: kept; a band
+-- stood in for a cast: kept)
+function Parts.Prune(now)
+	for j = #S.shieldIDs, 1, -1 do
+		local id = S.shieldIDs[j]
+		if id > 0 then
+			local ok, aura = Parts.Data(id)
+			if ok and not Secret(aura) and aura == nil then
+				Parts.Gone(id, now)
+			end
+		end
+	end
+end
+
+-- (/mello shield) the shield's events, the last S.log.size of them, kept in place (nothing made per event): when,
+-- which, what it held (a spell, how the auras were read, the total plain or secret), and your shields known and not
+-- known after it
+function Parts.Log(kind, arg)
+	local L = S.log
+	local i = L.pos % L.size + 1
+	L.pos = i
+	if L.n < L.size then
+		L.n = L.n + 1
+	end
+	local known, unknown = 0, 0
+	for _, id in ipairs(S.shieldIDs) do
+		if S.school[id] == -1 then
+			unknown = unknown + 1
+		else
+			known = known + 1
+		end
+	end
+	L.at[i], L.kind[i], L.arg[i], L.known[i], L.unknown[i] = GetTime(), kind, arg, known, unknown
+end
+
+-- band i and its icon, made the first time a shield needs them and kept: the bands in a frame on the column's fill,
+-- clipped to the column's bar's fill (the game's total, secret or not: the engine draws how full); each icon in the
+-- stack on the column's right. The bands over the column's rim (Gilded.Rim, col.bar's level + 3) and whatever a skin
+-- lays in its place, under the crack (+ 6): the Default skin's rim is the game's tooltip border on the rim's rect, its
+-- edges deeper than the rail, and over a fill only T.colW wide it dimmed every band to about half (the user's olive,
+-- 2026-10-31); a rim never covers a shield's colour
 function Parts.Get(i)
 	local col = S.ui.column
 	if not col.parts then
 		col.parts = {}
-		local host = CreateFrame("Frame", nil, col.strip.fill)
-		host:SetAllPoints(col.strip.fill)
-		host:SetClipsChildren(true)
-		host:SetFrameLevel(col.bar:GetFrameLevel())
-		col.partHost = host
+		local clip = CreateFrame("Frame", nil, col.strip.fill)
+		clip:SetClipsChildren(true)
+		clip:SetFrameLevel(col.bar:GetFrameLevel() + 5)
+		col.bands = clip
+		Parts.Anchor(col)
 	end
 	local p = col.parts[i]
 	if p then
 		return p
 	end
-	local bar = CreateFrame("StatusBar", nil, col.partHost)
-	bar:SetOrientation("VERTICAL")
-	bar:SetStatusBarTexture(W.BarFill("personal"))
-	bar:SetMinMaxValues(0, 1)
-	bar:SetValue(0)
-	if i == 1 then
-		bar:SetPoint("BOTTOMLEFT", col.partHost, "BOTTOMLEFT")
-		bar:SetPoint("BOTTOMRIGHT", col.partHost, "BOTTOMRIGHT")
-	else
-		local below = col.parts[i - 1].bar:GetStatusBarTexture()
-		bar:SetPoint("BOTTOMLEFT", below, "TOPLEFT")
-		bar:SetPoint("BOTTOMRIGHT", below, "TOPRIGHT")
-	end
-	bar:SetHeight(T.colH)
-	local icon = W.RoundIcon(col.float, T.partIcon, nil)
+	local band = col.bands:CreateTexture(nil, "ARTWORK")
+	band:SetTexture(W.BarFill("personal"))
+	band:Hide()
+	local icon = W.RoundIcon(col.clip or col.float, T.partIcon, nil)   -- (in the presence's clip: gone at a 0)
 	icon:EnableMouse(false)   -- (the pointer passes through the display to the world)
 	icon:SetKit(W.KitFor("unitframes"))   -- (0.25.0: MelloUI's ring unless Oldschool dresses the frames)
 	icon:SetPoint("BOTTOMLEFT", col.strip, "BOTTOMRIGHT", T.partGap,
 		col.strip.insets[4] + (i - 1) * (T.partIcon + T.partGap))
-	p = { bar = bar, icon = icon }
+	icon:Hide()
+	p = { band = band, icon = icon, key = "personalShield" }
 	col.parts[i] = p
 	return p
 end
 
-function Parts.Set(i, value, school, icon)
-	local p = Parts.Get(i)
-	p.bar:SetMinMaxValues(0, S.max or 1)   -- (the whole at the last rise: a secret too)
-	p.bar:SetValue(value, EASE)
-	Paint(p.bar, SCHOOL_KEY[school] or "personalShield")
-	p.bar:Show()
-	local shown = Secret(icon) or icon ~= nil
-	if shown then
-		shown = pcall(p.icon.SetIcon, p.icon, icon)
+-- the bands' clip on the column's bar's fill (again after its texture is set: the Bar Texture switched)
+function Parts.Anchor(col)
+	local clip = col.bands
+	if clip then
+		local fill = col.bar:GetStatusBarTexture()
+		clip:ClearAllPoints()
+		clip:SetPoint("TOPLEFT", fill, "TOPLEFT")
+		clip:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
 	end
-	p.icon:SetShown(shown and true or false)
 end
 
--- (the preview) its made-up shields at the total `left`: spent from the bottom up
-function Parts.Sample(left)
-	local list = S.previewParts or {}
-	local spent = 0
-	for _, part in ipairs(list) do
-		spent = spent + part[2]
-	end
-	spent = spent - (Num(left) or 0)
-	local i = 0
-	for _, part in ipairs(list) do
-		local value = math.max(0, part[2] - math.max(0, spent))
-		spent = spent - part[2]
-		if value > 0 then
-			i = i + 1
-			local code = SPELLS[part[1]] or 0
-			local ok, tex = pcall(_G.C_Spell and _G.C_Spell.GetSpellTexture or _G.GetSpellTexture, part[1])
-			Parts.Set(i, value, code % 10, ok and tex or nil)
+-- a band in its school's colour (MelloUI.Meaning by its own key: a repaint never changes its school)
+function Parts.PaintOne(p)
+	local c = MelloUI.Meaning[p.key] or MelloUI.Meaning.personalShield
+	p.band:SetVertexColor(c[1], c[2], c[3])
+end
+
+-- (the bus's 'palette', Motion.Paint) every band again by its own school's key
+function Parts.Paint()
+	local col = S.ui and S.ui.column
+	if col and col.parts then
+		for _, p in ipairs(col.parts) do
+			Parts.PaintOne(p)
 		end
 	end
-	return i
 end
 
--- the column in parts (each shield its own) or the one total: read again at each rise, hit and aura update
+-- (the Bar Texture switched) the bands' fill
+function Parts.Fill(texture)
+	local col = S.ui and S.ui.column
+	if col and col.parts then
+		Parts.Anchor(col)
+		for _, p in ipairs(col.parts) do
+			p.band:SetTexture(texture)
+		end
+	end
+end
+
+-- an icon in the stack: a plain one through the ring's own picture (round, sharp: MelloUI.Icons), a secret one handed
+-- to the picture as it is (the ring's own logic reads it)
+function Parts.Icon(p, icon)
+	local b = p.icon
+	if not Secret(icon) and icon == nil then
+		icon = UNKNOWN_ICON
+	end
+	if Secret(icon) then
+		b.texture = nil   -- (a skin switch puts no old picture back)
+		b.secretPic = true
+		pcall(b.icon.SetTexture, b.icon, icon)
+	elseif b.secretPic or b.texture ~= icon then
+		b.secretPic = nil
+		if not pcall(b.SetIcon, b, icon) then
+			pcall(b.icon.SetTexture, b.icon, icon)
+		end
+	end
+	b:Show()
+end
+
+-- the live shields, the first T.partMax, into DRAW. -> how many
+function Parts.FromLive()
+	local n = 0
+	for _, id in ipairs(S.shieldIDs) do
+		if n >= T.partMax then
+			break
+		end
+		n = n + 1
+		DRAW.school[n], DRAW.icon[n], DRAW.weight[n] = S.school[id], S.icon[id], S.weight[id]
+	end
+	return n
+end
+
+-- (the preview) its made-up shields into DRAW: [spell, amount]. -> how many
+function Parts.FromSample()
+	local list = S.previewParts
+	local n = 0
+	if not list then
+		return 0
+	end
+	for _, part in ipairs(list) do
+		if n >= T.partMax then
+			break
+		end
+		n = n + 1
+		local code = SPELLS[part[1]] or 0
+		DRAW.school[n], DRAW.icon[n], DRAW.weight[n] = code % 10, Parts.SpellIcon(part[1]), part[2]
+	end
+	return n
+end
+
+-- n bands up the column from DRAW: each its share of the column (every amount plain: by amount, else equal), its
+-- school's colour, its icon; the rest put away. The column's own bar shows only with no band (a total with no shield
+-- of yours told: the plain shield colour)
+function Parts.Lay(col, n)
+	local sum, all = 0, true
+	for i = 1, n do
+		local w = DRAW.weight[i]
+		if w then
+			sum = sum + w
+		else
+			all = false
+		end
+	end
+	local h, y = T.colH, 0
+	local fill = col.strip.fill
+	for i = 1, n do
+		local p = Parts.Get(i)
+		local share = (all and sum > 0) and DRAW.weight[i] / sum or 1 / n
+		local top = i == n and h or y + h * share
+		local band = p.band
+		band:ClearAllPoints()
+		band:SetPoint("BOTTOMLEFT", fill, "BOTTOMLEFT", 0, y)
+		band:SetPoint("TOPRIGHT", fill, "BOTTOMRIGHT", 0, top)
+		band:SetTexCoord(0, 1, 1 - top / h, 1 - y / h)
+		p.key = SCHOOL_KEY[DRAW.school[i]] or "personalShield"
+		Parts.PaintOne(p)
+		band:Show()
+		Parts.Icon(p, DRAW.icon[i])
+		y = top
+	end
+	if col.parts then
+		for i = n + 1, #col.parts do
+			col.parts[i].band:Hide()
+			col.parts[i].icon:Hide()
+		end
+	end
+	S.partsOn = n > 0
+	col.bar:SetAlpha(S.partsOn and 0 or 1)
+end
+
+-- the column in bands (each shield its own) or its own bar: drawn again at each rise, hit and aura update
 function Parts.Update()
 	local col = S.ui and S.ui.column
 	if not col then
@@ -1444,28 +2002,9 @@ function Parts.Update()
 	end
 	local n = 0
 	if S.shieldOn and Db().shield ~= false then
-		if S.preview then
-			n = Parts.Sample(S.value)
-		elseif #S.shieldIDs > 0 and #S.shieldIDs <= T.partMax then
-			n = #S.shieldIDs
-			for i, id in ipairs(S.shieldIDs) do
-				local value, school, icon = Parts.Read(id)
-				if value == nil then
-					n = 0   -- (one not read: the one total, nothing guessed)
-					break
-				end
-				Parts.Set(i, value, school, icon)
-			end
-		end
+		n = S.preview and Parts.FromSample() or Parts.FromLive()
 	end
-	if col.parts then
-		for i = n + 1, #col.parts do
-			col.parts[i].bar:Hide()
-			col.parts[i].icon:Hide()
-		end
-	end
-	S.partsOn = n > 0
-	col.bar:SetAlpha(S.partsOn and 0 or 1)
+	Parts.Lay(col, n)
 end
 
 --------------------------------------------------------------------------------
@@ -1517,12 +2056,13 @@ function Shield.Low(on)
 	end
 end
 
+-- the total under the column: always, whatever Percent And Spell Text (the user, 2026-10-31: "does not say the absorb
+-- amount on the bottom" -- their texts off hid it); a secret too, the font string takes it (never compared); a read
+-- the font string refuses: nothing, the column's story goes on
 local function Amount(amount)
 	local fs = S.ui.column.amount
-	if Db().text == false then
+	if amount == nil or not pcall(fs.SetFormattedText, fs, "%.0f", amount) then
 		fs:SetText("")
-	else
-		fs:SetFormattedText("%d", amount)   -- (a secret too: the font string takes it)
 	end
 end
 
@@ -1568,57 +2108,73 @@ function Shield.Hit(amount)
 	Parts.Update()
 end
 
--- broken (or run out): the shards, the column emptied, held a moment, faded out
+-- broken (or run out): the shards, the column emptied, held a moment, faded out (the shields' auras go with their own
+-- updates)
 function Shield.Break()
 	local col = S.ui.column
-	S.shieldOn = false
-	wipe(S.shieldIDs)
+	S.shieldOn, S.brokeAt = false, GetTime()
 	Shield.Low(false)
 	col.bar:SetValue(0, EASE)
 	col.loss:SetValue(0, EASE)
-	col.amount:SetText("")
+	Amount(nil)
 	Light("k")
 	Motion.Crack()
 	C_Timer.After(T.breakHold, ColumnOut)
 	Parts.Update()
 end
 
--- the shield's own auras: the ones the aura update that came with its rise added
--- (the user, 2026-10-12: "a single shield bar which includes all of the shields in the game" -- spells, passives,
--- items, the ones against one kind of damage; the column is the game's total of them all) a fresh shield's auras
--- known as its own; one more on top of shields already up added to the ones known, never in their place
-function Shield.Adopt()
-	-- (the ones the client's spell data names shields, when there are: a buff gone up beside them is not one)
-	local from = #S.addedSure > 0 and S.addedSure or S.added
-	if #from == 0 then
-		return   -- (no aura of its kind heard: the ones known kept)
+-- your cast landed (UNIT_SPELLCAST_SUCCEEDED, its spell ID plain for you): one the client's data names a shield given to
+-- the buff of yours it puts on you, whichever of its three events comes first (Parts.Settle: its aura heard before it,
+-- or the total's change, or both)
+function Shield.Cast(spell)
+	if Db().shield == false then
+		return
 	end
-	if not S.shieldOn then
-		wipe(S.shieldIDs)
+	if not SPELLS[spell] then
+		Parts.Log("UNIT_SPELLCAST_SUCCEEDED", spell)   -- (/mello shield: every cast of yours, a shield's or not)
+		return
 	end
-	for _, id in ipairs(from) do
-		local known = false
-		for _, have in ipairs(S.shieldIDs) do
-			if have == id then
-				known = true
-			end
-		end
-		if not known then
-			S.shieldIDs[#S.shieldIDs + 1] = id
-		end
+	local now = GetTime()
+	S.castSpell, S.castAt = spell, now
+	local changed = Parts.Settle(now)
+	Parts.Log("UNIT_SPELLCAST_SUCCEEDED", spell)
+	if changed and S.shieldOn and not S.preview then
+		Parts.Update()
+	end
+end
+
+-- (the fight over: auras read plain again) your buffs read again a moment after (the restriction ends just after the
+-- fight does): a shield taken in it with its school not known gets it, one up since a /reload in it is known
+function Shield.FightOver()
+	if S.shieldOn or #S.shieldIDs > 0 then
+		C_Timer.After(T.reread, Shield.Reread)
+	end
+end
+
+function Shield.Reread()
+	if On() and S.ui then
+		Shield.Aura(nil)
 	end
 end
 
 -- the total absorb changed: a plain amount tells it all, a secret one is read from the auras around it
 function Shield.Changed()
-	if not S.ui or S.preview then
+	if not S.ui then
 		return
 	end
 	local ok, amount = pcall(UnitGetTotalAbsorbs, "player")
 	if not ok then
 		return
 	end
-	S.absorbAt, S.lastAmount = GetTime(), amount
+	local now = GetTime()
+	S.absorbAt, S.lastAmount = now, amount
+	if Db().shield ~= false then
+		Parts.Settle(now)   -- (a buff heard around it, its data secret: a shield; your cast of one tells which)
+	end
+	Parts.Log("UNIT_ABSORB_AMOUNT_CHANGED", (Secret(amount) or type(amount) ~= "number") and TEXT.secret or amount)
+	if S.preview then
+		return
+	end
 	-- (the column's presence: the amount itself, secret or not -- the engine hides the column at 0)
 	if Usable(amount) then
 		S.ui.column.presence:SetValue(amount)
@@ -1637,11 +2193,6 @@ function Shield.Changed()
 		elseif not S.shieldOn or (max and amount > max) or (value and amount > value) then
 			Note("plain: applied")
 			S.lastKind = "apply"
-			-- (its aura heard just before -- the game sends the two in either order: its own, as a secret amount's are;
-			-- else the column fell back to the one total, the user's Power Word: Shield blue one time, yellow the next)
-			if S.absorbAt - S.auraAddedAt <= T.recent then
-				Shield.Adopt()
-			end
 			Shield.Apply(amount)
 		elseif value and amount < value then
 			Note("plain: hit")
@@ -1651,18 +2202,18 @@ function Shield.Changed()
 		return
 	end
 	S.reads.shield = TEXT.secret
-	local now = S.absorbAt
-	-- (with its own auras known, their going is the break: Shield.Aura)
-	if S.shieldOn and #S.shieldIDs == 0 and now - S.auraRemovedAt <= T.recent then
+	-- (with shields of yours known, their going is the break: Shield.Aura)
+	if S.shieldOn and #S.shieldIDs == 0 and now - S.goneAt <= T.recent then
 		Note("secret: broken (an aura taken with it)")
 		S.lastKind = "break"
 		Shield.Break()
-	elseif not S.shieldOn or now - S.auraAddedAt <= T.recent then
+	elseif not S.shieldOn and #S.shieldIDs == 0 and S.lastKind == "break" and now - S.brokeAt <= T.recent then
+		-- (2.1.0, fr-19: the last shield's aura heard going first, then the total down to its 0: that change is the
+		-- break's own -- the column came up again as the one total, the plain blue)
+		Note("secret: the break's own change")
+	elseif not S.shieldOn or now - S.learnedAt <= T.recent then
 		Note("secret: applied")
 		S.lastKind = "apply"
-		if now - S.auraAddedAt <= T.recent then
-			Shield.Adopt()
-		end
 		Shield.Apply(amount)
 	else
 		Note("secret: hit")
@@ -1671,126 +2222,113 @@ function Shield.Changed()
 	end
 end
 
--- an aura update's news: auras added (their instances kept in `into`, the harmful ones left out where that reads --
--- Weakened Soul comes with Power Word: Shield), auras taken (whether one of `mine`, the shield's own, is among them),
--- a full update (no list: what is left asked after). One function for every event, no closure made per update;
--- called through pcall (an answer it cannot read: nothing)
-local function AuraNews(info, into, mine, sure)
-	if type(info) ~= "table" then
-		return false, false, false, false
-	end
-	if info.isFullUpdate then
-		return false, false, false, true
-	end
-	local added, removed = info.addedAuras, info.removedAuraInstanceIDs
-	local n = 0
-	if type(added) == "table" then
-		for _, aura in ipairs(added) do
-			local id, harmful = aura.auraInstanceID, aura.isHarmful
-			if not Secret(id) and type(id) == "number" and (Secret(harmful) or harmful ~= true) then
-				if n == 0 then
-					wipe(into)   -- (news with none of its kind -- a debuff -- keeps the last one's)
-					wipe(sure)
-				end
-				n = n + 1
-				into[n] = id
-				local spell = aura.spellId
-				if not Secret(spell) and SPELLS[spell] then
-					sure[#sure + 1] = id   -- (a shield by the client's own spell data)
-				end
-			end
-		end
-	end
-	-- (one of the shields' own auras taken: off the list -- the column breaks when the last one is gone)
-	local gone = false
-	if type(removed) == "table" then
-		for _, r in ipairs(removed) do
-			if not Secret(r) then
-				for j = #mine, 1, -1 do
-					if r == mine[j] then
-						table.remove(mine, j)
-						gone = true
-					end
-				end
-			end
-		end
-	end
-	return n > 0, removed ~= nil, gone, false
-end
-
--- (a full update) whether one of the shield's own auras is still on
--- (a full update) the shields' own auras no longer on taken off the list (one that cannot be told: kept)
-local function Prune(ids)
-	local api = _G.C_UnitAuras
-	local get = api and api.GetAuraDataByAuraInstanceID
-	if type(get) ~= "function" then
+-- the auras changed: your shields known again (the update's lists, else the client's list, else each buff by its
+-- index; none of them told: S.listless); the buffs not told matched with what came around them (Parts.Settle); the
+-- last of them gone, broken; one come just after a change read as a hit, an application after all
+function Shield.Aura(info)
+	if Db().shield == false then
 		return
 	end
-	for j = #ids, 1, -1 do
-		local ok, aura = pcall(get, "player", ids[j])
-		if ok and not Secret(aura) and aura == nil then
-			table.remove(ids, j)
-		end
-	end
-end
-
--- the auras changed: noted for a secret amount's story; one added or taken just after a change read as a hit
--- makes that change an application or a break after all
-function Shield.Aura(info)
 	local now = GetTime()
 	local had = #S.shieldIDs
-	local ok, added, removed, _, full = pcall(AuraNews, info, S.added, S.shieldIDs, S.addedSure)   -- (the auras left decide a break)
-	if not ok then
-		return
+	local ok, read = pcall(Parts.News, info, now)
+	local how = (ok and read) and "lists" or nil
+	if not how then
+		local okS, scanned = pcall(Parts.Scan, now)
+		how = okS and scanned or nil
+		if not how then
+			pcall(Parts.Prune, now)
+			if Parts.Took(info) then
+				S.removedAt = now
+			end
+		end
 	end
-	if added then
-		S.auraAddedAt = now
-	end
-	if removed then
-		S.auraRemovedAt = now
-	end
+	S.listless, S.lastRead = not how, how or "none"
+	Parts.Settle(now)
+	Parts.Log("UNIT_AURA", S.lastRead)
 	if not S.ui or S.preview then
 		return
 	end
-	-- (the user's video, 2026-10-12: a shield broken before its time stayed up) its own auras gone, the last of
-	-- them: broken; one of several (a second shield still holding): the column stays, the game's total in it
-	if full and had > 0 then
-		pcall(Prune, S.shieldIDs)
-	end
+	-- (the user's video, 2026-10-12: a shield broken before its time stayed up) the last of them gone: broken; one of
+	-- several (a second shield still holding): the column stays, the bands laid again. A buff of yours come in the same
+	-- update, not told yet (a recast's new instance): the total's change or your cast tells (Shield.Changed breaks it
+	-- when neither makes it a shield)
 	if S.shieldOn and had > 0 and #S.shieldIDs == 0 then
+		if Parts.Waiting(now) then
+			Note("the last gone, a new buff with it: waited")
+			return
+		end
 		Note("broken (its own auras gone)")
 		S.lastKind = "break"
 		Shield.Break()
 		return
 	end
-	-- (the amount's change heard before its aura: the shield's own adopted now; one the spell data names a shield,
-	-- gone up on top of shields already up, adopted whenever it comes)
-	if added and S.shieldOn and #S.shieldIDs == 0 and S.lastKind == "apply" and now - S.absorbAt <= T.recent then
-		Shield.Adopt()
-	elseif added and S.shieldOn and #S.addedSure > 0 then
-		Shield.Adopt()
-	end
-	if S.shieldOn then
-		Parts.Update()   -- (an aura's amount changed, one went or came: the parts read again)
-	end
-	if not (S.reads.shield == TEXT.secret and S.lastKind == "hit" and now - S.absorbAt <= T.recent) then
+	local recent = now - S.absorbAt <= T.recent
+	if S.learnedAt == now and S.lastKind == "hit" and recent and S.reads.shield == TEXT.secret then
+		Note("secret: applied (an aura added just after)")
+		S.lastKind = "apply"
+		Shield.Apply(S.lastAmount)
 		return
 	end
-	if removed and S.shieldOn and #S.shieldIDs == 0 then
+	if S.shieldOn and had == 0 and S.goneAt == now and S.lastKind == "hit" and recent
+			and S.reads.shield == TEXT.secret then
 		Note("secret: broken (an aura taken just after)")
 		S.lastKind = "break"
 		Shield.Break()
-	elseif added then
-		Note("secret: applied (an aura added just after)")
-		S.lastKind = "apply"
-		Shield.Adopt()
-		Shield.Apply(S.lastAmount)
+		return
+	end
+	if S.shieldOn then
+		Parts.Update()   -- (one went or came, or its amount changed: the bands laid again)
 	end
 end
 
-local function ShieldOff()
+-- (Refresh: the login, a /reload, a new zone, the preview's end, a setting) your shields read again from the client's
+-- list; a total up with shields of yours on: the column up at once (the total itself, secret or not)
+function Shield.Refresh()
+	if Db().shield == false then
+		return
+	end
+	local now = GetTime()
+	local had = #S.shieldIDs
+	pcall(Parts.Scan, now, true)
+	Parts.Log("refresh", nil)
+	local ok, amount = pcall(UnitGetTotalAbsorbs, "player")
+	if not ok then
+		return
+	end
+	if not Secret(amount) then
+		if type(amount) ~= "number" then
+			return
+		end
+		-- (read again: a shield already up kept as it is, one gone meanwhile broken)
+		if amount > 0 and not S.shieldOn then
+			Shield.Apply(amount)
+		elseif amount <= 0 and S.shieldOn then
+			Shield.Break()
+		elseif S.shieldOn then
+			Parts.Update()
+		end
+		return
+	end
+	S.reads.shield = TEXT.secret
+	if #S.shieldIDs > 0 and not S.shieldOn then
+		Note("secret: shields on, read again")
+		Shield.Apply(amount)
+	elseif S.shieldOn and had > 0 and #S.shieldIDs == 0 then
+		Shield.Break()
+	elseif S.shieldOn then
+		Amount(amount)
+		Parts.Update()
+	end
+	-- (secret with none of yours known: whether one is up cannot be told until it changes; the column waits for that)
+end
+
+-- the column put away; `keep`: what is known of your shields kept (the preview over a live one)
+local function ShieldOff(keep)
 	S.shieldOn, S.low, S.max, S.value = false, false, nil, nil
-	wipe(S.shieldIDs)
+	if not keep then
+		Parts.Forget()
+	end
 	local col = S.ui and S.ui.column
 	if col then
 		col.presence:SetValue(0)
@@ -2277,6 +2815,7 @@ function Motion.Paint()
 		ui.lifeGlint.tex:SetVertexColor(Motion.Look("selectedTrim"))
 	end
 	local col = ui.column
+	Parts.Paint()   -- (each band by its own school's key: a repaint never changes a band's school)
 	if col and col.crack then
 		local c = MelloUI.Meaning.personalShield
 		for _, p in ipairs(col.crack.pieces) do
@@ -3138,6 +3677,9 @@ local function OnEvent(_, event, a1, a2, a3, a4)
 		-- (a cooldown of yours cast: its spell ID plain, as Frame Effects reads its own; a secret one plays nothing)
 		if not S.preview and not Secret(a3) and type(a3) == "number" then
 			Cds.Start(a3)
+			Shield.Cast(a3)   -- (a shield's: the aura it puts on you known by it)
+		elseif Secret(a3) and Db().shield ~= false then
+			Parts.Log(event, TEXT.secret)   -- (/mello shield: a cast whose spell this client hands secret)
 		end
 		-- (Cast Motion: the cast in hand landed -- its STOP comes after this)
 		if S.casting and not S.castChannel then
@@ -3157,6 +3699,10 @@ local function OnEvent(_, event, a1, a2, a3, a4)
 	elseif event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
 		if not S.preview then
 			Motion.Settle(event == "PLAYER_REGEN_DISABLED")
+		end
+		Parts.Log(event, nil)   -- (/mello shield: where the fight began and ended among the shield's events)
+		if event == "PLAYER_REGEN_ENABLED" then
+			Shield.FightOver()
 		end
 	elseif event == "PLAYER_DEAD" or event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
 		Motion.Death(Motion.IsDead())   -- (1.2.0: grey and folded, back with the sweep)
@@ -3212,26 +3758,20 @@ Refresh = function()
 	if not S.casting then
 		CastRead(true)
 	end
-	local ok, amount = pcall(UnitGetTotalAbsorbs, "player")
-	if ok and not Secret(amount) and type(amount) == "number" then
-		-- (read again: a shield already up kept as it is, one gone meanwhile broken)
-		if amount > 0 and not S.shieldOn then
-			Shield.Apply(amount)
-		elseif amount <= 0 and S.shieldOn then
-			Shield.Break()
-		end
-	elseif ok and Secret(amount) then
-		-- (secret: whether one is up cannot be told until it changes; the column waits for that)
-		S.reads.shield = TEXT.secret
-	end
+	Shield.Refresh()   -- (your shields read again from the client's list, the column up with them)
 end
 
 -- Hide The Game's Cast Bar (the user, 2026-10-12: "when i have the Personal Display option enabled, i want the normal
 -- castbar to be hidden"): no CVar switches the player's cast bar off, so it is held see-through -- its alpha 0, and
 -- the game's own write of it (ApplyAlpha(1) as each cast starts: once a cast, its fade an animation, no write a
 -- frame) answered by a post-hook, counted (Perf.WriteBack). Never Show / Hide or a key of the game's; its 1 given
--- back when off
-local GameCast = { hooked = false, held = false, writing = false }
+-- back when off.
+-- (2.1.0; the user, 2026-10-31: "the Cast Interrupted animation is still playing on my Normal Cast bar, and not on the
+-- Castbar attached to the Personal Nameplate") an interrupt or a fail holds the bar up by an animation of its own
+-- alpha (HoldFadeOutAnim: 1 for a second, then out; a landed cast's FadeOutAnim the same), which the engine lays over
+-- the alpha set, past the post-hook: its fades stopped as the game plays them (once a cast's end, counted). The cut
+-- plays on the display's own bar (CastFX)
+local GameCast = { hooked = false, held = false, writing = false, FADES = { "HoldFadeOutAnim", "FadeOutAnim" } }
 
 function GameCast.OnAlpha(bar, alpha)
 	if not GameCast.held or GameCast.writing or (not Secret(alpha) and alpha == 0) then
@@ -3241,6 +3781,25 @@ function GameCast.OnAlpha(bar, alpha)
 	bar:SetAlpha(0)
 	GameCast.writing = false
 	MelloUI.Perf.WriteBack("PersonalDisplay: the game's cast bar")
+end
+
+function GameCast.OnFade(anim)
+	if GameCast.held then
+		anim:Stop()
+		MelloUI.Perf.WriteBack("PersonalDisplay: the game's cast bar fade")
+	end
+end
+
+-- the bar's own fades (its animation groups, read raw)
+function GameCast.Fades(bar)
+	local out = {}
+	for _, key in ipairs(GameCast.FADES) do
+		local anim = rawget(bar, key)
+		if type(anim) == "table" and type(anim.Play) == "function" then
+			out[#out + 1] = anim
+		end
+	end
+	return out
 end
 
 function GameCast.Hold(on)
@@ -3256,6 +3815,21 @@ function GameCast.Hold(on)
 	if on and not GameCast.hooked then
 		GameCast.hooked = true
 		hooksecurefunc(bar, "SetAlpha", GameCast.OnAlpha)
+		for _, anim in ipairs(GameCast.Fades(bar)) do
+			hooksecurefunc(anim, "Play", GameCast.OnFade)
+		end
+	end
+	if on then
+		-- (one running as it comes on: an interrupt's hold, stopped)
+		for _, anim in ipairs(GameCast.Fades(bar)) do
+			if anim:IsPlaying() then
+				anim:Stop()
+			end
+		end
+	elseif bar:IsShown() and not StillCasting() and not rawget(bar, "isInEditMode") then
+		-- (off with no cast while it still stands from the last one's end, its fade held off: left see-through, so no
+		-- old bar comes back; the game's next cast gives it its 1, as each start does)
+		return
 	end
 	GameCast.writing = true
 	bar:SetAlpha(on and 0 or 1)
@@ -3826,7 +4400,7 @@ local function OnPreview(beat, _, n)
 	if beat == "stop" then
 		if S.preview then
 			S.preview = false
-			ShieldOff()
+			ShieldOff(true)
 			CastOut()
 			SB.Off()
 			Cds.Off()
@@ -3845,7 +4419,7 @@ local function OnPreview(beat, _, n)
 	end
 	if beat == "start" then
 		S.preview = true
-		ShieldOff()
+		ShieldOff(true)
 		S.previewHealth, S.previewPower, S.powerLast, S.lowWas = SAMPLE.health, SAMPLE.power, nil, nil
 		S.snap = true
 		SampleHealth(S.previewHealth)
@@ -3937,7 +4511,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		{ type = "toggle", key = "cooldowns", name = "Big Cooldowns",
 		  desc = "Your big defensive cooldowns (Shield Wall, Evasion, Ice Block...) as icons above the health bar." },
 		{ type = "toggle", key = "text", name = "Percent And Spell Text",
-		  desc = "Health and power percent, spell names and times, and your shield's amount." },
+		  desc = "Health and power percent, spell names and times." },
 		{ type = "dropdown", key = "textFont", name = "Text Font", values = MelloUI.FontFaces,
 		  desc = "The font of the display's text. Shared: the interface font." },
 		{ type = "toggle", key = "classColour", name = "Class Colours",
@@ -4053,8 +4627,8 @@ local function SecretsLog()
 					parts[#parts + 1] = Kind(true, points[i])
 				end
 			end
-			MelloUI:Print("  aura %s: spell %s, name %s, amounts [%s]", tostring(id), Kind(true, aura.spellId),
-				Kind(true, aura.name), table.concat(parts, ", "))
+			MelloUI:Print("  aura %s: spell %s, name %s, amounts [%s], school kept %s", tostring(id), Kind(true, aura.spellId),
+				Kind(true, aura.name), table.concat(parts, ", "), tostring(S.school[id]))
 		end
 	end
 	if #S.shieldIDs == 0 then
@@ -4062,7 +4636,119 @@ local function SecretsLog()
 	end
 	MelloUI:ShowLog(TEXT.secrets)
 end
-M.SlashWords = { secrets = SecretsLog }
+
+-- /mello shield (/mello personal shield; 2.1.0, fr-19 -- the user's sixth report, 2026-11-01: "when i place a shield
+-- onto myself in combat, the colour turns blue and there is no spell icon"): the column as it stands and how it came
+-- to it, in MelloUI's copy window, so one paste settles the next report. Read only.
+function Shield.Log()
+	local SCHOOL = { [-1] = "not known yet (the plain colour)", [0] = "no school (the plain colour)", "holy", "fire",
+		"nature", "frost", "shadow", "arcane" }
+	local SECRECY = { [0] = "never secret", "always secret", "secret in a fight (as the restrictions say)" }
+	local READ = { lists = "UNIT_AURA's own lists (plain)", list = "the client's list of your buffs",
+		index = "each buff by its index", none = "nothing told an instance (every list secret)" }
+	local function Call(fn, ...)
+		if type(fn) ~= "function" then
+			return "not on this client"
+		end
+		local ok, v = pcall(fn, ...)
+		if not ok then
+			return "refused"
+		end
+		return Secret(v) and TEXT.secret or tostring(v)
+	end
+	local function SpellText(spell)
+		local name = Call(_G.C_Spell and _G.C_Spell.GetSpellName or rawget(_G, "GetSpellInfo"), spell)
+		local secrets = _G.C_Secrets
+		local aura = Num(secrets and type(secrets.GetSpellAuraSecrecy) == "function"
+			and select(2, pcall(secrets.GetSpellAuraSecrecy, spell)) or nil)
+		local cast = Num(secrets and type(secrets.GetSpellCastSecrecy) == "function"
+			and select(2, pcall(secrets.GetSpellCastSecrecy, spell)) or nil)
+		return string.format("%s (%d, %s; its aura %s, its cast %s)", name, spell,
+			SPELLS[spell] and "a shield" or "not a shield", SECRECY[aura] or "?", SECRECY[cast] or "?")
+	end
+	MelloUI:ClearLog()
+	local ui = S.ui
+	local db = Db()
+	MelloUI:Print("Personal Display %s, its Shield Column %s; in a fight: %s.", On() and "on" or "off",
+		db.shield == false and "off" or "on", Call(InCombatLockdown))
+	if not ui then
+		MelloUI:Print("The display is not made yet (it is made when it is turned on).")
+	else
+		local col = ui.column
+		local up = S.shieldOn and (S.partsOn and string.format("up, in %d band(s)", #S.shieldIDs)
+			or "up, its own bar: the plain colour, no icon (no shield of yours told)") or "down"
+		MelloUI:Print("The column: %s; the total %s; shown %s.", up, Call(UnitGetTotalAbsorbs, "player"),
+			Call(col.holder.GetAlpha, col.holder))
+	end
+	MelloUI:Print("Your shields known (%d), bottom up:", #S.shieldIDs)
+	for i, id in ipairs(S.shieldIDs) do
+		local icon = S.icon[id]
+		local iconText
+		if Secret(icon) then
+			iconText = "the aura's own (secret: the game draws it)"
+		elseif icon == nil then
+			iconText = "none known (the question mark)"
+		else
+			iconText = "known (" .. tostring(icon) .. ")"
+		end
+		local spell = S.spell[id]
+		MelloUI:Print("  %d. %s: %s, %s; icon %s%s", i, id < 0 and "no instance (your cast's own band)"
+			or ("aura " .. id), SCHOOL[S.school[id]] or tostring(S.school[id]),
+			S.guess[id] and "told by what came around it" or "read from its aura", iconText,
+			spell and ("; " .. SpellText(spell)) or "")
+		if id > 0 then
+			-- (what the client hands for it now: its data, whether its filter calls it yours)
+			local okD, aura = Parts.Data(id)
+			local data
+			if not okD then
+				data = "refused"
+			elseif Secret(aura) then
+				data = "secret (the table itself)"
+			elseif aura == nil then
+				data = "nothing"
+			else
+				local sp = Parts.Read(aura, "spellId")
+				data = Secret(sp) and "a table, its spell secret" or ("a table, its spell " .. tostring(sp))
+			end
+			local mine = Parts.Is(id, "HELPFUL|PLAYER")
+			MelloUI:Print("       its data now: %s; cast by you: %s", data,
+				mine == nil and "not told" or tostring(mine))
+		end
+	end
+	local waiting = 0
+	for _ in pairs(S.fresh) do
+		waiting = waiting + 1
+	end
+	MelloUI:Print("Waiting: %s; buffs of yours not told yet: %d.", S.castSpell and string.format(
+		"your cast of %s, %.2f s ago", SpellText(S.castSpell), GetTime() - S.castAt) or "no cast of a shield", waiting)
+	MelloUI:Print("Your buffs were read last through: %s.", READ[S.lastRead] or "nothing yet")
+	local api = _G.C_UnitAuras
+	local okL, ids = pcall(api and api.GetUnitAuraInstanceIDs or error, "player", "HELPFUL")
+	MelloUI:Print("The client's list of your buffs now: %s.", not okL and "refused or missing"
+		or Secret(ids) and "secret" or type(ids) == "table" and "answers" or "nothing")
+	local L = S.log
+	MelloUI:Print("The shield's events, oldest first (the time, since the one before, the event, what it held -> your "
+		.. "shields known / not known yet after it):")
+	local last
+	for k = L.n - 1, 0, -1 do
+		local i = (L.pos - 1 - k) % L.size + 1
+		local at, arg = L.at[i], L.arg[i]
+		local held = arg == nil and "" or (type(arg) == "number" and L.kind[i] == "UNIT_SPELLCAST_SUCCEEDED"
+			and SpellText(arg)) or (READ[arg] or tostring(arg))
+		MelloUI:Print("  %9.2f  +%.2f  %s  %s -> %d / %d", at, last and at - last or 0, L.kind[i], held, L.known[i],
+			L.unknown[i])
+		last = at
+	end
+	if L.n == 0 then
+		MelloUI:Print("  (none yet: put a shield up, then type this again)")
+	end
+	MelloUI:Print("The column's last notes, oldest first:")
+	for _, line in ipairs(S.reads.path) do
+		MelloUI:Print("  %s", line)
+	end
+	MelloUI:ShowLog(TEXT.shieldLog)
+end
+M.SlashWords = { secrets = SecretsLog, shield = Shield.Log }
 
 -- Edit Layout's plates: the display made when it opens (its movers with it), never at login
 local function MoverSource()
@@ -4090,6 +4776,7 @@ local function UnitFill()
 		ui.power.bar:SetStatusBarTexture(fill)
 		ui.column.bar:SetStatusBarTexture(fill)
 		ui.column.loss:SetStatusBarTexture(fill)
+		Parts.Fill(fill)
 		for _, b in ipairs(ui.motionBars) do
 			b.ghost:SetStatusBarTexture(fill)
 			b.lead:SetStatusBarTexture(fill)

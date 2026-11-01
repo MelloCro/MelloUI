@@ -2389,6 +2389,12 @@ function M:OnInit(db)
 	for _, key in ipairs(GONE) do
 		db[key] = nil
 	end
+	-- (2.1.0) another addon took the minimap's objective marks over or gave them back (MelloUI.Overlaps)
+	MelloUI:On("overlap", function(job)
+		if job == "minimapObjectives" and QL.Objectives then
+			QL.Objectives.MiniSoon()
+		end
+	end, "Quest List: minimap marks")
 end
 
 -- (0.19.8) switched on after the login's PLAYER_ENTERING_WORLD (Core's

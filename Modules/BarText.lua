@@ -13,6 +13,23 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+
+-- (fr-17) the player frame on the screen -- MelloUI's own while it stands in (MelloUI.Units, Modules/UnitFramesOwn.lua),
+-- else the game's -- and the game's update hooks through it (a world without that file: the game's frame, a plain hook)
+local function ScreenPlayer()
+	local U = MelloUI.Units
+	return U and U.Player() or _G.PlayerFrame
+end
+-- (fr-17 stage 2) the target frame on the screen -- MelloUI's own while it stands in (Modules/UnitFramesTarget.lua)
+local function ScreenTarget()
+	local U = MelloUI.Units
+	return U and U.Target() or rawget(_G, "TargetFrame")
+end
+-- (fr-17 stage 3) the focus frame on the screen -- MelloUI's own while it stands in (Modules/UnitFramesTarget.lua)
+local function ScreenFocus()
+	local U = MelloUI.Units
+	return U and U.Focus() or rawget(_G, "FocusFrame")
+end
 local Perf = MelloUI.Perf:Scope("BarText")
 local hooksecurefunc = Perf.hooksecurefunc
 
@@ -173,8 +190,9 @@ local function BarList()
 			barUnit[power] = { unit = frameKey, power = true }
 		end
 	end
-	if PlayerFrame and PlayerFrame.PlayerFrameContent then
-		local main = PlayerFrame.PlayerFrameContent.PlayerFrameContentMain
+	local pf = ScreenPlayer()   -- (fr-17: MelloUI's own while it stands in)
+	if pf and pf.PlayerFrameContent then
+		local main = pf.PlayerFrameContent.PlayerFrameContentMain
 		if main then
 			Add("player",
 				main.HealthBarsContainer and main.HealthBarsContainer.HealthBar,
@@ -194,8 +212,8 @@ local function BarList()
 			end
 		end
 	end
-	TargetLike("target", TargetFrame)
-	TargetLike("focus", FocusFrame)
+	TargetLike("target", ScreenTarget())   -- (fr-17: the target frame on the screen)
+	TargetLike("focus", ScreenFocus())   -- (fr-17: the focus frame on the screen)
 	return list
 end
 
@@ -634,5 +652,12 @@ MelloUI:On("setting", Perf.Shared("'setting' on the bus: Bar Text's places (Unit
 		ApplyAll()
 	end
 end), "BarText places")
+
+-- (fr-17) the player frame of ours come or gone (the game's given back): the values on the one that stands now
+MelloUI:On("units", function()
+	if M.isEnabled and AnyFrame() then
+		ApplyAll()
+	end
+end, "BarText: the player frame of ours")
 
 MelloUI:Profile("BarText", "bar value updates", UpdateBar)

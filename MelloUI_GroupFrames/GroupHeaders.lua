@@ -7,8 +7,8 @@
 -- opens the unit's menu):
 --   party   you (Show Yourself In Your Party) and your party; you alone while
 --           solo (Show Yourself While Solo: the header's own SOLO) -- while In
---           A Party is Group Frames; under Party Frames the game's own in a
---           party, and you alone as a normal party frame (GroupSolo.lua)
+--           A Party is Group Frames; under Party Frames our own portrait party
+--           frames instead, you and your party (GroupSolo.lua)
 --   raid    the raid, one list: by group, role or class, so many per column
 --           (or row), the columns (rows) side by side
 -- Each in a container on MelloUI's mover (Edit Layout: "Party Frames", "Raid
@@ -20,12 +20,18 @@
 -- the buttons' size are set out of a fight only: a change in a fight waits for
 -- its end. A button's unit is the header's (its "unit" attribute, followed by
 -- an attribute hook); the units' events reach the buttons that show them.
--- The game's party and raid frames: faded to nothing and click-through, out
--- of a fight; given back when the module goes off. Nothing of theirs is laid
--- out or rebuilt. Under In A Party: Party Frames the game's normal party
--- frames show instead of our party, at the party container's place (Edit
--- Layout's "Party Frames": the party moves there only, whichever frames show
--- it).
+-- The game's party and raid frames -- its normal party frames, its raid-style
+-- party frames, its raid frames and its raid manager -- never show while ours
+-- are on, in every style (fr-16; the user, 2026-10-31: "i dont want, under any
+-- circumstance, when using our custom Party and Raid Frames, for the default
+-- blizzard Party/Raid Frames to appear at all"): faded to nothing and
+-- click-through, out of a fight, kept so (a write of their alpha faded again
+-- at once, the parts that ignore their parent's alpha tied to it); given back
+-- when the module goes off. Nothing of theirs is shown, hidden, moved, laid
+-- out or rebuilt (a show from our code would run their own OnShow under our
+-- taint). Under In A Party: Party Frames our portrait party frames show at the
+-- party container's place (Edit Layout's "Party Frames": the party moves
+-- there only, whichever frames show it).
 --   Headers:Start([first]) / Stop()   on and off; `first`: only the header the
 --                              group needs now (the login's first step)
 --   Headers:Layout()           the layout settings again (a fight: later)
@@ -35,7 +41,7 @@
 --   Headers.Aside(on)          your own frame in the party's place (you while solo) away while the Preview's made-up
 --                              raid shows, as in a raid; back after (fr-04)
 -- The Preview's party host (Core/Preview.lua's PartyHost): the look your party wears, your own frame the portraits'
--- stand-ins stand under, the party's spacing.
+-- stand-ins stand under, the party's spacing, the first member's place.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -53,8 +59,7 @@ local Looks = ns.Looks
 local H = {}
 ns.Headers = H
 
-local TEXT = { party = "Party Frames", raid = "Raid Frames",
-	partyNote = "The game's normal party frames stand here too (In A Party: Party Frames): move them here, not in Edit Mode." }
+local TEXT = { party = "Party Frames", raid = "Raid Frames" }
 local COUNT = { party = 5, raid = 40 }
 local ROLE_ORDER = "TANK,HEALER,DAMAGER,NONE"
 local CLASS_ORDER = "WARRIOR,DEATHKNIGHT,PALADIN,MONK,PRIEST,SHAMAN,DRUID,ROGUE,MAGE,WARLOCK,HUNTER,DEMONHUNTER,EVOKER"
@@ -71,11 +76,12 @@ local INIT = [[
 	self:SetAttribute("toggleForVehicle", false)
 ]]
 
-local S = { made = false, on = false, pending = false, hidden = false }
+local S = { made = false, on = false, pending = false, hidden = false, started = false, gameUsed = false }
 local containers, headers = {}, {}
 local buttons = {}            -- every button made, in order
 local byUnit = {}             -- [unit] = { [button] = true }
 local mouseOff = setmetatable({}, { __mode = "k" })   -- [game frame] = true: its mouse turned off by us
+local faded = setmetatable({}, { __mode = "k" })      -- [game holder] = its alpha before ours (fr-16)
 
 local function DB()
 	return RD.DB()
@@ -180,10 +186,10 @@ local function Scale(region)
 end
 
 -- (retail's fix of 2026-10-25, 1.2.4 here: the user, "we have also fixed the checkbox to show your own party
--- unitframe while in a party") a normal party member's reach past its own rect while Group Frames holds them
--- (StackMembers): under it, its pet's room while the game shows party pets (the showPartyPets CVar: the game's own 26
+-- unitframe while in a party") a portrait party frame's reach past its own rect (the game's member, 120 x 53, four
+-- of them): under it, its pet's room while the game shows party pets (the showPartyPets CVar: the game's own 26
 -- between members then, 10 without -- PartyFrame.lua)
-local GAME_MEMBER = { w = 120, h = 53, n = 4, spacing = 10, pet = 16 }
+local GAME_MEMBER = { w = 120, h = 53, n = 4, pet = 16 }
 local function PetRoom()
 	local get = type(C_CVar) == "table" and C_CVar.GetCVarBool
 	local ok, on = false, nil
@@ -193,22 +199,39 @@ local function PetRoom()
 	return (ok and on == true) and GAME_MEMBER.pet or 0
 end
 
--- the game's normal party frames' footprint in the party container's units:
--- four members (PartyMemberFrameTemplate, 120 x 53) at the party frame's
--- scale with their pets' room, Party Spacing between (StackMembers) -- and
--- you on top with Show Yourself In Your Party (GroupSolo.lua)
-local function GameFootprint(sp)
-	local pf, c = rawget(_G, "PartyFrame"), containers.party
-	local ratio = 1
-	local ps, cs = Scale(pf), Scale(c)
-	if ps and cs then
-		ratio = ps / cs
+-- (fr-16; the user, 2026-11-01: "the party frames are also too spread and i dont see the slider for vertical
+-- spacing") the room under each portrait party frame, in the frames' units: Vertical Spacing (portraitSpacing: 2 by
+-- default, the tight room MelloUI kept before fr-16, where the game's own is 10), and under a member its pet's room
+-- while the game shows party pets (the game's 26 then is its 10 and that room)
+local function PortraitSpacing()
+	local sp = Num(DB().portraitSpacing)
+	return ((sp and sp >= 0) and sp or 2) + PetRoom()
+end
+H.PortraitSpacing = PortraitSpacing
+
+-- (fr-15; the user, 2026-10-31: "they randomly shift from picture 1 and 2") your own frame over the members (Show
+-- Yourself In Your Party: GroupSolo.lua's Solo.Above) takes the place of one more member: its height and the room
+-- under it, in the frames' units (0: you not there). The members stand that much lower, by the settings alone, so
+-- nothing needs laying in a fight
+local function SelfRoom()
+	local Solo = ns.Solo
+	if not (Solo and Solo.Above and Solo.Above()) then
+		return 0
 	end
+	local me, okH, h = Solo.frame, false, nil
+	if me then
+		okH, h = pcall(me.GetHeight, me)
+	end
+	return (okH and Num(h) or GAME_MEMBER.h) + PortraitSpacing()
+end
+
+-- the portrait party frames' footprint in the party container's units (GroupSolo.lua): four members (the game's
+-- PartyMemberFrameTemplate, 120 x 53) at the portraits' scale, Vertical Spacing between them (its pets' room in it)
+-- and the last one's pet room under it -- and you on top with Show Yourself In Your Party (SelfRoom)
+local function GameFootprint()
+	local ratio = (ns.Solo and ns.Solo.Scale and ns.Solo.Scale()) or 1
 	local n = GAME_MEMBER.n
-	local h = n * (GAME_MEMBER.h + PetRoom()) + (n - 1) * sp
-	if DB().showPlayer then
-		h = h + GAME_MEMBER.h + sp
-	end
+	local h = n * GAME_MEMBER.h + (n - 1) * PortraitSpacing() + PetRoom() + SelfRoom()
 	-- (1.2.4, fr-10: the damage meter's tab on each frame's plate end -- Modules/Meter.lua -- inside the plate too)
 	local meter = MelloUI:GetModule("Meter")
 	local ok, reach = false, nil
@@ -230,8 +253,9 @@ local function Footprint(kind)
 	local db = DB()
 	local w, h, sp = db.width, db.height, Spacing(kind)
 	if kind == "party" and db.partyStyle == "party" then
-		-- (the game's normal party frames show at its place: the plate their size)
-		return GameFootprint(sp)
+		-- (the portrait party frames show at its place: the plate their size, Vertical Spacing between them --
+		-- Party Spacing is the raid frames': its row says so)
+		return GameFootprint()
 	end
 	if kind == "party" then
 		if db.partyGrowth == "RIGHT" or db.partyGrowth == "LEFT" then
@@ -342,9 +366,7 @@ local function MakeContainer(kind)
 	movers[kind] = MelloUI:RegisterMover(c, c, { key = key, anchor = Corner(kind), default = Home(kind),
 		label = TEXT[kind], page = RD.module.name, category = "frames", placeholder = true, when = function()
 			return RD.module.isEnabled and true or false
-		end, note = kind == "party" and function()
-			return DB().partyStyle == "party" and TEXT.partyNote or nil
-		end or nil })
+		end })
 	if not MelloUI:RestorePosition(key, c) then
 		Home(kind)(c)
 	end
@@ -490,8 +512,7 @@ local function MakeHeader(kind)
 end
 
 -- (In A Party: Raid Frames -- ours in a party and solo -- or Party Frames: the
--- game's normal party frames in a party, and solo the normal party frame of
--- ours, GroupSolo.lua: this header never)
+-- portrait party frames of ours, GroupSolo.lua: this header never)
 local function PartyRule()
 	return DB().partyStyle == "party" and "hide" or "[group:raid] hide; show"
 end
@@ -544,7 +565,10 @@ local function GameMembers(fn)
 	end
 end
 
+-- (the raid-style party frames, CompactPartyFrame, are the game's party frame's child: faded with it)
 local GAME_HOLDERS = { "CompactPartyFrame", "CompactRaidFrameContainer", "CompactRaidFrameManager", "PartyFrame" }
+-- (fr-16) the game's party and raid frames' Edit Mode systems: their selection box ignores its frame's alpha
+local GAME_SYSTEMS = { "PartyFrame", "CompactRaidFrameContainer" }
 
 local function MouseOff(f)
 	if type(f) == "table" and f.EnableMouse and f.IsMouseEnabled then
@@ -556,19 +580,12 @@ local function MouseOff(f)
 	end
 end
 
-local function MouseBack(f)
-	if mouseOff[f] then
-		pcall(f.EnableMouse, f, true)
-		mouseOff[f] = nil
-	end
-end
-
 -- A few parts of the game's frames ignore their parent's alpha (the game's templates: CompactUnitFrame.xml's target
 -- highlight -- the yellow RaidFrame-TargetFrame box -- and its ready check icon; the normal party frame's
--- NotPresentIcon). With the holders at alpha 0 they still showed where the game's hidden frame stands: the users'
--- "random square" (2026-10-14), a yellow box whenever that frame's unit was the target. While ours stand in they
--- follow their parent's alpha; the template's own setting comes back with the frames. (The game never sets it at
--- run time: nothing it writes is undone, no write a frame.)
+-- NotPresentIcon; fr-16: Edit Mode's selection box on the party and raid frames). With the holders at alpha 0 they
+-- still showed where the game's hidden frame stands: the users' "random square" (2026-10-14), a yellow box whenever
+-- that frame's unit was the target. While ours stand in they follow their parent's alpha; the template's own setting
+-- comes back with the frames. (The game never sets it at run time: nothing it writes is undone, no write a frame.)
 local loose = setmetatable({}, { __mode = "k" })   -- [game region] = true: made to follow its parent's alpha by us
 local LOOSE_KEYS = { "selectionHighlight", "readyCheckIcon", "NotPresentIcon" }
 
@@ -602,44 +619,133 @@ local function UntieLoose()
 	end
 end
 
--- the game's own frames give way to ours (the user, 2026-10-09: "i want these
--- frames to be the main ones"): always its raid frames, its raid-style party
--- frames and its raid manager; its normal party frames too, unless they are
--- the player's choice for a party (In A Party: Party Frames)
-local function GameParty()
-	return DB().partyStyle == "party"
+-- (fr-16) a holder's alpha written while ours stand in -- Edit Mode's Opacity setting as a layout is applied
+-- (EditModeUnitFrameSystemMixin:UpdateSystemSettingOpacity), anyone's write -- faded again at once (a post-hook of
+-- its SetAlpha: never per frame, the game writes it with its layout), the game's value kept to give back
+local refading = false
+local OnGameAlpha = Shared("SetAlpha on the game's party or raid frames: faded again", function(f, alpha)
+	if refading or not (S.hidden and faded[f] ~= nil) then
+		return
+	end
+	local a = Num(alpha)
+	if a and a ~= 0 then
+		faded[f] = a
+		refading = true
+		pcall(f.SetAlpha, f, 0)
+		refading = false
+	end
+end)
+local alphaHooked = setmetatable({}, { __mode = "k" })
+
+local function Fade(f)
+	if faded[f] == nil then
+		local ok, a = pcall(f.GetAlpha, f)
+		faded[f] = (ok and Num(a)) or 1
+	end
+	if not alphaHooked[f] then
+		alphaHooked[f] = true
+		hooksecurefunc(f, "SetAlpha", OnGameAlpha)
+	end
+	refading = true
+	pcall(f.SetAlpha, f, 0)
+	refading = false
 end
 
+-- their mouse off: the raid manager, every member, Edit Mode's selection boxes (protected frames: out of a fight)
+-- (fr-16; the user's errors of 2026-10-31 23:49 -- the game's party members, faded, ran their own updates on regions
+-- that had lost a method) the game's normal party members kept silent while ours stand in: the events their own code
+-- listens to (PartyMemberFrame.lua's Setup, UnitFrame_Initialize, their bars, their pet's frame, the alternate power
+-- bar, TextStatusBar) let go on each member and the frames in it, each one's own registrations (its units with it)
+-- kept to give back exactly when ours go. A frame's event list, never a key of theirs: nothing written on them, no
+-- method of theirs touched; out of a fight
+local SILENT_EVENTS = { "CVAR_UPDATE", "GROUP_ROSTER_UPDATE", "INCOMING_SUMMON_CHANGED", "PARTY_LEADER_CHANGED",
+	"PARTY_LOOT_METHOD_CHANGED", "PARTY_MEMBER_DISABLE", "PARTY_MEMBER_ENABLE", "PLAYER_ALIVE", "PLAYER_DEAD",
+	"PLAYER_ENTERING_WORLD", "PLAYER_GAINS_VEHICLE_DATA", "PLAYER_LOSES_VEHICLE_DATA", "PLAYER_UNGHOST",
+	"PORTRAITS_UPDATED", "READY_CHECK", "READY_CHECK_CONFIRM", "READY_CHECK_FINISHED", "UNIT_ABSORB_AMOUNT_CHANGED",
+	"UNIT_AURA", "UNIT_CONNECTION", "UNIT_CTR_OPTIONS", "UNIT_DISPLAYPOWER", "UNIT_ENTERED_VEHICLE",
+	"UNIT_EXITED_VEHICLE", "UNIT_FACTION", "UNIT_FLAGS", "UNIT_HEALTH", "UNIT_HEAL_ABSORB_AMOUNT_CHANGED",
+	"UNIT_HEAL_PREDICTION", "UNIT_MAXHEALTH", "UNIT_MAXPOWER", "UNIT_MAX_HEALTH_MODIFIERS_CHANGED", "UNIT_NAME_UPDATE",
+	"UNIT_OTHER_PARTY_CHANGED", "UNIT_PET", "UNIT_PHASE", "UNIT_PORTRAIT_UPDATE", "UNIT_POWER_BAR_HIDE",
+	"UNIT_POWER_BAR_SHOW", "UNIT_POWER_BAR_TIMER_UPDATE", "UNIT_POWER_FREQUENT", "UNIT_POWER_UPDATE",
+	"UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_SUCCEEDED",
+	"UNIT_THREAT_SITUATION_UPDATE", "UPDATE_ACTIVE_BATTLEFIELD", "VARIABLES_LOADED" }
+-- (fr-17: the one copy, MelloUI.Units.Silence / Unsilence -- Modules/UnitFramesOwn.lua -- shared with the player frame
+-- of ours; this owner's table the same as before: [game frame] = { { event, unit1, unit2 }, ... } it had)
+local silenced = MelloUI.Units.Silenced("party")
+
+-- (looked at again on every pass -- a roster change, the world entered: the game's UnitFrame_SetUnit may register a
+-- bar's unit events again -- what it took again let go too, kept with what it had; the frames in it three deep)
+local function SilenceMember(m)
+	MelloUI.Units.Silence(m, SILENT_EVENTS, "party", 3)
+end
+
+local function Unsilence()
+	MelloUI.Units.Unsilence("party")
+end
+
+local function MiceOff()
+	MouseOff(rawget(_G, "CompactRaidFrameManager"))
+	GameMembers(MouseOff)
+	PartyMembers(MouseOff)
+	for _, name in ipairs(GAME_SYSTEMS) do
+		local f = rawget(_G, name)
+		MouseOff(type(f) == "table" and rawget(f, "Selection") or nil)
+	end
+	PartyMembers(SilenceMember)
+end
+
+local function MiceLater()
+	if S.hidden then
+		MiceOff()
+	end
+end
+
+-- the game's own frames give way to ours (the user, 2026-10-09: "i want these frames to be the main ones"; fr-16,
+-- 2026-10-31: "under any circumstance"): its raid frames, its raid-style party frames, its raid manager and its
+-- normal party frames, in every style (In A Party: Party Frames is our portrait party now). Their alpha and their
+-- parts' at once, in a fight too (a login or /reload in one: an alpha and a region's setting are never protected);
+-- their mouse out of a fight
 local function HideGame()
+	local was = S.hidden
 	S.hidden = true
-	local party = GameParty()
 	for _, name in ipairs(GAME_HOLDERS) do
 		local f = rawget(_G, name)
 		if type(f) == "table" and f.SetAlpha then
-			pcall(f.SetAlpha, f, (name == "PartyFrame" and party) and 1 or 0)
+			Fade(f)
 		end
 	end
-	MouseOff(rawget(_G, "CompactRaidFrameManager"))
-	GameMembers(MouseOff)
-	PartyMembers(party and MouseBack or MouseOff)
-	-- (the parts that ignore their parent's alpha: tied to it on every frame that is hidden, the normal party frames
-	-- only while they are not the choice; again on each roster change, the game's new frames with them)
+	-- (the parts that ignore their parent's alpha: tied to it on every frame that is hidden; again on each roster
+	-- change, the game's new frames with them; Edit Mode's selection boxes too)
 	UntieLoose()
 	GameMembers(TieLoose)
-	if not party then
-		PartyMembers(TieLoose)
+	PartyMembers(TieLoose)
+	for _, name in ipairs(GAME_SYSTEMS) do
+		local f = rawget(_G, name)
+		Tie(type(f) == "table" and rawget(f, "Selection") or nil)
+	end
+	if InCombatLockdown() then
+		Later(MiceLater, "Group Frames: the game's frames click-through")
+	else
+		MiceOff()
+	end
+	-- (told on the bus once: Unit Frames dresses the game's party members only while they show, the meter's tabs
+	-- hang on the frames that show)
+	if not was then
+		MelloUI:Fire("groupframes", "game")
 	end
 end
-
-local TinyRoles   -- (below: the game's tiny role icons back)
 
 local function ShowGame()
 	S.hidden = false
-	TinyRoles()
+	S.gameUsed = true   -- (in use again: dressed as before -- a reload asked for when Group Frames comes back on)
 	for _, name in ipairs(GAME_HOLDERS) do
 		local f = rawget(_G, name)
 		if type(f) == "table" and f.SetAlpha then
-			pcall(f.SetAlpha, f, 1)
+			local a = faded[f]
+			faded[f] = nil
+			refading = true
+			pcall(f.SetAlpha, f, a or 1)
+			refading = false
 		end
 	end
 	for f in pairs(mouseOff) do
@@ -647,402 +753,62 @@ local function ShowGame()
 		mouseOff[f] = nil
 	end
 	UntieLoose()
+	Unsilence()
+	MelloUI:Fire("groupframes", "game")
 end
 
 --------------------------------------------------------------------------------
--- The normal party frames' place: Edit Layout's (the user, 2026-10-09: "why
--- are we moving the raid frames with the Edit Layout MelloUI option, and the
--- normal Party Frames with Edit mode, both of them need to be only moveable
--- with Edit Layout")
--- While they are the choice for a party, the game's party frame stands at the
--- party container's top left (its top right with Flip Horizontally: fr-03's
--- Corner) -- Edit Layout's "Party Frames" plate, one place for the party
--- whichever frames show it (the solo frame of ours there too, GroupSolo.lua)
--- -- and the container takes their size, so the plate is what shows. Laid with the plain methods Edit Mode keeps aside (ClearAllPointsBase
--- / SetPointBase: hard rule 2, nothing of Edit Mode's runs), at the
--- container's place on the screen (hung from UIParent, never from a frame of
--- ours: Edit Mode reads its anchor back); laid again after the container
--- moves, after Edit Mode lays it (its layout applied, a drag in Edit Mode put
--- back), when Edit Mode closes and on a UI scale change -- out of a fight.
--- Given back (the module off, Group Frames chosen): the place it had when
--- first taken.
+-- The party container's size and place (fr-03: the plate kept by its corner); the portrait party frames hang from
+-- it (GroupSolo.lua). Out of a fight
 --------------------------------------------------------------------------------
-local held = { on = false, placing = false, home = nil, hooked = false }
-local PlaceParty   -- (below: held or given back, as the choice is now)
-
-local function Base(frame, method)
-	local fn = frame[method .. "Base"] or frame[method]
-	return type(fn) == "function" and fn or nil
-end
-
-local function LayGame(pf, ...)
-	local clear, set = Base(pf, "ClearAllPoints"), Base(pf, "SetPoint")
-	if not (clear and set) then
-		return false
-	end
-	held.placing = true
-	local ok = pcall(clear, pf) and pcall(set, pf, ...)
-	held.placing = false
-	return ok
-end
-
-local function PlaceLater()
-	Later(PlaceParty, "Group Frames: the normal party frames' place")
-end
-
--- (1.2.4, the user's retail test, 2026-10-27: party portraits "set on EditMode to 100%, and on the Edit Layout 100%
--- and they are miniature" -- their pick, bigger by default) the game's party frames held at Edit Mode's own size
--- times Edit Layout's (the party container's scale) times PORTRAIT_BASE: about the player frame's height at 100% and
--- 100%; Edit Mode's size read from its own writes (held.gameScale, the post-hooks below), put back when let go. Out
--- of a fight only (the frame's geometry is the game's protected party's). Every skin: the Default skin's game party
--- frame too (the user, 2026-10-29: "the Party Portrait unitframes are very small" at the game's own size)
-held.PORTRAIT_BASE = 1.4
-local function ScaleGame(pf, c)
-	local set = Base(pf, "SetScale")
-	if not set or InCombatLockdown() then
-		return
-	end
-	if held.gameScale == nil then
-		local ok, s = pcall(pf.GetScale, pf)
-		held.gameScale = ok and Num(s) or 1
-	end
-	local cs, ps = Scale(c), Scale(pf:GetParent())
-	local rel = (cs and ps and ps > 0) and cs / ps or 1
-	held.scaling = true
-	pcall(set, pf, held.gameScale * rel * held.PORTRAIT_BASE)
-	held.scaling = false
-end
--- Edit Mode sized the party frame (its Frame Size): that size kept as the game's, the frame held again
-local function OnGameScaled(_, scale)
-	if held.on and not held.scaling then
-		held.gameScale = Num(scale) or held.gameScale
-		PlaceLater()
-	end
-end
-
--- (Edit Mode laid it, or the container moved: laid again, out of a fight)
-local function OnGameLaid()
-	if held.on and not held.placing then
-		PlaceLater()
-	end
-end
-
--- the game's members stacked as its own Layout stacks them (VerticalLayoutFrame: shown ones by layoutIndex, TOPLEFT
--- at its padding, down from its top), each with its pet's room under it (`rooms`) and `spacing` between -- under you
--- with Show Yourself In Your Party (GroupSolo.lua: your frame of ours in the first member's place). Held: Party
--- Spacing, laid after the game's every Layout (the post-hook in HoldGameParty: the roster, pets, Edit Mode -- events,
--- never per frame); given back: the game's own spacing, as its next Layout lays them. Only a member whose point
--- differs is laid; out of a fight (the callers' Later). Nothing of the game's is called or written
-local function StackMembers(pf, spacing, rooms)
-	local list = {}
-	PartyMembers(function(m)
-		local ok, shown = pcall(m.IsShown, m)
-		if ok and shown == true and Num(rawget(m, "layoutIndex")) then
-			list[#list + 1] = m
-		end
-	end)
-	table.sort(list, function(a, b)
-		return rawget(a, "layoutIndex") < rawget(b, "layoutIndex")
-	end)
-	local left = Num(rawget(pf, "leftPadding")) or 0
-	local y = Num(rawget(pf, "topPadding")) or 0
-	local down = rooms and PetRoom() or 0
-	if rooms and ns.Solo and ns.Solo.InParty() then
-		local me = ns.Solo.frame
-		local okH, h = false, nil
-		if me then
-			okH, h = pcall(me.GetHeight, me)
-		end
-		y = y + (okH and Num(h) or GAME_MEMBER.h) + spacing
-	end
-	for _, m in ipairs(list) do
-		local okN, n = pcall(m.GetNumPoints, m)
-		local okP, p, rel, rp, x, oy = pcall(m.GetPoint, m, 1)
-		x, oy = okP and Num(x), okP and Num(oy)
-		if not (okN and n == 1 and p == "TOPLEFT" and rel == pf and rp == "TOPLEFT" and x and oy
-			and math.abs(x - left) < 0.01 and math.abs(oy + y) < 0.01) then
-			pcall(m.ClearAllPoints, m)
-			pcall(m.SetPoint, m, "TOPLEFT", pf, "TOPLEFT", left, -y)
-		end
-		local okH, h = pcall(m.GetHeight, m)
-		y = y + (okH and Num(h) or GAME_MEMBER.h) + down + spacing
-	end
-end
-
-local function HoldGameParty()
-	local pf, c = rawget(_G, "PartyFrame"), containers.party
-	if not (type(pf) == "table" and c and type(pf.GetPoint) == "function") then
-		return
-	end
-	if not held.home then
-		local ok, p, rel, rp, x, y = pcall(pf.GetPoint, pf, 1)
-		if ok and Text(p) and Text(rp) and Num(x) and Num(y) then
-			held.home = { Text(p), type(rel) == "table" and rel or UIParent, Text(rp), Num(x), Num(y) }
-		end
-	end
-	local l, _, r, t = ScreenRect(c)
-	local s = Scale(pf)
-	if not (l and t and s) then
-		return
-	end
-	held.on = true
-	-- (fr-03: at the plate's corner -- its top right while Flip Horizontally mirrors the portraits)
-	local corner = Corner("party")
-	LayGame(pf, corner, UIParent, "BOTTOMLEFT", (corner == "TOPRIGHT" and r or l) / s, t / s)
-	StackMembers(pf, Spacing("party"), true)
-	if not held.hooked then
-		held.hooked = true
-		hooksecurefunc(pf, "SetPoint", OnGameLaid)
-		hooksecurefunc(c, "SetPoint", OnGameLaid)
-		hooksecurefunc(pf, "SetScale", OnGameScaled)
-		if type(pf.SetScaleBase) == "function" then
-			hooksecurefunc(pf, "SetScaleBase", OnGameScaled)
-		end
-		-- (the game stacked its members again -- a roster change, a pet, Edit Mode: Party Spacing again)
-		if type(pf.Layout) == "function" then
-			hooksecurefunc(pf, "Layout", OnGameLaid)
-		end
-	end
-end
-
-local function FreeGameParty()
-	if not held.on then
-		return
-	end
-	held.on = false
-	local pf, h = rawget(_G, "PartyFrame"), held.home
-	if type(pf) == "table" and h then
-		LayGame(pf, h[1], h[2], h[3], h[4], h[5])
-		StackMembers(pf, Num(rawget(pf, "spacing")) or GAME_MEMBER.spacing, false)
-	end
-	-- (the game's own size back)
-	local set = type(pf) == "table" and Base(pf, "SetScale")
-	if set and held.gameScale and not InCombatLockdown() then
-		held.scaling = true
-		pcall(set, pf, held.gameScale)
-		held.scaling = false
-		held.gameScale = nil
-	end
-end
-
-PlaceParty = function()
+local PlaceParty = function()
 	local c = containers.party
-	local holding = S.on and S.made and GameParty()
-	local pf = rawget(_G, "PartyFrame")
-	if holding and c and type(pf) == "table" then
-		ScaleGame(pf, c)   -- (first: the plate's size follows the frames' -- GameFootprint)
+	if not c then
+		return
 	end
-	if c then
-		c:SetSize(Footprint("party"))
-		-- (fr-03: the size final -- the plate kept by its corner, before the frames hang from it; its own lay, not
-		-- a move to answer: OnGameLaid stays out, the game's frame is laid right below)
-		held.placing = true
-		local ok, err = pcall(Recorner, "party")
-		held.placing = false
-		if not ok then
-			geterrorhandler()(err)
-		end
-	end
-	if holding then
-		HoldGameParty()
-	else
-		FreeGameParty()
+	c:SetSize(Footprint("party"))
+	-- (the size final: the plate kept by its corner, before the frames hang from it)
+	local ok, err = pcall(Recorner, "party")
+	if not ok then
+		geterrorhandler()(err)
 	end
 end
 
 function H:Blizzard()
+	if S.on then
+		HideGame()
+		return
+	end
 	Later(function()
-		if S.on then
-			HideGame()
-		elseif S.hidden then
+		if not S.on and S.hidden then
 			ShowGame()
 		end
 	end, "Group Frames: the game's frames")
 end
 
--- the game's party members' role icon sharp (the user, 2026-10-09: "the role
--- icons on the unitframes are too low resolution"; pick B): the round badge
--- Group Frames show (Button.RoleAtlas) put on the game's own icon right after
--- the game sets its tiny one -- a post-hook on the member's role update, which
--- the game runs on its group events, never per frame -- and the tiny one back
--- when the frames give the game's back
-local TINY_ROLE = { ["roleicon-tiny-tank"] = "TANK", ["roleicon-tiny-healer"] = "HEALER",
-	["roleicon-tiny-dps"] = "DAMAGER" }
-local SHARP_TINY = {}   -- [sharp atlas] = the game's tiny one (filled as met)
-local roleHooked = setmetatable({}, { __mode = "k" })
-
-local function RoleIconOf(m)
-	local ov = rawget(m, "PartyMemberOverlay")
-	local icon = type(ov) == "table" and rawget(ov, "RoleIcon") or nil
-	return type(icon) == "table" and icon.SetAtlas and icon or nil
-end
-
-local function AtlasOf(icon)
-	local ok, atlas = pcall(icon.GetAtlas, icon)
-	return ok and Text(atlas) or nil
-end
-
-local function SharpRole(m)
-	if not (S.on and GameParty()) then
-		return
-	end
-	local icon = RoleIconOf(m)
-	local tiny = icon and AtlasOf(icon)
-	local role = tiny and TINY_ROLE[tiny:lower()]
-	local sharp = role and Button.RoleAtlas(role)
-	if sharp and sharp ~= tiny then
-		SHARP_TINY[sharp] = tiny
-		pcall(icon.SetAtlas, icon, sharp)
-	end
-end
-
-local function HookRole(m)
-	if roleHooked[m] or type(m.UpdateAssignedRoles) ~= "function" then
-		return
-	end
-	roleHooked[m] = true
-	hooksecurefunc(m, "UpdateAssignedRoles", SharpRole)
-end
-
-TinyRoles = function()
-	PartyMembers(function(m)
-		local icon = RoleIconOf(m)
-		local atlas = icon and AtlasOf(icon)
-		local tiny = atlas and SHARP_TINY[atlas]
-		if tiny then
-			pcall(icon.SetAtlas, icon, tiny)
-		end
-	end)
-end
-
---------------------------------------------------------------------------------
--- (retail, never shipped: the user, 2026-10-24, on the Portraits look -- "this
--- mouseover container that shows the buffs instead of just showing them under
--- it, which makes it a problem to click cast heal", and Out Of Range Opacity
--- doing nothing there) while the game's normal party members are the choice:
--- their buffs in a row under them (GroupSolo.lua's Solo.BuffRow) and the
--- game's mouseover box of them put away as it shows (PartyMemberBuffTooltip:
--- over the frames, it took the clicks); out of range faded as our own frames
--- are (Button.RangeAlpha), never over the game's own fade (a member phased or
--- in another group: its NotPresentIcon). WoW Forever as before.
---------------------------------------------------------------------------------
-local ranged = setmetatable({}, { __mode = "k" })   -- [member] = faded by us
-local notPresentHooked = setmetatable({}, { __mode = "k" })
-
-local function RetailParty()
-	return RD.Retail() and S.on and GameParty()
-end
-
-local function MemberRange(f)
-	if not RetailParty() then
-		return
-	end
-	local unit = Text(rawget(f, "unit"))
-	local np = rawget(f, "NotPresentIcon")
-	if not unit or (type(np) == "table" and np.IsShown and np:IsShown()) then
-		return
-	end
-	local alpha = DB().rangeAlpha or 0.45
-	if alpha >= 1 then
-		if ranged[f] then
-			ranged[f] = nil
-			f:SetAlpha(1)
-		end
-		return
-	end
-	ranged[f] = true
-	Button.RangeAlpha(f, unit, alpha)
-end
-
--- every member back to the game's own (the choice changed, the module off)
-local function MembersBack()
-	for f in pairs(ranged) do
-		ranged[f] = nil
-		pcall(f.SetAlpha, f, 1)
-	end
-	if ns.Solo and ns.Solo.BuffRowsOn then
-		ns.Solo.BuffRowsOn(false)
-	end
-end
-
-local function RetailMember(f, unit)
-	if not RetailParty() then
-		return
-	end
-	if ns.Solo and ns.Solo.BuffRow and ns.Solo.BuffRow(f, unit) then
-		ns.Solo.BuffRowsOn(true)
-	end
-	if not notPresentHooked[f] and type(f.UpdateNotPresentIcon) == "function" then
-		notPresentHooked[f] = true
-		-- (the game sets the member's alpha there: ours again after it -- its events, never per frame)
-		hooksecurefunc(f, "UpdateNotPresentIcon", MemberRange)
-	end
-	MemberRange(f)
-end
-
-local tipHooked = false
-local function HookBuffTip()
-	local tip = rawget(_G, "PartyMemberBuffTooltip")
-	if tipHooked or not RD.Retail() or type(tip) ~= "table" or type(tip.HookScript) ~= "function" then
-		return
-	end
-	tipHooked = true
-	Perf.HookScript(tip, "OnShow", Shared("the game's party buff box put away", function(self)
-		if RetailParty() then
-			self:Hide()
-		end
-	end, "script"))
-end
-
--- the game's normal party members as hosts of the indicators (while they are
--- the choice for a party): the unit theirs, the health tint over their bar
-local function PartyHosts()
-	if not (ns.Indicators and GameParty()) then
-		return
-	end
-	PartyMembers(function(f)
-		local hc = rawget(f, "HealthBarContainer")
-		local hb = type(hc) == "table" and rawget(hc, "HealthBar") or nil
-		ns.Indicators:Host(f, Text(rawget(f, "unit")), Looks.Fill(hb), "party")
-		-- (and their parts as the Designer moved them, their role icon sharp)
-		if ns.Parts then
-			ns.Parts:HookMember(f)
-			ns.Parts:Lay(f, "party")
-		end
-		HookRole(f)
-		SharpRole(f)
-		RetailMember(f, Text(rawget(f, "unit")))
-	end)
-end
-
--- each of the game's party members now, and the solo party frame of ours
--- (fn(frame, own): the Designer's party parts)
+-- each portrait party frame of ours -- you and your members (GroupSolo.lua), made or not shown (fn(frame, own): the
+-- Designer's party parts; own: true, every one is ours)
 function H:EachPartyMember(fn)
-	PartyMembers(fn)
-	local solo = ns.Solo and ns.Solo.frame
-	if solo then
-		fn(solo, true)
+	if ns.Solo then
+		ns.Solo:Each(function(f)
+			fn(f, true)
+		end)
 	end
 end
 
--- In A Party changed: the party header's rule, the game's frames, the hosts
+-- In A Party changed: the party header's rule, the game's frames, the portraits
 function H:Style()
 	Later(function()
 		if S.on and S.made then
 			Drive(true)
 			HideGame()
-			PartyHosts()
-		end
-		-- (retail: Group Frames the choice now -- the members' own alpha and no buff rows)
-		if not (S.on and GameParty()) then
-			MembersBack()
 		end
 		PlaceParty()
 		SoloUpdate()
 	end, "Group Frames: In A Party")
 end
 
--- a normal party frame's health bar, portrait and the painted ring over it
+-- a portrait party frame's health bar, portrait and the painted ring over it
 -- while the unit frame skin dresses it (Unit Frames' M:RingOf -- as Healer
 -- Frames' glow), else nil
 local function PartyParts(f)
@@ -1063,10 +829,10 @@ end
 
 -- every frame that shows a member now, for every feature that marks one (Heal
 -- Flight, Frame Effects): { frame, unit, health, kind } -- ours shown with a
--- unit, and the normal party frames while they are the choice for a party:
--- the game's members, and you alone as one of ours (GroupSolo.lua) -- theirs
--- also `portrait`, the portrait texture, and `ring`, the painted ring over it
--- while the unit frame skin dresses it, else nil.
+-- unit: the raid-style buttons, and the portrait party frames while they are
+-- the choice for a party (GroupSolo.lua) -- theirs also `portrait`, the
+-- portrait texture, and `ring`, the painted ring over it while the unit frame
+-- skin dresses it, else nil.
 -- A fresh list each call: read it, never keep it
 function H:Hosts()
 	local out = {}
@@ -1075,17 +841,12 @@ function H:Hosts()
 			out[#out + 1] = { frame = b, unit = b.unit, health = b.healthBar, kind = "group" }
 		end
 	end
-	if GameParty() then
-		PartyMembers(function(f)
-			local unit = Text(rawget(f, "unit"))
-			if unit and f:IsVisible() then
+	if ns.Solo then
+		ns.Solo:Each(function(f, unit)
+			if f:IsVisible() then
 				out[#out + 1] = PartyEntry(f, unit)
 			end
 		end)
-		local solo = ns.Solo and ns.Solo:Shown()
-		if solo then
-			out[#out + 1] = PartyEntry(solo, solo.unit)
-		end
 	end
 	return out
 end
@@ -1113,22 +874,9 @@ function H:HostOf(unit)
 			end
 		end
 	end
-	if not GameParty() then
-		return nil
-	end
-	-- (you alone: the solo party frame of ours)
-	local solo = ns.Solo and ns.Solo:Shown()
-	if solo and solo.unit == unit then
-		return Found(solo, unit, "party", PartyParts(solo))
-	end
-	local pf = rawget(_G, "PartyFrame")
-	if not (type(pf) == "table" and pf.PartyMemberFramePool) then
-		return nil
-	end
-	for f in pf.PartyMemberFramePool:EnumerateActive() do
-		if Text(rawget(f, "unit")) == unit and f:IsVisible() then
-			return Found(f, unit, "party", PartyParts(f))
-		end
+	local f = ns.Solo and ns.Solo:Of(unit)
+	if f then
+		return Found(f, unit, "party", PartyParts(f))
 	end
 	return nil
 end
@@ -1164,15 +912,6 @@ local OnEvent = Shared("the group frames' events", function(_, event, unit, ...)
 				Button[paint](b)
 			end
 		end
-		-- (retail: the game's normal party member of that unit faded as ours)
-		if paint == "Range" and RD.Retail() and GameParty() then
-			local u = Text(unit)
-			PartyMembers(function(f)
-				if u and Text(rawget(f, "unit")) == u then
-					MemberRange(f)
-				end
-			end)
-		end
 		return
 	end
 	if event == "PLAYER_REGEN_ENABLED" then
@@ -1180,16 +919,11 @@ local OnEvent = Shared("the group frames' events", function(_, event, unit, ...)
 			H:Layout()
 		end
 		H:Blizzard()
-		-- (retail: a member's buff row asked for in the fight, made now)
-		if RetailParty() then
-			PartyHosts()
-		end
 	elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" or event == "PLAYER_ENTERING_WORLD" then
 		Each(Button.Refresh)
 		if S.hidden then
 			H:Blizzard()
 		end
-		PartyHosts()
 	elseif event == "RAID_TARGET_UPDATE" then
 		Each(Button.Mark)
 	elseif event == "READY_CHECK" or event == "READY_CHECK_CONFIRM" then
@@ -1216,12 +950,12 @@ local function Listen()
 		pcall(events.RegisterEvent, events, e)
 	end
 	Perf.SetScript(events, "OnEvent", OnEvent)
-	-- (retail: the game's mouseover box of the party's buffs put away while its members are the choice)
-	HookBuffTip()
-	-- the game's members made later (a raid formed): click-through too while hidden
+	-- the game's members made later (a raid formed, in a fight too): the parts that ignore their parent's alpha tied
+	-- to it at once (a region's setting: never protected), click-through out of a fight
 	if type(rawget(_G, "DefaultCompactUnitFrameSetup")) == "function" then
 		hooksecurefunc("DefaultCompactUnitFrameSetup", function(frame)
 			if S.hidden then
+				TieLoose(frame)
 				Later(function()
 					if S.hidden then
 						MouseOff(frame)
@@ -1230,18 +964,19 @@ local function Listen()
 			end
 		end)
 	end
-	-- Edit Mode closed (its own place laid on the party frame meanwhile), the
-	-- UI's scale changed: the normal party frames at the container again
+	-- the UI's scale changed, Edit Mode closed: the portrait party's place again
+	local function Replace()
+		Later(function()
+			PlaceParty()
+			SoloUpdate()
+		end, "Group Frames: the portrait party's place")
+	end
 	MelloUI:On("editmode", function(entering)
-		if not entering and held.on then
-			PlaceLater()
+		if not entering then
+			Replace()
 		end
 	end, "GroupFrames.party")
-	MelloUI:On("scale", function()
-		if held.on then
-			PlaceLater()
-		end
-	end, "GroupFrames.party")
+	MelloUI:On("scale", Replace, "GroupFrames.party")
 	-- the bar look (Bar Textures) changed: the fills again
 	MelloUI.Widgets.OnBarTexture("raidframes", function()
 		H:Repaint()
@@ -1310,10 +1045,6 @@ function H:Repaint()
 			Button.Refresh(b)
 		end
 	end
-	-- (retail: the game's normal party members' fade as Out Of Range Opacity is now)
-	if RetailParty() then
-		PartyMembers(MemberRange)
-	end
 	-- (0.20.1) the made-up members too: the Designer's samples, the fake raid
 	MelloUI:Fire("groupframes", "paint")
 end
@@ -1327,9 +1058,24 @@ end
 -- budget). `S.made`: a header made (what lays out loops over those there)
 local KINDS = { "party", "raid" }
 
+-- (fr-16; the user, 2026-11-01: "Ask for reload") Group Frames on after the game's party frames were in use this
+-- session -- off since the login, or given back since: what dressed them meanwhile (the painted skin, Class Icons, Unit
+-- Frames) hooked their regions, and a hook can't be taken off. They stay faded and silent, hooked till a reload, which
+-- is asked for (MelloUI:AskReload: once a session)
+H.RELOAD_SAY = "Group Frames is on: type /reload to finish putting the game's party frames away."
+
 function H:Start(first)
+	if not S.on and not S.started and not (MelloUI.LoggingIn and MelloUI:LoggingIn()) then
+		S.gameUsed = true   -- (on for the first time since the login: the game's were in use till now)
+	end
+	S.started = true
 	S.on = true
 	Listen()
+	-- (fr-16: the game's frames away at once, in a fight too -- a /reload in one; ours are made after it)
+	H:Blizzard()
+	if S.gameUsed and MelloUI.AskReload then
+		MelloUI:AskReload(H.RELOAD_SAY)
+	end
 	Later(function()
 		if not S.on then
 			return
@@ -1346,7 +1092,6 @@ function H:Start(first)
 		end
 		Drive(true)
 		H:Blizzard()
-		PartyHosts()
 		PlaceParty()
 		SoloUpdate()
 	end, first and "Group Frames: the group's header" or "Group Frames: the headers")
@@ -1364,7 +1109,6 @@ function H:Stop()
 		if S.hidden then
 			ShowGame()
 		end
-		MembersBack()
 	end, "Group Frames: the headers off")
 end
 
@@ -1384,18 +1128,45 @@ function H.Aside(on)
 end
 
 -- the Preview's party (Core/Preview.lua's PartyHost), asked at a party scene's start: the look your party wears, and
--- while that is the game's normal party frames (held here) your own frame of ours the stand-ins stand under and the
--- party's spacing between them
+-- while that is the portrait party frames of ours your own frame the stand-ins stand under, the room between them
+-- (fr-16: our members' -- PortraitSpacing) and the first member's place (fr-16: our members' first slot -- the game's
+-- party frame stands elsewhere, faded)
+local function Portraits()
+	return S.on and DB().partyStyle == "party"
+end
+
+-- the first member's top left in UIParent's units and its scale against UIParent's (nil: no party container)
+local function Origin()
+	local c = containers.party
+	local l, _, r, t = ScreenRect(c)
+	local us, cs = UIParent:GetEffectiveScale(), Scale(c)
+	if not (l and t and us and us > 0 and cs) then
+		return nil
+	end
+	local k = ((ns.Solo and ns.Solo.Scale and ns.Solo.Scale()) or 1) * cs / us
+	local top = t / us - SelfRoom() * k
+	if Corner("party") == "TOPRIGHT" then
+		return r / us - GAME_MEMBER.w * k, top, k
+	end
+	return l / us, top, k
+end
+
 if MelloUI.Preview then
 	MelloUI.Preview.PartyHost = {
 		Look = function()
-			return (S.on and not GameParty()) and "groupparty" or "party"
+			return (S.on and DB().partyStyle ~= "party") and "groupparty" or "party"
 		end,
 		Top = function()
-			return (S.on and GameParty() and ns.Solo and ns.Solo:Shown()) or nil
+			return (Portraits() and ns.Solo and ns.Solo:Shown()) or nil
 		end,
 		Gap = function()
-			return (S.on and GameParty()) and Spacing("party") or nil
+			return Portraits() and PortraitSpacing() or nil
+		end,
+		Origin = function()
+			if Portraits() then
+				return Origin()
+			end
+			return nil
 		end,
 	}
 end
@@ -1403,15 +1174,14 @@ end
 -- (the tests')
 H.S = S
 H.headers, H.containers, H.byUnit = headers, containers, byUnit
-H.loose = loose
-H.ranged = ranged
+H.loose, H.faded, H.silenced = loose, faded, silenced
 
 --------------------------------------------------------------------------------
 -- /run MelloUI.GroupFrames.DumpParty() (the user, 2026-10-24: on the Portraits
--- look the name's and the level's size "dont work"): every normal party frame
--- -- the game's members, your solo one, the Designer's replica -- its name and
+-- look the name's and the level's size "dont work"): every portrait party frame
+-- -- yours and your members' (ours), the Designer's replica -- its name and
 -- level as they are (font, size, place), the parts the Designer keeps for
--- them, its alpha and range, its buff row. Into the copy window, opened;
+-- them, its alpha and range, its buff row; the game's own party frames' alpha. Into the copy window, opened;
 -- nothing changed. (No slash command of its own: a dump is a mode of a shared
 -- one -- Tools/lint/check_panels.py's dump-slash -- and the shared one is
 -- Oldschool's, which retail has not)
@@ -1445,8 +1215,15 @@ function RD.DumpParty()
 		return string.format("%s %s,%s size %s show %s", S_(t.point), S_(t.x), S_(t.y), S_(t.size), S_(t.show))
 	end
 	local db = DB()
-	MelloUI:Print("Group Frames on %s  retail %s  In A Party %s  solo %s  Out Of Range Opacity %s  buff box hooked %s",
-		S_(S.on), S_(RD.Retail()), S_(db.partyStyle), S_(db.solo), S_(db.rangeAlpha), S_(tipHooked))
+	MelloUI:Print("Group Frames on %s  retail %s  In A Party %s  solo %s  Out Of Range Opacity %s  the game's hidden %s",
+		S_(S.on), S_(RD.Retail()), S_(db.partyStyle), S_(db.solo), S_(db.rangeAlpha), S_(S.hidden))
+	for _, name in ipairs(GAME_HOLDERS) do
+		local g = rawget(_G, name)
+		if type(g) == "table" and g.GetAlpha then
+			MelloUI:Print("   the game's %s: shown %s alpha %s visible %s", name, S_(g:IsShown()), S_(g:GetAlpha()),
+				S_(g:IsVisible()))
+		end
+	end
 	MelloUI:Print("parts: name [%s]  level [%s]  buffs [%s]", Part("party.name"), Part("party.level"), Part("party.buffs"))
 	local uf = MelloUI:GetModule("UnitFrames")
 	local function One(label, f)
@@ -1459,24 +1236,18 @@ function RD.DumpParty()
 		if type(unit) == "string" then
 			okR, inRange, checked = pcall(UnitInRange, unit)
 		end
-		MelloUI:Print("%s: unit %s shown %s alpha %s range %s/%s ours %s", label, S_(unit), S_(f:IsShown()), S_(f:GetAlpha()),
-			okR and S_(inRange) or "-", okR and S_(checked) or "-", S_(ranged[f] or false))
+		MelloUI:Print("%s: unit %s shown %s alpha %s range %s/%s", label, S_(unit), S_(f:IsShown()), S_(f:GetAlpha()),
+			okR and S_(inRange) or "-", okR and S_(checked) or "-")
 		MelloUI:Print("   name: %s", Font(rawget(f, "Name")))
 		local level = uf and uf.PartyLevelText and uf:PartyLevelText(f)
 		MelloUI:Print("   level: %s", level and Font(level) or "not made (Unit Frames' party level)")
-		local row = ns.Solo and ns.Solo.buffRows and ns.Solo.buffRows[f]
 		local own = ns.Solo and ns.Solo.ownBuffs and ns.Solo.ownBuffs[f]
-		MelloUI:Print("   buff row: %s", row and ("shown " .. S_(row:IsShown())) or (own and "in its debuff row") or "none")
+		MelloUI:Print("   buff row: %s", own and "in its debuff row" or "none")
 	end
-	local n = 0
-	PartyMembers(function(f)
-		n = n + 1
-		One("member " .. n, f)
-	end)
-	if n == 0 then
-		MelloUI:Print("the game's party members: none in its pool")
+	One("you", ns.Solo and ns.Solo.frame)
+	for i = 1, GAME_MEMBER.n do
+		One("member " .. i, ns.Solo and ns.Solo:Member(i))
 	end
-	One("solo", ns.Solo and ns.Solo.frame)
 	local replica = RD.Page and RD.Page.samples and RD.Page.samples.portrait
 	One("Designer replica", replica)
 	-- (2026-10-24, the user: the preview "a accurate representation of the actual unitframes") the replica against
@@ -1498,12 +1269,10 @@ function RD.DumpParty()
 		end
 	end
 	if replica then
-		local m = 0
-		PartyMembers(function(f)
-			m = m + 1
-			Against("member " .. m, f)
-		end)
-		Against("solo", ns.Solo and ns.Solo.frame)
+		Against("you", ns.Solo and ns.Solo.frame)
+		for i = 1, GAME_MEMBER.n do
+			Against("member " .. i, ns.Solo and ns.Solo:Member(i))
+		end
 	else
 		MelloUI:Print("replica against the frames: open the Designer's Party > Portraits first")
 	end

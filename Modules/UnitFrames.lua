@@ -87,6 +87,70 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 	},
 })
 
+-- (fr-17) the player frame on the screen -- MelloUI's own while it stands in (MelloUI.Units, Modules/UnitFramesOwn.lua),
+-- else the game's -- its name and level, and the game's update hooks through it; a world without that file (a test's
+-- chosen files): the game's frame and a plain hook. On the module: its main chunk takes no new local
+function M.ScreenPlayer()
+	local U = MelloUI.Units
+	return U and U.Player() or _G.PlayerFrame
+end
+function M.ScreenPlayerName()
+	local U = MelloUI.Units
+	return U and U.PlayerName() or _G.PlayerName
+end
+function M.ScreenPlayerLevel()
+	local U = MelloUI.Units
+	return U and U.PlayerLevel() or _G.PlayerLevelText
+end
+-- (fr-17 stage 2) the target frame on the screen and its target of target -- MelloUI's own while they stand in
+-- (Modules/UnitFramesTarget.lua), else the game's
+function M.ScreenTarget()
+	local U = MelloUI.Units
+	return U and U.Target() or rawget(_G, "TargetFrame")
+end
+function M.ScreenToT()
+	local U = MelloUI.Units
+	return U and U.TargetToT() or rawget(_G, "TargetFrameToT")
+end
+-- (fr-17 stage 3) the focus frame on the screen and its focus target (the same file), else the game's
+function M.ScreenFocus()
+	local U = MelloUI.Units
+	return U and U.Focus() or rawget(_G, "FocusFrame")
+end
+function M.ScreenFocusToT()
+	local U = MelloUI.Units
+	return U and U.FocusToT() or rawget(_G, "FocusFrameToT")
+end
+-- (fr-17 stage 4) the pet frame on the screen and its parts by the game's global names (Modules/UnitFramesPet.lua), else
+-- the game's
+function M.ScreenPet()
+	local U = MelloUI.Units
+	return U and U.Pet() or rawget(_G, "PetFrame")
+end
+local PET_GLOBALS = { texture = "PetFrameTexture", portrait = "PetPortrait", name = "PetName", health = "PetFrameHealthBar",
+	mana = "PetFrameManaBar", healthMask = "PetFrameHealthBarMask", flash = "PetFrameFlash", attack = "PetAttackModeTexture" }
+function M.PetPart(key)
+	local U = MelloUI.Units
+	if U and U.PetPart then
+		return U.PetPart(key)
+	end
+	return rawget(_G, PET_GLOBALS[key])
+end
+-- (the frames of ours that stand in, besides the player's: the target's and the focus's kinds, the pet's -- each
+-- started and stopped with the module)
+local function OwnKinds()
+	local U = MelloUI.Units
+	return U and { U.T, U.F, U.PetKind } or {}
+end
+function M.UnitsHook(fname, fn)
+	local U = MelloUI.Units
+	if U then
+		U.Hook(fname, fn)
+	elseif type(rawget(_G, fname)) == "function" then
+		hooksecurefunc(fname, fn)
+	end
+end
+
 --------------------------------------------------------------------------------
 -- The name's form (user, 2026-09-22): after the game has set a frame's name
 -- (UnitFrame_Update for the player, target, focus, pet and target-of-target
@@ -262,7 +326,8 @@ local function InstallNameHooks()
 	end
 	nameHooked = true
 	if type(UnitFrame_Update) == "function" then
-		hooksecurefunc("UnitFrame_Update", OnUnitFrameUpdate)
+		-- (fr-17: ours too -- MelloUI.Units, Modules/UnitFramesOwn.lua)
+		M.UnitsHook("UnitFrame_Update", OnUnitFrameUpdate)
 	end
 	if type(CompactUnitFrame_SetUnit) == "function" then
 		hooksecurefunc("CompactUnitFrame_SetUnit", Compact.OnSetUnit)
@@ -275,7 +340,7 @@ end
 -- game has made: CompactRaidFrame<n> counts up past 40 with pets) handed to
 -- their covers (Compact: swept out of combat).
 local function RefreshNames(mode)
-	local frames = { PlayerFrame, TargetFrame, FocusFrame, PetFrame, TargetFrameToT, FocusFrameToT }
+	local frames = { M.ScreenPlayer(), M.ScreenTarget(), M.ScreenFocus(), M.ScreenPet(), M.ScreenToT(), M.ScreenFocusToT() }
 	for i = 1, 5 do
 		frames[#frames + 1] = _G["CompactPartyFrameMember" .. i]
 		frames[#frames + 1] = _G["CompactPartyFramePet" .. i]
@@ -330,7 +395,7 @@ local hooksInstalled = false
 --------------------------------------------------------------------------------
 
 local function TargetLikeFrames()
-	return { TargetFrame, FocusFrame }
+	return { M.ScreenTarget(), M.ScreenFocus() }   -- (fr-17: the target and focus frames on the screen)
 end
 
 local function SetHidden(region, hidden)
@@ -501,7 +566,8 @@ function Places.Name(fs, frame, key, on, container)
 end
 
 local function PlayerNameContainer()
-	local content = PlayerFrame and PlayerFrame.PlayerFrameContent
+	local pf = M.ScreenPlayer()
+	local content = pf and pf.PlayerFrameContent
 	local main = content and content.PlayerFrameContentMain
 	return main and main.HealthBarsContainer
 end
@@ -513,19 +579,21 @@ local function ApplyNames()
 		return
 	end
 	local on = M.isEnabled
-	if PlayerName then
-		Places.Name(PlayerName, PlayerFrame, "player", on, PlayerNameContainer())
+	local playerName = M.ScreenPlayerName()
+	if playerName then
+		Places.Name(playerName, M.ScreenPlayer(), "player", on, PlayerNameContainer())
 	end
 	for _, frame in ipairs(TargetLikeFrames()) do
 		local main = frame and frame.TargetFrameContent and frame.TargetFrameContent.TargetFrameContentMain
 		if main and main.Name then
-			Places.Name(main.Name, frame, frame == FocusFrame and "focus" or "target", on, main.HealthBarsContainer)
+			Places.Name(main.Name, frame, frame.unit == "focus" and "focus" or "target", on, main.HealthBarsContainer)
 		end
 	end
 	-- (the pet's name: the game's place until it is moved)
-	local petName = PetFrame and rawget(PetFrame, "name")
+	local pet = M.ScreenPet()
+	local petName = pet and rawget(pet, "name")
 	if petName and petName.GetObjectType then
-		Places.Name(petName, PetFrame, "pet", on, nil)
+		Places.Name(petName, pet, "pet", on, nil)
 	end
 end
 
@@ -558,15 +626,16 @@ end
 
 local function CombatFlashTextures()
 	local list = {}
-	if PlayerFrame and PlayerFrame.PlayerFrameContainer then
-		list[#list + 1] = PlayerFrame.PlayerFrameContainer.FrameFlash
+	local pf = M.ScreenPlayer()
+	if pf and pf.PlayerFrameContainer then
+		list[#list + 1] = pf.PlayerFrameContainer.FrameFlash
 	end
 	for _, frame in ipairs(TargetLikeFrames()) do
 		if frame and frame.TargetFrameContainer then
 			list[#list + 1] = frame.TargetFrameContainer.Flash
 		end
 	end
-	list[#list + 1] = PetFrameFlash
+	list[#list + 1] = M.PetPart("flash")
 	if PartyFrame then
 		for i = 1, 4 do
 			local member = PartyFrame["MemberFrame" .. i]
@@ -583,12 +652,13 @@ end
 
 local function StatusGlowTextures()
 	local list = {}
-	local content = PlayerFrame and PlayerFrame.PlayerFrameContent
+	local pf = M.ScreenPlayer()
+	local content = pf and pf.PlayerFrameContent
 	local main = content and content.PlayerFrameContentMain
 	if main then
 		list[#list + 1] = main.StatusTexture
 	end
-	list[#list + 1] = PetAttackModeTexture
+	list[#list + 1] = M.PetPart("attack")
 	return list
 end
 
@@ -597,7 +667,8 @@ end
 -- GetPvPIndicatorElements' regions)
 local function PvPBadgeTextures()
 	local list = {}
-	local content = PlayerFrame and PlayerFrame.PlayerFrameContent
+	local pf = M.ScreenPlayer()
+	local content = pf and pf.PlayerFrameContent
 	local ctx = content and content.PlayerFrameContentContextual
 	if ctx then
 		list[#list + 1] = ctx.PrestigePortrait
@@ -684,19 +755,25 @@ end)
 -- questions; a pet whose state cannot be asked waits for its next
 -- PET_ATTACK_START.
 local function ReleaseGlows()
-	local content = PlayerFrame and PlayerFrame.PlayerFrameContent
+	-- (fr-17: the player frame on the screen -- MelloUI.Units -- read without the module's own helper: this function
+	-- stands alone too)
+	local units = MelloUI.Units
+	local pf = units and units.Player() or PlayerFrame
+	local content = pf and pf.PlayerFrameContent
 	local main = content and content.PlayerFrameContentMain
 	local status = main and main.StatusTexture
 	if status and status.SetShown then
 		local isResting = _G.IsResting
 		local resting = type(isResting) == "function" and Plain(isResting())
-		status:SetShown((resting or Plain(PlayerFrame.inCombat)) and true or false)
+		status:SetShown((resting or Plain(pf.inCombat)) and true or false)
 	end
 	local petAttacking = _G.IsPetAttackActive
-	if PetAttackModeTexture and type(petAttacking) == "function" then
+	-- (fr-17 stage 4: the pet frame's attack glow on the screen -- MelloUI's own while it stands in)
+	local glow = units and units.PetPart and units.PetPart("attack") or _G.PetAttackModeTexture
+	if glow and type(petAttacking) == "function" then
 		local ok, attacking = pcall(petAttacking)
 		if ok and Plain(attacking) then
-			PetAttackModeTexture:Show()
+			glow:Show()
 		end
 	end
 end
@@ -754,7 +831,7 @@ do
 	end
 
 	local OnFeedback = Shared("CombatFeedback_OnCombatEvent on your portrait", function(frame, event)
-		if frame ~= PlayerFrame or not HealHidden() or Secret(event) or event ~= "HEAL" then
+		if frame ~= M.ScreenPlayer() or not HealHidden() or Secret(event) or event ~= "HEAL" then
 			return
 		end
 		local text = frame.feedbackText
@@ -996,31 +1073,29 @@ local function InstallHooks()
 	end
 	hooksInstalled = true
 	-- Blizzard re-anchors the player name when switching to / from vehicle art.
-	if type(PlayerFrame_UpdatePlayerNameTextAnchor) == "function" then
-		hooksecurefunc("PlayerFrame_UpdatePlayerNameTextAnchor", function()
-			if M.isEnabled and PlayerName then
+	-- (fr-17: through MelloUI.Units -- the game's frame kept away is skipped, ours runs it as it lays its art)
+	M.UnitsHook("PlayerFrame_UpdatePlayerNameTextAnchor", function()
+		if M.isEnabled and M.ScreenPlayerName() then
+			OutOfCombat(function()
+				local playerName = M.ScreenPlayerName()
+				if M.isEnabled and playerName then
+					originalNameLayout[playerName] = nil
+					CenterName(playerName, PlayerNameContainer())
+				end
+			end)
+		end
+	end)
+	-- Art swaps (vehicle, alternate power) re-show textures; re-apply then.
+	for _, name in ipairs({ "PlayerFrame_ToPlayerArt", "PlayerFrame_ToVehicleArt" }) do
+		M.UnitsHook(name, function()
+			if M.isEnabled then
 				OutOfCombat(function()
-					if M.isEnabled and PlayerName then
-						originalNameLayout[PlayerName] = nil
-						CenterName(PlayerName, PlayerNameContainer())
+					if M.isEnabled then
+						ApplyGlows()
 					end
 				end)
 			end
 		end)
-	end
-	-- Art swaps (vehicle, alternate power) re-show textures; re-apply then.
-	for _, name in ipairs({ "PlayerFrame_ToPlayerArt", "PlayerFrame_ToVehicleArt" }) do
-		if type(_G[name]) == "function" then
-			hooksecurefunc(name, function()
-				if M.isEnabled then
-					OutOfCombat(function()
-						if M.isEnabled then
-							ApplyGlows()
-						end
-					end)
-				end
-			end)
-		end
 	end
 end
 
@@ -1176,14 +1251,15 @@ end
 
 -- the player's, the pet's and the targets' targets' bands (out of combat)
 function NameBand.Frames()
-	local pf = PlayerFrame
+	local pf = M.ScreenPlayer()
 	local container = pf and pf.PlayerFrameContainer
-	if PlayerName and container then
-		NameBand.Make(PlayerName, container, nil, nil, NameBand.PADS.player)
+	local playerName = M.ScreenPlayerName()
+	if playerName and container then
+		NameBand.Make(playerName, container, nil, nil, NameBand.PADS.player)
 	end
-	local pet = PetFrame
+	local pet = M.ScreenPet()
 	if pet then
-		NameBand.Make(_G.PetName or pet.name, pet, nil, nil, NameBand.PADS.pet)
+		NameBand.Make(M.PetPart("name") or pet.name, pet, nil, nil, NameBand.PADS.pet)
 	end
 	for _, frame in ipairs(TargetLikeFrames()) do
 		local tot = frame and frame.totFrame
@@ -1233,7 +1309,7 @@ end
 -- name (57 -> 38 on client 70338, 55 -> 36 on 70425; the user's screenshot,
 -- 2026-10-16: "Fellaria24" at 15), set again after the game sets its own (UpdateNameTextAnchors, which
 -- every To*Art calls right after its Name:SetWidth -- a state change, never
--- per frame), out of combat. The name's band runs on to the level. Made on
+-- per frame), at once, in a fight too (fr-15). The name's band runs on to the level. Made on
 -- the member's first show, out of combat; the level read on its show and on
 -- UNIT_LEVEL / GROUP_ROSTER_UPDATE (one event frame for every member); a
 -- preview's stand-in (ours, no unit) says its sample's level. Away while the
@@ -1305,14 +1381,15 @@ function Party.Update(frame)
 end
 
 -- the name box: the game's less SHORTER while wanted, the game's own else;
--- never while the skin lays the name (out of combat)
+-- never while the skin lays the name (a text region: in a fight too,
+-- Party.OnAnchors)
 function Party.Width(frame)
 	local made = Party.of[frame]
 	local name = rawget(frame, "Name")
 	if not (made and type(name) == "table") or Covered("partyframes") then
 		return
 	end
-	local okW, w = pcall(name.GetWidth, name)
+	local okW, w = pcall(name.GetWidth, name, true)
 	w = okW and Num(w) or nil
 	if not w then
 		return
@@ -1750,10 +1827,10 @@ function M.NameFace.All()
 	if not face and next(M.NameFace.of) == nil then
 		return
 	end
-	M.NameFace.Set(_G.PlayerName)
-	local pet = PetFrame
+	M.NameFace.Set(M.ScreenPlayerName())
+	local pet = M.ScreenPet()
 	if pet then
-		M.NameFace.Set(_G.PetName or pet.name)
+		M.NameFace.Set(M.PetPart("name") or pet.name)
 	end
 	for _, frame in ipairs(TargetLikeFrames()) do
 		local main = frame and frame.TargetFrameContent and frame.TargetFrameContent.TargetFrameContentMain
@@ -1874,11 +1951,23 @@ function Party.Make(frame)
 	return made
 end
 
--- the game's party members (the pool's active ones)
+-- the party's members on the screen: the game's (the pool's active ones) while they show; while Group Frames' own
+-- party and raid frames stand in (fr-16: the game's never show then -- MelloUI.GroupFrames:HidesGame) the members of
+-- its portrait party instead, while those are the choice (MelloUI.GroupFrames:PartyMember): dressed as the game's were
 function Party.Members()
 	local pf = PartyFrame
 	local pool = type(pf) == "table" and pf.PartyMemberFramePool
 	local list = {}
+	local gf = MelloUI.GroupFrames
+	if gf and gf.HidesGame and gf:HidesGame("party") then
+		for i = 1, 4 do
+			local own = gf.PartyMember and gf:PartyMember(i)
+			if own then
+				list[#list + 1] = own
+			end
+		end
+		return list
+	end
 	if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
 		for frame in pool:EnumerateActive() do
 			list[#list + 1] = frame
@@ -1944,16 +2033,21 @@ Party.OnShow = Shared("OnShow on a party member: its level", function(frame)
 end, "script")
 
 -- the game laid the name again (its art changed): its own width just set
--- (read now), ours again out of combat
+-- (read now: the width set, never the box its anchors may give), the name box
+-- ours again at once -- in a fight too (fr-15: the game lays its art again at
+-- every roster change, in a fight as well, and the full width stood until it
+-- ended; the name is a text region, which the game never protects) -- the rest
+-- of the member out of combat
 Party.OnAnchors = Shared("UpdateNameTextAnchors on a party member: its name box", function(frame)
 	local made = Party.of[frame]
 	local name = rawget(frame, "Name")
 	if made and type(name) == "table" then
-		local okW, w = pcall(name.GetWidth, name)
+		local okW, w = pcall(name.GetWidth, name, true)
 		w = okW and Num(w) or nil
 		if w then
 			made.gameW = w
 		end
+		Party.Width(frame)
 		Party.Due()
 	end
 end)
@@ -2385,6 +2479,12 @@ MelloUI:On("setting", function(module, key)
 	end
 end, "Unit Frames: name bands and Text Shade")
 MelloUI:On("restart", NameBand.All, "Unit Frames: name bands and Text Shade")
+-- (fr-16) Group Frames hid or gave back the game's party frames: its members dressed as they show now (Party.Members)
+MelloUI:On("groupframes", function(what)
+	if what == "game" then
+		Party.Due()
+	end
+end, "Unit Frames: party levels")
 
 --------------------------------------------------------------------------------
 -- The frames' parts (one-look D5: from the Unit Frames Kit, which fills in
@@ -2452,16 +2552,16 @@ function M:PartsOf(frame)
 	if type(frame) ~= "table" then
 		return nil
 	end
-	if frame == PlayerFrame then
+	if frame == M.ScreenPlayer() then
 		local c = frame.PlayerFrameContainer
 		local content = frame.PlayerFrameContent
 		local main = content and content.PlayerFrameContentMain
 		local bars = main and main.HealthBarsContainer
 		local area = main and main.ManaBarArea
 		-- (retail: MelloUI Frames' stand-in circle, Frames.Circle)
-		return c and c.PlayerPortrait, bars and bars.HealthBar, area and area.ManaBar, PlayerName,
+		return c and c.PlayerPortrait, bars and bars.HealthBar, area and area.ManaBar, M.ScreenPlayerName(),
 			main and (rawget(main, "LevelBackgroundCircle") or (M.Frames and M.Frames.Circle(main, "player"))),
-			_G.PlayerLevelText
+			M.ScreenPlayerLevel()
 	end
 	-- (a party member's shape: no other frame has these three -- the compact
 	-- and Group Frames' buttons no portrait, the pets and target of target no
@@ -2536,7 +2636,7 @@ function M:DressStandIn(frame)
 end
 
 function M:ReminderAnchor()
-	local pf = PlayerFrame
+	local pf = M.ScreenPlayer()
 	if not pf then
 		return nil
 	end
@@ -2723,7 +2823,7 @@ function Frames.Circle(main, kind)
 	if game or Frames.stand[main] then
 		return game or Frames.stand[main]
 	end
-	local level = kind == "player" and rawget(_G, "PlayerLevelText") or rawget(main, "LevelText")
+	local level = kind == "player" and M.ScreenPlayerLevel() or rawget(main, "LevelText")
 	if type(level) ~= "table" or type(main.CreateTexture) ~= "function" then
 		return nil
 	end
@@ -2736,7 +2836,7 @@ function Frames.Circle(main, kind)
 	stand:SetSize(Frames.CIRCLE.size, Frames.CIRCLE.size)
 	stand:SetPoint(at[1], main, at[1], at[2], at[3])
 	Frames.stand[main] = stand
-	local ctx = kind == "player" and rawget(PlayerFrame.PlayerFrameContent, "PlayerFrameContentContextual")
+	local ctx = kind == "player" and rawget(M.ScreenPlayer().PlayerFrameContent, "PlayerFrameContentContextual")
 	Frames.seat[stand] = { level = level, role = ctx and rawget(ctx, "RoleIcon") or nil }
 	return stand
 end
@@ -2810,7 +2910,7 @@ end
 -- the game's role update, never per frame; the vehicle's art keeps it hidden
 Frames.OnRoles = Shared("PlayerFrame_UpdateRolesAssigned (MelloUI Frames' level in its badge)", function()
 	for _, seat in pairs(Frames.seat) do
-		if seat.role and seat.held and rawget(PlayerFrame, "state") ~= "vehicle" then
+		if seat.role and seat.held and rawget(M.ScreenPlayer(), "state") ~= "vehicle" then
 			seat.level:Show()
 		end
 	end
@@ -2862,14 +2962,15 @@ Frames.owner = setmetatable({}, { __mode = "k" })  -- [a frame's picture] = the 
 
 -- retail's frames: the player's has no level circle (Forever's Camelot templates add one)
 function Frames.Retail()
-	local content = type(PlayerFrame) == "table" and rawget(PlayerFrame, "PlayerFrameContent")
+	local pf = M.ScreenPlayer()
+	local content = type(pf) == "table" and rawget(pf, "PlayerFrameContent")
 	local main = content and rawget(content, "PlayerFrameContentMain")
 	return type(main) == "table" and rawget(main, "LevelBackgroundCircle") == nil
 end
 
 -- a frame's bars and what they hang from, by the rows' names
 function Frames.BarParts(frame)
-	if frame == PlayerFrame then
+	if frame == M.ScreenPlayer() then
 		local content = rawget(frame, "PlayerFrameContent")
 		local main = content and rawget(content, "PlayerFrameContentMain")
 		local hc = main and rawget(main, "HealthBarsContainer")
@@ -2881,9 +2982,9 @@ function Frames.BarParts(frame)
 		return "player", { hc = hc, health = hc and rawget(hc, "HealthBar"), hmask = hc and rawget(hc, "HealthBarMask"),
 			mana = mana, mmask = mana and rawget(mana, "ManaBarMask"), alt = alt, altmask = alt and rawget(alt, "PowerBarMask") }
 	end
-	if frame == rawget(_G, "PetFrame") then
-		return "pet", { portrait = rawget(_G, "PetPortrait"), health = rawget(_G, "PetFrameHealthBar"),
-			hmask = rawget(_G, "PetFrameHealthBarMask"), mana = rawget(_G, "PetFrameManaBar") }
+	if frame == rawget(_G, "PetFrame") or frame == M.ScreenPet() then
+		return "pet", { portrait = M.PetPart("portrait"), health = M.PetPart("health"),
+			hmask = M.PetPart("healthMask"), mana = M.PetPart("mana") }
 	end
 	local c = rawget(frame, "TargetFrameContainer")
 	if c then
@@ -2969,7 +3070,7 @@ function Frames.Bars(frame, again)
 	if not rows then
 		return
 	end
-	local alt = frame == PlayerFrame and rawget(frame, "PlayerFrameContainer")
+	local alt = frame == M.ScreenPlayer() and rawget(frame, "PlayerFrameContainer")
 	alt = alt and rawget(alt, "AlternatePowerFrameTexture")
 	local soft = Frames.SoftOf((alt and Shown(alt)) and "res" or kind, parts)
 	-- (each region's own as the game had it, taken the first time it is laid: a class bar that comes later too)
@@ -3039,8 +3140,9 @@ function Frames.SoftOf(kind, parts)
 end
 
 Frames.OnPlayerArt = Shared("PlayerFrame_ToPlayerArt (MelloUI Frames' bars, the Default skin's sharp pictures)", function()
-	if Frames.bars[PlayerFrame] then
-		Frames.Bars(PlayerFrame, true)
+	local pf = M.ScreenPlayer()
+	if Frames.bars[pf] then
+		Frames.Bars(pf, true)
 	end
 	-- (fr-12: the game laid its pictures' atlases again -- the frame's, the glow's)
 	Frames.SharpPlayer()
@@ -3052,7 +3154,7 @@ end)
 
 -- a frame's pictures and the kind each wears
 function Frames.Regions(frame)
-	if frame == PlayerFrame then
+	if frame == M.ScreenPlayer() then
 		local c, content = rawget(frame, "PlayerFrameContainer"), rawget(frame, "PlayerFrameContent")
 		local main = content and content.PlayerFrameContentMain
 		return { { c and c.FrameTexture, "player" }, { c and c.AlternatePowerFrameTexture, "res" },
@@ -3291,7 +3393,7 @@ end
 -- a frame's game pictures, two at most (the player's art and its class resource art; a target of target's or the
 -- pet's; a party member's or a stand-in's): read, nothing made
 function Frames.GamePictures(frame)
-	if frame == PlayerFrame then
+	if frame == M.ScreenPlayer() then
 		local c = rawget(frame, "PlayerFrameContainer")
 		return c and rawget(c, "FrameTexture"), c and rawget(c, "AlternatePowerFrameTexture")
 	end
@@ -3383,7 +3485,7 @@ end
 function M:PlateCut(frame)
 	local tex, _, edge, _, atlas = self:PlateOf(frame)
 	if not (tex and edge) then
-		return nil, Covered(frame == PlayerFrame and "unitframes" or "partyframes")
+		return nil, Covered(frame == M.ScreenPlayer() and "unitframes" or "partyframes")
 	end
 	local mirrored = Party.flip.frames[frame] and true or false
 	if Frames.On() then
@@ -3475,13 +3577,14 @@ function Frames.SharpOne(tex, want)
 end
 
 function Frames.SharpPlayer()
-	if type(PlayerFrame) ~= "table" then
+	local pf = M.ScreenPlayer()
+	if type(pf) ~= "table" then
 		return
 	end
 	local skin = rawget(MelloUI, "Skin")
 	local want = (M.isEnabled and skin and skin.IsDefault() and Party.Sharp()) and true or false
 	for _, path in ipairs(Frames.SHARP_AT) do
-		local t = PlayerFrame
+		local t = pf
 		for _, key in ipairs(path) do
 			t = type(t) == "table" and rawget(t, key) or nil
 		end
@@ -3504,8 +3607,8 @@ end
 
 function Frames.Lay()
 	Frames.SharpPlayer()
-	for _, frame in ipairs({ PlayerFrame, TargetFrame, FocusFrame, rawget(_G, "TargetFrameToT"),
-		rawget(_G, "FocusFrameToT"), rawget(_G, "PetFrame") }) do
+	for _, frame in ipairs({ M.ScreenPlayer(), M.ScreenTarget(), M.ScreenFocus(), M.ScreenToT(),
+		M.ScreenFocusToT(), M.ScreenPet() }) do
 		if type(frame) == "table" then
 			Frames.LayOne(frame)
 		end
@@ -3529,24 +3632,26 @@ Frames.OnClassification = Shared("CheckClassification on the target / focus fram
 	end
 end)
 
+-- (each target-like frame on the screen hooked once: the game's, or ours -- fr-17 -- standing in; again as ours comes)
+Frames.classHooked = setmetatable({}, { __mode = "k" })
+function Frames.HookClassification()
+	for _, frame in ipairs(TargetLikeFrames()) do
+		if type(frame) == "table" and type(frame.CheckClassification) == "function" and not Frames.classHooked[frame] then
+			Frames.classHooked[frame] = true
+			hooksecurefunc(frame, "CheckClassification", Frames.OnClassification)
+		end
+	end
+end
+
 function Frames.Start()
+	Frames.HookClassification()
 	if not Frames.hooked then
 		Frames.hooked = true
-		for _, frame in ipairs({ TargetFrame, FocusFrame }) do
-			if type(frame) == "table" and type(frame.CheckClassification) == "function" then
-				hooksecurefunc(frame, "CheckClassification", Frames.OnClassification)
-			end
-		end
 		-- (retail: the level in its badge past the role icon, the player's bars after the game lays them)
-		if type(rawget(_G, "PlayerFrame_UpdateRolesAssigned")) == "function" then
-			hooksecurefunc("PlayerFrame_UpdateRolesAssigned", Frames.OnRoles)
-		end
-		if type(rawget(_G, "PlayerFrame_ToPlayerArt")) == "function" then
-			hooksecurefunc("PlayerFrame_ToPlayerArt", Frames.OnPlayerArt)
-		end
-		if type(rawget(_G, "PlayerFrame_ToVehicleArt")) == "function" then
-			hooksecurefunc("PlayerFrame_ToVehicleArt", Frames.OnVehicleArt)
-		end
+		-- (fr-17: through MelloUI.Units -- the game's frame kept away skipped, ours as it lays its art)
+		M.UnitsHook("PlayerFrame_UpdateRolesAssigned", Frames.OnRoles)
+		M.UnitsHook("PlayerFrame_ToPlayerArt", Frames.OnPlayerArt)
+		M.UnitsHook("PlayerFrame_ToVehicleArt", Frames.OnVehicleArt)
 	end
 	Frames.Lay()
 end
@@ -3573,8 +3678,30 @@ end
 
 M.Frames = Frames   -- (the tests, the dumps)
 
+-- (fr-17) the player frame of ours stands in from the login's own frame, before any module dresses a frame
+-- (Modules/UnitFramesOwn.lua); on and off with the module after that
+function M:OnLoginFrame()
+	local U = MelloUI.Units
+	if U then
+		U.P.Start(true)
+		-- (stage 2: the target frame and its target of target; stage 3: the focus's; stage 4: the pet's)
+		for _, kind in pairs(OwnKinds()) do
+			kind.Start(true)
+		end
+	end
+end
+
 function M:OnEnable(db)
 	self.db = db
+	local U = MelloUI.Units
+	if U then
+		-- (the login's pass of the modules -- its frames, or a module first switched on in it: nothing to ask)
+		local login = (MelloUI:LoggingIn() or MelloUI.initializingModules) and true or false
+		U.P.Start(login)
+		for _, kind in pairs(OwnKinds()) do
+			kind.Start(login)
+		end
+	end
 	InstallHooks()
 	InstallNameHooks()
 	RefreshNames(db.nameFormat or "both")
@@ -3601,6 +3728,17 @@ function M:OnEnable(db)
 		if pf and type(pf.InitializePartyMemberFrames) == "function" then
 			hooksecurefunc(pf, "InitializePartyMemberFrames", Party.Due)
 		end
+		-- (fr-17) the player frame of ours come or gone after the switch (a fight held it): the look on the frame
+		-- that stands now
+		MelloUI:On("units", function()
+			if M.isEnabled then
+				RefreshNames(M.db.nameFormat or "both")
+				ApplyAll()
+				ApplyParts()
+				Frames.HookClassification()
+				Frames.Lay()
+			end
+		end, M)
 	end
 	ApplyAll()
 	ApplyParts()
@@ -3612,6 +3750,14 @@ function M:OnEnable(db)
 end
 
 function M:OnDisable()
+	-- (fr-17: ours away, the game's player frame given back -- out of a fight)
+	local U = MelloUI.Units
+	if U then
+		U.P.Stop()
+		for _, kind in pairs(OwnKinds()) do
+			kind.Stop()
+		end
+	end
 	RefreshNames("both")   -- the game's full names back (first: the covers' release never waits on the rest)
 	ApplyParts()
 	ApplyAll()

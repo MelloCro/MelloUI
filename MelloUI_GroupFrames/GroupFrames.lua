@@ -181,7 +181,7 @@ local C = RD.CHOICES
 -- the frame's measures (the game's raid frame is 72 x 36: a little larger by
 -- default, as group frames are)
 RD.MEASURE = { width = 80, height = 40, widthMin = 40, widthMax = 200, heightMin = 20, heightMax = 120,
-	spacingMax = 20, powerMin = 2, powerMax = 20 }
+	spacingMax = 20, powerMin = 2, powerMax = 20, portraitSpacingMax = 40 }
 local MS = RD.MEASURE
 
 local M = MelloUI:RegisterModule(OWNER, {
@@ -201,6 +201,7 @@ local M = MelloUI:RegisterModule(OWNER, {
 		height = MS.height,
 		spacing = 2,
 		raidSpacing = 2,
+		portraitSpacing = 2,   -- (fr-16: the portrait party frames' room, the tight one of before fr-16)
 		partyGrowth = "DOWN",
 		partySort = "role",
 		raidGroupBy = "group",
@@ -263,6 +264,10 @@ local M = MelloUI:RegisterModule(OWNER, {
 		  desc = "The height of each frame." },
 		{ type = "slider", key = "spacing", name = "Party Spacing", min = 0, max = MS.spacingMax, step = 1,
 		  desc = "The space between the party's frames." },
+		-- (fr-16; the user, 2026-11-01: "the party frames are also too spread and i dont see the slider for vertical
+		-- spacing") the portrait party frames' own: GroupHeaders.lua's PortraitSpacing
+		{ type = "slider", key = "portraitSpacing", name = "Vertical Spacing", min = 0, max = MS.portraitSpacingMax,
+		  step = 1, new = "2.1.0", desc = "The space between the party frames with portraits." },
 		{ type = "dropdown", key = "partyGrowth", name = "Party Grows", values = C.partyGrowth,
 		  desc = "Which way the party's frames line up." },
 		{ type = "dropdown", key = "partySort", name = "Party Order", width = 240, values = C.partySort,
@@ -908,15 +913,28 @@ function M:OnInit(db)
 end
 
 -- the game's party and raid frames hidden by ours now (the Fader leaves them
--- alone then: Modules/Fader.lua); kind "party": its normal party frames (shown
--- while they are the choice for a party), "raid" or nil: the rest
+-- alone then: Modules/Fader.lua; Unit Frames dresses the game's party members
+-- only while they show); kind "party": its normal party frames, "raid" or nil:
+-- the rest -- all of them in every style since fr-16 (In A Party: Party Frames
+-- is our portrait party, GroupSolo.lua)
 function RD:HidesGame(kind)
 	local H = ns.Headers
-	local hidden = H and H.S and H.S.hidden and true or false
-	if kind == "party" then
-		return hidden and DB().partyStyle ~= "party"
-	end
-	return hidden
+	return (H and H.S and H.S.hidden) and true or false
+end
+
+-- (fr-16) the game's party and raid frames left alone -- nothing of another module's dressed, covered or hooked on
+-- them (the user's errors of 2026-10-31: writes on the game's party members' regions): while Group Frames is on (its
+-- switch, so a module asking before Group Frames has started hears it too) and while the game's are still hidden
+-- (given back out of a fight, after the switch). The bus word groupframes "game" tells when they come back
+function RD:LeavesGame(kind)
+	return (MelloUI.db and MelloUI:IsModuleEnabled(OWNER)) or self:HidesGame(kind)
+end
+
+-- (fr-16) party `i`'s portrait party frame of ours while the portraits stand in for the game's party frames (the
+-- damage meter's tab hangs on it: Modules/Meter.lua), else nil
+function RD:PartyMember(i)
+	local Solo = ns.Solo
+	return (Solo and Solo.partyDriven and Solo:Member(i)) or nil
 end
 
 -- every frame that shows a member now (GroupHeaders.lua: H:Hosts), and one
@@ -979,8 +997,9 @@ end
 
 -- the settings that move or size the secure frames (out of combat only: a
 -- fight's change waits for its end); every other one only repaints
-RD.LAYOUT_KEYS = { width = true, height = true, spacing = true, raidSpacing = true, partyGrowth = true, partySort = true,
-	raidGroupBy = true, raidFlow = true, raidPerLine = true, raidGap = true, showPlayer = true, solo = true }
+RD.LAYOUT_KEYS = { width = true, height = true, spacing = true, raidSpacing = true, portraitSpacing = true,
+	partyGrowth = true, partySort = true, raidGroupBy = true, raidFlow = true, raidPerLine = true, raidGap = true,
+	showPlayer = true, solo = true }
 
 function M:OnSettingChanged(key, _, db)
 	self.db = db

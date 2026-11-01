@@ -274,14 +274,36 @@ local function LayRegion(frame, p, s, r)
 	end
 end
 
-local function LayOne(frame, p, s)
+-- (fr-15) a part that is a frame -- a party member's aura row, its ready check -- hangs in the game's protected
+-- member: laid out of a fight only. Texts and icons are regions, laid in a fight too
+local function IsFrame(r)
+	local ok, is = pcall(r.IsObjectType, r, "Frame")
+	return ok and is == true
+end
+
+-- (false: a frame part left for the fight's end)
+local function LayOne(frame, p, s, fight)
 	local r = Region(frame, p)
+	if r and fight and IsFrame(r) then
+		return false
+	end
 	if r then
 		LayRegion(frame, p, s, r)
 	end
 	local twin = p.twin and Region(frame, p, p.twin)
 	if twin then
 		LayRegion(frame, p, s, twin)
+	end
+	return true
+end
+
+-- the party frames whose frame parts wait for the fight's end ([frame] = `own`), laid by one keyed job
+local due = setmetatable({}, { __mode = "k" })
+local DUE_KEY = "Group Frames: the party's frame parts"
+local function LayDue()
+	for frame, own in pairs(due) do
+		due[frame] = nil
+		Parts:Lay(frame, "party", own or nil)
 	end
 end
 
@@ -294,10 +316,19 @@ function Parts:Lay(frame, kind, own)
 		return
 	end
 	if kind == "party" then
+		local fight, waits = InCombatLockdown(), false
 		for _, p in ipairs(Parts.PARTY) do
 			local s = own and self:Shown(p.key) or self:Of(p.key)
 			if s then
-				pcall(LayOne, frame, p, s)
+				local ok, laid = pcall(LayOne, frame, p, s, fight)
+				waits = waits or (ok and laid == false)
+			end
+		end
+		if waits then
+			due[frame] = own and true or false
+			local K = MelloUI.Schedule or MelloUI.Kit
+			if K and K.WhenOutOfCombat then
+				K:WhenOutOfCombat(LayDue, DUE_KEY)
 			end
 		end
 		-- (the core's soft band behind the name runs on to the level: on the
@@ -326,20 +357,22 @@ end
 
 -- a game party member's name laid again after the game anchors it (its art
 -- changing: PartyMemberFrameMixin:UpdateNameTextAnchors -- a post-hook on the
--- member, never per frame)
+-- member, never per frame). At once, in a fight too (fr-15: the game lays its
+-- art again at every roster change, in a fight as well, and the moved name
+-- stood at the game's place until it ended): the name is a region; the frame
+-- parts wait for the fight's end (Parts:Lay)
 local hookedMember = setmetatable({}, { __mode = "k" })
+local OnMemberAnchors = Perf.Shared("UpdateNameTextAnchors on a party member: its moved name", function(m)
+	if Parts:Of("party.name") then
+		Parts:Lay(m, "party")
+	end
+end)
 function Parts:HookMember(member)
 	if hookedMember[member] or type(member) ~= "table" or type(member.UpdateNameTextAnchors) ~= "function" then
 		return
 	end
 	hookedMember[member] = true
-	hooksecurefunc(member, "UpdateNameTextAnchors", function(m)
-		if Parts:Of("party.name") then
-			Later(function()
-				Parts:Lay(m, "party")
-			end)
-		end
-	end)
+	hooksecurefunc(member, "UpdateNameTextAnchors", OnMemberAnchors)
 end
 
 -- every frame laid again: ours, and the game's party members

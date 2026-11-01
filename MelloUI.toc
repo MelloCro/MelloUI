@@ -16,6 +16,7 @@ Core\Core.lua
 Core\Perf.lua
 Core\Schedule.lua
 Core\Companions.lua
+Core\Overlaps.lua
 Core\QuestObjectives.lua
 Core\MapLayer.lua
 Core\QuestAreas.lua
@@ -64,6 +65,7 @@ Media\CustomFonts.lua
 Media\CustomTextures.lua
 Media\QuestListData.lua
 Media\TrainerSpells.lua
+Media\SupportersData.lua
 Media\PlaceData.lua
 Media\ClassIcons.lua
 Media\IconSizes.lua
@@ -80,6 +82,7 @@ Modules\KitWindow.lua
 Modules\KitShade.lua
 Modules\KitBorders.lua
 Modules\UIModifications.lua
+Modules\OwnBars.lua
 Modules\DarkMode.lua
 Modules\Fonts.lua
 Modules\ClassIcons.lua
@@ -108,6 +111,9 @@ Modules\CustomSounds.lua
 Modules\Nameplates.lua
 Modules\PlateImpact.lua
 Modules\Tooltip.lua
+Modules\UnitFramesOwn.lua
+Modules\UnitFramesTarget.lua
+Modules\UnitFramesPet.lua
 Modules\UnitFrames.lua
 Modules\Fader.lua
 Modules\QuestAuto.lua

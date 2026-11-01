@@ -40,7 +40,8 @@ local T = {
 	ICONS = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\",
 	MARK = "goal_cream",        -- the place found, marked
 	ORDER = 45,                 -- the mark's layer: over the group, under the player
-	KIND_RANK = { place = 1, area = 2, log = 3, dungeon = 4, raid = 4, flight = 5, dock = 6, quest = 7, giver = 8 },
+	KIND_RANK = { place = 1, area = 2, log = 3, dungeon = 4, raid = 4, flight = 5, dock = 6, airship = 6, quest = 7,
+		giver = 8 },
 }
 
 local TEXT = {
@@ -48,6 +49,7 @@ local TEXT = {
 	place = { zone = "Zone", city = "City", continent = "Continent" },
 	area = "Place",
 	log = "Your quest", dungeon = "Dungeon", raid = "Raid", flight = "Flight master", dock = "Boat or zeppelin",
+	airship = "Airship",   -- (qu-03: Zephras Isle's)
 	quest = "Quest", giver = "Quest giver",
 	none = "Nothing on the map by that name.",
 }

@@ -296,6 +296,13 @@ Lang:Add("esES", {
 	["Repairs your gear and sells junk at merchants."] = "Repara tu equipo y vende la chatarra en los vendedores.", -- draft
 	["FPS / Latency"] = "FPS / Latencia", -- draft
 	["A small FPS and latency readout in the bottom right corner."] = "Un pequeño indicador de FPS y latencia abajo a la derecha.", -- draft
+	-- OwnBars
+	["Own Bars"] = "Barras propias", -- draft
+	["The experience and reputation bars and the bag bar as MelloUI's own: placed by Edit Layout and the profiles."] = "Las barras de experiencia y reputación y la barra de bolsas como propias de MelloUI: colocadas por Editar diseño y los perfiles.", -- draft
+	["Vertical Bag Bar"] = "Barra de bolsas vertical", -- draft
+	["The bag bar stands upright instead of lying flat."] = "La barra de bolsas se pone de pie en lugar de tumbada.", -- draft
+	["Bags On The Other Side"] = "Bolsas al otro lado", -- draft
+	["The bag slots line up on the other side of the backpack (right instead of left, or down instead of up)."] = "Las ranuras de bolsas se alinean al otro lado de la mochila (a la derecha en vez de a la izquierda, o abajo en vez de arriba).", -- draft
 	-- DarkMode
 	["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours."] = "Oscurece toda la interfaz: las ventanas y marcos de MelloUI, el arte del juego y el reskin pintado. Los iconos y el texto conservan sus colores.", -- draft
 	["Dim the gold and the glare. The interface steps back, the world steps forward."] = "Atenúa el oro y el brillo. La interfaz se retira, el mundo avanza.", -- draft
@@ -1743,6 +1750,8 @@ Lang:Add("esES", {
 	["The height of each frame."] = "La altura de cada marco.", -- draft
 	["Party Spacing"] = "Separación del grupo", -- draft
 	["The space between the party's frames."] = "El espacio entre los marcos del grupo.", -- draft
+	["Vertical Spacing"] = "Espaciado vertical", -- draft
+	["The space between the party frames with portraits."] = "El espacio entre los marcos de grupo con retratos.", -- draft
 	["Party Grows"] = "Crecimiento del grupo", -- draft
 	["Which way the party's frames line up."] = "Hacia dónde se alinean los marcos del grupo.", -- draft
 	["Party Order"] = "Orden del grupo", -- draft
@@ -1842,7 +1851,7 @@ Lang:Add("esES", {
 	["Big Cooldowns"] = "Grandes reutilizaciones", -- draft
 	["Your big defensive cooldowns (Shield Wall, Evasion, Ice Block...) as icons above the health bar."] = "Tus grandes tiempos de reutilización defensivos (Muro de escudo, Evasión, Bloque de hielo...) como iconos sobre la barra de salud.", -- draft
 	["Percent And Spell Text"] = "Porcentaje y texto de hechizo", -- draft
-	["Health and power percent, spell names and times, and your shield's amount."] = "Salud y poder en porcentaje, nombres y tiempos de hechizos, y la cantidad de tu escudo.", -- draft
+	["Health and power percent, spell names and times."] = "Porcentaje de salud y poder, nombres y tiempos de hechizos.", -- draft
 	["Text Font"] = "Fuente del texto", -- draft
 	["The font of the display's text. Shared: the interface font."] = "La fuente del texto de la pantalla. Compartida: la fuente de la interfaz.", -- draft
 	["Class Colours"] = "Colores de clase", -- draft
@@ -2167,6 +2176,7 @@ Lang:Add("esES", {
 	["Only with Route on"] = "Solo con Ruta activa", -- draft
 	["Only with FPS / Latency on"] = "Solo con FPS / latencia activo", -- draft
 	["Only with Raid Frames"] = "Solo con Marcos de banda", -- draft
+	["Only with Party Frames (Portraits)"] = "Solo con marcos de grupo (retratos)", -- draft
 	["Only with Flat colour"] = "Solo con Color liso", -- draft
 	["Only with Missing Health on"] = "Solo con Salud perdida activa", -- draft
 	["Only with Heal Flight on"] = "Solo con Efectos de sanación activos", -- draft
@@ -2199,12 +2209,20 @@ Lang:Add("esES", {
 	-- Core/Config.lua
 	["Module based interface tweaks for World of Warcraft: Forever."] = "Ajustes de interfaz por módulos para World of Warcraft: Forever.", -- draft
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toda tu configuración bajo un nombre. Guárdala, cárgala o hazla la predeterminada de una instalación nueva.", -- draft
+	["Supporters"] = "Colaboradores", -- draft
+	["The people who help keep MelloUI going."] = "Las personas que mantienen MelloUI en marcha.", -- draft
 	["Edit Layout: Revert and Default place for each element; switch, make, copy, rename, delete and share Edit Mode layouts from the bar."] = "Editar diseño: Revertir y Lugar predeterminado para cada elemento; cambia, crea, copia, renombra, borra y comparte diseños del modo Edición desde la barra.", -- draft
-	["Edit Layout: attach the game's elements to each other, as in Edit Mode."] = "Editar diseño: une los elementos del juego entre sí, como en el modo de edición.", -- draft
+	["Edit Layout: attach elements as in Edit Mode; your other characters are asked again to use MelloUI's layout."] = "Editar diseño: une elementos como en el modo de edición; tus otros personajes vuelven a recibir la pregunta para usar el diseño de MelloUI.", -- draft
 	["Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab."] = "Editar diseño: el tamaño del medidor de daño se ve mientras lo cambias; el recuadro del jugador abarca la pestaña del medidor.", -- draft
-	["The map zoomed out: capitals, docks with their boat and zeppelin trails, dungeons, raids and your quests."] = "El mapa alejado: capitales, muelles con las rutas de barcos y zepelines, mazmorras, bandas y tus misiones.", -- draft
-	["Default skin: the player frame stays sharp when scaled up."] = "Skin Predeterminado: el marco del jugador sigue nítido al agrandarlo.", -- draft
-	["Loading a profile made for another screen offers Fit to this screen."] = "Cargar un perfil hecho para otra pantalla ofrece Ajustar a esta pantalla.", -- draft
+	["The map zoomed out: each capital in its own emblem, boat, zeppelin and airship trails, dungeons, raids, your quests, and Zephras Isle."] = "El mapa alejado: cada capital con su propio emblema, rutas de barcos, zepelines y aeronaves, mazmorras, bandas, tus misiones y Zephras Isle.", -- draft
+	["Route follows Polestar: its step in the tracker and on the map, one arrow and one route; its own features go first."] = "Route sigue a Polestar: su paso en el seguimiento y en el mapa, una flecha y una ruta; sus propias funciones van primero.", -- draft
+	["The World Marker and the route point at the same step again on quests that need an item first."] = "El marcador del mundo y la ruta vuelven a señalar el mismo paso en las misiones que primero piden un objeto.", -- draft
+	["Level Up Card: its own place, movable in Edit Layout, bigger, everything fits."] = "Tarjeta de subida de nivel: su propio lugar, movible en Editar diseño, más grande, todo cabe.", -- draft
+	["Personal Display: the shield column keeps its colours, icons and amount; interrupted casts show only on its cast bar."] = "Pantalla personal: la columna de escudos mantiene colores, iconos y cantidad; los hechizos interrumpidos solo se muestran en su barra de lanzamiento.", -- draft
+	["Oldschool's action bars keep their painted frames; Default's player frame stays sharp when scaled up."] = "Las barras de acción de Oldschool conservan sus marcos pintados; el marco del jugador de Default sigue nítido al agrandarlo.", -- draft
+	["Your unit, party and raid frames, the experience bars and the bag bar are MelloUI's own: placed by Edit Layout and your profiles."] = "Tus marcos de unidad, grupo y banda, las barras de experiencia y la barra de bolsas son propios de MelloUI: colocados por Editar diseño y tus perfiles.", -- draft
+	["A fresh Mello layout for wide screens, fitted to every other; Keep My Layout keeps your own places; profiles offer Fit to this screen."] = "Un nuevo diseño Mello para pantallas anchas, ajustado a todas las demás; Mantener mi diseño conserva tus posiciones; los perfiles ofrecen Ajustar a esta pantalla.", -- draft
+	["The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going."] = "El botón de MelloUI está dentro del menú del juego, bajo Opciones; una página de Patrocinadores en Perfiles agradece a quienes mantienen MelloUI.", -- draft
 	["Effects: bolder heals and cooldowns across the whole frame; Buff Landings in each school's colour; a threat halo (untick Hide Combat Flash)."] = "Efectos: sanaciones y reutilizaciones más marcadas en todo el marco; llegadas de beneficios en el color de su escuela; un halo de amenaza (desmarca Ocultar destello de combate).", -- draft
 	["Heals burst, seal onto the portrait or close round the frame as a shield; cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards, golden barriers, afterimages."] = "Las sanaciones estallan, se sellan en el retrato o se cierran como escudo alrededor del marco; reutilizaciones: ondas de choque para un rugido, un ! rojo para una provocación, guardias de acero, barreras doradas, imágenes residuales.", -- draft
 	["Frames: Hide Heal Numbers on your portrait; the meter's numbers in a tab on your frame and each party frame; party: Flip, Mouseover Highlight, Raid's look in raid frames."] = "Marcos: Ocultar números de sanación en tu retrato; los números del medidor en una pestaña en tu marco y cada marco de grupo; grupo: Voltear, Resaltado al pasar el ratón, el aspecto de Banda en los marcos de banda.", -- draft
@@ -2259,6 +2277,8 @@ Lang:Add("esES", {
 	["the bag window's money rolling up (bags open)"] = "el dinero de la ventana de bolsas subiendo (bolsas abiertas)", -- draft
 	["the Bags Full Warning on the Empty slot or bag button"] = "el Aviso de bolsas llenas en la casilla Vacías o el botón de bolsa", -- draft
 	["Mello's Edit Mode layout, fitted to your screen"] = "el diseño del Modo edición de Mello, ajustado a tu pantalla", -- draft
+	["your Edit Mode layout as the game holds it, to send"] = "tu diseño del modo de edición tal como lo guarda el juego, para enviar", -- draft
+	["the shield column and its last events, to send"] = "la columna de escudo y sus últimos eventos, para enviar", -- draft
 	["the guided tour of this window"] = "la visita guiada de esta ventana", -- draft
 	["what MelloUI costs: its time per frame, its slowest frames"] = "lo que cuesta MelloUI: su tiempo por fotograma, sus fotogramas más lentos", -- draft
 	["measure while you play (30 s, or /melloperf record 60)"] = "mide mientras juegas (30 s, o /melloperf record 60)", -- draft
@@ -2374,6 +2394,11 @@ Lang:Add("esES", {
 	["Not imported: %s."] = "No importado: %s.", -- draft
 	["Profile '%s' imported (%d settings). Load it from the list to use it."] = "Perfil «%s» importado (%d ajustes). Cárgalo desde la lista para usarlo.", -- draft
 	["No profiles yet. Type a name above and save the current settings."] = "Aún no hay perfiles. Escribe un nombre arriba y guarda los ajustes actuales.", -- draft
+	["Legends"] = "Leyendas", -- draft
+	["Champions"] = "Campeones", -- draft
+	["MelloUI is free for everyone and always will be. These are the people who help keep it going. Thank you, all of you!"] = "MelloUI es gratis para todos y siempre lo será. Estas son las personas que lo mantienen en marcha. ¡Gracias a todos!", -- draft
+	["No names here yet. They show up with each MelloUI update."] = "Aún no hay nombres. Aparecen con cada actualización de MelloUI.", -- draft
+	["As of %s"] = "A fecha de %s", -- draft
 	["Search options"] = "Buscar opciones", -- draft
 	["Nothing found. Try another word."] = "No se encontró nada. Prueba otra palabra.", -- draft
 	["%d more. Type more letters to narrow it down."] = "%d más. Escribe más letras para acotar.", -- draft
@@ -2401,6 +2426,8 @@ Lang:Add("esES", {
 	["Paused while Edit Mode is open."] = "En pausa mientras el Modo edición está abierto.", -- draft
 	["%s installed. Keep it, or MelloUI goes back to 'Before install' when the timer runs out."] = "%s instalado. Consérvalo, o MelloUI vuelve a «Before install» cuando se acabe el tiempo.", -- draft
 	["Your layout was fitted to this screen. Keep it, or MelloUI goes back to 'Before install' when the timer runs out."] = "Tu diseño se ajustó a esta pantalla. Consérvalo, o MelloUI vuelve a «Before install» cuando se acabe el tiempo.", -- draft
+	["MelloUI's Edit Mode layout did not go in (%s). Your own layout stays; /mello layout check shows why."] = "El diseño del modo de edición de MelloUI no se aplicó (%s). Tu diseño se queda; /mello layout check muestra por qué.", -- draft
+	["the screen was not fitted"] = "la pantalla no se ajustó", -- draft
 	["Back to 'Before install'."] = "De vuelta a «Before install».", -- draft
 	["Something went wrong while installing, so MelloUI went back to 'Before install'."] = "Algo salió mal durante la instalación, así que MelloUI volvió a «Before install».", -- draft
 	["Something went wrong while installing. Use Revert to go back to 'Before install'."] = "Algo salió mal durante la instalación. Usa Revertir para volver a «Before install».", -- draft
@@ -2619,6 +2646,7 @@ Lang:Add("esES", {
 -- stale: ["+ Buff"] = "+ Beneficio", -- draft
 -- stale: ["+ Debuff (by kind)"] = "+ Perjuicio (por tipo)", -- draft
 -- stale: ["A Read button on the quest log's details view: the quest's description in the giver's voice (the recorded offer line when a pack has it), then the recorded objectives when the voice pack has them (Quest Objectives). Also /vo read."] = "Un botón Leer en la vista de detalles del registro de misiones: la descripción de la misión con la voz del dador (la línea de oferta grabada si un paquete la tiene), y luego los objetivos grabados si el paquete de voces los tiene (Objetivos de misión). También /vo read.", -- draft
+-- stale: ["A Supporters page under Profiles: the people who help keep MelloUI going."] = "Una página de Colaboradores bajo Perfiles: las personas que mantienen MelloUI en marcha.", -- draft
 -- stale: ["A backdrop round Action Bar 1, merged into one with the other switched-on elements placed next to it. Off: no backdrop, and it joins none."] = "Un fondo alrededor de la barra de acción 1, fusionado en uno con los demás elementos activados colocados a su lado. Desactivado: sin fondo, y no se une a ninguno.", -- draft
 -- stale: ["A backdrop round Action Bar 2, merged into one with the other switched-on elements placed next to it. Off: no backdrop, and it joins none."] = "Un fondo alrededor de la barra de acción 2, fusionado en uno con los demás elementos activados colocados a su lado. Desactivado: sin fondo, y no se une a ninguno.", -- draft
 -- stale: ["A backdrop round Action Bar 3, merged into one with the other switched-on elements placed next to it. Off: no backdrop, and it joins none."] = "Un fondo alrededor de la barra de acción 3, fusionado en uno con los demás elementos activados colocados a su lado. Desactivado: sin fondo, y no se une a ninguno.", -- draft
@@ -2785,6 +2813,7 @@ Lang:Add("esES", {
 -- stale: ["Dead, Ghost or Offline written on a member's frame."] = "Muerto, Fantasma o Desconectado escrito en el marco de un miembro.", -- draft
 -- stale: ["Default UI Brightness"] = "Brillo de la interfaz predeterminada", -- draft
 -- stale: ["Default UI brightness"] = "Brillo del juego", -- draft
+-- stale: ["Default skin: the player frame stays sharp when scaled up."] = "Skin Predeterminado: el marco del jugador sigue nítido al agrandarlo.", -- draft
 -- stale: ["Distance from the bottom edge of the screen."] = "Distancia desde el borde inferior de la pantalla.", -- draft
 -- stale: ["Distance from the right edge of the screen."] = "Distancia desde el borde derecho de la pantalla.", -- draft
 -- stale: ["Do not show tooltips for units while in combat."] = "No muestra descripciones de unidades en combate.", -- draft
@@ -2798,6 +2827,7 @@ Lang:Add("esES", {
 -- stale: ["Each frame's width (the game's raid frame: 72)."] = "El ancho de cada marco (el marco de banda del juego: 72).", -- draft
 -- stale: ["Edit Layout, bags and groups: more windows move without the reskin; quality gems and junk on every slot; party and raid frames keep their own places and indicators."] = "Editar diseño, bolsas y grupos: más ventanas se mueven sin el aspecto pintado; gemas de calidad y chatarra en cada casilla; los marcos de grupo y de banda mantienen sus propios lugares e indicadores.", -- draft
 -- stale: ["Edit Layout: a dock at the top, the Elements list to show, hide, lock or single out any part, and the game's Edit Mode settings in each part's box."] = "Editar disposición: un dock arriba, la lista de elementos para mostrar, ocultar, bloquear o aislar cualquier parte, y los ajustes del modo edición del juego en la caja de cada parte.", -- draft
+-- stale: ["Edit Layout: attach the game's elements to each other, as in Edit Mode."] = "Editar diseño: une los elementos del juego entre sí, como en el modo de edición.", -- draft
 -- stale: ["Edit Mode already keeps %d account layouts, the most it can. Delete one in Edit Mode, or switch the layout off on the Screen step."] = "El Modo edición ya guarda %d diseños de cuenta, el máximo que admite. Borra uno en el Modo edición o desactiva el diseño en el paso Pantalla.", -- draft
 -- stale: ["Elites, rares, rare elites and bosses stand out: a metal line over the name with a crest on it. Gold with a crown and wings for an elite, silver with a star for a rare, silver with a gold star and wings for a rare elite, and red-bronze scrollwork with a skull, winged at both ends, for a boss. The plate itself keeps its look."] = "Los élites, raros, élites raros y jefes destacan: una línea de metal sobre el nombre con un blasón. Oro con corona y alas para un élite, plata con una estrella para un raro, plata con estrella dorada y alas para un élite raro, y volutas de bronce rojizo con una calavera, aladas en ambos extremos, para un jefe. La placa en sí conserva su aspecto.", -- draft
 -- stale: ["Every MelloUI animation ends at once: windows open without fading, the whisper popup appears in place, the quest tracker's lines do not flash, the configurator jumps instead of gliding. For anyone who finds moving interface parts distracting. Works with UI Modifications switched off as well."] = "Cada animación de MelloUI termina al instante: las ventanas se abren sin fundido, la ventana de susurros aparece en su sitio, las líneas del rastreador de misiones no destellan, el configurador salta en lugar de deslizarse. Para quien encuentre molestas las partes móviles de la interfaz. Funciona también con Ajustes de IU desactivado.", -- draft
@@ -2846,6 +2876,7 @@ Lang:Add("esES", {
 -- stale: ["Hand a finished quest in as soon as you talk to whoever takes it, and pick it from their list first. A choice of rewards waits for you (unless Take The Upgrade is on), and so do a hand-in that costs money and repeatable turn-ins."] = "Entrega una misión terminada en cuanto hablas con quien la recibe, eligiéndola antes de su lista. Una elección de recompensas te espera (salvo que Elegir la mejora esté activo), y también una entrega que cuesta dinero y las entregas repetibles.", -- draft
 -- stale: ["Heal and cooldown effects: bolder and across the whole frame; the portrait and the bars each play their own part, the gold border lit all round."] = "Efectos de sanación y de tiempos de reutilización: más intensos y en todo el marco; el retrato y las barras hacen cada uno su parte, el borde dorado se ilumina alrededor.", -- draft
 -- stale: ["Heal and cooldown effects: bolder, across the whole frame, the gold border lit all round; a threat halo fitted to each frame (untick Hide Combat Flash)."] = "Efectos de sanación y reutilización: más marcados, por todo el marco, el borde dorado iluminado alrededor; un halo de amenaza ajustado a cada marco (desmarca Ocultar destello de combate).", -- draft
+-- stale: ["Health and power percent, spell names and times, and your shield's amount."] = "Salud y poder en porcentaje, nombres y tiempos de hechizos, y la cantidad de tu escudo.", -- draft
 -- stale: ["Health bar backgrounds/borders and cast bars on nameplates."] = "Fondos/bordes de las barras de salud y barras de lanzamiento en las placas de nombre.", -- draft
 -- stale: ["Hide Quests More Than N Levels Above Me"] = "Ocultar misiones más de N niveles por encima", -- draft
 -- stale: ["Hide the PvP badge beside the portrait of the player, target and focus frames: the diamond with your honour rank, or the faction icon, that shows while you or they are flagged for PvP."] = "Oculta la insignia JcJ junto al retrato de los marcos de jugador, objetivo y foco: el rombo con tu rango de honor, o el icono de facción, que aparece mientras tú o ellos estáis marcados para JcJ.", -- draft
@@ -2926,6 +2957,7 @@ Lang:Add("esES", {
 -- stale: ["In silver: a stack worth this or more is never thrown away (selling it at a vendor still is). 100 silver = 1 gold."] = "En plata: un montón que valga esto o más nunca se tira (venderlo en un vendedor, sí). 100 de plata = 1 de oro.", -- draft
 -- stale: ["In the box that splits a stack (Shift-click a stack), the mouse wheel changes the amount: up adds one, down takes one, ten at a time while you hold Shift."] = "En la caja que divide un montón (Mayús-clic en un montón), la rueda del ratón cambia la cantidad: arriba suma uno, abajo quita uno, de diez en diez mientras mantienes Mayús.", -- draft
 -- stale: ["Indicators for %s"] = "Indicadores para %s", -- draft
+-- stale: ["Interrupted casts show only on the Personal Display's cast bar, with their word."] = "Los hechizos interrumpidos solo se muestran en la barra de lanzamiento de la pantalla personal, con su palabra.", -- draft
 -- stale: ["Into a fight the bars rise into place; a moment after it they settle a little lower, until the next one. (To fade them out of combat: the Fader.)"] = "Al entrar en combate las barras suben a su sitio; un momento después de acabar se asientan un poco más abajo, hasta el siguiente. (Para desvanecerlas fuera de combate: Desvanecer.)", -- draft
 -- stale: ["Iron in the palette's own colours"] = "Hierro en los colores de la paleta", -- draft
 -- stale: ["Iron in warm browns"] = "Hierro en marrones cálidos", -- draft
@@ -2954,6 +2986,8 @@ Lang:Add("esES", {
 -- stale: ["List quests whose giver or starting item is not known yet."] = "Lista las misiones cuyo dador u objeto de inicio aún no se conoce.", -- draft
 -- stale: ["List the quests you hid (Alt-click a quest giver's mark on the map, or a quest in the list), dimmed, so you can Alt-click them back. Hidden quests stay off the map either way. Hiding is kept per character."] = "Lista las misiones que ocultaste (Alt-clic en la marca de un dador en el mapa, o en una misión de la lista), atenuadas, para que puedas recuperarlas con Alt-clic. Las misiones ocultas siguen fuera del mapa en cualquier caso. Lo oculto se guarda por personaje.", -- draft
 -- stale: ["Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 13 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it."] = "Carga todo el arte del aspecto durante la pantalla de carga, para que una ventana abierta por primera vez tras recargar muestre su arte al instante y no un momento después. Mantiene unos 13 MB de arte en memoria durante toda la sesión, también para ventanas que nunca abres. Desactivado: cada pieza se carga la primera vez que una ventana la necesita.", -- draft
+-- stale: ["Loading a profile made for another screen offers Fit to this screen."] = "Cargar un perfil hecho para otra pantalla ofrece Ajustar a esta pantalla.", -- draft
+-- stale: ["Loading a profile made for another screen offers Fit to this screen; Gains keeps its place on a wide screen."] = "Cargar un perfil hecho para otra pantalla ofrece Ajustar a esta pantalla; Ganancias mantiene su sitio en una pantalla ancha.", -- draft
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "Miembros inventados donde están tus marcos de grupo, con los indicadores de esta lista, hasta que acabe la vista previa. Solo fuera de combate.", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "Miembros inventados donde están tus marcos de banda, con tus indicadores, hasta que acabe la vista previa. Solo fuera de combate.", -- draft
 -- stale: ["Mana, rage, energy and focus you gain (+12 Rage)."] = "El maná, la ira, la energía y el enfoque que ganas (+12 Ira).", -- draft
@@ -3004,6 +3038,7 @@ Lang:Add("esES", {
 -- stale: ["Nudge the text left (negative) or right (positive) from where Blizzard places its own bar text."] = "Mueve el texto a la izquierda (negativo) o a la derecha (positivo) desde donde Blizzard coloca su propio texto de barra.", -- draft
 -- stale: ["Off Hand Bar"] = "Barra de mano izquierda", -- draft
 -- stale: ["Off-hand bar"] = "Barra de mano izquierda", -- draft
+-- stale: ["Oldschool's action bars keep their painted frames."] = "Las barras de acción de Oldschool mantienen sus marcos pintados.", -- draft
 -- stale: ["On a quest's tooltip in the Quest List, name your other characters who have done the quest or have it in their quest log. A character is noted each time it logs out; /mello alts lists them and forgets a deleted one."] = "En la descripción de una misión en la Lista de misiones, nombra a tus otros personajes que han hecho la misión o la tienen en su registro. Un personaje se anota cada vez que se desconecta; /mello alts los lista y olvida uno borrado.", -- draft
 -- stale: ["On the game's nameplates: the large crowd-control icon above the name, the quest marker on enemies you still need, the threat line, the combo points on your target's plate, the names' form (Show Names As) and the soft shade behind the names (Name Shade). Off: all six go. Works with or without the reskin."] = "En las placas de nombre del juego: el icono grande de control de masas sobre el nombre, el marcador de misión en los enemigos que aún necesitas, la línea de amenaza, los puntos de combo en la placa de tu objetivo, la forma de los nombres (Mostrar nombres como) y la sombra suave tras los nombres (Sombra del nombre). Desactivado: se van los seis. Funciona con o sin el aspecto pintado.", -- draft
 -- stale: ["On the target, show only the debuffs you put on it."] = "En el objetivo, muestra solo los perjuicios que le pusiste tú.", -- draft
@@ -3030,6 +3065,7 @@ Lang:Add("esES", {
 -- stale: ["Party Frames (Portraits): indicators for %s"] = "Marcos de grupo (retratos): indicadores para %s", -- draft
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "Marcos de grupo: Voltear horizontalmente para un grupo a la derecha; Mostrarte en tu grupo corregido para retratos; el resaltado al pasar el ratón ilumina el marco bajo tu ratón.", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "Paga las reparaciones con el banco de hermandad cuando esté permitido. Si la hermandad no puede cubrir el coste, usa tu propio oro.", -- draft
+-- stale: ["Personal Display: the shield column keeps its colours, icons and amount in a fight."] = "Pantalla personal: la columna de escudos mantiene sus colores, iconos y cantidad en combate.", -- draft
 -- stale: ["Pet, their targets, Party portraits"] = "Mascota, sus objetivos, retratos del grupo", -- draft
 -- stale: ["Pick \"%s\" first."] = "Elige «%s» primero.", -- draft
 -- stale: ["Pick an indicator above, or add one."] = "Elige un indicador de arriba o añade uno.", -- draft
@@ -3241,6 +3277,7 @@ Lang:Add("esES", {
 -- stale: ["The light that flies from your cast bar to the frame when a cast heal ends (Chain Heal's hops too). Off: the heal lands on the frame the moment the cast ends, as an instant one does; the glow on your cast bar while you cast and every effect on the frames stay."] = "La luz que vuela de tu barra de lanzamiento al marco al acabar una sanación lanzada (también los saltos de Sanación en cadena). Desactivado: la sanación aterriza en el marco en el momento en que acaba el lanzamiento, como una instantánea; el brillo en tu barra de lanzamiento mientras lanzas y cada efecto en los marcos se mantienen.", -- draft
 -- stale: ["The look of the whole interface: the soft shade, fonts, icons, Dark Mode, the bar texture and fading. The painted reskin and its palettes are on the Oldschool page."] = "El aspecto de toda la interfaz: la sombra suave, las fuentes, los iconos, el modo oscuro, la textura de barra y el desvanecido. El aspecto pintado y sus paletas están en la página Oldschool.", -- draft
 -- stale: ["The map in the painted ring."] = "El mapa en el anillo pintado.", -- draft
+-- stale: ["The map zoomed out: capitals, docks with their boat and zeppelin trails, dungeons, raids and your quests."] = "El mapa alejado: capitales, muelles con las rutas de barcos y zepelines, mazmorras, bandas y tus misiones.", -- draft
 -- stale: ["The mechanism engaging when a quest is turned in."] = "El mecanismo que encaja al entregar una misión.", -- draft
 -- stale: ["The medallion's size above the name."] = "El tamaño del medallón sobre el nombre.", -- draft
 -- stale: ["The melee bar: each swing of your main hand counted down, shrinking to the middle. A wand's shots (Shoot) count down on it too."] = "La barra cuerpo a cuerpo: cada golpe de tu mano derecha en cuenta atrás, encogiéndose hacia el centro. Los disparos de una varita (Disparar) también cuentan en ella.", -- draft
@@ -3441,8 +3478,10 @@ Lang:Add("esES", {
 -- stale: ["Your target's frame (and its target's). Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "El marco de tu objetivo (y el de su objetivo). Siempre: nunca desvanecido. En combate: desvanecido fuera de combate, de vuelta en combate. Al pasar el ratón: desvanecido todo el tiempo, visible mientras lo señalas.", -- draft
 -- stale: ["Your target's health bar flashes a moment when it is hit; a critical hit flashes gold."] = "La barra de salud de tu objetivo destella un momento al recibir un golpe; un golpe crítico destella en dorado.", -- draft
 -- stale: ["Your target's nameplate answers the fight: hits flash its bar, the part a hit took drains away, crits glow gold, a dodge or a miss flicks off its edge, an enemy's cast glows hotter towards its end and shatters when you interrupt it, and the killing blow flashes the bar out."] = "La placa de nombre de tu objetivo responde al combate: los golpes hacen destellar su barra, la parte que se llevó un golpe se vacía, los críticos brillan dorados, una esquiva o un fallo sale disparado de su borde, el lanzamiento de un enemigo se calienta hacia el final y estalla cuando lo interrumpes, y el golpe mortal hace estallar la barra.", -- draft
+-- stale: ["Zephras Isle on the map, with its airship trails."] = "Zephras Isle en el mapa, con las rutas de sus aeronaves.", -- draft
 -- stale: ["boss and target of target"] = "jefes y objetivo del objetivo", -- draft
 -- stale: ["the level-up: your XP bar's light and the notice"] = "la subida de nivel: la luz de tu barra de XP y el aviso", -- draft
 -- stale: ["the level-up: your XP bar's light, the notice and the Level Up Card"] = "la subida de nivel: la luz de tu barra de experiencia, el aviso y la tarjeta de nivel", -- draft
 -- stale: ["the nameplates' debuffs"] = "los perjuicios de las placas de nombre", -- draft
+-- stale: ["what the game holds for your Edit Mode layout, to copy and send"] = "lo que el juego guarda de tu diseño del modo de edición, para copiar y enviar", -- draft
 -- stale: ["with Services on"] = "con Servicios activos", -- draft

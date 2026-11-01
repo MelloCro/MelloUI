@@ -42,6 +42,11 @@ import urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOC = os.path.join(ROOT, "MelloUI.toc")
 NOTES_DIR = os.path.join(ROOT, "docs", "discord")
+# (2.1.0, the user's pick of 2026-10-31: Champions and Legends thanked in every release post) the names the game's
+# Supporters page shows, written by MBot's `npm run supporters`: the post and the game always agree
+SUPPORTERS = os.path.join(ROOT, "Media", "SupportersData.lua")
+THANKED = (("legend", "Legends"), ("champion", "Champions"))
+FIELD_LIMIT = 1024         # Discord's cap on a field's value
 
 REPO = "MelloCro/MelloUI"
 RELEASES = f"https://github.com/{REPO}/releases"
@@ -83,7 +88,46 @@ def describe(body: str) -> str:
     return text
 
 
-def payload(version: str, body: str, role_id: str = "") -> dict:
+def supporters(path: str = SUPPORTERS) -> dict:
+    """{tier: [names]} from the data file's one line per tier (`\tlegend = { "A", "B" },`); {} without the file."""
+    if not os.path.isfile(path):
+        return {}
+    out = {}
+    for line in read(path).splitlines():
+        m = re.match(r'^\t(\w+) = \{(.*)\},\s*$', line)
+        if m:
+            out[m.group(1)] = [re.sub(r'\\(.)', r'\1', s) for s in re.findall(r'"((?:\\.|[^"\\])*)"', m.group(2))]
+    return out
+
+
+def thanks(tiers: dict) -> str:
+    """The thank-you line: Legends, then Champions, their names as plain text (Discord's markdown escaped); "" with
+    nobody to thank. Never cut mid-name: the names that do not fit become "and N more"."""
+    parts = []
+    for key, label in THANKED:
+        names = [re.sub(r'([\\*_`~|>#\[\]()<@:])', r'\\\1', n) for n in tiers.get(key, [])]
+        if names:
+            parts.append((label, names))
+    if not parts:
+        return ""
+    text = " · ".join(f"**{label}:** " + ", ".join(names) for label, names in parts)
+    if len(text) <= FIELD_LIMIT:
+        return text
+    kept, left, size = [], sum(len(n) for _, n in parts), 0
+    for label, names in parts:
+        fit = []
+        for n in names:
+            if size + len(n) + 2 > FIELD_LIMIT - 40:
+                break
+            fit.append(n)
+            size += len(n) + 2
+        left -= len(fit)
+        if fit:
+            kept.append(f"**{label}:** " + ", ".join(fit))
+    return " · ".join(kept) + f" … and {left} more"
+
+
+def payload(version: str, body: str, role_id: str = "", tiers: dict | None = None) -> dict:
     embed = {
         "title": f"MelloUI {version}",
         "url": f"{RELEASES}/tag/v{version}",
@@ -108,6 +152,9 @@ def payload(version: str, body: str, role_id: str = "") -> dict:
         ],
         "footer": {"text": "Your settings are kept. /mello status says where they came from."},
     }
+    line = thanks(supporters() if tiers is None else tiers)
+    if line:
+        embed["fields"].insert(2, {"name": "Thank you 💜", "value": line, "inline": False})
     out = {
         "username": "MBot",
         "embeds": [embed],

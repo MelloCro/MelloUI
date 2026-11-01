@@ -38,6 +38,14 @@
 --       drawn out from its middle under it, `sub` smaller under the rule in
 --       the body text's colour; held and faded as any line, its sound
 --       info's. Sent to the chat instead: the two as one line.
+--   MelloUI:AskReload(text)
+--       (fr-16) a change a /reload finishes: `text` said once a session --
+--       Announce's info line, and in the chat too (the line fades, the chat
+--       keeps it) unless the notices go there already. Never a Reload button:
+--       the game blocks a reload MelloUI's code asks for (0.19.9's in-game
+--       test, "MelloUI blocked by the game: Reload()"); the player's own
+--       /reload is allowed. Edit Mode's saved layout and Group Frames on
+--       again after the game's party frames were in use say theirs here.
 --
 -- The settings are Tweaks' rows beside Chat Notices (read when used, a
 -- missing one as its default, so they hold with Tweaks off):
@@ -547,6 +555,19 @@ function MelloUI:Announce(msg, kind, mute)
 	local sound = SOUND[kind]
 	if sound and not mute and Setting("noticeSounds") then
 		self:PlayUISound(sound)
+	end
+end
+
+-- A change a /reload finishes (see the top): its line once a session
+local reloadAsked = {}   -- [text] = true once said
+function MelloUI:AskReload(msg)
+	if type(msg) ~= "string" or Secret(msg) or reloadAsked[msg] then
+		return
+	end
+	reloadAsked[msg] = true
+	self:Announce(msg, "info")
+	if not Setting("noticeToChat") then
+		self:Print(msg)
 	end
 end
 

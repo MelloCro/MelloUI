@@ -837,8 +837,10 @@ local function LayoutGet()
 	if draft.layout ~= nil then
 		return draft.layout
 	end
+	-- (2.1.0, el-15) on as the installer puts it in: a pass, the screen it is drawn for, or adapted to this one
 	local fit = FitOf()
-	return not (fit and type(fit.report) == "table" and not fit.report.pass)
+	local report = fit and type(fit.report) == "table" and fit.report
+	return not report or (report.pass or report.drawn or report.adapted) and true or false
 end
 
 local function LayoutSet(on)
@@ -1061,11 +1063,18 @@ local function NoteText(page, report)
 		return page.noteText
 	end
 	local text
-	if report and not report.pass then
+	if report and not report.pass and not (report.drawn or report.adapted) then
 		text = MelloUI.Lang.T((type(report.why) == "string" and report.why) or TEXT.notFitted)
 		if report.tooSmall then
 			text = text .. "\n" .. MelloUI.Lang.T(TEXT.suggest)
 		end
+	elseif report and not report.pass then
+		-- (2.1.0, el-15) in all the same (drawn for this screen, or adapted to it): why, then what is worth a look
+		local lines = { MelloUI.Lang.T(type(report.why) == "string" and report.why or TEXT.notFitted) }
+		for i = 1, min(type(report.eye) == "table" and #report.eye or 0, EYE_SHOWN) do
+			lines[#lines + 1] = "- " .. tostring(report.eye[i])
+		end
+		text = concat(lines, "\n")
 	elseif report and type(report.eye) == "table" and #report.eye > 0 then
 		local lines = { MelloUI.Lang.T(TEXT.eyeHead) }
 		for i = 1, min(#report.eye, EYE_SHOWN) do
@@ -1110,7 +1119,8 @@ local function RefreshFit(page)
 	local LayoutFit = MelloUI.LayoutFit
 	local design = report and LayoutFit and abs((Num(report.W) or 0) - (LayoutFit.DESIGN_W or 0)) < 0.5
 		and abs((Num(report.H) or 0) - (LayoutFit.DESIGN_H or 0)) < 0.5
-	aspect.line:SetText(MelloUI.Lang.T(not done and TEXT.beingFitted or (report and not report.pass and TEXT.ownStays)
+	aspect.line:SetText(MelloUI.Lang.T(not done and TEXT.beingFitted
+		or (report and not report.pass and not (report.drawn or report.adapted) and TEXT.ownStays)
 		or (design and TEXT.asMade) or TEXT.fittedTo))
 	Place(aspect, page, 0, y)
 	page.scale.value:SetText(MelloUI.Lang.T(ScaleText()))
@@ -1755,12 +1765,26 @@ local function SetupSteps()
 			return "loaded"
 		end
 		local api = rawget(_G, "C_AddOns")
-		local info = type(api) == "table" and api.GetAddOnInfo or rawget(_G, "GetAddOnInfo")
-		local ok, name = false, nil
-		if type(info) == "function" then
-			ok, name = pcall(info, OLDSCHOOL)
+		-- (2.1.0; the user, 2026-11-01: "its not installed" while the card said switched off) GetAddOnInfo hands back a
+		-- name for an addon that isn't there too (its name is never nil; its reason says MISSING): the client's own
+		-- DoesAddOnExist first, else the reason
+		local exists = type(api) == "table" and api.DoesAddOnExist
+		if type(exists) == "function" then
+			local ok, yes = pcall(exists, OLDSCHOOL)
+			if ok and not Secret(yes) then
+				return yes and "off" or "missing"
+			end
 		end
-		return (ok and type(name) == "string" and not Secret(name)) and "off" or "missing"
+		local info = type(api) == "table" and api.GetAddOnInfo or rawget(_G, "GetAddOnInfo")
+		local ok, name, reason = false, nil, nil
+		if type(info) == "function" then
+			local _
+			ok, name, _, _, _, reason = pcall(info, OLDSCHOOL)
+		end
+		if not (ok and type(name) == "string" and not Secret(name)) or Secret(reason) or reason == "MISSING" then
+			return "missing"
+		end
+		return "off"
 	end
 
 	-- the picks changed: the draft is made again; the fit dropped (keepFit: the Layout step's own pick, which the
@@ -1926,7 +1950,15 @@ local function SetupSteps()
 		if card.key == "oldschool" and OldschoolState() ~= "loaded" then
 			page.getShown = true
 			RefreshPage()
-			if page.get.box:IsShown() then
+			if page.oldschool == "missing" then
+				-- (2.1.0; the user, 2026-11-01: "i want a popup copy window to appear that people can copy it ingame")
+				-- the link in MelloUI's one copy window, selected for Ctrl+C, over the installer
+				MelloUI:ShowText("MelloUI Oldschool on CurseForge", CURSEFORGE)
+				local copy = rawget(_G, "MelloUICopyFrame")
+				if copy and copy.Raise then
+					copy:Raise()
+				end
+			elseif page.get.box:IsShown() then
 				page.get.box:SetFocus()
 				page.get.box:HighlightText()
 			end
@@ -1966,9 +1998,11 @@ local function SetupSteps()
 		if old ~= "loaded" then
 			page.cards[3]:SetAlpha(0.55)   -- (dimmed: a click shows the way to it)
 		end
-		-- the way to MelloUI Oldschool (shown after a click on its card)
-		local get = CreateFrame("Frame", nil, page)
+		-- the way to MelloUI Oldschool (shown after a click on its card), on a plate of its own over the picture's foot
+		-- (2.1.0; the user, 2026-11-01: "still no link appears on the screen": under the cards it fell below the page)
+		local get = W.Box(page, "innerPanel", "border", 1)
 		get:SetSize(PAGE_W, 1)
+		get:Hide()
 		get.line = W.Text(get, "GameFontHighlight", nil, "text")
 		get.line:SetWidth(TEXT_W)
 		get.line:SetPoint("TOPLEFT", get, "TOPLEFT", PAD, 0)
@@ -1997,22 +2031,34 @@ local function SetupSteps()
 		local get = page.get
 		get:SetShown(page.getShown and page.oldschool ~= "loaded" or false)
 		if get:IsShown() then
-			y = y + 12
-			get:ClearAllPoints()
-			get:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
 			local missing = page.oldschool == "missing"
 			get.line:SetText(MelloUI.Lang.T(missing and TEXT.getOldschool or TEXT.enableOldschool))
+			get.line:ClearAllPoints()
+			get.line:SetPoint("TOPLEFT", get, "TOPLEFT", PAD, -10)
 			local h = Num(get.line:GetStringHeight()) or 28
 			get.box:SetShown(missing)
 			get.hint:SetShown(missing)
 			if missing then
 				get.box:ClearAllPoints()
-				get.box:SetPoint("TOPLEFT", get, "TOPLEFT", PAD + 6, -(h + 8))
+				get.box:SetPoint("TOPLEFT", get, "TOPLEFT", PAD + 6, -(10 + h + 8))
 				get.hint:ClearAllPoints()
-				get.hint:SetPoint("TOPLEFT", get, "TOPLEFT", PAD, -(h + 8 + 22 + 6))
+				get.hint:SetPoint("TOPLEFT", get, "TOPLEFT", PAD, -(10 + h + 8 + 22 + 6))
 				h = h + 8 + 22 + 6 + (Num(get.hint:GetStringHeight()) or 14)
 			end
-			y = y + h
+			get:ClearAllPoints()
+			local pic = page.picture
+			if pic and pic:IsShown() then
+				-- over the picture's foot, inside its edge: always on the page, the cards and the page's height unmoved
+				get:SetPoint("BOTTOMLEFT", pic, "BOTTOMLEFT", 8, 8)
+				get:SetPoint("BOTTOMRIGHT", pic, "BOTTOMRIGHT", -8, 8)
+				get:SetHeight(h + 20)
+				get:SetFrameLevel(pic:GetFrameLevel() + 5)
+			else
+				y = y + 12
+				get:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
+				get:SetSize(PAGE_W, h + 20)
+				y = y + h + 20
+			end
 		end
 		return y + 8
 	end
@@ -2331,7 +2377,8 @@ local function OnInstaller(what, a, b)
 			RefreshKeep()
 		end
 	elseif what == "installed" then
-		state.installed, state.keepLine = true, nil
+		-- (2.1.0, el-15) b: the line when Mello's Edit Mode layout did not go in, shown over the countdown (a: the setup)
+		state.installed, state.keepLine = true, type(b) == "string" and b or nil
 		if shown then
 			ShowKeep(1)
 		end

@@ -8,7 +8,8 @@ _The painted stone-and-parchment reskin MelloUI started with, now an addon of it
 *   **Painted frames and bars:** the unit frames' art, the action bars' art and backdrops, the cast bars, the nameplate kit, a border style for every kind of window, and the round painted minimap with its zone plate.
 *   **Eight palettes:** Ember, Obsidian, Royal Azure and Fel Ember, each with a Vibrant version and its own painted kit.
 *   **Parchment:** tooltips, the quest and gossip dialogs and the character window on parchment, the text in dark ink.
-*   **Its own setup:** with Oldschool on, the installer's Full experience brings the painted look with its own layout, and Reskin only paints the UI you already have.
+*   **Painted icons:** its own painted set for MelloUI's buttons, pages and map pins.
+*   **In the installer:** pick Oldschool as your skin on the first page; every other step works the same. You can switch skins any time in `/mello`.
 
 ## Install
 

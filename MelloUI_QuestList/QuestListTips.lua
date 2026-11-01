@@ -264,6 +264,11 @@ local function OnItem(tip, data)
 	if not (M.isEnabled and M.db.tipQuestItems) or (tip ~= GameTooltip and tip ~= _G.ItemRefTooltip) or type(data) ~= "table" then
 		return
 	end
+	-- (2.1.0; the user, 2026-10-31: "Polestar takes priority") another addon writing the item's quest lines: its own
+	local O = MelloUI.Overlaps
+	if O and O.By("questItemTips") then
+		return
+	end
 	local itemID = Number(data.id)   -- (secret first, then a number)
 	if not itemID or HasQuestLines(data) then
 		return

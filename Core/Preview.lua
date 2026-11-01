@@ -251,6 +251,15 @@ local function StandOrigin(w)
 			return tl / us, tb / us - StandGap() * k, k
 		end
 	end
+	-- (fr-16: the host's own first member's place -- Group Frames' portrait party; the game's party frame faded elsewhere)
+	local host = Preview.PartyHost
+	local origin = host and host.Origin
+	if type(origin) == "function" then
+		local okO, ol, ot, ok = pcall(origin)
+		if okO and type(ol) == "number" and type(ot) == "number" and type(ok) == "number" and ok > 0 then
+			return ol, ot, ok
+		end
+	end
 	local pf = rawget(_G, "PartyFrame")
 	local mf = type(pf) == "table" and pf.MemberFrame1
 	local l, _, r, t = nil, nil, nil, nil

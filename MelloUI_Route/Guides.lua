@@ -5,7 +5,8 @@
 -- those coordinates and places a mark on that spot, that could work"), the
 -- others since 2026-10-21 (the user: "add compatibility like we did with
 -- restedxp for ... Follow the Arrow, TUGs Leveling Guidelime Guide ... and some
--- other"): one core for every guide, one reader per addon. While a guide runs:
+-- other"), Polestar since 2.1.0: one core for every guide, one reader per
+-- addon. While a guide runs:
 --   * its step's spot gets the game's map pin, tracked, so the route and the
 --     World Marker lead there (Guide.Step, read by Route's ReadWaypoint on the
 --     pin's USER_WAYPOINT_UPDATED). A pin of the player's own is never moved,
@@ -115,7 +116,7 @@ end
 
 function Guide.Forget()
 	Guide.mapID, Guide.x, Guide.y = nil, nil, nil
-	Guide.sig, Guide.itemSig = nil, nil
+	Guide.sig, Guide.itemSig, Guide.goalSig = nil, nil, nil
 	for _, reader in ipairs(Guide.readers) do
 		reader.sig, reader.quick, reader.lastKey = nil, nil, nil
 	end
@@ -193,6 +194,12 @@ do
 				end
 			end
 		end
+		-- (a guide's drawings on no frame of its own, Polestar's on the minimap: quieted through its own setting, Quiet)
+		for _, r in ipairs(Guide.readers) do
+			if r.Quiet then
+				pcall(r.Quiet, r == reader)
+			end
+		end
 		for frame, v in pairs(veil) do
 			local on = want[frame] or false
 			if on ~= (v and true or false) then
@@ -249,7 +256,8 @@ local function Read(reader)
 	reader.runs = (m or steps) and true or false
 	-- (its step itself -- the guide, the step's number in its title, the spot -- not its lines' progress: what takes over)
 	reader.stepKey = parts[1] .. "|" .. tostring(steps and steps.title)
-	return table.concat(parts, "\n")
+	-- (2.1.0: its title too -- a new step whose lines read as the last one's is a change: its number in its title)
+	return reader.stepKey .. "\n" .. table.concat(parts, "\n", 2)
 end
 
 -- the guide followed: the active one while it runs; else a running guide with steps, else TomTom's arrow
@@ -274,6 +282,7 @@ local function Apply()
 	Guide.Step()
 	Guide.Publish()
 	Guide.PublishItems()
+	Guide.PublishGoals()
 end
 
 -- a reader's post-hook: its step read again; one whose step changed takes over, a guide with steps over a bare arrow
@@ -351,12 +360,13 @@ end
 
 -- the followed guide's step for the Quest Tracker (the user, 2026-10-18: its steps "shown in the quest tracker", with
 -- "the manual checkbox to skip certain steps"), on the bus's "guide": a line per step line, done when completed or
--- skipped, a box when it can be skipped (line.Toggle, the guide's own skip). Published only when a line changed
--- (Guide.sig); nil once there is no guide or it is off.
+-- skipped, a box when it can be skipped (line.Toggle, the guide's own skip). Published only when its title or a line
+-- changed (Guide.sig; 2.1.0: the title too, so a new step shows its own even when its lines read as the last one's);
+-- nil once there is no guide or it is off.
 function Guide.Publish()
 	local reader = Following() and Guide.active
 	local steps = reader and reader.steps
-	local parts = { reader and reader.key or "" }
+	local parts = { (reader and reader.key or "") .. "|" .. tostring(steps and steps.title) }
 	for _, line in ipairs(steps and steps.lines or {}) do
 		parts[#parts + 1] = tostring(line.text) .. (line.done and "+" or "-") .. (line.box and "b" or "")
 	end
@@ -428,6 +438,32 @@ function Guide.PublishItems()
 	MelloUI:Fire("guideitem", #items > 0 and { title = Guide.title, step = Guide.stepText, items = items } or nil)
 end
 
+-- the followed guide's goals for MelloUI's map (2.1.0; the user's pick P1 of qu05_polestar_sketch, 2026-10-31: "MelloUI's
+-- marks"; the map lays the ones it does not show already, MapObjectives): Guide.goals and the bus's "guidegoals", { title,
+-- goals = { { key, kind (the objective data's: 1 creature, 2 object, 3 item, 4 a place), text, quest, verb ("accept",
+-- "turnin", "objective" or nil), cont, places = { x1, y1, ... } (the client's world yards), lines, Aim } } };
+-- published only when one changed, nil once there are none or it is off
+function Guide.PublishGoals()
+	local reader = Following() and Guide.active
+	local goals
+	if reader and reader.Goals then
+		local ok, list = pcall(reader.Goals)
+		goals = ok and type(list) == "table" and #list > 0 and list or nil
+	end
+	local parts = {}
+	for i, g in ipairs(goals or {}) do
+		parts[i] = tostring(g.key) .. ":" .. tostring(g.text) .. ":" .. tostring(g.cont) .. ":"
+			.. table.concat(g.places or {}, ",") .. ":" .. table.concat(g.lines or {}, "|")
+	end
+	local sig = table.concat(parts, "\n")
+	if sig == Guide.goalSig then
+		return
+	end
+	Guide.goalSig = sig
+	Guide.goals = goals and { title = Guide.title, goals = goals } or nil
+	MelloUI:Fire("guidegoals", Guide.goals)
+end
+
 -- a click on the step in the Quest Tracker (the user, 2026-10-18: the World Marker missing, "click on that current
 -- step and re-check the pin"): its spot laid and tracked again; a step with no spot says so
 function Guide.Repin()
@@ -485,7 +521,10 @@ end
 -- an arrow alone); Hook(changed) post-hooks the addon's step update, true when
 -- hooked; Point() its step's spot: uiMapID, x, y in 0..1; Steps() { title,
 -- lines = { { text, done, box, Toggle } }, cog } or nil; Items() { { kind
--- "item" or "spell", id, known } }; Frames() its own arrow and windows.
+-- "item" or "spell", id, known } }; Frames() its own arrow and windows;
+-- Quiet(on), optional, its drawings on no frame of its own, through its own
+-- setting (on: followed); Goals(), optional, its step's goals with places
+-- for MelloUI's map (Guide.PublishGoals).
 --------------------------------------------------------------------------------
 
 -- RestedXP Guides: its table RXP; its arrow's element (zone the map, x / y 0..100) after its UpdateGotoSteps
@@ -884,6 +923,273 @@ do
 	Guide.readers[#Guide.readers + 1] = apr
 end
 
+-- Polestar (2.1.0; the user, 2026-10-31: "did we add Polestar to our compatibility?"): its namespace Polestar; its
+-- own messages (Polestar.On: a new step, a goal's progress, its arrow's target, a new guide), read a frame later --
+-- its step changes before its target does (STEP_CHANGED, then WAYPOINT_CHANGED); its arrow's target (Nav.GetTarget,
+-- 0..100 on its map in the guide's frame, Nav.LiveCoords the client's), its step's goals (Engine.GetStepView); a
+-- goal ticked as its window ticks it (Engine.ToggleGoal); it skips whole steps (Engine.Skip). Its arrow is its own,
+-- or TomTom's while it hands the arrow to TomTom.
+do
+	local polestar = { key = "polestar", name = "Polestar", section = "Polestar" }
+	local MESSAGES = { "STEP_CHANGED", "STEP_UPDATED", "WAYPOINT_CHANGED", "GUIDE_CHANGED", "SETTING_CHANGED" }
+
+	local function P()
+		local t = rawget(_G, "Polestar")
+		return type(t) == "table" and t or nil
+	end
+
+	local function Engine()
+		local t = P()
+		local e = t and rawget(t, "Engine")
+		return type(e) == "table" and e or nil
+	end
+
+	local function Nav()
+		local t = P()
+		local n = t and rawget(t, "Nav")
+		return type(n) == "table" and n or nil
+	end
+
+	function polestar.Hook(changed)
+		local t, e = P(), Engine()
+		if not (t and type(t.On) == "function" and e and type(e.GetStepIndex) == "function") then
+			return false
+		end
+		-- (several messages in one evaluation, one read: the next frame's, with its target settled)
+		local pending = false
+		local function Run()
+			pending = false
+			changed()
+		end
+		local function Soon()
+			if not pending then
+				pending = true
+				C_Timer.After(0, Run)
+			end
+		end
+		for _, msg in ipairs(MESSAGES) do
+			t.On(msg, Soon)
+		end
+		return true
+	end
+
+	function polestar.Point()
+		local nav = Nav()
+		if not (nav and type(nav.GetTarget) == "function" and type(nav.LiveCoords) == "function") then
+			return nil
+		end
+		local target = Pcall(nav.GetTarget)
+		if type(target) == "table" and Pcall(nav.IsOverride) and Pcall(rawget(_G, "UnitIsGhost"), "player") then
+			local e = Engine()   -- (a ghost's: its death helper's corpse or Spirit Healer, the game's own to show)
+			target = e and Pcall(e.GetWaypoint)
+		end
+		if type(target) ~= "table" then
+			return nil
+		end
+		local ok, m, x, y = pcall(nav.LiveCoords, target)
+		m, x, y = ok and tonumber(Plain(m)), ok and Finite(x), ok and Finite(y)
+		if not (m and x and y) then
+			return nil
+		end
+		return m, x / 100, y / 100
+	end
+
+	-- its step: a line per goal as its window words it (UI.PlainGoalText, the count after it), done when done or
+	-- skipped, a box on the goals it lets the player tick; then a box to skip the step
+	local seen   -- { step, view }: the step's view Steps read, for Goals right after it (one view a read)
+	function polestar.Steps()
+		local t, e = P(), Engine()
+		local i = e and tonumber(Pcall(e.GetStepIndex))
+		local ok, view = pcall(i and e.GetStepView, i)
+		seen = ok and type(view) == "table" and { i, view } or nil
+		if not ok or type(view) ~= "table" or type(view.goals) ~= "table" then
+			return nil
+		end
+		local ui = rawget(t, "UI")
+		local word = type(ui) == "table" and ui.PlainGoalText
+		local count = type(ui) == "table" and ui.GoalProgress
+		local lines = {}
+		for _, gv in ipairs(view.goals) do
+			if type(gv) == "table" and gv.status ~= "na" and not gv.folded and not gv.header then
+				local text = Text(Pcall(word, gv)) or Text(gv.text)
+				local n = gv.status ~= "skipped" and Text(Pcall(count, gv))
+				if text and text ~= "" then
+					local g = tonumber(gv.index)
+					lines[#lines + 1] = { text = n and (text .. " (" .. n .. ")") or text,
+						done = (gv.status == "done" or gv.status == "skipped") and true or false,
+						box = gv.tickable and g and true or false, Toggle = function(tick)
+							-- (its window's tick: on for a goal not done, off for one the player ticked)
+							if tick ~= (gv.status == "done") and (tick or gv.ticked) then
+								pcall(e.ToggleGoal, i, g)
+							end
+						end }
+				end
+			end
+		end
+		if #lines == 0 then
+			return nil
+		end
+		lines[#lines + 1] = { text = SKIP, done = false, box = true, skip = true, Toggle = function(skip)
+			if skip then
+				pcall(e.Skip)
+			end
+		end }
+		local guide = Pcall(e.GetGuide)
+		local name = type(guide) == "table" and Text(guide.title) or nil
+		local total = tonumber(Pcall(e.GetStepCount))
+		-- (the cog: its guide picker and its settings, as /polestar guides and /polestar options open them)
+		local function Picker()
+			pcall(t.Fire, "SHOW_PICKER")
+		end
+		local function Settings()
+			pcall(t.Fire, "SHOW_OPTIONS")
+		end
+		return { title = (name or "Polestar") .. " - step " .. i .. (total and ("/" .. total) or ""), lines = lines,
+			cog = { Left = Picker, Right = Settings, tip = "Polestar",
+				hint = "Click: its guides  -  Right-click: its settings" } }
+	end
+
+	-- what its buttons would hold: the step's quest item (QoL.Buttons.ChooseQuestItem), the Hearthstone for a hearth goal
+	function polestar.Items()
+		local t = P()
+		local qol = t and rawget(t, "QoL")
+		local buttons = type(qol) == "table" and rawget(qol, "Buttons")
+		if type(buttons) ~= "table" then
+			return {}
+		end
+		local list = {}
+		local item = tonumber(Pcall(buttons.ChooseQuestItem))
+		if item then
+			list[#list + 1] = { kind = "item", id = item }
+		end
+		local client = rawget(qol, "Client")
+		local hearth = type(client) == "table" and tonumber(client.HEARTHSTONE)
+		if hearth and Pcall(buttons.WantsHearth) then
+			list[#list + 1] = { kind = "item", id = hearth }
+		end
+		return list
+	end
+
+	-- its step's goals with a place, for MelloUI's map (Guide.PublishGoals): where a goal's mobs or objects spawn (its
+	-- guide's own spots), else its one place (its NPC, its spot), each in the client's frame (Nav.LiveCoords) and world
+	-- yards; its count after its words; a click aims its own arrow there (Engine.AimGoal: Route follows it)
+	local KIND = { kill = 1, click = 2, interact = 2, collect = 3, use = 3, loot = 3 }
+	local VERB = { accept = "accept", turnin = "turnin", kill = "objective", collect = "objective", use = "objective",
+		click = "objective", complete = "objective" }
+	function polestar.Goals()
+		local t, e, nav = P(), Engine(), Nav()
+		local i = e and tonumber(Pcall(e.GetStepIndex))
+		local okV, view = true, seen and seen[1] == i and seen[2]
+		seen = nil
+		if not view then
+			okV, view = pcall(i and e.GetStepView, i)
+		end
+		local guide = i and Pcall(e.GetGuide)
+		local step = type(guide) == "table" and type(guide.steps) == "table" and guide.steps[i]
+		local CM, V2 = rawget(_G, "C_Map"), rawget(_G, "CreateVector2D")
+		if not (okV and type(view) == "table" and type(view.goals) == "table" and type(step) == "table"
+			and type(step.goals) == "table" and nav and type(nav.LiveCoords) == "function" and type(CM) == "table"
+			and type(CM.GetWorldPosFromMapPos) == "function" and type(V2) == "function") then
+			return nil
+		end
+		local ui = rawget(t, "UI")
+		local word = type(ui) == "table" and ui.PlainGoalText
+		local count = type(ui) == "table" and ui.GoalProgress
+		local total = tonumber(Pcall(e.GetStepCount))
+		local head = "Polestar, step " .. i .. (total and ("/" .. total) or "")
+		local out = {}
+		for _, gv in ipairs(view.goals) do
+			local g = type(gv) == "table" and tonumber(gv.index)
+			local raw = g and step.goals[g]
+			if type(raw) == "table" and (gv.status == "active" or gv.status == "pending") and not gv.folded
+				and not gv.header and gv.t ~= "note" then
+				-- (its spawn spots on its own map, else the place its window shows: a chosen NPC's, a spot's)
+				local many = type(raw.spots) == "table" and #raw.spots > 0
+				local spots = many and raw.spots or { { x = gv.x, y = gv.y } }
+				local map, f = many and raw.map or gv.map, many and raw.f or gv.f
+				local cont, places = nil, {}
+				for _, s in ipairs(spots) do
+					local okL, m, x, y = pcall(nav.LiveCoords, { map = map, x = s.x, y = s.y, f = f })
+					m, x, y = okL and tonumber(Plain(m)), okL and Finite(x), okL and Finite(y)
+					local okW, c, pos
+					if m and x and y then
+						okW, c, pos = pcall(CM.GetWorldPosFromMapPos, m, V2(x / 100, y / 100))
+					end
+					c = okW and tonumber(Plain(c)) or nil
+					local wx, wy
+					if c then
+						wx, wy = M.VectorXY(pos)
+					end
+					if c and wx and wy and (cont == nil or c == cont) then
+						cont = c
+						places[#places + 1], places[#places + 2] = wx, wy
+					end
+				end
+				local text = Text(Pcall(word, gv)) or Text(gv.text)
+				if cont and text and text ~= "" then
+					local n = Text(Pcall(count, gv))
+					local lines = { head }
+					local who, lvl = Text(gv.npcName), type(gv.lvl) == "table" and gv.lvl
+					if who and lvl then
+						local lo, hi = tonumber(lvl[1] or lvl.min), tonumber(lvl[2] or lvl.max)
+						lines[#lines + 1] = "From " .. who .. ((lo and hi and lo ~= hi) and (" (level " .. lo .. "-" .. hi .. ")")
+							or (lo and (" (level " .. lo .. ")") or ""))
+					end
+					lines[#lines + 1] = "Click: the way there"
+					local si, gi = i, g
+					out[#out + 1] = { key = "polestar:" .. tostring(guide.id) .. ":" .. i .. ":" .. g, kind = KIND[gv.t] or 4,
+						text = n and (text .. " (" .. n .. ")") or text, quest = tonumber(Plain(gv.quest)), verb = VERB[gv.t],
+						cont = cont, places = places, lines = lines,
+						Aim = function() pcall(e.AimGoal, si, gi) end }
+				end
+			end
+		end
+		return out
+	end
+
+	function polestar.Frames()
+		local nav = Nav()
+		local arrow = rawget(_G, "PolestarNavArrow")
+		if nav and Pcall(nav.UsingTomTomArrow) then
+			arrow = rawget(_G, "TomTomCrazyArrow")   -- (its arrow handed to TomTom's: that one)
+		end
+		return List(arrow, rawget(_G, "PolestarGuideFrame"), rawget(_G, "PolestarQuestItemButton"),
+			rawget(_G, "PolestarHearthButton"))
+	end
+
+	-- its minimap route, trail and target pin (the user's pick, 2026-10-31: "one route"), on frames with no name: off
+	-- through its own nav.minimapPins while it is followed, for the session only -- given back when it is not and before
+	-- the logout writes its saved settings, so its options never change. Turned on again in its options meanwhile: the
+	-- player's, left so for the session.
+	local held, theirs, leaving, logout
+	function polestar.Quiet(on)
+		local t = P()
+		if not (t and type(t.Get) == "function" and type(t.Set) == "function") then
+			return
+		end
+		local shown = Pcall(t.Get, "nav.minimapPins") and true or false
+		if held and shown then
+			held, theirs = false, true
+		elseif on and not held and not theirs and not leaving and shown then
+			held = true
+			pcall(t.Set, "nav.minimapPins", false)
+			if not logout then
+				logout = CreateFrame("Frame")
+				logout:SetScript("OnEvent", function()
+					leaving = true   -- (its SETTING_CHANGED reads the guide again: nothing held after this)
+					polestar.Quiet(false)
+				end)
+				logout:RegisterEvent("PLAYER_LOGOUT")
+			end
+		elseif not on and held then
+			held = false
+			pcall(t.Set, "nav.minimapPins", true)
+		end
+	end
+
+	Guide.readers[#Guide.readers + 1] = polestar
+end
+
 -- TomTom: its arrow's waypoint (SetCrazyArrow's uid: uiMapID, x, y in 0..1), followed whoever set it (a /way, a
 -- quest addon, Guidelime with its "Use TomTom arrow"); an arrow only, no steps; its waypoint gone (arrived, removed),
 -- the pin laid for it goes too (clears)
@@ -893,8 +1199,11 @@ do
 
 	function tomtom.Hook(changed)
 		local T = rawget(_G, "TomTom")
-		if type(T) ~= "table" or type(T.SetCrazyArrow) ~= "function" then
-			return false
+		local ps = rawget(_G, "Polestar")
+		local nav = type(ps) == "table" and rawget(ps, "Nav")
+		if type(T) ~= "table" or type(T.SetCrazyArrow) ~= "function"
+			or (type(nav) == "table" and T == rawget(nav, "tomtomShim")) then
+			return false   -- (Polestar's stand-in, TomTom not installed: it points Polestar's arrow, followed there)
 		end
 		hooksecurefunc(T, "SetCrazyArrow", function(_, uid)
 			target = type(uid) == "table" and uid or nil
@@ -959,6 +1268,7 @@ do
 		{ "APR", "Azeroth Pilot Reloaded" },
 		{ "Guidelime", "Guidelime" },
 		{ "ForeverWisp", "ForeverWisp" },
+		{ "Polestar", "Polestar" },
 	}
 
 	local function AddOns()

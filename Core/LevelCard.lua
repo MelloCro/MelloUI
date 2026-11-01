@@ -4,7 +4,7 @@
 -- A small window at each level gained that says what the level gave you: the level over the moment line's gold rule,
 -- the stats gained (old › new  +gain), the spells now at your class trainer and a talent point, the quests the level
 -- opened nearby, and your nearest class trainer with "Set a route". The user, 2026-10-30, to the sketch
--- (BuildData/output/levelup_sketch): yes, on by default; level, stats and trainer; the top middle (the notice's place);
+-- (BuildData/output/levelup_sketch): yes, on by default; level, stats and trainer; the top middle;
 -- milestones' rays once; shown at once in a fight; one card for several levels ("Level 18 - 20"); "Level Up Card".
 -- Its motion is the user's own: "Spark flying from the Character on the top, explodes and the Animated line shows up,
 -- expands into the Levelup window, and the stats and spells start appearing with animation" -- a spark leaves the
@@ -28,11 +28,20 @@
 --               the click (held until the fight ends in combat)
 -- Several levels while it shows (a quest turned in at once, a dungeon's): one card, the gains added up, every spell.
 --
--- Where: the notice's place (its mover, "Centre notices": the card's top where the notice's line stands); while the
--- card shows a level, the notice's own line steps aside (Tweaks' Level.Notice). Built in MelloUI's one systems: the
+-- Where: its own place, the top middle, Card.TOP UI units under the screen's top (an-07, the user 2026-10-31:
+-- "its currently attached to the routing notification text, that should not be the case, it should retain this
+-- height and be fixed"): it had taken the notice's mover's place AND its scale, so it moved with Route's "Tracking"
+-- line and drew small, its hero -- on UIParent, unscaled -- across the panes. Its own mover since (the user, the
+-- same day: "Add it"): "Level Up Card" in Edit Layout (key "levelcard", MelloUI's one mover and position store), an
+-- empty frame as big as the card's largest layout for its plate; a place saved there, the card hangs from it at its
+-- size from its next show; none saved, it stands at its own place as before. While the card shows a level, Level
+-- Up's own moment line steps aside (Tweaks' Level.Notice: a line, not a place). Its size is its content's: the hero
+-- on its own band over the panes, every row and spell, the footer, measured from the fonts. Built in MelloUI's one
+-- systems: the
 -- own-window shell (Kit:OwnWindow, every skin's dress), W.Panel / W.Text / W.IconBox, the palette (W.Paint,
 -- W.Paint by key), the notice's shade band (MelloUI.Shade), the effects' art (FX.Art: each skin's set).
--- Nothing at login: made at the first level gained (or /mello player level). No secure frame: it shows in a fight.
+-- Nothing at login: made at the first level gained (or /mello player level); its place with it, or at Edit Layout's
+-- open (its mover source) while the card is on. No secure frame: it shows in a fight.
 --
 --   MelloUI.LevelCard.Level(new, gains)   a level gained: gains = { health, power, talents, str, agi, sta, int, spi }
 --                                         (the event's, plain numbers or nil); sub: the quests line (or nil)
@@ -54,12 +63,25 @@ local C_Timer = Perf.C_Timer
 local max, min, floor, ceil, sin, pi, rad = math.max, math.min, math.floor, math.ceil, math.sin, math.pi, math.rad
 local format = string.format
 
+-- (an-07, the user 2026-10-31: "the window needs to be bigger and make sure everything fits inside of it") Every
+-- room below is the room PAST a text: the texts' own heights and widths are measured from their fonts as drawn (the
+-- Font Style and the text size reach them), and the window grows to its content
 local Card = {
-	W = 420, PAD = 10, GAP = 8, STATS_W = 200,          -- the window's width, its content's inset, the panels' gap
-	HERO_H = 50, SUB_H = 18, ROW_H = 18, HEAD_H = 24,    -- the line's room (and its quests line), a row, a heading
-	ICON = 26, ICON_GAP = 3, ICON_ROWS = 3,              -- the trainer's icons, at most three rows of them
-	FOOT_H = 28, HERO_SIZE = 26, SUB_SIZE = 14,
+	W = 440, PAD = 10, GAP = 8,                          -- the window's least width, its content's inset, the panes' gap
+	IN = 8, COL = 12, ROW_GAP = 6, HEAD_GAP = 7,         -- a pane's inset and its columns' gap; a row's and a heading's room
+	ICON = 26, ICON_GAP = 3, PER_ROW = 8, ICON_ROWS = 5, -- the trainer's icons: eight a row (the most a level brings, 25,
+	                                                     -- in four full rows; several levels' up to five)
+	HERO_PAD = 6, RULE_GAP = 6, SUB_GAP = 5, HERO_FOOT = 10,   -- the hero's band: over the word, the word to the rule,
+	                                                     -- the rule to the quests line, under them (over the panes)
+	FOOT_PAD = 5, FOOT_ICON = 20, TALENT_GAP = 5, HERO_SIZE = 26, SUB_SIZE = 14,
 	RULE_W = 260, RULE_H = 2, RULE_ALPHA = 0.85,         -- the gold rule (the moment line's)
+	-- its own place (an-07, the user 2026-10-31: "it should retain this height and be fixed"): its top TOP under the
+	-- screen's top in UI units -- where their card stood (351 px down their 1440 px screen at UI scale 0.64: 292), never
+	-- the notice's -- and KEEP inside the screen's edge
+	TOP = 292, KEEP = 8,
+	-- (the user, 2026-10-31: "Add it") its mover's key, and its plate's height until a card has measured the largest
+	-- layout (the modern look's at the standard fonts: the quests line, five rows of spells, the talent line, the footer)
+	KEY = "levelcard", PLATE_H = 370,
 	SPARK = 40, TRAIL = 4, BURST = 72, GLOW = 48, RAYS = 150, RING = 1.85,   -- the lights' sizes (never past their files)
 	HOLD = 9, FADE = 1.5, STRATA = "DIALOG", PAINTED_TOP = -64,
 	MILESTONE = 10,                                      -- every tenth level: the rays
@@ -222,7 +244,7 @@ end
 local function MakeHero()
 	local hero = CreateFrame("Frame", nil, UIParent)
 	hero:SetFrameStrata(Card.STRATA)
-	hero:SetSize(Card.W, Card.HERO_H + Card.SUB_H)
+	hero:SetSize(Card.W, Card.HERO_SIZE * 2)   -- (its band's real size: LayHero, from the fonts)
 	hero:EnableMouse(false)
 	B.hero = hero
 	B.band = MelloUI.Shade:Band(hero, MelloUI.Shade.TEXT)
@@ -313,7 +335,7 @@ local function MakeWindow()
 	holder:EnableMouse(false)
 	B.holder = holder
 	local win = CreateFrame("Frame", "MelloUILevelCard", holder)
-	win:SetSize(Card.W, 200)
+	win:SetSize(Card.W, Card.W / 2)   -- (its real size: Fill, from its content)
 	win:SetFrameStrata(Card.STRATA)
 	win:EnableMouse(true)
 	win:Hide()
@@ -335,8 +357,8 @@ local function MakeWindow()
 	local foot = CreateFrame("Frame", nil, win)
 	B.foot = foot
 	B.footIcon = foot:CreateTexture(nil, "ARTWORK")
-	B.footIcon:SetSize(20, 20)
-	MelloUI.Icons.Set(B.footIcon, "svc_classtrainer", 20)
+	B.footIcon:SetSize(Card.FOOT_ICON, Card.FOOT_ICON)
+	MelloUI.Icons.Set(B.footIcon, "svc_classtrainer", Card.FOOT_ICON)
 	B.footText = W.Text(foot, "GameFontHighlight", nil, "text")
 	local link = CreateFrame("Button", nil, foot)
 	link.text = W.Text(link, "GameFontNormal", Tr("Set a route \226\128\186"), "selectedTrim")
@@ -414,14 +436,30 @@ local function Count(n, one, many)
 	return format(n == 1 and one or many, n)
 end
 
--- the content laid out in the window: rows, icons, the lines; the window's height from them
+-- a text's line height and its width as drawn (its font's real size: the Font Style and the text size reach it)
+local function LineH(fs)
+	local h = Num(fs:GetStringHeight())
+	if not (h and h > 0) then
+		local ok, _, size = pcall(fs.GetFont, fs)
+		h = ok and Num(size) or nil
+	end
+	return ceil(h and h > 0 and h or Card.SUB_SIZE)
+end
+
+local function TextW(fs)
+	return ceil(Num(fs:GetStringWidth()) or 0)
+end
+
+-- the content laid out in the window: the hero's band, the panes with their rows and icons, the talent line, the
+-- footer; the window's width and height from them (an-07: every height and width measured from the texts as drawn,
+-- nothing cut and nothing crossing: the hero on its own band over the panes)
 local function Fill()
 	local shell, win = B.shell, B.win
 	-- (the shell's content inset in its look: a side inset and a negative y -- the painted look's under its corner
 	-- ring, as the copy window's)
 	local edge, topY = shell:Inset(Card.PAD, Card.PAINTED_TOP)
 	local top = -topY
-	local width = Card.W
+	local IN, COL, ICON, IGAP = Card.IN, Card.COL, Card.ICON, Card.ICON_GAP
 	-- the rows: the gains above 0, with the totals where they read plain
 	local n = 0
 	for _, row in ipairs(STATS) do
@@ -447,11 +485,77 @@ local function Fill()
 	end
 	B.nRows = n
 	Card.Totals()
-	-- the spells
+	-- the spells, the talent line
 	local spells = Card.Spells(S.spellFrom or S.from, S.spellTo or S.to, S.preview)
-	local both = n > 0 and #spells > 0
-	local trainW = both and (width - 2 * edge - Card.STATS_W - Card.GAP) or (width - 2 * edge)
-	local per = max(1, floor((trainW - 16 + Card.ICON_GAP) / (Card.ICON + Card.ICON_GAP)))
+	local hasIcons = #spells > 0
+	B.trainCount:SetText(hasIcons and tostring(#spells) or "")
+	local talents = Num(S.gains.talents) or 0
+	B.talent:SetText(talents > 0 and Count(talents, Tr("+%d talent point to spend"), Tr("+%d talent points to spend"))
+		or "")
+	-- the hero: the word, the numbers, the quests line
+	local single = S.to - S.from <= 1
+	B.word:SetText(single and Tr("Level") or format(Tr("Level %d -"), S.from + 1))
+	B.old:SetText(tostring(S.rollFrom or S.to - 1))
+	B.new:SetText(tostring(S.to))
+	B.sub:SetText(S.sub or "")
+	-- the footer's line: the nearest class trainer and the route (none known, or no Services: the plain line)
+	local services = MelloUI:GetModule("Services")
+	local name
+	if services and type(services.Nearest) == "function" then
+		-- (yards and the name; none known: nil and why)
+		local ok, yards, who = pcall(services.Nearest, services, "classtrainer")
+		name = ok and Num(yards) and Text(who) or nil
+	end
+	local wantFoot = hasIcons
+	B.footText:SetText(name and format(Tr("Nearest trainer: %s"), name) or Tr("Visit your class trainer"))
+	B.link:SetShown(name ~= nil)
+	B.link.text:SetText(Tr(B.routeHeld and "Route after the fight" or "Set a route \226\128\186"))
+	-- measured: the hero's band, a heading's and a row's room, the stats' columns, the talent line, the footer
+	local wordH = LineH(B.new)
+	local heroH = Card.HERO_PAD + wordH + Card.RULE_GAP + Card.RULE_H + (S.sub and (Card.SUB_GAP + LineH(B.sub)) or 0)
+		+ Card.HERO_FOOT
+	B.wordH, B.heroH = wordH, heroH
+	local heroW = max(TextW(B.word) + 6 + max(TextW(B.old), TextW(B.new)), TextW(B.sub), Card.RULE_W + 22)
+	local headH = Card.HEAD_GAP + LineH(B.statsHead) + Card.HEAD_GAP
+	local rowLine = n > 0 and LineH(B.rows[1].label) or 0
+	local rowH = rowLine + Card.ROW_GAP
+	B.headH, B.rowH = headH, rowH
+	local labelW, valueW, gainW = 0, 0, 0
+	for i = 1, n do
+		local r = B.rows[i]
+		labelW = max(labelW, TextW(r.label))
+		valueW = max(valueW, TextW(r.value))
+		gainW = max(gainW, TextW(r.gain))
+	end
+	B.labelW = labelW
+	-- (a total read again as the rows come -- the game applies the level a moment after its event -- may be a digit
+	-- longer: room for one)
+	local digit = ceil(rowLine * 0.6)
+	local showStats = n > 0 or (not hasIcons and talents > 0)
+	local talentLine = talents > 0 and LineH(B.talent) or 0
+	local talentH = talents > 0 and (Card.TALENT_GAP + talentLine) or 0
+	local statsW = showStats and max(IN + labelW + COL + valueW + digit + COL + gainW + IN, IN + TextW(B.statsHead) + IN,
+		hasIcons and 0 or (IN + TextW(B.talent) + IN)) or 0
+	local trainNat = hasIcons and max(2 * IN + Card.PER_ROW * ICON + (Card.PER_ROW - 1) * IGAP,
+		IN + TextW(B.trainHead) + COL + TextW(B.trainCount) + IN, IN + TextW(B.talent) + IN) or 0
+	local footLine = max(Card.FOOT_ICON, LineH(B.footText), name and LineH(B.link.text) or 0)
+	local footH = footLine + 2 * Card.FOOT_PAD
+	local footW = wantFoot and (2 + Card.FOOT_ICON + 6 + TextW(B.footText) + COL
+		+ (name and (TextW(B.link.text) + 4) or 0) + 2) or 0
+	-- the largest card in this look and these fonts (its place's plate in Edit Layout): the quests line, the most rows
+	-- (every stat, or five rows of spells and the talent line), the footer
+	local hl = LineH(B.talent)
+	B.largestH = top + Card.HERO_PAD + wordH + Card.RULE_GAP + Card.RULE_H + Card.SUB_GAP + LineH(B.sub) + Card.HERO_FOOT
+		+ headH + max(#STATS * (hl + Card.ROW_GAP) - Card.ROW_GAP, Card.ICON_ROWS * (ICON + IGAP) - IGAP
+		+ Card.TALENT_GAP + hl) + IN + Card.GAP + footH + edge
+	-- the width: the panes side by side, the footer's line, the hero's; the trainer's pane takes what is over
+	local both = showStats and hasIcons
+	local panesW = both and (statsW + Card.GAP + trainNat) or (showStats and statsW or trainNat)
+	local width = max(Card.W, 2 * edge + max(panesW, footW, heroW))
+	win:SetWidth(width)
+	local content = width - 2 * edge
+	local trainW = both and (content - statsW - Card.GAP) or content
+	local per = max(1, floor((trainW - 2 * IN + IGAP) / (ICON + IGAP)))
 	local shownIcons = min(#spells, per * Card.ICON_ROWS)
 	for i = 1, shownIcons do
 		local b = IconAt(i)
@@ -470,89 +574,74 @@ local function Fill()
 		B.rings[i]:SetAlpha(0)
 	end
 	B.nIcons = shownIcons
-	B.trainCount:SetText(#spells > 0 and tostring(#spells) or "")
-	local talents = Num(S.gains.talents) or 0
-	B.talent:SetText(talents > 0 and Count(talents, Tr("+%d talent point to spend"), Tr("+%d talent points to spend"))
-		or "")
-	-- the hero: the word, the numbers, the quests line
-	local single = S.to - S.from <= 1
-	B.word:SetText(single and Tr("Level") or format(Tr("Level %d -"), S.from + 1))
-	B.old:SetText(tostring(S.rollFrom or S.to - 1))
-	B.new:SetText(tostring(S.to))
-	B.sub:SetText(S.sub or "")
-	-- the layout
-	local heroH = Card.HERO_H + (S.sub and Card.SUB_H or 0)
-	local y = top + heroH
 	local iconRows = shownIcons > 0 and ceil(shownIcons / per) or 0
-	local statsH = n > 0 and (Card.HEAD_H + n * Card.ROW_H + 6) or 0
-	local trainH = shownIcons > 0 and (Card.HEAD_H + iconRows * (Card.ICON + Card.ICON_GAP) + (talents > 0 and 20 or 0)
-		+ 6) or 0
+	local iconsH = iconRows > 0 and (iconRows * (ICON + IGAP) - IGAP) or 0
+	-- the heights: a pane's heading, its rows or icons, the talent line (under the icons; with no spells, under the
+	-- rows), its inset under them
+	local statsH = showStats and (headH + max(0, n * rowH - Card.ROW_GAP) + (hasIcons and 0 or talentH) + IN) or 0
+	local trainH = hasIcons and (headH + iconsH + talentH + IN) or 0
+	-- the layout: the hero's band, then the panes under it
+	local y = top + heroH
 	local sp, tp = B.statsPanel, B.trainPanel
 	sp:ClearAllPoints()
 	tp:ClearAllPoints()
-	sp:SetShown(n > 0)
-	tp:SetShown(shownIcons > 0 or talents > 0)
+	sp:SetShown(showStats)
+	tp:SetShown(hasIcons)
 	if both then
 		local h = max(statsH, trainH)
 		sp:SetPoint("TOPLEFT", win, "TOPLEFT", edge, -y)
-		sp:SetSize(Card.STATS_W, h)
+		sp:SetSize(statsW, h)
 		tp:SetPoint("TOPLEFT", sp, "TOPRIGHT", Card.GAP, 0)
 		tp:SetSize(trainW, h)
 		y = y + h
-	else
-		local h = n > 0 and statsH or trainH
-		local p = n > 0 and sp or tp
+	elseif showStats or hasIcons then
+		local p, h = showStats and sp or tp, showStats and statsH or trainH
 		p:SetPoint("TOPLEFT", win, "TOPLEFT", edge, -y)
-		p:SetSize(width - 2 * edge, max(h, 1))
+		p:SetSize(content, h)
 		y = y + h
 	end
-	-- the rows' places (their x moved by the drive from here)
-	B.statsHead:SetPoint("TOPLEFT", sp, "TOPLEFT", 8, -6)
-	local labelW = 0
-	for i = 1, n do
-		labelW = max(labelW, B.rows[i].label:GetStringWidth() or 0)
-	end
-	B.labelW = labelW
-	B.trainHead:SetPoint("TOPLEFT", tp, "TOPLEFT", 8, -6)
-	B.trainCount:SetPoint("TOPRIGHT", tp, "TOPRIGHT", -8, -6)
+	-- the rows' places (their x moved by the drive from here), the headings, the icons, the talent line
+	B.statsHead:ClearAllPoints()
+	B.statsHead:SetPoint("TOPLEFT", sp, "TOPLEFT", IN, -Card.HEAD_GAP)
+	B.trainHead:ClearAllPoints()
+	B.trainHead:SetPoint("TOPLEFT", tp, "TOPLEFT", IN, -Card.HEAD_GAP)
+	B.trainCount:ClearAllPoints()
+	B.trainCount:SetPoint("TOPRIGHT", tp, "TOPRIGHT", -IN, -Card.HEAD_GAP)
 	for i = 1, shownIcons do
 		local c, r = (i - 1) % per, floor((i - 1) / per)
 		local b = B.icons[i]
 		b:ClearAllPoints()
-		b:SetPoint("TOPLEFT", tp, "TOPLEFT", 8 + c * (Card.ICON + Card.ICON_GAP),
-			-(Card.HEAD_H + r * (Card.ICON + Card.ICON_GAP)))
+		b:SetPoint("TOPLEFT", tp, "TOPLEFT", IN + c * (ICON + IGAP), -(headH + r * (ICON + IGAP)))
 		local ring = B.rings[i]
-		ring:SetSize(Card.ICON * Card.RING, Card.ICON * Card.RING)
+		ring:SetSize(ICON * Card.RING, ICON * Card.RING)
 	end
 	B.talent:ClearAllPoints()
-	B.talent:SetPoint("TOPLEFT", tp, "TOPLEFT", 8, -(Card.HEAD_H + iconRows * (Card.ICON + Card.ICON_GAP) + 2))
-	-- the footer: the nearest class trainer and the route (none known, or no Services: the plain line)
-	local services = MelloUI:GetModule("Services")
-	local name
-	if services and type(services.Nearest) == "function" then
-		-- (yards and the name; none known: nil and why)
-		local ok, yards, who = pcall(services.Nearest, services, "classtrainer")
-		name = ok and Num(yards) and Text(who) or nil
+	if hasIcons then
+		B.talent:SetParent(tp)
+		B.talent:SetPoint("TOPLEFT", tp, "TOPLEFT", IN, -(headH + iconsH + Card.TALENT_GAP))
+	else
+		B.talent:SetParent(sp)
+		B.talent:SetPoint("TOPLEFT", sp, "TOPLEFT", IN, -(headH + max(0, n * rowH - Card.ROW_GAP) + Card.TALENT_GAP))
 	end
-	local wantFoot = shownIcons > 0
+	-- the footer
 	B.foot:SetShown(wantFoot)
 	if wantFoot then
 		y = y + Card.GAP
 		B.foot:ClearAllPoints()
 		B.foot:SetPoint("TOPLEFT", win, "TOPLEFT", edge, -y)
-		B.foot:SetSize(width - 2 * edge, Card.FOOT_H)
+		B.foot:SetSize(content, footH)
+		B.footIcon:ClearAllPoints()
 		B.footIcon:SetPoint("LEFT", B.foot, "LEFT", 2, 0)
+		B.footText:ClearAllPoints()
 		B.footText:SetPoint("LEFT", B.footIcon, "RIGHT", 6, 0)
-		B.footText:SetText(name and format(Tr("Nearest trainer: %s"), name) or Tr("Visit your class trainer"))
-		B.link:SetShown(name ~= nil)
+		B.link:ClearAllPoints()
 		B.link:SetPoint("RIGHT", B.foot, "RIGHT", -2, 0)
-		B.link.text:SetText(Tr(B.routeHeld and "Route after the fight" or "Set a route \226\128\186"))
-		B.link:SetSize((B.link.text:GetStringWidth() or 80) + 4, Card.FOOT_H)
+		B.link:SetSize(TextW(B.link.text) + 4, footH)
 		B.line:ClearAllPoints()
-		B.line:SetPoint("TOPLEFT", win, "TOPLEFT", edge, -(y - 4))
-		B.line:SetPoint("TOPRIGHT", win, "TOPRIGHT", -edge, -(y - 4))
+		B.line:SetPoint("TOPLEFT", win, "TOPLEFT", edge, -(y - Card.GAP / 2))
+		B.line:SetPoint("TOPRIGHT", win, "TOPRIGHT", -edge, -(y - Card.GAP / 2))
 		B.line:Show()
-		y = y + Card.FOOT_H
+		y = y + footH
 	else
 		B.line:Hide()
 	end
@@ -564,39 +653,43 @@ end
 local function LayRow(i, dx)
 	local r = B.rows[i]
 	local sp = B.statsPanel
-	local y = -(Card.HEAD_H + (i - 1) * Card.ROW_H)
+	local y = -(B.headH + (i - 1) * B.rowH)
 	r.label:ClearAllPoints()
-	r.label:SetPoint("TOPLEFT", sp, "TOPLEFT", 8 + dx, y)
+	r.label:SetPoint("TOPLEFT", sp, "TOPLEFT", Card.IN + dx, y)
 	r.value:ClearAllPoints()
-	r.value:SetPoint("TOPLEFT", sp, "TOPLEFT", 8 + B.labelW + 10 + dx, y)
+	r.value:SetPoint("TOPLEFT", sp, "TOPLEFT", Card.IN + B.labelW + Card.COL + dx, y)
 	r.gain:ClearAllPoints()
-	r.gain:SetPoint("TOPRIGHT", sp, "TOPRIGHT", -8, y)
+	r.gain:SetPoint("TOPRIGHT", sp, "TOPRIGHT", -Card.IN, y)
 end
 
+-- the hero's band over the window's top, as wide as the window, at its scale (the band's offsets are the window's
+-- units: a window scaled alone left its hero over the panes, an-07)
 local function LayHero()
 	local hero, win = B.hero, B.win
+	hero:SetScale(win:GetScale() or 1)
 	hero:ClearAllPoints()
 	hero:SetPoint("TOP", win, "TOP", 0, -B.heroTop)
-	hero:SetHeight(Card.HERO_H + (S.sub and Card.SUB_H or 0))
+	hero:SetSize(win:GetWidth(), B.heroH)
 	local ww, nw = B.word:GetStringWidth() or 0, max(B.old:GetStringWidth() or 0, B.new:GetStringWidth() or 0)
 	local gap = 6
 	local x0 = -(ww + gap + nw) / 2
+	local h = B.wordH
+	local wy = -(Card.HERO_PAD + h / 2)
 	B.word:ClearAllPoints()
-	B.word:SetPoint("LEFT", hero, "TOP", x0, -22)
-	local h = B.new:GetStringHeight() or Card.HERO_SIZE
+	B.word:SetPoint("LEFT", hero, "TOP", x0, wy)
 	B.numberH = h
 	B.clip:ClearAllPoints()
-	B.clip:SetPoint("LEFT", hero, "TOP", x0 + ww + gap - 2, -22)
+	B.clip:SetPoint("LEFT", hero, "TOP", x0 + ww + gap - 2, wy)
 	B.clip:SetSize(nw + 6, h + 4)
 	B.rule:ClearAllPoints()
-	B.rule:SetPoint("TOP", hero, "TOP", 0, -(Card.HERO_H - 8))
+	B.rule:SetPoint("TOP", hero, "TOP", 0, -(Card.HERO_PAD + h + Card.RULE_GAP))
 	B.sub:ClearAllPoints()
-	B.sub:SetPoint("TOP", B.rule, "BOTTOM", 0, -5)
+	B.sub:SetPoint("TOP", B.rule, "BOTTOM", 0, -Card.SUB_GAP)
 	local cx = x0 + ww + gap + nw / 2
 	B.numX = cx
 	for _, t in ipairs({ B.rays, B.glow }) do
 		t:ClearAllPoints()
-		t:SetPoint("CENTER", hero, "TOP", cx, -22)
+		t:SetPoint("CENTER", hero, "TOP", cx, wy)
 	end
 	B.burst:ClearAllPoints()
 	B.burst:SetPoint("CENTER", B.rule, "CENTER")
@@ -753,20 +846,78 @@ local Done = Shared("the level card's entrance done", function()
 	Hold()
 end, "callback")
 
--- the card's place: the notice's (its mover's saved place, else the top middle, 180 under the top)
+-- its home: the top middle, Card.TOP under the screen's top (its place's while none is saved; a Reset's preview)
+local function Home(f)
+	f:ClearAllPoints()
+	f:SetPoint("TOP", UIParent, "TOP", 0, -Card.TOP)
+	return true
+end
+
+-- the card on (Tweaks' Level Up Card): its plate shows and its place is kept only then
+local function CardOn()
+	local tweaks = MelloUI:GetModule("Tweaks")
+	return tweaks ~= nil and tweaks.isEnabled == true and type(tweaks.db) == "table" and tweaks.db.levelCard ~= false
+end
+
+-- its place on MelloUI's one mover (the user 2026-10-31, "Add it"): an empty frame, the mouse through it, as big as the
+-- card's largest layout (Edit Layout's plate), made with the first card or at Edit Layout's open
+local function PlaceFrame()
+	local f = B.place
+	if f then
+		return f
+	end
+	f = CreateFrame("Frame", "MelloUILevelCardPlace", UIParent)
+	f:SetSize(Card.W, B.largestH or Card.PLATE_H)
+	f:EnableMouse(false)
+	Home(f)
+	B.place = f
+	B.entry = MelloUI:RegisterMover(f, f, { key = Card.KEY, anchor = "TOP", default = Home, min = 0.5, max = 2,
+		base = 1, label = "Level Up Card", page = "Tweaks", category = "text", placeholder = true, when = CardOn })
+	return f
+end
+
+-- the card's place: a place saved in Edit Layout (or its plate being dragged there now), the card hung from its top at
+-- its size; none, its own: the top middle Card.TOP under the screen's top, kept KEEP inside the screen (a short screen:
+-- higher). Never the notice's mover (an-07: its place and its scale had come with it). Its place as big as the
+-- largest card or this one, so a place kept on the screen keeps the card on it
 local function Place()
-	local win = B.win
+	local win, place = B.win, PlaceFrame()
+	place:SetSize(max(Card.W, win:GetWidth()), max(B.largestH or Card.PLATE_H, win:GetHeight()))
 	win:ClearAllPoints()
-	if not MelloUI:RestorePosition("notice", win) then
-		win:SetPoint("TOP", UIParent, "TOP", 0, -180)
+	local entry = B.entry
+	if (entry and entry.moving) or MelloUI:RestorePosition(Card.KEY, place) then
+		MelloUI.Kit:SetFrameScale(win, place:GetScale() or 1)
+		win:SetPoint("TOP", place, "TOP", 0, 0)
+		return
+	end
+	-- (its place there too, at its 100 %: Edit Layout's plate shows where the card stands)
+	Home(place)
+	MelloUI.Kit:SetFrameScale(place, 1)
+	MelloUI.Kit:SetFrameScale(win, 1)
+	local room = UIParent:GetHeight() - win:GetHeight() - Card.KEEP
+	win:SetPoint("TOP", UIParent, "TOP", 0, -max(Card.KEEP, min(Card.TOP, room)))
+end
+
+-- Edit Layout's plate: the card's place made when it opens, while the card is on (never at login)
+local function MoverSource()
+	if CardOn() then
+		PlaceFrame()
 	end
 end
 
 -- (the shell's look switched while it shows -- a skin, the reskin: the content laid again in the new inset)
+-- the card laid again with its content now (a level more, the quests line, a look switch): its size, its place (a
+-- taller card on a short screen goes up), the hero, the spark's goal
+local function Relay()
+	Fill()
+	Place()
+	LayHero()
+	B.toX, B.toY = RuleAt()
+end
+
 Shell_OnKit = Shared("the level card's look switch", function()
 	if Card.shown and B.win:IsShown() then
-		Fill()
-		LayHero()
+		Relay()
 		Step(nil, 1)
 	end
 end, "callback")
@@ -843,8 +994,7 @@ function Card.Level(new, gains, sub)
 	end
 	if merge and Anim:IsRunning(B, "drive") then
 		-- (its entrance under way: the content now, the drive goes on; the new spells land at its end)
-		Fill()
-		LayHero()
+		Relay()
 		return
 	end
 	Play(merge)
@@ -855,8 +1005,7 @@ function Card.Sub(sub)
 	if Card.shown and type(sub) == "string" and sub ~= "" and S.sub ~= sub then
 		S.sub = sub
 		B.sub:SetText(sub)
-		LayHero()
-		Fill()
+		Relay()
 	end
 end
 
@@ -946,5 +1095,9 @@ Route = Shared("the level card's Set a route", function()
 	end
 	GoRoute()
 end, "handler")
+
+if MelloUI.AddMoverSource then
+	MelloUI:AddMoverSource(MoverSource)
+end
 
 Card.B, Card.S = B, S   -- (the tests')

@@ -27,6 +27,31 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("ClassIcons")
 local hooksecurefunc = Perf.hooksecurefunc
 
+-- (fr-17) the player frame on the screen -- MelloUI's own while it stands in (MelloUI.Units, Modules/UnitFramesOwn.lua),
+-- else the game's -- and the game's update hooks through it (a world without that file: the game's frame, a plain hook)
+local function ScreenPlayer()
+	local U = MelloUI.Units
+	return U and U.Player() or _G.PlayerFrame
+end
+-- (fr-17 stage 2) the target frame on the screen -- MelloUI's own while it stands in (Modules/UnitFramesTarget.lua)
+local function ScreenTarget()
+	local U = MelloUI.Units
+	return U and U.Target() or rawget(_G, "TargetFrame")
+end
+-- (fr-17 stage 3) the focus frame on the screen -- MelloUI's own while it stands in (Modules/UnitFramesTarget.lua)
+local function ScreenFocus()
+	local U = MelloUI.Units
+	return U and U.Focus() or rawget(_G, "FocusFrame")
+end
+local function UnitsHook(fname, fn)
+	local U = MelloUI.Units
+	if U then
+		U.Hook(fname, fn)
+	elseif type(rawget(_G, fname)) == "function" then
+		hooksecurefunc(fname, fn)
+	end
+end
+
 local M = MelloUI:RegisterModule("ClassIcons", {
 	title = "Class Icons",
 	desc = "High resolution painted class medallions in place of the default class icons, and on player portraits.",
@@ -376,9 +401,41 @@ end
 -- unit's portrait, if unit is a player with a mapped class icon and the
 -- Player Portraits toggle is on. NPC units are left with the game's own
 -- portrait (model render or its default question-mark art).
+-- (fr-16) the game's party left alone while Group Frames' party frames stand in (MelloUI.GroupFrames:LeavesGame):
+-- no cover on its members' portraits nor their pets' -- a cover hooks the portrait, a write on the game's members'
+-- regions (the user's errors of 2026-10-31). Group Frames' members wear the medallion of their own (the replica's
+-- painter). Given back, the game's are covered then (OnEnable's groupframes listener)
+local function GameLeftAlone()
+	local gf = MelloUI.GroupFrames
+	return gf and gf.LeavesGame and gf:LeavesGame("party") or false
+end
+local ofParty = setmetatable({}, { __mode = "k" })   -- [texture] = true when it is one of the game's party frames'
+local function OfGameParty(texture)
+	local was = ofParty[texture]
+	if was ~= nil then
+		return was
+	end
+	local pf, cur, found = rawget(_G, "PartyFrame"), texture, false
+	for _ = 1, 4 do   -- (a member's portrait: the member, PartyFrame; its pet's: the pet, the member, PartyFrame)
+		local ok, parent = pcall(cur.GetParent, cur)
+		cur = ok and parent or nil
+		if cur == nil then
+			break
+		elseif cur == pf then
+			found = true
+			break
+		end
+	end
+	ofParty[texture] = found
+	return found
+end
+
 local function TryReplacePlayerPortrait(texture, unit)
 	if not (M.isEnabled and M.db and M.db.portraits) then
 		Uncover(texture)
+		return false
+	end
+	if texture and GameLeftAlone() and OfGameParty(texture) then
 		return false
 	end
 	-- UnitIsPlayer first: it is false for an NPC and for no unit at all, so
@@ -442,8 +499,10 @@ local function InstallHooks()
 	-- many times a second (the target of target's portrait, every frame):
 	-- with the toggle off and no cover, no texture or no unit token, it is
 	-- left at once; an NPC's portrait is left at UnitIsPlayer.
+	-- (fr-17: through MelloUI.Units -- a portrait of the game's player frame kept away skipped; ours calls the game's
+	-- SetPortraitTexture itself)
 	if type(SetPortraitTexture) == "function" then
-		hooksecurefunc("SetPortraitTexture", function(texture, unit)
+		UnitsHook("SetPortraitTexture", function(texture, unit)
 			if not (texture and type(unit) == "string") then
 				return
 			end
@@ -465,7 +524,7 @@ local function InstallHooks()
 	-- ReplaceOtherPlayerPortraits CVar), so it needs its own hook too. The
 	-- stamp is used up here: seen once, then looked at again next time.
 	if type(UnitFramePortrait_Update) == "function" then
-		hooksecurefunc("UnitFramePortrait_Update", function(self)
+		UnitsHook("UnitFramePortrait_Update", function(self)
 			local portrait = self and self.portrait
 			if not portrait then
 				return
@@ -529,10 +588,10 @@ local function CoverFramePortrait(frame)
 end
 
 local function CoverUnitPortraits()
-	CoverFramePortrait(PlayerFrame)
-	CoverFramePortrait(TargetFrame)
-	CoverFramePortrait(FocusFrame)
-	if PartyFrame then
+	CoverFramePortrait(ScreenPlayer())
+	CoverFramePortrait(ScreenTarget())   -- (fr-17: the target frame on the screen)
+	CoverFramePortrait(ScreenFocus())   -- (fr-17: the focus frame on the screen)
+	if PartyFrame and not GameLeftAlone() then
 		for i = 1, 4 do
 			CoverFramePortrait(PartyFrame["MemberFrame" .. i])
 		end
@@ -559,6 +618,18 @@ function M:OnEnable(db)
 		M.listening = true
 		MelloUI:On("look:unitframes", RecoverAll, "Class Icons")
 		MelloUI:On("scale", RecoverAll, "Class Icons")
+		-- (fr-16) the game's party frames given back by Group Frames: covered now (left alone till then)
+		MelloUI:On("groupframes", function(what)
+			if what == "game" and M.isEnabled and M.db and M.db.portraits and not GameLeftAlone() then
+				CoverUnitPortraits()
+			end
+		end, "Class Icons: the game's party back")
+		-- (fr-17) the player frame of ours come or gone (the game's given back): the portrait of the one that stands
+		MelloUI:On("units", function()
+			if M.isEnabled and M.db and M.db.portraits then
+				CoverUnitPortraits()
+			end
+		end, "Class Icons: the player frame of ours")
 	end
 	-- the unit frames' portraits covered at once: on again after an
 	-- OnDisable, and at login too (the user, 2026-10-09: "i reloaded in game,
@@ -637,9 +708,11 @@ SlashCmdList.MELLOICONDUMP = function()
 				okL and tostring(layer) or "?", okL and tostring(sub) or "?", okC and tostring(cl) or "?", okC and tostring(cs) or "?")
 		end
 	end
-	local pf = PlayerFrame and PlayerFrame.PlayerFrameContainer
+	local pf = ScreenPlayer()
+	pf = pf and pf.PlayerFrameContainer
 	CoverLine("your", pf and pf.PlayerPortrait)
-	CoverLine("the target's", TargetFrame and TargetFrame.portrait)
+	local tf = ScreenTarget()
+	CoverLine("the target's", tf and tf.portrait)
 
 	if not UnitExists("target") then
 		MelloUI:Print("target: none")

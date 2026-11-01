@@ -86,6 +86,26 @@ def raw_snapshot():
     return B.py(lua, lua.eval("MelloUIDB.modules"))
 
 
+AXX = {"TOPLEFT": 0, "TOP": 0.5, "TOPRIGHT": 1, "LEFT": 0, "CENTER": 0.5, "RIGHT": 1, "BOTTOMLEFT": 0, "BOTTOM": 0.5,
+       "BOTTOMRIGHT": 1}
+AXY = {"TOPLEFT": 1, "TOP": 1, "TOPRIGHT": 1, "LEFT": 0.5, "CENTER": 0.5, "RIGHT": 0.5, "BOTTOMLEFT": 0, "BOTTOM": 0,
+       "BOTTOMRIGHT": 0}
+
+
+def same_spot(a, b, W=768 / 0.64 * 3440 / 1440, H=768 / 0.64):
+    """(2.1.0, el-15) two store places that put the same point of the frame at the same spot of the design screen
+    (UI units; the store's offsets are in the frame's own units, times its scale; relPoint none: CENTER)."""
+    if a.get("point", "BOTTOMLEFT") != b.get("point", "BOTTOMLEFT") or a.get("scale", 1) != b.get("scale", 1):
+        return False
+    s = a.get("scale", 1) or 1
+
+    def at(p):
+        rp = p.get("relPoint") or "CENTER"
+        return AXX[rp] * W + p.get("x", 0) * s, AXY[rp] * H + p.get("y", 0) * s
+    (ax, ay), (bx, by) = at(a), at(b)
+    return abs(ax - bx) < 0.2 and abs(ay - by) < 0.2
+
+
 def moved_places(snap):
     """The store entries the moved windows must have, by the rule the modules
     document (written again here, independently): Chat's whisperPopupPos
@@ -270,6 +290,9 @@ def main():
     lua2, errs, ns, _ = B.make_world_retry(5, 60, without=B.FULL_WITHOUT)
     lua2.execute(open(F.SNAP, encoding="utf-8").read())
     lua2.execute(B.CVAR_STORE)   # (1.0: a module restarted by the load gives its CVars back and holds them again)
+    # (2.1.0, el-15: a live saved file's Tweaks keeps the player's own world text scale, savedWorldTextScale: the client
+    # has the cvar -- Forever's name -- so the restart gives it back and takes it again, as in game)
+    lua2.execute('C_CVar.SetCVar("WorldTextScale_v2", "0.8")')
     lua2.execute(B.BUDGET)
     lua2.execute(F.LUA_STEPS)
     lua2.globals().Login()
@@ -297,6 +320,18 @@ def main():
     M2.ApplySettingsText(M2, text)
     M2.SaveProfile(M2, "Over")
     over = strip_extra(lua2.eval("MelloUI.db.profiles.Over"), report["skinLeftOut"])
+    # (2.1.0, el-15: a live saved file holds MelloUI_Oldschool's modules' settings as the player's client wrote them,
+    # and this world loads without it: there, no module knows those entries' defaults, so the save writes them all --
+    # the bake, with it loaded, leaves out what are its defaults. Those entries aside, every entry the same)
+    known2 = lua2.eval("function(n) return MelloUI.modules[n] ~= nil end")
+    em_text, em_over = B.entry_map(text), B.entry_map(over)
+
+    def unknown(k):
+        return not k.startswith("!") and not known2(k.split(".", 1)[0])
+    odd = sorted(k for k in set(em_text) | set(em_over) if em_text.get(k) != em_over.get(k))
+    if odd and all(unknown(k) for k in odd):
+        over = text
+        print("       (%d entries of modules this world without MelloUI_Oldschool does not have)" % len(odd))
     check(over == text, "loaded over the user's setup it gives the same text")
     if over != text:
         for c in F.diff(text, over):
@@ -328,7 +363,12 @@ def main():
                 # (as a value the way the profile writes one -- "=s<value>" or ":s<value>" inside a table -- not a
                 # word in another key's name: Chat's own Background copy "parchment" vs parchment_chat, 2026-10-01)
                 if isinstance(v, str) and len(v) >= 4 and re.search(r"[=:]s" + re.escape(v) + r"(?=[;,}|]|$)", text):
-                    leaks.append("%s.%s value" % (mod, k))
+                    # (2.1.0, el-15: the screen the places were made on ships as UIModifications.placesFor, so a snapshot
+                    # made on that screen has the same "WxH" as its layoutFitFor: that one is not a leak)
+                    if not (mod == "UIModifications" and k == "layoutFitFor"
+                            and re.search(r"(?:^|;)UIModifications\.placesFor=s" + re.escape(v) + r"(?:;|$)", text)
+                            and len(re.findall(r"[=:]s" + re.escape(v) + r"(?=[;,}|]|$)", text)) == 1):
+                        leaks.append("%s.%s value" % (mod, k))
     check(not leaks, "no personal key or personal value of the snapshot in it: %s" % leaks)
     # (0.17.0: a module's saved* keys are the player's own game settings it gives back when off -- Combat Text's
     # and the meter's were about to ship: none in it, whichever module adds one next)
@@ -366,7 +406,10 @@ def main():
     check(not [n for n in pos if n in F.STALE_PLACES], "no stale place")
     for n, want in moved.items():
         got = pos.get(n)
-        check(got is not None and {k: got[k] for k in got} == want, "the moved place %s is a store entry %s" % (n, got))
+        # (2.1.0, el-15: an own element's place in an old form ships in the side form, at the same spot -- LayoutFit's
+        # F0s with inputs.sideForm -- so the point, the scale and where it stands at the design size are compared)
+        same = got is not None and ({k: got[k] for k in got} == want or same_spot(got, want))
+        check(same, "the moved place %s is a store entry %s" % (n, got))
     for k in F.LEGACY_PLACES:
         check(k not in emap, "no old place key %s" % k)
     check("voiceOverlay" not in pos, "no voiceOverlay place (0.16.0: the widget column has its own)")

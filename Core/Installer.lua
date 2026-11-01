@@ -104,7 +104,8 @@
 --                                       this screen: the layout was fitted,
 --                                       nothing "installed")
 -- The bus topic "installer" tells the window what happened:
---   ("installed", optionKey)                ("countdown", seconds, paused, why)
+--   ("installed", optionKey, notIn)         ("countdown", seconds, paused, why)
+--   (notIn, 2.1.0: the line when Mello's Edit Mode layout was wanted and did not go in)
 --   ("kept")                                ("reverted", reason, reloadOwed)
 --   ("revertFailed", reason, why)
 -- A draft is { ["Module.key"] = value, ["!Module"] = on, layout = on,
@@ -269,6 +270,9 @@ I.TEXT = {
 	installed = "%s installed. Keep it, or MelloUI goes back to 'Before install' when the timer runs out.",
 	-- (Fit to this screen: nothing is installed, the layout is fitted)
 	refitted = "Your layout was fitted to this screen. Keep it, or MelloUI goes back to 'Before install' when the timer runs out.",
+	-- (2.1.0, el-15) Mello's Edit Mode layout wanted, but the game did not take it: said, never silent
+	layoutNotIn = "MelloUI's Edit Mode layout did not go in (%s). Your own layout stays; /mello layout check shows why.",
+	noFit = "the screen was not fitted",   -- (the layout's reason when no fit answered)
 	reverted = "Back to 'Before install'.",
 	failed = "Something went wrong while installing, so MelloUI went back to 'Before install'.",
 	failedStuck = "Something went wrong while installing. Use Revert to go back to 'Before install'.",
@@ -852,7 +856,13 @@ function I:LayoutOn(option, draft, fit)
 	if wanted ~= nil then
 		return wanted and true or false
 	end
-	return type(fit.report) == "table" and fit.report.pass and true or false
+	-- (2.1.0, el-15) in even on a FAIL: on the screen the layout is drawn for (report.drawn), and on any other the fit's
+	-- closest try (report.adapted: scaled to the screen where that came closer) -- its overlaps said on the Layout step;
+	-- the player is never left on the game's own layout (the user, 2026-11-01). Out only for a layout the fit could not
+	-- read or the player's own pick
+	local report = fit.report
+	return type(report) == "table" and (report.pass or ((report.drawn or report.adapted) and type(fit.fitted) == "table"))
+		and true or false
 end
 
 -- whether Install must wait for the fit: the window places, or the layout
@@ -873,6 +883,12 @@ local function EditModePlace(key)
 	if key:find("^EditMode%.%-?%d+%.%-?%d+$") then
 		return true
 	end
+	-- (fr-18) the places of MelloUI's own status bars and bag bar: kept with the player's own layout; a profile that
+	-- brings none leaves ours to take its layout's places for the game's frames at the next login (MelloUI.OwnBars)
+	local own = MelloUI.OwnBars
+	if own and own.IsKey(key) then
+		return true
+	end
 	local LayoutFit = MelloUI.LayoutFit
 	for _, name in ipairs(type(LayoutFit) == "table" and type(LayoutFit.EDIT_MODE_FRAMES) == "table"
 		and LayoutFit.EDIT_MODE_FRAMES or EMPTY) do
@@ -883,9 +899,23 @@ local function EditModePlace(key)
 	return false
 end
 
+-- (2.1.0, el-15; the user, 2026-11-01, of pr-04's question: "Yes, keep them too (Recommended)") a place of MelloUI's
+-- own elements in Core's store: no Edit Mode place (EditModePlace, the own bars with them) and none of the game's
+-- windows or Edit Mode frames (LayoutFit.IsGameKey) -- Gains, the notice, the widget column, Combat Text, the meter,
+-- the Personal Display, the group frames, the unit frames' own places
+local function OwnElementPlace(key)
+	if type(key) ~= "string" or EditModePlace(key) then
+		return false
+	end
+	local LayoutFit = MelloUI.LayoutFit
+	return not (type(LayoutFit) == "table" and type(LayoutFit.IsGameKey) == "function" and LayoutFit.IsGameKey(key))
+end
+
 -- Edit Mode keeps the player's own layout: its frames' store places, Edit
 -- Layout's copies and the tracker's own place as the player has them (the
--- shipped text's are for the shipped layout; its whole store would go in)
+-- shipped text's are for the shipped layout; its whole store would go in);
+-- (2.1.0) and every place the player gave MelloUI's own elements (OwnElementPlace: none given, the profile's).
+-- Returns the keys kept (keys[key] = true), which the window places then leave alone
 local function KeepOwnLayoutPlaces(target, cur)
 	local um = target.modules[UMB]
 	local have = (cur.modules[UMB] or EMPTY).positions
@@ -898,6 +928,18 @@ local function KeepOwnLayoutPlaces(target, cur)
 	end
 	for key in pairs(type(um.positions) == "table" and um.positions or EMPTY) do
 		if EditModePlace(key) and not keys[key] then
+			keys[#keys + 1], keys[key] = key, true
+		end
+	end
+	-- (fr-18) the player's own places of MelloUI's own status bars and bag bar, whether the profile names them or not
+	local own = MelloUI.OwnBars
+	for key in pairs(own and have or EMPTY) do
+		if own.IsKey(key) and not keys[key] then
+			keys[#keys + 1], keys[key] = key, true
+		end
+	end
+	for key, p in pairs(have) do
+		if p ~= nil and OwnElementPlace(key) and not keys[key] then
 			keys[#keys + 1], keys[key] = key, true
 		end
 	end
@@ -915,6 +957,7 @@ local function KeepOwnLayoutPlaces(target, cur)
 		target.modules.QuestTracker = target.modules.QuestTracker or {}
 		target.modules.QuestTracker.pos = DeepCopy(pos)
 	end
+	return keys
 end
 
 -- The fitter's places into the target (inside the one Batch like every
@@ -938,8 +981,9 @@ function I:PlacesToTarget(target, fit, option, draft, cur)
 	end
 	local places = type(fit) == "table" and type(fit.places) == "table" and fit.places or nil
 	local layoutOn = self:LayoutOn(option, draft, fit)
+	local kept
 	if not layoutOn and type(cur) == "table" then
-		KeepOwnLayoutPlaces(target, cur)
+		kept = KeepOwnLayoutPlaces(target, cur)
 	end
 	if not (places and (option.places or layoutOn)) then
 		return target
@@ -950,7 +994,9 @@ function I:PlacesToTarget(target, fit, option, draft, cur)
 	um.placesFor = nil
 	if option.places then
 		for key, p in pairs(type(places.windows) == "table" and places.windows or EMPTY) do
-			store[key] = DeepCopy(p)
+			if not (kept and kept[key]) then   -- (2.1.0: a place the player's own layout keeps)
+				store[key] = DeepCopy(p)
+			end
 		end
 	end
 	if layoutOn then
@@ -1960,6 +2006,32 @@ function I:Install(option, draft, fit)
 	-- 2. the restore point (in the db this session runs on: never the
 	-- global, which may not be there yet on this client)
 	local rp = { before = before, layout = layoutBefore, option = option.key, at = time() }
+	-- (2.1.0, el-15; the user's /mello layout check said "not wanted", and nothing told why) what the player picked on
+	-- the Layout step, and the fit's verdict when Mello's layout was picked but the fit did not pass (I:LayoutOn then
+	-- answers false and the layout was skipped without a word): kept for the check and said below
+	rp.layoutWanted = option.layout and not (type(draft) == "table" and draft.layout == false) and true or false
+	if rp.layoutWanted and not layoutOn then
+		local report = type(fit) == "table" and type(fit.report) == "table" and fit.report or nil
+		rp.layoutWhy = report and tostring(report.why or report.verdict) or TEXT.noFit
+	end
+	-- (el-15, the user's real client, 2026-11-01: "too small" on the very screen the layout is drawn for, which the sim
+	-- never gave) the fit's own answer kept with it, small and plain, for /mello layout check: the screen it measured,
+	-- its verdict and cause, and the first of what it could not solve
+	local report = type(fit) == "table" and type(fit.report) == "table" and fit.report or nil
+	if report then
+		local function Few(list)
+			local out = {}
+			for i = 1, math.min(4, type(list) == "table" and #list or 0) do
+				out[i] = tostring(list[i])
+			end
+			return out
+		end
+		local checks = type(report.checks) == "table" and report.checks or EMPTY
+		rp.layoutFit = { W = fit.W, H = fit.H, verdict = tostring(report.verdict), cause = report.cause and tostring(report.cause),
+			drawn = report.drawn and true or nil, adapted = report.adapted and true or nil, scaled = report.scaled,
+			flags = Few(report.flags), hard = Few(checks.hard), off = Few(checks.off),
+			centre = Few(checks.centre), stores = Few(checks.stores) }
+	end
 	db.installer = rp
 	-- 3-6. the setup, the layout, the windows
 	local out = {}
@@ -1990,8 +2062,16 @@ function I:Install(option, draft, fit)
 	else
 		MelloUI:Print(TEXT.installed, option.title)
 	end
+	-- (2.1.0, el-15: players' "the Edit Mode layout does not apply") the layout wanted but refused (a full list, a save
+	-- the game turned down ...): said in the chat and on the Keep page -- it was kept on the restore point only, and
+	-- the player reloaded into their old layout without a word
+	local notIn
+	if rp.layoutWanted and not rp.layoutPut then
+		notIn = MelloUI.Lang.F(TEXT.layoutNotIn, tostring(rp.layoutWhy or "?"))
+		MelloUI:Print("%s", notIn)
+	end
 	self:StartCountdown(KEEP_SECONDS)
-	MelloUI:Fire("installer", "installed", option.key)
+	MelloUI:Fire("installer", "installed", option.key, notIn)
 	NoteCost("install", "Install", t0)   -- (the window's Keep page drawn on the Fire included)
 	return true, nil, changed
 end
@@ -2168,6 +2248,7 @@ function I:Revert(reason)
 	end
 	rp.pending = nil
 	rp.layoutWritten, rp.layoutPut, rp.layoutFlags, rp.chatSizes = nil, nil, nil, nil
+	rp.reverted = tostring(reason or "?")   -- (2.1.0, el-15: /mello layout check tells a revert from a layout never wanted)
 	local reloaded = rp.reloadedSince or (pending and pending.reloadedSince)
 	local reloadOwed = (needsReload and reloaded) and true or false
 	MelloUI:Print(TEXT.reverted)
@@ -2219,8 +2300,9 @@ end
 --     player was not new;
 --   - an existing player on a new version: one chat line (What's new), and
 --     seenVersion (and welcomeAsked) set;
---   - an existing player with the reskin on whose account has Mello's Edit
---     Mode layout for this screen, on a character that does not use it (the
+--   - an existing player whose account took Mello's Edit Mode layout for
+--     this screen (the installer put it in, or the reskin is on: AltCheck),
+--     on a character that does not use it (the
 --     game keeps the active layout per character; MelloUI's settings are
 --     the account's): one question, once per character, remembered in
 --     UI Modifications' layoutAsked_<character> (the player's own), in
@@ -2480,13 +2562,24 @@ local function AltKey()
 end
 
 -- The alt question: this screen's Mello layout is in the account's list,
--- the reskin is on, and this character's active layout is another one: ask, once. A
+-- the account took it, and this character's active layout is another one: ask, once. A
 -- character already on it is remembered as asked (a later switch of its
 -- own is its own choice). Read only until then (EditModeState).
+-- (2.1.0, el-15: players' "the Edit Mode layout does not apply") The account
+-- took Mello's layout: the installer put it in (layoutFitFor, written only
+-- when the fitted layout went in), or the painted reskin is on (its own
+-- one-time layout). Since 1.2.4 the Default and Modern skins leave the reskin
+-- off, and the question was asked behind it alone: no other character was
+-- ever asked, and the game kept each one on its own layout.
+local function TookLayout(um)
+	return type(um.layoutFitFor) == "string" or (MelloUI:IsModuleEnabled(UMB) and um.reskin ~= false)
+end
+I.AltKey, I.TookLayout = AltKey, TookLayout   -- (read by /mello layout check: Core/EditModeLayout.lua)
+
 local function AltCheck()
 	local key = AltKey()
 	local um = MelloUI:GetModuleDB(UMB)
-	if not key or um[key] ~= nil or not (MelloUI:IsModuleEnabled(UMB) and um.reskin ~= false) or not MelloUI.EditModeState then
+	if not key or um[key] ~= nil or not TookLayout(um) or not MelloUI.EditModeState then
 		return
 	end
 	local ok, state = pcall(MelloUI.EditModeState, MelloUI)

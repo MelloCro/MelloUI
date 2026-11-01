@@ -113,9 +113,9 @@ CEILINGS = {
     # AddButton and its own layout fields from a post-hook of InitButtons,
     # never in the Gamepad UI (Core/Config.lua, MelloUI.GameMenuInside): 1 each, to be
     # proven with taintLog 2 in game before it ships
-    "blizz-menu-button": 1,
+    "blizz-menu-button": 0,
     "blizz-popup": 0,
-    "blizz-layout-field": 1,
+    "blizz-layout-field": 0,
     "panel-call": 0,
     "map-pool-call": 0,
     # Edit Layout (0.15.0): its three new files start at 0; its one key frame

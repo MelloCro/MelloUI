@@ -44,11 +44,13 @@ local STATE_TEXT = {
 }
 
 -- (0.25.0, the user's picks: MelloUI's icon set) a transport's pin by its kind: a dock's ship (0, 1), a zeppelin
--- tower's airship (2), the portal between Darnassus and Rut'theran Village (3), the Deeprun Tram's stations (4)
--- (the game's taxi node, portal and mine cart atlases until then)
-local TRANSPORT_PIN = { [0] = "pin_boat", [1] = "pin_boat", [2] = "pin_zeppelin", [3] = "pin_portal", [4] = "pin_tram" }
-local TRANSPORT_PLACE = { [2] = "Zeppelin tower", [3] = "Portal", [4] = "Tram station" }
-local TRANSPORT_WHAT = { [2] = "zeppelin", [3] = "portal", [4] = "tram" }
+-- tower's airship (2), the portal between Darnassus and Rut'theran Village (3), the Deeprun Tram's stations (4);
+-- (2.1.0, qu-03) Zephras Isle's airships (5) the zeppelin's pin (the game's taxi node, portal and mine cart atlases
+-- until then)
+local TRANSPORT_PIN = { [0] = "pin_boat", [1] = "pin_boat", [2] = "pin_zeppelin", [3] = "pin_portal", [4] = "pin_tram",
+	[5] = "pin_zeppelin" }
+local TRANSPORT_PLACE = { [2] = "Zeppelin tower", [3] = "Portal", [4] = "Tram station", [5] = "Airship dock" }
+local TRANSPORT_WHAT = { [2] = "zeppelin", [3] = "portal", [4] = "tram", [5] = "airship" }
 
 -- A quest found only inside a dungeon or raid is pinned beside its entrance.
 local BESIDE_DOOR_X, BESIDE_DOOR_Y = 20, 10   -- pixels: off the entrance pin's own icon
@@ -717,7 +719,7 @@ function QL.MarkTip(tip, kind, data, hints)
 			or ((data.item == "dungeon" or data.item == "raid") and "Click: route to the entrance" or "Click: waypoint")
 		Hint(open > 0 and (click .. "   Alt-click: hide") or click)
 	elseif kind == "objective" then
-		QL.Objectives.Tip(tip, data, Line)
+		QL.Objectives.Tip(tip, data, Line, hints)
 	elseif kind == "entrance" then
 		QL.TipTitle(tip, data.name)
 		local lv = data.dungeonID ~= 0 and QL.Data().dungeonLevel and QL.Data().dungeonLevel[data.dungeonID]

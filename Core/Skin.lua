@@ -38,7 +38,12 @@
 --       game's chat button with the letter on it), `disc` (a picture with a clear ground: a round button lays a dark
 --       disc under it), `round` (a square icon cut round, as the set's), `coords` (its part of a sheet: a class
 --       medallion's path -> the game's class circle), `flip` (an atlas pointing the other way from the set's icon:
---       turned over top to bottom); nil while the Default skin is off or the icon has no game twin (MelloUI's own then)
+--       turned over top to bottom), `rgb` (the picture tinted so: a class pin's blip; laid after the caller's colour,
+--       taken away again by Skin.ClearIcon), `grow` and `inset` (a picture with a wide clear margin: a map pin draws it
+--       this much bigger than the set's icon, with `inset` of each side cut off -- Skin.Inset, MelloUI_Map's MapPins);
+--       nil while the Default skin is off or the icon has no game twin (MelloUI's own then)
+--   Skin.Inset(tex, spec)   (qu-04) spec's atlas on tex without its clear margin (spec.inset of each side): the file
+--       and its part of the sheet, as Flip lays one
 --   Skin.LayIcon(tex, spec)   the game's picture on tex (Icons.Set's: its size the caller's);
 --       Skin.ClearIcon(tex) takes a channel key's letter away again
 -- The bus: 'skin' (isDefault) goes out at a switch, then each look area's 'look:<area>' with its own answer
@@ -640,7 +645,12 @@ local ICON = {
 	ql_chest = { atlas = "VignetteLoot" }, goal_pin = { atlas = "Waypoint-MapPin-Tracked" },
 	btn_way = { atlas = "Navigation-Tracked-Arrow" }, btn_list = { atlas = "dressingroom-button-appearancelist-up" },
 	kill = { atlas = "DungeonSkull" }, kill_elite = { atlas = "VignetteKillElite" }, kill_rare = { atlas = "VignetteKill" },
-	pin_dungeon = { atlas = "Dungeon" }, pin_raid = { atlas = "Raid" }, pin_portal = { atlas = "PortalBlue" },
+	-- (2.1.0, qu-04; the user's yes: Default's doors "a little bigger") the game's door pictures fill half their frame
+	-- (the solid swirl 0.54 of its 50 px; on screen the ring 6.7 px at 16, wowsim): a map pin draws them without their
+	-- clear margin (`inset` of each side, Skin.Inset) and a quarter bigger (`grow`): the ring about 13 px, as the other
+	-- pins' pictures read, in a 20 px box that keeps clear of its neighbours (a 32 px box pushed the capitals aside)
+	pin_dungeon = { atlas = "Dungeon", grow = 1.25, inset = 0.18 }, pin_raid = { atlas = "Raid", grow = 1.25, inset = 0.18 },
+	pin_portal = { atlas = "PortalBlue" },
 	-- the controls (the game's own, at their sizes or smaller)
 	ctl_check_off = { atlas = "checkbox-minimal" }, ctl_check_on = { atlas = "checkmark-minimal", box = "checkbox-minimal" },
 	-- (the dropdown's arrow button at rest -- "-up" is its state, the arrow points down; the plain arrow points up, as
@@ -676,6 +686,12 @@ local ICON = {
 	-- (every map dot is drawn tinted in its meaning colour -- a quest's, a whisperer's state -- so the game's white blip,
 	-- as the game tints its own; the blue party dot would turn muddy under a tint)
 	map_dot = { atlas = "PlayerPartyBlip" },
+	-- (2.1.0, qu-04) the map's towns and merged pins' count: the client's own map pictures (its town icon, its quest
+	-- map's number disc), where MelloUI's look lays palette pieces (MelloUI_Map's seal and badge). Not the capitals: the
+	-- user, 2026-10-31, their emblems "all on the map with the ring around it" -- under Default too each capital wears
+	-- its city's emblem in the gold seal, never the game's city tower
+	map_town = { atlas = "poi-town" },
+	map_count = { atlas = "UI-QuestPoi-QuestNumber" },
 	pin_boat = { atlas = "FlightMasterFerry" }, pin_zeppelin = { atlas = "Vehicle-Air-Unoccupied" },
 	pin_tram = { atlas = "Vehicle-SilvershardMines-MineCart" },
 	-- the quests' objective kinds, loot, reagents
@@ -745,6 +761,20 @@ local function ClassSpec(icon)
 	return spec or nil
 end
 
+-- (2.1.0, qu-04) a party member's class pin (the set's class_<CLASS>, its colour baked in): the game's map draws a
+-- member as its white blip in the class colour, so that, tinted (`rgb`, from the game's own class colours)
+local classBlips = {}
+
+local function ClassBlip(class)
+	local spec = classBlips[class]
+	if spec == nil then
+		local c = type(_G.RAID_CLASS_COLORS) == "table" and _G.RAID_CLASS_COLORS[class]
+		spec = type(c) == "table" and { atlas = ICON.map_dot.atlas, rgb = { c.r, c.g, c.b } } or false
+		classBlips[class] = spec
+	end
+	return spec or nil
+end
+
 function Skin.Icon(icon)
 	if not Skin.IsDefault() then
 		return nil
@@ -753,6 +783,10 @@ function Skin.Icon(icon)
 		return ClassSpec(icon)
 	end
 	local name = NameOf(icon)
+	local class = name and name:match("^class_(%u+)$")
+	if class then
+		return ClassBlip(class)
+	end
 	return name and ICON[name] or nil
 end
 
@@ -760,6 +794,7 @@ local letters = setmetatable({}, { __mode = "k" })   -- [tex] = its letter (a ch
 local boxes = setmetatable({}, { __mode = "k" })     -- [tex] = the box under a ticked check box's mark
 local cuts = setmetatable({}, { __mode = "k" })      -- [tex] = the round cut for a square icon (`round`; false: none)
 local cutOn = setmetatable({}, { __mode = "k" })     -- [tex] = true while it is cut
+local tinted = setmetatable({}, { __mode = "k" })    -- [tex] = true while a picture's own `rgb` colours it
 local ROUND_CUT = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
 -- (a square icon of the game's in the place of one of the set's round ones: cut round, as the set's is; never a
@@ -795,6 +830,10 @@ function Skin.ClearIcon(tex)
 	if boxes[tex] then
 		boxes[tex]:Hide()
 	end
+	if tinted[tex] then
+		tinted[tex] = nil
+		tex:SetVertexColor(1, 1, 1)
+	end
 	Cut(tex, false)
 end
 
@@ -810,6 +849,20 @@ local function Flip(tex, atlas)
 	if file and l and r and t and b then
 		tex:SetTexture(file)
 		tex:SetTexCoord(l, r, b, t)
+	end
+end
+
+function Skin.Inset(tex, spec)
+	local Num = MelloUI.Safe.Finite
+	local k = Num(spec.inset)
+	local info = spec.atlas and C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(spec.atlas)
+	local file = info and (info.file or info.filename)
+	local l, r = info and Num(info.leftTexCoord), info and Num(info.rightTexCoord)
+	local t, b = info and Num(info.topTexCoord), info and Num(info.bottomTexCoord)
+	if k and file and l and r and t and b then
+		local w, h = r - l, b - t
+		tex:SetTexture(file)
+		tex:SetTexCoord(l + w * k, r - w * k, t + h * k, b - h * k)
 	end
 end
 
@@ -857,5 +910,11 @@ function Skin.LayIcon(tex, spec)
 	elseif fs then
 		fs:Hide()
 	end
+	-- (its own colour over the caller's; a picture without one leaves the caller's as it is)
+	local c = spec.rgb
+	if c then
+		tex:SetVertexColor(c[1], c[2], c[3])
+	end
+	tinted[tex] = c and true or nil
 	Cut(tex, spec.round or false)
 end

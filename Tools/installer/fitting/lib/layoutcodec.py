@@ -38,7 +38,10 @@ ConvertLayoutInfoToString), tokens separated by ONE space, no trailing space:
                RaidWarning, TotemActionBar in every sample).
     The account cache file (WTF/Account/<acct>/edit-mode-cache-account.txt)
     uses the same system records:  "3 <nAcct> <acct values...> {<nameLen>
-    <name> <COUNT> <systems>}* \\0"  (decode_account_cache / encode_account_cache).
+    <name> <COUNT> <systems>}* \\0"  (decode_account_cache / encode_account_cache);
+    since version 4 (client 1.60.1.70009, as the share string) each layout's
+    input style follows its name: "{<nameLen> <name> <STYLE> <COUNT> <systems>}*"
+    (version 5 on client 1.60.1.70685, read 2026-11-01).
 """
 import json
 import sys
@@ -523,13 +526,17 @@ def decode_account_cache(text):
         nlen = int(take())
         name = body[pos:pos + nlen]
         pos += nlen + 1
+        style = int(take()) if version >= 4 else None
         count = int(take())
         # decode count systems from the remaining tokens
         rest = body[pos:].split(" ")
         systems, used = _decode_systems(rest, 0, count)
         consumed = len(" ".join(rest[:used]))
         pos += consumed + 1
-        layouts.append({"name": name, "systemCount": count, "systems": systems})
+        lay = {"name": name, "systemCount": count, "systems": systems}
+        if style is not None:
+            lay["interfaceStyle"] = style
+        layouts.append(lay)
     names = _rev("EditModeAccountSetting")
     return {"format": "EditModeAccountCache", "version": version,
             "accountSettings": [{"id": k, "name": names.get(k, "Setting%d" % k), "value": v} for k, v in enumerate(acct)],
@@ -540,7 +547,10 @@ def encode_account_cache(obj):
     parts = [str(obj["version"]), str(len(obj["accountSettings"]))]
     parts += [str(int(e["value"])) for e in obj["accountSettings"]]
     for lay in obj["layouts"]:
-        parts += [str(len(lay["name"])), lay["name"], str(len(lay["systems"]))]
+        parts += [str(len(lay["name"])), lay["name"]]
+        if int(obj["version"]) >= 4:
+            parts.append(str(int(lay.get("interfaceStyle", 0))))
+        parts.append(str(len(lay["systems"])))
         parts += [_encode_system(s) for s in lay["systems"]]
     return " ".join(parts) + obj.get("trailer", "")
 

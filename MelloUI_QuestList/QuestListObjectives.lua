@@ -620,10 +620,18 @@ end
 
 local FROM = { "From", "In", "Sold by" }   -- a creature drops it, an object holds it, a vendor sells it
 
--- the mark's tooltip (QuestListMap's MarkEnter, kind "objective")
-function O.Tip(tip, data, Line)
+-- the mark's tooltip (QuestListMap's MarkEnter, kind "objective"; the minimap's marks, O.MiniEnter); `hints`: its click
+-- line (only where the mark takes the click); `after`: (2.1.0) the quest of the lines above (marks stacked on the
+-- minimap, one after another): the same quest's title not again, another's under a gap
+function O.Tip(tip, data, Line, hints, after)
 	local row = QL.RowByID()[data.questID]
-	QL.TipTitle(tip, row and row[QL.F_TITLE] or data.name)
+	local title = row and row[QL.F_TITLE] or data.name
+	if not after then
+		QL.TipTitle(tip, title)
+	elseif after ~= data.questID then
+		Line(tip, " ", "text")
+		Line(tip, title, "selectedTrim")
+	end
 	local t = data.line
 	Line(tip, (t and t[6]) or data.name, "text")
 	local sources = MelloUI.QuestObjectives.Sources(data.questID)
@@ -633,7 +641,9 @@ function O.Tip(tip, data, Line)
 		local chance = Chance(s[5])
 		Line(tip, string.format("%s %s%s%s", FROM[s[1]] or "From", s[2], levels, chance and (", " .. chance) or ""), "text", true)
 	end
-	Line(tip, "Click to set a waypoint here.", "pinHint")
+	if hints then
+		Line(tip, "Click to set a waypoint here.", "pinHint")
+	end
 end
 
 -- the mark's click: a waypoint (Route's, when it is on) at the mark
@@ -711,8 +721,11 @@ end
 --                edge size and slides onto the edge as it passes it, its
 --                chevron coming in; one far beyond fades out (from MINI.FADE
 --                of the reach): all of it from the distance, no state, no
---                extra work a tick. No mouse: the minimap's own clicks and
---                pings go through
+--                extra work a tick. (2.1.0, qu-07) Hover only: a mark takes
+--                the mouse's motion, never its clicks (the minimap's ping,
+--                wheel and buttons go through, as a zone badge leaves its
+--                click to the map); its tooltip the maps' marks' own (O.Tip),
+--                every objective whose mark is under the cursor (O.MiniEnter)
 --   moments      (1.2.0) after the first build: an area new since then drawn
 --                round from its marks; a count up: its marks swell with a
 --                ring (the next tick that shows them); an objective done while
@@ -727,8 +740,10 @@ O.mini = { points = {}, n = 0, areas = {}, leaving = {}, ghosts = {}, ghostFrame
 	queued = false, built = false, painter = nil, holder = nil, readyAt = (GetTime and GetTime() or 0) + MINI.WAIT }
 
 function O.MiniWanted()
-	local M, R = QL.M, MelloUI.Route
-	return (M.isEnabled and M.db and M.db.objectiveMarks and M.db.objectiveMinimap and R and R.WantMinimap) and true or false
+	local M, R, OV = QL.M, MelloUI.Route, MelloUI.Overlaps
+	-- (2.1.0; the user, 2026-10-31: "Polestar takes priority") not while another addon marks them on the minimap
+	return (M.isEnabled and M.db and M.db.objectiveMarks and M.db.objectiveMinimap and R and R.WantMinimap
+		and not (OV and OV.By("minimapObjectives"))) and true or false
 end
 
 -- the places again (the log changed, a switch moved): soon, once
@@ -872,6 +887,8 @@ function O.MiniBuild()
 					mini.points[mini.n] = p
 				end
 				p.cont, p.x, p.y, p.kind, p.area = g.cont, rx, ry, entry[1], g
+				-- (2.1.0) its objective, for its tooltip (O.Tip's data, as the maps' marks have it)
+				p.questID, p.index, p.name, p.line = questID, index, entry[2], t
 				p.dx = (j - (#g.objs + 1) / 2) * 2 * MINI.SIDE_PX
 				p.bump, p.pop, p.shownAt = bump, g.fresh or nil, nil
 				seen[#seen + 1] = p
@@ -883,8 +900,48 @@ function O.MiniBuild()
 	end
 end
 
+-- (2.1.0, qu-07; the user, 2026-10-31: "mousing over the quest icons on the minimap, does not show the quest objective
+-- like it does on the map") a mark hovered: the maps' marks' tooltip (O.Tip, no click line: the click is the
+-- minimap's), the hovered mark's objective first, then every other one whose shown mark is under the cursor too (marks
+-- stacked on the small map), each once; one list reused
+local under = {}
+function O.MiniEnter(f)
+	local p = f.point
+	if not (p and p.questID) then
+		return
+	end
+	wipe(under)
+	under[p.questID * 100 + p.index] = true
+	local tip, Line = GameTooltip, QL.TipLine
+	tip:SetOwner(f, "ANCHOR_CURSOR")
+	O.Tip(tip, p, Line, false)
+	local after = p.questID
+	local mini = O.mini
+	for i = 1, mini.n do
+		local q = mini.points[i]
+		local qf = q.frame
+		if q ~= p and q.on and q.questID and qf and qf:IsShown() and qf:IsMouseOver() then
+			local id = q.questID * 100 + q.index
+			if not under[id] then
+				under[id] = true
+				O.Tip(tip, q, Line, false, after)
+				after = q.questID
+			end
+		end
+	end
+	tip:Show()
+end
+
+-- (the mark's own tooltip only: left, or hidden under the cursor)
+function O.MiniLeave(f)
+	if GameTooltip:GetOwner() == f then
+		GameTooltip:Hide()
+	end
+end
+
 -- a mark of a point (its own frame, kept with the point: a moment stays with its mark), `size` big, made the first
--- time it is needed: its kind's icon (as on the map) on its lift (MelloUI.Shade:Lift) -- placed by Route.MarkPlace
+-- time it is needed: its kind's icon (as on the map) on its lift (MelloUI.Shade:Lift) -- placed by Route.MarkPlace;
+-- (2.1.0) the mouse's motion only (O.MiniEnter), where the client splits it from the clicks (else none, as before)
 local function MiniMark(p, kind, size)
 	local f = p.frame
 	if not f then
@@ -893,6 +950,14 @@ local function MiniMark(p, kind, size)
 		f:SetFrameLevel(R.MinimapFrame():GetFrameLevel() + 2)
 		f.icon = f:CreateTexture(nil, "ARTWORK")
 		f.icon:SetPoint("CENTER")
+		f.point = p
+		if f.SetMouseClickEnabled then
+			f:EnableMouse(true)
+			f:SetMouseClickEnabled(false)
+			f:SetScript("OnEnter", O.MiniEnter)
+			f:SetScript("OnLeave", O.MiniLeave)
+			f:SetScript("OnHide", O.MiniLeave)
+		end
 		p.frame = f
 	end
 	if f.kind ~= kind then

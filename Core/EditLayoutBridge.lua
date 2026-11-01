@@ -1465,6 +1465,12 @@ local function Others(system, index)
 	if OTHERS[name] then
 		return true
 	end
+	-- (fr-18) the experience / reputation bars and the bag bar while MelloUI's own stand in for them (MelloUI.OwnBars:
+	-- their own movers and places; the game's frames kept away)
+	local own = MelloUI.OwnBars
+	if own and own.Holds(name, index) then
+		return true
+	end
 	if name == "UnitFrame" and GROUP_INDEX[index or 0] then
 		local gf = MelloUI:GetModule("GroupFrames")
 		return gf ~= nil and gf.isEnabled and true or false
@@ -2107,6 +2113,8 @@ local function Handover()
 	end
 end
 B.Handover = Handover
+-- (2.1.0, el-15) Edit Mode's list of its systems, read only: /mello layout check reads it too
+B.Systems = Systems
 
 -- Edit Mode opened: each held frame's point noted; closed (a frame later: its
 -- exit lays them again): one Edit Mode moved is its own again
@@ -2212,6 +2220,118 @@ do
 			end
 		end
 	end)
+end
+
+--------------------------------------------------------------------------------
+-- E. (2.1.0, el-15) "Reload now": MelloUIEditModeReload, over a button of ours (the Layout list's Reload now)
+-- The real client does not take info.activeLayout from SaveLayouts (the user's switch test, 2026-10-31: "'Classic'
+-- saved as the active one", then "the game kept 'Modern (MelloUI)' active"). A layout MelloUI saved as the active one
+-- waits (Core/EditModeLayout.lua: MelloUI:EditModeActivePending) and is made active right before the reload: in this
+-- button's PreClick (MelloUI:EditModeActivateNow), then the game's own /reload runs from its macro -- the installer's
+-- Keep's way (Core/InstallerWindow.lua, MelloUIInstallerReload): the manager's synchronous re-layout runs in a session
+-- the reload ends at once, never in a live one. Like Keep's (el-08, el-10), it lies over its button for as long as
+-- that button shows (laid at each of the list's lays and at the pointer's arrival), never only on a hover; made
+-- lazily, laid and hidden out of combat only; the macro stops itself in a fight, where the PreClick does nothing; one
+-- click phase (Acting).
+--   B.ReloadSync(button)   laid over `button` while it shows (and a layout waits), else hidden
+--   B.ReloadHide()
+--------------------------------------------------------------------------------
+local reload   -- the secure button, once made
+local reloadOver = { target = nil, clicking = false }
+local RELOAD_MACRO = "/stopmacro [combat]\n/reload"
+local RELOAD_KEY = "Edit Layout bridge: Reload now"
+
+local function ReloadHideNow()
+	B.ReloadHide()
+end
+
+function B.ReloadHide()
+	if not reload or reloadOver.clicking or not reload:IsShown() then
+		return
+	end
+	if InCombat() then
+		local K = Kit()
+		if K and K.WhenOutOfCombat then
+			K:WhenOutOfCombat(ReloadHideNow, RELOAD_KEY)
+		end
+		return
+	end
+	reloadOver.target = nil
+	reload:Hide()
+	reload:ClearAllPoints()
+end
+
+local ReloadPreClick = Shared("PreClick on MelloUIEditModeReload", function(_, mouse, down)
+	if mouse ~= "LeftButton" or not Acting(down) or InCombat() then
+		return
+	end
+	reloadOver.clicking = true
+	local ok, err = pcall(MelloUI.EditModeActivateNow, MelloUI)
+	if not ok then
+		Report(err)
+	end
+end, "script")
+
+local ReloadPostClick = Shared("PostClick on MelloUIEditModeReload", function(_, mouse, down)
+	if mouse ~= "LeftButton" or not Acting(down) then
+		return
+	end
+	reloadOver.clicking = false
+end, "script")
+
+-- the pointer on it: the hover look (and tooltip) of the button it covers
+local ReloadEnter = Shared("OnEnter on MelloUIEditModeReload", function()
+	Forward(reloadOver.target, "OnEnter")
+end, "script")
+
+local ReloadLeave = Shared("OnLeave on MelloUIEditModeReload", function()
+	Forward(reloadOver.target, "OnLeave")
+end, "script")
+
+local function MakeReload()
+	if reload then
+		return reload
+	end
+	if InCombat() then
+		return nil
+	end
+	reload = CreateFrame("Button", "MelloUIEditModeReload", UIParent, "SecureActionButtonTemplate")
+	reload:Hide()
+	reload:RegisterForClicks("LeftButtonUp", "LeftButtonDown")
+	reload:SetAttribute("type1", "macro")
+	reload:SetAttribute("macrotext1", RELOAD_MACRO)
+	Perf.SetScript(reload, "PreClick", ReloadPreClick)
+	Perf.SetScript(reload, "PostClick", ReloadPostClick)
+	Perf.SetScript(reload, "OnEnter", ReloadEnter)
+	Perf.SetScript(reload, "OnLeave", ReloadLeave)
+	return reload
+end
+
+function B.ReloadSync(button)
+	if reloadOver.clicking or InCombat() then
+		return
+	end
+	local wanted = MelloUI.EditModeActivePending and MelloUI:EditModeActivePending()
+	local visible = type(button) == "table" and button.IsVisible and button:IsVisible()
+	if not (wanted and visible) then
+		B.ReloadHide()
+		return
+	end
+	local o = MakeReload()
+	if not o then
+		return
+	end
+	local l, b, w, h = RectOf(button)
+	if not l then
+		return
+	end
+	local shown = o:IsShown()
+	if LayOver(o, l, b, w, h, StrataOf(button, "FULLSCREEN_DIALOG"), LevelOf(button)) then
+		reloadOver.target = button
+		if not shown then
+			o:Raise()
+		end
+	end
 end
 
 --------------------------------------------------------------------------------

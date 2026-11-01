@@ -137,6 +137,7 @@ NOT_CONFIGURATOR = {
 # the controls an OWN_FILES file builds that are no option of the configurator, and why (never New-tagged)
 NOT_OPTIONS = {
     "Core/Config.lua:Button(MelloUI)": "MelloUI's own entry at the game's Escape menu (it opens the configurator)",
+    "Core/Config.lua:Button(entry)": "MelloUI's entry inside the game's Escape menu (gm-01, 2026-11-01: it opens the configurator)",
     # (1.2.4, the configurator's shell -- docs/plans/configurator-shell.md: the window's own controls moved to its
     # painted header and footer, none of them an option)
     "Core/Config.lua:Button(Close)": "the configurator's footer Close (it closes the window)",
