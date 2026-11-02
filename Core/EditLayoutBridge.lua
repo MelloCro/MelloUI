@@ -621,6 +621,20 @@ local function DropAll()
 	end
 end
 
+-- (fr-18d) a system MelloUI's own stand in for (MelloUI.OwnBars: the experience / reputation bars and the bag bar --
+-- their own movers and plates): the game's frame stays shown under ours, kept away, at their very rect, so a plate of
+-- the game's there lay over ours and took every press (the user, 2026-11-01: "i cant move the bag bars and exp /
+-- reputation bar"). Registering such a system is refused already (Others); its plate is refused here
+local OWN_HELD = "MelloUI's own stand in for it"
+local function OwnHolds(frame)
+	local own = MelloUI.OwnBars
+	if not own then
+		return false
+	end
+	local system, index = SystemOf(frame)
+	return system ~= nil and own.Holds(SystemName(system), index) and true or false
+end
+
 -- one system: why it gets no plate, else nil and its rect (UI units)
 local function Look(frame)
 	if type(frame) ~= "table" then
@@ -629,6 +643,9 @@ local function Look(frame)
 	local entry = MelloUI:MoverEntry(frame)
 	if entry and MelloUI:EntryLive(entry) then
 		return "moved in Edit Layout"
+	end
+	if OwnHolds(frame) then
+		return OWN_HELD
 	end
 	if frame.IsForbidden then
 		local ok, forbidden = pcall(frame.IsForbidden, frame)
@@ -1509,12 +1526,13 @@ function B.StandIn(frame)
 	return p
 end
 
--- every bridged system's stand-in into `out` (the Elements list): no live mover holds it, it is not forbidden
+-- every bridged system's stand-in into `out` (the Elements list): no live mover holds it, it is not forbidden, and
+-- (fr-18d) MelloUI's own do not stand in for it (their own rows are theirs)
 function B.StandIns(out)
 	for _, frame in ipairs(Systems() or EMPTY) do
 		local entry = MelloUI:MoverEntry(frame)
 		local why = Look(frame)
-		if not (entry and MelloUI:EntryLive(entry)) and why ~= "forbidden" and why ~= "not a frame" then
+		if not (entry and MelloUI:EntryLive(entry)) and why ~= "forbidden" and why ~= "not a frame" and why ~= OWN_HELD then
 			out[#out + 1] = B.StandIn(frame)
 		end
 	end

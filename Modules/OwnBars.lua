@@ -288,6 +288,7 @@ end
 OB.gameOf = setmetatable({}, WEAK)   -- [ours] = the game's frame it stands in for
 OB.keyOf = setmetatable({}, WEAK)    -- [ours] = its key in Core's store
 OB.followed = setmetatable({}, WEAK) -- [ours] = { game, point, scale, lift } as last followed (nil: a place of its own)
+OB.ownScale = setmetatable({}, WEAK) -- [ours] = the game's scale last put on ours at a place of its own (fr-18d: OwnScale)
 
 -- ours has a place of its own: the player's Edit Layout save, a profile, the installer, an import
 local function OwnPlace(ours)
@@ -405,6 +406,13 @@ local function StoreChanged(module, key)
 	end
 end
 
+-- (fr-18d) Edit Layout's session let go of one of ours (Save, Discard, Revert, a write of the store): laid again
+local function Released(what, entry)
+	if what == "released" and type(entry) == "table" and OB.keyOf[entry.frame] ~= nil then
+		OB.FollowSoon()
+	end
+end
+
 local FOLLOW_EVENTS = { "EDIT_MODE_LAYOUTS_UPDATED", "PLAYER_ENTERING_WORLD", "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED" }
 local function FollowListen()
 	if OB.waiter then
@@ -420,6 +428,7 @@ local function FollowListen()
 	MelloUI:On("skin", OB.FollowSoon, "Own Bars: the skin switched")
 	MelloUI:On("editmode", OB.FollowSoon, "Own Bars: Edit Mode opened or closed")
 	MelloUI:On("setting", StoreChanged, "Own Bars: the store of places written")
+	MelloUI:On("mover", Released, "Own Bars: Edit Layout let go of one of ours")
 end
 
 -- (Edit Layout's Reset and Core's default place: ours following the game's frame again)
@@ -434,14 +443,60 @@ local function Register(frame, part, key, label, placeholder, anchor)
 		placeholder = placeholder, anchor = anchor, base = 1, when = LIVE[part], default = HomeOf, reset = HomeOf })
 end
 
+-- (fr-18d, the user 2026-11-01: "i cant move the bag bars and exp / reputation bar") Edit Layout's session holds it --
+-- under a drag, or at a pending place -- and it is no Reset (Reset and Default place follow the game's frame again:
+-- HomeOf): it stands where Edit Layout has it, never put back on the game's frame or on its old place under the
+-- pointer; laid again when the session lets go of it ('mover' "released", Released: Core's rule for owners that lay
+-- their element, MelloUI.LayoutSession)
+local function EditHeld(ours)
+	local LS = MelloUI.LayoutSession
+	local entry = LS and MelloUI:MoverEntry(ours)
+	return entry ~= nil and LS.Holds(entry) and not LS.IsReset(entry)
+end
+
+-- (fr-18d) ours' 100 % in Edit Layout (its entry's base) is the game's frame's scale, kept in step with it; at a place
+-- of its own with no size of its own ours stand at that scale, as they stood while following and when the place was
+-- made (a place is kept in ours' own units: at another scale it lands elsewhere -- Mello's layout's bag bar at 75 % came
+-- back at 100 % after a /reload, off where it was dropped). Set only when the game's scale changed (a backdrop's fit on
+-- ours is kept, as HangOnGame keeps it)
+local function OwnScale(ours, pos)
+	local s = ScaleOn(OB.gameOf[ours])
+	local entry = MelloUI:MoverEntry(ours)
+	if entry then
+		entry.base = s
+	end
+	if pos == nil then
+		OB.ownScale[ours] = nil
+	elseif pos.scale == nil then
+		local was = OB.ownScale[ours]
+		if not (was and math.abs(was - s) < 0.0005) then
+			pcall(ours.SetScale, ours, s)
+		end
+		OB.ownScale[ours] = s
+	else
+		OB.ownScale[ours] = nil
+	end
+end
+
 -- one of ours placed as it should be now: true when it follows (no place of its own)
 local function Place(ours)
-	if OwnPlace(ours) then
-		OB.followed[ours] = nil
-		MelloUI:RestorePosition(OB.keyOf[ours], ours)
+	if EditHeld(ours) then
 		return false
 	end
-	return true
+	local key = OB.keyOf[ours]
+	local pos = OwnPlace(ours) and MelloUI:GetPosition(key) or nil
+	if type(pos) ~= "table" then
+		OwnScale(ours, nil)
+		return true
+	end
+	local was = OB.followed[ours]
+	if was and OB.ownScale[ours] == nil then
+		OB.ownScale[ours] = was.scale   -- (the scale it followed at is on it already)
+	end
+	OB.followed[ours] = nil
+	OwnScale(ours, pos)
+	MelloUI:RestorePosition(key, ours)
+	return false
 end
 
 --------------------------------------------------------------------------------
@@ -1107,9 +1162,12 @@ local function StatusOn()
 	OB.own.SecondaryStatusTrackingBarContainer = S.barContainers[2]
 	OB.own.StatusTrackingBarManager = S
 	OB.standing.status = true
+	-- (fr-18d) a plate while hidden for the first only, as Edit Mode shows its first status bar alone while it is open
+	-- (EditModeStatusTrackingBar1SystemMixin:OnEditModeEnter): the hidden second, stacked on the first's spot, lay
+	-- over the shown first at its very rect and took its press
 	for i, c in ipairs(S.barContainers) do
 		local w, h = Finite(Call(c, "GetWidth")) or 100, Finite(Call(c, "GetHeight")) or 17
-		Register(c, "status", KEYS["status" .. i], STATUS_LABELS[i], { w, h }, "BOTTOM")
+		Register(c, "status", KEYS["status" .. i], STATUS_LABELS[i], i == 1 and { w, h } or nil, "BOTTOM")
 	end
 	OB.followed[S.barContainers[1]], OB.followed[S.barContainers[2]] = nil, nil
 	StatusFollow()
