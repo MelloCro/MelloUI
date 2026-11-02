@@ -103,6 +103,7 @@ local skin = nil
 local active = false
 local hooked = false
 local HookStatusManager   -- (fr-18: below, before Hook)
+local SkinCaps            -- (fr-18b: below SkinBar)
 
 local BAR_NAMES = { "MainActionBar", "MultiBarBottomLeft", "MultiBarBottomRight", "MultiBarRight", "MultiBarLeft",
 	"MultiBar5", "MultiBar6", "MultiBar7", "StanceBar", "PetActionBar", "PossessActionBar" }
@@ -406,12 +407,41 @@ local function SkinBar(bar)
 		end)
 	end
 	FadeDividers()
-	-- the end caps: on holders at the BACKGROUND strata (under every bar and
-	-- the status bars, whatever their strata and level — user, 2026-09-21:
-	-- the caps behind all the bars), following the caps' rects and the
-	-- EndCaps frame's show / hide (Edit Mode's 'hide bar art')
-	if bar.EndCaps then
+	SkinCaps(bar)
+	-- the page arrows' art (hidden or shown: the core's Hide Page Arrows)
+	local page = bar.ActionBarPageNumber
+	if page then
+		for key, art in pairs({ UpButton = "ui-hud-actionbar-pageuparrow-up", DownButton = "ui-hud-actionbar-pagedownarrow-up" }) do
+			local button = page[key]
+			if button and button.GetNormalTexture and button:GetNormalTexture() then
+				Replace(button:GetNormalTexture(), { as = art, button = button,
+					alsoFade = { button:GetPushedTexture(), button:GetHighlightTexture(), button:GetDisabledTexture() } })
+			end
+		end
+	end
+end
+
+-- the end caps: on holders at the BACKGROUND strata (under every bar and
+-- the status bars, whatever their strata and level — user, 2026-09-21:
+-- the caps behind all the bars), following the caps' rects and the
+-- EndCaps frame's show / hide (Edit Mode's 'hide bar art'). (fr-18b) Once a bar;
+-- the game's own caps while MelloUI's own Action Bar 1 stands in (they are
+-- Edit Mode systems of their own inside the game's bar, which keeps them).
+-- (fr-18c, the sim proof: the orbs stayed while MelloUI's Action Bar 1 faded)
+-- While MelloUI's own Action Bar 1 stands in, the game's end caps take its
+-- alpha (its fade, Bar Visible, its art: Modules/OwnActionBars.lua) and say
+-- so on the bus ('ownbars:caps'); the holders and their shadows -- frames of
+-- ours on the game's bar -- take that alpha with them
+function SkinCaps(bar)
+	if not bar or skin.capsOf[bar] then
+		return
+	end
+	skin.capsOf[bar] = true
+	do
 		local caps = bar.EndCaps
+		if not caps then
+			return
+		end
 		local reps = {}   -- { rep, cap }
 		local left, right = caps.LeftEndCap, caps.RightEndCap
 		if left and left.Texture then
@@ -464,12 +494,9 @@ local function SkinBar(bar)
 			Watch(entry.cap)
 			Watch(entry.cap.Texture)
 		end
-		-- the bar's own updates of its art (Edit Mode's setting applied)
-		for _, method in ipairs({ "UpdateEndCaps", "UpdateSystemSettingHideBarArt" }) do
-			if type(bar[method]) == "function" then
-				hooksecurefunc(bar, method, Sync)
-			end
-		end
+		-- (the bar's own updates of its art -- Edit Mode's Hide Bar Art applied, UpdateEndCaps -- end in the EndCaps
+		-- frame's SetShown, watched above. (fr-18c, the sim proof) No hook on the bar itself: two keys on the game's
+		-- Action Bar 1 while MelloUI's own stands in for it)
 		skin.capSync[#skin.capSync + 1] = Sync
 		-- the caps stand against the world at the bar's ends: their shadows
 		-- on the bar's shade frame, under them and the backdrop
@@ -477,17 +504,17 @@ local function SkinBar(bar)
 		for _, entry in ipairs(reps) do
 			el:Add(entry.rep, CAP_OPTS)
 		end
-	end
-	-- the page arrows' art (hidden or shown: the core's Hide Page Arrows)
-	local page = bar.ActionBarPageNumber
-	if page then
-		for key, art in pairs({ UpButton = "ui-hud-actionbar-pageuparrow-up", DownButton = "ui-hud-actionbar-pagedownarrow-up" }) do
-			local button = page[key]
-			if button and button.GetNormalTexture and button:GetNormalTexture() then
-				Replace(button:GetNormalTexture(), { as = art, button = button,
-					alsoFade = { button:GetPushedTexture(), button:GetHighlightTexture(), button:GetDisabledTexture() } })
+		-- (fr-18c) the end caps' alpha while MelloUI's own Action Bar 1 stands in: the orbs and their shadows with it
+		MelloUI:On("ownbars:caps", function(alpha)
+			alpha = tonumber(alpha) or 1
+			for _, entry in ipairs(reps) do
+				local object = rawget(entry.rep, "object")
+				if object and object.SetAlpha then
+					object:SetAlpha(alpha)
+				end
 			end
-		end
+			el:SetAlpha(alpha)
+		end, "Oldschool: the gryphon orbs with the end caps")
 	end
 end
 
@@ -1395,7 +1422,7 @@ end
 
 local function Build()
 	if not skin then
-		skin = { reps = {}, bars = {}, status = {}, capSync = {}, groups = {}, rims = {} }
+		skin = { reps = {}, bars = {}, status = {}, capSync = {}, groups = {}, rims = {}, capsOf = {} }
 		for _, g in ipairs(GROUPS) do
 			skin.groups[g.id] = { buttons = {} }
 		end
@@ -1407,9 +1434,11 @@ local function Build()
 			MelloUI:Print("Action bars: %s failed: %s", label, tostring(err))
 		end
 	end
+	-- (fr-18b) the bars that stand now (MelloUI's own action bars while they stand in), and the game's end caps
 	for _, name in ipairs(BAR_NAMES) do
-		Try(name, SkinBar, _G[name])
+		Try(name, SkinBar, OwnG(name))
 	end
+	Try("end caps", SkinCaps, rawget(_G, "MainActionBar"))
 	Try("micro menu", SkinMicroMenu)
 	Try("bag bar", SkinBagBar)
 	Try("status bars", SkinStatusBars)
@@ -1554,13 +1583,22 @@ local function OwnBarsListen()
 		return
 	end
 	ownListening = true
-	MelloUI:On("ownbars", function()
+	MelloUI:On("ownbars", function(part)
 		HookStatusManager()
 		if active then
 			Kit:WhenOutOfCombat(function()
 				SkinBagBar()
 				SkinStatusBars()
 				ResyncStatus()
+				-- (fr-18b) MelloUI's own action bars: their buttons' rims and their art, as the game's had
+				if part == "actions" or part == "special" then
+					for _, name in ipairs(BAR_NAMES) do
+						SkinBar(OwnG(name))
+					end
+					for bar in pairs(skin.bars) do
+						RefitBar(bar)
+					end
+				end
 			end, "Action bars: the bars of ours dressed")
 		end
 	end, "Action Bars Kit: the bars of ours")
@@ -1627,7 +1665,7 @@ SlashCmdList.MELLOABDUMP = function(msg)
 		end
 		for _, prefix in ipairs({ "ActionButton", "MultiBarBottomLeftButton", "MultiBarBottomRightButton", "StanceButton" }) do
 			for i = 1, 12 do
-				local button = _G[prefix .. i]
+				local button = OwnG(prefix .. i)
 				if button and button:IsShown() then
 					local rep = repOf[button]
 					local stone = slotStoneOf[button]
@@ -1668,7 +1706,7 @@ SlashCmdList.MELLOABDUMP = function(msg)
 		-- 2026-09-22: rims that looked pressed at rest)
 		for _, prefix in ipairs({ "ActionButton", "MultiBarBottomLeftButton", "MultiBarBottomRightButton", "MultiBarRightButton", "MultiBarLeftButton", "MultiBar5Button", "MultiBar6Button", "MultiBar7Button" }) do
 			for i = 1, 12 do
-				local button = _G[prefix .. i]
+				local button = OwnG(prefix .. i)
 				local rep = button and repOf[button]
 				local rim = rep and rep.object
 				if rim and rim.state and button:IsShown() then
@@ -1688,7 +1726,7 @@ SlashCmdList.MELLOABDUMP = function(msg)
 		MelloUI:ShowLog("abdump states")
 		return
 	end
-	local roots = { bar = MainActionBar, micro = MicroMenu, bags = OwnG("BagsBar"), xp = OwnG("MainStatusTrackingBarContainer") }
+	local roots = { bar = OwnG("MainActionBar"), micro = MicroMenu, bags = OwnG("BagsBar"), xp = OwnG("MainStatusTrackingBarContainer") }
 	local root = roots[which ~= "" and which or "bar"]
 	if root == MicroMenu and root then
 		-- every micro button: the rim's own rect against the glyph's (the

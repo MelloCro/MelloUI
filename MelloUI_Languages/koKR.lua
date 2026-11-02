@@ -303,6 +303,31 @@ Lang:Add("koKR", {
 	["The bag bar stands upright instead of lying flat."] = "가방 바가 눕지 않고 세로로 섭니다.", -- draft
 	["Bags On The Other Side"] = "반대쪽 가방", -- draft
 	["The bag slots line up on the other side of the backpack (right instead of left, or down instead of up)."] = "가방 칸이 배낭의 반대쪽에 줄을 섭니다(왼쪽 대신 오른쪽, 또는 위 대신 아래).", -- draft
+	["Experience Bar Width"] = "경험치 바 너비", -- draft
+	["The experience bar's width in px, from 20 up to the whole width of your screen. Changes at once."] = "경험치 바의 너비(픽셀), 20부터 화면 전체 너비까지. 바로 바뀝니다.", -- draft
+	["Reputation Bar Width"] = "평판 바 너비", -- draft
+	["The second bar's width in px (a watched reputation while you level), from 20 up to the whole width of your screen. Changes at once."] = "두 번째 바의 너비(픽셀, 레벨업 중 추적하는 평판), 20부터 화면 전체 너비까지. 바로 바뀝니다.", -- draft
+	["Orientation"] = "방향", -- draft
+	["Whether the bar's buttons lie in a row or stand in a column."] = "바의 버튼이 가로로 놓일지 세로로 설지입니다.", -- draft
+	["Horizontal"] = "가로", -- draft
+	["Vertical"] = "세로", -- draft
+	["# of Rows"] = "줄 수", -- draft
+	["How many rows (or columns, upright) the bar's buttons stand in."] = "바의 버튼이 몇 줄(세로일 때는 몇 열)로 놓일지입니다.", -- draft
+	["# of Icons"] = "아이콘 수", -- draft
+	["How many of the bar's buttons show."] = "바의 버튼이 몇 개 보이는지.", -- draft
+	["Icon Size"] = "아이콘 크기", -- draft
+	["The size of the bar's buttons. 100% is the game's size."] = "단축바 버튼 크기. 100%가 게임 크기입니다.", -- draft
+	["Icon Padding"] = "아이콘 간격", -- draft
+	["The space between the bar's buttons."] = "단축바 버튼 사이 간격.", -- draft
+	["Bar Visible"] = "바 표시", -- draft
+	["When the bar shows: always, only in a fight, only out of one, never, or while the pointer is over it."] = "바가 보이는 때: 항상, 전투 중에만, 전투 밖에서만, 안 보임, 또는 포인터가 위에 있을 때.", -- draft
+	["Always"] = "항상", -- draft
+	["In Combat"] = "전투 중", -- draft
+	["Out of Combat"] = "전투 밖", -- draft
+	["Hidden"] = "숨김", -- draft
+	["On Mouseover"] = "마우스를 올리면", -- draft
+	["Always Show Buttons"] = "버튼 항상 표시", -- draft
+	["Empty buttons show their slot too."] = "빈 버튼도 칸을 보여 줍니다.", -- draft
 	-- DarkMode
 	["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours."] = "인터페이스 전체를 어둡게 합니다: MelloUI 창과 개체창, 게임 아트, 그림 리스킨. 아이콘과 글자는 색을 유지합니다.", -- draft
 	["Dim the gold and the glare. The interface steps back, the world steps forward."] = "금빛과 눈부심을 낮추세요. 인터페이스는 물러나고 세상이 앞으로 나옵니다.", -- draft
@@ -533,7 +558,7 @@ Lang:Add("koKR", {
 	["The size of the game's damage numbers over enemies."] = "적 머리 위 게임 피해 숫자의 크기.", -- draft
 	["Bar Layout"] = "바 레이아웃", -- draft
 	["Which Bar"] = "어느 바", -- draft
-	["The bar the rows below set: its rows, icons, icon size and padding, saved into your active Edit Mode layout as Edit Mode saves them, once you let a slider go (out of combat). The game shows them after a reload: type /reload (MelloUI says so once). One of the game's preset layouts is copied first: you are asked once."] = "아래 줄들이 설정하는 바: 줄 수, 아이콘, 아이콘 크기, 간격을 슬라이더를 놓는 순간(전투 밖) 편집 모드가 저장하는 방식대로 현재 편집 모드 레이아웃에 저장합니다. 게임은 재시작 후에 보여 줍니다: /reload 를 입력하세요(MelloUI가 한 번 알려 줌). 먼저 게임의 기본 레이아웃 중 하나를 복사합니다: 한 번 묻습니다.", -- draft
+	["The bar the rows below set: its rows, icons, icon size and padding. MelloUI's own action bars change at once; the stance and pet bars (and the game's bars with UI Modifications off) are saved into your active Edit Mode layout once you let a slider go, and show after a /reload."] = "아래 줄들이 설정하는 바: 줄, 아이콘, 아이콘 크기와 간격. MelloUI 자체 행동 단축바는 바로 바뀌고, 태세·소환수 바(그리고 UI 수정이 꺼졌을 때 게임의 바)는 슬라이더를 놓으면 현재 편집 모드 레이아웃에 저장되어 /reload 후에 보입니다.", -- draft
 	["Action Bar 1"] = "행동 단축바 1", -- draft
 	["Action Bar 2"] = "행동 단축바 2", -- draft
 	["Action Bar 3"] = "행동 단축바 3", -- draft
@@ -547,13 +572,9 @@ Lang:Add("koKR", {
 	["Rows"] = "줄", -- draft
 	["How many rows the bar's buttons stand in."] = "단축바 버튼을 몇 줄로 놓을지.", -- draft
 	["Icons"] = "아이콘", -- draft
-	["How many of the bar's buttons show."] = "바의 버튼이 몇 개 보이는지.", -- draft
-	["Icon Size"] = "아이콘 크기", -- draft
-	["The size of the bar's buttons. 100% is the game's size."] = "단축바 버튼 크기. 100%가 게임 크기입니다.", -- draft
 	["Padding"] = "간격", -- draft
-	["The space between the bar's buttons."] = "단축바 버튼 사이 간격.", -- draft
 	["The Bar's Shape"] = "바의 모양", -- draft
-	["A preview of the bar's layout. Changes show after a /reload."] = "단축바 배치 미리보기. 변경 사항은 /reload 후 보입니다.", -- draft
+	["A preview of the bar's layout."] = "바 배치 미리보기.", -- draft
 	["Buff Layout"] = "강화 효과 레이아웃", -- draft
 	["The size of your buff and debuff icons. The game's own bar changes after a /reload."] = "강화·약화 효과 아이콘 크기. 게임의 바는 /reload 후 바뀝니다.", -- draft
 	["Spacing"] = "간격", -- draft
@@ -1082,9 +1103,6 @@ Lang:Add("koKR", {
 	["Also Show On Mouseover"] = "마우스를 올려도 표시", -- draft
 	["In Combat parts also come back while your mouse is over them."] = "'전투 중' 부분은 마우스를 올렸을 때도 돌아옵니다.", -- draft
 	["Your own frame. In Combat, it also returns while you are hurt, low on mana or dead. Always: never faded. In Combat: faded out of combat. On Mouseover: faded until you point at it."] = "내 개체창. '전투 중'이면 다쳤거나 마나가 적거나 죽었을 때도 돌아옵니다. 항상: 흐려지지 않음. 전투 중: 비전투 시 흐려짐. 마우스오버: 마우스를 올릴 때까지 흐려짐.", -- draft
-	["Always"] = "항상", -- draft
-	["In Combat"] = "전투 중", -- draft
-	["On Mouseover"] = "마우스를 올리면", -- draft
 	["Pet Frame Too"] = "소환수 창도", -- draft
 	["Your pet's frame fades with the player frame and returns while your pet is hurt."] = "소환수 개체창이 플레이어 개체창과 함께 흐려지고, 소환수가 다치면 돌아옵니다.", -- draft
 	["Your target's frame and its target. Always: never faded. In Combat: faded out of combat. On Mouseover: faded until you point at it."] = "대상 개체창과 그 대상. 항상: 흐려지지 않음. 전투 중: 비전투 시 흐려짐. 마우스오버: 마우스를 올릴 때까지 흐려짐.", -- draft
@@ -1150,7 +1168,7 @@ Lang:Add("koKR", {
 	["Hide Page Arrows"] = "페이지 화살표 숨기기", -- draft
 	["Hides the main bar's page number and arrows. Paging keys still work."] = "주 단축바의 페이지 번호와 화살표를 숨깁니다. 페이지 단축키는 작동합니다.", -- draft
 	["Hide Bar Art"] = "바 그림 숨기기", -- draft
-	["Hides the main bar's art, like the other bars. Only on your own Edit Mode layouts, not the presets; shows after a /reload."] = "다른 단축바처럼 주 단축바 아트를 숨깁니다. 내 편집 모드 배치에서만, 프리셋은 제외; /reload 후 보입니다.", -- draft
+	["Hides the main bar's art, like the other bars. With UI Modifications off: only on your own Edit Mode layouts, after a /reload."] = "다른 바처럼 주 바의 장식을 숨깁니다. UI 수정이 꺼져 있으면 직접 만든 편집 모드 레이아웃에서만, /reload 후에 적용됩니다.", -- draft
 	["A backdrop around Action Bar 1. Neighbours with a backdrop share one."] = "행동 단축바 1 둘레의 배경. 배경이 있는 이웃끼리 하나를 나눕니다.", -- draft
 	["A backdrop around Action Bar 2. Neighbours with a backdrop share one."] = "행동 단축바 2 둘레의 배경. 배경이 있는 이웃끼리 하나를 나눕니다.", -- draft
 	["A backdrop around Action Bar 3. Neighbours with a backdrop share one."] = "행동 단축바 3 둘레의 배경. 배경이 있는 이웃끼리 하나를 나눕니다.", -- draft
@@ -2220,7 +2238,7 @@ Lang:Add("koKR", {
 	["Level Up Card: its own place, movable in Edit Layout, bigger, everything fits."] = "레벨 업 카드: 자체 위치, 레이아웃 편집에서 이동 가능, 더 크고 모든 내용이 들어갑니다.", -- draft
 	["Personal Display: the shield column keeps its colours, icons and amount; interrupted casts show only on its cast bar."] = "개인 디스플레이: 보호막 기둥이 색, 아이콘, 수치를 유지하고, 차단된 시전은 그 시전 바에만 표시됩니다.", -- draft
 	["Oldschool's action bars keep their painted frames; Default's player frame stays sharp when scaled up."] = "Oldschool의 행동 단축바는 그려진 테두리를 유지하고, Default의 플레이어 프레임은 확대해도 선명합니다.", -- draft
-	["Your unit, party and raid frames, the experience bars and the bag bar are MelloUI's own: placed by Edit Layout and your profiles."] = "유닛, 파티, 공격대 프레임과 경험치 바, 가방 바가 MelloUI의 자체 프레임입니다: 레이아웃 편집과 프로필이 배치합니다.", -- draft
+	["Your unit, party and raid frames, action bars, experience bars and bag bar are MelloUI's own: action bar settings apply at once."] = "유닛·파티·공격대 프레임, 행동 단축바, 경험치 바, 가방 바가 MelloUI의 자체 요소입니다. 행동 단축바 설정이 바로 적용됩니다.", -- draft
 	["A fresh Mello layout for wide screens, fitted to every other; Keep My Layout keeps your own places; profiles offer Fit to this screen."] = "와이드 화면용 새 Mello 레이아웃, 다른 모든 화면에 맞춰집니다. '내 레이아웃 유지'는 직접 둔 위치를 지키고, 프로필은 '이 화면에 맞추기'를 제안합니다.", -- draft
 	["The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going."] = "MelloUI 버튼이 게임 메뉴의 설정 아래에 있습니다. 프로필의 후원자 페이지는 MelloUI를 지켜 주는 분들께 감사를 전합니다.", -- draft
 	["Effects: bolder heals and cooldowns across the whole frame; Buff Landings in each school's colour; a threat halo (untick Hide Combat Flash)."] = "효과: 치유와 재사용 대기시간이 창 전체에 더 선명하게; 계열 색의 강화 효과 도착; 위협 후광(전투 번쩍임 숨기기 해제).", -- draft
@@ -2694,6 +2712,7 @@ Lang:Add("koKR", {
 -- stale: ["A page turn when the character sheet, spell book, quest log or main menu opens, a latch when they close; the spell book's page turns; a quest giver's list and Decline; the bags as a leather pouch opening and closing."] = "캐릭터 정보, 마법책, 퀘스트 목록, 주 메뉴가 열릴 때 페이지 넘김, 닫힐 때 걸쇠 소리. 마법책 페이지 넘김, 퀘스트 제공자 목록과 거절, 가죽 주머니처럼 열리고 닫히는 가방.", -- draft
 -- stale: ["A pin into parchment for a minimap ping."] = "미니맵 핑에 양피지에 핀 꽂는 소리.", -- draft
 -- stale: ["A preset: choosing a style changes every font at once -- the titles, the interface text, the chat and numbers, the chat text and the chat on parchment, the sizes back to 100% (each face brings its own size correction) -- each pairing themed with readability first. Fine-tune any of them afterwards (the style then shows Custom). The damage numbers keep their own choice, but for Fredoka's: one face for everything.\nFredoka: MelloUI's own face: Fredoka's round letters for the titles, the text and the damage numbers, to fit MelloUI's icons. The default.\nScriptorium: Cinzel's carved capitals over Alegreya, a warm book face.\nChronicle: Alegreya SC's small capitals over Source Serif 4, the most readable serif.\nOld Tome: IM Fell English's aged print over Spectral.\nWarband: Pirata One's blackletter over Crimson Pro SemiBold: the boldest look.\nClarity: Cinzel titles, Noto Sans everywhere else: the easiest to read at small sizes.\nGothic: Enchanted Land's gothic titles kept, over Alegreya."] = "사전 설정: 스타일을 고르면 모든 글꼴이 한 번에 바뀝니다 -- 제목, 인터페이스 글자, 대화와 숫자, 대화 글자와 양피지 위 대화, 크기는 100%로 돌아갑니다(각 글꼴이 자체 크기 보정을 가져옴) -- 모든 조합은 가독성을 우선으로 맞췄습니다. 그 뒤 원하는 것을 조정하세요(스타일은 사용자 지정으로 표시됨). 피해 숫자는 자체 선택을 유지하지만 Fredoka는 예외: 모든 곳에 글꼴 하나.\nFredoka: MelloUI의 글꼴: 제목, 글자, 피해 숫자에 Fredoka의 둥근 글자로 MelloUI 아이콘과 어울립니다. 기본값.\nScriptorium: Alegreya 위에 Cinzel의 새긴 대문자, 따뜻한 책 글꼴.\nChronicle: Source Serif 4 위에 Alegreya SC의 작은 대문자, 가장 읽기 쉬운 세리프.\nOld Tome: Spectral 위에 IM Fell English의 오래된 인쇄체.\nWarband: Crimson Pro SemiBold 위에 Pirata One의 블랙레터: 가장 굵은 외형.\nClarity: Cinzel 제목, 나머지는 모두 Noto Sans: 작은 크기에서 가장 읽기 쉬움.\nGothic: Enchanted Land의 고딕 제목 유지, Alegreya 위에.", -- draft
+-- stale: ["A preview of the bar's layout. Changes show after a /reload."] = "단축바 배치 미리보기. 변경 사항은 /reload 후 보입니다.", -- draft
 -- stale: ["A profession cooldown ready again (a transmute, mooncloth, the salt shaker). MelloUI learns it when you open that profession."] = "전문 기술 재사용 대기시간이 다시 준비됨(변환, 달빛 옷감, 소금 통). 그 전문 기술을 열면 MelloUI가 알게 됩니다.", -- draft
 -- stale: ["A quest ready to turn in says who takes it and where, for example: Turn in: Gryan Stoutmantle, Sentinel Hill."] = "완료할 수 있는 퀘스트는 누가 어디서 받는지 알려 줍니다. 예: 완료: 그리안 스타우트맨틀, 감시의 언덕.", -- draft
 -- stale: ["A quest tracker in the game's tracker's place that scrolls with the mouse wheel, so every watched quest can be reached."] = "게임 추적기 자리에 마우스 휠로 스크롤되는 퀘스트 추적기를 두어, 주시하는 모든 퀘스트에 닿을 수 있게 합니다.", -- draft
@@ -2889,6 +2908,7 @@ Lang:Add("koKR", {
 -- stale: ["Hide the player coordinates the client writes under the minimap."] = "클라이언트가 미니맵 아래에 쓰는 플레이어 좌표를 숨깁니다.", -- draft
 -- stale: ["Hide the red flash around the player, target, focus, pet and party frames while in combat or when a target attacks."] = "전투 중이거나 대상이 공격할 때 플레이어, 대상, 주시 대상, 소환수, 파티 창 둘레의 빨간 번쩍임을 숨깁니다.", -- draft
 -- stale: ["Hide the row of menu buttons (character, spellbook, talents, ...). Still shown while Edit Mode is open."] = "메뉴 버튼 줄(캐릭터, 마법책, 특성, ...)을 숨깁니다. 편집 모드가 열려 있는 동안에는 보입니다.", -- draft
+-- stale: ["Hides the main bar's art, like the other bars. Only on your own Edit Mode layouts, not the presets; shows after a /reload."] = "다른 단축바처럼 주 단축바 아트를 숨깁니다. 내 편집 모드 배치에서만, 프리셋은 제외; /reload 후 보입니다.", -- draft
 -- stale: ["Hides the red error messages you choose (not enough energy, not ready yet, out of range...) from the middle of the screen."] = "고른 빨간 오류 메시지(기력이 부족합니다, 아직 준비되지 않았습니다, 사거리 밖...)를 화면 가운데에서 숨깁니다.", -- draft
 -- stale: ["Hides the red flash around unit frames in combat."] = "전투 중 개체창 둘레 빨간 번쩍임을 숨깁니다.", -- draft
 -- stale: ["Hold it as you talk to a giver to see its dialog as usual: nothing is accepted or handed in there."] = "제공자와 대화할 때 누르고 있으면 대화창을 평소처럼 봅니다: 그곳에서는 아무것도 수락하거나 완료하지 않습니다.", -- draft
@@ -3196,6 +3216,7 @@ Lang:Add("koKR", {
 -- stale: ["The UI Shade round the windows. Off: no shade there; the other areas keep theirs."] = "창 둘레의 UI 그림자. 끄기: 그곳에는 그림자가 없고 다른 영역은 그대로 유지합니다.", -- draft
 -- stale: ["The bag window's money rolls to its new sum when it changes (selling, buying, a repair, a quest) instead of jumping there: warm while it goes up, red while it goes down. Not with Reduce Motion."] = "가방 창의 돈이 바뀔 때(판매, 구매, 수리, 퀘스트) 뛰지 않고 새 합계까지 굴러갑니다: 오를 때는 따뜻하게, 내릴 때는 빨갛게. 움직임 줄이기에서는 아님.", -- draft
 -- stale: ["The bar as the rows above lay it out. Saved into your Edit Mode layout when you let a slider go (in a fight, when it ends); the bar itself changes after a reload."] = "위의 줄들이 배치하는 바. 슬라이더를 놓으면(전투 중이면 끝날 때) 편집 모드 레이아웃에 저장되며, 바 자체는 재시작 후 바뀝니다.", -- draft
+-- stale: ["The bar the rows below set: its rows, icons, icon size and padding, saved into your active Edit Mode layout as Edit Mode saves them, once you let a slider go (out of combat). The game shows them after a reload: type /reload (MelloUI says so once). One of the game's preset layouts is copied first: you are asked once."] = "아래 줄들이 설정하는 바: 줄 수, 아이콘, 아이콘 크기, 간격을 슬라이더를 놓는 순간(전투 밖) 편집 모드가 저장하는 방식대로 현재 편집 모드 레이아웃에 저장합니다. 게임은 재시작 후에 보여 줍니다: /reload 를 입력하세요(MelloUI가 한 번 알려 줌). 먼저 게임의 기본 레이아웃 중 하나를 복사합니다: 한 번 묻습니다.", -- draft
 -- stale: ["The bars glide to a new value instead of jumping."] = "막대가 뛰지 않고 새 값으로 미끄러집니다.", -- draft
 -- stale: ["The bars of your experience and the reputation you watch. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "경험치와 주시하는 평판의 막대. 항상: 흐려지지 않음. 전투 중: 전투 밖에서 흐려지고 전투 때 돌아옴. 마우스를 올리면: 늘 흐리고 가리키는 동안 보임.", -- draft
 -- stale: ["The bars under your character and the shield column beside it (Personal Display). In Combat, they also come back while you cast. (No On Mouseover: the pointer passes through them to the world.) Always: never faded. In Combat: faded out of combat, back in a fight."] = "캐릭터 아래의 막대와 옆의 보호막 열(개인 표시기). 전투 중이면 시전하는 동안에도 돌아옵니다. (마우스를 올리면 없음: 포인터가 이를 통과해 세상을 가리킵니다.) 항상: 흐려지지 않음. 전투 중: 전투 밖에서 흐려지고 전투 때 돌아옴.", -- draft
@@ -3478,6 +3499,7 @@ Lang:Add("koKR", {
 -- stale: ["Your target's frame (and its target's). Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "대상 창(과 대상의 대상). 항상: 흐려지지 않음. 전투 중: 전투 밖에서 흐려지고 전투 때 돌아옴. 마우스를 올리면: 늘 흐리고 가리키는 동안 보임.", -- draft
 -- stale: ["Your target's health bar flashes a moment when it is hit; a critical hit flashes gold."] = "대상의 생명력 막대가 맞으면 잠깐 번쩍입니다. 치명타는 금빛으로.", -- draft
 -- stale: ["Your target's nameplate answers the fight: hits flash its bar, the part a hit took drains away, crits glow gold, a dodge or a miss flicks off its edge, an enemy's cast glows hotter towards its end and shatters when you interrupt it, and the killing blow flashes the bar out."] = "대상의 이름표가 전투에 반응합니다: 적중하면 막대가 번쩍이고, 타격이 깎은 부분이 빠져나가고, 치명타는 금빛으로 빛나고, 회피나 빗나감은 가장자리에서 튕겨 나가고, 적의 시전은 끝에 가까울수록 뜨거워지다가 차단하면 부서지며, 결정타는 막대를 터뜨립니다.", -- draft
+-- stale: ["Your unit, party and raid frames, the experience bars and the bag bar are MelloUI's own: placed by Edit Layout and your profiles."] = "유닛, 파티, 공격대 프레임과 경험치 바, 가방 바가 MelloUI의 자체 프레임입니다: 레이아웃 편집과 프로필이 배치합니다.", -- draft
 -- stale: ["Zephras Isle on the map, with its airship trails."] = "지도에 Zephras Isle과 비행선 항로가 표시됩니다.", -- draft
 -- stale: ["boss and target of target"] = "우두머리와 대상의 대상", -- draft
 -- stale: ["the level-up: your XP bar's light and the notice"] = "레벨 상승: 경험치 막대의 빛과 알림", -- draft

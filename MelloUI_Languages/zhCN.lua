@@ -303,6 +303,31 @@ Lang:Add("zhCN", {
 	["The bag bar stands upright instead of lying flat."] = "背包栏竖着排列，而不是横躺。", -- draft
 	["Bags On The Other Side"] = "背包在另一侧", -- draft
 	["The bag slots line up on the other side of the backpack (right instead of left, or down instead of up)."] = "背包格排在行囊的另一侧（右侧而不是左侧，或下方而不是上方）。", -- draft
+	["Experience Bar Width"] = "经验条宽度", -- draft
+	["The experience bar's width in px, from 20 up to the whole width of your screen. Changes at once."] = "经验条的宽度（像素），从 20 到整个屏幕宽度。立即生效。", -- draft
+	["Reputation Bar Width"] = "声望条宽度", -- draft
+	["The second bar's width in px (a watched reputation while you level), from 20 up to the whole width of your screen. Changes at once."] = "第二条的宽度（像素，升级时追踪的声望），从 20 到整个屏幕宽度。立即生效。", -- draft
+	["Orientation"] = "方向", -- draft
+	["Whether the bar's buttons lie in a row or stand in a column."] = "动作条按钮横排还是竖排。", -- draft
+	["Horizontal"] = "水平", -- draft
+	["Vertical"] = "垂直", -- draft
+	["# of Rows"] = "行数", -- draft
+	["How many rows (or columns, upright) the bar's buttons stand in."] = "动作条按钮排成几行（竖排时为几列）。", -- draft
+	["# of Icons"] = "图标数量", -- draft
+	["How many of the bar's buttons show."] = "显示动作条的几个按钮。", -- draft
+	["Icon Size"] = "图标大小", -- draft
+	["The size of the bar's buttons. 100% is the game's size."] = "条上按钮的大小。100% 为游戏大小。", -- draft
+	["Icon Padding"] = "图标间距", -- draft
+	["The space between the bar's buttons."] = "条上按钮之间的间距。", -- draft
+	["Bar Visible"] = "动作条显示", -- draft
+	["When the bar shows: always, only in a fight, only out of one, never, or while the pointer is over it."] = "动作条何时显示：总是、仅战斗中、仅战斗外、从不，或鼠标悬停时。", -- draft
+	["Always"] = "总是", -- draft
+	["In Combat"] = "战斗中", -- draft
+	["Out of Combat"] = "战斗外", -- draft
+	["Hidden"] = "隐藏", -- draft
+	["On Mouseover"] = "鼠标悬停", -- draft
+	["Always Show Buttons"] = "总是显示按钮", -- draft
+	["Empty buttons show their slot too."] = "空按钮也显示其格子。", -- draft
 	-- DarkMode
 	["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours."] = "调暗整个界面：MelloUI 的窗口和框体、游戏自己的美术和手绘皮肤。图标和文字保持原色。", -- draft
 	["Dim the gold and the glare. The interface steps back, the world steps forward."] = "调暗金色和炫光。界面退后，世界向前。", -- draft
@@ -533,7 +558,7 @@ Lang:Add("zhCN", {
 	["The size of the game's damage numbers over enemies."] = "游戏在敌人头顶的伤害数字大小。", -- draft
 	["Bar Layout"] = "动作条布局", -- draft
 	["Which Bar"] = "哪条动作条", -- draft
-	["The bar the rows below set: its rows, icons, icon size and padding, saved into your active Edit Mode layout as Edit Mode saves them, once you let a slider go (out of combat). The game shows them after a reload: type /reload (MelloUI says so once). One of the game's preset layouts is copied first: you are asked once."] = "下面几行设置的动作条：它的行数、图标、图标大小和间距，在你松开滑块时（脱离战斗）按编辑模式的方式存入你当前的编辑模式布局。游戏在重载后显示它们：输入/reload（MelloUI会提示一次）。会先复制游戏的一个预设布局：只询问一次。", -- draft
+	["The bar the rows below set: its rows, icons, icon size and padding. MelloUI's own action bars change at once; the stance and pet bars (and the game's bars with UI Modifications off) are saved into your active Edit Mode layout once you let a slider go, and show after a /reload."] = "下方各行设置的动作条：行数、图标、图标大小和间距。MelloUI 自己的动作条立即改变；姿态条和宠物条（以及关闭界面修改时游戏的动作条）会在松开滑块时保存到当前编辑模式布局，并在 /reload 后显示。", -- draft
 	["Action Bar 1"] = "动作条1", -- draft
 	["Action Bar 2"] = "动作条2", -- draft
 	["Action Bar 3"] = "动作条3", -- draft
@@ -547,13 +572,9 @@ Lang:Add("zhCN", {
 	["Rows"] = "行数", -- draft
 	["How many rows the bar's buttons stand in."] = "条上按钮排成几行。", -- draft
 	["Icons"] = "图标", -- draft
-	["How many of the bar's buttons show."] = "显示动作条的几个按钮。", -- draft
-	["Icon Size"] = "图标大小", -- draft
-	["The size of the bar's buttons. 100% is the game's size."] = "条上按钮的大小。100% 为游戏大小。", -- draft
 	["Padding"] = "间距", -- draft
-	["The space between the bar's buttons."] = "条上按钮之间的间距。", -- draft
 	["The Bar's Shape"] = "动作条形状", -- draft
-	["A preview of the bar's layout. Changes show after a /reload."] = "条布局的预览。改动在 /reload 后显示。", -- draft
+	["A preview of the bar's layout."] = "动作条布局预览。", -- draft
 	["Buff Layout"] = "增益布局", -- draft
 	["The size of your buff and debuff icons. The game's own bar changes after a /reload."] = "你的增益和减益图标大小。游戏自己的条在 /reload 后改变。", -- draft
 	["Spacing"] = "间隔", -- draft
@@ -1082,9 +1103,6 @@ Lang:Add("zhCN", {
 	["Also Show On Mouseover"] = "鼠标悬停时也显示", -- draft
 	["In Combat parts also come back while your mouse is over them."] = "鼠标悬停时，“战斗中”的部分也会恢复。", -- draft
 	["Your own frame. In Combat, it also returns while you are hurt, low on mana or dead. Always: never faded. In Combat: faded out of combat. On Mouseover: faded until you point at it."] = "你自己的框体。“战斗中”时，受伤、法力不足或死亡时也会恢复。始终：从不淡出。战斗中：脱离战斗时淡出。鼠标悬停：淡出直到你指向它。", -- draft
-	["Always"] = "总是", -- draft
-	["In Combat"] = "战斗中", -- draft
-	["On Mouseover"] = "鼠标悬停", -- draft
 	["Pet Frame Too"] = "宠物框体也一起", -- draft
 	["Your pet's frame fades with the player frame and returns while your pet is hurt."] = "宠物框体随玩家框体淡出，宠物受伤时恢复。", -- draft
 	["Your target's frame and its target. Always: never faded. In Combat: faded out of combat. On Mouseover: faded until you point at it."] = "目标的框体及其目标。始终：从不淡出。战斗中：脱离战斗时淡出。鼠标悬停：淡出直到你指向它。", -- draft
@@ -1150,7 +1168,7 @@ Lang:Add("zhCN", {
 	["Hide Page Arrows"] = "隐藏翻页箭头", -- draft
 	["Hides the main bar's page number and arrows. Paging keys still work."] = "隐藏主动作条的页码和箭头。翻页按键仍可用。", -- draft
 	["Hide Bar Art"] = "隐藏动作条美术", -- draft
-	["Hides the main bar's art, like the other bars. Only on your own Edit Mode layouts, not the presets; shows after a /reload."] = "像其他动作条一样隐藏主动作条的美术。仅限你自己的编辑模式布局，不含预设；/reload 后显示。", -- draft
+	["Hides the main bar's art, like the other bars. With UI Modifications off: only on your own Edit Mode layouts, after a /reload."] = "像其他动作条一样隐藏主动作条的装饰。关闭界面修改时：仅在你自己的编辑模式布局中，/reload 后生效。", -- draft
 	["A backdrop around Action Bar 1. Neighbours with a backdrop share one."] = "动作条 1 周围的底板。相邻的有底板的条共用一个。", -- draft
 	["A backdrop around Action Bar 2. Neighbours with a backdrop share one."] = "动作条 2 周围的底板。相邻的有底板的条共用一个。", -- draft
 	["A backdrop around Action Bar 3. Neighbours with a backdrop share one."] = "动作条 3 周围的底板。相邻的有底板的条共用一个。", -- draft
@@ -2220,7 +2238,7 @@ Lang:Add("zhCN", {
 	["Level Up Card: its own place, movable in Edit Layout, bigger, everything fits."] = "升级卡片：有自己的位置，可在编辑布局中移动，更大，内容全部放得下。", -- draft
 	["Personal Display: the shield column keeps its colours, icons and amount; interrupted casts show only on its cast bar."] = "个人显示：护盾栏保持颜色、图标和数值；被打断的施法只显示在它的施法条上。", -- draft
 	["Oldschool's action bars keep their painted frames; Default's player frame stays sharp when scaled up."] = "Oldschool 的动作条保留其手绘边框；Default 的玩家框体放大后依然清晰。", -- draft
-	["Your unit, party and raid frames, the experience bars and the bag bar are MelloUI's own: placed by Edit Layout and your profiles."] = "你的单位、小队和团队框体、经验条和背包栏都是 MelloUI 自己的：由编辑布局和你的配置文件放置。", -- draft
+	["Your unit, party and raid frames, action bars, experience bars and bag bar are MelloUI's own: action bar settings apply at once."] = "你的单位、小队和团队框体、动作条、经验条和背包栏都是 MelloUI 自己的：动作条设置立即生效。", -- draft
 	["A fresh Mello layout for wide screens, fitted to every other; Keep My Layout keeps your own places; profiles offer Fit to this screen."] = "全新的宽屏 Mello 布局，并适配其他所有屏幕；“保留我的布局”会保留你自己的位置；配置文件会提供“适配此屏幕”。", -- draft
 	["The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going."] = "MelloUI 按钮位于游戏菜单中“选项”下方；配置文件下的支持者页面感谢让 MelloUI 持续运行的人们。", -- draft
 	["Effects: bolder heals and cooldowns across the whole frame; Buff Landings in each school's colour; a threat halo (untick Hide Combat Flash)."] = "效果：治疗和冷却更醒目，覆盖整个框体；增益落下按法术派系着色；威胁光环（取消勾选“隐藏战斗闪光”）。", -- draft
@@ -2694,6 +2712,7 @@ Lang:Add("zhCN", {
 -- stale: ["A page turn when the character sheet, spell book, quest log or main menu opens, a latch when they close; the spell book's page turns; a quest giver's list and Decline; the bags as a leather pouch opening and closing."] = "打开角色面板、法术书、任务日志或主菜单时翻页，关闭时插销声；法术书翻页；任务给予者的列表和拒绝；背包像皮袋一样打开和合上。", -- draft
 -- stale: ["A pin into parchment for a minimap ping."] = "微缩地图信号时图钉扎入羊皮纸的声音。", -- draft
 -- stale: ["A preset: choosing a style changes every font at once -- the titles, the interface text, the chat and numbers, the chat text and the chat on parchment, the sizes back to 100% (each face brings its own size correction) -- each pairing themed with readability first. Fine-tune any of them afterwards (the style then shows Custom). The damage numbers keep their own choice, but for Fredoka's: one face for everything.\nFredoka: MelloUI's own face: Fredoka's round letters for the titles, the text and the damage numbers, to fit MelloUI's icons. The default.\nScriptorium: Cinzel's carved capitals over Alegreya, a warm book face.\nChronicle: Alegreya SC's small capitals over Source Serif 4, the most readable serif.\nOld Tome: IM Fell English's aged print over Spectral.\nWarband: Pirata One's blackletter over Crimson Pro SemiBold: the boldest look.\nClarity: Cinzel titles, Noto Sans everywhere else: the easiest to read at small sizes.\nGothic: Enchanted Land's gothic titles kept, over Alegreya."] = "预设：选择一种风格会一次改变所有字体——标题、界面文字、聊天和数字、聊天文字和羊皮纸上的聊天，大小恢复到100%（每种字体自带大小校正）——每套搭配都以可读性为先。之后可以微调任意一项（风格随后显示“自定义”）。伤害数字保留自己的选择，Fredoka除外：一种字体用于全部。\nFredoka：MelloUI自己的字体：Fredoka的圆润字母用于标题、文字和伤害数字，与MelloUI的图标相配。默认。\nScriptorium：Cinzel的雕刻大写搭配Alegreya，一种温暖的书籍字体。\nChronicle：Alegreya SC的小型大写搭配Source Serif 4，最易读的衬线体。\nOld Tome：IM Fell English的旧式印刷搭配Spectral。\nWarband：Pirata One的哥特黑体搭配Crimson Pro SemiBold：最醒目的外观。\nClarity：Cinzel标题，其余全部Noto Sans：小字号下最易读。\nGothic：保留Enchanted Land的哥特标题，搭配Alegreya。", -- draft
+-- stale: ["A preview of the bar's layout. Changes show after a /reload."] = "条布局的预览。改动在 /reload 后显示。", -- draft
 -- stale: ["A profession cooldown ready again (a transmute, mooncloth, the salt shaker). MelloUI learns it when you open that profession."] = "某个专业冷却再次就绪（转化、月布、盐瓶）。打开该专业时MelloUI会记下它。", -- draft
 -- stale: ["A quest ready to turn in says who takes it and where, for example: Turn in: Gryan Stoutmantle, Sentinel Hill."] = "可以交的任务会说明谁接收以及在哪里，例如：交任务：格里安·斯托曼，哨兵岭。", -- draft
 -- stale: ["A quest tracker in the game's tracker's place that scrolls with the mouse wheel, so every watched quest can be reached."] = "在游戏追踪器的位置上放一个可用鼠标滚轮滚动的任务追踪器，让每个追踪的任务都能看到。", -- draft
@@ -2889,6 +2908,7 @@ Lang:Add("zhCN", {
 -- stale: ["Hide the player coordinates the client writes under the minimap."] = "隐藏客户端写在小地图下方的玩家坐标。", -- draft
 -- stale: ["Hide the red flash around the player, target, focus, pet and party frames while in combat or when a target attacks."] = "隐藏战斗中或目标攻击时玩家、目标、焦点、宠物和小队框体周围的红色闪光。", -- draft
 -- stale: ["Hide the row of menu buttons (character, spellbook, talents, ...). Still shown while Edit Mode is open."] = "隐藏那一排菜单按钮（角色、法术书、天赋……）。编辑模式打开时仍显示。", -- draft
+-- stale: ["Hides the main bar's art, like the other bars. Only on your own Edit Mode layouts, not the presets; shows after a /reload."] = "像其他动作条一样隐藏主动作条的美术。仅限你自己的编辑模式布局，不含预设；/reload 后显示。", -- draft
 -- stale: ["Hides the red error messages you choose (not enough energy, not ready yet, out of range...) from the middle of the screen."] = "从屏幕中央隐藏你选择的红色错误信息（能量值不足、还没有准备好、距离太远……）。", -- draft
 -- stale: ["Hides the red flash around unit frames in combat."] = "隐藏战斗中单位框体周围的红色闪光。", -- draft
 -- stale: ["Hold it as you talk to a giver to see its dialog as usual: nothing is accepted or handed in there."] = "与任务给予者交谈时按住它，照常查看对话：那里什么都不会被接受或交付。", -- draft
@@ -3196,6 +3216,7 @@ Lang:Add("zhCN", {
 -- stale: ["The UI Shade round the windows. Off: no shade there; the other areas keep theirs."] = "窗口周围的界面阴影。关闭：那里没有阴影；其他区域保留各自的阴影。", -- draft
 -- stale: ["The bag window's money rolls to its new sum when it changes (selling, buying, a repair, a quest) instead of jumping there: warm while it goes up, red while it goes down. Not with Reduce Motion."] = "背包窗口的金钱变化时（出售、购买、修理、任务）滚动到新数额而不是直接跳过去：增加时为暖色，减少时为红色。“减少动态效果”开启时不会。", -- draft
 -- stale: ["The bar as the rows above lay it out. Saved into your Edit Mode layout when you let a slider go (in a fight, when it ends); the bar itself changes after a reload."] = "按上面几行排布的动作条。松开滑块时存入你的编辑模式布局（战斗中则在战斗结束时）；动作条本身在重载后改变。", -- draft
+-- stale: ["The bar the rows below set: its rows, icons, icon size and padding, saved into your active Edit Mode layout as Edit Mode saves them, once you let a slider go (out of combat). The game shows them after a reload: type /reload (MelloUI says so once). One of the game's preset layouts is copied first: you are asked once."] = "下面几行设置的动作条：它的行数、图标、图标大小和间距，在你松开滑块时（脱离战斗）按编辑模式的方式存入你当前的编辑模式布局。游戏在重载后显示它们：输入/reload（MelloUI会提示一次）。会先复制游戏的一个预设布局：只询问一次。", -- draft
 -- stale: ["The bars glide to a new value instead of jumping."] = "条平滑过渡到新数值，而不是跳变。", -- draft
 -- stale: ["The bars of your experience and the reputation you watch. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "你的经验条和关注的声望条。总是：从不淡出。战斗中：脱离战斗时淡出，战斗时回来。鼠标悬停：一直淡出，指向时显示。", -- draft
 -- stale: ["The bars under your character and the shield column beside it (Personal Display). In Combat, they also come back while you cast. (No On Mouseover: the pointer passes through them to the world.) Always: never faded. In Combat: faded out of combat, back in a fight."] = "你角色下方的条和旁边的护盾栏（个人显示）。“战斗中”时，你施法时它们也会回来。（没有“鼠标悬停”：指针会穿过它们点到世界。）总是：从不淡出。战斗中：脱离战斗时淡出，战斗时回来。", -- draft
@@ -3478,6 +3499,7 @@ Lang:Add("zhCN", {
 -- stale: ["Your target's frame (and its target's). Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "你的目标框体（及其目标的）。总是：从不淡出。战斗中：脱离战斗时淡出，战斗时回来。鼠标悬停：一直淡出，指向时显示。", -- draft
 -- stale: ["Your target's health bar flashes a moment when it is hit; a critical hit flashes gold."] = "你目标的生命条被击中时闪一下；暴击闪金光。", -- draft
 -- stale: ["Your target's nameplate answers the fight: hits flash its bar, the part a hit took drains away, crits glow gold, a dodge or a miss flicks off its edge, an enemy's cast glows hotter towards its end and shatters when you interrupt it, and the killing blow flashes the bar out."] = "你目标的姓名板会回应战斗：命中让条闪一下，被打掉的部分慢慢流走，暴击泛起金光，躲闪或未命中从边上弹出，敌人的施法越接近结束越炽热、被你打断时碎裂，致命一击让条炸开。", -- draft
+-- stale: ["Your unit, party and raid frames, the experience bars and the bag bar are MelloUI's own: placed by Edit Layout and your profiles."] = "你的单位、小队和团队框体、经验条和背包栏都是 MelloUI 自己的：由编辑布局和你的配置文件放置。", -- draft
 -- stale: ["Zephras Isle on the map, with its airship trails."] = "地图上显示 Zephras Isle 及其飞艇航线。", -- draft
 -- stale: ["boss and target of target"] = "首领和目标的目标", -- draft
 -- stale: ["the level-up: your XP bar's light and the notice"] = "升级：经验条之光和通知", -- draft

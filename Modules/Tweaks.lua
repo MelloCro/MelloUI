@@ -128,7 +128,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 			{ value = 5, label = "Action Bar 5" }, { value = 6, label = "Action Bar 6" },
 			{ value = 7, label = "Action Bar 7" }, { value = 8, label = "Action Bar 8" },
 			{ value = 11, label = "Stance Bar" }, { value = 12, label = "Pet Bar" } },
-		  desc = "The bar the rows below set: its rows, icons, icon size and padding, saved into your active Edit Mode layout as Edit Mode saves them, once you let a slider go (out of combat). The game shows them after a reload: type /reload (MelloUI says so once). One of the game's preset layouts is copied first: you are asked once." },
+		  desc = "The bar the rows below set: its rows, icons, icon size and padding. MelloUI's own action bars change at once; the stance and pet bars (and the game's bars with UI Modifications off) are saved into your active Edit Mode layout once you let a slider go, and show after a /reload." },
 		{ type = "slider", key = "barRows", name = "Rows", min = 1, max = 4, step = 1,
 		  get = function(db) return Layout.BarGet(db, "barRows") end, missing = function() return Layout.BarMissing("barRows") end,
 		  search = "bar rows columns",
@@ -148,7 +148,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		  desc = "The space between the bar's buttons." },
 		{ type = "shape", key = "barShape", name = "The Bar's Shape",
 		  get = function(db) return Layout.BarShape(db) end, missing = function() return Layout.BarMissing() end,
-		  desc = "A preview of the bar's layout. Changes show after a /reload." },
+		  desc = "A preview of the bar's layout." },
 		-- (0.19.9: Unit Frames > Buffs & Debuffs > Layout, the player's: MelloUI's
 		-- own buff rows while they show, else the game's buff and debuff bars
 		-- in the Edit Mode layout -- one set of rows for both)
@@ -1121,6 +1121,18 @@ local function Clamp(v, lo, hi)
 	return math.max(lo, math.min(hi, v))
 end
 
+-- (fr-18b) MelloUI's own action bar stands in for the chosen bar (Bars 1-8 while UI Modifications is on): its own
+-- settings are the rows' (Own Bars' "bar<n>Rows" ..., at once), never the Edit Mode layout's
+Layout.ownSuffix = { barRows = "Rows", barIcons = "Icons", barIconSize = "IconSize", barPadding = "Padding" }
+function Layout.Own(db)
+	local bar = (db or M.db).barLayoutBar or 1
+	local OB = MelloUI.OwnBars
+	if bar <= 8 and OB and OB.On("actions") and OB.Actions then
+		return OB.Actions, bar
+	end
+	return nil
+end
+
 -- the chosen bar's values (the held ones over them), or nil and why
 function Layout.Bar(db)
 	local system = EnumOf("EditModeSystem", "ActionBar")
@@ -1137,6 +1149,10 @@ end
 -- a Bar Layout slider's value (the icon size as a share: the game keeps
 -- (size - 50) / 10)
 function Layout.BarGet(db, key)
+	local own, bar = Layout.Own(db)
+	if own then
+		return own.Values(bar)[Layout.ownSuffix[key]]
+	end
 	local values = Layout.Bar(db)
 	local setting = EnumOf("EditModeActionBarSetting", Layout.barSetting[key])
 	local raw = values and setting and values[setting]
@@ -1149,6 +1165,9 @@ end
 -- why a Bar Layout row sleeps: the layout unread, or the bar without that
 -- setting (the stance and pet bars keep their own icon count); nil: live
 function Layout.BarMissing(key)
+	if Layout.Own() then
+		return nil
+	end
 	local values, why = Layout.Bar()
 	if not values then
 		return why
@@ -1164,6 +1183,13 @@ end
 
 -- the preview's numbers (W.ShapeRow)
 function Layout.BarShape(db)
+	local own, ownBar = Layout.Own(db)
+	if own then
+		local v, shape = own.Values(ownBar), Layout.shape
+		shape.rows, shape.icons, shape.size, shape.padding = v.Rows, v.Icons, v.IconSize, v.Padding
+		shape.vertical = v.Orientation == 1
+		return shape
+	end
 	local values = Layout.Bar(db)
 	local S = Enum and Enum.EditModeActionBarSetting
 	if not (values and S) then
@@ -1179,6 +1205,11 @@ function Layout.BarShape(db)
 end
 
 function Layout.BarSet(db, key, value)
+	local own, ownBar = Layout.Own(db)
+	if own and type(value) == "number" then
+		MelloUI:NotifySettingChanged("OwnBars", own.Key(ownBar, Layout.ownSuffix[key]), value)
+		return
+	end
 	local system = EnumOf("EditModeSystem", "ActionBar")
 	local setting = EnumOf("EditModeActionBarSetting", Layout.barSetting[key])
 	if not (system and setting and MelloUI.EditModeSettingsSoon) or type(value) ~= "number" then

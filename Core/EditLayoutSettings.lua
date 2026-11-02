@@ -46,8 +46,9 @@
 --                                            Revert), its look put back
 --   MelloUI:EditLayoutOptions(frame, spec)   (el-07) frame's box lists those
 --     settings of a module: spec { module = name, keys = { key, ... } }, in
---     that order (a slider or a toggle of its schema; another kind is left
---     out)
+--     that order (a slider or a toggle of its schema; (fr-18b) a dropdown; a
+--     key "Module.key" another module's; an option's own `get(db)` read for
+--     its shown value; another kind is left out)
 -- Nothing at load: the rows are made at the first box that needs them.
 -- No colour number: palette keys through W.Paint.
 --------------------------------------------------------------------------------
@@ -376,6 +377,19 @@ local function OwnValue(module, key)
 	return db[key]
 end
 
+-- (fr-18b) the value a part's row shows: its option's own reader where it has one (a setting that acts from the game's
+-- layout until it is set: MelloUI's own action bars), else the stored value
+local function OwnShown(module, opt)
+	local fn = type(opt) == "table" and opt.get
+	if type(fn) == "function" then
+		local ok, v = pcall(fn, MelloUI:GetModuleDB(module))
+		if ok then
+			return v
+		end
+	end
+	return OwnValue(module, opt.key)
+end
+
 function ES.Count()
 	local n = 0
 	for _, p in pairs(pend) do
@@ -554,7 +568,7 @@ end
 
 local function RowGet(row)
 	if row.own then
-		local v = OwnValue(row.ownModule, row.own.key)
+		local v = OwnShown(row.ownModule, row.own)
 		if row.kind == "check" then
 			return v == true
 		end
@@ -881,8 +895,8 @@ function MelloUI:EditLayoutOptions(frame, spec)
 	own[frame] = spec
 end
 
--- the schema's controls a row shows
-local OWN_KIND = { slider = "slider", toggle = "check" }
+-- the schema's controls a row shows ((fr-18b) a dropdown too: its schema's values, { value, label } each)
+local OWN_KIND = { slider = "slider", toggle = "check", dropdown = "dropdown" }
 
 -- a module's option of that key (its schema's own table, read only)
 local function OptionOf(module, key)
@@ -905,7 +919,15 @@ local function LayOwn(box, entry, y, width)
 	local controlW = width - 12 - LABEL_W - GAP - 12
 	local any = false
 	for _, key in ipairs(spec.keys) do
-		local o = OptionOf(module, key)
+		-- (fr-18b) "Module.key": another module's own setting in the same box (Action Bar 1's Hide Bar Art, Action
+		-- Bars' option)
+		local owner, name = spec.module, key
+		local other, otherKey = tostring(key):match("^(%w+)%.(.+)$")
+		if other then
+			owner, name = other, otherKey
+		end
+		local m = (owner == spec.module) and module or MelloUI:GetModule(owner)
+		local o = m and OptionOf(m, name)
 		local kind = o and OWN_KIND[o.type]
 		if kind then
 			if not any then
@@ -914,12 +936,14 @@ local function LayOwn(box, entry, y, width)
 			end
 			local row = FreshRow(box)
 			row.info, row.kind, row.fade = nil, kind, nil
-			row.own, row.ownModule = o, spec.module
+			row.own, row.ownModule = o, owner
 			local c = Control(row, kind, controlW)
-			row.label:SetText(W.Tr(tostring(o.name or key)))
+			row.label:SetText(W.Tr(tostring(o.name or name)))
 			if kind == "slider" then
 				c:SetRange(Num(o.min) or 0, Num(o.max) or 1, Num(o.step) or 0.05, o.percent and true or false,
 					type(o.format) == "function" and o.format or nil)
+			elseif kind == "dropdown" then
+				c:SetValues(type(o.values) == "table" and o.values or {})
 			end
 			y = LayRow(box, row, c, y, width)
 		end

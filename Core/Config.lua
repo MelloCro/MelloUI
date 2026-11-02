@@ -183,7 +183,7 @@ local CHANGELOG = {
 		"Level Up Card: its own place, movable in Edit Layout, bigger, everything fits.",
 		"Personal Display: the shield column keeps its colours, icons and amount; interrupted casts show only on its cast bar.",
 		"Oldschool's action bars keep their painted frames; Default's player frame stays sharp when scaled up.",
-		"Your unit, party and raid frames, the experience bars and the bag bar are MelloUI's own: placed by Edit Layout and your profiles.",
+		"Your unit, party and raid frames, action bars, experience bars and bag bar are MelloUI's own: action bar settings apply at once.",
 		"A fresh Mello layout for wide screens, fitted to every other; Keep My Layout keeps your own places; profiles offer Fit to this screen.",
 		"The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going.",
 	} },

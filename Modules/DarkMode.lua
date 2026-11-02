@@ -442,18 +442,29 @@ local function CollectActionButton(button, list)
 	list[#list + 1] = button.style -- ExtraActionButton art
 end
 
+-- (fr-18b) the game's bar or button by its global name, or MelloUI's own standing in for it (MelloUI.OwnBars)
+local function OwnG(name)
+	local OB = MelloUI.OwnBars
+	if OB then
+		return OB.G(name)
+	end
+	return rawget(_G, name)
+end
+
 local function CollectMainBarArt(list)
-	local bar = MainActionBar or MainMenuBar
+	local bar = OwnG("MainActionBar") or MainMenuBar
 	if not bar then
 		return
 	end
 	list[#list + 1] = bar.BorderArt
-	if bar.EndCaps then
-		if bar.EndCaps.LeftEndCap then
-			list[#list + 1] = bar.EndCaps.LeftEndCap.Texture
+	-- (the end caps are the game's own Edit Mode systems inside the game's bar, MelloUI's own bar standing in or not)
+	local game = rawget(_G, "MainActionBar") or bar
+	if game.EndCaps then
+		if game.EndCaps.LeftEndCap then
+			list[#list + 1] = game.EndCaps.LeftEndCap.Texture
 		end
-		if bar.EndCaps.RightEndCap then
-			list[#list + 1] = bar.EndCaps.RightEndCap.Texture
+		if game.EndCaps.RightEndCap then
+			list[#list + 1] = game.EndCaps.RightEndCap.Texture
 		end
 	end
 	local pager = bar.ActionBarPageNumber
@@ -467,7 +478,7 @@ local function ApplyActionBars()
 	local list = {}
 	for _, entry in ipairs(BUTTON_PREFIXES) do
 		for i = 1, entry[2] do
-			CollectActionButton(_G[entry[1] .. i], list)
+			CollectActionButton(OwnG(entry[1] .. i), list)
 		end
 	end
 	CollectActionButton(ExtraActionButton1, list)
@@ -926,6 +937,9 @@ local OWN_AREAS = {
 	StatusTrackingBarManager = "statusbars", MainStatusTrackingBarContainer = "statusbars",
 	SecondaryStatusTrackingBarContainer = "statusbars", BuffFrame = "auras", DebuffFrame = "auras",
 	MelloUIStatusBar1 = "statusbars", MelloUIStatusBar2 = "statusbars",
+	MelloUIActionBar1 = "actionbars", MelloUIActionBar2 = "actionbars", MelloUIActionBar3 = "actionbars",
+	MelloUIActionBar4 = "actionbars", MelloUIActionBar5 = "actionbars", MelloUIActionBar6 = "actionbars",
+	MelloUIActionBar7 = "actionbars", MelloUIActionBar8 = "actionbars",
 	MinimapCluster = "minimap", PersonalResourceDisplayFrame = "personal", GeneralDockManager = "chat",
 	-- MelloUI's own (the party and raid frames with the unit frames, as the game's party frames are)
 	MelloUIGroupParty = "unitframes", MelloUIGroupRaid = "unitframes", MelloUIGroupSoloParty = "unitframes",
@@ -1155,6 +1169,8 @@ local function InstallHooks()
 			end
 		elseif part == "status" and Active("statusbars") then
 			ApplyStatusBars()
+		elseif (part == "actions" or part == "special") and Active("actionbars") then
+			ApplyActionBars()   -- (fr-18b: MelloUI's own action bars)
 		end
 	end, "Dark Mode: the bars of ours")
 end

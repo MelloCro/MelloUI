@@ -303,6 +303,31 @@ Lang:Add("deDE", {
 	["The bag bar stands upright instead of lying flat."] = "Die Taschenleiste steht aufrecht, statt flach zu liegen.", -- draft
 	["Bags On The Other Side"] = "Taschen auf der anderen Seite", -- draft
 	["The bag slots line up on the other side of the backpack (right instead of left, or down instead of up)."] = "Die Taschenplätze reihen sich auf der anderen Seite des Rucksacks auf (rechts statt links oder unten statt oben).", -- draft
+	["Experience Bar Width"] = "Breite der Erfahrungsleiste", -- draft
+	["The experience bar's width in px, from 20 up to the whole width of your screen. Changes at once."] = "Die Breite der Erfahrungsleiste in Pixeln, von 20 bis zur ganzen Bildschirmbreite. Ändert sich sofort.", -- draft
+	["Reputation Bar Width"] = "Breite der Rufleiste", -- draft
+	["The second bar's width in px (a watched reputation while you level), from 20 up to the whole width of your screen. Changes at once."] = "Die Breite der zweiten Leiste in Pixeln (ein beobachteter Ruf beim Leveln), von 20 bis zur ganzen Bildschirmbreite. Ändert sich sofort.", -- draft
+	["Orientation"] = "Ausrichtung", -- draft
+	["Whether the bar's buttons lie in a row or stand in a column."] = "Ob die Tasten der Leiste in einer Reihe liegen oder in einer Spalte stehen.", -- draft
+	["Horizontal"] = "Waagerecht", -- draft
+	["Vertical"] = "Senkrecht", -- draft
+	["# of Rows"] = "Anzahl der Reihen", -- draft
+	["How many rows (or columns, upright) the bar's buttons stand in."] = "In wie vielen Reihen (oder Spalten, aufrecht) die Tasten der Leiste stehen.", -- draft
+	["# of Icons"] = "Anzahl der Symbole", -- draft
+	["How many of the bar's buttons show."] = "Wie viele Tasten der Leiste erscheinen.", -- draft
+	["Icon Size"] = "Symbolgröße", -- draft
+	["The size of the bar's buttons. 100% is the game's size."] = "Die Größe der Knöpfe der Leiste. 100% ist die Größe des Spiels.", -- draft
+	["Icon Padding"] = "Symbolabstand", -- draft
+	["The space between the bar's buttons."] = "Der Abstand zwischen den Knöpfen der Leiste.", -- draft
+	["Bar Visible"] = "Leiste sichtbar", -- draft
+	["When the bar shows: always, only in a fight, only out of one, never, or while the pointer is over it."] = "Wann die Leiste erscheint: immer, nur im Kampf, nur außerhalb, nie oder während der Zeiger darüber ist.", -- draft
+	["Always"] = "Immer", -- draft
+	["In Combat"] = "Im Kampf", -- draft
+	["Out of Combat"] = "Außerhalb des Kampfes", -- draft
+	["Hidden"] = "Verborgen", -- draft
+	["On Mouseover"] = "Beim Darüberfahren", -- draft
+	["Always Show Buttons"] = "Tasten immer zeigen", -- draft
+	["Empty buttons show their slot too."] = "Leere Tasten zeigen auch ihren Platz.", -- draft
 	-- DarkMode
 	["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours."] = "Dunkelt die ganze Oberfläche ab: MelloUIs Fenster und Rahmen, die Grafik des Spiels und den gemalten Reskin. Symbole und Text behalten ihre Farben.", -- draft
 	["Dim the gold and the glare. The interface steps back, the world steps forward."] = "Dämpft das Gold und den Glanz. Die Oberfläche tritt zurück, die Welt tritt hervor.", -- draft
@@ -533,7 +558,7 @@ Lang:Add("deDE", {
 	["The size of the game's damage numbers over enemies."] = "Die Größe der Schadenszahlen des Spiels über Feinden.", -- draft
 	["Bar Layout"] = "Leistenlayout", -- draft
 	["Which Bar"] = "Welche Leiste", -- draft
-	["The bar the rows below set: its rows, icons, icon size and padding, saved into your active Edit Mode layout as Edit Mode saves them, once you let a slider go (out of combat). The game shows them after a reload: type /reload (MelloUI says so once). One of the game's preset layouts is copied first: you are asked once."] = "Die Leiste, die die Zeilen unten einstellen: ihre Reihen, Symbole, Symbolgröße und Abstände, gespeichert in dein aktives Layout des Bearbeitungsmodus, wie der Bearbeitungsmodus sie speichert, sobald du einen Schieberegler loslässt (außerhalb des Kampfes). Das Spiel zeigt sie nach einem Neuladen: Gib /reload ein (MelloUI sagt es einmal). Zuerst wird eines der vorgegebenen Layouts des Spiels kopiert: Du wirst einmal gefragt.", -- draft
+	["The bar the rows below set: its rows, icons, icon size and padding. MelloUI's own action bars change at once; the stance and pet bars (and the game's bars with UI Modifications off) are saved into your active Edit Mode layout once you let a slider go, and show after a /reload."] = "Die Leiste, die die Zeilen darunter einstellen: ihre Reihen, Symbole, Symbolgröße und Abstand. MelloUIs eigene Aktionsleisten ändern sich sofort; Haltungs- und Begleiterleiste (und die Leisten des Spiels ohne UI-Änderungen) werden in dein aktives Bearbeitungsmodus-Layout gespeichert, sobald du einen Regler loslässt, und zeigen sich nach einem /reload.", -- draft
 	["Action Bar 1"] = "Aktionsleiste 1", -- draft
 	["Action Bar 2"] = "Aktionsleiste 2", -- draft
 	["Action Bar 3"] = "Aktionsleiste 3", -- draft
@@ -547,13 +572,9 @@ Lang:Add("deDE", {
 	["Rows"] = "Reihen", -- draft
 	["How many rows the bar's buttons stand in."] = "In wie vielen Reihen die Knöpfe der Leiste stehen.", -- draft
 	["Icons"] = "Symbole", -- draft
-	["How many of the bar's buttons show."] = "Wie viele Tasten der Leiste erscheinen.", -- draft
-	["Icon Size"] = "Symbolgröße", -- draft
-	["The size of the bar's buttons. 100% is the game's size."] = "Die Größe der Knöpfe der Leiste. 100% ist die Größe des Spiels.", -- draft
 	["Padding"] = "Abstand", -- draft
-	["The space between the bar's buttons."] = "Der Abstand zwischen den Knöpfen der Leiste.", -- draft
 	["The Bar's Shape"] = "Die Form der Leiste", -- draft
-	["A preview of the bar's layout. Changes show after a /reload."] = "Eine Vorschau des Leistenlayouts. Änderungen erscheinen nach einem /reload.", -- draft
+	["A preview of the bar's layout."] = "Eine Vorschau des Leistenlayouts.", -- draft
 	["Buff Layout"] = "Aurenlayout", -- draft
 	["The size of your buff and debuff icons. The game's own bar changes after a /reload."] = "Die Größe deiner Stärkungs- und Schwächungszaubersymbole. Die Leiste des Spiels ändert sich nach einem /reload.", -- draft
 	["Spacing"] = "Abstand", -- draft
@@ -1082,9 +1103,6 @@ Lang:Add("deDE", {
 	["Also Show On Mouseover"] = "Auch beim Darüberfahren zeigen", -- draft
 	["In Combat parts also come back while your mouse is over them."] = "Im-Kampf-Teile kehren auch zurück, solange deine Maus über ihnen ist.", -- draft
 	["Your own frame. In Combat, it also returns while you are hurt, low on mana or dead. Always: never faded. In Combat: faded out of combat. On Mouseover: faded until you point at it."] = "Dein eigenes Fenster. Im Kampf kehrt es auch zurück, solange du verletzt bist, wenig Mana hast oder tot bist. Immer: nie ausgeblendet. Im Kampf: außerhalb des Kampfes ausgeblendet. Bei Mauskontakt: ausgeblendet, bis du darauf zeigst.", -- draft
-	["Always"] = "Immer", -- draft
-	["In Combat"] = "Im Kampf", -- draft
-	["On Mouseover"] = "Beim Darüberfahren", -- draft
 	["Pet Frame Too"] = "Auch Begleiterrahmen", -- draft
 	["Your pet's frame fades with the player frame and returns while your pet is hurt."] = "Das Fenster deines Begleiters blendet mit dem Spielerfenster aus und kehrt zurück, solange dein Begleiter verletzt ist.", -- draft
 	["Your target's frame and its target. Always: never faded. In Combat: faded out of combat. On Mouseover: faded until you point at it."] = "Das Fenster deines Ziels und dessen Ziel. Immer: nie ausgeblendet. Im Kampf: außerhalb des Kampfes ausgeblendet. Bei Mauskontakt: ausgeblendet, bis du darauf zeigst.", -- draft
@@ -1150,7 +1168,7 @@ Lang:Add("deDE", {
 	["Hide Page Arrows"] = "Seitenpfeile ausblenden", -- draft
 	["Hides the main bar's page number and arrows. Paging keys still work."] = "Blendet Seitenzahl und Pfeile der Hauptleiste aus. Die Blättertasten funktionieren weiter.", -- draft
 	["Hide Bar Art"] = "Leistenverzierung verbergen", -- draft
-	["Hides the main bar's art, like the other bars. Only on your own Edit Mode layouts, not the presets; shows after a /reload."] = "Blendet die Grafik der Hauptleiste aus, wie bei den anderen Leisten. Nur in deinen eigenen Bearbeitungsmodus-Layouts, nicht in den Vorlagen; erscheint nach einem /reload.", -- draft
+	["Hides the main bar's art, like the other bars. With UI Modifications off: only on your own Edit Mode layouts, after a /reload."] = "Blendet die Grafik der Hauptleiste aus, wie bei den anderen Leisten. Ohne UI-Änderungen: nur in deinen eigenen Bearbeitungsmodus-Layouts, nach einem /reload.", -- draft
 	["A backdrop around Action Bar 1. Neighbours with a backdrop share one."] = "Ein Hintergrund um Aktionsleiste 1. Nachbarn mit Hintergrund teilen sich einen.", -- draft
 	["A backdrop around Action Bar 2. Neighbours with a backdrop share one."] = "Ein Hintergrund um Aktionsleiste 2. Nachbarn mit Hintergrund teilen sich einen.", -- draft
 	["A backdrop around Action Bar 3. Neighbours with a backdrop share one."] = "Ein Hintergrund um Aktionsleiste 3. Nachbarn mit Hintergrund teilen sich einen.", -- draft
@@ -2220,7 +2238,7 @@ Lang:Add("deDE", {
 	["Level Up Card: its own place, movable in Edit Layout, bigger, everything fits."] = "Stufenaufstiegskarte: eigener Platz, in Layout bearbeiten verschiebbar, größer, alles passt hinein.", -- draft
 	["Personal Display: the shield column keeps its colours, icons and amount; interrupted casts show only on its cast bar."] = "Persönliche Anzeige: die Schildsäule behält Farben, Symbole und Betrag; unterbrochene Zauber erscheinen nur auf ihrer Zauberleiste.", -- draft
 	["Oldschool's action bars keep their painted frames; Default's player frame stays sharp when scaled up."] = "Die Aktionsleisten von Oldschool behalten ihre gemalten Rahmen; der Spielerrahmen von Default bleibt beim Vergrößern scharf.", -- draft
-	["Your unit, party and raid frames, the experience bars and the bag bar are MelloUI's own: placed by Edit Layout and your profiles."] = "Deine Einheiten-, Gruppen- und Schlachtzugsrahmen, die Erfahrungsleisten und die Taschenleiste sind MelloUIs eigene: platziert von Layout bearbeiten und deinen Profilen.", -- draft
+	["Your unit, party and raid frames, action bars, experience bars and bag bar are MelloUI's own: action bar settings apply at once."] = "Deine Einheiten-, Gruppen- und Schlachtzugsrahmen, Aktionsleisten, Erfahrungsleisten und Taschenleiste sind MelloUIs eigene: Einstellungen der Aktionsleisten wirken sofort.", -- draft
 	["A fresh Mello layout for wide screens, fitted to every other; Keep My Layout keeps your own places; profiles offer Fit to this screen."] = "Ein frisches Mello-Layout für breite Bildschirme, an jeden anderen angepasst; „Mein Layout behalten“ behält deine eigenen Plätze; Profile bieten „An diesen Bildschirm anpassen“ an.", -- draft
 	["The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going."] = "Der MelloUI-Knopf sitzt im Spielmenü unter Optionen; eine Unterstützer-Seite unter Profile dankt allen, die MelloUI am Laufen halten.", -- draft
 	["Effects: bolder heals and cooldowns across the whole frame; Buff Landings in each school's colour; a threat halo (untick Hide Combat Flash)."] = "Effekte: kräftigere Heilungen und Abklingzeiten über das ganze Fenster; Buff-Landungen in der Farbe ihrer Schule; ein Bedrohungsschein (Kampfblinken ausblenden abwählen).", -- draft
@@ -2694,6 +2712,7 @@ Lang:Add("deDE", {
 -- stale: ["A page turn when the character sheet, spell book, quest log or main menu opens, a latch when they close; the spell book's page turns; a quest giver's list and Decline; the bags as a leather pouch opening and closing."] = "Ein Umblättern, wenn Charakterfenster, Zauberbuch, Questlog oder Hauptmenü öffnen, ein Riegel, wenn sie schließen; das Umblättern im Zauberbuch; die Liste eines Questgebers und Ablehnen; die Taschen als Lederbeutel, der sich öffnet und schließt.", -- draft
 -- stale: ["A pin into parchment for a minimap ping."] = "Eine Nadel in Pergament für einen Minikarten-Ping.", -- draft
 -- stale: ["A preset: choosing a style changes every font at once -- the titles, the interface text, the chat and numbers, the chat text and the chat on parchment, the sizes back to 100% (each face brings its own size correction) -- each pairing themed with readability first. Fine-tune any of them afterwards (the style then shows Custom). The damage numbers keep their own choice, but for Fredoka's: one face for everything.\nFredoka: MelloUI's own face: Fredoka's round letters for the titles, the text and the damage numbers, to fit MelloUI's icons. The default.\nScriptorium: Cinzel's carved capitals over Alegreya, a warm book face.\nChronicle: Alegreya SC's small capitals over Source Serif 4, the most readable serif.\nOld Tome: IM Fell English's aged print over Spectral.\nWarband: Pirata One's blackletter over Crimson Pro SemiBold: the boldest look.\nClarity: Cinzel titles, Noto Sans everywhere else: the easiest to read at small sizes.\nGothic: Enchanted Land's gothic titles kept, over Alegreya."] = "Eine Vorgabe: Ein Stil ändert alle Schriften zugleich -- die Titel, den Oberflächentext, Chat und Zahlen, den Chattext und den Chat auf Pergament, die Größen zurück auf 100 % (jede Schrift bringt ihre eigene Größenkorrektur mit) --, jede Paarung thematisch und mit Lesbarkeit zuerst. Danach kannst du jede einzeln feinabstimmen (der Stil zeigt dann „Eigene“). Die Schadenszahlen behalten ihre eigene Wahl, außer bei Fredoka: eine Schrift für alles.\nFredoka: MelloUIs eigene Schrift: Fredokas runde Buchstaben für Titel, Text und Schadenszahlen, passend zu MelloUIs Symbolen. Der Standard.\nScriptorium: Cinzels gemeißelte Großbuchstaben über Alegreya, einer warmen Buchschrift.\nChronicle: Alegreya SCs Kapitälchen über Source Serif 4, der lesbarsten Serifenschrift.\nOld Tome: IM Fell Englishs gealterter Druck über Spectral.\nWarband: Pirata Ones Fraktur über Crimson Pro SemiBold: der kräftigste Look.\nClarity: Cinzel-Titel, sonst überall Noto Sans: am leichtesten lesbar in kleinen Größen.\nGothic: Enchanted Lands gotische Titel bleiben, über Alegreya.", -- draft
+-- stale: ["A preview of the bar's layout. Changes show after a /reload."] = "Eine Vorschau des Leistenlayouts. Änderungen erscheinen nach einem /reload.", -- draft
 -- stale: ["A profession cooldown ready again (a transmute, mooncloth, the salt shaker). MelloUI learns it when you open that profession."] = "Eine Berufsabklingzeit wieder bereit (eine Transmutation, Mondstoff, der Salzstreuer). MelloUI lernt sie, wenn du diesen Beruf öffnest.", -- draft
 -- stale: ["A quest ready to turn in says who takes it and where, for example: Turn in: Gryan Stoutmantle, Sentinel Hill."] = "Eine abgabebereite Quest sagt, wer sie annimmt und wo, zum Beispiel: Abgeben: Gryan Starkmantel, Späherkuppe.", -- draft
 -- stale: ["A quest tracker in the game's tracker's place that scrolls with the mouse wheel, so every watched quest can be reached."] = "Eine Questverfolgung am Platz der Verfolgung des Spiels, die mit dem Mausrad scrollt, damit jede beobachtete Quest erreichbar ist.", -- draft
@@ -2893,6 +2912,7 @@ Lang:Add("deDE", {
 -- stale: ["Hide the player coordinates the client writes under the minimap."] = "Blendet die Spielerkoordinaten aus, die der Client unter die Minikarte schreibt.", -- draft
 -- stale: ["Hide the red flash around the player, target, focus, pet and party frames while in combat or when a target attacks."] = "Blendet das rote Blinken um die Fenster von Spieler, Ziel, Fokus, Begleiter und Gruppe aus, im Kampf oder wenn ein Ziel angreift.", -- draft
 -- stale: ["Hide the row of menu buttons (character, spellbook, talents, ...). Still shown while Edit Mode is open."] = "Blendet die Reihe der Menüknöpfe aus (Charakter, Zauberbuch, Talente, ...). Solange der Bearbeitungsmodus offen ist, weiterhin sichtbar.", -- draft
+-- stale: ["Hides the main bar's art, like the other bars. Only on your own Edit Mode layouts, not the presets; shows after a /reload."] = "Blendet die Grafik der Hauptleiste aus, wie bei den anderen Leisten. Nur in deinen eigenen Bearbeitungsmodus-Layouts, nicht in den Vorlagen; erscheint nach einem /reload.", -- draft
 -- stale: ["Hides the red error messages you choose (not enough energy, not ready yet, out of range...) from the middle of the screen."] = "Blendet die roten Fehlermeldungen, die du wählst (nicht genug Energie, noch nicht bereit, außer Reichweite ...), in der Bildschirmmitte aus.", -- draft
 -- stale: ["Hides the red flash around unit frames in combat."] = "Blendet das rote Blinken um Einheitenfenster im Kampf aus.", -- draft
 -- stale: ["Hold it as you talk to a giver to see its dialog as usual: nothing is accepted or handed in there."] = "Halte sie, während du mit einem Questgeber sprichst, um seinen Dialog wie gewohnt zu sehen: Dort wird nichts angenommen oder abgegeben.", -- draft
@@ -3206,6 +3226,7 @@ Lang:Add("deDE", {
 -- stale: ["The UI Shade round the windows. Off: no shade there; the other areas keep theirs."] = "Der UI-Schatten um die Fenster. Aus: dort kein Schatten; die anderen Bereiche behalten ihren.", -- draft
 -- stale: ["The bag window's money rolls to its new sum when it changes (selling, buying, a repair, a quest) instead of jumping there: warm while it goes up, red while it goes down. Not with Reduce Motion."] = "Das Geld des Taschenfensters rollt zu seiner neuen Summe, wenn es sich ändert (Verkaufen, Kaufen, eine Reparatur, eine Quest), statt dorthin zu springen: warm, solange es steigt, rot, solange es sinkt. Nicht mit „Bewegung reduzieren“.", -- draft
 -- stale: ["The bar as the rows above lay it out. Saved into your Edit Mode layout when you let a slider go (in a fight, when it ends); the bar itself changes after a reload."] = "Die Leiste, wie die Zeilen oben sie anordnen. Wird in dein Layout des Bearbeitungsmodus gespeichert, wenn du einen Schieberegler loslässt (im Kampf, wenn er endet); die Leiste selbst ändert sich nach einem Neuladen.", -- draft
+-- stale: ["The bar the rows below set: its rows, icons, icon size and padding, saved into your active Edit Mode layout as Edit Mode saves them, once you let a slider go (out of combat). The game shows them after a reload: type /reload (MelloUI says so once). One of the game's preset layouts is copied first: you are asked once."] = "Die Leiste, die die Zeilen unten einstellen: ihre Reihen, Symbole, Symbolgröße und Abstände, gespeichert in dein aktives Layout des Bearbeitungsmodus, wie der Bearbeitungsmodus sie speichert, sobald du einen Schieberegler loslässt (außerhalb des Kampfes). Das Spiel zeigt sie nach einem Neuladen: Gib /reload ein (MelloUI sagt es einmal). Zuerst wird eines der vorgegebenen Layouts des Spiels kopiert: Du wirst einmal gefragt.", -- draft
 -- stale: ["The bars glide to a new value instead of jumping."] = "Die Balken gleiten zu einem neuen Wert, statt zu springen.", -- draft
 -- stale: ["The bars of your experience and the reputation you watch. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "Die Leisten deiner Erfahrung und des Rufs, den du beobachtest. Immer: nie ausgeblendet. Im Kampf: außerhalb des Kampfes ausgeblendet, im Kampf zurück. Beim Darüberfahren: die ganze Zeit ausgeblendet, sichtbar, solange du darauf zeigst.", -- draft
 -- stale: ["The bars under your character and the shield column beside it (Personal Display). In Combat, they also come back while you cast. (No On Mouseover: the pointer passes through them to the world.) Always: never faded. In Combat: faded out of combat, back in a fight."] = "Die Balken unter deinem Charakter und die Schildspalte daneben (Persönliche Anzeige). „Im Kampf“: Sie kommen auch zurück, solange du zauberst. (Kein „Beim Darüberfahren“: Der Mauszeiger geht durch sie hindurch in die Welt.) Immer: nie ausgeblendet. Im Kampf: außerhalb des Kampfes ausgeblendet, im Kampf zurück.", -- draft
@@ -3488,6 +3509,7 @@ Lang:Add("deDE", {
 -- stale: ["Your target's frame (and its target's). Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "Das Fenster deines Ziels (und das seines Ziels). Immer: nie ausgeblendet. Im Kampf: außerhalb des Kampfes ausgeblendet, im Kampf zurück. Beim Darüberfahren: die ganze Zeit ausgeblendet, sichtbar, solange du darauf zeigst.", -- draft
 -- stale: ["Your target's health bar flashes a moment when it is hit; a critical hit flashes gold."] = "Der Gesundheitsbalken deines Ziels blitzt kurz auf, wenn er getroffen wird; ein kritischer Treffer blitzt golden.", -- draft
 -- stale: ["Your target's nameplate answers the fight: hits flash its bar, the part a hit took drains away, crits glow gold, a dodge or a miss flicks off its edge, an enemy's cast glows hotter towards its end and shatters when you interrupt it, and the killing blow flashes the bar out."] = "Die Namensplakette deines Ziels antwortet auf den Kampf: Treffer lassen ihren Balken aufblitzen, der Teil, den ein Treffer nahm, läuft aus, kritische Treffer leuchten golden, ein Ausweichen oder Verfehlen springt von ihrem Rand, der Zauber eines Gegners glüht gegen Ende heißer und zerspringt, wenn du ihn unterbrichst, und der Todesstoß lässt den Balken verglühen.", -- draft
+-- stale: ["Your unit, party and raid frames, the experience bars and the bag bar are MelloUI's own: placed by Edit Layout and your profiles."] = "Deine Einheiten-, Gruppen- und Schlachtzugsrahmen, die Erfahrungsleisten und die Taschenleiste sind MelloUIs eigene: platziert von Layout bearbeiten und deinen Profilen.", -- draft
 -- stale: ["Zephras Isle on the map, with its airship trails."] = "Zephras Isle auf der Karte, mit den Routen ihrer Luftschiffe.", -- draft
 -- stale: ["boss and target of target"] = "Boss und Ziel des Ziels", -- draft
 -- stale: ["the level-up: your XP bar's light and the notice"] = "der Stufenaufstieg: das Licht deiner Erfahrungsleiste und der Hinweis", -- draft

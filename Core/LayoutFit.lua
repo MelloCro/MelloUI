@@ -71,7 +71,15 @@
 --               from the side of the screen it stands in (F0s); nil: made for
 --               this screen (Inputs reads UIModifications.placesFor);
 --               sizes ([key] = { w, h }, the frames' own units: the
---               installer's measure of the registered ones, for F0s)
+--               installer's measure of the registered ones, for F0s);
+--               ownBars (fr-18b; Inputs reads it while UI Modifications is
+--               on): MelloUI's own bars' own settings, [record] = { Orientation,
+--               NumRows, NumIcons, IconSize, IconPadding } for an action bar,
+--               { width } for a status bar, { vertical } for the bag bar --
+--               each modelled at its own size (a field it does not set: the
+--               layout's); their places (MelloUIActionBar1..8,
+--               MelloUIStatusBar1 / 2, MelloUIBagBar in the store) pin the
+--               record they stand in for, as Edit Layout's copies do
 --       opts    screenW / screenH (the physical size, for the layout's name;
 --               read from the game when not given), baseName ("MelloUI")
 --     fitted   the fitted layout info: anchorInfo points (strings) and
@@ -410,6 +418,29 @@ LayoutFit.RETRY = {
 
 -- Frames Edit Mode places that Edit Layout's movers (Core/EditLayoutWindows.lua) can also keep a place for
 local EDIT_MODE_FRAMES = { "MinimapCluster", "DamageMeter", "ChatFrame1", "ObjectiveTrackerFrame" }
+
+-- (fr-18b; the brief: "LayoutFit models ours") MelloUI's own bars (Modules/OwnBars.lua, Modules/OwnActionBars.lua):
+-- the layout's record each one's place in the store stands in for -- the record is modelled where that place puts it
+-- (ownPlaces' pins) and at the bar's own size (inputs.ownBars), so a fit sees what the player sees. (The game's
+-- stance, pet and possess bars and the end caps still hang on the game's own, unseen bars at the layout's places in
+-- game; the model hangs them on the record.) (A field, not a local: this file's main chunk is at Lua's 200 locals.)
+function LayoutFit.OwnBarRec(key)
+	if type(key) ~= "string" then
+		return nil
+	end
+	local n = tonumber(key:match("^MelloUIActionBar(%d)$"))
+	if n and n >= 1 and n <= 8 then
+		return "0:" .. (n - 1)
+	end
+	n = tonumber(key:match("^MelloUIStatusBar(%d)$"))
+	if n == 1 or n == 2 then
+		return "15:" .. (n - 1)
+	end
+	if key == "MelloUIBagBar" then
+		return "14:-1"
+	end
+	return nil
+end
 LayoutFit.EDIT_MODE_FRAMES = EDIT_MODE_FRAMES   -- (read only: the installer keeps the player's own places of these)
 
 -- The windows the fit places (those with a place in the user's snapshot;
@@ -1013,6 +1044,25 @@ local function MelloFrom(inputs)
 			sizes[key] = { w, h }
 		end
 	end
+	-- (fr-18b) MelloUI's own bars' own settings ([record] = fields), plain numbers / booleans only
+	local ownBars = {}
+	for rec, v in pairs(type(inputs.ownBars) == "table" and inputs.ownBars or EMPTY) do
+		if type(rec) == "string" and type(v) == "table" then
+			local fields = {}
+			for _, k in ipairs({ "Orientation", "NumRows", "NumIcons", "IconSize", "IconPadding", "width" }) do
+				local x = Num(v[k])
+				if x and (k ~= "width" or x > 0) then
+					fields[k] = x
+				end
+			end
+			if v.vertical ~= nil and not Secret(v.vertical) then
+				fields.vertical = v.vertical and true or false
+			end
+			if next(fields) then
+				ownBars[rec] = fields
+			end
+		end
+	end
 	local border = Str(c.border, D.border)
 	local size, perRow = Num(a.size), Num(a.perRow)
 	perRow = perRow and floor(perRow)
@@ -1046,6 +1096,7 @@ local function MelloFrom(inputs)
 		statsOn = inputs.statsOn and true or false,
 		bars = BarsFor(inputs),
 		own = inputs.ownPlaces == true,
+		ownBars = ownBars,
 	}
 end
 
@@ -1079,20 +1130,23 @@ end
 -- encounter content)
 local function SizeOf(f, s, m)
 	local name, idx = m.name, m.idx
+	-- (fr-18b) MelloUI's own bar standing in for the record: its own settings where it has them
+	local ownBars = f.mello and f.mello.ownBars
+	local own = ownBars and ownBars[m.key] or EMPTY
 	if name == "ActionBar" then
 		local btn, n
 		if idx == 11 or idx == 12 or idx == 13 then
 			btn, n = 30, (idx == 12) and 10 or 2
 		else
-			btn, n = 45, Setting(f, s, "NumIcons") or 12
+			btn, n = 45, own.NumIcons or Setting(f, s, "NumIcons") or 12
 		end
-		local rows = Disp(f, s, "NumRows") or 1
-		local scale = (Disp(f, s, "IconSize") or 100) / 100
-		local pad = max(2, Disp(f, s, "IconPadding") or 2)
+		local rows = own.NumRows or Disp(f, s, "NumRows") or 1
+		local scale = (own.IconSize or Disp(f, s, "IconSize") or 100) / 100
+		local pad = max(2, own.IconPadding or Disp(f, s, "IconPadding") or 2)
 		local stride = ceil(n / rows)
 		local a = stride * btn * scale + (stride - 1) * pad
 		local b = rows * btn * scale + (rows - 1) * pad
-		if (Setting(f, s, "Orientation") or 0) == 0 then
+		if (own.Orientation or Setting(f, s, "Orientation") or 0) == 0 then
 			return a, b
 		end
 		return b, a
@@ -1146,11 +1200,18 @@ local function SizeOf(f, s, m)
 		return (32 + 11 * 27) * k, 40 * k
 	elseif name == "Bags" then
 		local k = (Disp(f, s, "Size") or 100) / 100
-		if Setting(f, s, "Orientation") == 1 then
+		local vertical = own.vertical
+		if vertical == nil then
+			vertical = Setting(f, s, "Orientation") == 1
+		end
+		if vertical then
 			return 45 * k, 268 * k
 		end
 		return 268 * k, 45 * k
 	elseif name == "StatusTrackingBar" then
+		if own.width then
+			return own.width, 17
+		end
 		local k = (Disp(f, s, "Size") or 100) / 100
 		return 1192 * k, 17
 	elseif name == "MainActionBarEndCap" then
@@ -2060,6 +2121,8 @@ do
 		end
 		idx = tonumber(idx)
 		local rec = sys and idx and (sys .. ":" .. (idx == 0 and -1 or idx - 1))
+		-- (fr-18b) a place of MelloUI's own bars: the record it stands in for
+		rec = rec or LayoutFit.OwnBarRec(key)
 		return (rec and f.rec[rec]) and rec or nil
 	end
 
@@ -4143,7 +4206,7 @@ local function Core(info, W, H, inputs, opts, job)
 	for key, p in pairs(f.mello.positions) do
 		local layoutPlace = false
 		if own and type(key) == "string" then
-			layoutPlace = find(key, "^EditMode%.%-?%d+%.%-?%d+$") ~= nil
+			layoutPlace = find(key, "^EditMode%.%-?%d+%.%-?%d+$") ~= nil or LayoutFit.OwnBarRec(key) ~= nil
 			for i = 1, #EDIT_MODE_FRAMES do
 				layoutPlace = layoutPlace or EDIT_MODE_FRAMES[i] == key
 			end
@@ -4480,5 +4543,40 @@ function LayoutFit:Inputs(read)
 		-- (1.2.4, the user 2026-10-28: "MelloUI Configurator Export is always being Prioritized over the Game Edit
 		-- Mode Export") MelloUI's own places of what the layout places stay and win (F0Store, F1Zone)
 		ownPlaces = true,
+		-- (fr-18b) MelloUI's own bars stand in while UI Modifications is on: their own sizes
+		ownBars = read("UIModifications") and self:OwnBars(read) or nil,
 	}
+end
+
+-- (fr-18b) MelloUI's own bars' own settings as the fit models them ([record] = fields; a setting not set is the
+-- layout's, left out)
+LayoutFit.OWN_ACTION = { Orientation = "Orientation", NumRows = "Rows", NumIcons = "Icons", IconSize = "IconSize",
+	IconPadding = "Padding" }
+function LayoutFit:OwnBars(read)
+	read = read or LiveRead
+	local OWN_ACTION = LayoutFit.OWN_ACTION
+	local out = {}
+	for n = 1, 8 do
+		local t = {}
+		for field, suffix in pairs(OWN_ACTION) do
+			local v = read("OwnBars", "bar" .. n .. suffix)
+			if type(v) == "number" and not Secret(v) then
+				t[field] = v
+			end
+		end
+		if next(t) then
+			out["0:" .. (n - 1)] = t
+		end
+	end
+	for i = 1, 2 do
+		local w = read("OwnBars", "statusWidth" .. i)
+		if type(w) == "number" and not Secret(w) and w > 0 then
+			out["15:" .. (i - 1)] = { width = w }
+		end
+	end
+	local v = read("OwnBars", "bagVertical")
+	if v ~= nil and not Secret(v) then
+		out["14:-1"] = { vertical = v and true or false }
+	end
+	return out
 end

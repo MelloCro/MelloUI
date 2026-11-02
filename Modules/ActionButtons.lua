@@ -99,6 +99,17 @@ local short = setmetatable({}, { __mode = "k" })     -- [button] = true short of
 local greyed = setmetatable({}, { __mode = "k" })    -- [button] = true: its icon greyed here
 local buttons = {}                                   -- every hooked button, in order
 local hooked = false
+local hookedButton = setmetatable({}, { __mode = "k" })   -- [button] = true: hooked once
+
+-- (fr-18b) the game's bar or button by its global name, or MelloUI's own standing in for it (MelloUI.OwnBars: the
+-- action bars of ours carry the game's names)
+local function OwnG(name)
+	local OB = MelloUI.OwnBars
+	if OB then
+		return OB.G(name)
+	end
+	return rawget(_G, name)
+end
 
 local function PressOn()
 	return M.isEnabled and M.db and M.db.pressLight
@@ -381,6 +392,12 @@ local OnRange = Shared("ActionButton_UpdateRangeIndicator", function(button, che
 	if Secret(checksRange) or Secret(inRange) then
 		return
 	end
+	-- (fr-18c, the sim proof: a range cover was made on the game's own button, still told its range by the game's
+	-- watcher, while MelloUI's own stand in for it) the game's buttons kept away are left alone
+	local own = MelloUI.OwnBars
+	if own and own.Away(button) then
+		return
+	end
 	outOfRange[button] = (checksRange and not inRange) and true or nil
 	LayCover(button)
 	LayFrame(button)
@@ -497,9 +514,10 @@ end
 -- Hooking the buttons (once)
 --------------------------------------------------------------------------------
 local function Hook(button)
-	if type(button) ~= "table" or type(button.SetButtonState) ~= "function" then
+	if type(button) ~= "table" or type(button.SetButtonState) ~= "function" or hookedButton[button] then
 		return
 	end
+	hookedButton[button] = true
 	buttons[#buttons + 1] = button
 	hooksecurefunc(button, "SetButtonState", OnSetButtonState)
 	Perf.HookScript(button, "OnMouseDown", OnMouseDown)
@@ -521,13 +539,10 @@ local function Hook(button)
 	HookReady(button)   -- (Cooldown Ready: its cooldown frame)
 end
 
-local function HookAll()
-	if hooked then
-		return
-	end
-	hooked = true
+-- every bar's buttons that stand now hooked (each once: ours as they come, fr-18b)
+local function HookBars()
 	for _, name in ipairs(BARS) do
-		local bar = _G[name]
+		local bar = OwnG(name)
 		local list = type(bar) == "table" and bar.actionButtons
 		if type(list) == "table" then
 			for _, button in ipairs(list) do
@@ -535,9 +550,24 @@ local function HookAll()
 			end
 		end
 	end
+end
+
+local function HookAll()
+	if hooked then
+		return
+	end
+	hooked = true
+	HookBars()
 	for _, name in ipairs(EXTRA) do
 		Hook(_G[name])
 	end
+	-- (fr-18b) MelloUI's own action bars came: their buttons dressed as the game's were
+	MelloUI:On("ownbars", function(part)
+		if part == "actions" or part == "special" then   -- (fr-18 stage 3: the stance, pet, possess bars too)
+			HookBars()
+			M.Refresh()
+		end
+	end, "Action Buttons: the action bars of ours")
 	if type(ActionButton_UpdateRangeIndicator) == "function" then
 		hooksecurefunc("ActionButton_UpdateRangeIndicator", OnRange)
 	end
@@ -579,6 +609,10 @@ end
 
 -- (the light follows the palette by itself: W.Paint keeps it)
 
+M.Refresh = function()
+	Refresh()
+end
+
 function M:OnEnable(db)
 	self.db = db
 	HookAll()
@@ -618,7 +652,7 @@ end
 function M.BarButtons(out)
 	out = out or {}
 	for _, name in ipairs(BARS) do
-		local bar = rawget(_G, name)
+		local bar = OwnG(name)
 		local list = type(bar) == "table" and rawget(bar, "actionButtons")
 		if type(list) == "table" then
 			for _, button in ipairs(list) do
@@ -686,6 +720,14 @@ do
 	-- the bar's shape from the Edit Mode layout (Tweaks' Layout.BarShape's
 	-- reading), the game's defaults where it says nothing
 	function Stage.Shape(bar)
+		-- (fr-18b) MelloUI's own action bar: its own settings
+		local OB = MelloUI.OwnBars
+		if OB and OB.On("actions") and OB.Actions and bar <= 8 then
+			local v, shape = OB.Actions.Values(bar), Stage.shape
+			shape.rows, shape.icons, shape.size, shape.padding = v.Rows, v.Icons, v.IconSize, v.Padding
+			shape.vertical = v.Orientation == 1
+			return shape
+		end
 		local S = Enum and Enum.EditModeActionBarSetting
 		local system = Enum and Enum.EditModeSystem and Enum.EditModeSystem.ActionBar
 		local ok, values = false, nil

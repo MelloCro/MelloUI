@@ -28,10 +28,14 @@
 -- Places (fr-18 sim, 2026-11-01): a place of their own in MelloUI's mover store (Core's positions) comes only from
 -- the player's Edit Layout save, a profile load or the installer, or an import. Until then ours FOLLOW the game's
 -- frames: hung by the game's own anchor point on the game's frame (live: the bottom stack, a layout, a skin's micro
--- menu moving it moves ours), at its scale; the status bars always at the game's container's width (the layout's
--- Size; one of their own comes with stage 2). The second status bar with no place of its own stacks as the game's
+-- menu moving it moves ours), at its scale. The second status bar with no place of its own stacks as the game's
 -- bottom stack stacks it (Camelot's order: the main bar, the second, the first), or stands at its layout place --
 -- never at the second container's unlaid default. Followed again whenever the game lays a layout (see Following).
+-- (fr-18c) The bottom stack is laid on ours wherever ours stand in it (the main bar of ours its base, our status
+-- bars' heights and shown states), so a bar of ours that changes its size or shows moves the bars above it as the
+-- game's stack would. Each status bar's width is ours as well, in px (Experience Bar Width / Reputation Bar Width,
+-- fr-18b: 20 up to the screen's width): live from its Edit Layout box and the configurator, carried by the profiles;
+-- by the same rule as the place, a width not set is the game's container's (the layout's Size), followed.
 --
 -- The game's frames kept away while ours stand in (fr-16 / fr-17's means): StatusTrackingBarManager and BagsBar at
 -- alpha 0 (no game code writes either's alpha); the game's bars' and bag buttons' mouse off; Edit Mode's selection
@@ -83,7 +87,28 @@ local IS_KEY = { [KEYS.status1] = true, [KEYS.status2] = true, [KEYS.bags] = tru
 local OWNER = { status = "Own Bars: the status bars", bags = "Own Bars: the bag bar" }
 
 -- the Edit Mode systems ours stand in for (Enum.EditModeSystem names; index nil = every index)
-local SYSTEMS = { StatusTrackingBar = "status", Bags = "bags" }
+local SYSTEMS = { StatusTrackingBar = { "status" }, Bags = { "bags" } }   -- (each system: the parts of ours in it)
+
+-- (fr-18b; the user, 2026-11-01: "the exp reputation bar mostly does not fit the action bars since its width slider is
+-- to restrictive and operates in % instead of px, we should be able to manually set it to the width that we want,
+-- ranging from 20px - full monitor width") each status bar's width in px -- the bar's own units, at its own scale --
+-- from 20 up to the screen's full width at that scale (the slider's top follows the screen: StatusMax). 0 = not set
+-- yet: the game's container's width is taken (its Edit Mode Size, the old 50-130 %), once its layout is laid out,
+-- and kept as px from then on; a profile that carries none (every shipped profile) takes it again the same way.
+local WIDTH_MIN = 20
+local WIDTH_TOP = 8192   -- (the slider's top until the screen is read)
+local function PxFormat(v)
+	return ("%d px"):format(math.floor((tonumber(v) or 0) + 0.5))
+end
+local WIDTH_OPTS = {
+	{ type = "slider", key = "statusWidth1", name = "Experience Bar Width", new = "2.1.0", min = WIDTH_MIN, max = WIDTH_TOP,
+	  step = 1, format = PxFormat,
+	  desc = "The experience bar's width in px, from 20 up to the whole width of your screen. Changes at once." },
+	{ type = "slider", key = "statusWidth2", name = "Reputation Bar Width", new = "2.1.0", min = WIDTH_MIN, max = WIDTH_TOP,
+	  step = 1, format = PxFormat,
+	  desc = "The second bar's width in px (a watched reputation while you level), from 20 up to the whole width of your "
+		.. "screen. Changes at once." },
+}
 
 local M = MelloUI:RegisterModule("OwnBars", {
 	title = "Own Bars",
@@ -91,13 +116,15 @@ local M = MelloUI:RegisterModule("OwnBars", {
 	-- (always on, as Action Bars: no switch of its own; ours stand in while UI Modifications is on)
 	hidden = true,
 	enabledByDefault = true,
-	defaults = { bagVertical = false, bagReverse = false },
+	defaults = { bagVertical = false, bagReverse = false, statusWidth1 = 0, statusWidth2 = 0 },
 	options = {
 		-- (fr-18: Edit Mode's Orientation and Direction for the bag bar, now ours: in its Edit Layout box)
 		{ type = "toggle", key = "bagVertical", name = "Vertical Bag Bar", new = "2.1.0",
 		  desc = "The bag bar stands upright instead of lying flat." },
 		{ type = "toggle", key = "bagReverse", name = "Bags On The Other Side", new = "2.1.0",
 		  desc = "The bag slots line up on the other side of the backpack (right instead of left, or down instead of up)." },
+		WIDTH_OPTS[1],
+		WIDTH_OPTS[2],
 	},
 	-- (the game's Orientation and Direction taken once, the first time ours stood in: this machine's step)
 	keep = { "bagTaken", "seedsDropped" },
@@ -124,19 +151,40 @@ function OB.On(part)
 	return OB.standing[part] == true
 end
 
+-- (fr-18b) the system's indices a part stands in for ([part] = { [index] = true }; none: every index)
+local SYSTEM_INDEX = { status = { [1] = true, [2] = true } }
+
+-- (fr-18 stage 3: one Edit Mode system may be several parts of ours -- the action bars 1-8 and the stance, pet and
+-- possess bars are all ActionBar -- each by its own indices)
 function OB.Holds(system, index)
-	local part = SYSTEMS[system]
-	if not part then
+	local parts = SYSTEMS[system]
+	if not parts then
 		return false
 	end
-	if part == "status" and index ~= nil and index ~= 1 and index ~= 2 then
-		return false
+	for _, part in ipairs(parts) do
+		local only = SYSTEM_INDEX[part]
+		if not (only and index ~= nil and not only[index]) and OB.standing[part] == true then
+			return true
+		end
 	end
-	return OB.standing[part] == true
+	return false
 end
 
 function OB.IsKey(key)
 	return IS_KEY[key] == true
+end
+
+-- (fr-18b) a part of ours in another file (Modules/OwnActionBars.lua): the Edit Mode system it stands in for (its
+-- indices; nil = every index) and its places' keys in Core's store
+function OB.AddSystem(system, part, indices)
+	local parts = SYSTEMS[system] or {}
+	SYSTEMS[system] = parts
+	parts[#parts + 1] = part
+	SYSTEM_INDEX[part] = indices
+end
+
+function OB.AddKey(key)
+	IS_KEY[key] = true
 end
 
 -- obj is a game frame kept away, or in one (its parents walked; ours never)
@@ -261,6 +309,21 @@ local function MouseBack(f)
 	end
 end
 
+-- (fr-18c) another of MelloUI's systems hands over a game frame it had faded, or whose mouse it had taken, while ours
+-- keep that frame away now (Action Bars' Hide Page Arrows on the game's page number): what ours give back is the
+-- frame's own alpha / mouse from before that system's (nil: kept as it is)
+function OB.Rebase(f, alpha, mouse)
+	if type(f) ~= "table" then
+		return
+	end
+	if alpha ~= nil and OB.keptAlpha[f] ~= nil then
+		OB.keptAlpha[f] = alpha
+	end
+	if mouse ~= nil and OB.keptMouse[f] ~= nil then
+		OB.keptMouse[f] = mouse and true or false
+	end
+end
+
 -- Edit Mode's selection box on a game system: unseen and click-through (it ignores its parent's alpha)
 local function SelectionAway(f)
 	local sel = Field(f, "Selection")
@@ -307,9 +370,10 @@ local function GamePoint(game)
 end
 
 -- ours hung by `point` on `anchor` (the game's frame, or where the game's bottom stack puts it), at the game's
--- scale, `lift` UIParent units up; only what changed is set again (a scale of the backdrops' fit on ours is kept
--- while the game's own scale stays); true when something changed
-local function HangOnGame(ours, game, anchor, point, relPoint, lift)
+-- scale, `lift` UIParent units up and `dx` across ((fr-18c) a bar of the stack's own indent); only what changed is
+-- set again (a scale of the backdrops' fit on ours is kept while the game's own scale stays); true when something
+-- changed
+local function HangOnGame(ours, game, anchor, point, relPoint, lift, dx)
 	if type(game) ~= "table" or type(anchor) ~= "table" then
 		return false
 	end
@@ -321,14 +385,15 @@ local function HangOnGame(ours, game, anchor, point, relPoint, lift)
 		changed = true
 	end
 	local own = Finite(Call(ours, "GetScale")) or scale
-	lift = lift or 0
+	lift, dx = lift or 0, dx or 0
 	if changed or not (was and was.anchor == anchor and was.point == point and was.relPoint == relPoint
-		and math.abs(was.lift - lift) < 0.01) then
+		and math.abs(was.lift - lift) < 0.01 and math.abs(was.dx - dx) < 0.01) then
+		local k = own > 0 and own or 1
 		ours:ClearAllPoints()
-		ours:SetPoint(point, anchor, relPoint, 0, lift / (own > 0 and own or 1))
+		ours:SetPoint(point, anchor, relPoint, dx / k, lift / k)
 		changed = true
 	end
-	OB.followed[ours] = { anchor = anchor, point = point, relPoint = relPoint, scale = scale, lift = lift }
+	OB.followed[ours] = { anchor = anchor, point = point, relPoint = relPoint, scale = scale, lift = lift, dx = dx }
 	return changed
 end
 
@@ -339,9 +404,11 @@ local function OnGame(ours, game)
 end
 
 -- a status container at the game's container's width and height (the layout's Size: the game's own
--- UpdateSystemSetting lays its bars and dividers again the same way); kept whatever its place. true: changed
-local function FollowSize(c, game)
+-- UpdateSystemSetting lays its bars and dividers again the same way); kept whatever its place. (fr-18c) `ownW`: a
+-- width of its own (its px setting) in place of the game's. true: changed
+local function FollowSize(c, game, ownW)
 	local w, h = Finite(Call(game, "GetWidth")), Finite(Call(game, "GetHeight"))
+	w = ownW or w
 	local cw, ch = Finite(Call(c, "GetWidth")), Finite(Call(c, "GetHeight"))
 	if not (w and h and w > 0 and h > 0) or (cw and ch and math.abs(cw - w) < 0.01 and math.abs(ch - h) < 0.01) then
 		return false
@@ -358,36 +425,113 @@ local function StackLaid(game)
 	return Call(game, "IsInDefaultPosition") == true
 end
 
--- the stack's first row: where the game's bottom stack lays its first status bar -- on the main action bar, the
--- bar's height and a spacer up (EditModeManagerFrame:UpdateBottomActionBarPositions, the main bar its base); nil
--- without a shown main bar. (Never the game's first container itself: the game's own manager still lays its unseen
--- containers when OverrideActionBar's experience bar calls it on PLAYER_XP_UPDATE, and its stack lifts them)
-local function StackSlot()
-	local base = rawget(_G, "MainActionBar")
-	local h = type(base) == "table" and Call(base, "IsShown") == true and Finite(Call(base, "GetHeight"))
-	if not h then
+-- (fr-18c) The game's bottom stack (EditModeManagerFrame:UpdateBottomActionBarPositions, this client's relative-to-base
+-- form: every bar in its default place hangs on the main bar's BOTTOMLEFT, one row over the other, in Camelot's order)
+-- laid on ours: each bar of it is ours where ours stand in for it (OB.G), the game's otherwise; one of ours with a place
+-- of its own is out of the stack, as a bar moved out of its default place is. A bar not shown keeps its slot but takes
+-- no room. (Never the game's containers' own places: the game's manager still lays its unseen containers when
+-- OverrideActionBar's experience bar calls it on PLAYER_XP_UPDATE, and its stack lifts them -- fr-18 sim)
+local STACK = { "MainActionBar", "SecondaryStatusTrackingBarContainer", "MainStatusTrackingBarContainer",
+	"MultiBarBottomRight", "MultiBarBottomLeft" }
+OB.shownInStack = {}   -- [the game's name] = fn(ours) -> taking room in the stack (a part of ours that knows better)
+
+-- the layout's default anchor of a game system frame (its stack indent and whether it takes a row), read only
+local function DefaultAnchor(game)
+	local E = rawget(_G, "EditModeManagerFrame")
+	if type(E) ~= "table" or type(E.GetDefaultAnchor) ~= "function" then
 		return nil
 	end
-	return base, h + (tonumber(rawget(_G, "BOTTOM_ACTION_BARS_SPACER_Y")) or 4)
+	local ok, info = pcall(E.GetDefaultAnchor, E, game)
+	return (ok and type(info) == "table") and info or nil
 end
 
--- (live while ours stand in: Edit Layout's plate, Core's place on show)
-local LIVE = {
-	status = function() return OB.standing.status == true end,
-	bags = function() return OB.standing.bags == true end,
-}
+local function StackShown(name, f)
+	local fn = OB.shownInStack[name]
+	if fn and f ~= rawget(_G, name) then
+		return fn(f) == true
+	end
+	return Call(f, "IsShown") == true
+end
+
+-- [frame] = { base, x, y }: where the stack lays each bar of it but the base -- x and y in the game's units (its
+-- offsets: the stacked bar's own scale)
+local function StackPlaces()
+	local out = {}
+	local base, first = OB.G(STACK[1]), 1
+	if not (type(base) == "table" and type(rawget(_G, STACK[1])) == "table" and StackShown(STACK[1], base)) then
+		-- (no main bar shown: the stack hangs on the game's first status container's spot -- fr-18 sim's)
+		base, first = rawget(_G, STACK[3]), 2
+		if type(base) ~= "table" then
+			return out
+		end
+	end
+	local spacer = tonumber(rawget(_G, "BOTTOM_ACTION_BARS_SPACER_Y")) or 4
+	local gap = tonumber(rawget(_G, "PRIMARY_AND_SECONDARY_STATUS_TRACKING_BAR_SPACER_Y")) or -1
+	local y = 0
+	for i = first, #STACK do
+		local name = STACK[i]
+		local game, f = rawget(_G, name), OB.G(name)
+		if type(game) == "table" and type(f) == "table" then
+			local laid = StackLaid(game) and not (f ~= game and OwnPlace(f))
+			local shown = StackShown(name, f)
+			if i == 1 and not laid and shown then
+				-- (the base out of its default place: the stack starts a row over it)
+				y = (Finite(Call(f, "GetHeight")) or 0) + spacer
+			elseif laid then
+				local info = DefaultAnchor(game)
+				if i > 1 then
+					out[f] = { base = base, x = Finite(Field(info, "bottomBarOffsetX")) or 0, y = y }
+				end
+				if shown and Field(info, "bottomBarExcludeFromStackIncrement") ~= true then
+					y = y + (Finite(Call(f, "GetHeight")) or 0) + ((name == STACK[2]) and gap or spacer)
+				end
+			end
+		end
+	end
+	return out
+end
+
+-- one of ours hung in its stack slot (`slots` from StackPlaces), else on the game's frame itself; true: changed
+local function StackOrGame(ours, game, slots)
+	local slot = slots[ours]
+	if slot then
+		local k = ScaleOn(game)
+		return HangOnGame(ours, game, slot.base, "BOTTOMLEFT", "BOTTOMLEFT", slot.y * k, slot.x * k)
+	end
+	return OnGame(ours, game)
+end
+
+-- (live while ours stand in: Edit Layout's plate, Core's place on show; one per part, made at its first need)
+local LIVE = setmetatable({}, { __index = function(t, part)
+	local fn = function() return OB.standing[part] == true end
+	rawset(t, part, fn)
+	return fn
+end })
 
 OB.followers = {}   -- [part] = its follow pass (set below with each part)
+-- (fr-18c) the passes in this order: the action bars lay their sizes first (the main bar is the stack's base), the
+-- status bars then stack on it, the bag bar last
+local FOLLOW_ORDER = { "actions", "status", "bags" }
+
+local function FollowOne(part)
+	local fn = OB.followers[part]
+	if fn and OB.standing[part] then
+		local ok, err = pcall(fn)
+		if not ok then
+			geterrorhandler()(err)
+		end
+	end
+end
 
 -- every part as it should stand now: a place of its own restored from the store, else following the game's frames
 local function FollowAll()
 	OB.followSoon = false
-	for part, fn in pairs(OB.followers) do
-		if OB.standing[part] then
-			local ok, err = pcall(fn)
-			if not ok then
-				geterrorhandler()(err)
-			end
+	for _, part in ipairs(FOLLOW_ORDER) do
+		FollowOne(part)
+	end
+	for part in pairs(OB.followers) do
+		if not Contains(FOLLOW_ORDER, part) then
+			FollowOne(part)
 		end
 	end
 end
@@ -499,6 +643,13 @@ local function Place(ours)
 	return false
 end
 
+-- (fr-18b) the helpers a part of ours in another file shares (one system: Modules/OwnActionBars.lua); (fr-18c) its
+-- places by the same rule as ours here: Place, then StackOrGame with the stack's slots, FollowListen
+OB.kit = { Field = Field, Call = Call, ScaleOn = ScaleOn, Units = Units, Fade = Fade, Unfade = Unfade,
+	MouseOff = MouseOff, MouseBack = MouseBack, SelectionAway = SelectionAway, SelectionBack = SelectionBack,
+	Register = Register, Place = Place, StackPlaces = StackPlaces, StackOrGame = StackOrGame,
+	FollowListen = FollowListen }
+
 --------------------------------------------------------------------------------
 -- The status bars (the game's StatusTrackingManager / StatusTrackingBarContainer of this client, copied: our
 -- containers, the game's own bar templates in them)
@@ -591,6 +742,20 @@ function S:CheckForLayoutChange()
 	for _, c in ipairs(self.barContainers) do
 		c:ResizeContainerBars()
 		c:UpdateDividers(c:GetExpectedSegments())
+	end
+end
+
+-- (fr-18b) the bars laid again on their containers' widths (a width set): their size, the dividers, each bar's tick
+-- and rested fill (the game's ExhaustionTick lays the fill by its bar's width). The game's manager's name for laying
+-- its bars out, so a dresser that follows it (the painted skin's bracket) lays its parts again too.
+function S:LayoutBars()
+	self:CheckForLayoutChange()
+	for _, c in ipairs(self.barContainers) do
+		for _, bar in pairs(c.bars) do
+			if type(bar.UpdateTick) == "function" then
+				pcall(bar.UpdateTick, bar)
+			end
+		end
 	end
 end
 
@@ -778,6 +943,7 @@ function C.UpdateShownState(self)
 		if not ok then
 			geterrorhandler()(err)
 		end
+		OB.FollowSoon()   -- (fr-18c: the action bars of ours stacked over it, on the next frame)
 	end
 end
 
@@ -994,6 +1160,11 @@ local function NewContainer(i, game)
 			pcall(tex.SetPoint, tex, point, (rel == game or rel == nil) and c or rel, relPoint, Finite(x) or 0, Finite(y) or 0)
 		end
 	end
+	if n == 0 then
+		-- (fr-18b: the template's texture has no anchors -- a region without any fills its parent -- so the frame
+		-- picture spans the container and follows its width)
+		tex:SetAllPoints(c)
+	end
 	c.BarFrameTexture = tex
 	c:SetScript("OnShow", OB.FollowSoon)
 	c.FadeInAnimation = FadeGroup(c, 0, 1)
@@ -1072,41 +1243,104 @@ end
 
 local STATUS_LABELS = { "Experience and reputation", "Experience and reputation 2" }
 
--- The status bars where they should stand (fr-18 sim): one with a place of its own where the store says; the first
--- following the game's first container; the second following the game's second where the layout places it, else
--- stacked as the game's bottom stack stacks it (EditModeManagerFrame:UpdateBottomActionBarPositions, Camelot's order:
--- the main bar, the second, the first) -- on the first's spot, the first one row up while the second shows -- never
--- at the second container's unlaid default (it is laid only while shown, and the game's is kept hidden)
+-- (fr-18b) The status bars' width in px (WIDTH_OPTS above). (fr-18c) By the places' rule: a width of its own comes
+-- from its setting (the player's slider, a profile, an import); 0 -- not set -- the bar takes the game's container's
+-- width (the layout's Size), followed as the layout changes. Ours never write the setting.
+
+S.placeholders = {}   -- [i] = { w, h }: the mover's plate for a hidden bar (kept the bar's size)
+
+-- the screen's whole width in a frame's own units (at its scale), whole px
+local function ScreenWidthIn(f)
+	local w = Finite(Call(UIParent, "GetWidth"))
+	if not w or w <= 0 then
+		return nil
+	end
+	return math.floor(w / ScaleOn(f) + 0.5)
+end
+
+-- each width slider's top: the screen's width at its bar's scale (the configurator and the Edit Layout box read it as
+-- they lay the slider)
+local function StatusMax()
+	for i, o in ipairs(WIDTH_OPTS) do
+		local top = ScreenWidthIn(S.barContainers[i] or UIParent)
+		if top then
+			o.max = math.max(WIDTH_MIN + 1, top)
+		end
+	end
+end
+OB.StatusMax = StatusMax
+
+-- a status bar's own width (its setting, held between 20 and the screen's width at its scale); nil: not set
+local function OwnWidth(i)
+	local w = M.db and Finite(M.db["statusWidth" .. i])
+	if not w or w <= 0 then
+		return nil
+	end
+	return math.max(WIDTH_MIN, math.min(WIDTH_OPTS[i].max, w))
+end
+
+-- (the width a slider shows: the bar's own, else the one it follows now)
+for i, o in ipairs(WIDTH_OPTS) do
+	o.get = function(db)
+		local w = type(db) == "table" and Finite(db[o.key])
+		if w and w > 0 then
+			return w
+		end
+		local c = S.barContainers[i] or rawget(_G, GAME_STATUS[i])
+		local cw = Finite(Call(c, "GetWidth"))
+		return cw and math.floor(cw + 0.5) or WIDTH_MIN
+	end
+end
+
+-- one status bar at its width (its own, else the game's container's) and the game's height; true when changed. Its
+-- bars, dividers, ticks and rested fill follow (S:LayoutBars -- the painted bracket follows the manager's call); the
+-- mover's plate keeps the size
+local function StatusSize(i)
+	local c = S.barContainers[i]
+	local changed = FollowSize(c, S.games[i], OwnWidth(i))
+	local ph = S.placeholders[i]
+	if ph then
+		ph[1] = Finite(Call(c, "GetWidth")) or ph[1]
+		ph[2] = Finite(Call(c, "GetHeight")) or ph[2]
+	end
+	if changed then
+		S:LayoutBars()
+	end
+	return changed
+end
+
+-- The status bars where they should stand (fr-18 sim): one with a place of its own where the store says; else
+-- following the game's container where the layout places it, or in the bottom stack laid on ours (fr-18c:
+-- StackPlaces -- Camelot's order: the main bar, the second, the first: the second on the main bar, the first one row
+-- up while the second shows) -- never at the second container's unlaid default (it is laid only while shown, and the
+-- game's is kept hidden)
 local function StatusFollow()
 	if not OB.standing.status then
 		return
 	end
-	local c1, c2, g1, g2 = S.barContainers[1], S.barContainers[2], S.games[1], S.games[2]
-	local changed = FollowSize(c1, g1)
-	changed = FollowSize(c2, g2) or changed
-	local follow1, follow2 = Place(c1), Place(c2)
-	local stacked, firstLaid = StackLaid(g2), StackLaid(g1)
-	local base, up = StackSlot()
-	if follow2 then
-		if not stacked then
-			changed = OnGame(c2, g2) or changed
-		elseif base then
-			changed = HangOnGame(c2, g2, base, "BOTTOMLEFT", "BOTTOMLEFT", up * ScaleOn(g2)) or changed
-		else
-			changed = HangOnGame(c2, g2, g1, "BOTTOMLEFT", "BOTTOMLEFT", 0) or changed
-		end
-	end
-	if follow1 then
-		local lift = 0
-		if stacked and firstLaid and c2:IsShown() then
-			local gap = tonumber(rawget(_G, "PRIMARY_AND_SECONDARY_STATUS_TRACKING_BAR_SPACER_Y")) or -1
-			lift = (Finite(Call(c2, "GetHeight")) or 0) * ScaleOn(c2) + gap * ScaleOn(g1)
-		end
-		if firstLaid and base then
-			changed = HangOnGame(c1, g1, base, "BOTTOMLEFT", "BOTTOMLEFT", up * ScaleOn(g1) + lift) or changed
-		else
-			local p = GamePoint(g1)
-			changed = HangOnGame(c1, g1, g1, p, p, lift) or changed
+	StatusMax()
+	local changed = StatusSize(1)
+	changed = StatusSize(2) or changed
+	local slots = StackPlaces()
+	for i, c in ipairs(S.barContainers) do
+		if Place(c) then
+			-- (fr-18c, the sim proof: at the screen's whole width the bar ran off the screen's right edge) a width of its
+			-- own wider than the room right of the stack's left edge: the bar moved left, onto the screen (the game's
+			-- Size never made it so wide)
+			local slot = slots[c]
+			if slot and OwnWidth(i) then
+				local k = ScaleOn(S.games[i])
+				local left = Finite(Call(slot.base, "GetLeft"))
+				local sw = Finite(Call(UIParent, "GetWidth"))
+				if left and sw then
+					left = left * ScaleOn(slot.base)
+					local over = left + slot.x * k + OwnWidth(i) * k - sw
+					if over > 0.5 then
+						slots[c] = { base = slot.base, x = slot.x - math.min(over, left + slot.x * k) / k, y = slot.y }
+					end
+				end
+			end
+			changed = StackOrGame(c, S.games[i], slots) or changed
 		end
 	end
 	if changed then
@@ -1167,7 +1401,18 @@ local function StatusOn()
 	-- over the shown first at its very rect and took its press
 	for i, c in ipairs(S.barContainers) do
 		local w, h = Finite(Call(c, "GetWidth")) or 100, Finite(Call(c, "GetHeight")) or 17
-		Register(c, "status", KEYS["status" .. i], STATUS_LABELS[i], i == 1 and { w, h } or nil, "BOTTOM")
+		-- (fr-18b: the placeholder a table its width setting resizes; fr-18d: the first bar's alone)
+		local ph = nil
+		if i == 1 then
+			ph = S.placeholders[i] or {}
+			ph[1], ph[2] = w, h
+			S.placeholders[i] = ph
+		end
+		Register(c, "status", KEYS["status" .. i], STATUS_LABELS[i], ph, "BOTTOM")
+		-- (fr-18b: its width in px in its Edit Layout box, live)
+		if MelloUI.EditLayoutOptions then
+			MelloUI:EditLayoutOptions(c, { module = M.name, keys = { WIDTH_OPTS[i].key } })
+		end
 	end
 	OB.followed[S.barContainers[1]], OB.followed[S.barContainers[2]] = nil, nil
 	StatusFollow()
@@ -2039,8 +2284,30 @@ local PARTS = {
 	{ id = "bags", on = BagsOn, off = BagsOff },
 }
 
+-- (fr-18b) a part of ours in another file (Modules/OwnActionBars.lua): { id, on(db) -> done, off(), secure = true:
+-- built and taken down out of a fight only -- in one, both wait for its end }
+function OB.AddPart(part)
+	PARTS[#PARTS + 1] = part
+end
+
 local function Want()
 	return MelloUI:IsModuleEnabled(M.name) and MelloUI:IsModuleEnabled("UIModifications")
+end
+
+-- (fr-18b) a secure part's change in a fight: again as the fight ends, still as the login's when it was (a /reload in
+-- a fight keeps the game's bars until it ends, and asks for nothing)
+local function SyncAfterFight(atLogin)
+	OB.laterLogin = OB.laterLogin or (atLogin and true or false)
+	if not OB.later then
+		OB.later = CreateFrame("Frame")
+		OB.later:SetScript("OnEvent", function(self)
+			self:UnregisterAllEvents()
+			local login = OB.laterLogin
+			OB.laterLogin = nil
+			OB.Sync(login)
+		end)
+	end
+	OB.later:RegisterEvent("PLAYER_REGEN_ENABLED")
 end
 
 -- every part as it should be now; told on the bus as each comes or goes. Ours standing in after the login (UI
@@ -2050,14 +2317,17 @@ function OB.Sync(atLogin)
 	local want = Want()
 	for _, part in ipairs(PARTS) do
 		local now = OB.standing[part.id] == true
-		if want and not now then
-			if not atLogin then
-				MelloUI:AskReload("UI Modifications is on: type /reload to finish putting the game's bars away.")
-			end
+		if part.secure and want ~= now and InCombatLockdown() then
+			SyncAfterFight(atLogin)
+		elseif want and not now then
 			local ok, done = pcall(part.on, M.db)
 			if not ok then
 				geterrorhandler()(done)
 			elseif done then
+				-- (fr-18b: asked only for a part that came: one this client can't make never asks)
+				if not atLogin then
+					MelloUI:AskReload("UI Modifications is on: type /reload to finish putting the game's bars away.")
+				end
 				OB.stood[part.id] = true
 				MelloUI:Fire("ownbars", part.id, true)
 			end
@@ -2082,6 +2352,11 @@ local function ListenOnce()
 			OB.Sync()
 		end
 	end, "Own Bars: UI Modifications switched")
+	-- (fr-18b) the UI scale or the screen changed: the width sliders' top again, a width past it drawn at it
+	MelloUI:On("scale", function()
+		StatusMax()
+		OB.FollowSoon()
+	end, "Own Bars: the status bars' widths on a new screen")
 end
 
 -- (fr-18 sim, 2026-11-01) the places the first build of this module wrote into the store by itself (the game's
@@ -2111,6 +2386,9 @@ function M:OnEnable(db)
 	self.db = db
 	ListenOnce()
 	OB.Sync(MelloUI.ModulesStarting ~= nil and MelloUI:ModulesStarting())
+	-- (fr-18c: the modules started again -- a profile loaded -- bring its places and widths, or none: ours where the
+	-- store says at once, else following the game's frames; the installer's layout goes in first, its own event follows)
+	OB.FollowSoon()
 end
 
 function M:OnDisable()
@@ -2123,6 +2401,13 @@ function M:OnSettingChanged(key, _, db)
 		BagOrientation(db)
 		B.bar:Layout()
 		MelloUI:Fire("bagbar")
+	elseif (key == "statusWidth1" or key == "statusWidth2") and OB.standing.status then
+		-- (fr-18b: live as the slider moves; the plate follows -- Edit Layout lays it again. Reset / 0: following the
+		-- game's container's width again; the stack above follows its height)
+		StatusFollow()
+	elseif OB.Actions and OB.Actions.SettingChanged then
+		-- (fr-18b: an action bar's own setting, Modules/OwnActionBars.lua: at once, or after the fight)
+		OB.Actions.SettingChanged(key)
 	end
 end
 
@@ -2133,8 +2418,9 @@ function OB.Dump(out)
 		tostring(OB.standing.status == true), tostring(OB.standing.bags == true)))
 	for i, c in ipairs(S.barContainers) do
 		local l, b, r, t = Safe.ScreenRect(c)
-		out(("  %s: shown %s, bar %s, rect %s, %s"):format(c:GetName() or ("status" .. i), tostring(c:IsShown()),
-			tostring(c.shownBarIndex), l and ("%.0f,%.0f-%.0f,%.0f"):format(l, b, r, t) or "-",
+		out(("  %s: shown %s, bar %s, rect %s, width %s (setting %s), %s"):format(c:GetName() or ("status" .. i),
+			tostring(c:IsShown()), tostring(c.shownBarIndex), l and ("%.0f,%.0f-%.0f,%.0f"):format(l, b, r, t) or "-",
+			tostring(Finite(Call(c, "GetWidth"))), tostring(M.db and M.db["statusWidth" .. i]),
 			OB.followed[c] and "following the game's" or "its own place"))
 	end
 	if B.bar then
@@ -2144,5 +2430,8 @@ function OB.Dump(out)
 	end
 	for f, a in pairs(OB.keptAlpha) do
 		out(("  kept away: %s (alpha %.2f before)"):format(Call(f, "GetName") or tostring(f), a))
+	end
+	if OB.Actions and OB.Actions.Dump then
+		OB.Actions.Dump(out)   -- (fr-18b: the action bars, Modules/OwnActionBars.lua)
 	end
 end

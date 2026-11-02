@@ -415,6 +415,13 @@ L.unplaced = {
 	-- General's Skin (its schema's setBy: the rows that need it point there)
 	["UIModifications.reskin"] = "Look > General: the Skin row's Oldschool",
 }
+-- (fr-18b) MelloUI's own action bars' settings, one set a bar: each bar's Edit Layout box (right-click), the picked
+-- bar's rows, icons, size and padding also Bars > Action Bars' Layout rows (Tweaks' Bar Layout)
+for n = 1, 8 do
+	for _, s in ipairs({ "Orientation", "Rows", "Icons", "IconSize", "Padding", "Visible", "ShowButtons" }) do
+		L.unplaced["OwnBars.bar" .. n .. s] = "Edit Layout: Action Bar " .. n .. "'s box"
+	end
+end
 
 function L.Define(R, Link)
 	-- (0.19.4, the options audit) a kit panel covers its area while the
@@ -882,8 +889,11 @@ function L.Define(R, Link)
 	-- (an-06, the user, 2026-10-30: "study it and i would want us to implement something similar", then the picks)
 	R("ActionBars", "xprep:xp", "Look", "Tweaks.levelCard")
 	R("ActionBars", "xprep:xp", "Look", "ActionBars.backdropXP", { name = "Backdrop" })
+	-- (fr-18b; the user, 2026-11-01: the width in px, 20 up to the whole screen -- MelloUI's own status bars)
+	R("ActionBars", "xprep:xp", "Layout", "OwnBars.statusWidth1", { name = "Width" })
 	R("ActionBars", "xprep:rep", "Look", "Tweaks.repGain")
 	R("ActionBars", "xprep:rep", "Look", "ActionBars.backdropXP2", { name = "Backdrop" })
+	R("ActionBars", "xprep:rep", "Layout", "OwnBars.statusWidth2", { name = "Width" })
 	-- Cooldowns (0.19.8, Cooldown Tweaks: Modules/CooldownTweaks.lua -- the addon study's item 7)
 	R("Look", "Textures", "Look", "BarTextures.cooldownsTexture", { name = "Cooldown Bars", card = "Bars" })
 	Link("ActionBars", "cooldowns:element", "Look", "BarTextures.cooldownsTexture", "Bar Texture")

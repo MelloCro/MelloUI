@@ -303,7 +303,12 @@ CHECKS = {
     # (0.23.0); the installer's Keep (1.2.4: the game's /reload, its macro, over Keep)
     "secure-button": (r"SecureActionButtonTemplate",
                       {"skip": ["Core/Reminders.lua", "Modules/QuestTracker.lua", "Core/EditLayoutBridge.lua",
-                                "MelloUI_Chat/ChatView.lua", "Core/InstallerWindow.lua"]},
+                                "MelloUI_Chat/ChatView.lua", "Core/InstallerWindow.lua",
+                                # (fr-18b) MelloUI's own action bars: secure buttons by nature, built out of a fight
+                                # on headers of ours (Modules/OwnActionBars.lua)
+                                "Modules/OwnActionBars.lua",
+                                # (fr-18 stage 3) the stance, pet and possess bars, the same way
+                                "Modules/OwnSpecialBars.lua"]},
                       "a secure button: made lazily out of combat, laid by rect on UIParent, one click phase "
                       "(Core/Reminders.lua's Attach / OverlayPlace, Core/EditLayoutBridge.lua)"),
     # (0.17.0) a column of lines made by hand: a new line put first in a list

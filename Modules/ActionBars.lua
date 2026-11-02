@@ -114,7 +114,7 @@ local options = {
 	  desc = "Hides the main bar's page number and arrows. Paging keys still work." },
 	-- (0.25.0; the user, 2026-10-15: "MelloUI hides it") the game's own Edit Mode setting (Hide Bar Art, below)
 	{ type = "toggle", key = "hideBarArt", name = "Hide Bar Art",
-	  desc = "Hides the main bar's art, like the other bars. Only on your own Edit Mode layouts, not the presets; shows after a /reload." },
+	  desc = "Hides the main bar's art, like the other bars. With UI Modifications off: only on your own Edit Mode layouts, after a /reload." },
 }
 for _, e in ipairs(ELEMENTS) do
 	defaults[e.key] = false
@@ -302,7 +302,7 @@ end
 
 -- Where each group's own buttons hang
 local ANCHORS = {
-	bars = function() return rawget(_G, "MainActionBar") or rawget(_G, "MainMenuBar") end,
+	bars = function() return OwnG("MainActionBar") or rawget(_G, "MainMenuBar") end,
 	micro = function() return rawget(_G, "MicroMenu") end,
 	bags = function() return OwnG("BagsBar") end,
 }
@@ -847,21 +847,9 @@ end
 --------------------------------------------------------------------------------
 
 local PAGE_BUTTONS = { "UpButton", "DownButton" }
-local pageHidden = false   -- (the page faded here: only a change is written)
+local pageHidden = setmetatable({}, { __mode = "k" })   -- [page] = true: faded here (only a change is written)
 
--- The main bar's page number and arrows hidden (user, 2026-09-21): faded and
--- their mouse off, put back when the option or the module goes off.
-local function ApplyPageArrows()
-	local bar = rawget(_G, "MainActionBar")
-	local page = type(bar) == "table" and bar.ActionBarPageNumber
-	if type(page) ~= "table" then
-		return
-	end
-	local hide = (on and M.db and M.db.hidePageArrows) and true or false
-	if hide == pageHidden then
-		return
-	end
-	pageHidden = hide
+local function PageShown(page, hide)
 	if hide then
 		Kit:Fade(page)
 	else
@@ -873,6 +861,45 @@ local function ApplyPageArrows()
 			button:EnableMouse(not hide)
 		end
 	end
+end
+
+-- The main bar's page number and arrows hidden (user, 2026-09-21): faded and
+-- their mouse off, put back when the option or the module goes off. (fr-18b)
+-- On the bar that stands now -- MelloUI's own Action Bar 1 while it stands in,
+-- whose arrows are secure buttons: out of a fight -- and back on one faded
+-- before that no longer wants it.
+local function ApplyPageArrows()
+	if InCombatLockdown() then
+		Kit:WhenOutOfCombat(ApplyPageArrows, "Action bars: the page arrows")
+		return
+	end
+	local bar = OwnG("MainActionBar")
+	local page = type(bar) == "table" and bar.ActionBarPageNumber
+	local hide = (on and M.db and M.db.hidePageArrows) and true or false
+	local own = MelloUI.OwnBars
+	for faded in pairs(pageHidden) do
+		if faded ~= page or not hide then
+			pageHidden[faded] = nil
+			if own and own.Away(faded) and own.Rebase then
+				-- (fr-18c, the sim proof: the game's page number came back over ours after UI Modifications off and
+				-- on) the game's page number kept away by MelloUI's own bars now: the fade handed to them, never shown
+				-- meanwhile -- what they give back is its own alpha and its arrows' mouse from before this fade
+				Kit:Unfade(faded)
+				faded:SetAlpha(0)
+				own.Rebase(faded, 1)
+				for _, key in ipairs(PAGE_BUTTONS) do
+					own.Rebase(faded[key], nil, true)
+				end
+			else
+				PageShown(faded, false)
+			end
+		end
+	end
+	if type(page) ~= "table" or (pageHidden[page] or false) == hide then
+		return
+	end
+	pageHidden[page] = hide or nil
+	PageShown(page, hide)
 end
 
 --------------------------------------------------------------------------------
@@ -1134,6 +1161,12 @@ do
 		if not on then
 			return
 		end
+		-- (fr-18b) MelloUI's own Action Bar 1 stands in: its art is its own (Modules/OwnActionBars.lua reads this
+		-- switch); nothing written into Edit Mode meanwhile
+		local OB = MelloUI.OwnBars
+		if OB and OB.On("actions") then
+			return
+		end
 		if InCombat() then
 			Kit:WhenOutOfCombat(Pass, COMBAT_KEY)
 			return
@@ -1257,7 +1290,10 @@ local function Hook()
 	MelloUI:On("scale", ScheduleBackdrop, M)
 	-- (fr-18) MelloUI's own status bars or bag bar came or went (MelloUI.OwnBars): the backdrops round the one that
 	-- stands now, watched as the game's was, and the status bars' look on it
-	MelloUI:On("ownbars", function()
+	MelloUI:On("ownbars", function(part)
+		if part == "actions" then
+			ApplyPageArrows()   -- (fr-18b: the page number of the bar that stands now)
+		end
 		if watching then
 			for _, e in ipairs(ELEMENTS) do
 				local f = OwnG(e.frame)

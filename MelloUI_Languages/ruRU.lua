@@ -303,6 +303,31 @@ Lang:Add("ruRU", {
 	["The bag bar stands upright instead of lying flat."] = "Панель сумок стоит вертикально, а не лежит.", -- draft
 	["Bags On The Other Side"] = "Сумки с другой стороны", -- draft
 	["The bag slots line up on the other side of the backpack (right instead of left, or down instead of up)."] = "Ячейки сумок выстраиваются с другой стороны рюкзака (справа вместо слева или снизу вместо сверху).", -- draft
+	["Experience Bar Width"] = "Ширина полосы опыта", -- draft
+	["The experience bar's width in px, from 20 up to the whole width of your screen. Changes at once."] = "Ширина полосы опыта в пикселях, от 20 до всей ширины экрана. Меняется сразу.", -- draft
+	["Reputation Bar Width"] = "Ширина полосы репутации", -- draft
+	["The second bar's width in px (a watched reputation while you level), from 20 up to the whole width of your screen. Changes at once."] = "Ширина второй полосы в пикселях (отслеживаемая репутация во время прокачки), от 20 до всей ширины экрана. Меняется сразу.", -- draft
+	["Orientation"] = "Ориентация", -- draft
+	["Whether the bar's buttons lie in a row or stand in a column."] = "Лежат ли кнопки панели в ряд или стоят в столбец.", -- draft
+	["Horizontal"] = "Горизонтально", -- draft
+	["Vertical"] = "Вертикально", -- draft
+	["# of Rows"] = "Число рядов", -- draft
+	["How many rows (or columns, upright) the bar's buttons stand in."] = "Сколько рядов (или столбцов, вертикально) занимают кнопки панели.", -- draft
+	["# of Icons"] = "Число значков", -- draft
+	["How many of the bar's buttons show."] = "Сколько кнопок панели видно.", -- draft
+	["Icon Size"] = "Размер значков", -- draft
+	["The size of the bar's buttons. 100% is the game's size."] = "Размер кнопок панели. 100% — размер игры.", -- draft
+	["Icon Padding"] = "Отступ значков", -- draft
+	["The space between the bar's buttons."] = "Расстояние между кнопками панели.", -- draft
+	["Bar Visible"] = "Видимость панели", -- draft
+	["When the bar shows: always, only in a fight, only out of one, never, or while the pointer is over it."] = "Когда панель видна: всегда, только в бою, только вне боя, никогда или пока над ней указатель.", -- draft
+	["Always"] = "Всегда", -- draft
+	["In Combat"] = "В бою", -- draft
+	["Out of Combat"] = "Вне боя", -- draft
+	["Hidden"] = "Скрыта", -- draft
+	["On Mouseover"] = "При наведении", -- draft
+	["Always Show Buttons"] = "Всегда показывать кнопки", -- draft
+	["Empty buttons show their slot too."] = "Пустые кнопки тоже показывают свою ячейку.", -- draft
 	-- DarkMode
 	["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours."] = "Затемняет весь интерфейс: окна и рамки MelloUI, графику игры и рисованный рескин. Значки и текст сохраняют свои цвета.", -- draft
 	["Dim the gold and the glare. The interface steps back, the world steps forward."] = "Приглушите золото и блеск. Интерфейс отступает, мир выходит вперёд.", -- draft
@@ -533,7 +558,7 @@ Lang:Add("ruRU", {
 	["The size of the game's damage numbers over enemies."] = "Размер чисел урона игры над противниками.", -- draft
 	["Bar Layout"] = "Раскладка панелей", -- draft
 	["Which Bar"] = "Какая панель", -- draft
-	["The bar the rows below set: its rows, icons, icon size and padding, saved into your active Edit Mode layout as Edit Mode saves them, once you let a slider go (out of combat). The game shows them after a reload: type /reload (MelloUI says so once). One of the game's preset layouts is copied first: you are asked once."] = "Панель, которую задают строки ниже: ряды, значки, размер значков и отступы сохраняются в вашей активной раскладке режима редактирования так же, как их сохраняет режим редактирования, как только вы отпустите ползунок (вне боя). Игра показывает их после перезагрузки: введите /reload (MelloUI скажет это один раз). Сначала копируется одна из готовых раскладок игры: вас спросят один раз.", -- draft
+	["The bar the rows below set: its rows, icons, icon size and padding. MelloUI's own action bars change at once; the stance and pet bars (and the game's bars with UI Modifications off) are saved into your active Edit Mode layout once you let a slider go, and show after a /reload."] = "Панель, которую настраивают строки ниже: её ряды, значки, размер и отступы. Собственные панели действий MelloUI меняются сразу; панели стоек и питомца (и панели игры без изменений интерфейса) сохраняются в активную раскладку режима редактирования, когда вы отпускаете ползунок, и видны после /reload.", -- draft
 	["Action Bar 1"] = "Панель команд 1", -- draft
 	["Action Bar 2"] = "Панель команд 2", -- draft
 	["Action Bar 3"] = "Панель команд 3", -- draft
@@ -547,13 +572,9 @@ Lang:Add("ruRU", {
 	["Rows"] = "Ряды", -- draft
 	["How many rows the bar's buttons stand in."] = "В сколько рядов стоят кнопки панели.", -- draft
 	["Icons"] = "Значки", -- draft
-	["How many of the bar's buttons show."] = "Сколько кнопок панели видно.", -- draft
-	["Icon Size"] = "Размер значков", -- draft
-	["The size of the bar's buttons. 100% is the game's size."] = "Размер кнопок панели. 100% — размер игры.", -- draft
 	["Padding"] = "Отступ", -- draft
-	["The space between the bar's buttons."] = "Расстояние между кнопками панели.", -- draft
 	["The Bar's Shape"] = "Форма панели", -- draft
-	["A preview of the bar's layout. Changes show after a /reload."] = "Предпросмотр раскладки панели. Изменения видны после /reload.", -- draft
+	["A preview of the bar's layout."] = "Предпросмотр раскладки панели.", -- draft
 	["Buff Layout"] = "Раскладка эффектов", -- draft
 	["The size of your buff and debuff icons. The game's own bar changes after a /reload."] = "Размер ваших значков эффектов. Панель игры меняется после /reload.", -- draft
 	["Spacing"] = "Интервал", -- draft
@@ -1082,9 +1103,6 @@ Lang:Add("ruRU", {
 	["Also Show On Mouseover"] = "Показывать и при наведении", -- draft
 	["In Combat parts also come back while your mouse is over them."] = "Части «В бою» возвращаются и пока на них наведена мышь.", -- draft
 	["Your own frame. In Combat, it also returns while you are hurt, low on mana or dead. Always: never faded. In Combat: faded out of combat. On Mouseover: faded until you point at it."] = "Ваша рамка. В бою она возвращается и пока вы ранены, мало маны или вы мертвы. Всегда: не тускнеет. В бою: тускнеет вне боя. При наведении: тускнеет, пока не наведёте.", -- draft
-	["Always"] = "Всегда", -- draft
-	["In Combat"] = "В бою", -- draft
-	["On Mouseover"] = "При наведении", -- draft
 	["Pet Frame Too"] = "И рамка питомца", -- draft
 	["Your pet's frame fades with the player frame and returns while your pet is hurt."] = "Рамка питомца тускнеет вместе с рамкой игрока и возвращается, пока питомец ранен.", -- draft
 	["Your target's frame and its target. Always: never faded. In Combat: faded out of combat. On Mouseover: faded until you point at it."] = "Рамка цели и её цели. Всегда: не тускнеет. В бою: тускнеет вне боя. При наведении: тускнеет, пока не наведёте.", -- draft
@@ -1150,7 +1168,7 @@ Lang:Add("ruRU", {
 	["Hide Page Arrows"] = "Скрыть стрелки страниц", -- draft
 	["Hides the main bar's page number and arrows. Paging keys still work."] = "Скрывает номер страницы и стрелки главной панели. Клавиши страниц работают.", -- draft
 	["Hide Bar Art"] = "Скрыть оформление панели", -- draft
-	["Hides the main bar's art, like the other bars. Only on your own Edit Mode layouts, not the presets; shows after a /reload."] = "Скрывает графику главной панели, как у других панелей. Только в ваших раскладках режима редактирования, не в готовых; видно после /reload.", -- draft
+	["Hides the main bar's art, like the other bars. With UI Modifications off: only on your own Edit Mode layouts, after a /reload."] = "Скрывает оформление главной панели, как у остальных. Без изменений интерфейса: только в ваших собственных раскладках режима редактирования, после /reload.", -- draft
 	["A backdrop around Action Bar 1. Neighbours with a backdrop share one."] = "Подложка вокруг панели команд 1. Соседи с подложкой делят одну.", -- draft
 	["A backdrop around Action Bar 2. Neighbours with a backdrop share one."] = "Подложка вокруг панели команд 2. Соседи с подложкой делят одну.", -- draft
 	["A backdrop around Action Bar 3. Neighbours with a backdrop share one."] = "Подложка вокруг панели команд 3. Соседи с подложкой делят одну.", -- draft
@@ -2220,7 +2238,7 @@ Lang:Add("ruRU", {
 	["Level Up Card: its own place, movable in Edit Layout, bigger, everything fits."] = "Карточка нового уровня: своё место, перемещается в «Изменить раскладку», больше, всё помещается.", -- draft
 	["Personal Display: the shield column keeps its colours, icons and amount; interrupted casts show only on its cast bar."] = "Личный дисплей: колонка щитов сохраняет цвета, значки и величину; прерванные заклинания видны только на его полосе заклинаний.", -- draft
 	["Oldschool's action bars keep their painted frames; Default's player frame stays sharp when scaled up."] = "Панели действий Oldschool сохраняют нарисованные рамки; рамка игрока Default остаётся чёткой при увеличении.", -- draft
-	["Your unit, party and raid frames, the experience bars and the bag bar are MelloUI's own: placed by Edit Layout and your profiles."] = "Ваши рамки юнитов, группы и рейда, полосы опыта и панель сумок — собственные MelloUI: их размещают «Изменить раскладку» и ваши профили.", -- draft
+	["Your unit, party and raid frames, action bars, experience bars and bag bar are MelloUI's own: action bar settings apply at once."] = "Ваши рамки юнитов, группы и рейда, панели действий, полосы опыта и панель сумок — собственные MelloUI: настройки панелей действий применяются сразу.", -- draft
 	["A fresh Mello layout for wide screens, fitted to every other; Keep My Layout keeps your own places; profiles offer Fit to this screen."] = "Новая раскладка Mello для широких экранов, подогнанная под любые другие; «Оставить мою раскладку» сохраняет ваши места; профили предлагают «Подогнать под этот экран».", -- draft
 	["The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going."] = "Кнопка MelloUI теперь в игровом меню, под «Настройками»; страница «Поддержка» в «Профилях» благодарит тех, кто поддерживает MelloUI.", -- draft
 	["Effects: bolder heals and cooldowns across the whole frame; Buff Landings in each school's colour; a threat halo (untick Hide Combat Flash)."] = "Эффекты: исцеления и восстановления ярче по всей рамке; прибытие баффов в цвете их школы; ореол угрозы (снимите «Скрыть боевую вспышку»).", -- draft
@@ -2694,6 +2712,7 @@ Lang:Add("ruRU", {
 -- stale: ["A page turn when the character sheet, spell book, quest log or main menu opens, a latch when they close; the spell book's page turns; a quest giver's list and Decline; the bags as a leather pouch opening and closing."] = "Перелистывание страницы при открытии окна персонажа, книги заклинаний, журнала заданий или главного меню, защёлка при закрытии; страницы книги заклинаний; список того, кто даёт задания, и «Отказаться»; сумки как кожаный кошель, который открывается и закрывается.", -- draft
 -- stale: ["A pin into parchment for a minimap ping."] = "Булавка в пергамент для сигнала на мини-карте.", -- draft
 -- stale: ["A preset: choosing a style changes every font at once -- the titles, the interface text, the chat and numbers, the chat text and the chat on parchment, the sizes back to 100% (each face brings its own size correction) -- each pairing themed with readability first. Fine-tune any of them afterwards (the style then shows Custom). The damage numbers keep their own choice, but for Fredoka's: one face for everything.\nFredoka: MelloUI's own face: Fredoka's round letters for the titles, the text and the damage numbers, to fit MelloUI's icons. The default.\nScriptorium: Cinzel's carved capitals over Alegreya, a warm book face.\nChronicle: Alegreya SC's small capitals over Source Serif 4, the most readable serif.\nOld Tome: IM Fell English's aged print over Spectral.\nWarband: Pirata One's blackletter over Crimson Pro SemiBold: the boldest look.\nClarity: Cinzel titles, Noto Sans everywhere else: the easiest to read at small sizes.\nGothic: Enchanted Land's gothic titles kept, over Alegreya."] = "Набор: выбор стиля меняет все шрифты сразу -- заголовки, текст интерфейса, чат и числа, текст чата и чат на пергаменте, размеры обратно на 100% (каждое начертание несёт свою поправку размера) -- каждая пара подобрана прежде всего для читаемости. Потом настройте любой (стиль тогда покажет «Свой»). Числа урона сохраняют свой выбор, кроме Fredoka: одно начертание для всего.\nFredoka: собственное начертание MelloUI: круглые буквы Fredoka для заголовков, текста и чисел урона, под стать значкам MelloUI. По умолчанию.\nScriptorium: резные прописные Cinzel над Alegreya, тёплым книжным шрифтом.\nChronicle: капитель Alegreya SC над Source Serif 4, самой читаемой антиквой.\nOld Tome: состаренная печать IM Fell English над Spectral.\nWarband: готический шрифт Pirata One над Crimson Pro SemiBold: самый смелый облик.\nClarity: заголовки Cinzel, Noto Sans во всём остальном: легче всего читать в мелком размере.\nGothic: готические заголовки Enchanted Land над Alegreya.", -- draft
+-- stale: ["A preview of the bar's layout. Changes show after a /reload."] = "Предпросмотр раскладки панели. Изменения видны после /reload.", -- draft
 -- stale: ["A profession cooldown ready again (a transmute, mooncloth, the salt shaker). MelloUI learns it when you open that profession."] = "Время восстановления профессии снова готово (трансмутация, луноткань, солонка). MelloUI узнаёт его, когда вы открываете эту профессию.", -- draft
 -- stale: ["A quest ready to turn in says who takes it and where, for example: Turn in: Gryan Stoutmantle, Sentinel Hill."] = "Задание, готовое к сдаче, говорит, кто его примет и где, например: Сдать: Гриан Стаутмантл, Сторожевой холм.", -- draft
 -- stale: ["A quest tracker in the game's tracker's place that scrolls with the mouse wheel, so every watched quest can be reached."] = "Отслеживание заданий на месте игрового, прокручиваемое колёсиком мыши, чтобы можно было добраться до каждого отслеживаемого задания.", -- draft
@@ -2889,6 +2908,7 @@ Lang:Add("ruRU", {
 -- stale: ["Hide the player coordinates the client writes under the minimap."] = "Скрывает координаты игрока, которые клиент пишет под мини-картой.", -- draft
 -- stale: ["Hide the red flash around the player, target, focus, pet and party frames while in combat or when a target attacks."] = "Скрывает красную вспышку вокруг рамок игрока, цели, фокуса, питомца и группы в бою или когда цель атакует.", -- draft
 -- stale: ["Hide the row of menu buttons (character, spellbook, talents, ...). Still shown while Edit Mode is open."] = "Скрывает ряд кнопок меню (персонаж, книга заклинаний, таланты, ...). По-прежнему видно, пока открыт режим редактирования.", -- draft
+-- stale: ["Hides the main bar's art, like the other bars. Only on your own Edit Mode layouts, not the presets; shows after a /reload."] = "Скрывает графику главной панели, как у других панелей. Только в ваших раскладках режима редактирования, не в готовых; видно после /reload.", -- draft
 -- stale: ["Hides the red error messages you choose (not enough energy, not ready yet, out of range...) from the middle of the screen."] = "Скрывает из центра экрана выбранные вами красные сообщения об ошибках (недостаточно энергии, ещё не готово, слишком далеко...).", -- draft
 -- stale: ["Hides the red flash around unit frames in combat."] = "Скрывает красную вспышку вокруг рамок юнитов в бою.", -- draft
 -- stale: ["Hold it as you talk to a giver to see its dialog as usual: nothing is accepted or handed in there."] = "Удерживайте её, разговаривая с тем, кто даёт задание, чтобы увидеть диалог как обычно: там ничего не принимается и не сдаётся.", -- draft
@@ -3196,6 +3216,7 @@ Lang:Add("ruRU", {
 -- stale: ["The UI Shade round the windows. Off: no shade there; the other areas keep theirs."] = "Тень интерфейса вокруг окон. Выкл.: там нет тени; другие области сохраняют свою.", -- draft
 -- stale: ["The bag window's money rolls to its new sum when it changes (selling, buying, a repair, a quest) instead of jumping there: warm while it goes up, red while it goes down. Not with Reduce Motion."] = "Деньги окна сумок пробегают до новой суммы при изменении (продажа, покупка, ремонт, задание), а не прыгают: тёплые при росте, красные при убывании. Не при «Меньше движения».", -- draft
 -- stale: ["The bar as the rows above lay it out. Saved into your Edit Mode layout when you let a slider go (in a fight, when it ends); the bar itself changes after a reload."] = "Панель так, как её раскладывают строки выше. Сохраняется в вашей раскладке режима редактирования, когда вы отпускаете ползунок (в бою — когда он кончится); сама панель меняется после перезагрузки.", -- draft
+-- stale: ["The bar the rows below set: its rows, icons, icon size and padding, saved into your active Edit Mode layout as Edit Mode saves them, once you let a slider go (out of combat). The game shows them after a reload: type /reload (MelloUI says so once). One of the game's preset layouts is copied first: you are asked once."] = "Панель, которую задают строки ниже: ряды, значки, размер значков и отступы сохраняются в вашей активной раскладке режима редактирования так же, как их сохраняет режим редактирования, как только вы отпустите ползунок (вне боя). Игра показывает их после перезагрузки: введите /reload (MelloUI скажет это один раз). Сначала копируется одна из готовых раскладок игры: вас спросят один раз.", -- draft
 -- stale: ["The bars glide to a new value instead of jumping."] = "Полосы плавно переходят к новому значению, а не прыгают.", -- draft
 -- stale: ["The bars of your experience and the reputation you watch. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "Индикаторы вашего опыта и отслеживаемой репутации. «Всегда»: никогда не гаснет. «В бою»: гаснет вне боя, возвращается в бою. «При наведении»: погашена всё время, видна, пока вы на неё указываете.", -- draft
 -- stale: ["The bars under your character and the shield column beside it (Personal Display). In Combat, they also come back while you cast. (No On Mouseover: the pointer passes through them to the world.) Always: never faded. In Combat: faded out of combat, back in a fight."] = "Полосы под вашим персонажем и колонка щита рядом (личный дисплей). «В бою» они возвращаются и пока вы произносите заклинание. (Без «При наведении»: указатель проходит сквозь них в мир.) «Всегда»: никогда не гаснет. «В бою»: гаснет вне боя, возвращается в бою.", -- draft
@@ -3478,6 +3499,7 @@ Lang:Add("ruRU", {
 -- stale: ["Your target's frame (and its target's). Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "Рамка вашей цели (и её цели). «Всегда»: никогда не гаснет. «В бою»: гаснет вне боя, возвращается в бою. «При наведении»: погашена всё время, видна, пока вы на неё указываете.", -- draft
 -- stale: ["Your target's health bar flashes a moment when it is hit; a critical hit flashes gold."] = "Полоса здоровья вашей цели на миг вспыхивает при ударе; критический удар вспыхивает золотом.", -- draft
 -- stale: ["Your target's nameplate answers the fight: hits flash its bar, the part a hit took drains away, crits glow gold, a dodge or a miss flicks off its edge, an enemy's cast glows hotter towards its end and shatters when you interrupt it, and the killing blow flashes the bar out."] = "Индикатор здоровья вашей цели отвечает на бой: удары заставляют полосу вспыхивать, отнятая ударом часть утекает, критические удары светятся золотом, уклонение или промах слетает с края, заклинание врага разгорается к концу и разбивается, когда вы его прерываете, а смертельный удар взрывает полосу.", -- draft
+-- stale: ["Your unit, party and raid frames, the experience bars and the bag bar are MelloUI's own: placed by Edit Layout and your profiles."] = "Ваши рамки юнитов, группы и рейда, полосы опыта и панель сумок — собственные MelloUI: их размещают «Изменить раскладку» и ваши профили.", -- draft
 -- stale: ["Zephras Isle on the map, with its airship trails."] = "Zephras Isle на карте, с путями её воздушных кораблей.", -- draft
 -- stale: ["boss and target of target"] = "боссы и цель цели", -- draft
 -- stale: ["the level-up: your XP bar's light and the notice"] = "новый уровень: свет полосы опыта и оповещение", -- draft

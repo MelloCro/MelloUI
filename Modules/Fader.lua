@@ -733,11 +733,16 @@ function M.Run(db)
 end
 
 -- (fr-18) MelloUI's own status bars or bag bar came or went: their element takes the frames that stand now
-local OWN_ELEMENT = { status = "xp", bags = "bags" }
+local OWN_ELEMENT = { status = "xp", bags = "bags", special = "stance" }   -- (fr-18 stage 3: the stance, pet, possess bars)
 local function OwnBarsChanged(part)
 	local key = OWN_ELEMENT[part]
 	if key then
 		Fader:Regather(key)
+	elseif part == "actions" then
+		-- (fr-18b) MelloUI's own action bars: each bar's element takes the bar that stands now
+		for n = 1, 8 do
+			Fader:Regather("bar" .. n)
+		end
 	end
 end
 
