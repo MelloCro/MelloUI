@@ -39,6 +39,7 @@
 - Action bars: MelloUI's own action bars 1-8, in every skin, with the same look and places. Every setting in their Edit Layout box (orientation, rows, icons, icon size, padding, when the bar shows, empty buttons) changes the bar at once instead of after a /reload; in a fight it waits for the fight's end.
 - The experience and reputation bars have a width in pixels, from 20 up to your screen's whole width, so they can match your action bars exactly.
 - Action bars: the stance, pet and possess bars are MelloUI's own too, with the same look and places; their buttons cast through the game's own, in a fight too, and right-clicking a pet ability still toggles its autocast.
+- The micro menu's place is MelloUI's own: Edit Layout, your profiles and the installer place it directly, and its buttons stay the game's own (their windows, alerts and tooltips as before).
 - Fixed: Gains, the on-screen notice and the widget column stand where the layout made them on any screen shape: Gains no longer lands in the middle of a wide screen after the installer.
 - Mello's layout is the new wide-screen arrangement: Action Bar 2 right above Action Bar 1, the party frames in toward the middle at the game's own size, the bag window on the right; fitted to every other screen.
 - Keep My Layout also keeps where you put MelloUI's own parts in Edit Layout: Gains, the notice, the widget column, Combat Text, the meter, the Personal Display, the group frames.

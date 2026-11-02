@@ -439,6 +439,9 @@ function LayoutFit.OwnBarRec(key)
 	if key == "MelloUIBagBar" then
 		return "14:-1"
 	end
+	if key == "MelloUIMicroMenu" then   -- (fr-18 stage 4: the micro menu's holder)
+		return "13:-1"
+	end
 	return nil
 end
 LayoutFit.EDIT_MODE_FRAMES = EDIT_MODE_FRAMES   -- (read only: the installer keeps the player's own places of these)
