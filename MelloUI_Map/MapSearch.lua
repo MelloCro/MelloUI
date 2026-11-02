@@ -212,10 +212,15 @@ local function Mark(wx, wy)
 end
 
 function Search.Take(e)
-	local c = S.win.canvas
 	if not e then
 		return false
 	end
+	-- (2.1.0) a place on the world: out of a dungeon's plan first (MapDungeon.lua)
+	local D = ns.Dungeon
+	if D and D.Shown() and e.kind ~= "log" then
+		D.Hide()
+	end
+	local c = S.win.canvas
 	if e.kind == "place" then
 		c:Fit(e.id)
 		if S.win.pins.layers.search then

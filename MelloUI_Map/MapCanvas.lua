@@ -132,6 +132,11 @@ local T = {
 	UNEXPLORED = 0.3,         -- a place not explored yet: its piece this faint (the user's pick H)
 	CITY_IN = { 0.2, 0.4 },        -- a city as it fills this share of the view's width
 	MAP_TYPE = { continent = 2, zone = 3 },
+	-- (2.1.0; the user, 2026-11-02, the dungeon map: look B "slate") a dungeon's plan (LayoutDungeon)
+	DUNGEONS = "Interface\\AddOns\\MelloUI_Map\\Media\\Dungeons\\",   -- its edge and cove art (MapDungeons)
+	DUNGEON_PX = 4,           -- the closest zoom: canvas units a yard (the floor pictures' own 2 px a yard, twice)
+	DUNGEON_GROUND = 0.3,     -- the instance's minimap ground, grey, this strong over the window's dark ground
+	DUNGEON_EDGE = "selectedTrim",   -- the rooms' outline in the palette's gold
 }
 Canvas.T = T
 
@@ -378,12 +383,74 @@ function Canvas:FillLayout(places, byID)
 	end
 end
 
+-- (2.1.0; the user, 2026-11-02: "once inside of the dungeon, to open the dungeon map, with boss positions"; look B of
+-- Workspace/BuildData/output/dungeonmap_sketch, docs/plans/dungeon-map.md) a dungeon's own plan in place of the world
+-- (a canvas of its own: MapDungeon.lua): its world units yards (d: MapDungeons, Tools/build_dungeon_maps.py), its
+-- places the instance's minimap tiles (the ground, every wing's) and per wing (the user, 2026-11-02: "Several floors,
+-- we need to spread them into Wings") MelloUI's cove (the parts open to the sky), the rooms (the client's floor
+-- pictures, laid as the caves are) and MelloUI's edge round them; the ground and the wing shown at every zoom, the
+-- other wings out (Detail, SetWing)
+local function ArtPlace(self, d, prefix, list, id, level, wing, paint)
+	local tiles = {}
+	for i = 1, #list - 1, 2 do
+		tiles[#tiles + 1] = list[i]
+		tiles[#tiles + 1] = list[i + 1]
+		tiles[#tiles + 1] = prefix .. list[i] .. "_" .. list[i + 1]   -- (<map>_<wing>e|o<column>_<row>)
+	end
+	local p = {
+		id = id, kind = "fill", name = "dungeon " .. prefix, paint = paint, level = level, wing = wing,
+		fill = { cols = d.cols, rows = d.rows, tiles = tiles, dir = T.DUNGEONS, seam = 0 },
+		left = 0, top = 0, w = self.W, h = self.H, tiles = nil, alpha = 0, live = false,
+	}
+	p.right, p.bottom, p.area = p.w, p.h, p.w * p.h
+	local f = CreateFrame("Frame", nil, self.root)
+	f:SetFrameLevel(level)
+	f:SetSize(p.w, p.h)
+	f:Hide()
+	p.frame = f
+	return p
+end
+
+function Canvas:LayoutDungeon(d, mapID)
+	if self.places then
+		return
+	end
+	local t0 = debugprofilestop()
+	self.dungeon = d
+	self.W, self.H = d.w, d.h
+	self.root:SetSize(self.W, self.H)
+	local places = {}
+	local base = self.root:GetFrameLevel() + 1
+	-- (the grid the minimap's and the caves' layouts take: a terrain tile CAVE_YARDS yards, the plan's top left 0, 0)
+	local g = { x = -d.e0 / d.w, y = -d.s0 / d.h, w = T.CAVE_YARDS / d.w, h = T.CAVE_YARDS / d.h, tiles = d.ground }
+	self:MiniLayout(places, base, { minimap = { [0] = g } })
+	local wings = type(d.wings) == "table" and d.wings or EMPTY
+	for w, wing in ipairs(wings) do
+		local prefix = mapID .. "_" .. w
+		if type(wing.cove) == "table" and #wing.cove > 0 then
+			places[#places + 1] = ArtPlace(self, d, prefix .. "o", wing.cove, -10 * w - 1, base + 1, w)
+		end
+		local first = #places + 1
+		self:CaveLayout(places, base + 2, { minimap = { [0] = g }, caves = { [0] = wing.rooms } })
+		for i = first, #places do
+			places[i].wing = w
+		end
+		if type(wing.edge) == "table" and #wing.edge > 0 then
+			places[#places + 1] = ArtPlace(self, d, prefix .. "e", wing.edge, -10 * w - 2, base + 3, w, T.DUNGEON_EDGE)
+		end
+	end
+	self.wing, self.wings = 1, #wings
+	self.bounds = { 0, 0, self.W, self.H }
+	self.places, self.byID, self.isles = places, {}, {}
+	self.stats.layoutMs = debugprofilestop() - t0
+end
+
 -- (M3) the minimap's ground: a place for each continent's world map (MapData.minimap: its tile grid on Azeroth),
 -- at `level`, appended to the places (after their sort: not a map of the client's, never in byID); and the open
 -- water (MapData.minimapWater) on the world's painting, over its tiles and under every other map (2026-10-21: the
 -- ground over the painting at part strength, the water may lie only where the zones' art does not: the sea)
-function Canvas:MiniLayout(places, level)
-	local data = ns.MapData
+function Canvas:MiniLayout(places, level, data)
+	data = data or ns.MapData
 	local grids = data and data.minimap
 	if type(grids) ~= "table" then
 		return
@@ -465,9 +532,14 @@ local function CavePlace(self, g, cave, n, level)
 			local x, y = Out(corner[1], corner[2])
 			x0, y0, x1, y1 = min(x0, x), min(y0, y), max(x1, x), max(y1, y)
 		end
+		-- (2.1.0, a dungeon's plan, where the pictures lie edge to edge in view: each sampled half a texel in from its
+		-- edge, so its last texels are not faded into the clear past it -- the ground showed through as a dark line
+		-- along every seam)
+		local iu, iv = self.dungeon and 0.5 / fw or 0, self.dungeon and 0.5 / fh or 0
+		local su, sv = 1 - 2 * iu, 1 - 2 * iv
 		local function Coord(x, y)
 			local lx, ly = In(x, y)
-			return (lx - ax) * 2 / fw, 1 - (ly - ay) * 2 / fh
+			return iu + (lx - ax) * 2 / fw * su, iv + (1 - (ly - ay) * 2 / fh) * sv
 		end
 		local ulx, uly = Coord(x0, y0)
 		local llx, lly = Coord(x0, y1)
@@ -502,8 +574,8 @@ local function CaveFrame(self, p)
 	return f
 end
 
-function Canvas:CaveLayout(places, level)
-	local data = ns.MapData
+function Canvas:CaveLayout(places, level, data)
+	data = data or ns.MapData
 	local all, grids = data and data.caves, data and data.minimap
 	if type(all) ~= "table" or type(grids) ~= "table" then
 		return
@@ -583,11 +655,12 @@ local function MakeFillTiles(p)
 	p.tiles = tiles
 	local list = type(f.tiles) == "table" and f.tiles or EMPTY
 	local tw, th = p.w / f.cols, p.h / f.rows
-	local gw, gh = tw * T.FILL_SEAM, th * T.FILL_SEAM
+	local seam = f.seam or T.FILL_SEAM   -- (a dungeon's art: none -- its alpha would show twice on the overlap)
+	local gw, gh = tw * seam, th * seam
 	for i = 1, #list - 2, 3 do
 		local c, r, name = Finite(list[i]), Finite(list[i + 1]), list[i + 2]
 		if c and r and type(name) == "string" then
-			local t = Tile(p, T.FILLS .. name, c, r, 1, 1, 1, 1, "BACKGROUND", 0, tw, th)
+			local t = Tile(p, (f.dir or T.FILLS) .. name, c, r, 1, 1, 1, 1, "BACKGROUND", 0, tw, th)
 			t.x, t.y, t.w, t.h = t.x - gw, t.y - gh, t.w + 2 * gw, t.h + 2 * gh
 			t.unload = true
 			tiles[#tiles + 1] = t
@@ -747,7 +820,12 @@ local function ShowTile(self, p, t)
 		tex:SetSize(t.w, t.h)
 		tex:SetAlpha(0)
 		if p.kind == "minimap" then
-			tex:SetDesaturation(T.MINI_GREY)
+			tex:SetDesaturation(self.dungeon and 1 or T.MINI_GREY)
+		elseif self.dungeon and p.kind == "cave" then
+			tex:SetDesaturation(T.MINI_GREY)   -- (the slate look: the rooms greyed as the map's minimap ground)
+		end
+		if p.paint then
+			W.Paint(tex, p.paint, "vertex")   -- (a dungeon's edge: white art in the palette's gold)
 		end
 		if t.base and p.mask then
 			tex:AddMaskTexture(p.mask)   -- (M2: inside the zone's soft outline; B: a continent's inside its land)
@@ -888,6 +966,21 @@ end
 
 -- the detail by zoom: each map's alpha, set on a change; true when one came in or went out
 local function Detail(self, viewW)
+	if self.dungeon then
+		-- (a dungeon's plan: the same at every zoom, the ground faint; of its wings the one shown)
+		local flipped = false
+		for _, p in ipairs(self.places) do
+			local a = p.kind == "minimap" and T.DUNGEON_GROUND or ((not p.wing or p.wing == self.wing) and 1 or 0)
+			if a ~= p.alpha then
+				flipped = flipped or (a > 0) ~= (p.alpha > 0)
+				p.alpha = a
+				if p.frame then
+					p.frame:SetAlpha(a)
+				end
+			end
+		end
+		return flipped
+	end
 	local z = self.z
 	local world = 1   -- (B: the ground at every zoom)
 	local cont = Quant(Ramp(z, T.CONT_IN[1], T.CONT_IN[2]) * (1 - Ramp(z, T.CONT_OUT[1], T.CONT_OUT[2])))
@@ -948,7 +1041,7 @@ function Canvas:Size()
 	end
 	self.cw, self.ch = w, h
 	self.k1 = min(w / self.W, h / self.H)
-	self.zMax = max(T.MAX_ZOOM, T.MAX_PX / self.k1)
+	self.zMax = self.dungeon and max(1, T.DUNGEON_PX / self.k1) or max(T.MAX_ZOOM, T.MAX_PX / self.k1)
 	return w, h
 end
 
@@ -1301,7 +1394,7 @@ end
 function Canvas:PathWorld(wx, wy, out)
 	out = out or {}
 	wipe(out)
-	local p = self.byID[T.WORLD]
+	local p = self.byID and self.byID[T.WORLD]
 	while p do
 		out[#out + 1] = p
 		local u, v = (wx - p.left) / p.w, (wy - p.top) / p.h
@@ -1354,6 +1447,26 @@ function Canvas:Out()
 	local cx, cy = self:Clamp(self.W / 2, self.H / 2, 1)
 	self:Glide(cx, cy, 1)
 	return nil
+end
+
+-- (2.1.0) a dungeon's plan: the wing shown (its places in, the others' out at once)
+function Canvas:SetWing(w)
+	if self.dungeon and w ~= self.wing then
+		self.wing = w
+		if self.cx then
+			self.box[5] = nil
+			self:SetView(self.cx, self.cy, self.z)
+		end
+	end
+end
+
+-- (2.1.0) every place out of view and the files that may go let go: a dungeon's plan left for the world; laid again
+-- when it shows
+function Canvas:Release()
+	for _, p in ipairs(self.places or EMPTY) do
+		HidePlace(p)
+	end
+	self.box[5] = nil
 end
 
 -- the explored pieces read again (MAP_EXPLORATION_UPDATED): the maps whose tiles are made drop their pieces

@@ -10,6 +10,7 @@
 
 MapData.lua
 MapFills.lua
+MapDungeons.lua
 MapCanvas.lua
 MapPins.lua
 MapLayers.lua
@@ -18,4 +19,5 @@ MapAddonPins.lua
 MapObjectives.lua
 MapQuestLog.lua
 MapSearch.lua
+MapDungeon.lua
 Map.lua

@@ -177,7 +177,7 @@ local CHANGELOG = {
 		"Edit Layout: Revert and Default place for each element; switch, make, copy, rename, delete and share Edit Mode layouts from the bar.",
 		"Edit Layout: attach elements as in Edit Mode; your other characters are asked again to use MelloUI's layout.",
 		"Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab.",
-		"The map zoomed out: each capital in its own emblem, boat, zeppelin and airship trails, dungeons, raids, your quests, and Zephras Isle.",
+		"The map: capitals in their emblems, boat and zeppelin trails, Zephras Isle; inside a dungeon its floor plan in wings, doors, bosses, loot.",
 		"Route follows Polestar: its step in the tracker and on the map, one arrow and one route; its own features go first.",
 		"The World Marker and the route point at the same step again on quests that need an item first.",
 		"Level Up Card: its own place, movable in Edit Layout, bigger, everything fits.",

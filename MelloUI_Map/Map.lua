@@ -50,6 +50,7 @@ local Kit = MelloUI.Kit
 local Canvas, Pins, Layers, Log, Search = ns.Canvas, ns.Pins, ns.Layers, ns.QuestLog, ns.Search
 local AddonPins, Objectives = ns.AddonPins, ns.Objectives
 local Trails = ns.Trails   -- (2.1.0: the boats' and the zeppelins' trails, MapTrails.lua)
+local Dungeon = ns.Dungeon -- (2.1.0: a dungeon's own plan inside one, MapDungeon.lua)
 local floor, max, min = math.floor, math.max, math.min
 
 local ICON = "Interface\\Icons\\INV_Misc_Map_01"
@@ -104,7 +105,7 @@ M = MelloUI:RegisterModule("Map", {
 	flavour = "The whole world on one sheet, from the continents down to a village.",
 	group = "Quests and travel", navOrder = 4,
 	enabledByDefault = true,
-	defaults = {},
+	defaults = { dungeonMaps = true },
 	-- (1.0) the window's own state, the player's: where it looked, its quest log open and on which tab -- never in a
 	-- profile or the installer's Full (its layers and Tracked Only travel)
 	keep = { "view", "log", "logTab", "logMode" },
@@ -112,6 +113,10 @@ M = MelloUI:RegisterModule("Map", {
 		{ type = "button", name = TEXT.open, text = "Open",
 		  desc = "Opens MelloUI's map. Your map key (M) and /mellomap open it too.",
 		  onClick = function() M:Toggle(true) end },
+		-- (2.1.0; the user, 2026-11-02: "once inside of the dungeon, to open the dungeon map, with boss positions and
+		-- loot seen on the right side of the map") MapDungeon.lua
+		{ type = "toggle", key = "dungeonMaps", name = "Dungeon Maps", new = "2.1.0",
+		  desc = "Inside a dungeon or raid the map opens on its own floor plan: the bosses where they stand, and their loot beside it." },
 	},
 })
 
@@ -123,7 +128,7 @@ local win = {}
 
 local function SaveView()
 	local c = win.canvas
-	if not (c and c.cx and M.db) then
+	if not (c and c.cx and M.db) or c.dungeon then   -- (a dungeon's plan: not the world's view)
 		return
 	end
 	M.db.view = { x = c.cx / c.W, y = c.cy / c.H, z = c.z }
@@ -153,9 +158,10 @@ end
 --------------------------------------------------------------------------------
 
 local function ShowName(name)
-	if name ~= win.shownName then
-		win.shownName = name
-		win.name:SetText(name or TEXT.hint)
+	local text = name or (Dungeon.Shown() and Dungeon.Hint()) or TEXT.hint
+	if text ~= win.shownName then
+		win.shownName = text
+		win.name:SetText(text)
 	end
 end
 
@@ -535,9 +541,17 @@ local function Canvas_OnMouseUp(_, button)
 			pin.spec.click(pin, button, PinAnchor(pin))
 			return
 		end
+		if Dungeon.Shown() then
+			Dungeon.Out()   -- (2.1.0: a dungeon's plan, then the world)
+			return
+		end
 		c:Out()
 		return
 	elseif button == "MiddleButton" then
+		if Dungeon.Shown() then
+			Dungeon.FindMe()
+			return
+		end
 		Layers.FindMe()
 		return
 	end
@@ -558,12 +572,14 @@ local function Canvas_OnMouseUp(_, button)
 	else
 		-- (Ctrl: your pin; a click on a pin is the pin's; elsewhere a glide in)
 		local pin = win.pins:At(d.x, d.y)
-		if IsControlKeyDown() then
+		if IsControlKeyDown() and not Dungeon.Shown() then
 			SetPin(d.x, d.y)
 		elseif pin and pin.members then
 			Spread(pin)   -- (2.1.0: a pin that holds others: in until they part)
 		elseif pin and pin.spec.click then
 			pin.spec.click(pin, button, pin.spec.enter and PinAnchor(pin) or nil)
+		elseif Dungeon.Shown() then
+			c:ZoomAt(d.x, d.y, 3)   -- (a dungeon's plan has no maps in it: a step in)
 		else
 			c:Deeper(d.x, d.y)
 		end
@@ -642,7 +658,21 @@ local function Canvas_OnSizeChanged()
 	end
 end
 
+-- (2.1.0) inside a dungeon: Dungeon Info's page of it beside its plan (MelloUI_DungeonInfo, when it is there and on)
+local function OpenInside(mapID)
+	local J = rawget(MelloUI, "DungeonInfo")
+	if type(J) == "table" and J.ByMap and J.Open and J.M and J.M.isEnabled then
+		local ok, inst = pcall(J.ByMap, mapID)
+		if ok and type(inst) == "table" and inst.key then
+			pcall(J.Open, inst.key)
+		end
+	end
+end
+
 local function Shown()
+	-- (2.1.0) the world's canvas first (its view, its layers), the plan after; the plan kept when it shows again now
+	local inside = Dungeon.Current()
+	Dungeon.Hide(inside ~= nil and inside == Dungeon.Shown())
 	local c = win.canvas
 	local t0 = debugprofilestop()
 	c:Layout()
@@ -665,6 +695,11 @@ local function Shown()
 	f:RegisterEvent("TAXI_NODE_STATUS_CHANGED")
 	f:RegisterEvent("QUEST_LOG_UPDATE")
 	f:RegisterEvent("QUEST_WATCH_LIST_CHANGED")
+	if inside then
+		OpenInside(inside)   -- (first: Dungeon Info's column out, so the plan's first view fits beside it)
+		Dungeon.Show(inside)
+		ShowName(nil)
+	end
 end
 
 local function Hidden()
@@ -698,6 +733,7 @@ end
 -- the window's beat while it shows (the layers' positions; nothing runs while it is closed)
 local function Frame_OnUpdate(_, elapsed)
 	Layers.Tick(elapsed)
+	Dungeon.Tick(elapsed)
 	AddonPins.Tick()
 	Objectives.Tick(elapsed)
 	Log.Tick()
@@ -711,6 +747,16 @@ local function Frame_OnEvent(_, event)
 	elseif event == "QUEST_LOG_UPDATE" or event == "QUEST_WATCH_LIST_CHANGED" then
 		Objectives.Soon()   -- (the objectives again after the burst)
 	end
+end
+
+-- a canvas's mouse (the world's; 2.1.0: each dungeon's plan's the same)
+local function HookCanvas(cf)
+	Perf.SetScript(cf, "OnMouseWheel", Canvas_OnMouseWheel)
+	Perf.SetScript(cf, "OnMouseDown", Canvas_OnMouseDown)
+	Perf.SetScript(cf, "OnMouseUp", Canvas_OnMouseUp)
+	Perf.SetScript(cf, "OnEnter", Canvas_OnEnter)
+	Perf.SetScript(cf, "OnLeave", Canvas_OnLeave)
+	Perf.SetScript(cf, "OnSizeChanged", Canvas_OnSizeChanged)
 end
 
 local function Build()
@@ -776,12 +822,8 @@ local function Build()
 	name:SetWordWrap(false)
 	win.name = name
 	ShowName(false)
-	Perf.SetScript(cf, "OnMouseWheel", Canvas_OnMouseWheel)
-	Perf.SetScript(cf, "OnMouseDown", Canvas_OnMouseDown)
-	Perf.SetScript(cf, "OnMouseUp", Canvas_OnMouseUp)
-	Perf.SetScript(cf, "OnEnter", Canvas_OnEnter)
-	Perf.SetScript(cf, "OnLeave", Canvas_OnLeave)
-	Perf.SetScript(cf, "OnSizeChanged", Canvas_OnSizeChanged)
+	HookCanvas(cf)
+	Dungeon.Init(win, HookCanvas)
 	Perf.HookScript(f, "OnShow", Shown)
 	Perf.HookScript(f, "OnHide", Hidden)
 	Perf.SetScript(f, "OnEvent", Frame_OnEvent)
@@ -864,6 +906,7 @@ function M:ShowWorld(wcont, wx, wy, box)
 	if not (self.isEnabled and win.canvas and Layers and Layers.WorldPoint) then
 		return false
 	end
+	Dungeon.Hide()   -- (2.1.0: a place on the world, not in a dungeon's plan)
 	local x, y = Layers.WorldPoint(wcont, wx, wy)
 	if not x then
 		return false
@@ -1121,6 +1164,7 @@ function M:OnEnable(db)
 	self.db = db or self.db
 	TakeKeys(true)
 	TakeHeader(true)
+	Dungeon.Listen(true)   -- (2.1.0: the bosses down this run, for a dungeon's plan)
 end
 
 -- (MelloUI.Map:Show(uiMapID), the API's) the map opened, framed on that map
@@ -1129,8 +1173,11 @@ AddonPins.Shown(function(uiMapID)
 		return false
 	end
 	M:Toggle(true)
-	if uiMapID and win.canvas and win.canvas.byID[uiMapID] then
-		win.canvas:Fit(uiMapID)
+	if uiMapID and win.canvas then
+		Dungeon.Hide()
+		if win.canvas.byID[uiMapID] then
+			win.canvas:Fit(uiMapID)
+		end
 	end
 	return true
 end)
@@ -1138,6 +1185,10 @@ end)
 function M:OnDisable()
 	TakeKeys(false)
 	TakeHeader(false)
+	Dungeon.Listen(false)
+	if win.frame then
+		Dungeon.Hide()
+	end
 	Log.Unmount()   -- (the Quest List's page back to the game's column, whose map is the player's again)
 	if win.frame then
 		win.frame:Hide()

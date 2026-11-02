@@ -40,6 +40,7 @@ Data under the GPL-3.0 (not covered by the MIT License above):
     MelloUI_Companion/QuestObjectiveData.lua
     MelloUI_VoiceOver/NPCVoiceData.lua
     MelloUI_DungeonInfo/DungeonInfoData.lua
+    MelloUI_Map/MapDungeons.lua (the bosses' places)
   The scripts that generate them, in Tools/, are part of the MIT-licensed
   source above and are the files' preferred form for modification, with the
   public classic-db dump they read. World of Warcraft and its content (names,

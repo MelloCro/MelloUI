@@ -21,6 +21,9 @@
 - The map zoomed out to the whole world shows the capitals with a gold seal and their name, the boat and zeppelin docks, the dungeon and raid entrances and your quests. Towns show as small seals once you zoom into a continent.
 - Every boat and zeppelin connection is drawn on the map as a soft gold trail from dock to dock.
 - Map pins of one kind that touch become one with a count; click it to zoom in. The map's layers menu can hide Cities and towns.
+- Dungeon maps: inside a dungeon or raid the map opens on its own floor plan, with each boss numbered where he stands and Dungeon Info's loot beside it. Click a boss to see his loot; bosses you have killed this run turn grey. Turn it off on the Map page (Dungeon Maps).
+- Dungeons of several floors come in wings, named as the game names them (Blackrock Depths: The Lyceum, Shadowforge City, The Grim Guzzler, Ring of the Law). Pick one above the map; the map opens on the wing you stand in and follows you into the next.
+- Dungeon maps show the way in and out with a door, and an arrow up or down at each doorway into another wing: point at it for the wing's name, click it to see that wing.
 - Zephras Isle is on the map: its land, its name from the widest zoom, its docks and quest givers, and the airship trails from Alterac and Mulgore ending at its docks. Your arrow, Find me and the search work there too. Its airships are called airships and wear the zeppelin pin, and its villages Shen'dar, Valanaar and Thendal show as towns.
 - Each capital on the zoomed-out map wears its own emblem in its seal: Stormwind's lion gate, Ironforge's mountain gate, Darnassus's tree under the moon, Orgrimmar's spiked gate, Thunder Bluff's mesa, the Undercity's ruined tower.
 - The map's icons follow the skin: the game's own map pictures under Default (the dungeon and raid doors drawn bigger), the painted ones under Oldschool. Switching the skin with the map open updates every map icon at once.

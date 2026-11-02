@@ -96,6 +96,8 @@ CONTROL_TYPES = ("Button", "CheckButton", "EditBox", "Slider", "DropdownButton")
 # the other files that build controls with the widget set, and why theirs are not the configurator's options
 NOT_CONFIGURATOR = {
     "Core/Widgets.lua": "the builders themselves",
+    "MelloUI_Map/MapDungeon.lua": "the dungeon map's World map button and its wings' chips, on the map window (its "
+                                  "one option, Map.dungeonMaps, is tagged in Map.lua)",
     "Core/ConfigPreview.lua": "the designer stage's part controls (stage:PartSpec: a part's Show, Size and X / Y): "
                               "they edit a part's place in its kind's store (the frames' parts layouts), not "
                               "options",

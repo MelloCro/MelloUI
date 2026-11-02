@@ -896,6 +896,11 @@ function Log.ShowQuest(id)
 	if not (c and c.places and e) then
 		return false
 	end
+	-- (2.1.0) the quest's places on the world: out of a dungeon's plan first (MapDungeon.lua)
+	local D = ns.Dungeon
+	if D and D.Shown() then
+		D.Hide()
+	end
 	local n = Places(id, e.title)
 	if n > 0 then
 		local p = S.places

@@ -77,6 +77,8 @@
 --   spec.many = icon                 the picture a pin shows that holds others with another picture than its own
 --                                    (the quests': the "!" while one of them is still to do, though the first by
 --                                    place is ready to hand in; all ready: the "?")
+--   spec.number = text               (2.1.0, the dungeon map) a number in the pin's middle (a boss's place in its
+--                                    dungeon's order), in the palette's spec.numberKey (default text)
 --   spec.label = true                the pin's name (pin.name) beside it where it covers no pin and no other name,
 --                                    else left out at that zoom (its hover still names it); pins.labelBoxes the boxes
 --                                    of the names shown now (the zone names keep clear of them)
@@ -235,6 +237,9 @@ local function HideTex(pin)
 		end
 		if tex.emblem then
 			tex.emblem:Hide()
+		end
+		if tex.number then
+			tex.number:Hide()
 		end
 		if tex.badge then
 			tex.badge:Hide()
@@ -412,6 +417,25 @@ local function Dress(pin)
 	elseif emblem then
 		emblem:Hide()
 	end
+	-- (2.1.0, the dungeon map) the number in the seal
+	local number = tex.number
+	tex.numberOn = spec.number and true or nil
+	if tex.numberOn then
+		if not number then
+			number = pin.layer.frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+			number:Hide()
+			tex.number = number
+		end
+		number:ClearAllPoints()
+		number:SetPoint("CENTER", tex, "CENTER", 0, 0)
+		number:SetText(spec.number)
+		W.Paint(number, spec.numberKey or "text", "text")
+		if pin.shown then
+			number:Show()
+		end
+	elseif number then
+		number:Hide()
+	end
 	pin.dressed = true
 	pin.apartAt = nil   -- (its count and its name shown again on the lay)
 end
@@ -544,6 +568,9 @@ local function Extras(self, pin, tex)
 	end
 	if tex.emblem and tex.emblemOn then
 		tex.emblem:Show()
+	end
+	if tex.number and tex.numberOn then
+		tex.number:Show()
 	end
 	local n = pin.members and #pin.members or 0
 	-- (a pin that holds others with another picture than its own: spec.many's, where it has one; its own again when

@@ -1307,6 +1307,7 @@ function L.Define(R, Link)
 	R("Route", "Arrow & Marker", "Sound", "Route.markerSound")
 	R("Route", "Flights", "General", "Route.flightHint")
 	R("Map", "Map", "General", "Map.#Open The Map")
+	R("Map", "Map", "General", "Map.dungeonMaps")
 	R("DungeonInfo", "Dungeon Info", "General", "DungeonInfo.#Open Dungeon Info")
 	R("DungeonInfo", "Dungeon Info", "General", "DungeonInfo.doorRow")
 
