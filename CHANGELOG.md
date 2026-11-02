@@ -50,6 +50,7 @@
 - Fixed: the installer said MelloUI Oldschool was switched off when it wasn't installed; now it offers the link to get it.
 - Party and raid frames: with MelloUI's on, the game's own never show, in any case (a fight, a roster change, a zone change, Edit Mode, a /reload). The portrait party frames are MelloUI's own now: the same look, steady in a fight, the members the game's own distance apart.
 - Personal Display: an interrupted or failed cast no longer shows on the game's cast bar while the game's cast bar is hidden; the display's own cast bar says "Interrupted" or "Failed", even with its text off.
+- Fixed: Dungeon Info's My Items no longer leaves your starred items over the dungeon list when you switch back to Dungeons or Raids.
 
 ## 2.0.0
 

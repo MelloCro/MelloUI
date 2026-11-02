@@ -371,6 +371,7 @@ function P.LayList()
 	end
 	HideFrom(S.heads[page] or {}, nh)
 	HideFrom(S.drows, nr)
+	HideFrom(S.irows[page] or {}, 0)
 	S.mineEmpty:Hide()
 	PageHeight(page, max(y + T.PAD, 1))
 end
