@@ -285,6 +285,12 @@ local function MicroButtons()
 	return microList
 end
 
+-- the micro menu's shown buttons' rect as the backdrop measures it (screen px, a skin's rims counted): Own Bars' micro
+-- menu holder takes it (Modules/OwnMicroMenu.lua)
+function M.MicroRect(into)
+	return ShownRect(MicroButtons(), into)
+end
+
 local function BagButtons()
 	local n = 0
 	for _, name in ipairs(BAG_BUTTONS) do
