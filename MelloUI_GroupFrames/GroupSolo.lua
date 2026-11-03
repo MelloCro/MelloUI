@@ -83,8 +83,6 @@ local PARTY_RULE = "[group:raid] hide; [group] show; hide"
 -- the members' aura row (PartyAuraFrameTemplate: 15 x 15, 2 apart, its
 -- border the debuff overlay's; MAX_PARTY_DEBUFFS four; the row at 48,-43)
 local AURA = { size = 15, gap = 2, max = 4, x = 48, y = -43 }
-local DEBUFF_BORDER = "Interface\\Buttons\\UI-Debuff-Overlays"   -- look-ok: the game's party aura border
-local BORDER_COORDS = { 0.296875, 0.5703125, 0, 0.515625 }
 -- the game's leader and guide icons (PartyMemberOverlay's)
 local GROUP_ICONS = { LeaderIcon = "UI-HUD-UnitFrame-Player-Group-LeaderIcon",
 	GuideIcon = "UI-HUD-UnitFrame-Player-Group-GuideIcon" }
@@ -175,29 +173,7 @@ end
 --------------------------------------------------------------------------------
 
 local function DressAura(b)
-	b:SetSize(AURA.size, AURA.size)
-	local icon = b:CreateTexture(nil, "ARTWORK")
-	icon:SetAllPoints(b)
-	local cd = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
-	cd:SetPoint("CENTER", b, "CENTER", 0, -1)
-	cd:SetSize(AURA.size, AURA.size)
-	Call(cd, "SetReverse", true)
-	Call(cd, "SetHideCountdownNumbers", true)
-	local count = b:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
-	count:SetJustifyH("RIGHT")
-	count:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 5, 0)
-	local border = b:CreateTexture(nil, "OVERLAY")
-	border:SetTexture(DEBUFF_BORDER)
-	border:SetTexCoord(BORDER_COORDS[1], BORDER_COORDS[2], BORDER_COORDS[3], BORDER_COORDS[4])
-	border:SetPoint("TOPLEFT", b, "TOPLEFT", -1, 1)
-	border:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 1, -1)
-	Call(b, "SetIcon", icon)
-	Call(b, "SetDurationCooldown", cd)
-	Call(b, "SetApplicationCount", count)
-	local style = Enum2("CustomAuraButtonDispelTypeTextureStyle", "PreserveAsset")
-	if style ~= nil then
-		Call(b, "AddDispelTypeTexture", border, { style = style, showWhenHarmful = true, showWithoutDispelType = true })
-	end
+	MelloUI.Units.DressAura(b)
 	-- (retail: a click goes through to the frame -- click casting -- the hover still its tooltip)
 	Looks.ClickThrough(b)
 end
@@ -1175,79 +1151,18 @@ local function MemberParts(f)
 end
 
 -- (fr-16) the game's mouseover box of a member's buffs and debuffs (PartyMemberBuffTooltip, PartyMemberFrameMixin:
--- OnEnter: at the member's 47,-25, in the game's tooltip border, its buffs -- up to 16 -- and on a line under them its
--- debuffs -- up to 8 -- eight a row, 2 apart; shown while it has one; gone once the mouse is on neither): one per
--- member of ours, made with the members, its auras the game's aura container's -- read only while it shows (its groups
--- off else), the count of what it shows our own buttons' (their show and hide), never an aura of the unit's
-local BOX = { buffs = 16, debuffs = 8, row = 8, x = 47, y = -25, pad = 8 }
-local BoxSeen
-local OnBoxButton = Shared("a party member's mouseover box: a button shown or hidden", function(b)
-	local box = b.box
-	if box then
-		box.shown[b] = b:IsShown() or nil
-		BoxSeen(box)
-	end
-end, "script")
-
--- shown while its member (or itself) is under the mouse and it holds an aura
-BoxSeen = function(box)
-	box:SetShown((box.on and next(box.shown) ~= nil) and true or false)
-end
-
-local OnBoxUpdate = Shared("a party member's mouseover box: the mouse still on it or its member", function(box)
-	if not (box.member:IsMouseOver() or box:IsMouseOver()) then
-		box.on = false
-		Call(box.auras, "SetAuraGroupEnabled", "buffs", false)
-		Call(box.auras, "SetAuraGroupEnabled", "debuffs", false)
-		box:Hide()
-	end
-end, "script")
-
+-- OnEnter: at the member's 47,-25): one per member of ours, made with the members -- the shared one, MelloUI.Units.
+-- AuraBox (Modules/UnitFramesOwn.lua), the pet frame's too
+local BOX = { x = 47, y = -25 }
 local function MakeBox(m)
-	local ok, box = pcall(CreateFrame, "Frame", nil, UIParent, "TooltipBackdropTemplate")
-	local okC, c = false, nil
-	if ok then
-		okC, c = pcall(CreateFrame, "AuraContainer", nil, box, "CustomAuraContainerTemplate")
-	end
-	if not (okC and type(c) == "table" and type(c.AddAuraGroup) == "function") then
-		return nil
-	end
-	box:Hide()
-	box:SetFrameStrata("TOOLTIP")
-	box:EnableMouse(true)
-	box.member, box.auras, box.shown, box.on = m, c, {}, false
-	c:SetPoint("TOPLEFT", m, "TOPLEFT", BOX.x, BOX.y)
-	box:SetPoint("TOPLEFT", c, "TOPLEFT", 0, 0)
-	box:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", 0, 0)
-	Call(c, "SetFlowLayoutPadding", BOX.pad, BOX.pad, BOX.pad, BOX.pad)
-	Call(c, "SetFlowLayoutMaximumLineSize", BOX.row * AURA.size + (BOX.row - 1) * AURA.gap)
-	local function DressBoxAura(b)
-		DressAura(b)
-		b.box = box
-		Perf.HookScript(b, "OnShow", OnBoxButton)
-		Perf.HookScript(b, "OnHide", OnBoxButton)
-	end
-	for _, g in ipairs({ { "buffs", "HELPFUL", BOX.buffs }, { "debuffs", "HARMFUL", BOX.debuffs } }) do
-		Call(c, "AddAuraGroup", g[1], g[2], { maxFrameCount = g[3], initializeFrame = DressBoxAura,
-			layout = { elementSpacing = AURA.gap, lineSpacing = AURA.gap, elementWidth = AURA.size,
-				elementHeight = AURA.size, forceNewLine = g[1] == "debuffs" } })
-		Call(c, "SetAuraGroupEnabled", g[1], false)
-	end
-	Call(c, "SetUnit", m.unit)
-	Perf.SetScript(box, "OnUpdate", OnBoxUpdate)
-	return box
+	return MelloUI.Units.AuraBox(m, BOX.x, BOX.y, DressAura)
 end
 
 -- the member's box on its hover (the game's HIDE_PARTY_MEMBER_BUFF_TOOLTIP: none)
 local function BoxOn(m)
-	local box = m.buffBox
-	if not box or rawget(_G, "HIDE_PARTY_MEMBER_BUFF_TOOLTIP") then
-		return
+	if not rawget(_G, "HIDE_PARTY_MEMBER_BUFF_TOOLTIP") then
+		MelloUI.Units.AuraBoxOn(m.buffBox)
 	end
-	box.on = true
-	Call(box.auras, "SetAuraGroupEnabled", "buffs", true)
-	Call(box.auras, "SetAuraGroupEnabled", "debuffs", true)
-	BoxSeen(box)
 end
 
 -- (fr-16) a member under the mouse: the bar under it shows its text (Texts), as the game's bars do on their hover --
@@ -1297,13 +1212,7 @@ local OnMemberLeave = Shared("a portrait party member's tooltip away", function(
 		self.hovered = nil
 		Texts(self)
 	end
-	-- (its box: off now unless it shows -- then its own update lets it go once the mouse is on neither)
-	local box = self.buffBox
-	if box and not box:IsShown() then
-		box.on = false
-		Call(box.auras, "SetAuraGroupEnabled", "buffs", false)
-		Call(box.auras, "SetAuraGroupEnabled", "debuffs", false)
-	end
+	MelloUI.Units.AuraBoxOff(self.buffBox)
 end, "script")
 
 local OnShown = Shared("a portrait party frame shown", function(self)

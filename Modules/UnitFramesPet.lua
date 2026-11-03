@@ -10,6 +10,7 @@
 -- PetFrameMixin does (its name, portrait, bars and their texts through the target's pieces -- Units.Show -- the pet's
 -- own threat on its flash, the attack glow pulsing while the pet attacks, the numbers on its portrait). Its bars are our
 -- own StatusBars handed the pet's health and power as the game hands them (a secret value goes to the bar as it is).
+-- On its hover the pet's buffs and debuffs in a box at its corner, as the game's (Units.AuraBox).
 --
 -- It stands ON the game's frame: a child of the game's PetFrame over its rect, at its level. So it shows and hides
 -- exactly as the game's does -- the game's own secure code shows its pet frame with the pet (UNIT_PET, PET_UI_UPDATE,
@@ -207,6 +208,8 @@ function Pet.Build()
 		end
 	end
 	K.Mirror(pairs_, map)
+	-- its box of auras on its hover (PetFrameMixin:OnEnter: the party's PartyMemberBuffTooltip at its 60,-35)
+	f.buffBox = U.AuraBox(f, 60, -35)
 	f.Update = Pet.Update
 	Pet.frame = f
 	Pet.Scripts(f)

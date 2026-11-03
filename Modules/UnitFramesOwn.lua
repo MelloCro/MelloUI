@@ -617,6 +617,141 @@ do
 end
 
 --------------------------------------------------------------------------------
+-- A frame's box of auras on its hover, as the game's (PartyMemberBuffTooltip: PartyMemberFrameMixin:OnEnter puts it
+-- at the member's 47,-25, PetFrameMixin:OnEnter at the pet's 60,-35 -- in the game's tooltip border its buffs, up to
+-- 16, and on a line under them its debuffs, up to 8, eight a row, 2 apart; shown while it has one; gone once the mouse
+-- is on neither): one per frame of ours, made with it, its auras the game's aura container's -- read only while it
+-- shows (its groups off else), the count of what it shows our own buttons' (their show and hide), never an aura of the
+-- unit's. (fr-16's, moved here from Group Frames' party portraits, which call it.)
+--   U.DressAura(b)                 an aura button as the game's party aura (PartyAuraFrameTemplate)
+--   U.AuraBox(f, x, y, dress)      f's box (nil: no aura container in this client); dress: its buttons' dresser
+--   U.AuraBoxOn(box) / Off(box)    on the frame's OnEnter / OnLeave
+--------------------------------------------------------------------------------
+
+do
+	local AURA = { size = 15, gap = 2 }
+	local BOX = { buffs = 16, debuffs = 8, row = 8, pad = 8 }
+	local DEBUFF_BORDER = "Interface\\Buttons\\UI-Debuff-Overlays"   -- look-ok: the game's party aura border
+	local BORDER_COORDS = { 0.296875, 0.5703125, 0, 0.515625 }
+
+	local function Call(obj, method, ...)
+		local fn = obj and obj[method]
+		if type(fn) ~= "function" then
+			return false
+		end
+		return (pcall(fn, obj, ...))
+	end
+
+	-- (PartyAuraFrameTemplate: 15 square, its cooldown reversed and without numbers, its count at the bottom right, the
+	-- debuff border in its dispel type's colour)
+	function U.DressAura(b)
+		b:SetSize(AURA.size, AURA.size)
+		local icon = b:CreateTexture(nil, "ARTWORK")
+		icon:SetAllPoints(b)
+		local cd = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
+		cd:SetPoint("CENTER", b, "CENTER", 0, -1)
+		cd:SetSize(AURA.size, AURA.size)
+		Call(cd, "SetReverse", true)
+		Call(cd, "SetHideCountdownNumbers", true)
+		local count = b:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
+		count:SetJustifyH("RIGHT")
+		count:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 5, 0)
+		local border = b:CreateTexture(nil, "OVERLAY")
+		border:SetTexture(DEBUFF_BORDER)
+		border:SetTexCoord(BORDER_COORDS[1], BORDER_COORDS[2], BORDER_COORDS[3], BORDER_COORDS[4])
+		border:SetPoint("TOPLEFT", b, "TOPLEFT", -1, 1)
+		border:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 1, -1)
+		Call(b, "SetIcon", icon)
+		Call(b, "SetDurationCooldown", cd)
+		Call(b, "SetApplicationCount", count)
+		local E = rawget(_G, "Enum")
+		local styles = type(E) == "table" and E.CustomAuraButtonDispelTypeTextureStyle
+		local style = type(styles) == "table" and styles.PreserveAsset or nil
+		if style ~= nil then
+			Call(b, "AddDispelTypeTexture", border, { style = style, showWhenHarmful = true, showWithoutDispelType = true })
+		end
+	end
+
+	local function Groups(box, on)
+		Call(box.auras, "SetAuraGroupEnabled", "buffs", on)
+		Call(box.auras, "SetAuraGroupEnabled", "debuffs", on)
+	end
+
+	-- shown while its frame (or itself) is under the mouse and it holds an aura
+	local function Seen(box)
+		box:SetShown((box.on and next(box.shown) ~= nil) and true or false)
+	end
+
+	local OnButton = Shared("a frame's aura box: a button shown or hidden", function(b)
+		local box = b.box
+		if box then
+			box.shown[b] = b:IsShown() or nil
+			Seen(box)
+		end
+	end, "script")
+
+	local OnUpdate = Shared("a frame's aura box: the mouse still on it or its frame", function(box)
+		if not (box.member:IsMouseOver() or box:IsMouseOver()) then
+			box.on = false
+			Groups(box, false)
+			box:Hide()
+		end
+	end, "script")
+
+	function U.AuraBox(f, x, y, dress)
+		local ok, box = pcall(CreateFrame, "Frame", nil, UIParent, "TooltipBackdropTemplate")
+		local okC, c = false, nil
+		if ok then
+			okC, c = pcall(CreateFrame, "AuraContainer", nil, box, "CustomAuraContainerTemplate")
+		end
+		if not (okC and type(c) == "table" and type(c.AddAuraGroup) == "function") then
+			return nil
+		end
+		dress = dress or U.DressAura
+		box:Hide()
+		box:SetFrameStrata("TOOLTIP")
+		box:EnableMouse(true)
+		box.member, box.auras, box.shown, box.on = f, c, {}, false
+		c:SetPoint("TOPLEFT", f, "TOPLEFT", x, y)
+		box:SetPoint("TOPLEFT", c, "TOPLEFT", 0, 0)
+		box:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", 0, 0)
+		Call(c, "SetFlowLayoutPadding", BOX.pad, BOX.pad, BOX.pad, BOX.pad)
+		Call(c, "SetFlowLayoutMaximumLineSize", BOX.row * AURA.size + (BOX.row - 1) * AURA.gap)
+		local function DressBoxAura(b)
+			dress(b)
+			b.box = box
+			Perf.HookScript(b, "OnShow", OnButton)
+			Perf.HookScript(b, "OnHide", OnButton)
+		end
+		for _, g in ipairs({ { "buffs", "HELPFUL", BOX.buffs }, { "debuffs", "HARMFUL", BOX.debuffs } }) do
+			Call(c, "AddAuraGroup", g[1], g[2], { maxFrameCount = g[3], initializeFrame = DressBoxAura,
+				layout = { elementSpacing = AURA.gap, lineSpacing = AURA.gap, elementWidth = AURA.size,
+					elementHeight = AURA.size, forceNewLine = g[1] == "debuffs" } })
+			Call(c, "SetAuraGroupEnabled", g[1], false)
+		end
+		Call(c, "SetUnit", f.unit)
+		Perf.SetScript(box, "OnUpdate", OnUpdate)
+		return box
+	end
+
+	function U.AuraBoxOn(box)
+		if box then
+			box.on = true
+			Groups(box, true)
+			Seen(box)
+		end
+	end
+
+	-- (off now unless it shows -- then its own update lets it go once the mouse is on neither)
+	function U.AuraBoxOff(box)
+		if box and not box:IsShown() then
+			box.on = false
+			Groups(box, false)
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
 -- The player frame of ours (stage 1). Its parts as the game's PlayerFrame.xml (client 70425) lays them, with
 -- Camelot's PlayerFrame.lua over it (the name centred, 116 wide, at 149,-37; the level in its circle; the PvP badge
 -- the circle's faction icon at 22,-65 with its timer to its left) and PlayerFrame_ToPlayerArt's visuals (the health
@@ -785,7 +920,8 @@ function P.Build()
 	f:SetAttribute("toggleForVehicle", true)
 	f:RegisterForClicks("AnyUp")
 	f.unit, f.frameType, f.disablePortraitMask, f.state = "player", "Player", true, "player"
-	f.capNumeric = true
+	-- (deadText false: its bar's numbers at none -- the game's player health bar has no zero text)
+	f.capNumeric, f.deadText = true, false
 	f:Hide()
 	local gc = rawget(game, "PlayerFrameContainer")
 	local gContent = rawget(game, "PlayerFrameContent")
@@ -1557,6 +1693,8 @@ local OnEnter = Shared("your unit frames' tooltip", function(self)
 		hover.over = self
 		hover.frame:Show()
 	end
+	-- (its box of auras, the pet's: PetFrameMixin:OnEnter)
+	U.AuraBoxOn(self.buffBox)
 end, "script")
 
 local OnLeave = Shared("your unit frames' tooltip away", function(self)
@@ -1572,6 +1710,7 @@ local OnLeave = Shared("your unit frames' tooltip away", function(self)
 		self.hovered = nil
 		U.Texts(self)
 	end
+	U.AuraBoxOff(self.buffBox)
 end, "script")
 
 -- (the player frame's bars under the mouse)
