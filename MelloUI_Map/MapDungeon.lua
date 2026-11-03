@@ -21,8 +21,8 @@
 -- floors -- the client holds their art, no map of them -- laid by their place
 -- (MapDungeons' drawn, rect, art; MapCanvas' DrawnPlace). Forever's own are
 -- Santiago Reyes' maps (the user, 2026-11-03, with his blessing; MapDungeons'
--- credit): his sheets laid whole the same way, his name on the footer, no place
--- of the world on them (no arrow).
+-- credit): his sheets (their credit band cut, his watermark kept) laid the
+-- same way, his name on the footer, no place of the world on them (no arrow).
 --
 -- From outside (the user, 2026-11-03: "Can i open the dungeon map by clicking
 -- on it on the map, or clicking on the dungeon in the dungeon info?"): Dungeon

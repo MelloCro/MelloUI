@@ -44,10 +44,12 @@ The client has no dungeon maps (no UiMap of an instance), so each one is laid fr
             drawing laid by its world box, no edge, cove, rooms or ground of ours. The others (Forever's own) keep ours.
   sheets    (2.1.0; the user, 2026-11-03, with the artist's blessing) Forever's own dungeons in Santiago Reyes' maps
             ("Atlas de Azeroth: Forever", Workspace/ArtSources/SantiagoMaps, from his ArtStation page): each sheet a
-            wing, laid WHOLE -- his watermark and credit band are never cut or changed (his terms) -- in tiles of
-            SHEET_TILE px on a plan of its own (SHEET_PX px a yard: a sheet is no survey, so no boss, door, doorway
-            or arrow has a place on it); a sheet takes the area names of the wings of ours it stands for; the plan
-            carries his name (credit), shown on the map. His art: All Rights Reserved, used with his permission.
+            wing, laid whole but for the dark blue credit band under the parchment (the user, 2026-11-03: "remove that
+            part and make sure to cut the maps properly"; cut where the rows turn back to the parchment's own colour,
+            no blue bleed kept) -- his watermark on the parchment is never cut or changed (his terms) -- in tiles of
+            SHEET_TILE px on a plan of its own (SHEET_PX px a yard: a sheet is no survey, so no arrow has a place on
+            it); a sheet takes the area names of the wings of ours it stands for; the plan carries his name
+            (credit), shown on the map's footer. His art: All Rights Reserved, used with his permission.
 
 Only the instances with a door on the world map (the Quest List's entrances: Forever's doors) get a plan. With two or
 more bosses placed, only the models with rooms within NEAR of them are drawn (a dungeon in open land has far caves and
@@ -636,12 +638,35 @@ def buildings(units, ways, bosses):
     return [[units[i] for i in sorted(g)] for _, g in sorted(groups.items(), key=lambda kv: min(kv[1]))]
 
 
+def band_top(img):
+    """the row a sheet's credit band starts at: the first row from which every row down is blue (most of it bluer than
+    red), moved up past the rows the picture's compression blended toward it (their blue-red difference above half the
+    parchment's own, its median over the rows above); the sheet's height when it has none"""
+    a = np.asarray(img.convert("RGB")).astype(np.int32)
+    h = a.shape[0]
+    blue = (a[..., 2] > a[..., 0] + 8).mean(axis=1) > 0.5
+    top = h
+    while top > 0 and blue[top - 1]:
+        top -= 1
+    if top == h or top < h // 2:
+        return h
+    diff = (a[..., 2] - a[..., 0]).mean(axis=1)
+    paper = float(np.median(diff[max(0, top - 40):top]))
+    while top > 0 and diff[top - 1] > paper / 2:
+        top -= 1
+    return top
+
+
 def sheet_plan(mapID, name, sheets, areas):
     """(2.1.0) a dungeon in an artist's sheets (SHEETS): each a wing laid whole on a plan of its own; areas: the area
     names of our plan's wings, in its order"""
     wings = []
     for w, (fname, title, of) in enumerate(sheets, 1):
         img = Image.open(os.path.join(SHEETS_DIR, fname)).convert("RGBA")
+        cut = band_top(img)
+        if cut < img.size[1]:
+            log("  %s: its credit band cut off below row %d of %d" % (fname, cut, img.size[1]))
+            img = img.crop((0, 0, img.size[0], cut))
         lw, lh = img.size
         cols, rows_ = -(-lw // SHEET_TILE), -(-lh // SHEET_TILE)
         whole = Image.new("RGBA", (cols * SHEET_TILE, rows_ * SHEET_TILE), (0, 0, 0, 0))
