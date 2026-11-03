@@ -20,6 +20,7 @@ Sources (all local):
   (1.2.2) the picture      an instance with no LFG picture: its loading screen (LoadingScreens; picture_for)
   (1.2.2) Forever's loot   Everloot's open data (player-collected, CC BY-SA 4.0, credited in the data file): its
                            drop rates by boss and creature, fetched with --everloot into the build data's cache
+                           (its API since 2026-11-03: rollups/drops and corpus/public's encounter records)
   (1.2.2) seen in game     the players' /dungeoninfo exports in MelloUI-BuildData/dungeoninfo_seen (read_seen)
 
     python Tools/build_dungeoninfo.py [--check] [--everloot]
@@ -125,12 +126,15 @@ SEEN_DIR = os.path.join(REPO, "Workspace", "BuildData", "dungeoninfo_seen")
 # nor hotfix: every list is collected from players. Their pick: Everloot, with its credit) Everloot's open data
 # (https://everloot.app, CC BY-SA 4.0: player-collected, a fact only once 3 installs agree): its published drop
 # rates (a share of the loot windows opened on a creature) and its bosses (an encounter's boss creatures). Fetched by
-# `--everloot` into the build data's cache (checked against its manifest), read from the newest cached export by
-# every build. Its rows stay CC BY-SA 4.0 in the data file, with EVERLOOT_CREDIT beside them.
-EVERLOOT_URL = "https://data.everloot.app"
+# `--everloot` into the build data's cache, read from the newest cached export by every build. Its rows stay
+# CC BY-SA 4.0 in the data file, with EVERLOOT_CREDIT beside them. (2026-11-03: the open-data export at
+# data.everloot.app is gone; Everloot's API stands in its place -- /api/rollups/drops, the corroborated rates by
+# creature, and /api/corpus/public's encounter records, a boss kill's creatures -- paged, 500 rows a page and 30
+# requests an hour without a key. The fetch writes them in the cached export's shape, which read_everloot reads.)
+EVERLOOT_URL = "https://everloot.app"
+EVERLOOT_PAGE = 500
 EVERLOOT_DIR = os.path.join(BUILD, "everloot")
 EVERLOOT_CREDIT = "Data from Everloot (https://everloot.app), CC BY-SA 4.0."
-EVERLOOT_FILES = ("observed/drop-rates.ndjson", "observed/bosses.ndjson", "observed/npcs.ndjson")
 
 
 # (1.2.2, the user's pick) DungeonMaster's hand-curated boss loot (by MalkDev, CurseForge 1711748, GPL-3.0 like the
@@ -180,45 +184,87 @@ def norm_name(s):
 
 
 def fetch_everloot():
-    """Everloot's newest open-data export into EVERLOOT_DIR/<stamp>/ (each file checked against the manifest's
-    byte count and sha256); False when there is none yet (the cache kept as it is)"""
-    import hashlib
+    """Everloot's corroborated drop rates and its boss kills (its API, paged) into EVERLOOT_DIR/<its data's time>/ in
+    the export's shape (observed/drop-rates.ndjson, observed/bosses.ndjson, manifest.json); False when it has no rate
+    yet or that data is cached already (the cache kept as it is). A boss's creatures: those listed for a kill of his
+    encounter by at least half the installs that reported one (a record may list the trash that died in the fight)."""
     import json
+    import time
     import urllib.error
     import urllib.request
 
     def get(path):
-        req = urllib.request.Request(EVERLOOT_URL + "/" + path, headers={"User-Agent": "MelloUI build_dungeoninfo"})
-        with urllib.request.urlopen(req, timeout=60) as res:
-            return res.read()
-    try:
-        latest = json.loads(get("open-data/latest.json"))
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            log("Everloot has published no open-data export yet: the cached one (if any) is kept")
-            return False
-        raise
-    stamp, manifest_path = latest["stamp"], latest["manifest"]
-    if not re.match(r"^[\w.-]+$", stamp) or not manifest_path.startswith("open-data/"):
-        sys.exit("Everloot's latest.json looks wrong: %r" % latest)
-    manifest = json.loads(get(manifest_path))
+        req = urllib.request.Request(EVERLOOT_URL + path, headers={"User-Agent": "MelloUI build_dungeoninfo"})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as res:
+                return json.loads(res.read())
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                sys.exit("Everloot's rate limit (30 requests an hour without a key): try again in %s s; nothing kept"
+                         % e.headers.get("Retry-After", "?"))
+            raise
+
+    def pages(path, key):
+        """every page's rows, and the first page (its dataAsOf and stats)"""
+        out, first, url = [], None, path + ("&" if "?" in path else "?") + "limit=%d" % EVERLOOT_PAGE
+        while url:
+            body = get(url)
+            if body.get("unreachable"):
+                sys.exit("Everloot says its storage is unreachable (an answer unrecorded, not zero): nothing kept")
+            first = first or body
+            out += body.get(key) or []
+            nxt = body.get("next")
+            url = nxt[len(EVERLOOT_URL):] if isinstance(nxt, str) and nxt.startswith(EVERLOOT_URL) else None
+            if url:
+                time.sleep(1)
+        return out, first or {}
+    rates, first = pages("/api/rollups/drops", "rates")
+    stats = first.get("stats") or {}
+    as_of = first.get("dataAsOf") or first.get("generatedAt") or ""
+    if not rates:
+        log("Everloot has no corroborated drop rate yet (%s uploads, %s loot windows, data as of %s): the cache kept"
+            % (stats.get("uploads"), stats.get("lootWindows"), as_of or "unknown"))
+        return False
+    stamp = re.sub(r"[^\w.-]", "", as_of.replace(":", "")) or time.strftime("%Y-%m-%dT%H%M%SZ", time.gmtime())
     folder = os.path.join(EVERLOOT_DIR, stamp)
-    os.makedirs(os.path.join(folder, "observed"), exist_ok=True)
-    base = manifest_path.rsplit("/", 1)[0]
-    by_path = {f["path"]: f for f in manifest["files"]}
-    for path in EVERLOOT_FILES:
-        f = by_path.get(path)
-        if not f:
-            log("Everloot's export has no %s" % path)
+    if os.path.isfile(os.path.join(folder, "manifest.json")):
+        log("Everloot's data as of %s is cached already" % as_of)
+        return False
+    records, _ = pages("/api/corpus/public?kinds=encounter", "records")
+    kills = defaultdict(lambda: defaultdict(set))   # (map, encounter) -> npc -> installs
+    reporters = defaultdict(set)
+    for r in records:
+        if r.get("kind") != "encounter" or r.get("success") is not True:
             continue
-        body = get(base + "/" + path)
-        if len(body) != f["bytes"] or hashlib.sha256(body).hexdigest() != f["sha256"]:
-            sys.exit("Everloot's %s does not match its manifest: nothing kept" % path)
-        with open(os.path.join(folder, path), "wb") as fh:
-            fh.write(body)
+        key = (r.get("instanceMapId"), r.get("encounterId"))
+        if not all(isinstance(v, int) for v in key):
+            continue
+        reporters[key].add(r.get("installId"))
+        for npc in r.get("npcIds") or []:
+            if isinstance(npc, int):
+                kills[key][npc].add(r.get("installId"))
+    os.makedirs(os.path.join(folder, "observed"), exist_ok=True)
+    with open(os.path.join(folder, "observed", "drop-rates.ndjson"), "w", encoding="utf-8") as fh:
+        for r in rates:
+            if isinstance(r.get("sourceNpcId"), int) and isinstance(r.get("itemId"), int):
+                fh.write(json.dumps({"sourceNpcId": r["sourceNpcId"], "itemId": r["itemId"], "rate": r.get("rate"),
+                                     "lootWindows": r.get("kills"), "drops": r.get("drops"),
+                                     "reporters": r.get("reporters")}) + "\n")
+    n_bosses = 0
+    with open(os.path.join(folder, "observed", "bosses.ndjson"), "w", encoding="utf-8") as fh:
+        for (imap, enc), by_npc in sorted(kills.items()):
+            need = max(1, (len(reporters[(imap, enc)]) + 1) // 2)
+            npcs = sorted(n for n, who in by_npc.items() if len(who) >= need)
+            if npcs:
+                n_bosses += 1
+                fh.write(json.dumps({"instanceMapId": imap, "encounterId": enc,
+                                     "npcIds": [{"npcId": n} for n in npcs]}) + "\n")
     with open(os.path.join(folder, "manifest.json"), "w", encoding="utf-8") as fh:
-        json.dump(manifest, fh, indent=1)
-    log("Everloot export %s cached (%s)" % (stamp, ", ".join("%s %s rows" % (p, by_path[p]["rows"]) for p in EVERLOOT_FILES if p in by_path)))
+        json.dump({"source": EVERLOOT_URL + "/api", "dataAsOf": as_of, "credit": EVERLOOT_CREDIT,
+                   "files": [{"path": "observed/drop-rates.ndjson", "rows": len(rates)},
+                             {"path": "observed/bosses.ndjson", "rows": n_bosses}]}, fh, indent=1)
+    log("Everloot data as of %s cached: %d drop rates, %d bosses' creatures (from %d kill records)"
+        % (as_of, len(rates), n_bosses, sum(len(v) for v in reporters.values())))
     return True
 
 
