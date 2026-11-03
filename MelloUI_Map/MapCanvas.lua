@@ -703,7 +703,9 @@ local function MakeDrawnTiles(p)
 	for i, file in ipairs(p.drawn) do
 		local c, r = (i - 1) % cols, floor((i - 1) / cols)
 		local pw, ph = min(tw, lw - c * tw), min(th, lh - r * th)
-		if Finite(file) and pw > 0 and ph > 0 then
+		-- (the client's file by ID; an artist's sheet's tile by name in our Dungeons folder)
+		file = type(file) == "string" and T.DUNGEONS .. file or Finite(file)
+		if file and pw > 0 and ph > 0 then
 			tiles[#tiles + 1] = Tile(p, file, c * tw, r * th, pw, ph, tw, th, "BACKGROUND", 0, sx, sy)
 		end
 	end

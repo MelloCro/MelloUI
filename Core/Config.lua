@@ -177,7 +177,7 @@ local CHANGELOG = {
 		"Edit Layout: Revert and Default place for each element; switch, make, copy, rename, delete and share Edit Mode layouts from the bar.",
 		"Edit Layout: attach elements as in Edit Mode; your other characters are asked again to use MelloUI's layout.",
 		"Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab.",
-		"The map: capitals' emblems, boat trails, Zephras Isle, dungeon maps with bosses and loot; your quests, layers and Dungeon Info beside it, folded away with a click.",
+		"The map: capitals' emblems, boat trails, Zephras Isle, dungeon maps; your quests, layers and Dungeon Info beside it, folded away with a click.",
 		"Route follows Polestar: its step in the tracker and on the map, one arrow and one route; its own features go first. The World Marker and the route agree on item-first quests.",
 		"Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses.",
 		"Level Up Card: its own place, movable in Edit Layout, bigger, everything fits.",
@@ -5130,7 +5130,9 @@ local HOME_TIPS = {
 }
 local HELP_NOTE = "The game keeps your settings; /mello status shows where they came from. The voice pack, MelloUI_VoicePack, replaces the old pack: a separate download in two parts from the 0.15.0 release (the Voice pack link above). Unzip both into the AddOns folder, where they make one MelloUI_VoicePack folder."
 -- (1.2.4) the thanks under it: EllesmereUI's author let MelloUI use some of its design (the configurator's shell)
-local HELP_CREDIT = "Parts of this window's design come from EllesmereUI, used with its author's kind permission. Thank you!"
+local HELP_CREDIT = "Parts of this window's design come from EllesmereUI, used with its author's kind permission. "
+	.. "The maps of Forever's own dungeons are by Santiago Reyes (Atlas de Azeroth: Forever), used with his kind "
+	.. "permission. Thank you both!"
 
 -- This frame's rows counted as spent: a page's first open whose own parts
 -- are this frame's work (Home's header and cards), so the worker starts on

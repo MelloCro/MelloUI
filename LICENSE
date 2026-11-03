@@ -30,6 +30,17 @@ Route data (All Rights Reserved):
 
 ---
 
+Dungeon maps by Santiago Reyes (All Rights Reserved, used with permission):
+
+- The maps of Forever's own dungeons, MelloUI_Map/Media/Dungeons/<map>_<n>s*.blp
+  (City of Dalaran, Ruins of Lordaeron, Hall of Thanes, Excavation Site:
+  Wetlands), are fan-made art by Santiago Reyes from his "Atlas de Azeroth:
+  Forever" project (https://www.artstation.com/artwork/lEG15k), used in
+  MelloUI with his permission. They are not covered by the MIT License above;
+  they may not be sold, and their watermark and credits must stay unaltered.
+
+---
+
 Data under the GPL-3.0 (not covered by the MIT License above):
 
 - These generated data files hold data derived from the cmangos classic

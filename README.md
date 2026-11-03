@@ -64,6 +64,7 @@ Download the [release zip](https://github.com/MelloCro/MelloUI/releases/latest) 
 ## Credits
 
 - Parts of the configurator's design come from [EllesmereUI](https://www.curseforge.com/wow/addons/ellesmereui), used with its author's kind permission. Thank you!
+- The maps of Forever's own dungeons (City of Dalaran, Ruins of Lordaeron, Hall of Thanes, Excavation Site: Wetlands) are by [Santiago Reyes](https://www.artstation.com/artwork/lEG15k), from his "Atlas de Azeroth: Forever" project, used with his kind permission. Thank you! The other dungeon maps are Blizzard's own drawings from the game.
 - Dungeon Info's Forever loot: [DungeonMaster](https://www.curseforge.com/wow/addons/dungeonmaster) by MalkDev (GPL-3.0). Drop rates: Data from [Everloot](https://everloot.app), [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
 - Classic quests, NPCs and drops: the [cmangos classic-db](https://github.com/cmangos/classic-db) (GPL-3.0); the data files made from it are GPL-3.0 too.
 

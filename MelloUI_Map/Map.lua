@@ -122,7 +122,7 @@ M = MelloUI:RegisterModule("Map", {
 		-- (2.1.0; the user, 2026-11-02: "once inside of the dungeon, to open the dungeon map, with boss positions and
 		-- loot seen on the right side of the map") MapDungeon.lua
 		{ type = "toggle", key = "dungeonMaps", name = "Dungeon Maps", new = "2.1.0",
-		  desc = "Inside a dungeon or raid the map opens on its own map (Blizzard's drawings for the classic ones): the bosses where they stand, and their loot beside it. From outside, a click on its door or on its row in Dungeon Info shows it." },
+		  desc = "Inside a dungeon or raid the map opens on its own map (Blizzard's drawings for the classic ones), Dungeon Info's bosses and loot beside it. From outside, a click on its door or on its row in Dungeon Info shows it." },
 	},
 })
 
