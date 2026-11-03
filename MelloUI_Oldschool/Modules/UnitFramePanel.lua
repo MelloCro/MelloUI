@@ -501,6 +501,26 @@ local function OnBarSetting(module, key)
 	end
 end
 
+-- (2.1.0; the user, 2026-11-03: "in some cases you will see the textures overlapping on the unitframes") a boxed look
+-- of the Unit Frame Border row stands round the health bar, its top rail its depth above the bar: the name over the
+-- bar rises by that depth, clear of it (the bracket, the row's default, has none above the bar): 0 without one
+local function NameLift(bar)
+	local rep = bar and repOf[bar]
+	local border = rep and rep.libraryStyle and rep.libraryBorder
+	if not (border and border.shown) then
+		return 0
+	end
+	local _, y = border:Inset()
+	return y or 0
+end
+
+-- the names over the bars placed again (a health bar's border changed, its onBarChanged; a health bar dressed)
+local function PlaceNames()
+	for _, entry in ipairs(skin and skin.names or {}) do
+		entry.place()
+	end
+end
+
 -- A bar's bracket (B3): regions of the bar itself in the layer over its
 -- fill, fitted to `rect`; Bar Textures told to drop its mask.
 local function SkinBar(bar, rect, picture, mirrored, health)
@@ -532,6 +552,10 @@ local function SkinBar(bar, rect, picture, mirrored, health)
 	end
 	if active then
 		rep.onEnable()
+	end
+	if health then
+		rep.onBarChanged = PlaceNames
+		PlaceNames()
 	end
 	-- the rect changes with the game's own re-layouts (the target's minus-mob bar)
 	Perf.HookScript(rect, "OnSizeChanged", function()
@@ -945,7 +969,7 @@ local savedNameOf = setmetatable({}, { __mode = "k" })   -- [name] = { points, w
 -- The name centred on its band's rect (as a window's title on its plate;
 -- the plate itself retired 2026-10-03, the soft shade behind the name
 -- instead: NameShade): the game's anchors saved and put back on disable.
-local function CenterName(fs, rect)
+local function CenterName(fs, rect, bar)
 	if not (fs and rect) then
 		return
 	end
@@ -961,7 +985,7 @@ local function CenterName(fs, rect)
 			return
 		end
 		fs:ClearAllPoints()
-		fs:SetPoint("CENTER", rect, "CENTER", 0, 0)
+		fs:SetPoint("CENTER", rect, "CENTER", 0, NameLift(bar))   -- (`bar`: the health bar under it)
 		local ok, w = pcall(rect.GetWidth, rect)
 		if ok and not Secret(w) and w and w > 0 then
 			fs:SetWidth(w)
@@ -1489,7 +1513,7 @@ local function SkinPlayer()
 	-- the name centred on the band's rect, its shade behind it
 	local band = PlayerBandRect(container)
 	local playerName = ScreenPlayerName()
-	CenterName(playerName, band)
+	CenterName(playerName, band, main.HealthBarsContainer and main.HealthBarsContainer.HealthBar)
 	NameShade(playerName, container)
 	skin.playerRing = SkinRing(picture, container.PlayerPortrait, container.PlayerPortraitMask)
 	Shade(u, skin.playerRing, true)
@@ -1528,7 +1552,7 @@ local function SkinTargetLike(frame)
 	local u = Unit(frame, container)
 	if main.ReputationColor then
 		Replace(main.ReputationColor, { as = "UI-HUD-UnitFrame-Target-PortraitOn-Type" })
-		CenterName(main.Name, main.ReputationColor)
+		CenterName(main.Name, main.ReputationColor, main.HealthBarsContainer and main.HealthBarsContainer.HealthBar)
 		NameShade(main.Name, container)
 	end
 	local ring = SkinRing(picture, container.Portrait)   -- its mask follows the portrait's anchors
@@ -1852,7 +1876,7 @@ local function SkinPartyMember(frame)
 	local health = frame.HealthBarContainer.HealthBar
 	local band = frame.Name and NameBandRect(frame, frame.Name, frame.HealthBarContainer)
 	if band then
-		CenterName(frame.Name, band)
+		CenterName(frame.Name, band, health)
 	end
 	NameShade(frame.Name, frame)
 	local ring = SkinRing(picture, portrait, nil, "UnitFramePortraitRingParty")

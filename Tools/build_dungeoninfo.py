@@ -372,6 +372,14 @@ def main(check):
     encounters = defaultdict(list)
     for r in read_csv("DungeonEncounter.csv"):
         encounters[int(r["MapID"])].append(r)
+    # (2.1.0; the user, 2026-11-03, on the dungeon maps' crowded seals: Blackfathom Deeps' Ghamoo-ra listed three times)
+    # a map's bosses in its plain difficulty -- none (0) or Normal (1) -- when it has them: the client keeps the same
+    # bosses again under other difficulties (198, 201, 215) that Forever's dungeons are not
+    for mid, rows in encounters.items():
+        plain = [r for r in rows if int(r["DifficultyID"] or 0) in (0, 1)]
+        if plain and len(plain) < len(rows):
+            log("%s: %d of %d encounters, the plain difficulty's" % (maps.get(mid, {}).get("MapName_lang", mid), len(plain), len(rows)))
+            encounters[mid] = plain
 
     # the quest keys by instance map: one instance a map, every key of it kept (the quests of each are its quests;
     # Nightmare Grove's keys are the four dragons' zones, Blackrock Depths has two)
@@ -577,6 +585,17 @@ def main(check):
             if not b["rare"] and norm_name(name) in by_norm:
                 match[name] = by_norm[norm_name(name)]
         named = set(match.values())
+        # (2.1.0) a name with the same letters in another order -- two swapped (its "Gelihast", the client's
+        # "Geilhast": the client spells him both ways) -- for a boss of the client's not named yet
+        for name, b in cur["bosses"].items():
+            if b["rare"] or name in match:
+                continue
+            letters = sorted(norm_name(name))
+            for enc, bname in ours:
+                if enc not in named and sorted(norm_name(bname)) == letters:
+                    match[name] = enc
+                    named.add(enc)
+                    break
         if len(cur["order"]) == len(ours):
             for (enc, _), name in zip(ours, cur["order"]):
                 b = cur["bosses"].get(name)

@@ -58,6 +58,8 @@
 - Fixed: the Quest List and the map's quest givers no longer show other classes' quests from Forever's own class quests (Zephras Isle's first class quests, Taming the Beast, Call of Fire and more): they go by the class the game gives each quest.
 - Fixed: Dungeon Info shows each item in the quality the game gives it now, so Forever's changes show (Deathcharger's Reins is rare), and so will any the game makes later.
 - Fixed: the World Marker no longer flickers out when a guide's next step is right where you stand, as when skipping through steps at one quest giver. A place set that close shows its marker; it counts as arrived once you have walked off and come back.
+- Fixed: Dungeon Info and the dungeon maps list each boss once. Blackfathom Deeps, the Temple of Atal'Hakkar and Gnomeregan showed most of their bosses two or three times, their seals stacked on the map.
+- Fixed (Oldschool): a boxed Unit Frame Border (Single, Backdrop and the square styles) no longer runs through the name over the health bar, and its corner studs no longer sit on the portrait ring.
 
 ## 2.0.0
 

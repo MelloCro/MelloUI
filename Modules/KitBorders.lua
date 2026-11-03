@@ -380,6 +380,9 @@ end
 -- (0.20.1) an open side: its corners and side rail put away, the top and bottom rails to that edge (after CutNine and
 -- after every show of the parts)
 local OPEN_PARTS = { l = { "tl", "bl", "l" }, r = { "tr", "br", "r" } }
+-- (2.1.0; the user, 2026-11-03: "in some cases you will see the textures overlapping on the unitframes") an open side's
+-- corner studs and gems put away too: a unit frame's bar left them over its portrait ring
+local OPEN_GEMS = { l = { tl = true, bl = true }, r = { tr = true, br = true } }
 local function OpenSide(b, relay)
 	local s, parts = b.open, b.parts
 	if not (s and parts and OPEN_PARTS[s]) then
@@ -678,8 +681,9 @@ function Border:SetShown(on)
 		OpenSide(self)
 		ShowParts(self.glow, on and self.lit == "hover")
 		if self.gems then
+			local open = OPEN_GEMS[self.open or ""]
 			for _, c in ipairs(GEM_CORNERS) do
-				self.gems[c]:SetShown(on and self.gem ~= nil)
+				self.gems[c]:SetShown(on and self.gem ~= nil and not (open and open[c]))
 			end
 		end
 	elseif self.nine then
