@@ -899,6 +899,28 @@ local function Each(fn, ...)
 	end
 end
 
+-- (2.1.0; docs/plans/group-range.md) the range of every frame shown read again as a fight starts or ends (the rule's
+-- interact distance counts out of a fight only); the client's range and phase events read a member's own (UNIT_PAINT;
+-- GroupSolo's members their own). The buttons and the portrait party's members (Solo.Range)
+local function RangeShown(b)
+	if b:IsShown() then
+		Button.Range(b)
+	end
+end
+
+local function SoloRange(f)
+	if f:IsShown() and f.unit then
+		ns.Solo.Range(f)
+	end
+end
+
+local function RangeAll()
+	Each(RangeShown)
+	if ns.Solo and ns.Solo.Range then
+		ns.Solo:Each(SoloRange)
+	end
+end
+
 local events = nil
 local OnEvent = Shared("the group frames' events", function(_, event, unit, ...)
 	if not S.on then
@@ -914,7 +936,11 @@ local OnEvent = Shared("the group frames' events", function(_, event, unit, ...)
 		end
 		return
 	end
-	if event == "PLAYER_REGEN_ENABLED" then
+	if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_REGEN_DISABLED" then
+		RangeAll()
+		if event == "PLAYER_REGEN_DISABLED" then
+			return
+		end
 		if S.pending then
 			H:Layout()
 		end
@@ -938,6 +964,7 @@ end, "script")
 
 local EVENTS = { "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_CONNECTION", "UNIT_FLAGS", "UNIT_POWER_UPDATE", "UNIT_MAXPOWER",
 	"UNIT_DISPLAYPOWER", "UNIT_NAME_UPDATE", "UNIT_IN_RANGE_UPDATE", "UNIT_PHASE", "PLAYER_REGEN_ENABLED",
+	"PLAYER_REGEN_DISABLED",
 	"GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "PLAYER_ENTERING_WORLD", "RAID_TARGET_UPDATE", "READY_CHECK",
 	"READY_CHECK_CONFIRM", "READY_CHECK_FINISHED" }
 

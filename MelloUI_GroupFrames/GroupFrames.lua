@@ -208,7 +208,7 @@ local M = MelloUI:RegisterModule(OWNER, {
 		raidFlow = "down",
 		raidPerLine = 5,
 		raidGap = 6,
-		rangeAlpha = 0.45,   -- (one look C13d: 100% is no fade -- Fade When Out Of Range folded in)
+		rangeAlpha = 0.4,   -- (one look C13d: 100% is no fade -- Fade When Out Of Range folded in; 2.1.0: 40%)
 		-- the bars
 		healthAlpha = 1,
 		fillDirection = "RIGHT",

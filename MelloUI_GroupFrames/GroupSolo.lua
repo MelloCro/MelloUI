@@ -38,6 +38,7 @@
 --   Solo.PartyOn() -> bool    the members wanted (Party Frames the choice, the module on)
 --   Solo.frame                your frame (nil until made)
 --   Solo.aside                true while the Preview's made-up raid shows (GroupHeaders.lua's Aside): you away
+--   Solo.Range(f)             a member's fade out of range again (GroupHeaders: a fight's start or end)
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -502,6 +503,22 @@ end
 
 -- (fr-16) the member's "not here" eye, as the game's (UpdateNotPresentIcon): in another group, a summons on its way,
 -- phased -- the frame at the game's 0.6 then, the eye at full (it stands beside the frame, not in it)
+-- (2.1.0; the user, 2026-11-03: "...update the behaviour to match in Default, Modern and Oldschool theme") a member
+-- out of your range faded as the raid buttons are (GroupButton's rule and Out Of Range Opacity, whole and at once); one
+-- away (another group, another phase: NotPresent) faded the same; you never. Its pet's frame, a child of its frame,
+-- fades with it.
+local function Range(f)
+	local alpha = Button.RangeOpacity()
+	if f.unit == UNIT then
+		f:SetAlpha(1)
+	elseif alpha >= 1 then
+		f:SetAlpha(f.away and PART.away or 1)   -- (no fade asked: the game's own for one away)
+	else
+		Button.RangeAlpha(f, f.unit, alpha, f.away)
+	end
+end
+Solo.Range = Range
+
 local function NotPresent(f)
 	local eye = f.NotPresentIcon
 	if not eye then
@@ -532,7 +549,8 @@ local function NotPresent(f)
 			end
 		end
 	end
-	f:SetAlpha(away and PART.away or 1)
+	f.away = away
+	Range(f)
 	if not (atlas or file) then
 		eye:Hide()
 		return
@@ -882,6 +900,7 @@ local UNIT_EVENTS = {
 		Threat(f)
 	end,
 	UNIT_FACTION = PvP, UNIT_PHASE = NotPresent, UNIT_FLAGS = NotPresent, UNIT_OTHER_PARTY_CHANGED = NotPresent,
+	UNIT_IN_RANGE_UPDATE = Range,
 	UNIT_CTR_OPTIONS = NotPresent,
 }
 -- a member's own unit events beyond those (its status glow: its auras)

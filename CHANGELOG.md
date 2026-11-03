@@ -51,6 +51,8 @@
 - The MelloUI button sits inside the Game Menu now, under Options, in the menu's own style.
 - Party frames with portraits stand closer together (Vertical Spacing, Unit & Group Frames > Party, sets the gap), and the installer puts them at the game's own size instead of larger.
 - Fixed: the installer said MelloUI Oldschool was switched off when it wasn't installed; now it offers the link to get it.
+- Party and raid frames: a member out of your range fades to the Out Of Range Opacity (now 40%) in every skin, the portrait party frames and their pets too; a member in another phase counts as out of range, and one the game cannot range is judged by the interact distance out of a fight. The Designer's preview shows a member out of range.
+- Shields on every health bar: your player, target, target of target, focus and pet frames, the party and raid frames and the Personal Display show a shield, striped, after the health and the incoming heals; a shield bigger than the missing health (an overshield) shows whole from the bar's far end, over the health.
 - Party and raid frames: with MelloUI's on, the game's own never show, in any case (a fight, a roster change, a zone change, Edit Mode, a /reload). The portrait party frames are MelloUI's own now: the same look, steady in a fight, the members the game's own distance apart.
 - Personal Display: an interrupted or failed cast no longer shows on the game's cast bar while the game's cast bar is hidden; the display's own cast bar says "Interrupted" or "Failed", even with its text off.
 - Fixed: Dungeon Info's My Items no longer leaves your starred items over the dungeon list when you switch back to Dungeons or Raids.

@@ -626,10 +626,11 @@ plays it on the level you have.
 What a healer reads off the frames (0.19.0; on by default, both looks):
 
 - **Incoming Heals** (Unit & Group Frames: the Health bar of Player, Target and Focus): the heals on their way to a unit, on its health bar
-  after the health: your heals in teal, other healers' in a darker teal, shields striped.
-  They stop at the bar's end. Forever's player, target and focus frames (and their targets')
-  have no incoming heals of their own, so MelloUI draws them there; the party, pet and raid
-  frames show the game's own (the raid frames' Display Incoming Heals).
+  after the health: your heals in teal, other healers' in a darker teal, then its shield, striped.
+  They stop at the bar's end. A shield bigger than the missing health (an overshield) shows whole
+  from the bar's far end, striped over the health. On MelloUI's player, target, focus, target of
+  target and pet frames and its party and raid frames; the Personal Display's health bar shows
+  your shield the same way (its shield column stays beside it).
 - **Debuff Glow** (Unit & Group Frames > All frames): while a friend has a debuff that can be
   removed, a soft glow in its colour (Magic blue, Curse purple, Disease brown, Poison green)
   round their frame: round the portrait and the bars on the unit and party frames; on the raid
@@ -656,7 +657,10 @@ frames stand, so your heals and indicators can be seen on it. Either way the par
   party's will stand); Frame Width and Height (the game's raid frame: 72 x 36); Spacing; Party Grows (down, up, right, left);
   Party Order (by role: tanks, healers, damage; group order; by name); Raid Grouping (by group, role or class, or
   one list); Raid Fills (down then across, or across then down); Frames Per Column / Row; the Gap between them;
-  Out Of Range Opacity (100%: no fade). Move the party and the raid in Edit Layout ("Party Frames", "Raid
+  Out Of Range Opacity (40% by default, 100%: no fade): a member out of your range -- about 40 yards, the game's
+  own check; in another phase; or, when the game cannot range them, out of the interact distance (28 yards) while
+  you are not in a fight -- fades whole and at once, in raid-style frames and the portrait party alike (a pet
+  with its owner); you never do, nor anyone while you are not in a group. Move the party and the raid in Edit Layout ("Party Frames", "Raid
   Frames"). Layout changes made in a fight wait for its end.
 - **Their Health bar, Power bar and Background:** the Health Bar Colour, one for every frame (Look > Colours, a
   link on the Health bar: class colour, Class & Reaction -- the class colour here --, My Colour, By health with your

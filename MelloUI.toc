@@ -32,6 +32,7 @@ Core\GameLook.lua
 Core\Notice.lua
 Core\CentreText.lua
 Core\Feed.lua
+Core\Shields.lua
 Core\Reminders.lua
 Core\Threat.lua
 Core\Fader.lua

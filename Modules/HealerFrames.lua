@@ -11,13 +11,15 @@
 --     player, the target, the focus and their targets. After the health
 --     fill: my heals, others' heals, then shields, in the game's own colours
 --     (CompactUnitFrame.lua's CUF_MY_HEAL_PREDICTION_COLOR and
---     CUF_OTHER_HEAL_PREDICTION_COLOR, its raidframe-shield-fill). The party,
---     pet and raid frames draw the game's own. Health and heals are secret:
---     the client's calculator (CreateUnitHealPredictionCalculator,
+--     CUF_OTHER_HEAL_PREDICTION_COLOR). Health and heals are secret: the
+--     client's calculator (CreateUnitHealPredictionCalculator,
 --     UnitGetDetailedHealPrediction) splits and clamps them to the missing
---     health, and three StatusBars are handed its amounts, the unit's
---     maximum health their maximum, each starting at the fill before it.
---     Nothing is read or compared.
+--     health, and two StatusBars are handed its amounts, the unit's maximum
+--     health their maximum, each starting at the fill before it. The shield
+--     is Core/Shields.lua's (2.1.0, one system for every shield): handed the
+--     calculator's absorbs after the heals, and an overshield -- more than
+--     the missing health -- from the bar's far end. Nothing is read or
+--     compared.
 --   * Debuff Glow: while a frame's unit (a friend) has a debuff that Debuff
 --     Glow Shows keeps -- every dispellable one, one anyone in the group can
 --     dispel, or one I can -- a soft glow in the debuff's colour round the
@@ -185,11 +187,8 @@ local function Calculator()
 end
 
 local WHITE = "Interface\\Buttons\\WHITE8X8"
-local SHIELD_ATLAS = "raidframe-shield-fill"
--- the stripes over a shield: the game's own tiled overlay (StatusBarOverlaySegment.xml's TiledFillOverlay), tiled by
--- the engine at its own size over whatever width the fill has (no size read)
-local SHIELD_STRIPES = "Interface\\RaidFrame\\Shield-Overlay"
-local healSets = {}   -- every set made: { health, unit (fn), mine, other, shield, fill }
+local Shields = MelloUI.Shields   -- (2.1.0) the shield after the heals: Core/Shields.lua's strips
+local healSets = {}   -- every set made: { health, unit (fn), mine, other, shield (Shields' attached strip), fill }
 local healOf = setmetatable({}, WEAK)   -- [health bar] = its set
 
 local function Colour(c)
@@ -226,15 +225,14 @@ local function Widths(set)
 	if w and w > 0 then
 		set.mine:SetWidth(w)
 		set.other:SetWidth(w)
-		set.shield:SetWidth(w)
 	end
 end
 
 -- the chain: mine on the health fill's right edge, others' on mine's, the
--- shield on others' (a zero fill ends where it starts)
+-- shield on others' (a zero fill ends where it starts; Shields lays it)
 -- the segments' fills one sublevel after another over the health fill's (its
--- layer as it is now: Bar Textures may lift it), the shield's stripes over
--- them; set only when the fill's layer changed
+-- layer as it is now: Bar Textures may lift it; the shield's strips two and
+-- three over, Shields'); set only when the fill's layer changed
 local function Layers(set, fill)
 	local ok, layer, sub = pcall(fill.GetDrawLayer, fill)
 	if not ok or Secret(layer) or Secret(sub) or type(layer) ~= "string" then
@@ -246,20 +244,17 @@ local function Layers(set, fill)
 	end
 	set.layer, set.sub = layer, sub
 	local k = 0
-	for _, bar in ipairs({ set.mine, set.other, set.shield }) do
+	for _, bar in ipairs({ set.mine, set.other }) do
 		k = k + 1
 		local tex = bar:GetStatusBarTexture()
 		if tex then
 			tex:SetDrawLayer(layer, math.min(7, sub + k))
 		end
 	end
-	if set.stripes then
-		set.stripes:SetDrawLayer(layer, math.min(7, sub + 4))
-	end
 end
 
 -- (1.0, the user 2026-10-20: "shield texture is a bit too big for the health bar, it should fit") the health fill's
--- masks on the segments' own textures and the stripes: the game cuts the player's and the target's fill with its
+-- masks on the segments' own textures (the shield's: Shields' own): the game cuts the player's and the target's fill with its
 -- HealthBarMask (its own absorb bar wears it too), so an unmasked segment showed the fill's whole height over the
 -- bar's edges. Ours only: the mask is read off the game's fill and added to MelloUI's textures (a texture takes at
 -- most three)
@@ -268,8 +263,7 @@ local function Masks(set, fill)
 	if not okN or Secret(n) or type(n) ~= "number" or n < 1 then
 		return
 	end
-	local own = { set.mine:GetStatusBarTexture(), set.other:GetStatusBarTexture(), set.shield:GetStatusBarTexture(),
-		set.stripes }
+	local own = { set.mine:GetStatusBarTexture(), set.other:GetStatusBarTexture() }
 	set.masked = set.masked or {}
 	for i = 1, math.min(n, 3) do
 		local okM, mask = pcall(fill.GetMaskTexture, fill, i)
@@ -299,7 +293,7 @@ local function Chain(set)
 	end
 	set.fill = fill
 	local prev = fill
-	for _, bar in ipairs({ set.mine, set.other, set.shield }) do
+	for _, bar in ipairs({ set.mine, set.other }) do
 		bar:ClearAllPoints()
 		bar:SetPoint("TOPLEFT", prev, "TOPRIGHT")
 		bar:SetPoint("BOTTOMLEFT", prev, "BOTTOMRIGHT")
@@ -312,7 +306,7 @@ end
 local function HideHeals(set)
 	set.mine:Hide()
 	set.other:Hide()
-	set.shield:Hide()
+	Shields.Hide(set.health)
 end
 
 -- (the preview's stand-ins, MelloUI's own frames, below: sample heals from
@@ -336,11 +330,9 @@ local function PaintSample(set)
 	set.mine:SetValue(mine)
 	set.other:SetMinMaxValues(0, hi)
 	set.other:SetValue(others)
-	set.shield:SetMinMaxValues(0, hi)
-	set.shield:SetValue(shield)
 	set.mine:Show()
 	set.other:Show()
-	set.shield:Show()
+	Shields.Paint(health, shield, shield, hi, false, set.other:GetStatusBarTexture())
 end
 
 local function UpdateHeals(set)
@@ -359,7 +351,7 @@ local function UpdateHeals(set)
 		return
 	end
 	local okI, _, mine, others = pcall(c.GetIncomingHeals, c)
-	local okA, shield = pcall(c.GetDamageAbsorbs, c)
+	local okA, shield, clamped = pcall(c.GetDamageAbsorbs, c)
 	local okM, max = pcall(UnitHealthMax, unit)
 	if not (okI and okA and okM) then
 		HideHeals(set)
@@ -370,11 +362,14 @@ local function UpdateHeals(set)
 	set.mine:SetValue(mine)
 	set.other:SetMinMaxValues(0, max)
 	set.other:SetValue(others)
-	set.shield:SetMinMaxValues(0, max)
-	set.shield:SetValue(shield)
 	set.mine:Show()
 	set.other:Show()
-	set.shield:Show()
+	-- (2.1.0) the shield: what fits after the heals, or -- clamped, more than that -- the whole from the bar's far end
+	local okW, whole = pcall(UnitGetTotalAbsorbs, unit)
+	if not okW then
+		whole = shield
+	end
+	Shields.Paint(set.health, shield, whole, max, clamped, set.other:GetStatusBarTexture())
 end
 
 -- (one handler each for every health bar: the bar the script runs on)
@@ -398,24 +393,14 @@ local function MakeHeals(health, unit)
 		return healOf[health]
 	end
 	local set = { health = health, unit = unit }
-	set.mine, set.other, set.shield = Segment(health), Segment(health), Segment(health)
+	set.mine, set.other = Segment(health), Segment(health)
 	set.mine:SetStatusBarTexture(WHITE)
 	set.mine:SetStatusBarColor(Colour(_G.CUF_MY_HEAL_PREDICTION_COLOR))
 	set.other:SetStatusBarTexture(WHITE)
 	set.other:SetStatusBarColor(Colour(_G.CUF_OTHER_HEAL_PREDICTION_COLOR))
-	if not pcall(set.shield.SetStatusBarTexture, set.shield, SHIELD_ATLAS) then
-		set.shield:SetStatusBarTexture(WHITE)
-	end
-	local fill = set.shield:GetStatusBarTexture()
-	if fill then
-		local stripes = set.shield:CreateTexture(nil, "BACKGROUND")
-		stripes:SetTexture(SHIELD_STRIPES, "REPEAT", "REPEAT")
-		stripes:SetHorizTile(true)
-		stripes:SetVertTile(true)
-		stripes:SetPoint("TOPLEFT", fill, "TOPLEFT")
-		stripes:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
-		set.stripes = stripes
-	end
+	-- (2.1.0) the shield's strips (Core/Shields.lua); the attached one is the set's shield, for the dump and the tests
+	local sp = Shields.Attach(health)
+	set.shield, set.over, set.stripes = sp.attached, sp.over, sp.attached.stripes
 	healOf[health] = set
 	healSets[#healSets + 1] = set
 	Widths(set)

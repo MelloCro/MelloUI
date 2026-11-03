@@ -790,6 +790,7 @@ local function Build()
 	ui.float = float
 	local hh, hp, hc = Heights()
 	ui.health = NewBar(float, hh, "personal", true)
+	MelloUI.Shields.Attach(ui.health.bar)   -- (2.1.0: your shield on it, Core/Shields.lua)
 	ui.power = NewBar(float, hp, "personal", true)
 	ui.cast = NewBar(float, hc, "castbars")
 	ui.stack = { ui.health, ui.power, ui.cast }
@@ -928,6 +929,7 @@ local function Health()
 		Motion.Low(share)
 		Motion.HealthMoment(share, S.healAt and GetTime() - S.healAt < T.healRecent)
 	end
+	MelloUI.Shields.Update(ui.health.bar, "player")
 	Percent(ui.health.text, rawget(_G, "UnitHealthPercent"), "player", true, Curve())
 end
 
@@ -3670,6 +3672,9 @@ local function OnEvent(_, event, a1, a2, a3, a4)
 		Motion.Combat(a2, a3)
 	elseif event == "UNIT_ABSORB_AMOUNT_CHANGED" then
 		Shield.Changed()
+		if S.ui and not S.preview then
+			MelloUI.Shields.Update(S.ui.health.bar, "player")   -- (2.1.0: on the health bar too, Core/Shields.lua)
+		end
 	elseif event == "UNIT_AURA" then
 		Shield.Aura(a2)
 		Cds.Aura(a2)

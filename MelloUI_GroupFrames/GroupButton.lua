@@ -14,8 +14,11 @@
 --                           (name, health text, icons: GroupParts)
 --   Button.Refresh(f)       everything of f's unit painted again
 --   Button.Health / Power / Name / Role / Mark / Ready / Range / Paint (f)
+--   Button.InRange(unit)    the range rule (true, false or the client's secret)
+--   Button.RangeAlpha(f, unit, alpha, away)   f faded by it (away: out of range)
 --   Button.Sample(f, s)     a made-up member: s = { class, name, health (0..1),
---                           power (0..1), role, dead, offline, mark, ready }
+--                           power (0..1), role, dead, offline, mark, ready,
+--                           outOfRange, shield (0..1 of the maximum) }
 -- Every value of the unit goes to the client's own widgets as it is (secret
 -- or not): the health as the client's percent (UnitHealthPercent with the
 -- game's 0..100 curve), the missing health (UnitHealthMissing), the colours by
@@ -51,6 +54,20 @@ local READY = { ready = "READY_CHECK_READY_TEXTURE_RAID", notready = "READY_CHEC
 
 local function DB()
 	return RD.DB()
+end
+
+local RANGE_ALPHA = 0.4   -- (2.1.0: Out Of Range Opacity's default -- the fade of the best-known group frames)
+
+-- a call guarded: its first answer, or nil (an error, a missing API, a secret)
+local function Ask(fn, ...)
+	if type(fn) ~= "function" then
+		return nil
+	end
+	local ok, v = pcall(fn, ...)
+	if ok and not Secret(v) then
+		return v
+	end
+	return nil
 end
 
 --------------------------------------------------------------------------------
@@ -612,6 +629,14 @@ function Button.Health(f)
 	end
 	if f.sample then
 		HealthText(f, nil)
+		-- (2.1.0) a made-up shield (Core/Shields.lua): an overshield where it is more than the missing health. A live
+		-- member's is Healer Frames' (its heals and shield on every button: GroupHeaders' Dress)
+		local s = f.sample
+		local share = not (s.dead or s.offline) and s.shield or nil
+		if share then
+			MelloUI.Shields.Attach(hb)
+		end
+		MelloUI.Shields.Sample(hb, share, share and share > 1 - (s.health or 1))
 	end
 	-- the colours that follow the health
 	if f.offline or f.dead then
@@ -782,35 +807,75 @@ function Button.Ready(f, status)
 	end
 end
 
--- out of range: the frame faded (the client's answer, secret or not: the
--- alpha chosen from it by the client)
+-- (2.1.0; the user, 2026-11-03: "...how ... handles out of range party/raid
+-- members fade, and update the behaviour to match in Default, Modern and
+-- Oldschool theme"; docs/plans/group-range.md) the range rule, one for every
+-- frame of a member (these buttons, the portrait party and its pets: GroupSolo):
+-- you, and anyone while you are not in a group, always in range; a member in
+-- another phase never; else the client's own answer (UnitInRange, about 40
+-- yards -- a secret as it is: the client picks the alpha from it); a unit the
+-- client does not range (its "checked" false) by the interact distance out of
+-- a fight (28 yards), in range in one. Read again on the client's range and
+-- phase events, and for every frame as a fight starts or ends (GroupHeaders)
+function Button.InRange(unit)
+	if not unit or unit == "player" or Ask(UnitIsUnit, unit, "player") == true then
+		return true
+	end
+	if Ask(IsInGroup) ~= true and Ask(IsInRaid) ~= true then
+		return true
+	end
+	if Ask(rawget(_G, "UnitPhaseReason"), unit) ~= nil then
+		return false
+	end
+	local ok, inRange, checked = pcall(UnitInRange, unit)
+	if not ok then
+		return true
+	end
+	if Secret(inRange) then
+		return inRange
+	end
+	if not Secret(checked) and checked == false then
+		if Ask(InCombatLockdown) ~= true then
+			local near = Ask(rawget(_G, "CheckInteractDistance"), unit, 4)
+			if near ~= nil then
+				return near and true or false
+			end
+		end
+		return true
+	end
+	return inRange == true
+end
+
+-- f faded out of range to `alpha`, whole and at once (away: out of range
+-- whatever the rule says -- a member in another group)
+function Button.RangeAlpha(f, unit, alpha, away)
+	local inRange = not away and Button.InRange(unit)
+	if Secret(inRange) then
+		if f.SetAlphaFromBoolean then
+			pcall(f.SetAlphaFromBoolean, f, inRange, 1, alpha)
+		end
+		return
+	end
+	f:SetAlpha(inRange and 1 or alpha)
+end
+
+-- the Out Of Range Opacity (100%: no fade)
+function Button.RangeOpacity()
+	return DB().rangeAlpha or RANGE_ALPHA
+end
+
+-- this button's fade (a made-up member: its outOfRange, so the preview shows it)
 function Button.Range(f)
-	local db = DB()
-	local alpha = db.rangeAlpha or 0.45   -- (one look C13d: 100% is no fade)
-	if alpha >= 1 or f.sample or not f.unit or f.unit == "player" then
+	local alpha = Button.RangeOpacity()
+	if f.sample then
+		f:SetAlpha(f.sample.outOfRange and alpha < 1 and alpha or 1)
+		return
+	end
+	if alpha >= 1 or not f.unit then
 		f:SetAlpha(1)
 		return
 	end
 	Button.RangeAlpha(f, f.unit, alpha)
-end
-
--- the range rule on any frame of `unit` (retail: the game's normal party
--- members too, GroupHeaders.lua)
-function Button.RangeAlpha(f, unit, alpha)
-	local ok, inRange, checked = pcall(UnitInRange, unit)
-	if not ok then
-		f:SetAlpha(1)
-		return
-	end
-	if not Secret(checked) and checked == false then
-		f:SetAlpha(1)   -- (not checked: a unit the client cannot range)
-		return
-	end
-	if Secret(inRange) and f.SetAlphaFromBoolean then
-		pcall(f.SetAlphaFromBoolean, f, inRange, 1, alpha)
-	elseif not Secret(inRange) then
-		f:SetAlpha(inRange and 1 or alpha)
-	end
 end
 
 function Button.Refresh(f)

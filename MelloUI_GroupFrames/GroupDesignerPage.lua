@@ -139,11 +139,14 @@ Page.samples = setmetatable({}, { __mode = "v" })   -- [stage pick] = its big sa
 local Button = ns.Button
 
 local SAMPLE_MEMBERS = {
-	{ class = "PRIEST", health = 0.9, frac = 0.7, role = "HEALER", power = 0.6 },
-	{ class = "WARRIOR", health = 0.45, frac = 0.35, role = "TANK", power = 0.3, powerToken = "RAGE", mark = 8 },
+	-- (2.1.0) shields: the priest's more than its missing health (an overshield), the warrior's after its health
+	{ class = "PRIEST", health = 0.9, frac = 0.7, role = "HEALER", power = 0.6, shield = 0.3 },
+	{ class = "WARRIOR", health = 0.45, frac = 0.35, role = "TANK", power = 0.3, powerToken = "RAGE", mark = 8,
+	  shield = 0.2 },
 	{ class = "MAGE", health = 0.75, frac = 0.85, role = "DAMAGER", power = 0.8 },
 	{ class = "DRUID", health = 0.6, frac = 0.5, role = "HEALER", power = 0.5 },
-	{ class = "ROGUE", health = 0.3, frac = 0.2, role = "DAMAGER", power = 0.9, powerToken = "ENERGY" },
+	-- (2.1.0) one out of your range: the preview shows the Out Of Range Opacity's fade
+	{ class = "ROGUE", health = 0.3, frac = 0.2, role = "DAMAGER", power = 0.9, powerToken = "ENERGY", outOfRange = true },
 }
 
 -- a member's sample (its name from the Preview's made-up group)
