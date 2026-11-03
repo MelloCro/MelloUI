@@ -133,6 +133,7 @@ local TEXT = {
 	-- (1.2.0: Dungeon Info's lines on a door's tooltip, the user's pick B of journal_placements)
 	bosses = "%d bosses: %s",
 	dungeonInfo = "Click: open it in Dungeon Info",
+	dungeonMap = "Click: its floor plan, with its page in Dungeon Info",   -- (2.1.0: one with a plan, MapDungeon.lua)
 	-- (2.1.0) a pin that holds others (MapPins' merge): its title, its click
 	dungeons = "%d dungeons",
 	raids = "%d raids",
@@ -573,6 +574,12 @@ local function DungeonInfoOf(pin)
 	return J, J.Get(d.dungeonID)
 end
 
+-- the door's click line: its floor plan with the page when the map has one (2.1.0), the page alone else
+local function ClickLine(inst)
+	local D = ns.Dungeon
+	return D and D.Has(inst.map) and TEXT.dungeonMap or TEXT.dungeonInfo
+end
+
 -- its bosses in a line ("4 bosses: Oggleflint, Taragaman the Hungerer, ..."), nil with none known
 local function BossLine(inst)
 	local n = #inst.bosses
@@ -630,7 +637,7 @@ local function EntranceFill(tip, pin)
 		if line then
 			tip:AddLine(line, text[1], text[2], text[3], true)
 		end
-		tip:AddLine(TEXT.dungeonInfo, gold[1], gold[2], gold[3])
+		tip:AddLine(ClickLine(inst), gold[1], gold[2], gold[3])
 		tip:Show()
 	end
 end
@@ -645,7 +652,7 @@ local function EntranceTip(pin)
 	local _, inst = DungeonInfoOf(pin)
 	if inst then
 		local bosses = BossLine(inst)
-		return d.name, line .. (bosses and ("\n" .. bosses) or "") .. "\n" .. TEXT.dungeonInfo
+		return d.name, line .. (bosses and ("\n" .. bosses) or "") .. "\n" .. ClickLine(inst)
 	end
 	return d.name, line
 end

@@ -122,7 +122,7 @@ M = MelloUI:RegisterModule("Map", {
 		-- (2.1.0; the user, 2026-11-02: "once inside of the dungeon, to open the dungeon map, with boss positions and
 		-- loot seen on the right side of the map") MapDungeon.lua
 		{ type = "toggle", key = "dungeonMaps", name = "Dungeon Maps", new = "2.1.0",
-		  desc = "Inside a dungeon or raid the map opens on its own floor plan: the bosses where they stand, and their loot beside it." },
+		  desc = "Inside a dungeon or raid the map opens on its own floor plan: the bosses where they stand, and their loot beside it. From outside, a click on its door or on its row in Dungeon Info shows it." },
 	},
 })
 
@@ -933,6 +933,28 @@ end
 -- the map shown with Dungeon Info out (Dungeon Info's key toggles it)
 function M:DungeonInfoShown()
 	return win.frame ~= nil and win.frame:IsShown() and Log.IsDungeonInfo()
+end
+
+-- (2.1.0; the user, 2026-11-03) an instance's plan in place of the world while the window shows (Dungeon Info's page
+-- of it: a click on its door or its row), when it has one and Dungeon Maps is on; the plan shown already kept as it is
+-- (its wing and view: a boss's page opened from it)
+function M:ShowDungeon(mapID)
+	if not (self.isEnabled and win.frame and win.frame:IsShown() and Dungeon.Has(mapID)) then
+		return false
+	end
+	if Dungeon.Shown() == mapID then
+		return true
+	end
+	if not Dungeon.Show(mapID) then
+		return false
+	end
+	ShowName(nil)
+	return true
+end
+
+-- (2.1.0) an instance has a plan to show (Dungeon Info's row tooltip)
+function M:HasDungeonMap(mapID)
+	return self.isEnabled and Dungeon.Has(mapID)
 end
 
 -- (1.2.0) the map glides to a place given in the game's world coordinates (Dungeon Info's Show: a dungeon's door), a

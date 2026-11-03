@@ -108,6 +108,7 @@ local TEXT = {
 	inLog = "In your log", done = "Done", fromLevel = "From level %d", after = "After an earlier quest",
 	startsQuest = "Starts a quest",
 	rowTip = "Click: its page",
+	rowTipMap = "Click: its page, and its floor plan on the map",   -- (2.1.0: one with a plan, MelloUI_Map)
 	questTip = "Click: Route to its giver",
 }
 P.TEXT = TEXT
@@ -212,7 +213,9 @@ end, "script")
 
 local RowEnter = Perf.Shared("OnEnter on Dungeon Info's list rows", function(self)
 	if self.inst then
-		W.ShowTooltip(self, self.inst.name, TEXT.rowTip)
+		local map = MelloUI:GetModule("Map")
+		local plan = map and map.HasDungeonMap and map:HasDungeonMap(self.inst.map)
+		W.ShowTooltip(self, self.inst.name, plan and TEXT.rowTipMap or TEXT.rowTip)
 	end
 end, "script")
 
@@ -1129,6 +1132,11 @@ function P:Show(inst, encounterID)
 	end
 	pager:ScrollTo(0, true)
 	P.SyncBar()
+	-- (2.1.0; the user, 2026-11-03) its floor plan on the map beside the page, when the map has one
+	local map = MelloUI:GetModule("Map")
+	if map and map.ShowDungeon then
+		map:ShowDungeon(inst.map)
+	end
 end
 
 -- the page on show laid again (a change of your stars, quests, the items the game has come to know)

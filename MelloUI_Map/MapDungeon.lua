@@ -15,6 +15,12 @@
 -- The "World map" button at the top left, or a right-click at the plan's
 -- widest view, goes back to the world.
 --
+-- From outside (the user, 2026-11-03: "Can i open the dungeon map by clicking
+-- on it on the map, or clicking on the dungeon in the dungeon info?"): Dungeon
+-- Info's page of an instance shows its plan too (M:ShowDungeon) -- a click on
+-- its door on the world map, or on its row in Dungeon Info's list. Your arrow
+-- and the wing that follows you are the instance's you stand in only.
+--
 -- Wings (the user, 2026-11-02: "Several floors, we need to spread them into
 -- Wings"): a dungeon whose floors lie over each other comes in wings (the
 -- data's, each named by the game's own area name), one shown at a time, picked
@@ -32,7 +38,8 @@
 --                                mouse, as the world's)
 --   Dungeon.Current() -> map     the instance you are in, when it has a plan and
 --                                the option is on; else nil
---   Dungeon.Show(map)            the plan shown (its canvas made the first time)
+--   Dungeon.Has(map) -> bool     a plan of it, and the option on
+--   Dungeon.Show(map)          the plan shown (its canvas made the first time)
 --   Dungeon.Hide(keep)           the world again (keep: the plan's files kept, it
 --                                shows again at once)
 --   Dungeon.Shown() -> map       the plan shown now, or nil
@@ -138,6 +145,10 @@ function Dungeon.Current()
 	return Plan(mapID) and mapID or nil
 end
 
+function Dungeon.Has(mapID)
+	return On() and Plan(mapID) ~= nil
+end
+
 function Dungeon.Shown()
 	return S.shown
 end
@@ -146,11 +157,12 @@ function Dungeon.Hint()
 	return TEXT.hint
 end
 
--- the wing the minimap names you in: its area name now (the game's own for the room you stand in) one of a wing's own
+-- the wing the minimap names you in: its area name now (the game's own for the room you stand in) one of a wing's own;
+-- nil outside that instance (a plan shown from outside: the world's area names are not its rooms')
 function Dungeon.Where(mapID)
 	local areas = S.areas[mapID]
 	local fn = rawget(_G, "GetMinimapZoneText")
-	if not (areas and fn) then
+	if not (areas and fn) or InstanceMap() ~= mapID then
 		return nil
 	end
 	local ok, name = pcall(fn)
@@ -316,10 +328,11 @@ local function ArrowLook()
 	end
 end
 
--- your place on the plan shown (yards from its top left), or nil: the game gives none inside, or a secret
+-- your place on the plan shown (yards from its top left), or nil: the game gives none inside, or a secret, or you are
+-- not in that instance (its plan shown from outside)
 local function You()
 	local d = Plan(S.shown)
-	if not (d and UnitPosition) then
+	if not (d and UnitPosition) or InstanceMap() ~= S.shown then
 		return nil
 	end
 	-- (the game's world position: its first the north, its second the west)
