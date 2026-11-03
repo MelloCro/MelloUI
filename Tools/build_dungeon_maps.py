@@ -574,6 +574,67 @@ def split(units):
     return [[units[i] for i in sorted(g, key=lambda i: units[i]["zmin"])] for g in groups]
 
 
+def buildings(units, ways, bosses):
+    """the units by building (2.1.0; the user 2026-11-03, of Scarlet Monastery's first wing: its four buildings in
+    one, tiny rooms on a big empty plan). Rooms whose floors touch are one site (Scarlet Monastery's Graveyard,
+    Library, Armory and Cathedral; Dire Maul's East apart from its West and North, joined inside); a site with a way
+    in and a boss on it (KL px spots: on its floors, else the nearest) is a building of its own; every other site and
+    the outdoor ground join the building nearest them. A map of fewer than two buildings: all its units as one (open
+    land's huts and caves, a gap in a city's floor pictures stay with the dungeon)"""
+    rooms = [i for i, u in enumerate(units) if u["kind"] == "room"]
+    parent = {i: i for i in rooms}
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+    for a in range(len(rooms)):
+        for b in range(a + 1, len(rooms)):
+            if shared(units[rooms[a]], units[rooms[b]], grown=True) >= TOUCH:
+                parent[find(rooms[a])] = find(rooms[b])
+    sites = {}
+    for i in rooms:
+        sites.setdefault(find(i), []).append(i)
+    sites = list(sites.values())
+    if len(sites) < 2:
+        return [units]
+
+    def box(idx):
+        return (min(units[i]["fp"][0] for i in idx), min(units[i]["fp"][1] for i in idx),
+                max(units[i]["fp"][0] + units[i]["fp"][2].shape[1] for i in idx),
+                max(units[i]["fp"][1] + units[i]["fp"][2].shape[0] for i in idx))
+
+    def gap(p, q):
+        return max(0, p[0] - q[2], q[0] - p[2]) + max(0, p[1] - q[3], q[1] - p[3])
+    boxes = [box(s) for s in sites]
+
+    def site_at(x, y):
+        for k, s in enumerate(sites):
+            for i in s:
+                ux, uy, m = units[i]["fpg"]
+                px, py = int(x) - ux, int(y) - uy
+                if 0 <= py < m.shape[0] and 0 <= px < m.shape[1] and m[py, px]:
+                    return k
+        return min(range(len(sites)), key=lambda k: gap(boxes[k], (x, y, x, y)))
+    own = {site_at(x, y) for x, y in ways} & {site_at(x, y) for x, y in bosses}
+    # (and a name of its own: the game names the part apart -- Dire Maul's East, only ever "Dire Maul", stays with its
+    # West and North)
+    names = {k: {units[i]["name"] for i in sites[k] if units[i]["name"]} for k in own}
+    own = {k for k in own if names[k] - set().union(*(names[h] for h in own if h != k))}
+    if len(own) < 2:
+        return [units]
+    groups = {k: list(sites[k]) for k in own}
+    for k in range(len(sites)):
+        if k not in own:
+            groups[min(own, key=lambda h: gap(boxes[k], boxes[h]))] += sites[k]
+    for i, u in enumerate(units):
+        if u["kind"] != "room":
+            groups[max(own, key=lambda h: (sum(shared(u, units[j], grown=True) for j in groups[h]),
+                                           -gap(box([i]), boxes[h])))].append(i)
+    return [[units[i] for i in sorted(g)] for _, g in sorted(groups.items(), key=lambda kv: min(kv[1]))]
+
+
 def boss_wing(wings, x, y, z):
     """the wing whose rooms are under a boss's spot (KL px) nearest his height; else the nearest rooms' wing"""
     best = None
@@ -754,17 +815,32 @@ def build_map(key, mapID, name, bosses, spawns, wdt_fid, ways):
         g[2:-2, 2:-2] = m
         u["fpg"] = (x0 - 2, y0 - 2, dilate(g, 2))
         u["area"] = int(m.sum())
-    wings = split(units) if units else [[]]
+    spots = []   # (the ways in, KL px: which buildings have one; the bosses' spots too)
+    for wx, wy, _ in ways:
+        x, y = EDGE_W - wy - e0, EDGE_W - wx - s0
+        if 0 <= x <= e1 - e0 and 0 <= y <= s1 - s0:
+            spots.append((x * KL, y * KL))
+    wings = []
+    marks = [((E - e0) * KL, (S - s0) * KL) for _, E, S, _ in places]
+    for b, us in enumerate(buildings(units, spots, marks) if units else []):
+        for u in us:
+            u["building"] = b
+        wings += split(us)
+    wings = wings or [[]]
     at = [boss_wing(wings, (E - e0) * KL, (S - s0) * KL, z) for _, E, S, z in places]
+
+    def building(w):
+        return wings[w][0]["building"] if wings[w] else 0
     # (a wing of a room or two with no boss -- the Deadmines' room over its first tunnel -- is no wing to pick: it
-    # joins the wing it touches most, drawn over it)
+    # joins the wing of its building it touches most, drawn over it)
     while len(wings) > 1:
         size = [sum(u["area"] for u in us) for us in wings]
-        small = [w for w in range(len(wings)) if size[w] < SMALL * max(size) and w not in at]
+        small = [w for w in range(len(wings)) if size[w] < SMALL * max(size) and w not in at
+                 and any(v != w and building(v) == building(w) for v in range(len(wings)))]
         if not small:
             break
         w = min(small, key=lambda q: size[q])
-        best = max((v for v in range(len(wings)) if v != w),
+        best = max((v for v in range(len(wings)) if v != w and building(v) == building(w)),
                    key=lambda v: (sum(shared(u, o, grown=True) for u in wings[w] for o in wings[v]), size[v]))
         wings[best] += wings[w]
         del wings[w]
@@ -786,10 +862,17 @@ def build_map(key, mapID, name, bosses, spawns, wdt_fid, ways):
     home = {}
     for nm in {n for c_ in weight for n in c_}:
         home[nm] = max(range(len(wings)), key=lambda w: weight[w][nm])
+    # (2.1.0, of Dire Maul's "Wing 3") a wing with no area name of its own: the dungeon's own name for the first one,
+    # the name of the first boss met there for the others -- never a bare number
+    first_boss = {}
+    for (enc, *_), w in zip(places, at):
+        first_boss.setdefault(w, dict(bosses).get(enc))
     used, titles = set(), []
     for w in range(len(wings)):
-        pick = next((n for n, _ in weight[w].most_common() if n not in used and n != name), None) \
-            or next((n for n, _ in weight[w].most_common() if n not in used), None)
+        own_name = next((n for n, _ in weight[w].most_common() if n not in used and n != name), None)
+        any_name = next((n for n, _ in weight[w].most_common() if n not in used), None)
+        boss = first_boss.get(w) if first_boss.get(w) not in used else None
+        pick = own_name or (any_name or boss if w == 0 else boss or any_name)
         if pick:
             used.add(pick)
         titles.append(pick)
