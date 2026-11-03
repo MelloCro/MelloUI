@@ -190,8 +190,9 @@ local M = MelloUI:RegisterModule(OWNER, {
 	icon = "Interface\\Icons\\Spell_Holy_PrayerOfHealing",
 	flavour = "Your party and raid as you want them: colours, bars, texts, and your HoTs and shields at a glance.",
 	enabledByDefault = true,
-	-- (0.20.2) the raid spacing's one-time copy: this machine's step, never in a profile
-	keep = { "raidSpacingMigrated" },
+	-- (0.20.2, 2.1.0) the one-time steps (the raid spacing's copy, the range fade's new default): this machine's,
+	-- never in a profile
+	keep = { "raidSpacingMigrated", "rangeAlphaMigrated" },
 	defaults = {
 		-- the frames
 		partyStyle = "group",
@@ -251,7 +252,7 @@ local M = MelloUI:RegisterModule(OWNER, {
 		  desc = "In a party: the raid frames (their look is set on Raid), or the party frames with portraits. In a raid, the raid frames always show." },
 		-- (1.2.4; the user, 2026-10-28: "if the Person selects that he wants to see the Raid Frames, then he should get
 		-- the Look under the "Raid" category") the party in raid frames wears the raid's look: to Raid
-		{ type = "button", name = "Raid Frames' Look", text = "Raid", new = "2.0.0",
+		{ type = "button", name = "Raid Frames' Look", text = "Raid",
 		  desc = "Your party wears the raid frames' look: set it on Raid.",
 		  onClick = function() MelloUI:OpenConfig("raidframes") end },
 		{ type = "toggle", key = "showPlayer", name = "Show Yourself In Your Party",
@@ -294,7 +295,7 @@ local M = MelloUI:RegisterModule(OWNER, {
 		  desc = "Which way the health and power bars fill." },
 		{ type = "toggle", key = "smooth", name = "Smooth Bars",
 		  desc = "Bars glide to new values instead of jumping." },
-		{ type = "toggle", key = "hover", name = "Mouseover Highlight", new = "2.0.0",
+		{ type = "toggle", key = "hover", name = "Mouseover Highlight",
 		  desc = "A glow and an outline on the frame under your mouse." },
 		{ type = "dropdown", key = "backgroundTexture", name = "Background", values = RD.BackgroundTextures(),
 		  desc = "What shows behind the health bar: a flat colour, a texture, or nothing." },
@@ -908,6 +909,14 @@ function M:OnInit(db)
 		db.raidSpacingMigrated = true
 		if type(db.spacing) == "number" then
 			db.raidSpacing = db.spacing
+		end
+	end
+	-- (2.1.0: Out Of Range Opacity 45% -> 40%) the old default, stored with the rest, becomes the new one; a player's
+	-- own other value stays; once
+	if not db.rangeAlphaMigrated then
+		db.rangeAlphaMigrated = true
+		if db.rangeAlpha == 0.45 then
+			db.rangeAlpha = 0.4
 		end
 	end
 end

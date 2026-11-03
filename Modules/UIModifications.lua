@@ -245,7 +245,7 @@ end
 -- 2026-10-30: "One row for all skins") The row shows the skin in use and lays a pick whole (Skin.Current, Skin.Pick:
 -- the installer's own); Oldschool is a choice of MelloUI_Oldschool's, added by its part
 defaults.skin = "modern"
-Add({ type = "dropdown", key = "skin", name = "Skin", free = true, new = "2.0.0", width = 260, values = {
+Add({ type = "dropdown", key = "skin", name = "Skin", free = true, width = 260, values = {
 	{ value = "default", label = "Default (the game's own look)" },
 	{ value = "modern", label = "Modern (MelloUI's own look)" },
 }, get = function() return MelloUI.Skin.Current() end, set = function(value) MelloUI.Skin.Pick(value) end,

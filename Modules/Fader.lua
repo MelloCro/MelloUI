@@ -65,7 +65,7 @@ local MORE = "Chat, Map & More"
 local LIST = {
 	{ "player", "Player Frame", "Frames", "Your own frame. In Combat, it also returns while you are hurt, low on mana or dead." },
 	{ "target", "Target Frame", "Frames", "Your target's frame and its target." },
-	{ "focus", "Focus Frame", "Frames", "Your focus's frame.", "2.0.0" },   -- (1.2.4, the configurator audit: every fading part)
+	{ "focus", "Focus Frame", "Frames", "Your focus's frame." },   -- (1.2.4, the configurator audit: every fading part)
 	{ "party", "Party Frames", "Frames", "The party frames." },
 	{ "raid", "Raid Frames", "Frames", "The raid frames." },
 	{ "buffs", "Buffs & Debuffs", "Frames", "Your buffs and debuffs." },
@@ -90,7 +90,7 @@ local LIST = {
 	{ "objectives", "Objective Tracker", MORE, "The game's objective tracker." },
 	{ "widgets", "Widget Column", MORE, "The widget column. A new widget doesn't bring it back." },
 	{ "route", "World Marker", MORE, "Route's World Marker." },
-	{ "stats", "FPS / Latency", MORE, "The FPS and latency readout.", "2.0.0" },
+	{ "stats", "FPS / Latency", MORE, "The FPS and latency readout." },
 }
 
 local SHOW = { { value = "always", label = "Always" }, { value = "combat", label = "In Combat" },

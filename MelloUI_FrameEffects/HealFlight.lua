@@ -951,7 +951,7 @@ M = MelloUI:RegisterModule("HealFlight", {
 		  desc = "A light flies from your cast bar to the healed frame. Off: the heal lands at once; the other effects stay." },
 		{ type = "toggle", key = "hotTicks", name = "Heal Over Time Ticks",
 		  desc = "Each tick of your heals over time plays a small pulse on the frame." },
-		{ type = "toggle", key = "buffs", name = "Buff Landings", new = "2.0.0",
+		{ type = "toggle", key = "buffs", name = "Buff Landings",
 		  desc = "A buff landing on your group or your target plays a spiral of light on the frame, in its school's colour "
 			.. "(Fortitude, Mark of the Wild, Arcane Intellect, the blessings ...), whoever cast it. A group buff runs "
 			.. "out from the caster's frame; in a raid, a small glint. Buffs you can only cast on yourself play nothing." },
