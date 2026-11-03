@@ -186,7 +186,10 @@ Everything below is the detailed reference: profiles, every slash command, what 
 ## Profiles
 
 The MelloUI settings have a **Profiles** page. "Save current as" stores every setting of every
-module under a name; Load replaces all settings with a profile (it asks first, as the profile
+module under a name, with where everything on the screen stands as you save it: the action bars, the bag bar, the
+micro menu, the experience bars and every part and game element you moved (one still at Edit Mode's own default
+place stays Edit Mode's; a window keeps the place you gave it); Load replaces all settings with a profile and puts
+everything where it says (it asks first, as the profile
 list under Your setup on the Home page does; `/mello profile load <name>` loads at once);
 "Set default" marks the one
 that is applied when the addon starts with no settings at all, such as on a fresh install; out of the box

@@ -3554,6 +3554,104 @@ do
 			end
 		end
 	end, "Core mover")
+
+	-- (2.1.0; the user, 2026-11-03: "the profiles section in the configurator to update the saving of placements of
+	-- bag bar, micro bar, action bars and every other window") A profile saved carries every element's place as it
+	-- stands: the store's where it has one, else measured now -- a bar still following the game's frame, an Edit Mode
+	-- system the store let go at login (Edit Mode's layout held it), a part at its default (the wowsim measure: a
+	-- profile held 32 places, none of the action bars', the micro menu's, the bag bar's, the experience bar's, the
+	-- unit frames' or the cast bar's). Shown: from its rect, as Edit Layout's Save keeps it (Measure); hidden: its own
+	-- anchor while it hangs on the screen. Not the windows (the game lays a closed one out afresh; theirs are the
+	-- places the player gave them), nor an owner that keeps its own (`save`: the Quest Tracker's settings), nor an Edit
+	-- Mode system in Edit Mode's own default place (it hangs on another one -- the end caps on the main bar, 2 units
+	-- off the screen's bottom, which a place of the store's would keep on it -- and stays Edit Mode's).
+	--   MelloUI:SnapshotPlaces() -> { [key] = pos }   the places the store lacks, in its form
+	local function AtEditModeDefault(frame)
+		if type(frame.IsInDefaultPosition) ~= "function" then
+			return false
+		end
+		local ok, default = pcall(frame.IsInDefaultPosition, frame)
+		return ok and not Secret(default) and default == true
+	end
+
+	local function SnapshotOf(entry)
+		local frame = entry.frame
+		if AtEditModeDefault(frame) then
+			return nil
+		end
+		local point, relPoint, x, y
+		if Shown(entry) then
+			point, relPoint, x, y = Measure(frame, entry.anchor)
+		else
+			local ok, p, rel, rp, ox, oy = pcall(frame.GetPoint, frame, 1)
+			if ok and not (Secret(p) or Secret(rp)) and POINT_X[p] and POINT_X[rp] and (rel == nil or rel == UIParent) then
+				ox, oy = Finite(ox), Finite(oy)
+				if ox and oy then
+					point, relPoint, x, y = p, rp, Round(ox, 10), Round(oy, 10)
+				end
+			end
+		end
+		if not point then
+			return nil
+		end
+		return { point = point ~= "BOTTOMLEFT" and point or nil, relPoint = relPoint ~= "CENTER" and relPoint or nil, x = x, y = y }
+	end
+
+	function MelloUI:SnapshotPlaces()
+		-- (every owner's elements registered first, as Edit Layout's open does: a profile saved before Edit Layout was
+		-- opened this session holds them too; not in a fight)
+		if not InCombatLockdown() then
+			for i = 1, #sources do
+				local ok, err = pcall(sources[i])
+				if not ok then
+					Report(err)
+				end
+			end
+		end
+		local out = {}
+		for i = 1, #entries do
+			local entry = entries[i]
+			local key = entry.key
+			if key ~= nil and not entry.save and entry.group ~= "window" and Stored(key) == nil and Live(entry) then
+				local ok, pos = pcall(SnapshotOf, entry)
+				if ok and pos then
+					out[key] = pos
+				elseif not ok then
+					Report(pos)
+				end
+			end
+		end
+		return out
+	end
+
+	-- ... and a profile loaded puts every element it holds a place for there (MelloUI:ApplySettingsText, after the
+	-- modules came up again). The owners that place themselves as they come up do so as well; this is every other one
+	-- (the wowsim measure: Swing Timers' melee bar and the Level Up Card kept the places the last profile gave them).
+	-- One it holds none for is left to its owner (never its default laid here: Edit Mode's layout and the installer's
+	-- fit lay those -- laid here, the fit that follows a load waited for good, inst/setup C8). Not the windows (a
+	-- closed one takes its place on its next show), nor an owner keeping its own. In a fight: once it is over.
+	--   MelloUI:PlaceAllFromStore()
+	local placeAfterFight
+	function MelloUI:PlaceAllFromStore()
+		if InCombatLockdown() then
+			if not placeAfterFight then
+				placeAfterFight = CreateFrame("Frame")
+				placeAfterFight:SetScript("OnEvent", Wrap("mover: a profile's places after the fight", function(f)
+					f:UnregisterEvent("PLAYER_REGEN_ENABLED")
+					MelloUI:PlaceAllFromStore()
+				end, "script"))
+			end
+			placeAfterFight:RegisterEvent("PLAYER_REGEN_ENABLED")
+			return
+		end
+		for i = 1, #entries do
+			local entry = entries[i]
+			if entry.key ~= nil and not entry.save and not entry.moving and entry.group ~= "window" and Live(entry)
+				and Stored(entry.key) then
+				MelloUI:RestorePosition(entry.key, entry.frame)
+			end
+		end
+	end
 end
 
 local copyFrame
@@ -5494,7 +5592,41 @@ do
 	end
 end
 
-function MelloUI:SaveProfile(name)
+-- (2.1.0; the user, 2026-11-03: "the profiles section in the configurator to update the saving of placements of bag
+-- bar, micro bar, action bars and every other window") the settings as text with every element's place in the store's
+-- form (MelloUI:SnapshotPlaces: the places the store lacks, measured now), the live store as it was: a bar following
+-- the game's frame goes on following it here, the profile holds where it stands
+local function SerializeWithPlaces(self)
+	local snap = self.SnapshotPlaces and self:SnapshotPlaces()
+	if not (snap and next(snap)) then
+		return self:SerializeSettings()
+	end
+	local um = self:GetModuleDB("UIModifications")
+	local made = type(um.positions) ~= "table"
+	if made then
+		um.positions = {}
+	end
+	local positions = um.positions
+	for key, pos in pairs(snap) do
+		positions[key] = pos
+	end
+	local ok, text = pcall(self.SerializeSettings, self)
+	for key in pairs(snap) do
+		positions[key] = nil
+	end
+	if made then
+		um.positions = nil
+	end
+	if not ok then
+		geterrorhandler()(text)
+		return self:SerializeSettings()
+	end
+	return text
+end
+
+-- `plain` (2.1.0): the settings only, no places measured -- the installer's restore point ("Before install", saved in
+-- the middle of an install: the elements' registration the measure runs held its fit up for good, inst/setup C8)
+function MelloUI:SaveProfile(name, plain)
 	name = type(name) == "string" and name:gsub("^%s+", ""):gsub("%s+$", "") or ""
 	if name == "" then
 		return false, "a profile needs a name"
@@ -5502,7 +5634,7 @@ function MelloUI:SaveProfile(name)
 	if name == self.FRESH_PROFILE then
 		return false, "'" .. name .. "' is built in"
 	end
-	self:Profiles()[name] = StampPlaces(self, StripPersonal(self, self:SerializeSettings()))
+	self:Profiles()[name] = StampPlaces(self, StripPersonal(self, plain and self:SerializeSettings() or SerializeWithPlaces(self)))
 	self.db.activeProfile = name
 	return true
 end
@@ -5591,6 +5723,10 @@ function MelloUI:ApplySettingsText(text)
 		-- (a module's switch here is the profile's, not the player's: the
 		-- reskin's own reactions stay out, as in RestartModules)
 		WhileRestarting(self, SwitchForProfile)
+		-- (2.1.0) every element where the profile says, or at its default (MelloUI:PlaceAllFromStore)
+		if self.PlaceAllFromStore then
+			self:PlaceAllFromStore()
+		end
 		if self.RefreshConfig then
 			self:RefreshConfig()
 		end

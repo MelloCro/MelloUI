@@ -1924,7 +1924,7 @@ local function DoInstall(self, rp, option, target, fit, layoutOn, out)
 	-- the restore point on the Profiles page (it sets the active profile:
 	-- after the capture, and the revert puts the old name back); its text is
 	-- kept on the restore point too, for a revert whose exact apply fails
-	MelloUI:SaveProfile(BEFORE_PROFILE)
+	MelloUI:SaveProfile(BEFORE_PROFILE, true)   -- (2.1.0: plain -- the settings as they were, no places measured)
 	rp.text = MelloUI:Profiles()[BEFORE_PROFILE]
 	MelloUI:Batch(function()
 		out.changed = self:Apply(target)

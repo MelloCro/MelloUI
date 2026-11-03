@@ -59,6 +59,7 @@
 - Fixed: Dungeon Info shows each item in the quality the game gives it now, so Forever's changes show (Deathcharger's Reins is rare), and so will any the game makes later.
 - Fixed: the World Marker no longer flickers out when a guide's next step is right where you stand, as when skipping through steps at one quest giver. A place set that close shows its marker; it counts as arrived once you have walked off and come back.
 - Fixed: Dungeon Info and the dungeon maps list each boss once. Blackfathom Deeps, the Temple of Atal'Hakkar and Gnomeregan showed most of their bosses two or three times, their seals stacked on the map.
+- Profiles keep where everything stands: saving one stores the places of the action bars, the bag bar, the micro menu, the experience bars and every part and game element you moved, even the ones still following the game, and loading it puts them all back, Swing Timers' bars and the Level Up Card too.
 - Fixed (Oldschool): a boxed Unit Frame Border (Single, Backdrop and the square styles) no longer runs through the name over the health bar, and its corner studs no longer sit on the portrait ring.
 
 ## 2.0.0
