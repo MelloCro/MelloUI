@@ -98,6 +98,9 @@ NOT_CONFIGURATOR = {
     "Core/Widgets.lua": "the builders themselves",
     "MelloUI_Map/MapDungeon.lua": "the dungeon map's World map button and its wings' chips, on the map window (its "
                                   "one option, Map.dungeonMaps, is tagged in Map.lua)",
+    "MelloUI_Map/MapQuestLog.lua": "the map window's layers page (2.1.0, the rail's gear): its switches are the map's "
+                                   "layers (the window's own state, db.layers, as the gear's menu held them), not "
+                                   "options",
     "Core/ConfigPreview.lua": "the designer stage's part controls (stage:PartSpec: a part's Show, Size and X / Y): "
                               "they edit a part's place in its kind's store (the frames' parts layouts), not "
                               "options",

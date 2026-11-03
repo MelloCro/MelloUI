@@ -362,6 +362,17 @@ function J.ItemQuality(item)
 	return nil
 end
 
+-- (2.1.0; the user, 2026-11-03: "blizzard changed the quality of some of the items that are dropping") a drop's
+-- quality: the game's own once it knows the item (Forever's changes, the server's too), else the data's (0, not
+-- known yet: uncommon)
+function J.Quality(d)
+	local q = J.ItemQuality(d.item)
+	if q then
+		return q
+	end
+	return (d.quality and d.quality ~= 0) and d.quality or 2
+end
+
 function J.QualityColour(quality)
 	local fn = (C_Item and C_Item.GetItemQualityColor) or rawget(_G, "GetItemQualityColor")
 	if fn then
@@ -815,8 +826,9 @@ function J.Drops(boss)
 		rest[#rest + 1] = list[i]
 	end
 	table.sort(rest, function(a, b)
-		if a.quality ~= b.quality then
-			return a.quality > b.quality
+		local qa, qb = J.Quality(a), J.Quality(b)
+		if qa ~= qb then
+			return qa > qb
 		end
 		if (a.chance or 0) ~= (b.chance or 0) then
 			return (a.chance or 0) > (b.chance or 0)

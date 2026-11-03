@@ -24,6 +24,7 @@
 - Dungeon maps: inside a dungeon or raid the map opens on its own floor plan, with each boss numbered where he stands and Dungeon Info's loot beside it. Click a boss to see his loot; bosses you have killed this run turn grey. Turn it off on the Map page (Dungeon Maps).
 - Dungeons of several floors come in wings, named as the game names them (Blackrock Depths: The Lyceum, Shadowforge City, The Grim Guzzler, Ring of the Law). Pick one above the map; the map opens on the wing you stand in and follows you into the next.
 - Dungeon maps show the way in and out with a door, and an arrow up or down at each doorway into another wing: point at it for the wing's name, click it to see that wing.
+- The map window shows the whole map with a panel beside it, never over it: your quest log (with the Quest List), the map's layers and Dungeon Info. A column of round buttons between them picks one; click the lit one to fold the panel away and the window narrows to the map. The layers are a page of switches with their map icons, grouped Quests, Travel and People and more.
 - Zephras Isle is on the map: its land, its name from the widest zoom, its docks and quest givers, and the airship trails from Alterac and Mulgore ending at its docks. Your arrow, Find me and the search work there too. Its airships are called airships and wear the zeppelin pin, and its villages Shen'dar, Valanaar and Thendal show as towns.
 - Each capital on the zoomed-out map wears its own emblem in its seal: Stormwind's lion gate, Ironforge's mountain gate, Darnassus's tree under the moon, Orgrimmar's spiked gate, Thunder Bluff's mesa, the Undercity's ruined tower.
 - The map's icons follow the skin: the game's own map pictures under Default (the dungeon and raid doors drawn bigger), the painted ones under Oldschool. Switching the skin with the map open updates every map icon at once.
@@ -54,6 +55,9 @@
 - Party and raid frames: with MelloUI's on, the game's own never show, in any case (a fight, a roster change, a zone change, Edit Mode, a /reload). The portrait party frames are MelloUI's own now: the same look, steady in a fight, the members the game's own distance apart.
 - Personal Display: an interrupted or failed cast no longer shows on the game's cast bar while the game's cast bar is hidden; the display's own cast bar says "Interrupted" or "Failed", even with its text off.
 - Fixed: Dungeon Info's My Items no longer leaves your starred items over the dungeon list when you switch back to Dungeons or Raids.
+- Fixed: the Quest List and the map's quest givers no longer show other classes' quests from Forever's own class quests (Zephras Isle's first class quests, Taming the Beast, Call of Fire and more): they go by the class the game gives each quest.
+- Fixed: Dungeon Info shows each item in the quality the game gives it now, so Forever's changes show (Deathcharger's Reins is rare), and so will any the game makes later.
+- Fixed: the World Marker no longer flickers out when a guide's next step is right where you stand, as when skipping through steps at one quest giver. A place set that close shows its marker; it counts as arrived once you have walked off and come back.
 
 ## 2.0.0
 

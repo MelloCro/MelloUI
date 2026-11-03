@@ -6566,7 +6566,18 @@ local function CheckArrival()
 		return
 	end
 	local cont, x, y = PlayerYards()
-	if cont and cont == destination.cont and Dist(x, y, destination.x, destination.y) <= (tonumber(M.db.arrive) or 25) then
+	if not cont then
+		return
+	end
+	-- (2.1.0; the user, 2026-11-03: "the world marker sometimes does not appear when quickly skipping trough the stepps
+	-- in a leveling guide, the small spark animation appears, and then disappears") a place set while the player
+	-- already stands within Arrived Within of it -- a guide's next step at the same quest giver -- is shown, not
+	-- arrived at the moment it is set: it arrives once the player has been farther off (destination.away)
+	local near = cont == destination.cont and Dist(x, y, destination.x, destination.y) <= (tonumber(M.db.arrive) or 25)
+	if not near then
+		destination.away = true
+	end
+	if near and destination.away then
 		-- (1.2.0) a quest trip's stop that holds: kept until its quests are taken (Dungeon Info moves the trip on)
 		if M.trip and M.TripArrived() then
 			return
@@ -9346,7 +9357,11 @@ function M.QuestSpotArrive(d)
 	local reach = tonumber(M.db.arrive) or 25
 	-- (on another continent: not near -- a hearth or a boat away, the marker is the dock's again)
 	local dist = cont == d.cont and Dist(x, y, d.x, d.y) or math.huge
-	if not d.arrived and dist <= reach then
+	-- (2.1.0) as a pin's (CheckArrival): a spot set while the player stands at it is shown, it arrives once they were off
+	if dist > reach then
+		d.away = true
+	end
+	if not d.arrived and dist <= reach and d.away then
 		d.arrived = true
 		UpdateMarker()
 	elseif d.arrived and dist > 2 * reach then

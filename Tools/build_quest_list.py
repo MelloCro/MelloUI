@@ -332,7 +332,7 @@ def load_quests(sql):
                  raised to its zone (105 of 106 cached quests agree with Wowhead so), a negative sort as it is; a
                  holiday's quest Wowhead does not list is left out (its sort says only "Seasonal")
       side       Wowhead's; else classic-db's races; else the server's races when they are one faction's (0: both)
-      class      Wowhead's; else the class of a class quest's sort (classic-db's are added after: build_needs)
+      class      the class of a class quest's sort; else Wowhead's (classic-db's are added after: build_needs)
     Without a snapshot: Wowhead's listing as before. -> {questID: row as load_listing's}"""
     listing = load_listing()
     built = load_kept_built()
@@ -407,6 +407,13 @@ def load_quests(sql):
             if known and row.get(key) != value:
                 stats[f"{key} the server's, not Wowhead's"] += 1
                 row[key] = value
+        # (2.1.0; the user, 2026-11-03: "i dont want to see other class quest while im playing a specific class") a
+        # class sort is the game's own word for whose quest it is: Forever's class quests Wowhead lists without a class
+        # (Zephras Isle's first ones, Taming the Beast, Call of Fire ...)
+        cls = CLASS_SORTS.get(c["sort"], 0)
+        if cls and row.get("reqclass") != cls:
+            stats["class the server's sort, not Wowhead's" + (" (Wowhead had another)" if row.get("reqclass") else "")] += 1
+            row["reqclass"] = cls
     if whole:
         stats["Wowhead's, not asked (not in the client's QuestV2)"] = sum(
             1 for q in listing if q not in client and q not in scan["failed"] and q not in scan["quests"])

@@ -56,8 +56,9 @@ local floor, max, min = math.floor, math.max, math.min
 local ICON = "Interface\\Icons\\INV_Misc_Map_01"
 
 local T = {
-	SHARE = 0.72,      -- the window's width: this share of the screen's (its height from the world's 3 : 2)
-	MIN_W = 640,
+	SHARE = 0.72,      -- the map's width: this share of the screen's (its height from the world's 3 : 2) ...
+	WIDE = 0.95,       -- ... (2.1.0) the window with the column out at most this share (the map narrower to fit)
+	MIN_W = 480,       -- (2.1.0: 640 before the column stood beside it; a 4 : 3 screen at UI scale 1 takes the two)
 	PAD = 14, TOP = 34, FOOT = 24, IN = 1,
 	HOVER = 0.1,       -- the name under the cursor read at most this often
 	CLICK = 4,         -- a press that moved less than this is a click
@@ -78,23 +79,28 @@ local TEXT = {
 	open = "Open The Map",
 	usage = "/mellomap: open or close the map | /mellomap share: your pin's link in the chat | /mellomap dump: its places and the view, to copy",
 	off = "The map is off: switch it on in /mello (Quests and travel > Map).",
-	layers = "The map shows",
 }
 
 -- (after M4; the user, 2026-10-20: "Layer switches", a button on the map, "Objectives on, rares off") what the map
--- shows: a check per layer, kept in the module's settings (db.layers[key] = false: off; every one on until switched)
+-- shows: a switch per layer, kept in the module's settings (db.layers[key] = false: off; every one on until switched).
+-- (2.1.0, the user's pick B: the gear's page beside the map, MapQuestLog's Log.Layers) each in its group, with its
+-- icon (the map's own picture of it, as the look draws it: MelloUI.Icons)
+local GROUPS = { "Quests", "Travel", "People and more" }
 local SWITCHES = {
-	{ key = "quests", label = "Quest givers", layers = { "quests" } },
-	{ key = "objectives", label = "Your quests' objectives", layers = { "objectives", "objective_dots", "objective_quests" } },
-	{ key = "flights", label = "Flight masters", layers = { "flights" } },
-	{ key = "transports", label = "Boats, zeppelins and portals", layers = { "transports" }, trails = true },
-	{ key = "entrances", label = "Dungeons and raids", layers = { "entrances" } },
+	{ key = "quests", label = "Quest givers", layers = { "quests" }, group = 1, icon = "quest_mark" },
+	{ key = "objectives", label = "Your quests' objectives", layers = { "objectives", "objective_dots", "objective_quests" },
+	  group = 1, icon = "track_todo" },
+	{ key = "flights", label = "Flight masters", layers = { "flights" }, group = 2, icon = "svc_flight" },
+	{ key = "transports", label = "Boats, zeppelins and portals", layers = { "transports" }, trails = true, group = 2,
+	  icon = "pin_boat" },
+	{ key = "entrances", label = "Dungeons and raids", layers = { "entrances" }, group = 2, icon = "pin_dungeon" },
 	-- (2.1.0, qu-01) the capitals and the towns the world map names
-	{ key = "places", label = "Cities and towns", layers = { "places", "towns" } },
-	{ key = "group", label = "Your party and raid", layers = { "group" } },
-	{ key = "names", label = "Zone names", layers = { "names" } },
-	{ key = "addons", label = "Other addons' pins", layers = { "addons", "addons_continent", "addons_world" } },
-	{ key = "caves", label = "Caves (zoomed in close)", layers = {}, canvas = true },
+	{ key = "places", label = "Cities and towns", layers = { "places", "towns" }, group = 2, icon = "svc_inn" },
+	{ key = "group", label = "Your party and raid", layers = { "group" }, group = 3, icon = "chan_party" },
+	{ key = "names", label = "Zone names", layers = { "names" }, group = 3, icon = "page_screentext" },
+	{ key = "addons", label = "Other addons' pins", layers = { "addons", "addons_continent", "addons_world" }, group = 3,
+	  icon = "svc_addons" },
+	{ key = "caves", label = "Caves (zoomed in close)", layers = {}, canvas = true, group = 3, icon = "obj_explore" },
 }
 
 local M   -- (the module: its button opens it)
@@ -379,7 +385,7 @@ function M:PinOn(pin, label)
 end
 
 --------------------------------------------------------------------------------
--- The layers' switches (the layers button's menu)
+-- The layers' switches (the layers' page beside the map)
 --------------------------------------------------------------------------------
 
 local function LayerOn(key)
@@ -425,29 +431,9 @@ local function SetLayer(key, on)
 		end
 	end
 	win.pins:Lay()
+	Log.LayersChanged()
 end
 M.SetLayer, M.LayerOn = function(_, key, on) SetLayer(key, on) end, function(_, key) return LayerOn(key) end
-
-local function LayersMenu(_, root)
-	root:CreateTitle(TEXT.layers)
-	for _, s in ipairs(SWITCHES) do
-		root:CreateCheckbox(s.label, function()
-			return LayerOn(s.key)
-		end, function()
-			SetLayer(s.key, not LayerOn(s.key))
-		end)
-	end
-end
-
--- (the game's menu, as the Quest List's filter; not in the Gamepad UI, where the button hides: the game's menu
--- opened from MelloUI code runs its frame manager in MelloUI's run -- the Services note)
-local FilterClick = Perf.Shared("OnClick on the map's layers button", function(self)
-	if MelloUI.Safe.GamepadUI() or not (MenuUtil and MenuUtil.CreateContextMenu) then
-		return
-	end
-	MelloUI:PlayUISound("click")
-	MenuUtil.CreateContextMenu(self, LayersMenu)
-end, "script")
 
 -- your pin's link in the chat: the game's own map pin link (C_Map.GetUserWaypointHyperlink), which anyone can click
 function M:SharePin()
@@ -602,25 +588,72 @@ end
 -- The window
 --------------------------------------------------------------------------------
 
+-- the map's width (its body: the canvas and the line under it) and the window's height: the map SHARE of the screen's
+-- width, the world's 3 : 2 under it, the window at most 90 % of the screen's height; (2.1.0) and with the rail and the
+-- column out beside the map at most WIDE of its width (a narrow screen: the map narrower, never under the column)
 local function Size()
 	local sw = Finite(UIParent:GetWidth()) or 1280
 	local sh = Finite(UIParent:GetHeight()) or 720
-	local w = max(T.MIN_W, floor(sw * T.SHARE))
-	local h = floor(w * 668 / 1002) + T.TOP + T.FOOT + T.PAD
+	local LT = Log.T
+	local side = LT.GAP + LT.RAIL + LT.GAP + LT.W
+	local w = max(T.MIN_W, min(floor(sw * T.SHARE), floor(sw * T.WIDE) - 2 * T.PAD - side))
+	local rest = T.TOP + T.FOOT + T.PAD + 2 * T.IN
+	local h = floor((w - 2 * T.IN) * 668 / 1002) + rest
 	if h > sh * 0.9 then
 		h = floor(sh * 0.9)
-		w = floor((h - T.TOP - T.FOOT - T.PAD) * 1002 / 668)
+		w = floor((h - rest) * 1002 / 668) + 2 * T.IN
 	end
 	return w, h
 end
 
--- the window's parts where the look puts them, at the build and at every switch (shell:OnKit)
+-- (2.1.0) the window as wide as the map, the rail and the column's share `e` out (MapQuestLog's Reveal, every step of
+-- its move): the map stays where it stands -- the window's place moved by the share of the change its anchor takes
+-- (none for a left one, half for a centred one, all of it for a right one); `still` (a new look's lay): the place
+-- kept as it is
+local function Unfold(e, still)
+	win.e = e
+	local f, edge = win.frame, win.edge
+	if not edge then
+		return
+	end
+	local LT = Log.T
+	local w = floor(2 * edge + win.mapW + LT.GAP + LT.RAIL + (LT.GAP + LT.W) * e + 0.5)
+	local old = Finite(f:GetWidth())
+	if old and math.abs(old - w) < 0.5 then
+		return
+	end
+	f:SetWidth(w)
+	if old and not still and f:GetNumPoints() == 1 then
+		local point, rel, rp, x, y = f:GetPoint(1)
+		local share = point:find("LEFT") and 0 or point:find("RIGHT") and 1 or 0.5
+		if share > 0 and Finite(x) and Finite(y) then
+			f:SetPoint(point, rel, rp, x + (w - old) * share, y)
+		end
+	end
+end
+
+-- (2.1.0) the window's own place until it is moved (the mover's default, and its reset): held by its left edge, the
+-- window with the column out centred on the screen -- the map then stands still as the column comes and goes, never
+-- pushed aside by the screen's edge
+local function Home(frame)
+	local sw = Finite(UIParent:GetWidth()) or 1280
+	local LT = Log.T
+	local wide = (win.mapW or 0) + 2 * T.PAD + LT.GAP + LT.RAIL + LT.GAP + LT.W
+	frame:ClearAllPoints()
+	frame:SetPoint("LEFT", UIParent, "LEFT", floor(max(0, (sw - wide) / 2)), 0)
+end
+
+-- the window's parts where the look puts them, at the build and at every switch (shell:OnKit): the map at the left,
+-- as wide as Size made it; the window round it, the rail and the column
 local function Lay(sh)
 	local body, f = win.body, win.frame
 	local edge, top = sh:Inset(T.PAD, -T.TOP)
 	body:ClearAllPoints()
 	body:SetPoint("TOPLEFT", f, "TOPLEFT", edge, top)
-	body:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -edge, edge)
+	body:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", edge, edge)
+	body:SetWidth(win.mapW)
+	win.edge = edge
+	Unfold(win.e or 0, true)
 end
 
 -- the view laid again on the canvas's size: the first one (the one kept, else your zone) the first time it has a
@@ -652,7 +685,6 @@ local function Refit(onPlayer)
 end
 
 local function Canvas_OnSizeChanged()
-	Log.Size()
 	if win.frame:IsShown() then
 		Refit()
 	end
@@ -684,10 +716,6 @@ local function Shown()
 	AddonPins.Open()   -- (nothing while its switch is off: other addons' icons left to the game's map)
 	Objectives.Open()
 	Log.Shown()
-	local filter = Log.Filter()
-	if filter then
-		filter:SetShown(not MelloUI.Safe.GamepadUI())
-	end
 	c.stats.openMs = debugprofilestop() - t0
 	local f = win.frame
 	f:RegisterEvent("MAP_EXPLORATION_UPDATED")
@@ -696,7 +724,9 @@ local function Shown()
 	f:RegisterEvent("QUEST_LOG_UPDATE")
 	f:RegisterEvent("QUEST_WATCH_LIST_CHANGED")
 	if inside then
+		win.opening = true   -- (Dungeon Info's column out at once: the window opens as wide as it)
 		OpenInside(inside)   -- (first: Dungeon Info's column out, so the plan's first view fits beside it)
+		win.opening = false
 		Dungeon.Show(inside)
 		ShowName(nil)
 	end
@@ -763,7 +793,9 @@ local function Build()
 	local f = CreateFrame("Frame", "MelloUIMapFrame", UIParent)
 	f:SetFrameStrata("HIGH")
 	f:SetToplevel(true)
-	f:SetSize(Size())
+	local mw, h = Size()
+	win.mapW = mw
+	f:SetSize(mw + 2 * T.PAD + Log.T.GAP + Log.T.RAIL, h)
 	f:EnableMouse(true)
 	f:SetClampedToScreen(true)
 	f:Hide()
@@ -773,7 +805,7 @@ local function Build()
 	win.shell = Kit:OwnWindow(f, {
 		area = "config", ring = { at = "tl", texture = ICON }, plate = "rail",
 		title = TEXT.title, close = true, escape = true, fit = true, sounds = true,
-		mover = { key = "MelloUIMap", label = TEXT.title, page = "Map" },
+		mover = { key = "MelloUIMap", label = TEXT.title, page = "Map", default = Home },
 	})
 	local body = W.Panel(f)
 	win.body = body
@@ -807,13 +839,14 @@ local function Build()
 	AddonPins.Init(canvas, pins)
 	Objectives.Init(canvas, pins)
 	pins:Layer("names", Layers.T.ORDER.names)   -- (made here: its switch applies before the first names are laid)
-	-- the quest log's column on the canvas's right: out or folded as it was left
+	-- the quest log's column beside the map, the rail between them (2.1.0): out or folded as it was left
 	win.module = M
+	win.Unfold = Unfold
 	Log.Init(win)
 	-- (M4) the search in the title row
 	Search.Init(win)
-	-- (after M4) the layers button beside the column's opener; the layers as they were left
-	Log.Filter(FilterClick)
+	-- (2.1.0) the layers' page, the rail's gear; the layers as they were left
+	Log.Layers({ switches = SWITCHES, groups = GROUPS, on = LayerOn, set = SetLayer })
 	ApplyLayers()
 	local name = W.Text(body, "GameFontHighlight", nil, "text")
 	name:SetPoint("BOTTOMLEFT", body, "BOTTOMLEFT", 8, 5)
@@ -871,13 +904,14 @@ function M:ToggleLog()
 		Build()
 	end
 	local f = win.frame
-	if f:IsShown() and Log.IsOut() and not Log.IsDungeonInfo() then
+	if f:IsShown() and Log.IsOn("log") then
 		f:Hide()
 		return
 	end
+	local opening = not f:IsShown()   -- (2.1.0: the window opens with the column out, no move to watch)
 	f:Show()
-	Log.Mode("log")
-	Log.SetOut(true)
+	Log.Mode("log", opening)
+	Log.SetOut(true, opening)
 end
 
 -- (1.2.0) the map with Dungeon Info beside it (MelloUI_DungeonInfo's J.Open; the page is its own to show)
@@ -889,9 +923,10 @@ function M:OpenDungeonInfo()
 	if not win.frame then
 		Build()
 	end
+	local opening = win.opening or not win.frame:IsShown()   -- (as the log's: out at once as the window opens)
 	win.frame:Show()
-	Log.Mode("dungeonInfo")
-	Log.SetOut(true)
+	Log.Mode("dungeonInfo", opening)
+	Log.SetOut(true, opening)
 	return Log.IsDungeonInfo()
 end
 

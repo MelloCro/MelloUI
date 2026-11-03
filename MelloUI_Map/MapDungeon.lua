@@ -87,7 +87,7 @@ local T = {
 	FIND_ZOOM = 2,           -- Find me: at least this close
 	OUT_AT = 1.02,           -- a right-click at this share of the wing's whole view or wider: the world
 	CHIPS_GAP = 8,           -- the wings' chips: px right of the World map button ...
-	CHIPS_RIGHT = 130,       -- ... and kept clear of the map's own buttons at the canvas's right
+	CHIPS_RIGHT = 8,         -- ... and in from the canvas's right (2.1.0: the map's buttons on the rail beside it)
 	CHIPS_MIN = 160,
 }
 
@@ -511,7 +511,6 @@ function Dungeon.Show(mapID)
 	win.canvas, win.pins = c, c.pins
 	S.world.frame:Hide()
 	c.frame:Show()
-	c.cover = S.world.cover
 	-- (the wing you stand in, else the one shown last)
 	local wing = Dungeon.Where(mapID) or S.wingOf[mapID] or 1
 	local moved = wing ~= c.wing

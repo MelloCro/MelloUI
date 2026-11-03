@@ -5,13 +5,21 @@
 -- pick, BuildData/output/map_questlog_sketch A: "A, but make sure that when
 -- somebody clicks on it, it has a smooth animation like the rest of the UI")
 --
--- A column on the map's right, over the canvas's edge: the quests in your log
--- under their zones, a quest's page in the same column. It comes out of the
--- map's right edge as a drawer (Anim:Drawer, the whisper window's) and goes
--- back in; the list and a quest's page are two pages of one W.Pager (the
--- configurator's pages: the new one fades and slides in, a quest's from the
--- right, the list back from the left); the list and the page scroll with the
--- one smooth scroll. Reduce Motion lands each at once.
+-- A column on the map's right: the quests in your log
+-- under their zones, a quest's page in the same column. The list and a quest's
+-- page are two pages of one W.Pager (the configurator's pages: the new one
+-- fades and slides in, a quest's from the right, the list back from the left);
+-- the list and the page scroll with the one smooth scroll.
+--
+-- (2.1.0; the user's pick B of Workspace/BuildData/output/map_window_sketch,
+-- 2026-11-02: "fit the map but still have the Quest Log visible, and the Map
+-- Layers Config and the Dungeon Info as tabs"; docs/plans/map-window-rail.md)
+-- The column stands BESIDE the map now, never over it: the map, a rail of the
+-- map's own round buttons (the log's list, the layers' gear, Dungeon Info's
+-- door: the open page's lit), the column. The window grows by the column as
+-- it comes out and narrows again as it folds (the lit button again, or the
+-- column's fold), the map staying where it stands; the column trails in from
+-- the rail as a drawer's content does. Reduce Motion lands each at once.
 --
 -- The quests' actions are the Quest Tracker's own (MelloUI.QuestActs: follow,
 -- share, abandon with MelloUI's question, watch); the rows' gem, fonts and
@@ -26,8 +34,7 @@
 --   Log.Init(win)          the column on the map's window (Map.lua's Build)
 --   Log.Shown() / Log.Hidden()   the window's show and hide
 --   Log.Tick()             the window's beat: a change of the log laid once
---   Log.Size()             the canvas's size changed: the column's height
---   Log.SetOut(out, instant)     out of the edge (true) or folded back in
+--   Log.SetOut(out, instant)     out beside the rail (true) or folded back in
 --   Log.IsOut()
 --   Log.Select(questID)    a quest's page (from the list, the tracker, L)
 --   Log.Back()             back to the list
@@ -40,13 +47,16 @@
 --                          as the configurator's tabs (Anim:CrossFade)
 --   Log.ViewChanged()      the map's view moved: the Quest List again when its zone did
 --   Log.Unmount()          the map off: the Quest List's page back to the game's column
---   Log.Filter(click)      (after M4) the map's layers button beside the opener (beside the column while it
---                          is out): the set's gear; click(button) opens the layers' menu (Map.lua)
---   Log.Mode(mode)         (1.2.0) what the column holds: "log" (the quests: the tabs above) or "dungeonInfo"
---                          (Dungeon Info's own page, MelloUI_DungeonInfo: J.Panel:Mount into it, as the
---                          Quest List's is); its button the door over the map. Beside the column while it is
---                          out: the door, the layers button and the log's opener, the current one lit
+--   Log.Layers(spec)       (2.1.0) the layers' page (the gear's): spec = { switches, groups, on(key),
+--                          set(key, on) } (Map.lua's SWITCHES, each with its group and icon); laid the first
+--                          time it shows
+--   Log.LayersChanged()    a layer switched elsewhere: the page's switches again
+--   Log.Mode(mode)         (1.2.0) what the column holds: "log" (the quests: the tabs above), "layers"
+--                          (2.1.0) or "dungeonInfo" (Dungeon Info's own page, MelloUI_DungeonInfo:
+--                          J.Panel:Mount into it, as the Quest List's is)
+--   Log.IsOn(mode)         the column out on that mode
 --   Log.IsDungeonInfo()        the column out on Dungeon Info
+--   Log.Share()            (2.1.0) the column's share out now, 0..1 (Map.lua's window width follows it)
 --   S.showID               the quest whose places Show laid (the objectives layer leaves it to them)
 --   Log.State()            the tests' and the dump's look in
 --------------------------------------------------------------------------------
@@ -65,20 +75,23 @@ ns.QuestLog = Log
 
 local T = {
 	W = 340,                    -- the column's width (the sketch's 330 and its edge)
-	OPEN = 0.28, CLOSE = 0.18,  -- the drawer out and back in (the whisper window's)
-	LAG = 0.35,                 -- the share of its width the column trails behind the edge
+	OPEN = 0.28, CLOSE = 0.18,  -- the column out and back in (the whisper window's drawer)
+	LAG = 0.35,                 -- the share of its width the column trails behind the rail
+	RAIL = 46,                  -- (2.1.0) the rail between the map and the column
+	GAP = 6,                    -- the room between the map, the rail and the column
+	RAIL_TOP = 10, RAIL_STEP = 42,   -- the rail's buttons from its top, one under the other
+	LAYER_ROW = 32, LAYER_ICON = 20, -- (2.1.0) the layers' page: a switch's row, its icon
 	HEAD = 36,                  -- the column's title row
 	PAD = 10,                   -- room inside the column
 	BAR = 3,                    -- the thin scroll bar, and its gap
 	SLIDE = 12,                 -- the page switch's slide (the configurator's)
-	FILTER_GAP = 6,             -- (after M4) the layers button's gap to the opener and to the column
 	MARK = 18,                  -- a quest's mark (track_todo / track_handin)
 	CHECK = 16,                 -- its tracked box
 	TITLE_X = 35,               -- a quest's title and lines from the row's left (the mark, the gem, their gaps)
 	ROW_TOP = 7, ROW_GAP = 3, ROW_BOTTOM = 8,
 	ZONE = 28,                  -- a zone's heading
 	FOLD = 22,                  -- the fold button, the back button
-	OPENER = 30,                -- the map's button that brings the column out
+	OPENER = 30,                -- the rail's buttons
 	BUTTON = 34,                -- the page's round buttons
 	BUTTON_ROW = 54,            -- with their labels
 	REWARD = 28,                -- a reward's row (its icon 24)
@@ -132,7 +145,9 @@ local TEXT = {
 -- the state: one table (the file's locals stay few)
 local S = {
 	built = false, out = false, shown = false, dirty = false,
-	mode = "log",     -- (1.2.0) the column's: the quests ("log") or Dungeon Info ("dungeonInfo")
+	mode = "log",     -- (1.2.0) the column's: the quests ("log"), the layers ("layers") or Dungeon Info ("dungeonInfo")
+	e = 0,            -- (2.1.0) the column's share out now (0 folded, 1 out)
+	fold = {},        -- its move (Anim:Drive's job: from, to, moving)
 	entries = {}, n = 0, quests = 0,
 	heads = {}, rows = {}, objs = {}, rewards = {},
 	collapsed = {},   -- [zone name] = true while folded (this session)
@@ -322,26 +337,31 @@ local HeadEnter = Perf.Shared("OnEnter on the map's quest log headings", functio
 	W.ShowTooltip(self, self.zone or "", TEXT.collapse)
 end, "script")
 
+-- a heading's look on `h` (a zone's; 2.1.0: the layers' page's groups too): its name in gold over the hairline
+local function HeadLook(h)
+	h:SetHeight(T.ZONE)
+	h.label = W.Text(h, "GameFontNormal", nil, "selectedTrim")
+	h.label:SetPoint("BOTTOMLEFT", h, "BOTTOMLEFT", 2, 7)
+	h.label:SetWordWrap(false)
+	h.line = W.Solid(h, "ARTWORK", "selectedTrim", 0.6)
+	h.line:SetHeight(1)
+	h.line:SetPoint("BOTTOMLEFT", h, "BOTTOMLEFT", 0, 2)
+	h.line:SetPoint("BOTTOMRIGHT", h, "BOTTOMRIGHT", 0, 2)
+	return h
+end
+
 local function Head(i)
 	local h = S.heads[i]
 	if h then
 		return h
 	end
-	h = CreateFrame("Button", nil, S.list)
-	h:SetHeight(T.ZONE)
-	h.label = W.Text(h, "GameFontNormal", nil, "selectedTrim")
-	h.label:SetPoint("BOTTOMLEFT", h, "BOTTOMLEFT", 2, 7)
-	h.label:SetWordWrap(false)
+	h = HeadLook(CreateFrame("Button", nil, S.list))
 	h.count = W.Text(h, "GameFontNormal", nil, "text")
 	h.count:SetPoint("LEFT", h.label, "RIGHT", 6, 0)
 	h.toggle = h:CreateTexture(nil, "ARTWORK")
 	h.toggle:SetSize(14, 14)
 	h.toggle:SetPoint("RIGHT", h, "RIGHT", -4, 0)
 	h.toggle:SetPoint("BOTTOM", h.label, "BOTTOM", 0, -1)
-	h.line = W.Solid(h, "ARTWORK", "selectedTrim", 0.6)
-	h.line:SetHeight(1)
-	h.line:SetPoint("BOTTOMLEFT", h, "BOTTOMLEFT", 0, 2)
-	h.line:SetPoint("BOTTOMRIGHT", h, "BOTTOMRIGHT", 0, 2)
 	h:RegisterForClicks("LeftButtonUp")
 	Perf.SetScript(h, "OnClick", HeadClick)
 	Perf.SetScript(h, "OnEnter", HeadEnter)
@@ -993,7 +1013,7 @@ end
 local function Swallow() end
 
 local Tabs   -- (M4, below: the tabs shown as the Quest List is there)
-local FilterPlace   -- (after M4, below: the layers button's place)
+local Light   -- (2.1.0, below: the rail's buttons in their places, the open page's lit)
 
 local TabClick = Perf.Shared("OnClick on the map's quest log tabs", function(self)
 	if self.key ~= S.tab then
@@ -1007,8 +1027,8 @@ local FoldClick = Perf.Shared("OnClick on the map's quest log fold", function()
 	Log.SetOut(false)
 end, "script")
 
--- (1.2.0) a mode's button (the log's opener, Dungeon Info's door): the column out on it; again while it shows there,
--- folded
+-- (1.2.0) a mode's button on the rail (the log's list, 2.1.0: the layers' gear, Dungeon Info's door): the column out
+-- on it; again while it shows there, folded
 local function ModeClick(mode)
 	MelloUI:PlayUISound("click")
 	if S.out and S.mode == mode then
@@ -1025,6 +1045,10 @@ end, "script")
 
 local DoorClick = Perf.Shared("OnClick on the map's Dungeon Info button", function()
 	ModeClick("dungeonInfo")
+end, "script")
+
+local GearClick = Perf.Shared("OnClick on the map's layers button", function()
+	ModeClick("layers")
 end, "script")
 
 local BackClick = Perf.Shared("OnClick on the map's quest page back", function()
@@ -1055,26 +1079,30 @@ local function Column_OnEvent()
 end
 
 function Log.Init(win)
-	local canvas, frame = win.canvas, win.frame
-	S.canvas, S.pins, S.module = canvas, win.pins, win.module
+	local canvas, frame, body = win.canvas, win.frame, win.body
+	S.canvas, S.pins, S.module, S.win = canvas, win.pins, win.module, win
 	S.markSpecs = {}
 	win.pins:Layer("questlog", T.ORDER)
-	local cf = canvas.frame
-	-- the drawer: the holder clips the column while it moves (Anim:Drawer); over the canvas and its pins
+	-- (2.1.0) the rail beside the map, as tall as it; the column beside the rail in a holder as wide as the column
+	-- shows (it clips the column while it moves), the window as wide as the two
+	local rail = W.Panel(frame)
+	rail:SetPoint("TOPLEFT", body, "TOPRIGHT", T.GAP, 0)
+	rail:SetPoint("BOTTOMLEFT", body, "BOTTOMRIGHT", T.GAP, 0)
+	rail:SetWidth(T.RAIL)
+	rail:EnableMouse(true)
 	local holder = CreateFrame("Frame", nil, frame)
-	holder:SetFrameLevel(canvas.root:GetFrameLevel() + 500)
+	holder:SetPoint("TOPLEFT", rail, "TOPRIGHT", 0, 0)
+	holder:SetPoint("BOTTOMLEFT", rail, "BOTTOMRIGHT", 0, 0)
+	holder:SetWidth(1)
 	holder:EnableMouse(false)
 	local col = CreateFrame("Frame", nil, holder)
 	W.Panel(col, { on = true })
-	col:SetSize(T.W, 1)
+	col:SetWidth(T.W)
 	col:EnableMouse(true)
 	col:EnableMouseWheel(true)
 	Perf.SetScript(col, "OnMouseWheel", Swallow)
 	col:Hide()
-	S.holder, S.col = holder, col
-	S.job = { holder = holder, content = col, p = "RIGHT", rel = cf, rp = "RIGHT", x = 0, y = 0, w = T.W, h = 1,
-		lag = T.LAG, pad = 0 }
-	Anim:DrawerRest(S.job)
+	S.rail, S.holder, S.col = rail, holder, col
 	-- the title row: Quests and the count; the fold button
 	-- (M4) the tabs: Quests (the log's count on it), the Quest List while it is there (the UI's own tabs, W.FlatTab)
 	local function Tab(text, key)
@@ -1089,14 +1117,23 @@ function Log.Init(win)
 	S.tabs = { quests = Tab(TEXT.title, "quests"), list = Tab(TEXT.tabList, "list") }
 	S.tabs.quests:SetPoint("TOPLEFT", col, "TOPLEFT", T.PAD - 4, -7)
 	S.tabs.list:SetPoint("LEFT", S.tabs.quests, "RIGHT", 2, 0)
-	-- the two panes under the title row: the log's pages, the Quest List's page
+	-- (2.1.0) the layers' page's one tab, its title (no click: there is nothing beside it)
+	local layersTab = Tab(TEXT.filter, "layers")
+	layersTab:EnableMouse(false)
+	layersTab:SetPoint("TOPLEFT", col, "TOPLEFT", T.PAD - 4, -7)
+	layersTab:SetSelected(true)
+	layersTab:Hide()
+	S.layersTab = layersTab
+	-- the panes under the title row: the log's pages, the Quest List's page, (2.1.0) the layers' page
 	S.paneQ = CreateFrame("Frame", nil, col)
 	S.paneL = CreateFrame("Frame", nil, col)
-	for _, pane in ipairs({ S.paneQ, S.paneL }) do
+	S.paneY = CreateFrame("Frame", nil, col)
+	for _, pane in ipairs({ S.paneQ, S.paneL, S.paneY }) do
 		pane:SetPoint("TOPLEFT", col, "TOPLEFT", T.PAD, -(T.HEAD + 6))
-		pane:SetSize(T.W - 2 * T.PAD, 1)
+		pane:SetPoint("BOTTOMRIGHT", col, "BOTTOMRIGHT", -T.PAD, T.PAD)
 	end
 	S.paneL:Hide()
+	S.paneY:Hide()
 	-- (1.2.0) Dungeon Info's pane: the whole column under the fold button (its own tabs in the title row)
 	S.paneJ = CreateFrame("Frame", nil, col)
 	S.paneJ:SetPoint("TOPLEFT", col, "TOPLEFT", 0, 0)
@@ -1183,36 +1220,28 @@ function Log.Init(win)
 	-- the title and the parts under the back button
 	S.backButton = back
 	P.top = T.FOLD + 10
-	-- the map's own button that brings the column out (shown while it is folded)
-	local opener = W.RoundIcon(frame, T.OPENER, T.ICONS .. "btn_list")
-	opener:SetFrameLevel(holder:GetFrameLevel() + 2)
-	opener:SetPoint("TOPRIGHT", cf, "TOPRIGHT", -10, -10)
-	opener.tipTitle, opener.tipBody = TEXT.opener, TEXT.openerTip
-	Perf.SetScript(opener, "OnClick", OpenerClick)
-	Perf.SetScript(opener, "OnEnter", TipEnter)
-	Perf.SetScript(opener, "OnLeave", W.TipLeave)
-	S.opener = opener
-	-- (1.2.0) Dungeon Info's button (while Dungeon Info is there), and a light round each mode's button while
-	-- the column shows its mode
-	local door = W.RoundIcon(frame, T.OPENER, T.ICONS .. "btn_dungeon")
-	door:SetFrameLevel(holder:GetFrameLevel() + 2)
-	door.tipTitle, door.tipBody = TEXT.dungeonInfo, TEXT.dungeonInfoTip
-	Perf.SetScript(door, "OnClick", DoorClick)
-	Perf.SetScript(door, "OnEnter", TipEnter)
-	Perf.SetScript(door, "OnLeave", W.TipLeave)
-	door:Hide()
-	S.door = door
-	for _, b in ipairs({ opener, door }) do
+	-- (2.1.0) the rail's buttons, one under the other: the log's list, the layers' gear, Dungeon Info's door (while
+	-- Dungeon Info is there); a light round the one whose page the column shows
+	local function RailButton(icon, title, tip, click)
+		local b = W.RoundIcon(rail, T.OPENER, T.ICONS .. icon)
+		b.tipTitle, b.tipBody = title, tip
+		Perf.SetScript(b, "OnClick", click)
+		Perf.SetScript(b, "OnEnter", TipEnter)
+		Perf.SetScript(b, "OnLeave", W.TipLeave)
 		b.lit = b:CreateTexture(nil, "OVERLAY", nil, 2)
 		W.RoundGlow(b.lit)
 		b.lit:SetPoint("CENTER")
 		b.lit:SetSize(T.OPENER + 10, T.OPENER + 10)
 		b.lit:SetBlendMode("ADD")
 		b.lit:Hide()
+		return b
 	end
+	S.opener = RailButton("btn_list", TEXT.opener, TEXT.openerTip, OpenerClick)
+	S.filter = RailButton("chat_settings", TEXT.filter, TEXT.filterTip, GearClick)
+	S.door = RailButton("btn_dungeon", TEXT.dungeonInfo, TEXT.dungeonInfoTip, DoorClick)
+	S.door:Hide()
 	Perf.SetScript(col, "OnEvent", Column_OnEvent)
 	S.built = true
-	Log.Size()
 	pager:Show(S.list, 0, true)
 	local db = S.module and S.module.db
 	S.tab = "quests"
@@ -1223,24 +1252,10 @@ function Log.Init(win)
 	if db and db.logTab == "list" then
 		Log.Tab("list", true)
 	end
-	if db and db.logMode == "dungeonInfo" then
-		Log.Mode("dungeonInfo", true)
+	if db and (db.logMode == "dungeonInfo" or db.logMode == "layers") then
+		Log.Mode(db.logMode, true)
 	end
-	FilterPlace()
-end
-
-function Log.Size()
-	if not S.built then
-		return
-	end
-	local h = Finite(S.canvas.frame:GetHeight())
-	if h and h > 1 then
-		S.job.h = h
-		S.col:SetHeight(h)
-		local ph = max(1, h - T.HEAD - 6 - T.PAD)
-		S.paneQ:SetHeight(ph)
-		S.paneL:SetHeight(ph)
-	end
+	Light()
 end
 
 --------------------------------------------------------------------------------
@@ -1318,13 +1333,14 @@ function Log.Tab(key, instant)
 	ListShown()
 end
 
--- the tabs shown as the Quest List is there (its tab only then); none on Dungeon Info (its own); Dungeon Info's door
--- while Dungeon Info is there (the log again when it has gone)
+-- the tabs shown as the Quest List is there (its tab only then); none on Dungeon Info (its own); the layers' title on
+-- their page; Dungeon Info's door while Dungeon Info is there (the log again when it has gone)
 function Tabs()
 	local here = QuestListPanel() ~= nil
 	local log = S.mode == "log"
 	S.tabs.quests:SetShown(log)
 	S.tabs.list:SetShown(here and log)
+	S.layersTab:SetShown(S.mode == "layers")
 	if not here and S.tab == "list" then
 		Log.Tab("quests", true)
 	end
@@ -1334,30 +1350,114 @@ function Tabs()
 	end
 end
 
+--------------------------------------------------------------------------------
+-- (2.1.0) The layers' page (the gear's; the user's pick B, 2026-11-02): the map's switches by group, a heading each,
+-- a row a switch -- its icon (the map's own pin, as the look draws it), its name, MelloUI's switch. Laid the first time
+-- it shows; Map.lua's SetLayer switches the layer as the menu did.
+--------------------------------------------------------------------------------
+
+local LayerRowClick = Perf.Shared("OnClick on the map's layers rows", function(self)
+	self.switch:Click()
+end, "script")
+
+local function LayersPage()
+	local spec, pane = S.layers, S.paneY
+	if S.layerRows or not spec then
+		return
+	end
+	S.layerRows = {}
+	local Icons = MelloUI.Icons
+	local width = T.W - 2 * T.PAD
+	local y = 0
+	for g, name in ipairs(spec.groups) do
+		local h = HeadLook(CreateFrame("Frame", nil, pane))
+		h.label:SetText(name:upper())
+		h:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, -y)
+		h:SetWidth(width)
+		y = y + T.ZONE + 2
+		for _, s in ipairs(spec.switches) do
+			if s.group == g then
+				local key = s.key
+				local r = CreateFrame("Button", nil, pane)
+				r:SetSize(width, T.LAYER_ROW)
+				r:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, -y)
+				r:RegisterForClicks("LeftButtonUp")
+				r.icon = r:CreateTexture(nil, "ARTWORK")
+				r.icon:SetSize(T.LAYER_ICON, T.LAYER_ICON)
+				r.icon:SetPoint("LEFT", r, "LEFT", 4, 0)
+				Icons.Set(r.icon, s.icon, T.LAYER_ICON)
+				r.label = W.Text(r, "GameFontHighlight", s.label, "text")
+				r.label:SetPoint("LEFT", r, "LEFT", 4 + T.LAYER_ICON + 10, 0)
+				r.switch = W.Switch(r, function()
+					return spec.on(key)
+				end, function(on)
+					spec.set(key, on)
+				end)
+				r.switch:SetPoint("RIGHT", r, "RIGHT", -4, 0)
+				r.label:SetPoint("RIGHT", r.switch, "LEFT", -8, 0)
+				r.label:SetWordWrap(false)
+				Perf.SetScript(r, "OnClick", LayerRowClick)
+				W.RowPlate(r)
+				W.RowPlateChild(r, r.switch)
+				S.layerRows[#S.layerRows + 1] = r
+				y = y + T.LAYER_ROW
+			end
+		end
+		y = y + 8
+	end
+end
+
+function Log.Layers(spec)
+	S.layers = spec
+	if S.built and S.mode == "layers" then
+		LayersPage()   -- (the column left on the layers: its page now)
+		Log.LayersChanged()
+	end
+end
+
+function Log.LayersChanged()
+	for _, r in ipairs(S.layerRows or {}) do
+		r.switch:Refresh()
+	end
+end
+
+-- the panes by mode, in the rail's order (a page further down the rail slides in from the right)
+local ORDER = { log = 1, layers = 2, dungeonInfo = 3 }
+local function PaneOf(mode)
+	if mode == "dungeonInfo" then
+		return S.paneJ
+	elseif mode == "layers" then
+		return S.paneY
+	end
+	return S.tab == "list" and S.paneL or S.paneQ
+end
+
 function Log.Mode(mode, instant)
 	if not S.built then
 		return
 	end
 	local J = DungeonInfo()
-	if mode == "dungeonInfo" and not J then
+	if not ORDER[mode] or (mode == "dungeonInfo" and not J) then
 		mode = "log"
 	end
 	local db = S.module and S.module.db
 	if db then
 		db.logMode = mode
 	end
+	if mode == "layers" then
+		LayersPage()
+		Log.LayersChanged()
+	end
 	if mode == S.mode and not instant then
 		return
 	end
-	local logPane = S.tab == "list" and S.paneL or S.paneQ
-	local old = S.mode == "dungeonInfo" and S.paneJ or logPane
-	local new = mode == "dungeonInfo" and S.paneJ or logPane
+	local old, new = PaneOf(S.mode), PaneOf(mode)
+	TAB_FADE.slide = ORDER[mode] > ORDER[S.mode] and T.SLIDE or -T.SLIDE
 	S.mode = mode
 	if mode == "dungeonInfo" and not S.jmounted then
 		S.jmounted = J.Panel:Mount(S.paneJ, T)
 	end
 	Tabs()
-	TAB_FADE.slide = mode == "dungeonInfo" and T.SLIDE or -T.SLIDE
 	TAB_FADE.instant = (instant or not S.col:IsVisible()) and true or false
 	if old ~= new then
 		Anim:CrossFade(old, new, TAB_FADE)
@@ -1366,11 +1466,15 @@ function Log.Mode(mode, instant)
 	end
 	ListShown()
 	DungeonInfoShown()
-	FilterPlace()
+	Light()
+end
+
+function Log.IsOn(mode)
+	return S.out and S.mode == mode
 end
 
 function Log.IsDungeonInfo()
-	return S.out and S.mode == "dungeonInfo"
+	return Log.IsOn("dungeonInfo")
 end
 
 function Log.ViewChanged()
@@ -1385,24 +1489,6 @@ function Log.ViewChanged()
 			QL.Panel:Update(true)   -- (quiet: a zone with the same quests is not laid again)
 		end
 	end
-end
-
-local FilterEnter = Perf.Shared("OnEnter on the map's layers button", function(self)
-	W.ShowTooltip(self, TEXT.filter, TEXT.filterTip)
-end, "script")
-
-function Log.Filter(click)
-	if not S.built or S.filter then
-		return S.filter
-	end
-	local b = W.RoundIcon(S.opener:GetParent(), T.OPENER, T.ICONS .. "chat_settings")
-	b:SetFrameLevel(S.opener:GetFrameLevel())
-	Perf.SetScript(b, "OnClick", click)
-	Perf.SetScript(b, "OnEnter", FilterEnter)
-	Perf.SetScript(b, "OnLeave", W.TipLeave)
-	S.filter = b
-	FilterPlace()
-	return b
 end
 
 function Log.Unmount()
@@ -1425,33 +1511,64 @@ function Log.IsOut()
 	return S.out
 end
 
--- (after M4) the map's buttons in a row from its corner -- the log's opener, the layers button, Dungeon Info's door --
--- while the column is folded; beside the column while it is out (anchored to it: they move with the drawer), the
--- button of what it shows lit. (1.2.0: before, the opener went while the column was out; with two things to show,
--- each button stays, to switch to its own)
-function FilterPlace()
-	local opener = S.opener
-	opener:ClearAllPoints()
-	if S.out then
-		opener:SetPoint("TOPRIGHT", S.col, "TOPLEFT", -T.FILTER_GAP, -10)
-	else
-		opener:SetPoint("TOPRIGHT", S.canvas.frame, "TOPRIGHT", -10, -10)
-	end
-	local last = opener
-	for _, b in ipairs({ S.filter, S.door }) do
-		if b and (b ~= S.door or b:IsShown()) then
+-- (2.1.0) the rail's buttons from its top, one under the other (Dungeon Info's door while it is there), the button
+-- of what the column shows lit while it is out
+function Light()
+	local y = T.RAIL_TOP
+	for _, b in ipairs({ S.opener, S.filter, S.door }) do
+		if b:IsShown() then
 			b:ClearAllPoints()
-			b:SetPoint("TOPRIGHT", last, "TOPLEFT", -T.FILTER_GAP, 0)
-			last = b
+			b:SetPoint("TOP", S.rail, "TOP", 0, -y)
+			y = y + T.RAIL_STEP
 		end
 	end
-	opener.lit:SetShown(S.out and S.mode == "log")
+	S.opener.lit:SetShown(S.out and S.mode == "log")
+	S.filter.lit:SetShown(S.out and S.mode == "layers")
 	S.door.lit:SetShown(S.out and S.mode == "dungeonInfo")
 end
 
-local function FoldDone()
-	S.col:Hide()
-	FilterPlace()   -- (back in the map's corner now the column is gone)
+-- (2.1.0) the column `e` out (0..1): the holder that wide, the column trailing in it (a share of its width behind
+-- the rail, as a drawer's content), the window as wide (Map.lua's Unfold: the map stays where it stands)
+local function Reveal(e)
+	S.e = e
+	local x = T.GAP - (1 - e) * T.W * T.LAG
+	S.holder:SetWidth(max(1, (T.GAP + T.W) * e))
+	S.col:ClearAllPoints()
+	S.col:SetPoint("TOPLEFT", S.holder, "TOPLEFT", x, 0)
+	S.col:SetPoint("BOTTOMLEFT", S.holder, "BOTTOMLEFT", x, 0)
+	if S.win.Unfold then
+		S.win.Unfold(e)
+	end
+end
+
+-- a move's step: out on the drawer's outCubic, in on its smoothstep
+local function FoldStep(job, u)
+	local p
+	if job.to > job.from then
+		local q = 1 - u
+		p = 1 - q * q * q
+	else
+		p = u * u * (3 - 2 * u)
+	end
+	Reveal(job.from + (job.to - job.from) * p)
+end
+
+local function FoldDone(job)
+	job.moving = false
+	S.holder:SetClipsChildren(false)
+	if not S.out then
+		S.col:Hide()
+	end
+end
+
+-- the column landed where it is going (a move under way ended at its end)
+local function FoldLand()
+	local job = S.fold
+	if job.moving then
+		Anim:Stop(job, "drive")
+	end
+	Reveal(S.out and 1 or 0)
+	FoldDone(job)
 end
 
 function Log.SetOut(out, instant)
@@ -1463,45 +1580,36 @@ function Log.SetOut(out, instant)
 	if db then
 		db.log = out
 	end
-	S.canvas.cover = out and T.W or 0
 	if out == S.out and not instant then
 		return
 	end
 	S.out = out
-	instant = instant or not S.col:GetParent():IsVisible()
-	-- (out: beside the column, riding its slide in; folded at once: beside the opener; a fold under way rides the
-	-- column out, then FoldDone puts it beside the opener)
-	if out or instant then
-		FilterPlace()
-	end
+	instant = instant or not S.win.frame:IsVisible()
+	Light()
 	if out then
 		Read()
 		Log.Lay()
 		S.col:Show()
-		if instant then
-			Anim:StopDrawer(S.job)
-			Anim:DrawerRest(S.job)
-		else
-			Anim:Drawer(S.job, true, T.OPEN)
-		end
 		if S.shown then
 			Events(S.col, true)
 		end
-		ListShown()
-		DungeonInfoShown()
 	else
 		Events(S.col, false)
-		ListShown()
-		DungeonInfoShown()
-		if instant then
-			Anim:StopDrawer(S.job)
-			Anim:DrawerRest(S.job)
-			S.col:Hide()
-			FilterPlace()
-		else
-			Anim:Drawer(S.job, false, T.CLOSE, FoldDone)
-		end
 	end
+	ListShown()
+	DungeonInfoShown()
+	if instant then
+		FoldLand()
+		return
+	end
+	local job = S.fold
+	job.from, job.to, job.moving = S.e, out and 1 or 0, true
+	S.holder:SetClipsChildren(true)
+	Anim:Drive(job, FoldStep, out and T.OPEN or T.CLOSE, "linear", FoldDone)
+end
+
+function Log.Share()
+	return S.e
 end
 
 local function MarkSelected()
@@ -1582,8 +1690,8 @@ function Log.Shown()
 	if not S.built then
 		return
 	end
-	Log.Size()
 	Tabs()
+	Light()
 	if S.out then
 		Events(S.col, true)
 		Refresh()
@@ -1602,10 +1710,7 @@ function Log.Hidden()
 	Showing(nil)
 	ListShown()
 	DungeonInfoShown()
-	Anim:StopDrawer(S.job)
-	if not S.out then
-		S.col:Hide()
-	end
+	FoldLand()   -- (a fold under way: at its end)
 end
 
 function Log.State()
@@ -1613,7 +1718,7 @@ function Log.State()
 	return {
 		built = S.built, out = S.out, quests = S.quests, entries = S.n, selected = S.selected,
 		page = pager and (pager:Current() == S.page and "quest" or pager:Current() == S.list and "list") or nil,
-		cover = S.canvas and S.canvas.cover or 0, moving = S.job and S.job.moving or false,
+		mode = S.mode, share = S.e, moving = S.fold.moving or false,
 	}
 end
 

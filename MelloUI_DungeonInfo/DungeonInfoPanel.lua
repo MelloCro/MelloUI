@@ -480,11 +480,8 @@ end
 -- an item's row filled: d a drop of the data's, or nil (seen in front of you: item only)
 local function FillItemRow(r, item, d, line)
 	r.item, r.d = item, d
-	-- (a quality the data does not know, 0: the game's own, a Forever item's once the server has sent it)
-	local quality = d and d.quality or 2
-	if quality == 0 then
-		quality = J.ItemQuality(item) or 2
-	end
+	-- (2.1.0: the game's own quality once it knows the item, else the data's: J.Quality)
+	local quality = J.Quality(d or { item = item })
 	SetItemPicture(r.frame, r.icon, item, quality)
 	r.name:SetText(J.ItemName(item, d and d.name))
 	r.name:SetTextColor(J.QualityColour(quality))
@@ -581,7 +578,7 @@ local function FillBossRow(r, boss, i, n)
 		end
 	end
 	for _, d in ipairs(drops) do
-		if #shown < 3 and not J.IsTracked(d.item) and (d.quality >= 2 or d.quality == 0) and (d.starts or 0) == 0 then
+		if #shown < 3 and not J.IsTracked(d.item) and J.Quality(d) >= 2 and (d.starts or 0) == 0 then
 			shown[#shown + 1] = d
 		end
 	end
@@ -592,7 +589,7 @@ local function FillBossRow(r, boss, i, n)
 		slot.icon:SetShown(d ~= nil)
 		slot.star:SetShown(d ~= nil and J.IsTracked(d.item))
 		if d then
-			SetItemPicture(slot.frame, slot.icon, d.item, d.quality)
+			SetItemPicture(slot.frame, slot.icon, d.item, J.Quality(d))
 		end
 	end
 end

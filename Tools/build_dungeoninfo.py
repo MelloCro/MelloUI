@@ -81,6 +81,22 @@ def read_csv(name):
         return list(csv.DictReader(fh))
 
 
+def client_items():
+    """The client's item table (ItemSparse), its newest build: wago.tools' ItemSparse_<build>.csv in BuildData's cache
+    (fetched by hand: wago.tools/db2/ItemSparse/csv?build=<build>), else the WoWExport one -> {item: (name, quality,
+    required level)}. Only the items the client carries: the server sends the rest's in game."""
+    found = sorted((tuple(int(x) for x in m.group(1).split(".")), p) for p in os.listdir(BUILD)
+                   for m in [re.match(r"ItemSparse_(1\.60\.\d+\.\d+)\.csv$", p)] if m)
+    path = os.path.join(BUILD, found[-1][1]) if found else os.path.join(DB2, "ItemSparse.csv")
+    out = {}
+    if os.path.exists(path):
+        with open(path, encoding="utf-8", newline="") as fh:
+            for r in csv.DictReader(fh):
+                out[int(r["ID"])] = (r["Display_lang"], int(r["OverallQualityID"] or 0), int(r["RequiredLevel"] or 0))
+    log("client items: %d (%s)" % (len(out), os.path.basename(path)))
+    return out
+
+
 def quest_data():
     """the quest data's dungeons and raids: {key: name}, {key: True}, {key: (lo, hi)}"""
     text = open(os.path.join(REPO, "Media", "QuestListData.lua"), encoding="utf-8").read()
@@ -459,6 +475,17 @@ def main(check):
     for r in bql.sql_rows(SQL, "item_template"):
         items[int(r["entry"])] = (r["name"], int(r["Quality"] or 0), int(r["RequiredLevel"] or 0),
                                   int(r["startquest"] or 0))
+    # (2.1.0; the user, 2026-11-03: "blizzard changed the quality of some of the items that are dropping") the quality
+    # is Forever's own where its client carries the item, the database's the classic one; the game's own is read in
+    # game for every item it knows (DungeonInfo.lua J.Quality), so a change the server makes shows there too
+    sparse = client_items()
+    moved = 0
+    for item, (iname, quality, req, starts) in list(items.items()):
+        q = sparse.get(item, ("", 0, 0))[1]
+        if q and q != quality:
+            items[item] = (iname, q, req, starts)
+            moved += 1
+    log("qualities the client's, not the database's: %d" % moved)
 
     def shares(rows):
         explicit, zeros = defaultdict(float), defaultdict(int)
@@ -525,14 +552,8 @@ def main(check):
         trash.sort(key=lambda d: (-d[2], -d[1], d[3]))
         inst["trash"] = trash
 
-    # an item's name, quality and level: the database's, else the client's (ItemSparse); a Forever item neither
-    # knows yet: quality 0, the game's own read in game
-    sparse = {}
-    sparse_path = os.path.join(DB2, "ItemSparse.csv")
-    if os.path.exists(sparse_path):
-        for r in read_csv("ItemSparse.csv"):
-            sparse[int(r["ID"])] = (r["Display_lang"], int(r["OverallQualityID"] or 0), int(r["RequiredLevel"] or 0))
-
+    # an item's name, quality and level: the database's (its quality the client's, above), else the client's
+    # (ItemSparse); a Forever item neither knows yet: quality 0, the game's own read in game
     def item_info(item):
         if item in items:
             return items[item][0], items[item][1], items[item][2]
