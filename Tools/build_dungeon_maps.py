@@ -36,6 +36,15 @@ The client has no dungeon maps (no UiMap of an instance), so each one is laid fr
             database spawns its creature on the instance's map (the creature of its name, as build_dungeoninfo.py
             matches them), in the wing whose rooms are under that spot at its height; a boss spawned nowhere (summoned
             in his fight) has no place. GPL-3.0 data (cmangos).
+  drawn     (2.1.0; the user, 2026-11-03: "use the Blizzard own dungeon maps for the existing ones") Blizzard's own
+            drawn floors of the old dungeons: the Forever client holds their art (interface/worldmap/<dungeon>) but no
+            UiMap of them, so their floors, art tiles and places come from Cataclysm Classic's UiMap tables (CATA_BUILD,
+            the Cataclysm-era drawings of the old layouts: Scholomance's "ScholomanceOLD"); a floor with any tile the
+            Forever build lacks is left out. Where a dungeon has them (and DRAWN_FIT of its placed bosses stand on
+            them), its wings are those floors: each unit on the floor whose assignments list its group (UiMapAssignment's
+            WMOGroupID is the MOGP uniqueID; its z range picks between two floors of one group), else the one whose
+            region holds it; each named by the floor's own name (the dungeon's for a drawing of one floor); its art the
+            drawing laid by its world box, no edge, cove, rooms or ground of ours. The others (Forever's own) keep ours.
 
 Only the instances with a door on the world map (the Quest List's entrances: Forever's doors) get a plan. With two or
 more bosses placed, only the models with rooms within NEAR of them are drawn (a dungeon in open land has far caves and
@@ -84,6 +93,12 @@ ART = os.path.join(REPO, "MelloUI_Map", "Media", "Dungeons")
 BUILD = "1.60.1.70425"
 WAGO = "https://wago.tools/api/casc/%d?download&version=" + BUILD
 AGENT = "MelloUI build_dungeon_maps (dev tool)"
+CATA_BUILD = "4.4.2.60895"   # Cataclysm Classic: the drawn floors of the old dungeons (UiMap* tables)
+WAGO_CSV = "https://wago.tools/db2/%s/csv?build=" + CATA_BUILD
+DRAWN_DIR = os.path.join(paths.CACHE, "dungeonmap", "drawn")
+FILES = os.path.join(os.path.dirname(LISTFILE), "files-" + BUILD + ".csv")   # (every file of the Forever build)
+DRAWN_FIT = 0.8              # this share of a dungeon's placed bosses on its drawn floors, or its plan stays ours
+DRAWN_TYPES = ("4", "6")     # UiMap types drawn for an instance: a dungeon's floor, an orphan (Zul'Farrak's one sheet)
 
 TILE = 1600.0 / 3.0          # yards a terrain tile
 EDGE_W = 32 * TILE           # the grid's 0, 0 from the world's middle
@@ -635,8 +650,186 @@ def buildings(units, ways, bosses):
     return [[units[i] for i in sorted(g)] for _, g in sorted(groups.items(), key=lambda kv: min(kv[1]))]
 
 
-def boss_wing(wings, x, y, z):
-    """the wing whose rooms are under a boss's spot (KL px) nearest his height; else the nearest rooms' wing"""
+def drawn_floors():
+    """Blizzard's drawn floors of the old dungeons (Cataclysm Classic's UiMaps; their art all in the Forever build) ->
+    {map: [dict(name, files (row-major), lw, lh, tw, th, box (E0, S0, E1, S1: the art's 0..1 in E, S yards),
+    groups {WMO group uniqueID: [(z0, z1)]}, named {area name: [(z0, z1)]} (its groups' names), regions [(E0, S0, E1, S1,
+    z0, z1)])]} in the game's floor order"""
+    os.makedirs(DRAWN_DIR, exist_ok=True)
+
+    def table(name):
+        path = os.path.join(DRAWN_DIR, name + ".csv")
+        if not os.path.isfile(path):
+            req = urllib.request.Request(WAGO_CSV % name, headers={"User-Agent": AGENT})
+            with urllib.request.urlopen(req, timeout=120) as res, open(path, "wb") as fh:
+                fh.write(res.read())
+        with open(path, encoding="utf-8") as fh:
+            return list(csv.DictReader(fh))
+    if not os.path.isfile(FILES):
+        log("no file list of the Forever build (%s): no drawn floors" % FILES)
+        return {}
+    have = set()
+    with open(FILES, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            a = line.split(";", 1)[0]
+            if a.isdigit():
+                have.add(int(a))
+    uimap = {r["ID"]: r for r in table("UiMap") if r["Type"] in DRAWN_TYPES}
+    member = {r["UiMapID"]: r for r in table("UiMapGroupMember")}
+    art = {}
+    for r in table("UiMapXMapArt"):
+        if r["UiMapID"] in uimap and (r["UiMapID"] not in art or r["PhaseID"] == "0"):
+            art[r["UiMapID"]] = r["UiMapArtID"]
+    style = {r["ID"]: r["UiMapArtStyleID"] for r in table("UiMapArt")}
+    layer = {r["UiMapArtStyleID"]: r for r in table("UiMapArtStyleLayer") if r["LayerIndex"] == "0"}
+    tiles = defaultdict(dict)
+    for r in table("UiMapArtTile"):
+        if r["LayerIndex"] == "0":
+            tiles[r["UiMapArtID"]][(int(r["RowIndex"]), int(r["ColIndex"]))] = int(r["FileDataID"])
+    # (a group's area name in Cataclysm's own table: Forever rebuilt some models -- Blackrock Depths' -- with new group
+    # IDs, their area names the same)
+    area = {r["ID"]: r["AreaName_lang"] for r in rows("AreaTable")}
+    group_name = {}
+    for r in table("WMOAreaTable"):
+        n = r["AreaName_lang"] or area.get(r["AreaTableID"], "")
+        if n and not re.search(r"unused", n, re.I):
+            group_name.setdefault(int(r["WMOGroupID"]), n.strip())
+    assigned = defaultdict(lambda: defaultdict(list))
+    for r in table("UiMapAssignment"):
+        if r["UiMapID"] in uimap:
+            assigned[int(r["MapID"])][r["UiMapID"]].append(r)
+    out = {}
+    for mapID, by_ui in assigned.items():
+        floors = []
+        for ui, ass in by_ui.items():
+            L = layer.get(style.get(art.get(ui)))
+            grid = tiles.get(art.get(ui), {})
+            if not (L and grid):
+                continue
+            lw, lh, tw, th = (int(L[k]) for k in ("LayerWidth", "LayerHeight", "TileWidth", "TileHeight"))
+            cols, rows_ = -(-lw // tw), -(-lh // th)
+            files = [grid.get((r, c)) for r in range(rows_) for c in range(cols)]
+            if not all(files) or any(f not in have for f in files):
+                continue
+            # (the art's place: its widest assignment's world box over its share of the art; the others agree)
+            regions, boxes, groups, named = [], [], defaultdict(list), defaultdict(list)
+            for a in ass:
+                x0, y0, z0, x1, y1, z1 = (float(a["Region_%d" % i]) for i in range(6))
+                u0, v0, u1, v1 = (float(a[k]) for k in ("UiMin_0", "UiMin_1", "UiMax_0", "UiMax_1"))
+                if x1 <= x0 or y1 <= y0 or u1 <= u0 or v1 <= v0:
+                    continue
+                WE, HS = (y1 - y0) / (u1 - u0), (x1 - x0) / (v1 - v0)
+                E0, S0 = EDGE_W - y1 - u0 * WE, EDGE_W - x1 - v0 * HS
+                boxes.append(((y1 - y0) * (x1 - x0), (E0, S0, E0 + WE, S0 + HS)))
+                regions.append((EDGE_W - y1, EDGE_W - x1, EDGE_W - y0, EDGE_W - x0, z0, z1))
+                if int(a["WMOGroupID"] or 0):
+                    groups[int(a["WMOGroupID"])].append((z0, z1))
+                    if group_name.get(int(a["WMOGroupID"])):
+                        named[group_name[int(a["WMOGroupID"])]].append((z0, z1))
+            if not boxes:
+                continue
+            box = max(boxes)[1]
+            spread = max(abs(b[1][i] - box[i]) for b in boxes for i in range(4))
+            if spread > 2:
+                log("  (map %d, UiMap %s: its assignments disagree on the art's place by %.1f yards)" % (mapID, ui, spread))
+            m = member.get(ui)
+            floors.append(dict(ui=int(ui), name=(m and m["Name_lang"]) or uimap[ui]["Name_lang"],
+                               order=int(m["FloorIndex"]) if m else 0, files=files, lw=lw, lh=lh, tw=tw, th=th,
+                               box=box, groups=groups, named=named, regions=regions))
+        floors.sort(key=lambda f: (f["order"], f["ui"]))
+        if floors:
+            out[mapID] = floors
+    return out
+
+
+DRAWN = {}
+
+
+def floor_near(floors, E, S, z):
+    """the drawn floor a spot is on by the floors' regions (the smallest holding it at its height), else the floor whose
+    drawing holds it (the smallest), else the nearest drawing's"""
+    best = None
+    for i, f in enumerate(floors):
+        for x0, y0, x1, y1, z0, z1 in f["regions"]:
+            if x0 <= E <= x1 and y0 <= S <= y1 and z0 <= z <= z1:
+                key = ((x1 - x0) * (y1 - y0), z1 - z0)
+                if best is None or key < best[0]:
+                    best = (key, i)
+    if best:
+        return best[1]
+    held = [((f["box"][2] - f["box"][0]) * (f["box"][3] - f["box"][1]), i) for i, f in enumerate(floors)
+            if f["box"][0] <= E <= f["box"][2] and f["box"][1] <= S <= f["box"][3]]
+    if held:
+        return min(held)[1]
+    return min(range(len(floors)), key=lambda i: math.hypot((floors[i]["box"][0] + floors[i]["box"][2]) / 2 - E,
+                                                          (floors[i]["box"][1] + floors[i]["box"][3]) / 2 - S))
+
+
+def drawn_wings(units, floors, e0, s0):
+    """the units by drawn floor: the floor whose assignments list a unit's group at its height (the most particular z
+    range); else the one whose groups of the unit's area name do so (the most of them on a tie); else the floor of the
+    placed units it touches near its height; else floor_near its footprint's middle"""
+    wings = [[] for _ in floors]
+    how, floor_of = Counter(), {}
+
+    def pick(key, z):
+        best = None
+        for i, f in enumerate(floors):
+            spans = [z1 - z0 for z0, z1 in f[key[0]].get(key[1], ()) if z0 <= z <= z1]
+            if spans:
+                rank = (min(spans), -len(f[key[0]][key[1]]))
+                if best is None or rank < best[0]:
+                    best, tie = (rank, i), False
+                elif rank == best[0]:
+                    tie = True
+        return None if best is None or tie else best
+    for u in units:
+        z = u["zmin"] + 1
+        best = pick(("groups", u.get("unique") or -1), z)
+        how["group" if best else "name" if u["name"] else "place"] += 1
+        if best is None and u["name"]:
+            best = pick(("named", u["name"].strip()), z)
+            if best is None:
+                how["name"] -= 1
+                how["place"] += 1
+        if best is not None:
+            floor_of[id(u)] = best[1]
+    # (a room no group or name places: the floor of the placed rooms it touches near its height, the most ground
+    # shared -- passes until none moves; the rest by floor_near its footprint's middle)
+    left = [u for u in units if id(u) not in floor_of]
+    moved = True
+    while left and moved:
+        moved = False
+        for u in list(left):
+            votes = Counter()
+            for o in units:
+                f = floor_of.get(id(o))
+                if f is not None and abs(o["zmin"] - u["zmin"]) <= ZSEP:
+                    votes[f] += shared(u, o, grown=True)
+            votes = +votes
+            if votes:
+                floor_of[id(u)] = votes.most_common(1)[0][0]
+                left.remove(u)
+                how["place"] -= 1
+                how["neighbours"] += 1
+                moved = True
+    for u in left:
+        x0, y0, m = u["fp"]
+        ys, xs = np.nonzero(m)
+        E = e0 + (x0 + (xs.mean() if len(xs) else 0)) / KL
+        S = s0 + (y0 + (ys.mean() if len(ys) else 0)) / KL
+        floor_of[id(u)] = floor_near(floors, E, S, u["zmin"] + 1)
+    for u in units:
+        wings[floor_of[id(u)]].append(u)
+    log("  rooms on the drawn floors: %d by their group, %d by their area name, %d by their neighbours, %d by their "
+        "place" % (how["group"], how["name"], how["neighbours"], how["place"]))
+    return wings
+
+
+def boss_wing(wings, x, y, z, first=False):
+    """the wing whose rooms are under a boss's spot (KL px) nearest his height (on a tie the most particular: the
+    room of the least height -- a hall over a whole city holds many rooms' spots; first: the first wing, as a way in
+    is on the first floor); else the nearest rooms' wing"""
     best = None
     for w, us in enumerate(wings):
         for u in us:
@@ -644,8 +837,9 @@ def boss_wing(wings, x, y, z):
             px, py = int(x) - ux, int(y) - uy
             if 0 <= py < m.shape[0] and 0 <= px < m.shape[1] and m[py, px]:
                 dz = 0 if u["zmin"] - 3 <= z <= u["zmax"] + 3 else min(abs(z - u["zmin"]), abs(z - u["zmax"]))
-                if best is None or dz < best[0]:
-                    best = (dz, w)
+                key = (dz, w if first else u["zmax"] - u["zmin"])
+                if best is None or key < best[0]:
+                    best = (key, w)
     if best:
         return best[1]
     near = None
@@ -761,7 +955,7 @@ def build_map(key, mapID, name, bosses, spawns, wdt_fid, ways):
                     pieces.append(dict(f=f, ax=ax, ay=ay, fw=size[0], fh=size[1], E=E, S=S, c=c, s=s, sc=sc))
             if pieces:
                 units.append(dict(kind="room", pl=pl, g=g, pieces=pieces, zmin=Z + bb[2] * sc, zmax=Z + bb[5] * sc,
-                                  name=area_name(info["wmo"], unique)))
+                                  name=area_name(info["wmo"], unique), unique=unique))
         cols_ = None
         for g, gi in enumerate(info["groups"]):
             if (pl["uid"], g) not in outdoor:
@@ -786,14 +980,23 @@ def build_map(key, mapID, name, bosses, spawns, wdt_fid, ways):
             if tris:
                 bb = gi["bb"]
                 units.append(dict(kind="out", pl=pl, g=g, tris=tris, zmin=Z + bb[2] * sc, zmax=Z + bb[5] * sc,
-                                  name=area_name(info["wmo"], unique)))
+                                  name=area_name(info["wmo"], unique), unique=unique))
     if not units and not places:
         log("  nothing to draw")
         return None
 
+    # (2.1.0) Blizzard's drawn floors, when its placed bosses stand on them (a drawing of the dungeon as Forever has it)
+    floors = DRAWN.get(mapID) or []
+    if floors and places:
+        on = sum(1 for _, E, S, _ in places if any(f["box"][0] <= E <= f["box"][2] and f["box"][1] <= S <= f["box"][3]
+                                                   for f in floors))
+        if on < DRAWN_FIT * len(places):
+            log("  Blizzard's drawn floors left out: %d of %d bosses on them" % (on, len(places)))
+            floors = []
+
     # the plan: everything drawn and every boss, a margin round it
-    xs = [p[1] for p in places]
-    ys = [p[2] for p in places]
+    xs = [p[1] for p in places] + [v for f in floors for v in (f["box"][0], f["box"][2])]
+    ys = [p[2] for p in places] + [v for f in floors for v in (f["box"][1], f["box"][3])]
     for u in units:
         if u["kind"] == "room":
             xs += [x for p in u["pieces"] for x in corners(p, 0)]
@@ -821,11 +1024,14 @@ def build_map(key, mapID, name, bosses, spawns, wdt_fid, ways):
         if 0 <= x <= e1 - e0 and 0 <= y <= s1 - s0:
             spots.append((x * KL, y * KL))
     wings = []
-    marks = [((E - e0) * KL, (S - s0) * KL) for _, E, S, _ in places]
-    for b, us in enumerate(buildings(units, spots, marks) if units else []):
-        for u in us:
-            u["building"] = b
-        wings += split(us)
+    if floors:
+        wings = drawn_wings(units, floors, e0, s0)   # (2.1.0: the drawn floors are the wings, in the game's order)
+    else:
+        marks = [((E - e0) * KL, (S - s0) * KL) for _, E, S, _ in places]
+        for b, us in enumerate(buildings(units, spots, marks) if units else []):
+            for u in us:
+                u["building"] = b
+            wings += split(us)
     wings = wings or [[]]
     at = [boss_wing(wings, (E - e0) * KL, (S - s0) * KL, z) for _, E, S, z in places]
 
@@ -833,7 +1039,7 @@ def build_map(key, mapID, name, bosses, spawns, wdt_fid, ways):
         return wings[w][0]["building"] if wings[w] else 0
     # (a wing of a room or two with no boss -- the Deadmines' room over its first tunnel -- is no wing to pick: it
     # joins the wing of its building it touches most, drawn over it)
-    while len(wings) > 1:
+    while len(wings) > 1 and not floors:
         size = [sum(u["area"] for u in us) for us in wings]
         small = [w for w in range(len(wings)) if size[w] < SMALL * max(size) and w not in at
                  and any(v != w and building(v) == building(w) for v in range(len(wings)))]
@@ -848,9 +1054,9 @@ def build_map(key, mapID, name, bosses, spawns, wdt_fid, ways):
     first = {}
     for i, w in enumerate(at):
         first.setdefault(w, i)
-    order = sorted(range(len(wings)), key=lambda w: (first.get(w, 1e9),
-                                                     sum(u["zmin"] * u["area"] for u in wings[w]) /
-                                                     max(1, sum(u["area"] for u in wings[w]))))
+    order = list(range(len(wings))) if floors else sorted(
+        range(len(wings)), key=lambda w: (first.get(w, 1e9), sum(u["zmin"] * u["area"] for u in wings[w]) /
+                                          max(1, sum(u["area"] for u in wings[w]))))
     wings = [wings[w] for w in order]
     at = [order.index(w) for w in at]
     # their names: the game's area name of most of each one's ground, one a wing; the names the minimap shows there
@@ -876,6 +1082,8 @@ def build_map(key, mapID, name, bosses, spawns, wdt_fid, ways):
         if pick:
             used.add(pick)
         titles.append(pick)
+    if floors:
+        titles = [f["name"] for f in floors]   # (a drawn floor's own name; a drawing of one floor: the dungeon's)
 
     # the ways in: each teleport's landing in the plan, in the wing whose rooms are there
     doors = []
@@ -883,7 +1091,7 @@ def build_map(key, mapID, name, bosses, spawns, wdt_fid, ways):
         E, S = EDGE_W - wy, EDGE_W - wx
         x, y = E - e0, S - s0
         if 0 <= x <= e1 - e0 and 0 <= y <= s1 - s0 and all(math.hypot(x - d[0], y - d[1]) > DOOR_APART for d in doors):
-            doors.append((x, y, boss_wing(wings, x * KL, y * KL, wz) + 1))
+            doors.append((x, y, boss_wing(wings, x * KL, y * KL, wz, first=True) + 1))
     # the doorways between wings: the models' portals (through groups of no wing -- corridors -- within LINK_STEPS)
     wing_of, floor = {}, {}
     for w, us in enumerate(wings):
@@ -941,6 +1149,16 @@ def build_map(key, mapID, name, bosses, spawns, wdt_fid, ways):
     ss = 2 if W * H <= 16e6 else 1        # (the triangles drawn bigger, then shrunk: smooth edges; a huge plan: not)
     out_wings, n_edge, n_cove = [], 0, 0
     for w, us in enumerate(wings, 1):
+        if floors:
+            # (2.1.0) Blizzard's drawing of the floor: its tiles (row-major) and its art's place in the plan, the map
+            # opening on it; the art's size and tiles' (its last column and row run past it); no art of ours
+            f = floors[w - 1]
+            x0, y0, x1, y1 = f["box"]
+            rect = [round(v, 2) for v in (x0 - e0, y0 - s0, x1 - e0, y1 - s0)]
+            out_wings.append(dict(name=titles[w - 1], box=[round(v, 1) for v in rect],
+                                  areas=sorted(n for n, h in home.items() if h == w - 1), rooms=[], edge=[], cove=[],
+                                  drawn=f["files"], rect=rect, art=[f["lw"], f["lh"], f["tw"], f["th"]]))
+            continue
         walk = np.zeros((H, W), np.uint8)
         draw_pieces([p for u in us if u["kind"] == "room" for p in u["pieces"]], e0, s0, K, W, H, walk)
         cove = Image.new("RGBA", (W * ss, H * ss), (0, 0, 0, 0))
@@ -996,7 +1214,7 @@ def build_map(key, mapID, name, bosses, spawns, wdt_fid, ways):
 
     # the ground: the instance's minimap tiles under the plan
     ground = []
-    for tx, ty, m in tiles:
+    for tx, ty, m in tiles if not floors else []:   # (a drawn dungeon: Blizzard's drawing alone)
         if m[7] and tx * TILE < e0 + cols * ART_PX / K and (tx + 1) * TILE > e0 \
                 and ty * TILE < s0 + rows_ * ART_PX / K and (ty + 1) * TILE > s0:
             ground += [tx, ty, m[7]]
@@ -1006,10 +1224,10 @@ def build_map(key, mapID, name, bosses, spawns, wdt_fid, ways):
     doors_out = [v for x, y, w in doors for v in (round(x, 1), round(y, 1), w)]
     links_out = [v for x, y, wa, wb, way in links for v in (round(x, 1), round(y, 1), wa + 1, wb + 1, way)]
     log("  %d units in %d wing(s) (%s), %d room pictures, bosses %d of %d, %d way(s) in, %d doorways between wings, "
-        "art %d + %d tiles, ground %d tiles" % (
+        "art %d + %d tiles, ground %d tiles%s" % (
             len(units), len(out_wings), " / ".join(w["name"] or "-" for w in out_wings),
             sum(len(u["pieces"]) for u in units if u["kind"] == "room"), len(places), len(bosses), len(doors),
-            len(links), n_edge, n_cove, len(ground) // 3))
+            len(links), n_edge, n_cove, len(ground) // 3, ", Blizzard's drawn floors" if floors else ""))
     return dict(map=mapID, name=name, w=round(cols * ART_PX / K, 1), h=round(rows_ * ART_PX / K, 1),
                 cw=round(e1 - e0, 1), ch=round(s1 - s0, 1), e0=round(e0, 2), s0=round(s0, 2), cols=cols, rows=rows_,
                 ground=ground, wings=out_wings, bosses=bosses_out, doors=doors_out, links=links_out)
@@ -1048,9 +1266,11 @@ def read_existing():
 def entry(d):
     wings = []
     for w in d["wings"]:
-        wings.append("{ %sbox = %s, areas = %s, edge = %s, cove = %s, rooms = %s }" % (
+        drawn = (", drawn = %s, rect = %s, art = %s" % (lua_list(w["drawn"]), lua_list(w["rect"]), lua_list(w["art"]))
+                 if w.get("drawn") else "")
+        wings.append("{ %sbox = %s, areas = %s, edge = %s, cove = %s, rooms = %s%s }" % (
             ("name = %s, " % lua_str(w["name"])) if w["name"] else "", lua_list(w["box"]), lua_list(w["areas"]),
-            lua_list(w["edge"]), lua_list(w["cove"]), lua_list(w["rooms"])))
+            lua_list(w["edge"]), lua_list(w["cove"]), lua_list(w["rooms"]), drawn))
     return ("\t[%d] = { name = %s, w = %s, h = %s, cw = %s, ch = %s, e0 = %s, s0 = %s, cols = %d, rows = %d, "
             "ground = %s, bosses = %s, doors = %s, links = %s, wings = { %s } }," % (
                 d["map"], lua_str(d["name"]), lua_val(d["w"]), lua_val(d["h"]), lua_val(d["cw"]), lua_val(d["ch"]),
@@ -1075,7 +1295,10 @@ def write_data(lines):
         "--   game's area name; none: not known), box: { x0,",
         "--   y0, x1, y1 } (yards: what the map opens on), areas: { area names the minimap shows in it }, edge / cove:",
         "--   { column, row, ... } (its art tiles: <map>_<wing>e|o<column>_<row>), rooms: { { x, y (tiles), turn, scale,",
-        "--   { file, anchor x, anchor y, width, height, ... } }, ... } (as MapData.caves) }, ... } }",
+        "--   { file, anchor x, anchor y, width, height, ... } }, ... } (as MapData.caves); a drawn floor (Blizzard's own",
+        "--   drawing of an old dungeon's floor, its name the floor's): drawn: { file, ... } (its art's tiles, row by row),",
+        "--   rect: { x0, y0, x1, y1 } (yards: the art's place in the plan), art: { width, height, tile width, tile height }",
+        "--   (px), no edge, cove or rooms }, ... } }",
         "ns.MapDungeons = {",
     ]
     body = [lines[k] for k in sorted(lines)]
@@ -1137,6 +1360,7 @@ def main(argv):
     todo = [i for i in every if i[0] in doors and (not want or i[1] in want)]
     log("%d instances" % len(todo))
     spawns = boss_spawns({i[1] for i in todo}) if todo else {}
+    DRAWN.update(drawn_floors() if todo else {})
     ways = teleports({i[1] for i in todo}) if todo else {}
     lines = read_existing()
     for key, mapID, name, bosses in every:

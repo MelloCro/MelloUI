@@ -15,6 +15,12 @@
 -- The "World map" button at the top left, or a right-click at the plan's
 -- widest view, goes back to the world.
 --
+-- Blizzard's drawings (the user, 2026-11-03: "use the Blizzard own dungeon
+-- maps for the existing ones"): an old dungeon's wings are Blizzard's own drawn
+-- floors -- the client holds their art, no map of them -- laid by their place
+-- (MapDungeons' drawn, rect, art; MapCanvas' DrawnPlace); Forever's own keep
+-- the plan made from the client's floor pictures.
+--
 -- From outside (the user, 2026-11-03: "Can i open the dungeon map by clicking
 -- on it on the map, or clicking on the dungeon in the dungeon info?"): Dungeon
 -- Info's page of an instance shows its plan too (M:ShowDungeon) -- a click on

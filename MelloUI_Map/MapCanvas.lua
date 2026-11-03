@@ -136,6 +136,7 @@ local T = {
 	DUNGEON_PX = 4,           -- the closest zoom: canvas units a yard (the floor pictures' own 2 px a yard, twice)
 	DUNGEON_GROUND = 0.3,     -- the instance's minimap ground, grey, this strong over the window's dark ground
 	DUNGEON_EDGE = "selectedTrim",   -- the rooms' outline in the palette's gold
+	DRAWN_ZOOM = 2,           -- a drawn floor's closest zoom: its art's own pixels a yard, twice (as DUNGEON_PX)
 }
 Canvas.T = T
 
@@ -388,7 +389,8 @@ end
 -- places the instance's minimap tiles (the ground, every wing's) and per wing (the user, 2026-11-02: "Several floors,
 -- we need to spread them into Wings") MelloUI's cove (the parts open to the sky), the rooms (the client's floor
 -- pictures, laid as the caves are) and MelloUI's edge round them; the ground and the wing shown at every zoom, the
--- other wings out (Detail, SetWing)
+-- other wings out (Detail, SetWing). An old dungeon's wings are Blizzard's drawn floors instead (DrawnPlace): no
+-- ground, cove, rooms or edge
 local function ArtPlace(self, d, prefix, list, id, level, wing, paint)
 	local tiles = {}
 	for i = 1, #list - 1, 2 do
@@ -402,6 +404,24 @@ local function ArtPlace(self, d, prefix, list, id, level, wing, paint)
 		left = 0, top = 0, w = self.W, h = self.H, tiles = nil, alpha = 0, live = false,
 	}
 	p.right, p.bottom, p.area = p.w, p.h, p.w * p.h
+	local f = CreateFrame("Frame", nil, self.root)
+	f:SetFrameLevel(level)
+	f:SetSize(p.w, p.h)
+	f:Hide()
+	p.frame = f
+	return p
+end
+
+-- (2.1.0; the user, 2026-11-03: "use the Blizzard own dungeon maps for the existing ones") a drawn floor: Blizzard's own
+-- drawing of an old dungeon's floor (the client holds its art, no map of it: MapDungeons' drawn, rect, art), laid by
+-- its place in the plan as a zone's art is on the world
+local function DrawnPlace(self, wing, id, level, w)
+	local r = wing.rect
+	local p = {
+		id = id, kind = "drawn", name = "dungeon drawing", level = level, wing = w, drawn = wing.drawn, art = wing.art,
+		left = r[1], top = r[2], w = r[3] - r[1], h = r[4] - r[2], tiles = nil, alpha = 0, live = false,
+	}
+	p.right, p.bottom, p.area = p.left + p.w, p.top + p.h, p.w * p.h
 	local f = CreateFrame("Frame", nil, self.root)
 	f:SetFrameLevel(level)
 	f:SetSize(p.w, p.h)
@@ -426,6 +446,9 @@ function Canvas:LayoutDungeon(d, mapID)
 	local wings = type(d.wings) == "table" and d.wings or EMPTY
 	for w, wing in ipairs(wings) do
 		local prefix = mapID .. "_" .. w
+		if type(wing.drawn) == "table" and type(wing.rect) == "table" and type(wing.art) == "table" then
+			places[#places + 1] = DrawnPlace(self, wing, -10 * w - 3, base + 1, w)
+		end
 		if type(wing.cove) == "table" and #wing.cove > 0 then
 			places[#places + 1] = ArtPlace(self, d, prefix .. "o", wing.cove, -10 * w - 1, base + 1, w)
 		end
@@ -667,6 +690,25 @@ local function MakeFillTiles(p)
 	end
 end
 
+-- (2.1.0) a drawn floor's tiles: its art's tiles row by row over the art's width and height (the last column and row
+-- run past it: cut, as a zone's art)
+local function MakeDrawnTiles(p)
+	local tiles, a = {}, p.art
+	p.tiles = tiles
+	local lw, lh, tw, th = Finite(a[1]), Finite(a[2]), Finite(a[3]), Finite(a[4])
+	if not (lw and lh and tw and th) or lw <= 0 or lh <= 0 or tw <= 0 or th <= 0 then
+		return
+	end
+	local sx, sy, cols = p.w / lw, p.h / lh, ceil(lw / tw)
+	for i, file in ipairs(p.drawn) do
+		local c, r = (i - 1) % cols, floor((i - 1) / cols)
+		local pw, ph = min(tw, lw - c * tw), min(th, lh - r * th)
+		if Finite(file) and pw > 0 and ph > 0 then
+			tiles[#tiles + 1] = Tile(p, file, c * tw, r * th, pw, ph, tw, th, "BACKGROUND", 0, sx, sy)
+		end
+	end
+end
+
 -- a map's tiles: its base art, then its explored pieces (C_MapExplorationInfo), in art pixels of its own layer
 local function MakeTiles(p)
 	if p.kind == "minimap" then
@@ -674,6 +716,9 @@ local function MakeTiles(p)
 		return
 	elseif p.kind == "fill" then
 		MakeFillTiles(p)
+		return
+	elseif p.kind == "drawn" then
+		MakeDrawnTiles(p)
 		return
 	end
 	local tiles = {}
@@ -1040,7 +1085,12 @@ function Canvas:Size()
 	end
 	self.cw, self.ch = w, h
 	self.k1 = min(w / self.W, h / self.H)
-	self.zMax = self.dungeon and max(1, T.DUNGEON_PX / self.k1) or max(T.MAX_ZOOM, T.MAX_PX / self.k1)
+	local px = T.DUNGEON_PX
+	local wing = self.dungeon and type(self.dungeon.wings) == "table" and self.dungeon.wings[self.wing or 1]
+	if type(wing) == "table" and type(wing.art) == "table" and type(wing.rect) == "table" then
+		px = T.DRAWN_ZOOM * (Finite(wing.art[1]) or 0) / max(1, wing.rect[3] - wing.rect[1])   -- (a drawing: its own)
+	end
+	self.zMax = self.dungeon and max(1, px / self.k1) or max(T.MAX_ZOOM, T.MAX_PX / self.k1)
 	return w, h
 end
 
@@ -1450,6 +1500,7 @@ end
 function Canvas:SetWing(w)
 	if self.dungeon and w ~= self.wing then
 		self.wing = w
+		self:Size()   -- (its closest zoom: a drawn floor's own)
 		if self.cx then
 			self.box[5] = nil
 			self:SetView(self.cx, self.cy, self.z)
