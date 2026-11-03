@@ -161,7 +161,16 @@ local function ByName(target, members)
 	return nil
 end
 
-local function Resolve(target)
+-- whether the spell can harm (Holy Shock heals a friend and hurts an enemy; nil: not known, its ID secret)
+local function Harmful(spellID)
+	local api = rawget(_G, "C_Spell")
+	if not (Num(spellID) and api) then
+		return nil
+	end
+	return Ask(api.IsSpellHarmful, spellID)
+end
+
+local function Resolve(target, spellID)
 	local members = Members()
 	local unit, by = ByName(target, members)
 	if unit then
@@ -183,7 +192,13 @@ local function Resolve(target)
 	-- rule; the user, 2026-10-09: "when i healed myself again on full HP ...
 	-- not the small glow landing on the unitframe")
 	local exists = Ask(UnitExists, "target")
-	if exists == false or (exists and Ask(UnitCanAssist, "player", "target") == false) then
+	local foe = exists and Ask(UnitCanAssist, "player", "target") == false
+	-- (a spell that can also harm, at an enemy, goes to the enemy: nothing on your frame -- Holy Shock; the user,
+	-- 2026-11-03, every rank and part of a heal now counts)
+	if foe and Harmful(spellID) then
+		return nil, "foe"
+	end
+	if exists == false or foe then
 		return Canon("player"), "self"
 	end
 	return nil
@@ -550,7 +565,7 @@ local function OnSent(target, castGUID, spellID)
 	C.unit, C.by = nil, nil
 	-- (only a heal's target is looked for: the spell's kind, or its ID secret)
 	if C.kind or C.secret then
-		C.unit, C.by = Resolve(target)
+		C.unit, C.by = Resolve(target, spellID)
 	end
 end
 
@@ -617,8 +632,8 @@ local function OnSucceeded(castGUID)
 		P.hopFrom = C.unit
 		StartTicks(C.unit, P.spell)
 	else
-		-- (nobody known yet: the first heal on a member, just now, says who)
-		P.pending = C.by ~= "name"
+		-- (nobody known yet: the first heal on a member, just now, says who -- not after a cast at an enemy)
+		P.pending = C.by ~= "name" and C.by ~= "foe"
 	end
 end
 

@@ -11,7 +11,9 @@ hand: one rule for the whole class of spells.
     group heal    Effect 10 HEAL on a party or area of allies (implicit targets 20, 30, 31, 33, 56, 61, 132)
     heal          Effect 10 HEAL on one ally
     heal over time  an aura 8 PERIODIC_HEAL put on an ally (Renew, Rejuvenation)
-in that order (a spell that heals and leaves a heal over time, Regrowth, is a heal). Only what is put on an ally
+in that order (a spell that heals and leaves a heal over time, Regrowth, is a heal). A class spell with none of
+these takes its family's kind (the class's spells of its name: every rank, and the heal the game triggers from it --
+Holy Nova, Prayer of Mending). Only what is put on an ally
 counts (implicit targets 21 TARGET_ALLY, 25 TARGET_ANY, 57 TARGET_RAID, or the group's): a spell on yourself alone
 (a potion, Divine Shield, Ice Block) is none. Read from the client's tables as wow.export wrote them
 (F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/db2/SpellEffect.csv); written to MelloUI_FrameEffects/HealFlightSpells.lua.
@@ -358,8 +360,23 @@ def main():
         k = kind(effects)
         if k:
             kinds[sid] = k
+    names, cls_of, passive = table_names(), class_spells(), passives()
+    # every rank and every part of one spell (the user, 2026-11-03: "those animations should ignore the rank of the
+    # spell", after Holy Nova and Prayer of Mending showed nothing): a class's active spell with no kind of its own
+    # takes its family's -- the class's spells of the same name: its other ranks, and the heal the game triggers from
+    # it (Holy Nova's cast only harms; its heal is a Priest's Holy Nova of its own) -- the first by CODES' order. An
+    # NPC's spell of the same name never counts (Barkskin, Consecration, Mana Shield keep none).
+    order = [c for c, _ in CODES]
+    ranks = collections.defaultdict(set)
+    for sid, cls in cls_of.items():
+        ranks[(cls, names.get(sid, "?"))].add(sid)
+    for sids in ranks.values():
+        have = sorted({kinds[s] for s in sids if s in kinds}, key=order.index)
+        for s in sids:
+            if have and s not in kinds and s in spells and s not in passive:
+                kinds[s] = have[0]
     # the tanks' tools and defensives, by family
-    names, cls_of, cds, passive, length = table_names(), class_spells(), cooldowns(), passives(), durations()
+    cds, length = cooldowns(), durations()
     family = collections.defaultdict(list)
     for sid, cls in cls_of.items():
         if sid in full:

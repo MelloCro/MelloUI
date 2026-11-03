@@ -173,6 +173,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.1", lines = {
+		"Fixed: Holy Nova and Prayer of Mending show their heal effect on your party frames, at every rank.",
+		"Fixed: Holy Shock, Earth Shield and Healing Rain show theirs too; Holy Shock cast at an enemy shows nothing on your frame.",
+	} },
 	{ version = "2.1.0", lines = {
 		"Edit Layout: Revert and Default place for each element; switch, make, copy, rename, delete and share Edit Mode layouts from the bar.",
 		"Edit Layout: attach elements as in Edit Mode; your other characters are asked again to use MelloUI's layout.",
@@ -215,12 +219,6 @@ local CHANGELOG = {
 		"Dungeon Info: the loot of Forever's new dungeons' bosses and of the classic dungeons Forever changed (DungeonMaster's lists).",
 		"Dungeon Info counts the drops it sees fall, with chances; /dungeoninfo export lets you send yours in for everyone.",
 		"Dungeon Info: with DungeonJournal installed, its loot lists show too.",
-	} },
-	{ version = "1.2.1", lines = {
-		"Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart.",
-		"Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit.",
-		"Combat Text: an aura that comes and goes every few seconds (Demonic Knowledge with your pet) is shown once.",
-		"Fixed (Oldschool): popups that ask you to type, such as renaming a hunter pet, show their text box again.",
 	} },
 }
 local LINKS = {

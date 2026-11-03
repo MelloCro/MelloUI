@@ -2229,6 +2229,8 @@ Lang:Add("esES", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toda tu configuración bajo un nombre. Guárdala, cárgala o hazla la predeterminada de una instalación nueva.", -- draft
 	["Supporters"] = "Colaboradores", -- draft
 	["The people who help keep MelloUI going."] = "Las personas que mantienen MelloUI en marcha.", -- draft
+	["Fixed: Holy Nova and Prayer of Mending show their heal effect on your party frames, at every rank."] = "Corregido: Nova Sagrada y Rezo de alivio muestran su efecto de sanación en tus marcos de grupo, en cada rango.", -- draft
+	["Fixed: Holy Shock, Earth Shield and Healing Rain show theirs too; Holy Shock cast at an enemy shows nothing on your frame."] = "Corregido: Choque Sagrado, Escudo de tierra y Lluvia de sanación también muestran el suyo; Choque Sagrado lanzado a un enemigo no muestra nada en tu marco.", -- draft
 	["Edit Layout: Revert and Default place for each element; switch, make, copy, rename, delete and share Edit Mode layouts from the bar."] = "Editar diseño: Revertir y Lugar predeterminado para cada elemento; cambia, crea, copia, renombra, borra y comparte diseños del modo Edición desde la barra.", -- draft
 	["Edit Layout: attach elements as in Edit Mode; your other characters are asked again to use MelloUI's layout."] = "Editar diseño: une elementos como en el modo de edición; tus otros personajes vuelven a recibir la pregunta para usar el diseño de MelloUI.", -- draft
 	["Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab."] = "Editar diseño: el tamaño del medidor de daño se ve mientras lo cambias; el recuadro del jugador abarca la pestaña del medidor.", -- draft

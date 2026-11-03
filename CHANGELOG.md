@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.1
+
+- Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect on your party and raid frames, at every rank. Holy Shock cast at an enemy shows nothing on your own frame.
+
 ## 2.1.0
 
 - Edit Layout: Revert puts one element back where it was when you opened Edit Layout, and Default place puts a game element back where the game puts it, as Edit Mode does.

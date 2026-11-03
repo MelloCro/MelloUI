@@ -2229,6 +2229,8 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["Fixed: Holy Nova and Prayer of Mending show their heal effect on your party frames, at every rank."] = "Исправлено: Кольцо света и Молитва восстановления показывают эффект исцеления на рамках группы, на любом ранге.", -- draft
+	["Fixed: Holy Shock, Earth Shield and Healing Rain show theirs too; Holy Shock cast at an enemy shows nothing on your frame."] = "Исправлено: Шок небес, Щит земли и Целительный ливень тоже показывают свой; Шок небес по врагу ничего не показывает на вашей рамке.", -- draft
 	["Edit Layout: Revert and Default place for each element; switch, make, copy, rename, delete and share Edit Mode layouts from the bar."] = "Изменить раскладку: Вернуть и Место по умолчанию для каждого элемента; переключайте, создавайте, копируйте, переименовывайте, удаляйте и делитесь раскладками режима редактирования прямо с панели.", -- draft
 	["Edit Layout: attach elements as in Edit Mode; your other characters are asked again to use MelloUI's layout."] = "Изменить раскладку: прикрепляйте элементы, как в режиме редактирования; другим персонажам снова предлагается раскладка MelloUI.", -- draft
 	["Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab."] = "Изменить раскладку: размер счетчика урона виден сразу, пока вы его меняете; рамка игрока охватывает вкладку счетчика.", -- draft
