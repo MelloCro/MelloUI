@@ -122,7 +122,7 @@ Each feature you keep comes with Mello's own settings for it; change them any ti
 
 Then:
 
-- **Your screen:** Mello's layout was made on a 21:9 screen; the installer fits it to yours (pieces at an edge keep their distance to it, the middle group tightens, then everything is checked for overlaps). Leave the Edit Mode layout out if you like: your own Edit Mode layouts always stay, and your UI scale is never changed.
+- **Your screen:** Mello's layout was made on a 21:9 screen; the installer fits it to yours (pieces at an edge or in a corner keep their distance to it, on a 32:9 screen too, the middle group tightens, then everything is checked for overlaps). Leave the Edit Mode layout out if you like: your own Edit Mode layouts always stay, and your UI scale is never changed.
 - **Review:** what will change, before anything does.
 - **Install:** your current setup is saved as the profile **Before install** first. Then you have 15 seconds: **Keep** the new setup, or **Revert** to go back at once; if you don't answer, it goes back by itself. A fight or Edit Mode pauses the countdown, and a `/reload` in the middle brings it back with 15 seconds. Before install stays on the Profiles page, so you can load it later too.
 - **Done:** take the tour, open MelloUI, or reload once if the fonts over characters' heads changed.

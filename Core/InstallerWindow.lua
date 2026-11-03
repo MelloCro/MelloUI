@@ -151,7 +151,7 @@ local MAIN_BARS = { ["Bar panel backdrop"] = true }
 local MINIMAP = "Minimap (kit frame + zone plate)"
 local BAR_UNITS = { core = true, bars = true, br = true }
 -- draw layer sublevels, bottom to top
-local SUB_SCREEN, SUB_MAIN, SUB_BAR, SUB_FRAME, SUB_RING, SUB_ZONE = -8, -6, -4, -3, -1, 1
+local SUB_SCREEN, SUB_MAIN, SUB_BAR, SUB_FRAME, SUB_RING = -8, -6, -4, -3, -1
 
 -- The texts (in-game words: addon-only, no tool or other addon named)
 local TEXT = {
@@ -981,8 +981,7 @@ end
 -- The picture from the fit's report (the same model the fit checked: one
 -- system): the screen scaled into the box, the persistent pieces in palette
 -- solids -- the raised panel for frames, the border for bars, the selected
--- tab with a trim line for the main bars, a trim ring for the minimap, the
--- 21:9 zone's edges in trim on a wider screen
+-- tab with a trim line for the main bars, a trim ring for the minimap
 local function DrawPicture(page, report)
 	local pic, box = page.pic, page.box
 	local LayoutFit = MelloUI.LayoutFit
@@ -1034,17 +1033,6 @@ local function DrawPicture(page, report)
 					Rect(tex, box, x, y, pw, ph)
 				end
 			end
-		end
-	end
-	-- the 21:9 zone's edges on a wider screen
-	local inset = Num(report and report.inset) or 0
-	if inset > 0.5 then
-		for side = 0, 1 do
-			n = n + 1
-			local tex = PicTex(page, n)
-			tex:SetDrawLayer("ARTWORK", SUB_ZONE)
-			W.Paint(tex, "trim", "fill", 1)
-			Rect(tex, box, ox + (side == 0 and inset or (sw - inset)) * s, oy, 1, h)
 		end
 	end
 	for i = n + 1, #pic.pool do

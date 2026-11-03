@@ -57,7 +57,6 @@ def ui_parent(w, h, scale=None):
 
 
 DESIGN_W, DESIGN_H, _ = ui_parent(*DESIGN_SCREEN)      # 2866.67 x 1200
-DESIGN_ASPECT = DESIGN_W / DESIGN_H                      # 2.3889 (21:9)
 
 SCREENS = [
     ("3440x1440", 3440, 1440, None, "21:9 (the design screen: must come back unchanged)"),
@@ -224,36 +223,18 @@ def xov(a, b, g=0.0):
     return min(a[2], b[2]) - max(a[0], b[0]) > -g + EPS
 
 
-def ui_edge(rel_point):
-    return {0: "L", 0.5: "C", 1: "R"}[hud.AX[rel_point][0]]
-
-
-# ============================================================ F1 the 21:9 zone (32:9)
+# ============================================================ F1 no zone (every screen)
 
 def f1_zone(f):
-    """F1. Wider than 21:9: the HUD keeps the 21:9 width, centred; every piece held
-    to the left / right edge is held to the zone's edge instead (plan: '32:9
-    centre zone'). Centre-anchored pieces do not move."""
-    zone = min(f.W, DESIGN_ASPECT * f.H)
-    inset = (f.W - zone) / 2.0
-    f.inset = inset if inset >= 0.05 else 0.0
-    if not f.inset:
-        return
-    for s in f.lay["systems"]:
-        a = s["anchor"]
-        if a["relativeTo"] != "UIParent" or s["isInDefaultPosition"]:
-            continue
-        e = ui_edge(a["relativePoint"])
-        if e == "L":
-            f.shift(s["key"], "F1 zone", "held to the 21:9 zone's left edge, %.1f in from the screen's" % inset, dx=inset)
-        elif e == "R":
-            f.shift(s["key"], "F1 zone", "held to the 21:9 zone's right edge, %.1f in from the screen's" % inset, dx=-inset)
-    f.eye.append("32:9 zone: the HUD sits in a centred 21:9 zone, %.0f units in from each side (the outer %.0f%% of the screen stays world)"
-                 % (inset, 100 * 2 * inset / f.W))
+    """F1. (2.1.0, the user 2026-11-03, of 32:9: "isnt it logical to have those
+    things each in its own corners?") No zone on a screen wider than 21:9 any
+    more: a piece held to the left / right edge stays at the screen's own edge,
+    as Edit Mode keeps it; the middle group centred (Core/LayoutFit.lua F1Own)."""
+    f.inset = 0.0
 
 
 def third(f):
-    """The centre third (of the 21:9 zone on a wider screen)."""
+    """The centre third of the screen (f.inset is 0 since 2.1.0)."""
     zone = f.W - 2 * f.inset
     return f.inset + zone / 3.0, f.inset + 2 * zone / 3.0
 
@@ -1277,8 +1258,8 @@ def f0_store(f):
 
 def f12_windows(f):
     """F12. The windows in the user's snapshot (ship only if the user says so,
-    decision 7). W1: on a screen wider than 21:9 a window held to the left /
-    right edge is held to the 21:9 zone's edge instead. W2: a window that would
+    decision 7). (2.1.0: no W1 any more, the 21:9 zone's edge on a wider
+    screen -- a window held to an edge stays at the screen's.) W2: a window that would
     leave the screen at its size (times the game's checkFit scale) is pulled
     back by what is missing plus GAP, keeping its anchor. Then the world map +
     Quest List pair stays on the screen (wave 3's FitOnScreen with extraRects),
@@ -1292,10 +1273,7 @@ def f12_windows(f):
         p = P[name]
         before = dict(p)
         rp = p.get("relPoint") or "CENTER"
-        edge = {0: "L", 0.5: "C", 1: "R"}[hud.AX[rp][0]]
         s = hud.window_scale(name, W, H)
-        if f.inset and edge in ("L", "R"):
-            p["x"] = round(p.get("x", 0) + (f.inset if edge == "L" else -f.inset) / s, 1)
         rc, s = hud.window_rect(name, p, W, H)
         dx = (GAP - rc[0] if rc[0] < 0 else 0) - (rc[2] - W + GAP if rc[2] > W else 0)
         down = (GAP - rc[1] if rc[1] < 0 else 0) - (rc[3] - H + GAP if rc[3] > H else 0)
@@ -1310,8 +1288,6 @@ def f12_windows(f):
             p["y"] = round(p.get("y", 0) - down / s, 1)
         if p != before:
             why = []
-            if f.inset and edge in ("L", "R"):
-                why.append("W1: held to the 21:9 zone's %s edge" % ("left" if edge == "L" else "right"))
             if abs(dx) > EPS or abs(down) > EPS:
                 why.append("W2: pulled onto the screen by %.1f, %.1f (%s is %.0f x %.0f%s)" % (
                     dx, -down, name, hud.WINDOWS[name][0] * s, hud.WINDOWS[name][1] * s, ", scaled %.2f by the game" % s if s < 0.999 else ""))

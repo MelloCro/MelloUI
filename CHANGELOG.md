@@ -61,6 +61,7 @@
 - Fixed: Dungeon Info and the dungeon maps list each boss once. Blackfathom Deeps, the Temple of Atal'Hakkar and Gnomeregan showed most of their bosses two or three times, their seals stacked on the map.
 - Profiles keep where everything stands: saving one stores the places of the action bars, the bag bar, the micro menu, the experience bars and every part and game element you moved, even the ones still following the game, and loading it puts them all back, Swing Timers' bars and the Level Up Card too.
 - Fixed (Oldschool): a boxed Unit Frame Border (Single, Backdrop and the square styles) no longer runs through the name over the health bar, and its corner studs no longer sit on the portrait ring.
+- Super-ultrawide screens (32:9): the installer and Fit to this screen put the chat, the meter, the minimap, the quest tracker, the micro menu and the bag bar in the screen's own corners instead of a narrower strip in the middle; the action bars and unit frames stay centred. Windows open at the screen's edges too. Installed before? Fit to this screen on the settings' Home page moves them.
 
 ## 2.0.0
 

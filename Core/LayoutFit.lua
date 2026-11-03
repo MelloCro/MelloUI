@@ -13,9 +13,12 @@
 -- Mode's Size 100 %, the map the Minimap Kit's Width x Height, 198 x 198 by
 -- default), and the tracker hangs right under the column.
 -- So the design screen gets the approved layout back with only that and what
--- it forces (the boss frames and the external defensives make room); a 32:9
--- screen gets it in a centred 21:9 zone; a screen with no
--- room for it (inside 1400 x 800 UI units, or one where the design's own
+-- it forces (the boss frames and the external defensives make room); on
+-- every other screen a piece held from a side or a corner keeps its
+-- distance from that side or corner of the whole screen, the middle group
+-- centred (2.1.0, the user 2026-11-03, of 32:9: "isnt it logical to have
+-- those things each in its own corners?" -- no centred 21:9 zone any more);
+-- a screen with no room for it (inside 1400 x 800 UI units, or one where the design's own
 -- settings fail too) gets a "too small" result, and the installer then
 -- suggests No reskin. A FAIL that only the player's settings make is said
 -- as such (cause "settings"): No reskin would not help there.
@@ -93,7 +96,7 @@
 --                windows       [frame] = place, UIModifications.positions
 --                own           (ownPlaces) [key] = place: MelloUI's own places of
 --                              what the layout places (the four frames, Edit
---                              Layout's EditMode.* copies), as F1Zone fitted
+--                              Layout's EditMode.* copies), as F1Own fitted
 --                              them; they go in with the layout alone
 --                questTracker  { clearPos, maxHeight, width }
 --                              (clearPos: QuestTracker.pos = nil, it hangs on
@@ -158,15 +161,15 @@ local GRID = 8         -- F9g's search grid
 -- numbers are the same to the last bit
 local DESIGN_H = 768 / 0.64
 local DESIGN_W = DESIGN_H * 3440 / 1440
-local DESIGN_ASPECT = DESIGN_W / DESIGN_H
 LayoutFit.DESIGN_W, LayoutFit.DESIGN_H = DESIGN_W, DESIGN_H
 -- the model's revision, kept beside the fit's screen (UIModifications
 -- .layoutFitRev, Core/Installer.lua): a layout fitted by an older one is
 -- offered the refit (Home's Fit to this screen). 2: 0.14.0, the Services
 -- row's six groups (a shorter row under the minimap); 3: 0.15.0, the
 -- minimap at 100 % (its size the Minimap Kit's Width and Height; the 150 %
--- the fit had set was "far too big")
-LayoutFit.FIT_REV = 3
+-- the fit had set was "far too big"); 4: 2.1.0, no centred 21:9 zone on a
+-- wider screen (the corners' pieces in the screen's own corners)
+LayoutFit.FIT_REV = 4
 LayoutFit.TOO_SMALL = "Your screen is too small for Mello's layout at your UI scale; your own Edit Mode layout stays."
 LayoutFit.SETTINGS_FAIL = "Mello's layout fits your screen, but not with some of your settings; your own Edit Mode layout stays."
 -- (2.1.0, el-15) a FAIL on the screen the layout is drawn for: never "too small" (the user, 2026-11-01, on that very
@@ -1271,7 +1274,7 @@ local function Reset(f, W, H, inputs)
 	Truncate(f.notes, 0)
 	Truncate(f.flags, 0)
 	f.W, f.H = W, H
-	f.inset, f.bandWhy, f.bandNote = 0, nil, nil
+	f.bandWhy, f.bandNote = nil, nil
 	local t = f.mello.tracker
 	if t.gameW or t.gameH then
 		local s = f.rec["12:-1"]
@@ -1290,7 +1293,7 @@ end
 -- wins in game), at its frame's scale: the place's own, else the layout's
 -- Size for the minimap (f.pinFs[key]); its size times that over the
 -- layout's (the minimap's: f.mapZ, for the column); moved by what Core's
--- put-back pulls it onto the screen by (F1Zone's f.pinPull[key]).
+-- put-back pulls it onto the screen by (F1Own's f.pinPull[key]).
 -- R[key] is rounded to a tenth like the prototype's; the chain uses the exact
 -- rects. Rect tables are kept per key and refilled: no garbage per solve.
 local function Solve(f)
@@ -2040,10 +2043,9 @@ local function CentreTop(f, later)
 	return top
 end
 
--- the centre third (of the 21:9 zone on a wider screen)
+-- the centre third of the screen
 local function Third(f)
-	local zone = f.W - 2 * f.inset
-	return f.inset + zone / 3, f.inset + 2 * zone / 3
+	return f.W / 3, 2 * f.W / 3
 end
 
 local function Union(a, b)
@@ -2077,7 +2079,7 @@ end
 -- to the screen. f.removed: every key taken out, for places.remove.
 -- (1.2.4, ownPlaces: MelloUI's places win) Nothing is taken out: each of
 -- those places pins its record where it puts the frame (f.pins, Solve), the
--- tracker keeps its own place, and F1Zone fits them as the windows are.
+-- tracker keeps its own place, and F1Own fits them as the windows are.
 -- F0s (1.2.4, el-11; the user 2026-10-30, after installing on a 21:9 screen
 -- a profile made on a 16:9 one: "the Profile does not adjust the MelloUI
 -- Layout Depending on your Aspect Ratio"). The store keeps a place as an
@@ -2086,11 +2088,11 @@ end
 -- top-right corner, so places made on one screen kept as they are hold a
 -- zone of that screen's shape on another, and the tracker leaves the
 -- minimap. First, then: places made for another screen (inputs.placesFor)
--- each keep their distance from the side of the HUD's zone (the whole
--- screen up to 21:9, the centred 21:9 zone past it, as F1) they stand in
--- there -- the third the frame's middle is in, across and down: the left
--- third's from the zone's left edge, the middle third's from its middle, the
--- right third's from its right edge. The minimap and the tracker under it,
+-- each keep their distance from the side of the screen (the whole screen,
+-- on every shape: as F1) they stand in there -- the third the frame's
+-- middle is in, across and down: the left third's from the screen's left
+-- edge, the middle third's from its middle, the right third's from its
+-- right edge. The minimap and the tracker under it,
 -- both on the right, stay together on every screen, and every place still
 -- wins. The frame's size: the layout's for a record its place pins (as
 -- Solve lays it), a window's own (WINDOWS), the caller's measure
@@ -2104,8 +2106,7 @@ end
 -- (Core's side form, as Measure would save it there). (el-12) A place
 -- already held from the side of the screen its frame stands in -- every place
 -- Core saves since 1.2.4 -- follows any screen by itself: kept as it is, each
--- way it is so held. f.inZone[place]: its x laid in this screen's zone here
--- (W1 stands back for it).
+-- way it is so held.
 local F0Store
 do
 	local ACROSS = { [0] = "left", [0.5] = "middle", [1] = "right" }
@@ -2191,7 +2192,6 @@ do
 	end
 
 	local function Shape(f)
-		f.inZone = {}
 		local made = f.mello.placesFor
 		local W, H = f.W, f.H
 		-- (2.1.0, el-15; the brain, of the user's wide-screen arrangement baked as the shipped one: "so the shipped
@@ -2205,21 +2205,18 @@ do
 			made = { w = W, h = H }
 		end
 		local W0, H0 = made.w, made.h
-		local i0, i1 = (W0 - min(W0, DESIGN_ASPECT * H0)) / 2, (W - min(W, DESIGN_ASPECT * H)) / 2
-		-- (el-12) a way the place is held from its side already is kept exactly (nil k); f.inZone[p]: its x laid in
-		-- this screen's zone here (W1 stands back for it; a place held from the screen's side gets W1 as before).
+		-- (el-12) a way the place is held from its side already is kept exactly (nil k)
 		-- (pr-04) own: MelloUI's own element (Axis); one that takes the side form gets the screen's point of its sides
 		-- (CENTER as the store writes it: none)
 		local function Place(name, p, point, relPoint, w, h, s0, s1, known, own)
 			local before = CopyPlace(p)
 			local byCorner = not (point == "BOTTOMLEFT" and relPoint == "CENTER")
-			local x, kx, sx = Axis(Num(p.x) or 0, 1, AXX[relPoint], AXX[point], w, known, W0, i0, W0 - i0, s0, W, i1, W - i1,
-				s1, byCorner, own)
+			local x, kx, sx = Axis(Num(p.x) or 0, 1, AXX[relPoint], AXX[point], w, known, W0, 0, W0, s0, W, 0, W, s1,
+				byCorner, own)
 			local y, ky, sy = Axis(Num(p.y) or 0, -1, AXY[relPoint], AXY[point], h, known, H0, 0, H0, s0, H, 0, H, s1, byCorner,
 				own)
 			if kx ~= nil then
 				p.x = Round1(x)
-				f.inZone[p] = true
 			end
 			if ky ~= nil then
 				p.y = Round1(y)
@@ -2232,7 +2229,7 @@ do
 				local from = (kx ~= nil and ky ~= nil) and format("the %s and the %s", DOWN[ky], ACROSS[kx])
 					or format("the %s (the other way held from its side already)", ky ~= nil and DOWN[ky] or ACROSS[kx])
 				Log(f, "F0 shape", name, PlaceText(before) .. " -> " .. PlaceText(p),
-					format("made for a %.1f x %.1f screen: kept as far from %s of this screen's zone", W0, H0, from))
+					format("made for a %.1f x %.1f screen: kept as far from %s of this screen", W0, H0, from))
 			end
 		end
 		local P = f.mello.positions
@@ -2325,49 +2322,24 @@ do
 	end
 end
 
--- F1. Wider than 21:9: the HUD keeps the 21:9 width, centred; every piece
--- held to the left / right edge is held to the zone's edge instead.
--- (ownPlaces) Then MelloUI's own places of what the layout places, fitted as
--- F12 fits the windows': W1, on a screen wider than 21:9 one held to the left
--- / right edge is held to the 21:9 zone's edge (written into the place; not
--- one F0s laid in the zone already, f.inZone); W2,
--- one whose shown pieces would leave the screen is pulled back by what is
+-- F1. (2.1.0, the user 2026-11-03, of 32:9: "isnt it logical to have those
+-- things each in its own corners?") No zone on a screen wider than 21:9 any
+-- more: a piece held to the left / right edge stays at the screen's own
+-- edge, as Edit Mode keeps it, the middle group centred. (ownPlaces)
+-- MelloUI's own places of what the layout places, fitted as F12 fits the
+-- windows': W2, one whose shown pieces would leave the screen is pulled back by what is
 -- missing -- in game Core's put-back does that with the frame's real size,
 -- so the place is left as it is and only the model moves it (f.pinPull). The
 -- Quest Tracker's own place as a window's (its TOPRIGHT from the point its
 -- place names, its own scale; W2 with GAP, written). Before the other rules:
 -- each sees them where they will be.
-local function F1Zone(f)
-	local zone = min(f.W, DESIGN_ASPECT * f.H)
-	local inset = (f.W - zone) / 2
-	f.inset = inset >= 0.05 and inset or 0
-	if f.inset ~= 0 then
-		for i = 1, #f.systems do
-			local s = f.systems[i]
-			local a = s.anchorInfo
-			if a.relativeTo == "UIParent" and not s.isInDefaultPosition then
-				local edge = AXX[a.relativePoint]
-				if edge == 0 then
-					Shift(f, f.meta[s].key, "F1 zone", format("held to the 21:9 zone's left edge, %.1f in from the screen's", inset), inset, 0)
-				elseif edge == 1 then
-					Shift(f, f.meta[s].key, "F1 zone", format("held to the 21:9 zone's right edge, %.1f in from the screen's", inset), -inset, 0)
-				end
-			end
-		end
-		Eye(f, format("32:9 zone: the HUD sits in a centred 21:9 zone, %.0f units in from each side (the outer %.0f%% of the screen stays world)",
-			inset, 100 * 2 * inset / f.W))
-	end
+local function F1Own(f)
 	if not f.mello.own then
 		return
 	end
 	local W, H = f.W, f.H
-	local function Fit(name, p, s, edge, l, t, r, b, rec)
+	local function Fit(name, p, s, l, t, r, b, rec)
 		local before = CopyPlace(p)
-		if f.inset ~= 0 and (edge == 0 or edge == 1) and not f.inZone[p] then
-			local d = edge == 0 and f.inset or -f.inset
-			p.x = Round1((p.x or 0) + d / s)
-			l, r = l + d, r + d
-		end
 		local gap = rec and 0.1 or GAP   -- (a pinned one flush with the edge, as Core's put-back, but for the model's tenth)
 		local dx = (l < 0 and gap - l or 0) - (r > W and r - W + gap or 0)
 		local down = (t < 0 and gap - t or 0) - (b > H and b - H + gap or 0)
@@ -2382,7 +2354,7 @@ local function F1Zone(f)
 		end
 		if p.x ~= before.x or p.y ~= before.y then
 			Log(f, "F1 own", name, PlaceText(before) .. " -> " .. PlaceText(p),
-				"MelloUI's place wins over the layout's: fitted as a window's (W1 the 21:9 zone's edge, W2 on the screen)")
+				"MelloUI's place wins over the layout's: fitted as a window's (W2 on the screen)")
 			Bump(f)
 		end
 	end
@@ -2408,13 +2380,13 @@ local function F1Zone(f)
 			if not l then
 				l, t, rr, b = r[1], r[2], r[3], r[4]
 			end
-			Fit("positions." .. f.pins[rec], p, fs, AXX[p.relPoint or "CENTER"], l, t, rr, b, rec)
+			Fit("positions." .. f.pins[rec], p, fs, l, t, rr, b, rec)
 		end
 	end
 	local t = f.mello.tracker
 	if t.pos then
 		local l, tt, r, b = TrackerRect(f)
-		Fit("QuestTracker.pos", t.pos, t.scale, AXX[t.pos.relPoint or "TOPRIGHT"], l, tt, r, b)
+		Fit("QuestTracker.pos", t.pos, t.scale, l, tt, r, b)
 	end
 end
 
@@ -3638,9 +3610,8 @@ local function SortedWindows(P)
 	return names
 end
 
--- F12. The window places: W1, on a screen wider than 21:9 a window held to
--- the left / right edge is held to the 21:9 zone's edge instead (not one
--- F0s laid in the zone already, f.inZone); W2, a window
+-- F12. The window places (2.1.0: no W1 any more, the 21:9 zone's edge on a
+-- wider screen -- a window held to an edge stays at the screen's): W2, a window
 -- that would leave the screen at its size (times its scale: its store entry's
 -- own, else the game's checkFit) is pulled back by what is missing plus GAP,
 -- keeping its anchor. Then the world map stays on the screen, with its
@@ -3652,14 +3623,8 @@ local function F12Windows(f)
 	for _, name in ipairs(SortedWindows(P)) do
 		local p = P[name]
 		local before = CopyPlace(p)
-		local edge = AXX[p.relPoint or "CENTER"]
 		local win = WINDOWS[name]
 		local s, own = WindowScale(win, W, H, p)
-		-- (F0s: a place it laid for this screen stands in its zone already)
-		local zoned = f.inset ~= 0 and (edge == 0 or edge == 1) and not f.inZone[p]
-		if zoned then
-			p.x = Round1((p.x or 0) + (edge == 0 and f.inset or -f.inset) / s)
-		end
 		local l, t, r, b = WindowRect(name, p, W, H)
 		local dx = (l < 0 and GAP - l or 0) - (r > W and r - W + GAP or 0)
 		local down = (t < 0 and GAP - t or 0) - (b > H and b - H + GAP or 0)
@@ -3678,9 +3643,6 @@ local function F12Windows(f)
 		end
 		if p.x ~= before.x or p.y ~= before.y then
 			local why = {}
-			if zoned then
-				why[#why + 1] = format("W1: held to the 21:9 zone's %s edge", edge == 0 and "left" or "right")
-			end
 			if pulled then
 				local scaled = ""
 				if own and abs(s - 1) > 0.001 then
@@ -3741,7 +3703,7 @@ local function CheckAll(f)
 	for i = 1, f.nOrder do
 		local key = f.order[i]
 		local r = f.R[key]
-		-- (a record MelloUI's own place puts: what of it shows, its pieces below -- F1Zone kept those on the screen)
+		-- (a record MelloUI's own place puts: what of it shows, its pieces below -- F1Own kept those on the screen)
 		if Off(r[1], r[2], r[3], r[4], W, H) and not (f.pins and f.pins[key]) then
 			rep.off[#rep.off + 1] = format("system %s L%.1f T%.1f R%.1f B%.1f", key, r[1], r[2], r[3], r[4])
 		end
@@ -3771,8 +3733,7 @@ local function CheckAll(f)
 		list[#list + 1] = txt
 	end
 	local unitTop = CentreTop(f)
-	local zone = W - 2 * f.inset
-	local x0, x1 = f.inset + zone / 3, f.inset + 2 * zone / 3
+	local x0, x1 = Third(f)
 	for i = 1, f.nE do
 		local e = f.E[i]
 		if e.t < unitTop - EPS and e.r > x0 + EPS and e.l < x1 - EPS and e.unit ~= "frames" then
@@ -3927,7 +3888,7 @@ local function Rules(f, W, H, inputs, retry)
 		f.level = level
 		F0Store(f)
 		Step(f)
-		F1Zone(f)
+		F1Own(f)
 		Step(f)
 		ApplyCompact(f, level)
 		Step(f)
@@ -4203,7 +4164,7 @@ local function Core(info, W, H, inputs, opts, job)
 	-- (a tracker sized by the game's tracker keeps its 0 unless the fit
 	-- had to set a size)
 	-- (ownPlaces: nothing removed; MelloUI's places of what the layout places apart, `own`; the tracker's own place
-	-- kept as F1Zone fitted it -- pos)
+	-- kept as F1Own fitted it -- pos)
 	local own = f.mello.own
 	local windows, ownPlaces = {}, {}
 	for key, p in pairs(f.mello.positions) do
@@ -4266,8 +4227,8 @@ local function Core(info, W, H, inputs, opts, job)
 		why = drawn and LayoutFit.DRAWN_FAIL or adapted and LayoutFit.ADAPTED or cause == "size" and LayoutFit.TOO_SMALL
 			or cause == "settings" and LayoutFit.SETTINGS_FAIL or nil,
 		eye = f.eye, flags = f.flags, notes = f.notes, log = f.log, levelsTried = tried, level = f.level,
-		checks = rep, layoutName = name, W = W, H = H, inset = f.inset, third = rep.third, unitTop = rep.unitTop, pieces = pieces,
-		legend = { screen = "innerPanel", centreThird = "raisedPanel", centreThirdLines = "border", moved = "hover", together = "selectedTab", zoneEdge = "trim" },
+		checks = rep, layoutName = name, W = W, H = H, third = rep.third, unitTop = rep.unitTop, pieces = pieces,
+		legend = { screen = "innerPanel", centreThird = "raisedPanel", centreThirdLines = "border", moved = "hover", together = "selectedTab" },
 	}
 	return fitted, places, report
 end
@@ -4544,7 +4505,7 @@ function LayoutFit:Inputs(read)
 		statsOn = read("Stats") and true or false,
 		actionSlots = self:ActionSlots(),
 		-- (1.2.4, the user 2026-10-28: "MelloUI Configurator Export is always being Prioritized over the Game Edit
-		-- Mode Export") MelloUI's own places of what the layout places stay and win (F0Store, F1Zone)
+		-- Mode Export") MelloUI's own places of what the layout places stay and win (F0Store, F1Own)
 		ownPlaces = true,
 		-- (fr-18b) MelloUI's own bars stand in while UI Modifications is on: their own sizes
 		ownBars = read("UIModifications") and self:OwnBars(read) or nil,
