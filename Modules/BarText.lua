@@ -273,7 +273,9 @@ local function ApplyPosition(fs, bar, frameKey, power)
 	end
 	local uf = MelloUI.modules.UnitFrames
 	local place = PlaceOf(frameKey, power)
-	if place and uf.LayPlace then
+	-- (a place with a spot: the stage's; one without -- its spot given way to the rows, UnitFrames' DropPartSpots --
+	-- at the rows' position with its size and shown, below)
+	if place and place.point ~= nil and uf.LayPlace then
 		uf.LayPlace(fs, bar, place)
 		return
 	end
@@ -298,6 +300,9 @@ local function ApplyPosition(fs, bar, frameKey, power)
 		fs:SetPoint(point, bar, point, fallbackX + dx, dy)
 	end
 	fs:SetJustifyH(point)
+	if place and uf and uf.LayLook then
+		uf.LayLook(fs, place)
+	end
 end
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
@@ -643,6 +648,14 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
+	-- (the configurator walk's round 2, 2026-11-04: these did nothing while a value had a spot dragged on the
+	-- designer's stage) the rows are one setting for every frame: a dragged spot gives way, its size and shown kept
+	if key == "position" or key == "offsetX" or key == "offsetY" then
+		local uf = MelloUI.modules.UnitFrames
+		if uf and uf.DropPartSpots then
+			uf.DropPartSpots({ health = true, power = true })
+		end
+	end
 	Listen()
 end
 

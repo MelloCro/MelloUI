@@ -73,6 +73,39 @@ local COLOUR_BY = { { value = "type", label = "Its type's colour" }, { value = "
 local G = { pad = 10, gap = 8, trayH = 300, cardW = 128, cardH = 40, cardGap = 6, secW = 84, line = 46, rowH = 22,
 	rows = 9, labelW = 84, wheel = 90, icons = 5, drag = 6 }
 G.blockH = 900 - G.trayH - G.gap - G.gap - 30
+-- (Suggestion 1 point 1, layout C: the designer's rows in the column beside the stage, ~360 wide) narrower than
+-- stackW the tray's section names stand over their cards, two wider cards a line (their names whole), and the block's
+-- settings come under its spells and colour (its buttons under its heading): the canvas as tall as that needs
+G.stackW, G.labelLine, G.blockStackH, G.stackTop = 560, 20, 850, 92
+
+-- the page's measures at `width`: the tray's height, the block's, whether it stacks, cards a line, a card's width,
+-- the section names' column (0: over the cards), the tray's first line
+function Page.Measures(width)
+	local narrow = width < G.stackW
+	local secW = narrow and 0 or G.secW
+	local cardW = narrow and math.floor((width - 2 * G.pad - G.cardGap) / 2) or G.cardW
+	local perLine = math.max(1, math.floor((width - 2 * G.pad - secW + G.cardGap) / (cardW + G.cardGap)))
+	local count = { own = 0, all = 0, debuff = 0 }
+	for _, d in ipairs(SG.DEFS) do
+		if count[d.scope] then
+			count[d.scope] = count[d.scope] + 1
+		end
+	end
+	local first = narrow and G.pad + 40 or G.pad + 24
+	local y = first
+	for _, s in ipairs({ "own", "all", "debuff", "single" }) do
+		local lines = s == "single" and 1 or math.max(1, math.ceil(count[s] / perLine))
+		y = y + (narrow and G.labelLine or 0) + lines * G.line
+	end
+	local trayH = math.max(G.trayH, y + G.pad)
+	return trayH, narrow and G.blockStackH or G.blockH, narrow, perLine, cardW, secW, first
+end
+
+-- the canvas's height at `width` (GroupFrames.lua's Designer row: Config.lua's RowH asks it)
+function Page.Height(width)
+	local trayH, blockH = Page.Measures(width)
+	return trayH + G.gap + blockH + G.gap + 30
+end
 
 local function ShowEdges(edges, on)
 	for _, e in ipairs(edges) do
@@ -304,7 +337,7 @@ function Page.BuildGroups(canvas, width)
 	local sec = row and row:GetParent()
 	local tab = type(sec) == "table" and rawget(sec, "name")
 	local inst = { canvas = canvas, el = (type(tab) == "string" and tab:match("^party:")) and "party" or "raid",
-		spec = RD:Spec(), virtual = {} }
+		spec = RD:Spec(), virtual = {}, width = width }
 	inst.kind = Page.KindOf(inst)
 	Page.canvases[canvas] = inst
 	local function Key()
@@ -382,7 +415,10 @@ function Page.BuildGroups(canvas, width)
 	local Refresh   -- (below)
 
 	------------------------------------------------------------------ the tray
-	local tray = Box(canvas, 0, 0, width, G.trayH)
+	-- (layout C: narrow, the section names over their cards, two wider cards a line, the title wrapping beside the
+	-- copy menu -- Page.Measures)
+	local trayH, blockH, narrow, perLine, cardW, secW, firstY = Page.Measures(width)
+	local tray = Box(canvas, 0, 0, width, trayH)
 	local title = Label(tray, "", "selectedTrim", "GameFontNormal")
 	title:SetPoint("TOPLEFT", tray, "TOPLEFT", G.pad, -G.pad)
 	local copy = W.Dropdown(tray, 150, function() return nil end, function(value)
@@ -393,12 +429,16 @@ function Page.BuildGroups(canvas, width)
 		end
 	end, RD:SpecValues(), { default = TEXT.copy })
 	copy:SetPoint("TOPRIGHT", tray, "TOPRIGHT", -G.pad, -6)
+	if narrow then
+		title:SetPoint("RIGHT", copy, "LEFT", -8, 0)
+		title:SetJustifyH("LEFT")
+		title:SetWordWrap(true)
+	end
 	local SECTIONS = { "own", "all", "debuff", "single" }
 	local secLabel = {}
 	for _, s in ipairs(SECTIONS) do
 		secLabel[s] = Label(tray, TEXT.sections[s], "text", "GameFontHighlight")
 	end
-	local perLine = math.max(1, math.floor((width - 2 * G.pad - G.secW + G.cardGap) / (G.cardW + G.cardGap)))
 	local cards = {}
 	local more = Label(tray, "", "text", "GameFontHighlightSmall")
 
@@ -408,7 +448,7 @@ function Page.BuildGroups(canvas, width)
 			return c
 		end
 		c = CreateFrame("Button", nil, tray)
-		c:SetSize(G.cardW, G.cardH)
+		c:SetSize(cardW, G.cardH)
 		c.fill = W.Solid(c, "BACKGROUND", "raisedPanel", 1)
 		c.fill:SetAllPoints(c)
 		c.hover = W.Solid(c, "BORDER", "hover", 0.8)
@@ -554,12 +594,18 @@ function Page.BuildGroups(canvas, width)
 				groups.single[#groups.single + 1] = { ind = ind }
 			end
 		end
-		local y, n = G.pad + 24, 0
+		local y, n = firstY, 0
 		more:Hide()
 		for _, s in ipairs(SECTIONS) do
 			local items = groups[s]
 			secLabel[s]:ClearAllPoints()
-			secLabel[s]:SetPoint("TOPLEFT", tray, "TOPLEFT", G.pad, -(y + 12))
+			if narrow then
+				-- (the section's name over its cards)
+				secLabel[s]:SetPoint("TOPLEFT", tray, "TOPLEFT", G.pad, -y)
+				y = y + G.labelLine
+			else
+				secLabel[s]:SetPoint("TOPLEFT", tray, "TOPLEFT", G.pad, -(y + 12))
+			end
 			local lines = math.max(1, math.ceil((#items + (s == "single" and 1 or 0)) / perLine))
 			if s == "single" then
 				lines = 1   -- (one line: the rest counted)
@@ -570,13 +616,17 @@ function Page.BuildGroups(canvas, width)
 					n = n + 1
 					local c = Card(n)
 					c:ClearAllPoints()
-					c:SetPoint("TOPLEFT", tray, "TOPLEFT", G.pad + G.secW + col * (G.cardW + G.cardGap), -(y + line * G.line))
+					c:SetPoint("TOPLEFT", tray, "TOPLEFT", G.pad + secW + col * (cardW + G.cardGap), -(y + line * G.line))
 					FillCard(c, item.key, item.ind)
 					c:Show()
 				elseif s == "single" then
 					more:SetText(string.format(TEXT.more, #items - perLine + 1))
 					more:ClearAllPoints()
-					more:SetPoint("TOPLEFT", secLabel[s], "BOTTOMLEFT", 0, -4)
+					if narrow then
+						more:SetPoint("LEFT", secLabel[s], "RIGHT", 8, 0)
+					else
+						more:SetPoint("TOPLEFT", secLabel[s], "BOTTOMLEFT", 0, -4)
+					end
 					more:Show()
 				end
 			end
@@ -584,7 +634,7 @@ function Page.BuildGroups(canvas, width)
 				-- (the typed spell's box after the single spells)
 				local col = math.min(#items, perLine - 1)
 				single:ClearAllPoints()
-				single:SetPoint("TOPLEFT", tray, "TOPLEFT", G.pad + G.secW + col * (G.cardW + G.cardGap), -(y + 10))
+				single:SetPoint("TOPLEFT", tray, "TOPLEFT", G.pad + secW + col * (cardW + G.cardGap), -(y + 10))
 			end
 			y = y + lines * G.line
 		end
@@ -595,7 +645,7 @@ function Page.BuildGroups(canvas, width)
 	end
 
 	------------------------------------------------------------------ the block
-	local block = Box(canvas, 0, G.trayH + G.gap, width, G.blockH)
+	local block = Box(canvas, 0, trayH + G.gap, width, blockH)
 	local none = Label(block, TEXT.none, "text", "GameFontHighlight")
 	none:SetPoint("CENTER", block, "CENTER", 0, 0)
 	local body = CreateFrame("Frame", nil, block)
@@ -610,18 +660,27 @@ function Page.BuildGroups(canvas, width)
 	blurb:SetJustifyH("LEFT")
 	blurb:SetWordWrap(false)
 	local placeBtn = W.Button(body, TEXT.on, 110, nil, { height = 22 })
-	placeBtn:SetPoint("TOPRIGHT", body, "TOPRIGHT", -G.pad, -G.pad + 2)
 	local resetBtn = W.Button(body, TEXT.reset, 100, nil, { height = 22 })
-	resetBtn:SetPoint("RIGHT", placeBtn, "LEFT", -6, 0)
+	if narrow then
+		-- (layout C: the buttons under the blurb, the heading's line left whole)
+		placeBtn:SetPoint("TOPLEFT", body, "TOPLEFT", G.pad, -(G.pad + 46))
+		resetBtn:SetPoint("LEFT", placeBtn, "RIGHT", 6, 0)
+	else
+		placeBtn:SetPoint("TOPRIGHT", body, "TOPRIGHT", -G.pad, -G.pad + 2)
+		resetBtn:SetPoint("RIGHT", placeBtn, "LEFT", -6, 0)
+	end
 	Tip(resetBtn, TEXT.reset, TEXT.resetTip)
 
-	local lx, lw = G.pad, math.floor(width * 0.47)
-	local rx = lx + lw + 22
-	local top = 62
+	-- (layout C, narrow: the spells across the block, the settings under them and the colour)
+	local lx, lw = G.pad, narrow and (width - 2 * G.pad - 10) or math.floor(width * 0.47)
+	local rx = narrow and lx or lx + lw + 22
+	local top = narrow and G.stackTop or 62
 	local spellsLabel = Label(body, "", "text", "GameFontHighlight")
 	spellsLabel:SetPoint("TOPLEFT", body, "TOPLEFT", lx, -top)
 	local unplaced = Label(body, TEXT.unplaced, "text", "GameFontHighlight")
-	unplaced:SetPoint("TOPLEFT", body, "TOPLEFT", rx, -top)
+	-- (where the settings start: beside the spells, or under the spells, the typed box and the colour -- narrow)
+	local setY = narrow and (top + 20 + G.rows * G.rowH + 6 + 44 + G.wheel + 16) or top
+	unplaced:SetPoint("TOPLEFT", body, "TOPLEFT", rx, -setY)
 	unplaced:SetPoint("RIGHT", body, "RIGHT", -G.pad, 0)
 	unplaced:SetJustifyH("LEFT")
 
@@ -927,7 +986,7 @@ function Page.BuildGroups(canvas, width)
 		return l
 	end
 	local cx = rx + G.labelW
-	local y = top
+	local y = setY
 	Line("look", rx, y, TEXT.look)
 	controls.look = Choices(body, cx, y, LOOKS, 46, Getter("look"), Setter("look"))
 	y = y + 28
@@ -1051,7 +1110,7 @@ function Page.BuildGroups(canvas, width)
 
 	-- the fake raid (or party) where your frames stand
 	local show = W.Button(canvas, TEXT.show, 220, nil, { height = 22 })
-	show:SetPoint("TOPLEFT", canvas, "TOPLEFT", G.pad, -(G.trayH + G.gap + G.blockH + G.gap))
+	show:SetPoint("TOPLEFT", canvas, "TOPLEFT", G.pad, -(trayH + G.gap + blockH + G.gap))
 	show:HookScript("OnClick", function()
 		local Pv = MelloUI.Preview
 		if Pv and Pv.Start then

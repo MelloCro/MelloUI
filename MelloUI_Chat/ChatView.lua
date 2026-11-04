@@ -2078,6 +2078,9 @@ local function Build()
 			Restyle()
 		end
 	end, "Chat view parchment")
+	-- (the configurator walk, 2026-11-04: Look > Fonts' Chat text changed the game's windows, the view's lines kept
+	-- theirs -- the Fonts module sets the windows' font objects, which no SetFont hook sees) any font change: the rows
+	MelloUI:On("fonts", View.FontChanged, "Chat view fonts")
 	local Kit = MelloUI.Kit
 	if Kit and Kit.OnCover then
 		Kit:OnCover(function(group)

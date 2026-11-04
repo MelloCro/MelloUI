@@ -131,6 +131,8 @@
 --                                again: `value` a new choice, nil the
 --                                window's own read again (a window without
 --                                one: nothing)
+--   shell:EscapeSteps(fn)        Escape in steps: fn() undoes one of the
+--                                window's own pieces (true), else it closes
 --   shell:HoldEscape(on)         the window's Escape held while a piece of it
 --                                that Escape closes first is open (a picture
 --                                row's flyout, W.PictureMenu): its setting
@@ -285,6 +287,9 @@ local Shell_OnShow = Shared("OnShow on a kit own window", function(frame)
 		shell:Showing(not reshown)
 		-- (UI Shade's settings read again: a profile loaded while it was hidden)
 		shell:ShadeWindow()
+		if shell.stepper then
+			shell.stepper:Show()
+		end
 	end
 end, "script")
 
@@ -298,6 +303,13 @@ local Shell_OnHide = Shared("OnHide on a kit own window", function(frame)
 		return
 	end
 	shell.parentHidden = false
+	-- (its Escape stand-in put away quietly: no step asked)
+	local stepper = shell.stepper
+	if stepper and stepper:IsShown() then
+		stepper.quiet = true
+		stepper:Hide()
+		stepper.quiet = nil
+	end
 	if shell.sounds then
 		MelloUI:PlayUISound("window_close")
 	end
@@ -1119,13 +1131,64 @@ local function Special(name, on)
 	end
 end
 
+-- the name a window stands in the list by: its Escape stand-in's when it has steps (EscapeSteps), else its own
+local function EscName(shell)
+	local stepper = shell.stepper
+	return stepper and stepper:GetName() or shell.frame:GetName()
+end
+
 -- (while a question holds Escape, another shell's setting is only
 -- recorded: its name comes back when the question closes; the same while
 -- the shell's own hold is on)
 function Shell:SetEscape(on)
 	on = on and true or false
 	self.escape = on
-	Special(self.frame:GetName(), on and not self.escapeHeld and not (escapeHold and escapeHold ~= self))
+	Special(EscName(self), on and not self.escapeHeld and not (escapeHold and escapeHold ~= self))
+end
+
+-- Escape in steps (Suggestion 1, point 4, 2026-11-04): a window whose own pieces Escape undoes first, one a press
+-- (the configurator's cog panel, its search's text, a picked part), stands in the list by a stand-in frame of its own,
+-- shown while the window shows. The game's walk hides the stand-in, which asks the window's steps: one undone, it
+-- shows again and the window stays; none left, the window hides as before. A piece in the list itself (a flyout)
+-- still holds the window's Escape (HoldEscape: the stand-in's name out meanwhile), so a press is one step.
+--   shell:EscapeSteps(fn)   fn() -> true when it undid one
+local StepperHidden = Shared("OnHide on a window's Escape stand-in", function(stepper)
+	-- (put away with the window, or a parent's hide: no step)
+	if stepper.quiet or stepper:IsShown() then
+		return
+	end
+	local shell = stepper.shell
+	local frame = shell.frame
+	if not frame:IsShown() then
+		return
+	end
+	local ok, undone = pcall(shell.steps)
+	if not ok then
+		geterrorhandler()(undone)
+	end
+	if ok and undone then
+		stepper:Show()
+	else
+		frame:Hide()
+	end
+end, "script")
+
+function Shell:EscapeSteps(fn)
+	self.steps = fn
+	if self.stepper or not self.frame:GetName() then
+		return
+	end
+	-- (the window's own name out of the list: its stand-in's in its place)
+	Special(self.frame:GetName(), false)
+	local stepper = CreateFrame("Frame", self.frame:GetName() .. "EscapeSteps", UIParent)
+	stepper.shell = self
+	stepper:Hide()
+	Perf.SetScript(stepper, "OnHide", StepperHidden)
+	self.stepper = stepper
+	if self.frame:IsShown() then
+		stepper:Show()
+	end
+	self:SetEscape(self.escape)
 end
 
 -- A piece of the window that Escape closes first (a picture row's flyout,
@@ -1141,7 +1204,7 @@ local function EndHolds()
 	for shell in pairs(released) do
 		released[shell] = nil
 		shell.escapeHeld = nil
-		Special(shell.frame:GetName(), shell.escape and not (escapeHold and escapeHold ~= shell))
+		Special(EscName(shell), shell.escape and not (escapeHold and escapeHold ~= shell))
 	end
 end
 
@@ -1149,7 +1212,7 @@ function Shell:HoldEscape(on)
 	if on then
 		released[self] = nil
 		self.escapeHeld = true
-		Special(self.frame:GetName(), false)
+		Special(EscName(self), false)
 	elseif self.escapeHeld and not released[self] then
 		released[self] = true
 		C_Timer.After(0, EndHolds)
@@ -1490,9 +1553,9 @@ local function HoldEscape()
 		return
 	end
 	escapeHold = confirm.shell
-	for frame, shell in pairs(shells) do
+	for _, shell in pairs(shells) do
 		if shell ~= escapeHold and shell.escape then
-			Special(frame:GetName(), false)
+			Special(EscName(shell), false)
 		end
 	end
 end
@@ -1503,9 +1566,9 @@ local function ReleaseEscape()
 		return
 	end
 	escapeHold = nil
-	for frame, shell in pairs(shells) do
+	for _, shell in pairs(shells) do
 		if shell.escape and not shell.escapeHeld then
-			Special(frame:GetName(), true)
+			Special(EscName(shell), true)
 		end
 	end
 end

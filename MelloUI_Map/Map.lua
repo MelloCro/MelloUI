@@ -118,6 +118,7 @@ M = MelloUI:RegisterModule("Map", {
 	options = {
 		{ type = "button", name = TEXT.open, text = "Open",
 		  desc = "Opens MelloUI's map. Your map key (M) and /mellomap open it too.",
+		  opens = "MelloUIMapFrame",   -- (closed again: back in the configurator, Core/Config.lua's CONFIG.Away)
 		  onClick = function() M:Toggle(true) end },
 		-- (2.1.0; the user, 2026-11-02: "once inside of the dungeon, to open the dungeon map, with boss positions and
 		-- loot seen on the right side of the map") MapDungeon.lua

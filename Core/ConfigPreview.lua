@@ -1161,7 +1161,8 @@ do
 			end
 		end
 		local top = K.PAD + (band > 0 and band + K.PAD / 2 or 0)
-		local bottom = K.PAD / 2 + K.H_TEXT + K.PAD / 2
+		-- (the caption under the stage, layout C: no line kept for it inside)
+		local bottom = stage.opts and stage.opts.captionBelow and K.PAD or K.PAD / 2 + K.H_TEXT + K.PAD / 2
 		return K.PAD, top, w - 2 * K.PAD, h - top - bottom
 	end
 
@@ -1424,7 +1425,8 @@ do
 	end
 
 	-- the borrowed keys (Edit Layout's key frame calls it out of a fight
-	-- only): Escape closes an open list first, then lets the part go; an
+	-- only): Escape closes an open list first (and the window's own panels,
+	-- Preview.EscapeFirst), then lets the part go; an
 	-- arrow nudges it (one write a frame); any other key is the game's
 	function E.KeyHandler(key)
 		local stage = ST.lent
@@ -1439,6 +1441,11 @@ do
 				return false
 			end
 			if W.CloseFlyouts() then
+				return true
+			end
+			-- (the window's own open panels before the part: the configurator's Escape steps, Config.lua)
+			local first = Preview.EscapeFirst
+			if first and first() then
 				return true
 			end
 			local d = ST.drag
@@ -2439,8 +2446,17 @@ do
 		stage.selBox = E.Edged(stage, "selectedTrim", stage.level + 28)
 		stage.hoverBox = E.Edged(stage, "hover", stage.level + 29)
 		stage.caption = W.Text(stage, "GameFontHighlightSmall", nil, "text")
-		stage.caption:SetPoint("BOTTOMLEFT", stage, "BOTTOMLEFT", K.PAD, K.PAD / 2)
-		stage.caption:SetPoint("RIGHT", stage, "RIGHT", -K.PAD, 0)
+		if opts.captionBelow then
+			-- (layout C, the configurator's left column: the caption under the stage, wrapping at its width -- the
+			-- designer's Parts line under it, Config.lua's DUI.Lay -- so the sample keeps the stage's whole room)
+			stage.caption:SetPoint("TOPLEFT", stage, "BOTTOMLEFT", 2, -4)
+			stage.caption:SetPoint("TOPRIGHT", stage, "BOTTOMRIGHT", -2, -4)
+			stage.caption:SetJustifyH("LEFT")
+			stage.caption:SetWordWrap(true)
+		else
+			stage.caption:SetPoint("BOTTOMLEFT", stage, "BOTTOMLEFT", K.PAD, K.PAD / 2)
+			stage.caption:SetPoint("RIGHT", stage, "RIGHT", -K.PAD, 0)
+		end
 		if type(def.states) == "table" and #def.states > 0 then
 			local chips = W.Chips(stage, { width = math.floor(w / 2), onPick = E.StateChip })
 			chips.melloStage = stage

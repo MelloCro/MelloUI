@@ -154,13 +154,17 @@ local function SetAll(value)
 	end
 end
 
+-- (the configurator walk, 2026-11-04: both set all 27 parts at once, each part's own choice gone) they ask first
+local function AskAll(value, text, accept)
+	MelloUI:Confirm({ text = text, accept = accept, cancel = "Cancel", onAccept = function() SetAll(value) end })
+end
 options[#options + 1] = { type = "button", name = "Fade Everything", text = "Fade",
 	search = "hide out of combat whole ui",
 	desc = "Sets every part below to In Combat: the interface fades out of combat and comes back in a fight.",
-	onClick = function() SetAll("combat") end }
+	onClick = function() AskAll("combat", "Set every part below to In Combat? Each part's own choice is replaced.", "Fade") end }
 options[#options + 1] = { type = "button", name = "Fade Nothing", text = "Reset",
 	desc = "Sets every part below to Always: nothing fades.",
-	onClick = function() SetAll("always") end }
+	onClick = function() AskAll("always", "Set every part below to Always? Each part's own choice is replaced.", "Reset") end }
 options[#options + 1] = { type = "slider", key = "alpha", name = "Faded Opacity", min = 0, max = Fader.T.MAX, step = 0.05,
 	percent = true,
 	desc = "How visible a faded part stays. 0%: hidden until needed." }
@@ -175,10 +179,24 @@ options[#options + 1] = { type = "toggle", key = "target", name = "Show With A T
 options[#options + 1] = { type = "toggle", key = "mouse", name = "Also Show On Mouseover",
 	search = "show on hover",
 	desc = "In Combat parts also come back while your mouse is over them." }
+-- (Suggestion 1, point 8, 2026-11-04) a bar the game's Options turned off has nothing to fade: its row sleeps while it
+-- is off (the configurator's gate 7, the schema's `missing`), as the micro menu's while Hide This Bar parks it
+local BAR_OFF = "Off in the game's Options > Action Bars"
+local function BarOff(n)
+	return function()
+		local OB = MelloUI.OwnBars
+		local A = OB and OB.Actions
+		if A and A.GameWantsShown and not A.GameWantsShown(n) then
+			return BAR_OFF
+		end
+		return nil
+	end
+end
 for _, e in ipairs(LIST) do
 	local still = e[6] == "noMouse"
+	local bar = tonumber(e[1]:match("^bar(%d)$"))
 	options[#options + 1] = { type = "dropdown", key = "show_" .. e[1], name = e[2], values = still and SHOW_NO_MOUSE or SHOW,
-		new = e[5], desc = e[4] .. (still and SHOW_NO_MOUSE_TIP or SHOW_TIP) }
+		new = e[5], desc = e[4] .. (still and SHOW_NO_MOUSE_TIP or SHOW_TIP), missing = bar and bar > 1 and BarOff(bar) or nil }
 	if e[1] == "player" then
 		options[#options + 1] = { type = "toggle", key = "petToo", name = "Pet Frame Too",
 			desc = "Your pet's frame fades with the player frame and returns while your pet is hurt." }

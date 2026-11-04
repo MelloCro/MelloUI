@@ -85,7 +85,11 @@ local M = MelloUI:RegisterModule("Chat", {
 			{ value = "dark", label = "Dark" },
 			{ value = "game", label = "Game" },
 			{ value = "none", label = "None" },
-		  }, get = function(db) return Background(db) end,
+		  }, get = function(db)
+			-- (the configurator walk's round 2: with the Minimal Chat View its panel's Dark or None, M.BackgroundChoices)
+			local v = Background(db)
+			return (v == "game" and db and db.view == "minimal") and "dark" or v
+		  end,
 		  desc = "The chat's background: Dark, the game's own, or none." },
 		{ type = "toggle", key = "windowAlphaOn", name = "Set The Background Opacity",
 		  desc = "Every chat window uses the same background opacity. Off: each keeps its own." },
@@ -3964,6 +3968,42 @@ Background = function(db)
 end
 M.Background = Background   -- (read only: the tests)
 
+-- (the configurator walk's round 2, 2026-11-04: with the Minimal Chat View, Dark and Game drew the same panel) the
+-- choices the Background offers: with the Minimal Chat View its panel's Dark or None (Game names the game's windows,
+-- which the view hides; its row reads Dark then), with the game's windows Dark, Game and None. One list, Game put in
+-- and out in place (the configurator's box reads its list as it opens); the Dark look still reads Background
+function M.BackgroundChoices()
+	local list, game, at
+	for _, o in ipairs(M.options or {}) do
+		if o.key == "background" then
+			list = o.values
+		end
+	end
+	M.bgGame = M.bgGame or (function()
+		for _, v in ipairs(list or {}) do
+			if v.value == "game" then
+				return v
+			end
+		end
+	end)()
+	game = M.bgGame
+	if not (list and game) then
+		return
+	end
+	for i, v in ipairs(list) do
+		if v == game then
+			at = i
+		end
+	end
+	local db = M.db or MelloUI:GetModuleDB("Chat")
+	local minimal = db and db.view == "minimal"
+	if minimal and at then
+		table.remove(list, at)
+	elseif not minimal and not at then
+		table.insert(list, 2, game)
+	end
+end
+
 function M.SetBackground(value)
 	-- (one look: Dark, Game or None; the painted skin and its paper are switches of their own)
 	if value ~= "dark" and value ~= "game" and value ~= "none" then
@@ -4005,6 +4045,7 @@ end
 
 function M:OnEnable(db)
 	self.db = db
+	M.BackgroundChoices()   -- (the Background's choices for the view: Game only with the game's windows)
 	-- the old corner into the store now, as the Route arrow and the Voice
 	-- Over overlay do at enable, so a Reset positions before the session's
 	-- first whisper reaches it (review, 2026-09-25); data only, builds nothing
@@ -4062,6 +4103,7 @@ function M:OnSettingChanged(key, value, db)
 	elseif key == "editBoxWhileTyping" then
 		SetTypingOnly(true)
 	elseif key == "view" then
+		M.BackgroundChoices()
 		if M.View then
 			M.View.Apply()
 		end

@@ -868,6 +868,9 @@ end
 
 function Skin.LayIcon(tex, spec)
 	if spec.atlas then
+		-- (the configurator walk, 2026-11-04: the Default skin's tick showed only its long stroke, shifted) a crop left on
+		-- the texture by the other look (its picture's copy on a sheet) stays through SetAtlas: the whole of it first
+		tex:SetTexCoord(0, 1, 0, 1)
 		tex:SetAtlas(spec.atlas)
 		if spec.flip then
 			Flip(tex, spec.atlas)

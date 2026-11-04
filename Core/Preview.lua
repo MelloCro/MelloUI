@@ -584,6 +584,20 @@ function Preview:ToggleMenu(anchor, skin)
 	menu:Show()
 end
 
+-- the list open now (the configurator's Preview button shows no tooltip over it)
+function Preview:MenuShown()
+	return menu ~= nil and menu:IsShown()
+end
+
+-- the list closed if it is open (true then): the configurator's Escape, one step (Config.lua CONFIG.EscapeStep)
+function Preview:CloseMenu()
+	if menu and menu:IsShown() then
+		menu:Hide()
+		return true
+	end
+	return false
+end
+
 -- /mello preview [solo | party | raid | stop]
 function Preview.Slash(rest)
 	rest = type(rest) == "string" and rest:lower():match("^%s*(%S*)") or ""

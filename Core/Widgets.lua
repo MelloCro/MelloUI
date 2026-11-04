@@ -71,9 +71,6 @@
 --                                      a look chosen by its picture (0.15.0),
 --     its flyout W.PictureMenu(host, skin), one per window (a dropdown's
 --     list opens in it too), W.ClosePictureMenu(host), W.CloseFlyouts()
---   W.LinkRow(parent, y, label, get, onClick, opts)   a setting kept on
---                                      another page: its value and a button
---                                      to it (0.15.0)
 --   W.Card(parent, spec, skin)         a choice card (the installer's picks;
 --                                      spec.palette: a palette's card)
 --   W.PaletteSwatch(parent, spec)      a palette shown by its colours, and
@@ -281,7 +278,16 @@ do
 				end
 			end
 		elseif how == "vertex" then
+			-- (the configurator walk, 2026-11-04: every row lit after a skin switch) this client's SetVertexColor sets
+			-- the texture's own alpha too: a repaint keeps it (a resting row wash, a faded edge stay out)
+			local was = P.repainting and region:GetAlpha()
 			region:SetVertexColor(c[1], c[2], c[3], alpha)
+			if was and not Secret(was) then
+				local now = region:GetAlpha()
+				if not Secret(now) and now ~= was then
+					region:SetAlpha(was)
+				end
+			end
 		elseif how == "text" then
 			region:SetTextColor(c[1], c[2], c[3], alpha)
 		elseif how == "backdrop" then
@@ -294,11 +300,13 @@ do
 	end
 
 	local function RepaintAll()
+		P.repainting = true   -- (Apply: the colours again, never the alpha)
 		for _, list in pairs(lists) do
 			for region, e in pairs(list) do
 				Apply(region, e.key, e.how, e.alpha, e)
 			end
 		end
+		P.repainting = false
 	end
 
 	local function OnPalette()
@@ -866,6 +874,12 @@ do   -- (in a block: the main chunk is near Lua's 200 locals)
 		if spec.shape == "pill" then
 			r = h / 2
 		end
+		-- (the in-game test, 2026-11-04: Edit Layout's View panel, its plate made before its size -- 0 wide, its
+		-- corners 0, which the game draws at the mask's own size: big gold quarter discs) a frame not sized yet
+		-- keeps the radius
+		if w > 0 then
+			r = math.min(r, w / 2)
+		end
 		local sub = spec.sub or -7
 		local edgeW = spec.edgeWidth or 1
 		local plate = {
@@ -873,8 +887,8 @@ do   -- (in a block: the main chunk is near Lua's 200 locals)
 			fillAlpha = spec.fillAlpha or 1, edgeAlpha = spec.edgeAlpha or 1,
 			Paint = PlatePaint,
 		}
-		plate.edgeShape = Shape(frame, spec, math.min(r, w / 2), 0, sub)
-		plate.fillShape = Shape(frame, spec, math.min(r, w / 2), edgeW, sub + 1)
+		plate.edgeShape = Shape(frame, spec, r, 0, sub)
+		plate.fillShape = Shape(frame, spec, r, edgeW, sub + 1)
 		plate:Paint()
 		return plate
 	end
@@ -4530,30 +4544,43 @@ local function Wash(row, strength, edge)
 	return region
 end
 
-function W.RowPlate(row, opts)
-	opts = opts or {}
-	local skin = opts.skin
-	local region, kit
-	if opts.look == "plate" and skin and skin.kit then
-		-- the region to replace comes from the shell (its one invisible
-		-- anchor): no anchor and no colour literal here
-		local rep = skin:Replace(skin:Anchor(row, "BACKGROUND"), { as = "FriendsRowHighlight", rect = row })
-		region = rep and rep.object
-		if region then
-			region:Hide()
-			hiddenOf[row], strengthOf[row], kit = true, 1, true
+do   -- (in a block: the main chunk is near Lua's 200 locals)
+	-- (the in-game test, 2026-11-04: Edit Layout picked in the configurator's list, the window back after it -- the entry
+	-- still lit) a row hidden while lit, its window closed under the pointer, puts its wash out: no leave comes then
+	local PlateHidden = Shared("OnHide on MelloUI's rows (hover)", function(row)
+		local p = faderOf[row]
+		local sel = selectedOf[row]
+		if p and (held == row or (Num(p:GetAlpha()) or 0) > 0) and not (sel and sel(row)) then
+			W.RowPlateOff(row)
 		end
+	end, "script")
+
+	function W.RowPlate(row, opts)
+		opts = opts or {}
+		local skin = opts.skin
+		local region, kit
+		if opts.look == "plate" and skin and skin.kit then
+			-- the region to replace comes from the shell (its one invisible
+			-- anchor): no anchor and no colour literal here
+			local rep = skin:Replace(skin:Anchor(row, "BACKGROUND"), { as = "FriendsRowHighlight", rect = row })
+			region = rep and rep.object
+			if region then
+				region:Hide()
+				hiddenOf[row], strengthOf[row], kit = true, 1, true
+			end
+		end
+		if not region then
+			region = Wash(row, opts.strength, opts.edge)
+		end
+		plateOf[row] = region
+		faderOf[row] = kit and FaderOf(region) or region
+		selectedOf[row] = opts.selected
+		row:EnableMouse(true)
+		Perf.HookScript(row, "OnEnter", PlateEnter)
+		Perf.HookScript(row, "OnLeave", PlateLeave)
+		Perf.HookScript(row, "OnHide", PlateHidden)
+		return region, kit
 	end
-	if not region then
-		region = Wash(row, opts.strength, opts.edge)
-	end
-	plateOf[row] = region
-	faderOf[row] = kit and FaderOf(region) or region
-	selectedOf[row] = opts.selected
-	row:EnableMouse(true)
-	Perf.HookScript(row, "OnEnter", PlateEnter)
-	Perf.HookScript(row, "OnLeave", PlateLeave)
-	return region, kit
 end
 
 function W.RowPlateChild(row, child)
@@ -4596,13 +4623,47 @@ end
 -- timer: nothing runs between flashes. Reduce Motion: on and off at once,
 -- still held. A new flash puts the one before out at once; a row the
 -- pointer is on keeps its hover when the flash ends.
---   W.Flash(row[, hold])   `hold` in seconds (W.FLASH_HOLD, 1.2)
+--   W.Flash(row[, hold])   `hold` in seconds (W.FLASH_HOLD, 1.2); the row ringed in
+--                          gold meanwhile (W.FlashRing(): the ring, nil before the first)
 --   W.Flashing()           the row a flash holds now, or nil
 --------------------------------------------------------------------------------
 
 W.FLASH_HOLD = 1.2
 local flashOnly = setmetatable({}, weakKeys)   -- [frame] = true: its wash is a flash's only
-local flash = { row = nil, holds = 0 }
+local flash = { row = nil, holds = 0, ring = nil, RING = 2 }
+
+-- (Suggestion 1, point 10, 2026-11-04) the row ringed in gold for the hold too, over whatever plate it has: the hover
+-- look alone read, on a slate row, as the row losing its fill (the walk). The selected look's 2 px gold edge, all
+-- round; ONE ring, made at the first flash, laid on each flashed row (above its controls, no mouse). (A field of
+-- `flash`: no new top-level local, the file is near Lua's 200)
+function flash.Ring(row)
+	local RING = flash.RING
+	local ring = flash.ring
+	if not ring then
+		ring = CreateFrame("Frame", nil, row)
+		ring.edges = {}
+		for i = 1, 4 do
+			local t = ring:CreateTexture(nil, "OVERLAY", nil, 7)
+			t:SetTexture(WHITE)
+			W.Paint(t, "selectedTrim", "vertex", 1)
+			ring.edges[i] = t
+		end
+		local e = ring.edges
+		e[1]:SetPoint("TOPLEFT") e[1]:SetPoint("TOPRIGHT") e[1]:SetHeight(RING)
+		e[2]:SetPoint("BOTTOMLEFT") e[2]:SetPoint("BOTTOMRIGHT") e[2]:SetHeight(RING)
+		e[3]:SetPoint("TOPLEFT") e[3]:SetPoint("BOTTOMLEFT") e[3]:SetWidth(RING)
+		e[4]:SetPoint("TOPRIGHT") e[4]:SetPoint("BOTTOMRIGHT") e[4]:SetWidth(RING)
+		ring:Hide()
+		flash.ring = ring
+	end
+	if ring:GetParent() ~= row then
+		ring:SetParent(row)
+	end
+	ring:ClearAllPoints()
+	ring:SetAllPoints(row)
+	ring:SetFrameLevel((Num(row:GetFrameLevel()) or 0) + 8)
+	return ring
+end
 
 local function FlashOver()
 	flash.holds = flash.holds - 1
@@ -4614,6 +4675,10 @@ local function FlashOver()
 	flash.row = nil
 	if row and (flashOnly[row] or not OverRow(row)) then
 		PlateOut(row)
+	end
+	local ring = flash.ring
+	if ring and ring:IsShown() then
+		MelloUI.Anim:FadeOut(ring, FADE_OUT, "inQuad")
 	end
 end
 
@@ -4640,12 +4705,23 @@ function W.Flash(row, hold)
 			In(e, 1)
 		end
 	end
+	if row.GetFrameLevel then
+		local ring = flash.Ring(row)
+		MelloUI.Anim:Stop(ring, "alpha")
+		ring:SetAlpha(0)
+		ring:Show()
+		MelloUI.Anim:FadeIn(ring, FADE_IN, "outQuad")
+	end
 	flash.holds = flash.holds + 1
 	C_Timer.After(tonumber(hold) or W.FLASH_HOLD, FlashOver)
 end
 
 function W.Flashing()
 	return flash.row
+end
+
+function W.FlashRing()
+	return flash.ring
 end
 
 --------------------------------------------------------------------------------
@@ -5026,6 +5102,16 @@ function W.ClipRow(row, control, span)
 		FitLabel(row, span)
 	else
 		last:SetPoint("RIGHT", control, "LEFT", -10, 0)
+		-- (the configurator walk, 2026-11-04: Minimap > Services' "Bar Distance From The Minimap" ran under its
+		-- slider) a half row's hint that is not stacked is its gate's line UNDER the label (W.Gate): the label ends
+		-- at the control too
+		if last ~= row.label and row.colW then
+			if row.newTag then
+				FitLabel(row, span)
+			else
+				row.label:SetPoint("RIGHT", control, "LEFT", -10, 0)
+			end
+		end
 	end
 	clipped[row], clipAt[row] = true, control
 	if not row.tipTitle then
@@ -5453,9 +5539,18 @@ do
 	local DoneClick = Shared("OnClick on the colour flyout's Done", function(b)
 		Close(b.menu)
 	end, "script")
+	-- (its window's Escape held while it is open, as the picture flyout's: a press closes it alone)
+	local function Hold(menu, on)
+		local K = KitNow()
+		local shell = K and K.ShellOf and K:ShellOf(menu.host)
+		if shell and shell.HoldEscape then
+			shell:HoldEscape(on)
+		end
+	end
 	local MenuHidden = Shared("OnHide on the colour flyout", function(menu)
 		menu.catcher:Hide()
 		menu.row = nil
+		Hold(menu, false)
 	end, "script")
 
 	function W.ColourMenu(host)
@@ -5470,6 +5565,7 @@ do
 		menu:EnableMouse(true)
 		menu:SetClampedToScreen(true)
 		menu:Hide()
+		menu.host = host
 		menu.wheel = W.ColorWheel(menu, WHEEL_SIZE, function()
 			local row = menu.row
 			if row then
@@ -5517,6 +5613,7 @@ do
 		menu:ClearAllPoints()
 		menu:SetPoint("TOPRIGHT", row, "BOTTOMRIGHT", 0, -2)
 		menu:Show()
+		Hold(menu, true)
 		menu.wheel:Refresh()
 	end
 
@@ -6385,107 +6482,6 @@ do
 end
 
 --------------------------------------------------------------------------------
--- LinkRow (0.15.0): a row for a setting kept on another page -- a global one
--- on Look, the map's width on Minimap -- showing its value as text and a
--- flat button naming the page it lives on ("Look >"). The click is the
--- caller's (the configurator's jump: the page, its tab and pick, the row
--- flashed). Every option has ONE place: a link row is never a copy of it.
---   W.LinkRow(parent, y, label, get, onClick, opts) -> row
---     get()      the setting's value to show: text, or a boolean (On / Off)
---                or a number
---     onClick    a shared fn(row)
---     opts       target (the page's title: the button reads target .. " >",
---                as wide as its text, 60 to 110), desc (the row's tooltip)
---                and W.Row's (skin, inset, indent, zebra, line, look, gate,
---                note, onCover, new)
---   row:SetTarget(target, get)   another page and value (a per-pick link;
---                                nil keeps that part)
---   row:Refresh()   the value read again, and the row's gate
---   row.button, row.value
---------------------------------------------------------------------------------
-
-do
-	-- the link's button: its width's bounds, the room round its text (the max as wide as the longest page's name with
-	-- its " >": "Unit & Group Frames >" -- the user's screenshot, 2026-10-16: at 110 its text ran over the value)
-	local LINK_W_MIN, LINK_W_MAX, LINK_PAD = 60, 200, 24
-	local LINK_OPTS = {}   -- (the row's options less its gate, which comes once the value is placed)
-
-	local function LinkText(v)
-		if v == true then
-			return W.Tr("On")
-		elseif v == false then
-			return W.Tr("Off")
-		elseif v == nil then
-			return ""
-		end
-		return type(v) == "string" and W.Tr(v) or tostring(v)
-	end
-
-	local LinkClick = Shared("OnClick on a link row's button", function(button)
-		local row = button.melloLinkRow
-		if row and row.linkClick then
-			row.linkClick(row)
-		end
-	end, "script")
-
-	local function LinkRowRefresh(row)
-		local text = LinkText(row.linkGet and row.linkGet())
-		if row.value:GetText() ~= text then
-			row.value:SetText(text)
-		end
-		local cover = gateOf[row]
-		if cover then
-			cover:Refresh()
-		end
-	end
-
-	local function LinkRowSetTarget(row, target, get)
-		if target then
-			local button = row.button
-			button:SetText(W.Tr(target) .. " >")
-			local fs = button:GetFontString()
-			local w = fs and TextWidth(fs)
-			button:SetWidth(math.max(LINK_W_MIN, math.min(LINK_W_MAX, (w or 0) + LINK_PAD)))
-		end
-		if get then
-			row.linkGet = get
-		end
-		row:Refresh()
-	end
-
-	function W.LinkRow(parent, y, label, get, onClick, opts)
-		opts = opts or NO_OPTS
-		local o = LINK_OPTS
-		o.skin, o.inset, o.indent, o.zebra, o.line = opts.skin, opts.inset, opts.indent, opts.zebra, opts.line
-		o.look, o.strength, o.new, o.labelKey = opts.look, opts.strength, opts.new, opts.labelKey
-		o.colX, o.colW, o.colH = opts.colX, opts.colW, opts.colH   -- (1.2.4: a half row, W.Row's)
-		local row = W.Row(parent, y, W.ROW_HEIGHT, label, nil, opts.desc, o)
-		o.skin, o.inset, o.indent, o.zebra, o.line, o.look, o.strength, o.new, o.labelKey = nil, nil, nil, nil, nil, nil, nil, nil, nil
-		o.colX, o.colW, o.colH = nil, nil, nil
-		local button = W.Button(row, "", LINK_W_MIN, nil, { onClick = LinkClick })
-		button:SetPoint("RIGHT", -12, 0)
-		button.melloLinkRow = row
-		row.button = button
-		row.value = W.Text(row, "GameFontHighlight", nil, "text")
-		row.value:SetJustifyH("RIGHT")
-		row.value:SetWordWrap(false)
-		row.value:SetPoint("RIGHT", button, "LEFT", -10, 0)
-		row.linkGet, row.linkClick = get, onClick
-		row.Refresh, row.SetTarget = LinkRowRefresh, LinkRowSetTarget
-		controlOf[row] = button
-		W.RowPlateChild(row, button)
-		ControlTip(button, row, label, opts.desc)
-		-- (the gate's line, as a typed row's, before the texts are cut at the value)
-		if opts.gate then
-			W.Gate(row, opts.gate, opts)
-		end
-		W.ClipRow(row, row.value)
-		row:SetTarget(opts.target, nil)
-		return row
-	end
-end
-
---------------------------------------------------------------------------------
 -- Card: one choice among a few, shown whole (the installer's steps: its skins,
 -- layouts, party frames, chat, bags, sounds): a box with a title, a
 -- line under it, a tag at its top right (W.Tag: "Recommended") and a picture
@@ -6781,7 +6777,9 @@ end
 --   chips:Select(key)   chips:Selected()   chips:SetState(key, state)
 --   chips:Height()   the height the rows take
 --   chips:Refit()   measured and laid again (a font changed: the Interface text size, a skin), as they are
---   chips.buttons, chips.count, chips.row (a row's W.ScrollRow)
+--   chips:SetFlow(width, wrap)   a row's chips at another width, wrapping there (`wrap`: a narrow column -- the
+--     configurator's Parts under a stage beside its rows, layout C) or back in their row; measured and laid again
+--   chips.buttons, chips.count, chips.row (a row's W.ScrollRow), chips.wrap
 --------------------------------------------------------------------------------
 
 do
@@ -7020,7 +7018,7 @@ do
 				shown = b
 			end
 		end
-		if chips.row then
+		if chips.row and not chips.wrap then
 			chips.row:Show(shown)
 		end
 	end
@@ -7047,6 +7045,10 @@ do
 			ChipLook(b)   -- (the ink's larger face first: the width is the label's in it)
 		end
 		local fs = b:GetFontString()
+		if fs and b.melloCut then
+			fs:SetWidth(0)   -- (cut at a lay before: measured whole again)
+			b.melloCut = nil
+		end
 		b.melloTextW = fs and TextWidth(fs) or 24
 		local new = item.new ~= nil and MelloUI:IsNew(item.new)
 		if new and not b.melloNewTag then
@@ -7076,11 +7078,27 @@ do
 		return width + math.max(0, chips.count - 1) * (chips.spec.gap or CHIP_GAPS[t])
 	end
 
+	-- what the chips lie on: a row's strip, or the chips themselves (wrapping: a row's too while it wraps)
+	local function Holder(chips)
+		return chips.row and not chips.wrap and chips.row.strip or chips
+	end
+
 	local function Lay(chips)
 		local spec = chips.spec
 		local h, room = spec.height or 22, Num(spec.width)
 		local row = chips.row
-		if row and room then
+		if row then
+			-- (a row that wraps lays its chips on itself, its clip hidden; back in the row they go on its strip)
+			local holder = Holder(chips)
+			for i = 1, chips.count do
+				local b = chips.buttons[i]
+				if b:GetParent() ~= holder then
+					b:SetParent(holder)
+				end
+			end
+			row.clip:SetShown(not chips.wrap)
+		end
+		if row and room and not chips.wrap then
 			-- (one row: tightened step by step, then scrolled -- the user's "Tighten, then scroll")
 			local t = 1
 			while FitAll(chips, t) > room and t < #CHIP_PADS do
@@ -7100,6 +7118,18 @@ do
 		for i = 1, chips.count do
 			local b = chips.buttons[i]
 			local w = Fit(b, CHIP_PADS[1])
+			-- (the in-game test, 2026-11-04: a link chip, "Health Bar Colour: Class (players) / reaction (NPCs)", past its
+			-- line's end) a chip wider than the room is cut to it, its label ending in "..."
+			if room and w > room then
+				w = math.floor(room)
+				b:SetWidth(w)
+				local fs = b:GetFontString()
+				if fs then
+					fs:SetWordWrap(false)
+					fs:SetWidth(math.max(1, w - 2 * CHIP_PADS[1] - b.melloTagW))
+					b.melloCut = true
+				end
+			end
 			if room and x > 0 and x + w > room then
 				x, y = 0, y + h + gap
 			end
@@ -7119,7 +7149,7 @@ do
 
 	local function SetItems(chips, items)
 		local h = chips.spec.height or 22
-		local holder = chips.row and chips.row.strip or chips
+		local holder = Holder(chips)
 		local found = false
 		chips.count = 0
 		for i, item in ipairs(type(items) == "table" and items or NO_OPTS) do
@@ -7196,13 +7226,20 @@ do
 		Paint(chips)
 	end
 
+	-- a row's chips at `width`, wrapping there or in their row (laid with their labels measured anew, as Refit)
+	local function SetFlow(chips, width, wrap)
+		chips.spec.width = width
+		chips.wrap = (wrap and chips.row ~= nil) or nil
+		Refit(chips)
+	end
+
 	function W.Chips(parent, spec)
 		local chips = CreateFrame("Frame", nil, parent)
 		chips.spec = type(spec) == "table" and spec or {}
 		chips.buttons, chips.count, chips.rows, chips.list = {}, 0, 0, {}
 		chips.SetItems, chips.Select, chips.Selected, chips.SetState, chips.Height = SetItems, Select, Selected, SetState,
 			Height
-		chips.Refit = Refit
+		chips.Refit, chips.SetFlow = Refit, SetFlow
 		chips:SetSize(1, 1)   -- (a rect from the start: Lay)
 		if chips.spec.row then
 			local rowSpec = ROW_SPEC
@@ -7230,7 +7267,14 @@ end
 --         with :SetIcon and :SetOn, made once per row; nil: a plain texture),
 --         onSelect (a shared fn(rail, key, entry)), clickable (nil: all;
 --         fn(rail, key, entry) -> bool), doneGlyph (an atlas shown after a
---         done step's name)
+--         done step's name), bar (a width: a scrolling list's thin scroll
+--         bar, W.ThinScrollBar, in its right inset -- shown while the list is
+--         taller than its view, following the glide; dragged, the list
+--         follows: rail.bar; Suggestion 1 point 6, the configurator's side
+--         list), tipAnchor (its rows' and results' tooltips; nil:
+--         "ANCHOR_RIGHT" -- the configurator's "ANCHOR_LEFT": off its page),
+--         groupGap (0: the room between a group without a header -- a page
+--         of its own -- and the groups beside it)
 --   rail:SetGroups(groups)   groups = { { key, title (nil: no header),
 --                            collapsible, entries = { { key, text, icon,
 --                            tip, new } } } }; rows and headers come from a pool
@@ -7333,7 +7377,8 @@ local RailTipEnter = Shared("OnEnter on a NavRail entry (tooltip)", function(row
 	end
 	local P = MelloUI.Look.Palette()   -- (the palette's gold and text colour)
 	local gold, text = P.selectedTrim, P.text
-	GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+	local rail = railOf[row]
+	GameTooltip:SetOwner(row, rail and rail.spec.tipAnchor or "ANCHOR_RIGHT")
 	if clippedName then
 		GameTooltip:SetText(row.text:GetText(), gold[1], gold[2], gold[3], 1, true)
 		if tip then
@@ -7489,6 +7534,20 @@ function W.NavRail(parent, spec)
 		scroll:SetScrollChild(rail.content)
 		rail.scroll = scroll
 		rail.glide = MelloUI.Anim:Glide(scroll, { step = 68 })
+		if spec.bar then
+			local bar = W.ThinScrollBar(box, spec.bar)
+			local x = -math.floor((spec.inset - spec.bar) / 2)
+			bar:SetPoint("TOPRIGHT", box, "TOPRIGHT", x, -top)
+			bar:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", x, spec.inset)
+			bar:SetMinMaxValues(0, 0)
+			bar:SetValue(0)
+			bar:Hide()
+			railOf[bar], railOf[scroll] = rail, rail
+			Perf.SetScript(bar, "OnValueChanged", Rail.BarMoved)
+			Perf.hooksecurefunc(scroll, "SetVerticalScroll", Rail.ListScrolled)   -- (our own ScrollFrame, as the glide)
+			Perf.HookScript(scroll, "OnSizeChanged", Rail.ListSized)
+			rail.bar = bar
+		end
 	else
 		rail.content = CreateFrame("Frame", nil, box)
 		rail.content:SetPoint("TOPLEFT", spec.inset, -top)
@@ -7665,12 +7724,19 @@ function Rail:Layout(instant)
 	end
 	local spec = self.spec
 	local content = self.content
-	local y = 0
+	local y, last = 0, nil
 	for _, f in ipairs(self.order) do
 		local isRow = f.entry ~= nil
 		if isRow and self.folded[f.group] then
 			f:Hide()
 		else
+			-- (Suggestion 1 point 6; the in-game test, 2026-11-04: Chat right under Damage Meter read as one of
+			-- "Frames and bars") a group without a header stands spec.groupGap apart from the groups beside it
+			local g = isRow and f.group or f.key
+			if last ~= nil and g ~= last and not (self.headers[g] and self.headers[last]) then
+				y = y + (spec.groupGap or 0)
+			end
+			last = g
 			f:ClearAllPoints()
 			f:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
 			f:SetWidth(self.width)
@@ -7688,6 +7754,47 @@ function Rail:Layout(instant)
 		self.box:SetHeight(math.max(y, 1) + 2 * spec.inset + spec.head)
 	end
 	self:PlaceMarker(true)
+	self:BarRange()
+end
+
+-- (Suggestion 1 point 6) the list's thin bar (spec.bar): its range the list's height past its view, shown while there
+-- is one, its thumb the view's share, its value the list's scroll; a drag moves the list, the list's scroll the bar
+Rail.BarMoved = Shared("OnValueChanged on a NavRail's scroll bar", function(bar, value)
+	local rail = railOf[bar]
+	if rail and not rail.barSync and rail.glide then
+		rail.glide:Jump(Num(value) or 0)
+	end
+end, "script")
+Rail.ListScrolled = Shared("SetVerticalScroll on a NavRail's list (its bar)", function(scroll, offset)
+	local rail = railOf[scroll]
+	local bar = rail and rail.bar
+	if bar then
+		rail.barSync = true
+		bar:SetValue(Num(offset) or 0)
+		rail.barSync = nil
+	end
+end, "hook")
+Rail.ListSized = Shared("OnSizeChanged on a NavRail's list (its bar)", function(scroll)
+	local rail = railOf[scroll]
+	if rail then
+		rail:BarRange()
+	end
+end, "script")
+function Rail:BarRange()
+	local bar = self.bar
+	if not bar then
+		return
+	end
+	local view = Num(self.scroll:GetHeight()) or 0
+	local range = math.max(0, math.floor((Num(self.content:GetHeight()) or 0) - view + 0.5))
+	self.barSync = true
+	bar:SetMinMaxValues(0, range)
+	bar:SetValue(math.min(self.glide and self.glide.pos or 0, range))
+	self.barSync = nil
+	bar:SetShown(range > 0)
+	if range > 0 and view > 0 then
+		bar.thumb:SetHeight(math.max(16, (Num(bar:GetHeight()) or view) * view / (view + range)))
+	end
 end
 
 -- the one marker on `row` (an entry's, or a search result's: its height),
@@ -7905,7 +8012,8 @@ end, "script")
 local ResultTipEnter = Shared("OnEnter on a NavRail search result (tooltip)", function(row)
 	local e = row.entry
 	if e then
-		W.ShowTooltip(row, e.full or e.name or "", e.tip, e.section)
+		local rail = railOf[row]
+		W.ShowTooltip(row, e.full or e.name or "", e.tip, e.section, rail and rail.spec.tipAnchor)
 	end
 end, "script")
 
@@ -8066,6 +8174,7 @@ function Rail:ShowResults(list, n, note, more)
 	if self.glide and not more then
 		self.glide:Jump(0)
 	end
+	self:BarRange()
 	self:PlaceMarker(not more)
 	for i = 1, laid do
 		PaintResult(self, i)

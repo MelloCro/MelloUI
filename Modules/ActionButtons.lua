@@ -1044,7 +1044,9 @@ do
 
 	if CP and CP.Register then
 		CP.Register("actionbar", {
-			place = "wide", height = 236, maxScale = 1.5,
+			-- (across: a bar's twelve buttons need the page's width -- the stage stays over the rows, not in the
+			-- configurator's left column, layout C)
+			place = "wide", height = 236, maxScale = 1.5, across = true,
 			picks = { bars = true }, first = "bars",
 			watch = { Tweaks = true, ActionBars = true, ActionButtons = true, CooldownText = true },
 			states = Stage.STATES, pickText = Stage.TEXT.pick,

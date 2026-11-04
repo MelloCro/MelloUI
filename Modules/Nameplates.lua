@@ -2739,7 +2739,7 @@ do
 		HOSTILE = { reaction = 2, fraction = 0.72, area = "nameplates" },   -- (Bar Textures' sample: plain values)
 		STATES = { { key = "normal", label = "Normal" }, { key = "target", label = "Your target" } },
 		TEXT = { off = "Nameplate Tweaks is off: the game's own plate, none of MelloUI's parts on it.",
-			pick = "Click a part to pick it; its settings open below." },
+			pick = "Click a part to pick it; its settings open beside it." },
 		parts = nil,   -- (the part list, made once)
 	}
 	Stage.ROOM_TOP = 34    -- the state chips' row
@@ -2980,7 +2980,9 @@ do
 	-- the room under the state chips, over the caption
 	function Stage.Room(stage)
 		local w, h = Fin(stage:GetWidth()) or 0, Fin(stage:GetHeight()) or 0
-		return 8, Stage.ROOM_TOP, w - 16, h - Stage.ROOM_TOP - Stage.ROOM_BOTTOM
+		-- (the caption under the stage in the configurator's left column, layout C: no room for it inside)
+		local bottom = stage.opts and stage.opts.captionBelow and 8 or Stage.ROOM_BOTTOM
+		return 8, Stage.ROOM_TOP, w - 16, h - Stage.ROOM_TOP - bottom
 	end
 
 	-- the parts, each picked and never moved; one that does not show (its option off, the module off, your

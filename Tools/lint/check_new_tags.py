@@ -178,6 +178,12 @@ PAGE_TOOLS = {
     "Core/Config.lua:Button(KEYBIND_MODE.name)#2": "Keybind Mode in a designer page's header (the Bars page: no "
                                                    "picker line)",
     "Core/Config.lua:Button(hit)": "a designer sample's part in its slot (a click opens the part's tab: no setting)",
+    # (Suggestion 1, point 8, 2026-11-04)
+    "Core/Config.lua:Button(Go to \\\"%s\\\")": "an empty tab's Go to \"<switch>\" under its gate line (TEXT.goTo: "
+                                                 "jumps to the switch that wakes the tab, no setting)",
+    # (Suggestion 1, point 5, 2026-11-04)
+    "Core/Config.lua:Button(Back to %s)": "the header's way back after a link's jump (TEXT.backTo: goes back to the "
+                                          "page it came from, no setting)",
 }
 # a control builder's call whose label is the schema's own row: `opt.<field>` (the old pages' builders), a layout
 # row's `r.name` (the rebuild's element pages: Core/ConfigLayout.lua's rows, each a module's setting)

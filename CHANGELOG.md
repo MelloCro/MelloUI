@@ -2,6 +2,25 @@
 
 ## 2.1.1
 
+- The frame previews in the configurator stand on the left, with room around the frame and its parts under it; the settings sit beside them in one column. A tab without a preview keeps its two columns, and the Bars preview stays across the page for its twelve buttons.
+- Escape in the configurator goes one step at a time: it closes an open list or panel first, then lets go of a picked part, then clears the search, and only then closes the window. Edit Layout opened from the configurator brings you back to the page you were on when you leave it.
+- The configurator's search finds the words players use too (color, alpha, transparency, hotkey, hp, castbar, absorb, overshield, bigger ...), and the row it opens is ringed in gold for a moment.
+- A tab that waits on a switch somewhere else has a button that takes you to it. Links to settings of the other skin (Oldschool's window borders, the chat's parchment) stay hidden while they don't apply, and the Fader no longer lists action bars the game's Options turned off.
+- Settings that live on another page no longer look like a row of their own: each section ends with one line of small chips ("On Look: Border Opacity: 100%, UI Shade: On"). A click on one opens the setting, and that page shows a Back button to where you were.
+- The configurator's side list starts with Home, shows Chat and Quality of Life as plain entries instead of groups of one page, has a thin scroll bar, and its tooltips open to the left so they no longer cover the page.
+- Edit Layout: Grid, Snap, Dim the world and Coordinates are in one View menu on the bar, each by name with its switch, with the grid spacing and the gap between snapped elements as sliders there. An element's options box stays on the screen when it grows.
+- Deleting a profile, and the Fader's Fade Everything and Fade Nothing, now ask first.
+- A tab waiting on another setting's choice (Chat > Whispers, Voice Over > Voices) has a button to it too. Settings that do nothing in your setup stay hidden: the painted chat's Border Opacity outside Oldschool, the game's chat tab options with the Minimal Chat View.
+- Fixed: the Chat text font picked on Look > Fonts now reaches the Minimal Chat View's lines.
+- Fixed: under the Default skin a ticked box shows the game's whole tick, not only its long stroke.
+- Fixed in the configurator: a long label no longer runs under its slider, a switch's cog opens its panel inside the page and shows on Oldschool's parchment, another tab opens at its top, and the Cast Bar tab no longer says "Nothing to set" twice. Oldschool > Frame Art names its two Elite and Rare Marks and its unit frames' UI Shade.
+- Edit Layout: the bar's buttons keep their tooltips away while their list is open, and Share's text window lies over everything and is the first thing Escape closes.
+- The map, Dungeon Info and the installer, opened from the settings, bring you back to the page you were on when you close them, and Keybind Mode started from Edit Layout brings you back to Edit Layout.
+- The Windows page lists only the windows that have settings in your skin, and tabs of one or two settings are part of their page's first tab (Route's Flights, the Quest Tracker's Objective Tracker, Chat's Messages and Whispers).
+- Dark Mode no longer darkens the settings window. UI Shade's Chat, Bags and Event Widgets show only with Oldschool, whose painted pieces they shade; with the Minimal Chat View the chat's Background offers Dark and None.
+- Values' Position and Offsets now also move values you dragged on the frame preview, keeping their size.
+- Empty action bars show their empty slots while the settings or Edit Layout are open, so a bar you switch on can be seen and filled.
+- Fixed: the Whispers tab's yellow light stayed on over its icon; it lights once for a new whisper, the count stays.
 - Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect on your party and raid frames, at every rank. Holy Shock cast at an enemy shows nothing on your own frame.
 
 ## 2.1.0

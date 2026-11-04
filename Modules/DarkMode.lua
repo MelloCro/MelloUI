@@ -946,6 +946,8 @@ local OWN_AREAS = {
 	MelloUIGroupFramesFake = "unitframes", MelloUIGroupFramesFakeParty = "unitframes",
 	MelloUIPersonalDisplay = "personal", MelloUIPersonalShield = "personal",
 	MelloUIChatView = "chat", MelloUIWhispers = "chat",
+	-- (the configurator walk's round 2, 2026-11-04) the configurator: never dimmed (OwnLit)
+	MelloUIConfigFrame = "configurator",
 }
 for i = 1, 5 do
 	OWN_AREAS["Boss" .. i .. "TargetFrame"] = "unitframes"
@@ -1025,7 +1027,13 @@ local function OwnLit(region)
 	if not db then
 		return false
 	end
-	return db[type(region) == "table" and AreaOf(region) or "windows"] == false
+	local area = type(region) == "table" and AreaOf(region) or "windows"
+	-- (the configurator walk's round 2, 2026-11-04: Dark Mode darkened the configurator too) the configurator keeps its
+	-- colours: the palettes, colours and skins are chosen in it, its text laid against the palette undimmed
+	if area == "configurator" then
+		return true
+	end
+	return db[area] == false
 end
 
 -- (asked by the palette, Core/GameLook.lua's Look.Palette, and the kit's shade, Modules/Kit.lua: whether a region

@@ -1228,12 +1228,25 @@ local MarkResized = Shared("OnSizeChanged on a game-look mark's row", function(r
 	end
 end, "script")
 
+-- (the configurator walk, 2026-11-04: every row lit after a skin switch) a mark's alpha is its owner's (a row's wash
+-- rests at 0, fades in on hover): laid again in the other look, it keeps it -- this client's SetVertexColor sets the
+-- texture's alpha too
+local function KeepAlpha(tex, was)
+	if was ~= nil and not Secret(was) then
+		local now = tex:GetAlpha()
+		if not Secret(now) and now ~= was then
+			tex:SetAlpha(was)
+		end
+	end
+end
+
 local function ApplyMark(tex, painted)
 	local e = marks[tex]
 	if not e then
 		return
 	end
 	local W, Kit = MelloUI.Widgets, MelloUI.Kit
+	local was = tex:GetAlpha()
 	if painted then
 		if e.fills then
 			if markOf[e.fills] then
@@ -1248,6 +1261,7 @@ local function ApplyMark(tex, painted)
 		if W then
 			W.Paint(tex, e.key, "vertex", e.alpha)
 		end
+		KeepAlpha(tex, was)
 		return
 	end
 	if Kit and Kit.Unpaint then
@@ -1256,6 +1270,7 @@ local function ApplyMark(tex, painted)
 	local _, atlas = Look.Art(e.kind == "hover" and "listHover" or "listActive")
 	tex:SetAtlas(atlas, false, nil, true)   -- (resetTexCoords: no earlier crop kept on the mark)
 	tex:SetVertexColor(1, 1, 1, 1)
+	KeepAlpha(tex, was)
 	local rel = e.fills or MarkRect(tex)
 	local api = _G.C_Texture
 	local info = rel and api and api.GetAtlasInfo and api.GetAtlasInfo(atlas)

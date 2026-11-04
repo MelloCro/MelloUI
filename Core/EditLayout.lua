@@ -14,7 +14,8 @@
 --
 --   MelloUI:StartEditLayout(source)   THE entry point. source "configurator"
 --       | "slash" | "editmode". Closed: the configurator hidden when it
---       shows, then Open(). Paused for the configurator: it is hidden again
+--       shows, then Open() (from "configurator": it opens again on its page
+--       when the session ends, unless abandoned). Paused for the configurator: it is hidden again
 --       (the mode comes back; while the installer shows, the mode waits for
 --       its close). Showing and "slash": Close().
 --   MelloUI:EditingLayout() -> true while the mode shows (replaces Core's,
@@ -133,25 +134,25 @@ local DOCK = {
 	-- its lock's badge, a round button and its glyph, a text button, a pill under the dock and the room above it, the
 	-- room between round buttons
 	height = 46, radius = 14, crest = 52, badge = 20, toggleSize = 32, glyph = 17, buttonH = 30, pillH = 26,
-	underGap = 8, roundGap = 6, popW = 240,
+	underGap = 8, roundGap = 6,
+	-- (Suggestion 1, point 11) View's panel: its width, a switch's line, the room a slider takes with its title
+	viewW = 280, viewRowH = 30, viewSliderH = 52,
 	order = { "grid", "snap", "dim", "coords" },
 	default = { grid = false, dim = true, coords = true, help = false },
 	gridMin = 10, gridMax = 100, gridDefault = 50,
 	toggle = {
 		grid = { glyph = "grid", title = "Grid",
-			on = "The grid shows. Click to hide it; right-click for its spacing.",
-			off = "Click to show the grid (Snap to Grid follows it); right-click for its spacing." },
+			tip = "Lines across the screen at the Grid spacing below; Snap to Grid follows them." },
 		snap = { glyph = "magnet", title = "Snap",
-			on = "What you drag snaps to the other elements and the screen's edges and centre. Click to turn it "
-				.. "off; right-click for the gap kept between snapped elements.",
-			off = "Click to snap what you drag to the other elements and the screen's edges and centre." },
-		dim = { glyph = "moon", title = "Dim the world",
-			on = "The world is dimmed under the plates. Click to see it as it is.",
-			off = "Click to dim the world under the plates." },
+			tip = "What you drag snaps to the other elements and the screen's edges and centre, keeping the gap "
+				.. "below between snapped elements." },
+		dim = { glyph = "moon", title = "Dim the world", tip = "The world dimmed under the plates." },
 		coords = { glyph = "crosshair", title = "Coordinates",
-			on = "The picked element's place and size show under the bar. Click to hide them.",
-			off = "Click to show the picked element's place and size under the bar." },
+			tip = "The picked element's place and size under the bar." },
 	},
+	view = "View", viewOn = "%d on", viewTitle = "View",
+	viewTip = "The grid, snapping, the dimmed world and the picked element's place, with the grid's spacing and the "
+		.. "gap kept between snapped elements. Click for the switches.",
 	crestTip = "Click for the Elements list: which plates show, which are locked.",
 	elements = "Elements", elementsOf = "/ %d", elementsTitle = "Elements",
 	elementsTip = "Every element you can move, in groups. Show or hide their plates, lock them, find one by name, "
@@ -200,6 +201,7 @@ local S = {
 	quiet = false,      -- a close with nothing changed: no chat line
 	first = false,      -- the first Open's set-up done
 	after = nil,        -- (0.19.9) E:Close's "then": run once the session is over
+	back = nil,         -- (2.1.1) opened from the configurator: it opens again at the end
 }
 E.state = S
 
@@ -408,9 +410,9 @@ end
 -- hanging below it with the lock's badge, the title, Elements (the picker,
 -- Core/EditLayoutPicker.lua: the layers glyph, the plates shown in gold of
 -- all), Layout (2.1.0, el-14: the active Edit Mode layout's name; its list,
--- the picker's Layouts), the round toggles (Grid, Snap, Dim, Coordinates: a gold ring and
--- glyph on the selected fill while on; a right-click on Grid or Snap sets the
--- grid's spacing or the gap kept), Keybind Mode, Reset all, How it works, the
+-- the picker's Layouts), View (Suggestion 1 point 11: Grid, Snap, Dim, Coordinates
+-- by name with their switches, the grid's spacing and the gap kept, in its
+-- panel; the button says how many are on), Keybind Mode, Reset all, How it works, the
 -- change count, Exit and Save & Exit (filled gold). Under it, centred, the
 -- pills that apply (the solo with its way back, the picked element's place)
 -- and a small panel with the lines that apply (how it works, UI
@@ -418,7 +420,7 @@ end
 -- all's confirm or the leave prompt. Never moved (a "tool" mover until 1.2.4).
 --------------------------------------------------------------------------------
 
-local bar, pop
+local bar, view
 
 local function Bar()
 	return bar
@@ -571,8 +573,10 @@ local DockEnter = Shared("OnEnter on Edit Layout's dock", function(self)
 	local name = self.melloToggle
 	if name then
 		local t = DOCK.toggle[name]
-		E:Tooltip(self, t.title, Toggle(name) and t.on or t.off)
-	elseif self.melloTitle then
+		E:Tooltip(self, t.title, t.tip)
+	elseif self.melloTitle and not E.DockOpen(self) then
+		-- (View, Elements and Layout say nothing over what they opened: it says it -- the in-game test and walk,
+		-- 2026-11-04)
 		E:Tooltip(self, self.melloTitle, self.melloBody)
 	end
 end, "script")
@@ -584,25 +588,19 @@ local DockLeave = Shared("OnLeave on Edit Layout's dock", function(self)
 	E:TooltipHide(self)
 end, "script")
 
--- Grid's spacing and Snap's gap: a small panel under the toggle
-local function PopGet()
-	return pop and pop.kind == "grid" and GridSize() or GetGap()
-end
-local function PopSet(v)
+-- (Suggestion 1, point 11 -- the user's pick C of Workspace/BuildData/output/config_links_bar_sketch, 2026-11-04: "B
+-- and C") View: the four round toggles folded into one button on the dock -- the eye, its word, how many are on -- whose
+-- panel under it says them by name, each with its switch (W.Switch), and under them Grid's spacing and Snap's gap as
+-- sliders (before, a right-click on Grid or Snap: nothing showed it). The panel stays while you work, until View is
+-- clicked again, Escape (its first step) or the session's end; made at its first open
+local function GridSet(v)
 	v = Num(v)
-	if not (pop and v) then
-		return
-	end
-	if pop.kind == "grid" then
-		local K = E.Picker
-		local t = K and K.EditPrefs()
-		if t then
-			t.gridSize = math.max(DOCK.gridMin, math.min(DOCK.gridMax, math.floor(v + 0.5)))
-			K.SavePrefs(t)
-		end
+	local K = E.Picker
+	local t = v and K and K.EditPrefs()
+	if t then
+		t.gridSize = math.max(DOCK.gridMin, math.min(DOCK.gridMax, math.floor(v + 0.5)))
+		K.SavePrefs(t)
 		ApplyToggles()
-	else
-		SetGap(v)
 	end
 end
 local function GridText(v)
@@ -612,78 +610,152 @@ local function GapText(v)
 	return string.format(DOCK.gapUnits, Num(v) or 0)
 end
 
-local function ClosePop()
-	if pop and pop:IsShown() then
-		pop:Hide()
+local function CloseView()
+	if view and view:IsShown() then
+		view:Hide()
+		if bar then
+			W.FlatGold(bar.view, false)
+		end
 		return true
 	end
 	return false
 end
 
-local function OpenPop(button, kind)
-	if not pop then
-		pop = CreateFrame("Frame", nil, UIParent)
-		pop:Hide()
-		pop:SetFrameStrata("FULLSCREEN_DIALOG")
-		pop:SetFrameLevel(BAR_LEVEL + 4)
-		pop:SetClampedToScreen(true)
-		pop:EnableMouse(true)
-		pop:SetSize(DOCK.popW, 64)
-		pop.plate = W.RoundPlate(pop, { radius = 8, fill = "mainWindow", edge = "trim" })
-		MelloUI.Kit:ShadeElement(pop, "windows"):Add(pop, SQUARE_SHADE)
-		pop.title = W.Text(pop, "GameFontHighlight", nil, "text")
-		pop.title:SetPoint("TOPLEFT", pop, "TOPLEFT", PAD, -10)
-		pop.slider = W.Slider(pop, DOCK.popW - 2 * PAD, PopGet, PopSet, { min = 0, max = GAP_MAX, step = 1 })
-		pop.slider:SetPoint("TOPLEFT", pop, "TOPLEFT", PAD, -32)
-	end
-	if pop:IsShown() and pop.kind == kind then
-		pop:Hide()
+-- the panel's switches and glyphs as the toggles are now
+local function RefreshView()
+	if not (view and view:IsShown()) then
 		return
 	end
-	pop.kind = kind
-	if kind == "grid" then
-		pop.title:SetText(DOCK.gridSize)
-		pop.slider:SetRange(DOCK.gridMin, DOCK.gridMax, 5, false, GridText)
-	else
-		pop.title:SetText(DOCK.gapSize)
-		pop.slider:SetRange(0, GAP_MAX, 1, false, GapText)
+	for _, row in ipairs(view.rows) do
+		local on = Toggle(row.melloToggle)
+		row.switch:SetValue(on, true)
+		W.Paint(row.icon, on and "selectedTrim" or "text", "vertex")
 	end
-	pop.slider:Refresh()
-	pop:ClearAllPoints()
-	pop:SetPoint("TOP", button, "BOTTOM", 0, -12)
-	pop:Show()
+	view.grid:Refresh()
+	view.gap:Refresh()
 end
 
-local ToggleClick = Shared("OnClick on Edit Layout's dock toggles", function(self, button)
-	local name = self.melloToggle
-	if button == "RightButton" then
-		if name == "grid" or name == "snap" then
-			OpenPop(self, name)
-		end
-		return
-	end
-	SetToggle(name, not Toggle(name))
-	MelloUI:PlayUISound("tick")
+-- a switch of the panel set: the toggle kept, put to work, the dock's count again
+local function ViewSet(name, on)
+	SetToggle(name, on)
 	ApplyToggles()
 	LayBar()
-	if self:IsMouseOver() then
+end
+
+-- a slider with its title over it, the panel's
+local function ViewSlider(title, get, set, y)
+	local w = DOCK.viewW - 2 * PAD
+	local fs = W.Text(view, "GameFontHighlight", title, "text")
+	fs:SetPoint("TOPLEFT", view, "TOPLEFT", PAD, -y)
+	local slider = W.Slider(view, w, get, set, { min = 0, max = GAP_MAX, step = 1 })
+	slider:SetPoint("TOPLEFT", view, "TOPLEFT", PAD, -(y + 20))
+	return slider
+end
+
+local function MakeView()
+	view = CreateFrame("Frame", nil, UIParent)
+	view:Hide()
+	view:SetFrameStrata("FULLSCREEN_DIALOG")
+	view:SetFrameLevel(BAR_LEVEL + 4)
+	view:SetClampedToScreen(true)
+	view:EnableMouse(true)
+	view.plate = W.RoundPlate(view, { radius = 8, fill = "mainWindow", edge = "trim" })
+	MelloUI.Kit:ShadeElement(view, "windows"):Add(view, SQUARE_SHADE)
+	view.rows = {}
+	local y = 10
+	for i, name in ipairs(DOCK.order) do
 		local t = DOCK.toggle[name]
-		W.ShowTooltip(self, t.title, Toggle(name) and t.on or t.off)
+		local row = CreateFrame("Frame", nil, view)
+		row:SetSize(DOCK.viewW - 2 * PAD, DOCK.viewRowH)
+		row:SetPoint("TOPLEFT", view, "TOPLEFT", PAD, -y)
+		row:EnableMouse(true)
+		row.icon = row:CreateTexture(nil, "ARTWORK")
+		row.icon:SetSize(16, 16)
+		row.icon:SetPoint("LEFT", row, "LEFT", 0, 0)
+		W.Glyph(row.icon, t.glyph)
+		row.label = W.Text(row, "GameFontHighlight", t.title, "text")
+		row.label:SetPoint("LEFT", row.icon, "RIGHT", 10, 0)
+		row.switch = W.Switch(row, function()
+			return Toggle(name)
+		end, function(on)
+			ViewSet(name, on)
+		end)
+		row.switch:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+		row.melloToggle = name
+		Perf.SetScript(row, "OnEnter", DockEnter)
+		Perf.SetScript(row, "OnLeave", DockLeave)
+		view.rows[i] = row
+		y = y + DOCK.viewRowH
 	end
+	local line = W.Solid(view, "ARTWORK", "border", 0.8)
+	line:SetHeight(1)
+	line:SetPoint("TOPLEFT", view, "TOPLEFT", PAD, -(y + 6))
+	line:SetPoint("TOPRIGHT", view, "TOPRIGHT", -PAD, -(y + 6))
+	y = y + 14
+	view.grid = ViewSlider(DOCK.gridSize, GridSize, GridSet, y)
+	view.grid:SetRange(DOCK.gridMin, DOCK.gridMax, 5, false, GridText)
+	y = y + DOCK.viewSliderH
+	view.gap = ViewSlider(DOCK.gapSize, GetGap, SetGap, y)
+	view.gap:SetRange(0, GAP_MAX, 1, false, GapText)
+	y = y + DOCK.viewSliderH
+	view:SetSize(DOCK.viewW, y + 4)
+end
+
+local function OpenView(button)
+	if view and view:IsShown() then
+		CloseView()
+		return
+	end
+	if not view then
+		MakeView()
+	end
+	view:ClearAllPoints()
+	view:SetPoint("TOP", button, "BOTTOM", 0, -12)
+	view:Show()
+	E:TooltipHide(button)
+	W.FlatGold(button, true)
+	RefreshView()
+end
+
+local ViewClick = Shared("OnClick on Edit Layout's View", function(self)
+	MelloUI:PlayUISound("tick")
+	OpenView(self)
 end, "script")
+
+-- (the tests' and the tutorial's reading: the panel, nil before its first open)
+function E.ViewPanel()
+	return view
+end
 
 local ElementsClick = Shared("OnClick on Edit Layout's Elements", function()
 	local K = E.Picker
 	if K then
 		K.Toggle()
+		E:TooltipHide()
 	end
 end, "script")
+
+-- (the configurator walk, 2026-11-04) a dock button's list or panel open: its tooltip waits
+function E.DockOpen(b)
+	local K = E.Picker
+	if not bar then
+		return false
+	elseif b == bar.view then
+		return view ~= nil and view:IsShown()
+	elseif b == bar.elements or b == bar.crest then
+		return K ~= nil and K.IsOpen() and true or false
+	elseif b == bar.layout then
+		return K ~= nil and K.LayoutsOpen ~= nil and K.LayoutsOpen() and true or false
+	end
+	return false
+end
 
 -- (2.1.0, el-14) Layout: Edit Mode's layouts (the picker's Layouts list)
 local LayoutClick = Shared("OnClick on Edit Layout's Layout", function()
 	local K = E.Picker
 	if K and K.ToggleLayouts then
 		K.ToggleLayouts()
+		E:TooltipHide()
 	end
 end, "script")
 
@@ -808,6 +880,24 @@ local function MakeLayout(row)
 	return b
 end
 
+-- (point 11) View: the eye, its word, how many of the toggles are on in gold
+local function MakeViewButton(row)
+	local b = W.Button(row, "", 100, nil, { onClick = ViewClick, height = DOCK.buttonH })
+	b.glyph = b:CreateTexture(nil, "ARTWORK")
+	b.glyph:SetSize(15, 15)
+	W.Glyph(b.glyph, "eye")
+	W.Paint(b.glyph, "text", "vertex")
+	b.word = W.Text(b, "GameFontHighlight", DOCK.view, "text")
+	b.on = W.Text(b, "GameFontHighlight", nil, "selectedTrim")
+	b.glyph:SetPoint("LEFT", b, "LEFT", 10, 0)
+	b.word:SetPoint("LEFT", b.glyph, "RIGHT", 6, 0)
+	b.on:SetPoint("LEFT", b.word, "RIGHT", 6, 0)
+	b.melloTitle, b.melloBody = DOCK.viewTitle, DOCK.viewTip
+	Perf.HookScript(b, "OnEnter", DockEnter)
+	Perf.HookScript(b, "OnLeave", DockLeave)
+	return b
+end
+
 -- a pill under the dock: its plate, its text (and the solo's cross)
 local function MakePill(parent, onClick)
 	local p = CreateFrame("Button", nil, parent)
@@ -861,13 +951,7 @@ local function MakeBar()
 	end
 	bar.elements = MakeElements(row)
 	bar.layout = MakeLayout(row)
-	bar.toggles = {}
-	for i, name in ipairs(DOCK.order) do
-		local t = DOCK.toggle[name]
-		local b = RoundButton(row, t.glyph, t.title, nil, ToggleClick)
-		b.melloToggle = name
-		bar.toggles[i] = b
-	end
+	bar.view = MakeViewButton(row)
 	bar.keybind = RoundButton(row, "keys", TEXT.keybind, DOCK.keybindTip, KeybindClick)
 	bar.resetAll = RoundButton(row, "reset", TEXT.resetAll, DOCK.resetTip, ResetAllClick)
 	bar.help = RoundButton(row, "question", DOCK.helpTitle, DOCK.helpTip, HelpClick)
@@ -960,11 +1044,17 @@ local function RefreshBar()
 		l:SetWidth(math.ceil(10 + 15 + 6 + TextWidth(l.word) + (name and (6 + nw) or 0) + 14))
 		W.FlatGold(l, K.LayoutsOpen and K.LayoutsOpen() or false)
 	end
-	for i, name in ipairs(DOCK.order) do
-		local b = bar.toggles[i]
-		b.melloOn = Toggle(name)
-		RoundLook(b)
+	-- (point 11) View: how many of its toggles are on; its panel's switches with them
+	local on = 0
+	for _, name in ipairs(DOCK.order) do
+		if Toggle(name) then
+			on = on + 1
+		end
 	end
+	local v = bar.view
+	v.on:SetText(string.format(DOCK.viewOn, on))
+	v:SetWidth(math.ceil(10 + 15 + 6 + TextWidth(v.word) + 6 + TextWidth(v.on) + 14))
+	RefreshView()
 	bar.help.melloOn = Toggle("help")
 	RoundLook(bar.help)
 end
@@ -1079,9 +1169,7 @@ LayBar = function()
 		n = Put(n + 1, bar.elements, row, bar.elements:GetWidth())
 		n = Put(n + 1, bar.layout, row, bar.layout:GetWidth())
 		n = Put(n + 1, d[2], row, 1)
-		for i = 1, #bar.toggles do
-			n = Put(n + 1, bar.toggles[i], row, DOCK.toggleSize, i < #bar.toggles and DOCK.roundGap or nil)
-		end
+		n = Put(n + 1, bar.view, row, bar.view:GetWidth())
 		n = Put(n + 1, d[3], row, 1)
 		n = Put(n + 1, bar.keybind, row, DOCK.toggleSize, DOCK.roundGap)
 		n = Put(n + 1, bar.resetAll, row, DOCK.toggleSize, DOCK.roundGap)
@@ -1137,7 +1225,7 @@ local function ShowBar()
 end
 
 local function HideBar(fade)
-	ClosePop()
+	CloseView()
 	if not bar or not bar:IsShown() then
 		return
 	end
@@ -1690,13 +1778,15 @@ end
 
 -- (1.2.4) the box laid again where it stands (a switch among its Edit Mode
 -- settings brought another in or out)
+-- (Suggestion 1, point 11: a box grown taller than the room under its top moves up, never off the screen's bottom)
 function E.RelayBox()
 	if box and box:IsShown() then
-		local top = box:GetTop()
+		local top = Num(box:GetTop())
 		LayBox()
-		if Num(top) then
+		if top then
+			local sh, bh = Num(UIParent:GetHeight()) or 0, Num(box:GetHeight()) or 0
 			box:ClearAllPoints()
-			box:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", Num(box:GetLeft()) or 0, top)
+			box:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", Num(box:GetLeft()) or 0, math.max(bh, math.min(top, sh)))
 		end
 	end
 end
@@ -1849,12 +1939,15 @@ local keys
 
 local ARROWS = { UP = true, DOWN = true, LEFT = true, RIGHT = true }
 
--- Escape, one step each press: the dock's small panel, the box, the
+-- Escape, one step each press: View's panel, the box, the
 -- Elements list, the confirm or the prompt, the selection, then leaving
 local function Escape()
 	local P = Movers()
 	local K = E.Picker
-	if ClosePop() then
+	local copy = rawget(_G, "MelloUICopyFrame")
+	if copy and copy:IsShown() then
+		copy:Hide()   -- (the configurator walk, 2026-11-04: Share's text window, the topmost, closes first)
+	elseif CloseView() then
 		return
 	elseif E:BoxOpen() then
 		CloseBox()
@@ -2282,6 +2375,13 @@ end
 -- The session: begin, end, Save, Discard, the leave prompt
 --------------------------------------------------------------------------------
 
+-- the configurator open again on its last page (it closed as the session began: StartEditLayout's S.back)
+local function BackToConfig()
+	if not Shown(ConfigFrame()) and type(MelloUI.OpenConfig) == "function" then
+		MelloUI:OpenConfig()
+	end
+end
+
 -- Core's end of the session: reason "saved" (extra: the count saved),
 -- "discarded" or "abandoned"
 local function OnEnd(reason, extra)
@@ -2328,6 +2428,15 @@ local function OnEnd(reason, extra)
 	if after and reason ~= "abandoned" then
 		C_Timer.After(0, after)
 	end
+	-- (opened from the configurator: back on the page it was opened from, unless E:Close had more to do)
+	local back = S.back
+	S.back = nil
+	if back and not after and reason ~= "abandoned" then
+		C_Timer.After(0, BackToConfig)
+	end
+	-- (the configurator walk, 2026-11-04, F13) E:Close had more to do (Keybind Mode, which opens Edit Layout again as it
+	-- ends): the way back to the configurator kept for that session
+	E.resumeBack = (back and after and reason ~= "abandoned") and true or nil
 end
 
 local function Begin()
@@ -2471,6 +2580,10 @@ local function CancelQueue()
 	end
 	S.queued = nil
 	S.focus = nil
+	-- (an open from the configurator cancelled before it began: no way back owed)
+	if not S.open then
+		S.back = nil
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -2545,6 +2658,9 @@ function MelloUI:StartEditLayout(source, focus)
 	S.focus = focus
 	local cfg = ConfigFrame()
 	if not S.open then
+		-- (Suggestion 1, point 4: opened from the configurator, the session's end opens it again on its page: OnEnd)
+		S.back = (source == "configurator" and Shown(cfg)) or (source == "keybind" and E.resumeBack) or nil
+		E.resumeBack = nil
 		if Shown(cfg) then
 			cfg:Hide()
 		end

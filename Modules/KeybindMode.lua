@@ -583,6 +583,12 @@ function K:Finish(save, quiet)
 		S.reopen = nil
 		MelloUI:OpenConfig()
 	end
+	-- (the configurator walk, 2026-11-04, F13: started from Edit Layout -- which closed for it -- it ended in the world)
+	-- back in Edit Layout, which goes back to the configurator in turn when it came from there
+	if S.from == "editlayout" and MelloUI.StartEditLayout then
+		S.from = nil
+		MelloUI:StartEditLayout("keybind")
+	end
 end
 
 -- for the tests

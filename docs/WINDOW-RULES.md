@@ -664,8 +664,8 @@ Lint workflow) fails when a copy is added and names the system to use.
   per host window made on its first open, its tiles from a pool drawn by
   `Kit:ChoicePicture`, closed by a tile, Escape, a click outside, a scroll, a
   tab, page or pick change, the host hiding and a fight; it never opens in a
-  fight), `W.LinkRow` (a setting whose one place is another page: its value
-  and a button naming that page, "Look >"), `W.RowPlate` (one hover for a row, the
+  fight), a setting whose one place is another page (2.1.1, Suggestion 1 point 5: a chip on its section's
+  line of links, `W.Chips`, "On Look  [UI Shade: On]"; Core/Config.lua's CONFIG.MakeLinks), `W.RowPlate` (one hover for a row, the
   palette wash or the kit's plate, faded through Anim, none on the selected
   row; `W.RowPlateChild` for a control on it; `W.Flash(row)` lights a row's
   hover a moment, held by a one-shot timer: the row a jump brought into

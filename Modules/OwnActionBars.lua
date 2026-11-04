@@ -352,12 +352,13 @@ function B.UpdateAction(self, force)
 	self:UpdateShown()
 end
 
--- an empty button within the bar's count: seen while Always Show Buttons is on or a spell is on the cursor (the
--- game's grid), else unseen (alpha: allowed in a fight; its place kept, as the game keeps an empty slot's)
+-- an empty button within the bar's count: seen while Always Show Buttons is on, a spell is on the cursor (the
+-- game's grid) or the configurator or Edit Layout is open (A.setupOpen), else unseen (alpha: allowed in a fight; its
+-- place kept, as the game keeps an empty slot's)
 function B.UpdateShown(self)
 	local bar = self.bar
 	local has = self.action and Ask("HasAction", self.action) and true or false
-	local show = has or bar.showGrid or (A.grid > 0)
+	local show = has or bar.showGrid or (A.grid > 0) or A.setupOpen
 	self:SetAlpha(show and 1 or 0)
 end
 
@@ -1109,18 +1110,23 @@ local function Later(fn, key, quiet)
 	return false
 end
 
--- the game wants bar n shown (Options > Action Bars; Action Bar 1 always): its own flag, read
+-- the game wants bar n shown (Options > Action Bars; Action Bar 1 always): its own flag, read (the game's bar itself
+-- while ours are not built: the Fader's rows ask too, Fader.lua's BarOff)
 local function GameWantsShown(n)
 	if n == 1 then
 		return true
 	end
-	local game = A.gameOf[A.bars[n]]
+	local game = (A.bars[n] and A.gameOf[A.bars[n]]) or rawget(_G, GAME_BARS[n] or "")
+	if type(game) ~= "table" then
+		return true   -- (no bar to read: taken as shown)
+	end
 	local v = Field(game, "isShownExternal")
 	if v == nil then
 		return Call(game, "IsShown") and true or false
 	end
 	return v and true or false
 end
+A.GameWantsShown = GameWantsShown
 
 local function VisibilityDriver(n, v)
 	if not GameWantsShown(n) then
@@ -1534,6 +1540,29 @@ A.DividersSoon = Shared("Own Bars: the game's main bar dividers", function()
 		C_Timer.After(0, DividersAway)
 	end
 end, "script")
+
+-- (the configurator walk's round 2, 2026-11-04: Action Bar 3 to 8 switched on with no spell in them showed nothing, the
+-- switch looked dead) while the configurator or Edit Layout is open every empty button is seen, in the bars' own slot
+-- look; closed, an empty bar is unseen again (the buses 'configurator' and 'editlayout')
+A.setupOpen, A.setupBy = false, { config = false, layout = false }
+A.ShowEmpty = function(b)
+	b:UpdateShown()
+end
+function A.SetupOpen(which, on)
+	A.setupBy[which] = on and true or false
+	local open = A.setupBy.config or A.setupBy.layout
+	if open ~= A.setupOpen then
+		A.setupOpen = open
+		Each(A.ShowEmpty)
+		A.DividersSoon()
+	end
+end
+MelloUI:On("configurator", function(shown)
+	A.SetupOpen("config", shown)
+end, "Own Bars: empty buttons while the configurator shows")
+MelloUI:On("editlayout", function(showing)
+	A.SetupOpen("layout", showing)
+end, "Own Bars: empty buttons while Edit Layout shows")
 
 -- (fr-18c, the sim proof: the gryphons stayed while our Action Bar 1 faded) the game's end caps -- an Edit Mode system
 -- of their own inside the game's Action Bar 1, which stays the game's -- went with that bar: faded with it (the Fader)

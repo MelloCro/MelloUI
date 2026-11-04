@@ -57,6 +57,7 @@ local M = MelloUI:RegisterModule("DungeonInfo", {
 	options = {
 		{ type = "button", name = "Open Dungeon Info", text = "Open",
 		  desc = "Opens Dungeon Info beside the map. /dungeoninfo opens it too.",
+		  opens = "MelloUIMapFrame",   -- (closed again: back in the configurator, Core/Config.lua's CONFIG.Away)
 		  onClick = function() J.Open() end },
 		{ type = "toggle", key = "doorRow", name = "At A Dungeon's Door",
 		  desc = "At a dungeon's door, a row in the widget column with its bosses, your drops there and its quests." },

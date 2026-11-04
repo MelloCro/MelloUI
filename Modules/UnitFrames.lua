@@ -518,6 +518,12 @@ function M.LayPlace(fs, box, place)
 	fs:ClearAllPoints()
 	fs:SetPoint(point, box, point, Num(place.x) or 0, Num(place.y) or 0)
 	fs:SetJustifyH(point:find("LEFT") and "LEFT" or (point:find("RIGHT") and "RIGHT") or "CENTER")
+	M.LayLook(fs, place)
+end
+
+-- (the configurator walk's round 2, 2026-11-04) a place's size and shown alone: a value whose spot gave way to Bar
+-- Text's Position and Offsets (M.DropPartSpots) keeps what the stage set of it
+function M.LayLook(fs, place)
 	local size = Num(place.size)
 	if size then
 		local font, was, flags = fs:GetFont()
@@ -530,6 +536,42 @@ function M.LayPlace(fs, box, place)
 	end
 	fs:SetAlpha(place.show == false and 0 or 1)
 	Places.laid[fs] = true
+end
+
+-- (the configurator walk's round 2, 2026-11-04: Values' Position and Offsets did nothing while a value had a spot
+-- dragged on the stage) those rows are one setting for every frame, so a change of them drops every frame's dragged
+-- spot (point, x, y) of the parts listed ({ health = true, power = true }), their size and shown kept: what was done
+-- last counts. One write, none when no spot was there
+function M.DropPartSpots(list)
+	local db = M.db or MelloUI:GetModuleDB("UnitFrames")
+	local parts = db and db.parts
+	if type(parts) ~= "table" then
+		return
+	end
+	local all, changed = {}, false
+	for f, own in pairs(parts) do
+		if type(own) == "table" then
+			local copy = {}
+			for k, v in pairs(own) do
+				if type(v) == "table" and list[k] and (v.point ~= nil or v.x ~= nil or v.y ~= nil) then
+					local t = {}
+					for kk, vv in pairs(v) do
+						if kk ~= "point" and kk ~= "x" and kk ~= "y" then
+							t[kk] = vv
+						end
+					end
+					copy[k] = next(t) and t or nil
+					changed = true
+				else
+					copy[k] = v
+				end
+			end
+			all[f] = next(copy) and copy or nil
+		end
+	end
+	if changed then
+		MelloUI:NotifySettingChanged("UnitFrames", "parts", all)
+	end
 end
 
 function M.UnlayPlace(fs)

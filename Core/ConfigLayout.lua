@@ -472,12 +472,16 @@ function L.Define(R, Link)
 	R("Look", "General", "Look", "UIModifications.uiShade", { free = true })
 	R("Look", "General", "Look", "UIModifications.uiShadeStrength", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_windows", { free = true })
-	R("Look", "General", "Look", "UIModifications.shade_chat", { free = true })
-	R("Look", "General", "Look", "UIModifications.shade_bags", { free = true })
+	-- (the configurator walk's round 2, 2026-11-04: in Modern and Default these changed nothing) the shade of
+	-- Oldschool's painted pieces (KitShadePainted.lua's areas): only with its skin; their links sleep with them
+	local PAINTED_SHADE = { key = "UIModifications.reskin", value = true,
+		line = "Only with the Oldschool skin: it shades the painted pieces" }
+	R("Look", "General", "Look", "UIModifications.shade_chat", { free = true, when = PAINTED_SHADE })
+	R("Look", "General", "Look", "UIModifications.shade_bags", { free = true, when = PAINTED_SHADE })
 	R("Look", "General", "Look", "UIModifications.shade_minimap", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_icons", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_tracker", { free = true })
-	R("Look", "General", "Look", "UIModifications.shade_widgets", { free = true })
+	R("Look", "General", "Look", "UIModifications.shade_widgets", { free = true, when = PAINTED_SHADE })
 	R("Look", "General", "Text", "UIModifications.nameFormat")
 	R("Look", "General", "Text", "UIModifications.classNames", { free = true })
 	R("Look", "General", "Text", "Tweaks.textShade", { free = true })
@@ -518,8 +522,10 @@ function L.Define(R, Link)
 	R("Look", "Textures", "Look", "Tooltip.classBorder", { name = "Tooltip Class Border", card = "Borders",
 		when = Uncovered("TooltipPanel", "tooltip") })
 	Link("QualityOfLife", "Tooltip", "Look", "Tooltip.classBorder", "Class Border")
-	R("Look", "Textures", "Look", "Chat.borderAlpha", { name = "Chat Border Opacity", card = "Borders" })
-	Link("Chat", "Chat Frame", "Look", "Chat.borderAlpha", "Border Opacity")
+	-- (the configurator walk, 2026-11-04: shown in Modern, where it changed nothing) the painted chat's rails' own
+	local PAINTED_RAILS = { all = { CHAT_PAINTED }, line = "Only with the painted chat (its Painted Skin, the reskin on)" }
+	R("Look", "Textures", "Look", "Chat.borderAlpha", { name = "Chat Border Opacity", card = "Borders", when = PAINTED_RAILS })
+	Link("Chat", "Chat Frame", "Look", "Chat.borderAlpha", "Border Opacity", { when = PAINTED_RAILS })
 	R("Look", "Fonts", "General", "UIModifications.qol_Fonts")
 	R("Look", "Fonts", "Text", "Fonts.style")
 	R("Look", "Fonts", "Text", "Fonts.sizeText")
@@ -708,12 +714,14 @@ function L.Define(R, Link)
 	UGF({ "player:pvp", "target:pvp", "focus:pvp" }, "Look", "UnitFrames.hidePvPBadge", { when = UF })
 	-- (1.2.4, fr-05; the user, 2026-10-28: "the option to hide the incoming heals numbers on my own Player Unitframe")
 	UGF({ "player:portrait" }, "Look", "UnitFrames.hideHealNumbers", { when = UF })
-	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.marks")
+	-- (the configurator walk, 2026-11-04: two rows named "Elite and Rare Marks", one "UI Shade" beside "UI Shade: Action
+	-- Bars": each says whose it is)
+	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.marks", { name = "Elite and Rare Marks: Unit Frames" })
 	-- (0.19.8, the border library's stage 3: a backdrop round the frame, the kit's one backdrop system)
 	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.backdrop")
 	-- (one look C13e, the user's yes to the audit's correction: UI Shade's Unit Frames area is the painted unit
 	-- frames' -- KitShade.lua's OLDSCHOOL block, UnitFramePanel's SHADE_AREA -- so its switch is Oldschool's)
-	R("Oldschool", "Frame Art", "Look", "UIModifications.shade_unitframes", { free = true, name = "UI Shade" })
+	R("Oldschool", "Frame Art", "Look", "UIModifications.shade_unitframes", { free = true, name = "UI Shade: Unit Frames" })
 	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.backdropBackground",
 		{ when = { key = "UnitFramePanel.backdrop", notValue = "none", line = "Only with a Frame Backdrop" } })
 	-- (0.21.3, the animations: the level badge turning over, the XP bar's light, the notice;
@@ -832,7 +840,7 @@ function L.Define(R, Link)
 	R("Nameplates", "objects:element", "General", "Sparkles.questObjects")
 	-- (one look stage G: the painted Nameplate Kit's own rows, Oldschool's)
 	R("Oldschool", "Painted Skins", "Look", "UIModifications.NameplatePanel", { name = "Nameplates" })
-	R("Oldschool", "Frame Art", "Look", "NameplatePanel.marks")
+	R("Oldschool", "Frame Art", "Look", "NameplatePanel.marks", { name = "Elite and Rare Marks: Nameplates" })
 	-- (stage G, Q12: Name Shade's Whole plate, the kit's own switch; it needs the UI Shade)
 	R("Oldschool", "Frame Art", "Look", "NameplatePanel.plateShade", { when = { key = "UIModifications.uiShade", value = true,
 		line = "Only with the UI Shade on (Look)" } })
@@ -995,10 +1003,14 @@ function L.Define(R, Link)
 	R("Chat", "Chat Frame", "Look", "Chat.windowAlphaOn", { when = NOT_NONE })
 	R("Chat", "Chat Frame", "Look", "Chat.windowAlpha", { when = NOT_NONE })
 	-- (0.19.4: the painted chat holds the input box and the tabs itself)
-	R("Chat", "Chat Frame", "Look", "Chat.hideEditBox", { when = Uncovered("ChatPanel", "chat") })
-	R("Chat", "Chat Frame", "Look", "Chat.hideTabs", { when = Uncovered("ChatPanel", "chat") })
 	-- (0.23.0: the Minimal Chat View has its own row of buttons and places the line you type in itself)
 	local NOT_MINIMAL = { key = "Chat.view", notValue = "minimal", line = "Not with the Minimal Chat View" }
+	-- (the configurator walk, 2026-11-04: the game's tabs' rows changed nothing with the Minimal Chat View, which
+	-- hides them for its round tabs)
+	local GAME_TABS = { all = { Uncovered("ChatPanel", "chat"), NOT_MINIMAL },
+		line = "Only with the game's chat windows (not the painted chat or the Minimal Chat View)" }
+	R("Chat", "Chat Frame", "Look", "Chat.hideEditBox", { when = Uncovered("ChatPanel", "chat") })
+	R("Chat", "Chat Frame", "Look", "Chat.hideTabs", { when = GAME_TABS })
 	R("Chat", "Chat Frame", "Look", "Chat.chatButtons", { when = NOT_MINIMAL })
 	R("Chat", "Chat Frame", "Layout", "Chat.editBoxTop", { when = NOT_MINIMAL })
 	R("Chat", "Chat Frame", "Behaviour", "Chat.editBoxWhileTyping")   -- (0.20.4: the game's Classic chat style)
@@ -1471,9 +1483,9 @@ function L.Define(R, Link)
 	Link("QualityOfLife", "Widgets", "General", "Meter.summary", "Fight Summary")
 	-- (0.17.0: the fades moved to the Fader; 1.2.4, the configurator audit: Tabs Only On Mouseover is the chat's own,
 	-- on its page, linked from the Fader's chat row)
-	R("Chat", "Chat Frame", "Behaviour", "Chat.tabsOnMouseover", { when = Uncovered("ChatPanel", "chat") })
+	R("Chat", "Chat Frame", "Behaviour", "Chat.tabsOnMouseover", { when = GAME_TABS })
 	Link("Fader", "Chat, Map & More", "General", "Chat.tabsOnMouseover", "Chat: Tabs Only On Mouseover",
-		{ when = Uncovered("ChatPanel", "chat") })
+		{ when = GAME_TABS })
 	-- (0.16.0: the merged settings, from where their members were)
 	Link("Chat", "Messages", "Text", "UIModifications.nameFormat", "Names")
 	Link("Chat", "Messages", "Text", "UIModifications.classNames", "Class Coloured Names")

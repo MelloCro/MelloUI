@@ -344,7 +344,12 @@ local M = MelloUI:RegisterModule(OWNER, {
 		  desc = "Your aura indicators on the frames." },
 		-- (one look C10: the frame and its parts are the designer stage's; 1.2.4:
 		-- the canvas is the spell groups' tray and block, GroupSpellGroupsPage.lua's)
+		-- (its height from the width it gets, `heightAt`: taller in the narrow column beside the stage, layout C --
+		-- GroupSpellGroupsPage.lua's Page.Height; `height` the full width's)
 		{ type = "canvas", key = "designer", name = "Your Indicators", height = 900,
+		  heightAt = function(width)
+			return ns.Page and ns.Page.Height and ns.Page.Height(width) or 900
+		  end,
 		  search = "indicators spell groups icons squares bars hots shields buffs debuffs defensives lockouts dispel colour wheel designer",
 		  desc = "Your spell groups for this spec: drag a group onto the frame, pick its spells, then its look, place, size and colour.",
 		  build = function(canvas, width)
