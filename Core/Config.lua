@@ -176,16 +176,16 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "2.1.1", lines = {
 		"The configurator's frame previews stand on the left with room around them; the settings sit beside them.",
-		"Escape in the configurator goes one step at a time: an open list or panel, a picked part, the search, then the window.",
 		"Search finds your own words too (color, alpha, hotkey, hp, castbar, absorb); the row it opens is ringed in gold.",
 		"A tab waiting on a switch has a button to it; the other skin's settings and turned-off action bars stay out of sight.",
 		"Settings kept on another page show as small chips at the end of their section; a jump to one shows a way back.",
-		"The configurator's side list starts with Home, has a thin scroll bar, and its tooltips no longer cover the page.",
+		"Escape in the configurator goes one step at a time; its side list starts with Home and has a thin scroll bar.",
 		"Edit Layout: Grid, Snap, Dim and Coordinates in one View menu, with the grid spacing and snapping gap as sliders.",
 		"Deleting a profile, Fade Everything and Fade Nothing ask first; settings that do nothing in your setup stay hidden.",
 		"Fixed: the Chat text font reaches the Minimal Chat View; Default's ticks show whole; labels stay clear of sliders.",
 		"Edit Layout, the map, Dungeon Info and the installer bring you back to your settings page; Dark Mode leaves it alone.",
 		"Fewer empty places: tiny tabs joined, windows without settings unlisted; empty bars show their slots while you set up.",
+		"Spell groups for every class: one layout for all your characters; a spell you switch off is your class's own tweak.",
 		"Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect, at every rank.",
 	} },
 	{ version = "2.1.0", lines = {
@@ -3732,8 +3732,16 @@ end
 CONFIG.back = nil
 CONFIG.BACK_GAP = 10
 function CONFIG.JumpFrom(page, id, pick)
-	local from = page and page.pager and { page = page.name, sec = page.current, y = page.pager:Offset() } or nil
+	local from = CONFIG.Leaving(page)
 	JumpTo(id, pick)
+	CONFIG.Came(from)
+end
+-- where a jump leaves from (the page, its tab and scroll), and the way back once it has come somewhere else (a link's
+-- chip, an empty tab's Go to, a search result: one way back for every jump)
+function CONFIG.Leaving(page)
+	return page and page.pager and { page = page.name, sec = page.current, y = page.pager:Offset() } or nil
+end
+function CONFIG.Came(from)
 	local now = pages[currentPage]
 	if not (from and window and now) or (currentPage == from.page and now.current == from.sec) then
 		return   -- (no move: nothing to go back to)
@@ -7615,6 +7623,8 @@ local function Jump(e)
 		end
 		return
 	end
+	-- (Suggestion 1: a search's jump shows the way back too, as a link's does -- CONFIG.Came)
+	local from = CONFIG.Leaving(pages[currentPage])
 	local page, onShow = ShowPage(e.key)
 	if not page then
 		return
@@ -7646,6 +7656,7 @@ local function Jump(e)
 		page.pager:ScrollTo(0, false)
 	end
 	NavFollow(true)
+	CONFIG.Came(from)
 end
 
 -- the box's and the results' handlers (one function each)

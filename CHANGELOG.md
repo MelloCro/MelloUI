@@ -19,6 +19,7 @@
 - The Windows page lists only the windows that have settings in your skin, and tabs of one or two settings are part of their page's first tab (Route's Flights, the Quest Tracker's Objective Tracker, Chat's Messages and Whispers).
 - Dark Mode no longer darkens the settings window. UI Shade's Chat, Bags and Event Widgets show only with Oldschool, whose painted pieces they shade; with the Minimal Chat View the chat's Background offers Dark and None.
 - Values' Position and Offsets now also move values you dragged on the frame preview, keeping their size.
+- Spell groups for every class: one party and raid indicator layout for all your characters, every group holding every class's spells (your own first; Anyone's shows other players' too), and a spell you switch on or off is your class's own tweak. Each character's earlier layout is kept: Copy from in the Designer brings it back.
 - Empty action bars show their empty slots while the settings or Edit Layout are open, so a bar you switch on can be seen and filled.
 - Fixed: the Whispers tab's yellow light stayed on over its icon; it lights once for a new whisper, the count stays.
 - Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect on your party and raid frames, at every rank. Holy Shock cast at an enemy shows nothing on your own frame.

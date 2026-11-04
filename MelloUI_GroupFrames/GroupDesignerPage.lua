@@ -629,7 +629,7 @@ function Stage.OnSelect(stage, key)
 	local kind = Stage.LIST[stage.pick]
 	for canvas, inst in pairs(Page.canvases) do
 		if Page.KindOf(inst) == kind then
-			for _, ind in ipairs(RD:List(RD:KeyOf(inst.spec, kind))) do
+			for _, ind in ipairs(RD:List(RD:KeyOf(nil, kind))) do   -- (Suggestion 1, point 3: the shared layout)
 				if tostring(ind.id) == id then
 					inst.ind = ind
 					Page.syncing = true

@@ -145,10 +145,20 @@ local function Catalogue()
 	return catalogue
 end
 
--- a list key's class ("DRUID:2": the druid; Forever's data has no specs)
+-- a list key's class ("DRUID:2": the druid; Forever's data has no specs); the shared layout's (RD.SHARED, Suggestion
+-- 1 point 3), or a key of no class: the class you play
 function SG.SpecOf(specKey)
 	specKey = specKey or RD:Spec()
-	return specKey:match("^([^:]+)")
+	local class = specKey:match("^([^:]+)")
+	if class == nil or type(DATA[class]) ~= "table" then
+		return RD:Class()
+	end
+	return class
+end
+
+-- a class's own spells in a group (the starters judge a healer by them)
+function SG.ClassCount(group, class)
+	return #(Parse(class or "")[group] or EMPTY)
 end
 
 local entries = {}   -- ["group|class"] = { entry, ... }
@@ -169,8 +179,20 @@ function SG.Entries(group, class)
 			out[1] = { main = group, kind = group, ids = EMPTY, off = false, fixed = true }
 		end
 	elseif def and def.scope == "own" then
+		-- (Suggestion 1, point 3: every class's spells, the class's own first -- "Yours only" shows your casts of them,
+		-- "Anyone's" others' too)
+		local seen = {}
 		for _, e in ipairs(Parse(class or "")[group] or EMPTY) do
+			seen[e.main] = true
 			out[#out + 1] = e
+		end
+		for _, c in ipairs(SG.Classes()) do
+			for _, e in ipairs(Parse(c)[group] or EMPTY) do
+				if not seen[e.main] then
+					seen[e.main] = true
+					out[#out + 1] = e
+				end
+			end
 		end
 	elseif def then
 		local seen = {}
@@ -304,8 +326,14 @@ function SG.List(ind, specKey)
 	return out
 end
 
+-- (Suggestion 1, point 3: one layout for every character) a spell's switch: your class's tweak first
+-- (ind.classSpells[class]), then the layout's own (ind.spells), then the data's start
 function SG.IsOn(ind, e)
-	local v = ind.spells and ind.spells[e.main]
+	local cs = ind.classSpells and ind.classSpells[RD:Class()]
+	local v = cs and cs[e.main]
+	if v == nil then
+		v = ind.spells and ind.spells[e.main]
+	end
 	if v ~= nil then
 		return v and true or false
 	end
@@ -490,7 +518,7 @@ function SG.Starter(class)
 		return nil
 	end
 	local out = {}
-	local hots, shields = #SG.Entries("hot", class), #SG.Entries("shield", class)
+	local hots, shields = SG.ClassCount("hot", class), SG.ClassCount("shield", class)
 	if hots + shields > 0 then
 		if hots > 0 then
 			out[#out + 1] = G("hot", "TOPRIGHT", { grow = "LEFT", max = 3, size = 10, colour = "GREEN_FONT_COLOR" })
@@ -510,14 +538,23 @@ function SG.Starter(class)
 	return out
 end
 
--- a spell switched on or off (only a change from its start is kept)
+-- a spell switched on or off: your class's tweak on the shared layout (Suggestion 1, point 3), kept only where it
+-- differs from the layout's own switch (or the data's start)
 function SG.Switch(ind, e, on)
-	ind.spells = ind.spells or {}
-	if on == (not e.off) then
-		ind.spells[e.main] = nil
-	else
-		ind.spells[e.main] = on and true or false
+	local class = RD:Class()
+	local base = ind.spells and ind.spells[e.main]
+	if base == nil then
+		base = not e.off
 	end
+	local all = ind.classSpells or {}
+	local cs = all[class] or {}
+	if on == base then
+		cs[e.main] = nil
+	else
+		cs[e.main] = on and true or false
+	end
+	all[class] = next(cs) ~= nil and cs or nil
+	ind.classSpells = next(all) ~= nil and all or nil
 end
 
 -- a spell moved from one group into another (its own taken out, the other's

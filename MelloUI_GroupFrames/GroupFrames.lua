@@ -23,6 +23,10 @@
 --   RaidSolo.lua         your frame while solo
 --   GroupDesignerPage.lua the Designer (the Configurator's canvas)
 --
+-- (Suggestion 1, point 3, 2026-11-04: one layout for every character -- the lists' key RD.SHARED, "ALL", whatever
+-- you play; its start your class's own layout as you had it, else your class's starters; every character's own list
+-- kept in db.sets as it was, Copy from brings it back. A single spell switched in a group is your class's tweak,
+-- GroupSpellGroups.lua's classSpells.)
 -- The lists: db.sets[specKey] = { indicator, ... } (specKey "PRIEST:1": the
 -- class and the spec, or the talent group where the client has no specs). A
 -- spec with no list of its own shows its class's starter set, kept in memory
@@ -526,8 +530,14 @@ local PARTY_KEY = "party@"
 -- list, a bare spec key, again. Its old own lists stay in the settings, offered in Copy from only)
 local GPARTY_KEY = "gparty@"
 
+-- (Suggestion 1, point 3) the one layout every character shares
+RD.SHARED = "ALL"
+function RD:Layout()
+	return RD.SHARED
+end
+
 function RD:KeyOf(key, kind)
-	key = key or self:Spec()
+	key = key or self:Layout()
 	if kind == "party" and key:sub(1, #PARTY_KEY) ~= PARTY_KEY then
 		return PARTY_KEY .. key
 	end
@@ -612,8 +622,28 @@ function RD:List(key, kind)
 	end
 	list = unsaved[key]
 	if not list then
-		local class = SpecOf(key):match("^([^:]+)") or self:Class()
-		list = self:Starter(class, key)
+		local spec = SpecOf(key)
+		if spec == RD.SHARED then
+			-- (Suggestion 1, point 3) the shared layout's start: your class's own as you had it (copied: that one stays
+			-- as it is, a backup Copy from brings back), else your class's starters -- in memory until changed
+			local own = db.sets[key:sub(1, #key - #spec) .. self:Spec()]
+			if type(own) == "table" then
+				list = {}
+				for _, e in ipairs(own) do
+					local t = {}
+					for k, v in pairs(e) do
+						t[k] = type(v) == "table" and Copy(v) or v
+					end
+					t.id = key .. "#" .. (#list + 1)
+					list[#list + 1] = self:Fill(t)
+				end
+			else
+				list = self:Starter(self:Class(), key)
+			end
+		else
+			local class = spec:match("^([^:]+)") or self:Class()
+			list = self:Starter(class, key)
+		end
 		unsaved[key] = list
 	end
 	return list
@@ -654,7 +684,7 @@ function RD:Changed(ind, key)
 end
 
 function RD:Add(entry, key)
-	key = key or self:Spec()
+	key = key or self:Layout()
 	local list = self:List(key)
 	if unsaved[key] then
 		Keep(key, list)
@@ -669,7 +699,7 @@ function RD:Add(entry, key)
 end
 
 function RD:Remove(ind, key)
-	key = key or self:Spec()
+	key = key or self:Layout()
 	local list = self:List(key)
 	if unsaved[key] then
 		Keep(key, list)
@@ -694,7 +724,7 @@ function RD:CopyFrom(from, to)
 		t.id = nil
 		list[#list + 1] = self:Fill(t)
 	end
-	Keep(to or self:Spec(), list)
+	Keep(to or self:Layout(), list)
 	self:Changed()
 end
 
@@ -707,7 +737,9 @@ function RD:SpecValues()
 		for key in pairs(t) do
 			if not seen[key] then
 				seen[key] = true
-				out[#out + 1] = { value = key, label = LIST_LABEL[self:KindOf(key)] .. SpecOf(key) }
+				local spec = SpecOf(key)
+				out[#out + 1] = { value = key,
+					label = LIST_LABEL[self:KindOf(key)] .. (spec == RD.SHARED and "Every character" or spec) }
 			end
 		end
 	end
@@ -902,7 +934,7 @@ local OnSpecEvent = Shared("the Group Frames' spec events", function()
 	local key = RD:Spec()
 	if key ~= lastSpec then
 		lastSpec = key
-		RD:List(key)
+		RD:List()   -- (the shared layout; another class's spell tweaks: the bus's "spec")
 		MelloUI:Fire("groupframes", "spec", key)
 	end
 end, "script")

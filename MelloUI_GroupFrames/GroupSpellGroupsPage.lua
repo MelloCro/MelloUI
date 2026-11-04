@@ -341,7 +341,7 @@ function Page.BuildGroups(canvas, width)
 	inst.kind = Page.KindOf(inst)
 	Page.canvases[canvas] = inst
 	local function Key()
-		return RD:KeyOf(inst.spec, inst.kind)
+		return RD:KeyOf(nil, inst.kind)   -- (Suggestion 1, point 3: the layout every character shares)
 	end
 	local function List()
 		return RD:List(Key())
