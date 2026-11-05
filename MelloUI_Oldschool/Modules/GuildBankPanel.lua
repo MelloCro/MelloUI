@@ -1206,7 +1206,7 @@ local function ApplyReadable(entry, on)
 			if saved.object then
 				pcall(obj.SetFontObject, obj, saved.object)
 			elseif saved.font then
-				pcall(obj.SetFont, obj, saved.font[1], saved.font[2], saved.font[3])
+				MelloUI:SetFace(obj, saved.font[1], saved.font[2], saved.font[3])
 			end
 			entry.grown = nil
 		end

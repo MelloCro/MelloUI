@@ -179,7 +179,7 @@ local function Heading(button, rect)
 	local cover = button:CreateFontString(nil, "OVERLAY")
 	local ok, path, size, flags = pcall(src.GetFont, src)
 	if ok and path and size and not (Secret(path) or Secret(size)) then
-		cover:SetFont(path, size, flags or "")
+		MelloUI:SetFace(cover, path, size, flags or "")
 	else
 		cover:SetFontObject(GameFontNormal)
 	end

@@ -206,7 +206,10 @@ local function RestoreLook(fs, state)
 	if state.flags and state.flags ~= "" then
 		local ok, path, size, flags = pcall(fs.GetFont, fs)
 		if ok and path and size and (flags == nil or flags == "") then
-			pcall(fs.SetFont, fs, path, size, state.flags)
+			-- (2.1.1: the other alphabets kept; its colour put back is ours)
+			inking = true
+			MelloUI:SetFace(fs, path, size, state.flags)
+			inking = false
 		end
 	end
 	local sh = state.shadow
@@ -701,7 +704,7 @@ local function InkLine(fs, header, tip)
 	if okF and path and size and flags and flags ~= "" then
 		state.flags = flags
 		inking = true
-		pcall(fs.SetFont, fs, path, size, "")
+		MelloUI:SetFace(fs, path, size, "")   -- (2.1.1: the other alphabets kept)
 		inking = false
 	end
 	local sr, sg, sb, sa = fs:GetShadowColor()

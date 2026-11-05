@@ -148,7 +148,7 @@ function Looks.Make(b)
 	p.text = p.texts:CreateFontString(nil, "OVERLAY")
 	p.count = p.texts:CreateFontString(nil, "OVERLAY")
 	for _, fs in ipairs({ p.text, p.count }) do
-		fs:SetFont(FontFile(), RD.SIZE.text, "OUTLINE")
+		MelloUI:SetFace(fs, FontFile(), RD.SIZE.text, "OUTLINE")
 		W.Paint(fs, "text", "text")
 	end
 	return p
@@ -192,7 +192,7 @@ local function LayText(fs, t, anchor)
 		fs:Hide()
 		return
 	end
-	fs:SetFont(FontFile(), t.size or RD.SIZE.text, "OUTLINE")
+	MelloUI:SetFace(fs, FontFile(), t.size or RD.SIZE.text, "OUTLINE")
 	local point = t.point or "CENTER"
 	fs:SetPoint(point, anchor, point, t.x or 0, t.y or 0)
 	fs:Show()

@@ -233,7 +233,8 @@ function View.Font(fs, scale, from)
 			end
 		end
 	end
-	fs:SetFont(face, size * (scale or 1), flags)
+	-- (2.1.1: the chat's own faces for the other alphabets -- a Russian line in boxes else)
+	MelloUI:SetFace(fs, face, size * (scale or 1), flags, _G.ChatFontNormal)
 end
 
 -- (one look: nothing of the view follows the chat cover -- the painted kit, Oldschool's -- any more: the rims and

@@ -902,7 +902,7 @@ function Shell:LayPainting()
 		end
 		local ok, face, _, flags = pcall(title.GetFont, title)
 		if ok and type(face) == "string" and at.size then
-			title:SetFont(face, at.size, type(flags) == "string" and flags or "")
+			MelloUI:SetFace(title, face, at.size, type(flags) == "string" and flags or "")
 		end
 		title:ClearAllPoints()
 		title:SetPoint("LEFT", self.frame, "TOPLEFT", at.x, -at.y)

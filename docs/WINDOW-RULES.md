@@ -467,6 +467,16 @@ kit texture under the cursor (piece, rect, crop, tint, frame level) when a backg
 
 ## 5. Gotchas that cost a screenshot round each
 
+- A text given a face with `SetFont` is that ONE face: the letters it lacks
+  are boxes. MelloUI's faces have no Korean or Chinese and most no Cyrillic,
+  and the game's own Latin file (`FRIZQT__.TTF`) has no Cyrillic either: the
+  game draws other alphabets through font families (a face per alphabet). A
+  player on a Russian client, 2026-11-05: Combat Text, the zone's name and the
+  tracker's headings in boxes. Give a text its face with
+  `MelloUI:SetFace(fs, face, size, flags[, object])` (Core.lua, its families Modules/Fonts.lua's; a family on
+  the game's other faces, the text's own colour, shadow and alignment kept),
+  never `SetFont`; v180/fontfamily G8 fails on a new `SetFont` on a text
+  (numbers-only texts and the font system's own are listed there).
 - A nameplate rounds its layout to whole pixels, every frame and region of it,
   once, when the game makes it (`PixelUtil.SetRoundLayoutToNearestPixelRecursively`
   in its OnLoad). Anything added later is NOT rounded and slides by fractions of

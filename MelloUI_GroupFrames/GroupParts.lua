@@ -266,7 +266,7 @@ local function LayRegion(frame, p, s, r)
 		local file, _, flags = r:GetFont()
 		file = PartyFace(r, p) or file
 		if file then
-			r:SetFont(file, size, flags or "")
+			MelloUI:SetFace(r, file, size, flags or "")
 		end
 		LayWidth(frame, p, s, r, point)
 	else

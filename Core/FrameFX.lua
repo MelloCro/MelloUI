@@ -1245,7 +1245,7 @@ local function CopyText(dst, src)
 	if not (l and okF) or Secret(font) or type(font) ~= "string" then
 		return
 	end
-	dst:SetFont(font, Num(size) or 12, (not Secret(flags) and type(flags) == "string") and flags or "")
+	MelloUI:SetFace(dst, font, Num(size) or 12, (not Secret(flags) and type(flags) == "string") and flags or "")
 	local okT, text = pcall(src.GetText, src)
 	-- (the number as the game has it, a secret one too: only handed on)
 	pcall(dst.SetText, dst, okT and text or "")

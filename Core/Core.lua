@@ -953,6 +953,28 @@ do
 end
 
 --------------------------------------------------------------------------------
+-- A text's face (2.1.1; a player on a Russian client, 2026-11-05: Combat Text, the zone's name and the tracker's
+-- headings in boxes). SetFont with one file makes a text that one face, and the letters it lacks draw as boxes. Every
+-- text MelloUI gives a face takes it here, from any file:
+--   MelloUI:SetFace(fs, face, size, flags[, object]) -> ok   false while the face's file cannot be read yet
+--       (SetFont's own answer: the caller tries again); `object`: the font object whose other alphabets it takes
+--       (nil: the text's own; GameFontNormal's when it has none)
+--   MelloUI.FaceGlyphs   Modules/Fonts.lua's family side (its Glyph): the face for Latin (and Cyrillic where it has
+--       those letters), the game's own faces for the other alphabets, the text's own look kept. Until it is in, or
+--       on a client without families: SetFont.
+--------------------------------------------------------------------------------
+
+function MelloUI:SetFace(fs, face, size, flags, object)
+	flags = type(flags) == "string" and flags or ""
+	local glyphs = self.FaceGlyphs
+	if glyphs then
+		return glyphs(fs, face, size, flags, object)
+	end
+	local ok, set = pcall(fs.SetFont, fs, face, size, flags)
+	return ok and set ~= false
+end
+
+--------------------------------------------------------------------------------
 -- Utilities
 --------------------------------------------------------------------------------
 

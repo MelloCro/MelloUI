@@ -6933,7 +6933,7 @@ do
 				ok, face, size = pcall(base.GetFont, base)
 			end
 			if ok and face and Num(size) then
-				fs:SetFont(face, size + INK_UP, "")
+				MelloUI:SetFace(fs, face, size + INK_UP, "", base)
 			end
 			fs:SetShadowOffset(0, 0)   -- (ink casts no shadow: under the glyph, unseen)
 			fs:SetTextColor(c[1], c[2], c[3], 1)

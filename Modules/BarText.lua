@@ -251,7 +251,7 @@ local function ApplyFont(fs)
 	end
 	path = face or path
 	if path then
-		fs:SetFont(path, size, flags or "")
+		MelloUI:SetFace(fs, path, size, flags or "")
 	end
 end
 

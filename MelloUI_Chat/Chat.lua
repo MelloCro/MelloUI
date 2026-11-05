@@ -1750,7 +1750,7 @@ local function MeasureWidth(line, text)
 	if text == "" then
 		return 0, size
 	end
-	measure:SetFont(path, size, flags or "")
+	MelloUI:SetFace(measure, path, size, flags or "", _G.ChatFontNormal)   -- (the chat's other alphabets, as its lines)
 	measure:SetText(text)
 	local okW, w = pcall(measure.GetUnboundedStringWidth, measure)
 	if not okW or Secret(w) then

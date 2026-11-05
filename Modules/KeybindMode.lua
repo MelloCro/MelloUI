@@ -172,7 +172,7 @@ local function Label(button)
 		fs:SetDrawLayer("OVERLAY", 7)
 		local path, size = fs:GetFont()
 		if path then
-			fs:SetFont(path, math.max(16, (tonumber(size) or 14) + 4), "OUTLINE")
+			MelloUI:SetFace(fs, path, math.max(16, (tonumber(size) or 14) + 4), "OUTLINE")
 		end
 		fs:SetJustifyH("CENTER")
 		fs:SetPoint("CENTER", button, "CENTER", 0, 0)

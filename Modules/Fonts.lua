@@ -765,6 +765,144 @@ function Family.Own(object, original, face, size, flags)
 	return true
 end
 
+-- A text's face, the family side of Core.lua's MelloUI:SetFace (2.1.1; a player on a Russian client, 2026-11-05:
+-- "Combat text, enter to the zone, and other titels are looks like Squares"). SetFont with one file makes a text that
+-- one face, and the letters it lacks draw as boxes: MelloUI's own faces have no Korean or Chinese and most no
+-- Cyrillic, nor has the game's own Latin file (the game's other alphabets live in its font objects' other members).
+-- A family of the face (Family.Make, once per face, size and flags) on that object's members: the face for Latin
+-- (and Cyrillic where it has those letters), the game's own faces for the other alphabets. Put on by SetFontObject,
+-- which brings the family's colour, shadow, alignment and alpha, so the text's own are read first and put back (a
+-- name hidden by its alpha stays hidden). The face is tried first on one unseen string of ours (SetFont answers false
+-- while the file is not read yet), never on the text: a face SetFont put on a text stays over any font object. A
+-- text whose look reads secret, or a client without families: SetFont, as before.
+local Glyph = {
+	bases = setmetatable({}, { __mode = "k" }),    -- [font object] = its members (or false)
+	baseOf = setmetatable({}, { __mode = "k" }),   -- [a family made here] = the members it was made on
+}
+
+-- the members a text's family takes its other alphabets from: a family of ours, the ones it was made on (never a
+-- family of a family: one more each time a text is styled again); a game object's own as first remembered
+-- (StyleFont's strings), else as they read now; GameFontNormal's for none (read once: never remembered from here,
+-- which would change whose members a sharing font follows)
+function Glyph.Base(object)
+	object = type(object) == "table" and object or _G.GameFontNormal
+	if type(object) ~= "table" then
+		return nil
+	end
+	if Glyph.baseOf[object] then
+		return Glyph.baseOf[object]
+	end
+	local original = originals[object]
+	if original then
+		return original.members
+	end
+	local members = Glyph.bases[object]
+	if members == nil then
+		members = Family.Read(object) or false
+		Glyph.bases[object] = members
+	end
+	return members or nil
+end
+
+-- a text's own look (nil when any of it reads secret: it keeps SetFont)
+function Glyph.Look(fs)
+	local Secret = MelloUI.Safe.IsSecret
+	local look = {}
+	local okC, r, g, b, a = pcall(fs.GetTextColor, fs)
+	local okO, x, y = pcall(fs.GetShadowOffset, fs)
+	local okS, sr, sg, sb, sa = pcall(fs.GetShadowColor, fs)
+	local okH, jh = pcall(fs.GetJustifyH, fs)
+	local okV, jv = pcall(fs.GetJustifyV, fs)
+	local okP, spacing = pcall(fs.GetSpacing, fs)
+	local okI, indent = pcall(fs.GetIndentedWordWrap, fs)
+	local okA, alpha = pcall(fs.GetAlpha, fs)
+	for _, v in ipairs({ r, g, b, a, x, y, sr, sg, sb, sa, jh, jv, spacing, indent, alpha }) do
+		if Secret(v) then
+			return nil
+		end
+	end
+	look.alpha = okA and type(alpha) == "number" and alpha or nil
+	if okC and type(r) == "number" then
+		look.colour = { r, g, b, type(a) == "number" and a or 1 }
+	end
+	if okO and type(x) == "number" and type(y) == "number" then
+		look.offset = { x, y }
+	end
+	if okS and type(sr) == "number" then
+		look.shadow = { sr, sg, sb, type(sa) == "number" and sa or 1 }
+	end
+	look.justifyH = okH and type(jh) == "string" and jh or nil
+	look.justifyV = okV and type(jv) == "string" and jv or nil
+	look.spacing = okP and type(spacing) == "number" and spacing or nil
+	look.indent = okI and type(indent) == "boolean" and indent or nil
+	return look
+end
+
+function Glyph.Back(fs, look)
+	local c, o, s = look.colour, look.offset, look.shadow
+	if c then
+		pcall(fs.SetTextColor, fs, c[1], c[2], c[3], c[4])
+	end
+	if o then
+		pcall(fs.SetShadowOffset, fs, o[1], o[2])
+	end
+	if s then
+		pcall(fs.SetShadowColor, fs, s[1], s[2], s[3], s[4])
+	end
+	if look.justifyH then
+		pcall(fs.SetJustifyH, fs, look.justifyH)
+	end
+	if look.justifyV then
+		pcall(fs.SetJustifyV, fs, look.justifyV)
+	end
+	if look.spacing then
+		pcall(fs.SetSpacing, fs, look.spacing)
+	end
+	if look.indent ~= nil then
+		pcall(fs.SetIndentedWordWrap, fs, look.indent)
+	end
+	if look.alpha then
+		pcall(fs.SetAlpha, fs, look.alpha)
+	end
+end
+
+-- (`object` nil: the text's own font object -- a game string's own other alphabets)
+function Glyph.Set(fs, face, size, flags, object)
+	if object == nil then
+		local okO, own = pcall(fs.GetFontObject, fs)
+		object = okO and not MelloUI.Safe.IsSecret(own) and type(own) == "table" and own or nil
+	end
+	local base = type(face) == "string" and type(fs.SetFontObject) == "function" and Glyph.Base(object)
+	local fam, look
+	if base then
+		-- (the face readable now: SetFont's answer on our own unseen string)
+		local probe = Glyph.probe
+		if not probe then
+			probe = UIParent:CreateFontString(nil, "BACKGROUND")
+			probe:Hide()
+			Glyph.probe = probe
+		end
+		local okP, set = pcall(probe.SetFont, probe, face, size, flags)
+		if not okP or set == false then
+			return false
+		end
+		fam = Family.Make(base, face, size, flags, false, false, false, false, 0)
+		if fam then
+			Glyph.baseOf[fam] = base
+		end
+		look = fam and Glyph.Look(fs)
+	end
+	if not look then
+		local ok, set = pcall(fs.SetFont, fs, face, size, flags)
+		return ok and set ~= false
+	end
+	pcall(fs.SetFontObject, fs, fam)
+	Glyph.Back(fs, look)
+	return true
+end
+MelloUI.FaceGlyphs = Glyph.Set
+M.Glyph = Glyph   -- (the tests)
+
 -- The face for a font object: its role's choice, else its own.
 local function FontFor(object)
 	local original = Remember(object)
@@ -1456,10 +1594,10 @@ do
 		if math.abs(factor - 1) > 0.001 then
 			size = math.max(6, math.floor(baseSize * factor + 0.5))
 		end
-		-- a face the client cannot load (a font file gone) leaves the text on its own
-		local ok, set = pcall(fs.SetFont, fs, path, size, flags)
-		if not ok or set == false then
-			pcall(fs.SetFont, fs, basePath, size, flags)
+		-- a face the client cannot load (a font file gone) leaves the text on its own; either way the other
+		-- alphabets kept (MelloUI:SetFace, 2.1.1: a Russian zone name in boxes)
+		if not Glyph.Set(fs, path, size, flags or "", entry.object) then
+			Glyph.Set(fs, basePath, size, flags or "", entry.object)
 		end
 	end
 

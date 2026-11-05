@@ -2239,6 +2239,7 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "수정: 전투 문자, 지역 이름, 머리글과 제목의 러시아어, 한국어, 중국어 글자가 더 이상 네모로 표시되지 않습니다.", -- draft
 	["Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid."] = "프레임 미리보기가 왼쪽에 여유 공간과 함께 놓이고, 플레이어 미리보기는 내 캐릭터를 보여 줍니다. 가짜 공격대는 5~40명 중에서 고릅니다.", -- draft
 	["Search finds your own words too (color, alpha, hotkey, hp, castbar, absorb); the row it opens is ringed in gold."] = "검색이 직접 쓰는 단어도 찾습니다(color, alpha, hotkey, hp, castbar, absorb). 열린 줄은 금색 테두리로 표시됩니다.", -- draft
 	["A tab waiting on a switch has a button to it; the other skin's settings and turned-off action bars stay out of sight."] = "스위치를 기다리는 탭에는 그곳으로 가는 버튼이 있습니다. 다른 스킨의 설정과 꺼진 행동 단축바는 보이지 않습니다.", -- draft
@@ -2281,11 +2282,6 @@ Lang:Add("koKR", {
 	["Route takes far less memory while its roads go in and while it finds routes."] = "Route가 길을 불러오고 경로를 찾을 때 메모리를 훨씬 적게 씁니다.", -- draft
 	["Swing Badge: the strike shows when your blow lands; crits and parries show on the blow they belong to."] = "스윙 배지: 공격이 맞을 때 타격이 보이고, 치명타와 막음은 해당 공격에 표시됩니다.", -- draft
 	["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "수정: 개인 화면의 큰 재사용 대기시간으로 인한 전투 중 오류.", -- draft
-	["Dungeon Info: a Trash section on every dungeon, the rare drops of its other creatures with who drops them."] = "던전 정보: 던전마다 잡몹 항목, 다른 생물의 희귀 전리품과 떨어뜨리는 몬스터.", -- draft
-	["Dungeon Info: a new look, every dungeon's picture on its row and its pages, never stretched."] = "던전 정보: 새 모습, 던전마다 줄과 페이지에 그림, 절대 늘리지 않음.", -- draft
-	["Dungeon Info: the loot of Forever's new dungeons' bosses and of the classic dungeons Forever changed (DungeonMaster's lists)."] = "던전 정보: Forever 새 던전 우두머리 전리품과 Forever가 바꾼 고전 던전(DungeonMaster 목록).", -- draft
-	["Dungeon Info counts the drops it sees fall, with chances; /dungeoninfo export lets you send yours in for everyone."] = "던전 정보가 떨어지는 전리품과 확률을 셉니다. /dungeoninfo export로 모두를 위해 보낼 수 있습니다.", -- draft
-	["Dungeon Info: with DungeonJournal installed, its loot lists show too."] = "던전 정보: DungeonJournal이 설치되어 있으면 그 전리품 목록도 보입니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2865,7 +2861,12 @@ Lang:Add("koKR", {
 -- stale: ["Draw the route to the waypoint on the world map, and its destination as a flag in a gold ring. A stretch where no road is known is a paler, straight guess."] = "세계 지도에 경유지까지의 경로를, 목적지는 금 고리 안의 깃발로 그립니다. 아는 길이 없는 구간은 더 옅은 직선 추정입니다.", -- draft
 -- stale: ["Draw the text MelloUI shows on the world with an outline: the on-screen notice's lines, Combat Text's lines and the Gains lines, and, while Text Shade is on, the zone text and the game's messages in the middle of the screen. Off: soft text on a dark shade."] = "MelloUI가 세상 위에 보여 주는 글자에 외곽선을 그립니다: 화면 알림 줄, 전투 문자 줄과 획득 줄, 그리고 글자 그림자가 켜져 있는 동안 지역 글자와 화면 가운데의 게임 메시지. 끄기: 어두운 그림자 위의 부드러운 글자.", -- draft
 -- stale: ["Draws the way to your map waypoint on the world map and the minimap, along roads you have walked before."] = "전에 걸었던 길을 따라 세계 지도와 미니맵에 지도 경유지까지 가는 길을 그립니다.", -- draft
+-- stale: ["Dungeon Info counts the drops it sees fall, with chances; /dungeoninfo export lets you send yours in for everyone."] = "던전 정보가 떨어지는 전리품과 확률을 셉니다. /dungeoninfo export로 모두를 위해 보낼 수 있습니다.", -- draft
+-- stale: ["Dungeon Info: a Trash section on every dungeon, the rare drops of its other creatures with who drops them."] = "던전 정보: 던전마다 잡몹 항목, 다른 생물의 희귀 전리품과 떨어뜨리는 몬스터.", -- draft
+-- stale: ["Dungeon Info: a new look, every dungeon's picture on its row and its pages, never stretched."] = "던전 정보: 새 모습, 던전마다 줄과 페이지에 그림, 절대 늘리지 않음.", -- draft
 -- stale: ["Dungeon Info: every dungeon and raid, its bosses in order and what each one drops. Open it with the door button over the map, a dungeon's door on it, or /dungeoninfo."] = "던전 정보: 모든 던전과 공격대, 우두머리 순서와 각 전리품. 지도 위 문 버튼, 지도의 던전 문, /dungeoninfo로 엽니다.", -- draft
+-- stale: ["Dungeon Info: the loot of Forever's new dungeons' bosses and of the classic dungeons Forever changed (DungeonMaster's lists)."] = "던전 정보: Forever 새 던전 우두머리 전리품과 Forever가 바꾼 고전 던전(DungeonMaster 목록).", -- draft
+-- stale: ["Dungeon Info: with DungeonJournal installed, its loot lists show too."] = "던전 정보: DungeonJournal이 설치되어 있으면 그 전리품 목록도 보입니다.", -- draft
 -- stale: ["Each frame's height (the game's raid frame: 36)."] = "각 창의 높이(게임의 공격대 창: 36).", -- draft
 -- stale: ["Each frame's width (the game's raid frame: 72)."] = "각 창의 폭(게임의 공격대 창: 72).", -- draft
 -- stale: ["Edit Layout opened from the configurator brings you back to your page when you leave it."] = "구성기에서 연 Edit Layout을 나가면 보던 페이지로 돌아갑니다.", -- draft

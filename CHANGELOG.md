@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.2
+
+- Fixed: Russian, Korean and Chinese letters showed as boxes in MelloUI's own texts: Combat Text, the zone's name, the Quest Tracker's headings, window titles and the frames' texts. They draw in the game's own letters for those alphabets now, next to MelloUI's fonts.
+
 ## 2.1.1
 
 - The frame previews in the configurator stand on the left, with room around the frame and its parts under it; the settings sit beside them in one column. A tab without a preview keeps its two columns, and the Bars preview stays across the page for its twelve buttons.

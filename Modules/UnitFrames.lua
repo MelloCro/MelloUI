@@ -531,7 +531,7 @@ function M.LayLook(fs, place)
 			if Places.sizes[fs] == nil then
 				Places.sizes[fs] = Num(was) or false
 			end
-			fs:SetFont(font, size, flags)
+			MelloUI:SetFace(fs, font, size, flags)
 		end
 	end
 	fs:SetAlpha(place.show == false and 0 or 1)
@@ -584,7 +584,7 @@ function M.UnlayPlace(fs)
 	if size then
 		local font, _, flags = fs:GetFont()
 		if font then
-			fs:SetFont(font, size, flags)
+			MelloUI:SetFace(fs, font, size, flags)
 		end
 	end
 	fs:SetAlpha(1)
@@ -1845,7 +1845,7 @@ function M.NameFace.Set(fs, sized)
 		end
 		path = face
 	end
-	pcall(fs.SetFont, fs, path, size, flags)
+	MelloUI:SetFace(fs, path, size, flags)
 	local Shade = MelloUI.Shade
 	if Shade and Shade.SourceFont then
 		Shade:SourceFont(fs)

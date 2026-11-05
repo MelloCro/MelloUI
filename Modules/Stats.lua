@@ -119,7 +119,7 @@ local function ApplyFont()
 	local object = GameFontHighlightSmall or SystemFont_Shadow_Small
 	local path = object:GetFont()
 	if path then
-		text:SetFont(path, tonumber(M.db.fontSize) or 12, "OUTLINE")
+		MelloUI:SetFace(text, path, tonumber(M.db.fontSize) or 12, "OUTLINE", object)
 	end
 	text:SetShadowOffset(1, -1)
 	-- the palette's inner panel as the shadow (read when applied; again on

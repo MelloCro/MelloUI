@@ -526,7 +526,7 @@ do
 		end
 		local okF, face, size, flags = pcall(source.GetFont, source)
 		if okF and not Secret(face) and type(face) == "string" then
-			pcall(m.SetFont, m, face, size, flags)
+			MelloUI:SetFace(m, face, size, flags, okO and not Secret(object) and type(object) == "table" and object or nil)
 		end
 		local okS, scale = pcall(source.GetTextScale, source)
 		if okS and not Secret(scale) and type(scale) == "number" then

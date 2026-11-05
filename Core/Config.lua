@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.2", lines = {
+		"Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes.",
+	} },
 	{ version = "2.1.1", lines = {
 		"Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid.",
 		"Search finds your own words too (color, alpha, hotkey, hp, castbar, absorb); the row it opens is ringed in gold.",
@@ -223,13 +226,6 @@ local CHANGELOG = {
 		"Route takes far less memory while its roads go in and while it finds routes.",
 		"Swing Badge: the strike shows when your blow lands; crits and parries show on the blow they belong to.",
 		"Fixed: an error in fights from the Personal Display's Big Cooldowns.",
-	} },
-	{ version = "1.2.2", lines = {
-		"Dungeon Info: a Trash section on every dungeon, the rare drops of its other creatures with who drops them.",
-		"Dungeon Info: a new look, every dungeon's picture on its row and its pages, never stretched.",
-		"Dungeon Info: the loot of Forever's new dungeons' bosses and of the classic dungeons Forever changed (DungeonMaster's lists).",
-		"Dungeon Info counts the drops it sees fall, with chances; /dungeoninfo export lets you send yours in for everyone.",
-		"Dungeon Info: with DungeonJournal installed, its loot lists show too.",
 	} },
 }
 local LINKS = {
@@ -8247,7 +8243,7 @@ do
 			end
 			local ok, face, _, flags = pcall(fs.GetFont, fs)
 			if ok and type(face) == "string" then
-				fs:SetFont(face, spec.headTitle, type(flags) == "string" and flags or "")
+				MelloUI:SetFace(fs, face, spec.headTitle, type(flags) == "string" and flags or "")
 			end
 		end
 		local flavour = page.flavour

@@ -781,7 +781,7 @@ local function ApplyLook(fs, entry)
 	if ok and path and type(size) == "number" and not Secret(path) and not Secret(size) then
 		local full = FullSize()
 		if size < full then
-			pcall(fs.SetFont, fs, path, full, flags or "")
+			MelloUI:SetFace(fs, path, full, flags or "")
 		end
 	end
 	local c = entry.colour
@@ -854,7 +854,7 @@ local function Unlook(fs)
 	looking = true
 	local f = e.font
 	if f then
-		pcall(fs.SetFont, fs, f[1], f[2], f[3])
+		MelloUI:SetFace(fs, f[1], f[2], f[3])
 	end
 	local c = e.colour
 	if c then

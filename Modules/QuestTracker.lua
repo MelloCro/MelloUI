@@ -964,7 +964,7 @@ local function StyleText(fs, size)
 	end
 	local ok, path, _, flags = pcall(object.GetFont, object)
 	if ok and path then
-		pcall(fs.SetFont, fs, path, size, flags or "")
+		MelloUI:SetFace(fs, path, size, flags or "", object)
 	end
 end
 
@@ -1052,7 +1052,7 @@ function Motion.Size(fs, text)
 	end
 	local path, size, flags = fs:GetFont()
 	if path then
-		m:SetFont(path, size, flags or "")
+		MelloUI:SetFace(m, path, size, flags or "")
 	end
 	m:SetText(text)
 	return m:GetStringWidth() or 0, m:GetStringHeight() or 0
@@ -1128,7 +1128,7 @@ function Motion.Lay(fs, roll)
 		local ox, oy = src:GetShadowOffset()
 		for _, t in ipairs({ r.a, r.b }) do
 			if path then
-				t:SetFont(path, size, flags or "")
+				MelloUI:SetFace(t, path, size, flags or "")
 			end
 			t:SetJustifyH("LEFT")
 			t:SetTextColor(cr, cg, cb)

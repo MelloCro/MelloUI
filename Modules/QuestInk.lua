@@ -530,12 +530,15 @@ function QI.RowFonts(title, line)
 	local titleObject, lineObject = QI.RowFontObjects()
 	local tp, ts, tf = FontOf(titleObject)
 	local lp, ls, lf = FontOf(lineObject)
+	-- (2.1.1, MelloUI:SetFace: the object's other alphabets kept -- a Russian quest's text in boxes else)
+	QI.inking = true
 	if title and tp then
-		pcall(title.SetFont, title, tp, ts, tf or "")
+		MelloUI:SetFace(title, tp, ts, tf or "", titleObject)
 	end
 	if line and lp then
-		pcall(line.SetFont, line, lp, ls, lf or "")
+		MelloUI:SetFace(line, lp, ls, lf or "", lineObject)
 	end
+	QI.inking = false
 	ts = ts or 12
 	return ts, ls or ts
 end
@@ -653,7 +656,11 @@ function QI.Ink(fs, role)
 	end
 	local ok, path, size = pcall(fs.GetFont, fs)
 	if ok and path and size then
-		pcall(fs.SetFont, fs, path, size, "")
+		-- (2.1.1: the other alphabets kept, MelloUI:SetFace; its font object switch and colour put back are ours,
+		-- not the game's: QI.inking)
+		QI.inking = true
+		MelloUI:SetFace(fs, path, size, "")
+		QI.inking = false
 	end
 	fs:SetShadowColor(0, 0, 0, 0)
 	inkRole[fs] = role or "title"
@@ -759,7 +766,9 @@ function QI.Plain(fs, restoreColour)
 	end
 	local ok, path, size = pcall(fs.GetFont, fs)
 	if ok and path and size then
-		pcall(fs.SetFont, fs, path, size, saved.flags)
+		QI.inking = true
+		MelloUI:SetFace(fs, path, size, saved.flags)
+		QI.inking = false
 	end
 	local s = saved.shadow
 	if s and s[1] then
@@ -812,7 +821,8 @@ local OnSetText = Shared("SetText on inked strings", NewText)
 local OnSetFormattedText = Shared("SetFormattedText on inked strings", NewText)
 -- a font object set again brings its colour and outline back: ink again
 local OnSetFontObject = Shared("SetFontObject on inked strings", function(self)
-	if inkOn[self] then
+	-- (our own: the ink's face put on by MelloUI:SetFace)
+	if inkOn[self] and not QI.inking then
 		SetGameColour(self, self:GetTextColor())
 		QI.Ink(self, inkRole[self])
 	end

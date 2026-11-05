@@ -2181,7 +2181,7 @@ function M.ForeverArt.NameLook(fs)
 	end
 	flags = (not Secret(flags) and type(flags) == "string") and flags or ""
 	if not flags:find("OUTLINE", 1, true) then
-		pcall(fs.SetFont, fs, file, size, flags ~= "" and (flags .. ",OUTLINE") or "OUTLINE")
+		MelloUI:SetFace(fs, file, size, flags ~= "" and (flags .. ",OUTLINE") or "OUTLINE")
 	end
 end
 

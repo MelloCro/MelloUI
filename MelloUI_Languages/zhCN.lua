@@ -2239,6 +2239,7 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "修复：战斗文字、区域名称、标题和头衔中的俄文、韩文和中文字符不再显示为方块。", -- draft
 	["Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid."] = "框体预览位于左侧，四周留有空间；玩家预览显示的是你自己；虚拟团队可选 5 到 40 人。", -- draft
 	["Search finds your own words too (color, alpha, hotkey, hp, castbar, absorb); the row it opens is ringed in gold."] = "搜索也能找到你自己的说法（color、alpha、hotkey、hp、castbar、absorb）；打开的那一行会用金色框出。", -- draft
 	["A tab waiting on a switch has a button to it; the other skin's settings and turned-off action bars stay out of sight."] = "等待某个开关的标签页有一个前往该开关的按钮；另一种皮肤的设置和已关闭的动作条不再显示。", -- draft
@@ -2281,11 +2282,6 @@ Lang:Add("zhCN", {
 	["Route takes far less memory while its roads go in and while it finds routes."] = "Route 在读取道路和寻找路线时占用的内存大大减少。", -- draft
 	["Swing Badge: the strike shows when your blow lands; crits and parries show on the blow they belong to."] = "挥击徽章：攻击命中时显示挥击；暴击和招架显示在对应的那次攻击上。", -- draft
 	["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "修复：个人显示的重要冷却在战斗中引发的错误。", -- draft
-	["Dungeon Info: a Trash section on every dungeon, the rare drops of its other creatures with who drops them."] = "地下城信息：每个地下城增加“小怪”部分，列出其他生物的稀有掉落及掉落者。", -- draft
-	["Dungeon Info: a new look, every dungeon's picture on its row and its pages, never stretched."] = "地下城信息：全新外观，每个地下城的图片显示在其行和页面上，绝不拉伸。", -- draft
-	["Dungeon Info: the loot of Forever's new dungeons' bosses and of the classic dungeons Forever changed (DungeonMaster's lists)."] = "地下城信息：Forever 新地下城首领的掉落，以及 Forever 改动过的经典地下城（DungeonMaster 的列表）。", -- draft
-	["Dungeon Info counts the drops it sees fall, with chances; /dungeoninfo export lets you send yours in for everyone."] = "地下城信息统计看到的掉落及几率；/dungeoninfo export 可把你的数据分享给所有人。", -- draft
-	["Dungeon Info: with DungeonJournal installed, its loot lists show too."] = "地下城信息：安装 DungeonJournal 后也显示其掉落列表。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2865,7 +2861,12 @@ Lang:Add("zhCN", {
 -- stale: ["Draw the route to the waypoint on the world map, and its destination as a flag in a gold ring. A stretch where no road is known is a paler, straight guess."] = "在世界地图上画出通往路径点的路线，目的地显示为金环中的旗帜。没有已知道路的一段显示为较淡的直线估计。", -- draft
 -- stale: ["Draw the text MelloUI shows on the world with an outline: the on-screen notice's lines, Combat Text's lines and the Gains lines, and, while Text Shade is on, the zone text and the game's messages in the middle of the screen. Off: soft text on a dark shade."] = "为MelloUI显示在世界上的文字加描边：屏幕通知的行、战斗文字的行和收获行，以及“文字阴影”开启时的区域文字和屏幕中央的游戏消息。关闭：暗影上的柔和文字。", -- draft
 -- stale: ["Draws the way to your map waypoint on the world map and the minimap, along roads you have walked before."] = "在世界地图和小地图上沿你走过的道路画出通往地图路径点的路线。", -- draft
+-- stale: ["Dungeon Info counts the drops it sees fall, with chances; /dungeoninfo export lets you send yours in for everyone."] = "地下城信息统计看到的掉落及几率；/dungeoninfo export 可把你的数据分享给所有人。", -- draft
+-- stale: ["Dungeon Info: a Trash section on every dungeon, the rare drops of its other creatures with who drops them."] = "地下城信息：每个地下城增加“小怪”部分，列出其他生物的稀有掉落及掉落者。", -- draft
+-- stale: ["Dungeon Info: a new look, every dungeon's picture on its row and its pages, never stretched."] = "地下城信息：全新外观，每个地下城的图片显示在其行和页面上，绝不拉伸。", -- draft
 -- stale: ["Dungeon Info: every dungeon and raid, its bosses in order and what each one drops. Open it with the door button over the map, a dungeon's door on it, or /dungeoninfo."] = "地下城信息：每个地下城和团队副本，按顺序列出首领及其掉落。通过地图上方的门按钮、地图上地下城的门或 /dungeoninfo 打开。", -- draft
+-- stale: ["Dungeon Info: the loot of Forever's new dungeons' bosses and of the classic dungeons Forever changed (DungeonMaster's lists)."] = "地下城信息：Forever 新地下城首领的掉落，以及 Forever 改动过的经典地下城（DungeonMaster 的列表）。", -- draft
+-- stale: ["Dungeon Info: with DungeonJournal installed, its loot lists show too."] = "地下城信息：安装 DungeonJournal 后也显示其掉落列表。", -- draft
 -- stale: ["Each frame's height (the game's raid frame: 36)."] = "每个框体的高度（游戏的团队框体：36）。", -- draft
 -- stale: ["Each frame's width (the game's raid frame: 72)."] = "每个框体的宽度（游戏的团队框体：72）。", -- draft
 -- stale: ["Edit Layout opened from the configurator brings you back to your page when you leave it."] = "从配置器打开的 Edit Layout，退出时会回到你原来的页面。", -- draft

@@ -2239,6 +2239,7 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "Исправлено: русские, корейские и китайские буквы в тексте боя, названиях зон, заголовках и титулах больше не отображаются квадратами.", -- draft
 	["Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid."] = "Предпросмотры рамок стоят слева, с местом вокруг; предпросмотр игрока показывает вас; ненастоящий рейд — от 5 до 40.", -- draft
 	["Search finds your own words too (color, alpha, hotkey, hp, castbar, absorb); the row it opens is ringed in gold."] = "Поиск находит и ваши слова (color, alpha, hotkey, hp, castbar, absorb); открытая строка обводится золотом.", -- draft
 	["A tab waiting on a switch has a button to it; the other skin's settings and turned-off action bars stay out of sight."] = "У вкладки, ждущей переключатель, есть кнопка к нему; настройки другого облика и выключенные панели команд скрыты.", -- draft
@@ -2281,11 +2282,6 @@ Lang:Add("ruRU", {
 	["Route takes far less memory while its roads go in and while it finds routes."] = "Route расходует гораздо меньше памяти при загрузке дорог и поиске маршрутов.", -- draft
 	["Swing Badge: the strike shows when your blow lands; crits and parries show on the blow they belong to."] = "Значок ударов: удар виден, когда он попадает; криты и парирования показываются на своём ударе.", -- draft
 	["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "Исправлено: ошибка в бою из-за больших восстановлений Личной панели.", -- draft
-	["Dungeon Info: a Trash section on every dungeon, the rare drops of its other creatures with who drops them."] = "Сведения о подземельях: раздел «Мелочь» в каждом подземелье, редкая добыча прочих существ и кто её роняет.", -- draft
-	["Dungeon Info: a new look, every dungeon's picture on its row and its pages, never stretched."] = "Сведения о подземельях: новый вид, картинка каждого подземелья в строке и на страницах, никогда не растянутая.", -- draft
-	["Dungeon Info: the loot of Forever's new dungeons' bosses and of the classic dungeons Forever changed (DungeonMaster's lists)."] = "Сведения о подземельях: добыча боссов новых подземелий Forever и классических подземелий, изменённых Forever (списки DungeonMaster).", -- draft
-	["Dungeon Info counts the drops it sees fall, with chances; /dungeoninfo export lets you send yours in for everyone."] = "Сведения о подземельях считают выпадающую добычу с шансами; /dungeoninfo export позволяет отправить свою для всех.", -- draft
-	["Dungeon Info: with DungeonJournal installed, its loot lists show too."] = "Сведения о подземельях: с установленным DungeonJournal видны и его списки добычи.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -2865,7 +2861,12 @@ Lang:Add("ruRU", {
 -- stale: ["Draw the route to the waypoint on the world map, and its destination as a flag in a gold ring. A stretch where no road is known is a paler, straight guess."] = "Рисует маршрут к путевой точке на карте мира и цель — флагом в золотом кольце. Участок без известной дороги — более бледная прямая догадка.", -- draft
 -- stale: ["Draw the text MelloUI shows on the world with an outline: the on-screen notice's lines, Combat Text's lines and the Gains lines, and, while Text Shade is on, the zone text and the game's messages in the middle of the screen. Off: soft text on a dark shade."] = "Рисует с контуром текст, который MelloUI показывает поверх мира: строки оповещения на экране, строки «Текста боя» и строки получения, а пока включена «Тень текста» — ещё текст зоны и сообщения игры в центре экрана. Выкл.: мягкий текст на тёмной тени.", -- draft
 -- stale: ["Draws the way to your map waypoint on the world map and the minimap, along roads you have walked before."] = "Рисует путь к путевой точке на карте мира и мини-карте по дорогам, по которым вы уже ходили.", -- draft
+-- stale: ["Dungeon Info counts the drops it sees fall, with chances; /dungeoninfo export lets you send yours in for everyone."] = "Сведения о подземельях считают выпадающую добычу с шансами; /dungeoninfo export позволяет отправить свою для всех.", -- draft
+-- stale: ["Dungeon Info: a Trash section on every dungeon, the rare drops of its other creatures with who drops them."] = "Сведения о подземельях: раздел «Мелочь» в каждом подземелье, редкая добыча прочих существ и кто её роняет.", -- draft
+-- stale: ["Dungeon Info: a new look, every dungeon's picture on its row and its pages, never stretched."] = "Сведения о подземельях: новый вид, картинка каждого подземелья в строке и на страницах, никогда не растянутая.", -- draft
 -- stale: ["Dungeon Info: every dungeon and raid, its bosses in order and what each one drops. Open it with the door button over the map, a dungeon's door on it, or /dungeoninfo."] = "Сведения о подземельях: каждое подземелье и рейд, боссы по порядку и их добыча. Открываются кнопкой двери над картой, дверью подземелья на ней или /dungeoninfo.", -- draft
+-- stale: ["Dungeon Info: the loot of Forever's new dungeons' bosses and of the classic dungeons Forever changed (DungeonMaster's lists)."] = "Сведения о подземельях: добыча боссов новых подземелий Forever и классических подземелий, изменённых Forever (списки DungeonMaster).", -- draft
+-- stale: ["Dungeon Info: with DungeonJournal installed, its loot lists show too."] = "Сведения о подземельях: с установленным DungeonJournal видны и его списки добычи.", -- draft
 -- stale: ["Each frame's height (the game's raid frame: 36)."] = "Высота каждой рамки (рамка рейда игры: 36).", -- draft
 -- stale: ["Each frame's width (the game's raid frame: 72)."] = "Ширина каждой рамки (рамка рейда игры: 72).", -- draft
 -- stale: ["Edit Layout opened from the configurator brings you back to your page when you leave it."] = "Edit Layout, открытый из конфигуратора, при выходе возвращает вас на вашу страницу.", -- draft

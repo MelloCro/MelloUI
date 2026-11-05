@@ -1116,9 +1116,9 @@ function Kit:TitleFont(fs, on, ownSize)
 		local face = self.titleFont or saved[1]
 		local scale = self.titleFont and (self.titleFontScale or 1) or 1
 		local factor = own and (self.titleFaceFactor or 1) or (self.titleSizeFactor or 1)
-		local okSet, applied = pcall(fs.SetFont, fs, face, saved[2] * scale * factor, saved[3])
-		if not (okSet and applied) then
-			pcall(fs.SetFont, fs, saved[1], saved[2], saved[3])
+		-- (2.1.1: MelloUI:SetFace, the other alphabets kept -- the tracker's headings were boxes on a Russian client)
+		if not MelloUI:SetFace(fs, face, saved[2] * scale * factor, saved[3]) then
+			MelloUI:SetFace(fs, saved[1], saved[2], saved[3])
 			Kit.fontTriesOf[fs] = (Kit.fontTriesOf[fs] or 0) + 1
 			if Kit.fontTriesOf[fs] <= 8 and C_Timer and C_Timer.After then
 				C_Timer.After(1, function()
@@ -1135,7 +1135,7 @@ function Kit:TitleFont(fs, on, ownSize)
 		Kit.fontSavedOf[fs] = nil
 		Kit.fontTriesOf[fs] = nil
 		titleStrings[fs] = nil
-		fs:SetFont(saved[1], saved[2], saved[3])
+		MelloUI:SetFace(fs, saved[1], saved[2], saved[3])
 	end
 end
 
