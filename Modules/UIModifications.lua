@@ -411,7 +411,7 @@ do
 			ScaleNow()
 		end
 	end
-	Add({ type = "slider", key = "configScale", name = "Settings Window Scale", new = "2.1.1", free = true,
+	Add({ type = "slider", key = "configScale", name = "Settings Window Scale", free = true,
 		min = 0.9, max = 1.3, step = 0.05, percent = true,
 		get = function() return want or MelloUI:EntryFraction(MOVER) end,
 		set = function(v)

@@ -1153,7 +1153,7 @@ function Page.BuildGroups(canvas, width)
 		b:ClearAllPoints()
 		b:SetPoint("LEFT", i == 1 and sizeLabel or sizes.buttons[i - 1], "RIGHT", i == 1 and 6 or 4, 0)
 	end
-	sizes.tag = W.NewTag(canvas, sizes.buttons[#sizes.buttons], "2.1.1")
+	sizes.tag = W.NewTag(canvas, sizes.buttons[#sizes.buttons])
 
 	------------------------------------------------------------------ refresh
 	local SETTINGS = { "look", "size", "spot", "x", "y", "grow", "max", "perLine", "spacing", "whose", "which", "kind",
