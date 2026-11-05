@@ -365,11 +365,25 @@ local function Foreign(tex)
 		held[tex], pending[tex] = nil, nil
 	end
 end
+-- (2.1.4; a player's map, 2026-11-05: the quest givers' "!" stretched) the client's SetAtlas keeps the crop a texture
+-- had (its resetTexCoords is off unless asked): an atlas put on a held texture -- this set's copy cropped on a sheet; a
+-- pooled pin's texture reused -- showed a sliver of the atlas, magnified. Laid again whole, once, as it is let go
+local function ForeignAtlas(tex, atlas, useAtlasSize, filterMode, reset, ...)
+	if laying or not held[tex] then
+		return
+	end
+	held[tex], pending[tex] = nil, nil
+	if reset ~= true then
+		laying = true
+		pcall(tex.SetAtlas, tex, atlas, useAtlasSize, filterMode, true, ...)
+		laying = false
+	end
+end
 local function Watch(tex)
 	if not hooked[tex] then
 		hooked[tex] = true
 		hooksecurefunc(tex, "SetTexture", Foreign)
-		hooksecurefunc(tex, "SetAtlas", Foreign)
+		hooksecurefunc(tex, "SetAtlas", ForeignAtlas)
 		hooksecurefunc(tex, "SetColorTexture", Foreign)
 	end
 end

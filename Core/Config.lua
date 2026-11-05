@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.5", lines = {
+		"Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs.",
+	} },
 	{ version = "2.1.4", lines = {
 		"Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it.",
 		"Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again.",
@@ -198,20 +201,6 @@ local CHANGELOG = {
 		"Fewer empty places: tiny tabs joined, Dungeon Info now on Map, windows without settings unlisted; empty bars show slots.",
 		"Spell groups for every class: one layout for all your characters; a spell you switch off is your class's own tweak.",
 		"Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect, at every rank.",
-	} },
-	{ version = "2.1.0", lines = {
-		"Edit Layout: Revert and Default place for each element; switch, make, copy, rename, delete and share Edit Mode layouts from the bar.",
-		"Edit Layout: attach elements as in Edit Mode; your other characters are asked again to use MelloUI's layout.",
-		"Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab.",
-		"The map: capitals' emblems, boat trails, Zephras Isle, dungeon maps; your quests, layers and Dungeon Info beside it, folded away with a click.",
-		"Route follows Polestar: its step in the tracker and on the map, one arrow and one route; its own features go first. The World Marker and the route agree on item-first quests.",
-		"Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses.",
-		"Level Up Card: its own place, movable in Edit Layout, bigger, everything fits.",
-		"Personal Display: the shield column keeps its colours, icons and amount; interrupted casts show only on its cast bar.",
-		"Oldschool's action bars keep their painted frames and boxed unit frame borders clear the name; Default's player frame stays sharp.",
-		"Your unit, party and raid frames, action bars and bag bar are MelloUI's own; health bars show shields and overshields, and members out of range fade.",
-		"A fresh Mello layout for wide screens, fitted to every other (on 32:9 in the corners); Keep My Layout keeps your places; profiles keep every bar's place and offer Fit to this screen.",
-		"The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going.",
 	} },
 }
 local LINKS = {

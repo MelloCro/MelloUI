@@ -656,7 +656,8 @@ end
 -- (the seamless map, MelloUI_Map) a giver mark's picture by its group's state: the game's "!" and "?" (paler for
 -- what is not ready or not open yet), the check of a done one, or, for a quest begun by an item or object, crossed
 -- swords where it drops, a chest where it is picked up, the entrance's icon for an instance -- the Quest List's marks
--- and MelloUI_Map's pins alike
+-- and MelloUI_Map's pins alike. (2.1.4; a player's map, 2026-11-05: the "!" stretched) each atlas with its crop reset:
+-- the client's SetAtlas keeps the one a reused texture had (a starter's icon, cropped on its sheet)
 function QL.GiverIcon(icon, data)
 	local state = data.state
 	if data.item then
@@ -664,15 +665,15 @@ function QL.GiverIcon(icon, data)
 		icon:SetDesaturated(state ~= "available")
 		icon:SetAlpha(state == "available" and 1 or 0.75)
 	elseif state == "done" then
-		icon:SetAtlas("questlog-icon-checkmark-yellow")
+		icon:SetAtlas("questlog-icon-checkmark-yellow", false, nil, true)
 		icon:SetDesaturated(true)
 		icon:SetAlpha(0.7)
 	elseif state == "ready" or state == "progress" then
-		icon:SetAtlas("QuestTurnin")
+		icon:SetAtlas("QuestTurnin", false, nil, true)
 		icon:SetDesaturated(state ~= "ready")
 		icon:SetAlpha(state == "ready" and 1 or 0.75)
 	else
-		icon:SetAtlas("QuestNormal")
+		icon:SetAtlas("QuestNormal", false, nil, true)
 		icon:SetDesaturated(state ~= "available")
 		icon:SetAlpha(state == "available" and 1 or 0.75)
 	end

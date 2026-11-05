@@ -330,7 +330,7 @@ local function Dress(pin)
 		tex:SetVertexColor(1, 1, 1)
 	end
 	if spec.atlas then
-		tex:SetAtlas(spec.atlas)
+		tex:SetAtlas(spec.atlas, false, nil, true)   -- (2.1.4: a pooled texture's earlier crop not kept)
 	elseif spec.icon then
 		Icons.Set(tex, own or spec.icon, s)   -- (2026-10-21: the copy for its size; a game icon as it is)
 		-- (qu-04) a game picture with a wide clear margin without it (Skin.Inset: Default's doors); the icon system lets

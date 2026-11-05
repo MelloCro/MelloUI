@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.5
+
+- Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs.
+
 ## 2.1.4
 
 - Fixed: on Oldschool's frames the power bar now keeps a small gap under the health bar (player, target, focus, pet and party), and the target's and focus's power bar no longer reaches past the health bar on the far side.
