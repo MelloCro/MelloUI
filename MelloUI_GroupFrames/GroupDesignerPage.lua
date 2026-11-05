@@ -333,7 +333,19 @@ end
 --------------------------------------------------------------------------------
 
 local fake = { holder = nil, frames = {} }
-local FAKE_COUNT = 10
+-- (Suggestion 1 point 2, 2.1.1) how many it shows: the spell groups page's Size buttons, kept in the settings
+-- (fakeRaid) -- the Preview's Raid Fight shows as many
+local FAKE_SIZES = { 5, 10, 25, 40 }
+local function FakeCount()
+	local n = RD.DB().fakeRaid
+	for _, size in ipairs(FAKE_SIZES) do
+		if n == size then
+			return n
+		end
+	end
+	return 10
+end
+Page.FAKE_SIZES, Page.FakeCount = FAKE_SIZES, FakeCount
 
 local function FakeShow()
 	if not fake.holder then
@@ -353,7 +365,8 @@ local function FakeShow()
 	local list = RD:List()
 	local per = math.max(1, db.raidPerLine or 5)
 	local sp = ns.Headers and ns.Headers.Spacing and ns.Headers.Spacing("raid") or db.spacing   -- (0.20.2: the raid's own)
-	for n = 1, FAKE_COUNT do
+	local count = FakeCount()
+	for n = 1, count do
 		local f = fake.frames[n]
 		if not f then
 			f = SampleFrame(h, Member(n))
@@ -361,6 +374,7 @@ local function FakeShow()
 			fake.frames[n] = f
 		else
 			Resample(f)
+			f:Show()
 		end
 		-- (the raid header's own order: down a column, the next column across --
 		-- or across a row, the next row down)
@@ -377,7 +391,19 @@ local function FakeShow()
 			return e.kind == "group" or e.kind == "buff" and (n + j) % 2 == 0 or (e.kind == "debuff" and n % 4 == 2)
 		end)
 	end
+	-- (a smaller size than the last one shown: the rest away, kept for the next bigger one)
+	for n = count + 1, #fake.frames do
+		fake.frames[n]:Hide()
+	end
 	h:Show()
+end
+
+-- a Size picked: kept, and the fake raid on show laid again at once
+function Page.SetFakeCount(n)
+	RD.DB().fakeRaid = n
+	if fake.holder and fake.holder:IsShown() then
+		FakeShow()
+	end
 end
 
 -- (one look, F-v3's needs_user 7, the user's yes) the made-up party in raid frames (the Party Fight while your party
@@ -444,9 +470,11 @@ end
 local function FakeHit(n)
 	for _, set in ipairs({ fake.frames, fakeParty.frames }) do
 		for i, f in ipairs(set) do
-			local wave = (n or 0) <= 8 and (n or 0) / 8 or math.max(0, (12 - n) / 4)
-			f.sample.health = math.max(0.05, (f.base or 1) - 0.35 * wave * ((i % 3) + 1) / 3)
-			Button.Health(f)
+			if f:IsShown() then
+				local wave = (n or 0) <= 8 and (n or 0) / 8 or math.max(0, (12 - n) / 4)
+				f.sample.health = math.max(0.05, (f.base or 1) - 0.35 * wave * ((i % 3) + 1) / 3)
+				Button.Health(f)
+			end
 		end
 	end
 end

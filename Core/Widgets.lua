@@ -80,6 +80,7 @@
 --   W.NavRail(parent, spec)            a side list / a steps rail (and a
 --                                      search's results in its place)
 --   W.Pager(parent, opts)              pages that cross-fade in one scroll
+--   W.RevealInPager(region, margin)    a part of a Pager's page glided into view
 --   W.RowBudget                        ONE budget of rows a frame for every
 --                                      own window: Begin(ms), End(), Spent(ms)
 --
@@ -5018,7 +5019,7 @@ function W.Gate(row, gate, opts)
 	if not (opts and opts.note == false) then
 		cover.note = true
 		if not row.hint then
-			row.hint = W.Text(row, "GameFontHighlightSmall", nil, "text")
+			row.hint = W.Text(row, "GameFontHighlight", nil, "text")   -- (Suggestion 1 point 7: body size)
 			-- (after the row's last tag, as W.Row lays its hint: the Shared / "also ..." mark too -- the user's
 			-- screenshot, 2026-10-16: the gate's line over the "also Target, Focus ..." mark)
 			local last = row.sharedTag or row.newTag
@@ -5191,7 +5192,8 @@ function W.Row(parent, y, height, label, hint, desc, opts)
 	end
 	local last = row.sharedTag or row.newTag
 	if hint and hint ~= "" then
-		row.hint = W.Text(row, "GameFontHighlightSmall", hint, opts.hintKey or "text")
+		-- (Suggestion 1, point 7, 2026-11-04: a helper line at body size)
+		row.hint = W.Text(row, "GameFontHighlight", hint, opts.hintKey or "text")
 		if second and row.sharedTag then
 			row.hint:SetPoint("LEFT", row.sharedTag, "RIGHT", 10 + TAG_PAD_X, 0)
 		elseif second then
@@ -8276,6 +8278,8 @@ end
 --                                 pages over 40 rows)
 --   pager:Current()  pager:Offset()  pager:ScrollTo(offset, instant)
 --   pager:Contains(region)        region is inside the current page
+--   pager:Reveal(region, margin)  that part glided whole into view (the least
+--                                 scroll); W.RevealInPager(region) finds its pager
 --   pager.scroll, pager.canvas, pager.glide, pager.shield, pager.cf (the
 --   CrossFade options, one table: change its fields, never replace it)
 -- The switch is instant under Reduce Motion, while the scroll frame is not
@@ -8381,6 +8385,50 @@ function Pager:ScrollTo(offset, instant)
 		self.glide:Jump(offset)
 	else
 		self.glide:To(offset)
+	end
+end
+
+-- (Suggestion 1, point 2, 2026-11-04) a part of the page on show brought
+-- whole into view by the least glide (`margin` beyond its edges, 8): one
+-- below the view's foot rises until its foot shows, never its top past the
+-- view's top; one above comes down to the top. Nothing for a part in view,
+-- outside the page on show, or not laid out yet
+function Pager:Reveal(region, margin)
+	if not (region and region.GetTop and self:Contains(region)) then
+		return
+	end
+	margin = margin or 8
+	local scroll = self.scroll
+	local k = (Num(region:GetEffectiveScale()) or 1) / (Num(scroll:GetEffectiveScale()) or 1)
+	local top, foot = Num(region:GetTop()), Num(region:GetBottom())
+	local viewTop, viewFoot = Num(scroll:GetTop()), Num(scroll:GetBottom())
+	if not (top and foot and viewTop and viewFoot) then
+		return
+	end
+	top, foot = top * k, foot * k
+	local delta = 0
+	if top > viewTop - margin then
+		delta = -(top - viewTop + margin)
+	elseif foot < viewFoot + margin then
+		delta = math.min(viewFoot + margin - foot, viewTop - margin - top)
+	end
+	if delta ~= 0 then
+		self:ScrollTo(self:Offset() + delta, false)
+	end
+end
+
+-- the Pager holding `region` (its page's), its Reveal asked; nothing outside one
+function W.RevealInPager(region, margin)
+	local f = region
+	for _ = 1, 40 do
+		if not f then
+			return
+		end
+		local pager = pagerOf[f]
+		if pager then
+			return pager:Reveal(region, margin)
+		end
+		f = f.GetParent and f:GetParent() or nil
 	end
 end
 
@@ -8662,7 +8710,7 @@ do
 		Grip(row)
 		row.label = W.Text(row, "GameFontHighlight", nil, "text")
 		row.label:SetWordWrap(false)
-		row.note = W.Text(row, "GameFontHighlightSmall", nil, "mutedText")
+		row.note = W.Text(row, "GameFontHighlightSmall", nil, "text")   -- (small: never muted, Suggestion 1 point 7)
 		row.note:SetPoint("LEFT", row.label, "RIGHT", 10, 0)
 		row.rule = W.Solid(row, "ARTWORK", "trim", 0.8)
 		row.rule:SetHeight(1)
@@ -9025,7 +9073,7 @@ do
 		list.frame = f
 		local title = W.Text(f, "GameFontNormalLarge", spec.title, "text")
 		title:SetPoint("TOPLEFT", f, "TOPLEFT", 4, -4)
-		local help = W.Text(f, "GameFontHighlightSmall", spec.help, "mutedText")
+		local help = W.Text(f, "GameFontHighlightSmall", spec.help, "text")   -- (small: never muted, Suggestion 1 point 7)
 		help:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
 		local panel = W.Panel(f)
 		panel:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -HEAD_H)

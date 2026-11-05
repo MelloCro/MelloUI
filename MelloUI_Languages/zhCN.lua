@@ -163,6 +163,8 @@ Lang:Add("zhCN", {
 	["Windows fade in briefly when they open, instead of appearing at once."] = "窗口打开时短暂淡入，而不是瞬间出现。", -- draft
 	["Reduce Motion"] = "减少动态效果", -- draft
 	["Stops MelloUI's animations: windows and popups appear at once, nothing slides or flashes."] = "停止 MelloUI 的动画：窗口和弹窗立即出现，不滑动也不闪烁。", -- draft
+	["Settings Window Scale"] = "设置窗口缩放", -- draft
+	["How big this settings window is. The same value as its Size in Edit Layout; it never grows past the screen."] = "此设置窗口的大小。与它在编辑布局中的大小是同一个值；永远不会超出屏幕。", -- draft
 	["Show Names As"] = "名字显示方式", -- draft
 	["How character names are written everywhere: unit frames, nameplates, chat and over your own head."] = "角色名字在各处的写法：单位框体、姓名板、聊天以及你头顶。", -- draft
 	["Full name (Professor Skillybones)"] = "全名（Professor Skillybones）", -- draft
@@ -2237,16 +2239,16 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
-	["The configurator's frame previews stand on the left with room around them; the settings sit beside them."] = "配置器的框体预览位于左侧，四周留有空间；设置在旁边。", -- draft
+	["Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid."] = "框体预览位于左侧，四周留有空间；玩家预览显示的是你自己；虚拟团队可选 5 到 40 人。", -- draft
 	["Search finds your own words too (color, alpha, hotkey, hp, castbar, absorb); the row it opens is ringed in gold."] = "搜索也能找到你自己的说法（color、alpha、hotkey、hp、castbar、absorb）；打开的那一行会用金色框出。", -- draft
 	["A tab waiting on a switch has a button to it; the other skin's settings and turned-off action bars stay out of sight."] = "等待某个开关的标签页有一个前往该开关的按钮；另一种皮肤的设置和已关闭的动作条不再显示。", -- draft
 	["Settings kept on another page show as small chips at the end of their section; a jump to one shows a way back."] = "位于其他页面的设置在所在分区末尾显示为小标签；跳转过去后会显示返回按钮。", -- draft
-	["Escape in the configurator goes one step at a time; its side list starts with Home and has a thin scroll bar."] = "配置器中的 Esc 一次一步；侧边列表从主页开始，并有细滚动条。", -- draft
+	["Escape goes one step at a time; Settings Window Scale on Look sizes this window; helper texts are full size."] = "Esc 一次一步；外观中的“设置窗口缩放”调整此窗口大小；说明文字为正常字号。", -- draft
 	["Edit Layout: Grid, Snap, Dim and Coordinates in one View menu, with the grid spacing and snapping gap as sliders."] = "Edit Layout：网格、吸附、调暗和坐标合并到一个“视图”菜单，网格间距和吸附间隙用滑块调整。", -- draft
 	["Deleting a profile, Fade Everything and Fade Nothing ask first; settings that do nothing in your setup stay hidden."] = "删除配置、全部淡出和全不淡出会先询问；在你的设置中无效的选项会隐藏。", -- draft
-	["Fixed: the Chat text font reaches the Minimal Chat View; Default's ticks show whole; labels stay clear of sliders."] = "修复：聊天文字字体会应用到极简聊天视图；默认外观的勾选标记完整显示；标签不再被滑块遮住。", -- draft
+	["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "修复：点击潜行、姿态、形态和宠物按钮；极简聊天视图的聊天字体；默认外观的完整勾选标记；滑块旁的标签。", -- draft
 	["Edit Layout, the map, Dungeon Info and the installer bring you back to your settings page; Dark Mode leaves it alone."] = "编辑布局、地图、地下城信息和安装向导会带你回到设置页面；暗色模式不再影响它。", -- draft
-	["Fewer empty places: tiny tabs joined, windows without settings unlisted; empty bars show their slots while you set up."] = "更少空白：极小的标签页已合并，无设置的窗口不再列出；设置时空动作条会显示空格子。", -- draft
+	["Fewer empty places: tiny tabs joined, Dungeon Info now on Map, windows without settings unlisted; empty bars show slots."] = "更少空白：极小的标签页已合并，地下城信息并入地图，无设置的窗口不再列出；空动作条显示空格子。", -- draft
 	["Spell groups for every class: one layout for all your characters; a spell you switch off is your class's own tweak."] = "每个职业的法术组：所有角色共用一个布局；你关闭的法术只对你的职业生效。", -- draft
 	["Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect, at every rank."] = "修复：神圣新星、愈合祷言、神圣震击、大地之盾和治疗之雨在所有等级都会显示治疗效果。", -- draft
 	["Edit Layout: Revert and Default place for each element; switch, make, copy, rename, delete and share Edit Mode layouts from the bar."] = "编辑布局：每个元素都有还原和默认位置；在工具栏中切换、新建、复制、重命名、删除和分享编辑模式布局。", -- draft
@@ -2873,6 +2875,7 @@ Lang:Add("zhCN", {
 -- stale: ["Edit Mode already keeps %d account layouts, the most it can. Delete one in Edit Mode, or switch the layout off on the Screen step."] = "编辑模式已保存%d个账号布局，已达上限。在编辑模式中删除一个，或在“屏幕”步骤关闭布局。", -- draft
 -- stale: ["Elites, rares, rare elites and bosses stand out: a metal line over the name with a crest on it. Gold with a crown and wings for an elite, silver with a star for a rare, silver with a gold star and wings for a rare elite, and red-bronze scrollwork with a skull, winged at both ends, for a boss. The plate itself keeps its look."] = "精英、稀有、稀有精英和首领一眼可见：名字上方一条带纹章的金属线。精英为带王冠和翅膀的金色，稀有为带星的银色，稀有精英为带金星和翅膀的银色，首领为带骷髅、两端有翼的红铜卷纹。牌子本身保持原样。", -- draft
 -- stale: ["Escape in the configurator goes one step at a time: an open list or panel, a picked part, the search, then the window."] = "配置器中的 Esc 一次一步：先关打开的列表或面板，再取消选中的部件，再清空搜索，最后关窗口。", -- draft
+-- stale: ["Escape in the configurator goes one step at a time; its side list starts with Home and has a thin scroll bar."] = "配置器中的 Esc 一次一步；侧边列表从主页开始，并有细滚动条。", -- draft
 -- stale: ["Every MelloUI animation ends at once: windows open without fading, the whisper popup appears in place, the quest tracker's lines do not flash, the configurator jumps instead of gliding. For anyone who finds moving interface parts distracting. Works with UI Modifications switched off as well."] = "MelloUI的每个动画立即结束：窗口打开时不淡入，悄悄话弹窗原地出现，任务追踪器的行不闪烁，配置器直接跳转而不滑动。适合觉得界面动来动去会分心的人。界面修改关闭时同样有效。", -- draft
 -- stale: ["Every action button in MelloUI's frame: a dark iron rim with a gold line, brighter under the pointer, bright gold while its aura or stance is on, red out of range, a dark slot when the button is empty. Off: the game's own frames. The painted skin's bars keep their own (Oldschool)."] = "每个动作按钮使用MelloUI的边框：带金线的深色铁边，指针下更亮，光环或姿态开启时为亮金色，超出范围为红色，按钮为空时为深色栏位。关闭：游戏自己的边框。手绘皮肤的动作条保留自己的（Oldschool）。", -- draft
 -- stale: ["Every element on the Frames, Bars and Chat & Map tabs on Always: nothing fades."] = "把“框体”“条”和“聊天和地图”标签上的每个元素设为“总是”：什么都不淡出。", -- draft
@@ -2899,6 +2902,7 @@ Lang:Add("zhCN", {
 -- stale: ["Features on: %s"] = "已开启的功能：%s", -- draft
 -- stale: ["Features stay off; chat on parchment needs Chat tweaks, so it stays off"] = "功能保持关闭；羊皮纸上的聊天需要聊天调整，所以保持关闭", -- draft
 -- stale: ["Features stay off; switch them on in /mello any time"] = "功能保持关闭；随时在/mello中开启", -- draft
+-- stale: ["Fewer empty places: tiny tabs joined, windows without settings unlisted; empty bars show their slots while you set up."] = "更少空白：极小的标签页已合并，无设置的窗口不再列出；设置时空动作条会显示空格子。", -- draft
 -- stale: ["Fill texture for every bar whose own Bar Texture is Shared (each sits with its bars, on their own page). Custom files go into MelloUI\\Media\\Textures and are listed in Media\\CustomTextures.lua."] = "每个自身“条材质”为“共享”的条的填充材质（每项都和它的条在同一页面上）。自定义文件放进MelloUI\\Media\\Textures，并列在Media\\CustomTextures.lua中。", -- draft
 -- stale: ["Fixed (Oldschool): popups that ask you to type, such as renaming a hunter pet, show their text box again."] = "修复（Oldschool）：需要输入文字的弹窗（如给猎人宠物改名）重新显示输入框。", -- draft
 -- stale: ["Fixed: Holy Nova and Prayer of Mending show their heal effect on your party frames, at every rank."] = "修复：神圣新星和愈合祷言在每个等级都会在你的小队框体上显示治疗效果。", -- draft
@@ -3273,6 +3277,7 @@ Lang:Add("zhCN", {
 -- stale: ["The colour behind the health bar: one of yours, or the member's class colour."] = "生命条后面的颜色：你的一种颜色，或该成员的职业颜色。", -- draft
 -- stale: ["The colours of all the painted art (frames, headers, rows, buttons, slots, bars). With the Ember and Ember Vibrant palettes: Warm iron (the metal in warm browns), Bronze (warm browns with gold bevels), or the Original painted grey iron and bright red. With any other palette: that palette's own colours, or the Original. Pictures keep their own colours."] = "所有手绘美术的颜色（边框、标题、行、按钮、栏位、条）。使用 Ember 和 Ember Vibrant 配色时：暖铁（暖棕色的金属）、青铜（带金色斜边的暖棕色），或原版手绘灰铁加亮红。使用其他配色时：该配色自己的颜色，或原版。图片保留自己的颜色。", -- draft
 -- stale: ["The column of widgets: loot rolls, summons, Voice Over, whispers and the rest. A new one does not bring the column back: In Combat keeps a loot roll, a summons or a whisper faded out of combat, On Mouseover until you point at the column. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "小部件栏：拾取掷骰、召唤、Voice Over、悄悄话等。新的小部件不会让栏回来：“战斗中”让拾取掷骰、召唤或悄悄话在脱离战斗时保持淡出，“鼠标悬停”直到你指向这一栏。总是：从不淡出。战斗中：脱离战斗时淡出，战斗时回来。鼠标悬停：一直淡出，指向时显示。", -- draft
+-- stale: ["The configurator's frame previews stand on the left with room around them; the settings sit beside them."] = "配置器的框体预览位于左侧，四周留有空间；设置在旁边。", -- draft
 -- stale: ["The configurator's side list starts with Home, has a thin scroll bar, and its tooltips no longer cover the page."] = "配置器的侧边列表以“主页”开头，带有细滚动条，提示不再遮住页面。", -- draft
 -- stale: ["The configurator: one painted window per skin that moves a little while open (Oldschool's in ink on parchment); Quality of Life holds Automation, Screen Text, Reminders and Tooltip."] = "设置界面：每种风格一个手绘窗口，打开时会轻微动起来（Oldschool 为羊皮纸上的墨迹）；“便捷功能”汇集自动化、屏幕文字、提醒和说明条。", -- draft
 -- stale: ["The damage meter and its breakdown window in the kit."] = "伤害统计及其明细窗口使用套件外观。", -- draft

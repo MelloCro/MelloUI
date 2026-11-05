@@ -382,6 +382,49 @@ Add({ type = "toggle", key = "fadeWindows", name = "Windows Fade In",
 	desc = "Windows fade in briefly when they open, instead of appearing at once." })
 Add({ type = "toggle", key = "reduceMotion", name = "Reduce Motion", free = true,
 	desc = "Stops MelloUI's animations: windows and popups appear at once, nothing slides or flashes." })
+-- (Suggestion 1, point 7, 2026-11-04) the settings window's size: its
+-- mover's Edit Layout Size, one stored value, kept to 90-130 %. A drag sets
+-- it when the button is let go (the window grows under the slider: a live
+-- one would pull the knob from the cursor), a typed value at once; never
+-- more than the screen holds (its shell's Room, to the slider's step)
+do
+	local MOVER = "MelloUIConfigFrame"
+	local want, wait = nil, nil
+	local function ScaleNow()
+		local v = want
+		want = nil
+		if wait then
+			wait:SetScript("OnUpdate", nil)
+		end
+		local frame = rawget(_G, MOVER)
+		local shell = frame and Kit and Kit:ShellOf(frame)
+		local room = shell and shell:Room()
+		if v and room then
+			v = math.min(v, room >= 0.9 and math.floor(room * 20) / 20 or room)
+		end
+		if v and MelloUI:SetEntryFraction(MOVER, v) and shell then
+			shell:Fit()   -- (kept on the screen)
+		end
+	end
+	local function ScaleWhenUp()
+		if not IsMouseButtonDown("LeftButton") then
+			ScaleNow()
+		end
+	end
+	Add({ type = "slider", key = "configScale", name = "Settings Window Scale", new = "2.1.1", free = true,
+		min = 0.9, max = 1.3, step = 0.05, percent = true,
+		get = function() return want or MelloUI:EntryFraction(MOVER) end,
+		set = function(v)
+			want = v
+			if IsMouseButtonDown("LeftButton") then
+				wait = wait or CreateFrame("Frame")
+				wait:SetScript("OnUpdate", ScaleWhenUp)
+			else
+				ScaleNow()
+			end
+		end,
+		desc = "How big this settings window is. The same value as its Size in Edit Layout; it never grows past the screen." })
+end
 -- Names (user, 2026-09-22: "make that option global for all of the 3
 -- things at the same time"): one dropdown for the unit frames, the
 -- nameplates and the name over your own head. Characters here have a first

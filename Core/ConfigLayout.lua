@@ -106,7 +106,7 @@ L.groups = {
 	{ title = "Frames and bars", icon = "cat_frames", entries = { "UnitGroupFrames", "Nameplates", "ActionBars", "Minimap",
 		"BarsMeters" } },
 	{ title = "Chat", icon = "cat_chat", entries = { "Chat" } },
-	{ title = "Quests and travel", icon = "cat_quests", entries = { "QuestTracker", "QuestList", "Route", "Map", "DungeonInfo" } },
+	{ title = "Quests and travel", icon = "cat_quests", entries = { "QuestTracker", "QuestList", "Route", "Map" } },
 	-- (1.2.4, the configurator shell -- the user, 2026-10-27: "11 tabs is fine, build the Quality of Life page")
 	{ title = "Quality of life", icon = "cat_look", entries = { "QualityOfLife" } },
 	{ title = "Sound", icon = "cat_sound", entries = { "VoiceOver", "CustomSounds" } },
@@ -312,11 +312,10 @@ L.pages = {
 	-- (the seamless map, MelloUI_Map: docs/plans/seamless-map.md, stage M0)
 	-- (1.2.3, the user's retail screenshot: with its addon not loaded a "module:" icon has no module to read, and the
 	-- row showed a bare slot) the modules' own icons named here
+	-- (Suggestion 1, point 9, 2026-11-04: Map and Dungeon Info had two settings a page) one page: Dungeon Info
+	-- (MelloUI_DungeonInfo, docs/plans/dungeon-info.md) a tab of it, its own switch that tab's first row
 	Map = { title = "Map", icon = "Interface\\Icons\\INV_Misc_Map_01", module = "Map",
-		tabs = { "Map" } },
-	-- (1.2.0, docs/plans/dungeon-info.md) Dungeon Info (MelloUI_DungeonInfo)
-	DungeonInfo = { title = "Dungeon Info", icon = "Interface\\Icons\\INV_Misc_Book_09", module = "DungeonInfo",
-		tabs = { "Dungeon Info" } },
+		tabs = { "Map", "Dungeon Info" } },
 	-- (1.2.4, the configurator shell; the user, 2026-10-27: "11 tabs is fine, build the Quality of Life page") the
 	-- small helpers one page, in the sketch's order: Automation's tabs (one look stage H: the vendor's repairs and
 	-- sales, the restock list, the quests' automatic accept and hand-in), Screen Text's (the notices, the floating
@@ -342,6 +341,7 @@ L.words = {
 	-- (1.2.4: the old pages' names, now tabs of Quality of Life)
 	qualityoflife = { "QualityOfLife" },
 	qol = { "QualityOfLife" },
+	dungeoninfo = { "Map", "Dungeon Info" },   -- (Suggestion 1 point 9: a tab of Map)
 	automation = { "QualityOfLife", "Vendor" },
 	screentext = { "QualityOfLife", "Notices" },
 	reminders = { "QualityOfLife", "Reminders" },
@@ -485,6 +485,7 @@ function L.Define(R, Link)
 	R("Look", "General", "Text", "UIModifications.nameFormat")
 	R("Look", "General", "Text", "UIModifications.classNames", { free = true })
 	R("Look", "General", "Text", "Tweaks.textShade", { free = true })
+	R("Look", "General", "Layout", "UIModifications.configScale", { free = true })   -- (Suggestion 1, point 7: this window's size)
 	R("Look", "General", "Behaviour", "UIModifications.reduceMotion", { free = true })
 	R("Look", "General", "Behaviour", "UIModifications.fadeWindows")
 	-- (0.20.1: the windows' frame and title, the user's examples 3 and 4 in our own art)
@@ -1320,8 +1321,9 @@ function L.Define(R, Link)
 	R("Route", "Flights", "General", "Route.flightHint")
 	R("Map", "Map", "General", "Map.#Open The Map")
 	R("Map", "Map", "General", "Map.dungeonMaps")
-	R("DungeonInfo", "Dungeon Info", "General", "DungeonInfo.#Open Dungeon Info")
-	R("DungeonInfo", "Dungeon Info", "General", "DungeonInfo.doorRow")
+	R("Map", "Dungeon Info", "General", "DungeonInfo.!enabled", { name = "Dungeon Info" })
+	R("Map", "Dungeon Info", "General", "DungeonInfo.#Open Dungeon Info")
+	R("Map", "Dungeon Info", "General", "DungeonInfo.doorRow")
 
 	-- Reminders (each tab's first row its module's switch)
 	R("QualityOfLife", "Reminders", "General", "Reminders.!enabled", { name = "Reminders" })

@@ -243,6 +243,7 @@ local M = MelloUI:RegisterModule(OWNER, {
 		indicatorFont = "shared",
 		-- the indicators (the Designer)
 		indicators = true,
+		fakeRaid = 10,   -- (Suggestion 1 point 2, 2.1.1: the fake raid's size, its Size buttons: 5, 10, 25 or 40)
 		sets = {},
 		started = {},
 		-- (1.2.4: the raid's places, our party's too when it wears the raid frames; the party's own from one look C9,

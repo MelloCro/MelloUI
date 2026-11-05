@@ -190,7 +190,8 @@ local WATCH = { BarTextures = true, BarText = true, UnitFrames = true, ClassIcon
 local weakKeys = { __mode = "k" }
 
 --------------------------------------------------------------------------------
--- Reads (settings only: never a unit)
+-- Reads (settings only: never a unit but the player's own name, level and
+-- class, You below)
 --------------------------------------------------------------------------------
 
 -- a module that is loaded and running, or nil
@@ -220,6 +221,27 @@ local function NameAs(s)
 		return s.first .. " " .. s.last:sub(1, 1) .. "."
 	end
 	return s.last and (s.first .. " " .. s.last) or s.first
+end
+
+-- (Suggestion 1, point 2, 2026-11-04) the player's sample is you: your name
+-- (its first name and surname), level and class read on each show; a
+-- secret or missing answer keeps the stand-in. The numbers stay made up.
+local function You()
+	local s, Secret = SAMPLES.player, MelloUI.Safe.IsSecret
+	local full, first = MelloUI:UnitNameAs("player", "both"), MelloUI:UnitNameAs("player", "first")
+	if not (Secret(full) or Secret(first)) and type(full) == "string" and type(first) == "string"
+		and first ~= "" and full:sub(1, #first) == first then
+		local rest = full:sub(#first + 1):gsub("^%s+", "")
+		s.first, s.last = first, rest ~= "" and rest or nil
+	end
+	local okL, level = pcall(UnitLevel, "player")
+	if okL and not Secret(level) and type(level) == "number" and level > 0 then
+		s.level = level
+	end
+	local okC, _, class = pcall(UnitClass, "player")
+	if okC and not Secret(class) and type(class) == "string" then
+		s.class = class
+	end
 end
 
 -- is an atlas known to this client? (asked once per name)
@@ -3052,10 +3074,12 @@ Preview.Register("unitframe", {
 	-- (a show draws the portrait again: it may have changed)
 	OnShow = function(p)
 		p.portraitShows = nil
+		You()
 	end,
 	Tip = function(pick)
 		local s = SAMPLES[pick]
-		return s and (s.label .. ", drawn with your settings as they are now. The name and the numbers are made up.")
+		return s and (s.label .. ", drawn with your settings as they are now. "
+			.. (s.you and "The numbers are made up." or "The name and the numbers are made up."))
 	end,
 	Build = function(parent, pick, onto)
 		if pick == "party" then
@@ -3064,6 +3088,9 @@ Preview.Register("unitframe", {
 		return nil
 	end,
 	Values = function(pick)
+		if pick == "player" then
+			You()
+		end
 		return SAMPLES[pick]
 	end,
 	-- (dressed as a member: its level and name band, the painted skin's

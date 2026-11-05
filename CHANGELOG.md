@@ -8,6 +8,12 @@
 - A tab that waits on a switch somewhere else has a button that takes you to it. Links to settings of the other skin (Oldschool's window borders, the chat's parchment) stay hidden while they don't apply, and the Fader no longer lists action bars the game's Options turned off.
 - Settings that live on another page no longer look like a row of their own: each section ends with one line of small chips ("On Look: Border Opacity: 100%, UI Shade: On"). A click on one opens the setting, and that page shows a Back button to where you were.
 - The configurator's side list starts with Home, shows Chat and Quality of Life as plain entries instead of groups of one page, has a thin scroll bar, and its tooltips open to the left so they no longer cover the page.
+- The Player preview in Unit & Group Frames shows your own character: your name, level, class colour and portrait. Target, Focus, the pet and the group keep their stand-ins.
+- Look > General has a Settings Window Scale slider (90 to 130 %) for the settings window, the same size Edit Layout gives it. A drag takes effect when you let go, and the window never grows past the screen.
+- Page subtitles and the settings' helper lines are at the full text size.
+- Map and Dungeon Info share one Map page: Dungeon Info is its second tab, with its own switch on top.
+- A spell group dropped on the frame in the Designer brings its settings into view.
+- The fake raid shows 5, 10, 25 or 40 members: Size buttons beside "Show the fake raid on screen" in the Designer. The Preview's Raid Fight shows as many.
 - Edit Layout: Grid, Snap, Dim the world and Coordinates are in one View menu on the bar, each by name with its switch, with the grid spacing and the gap between snapped elements as sliders there. An element's options box stays on the screen when it grows.
 - Deleting a profile, and the Fader's Fade Everything and Fade Nothing, now ask first.
 - A tab waiting on another setting's choice (Chat > Whispers, Voice Over > Voices) has a button to it too. Settings that do nothing in your setup stay hidden: the painted chat's Border Opacity outside Oldschool, the game's chat tab options with the Minimal Chat View.
@@ -23,6 +29,7 @@
 - Empty action bars show their empty slots while the settings or Edit Layout are open, so a bar you switch on can be seen and filled.
 - Fixed: the Whispers tab's yellow light stayed on over its icon; it lights once for a new whisper, the count stays.
 - Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect on your party and raid frames, at every rank. Holy Shock cast at an enemy shows nothing on your own frame.
+- Fixed: clicking a button on the Stance Bar (a Rogue's Stealth, a Warrior's stance, a Druid's form), the Pet Bar, the Possess Bar or Action Bar 1's page arrows only lit it up while the game casts on key down; it acts again.
 
 ## 2.1.0
 

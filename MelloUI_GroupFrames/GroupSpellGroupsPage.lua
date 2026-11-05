@@ -59,6 +59,7 @@ local TEXT = {
 	more = "+%d more",
 	show = "Show the fake raid on screen", showParty = "Show the fake party on screen",
 	showTip = "Made-up members where your frames stand, your groups on them, until the preview ends. Out of combat only.",
+	fakeSize = "Size", fakeSizeTip = "How many made-up members the fake raid shows. The Preview's Raid Fight shows as many.",
 	copy = "Copy from a spec",
 }
 local LOOKS = { { value = "icon", label = "Icon" }, { value = "drain", label = "Drain" }, { value = "square", label = "Square" },
@@ -77,6 +78,8 @@ G.blockH = 900 - G.trayH - G.gap - G.gap - 30
 -- stackW the tray's section names stand over their cards, two wider cards a line (their names whole), and the block's
 -- settings come under its spells and colour (its buttons under its heading): the canvas as tall as that needs
 G.stackW, G.labelLine, G.blockStackH, G.stackTop = 560, 20, 850, 92
+-- (2.1.1) the fake raid's Size buttons: after its button, under it in the narrow column (that line's room)
+G.sizeW, G.sizeLine = 32, 30
 
 -- the page's measures at `width`: the tray's height, the block's, whether it stacks, cards a line, a card's width,
 -- the section names' column (0: over the cards), the tray's first line
@@ -103,8 +106,8 @@ end
 
 -- the canvas's height at `width` (GroupFrames.lua's Designer row: Config.lua's RowH asks it)
 function Page.Height(width)
-	local trayH, blockH = Page.Measures(width)
-	return trayH + G.gap + blockH + G.gap + 30
+	local trayH, blockH, narrow = Page.Measures(width)
+	return trayH + G.gap + blockH + G.gap + 30 + (narrow and G.sizeLine or 0)
 end
 
 local function ShowEdges(edges, on)
@@ -508,6 +511,10 @@ function Page.BuildGroups(canvas, width)
 				Changed(what.ind)
 				inst.Pick(what.ind)
 			end
+			-- (Suggestion 1, point 2: the dropped group's editor, under the tray, glided into view)
+			if spot then
+				W.RevealInPager(inst.block)
+			end
 		end)
 		cards[i] = c
 		return c
@@ -646,6 +653,7 @@ function Page.BuildGroups(canvas, width)
 
 	------------------------------------------------------------------ the block
 	local block = Box(canvas, 0, trayH + G.gap, width, blockH)
+	inst.block = block
 	local none = Label(block, TEXT.none, "text", "GameFontHighlight")
 	none:SetPoint("CENTER", block, "CENTER", 0, 0)
 	local body = CreateFrame("Frame", nil, block)
@@ -817,6 +825,7 @@ function Page.BuildGroups(canvas, width)
 				local ind = RD:Add({ kind = "buff", spell = e.main, name = SG.Name(e), look = "icon", point = spot }, Key())
 				MelloUI:PlayUISound("tab")
 				inst.Pick(ind)
+				W.RevealInPager(inst.block)
 			end
 		end)
 		rows[i] = r
@@ -1123,6 +1132,28 @@ function Page.BuildGroups(canvas, width)
 		end
 	end)
 	Tip(show, TEXT.show, TEXT.showTip)
+	-- (Suggestion 1 point 2, the user's pick A, 2026-11-05) the raid's size: four buttons after it -- under it in the
+	-- narrow column -- the Preview's Raid Fight showing as many; the party's has none
+	local sizeLabel = Label(canvas, TEXT.fakeSize, "text")
+	if narrow then
+		sizeLabel:SetPoint("TOPLEFT", show, "BOTTOMLEFT", 0, -10)
+	else
+		sizeLabel:SetPoint("LEFT", show, "RIGHT", 12, 0)
+	end
+	local SIZES = {}
+	for i, n in ipairs(Page.FAKE_SIZES) do
+		SIZES[i] = { value = n, label = tostring(n), tooltip = TEXT.fakeSizeTip }
+	end
+	local sizes
+	sizes = Choices(canvas, 0, 0, SIZES, G.sizeW, Page.FakeCount, function(n)
+		Page.SetFakeCount(n)
+		sizes:Refresh()
+	end)
+	for i, b in ipairs(sizes.buttons) do
+		b:ClearAllPoints()
+		b:SetPoint("LEFT", i == 1 and sizeLabel or sizes.buttons[i - 1], "RIGHT", i == 1 and 6 or 4, 0)
+	end
+	sizes.tag = W.NewTag(canvas, sizes.buttons[#sizes.buttons], "2.1.1")
 
 	------------------------------------------------------------------ refresh
 	local SETTINGS = { "look", "size", "spot", "x", "y", "grow", "max", "perLine", "spacing", "whose", "which", "kind",
@@ -1157,6 +1188,13 @@ function Page.BuildGroups(canvas, width)
 			inst.ind = list[1]
 		end
 		show:SetText(inst.el == "raid" and TEXT.show or TEXT.showParty)
+		local raid = inst.el == "raid"
+		sizeLabel:SetShown(raid)
+		for _, b in ipairs(sizes.buttons) do
+			b:SetShown(raid)
+		end
+		W.TagShown(sizes.tag, raid)
+		sizes:Refresh()
 		LayTray()
 		local ind = inst.ind
 		local key = (ind and ind.kind == "group" and ind.group) or (not ind and inst.group) or nil

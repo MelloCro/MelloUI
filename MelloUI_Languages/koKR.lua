@@ -163,6 +163,8 @@ Lang:Add("koKR", {
 	["Windows fade in briefly when they open, instead of appearing at once."] = "창이 열릴 때 바로 나타나지 않고 짧게 서서히 나타납니다.", -- draft
 	["Reduce Motion"] = "움직임 줄이기", -- draft
 	["Stops MelloUI's animations: windows and popups appear at once, nothing slides or flashes."] = "MelloUI 애니메이션을 멈춥니다: 창과 팝업이 바로 나타나고 아무것도 미끄러지거나 깜박이지 않습니다.", -- draft
+	["Settings Window Scale"] = "설정 창 크기", -- draft
+	["How big this settings window is. The same value as its Size in Edit Layout; it never grows past the screen."] = "이 설정 창의 크기입니다. 레이아웃 편집의 크기와 같은 값이며, 화면보다 커지지 않습니다.", -- draft
 	["Show Names As"] = "이름 표시 방식", -- draft
 	["How character names are written everywhere: unit frames, nameplates, chat and over your own head."] = "캐릭터 이름 표기 방식: 개체창, 이름표, 대화, 머리 위.", -- draft
 	["Full name (Professor Skillybones)"] = "전체 (Professor Skillybones)", -- draft
@@ -2237,16 +2239,16 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
-	["The configurator's frame previews stand on the left with room around them; the settings sit beside them."] = "구성기의 프레임 미리보기가 왼쪽에 여유 공간과 함께 놓이고, 설정은 그 옆에 놓입니다.", -- draft
+	["Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid."] = "프레임 미리보기가 왼쪽에 여유 공간과 함께 놓이고, 플레이어 미리보기는 내 캐릭터를 보여 줍니다. 가짜 공격대는 5~40명 중에서 고릅니다.", -- draft
 	["Search finds your own words too (color, alpha, hotkey, hp, castbar, absorb); the row it opens is ringed in gold."] = "검색이 직접 쓰는 단어도 찾습니다(color, alpha, hotkey, hp, castbar, absorb). 열린 줄은 금색 테두리로 표시됩니다.", -- draft
 	["A tab waiting on a switch has a button to it; the other skin's settings and turned-off action bars stay out of sight."] = "스위치를 기다리는 탭에는 그곳으로 가는 버튼이 있습니다. 다른 스킨의 설정과 꺼진 행동 단축바는 보이지 않습니다.", -- draft
 	["Settings kept on another page show as small chips at the end of their section; a jump to one shows a way back."] = "다른 페이지에 있는 설정은 섹션 끝에 작은 칩으로 표시됩니다. 그곳으로 이동하면 돌아가기 버튼이 나옵니다.", -- draft
-	["Escape in the configurator goes one step at a time; its side list starts with Home and has a thin scroll bar."] = "구성기에서 Esc는 한 단계씩 닫습니다. 옆 목록은 처음부터 시작하고 얇은 스크롤 막대가 있습니다.", -- draft
+	["Escape goes one step at a time; Settings Window Scale on Look sizes this window; helper texts are full size."] = "Esc는 한 단계씩 닫습니다. 외형의 설정 창 크기로 이 창의 크기를 바꿉니다. 도움말은 보통 크기입니다.", -- draft
 	["Edit Layout: Grid, Snap, Dim and Coordinates in one View menu, with the grid spacing and snapping gap as sliders."] = "Edit Layout: 격자, 자석, 어둡게, 좌표를 보기 메뉴 하나에 모으고 격자 간격과 붙임 간격을 슬라이더로 조절합니다.", -- draft
 	["Deleting a profile, Fade Everything and Fade Nothing ask first; settings that do nothing in your setup stay hidden."] = "프로필 삭제, 모두 흐리게, 흐리게 하지 않기는 먼저 묻습니다. 현재 설정에서 아무 효과가 없는 설정은 숨겨집니다.", -- draft
-	["Fixed: the Chat text font reaches the Minimal Chat View; Default's ticks show whole; labels stay clear of sliders."] = "수정: 대화 글자 글꼴이 최소 대화 보기에 적용됩니다. 기본 스킨의 체크 표시가 온전히 보입니다. 이름표가 슬라이더 밑으로 들어가지 않습니다.", -- draft
+	["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "수정: 은신, 태세, 변신, 소환수 버튼 클릭. 최소 대화 보기의 대화 글꼴. 기본 스킨의 온전한 체크 표시. 슬라이더 옆 이름표.", -- draft
 	["Edit Layout, the map, Dungeon Info and the installer bring you back to your settings page; Dark Mode leaves it alone."] = "레이아웃 편집, 지도, 던전 정보, 설치 도우미가 설정 페이지로 돌아옵니다. 어두운 모드는 설정 창을 건드리지 않습니다.", -- draft
-	["Fewer empty places: tiny tabs joined, windows without settings unlisted; empty bars show their slots while you set up."] = "빈 곳이 줄었습니다: 아주 작은 탭은 합쳐지고, 설정이 없는 창은 목록에서 빠지며, 설정하는 동안 빈 바에 칸이 보입니다.", -- draft
+	["Fewer empty places: tiny tabs joined, Dungeon Info now on Map, windows without settings unlisted; empty bars show slots."] = "빈 곳이 줄었습니다: 아주 작은 탭은 합쳐지고, 던전 정보는 지도로 옮겨졌으며, 설정이 없는 창은 목록에서 빠지고, 빈 바에 칸이 보입니다.", -- draft
 	["Spell groups for every class: one layout for all your characters; a spell you switch off is your class's own tweak."] = "모든 직업의 주문 그룹: 모든 캐릭터가 하나의 배치를 씁니다. 끈 주문은 내 직업에만 적용됩니다.", -- draft
 	["Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect, at every rank."] = "수정: 신성한 폭발, 회복의 기원, 신성 충격, 대지의 보호막, 치유의 비가 모든 레벨에서 치유 효과를 보여줍니다.", -- draft
 	["Edit Layout: Revert and Default place for each element; switch, make, copy, rename, delete and share Edit Mode layouts from the bar."] = "레이아웃 편집: 요소마다 되돌리기와 기본 위치; 바에서 편집 모드 레이아웃을 전환, 생성, 복사, 이름 변경, 삭제, 공유.", -- draft
@@ -2873,6 +2875,7 @@ Lang:Add("koKR", {
 -- stale: ["Edit Mode already keeps %d account layouts, the most it can. Delete one in Edit Mode, or switch the layout off on the Screen step."] = "편집 모드에 이미 계정 레이아웃이 최대치인 %d개 있습니다. 편집 모드에서 하나를 지우거나 화면 단계에서 레이아웃을 끄세요.", -- draft
 -- stale: ["Elites, rares, rare elites and bosses stand out: a metal line over the name with a crest on it. Gold with a crown and wings for an elite, silver with a star for a rare, silver with a gold star and wings for a rare elite, and red-bronze scrollwork with a skull, winged at both ends, for a boss. The plate itself keeps its look."] = "정예, 희귀, 희귀 정예, 우두머리가 눈에 띕니다: 이름 위의 문장이 달린 금속 선. 정예는 왕관과 날개가 있는 금, 희귀는 별이 있는 은, 희귀 정예는 금별과 날개가 있는 은, 우두머리는 해골이 있고 양 끝에 날개가 달린 적동 소용돌이 장식. 판 자체는 외형을 유지합니다.", -- draft
 -- stale: ["Escape in the configurator goes one step at a time: an open list or panel, a picked part, the search, then the window."] = "구성기에서 Esc는 한 단계씩: 열린 목록이나 패널, 고른 부분, 검색, 그다음 창을 닫습니다.", -- draft
+-- stale: ["Escape in the configurator goes one step at a time; its side list starts with Home and has a thin scroll bar."] = "구성기에서 Esc는 한 단계씩 닫습니다. 옆 목록은 처음부터 시작하고 얇은 스크롤 막대가 있습니다.", -- draft
 -- stale: ["Every MelloUI animation ends at once: windows open without fading, the whisper popup appears in place, the quest tracker's lines do not flash, the configurator jumps instead of gliding. For anyone who finds moving interface parts distracting. Works with UI Modifications switched off as well."] = "MelloUI의 모든 애니메이션이 즉시 끝납니다: 창은 서서히 나타나지 않고 열리며, 귓속말 팝업은 제자리에 나타나고, 퀘스트 추적기 줄은 깜빡이지 않고, 구성기는 미끄러지지 않고 바로 넘어갑니다. 움직이는 인터페이스가 신경 쓰이는 분을 위한 것입니다. UI 수정을 꺼도 작동합니다.", -- draft
 -- stale: ["Every action button in MelloUI's frame: a dark iron rim with a gold line, brighter under the pointer, bright gold while its aura or stance is on, red out of range, a dark slot when the button is empty. Off: the game's own frames. The painted skin's bars keep their own (Oldschool)."] = "MelloUI 테두리의 모든 행동 버튼: 금선이 있는 어두운 철 테, 포인터 아래에서 더 밝게, 오라나 태세가 켜져 있으면 밝은 금색, 사거리 밖이면 빨강, 빈 버튼은 어두운 칸. 끄기: 게임의 테두리. 페인팅 스킨의 바는 각자의 것을 유지합니다(Oldschool).", -- draft
 -- stale: ["Every element on the Frames, Bars and Chat & Map tabs on Always: nothing fades."] = "창, 바, 대화와 지도 탭의 모든 요소를 항상으로: 아무것도 흐려지지 않습니다.", -- draft
@@ -2899,6 +2902,7 @@ Lang:Add("koKR", {
 -- stale: ["Features on: %s"] = "켠 기능: %s", -- draft
 -- stale: ["Features stay off; chat on parchment needs Chat tweaks, so it stays off"] = "기능은 꺼진 채. 양피지 위 대화도 꺼짐", -- draft
 -- stale: ["Features stay off; switch them on in /mello any time"] = "기능은 꺼진 채, 언제든 /mello 에서 켜세요", -- draft
+-- stale: ["Fewer empty places: tiny tabs joined, windows without settings unlisted; empty bars show their slots while you set up."] = "빈 곳이 줄었습니다: 아주 작은 탭은 합쳐지고, 설정이 없는 창은 목록에서 빠지며, 설정하는 동안 빈 바에 칸이 보입니다.", -- draft
 -- stale: ["Fill texture for every bar whose own Bar Texture is Shared (each sits with its bars, on their own page). Custom files go into MelloUI\\Media\\Textures and are listed in Media\\CustomTextures.lua."] = "자체 막대 질감이 공유인 모든 막대의 채움 질감(각각 그 막대와 함께 자기 페이지에 있음). 사용자 파일은 MelloUI\\Media\\Textures에 넣고 Media\\CustomTextures.lua에 등록합니다.", -- draft
 -- stale: ["Fixed (Oldschool): popups that ask you to type, such as renaming a hunter pet, show their text box again."] = "수정(Oldschool): 사냥꾼 소환수 이름 바꾸기처럼 입력이 필요한 팝업에 입력 칸이 다시 보입니다.", -- draft
 -- stale: ["Fixed: Holy Nova and Prayer of Mending show their heal effect on your party frames, at every rank."] = "수정: 신성한 폭발과 회복의 기원이 모든 등급에서 파티 프레임에 치유 효과를 보여줍니다.", -- draft
@@ -3273,6 +3277,7 @@ Lang:Add("koKR", {
 -- stale: ["The colour behind the health bar: one of yours, or the member's class colour."] = "생명력 막대 뒤의 색: 내 색 중 하나, 또는 구성원의 직업 색.", -- draft
 -- stale: ["The colours of all the painted art (frames, headers, rows, buttons, slots, bars). With the Ember and Ember Vibrant palettes: Warm iron (the metal in warm browns), Bronze (warm browns with gold bevels), or the Original painted grey iron and bright red. With any other palette: that palette's own colours, or the Original. Pictures keep their own colours."] = "모든 페인팅 그림(테두리, 머리글, 줄, 버튼, 칸, 막대)의 색. Ember와 Ember Vibrant 색상표에서는: 따뜻한 철(따뜻한 갈색의 금속), 청동(금빛 경사가 있는 따뜻한 갈색), 또는 원본 페인팅 회색 철과 밝은 빨강. 다른 색상표에서는: 그 색상표의 색 또는 원본. 그림은 각자의 색을 유지합니다.", -- draft
 -- stale: ["The column of widgets: loot rolls, summons, Voice Over, whispers and the rest. A new one does not bring the column back: In Combat keeps a loot roll, a summons or a whisper faded out of combat, On Mouseover until you point at the column. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "위젯 열: 전리품 주사위, 소환, Voice Over, 귓속말 등. 새 위젯이 열을 되돌리지는 않습니다: 전투 중은 전리품 주사위, 소환, 귓속말을 전투 밖에서 흐린 채로, 마우스를 올리면은 열을 가리킬 때까지 흐린 채로 둡니다. 항상: 흐려지지 않음. 전투 중: 전투 밖에서 흐려지고 전투 때 돌아옴. 마우스를 올리면: 늘 흐리고 가리키는 동안 보임.", -- draft
+-- stale: ["The configurator's frame previews stand on the left with room around them; the settings sit beside them."] = "구성기의 프레임 미리보기가 왼쪽에 여유 공간과 함께 놓이고, 설정은 그 옆에 놓입니다.", -- draft
 -- stale: ["The configurator's side list starts with Home, has a thin scroll bar, and its tooltips no longer cover the page."] = "구성기의 옆 목록이 홈으로 시작하고 얇은 스크롤 막대가 생겼으며, 툴팁이 더 이상 페이지를 가리지 않습니다.", -- draft
 -- stale: ["The configurator: one painted window per skin that moves a little while open (Oldschool's in ink on parchment); Quality of Life holds Automation, Screen Text, Reminders and Tooltip."] = "설정 창: 스킨마다 그림 창 하나, 열려 있으면 살짝 움직입니다(Oldschool은 양피지 위 잉크); 편의 기능에 자동화, 화면 글자, 알림, 툴팁이 모였습니다.", -- draft
 -- stale: ["The damage meter and its breakdown window in the kit."] = "피해량 측정기와 상세 창에 키트 적용.", -- draft

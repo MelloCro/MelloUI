@@ -10,7 +10,8 @@
 --     templates (StanceButtonTemplate, PetActionButtonTemplate, PossessButtonTemplate: the game's art, cooldown,
 --     autocast sparkle, hotkey and tooltip under the game's keys) with SecureActionButtonTemplate LAST, so the click
 --     is the secure template's (fr-18c: a later template's scripts lie over an earlier one's).
---   * The click: type "click" on the game's own button of the same index (its "clickbutton"), so the game's code casts
+--   * The click (on its release, useOnKeyDown false: 2.1.1, the Rogue's Stealth that only lit up): type "click" on
+--     the game's own button of the same index (its "clickbutton"), so the game's code casts
 --     the form, the pet action or its autocast (a right click) or cancels the possession -- securely, in a fight too.
 --     Keys stay the game's (SHAPESHIFTBUTTON<i>, BONUSACTIONBUTTON<i>: they press the game's buttons). Drag and drop on
 --     the pet bar: PickupPetAction, the game's lock and modifier.
@@ -248,6 +249,10 @@ local function NewButton(bar, kind, i)
 	btn:SetID(i)
 	btn.index = i
 	btn:RegisterForClicks("AnyUp")
+	-- (2.1.1, players: "when pressing stealth on the rogue, the button lights up but nothing happens") it acts on the
+	-- release: the secure template takes an addon button's click for a key press, acted on its press while the game's
+	-- ActionButtonUseKeyDown is on (its default), so a button that hears only the release did nothing but light up
+	btn:SetAttribute("useOnKeyDown", false)
 	-- the click: the game's own button of this index (its code, securely)
 	local game = rawget(_G, spec.prefix .. i)
 	btn:SetAttribute("type", "click")

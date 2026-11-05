@@ -1089,6 +1089,21 @@ function Shell:Overhang()
 	return l, r, t, b
 end
 
+-- the largest scale at which the window and its dressing fit the screen
+-- (nil: nothing to measure yet); Fit's, and the settings window's own scale
+-- slider's ceiling (Suggestion 1, point 7, 2026-11-04)
+function Shell:Room()
+	local frame = self.frame
+	local okS, sw, sh = pcall(UIParent.GetSize, UIParent)
+	sw, sh = okS and Num(sw), okS and Num(sh)
+	local w, h = Num(frame:GetWidth()), Num(frame:GetHeight())
+	if not (sw and sh and w and h and sw > 0 and sh > 0 and w > 0 and h > 0) then
+		return nil
+	end
+	local l, r, t, b = self:Overhang()
+	return math.min((sw - FIT_MARGIN) / (w + l + r), (sh - FIT_MARGIN) / (h + t + b))
+end
+
 -- scaled down to fit the screen with its dressing (never up, and not while
 -- the mover holds a scale the user gave it), then kept on the screen with
 -- its crest
@@ -1096,17 +1111,12 @@ function Shell:Fit()
 	local frame = self.frame
 	local key = self.mover and self.mover.key
 	local pos = key ~= nil and MelloUI:GetPosition(key)
-	if not (pos and pos.scale) then
-		local okS, sw, sh = pcall(UIParent.GetSize, UIParent)
-		sw, sh = okS and Num(sw), okS and Num(sh)
-		local w, h = Num(frame:GetWidth()), Num(frame:GetHeight())
-		if sw and sh and w and h and sw > 0 and sh > 0 and w > 0 and h > 0 then
-			local l, r, t, b = self:Overhang()
-			local fit = math.min(1, (sw - FIT_MARGIN) / (w + l + r), (sh - FIT_MARGIN) / (h + t + b))
-			local scale = Num(frame:GetScale()) or 1
-			if math.abs(scale - fit) > 0.001 then
-				Kit:SetFrameScale(frame, fit)
-			end
+	local room = not (pos and pos.scale) and self:Room()
+	if room then
+		local fit = math.min(1, room)
+		local scale = Num(frame:GetScale()) or 1
+		if math.abs(scale - fit) > 0.001 then
+			Kit:SetFrameScale(frame, fit)
 		end
 	end
 	MelloUI:FitOnScreen(frame, self.bounds)

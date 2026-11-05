@@ -175,16 +175,16 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "2.1.1", lines = {
-		"The configurator's frame previews stand on the left with room around them; the settings sit beside them.",
+		"Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid.",
 		"Search finds your own words too (color, alpha, hotkey, hp, castbar, absorb); the row it opens is ringed in gold.",
 		"A tab waiting on a switch has a button to it; the other skin's settings and turned-off action bars stay out of sight.",
 		"Settings kept on another page show as small chips at the end of their section; a jump to one shows a way back.",
-		"Escape in the configurator goes one step at a time; its side list starts with Home and has a thin scroll bar.",
+		"Escape goes one step at a time; Settings Window Scale on Look sizes this window; helper texts are full size.",
 		"Edit Layout: Grid, Snap, Dim and Coordinates in one View menu, with the grid spacing and snapping gap as sliders.",
 		"Deleting a profile, Fade Everything and Fade Nothing ask first; settings that do nothing in your setup stay hidden.",
-		"Fixed: the Chat text font reaches the Minimal Chat View; Default's ticks show whole; labels stay clear of sliders.",
+		"Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders.",
 		"Edit Layout, the map, Dungeon Info and the installer bring you back to your settings page; Dark Mode leaves it alone.",
-		"Fewer empty places: tiny tabs joined, windows without settings unlisted; empty bars show their slots while you set up.",
+		"Fewer empty places: tiny tabs joined, Dungeon Info now on Map, windows without settings unlisted; empty bars show slots.",
 		"Spell groups for every class: one layout for all your characters; a spell you switch off is your class's own tweak.",
 		"Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect, at every rank.",
 	} },
@@ -1313,7 +1313,8 @@ local function BuildPageHeader(page, title, flavour, new, right)
 		W.NewTag(head, titleFS, new)
 	end
 
-	local flavourFS = Text(head, "GameFontHighlightSmall", nil, C.sub)
+	-- (Suggestion 1, point 7, 2026-11-04: at body size, as the rows' helper lines)
+	local flavourFS = Text(head, "GameFontHighlight", nil, C.sub)
 	flavourFS:SetPoint("TOPLEFT", titleFS, "BOTTOMLEFT", 2, -4)
 	flavourFS:SetWordWrap(true)
 	flavourFS:SetText(MelloUI.Lang.T(flavour))
@@ -5088,8 +5089,10 @@ do
 		local locked = kind == "part" and t.part.locked
 		local line = (kind ~= "part" and own.line) or (type(locked) == "string" and locked) or nil
 		-- (its line in the tooltip too: cut where the Copy from... and Reset begin -- the user's screenshot,
-		-- 2026-10-16: the cast bar's line ran under them)
-		local row = W.Row(sec, sec.y + job.gap, ROW_HEIGHT, title, line, line, RowOpts(sec))
+		-- 2026-10-16: the cast bar's line ran under them. Suggestion 1 point 7's sweep, 2026-11-04: in the column
+		-- beside the stage an element's head has no room for it -- "Player  Yo..." -- so there only the tooltip has it)
+		local shown = not (sec.beside and kind == "element") and line or nil
+		local row = W.Row(sec, sec.y + job.gap, ROW_HEIGHT, title, shown, line, RowOpts(sec))
 		local reset
 		if locked then
 			job.row = row
