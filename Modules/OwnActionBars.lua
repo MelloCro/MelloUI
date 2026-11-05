@@ -193,7 +193,6 @@ A.Values = Values
 -- the options (appended to Own Bars' schema; their rows live in each bar's Edit Layout box, and Bars > Action Bars'
 -- Layout rows set the picked bar's: Tweaks' Bar Layout)
 do
-	local NEW = "2.1.0"
 	for n = 1, #GAME_BARS do
 		local function Get(suffix)
 			return function(db)
@@ -201,21 +200,21 @@ do
 			end
 		end
 		local list = M.options
-		list[#list + 1] = { type = "dropdown", key = Key(n, "Orientation"), name = "Orientation", new = NEW,
+		list[#list + 1] = { type = "dropdown", key = Key(n, "Orientation"), name = "Orientation",
 			values = ORIENT_VALUES, get = Get("Orientation"),
 			desc = "Whether the bar's buttons lie in a row or stand in a column." }
-		list[#list + 1] = { type = "slider", key = Key(n, "Rows"), name = "# of Rows", new = NEW, min = 1, max = 4, step = 1,
+		list[#list + 1] = { type = "slider", key = Key(n, "Rows"), name = "# of Rows", min = 1, max = 4, step = 1,
 			get = Get("Rows"), desc = "How many rows (or columns, upright) the bar's buttons stand in." }
-		list[#list + 1] = { type = "slider", key = Key(n, "Icons"), name = "# of Icons", new = NEW, min = 6, max = 12,
+		list[#list + 1] = { type = "slider", key = Key(n, "Icons"), name = "# of Icons", min = 6, max = 12,
 			step = 1, get = Get("Icons"), desc = "How many of the bar's buttons show." }
-		list[#list + 1] = { type = "slider", key = Key(n, "IconSize"), name = "Icon Size", new = NEW, min = 50, max = 200,
+		list[#list + 1] = { type = "slider", key = Key(n, "IconSize"), name = "Icon Size", min = 50, max = 200,
 			step = 10, format = Percent, get = Get("IconSize"), desc = "The size of the bar's buttons. 100% is the game's size." }
-		list[#list + 1] = { type = "slider", key = Key(n, "Padding"), name = "Icon Padding", new = NEW, min = 2, max = 10,
+		list[#list + 1] = { type = "slider", key = Key(n, "Padding"), name = "Icon Padding", min = 2, max = 10,
 			step = 1, get = Get("Padding"), desc = "The space between the bar's buttons." }
-		list[#list + 1] = { type = "dropdown", key = Key(n, "Visible"), name = "Bar Visible", new = NEW,
+		list[#list + 1] = { type = "dropdown", key = Key(n, "Visible"), name = "Bar Visible",
 			values = VISIBLE_VALUES, get = Get("Visible"),
 			desc = "When the bar shows: always, only in a fight, only out of one, never, or while the pointer is over it." }
-		list[#list + 1] = { type = "toggle", key = Key(n, "ShowButtons"), name = "Always Show Buttons", new = NEW,
+		list[#list + 1] = { type = "toggle", key = Key(n, "ShowButtons"), name = "Always Show Buttons",
 			get = Get("ShowButtons"), desc = "Empty buttons show their slot too." }
 	end
 end

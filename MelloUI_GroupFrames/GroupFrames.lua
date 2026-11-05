@@ -273,7 +273,7 @@ local M = MelloUI:RegisterModule(OWNER, {
 		-- (fr-16; the user, 2026-11-01: "the party frames are also too spread and i dont see the slider for vertical
 		-- spacing") the portrait party frames' own: GroupHeaders.lua's PortraitSpacing
 		{ type = "slider", key = "portraitSpacing", name = "Vertical Spacing", min = 0, max = MS.portraitSpacingMax,
-		  step = 1, new = "2.1.0", desc = "The space between the party frames with portraits." },
+		  step = 1, desc = "The space between the party frames with portraits." },
 		{ type = "dropdown", key = "partyGrowth", name = "Party Grows", values = C.partyGrowth,
 		  desc = "Which way the party's frames line up." },
 		{ type = "dropdown", key = "partySort", name = "Party Order", width = 240, values = C.partySort,

@@ -101,10 +101,10 @@ local function PxFormat(v)
 	return ("%d px"):format(math.floor((tonumber(v) or 0) + 0.5))
 end
 local WIDTH_OPTS = {
-	{ type = "slider", key = "statusWidth1", name = "Experience Bar Width", new = "2.1.0", min = WIDTH_MIN, max = WIDTH_TOP,
+	{ type = "slider", key = "statusWidth1", name = "Experience Bar Width", min = WIDTH_MIN, max = WIDTH_TOP,
 	  step = 1, format = PxFormat,
 	  desc = "The experience bar's width in px, from 20 up to the whole width of your screen. Changes at once." },
-	{ type = "slider", key = "statusWidth2", name = "Reputation Bar Width", new = "2.1.0", min = WIDTH_MIN, max = WIDTH_TOP,
+	{ type = "slider", key = "statusWidth2", name = "Reputation Bar Width", min = WIDTH_MIN, max = WIDTH_TOP,
 	  step = 1, format = PxFormat,
 	  desc = "The second bar's width in px (a watched reputation while you level), from 20 up to the whole width of your "
 		.. "screen. Changes at once." },
@@ -119,9 +119,9 @@ local M = MelloUI:RegisterModule("OwnBars", {
 	defaults = { bagVertical = false, bagReverse = false, statusWidth1 = 0, statusWidth2 = 0 },
 	options = {
 		-- (fr-18: Edit Mode's Orientation and Direction for the bag bar, now ours: in its Edit Layout box)
-		{ type = "toggle", key = "bagVertical", name = "Vertical Bag Bar", new = "2.1.0",
+		{ type = "toggle", key = "bagVertical", name = "Vertical Bag Bar",
 		  desc = "The bag bar stands upright instead of lying flat." },
-		{ type = "toggle", key = "bagReverse", name = "Bags On The Other Side", new = "2.1.0",
+		{ type = "toggle", key = "bagReverse", name = "Bags On The Other Side",
 		  desc = "The bag slots line up on the other side of the backpack (right instead of left, or down instead of up)." },
 		WIDTH_OPTS[1],
 		WIDTH_OPTS[2],
