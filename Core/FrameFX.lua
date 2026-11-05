@@ -57,6 +57,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Area = MelloUI.Area   -- (2.1.6: no effect on a unit frame while the Unit Frames area is the game's)
 local Safe = MelloUI.Safe
 local Secret, Text, Num, ScreenRect = Safe.IsSecret, Safe.Text, Safe.Number, Safe.ScreenRect
 local Anim = MelloUI.Anim
@@ -1895,9 +1896,10 @@ function FX.FrameUnit(f)
 end
 local FrameUnit = FX.FrameUnit
 
--- shown and not faded away (the game's frames while Group Frames shows: alpha 0)
+-- shown and not faded away (the game's frames while Group Frames shows: alpha 0); (2.1.6) and not a frame of an area
+-- given back to the game (MelloUI.Area: the unit frames with Unit Frames off -- the game's, untouched)
 local function Seen(f)
-	if not Visible(f) then
+	if not Visible(f) or (not Area.On("unitframes") and Area.Holds("unitframes", f)) then
 		return false
 	end
 	local ok, a = pcall(f.GetEffectiveAlpha, f)

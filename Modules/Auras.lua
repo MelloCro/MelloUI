@@ -28,6 +28,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Area = MelloUI.Area   -- (2.1.6: the target's rows and those on the player frame are the Unit Frames area's, the
+                            -- nameplates' rows the Nameplates area's)
 
 -- (fr-17) the player frame on the screen -- MelloUI's own while it stands in (MelloUI.Units, Modules/UnitFramesOwn.lua),
 -- else the game's -- and the game's update hooks through it (a world without that file: the game's frame, a plain hook)
@@ -1178,13 +1180,22 @@ local coverSpec = {
 	end,
 }
 
+-- (2.1.6) the target's rows and the nameplates' on: their switch and their area's (MelloUI.Area) -- an area off is
+-- the game's own, untouched; your own rows stay (on the player frame: in their own place then)
+local function TargetOn()
+	return (M.isEnabled and M.db.target and Area.On("unitframes")) and true or false
+end
+local function PlatesOn()
+	return (M.isEnabled and M.db.nameplates and Area.On("nameplates")) and true or false
+end
+
 local function SetPlayer(on)
 	on = on and not inEditMode
 	if BuffFrame and MelloUI.EditLayoutCover then
 		MelloUI:EditLayoutCover(BuffFrame, coverSpec)
 	end
 	-- (0.20.1) Attach To The Player Frame: those rows in place of these
-	local onFrame = on and M.db.playerFrame and true or false
+	local onFrame = on and M.db.playerFrame and Area.On("unitframes") and true or false
 	SetFrameRows(onFrame)
 	local rows = on and not onFrame
 	if rows and not playerRows then
@@ -1289,7 +1300,7 @@ local function ClearPlate(uf)
 end
 
 local function FillPlate(uf, unit)
-	if not (M.isEnabled and M.db.nameplates and uf and unit) then
+	if not (PlatesOn() and uf and unit) then
 		ClearPlate(uf)
 		return
 	end
@@ -1416,23 +1427,22 @@ end
 local function ApplyAll()
 	local db = M.db
 	SetPlayer(M.isEnabled and db.player)
-	SetTarget(M.isEnabled and db.target)
-	SetNameplates(M.isEnabled and db.nameplates)
+	SetTarget(TargetOn())
+	SetNameplates(PlatesOn())
 end
 
 -- the events a kind of rows needs, only while its switch is on (one look Q9:
 -- with the three switches the only ones, all three off is nothing at all --
 -- no rows, no events)
 local function Events()
-	local db, on = M.db, M.isEnabled
-	if on and db.nameplates then
+	if PlatesOn() then
 		eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 		eventFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 	else
 		eventFrame:UnregisterEvent("NAME_PLATE_UNIT_ADDED")
 		eventFrame:UnregisterEvent("NAME_PLATE_UNIT_REMOVED")
 	end
-	if on and db.target then
+	if TargetOn() then
 		eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
 	else
 		eventFrame:UnregisterEvent("PLAYER_TARGET_CHANGED")
@@ -1472,10 +1482,10 @@ function M:OnSettingChanged(key, value, db)
 			SetPlayer(M.isEnabled and M.db.player)
 		end, FRAME_PLACE_KEY .. ": switched")
 	elseif key == "target" then
-		SetTarget(value)
+		SetTarget(TargetOn())
 		Events()
 	elseif key == "nameplates" then
-		SetNameplates(value)
+		SetNameplates(PlatesOn())
 		Events()
 	elseif key == "playerColumn" then
 		PlacePlayer()
@@ -1504,5 +1514,24 @@ function M:OnSettingChanged(key, value, db)
 		Try(targetRows.UpdateAllAuras, targetRows)
 	end
 end
+
+-- (2.1.6) an area's switch moved (MelloUI.Area): its rows on, or the game's back -- your rows on the player frame
+-- out of combat (they are protected: right-click cancels a buff)
+Area.Listen("unitframes", function()
+	if not M.isEnabled then
+		return
+	end
+	SetTarget(TargetOn())
+	Events()
+	MelloUI.Kit:WhenOutOfCombat(function()
+		SetPlayer(M.isEnabled and M.db.player)
+	end, FRAME_PLACE_KEY .. ": the Unit Frames area")
+end, "Auras: the Unit Frames area")
+Area.Listen("nameplates", function()
+	if M.isEnabled then
+		SetNameplates(PlatesOn())
+		Events()
+	end
+end, "Auras: the Nameplates area")
 
 MelloUI:Profile("Auras", "events", eventFrame)

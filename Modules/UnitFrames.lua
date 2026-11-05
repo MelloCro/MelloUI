@@ -39,7 +39,8 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 	icon = "Interface\\Icons\\INV_Misc_GroupLooking",
 	flavour = "Player, target and focus, centred and calm.",
 	group = "Frames and bars", navOrder = 1,
-	tweak = { label = "Unit Frame Tweaks", desc = "MelloUI's tweaks to the unit frames: names, glows and the party's levels.", order = 5 },
+	-- (2.1.6: the Unit Frames area's switch -- MelloUI.Area, Core.lua's Areas: off, nothing of MelloUI's on these frames)
+	tweak = { label = "Unit Frames", desc = "MelloUI on the unit frames: yours, your target's, focus's and pet's, with everything on them (values, portraits, buffs, incoming heals, effects). Off: the game's own frames, untouched.", order = 5 },
 	-- (one look C13, the user's yes to the audit's drops, 2026-10-15: the names
 	-- centred and the target's and focus's name band transparent while this
 	-- module is on, the frame art at its full opacity -- MelloUI's choices,

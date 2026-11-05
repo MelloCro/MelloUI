@@ -21,6 +21,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Area = MelloUI.Area   -- (2.1.6: the friendly players' plates are the Nameplates area's)
 local Perf = MelloUI.Perf:Scope("PartyMarkers")
 
 local defaults = {
@@ -205,7 +206,7 @@ local function UpdatePlate(plate)
 		return
 	end
 	local marker = markers[unitFrame]
-	if not (M.isEnabled and M.db) then
+	if not (M.isEnabled and M.db and Area.On("nameplates")) then
 		if marker then
 			marker:Hide()
 		end
@@ -321,6 +322,13 @@ function M:OnSettingChanged(key, value, db)
 	self.db = db
 	UpdateAll()
 end
+
+-- (2.1.6) the Nameplates switch moved (MelloUI.Area): the medallions on, or the game's plates as they are
+Area.Listen("nameplates", function()
+	if M.isEnabled then
+		UpdateAll()
+	end
+end, "PartyMarkers: the Nameplates area")
 
 -- /pmdump: every nameplate, whether the client lets an addon touch it
 -- (friendly plates in instances can be forbidden on this engine), the

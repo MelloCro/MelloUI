@@ -27,9 +27,8 @@
 --   Edit Mode setting saved into the player's own active layout
 --   (Core/EditModeLayout.lua; shows from the next reload; never a preset);
 --   off: the game's value back where MelloUI changed it. Its section below.
--- Hidden and always on (no switch of its own: each row switches one thing);
--- the installer's role "look" (Reskin only takes Full's backdrops, as it
--- took the skin's). Nothing at login while every backdrop is off and no skin
+-- (2.1.6) The Action Bars area's switch (MelloUI.Area): off, nothing of MelloUI's on the bars -- its own bars, these
+-- backdrops, the buttons' frames, colours and timers; each row still switches one thing. Nothing at login while every backdrop is off and no skin
 -- dresses them: no hook on a game frame, no holder, no layout.
 --   M.ELEMENTS               the elements, in order (read only)
 --   M.BarButtons(bar)        a bar's buttons
@@ -126,10 +125,10 @@ end
 
 local M = MelloUI:RegisterModule("ActionBars", {
 	title = "Action Bars",
-	desc = "The backdrops round the action bars, the micro menu, the bag bar and the experience bars, and the main bar's "
-		.. "page arrows and bar art hidden, whatever their look.",
-	-- (always on: no switch of its own, each of its rows switches one thing)
-	hidden = true,
+	-- (2.1.6: the Action Bars area's switch -- MelloUI.Area, Core.lua's Areas: off, nothing of MelloUI's on the bars;
+	-- until then always on, with no switch of its own)
+	desc = "MelloUI on the bars: its own action, stance, pet and possess bars, micro menu, bag bar and experience bars, "
+		.. "with their backdrops, button frames, colours and timers. Off: the game's own bars, untouched.",
 	enabledByDefault = true,
 	defaults = defaults,
 	options = options,

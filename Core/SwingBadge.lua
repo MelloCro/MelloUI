@@ -45,6 +45,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Area = MelloUI.Area   -- (2.1.6: the target's plate is the Nameplates area's -- off, the badge at its host's place)
 local Perf = MelloUI.Perf:Scope("SwingBadge")
 local C_Timer = Perf.C_Timer
 local Secret = MelloUI.Safe.IsSecret
@@ -279,7 +280,7 @@ function Badge.Place()
 		return
 	end
 	local NP = MelloUI:GetModule("Nameplates")
-	local uf = NP and NP.TargetPlate and NP:TargetPlate()
+	local uf = Area.On("nameplates") and NP and NP.TargetPlate and NP:TargetPlate()
 	if uf then
 		local container = uf.HealthBarsContainer
 		local hb = container.healthBar
@@ -309,6 +310,9 @@ function SB.Lay()
 		Badge.Place()
 	end
 end
+
+-- (2.1.6) the Nameplates switch moved (MelloUI.Area): the badges onto the target's plate, or to their host's place
+Area.Listen("nameplates", SB.Lay, "SwingBadge: the Nameplates area")
 
 -- the badge of a hand (the off hand's the small one; a shot's the main one), both made the first time
 function Badge.For(hand)

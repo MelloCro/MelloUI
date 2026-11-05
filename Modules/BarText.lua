@@ -13,6 +13,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Area = MelloUI.Area   -- (2.1.6: every value is on a unit frame -- the Unit Frames switch takes them all)
 
 -- (fr-17) the player frame on the screen -- MelloUI's own while it stands in (MelloUI.Units, Modules/UnitFramesOwn.lua),
 -- else the game's -- and the game's update hooks through it (a world without that file: the game's frame, a plain hook)
@@ -588,7 +589,8 @@ end
 
 function M.PreviewShows(frameKey, power)
 	local db = M.db
-	return (M.isEnabled and db and db[frameKey] and db[power and "power" or "health"]) and true or false
+	return (M.isEnabled and db and db[frameKey] and db[power and "power" or "health"] and Area.On("unitframes")) and true
+		or false
 end
 
 --------------------------------------------------------------------------------
@@ -618,9 +620,10 @@ end
 
 -- (one look Q9: the three frames' switches are its switches) its events
 -- and its texts only while one of them is on: all three off, nothing at all
+-- (2.1.6) and the Unit Frames area on (MelloUI.Area): off, the game's frames untouched
 local function AnyFrame()
 	local db = M.db
-	return M.isEnabled and db and (db.player or db.target or db.focus) and true or false
+	return M.isEnabled and db and (db.player or db.target or db.focus) and Area.On("unitframes") and true or false
 end
 
 local function Listen()
@@ -665,6 +668,13 @@ MelloUI:On("setting", Perf.Shared("'setting' on the bus: Bar Text's places (Unit
 		ApplyAll()
 	end
 end), "BarText places")
+
+-- (2.1.6) the Unit Frames switch moved: the values on, or the game's text back
+Area.Listen("unitframes", function()
+	if M.isEnabled then
+		Listen()
+	end
+end, "BarText: the Unit Frames area")
 
 -- (fr-17) the player frame of ours come or gone (the game's given back): the values on the one that stands now
 MelloUI:On("units", function()

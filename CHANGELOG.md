@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.6
+
+- The Unit Frames, Nameplates and Action Bars switches now turn off everything MelloUI shows there: with one off, that part is the game's own again (values, portraits, buffs, debuff and cooldown icons, bar textures, effects, MelloUI's own bars), while every other feature keeps working.
+- New: an Action Bars switch on the Bars page. "Unit Frame Tweaks" and "Nameplate Tweaks" are now called Unit Frames and Nameplates.
+
 ## 2.1.5
 
 - Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs.

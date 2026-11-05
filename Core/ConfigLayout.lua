@@ -121,7 +121,7 @@ L.pages = {
 	Look = { title = "Look", icon = "module:UIModifications", set = "page_look", module = "UIModifications",
 		flavour = "The look of the whole interface: its skin, the soft shade, every font and texture, the colours, icons and Dark Mode. The painted reskin and its palettes are on the Oldschool page.",
 		switchLabel = "UI Modifications",
-		switchDesc = "The painted reskin and MelloUI's interface features: Vendor, Error Messages, Nameplate Tweaks, Unit Frame Tweaks, Chat, Tooltip, Fonts, Dark Mode, Bar Textures and FPS / Latency, and hiding the micro menu, bag bar and minimap coordinates. Off: all of them stop, and Edit Layout lets go of the game's windows; the palette, the UI Shade, Reduce Motion and the notices keep working.",
+		switchDesc = "The painted reskin and MelloUI's interface features: Vendor, Error Messages, Nameplates, Unit Frames, Chat, Tooltip, Fonts, Dark Mode, Bar Textures and FPS / Latency, and hiding the micro menu, bag bar and minimap coordinates. Off: all of them stop, and Edit Layout lets go of the game's windows; the palette, the UI Shade, Reduce Motion and the notices keep working.",
 		tabs = { "General", "Fonts", "Textures", "Colours", "Icons", "Dark Mode" },
 		-- (1.2.4, Look's homes: every font and every bar texture, background and border here, a card per part of the
 		-- interface after the tab's own sections -- Core/Config.lua's Lay.Card; the frames' pages link here)
@@ -424,6 +424,9 @@ for n = 1, 8 do
 end
 
 function L.Define(R, Link)
+	-- (2.1.6) the areas' switches (MelloUI.Area, Core.lua's Areas): a row that sets what MelloUI draws in an area sleeps
+	-- while its area is the game's (its `gate`: the line points at the switch)
+	local UF_AREA, NP_AREA, AB_AREA = "UIModifications.qol_UnitFrames", "UIModifications.qol_Nameplates", "ActionBars.!enabled"
 	-- (0.19.4, the options audit) a kit panel covers its area while the
 	-- reskin and its Painted Skin are both on (Kit:IsCovered): what the skin
 	-- steps over (Dark Mode, the chat's and the tooltip's tweaks, the unit
@@ -740,7 +743,7 @@ function L.Define(R, Link)
 	UGF({ "player:health", "target:health", "focus:health" }, "General", "HealerFrames.incomingHeals",
 		{ also = { ["HealerFrames.incomingHeals"] = "their targets" } })
 	R("Look", "Textures", "Look", "BarTextures.unitframesTexture", { name = "Unit Frames", card = "Bars",
-		also = { ["BarTextures.unitframesTexture"] = "boss and target of target, party portraits" } })
+		also = { ["BarTextures.unitframesTexture"] = "boss and target of target, party portraits" }, gate = UF_AREA })
 	for _, tab in ipairs(GAME4) do
 		Link("UnitGroupFrames", tab, "Look", "BarTextures.unitframesTexture", "Bar Texture")
 	end
@@ -755,9 +758,9 @@ function L.Define(R, Link)
 	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.barBackgroundAlpha",
 		{ also = { ["UnitFramePanel.barBackgroundAlpha"] = "target of target" },
 		when = { key = "UnitFramePanel.barBackground", notValue = "none", line = "Not with the None background" } })
-	R("UnitGroupFrames", "player:values", "Text", "BarText.player", { name = "Values On This Frame" })
-	R("UnitGroupFrames", "target:values", "Text", "BarText.target", { name = "Values On This Frame" })
-	R("UnitGroupFrames", "focus:values", "Text", "BarText.focus", { name = "Values On This Frame" })
+	R("UnitGroupFrames", "player:values", "Text", "BarText.player", { name = "Values On This Frame", gate = UF_AREA })
+	R("UnitGroupFrames", "target:values", "Text", "BarText.target", { name = "Values On This Frame", gate = UF_AREA })
+	R("UnitGroupFrames", "focus:values", "Text", "BarText.focus", { name = "Values On This Frame", gate = UF_AREA })
 	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.health", { when = BAR_VALUES })
 	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.power", { when = BAR_VALUES })
 	UGF({ "player:values", "target:values", "focus:values" }, "Text", "BarText.format", { when = BAR_VALUES })
@@ -771,7 +774,7 @@ function L.Define(R, Link)
 	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.offsetX", { when = BAR_VALUES })
 	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.offsetY", { when = BAR_VALUES })
 	R("UnitGroupFrames", "buffs:element", "General", "Auras.player", { name = "Buffs & Debuffs On This Frame" })
-	R("UnitGroupFrames", "target:auras", "General", "Auras.target", { name = "Buffs & Debuffs On This Frame" })
+	R("UnitGroupFrames", "target:auras", "General", "Auras.target", { name = "Buffs & Debuffs On This Frame", gate = UF_AREA })
 	R("Look", "Fonts", "Text", "Auras.textFont", { name = "Numbers Font", card = "Buffs & Debuffs", when = OWN_ANY })
 	Link("UnitGroupFrames", "buffs:element", "Text", "Auras.textFont", "Numbers Font")
 	Link("UnitGroupFrames", "target:auras", "Text", "Auras.textFont", "Numbers Font")
@@ -801,7 +804,11 @@ function L.Define(R, Link)
 
 	-- Nameplates (one look stage G: the designer; np-audit.md's table)
 	-- Enemies: Nameplate Tweaks (the Nameplates module's switch) first, Dark Mode; each part's own rows
-	R("Nameplates", "enemies:element", "General", "UIModifications.qol_Nameplates")
+	-- (2.1.6: the Nameplates area's switch -- MelloUI.Area: everything MelloUI puts on a plate, friends' too)
+	R("Nameplates", "enemies:element", "General", "UIModifications.qol_Nameplates",
+		{ shared = "also Friendly players", sharedWith = { "Friendly players" } })
+	R("Nameplates", "friendly:element", "General", "UIModifications.qol_Nameplates",
+		{ shared = "also Enemies", sharedWith = { "Enemies" } })
 	-- (0.25.0, the user's "yes build it" to the Nameplate Impact page: the target's plate answers the fight)
 	R("Nameplates", "enemies:element", "General", "PlateImpact.!enabled", { name = "Impact Effects" })
 	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.flash")
@@ -810,8 +817,8 @@ function L.Define(R, Link)
 	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.kill")
 	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.evade")
 	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.cast")
-	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.targetFrame")
-	R("Look", "Textures", "Look", "BarTextures.nameplatesTexture", { name = "Nameplates", card = "Bars" })
+	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.targetFrame", { gate = UF_AREA })
+	R("Look", "Textures", "Look", "BarTextures.nameplatesTexture", { name = "Nameplates", card = "Bars", gate = NP_AREA })
 	Link("Nameplates", "enemies:health", "Look", "BarTextures.nameplatesTexture", "Bar Texture")
 	R("Nameplates", "enemies:element", "Behaviour", "Nameplates.hover")   -- (1.2.4: every plate's, the user)
 	R("Nameplates", "enemies:threat", "General", "Nameplates.threatLine")
@@ -822,12 +829,12 @@ function L.Define(R, Link)
 	R("Nameplates", "enemies:cc", "Layout", "Nameplates.ccGap")
 	R("Nameplates", "enemies:quest", "General", "Nameplates.questIcon")
 	R("Nameplates", "enemies:quest", "Layout", "Nameplates.questIconSize", { name = "Size" })
-	R("Nameplates", "enemies:debuffs", "General", "Auras.nameplates")
+	R("Nameplates", "enemies:debuffs", "General", "Auras.nameplates", { gate = NP_AREA })
 	R("Nameplates", "enemies:debuffs", "Layout", "Auras.nameplateSize",
 		{ when = { key = "Auras.nameplates", value = true, line = "Only with Your Debuffs on" } })
-	R("Nameplates", "enemies:auras", "General", "CooldownText.nameplates")   -- (the Bars audit: Cooldown Timers' switch here)
+	R("Nameplates", "enemies:auras", "General", "CooldownText.nameplates", { gate = NP_AREA })   -- (the Bars audit: Cooldown Timers' switch here)
 	-- Friendly players: Party Markers' switch first
-	R("Nameplates", "friendly:element", "General", "PartyMarkers.!enabled", { name = "Party Markers" })
+	R("Nameplates", "friendly:element", "General", "PartyMarkers.!enabled", { name = "Party Markers", gate = NP_AREA })
 	R("Nameplates", "friendly:element", "General", "PartyMarkers.who")
 	R("Nameplates", "friendly:medallion", "Layout", "PartyMarkers.size", { name = "Size" })
 	R("Nameplates", "friendly:medallion", "Layout", "PartyMarkers.offset")
@@ -849,6 +856,14 @@ function L.Define(R, Link)
 	-- Bars (one look stage G, bars-audit.md, the user's yes): each element's rows, its parts' rows
 	-- Action Bars: every bar's (Dark Mode, the backdrops, the layout of the bar picked on the stage's strips --
 	-- Which Bar), the parts shared by every bar
+	-- (2.1.6) the Action Bars area's switch (MelloUI.Area, Core.lua's Areas): MelloUI on every bar, first on the bars'
+	-- three elements (works with UI Modifications off: its backdrops do)
+	for i, tab in ipairs({ "actionbars:element", "menubags:element", "xprep:element" }) do
+		local others = { "Action Bars", "Menu & Bags", "XP & Rep" }
+		table.remove(others, i)
+		R("ActionBars", tab, "General", "ActionBars.!enabled", { name = "Action Bars", free = true,
+			shared = "also " .. table.concat(others, ", "), sharedWith = others })
+	end
 	-- (0.18.5) each bar's backdrop (onelook stage D4: the core's, Modules/ActionBars.lua, whatever the look)
 	for _, key in ipairs({ "Bar1", "Bar2", "Bar3", "Bar4", "Bar5", "Bar6", "Bar7", "Bar8", "Stance", "Pet", "Possess", "Totem" }) do
 		R("ActionBars", "actionbars:element", "Look", "ActionBars.backdrop" .. key)
@@ -861,13 +876,13 @@ function L.Define(R, Link)
 	R("ActionBars", "actionbars:element", "Layout", "Tweaks.barPadding")
 	R("ActionBars", "actionbars:element", "Layout", "Tweaks.barShape")
 	-- (2026-10-20, the user's sheet: MelloUI's frame on every button, the painted skin's bars aside)
-	R("ActionBars", "actionbars:button", "Look", "ActionButtons.frames")
-	R("ActionBars", "actionbars:button", "Look", "ActionButtons.readyFlash")
+	R("ActionBars", "actionbars:button", "Look", "ActionButtons.frames", { gate = AB_AREA })
+	R("ActionBars", "actionbars:button", "Look", "ActionButtons.readyFlash", { gate = AB_AREA })
 	-- (0.19.8, the user's picks of button_press_sketch: the key held, range and resources; skin on or off)
-	R("ActionBars", "actionbars:button", "Look", "ActionButtons.pressLight")
-	R("ActionBars", "actionbars:button", "Look", "ActionButtons.rangeColours")
+	R("ActionBars", "actionbars:button", "Look", "ActionButtons.pressLight", { gate = AB_AREA })
+	R("ActionBars", "actionbars:button", "Look", "ActionButtons.rangeColours", { gate = AB_AREA })
 	-- (the Bars audit's point 1: On Action Bars is Cooldown Timers' switch here)
-	R("ActionBars", "actionbars:cooldown", "General", "CooldownText.actionBars", { name = "Cooldown Timers" })
+	R("ActionBars", "actionbars:cooldown", "General", "CooldownText.actionBars", { name = "Cooldown Timers", gate = AB_AREA })
 	R("ActionBars", "actionbars:caps", "General", "ActionBars.hideBarArt")
 	R("ActionBars", "actionbars:arrows", "General", "ActionBars.hidePageArrows")
 	-- Menu & Bags: each bar a part (Hide This Bar, its backdrop; the bag bar's fold), Dark Mode for both
@@ -875,8 +890,8 @@ function L.Define(R, Link)
 	R("ActionBars", "menubags:micro", "Look", "ActionBars.backdropMicro", { name = "Backdrop" })
 	R("ActionBars", "menubags:bags", "General", "Tweaks.hideBagBar", { name = "Hide This Bar" })
 	R("ActionBars", "menubags:bags", "Look", "ActionBars.backdropBags", { name = "Backdrop" })
-	R("ActionBars", "menubags:bags", "Layout", "OwnBars.bagVertical")
-	R("ActionBars", "menubags:bags", "Layout", "OwnBars.bagReverse")
+	R("ActionBars", "menubags:bags", "Layout", "OwnBars.bagVertical", { gate = AB_AREA })
+	R("ActionBars", "menubags:bags", "Layout", "OwnBars.bagReverse", { gate = AB_AREA })
 	R("ActionBars", "menubags:bags", "Behaviour", "Tweaks.bagBarFold",
 		{ when = { key = "Tweaks.hideBagBar", value = false, line = "Only while the bag bar shows" } })
 	-- Cast Bar: its look (its parts the game's: nothing to set yet)
@@ -890,17 +905,18 @@ function L.Define(R, Link)
 	-- XP & Rep: the bars' look; the XP bar's light and Level Up (one look C13b: Tweaks'), each bar's backdrop
 	-- (2026-10-20, the user's sheet: MelloUI's frame, track, notches and light on the bars, first)
 	R("ActionBars", "xprep:element", "Look", "ActionBars.statusFrame")
-	R("Look", "Textures", "Look", "BarTextures.statusbarsTexture", { name = "Experience & Reputation", card = "Bars" })
+	R("Look", "Textures", "Look", "BarTextures.statusbarsTexture", { name = "Experience & Reputation", card = "Bars",
+		gate = AB_AREA })
 	Link("ActionBars", "xprep:element", "Look", "BarTextures.statusbarsTexture", "Bar Texture")
 	-- (0.22.1, the animations: the stretch of the XP bar just gained lit)
-	R("ActionBars", "xprep:xp", "Look", "Tweaks.xpGain")
+	R("ActionBars", "xprep:xp", "Look", "Tweaks.xpGain", { gate = AB_AREA })
 	R("ActionBars", "xprep:xp", "Look", "Tweaks.levelUp")
 	-- (an-06, the user, 2026-10-30: "study it and i would want us to implement something similar", then the picks)
 	R("ActionBars", "xprep:xp", "Look", "Tweaks.levelCard")
 	R("ActionBars", "xprep:xp", "Look", "ActionBars.backdropXP", { name = "Backdrop" })
 	-- (fr-18b; the user, 2026-11-01: the width in px, 20 up to the whole screen -- MelloUI's own status bars)
 	R("ActionBars", "xprep:xp", "Layout", "OwnBars.statusWidth1", { name = "Width" })
-	R("ActionBars", "xprep:rep", "Look", "Tweaks.repGain")
+	R("ActionBars", "xprep:rep", "Look", "Tweaks.repGain", { gate = AB_AREA })
 	R("ActionBars", "xprep:rep", "Look", "ActionBars.backdropXP2", { name = "Backdrop" })
 	R("ActionBars", "xprep:rep", "Layout", "OwnBars.statusWidth2", { name = "Width" })
 	-- Cooldowns (0.19.8, Cooldown Tweaks: Modules/CooldownTweaks.lua -- the addon study's item 7)

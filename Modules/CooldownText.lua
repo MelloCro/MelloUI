@@ -15,6 +15,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Area = MelloUI.Area   -- (2.1.6: each kind of cooldown is an area's: CATEGORY_AREA)
 local Perf = MelloUI.Perf:Scope("CooldownText")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
@@ -152,6 +153,13 @@ local function Category(cooldown)
 		frame = frame:GetParent()
 	end
 	return nil
+end
+
+-- (2.1.6) a kind of cooldown counted: its switch on and its area MelloUI's (MelloUI.Area) -- an area off keeps the
+-- game's own numbers there
+local CATEGORY_AREA = { actionBars = "actionbars", nameplates = "nameplates" }
+local function CategoryOn(db, category)
+	return (db and db[category] and Area.On(CATEGORY_AREA[category])) and true or false
 end
 
 local function SetNativeNumbersHidden(cooldown, hidden)
@@ -311,7 +319,7 @@ local function StartTimer(cooldown, start, duration, modRate)
 		return
 	end
 	pending[cooldown] = nil
-	if not M.db[category] then
+	if not CategoryOn(M.db, category) then
 		StopTimer(cooldown, true)
 		return
 	end
@@ -494,11 +502,21 @@ function M:OnSettingChanged(key, value, db)
 		timer.size = nil
 		if active[cooldown] then
 			local category = Category(cooldown)
-			if not category or not db[category] then
+			if not category or not CategoryOn(db, category) then
 				StopTimer(cooldown, true)
 			end
 		end
 	end
+end
+
+-- (2.1.6) an area's switch moved (MelloUI.Area): its timers stopped (the game's numbers back), or counted again from
+-- the next cooldown the game sets there
+for _, area in pairs(CATEGORY_AREA) do
+	Area.Listen(area, function()
+		if M.isEnabled and M.db then
+			M:OnSettingChanged("area", nil, M.db)
+		end
+	end, "CooldownText: the " .. area .. " area")
 end
 
 MelloUI:Profile("CooldownText", "timer tick (10/s)", Tick)

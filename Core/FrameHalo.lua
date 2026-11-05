@@ -31,6 +31,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Area = MelloUI.Area   -- (2.1.6: the unit frames' threat halos, the Unit Frames area's)
 local Safe = MelloUI.Safe
 local Secret, Text, Num = Safe.IsSecret, Safe.Text, Safe.Number
 local Perf = MelloUI.Perf:Scope("Frame halo")
@@ -265,10 +266,12 @@ local function Update(frame)
 	local t = T.of[frame]
 	local ind = Indicator(frame)
 	local okV, visible = pcall(frame.IsVisible, frame)
-	if not (T.on and ind and Shown(ind) and okV and visible == true) then
+	-- (2.1.6: none on a frame of the Unit Frames area while it is the game's -- MelloUI.Area)
+	local given = not Area.On("unitframes") and Area.Holds("unitframes", frame)
+	if not (T.on and ind and Shown(ind) and okV and visible == true) or given then
 		if t and t.shown then
 			-- (the game's indicator gone: faded out; the option ticked or the frame gone: at once)
-			local fade = T.on and okV and visible == true
+			local fade = T.on and okV and visible == true and not given
 			t.shown, t.key = false, nil
 			Gone(t.close, fade)
 			Gone(t.aggro, fade)
@@ -345,3 +348,11 @@ function Halo.Threat(on)
 	end
 	Each(Refresh)
 end
+
+-- (2.1.6) the Unit Frames switch moved (MelloUI.Area): the halos as the game's indicators stand now
+Area.Listen("unitframes", function()
+	if T.on then
+		Each(Hook)
+	end
+	Each(Refresh)
+end, "FrameHalo: the Unit Frames area")

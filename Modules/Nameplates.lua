@@ -39,7 +39,8 @@ local M = MelloUI:RegisterModule("Nameplates", {
 	icon = "Interface\\Icons\\Ability_Hunter_SniperShot",
 	flavour = "Know who is stunned, who is your quest target, and who is about to be a problem.",
 	group = "Frames and bars", navOrder = 2,
-	tweak = { label = "Nameplate Tweaks", desc = "MelloUI's additions to the game's nameplates: the large CC icon, quest markers, the threat line, combo points and name shading.", order = 4 },
+	-- (2.1.6: the Nameplates area's switch -- MelloUI.Area, Core.lua's Areas: off, nothing of MelloUI's on a plate)
+	tweak = { label = "Nameplates", desc = "MelloUI on the nameplates: the large CC icon, quest markers, the threat line, combo points, name shading, your debuffs, cooldown timers, impact effects, the swing badge and party markers. Off: the game's own plates, untouched.", order = 4 },
 	defaults = {
 		nameFormat = "both",   -- set by UI Modifications' "Show Names As" (one setting for every name)
 		bigCC = true,
@@ -2738,7 +2739,7 @@ do
 		FILL = 0.72, THREAT_FILL = 0.55, LIT = 3, SPACING = 2, PAD = 6, QUEST_GAP = 2,
 		HOSTILE = { reaction = 2, fraction = 0.72, area = "nameplates" },   -- (Bar Textures' sample: plain values)
 		STATES = { { key = "normal", label = "Normal" }, { key = "target", label = "Your target" } },
-		TEXT = { off = "Nameplate Tweaks is off: the game's own plate, none of MelloUI's parts on it.",
+		TEXT = { off = "The Nameplates switch is off: the game's own plate, none of MelloUI's parts on it.",
 			pick = "Click a part to pick it; its settings open beside it." },
 		parts = nil,   -- (the part list, made once)
 	}

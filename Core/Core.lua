@@ -4106,6 +4106,163 @@ function MelloUI:NotifySettingChanged(name, key, value)
 	self:Fire("setting", name, key, value)
 end
 
+--------------------------------------------------------------------------------
+-- Areas (2.1.6): the parts of the screen a player can give back to the game whole. Every module that draws
+-- on one asks here first, so its one switch takes everything MelloUI puts there (OpTick, Discord 2026-11-05: with the
+-- unit frames' and the nameplates' switches off, MelloUI's numbers stayed on the player frame and its icons on the
+-- plates; the user: "maybe people want to use all other features but not the unitframes").
+--
+--   local Area = MelloUI.Area
+--   Area.On(key) -> bool               MelloUI may draw in the area: its switch is on (the saved flag, so a module
+--                                      asking in the login's start-up pass reads the same answer as after it)
+--   Area.Holds(key, region) -> bool    the region is in the area: one of its frames or under one (ours standing in
+--                                      for the game's are their children); read once per region
+--   Area.Listen(key, fn, owner)        fn(on) the frame after the area's switch moved (the bus's 'module' for its
+--                                      module: once however often it moved, with its state then -- never inside a
+--                                      profile load's switching pass; never in the login's start-up pass either:
+--                                      OnEnable reads Area.On then)
+--
+-- The areas, each switched by one module (a module the player switches: off is the game's own, untouched):
+--   unitframes   Unit Frames (UI Modifications' row, on the player's, target's, focus's and pet's pages): those
+--                frames, their targets', the game's party frames and the boss frames
+--   nameplates   Nameplates (UI Modifications' row, on the Nameplates page): every nameplate
+--   actionbars   Action Bars (its row on the Bars page): the action bars, the stance, pet and possess bars, the
+--                micro menu, the bag bar and the experience bars
+-- MelloUI's own windows and the Fader's and Dark Mode's own choices are not an area's: a player picks those one by one.
+--------------------------------------------------------------------------------
+
+do
+	local Area = {}
+	MelloUI.Area = Area
+
+	local SWITCH = { unitframes = "UnitFrames", nameplates = "Nameplates", actionbars = "ActionBars" }
+	Area.SWITCH = SWITCH   -- (read only: the tests and the configurator's rows)
+
+	-- the frames each area is made of, by the game's global names (looked up when asked: the boss frames and the focus
+	-- frame come with their addons); MelloUI's own unit frames standing in are children of the game's they stand on
+	local ROOTS = {
+		unitframes = { "PlayerFrame", "TargetFrame", "TargetFrameToT", "FocusFrame", "FocusFrameToT", "PetFrame",
+			"PartyFrame", "Boss1TargetFrame", "Boss2TargetFrame", "Boss3TargetFrame", "Boss4TargetFrame", "Boss5TargetFrame" },
+		actionbars = { "MainActionBar", "MainMenuBar", "MultiBarBottomLeft", "MultiBarBottomRight", "MultiBarRight",
+			"MultiBarLeft", "MultiBar5", "MultiBar6", "MultiBar7", "StanceBar", "PetActionBar", "PossessActionBar",
+			"MicroMenuContainer", "BagsBar", "StatusTrackingBarManager", "MainStatusTrackingBarContainer",
+			"SecondaryStatusTrackingBarContainer" },
+	}
+	local PLATE = "^NamePlate%d+$"   -- (the game's nameplates: NamePlate1, NamePlate2 ...)
+	local DEPTH = 10                 -- (a region's parents looked at, at most)
+
+	function Area.On(key)
+		local name = SWITCH[key]
+		if not (name and MelloUI.db and MelloUI.IsModuleEnabled) then
+			return true   -- (no such area, or before the saved settings: nothing is held back)
+		end
+		return MelloUI:IsModuleEnabled(name) and true or false
+	end
+
+	-- the area's frames standing now: [frame] = true (made per ask: Holds caches its answers)
+	local function Roots(key)
+		local set = {}
+		for _, name in ipairs(ROOTS[key] or {}) do
+			local f = rawget(_G, name)
+			if type(f) == "table" then
+				set[f] = true
+			end
+		end
+		return set
+	end
+
+	local held = {}   -- [key] = { [region] = bool }, weak keys: a region's answer, read once
+	for key in pairs(SWITCH) do
+		held[key] = setmetatable({}, { __mode = "k" })
+	end
+
+	local function Named(f, pattern)
+		local ok, name = pcall(f.GetName, f)
+		return ok and type(name) == "string" and name:find(pattern) ~= nil
+	end
+
+	function Area.Holds(key, region)
+		local cache = held[key]
+		if not (cache and type(region) == "table") then
+			return false
+		end
+		local was = cache[region]
+		if was ~= nil then
+			return was
+		end
+		local roots = key ~= "nameplates" and Roots(key) or nil
+		local cur, found = region, false
+		for _ = 1, DEPTH do
+			if roots and roots[cur] or (not roots and Named(cur, PLATE)) then
+				found = true
+				break
+			end
+			local ok, parent = pcall(cur.GetParent, cur)
+			cur = ok and parent or nil
+			if type(cur) ~= "table" then
+				break
+			end
+		end
+		cache[region] = found
+		return found
+	end
+
+	-- the listeners by area: one list each, an owner's again replaces its own; run once a frame after a switch, with
+	-- the area's state then (a profile load turns an area off and on in one pass: they run once, outside it, and
+	-- never spend its share of the Lua budget)
+	local listeners, due = {}, {}
+	for key in pairs(SWITCH) do
+		listeners[key] = { fns = {}, owners = {} }
+	end
+	local function RunDue()
+		for key in pairs(due) do
+			due[key] = nil
+			local on, l = Area.On(key), listeners[key]
+			for i = 1, #l.fns do
+				local ok, err = pcall(l.fns[i], on)
+				if not ok then
+					Report(err)
+				end
+			end
+		end
+	end
+	local function Due(key)
+		if next(due) == nil then
+			if C_Timer and C_Timer.After then
+				C_Timer.After(0, RunDue)
+			else
+				due[key] = true
+				RunDue()   -- (a world with no timer: at once)
+				return
+			end
+		end
+		due[key] = true
+	end
+	local byModule = {}
+	for key, name in pairs(SWITCH) do
+		byModule[name] = key
+	end
+	MelloUI:On("module", function(module)
+		local key = byModule[module]
+		if key and #listeners[key].fns > 0 then
+			Due(key)
+		end
+	end, "MelloUI.Area")
+
+	function Area.Listen(key, fn, owner)
+		local l = listeners[key]
+		assert(l and type(fn) == "function", "MelloUI.Area.Listen(key, fn, owner): an area and a function")
+		owner = owner or fn
+		for i = 1, #l.owners do
+			if l.owners[i] == owner then
+				l.fns[i] = fn
+				return
+			end
+		end
+		l.fns[#l.fns + 1], l.owners[#l.owners + 1] = fn, owner
+	end
+end
+
 function MelloUI:InitModule(module)
 	if module.initialized then
 		return

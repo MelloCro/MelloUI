@@ -35,6 +35,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Area = MelloUI.Area   -- (2.1.6: the plates are the Nameplates area's, the target frame the Unit Frames area's)
 local Perf = MelloUI.Perf:Scope("PlateImpact")
 local Secret = MelloUI.Safe.IsSecret
 
@@ -316,6 +317,9 @@ end
 -- the target's plate taken on (or let go): its pieces made, the ghost on its health
 function FX.Attach()
 	local uf, bar = FX.Target()
+	if not Area.On("nameplates") then
+		uf, bar = nil, nil   -- (2.1.6: the plates the game's while the Nameplates area is -- MelloUI.Area)
+	end
 	if FX.uf and FX.uf ~= uf then
 		FX.Calm(FX.rec[FX.uf])
 	end
@@ -387,7 +391,7 @@ end
 function FX.AttachFrame()
 	FX.Calm(FrameRec())
 	FX.frame = nil
-	if not On("targetFrame") then
+	if not (On("targetFrame") and Area.On("unitframes")) then
 		return
 	end
 	local tf, bar = FX.TargetFrame()
@@ -682,6 +686,18 @@ function M:OnDisable()
 	FX.Calm(FrameRec())
 	FX.uf, FX.frame, FX.drainAt = nil, nil, nil
 end
+
+-- (2.1.6) an area's switch moved (MelloUI.Area): the target frame or the target's plate taken on again, or let go
+Area.Listen("unitframes", function()
+	if M.isEnabled then
+		FX.AttachFrame()
+	end
+end, "PlateImpact: the Unit Frames area")
+Area.Listen("nameplates", function()
+	if M.isEnabled then
+		FX.Attach()
+	end
+end, "PlateImpact: the Nameplates area")
 
 function M:OnSettingChanged(key, _, db)
 	self.db = db

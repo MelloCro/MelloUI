@@ -17,6 +17,7 @@
 
 local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
+local Area = MelloUI.Area   -- (2.1.6: the unit frames', nameplates' and experience bars' areas, AREA_GATE)
 local Perf = MelloUI.Perf:Scope("BarTextures")
 local hooksecurefunc = Perf.hooksecurefunc
 
@@ -273,7 +274,14 @@ for area, key in pairs(AREA_KEY) do
 	AREA_OF[key] = area
 end
 
+-- (2.1.6) a group whose area is given back to the game (MelloUI.Area): the game's art there, whatever is picked
+local AREA_GATE = { unitframes = "unitframes", nameplates = "nameplates", statusbars = "actionbars" }
+
 local function AreaValue(group)
+	local gate = group and AREA_GATE[group]
+	if gate and not Area.On(gate) then
+		return "game"
+	end
 	local db = M.db
 	local key = group and AREA_KEY[group]
 	local v = db and key and db[key]
@@ -1958,6 +1966,16 @@ function M:OnDisable()
 	end
 end
 
+-- (2.1.6) an area's switch moved (MelloUI.Area): its bars dressed again, or the game's art back -- as its own
+-- Bar Texture row would
+for group, gate in pairs(AREA_GATE) do
+	Area.Listen(gate, function()
+		if M.isEnabled and M.db then
+			M:OnSettingChanged(AREA_KEY[group], M.db[AREA_KEY[group]], M.db)
+		end
+	end, "BarTextures: the " .. gate .. " area (" .. group .. ")")
+end
+
 function M:OnSettingChanged(key, value, db)
 	self.db = db
 	local area = AREA_OF[key]
@@ -1966,7 +1984,7 @@ function M:OnSettingChanged(key, value, db)
 	end
 	if area and appliers[area] then
 		key = area
-		if value ~= "game" then
+		if AreaValue(key) ~= "game" then   -- (2.1.6: its area off is the game's too, AREA_GATE)
 			appliers[key]()
 			ReapplyGroup(key)   -- (bars already dressed: the new picture)
 			if key == "unitframes" then

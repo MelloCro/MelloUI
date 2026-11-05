@@ -656,11 +656,55 @@ fadeWatcher:RegisterEvent("PLAYER_LOGIN")
 fadeWatcher:RegisterEvent("ADDON_LOADED")
 Perf.SetScript(fadeWatcher, "OnEvent", SweepFade)
 
+-- (2.1.6) a painted panel of an area given back to the game (MelloUI.Area): off with it. The area's switch is a folded
+-- feature's here (Unit Frames, Nameplates: read from its switch, so the start-up pass, which writes the flags after
+-- this, reads it as the player left it) or a module's own (Action Bars)
+local PANEL_AREA = { UnitFramePanel = "unitframes", NameplatePanel = "nameplates", ActionBarPanel = "actionbars" }
+local function GameAreaOn(db, area)
+	local name = MelloUI.Area.SWITCH[area]
+	for _, tweak in ipairs(TWEAKS) do
+		if tweak[1] == name then
+			return TweakWanted(db, tweak)
+		end
+	end
+	return MelloUI.Area.On(area)
+end
+
 -- a panel (a painted skin) wanted: its switch on, and no part holding the
--- panels off (the painted reskin's part: its switch off)
+-- panels off (the painted reskin's part: its switch off); (2.1.6) and its area MelloUI's
 local function PanelWanted(db, name)
+	local area = PANEL_AREA[name]
+	if area and not GameAreaOn(db, area) then
+		return false
+	end
 	return not Parts.Run(M, "PanelsOff", db) and db[name] ~= false
 end
+
+-- (2.1.6) an area's switch moved (`switch`, its module): the area's painted panel follows, while this module runs --
+-- out of a fight, as every painted skin switches
+local function FollowArea(db, switch)
+	if not M.isEnabled then
+		return
+	end
+	MelloUI.Kit:WhenOutOfCombat(function()
+		if not M.isEnabled then
+			return
+		end
+		for panel, area in pairs(PANEL_AREA) do
+			if MelloUI.Area.SWITCH[area] == switch and MelloUI:GetModule(panel) then
+				MelloUI:SetModuleEnabled(panel, PanelWanted(db, panel))
+			end
+		end
+	end, "UIModifications: the " .. tostring(switch) .. " area's painted panel")
+end
+-- (the Action Bars area's switch is a module's own, not a folded feature's: heard on the bus as it moves -- not a
+-- frame later as Area.Listen tells it: the installer switches UI Modifications on before Action Bars, and the painted
+-- bars must stand as the switch does when its pass ends)
+MelloUI:On("module", function(name)
+	if name == MelloUI.Area.SWITCH.actionbars and M.isEnabled then
+		FollowArea(MelloUI:GetModuleDB(M.name), name)
+	end
+end, "UIModifications: the Action Bars area")
 
 -- During Core's start-up pass the driven modules must come up in TOC order
 -- (Bar Textures before the unit frame panel, and so on): only their flags
@@ -1150,6 +1194,7 @@ function M:OnSettingChanged(key, value, db)
 		-- nothing)
 		if m and not (type(m.tweak) == "table" and m.tweak.always) then
 			MelloUI:SetModuleEnabled(name, value and true or false)
+			FollowArea(db, name)   -- (2.1.6: an area's switch -- its painted panel with it)
 		end
 	elseif MelloUI:GetModule(key) then
 		MelloUI:SetModuleEnabled(key, PanelWanted(db, key))

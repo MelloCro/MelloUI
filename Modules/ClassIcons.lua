@@ -24,6 +24,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Area = MelloUI.Area   -- (2.1.6: the unit frames' portraits are the Unit Frames area's)
 local Perf = MelloUI.Perf:Scope("ClassIcons")
 local hooksecurefunc = Perf.hooksecurefunc
 
@@ -438,6 +439,12 @@ local function TryReplacePlayerPortrait(texture, unit)
 	if texture and GameLeftAlone() and OfGameParty(texture) then
 		return false
 	end
+	-- (2.1.6) a unit frame's portrait while the Unit Frames switch is off: the game's (MelloUI.Area); the character
+	-- window's and the other windows' keep the medallion
+	if texture and not Area.On("unitframes") and Area.Holds("unitframes", texture) then
+		Uncover(texture)
+		return false
+	end
 	-- UnitIsPlayer first: it is false for an NPC and for no unit at all, so
 	-- an NPC's portrait costs one question
 	if not (texture and unit and UnitIsPlayer(unit) and UnitExists(unit)) then
@@ -624,6 +631,21 @@ function M:OnEnable(db)
 				CoverUnitPortraits()
 			end
 		end, "Class Icons: the game's party back")
+		-- (2.1.6) the Unit Frames switch moved: the frames' portraits covered again, or the game's back
+		Area.Listen("unitframes", function(on)
+			if not (M.isEnabled and M.db and M.db.portraits) then
+				return
+			end
+			if on then
+				CoverUnitPortraits()
+				return
+			end
+			for texture in pairs(covers) do
+				if Area.Holds("unitframes", texture) then
+					Uncover(texture)
+				end
+			end
+		end, "Class Icons: the Unit Frames area")
 		-- (fr-17) the player frame of ours come or gone (the game's given back): the portrait of the one that stands
 		MelloUI:On("units", function()
 			if M.isEnabled and M.db and M.db.portraits then

@@ -174,6 +174,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.6", lines = {
+		"Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working.",
+		"New: an Action Bars switch on the Bars page.",
+	} },
 	{ version = "2.1.5", lines = {
 		"Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs.",
 	} },
@@ -187,20 +191,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.2", lines = {
 		"Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes.",
-	} },
-	{ version = "2.1.1", lines = {
-		"Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid.",
-		"Search finds your own words too (color, alpha, hotkey, hp, castbar, absorb); the row it opens is ringed in gold.",
-		"A tab waiting on a switch has a button to it; the other skin's settings and turned-off action bars stay out of sight.",
-		"Settings kept on another page show as small chips at the end of their section; a jump to one shows a way back.",
-		"Escape goes one step at a time; Settings Window Scale on Look sizes this window; helper texts are full size.",
-		"Edit Layout: Grid, Snap, Dim and Coordinates in one View menu, with the grid spacing and snapping gap as sliders.",
-		"Deleting a profile, Fade Everything and Fade Nothing ask first; settings that do nothing in your setup stay hidden.",
-		"Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders.",
-		"Edit Layout, the map, Dungeon Info and the installer bring you back to your settings page; Dark Mode leaves it alone.",
-		"Fewer empty places: tiny tabs joined, Dungeon Info now on Map, windows without settings unlisted; empty bars show slots.",
-		"Spell groups for every class: one layout for all your characters; a spell you switch off is your class's own tweak.",
-		"Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect, at every rank.",
 	} },
 }
 local LINKS = {

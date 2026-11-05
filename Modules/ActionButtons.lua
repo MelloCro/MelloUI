@@ -43,6 +43,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Area = MelloUI.Area   -- (2.1.6: every button here is the Action Bars area's -- off, the game's buttons untouched)
 local Perf = MelloUI.Perf:Scope("ActionButtons")
 local hooksecurefunc = Perf.hooksecurefunc
 local Shared = Perf.Shared
@@ -112,10 +113,10 @@ local function OwnG(name)
 end
 
 local function PressOn()
-	return M.isEnabled and M.db and M.db.pressLight
+	return M.isEnabled and M.db and M.db.pressLight and Area.On("actionbars")
 end
 local function ColoursOn()
-	return M.isEnabled and M.db and M.db.rangeColours
+	return M.isEnabled and M.db and M.db.rangeColours and Area.On("actionbars")
 end
 
 --------------------------------------------------------------------------------
@@ -136,7 +137,7 @@ local framed = setmetatable({}, { __mode = "k" })    -- [button] = the state it 
 local hover = setmetatable({}, { __mode = "k" })     -- [button] = true while the pointer is on it
 
 local function FramesOn()
-	if not (M.isEnabled and M.db and M.db.frames ~= false) then
+	if not (M.isEnabled and M.db and M.db.frames ~= false and Area.On("actionbars")) then
 		return false
 	end
 	-- (1.2.4, the Default skin -- MelloUI.Skin: the game's own button frames)
@@ -432,7 +433,7 @@ local since = setmetatable({}, { __mode = "k" })       -- [cooldown] = when it b
 local cooldownOf = setmetatable({}, { __mode = "k" })  -- [cooldown] = its button
 
 local function ReadyOn()
-	return M.isEnabled and M.db and M.db.readyFlash ~= false
+	return M.isEnabled and M.db and M.db.readyFlash ~= false and Area.On("actionbars")
 end
 
 local function ReadyStep(job, u)
@@ -627,6 +628,13 @@ function M:OnSettingChanged(_, _, db)
 	self.db = db
 	Refresh()
 end
+
+-- (2.1.6) the Action Bars switch moved (MelloUI.Area): the buttons dressed again, or the game's as they are
+Area.Listen("actionbars", function()
+	if M.isEnabled then
+		Refresh()
+	end
+end, "ActionButtons: the Action Bars area")
 
 -- (1.2.4) the skin switched (MelloUI.Skin): the frames in its look
 MelloUI:On("skin", function()

@@ -37,6 +37,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Area = MelloUI.Area   -- (2.1.6: the unit frames' and the game's party frames' heals and glows, the Unit Frames area's)
 
 -- (fr-17) the player frame on the screen -- MelloUI's own while it stands in (MelloUI.Units, Modules/UnitFramesOwn.lua),
 -- else the game's -- and the game's update hooks through it (a world without that file: the game's frame, a plain hook)
@@ -335,6 +336,11 @@ local function PaintSample(set)
 	Shields.Paint(health, shield, shield, hi, false, set.other:GetStatusBarTexture())
 end
 
+-- (2.1.6) a set or glow on a frame of an area given back to the game (MelloUI.Area): the game's frame, untouched
+local function GivenBack(region)
+	return not Area.On("unitframes") and Area.Holds("unitframes", region)
+end
+
 local function UpdateHeals(set)
 	if set.sample then
 		PaintSample(set)
@@ -342,7 +348,7 @@ local function UpdateHeals(set)
 	end
 	local c = Calculator()
 	local unit = set.unit()
-	if not (active and M.db and M.db.incomingHeals and c and unit and Chain(set)) then
+	if not (active and M.db and M.db.incomingHeals and c and unit and not GivenBack(set.health) and Chain(set)) then
 		HideHeals(set)
 		return
 	end
@@ -568,7 +574,7 @@ local function UpdateGlow(g)
 	if g.sample then
 		return   -- (the preview's while it plays: put back at its stop)
 	end
-	if not (active and M.db and M.db.debuffGlow) then
+	if not (active and M.db and M.db.debuffGlow) or GivenBack(g.frame) then
 		ShowGlow(g, false)
 		return
 	end
@@ -646,11 +652,13 @@ local function SetUpUnitFrames()
 end
 
 local function SetUpParty()
-	local pf = PartyFrame
-	if not (pf and pf.PartyMemberFramePool) then
+	local pool = PartyFrame and PartyFrame.PartyMemberFramePool
+	-- (the pool's own walk only: a stand-in that answers every key would never end -- 2.1.6, a set-up off the
+	-- module's own calls since the Unit Frames area's switch)
+	if not (pool and type(pool.EnumerateActive) == "function") then
 		return
 	end
-	for frame in pf.PartyMemberFramePool:EnumerateActive() do
+	for frame in pool:EnumerateActive() do
 		MakeGlow(frame, PARTY, nil)
 		local pet = frame.PetFrame
 		if pet then
@@ -685,8 +693,11 @@ local function SetUpAll()
 	if not active then
 		return
 	end
-	SetUpUnitFrames()
-	SetUpParty()
+	-- (2.1.6: nothing made on the unit frames while their area is the game's)
+	if Area.On("unitframes") then
+		SetUpUnitFrames()
+		SetUpParty()
+	end
 	SetUpRaid()
 end
 
@@ -927,6 +938,17 @@ function M:OnSettingChanged(_, _, db)
 	self.db = db
 	RefreshAll()
 end
+
+-- (2.1.6) the Unit Frames switch moved (MelloUI.Area): the frames' heals and glows made (out of combat) or hidden
+Area.Listen("unitframes", function(on)
+	if not active then
+		return
+	end
+	if on then
+		SetUpSoon()
+	end
+	RefreshAll()
+end, "HealerFrames: the Unit Frames area")
 
 -- (0.20.0) a member's frame of MelloUI's own group frames (MelloUI_GroupFrames):
 -- its incoming heals and its debuff glow, as a raid frame's (out of a fight:

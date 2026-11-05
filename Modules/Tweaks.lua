@@ -19,6 +19,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Area = MelloUI.Area   -- (2.1.6: the level badge's roll on the player frame, the XP bar's light: their areas')
 local Perf = MelloUI.Perf:Scope("Tweaks")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Num = MelloUI.Safe.Number
@@ -1446,7 +1447,8 @@ function Level.Up(new, ...)
 	local from = Level.From()
 	if motion then
 		-- (the badge's roll: the painted skin's disc, else the circle's stand-in -- 1.2.0, the modern look too)
-		local sp = FX.Split and FX.Split(MelloUI.Units and MelloUI.Units.Player() or PlayerFrame)
+		-- (2.1.6: on the player frame only while the Unit Frames area is MelloUI's; the bar's while Action Bars')
+		local sp = Area.On("unitframes") and FX.Split and FX.Split(MelloUI.Units and MelloUI.Units.Player() or PlayerFrame)
 		if sp and FX.LevelRoll(sp, new - 1, new) then
 			local badge = sp.orb or sp.disc
 			if badge then
@@ -1460,7 +1462,7 @@ function Level.Up(new, ...)
 		if to >= from and not Level.preview then
 			to = 0
 		end
-		if not (sb and FX.LevelBar and FX.LevelBar(sb, from, to)) then
+		if Area.On("actionbars") and not (sb and FX.LevelBar and FX.LevelBar(sb, from, to)) then
 			local bar = OwnRaw("MainStatusTrackingBarContainer")
 			if bar and bar:IsVisible() then
 				FX.ShowOn(bar, "level", "bar", Level.BAR_SPILL)
@@ -1564,7 +1566,8 @@ function XP.Update()
 	local old, oldMax = XP.at, XP.max
 	local now, max = XP.Read()
 	XP.at, XP.max = now, max
-	if now and old and max == oldMax and now > old and M.isEnabled and M.db and M.db.xpGain ~= false then
+	if now and old and max == oldMax and now > old and M.isEnabled and M.db and M.db.xpGain ~= false
+		and Area.On("actionbars") then
 		XP.Play(old, now, max)
 	end
 end
@@ -1579,7 +1582,8 @@ end, "event")
 
 -- its events while the option is on (and the module)
 function XP.Listen()
-	local on = M.isEnabled and M.db ~= nil and M.db.xpGain ~= false
+	-- (2.1.6: and the experience bar MelloUI's -- the Action Bars area, MelloUI.Area)
+	local on = M.isEnabled and M.db ~= nil and M.db.xpGain ~= false and Area.On("actionbars")
 	if not (on or XP.frame) then
 		return
 	end
@@ -1674,7 +1678,7 @@ function Rep.Update()
 	end
 	local was, wasReaction, wasShare = Rep.id, Rep.reaction, Rep.share
 	Rep.id, Rep.reaction, Rep.share = id, reaction, share
-	if was ~= id or not (M.isEnabled and M.db and M.db.repGain ~= false) then
+	if was ~= id or not (M.isEnabled and M.db and M.db.repGain ~= false and Area.On("actionbars")) then
 		return
 	end
 	if reaction > wasReaction then
@@ -1693,7 +1697,7 @@ end, "event")
 
 -- its events while the option is on (and the module)
 function Rep.Listen()
-	local on = M.isEnabled and M.db ~= nil and M.db.repGain ~= false
+	local on = M.isEnabled and M.db ~= nil and M.db.repGain ~= false and Area.On("actionbars")   -- (2.1.6, as XP's)
 	if not (on or Rep.frame) then
 		return
 	end
@@ -1739,7 +1743,7 @@ end
 -- PREVIEW of the level
 function M.SlashXP()
 	local now, max = XP.Read()
-	if not (now and M.isEnabled and M.db and M.db.xpGain ~= false and XP.Bar()) then
+	if not (now and M.isEnabled and M.db and M.db.xpGain ~= false and Area.On("actionbars") and XP.Bar()) then
 		MelloUI:Print("XP Gain is off (Bars > XP & Rep), or no experience bar shows.")
 		return
 	end
@@ -2346,6 +2350,14 @@ end
 function M:OnLoginWorld(...)
 	MelloUI:ReplayWorld(XP.frame, ...)
 end
+
+-- (2.1.6) the Action Bars switch moved (MelloUI.Area): the experience and reputation bars' lights listen, or not
+MelloUI.Area.Listen("actionbars", function()
+	if M.isEnabled then
+		XP.Listen()
+		Rep.Listen()
+	end
+end, "Tweaks: the Action Bars area")
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db

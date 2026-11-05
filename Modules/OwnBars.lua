@@ -61,6 +61,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Area = MelloUI.Area   -- (2.1.6: every bar of ours is the Action Bars area's)
 local Perf = MelloUI.Perf:Scope("OwnBars")
 local Shared = Perf.Shared
 local C_Timer = Perf.C_Timer
@@ -2294,8 +2295,9 @@ function OB.AddPart(part)
 	PARTS[#PARTS + 1] = part
 end
 
+-- (2.1.6: and the Action Bars area MelloUI's -- MelloUI.Area: off, the game's bars untouched)
 local function Want()
-	return MelloUI:IsModuleEnabled(M.name) and MelloUI:IsModuleEnabled("UIModifications")
+	return MelloUI:IsModuleEnabled(M.name) and MelloUI:IsModuleEnabled("UIModifications") and Area.On("actionbars")
 end
 
 -- (fr-18b) a secure part's change in a fight: again as the fight ends, still as the login's when it was (a /reload in
@@ -2330,7 +2332,7 @@ function OB.Sync(atLogin)
 			elseif done then
 				-- (fr-18b: asked only for a part that came: one this client can't make never asks)
 				if not atLogin then
-					MelloUI:AskReload("UI Modifications is on: type /reload to finish putting the game's bars away.")
+					MelloUI:AskReload("MelloUI's bars are on: type /reload to finish putting the game's bars away.")
 				end
 				OB.stood[part.id] = true
 				MelloUI:Fire("ownbars", part.id, true)
@@ -2352,10 +2354,10 @@ local function ListenOnce()
 	end
 	listening = true
 	MelloUI:On("module", function(name)
-		if name == "UIModifications" then
+		if name == "UIModifications" or name == Area.SWITCH.actionbars then
 			OB.Sync()
 		end
-	end, "Own Bars: UI Modifications switched")
+	end, "Own Bars: UI Modifications or the Action Bars area switched")
 	-- (fr-18b) the UI scale or the screen changed: the width sliders' top again, a width past it drawn at it
 	MelloUI:On("scale", function()
 		StatusMax()
