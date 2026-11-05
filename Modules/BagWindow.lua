@@ -2244,16 +2244,13 @@ do
 				end
 				-- (the user's screenshot, 2026-10-20: "they dont show the icons") the template's mask cuts the icon to the
 				-- game's tab shape, mirrored here for the left: in the game nothing of the icon was left. MelloUI's plate
-				-- shows it whole; the kit's rim has the mask back
+				-- shows it whole -- and the kit's rim too (2.1.4; a player, 2026-11-05: "Bag icons missing in
+				-- oldschool"): the rim is square and fits the icon in itself (Kit:SlotPlaceIcon), which the game's
+				-- mask, left where the game's art stood, no longer covered
 				local mask, icon = tab.Mask, tab.Icon
-				if mask and icon.RemoveMaskTexture then
-					if not kit and not tab.melloUnmasked then
-						pcall(icon.RemoveMaskTexture, icon, mask)
-						tab.melloUnmasked = true
-					elseif kit and tab.melloUnmasked then
-						pcall(icon.AddMaskTexture, icon, mask)
-						tab.melloUnmasked = nil
-					end
+				if mask and icon.RemoveMaskTexture and not tab.melloUnmasked then
+					pcall(icon.RemoveMaskTexture, icon, mask)
+					tab.melloUnmasked = true
 				end
 				local open = key == win.tab
 				if tab.melloEdge then
@@ -2332,7 +2329,11 @@ do
 		if n > 0 then
 			local ok, inv = pcall(C_Container.ContainerIDToInventoryID, G.REAGENT)
 			local okT, icon = pcall(GetInventoryItemTexture, "player", ok and inv or 0)
-			tabs.reagent.Icon:SetTexture(okT and icon and not Secret(icon) and icon or ICONS.reagent)
+			-- (2.1.4; a player, 2026-11-05: "Bag icons missing", every skin) through MelloUI.Icons as the Backpack's: a
+			-- plain SetTexture kept the crop of the set's copy sheet (MelloUI.Icons' size copies), so the bag's own
+			-- icon showed only that sliver of itself
+			iconOf[tabs.reagent] = okT and icon and not Secret(icon) and icon or ICONS.reagent
+			TabIcon(tabs.reagent)
 		end
 		Checked()
 	end

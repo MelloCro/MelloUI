@@ -267,6 +267,13 @@ local function GiversShown()
 	return shown
 end
 
+-- (2.1.4) what this map shows of a quest, for other addons' pins of it (MapAddonPins: Questie's, nothing twice): the
+-- givers' pins, and whether its objectives are laid here
+Objectives.GiversShown = GiversShown
+function Objectives.Laid(q)
+	return S.first[q] ~= nil
+end
+
 -- forward: (Lay) each guide goal not shown yet, in a group by its shape (a quest's own when the same); its dots
 local GuideGroups
 
@@ -804,6 +811,11 @@ function Objectives.Lay()
 	end
 	pins:Lay()
 	Ghosts()
+	-- (2.1.4) other addons' pins of these quests looked at again (Questie's: nothing twice)
+	local AP = ns.AddonPins
+	if AP and AP.Recheck then
+		AP.Recheck()
+	end
 end
 
 -- (Map.lua's canvas.onView) the view moved: the areas shown from the marks' zoom, their edge's width, the areas in

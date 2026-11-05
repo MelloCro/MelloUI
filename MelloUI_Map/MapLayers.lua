@@ -375,6 +375,11 @@ function Layers.Quests()
 		end
 	end
 	S.questsMs = debugprofilestop() - t0
+	-- (2.1.4) other addons' pins of these quests looked at again (Questie's: nothing twice)
+	local AP = ns.AddonPins
+	if AP and AP.Recheck then
+		AP.Recheck()
+	end
 end
 
 -- the Quest List laid its marks again: the givers again now if the window shows, else at its next open

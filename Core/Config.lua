@@ -174,6 +174,11 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.4", lines = {
+		"Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it.",
+		"Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again.",
+		"The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once.",
+	} },
 	{ version = "2.1.3", lines = {
 		"Fixed: after a level-up the micro menu no longer leaves the place you gave it.",
 	} },
@@ -207,20 +212,6 @@ local CHANGELOG = {
 		"Your unit, party and raid frames, action bars and bag bar are MelloUI's own; health bars show shields and overshields, and members out of range fade.",
 		"A fresh Mello layout for wide screens, fitted to every other (on 32:9 in the corners); Keep My Layout keeps your places; profiles keep every bar's place and offer Fit to this screen.",
 		"The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going.",
-	} },
-	{ version = "2.0.0", lines = {
-		"Effects: bolder heals and cooldowns across the whole frame; Buff Landings in each school's colour; a threat halo (untick Hide Combat Flash).",
-		"Heals burst, seal onto the portrait or close round the frame as a shield; cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards, golden barriers, afterimages.",
-		"Frames: Hide Heal Numbers on your portrait; the meter's numbers in a tab on your frame and each party frame; party: Flip, Mouseover Highlight, Raid's look in raid frames.",
-		"Previews: a dragged part stays inside; indicators: right-click to remove, spell groups to drag onto your frame (heals over time, defensives ...).",
-		"Skin (Look > General): Default, Modern or Oldschool in one row; Default gives MelloUI's windows, bags, chat, tracker and party frames the game's look.",
-		"A new installer: skin first, then each part; one setup for every skin, fitted to your screen, reloaded on Keep; moved frames keep their screen edges. Preview: Solo, Party, Raid Fight.",
-		"Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles; your text size stays after a /reload.",
-		"Level Up Card: what each level gave you, and the spells now waiting at your trainer.",
-		"The configurator: one painted window per skin that moves a little while open; plain one-row tabs, the designers' frames too; Quality of Life holds Automation, Screen Text, Reminders.",
-		"Options two to a line, none greyed out (a switch's settings behind its cog); Look holds every font, texture and border; profiles keep every setting exactly.",
-		"Edit Layout: a top dock; every part of Edit Mode, hidden ones too, to show, hide, lock or move; the game's settings and switches in each box (bars: On Mouseover); one gold highlight.",
-		"Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS); Dark Mode: one Brightness for all of MelloUI, all switches on its tab, new: Windows.",
 	} },
 }
 local LINKS = {

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.4
+
+- Fixed: on Oldschool's frames the power bar now keeps a small gap under the health bar (player, target, focus, pet and party), and the target's and focus's power bar no longer reaches past the health bar on the far side.
+- Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window showed no icon.
+- MelloUI's map shows Questie's quest givers, turn-ins and objectives in MelloUI's own icons, in every skin, instead of Questie's stretched ones; a quest the map already shows appears once.
+
 ## 2.1.3
 
 - Fixed: after a level-up the micro menu moved away from the place you gave it in Edit Layout, until Edit Mode was opened. It stays in place now when the game shows a new button.

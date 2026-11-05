@@ -74,7 +74,7 @@ local T = {
 	-- HereBeDragons' world map pins: the library's own name, and Questie's renamed copy
 	HBD = {
 		{ pins = "HereBeDragons-Pins-2.0", hbd = "HereBeDragons-2.0" },
-		{ pins = "HereBeDragonsQuestie-Pins-2.0", hbd = "HereBeDragonsQuestie-2.0" },
+		{ pins = "HereBeDragonsQuestie-Pins-2.0", hbd = "HereBeDragonsQuestie-2.0", questie = true },
 	},
 	SHOW_CONTINENT = 2,      -- HBD_PINS_WORLDMAP_SHOW_CONTINENT
 	SHOW_WORLD = 3,          -- HBD_PINS_WORLDMAP_SHOW_WORLD
@@ -97,11 +97,161 @@ local S = {
 AddonPins.S = S
 
 --------------------------------------------------------------------------------
+-- Questie's icons in MelloUI's own look (2.1.4; the user, 2026-11-05: "Those polestar and questie icons need to be
+-- replaced by our own, we have the library for it, and match the themes"; a player's screenshot: Questie's "!" cut off
+-- on this map). An icon of Questie's (its renamed library's) is known by its picture's file name (Questie.icons):
+--   a quest whose giver or ender the quest givers show already, or whose objectives this map's objectives lay: not
+--   borrowed -- nothing twice, as the followed guide's goals (MapObjectives); looked at again whenever either lays
+--   one with a picture of MelloUI's own (QUESTIE_LOOK): that picture on the frame -- the quest givers' (the game's
+--   quest marks, greyed as the Quest List greys them) or the icon set's in the look on (MelloUI.Icons), lifted as
+--   this map's marks -- and Questie's own pictures out of sight; its tooltip and clicks Questie's still. Given back as
+--   it was (Release: the library shows the same frame on the game's map)
+--   any other (gathering nodes, townsfolk, its own markers): Questie's own, as before
+-- (Polestar's pins stay on the game's map; on this one its guide's goals are this map's marks already: MapObjectives)
+--------------------------------------------------------------------------------
+
+local GIVER_ATLAS, ENDER_ATLAS = "QuestNormal", "QuestTurnin"
+local QUESTIE_LOOK = {
+	available = { atlas = GIVER_ATLAS, cover = "giver" },
+	available_gray = { atlas = GIVER_ATLAS, grey = true, cover = "giver" },
+	repeatable = { atlas = GIVER_ATLAS, cover = "giver" },
+	eventquest = { atlas = GIVER_ATLAS, cover = "giver" },
+	pvpquest = { atlas = GIVER_ATLAS, cover = "giver" },
+	complete = { atlas = ENDER_ATLAS, cover = "ender" },
+	incomplete = { atlas = ENDER_ATLAS, grey = true, cover = "ender" },
+	repeatable_complete = { atlas = ENDER_ATLAS, cover = "ender" },
+	eventquest_complete = { atlas = ENDER_ATLAS, cover = "ender" },
+	pvpquest_complete = { atlas = ENDER_ATLAS, cover = "ender" },
+	slay = { icon = "kill", cover = "objective" },
+	slay_mono = { icon = "kill", cover = "objective" },
+	loot = { icon = "pin_collect", cover = "objective" },
+	loot_mono = { icon = "pin_collect", cover = "objective" },
+	object = { icon = "obj_use", cover = "objective" },
+	object_mono = { icon = "obj_use", cover = "objective" },
+	interact = { icon = "obj_use", cover = "objective" },
+	talk = { icon = "chat_general", cover = "objective" },
+	chatbubblegossipicon = { icon = "chat_general", cover = "objective" },
+	event = { icon = "obj_explore", cover = "objective" },
+	chest = { icon = "ql_chest" },
+}
+AddonPins.QUESTIE_LOOK = QUESTIE_LOOK
+local QUESTIE_PARTS = { "texture", "glowTexture", "overlayTexture" }   -- (QuestieFrame.lua's own pictures)
+local ICONS = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\"
+local styled = setmetatable({}, { __mode = "k" })   -- [Questie's frame] = our picture on it
+
+-- a Questie icon's look: its picture's file name (data.Icon, else the texture's own), nil for one of no look of ours
+local function QuestieLook(icon)
+	local data = rawget(icon, "data")
+	local path = type(data) == "table" and Text(data.Icon) or nil
+	if not path then
+		local tex = rawget(icon, "texture")
+		local ok, p = pcall(tex and tex.GetTexture, tex)
+		path = ok and Text(p) or nil
+	end
+	local name = type(path) == "string" and path:match("([^\\/]+)%.%w+$")
+	return name and QUESTIE_LOOK[name:lower()] or nil
+end
+
+-- what this map shows of the quests already (taken once a pass): MapObjectives' givers shown and objectives laid
+local function Cover()
+	local O = ns.Objectives
+	if not (O and O.GiversShown and O.Laid) then
+		return nil
+	end
+	local ok, givers = pcall(O.GiversShown)
+	return { givers = ok and type(givers) == "table" and givers or {}, laid = O.Laid }
+end
+
+local function Covered(look, icon, cover)
+	local data = rawget(icon, "data")
+	local q = cover and look.cover and type(data) == "table" and Finite(data.Id)
+	if not q then
+		return false
+	end
+	if look.cover == "objective" then
+		return cover.laid(q) and true or false
+	end
+	local g = cover.givers[q]
+	if not g then
+		return false
+	end
+	if look.cover == "giver" then
+		return (g.available or g.locked) and true or false
+	end
+	return (g.ready or g.progress) and true or false
+end
+
+local function Restyle(icon, look)
+	local tex = styled[icon]
+	if not tex then
+		tex = icon:CreateTexture(nil, "OVERLAY", nil, 7)
+		tex:SetAllPoints(icon)
+		styled[icon] = tex
+	end
+	for _, key in ipairs(QUESTIE_PARTS) do
+		local part = rawget(icon, key)
+		if part and part.SetAlpha then
+			part:SetAlpha(0)
+		end
+	end
+	if look.atlas then
+		MelloUI.Icons.Release(tex)
+		tex:SetTexCoord(0, 1, 0, 1)
+		tex:SetAtlas(look.atlas)
+	else
+		MelloUI.Icons.Set(tex, ICONS .. look.icon)
+	end
+	tex:SetDesaturated(look.grey == true)
+	tex:SetAlpha(look.grey and 0.75 or 1)
+	tex:Show()
+	-- (lifted as this map's own marks: the look's shade)
+	local P = ns.Pins
+	if P and P.Lift then
+		local w = Finite(icon:GetWidth())
+		P.Lift(tex, look.icon or false, w and w > 0 and w or 16)
+	end
+end
+
+-- Questie's frame as it was (given back: its library shows it on the game's map too)
+local function Unstyle(icon)
+	local tex = styled[icon]
+	if not tex then
+		return
+	end
+	tex:Hide()
+	local P = ns.Pins
+	if P and P.Lift then
+		P.Lift(tex, false)
+	end
+	for _, key in ipairs(QUESTIE_PARTS) do
+		local part = rawget(icon, key)
+		if part and part.SetAlpha then
+			part:SetAlpha(1)
+		end
+	end
+end
+AddonPins.Restyled = function(icon)
+	local tex = styled[icon]
+	return tex ~= nil and tex:IsShown() and tex or nil
+end
+
+-- (MapLayers' quest givers and MapObjectives' objectives laid again) Questie's icons looked at again on the next beat
+function AddonPins.Recheck()
+	for _, entry in ipairs(S.libs) do
+		if entry.questie then
+			entry.full = true
+			S.queued = true
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
 -- HereBeDragons: the icons borrowed
 --------------------------------------------------------------------------------
 
 -- a borrowed icon back where its library keeps an icon it does not show: hidden, on UIParent (its own release)
 local function Release(frame)
+	Unstyle(frame)
 	if S.ours[frame:GetParent()] then
 		frame:Hide()
 		frame:ClearAllPoints()
@@ -158,13 +308,22 @@ local function Drop(icon)
 	S.owner[icon], S.layerOf[icon] = nil, nil
 end
 
--- one icon of the library's registry laid (or let go: no place here)
-local function Place(entry, icon, t)
+-- one icon of the library's registry laid (or let go: no place here); `cover`: Questie's, what this map shows already
+local function Place(entry, icon, t, cover)
 	if type(icon) ~= "table" or type(t) ~= "table" or not icon.SetPoint then
 		return
 	end
 	-- (a secure frame is never moved by MelloUI: hard rule 1)
 	if icon.IsProtected and icon:IsProtected() then
+		return
+	end
+	-- (2.1.4) Questie's: a quest this map shows already is not drawn twice; the rest in MelloUI's own look
+	local look = entry.questie and QuestieLook(icon) or nil
+	if look and Covered(look, icon, cover) then
+		if S.owner[icon] then
+			Drop(icon)
+			Release(icon)
+		end
 		return
 	end
 	local c = S.canvas
@@ -195,6 +354,11 @@ local function Place(entry, icon, t)
 	end
 	S.pins:Set(layer, icon, wx, wy, spec)
 	S.owner[icon], S.layerOf[icon] = entry, layer
+	if look then
+		Restyle(icon, look)
+	elseif styled[icon] then
+		Unstyle(icon)   -- (Questie's pooled frame now one of no look of ours)
+	end
 end
 
 -- every icon of a library again (the map's open, or the library's remove-all)
@@ -203,8 +367,9 @@ local function Sync(entry)
 	if type(reg) ~= "table" then
 		return
 	end
+	local cover = entry.questie and Cover() or nil
 	for icon, t in pairs(reg) do
-		Place(entry, icon, t)
+		Place(entry, icon, t, cover)
 	end
 	for icon, e in pairs(S.owner) do
 		if e == entry and not reg[icon] then
@@ -248,7 +413,8 @@ local function FindLibs()
 		local okH, hbd = pcall(LibStub, names.hbd, true)
 		if okP and okH and type(lib) == "table" and type(hbd) == "table" and not S.byLib[lib]
 			and type(lib.worldmapPins) == "table" and type(hbd.GetZoneCoordinatesFromWorldInstance) == "function" then
-			local entry = { pins = lib, hbd = hbd, maps = {}, conts = {}, full = true, hooked = {} }
+			local entry = { pins = lib, hbd = hbd, maps = {}, conts = {}, full = true, hooked = {},
+				questie = names.questie == true }
 			entry.onOne = function(_, _, icon)
 				Changed(entry, icon)
 			end
@@ -272,10 +438,14 @@ local function Queue()
 			Sync(entry)
 		end
 	end
+	local cover
 	for icon, entry in pairs(S.queue) do
 		local t = entry.pins.worldmapPins[icon]
 		if t then
-			Place(entry, icon, t)
+			if entry.questie and not cover then
+				cover = Cover() or false
+			end
+			Place(entry, icon, t, entry.questie and cover or nil)
 		else
 			Drop(icon)
 		end

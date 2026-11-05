@@ -723,12 +723,30 @@ end
 -- saved and put back on disable (part of the replaced element's geometry,
 -- law 5). Re-applied after the game's art swaps.
 local TUCK = 2
+-- (2.1.3; a player, 2026-11-05: "the target's energy bar is now slightly offset to the left", "the player's own energy
+-- bar and health bar are too close together", the party's too) the power bar under its health bar keeps BAR_GAP UI px
+-- between the two (the game lays them touching: their brackets' gold rails met), and its far end where the health
+-- bar's ends (the game's target power bar runs past it on the far side)
+local BAR_GAP = 3
 local tucked = {}          -- bars with saved anchors (re-anchored at least once)
 local tuckable = {}        -- every bar registered (a hidden frame's bars get their first tuck later)
 
 local tuckOf = setmetatable({}, { __mode = "k" })   -- [bar] = { points, w, h }: its place before the tuck
+-- a bar's place before ours, kept for the untuck (read before anything here moves it)
+local function KeepTuck(bar, w, h)
+	if not tuckOf[bar] then
+		local points = {}
+		for i = 1, bar:GetNumPoints() do
+			points[i] = { bar:GetPoint(i) }
+		end
+		tuckOf[bar] = { points = points, w = w, h = h }
+		tucked[#tucked + 1] = bar
+	end
+end
+
 -- (one function for every bar, called protected: nothing made per call)
-local function TuckBarNow(bar, tex, mirrored)
+-- (`above`: the health bar over a power bar, tucked first -- BAR_GAP)
+local function TuckBarNow(bar, tex, mirrored, above)
 	do
 		local rl, rb, rw, rh = tex:GetRect()
 		local piece = pieceOf[tex]
@@ -739,6 +757,23 @@ local function TuckBarNow(bar, tex, mirrored)
 		if not l then
 			return
 		end
+		local spaced = false
+		local al, ab, aw = nil, nil, nil
+		if above then
+			al, ab, aw = above:GetRect()
+		end
+		if al and ab and aw then
+			KeepTuck(bar, w, h)
+			-- the far end at the health bar's, the top BAR_GAP under its bottom (the game's own place when that is lower)
+			if mirrored then
+				w = w + (l - al)
+				l = al
+			else
+				w = al + aw - l
+			end
+			b = math.min(b, ab - BAR_GAP - h)
+			spaced = true
+		end
 		-- the ring is ROUND: its outer edge at the bar's height, taken at the
 		-- bar's edge farthest from the ring's centre so the whole end is under
 		-- the rim (the bars follow the curve, as the painting has them)
@@ -747,19 +782,15 @@ local function TuckBarNow(bar, tex, mirrored)
 		-- gems, which stick out past the body), else the box
 		local radius = rw * (piece.radius or (piece.box[3] - piece.box[1]) / 2) / piece.w
 		local dy = math.max(math.abs(b - cy), math.abs(b + h - cy))
-		if dy >= radius then
+		-- (past the ring's curve: no end to tuck -- a power bar is still spaced)
+		local tuckX
+		if dy < radius then
+			local reach = math.sqrt(radius * radius - dy * dy)
+			tuckX = mirrored and (cx - reach + TUCK) or (cx + reach - TUCK)
+		elseif not spaced then
 			return
 		end
-		local reach = math.sqrt(radius * radius - dy * dy)
-		local tuckX = mirrored and (cx - reach + TUCK) or (cx + reach - TUCK)
-		if not tuckOf[bar] then
-			local points = {}
-			for i = 1, bar:GetNumPoints() do
-				points[i] = { bar:GetPoint(i) }
-			end
-			tuckOf[bar] = { points = points, w = w, h = h }
-			tucked[#tucked + 1] = bar
-		end
+		KeepTuck(bar, w, h)
 		local _, rel = bar:GetPoint(1)
 		rel = rel or bar:GetParent()
 		local pl, pb, _, ph = rel:GetRect()
@@ -768,9 +799,9 @@ local function TuckBarNow(bar, tex, mirrored)
 		end
 		local top = pb + ph
 		local left, right = l, l + w
-		if mirrored then
+		if tuckX and mirrored then
 			right = math.min(right, tuckX)
-		else
+		elseif tuckX then
 			left = math.max(left, tuckX)
 		end
 		if right - left < 4 then
@@ -782,29 +813,31 @@ local function TuckBarNow(bar, tex, mirrored)
 	end
 end
 
-local function TuckBar(bar, ring, mirrored)
+local function TuckBar(bar, ring, mirrored, above)
 	local tex = ring and ring.tex
 	if not (bar and tex) then
 		return
 	end
-	local ok = pcall(TuckBarNow, bar, tex, mirrored)
+	local ok = pcall(TuckBarNow, bar, tex, mirrored, above)
 	return ok
 end
 
 local retuckOf = setmetatable({}, { __mode = "k" })   -- [bar] = its tuck laid again
+-- (`bars`: the health bar first, its power bar after it: spaced under it, BAR_GAP)
 local function TuckBars(ring, bars, mirrored)
 	if not ring then
 		return
 	end
-	for _, bar in ipairs(bars) do
+	for i, bar in ipairs(bars) do
 		if bar then
+			local above = i == 2 and bars[1] or nil
 			retuckOf[bar] = function()
 				if active then
-					TuckBar(bar, ring, mirrored)
+					TuckBar(bar, ring, mirrored, above)
 				end
 			end
 			tuckable[#tuckable + 1] = bar
-			TuckBar(bar, ring, mirrored)
+			TuckBar(bar, ring, mirrored, above)
 		end
 	end
 end
