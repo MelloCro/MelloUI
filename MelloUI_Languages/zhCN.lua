@@ -554,7 +554,7 @@ Lang:Add("zhCN", {
 	["Text Shade"] = "文字阴影", -- draft
 	["A soft dark shadow behind on-screen text (zone names, messages, names on unit frames and nameplates, chat tags on parchment), so it stays readable on bright ground."] = "屏幕文字后的柔和暗影（区域名、各种信息、单位框体和姓名板上的名字、羊皮纸上的聊天标签），在明亮背景上也能看清。", -- draft
 	["Outlined Text"] = "描边文字", -- draft
-	["An outline on MelloUI's on-screen text: notices, Combat Text and Gains. Off: soft text on a dark shadow."] = "MelloUI 屏幕文字的描边：通知、战斗文字和收获。关闭：暗影上的柔和文字。", -- draft
+	["An outline on MelloUI's on-screen text: notices, Combat Text, Gains and, with Text Shade on, the zone text and the messages in the middle of the screen. Off: soft text on a dark shadow."] = "MelloUI 屏幕文字的描边：通知、战斗文字、收获，以及开启文字阴影时的区域文字和屏幕中央的消息。关闭：暗影上的柔和文字。", -- draft
 	["Combat Text"] = "战斗文字", -- draft
 	["Numbers Over Enemies"] = "敌人头上的数字", -- draft
 	["The size of the game's damage numbers over enemies."] = "游戏在敌人头顶的伤害数字大小。", -- draft
@@ -2239,6 +2239,7 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Fixed: after a level-up the micro menu no longer leaves the place you gave it."] = "修复：升级后微型菜单不再离开你为它设定的位置。", -- draft
 	["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "修复：战斗文字、区域名称、标题和头衔中的俄文、韩文和中文字符不再显示为方块。", -- draft
 	["Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid."] = "框体预览位于左侧，四周留有空间；玩家预览显示的是你自己；虚拟团队可选 5 到 40 人。", -- draft
 	["Search finds your own words too (color, alpha, hotkey, hp, castbar, absorb); the row it opens is ringed in gold."] = "搜索也能找到你自己的说法（color、alpha、hotkey、hp、castbar、absorb）；打开的那一行会用金色框出。", -- draft
@@ -2276,12 +2277,6 @@ Lang:Add("zhCN", {
 	["Options two to a line, none greyed out (a switch's settings behind its cog); Look holds every font, texture and border; profiles keep every setting exactly."] = "选项每行两个，不再变灰（开关的设置在其齿轮后面）；外观包含所有字体、材质和边框；配置精确保留每项设置。", -- draft
 	["Edit Layout: a top dock; every part of Edit Mode, hidden ones too, to show, hide, lock or move; the game's settings and switches in each box (bars: On Mouseover); one gold highlight."] = "编辑布局：顶部停靠栏；编辑模式的每个部分（包括隐藏的）都可显示、隐藏、锁定或移动；每个框中都有游戏的设置和开关（动作条：鼠标悬停）；统一的金色高亮。", -- draft
 	["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS); Dark Mode: one Brightness for all of MelloUI, all switches on its tab, new: Windows."] = "选项：更短、更直白的说明；淡出列出所有会淡出的部分（焦点框体、FPS）；暗色模式：整个 MelloUI 统一亮度，所有开关都在其标签页，新增：窗口。", -- draft
-	["Route: the service buttons (Repair, Innkeeper, Flight Master ...) route to the nearest one at once again."] = "Route：服务按钮（修理、旅店老板、飞行管理员……）又能立即引导到最近的一个。", -- draft
-	["Route: routes to the other continent are found faster and show Loading navigation... with its bar while they are."] = "Route：前往另一大陆的路线找得更快，寻找时显示“导航读取中……”及进度条。", -- draft
-	["Route: a route to a place the roads don't reach starts at once; one such spot no longer blocks routes to the other continent."] = "Route：前往道路无法到达之处的路线立即开始；此类地点不再阻挡前往另一大陆的路线。", -- draft
-	["Route takes far less memory while its roads go in and while it finds routes."] = "Route 在读取道路和寻找路线时占用的内存大大减少。", -- draft
-	["Swing Badge: the strike shows when your blow lands; crits and parries show on the blow they belong to."] = "挥击徽章：攻击命中时显示挥击；暴击和招架显示在对应的那次攻击上。", -- draft
-	["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "修复：个人显示的重要冷却在战斗中引发的错误。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2910,6 +2905,7 @@ Lang:Add("zhCN", {
 -- stale: ["Fixed: Holy Shock, Earth Shield and Healing Rain show theirs too; Holy Shock cast at an enemy shows nothing on your frame."] = "修复：神圣震击、大地之盾和治疗之雨也会显示；对敌人施放的神圣震击不会在你的框体上显示任何效果。", -- draft
 -- stale: ["Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat."] = "修复：希利苏斯和另外六个区域不再从地图上被裁掉；编辑布局中的聊天框覆盖整个简约聊天。", -- draft
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "修复：学会新姿态或形态后，战斗中帧数可能骤降，直到重启。", -- draft
+-- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "修复：个人显示的重要冷却在战斗中引发的错误。", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "修复：只是你自己的某些设置放不下时，安装向导不再说你的屏幕太小。", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "盗贼以及猎豹形态的德鲁伊：你的五个连击点数排在目标生命条的上沿，攒起来之前是空的。名字会稍微上移让出位置。", -- draft
 -- stale: ["Force an outline on every light-coloured font. Dark text on parchment (quests, spellbook, dialogs) keeps its original look. MelloUI's own text in the world (notices, combat text, Gains lines) takes its outline from Notices: Outlined Text; this sets only how thick it is."] = "强制给每种浅色字体加描边。羊皮纸上的深色文字（任务、法术书、对话）保持原样。MelloUI在世界中的文字（通知、战斗文字、收获行）的描边取自“通知：描边文字”；这里只设置粗细。", -- draft
@@ -3176,9 +3172,13 @@ Lang:Add("zhCN", {
 -- stale: ["Round borders are sharp at small sizes: the Services buttons' and Round Border styles' rings are solid, not dotted."] = "圆形边框在小尺寸下清晰：服务按钮和圆形边框样式的圆环是实心的，不再是点状。", -- draft
 -- stale: ["Route follows Follow The Arrow, Azeroth Pilot Reloaded, TomTom's arrow and Guidelime through it, as it follows RestedXP. Several guides on? MelloUI asks which to keep."] = "Route 像跟随 RestedXP 一样跟随 Follow The Arrow、Azeroth Pilot Reloaded、TomTom 的箭头和 Guidelime。开了多个指南？MelloUI 会问保留哪个。", -- draft
 -- stale: ["Route follows Polestar: its step in the tracker and on the map, one arrow and one route; its own features go first."] = "Route 跟随 Polestar：它的步骤显示在任务追踪和地图上，一个箭头和一条路线；它自己的功能优先。", -- draft
+-- stale: ["Route takes far less memory while its roads go in and while it finds routes."] = "Route 在读取道路和寻找路线时占用的内存大大减少。", -- draft
 -- stale: ["Route's World Marker over the destination. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "路线在目的地上方的世界标记。总是：从不淡出。战斗中：脱离战斗时淡出，战斗时回来。鼠标悬停：一直淡出，指向时显示。", -- draft
 -- stale: ["Route: Loading navigation... shows a loading bar, and the roads take about 20 MB less memory; notices show above the world map."] = "Route：“导航读取中……”显示读取进度条，道路少占约 20 MB 内存；通知显示在世界地图上方。", -- draft
+-- stale: ["Route: a route to a place the roads don't reach starts at once; one such spot no longer blocks routes to the other continent."] = "Route：前往道路无法到达之处的路线立即开始；此类地点不再阻挡前往另一大陆的路线。", -- draft
+-- stale: ["Route: routes to the other continent are found faster and show Loading navigation... with its bar while they are."] = "Route：前往另一大陆的路线找得更快，寻找时显示“导航读取中……”及进度条。", -- draft
 -- stale: ["Route: shorter ways over open ground, out of rough hills and capitals' cliffs, never turned round mid-walk; the World Marker shows the way and follows RestedXP Guides."] = "路线：开阔地上走更短的路，避开崎岖丘陵和主城的悬崖，途中绝不掉头；世界标记指示方向并跟随RestedXP指南。", -- draft
+-- stale: ["Route: the service buttons (Repair, Innkeeper, Flight Master ...) route to the nearest one at once again."] = "Route：服务按钮（修理、旅店老板、飞行管理员……）又能立即引导到最近的一个。", -- draft
 -- stale: ["Scale of the game tooltip, the comparison tooltips beside it and a linked item's tooltip."] = "游戏鼠标提示、旁边的对比提示以及链接物品提示的缩放。", -- draft
 -- stale: ["Screen Text"] = "屏幕文字", -- draft
 -- stale: ["Seconds"] = "秒数", -- draft
@@ -3228,6 +3228,7 @@ Lang:Add("zhCN", {
 -- stale: ["Star the items you want: a loot roll for one shines gold and lights Need. Pick Up Quests: Route takes you to all of a dungeon's quests in the fastest order."] = "为想要的物品加星：它的掉落掷骰会发出金光并突出“需求”。接取任务：Route 按最快顺序带你接取地下城的所有任务。", -- draft
 -- stale: ["Strength"] = "强度", -- draft
 -- stale: ["Supplies, mail, repairs and training: a gentle nudge beside your portrait, never a nag. With the widgets for loot rolls, summons and the rest, and the FPS / latency readout."] = "补给、邮件、修理和训练：头像旁轻轻一点，从不唠叨。还有拾取掷骰、召唤等小部件，以及FPS / 延迟读数。", -- draft
+-- stale: ["Swing Badge: the strike shows when your blow lands; crits and parries show on the blow they belong to."] = "挥击徽章：攻击命中时显示挥击；暴击和招架显示在对应的那次攻击上。", -- draft
 -- stale: ["Swing On The Rails"] = "轨道上的挥击", -- draft
 -- stale: ["Swing On The Rails (Personal Display)"] = "轨道上的挥击（个人显示）", -- draft
 -- stale: ["Swing Timer Border"] = "挥击计时条边框", -- draft

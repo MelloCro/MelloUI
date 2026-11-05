@@ -115,7 +115,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		-- (not under On-screen Notices: it sets the zone text's and the
 		-- centre texts' outline too, which show with the notices off)
 		{ type = "toggle", key = "noticeOutline", name = "Outlined Text",
-		  desc = "An outline on MelloUI's on-screen text: notices, Combat Text and Gains. Off: soft text on a dark shadow." },
+		  desc = "An outline on MelloUI's on-screen text: notices, Combat Text, Gains and, with Text Shade on, the zone text and the messages in the middle of the screen. Off: soft text on a dark shadow." },
 		{ type = "header", name = "Combat Text" },
 		{ type = "slider", key = "worldTextScale", name = "Numbers Over Enemies", min = 0.5, max = 3, step = 0.1,
 		  format = function(v) return string.format("%.1fx", v) end, search = "world text scale",

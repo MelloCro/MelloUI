@@ -557,7 +557,11 @@ local function Released(what, entry)
 	end
 end
 
-local FOLLOW_EVENTS = { "EDIT_MODE_LAYOUTS_UPDATED", "PLAYER_ENTERING_WORLD", "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED" }
+-- (2.1.3; players, 2026-11-05: parts out of place after a level-up until Edit Mode opened) a level gained lays the
+-- game's level-gated parts again -- the micro menu's buttons, the experience bar at the cap, new stances -- on the
+-- next frame, after the game's own pass (PLAYER_LEVEL_CHANGED: the new level applied, as the micro menu waits for it)
+local FOLLOW_EVENTS = { "EDIT_MODE_LAYOUTS_UPDATED", "PLAYER_ENTERING_WORLD", "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED",
+	"PLAYER_LEVEL_CHANGED" }
 local function FollowListen()
 	if OB.waiter then
 		return

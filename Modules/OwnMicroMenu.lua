@@ -207,6 +207,13 @@ local function On()
 		end, "Own Bars: the micro menu measured for Edit Layout")
 		-- (the game's menu narrower or wider -- a button shown or hidden by the game, a skin's pitch: measured again)
 		Perf.HookScript(game, "OnSizeChanged", OB.FollowSoon)
+		-- (2.1.3; players, 2026-11-05: the micro menu moved after a level-up and snapped back as Edit Mode opened) a
+		-- level-gated button shown lays the buttons' own grid again (MicroMenu:Layout on its MarkDirty: PLAYER_LEVEL_CHANGED)
+		-- while the container keeps its size, so its OnSizeChanged above never told us: the grid's own size too
+		local menu = rawget(_G, "MicroMenu")
+		if type(menu) == "table" and menu ~= game then
+			Perf.HookScript(menu, "OnSizeChanged", OB.FollowSoon)
+		end
 	end
 	return true
 end

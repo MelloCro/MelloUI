@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.3
+
+- Fixed: after a level-up the micro menu moved away from the place you gave it in Edit Layout, until Edit Mode was opened. It stays in place now when the game shows a new button.
+- Outlined Text's description names everything it outlines again: the zone text and the messages in the middle of the screen too, while Text Shade is on.
+
 ## 2.1.2
 
 - Fixed: Russian, Korean and Chinese letters showed as boxes in MelloUI's own texts: Combat Text, the zone's name, the Quest Tracker's headings, window titles and the frames' texts. They draw in the game's own letters for those alphabets now, next to MelloUI's fonts.

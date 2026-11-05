@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.3", lines = {
+		"Fixed: after a level-up the micro menu no longer leaves the place you gave it.",
+	} },
 	{ version = "2.1.2", lines = {
 		"Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes.",
 	} },
@@ -218,14 +221,6 @@ local CHANGELOG = {
 		"Options two to a line, none greyed out (a switch's settings behind its cog); Look holds every font, texture and border; profiles keep every setting exactly.",
 		"Edit Layout: a top dock; every part of Edit Mode, hidden ones too, to show, hide, lock or move; the game's settings and switches in each box (bars: On Mouseover); one gold highlight.",
 		"Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS); Dark Mode: one Brightness for all of MelloUI, all switches on its tab, new: Windows.",
-	} },
-	{ version = "1.2.3", lines = {
-		"Route: the service buttons (Repair, Innkeeper, Flight Master ...) route to the nearest one at once again.",
-		"Route: routes to the other continent are found faster and show Loading navigation... with its bar while they are.",
-		"Route: a route to a place the roads don't reach starts at once; one such spot no longer blocks routes to the other continent.",
-		"Route takes far less memory while its roads go in and while it finds routes.",
-		"Swing Badge: the strike shows when your blow lands; crits and parries show on the blow they belong to.",
-		"Fixed: an error in fights from the Personal Display's Big Cooldowns.",
 	} },
 }
 local LINKS = {

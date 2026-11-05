@@ -554,7 +554,7 @@ Lang:Add("koKR", {
 	["Text Shade"] = "글자 그림자", -- draft
 	["A soft dark shadow behind on-screen text (zone names, messages, names on unit frames and nameplates, chat tags on parchment), so it stays readable on bright ground."] = "화면 글자(지역 이름, 메시지, 개체창과 이름표의 이름, 양피지 위 대화 태그) 뒤의 부드러운 그림자로 밝은 배경에서도 읽기 쉽게 합니다.", -- draft
 	["Outlined Text"] = "외곽선 글자", -- draft
-	["An outline on MelloUI's on-screen text: notices, Combat Text and Gains. Off: soft text on a dark shadow."] = "MelloUI 화면 글자의 외곽선: 알림, 전투 문자, 획득. 끄면: 어두운 그림자 위의 부드러운 글자.", -- draft
+	["An outline on MelloUI's on-screen text: notices, Combat Text, Gains and, with Text Shade on, the zone text and the messages in the middle of the screen. Off: soft text on a dark shadow."] = "MelloUI 화면 글자의 외곽선: 알림, 전투 문자, 획득, 그리고 글자 그림자가 켜져 있으면 지역 글자와 화면 가운데 메시지. 끄면: 어두운 그림자 위의 부드러운 글자.", -- draft
 	["Combat Text"] = "전투 문자", -- draft
 	["Numbers Over Enemies"] = "적 위의 숫자", -- draft
 	["The size of the game's damage numbers over enemies."] = "적 머리 위 게임 피해 숫자의 크기.", -- draft
@@ -2239,6 +2239,7 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Fixed: after a level-up the micro menu no longer leaves the place you gave it."] = "수정: 레벨이 오른 뒤에도 마이크로 메뉴가 지정한 자리를 벗어나지 않습니다.", -- draft
 	["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "수정: 전투 문자, 지역 이름, 머리글과 제목의 러시아어, 한국어, 중국어 글자가 더 이상 네모로 표시되지 않습니다.", -- draft
 	["Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid."] = "프레임 미리보기가 왼쪽에 여유 공간과 함께 놓이고, 플레이어 미리보기는 내 캐릭터를 보여 줍니다. 가짜 공격대는 5~40명 중에서 고릅니다.", -- draft
 	["Search finds your own words too (color, alpha, hotkey, hp, castbar, absorb); the row it opens is ringed in gold."] = "검색이 직접 쓰는 단어도 찾습니다(color, alpha, hotkey, hp, castbar, absorb). 열린 줄은 금색 테두리로 표시됩니다.", -- draft
@@ -2276,12 +2277,6 @@ Lang:Add("koKR", {
 	["Options two to a line, none greyed out (a switch's settings behind its cog); Look holds every font, texture and border; profiles keep every setting exactly."] = "옵션은 한 줄에 둘씩, 회색 처리 없음(스위치의 설정은 톱니바퀴 뒤에); 외형에 모든 글꼴, 텍스처, 테두리; 프로필은 모든 설정을 정확히 유지.", -- draft
 	["Edit Layout: a top dock; every part of Edit Mode, hidden ones too, to show, hide, lock or move; the game's settings and switches in each box (bars: On Mouseover); one gold highlight."] = "레이아웃 편집: 상단 도크; 편집 모드의 모든 부분을 숨겨진 것까지 표시, 숨기기, 잠금, 이동; 각 상자에 게임의 설정과 스위치(바: 마우스를 올리면); 하나의 금색 강조.", -- draft
 	["Options: shorter, plainer descriptions; the Fader lists all that fades (Focus Frame, FPS); Dark Mode: one Brightness for all of MelloUI, all switches on its tab, new: Windows."] = "옵션: 더 짧고 쉬운 설명; 흐리게 하기가 흐려지는 모든 것을 나열(주시 대상 창, FPS); 어두운 모드: MelloUI 전체에 하나의 밝기, 모든 스위치는 해당 탭에, 새로 추가: 창.", -- draft
-	["Route: the service buttons (Repair, Innkeeper, Flight Master ...) route to the nearest one at once again."] = "Route: 서비스 버튼(장비 수리, 여관주인, 비행 조련사...)이 다시 바로 가장 가까운 곳으로 안내합니다.", -- draft
-	["Route: routes to the other continent are found faster and show Loading navigation... with its bar while they are."] = "Route: 다른 대륙 경로를 더 빨리 찾고, 찾는 동안 '내비게이션 불러오는 중...'과 바를 보여 줍니다.", -- draft
-	["Route: a route to a place the roads don't reach starts at once; one such spot no longer blocks routes to the other continent."] = "Route: 길이 닿지 않는 곳으로 가는 경로가 바로 시작되고, 그런 지점이 다른 대륙 경로를 더는 막지 않습니다.", -- draft
-	["Route takes far less memory while its roads go in and while it finds routes."] = "Route가 길을 불러오고 경로를 찾을 때 메모리를 훨씬 적게 씁니다.", -- draft
-	["Swing Badge: the strike shows when your blow lands; crits and parries show on the blow they belong to."] = "스윙 배지: 공격이 맞을 때 타격이 보이고, 치명타와 막음은 해당 공격에 표시됩니다.", -- draft
-	["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "수정: 개인 화면의 큰 재사용 대기시간으로 인한 전투 중 오류.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2910,6 +2905,7 @@ Lang:Add("koKR", {
 -- stale: ["Fixed: Holy Shock, Earth Shield and Healing Rain show theirs too; Holy Shock cast at an enemy shows nothing on your frame."] = "수정: 신성 충격, 대지의 보호막, 치유의 비도 효과를 보여줍니다. 적에게 시전한 신성 충격은 내 프레임에 아무것도 표시하지 않습니다.", -- draft
 -- stale: ["Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat."] = "수정: 실리더스와 다른 여섯 지역이 더는 지도에서 잘리지 않습니다; 배치 편집의 대화 상자가 최소 대화창 전체를 덮습니다.", -- draft
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "수정: 새 태세나 변신을 배운 뒤 재시작 전까지 전투 프레임이 크게 떨어질 수 있던 문제.", -- draft
+-- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "수정: 개인 화면의 큰 재사용 대기시간으로 인한 전투 중 오류.", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "수정: 설치 마법사가 내 설정 일부가 맞지 않을 때 화면이 너무 작다고 하지 않습니다.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "도적과 표범 변신 드루이드: 대상 생명력 막대 위쪽 가장자리에 다섯 연계 점수를 한 줄로, 쌓기 전에는 비어 있습니다. 이름이 조금 올라가 자리를 만듭니다.", -- draft
 -- stale: ["Force an outline on every light-coloured font. Dark text on parchment (quests, spellbook, dialogs) keeps its original look. MelloUI's own text in the world (notices, combat text, Gains lines) takes its outline from Notices: Outlined Text; this sets only how thick it is."] = "밝은 색 글꼴 모두에 외곽선을 강제로 둡니다. 양피지 위의 어두운 글자(퀘스트, 마법책, 대화)는 원래 모습을 유지합니다. 세상 속 MelloUI 글자(알림, 전투 문자, 획득 줄)는 알림: 외곽선 글자에서 외곽선을 가져오며, 여기서는 두께만 정합니다.", -- draft
@@ -3176,9 +3172,13 @@ Lang:Add("koKR", {
 -- stale: ["Round borders are sharp at small sizes: the Services buttons' and Round Border styles' rings are solid, not dotted."] = "둥근 테두리가 작은 크기에서도 선명함: 서비스 버튼과 원형 테두리 스타일의 고리가 점선이 아니라 실선입니다.", -- draft
 -- stale: ["Route follows Follow The Arrow, Azeroth Pilot Reloaded, TomTom's arrow and Guidelime through it, as it follows RestedXP. Several guides on? MelloUI asks which to keep."] = "Route가 RestedXP처럼 Follow The Arrow, Azeroth Pilot Reloaded, TomTom 화살표, Guidelime도 따릅니다. 안내서가 여럿 켜져 있나요? MelloUI가 무엇을 남길지 묻습니다.", -- draft
 -- stale: ["Route follows Polestar: its step in the tracker and on the map, one arrow and one route; its own features go first."] = "Route가 Polestar를 따릅니다: 그 단계가 추적기와 지도에, 화살표 하나와 경로 하나; Polestar의 기능이 먼저입니다.", -- draft
+-- stale: ["Route takes far less memory while its roads go in and while it finds routes."] = "Route가 길을 불러오고 경로를 찾을 때 메모리를 훨씬 적게 씁니다.", -- draft
 -- stale: ["Route's World Marker over the destination. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "목적지 위 경로의 월드 마커. 항상: 흐려지지 않음. 전투 중: 전투 밖에서 흐려지고 전투 때 돌아옴. 마우스를 올리면: 늘 흐리고 가리키는 동안 보임.", -- draft
 -- stale: ["Route: Loading navigation... shows a loading bar, and the roads take about 20 MB less memory; notices show above the world map."] = "Route: '내비게이션 불러오는 중...'이 로딩 바를 보여 주고 길이 약 20 MB 덜 씁니다. 알림은 세계 지도 위에 보입니다.", -- draft
+-- stale: ["Route: a route to a place the roads don't reach starts at once; one such spot no longer blocks routes to the other continent."] = "Route: 길이 닿지 않는 곳으로 가는 경로가 바로 시작되고, 그런 지점이 다른 대륙 경로를 더는 막지 않습니다.", -- draft
+-- stale: ["Route: routes to the other continent are found faster and show Loading navigation... with its bar while they are."] = "Route: 다른 대륙 경로를 더 빨리 찾고, 찾는 동안 '내비게이션 불러오는 중...'과 바를 보여 줍니다.", -- draft
 -- stale: ["Route: shorter ways over open ground, out of rough hills and capitals' cliffs, never turned round mid-walk; the World Marker shows the way and follows RestedXP Guides."] = "경로: 트인 땅에서 더 짧은 길, 험한 언덕과 수도의 절벽을 피하고 도중에 절대 돌아서지 않음. 월드 마커가 길을 보여 주고 RestedXP 가이드를 따릅니다.", -- draft
+-- stale: ["Route: the service buttons (Repair, Innkeeper, Flight Master ...) route to the nearest one at once again."] = "Route: 서비스 버튼(장비 수리, 여관주인, 비행 조련사...)이 다시 바로 가장 가까운 곳으로 안내합니다.", -- draft
 -- stale: ["Scale of the game tooltip, the comparison tooltips beside it and a linked item's tooltip."] = "게임 툴팁, 옆의 비교 툴팁, 링크한 아이템 툴팁의 크기.", -- draft
 -- stale: ["Screen Text"] = "화면 글자", -- draft
 -- stale: ["Seconds"] = "초", -- draft
@@ -3228,6 +3228,7 @@ Lang:Add("koKR", {
 -- stale: ["Star the items you want: a loot roll for one shines gold and lights Need. Pick Up Quests: Route takes you to all of a dungeon's quests in the fastest order."] = "원하는 아이템에 별표: 그 아이템 주사위가 금빛으로 빛나고 입찰을 강조합니다. 퀘스트 받기: Route가 던전 퀘스트 전부를 가장 빠른 순서로 안내합니다.", -- draft
 -- stale: ["Strength"] = "강도", -- draft
 -- stale: ["Supplies, mail, repairs and training: a gentle nudge beside your portrait, never a nag. With the widgets for loot rolls, summons and the rest, and the FPS / latency readout."] = "보급품, 우편, 수리, 훈련: 잔소리가 아니라 초상화 옆의 가벼운 귀띔. 전리품 주사위, 소환 등의 위젯과 FPS / 지연 시간 표시도.", -- draft
+-- stale: ["Swing Badge: the strike shows when your blow lands; crits and parries show on the blow they belong to."] = "스윙 배지: 공격이 맞을 때 타격이 보이고, 치명타와 막음은 해당 공격에 표시됩니다.", -- draft
 -- stale: ["Swing On The Rails"] = "레일 위 공격", -- draft
 -- stale: ["Swing On The Rails (Personal Display)"] = "레일 위 공격(개인 표시기)", -- draft
 -- stale: ["Swing Timer Border"] = "자동 공격 타이머 테두리", -- draft
