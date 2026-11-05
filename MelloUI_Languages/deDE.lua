@@ -2237,6 +2237,9 @@ Lang:Add("deDE", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Deine ganze Einrichtung unter einem Namen. Speichere sie, lade sie oder mach sie zum Standard für eine frische Installation.", -- draft
 	["Supporters"] = "Unterstützer", -- draft
 	["The people who help keep MelloUI going."] = "Die Menschen, die MelloUI am Laufen halten.", -- draft
+	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "Behoben: MelloUIs Karte zeigt das „?“ einer Quest nach der Abgabe nicht mehr an; ihre Markierungen folgen deinem Questlog.", -- draft
+	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "Die Questliste entspricht dem Live-Server: 2 neue Quests, korrigierte Stufen bei 52 Quests, Die Versunkene Stadt hat ihren Namen.", -- draft
+	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "Behoben: Die Sprachausgabe spricht jetzt auch, wenn ein Levelling-Addon eine Quest annimmt oder abgibt, sobald sich ihr Fenster öffnet.", -- draft
 	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "Einheitenfenster, Namensplaketten und Aktionsleisten: Jeder Schalter schaltet jetzt alles ab, was MelloUI dort zeigt, der Rest funktioniert weiter.", -- draft
 	["New: an Action Bars switch on the Bars page."] = "Neu: ein Schalter für die Aktionsleisten auf der Seite Leisten.", -- draft
 	["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Behoben: Die Markierungen der Questgeber auf MelloUIs Karte erscheinen nicht mehr als verzerrte gelbe Flecken.", -- draft
@@ -2244,7 +2247,6 @@ Lang:Add("deDE", {
 	["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Behoben: Die Reiter für Rucksack und Reagenzientasche neben dem Taschenfenster zeigen wieder ihre Symbole.", -- draft
 	["The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once."] = "Die Karte: Questies Questgeber, Abgaben und Ziele tragen MelloUIs eigene Symbole; eine Quest, die die Karte schon zeigt, erscheint nur einmal.", -- draft
 	["Fixed: after a level-up the micro menu no longer leaves the place you gave it."] = "Behoben: Nach einem Stufenaufstieg verlässt das Mikromenü nicht mehr den Platz, den du ihm gegeben hast.", -- draft
-	["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "Behoben: Russische, koreanische und chinesische Buchstaben in Kampftext, Zonennamen, Überschriften und Titeln erscheinen nicht mehr als Kästchen.", -- draft
 	["Report a problem"] = "Ein Problem melden", -- draft
 	["Voice pack"] = "Stimmenpaket", -- draft
 	["open or close this window"] = "dieses Fenster öffnen oder schließen", -- draft
@@ -2890,6 +2892,7 @@ Lang:Add("deDE", {
 -- stale: ["Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect, at every rank."] = "Behoben: Heilige Nova, Gebet der Besserung, Heiliger Schock, Erdschild und Heilender Regen zeigen ihren Heileffekt, in jedem Rang.", -- draft
 -- stale: ["Fixed: Holy Shock, Earth Shield and Healing Rain show theirs too; Holy Shock cast at an enemy shows nothing on your frame."] = "Behoben: Heiliger Schock, Erdschild und Heilender Regen zeigen ihren auch; Heiliger Schock auf einen Feind zeigt nichts auf deinem Rahmen.", -- draft
 -- stale: ["Fixed: Minimap: the day / night moon sits in the square map's top right corner, clear of the zone name."] = "Behoben: Minikarte: Der Tag-/Nacht-Mond sitzt in der oberen rechten Ecke der eckigen Karte, weg vom Zonennamen.", -- draft
+-- stale: ["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "Behoben: Russische, koreanische und chinesische Buchstaben in Kampftext, Zonennamen, Überschriften und Titeln erscheinen nicht mehr als Kästchen.", -- draft
 -- stale: ["Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat."] = "Behoben: Silithus und sechs andere Zonen werden nicht mehr aus der Karte geschnitten; das Chat-Feld von Layout bearbeiten deckt den ganzen minimalen Chat ab.", -- draft
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "Behoben: nach dem Erlernen einer neuen Haltung oder Gestalt konnte ein Kampf bis zu einem Neustart auf wenige Bilder pro Sekunde fallen.", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "Behoben: ein Fehler im Kampf durch die Großen Abklingzeiten der Persönlichen Anzeige.", -- draft

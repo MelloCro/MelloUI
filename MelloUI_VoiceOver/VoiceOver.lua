@@ -2166,6 +2166,10 @@ end
 -- lost its recording or the wrong quest was read. The read is put off to
 -- the next frame and retried a few times until the ID, title and text are
 -- there, keyed so the same panel is not read twice when the event repeats.
+-- (2.1.7; the user, 2026-11-05: "using a leveling addon, auto accepting the quests does not trigger the Voiceover") An
+-- addon that accepts or hands in inside the event closes the window before that read (QuestFrame_OnHide hides the
+-- panel): what the window said is kept as the event comes (HoldPanel) and read then. An addon that answers before even
+-- that leaves nothing kept: the game's QUEST_ACCEPTED / QUEST_TURNED_IN name the quest, for its recording (ReadMissed).
 --------------------------------------------------------------------------------
 
 local QUEST_PANELS = { accept = "QuestFrameDetailPanel", progress = "QuestFrameProgressPanel", complete = "QuestFrameRewardPanel" }
@@ -2175,8 +2179,10 @@ local QUEST_TEXT = {
 	complete = function() return GetRewardText and GetRewardText() or nil end,
 }
 local READ_TRIES, READ_STEP = 5, 0.1
+local MISSED_WAIT = 5   -- (seconds after its window a quest's QUEST_ACCEPTED or QUEST_TURNED_IN still counts as its answer)
 local lastRead = { key = nil, at = 0 }
 local readSerial = 0
+local held = { at = 0 }   -- what the last quest panel said as its event came (HoldPanel), `read`: its line was queued
 
 local function ClientQuestID()
 	if not GetQuestID then
@@ -2193,40 +2199,92 @@ local function QuestPanelShown(kind)
 	return not panel or panel:IsShown()
 end
 
+local function HoldPanel(kind)
+	held.kind, held.at, held.read = kind, GetTime(), false
+	held.questID, held.title, held.text = ClientQuestID(), QuestTitle(), QUEST_TEXT[kind]()
+	held.objectives = kind == "accept" and GetObjectiveText and GetObjectiveText() or nil
+	held.speaker, held.npc = SpeakerID(), DescribeNPC()
+end
+
 local function ReadQuestPanel(kind, serial, attempt)
-	if serial ~= readSerial or not M.isEnabled or not QuestPanelShown(kind) then
+	if serial ~= readSerial or not M.isEnabled then
 		return
 	end
-	local questID = ClientQuestID()
-	local title = QuestTitle()
-	local text = QUEST_TEXT[kind]()
+	-- (the panel gone first: what it said as its event came)
+	local shown = QuestPanelShown(kind)
+	if not shown and held.kind ~= kind then
+		return
+	end
+	local questID, title, text = held.questID, held.title, held.text
+	if shown then
+		questID, title, text = ClientQuestID(), QuestTitle(), QUEST_TEXT[kind]()
+	end
 	local plain = PlainString(text)
-	local ready = questID ~= nil and title ~= nil and (IsSecret(text) or (plain ~= nil and plain ~= ""))
-	if not ready and attempt < READ_TRIES then
+	local said = IsSecret(text) or (plain ~= nil and plain ~= "")
+	if not shown and not said then
+		return   -- (nothing kept: ReadMissed, when the game names the quest)
+	end
+	if shown and not (questID ~= nil and title ~= nil and said) and attempt < READ_TRIES then
 		C_Timer.After(READ_STEP, function() ReadQuestPanel(kind, serial, attempt + 1) end)
 		return
 	end
 	local key = kind .. ":" .. tostring(questID or 0) .. ":" .. tostring(title)
 	if key == lastRead.key and GetTime() - lastRead.at < 5 then
+		held.read = true
 		return
 	end
 	lastRead.key, lastRead.at = key, GetTime()
-	Trace("%s %q: client quest ID %s after %d read(s)", kind, tostring(title), tostring(questID or "none"), attempt)
-	local npc = DescribeNPC()
-	Enqueue(text, npc, kind, title, questID, text)
+	Trace("%s %q: client quest ID %s after %d read(s)%s", kind, tostring(title), tostring(questID or "none"), attempt,
+		shown and "" or ", the window gone: as its event said")
+	local npc = shown and DescribeNPC() or held.npc
+	local speaker = not shown and held.speaker or nil
+	held.read = Enqueue(text, npc, kind, title, questID, text, speaker and { speaker = speaker } or nil) ~= nil
 	-- after the offer, a line of its own: the voice pack's objectives clip
 	-- (Quest Objectives), or nothing when it has none. Text-to-speech never
 	-- reads the objectives (user, 2026-09-29: the pack has them recorded).
 	if kind == "accept" and M.db.recordedObjectives and plain and GetObjectiveText and Mode() == "v2" then
-		local objectives = GetObjectiveText()
+		local objectives = held.objectives
+		if shown then
+			objectives = GetObjectiveText()
+		end
 		if type(objectives) == "string" and not IsSecret(objectives) and objectives ~= "" then
 			Enqueue(objectives, npc, "objectives", "Objectives" .. (title and (": " .. title) or ""), questID, nil,
-				{ follow = true })
+				{ follow = true, speaker = speaker })
 		end
 	end
 end
 
+-- A quest accepted or handed in right after its window, with nothing of the window read: its recording, by the ID the
+-- game names now (the voice pack's clip only: there are no words to read aloud)
+local function ReadMissed(kind, questID)
+	questID = PlainNumber(questID)
+	if not (questID and M.isEnabled and held.kind == kind and not held.read and GetTime() - held.at < MISSED_WAIT
+		and Mode() == "v2") then
+		return
+	end
+	local title = held.title
+	if not title and C_QuestLog and C_QuestLog.GetTitleForQuestID then
+		local ok, name = pcall(C_QuestLog.GetTitleForQuestID, questID)
+		title = ok and PlainString(name) or nil
+	end
+	local speaker = held.speaker or 0
+	if not V2Line(kind, speaker, questID, title, nil, string.format("%s, quest %d, its window answered", kind, questID)) then
+		return
+	end
+	readSerial = readSerial + 1   -- (a read still waiting for this window has nothing to add)
+	held.read = true
+	lastRead.key, lastRead.at = kind .. ":" .. questID .. ":" .. tostring(title), GetTime()
+	local words = title or tostring(questID)
+	Enqueue(words, held.npc, kind, title, questID, nil, { speaker = speaker })
+	if kind == "accept" and M.db.recordedObjectives then
+		-- (its own words: the queue takes a line with the words of the one before it for a repeat)
+		local label = "Objectives" .. (title and (": " .. title) or "")
+		Enqueue(label, held.npc, "objectives", label, questID, nil, { follow = true, speaker = speaker })
+	end
+end
+
 local function ScheduleQuestRead(kind)
+	HoldPanel(kind)
 	readSerial = readSerial + 1
 	local serial = readSerial
 	C_Timer.After(0, function() ReadQuestPanel(kind, serial, 1) end)
@@ -2428,6 +2486,13 @@ local handlers = {
 		if M.db.questComplete and GetRewardText then
 			ScheduleQuestRead("complete")
 		end
+	end,
+	-- (2.1.7: a window answered before it could be read: ReadMissed)
+	QUEST_ACCEPTED = function(questID)
+		ReadMissed("accept", questID)
+	end,
+	QUEST_TURNED_IN = function(questID)
+		ReadMissed("complete", questID)
 	end,
 	GOSSIP_CLOSED = function()
 		if M.db.stopOnClose then
@@ -2846,6 +2911,7 @@ end
 local EVENTS = {
 	"GOSSIP_SHOW", "GOSSIP_CLOSED",
 	"QUEST_GREETING", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_FINISHED",
+	"QUEST_ACCEPTED", "QUEST_TURNED_IN",
 	"TRAINER_SHOW",
 	"ITEM_TEXT_READY",
 	"PLAYER_TARGET_CHANGED",

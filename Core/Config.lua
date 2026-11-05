@@ -174,6 +174,11 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.7", lines = {
+		"Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log.",
+		"The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named.",
+		"Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens.",
+	} },
 	{ version = "2.1.6", lines = {
 		"Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working.",
 		"New: an Action Bars switch on the Bars page.",
@@ -188,9 +193,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.3", lines = {
 		"Fixed: after a level-up the micro menu no longer leaves the place you gave it.",
-	} },
-	{ version = "2.1.2", lines = {
-		"Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes.",
 	} },
 }
 local LINKS = {

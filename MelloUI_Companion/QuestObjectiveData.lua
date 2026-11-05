@@ -2040,7 +2040,7 @@ MelloUI_QuestObjectiveData = {
 	[99051]="31Naga Spinefin||P;<NbUP;QN``P;fNa@P;mNa@P<4Na6P<;NajP<WNa@P<^N`kP<eN_lP<eNb@P=:N_lP=:Na6P=BNb5P=eNbJP>ANa6P>ANaUP>ON`KP?9N`VP?HN_AP?VN_lP?VNa6P?kN`AP@@N_lP@@NaKP@GNa@P@GNb@~",
 	[99052]="31Aggor's Belt||PB?NbUPB[N`VPC0NajPCEN`kPCENaKPDLNcJ~",
 	[99080]="11Galak Centaur||OPRO[\\OQ3OZSOQ3O]3OQCO[DOQCO[i~11Galak Outrunner||OPRO[\\OPbO[\\OQCO[D~31Herak's Head||ON6O\\ZON>O\\N~",
-	[99128]="10Murloc Streamrunner||MZWOk;MZeOhnMZeOl6MZfOj3M[HOhIM[HOkAM[nOlVM[oOkcM\\FOhGM\\YOkdM\\jOhlM\\nOk7M]4OiiM]@OjWM]JOlXM]KOi0~10Murloc||M[2Ol9M[XOi6M[[OlPM[\\Ol@M[cOjgM[dOidM[eOiGM[kOlnM[nOiAM[oOlUM\\1Oj0M\\@Ojd~",
+	[99128]="10Murloc||M[2Ol9M[XOi6M[[OlPM[\\Ol@M[cOjgM[dOidM[eOiGM[kOlnM[nOiAM[oOlUM\\1Oj0M\\@Ojd~10Murloc Streamrunner||MZWOk;MZeOhnMZeOl6MZfOj3M[HOhIM[HOkAM[nOlVM[oOkcM\\FOhGM\\YOkdM\\jOhlM\\nOk7M]4OiiM]@OjWM]JOlXM]KOi0~",
 	[99130]="30Vial of Animal Blood||MX=O^8MXEOj_MXKOmFMXOOi9MXQOnhMX[P3EMX^P1FMX`P;\\MXgOa\\MYNP0jMYcP0BMZ6P0gMZFP3VMZGP1mMZ_P2GMZgOX\\MZgP04M[6P2kM[IO_fM[PO^oM[XOcbM[`OglM\\8OehM\\<OX6M\\hOb[M]9OdiM]@OY2M]OO]5M]RO^1M]_OaZ~",
 	[99134]="10Deathguard Cyrus||PSQP4R~10Deathguard Billmuth||PW4POg~10Deathguard Veteran||PQ\\PDKPQoPCg~",
 	[99152]="30Faintly Glowing Bone||PK[PXXPKmPXaPLKPY<PLKPYNPLQPWjPLQPX<PLWPW4PLcPX<PLoPVPPM5PYNPMAPW=PMAPWjPMGPXaPMYPXXPM`PXj~",

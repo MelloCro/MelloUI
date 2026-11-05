@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.7
+
+- Fixed: MelloUI's map kept showing a quest's "?" after you handed it in. Its quest marks now follow your quest log: quests taken, ready and handed in.
+- The Quest List is up to date with the live server: 2 new quests in The Drowned City, corrected levels on 52 quests, and The Drowned City's quests show its name instead of a number.
+- Fixed: Voice Over stayed silent when another addon, such as a levelling guide, accepted or handed in a quest the moment its window opened.
+
 ## 2.1.6
 
 - The Unit Frames, Nameplates and Action Bars switches now turn off everything MelloUI shows there: with one off, that part is the game's own again (values, portraits, buffs, debuff and cooldown icons, bar textures, effects, MelloUI's own bars), while every other feature keeps working.

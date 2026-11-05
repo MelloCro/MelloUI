@@ -268,22 +268,34 @@ def scan_saved():
 
 
 def snapshot():
-    """What the builders read: the newest questcache_<build>.json in BuildData's cache (this tool writes it) and the
-    scan's answers saved beside it (questscan_<build>.json) -> (build, {quest ID: quest}, scan or None);
-    (None, {}, None) when no cache was read yet."""
+    """What the builders read: every questcache_<build>.json in BuildData's cache (this tool writes them) and the scan's
+    answers saved beside each (questscan_<build>.json) -> (the newest build, {quest ID: quest}, the newest scan or None);
+    (None, {}, None) when no cache was read yet.
+    Newest over older, quest by quest (2026-11-05: the live server refuses 469 quests the beta answered -- a refusal is
+    no proof a quest is gone, the server refuses what is not open): a quest the newest scan has no answer for keeps what
+    an earlier one said. scan["earlier"]: those quests' IDs; they leave scan["failed"]."""
     found = sorted((int(m.group(1)), p) for p in glob.glob(os.path.join(CACHE, "questcache_*.json"))
                    for m in [re.search(r"questcache_(\d+)\.json$", p)] if m)
     if not found:
         return None, {}, None
-    build, path = found[-1]
-    quests = {int(k): v for k, v in json.load(open(path, encoding="utf-8")).items()}
-    scan_path = os.path.join(CACHE, "questscan_%d.json" % build)
-    scan = None
-    if os.path.exists(scan_path):
-        raw = json.load(open(scan_path, encoding="utf-8"))
-        scan = {"done": raw["done"], "build": raw.get("build"), "failed": set(raw["failed"]),
-                "quests": {int(k): v for k, v in raw["quests"].items()}}
-    return build, quests, scan
+    quests, answers, scan = {}, {}, None
+    held = {}
+    for build, path in found:
+        held = {int(k): v for k, v in json.load(open(path, encoding="utf-8")).items()}
+        quests.update(held)
+        scan_path = os.path.join(CACHE, "questscan_%d.json" % build)
+        scan = None
+        if os.path.exists(scan_path):
+            raw = json.load(open(scan_path, encoding="utf-8"))
+            scan = {"done": raw["done"], "build": raw.get("build"), "failed": set(raw["failed"]),
+                    "quests": {int(k): v for k, v in raw["quests"].items()}}
+            answers.update(scan["quests"])
+    newest = found[-1][0]
+    if scan:
+        scan["earlier"] = set(quests) - set(held) - set(scan["quests"])
+        scan["quests"] = answers
+        scan["failed"] -= scan["earlier"]
+    return newest, quests, scan
 
 
 def main():

@@ -2237,6 +2237,9 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "Исправлено: карта MelloUI больше не оставляет «?» задания после его сдачи; её метки следуют за журналом заданий.", -- draft
+	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "Список заданий соответствует живому серверу: 2 новых задания, исправлены уровни у 52 заданий, Затонувший город получил название.", -- draft
+	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "Исправлено: озвучка теперь звучит, когда аддон для прокачки принимает или сдаёт задание сразу при открытии окна.", -- draft
 	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "Рамки юнитов, индикаторы здоровья и панели действий: каждый переключатель теперь отключает всё, что MelloUI там показывает, остальное продолжает работать.", -- draft
 	["New: an Action Bars switch on the Bars page."] = "Новое: переключатель панелей действий на странице «Панели».", -- draft
 	["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Исправлено: метки квестодателей на карте MelloUI больше не выглядят растянутыми жёлтыми пятнами.", -- draft
@@ -2244,7 +2247,6 @@ Lang:Add("ruRU", {
 	["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Исправлено: вкладки рюкзака и сумки для реагентов рядом с окном сумок снова показывают свои значки.", -- draft
 	["The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once."] = "Карта: квестодатели, сдача заданий и цели Questie показаны значками MelloUI; задание, которое карта уже показывает, появляется лишь один раз.", -- draft
 	["Fixed: after a level-up the micro menu no longer leaves the place you gave it."] = "Исправлено: после повышения уровня микроменю больше не уходит с места, которое вы ему задали.", -- draft
-	["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "Исправлено: русские, корейские и китайские буквы в тексте боя, названиях зон, заголовках и титулах больше не отображаются квадратами.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -2886,6 +2888,7 @@ Lang:Add("ruRU", {
 -- stale: ["Fixed: Holy Nova and Prayer of Mending show their heal effect on your party frames, at every rank."] = "Исправлено: Кольцо света и Молитва восстановления показывают эффект исцеления на рамках группы, на любом ранге.", -- draft
 -- stale: ["Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect, at every rank."] = "Исправлено: Кольцо света, Молитва восстановления, Шок небес, Щит земли и Целительный ливень показывают эффект исцеления на любом ранге.", -- draft
 -- stale: ["Fixed: Holy Shock, Earth Shield and Healing Rain show theirs too; Holy Shock cast at an enemy shows nothing on your frame."] = "Исправлено: Шок небес, Щит земли и Целительный ливень тоже показывают свой; Шок небес по врагу ничего не показывает на вашей рамке.", -- draft
+-- stale: ["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "Исправлено: русские, корейские и китайские буквы в тексте боя, названиях зон, заголовках и титулах больше не отображаются квадратами.", -- draft
 -- stale: ["Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat."] = "Исправлено: Силитус и ещё шесть зон больше не вырезаны из карты; окно чата в «Изменить раскладку» покрывает весь минимальный чат.", -- draft
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "Исправлено: после изучения новой стойки или облика бой мог падать до нескольких кадров в секунду до перезапуска.", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "Исправлено: ошибка в бою из-за больших восстановлений Личной панели.", -- draft

@@ -777,6 +777,7 @@ local function Frame_OnEvent(_, event)
 		Layers.Event()   -- (a flight point learned, or a flight master's map: the flights again)
 	elseif event == "QUEST_LOG_UPDATE" or event == "QUEST_WATCH_LIST_CHANGED" then
 		Objectives.Soon()   -- (the objectives again after the burst)
+		Layers.LogChanged()   -- (2.1.7: the givers' marks, if what they show moved)
 	end
 end
 

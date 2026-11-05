@@ -50,6 +50,7 @@
 --
 --   Layers.Init(canvas, pins)   the layers made (the window's first open)
 --   Layers.Tick(elapsed)        the window's OnUpdate
+--   Layers.LogChanged()         the quest log changed: the givers looked at on the next beat (2.1.7)
 --   Layers.FindMe()             a glide to the player
 --------------------------------------------------------------------------------
 
@@ -119,7 +120,8 @@ local T = {
 Layers.T = T
 
 local S = { canvas = nil, pins = nil, wait = 0, seen = {}, docks = {}, built = false,
-	readySeen = setmetatable({}, { __mode = "k" }) }   -- (1.2.0: the givers' ready moments shown, by quest row)
+	readySeen = setmetatable({}, { __mode = "k" }),   -- (1.2.0: the givers' ready moments shown, by quest row)
+	logSums = {} }   -- (2.1.7: the quest log's sums the givers were laid from, QL.QuestsMoved)
 local EMPTY = {}
 local floor = math.floor
 
@@ -297,6 +299,9 @@ end
 -- for every zone and city at once; from a zone's zoom on. Made when the
 -- window opens and again when the Quest List lays its own marks again (its
 -- RefreshPins: a quest taken, done, its data placed)
+-- (2.1.7; Sikotic, 2026-11-05: "after finish a quest the map still show the icon to deliver" -- what asks RefreshPins
+-- after a change of the log hangs on the game's own world map being shown, and this map stands in for it) and when the
+-- quest log moved: looked at as the window opens and, while it shows, on the beat after a log event (LogMoved)
 --------------------------------------------------------------------------------
 
 local function QuestList()
@@ -347,6 +352,12 @@ end
 
 local GIVER = { size = T.GIVER_SIZE, look = GiverLook, fillTip = GiverTip, click = GiverClick, sub = 2 }
 
+-- what the givers show of the quests moved since they were laid: the Quest List's sums (the log's quests, the ready
+-- ones, the ones done, the level, the pinned quest); a log it cannot read whole (nil: a folded header) counts as moved
+local function LogMoved(QL)
+	return type(QL.QuestsMoved) == "function" and QL.QuestsMoved(S.logSums) ~= false
+end
+
 function Layers.Quests()
 	local pins, QL = S.pins, QuestList()
 	if not pins then
@@ -358,6 +369,7 @@ function Layers.Quests()
 	if not QL then
 		return
 	end
+	LogMoved(QL)   -- (the sums these are laid from)
 	local t0 = debugprofilestop()
 	for _, p in ipairs(S.canvas.places) do
 		if p.kind == "zone" or p.kind == "city" then
@@ -790,9 +802,11 @@ function Layers.Open()
 		Entrances()
 		Places()
 	end
-	-- (the givers: made again when the Quest List laid its marks again, or when they were last made without it)
+	-- (the givers: made again when the Quest List laid its marks again, when they were last made without it, or when
+	-- the quest log moved while the window was closed)
 	WatchQuests()
-	if S.questsDirty or not S.questsBuilt then
+	local QL = QuestList()
+	if S.questsDirty or not S.questsBuilt or (QL and LogMoved(QL)) then
 		Layers.Quests()
 	end
 	Flights()
@@ -1097,6 +1111,14 @@ function Layers.Tick(elapsed)
 		return
 	end
 	S.wait = T.EVERY
+	-- (2.1.7: a log event since the last beat: the givers again if what they show moved -- a kill's progress does not)
+	if S.logDue then
+		S.logDue = false
+		local QL = QuestList()
+		if QL and LogMoved(QL) then
+			Layers.Quests()
+		end
+	end
 	local mapID = PlayerMap()
 	if mapID then
 		Player(mapID)
@@ -1110,9 +1132,17 @@ function Layers.Tick(elapsed)
 	RouteChanged()
 end
 
+-- (2.1.7) the quest log changed while the window shows: looked at on the next beat (one flag, once for a burst)
+function Layers.LogChanged()
+	if S.shown then
+		S.logDue = true
+	end
+end
+
 -- the window closed (the givers wait for its next open)
 function Layers.Close()
 	S.shown = false
+	S.logDue = false
 end
 
 -- a glide to the player: at least FIND_ZOOM close, the zoom kept when closer

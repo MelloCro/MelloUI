@@ -2237,6 +2237,9 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "修复：交付任务后，MelloUI 地图不再保留该任务的“?”；地图标记会跟随你的任务日志。", -- draft
+	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "任务列表与正式服务器一致：新增 2 个任务，修正 52 个任务的等级，沉没之城显示名称。", -- draft
+	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "修复：练级插件在任务窗口打开时立即接受或交付任务时，现在也会播放语音。", -- draft
 	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "单位框体、姓名板和动作条：每个开关现在都会关闭 MelloUI 在那里显示的一切，其余功能继续工作。", -- draft
 	["New: an Action Bars switch on the Bars page."] = "新增：动作条页面上的动作条开关。", -- draft
 	["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "修复：MelloUI 地图上的任务发布者标记不再显示为拉伸的黄色色块。", -- draft
@@ -2244,7 +2247,6 @@ Lang:Add("zhCN", {
 	["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "修复：背包窗口旁的行囊和材料包标签页重新显示图标。", -- draft
 	["The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once."] = "地图：Questie 的任务发布者、交任务处和任务目标使用 MelloUI 自己的图标；地图已显示的任务只出现一次。", -- draft
 	["Fixed: after a level-up the micro menu no longer leaves the place you gave it."] = "修复：升级后微型菜单不再离开你为它设定的位置。", -- draft
-	["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "修复：战斗文字、区域名称、标题和头衔中的俄文、韩文和中文字符不再显示为方块。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2886,6 +2888,7 @@ Lang:Add("zhCN", {
 -- stale: ["Fixed: Holy Nova and Prayer of Mending show their heal effect on your party frames, at every rank."] = "修复：神圣新星和愈合祷言在每个等级都会在你的小队框体上显示治疗效果。", -- draft
 -- stale: ["Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect, at every rank."] = "修复：神圣新星、愈合祷言、神圣震击、大地之盾和治疗之雨在所有等级都会显示治疗效果。", -- draft
 -- stale: ["Fixed: Holy Shock, Earth Shield and Healing Rain show theirs too; Holy Shock cast at an enemy shows nothing on your frame."] = "修复：神圣震击、大地之盾和治疗之雨也会显示；对敌人施放的神圣震击不会在你的框体上显示任何效果。", -- draft
+-- stale: ["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "修复：战斗文字、区域名称、标题和头衔中的俄文、韩文和中文字符不再显示为方块。", -- draft
 -- stale: ["Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat."] = "修复：希利苏斯和另外六个区域不再从地图上被裁掉；编辑布局中的聊天框覆盖整个简约聊天。", -- draft
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "修复：学会新姿态或形态后，战斗中帧数可能骤降，直到重启。", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "修复：个人显示的重要冷却在战斗中引发的错误。", -- draft

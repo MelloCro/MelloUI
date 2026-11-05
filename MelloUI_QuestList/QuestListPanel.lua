@@ -722,7 +722,9 @@ local LogCalls, LogSize, LogQuestID = QL.LogCalls, QL.LogSize, QL.LogQuestID
 -- true when what the list and the pins show of the quests moved since the
 -- last walk (the new sums kept for the next); nil when the log could not be
 -- read whole and the level and the pinned quest are as they were
-local function QuestsMoved()
+-- (2.1.7: one walk, each reader's sums its own, `into`: this page's while the game's map shows, MelloUI_Map's givers'
+-- with this page unseen)
+function QL.QuestsMoved(into)
 	walks = walks + 1
 	local count, ids, squares, ready = 0, 0, 0, 0
 	local modern = LogCalls()
@@ -749,15 +751,19 @@ local function QuestsMoved()
 	end
 	local level = QL.Plain(UnitLevel("player"))
 	local known = lines ~= nil and count >= quests
-	local moved = level ~= sums.level or QL.trackedQuestID ~= sums.tracked
-		or (known and (count ~= sums.count or ids ~= sums.ids or squares ~= sums.squares or ready ~= sums.ready
-		or landed ~= sums.landed))
-	sums.count, sums.ids, sums.squares, sums.ready, sums.landed = count, ids, squares, ready, landed
-	sums.level, sums.tracked = level, QL.trackedQuestID
+	local moved = level ~= into.level or QL.trackedQuestID ~= into.tracked
+		or (known and (count ~= into.count or ids ~= into.ids or squares ~= into.squares or ready ~= into.ready
+		or landed ~= into.landed))
+	into.count, into.ids, into.squares, into.ready, into.landed = count, ids, squares, ready, landed
+	into.level, into.tracked = level, QL.trackedQuestID
 	if not (known or moved) then
 		return nil
 	end
 	return moved
+end
+
+local function QuestsMoved()
+	return QL.QuestsMoved(sums)
 end
 
 local watcher = CreateFrame("Frame")

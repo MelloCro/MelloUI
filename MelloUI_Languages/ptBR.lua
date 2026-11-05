@@ -2237,6 +2237,9 @@ Lang:Add("ptBR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toda a sua configuração sob um nome. Salve, carregue ou torne-a o padrão de uma instalação nova.", -- draft
 	["Supporters"] = "Apoiadores", -- draft
 	["The people who help keep MelloUI going."] = "As pessoas que mantêm o MelloUI funcionando.", -- draft
+	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "Corrigido: o mapa do MelloUI não mantém mais o \"?\" de uma missão depois de entregá-la; suas marcas seguem seu registro de missões.", -- draft
+	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "A lista de missões segue o servidor ao vivo: 2 missões novas, níveis corrigidos em 52 missões, a Cidade Submersa agora tem nome.", -- draft
+	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "Corrigido: as vozes agora tocam quando um addon de nivelamento aceita ou entrega uma missão assim que a janela abre.", -- draft
 	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "Quadros de unidade, Placas de identificação e Barras de ação: cada interruptor agora desliga tudo o que o MelloUI mostra ali, o resto continua funcionando.", -- draft
 	["New: an Action Bars switch on the Bars page."] = "Novo: um interruptor de Barras de ação na página Barras.", -- draft
 	["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Corrigido: as marcas dos doadores de missões no mapa do MelloUI não aparecem mais como manchas amarelas esticadas.", -- draft
@@ -2244,7 +2247,6 @@ Lang:Add("ptBR", {
 	["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Corrigido: as abas da mochila e da bolsa de reagentes ao lado da janela de bolsas voltam a mostrar seus ícones.", -- draft
 	["The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once."] = "O mapa: os doadores de missões, as entregas e os objetivos do Questie usam os ícones do MelloUI; uma missão que o mapa já mostra aparece uma só vez.", -- draft
 	["Fixed: after a level-up the micro menu no longer leaves the place you gave it."] = "Corrigido: depois de subir de nível, o micromenu não sai mais do lugar que você deu a ele.", -- draft
-	["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "Corrigido: letras russas, coreanas e chinesas no texto de combate, nomes de zona, cabeçalhos e títulos não aparecem mais como quadrados.", -- draft
 	["Report a problem"] = "Relatar um problema", -- draft
 	["Voice pack"] = "Pacote de vozes", -- draft
 	["open or close this window"] = "abre ou fecha esta janela", -- draft
@@ -2886,6 +2888,7 @@ Lang:Add("ptBR", {
 -- stale: ["Fixed: Holy Nova and Prayer of Mending show their heal effect on your party frames, at every rank."] = "Corrigido: Nova Sagrada e Prece de Recomposição mostram seu efeito de cura nos quadros do grupo, em todas as patentes.", -- draft
 -- stale: ["Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect, at every rank."] = "Corrigido: Nova Sagrada, Oração da Reparação, Choque Sagrado, Escudo da Terra e Chuva Curativa mostram seu efeito de cura, em todas as patentes.", -- draft
 -- stale: ["Fixed: Holy Shock, Earth Shield and Healing Rain show theirs too; Holy Shock cast at an enemy shows nothing on your frame."] = "Corrigido: Choque Sagrado, Escudo da Terra e Chuva de Cura também mostram o seu; Choque Sagrado lançado num inimigo não mostra nada no seu quadro.", -- draft
+-- stale: ["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "Corrigido: letras russas, coreanas e chinesas no texto de combate, nomes de zona, cabeçalhos e títulos não aparecem mais como quadrados.", -- draft
 -- stale: ["Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat."] = "Corrigido: Silithus e outras seis zonas não são mais cortadas do mapa; a caixa do Bate-papo no Editar layout cobre todo o bate-papo mínimo.", -- draft
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "Corrigido: após aprender uma nova postura ou forma, uma luta podia cair para poucos quadros por segundo até reiniciar.", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "Corrigido: um erro em lutas vindo das Grandes recargas do Painel pessoal.", -- draft

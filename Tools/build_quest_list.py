@@ -59,6 +59,9 @@ from paths import CACHE, GPL_NOTICE
 WOWHEAD = os.path.join(CACHE, "wowhead")
 BUILD = "1.15.9.69722"          # Classic Era, from wago.tools (comma separated, vectors as Pos_0..)
 FOREVER = "1.60.1.70338"        # Forever, exported with wow.export (2026-10-13: comma separated, vectors as Loc_0..;
+# (2026-11-05) a table exported from a newer client than FOREVER's: the area table, so a zone the client added since has
+# its name (The Drowned City, 16550, was listed by its number)
+NEWER = {"AreaTable": "1.60.1.70790"}
                                 # 69913 before: semicolons, vectors as "x,y,z" -- db2() reads both)
 VECTOR_COLUMNS = {"Loc", "Pos", "Corpse", "Region", "GeoBox", "MapOffset", "FlightMapOffset"}
 
@@ -75,7 +78,7 @@ def db2(name):
     """Rows of a client table: the Forever export when it exists in the cache,
     else the Classic Era one. Both CSV dialects are normalised to wago's."""
     import csv
-    for build in (FOREVER, BUILD):
+    for build in (NEWER.get(name), FOREVER, BUILD):
         path = os.path.join(CACHE, f"{name}_{build}.csv")
         if not os.path.exists(path):
             continue
@@ -419,6 +422,8 @@ def load_quests(sql):
             1 for q in listing if q not in client and q not in scan["failed"] and q not in scan["quests"])
     log(f"  the client's quest cache (build {build}): {len(client)} quests; scan "
         + ("whole" if whole else "not whole (nothing left out)" if scan else "none"))
+    if scan and scan.get("earlier"):
+        log(f"    of them from an earlier scan (no answer in this one, kept): {len(scan['earlier'])}")
     for k, v in sorted(stats.items()):
         log(f"    {k}: {v}")
     return listing
@@ -2247,7 +2252,10 @@ def main():
         fh.write("\t},\n\t-- zone -> continent: 0 Eastern Kingdoms, 1 Kalimdor, an open-world map of its own\n")
         fh.write("\t-- (2991 Zephras Isle, named in continentNames), -1 elsewhere\n\tzoneContinent = {\n")
         for aid in sorted(used_zones):
-            fh.write(f"\t\t[{aid}] = {continent_of.get(aid, -1)},\n")
+            # (a map with no name here -- The Drowned City's 2970 since the newer area table -- is elsewhere: the
+            # Continent filter lists only the named ones)
+            cont = continent_of.get(aid, -1)
+            fh.write(f"\t\t[{aid}] = {cont if cont in continent_names else -1},\n")
         fh.write("\t},\n\tcontinentNames = { " + ", ".join(f"[{c}] = {lua_str(n)}" for c, n in sorted(continent_names.items())) + " },\n")
         fh.write("\t-- instance -> { min level, max level } from Wowhead's zone list, for sorting dungeons by their level\n\tdungeonLevel = {\n")
         for did in sorted(used_dungeons):
