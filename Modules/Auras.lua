@@ -70,6 +70,13 @@ local M = MelloUI:RegisterModule("Auras", {
 		playerFrame = false,
 		playerFrameSize = 22,   -- (the target rows' size)
 		playerFrameGrow = "right",
+		-- (2.1.10: Separate Debuffs: the debuffs' own block, its own layout)
+		separateDebuffs = false,
+		debuffSize = 30,
+		debuffPerRow = 12,
+		debuffSpacing = 6,
+		debuffGrow = "left",
+		debuffNewRows = "down",
 		target = true,
 		targetSize = 22,
 		targetOnlyMine = false,
@@ -90,6 +97,21 @@ local M = MelloUI:RegisterModule("Auras", {
 		  desc = "Which way your icons run under the player frame." },
 		{ type = "slider", key = "playerFrameSize", parent = "playerFrame", name = "Icon Size On The Frame", min = 14, max = 36, step = 1,
 		  desc = "The size of your buff and debuff icons under the player frame." },
+		{ type = "toggle", key = "separateDebuffs", parent = "player", name = "Separate Debuffs", new = "2.1.10",
+		  search = "debuffs apart place position move rows",
+		  desc = "Your debuffs in a block of their own, with their own place in Edit Layout and their own size and rows. Off: they are the line under your buffs." },
+		{ type = "slider", key = "debuffSize", parent = "separateDebuffs", name = "Debuff Icon Size", min = 15, max = 60, step = 1, new = "2.1.10",
+		  desc = "The size of your debuff icons." },
+		{ type = "slider", key = "debuffSpacing", parent = "separateDebuffs", name = "Debuff Spacing", min = 5, max = 15, step = 1, new = "2.1.10",
+		  desc = "The space between your debuff icons." },
+		{ type = "slider", key = "debuffPerRow", parent = "separateDebuffs", name = "Debuffs Per Row", min = 1, max = 16, step = 1, new = "2.1.10",
+		  desc = "How many debuffs fit in a row before a new row starts." },
+		{ type = "dropdown", key = "debuffGrow", parent = "separateDebuffs", name = "Debuff Grow", new = "2.1.10",
+		  values = { { value = "left", label = "Left" }, { value = "right", label = "Right" } },
+		  desc = "Which way a row of debuffs grows." },
+		{ type = "dropdown", key = "debuffNewRows", parent = "separateDebuffs", name = "Debuff New Rows", new = "2.1.10",
+		  values = { { value = "down", label = "Down" }, { value = "up", label = "Up" } },
+		  desc = "Which way new rows of debuffs go." },
 		{ type = "header", name = "Target" },
 		{ type = "toggle", key = "target", name = "Target Frame",
 		  desc = "Your target's debuffs and buffs under the target frame, in MelloUI's look." },
@@ -721,12 +743,7 @@ end
 -- (0.19.9) the Buff Layout's spacing, grow or new rows changed: the rows'
 -- groups spaced again (their durations under each line: 10 more between
 -- lines), the line's length, and placed again with their flow (out of combat)
-local function Relayout()
-	local c = playerRows
-	if not c then
-		return
-	end
-	local spacing = M.db.playerSpacing or 6
+local function SpaceRows(c, spacing)
 	local layout = { elementSpacing = spacing, lineSpacing = spacing + 10, groupSpacing = spacing,
 		groupLineSpacing = spacing + 10, forceNewLine = true }
 	for _, key in ipairs(c.melloGroups) do
@@ -738,6 +755,14 @@ local function Relayout()
 			t.gap = spacing   -- (the shade's reach between two buttons: the smaller room)
 		end
 	end
+end
+
+local function Relayout()
+	local c = playerRows
+	if not c then
+		return
+	end
+	SpaceRows(c, M.db.playerSpacing or 6)
 	Resize(c, M.db.playerSize, PlayerLine())
 	placedX = nil   -- (placed again: its corner may have changed)
 	MelloUI.Kit:WhenOutOfCombat(PlaceNow, PLACE_KEY)
@@ -754,6 +779,90 @@ local function FollowColumn()
 	if playerRows and M.isEnabled and (M.db.playerColumn or placedSide) then
 		PlacePlayer()
 	end
+end
+
+--------------------------------------------------------------------------------
+-- Separate Debuffs (2.1.10; BaQstein, Discord 2026-11-06: "settings for Buffs and debuffs seperatly. I want them at
+-- different postion and row settings", buffs left of the totems, debuffs right of them). Off, the debuffs are the line
+-- under the buffs in one container. On, a second container holds them and the first's debuff group is off; its size,
+-- spacing, line and flow its own. It hangs from the game's Debuffs bar, as the rows hang from its Buffs bar, so Edit
+-- Layout's plate moves it and the place is the layout's (nothing of ours stored). Protected as the rows are (right-click):
+-- made, shown and placed out of combat. Never with Attach To The Player Frame: those rows hold both.
+--------------------------------------------------------------------------------
+local Apart = { KEY = "Auras: your debuffs' own block", split = false }
+
+function Apart.Line()
+	return (M.db.debuffSize + (M.db.debuffSpacing or 6)) * M.db.debuffPerRow
+end
+
+function Apart.FlowOf()
+	local right = M.db.debuffGrow == "right"
+	local up = M.db.debuffNewRows == "up"
+	return (up and "BOTTOM" or "TOP") .. (right and "LEFT" or "RIGHT"), right and 1 or -1, up and 1 or -1
+end
+
+function Apart.Place()
+	local c = Apart.rows
+	if not c then
+		return
+	end
+	local corner, gx, gy = Apart.FlowOf()
+	local key = corner .. gx .. gy
+	if key ~= Apart.flowNow then
+		Apart.flowNow = key
+		Try(c.SetFlowLayoutAnchorPoint, c, corner)
+		Try(c.SetFlowLayoutGrowthDirection, c, gx, gy)
+		Try(c.UpdateAllAuras, c)
+	end
+	c:ClearAllPoints()
+	c:SetPoint(corner, DebuffFrame or UIParent, corner, 0, 0)
+end
+
+function Apart.Relayout()
+	local c = Apart.rows
+	if not c then
+		return
+	end
+	SpaceRows(c, M.db.debuffSpacing or 6)
+	Resize(c, M.db.debuffSize, Apart.Line())
+	MelloUI.Kit:WhenOutOfCombat(Apart.Place, Apart.KEY)
+end
+
+-- the block on or off: the rows' own debuff group the other way, only when it changed
+function Apart.Set(want)
+	if want ~= Apart.split and playerRows then
+		Apart.split = want
+		Try(playerRows.SetAuraGroupEnabled, playerRows, "debuffs", not want)
+		Try(playerRows.UpdateAllAuras, playerRows)
+	end
+	if want and not Apart.rows then
+		local corner, gx, gy = Apart.FlowOf()
+		local spacing = M.db.debuffSpacing or 6
+		local ok, c = pcall(NewContainer, UIParent, "player", { { key = "debuffs", filter = "HARMFUL", max = 16 } },
+			{ size = M.db.debuffSize, durationBelow = true, compactTime = true, dispel = true, cancel = true,
+				tooltip = "ANCHOR_BOTTOMLEFT", anchor = corner, gx = gx, gy = gy, line = Apart.Line(),
+				spacing = spacing, lineSpacing = spacing + 10, shade = true })
+		if not ok then
+			MelloUI:Notice("Buffs & Debuffs: your debuffs' block could not be made (%s).", tostring(c))
+			return
+		end
+		Apart.rows, Apart.flowNow = c, corner .. gx .. gy
+		c:SetFrameStrata("LOW")
+		if DebuffFrame and MelloUI.EditLayoutCover then
+			MelloUI:EditLayoutCover(DebuffFrame, Apart.cover)
+		end
+	end
+	local c = Apart.rows
+	if c then
+		Apart.Place()
+		Try(c.SetEnabled, c, want)
+		c:SetShown(want)
+	end
+end
+
+-- (the tests', the Fader's Buffs & Debuffs element)
+M.DebuffRows = function()
+	return Apart.rows
 end
 
 --------------------------------------------------------------------------------
@@ -1109,6 +1218,7 @@ local COVER_TEXT = {
 	label = "Your buffs & debuffs",
 	column = "They stand by the minimap column and move with it (Buffs & Debuffs: Attach To The Minimap Column).",
 	frame = "They hang under your player frame and move with it (Unit Frames: Attach Your Buffs And Debuffs).",
+	debuffs = "Your debuffs",
 }
 
 -- the rows shown now (the player frame's or these), and whether they are the player frame's
@@ -1128,15 +1238,22 @@ end
 -- the rows' rect: the container's, grown round its shown buttons and (these rows, not the player frame's) to their
 -- whole room -- a line long, two rows high, out from the corner they grow from -- so the plate can be taken hold of
 -- with no aura up (screen px)
-local function RowsRect(c, framed)
+local function RowsRect(c, framed, debuffs)
 	local Rect = MelloUI.Safe.ScreenRect
 	local l, b, r, t = Rect(c)
 	if l and not framed then
-		local corner, gx, gy = FlowOf(placedSide)
+		local corner, gx, gy
+		local size, spacing, line
+		if debuffs then
+			corner, gx, gy = Apart.FlowOf()
+			size, spacing, line = M.db.debuffSize or 30, M.db.debuffSpacing or 6, Apart.Line()
+		else
+			corner, gx, gy = FlowOf(placedSide)
+			size, spacing, line = M.db.playerSize or 30, M.db.playerSpacing or 6, PlayerLine()
+		end
 		local okS, s = pcall(c.GetEffectiveScale, c)
 		s = okS and not Secret(s) and s or 1
-		local size, spacing = M.db.playerSize or 30, M.db.playerSpacing or 6
-		local w, h = PlayerLine() * s, (2 * size + spacing + 10) * s
+		local w, h = line * s, (2 * size + spacing + 10) * s
 		local x = corner:find("LEFT") and l or r
 		local y = corner:find("TOP") and t or b
 		local rl, rb = gx > 0 and x or x - w, gy > 0 and y or y - h
@@ -1159,10 +1276,48 @@ local function RowsRect(c, framed)
 	return l, b, r, t
 end
 
+-- (2.1.10) your rows off: the game's own bar stands, and its plate with it (a covered bar's plate went with the rows)
+local function GameBarShown(entry)
+	local frame = entry and entry.frame
+	if not frame or (M.isEnabled and M.db.player) then
+		return false
+	end
+	local ok, shown = pcall(frame.IsShown, frame)
+	return (ok and not Secret(shown) and shown) and true or false
+end
+
+-- the debuffs' block standing now
+local function ApartShown()
+	local c = Apart.rows
+	if not (M.isEnabled and c) then
+		return nil
+	end
+	local ok, shown = pcall(c.IsShown, c)
+	return (ok and not Secret(shown) and shown) and c or nil
+end
+
+-- (2.1.10) the plate of the game's Debuffs over the debuffs' block: dragged, it moves the bar the block hangs from
+Apart.cover = {
+	label = COVER_TEXT.debuffs, page = "Auras",
+	visible = function(entry)
+		return ApartShown() ~= nil or GameBarShown(entry)
+	end,
+	box = function()
+		local c = ApartShown()
+		if c then
+			return RowsRect(c, false, true)
+		end
+		return nil
+	end,
+	locked = function()
+		return nil
+	end,
+}
+
 local coverSpec = {
 	label = COVER_TEXT.label, page = "Auras",
-	visible = function()
-		return ShownRows() ~= nil
+	visible = function(entry)
+		return ShownRows() ~= nil or GameBarShown(entry)
 	end,
 	box = function()
 		local c, framed = ShownRows()
@@ -1219,6 +1374,7 @@ local function SetPlayer(on)
 		Try(playerRows.SetEnabled, playerRows, rows and true or false)
 		playerRows:SetShown(rows and true or false)
 	end
+	Apart.Set((rows and M.db.separateDebuffs) and true or false)
 	GameBars(on and true or false)
 	Weapon.Switch(on and true or false)
 end
@@ -1492,6 +1648,15 @@ function M:OnSettingChanged(key, value, db)
 	elseif key == "playerSize" or key == "playerPerRow" then
 		Resize(playerRows, db.playerSize, PlayerLine())
 		Weapon.Resized()
+	elseif key == "separateDebuffs" then
+		-- (protected, as the rows: switched out of combat only)
+		MelloUI.Kit:WhenOutOfCombat(function()
+			SetPlayer(M.isEnabled and M.db.player)
+		end, Apart.KEY .. ": switched")
+	elseif key == "debuffSize" or key == "debuffPerRow" then
+		Resize(Apart.rows, db.debuffSize, Apart.Line())
+	elseif key == "debuffSpacing" or key == "debuffGrow" or key == "debuffNewRows" then
+		Apart.Relayout()
 	elseif key == "playerFrameSize" then
 		Resize(frameRows, db.playerFrameSize)
 		Weapon.Resized()

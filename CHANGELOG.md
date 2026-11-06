@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.10
+
+- Fixed: Zygor Guides could not start with MelloUI 2.1.9 ("ERROR initializing"). It starts again.
+- New: Separate Debuffs, on the Buffs page. Your debuffs get a block of their own, with their own place in Edit Layout and their own size and rows.
+- Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again.
+
 ## 2.1.9
 
 - New: Look > Colours has a colour wheel for every class, each power (mana, rage, energy, focus) and NPC standings. Your colours show on MelloUI's frames and bars, in chat, tooltips and the damage meter; the game's own windows keep theirs.

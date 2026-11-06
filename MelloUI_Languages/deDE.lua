@@ -1346,6 +1346,18 @@ Lang:Add("deDE", {
 	["Right To Left"] = "Rechts nach links", -- draft
 	["Icon Size On The Frame"] = "Symbolgröße am Fenster", -- draft
 	["The size of your buff and debuff icons under the player frame."] = "Die Größe deiner Stärkungs- und Schwächungszaubersymbole unter dem Spielerfenster.", -- draft
+	["Separate Debuffs"] = "Schwächungen getrennt", -- draft
+	["Your debuffs in a block of their own, with their own place in Edit Layout and their own size and rows. Off: they are the line under your buffs."] = "Deine Schwächungen in einem eigenen Block, mit eigenem Platz im Layout-Editor und eigener Größe und eigenen Reihen. Aus: Sie sind die Zeile unter deinen Stärkungen.", -- draft
+	["Debuff Icon Size"] = "Symbolgröße der Schwächungen", -- draft
+	["The size of your debuff icons."] = "Die Größe deiner Schwächungssymbole.", -- draft
+	["Debuff Spacing"] = "Abstand der Schwächungen", -- draft
+	["The space between your debuff icons."] = "Der Abstand zwischen deinen Schwächungssymbolen.", -- draft
+	["Debuffs Per Row"] = "Schwächungen pro Reihe", -- draft
+	["How many debuffs fit in a row before a new row starts."] = "Wie viele Schwächungen in eine Reihe passen, bevor eine neue beginnt.", -- draft
+	["Debuff Grow"] = "Wachstum der Schwächungen", -- draft
+	["Which way a row of debuffs grows."] = "In welche Richtung eine Reihe von Schwächungen wächst.", -- draft
+	["Debuff New Rows"] = "Neue Reihen der Schwächungen", -- draft
+	["Which way new rows of debuffs go."] = "In welche Richtung neue Reihen von Schwächungen gehen.", -- draft
 	["Target"] = "Ziel", -- draft
 	["Your target's debuffs and buffs under the target frame, in MelloUI's look."] = "Die Schwächungs- und Stärkungszauber deines Ziels unter dem Zielfenster, in MelloUIs Aussehen.", -- draft
 	["The size of your target's buff and debuff icons."] = "Die Größe der Stärkungs- und Schwächungszaubersymbole deines Ziels.", -- draft
@@ -2072,7 +2084,7 @@ Lang:Add("deDE", {
 	["Combo points"] = "Combopunkte", -- draft
 	["CC icon"] = "Kontrollverlust-Symbol", -- draft
 	["Quest icon"] = "Questsymbol", -- draft
-	["Your debuffs"] = "Deine Schwächungszauber", -- draft
+	["Your debuffs"] = "Deine Schwächungen", -- draft
 	["The game's auras"] = "Die Auren des Spiels", -- draft
 	["A class medallion over friendly players' names, in the open world"] = "Ein Klassenmedaillon über den Namen freundlicher Spieler, in der offenen Welt", -- draft
 	["Friendly players"] = "Freundliche Spieler", -- draft
@@ -2175,7 +2187,7 @@ Lang:Add("deDE", {
 	["Numbers Font"] = "Zahlenschrift", -- draft
 	["Only with MelloUI's icons on"] = "Nur mit eingeschalteten Symbolen von MelloUI", -- draft
 	["Only with MelloUI's icons here"] = "Nur mit MelloUIs Symbolen hier", -- draft
-	["Not with Attach To The Player Frame"] = "Nicht mit „An das Spielerfenster heften“", -- draft
+	["Not with Attach To The Player Frame"] = "Nicht mit An Spielerfenster anheften", -- draft
 	["Only when attached to the frame"] = "Nur, wenn ans Fenster geheftet", -- draft
 	["Above The Name"] = "Über dem Namen", -- draft
 	["Size"] = "Größe", -- draft
@@ -2263,6 +2275,9 @@ Lang:Add("deDE", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Deine ganze Einrichtung unter einem Namen. Speichere sie, lade sie oder mach sie zum Standard für eine frische Installation.", -- draft
 	["Supporters"] = "Unterstützer", -- draft
 	["The people who help keep MelloUI going."] = "Die Menschen, die MelloUI am Laufen halten.", -- draft
+	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "Behoben: Zygor Guides konnte mit MelloUI 2.1.9 nicht starten. Es startet wieder.", -- draft
+	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "Neu: Schwächungen getrennt auf der Seite Stärkungen: Deine Schwächungen bekommen ihren eigenen Platz und eigene Reihen.", -- draft
+	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Behoben: Mit ausgeschalteten MelloUI-Stärkungssymbolen lässt sich die Stärkungsleiste des Spiels im Layout-Editor wieder verschieben.", -- draft
 	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Neu: Aussehen > Farben bietet ein Farbrad für jede Klasse, jede Ressource und das Ansehen von NPCs.", -- draft
 	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Leisten: Die Schalter für den Schatten hinter deinen Aktionsleisten stehen jetzt unter Hintergründe und Schatten, und die Suche findet sie.", -- draft
 	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Behoben: Die Einstellung Namen wirkt jetzt in der minimalen Chatansicht und im Flüsterfenster.", -- draft
@@ -2271,7 +2286,6 @@ Lang:Add("deDE", {
 	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "Behoben: Die Sprachausgabe spricht jetzt auch, wenn ein Levelling-Addon eine Quest annimmt oder abgibt, sobald sich ihr Fenster öffnet.", -- draft
 	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "Einheitenfenster, Namensplaketten und Aktionsleisten: Jeder Schalter schaltet jetzt alles ab, was MelloUI dort zeigt, der Rest funktioniert weiter.", -- draft
 	["New: an Action Bars switch on the Bars page."] = "Neu: ein Schalter für die Aktionsleisten auf der Seite Leisten.", -- draft
-	["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Behoben: Die Markierungen der Questgeber auf MelloUIs Karte erscheinen nicht mehr als verzerrte gelbe Flecken.", -- draft
 	["Report a problem"] = "Ein Problem melden", -- draft
 	["Voice pack"] = "Stimmenpaket", -- draft
 	["open or close this window"] = "dieses Fenster öffnen oder schließen", -- draft
@@ -2924,6 +2938,7 @@ Lang:Add("deDE", {
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "Behoben: ein Fehler im Kampf durch die Großen Abklingzeiten der Persönlichen Anzeige.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "Behoben: Klicks auf Verstohlenheit, Haltungen, Gestalten und Begleitertasten; die Chat-Schrift in der minimalen Chatansicht; ganze Häkchen bei Standard; Beschriftungen neben Schiebereglern.", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Behoben: Auf Oldschools Rahmen hält die Ressourcenleiste einen kleinen Abstand unter der Gesundheitsleiste, und die des Ziels schließt bündig mit ihr ab.", -- draft
+-- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Behoben: Die Markierungen der Questgeber auf MelloUIs Karte erscheinen nicht mehr als verzerrte gelbe Flecken.", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Behoben: Die Reiter für Rucksack und Reagenzientasche neben dem Taschenfenster zeigen wieder ihre Symbole.", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "Behoben: die Weltmarkierung bei einem Leitfaden-Schritt direkt neben dir; die Klassenquests der Questliste; Gegenstandsqualität und wiederholte Bosse in Dungeon-Info.", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "Behoben: der Installer nennt deinen Bildschirm nicht mehr zu klein, wenn nur einige deiner eigenen Einstellungen nicht passen.", -- draft

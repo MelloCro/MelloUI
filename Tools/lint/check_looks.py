@@ -270,7 +270,7 @@ CEILINGS = {
     "hygiene:MelloUI_GroupFrames/GroupButton.lua": 2,
     "hygiene:MelloUI_GroupFrames/GroupDesignerPage.lua": 2,   # (2026-10-27: Your Indicators' canvas moved to GroupSpellGroupsPage.lua)
     "hygiene:MelloUI_GroupFrames/GroupLooks.lua": 8,
-    "hygiene:MelloUI_GroupFrames/GroupSolo.lua": 1,
+    "hygiene:MelloUI_GroupFrames/GroupSolo.lua": 0,
     "hygiene:MelloUI_QuestList/QuestListMap.lua": 1,
     "hygiene:MelloUI_Route/Route.lua": 4,
     "hygiene:MelloUI_VoiceOver/VoiceOver.lua": 1,

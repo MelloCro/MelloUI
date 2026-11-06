@@ -812,6 +812,12 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerFrame", { when = OWN_PLAYER })
 	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerFrameGrow", { when = OWN_ATTACHED })
 	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerFrameSize", { when = OWN_ATTACHED })
+	-- (2.1.10; BaQstein, 2026-11-06: its own place and rows; the rows on its cog: only for who turns it on)
+	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.separateDebuffs",
+		{ when = { all = { OWN_PLAYER, { key = "Auras.playerFrame", value = false } }, line = "Not with Attach To The Player Frame" } })
+	for _, key in ipairs({ "debuffSize", "debuffSpacing", "debuffPerRow", "debuffGrow", "debuffNewRows" }) do
+		R("UnitGroupFrames", "buffs:element", "Layout", "Auras." .. key)
+	end
 	R("UnitGroupFrames", "target:auras", "Behaviour", "Auras.targetOnlyMine", { when = OWN_TARGET })
 	R("UnitGroupFrames", "all", "Behaviour", "HealerFrames.debuffGlowShows")
 

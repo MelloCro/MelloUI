@@ -323,6 +323,12 @@ local function Auras()
 			Add(out, rows)
 		end
 	end
+	if A and type(A.DebuffRows) == "function" then   -- (2.1.10: Separate Debuffs' block)
+		local ok, rows = pcall(A.DebuffRows)
+		if ok then
+			Add(out, rows)
+		end
+	end
 	return out
 end
 

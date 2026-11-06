@@ -1346,6 +1346,18 @@ Lang:Add("ruRU", {
 	["Right To Left"] = "Справа налево", -- draft
 	["Icon Size On The Frame"] = "Размер значков на рамке", -- draft
 	["The size of your buff and debuff icons under the player frame."] = "Размер значков эффектов под рамкой игрока.", -- draft
+	["Separate Debuffs"] = "Отдельные отрицательные эффекты", -- draft
+	["Your debuffs in a block of their own, with their own place in Edit Layout and their own size and rows. Off: they are the line under your buffs."] = "Ваши отрицательные эффекты в отдельном блоке, со своим местом в редакторе расположения, своим размером и рядами. Выкл.: они идут строкой под вашими положительными эффектами.", -- draft
+	["Debuff Icon Size"] = "Размер значков отрицательных эффектов", -- draft
+	["The size of your debuff icons."] = "Размер значков ваших отрицательных эффектов.", -- draft
+	["Debuff Spacing"] = "Отступ отрицательных эффектов", -- draft
+	["The space between your debuff icons."] = "Расстояние между значками ваших отрицательных эффектов.", -- draft
+	["Debuffs Per Row"] = "Отрицательных эффектов в ряду", -- draft
+	["How many debuffs fit in a row before a new row starts."] = "Сколько отрицательных эффектов помещается в ряд, прежде чем начнётся новый.", -- draft
+	["Debuff Grow"] = "Направление отрицательных эффектов", -- draft
+	["Which way a row of debuffs grows."] = "В какую сторону растёт ряд отрицательных эффектов.", -- draft
+	["Debuff New Rows"] = "Новые ряды отрицательных эффектов", -- draft
+	["Which way new rows of debuffs go."] = "Куда идут новые ряды отрицательных эффектов.", -- draft
 	["Target"] = "Цель", -- draft
 	["Your target's debuffs and buffs under the target frame, in MelloUI's look."] = "Отрицательные и положительные эффекты цели под её рамкой, в стиле MelloUI.", -- draft
 	["The size of your target's buff and debuff icons."] = "Размер значков эффектов цели.", -- draft
@@ -2175,7 +2187,7 @@ Lang:Add("ruRU", {
 	["Numbers Font"] = "Шрифт чисел", -- draft
 	["Only with MelloUI's icons on"] = "Только с включёнными значками MelloUI", -- draft
 	["Only with MelloUI's icons here"] = "Только со значками MelloUI здесь", -- draft
-	["Not with Attach To The Player Frame"] = "Не с «Прикрепить к рамке игрока»", -- draft
+	["Not with Attach To The Player Frame"] = "Не с креплением к рамке игрока", -- draft
 	["Only when attached to the frame"] = "Только при прикреплении к рамке", -- draft
 	["Above The Name"] = "Над именем", -- draft
 	["Size"] = "Размер", -- draft
@@ -2263,6 +2275,9 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "Исправлено: Zygor Guides не запускался с MelloUI 2.1.9. Теперь запускается.", -- draft
+	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "Новое: «Отдельные отрицательные эффекты» на странице положительных эффектов: у ваших отрицательных эффектов своё место и ряды.", -- draft
+	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Исправлено: при выключенных значках эффектов MelloUI панель положительных эффектов игры снова можно перемещать в редакторе расположения.", -- draft
 	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Новое: в разделе «Облик > Цвета» есть цветовой круг для каждого класса, каждого ресурса и отношения НИП.", -- draft
 	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Панели: переключатели тени за панелями команд теперь находятся в разделе «Подложки и тени», и поиск их находит.", -- draft
 	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Исправлено: настройка «Имена» теперь работает в минимальном виде чата и в окне шёпота.", -- draft
@@ -2271,7 +2286,6 @@ Lang:Add("ruRU", {
 	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "Исправлено: озвучка теперь звучит, когда аддон для прокачки принимает или сдаёт задание сразу при открытии окна.", -- draft
 	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "Рамки юнитов, индикаторы здоровья и панели действий: каждый переключатель теперь отключает всё, что MelloUI там показывает, остальное продолжает работать.", -- draft
 	["New: an Action Bars switch on the Bars page."] = "Новое: переключатель панелей действий на странице «Панели».", -- draft
-	["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Исправлено: метки квестодателей на карте MelloUI больше не выглядят растянутыми жёлтыми пятнами.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -2920,6 +2934,7 @@ Lang:Add("ruRU", {
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "Исправлено: ошибка в бою из-за больших восстановлений Личной панели.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "Исправлено: щелчки по «Незаметности», стойкам, формам и кнопкам питомца; шрифт чата в «Минимальном» виде; целые галочки облика «По умолчанию»; подписи рядом с ползунками.", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Исправлено: на рамках Oldschool полоса ресурса держит небольшой зазор под полосой здоровья, а у цели она выровнена по ней.", -- draft
+-- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Исправлено: метки квестодателей на карте MelloUI больше не выглядят растянутыми жёлтыми пятнами.", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Исправлено: вкладки рюкзака и сумки для реагентов рядом с окном сумок снова показывают свои значки.", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "Исправлено: мировой маркер на шаге гида рядом с вами; классовые задания в списке заданий; качество предметов и повторяющиеся боссы в «Сведениях о подземельях».", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "Исправлено: установщик больше не называет экран слишком маленьким, когда не помещаются ваши собственные настройки.", -- draft

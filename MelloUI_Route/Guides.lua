@@ -5,8 +5,8 @@
 -- those coordinates and places a mark on that spot, that could work"), the
 -- others since 2026-10-21 (the user: "add compatibility like we did with
 -- restedxp for ... Follow the Arrow, TUGs Leveling Guidelime Guide ... and some
--- other"), Polestar since 2.1.0, Zygor since 2.1.9: one core for every guide, one
--- reader per addon. While a guide runs:
+-- other"), Polestar since 2.1.0, Zygor's opt-in since 2.1.10 (its reader, below): one core for every guide,
+-- one reader per addon. While a guide runs:
 --   * its step's spot gets the game's map pin, tracked, so the route and the
 --     World Marker lead there (Guide.Step, read by Route's ReadWaypoint on the
 --     pin's USER_WAYPOINT_UPDATED). A pin of the player's own is never moved,
@@ -1246,31 +1246,58 @@ do
 		return m, x, y
 	end
 
-	-- its update: several of its own calls, whichever this version has; each a quarter second later, once (they can run
-	-- many times a second)
+	-- NO POST-HOOK ON ANY METHOD OF ITS (2.1.10; a friend's error, 2026-11-06: 2.1.9's hooks stopped Zygor starting at all,
+	-- "ERROR in startup frame 32: attempt to yield across metamethod/C-call boundary", through "[C]: in function
+	-- 'SetGuide'"): its startup is a coroutine and SetGuide yields inside it; hooksecurefunc's wrapper is a C function, and
+	-- nothing yields through one. Read on a slow ticker instead (Zygor checks its own goals once a second, its
+	-- completioninterval), a line built again only when its step reads otherwise (Quick).
+	-- OPT-IN until it is proven on the real addon (2.1.9 shipped it unproven and broke Zygor): for every player Zygor is left
+	-- alone -- no ticker, nothing read, its own window. /route zygor on follows it, for the test.
 	function zygor.Hook(changed)
-		local z = Z()
-		if not z then
+		if not (Z() and M.db and M.db.zygorFollow) then
 			return false
 		end
-		local due = false
-		local function Soon()
-			if not due then
-				due = true
-				C_Timer.After(0.25, function()
-					due = false
-					changed()
-				end)
-			end
+		if not zygor.ticker then
+			zygor.ticker = C_Timer.NewTicker(0.5, function()
+				changed()
+			end)
 		end
-		local hooked = false
-		for _, name in ipairs({ "FocusStep", "UpdateFrame", "TryToCompleteStep", "SetGuide" }) do
-			if type(z[name]) == "function" then
-				hooksecurefunc(z, name, Soon)
-				hooked = true
-			end
+		return true
+	end
+
+	-- /route zygor on | off (the test's): off, its own window and arrow back at once
+	function Guide.ZygorFollow(on)
+		if not M.db then
+			return
 		end
-		return hooked
+		M.db.zygorFollow = on and true or nil
+		if on then
+			Guide.Hook()
+		else
+			if zygor.ticker then
+				zygor.ticker:Cancel()
+				zygor.ticker = nil
+			end
+			zygor.hooked = nil
+			Guide.Forget()
+			Guide.Refresh()
+		end
+		MelloUI:Print("Following Zygor Guides: %s.", on and "on (a test)" or "off")
+	end
+
+	-- its step's signature (Read: Steps only when it changed)
+	function zygor.Quick()
+		local z = Z()
+		local goals = Goals(z)
+		if not goals then
+			return ""
+		end
+		local guide = z.CurrentGuide
+		local parts = { tostring(Plain(z.CurrentStepNum)), tostring(type(guide) == "table" and guide.title) }
+		for _, goal in ipairs(goals) do
+			parts[#parts + 1] = tostring(Ask(goal, "GetText", true)) .. (GoalDone(goal) and "+" or "-")
+		end
+		return table.concat(parts, "\n")
 	end
 
 	-- the first open goal with a place, else its arrow's waypoint
@@ -1518,7 +1545,6 @@ do
 		{ "Guidelime", "Guidelime" },
 		{ "ForeverWisp", "ForeverWisp" },
 		{ "Polestar", "Polestar" },
-		{ "ZygorGuidesViewer", "Zygor Guides" },
 	}
 
 	local function AddOns()

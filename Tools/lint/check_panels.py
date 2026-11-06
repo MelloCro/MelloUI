@@ -56,7 +56,7 @@ CEILINGS = {
     "dump-slash": 57,
     "start-moving": 0,
     "animation-group": 3,
-    "new-ticker": 8,
+    "new-ticker": 9,   # (2026-11-06: Zygor's reader: no hook on its methods can be used, they yield. Opt-in, with Zygor only)
     "combat-guard": 1,
     "safe-standin": 0,
     "fn-standin": 0,

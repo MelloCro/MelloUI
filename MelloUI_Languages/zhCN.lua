@@ -1346,6 +1346,18 @@ Lang:Add("zhCN", {
 	["Right To Left"] = "从右到左", -- draft
 	["Icon Size On The Frame"] = "框体上的图标大小", -- draft
 	["The size of your buff and debuff icons under the player frame."] = "玩家框体下方增益和减益图标的大小。", -- draft
+	["Separate Debuffs"] = "分离减益效果", -- draft
+	["Your debuffs in a block of their own, with their own place in Edit Layout and their own size and rows. Off: they are the line under your buffs."] = "将你的减益效果放在单独的区块中，在布局编辑中有自己的位置、大小和行。关闭时：它们是增益效果下方的一行。", -- draft
+	["Debuff Icon Size"] = "减益图标大小", -- draft
+	["The size of your debuff icons."] = "你的减益图标的大小。", -- draft
+	["Debuff Spacing"] = "减益间距", -- draft
+	["The space between your debuff icons."] = "你的减益图标之间的间距。", -- draft
+	["Debuffs Per Row"] = "每行减益数", -- draft
+	["How many debuffs fit in a row before a new row starts."] = "一行放多少个减益后开始新的一行。", -- draft
+	["Debuff Grow"] = "减益增长方向", -- draft
+	["Which way a row of debuffs grows."] = "一行减益的增长方向。", -- draft
+	["Debuff New Rows"] = "减益新行方向", -- draft
+	["Which way new rows of debuffs go."] = "减益新行的方向。", -- draft
 	["Target"] = "目标", -- draft
 	["Your target's debuffs and buffs under the target frame, in MelloUI's look."] = "目标的减益和增益显示在其框体下方，使用 MelloUI 外观。", -- draft
 	["The size of your target's buff and debuff icons."] = "目标的增益和减益图标大小。", -- draft
@@ -2072,7 +2084,7 @@ Lang:Add("zhCN", {
 	["Combo points"] = "连击点数", -- draft
 	["CC icon"] = "控制图标", -- draft
 	["Quest icon"] = "任务图标", -- draft
-	["Your debuffs"] = "你的减益", -- draft
+	["Your debuffs"] = "你的减益效果", -- draft
 	["The game's auras"] = "游戏的光环", -- draft
 	["A class medallion over friendly players' names, in the open world"] = "野外友方玩家名字上方的职业徽章", -- draft
 	["Friendly players"] = "友方玩家", -- draft
@@ -2175,7 +2187,7 @@ Lang:Add("zhCN", {
 	["Numbers Font"] = "数字字体", -- draft
 	["Only with MelloUI's icons on"] = "仅在开启MelloUI图标时", -- draft
 	["Only with MelloUI's icons here"] = "仅在此处使用MelloUI图标时", -- draft
-	["Not with Attach To The Player Frame"] = "贴附玩家框体时不适用", -- draft
+	["Not with Attach To The Player Frame"] = "不能与附着到玩家框架同时使用", -- draft
 	["Only when attached to the frame"] = "仅在贴附框体时", -- draft
 	["Above The Name"] = "名字上方", -- draft
 	["Size"] = "大小", -- draft
@@ -2263,6 +2275,9 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "修复：Zygor Guides 在 MelloUI 2.1.9 下无法启动。现在可以正常启动。", -- draft
+	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "新增：增益页面的“分离减益效果”：你的减益效果拥有自己的位置和行。", -- draft
+	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "修复：关闭 MelloUI 的增益图标时，又可以在布局编辑中移动游戏的增益条了。", -- draft
 	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "新增：外观 > 颜色 提供色轮，可设置每个职业、每种能量和NPC声望的颜色。", -- draft
 	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "动作条：动作条背后阴影的开关现在位于“底板与阴影”下，搜索也能找到。", -- draft
 	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "修复：名称设置现在对精简聊天视图和密语窗口生效。", -- draft
@@ -2271,7 +2286,6 @@ Lang:Add("zhCN", {
 	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "修复：练级插件在任务窗口打开时立即接受或交付任务时，现在也会播放语音。", -- draft
 	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "单位框体、姓名板和动作条：每个开关现在都会关闭 MelloUI 在那里显示的一切，其余功能继续工作。", -- draft
 	["New: an Action Bars switch on the Bars page."] = "新增：动作条页面上的动作条开关。", -- draft
-	["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "修复：MelloUI 地图上的任务发布者标记不再显示为拉伸的黄色色块。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2920,6 +2934,7 @@ Lang:Add("zhCN", {
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "修复：个人显示的重要冷却在战斗中引发的错误。", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "修复：点击潜行、姿态、形态和宠物按钮；极简聊天视图的聊天字体；默认外观的完整勾选标记；滑块旁的标签。", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "修复：Oldschool 框体上的能量条与生命条之间留出小间隙，目标的能量条也与生命条对齐。", -- draft
+-- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "修复：MelloUI 地图上的任务发布者标记不再显示为拉伸的黄色色块。", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "修复：背包窗口旁的行囊和材料包标签页重新显示图标。", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "修复：引导步骤就在身边时的世界标记；任务列表中的职业任务；地下城信息的物品品质和重复首领。", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "修复：只是你自己的某些设置放不下时，安装向导不再说你的屏幕太小。", -- draft

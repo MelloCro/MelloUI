@@ -1346,6 +1346,18 @@ Lang:Add("koKR", {
 	["Right To Left"] = "오른쪽에서 왼쪽", -- draft
 	["Icon Size On The Frame"] = "창 위 아이콘 크기", -- draft
 	["The size of your buff and debuff icons under the player frame."] = "플레이어 개체창 아래 강화·약화 효과 아이콘 크기.", -- draft
+	["Separate Debuffs"] = "약화 효과 분리", -- draft
+	["Your debuffs in a block of their own, with their own place in Edit Layout and their own size and rows. Off: they are the line under your buffs."] = "약화 효과를 별도 블록으로 표시하며, 레이아웃 편집에서의 위치와 크기, 줄을 따로 갖습니다. 끄면 강화 효과 아래 줄에 표시됩니다.", -- draft
+	["Debuff Icon Size"] = "약화 효과 아이콘 크기", -- draft
+	["The size of your debuff icons."] = "약화 효과 아이콘의 크기입니다.", -- draft
+	["Debuff Spacing"] = "약화 효과 간격", -- draft
+	["The space between your debuff icons."] = "약화 효과 아이콘 사이의 간격입니다.", -- draft
+	["Debuffs Per Row"] = "줄당 약화 효과", -- draft
+	["How many debuffs fit in a row before a new row starts."] = "새 줄을 시작하기 전에 한 줄에 들어가는 약화 효과 수입니다.", -- draft
+	["Debuff Grow"] = "약화 효과 방향", -- draft
+	["Which way a row of debuffs grows."] = "약화 효과 줄이 늘어나는 방향입니다.", -- draft
+	["Debuff New Rows"] = "약화 효과 새 줄", -- draft
+	["Which way new rows of debuffs go."] = "약화 효과의 새 줄이 생기는 방향입니다.", -- draft
 	["Target"] = "대상", -- draft
 	["Your target's debuffs and buffs under the target frame, in MelloUI's look."] = "대상 개체창 아래 대상의 약화·강화 효과를 MelloUI 모습으로.", -- draft
 	["The size of your target's buff and debuff icons."] = "대상의 강화·약화 효과 아이콘 크기.", -- draft
@@ -2175,7 +2187,7 @@ Lang:Add("koKR", {
 	["Numbers Font"] = "숫자 글꼴", -- draft
 	["Only with MelloUI's icons on"] = "MelloUI 아이콘이 켜져 있을 때만", -- draft
 	["Only with MelloUI's icons here"] = "여기서 MelloUI 아이콘을 쓸 때만", -- draft
-	["Not with Attach To The Player Frame"] = "플레이어 창에 붙이기에서는 아님", -- draft
+	["Not with Attach To The Player Frame"] = "플레이어 프레임에 붙이기와 함께 사용 불가", -- draft
 	["Only when attached to the frame"] = "창에 붙였을 때만", -- draft
 	["Above The Name"] = "이름 위", -- draft
 	["Size"] = "크기", -- draft
@@ -2263,6 +2275,9 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "수정: MelloUI 2.1.9에서 Zygor Guides가 시작되지 않던 문제. 이제 다시 시작됩니다.", -- draft
+	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "새 기능: 강화 효과 페이지의 약화 효과 분리: 약화 효과가 자체 위치와 줄을 갖습니다.", -- draft
+	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "수정: MelloUI 강화 효과 아이콘을 꺼도 레이아웃 편집에서 게임의 강화 효과 바를 다시 옮길 수 있습니다.", -- draft
 	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "새 기능: 외형 > 색에 모든 직업, 자원, NPC 평판을 위한 색상환이 생겼습니다.", -- draft
 	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "바: 행동 단축바 뒤 그림자 스위치가 이제 배경판과 그림자 아래에 있으며, 검색으로도 찾을 수 있습니다.", -- draft
 	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "수정: 이름 설정이 이제 최소 대화창 보기와 귓속말 창에서도 적용됩니다.", -- draft
@@ -2271,7 +2286,6 @@ Lang:Add("koKR", {
 	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "수정: 레벨링 애드온이 창이 열리자마자 퀘스트를 수락하거나 완료해도 음성이 재생됩니다.", -- draft
 	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "유닛 프레임, 이름표, 행동 단축바: 이제 각 스위치가 MelloUI가 그곳에 보여 주는 모든 것을 끄고, 나머지는 계속 작동합니다.", -- draft
 	["New: an Action Bars switch on the Bars page."] = "새 기능: 바 페이지의 행동 단축바 스위치.", -- draft
-	["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "수정: MelloUI 지도의 퀘스트 제공자 표시가 더 이상 늘어난 노란 얼룩으로 보이지 않습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2920,6 +2934,7 @@ Lang:Add("koKR", {
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "수정: 개인 화면의 큰 재사용 대기시간으로 인한 전투 중 오류.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "수정: 은신, 태세, 변신, 소환수 버튼 클릭. 최소 대화 보기의 대화 글꼴. 기본 스킨의 온전한 체크 표시. 슬라이더 옆 이름표.", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "수정: Oldschool 프레임에서 자원 바가 생명력 바 아래에 작은 간격을 두며, 대상의 자원 바도 생명력 바에 맞춰 정렬됩니다.", -- draft
+-- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "수정: MelloUI 지도의 퀘스트 제공자 표시가 더 이상 늘어난 노란 얼룩으로 보이지 않습니다.", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "수정: 가방 창 옆의 배낭과 재료 가방 탭에 다시 아이콘이 표시됩니다.", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "수정: 바로 옆에 있는 가이드 단계의 월드 마커, 퀘스트 리스트의 직업 퀘스트, 던전 정보의 아이템 품질과 반복되는 우두머리.", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "수정: 설치 마법사가 내 설정 일부가 맞지 않을 때 화면이 너무 작다고 하지 않습니다.", -- draft

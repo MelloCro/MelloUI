@@ -12450,6 +12450,10 @@ SlashCmdList.MELLOROUTE = function(msg)
 		if M.Guide and M.Guide.DumpZygor then
 			M.Guide.DumpZygor()   -- (2.1.9: what the real Zygor Guides holds, in the copy window)
 		end
+	elseif msg == "zygor on" or msg == "zygor off" then
+		if M.Guide and M.Guide.ZygorFollow then
+			M.Guide.ZygorFollow(msg == "zygor on")   -- (2.1.10: following it, opt-in until proven on the real addon)
+		end
 	elseif msg == "clear" then
 		M.StopRoute()   -- (a tracked quest's route stays stopped too)
 		MelloUI:Print("Route cleared.")

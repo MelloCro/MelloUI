@@ -4471,7 +4471,7 @@ do
 		local defaults, options = {}, {}
 		local function Row(key, name, default, desc)
 			defaults[key] = default
-			options[#options + 1] = { type = "colour", key = key, name = name, desc = desc, new = "2.1.9", free = true }
+			options[#options + 1] = { type = "colour", key = key, name = name, desc = desc, free = true }
 		end
 		local names = rawget(_G, "LOCALIZED_CLASS_NAMES_MALE")
 		for _, c in ipairs(CLASSES) do

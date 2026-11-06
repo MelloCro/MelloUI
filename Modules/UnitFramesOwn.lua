@@ -1236,7 +1236,7 @@ function P.PowerType(f)
 	token = okT and Text(token) or nil
 	local colours = rawget(_G, "PowerBarColor")
 	local info = token and type(colours) == "table" and colours[token] or nil
-	-- (2.1.9: a colour picked on Look > Colours, on the game's colourable fill)
+	-- (2.1.9: a colour picked on Look > Colours, on the colourable fill)
 	local pr, pg, pb = MelloUI.Colours.PowerPicked(token)
 	if pr then
 		mb:SetStatusBarTexture(ART.mana .. "-Status")

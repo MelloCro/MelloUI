@@ -1346,6 +1346,18 @@ Lang:Add("frFR", {
 	["Right To Left"] = "De droite à gauche", -- draft
 	["Icon Size On The Frame"] = "Taille des icônes sur le cadre", -- draft
 	["The size of your buff and debuff icons under the player frame."] = "La taille de vos icônes d'améliorations et d'affaiblissements sous le cadre du joueur.", -- draft
+	["Separate Debuffs"] = "Affaiblissements séparés", -- draft
+	["Your debuffs in a block of their own, with their own place in Edit Layout and their own size and rows. Off: they are the line under your buffs."] = "Vos affaiblissements dans un bloc à part, avec leur place dans l'éditeur de disposition, leur taille et leurs rangées. Désactivé : ils sont la ligne sous vos améliorations.", -- draft
+	["Debuff Icon Size"] = "Taille des icônes d'affaiblissement", -- draft
+	["The size of your debuff icons."] = "La taille de vos icônes d'affaiblissement.", -- draft
+	["Debuff Spacing"] = "Espacement des affaiblissements", -- draft
+	["The space between your debuff icons."] = "L'espace entre vos icônes d'affaiblissement.", -- draft
+	["Debuffs Per Row"] = "Affaiblissements par rangée", -- draft
+	["How many debuffs fit in a row before a new row starts."] = "Combien d'affaiblissements tiennent sur une rangée avant d'en commencer une nouvelle.", -- draft
+	["Debuff Grow"] = "Sens des affaiblissements", -- draft
+	["Which way a row of debuffs grows."] = "Dans quel sens s'étend une rangée d'affaiblissements.", -- draft
+	["Debuff New Rows"] = "Nouvelles rangées d'affaiblissements", -- draft
+	["Which way new rows of debuffs go."] = "Dans quel sens vont les nouvelles rangées d'affaiblissements.", -- draft
 	["Target"] = "Cible", -- draft
 	["Your target's debuffs and buffs under the target frame, in MelloUI's look."] = "Les affaiblissements et améliorations de votre cible sous son cadre, dans le style de MelloUI.", -- draft
 	["The size of your target's buff and debuff icons."] = "La taille des icônes d'améliorations et d'affaiblissements de votre cible.", -- draft
@@ -2263,6 +2275,9 @@ Lang:Add("frFR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toute votre configuration sous un nom. Enregistrez-la, chargez-la, ou faites-en la configuration par défaut d'une nouvelle installation.", -- draft
 	["Supporters"] = "Soutiens", -- draft
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.", -- draft
+	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "Corrigé : Zygor Guides ne pouvait pas démarrer avec MelloUI 2.1.9. Il démarre de nouveau.", -- draft
+	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "Nouveau : Affaiblissements séparés sur la page Améliorations : vos affaiblissements ont leur place et leurs rangées.", -- draft
+	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Corrigé : avec les icônes d'amélioration de MelloUI désactivées, la barre d'améliorations du jeu peut de nouveau être déplacée dans l'éditeur de disposition.", -- draft
 	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Nouveau : Apparence > Couleurs propose une roue chromatique pour chaque classe, chaque ressource et les réputations des PNJ.", -- draft
 	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Barres : les options de l'ombre derrière vos barres d'action se trouvent maintenant sous Fonds et ombres, et la recherche les trouve.", -- draft
 	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Corrigé : le réglage Noms fonctionne dans la vue de discussion minimale et la fenêtre de chuchotements.", -- draft
@@ -2271,7 +2286,6 @@ Lang:Add("frFR", {
 	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "Corrigé : la voix se fait entendre lorsqu'un addon de progression accepte ou rend une quête dès l'ouverture de sa fenêtre.", -- draft
 	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "Cadres d'unité, Barres de nom et Barres d'action : chaque interrupteur désactive désormais tout ce que MelloUI y affiche, le reste continue de fonctionner.", -- draft
 	["New: an Action Bars switch on the Bars page."] = "Nouveau : un interrupteur Barres d'action sur la page Barres.", -- draft
-	["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Corrigé : les marques des donneurs de quêtes sur la carte de MelloUI ne s'affichent plus comme des taches jaunes étirées.", -- draft
 	["Report a problem"] = "Signaler un problème", -- draft
 	["Voice pack"] = "Pack de voix", -- draft
 	["open or close this window"] = "ouvrir ou fermer cette fenêtre", -- draft
@@ -2920,6 +2934,7 @@ Lang:Add("frFR", {
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "Corrigé : une erreur en combat venant des grands temps de recharge de l'Affichage personnel.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "Corrigé : les clics sur Camouflage, les postures, les formes et les boutons du familier ; la police de discussion dans la Vue Minimale ; les coches entières de Par défaut ; les libellés près des curseurs.", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Corrigé : sur les cadres d'Oldschool, la barre de ressource garde un petit écart sous la barre de vie, et celle de la cible s'aligne sur elle.", -- draft
+-- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Corrigé : les marques des donneurs de quêtes sur la carte de MelloUI ne s'affichent plus comme des taches jaunes étirées.", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Corrigé : les onglets du sac à dos et du sac de composants à côté de la fenêtre des sacs affichent de nouveau leurs icônes.", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "Corrigé : le Marqueur du monde sur une étape de guide à côté de vous ; les quêtes de classe de la Liste des quêtes ; la qualité des objets et les boss répétés d'Infos des donjons.", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "Corrigé : l'installateur ne dit plus votre écran trop petit quand ce sont certains de vos propres réglages qui ne tiennent pas.", -- draft

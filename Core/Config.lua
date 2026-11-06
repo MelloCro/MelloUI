@@ -174,6 +174,11 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.10", lines = {
+		"Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again.",
+		"New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows.",
+		"Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again.",
+	} },
 	{ version = "2.1.9", lines = {
 		"New: Look > Colours has a colour wheel for every class, each power and NPC standings.",
 		"Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them.",
@@ -189,9 +194,6 @@ local CHANGELOG = {
 	{ version = "2.1.6", lines = {
 		"Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working.",
 		"New: an Action Bars switch on the Bars page.",
-	} },
-	{ version = "2.1.5", lines = {
-		"Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs.",
 	} },
 }
 local LINKS = {
