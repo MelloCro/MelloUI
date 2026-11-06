@@ -3820,7 +3820,7 @@ M.Whisper = {
 	EVENTS = WHISPER_EVENTS, ACTIONS = ACTIONS, ACTION_TEXT = ACTION_TEXT,
 	MakeActions = MakeActions, RefreshActions = RefreshActions, SendWhisper = SendWhisper,
 	CharacterIdentity = CharacterIdentity, BattleNetIdentity = BattleNetIdentity, ClassHex = ClassHex,
-	Known = Known, PopupColor = PopupColor, ShortPerson = ShortPerson, NameStyle = NameStyle,
+	Known = Known, PopupColor = PopupColor, ShortPerson = ShortPerson, NameStyle = NameStyle, ShortNames = ShortNames,
 	GuildStale = function()
 		guildRoster.stale = true
 	end,
@@ -3936,6 +3936,12 @@ function M:OnInit(db)
 			ApplyClassColors(value ~= false)
 		elseif M.isEnabled and module == "UIModifications" and key == "ChatPanel" then
 			ApplyArt()   -- (the Background it makes up: the Dark look on or off)
+		elseif M.isEnabled and module == "UIModifications" and key == "nameFormat" and M.View and M.View.on then
+			-- (2.1.8: Show Names As: the view's lines and the whisper window drawn in the new form)
+			M.View.Soon()
+			if M.Whispers and M.Whispers.open then
+				M.Whispers.Restyle()
+			end
 		end
 	end, "Chat: class names")
 end

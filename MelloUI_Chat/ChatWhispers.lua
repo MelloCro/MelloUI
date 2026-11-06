@@ -41,6 +41,16 @@ local View = M.View
 local WV = { convs = {}, order = {}, current = nil, open = false, job = {}, rows = {}, bubbles = {}, offset = 0,
 	listOffset = 0, shim = {}, pixel = 0 }
 M.Whispers = WV
+
+-- (2.1.8) a conversation's name as Show Names As says (Chat.lua's, M.Whisper): the conversation keeps the whole one, its
+-- key and whom an answer goes to; a Battle.net friend's stays whole
+function WV.Shown(c)
+	if c.kind ~= "WHISPER" or Secret(c.title) then
+		return c.title
+	end
+	return M.Whisper.ShortPerson(c.title, M.Whisper.NameStyle())
+end
+
 View.Whispers = WV
 
 -- UI units (1.2.4, the user's pick B of BuildData/output/chat_room_sketch, 2026-10-27: taller, a little more air in
@@ -186,7 +196,7 @@ local function OnEvent(_, event, text, sender, ...)
 		c.unread = 0   -- (answered)
 	end
 	-- the widget column's Whispers row hears it here (its Reply opens this window: Chat's OpenWhisper)
-	MelloUI:Fire("whisper", key, c.title, c.classHex, text, how.incoming, WV.open)
+	MelloUI:Fire("whisper", key, WV.Shown(c), c.classHex, text, how.incoming, WV.open)
 	if View.WhisperCount then
 		View.WhisperCount(how.incoming and not WV.open)
 	end
@@ -397,7 +407,7 @@ end
 -- a person's name on `fs`: in their class colour on the dark panel; on the paper in ink after their class gem (the
 -- chat's own way: View.Gem)
 local function NameText(c, fs)
-	local name = c.title
+	local name = WV.Shown(c)
 	if Secret(name) then
 		return name
 	end
@@ -624,7 +634,7 @@ function WV.LayTalk()
 		if not SameRun(rec, older) then
 			local stamp = b.stamp
 			stamp:ClearAllPoints()
-			local who = mine and TEXT.you or c.title
+			local who = mine and TEXT.you or WV.Shown(c)
 			pcall(stamp.SetText, stamp, (Secret(who) and "" or (tostring(who) .. "  ")) .. (rec.time or ""))
 			if mine then
 				stamp:SetPoint("BOTTOMRIGHT", text, "TOPRIGHT", PADX, PADY + 2)
@@ -797,7 +807,8 @@ function WV.Head()
 	WV.info:SetText(info)
 	Colour(WV.info, "text")
 	Shadow(WV.info)
-	local who = Secret(c.title) and "" or tostring(c.title)
+	local shown = WV.Shown(c)
+	local who = Secret(shown) and "" or tostring(shown)
 	WV.hint:SetText(TEXT.reply:format(who))
 	WV.boxHint:SetText(TEXT.reply:format(who))
 end
@@ -1228,7 +1239,7 @@ function WV.Open(key, answer)
 	WV.open = true
 	-- the widget's rows read (its count gone with this window open: every conversation told, none came in)
 	for k, conv in pairs(WV.convs) do
-		MelloUI:Fire("whisper", k, conv.title, conv.classHex, nil, false, true)
+		MelloUI:Fire("whisper", k, WV.Shown(conv), conv.classHex, nil, false, true)
 	end
 	WV.Restyle()
 	WV.Select(c)

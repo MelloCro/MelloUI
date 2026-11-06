@@ -2237,6 +2237,7 @@ Lang:Add("frFR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toute votre configuration sous un nom. Enregistrez-la, chargez-la, ou faites-en la configuration par défaut d'une nouvelle installation.", -- draft
 	["Supporters"] = "Soutiens", -- draft
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.", -- draft
+	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Corrigé : le réglage Noms fonctionne dans la vue de discussion minimale et la fenêtre de chuchotements.", -- draft
 	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "Corrigé : la carte de MelloUI ne garde plus le « ? » d'une quête après sa remise ; ses marqueurs suivent votre journal de quêtes.", -- draft
 	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "La liste de quêtes suit le serveur en jeu : 2 nouvelles quêtes, niveaux corrigés sur 52 quêtes, la Cité engloutie porte son nom.", -- draft
 	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "Corrigé : la voix se fait entendre lorsqu'un addon de progression accepte ou rend une quête dès l'ouverture de sa fenêtre.", -- draft
@@ -2246,7 +2247,6 @@ Lang:Add("frFR", {
 	["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Corrigé : sur les cadres d'Oldschool, la barre de ressource garde un petit écart sous la barre de vie, et celle de la cible s'aligne sur elle.", -- draft
 	["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Corrigé : les onglets du sac à dos et du sac de composants à côté de la fenêtre des sacs affichent de nouveau leurs icônes.", -- draft
 	["The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once."] = "La carte : les donneurs de quêtes, les rendus et les objectifs de Questie portent les icônes de MelloUI ; une quête que la carte affiche déjà n'apparaît qu'une fois.", -- draft
-	["Fixed: after a level-up the micro menu no longer leaves the place you gave it."] = "Corrigé : après une montée de niveau, le micro-menu ne quitte plus la place que vous lui avez donnée.", -- draft
 	["Report a problem"] = "Signaler un problème", -- draft
 	["Voice pack"] = "Pack de voix", -- draft
 	["open or close this window"] = "ouvrir ou fermer cette fenêtre", -- draft
@@ -2890,6 +2890,7 @@ Lang:Add("frFR", {
 -- stale: ["Fixed: Holy Shock, Earth Shield and Healing Rain show theirs too; Holy Shock cast at an enemy shows nothing on your frame."] = "Corrigé : Horion sacré, Bouclier de terre et Pluie guérissante affichent aussi le leur ; Horion sacré lancé sur un ennemi n'affiche rien sur votre cadre.", -- draft
 -- stale: ["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "Corrigé : les lettres russes, coréennes et chinoises du texte de combat, des noms de zone, des en-têtes et des titres ne s'affichent plus en carrés.", -- draft
 -- stale: ["Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat."] = "Corrigé : Silithus et six autres zones ne sont plus coupées de la carte ; la boîte Discussion de Modifier la disposition couvre toute la discussion minimaliste.", -- draft
+-- stale: ["Fixed: after a level-up the micro menu no longer leaves the place you gave it."] = "Corrigé : après une montée de niveau, le micro-menu ne quitte plus la place que vous lui avez donnée.", -- draft
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "Corrigé : après avoir appris une nouvelle posture ou forme, un combat pouvait tomber à quelques images par seconde jusqu'au redémarrage.", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "Corrigé : une erreur en combat venant des grands temps de recharge de l'Affichage personnel.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "Corrigé : les clics sur Camouflage, les postures, les formes et les boutons du familier ; la police de discussion dans la Vue Minimale ; les coches entières de Par défaut ; les libellés près des curseurs.", -- draft

@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.8", lines = {
+		"Fixed: the Names setting now works in the Minimal chat view and the whisper window.",
+	} },
 	{ version = "2.1.7", lines = {
 		"Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log.",
 		"The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named.",
@@ -190,9 +193,6 @@ local CHANGELOG = {
 		"Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it.",
 		"Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again.",
 		"The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once.",
-	} },
-	{ version = "2.1.3", lines = {
-		"Fixed: after a level-up the micro menu no longer leaves the place you gave it.",
 	} },
 }
 local LINKS = {

@@ -2237,6 +2237,7 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "수정: 이름 설정이 이제 최소 대화창 보기와 귓속말 창에서도 적용됩니다.", -- draft
 	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "수정: MelloUI 지도에서 퀘스트를 완료한 뒤에도 \"?\"가 남아 있지 않습니다. 표시가 퀘스트 목록을 따릅니다.", -- draft
 	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "퀘스트 목록이 라이브 서버와 일치합니다: 새 퀘스트 2개, 퀘스트 52개의 레벨 수정, 가라앉은 도시 이름 표시.", -- draft
 	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "수정: 레벨링 애드온이 창이 열리자마자 퀘스트를 수락하거나 완료해도 음성이 재생됩니다.", -- draft
@@ -2246,7 +2247,6 @@ Lang:Add("koKR", {
 	["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "수정: Oldschool 프레임에서 자원 바가 생명력 바 아래에 작은 간격을 두며, 대상의 자원 바도 생명력 바에 맞춰 정렬됩니다.", -- draft
 	["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "수정: 가방 창 옆의 배낭과 재료 가방 탭에 다시 아이콘이 표시됩니다.", -- draft
 	["The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once."] = "지도: Questie의 퀘스트 제공자, 완료 지점, 목표가 MelloUI의 아이콘으로 표시되며, 지도에 이미 표시된 퀘스트는 한 번만 나타납니다.", -- draft
-	["Fixed: after a level-up the micro menu no longer leaves the place you gave it."] = "수정: 레벨이 오른 뒤에도 마이크로 메뉴가 지정한 자리를 벗어나지 않습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2890,6 +2890,7 @@ Lang:Add("koKR", {
 -- stale: ["Fixed: Holy Shock, Earth Shield and Healing Rain show theirs too; Holy Shock cast at an enemy shows nothing on your frame."] = "수정: 신성 충격, 대지의 보호막, 치유의 비도 효과를 보여줍니다. 적에게 시전한 신성 충격은 내 프레임에 아무것도 표시하지 않습니다.", -- draft
 -- stale: ["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "수정: 전투 문자, 지역 이름, 머리글과 제목의 러시아어, 한국어, 중국어 글자가 더 이상 네모로 표시되지 않습니다.", -- draft
 -- stale: ["Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat."] = "수정: 실리더스와 다른 여섯 지역이 더는 지도에서 잘리지 않습니다; 배치 편집의 대화 상자가 최소 대화창 전체를 덮습니다.", -- draft
+-- stale: ["Fixed: after a level-up the micro menu no longer leaves the place you gave it."] = "수정: 레벨이 오른 뒤에도 마이크로 메뉴가 지정한 자리를 벗어나지 않습니다.", -- draft
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "수정: 새 태세나 변신을 배운 뒤 재시작 전까지 전투 프레임이 크게 떨어질 수 있던 문제.", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "수정: 개인 화면의 큰 재사용 대기시간으로 인한 전투 중 오류.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "수정: 은신, 태세, 변신, 소환수 버튼 클릭. 최소 대화 보기의 대화 글꼴. 기본 스킨의 온전한 체크 표시. 슬라이더 옆 이름표.", -- draft

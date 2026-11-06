@@ -4153,8 +4153,10 @@ do
 
 	function Area.On(key)
 		local name = SWITCH[key]
-		if not (name and MelloUI.db and MelloUI.IsModuleEnabled) then
-			return true   -- (no such area, or before the saved settings: nothing is held back)
+		-- (no such area, before the saved settings, or its switch's module not there -- a file that failed to load
+		-- must not take a whole area off with it: nothing is held back)
+		if not (name and MelloUI.db and MelloUI.modules and MelloUI.modules[name]) then
+			return true
 		end
 		return MelloUI:IsModuleEnabled(name) and true or false
 	end

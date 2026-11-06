@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.8
+
+- Fixed: the Names setting (such as Name and initial) did nothing in the Minimal chat view and the whisper window. They now show every player's name in the form you picked, the lines already there too.
+
 ## 2.1.7
 
 - Fixed: MelloUI's map kept showing a quest's "?" after you handed it in. Its quest marks now follow your quest log: quests taken, ready and handed in.

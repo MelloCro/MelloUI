@@ -321,6 +321,32 @@ local function Expand(msg, chatType, args)
 	return (ok and not Secret(out) and type(out) == "string") and out or msg
 end
 
+-- (2.1.8; BaQstein, 2026-11-05: Names on "Name and initial", the Minimal view's still "Pickles Mcdoom") a line's name
+-- in the form Show Names As says, as it is drawn: the ring and the history keep the whole name (a run's key too), so the
+-- setting reaches the lines already there. A player's link only: an NPC's second word is no surname, a Battle.net
+-- friend's name no character's
+function View.NameShown(rec)
+	local text = rec.name
+	if Secret(text) or type(text) ~= "string" then
+		return text
+	end
+	local open, shown, close = text:match("^(|Hplayer:[^|]*|h)(.-)(|h)$")
+	local style = shown and M.Whisper.NameStyle()
+	if not style then
+		return text
+	end
+	-- (the words this file puts before the name of a whisper you sent)
+	local to = (type(rec.key) == "string" and rec.key:find("_INFORM:", 1, true) and shown:match("^To ")) or ""
+	return open .. to .. M.Whisper.ShortPerson(shown:sub(#to + 1), style) .. close
+end
+
+-- (2.1.8) a line with no header (a friend come online, a roll): the player links in its words, in that form too
+function View.BodyShown(rec)
+	local text = View.Codes(rec.body)
+	local style = not rec.headed and not Secret(text) and type(text) == "string" and M.Whisper.NameStyle()
+	return style and M.Whisper.ShortNames(text, style) or text
+end
+
 -- a line as the game added it (the Chat module's AddMessage post-hook)
 function View.Line(frame, text, r, g, b, _, _, _, event, args)
 	if not View.on then
@@ -590,7 +616,7 @@ function View.Lay()
 			View.firstX = x
 		end
 		body:SetWidth(math.max(40, width - x - 4))
-		pcall(body.SetText, body, View.Codes(rec.body))
+		pcall(body.SetText, body, View.BodyShown(rec))
 		View.ChatColour(body, rec.r, rec.g, rec.b)
 		View.Shadow(body)
 		body:Show()
@@ -600,7 +626,7 @@ function View.Lay()
 			local name, tag, time = row.name, row.tag, row.time
 			name:ClearAllPoints()
 			name:SetPoint("BOTTOMLEFT", body, "TOPLEFT", -x, GAP_LINE)
-			local text = rec.name
+			local text = View.NameShown(rec)
 			if View.paper and rec.cr and not Secret(text) and type(text) == "string" then
 				text = View.Gem(rec.cr, rec.cg, rec.cb, name) .. text
 			end
