@@ -126,7 +126,8 @@ L.pages = {
 		-- (1.2.4, Look's homes: every font and every bar texture, background and border here, a card per part of the
 		-- interface after the tab's own sections -- Core/Config.lua's Lay.Card; the frames' pages link here)
 		cards = { Fonts = { "Unit Frames", "Party & Raid", "Buffs & Debuffs", "Personal Display", "Quest Tracker",
-			"Combat Text", "FPS / Latency" }, Textures = { "Bars", "Backgrounds", "Borders" } } },
+			"Combat Text", "FPS / Latency" }, Textures = { "Bars", "Backgrounds", "Borders" },
+			Colours = { "Class Colours", "Power Colours", "NPC Colours" } } },
 	-- (1.0, the user, 2026-10-20: "once you disable MelloUI_OldSchool, the "Window" category disappears from the
 	-- Configurator, but that means that people cant configure their Bag anymore") made with or without
 	-- MelloUI_Oldschool: its picker's `own` windows are the ones MelloUI's own settings belong to (the bag window and
@@ -484,7 +485,7 @@ function L.Define(R, Link)
 	R("Look", "General", "Look", "UIModifications.shade_chat", { free = true, when = PAINTED_SHADE })
 	R("Look", "General", "Look", "UIModifications.shade_bags", { free = true, when = PAINTED_SHADE })
 	R("Look", "General", "Look", "UIModifications.shade_minimap", { free = true })
-	R("Look", "General", "Look", "UIModifications.shade_icons", { free = true })
+	R("Look", "General", "Look", "UIModifications.shade_personal", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_tracker", { free = true })
 	R("Look", "General", "Look", "UIModifications.shade_widgets", { free = true, when = PAINTED_SHADE })
 	R("Look", "General", "Text", "UIModifications.nameFormat")

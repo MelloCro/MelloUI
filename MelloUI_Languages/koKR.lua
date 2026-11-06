@@ -153,8 +153,8 @@ Lang:Add("koKR", {
 	["The UI Shade around the bags."] = "가방 둘레의 UI 그림자.", -- draft
 	["Shade: Minimap"] = "그림자: 미니맵", -- draft
 	["The UI Shade around the minimap."] = "미니맵 둘레의 UI 그림자.", -- draft
-	["Shade: Map Icons"] = "그림자: 지도 아이콘", -- draft
-	["The UI Shade around the map icons."] = "지도 아이콘 둘레의 UI 그림자.", -- draft
+	["Shade: Personal Display"] = "그림자: 개인 표시기", -- draft
+	["The UI Shade around the personal display."] = "개인 표시기 주변의 UI 그림자입니다.", -- draft
 	["Shade: Tracker"] = "그림자: 추적기", -- draft
 	["The UI Shade around the tracker."] = "추적기 둘레의 UI 그림자.", -- draft
 	["Shade: Event Widgets"] = "그림자: 이벤트 위젯", -- draft
@@ -2275,6 +2275,8 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "UI 그림자가 이제 개인 표시기에도 적용되며, 자체 스위치와 그림자 강도 슬라이더를 사용합니다.", -- draft
+	["The glow under icons on the maps and the minimap is always on now."] = "지도와 미니맵 아이콘 아래의 빛이 이제 항상 켜져 있습니다.", -- draft
 	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "수정: MelloUI 2.1.9에서 Zygor Guides가 시작되지 않던 문제. 이제 다시 시작됩니다.", -- draft
 	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "새 기능: 강화 효과 페이지의 약화 효과 분리: 약화 효과가 자체 위치와 줄을 갖습니다.", -- draft
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "수정: MelloUI 강화 효과 아이콘을 꺼도 레이아웃 편집에서 게임의 강화 효과 바를 다시 옮길 수 있습니다.", -- draft
@@ -2284,8 +2286,6 @@ Lang:Add("koKR", {
 	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "수정: MelloUI 지도에서 퀘스트를 완료한 뒤에도 \"?\"가 남아 있지 않습니다. 표시가 퀘스트 목록을 따릅니다.", -- draft
 	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "퀘스트 목록이 라이브 서버와 일치합니다: 새 퀘스트 2개, 퀘스트 52개의 레벨 수정, 가라앉은 도시 이름 표시.", -- draft
 	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "수정: 레벨링 애드온이 창이 열리자마자 퀘스트를 수락하거나 완료해도 음성이 재생됩니다.", -- draft
-	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "유닛 프레임, 이름표, 행동 단축바: 이제 각 스위치가 MelloUI가 그곳에 보여 주는 모든 것을 끄고, 나머지는 계속 작동합니다.", -- draft
-	["New: an Action Bars switch on the Bars page."] = "새 기능: 바 페이지의 행동 단축바 스위치.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3120,6 +3120,7 @@ Lang:Add("koKR", {
 -- stale: ["Names in chat"] = "대화의 이름", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "새 움직임: 큰 재사용 대기시간, 퀘스트 진행, 레벨업, 치명타, 연계 점수, 알림, 지역 이름, 평판 획득; 충격 효과가 대상 개체창에도.", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "새 자원이 막대 앞에서 빛나고 막대가 거기까지 자랍니다. 크게 얻으면 가장자리에서 불꽃이 튑니다(기력의 꾸준한 틱은 아님).", -- draft
+-- stale: ["New: an Action Bars switch on the Bars page."] = "새 기능: 바 페이지의 행동 단축바 스위치.", -- draft
 -- stale: ["No Edit Mode change"] = "편집 모드 변경 없음", -- draft
 -- stale: ["No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing."] = "더 이상 쓰이지 않음: 자동 공격 타이머는 둥근 테두리와 평평한 막대를 쓰고 테두리가 없으므로 이 설정은 아무것도 바꾸지 않습니다.", -- draft
 -- stale: ["No reskin, features on"] = "스킨 없이 기능 켜기", -- draft
@@ -3239,6 +3240,7 @@ Lang:Add("koKR", {
 -- stale: ["Setup"] = "구성", -- draft
 -- stale: ["Shade behind text"] = "글자 뒤 그림자", -- draft
 -- stale: ["Shade: Buffs"] = "그림자: 강화 효과", -- draft
+-- stale: ["Shade: Map Icons"] = "그림자: 지도 아이콘", -- draft
 -- stale: ["Shops, mail, bank, trainers"] = "상점, 우편, 은행, 전문가", -- draft
 -- stale: ["Short channel names, class-coloured names, the whisper popup, the chat buttons, smooth scrolling, the names' form (Show Names As), the Background dropdown and the art-hiding switches (which only apply while the chat reskin is off). Off: every one of them goes."] = "짧은 채널 이름, 직업 색상 이름, 귓속말 팝업, 대화 버튼, 부드러운 스크롤, 이름 형식(이름 표시 방식), 배경 목록, 그림을 숨기는 스위치(대화 스킨이 꺼져 있을 때만 적용). 끄기: 모두 사라집니다.", -- draft
 -- stale: ["Short lines beside your character show what you just gained: a skill point, the items you loot or receive, and what you buy. You can move them in Edit Layout."] = "캐릭터 옆의 짧은 줄이 방금 얻은 것을 보여 줍니다: 기술 점수, 줍거나 받은 아이템, 산 것. 레이아웃 편집에서 옮길 수 있습니다.", -- draft
@@ -3292,6 +3294,7 @@ Lang:Add("koKR", {
 -- stale: ["The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going."] = "MelloUI 버튼이 게임 메뉴의 설정 아래에 있습니다. 프로필의 후원자 페이지는 MelloUI를 지켜 주는 분들께 감사를 전합니다.", -- draft
 -- stale: ["The Swing Badge, your swing timer on your target's nameplate: it winds up, strikes, flashes gold on crits; it replaces the Swing Timers' bars too."] = "스윙 배지, 대상 이름표의 스윙 타이머: 준비하고, 치고, 치명타에 금빛으로 번쩍입니다. 스윙 타이머 바도 대체합니다.", -- draft
 -- stale: ["The UI Shade also follows the painted plate's own shape: round the level circle, round each end gem and along the bar, in every Nameplate Border look. It needs the UI Shade on (Look); its Shade Strength sets how dark it is. The name's own band is Nameplates' Name Shade."] = "UI 그림자가 페인팅 판 자체의 모양도 따릅니다: 모든 이름표 테두리 외형에서 레벨 원 둘레, 양 끝 보석 둘레, 막대를 따라. UI 그림자가 켜져 있어야 하며(외형), 그 그림자 강도가 어두운 정도를 정합니다. 이름 자체의 띠는 이름표의 이름 그림자입니다.", -- draft
+-- stale: ["The UI Shade around the map icons."] = "지도 아이콘 둘레의 UI 그림자.", -- draft
 -- stale: ["The UI Shade round the action bars. Off: no shade there; the other areas keep theirs."] = "행동 단축바 둘레의 UI 그림자. 끄기: 그곳에는 그림자가 없고 다른 영역은 그대로 유지합니다.", -- draft
 -- stale: ["The UI Shade round the bags. Off: no shade there; the other areas keep theirs."] = "가방 둘레의 UI 그림자. 끄기: 그곳에는 그림자가 없고 다른 영역은 그대로 유지합니다.", -- draft
 -- stale: ["The UI Shade round the buffs. Off: no shade there; the other areas keep theirs."] = "강화 효과 둘레의 UI 그림자. 끄기: 그곳에는 그림자가 없고 다른 영역은 그대로 유지합니다.", -- draft
@@ -3499,6 +3502,7 @@ Lang:Add("koKR", {
 -- stale: ["Under 35% health the health bar turns ember."] = "생명력이 35% 미만이면 생명력 막대가 불씨 색이 됩니다.", -- draft
 -- stale: ["Unit Frame Bars: Font Size"] = "개체창 막대: 글자 크기", -- draft
 -- stale: ["Unit Frame Tweaks"] = "개체창 조정", -- draft
+-- stale: ["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "유닛 프레임, 이름표, 행동 단축바: 이제 각 스위치가 MelloUI가 그곳에 보여 주는 모든 것을 끄고, 나머지는 계속 작동합니다.", -- draft
 -- stale: ["Unit Frames: XP Gain -- the stretch of the experience bar you just gained lights up as a light runs along it."] = "개체창: 경험치 획득 -- 방금 얻은 경험치 막대 구간이 빛이 지나가는 동안 밝아집니다.", -- draft
 -- stale: ["Use No reskin"] = "스킨 없이 사용", -- draft
 -- stale: ["What a button shows inside its rim where it has no icon."] = "아이콘이 없을 때 버튼이 테두리 안에 보여 주는 것.", -- draft

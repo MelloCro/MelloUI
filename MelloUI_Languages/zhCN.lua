@@ -153,8 +153,8 @@ Lang:Add("zhCN", {
 	["The UI Shade around the bags."] = "背包周围的界面阴影。", -- draft
 	["Shade: Minimap"] = "阴影：小地图", -- draft
 	["The UI Shade around the minimap."] = "微缩地图周围的界面阴影。", -- draft
-	["Shade: Map Icons"] = "阴影：地图图标", -- draft
-	["The UI Shade around the map icons."] = "地图图标周围的界面阴影。", -- draft
+	["Shade: Personal Display"] = "阴影：个人显示", -- draft
+	["The UI Shade around the personal display."] = "个人显示周围的界面阴影。", -- draft
 	["Shade: Tracker"] = "阴影：追踪器", -- draft
 	["The UI Shade around the tracker."] = "追踪器周围的界面阴影。", -- draft
 	["Shade: Event Widgets"] = "阴影：事件小部件", -- draft
@@ -2275,6 +2275,8 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "界面阴影现在覆盖个人显示，有自己的开关和阴影强度滑块。", -- draft
+	["The glow under icons on the maps and the minimap is always on now."] = "地图和小地图上图标下方的光晕现在始终开启。", -- draft
 	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "修复：Zygor Guides 在 MelloUI 2.1.9 下无法启动。现在可以正常启动。", -- draft
 	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "新增：增益页面的“分离减益效果”：你的减益效果拥有自己的位置和行。", -- draft
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "修复：关闭 MelloUI 的增益图标时，又可以在布局编辑中移动游戏的增益条了。", -- draft
@@ -2284,8 +2286,6 @@ Lang:Add("zhCN", {
 	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "修复：交付任务后，MelloUI 地图不再保留该任务的“?”；地图标记会跟随你的任务日志。", -- draft
 	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "任务列表与正式服务器一致：新增 2 个任务，修正 52 个任务的等级，沉没之城显示名称。", -- draft
 	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "修复：练级插件在任务窗口打开时立即接受或交付任务时，现在也会播放语音。", -- draft
-	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "单位框体、姓名板和动作条：每个开关现在都会关闭 MelloUI 在那里显示的一切，其余功能继续工作。", -- draft
-	["New: an Action Bars switch on the Bars page."] = "新增：动作条页面上的动作条开关。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3120,6 +3120,7 @@ Lang:Add("zhCN", {
 -- stale: ["Names in chat"] = "聊天中的名字", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "新动效：重要冷却、任务进度、升级、暴击、连击点、提醒、区域名、声望获得；冲击效果也作用于目标框体。", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "新获得的能量在条的前方亮起，条再长到那里；大量获得时在边缘迸出火花（能量的稳定恢复不会）。", -- draft
+-- stale: ["New: an Action Bars switch on the Bars page."] = "新增：动作条页面上的动作条开关。", -- draft
 -- stale: ["No Edit Mode change"] = "编辑模式不变", -- draft
 -- stale: ["No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing."] = "不再使用：挥击计时条是圆形边缘加扁平条，没有边框，所以这一项不会改变任何东西。", -- draft
 -- stale: ["No reskin, features on"] = "不换肤，开启功能", -- draft
@@ -3239,6 +3240,7 @@ Lang:Add("zhCN", {
 -- stale: ["Setup"] = "方案", -- draft
 -- stale: ["Shade behind text"] = "文字背后的阴影", -- draft
 -- stale: ["Shade: Buffs"] = "阴影：增益效果", -- draft
+-- stale: ["Shade: Map Icons"] = "阴影：地图图标", -- draft
 -- stale: ["Shops, mail, bank, trainers"] = "商店、邮件、银行、训练师", -- draft
 -- stale: ["Short channel names, class-coloured names, the whisper popup, the chat buttons, smooth scrolling, the names' form (Show Names As), the Background dropdown and the art-hiding switches (which only apply while the chat reskin is off). Off: every one of them goes."] = "短频道名、职业颜色名字、悄悄话弹窗、聊天按钮、平滑滚动、名字形式（名字显示方式）、“背景”下拉列表以及隐藏美术的开关（仅在聊天换肤关闭时生效）。关闭：全部消失。", -- draft
 -- stale: ["Short lines beside your character show what you just gained: a skill point, the items you loot or receive, and what you buy. You can move them in Edit Layout."] = "角色旁的短行显示你刚获得的东西：一个技能点、你拾取或收到的物品以及你买的东西。可在“编辑布局”中移动。", -- draft
@@ -3292,6 +3294,7 @@ Lang:Add("zhCN", {
 -- stale: ["The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going."] = "MelloUI 按钮位于游戏菜单中“选项”下方；配置文件下的支持者页面感谢让 MelloUI 持续运行的人们。", -- draft
 -- stale: ["The Swing Badge, your swing timer on your target's nameplate: it winds up, strikes, flashes gold on crits; it replaces the Swing Timers' bars too."] = "挥击徽章，即目标姓名板上的挥击计时器：蓄力、挥击、暴击时闪金光；它也取代了挥击计时器的条。", -- draft
 -- stale: ["The UI Shade also follows the painted plate's own shape: round the level circle, round each end gem and along the bar, in every Nameplate Border look. It needs the UI Shade on (Look); its Shade Strength sets how dark it is. The name's own band is Nameplates' Name Shade."] = "界面阴影也会跟随手绘牌子自身的形状：环绕等级圆圈、环绕两端的每颗宝石并沿着条，适用于每种姓名板边框外观。需要开启界面阴影（外观）；它的阴影强度决定有多暗。名字自己的横带是姓名板的“名字阴影”。", -- draft
+-- stale: ["The UI Shade around the map icons."] = "地图图标周围的界面阴影。", -- draft
 -- stale: ["The UI Shade round the action bars. Off: no shade there; the other areas keep theirs."] = "动作条周围的界面阴影。关闭：那里没有阴影；其他区域保留各自的阴影。", -- draft
 -- stale: ["The UI Shade round the bags. Off: no shade there; the other areas keep theirs."] = "背包周围的界面阴影。关闭：那里没有阴影；其他区域保留各自的阴影。", -- draft
 -- stale: ["The UI Shade round the buffs. Off: no shade there; the other areas keep theirs."] = "增益效果周围的界面阴影。关闭：那里没有阴影；其他区域保留各自的阴影。", -- draft
@@ -3499,6 +3502,7 @@ Lang:Add("zhCN", {
 -- stale: ["Under 35% health the health bar turns ember."] = "生命值低于35%时生命条变成余烬色。", -- draft
 -- stale: ["Unit Frame Bars: Font Size"] = "单位框体条：字体大小", -- draft
 -- stale: ["Unit Frame Tweaks"] = "单位框体调整", -- draft
+-- stale: ["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "单位框体、姓名板和动作条：每个开关现在都会关闭 MelloUI 在那里显示的一切，其余功能继续工作。", -- draft
 -- stale: ["Unit Frames: XP Gain -- the stretch of the experience bar you just gained lights up as a light runs along it."] = "单位框体：获得经验——经验条上刚获得的那一段在一道光划过时亮起。", -- draft
 -- stale: ["Use No reskin"] = "使用“不换肤”", -- draft
 -- stale: ["What a button shows inside its rim where it has no icon."] = "按钮在没有图标时其边缘内显示的东西。", -- draft

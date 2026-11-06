@@ -1358,9 +1358,9 @@ end
 -- chest). One baked white picture per icon, Media\Textures\Icons\Halo\<name>
 -- (Tools\make_icons.py HALO: the icon's alpha grown and blurred on a canvas
 -- reaching a quarter of the icon past each side), tinted with a palette
--- colour (selectedTrim added as light, innerPanel). It is the UI Shade's area "icons"
--- (Modules/KitShade.lua; "Shade: Map Icons" on Look > General): shown while
--- that area is on, at the UI Shade's strength.
+-- colour (selectedTrim added as light, innerPanel). Part of the icon's own look, at
+-- one strength: never the UI Shade's (2.1.11; the user, 2026-11-06: "the icons glow on
+-- the map and minimap shouldnt be a thing people can disable").
 --   MelloUI.Shade:Lift(tex, name, size) -> the lift's texture, or nil
 --       tex shows the set's icon `name` (W.Icon); its lift is made once, a
 --       region of tex's parent in tex's layer one sublevel under it, laid
@@ -1371,17 +1371,16 @@ end
 --       hidden too while the skin shows the game's picture for it (1.2.4).
 --       Called after the icon's look is set (and after it turns); a call that
 --       changes nothing writes nothing (a minimap mark laid every tick)
--- Made on first use only: the 'shade' listener comes with the first lift.
--- The one 'palette' listener repaints them.
+-- Made on first use only: its listeners come with the first lift. The one
+-- 'palette' listener repaints them.
 --------------------------------------------------------------------------------
 
 do
 	-- (the halos: Media\Textures\Icons\Halo\<name>, or a look's own set's -- MelloUI.Icons.HaloPath)
 	local PAD = 0.25   -- (make_icons.py HALO_PAD)
-	local AREA = "icons"
 	local DISCS = { "pin_", "goal_", "obj_", "class_" }   -- (make_icons.py HALO_DISCS)
 	local GLOW_KEY, SHADE_KEY = "selectedTrim", "innerPanel"
-	local on, strength   -- the area's, as last told (nil until the first lift)
+	local started = false   -- (its listeners: with the first lift)
 
 	local Lift = {}
 	local LiftMeta = { __index = Lift }
@@ -1409,36 +1408,20 @@ do
 		return Skin and Skin.Icon(name) ~= nil or false
 	end
 
-	-- shown at its strength while the area is on and it has an icon of the set's look, else hidden
+	-- shown while it has an icon of the set's look, else hidden
 	function Lift:Show()
 		local tex = self.tex
-		if on and self.name and not Gamed(self.name) then
-			tex:SetAlpha(strength * self.alpha)
+		if self.name and not Gamed(self.name) then
+			tex:SetAlpha(DEFAULT_ALPHA * self.alpha)
 			tex:Show()
 		else
 			tex:Hide()
 		end
 	end
 
-	local function OnShade(area, isOn, s)
-		if area ~= AREA then
-			return
-		end
-		on, strength = isOn and true or false, Num(s) or DEFAULT_ALPHA
-		for _, lift in pairs(lifts) do
-			lift:Show()
-		end
-	end
-
-	-- the area's state now, and its listener (with the first lift)
+	-- its listeners (with the first lift)
 	local function Start()
-		local Kit = MelloUI.Kit
-		if Kit and Kit.ShadeOn then
-			on, strength = Kit:ShadeOn(AREA) and true or false, Num(Kit:ShadeStrength()) or DEFAULT_ALPHA
-		else
-			on, strength = true, DEFAULT_ALPHA
-		end
-		MelloUI:On("shade", Perf.Shared("'shade' on the bus: the icons' lifts", OnShade), "Shade lifts")
+		started = true
 		MelloUI:On("skin", Perf.Shared("'skin' on the bus: the icons' lifts", function()
 			for _, lift in pairs(lifts) do
 				lift:Show()
@@ -1469,7 +1452,7 @@ do
 			return lift and lift.tex
 		end
 		if not lift then
-			if on == nil then
+			if not started then
 				Start()
 			end
 			local layer, sublevel = icon:GetDrawLayer()

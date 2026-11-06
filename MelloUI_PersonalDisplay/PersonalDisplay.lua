@@ -582,6 +582,26 @@ function Gilded.Round(f, from, to)
 	end
 end
 
+-- (2.1.11; the user, 2026-11-06: the UI Shade's slider left the Personal Display out) the rims' shades follow the UI Shade:
+-- its master, its Personal Display switch and its strength (T.shade at the slider's default)
+function Gilded.Shade(ui)
+	local g = ui and ui.gild
+	local Kit = MelloUI.Kit
+	if not (g and Kit and Kit.ShadeOn and Kit.ShadeStrength) then
+		return
+	end
+	local on = Kit:ShadeOn("personal") and true or false
+	local set = Kit.shadeSettings
+	local base = type(set) == "table" and tonumber(set.default) or Kit:ShadeStrength()
+	local alpha = math.min(1, T.shade * Kit:ShadeStrength() / base)
+	for _, f in ipairs({ g.block, g.cast, g.column }) do
+		if f.shade then
+			f.shade:SetStrength(alpha)
+			f.shade:SetShown(on)
+		end
+	end
+end
+
 -- the pieces (once): the block's dark joint under the fills (over the Motion rims), its hairline, its rim over them;
 -- the cast bar's rim and icon on its strip (its fades and folds theirs); the column's rim
 function Gilded.Make(ui)
@@ -607,6 +627,7 @@ function Gilded.Make(ui)
 	local col = ui.column
 	g.column = Gilded.Rim(col.strip, col.bar:GetFrameLevel() + 3, col.strip)
 	ui.gild = g
+	Gilded.Shade(ui)
 end
 
 -- (LayStack) every piece round its fills, shown in the gilded look only
@@ -4806,6 +4827,11 @@ function M:OnEnable(db)
 	MelloUI:On("module", OnModule, OWNER)
 	MelloUI:On("border", OnBorder, OWNER)
 	MelloUI:On("palette", Motion.Paint, OWNER)
+	MelloUI:On("shade", function(area)
+		if area == "personal" then
+			Gilded.Shade(S.ui)
+		end
+	end, OWNER)
 	if not S.watching then
 		-- (once: their owners' own listeners on the bus; with nothing made they do nothing)
 		S.watching = true

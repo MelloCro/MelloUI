@@ -153,8 +153,8 @@ Lang:Add("ruRU", {
 	["The UI Shade around the bags."] = "Тень интерфейса вокруг сумок.", -- draft
 	["Shade: Minimap"] = "Тень: мини-карта", -- draft
 	["The UI Shade around the minimap."] = "Тень интерфейса вокруг мини-карты.", -- draft
-	["Shade: Map Icons"] = "Тень: значки карты", -- draft
-	["The UI Shade around the map icons."] = "Тень интерфейса вокруг значков карты.", -- draft
+	["Shade: Personal Display"] = "Тень: Личный дисплей", -- draft
+	["The UI Shade around the personal display."] = "Тень интерфейса вокруг личного дисплея.", -- draft
 	["Shade: Tracker"] = "Тень: отслеживание", -- draft
 	["The UI Shade around the tracker."] = "Тень интерфейса вокруг отслеживания.", -- draft
 	["Shade: Event Widgets"] = "Тень: виджеты событий", -- draft
@@ -2275,6 +2275,8 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "Тень интерфейса теперь охватывает личный дисплей, с отдельным переключателем и ползунком силы тени.", -- draft
+	["The glow under icons on the maps and the minimap is always on now."] = "Свечение под значками на картах и миникарте теперь всегда включено.", -- draft
 	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "Исправлено: Zygor Guides не запускался с MelloUI 2.1.9. Теперь запускается.", -- draft
 	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "Новое: «Отдельные отрицательные эффекты» на странице положительных эффектов: у ваших отрицательных эффектов своё место и ряды.", -- draft
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Исправлено: при выключенных значках эффектов MelloUI панель положительных эффектов игры снова можно перемещать в редакторе расположения.", -- draft
@@ -2284,8 +2286,6 @@ Lang:Add("ruRU", {
 	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "Исправлено: карта MelloUI больше не оставляет «?» задания после его сдачи; её метки следуют за журналом заданий.", -- draft
 	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "Список заданий соответствует живому серверу: 2 новых задания, исправлены уровни у 52 заданий, Затонувший город получил название.", -- draft
 	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "Исправлено: озвучка теперь звучит, когда аддон для прокачки принимает или сдаёт задание сразу при открытии окна.", -- draft
-	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "Рамки юнитов, индикаторы здоровья и панели действий: каждый переключатель теперь отключает всё, что MelloUI там показывает, остальное продолжает работать.", -- draft
-	["New: an Action Bars switch on the Bars page."] = "Новое: переключатель панелей действий на странице «Панели».", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -3120,6 +3120,7 @@ Lang:Add("ruRU", {
 -- stale: ["Names in chat"] = "Имена в чате", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "Новое движение: большие восстановления, прогресс заданий, новый уровень, криты, приёмы серии, напоминания, название зоны, рост репутации; эффекты попаданий доходят до рамки цели.", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "Новый ресурс подсвечивается впереди полосы, и она дорастает до него; большое получение искрит на краю (ровные тики энергии — нет).", -- draft
+-- stale: ["New: an Action Bars switch on the Bars page."] = "Новое: переключатель панелей действий на странице «Панели».", -- draft
 -- stale: ["No Edit Mode change"] = "Без изменений в режиме редактирования", -- draft
 -- stale: ["No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing."] = "Больше не используется: у таймеров удара круглая окантовка и плоская полоса без рамки, так что это ничего не меняет.", -- draft
 -- stale: ["No reskin, features on"] = "Без облика, функции включены", -- draft
@@ -3239,6 +3240,7 @@ Lang:Add("ruRU", {
 -- stale: ["Setup"] = "Настройка", -- draft
 -- stale: ["Shade behind text"] = "Тень за текстом", -- draft
 -- stale: ["Shade: Buffs"] = "Тень: положительные эффекты", -- draft
+-- stale: ["Shade: Map Icons"] = "Тень: значки карты", -- draft
 -- stale: ["Shops, mail, bank, trainers"] = "Магазины, почта, банк, наставники", -- draft
 -- stale: ["Short channel names, class-coloured names, the whisper popup, the chat buttons, smooth scrolling, the names' form (Show Names As), the Background dropdown and the art-hiding switches (which only apply while the chat reskin is off). Off: every one of them goes."] = "Короткие названия каналов, имена в цвете класса, окно шёпота, кнопки чата, плавная прокрутка, форма имён («Показывать имена как»), список «Фон» и переключатели, скрывающие оформление (действуют, только пока облик чата выключен). Выкл.: пропадают все.", -- draft
 -- stale: ["Short lines beside your character show what you just gained: a skill point, the items you loot or receive, and what you buy. You can move them in Edit Layout."] = "Короткие строки рядом с вашим персонажем показывают, что вы только что получили: очко навыка, добытые или полученные предметы и покупки. Их можно сдвинуть в «Изменить раскладку».", -- draft
@@ -3292,6 +3294,7 @@ Lang:Add("ruRU", {
 -- stale: ["The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going."] = "Кнопка MelloUI теперь в игровом меню, под «Настройками»; страница «Поддержка» в «Профилях» благодарит тех, кто поддерживает MelloUI.", -- draft
 -- stale: ["The Swing Badge, your swing timer on your target's nameplate: it winds up, strikes, flashes gold on crits; it replaces the Swing Timers' bars too."] = "Значок ударов, ваш таймер ударов на индикаторе здоровья цели: замахивается, бьёт, вспыхивает золотом при критах; заменяет и полосы таймеров ударов.", -- draft
 -- stale: ["The UI Shade also follows the painted plate's own shape: round the level circle, round each end gem and along the bar, in every Nameplate Border look. It needs the UI Shade on (Look); its Shade Strength sets how dark it is. The name's own band is Nameplates' Name Shade."] = "Тень интерфейса также следует собственной форме рисованной таблички: вокруг круга уровня, вокруг каждого концевого самоцвета и вдоль полосы, в каждом облике «Рамки индикаторов здоровья». Нужна включённая «Тень интерфейса» (Облик); её «Сила тени» задаёт, насколько она темна. Собственная полоса имени — «Тень имени» в «Индикаторах здоровья».", -- draft
+-- stale: ["The UI Shade around the map icons."] = "Тень интерфейса вокруг значков карты.", -- draft
 -- stale: ["The UI Shade round the action bars. Off: no shade there; the other areas keep theirs."] = "Тень интерфейса вокруг панелей команд. Выкл.: там нет тени; другие области сохраняют свою.", -- draft
 -- stale: ["The UI Shade round the bags. Off: no shade there; the other areas keep theirs."] = "Тень интерфейса вокруг сумок. Выкл.: там нет тени; другие области сохраняют свою.", -- draft
 -- stale: ["The UI Shade round the buffs. Off: no shade there; the other areas keep theirs."] = "Тень интерфейса вокруг положительных эффектов. Выкл.: там нет тени; другие области сохраняют свою.", -- draft
@@ -3499,6 +3502,7 @@ Lang:Add("ruRU", {
 -- stale: ["Under 35% health the health bar turns ember."] = "Ниже 35% здоровья полоса здоровья становится угольной.", -- draft
 -- stale: ["Unit Frame Bars: Font Size"] = "Полосы рамок: размер шрифта", -- draft
 -- stale: ["Unit Frame Tweaks"] = "Доработки рамок", -- draft
+-- stale: ["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "Рамки юнитов, индикаторы здоровья и панели действий: каждый переключатель теперь отключает всё, что MelloUI там показывает, остальное продолжает работать.", -- draft
 -- stale: ["Unit Frames: XP Gain -- the stretch of the experience bar you just gained lights up as a light runs along it."] = "Рамки: «Получение опыта» — только что полученный отрезок индикатора опыта загорается, пока по нему пробегает свет.", -- draft
 -- stale: ["Use No reskin"] = "Использовать «Без облика»", -- draft
 -- stale: ["What a button shows inside its rim where it has no icon."] = "Что кнопка показывает внутри своего ободка там, где у неё нет значка.", -- draft

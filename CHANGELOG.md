@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.11
+
+- UI Shade: the Personal Display now follows it, with a switch of its own and the Shade Strength slider.
+- The glow under icons on the maps and the minimap is now always on: it no longer depends on UI Shade.
+
 ## 2.1.10
 
 - Fixed: Zygor Guides could not start with MelloUI 2.1.9 ("ERROR initializing"). It starts again.

@@ -153,8 +153,8 @@ Lang:Add("ptBR", {
 	["The UI Shade around the bags."] = "A sombra da interface em volta das bolsas.", -- draft
 	["Shade: Minimap"] = "Sombra: minimapa", -- draft
 	["The UI Shade around the minimap."] = "A sombra da interface em volta do minimapa.", -- draft
-	["Shade: Map Icons"] = "Sombra: ícones do mapa", -- draft
-	["The UI Shade around the map icons."] = "A sombra da interface em volta dos ícones do mapa.", -- draft
+	["Shade: Personal Display"] = "Sombra: Exibição pessoal", -- draft
+	["The UI Shade around the personal display."] = "A sombra da interface ao redor da exibição pessoal.", -- draft
 	["Shade: Tracker"] = "Sombra: rastreador", -- draft
 	["The UI Shade around the tracker."] = "A sombra da interface em volta do rastreador.", -- draft
 	["Shade: Event Widgets"] = "Sombra: widgets de evento", -- draft
@@ -2275,6 +2275,8 @@ Lang:Add("ptBR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toda a sua configuração sob um nome. Salve, carregue ou torne-a o padrão de uma instalação nova.", -- draft
 	["Supporters"] = "Apoiadores", -- draft
 	["The people who help keep MelloUI going."] = "As pessoas que mantêm o MelloUI funcionando.", -- draft
+	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "A sombra da interface agora cobre a exibição pessoal, com interruptor próprio e o controle de força da sombra.", -- draft
+	["The glow under icons on the maps and the minimap is always on now."] = "O brilho sob os ícones nos mapas e no minimapa agora fica sempre ligado.", -- draft
 	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "Corrigido: o Zygor Guides não iniciava com o MelloUI 2.1.9. Agora inicia de novo.", -- draft
 	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "Novo: Penalidades separadas na página Bônus: suas penalidades têm lugar e fileiras próprios.", -- draft
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Corrigido: com os ícones de bônus do MelloUI desligados, a barra de bônus do jogo volta a poder ser movida no editor de layout.", -- draft
@@ -2284,8 +2286,6 @@ Lang:Add("ptBR", {
 	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "Corrigido: o mapa do MelloUI não mantém mais o \"?\" de uma missão depois de entregá-la; suas marcas seguem seu registro de missões.", -- draft
 	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "A lista de missões segue o servidor ao vivo: 2 missões novas, níveis corrigidos em 52 missões, a Cidade Submersa agora tem nome.", -- draft
 	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "Corrigido: as vozes agora tocam quando um addon de nivelamento aceita ou entrega uma missão assim que a janela abre.", -- draft
-	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "Quadros de unidade, Placas de identificação e Barras de ação: cada interruptor agora desliga tudo o que o MelloUI mostra ali, o resto continua funcionando.", -- draft
-	["New: an Action Bars switch on the Bars page."] = "Novo: um interruptor de Barras de ação na página Barras.", -- draft
 	["Report a problem"] = "Relatar um problema", -- draft
 	["Voice pack"] = "Pacote de vozes", -- draft
 	["open or close this window"] = "abre ou fecha esta janela", -- draft
@@ -3120,6 +3120,7 @@ Lang:Add("ptBR", {
 -- stale: ["Names in chat"] = "Nomes no bate-papo", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "Novo movimento: Grandes recargas, progresso de missão, subir de nível, críticos, pontos de combo, lembretes, o nome da zona, ganhos de reputação; os efeitos de impacto chegam ao seu quadro de alvo.", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "O recurso novo acende à frente da barra, que cresce até ele; um ganho grande solta faíscas na borda (os tiques constantes de energia não).", -- draft
+-- stale: ["New: an Action Bars switch on the Bars page."] = "Novo: um interruptor de Barras de ação na página Barras.", -- draft
 -- stale: ["No Edit Mode change"] = "Nenhuma mudança no Modo de edição", -- draft
 -- stale: ["No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing."] = "Não é mais usado: os temporizadores de golpe têm um contorno redondo e uma barra plana e não usam moldura, então isto não muda nada.", -- draft
 -- stale: ["No reskin, features on"] = "Sem visual pintado, funções ligadas", -- draft
@@ -3239,6 +3240,7 @@ Lang:Add("ptBR", {
 -- stale: ["Setup"] = "Configuração", -- draft
 -- stale: ["Shade behind text"] = "Sombra atrás do texto", -- draft
 -- stale: ["Shade: Buffs"] = "Sombra: bônus", -- draft
+-- stale: ["Shade: Map Icons"] = "Sombra: ícones do mapa", -- draft
 -- stale: ["Shops, mail, bank, trainers"] = "Lojas, correio, banco, instrutores", -- draft
 -- stale: ["Short channel names, class-coloured names, the whisper popup, the chat buttons, smooth scrolling, the names' form (Show Names As), the Background dropdown and the art-hiding switches (which only apply while the chat reskin is off). Off: every one of them goes."] = "Nomes de canal curtos, nomes com cor de classe, a janela de sussurro, os botões do bate-papo, a rolagem suave, a forma dos nomes (Mostrar nomes como), a lista Fundo e os interruptores que escondem a arte (só valem enquanto o visual pintado do bate-papo está desligado). Desligado: todos somem.", -- draft
 -- stale: ["Short lines beside your character show what you just gained: a skill point, the items you loot or receive, and what you buy. You can move them in Edit Layout."] = "Linhas curtas ao lado do seu personagem mostram o que você acabou de ganhar: um ponto de perícia, os itens que você saqueia ou recebe e o que compra. Você pode movê-las em Editar layout.", -- draft
@@ -3292,6 +3294,7 @@ Lang:Add("ptBR", {
 -- stale: ["The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going."] = "O botão do MelloUI fica dentro do Menu do Jogo, abaixo de Opções; uma página de Apoiadores em Perfis agradece a quem mantém o MelloUI.", -- draft
 -- stale: ["The Swing Badge, your swing timer on your target's nameplate: it winds up, strikes, flashes gold on crits; it replaces the Swing Timers' bars too."] = "O emblema de golpes, seu cronômetro de golpes na placa do seu alvo: prepara, golpeia, brilha em ouro nos críticos; também substitui as barras dos cronômetros de golpes.", -- draft
 -- stale: ["The UI Shade also follows the painted plate's own shape: round the level circle, round each end gem and along the bar, in every Nameplate Border look. It needs the UI Shade on (Look); its Shade Strength sets how dark it is. The name's own band is Nameplates' Name Shade."] = "A Sombra da interface também segue o formato próprio da placa pintada: ao redor do círculo de nível, ao redor de cada gema da ponta e ao longo da barra, em todo visual de Borda das placas de identificação. Precisa da Sombra da interface ligada (Visual); a Intensidade da sombra define o quanto ela é escura. A faixa própria do nome é a Sombra do nome das Placas de identificação.", -- draft
+-- stale: ["The UI Shade around the map icons."] = "A sombra da interface em volta dos ícones do mapa.", -- draft
 -- stale: ["The UI Shade round the action bars. Off: no shade there; the other areas keep theirs."] = "A sombra da interface ao redor das barras de ação. Desligado: sem sombra ali; as outras áreas mantêm a sua.", -- draft
 -- stale: ["The UI Shade round the bags. Off: no shade there; the other areas keep theirs."] = "A sombra da interface ao redor das bolsas. Desligado: sem sombra ali; as outras áreas mantêm a sua.", -- draft
 -- stale: ["The UI Shade round the buffs. Off: no shade there; the other areas keep theirs."] = "A sombra da interface ao redor dos bônus. Desligado: sem sombra ali; as outras áreas mantêm a sua.", -- draft
@@ -3499,6 +3502,7 @@ Lang:Add("ptBR", {
 -- stale: ["Under 35% health the health bar turns ember."] = "Abaixo de 35% de vida, a barra de vida fica brasa.", -- draft
 -- stale: ["Unit Frame Bars: Font Size"] = "Barras dos quadros de unidade: tamanho da fonte", -- draft
 -- stale: ["Unit Frame Tweaks"] = "Ajustes dos quadros de unidade", -- draft
+-- stale: ["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "Quadros de unidade, Placas de identificação e Barras de ação: cada interruptor agora desliga tudo o que o MelloUI mostra ali, o resto continua funcionando.", -- draft
 -- stale: ["Unit Frames: XP Gain -- the stretch of the experience bar you just gained lights up as a light runs along it."] = "Quadros de unidade: Ganho de experiência -- o trecho da barra de experiência que você acabou de ganhar acende enquanto uma luz o percorre.", -- draft
 -- stale: ["Use No reskin"] = "Usar Sem visual pintado", -- draft
 -- stale: ["What a button shows inside its rim where it has no icon."] = "O que um botão mostra dentro da borda onde não tem ícone.", -- draft

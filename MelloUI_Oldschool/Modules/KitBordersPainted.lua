@@ -536,10 +536,10 @@ local function PersonalLay()
 		local a = CreateFrame("Frame", nil, prd)
 		a:EnableMouse(false)
 		personal.anchor = a
-		-- (no piece of the game's under it to keep a shade: the UI shade's unit
-		-- frames area round its own outline)
+		-- (no piece of the game's under it to keep a shade: the UI shade's Personal
+		-- Display area round its own outline, 2.1.11)
 		personal.border = Kit:NewBorder({ rect = a, place = "round", layer = "OVERLAY", sub = 3, level = 2,
-			shade = { root = prd, area = "unitframes" } })
+			shade = { root = prd, area = "personal" } })
 	end
 	personal.anchor:ClearAllPoints()
 	personal.anchor:SetPoint("TOPLEFT", top, "TOPLEFT")

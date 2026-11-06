@@ -158,8 +158,9 @@ function Kit:AddShadeArea(name, label, opts)
 end
 Kit:AddShadeArea("windows", "Windows", { order = 1 })
 Kit:AddShadeArea("minimap", "Minimap", { order = 7 })
--- (0.25.0) the glow and shade under the icon set's marks on the maps and the minimap (MelloUI.Shade:Lift)
-Kit:AddShadeArea("icons", "Map Icons", { order = 7.5 })
+-- (2.1.11; the user, 2026-11-06: the slider left it out) the Personal Display. The icons' glow on the maps and the minimap,
+-- an area here until then, is no shade of the UI's any more (MelloUI.Shade:Lift: always on)
+Kit:AddShadeArea("personal", "Personal Display", { order = 7.5, new = "2.1.11" })
 Kit:AddShadeArea("tracker", "Tracker", { order = 8 })
 -- (1.2.4, the configurator audit: its switch showed nothing -- at the rows' default spacing the shade has no room
 -- between the icons (Auras.lua's FitPartner) -- so the buffs' shade follows the UI Shade alone)
