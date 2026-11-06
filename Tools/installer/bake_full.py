@@ -162,6 +162,8 @@ FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPan
              "NameplatePanel.shadeStrength", "UIModifications.shade_nameplates", "Tooltip.classNames",
              "Tooltip.barTexture", "DarkMode.auraIconBorder", "Route.notice", "Route.noticeSound",
              "Reminders.remind_restock", "VoiceOver.overlayLock", "VoiceOver.overlayScale",
+             # (2.1.11: the icons' glow is always on, Shade: Map Icons gone)
+             "UIModifications.shade_icons",
              # (0.17.0, the user's pick C of chat_menu_sketch: Hide Chat Buttons became Chat Buttons, on for the Full
              # experience too -- a snapshot's old "hide them" is dropped, never shipped)
              "Chat.hideButtons",
