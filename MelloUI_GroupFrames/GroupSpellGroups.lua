@@ -626,17 +626,9 @@ function SG.ClassName(class)
 end
 
 function SG.ClassColour(class)
-	local CC = rawget(_G, "C_ClassColor")
-	if CC and type(CC.GetClassColor) == "function" then
-		local ok, c = pcall(CC.GetClassColor, class)
-		if ok and type(c) == "table" and c.GetRGB then
-			return c:GetRGB()
-		end
-	end
-	local t = rawget(_G, "RAID_CLASS_COLORS")
-	t = type(t) == "table" and t[class]
-	if t then
-		return t.r, t.g, t.b
+	local r, g, b = MelloUI.Colours.Class(class)
+	if type(r) == "number" then
+		return r, g, b
 	end
 	return 1, 1, 1
 end

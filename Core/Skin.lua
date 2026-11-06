@@ -764,12 +764,15 @@ end
 -- (2.1.0, qu-04) a party member's class pin (the set's class_<CLASS>, its colour baked in): the game's map draws a
 -- member as its white blip in the class colour, so that, tinted (`rgb`, from the game's own class colours)
 local classBlips = {}
+MelloUI:On("colours", function()   -- (2.1.9: a colour picked on Look > Colours)
+	wipe(classBlips)
+end, "Skin: the class blips")
 
 local function ClassBlip(class)
 	local spec = classBlips[class]
 	if spec == nil then
-		local c = type(_G.RAID_CLASS_COLORS) == "table" and _G.RAID_CLASS_COLORS[class]
-		spec = type(c) == "table" and { atlas = ICON.map_dot.atlas, rgb = { c.r, c.g, c.b } } or false
+		local r, g, b = MelloUI.Colours.Class(class)
+		spec = type(r) == "number" and { atlas = ICON.map_dot.atlas, rgb = { r, g, b } } or false
 		classBlips[class] = spec
 	end
 	return spec or nil

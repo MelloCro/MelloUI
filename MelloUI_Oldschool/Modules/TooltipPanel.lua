@@ -298,8 +298,8 @@ local function IsQuality(r, g, b)
 	return false
 end
 
--- a class's colour (the game's table, read as it is: nothing made); never
--- plain white, the Priest's and the game's own for other names
+-- a class's colour (the game's table, read as it is: nothing made -- the game's own lines are in the game's colours,
+-- whatever is picked on Look > Colours); never plain white, the Priest's and the game's own for other names
 local function IsClassColour(r, g, b)
 	local list = RAID_CLASS_COLORS
 	if type(list) ~= "table" or (r > 0.99 and g > 0.99 and b > 0.99) then
@@ -373,14 +373,8 @@ local function NoteClass(note, guid)
 	if not ok or Secret(class) or type(class) ~= "string" then
 		return
 	end
-	local list = RAID_CLASS_COLORS
-	local c = type(list) == "table" and list[class]
-	if type(c) ~= "table" then
-		return
-	end
-	local cr, cg, cb = c.r, c.g, c.b
-	if not (Secret(cr) or Secret(cg) or Secret(cb)) and type(cr) == "number" and type(cg) == "number"
-		and type(cb) == "number" then
+	local cr, cg, cb = MelloUI.Colours.Class(class)
+	if cr then
 		note.cr, note.cg, note.cb = cr, cg, cb
 	end
 end

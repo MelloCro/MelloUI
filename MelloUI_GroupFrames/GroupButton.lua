@@ -113,18 +113,9 @@ local function ClassRGB(f)
 	if class == nil then
 		return GREY[1], GREY[2], GREY[3]
 	end
-	local CC = rawget(_G, "C_ClassColor")
-	if type(CC) == "table" and type(CC.GetClassColor) == "function" then
-		local ok, c = pcall(CC.GetClassColor, class)
-		if ok and c and c.GetRGB then
-			return c:GetRGB()
-		end
-	end
-	if not Secret(class) then
-		local t = rawget(_G, "RAID_CLASS_COLORS") and RAID_CLASS_COLORS[class]
-		if t then
-			return t.r, t.g, t.b
-		end
+	local r, g, b = MelloUI.Colours.Class(class)
+	if type(r) == "number" then
+		return r, g, b
 	end
 	return GREY[1], GREY[2], GREY[3]
 end
@@ -670,9 +661,9 @@ local function PowerRGB(f)
 	elseif f.sample and f.sample.powerToken then
 		token = f.sample.powerToken
 	end
-	local pc = rawget(_G, "PowerBarColor") and PowerBarColor[token]
-	if type(pc) == "table" and type(pc.r) == "number" then
-		return pc.r, pc.g, pc.b
+	local r, g, b = MelloUI.Colours.Power(token)
+	if r then
+		return r, g, b
 	end
 	return 0, 0.4, 1
 end

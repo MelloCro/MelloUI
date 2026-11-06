@@ -699,14 +699,21 @@ local function CoverBar(bar)
 		c.file = file
 		c.tex:SetTexture(file)
 	end
-	-- (a power bar's colour its power's; a health bar's the module's, written by SetHealthColour)
-	local info = not healthBars[bar] and (bar.overrideInfo or (PowerBarColor and bar.powerToken and PowerBarColor[bar.powerToken]))
-	if not healthBars[bar] and c.token ~= info then
-		c.token = info
-		if info and IsPlainNumber(info.r) and IsPlainNumber(info.g) and IsPlainNumber(info.b) then
-			c.tex:SetVertexColor(info.r, info.g, info.b)
+	-- (a power bar's colour its power's, a player's pick first: MelloUI.Colours; a health bar's the module's, written by
+	-- SetHealthColour)
+	if not healthBars[bar] then
+		local info, r, g, b = bar.overrideInfo, nil, nil, nil
+		if info then
+			if IsPlainNumber(info.r) and IsPlainNumber(info.g) and IsPlainNumber(info.b) then
+				r, g, b = info.r, info.g, info.b
+			end
 		else
-			c.tex:SetVertexColor(1, 1, 1)
+			r, g, b = MelloUI.Colours.Power(bar.powerToken)
+		end
+		r, g, b = r or 1, g or 1, b or 1
+		if c.pr ~= r or c.pg ~= g or c.pb ~= b then
+			c.pr, c.pg, c.pb = r, g, b
+			c.tex:SetVertexColor(r, g, b)
 		end
 	end
 	CoverShown(c, true)
@@ -987,26 +994,10 @@ end
 local function ClassOrReactionColor(unit, mode)
 	if UnitIsPlayer(unit) then
 		local _, class = UnitClass(unit)
-		if issecretvalue and issecretvalue(class) then
-			-- a secret class cannot key the colour table; the
-			-- game's own lookup takes it and answers in kind
-			local color = C_ClassColor and C_ClassColor.GetClassColor and C_ClassColor.GetClassColor(class)
-			if color then
-				return color:GetRGB()
-			end
-			return nil
-		end
-		local color = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-		if color then
-			return color.r, color.g, color.b
-		end
+		return MelloUI.Colours.Class(class)
 	elseif mode == "reaction" then
 		-- Hostile red, unfriendly orange, neutral yellow, friendly green.
-		local reaction = UnitReaction(unit, "player")
-		local color = reaction and FACTION_BAR_COLORS and FACTION_BAR_COLORS[reaction]
-		if color then
-			return color.r, color.g, color.b
-		end
+		return MelloUI.Colours.Reaction(UnitReaction(unit, "player"))
 	end
 end
 
@@ -1437,9 +1428,16 @@ local function RecolorManaBar(manaBar)
 	if TextureOf("unitframes") == "default" then
 		return   -- the game's power atlas is coloured already; it expects white
 	end
-	local info = manaBar.overrideInfo or (PowerBarColor and manaBar.powerToken and PowerBarColor[manaBar.powerToken])
-	if info and info.r then
-		manaBar:SetStatusBarColor(info.r, info.g, info.b)
+	local info = manaBar.overrideInfo
+	if info then
+		if info.r then
+			manaBar:SetStatusBarColor(info.r, info.g, info.b)
+		end
+		return
+	end
+	local r, g, b = MelloUI.Colours.Power(manaBar.powerToken)
+	if r then
+		manaBar:SetStatusBarColor(r, g, b)
 	end
 end
 
@@ -1700,6 +1698,20 @@ local function InstallHooks()
 		pcall(RecolorHealthBar, statusbar)
 	end)
 	-- (fr-17) the player frame of ours come or gone (the game's given back): the bars of the one that stands now
+	-- (2.1.9: a colour picked on Look > Colours: the health bars in class or reaction colours, the power bars)
+	MelloUI:On("colours", function()
+		if not M.isEnabled then
+			return
+		end
+		RecolorAllHealthBars()
+		local list = {}
+		CollectUnitFrameBars(list)
+		for _, bar in ipairs(list) do
+			if bar and bar.powerToken then
+				pcall(RecolorManaBar, bar)
+			end
+		end
+	end, "Bar Textures: the picked colours")
 	MelloUI:On("units", function()
 		if M.isEnabled and Active("unitframes") then
 			ApplyUnitFrames()
@@ -1879,22 +1891,27 @@ do
 		if mode == "class" or mode == "reaction" then
 			local class = IsPlainString(sample.class) and sample.class or nil
 			if class then
-				local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-				if color then
-					return color.r, color.g, color.b
+				local r, g, b = MelloUI.Colours.Class(class)
+				if r then
+					return r, g, b
 				end
 			elseif mode == "reaction" then
 				local reaction = IsPlainNumber(sample.reaction) and sample.reaction or nil
-				local color = reaction and FACTION_BAR_COLORS and FACTION_BAR_COLORS[reaction]
-				if color then
-					return color.r, color.g, color.b
+				local r, g, b = MelloUI.Colours.Reaction(reaction)
+				if r then
+					return r, g, b
 				end
 			end
 		end
 		return 0.0, 1.0, 0.0
 	end
 
+	-- (2.1.9: `picked`, the fifth: a player's colour, on the game's colourable fill)
 	function M.PreviewPowerColor(token)
+		local pr, pg, pb = MelloUI.Colours.PowerPicked(token)
+		if pr then
+			return pr, pg, pb, "UI-HUD-UnitFrame-Player-PortraitOn-Bar-Mana-Status", true
+		end
 		local info = IsPlainString(token) and PowerBarColor and PowerBarColor[token]
 		if type(info) ~= "table" or not IsPlainNumber(info.r) then
 			return 0.0, 0.0, 1.0, nil   -- (the game's mana blue)

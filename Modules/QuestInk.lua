@@ -431,16 +431,7 @@ function QI.ClassColour(classFile)
 	if GemSecret(classFile) or type(classFile) ~= "string" then
 		return nil
 	end
-	local list = RAID_CLASS_COLORS
-	local c = type(list) == "table" and list[classFile]
-	if type(c) ~= "table" then
-		return nil
-	end
-	local r, g, b = c.r, c.g, c.b
-	if GemSecret(r) or GemSecret(g) or GemSecret(b) or type(r) ~= "number" or type(g) ~= "number" or type(b) ~= "number" then
-		return nil
-	end
-	return r, g, b
+	return MelloUI.Colours.Class(classFile)
 end
 
 --------------------------------------------------------------------------------

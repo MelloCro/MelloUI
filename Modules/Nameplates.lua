@@ -2890,11 +2890,7 @@ do
 			r, g, b = bt.PreviewHealthColor(nil, Stage.HOSTILE)
 		end
 		if not r then
-			local c = rawget(_G, "FACTION_BAR_COLORS")
-			c = type(c) == "table" and c[Stage.HOSTILE.reaction]
-			if type(c) == "table" then
-				r, g, b = c.r, c.g, c.b
-			end
+			r, g, b = MelloUI.Colours.Reaction(Stage.HOSTILE.reaction)
 		end
 		if r then
 			f.fill:SetVertexColor(r, g, b)

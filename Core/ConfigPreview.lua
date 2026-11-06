@@ -318,10 +318,10 @@ end
 
 local function PaintPower(bar, s, BT)
 	local texture = BT.PreviewTexture(s.area)
-	local r, g, b, atlas = BT.PreviewPowerColor(s.token)
+	local r, g, b, atlas, picked = BT.PreviewPowerColor(s.token)
 	-- a flat texture takes the power's colour (RecolorManaBar); the game's
-	-- own art carries it
-	if Picture(bar, texture, atlas) then
+	-- own art carries it (2.1.9: a picked colour on its colourable fill)
+	if Picture(bar, texture, atlas) and not picked then
 		White(bar)
 	else
 		bar:SetStatusBarColor(r, g, b)
@@ -2927,10 +2927,9 @@ function Copy.Paint(p, s)
 	local uf = Running("UnitFrames")
 	if f.strip then
 		-- (the reaction strip: the game's reaction colour; Unit Frames on makes it clear, as on the target's frame)
-		local c = rawget(_G, "FACTION_BAR_COLORS")
-		c = type(c) == "table" and c[s.reaction or 4]
-		if c then
-			f.strip:SetVertexColor(c.r, c.g, c.b)
+		local r, g, b = MelloUI.Colours.Reaction(s.reaction or 4)
+		if r then
+			f.strip:SetVertexColor(r, g, b)
 		end
 		f.strip:SetAlpha(uf and 0 or 1)
 	end

@@ -786,7 +786,12 @@ local function PowerType(f)
 	local colours = rawget(_G, "PowerBarColor")
 	local info = token and type(colours) == "table" and colours[token] or nil
 	local base = "UI-HUD-UnitFrame-" .. f.frameType .. "-PortraitOn"
-	if type(info) == "table" and info.atlasElementName then
+	-- (2.1.9: a colour picked on Look > Colours, on the game's colourable fill)
+	local pr, pg, pb = MelloUI.Colours.PowerPicked(token)
+	if pr then
+		mb:SetStatusBarTexture(base .. "-Bar-Mana-Status")
+		mb:SetStatusBarColor(pr, pg, pb)
+	elseif type(info) == "table" and info.atlasElementName then
 		mb:SetStatusBarTexture(base .. "-Bar-" .. info.atlasElementName)
 		mb:SetStatusBarColor(1, 1, 1)
 	elseif type(info) == "table" and info.atlas then
@@ -815,6 +820,17 @@ local function PowerType(f)
 	end
 	U.Notify("UnitFrameManaBar_UpdateType", mb)
 end
+
+MelloUI:On("colours", function()
+	for _, kind in ipairs(KINDS) do
+		for _, unit in ipairs({ kind.unit, kind.totUnit }) do
+			local f = U.own[unit]
+			if f and f.manabar then
+				PowerType(f)
+			end
+		end
+	end
+end, "Target and focus frames: the power's colour")
 
 -- the threat flash and the numeric threat (UnitFrame_UpdateThreatIndicator: your threat on the target; a secret
 -- answer shows none)

@@ -5480,14 +5480,16 @@ end
 -- A colour setting (0.20.0, Group Frames' colours): its value is a string --
 -- "#rrggbb" (the colour wheel's), "palette:<key>" (a palette colour, which
 -- follows the palette) or the name of one of the game's colours
--- ("GREEN_FONT_COLOR": a default with no literal of ours)
+-- ("GREEN_FONT_COLOR": a default with no literal of ours; 2.1.9: "class:MAGE",
+-- "power:MANA", "reaction:4", MelloUI.Colours.Game's)
 --   W.ColourValue(v) -> r, g, b        (white for anything else)
 --   W.ColourHex(r, g, b) -> "#rrggbb"
 --   W.ColourRow(parent, y, label, hint, desc, get, set, opts) -> row, swatch
 --     the colour as a swatch at the row's right; a click opens the colour
 --     wheel under it (W.ColourMenu: one per host window, opts.host -- the
 --     configurator's frame -- made on its first open), a thumb's move sets
---     "#rrggbb" at once; a click outside, Escape or Done closes it
+--     "#rrggbb" at once; a click outside, Escape or Done closes it; with
+--     opts.default (2.1.9) its Default button sets that value back
 --------------------------------------------------------------------------------
 
 function W.ColourValue(v)
@@ -5505,6 +5507,12 @@ function W.ColourValue(v)
 			return c[1], c[2], c[3]
 		end
 		return 1, 1, 1
+	end
+	if MelloUI.Colours then
+		local r, g, b = MelloUI.Colours.Game(v)
+		if r then
+			return r, g, b
+		end
 	end
 	local named = rawget(_G, v)
 	if type(named) == "table" and named.GetRGB then
@@ -5527,7 +5535,8 @@ end
 do
 	local WHEEL_SIZE, PAD = 110, 10
 	local menuOf = setmetatable({}, weakKeys)   -- [host] = its colour flyout
-	local DONE = "Done"
+	local DONE, DEFAULT = "Done", "Default"
+	local DONE_W, DEFAULT_W, BUTTON_GAP = 70, 84, 8
 
 	local function Close(menu)
 		menu:Hide()
@@ -5540,6 +5549,16 @@ do
 	end, "script")
 	local DoneClick = Shared("OnClick on the colour flyout's Done", function(b)
 		Close(b.menu)
+	end, "script")
+	-- (2.1.9: the way back from a pick: the row's default, the game's own colour where it names one)
+	local DefaultClick = Shared("OnClick on the colour flyout's Default", function(b)
+		local menu = b.menu
+		local row = menu.row
+		if row and row.melloDefault ~= nil then
+			row.melloSet(row.melloDefault)
+			row:Refresh()
+			menu.wheel:Refresh()
+		end
 	end, "script")
 	-- (its window's Escape held while it is open, as the picture flyout's: a press closes it alone)
 	local function Hold(menu, on)
@@ -5562,7 +5581,8 @@ do
 		end
 		local name = (host:GetName() or "MelloUIWindow") .. "ColourMenu"
 		menu = W.Panel(CreateFrame("Frame", name, host), { on = true })
-		menu:SetSize(WHEEL_SIZE + W.WHEEL_GAP + W.WHEEL_BAR + 2 * PAD + 6, WHEEL_SIZE + 2 * PAD + 30)
+		menu:SetSize(math.max(WHEEL_SIZE + W.WHEEL_GAP + W.WHEEL_BAR + 6, DEFAULT_W + BUTTON_GAP + DONE_W) + 2 * PAD,
+			WHEEL_SIZE + 2 * PAD + 30)
 		menu:SetFrameStrata("FULLSCREEN_DIALOG")
 		menu:EnableMouse(true)
 		menu:SetClampedToScreen(true)
@@ -5582,9 +5602,13 @@ do
 			end
 		end)
 		menu.wheel:SetPoint("TOPLEFT", menu, "TOPLEFT", PAD, -PAD)
-		local done = W.Button(menu, DONE, 70, nil, { height = 20, onClick = DoneClick })
+		local done = W.Button(menu, DONE, DONE_W, nil, { height = 20, onClick = DoneClick })
 		done:SetPoint("BOTTOMRIGHT", menu, "BOTTOMRIGHT", -PAD, PAD - 2)
 		done.menu = menu
+		local default = W.Button(menu, DEFAULT, DEFAULT_W, nil, { height = 20, onClick = DefaultClick })
+		default:SetPoint("RIGHT", done, "LEFT", -BUTTON_GAP, 0)
+		default.menu = menu
+		menu.default = default
 		local catcher = CreateFrame("Frame", nil, host)
 		catcher:SetAllPoints(host)
 		catcher:SetFrameStrata("FULLSCREEN_DIALOG")
@@ -5610,6 +5634,7 @@ do
 			return
 		end
 		menu.row = row
+		menu.default:SetShown(row.melloDefault ~= nil)
 		menu.catcher:SetFrameLevel(math.max(1, menu:GetFrameLevel() - 1))
 		menu.catcher:Show()
 		menu:ClearAllPoints()
@@ -5641,6 +5666,7 @@ do
 		swatch.fill:SetPoint("BOTTOMRIGHT", swatch, "BOTTOMRIGHT", -1, 1)
 		swatch.edges = Edges(swatch, "border", "OVERLAY")
 		swatch.melloGet, swatch.melloSet, swatch.melloHost = get, set, opts.host
+		swatch.melloDefault = opts.default
 		swatch.Refresh = SwatchRefresh
 		Perf.SetScript(swatch, "OnClick", SwatchClick)
 		SwatchRefresh(swatch)

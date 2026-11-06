@@ -6,6 +6,29 @@ if not (Lang and Lang:Wants("deDE")) then
 	return
 end
 Lang:Add("deDE", {
+	-- Colours
+	["Colours"] = "Farben", -- draft
+	["Your own colours for the classes, the powers and NPC standings."] = "Deine eigenen Farben für Klassen, Ressourcen und das Ansehen von NPCs.", -- draft
+	["Warrior"] = "Krieger", -- draft
+	["This class's colour wherever MelloUI shows one: health bars in class colours, party and raid frames, chat, tooltips and the damage meter. The game's own windows keep the game's."] = "Die Farbe dieser Klasse überall, wo MelloUI eine zeigt: Gesundheitsbalken in Klassenfarben, Gruppen- und Schlachtzugsfenster, Chat, Tooltips und die Schadensanzeige. Die Fenster des Spiels behalten dessen Farben.", -- draft
+	["Paladin"] = "Paladin", -- draft
+	["Priest"] = "Priester", -- draft
+	["Shaman"] = "Schamane", -- draft
+	["Druid"] = "Druide", -- draft
+	["Rogue"] = "Schurke", -- draft
+	["Mage"] = "Magier", -- draft
+	["Warlock"] = "Hexenmeister", -- draft
+	["Hunter"] = "Jäger", -- draft
+	["Mana"] = "Mana", -- draft
+	["This power's colour on MelloUI's player, target and focus frames, party and raid frames and the Personal Display."] = "Die Farbe dieser Ressource auf MelloUIs Spieler-, Ziel- und Fokusfenstern, Gruppen- und Schlachtzugsfenstern und der persönlichen Anzeige.", -- draft
+	["Rage"] = "Wut", -- draft
+	["Energy"] = "Energie", -- draft
+	["Focus"] = "Fokus", -- draft
+	["Hostile"] = "Feindselig", -- draft
+	["An NPC's health bar in this standing, with Health Bar Colour on Class (players) / reaction (NPCs)."] = "Der Gesundheitsbalken eines NPCs mit diesem Ansehen, wenn die Farbe der Gesundheitsbalken auf Klasse (Spieler) / Reaktion (NPCs) steht.", -- draft
+	["Unfriendly"] = "Unfreundlich", -- draft
+	["Neutral"] = "Neutral", -- draft
+	["Friendly"] = "Freundlich", -- draft
 	-- UIModifications
 	["UI Modifications"] = "UI-Anpassungen", -- draft
 	["The painted reskin and most of MelloUI's interface changes: fonts, Dark Mode, chat, tooltips, buffs, bar textures and more."] = "Der gemalte Reskin und die meisten Änderungen von MelloUI an der Oberfläche: Schriften, Dunkelmodus, Chat, Tooltips, Stärkungszauber, Leistentexturen und mehr.", -- draft
@@ -1993,6 +2016,7 @@ Lang:Add("deDE", {
 	["Quests and travel"] = "Quests und Reisen", -- draft
 	["Quality of life"] = "Komfort", -- draft
 	["Bars 1-8, stance, pet, possess, totem"] = "Leisten 1-8, Haltung, Begleiter", -- draft
+	["Backdrops And Shadows"] = "Hintergründe und Schatten", -- draft
 	["Button"] = "Taste", -- draft
 	["Cooldown timer"] = "Abklingzeit-Timer", -- draft
 	["End caps"] = "Endstücke", -- draft
@@ -2074,7 +2098,6 @@ Lang:Add("deDE", {
 	["Portrait"] = "Porträt", -- draft
 	["Your target's frame (and its target's)"] = "Das Fenster deines Ziels (und das seines Ziels)", -- draft
 	["Your focus's frame"] = "Das Fenster deines Fokus", -- draft
-	["Focus"] = "Fokus", -- draft
 	["Your pet's frame"] = "Das Fenster deines Begleiters", -- draft
 	["Pet"] = "Begleiter", -- draft
 	["Your buffs and debuffs"] = "Deine Stärkungs- und Schwächungszauber", -- draft
@@ -2101,7 +2124,6 @@ Lang:Add("deDE", {
 	["Messages"] = "Meldungen", -- draft
 	["Chat, Map & More"] = "Chat, Karte & mehr", -- draft
 	["Textures"] = "Texturen", -- draft
-	["Colours"] = "Farben", -- draft
 	["Painted Skins"] = "Gemalte Skins", -- draft
 	["Borders"] = "Ränder", -- draft
 	["Arrow & Marker"] = "Pfeil & Markierung", -- draft
@@ -2125,6 +2147,9 @@ Lang:Add("deDE", {
 	["Only with My Colour"] = "Nur mit „Meine Farbe“", -- draft
 	["Only with By health"] = "Nur mit „Nach Gesundheit“", -- draft
 	["Not with the Green (Blizzard) colour"] = "Nicht mit der Farbe Grün (Blizzard)", -- draft
+	["Power Colours"] = "Ressourcenfarben", -- draft
+	["Only with Class / reaction"] = "Nur mit Klasse / Reaktion", -- draft
+	["NPC Colours"] = "NPC-Farben", -- draft
 	["Only for the game's tracker (MelloUI's Quest Tracker off)"] = "Nur für die Verfolgung des Spiels (MelloUIs Questverfolgung aus)", -- draft
 	["Painted Skin"] = "Gemalter Skin", -- draft
 	["Not with the whole window on parchment"] = "Nicht mit dem ganzen Fenster auf Pergament", -- draft
@@ -2182,6 +2207,7 @@ Lang:Add("deDE", {
 	["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "Nur mit Minimaler Chatansicht oder gemaltem Chat", -- draft
 	["Chat Background"] = "Chathintergrund", -- draft
 	["Only without the painted chat, or with the Minimal Chat View"] = "Nur ohne den gemalten Chat oder mit der Minimalen Chatansicht", -- draft
+	["Backgrounds"] = "Hintergründe", -- draft
 	["Only without the painted chat"] = "Nur ohne den gemalten Chat", -- draft
 	["Only with the game's chat windows (not the painted chat or the Minimal Chat View)"] = "Nur mit den Chatfenstern des Spiels (nicht mit dem gemalten Chat oder der Minimalen Chatansicht)", -- draft
 	["Not with the Minimal Chat View"] = "Nicht mit der Minimalen Chatansicht", -- draft
@@ -2237,6 +2263,8 @@ Lang:Add("deDE", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Deine ganze Einrichtung unter einem Namen. Speichere sie, lade sie oder mach sie zum Standard für eine frische Installation.", -- draft
 	["Supporters"] = "Unterstützer", -- draft
 	["The people who help keep MelloUI going."] = "Die Menschen, die MelloUI am Laufen halten.", -- draft
+	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Neu: Aussehen > Farben bietet ein Farbrad für jede Klasse, jede Ressource und das Ansehen von NPCs.", -- draft
+	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Leisten: Die Schalter für den Schatten hinter deinen Aktionsleisten stehen jetzt unter Hintergründe und Schatten, und die Suche findet sie.", -- draft
 	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Behoben: Die Einstellung Namen wirkt jetzt in der minimalen Chatansicht und im Flüsterfenster.", -- draft
 	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "Behoben: MelloUIs Karte zeigt das „?“ einer Quest nach der Abgabe nicht mehr an; ihre Markierungen folgen deinem Questlog.", -- draft
 	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "Die Questliste entspricht dem Live-Server: 2 neue Quests, korrigierte Stufen bei 52 Quests, Die Versunkene Stadt hat ihren Namen.", -- draft
@@ -2244,9 +2272,6 @@ Lang:Add("deDE", {
 	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "Einheitenfenster, Namensplaketten und Aktionsleisten: Jeder Schalter schaltet jetzt alles ab, was MelloUI dort zeigt, der Rest funktioniert weiter.", -- draft
 	["New: an Action Bars switch on the Bars page."] = "Neu: ein Schalter für die Aktionsleisten auf der Seite Leisten.", -- draft
 	["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Behoben: Die Markierungen der Questgeber auf MelloUIs Karte erscheinen nicht mehr als verzerrte gelbe Flecken.", -- draft
-	["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Behoben: Auf Oldschools Rahmen hält die Ressourcenleiste einen kleinen Abstand unter der Gesundheitsleiste, und die des Ziels schließt bündig mit ihr ab.", -- draft
-	["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Behoben: Die Reiter für Rucksack und Reagenzientasche neben dem Taschenfenster zeigen wieder ihre Symbole.", -- draft
-	["The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once."] = "Die Karte: Questies Questgeber, Abgaben und Ziele tragen MelloUIs eigene Symbole; eine Quest, die die Karte schon zeigt, erscheint nur einmal.", -- draft
 	["Report a problem"] = "Ein Problem melden", -- draft
 	["Voice pack"] = "Stimmenpaket", -- draft
 	["open or close this window"] = "dieses Fenster öffnen oder schließen", -- draft
@@ -2898,6 +2923,8 @@ Lang:Add("deDE", {
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "Behoben: nach dem Erlernen einer neuen Haltung oder Gestalt konnte ein Kampf bis zu einem Neustart auf wenige Bilder pro Sekunde fallen.", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "Behoben: ein Fehler im Kampf durch die Großen Abklingzeiten der Persönlichen Anzeige.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "Behoben: Klicks auf Verstohlenheit, Haltungen, Gestalten und Begleitertasten; die Chat-Schrift in der minimalen Chatansicht; ganze Häkchen bei Standard; Beschriftungen neben Schiebereglern.", -- draft
+-- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Behoben: Auf Oldschools Rahmen hält die Ressourcenleiste einen kleinen Abstand unter der Gesundheitsleiste, und die des Ziels schließt bündig mit ihr ab.", -- draft
+-- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Behoben: Die Reiter für Rucksack und Reagenzientasche neben dem Taschenfenster zeigen wieder ihre Symbole.", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "Behoben: die Weltmarkierung bei einem Leitfaden-Schritt direkt neben dir; die Klassenquests der Questliste; Gegenstandsqualität und wiederholte Bosse in Dungeon-Info.", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "Behoben: der Installer nennt deinen Bildschirm nicht mehr zu klein, wenn nur einige deiner eigenen Einstellungen nicht passen.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "Für einen Schurken und einen Druiden in Katzengestalt: deine fünf Combopunkte in einer Reihe am oberen Rand des Gesundheitsbalkens deines Ziels, leer, bis du sie aufbaust. Der Name rückt etwas nach oben, um Platz zu machen.", -- draft
@@ -3362,6 +3389,7 @@ Lang:Add("deDE", {
 -- stale: ["The map in the painted ring."] = "Die Karte im gemalten Ring.", -- draft
 -- stale: ["The map zoomed out: capitals, docks with their boat and zeppelin trails, dungeons, raids and your quests."] = "Die Karte ganz herausgezoomt: Hauptstädte, Anleger mit den Routen von Schiffen und Zeppelinen, Dungeons, Schlachtzüge und deine Quests.", -- draft
 -- stale: ["The map zoomed out: each capital in its own emblem, boat, zeppelin and airship trails, dungeons, raids, your quests, and Zephras Isle."] = "Die Karte ganz herausgezoomt: jede Hauptstadt mit eigenem Wappen, Routen von Schiffen, Zeppelinen und Luftschiffen, Dungeons, Schlachtzüge, deine Quests und Zephras Isle.", -- draft
+-- stale: ["The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once."] = "Die Karte: Questies Questgeber, Abgaben und Ziele tragen MelloUIs eigene Symbole; eine Quest, die die Karte schon zeigt, erscheint nur einmal.", -- draft
 -- stale: ["The map: capitals' emblems, boat trails, Zephras Isle, dungeon maps; your quests, layers and Dungeon Info beside it, folded away with a click."] = "Die Karte: Wappen der Hauptstädte, Schiffsrouten, Zephras Isle, Dungeon-Karten; deine Quests, Ebenen und Dungeon-Info daneben, mit einem Klick eingeklappt.", -- draft
 -- stale: ["The mechanism engaging when a quest is turned in."] = "Der einrastende Mechanismus, wenn eine Quest abgegeben wird.", -- draft
 -- stale: ["The medallion's size above the name."] = "Die Größe des Medaillons über dem Namen.", -- draft

@@ -6,6 +6,29 @@ if not (Lang and Lang:Wants("zhCN")) then
 	return
 end
 Lang:Add("zhCN", {
+	-- Colours
+	["Colours"] = "颜色", -- draft
+	["Your own colours for the classes, the powers and NPC standings."] = "为职业、能量和NPC声望设置你自己的颜色。", -- draft
+	["Warrior"] = "战士", -- draft
+	["This class's colour wherever MelloUI shows one: health bars in class colours, party and raid frames, chat, tooltips and the damage meter. The game's own windows keep the game's."] = "MelloUI 显示职业颜色的所有地方都使用此颜色：职业颜色的生命条、小队和团队框架、聊天、鼠标提示和伤害统计。游戏自身的窗口保留游戏的颜色。", -- draft
+	["Paladin"] = "圣骑士", -- draft
+	["Priest"] = "牧师", -- draft
+	["Shaman"] = "萨满祭司", -- draft
+	["Druid"] = "德鲁伊", -- draft
+	["Rogue"] = "潜行者", -- draft
+	["Mage"] = "法师", -- draft
+	["Warlock"] = "术士", -- draft
+	["Hunter"] = "猎人", -- draft
+	["Mana"] = "法力值", -- draft
+	["This power's colour on MelloUI's player, target and focus frames, party and raid frames and the Personal Display."] = "此能量在 MelloUI 的玩家、目标和焦点框架、小队和团队框架以及个人显示上的颜色。", -- draft
+	["Rage"] = "怒气", -- draft
+	["Energy"] = "能量", -- draft
+	["Focus"] = "焦点", -- draft
+	["Hostile"] = "敌对", -- draft
+	["An NPC's health bar in this standing, with Health Bar Colour on Class (players) / reaction (NPCs)."] = "当生命条颜色设为职业（玩家）/ 反应（NPC）时，此声望NPC的生命条。", -- draft
+	["Unfriendly"] = "冷淡", -- draft
+	["Neutral"] = "中立", -- draft
+	["Friendly"] = "友善", -- draft
 	-- UIModifications
 	["UI Modifications"] = "界面修改", -- draft
 	["The painted reskin and most of MelloUI's interface changes: fonts, Dark Mode, chat, tooltips, buffs, bar textures and more."] = "手绘皮肤以及 MelloUI 对界面的大部分改动：字体、暗色模式、聊天、说明条、增益、条材质等。", -- draft
@@ -1993,6 +2016,7 @@ Lang:Add("zhCN", {
 	["Quests and travel"] = "任务和旅行", -- draft
 	["Quality of life"] = "便捷功能", -- draft
 	["Bars 1-8, stance, pet, possess, totem"] = "动作条1-8、姿态、宠物、附身、图腾", -- draft
+	["Backdrops And Shadows"] = "底板与阴影", -- draft
 	["Button"] = "按钮", -- draft
 	["Cooldown timer"] = "冷却计时", -- draft
 	["End caps"] = "端饰", -- draft
@@ -2074,7 +2098,6 @@ Lang:Add("zhCN", {
 	["Portrait"] = "头像", -- draft
 	["Your target's frame (and its target's)"] = "你的目标框体（及其目标的）", -- draft
 	["Your focus's frame"] = "你的焦点框体", -- draft
-	["Focus"] = "焦点", -- draft
 	["Your pet's frame"] = "你的宠物框体", -- draft
 	["Pet"] = "宠物", -- draft
 	["Your buffs and debuffs"] = "你的增益和减益效果", -- draft
@@ -2101,7 +2124,6 @@ Lang:Add("zhCN", {
 	["Messages"] = "消息", -- draft
 	["Chat, Map & More"] = "聊天、地图及其他", -- draft
 	["Textures"] = "材质", -- draft
-	["Colours"] = "颜色", -- draft
 	["Painted Skins"] = "手绘皮肤", -- draft
 	["Borders"] = "边框", -- draft
 	["Arrow & Marker"] = "箭头和标记", -- draft
@@ -2125,6 +2147,9 @@ Lang:Add("zhCN", {
 	["Only with My Colour"] = "仅在选择“我的颜色”时", -- draft
 	["Only with By health"] = "仅在选择“按生命值”时", -- draft
 	["Not with the Green (Blizzard) colour"] = "不适用于绿色（暴雪）", -- draft
+	["Power Colours"] = "能量颜色", -- draft
+	["Only with Class / reaction"] = "仅限职业 / 反应", -- draft
+	["NPC Colours"] = "NPC颜色", -- draft
 	["Only for the game's tracker (MelloUI's Quest Tracker off)"] = "仅用于游戏的追踪器（MelloUI任务追踪器关闭）", -- draft
 	["Painted Skin"] = "手绘皮肤", -- draft
 	["Not with the whole window on parchment"] = "整个窗口铺羊皮纸时不适用", -- draft
@@ -2182,6 +2207,7 @@ Lang:Add("zhCN", {
 	["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "仅在极简聊天视图或手绘聊天时", -- draft
 	["Chat Background"] = "聊天背景", -- draft
 	["Only without the painted chat, or with the Minimal Chat View"] = "仅在不使用手绘聊天或使用极简聊天视图时", -- draft
+	["Backgrounds"] = "背景", -- draft
 	["Only without the painted chat"] = "仅在不使用手绘聊天时", -- draft
 	["Only with the game's chat windows (not the painted chat or the Minimal Chat View)"] = "仅在游戏聊天窗口时（不适用于手绘聊天或极简聊天视图）", -- draft
 	["Not with the Minimal Chat View"] = "极简聊天视图下不适用", -- draft
@@ -2237,6 +2263,8 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "新增：外观 > 颜色 提供色轮，可设置每个职业、每种能量和NPC声望的颜色。", -- draft
+	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "动作条：动作条背后阴影的开关现在位于“底板与阴影”下，搜索也能找到。", -- draft
 	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "修复：名称设置现在对精简聊天视图和密语窗口生效。", -- draft
 	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "修复：交付任务后，MelloUI 地图不再保留该任务的“?”；地图标记会跟随你的任务日志。", -- draft
 	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "任务列表与正式服务器一致：新增 2 个任务，修正 52 个任务的等级，沉没之城显示名称。", -- draft
@@ -2244,9 +2272,6 @@ Lang:Add("zhCN", {
 	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "单位框体、姓名板和动作条：每个开关现在都会关闭 MelloUI 在那里显示的一切，其余功能继续工作。", -- draft
 	["New: an Action Bars switch on the Bars page."] = "新增：动作条页面上的动作条开关。", -- draft
 	["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "修复：MelloUI 地图上的任务发布者标记不再显示为拉伸的黄色色块。", -- draft
-	["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "修复：Oldschool 框体上的能量条与生命条之间留出小间隙，目标的能量条也与生命条对齐。", -- draft
-	["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "修复：背包窗口旁的行囊和材料包标签页重新显示图标。", -- draft
-	["The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once."] = "地图：Questie 的任务发布者、交任务处和任务目标使用 MelloUI 自己的图标；地图已显示的任务只出现一次。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2894,6 +2919,8 @@ Lang:Add("zhCN", {
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "修复：学会新姿态或形态后，战斗中帧数可能骤降，直到重启。", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "修复：个人显示的重要冷却在战斗中引发的错误。", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "修复：点击潜行、姿态、形态和宠物按钮；极简聊天视图的聊天字体；默认外观的完整勾选标记；滑块旁的标签。", -- draft
+-- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "修复：Oldschool 框体上的能量条与生命条之间留出小间隙，目标的能量条也与生命条对齐。", -- draft
+-- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "修复：背包窗口旁的行囊和材料包标签页重新显示图标。", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "修复：引导步骤就在身边时的世界标记；任务列表中的职业任务；地下城信息的物品品质和重复首领。", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "修复：只是你自己的某些设置放不下时，安装向导不再说你的屏幕太小。", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "盗贼以及猎豹形态的德鲁伊：你的五个连击点数排在目标生命条的上沿，攒起来之前是空的。名字会稍微上移让出位置。", -- draft
@@ -3352,6 +3379,7 @@ Lang:Add("zhCN", {
 -- stale: ["The map in the painted ring."] = "手绘圆环中的地图。", -- draft
 -- stale: ["The map zoomed out: capitals, docks with their boat and zeppelin trails, dungeons, raids and your quests."] = "地图完全缩小时：主城、码头及船只和飞艇的航线、地下城、团队副本和你的任务。", -- draft
 -- stale: ["The map zoomed out: each capital in its own emblem, boat, zeppelin and airship trails, dungeons, raids, your quests, and Zephras Isle."] = "地图完全缩小时：每座主城都有自己的徽记，船只、飞艇和飞行器的航线，地下城、团队副本、你的任务以及 Zephras Isle。", -- draft
+-- stale: ["The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once."] = "地图：Questie 的任务发布者、交任务处和任务目标使用 MelloUI 自己的图标；地图已显示的任务只出现一次。", -- draft
 -- stale: ["The map: capitals' emblems, boat trails, Zephras Isle, dungeon maps; your quests, layers and Dungeon Info beside it, folded away with a click."] = "地图：主城徽记、航船路线、Zephras Isle、地下城地图；你的任务、图层和地下城信息在旁边，一键即可收起。", -- draft
 -- stale: ["The mechanism engaging when a quest is turned in."] = "交任务时机关啮合的声音。", -- draft
 -- stale: ["The medallion's size above the name."] = "名字上方徽章的大小。", -- draft

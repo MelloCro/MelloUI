@@ -12446,6 +12446,10 @@ SlashCmdList.MELLOROUTE = function(msg)
 			M.Guide.Forget()
 			M.Guide.Refresh()   -- (their spot, their steps in the Quest Tracker and their items, or all gone)
 		end
+	elseif msg == "zygor" then
+		if M.Guide and M.Guide.DumpZygor then
+			M.Guide.DumpZygor()   -- (2.1.9: what the real Zygor Guides holds, in the copy window)
+		end
 	elseif msg == "clear" then
 		M.StopRoute()   -- (a tracked quest's route stays stopped too)
 		MelloUI:Print("Route cleared.")

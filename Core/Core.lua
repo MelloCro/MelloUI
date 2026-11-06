@@ -4265,6 +4265,262 @@ do
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Colours (2.1.9): the class, power and reaction colours a player picks on Look > Colours (the user, 2026-11-06: "custom
+-- coloring options for people to custom choose from a colour wheel to colour classes, mana bars, power bars, etc"). The
+-- one place MelloUI reads those colours: a pick first, else the game's. Nothing is ever written on the game's tables
+-- (RAID_CLASS_COLORS, PowerBarColor, FACTION_BAR_COLORS: hard rule 1), so the game's own windows keep the game's colours.
+--
+--   local Colours = MelloUI.Colours
+--   Colours.Class(class) -> r, g, b        nil for no such class. A secret class keys no table: the game's own lookup
+--                                          answers it in kind (its values secret, a pick not asked)
+--   Colours.ClassHex(class) -> "ffrrggbb"  for a text's colour code (nil for a secret class or none)
+--   Colours.Power(token) -> r, g, b        "MANA", "RAGE" ...; nil for none or a secret token
+--   Colours.PowerPicked(token) -> r, g, b  only a player's pick: the game's power art carries its own colour, so a pick
+--                                          swaps it for the game's colourable fill
+--   Colours.Reaction(reaction) -> r, g, b  UnitReaction's 1-8
+--   Colours.Game(value) -> r, g, b         a row's default, the game's colour by name: "class:MAGE", "power:MANA",
+--                                          "reaction:4" (W.ColourValue reads them; nil for any other value)
+--   the bus's "colours"                    the frame after a pick moved (a drag on the wheel moves it many times), or the
+--                                          module was switched: everything painted with one paints again
+--------------------------------------------------------------------------------
+
+do
+	local Colours = {}
+	MelloUI.Colours = Colours
+
+	local Secret = MelloUI.Safe.IsSecret
+
+	-- (the game's lists, Camelot's Constants.lua and PowerBarColor; the names the game's own, from its tables when the
+	-- file loads, these where a world has none)
+	local CLASSES = {
+		{ key = "WARRIOR", label = "Warrior" }, { key = "PALADIN", label = "Paladin" }, { key = "PRIEST", label = "Priest" },
+		{ key = "SHAMAN", label = "Shaman" }, { key = "DRUID", label = "Druid" }, { key = "ROGUE", label = "Rogue" },
+		{ key = "MAGE", label = "Mage" }, { key = "WARLOCK", label = "Warlock" }, { key = "HUNTER", label = "Hunter" },
+	}
+	local POWERS = {
+		{ key = "MANA", label = "Mana" }, { key = "RAGE", label = "Rage" }, { key = "ENERGY", label = "Energy" },
+		{ key = "FOCUS", label = "Focus" },
+	}
+	-- the game paints 1-2 alike and 5-8 alike (FACTION_BAR_COLORS): one pick each
+	local REACTIONS = {
+		{ key = 2, label = "Hostile" }, { key = 3, label = "Unfriendly" }, { key = 4, label = "Neutral" },
+		{ key = 5, label = "Friendly" },
+	}
+	local REACTION_OF = { 2, 2, 3, 4, 5, 5, 5, 5 }
+
+	local M   -- (the module, below; a world without the registry has no picks)
+
+	-- a pick's colour, nil without one: its "#rrggbb" read once per value (a default names the game's)
+	local seen = {}
+	local function Picked(key)
+		if not (M and M.isEnabled) then
+			return nil
+		end
+		local mods = MelloUI.db and MelloUI.db.modules
+		local db = mods and mods.Colours
+		local v = db and db[key]
+		if type(v) ~= "string" or v:byte(1) ~= 35 then
+			return nil
+		end
+		local s = seen[key]
+		if not s or s.v ~= v then
+			local hex = v:match("^#(%x%x%x%x%x%x)$")
+			s = { v = v }
+			if hex then
+				s.r = tonumber(hex:sub(1, 2), 16) / 255
+				s.g = tonumber(hex:sub(3, 4), 16) / 255
+				s.b = tonumber(hex:sub(5, 6), 16) / 255
+			end
+			seen[key] = s
+		end
+		return s.r, s.g, s.b
+	end
+
+	-- a game's table entry as plain numbers
+	local function RGBOf(c)
+		if type(c) ~= "table" then
+			return nil
+		end
+		local r, g, b = c.r, c.g, c.b
+		if Secret(r) or Secret(g) or Secret(b) or type(r) ~= "number" or type(g) ~= "number" or type(b) ~= "number" then
+			return nil
+		end
+		return r, g, b
+	end
+
+	local function Entry(tableName, key)
+		local list = rawget(_G, tableName)
+		return type(list) == "table" and list[key] or nil
+	end
+
+	local function GameClassObject(class)
+		local CC = rawget(_G, "C_ClassColor")
+		if type(CC) == "table" and type(CC.GetClassColor) == "function" then
+			local ok, c = pcall(CC.GetClassColor, class)
+			if ok and type(c) == "table" then
+				return c
+			end
+		end
+		return nil
+	end
+
+	local function GameClass(class)
+		local r, g, b = RGBOf(Entry("RAID_CLASS_COLORS", class))
+		if r then
+			return r, g, b
+		end
+		local c = GameClassObject(class)
+		if c and c.GetRGB then
+			return c:GetRGB()
+		end
+		return nil
+	end
+
+	function Colours.Class(class)
+		if Secret(class) then
+			local c = GameClassObject(class)
+			if c and c.GetRGB then
+				return c:GetRGB()
+			end
+			return nil
+		end
+		if type(class) ~= "string" then
+			return nil
+		end
+		local r, g, b = Picked("class" .. class)
+		if r then
+			return r, g, b
+		end
+		return GameClass(class)
+	end
+
+	function Colours.ClassHex(class)
+		if Secret(class) or type(class) ~= "string" then
+			return nil
+		end
+		local r, g, b = Picked("class" .. class)
+		if r then
+			return string.format("ff%02x%02x%02x", r * 255 + 0.5, g * 255 + 0.5, b * 255 + 0.5)
+		end
+		local c = GameClassObject(class) or Entry("RAID_CLASS_COLORS", class)
+		if type(c) ~= "table" then
+			return nil
+		end
+		if c.GenerateHexColor then
+			return c:GenerateHexColor()
+		end
+		return c.colorStr
+	end
+
+	function Colours.PowerPicked(token)
+		if Secret(token) or type(token) ~= "string" then
+			return nil
+		end
+		return Picked("power" .. token)
+	end
+
+	function Colours.Power(token)
+		if Secret(token) or type(token) ~= "string" then
+			return nil
+		end
+		local r, g, b = Picked("power" .. token)
+		if r then
+			return r, g, b
+		end
+		return RGBOf(Entry("PowerBarColor", token))
+	end
+
+	function Colours.Reaction(reaction)
+		if Secret(reaction) or type(reaction) ~= "number" then
+			return nil
+		end
+		local step = REACTION_OF[reaction]
+		local r, g, b
+		if step then
+			r, g, b = Picked("reaction" .. step)
+		end
+		if r then
+			return r, g, b
+		end
+		return RGBOf(Entry("FACTION_BAR_COLORS", reaction))
+	end
+
+	function Colours.Game(value)
+		if type(value) ~= "string" then
+			return nil
+		end
+		local kind, name = value:match("^(%l+):(%w+)$")
+		if kind == "class" then
+			return GameClass(name)
+		elseif kind == "power" then
+			return RGBOf(Entry("PowerBarColor", name))
+		elseif kind == "reaction" then
+			return RGBOf(Entry("FACTION_BAR_COLORS", tonumber(name)))
+		end
+		return nil
+	end
+
+	-- the options: one module with no page of its own, its rows Look > Colours' cards (ConfigLayout)
+	if MelloUI.RegisterModule then
+		local CLASS_DESC = "This class's colour wherever MelloUI shows one: health bars in class colours, party and raid "
+			.. "frames, chat, tooltips and the damage meter. The game's own windows keep the game's."
+		local POWER_DESC = "This power's colour on MelloUI's player, target and focus frames, party and raid frames and the "
+			.. "Personal Display."
+		local REACTION_DESC = "An NPC's health bar in this standing, with Health Bar Colour on Class (players) / reaction (NPCs)."
+		local defaults, options = {}, {}
+		local function Row(key, name, default, desc)
+			defaults[key] = default
+			options[#options + 1] = { type = "colour", key = key, name = name, desc = desc, new = "2.1.9", free = true }
+		end
+		local names = rawget(_G, "LOCALIZED_CLASS_NAMES_MALE")
+		for _, c in ipairs(CLASSES) do
+			local game = type(names) == "table" and names[c.key]
+			Row("class" .. c.key, type(game) == "string" and game or c.label, "class:" .. c.key, CLASS_DESC)
+		end
+		for _, p in ipairs(POWERS) do
+			local game = rawget(_G, p.key)
+			Row("power" .. p.key, type(game) == "string" and game or p.label, "power:" .. p.key, POWER_DESC)
+		end
+		for _, s in ipairs(REACTIONS) do
+			local game = rawget(_G, "FACTION_STANDING_LABEL" .. s.key)
+			Row("reaction" .. s.key, type(game) == "string" and game or s.label, "reaction:" .. s.key, REACTION_DESC)
+		end
+		M = MelloUI:RegisterModule("Colours", {
+			title = "Colours",
+			desc = "Your own colours for the classes, the powers and NPC standings.",
+			enabledByDefault = true,
+			defaults = defaults,
+			options = options,
+		})
+
+		local due = false
+		local function Tell()
+			due = false
+			MelloUI:Fire("colours")
+		end
+		local function Soon()
+			if due then
+				return
+			end
+			if C_Timer and C_Timer.After then
+				due = true
+				C_Timer.After(0, Tell)
+			else
+				Tell()   -- (a world with no timer: at once)
+			end
+		end
+		function M:OnSettingChanged()
+			Soon()
+		end
+		MelloUI:On("module", function(module)
+			if module == "Colours" then
+				Soon()
+			end
+		end, "MelloUI.Colours")
+	end
+end
+
 function MelloUI:InitModule(module)
 	if module.initialized then
 		return

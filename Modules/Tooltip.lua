@@ -248,9 +248,11 @@ local function UnitColorFor(unit)
 	-- Everything here may touch secret values; the caller wraps it in pcall.
 	if UnitIsPlayer(unit) then
 		local _, class = UnitClass(unit)
-		local color = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-		if color then
-			return color.r, color.g, color.b
+		if not Secret(class) then
+			local r, g, b = MelloUI.Colours.Class(class)
+			if r then
+				return r, g, b
+			end
 		end
 	end
 	if GameTooltip_UnitColor then

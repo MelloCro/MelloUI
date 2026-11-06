@@ -1048,6 +1048,13 @@ RD.LAYOUT_KEYS = { width = true, height = true, spacing = true, raidSpacing = tr
 	partyGrowth = true, partySort = true, raidGroupBy = true, raidFlow = true, raidPerLine = true, raidGap = true,
 	showPlayer = true, solo = true }
 
+-- (2.1.9: a colour picked on Look > Colours)
+MelloUI:On("colours", function()
+	if M.isEnabled and ns.Headers then
+		ns.Headers:Repaint()
+	end
+end, "Group Frames: the picked colours")
+
 function M:OnSettingChanged(key, _, db)
 	self.db = db
 	if key == "hover" then

@@ -3503,12 +3503,7 @@ local function ClassHex(classFile)
 	if not Known(classFile) then
 		return nil
 	end
-	local color = C_ClassColor and C_ClassColor.GetClassColor and C_ClassColor.GetClassColor(classFile)
-		or (RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile])
-	if color and color.GenerateHexColor then
-		return color:GenerateHexColor()
-	end
-	return color and color.colorStr or nil
+	return MelloUI.Colours.ClassHex(classFile)
 end
 
 local function ClassFileFromLocalized(localized)

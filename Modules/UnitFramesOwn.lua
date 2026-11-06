@@ -1236,7 +1236,12 @@ function P.PowerType(f)
 	token = okT and Text(token) or nil
 	local colours = rawget(_G, "PowerBarColor")
 	local info = token and type(colours) == "table" and colours[token] or nil
-	if type(info) == "table" and info.atlasElementName then
+	-- (2.1.9: a colour picked on Look > Colours, on the game's colourable fill)
+	local pr, pg, pb = MelloUI.Colours.PowerPicked(token)
+	if pr then
+		mb:SetStatusBarTexture(ART.mana .. "-Status")
+		mb:SetStatusBarColor(pr, pg, pb)
+	elseif type(info) == "table" and info.atlasElementName then
 		mb:SetStatusBarTexture("UI-HUD-UnitFrame-Player-PortraitOn-Bar-" .. info.atlasElementName)
 		mb:SetStatusBarColor(1, 1, 1)
 	elseif type(info) == "table" and info.atlas then
@@ -1545,6 +1550,13 @@ function P.Art(f)
 	U.Notify("PlayerFrame_UpdateArt", f)
 	U.Notify("PlayerFrame_UpdatePlayerNameTextAnchor")
 end
+
+MelloUI:On("colours", function()
+	local f = U.own.player
+	if f then
+		P.PowerType(f)
+	end
+end, "Unit Frames: your power's colour")
 
 function P.Update(f)
 	f = f or P.frame

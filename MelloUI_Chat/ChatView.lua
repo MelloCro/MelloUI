@@ -280,9 +280,8 @@ local function ClassColour(guid)
 	end
 	local ok, _, class = pcall(GetPlayerInfoByGUID, guid)
 	class = ok and Plain(class)
-	local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-	if c then
-		return c.r, c.g, c.b
+	if class then
+		return MelloUI.Colours.Class(class)
 	end
 	return nil
 end

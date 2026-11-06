@@ -6,6 +6,29 @@ if not (Lang and Lang:Wants("ruRU")) then
 	return
 end
 Lang:Add("ruRU", {
+	-- Colours
+	["Colours"] = "Цвета", -- draft
+	["Your own colours for the classes, the powers and NPC standings."] = "Ваши собственные цвета для классов, ресурсов и отношения НИП.", -- draft
+	["Warrior"] = "Воин", -- draft
+	["This class's colour wherever MelloUI shows one: health bars in class colours, party and raid frames, chat, tooltips and the damage meter. The game's own windows keep the game's."] = "Цвет этого класса везде, где MelloUI его показывает: полосы здоровья в цветах классов, рамки группы и рейда, чат, подсказки и счётчик урона. Окна самой игры сохраняют свои цвета.", -- draft
+	["Paladin"] = "Паладин", -- draft
+	["Priest"] = "Жрец", -- draft
+	["Shaman"] = "Шаман", -- draft
+	["Druid"] = "Друид", -- draft
+	["Rogue"] = "Разбойник", -- draft
+	["Mage"] = "Маг", -- draft
+	["Warlock"] = "Чернокнижник", -- draft
+	["Hunter"] = "Охотник", -- draft
+	["Mana"] = "Мана", -- draft
+	["This power's colour on MelloUI's player, target and focus frames, party and raid frames and the Personal Display."] = "Цвет этого ресурса на рамках игрока, цели и фокуса MelloUI, рамках группы и рейда и на личном дисплее.", -- draft
+	["Rage"] = "Ярость", -- draft
+	["Energy"] = "Энергия", -- draft
+	["Focus"] = "Фокус", -- draft
+	["Hostile"] = "Враждебность", -- draft
+	["An NPC's health bar in this standing, with Health Bar Colour on Class (players) / reaction (NPCs)."] = "Полоса здоровья НИП с этим отношением, если для цвета полосы здоровья выбрано: класс (игроки) / реакция (НИП).", -- draft
+	["Unfriendly"] = "Неприязнь", -- draft
+	["Neutral"] = "Равнодушие", -- draft
+	["Friendly"] = "Дружелюбие", -- draft
 	-- UIModifications
 	["UI Modifications"] = "Изменения интерфейса", -- draft
 	["The painted reskin and most of MelloUI's interface changes: fonts, Dark Mode, chat, tooltips, buffs, bar textures and more."] = "Рисованный рескин и большинство изменений интерфейса от MelloUI: шрифты, тёмный режим, чат, подсказки, эффекты, текстуры полос и не только.", -- draft
@@ -1993,6 +2016,7 @@ Lang:Add("ruRU", {
 	["Quests and travel"] = "Задания и путешествия", -- draft
 	["Quality of life"] = "Удобство", -- draft
 	["Bars 1-8, stance, pet, possess, totem"] = "Панели 1–8 и прочие", -- draft
+	["Backdrops And Shadows"] = "Подложки и тени", -- draft
 	["Button"] = "Кнопка", -- draft
 	["Cooldown timer"] = "Таймер восстановления", -- draft
 	["End caps"] = "Края", -- draft
@@ -2074,7 +2098,6 @@ Lang:Add("ruRU", {
 	["Portrait"] = "Портрет", -- draft
 	["Your target's frame (and its target's)"] = "Рамка вашей цели (и её цели)", -- draft
 	["Your focus's frame"] = "Рамка вашего фокуса", -- draft
-	["Focus"] = "Фокус", -- draft
 	["Your pet's frame"] = "Рамка вашего питомца", -- draft
 	["Pet"] = "Питомец", -- draft
 	["Your buffs and debuffs"] = "Ваши положительные и отрицательные эффекты", -- draft
@@ -2101,7 +2124,6 @@ Lang:Add("ruRU", {
 	["Messages"] = "Сообщения", -- draft
 	["Chat, Map & More"] = "Чат, карта и другое", -- draft
 	["Textures"] = "Текстуры", -- draft
-	["Colours"] = "Цвета", -- draft
 	["Painted Skins"] = "Рисованные облики", -- draft
 	["Borders"] = "Рамки", -- draft
 	["Arrow & Marker"] = "Стрелка и маркер", -- draft
@@ -2125,6 +2147,9 @@ Lang:Add("ruRU", {
 	["Only with My Colour"] = "Только с «Моим цветом»", -- draft
 	["Only with By health"] = "Только с «По здоровью»", -- draft
 	["Not with the Green (Blizzard) colour"] = "Не с цветом «Зелёный (Blizzard)»", -- draft
+	["Power Colours"] = "Цвета ресурсов", -- draft
+	["Only with Class / reaction"] = "Только с вариантом «класс / реакция»", -- draft
+	["NPC Colours"] = "Цвета НИП", -- draft
 	["Only for the game's tracker (MelloUI's Quest Tracker off)"] = "Только для отслеживания игры (отслеживание заданий MelloUI выкл.)", -- draft
 	["Painted Skin"] = "Рисованный облик", -- draft
 	["Not with the whole window on parchment"] = "Не при всём окне на пергаменте", -- draft
@@ -2182,6 +2207,7 @@ Lang:Add("ruRU", {
 	["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "Только с «Минимальным» видом или рисованным чатом", -- draft
 	["Chat Background"] = "Фон чата", -- draft
 	["Only without the painted chat, or with the Minimal Chat View"] = "Только без рисованного чата или с «Минимальным» видом чата", -- draft
+	["Backgrounds"] = "Фоны", -- draft
 	["Only without the painted chat"] = "Только без рисованного чата", -- draft
 	["Only with the game's chat windows (not the painted chat or the Minimal Chat View)"] = "Только с окнами чата игры (не с рисованным чатом и не с «Минимальным» видом чата)", -- draft
 	["Not with the Minimal Chat View"] = "Не с «Минимальным» видом чата", -- draft
@@ -2237,6 +2263,8 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Новое: в разделе «Облик > Цвета» есть цветовой круг для каждого класса, каждого ресурса и отношения НИП.", -- draft
+	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Панели: переключатели тени за панелями команд теперь находятся в разделе «Подложки и тени», и поиск их находит.", -- draft
 	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Исправлено: настройка «Имена» теперь работает в минимальном виде чата и в окне шёпота.", -- draft
 	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "Исправлено: карта MelloUI больше не оставляет «?» задания после его сдачи; её метки следуют за журналом заданий.", -- draft
 	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "Список заданий соответствует живому серверу: 2 новых задания, исправлены уровни у 52 заданий, Затонувший город получил название.", -- draft
@@ -2244,9 +2272,6 @@ Lang:Add("ruRU", {
 	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "Рамки юнитов, индикаторы здоровья и панели действий: каждый переключатель теперь отключает всё, что MelloUI там показывает, остальное продолжает работать.", -- draft
 	["New: an Action Bars switch on the Bars page."] = "Новое: переключатель панелей действий на странице «Панели».", -- draft
 	["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Исправлено: метки квестодателей на карте MelloUI больше не выглядят растянутыми жёлтыми пятнами.", -- draft
-	["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Исправлено: на рамках Oldschool полоса ресурса держит небольшой зазор под полосой здоровья, а у цели она выровнена по ней.", -- draft
-	["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Исправлено: вкладки рюкзака и сумки для реагентов рядом с окном сумок снова показывают свои значки.", -- draft
-	["The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once."] = "Карта: квестодатели, сдача заданий и цели Questie показаны значками MelloUI; задание, которое карта уже показывает, появляется лишь один раз.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -2894,6 +2919,8 @@ Lang:Add("ruRU", {
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "Исправлено: после изучения новой стойки или облика бой мог падать до нескольких кадров в секунду до перезапуска.", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "Исправлено: ошибка в бою из-за больших восстановлений Личной панели.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "Исправлено: щелчки по «Незаметности», стойкам, формам и кнопкам питомца; шрифт чата в «Минимальном» виде; целые галочки облика «По умолчанию»; подписи рядом с ползунками.", -- draft
+-- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Исправлено: на рамках Oldschool полоса ресурса держит небольшой зазор под полосой здоровья, а у цели она выровнена по ней.", -- draft
+-- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Исправлено: вкладки рюкзака и сумки для реагентов рядом с окном сумок снова показывают свои значки.", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "Исправлено: мировой маркер на шаге гида рядом с вами; классовые задания в списке заданий; качество предметов и повторяющиеся боссы в «Сведениях о подземельях».", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "Исправлено: установщик больше не называет экран слишком маленьким, когда не помещаются ваши собственные настройки.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "Для разбойника и друида в облике кошки: пять приёмов серии в ряд по верхнему краю полосы здоровья вашей цели, пустые, пока вы их не накопите. Имя немного поднимается, чтобы освободить место.", -- draft
@@ -3352,6 +3379,7 @@ Lang:Add("ruRU", {
 -- stale: ["The map in the painted ring."] = "Карта в рисованном кольце.", -- draft
 -- stale: ["The map zoomed out: capitals, docks with their boat and zeppelin trails, dungeons, raids and your quests."] = "Карта при полном отдалении: столицы, пристани с путями кораблей и дирижаблей, подземелья, рейды и ваши задания.", -- draft
 -- stale: ["The map zoomed out: each capital in its own emblem, boat, zeppelin and airship trails, dungeons, raids, your quests, and Zephras Isle."] = "Карта при полном отдалении: у каждой столицы свой герб, пути кораблей, дирижаблей и воздушных кораблей, подземелья, рейды, ваши задания и Zephras Isle.", -- draft
+-- stale: ["The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once."] = "Карта: квестодатели, сдача заданий и цели Questie показаны значками MelloUI; задание, которое карта уже показывает, появляется лишь один раз.", -- draft
 -- stale: ["The map: capitals' emblems, boat trails, Zephras Isle, dungeon maps; your quests, layers and Dungeon Info beside it, folded away with a click."] = "Карта: эмблемы столиц, пути кораблей, Zephras Isle, карты подземелий; ваши задания, слои и «Сведения о подземельях» рядом, сворачиваются одним щелчком.", -- draft
 -- stale: ["The mechanism engaging when a quest is turned in."] = "Срабатывающий механизм, когда задание сдано.", -- draft
 -- stale: ["The medallion's size above the name."] = "Размер медальона над именем.", -- draft

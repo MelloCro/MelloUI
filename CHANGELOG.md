@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.9
+
+- New: Look > Colours has a colour wheel for every class, each power (mana, rage, energy, focus) and NPC standings. Your colours show on MelloUI's frames and bars, in chat, tooltips and the damage meter; the game's own windows keep theirs.
+- Bars > Action Bars: the switches for the shadow behind your bars now sit under a heading that says so, Backdrops And Shadows, and the search finds them by "shadow" too.
+
 ## 2.1.8
 
 - Fixed: the Names setting (such as Name and initial) did nothing in the Minimal chat view and the whisper window. They now show every player's name in the form you picked, the lines already there too.

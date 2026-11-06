@@ -5,8 +5,8 @@
 -- those coordinates and places a mark on that spot, that could work"), the
 -- others since 2026-10-21 (the user: "add compatibility like we did with
 -- restedxp for ... Follow the Arrow, TUGs Leveling Guidelime Guide ... and some
--- other"), Polestar since 2.1.0: one core for every guide, one reader per
--- addon. While a guide runs:
+-- other"), Polestar since 2.1.0, Zygor since 2.1.9: one core for every guide, one
+-- reader per addon. While a guide runs:
 --   * its step's spot gets the game's map pin, tracked, so the route and the
 --     World Marker lead there (Guide.Step, read by Route's ReadWaypoint on the
 --     pin's USER_WAYPOINT_UPDATED). A pin of the player's own is never moved,
@@ -1190,6 +1190,255 @@ do
 	Guide.readers[#Guide.readers + 1] = polestar
 end
 
+-- Zygor Guides (2.1.9; the user, 2026-11-06, a friend's screenshot: its window and arrow beside the Quest Tracker: "should
+-- be integrated into quest tracker exactly like restedxp is"). A paid addon with no copy here to read: its shape from its
+-- own forum's error dumps and memory of its older versions (ZGV: CurrentGuide, CurrentStep, a step's goals, a goal's
+-- GetText and IsComplete, SkipStep): NOT YET SEEN ON THE REAL ADDON. /route zygor lists what is really there. Its frames
+-- are veiled only while its lines read: a Zygor of another shape keeps its own window and nothing is lost.
+do
+	local zygor = { key = "zygor", name = "Zygor", section = "Zygor Guide" }
+
+	local function Z()
+		local t = rawget(_G, "ZGV") or rawget(_G, "ZygorGuidesViewer")
+		return type(t) == "table" and t or nil
+	end
+
+	local function Goals(z)
+		local step = z and z.CurrentStep
+		local goals = type(step) == "table" and step.goals
+		return type(goals) == "table" and goals or nil, step
+	end
+
+	-- a goal's line as its window shows it, in the tracker's own look: no colour codes or pictures
+	local function Clean(s)
+		s = Text(s)
+		if not s then
+			return nil
+		end
+		s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|n", " ")
+		s = s:gsub("^%s+", ""):gsub("%s+$", "")
+		return s ~= "" and s or nil
+	end
+
+	local function Ask(goal, method, ...)
+		if type(goal) ~= "table" or type(goal[method]) ~= "function" then
+			return nil
+		end
+		return Pcall(goal[method], goal, ...)
+	end
+
+	local function GoalDone(goal)
+		return Ask(goal, "IsComplete") == true
+	end
+
+	-- a goal's place, on the map's 0..1 (Zygor's own may be 0..100)
+	local function Place(t)
+		if type(t) ~= "table" then
+			return nil
+		end
+		local m, x, y = tonumber(Plain(t.map or t.m)), Finite(t.x), Finite(t.y)
+		if not (m and x and y) then
+			return nil
+		end
+		if x > 1 or y > 1 then
+			x, y = x / 100, y / 100
+		end
+		return m, x, y
+	end
+
+	-- its update: several of its own calls, whichever this version has; each a quarter second later, once (they can run
+	-- many times a second)
+	function zygor.Hook(changed)
+		local z = Z()
+		if not z then
+			return false
+		end
+		local due = false
+		local function Soon()
+			if not due then
+				due = true
+				C_Timer.After(0.25, function()
+					due = false
+					changed()
+				end)
+			end
+		end
+		local hooked = false
+		for _, name in ipairs({ "FocusStep", "UpdateFrame", "TryToCompleteStep", "SetGuide" }) do
+			if type(z[name]) == "function" then
+				hooksecurefunc(z, name, Soon)
+				hooked = true
+			end
+		end
+		return hooked
+	end
+
+	-- the first open goal with a place, else its arrow's waypoint
+	function zygor.Point()
+		local z = Z()
+		local goals = Goals(z)
+		for _, goal in ipairs(goals or {}) do
+			if not GoalDone(goal) then
+				local m, x, y = Place(goal)
+				if m then
+					return m, x, y
+				end
+			end
+		end
+		local pointer = z and z.Pointer
+		local arrow = type(pointer) == "table" and pointer.ArrowFrame
+		return Place(type(arrow) == "table" and arrow.waypoint or nil)
+	end
+
+	function zygor.Steps()
+		local z = Z()
+		local goals, step = Goals(z)
+		if not goals then
+			return nil
+		end
+		local lines = {}
+		for _, goal in ipairs(goals) do
+			if Ask(goal, "IsVisible") ~= false then
+				local text = Clean(Ask(goal, "GetText", true))
+				if text then
+					lines[#lines + 1] = { text = text, done = GoalDone(goal) }
+				end
+			end
+		end
+		if #lines == 0 then
+			return nil
+		end
+		if type(z.SkipStep) == "function" then
+			lines[#lines + 1] = { text = SKIP, done = false, box = true, skip = true, Toggle = function(skip)
+				if skip then
+					pcall(z.SkipStep, z)
+				end
+			end }
+		end
+		local guide = z.CurrentGuide
+		local name = type(guide) == "table" and (Text(guide.title_short) or Text(guide.title)) or nil
+		name = name and (name:match("([^\\/]+)$") or name) or "Zygor"
+		local n = tonumber(Plain(z.CurrentStepNum)) or tonumber(Plain(step.num))
+		-- (the cog: its guide menu at its own place, its settings: its window is veiled)
+		local menu = z.GuideMenu
+		local pick = type(menu) == "table" and type(menu.Show) == "function" and function() pcall(menu.Show, menu) end or nil
+		local settings = type(z.OpenOptions) == "function" and function() pcall(z.OpenOptions, z) end or nil
+		return { title = name .. (n and (" - step " .. n) or ""), lines = lines,
+			cog = (pick or settings) and { Left = pick or settings, Right = settings or pick, tip = "Zygor Guides",
+				hint = "Click: its guides  -  Right-click: its settings" } or nil }
+	end
+
+	-- only while its lines read (zygor.steps: Read's): no step in the tracker, its own window stays
+	function zygor.Frames()
+		if not zygor.steps then
+			return {}
+		end
+		local z = Z()
+		local pointer = z and z.Pointer
+		return List(z and z.Frame, z and z.MasterFrame, rawget(_G, "ZygorGuidesViewerFrame"),
+			type(pointer) == "table" and pointer.ArrowFrame or nil, type(pointer) == "table" and pointer.arrow or nil)
+	end
+
+	-- /route zygor (2.1.9): what is really there, in the copy window, for a reader written without the addon at hand
+	function Guide.DumpZygor()
+		MelloUI:ClearLog()
+		local function Say(...)
+			MelloUI:Print(...)
+		end
+		local function Show(v)
+			if MelloUI.Safe.IsSecret(v) then
+				return "<secret>"
+			end
+			local kind = type(v)
+			if kind == "table" then
+				local okN, name = pcall(function() return v.GetObjectType and v:GetObjectType() end)
+				return okN and name and ("frame " .. tostring(name)) or "table"
+			end
+			return kind == "function" and "function" or tostring(v)
+		end
+		local function Fields(label, t, limit)
+			if type(t) ~= "table" then
+				Say("%s: %s", label, Show(t))
+				return
+			end
+			local keys = {}
+			for k in pairs(t) do
+				if type(k) == "string" then
+					keys[#keys + 1] = k
+				end
+			end
+			table.sort(keys)
+			local parts = {}
+			for i = 1, math.min(#keys, limit or 60) do
+				local okV, v = pcall(function() return t[keys[i]] end)
+				parts[#parts + 1] = keys[i] .. "=" .. (okV and Show(v) or "<error>")
+			end
+			Say("%s (%d keys): %s", label, #keys, table.concat(parts, "  "))
+		end
+		local CA = rawget(_G, "C_AddOns")
+		for i = 1, tonumber(Pcall(CA and CA.GetNumAddOns)) or 0 do
+			local name = Text(Pcall(CA.GetAddOnInfo, i))
+			if name and name:find("Zygor") then
+				Say("addon: %s, loaded %s", name, tostring(Pcall(CA.IsAddOnLoaded, name)))
+			end
+		end
+		local z = Z()
+		Say("ZGV %s, ZygorGuidesViewer %s", type(rawget(_G, "ZGV")), type(rawget(_G, "ZygorGuidesViewer")))
+		Say("reader: hooked %s, runs %s, followed %s, lines %s, spot %s %s %s", tostring(zygor.hooked), tostring(zygor.runs),
+			tostring(Guide.active == zygor), tostring(zygor.steps and #zygor.steps.lines), tostring(zygor.mapID),
+			tostring(zygor.x), tostring(zygor.y))
+		if z then
+			for _, name in ipairs({ "FocusStep", "UpdateFrame", "TryToCompleteStep", "SetGuide", "SkipStep", "PreviousStep",
+				"OpenOptions", "RegisterMessage", "SendMessage" }) do
+				Say("method %s: %s", name, type(z[name]))
+			end
+			-- its frames and its big tables by name (it holds thousands of keys)
+			local top = {}
+			for k, v in pairs(z) do
+				if type(k) == "string" and (k:find("Frame") or k:find("Pointer") or k:find("Menu") or k:find("Guide")
+					or k:find("Step") or k:find("Arrow") or k:find("Action") or k:find("Item")) then
+					top[k] = v
+				end
+			end
+			Fields("ZGV", top, 80)
+			Fields("CurrentGuide", z.CurrentGuide, 40)
+			local goals, step = Goals(z)
+			Fields("CurrentStep", step, 40)
+			for i, goal in ipairs(goals or {}) do
+				if i > 8 then
+					break
+				end
+				Fields("goal " .. i, goal, 40)
+				Say("goal %d: text [%s], complete %s, visible %s", i, tostring(Ask(goal, "GetText", true)),
+					tostring(Ask(goal, "IsComplete")), tostring(Ask(goal, "IsVisible")))
+			end
+			local pointer = z.Pointer
+			Fields("Pointer", pointer, 60)
+			if type(pointer) == "table" then
+				Fields("Pointer.ArrowFrame", pointer.ArrowFrame, 40)
+				Fields("Pointer.ArrowFrame.waypoint", type(pointer.ArrowFrame) == "table" and pointer.ArrowFrame.waypoint or nil, 30)
+			end
+			Fields("GuideMenu", z.GuideMenu, 30)
+		end
+		-- its named frames on the screen
+		local enum, count = rawget(_G, "EnumerateFrames"), 0
+		local f = type(enum) == "function" and enum() or nil
+		while f and count < 40 do
+			local okN, name = pcall(f.GetName, f)
+			if okN and type(name) == "string" and (name:find("^Zygor") or name:find("^ZGV")) then
+				count = count + 1
+				local okP, parent = pcall(f.GetParent, f)
+				local okPN, pn = pcall(function() return parent and parent:GetName() end)
+				Say("frame %s: shown %s, parent %s", name, tostring(Pcall(f.IsShown, f)), tostring(okP and okPN and pn))
+			end
+			f = enum(f)
+		end
+		MelloUI:ShowLog("Zygor Guides")
+	end
+
+	Guide.readers[#Guide.readers + 1] = zygor
+end
+
 -- TomTom: its arrow's waypoint (SetCrazyArrow's uid: uiMapID, x, y in 0..1), followed whoever set it (a /way, a
 -- quest addon, Guidelime with its "Use TomTom arrow"); an arrow only, no steps; its waypoint gone (arrived, removed),
 -- the pin laid for it goes too (clears)
@@ -1269,6 +1518,7 @@ do
 		{ "Guidelime", "Guidelime" },
 		{ "ForeverWisp", "ForeverWisp" },
 		{ "Polestar", "Polestar" },
+		{ "ZygorGuidesViewer", "Zygor Guides" },
 	}
 
 	local function AddOns()

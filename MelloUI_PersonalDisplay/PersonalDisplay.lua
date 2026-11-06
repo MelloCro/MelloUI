@@ -235,22 +235,15 @@ local function Paint(bar, key)
 	end
 end
 
--- the health bar's colour: your class's with Class Colours (C_ClassColor, else the plain RAID_CLASS_COLORS, as the
--- group frames read it), else the meaning green
+-- the health bar's colour: your class's with Class Colours (MelloUI.Colours, as the group frames read it), else the
+-- meaning green
 local function HealthRGB()
 	if Db().classColour then
 		local ok, _, class = pcall(UnitClass, "player")
 		if ok and class ~= nil then
-			local CC = rawget(_G, "C_ClassColor")
-			if type(CC) == "table" and type(CC.GetClassColor) == "function" then
-				local okC, c = pcall(CC.GetClassColor, class)
-				if okC and c and c.GetRGB then
-					return c:GetRGB()
-				end
-			end
-			local t = not Secret(class) and rawget(_G, "RAID_CLASS_COLORS") and RAID_CLASS_COLORS[class]
-			if t then
-				return t.r, t.g, t.b
+			local r, g, b = MelloUI.Colours.Class(class)
+			if type(r) == "number" then
+				return r, g, b
 			end
 		end
 	end
@@ -939,15 +932,14 @@ local function Power()
 		return
 	end
 	local okT, _, token = pcall(UnitPowerType, "player")
-	local colours = rawget(_G, "PowerBarColor")
 	local plain = okT and not Secret(token) and type(token) == "string" and token or nil
 	-- (another power -- a druid's form --: its fills set at once, no cost or gain shown)
 	local shifted = plain ~= S.powerToken
 	S.powerToken = plain
-	local c = plain and type(colours) == "table" and colours[plain]
-	if c and c.r then
-		ui.power.bar:SetStatusBarColor(c.r, c.g, c.b)
-		ui.power.lead:SetStatusBarColor(Motion.Pale(c.r, c.g, c.b))
+	local cr, cg, cb = MelloUI.Colours.Power(plain)
+	if cr then
+		ui.power.bar:SetStatusBarColor(cr, cg, cb)
+		ui.power.lead:SetStatusBarColor(Motion.Pale(cr, cg, cb))
 	else
 		Paint(ui.power.bar, "combatResource")
 		local m = MelloUI.Meaning.combatResource
@@ -4862,6 +4854,19 @@ function M:OnDisable()
 		ui.column.holder:Hide()
 	end
 end
+
+-- (2.1.9: a colour picked on Look > Colours: your class's on the health bar, your power's)
+MelloUI:On("colours", function()
+	local ui = S.ui
+	if not (ui and M.isEnabled) then
+		return
+	end
+	S.lowCurves = nil
+	Motion.Paint()
+	PaintHealth(ui.health.bar)
+	S.lowWas = nil
+	Refresh()
+end, "Personal Display: the picked colours")
 
 function M:OnSettingChanged(key, _, db)
 	self.db = db or self.db

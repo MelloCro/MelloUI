@@ -120,6 +120,7 @@ for _, e in ipairs(ELEMENTS) do
 	-- (0.20.2, the user: "Checkbox on, the Bar gets its backdrop and merges seamlessly, Checkbox off, no backdrop and
 	-- no merging")
 	options[#options + 1] = { type = "toggle", key = e.key, name = e.name, new = e.new,
+		search = "shadows",   -- (2.1.9: the word players look for it by)
 		desc = "A backdrop around " .. e.what .. ". Neighbours with a backdrop share one." }
 end
 

@@ -6,6 +6,29 @@ if not (Lang and Lang:Wants("koKR")) then
 	return
 end
 Lang:Add("koKR", {
+	-- Colours
+	["Colours"] = "색", -- draft
+	["Your own colours for the classes, the powers and NPC standings."] = "직업, 자원, NPC 평판에 쓸 나만의 색입니다.", -- draft
+	["Warrior"] = "전사", -- draft
+	["This class's colour wherever MelloUI shows one: health bars in class colours, party and raid frames, chat, tooltips and the damage meter. The game's own windows keep the game's."] = "MelloUI가 직업 색을 표시하는 모든 곳에 쓰이는 이 직업의 색입니다: 직업 색 생명력 막대, 파티 및 공격대 프레임, 대화, 툴팁, 피해 측정기. 게임 자체 창은 게임의 색을 유지합니다.", -- draft
+	["Paladin"] = "성기사", -- draft
+	["Priest"] = "사제", -- draft
+	["Shaman"] = "주술사", -- draft
+	["Druid"] = "드루이드", -- draft
+	["Rogue"] = "도적", -- draft
+	["Mage"] = "마법사", -- draft
+	["Warlock"] = "흑마법사", -- draft
+	["Hunter"] = "사냥꾼", -- draft
+	["Mana"] = "마나", -- draft
+	["This power's colour on MelloUI's player, target and focus frames, party and raid frames and the Personal Display."] = "MelloUI의 플레이어, 대상, 주시 대상 프레임, 파티 및 공격대 프레임과 개인 표시기에 쓰이는 이 자원의 색입니다.", -- draft
+	["Rage"] = "분노", -- draft
+	["Energy"] = "기력", -- draft
+	["Focus"] = "주시 대상", -- draft
+	["Hostile"] = "적대적", -- draft
+	["An NPC's health bar in this standing, with Health Bar Colour on Class (players) / reaction (NPCs)."] = "생명력 막대 색상이 직업(플레이어) / 반응(NPC)일 때 이 평판인 NPC의 생명력 막대입니다.", -- draft
+	["Unfriendly"] = "비우호적", -- draft
+	["Neutral"] = "중립적", -- draft
+	["Friendly"] = "우호적", -- draft
 	-- UIModifications
 	["UI Modifications"] = "UI 수정", -- draft
 	["The painted reskin and most of MelloUI's interface changes: fonts, Dark Mode, chat, tooltips, buffs, bar textures and more."] = "그림 리스킨과 MelloUI의 인터페이스 변경 대부분: 글꼴, 다크 모드, 대화, 툴팁, 강화 효과, 바 텍스처 등.", -- draft
@@ -1874,7 +1897,7 @@ Lang:Add("koKR", {
 	["Health and power percent, spell names and times."] = "생명력과 자원 백분율, 주문 이름과 시간.", -- draft
 	["Text Font"] = "글자 글꼴", -- draft
 	["The font of the display's text. Shared: the interface font."] = "개인 화면 글자 글꼴. 공유: 인터페이스 글꼴.", -- draft
-	["Class Colours"] = "직업 색상", -- draft
+	["Class Colours"] = "직업 색", -- draft
 	["The health bar in your class colour instead of green."] = "생명력 바를 초록 대신 직업 색으로.", -- draft
 	["How wide the bars are."] = "바 너비.", -- draft
 	["How tall the health bar is; the others follow."] = "생명력 바 높이. 다른 바가 따라갑니다.", -- draft
@@ -1993,6 +2016,7 @@ Lang:Add("koKR", {
 	["Quests and travel"] = "퀘스트와 이동", -- draft
 	["Quality of life"] = "편의 기능", -- draft
 	["Bars 1-8, stance, pet, possess, totem"] = "바 1-8, 태세, 소환수 등", -- draft
+	["Backdrops And Shadows"] = "배경판과 그림자", -- draft
 	["Button"] = "버튼", -- draft
 	["Cooldown timer"] = "재사용 대기시간 타이머", -- draft
 	["End caps"] = "끝 장식", -- draft
@@ -2074,7 +2098,6 @@ Lang:Add("koKR", {
 	["Portrait"] = "초상화", -- draft
 	["Your target's frame (and its target's)"] = "대상 창(과 대상의 대상)", -- draft
 	["Your focus's frame"] = "주시 대상 창", -- draft
-	["Focus"] = "주시 대상", -- draft
 	["Your pet's frame"] = "소환수 창", -- draft
 	["Pet"] = "소환수", -- draft
 	["Your buffs and debuffs"] = "내 강화 및 약화 효과", -- draft
@@ -2101,7 +2124,6 @@ Lang:Add("koKR", {
 	["Messages"] = "메시지", -- draft
 	["Chat, Map & More"] = "대화, 지도 등", -- draft
 	["Textures"] = "텍스처", -- draft
-	["Colours"] = "색", -- draft
 	["Painted Skins"] = "페인팅 스킨", -- draft
 	["Borders"] = "테두리", -- draft
 	["Arrow & Marker"] = "화살표와 마커", -- draft
@@ -2125,6 +2147,9 @@ Lang:Add("koKR", {
 	["Only with My Colour"] = "내 색일 때만", -- draft
 	["Only with By health"] = "생명력에 따라일 때만", -- draft
 	["Not with the Green (Blizzard) colour"] = "녹색(블리자드) 색에서는 아님", -- draft
+	["Power Colours"] = "자원 색", -- draft
+	["Only with Class / reaction"] = "직업 / 반응일 때만", -- draft
+	["NPC Colours"] = "NPC 색", -- draft
 	["Only for the game's tracker (MelloUI's Quest Tracker off)"] = "게임 추적기에서만(MelloUI 퀘스트 추적기 꺼짐)", -- draft
 	["Painted Skin"] = "페인팅 스킨", -- draft
 	["Not with the whole window on parchment"] = "창 전체가 양피지일 때는 아님", -- draft
@@ -2182,6 +2207,7 @@ Lang:Add("koKR", {
 	["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "최소 대화 보기나 페인팅 대화에서만", -- draft
 	["Chat Background"] = "대화 배경", -- draft
 	["Only without the painted chat, or with the Minimal Chat View"] = "페인팅 대화가 없거나 최소 대화 보기일 때만", -- draft
+	["Backgrounds"] = "배경", -- draft
 	["Only without the painted chat"] = "페인팅 대화가 없을 때만", -- draft
 	["Only with the game's chat windows (not the painted chat or the Minimal Chat View)"] = "게임 대화 창에서만 (페인팅 대화나 최소 대화 보기에서는 아님)", -- draft
 	["Not with the Minimal Chat View"] = "최소 대화 보기에서는 아님", -- draft
@@ -2237,6 +2263,8 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "새 기능: 외형 > 색에 모든 직업, 자원, NPC 평판을 위한 색상환이 생겼습니다.", -- draft
+	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "바: 행동 단축바 뒤 그림자 스위치가 이제 배경판과 그림자 아래에 있으며, 검색으로도 찾을 수 있습니다.", -- draft
 	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "수정: 이름 설정이 이제 최소 대화창 보기와 귓속말 창에서도 적용됩니다.", -- draft
 	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "수정: MelloUI 지도에서 퀘스트를 완료한 뒤에도 \"?\"가 남아 있지 않습니다. 표시가 퀘스트 목록을 따릅니다.", -- draft
 	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "퀘스트 목록이 라이브 서버와 일치합니다: 새 퀘스트 2개, 퀘스트 52개의 레벨 수정, 가라앉은 도시 이름 표시.", -- draft
@@ -2244,9 +2272,6 @@ Lang:Add("koKR", {
 	["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "유닛 프레임, 이름표, 행동 단축바: 이제 각 스위치가 MelloUI가 그곳에 보여 주는 모든 것을 끄고, 나머지는 계속 작동합니다.", -- draft
 	["New: an Action Bars switch on the Bars page."] = "새 기능: 바 페이지의 행동 단축바 스위치.", -- draft
 	["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "수정: MelloUI 지도의 퀘스트 제공자 표시가 더 이상 늘어난 노란 얼룩으로 보이지 않습니다.", -- draft
-	["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "수정: Oldschool 프레임에서 자원 바가 생명력 바 아래에 작은 간격을 두며, 대상의 자원 바도 생명력 바에 맞춰 정렬됩니다.", -- draft
-	["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "수정: 가방 창 옆의 배낭과 재료 가방 탭에 다시 아이콘이 표시됩니다.", -- draft
-	["The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once."] = "지도: Questie의 퀘스트 제공자, 완료 지점, 목표가 MelloUI의 아이콘으로 표시되며, 지도에 이미 표시된 퀘스트는 한 번만 나타납니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2894,6 +2919,8 @@ Lang:Add("koKR", {
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "수정: 새 태세나 변신을 배운 뒤 재시작 전까지 전투 프레임이 크게 떨어질 수 있던 문제.", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "수정: 개인 화면의 큰 재사용 대기시간으로 인한 전투 중 오류.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "수정: 은신, 태세, 변신, 소환수 버튼 클릭. 최소 대화 보기의 대화 글꼴. 기본 스킨의 온전한 체크 표시. 슬라이더 옆 이름표.", -- draft
+-- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "수정: Oldschool 프레임에서 자원 바가 생명력 바 아래에 작은 간격을 두며, 대상의 자원 바도 생명력 바에 맞춰 정렬됩니다.", -- draft
+-- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "수정: 가방 창 옆의 배낭과 재료 가방 탭에 다시 아이콘이 표시됩니다.", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "수정: 바로 옆에 있는 가이드 단계의 월드 마커, 퀘스트 리스트의 직업 퀘스트, 던전 정보의 아이템 품질과 반복되는 우두머리.", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "수정: 설치 마법사가 내 설정 일부가 맞지 않을 때 화면이 너무 작다고 하지 않습니다.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "도적과 표범 변신 드루이드: 대상 생명력 막대 위쪽 가장자리에 다섯 연계 점수를 한 줄로, 쌓기 전에는 비어 있습니다. 이름이 조금 올라가 자리를 만듭니다.", -- draft
@@ -3352,6 +3379,7 @@ Lang:Add("koKR", {
 -- stale: ["The map in the painted ring."] = "페인팅 고리 안의 지도.", -- draft
 -- stale: ["The map zoomed out: capitals, docks with their boat and zeppelin trails, dungeons, raids and your quests."] = "지도를 끝까지 축소하면: 수도, 배와 비행선 항로가 있는 선착장, 던전, 공격대, 그리고 내 퀘스트.", -- draft
 -- stale: ["The map zoomed out: each capital in its own emblem, boat, zeppelin and airship trails, dungeons, raids, your quests, and Zephras Isle."] = "지도를 끝까지 축소하면: 수도마다 고유한 문장, 배·비행선·비공정 항로, 던전, 공격대, 내 퀘스트, 그리고 Zephras Isle.", -- draft
+-- stale: ["The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once."] = "지도: Questie의 퀘스트 제공자, 완료 지점, 목표가 MelloUI의 아이콘으로 표시되며, 지도에 이미 표시된 퀘스트는 한 번만 나타납니다.", -- draft
 -- stale: ["The map: capitals' emblems, boat trails, Zephras Isle, dungeon maps; your quests, layers and Dungeon Info beside it, folded away with a click."] = "지도: 수도 문장, 배 항로, Zephras Isle, 던전 지도. 퀘스트, 레이어, 던전 정보가 옆에 있으며 클릭 한 번으로 접힙니다.", -- draft
 -- stale: ["The mechanism engaging when a quest is turned in."] = "퀘스트를 완료하면 장치가 맞물리는 소리.", -- draft
 -- stale: ["The medallion's size above the name."] = "이름 위 메달의 크기.", -- draft

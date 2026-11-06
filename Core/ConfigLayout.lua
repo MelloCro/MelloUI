@@ -254,6 +254,8 @@ L.pages = {
 			-- (`stage`: the bars' strips and the picked bar large, Modules/ActionButtons.lua's 'actionbar' kind --
 			-- the user's A; a strip is Which Bar, the bar the Layout rows set)
 			{ key = "actionbars", label = "Action Bars", line = "Bars 1-8, stance, pet, possess, totem",
+				-- (2.1.9: its Look holds the bars' backdrops alone: headed in the words players look for them by)
+				heads = { Look = { heading = "Backdrops And Shadows" } },
 				stage = { kind = "actionbar", pick = "bars" },
 				parts = { { key = "button", label = "Button", stage = "button" },
 				{ key = "cooldown", label = "Cooldown timer", stage = "cooldown", showIn = "cooldown" },
@@ -612,6 +614,17 @@ function L.Define(R, Link)
 		{ when = { key = "BarTextures.healthColor", notValue = "green", line = "Not with the Green (Blizzard) colour" } })
 	R("Look", "Colours", "Look", "BarTextures.executeRange")
 	R("Look", "Colours", "Look", "BarTextures.executeBelow")
+	-- (2.1.9; the user, 2026-11-06: a colour wheel for the classes, the powers and so on: MelloUI.Colours, Core.lua)
+	for _, class in ipairs({ "WARRIOR", "PALADIN", "PRIEST", "SHAMAN", "DRUID", "ROGUE", "MAGE", "WARLOCK", "HUNTER" }) do
+		R("Look", "Colours", "Look", "Colours.class" .. class, { card = "Class Colours" })
+	end
+	for _, power in ipairs({ "MANA", "RAGE", "ENERGY", "FOCUS" }) do
+		R("Look", "Colours", "Look", "Colours.power" .. power, { card = "Power Colours" })
+	end
+	for _, reaction in ipairs({ 2, 3, 4, 5 }) do
+		R("Look", "Colours", "Look", "Colours.reaction" .. reaction, { card = "NPC Colours",
+			when = { key = "BarTextures.healthColor", value = "reaction", line = "Only with Class / reaction" } })
+	end
 	R("Oldschool", "Parchment", "Look", "UIModifications.parchmentStyle")   -- (0.20.3: the look of every sheet and page)
 	R("Oldschool", "Parchment", "Look", "UIModifications.parchment_tracker", { when = GAME_TRACKER })
 	-- (the Quest Tracker's paper and the chat's: their rows on their own pages since the one look, links here -- the

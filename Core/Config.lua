@@ -174,6 +174,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.9", lines = {
+		"New: Look > Colours has a colour wheel for every class, each power and NPC standings.",
+		"Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them.",
+	} },
 	{ version = "2.1.8", lines = {
 		"Fixed: the Names setting now works in the Minimal chat view and the whisper window.",
 	} },
@@ -188,11 +192,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.5", lines = {
 		"Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs.",
-	} },
-	{ version = "2.1.4", lines = {
-		"Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it.",
-		"Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again.",
-		"The map: Questie's quest givers, turn-ins and objectives wear MelloUI's own icons; a quest the map shows already appears once.",
 	} },
 }
 local LINKS = {
@@ -1488,9 +1487,13 @@ do
 			end
 		end
 		if info.el then
+			-- (2.1.9; Tereith, Discord 2026-11-06: "can i remove the shadow?"; the user: "people have trouble finding this
+			-- option") an element's own word in a section's heading (`heads`): the section keeps its name and its place
+			local heads = info.el.heads
 			for _, sname in ipairs(SECTIONS) do
-				local s = { name = sname, rows = {}, links = {}, heading = info.el.label .. " · " .. sname, element = true,
-					headParts = { info.el.label, sname } }
+				local word = heads and heads[sname] and heads[sname].heading or sname
+				local s = { name = sname, rows = {}, links = {}, heading = info.el.label .. " · " .. word, element = true,
+					headParts = { info.el.label, word } }
 				t.sections[#t.sections + 1] = s
 				t.elSecOf[sname] = s
 				if not info.part then
@@ -3380,9 +3383,9 @@ local function MakeRow(sec, r)
 		row, control = W.CanvasRow(sec, sec.y, RowH(r, sec), opt.build, o)
 	elseif t == "colour" then
 		-- (0.20.0) a colour of the player's: a swatch, the wheel in a flyout
-		o.host = window
+		o.host, o.default = window, shape.mod and shape.mod.defaults and shape.mod.defaults[shape.key]
 		row, control = W.ColourRow(sec, sec.y, r.name, hint, desc, get, set, o)
-		o.host = nil
+		o.host, o.default = nil, nil
 	else
 		o.width = opt.width
 		row, control = W.ButtonRow(sec, sec.y, r.name, hint, desc, opt.text or "Run", RowButtonClick, o)

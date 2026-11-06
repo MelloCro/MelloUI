@@ -325,6 +325,7 @@ if L then
       S(tab, "ConfigLayout"); S(section, "ConfigLayout")
       if type(extra) == "table" then
         S(extra.name, "ConfigLayout"); S(extra.wide, "ConfigLayout"); S(extra.plus, "ConfigLayout"); When(extra.when)
+        S(extra.card, "ConfigLayout")
         if type(extra.sharedWith) == "table" then for _, n in ipairs(extra.sharedWith) do S(n, "ConfigLayout") end end
         if type(extra.also) == "table" then for _, t in pairs(extra.also) do S(t, "ConfigLayout") end end
         if type(extra.whenFor) == "table" then for _, w in pairs(extra.whenFor) do When(w) end end
