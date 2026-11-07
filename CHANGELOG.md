@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.13
+
+- Fixed: asking a guard for directions now puts its marker on MelloUI's map.
+
 ## 2.1.12
 
 - Fixed: on Chinese, Korean and Russian game clients, the floating combat text and the names above characters no longer show as squares.

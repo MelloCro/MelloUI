@@ -2275,6 +2275,7 @@ Lang:Add("ptBR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toda a sua configuração sob um nome. Salve, carregue ou torne-a o padrão de uma instalação nova.", -- draft
 	["Supporters"] = "Apoiadores", -- draft
 	["The people who help keep MelloUI going."] = "As pessoas que mantêm o MelloUI funcionando.", -- draft
+	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Corrigido: pedir informações a um guarda agora coloca a marca dele no mapa do MelloUI.", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "Corrigido: em clientes chineses, coreanos e russos, o texto de combate flutuante e os nomes acima dos personagens não aparecem mais como quadrados.", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "A sombra da interface agora cobre a exibição pessoal, com interruptor próprio e o controle de força da sombra.", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "O brilho sob os ícones nos mapas e no minimapa agora fica sempre ligado.", -- draft
@@ -2283,7 +2284,6 @@ Lang:Add("ptBR", {
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Corrigido: com os ícones de bônus do MelloUI desligados, a barra de bônus do jogo volta a poder ser movida no editor de layout.", -- draft
 	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Novo: Visual > Cores tem uma roda de cores para cada classe, cada poder e a reputação dos PNJs.", -- draft
 	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Barras: os interruptores da sombra atrás das suas barras de ação agora ficam em Fundos e sombras, e a busca os encontra.", -- draft
-	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Corrigido: a opção Nomes agora funciona na visão mínima do bate-papo e na janela de sussurros.", -- draft
 	["Report a problem"] = "Relatar um problema", -- draft
 	["Voice pack"] = "Pacote de vozes", -- draft
 	["open or close this window"] = "abre ou fecha esta janela", -- draft
@@ -2936,6 +2936,7 @@ Lang:Add("ptBR", {
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Corrigido: nos quadros do Oldschool a barra de recurso mantém um pequeno espaço sob a barra de vida, e a do alvo fica alinhada com ela.", -- draft
 -- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Corrigido: as marcas dos doadores de missões no mapa do MelloUI não aparecem mais como manchas amarelas esticadas.", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Corrigido: as abas da mochila e da bolsa de reagentes ao lado da janela de bolsas voltam a mostrar seus ícones.", -- draft
+-- stale: ["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Corrigido: a opção Nomes agora funciona na visão mínima do bate-papo e na janela de sussurros.", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "Corrigido: o Marcador do mundo num passo de guia ao seu lado; as missões de classe da Lista de missões; a qualidade dos itens e os chefes repetidos da Info de masmorras.", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "Corrigido: o instalador não diz mais que sua tela é pequena demais quando são alguns dos seus próprios ajustes que não cabem.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "Para um ladino, e um druida em Forma de Felino: seus cinco pontos de combo em fila na borda superior da barra de vida do seu alvo, vazios até você acumulá-los. O nome sobe um pouco para abrir espaço.", -- draft

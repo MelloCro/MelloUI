@@ -2275,6 +2275,7 @@ Lang:Add("deDE", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Deine ganze Einrichtung unter einem Namen. Speichere sie, lade sie oder mach sie zum Standard für eine frische Installation.", -- draft
 	["Supporters"] = "Unterstützer", -- draft
 	["The people who help keep MelloUI going."] = "Die Menschen, die MelloUI am Laufen halten.", -- draft
+	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Behoben: Wenn du eine Wache nach dem Weg fragst, erscheint ihre Markierung jetzt auf MelloUIs Karte.", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "Behoben: Auf chinesischen, koreanischen und russischen Clients erscheinen schwebender Kampftext und Namen über Charakteren nicht mehr als Quadrate.", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "Der UI-Schatten umfasst jetzt die persönliche Anzeige, mit eigenem Schalter und dem Regler für die Schattenstärke.", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "Das Leuchten unter Symbolen auf den Karten und der Minikarte ist jetzt immer an.", -- draft
@@ -2283,7 +2284,6 @@ Lang:Add("deDE", {
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Behoben: Mit ausgeschalteten MelloUI-Stärkungssymbolen lässt sich die Stärkungsleiste des Spiels im Layout-Editor wieder verschieben.", -- draft
 	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Neu: Aussehen > Farben bietet ein Farbrad für jede Klasse, jede Ressource und das Ansehen von NPCs.", -- draft
 	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Leisten: Die Schalter für den Schatten hinter deinen Aktionsleisten stehen jetzt unter Hintergründe und Schatten, und die Suche findet sie.", -- draft
-	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Behoben: Die Einstellung Namen wirkt jetzt in der minimalen Chatansicht und im Flüsterfenster.", -- draft
 	["Report a problem"] = "Ein Problem melden", -- draft
 	["Voice pack"] = "Stimmenpaket", -- draft
 	["open or close this window"] = "dieses Fenster öffnen oder schließen", -- draft
@@ -2940,6 +2940,7 @@ Lang:Add("deDE", {
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Behoben: Auf Oldschools Rahmen hält die Ressourcenleiste einen kleinen Abstand unter der Gesundheitsleiste, und die des Ziels schließt bündig mit ihr ab.", -- draft
 -- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Behoben: Die Markierungen der Questgeber auf MelloUIs Karte erscheinen nicht mehr als verzerrte gelbe Flecken.", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Behoben: Die Reiter für Rucksack und Reagenzientasche neben dem Taschenfenster zeigen wieder ihre Symbole.", -- draft
+-- stale: ["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Behoben: Die Einstellung Namen wirkt jetzt in der minimalen Chatansicht und im Flüsterfenster.", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "Behoben: die Weltmarkierung bei einem Leitfaden-Schritt direkt neben dir; die Klassenquests der Questliste; Gegenstandsqualität und wiederholte Bosse in Dungeon-Info.", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "Behoben: der Installer nennt deinen Bildschirm nicht mehr zu klein, wenn nur einige deiner eigenen Einstellungen nicht passen.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "Für einen Schurken und einen Druiden in Katzengestalt: deine fünf Combopunkte in einer Reihe am oberen Rand des Gesundheitsbalkens deines Ziels, leer, bis du sie aufbaust. Der Name rückt etwas nach oben, um Platz zu machen.", -- draft

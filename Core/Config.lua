@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.13", lines = {
+		"Fixed: asking a guard for directions now puts its marker on MelloUI's map.",
+	} },
 	{ version = "2.1.12", lines = {
 		"Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares.",
 	} },
@@ -189,9 +192,6 @@ local CHANGELOG = {
 	{ version = "2.1.9", lines = {
 		"New: Look > Colours has a colour wheel for every class, each power and NPC standings.",
 		"Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them.",
-	} },
-	{ version = "2.1.8", lines = {
-		"Fixed: the Names setting now works in the Minimal chat view and the whisper window.",
 	} },
 }
 local LINKS = {

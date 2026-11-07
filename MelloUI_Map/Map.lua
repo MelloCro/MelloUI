@@ -724,6 +724,7 @@ local function Shown()
 	f:RegisterEvent("TAXI_NODE_STATUS_CHANGED")
 	f:RegisterEvent("QUEST_LOG_UPDATE")
 	f:RegisterEvent("QUEST_WATCH_LIST_CHANGED")
+	f:RegisterEvent("DYNAMIC_GOSSIP_POI_UPDATED")
 	if inside then
 		win.opening = true   -- (Dungeon Info's column out at once: the window opens as wide as it)
 		OpenInside(inside)   -- (first: Dungeon Info's column out, so the plan's first view fits beside it)
@@ -759,6 +760,7 @@ local function Hidden()
 	f:UnregisterEvent("TAXI_NODE_STATUS_CHANGED")
 	f:UnregisterEvent("QUEST_LOG_UPDATE")
 	f:UnregisterEvent("QUEST_WATCH_LIST_CHANGED")
+	f:UnregisterEvent("DYNAMIC_GOSSIP_POI_UPDATED")
 end
 
 -- the window's beat while it shows (the layers' positions; nothing runs while it is closed)
@@ -778,6 +780,8 @@ local function Frame_OnEvent(_, event)
 	elseif event == "QUEST_LOG_UPDATE" or event == "QUEST_WATCH_LIST_CHANGED" then
 		Objectives.Soon()   -- (the objectives again after the burst)
 		Layers.LogChanged()   -- (2.1.7: the givers' marks, if what they show moved)
+	elseif event == "DYNAMIC_GOSSIP_POI_UPDATED" then
+		Layers.GossipChanged()   -- (a guard's directions: the game's marker)
 	end
 end
 

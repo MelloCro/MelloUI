@@ -2275,6 +2275,7 @@ Lang:Add("frFR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toute votre configuration sous un nom. Enregistrez-la, chargez-la, ou faites-en la configuration par défaut d'une nouvelle installation.", -- draft
 	["Supporters"] = "Soutiens", -- draft
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.", -- draft
+	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Corrigé : demander son chemin à un garde place désormais son repère sur la carte de MelloUI.", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "Corrigé : sur les clients chinois, coréens et russes, le texte de combat flottant et les noms au-dessus des personnages ne s'affichent plus en carrés.", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "L'ombre de l'interface couvre maintenant l'affichage personnel, avec son propre interrupteur et le curseur de force de l'ombre.", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "La lueur sous les icônes sur les cartes et la minicarte est maintenant toujours active.", -- draft
@@ -2283,7 +2284,6 @@ Lang:Add("frFR", {
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Corrigé : avec les icônes d'amélioration de MelloUI désactivées, la barre d'améliorations du jeu peut de nouveau être déplacée dans l'éditeur de disposition.", -- draft
 	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Nouveau : Apparence > Couleurs propose une roue chromatique pour chaque classe, chaque ressource et les réputations des PNJ.", -- draft
 	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Barres : les options de l'ombre derrière vos barres d'action se trouvent maintenant sous Fonds et ombres, et la recherche les trouve.", -- draft
-	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Corrigé : le réglage Noms fonctionne dans la vue de discussion minimale et la fenêtre de chuchotements.", -- draft
 	["Report a problem"] = "Signaler un problème", -- draft
 	["Voice pack"] = "Pack de voix", -- draft
 	["open or close this window"] = "ouvrir ou fermer cette fenêtre", -- draft
@@ -2936,6 +2936,7 @@ Lang:Add("frFR", {
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Corrigé : sur les cadres d'Oldschool, la barre de ressource garde un petit écart sous la barre de vie, et celle de la cible s'aligne sur elle.", -- draft
 -- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Corrigé : les marques des donneurs de quêtes sur la carte de MelloUI ne s'affichent plus comme des taches jaunes étirées.", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Corrigé : les onglets du sac à dos et du sac de composants à côté de la fenêtre des sacs affichent de nouveau leurs icônes.", -- draft
+-- stale: ["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Corrigé : le réglage Noms fonctionne dans la vue de discussion minimale et la fenêtre de chuchotements.", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "Corrigé : le Marqueur du monde sur une étape de guide à côté de vous ; les quêtes de classe de la Liste des quêtes ; la qualité des objets et les boss répétés d'Infos des donjons.", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "Corrigé : l'installateur ne dit plus votre écran trop petit quand ce sont certains de vos propres réglages qui ne tiennent pas.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "Pour un voleur, et un druide en forme de félin : vos cinq points de combo en rangée sur le bord supérieur de la barre de vie de votre cible, vides jusqu'à ce que vous les accumuliez. Le nom monte un peu pour faire de la place.", -- draft

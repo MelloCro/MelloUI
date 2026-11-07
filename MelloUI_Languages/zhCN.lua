@@ -2275,6 +2275,7 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "修复：向卫兵问路后，其标记现在会显示在 MelloUI 地图上。", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "修复：在中文、韩文和俄文客户端上，浮动战斗文字和角色头顶的名字不再显示为方块。", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "界面阴影现在覆盖个人显示，有自己的开关和阴影强度滑块。", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "地图和小地图上图标下方的光晕现在始终开启。", -- draft
@@ -2283,7 +2284,6 @@ Lang:Add("zhCN", {
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "修复：关闭 MelloUI 的增益图标时，又可以在布局编辑中移动游戏的增益条了。", -- draft
 	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "新增：外观 > 颜色 提供色轮，可设置每个职业、每种能量和NPC声望的颜色。", -- draft
 	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "动作条：动作条背后阴影的开关现在位于“底板与阴影”下，搜索也能找到。", -- draft
-	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "修复：名称设置现在对精简聊天视图和密语窗口生效。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2936,6 +2936,7 @@ Lang:Add("zhCN", {
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "修复：Oldschool 框体上的能量条与生命条之间留出小间隙，目标的能量条也与生命条对齐。", -- draft
 -- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "修复：MelloUI 地图上的任务发布者标记不再显示为拉伸的黄色色块。", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "修复：背包窗口旁的行囊和材料包标签页重新显示图标。", -- draft
+-- stale: ["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "修复：名称设置现在对精简聊天视图和密语窗口生效。", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "修复：引导步骤就在身边时的世界标记；任务列表中的职业任务；地下城信息的物品品质和重复首领。", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "修复：只是你自己的某些设置放不下时，安装向导不再说你的屏幕太小。", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "盗贼以及猎豹形态的德鲁伊：你的五个连击点数排在目标生命条的上沿，攒起来之前是空的。名字会稍微上移让出位置。", -- draft

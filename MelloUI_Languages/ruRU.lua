@@ -2275,6 +2275,7 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Исправлено: если спросить дорогу у стражника, его метка теперь появляется на карте MelloUI.", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "Исправлено: в китайском, корейском и русском клиентах всплывающий текст боя и имена над персонажами больше не отображаются квадратами.", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "Тень интерфейса теперь охватывает личный дисплей, с отдельным переключателем и ползунком силы тени.", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "Свечение под значками на картах и миникарте теперь всегда включено.", -- draft
@@ -2283,7 +2284,6 @@ Lang:Add("ruRU", {
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Исправлено: при выключенных значках эффектов MelloUI панель положительных эффектов игры снова можно перемещать в редакторе расположения.", -- draft
 	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Новое: в разделе «Облик > Цвета» есть цветовой круг для каждого класса, каждого ресурса и отношения НИП.", -- draft
 	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Панели: переключатели тени за панелями команд теперь находятся в разделе «Подложки и тени», и поиск их находит.", -- draft
-	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Исправлено: настройка «Имена» теперь работает в минимальном виде чата и в окне шёпота.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -2936,6 +2936,7 @@ Lang:Add("ruRU", {
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Исправлено: на рамках Oldschool полоса ресурса держит небольшой зазор под полосой здоровья, а у цели она выровнена по ней.", -- draft
 -- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Исправлено: метки квестодателей на карте MelloUI больше не выглядят растянутыми жёлтыми пятнами.", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Исправлено: вкладки рюкзака и сумки для реагентов рядом с окном сумок снова показывают свои значки.", -- draft
+-- stale: ["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Исправлено: настройка «Имена» теперь работает в минимальном виде чата и в окне шёпота.", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "Исправлено: мировой маркер на шаге гида рядом с вами; классовые задания в списке заданий; качество предметов и повторяющиеся боссы в «Сведениях о подземельях».", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "Исправлено: установщик больше не называет экран слишком маленьким, когда не помещаются ваши собственные настройки.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "Для разбойника и друида в облике кошки: пять приёмов серии в ряд по верхнему краю полосы здоровья вашей цели, пустые, пока вы их не накопите. Имя немного поднимается, чтобы освободить место.", -- draft

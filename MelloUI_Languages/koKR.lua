@@ -2275,6 +2275,7 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "수정: 경비병에게 길을 물으면 이제 그 표시가 MelloUI 지도에 나타납니다.", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "수정: 중국어, 한국어, 러시아어 클라이언트에서 떠오르는 전투 문자와 캐릭터 위 이름이 더 이상 네모로 표시되지 않습니다.", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "UI 그림자가 이제 개인 표시기에도 적용되며, 자체 스위치와 그림자 강도 슬라이더를 사용합니다.", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "지도와 미니맵 아이콘 아래의 빛이 이제 항상 켜져 있습니다.", -- draft
@@ -2283,7 +2284,6 @@ Lang:Add("koKR", {
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "수정: MelloUI 강화 효과 아이콘을 꺼도 레이아웃 편집에서 게임의 강화 효과 바를 다시 옮길 수 있습니다.", -- draft
 	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "새 기능: 외형 > 색에 모든 직업, 자원, NPC 평판을 위한 색상환이 생겼습니다.", -- draft
 	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "바: 행동 단축바 뒤 그림자 스위치가 이제 배경판과 그림자 아래에 있으며, 검색으로도 찾을 수 있습니다.", -- draft
-	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "수정: 이름 설정이 이제 최소 대화창 보기와 귓속말 창에서도 적용됩니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2936,6 +2936,7 @@ Lang:Add("koKR", {
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "수정: Oldschool 프레임에서 자원 바가 생명력 바 아래에 작은 간격을 두며, 대상의 자원 바도 생명력 바에 맞춰 정렬됩니다.", -- draft
 -- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "수정: MelloUI 지도의 퀘스트 제공자 표시가 더 이상 늘어난 노란 얼룩으로 보이지 않습니다.", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "수정: 가방 창 옆의 배낭과 재료 가방 탭에 다시 아이콘이 표시됩니다.", -- draft
+-- stale: ["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "수정: 이름 설정이 이제 최소 대화창 보기와 귓속말 창에서도 적용됩니다.", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "수정: 바로 옆에 있는 가이드 단계의 월드 마커, 퀘스트 리스트의 직업 퀘스트, 던전 정보의 아이템 품질과 반복되는 우두머리.", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "수정: 설치 마법사가 내 설정 일부가 맞지 않을 때 화면이 너무 작다고 하지 않습니다.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "도적과 표범 변신 드루이드: 대상 생명력 막대 위쪽 가장자리에 다섯 연계 점수를 한 줄로, 쌓기 전에는 비어 있습니다. 이름이 조금 올라가 자리를 만듭니다.", -- draft

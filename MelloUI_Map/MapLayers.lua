@@ -39,6 +39,9 @@
 --                  groups, picture and tooltip, from a zone's zoom on
 --   names          (M2) each zone's name on the soft shade, from a continent's
 --                  zoom to a zone's
+--   gossip         (GitHub issue 2) the game's marker from a guard's directions
+--                  (C_GossipInfo), its name on hover, at every zoom; read when
+--                  the window opens and when the game says it changed
 --
 -- The places of the data are the client's: GetMapPosFromWorldPos turns its
 -- world yards into a continent's position, the canvas carries that on.
@@ -51,6 +54,7 @@
 --   Layers.Init(canvas, pins)   the layers made (the window's first open)
 --   Layers.Tick(elapsed)        the window's OnUpdate
 --   Layers.LogChanged()         the quest log changed: the givers looked at on the next beat (2.1.7)
+--   Layers.GossipChanged()      the game set its directions marker or took it away
 --   Layers.FindMe()             a glide to the player
 --------------------------------------------------------------------------------
 
@@ -76,8 +80,9 @@ local T = {
 	ARROW_ATLAS = "UI-WorldMapArrow",                 -- the game's own map arrow
 	ARROW_FILE = "Interface\\Minimap\\MinimapArrow",  -- (if the atlas is missing)
 	-- the stack (MapPins' layer order): the places under the group, the group under the player
-	ORDER = { towns = 7, names = 8, places = 9, entrances = 10, transports = 12, flights = 14, quests = 20, route = 30,
-		waypoint = 32, group = 40, player = 50 },
+	ORDER = { towns = 7, names = 8, places = 9, entrances = 10, transports = 12, flights = 14, quests = 20, gossip = 26,
+		route = 30, waypoint = 32, group = 40, player = 50 },
+	GOSSIP_ICON = "chat_general",   -- a guard's directions: the speech bubble (the game's gossip icon in MapAddonPins too)
 	MEMBER_SIZE = 16,        -- a party member's class pin (the user, 2026-10-20: "in the theme", "enough just in the color")
 	PIN_GOAL = "goal_pin",   -- the game's waypoint, while Route is off
 	QUESTS_FROM = 2.5,       -- the quest givers from a zone's zoom on (a continent's: thousands)
@@ -790,6 +795,74 @@ local function Places()
 	end
 end
 
+--------------------------------------------------------------------------------
+-- The game's marker from a guard's directions (GitHub issue 2, Nixxen,
+-- 2026-11-05: no marker on this map): what the game's own GossipDataProvider
+-- reads, one marker a map. The game's map asks for the one map it shows; this
+-- one shows them all, so it asks each, the player's first, then the smallest
+-- first (a marker on the map round it too: its place from the deepest map)
+--------------------------------------------------------------------------------
+
+local function GossipTip(pin)
+	return pin.data
+end
+
+local GOSSIP = { icon = T.ICONS .. T.GOSSIP_ICON, size = T.PIN_SIZE + 4, sub = 3, tip = GossipTip }
+
+-- its name and place (under a pcall: whatever the client handed out)
+local function GossipRead(info)
+	return Text(info.name), XY(info.position)
+end
+
+local gossipSeen = {}
+
+local function GossipOn(api, mapID)
+	local ok, id = pcall(api.GetPoiForUiMapID, mapID)
+	id = ok and Finite(id)
+	if not id or gossipSeen[id] then
+		return
+	end
+	local got, info = pcall(api.GetPoiInfo, mapID, id)
+	local read, name, x, y = pcall(GossipRead, got and info)
+	local pin = read and x and y and S.pins:SetAt("gossip", id, mapID, x, y, GOSSIP)
+	if pin then
+		pin.data = name
+		gossipSeen[id] = true
+	end
+end
+
+local function Gossip()
+	local api = rawget(_G, "C_GossipInfo")
+	if not (api and api.GetPoiForUiMapID and api.GetPoiInfo) then
+		return
+	end
+	wipe(gossipSeen)
+	local playerMap = PlayerMap()
+	if playerMap then
+		GossipOn(api, playerMap)
+	end
+	local places, byID = S.canvas.places, S.canvas.byID
+	for i = #places, 1, -1 do   -- (biggest first in the list; the fills and the ground after them are no maps)
+		local p = places[i]
+		if byID[p.id] == p and p.id ~= playerMap then
+			GossipOn(api, p.id)
+		end
+	end
+	for id in pairs(S.pins.layers.gossip.pins) do
+		if not gossipSeen[id] then
+			S.pins:Remove("gossip", id)
+		end
+	end
+end
+
+-- the game set its marker or took it away (DYNAMIC_GOSSIP_POI_UPDATED, while the window shows)
+function Layers.GossipChanged()
+	if S.pins then
+		Gossip()
+		S.pins:Lay()
+	end
+end
+
 -- the window opened: the places laid (the data's once; the flights each time: learned ones change)
 function Layers.Open()
 	if not S.pins then
@@ -810,6 +883,7 @@ function Layers.Open()
 		Layers.Quests()
 	end
 	Flights()
+	Gossip()
 	S.wait = 0
 	S.pins:Lay()
 	Layers.Route()
@@ -1169,6 +1243,7 @@ function Layers.Init(canvas, pins)
 	pins:Layer("flights", T.ORDER.flights, { minZ = T.PLACES_FROM })
 	pins:Layer("route", T.ORDER.route)
 	pins:Layer("quests", T.ORDER.quests, { minZ = T.QUESTS_FROM })
+	pins:Layer("gossip", T.ORDER.gossip)
 	pins:Layer("group", T.ORDER.group)
 	pins:Layer("waypoint", T.ORDER.waypoint)
 	pins:Layer("player", T.ORDER.player)
