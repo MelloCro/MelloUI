@@ -591,10 +591,10 @@ end
 -- made each of those a real change again, two texture swaps a frame (49 a
 -- second in /melloperf). Such a bar is never written: a COVER of ours lies
 -- on it, regions of the bar itself between the game's fill and the kit's
--- bracket (the fill's layer, a sublevel over it) --
+-- bracket (the fill's layer, over it) --
 --   back   an opaque palette ground, so nothing of the game's fill shows
---          through a texture with see-through parts,
---   tex    the chosen texture in the power's colour,
+--          through a texture with see-through parts (a sublevel over the fill),
+--   tex    the chosen texture in the power's colour (a sublevel over back),
 -- both on the bar's whole rect, cut to the game's fill by a mask on the
 -- fill's own rect (the engine moves it with the value, a secret one too:
 -- the texture is cropped as a fill is, never stretched), to the bar's
@@ -623,13 +623,16 @@ local function NewCover(bar)
 	if not okL or type(layer) ~= "string" then
 		layer, sub = "BACKGROUND", 0
 	end
-	sub = math.min(7, (tonumber(sub) or 0) + 1)
+	-- (2.1.14; the user, 2026-11-07: "bug on target of target hp and mana", a shot of both bars dark but for a coloured
+	-- rim, their centre this ground's colour exactly: back and tex shared a sublevel, and the game keeps no order inside
+	-- one, so the ground could lie over the texture. Each has its own: back, then tex)
+	sub = math.min(6, (tonumber(sub) or 0) + 1)
 	local back = bar:CreateTexture(nil, layer, nil, sub)
 	back:SetPoint("TOPLEFT", bar, "TOPLEFT")
 	back:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT")
 	MelloUI.Widgets.Paint(back, "mainWindow", "vertex")
 	back:SetTexture(WHITE)
-	local tex = bar:CreateTexture(nil, layer, nil, sub)
+	local tex = bar:CreateTexture(nil, layer, nil, sub + 1)
 	tex:SetPoint("TOPLEFT", bar, "TOPLEFT")
 	tex:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT")
 	local crop = bar:CreateMaskTexture()
@@ -1187,6 +1190,11 @@ local function ExecuteCurve()
 	return executeCurve or nil
 end
 
+-- the tint's sublevel: one over the fill, and on a covered bar over the cover's two (2.1.14: NewCover)
+local function TintSub(bar, sub)
+	return math.min(7, (tonumber(sub) or 0) + (covered[bar] and 3 or 1))
+end
+
 local function ExecuteTint(bar)
 	local tint = executeTints[bar]
 	if tint then
@@ -1200,7 +1208,7 @@ local function ExecuteTint(bar)
 	if not okL or type(layer) ~= "string" then
 		layer, sub = "ARTWORK", 0
 	end
-	tint = bar:CreateTexture(nil, layer, nil, math.min(7, (tonumber(sub) or 0) + 1))
+	tint = bar:CreateTexture(nil, layer, nil, TintSub(bar, sub))
 	-- the bar's whole rect, cut to the fill by a mask on the fill's own rect:
 	-- a file texture then shows as the fill shows it (cropped, not
 	-- squeezed) with no texture coordinates written per value
@@ -1295,7 +1303,7 @@ SyncTint = function(bar, tint)
 	if fill then
 		local okL, layer, sub = pcall(fill.GetDrawLayer, fill)
 		if okL and type(layer) == "string" then
-			local want = math.min(7, (tonumber(sub) or 0) + 1)
+			local want = TintSub(bar, sub)
 			local _, tl, ts = pcall(tint.GetDrawLayer, tint)
 			if tl ~= layer or ts ~= want then
 				tint:SetDrawLayer(layer, want)

@@ -2279,6 +2279,7 @@ Lang:Add("deDE", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Deine ganze Einrichtung unter einem Namen. Speichere sie, lade sie oder mach sie zum Standard für eine frische Installation.", -- draft
 	["Supporters"] = "Unterstützer", -- draft
 	["The people who help keep MelloUI going."] = "Die Menschen, die MelloUI am Laufen halten.", -- draft
+	["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "Behoben: Die Gesundheits- und Energieleisten von Ziel des Ziels und Fokusziel wirken nicht mehr dunkel, wenn eine Leistentextur gewählt ist.", -- draft
 	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "Der Bericht von /mellobug zeigt jetzt, was zu einer blockierten Aktion geführt hat, um vom Spiel blockierte Taschengegenstände aufzuspüren.", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Behoben: Wenn du eine Wache nach dem Weg fragst, erscheint ihre Markierung jetzt auf MelloUIs Karte.", -- draft
 	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "Behoben: Die Einstellungen einer Art weit unten in der Liste von Taschen nach Art werden nicht mehr abgeschnitten: Die Liste wächst mit ihnen.", -- draft
@@ -2292,8 +2293,6 @@ Lang:Add("deDE", {
 	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "Behoben: Zygor Guides konnte mit MelloUI 2.1.9 nicht starten. Es startet wieder.", -- draft
 	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "Neu: Schwächungen getrennt auf der Seite Stärkungen: Deine Schwächungen bekommen ihren eigenen Platz und eigene Reihen.", -- draft
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Behoben: Mit ausgeschalteten MelloUI-Stärkungssymbolen lässt sich die Stärkungsleiste des Spiels im Layout-Editor wieder verschieben.", -- draft
-	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Neu: Aussehen > Farben bietet ein Farbrad für jede Klasse, jede Ressource und das Ansehen von NPCs.", -- draft
-	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Leisten: Die Schalter für den Schatten hinter deinen Aktionsleisten stehen jetzt unter Hintergründe und Schatten, und die Suche findet sie.", -- draft
 	["Report a problem"] = "Ein Problem melden", -- draft
 	["Voice pack"] = "Stimmenpaket", -- draft
 	["open or close this window"] = "dieses Fenster öffnen oder schließen", -- draft
@@ -2822,6 +2821,7 @@ Lang:Add("deDE", {
 -- stale: ["Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it."] = "Taschen nach Art: Rollendes Geld -- das Geld des Taschenfensters rollt zu seiner neuen Summe; Münzen, die du plünderst, fliegen hinein.", -- draft
 -- stale: ["Bags by Kind: the Reagent Bag on its own tab at the bag window's side; move items between it and your bags, or drop one on a tab."] = "Taschen nach Art: die Reagenzientasche auf ihrem eigenen Reiter an der Seite des Taschenfensters; verschiebe Gegenstände zwischen ihr und deinen Taschen oder leg einen auf einen Reiter.", -- draft
 -- stale: ["Bar Texture (Look)"] = "Balkentextur (Aussehen)", -- draft
+-- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Leisten: Die Schalter für den Schatten hinter deinen Aktionsleisten stehen jetzt unter Hintergründe und Schatten, und die Suche findet sie.", -- draft
 -- stale: ["Browns with gold bevels"] = "Brauntöne mit goldenen Fasen", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "Schnallen und Platten für Rüstung, ein Stahlgleiten für Waffen, Schmuckklicken für Ringe, Hälse und Schmuckstücke; sich lockernde Riemen, wenn etwas abgelegt wird.", -- draft
 -- stale: ["Buff, debuff and crowd control icons on nameplates. While Buffs & Debuffs puts your debuffs on enemy nameplates, those icons are MelloUI's own and show their own time: this switch does not reach them."] = "Symbole für Stärkungs-, Schwächungs- und Kontrollverlusteffekte auf Namensplaketten. Solange Buffs & Debuffs deine Schwächungszauber auf gegnerische Namensplaketten legt, sind diese Symbole MelloUIs eigene und zeigen ihre eigene Zeit: Dieser Schalter erreicht sie nicht.", -- draft
@@ -3137,6 +3137,7 @@ Lang:Add("deDE", {
 -- stale: ["Names in chat"] = "Namen im Chat", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "Neue Bewegung: Große Abklingzeiten, Questfortschritt, Stufenaufstieg, kritische Treffer, Combopunkte, Erinnerungen, der Zonenname, Rufgewinne; Treffereffekte erreichen dein Zielfenster.", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "Neue Ressource leuchtet vor dem Balken auf, der hineinwächst; ein großer Gewinn sprüht Funken an seiner Kante (die gleichmäßigen Ticks der Energie nicht).", -- draft
+-- stale: ["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Neu: Aussehen > Farben bietet ein Farbrad für jede Klasse, jede Ressource und das Ansehen von NPCs.", -- draft
 -- stale: ["New: an Action Bars switch on the Bars page."] = "Neu: ein Schalter für die Aktionsleisten auf der Seite Leisten.", -- draft
 -- stale: ["No Edit Mode change"] = "Keine Änderung am Bearbeitungsmodus", -- draft
 -- stale: ["No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing."] = "Nicht mehr benutzt: Die Swing-Timer haben einen runden Rand und einen flachen Balken und tragen keinen Rahmen, also ändert dies nichts.", -- draft

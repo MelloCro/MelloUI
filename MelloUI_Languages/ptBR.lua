@@ -2279,6 +2279,7 @@ Lang:Add("ptBR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toda a sua configuração sob um nome. Salve, carregue ou torne-a o padrão de uma instalação nova.", -- draft
 	["Supporters"] = "Apoiadores", -- draft
 	["The people who help keep MelloUI going."] = "As pessoas que mantêm o MelloUI funcionando.", -- draft
+	["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "Corrigido: as barras de vida e de poder do alvo do alvo e do alvo do foco não ficam mais escuras quando uma textura de barra é escolhida.", -- draft
 	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "O relatório do /mellobug agora mostra o que levou a uma ação bloqueada, para ajudar a encontrar a causa de itens das bolsas bloqueados pelo jogo.", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Corrigido: pedir informações a um guarda agora coloca a marca dele no mapa do MelloUI.", -- draft
 	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "Corrigido: os ajustes de um tipo no fim da lista de Bolsas por tipo não são mais cortados: a lista cresce com eles.", -- draft
@@ -2292,8 +2293,6 @@ Lang:Add("ptBR", {
 	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "Corrigido: o Zygor Guides não iniciava com o MelloUI 2.1.9. Agora inicia de novo.", -- draft
 	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "Novo: Penalidades separadas na página Bônus: suas penalidades têm lugar e fileiras próprios.", -- draft
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Corrigido: com os ícones de bônus do MelloUI desligados, a barra de bônus do jogo volta a poder ser movida no editor de layout.", -- draft
-	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Novo: Visual > Cores tem uma roda de cores para cada classe, cada poder e a reputação dos PNJs.", -- draft
-	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Barras: os interruptores da sombra atrás das suas barras de ação agora ficam em Fundos e sombras, e a busca os encontra.", -- draft
 	["Report a problem"] = "Relatar um problema", -- draft
 	["Voice pack"] = "Pacote de vozes", -- draft
 	["open or close this window"] = "abre ou fecha esta janela", -- draft
@@ -2821,6 +2820,7 @@ Lang:Add("ptBR", {
 -- stale: ["Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in."] = "Bolsas por tipo: Itens deslizam -- os itens deslizam até os novos espaços quando a janela reorganiza; os novos aparecem esmaecendo.", -- draft
 -- stale: ["Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it."] = "Bolsas por tipo: Dinheiro rolando -- o dinheiro da janela de bolsas rola até a nova soma; as moedas saqueadas voam até ele.", -- draft
 -- stale: ["Bar Texture (Look)"] = "Textura das barras (Visual)", -- draft
+-- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Barras: os interruptores da sombra atrás das suas barras de ação agora ficam em Fundos e sombras, e a busca os encontra.", -- draft
 -- stale: ["Browns with gold bevels"] = "Marrons com chanfros dourados", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "Fivelas e placas para armaduras, um deslizar de aço para armas, tilintar de joias para anéis, colares e berloques; correias afrouxando quando algo é tirado.", -- draft
 -- stale: ["Buff, debuff and crowd control icons on nameplates. While Buffs & Debuffs puts your debuffs on enemy nameplates, those icons are MelloUI's own and show their own time: this switch does not reach them."] = "Ícones de bônus, penalidades e controle de grupo nas placas de identificação. Enquanto Bônus e penalidades põe suas penalidades nas placas dos inimigos, esses ícones são do MelloUI e mostram o próprio tempo: este interruptor não os alcança.", -- draft
@@ -3131,6 +3131,7 @@ Lang:Add("ptBR", {
 -- stale: ["Names in chat"] = "Nomes no bate-papo", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "Novo movimento: Grandes recargas, progresso de missão, subir de nível, críticos, pontos de combo, lembretes, o nome da zona, ganhos de reputação; os efeitos de impacto chegam ao seu quadro de alvo.", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "O recurso novo acende à frente da barra, que cresce até ele; um ganho grande solta faíscas na borda (os tiques constantes de energia não).", -- draft
+-- stale: ["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Novo: Visual > Cores tem uma roda de cores para cada classe, cada poder e a reputação dos PNJs.", -- draft
 -- stale: ["New: an Action Bars switch on the Bars page."] = "Novo: um interruptor de Barras de ação na página Barras.", -- draft
 -- stale: ["No Edit Mode change"] = "Nenhuma mudança no Modo de edição", -- draft
 -- stale: ["No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing."] = "Não é mais usado: os temporizadores de golpe têm um contorno redondo e uma barra plana e não usam moldura, então isto não muda nada.", -- draft

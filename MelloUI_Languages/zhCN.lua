@@ -2279,6 +2279,7 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "修复：选择条材质时，目标的目标和焦点目标的生命条与能量条不再显示为暗色。", -- draft
 	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "/mellobug 报告现在会显示导致操作被阻止的过程，便于查明游戏阻止使用背包物品的原因。", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "修复：向卫兵问路后，其标记现在会显示在 MelloUI 地图上。", -- draft
 	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "修复：背包分类列表靠下类别的设置不再被截断，列表会随之变长。", -- draft
@@ -2292,8 +2293,6 @@ Lang:Add("zhCN", {
 	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "修复：Zygor Guides 在 MelloUI 2.1.9 下无法启动。现在可以正常启动。", -- draft
 	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "新增：增益页面的“分离减益效果”：你的减益效果拥有自己的位置和行。", -- draft
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "修复：关闭 MelloUI 的增益图标时，又可以在布局编辑中移动游戏的增益条了。", -- draft
-	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "新增：外观 > 颜色 提供色轮，可设置每个职业、每种能量和NPC声望的颜色。", -- draft
-	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "动作条：动作条背后阴影的开关现在位于“底板与阴影”下，搜索也能找到。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2821,6 +2820,7 @@ Lang:Add("zhCN", {
 -- stale: ["Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in."] = "背包分类：物品滑动——窗口重新排序时物品滑到新栏位；新物品淡入。", -- draft
 -- stale: ["Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it."] = "背包分类：滚动金钱——背包窗口的金钱滚动到新数额；你拾取的钱币飞进去。", -- draft
 -- stale: ["Bar Texture (Look)"] = "条材质（外观）", -- draft
+-- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "动作条：动作条背后阴影的开关现在位于“底板与阴影”下，搜索也能找到。", -- draft
 -- stale: ["Browns with gold bevels"] = "带金色斜边的棕色", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "护甲用扣带和板甲声，武器用钢铁滑动声，戒指、项链和饰品用首饰叮当声；取下东西时皮带松开的声音。", -- draft
 -- stale: ["Buff, debuff and crowd control icons on nameplates. While Buffs & Debuffs puts your debuffs on enemy nameplates, those icons are MelloUI's own and show their own time: this switch does not reach them."] = "姓名板上的增益、减益和控制图标。当“增益和减益效果”把你的减益放到敌方姓名板上时，那些图标是MelloUI自己的，显示自己的时间：这个开关管不到它们。", -- draft
@@ -3131,6 +3131,7 @@ Lang:Add("zhCN", {
 -- stale: ["Names in chat"] = "聊天中的名字", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "新动效：重要冷却、任务进度、升级、暴击、连击点、提醒、区域名、声望获得；冲击效果也作用于目标框体。", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "新获得的能量在条的前方亮起，条再长到那里；大量获得时在边缘迸出火花（能量的稳定恢复不会）。", -- draft
+-- stale: ["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "新增：外观 > 颜色 提供色轮，可设置每个职业、每种能量和NPC声望的颜色。", -- draft
 -- stale: ["New: an Action Bars switch on the Bars page."] = "新增：动作条页面上的动作条开关。", -- draft
 -- stale: ["No Edit Mode change"] = "编辑模式不变", -- draft
 -- stale: ["No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing."] = "不再使用：挥击计时条是圆形边缘加扁平条，没有边框，所以这一项不会改变任何东西。", -- draft

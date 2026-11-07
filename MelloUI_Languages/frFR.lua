@@ -2279,6 +2279,7 @@ Lang:Add("frFR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toute votre configuration sous un nom. Enregistrez-la, chargez-la, ou faites-en la configuration par défaut d'une nouvelle installation.", -- draft
 	["Supporters"] = "Soutiens", -- draft
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.", -- draft
+	["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "Corrigé : les barres de vie et de puissance de la cible de la cible et de la cible de la focalisation ne sont plus sombres lorsqu'une texture de barre est choisie.", -- draft
 	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "Le rapport de /mellobug montre désormais ce qui a mené à une action bloquée, pour retrouver la cause des objets de sac bloqués par le jeu.", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Corrigé : demander son chemin à un garde place désormais son repère sur la carte de MelloUI.", -- draft
 	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "Corrigé : les réglages d'un type en bas de la liste de Sacs par type ne sont plus coupés : la liste s'agrandit avec eux.", -- draft
@@ -2292,8 +2293,6 @@ Lang:Add("frFR", {
 	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "Corrigé : Zygor Guides ne pouvait pas démarrer avec MelloUI 2.1.9. Il démarre de nouveau.", -- draft
 	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "Nouveau : Affaiblissements séparés sur la page Améliorations : vos affaiblissements ont leur place et leurs rangées.", -- draft
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Corrigé : avec les icônes d'amélioration de MelloUI désactivées, la barre d'améliorations du jeu peut de nouveau être déplacée dans l'éditeur de disposition.", -- draft
-	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Nouveau : Apparence > Couleurs propose une roue chromatique pour chaque classe, chaque ressource et les réputations des PNJ.", -- draft
-	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Barres : les options de l'ombre derrière vos barres d'action se trouvent maintenant sous Fonds et ombres, et la recherche les trouve.", -- draft
 	["Report a problem"] = "Signaler un problème", -- draft
 	["Voice pack"] = "Pack de voix", -- draft
 	["open or close this window"] = "ouvrir ou fermer cette fenêtre", -- draft
@@ -2821,6 +2820,7 @@ Lang:Add("frFR", {
 -- stale: ["Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in."] = "Sacs par type : Les objets glissent -- les objets glissent vers leurs nouveaux emplacements quand la fenêtre se retrie ; les nouveaux apparaissent en fondu.", -- draft
 -- stale: ["Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it."] = "Sacs par type : Argent qui défile -- l'argent de la fenêtre de sacs défile jusqu'à sa nouvelle somme ; les pièces ramassées y volent.", -- draft
 -- stale: ["Bar Texture (Look)"] = "Texture des barres (Apparence)", -- draft
+-- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Barres : les options de l'ombre derrière vos barres d'action se trouvent maintenant sous Fonds et ombres, et la recherche les trouve.", -- draft
 -- stale: ["Browns with gold bevels"] = "Bruns aux biseaux dorés", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "Boucles et plaques pour les armures, un glissement d'acier pour les armes, des tintements de bijoux pour les anneaux, colliers et bijoux ; des sangles qui se desserrent quand on retire quelque chose.", -- draft
 -- stale: ["Buff, debuff and crowd control icons on nameplates. While Buffs & Debuffs puts your debuffs on enemy nameplates, those icons are MelloUI's own and show their own time: this switch does not reach them."] = "Les icônes d'améliorations, d'affaiblissements et de contrôle sur les barres d'info. Tant qu'Améliorations et affaiblissements place vos affaiblissements sur les barres d'info ennemies, ces icônes sont celles de MelloUI et affichent leur propre temps : cet interrupteur ne les atteint pas.", -- draft
@@ -3131,6 +3131,7 @@ Lang:Add("frFR", {
 -- stale: ["Names in chat"] = "Noms dans la discussion", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "Nouveau mouvement : grands temps de recharge, progression de quête, prise de niveau, critiques, points de combo, rappels, le nom de zone, gains de réputation ; les effets d'impact atteignent votre cadre de cible.", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "La nouvelle ressource s'allume devant la barre, qui grandit jusqu'à elle ; un gros gain étincelle à son bord (les tics réguliers de l'énergie non).", -- draft
+-- stale: ["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Nouveau : Apparence > Couleurs propose une roue chromatique pour chaque classe, chaque ressource et les réputations des PNJ.", -- draft
 -- stale: ["New: an Action Bars switch on the Bars page."] = "Nouveau : un interrupteur Barres d'action sur la page Barres.", -- draft
 -- stale: ["No Edit Mode change"] = "Aucun changement du mode Édition", -- draft
 -- stale: ["No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing."] = "N'est plus utilisé : les minuteurs d'attaque ont un contour rond et une barre plate et ne portent aucun cadre, donc ceci ne change rien.", -- draft

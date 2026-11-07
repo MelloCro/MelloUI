@@ -2279,6 +2279,7 @@ Lang:Add("esES", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toda tu configuración bajo un nombre. Guárdala, cárgala o hazla la predeterminada de una instalación nueva.", -- draft
 	["Supporters"] = "Colaboradores", -- draft
 	["The people who help keep MelloUI going."] = "Las personas que mantienen MelloUI en marcha.", -- draft
+	["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "Corregido: las barras de salud y de poder del objetivo del objetivo y del objetivo del foco ya no se ven oscuras al elegir una textura de barra.", -- draft
 	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "El informe de /mellobug ahora muestra qué llevó a una acción bloqueada, para localizar la causa de los objetos de las bolsas que bloquea el juego.", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Corregido: al preguntar una dirección a un guardia, su marca ahora aparece en el mapa de MelloUI.", -- draft
 	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "Corregido: los ajustes de un tipo situado abajo en la lista de Bolsas por tipo ya no se cortan: la lista crece con ellos.", -- draft
@@ -2292,8 +2293,6 @@ Lang:Add("esES", {
 	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "Corregido: Zygor Guides no podía iniciarse con MelloUI 2.1.9. Ya se inicia de nuevo.", -- draft
 	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "Nuevo: Perjuicios separados en la página Beneficios: tus perjuicios tienen su propio lugar y filas.", -- draft
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Corregido: con los iconos de beneficios de MelloUI desactivados, la barra de beneficios del juego vuelve a poder moverse en el editor de diseño.", -- draft
-	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Nuevo: Aspecto > Colores tiene una rueda de color para cada clase, cada poder y la reputación de los PNJ.", -- draft
-	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Barras: los interruptores de la sombra detrás de tus barras de acción ahora están en Fondos y sombras, y la búsqueda los encuentra.", -- draft
 	["Report a problem"] = "Informar de un problema", -- draft
 	["Voice pack"] = "Paquete de voces", -- draft
 	["open or close this window"] = "abre o cierra esta ventana", -- draft
@@ -2821,6 +2820,7 @@ Lang:Add("esES", {
 -- stale: ["Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in."] = "Bolsas por tipo: Los objetos se deslizan -- los objetos se deslizan a sus nuevas casillas cuando la ventana se reordena; los nuevos aparecen con un fundido.", -- draft
 -- stale: ["Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it."] = "Bolsas por tipo: Dinero rodante -- el dinero de la ventana de bolsas rueda hasta su nueva suma; las monedas que despojas vuelan hacia él.", -- draft
 -- stale: ["Bar Texture (Look)"] = "Textura de barra (Aspecto)", -- draft
+-- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Barras: los interruptores de la sombra detrás de tus barras de acción ahora están en Fondos y sombras, y la búsqueda los encuentra.", -- draft
 -- stale: ["Browns with gold bevels"] = "Marrones con biseles dorados", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "Hebillas y placas para la armadura, un deslizar de acero para las armas, tintineos de joyas para anillos, collares y abalorios; correas aflojándose al quitarse algo.", -- draft
 -- stale: ["Buff, debuff and crowd control icons on nameplates. While Buffs & Debuffs puts your debuffs on enemy nameplates, those icons are MelloUI's own and show their own time: this switch does not reach them."] = "Iconos de beneficios, perjuicios y control de masas en las placas de nombre. Mientras Beneficios y perjuicios pone tus perjuicios en las placas de nombre enemigas, esos iconos son de MelloUI y muestran su propio tiempo: este interruptor no los alcanza.", -- draft
@@ -3131,6 +3131,7 @@ Lang:Add("esES", {
 -- stale: ["Names in chat"] = "Nombres en el chat", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "Nuevo movimiento: Grandes tiempos de reutilización, progreso de misión, subir de nivel, críticos, puntos de combo, recordatorios, el nombre de la zona, ganancias de reputación; los efectos de impacto llegan a tu marco de objetivo.", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "El recurso nuevo se ilumina por delante de la barra, que crece hasta él; una ganancia grande chispea en su borde (los tics constantes de energía no).", -- draft
+-- stale: ["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Nuevo: Aspecto > Colores tiene una rueda de color para cada clase, cada poder y la reputación de los PNJ.", -- draft
 -- stale: ["New: an Action Bars switch on the Bars page."] = "Nuevo: un interruptor de Barras de acción en la página Barras.", -- draft
 -- stale: ["No Edit Mode change"] = "Sin cambios en el Modo edición", -- draft
 -- stale: ["No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing."] = "Ya no se usa: los temporizadores de golpe tienen un contorno redondo y una barra plana y no llevan marco, así que esto no cambia nada.", -- draft

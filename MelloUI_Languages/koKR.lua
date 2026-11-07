@@ -2279,6 +2279,7 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "수정: 바 텍스처를 선택했을 때 대상의 대상과 주시 대상의 대상 생명력 및 자원 바가 더 이상 어둡게 보이지 않습니다.", -- draft
 	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "/mellobug 보고서가 이제 차단된 동작에 이르는 과정을 보여 주어, 게임이 가방 아이템을 차단하는 원인을 찾는 데 도움이 됩니다.", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "수정: 경비병에게 길을 물으면 이제 그 표시가 MelloUI 지도에 나타납니다.", -- draft
 	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "수정: 종류별 가방 목록 아래쪽에 있는 종류의 설정이 더 이상 잘리지 않습니다. 목록이 함께 늘어납니다.", -- draft
@@ -2292,8 +2293,6 @@ Lang:Add("koKR", {
 	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "수정: MelloUI 2.1.9에서 Zygor Guides가 시작되지 않던 문제. 이제 다시 시작됩니다.", -- draft
 	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "새 기능: 강화 효과 페이지의 약화 효과 분리: 약화 효과가 자체 위치와 줄을 갖습니다.", -- draft
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "수정: MelloUI 강화 효과 아이콘을 꺼도 레이아웃 편집에서 게임의 강화 효과 바를 다시 옮길 수 있습니다.", -- draft
-	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "새 기능: 외형 > 색에 모든 직업, 자원, NPC 평판을 위한 색상환이 생겼습니다.", -- draft
-	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "바: 행동 단축바 뒤 그림자 스위치가 이제 배경판과 그림자 아래에 있으며, 검색으로도 찾을 수 있습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2821,6 +2820,7 @@ Lang:Add("koKR", {
 -- stale: ["Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in."] = "종류별 가방: 아이템 미끄러짐 -- 창이 다시 정렬될 때 아이템이 새 칸으로 미끄러지고, 새 아이템은 서서히 나타납니다.", -- draft
 -- stale: ["Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it."] = "종류별 가방: 굴러가는 돈 -- 가방 창의 돈이 새 합계까지 굴러가고, 주운 동전이 그리로 날아듭니다.", -- draft
 -- stale: ["Bar Texture (Look)"] = "막대 질감(외형)", -- draft
+-- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "바: 행동 단축바 뒤 그림자 스위치가 이제 배경판과 그림자 아래에 있으며, 검색으로도 찾을 수 있습니다.", -- draft
 -- stale: ["Browns with gold bevels"] = "금빛 경사의 갈색", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "방어구에는 버클과 판금, 무기에는 강철 미끄러지는 소리, 반지, 목걸이, 장신구에는 장신구 딸깍. 무언가를 벗을 때 끈 풀리는 소리.", -- draft
 -- stale: ["Buff, debuff and crowd control icons on nameplates. While Buffs & Debuffs puts your debuffs on enemy nameplates, those icons are MelloUI's own and show their own time: this switch does not reach them."] = "이름표의 강화, 약화, 군중 제어 아이콘. 강화 및 약화 효과가 내 약화 효과를 적 이름표에 올리는 동안 그 아이콘은 MelloUI의 것이며 자체 시간을 보여 줍니다: 이 스위치는 거기에 닿지 않습니다.", -- draft
@@ -3131,6 +3131,7 @@ Lang:Add("koKR", {
 -- stale: ["Names in chat"] = "대화의 이름", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "새 움직임: 큰 재사용 대기시간, 퀘스트 진행, 레벨업, 치명타, 연계 점수, 알림, 지역 이름, 평판 획득; 충격 효과가 대상 개체창에도.", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "새 자원이 막대 앞에서 빛나고 막대가 거기까지 자랍니다. 크게 얻으면 가장자리에서 불꽃이 튑니다(기력의 꾸준한 틱은 아님).", -- draft
+-- stale: ["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "새 기능: 외형 > 색에 모든 직업, 자원, NPC 평판을 위한 색상환이 생겼습니다.", -- draft
 -- stale: ["New: an Action Bars switch on the Bars page."] = "새 기능: 바 페이지의 행동 단축바 스위치.", -- draft
 -- stale: ["No Edit Mode change"] = "편집 모드 변경 없음", -- draft
 -- stale: ["No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing."] = "더 이상 쓰이지 않음: 자동 공격 타이머는 둥근 테두리와 평평한 막대를 쓰고 테두리가 없으므로 이 설정은 아무것도 바꾸지 않습니다.", -- draft

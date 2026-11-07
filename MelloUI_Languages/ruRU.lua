@@ -2279,6 +2279,7 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "Исправлено: полосы здоровья и ресурса цели цели и цели фокуса больше не выглядят тёмными при выбранной текстуре полос.", -- draft
 	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "Отчёт /mellobug теперь показывает, что привело к заблокированному действию, чтобы найти причину блокировки предметов из сумок.", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Исправлено: если спросить дорогу у стражника, его метка теперь появляется на карте MelloUI.", -- draft
 	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "Исправлено: настройки вида в нижней части списка «Сумки по видам» больше не обрезаются: список растёт вместе с ними.", -- draft
@@ -2292,8 +2293,6 @@ Lang:Add("ruRU", {
 	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "Исправлено: Zygor Guides не запускался с MelloUI 2.1.9. Теперь запускается.", -- draft
 	["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "Новое: «Отдельные отрицательные эффекты» на странице положительных эффектов: у ваших отрицательных эффектов своё место и ряды.", -- draft
 	["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Исправлено: при выключенных значках эффектов MelloUI панель положительных эффектов игры снова можно перемещать в редакторе расположения.", -- draft
-	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Новое: в разделе «Облик > Цвета» есть цветовой круг для каждого класса, каждого ресурса и отношения НИП.", -- draft
-	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Панели: переключатели тени за панелями команд теперь находятся в разделе «Подложки и тени», и поиск их находит.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -2821,6 +2820,7 @@ Lang:Add("ruRU", {
 -- stale: ["Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in."] = "Сумки по видам: «Плавное перемещение» — предметы плавно переезжают в новые ячейки при пересортировке окна; новые проявляются.", -- draft
 -- stale: ["Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it."] = "Сумки по видам: «Бегущие деньги» — деньги окна сумок бегут до новой суммы; добытые монеты влетают в них.", -- draft
 -- stale: ["Bar Texture (Look)"] = "Текстура полос (Облик)", -- draft
+-- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Панели: переключатели тени за панелями команд теперь находятся в разделе «Подложки и тени», и поиск их находит.", -- draft
 -- stale: ["Browns with gold bevels"] = "Коричневые с золотыми фасками", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "Пряжки и латы для доспехов, скольжение стали для оружия, звон украшений для колец, ожерелий и аксессуаров; ослабляющиеся ремни, когда что-то снимается.", -- draft
 -- stale: ["Buff, debuff and crowd control icons on nameplates. While Buffs & Debuffs puts your debuffs on enemy nameplates, those icons are MelloUI's own and show their own time: this switch does not reach them."] = "Значки положительных, отрицательных эффектов и контроля на индикаторах здоровья. Пока «Баффы и дебаффы» выводит ваши отрицательные эффекты на индикаторы здоровья врагов, эти значки принадлежат MelloUI и показывают своё время: этот переключатель до них не дотягивается.", -- draft
@@ -3131,6 +3131,7 @@ Lang:Add("ruRU", {
 -- stale: ["Names in chat"] = "Имена в чате", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "Новое движение: большие восстановления, прогресс заданий, новый уровень, криты, приёмы серии, напоминания, название зоны, рост репутации; эффекты попаданий доходят до рамки цели.", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "Новый ресурс подсвечивается впереди полосы, и она дорастает до него; большое получение искрит на краю (ровные тики энергии — нет).", -- draft
+-- stale: ["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "Новое: в разделе «Облик > Цвета» есть цветовой круг для каждого класса, каждого ресурса и отношения НИП.", -- draft
 -- stale: ["New: an Action Bars switch on the Bars page."] = "Новое: переключатель панелей действий на странице «Панели».", -- draft
 -- stale: ["No Edit Mode change"] = "Без изменений в режиме редактирования", -- draft
 -- stale: ["No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing."] = "Больше не используется: у таймеров удара круглая окантовка и плоская полоса без рамки, так что это ничего не меняет.", -- draft

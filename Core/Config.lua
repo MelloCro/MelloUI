@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.14", lines = {
+		"Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen.",
+	} },
 	{ version = "2.1.13", lines = {
 		"/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags.",
 		"Fixed: asking a guard for directions now puts its marker on MelloUI's map.",
@@ -194,10 +197,6 @@ local CHANGELOG = {
 		"Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again.",
 		"New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows.",
 		"Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again.",
-	} },
-	{ version = "2.1.9", lines = {
-		"New: Look > Colours has a colour wheel for every class, each power and NPC standings.",
-		"Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them.",
 	} },
 }
 local LINKS = {
