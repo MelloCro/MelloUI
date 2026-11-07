@@ -333,11 +333,11 @@ local function Dress(pin)
 		tex:SetAtlas(spec.atlas, false, nil, true)   -- (2.1.4: a pooled texture's earlier crop not kept)
 	elseif spec.icon then
 		Icons.Set(tex, own or spec.icon, s)   -- (2026-10-21: the copy for its size; a game icon as it is)
-		-- (qu-04) a game picture with a wide clear margin without it (Skin.Inset: Default's doors); the icon system lets
+		-- (qu-04) a game picture with a wide clear margin without it (Skin.InsetPicture: Default's doors); the icon system lets
 		-- go of the texture then, and the next look switch dresses it again here (Restyle)
-		local pic = Skin and Skin.Inset and Skin.Icon(own or spec.icon)
+		local pic = Skin and Skin.InsetPicture and Skin.Icon(own or spec.icon)
 		if pic and pic.inset then
-			Skin.Inset(tex, pic)
+			Skin.InsetPicture(tex, pic)
 		end
 	end
 	tex:SetSize(s, s)

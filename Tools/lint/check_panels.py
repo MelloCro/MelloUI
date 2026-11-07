@@ -57,6 +57,7 @@ CEILINGS = {
     "start-moving": 0,
     "animation-group": 3,
     "new-ticker": 9,   # (2026-11-06: Zygor's reader: no hook on its methods can be used, they yield. Opt-in, with Zygor only)
+    "hook-bag-call": 0,
     "combat-guard": 1,
     "safe-standin": 0,
     "fn-standin": 0,
@@ -210,6 +211,8 @@ CHECKS = {
                         "a raw AnimationGroup: MelloUI.Anim (Anim:PlayGroup, Reduce Motion aware)"),
     "new-ticker": (r"NewTicker\(", {"skip": ["Core/Perf.lua"]},
                    "one more ticker: an event, Kit:NextFrame or a shared job"),
+    "hook-bag-call": (r"hooksecurefunc\(\s*C_Container\b", None,
+                      "a post-hook on the game's bag calls: its own bag click runs through them (2.1.13: a precaution, not a proven cause of the blocked items)"),
     "combat-guard": (r"if Kit\.WhenOutOfCombat then|Kit and Kit\.WhenOutOfCombat", None,
                      "a guard around Kit:WhenOutOfCombat: the kit is always loaded, call it"),
     "safe-standin": (r"MelloUI\.Safe and MelloUI\.Safe\.", None,

@@ -1026,14 +1026,21 @@ local function HookMerchant()
 	if type(SellCursorItem) == "function" then
 		hooksecurefunc("SellCursorItem", Sold)
 	end
-	if C_Container and type(C_Container.UseContainerItem) == "function" then
-		hooksecurefunc(C_Container, "UseContainerItem", function()
-			-- with the merchant open a bag item used is a bag item sold
-			if MerchantFrame and MerchantFrame:IsShown() then
+	-- (2.1.13; Nixxen, MelloCro/MelloUI#1, and BaQstein: a profession book right-clicked in the bag, "MelloUI took an action
+	-- reserved for the Blizzard UI", function "UNKNOWN()". NOT proven the cause: issecurevariable reads this call clean with the
+	-- hook on; taken away as a precaution) NO post-hook on C_Container.UseContainerItem: it is the very call the game's bag click makes. With the merchant open a bag item
+	-- right-clicked is a bag item sold: the game's own word for the click, at its end, and the bus's for MelloUI's selling
+	local registry = rawget(_G, "EventRegistry")
+	if type(registry) == "table" and type(registry.RegisterCallback) == "function" then
+		registry:RegisterCallback("ContainerFrameItemButton.OnItemClicked", function()
+			local shown = MerchantFrame and MerchantFrame:IsShown()
+			local clicked = rawget(_G, "GetMouseButtonClicked")
+			if shown and type(clicked) == "function" and clicked() == "RightButton" then
 				Sold()
 			end
-		end)
+		end, M)
 	end
+	MelloUI:On("junksold", Sold, "Custom Sounds: the junk sold")
 end
 
 --------------------------------------------------------------------------------

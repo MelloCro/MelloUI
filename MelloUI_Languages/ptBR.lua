@@ -698,10 +698,12 @@ Lang:Add("ptBR", {
 	["In inns, cities and towns, reminders stay until done or until you leave."] = "Em estalagens, cidades e vilas, os lembretes ficam até serem feitos ou você sair.", -- draft
 	["Widget"] = "Widget", -- draft
 	["Place"] = "Lugar", -- draft
-	["Which side of your portrait the reminder button sits on. Without a player frame, move it in Edit Layout."] = "De que lado do seu retrato fica o botão de lembretes. Sem quadro de jogador, mova-o com Editar layout.", -- draft
+	["Which side of your portrait the reminder button sits on. Detached or without a player frame, you move it in Edit Layout, and this is the side its line opens to."] = "De que lado do seu retrato fica o botão de lembretes. Separado ou sem quadro de jogador, mova-o com Editar layout; este é o lado para onde a linha dele se abre.", -- draft
 	["Left of the portrait"] = "À esquerda do retrato", -- draft
 	["Above the portrait"] = "Acima do retrato", -- draft
 	["Right of the portrait"] = "À direita do retrato", -- draft
+	["Detach From Portrait"] = "Separar do retrato", -- draft
+	["Gives the reminder button a place of its own, so it no longer follows your player frame. Move it in Edit Layout."] = "Dá ao botão de lembretes um lugar próprio, para que ele não siga mais seu quadro de jogador. Mova-o com Editar layout.", -- draft
 	["Glow"] = "Brilho", -- draft
 	["The soft glow around the reminder button: steady, or none."] = "O brilho suave do botão de lembretes: fixo ou nenhum.", -- draft
 	["Steady"] = "Fixo", -- draft
@@ -1090,6 +1092,8 @@ Lang:Add("ptBR", {
 	["Player, target and focus, centred and calm."] = "Jogador, alvo e foco, centralizados e calmos.", -- draft
 	["MelloUI Frames"] = "Quadros MelloUI", -- draft
 	["The unit frames in MelloUI's look: a gold portrait ring, a level badge and gold-lined borders. Off: the game's own art."] = "Os quadros de unidade no visual do MelloUI: anel de retrato dourado, emblema de nível e bordas com filete dourado. Desligado: a arte do jogo.", -- draft
+	["Target of Target"] = "Alvo do alvo", -- draft
+	["Shows who your target is targeting, under the target frame, and who your focus is targeting, under the focus frame. This is the game's own Target of Target setting. A change here takes effect after a /reload."] = "Mostra quem o seu alvo está mirando, sob o quadro de alvo, e quem o seu foco está mirando, sob o quadro de foco. É a configuração \"Alvo do alvo\" do jogo. Uma mudança aqui vale depois de um /reload.", -- draft
 	["Flip Horizontally"] = "Inverter na horizontal", -- draft
 	["Mirrors the party frames for a party on the right of the screen: portraits on the right."] = "Espelha os quadros de grupo para um grupo à direita da tela: retratos à direita.", -- draft
 	["Names"] = "Nomes", -- draft
@@ -2275,8 +2279,13 @@ Lang:Add("ptBR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toda a sua configuração sob um nome. Salve, carregue ou torne-a o padrão de uma instalação nova.", -- draft
 	["Supporters"] = "Apoiadores", -- draft
 	["The people who help keep MelloUI going."] = "As pessoas que mantêm o MelloUI funcionando.", -- draft
+	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "O relatório do /mellobug agora mostra o que levou a uma ação bloqueada, para ajudar a encontrar a causa de itens das bolsas bloqueados pelo jogo.", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Corrigido: pedir informações a um guarda agora coloca a marca dele no mapa do MelloUI.", -- draft
 	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "Corrigido: os ajustes de um tipo no fim da lista de Bolsas por tipo não são mais cortados: a lista cresce com eles.", -- draft
+	["The target of target frame now shows: it appears after your next /reload or login. The Target page has a switch."] = "O quadro Alvo do alvo agora aparece: ele surge depois do seu próximo /reload ou login. A página Alvo tem um botão para isso.", -- draft
+	["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "Corrigido: com o visual Padrão, a janela de sussurro abre sem erro de Lua e volta a ter a aparência do jogo.", -- draft
+	["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "Novo: Separar do retrato na página Lembretes dá ao botão de lembretes um lugar próprio, movido com Editar layout.", -- draft
+	["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "Corrigido: a linha e os botões extras do botão de lembretes não saem mais da tela: eles abrem para o lado com espaço.", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "Corrigido: em clientes chineses, coreanos e russos, o texto de combate flutuante e os nomes acima dos personagens não aparecem mais como quadrados.", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "A sombra da interface agora cobre a exibição pessoal, com interruptor próprio e o controle de força da sombra.", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "O brilho sob os ícones nos mapas e no minimapa agora fica sempre ligado.", -- draft
@@ -3544,6 +3553,7 @@ Lang:Add("ptBR", {
 -- stale: ["Which"] = "Quais", -- draft
 -- stale: ["Which debuffs light a frame: every one that can be removed, the ones someone in your group can remove, or only the ones you can remove."] = "Quais penalidades acendem um quadro: todas as que podem ser removidas, as que alguém do seu grupo pode remover, ou só as que você pode remover.", -- draft
 -- stale: ["Which quests the list shows. The dropdown at the top of the list switches this as well."] = "Quais missões a lista mostra. O menu no topo da lista também muda isto.", -- draft
+-- stale: ["Which side of your portrait the reminder button sits on. Without a player frame, move it in Edit Layout."] = "De que lado do seu retrato fica o botão de lembretes. Sem quadro de jogador, mova-o com Editar layout.", -- draft
 -- stale: ["Which way a row of buffs grows from the first one."] = "Para que lado uma fileira de bônus cresce a partir do primeiro.", -- draft
 -- stale: ["Which way the party's frames line up from where you placed them."] = "Para que lado os quadros do grupo se alinham a partir de onde você os pôs.", -- draft
 -- stale: ["Which way your icons run under the player frame: from the bars' left end rightwards, or from their right end leftwards."] = "Para que lado seus ícones correm sob a janela do jogador: da ponta esquerda das barras para a direita, ou da ponta direita para a esquerda.", -- draft

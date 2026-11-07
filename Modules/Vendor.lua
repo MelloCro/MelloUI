@@ -379,6 +379,9 @@ SellNextBatch = function()
 			count = count + 1
 		end
 	end
+	if count > 0 then
+		MelloUI:Fire("junksold")   -- (Custom Sounds' sale: 2.1.13, its hook on the use gone)
+	end
 	if queuePos < queueLen then
 		batchPending = batchPending + 1
 		C_Timer.After(SELL_DELAY, BatchTimer)

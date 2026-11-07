@@ -698,10 +698,12 @@ Lang:Add("esES", {
 	["In inns, cities and towns, reminders stay until done or until you leave."] = "En posadas, ciudades y pueblos, los recordatorios siguen hasta completarse o hasta que te vayas.", -- draft
 	["Widget"] = "Widget", -- draft
 	["Place"] = "Lugar", -- draft
-	["Which side of your portrait the reminder button sits on. Without a player frame, move it in Edit Layout."] = "En qué lado de tu retrato está el botón de recordatorios. Sin marco de jugador, muévelo con Editar disposición.", -- draft
+	["Which side of your portrait the reminder button sits on. Detached or without a player frame, you move it in Edit Layout, and this is the side its line opens to."] = "En qué lado de tu retrato está el botón de recordatorios. Separado o sin marco de jugador, muévelo con Editar disposición; este es el lado hacia el que se abre su línea.", -- draft
 	["Left of the portrait"] = "Izquierda del retrato", -- draft
 	["Above the portrait"] = "Encima del retrato", -- draft
 	["Right of the portrait"] = "Derecha del retrato", -- draft
+	["Detach From Portrait"] = "Separar del retrato", -- draft
+	["Gives the reminder button a place of its own, so it no longer follows your player frame. Move it in Edit Layout."] = "Da al botón de recordatorios un lugar propio, para que deje de seguir tu marco de jugador. Muévelo con Editar disposición.", -- draft
 	["Glow"] = "Brillo", -- draft
 	["The soft glow around the reminder button: steady, or none."] = "El suave brillo del botón de recordatorios: fijo o ninguno.", -- draft
 	["Steady"] = "Fijo", -- draft
@@ -1090,6 +1092,8 @@ Lang:Add("esES", {
 	["Player, target and focus, centred and calm."] = "Jugador, objetivo y foco, centrados y tranquilos.", -- draft
 	["MelloUI Frames"] = "Marcos MelloUI", -- draft
 	["The unit frames in MelloUI's look: a gold portrait ring, a level badge and gold-lined borders. Off: the game's own art."] = "Los marcos de unidad con el aspecto de MelloUI: anillo de retrato dorado, insignia de nivel y bordes con filete dorado. Desactivado: el arte del juego.", -- draft
+	["Target of Target"] = "Objetivo de objetivo", -- draft
+	["Shows who your target is targeting, under the target frame, and who your focus is targeting, under the focus frame. This is the game's own Target of Target setting. A change here takes effect after a /reload."] = "Muestra a quién apunta tu objetivo, bajo el marco de objetivo, y a quién apunta tu foco, bajo el marco de foco. Es el ajuste «Objetivo de objetivo» del juego. Un cambio aquí se aplica tras un /reload.", -- draft
 	["Flip Horizontally"] = "Voltear horizontalmente", -- draft
 	["Mirrors the party frames for a party on the right of the screen: portraits on the right."] = "Refleja los marcos de grupo para un grupo a la derecha de la pantalla: retratos a la derecha.", -- draft
 	["Names"] = "Nombres", -- draft
@@ -2275,8 +2279,13 @@ Lang:Add("esES", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toda tu configuración bajo un nombre. Guárdala, cárgala o hazla la predeterminada de una instalación nueva.", -- draft
 	["Supporters"] = "Colaboradores", -- draft
 	["The people who help keep MelloUI going."] = "Las personas que mantienen MelloUI en marcha.", -- draft
+	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "El informe de /mellobug ahora muestra qué llevó a una acción bloqueada, para localizar la causa de los objetos de las bolsas que bloquea el juego.", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Corregido: al preguntar una dirección a un guardia, su marca ahora aparece en el mapa de MelloUI.", -- draft
 	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "Corregido: los ajustes de un tipo situado abajo en la lista de Bolsas por tipo ya no se cortan: la lista crece con ellos.", -- draft
+	["The target of target frame now shows: it appears after your next /reload or login. The Target page has a switch."] = "El marco Objetivo de objetivo ya se muestra: aparece tras tu próximo /reload o inicio de sesión. La página Objetivo tiene un interruptor.", -- draft
+	["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "Corregido: con la apariencia Predeterminado, la ventana de susurros se abre sin error de Lua y vuelve a tener el aspecto del juego.", -- draft
+	["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "Nuevo: Separar del retrato en la página Recordatorios da al botón de recordatorios un lugar propio, que se mueve con Editar disposición.", -- draft
+	["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "Corregido: la línea y los botones adicionales del botón de recordatorios ya no se salen de la pantalla: se abren hacia el lado con espacio.", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "Corregido: en clientes chinos, coreanos y rusos, el texto de combate flotante y los nombres sobre los personajes ya no aparecen como cuadrados.", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "La sombra de la interfaz ahora cubre la pantalla personal, con su propio interruptor y el control de intensidad de sombra.", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "El brillo bajo los iconos en los mapas y el minimapa ahora está siempre activo.", -- draft
@@ -3544,6 +3553,7 @@ Lang:Add("esES", {
 -- stale: ["Which"] = "Cuáles", -- draft
 -- stale: ["Which debuffs light a frame: every one that can be removed, the ones someone in your group can remove, or only the ones you can remove."] = "Qué perjuicios iluminan un marco: todos los que se pueden quitar, los que alguien de tu grupo puede quitar, o solo los que puedes quitar tú.", -- draft
 -- stale: ["Which quests the list shows. The dropdown at the top of the list switches this as well."] = "Qué misiones muestra la lista. El desplegable de arriba de la lista también cambia esto.", -- draft
+-- stale: ["Which side of your portrait the reminder button sits on. Without a player frame, move it in Edit Layout."] = "En qué lado de tu retrato está el botón de recordatorios. Sin marco de jugador, muévelo con Editar disposición.", -- draft
 -- stale: ["Which way a row of buffs grows from the first one."] = "Hacia dónde crece una fila de beneficios desde el primero.", -- draft
 -- stale: ["Which way the party's frames line up from where you placed them."] = "Hacia dónde se alinean los marcos del grupo desde donde los colocaste.", -- draft
 -- stale: ["Which way your icons run under the player frame: from the bars' left end rightwards, or from their right end leftwards."] = "Hacia dónde avanzan tus iconos bajo el marco de jugador: del extremo izquierdo de las barras hacia la derecha, o de su extremo derecho hacia la izquierda.", -- draft

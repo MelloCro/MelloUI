@@ -175,8 +175,13 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "2.1.13", lines = {
+		"/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags.",
 		"Fixed: asking a guard for directions now puts its marker on MelloUI's map.",
 		"Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them.",
+		"The target of target frame now shows: it appears after your next /reload or login. The Target page has a switch.",
+		"Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again.",
+		"New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout.",
+		"Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room.",
 	} },
 	{ version = "2.1.12", lines = {
 		"Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares.",

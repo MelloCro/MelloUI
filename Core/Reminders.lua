@@ -142,10 +142,14 @@
 -- its free side, how far its art stands past the region, the frame's other
 -- end), by anchors only (it follows the player frame with no code): left of
 -- the ring, above it, or right past the frame's far end (the bars; not over
--- the name band). While the player frame is hidden (no anchor), on a place of
--- its own: MelloUI's one mover and position store (key "reminders"; Edit
--- Layout shows it with a sample line on its plate to drag, and its Reset puts
--- it back; beside the portrait its plate is locked, the ring places it).
+-- the name band). While the player frame is hidden (no anchor), or detached by
+-- the player's switch (2.1.13; SmoomS, Discord 2026-11-07: "Any chance to
+-- detach the reminders from the player frame?"), on a place of its own:
+-- MelloUI's one mover and position store (key "reminders"; Edit Layout shows
+-- it with a sample line on its plate to drag, and its Reset puts it back;
+-- beside the portrait its plate is locked, the ring places it). The switch
+-- starts off, so nobody's widget moves with the update. Wherever it stands,
+-- its line and more buttons open to the side with room (SetWay).
 -- While Edit Layout holds a change of it, its own placing waits and lays it
 -- again once the change is saved or dropped ('mover' "released"); Edit
 -- Layout's first open builds it (a mover source) while the Reminders module
@@ -207,7 +211,7 @@ Rem.TEXT = {
 	notNow = "Right-click: not now",
 	secureFight = "In a fight the click cannot do it: the game allows it only out of combat.",
 	-- (Edit Layout's box and plate: why it cannot be moved there)
-	locked = "It sits beside your portrait while your player frame shows.",
+	locked = "It sits beside your portrait. To move it, turn on Detach From Portrait on the Reminders page.",
 	-- the column (0.16.0)
 	colTitle = "Widgets",
 	colLocked = "Locked: Lock The Widgets is on (Reminders > Widgets, or Voice Over's padlock).",
@@ -222,7 +226,7 @@ Rem.TEXT = {
 }
 local TEXT = Rem.TEXT
 
-local DEFAULTS = { glow = "still", hold = HOLD, stayResting = true, widgetLock = false, widgetMax = 4 }
+local DEFAULTS = { glow = "still", hold = HOLD, stayResting = true, widgetLock = false, widgetMax = 4, detached = false }
 local GLOWS = { still = true, off = true }
 local SIDES = { LEFT = "left", RIGHT = "right", TOP = "above", left = "left", right = "right", above = "above" }
 -- each place: the widget's point on the ring's, the way out of the button
@@ -481,8 +485,12 @@ end
 -- game's portrait), side (its free side), reach (how far its art stands past
 -- region: added to the gap), far (the frame's other end: the "right" place
 -- goes past it, not onto the name band); nil while the player frame is
--- hidden or there is no such module
+-- hidden, there is no such module, or the player detached it (no ring to hang
+-- from: every reader then takes its own place, unlocks its plate, shows the sample)
 local function Anchor()
+	if Setting("detached") == true then
+		return nil
+	end
 	local panel = MelloUI.GetModule and MelloUI:GetModule("UnitFrames")
 	local fn = type(panel) == "table" and panel.ReminderAnchor
 	if type(fn) ~= "function" then
@@ -535,6 +543,74 @@ local function AnchorLabel()
 	label:SetJustifyH(p.justify)
 end
 
+-- The way out (2.1.13; SmoomS, Discord 2026-11-07: "Now the reminder always
+-- clips out if the screen"; the user's "Yes, add the flip"): the side the line
+-- and the more buttons open to and the tooltip's (ui.place). The place's own
+-- (ui.want) while they fit on the screen there, else the side with room. The
+-- holder is clamped to the screen, but they stand outside its rect. Only they
+-- change sides, never the button, so no saved place moves. Measured at each lay
+-- and place: no OnUpdate, no table. A rect that cannot be read (a secret, not
+-- laid yet): the place's own.
+local SetWay
+do
+	local ScreenRect = MelloUI.Safe.ScreenRect
+	local OTHER = { left = "right", right = "left", above = "right" }
+	local BAND_X, BAND_Y = 8, 4   -- (the line's soft band past its text: Build's ui.band:Anchor)
+
+	-- fits going `way`: l, r, t the button's edges, sl, sr, st the screen's, s
+	-- screen px per UI unit, w, h the line's text, more the more buttons
+	local function Fits(way, l, r, t, sl, sr, st, s, w, h, more)
+		local out = more * (MINI + GAP)
+		if way == "above" then
+			-- (its line centred over the button: half its width each way)
+			local mid, half = (l + r) / 2, s * (w / 2 + BAND_X)
+			return t + s * math.max(out, GAP + 4 + h + BAND_Y) <= st and mid - half >= sl and mid + half <= sr
+		end
+		local need = s * math.max(out, GAP + 6 + w + BAND_X)
+		if way == "left" then
+			return l - need >= sl
+		end
+		return r + need <= sr
+	end
+
+	local function WayOut(want)
+		local l, _, r, t = ScreenRect(ui.holder)
+		local sl, _, sr, st = ScreenRect(UIParent)
+		if not (l and sl) or r <= l then
+			return want
+		end
+		local s = (r - l) / SIZE
+		local label = ui.label
+		local okW, w = pcall(label.GetStringWidth, label)
+		local okH, h = pcall(label.GetStringHeight, label)
+		w, h = okW and Num(w) or 0, okH and Num(h) or 0
+		local more = list.n > 1 and list.n - 1 or 0
+		if Fits(want, l, r, t, sl, sr, st, s, w, h, more) then
+			return want
+		end
+		local other = OTHER[want]
+		if Fits(other, l, r, t, sl, sr, st, s, w, h, more) then
+			return other
+		end
+		-- (Above with no room to the right: its left; none anywhere: the place's own)
+		if want == "above" and Fits("left", l, r, t, sl, sr, st, s, w, h, more) then
+			return "left"
+		end
+		return want
+	end
+
+	SetWay = function()
+		local way = WayOut(ui.want)
+		if way ~= ui.place then
+			ui.place = way
+			for i = 1, #ui.minis do
+				AnchorMini(ui.minis[i], i)
+			end
+			AnchorLabel()
+		end
+	end
+end
+
 -- The secure target button (a protected frame) laid over the round button by
 -- measure, on UIParent: the widget hangs from the player portrait, a region,
 -- and the game refuses a protected frame anchored to a chain that ends on a
@@ -580,13 +656,7 @@ local function Hang(home)
 	Anim:Land(holder, "y")   -- a rise under way ends first: the anchor is laid anew
 	local region, side, reach, far = Anchor()
 	local place = PlaceOf(side)
-	if place ~= ui.place then
-		ui.place = place
-		for i = 1, #ui.minis do
-			AnchorMini(ui.minis[i], i)
-		end
-		AnchorLabel()
-	end
+	ui.want = place
 	holder:ClearAllPoints()
 	if region then
 		S.attached = true
@@ -602,6 +672,7 @@ local function Hang(home)
 			Home(holder)
 		end
 	end
+	SetWay()
 	-- the secure target button follows the widget (placed by measure)
 	local o = ui.overlay
 	if o and o:IsShown() and not OverlayPlace(o, o.target) and not InCombatLockdown() then
@@ -1029,7 +1100,7 @@ Build = function()
 	if ui then
 		return ui
 	end
-	ui = { minis = {}, place = "left" }
+	ui = { minis = {}, place = "left", want = "left" }
 	-- (0.17.0: on the Fader's host, which fades it as the user picks)
 	local holder = CreateFrame("Frame", "MelloUIReminders", (MelloUI.Fader and MelloUI.Fader:Host("reminders") or UIParent))
 	holder:SetSize(SIZE, SIZE)
@@ -1074,8 +1145,8 @@ Build = function()
 	ui.band = Look.Plate(lf, { alpha = 0.7, feather = 16 })
 	ui.band:Anchor(label, 8, 4)
 	AnchorLabel()
-	-- its own place, on the one mover (used while the ring is hidden): moved
-	-- in Edit Layout (its plate, locked while the ring places it), never by a
+	-- its own place, on the one mover (used while the ring is hidden or it is
+	-- detached): moved in Edit Layout (its plate, locked while the ring places it), never by a
 	-- drag of its own -- the buttons keep their mouse
 	ui.entry = MelloUI:RegisterMover(holder, holder, { key = MOVER_KEY, anchor = "CENTER", save = SaveFree,
 		reset = ForgetFree, default = PlaceHome, label = "Reminders", page = SETTINGS, when = RemindersOn,
@@ -1121,6 +1192,7 @@ Lay = function()
 		ui.glow:SetShown(false)
 		Look.CountShown(ui.count, false)
 		ui.label:SetText(TEXT.preview)
+		SetWay()
 		Anim:Retract(ui.minis)
 		Detach()
 		return
@@ -1143,6 +1215,7 @@ Lay = function()
 		m:SetIcon(Rem:Icon(key))
 		m.glow:SetStrength(states[key].reach and "reach" or "near")
 	end
+	SetWay()   -- (the line's width and the more buttons' count just changed)
 	-- fewer than are out: all in at once; the right ones out (hovered)
 	EXPAND.count = n - 1
 	if shown > n - 1 then
@@ -1287,6 +1360,7 @@ Show = function()
 		ui.tick:Hide()
 		ui.tickShade:Hide()
 		Anim:Pop(holder, POP, RISE)
+		SetWay()   -- (shown now: a rect the game gave none of while hidden)
 		Motion.Up()
 	end
 	if ui.button.key then
@@ -1347,6 +1421,7 @@ Preview = function()
 		if not ui.holder:IsShown() or Anim:Target(ui.holder, "alpha") == 0 then
 			Anim:FadeIn(ui.holder)
 		end
+		SetWay()   -- (shown now: as in Show)
 		ShowLabel(LabelWanted())
 	else
 		if list.n == 0 then
@@ -1882,7 +1957,7 @@ end
 -- the Reminders settings, Edit Layout shown or not, a profile load
 local function OnSetting(module, key)
 	if module == SETTINGS then
-		if key == "place" then
+		if key == "place" or key == "detached" then
 			Place()
 			Preview()
 		elseif key == "glow" then

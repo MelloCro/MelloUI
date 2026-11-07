@@ -2,8 +2,13 @@
 
 ## 2.1.13
 
+- /mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags.
 - Fixed: asking a guard for directions now puts its marker on MelloUI's map.
 - Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them and scrolls with the page.
+- The target of target frame now shows in every skin: MelloUI switches the game's setting on, and the frame appears after your next /reload or login. The Target page has a switch to turn it off.
+- Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again.
+- New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout.
+- Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room.
 
 ## 2.1.12
 

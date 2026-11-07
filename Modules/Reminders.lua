@@ -9,8 +9,8 @@
 --
 -- The page of the one reminder widget (Core/Reminders.lua, MelloUI.Reminders:
 -- the round button beside the player ring, its count, glow, hover and place;
--- the settings it reads are this module's: remind_<key>, place, glow, hold,
--- stayResting)
+-- the settings it reads are this module's: remind_<key>, place, detached, glow,
+-- hold, stayResting)
 -- and three of its four users. Restock is the fourth (Modules/Restock.lua):
 -- while it has no page of its own, its rows are on this page's Restock tab
 -- (Core/ConfigLayout.lua), under the Restock module's own switch, which is
@@ -119,6 +119,7 @@ local M = MelloUI:RegisterModule("Reminders", {
 		trainerProfession = true,
 		stayResting = true,   -- (the widget reads it: Rem:StayUp; Restock's own until RC4, carried over: CarryRestock)
 		place = "left",
+		detached = false,   -- (the widget reads it: its own place, Core/Reminders.lua's Anchor)
 		glow = "still",
 		hold = 8,
 		widgetLock = false,   -- (the widget column's, Core/Reminders.lua: Edit Layout's plate locked)
@@ -142,7 +143,9 @@ local M = MelloUI:RegisterModule("Reminders", {
 		  desc = "In inns, cities and towns, reminders stay until done or until you leave." },
 		{ type = "header", name = "Widget" },
 		{ type = "dropdown", key = "place", name = "Place", values = PLACES,
-		  desc = "Which side of your portrait the reminder button sits on. Without a player frame, move it in Edit Layout." },
+		  desc = "Which side of your portrait the reminder button sits on. Detached or without a player frame, you move it in Edit Layout, and this is the side its line opens to." },
+		{ type = "toggle", key = "detached", name = "Detach From Portrait", new = "2.1.13",
+		  desc = "Gives the reminder button a place of its own, so it no longer follows your player frame. Move it in Edit Layout." },
 		{ type = "dropdown", key = "glow", name = "Glow", values = GLOWS,
 		  desc = "The soft glow around the reminder button: steady, or none." },
 		{ type = "slider", key = "hold", name = "Show For", min = 4, max = 20, step = 1, format = Seconds,
@@ -932,8 +935,8 @@ function M:OnDisable()
 	end
 end
 
--- (the widget reads remind_<key>, place, glow, hold and stayResting itself,
--- on 'setting')
+-- (the widget reads remind_<key>, place, detached, glow, hold and stayResting
+-- itself, on 'setting')
 function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if key == "remind_mail" or key == "remind_repair" or key == "remind_trainer" then

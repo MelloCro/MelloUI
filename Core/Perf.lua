@@ -1430,6 +1430,102 @@ function BUG.List()
 	return db.blocked
 end
 
+-- (2.1.13; Nixxen, MelloCro/MelloUI#1, BaQstein and the user: a bag item blocked at random, never on demand, so no taint log
+-- is on when it comes) The report names what it can from the block itself, then and only then. The game's event comes inside
+-- the blocked call, so the stack is the way there (BUG.Way: the real name of an "UNKNOWN()"); what stood under the mouse
+-- (BUG.Under); the other addons (BUG.Others); and which of the values the game's own bag click reads on its way to the call
+-- are not the game's any more, with who wrote them (BUG.NotGames; ContainerFrameItemButton_OnClick's right click).
+BUG.WAY, BUG.NAMES, BUG.OTHERS = 14, 40, 40
+BUG.READS = { "ContainerFrameItemButton_OnClick", "ContainerFrame_GetExtendedPriceString", "MerchantFrame_ResetRefundItem",
+	"BankUtil_IsAccountBankDepositRefundable", "IsModifiedClick", "GetCursorInfo", "SpellCanTargetItem", "SpellCanTargetItemID",
+	"CreateFromMixins", "ItemLocationMixin", "ItemLocation", "ItemButtonUtil", "EventRegistry", "C_Container", "C_Item",
+	"C_AuctionHouse", "C_ItemSocketInfo", "C_MountJournal", "C_Spell", "AuctionHouseFrame", "AzeriteRespecFrame",
+	"RuneforgeFrame", "MerchantFrame", "BankFrame", "GuildBankFrame", "MailFrame", "AuctionFrame", "TradeFrame",
+	"ItemUpgradeFrame", "ObliterumForgeFrame", "ChallengesKeystoneFrame", "StackSplitFrame" }
+BUG.FIELDS = { "MerchantFrame", "BankFrame", "ItemButtonUtil", "ItemLocation", "C_Container" }
+
+function BUG.Way()
+	local ok, text = pcall(rawget(_G, "debugstack") or error, 1, 30, 0)
+	if not ok or Secret(text) or type(text) ~= "string" then
+		return nil
+	end
+	local way = {}
+	for line in text:gmatch("[^\n]+") do
+		if #way < BUG.WAY and not line:find("Core/Perf.lua", 1, true) and not line:find("'pcall'", 1, true) then
+			way[#way + 1] = (line:gsub("Interface/AddOns/", "")):sub(1, 150)
+		end
+	end
+	return way
+end
+
+function BUG.Under()
+	local ok, list = pcall(rawget(_G, "GetMouseFoci") or error)
+	local f = ok and type(list) == "table" and list[1] or nil
+	if type(f) ~= "table" then
+		return nil, nil
+	end
+	local okN, name = pcall(f.GetDebugName, f)
+	local text = "an unnamed frame"
+	if okN and not Secret(name) and type(name) == "string" then
+		text = name:sub(1, 90)
+	end
+	local okB, bag = pcall(f.GetBagID, f)
+	local okS, slot = pcall(f.GetID, f)
+	if okB and okS and not Secret(bag) and not Secret(slot) and type(bag) == "number" and type(slot) == "number" then
+		local okI, id = pcall(C_Container.GetContainerItemID, bag, slot)
+		text = format("%s: bag %d, slot %d, item %s", text, bag, slot, okI and not Secret(id) and tostring(id) or "?")
+	end
+	return text, f
+end
+
+function BUG.NotGames(button)
+	local check = rawget(_G, "issecurevariable")
+	if type(check) ~= "function" then
+		return nil
+	end
+	local out = {}
+	local function Note(label, ok, secure, by)
+		if ok and not secure and #out < BUG.NAMES then
+			out[#out + 1] = format("%s (%s)", label, tostring(by))
+		end
+	end
+	local function Fields(label, t)
+		if type(t) == "table" then
+			for k in pairs(t) do
+				if type(k) == "string" then
+					Note(label .. "." .. k, pcall(check, t, k))
+				end
+			end
+		end
+	end
+	for _, name in ipairs(BUG.READS) do
+		Note(name, pcall(check, name))
+	end
+	for _, name in ipairs(BUG.FIELDS) do
+		Fields(name, rawget(_G, name))
+	end
+	local bank = rawget(_G, "BankFrame")
+	Fields("BankFrame.BankPanel", type(bank) == "table" and bank.BankPanel or nil)
+	Fields("button", button)
+	return out
+end
+
+function BUG.Others()
+	local A = rawget(_G, "C_AddOns")
+	if not (type(A) == "table" and A.GetNumAddOns and A.GetAddOnInfo and A.IsAddOnLoaded) then
+		return nil
+	end
+	local out = {}
+	for i = 1, A.GetNumAddOns() do
+		local name = A.GetAddOnInfo(i)
+		if #out < BUG.OTHERS and type(name) == "string" and not name:find("^MelloUI") and not name:find("^Blizzard_")
+			and A.IsAddOnLoaded(i) then
+			out[#out + 1] = name
+		end
+	end
+	return out
+end
+
 function BUG.Capture(event, addon, func)
 	addon = Secret(addon) and nil or addon
 	if not (type(addon) == "string" and (BUG.ADDONS[addon] or addon:find("^MelloUI_"))) then
@@ -1459,6 +1555,10 @@ function BUG.Capture(event, addon, func)
 		BUG.memoryKB = AddonMemory()
 	end
 	local kb = BUG.memoryKB   -- (measured within the last minute)
+	local okU, under, button = pcall(BUG.Under)
+	local okW, way = pcall(BUG.Way)
+	local okT, tainted = pcall(BUG.NotGames, okU and button or nil)
+	local okO, others = pcall(BUG.Others)
 	local entry = {
 		when = date("%Y-%m-%d %H:%M:%S"),
 		what = event == "ADDON_ACTION_FORBIDDEN" and "forbidden" or "blocked",
@@ -1468,6 +1568,8 @@ function BUG.Capture(event, addon, func)
 		version = MelloUI.version, memory = kb and math.floor(kb + 0.5) or nil,
 		gamepad = MelloUI.Safe.GamepadUI and MelloUI.Safe.GamepadUI() and true or false,
 		lines = lines,
+		under = okU and under or nil, way = okW and way or nil,
+		tainted = okT and tainted or nil, others = okO and others or nil,
 	}
 	table.insert(list, 1, entry)
 	BUG.seen[func] = { entry = entry, at = at }
@@ -1506,6 +1608,21 @@ function BUG.Report()
 			e.gamepad and ", Gamepad UI" or "", tostring(e.version), e.memory and tostring(e.memory) or "?")
 		for _, line in ipairs(e.lines or {}) do
 			add("  %s", line)
+		end
+		if e.under then
+			add("   Under the mouse: %s", e.under)
+		end
+		if e.tainted then
+			add("   Not the game's: %s", #e.tainted > 0 and table.concat(e.tainted, ", ") or "nothing the bag click reads")
+		end
+		if e.others and #e.others > 0 then
+			add("   Other addons: %s", table.concat(e.others, ", "))
+		end
+		if e.way then
+			add("   The way to it:")
+			for _, line in ipairs(e.way) do
+				add("     %s", line)
+			end
 		end
 	end
 	add("")

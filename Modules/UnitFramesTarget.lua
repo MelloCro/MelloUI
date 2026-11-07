@@ -1639,6 +1639,11 @@ U.dumps[#U.dumps + 1] = function(add)
 		if game then
 			add(("game %s: shown %s, art %.2f, main %.2f, mouse %s"):format(kind.game, tostring(game:IsShown()),
 				art and K.Alpha(art) or -1, main and K.Alpha(main) or -1, tostring(K.Mouse(game))))
+			-- (the game's frame decides: ours shows only with it)
+			local tot = GameToT(kind, game)
+			add(("game %s: shown %s, showTargetOfTarget %s; ours visible %s"):format(kind.gameToT,
+				tostring(tot and tot:IsShown()), tostring(MelloUI:CVarText("showTargetOfTarget")),
+				tostring(kind.tot and kind.tot:IsVisible())))
 		end
 		local n = 0
 		for _, owner in ipairs({ kind.owner, kind.totOwner }) do

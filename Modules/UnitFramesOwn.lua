@@ -631,7 +631,7 @@ end
 do
 	local AURA = { size = 15, gap = 2 }
 	local BOX = { buffs = 16, debuffs = 8, row = 8, pad = 8 }
-	local DEBUFF_BORDER = "Interface\\Buttons\\UI-Debuff-Overlays"   -- look-ok: the game's party aura border
+	local DEBUFF_BORDER = "Interface\\Buttons\\UI-Debuff-Overlays"   -- (the game's party aura border)
 	local BORDER_COORDS = { 0.296875, 0.5703125, 0, 0.515625 }
 
 	local function Call(obj, method, ...)

@@ -45,7 +45,9 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 	-- centred and the target's and focus's name band transparent while this
 	-- module is on, the frame art at its full opacity -- MelloUI's choices,
 	-- no rows; Core.lua's MERGES drops the old keys)
+	keep = { "savedToT" },   -- (the player's own value of the game's Target of Target setting: MelloUI:HoldCVar's note)
 	defaults = {
+		targetOfTarget = true,
 		nameFormat = "both",   -- set by UI Modifications' "Show Names As" (one setting for every name)
 		hideCombatGlow = true,
 		hideStatusGlow = true,
@@ -59,6 +61,9 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		-- (2026-10-20, the user: the game's frames as they are, in the set's borders, one picture each; the Frames section)
 		{ type = "toggle", key = "frames", name = "MelloUI Frames",
 		  desc = "The unit frames in MelloUI's look: a gold portrait ring, a level badge and gold-lined borders. Off: the game's own art." },
+		-- (2.1.13; the user, 2026-11-07: "we are missing the unitframe of target of target in every single theme") M.ToTChanged
+		{ type = "toggle", key = "targetOfTarget", name = "Target of Target", new = "2.1.13",
+		  desc = "Shows who your target is targeting, under the target frame, and who your focus is targeting, under the focus frame. This is the game's own Target of Target setting. A change here takes effect after a /reload." },
 		-- (1.2.4; the user, 2026-10-26: "to have the option to flip the party frames horizontally, i like to have them
 		-- on the right side of the screen and not the left side") Party.Flip
 		{ type = "toggle", key = "partyFlip", name = "Flip Horizontally",
@@ -3807,8 +3812,61 @@ function M:OnDisable()
 	Frames.Lay()   -- (isEnabled is false: the game's art back)
 end
 
+--------------------------------------------------------------------------------
+-- The target of target's switch (2.1.13; the user, 2026-11-07: "we are missing the unitframe of target of target in
+-- every single theme", then "Yes, switch it on"). Ours shows only with the game's frame (Modules/UnitFramesTarget.lua),
+-- and the game's only with its setting on: showTargetOfTarget, for the focus's target too.
+-- Written at PLAYER_LOGOUT only (a /reload fires it too), never while playing: CVAR_UPDATE is synchronous, so a write
+-- from here would run the game's own callback in MelloUI's taint (TargetOfTargetMixin:OnTargetOfTargetCVarChanged: the
+-- frame's OnUpdate set, its rule run). In the next fight that rule would compare a secret value and be refused its
+-- Show, every frame. Read at the next load, the game's frame takes the setting clean.
+-- The game's own box (Options > Gameplay > Combat) is the same setting: ticked there, the row follows, so nothing is
+-- put back at the logout. Unit Frames off: the player's own value back at the logout (MelloUI:HoldCVar's note).
+--------------------------------------------------------------------------------
+
+do
+	local CVAR = "showTargetOfTarget"
+
+	local function Want(db)
+		return db.targetOfTarget == false and "0" or "1"
+	end
+
+	-- (the row changed: nothing written now)
+	function M.ToTChanged(db)
+		if MelloUI:CVarText(CVAR) ~= Want(db) then
+			MelloUI:AskReload("Target of Target: type /reload to apply the change.")
+		end
+	end
+
+	local frame = CreateFrame("Frame")
+	frame:RegisterEvent("PLAYER_LOGOUT")
+	frame:RegisterEvent("CVAR_UPDATE")
+	Perf.SetScript(frame, "OnEvent", Shared("the target of target's switch", function(_, event, name, value)
+		if event == "PLAYER_LOGOUT" then
+			local db = MelloUI.db and MelloUI:GetModuleDB("UnitFrames")
+			if db then
+				MelloUI:HoldCVar(db, CVAR, "savedToT", MelloUI:IsModuleEnabled("UnitFrames") and true or false, Want(db))
+			end
+			return
+		end
+		if Secret(name) or Secret(value) or name ~= CVAR then
+			return
+		end
+		-- (the game's own box: only while its window shows, so a load's or another addon's write is not the player's)
+		local panel, db = rawget(_G, "SettingsPanel"), M.db
+		local on = value == "1"
+		if M.isEnabled and db and panel and panel:IsShown() and (db.targetOfTarget ~= false) ~= on then
+			MelloUI:NotifySettingChanged("UnitFrames", "targetOfTarget", on)
+		end
+	end, "script"))
+end
+
 function M:OnSettingChanged(key, value, db)
 	self.db = db
+	if key == "targetOfTarget" then
+		M.ToTChanged(db)
+		return
+	end
 	if key == "nameFormat" then
 		RefreshNames(value or "both")
 		return

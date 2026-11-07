@@ -2023,6 +2023,7 @@ local SellClick = Shared("OnClick on the bag window's Sell Junk", function()
 		for _, e in ipairs(S.byKind.junk) do
 			C_Container.UseContainerItem(e.bag, e.slot)
 		end
+		MelloUI:Fire("junksold")   -- (Custom Sounds' sale: 2.1.13, its hook on the use gone)
 	end
 end, "script")
 

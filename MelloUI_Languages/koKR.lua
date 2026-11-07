@@ -698,10 +698,12 @@ Lang:Add("koKR", {
 	["In inns, cities and towns, reminders stay until done or until you leave."] = "여관, 도시, 마을에서는 일을 마치거나 떠날 때까지 알림이 남습니다.", -- draft
 	["Widget"] = "위젯", -- draft
 	["Place"] = "위치", -- draft
-	["Which side of your portrait the reminder button sits on. Without a player frame, move it in Edit Layout."] = "알림 버튼이 초상화의 어느 쪽에 있는지. 플레이어 개체창이 없으면 배치 편집에서 옮깁니다.", -- draft
+	["Which side of your portrait the reminder button sits on. Detached or without a player frame, you move it in Edit Layout, and this is the side its line opens to."] = "알림 버튼이 초상화의 어느 쪽에 있는지. 분리했거나 플레이어 개체창이 없으면 배치 편집에서 옮기며, 이 설정은 글줄이 열리는 쪽을 정합니다.", -- draft
 	["Left of the portrait"] = "초상화 왼쪽", -- draft
 	["Above the portrait"] = "초상화 위", -- draft
 	["Right of the portrait"] = "초상화 오른쪽", -- draft
+	["Detach From Portrait"] = "초상화에서 분리", -- draft
+	["Gives the reminder button a place of its own, so it no longer follows your player frame. Move it in Edit Layout."] = "알림 버튼에 자체 위치를 주어 더 이상 플레이어 개체창을 따라가지 않습니다. 배치 편집에서 옮깁니다.", -- draft
 	["Glow"] = "빛", -- draft
 	["The soft glow around the reminder button: steady, or none."] = "알림 버튼의 부드러운 빛: 고정 또는 없음.", -- draft
 	["Steady"] = "고정", -- draft
@@ -1090,6 +1092,8 @@ Lang:Add("koKR", {
 	["Player, target and focus, centred and calm."] = "플레이어, 대상, 주시 대상을 가운데로 차분하게.", -- draft
 	["MelloUI Frames"] = "MelloUI 개체창", -- draft
 	["The unit frames in MelloUI's look: a gold portrait ring, a level badge and gold-lined borders. Off: the game's own art."] = "MelloUI 모습의 개체창: 금빛 초상화 고리, 레벨 배지, 금테 테두리. 끄면: 게임 아트.", -- draft
+	["Target of Target"] = "대상의 대상", -- draft
+	["Shows who your target is targeting, under the target frame, and who your focus is targeting, under the focus frame. This is the game's own Target of Target setting. A change here takes effect after a /reload."] = "대상 프레임 아래에 대상이 노리는 상대를, 주시 대상 프레임 아래에 주시 대상이 노리는 상대를 표시합니다. 게임 자체의 '대상의 대상' 설정입니다. 여기서 변경하면 /reload 후에 적용됩니다.", -- draft
 	["Flip Horizontally"] = "가로 뒤집기", -- draft
 	["Mirrors the party frames for a party on the right of the screen: portraits on the right."] = "화면 오른쪽 파티를 위해 파티 개체창을 좌우 반전: 초상화가 오른쪽.", -- draft
 	["Names"] = "이름", -- draft
@@ -2275,8 +2279,13 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "/mellobug 보고서가 이제 차단된 동작에 이르는 과정을 보여 주어, 게임이 가방 아이템을 차단하는 원인을 찾는 데 도움이 됩니다.", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "수정: 경비병에게 길을 물으면 이제 그 표시가 MelloUI 지도에 나타납니다.", -- draft
 	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "수정: 종류별 가방 목록 아래쪽에 있는 종류의 설정이 더 이상 잘리지 않습니다. 목록이 함께 늘어납니다.", -- draft
+	["The target of target frame now shows: it appears after your next /reload or login. The Target page has a switch."] = "이제 대상의 대상 프레임이 표시됩니다. 다음 /reload 또는 접속 후에 나타납니다. 대상 페이지에 스위치가 있습니다.", -- draft
+	["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "수정: 기본 스킨에서 귓속말 창이 Lua 오류 없이 열리고 다시 게임 고유의 모습으로 표시됩니다.", -- draft
+	["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "새 기능: 알림 페이지의 초상화에서 분리로 알림 버튼에 자체 위치를 줍니다. 배치 편집에서 옮깁니다.", -- draft
+	["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "수정: 알림 버튼의 글줄과 추가 버튼이 더 이상 화면 밖으로 나가지 않습니다. 공간이 있는 쪽으로 열립니다.", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "수정: 중국어, 한국어, 러시아어 클라이언트에서 떠오르는 전투 문자와 캐릭터 위 이름이 더 이상 네모로 표시되지 않습니다.", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "UI 그림자가 이제 개인 표시기에도 적용되며, 자체 스위치와 그림자 강도 슬라이더를 사용합니다.", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "지도와 미니맵 아이콘 아래의 빛이 이제 항상 켜져 있습니다.", -- draft
@@ -3544,6 +3553,7 @@ Lang:Add("koKR", {
 -- stale: ["Which"] = "누구의", -- draft
 -- stale: ["Which debuffs light a frame: every one that can be removed, the ones someone in your group can remove, or only the ones you can remove."] = "창을 밝히는 약화 효과: 해제할 수 있는 모든 것, 파티의 누군가가 해제할 수 있는 것, 또는 내가 해제할 수 있는 것만.", -- draft
 -- stale: ["Which quests the list shows. The dropdown at the top of the list switches this as well."] = "목록이 보여 줄 퀘스트. 목록 위 드롭다운으로도 바꿉니다.", -- draft
+-- stale: ["Which side of your portrait the reminder button sits on. Without a player frame, move it in Edit Layout."] = "알림 버튼이 초상화의 어느 쪽에 있는지. 플레이어 개체창이 없으면 배치 편집에서 옮깁니다.", -- draft
 -- stale: ["Which way a row of buffs grows from the first one."] = "강화 효과 줄이 첫 아이콘에서 어느 쪽으로 늘어나는지.", -- draft
 -- stale: ["Which way the party's frames line up from where you placed them."] = "놓은 자리에서 파티 창이 줄 서는 방향.", -- draft
 -- stale: ["Which way your icons run under the player frame: from the bars' left end rightwards, or from their right end leftwards."] = "플레이어 창 아래 아이콘의 진행 방향: 막대 왼쪽 끝에서 오른쪽으로, 또는 오른쪽 끝에서 왼쪽으로.", -- draft

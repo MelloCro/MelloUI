@@ -698,10 +698,12 @@ Lang:Add("ruRU", {
 	["In inns, cities and towns, reminders stay until done or until you leave."] = "В тавернах, городах и посёлках напоминания остаются, пока дело не сделано или вы не уйдёте.", -- draft
 	["Widget"] = "Виджет", -- draft
 	["Place"] = "Место", -- draft
-	["Which side of your portrait the reminder button sits on. Without a player frame, move it in Edit Layout."] = "С какой стороны портрета стоит кнопка напоминаний. Без рамки игрока перемещайте её в «Изменить раскладку».", -- draft
+	["Which side of your portrait the reminder button sits on. Detached or without a player frame, you move it in Edit Layout, and this is the side its line opens to."] = "С какой стороны портрета стоит кнопка напоминаний. Если она отделена или нет рамки игрока, перемещайте её в «Изменить раскладку», а здесь выбирается сторона, куда открывается её строка.", -- draft
 	["Left of the portrait"] = "Слева от портрета", -- draft
 	["Above the portrait"] = "Над портретом", -- draft
 	["Right of the portrait"] = "Справа от портрета", -- draft
+	["Detach From Portrait"] = "Отделить от портрета", -- draft
+	["Gives the reminder button a place of its own, so it no longer follows your player frame. Move it in Edit Layout."] = "Даёт кнопке напоминаний собственное место, и она больше не следует за рамкой игрока. Перемещайте её в «Изменить раскладку».", -- draft
 	["Glow"] = "Свечение", -- draft
 	["The soft glow around the reminder button: steady, or none."] = "Мягкое свечение кнопки напоминаний: постоянное или нет.", -- draft
 	["Steady"] = "Ровно", -- draft
@@ -1090,6 +1092,8 @@ Lang:Add("ruRU", {
 	["Player, target and focus, centred and calm."] = "Игрок, цель и фокус — по центру и спокойно.", -- draft
 	["MelloUI Frames"] = "Рамки MelloUI", -- draft
 	["The unit frames in MelloUI's look: a gold portrait ring, a level badge and gold-lined borders. Off: the game's own art."] = "Рамки юнитов в стиле MelloUI: золотое кольцо портрета, значок уровня и рамки с золотой каймой. Выкл.: графика игры.", -- draft
+	["Target of Target"] = "Цель выбранной цели", -- draft
+	["Shows who your target is targeting, under the target frame, and who your focus is targeting, under the focus frame. This is the game's own Target of Target setting. A change here takes effect after a /reload."] = "Показывает, на кого нацелена ваша цель, под рамкой цели, и на кого нацелен ваш фокус, под рамкой фокуса. Это игровая настройка «Цель выбранной цели». Изменение здесь вступает в силу после /reload.", -- draft
 	["Flip Horizontally"] = "Отразить по горизонтали", -- draft
 	["Mirrors the party frames for a party on the right of the screen: portraits on the right."] = "Отражает рамки группы для группы справа на экране: портреты справа.", -- draft
 	["Names"] = "Имена", -- draft
@@ -2275,8 +2279,13 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "Отчёт /mellobug теперь показывает, что привело к заблокированному действию, чтобы найти причину блокировки предметов из сумок.", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Исправлено: если спросить дорогу у стражника, его метка теперь появляется на карте MelloUI.", -- draft
 	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "Исправлено: настройки вида в нижней части списка «Сумки по видам» больше не обрезаются: список растёт вместе с ними.", -- draft
+	["The target of target frame now shows: it appears after your next /reload or login. The Target page has a switch."] = "Рамка цели выбранной цели теперь показывается: она появится после следующего /reload или входа в игру. На странице «Цель» есть переключатель.", -- draft
+	["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "Исправлено: с обликом «По умолчанию» окно шёпота открывается без ошибки Lua и снова выглядит как в игре.", -- draft
+	["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "Новое: «Отделить от портрета» на странице «Напоминания» даёт кнопке напоминаний собственное место; перемещается в «Изменить раскладку».", -- draft
+	["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "Исправлено: строка и дополнительные кнопки у кнопки напоминаний больше не уходят за край экрана: они открываются в сторону, где есть место.", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "Исправлено: в китайском, корейском и русском клиентах всплывающий текст боя и имена над персонажами больше не отображаются квадратами.", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "Тень интерфейса теперь охватывает личный дисплей, с отдельным переключателем и ползунком силы тени.", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "Свечение под значками на картах и миникарте теперь всегда включено.", -- draft
@@ -3544,6 +3553,7 @@ Lang:Add("ruRU", {
 -- stale: ["Which"] = "Чьи", -- draft
 -- stale: ["Which debuffs light a frame: every one that can be removed, the ones someone in your group can remove, or only the ones you can remove."] = "Какие эффекты подсвечивают рамку: все, которые можно снять, те, что может снять кто-то из вашей группы, или только те, что можете снять вы.", -- draft
 -- stale: ["Which quests the list shows. The dropdown at the top of the list switches this as well."] = "Какие задания показывает список. Выпадающий список вверху списка тоже переключает это.", -- draft
+-- stale: ["Which side of your portrait the reminder button sits on. Without a player frame, move it in Edit Layout."] = "С какой стороны портрета стоит кнопка напоминаний. Без рамки игрока перемещайте её в «Изменить раскладку».", -- draft
 -- stale: ["Which way a row of buffs grows from the first one."] = "В какую сторону ряд эффектов растёт от первого.", -- draft
 -- stale: ["Which way the party's frames line up from where you placed them."] = "В какую сторону выстраиваются рамки группы от места, где вы их поставили.", -- draft
 -- stale: ["Which way your icons run under the player frame: from the bars' left end rightwards, or from their right end leftwards."] = "В какую сторону идут значки под рамкой игрока: от левого конца полос вправо или от правого конца влево.", -- draft

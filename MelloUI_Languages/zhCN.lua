@@ -698,10 +698,12 @@ Lang:Add("zhCN", {
 	["In inns, cities and towns, reminders stay until done or until you leave."] = "在旅店、城市和城镇中，提醒会一直保留，直到完成或你离开。", -- draft
 	["Widget"] = "小部件", -- draft
 	["Place"] = "位置", -- draft
-	["Which side of your portrait the reminder button sits on. Without a player frame, move it in Edit Layout."] = "提醒按钮位于头像哪一侧。没有玩家框体时，在“编辑布局”中移动它。", -- draft
+	["Which side of your portrait the reminder button sits on. Detached or without a player frame, you move it in Edit Layout, and this is the side its line opens to."] = "提醒按钮位于头像哪一侧。分离后或没有玩家框体时，在“编辑布局”中移动它，此选项决定其文字行朝哪一侧展开。", -- draft
 	["Left of the portrait"] = "头像左侧", -- draft
 	["Above the portrait"] = "头像上方", -- draft
 	["Right of the portrait"] = "头像右侧", -- draft
+	["Detach From Portrait"] = "从头像分离", -- draft
+	["Gives the reminder button a place of its own, so it no longer follows your player frame. Move it in Edit Layout."] = "让提醒按钮拥有自己的位置，不再跟随玩家框体。在“编辑布局”中移动它。", -- draft
 	["Glow"] = "光晕", -- draft
 	["The soft glow around the reminder button: steady, or none."] = "提醒按钮周围的柔和光晕：常亮或无。", -- draft
 	["Steady"] = "常亮", -- draft
@@ -1090,6 +1092,8 @@ Lang:Add("zhCN", {
 	["Player, target and focus, centred and calm."] = "玩家、目标和焦点，居中又安静。", -- draft
 	["MelloUI Frames"] = "MelloUI框体", -- draft
 	["The unit frames in MelloUI's look: a gold portrait ring, a level badge and gold-lined borders. Off: the game's own art."] = "MelloUI 外观的单位框体：金色头像环、等级徽章和金线边框。关闭：游戏自己的美术。", -- draft
+	["Target of Target"] = "目标的目标", -- draft
+	["Shows who your target is targeting, under the target frame, and who your focus is targeting, under the focus frame. This is the game's own Target of Target setting. A change here takes effect after a /reload."] = "在目标框体下方显示你的目标正在瞄准谁，在焦点框体下方显示你的焦点正在瞄准谁。这是游戏自带的“目标的目标”设置。此处的更改在 /reload 后生效。", -- draft
 	["Flip Horizontally"] = "水平翻转", -- draft
 	["Mirrors the party frames for a party on the right of the screen: portraits on the right."] = "为位于屏幕右侧的小队镜像小队框体：头像在右。", -- draft
 	["Names"] = "名字", -- draft
@@ -2275,8 +2279,13 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "/mellobug 报告现在会显示导致操作被阻止的过程，便于查明游戏阻止使用背包物品的原因。", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "修复：向卫兵问路后，其标记现在会显示在 MelloUI 地图上。", -- draft
 	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "修复：背包分类列表靠下类别的设置不再被截断，列表会随之变长。", -- draft
+	["The target of target frame now shows: it appears after your next /reload or login. The Target page has a switch."] = "现在会显示“目标的目标”框体：它会在你下次 /reload 或登录后出现。“目标”页面有一个开关。", -- draft
+	["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "修复：使用默认外观风格时，悄悄话窗口打开不再出现 Lua 错误，并恢复游戏自身的外观。", -- draft
+	["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "新增：提醒页面的“从头像分离”让提醒按钮拥有自己的位置，可在“编辑布局”中移动。", -- draft
+	["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "修复：提醒按钮的文字行和额外按钮不再超出屏幕：它们会朝有空间的一侧展开。", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "修复：在中文、韩文和俄文客户端上，浮动战斗文字和角色头顶的名字不再显示为方块。", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "界面阴影现在覆盖个人显示，有自己的开关和阴影强度滑块。", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "地图和小地图上图标下方的光晕现在始终开启。", -- draft
@@ -3544,6 +3553,7 @@ Lang:Add("zhCN", {
 -- stale: ["Which"] = "哪些", -- draft
 -- stale: ["Which debuffs light a frame: every one that can be removed, the ones someone in your group can remove, or only the ones you can remove."] = "哪些减益会点亮框体：所有可移除的、队伍中有人能移除的，或只有你能移除的。", -- draft
 -- stale: ["Which quests the list shows. The dropdown at the top of the list switches this as well."] = "列表显示哪些任务。列表顶部的下拉菜单也可切换。", -- draft
+-- stale: ["Which side of your portrait the reminder button sits on. Without a player frame, move it in Edit Layout."] = "提醒按钮位于头像哪一侧。没有玩家框体时，在“编辑布局”中移动它。", -- draft
 -- stale: ["Which way a row of buffs grows from the first one."] = "一行增益从第一个开始向哪边增长。", -- draft
 -- stale: ["Which way the party's frames line up from where you placed them."] = "小队框体从你放置的位置向哪个方向排列。", -- draft
 -- stale: ["Which way your icons run under the player frame: from the bars' left end rightwards, or from their right end leftwards."] = "玩家框体下方图标排列的方向：从条的左端向右，或从右端向左。", -- draft

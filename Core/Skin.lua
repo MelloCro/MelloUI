@@ -40,9 +40,9 @@
 --       medallion's path -> the game's class circle), `flip` (an atlas pointing the other way from the set's icon:
 --       turned over top to bottom), `rgb` (the picture tinted so: a class pin's blip; laid after the caller's colour,
 --       taken away again by Skin.ClearIcon), `grow` and `inset` (a picture with a wide clear margin: a map pin draws it
---       this much bigger than the set's icon, with `inset` of each side cut off -- Skin.Inset, MelloUI_Map's MapPins);
+--       this much bigger than the set's icon, with `inset` of each side cut off -- Skin.InsetPicture, MelloUI_Map's MapPins);
 --       nil while the Default skin is off or the icon has no game twin (MelloUI's own then)
---   Skin.Inset(tex, spec)   (qu-04) spec's atlas on tex without its clear margin (spec.inset of each side): the file
+--   Skin.InsetPicture(tex, spec)   (qu-04) spec's atlas on tex without its clear margin (spec.inset of each side): the file
 --       and its part of the sheet, as Flip lays one
 --   Skin.LayIcon(tex, spec)   the game's picture on tex (Icons.Set's: its size the caller's);
 --       Skin.ClearIcon(tex) takes a channel key's letter away again
@@ -647,7 +647,7 @@ local ICON = {
 	kill = { atlas = "DungeonSkull" }, kill_elite = { atlas = "VignetteKillElite" }, kill_rare = { atlas = "VignetteKill" },
 	-- (2.1.0, qu-04; the user's yes: Default's doors "a little bigger") the game's door pictures fill half their frame
 	-- (the solid swirl 0.54 of its 50 px; on screen the ring 6.7 px at 16, wowsim): a map pin draws them without their
-	-- clear margin (`inset` of each side, Skin.Inset) and a quarter bigger (`grow`): the ring about 13 px, as the other
+	-- clear margin (`inset` of each side, Skin.InsetPicture) and a quarter bigger (`grow`): the ring about 13 px, as the other
 	-- pins' pictures read, in a 20 px box that keeps clear of its neighbours (a 32 px box pushed the capitals aside)
 	pin_dungeon = { atlas = "Dungeon", grow = 1.25, inset = 0.18 }, pin_raid = { atlas = "Raid", grow = 1.25, inset = 0.18 },
 	pin_portal = { atlas = "PortalBlue" },
@@ -855,7 +855,9 @@ local function Flip(tex, atlas)
 	end
 end
 
-function Skin.Inset(tex, spec)
+-- (2.1.13: named Skin.Inset until now, which overwrote the whisper window's Skin.Inset(frame) above: under the Default skin
+-- every open of that window raised an error, since 2.1.0)
+function Skin.InsetPicture(tex, spec)
 	local Num = MelloUI.Safe.Finite
 	local k = Num(spec.inset)
 	local info = spec.atlas and C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(spec.atlas)
