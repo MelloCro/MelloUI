@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.12
+
+- Fixed: on Chinese, Korean and Russian game clients, the floating combat text and the names above characters no longer show as squares.
+
 ## 2.1.11
 
 - UI Shade: the Personal Display now follows it, with a switch of its own and the Shade Strength slider.

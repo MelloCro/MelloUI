@@ -2275,6 +2275,7 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "수정: 중국어, 한국어, 러시아어 클라이언트에서 떠오르는 전투 문자와 캐릭터 위 이름이 더 이상 네모로 표시되지 않습니다.", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "UI 그림자가 이제 개인 표시기에도 적용되며, 자체 스위치와 그림자 강도 슬라이더를 사용합니다.", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "지도와 미니맵 아이콘 아래의 빛이 이제 항상 켜져 있습니다.", -- draft
 	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "수정: MelloUI 2.1.9에서 Zygor Guides가 시작되지 않던 문제. 이제 다시 시작됩니다.", -- draft
@@ -2283,9 +2284,6 @@ Lang:Add("koKR", {
 	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "새 기능: 외형 > 색에 모든 직업, 자원, NPC 평판을 위한 색상환이 생겼습니다.", -- draft
 	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "바: 행동 단축바 뒤 그림자 스위치가 이제 배경판과 그림자 아래에 있으며, 검색으로도 찾을 수 있습니다.", -- draft
 	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "수정: 이름 설정이 이제 최소 대화창 보기와 귓속말 창에서도 적용됩니다.", -- draft
-	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "수정: MelloUI 지도에서 퀘스트를 완료한 뒤에도 \"?\"가 남아 있지 않습니다. 표시가 퀘스트 목록을 따릅니다.", -- draft
-	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "퀘스트 목록이 라이브 서버와 일치합니다: 새 퀘스트 2개, 퀘스트 52개의 레벨 수정, 가라앉은 도시 이름 표시.", -- draft
-	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "수정: 레벨링 애드온이 창이 열리자마자 퀘스트를 수락하거나 완료해도 음성이 재생됩니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2927,8 +2925,10 @@ Lang:Add("koKR", {
 -- stale: ["Fixed: Holy Nova and Prayer of Mending show their heal effect on your party frames, at every rank."] = "수정: 신성한 폭발과 회복의 기원이 모든 등급에서 파티 프레임에 치유 효과를 보여줍니다.", -- draft
 -- stale: ["Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect, at every rank."] = "수정: 신성한 폭발, 회복의 기원, 신성 충격, 대지의 보호막, 치유의 비가 모든 레벨에서 치유 효과를 보여줍니다.", -- draft
 -- stale: ["Fixed: Holy Shock, Earth Shield and Healing Rain show theirs too; Holy Shock cast at an enemy shows nothing on your frame."] = "수정: 신성 충격, 대지의 보호막, 치유의 비도 효과를 보여줍니다. 적에게 시전한 신성 충격은 내 프레임에 아무것도 표시하지 않습니다.", -- draft
+-- stale: ["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "수정: MelloUI 지도에서 퀘스트를 완료한 뒤에도 \"?\"가 남아 있지 않습니다. 표시가 퀘스트 목록을 따릅니다.", -- draft
 -- stale: ["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "수정: 전투 문자, 지역 이름, 머리글과 제목의 러시아어, 한국어, 중국어 글자가 더 이상 네모로 표시되지 않습니다.", -- draft
 -- stale: ["Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat."] = "수정: 실리더스와 다른 여섯 지역이 더는 지도에서 잘리지 않습니다; 배치 편집의 대화 상자가 최소 대화창 전체를 덮습니다.", -- draft
+-- stale: ["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "수정: 레벨링 애드온이 창이 열리자마자 퀘스트를 수락하거나 완료해도 음성이 재생됩니다.", -- draft
 -- stale: ["Fixed: after a level-up the micro menu no longer leaves the place you gave it."] = "수정: 레벨이 오른 뒤에도 마이크로 메뉴가 지정한 자리를 벗어나지 않습니다.", -- draft
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "수정: 새 태세나 변신을 배운 뒤 재시작 전까지 전투 프레임이 크게 떨어질 수 있던 문제.", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "수정: 개인 화면의 큰 재사용 대기시간으로 인한 전투 중 오류.", -- draft
@@ -3292,6 +3292,7 @@ Lang:Add("koKR", {
 -- stale: ["The Fight History window: every fight of this session, grouped by run, with the damage, healing and your spells of each. It opens from its button in the chat's button column and from the summary. It takes the place of the game's meter windows."] = "전투 기록 창: 이번 세션의 모든 전투를 던전별로 묶어 각각의 피해, 치유, 내 주문을 보여 줍니다. 대화 버튼 열의 버튼과 요약에서 엽니다. 게임의 측정기 창을 대신합니다.", -- draft
 -- stale: ["The HUD"] = "HUD", -- draft
 -- stale: ["The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going."] = "MelloUI 버튼이 게임 메뉴의 설정 아래에 있습니다. 프로필의 후원자 페이지는 MelloUI를 지켜 주는 분들께 감사를 전합니다.", -- draft
+-- stale: ["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "퀘스트 목록이 라이브 서버와 일치합니다: 새 퀘스트 2개, 퀘스트 52개의 레벨 수정, 가라앉은 도시 이름 표시.", -- draft
 -- stale: ["The Swing Badge, your swing timer on your target's nameplate: it winds up, strikes, flashes gold on crits; it replaces the Swing Timers' bars too."] = "스윙 배지, 대상 이름표의 스윙 타이머: 준비하고, 치고, 치명타에 금빛으로 번쩍입니다. 스윙 타이머 바도 대체합니다.", -- draft
 -- stale: ["The UI Shade also follows the painted plate's own shape: round the level circle, round each end gem and along the bar, in every Nameplate Border look. It needs the UI Shade on (Look); its Shade Strength sets how dark it is. The name's own band is Nameplates' Name Shade."] = "UI 그림자가 페인팅 판 자체의 모양도 따릅니다: 모든 이름표 테두리 외형에서 레벨 원 둘레, 양 끝 보석 둘레, 막대를 따라. UI 그림자가 켜져 있어야 하며(외형), 그 그림자 강도가 어두운 정도를 정합니다. 이름 자체의 띠는 이름표의 이름 그림자입니다.", -- draft
 -- stale: ["The UI Shade around the map icons."] = "지도 아이콘 둘레의 UI 그림자.", -- draft

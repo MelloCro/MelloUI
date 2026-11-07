@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.12", lines = {
+		"Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares.",
+	} },
 	{ version = "2.1.11", lines = {
 		"UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider.",
 		"The glow under icons on the maps and the minimap is always on now.",
@@ -189,11 +192,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.8", lines = {
 		"Fixed: the Names setting now works in the Minimal chat view and the whisper window.",
-	} },
-	{ version = "2.1.7", lines = {
-		"Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log.",
-		"The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named.",
-		"Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens.",
 	} },
 }
 local LINKS = {

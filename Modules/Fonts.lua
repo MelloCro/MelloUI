@@ -1683,6 +1683,20 @@ local WORLD_FONT_GLOBALS = {
 
 local worldOriginals = {}
 
+-- (2.1.12; WeskerWang, Discord 2026-11-07, a Chinese client: the floating texts over the world in squares, "XP: 97" and a
+-- dodge among them) the engine reads ONE file for these, no family (Family above): a face without the client's letters
+-- draws boxes, and no font MelloUI ships has Chinese or Korean ones. So on those clients they stay the game's; on a Russian
+-- one only a face with Cyrillic letters is taken. MelloUI's own strings keep the chosen face (their families: MelloUI:SetFace)
+local WORLD_NO_FACE = { zhCN = true, zhTW = true, koKR = true }
+
+local function WorldFaceFits(face)
+	local locale = type(GetLocale) == "function" and GetLocale() or nil
+	if WORLD_NO_FACE[locale] then
+		return false
+	end
+	return locale ~= "ruRU" or Family.Cyrillic(face)
+end
+
 local function ApplyWorldFonts(db)
 	for roleKey, globals in pairs(WORLD_FONT_GLOBALS) do
 		local face = ChosenFont(roleKey, db)
@@ -1690,7 +1704,7 @@ local function ApplyWorldFonts(db)
 			if worldOriginals[name] == nil and type(_G[name]) == "string" then
 				worldOriginals[name] = _G[name]
 			end
-			if face then
+			if face and WorldFaceFits(face) then
 				_G[name] = face
 			elseif worldOriginals[name] then
 				_G[name] = worldOriginals[name]

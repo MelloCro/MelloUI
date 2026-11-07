@@ -2275,6 +2275,7 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "修复：在中文、韩文和俄文客户端上，浮动战斗文字和角色头顶的名字不再显示为方块。", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "界面阴影现在覆盖个人显示，有自己的开关和阴影强度滑块。", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "地图和小地图上图标下方的光晕现在始终开启。", -- draft
 	["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "修复：Zygor Guides 在 MelloUI 2.1.9 下无法启动。现在可以正常启动。", -- draft
@@ -2283,9 +2284,6 @@ Lang:Add("zhCN", {
 	["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "新增：外观 > 颜色 提供色轮，可设置每个职业、每种能量和NPC声望的颜色。", -- draft
 	["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "动作条：动作条背后阴影的开关现在位于“底板与阴影”下，搜索也能找到。", -- draft
 	["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "修复：名称设置现在对精简聊天视图和密语窗口生效。", -- draft
-	["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "修复：交付任务后，MelloUI 地图不再保留该任务的“?”；地图标记会跟随你的任务日志。", -- draft
-	["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "任务列表与正式服务器一致：新增 2 个任务，修正 52 个任务的等级，沉没之城显示名称。", -- draft
-	["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "修复：练级插件在任务窗口打开时立即接受或交付任务时，现在也会播放语音。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2927,8 +2925,10 @@ Lang:Add("zhCN", {
 -- stale: ["Fixed: Holy Nova and Prayer of Mending show their heal effect on your party frames, at every rank."] = "修复：神圣新星和愈合祷言在每个等级都会在你的小队框体上显示治疗效果。", -- draft
 -- stale: ["Fixed: Holy Nova, Prayer of Mending, Holy Shock, Earth Shield and Healing Rain show their heal effect, at every rank."] = "修复：神圣新星、愈合祷言、神圣震击、大地之盾和治疗之雨在所有等级都会显示治疗效果。", -- draft
 -- stale: ["Fixed: Holy Shock, Earth Shield and Healing Rain show theirs too; Holy Shock cast at an enemy shows nothing on your frame."] = "修复：神圣震击、大地之盾和治疗之雨也会显示；对敌人施放的神圣震击不会在你的框体上显示任何效果。", -- draft
+-- stale: ["Fixed: MelloUI's map no longer keeps a quest's \"?\" after you hand it in; its marks follow your quest log."] = "修复：交付任务后，MelloUI 地图不再保留该任务的“?”；地图标记会跟随你的任务日志。", -- draft
 -- stale: ["Fixed: Russian, Korean and Chinese letters in Combat Text, zone names, headings and titles no longer show as boxes."] = "修复：战斗文字、区域名称、标题和头衔中的俄文、韩文和中文字符不再显示为方块。", -- draft
 -- stale: ["Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat."] = "修复：希利苏斯和另外六个区域不再从地图上被裁掉；编辑布局中的聊天框覆盖整个简约聊天。", -- draft
+-- stale: ["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "修复：练级插件在任务窗口打开时立即接受或交付任务时，现在也会播放语音。", -- draft
 -- stale: ["Fixed: after a level-up the micro menu no longer leaves the place you gave it."] = "修复：升级后微型菜单不再离开你为它设定的位置。", -- draft
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "修复：学会新姿态或形态后，战斗中帧数可能骤降，直到重启。", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "修复：个人显示的重要冷却在战斗中引发的错误。", -- draft
@@ -3292,6 +3292,7 @@ Lang:Add("zhCN", {
 -- stale: ["The Fight History window: every fight of this session, grouped by run, with the damage, healing and your spells of each. It opens from its button in the chat's button column and from the summary. It takes the place of the game's meter windows."] = "战斗历史窗口：本次游戏的每场战斗，按副本分组，带每场的伤害、治疗和你的法术。可从聊天按钮栏中的按钮和总结打开。它取代游戏的统计窗口。", -- draft
 -- stale: ["The HUD"] = "HUD", -- draft
 -- stale: ["The MelloUI button sits inside the Game Menu, under Options; a Supporters page under Profiles thanks the people who keep MelloUI going."] = "MelloUI 按钮位于游戏菜单中“选项”下方；配置文件下的支持者页面感谢让 MelloUI 持续运行的人们。", -- draft
+-- stale: ["The Quest List matches the live server: 2 new quests, corrected levels on 52 quests, The Drowned City named."] = "任务列表与正式服务器一致：新增 2 个任务，修正 52 个任务的等级，沉没之城显示名称。", -- draft
 -- stale: ["The Swing Badge, your swing timer on your target's nameplate: it winds up, strikes, flashes gold on crits; it replaces the Swing Timers' bars too."] = "挥击徽章，即目标姓名板上的挥击计时器：蓄力、挥击、暴击时闪金光；它也取代了挥击计时器的条。", -- draft
 -- stale: ["The UI Shade also follows the painted plate's own shape: round the level circle, round each end gem and along the bar, in every Nameplate Border look. It needs the UI Shade on (Look); its Shade Strength sets how dark it is. The name's own band is Nameplates' Name Shade."] = "界面阴影也会跟随手绘牌子自身的形状：环绕等级圆圈、环绕两端的每颗宝石并沿着条，适用于每种姓名板边框外观。需要开启界面阴影（外观）；它的阴影强度决定有多暗。名字自己的横带是姓名板的“名字阴影”。", -- draft
 -- stale: ["The UI Shade around the map icons."] = "地图图标周围的界面阴影。", -- draft
