@@ -85,7 +85,7 @@ local function Answer(ok, v)
 end
 
 local function Dead(unit)
-	return Answer(pcall(UnitIsDeadOrGhost, unit)) == true
+	return MelloUI.Units.Gone(unit)   -- (the one rule of every bar of a unit: its bars at none)
 end
 
 local function Ghost(unit)
@@ -584,6 +584,7 @@ end
 function Button.Health(f)
 	local db = DB()
 	local hb = f.healthBar
+	local was = nil
 	if f.sample then
 		local s = f.sample
 		f.dead, f.offline, f.ghost = s.dead, s.offline, false
@@ -595,6 +596,7 @@ function Button.Health(f)
 		if not unit then
 			return
 		end
+		was = f.dead
 		f.dead, f.offline, f.ghost = Dead(unit), Offline(unit), Ghost(unit)
 		local pct = nil
 		if f.offline then
@@ -611,7 +613,12 @@ function Button.Health(f)
 		end
 		if (db.missing or "off") ~= "off" then
 			pcall(f.missingBar.SetMinMaxValues, f.missingBar, 0, UnitHealthMax(unit))
-			local ok, m = pcall(UnitHealthMissing, unit, true)
+			local ok, m
+			if f.dead then
+				ok, m = pcall(UnitHealthMax, unit)   -- (gone: all of it missing, whatever the client still hands out)
+			else
+				ok, m = pcall(UnitHealthMissing, unit, true)
+			end
 			if ok then
 				SetBar(f.missingBar, m, db.smooth)
 			end
@@ -645,6 +652,10 @@ function Button.Health(f)
 		end
 	end
 	Button.NameColour(f)
+	-- (gone or back: its power with it -- no power event comes for that)
+	if was ~= nil and was ~= f.dead then
+		Button.Power(f)
+	end
 end
 
 -- a power's own colour (the game's PowerBarColor), the class's or the player's
@@ -686,7 +697,7 @@ function Button.Power(f)
 		pcall(pb.SetMinMaxValues, pb, 0, UnitPowerMax(f.unit))
 		local ok, v = pcall(UnitPower, f.unit)
 		if ok then
-			SetBar(pb, v, DB().smooth)
+			SetBar(pb, MelloUI.Units.Value(f.unit, v), DB().smooth)
 		end
 	end
 	local r, g, b = PowerRGB(f)

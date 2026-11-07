@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.16
+
+- Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name.
+- Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts.
+
 ## 2.1.15
 
 - /mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags.

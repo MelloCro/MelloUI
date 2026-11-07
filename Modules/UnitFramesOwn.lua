@@ -472,6 +472,31 @@ function U.Connected(unit)
 	return Ask(UnitIsConnected, unit) ~= false
 end
 
+-- (2.1.16; the user, 2026-11-07: "unitframes showing around 10% hp even when the person is dead") gone: dead or a ghost,
+-- as the game says (a refused or secret answer: not gone; a hunter feigning death: not gone). The one rule of every bar
+-- showing a unit's health or power: a gone unit's reads empty, whatever the client still hands out for it (the game's
+-- own frames show that as it is; a ghost's can be well above none)
+function U.Gone(unit)
+	return Ask(UnitIsDeadOrGhost, unit) == true and Ask(rawget(_G, "UnitIsFeignDeath"), unit) ~= true
+end
+
+-- what a bar shows of a unit's value (handed on as it is: it may be secret; never tested)
+function U.Value(unit, value)
+	if U.Gone(unit) then
+		return 0
+	end
+	return value
+end
+
+-- true once each time f's unit goes or comes back: a death brings no event of the power's, and may bring none of the
+-- health's, so whichever event comes first paints both bars
+function U.GoneChanged(f)
+	local gone = U.Gone(f.unit)
+	local changed = gone ~= (f.gone or false)
+	f.gone = gone
+	return changed
+end
+
 do
 	local ceil = { made = false, curve = nil }
 	-- (x in (k-1, k] hundredths -> k: the game's math.ceil of the share times 100)
@@ -562,6 +587,7 @@ do
 			return
 		end
 		local unit = f.unit
+		local gone = U.Gone(unit)
 		local cur, max
 		if power then
 			cur, max = UnitPower(unit), UnitPowerMax(unit)
@@ -574,7 +600,7 @@ do
 		if plainMax and plainMax <= 0 then
 			return
 		end
-		if not power and f.deadText ~= false and Ask(UnitIsDeadOrGhost, unit) == true then
+		if not power and f.deadText ~= false and gone then
 			-- (f.deadText: a bar's own zero text -- the target's bars show none: its "Dead" is a text of the frame's; false:
 			-- no zero text at all, the numbers at none -- the pet's bar, as the game's sets none)
 			local dead = f.deadText
@@ -584,10 +610,13 @@ do
 			Set(t.center, "%s", dead)
 			return
 		end
-		local value, most = Big(f, cur), Big(f, max)
+		-- (gone: the numbers say what its bar says, none)
+		local value, most = Big(f, gone and 0 or cur), Big(f, max)
 		local share
 		if mode == "PERCENT" or mode == "BOTH" then
-			if power then
+			if gone then
+				share = 0
+			elseif power then
 				share = Share(rawget(_G, "UnitPowerPercent"), unit, nil, false, Ceil())
 			else
 				share = Share(rawget(_G, "UnitHealthPercent"), unit, false, Ceil())
@@ -1185,15 +1214,25 @@ local function Yes(fn, ...)
 	return Ask(fn, ...) == true
 end
 
-function P.Name(f)
-	local text = Ask(rawget(_G, "GetUnitName"), "player") or Ask(UnitName, "player")
-	if text == nil then
-		local ok, v = pcall(UnitName, "player")
-		text = ok and v or nil   -- (a secret name set as it is)
-	end
-	if text ~= nil then
+-- A unit's name on one of our frames, as the game's UnitFrame_Update has it. (2.1.16; the user, 2026-11-07, in Ragefire
+-- Chasm: "name on the target of target is not correct", a mob's old name over the right portrait and bars) The game can
+-- hand a name out as a secret; GetUnitName's own test of it raises in our code, a pcall swallowed that, and the text kept
+-- the last name it had. MelloUI:UnitNameAs reads it either way; a secret goes to SetText as it is, never compared; no
+-- name at all leaves the text empty, never an old one. `shape(text, unit)` changes a plain name (the follower prefix).
+function U.LayName(f, unit, shape)
+	local text = MelloUI:UnitNameAs(unit, "both")
+	if Secret(text) then
 		pcall(f.name.SetText, f.name, text)
+		return
 	end
+	if text ~= nil and shape then
+		text = shape(text, unit)
+	end
+	pcall(f.name.SetText, f.name, text or "")
+end
+
+function P.Name(f)
+	U.LayName(f, "player")
 	U.Notify("UnitFrame_Update", f)
 end
 
@@ -1216,7 +1255,7 @@ end
 function P.Health(f)
 	local hb = f.healthbar
 	pcall(hb.SetMinMaxValues, hb, 0, UnitHealthMax("player"))
-	pcall(hb.SetValue, hb, UnitHealth("player"))
+	pcall(hb.SetValue, hb, U.Value("player", UnitHealth("player")))
 	U.Notify("UnitFrameHealthBar_Update", hb, "player")
 	U.Texts(f)
 end
@@ -1224,7 +1263,7 @@ end
 function P.Power(f)
 	local mb = f.manabar
 	pcall(mb.SetMinMaxValues, mb, 0, UnitPowerMax("player"))
-	pcall(mb.SetValue, mb, UnitPower("player"))
+	pcall(mb.SetValue, mb, U.Value("player", UnitPower("player")))
 	U.Texts(f)
 end
 

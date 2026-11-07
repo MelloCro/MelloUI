@@ -2279,6 +2279,8 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "수정: 던전에서 대상의 대상과 다른 유닛 프레임에 이전 이름이 계속 표시되지 않습니다.", -- draft
+	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "수정: 파티 창, 공격대 창 및 기타 개체창에서 죽은 플레이어와 유령의 생명력 및 자원 바가 이제 비어 있게 표시됩니다.", -- draft
 	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "/mellobug 보고서가 이제 가방 버튼이 어떻게 만들어졌는지도 보여 주어, 게임이 가방 아이템을 차단하는 원인을 찾는 데 도움이 됩니다.", -- draft
 	["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "수정: 바 텍스처를 선택했을 때 대상의 대상과 주시 대상의 대상 생명력 및 자원 바가 더 이상 어둡게 보이지 않습니다.", -- draft
 	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "/mellobug 보고서가 이제 차단된 동작에 이르는 과정을 보여 주어, 게임이 가방 아이템을 차단하는 원인을 찾는 데 도움이 됩니다.", -- draft
@@ -2289,8 +2291,6 @@ Lang:Add("koKR", {
 	["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "새 기능: 알림 페이지의 초상화에서 분리로 알림 버튼에 자체 위치를 줍니다. 배치 편집에서 옮깁니다.", -- draft
 	["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "수정: 알림 버튼의 글줄과 추가 버튼이 더 이상 화면 밖으로 나가지 않습니다. 공간이 있는 쪽으로 열립니다.", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "수정: 중국어, 한국어, 러시아어 클라이언트에서 떠오르는 전투 문자와 캐릭터 위 이름이 더 이상 네모로 표시되지 않습니다.", -- draft
-	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "UI 그림자가 이제 개인 표시기에도 적용되며, 자체 스위치와 그림자 강도 슬라이더를 사용합니다.", -- draft
-	["The glow under icons on the maps and the minimap is always on now."] = "지도와 미니맵 아이콘 아래의 빛이 이제 항상 켜져 있습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3394,6 +3394,7 @@ Lang:Add("koKR", {
 -- stale: ["The game's windows and HUD dressed in the painted kit, and the frame of MelloUI's own windows. Off: the game's windows and HUD keep the game's own art; MelloUI's own parts (the Quest Tracker, the widget column, the reminders, the race bar ...) keep MelloUI's look either way, and every feature keeps working. Switching it on also switches Custom Sounds on, and the first time puts in the Edit Mode layout the reskin is drawn for, fitted to your screen. Switching it off leaves Custom Sounds on."] = "게임의 창과 HUD에 페인팅 키트를 입히고, MelloUI 자체 창의 테두리도 바꿉니다. 끄기: 게임의 창과 HUD는 게임의 그림을 유지합니다. MelloUI 자체 요소(퀘스트 추적기, 위젯 열, 알림, 경주 막대...)는 어느 쪽이든 MelloUI의 외형을 유지하며 모든 기능은 계속 작동합니다. 켜면 사용자 지정 소리도 켜지고, 처음 켤 때는 스킨에 맞춰 그려진 편집 모드 레이아웃을 화면에 맞게 적용합니다. 꺼도 사용자 지정 소리는 켜진 채로 둡니다.", -- draft
 -- stale: ["The game's windows and HUD dressed in the painted kit. Off: they keep the game's own art; MelloUI's own parts keep its look, and the features you switch on keep working."] = "게임의 창과 HUD에 페인팅 키트를 입힙니다. 끄기: 게임의 그림을 유지하고, MelloUI 자체 요소는 그 외형을 유지하며, 켠 기능은 계속 작동합니다.", -- draft
 -- stale: ["The gap between the name and the medallion."] = "이름과 메달 사이의 간격.", -- draft
+-- stale: ["The glow under icons on the maps and the minimap is always on now."] = "지도와 미니맵 아이콘 아래의 빛이 이제 항상 켜져 있습니다.", -- draft
 -- stale: ["The healing you get, and shields put on you."] = "받는 치유와 나에게 걸린 보호막.", -- draft
 -- stale: ["The heals on their way to a unit shown on its health bar: your heals, other healers' heals and shields. On the player, target and focus frames and their targets; the party, pet and raid frames show the game's own (the raid frames' Display Incoming Heals)."] = "개체에게 가는 중인 치유를 생명력 막대에 표시: 내 치유, 다른 치유사의 치유, 보호막. 플레이어, 대상, 주시 대상 창과 그 대상에서. 파티, 소환수, 공격대 창은 게임의 것을 보여 줍니다(공격대 창의 예상 치유량 표시).", -- draft
 -- stale: ["The health and power bars shown under your character."] = "캐릭터 아래에 보이는 생명력과 자원 막대.", -- draft
@@ -3513,6 +3514,7 @@ Lang:Add("koKR", {
 -- stale: ["Three numbers on top of your frame: the sword this fight's damage per second, the hourglass this run's, the cross your healing per second. Live in a fight, the last fight's after it. Move them in Edit Layout (Your Values)."] = "내 창 위의 세 숫자: 칼은 이번 전투의 초당 피해, 모래시계는 이번 던전의 것, 십자는 초당 치유. 전투 중에는 실시간, 전투 후에는 마지막 전투의 값. 레이아웃 편집(내 값)에서 옮기세요.", -- draft
 -- stale: ["Titles, headers, dialog names, mail and book text, and the kit's title face on the painted plates; a Font Style puts it back to 100% (its faces bring their own correction). Not the Quest Tracker's title and section headers or Combat Text's notices: they have sizes of their own."] = "제목, 머리글, 대화 이름, 우편과 책 글자, 페인팅 명판 위 키트의 제목 글꼴. 글꼴 스타일은 이를 100%로 되돌립니다(그 글꼴들이 자체 보정을 가져옴). 퀘스트 추적기의 제목과 구역 머리글, 전투 문자의 알림은 제외: 자체 크기가 있습니다.", -- draft
 -- stale: ["Tooltips colour guilds, factions, levels and quest objectives. Macro Backup is gone: the game keeps your settings."] = "툴팁이 길드, 진영, 레벨, 퀘스트 목표를 색으로 구분합니다. 매크로 백업은 사라짐: 게임이 설정을 보관합니다.", -- draft
+-- stale: ["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "UI 그림자가 이제 개인 표시기에도 적용되며, 자체 스위치와 그림자 강도 슬라이더를 사용합니다.", -- draft
 -- stale: ["Under 35% health the health bar turns ember."] = "생명력이 35% 미만이면 생명력 막대가 불씨 색이 됩니다.", -- draft
 -- stale: ["Unit Frame Bars: Font Size"] = "개체창 막대: 글자 크기", -- draft
 -- stale: ["Unit Frame Tweaks"] = "개체창 조정", -- draft

@@ -174,6 +174,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.16", lines = {
+		"Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name.",
+		"Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts.",
+	} },
 	{ version = "2.1.15", lines = {
 		"/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags.",
 	} },
@@ -191,10 +195,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.12", lines = {
 		"Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares.",
-	} },
-	{ version = "2.1.11", lines = {
-		"UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider.",
-		"The glow under icons on the maps and the minimap is always on now.",
 	} },
 }
 local LINKS = {

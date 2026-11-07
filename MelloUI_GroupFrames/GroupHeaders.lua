@@ -887,6 +887,7 @@ end
 
 local UNIT_PAINT = {
 	UNIT_HEALTH = "Health", UNIT_MAXHEALTH = "Health", UNIT_CONNECTION = "Refresh", UNIT_FLAGS = "Health",
+	PARTY_MEMBER_ENABLE = "Health", PARTY_MEMBER_DISABLE = "Health",
 	UNIT_POWER_UPDATE = "Power", UNIT_MAXPOWER = "Power", UNIT_DISPLAYPOWER = "Power",
 	UNIT_NAME_UPDATE = "Name", UNIT_IN_RANGE_UPDATE = "Range", UNIT_PHASE = "Range",
 }
@@ -921,6 +922,13 @@ local function RangeAll()
 	end
 end
 
+-- (2.1.16) a button's unit gone or back, on whatever told us first: Button.Health paints both bars
+local function Life(b)
+	if MelloUI.Units.Gone(b.unit) ~= (b.dead or false) then
+		Button.Health(b)
+	end
+end
+
 local events = nil
 local OnEvent = Shared("the group frames' events", function(_, event, unit, ...)
 	if not S.on then
@@ -931,9 +939,14 @@ local OnEvent = Shared("the group frames' events", function(_, event, unit, ...)
 		local set = unit and byUnit[Text(unit) or ""]
 		if set then
 			for b in pairs(set) do
+				Life(b)   -- (any event of its unit may be the first to say)
 				Button[paint](b)
 			end
 		end
+		return
+	end
+	if event == "UNIT_DIED" or event == "PLAYER_DEAD" or event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
+		Each(Life)   -- (a death anywhere near, yours, your release and return; UNIT_DIED's payload not read)
 		return
 	end
 	if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_REGEN_DISABLED" then
@@ -963,7 +976,8 @@ local OnEvent = Shared("the group frames' events", function(_, event, unit, ...)
 end, "script")
 
 local EVENTS = { "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_CONNECTION", "UNIT_FLAGS", "UNIT_POWER_UPDATE", "UNIT_MAXPOWER",
-	"UNIT_DISPLAYPOWER", "UNIT_NAME_UPDATE", "UNIT_IN_RANGE_UPDATE", "UNIT_PHASE", "PLAYER_REGEN_ENABLED",
+	"UNIT_DISPLAYPOWER", "UNIT_NAME_UPDATE", "UNIT_IN_RANGE_UPDATE", "UNIT_PHASE", "UNIT_DIED", "PLAYER_DEAD",
+	"PLAYER_ALIVE", "PLAYER_UNGHOST", "PARTY_MEMBER_ENABLE", "PARTY_MEMBER_DISABLE", "PLAYER_REGEN_ENABLED",
 	"PLAYER_REGEN_DISABLED",
 	"GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "PLAYER_ENTERING_WORLD", "RAID_TARGET_UPDATE", "READY_CHECK",
 	"READY_CHECK_CONFIRM", "READY_CHECK_FINISHED" }

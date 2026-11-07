@@ -703,22 +703,19 @@ function O.GetPortrait(f)
 end
 
 -- the name (UnitFrame_Update: GetUnitName, the follower prefix in a follower dungeon)
-local function Name(f)
-	local unit = f.unit
-	local okN, text = pcall(rawget(_G, "GetUnitName") or UnitName, unit, false)
-	if not okN then
-		text = nil
-	end
-	if text ~= nil and not Secret(text) and Yes(rawget(_G, "UnitInPartyIsAI"), unit) then
+local function Follower(text, unit)
+	if Yes(rawget(_G, "UnitInPartyIsAI"), unit) then
 		local lfg = rawget(_G, "C_LFGInfo")
 		local prefix = rawget(_G, "LFG_FOLLOWER_NAME_PREFIX")
 		if prefix and lfg and Yes(lfg.IsInLFGFollowerDungeon) then
-			text = prefix:format(text)
+			return prefix:format(text)
 		end
 	end
-	if text ~= nil then
-		pcall(f.name.SetText, f.name, text)
-	end
+	return text
+end
+
+local function Name(f)
+	U.LayName(f, f.unit, Follower)
 end
 
 -- the portrait (UnitFramePortrait_Update: the class picture for a player while the CVar says so, else the unit's)
@@ -739,26 +736,8 @@ local function Portrait(f)
 	U.Notify("UnitFramePortrait_Update", f)
 end
 
--- the health bar (UnitFrameHealthBar_Update: a disconnected unit's full)
-local function Health(f)
-	local hb, unit = f.healthbar, f.unit
-	local max = UnitHealthMax(unit)
-	local plainMax = Num(max)
-	pcall(hb.SetMinMaxValues, hb, 0, (plainMax and plainMax == 0) and 1 or max)
-	BarShown(hb, max)
-	if U.Connected(unit) then
-		pcall(hb.SetValue, hb, UnitHealth(unit))
-	else
-		pcall(hb.SetValue, hb, (plainMax and plainMax == 0) and 1 or max)
-	end
-	U.Notify("UnitFrameHealthBar_Update", hb, unit)
-	U.Texts(f)
-	if f.HealthCheck then
-		f:HealthCheck()
-	end
-end
-
--- the mana bar (UnitFrameManaBar_Update: its values, paused or not -- a "minus" unit's bar is hidden by its shown rule)
+-- the mana bar (UnitFrameManaBar_Update: its values, paused or not -- a "minus" unit's bar is hidden by its shown rule;
+-- a gone unit's none: U.Value)
 local function Power(f)
 	local mb, unit = f.manabar, f.unit
 	local pt = mb.powerType
@@ -769,12 +748,34 @@ local function Power(f)
 	if U.Connected(unit) then
 		local okV, v = pcall(UnitPower, unit, pt)
 		if okV then
-			pcall(mb.SetValue, mb, v)
+			pcall(mb.SetValue, mb, U.Value(unit, v))
 		end
 	else
 		pcall(mb.SetValue, mb, max)
 	end
 	U.Texts(f)
+end
+
+-- the health bar (UnitFrameHealthBar_Update: a disconnected unit's full; a gone unit's none, its power with it: U.Value)
+local function Health(f)
+	local hb, unit = f.healthbar, f.unit
+	local max = UnitHealthMax(unit)
+	local plainMax = Num(max)
+	pcall(hb.SetMinMaxValues, hb, 0, (plainMax and plainMax == 0) and 1 or max)
+	BarShown(hb, max)
+	if U.Connected(unit) then
+		pcall(hb.SetValue, hb, U.Value(unit, UnitHealth(unit)))
+	else
+		pcall(hb.SetValue, hb, (plainMax and plainMax == 0) and 1 or max)
+	end
+	U.Notify("UnitFrameHealthBar_Update", hb, unit)
+	U.Texts(f)
+	if f.HealthCheck then
+		f:HealthCheck()
+	end
+	if U.GoneChanged(f) then
+		Power(f)
+	end
 end
 
 -- the power's picture (UnitFrameManaBar_UpdateType: "UI-HUD-UnitFrame-<Target|TargetofTarget>-PortraitOn-Bar-<Mana|

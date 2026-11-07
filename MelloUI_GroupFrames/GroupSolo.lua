@@ -324,10 +324,10 @@ local function Tint(f)
 	if unit == UNIT then
 		return
 	end
-	local dead = Ask(UnitIsDead, unit) == true
-	local c = dead and TINT.dead or (Ask(UnitIsGhost, unit) == true and TINT.ghost) or nil
-	-- (dead: its share none; offline: the game's bar at its most -- UpdateOnlineStatus: neither red nor beating)
-	if dead or not Connected(unit) then
+	local c = Ask(UnitIsDead, unit) == true and TINT.dead or (Ask(UnitIsGhost, unit) == true and TINT.ghost) or nil
+	-- (dead or a ghost: its bar at none -- MelloUI.Units.Value; offline: the game's bar at its most -- UpdateOnlineStatus:
+	-- neither red nor beating)
+	if c or not Connected(unit) then
 		c = c or TINT.none
 		TintBoth(f, c[1], c[2], c[3], 1, 0)
 		return
@@ -341,9 +341,6 @@ local function Tint(f)
 	if okP and okT and type(col) == "table" and col.GetRGBA and type(twin) == "table" and twin.GetRGBA then
 		local r, g, b, a = col:GetRGBA()
 		local _, _, _, twinAlpha = twin:GetRGBA()
-		if c then
-			r, g, b = c[1], c[2], c[3]   -- (a ghost: its blue, beating as the game's while its share is that low)
-		end
 		TintBoth(f, r, g, b, a, twinAlpha)
 		return
 	end
@@ -351,7 +348,7 @@ local function Tint(f)
 	local cur, max = Ask(UnitHealth, unit), Ask(UnitHealthMax, unit)
 	local share = (cur and max and max > 0) and cur / max or 1
 	local low = share > 0 and share <= TINT.at
-	c = c or (low and TINT.low or TINT.none)
+	c = low and TINT.low or TINT.none
 	TintBoth(f, c[1], c[2], c[3], low and 0 or 1, low and 1 or 0)
 end
 
@@ -429,14 +426,19 @@ local Texts = function(f)
 	MelloUI.Units.Texts(f)
 end
 
--- the bars' values, as the game hands them (a member offline: its bar full and grey, as the game's)
+-- the bars' values, as the game hands them (a member offline: its bar full and grey, as the game's; gone: none, the one
+-- rule of every bar of a unit, MelloUI.Units.Value)
 local function Health(f)
 	local unit = f.unit
 	local hb = f.HealthBarContainer.HealthBar
 	local max = UnitHealthMax(unit)
 	pcall(hb.SetMinMaxValues, hb, 0, max)
 	local on = Connected(unit)
-	pcall(hb.SetValue, hb, on and UnitHealth(unit) or max)
+	local value = max
+	if on then
+		value = MelloUI.Units.Value(unit, UnitHealth(unit))
+	end
+	pcall(hb.SetValue, hb, value)
 	Call(hb, "SetStatusBarDesaturated", not on)
 	if ByHealth() then
 		Colour(f)
@@ -449,8 +451,16 @@ local function Power(f)
 	local unit = f.unit
 	local mb = f.ManaBar
 	pcall(mb.SetMinMaxValues, mb, 0, UnitPowerMax(unit))
-	pcall(mb.SetValue, mb, UnitPower(unit))
+	pcall(mb.SetValue, mb, MelloUI.Units.Value(unit, UnitPower(unit)))
 	Texts(f)
+end
+
+-- (2.1.16) gone or back, on whatever told us first: both bars and the portrait's tint at once
+local function Life(f)
+	if MelloUI.Units.GoneChanged(f) then
+		Health(f)
+		Power(f)
+	end
 end
 
 -- the portrait (the game's), or Class Icons' medallion while its portraits
@@ -767,7 +777,7 @@ local function PetLook(p)
 	pcall(SetPortraitTexture, p.Portrait, unit)
 	local hb = p.HealthBar
 	pcall(hb.SetMinMaxValues, hb, 0, UnitHealthMax(unit))
-	pcall(hb.SetValue, hb, UnitHealth(unit))
+	pcall(hb.SetValue, hb, MelloUI.Units.Value(unit, UnitHealth(unit)))
 	p:SetAlpha(Connected(p.owner.unit) and 1 or 0)
 end
 
@@ -913,6 +923,8 @@ local PLACE_EVENTS = { UI_SCALE_CHANGED = true, PLAYER_ENTERING_WORLD = true, ED
 local GROUP_EVENTS = { GROUP_ROSTER_UPDATE = true, PLAYER_ROLES_ASSIGNED = true, PARTY_LEADER_CHANGED = true }
 local MEMBER_EVENTS = { READY_CHECK = true, READY_CHECK_CONFIRM = true, READY_CHECK_FINISHED = true,
 	INCOMING_SUMMON_CHANGED = true, PARTY_MEMBER_ENABLE = true, PARTY_MEMBER_DISABLE = true, CVAR_UPDATE = true }
+-- (2.1.16) a death anywhere near, yours, your release and return: who is gone read again (UNIT_DIED's payload not read)
+local LIFE_EVENTS = { UNIT_DIED = true, PLAYER_DEAD = true, PLAYER_ALIVE = true, PLAYER_UNGHOST = true }
 
 local function PlaceNow()
 	if Solo.driven or Solo.partyDriven then
@@ -971,6 +983,12 @@ local OnEvent = Shared("the portrait party's events", function(_, event, arg1)
 		end
 	elseif MEMBER_EVENTS[event] then
 		EachMember(NotPresent)
+		EachMember(Life)
+	elseif LIFE_EVENTS[event] then
+		if f and f:IsShown() then
+			Life(f)
+		end
+		EachMember(Life)
 	end
 end, "script")
 
@@ -979,6 +997,7 @@ local OnYours = Shared("your portrait party frame's events", function(_, event)
 	local f = Solo.frame
 	local paint = f and f:IsShown() and UNIT_EVENTS[event]
 	if paint then
+		Life(f)
 		paint(f, UNIT)
 	end
 end, "script")
@@ -989,6 +1008,7 @@ local OnMember = Shared("a portrait party member's events", function(self, event
 		return
 	end
 	if unit == self.unit then
+		Life(self)   -- (any event of its unit may be the first to say)
 		local paint = UNIT_EVENTS[event] or OWN_EVENTS[event]
 		if paint then
 			paint(self, unit)
@@ -1024,7 +1044,7 @@ local function Listen(on)
 			pcall(yours.RegisterUnitEvent, yours, e, UNIT)
 		end
 		pcall(events.RegisterEvent, events, "PORTRAITS_UPDATED")
-		for _, set in ipairs({ PLACE_EVENTS, GROUP_EVENTS, MEMBER_EVENTS }) do
+		for _, set in ipairs({ PLACE_EVENTS, GROUP_EVENTS, MEMBER_EVENTS, LIFE_EVENTS }) do
 			for e in pairs(set) do
 				pcall(events.RegisterEvent, events, e)
 			end

@@ -2279,6 +2279,8 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "修复：在地下城中，目标的目标及其他单位框体不再显示旧名字。", -- draft
+	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "修复：小队、团队及其他单位框体现在会将死亡玩家和灵魂的生命条与能量条显示为空。", -- draft
 	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "/mellobug 报告现在还会显示背包按钮的创建方式，便于查明游戏阻止使用背包物品的原因。", -- draft
 	["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "修复：选择条材质时，目标的目标和焦点目标的生命条与能量条不再显示为暗色。", -- draft
 	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "/mellobug 报告现在会显示导致操作被阻止的过程，便于查明游戏阻止使用背包物品的原因。", -- draft
@@ -2289,8 +2291,6 @@ Lang:Add("zhCN", {
 	["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "新增：提醒页面的“从头像分离”让提醒按钮拥有自己的位置，可在“编辑布局”中移动。", -- draft
 	["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "修复：提醒按钮的文字行和额外按钮不再超出屏幕：它们会朝有空间的一侧展开。", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "修复：在中文、韩文和俄文客户端上，浮动战斗文字和角色头顶的名字不再显示为方块。", -- draft
-	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "界面阴影现在覆盖个人显示，有自己的开关和阴影强度滑块。", -- draft
-	["The glow under icons on the maps and the minimap is always on now."] = "地图和小地图上图标下方的光晕现在始终开启。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3394,6 +3394,7 @@ Lang:Add("zhCN", {
 -- stale: ["The game's windows and HUD dressed in the painted kit, and the frame of MelloUI's own windows. Off: the game's windows and HUD keep the game's own art; MelloUI's own parts (the Quest Tracker, the widget column, the reminders, the race bar ...) keep MelloUI's look either way, and every feature keeps working. Switching it on also switches Custom Sounds on, and the first time puts in the Edit Mode layout the reskin is drawn for, fitted to your screen. Switching it off leaves Custom Sounds on."] = "游戏的窗口和HUD穿上手绘套件，以及MelloUI自身窗口的边框。关闭：游戏的窗口和HUD保留游戏自己的美术；MelloUI自己的部分（任务追踪器、小部件栏、提醒、竞速条……）无论如何都保持MelloUI的外观，所有功能照常工作。开启时也会开启“自定义音效”，并在第一次时套用为该换肤绘制的编辑模式布局，按你的屏幕调整。关闭时“自定义音效”保持开启。", -- draft
 -- stale: ["The game's windows and HUD dressed in the painted kit. Off: they keep the game's own art; MelloUI's own parts keep its look, and the features you switch on keep working."] = "游戏的窗口和HUD穿上手绘套件。关闭：它们保留游戏自己的美术；MelloUI自己的部分保持它的外观，你开启的功能照常工作。", -- draft
 -- stale: ["The gap between the name and the medallion."] = "名字和徽章之间的间隙。", -- draft
+-- stale: ["The glow under icons on the maps and the minimap is always on now."] = "地图和小地图上图标下方的光晕现在始终开启。", -- draft
 -- stale: ["The healing you get, and shields put on you."] = "你获得的治疗，以及加在你身上的护盾。", -- draft
 -- stale: ["The heals on their way to a unit shown on its health bar: your heals, other healers' heals and shields. On the player, target and focus frames and their targets; the party, pet and raid frames show the game's own (the raid frames' Display Incoming Heals)."] = "正在飞向单位的治疗显示在它的生命条上：你的治疗、其他治疗者的治疗和护盾。用于玩家、目标和焦点框体及其目标；小队、宠物和团队框体显示游戏自己的（团队框体的“显示预计治疗”）。", -- draft
 -- stale: ["The health and power bars shown under your character."] = "显示在你角色下方的生命条和能量条。", -- draft
@@ -3513,6 +3514,7 @@ Lang:Add("zhCN", {
 -- stale: ["Three numbers on top of your frame: the sword this fight's damage per second, the hourglass this run's, the cross your healing per second. Live in a fight, the last fight's after it. Move them in Edit Layout (Your Values)."] = "你框体上方三个数字：剑是本场战斗的每秒伤害，沙漏是本次副本的，十字是你的每秒治疗。战斗中实时显示，战斗后显示上一场的。可在“编辑布局”（你的数值）中移动。", -- draft
 -- stale: ["Titles, headers, dialog names, mail and book text, and the kit's title face on the painted plates; a Font Style puts it back to 100% (its faces bring their own correction). Not the Quest Tracker's title and section headers or Combat Text's notices: they have sizes of their own."] = "标题、题头、对话名字、邮件和书籍文字，以及手绘牌匾上套件的标题字体；字体风格会把它恢复到100%（它的字体自带校正）。不包括任务追踪器的标题和分区题头，也不包括战斗文字的通知：它们有自己的大小。", -- draft
 -- stale: ["Tooltips colour guilds, factions, levels and quest objectives. Macro Backup is gone: the game keeps your settings."] = "鼠标提示为公会、阵营、等级和任务目标着色。宏备份已移除：游戏会保存你的设置。", -- draft
+-- stale: ["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "界面阴影现在覆盖个人显示，有自己的开关和阴影强度滑块。", -- draft
 -- stale: ["Under 35% health the health bar turns ember."] = "生命值低于35%时生命条变成余烬色。", -- draft
 -- stale: ["Unit Frame Bars: Font Size"] = "单位框体条：字体大小", -- draft
 -- stale: ["Unit Frame Tweaks"] = "单位框体调整", -- draft

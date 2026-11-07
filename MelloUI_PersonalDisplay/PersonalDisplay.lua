@@ -915,6 +915,14 @@ local function Usable(v)
 	return Secret(v) or type(v) == "number"
 end
 
+-- the share a text reads: the client's, none while you are dead or a ghost (as the bar: MelloUI.Units.Value)
+local function NoShare()
+	return 0
+end
+local function Share(fn)
+	return (fn and MelloUI.Units.Gone("player")) and NoShare or fn
+end
+
 local function Percent(fs, fn, ...)
 	if Db().text == false or not fn then
 		fs:SetText("")
@@ -934,6 +942,7 @@ local function Health()
 	local okM, max = pcall(UnitHealthMax, "player")
 	local okV, v = pcall(UnitHealth, "player")
 	if okM and okV and Usable(max) and Usable(v) then
+		v = MelloUI.Units.Value("player", v)   -- (dead or a ghost: none, the one rule of every bar of a unit)
 		ui.health.bar:SetMinMaxValues(0, max)
 		ui.health.bar:SetValue(v, EASE)
 		Motion.Value(ui.health, max, v)
@@ -944,7 +953,7 @@ local function Health()
 		Motion.HealthMoment(share, S.healAt and GetTime() - S.healAt < T.healRecent)
 	end
 	MelloUI.Shields.Update(ui.health.bar, "player")
-	Percent(ui.health.text, rawget(_G, "UnitHealthPercent"), "player", true, Curve())
+	Percent(ui.health.text, Share(rawget(_G, "UnitHealthPercent")), "player", true, Curve())
 end
 
 local function Power()
@@ -969,6 +978,7 @@ local function Power()
 	local okM, max = pcall(UnitPowerMax, "player")
 	local okV, v = pcall(UnitPower, "player")
 	if okM and okV and Usable(max) and Usable(v) then
+		v = MelloUI.Units.Value("player", v)
 		ui.power.bar:SetMinMaxValues(0, max)
 		ui.power.bar:SetValue(v, EASE)
 		Motion.Value(ui.power, max, v, shifted)
@@ -977,7 +987,7 @@ local function Power()
 		end
 		Motion.Gain(Num(max), Num(v), plain)
 	end
-	Percent(ui.power.text, rawget(_G, "UnitPowerPercent"), "player", nil, false, Curve())
+	Percent(ui.power.text, Share(rawget(_G, "UnitPowerPercent")), "player", nil, false, Curve())
 end
 
 --------------------------------------------------------------------------------
@@ -3724,6 +3734,8 @@ local function OnEvent(_, event, a1, a2, a3, a4)
 		end
 	elseif event == "PLAYER_DEAD" or event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
 		Motion.Death(Motion.IsDead())   -- (1.2.0: grey and folded, back with the sweep)
+		Health()   -- (2.1.16: the bars at none, or back: your release brings no health or power event of its own)
+		Power()
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		Refresh()
 	end
