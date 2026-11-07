@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.15
+
+- /mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags.
+
 ## 2.1.14
 
 - Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen.

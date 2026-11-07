@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.15", lines = {
+		"/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags.",
+	} },
 	{ version = "2.1.14", lines = {
 		"Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen.",
 	} },
@@ -192,11 +195,6 @@ local CHANGELOG = {
 	{ version = "2.1.11", lines = {
 		"UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider.",
 		"The glow under icons on the maps and the minimap is always on now.",
-	} },
-	{ version = "2.1.10", lines = {
-		"Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again.",
-		"New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows.",
-		"Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again.",
 	} },
 }
 local LINKS = {

@@ -997,7 +997,12 @@ local function SlotButton(bag, slot)
 	end
 	local b = list[slot]
 	if not b then
+		local bug = MelloUI.Perf.bug   -- (2.1.15: how it was made, for /mellobug: BUG.Made)
+		local secure = bug and bug.Secure()
 		b = CreateFrame("ItemButton", nil, Holder(bag), "ContainerFrameItemButtonTemplate")
+		if bug then
+			pcall(bug.Made, b, secure)
+		end
 		b:SetID(slot)
 		b:SetSize(G.BASE, G.BASE)   -- (Item Size scales it: Place)
 		G.SlotBack(b)

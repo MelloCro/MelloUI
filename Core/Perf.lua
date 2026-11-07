@@ -1526,6 +1526,58 @@ function BUG.Others()
 	return out
 end
 
+-- (2.1.15; the user's report and scans, 2026-11-07: the same bags read 43 of 43 buttons tainted in one session and none
+-- in the next two, cause unknown) How this session's bag buttons were made, for the report: one row per run of buttons
+-- made alike, each with the way there. Only when a button is made (Modules/BagWindow.lua's SlotButton); not saved
+-- until a block keeps a copy.
+-- (The user's login, the same day: 27 clean buttons from code that was not secure, so the code's taint alone does not do it.)
+BUG.MADE, BUG.MADE_WAY = 6, 14
+BUG.made = {}
+
+function BUG.Secure()
+	local ok, secure = pcall(rawget(_G, "issecure") or error)
+	return ok and secure == true
+end
+
+function BUG.Made(button, secure)
+	local check = rawget(_G, "issecurevariable")
+	local okC, clean = pcall(check or error, button, "SetItem")
+	local tainted = okC and clean == false
+	local combat = InCombatLockdown() and true or false
+	local co = rawget(_G, "coroutine")
+	local okR, running = pcall(co and co.running or error)
+	local thread = okR and running ~= nil
+	local last = BUG.made[#BUG.made]
+	if last and last.tainted == tainted and last.secure == secure and last.combat == combat and last.thread == thread then
+		last.n = last.n + 1
+		return
+	end
+	if #BUG.made >= BUG.MADE then
+		return
+	end
+	local okW, way = pcall(BUG.Way)
+	BUG.made[#BUG.made + 1] = { n = 1, tainted = tainted, secure = secure, combat = combat, thread = thread,
+		at = BUG.beganAt and math.floor(GetTime() - BUG.beganAt) or nil, way = okW and way or nil }
+end
+
+function BUG.MadeLines()
+	local out = { format("This session began with %s.", BUG.began or "a login or reload not seen") }
+	if #BUG.made == 0 then
+		out[2] = "Bag buttons: none made yet."
+	end
+	for _, m in ipairs(BUG.made) do
+		out[#out + 1] = format("Bag buttons: %d made %s s in, %s, the code %s, %s%s", m.n, tostring(m.at or "?"),
+			m.tainted and "TAINTED" or "clean", m.secure and "secure" or "not secure", m.combat and "in combat" or "out of combat",
+			m.thread and ", in a coroutine" or "")
+		for i, line in ipairs(m.way or {}) do
+			if i <= BUG.MADE_WAY then
+				out[#out + 1] = "  " .. line
+			end
+		end
+	end
+	return out
+end
+
 function BUG.Capture(event, addon, func)
 	addon = Secret(addon) and nil or addon
 	if not (type(addon) == "string" and (BUG.ADDONS[addon] or addon:find("^MelloUI_"))) then
@@ -1559,6 +1611,7 @@ function BUG.Capture(event, addon, func)
 	local okW, way = pcall(BUG.Way)
 	local okT, tainted = pcall(BUG.NotGames, okU and button or nil)
 	local okO, others = pcall(BUG.Others)
+	local okM, made = pcall(BUG.MadeLines)
 	local entry = {
 		when = date("%Y-%m-%d %H:%M:%S"),
 		what = event == "ADDON_ACTION_FORBIDDEN" and "forbidden" or "blocked",
@@ -1569,7 +1622,7 @@ function BUG.Capture(event, addon, func)
 		gamepad = MelloUI.Safe.GamepadUI and MelloUI.Safe.GamepadUI() and true or false,
 		lines = lines,
 		under = okU and under or nil, way = okW and way or nil,
-		tainted = okT and tainted or nil, others = okO and others or nil,
+		tainted = okT and tainted or nil, others = okO and others or nil, made = okM and made or nil,
 	}
 	table.insert(list, 1, entry)
 	BUG.seen[func] = { entry = entry, at = at }
@@ -1618,6 +1671,9 @@ function BUG.Report()
 		if e.others and #e.others > 0 then
 			add("   Other addons: %s", table.concat(e.others, ", "))
 		end
+		for _, line in ipairs(e.made or {}) do
+			add("   %s", line)
+		end
 		if e.way then
 			add("   The way to it:")
 			for _, line in ipairs(e.way) do
@@ -1628,6 +1684,9 @@ function BUG.Report()
 	add("")
 	add("NOW")
 	SessionLines(add)
+	for _, line in ipairs(BUG.MadeLines()) do
+		add("  %s", line)
+	end
 	add("")
 	add("To find the cause: /console taintLog 2, /reload, do what you did; the game writes Logs/taint.log.")
 	return table.concat(L, "\n")
@@ -1636,7 +1695,15 @@ end
 BUG.frame = CreateFrame("Frame")
 BUG.frame:RegisterEvent("ADDON_ACTION_BLOCKED")
 BUG.frame:RegisterEvent("ADDON_ACTION_FORBIDDEN")
+BUG.frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 BUG.frame:SetScript("OnEvent", function(_, event, addon, func)
+	if event == "PLAYER_ENTERING_WORLD" then
+		-- (isInitialLogin, isReloadingUi: BUG.MadeLines; once)
+		BUG.frame:UnregisterEvent(event)
+		BUG.began = (addon and "a login") or (func and "a reload") or nil
+		BUG.beganAt = GetTime()
+		return
+	end
 	local ok, err = pcall(BUG.Capture, event, addon, func)
 	if not ok then
 		geterrorhandler()(err)
