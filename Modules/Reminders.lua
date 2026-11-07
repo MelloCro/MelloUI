@@ -144,7 +144,7 @@ local M = MelloUI:RegisterModule("Reminders", {
 		{ type = "header", name = "Widget" },
 		{ type = "dropdown", key = "place", name = "Place", values = PLACES,
 		  desc = "Which side of your portrait the reminder button sits on. Detached or without a player frame, you move it in Edit Layout, and this is the side its line opens to." },
-		{ type = "toggle", key = "detached", name = "Detach From Portrait", new = "2.1.13",
+		{ type = "toggle", key = "detached", name = "Detach From Portrait",
 		  desc = "Gives the reminder button a place of its own, so it no longer follows your player frame. Move it in Edit Layout." },
 		{ type = "dropdown", key = "glow", name = "Glow", values = GLOWS,
 		  desc = "The soft glow around the reminder button: steady, or none." },

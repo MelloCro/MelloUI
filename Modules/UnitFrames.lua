@@ -62,7 +62,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		{ type = "toggle", key = "frames", name = "MelloUI Frames",
 		  desc = "The unit frames in MelloUI's look: a gold portrait ring, a level badge and gold-lined borders. Off: the game's own art." },
 		-- (2.1.13; the user, 2026-11-07: "we are missing the unitframe of target of target in every single theme") M.ToTChanged
-		{ type = "toggle", key = "targetOfTarget", name = "Target of Target", new = "2.1.13",
+		{ type = "toggle", key = "targetOfTarget", name = "Target of Target",
 		  desc = "Shows who your target is targeting, under the target frame, and who your focus is targeting, under the focus frame. This is the game's own Target of Target setting. A change here takes effect after a /reload." },
 		-- (1.2.4; the user, 2026-10-26: "to have the option to flip the party frames horizontally, i like to have them
 		-- on the right side of the screen and not the left side") Party.Flip
