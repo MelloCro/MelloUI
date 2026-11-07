@@ -2276,6 +2276,7 @@ Lang:Add("ptBR", {
 	["Supporters"] = "Apoiadores", -- draft
 	["The people who help keep MelloUI going."] = "As pessoas que mantêm o MelloUI funcionando.", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Corrigido: pedir informações a um guarda agora coloca a marca dele no mapa do MelloUI.", -- draft
+	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "Corrigido: os ajustes de um tipo no fim da lista de Bolsas por tipo não são mais cortados: a lista cresce com eles.", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "Corrigido: em clientes chineses, coreanos e russos, o texto de combate flutuante e os nomes acima dos personagens não aparecem mais como quadrados.", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "A sombra da interface agora cobre a exibição pessoal, com interruptor próprio e o controle de força da sombra.", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "O brilho sob os ícones nos mapas e no minimapa agora fica sempre ligado.", -- draft

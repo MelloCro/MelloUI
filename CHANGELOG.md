@@ -3,6 +3,7 @@
 ## 2.1.13
 
 - Fixed: asking a guard for directions now puts its marker on MelloUI's map.
+- Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them and scrolls with the page.
 
 ## 2.1.12
 

@@ -87,8 +87,8 @@ local SORT_BY = {
 	{ value = "level", label = "Item Level" },
 }
 
--- (0.20.4) the Kinds list's row: its heading, 22 rows, its buttons (W.OrderList; longer lists scroll)
-local KINDS_H = 46 + 22 * 26 + 8 + 40 + 10
+-- (0.20.4) the room round the Kinds list on its row. (2.1.13) The row is as tall as the list: M.KindRowHeight, D.ListHeight
+local KINDS_PAD = 12
 
 local M   -- (the Kinds row's build reads it)
 M = MelloUI:RegisterModule("BagWindow", {
@@ -106,7 +106,10 @@ M = MelloUI:RegisterModule("BagWindow", {
 		-- (0.20.4; the user, 2026-10-11: "the categories have a priority, whats shown on top ... most people have their
 		-- hearthstone on top", look A of bag_kinds_sketch: the kinds in the player's order, lines and groups among them,
 		-- a tick each -- the Recent / Gear / Quest / Consumables / Junk / Trade Goods Kind switches folded in)
-		{ type = "canvas", key = "kinds", name = "Kinds", height = KINDS_H,
+		{ type = "canvas", key = "kinds", name = "Kinds",
+		  heightAt = function()
+			return M.KindRowHeight()
+		  end,
 		  search = "kinds order categories priority hearthstone groups lines separator equipment crafting recent junk own custom new add rename subcategories split type subtype rule",
 		  desc = "The kinds your bag window sorts items into, top first. Drag to reorder, untick to hide, Add kind to make your own; double-click a name to rename it, its cog opens its settings.",
 		  build = function(canvas, width)
@@ -3247,9 +3250,21 @@ local function RefreshKindList(canvas)
 	end
 end
 
+-- (2.1.13) the room the list takes on its row before it is built, and its row with it after (a row added or gone, a
+-- kind's settings opened or closed): the page's scroll follows
+function M.KindRowHeight()
+	return W.OrderListHeight(#KindRows()) + KINDS_PAD
+end
+
+function D.ListHeight(list, height)
+	W.CanvasHeight(list.frame:GetParent(), height + KINDS_PAD)
+end
+
 function M.BuildKindList(canvas, width)
-	local list = W.OrderList(canvas, math.min((Num(width) or 600) - 28, 560), KINDS_H - 12, KIND_LIST)
+	local list = W.OrderList(canvas, math.min((Num(width) or 600) - 28, 560), KIND_LIST)
 	list.frame:SetPoint("TOPLEFT", canvas, "TOPLEFT", 14, -6)
+	list.onHeight = D.ListHeight
+	D.ListHeight(list, list.height)
 	canvas.list = list
 	canvas.Refresh = RefreshKindList
 	kindList = list

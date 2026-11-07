@@ -31,8 +31,12 @@
 --                                      wheel and a brightness bar (0.20.0)
 --   W.CanvasRow(parent, y, height, build, opts)   a row that is one frame a
 --                                      module builds (0.20.0)
---   W.OrderList(parent, width, height, spec)   rows put in order by dragging
---                                      them, ticks, lines and groups (0.20.4)
+--   W.CanvasHeight(canvas, height)     that row's new height: what it holds
+--                                      grew or shrank (2.1.13)
+--   W.OrderList(parent, width, spec)   rows put in order by dragging them,
+--                                      ticks, lines and groups (0.20.4)
+--   W.OrderListHeight(rows)            the height of an order list of so many
+--                                      rows (2.1.13)
 --   W.Caret(tex, size, dir, lit)       the kit's gold caret (a fold arrow)
 --   W.PlusMark(tex, size, lit)         the kit's gold plus glyph
 --   W.ColourRow(parent, y, label, hint, desc, get, set, opts)   a colour
@@ -81,6 +85,7 @@
 --                                      search's results in its place)
 --   W.Pager(parent, opts)              pages that cross-fade in one scroll
 --   W.RevealInPager(region, margin)    a part of a Pager's page glided into view
+--   W.PagerOf(region)                  the Pager holding a part of its page (2.1.13)
 --   W.RowBudget                        ONE budget of rows a frame for every
 --                                      own window: Begin(ms), End(), Spent(ms)
 --
@@ -5400,6 +5405,7 @@ do
 		local canvas = CreateFrame("Frame", nil, row)
 		canvas:SetAllPoints(row)
 		canvas.Refresh = NoRefresh
+		canvas.melloRow = row
 		local width = Num(parent:GetWidth())
 		width = (width and width > 0 and width or 700) - 2 * (opts.inset or 0)
 		local ok, err = pcall(build, canvas, width)
@@ -5408,6 +5414,21 @@ do
 		end
 		controlOf[row] = canvas
 		return row, canvas
+	end
+
+	-- (2.1.13; Nixxen, Discord, 2026-11-07, the Kinds list) a canvas that grew or shrank: its row takes the height and
+	-- tells whoever laid it (row.melloOnHeight(row, height): the configurator moves the rows under it, the page's scroll
+	-- with them). Nothing for a frame that is no canvas row's
+	function W.CanvasHeight(canvas, height)
+		local row = canvas.melloRow
+		height = Num(height)
+		if not (row and height) or Num(row:GetHeight()) == height then
+			return
+		end
+		row:SetHeight(height)
+		if row.melloOnHeight then
+			row.melloOnHeight(row, height)
+		end
 	end
 end
 
@@ -8439,22 +8460,34 @@ function Pager:Reveal(region, margin)
 		delta = math.min(viewFoot + margin - foot, viewTop - margin - top)
 	end
 	if delta ~= 0 then
+		-- (2.1.13: a page grown just now -- a kind's settings opened -- the engine's range is a frame late, and a glide
+		-- stops at the range)
+		scroll:UpdateScrollChildRect()
 		self:ScrollTo(self:Offset() + delta, false)
 	end
 end
 
--- the Pager holding `region` (its page's), its Reveal asked; nothing outside one
-function W.RevealInPager(region, margin)
+-- the Pager holding `region` (its page's); nil outside one
+function W.PagerOf(region)
 	local f = region
 	for _ = 1, 40 do
 		if not f then
-			return
+			return nil
 		end
 		local pager = pagerOf[f]
 		if pager then
-			return pager:Reveal(region, margin)
+			return pager
 		end
 		f = f.GetParent and f:GetParent() or nil
+	end
+	return nil
+end
+
+-- the Pager holding `region`, its Reveal asked; nothing outside one
+function W.RevealInPager(region, margin)
+	local pager = W.PagerOf(region)
+	if pager then
+		return pager:Reveal(region, margin)
 	end
 end
 
@@ -8628,7 +8661,7 @@ end
 -- a tick on the rows that have one, a name to type on the rows that take one (double-click it), a cross on the rows
 -- that may go, buttons under the list. The list is its owner's: the widget lays the rows `spec.rows()` gives and
 -- hands every change back; list:Refresh() lays them again.
---   W.OrderList(parent, width, height, spec) -> list
+--   W.OrderList(parent, width, spec) -> list
 --     spec.rows() -> { { kind = "item" | "line" | "group", label, note, ticked (nil: no tick), indent (0 / 1),
 --                       removable, renamable }, ... }
 --     spec.block(i) -> the rows that move with row i (a group: itself and its members), else 1
@@ -8639,9 +8672,16 @@ end
 --     `id`) shows a cog: its settings open under it, in the list (one at a time; a click on the cog again, or a row
 --     picked up to drag, closes them). spec.detailRows(r) -> how many rows' height they take; spec.detail(holder, r, i)
 --     fills the holder (a Frame, made once, the list's) for that row, each time they are laid
---   list:Open(id)   the settings of the row with that id opened (nil: closed), the list laid again
--- A held row runs an OnUpdate while it is held, nothing else does; a long list scrolls with the wheel, and on its
--- own while a held row is near its top or bottom.
+--   list:Open(id)   the settings of the row with that id opened (nil: closed), the list laid again, the settings
+--     glided whole into view (W.RevealInPager)
+--   list.height     its height; list.onHeight(list, height) when it changes
+--   W.OrderListHeight(rows)   the height of a list of so many rows, for the room its owner keeps before it is built
+-- A held row runs an OnUpdate while it is held, nothing else does.
+-- (2.1.13; Nixxen, Discord, 2026-11-07: "you are unable to scroll to see the full menu of the edit options") No scroll
+-- of its own: it had a fixed height and a hidden offset, no bar, inside a page that scrolls, and a kind's settings
+-- raised only that offset, so the page's bar ended at the same place and the settings stayed cut at the list's foot.
+-- It is as tall as its rows and the open settings, and the page's scroll carries it (the wheel over it too); a held row
+-- near the top or foot of the view moves the page.
 --------------------------------------------------------------------------------
 
 -- W.Caret(tex, size, dir, lit): the kit's gold caret (a dropdown's) on a texture, pointing "down", "right", "up" or
@@ -8665,7 +8705,7 @@ do
 	local HEAD_H = 46            -- the title and its help line over the list
 	local FOOT_H = 40            -- the buttons under it
 	local GRIP_X, TEXT_X, INDENT = 10, 32, 20
-	-- px the cursor goes before a held row is dragged; the scroll's edges while dragging (px), a row every this long
+	-- px the cursor goes before a held row is dragged; the view's edges while dragging (px), a row every this long
 	-- (one table: the file's main chunk is at Lua 5.1's 200 locals)
 	local DRAG = { START = 4, EDGE = 18, EVERY = 0.08 }
 	local TEXT = { line = "line", rename = "Double-click to rename." }
@@ -8830,15 +8870,9 @@ do
 		return self.data
 	end
 
-	-- how many rows the list shows at once, and the furthest it scrolls
-	function List:Room()
-		local h = Num(self.clip:GetHeight()) or 0
-		return math.max(1, math.floor(h / ROW_H))
-	end
-
-	function List:MaxScroll()
-		local n = #self.data - (self.drag and self.drag.count - 1 or 0) + self:DetailRows()
-		return math.max(0, n - self:Room())
+	-- (2.1.13) the height of a list of so many rows: its heading, the rows, its buttons
+	function W.OrderListHeight(rows)
+		return HEAD_H + 8 + rows * ROW_H + FOOT_H
 	end
 
 	-- (0.21.1) the open settings' row and how many rows' height they take (0: none open)
@@ -8858,13 +8892,17 @@ do
 	function List:Open(id)
 		self.open = id
 		self:Refresh()
+		-- (their row with them, right over them)
+		if id ~= nil and self.detail and self.detail:IsShown() then
+			W.RevealInPager(self.detail, ROW_H + 8)
+		end
 	end
 
 	-- the rows laid from the top (a held block left out and its landing place open)
 	function List:Lay()
 		local data, drag = self.data, self.drag
 		local n = 0
-		local y = -self.scroll * ROW_H
+		local y = 0
 		local landed = false
 		local function Gap()
 			self.gap:ClearAllPoints()
@@ -8925,20 +8963,46 @@ do
 		end
 	end
 
-	function List:Refresh()
-		self:Rows()
-		self.scroll = math.min(self.scroll, self:MaxScroll())
-		self:Lay()
+	-- (2.1.13) as tall as its rows and the open settings
+	function List:Fit()
+		local h = W.OrderListHeight(#self.data + self:DetailRows())
+		if h ~= self.height then
+			self.height = h
+			self.frame:SetHeight(h)
+			if self.onHeight then
+				self.onHeight(self, h)
+			end
+		end
 	end
 
-	function List:Scroll(delta)
-		local s = math.max(0, math.min(self.scroll + delta, self:MaxScroll()))
-		if s ~= self.scroll then
-			self.scroll = s
-			self:Lay()
-			return true
+	function List:Refresh()
+		self:Rows()
+		self:Lay()
+		-- (not while a row is held: what is under the cursor stays where it is until it lands, List:Drop)
+		if not self.drag then
+			self:Fit()
 		end
-		return false
+	end
+
+	-- (2.1.13) a held row near the top or foot of the view, with more of the list past it: the page a row further
+	-- (top, bottom: the list's own)
+	function List:EdgeScroll(y, top, bottom)
+		local pager = W.PagerOf(self.frame)
+		local scroll = pager and pager.scroll
+		if not scroll then
+			return
+		end
+		local k = (Num(scroll:GetEffectiveScale()) or 1) / (Num(self.clip:GetEffectiveScale()) or 1)
+		local viewTop, viewFoot = Num(scroll:GetTop()), Num(scroll:GetBottom())
+		if not (viewTop and viewFoot) then
+			return
+		end
+		viewTop, viewFoot = viewTop * k, viewFoot * k
+		if top > viewTop and y > viewTop - DRAG.EDGE then
+			pager:ScrollTo(pager:Offset() - ROW_H, true)
+		elseif bottom < viewFoot and y < viewFoot + DRAG.EDGE then
+			pager:ScrollTo(pager:Offset() + ROW_H, true)
+		end
 	end
 
 	-- the place among the rows left (not held) the cursor points at
@@ -8946,7 +9010,7 @@ do
 		local top = Num(self.clip:GetTop()) or 0
 		local y = CursorY(self.clip)
 		local left = #self.data - self.drag.count
-		local at = math.floor((top - y) / ROW_H + 0.5) + self.scroll
+		local at = math.floor((top - y) / ROW_H + 0.5)
 		return math.max(0, math.min(at, left))
 	end
 
@@ -8988,12 +9052,12 @@ do
 			list.ghost.label:SetText(r and (r.kind == "line" and TEXT.line or r.label) or "")
 			list.ghost:Show()
 		end
-		-- (near the list's top or bottom: a row at a time)
+		-- (near the view's top or foot: a row at a time)
 		d.wait = (d.wait or 0) - elapsed
 		local top, bottom = Num(list.clip:GetTop()) or 0, Num(list.clip:GetBottom()) or 0
-		if d.wait <= 0 and (y > top - DRAG.EDGE or y < bottom + DRAG.EDGE) then
+		if d.wait <= 0 then
 			d.wait = DRAG.EVERY
-			list:Scroll(y > top - DRAG.EDGE and -1 or 1)
+			list:EdgeScroll(y, top, bottom)
 		end
 		local to = list:DropAt()
 		if to ~= d.to then
@@ -9077,9 +9141,6 @@ do
 		box:HighlightText()
 	end, "script")
 
-	local Wheel = Shared("OnMouseWheel on an order list", function(clip, delta)
-		clip.list:Scroll(delta > 0 and -1 or 1)
-	end, "script")
 	local BoxEnter = Shared("OnEnterPressed in an order list's name box", function(box)
 		EndRename(box, true)
 	end, "script")
@@ -9092,10 +9153,10 @@ do
 		end
 	end, "script")
 
-	function W.OrderList(parent, width, height, spec)
-		local list = setmetatable({ spec = spec, rows = {}, data = {}, scroll = 0 }, List)
+	function W.OrderList(parent, width, spec)
+		local list = setmetatable({ spec = spec, rows = {}, data = {} }, List)
 		local f = CreateFrame("Frame", nil, parent)
-		f:SetSize(width, height)
+		f:SetWidth(width)
 		list.frame = f
 		local title = W.Text(f, "GameFontNormalLarge", spec.title, "text")
 		title:SetPoint("TOPLEFT", f, "TOPLEFT", 4, -4)
@@ -9108,9 +9169,6 @@ do
 		clip:SetPoint("TOPLEFT", panel, "TOPLEFT", 1, -4)
 		clip:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -1, 4)
 		clip:SetClipsChildren(true)
-		clip:EnableMouseWheel(true)
-		clip.list = list
-		Perf.SetScript(clip, "OnMouseWheel", Wheel)
 		list.clip = clip
 		local content = CreateFrame("Frame", nil, clip)
 		content:SetPoint("TOPLEFT", clip, "TOPLEFT", 0, 0)

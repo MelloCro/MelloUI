@@ -2276,6 +2276,7 @@ Lang:Add("koKR", {
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "수정: 경비병에게 길을 물으면 이제 그 표시가 MelloUI 지도에 나타납니다.", -- draft
+	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "수정: 종류별 가방 목록 아래쪽에 있는 종류의 설정이 더 이상 잘리지 않습니다. 목록이 함께 늘어납니다.", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "수정: 중국어, 한국어, 러시아어 클라이언트에서 떠오르는 전투 문자와 캐릭터 위 이름이 더 이상 네모로 표시되지 않습니다.", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "UI 그림자가 이제 개인 표시기에도 적용되며, 자체 스위치와 그림자 강도 슬라이더를 사용합니다.", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "지도와 미니맵 아이콘 아래의 빛이 이제 항상 켜져 있습니다.", -- draft

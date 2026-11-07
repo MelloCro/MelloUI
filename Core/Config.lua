@@ -176,6 +176,7 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "2.1.13", lines = {
 		"Fixed: asking a guard for directions now puts its marker on MelloUI's map.",
+		"Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them.",
 	} },
 	{ version = "2.1.12", lines = {
 		"Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares.",
@@ -3381,6 +3382,7 @@ local function MakeRow(sec, r)
 	elseif t == "canvas" then
 		-- (0.20.0) a frame the module builds (the Group Frames' Designer)
 		row, control = W.CanvasRow(sec, sec.y, RowH(r, sec), opt.build, o)
+		row.melloSec, row.melloJob, row.melloOnHeight = sec, sec.curN, CONFIG.CanvasHeight
 	elseif t == "colour" then
 		-- (0.20.0) a colour of the player's: a swatch, the wheel in a flyout
 		o.host, o.default = window, shape.mod and shape.mod.defaults and shape.mod.defaults[shape.key]
@@ -4044,6 +4046,19 @@ function CONFIG.Reflow(sec)
 	end
 	if changed and page.current == sec then
 		PageHeight(page, sec)
+	end
+end
+
+-- (2.1.13; Nixxen, Discord, 2026-11-07) a canvas row grew or shrank (W.CanvasHeight; the Kinds list with a kind's
+-- settings open): the job's height, so the rows under it move and the page's scroll range follows
+function CONFIG.CanvasHeight(row, height)
+	local sec, job = row.melloSec, row.melloJob
+	if job and sec.jobH0 and sec.jobH0[job] and sec.jobH0[job] ~= height then
+		sec.jobH0[job] = height
+		if sec.jobH and sec.jobH[job] then
+			sec.jobH[job] = height
+		end
+		CONFIG.Reflow(sec)
 	end
 end
 

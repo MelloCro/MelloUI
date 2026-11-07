@@ -2276,6 +2276,7 @@ Lang:Add("zhCN", {
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "修复：向卫兵问路后，其标记现在会显示在 MelloUI 地图上。", -- draft
+	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "修复：背包分类列表靠下类别的设置不再被截断，列表会随之变长。", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "修复：在中文、韩文和俄文客户端上，浮动战斗文字和角色头顶的名字不再显示为方块。", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "界面阴影现在覆盖个人显示，有自己的开关和阴影强度滑块。", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "地图和小地图上图标下方的光晕现在始终开启。", -- draft

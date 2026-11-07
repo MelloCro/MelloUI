@@ -2276,6 +2276,7 @@ Lang:Add("ruRU", {
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
 	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Исправлено: если спросить дорогу у стражника, его метка теперь появляется на карте MelloUI.", -- draft
+	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "Исправлено: настройки вида в нижней части списка «Сумки по видам» больше не обрезаются: список растёт вместе с ними.", -- draft
 	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "Исправлено: в китайском, корейском и русском клиентах всплывающий текст боя и имена над персонажами больше не отображаются квадратами.", -- draft
 	["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "Тень интерфейса теперь охватывает личный дисплей, с отдельным переключателем и ползунком силы тени.", -- draft
 	["The glow under icons on the maps and the minimap is always on now."] = "Свечение под значками на картах и миникарте теперь всегда включено.", -- draft
