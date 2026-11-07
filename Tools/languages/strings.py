@@ -116,6 +116,9 @@ def tokens(src):
 
 
 PATHLIKE = re.compile(r"[\\/]|^\||\.(lua|tga|blp|ttf|ogg|mp3)$", re.I)
+# a slash command and its arguments ("/sfx play <name>", "/mello profile ...", "/vo stop | pause | skip"): the same in
+# every language. A sentence that opens with one ("/mellobug's report now shows ...") is a line a player reads.
+SLASH = re.compile(r"^/[a-z]+(?: (?:[a-z]+|<[a-z]+>|\||\.\.\.)){0,5}$")
 
 
 def Prose(s):
@@ -128,7 +131,7 @@ def Prose(s):
         return False
     if t.startswith(("http://", "https://")) and " " not in t:
         return False
-    if t.startswith("/"):                                   # a slash command: the same in every language
+    if SLASH.match(t):
         return False
     if " " not in t:
         if t.isupper() or "_" in t:                        # LEFT, OVERLAY, PLAYER_LOGIN, ui-hud-atlas_names
