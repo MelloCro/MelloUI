@@ -1638,6 +1638,8 @@ Lang:Add("deDE", {
 	["Without a map pin, routes to the quest you track: its next objective, then its turn-in."] = "Ohne Kartenmarkierung führt die Route zur verfolgten Quest: ihr nächstes Ziel, dann ihre Abgabe.", -- draft
 	["Fall Back To The First Tracked Quest"] = "Notfalls der ersten verfolgten Quest folgen", -- draft
 	["When no quest is followed, routes to the first quest on the game's watch list."] = "Folgst du keiner Quest, führt die Route zur ersten Quest auf der Beobachtungsliste des Spiels.", -- draft
+	["Follow Guide Addons"] = "Guide-Addons folgen", -- draft
+	["Shows the current steps of RestedXP and other guide addons in the Quest Tracker and routes to them, hiding the guide's own arrow and window. Off, the guide keeps its own."] = "Zeigt die aktuellen Schritte von RestedXP und anderen Guide-Addons in der Questverfolgung und führt die Route dorthin; Pfeil und Fenster des Guides werden ausgeblendet. Aus: Der Guide behält seine eigenen.", -- draft
 	["Distance Under The Minimap"] = "Entfernung unter der Minikarte", -- draft
 	["The distance left and the destination under the minimap."] = "Die verbleibende Entfernung und das Ziel unter der Minikarte.", -- draft
 	["Travel Time"] = "Reisezeit", -- draft
@@ -2279,6 +2281,11 @@ Lang:Add("deDE", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Deine ganze Einrichtung unter einem Namen. Speichere sie, lade sie oder mach sie zum Standard für eine frische Installation.", -- draft
 	["Supporters"] = "Unterstützer", -- draft
 	["The people who help keep MelloUI going."] = "Die Menschen, die MelloUI am Laufen halten.", -- draft
+	["Fixed: keys bound in Keybind Mode in place of a default key, such as those of action bar 1, now stay after logging in again."] = "Behoben: Tasten, die im Tastenbelegungsmodus anstelle einer Standardtaste belegt werden, etwa die der Aktionsleiste 1, bleiben jetzt auch nach dem erneuten Einloggen erhalten.", -- draft
+	["Fixed: inside a battleground, MelloUI's map opens on the battleground's own map, with you and your group on it."] = "Behoben: In einem Schlachtfeld öffnet sich MelloUIs Karte auf der Karte des Schlachtfelds, mit dir und deiner Gruppe darauf.", -- draft
+	["Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames."] = "Behoben: Tote Spieler und Geister behalten kein Schwächungs- oder Bedrohungsleuchten mehr um ihre Fenster.", -- draft
+	["Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker."] = "Route: Ein Schalter „Guide-Addons folgen“ (Route > Allgemein) blendet die Schritte von RestedXP und anderen Guides in der Questverfolgung aus.", -- draft
+	["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars lässt jetzt in jedem Design MelloUIs eigene Aktionsleisten und Haltungsleiste leuchten statt der verborgenen Spielleisten darunter.", -- draft
 	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "Behoben: In Dungeons zeigen das Ziel des Ziels und andere Einheitenfenster nicht mehr weiter einen alten Namen an.", -- draft
 	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "Behoben: Gruppen-, Schlachtzugs- und andere Einheitenfenster zeigen für tote Spieler und Geister jetzt leere Gesundheits- und Energieleisten.", -- draft
 	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "Der Bericht von /mellobug zeigt jetzt auch, wie die Taschenknöpfe erstellt wurden, um vom Spiel blockierte Taschengegenstände aufzuspüren.", -- draft
@@ -2290,7 +2297,6 @@ Lang:Add("deDE", {
 	["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "Behoben: Mit dem Skin Standard öffnet sich das Flüsterfenster ohne Lua-Fehler und hat wieder den Look des Spiels.", -- draft
 	["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "Neu: Vom Porträt lösen auf der Seite Erinnerungen gibt dem Erinnerungsknopf einen eigenen Platz, verschoben mit Layout bearbeiten.", -- draft
 	["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "Behoben: Zeile und zusätzliche Knöpfe des Erinnerungsknopfs laufen nicht mehr aus dem Bildschirm: Sie öffnen sich zur Seite mit Platz.", -- draft
-	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "Behoben: Auf chinesischen, koreanischen und russischen Clients erscheinen schwebender Kampftext und Namen über Charakteren nicht mehr als Quadrate.", -- draft
 	["Report a problem"] = "Ein Problem melden", -- draft
 	["Voice pack"] = "Stimmenpaket", -- draft
 	["open or close this window"] = "dieses Fenster öffnen oder schließen", -- draft
@@ -2946,6 +2952,7 @@ Lang:Add("deDE", {
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "Behoben: nach dem Erlernen einer neuen Haltung oder Gestalt konnte ein Kampf bis zu einem Neustart auf wenige Bilder pro Sekunde fallen.", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "Behoben: ein Fehler im Kampf durch die Großen Abklingzeiten der Persönlichen Anzeige.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "Behoben: Klicks auf Verstohlenheit, Haltungen, Gestalten und Begleitertasten; die Chat-Schrift in der minimalen Chatansicht; ganze Häkchen bei Standard; Beschriftungen neben Schiebereglern.", -- draft
+-- stale: ["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "Behoben: Auf chinesischen, koreanischen und russischen Clients erscheinen schwebender Kampftext und Namen über Charakteren nicht mehr als Quadrate.", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Behoben: Auf Oldschools Rahmen hält die Ressourcenleiste einen kleinen Abstand unter der Gesundheitsleiste, und die des Ziels schließt bündig mit ihr ab.", -- draft
 -- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Behoben: Die Markierungen der Questgeber auf MelloUIs Karte erscheinen nicht mehr als verzerrte gelbe Flecken.", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Behoben: Die Reiter für Rucksack und Reagenzientasche neben dem Taschenfenster zeigen wieder ihre Symbole.", -- draft

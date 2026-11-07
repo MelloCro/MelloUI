@@ -1491,6 +1491,9 @@ local function GameParts(n, fn)
 	local buttons = Field(game, "actionButtons")
 	for _, btn in ipairs(type(buttons) == "table" and buttons or {}) do
 		fn("mouse", btn)
+		-- (2.1.17) the button's own alpha too: an addon lifting its holders' alpha off it (Glowing Bars' glowing in
+		-- full, SetIgnoreParentAlpha) showed it, lit, where the game's bar stood (no game code writes a button's alpha)
+		fn("alpha", btn)
 		if n == 1 then
 			fn("alpha", Field(btn, "container"))
 		end
@@ -1716,6 +1719,7 @@ local function On()
 		OB.own[GAME_BARS[n]] = bar
 		for i, btn in ipairs(bar.actionButtons) do
 			OB.own[GAME_PREFIX[n] .. i] = btn
+			K.GlowingBars(btn, n)   -- (2.1.17: its glows on ours, OwnBars.lua)
 		end
 	end
 	OB.own.MainMenuBar = A.bars[1]

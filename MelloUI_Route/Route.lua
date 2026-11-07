@@ -50,6 +50,7 @@ local M = MelloUI:RegisterModule("Route", {
 		learn = true,
 		trackQuests = true,
 		trackFirstWatched = false,
+		followGuide = true,
 		worldMarker = true,
 		routeBeam = true,
 		markerWisp = "firefly",
@@ -78,6 +79,11 @@ local M = MelloUI:RegisterModule("Route", {
 		  desc = "Without a map pin, routes to the quest you track: its next objective, then its turn-in." },
 		{ type = "toggle", key = "trackFirstWatched", parent = "trackQuests", name = "Fall Back To The First Tracked Quest",
 		  desc = "When no quest is followed, routes to the first quest on the game's watch list." },
+		-- (2.1.17; the user, 2026-11-07: "how can people disable the compatibility with restedxp on the objective
+		-- tracker?" -- only /route guide did it) Guides.lua's Following(); the change refreshes as the slash word does
+		{ type = "toggle", key = "followGuide", name = "Follow Guide Addons", new = "2.1.17",
+		  desc = "Shows the current steps of RestedXP and other guide addons in the Quest Tracker and routes to them, "
+			.. "hiding the guide's own arrow and window. Off, the guide keeps its own." },
 		{ type = "toggle", key = "distanceText", name = "Distance Under The Minimap",
 		  desc = "The distance left and the destination under the minimap." },
 		{ type = "toggle", key = "travelTime", name = "Travel Time",
@@ -12771,6 +12777,10 @@ function M:OnSettingChanged(key, value, db)
 		StandIn.Update()
 	elseif key == "trailLook" then
 		Beacon.Tint()   -- (the World Marker's light and flag in the new look; the maps' at the redraw)
+	elseif key == "followGuide" and M.Guide then
+		-- (as /route guide: their spot, their steps in the Quest Tracker and their items, or all gone)
+		M.Guide.Forget()
+		M.Guide.Refresh()
 	end
 	M.flight.Setting(key)
 	Redraw()

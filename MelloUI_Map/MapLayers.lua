@@ -56,6 +56,7 @@
 --   Layers.LogChanged()         the quest log changed: the givers looked at on the next beat (2.1.7)
 --   Layers.GossipChanged()      the game set its directions marker or took it away
 --   Layers.FindMe()             a glide to the player
+--   Layers.Group(pins, map, seen) (2.1.17) the group on another canvas's pins (a battleground's own map)
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -268,8 +269,9 @@ local function MemberXY(unit, mapID)
 	return nil
 end
 
-local function Group(mapID)
-	local pins, seen = S.pins, S.seen
+-- (2.1.17: pins / seen another canvas's -- a battleground's own map, MapDungeon.lua -- else the world's)
+local function Group(mapID, pins, seen)
+	pins, seen = pins or S.pins, seen or S.seen
 	for key in pairs(seen) do
 		seen[key] = false
 	end
@@ -1204,6 +1206,12 @@ function Layers.Tick(elapsed)
 	Waypoint()
 	S.pins:Lay()
 	RouteChanged()
+end
+
+-- (2.1.17) the group on another canvas's pins (a battleground's own map, MapDungeon.lua: its "group" layer), by the
+-- same rule as the world's; `seen` that canvas's own (the members it shows)
+function Layers.Group(pins, mapID, seen)
+	Group(mapID, pins, seen)
 end
 
 -- (2.1.7) the quest log changed while the window shows: looked at on the next beat (one flag, once for a burst)

@@ -1638,6 +1638,8 @@ Lang:Add("ruRU", {
 	["Without a map pin, routes to the quest you track: its next objective, then its turn-in."] = "Без метки на карте ведёт к отслеживаемому заданию: его следующей цели, затем к сдаче.", -- draft
 	["Fall Back To The First Tracked Quest"] = "Брать первое отслеживаемое задание", -- draft
 	["When no quest is followed, routes to the first quest on the game's watch list."] = "Если вы ни за каким заданием не следуете, ведёт к первому в списке отслеживания игры.", -- draft
+	["Follow Guide Addons"] = "Следовать аддонам-гайдам", -- draft
+	["Shows the current steps of RestedXP and other guide addons in the Quest Tracker and routes to them, hiding the guide's own arrow and window. Off, the guide keeps its own."] = "Показывает текущие шаги RestedXP и других аддонов-гайдов в отслеживании заданий и ведёт к ним маршрут, скрывая собственные стрелку и окно гайда. Если выключено, гайд показывает свои.", -- draft
 	["Distance Under The Minimap"] = "Расстояние под мини-картой", -- draft
 	["The distance left and the destination under the minimap."] = "Оставшееся расстояние и цель под мини-картой.", -- draft
 	["Travel Time"] = "Время в пути", -- draft
@@ -2279,6 +2281,11 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["Fixed: keys bound in Keybind Mode in place of a default key, such as those of action bar 1, now stay after logging in again."] = "Исправлено: клавиши, назначенные в режиме клавиш вместо клавиши по умолчанию, например на панели команд 1, теперь сохраняются после повторного входа в игру.", -- draft
+	["Fixed: inside a battleground, MelloUI's map opens on the battleground's own map, with you and your group on it."] = "Исправлено: на поле боя карта MelloUI открывается на карте самого поля боя, с вами и вашей группой на ней.", -- draft
+	["Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames."] = "Исправлено: вокруг рамок мёртвых игроков и духов больше не остаётся свечение отрицательного эффекта или угрозы.", -- draft
+	["Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker."] = "Маршрут: переключатель «Следовать аддонам-гайдам» (Маршрут > Общие) отключает показ шагов RestedXP и других гайдов в отслеживании заданий.", -- draft
+	["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars теперь подсвечивает собственные панели команд и панель стоек MelloUI в любом облике, а не скрытые под ними панели игры.", -- draft
 	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "Исправлено: в подземельях цель цели и другие рамки юнитов больше не показывают старое имя.", -- draft
 	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "Исправлено: рамки группы, рейда и другие рамки теперь показывают пустые полосы здоровья и ресурса у мёртвых игроков и духов.", -- draft
 	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "Отчёт /mellobug теперь также показывает, как были созданы кнопки сумок, чтобы найти причину блокировки предметов.", -- draft
@@ -2290,7 +2297,6 @@ Lang:Add("ruRU", {
 	["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "Исправлено: с обликом «По умолчанию» окно шёпота открывается без ошибки Lua и снова выглядит как в игре.", -- draft
 	["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "Новое: «Отделить от портрета» на странице «Напоминания» даёт кнопке напоминаний собственное место; перемещается в «Изменить раскладку».", -- draft
 	["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "Исправлено: строка и дополнительные кнопки у кнопки напоминаний больше не уходят за край экрана: они открываются в сторону, где есть место.", -- draft
-	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "Исправлено: в китайском, корейском и русском клиентах всплывающий текст боя и имена над персонажами больше не отображаются квадратами.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -2942,6 +2948,7 @@ Lang:Add("ruRU", {
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "Исправлено: после изучения новой стойки или облика бой мог падать до нескольких кадров в секунду до перезапуска.", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "Исправлено: ошибка в бою из-за больших восстановлений Личной панели.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "Исправлено: щелчки по «Незаметности», стойкам, формам и кнопкам питомца; шрифт чата в «Минимальном» виде; целые галочки облика «По умолчанию»; подписи рядом с ползунками.", -- draft
+-- stale: ["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "Исправлено: в китайском, корейском и русском клиентах всплывающий текст боя и имена над персонажами больше не отображаются квадратами.", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Исправлено: на рамках Oldschool полоса ресурса держит небольшой зазор под полосой здоровья, а у цели она выровнена по ней.", -- draft
 -- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Исправлено: метки квестодателей на карте MelloUI больше не выглядят растянутыми жёлтыми пятнами.", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Исправлено: вкладки рюкзака и сумки для реагентов рядом с окном сумок снова показывают свои значки.", -- draft

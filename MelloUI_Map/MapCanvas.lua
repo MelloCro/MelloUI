@@ -130,7 +130,9 @@ local T = {
 	FILLS = "Interface\\AddOns\\MelloUI_Map\\Media\\Fills\\",         -- the gaps' fills (MapFills)
 	UNEXPLORED = 0.3,         -- a place not explored yet: its piece this faint (the user's pick H)
 	CITY_IN = { 0.2, 0.4 },        -- a city as it fills this share of the view's width
-	MAP_TYPE = { continent = 2, zone = 3 },
+	-- (Enum.UIMapType; 2.1.17: an orphan has no place in the world's maps -- this client's battlegrounds, each on its own
+	-- instance map: MapDungeon.lua shows one as its own plan)
+	MAP_TYPE = { continent = 2, zone = 3, orphan = 6 },
 	-- (2.1.0; the user, 2026-11-02, the dungeon map: look B "slate") a dungeon's plan (LayoutDungeon)
 	DUNGEONS = "Interface\\AddOns\\MelloUI_Map\\Media\\Dungeons\\",   -- its edge and cove art (MapDungeons)
 	DUNGEON_PX = 4,           -- the closest zoom: canvas units a yard (the floor pictures' own 2 px a yard, twice)
@@ -198,6 +200,13 @@ local function Isle(id)
 		return nil
 	end
 	return x0, x1, y0, y1
+end
+
+-- (2.1.17) the world lays this map: the client places it on Azeroth, or MelloUI lays it as an isle (MapDungeon.lua: an
+-- instance's own map the world does not lay is shown as its plan)
+function Canvas.OnWorld(id)
+	id = Finite(id)
+	return id ~= nil and (Rect(id, T.WORLD) ~= nil or Isle(id) ~= nil)
 end
 
 -- an isle's land in world units: MapData.isles' land (its pieces' hit rectangles widened as its outline is: the
@@ -444,10 +453,15 @@ function Canvas:LayoutDungeon(d, mapID)
 	local g = { x = -d.e0 / d.w, y = -d.s0 / d.h, w = T.CAVE_YARDS / d.w, h = T.CAVE_YARDS / d.h, tiles = d.ground }
 	self:MiniLayout(places, base, { minimap = { [0] = g } })
 	local wings = type(d.wings) == "table" and d.wings or EMPTY
+	local byID = {}
 	for w, wing in ipairs(wings) do
 		local prefix = mapID .. "_" .. w
 		if type(wing.drawn) == "table" and type(wing.rect) == "table" and type(wing.art) == "table" then
-			places[#places + 1] = DrawnPlace(self, wing, -10 * w - 3, base + 1, w)
+			local p = DrawnPlace(self, wing, -10 * w - 3, base + 1, w)
+			places[#places + 1] = p
+			if d.uiMap then
+				byID[d.uiMap] = p   -- (2.1.17: the client's own map the plan is made from: pins at their places on it)
+			end
 		end
 		if type(wing.cove) == "table" and #wing.cove > 0 then
 			places[#places + 1] = ArtPlace(self, d, prefix .. "o", wing.cove, -10 * w - 1, base + 1, w)
@@ -463,7 +477,7 @@ function Canvas:LayoutDungeon(d, mapID)
 	end
 	self.wing, self.wings = 1, #wings
 	self.bounds = { 0, 0, self.W, self.H }
-	self.places, self.byID, self.isles = places, {}, {}
+	self.places, self.byID, self.isles = places, byID, {}
 	self.stats.layoutMs = debugprofilestop() - t0
 end
 
@@ -1165,13 +1179,18 @@ function Canvas:SetView(cx, cy, z)
 end
 
 -- a map's position (0..1 on uiMapID) in world units: a laid map's place, else the map's rect on the world (a city's
--- or a cave's map the client places there), read once; nil where the client places it nowhere (an instance's own)
+-- or a cave's map the client places there), read once; nil where the client places it nowhere (an instance's own).
+-- (2.1.17) A plan's canvas places only the client's map it is made from (byID): never the world's maps
 function Canvas:ToWorld(id, x, y)
 	id, x, y = Finite(id), Finite(x), Finite(y)
 	if not (id and x and y and self.places) then
 		return nil
 	end
 	local r = self.byID[id] or self.rects[id]
+	if r == nil and self.dungeon then
+		r = false
+		self.rects[id] = r
+	end
 	if r == nil then
 		local x0, x1, y0, y1 = Rect(id, T.WORLD)
 		r = x0 and { left = x0 * self.W, top = y0 * self.H, w = (x1 - x0) * self.W, h = (y1 - y0) * self.H } or false

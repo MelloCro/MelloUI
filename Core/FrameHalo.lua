@@ -261,6 +261,14 @@ local function Gone(h, fade)
 	end
 end
 
+-- (2.1.17) the indicator's unit dead or a ghost: the game asks UnitIsDead of it and leaves its flash as it stood; the
+-- user, 2026-11-07: hidden (MelloUI.Units.Gone, the one rule)
+local function UnitGone(ind)
+	local U = MelloUI.Units
+	local unit = rawget(ind, "unit")
+	return (U and type(unit) == "string" and U.Gone(unit)) and true or false
+end
+
 -- the frame's halo as the game's indicator stands now
 local function Update(frame)
 	local t = T.of[frame]
@@ -268,7 +276,7 @@ local function Update(frame)
 	local okV, visible = pcall(frame.IsVisible, frame)
 	-- (2.1.6: none on a frame of the Unit Frames area while it is the game's -- MelloUI.Area)
 	local given = not Area.On("unitframes") and Area.Holds("unitframes", frame)
-	if not (T.on and ind and Shown(ind) and okV and visible == true) or given then
+	if not (T.on and ind and Shown(ind) and okV and visible == true) or given or UnitGone(ind) then
 		if t and t.shown then
 			-- (the game's indicator gone: faded out; the option ticked or the frame gone: at once)
 			local fade = T.on and okV and visible == true and not given
@@ -341,10 +349,27 @@ local function Refresh(frame)
 	end
 end
 
+-- (2.1.17) a member's death or yours, your release and return: the halos read again (the game's indicator does not
+-- change for the dead); heard from the first switch-on
+local life = nil
+local function Listen()
+	if life then
+		return
+	end
+	life = CreateFrame("Frame")
+	for _, e in ipairs({ "PARTY_MEMBER_ENABLE", "PARTY_MEMBER_DISABLE", "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST" }) do
+		pcall(life.RegisterEvent, life, e)
+	end
+	Perf.SetScript(life, "OnEvent", function()
+		Each(Refresh)
+	end)
+end
+
 function Halo.Threat(on)
 	T.on = on and true or false
 	if T.on then
 		Each(Hook)
+		Listen()
 	end
 	Each(Refresh)
 end

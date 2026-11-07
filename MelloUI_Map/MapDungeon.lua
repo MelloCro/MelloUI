@@ -30,6 +30,18 @@
 -- its door on the world map, or on its row in Dungeon Info's list. Your arrow
 -- and the wing that follows you are the instance's you stand in only.
 --
+-- Battlegrounds (2.1.17; the user, 2026-11-07: "Battleground maps are missing
+-- from our map"): an instance MelloUI has no plan of, whose map the client has
+-- itself and the world does not lay -- an orphan map (Enum.UIMapType), on its
+-- own instance map: Alterac Valley, Warsong Gulch, Arathi Basin and Forever's
+-- own battleground -- opens on that map, as the game's own map does
+-- (MapUtil.GetDisplayableMapForPlayer): its plan made from the client's map
+-- (ClientPlan: its art one drawn floor by file ID, its units the art's
+-- pixels), your arrow and your group at the game's places on it
+-- (C_Map.GetPlayerMapPosition; the group by MapLayers' Layers.Group). Not
+-- behind Dungeon Maps: it is the game's own map. From outside the game's map
+-- has no way to one (no map links in this client), nor has this one.
+--
 -- Wings (the user, 2026-11-02: "Several floors, we need to spread them into
 -- Wings"): a dungeon whose floors lie over each other comes in wings (the
 -- data's, each named by the game's own area name), one shown at a time, picked
@@ -40,7 +52,8 @@
 --   Dungeon.Init(win, hook)      at the window's build (hook(frame): the canvas's
 --                                mouse, as the world's)
 --   Dungeon.Current() -> map     the instance you are in, when it has a plan and
---                                the option is on; else nil
+--                                the option is on, or (2.1.17) a map of the
+--                                client's own the world does not lay; else nil
 --   Dungeon.Has(map) -> bool     a plan of it, and the option on
 --   Dungeon.Show(map)          the plan shown (its canvas made the first time)
 --   Dungeon.Hide(keep)           the world again (keep: the plan's files kept, it
@@ -64,8 +77,8 @@ local Perf = MelloUI.Perf:Scope("MelloUI_Map (MapDungeon)")
 local Finite = MelloUI.Safe.Finite
 local Text = MelloUI.Safe.Text
 local W = MelloUI.Widgets
-local Canvas, Pins = ns.Canvas, ns.Pins
-local ipairs, pcall, type, max = ipairs, pcall, type, math.max
+local Canvas, Pins, Layers = ns.Canvas, ns.Pins, ns.Layers
+local ipairs, pcall, type, max, ceil = ipairs, pcall, type, math.max, math.ceil
 
 local Dungeon = {}
 ns.Dungeon = Dungeon
@@ -76,7 +89,7 @@ local T = {
 	ARROW_ATLAS = "UI-WorldMapArrow",                 -- the game's own map arrow
 	ARROW_FILE = "Interface\\Minimap\\MinimapArrow",  -- (if the atlas is missing)
 	EVERY = 0.1,             -- your place read at most this often
-	ORDER = { player = 50 },
+	ORDER = { group = 40, player = 50 },   -- (the group: a battleground's own map only, 2.1.17)
 	BACK_AT = 8,             -- the World map button: px in from the canvas's top left
 	FIND_ZOOM = 2,           -- Find me: at least this close
 	OUT_AT = 1.02,           -- a right-click at this share of the wing's whole view or wider: the world
@@ -92,15 +105,22 @@ local TEXT = {
 	credit = "Map by %s",   -- (an artist's sheets: MapDungeons' credit)
 }
 
-local S = { canvases = {}, areas = {}, wingOf = {} }
+-- (own: [instance map] = the plan made from the client's own map, 2.1.17)
+local S = { canvases = {}, areas = {}, wingOf = {}, own = {} }
 
 --------------------------------------------------------------------------------
 -- The instance you are in
 --------------------------------------------------------------------------------
 
-local function Plan(mapID)
+-- MelloUI's plan of an instance (MapDungeons)
+local function Data(mapID)
 	local all = ns.MapDungeons
 	return mapID and type(all) == "table" and all[mapID] or nil
+end
+
+-- the plan shown: MelloUI's, else (2.1.17) the one made from the client's own map
+local function Plan(mapID)
+	return mapID and (Data(mapID) or S.own[mapID]) or nil
 end
 
 local function On()
@@ -118,16 +138,88 @@ local function InstanceMap()
 	return okI and Finite(mapID) or nil
 end
 
-function Dungeon.Current()
-	if not On() then
+-- (2.1.17) a plan made from a map of the client's own (a battleground's): its art one drawn floor -- the client's files
+-- by ID, the whole map in its first art layer -- its units the art's pixels; nil when its art does not read plainly
+local function ClientPlan(uiMap)
+	local okL, layers = pcall(C_Map.GetMapArtLayers, uiMap)
+	local L = okL and type(layers) == "table" and layers[1]
+	local lw, lh = L and Finite(L.layerWidth), L and Finite(L.layerHeight)
+	local tw, th = L and Finite(L.tileWidth), L and Finite(L.tileHeight)
+	if not (lw and lh and tw and th) or lw <= 0 or lh <= 0 or tw <= 0 or th <= 0 then
 		return nil
 	end
+	local okF, files = pcall(C_Map.GetMapArtLayerTextures, uiMap, 1)
+	if not (okF and type(files) == "table") then
+		return nil
+	end
+	local cols, rows = ceil(lw / tw), ceil(lh / th)
+	local drawn, any = {}, false
+	for i = 1, cols * rows do
+		drawn[i] = Finite(files[i]) or false   -- (a tile that does not read: none drawn, its place kept)
+		any = any or drawn[i] ~= false
+	end
+	if not any then
+		return nil
+	end
+	local okI, info = pcall(C_Map.GetMapInfo, uiMap)
+	local name = okI and type(info) == "table" and Text(info.name) or nil
+	local whole = { 0, 0, lw, lh }
+	return {
+		name = name, uiMap = uiMap, w = lw, h = lh, cw = lw, ch = lh, e0 = 0, s0 = 0, cols = cols, rows = rows,
+		ground = {},
+		wings = { { name = name, box = whole, areas = {}, drawn = drawn, rect = whole, art = { lw, lh, tw, th },
+			cove = {}, edge = {}, rooms = {} } },
+	}
+end
+
+-- (2.1.17) inside an instance MelloUI has no plan of: the client's map for you (the game's own map shows it), when it
+-- is an orphan or the world does not lay it -- its plan (kept for the instance while the client's map for you is the
+-- same), or nil
+local function Own(mapID)
+	if not mapID or Data(mapID) then
+		return nil
+	end
+	local ok, uiMap = pcall(C_Map.GetBestMapForUnit, "player")
+	uiMap = ok and Finite(uiMap) or nil
+	if not uiMap then
+		return nil
+	end
+	local d = S.own[mapID]
+	if d and d.uiMap == uiMap then
+		return d
+	end
+	local okI, info = pcall(C_Map.GetMapInfo, uiMap)
+	local kind = okI and type(info) == "table" and Finite(info.mapType) or nil
+	if kind ~= Canvas.T.MAP_TYPE.orphan and Canvas.OnWorld(uiMap) then
+		return nil
+	end
+	d = ClientPlan(uiMap)
+	if d and S.own[mapID] and S.canvases[mapID] then
+		-- (another map of the client's in this instance: the old plan's canvas let go, the new one made at its show)
+		if S.shown == mapID then
+			Dungeon.Hide()
+		end
+		local old = S.canvases[mapID]
+		old:Release()
+		old.frame:Hide()
+		S.canvases[mapID] = nil
+	end
+	if d then
+		S.own[mapID] = d
+	end
+	return d
+end
+
+function Dungeon.Current()
 	local mapID = InstanceMap()
-	return Plan(mapID) and mapID or nil
+	if On() and Data(mapID) then
+		return mapID
+	end
+	return Own(mapID) and mapID or nil
 end
 
 function Dungeon.Has(mapID)
-	return On() and Plan(mapID) ~= nil
+	return On() and Data(mapID) ~= nil
 end
 
 function Dungeon.Shown()
@@ -175,12 +267,33 @@ local function ArrowLook()
 	end
 end
 
+-- (2.1.17) your place on a map of the client's own (0..1 on it, the game's own), in its plan's units; nil: none, a
+-- secret, off the map
+local function OnClientMap(d)
+	local ok, pos = pcall(C_Map.GetPlayerMapPosition, d.uiMap, "player")
+	if not (ok and type(pos) == "table") then
+		return nil
+	end
+	local okXY, x, y = pcall(pos.GetXY, pos)
+	x, y = okXY and Finite(x), okXY and Finite(y)
+	if not (x and y) or x < 0 or y < 0 or x > 1 or y > 1 then
+		return nil
+	end
+	return x * d.w, y * d.h
+end
+
 -- your place on the plan shown (yards from its top left), or nil: the game gives none inside, or a secret, or you are
 -- not in that instance (its plan shown from outside)
 local function You()
 	local d = Plan(S.shown)
+	if not d or InstanceMap() ~= S.shown then
+		return nil
+	end
+	if d.uiMap then
+		return OnClientMap(d)   -- (2.1.17: a battleground's own map)
+	end
 	-- (an artist's sheets, d.credit: no place of the world on them)
-	if not (d and UnitPosition) or d.credit or InstanceMap() ~= S.shown then
+	if not UnitPosition or d.credit then
 		return nil
 	end
 	-- (the game's world position: its first the north, its second the west)
@@ -217,6 +330,15 @@ local function Player()
 	end
 end
 
+-- (2.1.17) a map of the client's own (a battleground's): your group at their places on it, by MapLayers' one rule (a
+-- member elsewhere: not on it)
+local function Group()
+	local d, c = Plan(S.shown), S.canvases[S.shown]
+	if d and d.uiMap and c and c.seen then
+		Layers.Group(S.pins, d.uiMap, c.seen)
+	end
+end
+
 function Dungeon.Tick(elapsed)
 	if not S.shown then
 		return
@@ -225,6 +347,7 @@ function Dungeon.Tick(elapsed)
 	if S.wait <= 0 then
 		S.wait = T.EVERY
 		Player()
+		Group()
 		S.pins:Lay()
 	end
 end
@@ -267,6 +390,10 @@ local function Make(mapID)
 	end
 	S.areas[mapID] = areas
 	local pins = Pins.New(c)
+	if d.uiMap then
+		pins:Layer("group", T.ORDER.group)   -- (2.1.17: a battleground's own map, its group as the world's)
+		c.seen = {}
+	end
 	pins:Layer("player", T.ORDER.player)
 	c.pins = pins
 	c.onView = function()

@@ -455,14 +455,6 @@ local function Power(f)
 	Texts(f)
 end
 
--- (2.1.16) gone or back, on whatever told us first: both bars and the portrait's tint at once
-local function Life(f)
-	if MelloUI.Units.GoneChanged(f) then
-		Health(f)
-		Power(f)
-	end
-end
-
 -- the portrait (the game's), or Class Icons' medallion while its portraits
 -- are on (the look put that on); grey while offline, as the game's
 local function Portrait(f)
@@ -644,7 +636,8 @@ local function Status(f)
 		return
 	end
 	local found, r, g, b = false, nil, nil, nil
-	local hf = f.unit ~= UNIT and MelloUI:GetModule("HealerFrames")
+	-- (2.1.17: none on a dead member or a ghost, MelloUI.Units.Gone -- the user, 2026-11-07)
+	local hf = f.unit ~= UNIT and not MelloUI.Units.Gone(f.unit) and MelloUI:GetModule("HealerFrames")
 	if hf and hf.DebuffColour then
 		local ok
 		ok, found, r, g, b = pcall(hf.DebuffColour, hf, f.unit, StatusFilter(f.unit))
@@ -741,7 +734,8 @@ Threat = function(f)
 		return
 	end
 	local status = Ask(rawget(_G, "UnitThreatSituation"), f.unit)
-	local on = type(status) == "number" and status > 0
+	-- (2.1.17: none on a dead member or a ghost -- the game's leaves its flash as it stood; the user, 2026-11-07, hid it)
+	local on = type(status) == "number" and status > 0 and not MelloUI.Units.Gone(f.unit)
 	if on then
 		local get = rawget(_G, "GetThreatStatusColor")
 		local ok, r, g, b = false, nil, nil, nil
@@ -757,6 +751,23 @@ Threat = function(f)
 	local halo = rawget(MelloUI, "FrameHalo")
 	if halo and halo.Update then
 		pcall(halo.Update, f)
+	end
+end
+
+-- (2.1.16) gone or back, on whatever told us first: both bars and the portrait's tint at once; (2.1.17) no glow round a
+-- gone member (the user, 2026-11-07): its combat flash (the threat halo follows it), its status glow, Healer Frames' glow
+local function Life(f)
+	if MelloUI.Units.GoneChanged(f) then
+		Health(f)
+		Power(f)
+		if f.unit ~= UNIT then
+			Threat(f)
+			Status(f)
+		end
+		local hf = MelloUI:GetModule("HealerFrames")
+		if hf and hf.Update then
+			pcall(hf.Update, hf, f)
+		end
 	end
 end
 

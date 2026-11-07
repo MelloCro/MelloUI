@@ -579,7 +579,9 @@ local function UpdateGlow(g)
 		return
 	end
 	local unit = UnitOf(g.frame, g.unit)
-	if not (unit and Friend(unit)) then
+	-- (2.1.17: none round a dead unit or a ghost, the one rule of MelloUI.Units.Gone -- the user, 2026-11-07)
+	local U = MelloUI.Units
+	if not (unit and Friend(unit)) or (U and U.Gone(unit)) then
 		ShowGlow(g, false)
 		return
 	end
@@ -766,7 +768,8 @@ local function OnEvent(_, event, unit, info)
 		Kit:WhenOutOfCombat(SetUpAll, SETUP_KEY)
 		RefreshAll()
 	else
-		-- the target, the focus: new units on their frames
+		-- the target, the focus: new units on their frames; (2.1.17) a member's death or yours, your release and return:
+		-- who is gone read again (a member's death clears most debuffs, so UNIT_AURA usually tells first)
 		RefreshAll()
 	end
 end
@@ -780,7 +783,8 @@ local function Hook()
 	hooked = true
 	events = CreateFrame("Frame")
 	for _, e in ipairs({ "UNIT_AURA", "UNIT_HEAL_PREDICTION", "UNIT_ABSORB_AMOUNT_CHANGED", "UNIT_HEAL_ABSORB_AMOUNT_CHANGED",
-		"UNIT_MAXHEALTH", "PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED", "GROUP_ROSTER_UPDATE", "UNIT_PET" }) do
+		"UNIT_MAXHEALTH", "PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED", "GROUP_ROSTER_UPDATE", "UNIT_PET",
+		"PARTY_MEMBER_ENABLE", "PARTY_MEMBER_DISABLE", "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST" }) do
 		pcall(events.RegisterEvent, events, e)
 	end
 	pcall(events.RegisterUnitEvent, events, "UNIT_TARGET", "target", "focus")

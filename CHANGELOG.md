@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.17
+
+- Fixed: keys bound in Keybind Mode in place of a default key, such as those of action bar 1, now stay after logging in again.
+- Fixed: inside a battleground, MelloUI's map opens on the battleground's own map, with you and your group on it.
+- Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames.
+- Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker.
+- Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath.
+
 ## 2.1.16
 
 - Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name.

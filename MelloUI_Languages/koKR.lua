@@ -1638,6 +1638,8 @@ Lang:Add("koKR", {
 	["Without a map pin, routes to the quest you track: its next objective, then its turn-in."] = "지도 핀이 없으면 추적 중인 퀘스트로 안내: 다음 임무, 그다음 제출.", -- draft
 	["Fall Back To The First Tracked Quest"] = "첫 추적 퀘스트로 대체", -- draft
 	["When no quest is followed, routes to the first quest on the game's watch list."] = "따라가는 퀘스트가 없으면 게임 주시 목록의 첫 퀘스트로 안내합니다.", -- draft
+	["Follow Guide Addons"] = "가이드 애드온 따르기", -- draft
+	["Shows the current steps of RestedXP and other guide addons in the Quest Tracker and routes to them, hiding the guide's own arrow and window. Off, the guide keeps its own."] = "RestedXP와 다른 가이드 애드온의 현재 단계를 퀘스트 추적기에 표시하고 그곳으로 경로를 안내하며, 가이드 자체의 화살표와 창은 숨깁니다. 끄면 가이드가 자체 화살표와 창을 유지합니다.", -- draft
 	["Distance Under The Minimap"] = "미니맵 아래 거리", -- draft
 	["The distance left and the destination under the minimap."] = "미니맵 아래 남은 거리와 목적지.", -- draft
 	["Travel Time"] = "이동 시간", -- draft
@@ -2279,6 +2281,11 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Fixed: keys bound in Keybind Mode in place of a default key, such as those of action bar 1, now stay after logging in again."] = "수정: 단축키 모드에서 기본 키(예: 행동 단축바 1의 키) 대신 지정한 키가 이제 다시 접속한 뒤에도 유지됩니다.", -- draft
+	["Fixed: inside a battleground, MelloUI's map opens on the battleground's own map, with you and your group on it."] = "수정: 전장 안에서 MelloUI 지도가 해당 전장의 지도로 열리며, 자신과 파티가 표시됩니다.", -- draft
+	["Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames."] = "수정: 죽은 플레이어와 유령의 창 주위에 더 이상 약화 효과나 위협 빛이 남지 않습니다.", -- draft
+	["Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker."] = "경로: 가이드 애드온 따르기 스위치(경로 > 일반)로 퀘스트 추적기에 RestedXP와 다른 가이드의 단계를 표시하지 않을 수 있습니다.", -- draft
+	["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars가 이제 모든 스킨에서 아래에 숨겨진 게임 기본 바 대신 MelloUI 자체 행동 단축바와 태세 바를 빛나게 합니다.", -- draft
 	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "수정: 던전에서 대상의 대상과 다른 유닛 프레임에 이전 이름이 계속 표시되지 않습니다.", -- draft
 	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "수정: 파티 창, 공격대 창 및 기타 개체창에서 죽은 플레이어와 유령의 생명력 및 자원 바가 이제 비어 있게 표시됩니다.", -- draft
 	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "/mellobug 보고서가 이제 가방 버튼이 어떻게 만들어졌는지도 보여 주어, 게임이 가방 아이템을 차단하는 원인을 찾는 데 도움이 됩니다.", -- draft
@@ -2290,7 +2297,6 @@ Lang:Add("koKR", {
 	["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "수정: 기본 스킨에서 귓속말 창이 Lua 오류 없이 열리고 다시 게임 고유의 모습으로 표시됩니다.", -- draft
 	["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "새 기능: 알림 페이지의 초상화에서 분리로 알림 버튼에 자체 위치를 줍니다. 배치 편집에서 옮깁니다.", -- draft
 	["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "수정: 알림 버튼의 글줄과 추가 버튼이 더 이상 화면 밖으로 나가지 않습니다. 공간이 있는 쪽으로 열립니다.", -- draft
-	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "수정: 중국어, 한국어, 러시아어 클라이언트에서 떠오르는 전투 문자와 캐릭터 위 이름이 더 이상 네모로 표시되지 않습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2942,6 +2948,7 @@ Lang:Add("koKR", {
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "수정: 새 태세나 변신을 배운 뒤 재시작 전까지 전투 프레임이 크게 떨어질 수 있던 문제.", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "수정: 개인 화면의 큰 재사용 대기시간으로 인한 전투 중 오류.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "수정: 은신, 태세, 변신, 소환수 버튼 클릭. 최소 대화 보기의 대화 글꼴. 기본 스킨의 온전한 체크 표시. 슬라이더 옆 이름표.", -- draft
+-- stale: ["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "수정: 중국어, 한국어, 러시아어 클라이언트에서 떠오르는 전투 문자와 캐릭터 위 이름이 더 이상 네모로 표시되지 않습니다.", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "수정: Oldschool 프레임에서 자원 바가 생명력 바 아래에 작은 간격을 두며, 대상의 자원 바도 생명력 바에 맞춰 정렬됩니다.", -- draft
 -- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "수정: MelloUI 지도의 퀘스트 제공자 표시가 더 이상 늘어난 노란 얼룩으로 보이지 않습니다.", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "수정: 가방 창 옆의 배낭과 재료 가방 탭에 다시 아이콘이 표시됩니다.", -- draft

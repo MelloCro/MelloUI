@@ -310,6 +310,26 @@ local function MouseBack(f)
 	end
 end
 
+-- (2.1.17; the user, 2026-11-08, players asking for Glowing Bars on MelloUI's bars in every skin) Glowing Bars finds
+-- the game's buttons and the other bar addons' by name, so its glows lit the game's buttons where they stood under
+-- ours. It has a public API of its own for bars like ours (GlowingBars.RegisterButton(button, bar, shape) and
+-- RegisterStanceButton(button, stance, shape)): each button of ours is told once (a table of its, nothing hooked), and
+-- it counts its buttons on a timer of its own, so one told after its first look is seen too. The game's buttons it
+-- still finds stay unseen by their own alpha (Fade, Away): its "glowing in full" lifts only their holders' alpha
+-- (SetIgnoreParentAlpha on the button)
+local glowTold = setmetatable({}, { __mode = "k" })
+local function GlowingBars(button, bar, stance)
+	local api = rawget(_G, "GlowingBars")
+	if type(button) ~= "table" or glowTold[button] or type(api) ~= "table" then
+		return
+	end
+	local tell = stance and api.RegisterStanceButton or api.RegisterButton
+	if type(tell) == "function" and pcall(tell, button, stance or bar, "Square") then
+		glowTold[button] = true
+	end
+end
+OB.glowTold = glowTold
+
 -- (fr-18c) another of MelloUI's systems hands over a game frame it had faded, or whose mouse it had taken, while ours
 -- keep that frame away now (Action Bars' Hide Page Arrows on the game's page number): what ours give back is the
 -- frame's own alpha / mouse from before that system's (nil: kept as it is)
@@ -653,7 +673,7 @@ end
 OB.kit = { Field = Field, Call = Call, ScaleOn = ScaleOn, Units = Units, Fade = Fade, Unfade = Unfade,
 	MouseOff = MouseOff, MouseBack = MouseBack, SelectionAway = SelectionAway, SelectionBack = SelectionBack,
 	Register = Register, Place = Place, StackPlaces = StackPlaces, StackOrGame = StackOrGame,
-	FollowListen = FollowListen }
+	FollowListen = FollowListen, GlowingBars = GlowingBars }
 
 --------------------------------------------------------------------------------
 -- The status bars (the game's StatusTrackingManager / StatusTrackingBarContainer of this client, copied: our

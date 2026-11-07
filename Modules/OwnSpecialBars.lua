@@ -457,6 +457,8 @@ local function GameParts(fn)
 			fn("select", game)
 			for i = 1, spec.n do
 				fn("mouse", rawget(_G, spec.prefix .. i))
+				-- (2.1.17) its own alpha too, as the action bars' (OwnActionBars.lua GameParts: Glowing Bars)
+				fn("alpha", rawget(_G, spec.prefix .. i))
 			end
 		end
 	end
@@ -514,6 +516,9 @@ local function On()
 		OB.own[spec.game] = bar
 		for i, btn in ipairs(bar.buttons) do
 			OB.own[spec.prefix .. i] = btn
+			if kind == "stance" then
+				K.GlowingBars(btn, nil, i)   -- (2.1.17: its glows on ours, OwnBars.lua)
+			end
 		end
 	end
 	OB.standing[PART] = true

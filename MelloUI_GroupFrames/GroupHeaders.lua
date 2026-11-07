@@ -926,6 +926,11 @@ end
 local function Life(b)
 	if MelloUI.Units.Gone(b.unit) ~= (b.dead or false) then
 		Button.Health(b)
+		-- (2.1.17: Healer Frames' debuff glow, none round a gone member -- the user, 2026-11-07)
+		local hf = MelloUI:GetModule("HealerFrames")
+		if hf and hf.Update then
+			pcall(hf.Update, hf, b)
+		end
 	end
 end
 

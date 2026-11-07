@@ -1638,6 +1638,8 @@ Lang:Add("zhCN", {
 	["Without a map pin, routes to the quest you track: its next objective, then its turn-in."] = "没有地图标记时，引导到你追踪的任务：下一个目标，然后是交付处。", -- draft
 	["Fall Back To The First Tracked Quest"] = "退而使用第一个追踪任务", -- draft
 	["When no quest is followed, routes to the first quest on the game's watch list."] = "没有跟随任务时，引导到游戏追踪列表中的第一个任务。", -- draft
+	["Follow Guide Addons"] = "跟随指南插件", -- draft
+	["Shows the current steps of RestedXP and other guide addons in the Quest Tracker and routes to them, hiding the guide's own arrow and window. Off, the guide keeps its own."] = "在任务追踪器中显示RestedXP和其他指南插件的当前步骤并规划路线前往，同时隐藏指南自带的箭头和窗口。关闭后，指南保留自己的箭头和窗口。", -- draft
 	["Distance Under The Minimap"] = "小地图下方的距离", -- draft
 	["The distance left and the destination under the minimap."] = "微缩地图下方显示剩余距离和目的地。", -- draft
 	["Travel Time"] = "旅行时间", -- draft
@@ -2279,6 +2281,11 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Fixed: keys bound in Keybind Mode in place of a default key, such as those of action bar 1, now stay after logging in again."] = "修复：在按键绑定模式中替换默认按键（例如动作条1的按键）所绑定的按键，现在重新登录后仍会保留。", -- draft
+	["Fixed: inside a battleground, MelloUI's map opens on the battleground's own map, with you and your group on it."] = "修复：在战场中，MelloUI 地图会打开该战场自己的地图，并显示你和你的队伍。", -- draft
+	["Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames."] = "修复：死亡玩家和灵魂的框体周围不再残留减益或仇恨发光。", -- draft
+	["Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker."] = "路线：新增“跟随指南插件”开关（路线 > 常规），可在任务追踪器中关闭RestedXP和其他指南的步骤显示。", -- draft
+	["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars现在会在所有外观中点亮MelloUI自己的动作条和姿态条，而不是下方隐藏的游戏动作条。", -- draft
 	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "修复：在地下城中，目标的目标及其他单位框体不再显示旧名字。", -- draft
 	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "修复：小队、团队及其他单位框体现在会将死亡玩家和灵魂的生命条与能量条显示为空。", -- draft
 	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "/mellobug 报告现在还会显示背包按钮的创建方式，便于查明游戏阻止使用背包物品的原因。", -- draft
@@ -2290,7 +2297,6 @@ Lang:Add("zhCN", {
 	["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "修复：使用默认外观风格时，悄悄话窗口打开不再出现 Lua 错误，并恢复游戏自身的外观。", -- draft
 	["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "新增：提醒页面的“从头像分离”让提醒按钮拥有自己的位置，可在“编辑布局”中移动。", -- draft
 	["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "修复：提醒按钮的文字行和额外按钮不再超出屏幕：它们会朝有空间的一侧展开。", -- draft
-	["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "修复：在中文、韩文和俄文客户端上，浮动战斗文字和角色头顶的名字不再显示为方块。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2942,6 +2948,7 @@ Lang:Add("zhCN", {
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "修复：学会新姿态或形态后，战斗中帧数可能骤降，直到重启。", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "修复：个人显示的重要冷却在战斗中引发的错误。", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "修复：点击潜行、姿态、形态和宠物按钮；极简聊天视图的聊天字体；默认外观的完整勾选标记；滑块旁的标签。", -- draft
+-- stale: ["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "修复：在中文、韩文和俄文客户端上，浮动战斗文字和角色头顶的名字不再显示为方块。", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "修复：Oldschool 框体上的能量条与生命条之间留出小间隙，目标的能量条也与生命条对齐。", -- draft
 -- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "修复：MelloUI 地图上的任务发布者标记不再显示为拉伸的黄色色块。", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "修复：背包窗口旁的行囊和材料包标签页重新显示图标。", -- draft

@@ -10,9 +10,9 @@
 -- only: the key converted (GetConvertedKeyOrButton), a lone modifier passed
 -- by (IsKeyPressIgnoredForBinding), the chord built with Alt / Ctrl / Shift
 -- (CreateKeyChordStringUsingMetaKeyState), the chord taken from any other
--- action, the new key first and the button's old first key kept as its
--- second. Done saves the binding set in use (SaveBindings), Cancel loads it
--- back (LoadBindings).
+-- action, the new key in place of the button's first and its second kept
+-- (the game's Quick Keybind, 2.1.17). Done saves the binding set in use
+-- (SaveBindings), Cancel loads it back (LoadBindings).
 --   the buttons   every bar's (Action Buttons' BarButtons: the eleven bars),
 --                 each with the game's own commandName (ActionBar.lua:
 --                 ACTIONBUTTON3, MULTIACTIONBAR1BUTTON5, SHAPESHIFTBUTTON2,
@@ -251,10 +251,12 @@ local function Bind(command, input)
 		Say(string.format(TEXT.refused, KeyText(chord)))
 		return
 	end
-	-- its old first key kept as its second
-	local keep = (k1 and k1 ~= chord and k1) or (k2 and k2 ~= chord and k2) or nil
-	if keep then
-		Set(keep, command, ctx)
+	-- the chord takes the first key's place and its second key stays, as the game's Quick Keybind binds (slot 1:
+	-- QuickKeybind.lua, KeybindListener:RebindKeysInOrder). (2.1.17; the user, 2026-11-07, "on action bar 1, my
+	-- keybinds dont save": the old first key was kept as the second, and a default one -- Action Bar 1's 1 to = -- came
+	-- back first at every login, the game loading the defaults before the saved changes, so the button showed it again)
+	if k2 and k2 ~= chord then
+		Set(k2, command, ctx)
 	end
 	S.changed = true
 	MelloUI:PlayUISound("option_on")
