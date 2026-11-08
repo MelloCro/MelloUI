@@ -2304,6 +2304,7 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Bags: items in MelloUI's bag window no longer get blocked with \"MelloUI took an action reserved for the Blizzard UI\": its item buttons are never made during a fight."] = "背包：MelloUI 背包窗口中的物品不再被“MelloUI took an action reserved for the Blizzard UI”阻止：其物品按钮绝不会在战斗中创建。", -- draft
 	["Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time."] = "聊天：鼠标停在聊天框上时，右上角会出现复制聊天按钮；它会把该标签的消息打开在可复制的窗口中，每行带有时间。", -- draft
 	["Personal Display: Tracked Spells (Big Cooldowns' tab): tick your class's spells, like Weakened Soul or Renew, to see them under the bars while they last on you."] = "个人显示：追踪法术（大型冷却标签）——勾选你职业的法术，例如 Weakened Soul 或 Renew，在它们作用于你时显示在血条下方。", -- draft
 	["Nameplates designer: drag and size every part of the enemy plate (cast bar, buffs, debuffs, level, raid marker, icons) and set its own width and height; overlaps are outlined red."] = "姓名板设计器：可拖动并缩放敌方姓名板的每个部件（施法条、增益、减益、等级、团队标记、图标），并自定宽度和高度；重叠部分以红框标出。", -- draft
@@ -2312,11 +2313,6 @@ Lang:Add("zhCN", {
 	["Click-casting: Clique and other click-cast addons now work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames, and the Personal Display."] = "点击施法：Clique 等点击施法插件现在可用于 MelloUI 的玩家、目标、焦点、目标的目标和宠物框体，以及其小队和团队框体和个人显示。", -- draft
 	["Chat: Parchment now works with the Game Windows chat view too, in all three skins: the chat windows on parchment, their lines in dark ink."] = "聊天：羊皮纸现在也适用于“游戏窗口”聊天视图，三种皮肤均可：聊天窗口铺上羊皮纸，文字为深色墨水。", -- draft
 	["Dark Mode: parchment is no longer dimmed (the chat, the Quest Tracker, tooltips, windows and pages), so its dark ink stays readable."] = "暗色模式：羊皮纸不再被调暗（聊天、任务追踪器、鼠标提示、窗口和页面），深色墨水字迹保持清晰可读。", -- draft
-	["Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel."] = "动画：新的动画页面（外观）汇集了MelloUI的所有动画，顶部是减少动态效果，每个播放位置各有一个标签：框体、姓名板、动作条与窗口、旅行。", -- draft
-	["Animations: press Play beside an animation to see it once before you choose."] = "动画：点击动画旁边的播放，在选择之前先看一次。", -- draft
-	["Swing Badge: the gold ring round your weapon fills up as your next swing nears."] = "攻击徽章：随着下一次攻击临近，环绕你武器的金色圆环会逐渐填满。", -- draft
-	["Personal Display: the Big Cooldowns are square in the display's gold rim, their seconds drawn and coloured as on your debuffs on the nameplates (shown even with Percent And Spell Text off)."] = "个人显示：重要冷却显示为个人显示金色边框中的方形图标，秒数的字体与颜色与姓名板上你的减益效果相同（即使关闭“百分比和法术文字”也会显示）。", -- draft
-	["Personal Display: with Over The Personal Display, the swing badge and the Big Cooldowns share one row on the bars, the badge in the middle and the cooldowns beside it."] = "个人显示：开启“在个人显示上方”后，攻击徽章和重要冷却共用血条上方的一行，徽章居中，冷却在其两侧。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2839,6 +2835,8 @@ Lang:Add("zhCN", {
 -- stale: ["An item picked up, moved between slots, put down or looted; a rare or better item has its own sound. Silences the game's own pick-up and put-down sounds (the Equipment and Vendor sounds rely on that, and play only while this is on)."] = "拿起、在栏位间移动、放下或拾取物品；稀有及以上物品有自己的音效。屏蔽游戏自己的拿起和放下音效（装备和商人音效依赖这一点，只在此项开启时播放）。", -- draft
 -- stale: ["An item you loot flies from where you picked it up into its slot in your bag window (with the bags closed, onto the bag button) and lands with a light across it. The rarer it is, the more it does: green leaves a streak, blue bursts into rays and lands in a ring, purple throws sparks and a shockwave, and a legendary rises in a pillar of light, flashes your bag window's border and says its name on the screen. Turning in a quest, its reward item flies the same way, and its money flies as coins into the bag window's money, which counts up as they land; coins you loot fly in the same way while the bag window is open. Only loot and quest rewards, never what you buy, craft or take from the mail. Not with Reduce Motion."] = "你拾取的物品从拾取处飞进背包窗口中它的栏位（背包关闭时飞到背包按钮上），落下时有一道光扫过。越稀有效果越多：绿色留下一道拖尾，蓝色迸出光芒并落入光环，紫色溅出火花和冲击波，传说物品在光柱中升起，让背包窗口的边框闪光，并在屏幕上显示它的名字。交任务时，奖励物品同样飞入，金钱化作钱币飞进背包窗口的金钱栏，落下时数字随之增加；背包窗口打开时拾取的钱币也这样飞入。只限拾取和任务奖励，绝不包括你购买、制造或从邮件中取出的东西。“减少动态效果”开启时不会。", -- draft
 -- stale: ["An upright bar beside your character for every shield on you added up, as the game counts them: spells (Power Word: Shield, Ice Barrier, Mana Shield, the wards), talents and items, the ones against one kind of damage too. Each shield is its own part, in its school's colour (Power Word: Shield gold, Ice Barrier frost, Mana Shield arcane, a Fire Protection Potion fire), stacked in the order they went up, its icon beside the column. It fills when one goes up, drains as it takes the hits, turns amber when low and breaks when the last one is gone; one ending while another holds only takes its part away. Edit Layout places it."] = "角色旁一根竖条，按游戏的计算方式累加你身上所有护盾：法术（真言术：盾、寒冰护体、法力护盾、各种防护结界）、天赋和物品，只防一种伤害的护盾也算。每个护盾是独立的一段，使用其学派颜色（真言术：盾金色、寒冰护体冰霜、法力护盾奥术、防护火焰药水火焰），按出现顺序叠放，图标在栏旁边。护盾出现时填满，随承受打击而耗减，低时变成琥珀色，最后一个消失时碎裂；一个结束而另一个还在时只去掉它那一段。在“编辑布局”中放置。", -- draft
+-- stale: ["Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel."] = "动画：新的动画页面（外观）汇集了MelloUI的所有动画，顶部是减少动态效果，每个播放位置各有一个标签：框体、姓名板、动作条与窗口、旅行。", -- draft
+-- stale: ["Animations: press Play beside an animation to see it once before you choose."] = "动画：点击动画旁边的播放，在选择之前先看一次。", -- draft
 -- stale: ["Another action is in progress, can't do that while moving, while stunned or while mounted."] = "另一个动作正在进行，移动、昏迷或骑乘时无法那么做。", -- draft
 -- stale: ["Anyone's"] = "任何人的", -- draft
 -- stale: ["As a ghost: how far your body is and which way, and a ring until you can come back. Click it for the way there; at your body, Resurrect. The game's own Resurrect popup is see-through and click-through meanwhile."] = "作为灵魂时：尸体有多远、在哪个方向，以及一个圆环显示何时可以复活。点击查看路线；到达尸体处时为复活。此时游戏自己的复活弹窗透明且可点击穿透。", -- draft
@@ -3235,10 +3233,12 @@ Lang:Add("zhCN", {
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "允许时从公会银行支付修理费。公会无法支付时改用你自己的金币。", -- draft
 -- stale: ["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "个人显示：“显示在个人显示上方”会把攻击徽章居中放在个人显示上方，而不是目标的姓名板上。", -- draft
 -- stale: ["Personal Display: Tracked Spells, on Big Cooldowns' tab: tick your class's spells (Weakened Soul, Power Word: Shield, Renew, Forbearance...) to see them in a row under the bars while they last on you, with their seconds."] = "个人显示：大型冷却标签中的追踪法术——勾选你职业的法术（Weakened Soul、Power Word: Shield、Renew、Forbearance……），在它们作用于你时显示在血条下方的一行中，并带有剩余秒数。", -- draft
+-- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their seconds drawn and coloured as on your debuffs on the nameplates (shown even with Percent And Spell Text off)."] = "个人显示：重要冷却显示为个人显示金色边框中的方形图标，秒数的字体与颜色与姓名板上你的减益效果相同（即使关闭“百分比和法术文字”也会显示）。", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a gold line draining under each icon, with the seconds (shown even with Percent And Spell Text off)."] = "个人显示：重要冷却显示为个人显示金色边框中的方形图标，剩余时间是每个图标下方逐渐缩短的金色线条，并显示秒数（即使关闭“百分比和法术文字”也会显示）。", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a thin line draining inside each icon, with the seconds."] = "个人显示：重要冷却显示为个人显示金色边框中的方形图标，剩余时间是图标内部逐渐缩短的细线，并显示秒数。", -- draft
 -- stale: ["Personal Display: the shield column keeps its colours, icons and amount in a fight."] = "个人显示：护盾栏在战斗中保持颜色、图标和数值。", -- draft
 -- stale: ["Personal Display: the shield column keeps its colours, icons and amount; interrupted casts show only on its cast bar."] = "个人显示：护盾栏保持颜色、图标和数值；被打断的施法只显示在它的施法条上。", -- draft
+-- stale: ["Personal Display: with Over The Personal Display, the swing badge and the Big Cooldowns share one row on the bars, the badge in the middle and the cooldowns beside it."] = "个人显示：开启“在个人显示上方”后，攻击徽章和重要冷却共用血条上方的一行，徽章居中，冷却在其两侧。", -- draft
 -- stale: ["Pet, their targets, Party portraits"] = "宠物、它们的目标、小队头像", -- draft
 -- stale: ["Pick \"%s\" first."] = "请先选择“%s”。", -- draft
 -- stale: ["Pick an indicator above, or add one."] = "选择上方的一个指示器，或添加一个。", -- draft
@@ -3360,6 +3360,7 @@ Lang:Add("zhCN", {
 -- stale: ["Star the items you want: a loot roll for one shines gold and lights Need. Pick Up Quests: Route takes you to all of a dungeon's quests in the fastest order."] = "为想要的物品加星：它的掉落掷骰会发出金光并突出“需求”。接取任务：Route 按最快顺序带你接取地下城的所有任务。", -- draft
 -- stale: ["Strength"] = "强度", -- draft
 -- stale: ["Supplies, mail, repairs and training: a gentle nudge beside your portrait, never a nag. With the widgets for loot rolls, summons and the rest, and the FPS / latency readout."] = "补给、邮件、修理和训练：头像旁轻轻一点，从不唠叨。还有拾取掷骰、召唤等小部件，以及FPS / 延迟读数。", -- draft
+-- stale: ["Swing Badge: the gold ring round your weapon fills up as your next swing nears."] = "攻击徽章：随着下一次攻击临近，环绕你武器的金色圆环会逐渐填满。", -- draft
 -- stale: ["Swing Badge: the strike shows when your blow lands; crits and parries show on the blow they belong to."] = "挥击徽章：攻击命中时显示挥击；暴击和招架显示在对应的那次攻击上。", -- draft
 -- stale: ["Swing On The Rails"] = "轨道上的挥击", -- draft
 -- stale: ["Swing On The Rails (Personal Display)"] = "轨道上的挥击（个人显示）", -- draft

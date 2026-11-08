@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.25
+
+- Bags: items in MelloUI's bag window no longer get blocked with "MelloUI took an action reserved for the Blizzard UI": its item buttons are never made during a fight.
+
 ## 2.1.24
 
 - Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time.

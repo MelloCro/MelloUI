@@ -997,6 +997,12 @@ local function SlotButton(bag, slot)
 	end
 	local b = list[slot]
 	if not b then
+		-- (2.1.25, MelloCro/MelloUI#1: every bag button made in combat came out tainted, and the game blocked its
+		-- clicks for good -- M.MakePool) none made in a fight: the slot waits, the window laid again after it
+		if InCombatLockdown() then
+			M.waiting = true
+			return nil
+		end
 		local bug = MelloUI.Perf.bug   -- (2.1.15: how it was made, for /mellobug: BUG.Made)
 		local secure = bug and bug.Secure()
 		b = CreateFrame("ItemButton", nil, Holder(bag), "ContainerFrameItemButtonTemplate")
@@ -1626,8 +1632,10 @@ local function LayKinds()
 					for j = 1, zero and 0 or n do
 						local e = S.empties[j]
 						local b = SlotButton(e.bag, e.slot)
-						FillEmpty(b, e.free)
-						Place(b, x + ((j - 1) % cols) * G.PITCH, y + G.HEAD + math.floor((j - 1) / cols) * G.PITCH)
+						if b then   -- (2.1.25: none made in a fight)
+							FillEmpty(b, e.free)
+							Place(b, x + ((j - 1) % cols) * G.PITCH, y + G.HEAD + math.floor((j - 1) / cols) * G.PITCH)
+						end
 						h.free = h.free + (e.free or 1)
 					end
 					if zero then
@@ -1639,8 +1647,10 @@ local function LayKinds()
 					for j = 1, shown do
 						local e = list[j]
 						local b = SlotButton(e.bag, e.slot)
-						Fill(b, e)
-						Place(b, x + ((j - 1) % cols) * G.PITCH, y + G.HEAD + math.floor((j - 1) / cols) * G.PITCH)
+						if b then   -- (2.1.25: none made in a fight)
+							Fill(b, e)
+							Place(b, x + ((j - 1) % cols) * G.PITCH, y + G.HEAD + math.floor((j - 1) / cols) * G.PITCH)
+						end
 					end
 					if plus then
 						at.nPlus = at.nPlus + 1
@@ -1972,6 +1982,9 @@ local Shown = Shared("OnShow on the bag window", function()
 	end
 	InkMoney()
 	Move.Opened()   -- (0.22.1: the first layout lays, the money's sum as shown)
+	if not M.pooled then
+		M.MakePool()   -- (2.1.25: every slot's button made out of combat, MelloCro/MelloUI#1)
+	end
 	M:Layout()
 end, "script")
 
@@ -2499,6 +2512,36 @@ function M:Open()
 	f:Show()
 end
 
+-- (2.1.25; MelloCro/MelloUI#1, Nixxen's reports of 2026-11-08: every batch of bag buttons made in combat came out
+-- TAINTED and every batch made out of combat clean, and the blocked clicks -- "MelloUI took an action reserved for the
+-- Blizzard UI", UseContainerItem from the game's own OnClick -- hit those buttons, in a fight and long after it) a
+-- button for every slot of every held bag (the Reagent Bag's too), made out of combat: at the window's first show, and
+-- as a fight starts (PLAYER_REGEN_DISABLED comes before the lockdown) while none was made yet, so a first open in a
+-- fight finds them all; topped up after a fight. In a fight none is made (SlotButton): a slot without one waits for its
+-- end. Cheap once made: a slot that has its button is passed by
+function M.MakePool()
+	if InCombatLockdown() or not M.isEnabled then
+		return
+	end
+	if not win.frame then
+		Build()
+	end
+	local was = S
+	S = BAGS
+	local get = C_Container and C_Container.GetContainerNumSlots
+	for _, bag in ipairs(HeldBags(true)) do
+		local ok, n = false, nil
+		if get then
+			ok, n = pcall(get, bag)
+		end
+		for slot = 1, (ok and Num(n)) or 0 do
+			SlotButton(bag, slot)
+		end
+	end
+	S = was
+	M.pooled = true
+end
+
 --------------------------------------------------------------------------------
 -- Events: only while the window shows
 --------------------------------------------------------------------------------
@@ -2522,10 +2565,24 @@ function LayoutSoon()
 end
 
 local OnEvent = Shared("OnEvent of the bag window", function(_, event, arg1)
-	if event == "PLAYER_REGEN_ENABLED" then
+	if event == "PLAYER_REGEN_DISABLED" then
+		-- (2.1.25, MelloCro/MelloUI#1) a fight starting, the lockdown not yet on: every slot's button made now if the
+		-- window never was, so none is made in the fight
+		if not M.pooled then
+			M.MakePool()
+		end
+	elseif event == "PLAYER_REGEN_ENABLED" then
 		if M.pending then
 			M.pending = nil
 			M:Apply()
+		end
+		-- (2.1.25) the fight over: the buttons topped up, a slot that waited for one laid now
+		if M.pooled or M.waiting then
+			M.MakePool()
+		end
+		if M.waiting then
+			M.waiting = nil
+			LayAll()
 		end
 	elseif event == "GET_ITEM_INFO_RECEIVED" then
 		if S.junkWorth == nil then
@@ -2574,6 +2631,7 @@ function M:Apply()
 		Perf.SetScript(events, "OnEvent", OnEvent)
 	end
 	events:RegisterEvent("PLAYER_REGEN_ENABLED")
+	events:RegisterEvent("PLAYER_REGEN_DISABLED")   -- (2.1.25: the buttons made before a fight's lockdown)
 	if self.isEnabled then
 		Hook()
 		Capture()
