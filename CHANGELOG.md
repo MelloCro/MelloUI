@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.23
+
+- Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands.
+
 ## 2.1.22
 
 - Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away.

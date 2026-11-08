@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.23", lines = {
+		"Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands.",
+	} },
 	{ version = "2.1.22", lines = {
 		"Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away.",
 	} },
@@ -199,11 +202,6 @@ local CHANGELOG = {
 		"Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast.",
 		"Action Bars: the game's hidden stance, pet and possess bars no longer take clicks where they stood once MelloUI's bars are moved (thanks, Baine).",
 		"Map: inside a battleground, the map shows you, your group and the battleground's flags.",
-	} },
-	{ version = "2.1.18", lines = {
-		"Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many.",
-		"Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines.",
-		"Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle.",
 	} },
 }
 local LINKS = {

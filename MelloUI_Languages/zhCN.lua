@@ -2294,6 +2294,7 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands."] = "地图和路线：Excavation Site: Wetlands 的入口现在位于维尔加挖掘场以东的矮人挖掘营地，也就是传送门所在的位置。", -- draft
 	["Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away."] = "小队和团队框体：在你附近的成员不再显示为超出范围；只有当游戏测得成员距离过远时才会变淡。", -- draft
 	["Click-casting: Clique and other click-cast addons now work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames, and the Personal Display."] = "点击施法：Clique 等点击施法插件现在可用于 MelloUI 的玩家、目标、焦点、目标的目标和宠物框体，以及其小队和团队框体和个人显示。", -- draft
 	["Chat: Parchment now works with the Game Windows chat view too, in all three skins: the chat windows on parchment, their lines in dark ink."] = "聊天：羊皮纸现在也适用于“游戏窗口”聊天视图，三种皮肤均可：聊天窗口铺上羊皮纸，文字为深色墨水。", -- draft
@@ -2312,9 +2313,6 @@ Lang:Add("zhCN", {
 	["Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast."] = "动作条：职业弹出菜单（如猎人的守护、战士的姿态和德鲁伊的形态）可在MelloUI的动作条上打开，其法术可以施放。", -- draft
 	["Action Bars: the game's hidden stance, pet and possess bars no longer take clicks where they stood once MelloUI's bars are moved (thanks, Baine)."] = "动作条：移动MelloUI的动作条后，游戏隐藏的姿态条、宠物条和控制条不再在原位置拦截点击（感谢Baine）。", -- draft
 	["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "地图：在战场中，地图会显示你、你的队伍和战场的旗帜。", -- draft
-	["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "补给清单：现在是带搜索的按类别目录（饮料、食物、弹药、药水、合剂、卷轴、毒药、材料）：勾选要常备的每件物品并设置数量。", -- draft
-	["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "补给：猎人可以按食性常备宠物食物（肉、鱼、面包、奶酪、水果、蘑菇），清单最多容纳40行。", -- draft
-	["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "修复：MelloUI的搜索框和输入框中的文字重新从左侧开始，而不是居中。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2988,6 +2986,7 @@ Lang:Add("zhCN", {
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "修复：只是你自己的某些设置放不下时，安装向导不再说你的屏幕太小。", -- draft
 -- stale: ["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "修复：提醒按钮的文字行和额外按钮不再超出屏幕：它们会朝有空间的一侧展开。", -- draft
 -- stale: ["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "修复：选择条材质时，目标的目标和焦点目标的生命条与能量条不再显示为暗色。", -- draft
+-- stale: ["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "修复：MelloUI的搜索框和输入框中的文字重新从左侧开始，而不是居中。", -- draft
 -- stale: ["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "修复：关闭 MelloUI 的增益图标时，又可以在布局编辑中移动游戏的增益条了。", -- draft
 -- stale: ["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "修复：使用默认外观风格时，悄悄话窗口打开不再出现 Lua 错误，并恢复游戏自身的外观。", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "盗贼以及猎豹形态的德鲁伊：你的五个连击点数排在目标生命条的上沿，攒起来之前是空的。名字会稍微上移让出位置。", -- draft
@@ -3275,6 +3274,8 @@ Lang:Add("zhCN", {
 -- stale: ["Reskin Brightness"] = "换肤亮度", -- draft
 -- stale: ["Reskin only"] = "仅换肤", -- draft
 -- stale: ["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, poisons, reagents): tick each item to keep and set how many."] = "补给清单：现在是按类别的目录（饮料、食物、弹药、药水、合剂、毒药、材料）：勾选要常备的每件物品并设置数量。", -- draft
+-- stale: ["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "补给清单：现在是带搜索的按类别目录（饮料、食物、弹药、药水、合剂、卷轴、毒药、材料）：勾选要常备的每件物品并设置数量。", -- draft
+-- stale: ["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "补给：猎人可以按食性常备宠物食物（肉、鱼、面包、奶酪、水果、蘑菇），清单最多容纳40行。", -- draft
 -- stale: ["Round borders are sharp at small sizes: the Services buttons' and Round Border styles' rings are solid, not dotted."] = "圆形边框在小尺寸下清晰：服务按钮和圆形边框样式的圆环是实心的，不再是点状。", -- draft
 -- stale: ["Route follows Follow The Arrow, Azeroth Pilot Reloaded, TomTom's arrow and Guidelime through it, as it follows RestedXP. Several guides on? MelloUI asks which to keep."] = "Route 像跟随 RestedXP 一样跟随 Follow The Arrow、Azeroth Pilot Reloaded、TomTom 的箭头和 Guidelime。开了多个指南？MelloUI 会问保留哪个。", -- draft
 -- stale: ["Route follows Polestar: its step in the tracker and on the map, one arrow and one route; its own features go first."] = "Route 跟随 Polestar：它的步骤显示在任务追踪和地图上，一个箭头和一条路线；它自己的功能优先。", -- draft

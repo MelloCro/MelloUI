@@ -2294,6 +2294,7 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands."] = "지도 및 경로: Excavation Site: Wetlands 입구가 이제 휄가르 발굴지 동쪽, 포탈이 있는 드워프 발굴 야영지에 표시됩니다.", -- draft
 	["Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away."] = "파티 및 공격대 창: 가까이 있는 구성원이 더 이상 사거리 밖처럼 보이지 않습니다. 게임이 너무 멀다고 측정한 구성원만 흐려집니다.", -- draft
 	["Click-casting: Clique and other click-cast addons now work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames, and the Personal Display."] = "클릭 시전: Clique 등 클릭 시전 애드온이 이제 MelloUI의 플레이어, 대상, 주시 대상, 대상의 대상, 소환수 창과 파티 및 공격대 창, 개인 디스플레이에서 작동합니다.", -- draft
 	["Chat: Parchment now works with the Game Windows chat view too, in all three skins: the chat windows on parchment, their lines in dark ink."] = "채팅: 이제 '게임 창' 채팅 보기에서도 세 가지 스킨 모두 양피지를 쓸 수 있습니다. 채팅 창이 양피지 위에, 줄은 짙은 잉크로 표시됩니다.", -- draft
@@ -2312,9 +2313,6 @@ Lang:Add("koKR", {
 	["Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast."] = "행동 단축바: 사냥꾼의 상(Aspect), 전사의 태세, 드루이드의 변신 같은 직업 펼침 메뉴가 MelloUI 행동 단축바에서 열리고 그 주문이 시전됩니다.", -- draft
 	["Action Bars: the game's hidden stance, pet and possess bars no longer take clicks where they stood once MelloUI's bars are moved (thanks, Baine)."] = "행동 단축바: MelloUI 바를 옮긴 뒤 게임의 숨겨진 태세, 소환수, 지배 바가 원래 자리에서 클릭을 가로채지 않습니다(Baine님 감사합니다).", -- draft
 	["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "지도: 전장 안에서 지도에 내 캐릭터, 내 파티와 전장의 깃발이 표시됩니다.", -- draft
-	["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "보충 목록: 이제 검색이 있는 종류별 카탈로그(음료, 음식, 탄약, 물약, 비약, 두루마리, 독, 재료)로, 보관할 아이템을 체크하고 개수를 정합니다.", -- draft
-	["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "보충: 사냥꾼은 먹이 종류별(고기, 생선, 빵, 치즈, 과일, 버섯)로 소환수 먹이를 보관할 수 있으며, 목록은 40줄까지 담습니다.", -- draft
-	["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "수정: MelloUI의 검색창과 입력창의 글자가 가운데가 아니라 다시 왼쪽부터 시작합니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2988,6 +2986,7 @@ Lang:Add("koKR", {
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "수정: 설치 마법사가 내 설정 일부가 맞지 않을 때 화면이 너무 작다고 하지 않습니다.", -- draft
 -- stale: ["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "수정: 알림 버튼의 글줄과 추가 버튼이 더 이상 화면 밖으로 나가지 않습니다. 공간이 있는 쪽으로 열립니다.", -- draft
 -- stale: ["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "수정: 바 텍스처를 선택했을 때 대상의 대상과 주시 대상의 대상 생명력 및 자원 바가 더 이상 어둡게 보이지 않습니다.", -- draft
+-- stale: ["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "수정: MelloUI의 검색창과 입력창의 글자가 가운데가 아니라 다시 왼쪽부터 시작합니다.", -- draft
 -- stale: ["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "수정: MelloUI 강화 효과 아이콘을 꺼도 레이아웃 편집에서 게임의 강화 효과 바를 다시 옮길 수 있습니다.", -- draft
 -- stale: ["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "수정: 기본 스킨에서 귓속말 창이 Lua 오류 없이 열리고 다시 게임 고유의 모습으로 표시됩니다.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "도적과 표범 변신 드루이드: 대상 생명력 막대 위쪽 가장자리에 다섯 연계 점수를 한 줄로, 쌓기 전에는 비어 있습니다. 이름이 조금 올라가 자리를 만듭니다.", -- draft
@@ -3275,6 +3274,8 @@ Lang:Add("koKR", {
 -- stale: ["Reskin Brightness"] = "스킨 밝기", -- draft
 -- stale: ["Reskin only"] = "스킨만", -- draft
 -- stale: ["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, poisons, reagents): tick each item to keep and set how many."] = "보충 목록: 이제 종류별 카탈로그(음료, 음식, 탄약, 물약, 비약, 독, 재료)로, 보관할 아이템을 체크하고 개수를 정합니다.", -- draft
+-- stale: ["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "보충 목록: 이제 검색이 있는 종류별 카탈로그(음료, 음식, 탄약, 물약, 비약, 두루마리, 독, 재료)로, 보관할 아이템을 체크하고 개수를 정합니다.", -- draft
+-- stale: ["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "보충: 사냥꾼은 먹이 종류별(고기, 생선, 빵, 치즈, 과일, 버섯)로 소환수 먹이를 보관할 수 있으며, 목록은 40줄까지 담습니다.", -- draft
 -- stale: ["Round borders are sharp at small sizes: the Services buttons' and Round Border styles' rings are solid, not dotted."] = "둥근 테두리가 작은 크기에서도 선명함: 서비스 버튼과 원형 테두리 스타일의 고리가 점선이 아니라 실선입니다.", -- draft
 -- stale: ["Route follows Follow The Arrow, Azeroth Pilot Reloaded, TomTom's arrow and Guidelime through it, as it follows RestedXP. Several guides on? MelloUI asks which to keep."] = "Route가 RestedXP처럼 Follow The Arrow, Azeroth Pilot Reloaded, TomTom 화살표, Guidelime도 따릅니다. 안내서가 여럿 켜져 있나요? MelloUI가 무엇을 남길지 묻습니다.", -- draft
 -- stale: ["Route follows Polestar: its step in the tracker and on the map, one arrow and one route; its own features go first."] = "Route가 Polestar를 따릅니다: 그 단계가 추적기와 지도에, 화살표 하나와 경로 하나; Polestar의 기능이 먼저입니다.", -- draft

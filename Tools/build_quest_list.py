@@ -1015,12 +1015,17 @@ SKIP_ENTRANCE = ("back door", "after ", "fall", "instance end")
 # Forever's new instances: classic-db has no trigger for their doors. Each is the instance portal the client's own
 # world files place (in the terrain, or in a building's doodads: the tiles WoWSim 0.9's ground build keeps,
 # 2026-10-20), but the Hall of Thanes, whose door has no portal in the files (Warcraft Tavern's 43.5, 52.0 on
-# Ironforge's map). A door only one side uses names it (1 Alliance, 2 Horde); 0 both.
+# Ironforge's map), and the Excavation Site, whose portal is the server's (where a player stood at it). A door only
+# one side uses names it (1 Alliance, 2 Horde); 0 both.
 #   (instance map, its name when the client has no map row for it, continent, world x, world y, side)
 FOREVER_ENTRANCES = [
     (2959, None, 0, 376.9, 524.8, 2),  # City of Dalaran: the Horde's gate outside the north-west wall
     (2959, None, 0, 224.2, 176.4, 1),  # City of Dalaran: the Alliance's way in through the sewers
-    (2998, None, 0, -4169.8, -1400.8, 0),  # Excavation Site: Wetlands, up the dwarves' path from Dun Algaz
+    # Excavation Site: Wetlands: its portal is the server's, at the dwarves' dig camp east of Whelgar's Excavation
+    # Site (2.1.23; players, 2026-11-08: "excavation site entrance is at the wrong location" -- where one stood at the
+    # portal, read off their map against the camp's tents and wagons). The instance portal model the world files
+    # place at -4169.8, -1400.8 (up in the mountains towards Dun Morogh) is an old one that leads nowhere.
+    (2998, None, 0, -3701.8, -2385.6, 0),
     (2999, None, 0, 1804.2, 175.0, 0),  # Ruins of Lordaeron, in the ruins above Undercity
     (3065, None, 0, -4843.6, -1057.5, 0),  # The Hall of Thanes, down from Ironforge's throne room
     (0, "The Drowned City", 0, -12354.2, 852.7, 0),  # under the Vile Reef by Gillijim's Isle (no map row yet)
