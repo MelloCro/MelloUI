@@ -2292,8 +2292,10 @@ Lang:Add("zhCN", {
 	["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "姓名板：敌方姓名板上的你的减益效果新增“只显示我的减益”设置（默认开启）。", -- draft
 	["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "姓名板：敌方姓名板上你的减益效果不再显示时钟转圈，数字按剩余时间着色，少于5秒时变为红色。", -- draft
 	["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "姓名板：连击点可以通过水平和垂直偏移移动。", -- draft
+	["Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do."] = "姓名板：姓名板预览中敌人的名字与实际姓名板一样居中显示在血条上方。", -- draft
 	["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "个人显示：“显示在个人显示上方”会把攻击徽章居中放在个人显示上方，而不是目标的姓名板上。", -- draft
 	["Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast."] = "动作条：职业弹出菜单（如猎人的守护、战士的姿态和德鲁伊的形态）可在MelloUI的动作条上打开，其法术可以施放。", -- draft
+	["Action Bars: the game's hidden stance, pet and possess bars no longer take clicks where they stood once MelloUI's bars are moved (thanks, Baine)."] = "动作条：移动MelloUI的动作条后，游戏隐藏的姿态条、宠物条和控制条不再在原位置拦截点击（感谢Baine）。", -- draft
 	["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "地图：在战场中，地图会显示你、你的队伍和战场的旗帜。", -- draft
 	["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "补给清单：现在是带搜索的按类别目录（饮料、食物、弹药、药水、合剂、卷轴、毒药、材料）：勾选要常备的每件物品并设置数量。", -- draft
 	["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "补给：猎人可以按食性常备宠物食物（肉、鱼、面包、奶酪、水果、蘑菇），清单最多容纳40行。", -- draft

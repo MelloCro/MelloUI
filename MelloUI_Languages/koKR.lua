@@ -2292,8 +2292,10 @@ Lang:Add("koKR", {
 	["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "이름표: 적 이름표의 내 약화 효과에 '내 약화 효과만' 설정이 추가되었습니다(기본값 켜짐).", -- draft
 	["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "이름표: 적 이름표의 내 약화 효과에 더 이상 시계 표시가 나오지 않으며, 숫자는 남은 시간에 따라 색이 바뀌고 5초 미만이면 빨간색이 됩니다.", -- draft
 	["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "이름표: 연계 점수를 가로 및 세로 오프셋으로 옮길 수 있습니다.", -- draft
+	["Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do."] = "이름표: 이름표 미리보기에서 적의 이름이 실제 이름표처럼 바 위 가운데에 표시됩니다.", -- draft
 	["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "개인 표시: '개인 표시 위에'를 켜면 공격 배지가 대상의 이름표 대신 개인 표시 위 가운데에 표시됩니다.", -- draft
 	["Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast."] = "행동 단축바: 사냥꾼의 상(Aspect), 전사의 태세, 드루이드의 변신 같은 직업 펼침 메뉴가 MelloUI 행동 단축바에서 열리고 그 주문이 시전됩니다.", -- draft
+	["Action Bars: the game's hidden stance, pet and possess bars no longer take clicks where they stood once MelloUI's bars are moved (thanks, Baine)."] = "행동 단축바: MelloUI 바를 옮긴 뒤 게임의 숨겨진 태세, 소환수, 지배 바가 원래 자리에서 클릭을 가로채지 않습니다(Baine님 감사합니다).", -- draft
 	["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "지도: 전장 안에서 지도에 내 캐릭터, 내 파티와 전장의 깃발이 표시됩니다.", -- draft
 	["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "보충 목록: 이제 검색이 있는 종류별 카탈로그(음료, 음식, 탄약, 물약, 비약, 두루마리, 독, 재료)로, 보관할 아이템을 체크하고 개수를 정합니다.", -- draft
 	["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "보충: 사냥꾼은 먹이 종류별(고기, 생선, 빵, 치즈, 과일, 버섯)로 소환수 먹이를 보관할 수 있으며, 목록은 40줄까지 담습니다.", -- draft

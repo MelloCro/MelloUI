@@ -2883,7 +2883,12 @@ do
 		Plate.LOOK.alpha = MelloUI.Shade.TEXT.alpha
 		f.band = MelloUI.Shade:Band(f.top, Plate.LOOK)
 		if f.band then
-			f.band:Anchor(f.name, Plate.PAD_X, Plate.PAD_Y)
+			-- (2.1.19) on a measure of the text, as the live plates' band (Plate.Make): the name's box spans the bar now
+			f.measure = MelloUI.Shade:Measure(f.top, f.name, Plate.POINT, Plate.MEASURE)
+			if f.measure then
+				MelloUI.Shade:MeasureText(f.measure, Stage.NAME)
+			end
+			f.band:Anchor(f.measure or f.name, Plate.PAD_X, Plate.PAD_Y)
 		end
 		f.debuffs = CreateFrame("Frame", nil, f.top)
 		f.debuffs.icons, f.debuffs.times = {}, {}
@@ -2992,6 +2997,14 @@ do
 			local j = type(opts) == "table" and opts.nameJustificationWhenAboveHealthBar
 			f.name:SetJustifyH((j == "CENTER" or j == "RIGHT") and j or "LEFT")
 			f.name:SetPoint("BOTTOMLEFT", f.bar, "TOPLEFT", 0, y)
+			-- (2.1.19; the user, 2026-11-08: centred in game, not here) its right end as the game's (LayGameName's
+			-- :772-788): the level box's right while it shows, else the bar's (the sample has no health text) -- only
+			-- its text wide, Camelot's CENTER justification had nothing to centre across
+			if f.level:IsShown() then
+				f.name:SetPoint("RIGHT", f.level, "RIGHT", 0, 0)
+			else
+				f.name:SetPoint("RIGHT", f.bar, "RIGHT", 0, 0)
+			end
 		end
 		if f.band then
 			f.band:SetShown(ours and Plate.Shade())

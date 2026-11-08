@@ -6,8 +6,10 @@
 - Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default).
 - Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds.
 - Nameplates: the combo points can be moved with a horizontal and a vertical offset.
+- Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do.
 - Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate.
 - Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast.
+- Action Bars: the game's hidden stance, pet and possess bars no longer take clicks where they stood once MelloUI's bars are moved (thanks, Baine).
 - Map: inside a battleground, the map shows you, your group and the battleground's flags.
 
 ## 2.1.18
