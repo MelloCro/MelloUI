@@ -154,7 +154,7 @@ L.pages = {
 	-- docs/plans/animations-page.md) every animation MelloUI plays, one place: Reduce Motion on top, a tab for each
 	-- place they play, a Play beside each row (CONFIG.Play); nothing left behind on the pages they came from. The glows
 	-- that tell you something (threat, resting, Debuff Glow, Low Health, Loss Of Control, Loot Sparkles) stay there
-	Animations = { title = "Animations", icon = "Interface\\Icons\\Spell_Holy_Renew", set = "fx_cooldown", new = "2.1.20",
+	Animations = { title = "Animations", icon = "Interface\\Icons\\Spell_Holy_Renew", set = "fx_cooldown",
 		flavour = "Every animation MelloUI plays, in one place. Press Play beside one to see it before you choose.",
 		tabs = { "General", "Frames", "Nameplates", "Bars & Windows", "Travel" },
 		cards = { Frames = { "Heal Effects", "Cooldown Effects", "Personal Display" },
