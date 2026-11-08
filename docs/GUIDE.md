@@ -95,7 +95,7 @@ It comes in two parts, and you need both. Remade for 0.18.3: every voice at a be
 
 A small round button beside your portrait taps you on the shoulder, then tucks itself away: drink or food running low, new mail, gear wearing out, a trainer with something new. Several at once? One button with a count; point at it and the others slide out. Click one and the arrow takes you to the nearest place for it; close to the NPC, a click targets them. Right-click says "not now".
 
-- **Restock** keeps a list per character (drink, food, arrows or bullets, reagents) and reminds you before you run dry.
+- **Restock** keeps a list per character and reminds you before you run dry. Its window is a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search box: tick each item to keep and set how many; items show their tooltips. Hunters keep pet food by diet (meat, fish, bread, cheese, fruit, fungus).
 - In an inn or a city every reminder stays up until it is done (restocked, a mailbox opened, gear repaired, your new spells or a profession's next rank learned) or you leave.
 - At a shop that sells what you are low on, a small shopping list opens beside it. Nothing is bought until you click **Buy**.
 - Bags almost full, talent points to spend and Well Fed running out get the same little button.

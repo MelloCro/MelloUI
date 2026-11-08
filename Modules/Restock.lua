@@ -115,11 +115,11 @@ local REM_KEY = "restock"
 local ICON = MelloUI.Widgets.IconPath("svc_vendor")   -- (0.25.0: the set's food vendor; the 1x tracking icon until then)
 local URGENCY = 50        -- the widget's order (higher first): broken gear 100, Repair 40, Mail 20, Trainer 10
 local READY_DELAY = 8     -- s into the world before the first count and the reminder (nothing in the login frames)
-local MAX_ENTRIES = 12    -- lines on a list
+local MAX_ENTRIES = 40    -- lines on a list (2.1.18: 12 until the catalogue; each item its own line now)
+local SHOP_ROWS = 16      -- purchases a shop visit plans (the shop panel's rows): the rest at the next one
 local MAX_AMOUNT = 5000
 local BUY_SPACING = 0.2   -- s between two purchases
 local LOW_DEFAULT = 0.5   -- Remind Below: half (the user's pick)
-local ORDER = "dfabr"     -- the families, in the data's order
 
 -- the families: their names, the amount a new line keeps, and the list
 -- window's slider (step, top)
@@ -130,6 +130,19 @@ local FAMILY = {
 	b = { name = "Bullets", word = "bullets", amount = 1000, step = 200, top = 2000, range = "ammo" },
 	r = { name = "Class reagents", word = "reagents", amount = 10, step = 1, top = 100, range = "item" },
 }
+-- (2.1.18; the user, 2026-11-08: "especially the hunters because their pets have diets", the pick "per diet") a pet's
+-- diets as the data numbers them (item_template's FoodType): the family lines p1 .. p6, each counting every food of
+-- its diet, raw meat and fish too, whatever pet is out
+local DIETS = { "Meat", "Fish", "Cheese", "Bread", "Fungus", "Fruit" }
+local DIET_KEY = {}   -- [diet] = its line's key, made once (a count makes no strings)
+for i, name in ipairs(DIETS) do
+	DIET_KEY[i] = "p" .. i
+	FAMILY[DIET_KEY[i]] = { name = name, word = name:lower() .. " for your pet", amount = 20, step = 5, top = 100,
+		range = "stack", diet = i }
+end
+-- the data's kinds: the families, p potions and bandages, e elixirs and flasks, o poisons, s scrolls (their own kind:
+-- the user, 2026-11-08, "You have categorized Scrolls under Elixirs?")
+local KIND_LETTERS = "dfabrpeos"
 
 -- The class suggestions. Drink for the classes with mana, food for every
 -- class, a hunter's ammunition (by the ranged weapon: a gun shoots bullets).
@@ -268,19 +281,35 @@ local function Families()
 	if fam then
 		return fam
 	end
-	fam = { of = {}, level = {}, stack = {}, classes = {}, classBit = false, shipped = nil }
+	-- (2.1.18) rows: [letter] = the kind's items by level (the catalogue's order); diet / ilevel: a pet food's diet and
+	-- item level (an item may be a food and a pet food both)
+	fam = { of = {}, level = {}, stack = {}, classes = {}, classBit = false, shipped = nil, rows = {}, diet = {},
+		ilevel = {}, firstOfDiet = {} }
 	local data = rawget(_G, "MelloUI_QuestListData")
 	local items = type(data) == "table" and data.restockItems
 	if type(items) == "table" then
-		for i = 1, #ORDER do
-			local letter = ORDER:sub(i, i)
+		for i = 1, #KIND_LETTERS do
+			local letter = KIND_LETTERS:sub(i, i)
 			local rows = items[letter]
+			local ids = {}
+			fam.rows[letter] = ids
 			if type(rows) == "table" then
 				for _, row in ipairs(rows) do
 					local id = row[1]
 					if type(id) == "number" and not fam.of[id] then
 						fam.of[id], fam.level[id], fam.stack[id], fam.classes[id] = letter, row[2] or 0, row[3] or 20, row[5] or 0
+						ids[#ids + 1] = id
 					end
+				end
+			end
+		end
+		if type(items.diet) == "table" then
+			for _, row in ipairs(items.diet) do
+				local id, diet = row[1], row[2]
+				if type(id) == "number" and FAMILY["p" .. tostring(diet)] then
+					fam.diet[id], fam.ilevel[id] = diet, row[3] or 0
+					fam.stack[id] = fam.stack[id] or row[4] or 20
+					fam.firstOfDiet[diet] = fam.firstOfDiet[diet] or id
 				end
 			end
 		end
@@ -310,11 +339,13 @@ local function ClassOk(mask, mine)
 	return bit.band(mask, mine) ~= 0
 end
 
--- a line counts at this level (a reagent only in its levels)
+-- a line counts at this level (a reagent only in its levels; 2.1.18: an item of the kinds from the level it is used
+-- at -- the catalogue lists the next ones up)
 local function Active(key, level)
 	local w = type(key) == "number" and WINDOW[key]
 	if not w then
-		return true
+		local need = type(key) == "number" and Families().level[key]
+		return not (need and need > level)
 	end
 	return level >= w[1] and (w[2] == nil or level <= w[2])
 end
@@ -488,10 +519,13 @@ local function Below()
 end
 
 -- the family counts from the bags: each item the character can use, once
+-- (2.1.18) and the diets': every food of a diet in the bags, whatever its level (a pet's, not the character's)
 local function CountFamilies(level)
 	local F = Families()
 	local famHave, seen = state.famHave, state.seen
-	famHave.d, famHave.f, famHave.a, famHave.b, famHave.r = 0, 0, 0, 0, 0
+	for k in pairs(famHave) do
+		famHave[k] = 0
+	end
 	if not list.families or not C_Container then
 		return
 	end
@@ -502,11 +536,19 @@ local function CountFamilies(level)
 		local slots = Num((Ask(getSlots, bag))) or 0
 		for slot = 1, slots do
 			local id = Num((Ask(getID, bag, slot)))
-			local letter = id and F.of[id]
-			if letter and seen[id] ~= pass then
-				seen[id] = pass
-				if F.level[id] <= level and ClassOk(F.classes[id], F.classBit) then
-					famHave[letter] = famHave[letter] + ItemCount(id)
+			if id and seen[id] ~= pass then
+				local letter, diet = F.of[id], F.diet[id]
+				local family = letter and FAMILY[letter] and letter
+				if family or diet then
+					seen[id] = pass
+					local n = ItemCount(id)
+					if family and F.level[id] <= level and ClassOk(F.classes[id], F.classBit) then
+						famHave[family] = (famHave[family] or 0) + n
+					end
+					if diet then
+						local key = DIET_KEY[diet]
+						famHave[key] = (famHave[key] or 0) + n
+					end
 				end
 			end
 		end
@@ -828,7 +870,7 @@ local function ScanMerchant()
 			local j = m.n + 1
 			m.n = j
 			m.idx[j], m.id[j], m.ok[j] = index, id, false
-			if F.of[id] or list.items[id] then
+			if F.of[id] or F.diet[id] or list.items[id] then
 				local name, icon, price, bundle, avail, ok = Offer(index)
 				if ok and price and price >= 0 then
 					m.ok[j] = true
@@ -844,6 +886,7 @@ local function ScanMerchant()
 end
 
 local sellsScratch = { d = false, f = false, a = false, b = false, r = false }
+local dietScratch = {}   -- [diet] = true: a shop sells food of it (LearnShop, filled again)
 
 -- the open shop, remembered with what it sells (written only when that
 -- changed): a shop that sells none of it is kept only to override a shipped
@@ -863,17 +906,31 @@ local function LearnShop()
 	local s = sellsScratch
 	s.d, s.f, s.a, s.b, s.r = false, false, false, false, false
 	local items = nil
+	-- (2.1.18) the diets it sells: kept as their digits after the families' letters
+	local diets = dietScratch
+	for d = 1, #DIETS do
+		diets[d] = false
+	end
 	for j = 1, merchant.n do
 		local id = merchant.id[j]
 		local letter = F.of[id]
-		if letter then
+		if letter and FAMILY[letter] then
 			s[letter] = true
+		end
+		local diet = F.diet[id]
+		if diet then
+			diets[diet] = true
 		end
 		if list.items[id] then
 			items = items and (items .. "," .. id) or tostring(id)
 		end
 	end
 	local sells = (s.d and "d" or "") .. (s.f and "f" or "") .. (s.a and "a" or "") .. (s.b and "b" or "") .. (s.r and "r" or "")
+	for d = 1, #DIETS do
+		if diets[d] then
+			sells = sells .. d
+		end
+	end
 	items = items or ""
 	if type(e) ~= "table" then
 		if sells == "" and items == "" and not ShippedName(name) then
@@ -925,14 +982,19 @@ local function RouteOpts(keys, n)
 	local s = sellsScratch
 	s.d, s.f, s.a, s.b, s.r = false, false, false, false, false
 	local items = false
+	local diets = nil   -- (2.1.18) the diets wanted, as their digits: the shops seen that sell one of them
 	for i = 1, n do
 		local key = keys[i]
+		local family = FAMILY[key]
 		if type(key) == "number" then
-			if F.of[key] then
-				s[F.of[key]] = true
+			local letter = F.of[key]
+			if letter and FAMILY[letter] then
+				s[letter] = true
 			end
 			items = true
-		else
+		elseif family and family.diet then
+			diets = (diets or "") .. family.diet
+		elseif family then
 			s[key] = true
 		end
 	end
@@ -947,15 +1009,26 @@ local function RouteOpts(keys, n)
 			if type(e) == "table" and e.kind == "vendor" and type(e.name) == "string" then
 				route.skip[e.name] = true
 				-- a shop seen with one of the lines' own items (the families
-				-- are Services' own filter, by `sells`)
+				-- are Services' own filter, by `sells`; an item of the kinds
+				-- that are no family -- potions, elixirs, poisons -- by its id)
+				local hit = false
 				if items and type(e.items) == "string" and e.items ~= "" then
 					for i = 1, n do
 						local key = keys[i]
-						if type(key) == "number" and not F.of[key] and ("," .. e.items .. ","):find("," .. key .. ",", 1, true) then
-							route.extra[#route.extra + 1] = { name = e.name, sub = e.sub or "", mapID = e.mapID, x = e.x, y = e.y }
+						local letter = type(key) == "number" and F.of[key]
+						if type(key) == "number" and not (letter and FAMILY[letter])
+							and ("," .. e.items .. ","):find("," .. key .. ",", 1, true) then
+							hit = true
 							break
 						end
 					end
+				end
+				-- (2.1.18) a shop seen selling food of a diet wanted
+				if not hit and diets and type(e.sells) == "string" and e.sells:find("[" .. diets .. "]") then
+					hit = true
+				end
+				if hit then
+					route.extra[#route.extra + 1] = { name = e.name, sub = e.sub or "", mapID = e.mapID, x = e.x, y = e.y }
 				end
 			end
 		end
@@ -1059,15 +1132,25 @@ end
 
 -- the merchant's best for a line: its own item, or of a family the
 -- character can use, the highest level first (then the dearer per item)
+-- (2.1.18: a diet's, its food of the highest item level up to the character's -- the pet is never above it)
 local function BestFor(key, level)
 	local F, m = Families(), merchant
 	local best, bestLevel, bestUnit = nil, -1, -1
+	local diet = type(key) == "string" and FAMILY[key] and FAMILY[key].diet
 	for j = 1, m.n do
 		local id = m.id[j]
 		if m.ok[j] then
 			if type(key) == "number" then
 				if id == key then
 					return j
+				end
+			elseif diet then
+				local lv = F.ilevel[id] or 0
+				if F.diet[id] == diet and lv <= level then
+					local unit = m.price[j] / m.bundle[j]
+					if lv > bestLevel or (lv == bestLevel and unit > bestUnit) then
+						best, bestLevel, bestUnit = j, lv, unit
+					end
 				end
 			elseif F.of[id] == key and F.level[id] <= level and ClassOk(F.classes[id], F.classBit) then
 				local lv, unit = F.level[id], m.price[j] / m.bundle[j]
@@ -1101,7 +1184,7 @@ local function Plan()
 	local F, m = Families(), merchant
 	for e = 1, list.n do
 		local key, amount, have = list.key[e], list.amount[e], state.have[e] or 0
-		local j = state.active[e] and amount > have and BestFor(key, level) or nil
+		local j = state.active[e] and amount > have and plan.n < SHOP_ROWS and BestFor(key, level) or nil
 		if j and not Planned(j) then
 			local id, bundle, price = m.id[j], m.bundle[j], m.price[j]
 			local buys = ceil((amount - have) / bundle)
@@ -1154,9 +1237,10 @@ end
 
 -- the panel ---------------------------------------------------------------
 
--- (a row for every line a list may hold: every item Buy buys is shown with
--- its amount and price; 36 + 12 x 26 + 74 = 422, beside the 444 of the shop)
-local PANEL_W, PAD, HEAD, ROW_H, FOOT, MAX_ROWS = 320, 12, 36, 26, 74, MAX_ENTRIES
+-- (a row for every purchase a visit plans: every item Buy buys is shown with
+-- its amount and price; 36 + 16 x 26 + 74 = 526 -- 2.1.18: the list holds 40
+-- lines now, a visit plans SHOP_ROWS of them)
+local PANEL_W, PAD, HEAD, ROW_H, FOOT, MAX_ROWS = 320, 12, 36, 26, 74, SHOP_ROWS
 local PANEL_AREA = "config"   -- the panel's look: the reskin's, as MelloUI's own windows (Kit.Areas)
 
 local RowEnter = Shared("OnEnter on the Restock shop rows", function(row)
@@ -1573,14 +1657,73 @@ NotNow = function()
 end
 
 --------------------------------------------------------------------------------
--- The Restock List window (its own window, built on its first open)
+-- The Restock List window (its own window, built on its first open): the
+-- catalogue by kind (2.1.18; the user, 2026-11-08: "pick and choose each
+-- consumable, ammo, food etc", the pick B of restock_catalogue_sketch: the
+-- kinds in a rail on the left). A rail entry per kind this character has use
+-- for; its page lists the kind's items the character can use near its level
+-- (NEAR_BELOW under it to NEAR_ABOVE over), and whatever is on the list or in
+-- the bags, a family's "any" line first (Any drink counts them all). A row: a
+-- tick (on the list or not), the item's icon, its name, what the bags hold
+-- (or the level it is first used at), and while it is on the list how many to
+-- keep. Pet Food (hunters): the six diets, the ones the pet out eats marked
+-- (C_PetInfo.CanPetEatItem on an item of each). Items on the list that no
+-- page lists (one dropped from the bags): Other. An item dropped on the window
+-- is added, as before.
 --------------------------------------------------------------------------------
 
-local LIST_W, LIST_TOP, INTRO_H, LIST_FOOT = 480, 66, 44, 56
+local LIST_W, LIST_H, RAIL_W, LIST_TOP, INTRO_H, LIST_FOOT = 680, 560, 168, 66, 76, 56
+local SEARCH_H, HEAD_STEP = 30, 28    -- the search box's room over the line; a group's heading and its rule
+local BAR = 6                         -- the thin scroll bar's width (and the room each side of it)
 local LIST_EDGE = 14   -- the panel's margin in the painted look (the modern shell's: its one inset, shell:Inset)
 local ROW_STEP = W.SLIDER_ROW_HEIGHT or 40
-local win = { frame = nil, body = nil, rows = {}, pools = { stack = {}, ammo = {}, item = {} }, addValues = {}, shell = nil }
+local NEAR_BELOW, NEAR_ABOVE = 20, 10   -- the levels a page lists around the character's
+local ROW_INDENT = 64                   -- the name's room left of it: the tick and the icon
+local win = { frame = nil, body = nil, rail = nil, pager = nil, page = nil, rows = {}, pools = { stack = {}, ammo = {},
+	item = {} }, kind = nil, shell = nil, lines = {}, scratch = {}, seenKeys = {}, onKeys = {}, offKeys = {},
+	query = nil, queryText = nil }
 local ListLayout   -- (below)
+
+-- the kinds, in the rail's order: `any` the family lines first, `letters` the data's kinds listed, `diets` the six
+-- diet lines, `classes` the classes it is for (nil: every class; its page shows too while the list holds a line of
+-- it), `icon` an item of it whose icon the rail shows
+local KINDS = {
+	{ key = "drink", text = "Drink", any = { "d" }, letters = "d", icon = 159 },
+	{ key = "food", text = "Food", any = { "f" }, letters = "f", icon = 4540 },
+	{ key = "pet", text = "Pet Food", diets = true, icon = 2287, classes = { HUNTER = true } },
+	{ key = "ammo", text = "Ammo", any = { "a", "b" }, letters = "ab", icon = 2512,
+	  classes = { HUNTER = true, WARRIOR = true, ROGUE = true } },
+	{ key = "potions", text = "Potions", letters = "p", icon = 118 },
+	{ key = "elixirs", text = "Elixirs", letters = "e", icon = 2454 },
+	{ key = "scrolls", text = "Scrolls", letters = "s", icon = 954 },
+	{ key = "poisons", text = "Poisons", letters = "o", icon = 6947, classes = { ROGUE = true } },
+	{ key = "reagents", text = "Reagents", letters = "r", icon = 17020 },
+	{ key = "other", text = "Other", other = true, icon = "Interface\\Icons\\INV_Misc_Bag_08" },
+}
+local KIND_OF = {}
+for _, k in ipairs(KINDS) do
+	KIND_OF[k.key] = k
+end
+local INTRO = {
+	-- (the user, 2026-11-08: "make it clear somewhere in the restock list that the restock only show items which are
+	-- level appropriate")
+	any = "Tick what to keep and how many. Each kind shows only the items for your level, and what you carry or have "
+		.. "ticked; search to find any other.",
+	pet = "A diet counts every food of it in your bags, whichever pet is out.",
+	other = "Items you dropped on the list. Drop any item from your bags on this window to add it.",
+	search = "Results for \"%s\" in every kind. Clear the box to go back.",
+	onList = "On your list", offList = "More for your level", offSearch = "Not on your list",
+	none = "Nothing of this kind for your level yet.",
+	found = "Nothing found.", prompt = "Search every kind",
+}
+-- a family's or a diet's tooltip (an item's is the game's own)
+local FAMILY_TIP = {
+	d = "Counts every drink this character can use, the older ones too, and buys the best a shop has.",
+	f = "Counts every food this character can use, the older ones too, and buys the best a shop has.",
+	a = "Counts every arrow this character can use, and buys the best a shop has.",
+	b = "Counts every bullet this character can use, and buys the best a shop has.",
+	diet = "Counts every %s in your bags, raw too, whatever its level, and buys the best a shop has for your level.",
+}
 
 local function Save()
 	local key = ListKey()
@@ -1693,6 +1836,7 @@ function M:Reset()
 	end
 end
 
+-- a line's count as its row says it: what the bags hold, or the level it waits for
 local function HaveText(i)
 	local key = list.key[i]
 	if state.active[i] == false then
@@ -1700,27 +1844,152 @@ local function HaveText(i)
 		if w and Level() < w[1] then
 			return "from level " .. w[1]
 		end
+		local need = type(key) == "number" and Families().level[key]
+		if need and need > Level() then
+			return "from level " .. need
+		end
 		return "not at your level"
 	end
-	return "have " .. (state.have[i] or 0)
+	return "in bags " .. (state.have[i] or 0)
 end
 
--- a line's row in the window: a slider row of the line's range (one pool a
--- range: a row is used again only for a line of the same range) and a
--- Remove button
-local RemoveClick = Shared("OnClick on the Restock List's Remove", function(button)
-	local row = button.restockRow
-	if row and row.line then
-		MelloUI:PlayUISound("check_off")
-		M:Remove(row.line)
+-- the diets the pet out eats (C_PetInfo.CanPetEatItem on the first item of each), into out; true when it eats any
+local function PetEats(out)
+	wipe(out)
+	local okE, exists = pcall(UnitExists, "pet")
+	local pets = rawget(_G, "C_PetInfo")
+	local can = type(pets) == "table" and pets.CanPetEatItem
+	if not (okE and Plain(exists) and type(can) == "function") then
+		return false
 	end
-end, "script")
+	local F, any = Families(), false
+	for d = 1, #DIETS do
+		local id = F.firstOfDiet[d]
+		local ok, eats = false, nil
+		if id then
+			ok, eats = pcall(can, id)
+		end
+		if ok and Plain(eats) == true then
+			out[d] = true
+			any = true
+		end
+	end
+	return any
+end
 
-local function RangeOf(key)
-	if FAMILY[key] then
-		return FAMILY[key].range
+-- a row's line under its name: on the list, its count (or the level it waits for); else what the bags hold or the
+-- level it is first used at; a diet the pet eats says so
+local function RowHint(key)
+	local i = Has(key)
+	local text
+	if i then
+		text = HaveText(i)
+	else
+		local need = type(key) == "number" and Families().level[key]
+		local n = type(key) == "number" and ItemCount(key) or (state.famHave[key] or 0)
+		if need and need > Level() then
+			text = "level " .. need
+		elseif n > 0 then
+			text = "in bags " .. n
+		else
+			text = ""
+		end
 	end
-	return "item"
+	local diet = FAMILY[key] and FAMILY[key].diet
+	if diet and win.eats and win.eats[diet] then
+		text = text ~= "" and (text .. ", your pet eats this") or "your pet eats this"
+	end
+	return text
+end
+
+local function RowName(key)
+	if key == "d" then
+		return "Any drink"
+	elseif key == "f" then
+		return "Any food"
+	elseif key == "a" then
+		return "Any arrows"
+	elseif key == "b" then
+		return "Any bullets"
+	end
+	return EntryName(key)
+end
+
+local function RowIcon(key)
+	if type(key) == "number" then
+		return ItemIcon(key)
+	end
+	local F = Families()
+	local family = FAMILY[key]
+	local id = family and family.diet and F.firstOfDiet[family.diet] or (F.rows[key] and F.rows[key][#F.rows[key]])
+	return id and ItemIcon(id) or "Interface\\Icons\\INV_Misc_QuestionMark"
+end
+
+-- the keys a kind's page lists, into out: its family lines, its diets, its items near the character's level (an
+-- item of a skill's -- potions, elixirs, poisons -- with no level always; `all`, a search's: every one the class can
+-- use), and whatever of it is on the list or in the bags; Other: the list's items no kind knows
+local SKILL_KIND = { p = true, e = true, o = true }
+local function KindLines(k, out, all)
+	wipe(out)
+	local F, level = Families(), Level()
+	for _, f in ipairs(k.any or {}) do
+		out[#out + 1] = f
+	end
+	if k.diets then
+		for d = 1, #DIETS do
+			out[#out + 1] = "p" .. d
+		end
+	end
+	for c = 1, #(k.letters or "") do
+		local letter = k.letters:sub(c, c)
+		for _, id in ipairs(F.rows[letter] or {}) do
+			local lv = F.level[id] or 0
+			local near = ClassOk(F.classes[id], F.classBit)
+				and (all or (lv == 0 and SKILL_KIND[letter]) or (lv <= level + NEAR_ABOVE and lv >= level - NEAR_BELOW))
+			if near or Has(id) or ItemCount(id) > 0 then
+				out[#out + 1] = id
+			end
+		end
+	end
+	if k.other then
+		for i = 1, list.n do
+			local key = list.key[i]
+			if type(key) == "number" and not F.of[key] then
+				out[#out + 1] = key
+			end
+		end
+	end
+	return out
+end
+
+-- the kinds this character's rail shows: its classes' (or any kind the list holds a line of), with something to list
+local function KindShown(k, class, lines)
+	if #lines == 0 then
+		return false
+	end
+	if not k.classes or k.classes[class] then
+		return true
+	end
+	for _, key in ipairs(lines) do
+		if Has(key) then
+			return true
+		end
+	end
+	return false
+end
+
+-- a row ticked: the line added with its default amount, or taken off
+local function RowTicked(row, on)
+	local key = row.key
+	if key == nil then
+		return
+	end
+	local i = Has(key)
+	if on and not i then
+		M:Add(key)
+	elseif not on and i then
+		M:Remove(i)
+	end
 end
 
 local RANGES = {
@@ -1729,53 +1998,197 @@ local RANGES = {
 	item = { min = 0, max = 100, step = 1 },
 }
 
+local function RangeOf(key)
+	if FAMILY[key] then
+		return FAMILY[key].range
+	end
+	return "item"
+end
+
 local ListDrop   -- (below)
 
+-- a row under the mouse: an item's own tooltip (the game's), a family's or a diet's what it counts
+local CatRowEnter = Shared("OnEnter on the Restock List's rows", function(row)
+	local key = row.key
+	if key == nil then
+		return
+	end
+	if type(key) == "number" then
+		GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+		if not pcall(GameTooltip.SetItemByID, GameTooltip, key) then
+			pcall(GameTooltip.SetHyperlink, GameTooltip, "item:" .. key)
+		end
+		GameTooltip:Show()
+		return
+	end
+	local family = FAMILY[key]
+	local body = family and family.diet and string.format(FAMILY_TIP.diet, family.name:lower()) or FAMILY_TIP[key]
+	W.ShowTooltip(row, RowName(key), body)
+end, "script")
+
+-- a row of the catalogue: a slider row of its range (one pool a range: a row is used again only for a key of the
+-- same range), the tick and the icon left of the name
 local function NewListRow(range)
 	local row = nil
 	-- (the slider asks its value while it is made: row is nil then)
-	row = W.SliderRow(win.body, 0, "", "have 0", nil,
-		function() return row and row.line and list.amount[row.line] or 0 end,
-		function(v) if row and row.line then M:SetAmount(row.line, v) end end,
+	row = W.SliderRow(win.page, 0, "", " ", nil,
+		function()
+			local i = row and row.key ~= nil and Has(row.key)
+			return i and list.amount[i] or 0
+		end,
+		function(v)
+			local i = row and row.key ~= nil and Has(row.key)
+			if i then
+				M:SetAmount(i, v)
+			end
+		end,
 		{ min = RANGES[range].min, max = RANGES[range].max, step = RANGES[range].step, width = 150, skin = win.shell,
-		  zebra = true })
-	local slider = W.ControlOf(row)
-	if slider then
-		slider:ClearAllPoints()
-		slider:SetPoint("RIGHT", row, "RIGHT", -108, 0)
-	end
-	local remove = W.Button(row, "Remove", 70, win.shell, { onClick = RemoveClick })
-	remove:SetPoint("RIGHT", row, "RIGHT", -10, 0)
-	remove.restockRow = row
-	row.remove = remove
+		  zebra = true, indent = ROW_INDENT })
+	row.tick = W.Switch(row, function() return row.key ~= nil and Has(row.key) ~= nil end,
+		function(on) RowTicked(row, on) end)
+	row.tick:SetPoint("LEFT", row, "LEFT", 12, 0)
+	row.icon = row:CreateTexture(nil, "ARTWORK")
+	row.icon:SetSize(24, 24)
+	row.icon:SetPoint("LEFT", row, "LEFT", 42, 0)
 	row.range = range
-	-- (a line covers the body's width: an item dropped on it is added too)
+	-- (a row covers the page's width: an item dropped on it is added too)
 	Perf.HookScript(row, "OnReceiveDrag", ListDrop)
 	Perf.HookScript(row, "OnMouseUp", ListDrop)
+	Perf.HookScript(row, "OnEnter", CatRowEnter)
+	Perf.HookScript(row, "OnLeave", W.TipLeave)
 	if row.label then
 		Style(row.label, "fontText", _G.GameFontHighlight)
 	end
 	if row.hint then
-		Style(row.hint, "fontText", _G.GameFontHighlightSmall)
+		Style(row.hint, "fontText", _G.GameFontHighlight)
 	end
 	return row
 end
 
--- the lines onto the rows (the counts in their hints)
+-- the rail's entries for this character (made again at each layout; the rail pools its rows)
+local function RailGroups(class)
+	local entries, firstShown = {}, nil
+	for _, k in ipairs(KINDS) do
+		local lines = KindLines(k, {})
+		if KindShown(k, class, lines) then
+			entries[#entries + 1] = { key = k.key, text = k.text, icon = RowIcon(type(k.icon) == "number" and k.icon or 0) }
+			if type(k.icon) == "string" then
+				entries[#entries].icon = k.icon
+			end
+			firstShown = firstShown or k.key
+		end
+	end
+	return { { key = "kinds", entries = entries } }, firstShown, entries
+end
+
+-- the scroll bar to the list: its range the page's height past the view, its thumb the share in view; hidden while
+-- the page fits (Dungeon Info's SyncBar, the one way MelloUI's lists pair the bar with a pager)
+local function SyncBar()
+	local bar, pager = win.bar, win.pager
+	if not bar then
+		return
+	end
+	local Finite = MelloUI.Safe.Finite
+	local view = Finite(pager.scroll:GetHeight()) or 0
+	local range = max(0, (Finite(pager.canvas:GetHeight()) or 0) - view)
+	-- (not laid out yet: no height to measure -- its OnSizeChanged syncs it once it has one)
+	if view <= 1 or range <= 0.5 then
+		bar:Hide()
+		return
+	end
+	bar.laying = true
+	bar:SetMinMaxValues(0, range)
+	bar:SetValue(min(range, Finite(pager.scroll:GetVerticalScroll()) or 0))
+	bar.laying = false
+	bar.thumb:SetHeight(max(16, (Finite(bar:GetHeight()) or view) * view / (view + range)))
+	bar:Show()
+end
+local BarSync = Shared("SetVerticalScroll / OnSizeChanged on the Restock List's scroll", function()
+	SyncBar()
+end, "script")
+local BarDragged = Shared("OnValueChanged on the Restock List's scroll bar", function(bar, value)
+	if not bar.laying then
+		win.pager:ScrollTo(MelloUI.Safe.Finite(value) or 0, true)
+	end
+end, "script")
+
+-- two keys by their rows' names (the ticked ones' order), then by key
+local function ByName(a, b)
+	local na, nb = RowName(a):lower(), RowName(b):lower()
+	if na ~= nb then
+		return na < nb
+	end
+	return tostring(a) < tostring(b)
+end
+
+-- the page of the kind on show onto its rows (the counts in their hints), the rail with it; a search's matches
+-- instead while the search box holds a text
 ListLayout = function()
 	local f = win.frame
 	if not f then
 		return
 	end
 	Counted()
+	local class = PlayerClass() or ""
+	local groups, first, entries = RailGroups(class)
+	win.shownKinds = entries
+	local shown = false
+	for _, e in ipairs(entries) do
+		if e.key == win.kind then
+			shown = true
+		end
+	end
+	if not shown then
+		win.kind = first
+	end
+	win.rail:SetGroups(groups)
+	if win.kind then
+		win.rail:Select(win.kind, true)
+	end
+	local k = KIND_OF[win.kind or ""]
+	local query = win.query
+	win.eats = win.eats or {}
+	local eats = (query or (k and k.diets)) and PetEats(win.eats)
+	if not eats then
+		wipe(win.eats)
+	end
+	-- the keys: the kind's page, or a search's matches in every kind the rail shows (each once)
+	local lines = win.lines
+	if query then
+		wipe(lines)
+		local seen = win.seenKeys
+		wipe(seen)
+		for _, e in ipairs(entries) do
+			for _, key in ipairs(KindLines(KIND_OF[e.key], win.scratch, true)) do
+				if not seen[key] and RowName(key):lower():find(query, 1, true) then
+					seen[key] = true
+					lines[#lines + 1] = key
+				end
+			end
+		end
+	else
+		KindLines(k or KINDS[1], lines)
+	end
+	-- split: the ticked on top by name, the rest below in the kind's order
+	local on, off = win.onKeys, win.offKeys
+	wipe(on)
+	wipe(off)
+	for _, key in ipairs(lines) do
+		if Has(key) then
+			on[#on + 1] = key
+		else
+			off[#off + 1] = key
+		end
+	end
+	table.sort(on, ByName)
 	local used = { stack = 0, ammo = 0, item = 0 }
 	for _, row in ipairs(win.rows) do
-		row.line = nil
+		row.key = nil
 		row:Hide()
 	end
 	wipe(win.rows)
-	for i = 1, list.n do
-		local key = list.key[i]
+	local y = 0
+	local function Lay(key)
 		local range = RangeOf(key)
 		local pool = win.pools[range]
 		used[range] = used[range] + 1
@@ -1784,51 +2197,84 @@ ListLayout = function()
 			row = NewListRow(range)
 			pool[used[range]] = row
 		end
-		row.line = i
+		row.key = key
 		row:ClearAllPoints()
-		row:SetPoint("TOPLEFT", win.body, "TOPLEFT", 8, -(INTRO_H + (i - 1) * ROW_STEP))
-		row:SetPoint("RIGHT", win.body, "RIGHT", -8, 0)
-		row.label:SetText(EntryName(key))
+		row:SetPoint("TOPLEFT", win.page, "TOPLEFT", 0, -y)
+		row:SetPoint("RIGHT", win.page, "RIGHT", 0, 0)
+		row.label:SetText(RowName(key))
 		if row.hint then
-			row.hint:SetText(HaveText(i))
+			row.hint:SetText(RowHint(key))
 		end
+		MelloUI.Icons.Set(row.icon, RowIcon(key), 24)
+		local n = #win.rows + 1
 		if row.band then
-			row.band:SetShown(i % 2 == 1)   -- (a neutral stripe under every other line)
+			row.band:SetShown(n % 2 == 1)   -- (a neutral stripe under every other row)
 		end
+		local ticked = Has(key) ~= nil
+		row.tick:SetValue(ticked, true)
 		local slider = W.ControlOf(row)
-		if slider and slider.Refresh then
-			slider:Refresh()
+		if slider then
+			slider:SetShown(ticked)
+			if ticked and slider.Refresh then
+				slider:Refresh()
+			end
 		end
 		row:Show()
-		win.rows[#win.rows + 1] = row
+		win.rows[n] = row
+		y = y + ROW_STEP
 	end
-	win.empty:SetShown(list.n == 0)
+	local function Heading(fs, rule)
+		fs:ClearAllPoints()
+		fs:SetPoint("TOPLEFT", win.page, "TOPLEFT", 12, -(y + 8))
+		fs:Show()
+		if rule then
+			rule:ClearAllPoints()
+			rule:SetPoint("TOPLEFT", win.page, "TOPLEFT", 8, -(y + 2))
+			rule:SetPoint("RIGHT", win.page, "RIGHT", -8, 0)
+			rule:Show()
+		end
+		y = y + HEAD_STEP
+	end
+	win.headOn:Hide()
+	win.headOff:Hide()
+	win.rule:Hide()
+	if #on > 0 then
+		Heading(win.headOn)
+		for _, key in ipairs(on) do
+			Lay(key)
+		end
+	end
+	if #off > 0 then
+		if #on > 0 then
+			win.headOff:SetText(query and INTRO.offSearch or INTRO.offList)   -- (a search's are of any level)
+			Heading(win.headOff, win.rule)
+		end
+		for _, key in ipairs(off) do
+			Lay(key)
+		end
+	end
+	-- the page's line over its rows: what a tick does (the pet's diets: what it eats; a search: what it looked for)
+	local intro = INTRO.any
+	if query then
+		intro = string.format(INTRO.search, win.queryText or query)
+	elseif k and k.diets then
+		local eaten = nil
+		for d = 1, #DIETS do
+			if win.eats[d] then
+				eaten = eaten and (eaten .. ", " .. DIETS[d]) or DIETS[d]
+			end
+		end
+		intro = (eaten and ("Your pet eats: " .. eaten .. ". ") or "Call your pet to see what it eats. ") .. INTRO.pet
+	elseif k and k.other then
+		intro = INTRO.other
+	end
+	win.intro:SetText(intro)
+	win.empty:SetText(query and INTRO.found or INTRO.none)
+	win.empty:SetShown(#win.rows == 0)
+	win.pager:SetPageHeight(win.page, max(ROW_STEP, y) + 8)
+	SyncBar()
 	local below = floor(Below() * 100 + 0.5)
-	if win.introBelow ~= below then
-		win.introBelow = below
-		win.intro:SetText("What to keep in your bags. You are reminded when a line runs below " .. below
-			.. "%, and at a shop it is bought back up to the full amount. Drop an item here to add it.")
-	end
-	-- the Add list: the families not on it, then the class's suggestions
-	local values = win.addValues
-	wipe(values)
-	for k = 1, #ORDER do
-		local letter = ORDER:sub(k, k)
-		if letter ~= "r" and not Has(letter) then
-			values[#values + 1] = { value = letter, label = FAMILY[letter].name }
-		end
-	end
-	for _, r in ipairs(REAGENTS[PlayerClass() or ""] or {}) do
-		if not Has(r[1]) then
-			values[#values + 1] = { value = r[1], label = ItemName(r[1]) or ("Item " .. r[1]) }
-		end
-	end
-	if win.add and win.add.Refresh then
-		win.add:Refresh()
-	end
-	-- (the panel's top as the shell's look has it: shell:Inset)
-	local _, top = win.shell:Inset(LIST_EDGE, -LIST_TOP)
-	f:SetHeight(-top + INTRO_H + max(1, list.n) * ROW_STEP + LIST_FOOT + 16)
+	win.foot:SetText(string.format("%d of %d lines on the list. Reminded below %d%%.", list.n, MAX_ENTRIES, below))
 end
 
 -- a count while the window is open: the hints
@@ -1837,8 +2283,8 @@ ListCounted = function()
 		return
 	end
 	for _, row in ipairs(win.rows) do
-		if row.line and row.hint then
-			row.hint:SetText(HaveText(row.line))
+		if row.key ~= nil and row.hint then
+			row.hint:SetText(RowHint(row.key))
 		end
 	end
 end
@@ -1867,14 +2313,68 @@ local ListShown = Shared("OnShow on the Restock List", function()
 	ListLayout()
 end, "script")
 
-local AddGet = function()
-	return nil
-end
-local AddSet = function(value)
-	if M:Add(value) then
-		MelloUI:PlayUISound("check_on")
+
+-- names the client had not loaded yet arrive while a search runs: the matches again on the next frame
+local function Renamed()
+	if win.query and win.frame and win.frame:IsShown() then
+		ListLayout()
 	end
 end
+local NamesArrived = Shared("OnEvent on the Restock List's search (item names)", function()
+	MelloUI.Kit:NextFrame("Restock List search names", Renamed)
+end, "script")
+
+local function Listening(on)
+	local f = win.names
+	if not f then
+		return
+	end
+	if on then
+		f:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+	else
+		f:UnregisterEvent("GET_ITEM_INFO_RECEIVED")
+	end
+end
+
+-- the search box's text: a search in every kind (lower case, trimmed), none when empty
+local SearchChanged = Shared("OnTextChanged on the Restock List's search", function(box)
+	local t = Text(box:GetText()) or ""
+	t = t:match("^%s*(.-)%s*$") or ""
+	local query = t ~= "" and t:lower() or nil
+	if query == win.query then
+		return
+	end
+	win.query, win.queryText = query, t
+	Listening(query ~= nil and win.frame and win.frame:IsShown())
+	win.pager:ScrollTo(0, true)
+	ListLayout()
+end, "script")
+local SearchEscape = Shared("OnEscapePressed on the Restock List's search", function(box)
+	box:SetText("")
+	box:ClearFocus()
+end, "script")
+local SearchEnter = Shared("OnEnterPressed on the Restock List's search", function(box)
+	box:ClearFocus()
+end, "script")
+local ListHidden = Shared("OnHide on the Restock List", function()
+	Listening(false)
+end, "script")
+
+-- a kind picked in the rail: its page, at its top (a search let go)
+local RailPicked = Shared("onSelect of the Restock List's kinds", function(_, key)
+	local searching = win.query ~= nil
+	if key ~= win.kind or searching then
+		win.kind = key
+		win.pager:ScrollTo(0, true)
+		if searching then
+			-- (the search let go here: the box's OnTextChanged then finds nothing changed)
+			win.query, win.queryText = nil, nil
+			Listening(false)
+			win.search:SetText("")
+		end
+		ListLayout()
+	end
+end)
 
 -- Suggested replaces the list, once the player says so in MelloUI's own
 -- dialog (MelloUI:Confirm, Modules/KitWindow.lua: never the game's popup,
@@ -1893,7 +2393,7 @@ local function BuildList()
 	local f = CreateFrame("Frame", "MelloUIRestockList", UIParent)
 	f:SetFrameStrata("DIALOG")
 	f:SetToplevel(true)
-	f:SetSize(LIST_W, 360)
+	f:SetSize(LIST_W, LIST_H)
 	f:EnableMouse(true)
 	f:SetClampedToScreen(true)
 	f:Hide()
@@ -1907,6 +2407,9 @@ local function BuildList()
 		close = true, escape = true, fit = true, sounds = true,
 		mover = { key = "MelloUIRestockList", label = "Restock list", page = "Restock" },
 	})
+	-- the kinds: the configurator's own side list (W.NavRail), in its box
+	win.rail = W.NavRail(f, { width = RAIL_W, rowHeight = 34, iconSize = 22, scroll = false, box = true,
+		skin = win.shell, onSelect = RailPicked })
 	-- the text sits on the dark inner panel (the eye strain rule), placed by
 	-- the look (Lay, below)
 	local body = CreateFrame("Frame", nil, f)
@@ -1916,29 +2419,78 @@ local function BuildList()
 	Perf.SetScript(body, "OnReceiveDrag", ListDrop)
 	Perf.SetScript(body, "OnMouseUp", ListDrop)
 	win.body = body
+	-- the search box over the line (the configurator's own: SearchBoxTemplate made flat, W.FlatSearch)
+	local search = CreateFrame("EditBox", nil, body, "SearchBoxTemplate")
+	search:SetPoint("TOPLEFT", body, "TOPLEFT", 14, -6)
+	search:SetPoint("TOPRIGHT", body, "TOPRIGHT", -10, -6)
+	search:SetHeight(22)
+	search:SetAutoFocus(false)
+	search:SetMaxLetters(40)
+	W.Paint(search, "text", "text")   -- (what is typed, in the palette's text colour)
+	if search.Instructions then
+		search.Instructions:SetText(INTRO.prompt)
+	end
+	Perf.HookScript(search, "OnTextChanged", SearchChanged)
+	Perf.SetScript(search, "OnEscapePressed", SearchEscape)
+	Perf.SetScript(search, "OnEnterPressed", SearchEnter)
+	W.FlatSearch(search)
+	win.search = search
+	win.names = CreateFrame("Frame")
+	Perf.SetScript(win.names, "OnEvent", NamesArrived)
+	Perf.HookScript(f, "OnHide", ListHidden)
 	local intro = Style(W.Text(body, "GameFontHighlight", nil, "text"), "fontText", _G.GameFontHighlight)
-	intro:SetPoint("TOPLEFT", body, "TOPLEFT", 12, -8)
+	intro:SetPoint("TOPLEFT", body, "TOPLEFT", 12, -(SEARCH_H + 6))
 	intro:SetPoint("RIGHT", body, "RIGHT", -12, 0)
+	intro:SetJustifyH("LEFT")
 	win.intro = intro
-	win.empty = Style(W.Text(body, "GameFontHighlight", "Nothing on the list. Add a line below, or drop an item here.", "text"),
+	-- the rows on one page of a pager: its wheel glides
+	win.pager = W.Pager(body)
+	win.pager.scroll:SetPoint("TOPLEFT", body, "TOPLEFT", 4, -INTRO_H)
+	win.pager.scroll:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -(4 + 2 * BAR), 4)
+	-- MelloUI's thin scroll bar beside it (W.ThinScrollBar), in step with the scroll
+	local bar = W.ThinScrollBar(body, BAR)
+	bar:SetPoint("TOPLEFT", win.pager.scroll, "TOPRIGHT", BAR / 2, 0)
+	bar:SetPoint("BOTTOMLEFT", win.pager.scroll, "BOTTOMRIGHT", BAR / 2, 0)
+	bar:Hide()
+	Perf.SetScript(bar, "OnValueChanged", BarDragged)
+	win.bar = bar
+	Perf.hooksecurefunc(win.pager.scroll, "SetVerticalScroll", BarSync)
+	Perf.SetScript(win.pager.scroll, "OnSizeChanged", BarSync)
+	win.page = win.pager:NewPage()
+	-- the two groups' headings and the rule between them (ListLayout places them)
+	win.headOn = Style(W.Text(win.page, "GameFontNormal", INTRO.onList, "selectedTrim"), "fontText", _G.GameFontNormal)
+	win.headOff = Style(W.Text(win.page, "GameFontNormal", INTRO.offList, "selectedTrim"), "fontText", _G.GameFontNormal)
+	win.rule = W.Solid(win.page, "ARTWORK", "border", 0.8)
+	win.rule:SetHeight(1)
+	win.empty = Style(W.Text(body, "GameFontHighlight", INTRO.none, "text"),
 		"fontText", _G.GameFontHighlight)
 	win.empty:SetPoint("TOPLEFT", body, "TOPLEFT", 22, -(INTRO_H + 12))
-	win.add = W.Dropdown(f, 200, AddGet, AddSet, win.addValues, { default = "Add a line", tooltip = "Drink, food, ammunition or your class's reagents." })
+	win.foot = Style(W.Text(f, "GameFontHighlight", nil, "text"), "fontText", _G.GameFontHighlight)
 	win.reset = W.Button(f, "Suggested", 100, win.shell, { onClick = ResetClick })
-	-- the panel and the controls under it on the look's inset (onelook, the
-	-- modern shell: under its strip on the one inset; the painted one: under
-	-- the corner ring), the window's height with them, at every look switch
+	-- the rail, the panel and the controls under them on the look's inset (onelook, the modern shell: under its strip
+	-- on the one inset; the painted one: under the corner ring), at every look switch
 	local function Lay(sh)
 		local edge, top = sh:Inset(LIST_EDGE, -LIST_TOP)
-		body:SetPoint("TOPLEFT", f, "TOPLEFT", edge, top)
+		win.rail.box:ClearAllPoints()
+		win.rail.box:SetPoint("TOPLEFT", f, "TOPLEFT", edge, top)
+		win.rail.box:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", edge, LIST_FOOT)
+		body:SetPoint("TOPLEFT", f, "TOPLEFT", edge + RAIL_W + 8, top)
 		body:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -edge, LIST_FOOT)
-		win.add:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", edge + 4, 18)
+		win.foot:ClearAllPoints()
+		win.foot:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", edge + 4, 24)
 		win.reset:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -(edge + 4), 18)
+		-- (the page a width of its own, as the configurator's and the installer's: the pager's canvas takes the page's
+		-- width when it shows it, and a page held by one point has none -- the rows were laid in a canvas 0 wide, unseen;
+		-- the user's shot, 2026-11-08: the Drink page empty) the body's width less the scroll frame's 4 on each side
+		local pageW = LIST_W - 2 * edge - RAIL_W - 8 - 8 - 2 * BAR   -- (2.1.18: and the scroll bar's room)
+		win.page:SetWidth(pageW)
+		win.pager.canvas:SetWidth(pageW)
 		if f:IsShown() then
 			ListLayout()
 		end
 	end
 	Lay(win.shell)
+	win.pager:Show(win.page, 0, true)
 	win.shell:OnKit(Lay)
 	W.Dress(f, win.shell)
 	return f
@@ -1952,6 +2504,7 @@ function M:OpenList()
 	end
 	f:Show()
 end
+M.listWindow = win   -- (read by the tests: the kind on show, the kinds shown, the rows)
 
 --------------------------------------------------------------------------------
 -- Events

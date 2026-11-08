@@ -1599,8 +1599,15 @@ def build_services(sql, spawns):
 # bundle 0: the player's stock that counts); trainerLevels the levels at which
 # each class has new spells.
 
-FAMILIES = "dfabr"          # drink, food, arrows, bullets, reagents
-FAMILY_STACK = {"d": 20, "f": 20, "a": 200, "b": 200, "r": 20}   # stack size when no table says
+FAMILIES = "dfabr"          # drink, food, arrows, bullets, reagents: the vendor rows' letters (Services reads these)
+# (2.1.18; the user, 2026-11-08: "pick and choose each consumable", a catalogue by kind) restockItems' kinds: the
+# families, then p potions and bandages, e elixirs and flasks, o rogue poisons and their recipes' reagents, s scrolls
+# (their own kind: the user, 2026-11-08, "You have categorized Scrolls under Elixirs?")
+KINDS = "dfabrpeos"
+FAMILY_STACK = {"d": 20, "f": 20, "a": 200, "b": 200, "r": 20, "p": 5, "e": 5, "o": 20, "s": 5}   # stack size when no table says
+POISONS_SKILL = 40          # SkillLine: Poisons (the rogue's recipes)
+ROGUE = 8                   # CLASSES' rogue bit
+DIETS = range(1, 7)         # item_template.FoodType: 1 meat, 2 fish, 3 cheese, 4 bread, 5 fungus, 6 fruit
 # Class reagents, by item: the classes that use them (CLASSES masks).
 REAGENTS = {
     5140: 8,        # Flash Powder: rogue (Vanish)
@@ -1671,20 +1678,62 @@ def sql_tables(path, tables):
     return out
 
 
+_poison_reagents = None
+
+
+def poison_reagents():
+    """The items the rogue's poison recipes take (Forever's SkillLineAbility of Poisons, its SpellReagents)."""
+    global _poison_reagents
+    if _poison_reagents is None:
+        spells = {int(r["Spell"]) for r in db2("SkillLineAbility") if int(r.get("SkillLine") or 0) == POISONS_SKILL}
+        _poison_reagents = set()
+        for r in db2("SpellReagents"):
+            if int(r.get("SpellID") or 0) in spells:
+                for k in range(8):
+                    iid = int(r.get(f"Reagent_{k}") or 0)
+                    if iid > 0:
+                        _poison_reagents.add(iid)
+    return _poison_reagents
+
+
 def item_family(it):
-    """A cmangos item row -> its restock family letter, or None."""
+    """A cmangos item row -> its restock kind letter (KINDS), or None."""
     entry = int(it["entry"])
     if entry in REAGENTS:
         return "r"
     cls, sub, cat = it["class"], it["subclass"], it["spellcategory_1"]
-    if cls == "0" and cat in ("59", "11") and int(it.get("stackable") or 0) > 1:
+    stacks = int(it.get("stackable") or 0) > 1
+    if cls == "0" and cat in ("59", "11") and stacks:
         # food and drink stack; a single one is a quest's (Special Chicken Feed)
         return "d" if cat == "59" else "f"
     if cls == "6" and sub == "2":
         return "a"
     if cls == "6" and sub == "3":
         return "b"
+    if cls == "0" and ((sub == "3" and cat == "4") or (sub == "5" and cat == "150")):
+        return "p"      # potions (the potion cooldown), bandages (First Aid's)
+    if cls == "0" and sub == "3" and cat == "79":
+        return "e"      # elixirs and flasks
+    if cls == "0" and sub == "4":
+        return "s"      # scrolls
+    if cls == "0" and it.get("AllowableClass") == str(ROGUE) and int(it.get("RequiredLevel") or 0) > 0 and stacks:
+        return "o"      # the rogue's poisons
+    if entry in poison_reagents():
+        return "o"      # their vials and reagents
     return None
+
+
+def kind_classes(it, fam):
+    """The class mask a kind's item is for (CLASSES' bits; 0 any): a reagent's REAGENTS, a rogue's poison kind the
+    rogue, else the item's own AllowableClass when it names some classes only."""
+    entry = int(it["entry"])
+    if entry in REAGENTS:
+        return REAGENTS[entry]
+    if fam == "o":
+        return ROGUE
+    every = sum(CLASSES)
+    mask = int(it.get("AllowableClass") or -1)
+    return 0 if mask <= 0 or (mask & every) == every else mask & every
 
 
 def faction_sides():
@@ -1951,11 +2000,23 @@ def build_restock(sql, zones, pages):
             level = int(level or 0)
             stack = FAMILY_STACK[fam]
             bundle = bundle or 1
-        goods[fam].append((iid, level, stack, bundle, REAGENTS.get(iid, 0)))
+        classes = kind_classes(it, fam) if it is not None else REAGENTS.get(iid, 0)
+        goods[fam].append((iid, level, stack, bundle, classes))
     for fam in goods:
         goods[fam].sort(key=lambda g: (g[1], g[0]))
         stats[f"restock goods {fam}"] = len(goods[fam])
         stats[f"restock goods {fam} sold"] = sum(1 for g in goods[fam] if g[3])
+    # (2.1.18) pet food by diet: every item a pet eats (FoodType 1-6), any class's, raw meat and fish too:
+    # { item, diet, item level, stack, bundle }, by diet then item level
+    diet = []
+    for iid, it in items.items():
+        ft = int(it.get("FoodType") or 0)
+        if ft in DIETS and not JUNK.search(it["name"] or "") and not NOT_GOODS.search(it["name"] or ""):
+            bundle = (int(it.get("BuyCount") or 0) or 1) if iid in sold else 0
+            diet.append((iid, ft, int(it.get("ItemLevel") or 0), int(it.get("stackable") or 0) or 20, bundle))
+    diet.sort(key=lambda g: (g[1], g[2], g[0]))
+    goods["diet"] = diet
+    stats["restock pet food"] = len(diet)
 
     # Class trainers: the levels at which each class has new spells, from
     # classic-db's trainers and the cached Wowhead trainer pages (Forever's included).
@@ -2001,13 +2062,59 @@ def lua_str(s):
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
+def restock_block(restock_items):
+    """The data file's restockItems part: its comment, the kinds' goods and the pet food by diet."""
+    out = ["\t-- restock goods by kind (d drink, f food, a arrows, b bullets, r class reagents; p potions and bandages,\n",
+           "\t-- e elixirs and flasks, o rogue poisons and their reagents, s scrolls):\n",
+           "\t-- { item id, required level (0 none), stack size, bundle (items per purchase; 0 when no vendor sells it:\n",
+           "\t-- stock that counts, never bought), classes (class mask as in classes, 0 any) }, by required level;\n",
+           "\t-- a bundle only says some vendor sells it (maybe an event's or a reputation's): buy from the merchant's list.\n",
+           "\t-- diet: pet food, { item id, diet (1 meat, 2 fish, 3 cheese, 4 bread, 5 fungus, 6 fruit), item level,\n",
+           "\t-- stack size, bundle }, by diet and item level\n",
+           "\trestockItems = {\n"]
+    for fam in KINDS:
+        out.append(f"\t\t{fam} = {{\n")
+        for iid, level, stack, bundle, classes in restock_items.get(fam, []):
+            out.append(f"\t\t\t{{{iid},{level},{stack},{bundle},{classes}}},\n")
+        out.append("\t\t},\n")
+    out.append("\t\tdiet = {\n")
+    for iid, ft, ilevel, stack, bundle in restock_items.get("diet", []):
+        out.append(f"\t\t\t{{{iid},{ft},{ilevel},{stack},{bundle}}},\n")
+    out.append("\t\t},\n\t},\n")
+    return "".join(out)
+
+
+RESTOCK_PART = re.compile(r"\t-- restock goods by (?:family|kind).*?\n\trestockItems = \{\n.*?\n\t\},\n(?=\t-- class trainers)", re.S)
+
+
+def restock_only(out_path):
+    """Rewrite only the data file's restockItems part (2.1.18): the rest of the file stays as the last full build
+    left it."""
+    sql = fetch_file(CMANGOS_SQL, os.path.join(CACHE, "ClassicDB.sql.gz"))
+    zones, _ = load_zone_maps()
+    _, _, restock_items, _ = build_restock(sql, zones, load_npc_pages())
+    path = os.path.abspath(out_path)
+    text = open(path, encoding="utf-8", newline="").read()
+    if not RESTOCK_PART.search(text):
+        raise SystemExit("restockItems not found in " + path)
+    text = RESTOCK_PART.sub(lambda m: restock_block(restock_items), text, count=1)
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        fh.write(text)
+    log(f"wrote {path}: restockItems only ({', '.join(f'{k} {len(v)}' for k, v in sorted(restock_items.items()))})")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", default=os.path.join(HERE, "..", "Media", "QuestListData.lua"))
+    ap.add_argument("--restock-only", action="store_true",
+                    help="rewrite only the restockItems part of --out (the rest as the last full build left it)")
     ap.add_argument("--fetch-npcs", action="store_true")
     ap.add_argument("--refresh-npcs", action="store_true")
     ap.add_argument("--store", default=os.path.join(CACHE, "voice_lines.json"))
     args = ap.parse_args()
+    if args.restock_only:
+        restock_only(args.out)
+        return
 
     sql = fetch_file(CMANGOS_SQL, os.path.join(CACHE, "ClassicDB.sql.gz"))
     zones, areas = load_zone_maps()
@@ -2303,17 +2410,9 @@ def main():
             kind, name, sub, side, cont, wx, wy = row[:7]
             extra = "".join("," + lua_str(v) for v in row[7:])
             fh.write(f"\t\t{{{lua_str(kind)},{lua_str(name)},{lua_str(sub)},{side},{cont},{wx},{wy}{extra}}},\n")
-        fh.write("\t},\n\t-- restock goods by family (d drink, f food, a arrows, b bullets, r class reagents):\n")
-        fh.write("\t-- { item id, required level (0 none), stack size, bundle (items per purchase; 0 when no vendor sells it:\n")
-        fh.write("\t-- stock that counts, never bought), classes (class mask as in classes, 0 any) }, by required level;\n")
-        fh.write("\t-- a bundle only says some vendor sells it (maybe an event's or a reputation's): buy from the merchant's list\n")
-        fh.write("\trestockItems = {\n")
-        for fam in FAMILIES:
-            fh.write(f"\t\t{fam} = {{\n")
-            for iid, level, stack, bundle, classes in restock_items.get(fam, []):
-                fh.write(f"\t\t\t{{{iid},{level},{stack},{bundle},{classes}}},\n")
-            fh.write("\t\t},\n")
-        fh.write("\t},\n\t-- class trainers: [class] = { the levels at which a class trainer has new spells }\n\ttrainerLevels = {\n")
+        fh.write("\t},\n")
+        fh.write(restock_block(restock_items))
+        fh.write("\t-- class trainers: [class] = { the levels at which a class trainer has new spells }\n\ttrainerLevels = {\n")
         for cls, lvls in trainer_levels.items():
             fh.write(f"\t\t{cls} = {{ {','.join(str(v) for v in lvls)} }},\n")
         fh.write("\t},\n\t-- flight links: from id, to id, seconds in the air\n\ttaxiPaths = {\n")

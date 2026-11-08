@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.18
+
+- Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many.
+- Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines.
+- Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle.
+
 ## 2.1.17
 
 - Fixed: keys bound in Keybind Mode in place of a default key, such as those of action bar 1, now stay after logging in again.

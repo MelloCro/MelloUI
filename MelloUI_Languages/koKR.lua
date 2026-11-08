@@ -2281,6 +2281,9 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "보충 목록: 이제 검색이 있는 종류별 카탈로그(음료, 음식, 탄약, 물약, 비약, 두루마리, 독, 재료)로, 보관할 아이템을 체크하고 개수를 정합니다.", -- draft
+	["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "보충: 사냥꾼은 먹이 종류별(고기, 생선, 빵, 치즈, 과일, 버섯)로 소환수 먹이를 보관할 수 있으며, 목록은 40줄까지 담습니다.", -- draft
+	["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "수정: MelloUI의 검색창과 입력창의 글자가 가운데가 아니라 다시 왼쪽부터 시작합니다.", -- draft
 	["Fixed: keys bound in Keybind Mode in place of a default key, such as those of action bar 1, now stay after logging in again."] = "수정: 단축키 모드에서 기본 키(예: 행동 단축바 1의 키) 대신 지정한 키가 이제 다시 접속한 뒤에도 유지됩니다.", -- draft
 	["Fixed: inside a battleground, MelloUI's map opens on the battleground's own map, with you and your group on it."] = "수정: 전장 안에서 MelloUI 지도가 해당 전장의 지도로 열리며, 자신과 파티가 표시됩니다.", -- draft
 	["Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames."] = "수정: 죽은 플레이어와 유령의 창 주위에 더 이상 약화 효과나 위협 빛이 남지 않습니다.", -- draft
@@ -2290,13 +2293,6 @@ Lang:Add("koKR", {
 	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "수정: 파티 창, 공격대 창 및 기타 개체창에서 죽은 플레이어와 유령의 생명력 및 자원 바가 이제 비어 있게 표시됩니다.", -- draft
 	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "/mellobug 보고서가 이제 가방 버튼이 어떻게 만들어졌는지도 보여 주어, 게임이 가방 아이템을 차단하는 원인을 찾는 데 도움이 됩니다.", -- draft
 	["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "수정: 바 텍스처를 선택했을 때 대상의 대상과 주시 대상의 대상 생명력 및 자원 바가 더 이상 어둡게 보이지 않습니다.", -- draft
-	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "/mellobug 보고서가 이제 차단된 동작에 이르는 과정을 보여 주어, 게임이 가방 아이템을 차단하는 원인을 찾는 데 도움이 됩니다.", -- draft
-	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "수정: 경비병에게 길을 물으면 이제 그 표시가 MelloUI 지도에 나타납니다.", -- draft
-	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "수정: 종류별 가방 목록 아래쪽에 있는 종류의 설정이 더 이상 잘리지 않습니다. 목록이 함께 늘어납니다.", -- draft
-	["The target of target frame now shows: it appears after your next /reload or login. The Target page has a switch."] = "이제 대상의 대상 프레임이 표시됩니다. 다음 /reload 또는 접속 후에 나타납니다. 대상 페이지에 스위치가 있습니다.", -- draft
-	["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "수정: 기본 스킨에서 귓속말 창이 Lua 오류 없이 열리고 다시 게임 고유의 모습으로 표시됩니다.", -- draft
-	["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "새 기능: 알림 페이지의 초상화에서 분리로 알림 버튼에 자체 위치를 줍니다. 배치 편집에서 옮깁니다.", -- draft
-	["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "수정: 알림 버튼의 글줄과 추가 버튼이 더 이상 화면 밖으로 나가지 않습니다. 공간이 있는 쪽으로 열립니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2696,6 +2692,7 @@ Lang:Add("koKR", {
 -- stale: ["'No reskin, features on' suits this screen."] = "'스킨 없이 기능 켜기'가 이 화면에 맞습니다.", -- draft
 -- stale: ["+ Buff"] = "+ 강화 효과", -- draft
 -- stale: ["+ Debuff (by kind)"] = "+ 약화 효과(종류별)", -- draft
+-- stale: ["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "/mellobug 보고서가 이제 차단된 동작에 이르는 과정을 보여 주어, 게임이 가방 아이템을 차단하는 원인을 찾는 데 도움이 됩니다.", -- draft
 -- stale: ["A Read button on the quest log's details view: the quest's description in the giver's voice (the recorded offer line when a pack has it), then the recorded objectives when the voice pack has them (Quest Objectives). Also /vo read."] = "퀘스트 목록 상세 보기의 읽기 버튼: 제공자의 목소리로 퀘스트 설명(팩에 녹음된 제안 줄이 있으면 그것), 그다음 음성 팩에 있으면 녹음된 목표(퀘스트 목표). /vo read 도 됩니다.", -- draft
 -- stale: ["A Supporters page under Profiles: the people who help keep MelloUI going."] = "프로필 아래 후원자 페이지: MelloUI가 계속 나아가도록 돕는 분들.", -- draft
 -- stale: ["A backdrop round Action Bar 1, merged into one with the other switched-on elements placed next to it. Off: no backdrop, and it joins none."] = "행동 단축바 1 둘레의 배경판, 옆에 놓인 다른 켜진 요소와 하나로 합쳐집니다. 끄기: 배경판 없음, 어디에도 합쳐지지 않음.", -- draft
@@ -2944,9 +2941,11 @@ Lang:Add("koKR", {
 -- stale: ["Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat."] = "수정: 실리더스와 다른 여섯 지역이 더는 지도에서 잘리지 않습니다; 배치 편집의 대화 상자가 최소 대화창 전체를 덮습니다.", -- draft
 -- stale: ["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "수정: 레벨링 애드온이 창이 열리자마자 퀘스트를 수락하거나 완료해도 음성이 재생됩니다.", -- draft
 -- stale: ["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "수정: MelloUI 2.1.9에서 Zygor Guides가 시작되지 않던 문제. 이제 다시 시작됩니다.", -- draft
+-- stale: ["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "수정: 종류별 가방 목록 아래쪽에 있는 종류의 설정이 더 이상 잘리지 않습니다. 목록이 함께 늘어납니다.", -- draft
 -- stale: ["Fixed: after a level-up the micro menu no longer leaves the place you gave it."] = "수정: 레벨이 오른 뒤에도 마이크로 메뉴가 지정한 자리를 벗어나지 않습니다.", -- draft
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "수정: 새 태세나 변신을 배운 뒤 재시작 전까지 전투 프레임이 크게 떨어질 수 있던 문제.", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "수정: 개인 화면의 큰 재사용 대기시간으로 인한 전투 중 오류.", -- draft
+-- stale: ["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "수정: 경비병에게 길을 물으면 이제 그 표시가 MelloUI 지도에 나타납니다.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "수정: 은신, 태세, 변신, 소환수 버튼 클릭. 최소 대화 보기의 대화 글꼴. 기본 스킨의 온전한 체크 표시. 슬라이더 옆 이름표.", -- draft
 -- stale: ["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "수정: 중국어, 한국어, 러시아어 클라이언트에서 떠오르는 전투 문자와 캐릭터 위 이름이 더 이상 네모로 표시되지 않습니다.", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "수정: Oldschool 프레임에서 자원 바가 생명력 바 아래에 작은 간격을 두며, 대상의 자원 바도 생명력 바에 맞춰 정렬됩니다.", -- draft
@@ -2955,7 +2954,9 @@ Lang:Add("koKR", {
 -- stale: ["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "수정: 이름 설정이 이제 최소 대화창 보기와 귓속말 창에서도 적용됩니다.", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "수정: 바로 옆에 있는 가이드 단계의 월드 마커, 퀘스트 리스트의 직업 퀘스트, 던전 정보의 아이템 품질과 반복되는 우두머리.", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "수정: 설치 마법사가 내 설정 일부가 맞지 않을 때 화면이 너무 작다고 하지 않습니다.", -- draft
+-- stale: ["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "수정: 알림 버튼의 글줄과 추가 버튼이 더 이상 화면 밖으로 나가지 않습니다. 공간이 있는 쪽으로 열립니다.", -- draft
 -- stale: ["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "수정: MelloUI 강화 효과 아이콘을 꺼도 레이아웃 편집에서 게임의 강화 효과 바를 다시 옮길 수 있습니다.", -- draft
+-- stale: ["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "수정: 기본 스킨에서 귓속말 창이 Lua 오류 없이 열리고 다시 게임 고유의 모습으로 표시됩니다.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "도적과 표범 변신 드루이드: 대상 생명력 막대 위쪽 가장자리에 다섯 연계 점수를 한 줄로, 쌓기 전에는 비어 있습니다. 이름이 조금 올라가 자리를 만듭니다.", -- draft
 -- stale: ["Force an outline on every light-coloured font. Dark text on parchment (quests, spellbook, dialogs) keeps its original look. MelloUI's own text in the world (notices, combat text, Gains lines) takes its outline from Notices: Outlined Text; this sets only how thick it is."] = "밝은 색 글꼴 모두에 외곽선을 강제로 둡니다. 양피지 위의 어두운 글자(퀘스트, 마법책, 대화)는 원래 모습을 유지합니다. 세상 속 MelloUI 글자(알림, 전투 문자, 획득 줄)는 알림: 외곽선 글자에서 외곽선을 가져오며, 여기서는 두께만 정합니다.", -- draft
 -- stale: ["Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid."] = "프레임 미리보기가 왼쪽에 여유 공간과 함께 놓이고, 플레이어 미리보기는 내 캐릭터를 보여 줍니다. 가짜 공격대는 5~40명 중에서 고릅니다.", -- draft
@@ -3138,6 +3139,7 @@ Lang:Add("koKR", {
 -- stale: ["Names in chat"] = "대화의 이름", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "새 움직임: 큰 재사용 대기시간, 퀘스트 진행, 레벨업, 치명타, 연계 점수, 알림, 지역 이름, 평판 획득; 충격 효과가 대상 개체창에도.", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "새 자원이 막대 앞에서 빛나고 막대가 거기까지 자랍니다. 크게 얻으면 가장자리에서 불꽃이 튑니다(기력의 꾸준한 틱은 아님).", -- draft
+-- stale: ["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "새 기능: 알림 페이지의 초상화에서 분리로 알림 버튼에 자체 위치를 줍니다. 배치 편집에서 옮깁니다.", -- draft
 -- stale: ["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "새 기능: 외형 > 색에 모든 직업, 자원, NPC 평판을 위한 색상환이 생겼습니다.", -- draft
 -- stale: ["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "새 기능: 강화 효과 페이지의 약화 효과 분리: 약화 효과가 자체 위치와 줄을 갖습니다.", -- draft
 -- stale: ["New: an Action Bars switch on the Bars page."] = "새 기능: 바 페이지의 행동 단축바 스위치.", -- draft
@@ -3235,6 +3237,7 @@ Lang:Add("koKR", {
 -- stale: ["Replaces the interface's sounds with MelloUI's own: clicks, windows, bags, gear, vendors and more."] = "인터페이스 소리를 MelloUI 소리로 바꿉니다: 클릭, 창, 가방, 장비, 상인 등.", -- draft
 -- stale: ["Reskin Brightness"] = "스킨 밝기", -- draft
 -- stale: ["Reskin only"] = "스킨만", -- draft
+-- stale: ["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, poisons, reagents): tick each item to keep and set how many."] = "보충 목록: 이제 종류별 카탈로그(음료, 음식, 탄약, 물약, 비약, 독, 재료)로, 보관할 아이템을 체크하고 개수를 정합니다.", -- draft
 -- stale: ["Round borders are sharp at small sizes: the Services buttons' and Round Border styles' rings are solid, not dotted."] = "둥근 테두리가 작은 크기에서도 선명함: 서비스 버튼과 원형 테두리 스타일의 고리가 점선이 아니라 실선입니다.", -- draft
 -- stale: ["Route follows Follow The Arrow, Azeroth Pilot Reloaded, TomTom's arrow and Guidelime through it, as it follows RestedXP. Several guides on? MelloUI asks which to keep."] = "Route가 RestedXP처럼 Follow The Arrow, Azeroth Pilot Reloaded, TomTom 화살표, Guidelime도 따릅니다. 안내서가 여럿 켜져 있나요? MelloUI가 무엇을 남길지 묻습니다.", -- draft
 -- stale: ["Route follows Polestar: its step in the tracker and on the map, one arrow and one route; its own features go first."] = "Route가 Polestar를 따릅니다: 그 단계가 추적기와 지도에, 화살표 하나와 경로 하나; Polestar의 기능이 먼저입니다.", -- draft
@@ -3502,6 +3505,7 @@ Lang:Add("koKR", {
 -- stale: ["The speaker's animated 3D face in the widget. Off: the book."] = "위젯 안 화자의 움직이는 3D 얼굴. 끄기: 책.", -- draft
 -- stale: ["The square map, its zone header and the Services bar in one frame: the zone name on the frame's top rail, and under the map a divider rail named Services over the Services bar (with the row of group buttons, the clock beside the zone name). For the square shape with the window frame or the single rail."] = "사각 지도, 지역 머리글, 서비스 바를 한 테두리에: 지역 이름은 테두리 위 레일에, 지도 아래에는 서비스 바 위로 서비스라는 이름의 구분 레일(그룹 버튼 줄과 함께, 시계는 지역 이름 옆). 창 테두리 또는 단일 레일의 사각 모양용.", -- draft
 -- stale: ["The stance, form and aura bar, and your pet's bar. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "태세, 변신, 오라 바와 소환수 바. 항상: 흐려지지 않음. 전투 중: 전투 밖에서 흐려지고 전투 때 돌아옴. 마우스를 올리면: 늘 흐리고 가리키는 동안 보임.", -- draft
+-- stale: ["The target of target frame now shows: it appears after your next /reload or login. The Target page has a switch."] = "이제 대상의 대상 프레임이 표시됩니다. 다음 /reload 또는 접속 후에 나타납니다. 대상 페이지에 스위치가 있습니다.", -- draft
 -- stale: ["The target's and focus's portrait ring and level circle in gold for an elite, silver for a rare or rare elite and red-bronze for a boss, with a small crest on the ring's top gem: a crown, a silver star, a gold star or a skull. Their target's ring too."] = "대상과 주시 대상의 초상화 고리와 레벨 원을 정예는 금, 희귀나 희귀 정예는 은, 우두머리는 적동으로, 고리 위 보석에 작은 문장과 함께: 왕관, 은별, 금별, 해골. 그 대상의 고리도.", -- draft
 -- stale: ["The text an NPC greets you with when you talk to them."] = "말을 걸면 NPC가 맞이하는 글.", -- draft
 -- stale: ["The text in the middle of the screen: MelloUI's notices, the zone text, the red error messages and the floating combat numbers."] = "화면 가운데 글자: MelloUI 알림, 지역 글자, 빨간 오류 메시지, 떠오르는 전투 숫자.", -- draft

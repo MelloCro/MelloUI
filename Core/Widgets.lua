@@ -2865,9 +2865,29 @@ do
 		Glass(box)
 	end, "script")
 
+	-- (2026-11-08; the user, a shot of the Restock List's search: "why are some search boxes and input boxes texts
+	-- centered? they need to behave normally") a field's text from its left edge: MelloUI's fonts are made at runtime
+	-- (Modules/Fonts.lua's families), and a font made at runtime brings a CENTER of its own where the game's XML fonts
+	-- leave it unset -- an edit box takes it over (the chat's boxes, 2026-10-03: Fonts' Family.EditBoxesLeft). Set as
+	-- the field is made and again after every pass over the fonts (the bus 'fonts'), as the chat's are; a box meant
+	-- centred (a slider's value, W.NumberBox) is never a flat field
+	local flatFields = setmetatable({}, weakKeys)
+	local fieldsHeard = false
+	local function FieldsLeft()
+		for box in pairs(flatFields) do
+			pcall(box.SetJustifyH, box, "LEFT")
+		end
+	end
+
 	function W.FlatField(box)
 		if not box or box.melloField then
 			return box
+		end
+		flatFields[box] = true
+		pcall(box.SetJustifyH, box, "LEFT")
+		if not fieldsHeard then
+			fieldsHeard = true
+			MelloUI:On("fonts", FieldsLeft, "W.FlatField")
 		end
 		KitRep(box, false)   -- (the kit's sweep passes it by: no S1)
 		local span = box:CreateTexture(nil, "BACKGROUND")   -- (the field's span: an empty region)

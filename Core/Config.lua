@@ -174,6 +174,11 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.18", lines = {
+		"Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many.",
+		"Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines.",
+		"Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle.",
+	} },
 	{ version = "2.1.17", lines = {
 		"Fixed: keys bound in Keybind Mode in place of a default key, such as those of action bar 1, now stay after logging in again.",
 		"Fixed: inside a battleground, MelloUI's map opens on the battleground's own map, with you and your group on it.",
@@ -190,15 +195,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.14", lines = {
 		"Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen.",
-	} },
-	{ version = "2.1.13", lines = {
-		"/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags.",
-		"Fixed: asking a guard for directions now puts its marker on MelloUI's map.",
-		"Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them.",
-		"The target of target frame now shows: it appears after your next /reload or login. The Target page has a switch.",
-		"Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again.",
-		"New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout.",
-		"Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room.",
 	} },
 }
 local LINKS = {

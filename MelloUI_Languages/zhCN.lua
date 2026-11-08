@@ -2281,6 +2281,9 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "补给清单：现在是带搜索的按类别目录（饮料、食物、弹药、药水、合剂、卷轴、毒药、材料）：勾选要常备的每件物品并设置数量。", -- draft
+	["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "补给：猎人可以按食性常备宠物食物（肉、鱼、面包、奶酪、水果、蘑菇），清单最多容纳40行。", -- draft
+	["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "修复：MelloUI的搜索框和输入框中的文字重新从左侧开始，而不是居中。", -- draft
 	["Fixed: keys bound in Keybind Mode in place of a default key, such as those of action bar 1, now stay after logging in again."] = "修复：在按键绑定模式中替换默认按键（例如动作条1的按键）所绑定的按键，现在重新登录后仍会保留。", -- draft
 	["Fixed: inside a battleground, MelloUI's map opens on the battleground's own map, with you and your group on it."] = "修复：在战场中，MelloUI 地图会打开该战场自己的地图，并显示你和你的队伍。", -- draft
 	["Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames."] = "修复：死亡玩家和灵魂的框体周围不再残留减益或仇恨发光。", -- draft
@@ -2290,13 +2293,6 @@ Lang:Add("zhCN", {
 	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "修复：小队、团队及其他单位框体现在会将死亡玩家和灵魂的生命条与能量条显示为空。", -- draft
 	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "/mellobug 报告现在还会显示背包按钮的创建方式，便于查明游戏阻止使用背包物品的原因。", -- draft
 	["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "修复：选择条材质时，目标的目标和焦点目标的生命条与能量条不再显示为暗色。", -- draft
-	["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "/mellobug 报告现在会显示导致操作被阻止的过程，便于查明游戏阻止使用背包物品的原因。", -- draft
-	["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "修复：向卫兵问路后，其标记现在会显示在 MelloUI 地图上。", -- draft
-	["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "修复：背包分类列表靠下类别的设置不再被截断，列表会随之变长。", -- draft
-	["The target of target frame now shows: it appears after your next /reload or login. The Target page has a switch."] = "现在会显示“目标的目标”框体：它会在你下次 /reload 或登录后出现。“目标”页面有一个开关。", -- draft
-	["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "修复：使用默认外观风格时，悄悄话窗口打开不再出现 Lua 错误，并恢复游戏自身的外观。", -- draft
-	["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "新增：提醒页面的“从头像分离”让提醒按钮拥有自己的位置，可在“编辑布局”中移动。", -- draft
-	["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "修复：提醒按钮的文字行和额外按钮不再超出屏幕：它们会朝有空间的一侧展开。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2696,6 +2692,7 @@ Lang:Add("zhCN", {
 -- stale: ["'No reskin, features on' suits this screen."] = "“不换肤，开启功能”适合此屏幕。", -- draft
 -- stale: ["+ Buff"] = "+ 增益", -- draft
 -- stale: ["+ Debuff (by kind)"] = "+ 减益（按类型）", -- draft
+-- stale: ["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "/mellobug 报告现在会显示导致操作被阻止的过程，便于查明游戏阻止使用背包物品的原因。", -- draft
 -- stale: ["A Read button on the quest log's details view: the quest's description in the giver's voice (the recorded offer line when a pack has it), then the recorded objectives when the voice pack has them (Quest Objectives). Also /vo read."] = "任务日志详情中的一个朗读按钮：用给予者的声音朗读任务描述（语音包有录制的提供台词时用它），然后在语音包有录音时朗读任务目标（任务目标）。也可用/vo read。", -- draft
 -- stale: ["A Supporters page under Profiles: the people who help keep MelloUI going."] = "配置档下新增支持者页面：帮助 MelloUI 持续发展的人们。", -- draft
 -- stale: ["A backdrop round Action Bar 1, merged into one with the other switched-on elements placed next to it. Off: no backdrop, and it joins none."] = "动作条1周围的底板，与旁边其他已开启的元素合并为一块。关闭：没有底板，也不与任何底板合并。", -- draft
@@ -2944,9 +2941,11 @@ Lang:Add("zhCN", {
 -- stale: ["Fixed: Silithus and six other zones are no longer cut out of the map; Edit Layout's Chat box covers the whole minimal chat."] = "修复：希利苏斯和另外六个区域不再从地图上被裁掉；编辑布局中的聊天框覆盖整个简约聊天。", -- draft
 -- stale: ["Fixed: Voice Over now speaks when a levelling addon accepts or hands in a quest the moment its window opens."] = "修复：练级插件在任务窗口打开时立即接受或交付任务时，现在也会播放语音。", -- draft
 -- stale: ["Fixed: Zygor Guides could not start with MelloUI 2.1.9. It starts again."] = "修复：Zygor Guides 在 MelloUI 2.1.9 下无法启动。现在可以正常启动。", -- draft
+-- stale: ["Fixed: a kind's settings low in the Bags by Kind list are no longer cut off: the list grows with them."] = "修复：背包分类列表靠下类别的设置不再被截断，列表会随之变长。", -- draft
 -- stale: ["Fixed: after a level-up the micro menu no longer leaves the place you gave it."] = "修复：升级后微型菜单不再离开你为它设定的位置。", -- draft
 -- stale: ["Fixed: after learning a new stance or form, a fight could drop to a few frames a second until a restart."] = "修复：学会新姿态或形态后，战斗中帧数可能骤降，直到重启。", -- draft
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "修复：个人显示的重要冷却在战斗中引发的错误。", -- draft
+-- stale: ["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "修复：向卫兵问路后，其标记现在会显示在 MelloUI 地图上。", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "修复：点击潜行、姿态、形态和宠物按钮；极简聊天视图的聊天字体；默认外观的完整勾选标记；滑块旁的标签。", -- draft
 -- stale: ["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "修复：在中文、韩文和俄文客户端上，浮动战斗文字和角色头顶的名字不再显示为方块。", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "修复：Oldschool 框体上的能量条与生命条之间留出小间隙，目标的能量条也与生命条对齐。", -- draft
@@ -2955,7 +2954,9 @@ Lang:Add("zhCN", {
 -- stale: ["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "修复：名称设置现在对精简聊天视图和密语窗口生效。", -- draft
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "修复：引导步骤就在身边时的世界标记；任务列表中的职业任务；地下城信息的物品品质和重复首领。", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "修复：只是你自己的某些设置放不下时，安装向导不再说你的屏幕太小。", -- draft
+-- stale: ["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "修复：提醒按钮的文字行和额外按钮不再超出屏幕：它们会朝有空间的一侧展开。", -- draft
 -- stale: ["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "修复：关闭 MelloUI 的增益图标时，又可以在布局编辑中移动游戏的增益条了。", -- draft
+-- stale: ["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "修复：使用默认外观风格时，悄悄话窗口打开不再出现 Lua 错误，并恢复游戏自身的外观。", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "盗贼以及猎豹形态的德鲁伊：你的五个连击点数排在目标生命条的上沿，攒起来之前是空的。名字会稍微上移让出位置。", -- draft
 -- stale: ["Force an outline on every light-coloured font. Dark text on parchment (quests, spellbook, dialogs) keeps its original look. MelloUI's own text in the world (notices, combat text, Gains lines) takes its outline from Notices: Outlined Text; this sets only how thick it is."] = "强制给每种浅色字体加描边。羊皮纸上的深色文字（任务、法术书、对话）保持原样。MelloUI在世界中的文字（通知、战斗文字、收获行）的描边取自“通知：描边文字”；这里只设置粗细。", -- draft
 -- stale: ["Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid."] = "框体预览位于左侧，四周留有空间；玩家预览显示的是你自己；虚拟团队可选 5 到 40 人。", -- draft
@@ -3138,6 +3139,7 @@ Lang:Add("zhCN", {
 -- stale: ["Names in chat"] = "聊天中的名字", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "新动效：重要冷却、任务进度、升级、暴击、连击点、提醒、区域名、声望获得；冲击效果也作用于目标框体。", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "新获得的能量在条的前方亮起，条再长到那里；大量获得时在边缘迸出火花（能量的稳定恢复不会）。", -- draft
+-- stale: ["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "新增：提醒页面的“从头像分离”让提醒按钮拥有自己的位置，可在“编辑布局”中移动。", -- draft
 -- stale: ["New: Look > Colours has a colour wheel for every class, each power and NPC standings."] = "新增：外观 > 颜色 提供色轮，可设置每个职业、每种能量和NPC声望的颜色。", -- draft
 -- stale: ["New: Separate Debuffs on the Buffs page: your debuffs get their own place and rows."] = "新增：增益页面的“分离减益效果”：你的减益效果拥有自己的位置和行。", -- draft
 -- stale: ["New: an Action Bars switch on the Bars page."] = "新增：动作条页面上的动作条开关。", -- draft
@@ -3235,6 +3237,7 @@ Lang:Add("zhCN", {
 -- stale: ["Replaces the interface's sounds with MelloUI's own: clicks, windows, bags, gear, vendors and more."] = "用 MelloUI 自己的声音替换界面声音：点击、窗口、背包、装备、商人等。", -- draft
 -- stale: ["Reskin Brightness"] = "换肤亮度", -- draft
 -- stale: ["Reskin only"] = "仅换肤", -- draft
+-- stale: ["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, poisons, reagents): tick each item to keep and set how many."] = "补给清单：现在是按类别的目录（饮料、食物、弹药、药水、合剂、毒药、材料）：勾选要常备的每件物品并设置数量。", -- draft
 -- stale: ["Round borders are sharp at small sizes: the Services buttons' and Round Border styles' rings are solid, not dotted."] = "圆形边框在小尺寸下清晰：服务按钮和圆形边框样式的圆环是实心的，不再是点状。", -- draft
 -- stale: ["Route follows Follow The Arrow, Azeroth Pilot Reloaded, TomTom's arrow and Guidelime through it, as it follows RestedXP. Several guides on? MelloUI asks which to keep."] = "Route 像跟随 RestedXP 一样跟随 Follow The Arrow、Azeroth Pilot Reloaded、TomTom 的箭头和 Guidelime。开了多个指南？MelloUI 会问保留哪个。", -- draft
 -- stale: ["Route follows Polestar: its step in the tracker and on the map, one arrow and one route; its own features go first."] = "Route 跟随 Polestar：它的步骤显示在任务追踪和地图上，一个箭头和一条路线；它自己的功能优先。", -- draft
@@ -3502,6 +3505,7 @@ Lang:Add("zhCN", {
 -- stale: ["The speaker's animated 3D face in the widget. Off: the book."] = "小部件中说话者的3D动态脸部。关闭：显示书本。", -- draft
 -- stale: ["The square map, its zone header and the Services bar in one frame: the zone name on the frame's top rail, and under the map a divider rail named Services over the Services bar (with the row of group buttons, the clock beside the zone name). For the square shape with the window frame or the single rail."] = "方形地图、区域标题和服务栏在同一个边框中：区域名在边框上沿石条上，地图下方一条名为“服务”的分隔石条在服务栏上方（含一排分组按钮，时钟在区域名旁）。用于配窗口边框或单石条的方形。", -- draft
 -- stale: ["The stance, form and aura bar, and your pet's bar. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "姿态、形态和光环条，以及你宠物的条。总是：从不淡出。战斗中：脱离战斗时淡出，战斗时回来。鼠标悬停：一直淡出，指向时显示。", -- draft
+-- stale: ["The target of target frame now shows: it appears after your next /reload or login. The Target page has a switch."] = "现在会显示“目标的目标”框体：它会在你下次 /reload 或登录后出现。“目标”页面有一个开关。", -- draft
 -- stale: ["The target's and focus's portrait ring and level circle in gold for an elite, silver for a rare or rare elite and red-bronze for a boss, with a small crest on the ring's top gem: a crown, a silver star, a gold star or a skull. Their target's ring too."] = "目标和焦点的头像圆环和等级圆圈：精英为金色，稀有或稀有精英为银色，首领为红铜色，圆环顶部宝石上有一个小纹章：王冠、银星、金星或骷髅。它们目标的圆环也是。", -- draft
 -- stale: ["The text an NPC greets you with when you talk to them."] = "你与NPC交谈时它问候你的文字。", -- draft
 -- stale: ["The text in the middle of the screen: MelloUI's notices, the zone text, the red error messages and the floating combat numbers."] = "屏幕中央的文字：MelloUI的通知、区域文字、红色错误信息和浮动战斗数字。", -- draft
