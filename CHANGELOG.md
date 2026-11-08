@@ -4,6 +4,9 @@
 
 - Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel.
 - Animations: press Play beside an animation to see it once before you choose.
+- Swing Badge: the gold ring round your weapon fills up as your next swing nears.
+- Personal Display: the Big Cooldowns are square in the display's gold rim, their seconds drawn and coloured as on your debuffs on the nameplates (shown even with Percent And Spell Text off).
+- Personal Display: with Over The Personal Display, the swing badge and the Big Cooldowns share one row on the bars, the badge in the middle and the cooldowns beside it.
 
 ## 2.1.19
 

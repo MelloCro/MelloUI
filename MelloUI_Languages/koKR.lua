@@ -2296,6 +2296,9 @@ Lang:Add("koKR", {
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel."] = "애니메이션: 새 애니메이션 페이지(외형)에 MelloUI의 모든 애니메이션이 모였습니다. 맨 위에 움직임 줄이기가 있고, 재생되는 곳마다 탭이 있습니다: 창, 이름표, 바 및 창, 이동.", -- draft
 	["Animations: press Play beside an animation to see it once before you choose."] = "애니메이션: 애니메이션 옆의 재생을 누르면 선택하기 전에 한 번 볼 수 있습니다.", -- draft
+	["Swing Badge: the gold ring round your weapon fills up as your next swing nears."] = "공격 배지: 다음 공격이 다가올수록 무기를 둘러싼 금색 고리가 채워집니다.", -- draft
+	["Personal Display: the Big Cooldowns are square in the display's gold rim, their seconds drawn and coloured as on your debuffs on the nameplates (shown even with Percent And Spell Text off)."] = "개인 디스플레이: 주요 재사용 대기시간이 디스플레이의 금색 테두리 안 사각형 아이콘으로 표시되며, 초는 이름표의 내 약화 효과와 같은 모양과 색으로 표시됩니다('백분율 및 주문 텍스트'가 꺼져 있어도 표시).", -- draft
+	["Personal Display: with Over The Personal Display, the swing badge and the Big Cooldowns share one row on the bars, the badge in the middle and the cooldowns beside it."] = "개인 디스플레이: '개인 디스플레이 위에'를 켜면 공격 배지와 주요 재사용 대기시간이 바 위의 한 줄을 함께 쓰며, 배지는 가운데, 재사용 대기시간은 그 옆에 놓입니다.", -- draft
 	["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "이름표: 공격 배지가 이름표 미리보기에 표시되며, 크기를 50~200%로 조절할 수 있습니다.", -- draft
 	["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "이름표: 적 이름표의 내 약화 효과에 '내 약화 효과만' 설정이 추가되었습니다(기본값 켜짐).", -- draft
 	["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "이름표: 적 이름표의 내 약화 효과에 더 이상 시계 표시가 나오지 않으며, 숫자는 남은 시간에 따라 색이 바뀌고 5초 미만이면 빨간색이 됩니다.", -- draft
@@ -3209,6 +3212,8 @@ Lang:Add("koKR", {
 -- stale: ["Party Frames (Portraits): indicators for %s"] = "파티 창(초상화): %s 표시기", -- draft
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "파티 개체창: 오른쪽 파티를 위한 가로 뒤집기; 초상화 방식에서 '내 개체창 표시' 수정; 마우스오버 강조가 마우스 아래 개체창을 밝힙니다.", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "허용되면 길드 은행에서 수리비를 냅니다. 길드가 비용을 감당할 수 없으면 내 골드를 씁니다.", -- draft
+-- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a gold line draining under each icon, with the seconds (shown even with Percent And Spell Text off)."] = "개인 디스플레이: 주요 재사용 대기시간이 디스플레이의 금색 테두리 안 사각형 아이콘으로 표시되며, 남은 시간은 각 아이콘 아래에서 줄어드는 금색 선과 초로 표시됩니다('백분율 및 주문 텍스트'가 꺼져 있어도 표시).", -- draft
+-- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a thin line draining inside each icon, with the seconds."] = "개인 디스플레이: 주요 재사용 대기시간이 디스플레이의 금색 테두리 안 사각형 아이콘으로 표시되며, 남은 시간은 아이콘 안에서 줄어드는 가는 선과 초로 표시됩니다.", -- draft
 -- stale: ["Personal Display: the shield column keeps its colours, icons and amount in a fight."] = "개인 디스플레이: 보호막 기둥이 전투 중에도 색, 아이콘, 수치를 유지합니다.", -- draft
 -- stale: ["Personal Display: the shield column keeps its colours, icons and amount; interrupted casts show only on its cast bar."] = "개인 디스플레이: 보호막 기둥이 색, 아이콘, 수치를 유지하고, 차단된 시전은 그 시전 바에만 표시됩니다.", -- draft
 -- stale: ["Pet, their targets, Party portraits"] = "소환수, 그 대상, 파티 초상화", -- draft

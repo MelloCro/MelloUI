@@ -778,15 +778,19 @@ default; its settings on **Unit & Group Frames**' **Personal** frame):
   at. **Follow Camera Zoom** keeps it there as you zoom: closer under your feet when you zoom out, further down when
   you zoom in, never over your character. Turning the camera up or down is not followed. The display hops with you
   when you jump (not with Reduce Motion).
-- **Swing On The Rails:** your swing timer with no bar of its own: in a fight two sparks run out from the middle of
-  the health bar's top rail to its ends, and your swing lands as they reach them (a flash there); an off hand's run
-  along the bottom of the power bar. Shots run on the seam between the health and power bars: cream sparks out while
-  you reload, then a red line grows back from both ends while you aim, and the shot flies as it meets in the middle.
-  Aiming needs you to stand still: while you move, the red ends dim and wait. A wand's shots run out once, no aim. MelloUI's Swing Timers step aside while it is on, and the game's own swing timers
-  stay off.
+- **Swing Badge:** your swing timer with no bar of its own: your weapon in a gold ring on your target's nameplate
+  (with no plate, at the display's left end), the ring filling up as your next swing nears (2.1.20; under Oldschool's
+  painted rim a shade sweeps off the weapon instead); the blow strikes with sun rays, a crit bigger, a dodge or parry
+  bounced back with its word. An off hand has a smaller badge; Auto Shot aims with red chevrons, a wand gathers its
+  motes. **Over The Personal Display** puts it on the display instead: one row on the bars with the Big Cooldowns,
+  the badge in the middle, the off hand's at its lower left, the cooldowns beside it (2.1.20). MelloUI's Swing Timers
+  step aside while it is on, and the game's own swing timers stay off.
 - **Big Cooldowns** (on): the buffs you give yourself on a cooldown -- Shield Wall, Shield Block, Last Stand,
-  Evasion, Ice Block, Divine Shield, Recklessness, Death Wish, Arcane Power, a trinket's -- as round icons above the
-  health bar, centred, their time sweeping round them and their seconds on them, the most important first: an
+  Evasion, Ice Block, Divine Shield, Recklessness, Death Wish, Arcane Power, a trinket's -- as square icons in the
+  display's gold rim above the health bar, centred (with Over The Personal Display beside the swing badge: the first
+  on its right, the next on its left), their seconds on them drawn and coloured as your debuffs' on the nameplates (the
+  same face, size and outline, red under 5 seconds; shown even with Percent And Spell Text off; the rim ember in the
+  last seconds), the most important first: an
   immunity, then damage taken down, more health, block, evasion, the rest. Which spells count comes from the game's
   own spell data, for every class; one you cancel early (its buff gone) ends there. Nothing is drawn on your
   character. **Big Cooldown Size** (Layout, 12 to 40, 16 by default) sizes the icons; their seconds keep the

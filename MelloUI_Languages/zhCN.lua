@@ -2296,6 +2296,9 @@ Lang:Add("zhCN", {
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel."] = "动画：新的动画页面（外观）汇集了MelloUI的所有动画，顶部是减少动态效果，每个播放位置各有一个标签：框体、姓名板、动作条与窗口、旅行。", -- draft
 	["Animations: press Play beside an animation to see it once before you choose."] = "动画：点击动画旁边的播放，在选择之前先看一次。", -- draft
+	["Swing Badge: the gold ring round your weapon fills up as your next swing nears."] = "攻击徽章：随着下一次攻击临近，环绕你武器的金色圆环会逐渐填满。", -- draft
+	["Personal Display: the Big Cooldowns are square in the display's gold rim, their seconds drawn and coloured as on your debuffs on the nameplates (shown even with Percent And Spell Text off)."] = "个人显示：重要冷却显示为个人显示金色边框中的方形图标，秒数的字体与颜色与姓名板上你的减益效果相同（即使关闭“百分比和法术文字”也会显示）。", -- draft
+	["Personal Display: with Over The Personal Display, the swing badge and the Big Cooldowns share one row on the bars, the badge in the middle and the cooldowns beside it."] = "个人显示：开启“在个人显示上方”后，攻击徽章和重要冷却共用血条上方的一行，徽章居中，冷却在其两侧。", -- draft
 	["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "姓名板：攻击徽章会显示在姓名板预览中，并可在50%到200%之间调整大小。", -- draft
 	["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "姓名板：敌方姓名板上的你的减益效果新增“只显示我的减益”设置（默认开启）。", -- draft
 	["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "姓名板：敌方姓名板上你的减益效果不再显示时钟转圈，数字按剩余时间着色，少于5秒时变为红色。", -- draft
@@ -3209,6 +3212,8 @@ Lang:Add("zhCN", {
 -- stale: ["Party Frames (Portraits): indicators for %s"] = "小队框体（头像）：%s的指示器", -- draft
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "小队框体：“水平翻转”适合右侧的小队；修复了头像样式下“显示你自己”；鼠标悬停高亮点亮鼠标下的框体。", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "允许时从公会银行支付修理费。公会无法支付时改用你自己的金币。", -- draft
+-- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a gold line draining under each icon, with the seconds (shown even with Percent And Spell Text off)."] = "个人显示：重要冷却显示为个人显示金色边框中的方形图标，剩余时间是每个图标下方逐渐缩短的金色线条，并显示秒数（即使关闭“百分比和法术文字”也会显示）。", -- draft
+-- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a thin line draining inside each icon, with the seconds."] = "个人显示：重要冷却显示为个人显示金色边框中的方形图标，剩余时间是图标内部逐渐缩短的细线，并显示秒数。", -- draft
 -- stale: ["Personal Display: the shield column keeps its colours, icons and amount in a fight."] = "个人显示：护盾栏在战斗中保持颜色、图标和数值。", -- draft
 -- stale: ["Personal Display: the shield column keeps its colours, icons and amount; interrupted casts show only on its cast bar."] = "个人显示：护盾栏保持颜色、图标和数值；被打断的施法只显示在它的施法条上。", -- draft
 -- stale: ["Pet, their targets, Party portraits"] = "宠物、它们的目标、小队头像", -- draft

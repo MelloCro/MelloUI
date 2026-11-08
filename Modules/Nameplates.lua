@@ -2763,6 +2763,7 @@ do
 		NAME = "Defias Pillager", LEVEL = "17",
 		CC = "Interface\\Icons\\Ability_Sap",
 		WEAPON = "Interface\\Icons\\INV_Sword_04",   -- (2.1.19: the swing badge's weapon)
+		SWING_FILL = 0.6,   -- (2.1.20: how far its ring is filled -- SwingBadge.SampleFill)
 		-- (2.1.19: the numbers coloured by the time left, as the plates' rows -- Rupture's under 5 s, red)
 		DEBUFFS = { { "Interface\\Icons\\Ability_Rogue_Garrote", "12", 12 }, { "Interface\\Icons\\Ability_Rogue_Rupture", "4", 4 } },
 		-- the game's (NamePlateConstants; the fallbacks its values on this client)
@@ -2979,6 +2980,9 @@ do
 		if swing then
 			f.swing:SetScale(k)
 			MelloUI.Widgets.RoundIconRefit(f.swing)
+			if sb.SampleFill then
+				sb.SampleFill(f.swing, Stage.SWING_FILL)   -- (2.1.20: its ring as a fight's, filled part of the way)
+			end
 			f.swing:ClearAllPoints()
 			f.swing:SetPoint("LEFT", f.level, "RIGHT", gap, 0)   -- (in its own units: the plate's gap, scaled with it)
 		end

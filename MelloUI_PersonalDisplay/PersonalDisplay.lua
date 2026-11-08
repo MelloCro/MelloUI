@@ -82,6 +82,9 @@ local T = {
 	-- gap between them, how far over the bar's painted top, at most this many; one lasting "until used" with no aura of
 	-- it seen, ended after this long
 	cdIcon = 16, cdGap = 3, cdLift = 2, cdMax = 4, cdUntilUsed = 30,
+	-- (2.1.20, the crest) a square icon's gilded rim past its edges, its picture's crop (the game's icons' own border
+	-- off), the gap between the swing badge and the cooldowns beside it
+	cdRim = 1.5, cdCrop = 0.08, crestGap = 3,
 	-- (1.2.0, animations round 3) the icons' motion: the pop-in, the row's glide, the end's flash and shrink, and how
 	-- long before its end an icon turns ember
 	cdPop = 0.32, cdGlide = 0.25, cdEnd = 0.3, cdEmber = 1.5,
@@ -3629,14 +3632,6 @@ end
 -- its word in the display's Text Font
 --------------------------------------------------------------------------------
 
--- a cooldown sweep's call, where this client has it (each set once, at the sweep's making: Big Cooldowns')
-local function Try(frame, method, ...)
-	local fn = frame[method]
-	if type(fn) == "function" then
-		pcall(fn, frame, ...)
-	end
-end
-
 SwingOn = function()
 	return On() and Db().swing ~= false
 end
@@ -3650,8 +3645,9 @@ function Host.Over()
 end
 
 -- the two at the display's left end, the off hand's left of the main one (the strike toward the display); (2.1.19)
--- Over The Personal Display: centred above the health bar at the Swing Badge Size, over the Big Cooldowns' row while
--- that is on (its icons stand centred on the bar's top), the off hand's right of it
+-- Over The Personal Display: centred above the health bar at the Swing Badge Size; (2.1.20, the crest -- the user's
+-- pick D of 2026-11-08) on the Big Cooldowns' row, in its middle, standing where they stand (Cds.X lays them beside
+-- it), the off hand's small one at its lower left -- the row keeps its width, nothing climbs toward your character
 function Host.Here(big, small)
 	local ui = S.ui
 	if not ui then
@@ -3663,15 +3659,17 @@ function Host.Here(big, small)
 		local k = (SB.PlateScale and SB.PlateScale()) or 1
 		SB.Attach(big, ui.float, level, k)
 		SB.Attach(small, ui.float, level, k)
-		local db = Db()
-		local over = T.cdLift + T.badgeGap
-		if db.cooldowns ~= false then
-			over = over + math.max(12, math.min(40, Num(db.cdSize) or T.cdIcon)) + T.cdGap
-		end
+		local over = Dress.Reach(ui.health) + T.cdLift
 		big:ClearAllPoints()
 		big:SetPoint("BOTTOM", fill, "TOP", 0, over / k)
 		small:ClearAllPoints()
-		small:SetPoint("LEFT", big, "RIGHT", 3, 0)
+		small:SetPoint("CENTER", big, "BOTTOMLEFT", SB.T.badge * 0.12, SB.T.badge * 0.12)
+		small:SetFrameLevel(big:GetFrameLevel() + 6)
+		-- (the badge's size changed -- Swing Badge Size --: the cooldowns beside it laid again)
+		if S.crestK ~= k then
+			S.crestK = k
+			Cds.Refresh()
+		end
 		return
 	end
 	local k = T.badgeHere / SB.T.badge
@@ -3934,7 +3932,13 @@ end
 -- client's own spell data, Tools/personal_cooldowns.py: immunity, fortify, more health, block, evasion, offence),
 -- begun by your own cast (its spell ID plain; how long from the data), ended by its time or by its aura going (an aura
 -- of its kind seen just after the cast is its own). Above the health bar, centred, every one's icon with the game's
--- sweep and its seconds (the engine's timer text), the most important kind first (an immunity, offence last). Nothing
+-- sweep and its seconds (the engine's timer text), the most important kind first (an immunity, offence last).
+-- (2.1.20; the user's picks of 2026-11-08, BuildData/output/swing_cooldowns_sketch: "D", "Square", and seen in game
+-- the same day: "scrap the duration bar, just make sure that the duration text is looking the same as it does on the
+-- debuffs") each icon square in the gilded rim, its seconds the nameplate debuffs' own -- their bare seconds, their
+-- colours by the time left, their face, size and outline (Auras' M.TimeFont) -- shown whatever Percent And Spell Text
+-- says (that switch had hidden them); with Over The Personal Display the crest: one row on the bar, the swing badge in its
+-- middle and the cooldowns beside it, the first on its right, then its left, in turn (Cds.X). Nothing
 -- drawn on your character (the user, 2026-10-12: "lets scrap this idea of those visual cooldown effects on my
 -- character ... the only thing i like to keep are the Big Cooldown Icons above the Personal Resource Healthbar").
 -- Nothing per frame in Lua; nothing made at login (each icon the first time one is needed, then kept).
@@ -4098,31 +4102,46 @@ function Cds.Aura(info)
 	end
 end
 
--- an icon (made the first time one is needed, kept, used again): the spell's icon in the round rim, the game's sweep
--- over it, its seconds on top, its light (the ring's pop and the end's flash)
+-- an icon (made the first time one is needed, kept, used again): (2.1.20) the spell's icon square in the gilded rim
+-- (the display's own, W.RimArt; an ember rim over it for the last seconds), its seconds on top as the nameplate
+-- debuffs' (the engine counts them on a hidden timer bar), its light (the pop's ring and the end's flash)
+function Cds.SetIcon(ic, tex)
+	ic.icon:SetTexture(tex)
+end
+
 function Cds.Make()
-	local ic = W.RoundIcon(S.ui.float, T.cdIcon, nil)
+	local ic = CreateFrame("Frame", nil, S.ui.float)
+	ic:SetSize(T.cdIcon, T.cdIcon)
 	ic:EnableMouse(false)   -- (the pointer passes through the display to the world)
-	ic:SetKit(W.KitFor("unitframes"))   -- (0.25.0: MelloUI's ring unless Oldschool dresses the frames)
-	local sweep = CreateFrame("Cooldown", nil, ic, "CooldownFrameTemplate")
-	sweep:SetAllPoints(ic.icon)
-	Try(sweep, "SetSwipeTexture", "Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
-	Try(sweep, "SetDrawEdge", false)
-	Try(sweep, "SetHideCountdownNumbers", true)
-	Try(sweep, "SetReverse", true)
-	sweep:EnableMouse(false)
-	ic.sweep = sweep
+	ic.icon = ic:CreateTexture(nil, "ARTWORK")
+	ic.icon:SetAllPoints(ic)
+	ic.icon:SetTexCoord(T.cdCrop, 1 - T.cdCrop, T.cdCrop, 1 - T.cdCrop)
+	ic.SetIcon = Cds.SetIcon
+	local rim = CreateFrame("Frame", nil, ic)
+	rim:SetPoint("TOPLEFT", ic, "TOPLEFT", -T.cdRim, T.cdRim)
+	rim:SetPoint("BOTTOMRIGHT", ic, "BOTTOMRIGHT", T.cdRim, -T.cdRim)
+	rim:SetFrameLevel(ic:GetFrameLevel() + 3)
+	rim.art = rim:CreateTexture(nil, "OVERLAY")
+	rim.art:SetAllPoints(rim)
+	W.RimArt(rim.art, T.cdRim)
+	rim.ember = rim:CreateTexture(nil, "OVERLAY", nil, 1)
+	rim.ember:SetAllPoints(rim)
+	W.RimArt(rim.ember, T.cdRim, true)
+	rim.ember:Hide()
+	ic.rim = rim
 	local top = CreateFrame("Frame", nil, ic)
 	top:SetAllPoints(ic)
-	top:SetFrameLevel(sweep:GetFrameLevel() + 1)
+	top:SetFrameLevel(ic:GetFrameLevel() + 2)
 	local timer = CreateFrame("StatusBar", nil, top)
 	timer:SetAlpha(0)   -- (its seconds only: the engine counts them)
 	ic.timer = timer
 	local secs = top:CreateFontString(nil, "OVERLAY")
-	StyleText(secs, T.text - 1)
+	Cds.TimeFont(secs, T.cdIcon)
+	secs:SetTextColor(1, 1, 1)   -- (a client without the time-left colours)
 	secs:SetPoint("CENTER", ic, "CENTER", 0, 0)
 	ic.top, ic.secs = top, secs
-	ic.timed = Anim:TimerText(secs, timer)
+	-- (2.1.20: the nameplate debuffs' bare seconds and colours by the time left)
+	ic.timed = Anim:TimerText(secs, timer, { formatter = Anim:RawSeconds(), colours = Anim:TimeLeftColours() })
 	ic.flare = Spark(top, "OVERLAY", 7, "glow_white.tga", SB.GOLD)
 	ic.flare:SetPoint("CENTER", ic, "CENTER", 0, 0)
 	ic.flare:SetSize(T.cdIcon * 2.2, T.cdIcon * 2.2)
@@ -4159,16 +4178,24 @@ function Cds.Release(e)
 	S.cdSpare[#S.cdSpare + 1] = ic
 end
 
--- an icon in ember (its last seconds) or back to its own look
+-- (2.1.20) an icon's seconds in the nameplate debuffs' face, size and outline for its size (on the icon's text layer,
+-- which keeps the display's units: the icon's size on screen)
+function Cds.TimeFont(fs, size)
+	local A = MelloUI.modules.Auras
+	if A and A.TimeFont then
+		A.TimeFont(fs, size)
+	else
+		StyleText(fs, T.text - 1)
+	end
+end
+
+-- an icon in ember (its last seconds) or back to its own look: (2.1.20) the ember rim over the gilded one (its seconds
+-- keep the debuffs' colours by the time left: red by then)
 function Cds.Ember(ic, on)
 	local c = on and MelloUI.Meaning.personalLow or nil
-	local rim = ic.plainRim
+	ic.rim.ember:SetShown(c ~= nil)
 	if c then
-		rim:SetVertexColor(c[1], c[2], c[3])
-		ic.secs:SetTextColor(c[1], c[2], c[3])
-	else
-		rim:SetVertexColor(1, 1, 1)
-		StyleText(ic.secs, T.text - 1)
+		ic.rim.ember:SetVertexColor(c[1], c[2], c[3])
 	end
 end
 
@@ -4210,11 +4237,11 @@ function Cds.Place(ic)
 	ic.x = x
 	local k = ic.k
 	ic:SetScale(k * sc)
-	W.RoundIconRefit(ic)   -- (its ring sharp at every step of the pop and the end)
 	ic.top:SetScale(1 / k)
 	ic:SetAlpha(alpha)
 	ic:ClearAllPoints()
-	ic:SetPoint("BOTTOM", S.ui.health.strip.fill, "TOP", x / sc, ic.above / (k * sc) + T.cdLift / sc)
+	-- (2.1.20: its rim's depth under it too, so the rim stands on the bar's top, never over it)
+	ic:SetPoint("BOTTOM", S.ui.health.strip.fill, "TOP", x / sc, ic.above / (k * sc) + (T.cdLift + T.cdRim) / sc)
 	ic.flare:SetAlpha(flare)
 end
 
@@ -4246,6 +4273,27 @@ end
 -- user's video of 2026-10-12: "i need a slider to resize the Big Cooldown icons above my HP bar") Each icon scaled
 -- from its made size, its rim, sweep and the gap with it; its seconds kept at the display's text size (over a larger
 -- icon they fit inside it, not over the next one's), the row's place over the bar unchanged
+-- (2.1.20, the crest) the swing badge's half width on the row, in the display's units, while the crest holds it (Over
+-- The Personal Display, the swing badge on), else nil: the row centred as before
+function Cds.Crest()
+	if not (Db().swingOver == true and SwingOn() and SB and SB.T and SB.PlateScale) then
+		return nil
+	end
+	return SB.T.badge * SB.PlateScale() / 2
+end
+
+-- the i-th of n icons' place on the row (its own units: Big Cooldown Size scales it): centred, or (the crest) beside
+-- the badge -- the first on its right, the second on its left, and so on
+function Cds.X(i, n, k)
+	local step = T.cdIcon + 2 * T.cdRim + T.cdGap
+	local half = Cds.Crest()
+	if not half then
+		return (i - (n + 1) / 2) * step
+	end
+	local slot, side = math.floor((i - 1) / 2), (i % 2 == 1) and 1 or -1
+	return side * ((half + T.crestGap) / k + T.cdIcon / 2 + T.cdRim + slot * step)
+end
+
 function Cds.Icons()
 	local ui, list = S.ui, S.cdOrder
 	local n = math.min(#list, T.cdMax)
@@ -4259,7 +4307,7 @@ function Cds.Icons()
 			Cds.Release(e)
 		else
 			local ic = e.icon
-			local x = (i - (n + 1) / 2) * (T.cdIcon + T.cdGap)
+			local x = Cds.X(i, n, k)
 			if not ic then
 				ic = Cds.Take()
 				e.icon = ic
@@ -4277,13 +4325,11 @@ function Cds.Icons()
 				end
 			end
 			ic.k, ic.above = k, above
+			Cds.TimeFont(ic.secs, T.cdIcon * k)   -- (2.1.20: the debuffs' size for its size, their face as it is now)
 			if e.dur > 0 then
-				Try(ic.sweep, "SetCooldown", e.start, e.dur)
-				ic.sweep:Show()
-				Anim:Timer(ic.timer, e.ends - now, false)
-				ic.secs:SetShown(ic.timed and Db().text ~= false and true or false)
+				Anim:Timer(ic.timer, e.ends - e.start, false, e.start)
+				ic.secs:SetShown(ic.timed and true or false)   -- (2.1.20: not Percent And Spell Text's)
 			else
-				ic.sweep:Hide()
 				Anim:StopTimer(ic.timer)
 				ic.secs:Hide()
 			end
@@ -5078,11 +5124,13 @@ function M:OnSettingChanged(key, _, db)
 	elseif key == "swing" then
 		Events(true)   -- (the swing badge's host or not)
 		HoldGameSwing()
+		Cds.Refresh()   -- (2.1.20: the crest's middle kept for the badge, or not)
 	elseif key == "swingOver" then
-		-- (2.1.19) the badge laid again: over the display or on the plate
+		-- (2.1.19) the badge laid again: over the display or on the plate; (2.1.20) the cooldowns beside it, or centred
 		if SB and SB.Lay then
 			SB.Lay()
 		end
+		Cds.Refresh()
 	elseif key == "shield" then
 		if Db().shield == false then
 			ShieldOff()
@@ -5120,10 +5168,6 @@ function M:OnSettingChanged(key, _, db)
 		for fs, size in pairs(S.texts) do
 			StyleText(fs, size)
 		end
-	end
-	-- (2.1.19) the badge over the display stands over the Big Cooldowns' row: laid again when that changes
-	if (key == "cooldowns" or key == "cdSize") and Db().swingOver and SB and SB.Lay then
-		SB.Lay()
 	end
 end
 

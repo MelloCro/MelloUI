@@ -162,17 +162,31 @@ end
 -- the icon, the stacks a little smaller, the game's number face, outlined
 local texts = setmetatable({}, { __mode = "k" })   -- [button] = { time, count }
 
+-- (one look C11: their own face, Buff Numbers Font; Shared the game's number face)
+local function NumberFace()
+	local db = M.db or MelloUI:GetModuleDB("Auras")
+	return MelloUI:FaceOf(db and db.textFont)
+		or NumberFontNormal and NumberFontNormal.GetFont and NumberFontNormal:GetFont() or "Fonts\\ARIALN.TTF"
+end
+
+-- (2.1.20) an icon's time in the middle of it, as the rows draw it -- the face, its size for the icon's, the outline:
+-- the one rule, the Personal Display's Big Cooldowns' too (the user, 2026-11-08: "the duration text is looking the
+-- same as it does on the debuffs")
+function M.TimeFont(fs, size)
+	Try(fs.SetFont, fs, NumberFace(), math.max(8, math.floor(size * 0.46 + 0.5)), "OUTLINE")
+end
+
 local function SizeTexts(button, size)
 	local t = texts[button]
 	if not t then
 		return
 	end
-	-- (one look C11: their own face, Buff Numbers Font; Shared the game's number face)
-	local face = MelloUI:FaceOf(M.db.textFont)
-		or NumberFontNormal and NumberFontNormal.GetFont and NumberFontNormal:GetFont() or "Fonts\\ARIALN.TTF"
-	local below = t.below
-	Try(t.time.SetFont, t.time, face, math.max(8, math.floor((below and 11 or size * 0.46) + 0.5)), "OUTLINE")
-	Try(t.count.SetFont, t.count, face, math.max(8, math.floor(size * 0.4 + 0.5)), "OUTLINE")
+	if t.below then
+		Try(t.time.SetFont, t.time, NumberFace(), 11, "OUTLINE")
+	else
+		M.TimeFont(t.time, size)
+	end
+	Try(t.count.SetFont, t.count, NumberFace(), math.max(8, math.floor(size * 0.4 + 0.5)), "OUTLINE")
 end
 
 -- Aura Border (user, 2026-09-23: one border per kind for every window, UI

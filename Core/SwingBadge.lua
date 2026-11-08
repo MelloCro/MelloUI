@@ -8,8 +8,10 @@
 -- system for everyone: the Personal Display's Swing Badge and the Swing Timers both wear it (their bars retired), one
 -- at a time -- the Personal Display's while it shows the badge, else the Swing Timers'.
 --
--- Your weapon in the gold ring (W.RoundIcon), the game's own sweep over it (its shade turning off as the next swing
--- nears: the engine counts it), on your target's plate right of its level box -- the off hand's smaller one beside it,
+-- Your weapon in the gold ring (W.RoundIcon), the time to the next swing the ring filling round it (2.1.20; the user's
+-- pick of 2026-11-08, BuildData/output/swing_cooldowns_sketch: "The ring fills" -- the game's own sweep drawn with the
+-- ring's art, its lit part growing: the engine counts it; under Oldschool's painted rim the sweep's shade over the
+-- weapon as before), on your target's plate right of its level box -- the off hand's smaller one beside it,
 -- away from the bar -- or, with no plate for your target (nameplates off, the target off screen), at the host's own
 -- place: the Personal Display's left end, the Swing Timers' mover above the cast bar. The timing is the client's alone
 -- (PLAYER_SWING: its seconds to the next swing, the hand): nothing counted here. The motion (Anim:Drive: Lua only while
@@ -79,6 +81,8 @@ local T = SB.T
 -- swing types of PLAYER_SWING
 SB.ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\"
 SB.ROUND = "Interface\\CHARACTERFRAME\\TempPortraitAlphaMask"
+SB.RING = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\ring_gold"   -- (2.1.20: the ring that fills)
+SB.RING_DIM = 0.35   -- (the ring's alpha under the part still to fill)
 SB.WHITE = "Interface\\Buttons\\WHITE8X8"
 SB.GOLD, SB.STEEL, SB.ARCANE = { 1, 0.8, 0.35 }, { 0.75, 0.8, 0.9 }, { 0.78, 0.67, 1 }
 SB.PLAIN = { 1, 1, 1 }
@@ -164,6 +168,7 @@ function Badge.Make(small)
 	Try(sweep, "SetSwipeTexture", SB.ROUND)
 	Try(sweep, "SetDrawEdge", false)
 	Try(sweep, "SetHideCountdownNumbers", true)
+	Try(sweep, "SetDrawBling", false)   -- (2.1.20: the blow has its own light)
 	sweep:EnableMouse(false)
 	b.sweep = sweep
 	local fx = CreateFrame("Frame", nil, b)
@@ -362,13 +367,66 @@ function Badge.Weapon(b, hand)
 	b.kind = SB.STAB[sub] and "stab" or "chop"
 end
 
--- a hand's run: its badge shown with its weapon, the sweep over the `seconds` to the next swing, the wind-up (a
--- wand: its motes) set for its last share
+-- (2.1.20) the sweep's look for the ring the badge wears now: the plain ring fills (the sweep the ring's own art over
+-- the whole ring, the elapsed share lit -- reversed -- over the ring dimmed), the kit's painted rim keeps the shade
+-- over the weapon (its rim is no ring to fill). Set each run (a skin's switch may have laid the ring anew)
+function Badge.Look(b)
+	local ring, sweep = b.ring, b.sweep
+	local fill = not ring.kitLaid
+	ring.plainRim:SetAlpha(fill and SB.RING_DIM or 1)
+	if b.fill == fill then
+		return
+	end
+	b.fill = fill
+	sweep:ClearAllPoints()
+	if fill then
+		sweep:SetAllPoints(ring)
+		Try(sweep, "SetSwipeTexture", SB.RING)
+		Try(sweep, "SetSwipeColor", 1, 1, 1, 1)
+		Try(sweep, "SetReverse", true)
+	else
+		sweep:SetAllPoints(ring.icon)
+		Try(sweep, "SetSwipeTexture", SB.ROUND)
+		Try(sweep, "SetSwipeColor", 0, 0, 0, 0.8)
+		Try(sweep, "SetReverse", false)
+	end
+end
+
+-- (2.1.20) a ring that is no badge -- the nameplate preview's sample (Modules/Nameplates.lua's stage) -- worn as a
+-- badge's is in a fight: the plain ring dimmed, its gold filled `share` of the way and held there (Cooldown:Pause; a
+-- client without it fills on to the end); the kit's painted rim whole, nothing over it
+function SB.SampleFill(ring, share)
+	local fill = ring.melloFill
+	if not fill then
+		fill = CreateFrame("Cooldown", nil, ring, "CooldownFrameTemplate")
+		fill:SetAllPoints(ring)
+		fill:EnableMouse(false)
+		Try(fill, "SetSwipeTexture", SB.RING)
+		Try(fill, "SetSwipeColor", 1, 1, 1, 1)
+		Try(fill, "SetReverse", true)
+		Try(fill, "SetDrawEdge", false)
+		Try(fill, "SetDrawBling", false)
+		Try(fill, "SetHideCountdownNumbers", true)
+		ring.melloFill = fill
+	end
+	local plain = not ring.kitLaid
+	ring.plainRim:SetAlpha(plain and SB.RING_DIM or 1)
+	fill:SetShown(plain)
+	if plain then
+		Try(fill, "SetCooldown", GetTime() - SB.SAMPLE_SPAN * share, SB.SAMPLE_SPAN)
+		Try(fill, "Pause")
+	end
+end
+SB.SAMPLE_SPAN = 10
+
+-- a hand's run: its badge shown with its weapon, the ring filling over the `seconds` to the next swing (Badge.Look),
+-- the wind-up (a wand: its motes) set for its last share
 function Badge.Run(hand, seconds)
 	local b = Badge.For(hand)
 	b.hand = hand
 	Badge.Weapon(b, hand)
 	Badge.Place()
+	Badge.Look(b)
 	Try(b.sweep, "SetCooldown", GetTime(), seconds)
 	b.running = true
 	Anim:Stop(b, "alpha")

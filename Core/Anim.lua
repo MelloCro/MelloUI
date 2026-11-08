@@ -1777,11 +1777,14 @@ end
 --       duration object the game hands over (C_LossOfControl's): its span
 --       may be secret -- the engine reads it, Lua never does. Refused (or no
 --       object): false, the bar left as it was
---   MelloUI.Anim:TimerText(fontString, bar) -> true when bound
+--   MelloUI.Anim:TimerText(fontString, bar[, opts]) -> true when bound
 --       the font string shows the seconds left of the bar's timer, one
 --       decimal rounded up, written by the engine every 0.1 s at most; ""
 --       once it has run out or is stopped. Bound once: it follows every
---       Timer on that bar after.
+--       Timer on that bar after. (2.1.20) opts: { formatter = a numeric
+--       formatter (Anim:RawSeconds': the nameplate debuffs' bare seconds),
+--       colours = Anim:TimeLeftColours() (their colours by the time left,
+--       the engine's text colour curve) }
 --   MelloUI.Anim:StopTimer(bar[, full])   its timer stopped, the bar empty
 --       (full: full; 1.2.0, a number: that share), its texts ""
 --   MelloUI.Anim:RawSeconds() -> the bare-seconds formatter, or nil
@@ -1997,7 +2000,7 @@ do
 		Texts(bar, nil)
 	end
 
-	function Anim:TimerText(fs, bar)
+	function Anim:TimerText(fs, bar, opts)
 		if type(fs) ~= "table" or type(bar) ~= "table" or bindingOf[fs] then
 			return bindingOf[fs] ~= nil
 		end
@@ -2007,7 +2010,8 @@ do
 			and enum.NumericRuleFormatRounding) then
 			return false
 		end
-		if not formatter then
+		local made = opts and opts.formatter
+		if not made and not formatter then
 			local ok, f = pcall(strings.CreateNumericRuleFormatter)
 			if not (ok and f and pcall(f.SetBreakpoints, f, { { threshold = 0, step = 0.1,
 				rounding = enum.NumericRuleFormatRounding.Up, format = "%.1f" } })) then
@@ -2015,9 +2019,14 @@ do
 			end
 			formatter = f
 		end
+		made = made or formatter
 		local ok, b = pcall(util.CreateDurationTextBinding)
-		if not (ok and b and pcall(b.SetFontString, b, fs) and pcall(b.SetFormatter, b, formatter)) then
+		if not (ok and b and pcall(b.SetFontString, b, fs) and pcall(b.SetFormatter, b, made)) then
 			return false
+		end
+		local colours = opts and opts.colours
+		if colours and b.SetTextColorCurve then
+			pcall(b.SetTextColorCurve, b, colours.curve, colours.property)
 		end
 		pcall(b.SetUpdateInterval, b, 0.1)
 		pcall(b.SetExpiredText, b, "")
