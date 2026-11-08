@@ -174,6 +174,15 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.19", lines = {
+		"Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %.",
+		"Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default).",
+		"Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds.",
+		"Nameplates: the combo points can be moved with a horizontal and a vertical offset.",
+		"Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate.",
+		"Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast.",
+		"Map: inside a battleground, the map shows you, your group and the battleground's flags.",
+	} },
 	{ version = "2.1.18", lines = {
 		"Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many.",
 		"Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines.",
@@ -192,9 +201,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.15", lines = {
 		"/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags.",
-	} },
-	{ version = "2.1.14", lines = {
-		"Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen.",
 	} },
 }
 local LINKS = {

@@ -1034,6 +1034,11 @@ Lang:Add("esES", {
 	["Rogues and cat druids: your combo points on your target's nameplate."] = "Pícaros y druidas en forma felina: tus puntos de combo en la placa de nombre de tu objetivo.", -- draft
 	["Combo Point Size"] = "Tamaño de los puntos de combo", -- draft
 	["The size of each combo point."] = "El tamaño de cada punto de combo.", -- draft
+	["Moves the combo points left or right on the nameplate."] = "Mueve los puntos de combo a la izquierda o a la derecha en la placa de nombre.", -- draft
+	["Moves the combo points up or down on the nameplate. The name moves out of their way."] = "Mueve los puntos de combo arriba o abajo en la placa de nombre. El nombre se aparta.", -- draft
+	["Swing Badge"] = "Insignia de golpes", -- draft
+	["Swing Badge Size"] = "Tamaño de la insignia de golpe", -- draft
+	["The size of your swing timer's weapon badge on your target's nameplate, or over the Personal Display."] = "El tamaño de la insignia del arma de tu temporizador de golpes en la placa de nombre de tu objetivo o sobre la pantalla personal.", -- draft
 	-- PlateImpact
 	["Impact Effects"] = "Efectos de impacto", -- draft
 	["Your target's nameplate reacts to the fight: hits flash, crits glow, interrupted casts shatter."] = "La placa de nombre de tu objetivo reacciona al combate: los golpes destellan, los críticos brillan, los lanzamientos interrumpidos estallan.", -- draft
@@ -1370,6 +1375,7 @@ Lang:Add("esES", {
 	["Enemy Nameplates"] = "Placas de nombre enemigas", -- draft
 	["Your debuffs on enemy nameplates, in MelloUI's look."] = "Tus perjuicios en las placas de nombre enemigas, con el aspecto de MelloUI.", -- draft
 	["The size of your debuff icons on nameplates."] = "El tamaño de tus iconos de perjuicio en las placas de nombre.", -- draft
+	["Only the debuffs you put on enemies. Off: every debuff the game shows on their nameplates."] = "Solo los perjuicios que lanzas a los enemigos. Desactivado: todos los perjuicios que el juego muestra en sus placas de nombre.", -- draft
 	["Buff Numbers Font"] = "Fuente de los números de auras", -- draft
 	["The font of timers and stacks on MelloUI's buffs and debuffs. Shared: the numbers font."] = "La fuente de temporizadores y acumulaciones en los beneficios y perjuicios de MelloUI. Compartida: la fuente de números.", -- draft
 	-- Map
@@ -1907,8 +1913,9 @@ Lang:Add("esES", {
 	["Hides the game's cast bar; your casts show on the display."] = "Oculta la barra de lanzamiento del juego; tus lanzamientos se ven en la pantalla.", -- draft
 	["Heal Light From Your Character"] = "Luz de sanación desde tu personaje", -- draft
 	["Your heals' light starts from your character instead of the cast bar."] = "La luz de tus sanaciones parte de tu personaje en lugar de la barra de lanzamiento.", -- draft
-	["Swing Badge"] = "Insignia de golpes", -- draft
 	["Your swing timer as a small badge on your target's nameplate."] = "Tu temporizador de golpes como una pequeña insignia en la placa de nombre de tu objetivo.", -- draft
+	["Over The Personal Display"] = "Sobre la pantalla personal", -- draft
+	["The swing badge stands centred above the display instead of on your target's nameplate."] = "La insignia de golpe se sitúa centrada sobre la pantalla en lugar de en la placa de nombre de tu objetivo.", -- draft
 	["Big Cooldowns"] = "Grandes reutilizaciones", -- draft
 	["Your big defensive cooldowns (Shield Wall, Evasion, Ice Block...) as icons above the health bar."] = "Tus grandes tiempos de reutilización defensivos (Muro de escudo, Evasión, Bloque de hielo...) como iconos sobre la barra de salud.", -- draft
 	["Percent And Spell Text"] = "Porcentaje y texto de hechizo", -- draft
@@ -2092,6 +2099,7 @@ Lang:Add("esES", {
 	["Quest icon"] = "Icono de misión", -- draft
 	["Your debuffs"] = "Tus perjuicios", -- draft
 	["The game's auras"] = "Las auras del juego", -- draft
+	["Swing badge"] = "Insignia de golpes", -- draft
 	["A class medallion over friendly players' names, in the open world"] = "Un medallón de clase sobre los nombres de los jugadores amistosos, en el mundo abierto", -- draft
 	["Friendly players"] = "Jugadores amistosos", -- draft
 	["Medallion"] = "Medallón", -- draft
@@ -2135,7 +2143,6 @@ Lang:Add("esES", {
 	["Personal"] = "Personal", -- draft
 	["Shield column"] = "Columna de escudo", -- draft
 	["Cast"] = "Lanzamiento", -- draft
-	["Swing badge"] = "Insignia de golpes", -- draft
 	["Big cooldowns"] = "Grandes reutilizaciones", -- draft
 	["Window"] = "Ventana", -- draft
 	["The bag window and the game's windows, one at a time: pick a window."] = "La ventana de bolsas y las ventanas del juego, de una en una: elige una ventana.", -- draft
@@ -2281,6 +2288,13 @@ Lang:Add("esES", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toda tu configuración bajo un nombre. Guárdala, cárgala o hazla la predeterminada de una instalación nueva.", -- draft
 	["Supporters"] = "Colaboradores", -- draft
 	["The people who help keep MelloUI going."] = "Las personas que mantienen MelloUI en marcha.", -- draft
+	["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "Placas de nombre: la insignia de golpe aparece en la vista previa de la placa, con un ajuste de tamaño de 50 a 200 %.", -- draft
+	["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "Placas de nombre: Solo mis perjuicios para tus perjuicios en las placas de nombre enemigas (activado por defecto).", -- draft
+	["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "Placas de nombre: tus perjuicios en las placas enemigas ya no muestran el reloj, y sus números se colorean según el tiempo restante, en rojo por debajo de 5 segundos.", -- draft
+	["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "Placas de nombre: los puntos de combo se pueden mover con un desplazamiento horizontal y uno vertical.", -- draft
+	["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "Pantalla personal: Sobre la pantalla personal coloca la insignia de golpe centrada sobre la pantalla en lugar de en la placa de nombre de tu objetivo.", -- draft
+	["Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast."] = "Barras de acción: los desplegables de clase, como los aspectos del cazador, las actitudes del guerrero y las formas del druida, se abren en las barras de acción de MelloUI y sus hechizos se lanzan.", -- draft
+	["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "Mapa: dentro de un campo de batalla, el mapa muestra a ti, a tu grupo y las banderas del campo de batalla.", -- draft
 	["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "Lista de reabastecimiento: ahora un catálogo por tipo (bebida, comida, munición, pociones, elixires, pergaminos, venenos, componentes) con búsqueda: marca cada objeto que quieras tener y cuántos.", -- draft
 	["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "Reabastecimiento: los cazadores pueden tener comida para mascotas por dieta (carne, pescado, pan, queso, fruta, hongos), y la lista admite 40 líneas.", -- draft
 	["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "Corregido: el texto de los cuadros de búsqueda y de entrada de MelloUI vuelve a empezar a la izquierda en lugar de en el centro.", -- draft
@@ -2292,7 +2306,6 @@ Lang:Add("esES", {
 	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "Corregido: en las mazmorras, el objetivo del objetivo y otros marcos de unidad ya no siguen mostrando un nombre antiguo.", -- draft
 	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "Corregido: los marcos de grupo, de banda y otros marcos de unidad ahora muestran vacías las barras de salud y de poder de los jugadores muertos y los fantasmas.", -- draft
 	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "El informe de /mellobug ahora también muestra cómo se crearon los botones de las bolsas, para localizar la causa de los objetos que bloquea el juego.", -- draft
-	["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "Corregido: las barras de salud y de poder del objetivo del objetivo y del objetivo del foco ya no se ven oscuras al elegir una textura de barra.", -- draft
 	["Report a problem"] = "Informar de un problema", -- draft
 	["Voice pack"] = "Paquete de voces", -- draft
 	["open or close this window"] = "abre o cierra esta ventana", -- draft
@@ -2955,6 +2968,7 @@ Lang:Add("esES", {
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "Corregido: el Marcador del mundo en un paso de guía a tu lado; las misiones de clase de la Lista de misiones; la calidad de objetos y los jefes repetidos de Info de mazmorras.", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "Corregido: el instalador ya no dice que tu pantalla es demasiado pequeña cuando son algunos de tus propios ajustes los que no caben.", -- draft
 -- stale: ["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "Corregido: la línea y los botones adicionales del botón de recordatorios ya no se salen de la pantalla: se abren hacia el lado con espacio.", -- draft
+-- stale: ["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "Corregido: las barras de salud y de poder del objetivo del objetivo y del objetivo del foco ya no se ven oscuras al elegir una textura de barra.", -- draft
 -- stale: ["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Corregido: con los iconos de beneficios de MelloUI desactivados, la barra de beneficios del juego vuelve a poder moverse en el editor de diseño.", -- draft
 -- stale: ["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "Corregido: con la apariencia Predeterminado, la ventana de susurros se abre sin error de Lua y vuelve a tener el aspecto del juego.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "Para un pícaro, y un druida en forma felina: tus cinco puntos de combo en fila en el borde superior de la barra de salud de tu objetivo, vacíos hasta que los acumulas. El nombre sube un poco para hacer sitio.", -- draft
@@ -3498,6 +3512,7 @@ Lang:Add("esES", {
 -- stale: ["The size of your buff and debuff icons under the player frame, in pixels (the target's are 22 by default). The rows keep one width, so a smaller size fits more in a row."] = "El tamaño de tus iconos de beneficios y perjuicios bajo el marco de jugador, en píxeles (los del objetivo son 22 por defecto). Las filas mantienen un ancho, así que un tamaño menor mete más en una fila.", -- draft
 -- stale: ["The size of your buff and debuff icons, in pixels: MelloUI's own rows while Your Buffs And Debuffs shows them, else the game's buff and debuff bars (saved into your Edit Mode layout in its own steps of 3 pixels, shown after a reload; 30 is the game's size)."] = "El tamaño de tus iconos de beneficios y perjuicios, en píxeles: las filas de MelloUI mientras Tus beneficios y perjuicios las muestra; si no, las barras de beneficios y perjuicios del juego (guardado en tu diseño del Modo edición en pasos de 3 píxeles, visible tras recargar; 30 es el tamaño del juego).", -- draft
 -- stale: ["The size of your debuff icons on enemy nameplates, in pixels."] = "El tamaño de tus iconos de perjuicio en las placas de nombre enemigas, en píxeles.", -- draft
+-- stale: ["The size of your swing timer's weapon badge on your target's nameplate."] = "El tamaño de la insignia del arma de tu temporizador de golpes en la placa de nombre de tu objetivo.", -- draft
 -- stale: ["The size of your target's debuff and buff icons under its frame, in pixels. The rows keep one width, so a smaller size fits more in a row."] = "El tamaño de los iconos de perjuicios y beneficios de tu objetivo bajo su marco, en píxeles. Las filas mantienen un ancho, así que un tamaño menor mete más en una fila.", -- draft
 -- stale: ["The skill's new value and its cap after its name, such as 57 / 80."] = "El nuevo valor de la habilidad y su tope tras su nombre, como 57 / 80.", -- draft
 -- stale: ["The small buttons for the game's windows. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "Los pequeños botones de las ventanas del juego. Siempre: nunca desvanecido. En combate: desvanecido fuera de combate, de vuelta en combate. Al pasar el ratón: desvanecido todo el tiempo, visible mientras lo señalas.", -- draft

@@ -51,6 +51,8 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		threatLine = true,
 		comboPoints = true,
 		comboSize = 90,
+		comboX = 0, comboY = 0,   -- (2.1.19) the row moved off the bar's top edge
+		swingSize = 100,          -- (2.1.19) the swing badge on your target's plate, a percentage
 		hover = true,   -- (1.2.4: the mouseover highlight, MelloUI.FrameHover)
 		-- (the band behind the names: Text Shade's, Look > General > Text -- the
 		-- user, 2026-10-16; Name Shade's key dropped by Core.lua's MERGES)
@@ -82,6 +84,17 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		{ type = "slider", key = "comboSize", parent = "comboPoints", name = "Combo Point Size", min = 50, max = 150, step = 5,
 		  format = function(v) return string.format("%d%%", v) end,
 		  desc = "The size of each combo point." },
+		-- (2.1.19; the user, 2026-11-08: "the combo points need to be moveable") off the health bar's top edge
+		{ type = "slider", key = "comboX", parent = "comboPoints", name = "Horizontal Offset", min = -100, max = 100, step = 1,
+		  new = "2.1.19", desc = "Moves the combo points left or right on the nameplate." },
+		{ type = "slider", key = "comboY", parent = "comboPoints", name = "Vertical Offset", min = -50, max = 50, step = 1,
+		  new = "2.1.19", desc = "Moves the combo points up or down on the nameplate. The name moves out of their way." },
+		-- (2.1.19; the user, 2026-11-08: "let users scale them from 50% - 200%") the badge Core/SwingBadge.lua lays on
+		-- your target's plate (the Swing Timers' or the Personal Display's)
+		{ type = "header", name = "Swing Badge" },
+		{ type = "slider", key = "swingSize", name = "Swing Badge Size", min = 50, max = 200, step = 5, new = "2.1.19",
+		  format = function(v) return string.format("%d%%", v) end,
+		  desc = "The size of your swing timer's weapon badge on your target's nameplate, or over the Personal Display." },
 	},
 })
 
@@ -1805,9 +1818,16 @@ function Combo.Socket()
 end
 
 -- the name's lift over a row of `s`: from the bar's top to the sockets' top,
--- less the game's gap under the name and a pixel (the sketch's 5 at 16)
-function Combo.NameLift(s)
-	return math.max(0, s / 2 - SetupOption("healthBarToNameAboveSpacing", 2) - 1)
+-- less the game's gap under the name and a pixel (the sketch's 5 at 16);
+-- (2.1.19) the row moved up `y` lifts it as much more, moved down less
+function Combo.NameLift(s, y)
+	return math.max(0, s / 2 + (y or 0) - SetupOption("healthBarToNameAboveSpacing", 2) - 1)
+end
+
+-- (2.1.19) the row's offsets off the bar's top edge (Horizontal / Vertical Offset)
+function Combo.Offset()
+	local db = M.db
+	return (db and Num(db.comboX)) or 0, (db and Num(db.comboY)) or 0
 end
 
 -- a piece at its atlas's size times f (s x s where the client gives none),
@@ -1883,8 +1903,6 @@ function Combo.Attach(uf)
 		Combo.at = uf
 		HookUnitFrame(uf)   -- (its layout hook: the lift kept through the game's)
 		row:SetParent(uf)
-		row:ClearAllPoints()
-		row:SetPoint("CENTER", hb, "TOP", 0, 0)
 		local ok, level = pcall(hb.GetFrameLevel, hb)
 		level = ((ok and Num(level)) or 0) + Combo.LEVEL
 		row:SetFrameLevel(level)
@@ -1898,9 +1916,13 @@ function Combo.Attach(uf)
 			Combo.Lift(old, 0)
 		end
 	end
+	-- (2.1.19) at the user's offsets, on every attach (cheap: a target change, an option)
+	local x, y = Combo.Offset()
+	row:ClearAllPoints()
+	row:SetPoint("CENTER", hb, "TOP", x, y)
 	local s = Combo.Socket()
 	Combo.Lay(row, s)
-	Combo.Lift(uf, Combo.NameLift(s))
+	Combo.Lift(uf, Combo.NameLift(s, y))
 	row:Show()
 end
 
@@ -2683,9 +2705,17 @@ function M:OnSettingChanged(key, value, db)
 		end
 		return
 	end
-	if key == "comboPoints" or key == "comboSize" then
+	if key == "comboPoints" or key == "comboSize" or key == "comboX" or key == "comboY" then
 		Combo.Register(db.comboPoints ~= false)
 		Combo.Update()
+		return
+	end
+	if key == "swingSize" then
+		-- (2.1.19) the swing badge laid again at its new size (Core/SwingBadge.lua)
+		local sb = MelloUI.SwingBadge
+		if sb and sb.Lay then
+			sb.Lay()
+		end
 		return
 	end
 	if db.bigCC then
@@ -2732,7 +2762,9 @@ do
 	local Stage = {
 		NAME = "Defias Pillager", LEVEL = "17",
 		CC = "Interface\\Icons\\Ability_Sap",
-		DEBUFFS = { { "Interface\\Icons\\Ability_Rogue_Garrote", "12" }, { "Interface\\Icons\\Ability_Rogue_Rupture", "8" } },
+		WEAPON = "Interface\\Icons\\INV_Sword_04",   -- (2.1.19: the swing badge's weapon)
+		-- (2.1.19: the numbers coloured by the time left, as the plates' rows -- Rupture's under 5 s, red)
+		DEBUFFS = { { "Interface\\Icons\\Ability_Rogue_Garrote", "12", 12 }, { "Interface\\Icons\\Ability_Rogue_Rupture", "4", 4 } },
 		-- the game's (NamePlateConstants; the fallbacks its values on this client)
 		PLATE_W = 190, INSET = 12, BAR_H = 12, AURA = 25, LEVEL_W = 15, LEVEL_GAP = 5, CC_GAP = 5,
 		BG = { -2, 3, 6, -6 }, BORDER = { -1, 1, -3, 3 },
@@ -2756,6 +2788,17 @@ do
 		local obj = rawget(_G, font)
 		t:SetFontObject(type(obj) == "table" and obj or GameFontHighlightSmall)
 		return t
+	end
+
+	-- (2.1.19) the colour a number of seconds left takes on the plates' rows: Anim:TimeLeftColours' steps, plain here
+	-- (the sample's made-up times)
+	function Stage.TimeColour(seconds)
+		local m = MelloUI.Meaning
+		if not seconds then
+			return nil
+		end
+		return (seconds < 5 and m.cooldownSoon) or (seconds < 60 and m.cooldownSeconds)
+			or (seconds < 3600 and m.cooldownMinutes) or m.cooldownHours
 	end
 
 	function Stage.Icon(parent, file, layer)
@@ -2852,6 +2895,12 @@ do
 			f.debuffs.times[i] = t
 		end
 		f.cc = Stage.Icon(f.top, Stage.CC)
+		-- (2.1.19) the swing badge right of the level box, as Core/SwingBadge.lua lays it on your target's plate
+		local sb = MelloUI.SwingBadge
+		f.swing = MelloUI.Widgets.RoundIcon(f.top, (sb and sb.T and sb.T.badge) or 24, nil)
+		f.swing:EnableMouse(false)
+		f.swing:SetKit(MelloUI.Widgets.KitFor("unitframes"))
+		f.swing:SetIcon(Stage.WEAPON)
 		return f
 	end
 
@@ -2901,14 +2950,34 @@ do
 		f.level:SetSize(Stage.LEVEL_W, Stage.LEVEL_W)
 		f.level:ClearAllPoints()
 		f.level:SetPoint("LEFT", f.bar, "RIGHT", Stage.LEVEL_GAP, 0)
-		-- the combo points (your target, the option on): the name lifted over them
+		-- the combo points (your target, the option on) at their offsets: the name lifted over them
 		local s = barH * (Num(db.comboSize) or 90) / 100
 		local combo = ours and target and db.comboPoints ~= false
+		local cx, cy = Num(db.comboX) or 0, Num(db.comboY) or 0
 		if combo then
+			f.combo:ClearAllPoints()
+			f.combo:SetPoint("CENTER", f.bar, "TOP", cx, cy)
 			Combo.Lay(f.combo, s)
 		end
 		f.combo:SetShown(combo)
-		local lift = combo and Combo.NameLift(s) or 0
+		local lift = combo and Combo.NameLift(s, cy) or 0
+		-- (2.1.19) the swing badge (your target, a swing badge in use: the Swing Timers' or the Personal Display's) right
+		-- of the level box at its size
+		-- (scaled whole, as the plate's badge is: SB.Attach's SetScale -- sized instead, its rim and weapon stayed at the
+		-- made size inside a bigger box; the user's shot, 2026-11-08)
+		local sb = MelloUI.SwingBadge
+		local swing = ours and target and sb and sb.Active and sb.Active() ~= nil and true or false
+		local k = (sb and sb.PlateScale and sb.PlateScale()) or 1
+		local gap = (sb and sb.T and sb.T.badgeGap) or 4
+		local badge = ((sb and sb.T and sb.T.badge) or 24) * k
+		f.swing:SetShown(swing)
+		if swing then
+			f.swing:SetScale(k)
+			MelloUI.Widgets.RoundIconRefit(f.swing)
+			f.swing:ClearAllPoints()
+			f.swing:SetPoint("LEFT", f.level, "RIGHT", gap, 0)   -- (in its own units: the plate's gap, scaled with it)
+		end
+		local swingW = swing and (gap * k + badge) or 0
 		f.threat:SetShown(ours and target and db.threatLine ~= false)
 		-- the name, in the setup's style (LayGameName's), and its soft band
 		local styles = rawget(_G, "NamePlateConstants")
@@ -2943,6 +3012,14 @@ do
 			icon:ClearAllPoints()
 			icon:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", (i - 1) * (size + Stage.SPACING), 0)
 			row.times[i]:SetShown(timers)
+			-- (2.1.19) Auras' row: the numbers by the time left (the cooldown timers' colours, the plate's own
+			-- curve's steps); the game's row: its own white
+			local c = mine and Stage.TimeColour(Stage.DEBUFFS[i][3]) or nil
+			if c then
+				row.times[i]:SetTextColor(c[1], c[2], c[3])
+			else
+				W.Paint(row.times[i], "text", "text")
+			end
 		end
 		-- the CC icon: above the name and the debuff row (ComputeOffset's sum), else small at the game's place
 		local big = ours and db.bigCC ~= false
@@ -2955,7 +3032,7 @@ do
 			f.cc:SetPoint("BOTTOM", f.bar, "TOP", 0, above)
 			above = above + cc
 		else
-			f.cc:SetPoint("LEFT", f.bar, "RIGHT", Stage.LEVEL_GAP + Stage.LEVEL_W + Stage.CC_GAP, 0)
+			f.cc:SetPoint("LEFT", f.bar, "RIGHT", Stage.LEVEL_GAP + Stage.LEVEL_W + swingW + Stage.CC_GAP, 0)
 			above = y + nameH + Stage.SPACING + size
 		end
 		-- the quest icon (the option on), left of the bar
@@ -2965,9 +3042,10 @@ do
 		f.quest:SetShown(quest)
 		-- the sample's own size round what shows (the stage fits it), the bar placed in it
 		local left = Stage.PAD + (quest and qs + Stage.QUEST_GAP or 0) + 2
-		local right = Stage.PAD + Stage.LEVEL_GAP + Stage.LEVEL_W + (big and 0 or Stage.CC_GAP + cc)
+		local right = Stage.PAD + Stage.LEVEL_GAP + Stage.LEVEL_W + swingW + (big and 0 or Stage.CC_GAP + cc)
 		local bottom = Stage.PAD - Stage.BG[4] - Stage.BORDER[4]
-		local top = Stage.PAD + math.max(above, (barH / 2) + s / 2, (big or not quest) and 0 or qs / 2)
+		local top = Stage.PAD + math.max(above, (barH / 2) + (combo and (s / 2 + cy) or 0), (big or not quest) and 0 or qs / 2,
+			swing and badge / 2 or 0)
 		f.bar:SetSize(barW, barH)
 		f.bar:ClearAllPoints()
 		f.bar:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", left, bottom)
@@ -3002,6 +3080,7 @@ do
 				Stage.Part("cc", "CC icon", "cc"),
 				Stage.Part("quest", "Quest icon", "quest"),
 				Stage.Part("debuffs", "Your debuffs", "debuffs"),
+				Stage.Part("swing", "Swing badge", "swing"),   -- (2.1.19)
 			}
 		end
 		return Stage.parts
@@ -3016,7 +3095,8 @@ do
 			place = "wide", height = 230, maxScale = 1.5,
 			picks = { enemy = true }, first = "enemy",
 			watch = { Nameplates = true, Auras = true, CooldownText = true, BarTextures = true, UIModifications = true,
-				Tweaks = true },   -- (Tweaks: Text Shade, the band behind the name -- 2026-10-16)
+				Tweaks = true,   -- (Tweaks: Text Shade, the band behind the name -- 2026-10-16)
+				SwingTimers = true, PersonalDisplay = true },   -- (2.1.19: the swing badge's hosts)
 			states = Stage.STATES, pickText = Stage.TEXT.pick,
 			Main = Stage.Main, Paint = Stage.Paint, Room = Stage.Room, parts = Stage.Parts, Empty = Stage.Empty,
 		})

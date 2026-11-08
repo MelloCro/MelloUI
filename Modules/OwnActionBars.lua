@@ -26,6 +26,8 @@
 --     with SetOverrideBindingClick, read again on UPDATE_BINDINGS out of a fight; a key fires on its press or release
 --     as the game's ActionButtonUseKeyDown says, a mouse click on its release (the header's secure click wrapper).
 --   * Drag and drop through the secure drag wrappers (the game's "lock action bars" and its pick-up modifier).
+--   * (2.1.19) A flyout on a bar of ours (the hunter's Aspects, the warrior's stances ...) opens a flyout of ours, the
+--     game's in its parts (the section Flyouts: why the game's SpellFlyout cannot serve our buttons).
 --   * Every setting of the bar's Edit Layout box is ours and acts at once (out of a fight; in one, after it, said once):
 --     Orientation, # of Rows, # of Icons, Icon Size, Icon Padding, Bar Visible, Always Show Buttons (Own Bars' per-bar
 --     options, "bar<n>Rows" ...), Action Bar 1's Hide Bar Art and Hide Page Arrows (Action Bars' own options). A bar's
@@ -94,6 +96,8 @@ local TEXT = {
 
 local A = { bars = {}, built = nil, buttons = {}, byAction = {}, gameOf = {}, wantShown = {} }
 OB.Actions = A
+local FLY = { panels = {} }   -- (2.1.19) the flyouts of ours (the section Flyouts)
+A.Flyouts = FLY
 
 --------------------------------------------------------------------------------
 -- The settings (Own Bars' options, one set a bar): Edit Mode's names and ranges; not set = the game's
@@ -349,6 +353,13 @@ function B.UpdateAction(self, force)
 	end
 	self:Update()
 	self:UpdateShown()
+	-- (2.1.19) a flyout here: its panel of ours made, out of a fight (Flyouts)
+	if action and FLY.Need then
+		local kind, id = GetInfo(action)
+		if kind == "flyout" and type(id) == "number" then
+			FLY.Need(id)
+		end
+	end
 end
 
 -- an empty button within the bar's count: seen while Always Show Buttons is on, a spell is on the cursor (the
@@ -711,6 +722,9 @@ local PostClick = Shared("OnClick after an action button of ours", function(self
 		self:SetButtonState(down and "PUSHED" or "NORMAL")
 	end
 	self:UpdateState()
+	if FLY.Refresh then
+		FLY.Refresh()   -- (2.1.19: a flyout this click opened, its cooldowns and states now)
+	end
 end, "script")
 
 local PostDrag = Shared("OnDragStart / OnReceiveDrag after an action button of ours", function(self)
@@ -719,7 +733,77 @@ local PostDrag = Shared("OnDragStart / OnReceiveDrag after an action button of o
 end, "script")
 
 -- the secure wrappers (the header's restricted snippets)
+-- (2.1.19) a slot holding a flyout opens our panel of it (Flyouts): on the press the game's would act on (a mouse
+-- button's release; a key's press with Cast On Key Down, else its release), again closes it, one open at a time;
+-- where the game's opens (above a horizontal bar, left of an upright one, popupOffset over the button, at its scale).
+-- The click itself goes no further: the game's flyout is never opened from a button of ours
 local PRE_CLICK = [[
+	local page = self:GetAttribute("actionpage")
+	local kind, id
+	if page then
+		kind, id = GetActionInfo(self:GetID() + (page - 1) * 12)
+	end
+	if kind == "flyout" then
+		local bar = self:GetParent()
+		local onDown = button == "Keybind" and bar:GetAttribute("mellokeydown") and true or false
+		if (down and true or false) ~= onDown then
+			return false
+		end
+		local hub = bar:GetFrameRef("melloflyouts")
+		if not hub then
+			return false
+		end
+		local name = self:GetName()
+		local open = hub:GetAttribute("openid")
+		if open then
+			local was = hub:GetFrameRef("fly" .. open)
+			local shown = was and was:IsShown()
+			if was then
+				was:Hide()
+			end
+			hub:SetAttribute("openid", nil)
+			if shown and open == id and hub:GetAttribute("openby") == name then
+				return false
+			end
+		end
+		local p = hub:GetFrameRef("fly" .. id)
+		local n = p and p:GetAttribute("count") or 0
+		if n < 1 then
+			return false
+		end
+		local size, gap, edge = p:GetAttribute("size"), p:GetAttribute("gap"), p:GetAttribute("edge")
+		local left = bar:GetAttribute("mellodir") == "LEFT"
+		for i = 1, n do
+			local b = p:GetFrameRef("b" .. i)
+			local at = edge + (i - 1) * (size + gap)
+			b:ClearAllPoints()
+			if left then
+				b:SetPoint("RIGHT", p, "RIGHT", -at, 0)
+			else
+				b:SetPoint("BOTTOM", p, "BOTTOM", 0, at)
+			end
+		end
+		local along, across, off = edge * 2 + n * size + (n - 1) * gap, p:GetAttribute("across"), p:GetAttribute("offset")
+		p:SetScale(self:GetEffectiveScale() / hub:GetEffectiveScale())
+		p:ClearAllPoints()
+		if left then
+			p:SetWidth(along)
+			p:SetHeight(across)
+			p:SetPoint("RIGHT", self, "LEFT", -off, 0)
+			p:GetFrameRef("artup"):Hide()
+			p:GetFrameRef("artleft"):Show()
+		else
+			p:SetWidth(across)
+			p:SetHeight(along)
+			p:SetPoint("BOTTOM", self, "TOP", 0, off)
+			p:GetFrameRef("artleft"):Hide()
+			p:GetFrameRef("artup"):Show()
+		end
+		hub:SetAttribute("openid", id)
+		hub:SetAttribute("openby", name)
+		p:Show()
+		return false
+	end
 	if button == "Keybind" then
 		self:SetAttribute("useOnKeyDown", self:GetParent():GetAttribute("mellokeydown") and true or false)
 		return "LeftButton"
@@ -750,6 +834,15 @@ local CHILD_PAGE = [[
 local ON_PAGE = [[
 	self:SetAttribute("actionpage", newstate)
 	control:ChildUpdate("actionpage", newstate)
+	local hub = self:GetFrameRef("melloflyouts")
+	local open = hub and hub:GetAttribute("openid")
+	if open then
+		local p = hub:GetFrameRef("fly" .. open)
+		if p then
+			p:Hide()
+		end
+		hub:SetAttribute("openid", nil)
+	end
 ]]
 
 --------------------------------------------------------------------------------
@@ -1165,6 +1258,7 @@ function BAR.UpdateGridLayout(bar)
 	local step = BUTTON + pad
 	local horizontal = v.Orientation == 0
 	bar.isHorizontal = horizontal
+	bar:SetAttribute("mellodir", horizontal and "UP" or "LEFT")   -- (2.1.19: where a flyout opens, Flyouts)
 	bar.numButtonsShowable = count
 	bar.numRows = v.Rows
 	bar.buttonPadding = pad
@@ -1375,6 +1469,7 @@ A.OnEvent = Shared("Own Bars: the action bars' events", function(_, event, a1, a
 		end
 	elseif event == "ACTIONBAR_UPDATE_USABLE" or event == "PLAYER_MOUNT_DISPLAY_CHANGED" then
 		Live(function(b) b:UpdateUsable() end)
+		FLY.Refresh()
 	elseif event == "ACTIONBAR_UPDATE_COOLDOWN" or event == "SPELL_UPDATE_COOLDOWN" or event == "LOSS_OF_CONTROL_ADDED"
 		or event == "LOSS_OF_CONTROL_UPDATE" then
 		Live(function(b)
@@ -1383,10 +1478,12 @@ A.OnEvent = Shared("Own Bars: the action bars' events", function(_, event, a1, a
 				b:SetTooltip()
 			end
 		end)
+		FLY.Refresh()
 	elseif event == "ACTIONBAR_UPDATE_STATE" or event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_CLOSE"
 		or event == "UNIT_ENTERED_VEHICLE" or event == "UNIT_EXITED_VEHICLE" or event == "COMPANION_UPDATE"
 		or event == "PET_BAR_UPDATE" then
 		Live(function(b) b:UpdateState() end)
+		FLY.Refresh()
 	elseif event == "UPDATE_SHAPESHIFT_FORM" or event == "UPDATE_SUMMONPETS_ACTION" then
 		Each(function(b)
 			local fn = Api("GetActionTexture")
@@ -1445,6 +1542,7 @@ A.OnEvent = Shared("Own Bars: the action bars' events", function(_, event, a1, a
 		-- (a bar the game showed or hid in the fight: laid with the rest of the queue)
 		A.ShownAgain()
 	else   -- PLAYER_ENTERING_WORLD, SPELL_UPDATE_ICON, LEARNED_SPELL_IN_SKILL_LINE, PET_STABLE_UPDATE
+		FLY.Dirty()   -- (2.1.19: a spell learned, a pet stabled: the flyouts filled again)
 		Each(function(b) b:UpdateAction(true) end)
 		-- (fr-18c: the game's key and lock settings and Action Bar 1's page number read again as the world is entered:
 		-- the login's frame came first -- the sim proof: the page number stood empty, its page not read yet)
@@ -1475,6 +1573,348 @@ function A.ShownAgain()
 	end
 	if changed then
 		A.Lay()
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Flyouts (2.1.19; a player's report on CurseForge, 2026-11-08: "can't use the built in aspect swapper without
+-- disabling the ui OR manually clicking on each aspect")
+--------------------------------------------------------------------------------
+-- A flyout on a bar of ours (this client's class flyouts: the hunter's Aspects, the warrior's stances, the druid's
+-- forms, the paladin's auras) opens a flyout of ours. The game's SpellFlyout cannot serve our buttons: its secure click
+-- (SECURE_ACTIONS.action) takes the button's popup field, which the game's UpdateFlyout writes from the button's
+-- OnAttributeChanged after reading our own fields (bar, its GetSpellFlyoutDirection) -- written tainted, it taints the
+-- flyout's spells as they are filled in, and their CastSpellByID is blocked. Ours, the game's flyout in its parts:
+--   * a panel for each flyout on a bar of ours, made out of a fight: the game's popup art (FlyoutPopupTemplate's
+--     atlases, upward and leftward), a small action button of the game's template for each spell the game's flyout
+--     shows from a bar (its rule: the known slots, the highest rank of each spell, a Call Pet slot only with its pet),
+--     each a secure spell button (the cast is the game's own secure path, from its attributes) whose click closes the
+--     panel (a secure post-snippet);
+--   * opened in the bar header's click snippet (PRE_CLICK: GetActionInfo is allowed there), closed by the same button,
+--     by a spell picked, by another flyout opened and by Action Bar 1's page changing (ON_PAGE);
+--   * its cooldowns, usable tint, checked state and tooltip as the game's popup buttons' (insecure, visual only);
+--   * a spell learned in a fight, or a flyout put on a bar in one, waits for its end (Later).
+-- The panels hang on one hub of ours on UIParent, not on the button (the game's): a bar faded On Mouseover would fade
+-- the open flyout as the pointer moved onto it.
+do
+	local SMALL, GAP, EDGE = 30, 4, 9   -- SmallActionButtonTemplate; SPELLFLYOUT_DEFAULT_SPACING, _INITIAL_ / _FINAL_
+	local OFFSET, ACROSS = -4, 47       -- ActionButtonTemplate's popupOffset and popupCrossAxisSize
+	local BORDER = 0.7                  -- the game's SpellFlyout:SetBorderColor(0.7, 0.7, 0.7)
+	local ART_START, ART_TIP = "UI-HUD-ActionBar-IconFrame-FlyoutBottom", "UI-HUD-ActionBar-IconFrame-FlyoutButton"
+	local ART_MID_UP, ART_MID_LEFT = "!UI-HUD-ActionBar-IconFrame-FlyoutMid", "_UI-HUD-ActionBar-IconFrame-FlyoutMidLeft"
+	-- a spell picked: the panel closes after the cast (the game's ClosePopup after its CastSpellByID)
+	local PANEL_PRE = [[ return nil, true ]]
+	local PANEL_POST = [[ control:Hide() ]]
+	local hub
+	local want = {}   -- [flyout id] = true: on a bar of ours
+	local dirty, soon = false, false
+
+	-- C_Spell.<name>(...), or nil (missing, an error)
+	local function SpellApi(name, ...)
+		local api = rawget(_G, "C_Spell")
+		local fn = type(api) == "table" and api[name]
+		if type(fn) ~= "function" then
+			return nil
+		end
+		local ok, a, b = pcall(fn, ...)
+		if not ok then
+			return nil
+		end
+		return a, b
+	end
+
+	-- the spells the game's flyout shows from an action bar (SpellFlyoutMixin:Toggle, isActionBar): { spell, show }
+	local function Slots(id)
+		local list = {}
+		local info, slot = rawget(_G, "GetFlyoutInfo"), rawget(_G, "GetFlyoutSlotInfo")
+		if type(info) ~= "function" or type(slot) ~= "function" then
+			return list
+		end
+		local ok, _, _, num, known = pcall(info, id)
+		num, known = ok and Plain(num), ok and Plain(known)
+		if not (known and type(num) == "number" and num > 0) then
+			return list
+		end
+		local pet = rawget(_G, "GetCallPetSpellInfo")
+		local last
+		for i = 1, num do
+			local ok2, spell, override, isKnown, name = pcall(slot, id, i)
+			if ok2 then
+				spell, override, isKnown, name = Plain(spell), Plain(override), Plain(isKnown), Plain(name)
+			end
+			local visible = ok2 and type(spell) == "number" and isKnown and true or false
+			if visible and type(pet) == "function" then
+				-- (a Call Pet slot without a pet in it: not shown)
+				local okp, index, petName = pcall(pet, spell)
+				petName = okp and Plain(petName)
+				if okp and Plain(index) and not (type(petName) == "string" and petName ~= "") then
+					visible = false
+				end
+			end
+			if visible then
+				local level = tonumber(Plain(SpellApi("GetSpellLevelLearned", spell))) or 0
+				local show = type(override) == "number" and override or spell
+				if not last or last.name ~= name then
+					last = { spell = spell, show = show, name = name, level = level }
+					list[#list + 1] = last
+				elseif last.level < level then
+					last.spell, last.show, last.level = spell, show, level   -- (the higher rank in its place)
+				end
+			end
+		end
+		return list
+	end
+
+	-- the game's popup art one way (FlyoutPopupMixin:UpdateBackground, "UP" or "LEFT") on a protected holder the
+	-- snippet shows or hides
+	local function Art(panel, up)
+		local f = CreateFrame("Frame", nil, panel, "SecureFrameTemplate")
+		f:SetAllPoints(panel)
+		local function Tex(atlas)
+			local t = f:CreateTexture(nil, "BACKGROUND")
+			t:SetAtlas(atlas, true)
+			t:SetVertexColor(BORDER, BORDER, BORDER)
+			return t
+		end
+		local start, mid, tip = Tex(ART_START), Tex(up and ART_MID_UP or ART_MID_LEFT), Tex(ART_TIP)
+		if up then
+			start:SetPoint("BOTTOM")
+			tip:SetPoint("TOP")
+			mid:SetPoint("BOTTOM", start, "TOP")
+			mid:SetPoint("TOP", tip, "BOTTOM")
+			mid:SetVertTile(true)
+			for _, t in ipairs({ start, mid, tip }) do
+				t:SetWidth(ACROSS)
+			end
+		else
+			start:SetPoint("RIGHT")
+			tip:SetPoint("LEFT")
+			mid:SetPoint("RIGHT", start, "LEFT")
+			mid:SetPoint("LEFT", tip, "RIGHT")
+			mid:SetHorizTile(true)
+			local rotate = rawget(_G, "SetClampedTextureRotation")
+			if type(rotate) == "function" then
+				pcall(rotate, start, 270)
+				pcall(rotate, mid, 180)
+				pcall(rotate, tip, 270)
+			end
+			for _, t in ipairs({ start, mid, tip }) do
+				t:SetHeight(ACROSS)
+			end
+		end
+		f:Hide()
+		return f
+	end
+
+	-- the tooltip as the game's popup button's from a bar (GameTooltip_SetDefaultAnchor, the spell)
+	local FlyEnter = Shared("OnEnter on a flyout button of ours", function(self)
+		local anchor = rawget(_G, "GameTooltip_SetDefaultAnchor")
+		if type(anchor) == "function" then
+			anchor(GameTooltip, self)
+		else
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		end
+		if self.melloSpell then
+			pcall(GameTooltip.SetSpellByID, GameTooltip, self.melloSpell)
+		end
+		GameTooltip:Show()
+	end, "script")
+
+	local function Hub()
+		if hub then
+			return hub
+		end
+		hub = CreateFrame("Frame", "MelloUIFlyouts", UIParent, "SecureHandlerBaseTemplate")
+		OB.mine[hub] = true
+		hub:SetFrameStrata("DIALOG")
+		hub:SetPoint("CENTER")
+		for _, bar in ipairs(A.bars) do
+			bar:SetFrameRef("melloflyouts", hub)
+		end
+		return hub
+	end
+
+	local function Panel(id)
+		local p = FLY.panels[id]
+		if p then
+			return p
+		end
+		local h = Hub()
+		p = CreateFrame("Frame", "MelloUIFlyout" .. id, h, "SecureHandlerBaseTemplate")
+		OB.mine[p] = true
+		p:SetFrameStrata("DIALOG")
+		p:SetFrameLevel(10)   -- (SpellFlyout's frameLevel)
+		p:EnableMouse(true)
+		p:Hide()
+		p.buttons = {}
+		p:SetFrameRef("artup", Art(p, true))
+		p:SetFrameRef("artleft", Art(p, false))
+		p:SetAttribute("size", SMALL)
+		p:SetAttribute("gap", GAP)
+		p:SetAttribute("edge", EDGE)
+		p:SetAttribute("offset", OFFSET)
+		p:SetAttribute("across", ACROSS)
+		p:SetAttribute("count", 0)
+		h:SetFrameRef("fly" .. id, p)
+		FLY.panels[id] = p
+		return p
+	end
+
+	-- one spell's button: the game's small action button with the secure spell click last (as our bars' buttons: its
+	-- FlyoutButtonTemplate's OnClick would take the click), a mouse button's release only
+	local function FlyButton(p, i)
+		local b = p.buttons[i]
+		if b then
+			return b
+		end
+		local ok
+		ok, b = pcall(CreateFrame, "CheckButton", p:GetName() .. "Button" .. i, p,
+			"SmallActionButtonTemplate, SecureActionButtonTemplate")
+		if not ok or type(b) ~= "table" then
+			return nil
+		end
+		OB.mine[b] = true
+		b:SetAttribute("type", "spell")
+		b:SetAttribute("useOnKeyDown", false)
+		b:RegisterForClicks("AnyUp")
+		WrapScript(b, "OnClick", p, PANEL_PRE, PANEL_POST)
+		Perf.HookScript(b, "OnEnter", FlyEnter)
+		Perf.HookScript(b, "OnLeave", OnLeave)
+		b.HotKey:SetText("")
+		b.Count:SetText("")
+		if b.Name then
+			b.Name:SetText("")
+		end
+		p:SetFrameRef("b" .. i, b)
+		p.buttons[i] = b
+		return b
+	end
+
+	-- a panel filled from its flyout now (out of a fight)
+	local function Fill(id)
+		local p = Panel(id)
+		local n = 0
+		for i, s in ipairs(Slots(id)) do
+			local b = FlyButton(p, i)
+			if not b then
+				break
+			end
+			n = i
+			b.melloSpell = s.spell
+			b:SetAttribute("spell", s.spell)
+			b.icon:SetTexture(SpellApi("GetSpellTexture", s.show))
+			b.icon:Show()
+			b:Show()
+		end
+		for i = n + 1, #p.buttons do
+			p.buttons[i].melloSpell = nil
+			p.buttons[i]:Hide()
+		end
+		p:SetAttribute("count", n)
+	end
+
+	local function Sync()
+		soon = false
+		if not (A.built and OB.On(PART)) or Later(Sync, "Own Bars: the flyouts", true) then
+			return
+		end
+		for id in pairs(want) do
+			if dirty or not FLY.panels[id] then
+				Fill(id)
+			end
+		end
+		dirty = false
+	end
+
+	local function SyncSoon()
+		if not soon then
+			soon = true
+			C_Timer.After(0, Sync)
+		end
+	end
+
+	-- a flyout on a bar of ours (B.UpdateAction): its panel made
+	function FLY.Need(id)
+		if not (want[id] and FLY.panels[id]) then
+			want[id] = true
+			SyncSoon()
+		end
+	end
+
+	-- a spell learned, a pet stabled: every panel filled again
+	function FLY.Dirty()
+		if next(want) then
+			dirty = true
+			SyncSoon()
+		end
+	end
+
+	local function Cooldown(b)
+		local cd = b.cooldown
+		if not cd then
+			return
+		end
+		local d = SpellApi("GetSpellCooldownDuration", b.melloSpell)
+		if d ~= nil and type(cd.SetCooldownFromDurationObject) == "function"
+			and pcall(cd.SetCooldownFromDurationObject, cd, d, true) then
+			return
+		end
+		cd:Clear()
+	end
+
+	-- (the game's popup buttons' colours: white, pale blue short of mana, grey unusable; white when it cannot be read)
+	local function Usable(b)
+		local usable, noMana = SpellApi("IsSpellUsable", b.melloSpell)
+		usable, noMana = Plain(usable), Plain(noMana)
+		if usable or usable == nil then
+			b.icon:SetVertexColor(1, 1, 1)
+		elseif noMana then
+			b.icon:SetVertexColor(0.5, 0.5, 1)
+		else
+			b.icon:SetVertexColor(0.4, 0.4, 0.4)
+		end
+	end
+
+	-- the open panel's buttons as they are now (its cooldowns, usable tint, checked state); nothing while none is open
+	function FLY.Refresh()
+		local id = hub and hub:GetAttribute("openid")
+		local p = id and FLY.panels[id]
+		if not (p and p:IsShown()) then
+			return
+		end
+		for _, b in ipairs(p.buttons) do
+			if b.melloSpell and b:IsShown() then
+				Cooldown(b)
+				Usable(b)
+				b:SetChecked(Plain(SpellApi("IsCurrentSpell", b.melloSpell)) and true or false)
+			end
+		end
+	end
+
+	-- our bars gone (out of a fight): no flyout of ours left open
+	function FLY.HideAll()
+		if InCombatLockdown() then
+			return
+		end
+		for _, p in pairs(FLY.panels) do
+			p:Hide()
+		end
+		if hub then
+			hub:SetAttribute("openid", nil)
+		end
+	end
+
+	function FLY.Dump(out)
+		for id, p in pairs(FLY.panels) do
+			local spells = {}
+			for _, b in ipairs(p.buttons) do
+				if b.melloSpell then
+					spells[#spells + 1] = tostring(b.melloSpell)
+				end
+			end
+			out(("  flyout %d: %d spells (%s), shown %s"):format(id, p:GetAttribute("count") or 0,
+				table.concat(spells, ","), tostring(p:IsShown())))
+		end
 	end
 end
 
@@ -1792,6 +2232,7 @@ local function Off()
 	for btn in pairs(flashing) do
 		btn:StopFlash()
 	end
+	FLY.HideAll()
 	Back()
 end
 
@@ -1868,4 +2309,5 @@ function A.Dump(out)
 			v.Orientation == 0 and "horizontal" or "vertical", v.Rows, v.Icons, v.IconSize, v.Padding, tostring(v.Visible),
 			l and ("%.0f,%.0f-%.0f,%.0f"):format(l, b, r, t) or "-"))
 	end
+	FLY.Dump(out)
 end

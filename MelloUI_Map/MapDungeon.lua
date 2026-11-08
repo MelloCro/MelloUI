@@ -37,10 +37,20 @@
 -- own battleground -- opens on that map, as the game's own map does
 -- (MapUtil.GetDisplayableMapForPlayer): its plan made from the client's map
 -- (ClientPlan: its art one drawn floor by file ID, its units the art's
--- pixels), your arrow and your group at the game's places on it
--- (C_Map.GetPlayerMapPosition; the group by MapLayers' Layers.Group). Not
--- behind Dungeon Maps: it is the game's own map. From outside the game's map
--- has no way to one (no map links in this client), nor has this one.
+-- pixels). Not behind Dungeon Maps: it is the game's own map. From outside
+-- the game's map has no way to one (no map links in this client), nor has
+-- this one.
+-- The people on it (2.1.19; a player, 2026-11-08: the map shows, "but the
+-- units are not shown on it"): the client gives no addon a place inside an
+-- instance (UnitPosition answers none in a dungeon, proven in game) nor a
+-- raid member's anywhere (C_Map.GetPlayerMapPosition: the player and the
+-- party only), so you and your group come from the game's own unit frame
+-- (Units: a UnitPositionFrame, its map's group pin), which the client draws
+-- itself -- as the game's map does, inside its scaled canvas, the units
+-- added again at each zoom. A client without one: our pins from the places
+-- that read (C_Map.GetPlayerMapPosition, MapLayers' Layers.Group). The
+-- battleground's own marks as its map draws them: its flags, on the ground
+-- or with the one who carries it, and its vehicles (Battlefield).
 --
 -- Wings (the user, 2026-11-02: "Several floors, we need to spread them into
 -- Wings"): a dungeon whose floors lie over each other comes in wings (the
@@ -61,7 +71,8 @@
 --   Dungeon.Shown() -> map       the plan shown now, or nil
 --   Dungeon.Out()                a right-click: out, then the world
 --   Dungeon.FindMe()             a middle-click: the view on you
---   Dungeon.Tick(elapsed)        your arrow (the window's beat)
+--   Dungeon.Tick(elapsed)        your arrow (the window's beat; 2.1.19: a
+--                                battleground's people and marks)
 --   Dungeon.Listen(on)           the wing you walk into (the module on / off)
 --   Dungeon.Hint()               the footer's text while the plan shows
 --   Dungeon.SetWing(w, glide)    the wing shown (the view on the whole of it)
@@ -89,7 +100,19 @@ local T = {
 	ARROW_ATLAS = "UI-WorldMapArrow",                 -- the game's own map arrow
 	ARROW_FILE = "Interface\\Minimap\\MinimapArrow",  -- (if the atlas is missing)
 	EVERY = 0.1,             -- your place read at most this often
-	ORDER = { group = 40, player = 50 },   -- (the group: a battleground's own map only, 2.1.17)
+	-- (the group: a battleground's own map only, 2.1.17; 2.1.19: its flags and vehicles under the people, as the game's)
+	ORDER = { pvp = 30, group = 40, player = 50 },
+	-- (2.1.19) the people on a battleground's map, the game's unit frame: px on the screen (MapLayers' member and dot
+	-- sizes; your arrow ARROW_SIZE), the game's own blips (its UnitPositionFrame's: your party, in a raid the dotted
+	-- one), the draw sublevel (you on top)
+	MEMBER_SIZE = 16,
+	RAID_SIZE = 12,
+	BLIP = "WhiteCircle-RaidBlips",
+	BLIP_PARTY = "WhiteDotCircle-RaidBlips",
+	UNIT_SUB = 6,
+	PLAIN = 1,               -- a unit's picture in its own colours (no tint: the game passes white)
+	UNITS_ZOOM = 1.02,       -- their units added again when the zoom moved by this factor (their size within a hair)
+	FLAG_SIZE = 30,          -- a battleground's flag (the game's: 36 at its pins' smallest scale 0.825)
 	BACK_AT = 8,             -- the World map button: px in from the canvas's top left
 	FIND_ZOOM = 2,           -- Find me: at least this close
 	OUT_AT = 1.02,           -- a right-click at this share of the wing's whole view or wider: the world
@@ -105,8 +128,9 @@ local TEXT = {
 	credit = "Map by %s",   -- (an artist's sheets: MapDungeons' credit)
 }
 
--- (own: [instance map] = the plan made from the client's own map, 2.1.17)
-local S = { canvases = {}, areas = {}, wingOf = {}, own = {} }
+-- (own: [instance map] = the plan made from the client's own map, 2.1.17; 2.1.19: roster, the group's changes counted --
+-- a battleground's unit frame adds its units again when its count is behind)
+local S = { canvases = {}, areas = {}, wingOf = {}, own = {}, roster = 0 }
 
 --------------------------------------------------------------------------------
 -- The instance you are in
@@ -309,19 +333,9 @@ local function You()
 	return x, y
 end
 
-local function Player()
-	local pins = S.pins
-	local x, y = You()
-	local here, c = Dungeon.Where(S.shown), S.canvases[S.shown]
-	if here and c and here ~= c.wing then
-		x = nil   -- (you stand in another wing: no arrow on this one)
-	end
-	local pin = x and pins:Set("player", "player", x, y, PLAYER)
-	if not pin then
-		pins:Remove("player", "player")
-		return
-	end
-	local facing = Finite(GetPlayerFacing and GetPlayerFacing())
+-- a pin turned to the way it faces (a plain angle; else as it was)
+local function Turn(pin, facing)
+	facing = Finite(facing)
 	if facing and pin.rotation ~= facing then
 		pin.rotation = facing
 		if pin.tex then
@@ -330,13 +344,188 @@ local function Player()
 	end
 end
 
--- (2.1.17) a map of the client's own (a battleground's): your group at their places on it, by MapLayers' one rule (a
--- member elsewhere: not on it)
+local function Player()
+	local pins = S.pins
+	local x, y = You()
+	local here, c = Dungeon.Where(S.shown), S.canvases[S.shown]
+	if (here and c and here ~= c.wing) or (c and c.units) then
+		x = nil   -- (you stand in another wing: no arrow on this one; 2.1.19: the game's unit frame draws you)
+	end
+	local pin = x and pins:Set("player", "player", x, y, PLAYER)
+	if not pin then
+		pins:Remove("player", "player")
+		return
+	end
+	Turn(pin, GetPlayerFacing and GetPlayerFacing())
+end
+
+-- (2.1.17) a map of the client's own (a battleground's), on a client without the game's unit frame: your group at
+-- their places on it, by MapLayers' one rule (a member elsewhere: not on it)
 local function Group()
 	local d, c = Plan(S.shown), S.canvases[S.shown]
 	if d and d.uiMap and c and c.seen then
 		Layers.Group(S.pins, d.uiMap, c.seen)
 	end
+end
+
+-- (2.1.19) the people on a map of the client's own (a battleground's): the game's own unit frame -- its map's group
+-- pin, a UnitPositionFrame -- over that map's place in the scaled canvas, the client's map set on it: the client draws
+-- you and your group at their places itself (none of which it hands an addon inside an instance); nil on a client
+-- without one (our pins then)
+local function Units(c, d)
+	local p = c.byID[d.uiMap]
+	local ok, f = pcall(CreateFrame, "UnitPositionFrame", nil, c.root)
+	if not (p and ok and type(f) == "table" and type(f.AddUnit) == "function" and type(f.SetUiMapID) == "function"
+		and type(f.ClearUnits) == "function" and type(f.FinalizeUnits) == "function") then
+		if ok and type(f) == "table" and f.Hide then
+			f:Hide()
+		end
+		return nil
+	end
+	f:SetPoint("TOPLEFT", c.root, "TOPLEFT", p.left, -p.top)
+	f:SetSize(p.w, p.h)
+	f:SetFrameLevel(c.pins.frame:GetFrameLevel() + T.ORDER.group)   -- (over the flags' pins, under nothing of ours)
+	f:EnableMouse(false)   -- (the canvas keeps its wheel and drag)
+	if not pcall(f.SetUiMapID, f, d.uiMap) then
+		f:Hide()
+		return nil
+	end
+	return f
+end
+
+local UNIT = { raid = {}, party = {} }   -- [kind][i] = its unit token (made once)
+for i = 1, 40 do
+	UNIT.raid[i] = "raid" .. i
+end
+for i = 1, 4 do
+	UNIT.party[i] = "party" .. i
+end
+
+-- an answer of the client's, true when it reads plainly true (a secret: no)
+local function Yes(v)
+	v = MelloUI.Safe.Value(v)
+	return v ~= nil and v ~= false
+end
+
+-- the unit frame's units added again (the group changed, or the zoom: their sizes are in the canvas's scaled units, as
+-- the game's map adds them again at each scale): each member in their class's colour (MelloUI.Colours), your party's
+-- bigger, you last with your facing
+local function Roster(c)
+	local f = c.units
+	local k = c.k1 * c.z
+	c.unitsK, c.roster = k, S.roster
+	pcall(f.ClearUnits, f)
+	local raid = Yes(IsInRaid and IsInRaid())
+	local list = raid and UNIT.raid or UNIT.party
+	local Colours, sub = MelloUI.Colours, rawget(_G, "UnitInSubgroup")
+	for i = 1, #list do
+		local unit = list[i]
+		if Yes(UnitExists(unit)) and not Yes(UnitIsUnit(unit, "player")) then
+			local mine = not raid or Yes(sub and sub(unit))
+			local _, class = UnitClass(unit)
+			local r, g, b
+			if Colours and Colours.Class then
+				r, g, b = Colours.Class(Text(class))
+			end
+			r, g, b = Finite(r), Finite(g), Finite(b)
+			if not (r and g and b) then
+				r, g, b = T.PLAIN, T.PLAIN, T.PLAIN   -- (no class read: the blip as it is)
+			end
+			local s = (mine and T.MEMBER_SIZE or T.RAID_SIZE) / k
+			pcall(f.AddUnit, f, unit, (mine and raid) and T.BLIP_PARTY or T.BLIP, s, s, r, g, b, T.PLAIN, T.UNIT_SUB, false)
+		end
+	end
+	if not (PLAYER.atlas or PLAYER.icon) then
+		ArrowLook()   -- (its first view comes before the show's own)
+	end
+	local s = T.ARROW_SIZE / k
+	local w = T.PLAIN
+	pcall(f.AddUnit, f, "player", PLAYER.atlas or PLAYER.icon, s, s, w, w, w, w, T.UNIT_SUB + 1, true)
+	pcall(f.FinalizeUnits, f)
+end
+
+-- (2.1.19) a battleground's own marks on its map, as the game's map draws them (its BattlefieldFlag and Vehicle
+-- providers): each flag at the game's place for it -- on the ground, or with the one who carries it -- in its own
+-- picture; each vehicle in its atlas, turned its way (none you ride); a place that does not read plainly: not drawn
+local flagSpecs, carSpecs, EMPTY = {}, {}, {}
+
+local function Flags(c, pins, map)
+	local count = 0
+	local pvp = rawget(_G, "C_PvP")
+	local get = pvp and pvp.GetBattlefieldFlagPosition
+	local fn = rawget(_G, "GetNumBattlefieldFlagPositions")
+	if get and fn then
+		local ok, n = pcall(fn)
+		count = ok and Finite(n) or 0
+	end
+	for i = 1, count do
+		local ok, x, y, file = pcall(get, i, map)
+		x, y, file = ok and Finite(x), ok and Finite(y), ok and Finite(file)
+		local spec = file and flagSpecs[file]
+		if file and not spec then
+			spec = { icon = file, size = T.FLAG_SIZE, sub = 1 }
+			flagSpecs[file] = spec
+		end
+		if not (x and y and spec and pins:SetAt("pvp", i, map, x, y, spec)) then
+			pins:Remove("pvp", i)
+		end
+	end
+	for i = count + 1, c.flags or 0 do
+		pins:Remove("pvp", i)
+	end
+	c.flags = count
+end
+
+local function Vehicles(c, pins, map)
+	local cars = 0
+	local pvp = rawget(_G, "C_PvP")
+	local get = pvp and pvp.GetBattlefieldVehicles
+	local ok, all = false, nil
+	if get then
+		ok, all = pcall(get, map)
+	end
+	if ok and type(all) == "table" then
+		for i, v in ipairs(all) do
+			v = type(v) == "table" and v or EMPTY
+			local x, y = Finite(v.x), Finite(v.y)
+			local atlas = Text(v.atlas)
+			local spec = atlas and carSpecs[atlas]
+			if atlas and not spec then
+				spec = { atlas = atlas, size = Finite(v.textureWidth) or T.FLAG_SIZE, sub = 2 }
+				carSpecs[atlas] = spec
+			end
+			local pin = x and y and spec and Yes(v.isAlive) and not Yes(v.isPlayer)
+				and pins:SetAt("pvp", -i, map, x, y, spec)
+			if pin then
+				Turn(pin, v.facing)
+			else
+				pins:Remove("pvp", -i)
+			end
+			cars = i
+		end
+	end
+	for i = cars + 1, c.cars or 0 do
+		pins:Remove("pvp", -i)
+	end
+	c.cars = cars
+end
+
+-- the unit frame's units again when the group changed or the zoom moved (a view of its canvas, or the beat)
+local function Resize(c)
+	local k, was = c.units and c.k1 and c.z and c.k1 * c.z, c.unitsK
+	if k and (c.roster ~= S.roster or not was or k > was * T.UNITS_ZOOM or k < was / T.UNITS_ZOOM) then
+		Roster(c)
+	end
+end
+
+local function Battlefield()
+	local d, c = Plan(S.shown), S.canvases[S.shown]
+	if not (d and d.uiMap and c) then
+		return
+	end
+	Resize(c)
+	Flags(c, S.pins, d.uiMap)
+	Vehicles(c, S.pins, d.uiMap)
 end
 
 function Dungeon.Tick(elapsed)
@@ -348,6 +537,7 @@ function Dungeon.Tick(elapsed)
 		S.wait = T.EVERY
 		Player()
 		Group()
+		Battlefield()
 		S.pins:Lay()
 	end
 end
@@ -390,14 +580,23 @@ local function Make(mapID)
 	end
 	S.areas[mapID] = areas
 	local pins = Pins.New(c)
+	c.pins = pins
 	if d.uiMap then
-		pins:Layer("group", T.ORDER.group)   -- (2.1.17: a battleground's own map, its group as the world's)
-		c.seen = {}
+		-- (a battleground's own map: its flags and vehicles; you and your group the game's unit frame draws -- 2.1.19 --
+		-- else, as 2.1.17, our pins: the group as the world's)
+		pins:Layer("pvp", T.ORDER.pvp)
+		c.units = Units(c, d)
+		if not c.units then
+			pins:Layer("group", T.ORDER.group)
+			c.seen = {}
+		end
 	end
 	pins:Layer("player", T.ORDER.player)
-	c.pins = pins
 	c.onView = function()
 		pins:Lay()
+		if c.units then
+			Resize(c)   -- (2.1.19: the units' size kept on the screen through a zoom)
+		end
 	end
 	S.hook(c.frame)
 	S.canvases[mapID] = c
@@ -563,7 +762,11 @@ end
 -- The wing you walk into (the minimap's area name)
 --------------------------------------------------------------------------------
 
-local function Listen_OnEvent()
+local function Listen_OnEvent(_, event)
+	if event == "GROUP_ROSTER_UPDATE" then
+		S.roster = S.roster + 1   -- (2.1.19: a battleground's unit frame adds its units again on its next beat)
+		return
+	end
 	if S.shown then
 		-- (ZONE_CHANGED_INDOORS, ZONE_CHANGED: the minimap's area name changed -- into another wing, its rooms shown)
 		local here = Dungeon.Where(S.shown)
@@ -587,6 +790,7 @@ function Dungeon.Listen(on)
 	if on then
 		f:RegisterEvent("ZONE_CHANGED_INDOORS")
 		f:RegisterEvent("ZONE_CHANGED")
+		f:RegisterEvent("GROUP_ROSTER_UPDATE")
 	else
 		f:UnregisterAllEvents()
 	end

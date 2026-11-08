@@ -82,6 +82,7 @@ local M = MelloUI:RegisterModule("Auras", {
 		targetOnlyMine = false,
 		nameplates = true,
 		nameplateSize = 20,
+		nameplateOnlyMine = true,   -- (2.1.19) the row is "your debuffs": the game's plate filter shows everyone's
 		textFont = "shared",
 	},
 	options = {
@@ -124,6 +125,10 @@ local M = MelloUI:RegisterModule("Auras", {
 		  desc = "Your debuffs on enemy nameplates, in MelloUI's look." },
 		{ type = "slider", key = "nameplateSize", parent = "nameplates", name = "Icon Size", min = 12, max = 32, step = 1,
 		  desc = "The size of your debuff icons on nameplates." },
+		-- (2.1.19; the user, 2026-11-08: "Your Debuffs show debuffs from everybody, make a checkbox on them to ONLY show
+		-- your own debuffs on the nameplates")
+		{ type = "toggle", key = "nameplateOnlyMine", parent = "nameplates", name = "Only My Debuffs", new = "2.1.19",
+		  desc = "Only the debuffs you put on enemies. Off: every debuff the game shows on their nameplates." },
 		{ type = "dropdown", key = "textFont", name = "Buff Numbers Font", values = MelloUI.FontFaces,
 		  desc = "The font of timers and stacks on MelloUI's buffs and debuffs. Shared: the numbers font." },
 	},
@@ -337,7 +342,8 @@ end
 -- o: size, swipe (a cooldown spiral), durationBelow (the time under the
 -- icon, else in its middle), rawSeconds (the time as the bare number of
 -- seconds: MelloUI.Anim:RawSeconds), compactTime (the time with no space
--- before its letter, "59m": MelloUI.Anim:CompactDuration), dispel (a dispel-coloured border on debuffs),
+-- before its letter, "59m": MelloUI.Anim:CompactDuration), timeColours (2.1.19: the numbers coloured by the time
+-- left, MelloUI.Anim:TimeLeftColours), dispel (a dispel-coloured border on debuffs),
 -- cancel (right-click cancels), tooltip (anchor), shade (the UI shade:
 -- ShadeButton)
 local function InitButton(button, o)
@@ -386,7 +392,9 @@ local function InitButton(button, o)
 	-- (0.20.1, the user: "make it 59m on both" -- the target's rows and the rows on the player frame)
 	local Anim = MelloUI.Anim
 	local fmt = Anim and ((o.rawSeconds and Anim:RawSeconds()) or (o.compactTime and Anim:CompactDuration()))
-	Try(button.SetDurationText, button, time, fmt and { textFormatter = fmt } or {})
+	-- (2.1.19) coloured by the time left where the row asks: the game's own colouring, on its own time
+	local colours = o.timeColours and Anim and Anim:TimeLeftColours() or nil
+	Try(button.SetDurationText, button, time, { textFormatter = fmt or nil, textColor = colours })
 	-- (gap: the room between two buttons of the row, the shade's reach kept in it)
 	texts[button] = { time = time, count = count, below = o.durationBelow, edge = edge, size = o.size, shade = o.shade,
 		gap = o.shade and math.min(o.spacing or 0, o.lineSpacing or o.spacing or 0) or nil, over = over }
@@ -1438,12 +1446,18 @@ local function GameDebuffRow(uf)
 	return auras and auras.DebuffListFrame, auras
 end
 
+-- The plate's own debuff filter (this client's: HARMFUL|INCLUDE_NAME_PLATE_ONLY, Blizzard_NamePlateAuras -- everyone's
+-- debuffs the game shows on plates); (2.1.19) Only My Debuffs: that filter with PLAYER, the engine's own sort (no
+-- aura's source read: it can be secret)
 local function PlateFilter(auras)
 	local f = auras and auras.debuffFilterString
-	if type(f) == "string" and not Secret(f) and f ~= "" then
-		return f
+	if not (type(f) == "string" and not Secret(f) and f ~= "") then
+		return "HARMFUL|PLAYER"
 	end
-	return "HARMFUL|PLAYER"
+	if M.db and M.db.nameplateOnlyMine ~= false and not f:find("PLAYER", 1, true) then
+		f = f .. "|PLAYER"
+	end
+	return f
 end
 
 local function ClearPlate(uf)
@@ -1470,7 +1484,9 @@ local function FillPlate(uf, unit)
 	if not c then
 		local ok, made = pcall(NewContainer, uf, nil, {
 			{ key = "debuffs", filter = PlateFilter(auras), max = 8 },
-		}, { size = M.db.nameplateSize, swipe = true, rawSeconds = true, dispel = false, tooltip = "ANCHOR_TOP",
+		-- (2.1.19; the user, 2026-11-08: "should have its "Clock Icon" timer removed, and the Duration Numbers should
+		-- be colored depending on the duration left") no sweep, the numbers by the time left
+		}, { size = M.db.nameplateSize, swipe = false, rawSeconds = true, timeColours = true, dispel = false, tooltip = "ANCHOR_TOP",
 			anchor = "BOTTOMLEFT", gx = 1, gy = 1, line = 150, spacing = 2 })
 		if not ok then
 			return   -- the game's row stays
@@ -1673,6 +1689,13 @@ function M:OnSettingChanged(key, value, db)
 	elseif key == "textFont" then
 		for b, t in pairs(texts) do
 			SizeTexts(b, t.size)
+		end
+	elseif key == "nameplateOnlyMine" then
+		-- (2.1.19) every plate's row on its new filter
+		for uf, c in pairs(plateRows) do
+			local _, auras = GameDebuffRow(uf)
+			Try(c.SetAuraGroupFilterString, c, "debuffs", PlateFilter(auras))
+			Try(c.UpdateAllAuras, c)
 		end
 	elseif key == "targetOnlyMine" and targetRows then
 		Try(targetRows.SetAuraGroupFilterString, targetRows, "debuffs", TargetFilter())

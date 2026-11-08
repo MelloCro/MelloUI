@@ -37,6 +37,7 @@
 --         Wants(hand)        (optional) whether a hand's swing shows: "main", "off", "ranged"
 --         Quiet()            (optional) true while it plays its own preview: the game's swings and stops left out
 --         Style(fs, size)    (optional) the word's font (else the Interface text's)
+--         Over()             (optional; 2.1.19) true: the badges at its own place even while your target has a plate
 --       }
 --   SB.Start(hand, seconds), SB.Shot(seconds), SB.Outcome(action, flag): a swing, a shot, the game's report of a blow
 --       (a host's preview drives them too); SB.Off(): every badge put away; SB.Lay(): laid again (the host's place
@@ -281,6 +282,11 @@ function Badge.Place()
 	end
 	local NP = MelloUI:GetModule("Nameplates")
 	local uf = Area.On("nameplates") and NP and NP.TargetPlate and NP:TargetPlate()
+	-- (2.1.19) a host that holds the badge over itself (the Personal Display's Over The Personal Display): the plate
+	-- passed by
+	if uf and host.Over and host.Over() then
+		uf = nil
+	end
 	if uf then
 		local container = uf.HealthBarsContainer
 		local hb = container.healthBar
@@ -288,8 +294,9 @@ function Badge.Place()
 		local beside = (lf and MelloUI.Safe.Call(lf, "IsShown") == true) and lf or container
 		local ok, level = pcall(hb.GetFrameLevel, hb)
 		level = ((ok and Num(level)) or 0) + 10
-		SB.Attach(big, uf, level, 1)
-		SB.Attach(small, uf, level, 1)
+		local k = SB.PlateScale()
+		SB.Attach(big, uf, level, k)
+		SB.Attach(small, uf, level, k)
 		big:ClearAllPoints()
 		big:SetPoint("LEFT", beside, "RIGHT", T.badgeGap, 0)
 		small:ClearAllPoints()
@@ -309,6 +316,18 @@ function SB.Lay()
 	if Badge.big then
 		Badge.Place()
 	end
+end
+
+-- (2.1.19; the user, 2026-11-08: "let users scale them from 50% - 200%") the badges' scale on your target's plate:
+-- Nameplates' Swing Badge Size, 50 - 200 % (the host's own place keeps its own size)
+function SB.PlateScale()
+	-- (the saved table the configurator writes and its stage reads, the module's db while it runs)
+	local db = MelloUI:GetModuleDB("Nameplates")
+	local v = type(db) == "table" and Num(db.swingSize)
+	if not v or v < 50 or v > 200 then
+		v = 100
+	end
+	return v / 100
 end
 
 -- (2.1.6) the Nameplates switch moved (MelloUI.Area): the badges onto the target's plate, or to their host's place

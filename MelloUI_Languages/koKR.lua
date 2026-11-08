@@ -1034,6 +1034,11 @@ Lang:Add("koKR", {
 	["Rogues and cat druids: your combo points on your target's nameplate."] = "도적과 표범 형태 드루이드: 대상 이름표에 연계 점수.", -- draft
 	["Combo Point Size"] = "연계 점수 크기", -- draft
 	["The size of each combo point."] = "연계 점수 하나의 크기.", -- draft
+	["Moves the combo points left or right on the nameplate."] = "이름표에서 연계 점수를 왼쪽이나 오른쪽으로 옮깁니다.", -- draft
+	["Moves the combo points up or down on the nameplate. The name moves out of their way."] = "이름표에서 연계 점수를 위나 아래로 옮깁니다. 이름은 연계 점수를 피해 움직입니다.", -- draft
+	["Swing Badge"] = "스윙 배지", -- draft
+	["Swing Badge Size"] = "공격 배지 크기", -- draft
+	["The size of your swing timer's weapon badge on your target's nameplate, or over the Personal Display."] = "대상의 이름표나 개인 표시 위에 표시되는 공격 타이머 무기 배지의 크기입니다.", -- draft
 	-- PlateImpact
 	["Impact Effects"] = "타격 효과", -- draft
 	["Your target's nameplate reacts to the fight: hits flash, crits glow, interrupted casts shatter."] = "대상 이름표가 전투에 반응합니다: 타격은 번쩍이고 치명타는 빛나며 차단된 시전은 부서집니다.", -- draft
@@ -1370,6 +1375,7 @@ Lang:Add("koKR", {
 	["Enemy Nameplates"] = "적 이름표", -- draft
 	["Your debuffs on enemy nameplates, in MelloUI's look."] = "적 이름표에 내 약화 효과를 MelloUI 모습으로.", -- draft
 	["The size of your debuff icons on nameplates."] = "이름표의 내 약화 효과 아이콘 크기.", -- draft
+	["Only the debuffs you put on enemies. Off: every debuff the game shows on their nameplates."] = "내가 적에게 건 약화 효과만 표시합니다. 끄면 게임이 이름표에 보여 주는 모든 약화 효과가 표시됩니다.", -- draft
 	["Buff Numbers Font"] = "효과 숫자 글꼴", -- draft
 	["The font of timers and stacks on MelloUI's buffs and debuffs. Shared: the numbers font."] = "MelloUI 강화·약화 효과의 타이머와 중첩 글꼴. 공유: 숫자 글꼴.", -- draft
 	-- Map
@@ -1907,8 +1913,9 @@ Lang:Add("koKR", {
 	["Hides the game's cast bar; your casts show on the display."] = "게임 시전 바를 숨깁니다. 시전은 개인 화면에 보입니다.", -- draft
 	["Heal Light From Your Character"] = "캐릭터에서 나오는 치유 빛", -- draft
 	["Your heals' light starts from your character instead of the cast bar."] = "치유 빛이 시전 바가 아닌 캐릭터에서 시작합니다.", -- draft
-	["Swing Badge"] = "스윙 배지", -- draft
 	["Your swing timer as a small badge on your target's nameplate."] = "대상 이름표에 작은 배지로 스윙 타이머.", -- draft
+	["Over The Personal Display"] = "개인 표시 위에", -- draft
+	["The swing badge stands centred above the display instead of on your target's nameplate."] = "공격 배지가 대상의 이름표 대신 개인 표시 위 가운데에 표시됩니다.", -- draft
 	["Big Cooldowns"] = "큰 재사용 대기시간", -- draft
 	["Your big defensive cooldowns (Shield Wall, Evasion, Ice Block...) as icons above the health bar."] = "큰 방어 재사용 대기시간(방패의 벽, 회피, 얼음 방패...)을 생명력 바 위 아이콘으로.", -- draft
 	["Percent And Spell Text"] = "백분율과 주문 글자", -- draft
@@ -2092,6 +2099,7 @@ Lang:Add("koKR", {
 	["Quest icon"] = "퀘스트 아이콘", -- draft
 	["Your debuffs"] = "내 약화 효과", -- draft
 	["The game's auras"] = "게임의 효과", -- draft
+	["Swing badge"] = "스윙 배지", -- draft
 	["A class medallion over friendly players' names, in the open world"] = "야외에서 아군 플레이어 이름 위의 직업 메달", -- draft
 	["Friendly players"] = "아군 플레이어", -- draft
 	["Medallion"] = "메달", -- draft
@@ -2135,7 +2143,6 @@ Lang:Add("koKR", {
 	["Personal"] = "개인", -- draft
 	["Shield column"] = "보호막 열", -- draft
 	["Cast"] = "시전", -- draft
-	["Swing badge"] = "스윙 배지", -- draft
 	["Big cooldowns"] = "큰 재사용 대기시간", -- draft
 	["Window"] = "창", -- draft
 	["The bag window and the game's windows, one at a time: pick a window."] = "가방 창과 게임 창을 하나씩: 창을 고르세요.", -- draft
@@ -2281,6 +2288,13 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "이름표: 공격 배지가 이름표 미리보기에 표시되며, 크기를 50~200%로 조절할 수 있습니다.", -- draft
+	["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "이름표: 적 이름표의 내 약화 효과에 '내 약화 효과만' 설정이 추가되었습니다(기본값 켜짐).", -- draft
+	["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "이름표: 적 이름표의 내 약화 효과에 더 이상 시계 표시가 나오지 않으며, 숫자는 남은 시간에 따라 색이 바뀌고 5초 미만이면 빨간색이 됩니다.", -- draft
+	["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "이름표: 연계 점수를 가로 및 세로 오프셋으로 옮길 수 있습니다.", -- draft
+	["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "개인 표시: '개인 표시 위에'를 켜면 공격 배지가 대상의 이름표 대신 개인 표시 위 가운데에 표시됩니다.", -- draft
+	["Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast."] = "행동 단축바: 사냥꾼의 상(Aspect), 전사의 태세, 드루이드의 변신 같은 직업 펼침 메뉴가 MelloUI 행동 단축바에서 열리고 그 주문이 시전됩니다.", -- draft
+	["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "지도: 전장 안에서 지도에 내 캐릭터, 내 파티와 전장의 깃발이 표시됩니다.", -- draft
 	["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "보충 목록: 이제 검색이 있는 종류별 카탈로그(음료, 음식, 탄약, 물약, 비약, 두루마리, 독, 재료)로, 보관할 아이템을 체크하고 개수를 정합니다.", -- draft
 	["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "보충: 사냥꾼은 먹이 종류별(고기, 생선, 빵, 치즈, 과일, 버섯)로 소환수 먹이를 보관할 수 있으며, 목록은 40줄까지 담습니다.", -- draft
 	["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "수정: MelloUI의 검색창과 입력창의 글자가 가운데가 아니라 다시 왼쪽부터 시작합니다.", -- draft
@@ -2292,7 +2306,6 @@ Lang:Add("koKR", {
 	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "수정: 던전에서 대상의 대상과 다른 유닛 프레임에 이전 이름이 계속 표시되지 않습니다.", -- draft
 	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "수정: 파티 창, 공격대 창 및 기타 개체창에서 죽은 플레이어와 유령의 생명력 및 자원 바가 이제 비어 있게 표시됩니다.", -- draft
 	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "/mellobug 보고서가 이제 가방 버튼이 어떻게 만들어졌는지도 보여 주어, 게임이 가방 아이템을 차단하는 원인을 찾는 데 도움이 됩니다.", -- draft
-	["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "수정: 바 텍스처를 선택했을 때 대상의 대상과 주시 대상의 대상 생명력 및 자원 바가 더 이상 어둡게 보이지 않습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2955,6 +2968,7 @@ Lang:Add("koKR", {
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "수정: 바로 옆에 있는 가이드 단계의 월드 마커, 퀘스트 리스트의 직업 퀘스트, 던전 정보의 아이템 품질과 반복되는 우두머리.", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "수정: 설치 마법사가 내 설정 일부가 맞지 않을 때 화면이 너무 작다고 하지 않습니다.", -- draft
 -- stale: ["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "수정: 알림 버튼의 글줄과 추가 버튼이 더 이상 화면 밖으로 나가지 않습니다. 공간이 있는 쪽으로 열립니다.", -- draft
+-- stale: ["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "수정: 바 텍스처를 선택했을 때 대상의 대상과 주시 대상의 대상 생명력 및 자원 바가 더 이상 어둡게 보이지 않습니다.", -- draft
 -- stale: ["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "수정: MelloUI 강화 효과 아이콘을 꺼도 레이아웃 편집에서 게임의 강화 효과 바를 다시 옮길 수 있습니다.", -- draft
 -- stale: ["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "수정: 기본 스킨에서 귓속말 창이 Lua 오류 없이 열리고 다시 게임 고유의 모습으로 표시됩니다.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "도적과 표범 변신 드루이드: 대상 생명력 막대 위쪽 가장자리에 다섯 연계 점수를 한 줄로, 쌓기 전에는 비어 있습니다. 이름이 조금 올라가 자리를 만듭니다.", -- draft
@@ -3498,6 +3512,7 @@ Lang:Add("koKR", {
 -- stale: ["The size of your buff and debuff icons under the player frame, in pixels (the target's are 22 by default). The rows keep one width, so a smaller size fits more in a row."] = "플레이어 창 아래 강화 및 약화 효과 아이콘의 픽셀 크기(대상은 기본 22). 줄은 폭을 유지하므로 작을수록 한 줄에 더 많이 들어갑니다.", -- draft
 -- stale: ["The size of your buff and debuff icons, in pixels: MelloUI's own rows while Your Buffs And Debuffs shows them, else the game's buff and debuff bars (saved into your Edit Mode layout in its own steps of 3 pixels, shown after a reload; 30 is the game's size)."] = "강화 및 약화 효과 아이콘의 크기(픽셀): 내 강화 및 약화 효과가 MelloUI의 줄을 보여 주는 동안은 그 줄, 아니면 게임의 강화 및 약화 효과 바(편집 모드 레이아웃에 3픽셀 단위로 저장, 재시작 후 표시; 30이 게임의 크기).", -- draft
 -- stale: ["The size of your debuff icons on enemy nameplates, in pixels."] = "적 이름표에 표시하는 내 약화 효과 아이콘의 픽셀 크기.", -- draft
+-- stale: ["The size of your swing timer's weapon badge on your target's nameplate."] = "대상의 이름표에 표시되는 공격 타이머 무기 배지의 크기입니다.", -- draft
 -- stale: ["The size of your target's debuff and buff icons under its frame, in pixels. The rows keep one width, so a smaller size fits more in a row."] = "대상 창 아래 대상의 약화 및 강화 효과 아이콘의 픽셀 크기. 줄은 폭을 유지하므로 작을수록 한 줄에 더 많이 들어갑니다.", -- draft
 -- stale: ["The skill's new value and its cap after its name, such as 57 / 80."] = "이름 뒤에 기술의 새 값과 한도, 예: 57 / 80.", -- draft
 -- stale: ["The small buttons for the game's windows. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "게임 창을 여는 작은 버튼. 항상: 흐려지지 않음. 전투 중: 전투 밖에서 흐려지고 전투 때 돌아옴. 마우스를 올리면: 늘 흐리고 가리키는 동안 보임.", -- draft

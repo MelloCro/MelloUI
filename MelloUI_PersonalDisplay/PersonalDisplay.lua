@@ -3640,15 +3640,38 @@ end
 
 local Host = { key = "personal" }
 
--- the two at the display's left end, the off hand's left of the main one (the strike toward the display)
+-- (2.1.19) Over The Personal Display: the badge here even while your target has a plate (Core/SwingBadge.lua's
+-- Badge.Place asks)
+function Host.Over()
+	return Db().swingOver == true
+end
+
+-- the two at the display's left end, the off hand's left of the main one (the strike toward the display); (2.1.19)
+-- Over The Personal Display: centred above the health bar at the Swing Badge Size, over the Big Cooldowns' row while
+-- that is on (its icons stand centred on the bar's top), the off hand's right of it
 function Host.Here(big, small)
 	local ui = S.ui
 	if not ui then
 		return
 	end
 	local fill = ui.health.strip.fill
-	local k = T.badgeHere / SB.T.badge
 	local level = ui.float:GetFrameLevel() + 12
+	if Host.Over() then
+		local k = (SB.PlateScale and SB.PlateScale()) or 1
+		SB.Attach(big, ui.float, level, k)
+		SB.Attach(small, ui.float, level, k)
+		local db = Db()
+		local over = T.cdLift + T.badgeGap
+		if db.cooldowns ~= false then
+			over = over + math.max(12, math.min(40, Num(db.cdSize) or T.cdIcon)) + T.cdGap
+		end
+		big:ClearAllPoints()
+		big:SetPoint("BOTTOM", fill, "TOP", 0, over / k)
+		small:ClearAllPoints()
+		small:SetPoint("LEFT", big, "RIGHT", 3, 0)
+		return
+	end
+	local k = T.badgeHere / SB.T.badge
 	SB.Attach(big, ui.float, level, k)
 	SB.Attach(small, ui.float, level, k)
 	big:ClearAllPoints()
@@ -4526,7 +4549,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 	-- profile
 	keep = { "savedGameDisplay", "zoomRef", "savedSwing", "savedLoc" },
 	defaults = { width = 160, height = 10, shield = true, text = true, zoom = true, hideCastBar = true,
-		healFrom = true, swing = true, cooldowns = true, cdSize = 16, textFont = "shared",
+		healFrom = true, swing = true, swingOver = false, cooldowns = true, cdSize = 16, textFont = "shared",
 		chunk = true, lead = true, heavy = true, spend = true, gain = true, avoid = true, lowHealth = true,
 		stun = true, settle = true, classColour = false, castMotion = true },
 	options = {
@@ -4538,6 +4561,10 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "Your heals' light starts from your character instead of the cast bar." },
 		{ type = "toggle", key = "swing", name = "Swing Badge",
 		  desc = "Your swing timer as a small badge on your target's nameplate." },
+		-- (2.1.19; the user, 2026-11-08: "The Swing Badge, should also have the option to be shown over the Personal
+		-- Nameplate, a checkbox will do" -- this display, their pick)
+		{ type = "toggle", key = "swingOver", parent = "swing", name = "Over The Personal Display", new = "2.1.19",
+		  desc = "The swing badge stands centred above the display instead of on your target's nameplate." },
 		{ type = "toggle", key = "cooldowns", name = "Big Cooldowns",
 		  desc = "Your big defensive cooldowns (Shield Wall, Evasion, Ice Block...) as icons above the health bar." },
 		{ type = "toggle", key = "text", name = "Percent And Spell Text",
@@ -4927,6 +4954,11 @@ function M:OnSettingChanged(key, _, db)
 	elseif key == "swing" then
 		Events(true)   -- (the swing badge's host or not)
 		HoldGameSwing()
+	elseif key == "swingOver" then
+		-- (2.1.19) the badge laid again: over the display or on the plate
+		if SB and SB.Lay then
+			SB.Lay()
+		end
 	elseif key == "shield" then
 		if Db().shield == false then
 			ShieldOff()
@@ -4964,6 +4996,10 @@ function M:OnSettingChanged(key, _, db)
 		for fs, size in pairs(S.texts) do
 			StyleText(fs, size)
 		end
+	end
+	-- (2.1.19) the badge over the display stands over the Big Cooldowns' row: laid again when that changes
+	if (key == "cooldowns" or key == "cdSize") and Db().swingOver and SB and SB.Lay then
+		SB.Lay()
 	end
 end
 

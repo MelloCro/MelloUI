@@ -1034,6 +1034,11 @@ Lang:Add("zhCN", {
 	["Rogues and cat druids: your combo points on your target's nameplate."] = "盗贼和猎豹形态的德鲁伊：你的连击点显示在目标姓名板上。", -- draft
 	["Combo Point Size"] = "连击点数大小", -- draft
 	["The size of each combo point."] = "每个连击点的大小。", -- draft
+	["Moves the combo points left or right on the nameplate."] = "在姓名板上左右移动连击点。", -- draft
+	["Moves the combo points up or down on the nameplate. The name moves out of their way."] = "在姓名板上上下移动连击点。名字会让开它们。", -- draft
+	["Swing Badge"] = "挥击徽章", -- draft
+	["Swing Badge Size"] = "攻击徽章大小", -- draft
+	["The size of your swing timer's weapon badge on your target's nameplate, or over the Personal Display."] = "目标姓名板上或个人显示上方你的攻击计时器武器徽章的大小。", -- draft
 	-- PlateImpact
 	["Impact Effects"] = "打击效果", -- draft
 	["Your target's nameplate reacts to the fight: hits flash, crits glow, interrupted casts shatter."] = "目标姓名板对战斗作出反应：命中闪光、暴击发光、被打断的施法碎裂。", -- draft
@@ -1370,6 +1375,7 @@ Lang:Add("zhCN", {
 	["Enemy Nameplates"] = "敌方姓名板", -- draft
 	["Your debuffs on enemy nameplates, in MelloUI's look."] = "你的减益显示在敌方姓名板上，使用 MelloUI 外观。", -- draft
 	["The size of your debuff icons on nameplates."] = "姓名板上你的减益图标大小。", -- draft
+	["Only the debuffs you put on enemies. Off: every debuff the game shows on their nameplates."] = "只显示你施加在敌人身上的减益效果。关闭后：显示游戏在其姓名板上显示的所有减益效果。", -- draft
 	["Buff Numbers Font"] = "增益数字字体", -- draft
 	["The font of timers and stacks on MelloUI's buffs and debuffs. Shared: the numbers font."] = "MelloUI 增益和减益上计时器和堆叠的字体。共享：数字字体。", -- draft
 	-- Map
@@ -1907,8 +1913,9 @@ Lang:Add("zhCN", {
 	["Hides the game's cast bar; your casts show on the display."] = "隐藏游戏的施法条；你的施法显示在个人显示上。", -- draft
 	["Heal Light From Your Character"] = "治疗之光从角色出发", -- draft
 	["Your heals' light starts from your character instead of the cast bar."] = "你的治疗光芒从角色身上出发，而不是施法条。", -- draft
-	["Swing Badge"] = "挥击徽章", -- draft
 	["Your swing timer as a small badge on your target's nameplate."] = "目标姓名板上以小徽章显示你的挥击计时器。", -- draft
+	["Over The Personal Display"] = "显示在个人显示上方", -- draft
+	["The swing badge stands centred above the display instead of on your target's nameplate."] = "攻击徽章居中显示在个人显示上方，而不是目标的姓名板上。", -- draft
 	["Big Cooldowns"] = "大冷却", -- draft
 	["Your big defensive cooldowns (Shield Wall, Evasion, Ice Block...) as icons above the health bar."] = "你的重要防御冷却（盾墙、闪避、寒冰屏障……）以图标显示在生命条上方。", -- draft
 	["Percent And Spell Text"] = "百分比和法术文字", -- draft
@@ -2092,6 +2099,7 @@ Lang:Add("zhCN", {
 	["Quest icon"] = "任务图标", -- draft
 	["Your debuffs"] = "你的减益效果", -- draft
 	["The game's auras"] = "游戏的光环", -- draft
+	["Swing badge"] = "挥击徽章", -- draft
 	["A class medallion over friendly players' names, in the open world"] = "野外友方玩家名字上方的职业徽章", -- draft
 	["Friendly players"] = "友方玩家", -- draft
 	["Medallion"] = "徽章", -- draft
@@ -2135,7 +2143,6 @@ Lang:Add("zhCN", {
 	["Personal"] = "个人", -- draft
 	["Shield column"] = "护盾栏", -- draft
 	["Cast"] = "施法", -- draft
-	["Swing badge"] = "挥击徽章", -- draft
 	["Big cooldowns"] = "大冷却", -- draft
 	["Window"] = "窗口", -- draft
 	["The bag window and the game's windows, one at a time: pick a window."] = "背包窗口和游戏的窗口，一次一个：选一个窗口。", -- draft
@@ -2281,6 +2288,13 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "姓名板：攻击徽章会显示在姓名板预览中，并可在50%到200%之间调整大小。", -- draft
+	["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "姓名板：敌方姓名板上的你的减益效果新增“只显示我的减益”设置（默认开启）。", -- draft
+	["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "姓名板：敌方姓名板上你的减益效果不再显示时钟转圈，数字按剩余时间着色，少于5秒时变为红色。", -- draft
+	["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "姓名板：连击点可以通过水平和垂直偏移移动。", -- draft
+	["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "个人显示：“显示在个人显示上方”会把攻击徽章居中放在个人显示上方，而不是目标的姓名板上。", -- draft
+	["Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast."] = "动作条：职业弹出菜单（如猎人的守护、战士的姿态和德鲁伊的形态）可在MelloUI的动作条上打开，其法术可以施放。", -- draft
+	["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "地图：在战场中，地图会显示你、你的队伍和战场的旗帜。", -- draft
 	["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "补给清单：现在是带搜索的按类别目录（饮料、食物、弹药、药水、合剂、卷轴、毒药、材料）：勾选要常备的每件物品并设置数量。", -- draft
 	["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "补给：猎人可以按食性常备宠物食物（肉、鱼、面包、奶酪、水果、蘑菇），清单最多容纳40行。", -- draft
 	["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "修复：MelloUI的搜索框和输入框中的文字重新从左侧开始，而不是居中。", -- draft
@@ -2292,7 +2306,6 @@ Lang:Add("zhCN", {
 	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "修复：在地下城中，目标的目标及其他单位框体不再显示旧名字。", -- draft
 	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "修复：小队、团队及其他单位框体现在会将死亡玩家和灵魂的生命条与能量条显示为空。", -- draft
 	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "/mellobug 报告现在还会显示背包按钮的创建方式，便于查明游戏阻止使用背包物品的原因。", -- draft
-	["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "修复：选择条材质时，目标的目标和焦点目标的生命条与能量条不再显示为暗色。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2955,6 +2968,7 @@ Lang:Add("zhCN", {
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "修复：引导步骤就在身边时的世界标记；任务列表中的职业任务；地下城信息的物品品质和重复首领。", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "修复：只是你自己的某些设置放不下时，安装向导不再说你的屏幕太小。", -- draft
 -- stale: ["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "修复：提醒按钮的文字行和额外按钮不再超出屏幕：它们会朝有空间的一侧展开。", -- draft
+-- stale: ["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "修复：选择条材质时，目标的目标和焦点目标的生命条与能量条不再显示为暗色。", -- draft
 -- stale: ["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "修复：关闭 MelloUI 的增益图标时，又可以在布局编辑中移动游戏的增益条了。", -- draft
 -- stale: ["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "修复：使用默认外观风格时，悄悄话窗口打开不再出现 Lua 错误，并恢复游戏自身的外观。", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "盗贼以及猎豹形态的德鲁伊：你的五个连击点数排在目标生命条的上沿，攒起来之前是空的。名字会稍微上移让出位置。", -- draft
@@ -3498,6 +3512,7 @@ Lang:Add("zhCN", {
 -- stale: ["The size of your buff and debuff icons under the player frame, in pixels (the target's are 22 by default). The rows keep one width, so a smaller size fits more in a row."] = "玩家框体下方增益和减益图标的大小（像素；目标的默认为22）。行宽保持不变，所以尺寸越小一行放得越多。", -- draft
 -- stale: ["The size of your buff and debuff icons, in pixels: MelloUI's own rows while Your Buffs And Debuffs shows them, else the game's buff and debuff bars (saved into your Edit Mode layout in its own steps of 3 pixels, shown after a reload; 30 is the game's size)."] = "你的增益和减益图标的大小（像素）：当“你的增益和减益效果”显示MelloUI的行时为那些行，否则为游戏的增益和减益条（按3像素一档存入你的编辑模式布局，重载后显示；30为游戏的大小）。", -- draft
 -- stale: ["The size of your debuff icons on enemy nameplates, in pixels."] = "敌方姓名板上你的减益图标的大小（像素）。", -- draft
+-- stale: ["The size of your swing timer's weapon badge on your target's nameplate."] = "目标姓名板上你的攻击计时器武器徽章的大小。", -- draft
 -- stale: ["The size of your target's debuff and buff icons under its frame, in pixels. The rows keep one width, so a smaller size fits more in a row."] = "目标框体下方目标减益和增益图标的大小（像素）。行宽保持不变，所以尺寸越小一行放得越多。", -- draft
 -- stale: ["The skill's new value and its cap after its name, such as 57 / 80."] = "技能名后显示新数值和上限，例如57 / 80。", -- draft
 -- stale: ["The small buttons for the game's windows. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "游戏窗口的小按钮。总是：从不淡出。战斗中：脱离战斗时淡出，战斗时回来。鼠标悬停：一直淡出，指向时显示。", -- draft

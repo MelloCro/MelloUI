@@ -1034,6 +1034,11 @@ Lang:Add("ruRU", {
 	["Rogues and cat druids: your combo points on your target's nameplate."] = "Разбойники и друиды в облике кошки: ваши приёмы серии на индикаторе здоровья цели.", -- draft
 	["Combo Point Size"] = "Размер приёмов серии", -- draft
 	["The size of each combo point."] = "Размер каждого приёма серии.", -- draft
+	["Moves the combo points left or right on the nameplate."] = "Сдвигает приёмы серии влево или вправо на индикаторе здоровья.", -- draft
+	["Moves the combo points up or down on the nameplate. The name moves out of their way."] = "Сдвигает приёмы серии вверх или вниз на индикаторе здоровья. Имя уходит с их пути.", -- draft
+	["Swing Badge"] = "Значок ударов", -- draft
+	["Swing Badge Size"] = "Размер значка удара", -- draft
+	["The size of your swing timer's weapon badge on your target's nameplate, or over the Personal Display."] = "Размер значка оружия вашего таймера ударов на индикаторе здоровья вашей цели или над личной панелью.", -- draft
 	-- PlateImpact
 	["Impact Effects"] = "Эффекты попаданий", -- draft
 	["Your target's nameplate reacts to the fight: hits flash, crits glow, interrupted casts shatter."] = "Индикатор здоровья цели реагирует на бой: попадания вспыхивают, криты светятся, прерванные заклинания разлетаются.", -- draft
@@ -1370,6 +1375,7 @@ Lang:Add("ruRU", {
 	["Enemy Nameplates"] = "Индикаторы здоровья врагов", -- draft
 	["Your debuffs on enemy nameplates, in MelloUI's look."] = "Ваши отрицательные эффекты на индикаторах противников, в стиле MelloUI.", -- draft
 	["The size of your debuff icons on nameplates."] = "Размер значков ваших эффектов на индикаторах здоровья.", -- draft
+	["Only the debuffs you put on enemies. Off: every debuff the game shows on their nameplates."] = "Только эффекты ослабления, которые вы наложили на врагов. Если выключено: все, что игра показывает на их индикаторах.", -- draft
 	["Buff Numbers Font"] = "Шрифт чисел эффектов", -- draft
 	["The font of timers and stacks on MelloUI's buffs and debuffs. Shared: the numbers font."] = "Шрифт таймеров и стопок на эффектах MelloUI. Общая: шрифт чисел.", -- draft
 	-- Map
@@ -1907,8 +1913,9 @@ Lang:Add("ruRU", {
 	["Hides the game's cast bar; your casts show on the display."] = "Скрывает полосу заклинаний игры; ваши заклинания видны на панели.", -- draft
 	["Heal Light From Your Character"] = "Свет исцеления от персонажа", -- draft
 	["Your heals' light starts from your character instead of the cast bar."] = "Свет ваших исцелений начинается от персонажа, а не от полосы заклинаний.", -- draft
-	["Swing Badge"] = "Значок ударов", -- draft
 	["Your swing timer as a small badge on your target's nameplate."] = "Ваш таймер ударов маленьким значком на индикаторе здоровья цели.", -- draft
+	["Over The Personal Display"] = "Над личной панелью", -- draft
+	["The swing badge stands centred above the display instead of on your target's nameplate."] = "Значок удара показывается по центру над панелью, а не на индикаторе здоровья вашей цели.", -- draft
 	["Big Cooldowns"] = "Крупные способности", -- draft
 	["Your big defensive cooldowns (Shield Wall, Evasion, Ice Block...) as icons above the health bar."] = "Ваши большие защитные восстановления («Глухая оборона», «Ускользание», «Ледяная глыба»...) значками над полосой здоровья.", -- draft
 	["Percent And Spell Text"] = "Процент и текст заклинания", -- draft
@@ -2092,6 +2099,7 @@ Lang:Add("ruRU", {
 	["Quest icon"] = "Значок задания", -- draft
 	["Your debuffs"] = "Ваши отрицательные эффекты", -- draft
 	["The game's auras"] = "Эффекты игры", -- draft
+	["Swing badge"] = "Значок ударов", -- draft
 	["A class medallion over friendly players' names, in the open world"] = "Медальон класса над именами дружественных игроков, в открытом мире", -- draft
 	["Friendly players"] = "Дружественные игроки", -- draft
 	["Medallion"] = "Медальон", -- draft
@@ -2135,7 +2143,6 @@ Lang:Add("ruRU", {
 	["Personal"] = "Личный", -- draft
 	["Shield column"] = "Колонка щита", -- draft
 	["Cast"] = "Заклинание", -- draft
-	["Swing badge"] = "Значок ударов", -- draft
 	["Big cooldowns"] = "Крупные способности", -- draft
 	["Window"] = "Окно", -- draft
 	["The bag window and the game's windows, one at a time: pick a window."] = "Окно сумок и окна игры, по одному: выберите окно.", -- draft
@@ -2281,6 +2288,13 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "Индикаторы здоровья: значок удара показан в предпросмотре индикатора, его размер настраивается от 50 до 200 %.", -- draft
+	["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "Индикаторы здоровья: «Только мои ослабления» для ваших ослаблений на вражеских индикаторах (включено по умолчанию).", -- draft
+	["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "Индикаторы здоровья: ваши ослабления на вражеских индикаторах больше не показывают часы, а их числа окрашиваются по оставшемуся времени, красным при менее 5 секунд.", -- draft
+	["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "Индикаторы здоровья: приёмы серии можно сдвигать по горизонтали и по вертикали.", -- draft
+	["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "Личная панель: «Над личной панелью» ставит значок удара по центру над панелью, а не на индикатор здоровья вашей цели.", -- draft
+	["Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast."] = "Панели команд: классовые выпадающие меню, такие как духи охотника, стойки воина и облики друида, открываются на панелях команд MelloUI, и их заклинания применяются.", -- draft
+	["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "Карта: на поле боя карта показывает вас, вашу группу и флаги поля боя.", -- draft
 	["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "Список пополнения: теперь каталог по видам (напитки, еда, боеприпасы, зелья, эликсиры, свитки, яды, реагенты) с поиском: отметьте каждый предмет, который нужно держать, и укажите количество.", -- draft
 	["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "Пополнение: охотники могут держать корм для питомца по рациону (мясо, рыба, хлеб, сыр, фрукты, грибы), а список вмещает 40 строк.", -- draft
 	["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "Исправлено: текст в полях поиска и ввода MelloUI снова начинается слева, а не по центру.", -- draft
@@ -2292,7 +2306,6 @@ Lang:Add("ruRU", {
 	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "Исправлено: в подземельях цель цели и другие рамки юнитов больше не показывают старое имя.", -- draft
 	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "Исправлено: рамки группы, рейда и другие рамки теперь показывают пустые полосы здоровья и ресурса у мёртвых игроков и духов.", -- draft
 	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "Отчёт /mellobug теперь также показывает, как были созданы кнопки сумок, чтобы найти причину блокировки предметов.", -- draft
-	["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "Исправлено: полосы здоровья и ресурса цели цели и цели фокуса больше не выглядят тёмными при выбранной текстуре полос.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -2955,6 +2968,7 @@ Lang:Add("ruRU", {
 -- stale: ["Fixed: the World Marker on a guide's step beside you; the Quest List's class quests; Dungeon Info's item quality and repeated bosses."] = "Исправлено: мировой маркер на шаге гида рядом с вами; классовые задания в списке заданий; качество предметов и повторяющиеся боссы в «Сведениях о подземельях».", -- draft
 -- stale: ["Fixed: the installer no longer calls your screen too small when it is some of your own settings that do not fit."] = "Исправлено: установщик больше не называет экран слишком маленьким, когда не помещаются ваши собственные настройки.", -- draft
 -- stale: ["Fixed: the reminder button's line and extra buttons no longer run off the screen: they open on the side with room."] = "Исправлено: строка и дополнительные кнопки у кнопки напоминаний больше не уходят за край экрана: они открываются в сторону, где есть место.", -- draft
+-- stale: ["Fixed: the target of target's and focus target's health and power bars no longer look dark when a bar texture is chosen."] = "Исправлено: полосы здоровья и ресурса цели цели и цели фокуса больше не выглядят тёмными при выбранной текстуре полос.", -- draft
 -- stale: ["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Исправлено: при выключенных значках эффектов MelloUI панель положительных эффектов игры снова можно перемещать в редакторе расположения.", -- draft
 -- stale: ["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "Исправлено: с обликом «По умолчанию» окно шёпота открывается без ошибки Lua и снова выглядит как в игре.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "Для разбойника и друида в облике кошки: пять приёмов серии в ряд по верхнему краю полосы здоровья вашей цели, пустые, пока вы их не накопите. Имя немного поднимается, чтобы освободить место.", -- draft
@@ -3498,6 +3512,7 @@ Lang:Add("ruRU", {
 -- stale: ["The size of your buff and debuff icons under the player frame, in pixels (the target's are 22 by default). The rows keep one width, so a smaller size fits more in a row."] = "Размер значков ваших эффектов под рамкой игрока в пикселях (у цели по умолчанию 22). Ряды сохраняют одну ширину, поэтому меньший размер вмещает больше в ряд.", -- draft
 -- stale: ["The size of your buff and debuff icons, in pixels: MelloUI's own rows while Your Buffs And Debuffs shows them, else the game's buff and debuff bars (saved into your Edit Mode layout in its own steps of 3 pixels, shown after a reload; 30 is the game's size)."] = "Размер значков ваших положительных и отрицательных эффектов в пикселях: ряды MelloUI, пока их показывает «Ваши положительные и отрицательные эффекты», иначе панели эффектов игры (сохраняется в вашей раскладке режима редактирования шагами по 3 пикселя, видно после перезагрузки; 30 — размер игры).", -- draft
 -- stale: ["The size of your debuff icons on enemy nameplates, in pixels."] = "Размер значков ваших отрицательных эффектов на индикаторах здоровья врагов в пикселях.", -- draft
+-- stale: ["The size of your swing timer's weapon badge on your target's nameplate."] = "Размер значка оружия вашего таймера ударов на индикаторе здоровья вашей цели.", -- draft
 -- stale: ["The size of your target's debuff and buff icons under its frame, in pixels. The rows keep one width, so a smaller size fits more in a row."] = "Размер значков эффектов вашей цели под её рамкой в пикселях. Ряды сохраняют одну ширину, поэтому меньший размер вмещает больше в ряд.", -- draft
 -- stale: ["The skill's new value and its cap after its name, such as 57 / 80."] = "Новое значение навыка и его предел после названия, например 57 / 80.", -- draft
 -- stale: ["The small buttons for the game's windows. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "Маленькие кнопки окон игры. «Всегда»: никогда не гаснет. «В бою»: гаснет вне боя, возвращается в бою. «При наведении»: погашена всё время, видна, пока вы на неё указываете.", -- draft

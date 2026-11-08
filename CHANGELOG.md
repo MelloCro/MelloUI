@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.19
+
+- Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %.
+- Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default).
+- Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds.
+- Nameplates: the combo points can be moved with a horizontal and a vertical offset.
+- Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate.
+- Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast.
+- Map: inside a battleground, the map shows you, your group and the battleground's flags.
+
 ## 2.1.18
 
 - Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many.

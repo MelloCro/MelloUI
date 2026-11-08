@@ -236,7 +236,8 @@ L.pages = {
 				{ key = "threat", label = "Threat line", stage = "threat", showIn = "target" },
 				{ key = "combo", label = "Combo points", stage = "combo", showIn = "target" },
 				{ key = "cc", label = "CC icon", stage = "cc" }, { key = "quest", label = "Quest icon", stage = "quest" },
-				{ key = "debuffs", label = "Your debuffs", stage = "debuffs" }, { key = "auras", label = "The game's auras" } } },
+				{ key = "debuffs", label = "Your debuffs", stage = "debuffs" }, { key = "auras", label = "The game's auras" },
+				{ key = "swing", label = "Swing badge", stage = "swing", showIn = "target" } } },   -- (2.1.19)
 			-- (`sample`: Party Markers' own medallion sample in the slot -- Modules/PartyMarkers.lua's corner kind)
 			{ key = "friendly", label = "Friendly players", line = "A class medallion over friendly players' names, in the open world",
 				sample = { kind = "partymarker", pick = "marker" },
@@ -846,6 +847,8 @@ function L.Define(R, Link)
 	R("Nameplates", "enemies:threat", "General", "Nameplates.threatLine")
 	R("Nameplates", "enemies:combo", "General", "Nameplates.comboPoints")
 	R("Nameplates", "enemies:combo", "Layout", "Nameplates.comboSize")   -- (under its switch: the user, 2026-10-04)
+	R("Nameplates", "enemies:combo", "Layout", "Nameplates.comboX")      -- (2.1.19: the user, "moveable")
+	R("Nameplates", "enemies:combo", "Layout", "Nameplates.comboY")
 	R("Nameplates", "enemies:cc", "General", "Nameplates.bigCC", { name = "Above The Name" })
 	R("Nameplates", "enemies:cc", "Layout", "Nameplates.ccSize", { name = "Size" })
 	R("Nameplates", "enemies:cc", "Layout", "Nameplates.ccGap")
@@ -854,6 +857,9 @@ function L.Define(R, Link)
 	R("Nameplates", "enemies:debuffs", "General", "Auras.nameplates", { gate = NP_AREA })
 	R("Nameplates", "enemies:debuffs", "Layout", "Auras.nameplateSize",
 		{ when = { key = "Auras.nameplates", value = true, line = "Only with Your Debuffs on" } })
+	R("Nameplates", "enemies:debuffs", "Behaviour", "Auras.nameplateOnlyMine",   -- (2.1.19: the user)
+		{ when = { key = "Auras.nameplates", value = true, line = "Only with Your Debuffs on" } })
+	R("Nameplates", "enemies:swing", "Layout", "Nameplates.swingSize")   -- (2.1.19: the user, 50 - 200 %)
 	R("Nameplates", "enemies:auras", "General", "CooldownText.nameplates", { gate = NP_AREA })   -- (the Bars audit: Cooldown Timers' switch here)
 	-- Friendly players: Party Markers' switch first
 	R("Nameplates", "friendly:element", "General", "PartyMarkers.!enabled", { name = "Party Markers", gate = NP_AREA })
@@ -1253,6 +1259,7 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "personal:element", "General", "PersonalDisplay.#Preview")
 	R("UnitGroupFrames", "personal:cast", "General", "PersonalDisplay.hideCastBar")
 	R("UnitGroupFrames", "personal:swing", "General", "PersonalDisplay.swing")
+	R("UnitGroupFrames", "personal:swing", "General", "PersonalDisplay.swingOver")   -- (2.1.19: the user)
 	R("UnitGroupFrames", "personal:cooldowns", "General", "PersonalDisplay.cooldowns")
 	R("UnitGroupFrames", "personal:element", "Look", "PersonalDisplay.classColour")
 	-- (the audit, 2026-10-12: gated as Route's minimap drawing is -- it does nothing without Heal Flight)

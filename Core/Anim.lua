@@ -1820,6 +1820,42 @@ do
 		return raw or nil
 	end
 
+	-- (2.1.19; the user, 2026-11-08: the debuffs' numbers on the nameplates "colored depending on the duration left,
+	-- maybe turning red at below 5 seconds") the cooldown timers' colours by the time left (MelloUI.Meaning: red under
+	-- 5 s, yellow under a minute, dim white for minutes, grey for hours -- Modules/CooldownText.lua's) as the game's own
+	-- duration text colouring: a step curve on the remaining duration, handed to a duration text (an aura button's
+	-- SetDurationText textColor). The engine reads the time left (it can be secret); nothing here does
+	local timeColours = nil   -- false once the client has been found without the means
+	function Anim:TimeLeftColours()
+		if timeColours ~= nil then
+			return timeColours or nil
+		end
+		timeColours = false
+		local CU, E = rawget(_G, "C_CurveUtil"), rawget(_G, "Enum")
+		local props = type(E) == "table" and E.DurationTextBindingProperty
+		if not (type(CU) == "table" and type(CU.CreateColorCurve) == "function" and type(props) == "table"
+			and props.RemainingDuration ~= nil and type(rawget(_G, "CreateColor")) == "function") then
+			return nil
+		end
+		local m = MelloUI.Meaning
+		local ok, curve = pcall(function()
+			local c = CU.CreateColorCurve()
+			if E.LuaCurveType then
+				c:SetType(E.LuaCurveType.Step)
+			end
+			for _, stop in ipairs({ { 0, m.cooldownSoon }, { 5, m.cooldownSeconds }, { 60, m.cooldownMinutes },
+				{ 3600, m.cooldownHours } }) do
+				local col = stop[2]
+				c:AddPoint(stop[1], CreateColor(col[1], col[2], col[3], 1))
+			end
+			return c
+		end)
+		if ok and curve then
+			timeColours = { curve = curve, property = props.RemainingDuration }
+		end
+		return timeColours or nil
+	end
+
 	local compact = nil   -- false once the client has been found without one
 	local function Set(f, method, ...)
 		local fn = f[method]
