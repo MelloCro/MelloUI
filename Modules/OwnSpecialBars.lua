@@ -455,6 +455,9 @@ local function GameParts(fn)
 		if type(game) == "table" then
 			fn("alpha", game)
 			fn("select", game)
+			-- the bar itself too: a mouse-enabled frame at alpha 0 still takes the clicks, and the pet bar's
+			-- stayed at its old place once ours was moved away, blocking whatever stood under it
+			fn("mouse", game)
 			for i = 1, spec.n do
 				fn("mouse", rawget(_G, spec.prefix .. i))
 				-- (2.1.17) its own alpha too, as the action bars' (OwnActionBars.lua GameParts: Glowing Bars)
