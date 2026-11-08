@@ -81,7 +81,7 @@ local M = MelloUI:RegisterModule("Route", {
 		  desc = "When no quest is followed, routes to the first quest on the game's watch list." },
 		-- (2.1.17; the user, 2026-11-07: "how can people disable the compatibility with restedxp on the objective
 		-- tracker?" -- only /route guide did it) Guides.lua's Following(); the change refreshes as the slash word does
-		{ type = "toggle", key = "followGuide", name = "Follow Guide Addons", new = "2.1.17",
+		{ type = "toggle", key = "followGuide", name = "Follow Guide Addons",
 		  desc = "Shows the current steps of RestedXP and other guide addons in the Quest Tracker and routes to them, "
 			.. "hiding the guide's own arrow and window. Off, the guide keeps its own." },
 		{ type = "toggle", key = "distanceText", name = "Distance Under The Minimap",
