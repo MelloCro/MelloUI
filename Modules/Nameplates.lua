@@ -61,12 +61,12 @@ local M = MelloUI:RegisterModule("Nameplates", {
 	},
 	options = {
 		-- (2.1.24; the user, 2026-11-08: "everything should be moveable ... resizing, height width etc")
-		{ type = "toggle", key = "plateSize", name = "Own Plate Size", new = "2.1.24",
+		{ type = "toggle", key = "plateSize", name = "Own Plate Size",
 		  desc = "The enemy plates take the width and height set here instead of the game's." },
 		{ type = "slider", key = "plateWidth", parent = "plateSize", name = "Plate Width", min = 60, max = 300, step = 2,
-		  new = "2.1.24", desc = "The whole plate's width: the health bar and the level badge's room beside it." },
+		  desc = "The whole plate's width: the health bar and the level badge's room beside it." },
 		{ type = "slider", key = "plateHeight", parent = "plateSize", name = "Plate Height", min = 4, max = 40, step = 1,
-		  new = "2.1.24", desc = "The health bar's height." },
+		  desc = "The health bar's height." },
 		{ type = "header", name = "Crowd Control" },
 		{ type = "toggle", key = "bigCC", name = "Large CC Icon Above Name",
 		  desc = "A large crowd-control icon above the name. Needs the game's Crowd Control nameplate option on." },

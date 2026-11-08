@@ -5018,7 +5018,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "Your big defensive cooldowns (Shield Wall, Evasion, Ice Block...) as icons above the health bar." },
 		-- (2.1.24; a player, S1lver, 2026-11-08: "would love to see priest weakened soul near my char" -- the user's
 		-- pick B: their own smaller row under the bars)
-		{ type = "canvas", key = "tracked", name = "Tracked Spells", new = "2.1.24",
+		{ type = "canvas", key = "tracked", name = "Tracked Spells",
 		  heightAt = function()
 			return Track.Height()
 		  end,

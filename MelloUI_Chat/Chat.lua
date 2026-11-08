@@ -117,7 +117,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		{ type = "toggle", key = "smoothScroll", name = "Smooth Scrolling",
 		  desc = "The mouse wheel scrolls the chat smoothly instead of a line at a time." },
 		-- (2.1.24; a player, S1lver, 2026-11-08: "can we add a copy chat text" -- the user's pick B: shown on hover)
-		{ type = "toggle", key = "copyButton", name = "Copy Chat Button", new = "2.1.24",
+		{ type = "toggle", key = "copyButton", name = "Copy Chat Button",
 		  desc = "While your mouse is on the chat, a small button at its top right corner puts the tab's lines in a window to copy, each with its time." },
 		{ type = "header", name = "Channels" },
 		{ type = "toggle", key = "shortChannels", name = "Short Channel Tags",
