@@ -131,6 +131,9 @@ local T = {
 	crackN = 6, crack = 0.7, crackOut = 22,
 }
 local TEXT = {
+	-- (2.1.20, the Animations page's Play)
+	momentNone = "Personal Display: it is off or hidden, so there is nothing to play on.",
+	momentHeal = "Heal Effects are off.",
 	bars = "Personal Display",
 	column = "Shield Column",
 	secrets = "Personal Display: what this client hands over",
@@ -4535,6 +4538,126 @@ local function OnPreview(beat, _, n)
 end
 
 --------------------------------------------------------------------------------
+-- (2.1.20, the Animations page) each moment's Play (Core/Config.lua's CONFIG.Play, Preview:Once): played on the
+-- display with plain sample numbers, as the preview's (your own health and power may be secret), the live ones read
+-- again after it. Heal Light From Your Character plays Heal Effects' made-up heal
+--------------------------------------------------------------------------------
+
+local Moment = { LAST = 1.8, STEP = 0.1, at = 0 }
+
+-- the moment over (a later play's due wins): the live numbers back, unless a preview scene took the display since
+function Moment.End()
+	if not S.momentOn or GetTime() < Moment.at - 0.05 then
+		return
+	end
+	S.momentOn = nil
+	local P = MelloUI.Preview
+	if P and P:On() then
+		return
+	end
+	S.preview = false
+	S.previewPower, S.powerLast, S.lowWas, S.samplePct = nil, nil, nil, nil
+	CastOut()
+	Refresh()
+end
+
+-- the display there to play on: true, else it says why
+function Moment.Ready()
+	local ui = S.ui
+	if not (On() and ui and ui.loc and ui.holder:IsVisible()) then
+		MelloUI:Announce(TEXT.momentNone, "info")
+		return false
+	end
+	return true
+end
+
+-- the sample numbers held for `seconds` (the live updates wait: S.preview)
+function Moment.Start(seconds)
+	S.preview, S.momentOn = true, true
+	Moment.at = GetTime() + seconds
+	C_Timer.After(seconds, Moment.End)
+end
+
+-- the bars at `health` % and `power` % at once, then at `health2` / `power2` a step later (what the moment shows)
+function Moment.Bars(health, power, health2, power2)
+	S.previewPower, S.samplePct = power, nil
+	S.snap = true
+	SampleHealth(health)
+	S.snap = false
+	Moment.next = { health2, power2 }
+	C_Timer.After(Moment.STEP, Moment.Second)
+end
+
+function Moment.Second()
+	local n = Moment.next
+	Moment.next = nil
+	if n and S.momentOn then
+		S.previewPower = n[2]
+		SampleHealth(n[1])
+	end
+end
+
+-- a play of the bars' numbers: from health / power to health2 / power2
+local function BarsPlay(health, power, health2, power2, extra)
+	return function()
+		if not Moment.Ready() then
+			return false
+		end
+		Moment.Start(Moment.LAST)
+		Moment.Bars(health, power, health2, power2)
+		if extra then
+			C_Timer.After(Moment.STEP, extra)
+		end
+		return true, Moment.LAST
+	end
+end
+
+function Moment.SettleBack()
+	Motion.SettleGo(MelloUI.InCombat())
+end
+
+Moment.PLAYS = {
+	cast = function()
+		if not Moment.Ready() then
+			return false
+		end
+		local spec = SAMPLE.casts[7]
+		Moment.Start(spec[2] + 1)
+		SampleCast(spec)
+		return true, spec[2] + 1
+	end,
+	chunk = BarsPlay(90, 70, 62, 70),
+	lead = BarsPlay(45, 70, 80, 70),
+	heavy = BarsPlay(85, 70, 55, 70, function() Motion.Heavy() end),
+	spend = BarsPlay(100, 90, 100, 50),
+	gain = BarsPlay(100, 25, 100, 70),
+	avoid = function()
+		if not Moment.Ready() then
+			return false
+		end
+		Motion.Word("DODGE")
+		return true, T.word + 0.4
+	end,
+	settle = function()
+		if not Moment.Ready() then
+			return false
+		end
+		Motion.SettleGo(true)
+		C_Timer.After(1.2, Moment.SettleBack)
+		return true, 2.4
+	end,
+	heal = function()
+		local hf = MelloUI.modules.HealFlight
+		local fn = hf and type(hf.Plays) == "table" and hf.Plays.heal
+		if type(fn) ~= "function" then
+			MelloUI:Announce(TEXT.momentHeal, "info")
+			return false
+		end
+		return fn()
+	end,
+}
+
+--------------------------------------------------------------------------------
 -- The module
 --------------------------------------------------------------------------------
 
@@ -4557,13 +4680,13 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "A bar beside your character for all your shields, each in its school's colour. It drains as they take hits." },
 		{ type = "toggle", key = "hideCastBar", name = "Hide The Game's Cast Bar",
 		  desc = "Hides the game's cast bar; your casts show on the display." },
-		{ type = "toggle", key = "healFrom", name = "Heal Light From Your Character",
+		{ type = "toggle", key = "healFrom", name = "Heal Light From Your Character", play = "heal",
 		  desc = "Your heals' light starts from your character instead of the cast bar." },
 		{ type = "toggle", key = "swing", name = "Swing Badge",
 		  desc = "Your swing timer as a small badge on your target's nameplate." },
 		-- (2.1.19; the user, 2026-11-08: "The Swing Badge, should also have the option to be shown over the Personal
 		-- Nameplate, a checkbox will do" -- this display, their pick)
-		{ type = "toggle", key = "swingOver", parent = "swing", name = "Over The Personal Display", new = "2.1.19",
+		{ type = "toggle", key = "swingOver", parent = "swing", name = "Over The Personal Display",
 		  desc = "The swing badge stands centred above the display instead of on your target's nameplate." },
 		{ type = "toggle", key = "cooldowns", name = "Big Cooldowns",
 		  desc = "Your big defensive cooldowns (Shield Wall, Evasion, Ice Block...) as icons above the health bar." },
@@ -4581,25 +4704,25 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "The size of the Big Cooldowns' icons." },
 		{ type = "toggle", key = "zoom", name = "Follow Camera Zoom",
 		  desc = "The display stays by your character as you zoom the camera." },
-		{ type = "toggle", key = "castMotion", name = "Cast Motion",
+		{ type = "toggle", key = "castMotion", name = "Cast Motion", play = "cast",
 		  desc = "The cast bar opens, flashes on a landed cast and drops when interrupted." },
-		{ type = "toggle", key = "chunk", name = "Damage Chunk",
+		{ type = "toggle", key = "chunk", name = "Damage Chunk", play = "chunk",
 		  desc = "The health a hit took stays lit for a moment before it drains." },
-		{ type = "toggle", key = "lead", name = "Heal Lead",
+		{ type = "toggle", key = "lead", name = "Heal Lead", play = "lead",
 		  desc = "A heal lights the health it gives at once; the bar then fills into it." },
-		{ type = "toggle", key = "heavy", name = "Heavy Hit",
+		{ type = "toggle", key = "heavy", name = "Heavy Hit", play = "heavy",
 		  desc = "A critical or crushing blow on you flashes the bars red." },
-		{ type = "toggle", key = "spend", name = "Power Spent",
+		{ type = "toggle", key = "spend", name = "Power Spent", play = "spend",
 		  desc = "The power an ability costs stays lit for a moment, so you see the cost." },
-		{ type = "toggle", key = "gain", name = "Power Gained",
+		{ type = "toggle", key = "gain", name = "Power Gained", play = "gain",
 		  desc = "New power lights up ahead of the bar before it fills." },
-		{ type = "toggle", key = "avoid", name = "Dodge, Parry, Block",
+		{ type = "toggle", key = "avoid", name = "Dodge, Parry, Block", play = "avoid",
 		  desc = "Your dodge, parry or block flicks its word off the health bar." },
 		{ type = "toggle", key = "lowHealth", name = "Low Health",
 		  desc = "The health bar turns ember under 35% health." },
 		{ type = "toggle", key = "stun", name = "Loss Of Control",
 		  desc = "While you are stunned, feared or silenced, the bars turn red and a line counts down its time. Replaces the game's own banner." },
-		{ type = "toggle", key = "settle", name = "Combat Settle",
+		{ type = "toggle", key = "settle", name = "Combat Settle", play = "settle",
 		  desc = "The bars rise into place when a fight starts and settle lower and slimmer after it. (To fade them out of combat: the Fader.)" },
 		{ type = "button", name = "Preview", text = "Play",
 		  hint = "a shield going up, hit, low and broken, casts, and the bars in the fight",
@@ -4607,6 +4730,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  onClick = function() M.Preview() end },
 	},
 })
+M.Plays = Moment.PLAYS   -- (2.1.20, the Animations page: the rows' Play)
 
 function M.Preview()
 	if not On() then

@@ -92,14 +92,14 @@ local M = MelloUI:RegisterModule("Route", {
 		  desc = "A mark over the destination in the world with its distance; an arrow points the way when it is off screen." },
 		{ type = "toggle", key = "routeBeam", parent = "worldMarker", name = "Light Beam",
 		  desc = "A slim beam of light over the destination, seen from far away." },
-		{ type = "dropdown", key = "markerWisp", parent = "worldMarker", name = "Wisp", values = {
+		{ type = "dropdown", key = "markerWisp", parent = "worldMarker", play = "wisp", name = "Wisp", values = {
 			{ value = "firefly", label = "Firefly" },
 			{ value = "embers", label = "Embers" },
 			{ value = "off", label = "Off" },
 		  }, desc = "A small light flies from you to a new destination and lights it." },
-		{ type = "toggle", key = "drawIn", name = "Route Draws In",
+		{ type = "toggle", key = "drawIn", play = "draw", name = "Route Draws In",
 		  desc = "A new route grows from you to the destination instead of appearing all at once." },
-		{ type = "toggle", key = "arriveLight", name = "Arrival Light",
+		{ type = "toggle", key = "arriveLight", play = "arrive", name = "Arrival Light",
 		  desc = "The mark sinks into a ring of light when you arrive." },
 		{ type = "toggle", key = "markerSound", parent = "worldMarker", name = "Marker Sounds",
 		  desc = "A soft sound when the World Marker appears or changes." },
@@ -9618,6 +9618,45 @@ M.SlashWords = {
 		marker.soundKey = nil
 		marker:Hide()
 		UpdateMarker()
+	end,
+}
+
+-- (2.1.20, the Animations page) each row's Play (Core/Config.lua's CONFIG.Play, Preview:Once): the words above on the
+-- route set now -- true when it played (the why on the screen, else), and how long it lasts
+M.Plays = {
+	draw = function()
+		if not (route and destination) then
+			MelloUI:Announce(M.PREVIEW.need, "info")
+			return false
+		end
+		M.DrawIn.forDest = nil
+		M.DrawIn.Start(destination)
+		Redraw()
+		return M.DrawIn.on, M.DrawIn.TIME + 1.2
+	end,
+	arrive = function()
+		if not (destination and marker and marker:IsShown()) then
+			MelloUI:Announce(M.PREVIEW.need, "info")
+			return false
+		end
+		if marker.off ~= false then
+			MelloUI:Announce(M.PREVIEW.turn, "info")
+			return false
+		end
+		M.ArriveLight()
+		return true, 2
+	end,
+	wisp = function()
+		if not (destination and marker and marker:IsShown()) then
+			MelloUI:Announce(M.PREVIEW.need, "info")
+			return false
+		end
+		if M.db.markerWisp == "off" then
+			MelloUI:Announce(M.PREVIEW.off:format("Wisp"), "info")
+			return false
+		end
+		M.SlashWords.wisp()
+		return true, 2.4
 	end,
 }
 

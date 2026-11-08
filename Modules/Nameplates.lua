@@ -86,13 +86,13 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		  desc = "The size of each combo point." },
 		-- (2.1.19; the user, 2026-11-08: "the combo points need to be moveable") off the health bar's top edge
 		{ type = "slider", key = "comboX", parent = "comboPoints", name = "Horizontal Offset", min = -100, max = 100, step = 1,
-		  new = "2.1.19", desc = "Moves the combo points left or right on the nameplate." },
+		  desc = "Moves the combo points left or right on the nameplate." },
 		{ type = "slider", key = "comboY", parent = "comboPoints", name = "Vertical Offset", min = -50, max = 50, step = 1,
-		  new = "2.1.19", desc = "Moves the combo points up or down on the nameplate. The name moves out of their way." },
+		  desc = "Moves the combo points up or down on the nameplate. The name moves out of their way." },
 		-- (2.1.19; the user, 2026-11-08: "let users scale them from 50% - 200%") the badge Core/SwingBadge.lua lays on
 		-- your target's plate (the Swing Timers' or the Personal Display's)
 		{ type = "header", name = "Swing Badge" },
-		{ type = "slider", key = "swingSize", name = "Swing Badge Size", min = 50, max = 200, step = 5, new = "2.1.19",
+		{ type = "slider", key = "swingSize", name = "Swing Badge Size", min = 50, max = 200, step = 5,
 		  format = function(v) return string.format("%d%%", v) end,
 		  desc = "The size of your swing timer's weapon badge on your target's nameplate, or over the Personal Display." },
 	},

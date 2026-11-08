@@ -102,7 +102,7 @@ L.SECTIONS = { "General", "Look", "Text", "Layout", "Behaviour", "Sound", "Text-
 -- its flavour line
 L.groups = {
 	{ entries = { "Home" } },
-	{ title = "The look", icon = "cat_look", entries = { "Look", "Windows", "Fader", "Oldschool" } },
+	{ title = "The look", icon = "cat_look", entries = { "Look", "Windows", "Fader", "Animations", "Oldschool" } },
 	{ title = "Frames and bars", icon = "cat_frames", entries = { "UnitGroupFrames", "Nameplates", "ActionBars", "Minimap",
 		"BarsMeters" } },
 	{ title = "Chat", icon = "cat_chat", entries = { "Chat" } },
@@ -149,6 +149,16 @@ L.pages = {
 	Fader = { title = "Fader", icon = "module:Fader", set = "page_fader",
 		flavour = "Fade parts of the interface while you don't need them: pick when each one shows.",
 		tabs = { "General", "Frames", "Bars", "Chat, Map & More" } },
+	-- (2.1.20; the user, 2026-11-08: "People are confused on where to find and turn off animations they dont want, why
+	-- dont we move the animations to its separate category", then the sketch's picks 1A 2A 3A 4A,
+	-- docs/plans/animations-page.md) every animation MelloUI plays, one place: Reduce Motion on top, a tab for each
+	-- place they play, a Play beside each row (CONFIG.Play); nothing left behind on the pages they came from. The glows
+	-- that tell you something (threat, resting, Debuff Glow, Low Health, Loss Of Control, Loot Sparkles) stay there
+	Animations = { title = "Animations", icon = "Interface\\Icons\\Spell_Holy_Renew", set = "fx_cooldown", new = "2.1.20",
+		flavour = "Every animation MelloUI plays, in one place. Press Play beside one to see it before you choose.",
+		tabs = { "General", "Frames", "Nameplates", "Bars & Windows", "Travel" },
+		cards = { Frames = { "Heal Effects", "Cooldown Effects", "Personal Display" },
+			["Bars & Windows"] = { "Action Bars", "XP Bar", "Bag Window", "Quest Tracker", "Services Bar" } } },
 	-- (one look C8, the user 2026-10-15: one designer per family) the player, target, focus, pet, your buffs, the
 	-- party and raid frames (MelloUI's own) and the Personal Display: pick a frame, then a part of it; its own
 	-- options under the part's (docs/plans/onelook-designer/c7-lite.md, ugf-audit.md)
@@ -209,7 +219,7 @@ L.pages = {
 				{ key = "swing", label = "Swing badge" }, { key = "text", label = "Text" },
 				{ key = "cooldowns", label = "Big cooldowns" } } },
 		},
-		family = { key = "all", label = "All frames", line = "Every frame: the heal light, the big moments, the debuff glow" } },
+		family = { key = "all", label = "All frames", line = "Every frame: the debuff glow" } },
 	-- (one look C8) the painted reskin's own rows, kept working here until the painted look becomes its own addon
 	Oldschool = { title = "Oldschool", icon = "module:UIModifications", set = "page_oldschool", oldschool = true,
 		flavour = "The painted reskin's own settings, kept here until the painted look becomes its own addon.",
@@ -352,6 +362,9 @@ L.words = {
 	remindersandwidgets = { "QualityOfLife", "Reminders" },
 	tooltip = { "QualityOfLife", "Tooltip" },
 	fade = { "Fader", "General" },
+	animation = { "Animations" },   -- (2.1.20)
+	motion = { "Animations" },
+	reducemotion = { "Animations", "General" },
 	groupframes = { "UnitGroupFrames", "raid:element" },
 	partyframes = { "UnitGroupFrames", "party:element" },
 	raidframes = { "UnitGroupFrames", "raid:element" },
@@ -493,8 +506,6 @@ function L.Define(R, Link)
 	R("Look", "General", "Text", "UIModifications.classNames", { free = true })
 	R("Look", "General", "Text", "Tweaks.textShade", { free = true })
 	R("Look", "General", "Layout", "UIModifications.configScale", { free = true })   -- (Suggestion 1, point 7: this window's size)
-	R("Look", "General", "Behaviour", "UIModifications.reduceMotion", { free = true })
-	R("Look", "General", "Behaviour", "UIModifications.fadeWindows")
 	-- (0.20.1: the windows' frame and title, the user's examples 3 and 4 in our own art)
 	R("Oldschool", "Borders", "Look", "UIModifications.windowBorder")
 	R("Oldschool", "Borders", "Look", "UIModifications.windowTitle")
@@ -668,12 +679,6 @@ function L.Define(R, Link)
 	for _, key in ipairs({ "columns", "itemSize", "foldEmpty", "sortBy" }) do
 		R("Windows", "Windows", "Layout", { BackpackPanel = "BagWindow." .. key }, { free = true })
 	end
-	-- (0.21.3, the animations: an item looted flies into its slot, the rarer the more)
-	R("Windows", "Windows", "Behaviour", { BackpackPanel = "BagWindow.lootFlight" }, { free = true })
-	-- (0.22.1, the animations: items glide to their new slots, the money rolls, the bags full shake their Empty slot)
-	for _, key in ipairs({ "itemsGlide", "moneyRoll", "fullWarning" }) do
-		R("Windows", "Windows", "Behaviour", { BackpackPanel = "BagWindow." .. key }, { free = true })
-	end
 	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.bagButton", LootPanel = "Discard.lootButton" }, { name = "Discard Button" })
 	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.keepWorth", LootPanel = "Discard.keepWorth" }, { name = "Never Throw Away Items Worth" })
 	-- (0.22.0, a player's request: the split box's mouse wheel and ½, Tweaks' -- either look)
@@ -832,15 +837,6 @@ function L.Define(R, Link)
 		{ shared = "also Friendly players", sharedWith = { "Friendly players" } })
 	R("Nameplates", "friendly:element", "General", "UIModifications.qol_Nameplates",
 		{ shared = "also Enemies", sharedWith = { "Enemies" } })
-	-- (0.25.0, the user's "yes build it" to the Nameplate Impact page: the target's plate answers the fight)
-	R("Nameplates", "enemies:element", "General", "PlateImpact.!enabled", { name = "Impact Effects" })
-	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.flash")
-	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.chunk")
-	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.crit")
-	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.kill")
-	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.evade")
-	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.cast")
-	R("Nameplates", "enemies:element", "Behaviour", "PlateImpact.targetFrame", { gate = UF_AREA })
 	R("Look", "Textures", "Look", "BarTextures.nameplatesTexture", { name = "Nameplates", card = "Bars", gate = NP_AREA })
 	Link("Nameplates", "enemies:health", "Look", "BarTextures.nameplatesTexture", "Bar Texture")
 	R("Nameplates", "enemies:element", "Behaviour", "Nameplates.hover")   -- (1.2.4: every plate's, the user)
@@ -905,7 +901,6 @@ function L.Define(R, Link)
 	R("ActionBars", "actionbars:element", "Layout", "Tweaks.barShape")
 	-- (2026-10-20, the user's sheet: MelloUI's frame on every button, the painted skin's bars aside)
 	R("ActionBars", "actionbars:button", "Look", "ActionButtons.frames", { gate = AB_AREA })
-	R("ActionBars", "actionbars:button", "Look", "ActionButtons.readyFlash", { gate = AB_AREA })
 	-- (0.19.8, the user's picks of button_press_sketch: the key held, range and resources; skin on or off)
 	R("ActionBars", "actionbars:button", "Look", "ActionButtons.pressLight", { gate = AB_AREA })
 	R("ActionBars", "actionbars:button", "Look", "ActionButtons.rangeColours", { gate = AB_AREA })
@@ -938,7 +933,6 @@ function L.Define(R, Link)
 	Link("ActionBars", "xprep:element", "Look", "BarTextures.statusbarsTexture", "Bar Texture")
 	-- (0.22.1, the animations: the stretch of the XP bar just gained lit)
 	R("ActionBars", "xprep:xp", "Look", "Tweaks.xpGain", { gate = AB_AREA })
-	R("ActionBars", "xprep:xp", "Look", "Tweaks.levelUp")
 	-- (an-06, the user, 2026-10-30: "study it and i would want us to implement something similar", then the picks)
 	R("ActionBars", "xprep:xp", "Look", "Tweaks.levelCard")
 	R("ActionBars", "xprep:xp", "Look", "ActionBars.backdropXP", { name = "Backdrop" })
@@ -990,7 +984,6 @@ function L.Define(R, Link)
 	R("Minimap", "services:button", "Look", "Services.roundIcons")
 	-- (0.22.0, a player's request: the addons' minimap buttons gathered into the row's AddOns group)
 	R("Minimap", "services:tray", "General", "Services.addonButtons")
-	R("Minimap", "services:tray", "Look", "Services.trayDrawer")   -- (0.22.1, the animations: the trays slide out)
 	-- the painted minimap (Oldschool: its switch -- with MelloUI's minimap on -- and its Shape, Round or Square)
 	R("Oldschool", "Painted Skins", "Look", "UIModifications.MinimapKit", { name = "Minimap",
 		when = { key = "MinimapPanel.!enabled", value = true, line = "Only with MelloUI's minimap on" } })
@@ -1237,21 +1230,7 @@ function L.Define(R, Link)
 		UGF({ "raid:indicators", "party:indicators" }, "General", "GroupFrames.designer")
 	end
 
-	-- (0.20.0) Frame Effects, Heals: Heal Flight's switch, the look, the landing
-	-- in a raid, a made-up heal and every kind's landing to compare them
-	R("UnitGroupFrames", "all", "General", "HealFlight.!enabled", { name = "Heal Effects" })
-	R("UnitGroupFrames", "all", "General", "HealFlight.#Preview")
-	R("UnitGroupFrames", "all", "General", "HealFlight.#Every Kind")
-	R("UnitGroupFrames", "all", "General", "HealFlight.flight")
-	R("UnitGroupFrames", "all", "General", "HealFlight.hotTicks")
-	-- (an-05, the user, 2026-10-30: "Yes, sketch first", then the picks) a buff landing on the group's frames
-	R("UnitGroupFrames", "all", "General", "HealFlight.buffs")
-	R("UnitGroupFrames", "all", "Look", "HealFlight.look")
 
-	-- (0.20.0) Frame Effects, Cooldowns: its switch, whose, and every kind to see
-	R("UnitGroupFrames", "all", "General", "FrameEffects.!enabled", { name = "Cooldown Effects" })
-	R("UnitGroupFrames", "all", "General", "FrameEffects.#Every Effect")
-	R("UnitGroupFrames", "all", "General", "FrameEffects.whose")   -- (one look C13d: Your Own + Your Group's)
 
 	-- (0.21.0) Personal Display (header: its module's switch): the shield column, the texts, the width, the hop, the preview
 	R("UnitGroupFrames", "personal:element", "General", "PersonalDisplay.!enabled", { name = "Personal Display" })
@@ -1262,9 +1241,6 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "personal:swing", "General", "PersonalDisplay.swingOver")   -- (2.1.19: the user)
 	R("UnitGroupFrames", "personal:cooldowns", "General", "PersonalDisplay.cooldowns")
 	R("UnitGroupFrames", "personal:element", "Look", "PersonalDisplay.classColour")
-	-- (the audit, 2026-10-12: gated as Route's minimap drawing is -- it does nothing without Heal Flight)
-	R("UnitGroupFrames", "personal:cast", "Behaviour", "PersonalDisplay.healFrom", { when = { key = "HealFlight.!enabled", value = true, line = "Only with Heal Flight on" } })
-	R("UnitGroupFrames", "personal:cast", "Behaviour", "PersonalDisplay.castMotion")
 	R("UnitGroupFrames", "personal:text", "Text", "PersonalDisplay.text")
 	R("Look", "Fonts", "Text", "PersonalDisplay.textFont", { name = "Font", card = "Personal Display" })
 	Link("UnitGroupFrames", "personal:text", "Text", "PersonalDisplay.textFont", "Font")
@@ -1275,15 +1251,8 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "personal:shield", "Layout", "PersonalDisplay.@scale:personalshield", { name = "Scale" })
 	R("UnitGroupFrames", "personal:cooldowns", "Layout", "PersonalDisplay.cdSize", { when = { key = "PersonalDisplay.cooldowns", notValue = false, line = "Only with Big Cooldowns on" } })
 	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.zoom")
-	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.chunk")
-	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.lead")
-	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.heavy")
-	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.spend")
-	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.gain")
-	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.avoid")
 	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.lowHealth")
 	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.stun")
-	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.settle")
 	-- (0.21.0: its border on Oldschool > Borders, its fade on the Fader's page)
 
 	-- Quest Tracker (header: its module's switch; one look, stage E, the user 2026-10-15: its Painted Skin row is
@@ -1294,7 +1263,6 @@ function L.Define(R, Link)
 	-- the page's other rows)
 	R("QuestTracker", "Quest Tracker", "Look", "UIModifications.parchment_questTracker", { name = "Parchment", free = true,
 		when = { key = "QuestTracker.!enabled", value = true, line = "Only with MelloUI's Quest Tracker on" } })
-	R("QuestTracker", "Quest Tracker", "Look", "QuestTracker.progressMotion")
 	-- (el-07, the user, 2026-10-29: "the objective tracker by either clicking on it in edit mode or edit layout does
 	-- not have the opacity slider") the tracker's backing, also in its Edit Layout box with Height and Text Size
 	R("QuestTracker", "Quest Tracker", "Look", "QuestTracker.opacity")
@@ -1356,13 +1324,10 @@ function L.Define(R, Link)
 	R("Route", "Route", "General", "Route.travelTime")
 	R("Route", "Route", "Look", "Route.trailLook")
 	R("Route", "Route", "Look", "Route.lineWidth")
-	R("Route", "Route", "Look", "Route.drawIn")
 	R("Route", "Route", "Behaviour", "Route.arrive")
 	R("Route", "Route", "Behaviour", "Route.learn")
 	R("Route", "Arrow & Marker", "General", "Route.worldMarker")
 	R("Route", "Arrow & Marker", "General", "Route.routeBeam")
-	R("Route", "Arrow & Marker", "General", "Route.markerWisp")
-	R("Route", "Arrow & Marker", "General", "Route.arriveLight")
 	R("Route", "Arrow & Marker", "Sound", "Route.markerSound")
 	R("Route", "Flights", "General", "Route.flightHint")
 	R("Map", "Map", "General", "Map.#Open The Map")
@@ -1419,6 +1384,58 @@ function L.Define(R, Link)
 	R("QualityOfLife", "Gains", "General", "Gains.currencies")
 	R("QualityOfLife", "Gains", "Look", "Gains.qualityNames")
 	R("QualityOfLife", "Gains", "Behaviour", "Gains.hold")
+
+	-- (2.1.20, the Animations page) every animation MelloUI plays: Reduce Motion first (it stops them all), then a tab
+	-- for each place they play, a card per part. Each row's Play is its module's (an option's `play`, CONFIG.Play)
+	R("Animations", "General", "General", "UIModifications.reduceMotion", { free = true })
+	R("Animations", "General", "Behaviour", "UIModifications.fadeWindows")
+	-- (0.20.0) Frame Effects, Heals: Heal Flight's switch, a made-up heal and every kind's landing, the look, the light
+	R("Animations", "Frames", "General", "HealFlight.!enabled", { name = "Heal Effects", card = "Heal Effects" })
+	R("Animations", "Frames", "General", "HealFlight.#Preview", { card = "Heal Effects" })
+	R("Animations", "Frames", "General", "HealFlight.#Every Kind", { card = "Heal Effects" })
+	R("Animations", "Frames", "General", "HealFlight.look", { card = "Heal Effects" })
+	R("Animations", "Frames", "General", "HealFlight.flight", { card = "Heal Effects" })
+	R("Animations", "Frames", "General", "HealFlight.hotTicks", { card = "Heal Effects" })
+	-- (an-05, the user, 2026-10-30: "Yes, sketch first", then the picks) a buff landing on the group's frames
+	R("Animations", "Frames", "General", "HealFlight.buffs", { card = "Heal Effects" })
+	-- (the audit, 2026-10-12: gated as Route's minimap drawing is -- it does nothing without Heal Flight)
+	R("Animations", "Frames", "General", "PersonalDisplay.healFrom", { card = "Heal Effects",
+		when = { key = "HealFlight.!enabled", value = true, line = "Only with Heal Flight on" } })
+	-- (0.20.0) Frame Effects, Cooldowns: its switch, every kind to see, whose (one look C13d: Your Own + Your Group's)
+	R("Animations", "Frames", "General", "FrameEffects.!enabled", { name = "Cooldown Effects", card = "Cooldown Effects" })
+	R("Animations", "Frames", "General", "FrameEffects.#Every Effect", { card = "Cooldown Effects" })
+	R("Animations", "Frames", "General", "FrameEffects.whose", { card = "Cooldown Effects" })
+	-- (0.25.0 / 1.2.0) the Personal Display's moments (its switch on Unit & Group Frames > Personal)
+	R("Animations", "Frames", "General", "PersonalDisplay.castMotion", { card = "Personal Display" })
+	R("Animations", "Frames", "General", "PersonalDisplay.chunk", { card = "Personal Display" })
+	R("Animations", "Frames", "General", "PersonalDisplay.lead", { card = "Personal Display" })
+	R("Animations", "Frames", "General", "PersonalDisplay.heavy", { card = "Personal Display" })
+	R("Animations", "Frames", "General", "PersonalDisplay.spend", { card = "Personal Display" })
+	R("Animations", "Frames", "General", "PersonalDisplay.gain", { card = "Personal Display" })
+	R("Animations", "Frames", "General", "PersonalDisplay.avoid", { card = "Personal Display" })
+	R("Animations", "Frames", "General", "PersonalDisplay.settle", { card = "Personal Display" })
+	-- (0.25.0, the user's "yes build it" to the Nameplate Impact page: the target's plate answers the fight)
+	R("Animations", "Nameplates", "General", "PlateImpact.!enabled", { name = "Impact Effects" })
+	R("Animations", "Nameplates", "Behaviour", "PlateImpact.flash")
+	R("Animations", "Nameplates", "Behaviour", "PlateImpact.chunk")
+	R("Animations", "Nameplates", "Behaviour", "PlateImpact.crit")
+	R("Animations", "Nameplates", "Behaviour", "PlateImpact.kill")
+	R("Animations", "Nameplates", "Behaviour", "PlateImpact.evade")
+	R("Animations", "Nameplates", "Behaviour", "PlateImpact.cast")
+	R("Animations", "Nameplates", "Behaviour", "PlateImpact.targetFrame", { gate = UF_AREA })
+	R("Animations", "Bars & Windows", "Look", "ActionButtons.readyFlash", { gate = AB_AREA, card = "Action Bars" })
+	R("Animations", "Bars & Windows", "Look", "Tweaks.levelUp", { card = "XP Bar" })
+	-- (0.21.3 / 0.22.1, the animations: an item looted flies into its slot, items glide to their new slots, the money
+	-- rolls, the bags full shake their Empty slot)
+	R("Animations", "Bars & Windows", "Behaviour", "BagWindow.lootFlight", { free = true, card = "Bag Window" })
+	R("Animations", "Bars & Windows", "Behaviour", "BagWindow.itemsGlide", { free = true, card = "Bag Window" })
+	R("Animations", "Bars & Windows", "Behaviour", "BagWindow.moneyRoll", { free = true, card = "Bag Window" })
+	R("Animations", "Bars & Windows", "Behaviour", "BagWindow.fullWarning", { free = true, card = "Bag Window" })
+	R("Animations", "Bars & Windows", "Look", "QuestTracker.progressMotion", { card = "Quest Tracker" })
+	R("Animations", "Bars & Windows", "Look", "Services.trayDrawer", { card = "Services Bar" })   -- (0.22.1: the trays slide out)
+	R("Animations", "Travel", "General", "Route.drawIn")
+	R("Animations", "Travel", "General", "Route.markerWisp")
+	R("Animations", "Travel", "General", "Route.arriveLight")
 
 	-- Voice Over (header: its module's switch)
 	R("VoiceOver", "Reading", "General", "VoiceOver.gossip")

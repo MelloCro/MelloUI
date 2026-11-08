@@ -174,6 +174,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.20", lines = {
+		"Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel.",
+		"Animations: press Play beside an animation to see it once before you choose.",
+	} },
 	{ version = "2.1.19", lines = {
 		"Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %.",
 		"Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default).",
@@ -200,9 +204,6 @@ local CHANGELOG = {
 	{ version = "2.1.16", lines = {
 		"Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name.",
 		"Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts.",
-	} },
-	{ version = "2.1.15", lines = {
-		"/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags.",
 	} },
 }
 local LINKS = {
@@ -2019,10 +2020,10 @@ do
 		Lay.SmallTabs(out)
 		-- the New tags: a tab holding a row new in the running update, a page
 		-- with one or whose module is new itself (its header's, else the one
-		-- its icon names: Reminders)
+		-- its icon names: Reminders); (2.1.20) a page new itself, its def's `new` (the Animations page)
 		for _, p in pairs(out.pages) do
 			local m = Lay.ModuleOf(p.def)
-			p.new = m ~= nil and MelloUI:IsNew(m.new) or nil
+			p.new = (m ~= nil and MelloUI:IsNew(m.new)) or (p.def.new ~= nil and MelloUI:IsNew(p.def.new)) or nil
 			for _, t in ipairs(p.tabs) do
 				for _, s in ipairs(t.sections) do
 					for _, r in ipairs(s.rows) do
@@ -3320,6 +3321,48 @@ end
 
 local SLIDER_KEYS = { "min", "max", "step", "percent", "format" }
 
+-- (2.1.20, the Animations page; the user, 2026-11-08, the sketch's pick 3A: "press it to see the animation") a Play
+-- beside a row whose option (or module, on its switch row) names one of its module's plays: the row's `play` word,
+-- the module's `Plays[word]` (Core.lua's registry header), played by Preview:Once (Core/Preview.lua). Left of the
+-- control, or of its cog; fields of CONFIG (Config.lua is near Lua's 200 locals)
+CONFIG.PLAY = { SIZE = 22, GAP = 10, TIP = "Play", TIP_BODY = "Plays this animation once, so you can see it.",
+	OFF = "%s is off: switch it on to see it." }
+function CONFIG.PlayOf(shape)
+	local mod = shape and shape.mod
+	local word = mod and (shape.kind == "module" and mod.play or (shape.opt and shape.opt.play)) or nil
+	local fn = type(word) == "string" and type(mod.Plays) == "table" and mod.Plays[word] or nil
+	return type(fn) == "function" and fn or nil
+end
+CONFIG.PlayClick = Shared("OnClick on a row's Play", function(b)
+	local e = b.melloEntry
+	local now = e and (Current(e.page, e.r) or e.shape)
+	local fn = now and CONFIG.PlayOf(now)
+	if not fn then
+		return
+	end
+	MelloUI:PlayUISound("menu_button")
+	-- (a switch that is off plays nothing of its own: it says so)
+	if e.r.type == "toggle" and ValueOf(now) ~= true then
+		MelloUI:Announce(MelloUI.Lang.F(CONFIG.PLAY.OFF, MelloUI.Lang.T(e.r.name or "")), "info")
+		return
+	end
+	MelloUI.Preview:Once(fn)
+end, "script")
+function CONFIG.Play(e, control, span, t)
+	if t == "button" or not CONFIG.PlayOf(e.shape) then
+		return
+	end
+	local row, P = e.row, CONFIG.PLAY
+	local b = W.GlyphButton(row, P.SIZE, "play")
+	Perf.SetScript(b, "OnClick", CONFIG.PlayClick)
+	b:SetPoint("RIGHT", e.cog or control, "LEFT", -P.GAP, 0)
+	b.melloEntry = e
+	PageTip(b, P.TIP, P.TIP_BODY)
+	W.RowPlateChild(row, b)
+	W.ClipRow(row, b, span + (e.cog and CONFIG.COG.SIZE + CONFIG.COG.GAP or 0) + P.SIZE + P.GAP)
+	e.play = b
+end
+
 local function MakeRow(sec, r)
 	local page = sec.page
 	local b = Current(page, r)
@@ -3436,6 +3479,7 @@ local function MakeRow(sec, r)
 		swatch:SetPoint("RIGHT", control, "LEFT", -SWATCH_GAP, 0)
 		W.ClipRow(row, swatch, span + SWATCH_SPEC.width + SWATCH_GAP)
 	end
+	CONFIG.Play(e, control, span, t)
 	sec.refreshers[#sec.refreshers + 1] = function()
 		RefreshEntry(e)
 	end

@@ -2071,6 +2071,8 @@ Lang:Add("koKR", {
 	["The game's Cooldown Manager"] = "게임의 재사용 대기시간 관리자", -- draft
 	["Cooldowns"] = "재사용 대기시간", -- draft
 	["Your bars: pick one, click a part of it, change it."] = "내 바: 하나를 골라 부분을 누르고 바꾸세요.", -- draft
+	["Animations"] = "애니메이션", -- draft
+	["Every animation MelloUI plays, in one place. Press Play beside one to see it before you choose."] = "MelloUI의 모든 애니메이션을 한곳에서. 옆의 재생을 눌러 선택하기 전에 확인하세요.", -- draft
 	["The damage meter."] = "피해량 측정기.", -- draft
 	["The chat windows, the lines in them and the whisper popup."] = "대화창, 그 안의 줄, 귓속말 팝업.", -- draft
 	["Fade parts of the interface while you don't need them: pick when each one shows."] = "필요 없을 때 인터페이스 일부를 흐리게: 각 부분이 언제 보일지 고르세요.", -- draft
@@ -2111,7 +2113,7 @@ Lang:Add("koKR", {
 	["Profiles"] = "프로필", -- draft
 	["Quality of Life"] = "편의 기능", -- draft
 	["The small helpers, a tab each: the vendor, your restock list and quests done for you, the text in the middle of the screen, the reminders and widgets, FPS / latency and the tooltip."] = "작은 도우미, 탭마다 하나씩: 상인, 보충 목록과 자동 퀘스트, 화면 가운데 글자, 알림과 위젯, FPS / 지연 시간, 툴팁.", -- draft
-	["Every frame: the heal light, the big moments, the debuff glow"] = "모든 창: 치유 빛, 큰 순간, 약화 효과 빛", -- draft
+	["Every frame: the debuff glow"] = "모든 창: 약화 효과 빛", -- draft
 	["All frames"] = "모든 창", -- draft
 	["Unit & Group Frames"] = "개체창", -- draft
 	["You, your target and your group: pick a frame, click a part of it, change it."] = "나, 대상, 파티: 창을 골라 부분을 누르고 바꾸세요.", -- draft
@@ -2146,6 +2148,8 @@ Lang:Add("koKR", {
 	["Big cooldowns"] = "큰 재사용 대기시간", -- draft
 	["Window"] = "창", -- draft
 	["The bag window and the game's windows, one at a time: pick a window."] = "가방 창과 게임 창을 하나씩: 창을 고르세요.", -- draft
+	["Bars & Windows"] = "바 및 창", -- draft
+	["Travel"] = "이동", -- draft
 	["Messages"] = "메시지", -- draft
 	["Chat, Map & More"] = "대화, 지도 등", -- draft
 	["Textures"] = "텍스처", -- draft
@@ -2256,7 +2260,6 @@ Lang:Add("koKR", {
 	["Only with Party Frames (Portraits)"] = "파티 프레임(초상화)에서만", -- draft
 	["Only with Flat colour"] = "단색일 때만", -- draft
 	["Only with Missing Health on"] = "잃은 생명력이 켜져 있을 때만", -- draft
-	["Only with Heal Flight on"] = "치유 효과가 켜져 있을 때만", -- draft
 	["Only with Big Cooldowns on"] = "큰 재사용 대기시간이 켜져 있을 때만", -- draft
 	["Only while the tracker does not match the minimap (Match Minimap or MelloUI's minimap off)"] = "추적기가 미니맵에 맞추지 않는 동안만(미니맵 폭에 맞추기 또는 MelloUI 미니맵 꺼짐)", -- draft
 	["Only with Auto Hand In"] = "자동 완료에서만", -- draft
@@ -2264,6 +2267,9 @@ Lang:Add("koKR", {
 	["Only with Route on (its minimap drawing)"] = "경로가 켜져 있을 때만(그 미니맵 그리기)", -- draft
 	["Restock List And Shop"] = "재보충 목록과 상점", -- draft
 	["Needs Chat's Whisper Popup Window or the Minimal Chat View"] = "대화의 귓속말 팝업 창 또는 최소 대화 보기가 필요합니다", -- draft
+	["Only with Heal Flight on"] = "치유 효과가 켜져 있을 때만", -- draft
+	["XP Bar"] = "경험치 바", -- draft
+	["Bag Window"] = "가방 창", -- draft
 	["Only for text-to-speech (Read Unvoiced Lines on, or Use Voice Packs off)"] = "음성 합성에서만(목소리 없는 줄 읽기 켜짐, 또는 음성 팩 사용 꺼짐)", -- draft
 	["Fades With The Player"] = "플레이어와 함께 흐려짐", -- draft
 	["Fade: Main Action Bar"] = "흐리게: 주 행동 단축바", -- draft
@@ -2288,6 +2294,8 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel."] = "애니메이션: 새 애니메이션 페이지(외형)에 MelloUI의 모든 애니메이션이 모였습니다. 맨 위에 움직임 줄이기가 있고, 재생되는 곳마다 탭이 있습니다: 창, 이름표, 바 및 창, 이동.", -- draft
+	["Animations: press Play beside an animation to see it once before you choose."] = "애니메이션: 애니메이션 옆의 재생을 누르면 선택하기 전에 한 번 볼 수 있습니다.", -- draft
 	["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "이름표: 공격 배지가 이름표 미리보기에 표시되며, 크기를 50~200%로 조절할 수 있습니다.", -- draft
 	["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "이름표: 적 이름표의 내 약화 효과에 '내 약화 효과만' 설정이 추가되었습니다(기본값 켜짐).", -- draft
 	["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "이름표: 적 이름표의 내 약화 효과에 더 이상 시계 표시가 나오지 않으며, 숫자는 남은 시간에 따라 색이 바뀌고 5초 미만이면 빨간색이 됩니다.", -- draft
@@ -2307,7 +2315,6 @@ Lang:Add("koKR", {
 	["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars가 이제 모든 스킨에서 아래에 숨겨진 게임 기본 바 대신 MelloUI 자체 행동 단축바와 태세 바를 빛나게 합니다.", -- draft
 	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "수정: 던전에서 대상의 대상과 다른 유닛 프레임에 이전 이름이 계속 표시되지 않습니다.", -- draft
 	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "수정: 파티 창, 공격대 창 및 기타 개체창에서 죽은 플레이어와 유령의 생명력 및 자원 바가 이제 비어 있게 표시됩니다.", -- draft
-	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "/mellobug 보고서가 이제 가방 버튼이 어떻게 만들어졌는지도 보여 주어, 게임이 가방 아이템을 차단하는 원인을 찾는 데 도움이 됩니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2661,6 +2668,7 @@ Lang:Add("koKR", {
 	["Time"] = "시간", -- draft
 	["Stacks"] = "중첩", -- draft
 	-- Modules/ActionButtons.lua
+	["Cooldown Ready Flash: no action button of yours is shown."] = "재사용 준비 번쩍임: 표시된 행동 단축 버튼이 없습니다.", -- draft
 	["Cooldown"] = "재사용 대기시간", -- draft
 	["Out of range"] = "사거리 밖", -- draft
 	["Pressed"] = "누름", -- draft
@@ -2707,6 +2715,7 @@ Lang:Add("koKR", {
 -- stale: ["'No reskin, features on' suits this screen."] = "'스킨 없이 기능 켜기'가 이 화면에 맞습니다.", -- draft
 -- stale: ["+ Buff"] = "+ 강화 효과", -- draft
 -- stale: ["+ Debuff (by kind)"] = "+ 약화 효과(종류별)", -- draft
+-- stale: ["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "/mellobug 보고서가 이제 가방 버튼이 어떻게 만들어졌는지도 보여 주어, 게임이 가방 아이템을 차단하는 원인을 찾는 데 도움이 됩니다.", -- draft
 -- stale: ["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "/mellobug 보고서가 이제 차단된 동작에 이르는 과정을 보여 주어, 게임이 가방 아이템을 차단하는 원인을 찾는 데 도움이 됩니다.", -- draft
 -- stale: ["A Read button on the quest log's details view: the quest's description in the giver's voice (the recorded offer line when a pack has it), then the recorded objectives when the voice pack has them (Quest Objectives). Also /vo read."] = "퀘스트 목록 상세 보기의 읽기 버튼: 제공자의 목소리로 퀘스트 설명(팩에 녹음된 제안 줄이 있으면 그것), 그다음 음성 팩에 있으면 녹음된 목표(퀘스트 목표). /vo read 도 됩니다.", -- draft
 -- stale: ["A Supporters page under Profiles: the people who help keep MelloUI going."] = "프로필 아래 후원자 페이지: MelloUI가 계속 나아가도록 돕는 분들.", -- draft
@@ -2924,6 +2933,7 @@ Lang:Add("koKR", {
 -- stale: ["Every element on the Frames, Bars and Chat & Map tabs on In Combat: the whole interface fades away out of combat and comes back in a fight."] = "창, 바, 대화와 지도 탭의 모든 요소를 전투 중으로: 인터페이스 전체가 전투 밖에서 흐려지고 전투 때 돌아옵니다.", -- draft
 -- stale: ["Every feature below on or off at once."] = "아래 모든 기능을 한 번에 켜거나 끕니다.", -- draft
 -- stale: ["Every font drawn with the interface face, relative to its normal size; a Font Style puts it back to 100% (its faces bring their own correction). Not the text with a size of its own: the Quest Tracker, Combat Text, the chat (Chat & numbers size), FPS / Latency, Cooldown Timers, and the bar values while their size is set."] = "인터페이스 글꼴로 그리는 모든 글자, 원래 크기 기준. 글꼴 스타일은 이를 100%로 되돌립니다(그 글꼴들이 자체 보정을 가져옴). 자체 크기가 있는 글자는 제외: 퀘스트 추적기, 전투 문자, 대화(대화와 숫자 크기), FPS / 지연 시간, 재사용 대기시간 타이머, 크기를 정한 막대 값.", -- draft
+-- stale: ["Every frame: the heal light, the big moments, the debuff glow"] = "모든 창: 치유 빛, 큰 순간, 약화 효과 빛", -- draft
 -- stale: ["Every setting lives in /mello, and in the MelloUI button of the game menu."] = "모든 설정은 /mello 와 게임 메뉴의 MelloUI 버튼에 있습니다.", -- draft
 -- stale: ["Every window and HUD area of the reskin back on, and every feature of UI Modifications that is on by default."] = "스킨의 모든 창과 HUD 영역, 그리고 기본으로 켜져 있는 UI 수정의 모든 기능을 다시 켭니다.", -- draft
 -- stale: ["Every window fades in over a fifth of a second when it opens, instead of appearing at once: the character window, talents and spells, professions, the bags, social, guild, group finder, collections, the map, the game menu and the rest. Works with the reskin on or off. Reduce Motion: at once."] = "모든 창이 열릴 때 한꺼번에 나타나는 대신 5분의 1초에 걸쳐 서서히 나타납니다: 캐릭터 창, 특성과 주문, 전문 기술, 가방, 소셜, 길드, 파티 찾기, 수집품, 지도, 게임 메뉴 등. 스킨을 켜든 끄든 작동합니다. 움직임 줄이기: 즉시.", -- draft

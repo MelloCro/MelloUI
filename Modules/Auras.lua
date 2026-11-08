@@ -127,7 +127,7 @@ local M = MelloUI:RegisterModule("Auras", {
 		  desc = "The size of your debuff icons on nameplates." },
 		-- (2.1.19; the user, 2026-11-08: "Your Debuffs show debuffs from everybody, make a checkbox on them to ONLY show
 		-- your own debuffs on the nameplates")
-		{ type = "toggle", key = "nameplateOnlyMine", parent = "nameplates", name = "Only My Debuffs", new = "2.1.19",
+		{ type = "toggle", key = "nameplateOnlyMine", parent = "nameplates", name = "Only My Debuffs",
 		  desc = "Only the debuffs you put on enemies. Off: every debuff the game shows on their nameplates." },
 		{ type = "dropdown", key = "textFont", name = "Buff Numbers Font", values = MelloUI.FontFaces,
 		  desc = "The font of timers and stacks on MelloUI's buffs and debuffs. Shared: the numbers font." },

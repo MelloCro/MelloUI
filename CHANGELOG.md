@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.20
+
+- Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel.
+- Animations: press Play beside an animation to see it once before you choose.
+
 ## 2.1.19
 
 - Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %.

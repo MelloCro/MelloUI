@@ -25,6 +25,11 @@
 --                    its flag alone
 --   slash            a short word /mello finds the module by besides its key
 --                    and title (0.17.1: "swing" for Swing Timers: /mello swing log)
+--   play             (2.1.20) a word: the Play beside its switch row plays
+--                    `module.Plays[word]` (an option's own `play` the same
+--                    way; Preview:Once in Core/Preview.lua): a function that
+--                    shows its animation once and returns true when it played
+--                    (else it said why), and how long it lasts
 --   important        true: the configurator's tile keeps a gold border, a glowing
 --                    icon and an IMPORTANT badge (the UI Modifications entry)
 --   keep             the settings that are this player's own, not choices
@@ -3885,6 +3890,9 @@ local REGISTRY_FIELDS = { flavour = "string", group = "string", window = "table"
 	navOrder = "number" }
 REGISTRY_FIELDS.new = "string"   -- (0.14.0: a new module's New tag, the update it came with)
 REGISTRY_FIELDS.slash = "string"   -- (0.17.1: its short /mello word)
+-- (2.1.20, the Animations page) the word of its own switch row's Play: the module's `Plays[word]` (an option's own
+-- `play` names one the same way; Core/Preview.lua's Preview:Once plays it)
+REGISTRY_FIELDS.play = "string"
 
 -- MelloUI's features that ship as addons of their own (0.19.9; the user,
 -- 2026-10-08: docs/plans/split-addons.md): module name -> { addon, title }.

@@ -69,7 +69,7 @@ local M = MelloUI:RegisterModule("ActionButtons", {
 		{ type = "toggle", key = "frames", name = "MelloUI Frames",
 		  desc = "Action buttons in MelloUI's frame: gold when active, red out of range. Off: the game's own frames." },
 		-- (2026-10-20, the user: the golden frame animation "to notify when something comes off cooldown")
-		{ type = "toggle", key = "readyFlash", name = "Cooldown Ready Flash",
+		{ type = "toggle", key = "readyFlash", name = "Cooldown Ready Flash", play = "ready",
 		  desc = "A gold light runs around a button when its cooldown ends." },
 		{ type = "toggle", key = "pressLight", name = "Light While Pressed",
 		  desc = "A button lights up while you press it." },
@@ -497,6 +497,31 @@ local OnCooldownEnd = Shared("Clear / OnCooldownDone on an action button's coold
 		Flash(button)
 	end
 end)
+
+-- (2.1.20, the Animations page) the row's Play (Core/Config.lua's CONFIG.Play, Preview:Once): the flash on the lowest
+-- row of buttons on the screen (every shown button whose bottom is the lowest one's), as their cooldowns ending would
+M.Plays = {
+	ready = function()
+		local low
+		for _, button in pairs(cooldownOf) do
+			local b = button:IsVisible() and Num(button:GetBottom())
+			if b and (not low or b < low) then
+				low = b
+			end
+		end
+		if not low then
+			MelloUI:Announce("Cooldown Ready Flash: no action button of yours is shown.", "info")
+			return false
+		end
+		for _, button in pairs(cooldownOf) do
+			local b = button:IsVisible() and Num(button:GetBottom())
+			if b and b - low < 4 then
+				Flash(button)
+			end
+		end
+		return true, READY.TIME + 0.6
+	end,
+}
 
 local function HookReady(button)
 	local cd = rawget(button, "cooldown")

@@ -106,7 +106,7 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		  desc = "How far one turn of the mouse wheel scrolls." },
 		{ type = "toggle", key = "itemButtons", name = "Quest Items",
 		  desc = "A quest's usable item beside it. Click to use it out of combat." },
-		{ type = "toggle", key = "progressMotion", name = "Progress Motion",
+		{ type = "toggle", key = "progressMotion", name = "Progress Motion", play = "progress",
 		  desc = "Counts roll to their new number, finished objectives get a tick, and a finished quest lights up." },
 		{ type = "header", name = "Nearest First" },
 		{ type = "toggle", key = "nearestFirst", name = "Nearest Quest First",
@@ -1511,13 +1511,14 @@ end
 -- (/mello tracker progress) the motion played on the first watched quest's
 -- line with a count, to see it: the count rolls up to what it shows, its
 -- tick is drawn, then the finished quest's light over the title and its map
--- button's pop; the tracker drawn as it is again after (a rebuild)
+-- button's pop; the tracker drawn as it is again after (a rebuild). (2.1.20) true when it played: the Animations
+-- page's Play too (Core/Config.lua's CONFIG.Play, Preview:Once), its lines on the screen
 Motion.PREVIEW = { off = "Quest Tracker: Progress Motion is off, or Reduce Motion is on.",
 	none = "Quest Tracker: no watched quest with a count is shown.", AFTER = 2.2 }
 function Motion.Preview()
 	if not Motion.On() then
-		MelloUI:Print(Motion.PREVIEW.off)
-		return
+		MelloUI:Announce(Motion.PREVIEW.off, "info")
+		return false
 	end
 	local found, fi, fn
 	for _, block in pairs(blocks) do
@@ -1532,8 +1533,8 @@ function Motion.Preview()
 		end
 	end
 	if not found then
-		MelloUI:Print(Motion.PREVIEW.none)
-		return
+		MelloUI:Announce(Motion.PREVIEW.none, "info")
+		return false
 	end
 	local fs = found.lines[fi]
 	Motion.preview = { block = found, fs = fs }
@@ -1541,6 +1542,7 @@ function Motion.Preview()
 	C_Timer.After(Motion.ROLL, Motion.PreviewTick)
 	C_Timer.After(Motion.HOLD, Motion.PreviewDone)
 	C_Timer.After(Motion.PREVIEW.AFTER, Motion.Dirty)
+	return true
 end
 
 function Motion.PreviewTick()
@@ -3967,6 +3969,7 @@ end
 Near.MarkDirty = MarkDirty
 Motion.Dirty = MarkDirty
 M.SlashWords = { progress = Motion.Preview }   -- (0.21.3: /mello tracker progress)
+M.Plays = { progress = function() return Motion.Preview(), Motion.PREVIEW.AFTER end }   -- (2.1.20, the Animations page)
 M.Motion = Motion   -- (the tests')
 
 -- a guide's steps published, or taken away (nil): the list rebuilt (GUIDE)

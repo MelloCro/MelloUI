@@ -378,7 +378,7 @@ for _, entry in ipairs(PARCHMENTS) do
 		missing = skinless and SkinlessLine or nil })
 end
 
-Add({ type = "toggle", key = "fadeWindows", name = "Windows Fade In",
+Add({ type = "toggle", key = "fadeWindows", play = "fade", name = "Windows Fade In",
 	desc = "Windows fade in briefly when they open, instead of appearing at once." })
 Add({ type = "toggle", key = "reduceMotion", name = "Reduce Motion", free = true,
 	desc = "Stops MelloUI's animations: windows and popups appear at once, nothing slides or flashes." })
@@ -655,6 +655,19 @@ local fadeWatcher = CreateFrame("Frame")
 fadeWatcher:RegisterEvent("PLAYER_LOGIN")
 fadeWatcher:RegisterEvent("ADDON_LOADED")
 Perf.SetScript(fadeWatcher, "OnEvent", SweepFade)
+
+-- (2.1.20, the Animations page) Windows Fade In's Play (Core/Config.lua's CONFIG.Play, Preview:Once): the configurator
+-- itself fades in as a window opening does (it stays: the third true)
+M.Plays = {
+	fade = function()
+		local cfg = rawget(_G, "MelloUIConfigFrame")
+		if not (cfg and cfg:IsShown()) then
+			return false
+		end
+		MelloUI.Anim:FadeIn(cfg, 0.2)
+		return true, 0, true
+	end,
+}
 
 -- (2.1.6) a painted panel of an area given back to the game (MelloUI.Area): off with it. The area's switch is a folded
 -- feature's here (Unit Frames, Nameplates: read from its switch, so the start-up pass, which writes the flags after

@@ -149,6 +149,27 @@ local function PreviewAll()
 	ShowNext()
 end
 
+-- (2.1.20, the Animations page) the switch row's and Whose's Play (Core/Config.lua's CONFIG.Play, Preview:Once): one
+-- big moment on your own frame, the first of Every Effect's -- true when it played, and how long it lasts
+local function PlayOne()
+	if not (M and M.isEnabled) then
+		MelloUI:Announce(TEXT.off, "info")
+		return false
+	end
+	FX.Members()
+	if not FX.FrameOf(FX.Canon("player")) then
+		MelloUI:Announce(TEXT.noFrame, "info")
+		return false
+	end
+	local e = EXAMPLES[1]
+	if not e then
+		return false
+	end
+	local last = math.min(LASTS[e[4]] or SHOW_LAST, SHOW_LAST)
+	FX.Show(FX.Canon("player"), e[1], nil, false, last)
+	return true, last
+end
+
 -- Every Effect stopped, whatever plays on the frames cleared (/mellofx stop)
 local function StopPreview()
 	P.show, P.due = #EXAMPLES, 0
@@ -161,6 +182,7 @@ end
 
 M = MelloUI:RegisterModule("FrameEffects", {
 	title = "Cooldown Effects",   -- (0.21.0, the user: the page's switch name, every text alike)
+	play = "one",   -- (2.1.20: its switch row's Play, the Animations page)
 	desc = "Your group's frames show their big moments: taunts, Shield Wall, immunities, evasion and more.",
 	icon = "Interface\\Icons\\Ability_Warrior_ShieldWall",
 	flavour = "Shield Wall, Last Stand, a roar: your group's frames show their big moments.",
@@ -173,12 +195,14 @@ M = MelloUI:RegisterModule("FrameEffects", {
 		  hint = "each kind on your own frame",
 		  desc = "Plays each kind of big moment on your own frame.",
 		  onClick = function() PreviewAll() end },
-		{ type = "dropdown", key = "whose", name = "Whose",
+		{ type = "dropdown", key = "whose", name = "Whose", play = "one",
 		  values = { { value = "both", label = "Yours And Your Group's" }, { value = "mine", label = "Yours" },
 			{ value = "group", label = "Your Group's" } },
 		  desc = "Whose big moments (Shield Wall, Divine Shield, Evasion...) play on the frames: yours, your group's, or both." },
 	},
 })
+
+M.Plays = { one = PlayOne }
 
 function M:OnInit(db)
 	self.db = db

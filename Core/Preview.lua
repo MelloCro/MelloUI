@@ -515,6 +515,94 @@ end
 Preview.Play = Play
 
 --------------------------------------------------------------------------------
+-- One animation once (2.1.20, the Animations page; the user, 2026-11-08: "People are confused on where to find and
+-- turn off animations they dont want", then the sketch's pick 3A: a Play beside each row). The row's module plays
+-- its own sample from its own code -- `fn` (a module's `Plays[word]`, Core/Config.lua's CONFIG.PlayOf) returns true
+-- when it played, else it said why (MelloUI:Announce), and how long it lasts; a third true: it plays on the
+-- configurator itself (Windows Fade In), which then stays. Meanwhile the configurator steps aside: faded out, not
+-- hidden (its page kept, and the Fader goes on showing every element while it is open), a click anywhere on it
+-- bringing it back at once; then it fades back in.
+--   Preview:Once(fn) -> true when it played
+--------------------------------------------------------------------------------
+
+local ONCE = { OUT = 0.15, BACK = 0.2, LAST = 1.6, MAX = 6 }
+TEXT.reduced = "Reduce Motion is on (Animations > General): the animations do not play."
+TEXT.failed = "That animation could not play: %s"
+
+local function OnceBack()
+	ONCE.due = nil
+	local cfg, catcher = rawget(_G, "MelloUIConfigFrame"), ONCE.catcher
+	if catcher then
+		catcher:Hide()
+	end
+	if cfg then
+		MelloUI.Anim:To(cfg, "alpha", 1, ONCE.BACK, "outQuad")
+	end
+end
+
+-- (one timer at a time: a due before the newest one's is an older play's, played again since)
+local function OnceDue()
+	if ONCE.due and GetTime() >= ONCE.due - 0.05 then
+		OnceBack()
+	end
+end
+
+local CatcherClick = Shared("OnClick on the configurator while an animation plays", function()
+	OnceBack()
+end, "script")
+
+local function Aside(cfg, seconds)
+	local catcher = ONCE.catcher
+	if not catcher then
+		catcher = CreateFrame("Button", nil, cfg)
+		catcher:SetAllPoints(cfg)
+		catcher:SetFrameStrata("FULLSCREEN_DIALOG")
+		catcher:RegisterForClicks("AnyUp")
+		Perf.SetScript(catcher, "OnClick", CatcherClick)
+		ONCE.catcher = catcher
+	end
+	catcher:Show()
+	MelloUI.Anim:To(cfg, "alpha", 0, ONCE.OUT, "inQuad")
+	ONCE.due = GetTime() + seconds
+	C_Timer.After(seconds, OnceDue)
+end
+
+function Preview:Once(fn)
+	if type(fn) ~= "function" then
+		return false
+	end
+	if MelloUI.InCombat() then
+		MelloUI:Announce(TEXT.inCombat, "info")
+		return false
+	end
+	if MelloUI:EditingLayout() then
+		MelloUI:Announce(TEXT.editing, "info")
+		return false
+	end
+	if MelloUI.Anim.reduceMotion then
+		MelloUI:Announce(TEXT.reduced, "info")
+		return false
+	end
+	if S.mode then
+		self:Stop("restart")
+	end
+	local ok, played, seconds, stay = pcall(fn)
+	if not ok then
+		MelloUI:Announce(TEXT.failed:format(tostring(played)), "info")
+		return false
+	end
+	if not played then
+		return false
+	end
+	local cfg = rawget(_G, "MelloUIConfigFrame")
+	if not stay and cfg and cfg:IsShown() then
+		seconds = type(seconds) == "number" and seconds > 0 and math.min(seconds, ONCE.MAX) or ONCE.LAST
+		Aside(cfg, seconds)
+	end
+	return true
+end
+
+--------------------------------------------------------------------------------
 -- The list (the configurator's Preview button): a small list in the widget
 -- set's tray box under the button, a row per scene -- its name, what it
 -- shows. Made on its first open; a row whose module is off is dimmed (its

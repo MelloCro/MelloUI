@@ -139,17 +139,17 @@ M = MelloUI:RegisterModule("BagWindow", {
 		  desc = "How items are ordered inside each kind." },
 		-- (0.21.3; the user, 2026-10-13: "Yes to all" to the animation previews, and "more impactfull animations
 		-- depending on the rarity of the item")
-		{ type = "toggle", key = "lootFlight", name = "Loot Flight",
+		{ type = "toggle", key = "lootFlight", play = "loot", name = "Loot Flight",
 		  search = "loot animation fly flight rarity quality legendary epic",
 		  desc = "Looted items fly into your bag window; the rarer the item, the bigger the effect." },
 		-- (0.22.1; the user, 2026-10-14: "make a preview on 1, 2, 3, 4 aand 5", then "build all 5" -- previews round 2)
-		{ type = "toggle", key = "itemsGlide", name = "Items Glide",
+		{ type = "toggle", key = "itemsGlide", play = "glide", name = "Items Glide",
 		  search = "animation glide slide move items slots reorder sort tab fade",
 		  desc = "Items glide to their new slots instead of jumping." },
-		{ type = "toggle", key = "moneyRoll", name = "Rolling Money",
+		{ type = "toggle", key = "moneyRoll", play = "money", name = "Rolling Money",
 		  search = "animation money gold count roll counter",
 		  desc = "Your money counts up or down to its new amount." },
-		{ type = "toggle", key = "fullWarning", name = "Bags Full Warning",
+		{ type = "toggle", key = "fullWarning", play = "full", name = "Bags Full Warning",
 		  search = "bags full inventory space empty slots warning shake red",
 		  desc = "The bag window shakes and flashes red when your bags are full." },
 	},
@@ -3616,7 +3616,7 @@ M.Fly = Fly   -- (the tests)
 -- quality, one after another. /mello bags coins: quest money flying in
 Fly.SAMPLE = { poor = 0, common = 1, uncommon = 2, rare = 3, epic = 4, legendary = 5, MONEY = 1234,
 	ICON = "Interface\\Icons\\INV_Misc_QuestionMark", NAME = "a made-up item", GAP = 1.4, GAP_BIG = 2.2,
-	off = "Bags by Kind: Loot Flight is off (Windows > Bags), or Reduce Motion is on.",
+	off = "Bags by Kind: Loot Flight is off (Animations > Bars & Windows), or Reduce Motion is on.",
 	none = "Bags by Kind: no item is shown in the bag window to fly into." }
 
 function Fly.Sample(quality)
@@ -4004,7 +4004,7 @@ M.Move = Move   -- (the tests)
 Move.SAMPLE_MONEY = 12345
 M.SlashWords.full = function()
 	if not (M.db and M.db.fullWarning ~= false) or MelloUI.Anim.reduceMotion then
-		MelloUI:Print("Bags by Kind: Bags Full Warning is off (Windows > Bags), or Reduce Motion is on.")
+		MelloUI:Print("Bags by Kind: Bags Full Warning is off (Animations > Bars & Windows), or Reduce Motion is on.")
 		return
 	end
 	Move.Warn()
@@ -4012,13 +4012,76 @@ end
 M.SlashWords.money = function()
 	local now = Move.Shown()
 	if not (M.db and M.db.moneyRoll ~= false) or MelloUI.Anim.reduceMotion then
-		MelloUI:Print("Bags by Kind: Rolling Money is off (Windows > Bags), or Reduce Motion is on.")
+		MelloUI:Print("Bags by Kind: Rolling Money is off (Animations > Bars & Windows), or Reduce Motion is on.")
 	elseif not (now and win.frame and win.frame:IsShown()) then
 		MelloUI:Print("Bags by Kind: open your bags to see the money roll.")
 	else
 		Move.Roll(math.max(0, now - Move.SAMPLE_MONEY), now)
 	end
 end
+
+-- (2.1.20, the Animations page) each row's Play (Core/Config.lua's CONFIG.Play, Preview:Once): true when it played,
+-- and how long it lasts. Loot Flight: an epic item flies in (into a slot of yours while the window shows, else to
+-- the bag button); Items Glide: two items of one row trade places; Rolling Money: the sum rolls up to yours; Bags
+-- Full Warning: the warning as the game's "Inventory is full." plays it. The window opened where the play needs it
+Move.PLAY = { OPEN = 0.3, NONE = "Bags by Kind: no two items in one row to move -- put some in your bags first." }
+
+-- the window shown (opened now when it was not): the seconds to wait for its layout
+function Move.OpenForPlay()
+	local f = win.frame
+	if f and f:IsShown() then
+		return 0
+	end
+	M:Open()
+	return Move.PLAY.OPEN
+end
+
+-- two shown items of one row, slid from each other's place to their own
+function Move.Swap()
+	local a, b
+	for btn, pos in pairs(Move.at) do
+		if btn:IsVisible() and pos[1] then
+			if not a then
+				a = btn
+			elseif not b and Move.at[a][2] == pos[2] then
+				b = btn
+			end
+		end
+	end
+	if not (a and b) then
+		MelloUI:Announce(Move.PLAY.NONE, "info")
+		return
+	end
+	local A, k, pa, pb = MelloUI.Anim, G.SCALE, Move.at[a], Move.at[b]
+	A:Slide(a, "TOPLEFT", S.content, "TOPLEFT", pb[1] / k, -pb[2] / k, (pa[1] - pb[1]) / k, 0, Move.GLIDE * 2)
+	A:Slide(b, "TOPLEFT", S.content, "TOPLEFT", pa[1] / k, -pa[2] / k, (pb[1] - pa[1]) / k, 0, Move.GLIDE * 2)
+end
+
+function Move.RollSample()
+	local now = Move.Shown()
+	if now then
+		Move.Roll(math.max(0, now - Move.SAMPLE_MONEY), now)
+	end
+end
+
+M.Plays = {
+	loot = function()
+		Fly.Sample(Fly.SAMPLE.epic)
+		return true, 1.8
+	end,
+	glide = function()
+		C_Timer.After(Move.OpenForPlay() + 0.05, Move.Swap)
+		return true, 1.8
+	end,
+	money = function()
+		C_Timer.After(Move.OpenForPlay() + 0.05, Move.RollSample)
+		return true, 1.8
+	end,
+	full = function()
+		Move.Warn()
+		return true, 1.4
+	end,
+}
 
 function M:OnEnable(db)
 	self.db = db

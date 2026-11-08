@@ -2071,6 +2071,8 @@ Lang:Add("ruRU", {
 	["The game's Cooldown Manager"] = "Менеджер восстановления игры", -- draft
 	["Cooldowns"] = "Восстановление", -- draft
 	["Your bars: pick one, click a part of it, change it."] = "Ваши панели: выберите одну, щёлкните по её части, измените её.", -- draft
+	["Animations"] = "Анимации", -- draft
+	["Every animation MelloUI plays, in one place. Press Play beside one to see it before you choose."] = "Все анимации MelloUI в одном месте. Нажмите «Играть» рядом с анимацией, чтобы увидеть её до выбора.", -- draft
 	["The damage meter."] = "Счетчик урона.", -- draft
 	["The chat windows, the lines in them and the whisper popup."] = "Окна чата, строки в них и всплывающее окно шёпота.", -- draft
 	["Fade parts of the interface while you don't need them: pick when each one shows."] = "Скрывает части интерфейса, пока они не нужны: выберите, когда видна каждая.", -- draft
@@ -2111,7 +2113,7 @@ Lang:Add("ruRU", {
 	["Profiles"] = "Профили", -- draft
 	["Quality of Life"] = "Удобство", -- draft
 	["The small helpers, a tab each: the vendor, your restock list and quests done for you, the text in the middle of the screen, the reminders and widgets, FPS / latency and the tooltip."] = "Маленькие помощники, по вкладке: торговец, ваш список пополнения и задания, выполняемые за вас, текст в центре экрана, напоминания и виджеты, FPS / задержка и подсказка.", -- draft
-	["Every frame: the heal light, the big moments, the debuff glow"] = "Каждая рамка: свет исцеления, громкие моменты, свечение эффектов", -- draft
+	["Every frame: the debuff glow"] = "Все рамки: свечение при эффектах", -- draft
 	["All frames"] = "Все рамки", -- draft
 	["Unit & Group Frames"] = "Рамки юнитов", -- draft
 	["You, your target and your group: pick a frame, click a part of it, change it."] = "Вы, ваша цель и группа: выберите рамку, щёлкните по её части, измените её.", -- draft
@@ -2146,6 +2148,8 @@ Lang:Add("ruRU", {
 	["Big cooldowns"] = "Крупные способности", -- draft
 	["Window"] = "Окно", -- draft
 	["The bag window and the game's windows, one at a time: pick a window."] = "Окно сумок и окна игры, по одному: выберите окно.", -- draft
+	["Bars & Windows"] = "Панели и окна", -- draft
+	["Travel"] = "Путешествия", -- draft
 	["Messages"] = "Сообщения", -- draft
 	["Chat, Map & More"] = "Чат, карта и другое", -- draft
 	["Textures"] = "Текстуры", -- draft
@@ -2256,7 +2260,6 @@ Lang:Add("ruRU", {
 	["Only with Party Frames (Portraits)"] = "Только с рамками группы (портреты)", -- draft
 	["Only with Flat colour"] = "Только со «Сплошным цветом»", -- draft
 	["Only with Missing Health on"] = "Только с включённым «Недостающим здоровьем»", -- draft
-	["Only with Heal Flight on"] = "Только с включёнными «Эффектами исцеления»", -- draft
 	["Only with Big Cooldowns on"] = "Только с включёнными «Крупными способностями»", -- draft
 	["Only while the tracker does not match the minimap (Match Minimap or MelloUI's minimap off)"] = "Только пока отслеживание не повторяет мини-карту («По ширине мини-карты» или мини-карта MelloUI выкл.)", -- draft
 	["Only with Auto Hand In"] = "Только с «Автосдачей»", -- draft
@@ -2264,6 +2267,9 @@ Lang:Add("ruRU", {
 	["Only with Route on (its minimap drawing)"] = "Только с включённым «Маршрутом» (его отрисовка на мини-карте)", -- draft
 	["Restock List And Shop"] = "Список пополнения и покупки", -- draft
 	["Needs Chat's Whisper Popup Window or the Minimal Chat View"] = "Нужно «Всплывающее окно шёпота» чата или «Минимальный» вид чата", -- draft
+	["Only with Heal Flight on"] = "Только с включёнными «Эффектами исцеления»", -- draft
+	["XP Bar"] = "Полоса опыта", -- draft
+	["Bag Window"] = "Окно сумок", -- draft
 	["Only for text-to-speech (Read Unvoiced Lines on, or Use Voice Packs off)"] = "Только для синтеза речи («Читать неозвученные строки» вкл. или «Использовать пакеты голосов» выкл.)", -- draft
 	["Fades With The Player"] = "Гаснет вместе с игроком", -- draft
 	["Fade: Main Action Bar"] = "Угасание: главная панель команд", -- draft
@@ -2288,6 +2294,8 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel."] = "Анимации: новая страница «Анимации» (Облик) собирает все анимации MelloUI, с «Меньше движения» вверху и вкладкой для каждого места, где они играют: рамки, индикаторы здоровья, панели и окна, путешествия.", -- draft
+	["Animations: press Play beside an animation to see it once before you choose."] = "Анимации: нажмите «Играть» рядом с анимацией, чтобы увидеть её один раз до выбора.", -- draft
 	["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "Индикаторы здоровья: значок удара показан в предпросмотре индикатора, его размер настраивается от 50 до 200 %.", -- draft
 	["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "Индикаторы здоровья: «Только мои ослабления» для ваших ослаблений на вражеских индикаторах (включено по умолчанию).", -- draft
 	["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "Индикаторы здоровья: ваши ослабления на вражеских индикаторах больше не показывают часы, а их числа окрашиваются по оставшемуся времени, красным при менее 5 секунд.", -- draft
@@ -2307,7 +2315,6 @@ Lang:Add("ruRU", {
 	["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars теперь подсвечивает собственные панели команд и панель стоек MelloUI в любом облике, а не скрытые под ними панели игры.", -- draft
 	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "Исправлено: в подземельях цель цели и другие рамки юнитов больше не показывают старое имя.", -- draft
 	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "Исправлено: рамки группы, рейда и другие рамки теперь показывают пустые полосы здоровья и ресурса у мёртвых игроков и духов.", -- draft
-	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "Отчёт /mellobug теперь также показывает, как были созданы кнопки сумок, чтобы найти причину блокировки предметов.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -2661,6 +2668,7 @@ Lang:Add("ruRU", {
 	["Time"] = "Время", -- draft
 	["Stacks"] = "Стопки", -- draft
 	-- Modules/ActionButtons.lua
+	["Cooldown Ready Flash: no action button of yours is shown."] = "Вспышка готовности: ни одна ваша кнопка действия не показана.", -- draft
 	["Cooldown"] = "Восстановление", -- draft
 	["Out of range"] = "Вне досягаемости", -- draft
 	["Pressed"] = "Нажато", -- draft
@@ -2707,6 +2715,7 @@ Lang:Add("ruRU", {
 -- stale: ["'No reskin, features on' suits this screen."] = "«Без облика, функции включены» подходит этому экрану.", -- draft
 -- stale: ["+ Buff"] = "+ Положительный эффект", -- draft
 -- stale: ["+ Debuff (by kind)"] = "+ Отрицательный эффект (по виду)", -- draft
+-- stale: ["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "Отчёт /mellobug теперь также показывает, как были созданы кнопки сумок, чтобы найти причину блокировки предметов.", -- draft
 -- stale: ["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "Отчёт /mellobug теперь показывает, что привело к заблокированному действию, чтобы найти причину блокировки предметов из сумок.", -- draft
 -- stale: ["A Read button on the quest log's details view: the quest's description in the giver's voice (the recorded offer line when a pack has it), then the recorded objectives when the voice pack has them (Quest Objectives). Also /vo read."] = "Кнопка «Читать» в подробностях журнала заданий: описание задания голосом того, кто его даёт (записанная строка предложения, если она есть в пакете), затем записанные цели, если они есть в пакете голосов («Цели заданий»). Также /vo read.", -- draft
 -- stale: ["A Supporters page under Profiles: the people who help keep MelloUI going."] = "Страница «Спонсоры» под «Профилями»: люди, благодаря которым MelloUI продолжает развиваться.", -- draft
@@ -2924,6 +2933,7 @@ Lang:Add("ruRU", {
 -- stale: ["Every element on the Frames, Bars and Chat & Map tabs on In Combat: the whole interface fades away out of combat and comes back in a fight."] = "Каждый элемент вкладок «Рамки», «Панели» и «Чат и карта» на «В бою»: весь интерфейс гаснет вне боя и возвращается в бою.", -- draft
 -- stale: ["Every feature below on or off at once."] = "Все функции ниже включены или выключены сразу.", -- draft
 -- stale: ["Every font drawn with the interface face, relative to its normal size; a Font Style puts it back to 100% (its faces bring their own correction). Not the text with a size of its own: the Quest Tracker, Combat Text, the chat (Chat & numbers size), FPS / Latency, Cooldown Timers, and the bar values while their size is set."] = "Каждый шрифт, нарисованный начертанием интерфейса, относительно его обычного размера; стиль шрифтов возвращает его на 100% (его начертания несут свою поправку). Не текст со своим размером: отслеживание заданий, «Текст боя», чат (размер «Чата и чисел»), FPS / задержка, таймеры восстановления и значения на полосах, пока их размер задан.", -- draft
+-- stale: ["Every frame: the heal light, the big moments, the debuff glow"] = "Каждая рамка: свет исцеления, громкие моменты, свечение эффектов", -- draft
 -- stale: ["Every setting lives in /mello, and in the MelloUI button of the game menu."] = "Все настройки — в /mello и в кнопке MelloUI меню игры.", -- draft
 -- stale: ["Every window and HUD area of the reskin back on, and every feature of UI Modifications that is on by default."] = "Снова включает каждую область окон и HUD облика и каждую функцию изменений интерфейса, включённую по умолчанию.", -- draft
 -- stale: ["Every window fades in over a fifth of a second when it opens, instead of appearing at once: the character window, talents and spells, professions, the bags, social, guild, group finder, collections, the map, the game menu and the rest. Works with the reskin on or off. Reduce Motion: at once."] = "Каждое окно плавно появляется за пятую долю секунды при открытии, а не сразу: окно персонажа, таланты и заклинания, профессии, сумки, общение, гильдия, поиск группы, коллекции, карта, меню игры и остальные. Работает с включённым или выключенным обликом. «Меньше движения»: сразу.", -- draft

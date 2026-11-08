@@ -2071,6 +2071,8 @@ Lang:Add("zhCN", {
 	["The game's Cooldown Manager"] = "游戏的冷却管理器", -- draft
 	["Cooldowns"] = "冷却", -- draft
 	["Your bars: pick one, click a part of it, change it."] = "你的动作条：选一条，点击它的某个部分，修改它。", -- draft
+	["Animations"] = "动画", -- draft
+	["Every animation MelloUI plays, in one place. Press Play beside one to see it before you choose."] = "MelloUI的所有动画都在这里。点击旁边的播放，在选择之前先看一看。", -- draft
 	["The damage meter."] = "伤害统计。", -- draft
 	["The chat windows, the lines in them and the whisper popup."] = "聊天窗口、其中的行以及悄悄话弹窗。", -- draft
 	["Fade parts of the interface while you don't need them: pick when each one shows."] = "在你不需要时淡出界面的部分：选择每个部分何时显示。", -- draft
@@ -2111,7 +2113,7 @@ Lang:Add("zhCN", {
 	["Profiles"] = "配置", -- draft
 	["Quality of Life"] = "便捷功能", -- draft
 	["The small helpers, a tab each: the vendor, your restock list and quests done for you, the text in the middle of the screen, the reminders and widgets, FPS / latency and the tooltip."] = "各种小帮手，各占一个标签：商人、你的补货清单和自动任务、屏幕中央的文字、提醒和小部件、帧数 / 延迟和说明条。", -- draft
-	["Every frame: the heal light, the big moments, the debuff glow"] = "所有框体：治疗之光、高光时刻、减益光晕", -- draft
+	["Every frame: the debuff glow"] = "所有框体：减益效果光晕", -- draft
 	["All frames"] = "所有框体", -- draft
 	["Unit & Group Frames"] = "单位和小队框体", -- draft
 	["You, your target and your group: pick a frame, click a part of it, change it."] = "你、你的目标和你的队伍：选一个框体，点击它的某个部分，修改它。", -- draft
@@ -2146,6 +2148,8 @@ Lang:Add("zhCN", {
 	["Big cooldowns"] = "大冷却", -- draft
 	["Window"] = "窗口", -- draft
 	["The bag window and the game's windows, one at a time: pick a window."] = "背包窗口和游戏的窗口，一次一个：选一个窗口。", -- draft
+	["Bars & Windows"] = "动作条与窗口", -- draft
+	["Travel"] = "旅行", -- draft
 	["Messages"] = "消息", -- draft
 	["Chat, Map & More"] = "聊天、地图及其他", -- draft
 	["Textures"] = "材质", -- draft
@@ -2256,7 +2260,6 @@ Lang:Add("zhCN", {
 	["Only with Party Frames (Portraits)"] = "仅限小队框体（头像）", -- draft
 	["Only with Flat colour"] = "仅在选择纯色时", -- draft
 	["Only with Missing Health on"] = "仅在开启损失生命时", -- draft
-	["Only with Heal Flight on"] = "仅在开启治疗效果时", -- draft
 	["Only with Big Cooldowns on"] = "仅在开启大冷却时", -- draft
 	["Only while the tracker does not match the minimap (Match Minimap or MelloUI's minimap off)"] = "仅在追踪器不与小地图同宽时（“与小地图同宽”或MelloUI小地图关闭）", -- draft
 	["Only with Auto Hand In"] = "仅在开启自动交任务时", -- draft
@@ -2264,6 +2267,9 @@ Lang:Add("zhCN", {
 	["Only with Route on (its minimap drawing)"] = "仅在开启路线时（它的小地图绘制）", -- draft
 	["Restock List And Shop"] = "补货列表和购物", -- draft
 	["Needs Chat's Whisper Popup Window or the Minimal Chat View"] = "需要聊天的悄悄话弹窗或极简聊天视图", -- draft
+	["Only with Heal Flight on"] = "仅在开启治疗效果时", -- draft
+	["XP Bar"] = "经验条", -- draft
+	["Bag Window"] = "背包窗口", -- draft
 	["Only for text-to-speech (Read Unvoiced Lines on, or Use Voice Packs off)"] = "仅用于文字转语音（“朗读无配音的台词”开启，或“使用语音包”关闭）", -- draft
 	["Fades With The Player"] = "随玩家淡出", -- draft
 	["Fade: Main Action Bar"] = "淡出：主动作条", -- draft
@@ -2288,6 +2294,8 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel."] = "动画：新的动画页面（外观）汇集了MelloUI的所有动画，顶部是减少动态效果，每个播放位置各有一个标签：框体、姓名板、动作条与窗口、旅行。", -- draft
+	["Animations: press Play beside an animation to see it once before you choose."] = "动画：点击动画旁边的播放，在选择之前先看一次。", -- draft
 	["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "姓名板：攻击徽章会显示在姓名板预览中，并可在50%到200%之间调整大小。", -- draft
 	["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "姓名板：敌方姓名板上的你的减益效果新增“只显示我的减益”设置（默认开启）。", -- draft
 	["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "姓名板：敌方姓名板上你的减益效果不再显示时钟转圈，数字按剩余时间着色，少于5秒时变为红色。", -- draft
@@ -2307,7 +2315,6 @@ Lang:Add("zhCN", {
 	["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars现在会在所有外观中点亮MelloUI自己的动作条和姿态条，而不是下方隐藏的游戏动作条。", -- draft
 	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "修复：在地下城中，目标的目标及其他单位框体不再显示旧名字。", -- draft
 	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "修复：小队、团队及其他单位框体现在会将死亡玩家和灵魂的生命条与能量条显示为空。", -- draft
-	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "/mellobug 报告现在还会显示背包按钮的创建方式，便于查明游戏阻止使用背包物品的原因。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2661,6 +2668,7 @@ Lang:Add("zhCN", {
 	["Time"] = "时间", -- draft
 	["Stacks"] = "堆叠", -- draft
 	-- Modules/ActionButtons.lua
+	["Cooldown Ready Flash: no action button of yours is shown."] = "冷却就绪闪光：没有显示你的动作按钮。", -- draft
 	["Cooldown"] = "冷却", -- draft
 	["Out of range"] = "超出范围", -- draft
 	["Pressed"] = "按下", -- draft
@@ -2707,6 +2715,7 @@ Lang:Add("zhCN", {
 -- stale: ["'No reskin, features on' suits this screen."] = "“不换肤，开启功能”适合此屏幕。", -- draft
 -- stale: ["+ Buff"] = "+ 增益", -- draft
 -- stale: ["+ Debuff (by kind)"] = "+ 减益（按类型）", -- draft
+-- stale: ["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "/mellobug 报告现在还会显示背包按钮的创建方式，便于查明游戏阻止使用背包物品的原因。", -- draft
 -- stale: ["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "/mellobug 报告现在会显示导致操作被阻止的过程，便于查明游戏阻止使用背包物品的原因。", -- draft
 -- stale: ["A Read button on the quest log's details view: the quest's description in the giver's voice (the recorded offer line when a pack has it), then the recorded objectives when the voice pack has them (Quest Objectives). Also /vo read."] = "任务日志详情中的一个朗读按钮：用给予者的声音朗读任务描述（语音包有录制的提供台词时用它），然后在语音包有录音时朗读任务目标（任务目标）。也可用/vo read。", -- draft
 -- stale: ["A Supporters page under Profiles: the people who help keep MelloUI going."] = "配置档下新增支持者页面：帮助 MelloUI 持续发展的人们。", -- draft
@@ -2924,6 +2933,7 @@ Lang:Add("zhCN", {
 -- stale: ["Every element on the Frames, Bars and Chat & Map tabs on In Combat: the whole interface fades away out of combat and comes back in a fight."] = "把“框体”“条”和“聊天和地图”标签上的每个元素设为“战斗中”：整个界面在脱离战斗时淡出，战斗时回来。", -- draft
 -- stale: ["Every feature below on or off at once."] = "下方所有功能一次开启或关闭。", -- draft
 -- stale: ["Every font drawn with the interface face, relative to its normal size; a Font Style puts it back to 100% (its faces bring their own correction). Not the text with a size of its own: the Quest Tracker, Combat Text, the chat (Chat & numbers size), FPS / Latency, Cooldown Timers, and the bar values while their size is set."] = "使用界面字体绘制的每种文字，相对于其正常大小；字体风格会把它恢复到100%（它的字体自带校正）。不包括有自己大小的文字：任务追踪器、战斗文字、聊天（“聊天和数字”大小）、FPS / 延迟、冷却计时以及设置了大小的条数值。", -- draft
+-- stale: ["Every frame: the heal light, the big moments, the debuff glow"] = "所有框体：治疗之光、高光时刻、减益光晕", -- draft
 -- stale: ["Every setting lives in /mello, and in the MelloUI button of the game menu."] = "所有设置都在/mello中，也在游戏菜单的MelloUI按钮中。", -- draft
 -- stale: ["Every window and HUD area of the reskin back on, and every feature of UI Modifications that is on by default."] = "重新开启换肤的每个窗口和HUD区域，以及界面修改中每个默认开启的功能。", -- draft
 -- stale: ["Every window fades in over a fifth of a second when it opens, instead of appearing at once: the character window, talents and spells, professions, the bags, social, guild, group finder, collections, the map, the game menu and the rest. Works with the reskin on or off. Reduce Motion: at once."] = "每个窗口打开时用五分之一秒淡入，而不是一下子出现：角色窗口、天赋和法术、专业、背包、社交、公会、队伍查找器、藏品、地图、游戏菜单等。换肤开启或关闭都可用。减少动态效果：立即出现。", -- draft

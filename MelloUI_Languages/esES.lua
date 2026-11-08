@@ -2071,6 +2071,8 @@ Lang:Add("esES", {
 	["The game's Cooldown Manager"] = "El gestor de tiempos de reutilización del juego", -- draft
 	["Cooldowns"] = "Reutilizaciones", -- draft
 	["Your bars: pick one, click a part of it, change it."] = "Tus barras: elige una, haz clic en una parte, cámbiala.", -- draft
+	["Animations"] = "Animaciones", -- draft
+	["Every animation MelloUI plays, in one place. Press Play beside one to see it before you choose."] = "Todas las animaciones de MelloUI, en un solo lugar. Pulsa Reproducir junto a una para verla antes de decidir.", -- draft
 	["The damage meter."] = "El medidor de daño.", -- draft
 	["The chat windows, the lines in them and the whisper popup."] = "Las ventanas de chat, sus líneas y la ventana emergente de susurros.", -- draft
 	["Fade parts of the interface while you don't need them: pick when each one shows."] = "Desvanece partes de la interfaz mientras no las necesitas: elige cuándo se muestra cada una.", -- draft
@@ -2111,7 +2113,7 @@ Lang:Add("esES", {
 	["Profiles"] = "Perfiles", -- draft
 	["Quality of Life"] = "Comodidad", -- draft
 	["The small helpers, a tab each: the vendor, your restock list and quests done for you, the text in the middle of the screen, the reminders and widgets, FPS / latency and the tooltip."] = "Los pequeños ayudantes, una pestaña cada uno: el vendedor, tu lista de reabastecer y misiones hechas por ti, el texto en el centro de la pantalla, los recordatorios y widgets, FPS / latencia y la descripción.", -- draft
-	["Every frame: the heal light, the big moments, the debuff glow"] = "Cada marco: la luz de sanación, los grandes momentos, el brillo de perjuicio", -- draft
+	["Every frame: the debuff glow"] = "Todos los marcos: el brillo de perjuicios", -- draft
 	["All frames"] = "Todos los marcos", -- draft
 	["Unit & Group Frames"] = "Marcos de unidad", -- draft
 	["You, your target and your group: pick a frame, click a part of it, change it."] = "Tú, tu objetivo y tu grupo: elige un marco, haz clic en una parte, cámbiala.", -- draft
@@ -2146,6 +2148,8 @@ Lang:Add("esES", {
 	["Big cooldowns"] = "Grandes reutilizaciones", -- draft
 	["Window"] = "Ventana", -- draft
 	["The bag window and the game's windows, one at a time: pick a window."] = "La ventana de bolsas y las ventanas del juego, de una en una: elige una ventana.", -- draft
+	["Bars & Windows"] = "Barras y ventanas", -- draft
+	["Travel"] = "Viajes", -- draft
 	["Messages"] = "Mensajes", -- draft
 	["Chat, Map & More"] = "Chat, mapa y más", -- draft
 	["Textures"] = "Texturas", -- draft
@@ -2256,7 +2260,6 @@ Lang:Add("esES", {
 	["Only with Party Frames (Portraits)"] = "Solo con marcos de grupo (retratos)", -- draft
 	["Only with Flat colour"] = "Solo con Color liso", -- draft
 	["Only with Missing Health on"] = "Solo con Salud perdida activa", -- draft
-	["Only with Heal Flight on"] = "Solo con Efectos de sanación activos", -- draft
 	["Only with Big Cooldowns on"] = "Solo con Grandes reutilizaciones activas", -- draft
 	["Only while the tracker does not match the minimap (Match Minimap or MelloUI's minimap off)"] = "Solo mientras el rastreador no iguala el minimapa (Igualar el ancho del minimapa o el minimapa de MelloUI desactivado)", -- draft
 	["Only with Auto Hand In"] = "Solo con Entregar automáticamente", -- draft
@@ -2264,6 +2267,9 @@ Lang:Add("esES", {
 	["Only with Route on (its minimap drawing)"] = "Solo con Ruta activa (su dibujo en el minimapa)", -- draft
 	["Restock List And Shop"] = "Lista de reabastecimiento y tienda", -- draft
 	["Needs Chat's Whisper Popup Window or the Minimal Chat View"] = "Necesita la Ventana emergente de susurros del chat o la Vista mínima del chat", -- draft
+	["Only with Heal Flight on"] = "Solo con Efectos de sanación activos", -- draft
+	["XP Bar"] = "Barra de experiencia", -- draft
+	["Bag Window"] = "Ventana de bolsas", -- draft
 	["Only for text-to-speech (Read Unvoiced Lines on, or Use Voice Packs off)"] = "Solo para texto a voz (Leer líneas sin voz activo, o Usar paquetes de voces desactivado)", -- draft
 	["Fades With The Player"] = "Se desvanece con el jugador", -- draft
 	["Fade: Main Action Bar"] = "Desvanecer: barra de acción principal", -- draft
@@ -2288,6 +2294,8 @@ Lang:Add("esES", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toda tu configuración bajo un nombre. Guárdala, cárgala o hazla la predeterminada de una instalación nueva.", -- draft
 	["Supporters"] = "Colaboradores", -- draft
 	["The people who help keep MelloUI going."] = "Las personas que mantienen MelloUI en marcha.", -- draft
+	["Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel."] = "Animaciones: una nueva página Animaciones (El aspecto) reúne todas las animaciones de MelloUI, con Reducir movimiento arriba y una pestaña para cada lugar donde se ven: marcos, placas de nombre, barras y ventanas, viajes.", -- draft
+	["Animations: press Play beside an animation to see it once before you choose."] = "Animaciones: pulsa Reproducir junto a una animación para verla una vez antes de decidir.", -- draft
 	["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "Placas de nombre: la insignia de golpe aparece en la vista previa de la placa, con un ajuste de tamaño de 50 a 200 %.", -- draft
 	["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "Placas de nombre: Solo mis perjuicios para tus perjuicios en las placas de nombre enemigas (activado por defecto).", -- draft
 	["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "Placas de nombre: tus perjuicios en las placas enemigas ya no muestran el reloj, y sus números se colorean según el tiempo restante, en rojo por debajo de 5 segundos.", -- draft
@@ -2307,7 +2315,6 @@ Lang:Add("esES", {
 	["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars ahora ilumina las barras de acción y la barra de actitudes propias de MelloUI en todos los aspectos, en lugar de las barras ocultas del juego que hay debajo.", -- draft
 	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "Corregido: en las mazmorras, el objetivo del objetivo y otros marcos de unidad ya no siguen mostrando un nombre antiguo.", -- draft
 	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "Corregido: los marcos de grupo, de banda y otros marcos de unidad ahora muestran vacías las barras de salud y de poder de los jugadores muertos y los fantasmas.", -- draft
-	["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "El informe de /mellobug ahora también muestra cómo se crearon los botones de las bolsas, para localizar la causa de los objetos que bloquea el juego.", -- draft
 	["Report a problem"] = "Informar de un problema", -- draft
 	["Voice pack"] = "Paquete de voces", -- draft
 	["open or close this window"] = "abre o cierra esta ventana", -- draft
@@ -2661,6 +2668,7 @@ Lang:Add("esES", {
 	["Time"] = "Tiempo", -- draft
 	["Stacks"] = "Acumulaciones", -- draft
 	-- Modules/ActionButtons.lua
+	["Cooldown Ready Flash: no action button of yours is shown."] = "Destello de reutilización lista: no se muestra ningún botón de acción tuyo.", -- draft
 	["Cooldown"] = "Reutilización", -- draft
 	["Out of range"] = "Fuera de alcance", -- draft
 	["Pressed"] = "Pulsado", -- draft
@@ -2707,6 +2715,7 @@ Lang:Add("esES", {
 -- stale: ["'No reskin, features on' suits this screen."] = "«Sin aspecto pintado, funciones activas» le va bien a esta pantalla.", -- draft
 -- stale: ["+ Buff"] = "+ Beneficio", -- draft
 -- stale: ["+ Debuff (by kind)"] = "+ Perjuicio (por tipo)", -- draft
+-- stale: ["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "El informe de /mellobug ahora también muestra cómo se crearon los botones de las bolsas, para localizar la causa de los objetos que bloquea el juego.", -- draft
 -- stale: ["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "El informe de /mellobug ahora muestra qué llevó a una acción bloqueada, para localizar la causa de los objetos de las bolsas que bloquea el juego.", -- draft
 -- stale: ["A Read button on the quest log's details view: the quest's description in the giver's voice (the recorded offer line when a pack has it), then the recorded objectives when the voice pack has them (Quest Objectives). Also /vo read."] = "Un botón Leer en la vista de detalles del registro de misiones: la descripción de la misión con la voz del dador (la línea de oferta grabada si un paquete la tiene), y luego los objetivos grabados si el paquete de voces los tiene (Objetivos de misión). También /vo read.", -- draft
 -- stale: ["A Supporters page under Profiles: the people who help keep MelloUI going."] = "Una página de Colaboradores bajo Perfiles: las personas que mantienen MelloUI en marcha.", -- draft
@@ -2924,6 +2933,7 @@ Lang:Add("esES", {
 -- stale: ["Every element on the Frames, Bars and Chat & Map tabs on In Combat: the whole interface fades away out of combat and comes back in a fight."] = "Cada elemento de las pestañas Marcos, Barras y Chat y mapa en En combate: toda la interfaz se desvanece fuera de combate y vuelve en un combate.", -- draft
 -- stale: ["Every feature below on or off at once."] = "Todas las funciones de abajo activadas o desactivadas a la vez.", -- draft
 -- stale: ["Every font drawn with the interface face, relative to its normal size; a Font Style puts it back to 100% (its faces bring their own correction). Not the text with a size of its own: the Quest Tracker, Combat Text, the chat (Chat & numbers size), FPS / Latency, Cooldown Timers, and the bar values while their size is set."] = "Cada fuente dibujada con la fuente de la interfaz, respecto a su tamaño normal; un estilo de fuente la devuelve al 100% (sus fuentes traen su propia corrección). No el texto que tiene su propio tamaño: el rastreador de misiones, el Texto de combate, el chat (tamaño de Chat y números), FPS / Latencia, los temporizadores de reutilización y los valores de las barras mientras su tamaño esté fijado.", -- draft
+-- stale: ["Every frame: the heal light, the big moments, the debuff glow"] = "Cada marco: la luz de sanación, los grandes momentos, el brillo de perjuicio", -- draft
 -- stale: ["Every setting lives in /mello, and in the MelloUI button of the game menu."] = "Cada ajuste está en /mello, y en el botón MelloUI del menú del juego.", -- draft
 -- stale: ["Every window and HUD area of the reskin back on, and every feature of UI Modifications that is on by default."] = "Vuelve a activar cada zona de ventanas y HUD del aspecto, y cada función de Ajustes de IU activa por defecto.", -- draft
 -- stale: ["Every window fades in over a fifth of a second when it opens, instead of appearing at once: the character window, talents and spells, professions, the bags, social, guild, group finder, collections, the map, the game menu and the rest. Works with the reskin on or off. Reduce Motion: at once."] = "Cada ventana aparece gradualmente en una quinta parte de segundo al abrirse, en lugar de aparecer de golpe: la ventana del personaje, talentos y hechizos, profesiones, las bolsas, social, hermandad, buscador de grupos, colecciones, el mapa, el menú de juego y el resto. Funciona con el aspecto pintado activado o no. Reducir movimiento: al instante.", -- draft

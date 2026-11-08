@@ -901,16 +901,17 @@ end
 
 local function Preview()
 	if not CanPreview() then
-		return
+		return false
 	end
 	local S = Looks.state[chargeLayer]
 	if not BarPlace(S) then
 		MelloUI:Announce(TEXT.noBar, "info")
-		return
+		return false
 	end
 	S.start, S.castTime = GetTime(), PREVIEW_CAST
 	Looks.Charge(chargeLayer, LookName())
 	C_Timer.After(PREVIEW_CAST, PreviewLand)
+	return true
 end
 
 -- (one chain at a time: a step due before the newest one's time is an older
@@ -943,12 +944,35 @@ local function PreviewKinds()
 	ShowNext()
 end
 
+-- (2.1.20, the Animations page) each row's Play (Core/Config.lua's CONFIG.Play, Preview:Once): true when it played,
+-- and how long it lasts. heal: a made-up heal (the switch, Look, Flying Light, and the Personal Display's Heal Light
+-- From Your Character); tick: a heal over time's tick; buff: a buff's landing (Power Word: Fortitude's look)
+local PLAYS = { HEAL = PREVIEW_CAST + 1.4, TICK = 1.2, BUFF = 1.8 }
+local function PlayTick()
+	local unit = CanPreview()
+	if not unit then
+		return false
+	end
+	Shoot(unit, "t")
+	return true, PLAYS.TICK
+end
+
+local function PlayBuff()
+	local unit = CanPreview()
+	if not unit then
+		return false
+	end
+	Looks.Show(unit, Quiet() and "q" or "u", "holy")
+	return true, PLAYS.BUFF
+end
+
 --------------------------------------------------------------------------------
 -- The module
 --------------------------------------------------------------------------------
 
 M = MelloUI:RegisterModule("HealFlight", {
 	title = "Heal Effects",   -- (0.21.0, the user: the page's switch name, every text alike)
+	play = "heal",   -- (2.1.20: its switch row's Play, the Animations page)
 	desc = "Your heals shown as light flying from your cast bar to the frame of the one you heal.",
 	icon = "Interface\\Icons\\Spell_Holy_Renew",
 	flavour = "Your heals fly from your cast bar to the frame of the one you heal.",
@@ -960,13 +984,13 @@ M = MelloUI:RegisterModule("HealFlight", {
 		buffs = true,
 	},
 	options = {
-		{ type = "dropdown", key = "look", name = "Look", width = 240, values = LOOK_VALUES,
+		{ type = "dropdown", key = "look", name = "Look", width = 240, values = LOOK_VALUES, play = "heal",
 		  desc = "How your heals look. By Class: Holy for priests and paladins, Nature for druids, Water for shamans. Quiet: a subtle thread of light." },
-		{ type = "toggle", key = "flight", name = "Flying Light",
+		{ type = "toggle", key = "flight", name = "Flying Light", play = "heal",
 		  desc = "A light flies from your cast bar to the healed frame. Off: the heal lands at once; the other effects stay." },
-		{ type = "toggle", key = "hotTicks", name = "Heal Over Time Ticks",
+		{ type = "toggle", key = "hotTicks", name = "Heal Over Time Ticks", play = "tick",
 		  desc = "Each tick of your heals over time plays a small pulse on the frame." },
-		{ type = "toggle", key = "buffs", name = "Buff Landings",
+		{ type = "toggle", key = "buffs", name = "Buff Landings", play = "buff",
 		  desc = "A buff landing on your group or your target plays a spiral of light on the frame, in its school's colour "
 			.. "(Fortitude, Mark of the Wild, Arcane Intellect, the blessings ...), whoever cast it. A group buff runs "
 			.. "out from the caster's frame; in a raid, a small glint. Buffs you can only cast on yourself play nothing." },
@@ -980,6 +1004,14 @@ M = MelloUI:RegisterModule("HealFlight", {
 		  onClick = function() PreviewKinds() end },
 	},
 })
+
+M.Plays = {
+	heal = function()
+		return Preview(), PLAYS.HEAL
+	end,
+	tick = PlayTick,
+	buff = PlayBuff,
+}
 
 function M:OnInit(db)
 	self.db = db

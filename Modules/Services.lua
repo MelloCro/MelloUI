@@ -71,7 +71,7 @@ local M = MelloUI:RegisterModule("Services", {
 		{ type = "toggle", key = "roundIcons", parent = "showBar", name = "Round Icons",
 		  desc = "Service icons as round medallions instead of squares." },
 		-- (0.22.1; the user, 2026-10-14: "build all 5" to the animation previews)
-		{ type = "toggle", key = "trayDrawer", parent = "showBar", name = "Trays Slide Out",
+		{ type = "toggle", key = "trayDrawer", parent = "showBar", play = "tray", name = "Trays Slide Out",
 		  desc = "A group's list slides out like a drawer." },
 		{ type = "toggle", key = "showButton", name = "Minimap Button",
 		  desc = "A round button on the minimap's edge that opens the list of the nearest services. /services does the same." },
@@ -2386,6 +2386,31 @@ local function OpenMenu(group, owner)
 		MelloUI.Anim:FadeIn(menu, MENU_FADE)
 	end
 end
+
+-- (2.1.20, the Animations page) Trays Slide Out's Play (Core/Config.lua's CONFIG.Play, Preview:Once): the first shown
+-- group's tray out, and back in a moment later (unless another took its place)
+Tray.PLAY = { HOLD = 1.4, NONE = "Services: no group button is shown under the minimap (Button Layout: Groups)." }
+function Tray.PlayBack()
+	local g = Tray.played
+	Tray.played = nil
+	if g and menu and menu:IsShown() and menu.group == g then
+		Tray.Close(menu)
+	end
+end
+M.Plays = {
+	tray = function()
+		for _, b in ipairs(bar and bar.groupButtons or {}) do
+			if b:IsVisible() and b.group then
+				OpenMenu(b.group, b)
+				Tray.played = b.group
+				C_Timer.After(Tray.PLAY.HOLD, Tray.PlayBack)
+				return true, Tray.PLAY.HOLD + 0.6
+			end
+		end
+		MelloUI:Announce(Tray.PLAY.NONE, "info")
+		return false
+	end,
+}
 
 local function ToggleMenu(anchor)
 	if menu and menu:IsShown() and not menu.group then

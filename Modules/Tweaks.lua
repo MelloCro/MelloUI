@@ -190,7 +190,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		{ type = "toggle", key = "greyJunk", name = "Grey Out Junk",
 		  desc = "Junk items show grey in your bags and bank." },
 		-- (0.21.3; the user, 2026-10-13: "Yes to all" to the animation previews; one look C13b: Unit Frames' until then)
-		{ type = "toggle", key = "levelUp", name = "Level Up",
+		{ type = "toggle", key = "levelUp", name = "Level Up", play = "level",
 		  desc = "A level up fills the bar with light and announces your new level." },
 		-- (1.2.4, an-06; the user, 2026-10-30: "Yes, on by default" to BuildData/output/levelup_sketch)
 		{ type = "toggle", key = "levelCard", name = "Level Up Card",
@@ -1725,7 +1725,7 @@ function M.SlashLevel()
 	local up = lv and M.isEnabled and M.db and M.db.levelUp ~= false
 	local card = lv and Level.CardOn()
 	if not (up or card) then
-		MelloUI:Print("Level Up and the Level Up Card are off (Bars > XP & Rep).")
+		MelloUI:Print("Level Up (Animations > Bars & Windows) and the Level Up Card (Bars > XP & Rep) are off.")
 		return
 	end
 	if card then
@@ -2309,6 +2309,21 @@ end
 --------------------------------------------------------------------------------
 -- Module lifecycle
 --------------------------------------------------------------------------------
+
+-- (2.1.20, the Animations page) Level Up's Play (Core/Config.lua's CONFIG.Play, Preview:Once): the level-up played on
+-- the level you have, as /mello player level plays it (the Level Up Card left out: it is a window, not the animation)
+M.Plays = {
+	level = function()
+		local lv = Num(UnitLevel("player"))
+		if not (lv and M.isEnabled and M.db) then
+			return false
+		end
+		Level.preview = true
+		Level.Up(lv)
+		Level.preview = nil
+		return true, Level.NOTICE_AT + 2
+	end,
+}
 
 function M:OnInit(db)
 	self.db = db

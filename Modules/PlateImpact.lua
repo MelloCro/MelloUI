@@ -41,6 +41,7 @@ local Secret = MelloUI.Safe.IsSecret
 
 local M = MelloUI:RegisterModule("PlateImpact", {
 	title = "Impact Effects",
+	play = "crit",   -- (2.1.20: its switch row's Play, the Animations page)
 	desc = "Your target's nameplate reacts to the fight: hits flash, crits glow, interrupted casts shatter.",
 	icon = "Interface\\Icons\\Ability_Warrior_Revenge",
 	flavour = "Every hit lands on the plate, not only in a number.",
@@ -55,20 +56,20 @@ local M = MelloUI:RegisterModule("PlateImpact", {
 		targetFrame = true,
 	},
 	options = {
-		{ type = "toggle", key = "flash", name = "Hit Flash",
+		{ type = "toggle", key = "flash", play = "flash", name = "Hit Flash",
 		  desc = "Your target's bar flashes when it is hit; gold for a critical hit." },
-		{ type = "toggle", key = "chunk", name = "Damage Chunk",
+		{ type = "toggle", key = "chunk", play = "chunk", name = "Damage Chunk",
 		  desc = "The part of the bar a hit took stays lit for a moment before it drains, so you see each hit's size." },
-		{ type = "toggle", key = "crit", name = "Crit Glow",
+		{ type = "toggle", key = "crit", play = "crit", name = "Crit Glow",
 		  desc = "A gold glow bursts around your target's bar on a critical hit." },
-		{ type = "toggle", key = "kill", name = "Kill Flash",
+		{ type = "toggle", key = "kill", play = "kill", name = "Kill Flash",
 		  desc = "A killing blow flashes the bar out instead of the plate just vanishing." },
-		{ type = "toggle", key = "evade", name = "Dodge And Miss",
+		{ type = "toggle", key = "evade", play = "evade", name = "Dodge And Miss",
 		  desc = "Dodge, parry and miss words flick off the side of your target's plate." },
-		{ type = "toggle", key = "cast", name = "Cast Warning",
+		{ type = "toggle", key = "cast", play = "cast", name = "Cast Warning",
 		  desc = "Your target's cast bar glows hotter near the end, and shatters when interrupted." },
 		-- (1.2.0, animations round 4; the user, 2026-10-22: "all of them" to the round 4 previews)
-		{ type = "toggle", key = "targetFrame", name = "On Your Target Frame",
+		{ type = "toggle", key = "targetFrame", play = "frame", name = "On Your Target Frame",
 		  desc = "Your target frame's health bar shows the same hit effects." },
 	},
 })
@@ -724,3 +725,99 @@ end
 
 -- (the configurator's Play and the tests: the effects on the target's plate now)
 M.FX = FX
+
+--------------------------------------------------------------------------------
+-- (2.1.20, the Animations page) each row's Play (Core/Config.lua's CONFIG.Play, Preview:Once): on your target's plate
+-- (and its frame) as the fight would -- true when it played, and how long it lasts. Nothing is faked of the game's:
+-- the chunk is the ghost lit to the whole bar and drained to the target's health (seen on a hurt target)
+--------------------------------------------------------------------------------
+
+FX.NO_TARGET = "Impact Effects: target an enemy whose nameplate shows, then press Play."
+FX.NO_FRAME = "Impact Effects: target something first; it plays on your target frame's health bar."
+
+function FX.Ready(frameToo)
+	if M.isEnabled and (Rec() or (frameToo and FrameRec())) then
+		return true
+	end
+	MelloUI:Announce(FX.NO_TARGET, "info")
+	return false
+end
+
+-- the chunk's ghost lit full, then drained as after a hit
+function FX.Full(r)
+	local ghost = r and r.ghost
+	if ghost then
+		pcall(ghost.SetMinMaxValues, ghost, 0, 1)
+		pcall(ghost.SetValue, ghost, 1)
+	end
+end
+
+M.Plays = {
+	flash = function()
+		if not FX.Ready(true) then
+			return false
+		end
+		FX.Hit(false)
+		return true, 1
+	end,
+	crit = function()
+		if not FX.Ready(true) then
+			return false
+		end
+		FX.Hit(true)
+		return true, 1.2
+	end,
+	chunk = function()
+		if not FX.Ready(true) then
+			return false
+		end
+		FX.Full(Rec())
+		FX.Full(FrameRec())
+		FX.Hit(false)
+		FX.Drain()
+		return true, 1.4
+	end,
+	kill = function()
+		if not FX.Ready(true) then
+			return false
+		end
+		local bars = FX.uf and FX.uf.HealthBarsContainer
+		local bar = type(bars) == "table" and bars.healthBar or nil
+		if bar then
+			FX.KillOn(bar, "killFrame")
+		end
+		local _, fbar = FX.TargetFrame()
+		if fbar and FrameRec() then
+			FX.KillOn(fbar, "killFrameTF")
+		end
+		return true, 1.2
+	end,
+	evade = function()
+		if not FX.Ready(false) then
+			return false
+		end
+		FX.Word("DODGE")
+		return true, 1.4
+	end,
+	cast = function()
+		local r = FX.Ready(false) and Rec()
+		if not (r and r.castGlow) then
+			return false
+		end
+		Fade(r.castGlow, 0.12, 1, 0.8)
+		C_Timer.After(0.8, FX.CastPlayEnd)
+		return true, 1.6
+	end,
+	frame = function()
+		if not (M.isEnabled and FrameRec()) then
+			MelloUI:Announce(FX.NO_FRAME, "info")
+			return false
+		end
+		HitOn(FrameRec(), true)
+		return true, 1.2
+	end,
+}
+
+function FX.CastPlayEnd()
+	FX.CastEnd(true)
+end
