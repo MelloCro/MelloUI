@@ -103,6 +103,7 @@ function Pet.Build()
 	f:SetAttribute("*type1", "target")
 	f:SetAttribute("*type2", "togglemenu")
 	f:RegisterForClicks("AnyUp")
+	MelloUI:ClickCast(f)   -- (2.1.21: click-cast addons -- Clique -- on it, as on the game's own frame)
 	-- (deadText false: its bar's numbers at none -- the game's pet health bar has no zero text)
 	f.unit, f.frameType, f.capNumeric, f.deadText, f.kind = "pet", "TargetofTarget", true, false, Pet
 	f:Hide()

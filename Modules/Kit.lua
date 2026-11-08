@@ -1154,6 +1154,31 @@ end
 -- Kit:Reshade() lays every one again after an area's switch.
 Kit.shade = 1
 local SHADED = setmetatable({}, { __mode = "k" })
+-- (2.1.21; the user, 2026-11-08, the chat on parchment "on dark mode": dark ink on a dimmed sheet, then of the other
+-- parchments: "Yes, all of them") a parchment never takes the shade: its text is dark ink. Told by the piece it shows
+-- (Kit.pieceNameOf): the sheets' and pages' nines, the vellum, the parchment backgrounds -- every sheet, page and
+-- background choice made of them, whoever laid it
+Kit.PAPER_PIECES = { "^parchment/", "^tiles/vellum", "^tiles/parchment", "^tiles/agedparchment" }
+Kit.paperName = {}   -- [piece name] = true / false, each name matched once
+
+function Kit.IsPaper(tex)
+	local name = Kit.pieceNameOf[tex]
+	if not name then
+		return false
+	end
+	local paper = Kit.paperName[name]
+	if paper == nil then
+		paper = false
+		for _, pattern in ipairs(Kit.PAPER_PIECES) do
+			if name:find(pattern) then
+				paper = true
+				break
+			end
+		end
+		Kit.paperName[name] = paper
+	end
+	return paper
+end
 
 local function ShadeTexture(tex)
 	local base = Kit.tintBaseOf[tex]
@@ -1162,7 +1187,7 @@ local function ShadeTexture(tex)
 		r, g, b, a = base[1], base[2], base[3], base[4]
 	end
 	local k = Kit.shade
-	if k < 1 and Kit.Lit and Kit.Lit(tex) then
+	if k < 1 and (Kit.IsPaper(tex) or (Kit.Lit and Kit.Lit(tex))) then
 		k = 1
 	end
 	Kit.shadingNow[tex] = true
@@ -1196,7 +1221,7 @@ local OnKitVertexColour = Shared("SetVertexColor on every kit texture", function
 	else
 		Kit.tintBaseOf[t] = { r or 1, g or 1, b or 1, a }
 	end
-	if Kit.shade < 1 and not (Kit.Lit and Kit.Lit(t)) then
+	if Kit.shade < 1 and not (Kit.IsPaper(t) or (Kit.Lit and Kit.Lit(t))) then
 		ShadeTexture(t)
 	end
 end)
@@ -1235,9 +1260,16 @@ function Kit:SetShade(shade)
 	self:Reshade()
 end
 
-function Kit:Reshade()
-	for tex in pairs(SHADED) do
-		ShadeTexture(tex)
+-- (2.1.21: `tex` -- that one texture again, if registered and the shade is on; Kit:Apply's, after a piece change)
+function Kit:Reshade(tex)
+	if tex then
+		if SHADED[tex] and self.shade < 1 then
+			ShadeTexture(tex)
+		end
+		return
+	end
+	for t in pairs(SHADED) do
+		ShadeTexture(t)
 	end
 end
 
@@ -1307,6 +1339,8 @@ function Kit:Apply(tex, name, later)
 	if Kit.backgroundOf[tex] then
 		BACKGROUNDS[tex] = true
 	end
+	-- (2.1.21) a shaded texture given another piece: its shade again (a parchment is never dimmed, Kit.IsPaper)
+	self:Reshade(tex)
 	self:RegisterTexture(tex)
 	if p.tile and not later then
 		self:Retile(tex)

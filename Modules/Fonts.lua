@@ -1154,8 +1154,13 @@ local function ChatBaseSize(frame, original)
 	return original and original.size or 14
 end
 
--- Is the chat on its parchment sheet (its lines in ink, Chat.lua)?
+-- Is the chat on its parchment sheet (its lines in ink, Chat.lua)? (2.1.21) the Chat module's own answer -- the
+-- painted chat's sheet or the Game Windows view's (M.WindowsInked); the painted chat's alone without that module
 local function ChatOnParchment()
+	local chat = MelloUI.modules.Chat
+	if chat and type(chat.WindowsInked) == "function" then
+		return chat.WindowsInked() and true or false
+	end
 	local Kit = MelloUI.Kit
 	return (MelloUI.QuestInk ~= nil and Kit and Kit.IsCovered and Kit:IsCovered("chat")
 		and Kit.ParchmentOn and Kit:ParchmentOn("chat")) and true or false

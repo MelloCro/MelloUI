@@ -315,7 +315,7 @@ Lang:Add("koKR", {
 	["Custom Fonts"] = "사용자 지정 글꼴", -- draft
 	["MelloUI's fonts and text sizes for the whole interface. Off: the game's own fonts."] = "인터페이스 전체에 쓰는 MelloUI 글꼴과 글자 크기. 끄면: 게임 글꼴.", -- draft
 	["Dark Mode"] = "어두운 모드", -- draft
-	["Dims the whole interface. Icons and text keep their colours."] = "인터페이스 전체를 어둡게 합니다. 아이콘과 글자는 색을 유지합니다.", -- draft
+	["Dims the whole interface. Icons, text and parchment keep their colours."] = "인터페이스 전체를 어둡게 합니다. 아이콘, 글자, 양피지는 색을 유지합니다.", -- draft
 	["Vendor Automation"] = "상인 자동화", -- draft
 	["Repairs your gear and sells junk at merchants."] = "상인에게서 장비를 수리하고 잡동사니를 판매합니다.", -- draft
 	["FPS / Latency"] = "FPS / 지연 시간", -- draft
@@ -353,7 +353,7 @@ Lang:Add("koKR", {
 	["Always Show Buttons"] = "버튼 항상 표시", -- draft
 	["Empty buttons show their slot too."] = "빈 버튼도 칸을 보여 줍니다.", -- draft
 	-- DarkMode
-	["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours."] = "인터페이스 전체를 어둡게 합니다: MelloUI 창과 개체창, 게임 아트, 그림 리스킨. 아이콘과 글자는 색을 유지합니다.", -- draft
+	["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons, text and parchment keep their colours."] = "인터페이스 전체를 어둡게 합니다: MelloUI 창과 개체창, 게임 아트, 그림 리스킨. 아이콘, 글자, 양피지는 색을 유지합니다.", -- draft
 	["Dim the gold and the glare. The interface steps back, the world steps forward."] = "금빛과 눈부심을 낮추세요. 인터페이스는 물러나고 세상이 앞으로 나옵니다.", -- draft
 	["Appearance"] = "외형", -- draft
 	["Brightness"] = "밝기", -- draft
@@ -2233,7 +2233,7 @@ Lang:Add("koKR", {
 	["Only with the painted Minimap skin"] = "페인팅 미니맵 스킨에서만", -- draft
 	["Use MelloUI's Damage Meter (replaces the game's)"] = "MelloUI 피해량 측정기 사용(게임의 것을 대신함)", -- draft
 	["Only for the game's meter (MelloUI's meter off)"] = "게임 측정기에서만(MelloUI 측정기 꺼짐)", -- draft
-	["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "최소 대화 보기나 페인팅 대화에서만", -- draft
+	["Only with Chat Tweaks on or the painted chat (its Painted Skin, the reskin on)"] = "채팅 조정을 켜거나 채색된 채팅(채색 스킨, 리스킨 켜짐)일 때만", -- draft
 	["Chat Background"] = "대화 배경", -- draft
 	["Only without the painted chat, or with the Minimal Chat View"] = "페인팅 대화가 없거나 최소 대화 보기일 때만", -- draft
 	["Backgrounds"] = "배경", -- draft
@@ -2294,6 +2294,9 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Click-casting: Clique and other click-cast addons now work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames, and the Personal Display."] = "클릭 시전: Clique 등 클릭 시전 애드온이 이제 MelloUI의 플레이어, 대상, 주시 대상, 대상의 대상, 소환수 창과 파티 및 공격대 창, 개인 디스플레이에서 작동합니다.", -- draft
+	["Chat: Parchment now works with the Game Windows chat view too, in all three skins: the chat windows on parchment, their lines in dark ink."] = "채팅: 이제 '게임 창' 채팅 보기에서도 세 가지 스킨 모두 양피지를 쓸 수 있습니다. 채팅 창이 양피지 위에, 줄은 짙은 잉크로 표시됩니다.", -- draft
+	["Dark Mode: parchment is no longer dimmed (the chat, the Quest Tracker, tooltips, windows and pages), so its dark ink stays readable."] = "어두운 모드: 이제 양피지(채팅, 퀘스트 추적기, 툴팁, 창과 페이지)를 어둡게 하지 않아 짙은 잉크 글씨가 계속 잘 읽힙니다.", -- draft
 	["Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel."] = "애니메이션: 새 애니메이션 페이지(외형)에 MelloUI의 모든 애니메이션이 모였습니다. 맨 위에 움직임 줄이기가 있고, 재생되는 곳마다 탭이 있습니다: 창, 이름표, 바 및 창, 이동.", -- draft
 	["Animations: press Play beside an animation to see it once before you choose."] = "애니메이션: 애니메이션 옆의 재생을 누르면 선택하기 전에 한 번 볼 수 있습니다.", -- draft
 	["Swing Badge: the gold ring round your weapon fills up as your next swing nears."] = "공격 배지: 다음 공격이 다가올수록 무기를 둘러싼 금색 고리가 채워집니다.", -- draft
@@ -2316,8 +2319,6 @@ Lang:Add("koKR", {
 	["Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames."] = "수정: 죽은 플레이어와 유령의 창 주위에 더 이상 약화 효과나 위협 빛이 남지 않습니다.", -- draft
 	["Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker."] = "경로: 가이드 애드온 따르기 스위치(경로 > 일반)로 퀘스트 추적기에 RestedXP와 다른 가이드의 단계를 표시하지 않을 수 있습니다.", -- draft
 	["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars가 이제 모든 스킨에서 아래에 숨겨진 게임 기본 바 대신 MelloUI 자체 행동 단축바와 태세 바를 빛나게 합니다.", -- draft
-	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "수정: 던전에서 대상의 대상과 다른 유닛 프레임에 이전 이름이 계속 표시되지 않습니다.", -- draft
-	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "수정: 파티 창, 공격대 창 및 기타 개체창에서 죽은 플레이어와 유령의 생명력 및 자원 바가 이제 비어 있게 표시됩니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2898,6 +2899,8 @@ Lang:Add("koKR", {
 -- stale: ["Default UI brightness"] = "기본 UI 밝기", -- draft
 -- stale: ["Default skin: the player frame stays sharp when scaled up."] = "기본 스킨: 플레이어 프레임이 확대해도 선명합니다.", -- draft
 -- stale: ["Deleting a profile, Fade Everything and Fade Nothing ask first; settings that do nothing in your setup stay hidden."] = "프로필 삭제, 모두 흐리게, 흐리게 하지 않기는 먼저 묻습니다. 현재 설정에서 아무 효과가 없는 설정은 숨겨집니다.", -- draft
+-- stale: ["Dims the whole interface. Icons and text keep their colours."] = "인터페이스 전체를 어둡게 합니다. 아이콘과 글자는 색을 유지합니다.", -- draft
+-- stale: ["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours."] = "인터페이스 전체를 어둡게 합니다: MelloUI 창과 개체창, 게임 아트, 그림 리스킨. 아이콘과 글자는 색을 유지합니다.", -- draft
 -- stale: ["Distance from the bottom edge of the screen."] = "화면 아래쪽 가장자리로부터의 거리.", -- draft
 -- stale: ["Distance from the right edge of the screen."] = "화면 오른쪽 가장자리로부터의 거리.", -- draft
 -- stale: ["Do not show tooltips for units while in combat."] = "전투 중에는 개체 툴팁을 표시하지 않습니다.", -- draft
@@ -2975,8 +2978,10 @@ Lang:Add("koKR", {
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "수정: 개인 화면의 큰 재사용 대기시간으로 인한 전투 중 오류.", -- draft
 -- stale: ["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "수정: 경비병에게 길을 물으면 이제 그 표시가 MelloUI 지도에 나타납니다.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "수정: 은신, 태세, 변신, 소환수 버튼 클릭. 최소 대화 보기의 대화 글꼴. 기본 스킨의 온전한 체크 표시. 슬라이더 옆 이름표.", -- draft
+-- stale: ["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "수정: 던전에서 대상의 대상과 다른 유닛 프레임에 이전 이름이 계속 표시되지 않습니다.", -- draft
 -- stale: ["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "수정: 중국어, 한국어, 러시아어 클라이언트에서 떠오르는 전투 문자와 캐릭터 위 이름이 더 이상 네모로 표시되지 않습니다.", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "수정: Oldschool 프레임에서 자원 바가 생명력 바 아래에 작은 간격을 두며, 대상의 자원 바도 생명력 바에 맞춰 정렬됩니다.", -- draft
+-- stale: ["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "수정: 파티 창, 공격대 창 및 기타 개체창에서 죽은 플레이어와 유령의 생명력 및 자원 바가 이제 비어 있게 표시됩니다.", -- draft
 -- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "수정: MelloUI 지도의 퀘스트 제공자 표시가 더 이상 늘어난 노란 얼룩으로 보이지 않습니다.", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "수정: 가방 창 옆의 배낭과 재료 가방 탭에 다시 아이콘이 표시됩니다.", -- draft
 -- stale: ["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "수정: 이름 설정이 이제 최소 대화창 보기와 귓속말 창에서도 적용됩니다.", -- draft
@@ -3193,6 +3198,7 @@ Lang:Add("koKR", {
 -- stale: ["One look: its own look, Gilded Slate colours, the Fredoka font and a new logo, reskin or not; the installer sets up the new layout. The painted reskin is MelloUI Oldschool."] = "하나의 외형: 자체 외형, Gilded Slate 색, Fredoka 글꼴과 새 로고, 스킨과 상관없이. 설치기가 새 레이아웃을 설정합니다. 페인팅 스킨은 MelloUI Oldschool입니다.", -- draft
 -- stale: ["One seamless map of the whole world: zoom from Azeroth down to a zone with the mouse wheel and drag to look around."] = "온 세상을 잇는 하나의 지도: 마우스 휠로 아제로스에서 지역까지 확대하고, 끌어서 둘러봅니다.", -- draft
 -- stale: ["One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Move it in Edit Layout."] = "MelloUI가 전할 소식이 있을 때 화면 위쪽 3분의 1에 나타나는 짧은 한 줄: 경로 설정 또는 완료, 기억된 서비스, 목록에 오른 던전 퀘스트. 몇 초 뒤 사라집니다. 레이아웃 편집에서 옮길 수 있습니다.", -- draft
+-- stale: ["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "최소 대화 보기나 페인팅 대화에서만", -- draft
 -- stale: ["Only without the painted cast bars"] = "페인팅 시전바가 없을 때만", -- draft
 -- stale: ["Only without the painted minimap"] = "페인팅 미니맵이 없을 때만", -- draft
 -- stale: ["Only without the painted nameplates"] = "페인팅 이름표가 없을 때만", -- draft

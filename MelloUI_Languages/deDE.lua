@@ -315,7 +315,7 @@ Lang:Add("deDE", {
 	["Custom Fonts"] = "Eigene Schriften", -- draft
 	["MelloUI's fonts and text sizes for the whole interface. Off: the game's own fonts."] = "MelloUIs Schriften und Textgrößen für die ganze Oberfläche. Aus: die Schriften des Spiels.", -- draft
 	["Dark Mode"] = "Dunkelmodus", -- draft
-	["Dims the whole interface. Icons and text keep their colours."] = "Dunkelt die ganze Oberfläche ab. Symbole und Text behalten ihre Farben.", -- draft
+	["Dims the whole interface. Icons, text and parchment keep their colours."] = "Dunkelt die ganze Oberfläche ab. Symbole, Text und Pergament behalten ihre Farben.", -- draft
 	["Vendor Automation"] = "Händler-Automatik", -- draft
 	["Repairs your gear and sells junk at merchants."] = "Repariert deine Ausrüstung und verkauft Plunder bei Händlern.", -- draft
 	["FPS / Latency"] = "FPS / Latenz", -- draft
@@ -353,7 +353,7 @@ Lang:Add("deDE", {
 	["Always Show Buttons"] = "Tasten immer zeigen", -- draft
 	["Empty buttons show their slot too."] = "Leere Tasten zeigen auch ihren Platz.", -- draft
 	-- DarkMode
-	["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours."] = "Dunkelt die ganze Oberfläche ab: MelloUIs Fenster und Rahmen, die Grafik des Spiels und den gemalten Reskin. Symbole und Text behalten ihre Farben.", -- draft
+	["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons, text and parchment keep their colours."] = "Dunkelt die ganze Oberfläche ab: MelloUIs Fenster und Rahmen, die Grafik des Spiels und den gemalten Reskin. Symbole, Text und Pergament behalten ihre Farben.", -- draft
 	["Dim the gold and the glare. The interface steps back, the world steps forward."] = "Dämpft das Gold und den Glanz. Die Oberfläche tritt zurück, die Welt tritt hervor.", -- draft
 	["Appearance"] = "Aussehen", -- draft
 	["Brightness"] = "Helligkeit", -- draft
@@ -2233,7 +2233,7 @@ Lang:Add("deDE", {
 	["Only with the painted Minimap skin"] = "Nur mit dem gemalten Minikarten-Skin", -- draft
 	["Use MelloUI's Damage Meter (replaces the game's)"] = "MelloUIs Schadensanzeige nutzen (ersetzt die des Spiels)", -- draft
 	["Only for the game's meter (MelloUI's meter off)"] = "Nur für die Anzeige des Spiels (MelloUIs Anzeige aus)", -- draft
-	["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "Nur mit Minimaler Chatansicht oder gemaltem Chat", -- draft
+	["Only with Chat Tweaks on or the painted chat (its Painted Skin, the reskin on)"] = "Nur mit eingeschalteten Chat-Anpassungen oder dem gemalten Chat (sein gemalter Skin, die Neugestaltung an)", -- draft
 	["Chat Background"] = "Chathintergrund", -- draft
 	["Only without the painted chat, or with the Minimal Chat View"] = "Nur ohne den gemalten Chat oder mit der Minimalen Chatansicht", -- draft
 	["Backgrounds"] = "Hintergründe", -- draft
@@ -2294,6 +2294,9 @@ Lang:Add("deDE", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Deine ganze Einrichtung unter einem Namen. Speichere sie, lade sie oder mach sie zum Standard für eine frische Installation.", -- draft
 	["Supporters"] = "Unterstützer", -- draft
 	["The people who help keep MelloUI going."] = "Die Menschen, die MelloUI am Laufen halten.", -- draft
+	["Click-casting: Clique and other click-cast addons now work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames, and the Personal Display."] = "Klickzauber: Clique und andere Klickzauber-Addons funktionieren jetzt auf den Spieler-, Ziel-, Fokus-, Ziel-des-Ziels- und Begleiterfenstern von MelloUI, auf seinen Gruppen- und Schlachtzugsfenstern und auf der persönlichen Anzeige.", -- draft
+	["Chat: Parchment now works with the Game Windows chat view too, in all three skins: the chat windows on parchment, their lines in dark ink."] = "Chat: Pergament funktioniert jetzt auch mit der Chat-Ansicht „Spielfenster“, in allen drei Skins: die Chatfenster auf Pergament, ihre Zeilen in dunkler Tinte.", -- draft
+	["Dark Mode: parchment is no longer dimmed (the chat, the Quest Tracker, tooltips, windows and pages), so its dark ink stays readable."] = "Dunkelmodus: Pergament wird nicht mehr abgedunkelt (Chat, Questverfolgung, Tooltips, Fenster und Seiten), seine dunkle Tinte bleibt lesbar.", -- draft
 	["Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel."] = "Animationen: Eine neue Seite „Animationen“ (Das Aussehen) enthält jede Animation von MelloUI, mit „Bewegung reduzieren“ ganz oben und einem Reiter für jeden Ort, an dem sie spielen: Rahmen, Namensplaketten, Leisten und Fenster, Reisen.", -- draft
 	["Animations: press Play beside an animation to see it once before you choose."] = "Animationen: Drücke neben einer Animation auf Abspielen, um sie einmal zu sehen, bevor du wählst.", -- draft
 	["Swing Badge: the gold ring round your weapon fills up as your next swing nears."] = "Schlagabzeichen: Der goldene Ring um deine Waffe füllt sich, während dein nächster Schlag näher rückt.", -- draft
@@ -2316,8 +2319,6 @@ Lang:Add("deDE", {
 	["Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames."] = "Behoben: Tote Spieler und Geister behalten kein Schwächungs- oder Bedrohungsleuchten mehr um ihre Fenster.", -- draft
 	["Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker."] = "Route: Ein Schalter „Guide-Addons folgen“ (Route > Allgemein) blendet die Schritte von RestedXP und anderen Guides in der Questverfolgung aus.", -- draft
 	["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars lässt jetzt in jedem Design MelloUIs eigene Aktionsleisten und Haltungsleiste leuchten statt der verborgenen Spielleisten darunter.", -- draft
-	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "Behoben: In Dungeons zeigen das Ziel des Ziels und andere Einheitenfenster nicht mehr weiter einen alten Namen an.", -- draft
-	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "Behoben: Gruppen-, Schlachtzugs- und andere Einheitenfenster zeigen für tote Spieler und Geister jetzt leere Gesundheits- und Energieleisten.", -- draft
 	["Report a problem"] = "Ein Problem melden", -- draft
 	["Voice pack"] = "Stimmenpaket", -- draft
 	["open or close this window"] = "dieses Fenster öffnen oder schließen", -- draft
@@ -2899,6 +2900,8 @@ Lang:Add("deDE", {
 -- stale: ["Default UI brightness"] = "Standardhelligkeit der UI", -- draft
 -- stale: ["Default skin: the player frame stays sharp when scaled up."] = "Standard-Skin: der Spielerrahmen bleibt vergrößert scharf.", -- draft
 -- stale: ["Deleting a profile, Fade Everything and Fade Nothing ask first; settings that do nothing in your setup stay hidden."] = "Ein Profil löschen, Alles ausblenden und Nichts ausblenden fragen zuerst; Einstellungen, die in deinem Setup nichts bewirken, bleiben verborgen.", -- draft
+-- stale: ["Dims the whole interface. Icons and text keep their colours."] = "Dunkelt die ganze Oberfläche ab. Symbole und Text behalten ihre Farben.", -- draft
+-- stale: ["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours."] = "Dunkelt die ganze Oberfläche ab: MelloUIs Fenster und Rahmen, die Grafik des Spiels und den gemalten Reskin. Symbole und Text behalten ihre Farben.", -- draft
 -- stale: ["Distance from the bottom edge of the screen."] = "Abstand vom unteren Bildschirmrand.", -- draft
 -- stale: ["Distance from the right edge of the screen."] = "Abstand vom rechten Bildschirmrand.", -- draft
 -- stale: ["Do not show tooltips for units while in combat."] = "Zeigt im Kampf keine Tooltips für Einheiten.", -- draft
@@ -2979,8 +2982,10 @@ Lang:Add("deDE", {
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "Behoben: ein Fehler im Kampf durch die Großen Abklingzeiten der Persönlichen Anzeige.", -- draft
 -- stale: ["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Behoben: Wenn du eine Wache nach dem Weg fragst, erscheint ihre Markierung jetzt auf MelloUIs Karte.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "Behoben: Klicks auf Verstohlenheit, Haltungen, Gestalten und Begleitertasten; die Chat-Schrift in der minimalen Chatansicht; ganze Häkchen bei Standard; Beschriftungen neben Schiebereglern.", -- draft
+-- stale: ["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "Behoben: In Dungeons zeigen das Ziel des Ziels und andere Einheitenfenster nicht mehr weiter einen alten Namen an.", -- draft
 -- stale: ["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "Behoben: Auf chinesischen, koreanischen und russischen Clients erscheinen schwebender Kampftext und Namen über Charakteren nicht mehr als Quadrate.", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Behoben: Auf Oldschools Rahmen hält die Ressourcenleiste einen kleinen Abstand unter der Gesundheitsleiste, und die des Ziels schließt bündig mit ihr ab.", -- draft
+-- stale: ["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "Behoben: Gruppen-, Schlachtzugs- und andere Einheitenfenster zeigen für tote Spieler und Geister jetzt leere Gesundheits- und Energieleisten.", -- draft
 -- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Behoben: Die Markierungen der Questgeber auf MelloUIs Karte erscheinen nicht mehr als verzerrte gelbe Flecken.", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Behoben: Die Reiter für Rucksack und Reagenzientasche neben dem Taschenfenster zeigen wieder ihre Symbole.", -- draft
 -- stale: ["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Behoben: Die Einstellung Namen wirkt jetzt in der minimalen Chatansicht und im Flüsterfenster.", -- draft
@@ -3201,6 +3206,7 @@ Lang:Add("deDE", {
 -- stale: ["One look: its own look, Gilded Slate colours, the Fredoka font and a new logo, reskin or not; the installer sets up the new layout. The painted reskin is MelloUI Oldschool."] = "Ein Aussehen: ein eigenes Aussehen, die Farben von Gilded Slate, die Schrift Fredoka und ein neues Logo, mit oder ohne Skin; der Installer richtet das neue Layout ein. Der gemalte Skin ist MelloUI Oldschool.", -- draft
 -- stale: ["One seamless map of the whole world: zoom from Azeroth down to a zone with the mouse wheel and drag to look around."] = "Eine nahtlose Karte der ganzen Welt: Zoome mit dem Mausrad von Azeroth bis in eine Zone und zieh, um dich umzusehen.", -- draft
 -- stale: ["One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Move it in Edit Layout."] = "Eine kurze Zeile im oberen Drittel des Bildschirms, wenn MelloUI Neuigkeiten für dich hat: eine Route gesetzt oder beendet, ein Dienst gemerkt, die Quests eines Dungeons aufgelistet. Sie blendet nach ein paar Sekunden aus. Verschiebe sie unter „Layout bearbeiten“.", -- draft
+-- stale: ["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "Nur mit Minimaler Chatansicht oder gemaltem Chat", -- draft
 -- stale: ["Only without the painted cast bars"] = "Nur ohne die gemalten Zauberbalken", -- draft
 -- stale: ["Only without the painted minimap"] = "Nur ohne die gemalte Minikarte", -- draft
 -- stale: ["Only without the painted nameplates"] = "Nur ohne die gemalten Namensplaketten", -- draft

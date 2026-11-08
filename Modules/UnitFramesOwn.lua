@@ -948,6 +948,7 @@ function P.Build()
 	f:SetAttribute("*type2", "togglemenu")
 	f:SetAttribute("toggleForVehicle", true)
 	f:RegisterForClicks("AnyUp")
+	MelloUI:ClickCast(f)   -- (2.1.21: click-cast addons -- Clique -- on it, as on the game's own frame)
 	f.unit, f.frameType, f.disablePortraitMask, f.state = "player", "Player", true, "player"
 	-- (deadText false: its bar's numbers at none -- the game's player health bar has no zero text)
 	f.capNumeric, f.deadText = true, false

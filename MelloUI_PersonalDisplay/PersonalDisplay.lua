@@ -213,6 +213,7 @@ local Shield = {}
 local Motion = {}   -- (0.25.0: the bars answering the fight; its section after the hop)
 local Gilded = {}   -- (1.2.0: the modern look's gold rims; its section after the bars' look)
 local CastFX = {}   -- (1.2.0, Cast Motion: the cast bar's moments; in the cast bar's section)
+local Click = {}    -- (2.1.21, click-casting on the display; its section after the placing)
 
 local function On()
 	return M and M.isEnabled and true or false
@@ -2441,6 +2442,55 @@ local function Place()
 	if cl and cb and ct then
 		Shift(c, ui.column.float, cl * cs - mx, (cb + ct) / 2 * cs - my, k, hop)
 	end
+	Click.Lay()
+end
+
+--------------------------------------------------------------------------------
+-- Click-casting on the display (2.1.21; the user, 2026-11-08: "Addon Clique does not work with MelloUI Unitframes,
+-- ... Personal Nameplates, fix that"): while a click-cast addon is there (MelloUI:ClickCastOn), a secure unit button
+-- of yours over the health and power bars, offered to it (MelloUI:ClickCast) -- a click on them works as on your
+-- player frame; without one the display lets the pointer through to the world as before. The button is never tied to
+-- the display's frames: their float moves in a fight (the zoom, the hop, the settle), and a frame a secure one is
+-- anchored to may not move then. It is UIParent's, laid over the bars out of a fight only (each Place, a fight's
+-- end), as tall as the bars' settled rest and their place in a fight together; hidden while Edit Layout is open
+--------------------------------------------------------------------------------
+
+function Click.Make()
+	if Click.button or InCombatLockdown() or not MelloUI:ClickCastOn() then
+		return Click.button
+	end
+	local b = CreateFrame("Button", "MelloUIPersonalDisplayClick", UIParent, "SecureUnitButtonTemplate")
+	b:SetAttribute("unit", "player")
+	b:SetAttribute("*type1", "target")
+	b:SetAttribute("*type2", "togglemenu")
+	b:RegisterForClicks("AnyUp")
+	b:Hide()
+	MelloUI:ClickCast(b)
+	Click.button = b
+	return b
+end
+
+function Click.Lay()
+	local b, ui = Click.button, S.ui
+	if not (b and ui) or InCombatLockdown() then
+		return
+	end
+	local top, low = ui.health.strip, ui.power.strip
+	local l, t = top:GetLeft(), top:GetTop()
+	local r, bt = low:GetRight(), low:GetBottom()
+	if not (On() and not S.editing and ui.holder:IsShown() and l and t and r and bt) then
+		b:Hide()
+		return
+	end
+	local us = UIParent:GetEffectiveScale()
+	local k = top:GetEffectiveScale() / us
+	-- (out of a fight the bars rest this much lower than in one: the settle)
+	local lift = math.max(0, -(S.settleY or 0)) * ui.holder:GetEffectiveScale() / us
+	b:SetFrameStrata(ui.holder:GetFrameStrata())
+	b:ClearAllPoints()
+	b:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l * k, t * k + lift)
+	b:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMLEFT", r * (low:GetEffectiveScale() / us), bt * (low:GetEffectiveScale() / us))
+	b:Show()
 end
 
 -- the zoom keys pressed: the camera eases to its new distance; followed each frame until it has held still
@@ -3755,6 +3805,7 @@ local function OnEvent(_, event, a1, a2, a3, a4)
 		Parts.Log(event, nil)   -- (/mello shield: where the fight began and ended among the shield's events)
 		if event == "PLAYER_REGEN_ENABLED" then
 			Shield.FightOver()
+			Click.Lay()   -- (2.1.21: the click-cast button over the bars where they stand now)
 		end
 	elseif event == "PLAYER_DEAD" or event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
 		Motion.Death(Motion.IsDead())   -- (1.2.0: grey and folded, back with the sweep)
@@ -4429,6 +4480,7 @@ local function Start()
 	if not ui then
 		return
 	end
+	Click.Make()   -- (2.1.21: while a click-cast addon is there; laid at the Place below)
 	if again then
 		-- (switched on again: what changed while it was off -- its border on the Look page, a profile's sizes)
 		Refit(ui)
@@ -5088,6 +5140,7 @@ function M:OnDisable()
 		ui.holder:Hide()
 		ui.column.holder:Hide()
 	end
+	Click.Lay()   -- (2.1.21: the click-cast button away with the display, out of a fight)
 end
 
 -- (2.1.9: a colour picked on Look > Colours: your class's on the health bar, your power's)

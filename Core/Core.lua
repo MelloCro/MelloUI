@@ -755,6 +755,31 @@ function MelloUI.InCombat()
 	return InCombatLockdown and InCombatLockdown() and true or false
 end
 
+-- (2.1.21; the user, 2026-11-08: "Addon Clique does not work with MelloUI Unitframes, Party/Raid, Pet, Target, Focus,
+-- Target of Target, Personal Nameplates, fix that") click-casting addons on MelloUI's own unit buttons: one place for
+-- every frame that stands where the game's would. A click-cast addon (Clique, and those that read its table) takes
+-- the frames in the shared ClickCastFrames table -- set there by whichever loads first; Clique adopts the entries
+-- already in it when it loads, and registers a new one at once (out of a fight; in one, at its end). Nothing of the
+-- game's is written: the table is the addons' own.
+--   MelloUI:ClickCast(button)   a secure unit button of ours offered to the click-cast addons
+--   MelloUI:ClickCastOn() -> true while a click-cast addon is there (its table or Clique's header)
+function MelloUI:ClickCast(button)
+	if type(button) ~= "table" then
+		return
+	end
+	local list = rawget(_G, "ClickCastFrames")
+	if type(list) ~= "table" then
+		list = {}
+		rawset(_G, "ClickCastFrames", list)
+	end
+	list[button] = true
+end
+
+function MelloUI:ClickCastOn()
+	return rawget(_G, "ClickCastHeader") ~= nil
+		or (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Clique") and true) or false
+end
+
 function MelloUI.EditModeOpen()
 	local manager = EditModeManagerFrame
 	if type(manager) ~= "table" or type(manager.IsShown) ~= "function" then

@@ -1291,13 +1291,15 @@ local function Number(v)
 end
 
 -- the game's chat windows' lines in ink: on the painted chat's sheet (Oldschool's cover, Kit:IsCovered -- the sheet
--- lies on its skin) with the chat's parchment on; without the cover they have no sheet, so no ink
+-- lies on its skin) with the chat's parchment on; (2.1.21) or on the Game Windows view's own sheet (M.Paper), every
+-- skin. Fonts asks here too (M.WindowsInked: its parchment face for the windows)
 local function ChatInked()
 	local Kit = MelloUI.Kit
-	return (MelloUI.QuestInk ~= nil and Kit and Kit.IsCovered and Kit:IsCovered("chat")
-		and Kit.ParchmentOn and Kit:ParchmentOn("chat")) and true or false
+	return (MelloUI.QuestInk ~= nil and Kit and Kit.ParchmentOn and Kit:ParchmentOn("chat")
+		and ((Kit.IsCovered and Kit:IsCovered("chat")) or M.Paper.Alive())) and true or false
 end
 M.ChatInk = ChatInk
+M.WindowsInked = ChatInked
 -- (0.23.0) the minimal chat and its whisper window on the same paper, in the same inks (ChatView.lua). One look (the
 -- user, 2026-10-15: "for those 2, chat and objective tracker, i want them to have the option for either normal look,
 -- and parchment even with the reskin off"): the chat's Parchment alone -- its own switch, Kit.ownParchments -- with
@@ -3852,13 +3854,67 @@ M.Whisper = {
 -- Module lifecycle
 --------------------------------------------------------------------------------
 
--- (the Dark look hides the game's art and lays its own: M.Dark)
+--------------------------------------------------------------------------------
+-- The Game Windows view on parchment (2.1.21; the user, 2026-11-08, of the chat's Parchment: "Yes, for all 3 themes"):
+-- with the Game Windows view and no painted chat over the windows, the chat's Parchment lays the very sheet the
+-- painted chat lays (Kit:ParchmentSheet on the window -- the lines draw over it -- area "chat": the chat's Parchment
+-- switches it, Paper.Alive its own condition) on each window's background a little grown, in every skin; the game's
+-- background and the Dark look's plates step aside under it, at Background Opacity while that is set; the lines in
+-- the painted chat's ink (ChatInked). The combat log keeps its own ground (its lines are never inked). Made the first
+-- time it shows (never at login); kept in weak lists here, never keys on the windows. (A table: near Lua's 200.)
+--------------------------------------------------------------------------------
+M.Paper = { GROW = 3, sheets = setmetatable({}, { __mode = "k" }), was = false }
+
+-- the Game Windows view's paper possible: the module on, that view, no painted chat covering the windows
+function M.Paper.Alive()
+	return (M.isEnabled and M.db and M.db.view ~= "minimal" and not ArtCovered()) and true or false
+end
+
+-- every window's sheet to the paper as it should be now: -> true while it shows
+function M.Paper.Apply()
+	local P, Kit = M.Paper, MelloUI.Kit
+	local on = ChatInked() and P.Alive()
+	if not (on or next(P.sheets)) or not (Kit and Kit.ParchmentSheet) then
+		return on
+	end
+	local alpha = Alpha.On() and Alpha.Wanted() or 1
+	for _, name in ipairs(ChatFrameNames()) do
+		local cf, bg = _G[name], _G[name .. "Background"]
+		if cf and bg and cf ~= _G.COMBATLOG then
+			local sheet = P.sheets[cf]
+			if sheet == nil and on then
+				local rect = CreateFrame("Frame", nil, cf)
+				rect:EnableMouse(false)
+				rect:SetPoint("TOPLEFT", bg, "TOPLEFT", -P.GROW, P.GROW)
+				rect:SetPoint("BOTTOMRIGHT", bg, "BOTTOMRIGHT", P.GROW, -P.GROW)
+				sheet = Kit:ParchmentSheet(cf, cf, { rect = rect, margin = 0, wide = true, layer = "BACKGROUND",
+					sublevel = 2, area = "chat", alive = P.Alive }) or false
+				P.sheets[cf] = sheet
+			end
+			if sheet then
+				sheet:SetShown(on)
+				if on then
+					sheet:SetAlpha(alpha)
+				end
+			end
+		end
+	end
+	return on
+end
+
+-- (the Dark look hides the game's art and lays its own: M.Dark; 2.1.21: the paper over both, M.Paper)
 local function ApplyArt()
-	local dark = M.Dark.Active()
-	SetBackgroundShown(not (dark or HideArt("hideBackground")))
+	local paper = M.Paper.Apply()
+	local dark = M.Dark.Active() and not paper
+	SetBackgroundShown(not (dark or paper or HideArt("hideBackground")))
 	SetEditBoxArtShown(not (dark or HideArt("hideEditBox")))
 	SetTabArtShown(not (dark or HideArt("hideTabs")))
 	M.Dark.Apply(dark)
+	-- (the paper came or went: the lines into the ink or out of it, their faces with them)
+	if paper ~= M.Paper.was then
+		M.Paper.was = paper
+		InkAllChat(ChatInked())
+	end
 end
 
 local coverWatched = false
@@ -3903,6 +3959,12 @@ local function ApplyAll()
 				SetTabsOnMouseover(M.db.tabsOnMouseover)
 			end
 		end)
+		-- (2.1.21) the chat's Parchment switched: the Game Windows view's paper and the art under it again
+		MelloUI:On("parchment", function(area)
+			if area == "chat" and M.isEnabled then
+				ApplyArt()
+			end
+		end, "Chat: the Game Windows view's paper")
 	end
 	ApplyArt()
 	SetTabsOnMouseover(db.tabsOnMouseover)
@@ -4108,6 +4170,7 @@ function M:OnSettingChanged(key, value, db)
 		if M.View then
 			M.View.Apply()
 		end
+		ApplyArt()   -- (2.1.21: the Game Windows view's paper, or none)
 	elseif key == "smoothScroll" then
 		-- off: a glide under way ends where it was going; on: the next notch glides
 		if not value then

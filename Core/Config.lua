@@ -174,6 +174,11 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.21", lines = {
+		"Click-casting: Clique and other click-cast addons now work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames, and the Personal Display.",
+		"Chat: Parchment now works with the Game Windows chat view too, in all three skins: the chat windows on parchment, their lines in dark ink.",
+		"Dark Mode: parchment is no longer dimmed (the chat, the Quest Tracker, tooltips, windows and pages), so its dark ink stays readable.",
+	} },
 	{ version = "2.1.20", lines = {
 		"Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel.",
 		"Animations: press Play beside an animation to see it once before you choose.",
@@ -203,10 +208,6 @@ local CHANGELOG = {
 		"Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames.",
 		"Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker.",
 		"Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath.",
-	} },
-	{ version = "2.1.16", lines = {
-		"Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name.",
-		"Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts.",
 	} },
 }
 local LINKS = {

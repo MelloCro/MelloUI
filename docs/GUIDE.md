@@ -317,6 +317,10 @@ cooldown manager, micro menu and bag bar, minimap, chat frame, buffs and
 debuffs. Extra options: brightness, desaturate, aura icon border, keep dispel
 colours on debuff borders.
 
+Parchment is never dimmed (2.1.21): its text is dark ink, so every parchment keeps its light --
+the chat's, the Quest Tracker's, the tooltips', the windows' sheets and pages, and a background
+set to parchment.
+
 Dark Mode is a personal preference: its switch and every setting here stay out of profiles,
 shared strings and the shipped MelloUI profile, and no installer setup changes it (Fresh
 start's dark mode row sets it as you choose). A new character starts with it off.
@@ -375,6 +379,11 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
 
 ### Chat
 
+- **Parchment** (Chat > Chat Frame > Look): the chat on the kit's parchment, every line in dark ink (names with their
+  class gems, links and tags in the inks), with either Chat View: the Minimal panel and its whisper window, or (2.1.21)
+  the Game Windows view -- a sheet on each chat window (the combat log keeps its own ground), the game's background
+  and the Dark look's plates aside under it, at Background Opacity while that is set -- in all three skins (Oldschool's
+  painted chat lays its own sheet over the windows instead). It needs Chat Tweaks on (the painted chat's: the reskin).
 - Chat View (0.23.0; Chat > Chat Frame > Look: Game Windows or Minimal): Minimal is MelloUI's own chat over the
   game's windows, which stay alive out of sight under it. One panel: a rail of round tabs on its left (one per chat
   window by its name, a count of the lines you have not seen, the wheel scrolls it; Whispers last), each line under
@@ -593,6 +602,8 @@ world latency, bandwidth and the addon's memory use. Options: which values, font
 from the corner, update interval.
 
 ### Unit Frames
+
+**Click-casting** (2.1.21): Clique, and other click-cast addons that read its frame list, work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames and the Personal Display, as on the game's own. The Personal Display takes clicks only while such an addon is loaded (else the pointer goes through it to the world); its click area is laid out of a fight, so a zoom during one can leave it a little off the bars until the fight ends.
 
 Layout tweaks for the player, target and focus frames: names centred above the health bar and a
 transparent name band (the reaction coloured strip behind target / focus names) -- both always, while

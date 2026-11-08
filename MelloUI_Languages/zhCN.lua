@@ -315,7 +315,7 @@ Lang:Add("zhCN", {
 	["Custom Fonts"] = "自定义字体", -- draft
 	["MelloUI's fonts and text sizes for the whole interface. Off: the game's own fonts."] = "MelloUI 用于整个界面的字体和字号。关闭：游戏自己的字体。", -- draft
 	["Dark Mode"] = "暗色模式", -- draft
-	["Dims the whole interface. Icons and text keep their colours."] = "调暗整个界面。图标和文字保持原色。", -- draft
+	["Dims the whole interface. Icons, text and parchment keep their colours."] = "调暗整个界面。图标、文字和羊皮纸保持原色。", -- draft
 	["Vendor Automation"] = "商人自动化", -- draft
 	["Repairs your gear and sells junk at merchants."] = "在商人处修理装备并出售垃圾。", -- draft
 	["FPS / Latency"] = "FPS / 延迟", -- draft
@@ -353,7 +353,7 @@ Lang:Add("zhCN", {
 	["Always Show Buttons"] = "总是显示按钮", -- draft
 	["Empty buttons show their slot too."] = "空按钮也显示其格子。", -- draft
 	-- DarkMode
-	["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours."] = "调暗整个界面：MelloUI 的窗口和框体、游戏自己的美术和手绘皮肤。图标和文字保持原色。", -- draft
+	["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons, text and parchment keep their colours."] = "调暗整个界面：MelloUI 的窗口和框体、游戏自己的美术和手绘皮肤。图标、文字和羊皮纸保持原色。", -- draft
 	["Dim the gold and the glare. The interface steps back, the world steps forward."] = "调暗金色和炫光。界面退后，世界向前。", -- draft
 	["Appearance"] = "外观", -- draft
 	["Brightness"] = "亮度", -- draft
@@ -2233,7 +2233,7 @@ Lang:Add("zhCN", {
 	["Only with the painted Minimap skin"] = "仅在使用手绘小地图皮肤时", -- draft
 	["Use MelloUI's Damage Meter (replaces the game's)"] = "使用MelloUI的伤害统计（取代游戏的）", -- draft
 	["Only for the game's meter (MelloUI's meter off)"] = "仅用于游戏的统计（MelloUI统计关闭）", -- draft
-	["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "仅在极简聊天视图或手绘聊天时", -- draft
+	["Only with Chat Tweaks on or the painted chat (its Painted Skin, the reskin on)"] = "仅在开启聊天调整或使用彩绘聊天（其彩绘外观，重绘开启）时", -- draft
 	["Chat Background"] = "聊天背景", -- draft
 	["Only without the painted chat, or with the Minimal Chat View"] = "仅在不使用手绘聊天或使用极简聊天视图时", -- draft
 	["Backgrounds"] = "背景", -- draft
@@ -2294,6 +2294,9 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Click-casting: Clique and other click-cast addons now work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames, and the Personal Display."] = "点击施法：Clique 等点击施法插件现在可用于 MelloUI 的玩家、目标、焦点、目标的目标和宠物框体，以及其小队和团队框体和个人显示。", -- draft
+	["Chat: Parchment now works with the Game Windows chat view too, in all three skins: the chat windows on parchment, their lines in dark ink."] = "聊天：羊皮纸现在也适用于“游戏窗口”聊天视图，三种皮肤均可：聊天窗口铺上羊皮纸，文字为深色墨水。", -- draft
+	["Dark Mode: parchment is no longer dimmed (the chat, the Quest Tracker, tooltips, windows and pages), so its dark ink stays readable."] = "暗色模式：羊皮纸不再被调暗（聊天、任务追踪器、鼠标提示、窗口和页面），深色墨水字迹保持清晰可读。", -- draft
 	["Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel."] = "动画：新的动画页面（外观）汇集了MelloUI的所有动画，顶部是减少动态效果，每个播放位置各有一个标签：框体、姓名板、动作条与窗口、旅行。", -- draft
 	["Animations: press Play beside an animation to see it once before you choose."] = "动画：点击动画旁边的播放，在选择之前先看一次。", -- draft
 	["Swing Badge: the gold ring round your weapon fills up as your next swing nears."] = "攻击徽章：随着下一次攻击临近，环绕你武器的金色圆环会逐渐填满。", -- draft
@@ -2316,8 +2319,6 @@ Lang:Add("zhCN", {
 	["Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames."] = "修复：死亡玩家和灵魂的框体周围不再残留减益或仇恨发光。", -- draft
 	["Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker."] = "路线：新增“跟随指南插件”开关（路线 > 常规），可在任务追踪器中关闭RestedXP和其他指南的步骤显示。", -- draft
 	["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars现在会在所有外观中点亮MelloUI自己的动作条和姿态条，而不是下方隐藏的游戏动作条。", -- draft
-	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "修复：在地下城中，目标的目标及其他单位框体不再显示旧名字。", -- draft
-	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "修复：小队、团队及其他单位框体现在会将死亡玩家和灵魂的生命条与能量条显示为空。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2898,6 +2899,8 @@ Lang:Add("zhCN", {
 -- stale: ["Default UI brightness"] = "默认界面亮度", -- draft
 -- stale: ["Default skin: the player frame stays sharp when scaled up."] = "默认皮肤：玩家框放大后依然清晰。", -- draft
 -- stale: ["Deleting a profile, Fade Everything and Fade Nothing ask first; settings that do nothing in your setup stay hidden."] = "删除配置、全部淡出和全不淡出会先询问；在你的设置中无效的选项会隐藏。", -- draft
+-- stale: ["Dims the whole interface. Icons and text keep their colours."] = "调暗整个界面。图标和文字保持原色。", -- draft
+-- stale: ["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours."] = "调暗整个界面：MelloUI 的窗口和框体、游戏自己的美术和手绘皮肤。图标和文字保持原色。", -- draft
 -- stale: ["Distance from the bottom edge of the screen."] = "距屏幕下边缘的距离。", -- draft
 -- stale: ["Distance from the right edge of the screen."] = "距屏幕右边缘的距离。", -- draft
 -- stale: ["Do not show tooltips for units while in combat."] = "战斗中不显示单位的鼠标提示。", -- draft
@@ -2975,8 +2978,10 @@ Lang:Add("zhCN", {
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "修复：个人显示的重要冷却在战斗中引发的错误。", -- draft
 -- stale: ["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "修复：向卫兵问路后，其标记现在会显示在 MelloUI 地图上。", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "修复：点击潜行、姿态、形态和宠物按钮；极简聊天视图的聊天字体；默认外观的完整勾选标记；滑块旁的标签。", -- draft
+-- stale: ["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "修复：在地下城中，目标的目标及其他单位框体不再显示旧名字。", -- draft
 -- stale: ["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "修复：在中文、韩文和俄文客户端上，浮动战斗文字和角色头顶的名字不再显示为方块。", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "修复：Oldschool 框体上的能量条与生命条之间留出小间隙，目标的能量条也与生命条对齐。", -- draft
+-- stale: ["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "修复：小队、团队及其他单位框体现在会将死亡玩家和灵魂的生命条与能量条显示为空。", -- draft
 -- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "修复：MelloUI 地图上的任务发布者标记不再显示为拉伸的黄色色块。", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "修复：背包窗口旁的行囊和材料包标签页重新显示图标。", -- draft
 -- stale: ["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "修复：名称设置现在对精简聊天视图和密语窗口生效。", -- draft
@@ -3193,6 +3198,7 @@ Lang:Add("zhCN", {
 -- stale: ["One look: its own look, Gilded Slate colours, the Fredoka font and a new logo, reskin or not; the installer sets up the new layout. The painted reskin is MelloUI Oldschool."] = "统一外观：自己的样式、Gilded Slate配色、Fredoka字体和新标志，换肤与否均可；安装器会设置新布局。手绘换肤即MelloUI Oldschool。", -- draft
 -- stale: ["One seamless map of the whole world: zoom from Azeroth down to a zone with the mouse wheel and drag to look around."] = "一张无缝的全世界地图：用鼠标滚轮从艾泽拉斯一直缩放到某个区域，拖动查看四周。", -- draft
 -- stale: ["One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Move it in Edit Layout."] = "当MelloUI有消息告诉你时，在屏幕上方三分之一处显示一行短文字：设定或完成了路线、记住了一个服务、列出了地下城的任务。几秒后淡出。可在“编辑布局”中移动。", -- draft
+-- stale: ["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "仅在极简聊天视图或手绘聊天时", -- draft
 -- stale: ["Only without the painted cast bars"] = "仅在不使用手绘施法条时", -- draft
 -- stale: ["Only without the painted minimap"] = "仅在不使用手绘小地图时", -- draft
 -- stale: ["Only without the painted nameplates"] = "仅在不使用手绘姓名板时", -- draft

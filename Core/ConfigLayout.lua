@@ -475,12 +475,12 @@ function L.Define(R, Link)
 	-- (one look, 2026-10-15) the painted chat covers the game's chat windows: the reskin and its Painted Skin both on
 	local CHAT_PAINTED = { all = { { key = "UIModifications.reskin", value = true },
 		{ key = "UIModifications.ChatPanel", value = true } } }
-	-- the chat's paper: the Minimal Chat View's and its whisper window's sheet, the reskin on or off (the Chat
-	-- module's: asleep with it off, as the page's other rows), or the painted chat's on the game's windows (its own
-	-- sheet, the Chat module on or off: a paper on there can always be switched off)
-	local CHAT_PAPER = { any = { { all = { { key = "Chat.!enabled", value = true }, { key = "Chat.view", value = "minimal" } } },
-		CHAT_PAINTED },
-		line = "Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)" }
+	-- the chat's paper: the Minimal Chat View's and its whisper window's sheet, (2.1.21) the Game Windows view's on the
+	-- game's windows, the reskin on or off, every skin (the Chat module's: asleep with it off, as the page's other
+	-- rows), or the painted chat's on the game's windows (its own sheet, the Chat module on or off: a paper on there
+	-- can always be switched off)
+	local CHAT_PAPER = { any = { { key = "Chat.!enabled", value = true }, CHAT_PAINTED },
+		line = "Only with Chat Tweaks on or the painted chat (its Painted Skin, the reskin on)" }
 	-- Look: the global look, only here (every element's page links to it)
 	R("Oldschool", "General", "General", "UIModifications.preloadArt")
 	R("Oldschool", "General", "General", "UIModifications.#Switch every area on")

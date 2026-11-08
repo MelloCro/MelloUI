@@ -256,6 +256,7 @@ local function Build(kind)
 	f:SetAttribute("*type1", "target")
 	f:SetAttribute("*type2", "togglemenu")
 	f:RegisterForClicks("AnyUp")
+	MelloUI:ClickCast(f)   -- (2.1.21: click-cast addons -- Clique -- on it, as on the game's own frame)
 	f.unit, f.frameType, f.capNumeric, f.deadText, f.kind = unit, "Target", true, "", kind
 	f.showLevel, f.showPVP, f.showLeader, f.showThreat, f.showPortrait, f.showClassification = true, true, true, true,
 		true, true
@@ -596,6 +597,7 @@ function BuildToT(kind)
 	f:SetAttribute("unit", unit)
 	f:SetAttribute("*type1", "target")
 	f:RegisterForClicks("AnyUp")
+	MelloUI:ClickCast(f)   -- (2.1.21: click-cast addons -- Clique -- on it, as on the game's own frame)
 	f.unit, f.frameType, f.capNumeric, f.kind = unit, "TargetofTarget", true, kind
 	f:Hide()
 	local portrait = Tex(f, "BACKGROUND", 1)

@@ -506,6 +506,7 @@ local function MakeHeader(kind)
 			break
 		end
 		Dress(b)
+		MelloUI:ClickCast(b)   -- (2.1.21: click-cast addons -- Clique -- on every button, all made here out of a fight)
 		i = i + 1
 	end
 	return h

@@ -315,7 +315,7 @@ Lang:Add("ruRU", {
 	["Custom Fonts"] = "Свои шрифты", -- draft
 	["MelloUI's fonts and text sizes for the whole interface. Off: the game's own fonts."] = "Шрифты и размеры текста MelloUI для всего интерфейса. Выкл.: шрифты игры.", -- draft
 	["Dark Mode"] = "Тёмный режим", -- draft
-	["Dims the whole interface. Icons and text keep their colours."] = "Затемняет весь интерфейс. Значки и текст сохраняют свои цвета.", -- draft
+	["Dims the whole interface. Icons, text and parchment keep their colours."] = "Затемняет весь интерфейс. Значки, текст и пергамент сохраняют свои цвета.", -- draft
 	["Vendor Automation"] = "Автоматизация торговца", -- draft
 	["Repairs your gear and sells junk at merchants."] = "Чинит снаряжение и продаёт хлам у торговцев.", -- draft
 	["FPS / Latency"] = "FPS / задержка", -- draft
@@ -353,7 +353,7 @@ Lang:Add("ruRU", {
 	["Always Show Buttons"] = "Всегда показывать кнопки", -- draft
 	["Empty buttons show their slot too."] = "Пустые кнопки тоже показывают свою ячейку.", -- draft
 	-- DarkMode
-	["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours."] = "Затемняет весь интерфейс: окна и рамки MelloUI, графику игры и рисованный рескин. Значки и текст сохраняют свои цвета.", -- draft
+	["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons, text and parchment keep their colours."] = "Затемняет весь интерфейс: окна и рамки MelloUI, графику игры и рисованный рескин. Значки, текст и пергамент сохраняют свои цвета.", -- draft
 	["Dim the gold and the glare. The interface steps back, the world steps forward."] = "Приглушите золото и блеск. Интерфейс отступает, мир выходит вперёд.", -- draft
 	["Appearance"] = "Внешний вид", -- draft
 	["Brightness"] = "Яркость", -- draft
@@ -2233,7 +2233,7 @@ Lang:Add("ruRU", {
 	["Only with the painted Minimap skin"] = "Только с рисованным обликом мини-карты", -- draft
 	["Use MelloUI's Damage Meter (replaces the game's)"] = "Использовать счетчик урона MelloUI (заменяет игровой)", -- draft
 	["Only for the game's meter (MelloUI's meter off)"] = "Только для счетчика игры (счетчик MelloUI выкл.)", -- draft
-	["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "Только с «Минимальным» видом или рисованным чатом", -- draft
+	["Only with Chat Tweaks on or the painted chat (its Painted Skin, the reskin on)"] = "Только с включёнными настройками чата или с расписным чатом (его расписной облик, переоформление включено)", -- draft
 	["Chat Background"] = "Фон чата", -- draft
 	["Only without the painted chat, or with the Minimal Chat View"] = "Только без рисованного чата или с «Минимальным» видом чата", -- draft
 	["Backgrounds"] = "Фоны", -- draft
@@ -2294,6 +2294,9 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["Click-casting: Clique and other click-cast addons now work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames, and the Personal Display."] = "Заклинания по клику: Clique и другие аддоны для заклинаний по клику теперь работают на рамках игрока, цели, фокуса, цели цели и питомца MelloUI, на его рамках группы и рейда и на личном индикаторе.", -- draft
+	["Chat: Parchment now works with the Game Windows chat view too, in all three skins: the chat windows on parchment, their lines in dark ink."] = "Чат: пергамент теперь работает и с видом чата «Окна игры», во всех трёх обликах: окна чата на пергаменте, строки тёмными чернилами.", -- draft
+	["Dark Mode: parchment is no longer dimmed (the chat, the Quest Tracker, tooltips, windows and pages), so its dark ink stays readable."] = "Тёмный режим: пергамент больше не затемняется (чат, отслеживание заданий, подсказки, окна и страницы), и его тёмные чернила остаются читаемыми.", -- draft
 	["Animations: a new Animations page (The look) holds every animation MelloUI plays, with Reduce Motion on top and a tab for each place they play: frames, nameplates, bars and windows, travel."] = "Анимации: новая страница «Анимации» (Облик) собирает все анимации MelloUI, с «Меньше движения» вверху и вкладкой для каждого места, где они играют: рамки, индикаторы здоровья, панели и окна, путешествия.", -- draft
 	["Animations: press Play beside an animation to see it once before you choose."] = "Анимации: нажмите «Играть» рядом с анимацией, чтобы увидеть её один раз до выбора.", -- draft
 	["Swing Badge: the gold ring round your weapon fills up as your next swing nears."] = "Значок удара: золотое кольцо вокруг оружия заполняется по мере приближения следующего удара.", -- draft
@@ -2316,8 +2319,6 @@ Lang:Add("ruRU", {
 	["Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames."] = "Исправлено: вокруг рамок мёртвых игроков и духов больше не остаётся свечение отрицательного эффекта или угрозы.", -- draft
 	["Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker."] = "Маршрут: переключатель «Следовать аддонам-гайдам» (Маршрут > Общие) отключает показ шагов RestedXP и других гайдов в отслеживании заданий.", -- draft
 	["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars теперь подсвечивает собственные панели команд и панель стоек MelloUI в любом облике, а не скрытые под ними панели игры.", -- draft
-	["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "Исправлено: в подземельях цель цели и другие рамки юнитов больше не показывают старое имя.", -- draft
-	["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "Исправлено: рамки группы, рейда и другие рамки теперь показывают пустые полосы здоровья и ресурса у мёртвых игроков и духов.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -2898,6 +2899,8 @@ Lang:Add("ruRU", {
 -- stale: ["Default UI brightness"] = "Яркость игры", -- draft
 -- stale: ["Default skin: the player frame stays sharp when scaled up."] = "Скин По умолчанию: рамка игрока остается четкой при увеличении.", -- draft
 -- stale: ["Deleting a profile, Fade Everything and Fade Nothing ask first; settings that do nothing in your setup stay hidden."] = "Удаление профиля, «Гасить всё» и «Не гасить ничего» сначала спрашивают; настройки, которые ничего не делают в вашей сборке, скрыты.", -- draft
+-- stale: ["Dims the whole interface. Icons and text keep their colours."] = "Затемняет весь интерфейс. Значки и текст сохраняют свои цвета.", -- draft
+-- stale: ["Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours."] = "Затемняет весь интерфейс: окна и рамки MelloUI, графику игры и рисованный рескин. Значки и текст сохраняют свои цвета.", -- draft
 -- stale: ["Distance from the bottom edge of the screen."] = "Расстояние от нижнего края экрана.", -- draft
 -- stale: ["Distance from the right edge of the screen."] = "Расстояние от правого края экрана.", -- draft
 -- stale: ["Do not show tooltips for units while in combat."] = "Не показывает подсказки юнитов в бою.", -- draft
@@ -2975,8 +2978,10 @@ Lang:Add("ruRU", {
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "Исправлено: ошибка в бою из-за больших восстановлений Личной панели.", -- draft
 -- stale: ["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "Исправлено: если спросить дорогу у стражника, его метка теперь появляется на карте MelloUI.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "Исправлено: щелчки по «Незаметности», стойкам, формам и кнопкам питомца; шрифт чата в «Минимальном» виде; целые галочки облика «По умолчанию»; подписи рядом с ползунками.", -- draft
+-- stale: ["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "Исправлено: в подземельях цель цели и другие рамки юнитов больше не показывают старое имя.", -- draft
 -- stale: ["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "Исправлено: в китайском, корейском и русском клиентах всплывающий текст боя и имена над персонажами больше не отображаются квадратами.", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "Исправлено: на рамках Oldschool полоса ресурса держит небольшой зазор под полосой здоровья, а у цели она выровнена по ней.", -- draft
+-- stale: ["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "Исправлено: рамки группы, рейда и другие рамки теперь показывают пустые полосы здоровья и ресурса у мёртвых игроков и духов.", -- draft
 -- stale: ["Fixed: quest givers' marks on MelloUI's map no longer show as stretched yellow blobs."] = "Исправлено: метки квестодателей на карте MelloUI больше не выглядят растянутыми жёлтыми пятнами.", -- draft
 -- stale: ["Fixed: the Backpack's and the Reagent Bag's tabs beside the bag window show their icons again."] = "Исправлено: вкладки рюкзака и сумки для реагентов рядом с окном сумок снова показывают свои значки.", -- draft
 -- stale: ["Fixed: the Names setting now works in the Minimal chat view and the whisper window."] = "Исправлено: настройка «Имена» теперь работает в минимальном виде чата и в окне шёпота.", -- draft
@@ -3193,6 +3198,7 @@ Lang:Add("ruRU", {
 -- stale: ["One look: its own look, Gilded Slate colours, the Fredoka font and a new logo, reskin or not; the installer sets up the new layout. The painted reskin is MelloUI Oldschool."] = "Единый облик: собственный вид, цвета Gilded Slate, шрифт Fredoka и новый логотип, с рисованным обликом или без; установщик ставит новую раскладку. Рисованный облик — это MelloUI Oldschool.", -- draft
 -- stale: ["One seamless map of the whole world: zoom from Azeroth down to a zone with the mouse wheel and drag to look around."] = "Одна бесшовная карта всего мира: приближайте от Азерота до зоны колёсиком мыши и перетаскивайте, чтобы оглядеться.", -- draft
 -- stale: ["One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Move it in Edit Layout."] = "Одна короткая строка в верхней трети экрана, когда у MelloUI есть для вас новости: маршрут задан или пройден, услуга запомнена, задания подземелья перечислены. Она гаснет через несколько секунд. Переместите её в «Изменить раскладку».", -- draft
+-- stale: ["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "Только с «Минимальным» видом или рисованным чатом", -- draft
 -- stale: ["Only without the painted cast bars"] = "Только без рисованных индикаторов заклинаний", -- draft
 -- stale: ["Only without the painted minimap"] = "Только без рисованной мини-карты", -- draft
 -- stale: ["Only without the painted nameplates"] = "Только без рисованных индикаторов здоровья", -- draft

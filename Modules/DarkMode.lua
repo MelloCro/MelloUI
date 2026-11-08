@@ -74,12 +74,12 @@ local Secret = MelloUI.Safe.IsSecret
 
 local M = MelloUI:RegisterModule("DarkMode", {
 	title = "Dark Mode",
-	desc = "Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons and text keep their colours.",
+	desc = "Dims the whole interface: MelloUI's windows and frames, the game's own art and the painted reskin. Icons, text and parchment keep their colours.",
 	icon = "Interface\\Icons\\Spell_Shadow_Twilight",
 	flavour = "Dim the gold and the glare. The interface steps back, the world steps forward.",
 	group = "The look", navOrder = 2,
 	-- (off until switched on: a personal preference, never on by default)
-	tweak = { label = "Dark Mode", desc = "Dims the whole interface. Icons and text keep their colours.", order = 12, off = true },
+	tweak = { label = "Dark Mode", desc = "Dims the whole interface. Icons, text and parchment keep their colours.", order = 12, off = true },
 	-- Dark Mode's switch is the player's own preference (user, 2026-09-26:
 	-- "Dark mode ... should be a personal preference"): no profile, share
 	-- string or setup carries it, and loading one leaves it as it is (it is
