@@ -1015,6 +1015,12 @@ Lang:Add("koKR", {
 	-- Nameplates
 	["Large crowd-control icon above the name and a quest marker on enemy nameplates."] = "이름 위의 큰 군중 제어 아이콘과 적 이름표의 퀘스트 표시.", -- draft
 	["Know who is stunned, who is your quest target, and who is about to be a problem."] = "누가 기절했는지, 누가 퀘스트 대상인지, 누가 곧 골칫거리가 될지 알 수 있습니다.", -- draft
+	["Own Plate Size"] = "이름표 크기 직접 설정", -- draft
+	["The enemy plates take the width and height set here instead of the game's."] = "적 이름표가 게임 설정 대신 여기서 정한 너비와 높이를 사용합니다.", -- draft
+	["Plate Width"] = "이름표 너비", -- draft
+	["The whole plate's width: the health bar and the level badge's room beside it."] = "이름표 전체 너비: 생명력 바와 옆의 레벨 배지 자리.", -- draft
+	["Plate Height"] = "이름표 높이", -- draft
+	["The health bar's height."] = "생명력 바의 높이.", -- draft
 	["Crowd Control"] = "군중 제어", -- draft
 	["Large CC Icon Above Name"] = "이름 위 큰 군중 제어 아이콘", -- draft
 	["A large crowd-control icon above the name. Needs the game's Crowd Control nameplate option on."] = "이름 위 큰 군중 제어 아이콘. 게임의 이름표 군중 제어 옵션이 필요합니다.", -- draft
@@ -1699,6 +1705,8 @@ Lang:Add("koKR", {
 	["The column of chat buttons beside the chat: Friends, Channels and the chat menu."] = "대화창 옆 버튼 열: 친구, 채널 메시지, 대화 메뉴.", -- draft
 	["Smooth Scrolling"] = "부드러운 스크롤", -- draft
 	["The mouse wheel scrolls the chat smoothly instead of a line at a time."] = "마우스 휠로 대화창을 한 줄씩이 아니라 부드럽게 스크롤합니다.", -- draft
+	["Copy Chat Button"] = "채팅 복사 버튼", -- draft
+	["While your mouse is on the chat, a small button at its top right corner puts the tab's lines in a window to copy, each with its time."] = "마우스가 채팅 위에 있는 동안 오른쪽 위 모서리의 작은 버튼이 탭의 줄을 복사할 수 있는 창에 넣습니다. 각 줄에는 시간이 붙습니다.", -- draft
 	["Channels"] = "채널", -- draft
 	["Short Channel Tags"] = "짧은 채널 태그", -- draft
 	["Short coloured tags instead of [Guild], [Party], [1. General] and so on."] = "[길드], [파티], [1. 일반] 대신 짧은 색 태그.", -- draft
@@ -1918,6 +1926,8 @@ Lang:Add("koKR", {
 	["The swing badge stands centred above the display instead of on your target's nameplate."] = "공격 배지가 대상의 이름표 대신 개인 표시 위 가운데에 표시됩니다.", -- draft
 	["Big Cooldowns"] = "큰 재사용 대기시간", -- draft
 	["Your big defensive cooldowns (Shield Wall, Evasion, Ice Block...) as icons above the health bar."] = "큰 방어 재사용 대기시간(방패의 벽, 회피, 얼음 방패...)을 생명력 바 위 아이콘으로.", -- draft
+	["Tracked Spells"] = "추적 주문", -- draft
+	["Tick your class's spells to see them in a row under the bars while they last on you, each with its seconds. Nothing is ticked at first."] = "직업 주문을 선택하면 자신에게 지속되는 동안 바 아래 한 줄에 남은 초와 함께 표시됩니다. 처음에는 아무것도 선택되어 있지 않습니다.", -- draft
 	["Percent And Spell Text"] = "백분율과 주문 글자", -- draft
 	["Health and power percent, spell names and times."] = "생명력과 자원 백분율, 주문 이름과 시간.", -- draft
 	["Text Font"] = "글자 글꼴", -- draft
@@ -2294,6 +2304,9 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time."] = "채팅: 마우스가 채팅 위에 있는 동안 오른쪽 위 모서리에 채팅 복사 버튼이 나타납니다. 탭의 줄을 복사할 수 있는 창으로 열며, 각 줄에는 시간이 붙습니다.", -- draft
+	["Personal Display: Tracked Spells (Big Cooldowns' tab): tick your class's spells, like Weakened Soul or Renew, to see them under the bars while they last on you."] = "개인 디스플레이: 추적 주문(큰 재사용 대기시간 탭) - Weakened Soul이나 Renew 같은 직업 주문을 선택하면 자신에게 지속되는 동안 바 아래에 표시됩니다.", -- draft
+	["Nameplates designer: drag and size every part of the enemy plate (cast bar, buffs, debuffs, level, raid marker, icons) and set its own width and height; overlaps are outlined red."] = "이름표 디자이너: 적 이름표의 모든 요소(시전 바, 강화 효과, 약화 효과, 레벨, 공격대 징표, 아이콘)를 끌어 놓고 크기를 조절하며, 너비와 높이도 직접 정할 수 있습니다. 겹친 요소는 빨간 테두리로 표시됩니다.", -- draft
 	["Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands."] = "지도 및 경로: Excavation Site: Wetlands 입구가 이제 휄가르 발굴지 동쪽, 포탈이 있는 드워프 발굴 야영지에 표시됩니다.", -- draft
 	["Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away."] = "파티 및 공격대 창: 가까이 있는 구성원이 더 이상 사거리 밖처럼 보이지 않습니다. 게임이 너무 멀다고 측정한 구성원만 흐려집니다.", -- draft
 	["Click-casting: Clique and other click-cast addons now work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames, and the Personal Display."] = "클릭 시전: Clique 등 클릭 시전 애드온이 이제 MelloUI의 플레이어, 대상, 주시 대상, 대상의 대상, 소환수 창과 파티 및 공격대 창, 개인 디스플레이에서 작동합니다.", -- draft
@@ -2304,15 +2317,6 @@ Lang:Add("koKR", {
 	["Swing Badge: the gold ring round your weapon fills up as your next swing nears."] = "공격 배지: 다음 공격이 다가올수록 무기를 둘러싼 금색 고리가 채워집니다.", -- draft
 	["Personal Display: the Big Cooldowns are square in the display's gold rim, their seconds drawn and coloured as on your debuffs on the nameplates (shown even with Percent And Spell Text off)."] = "개인 디스플레이: 주요 재사용 대기시간이 디스플레이의 금색 테두리 안 사각형 아이콘으로 표시되며, 초는 이름표의 내 약화 효과와 같은 모양과 색으로 표시됩니다('백분율 및 주문 텍스트'가 꺼져 있어도 표시).", -- draft
 	["Personal Display: with Over The Personal Display, the swing badge and the Big Cooldowns share one row on the bars, the badge in the middle and the cooldowns beside it."] = "개인 디스플레이: '개인 디스플레이 위에'를 켜면 공격 배지와 주요 재사용 대기시간이 바 위의 한 줄을 함께 쓰며, 배지는 가운데, 재사용 대기시간은 그 옆에 놓입니다.", -- draft
-	["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "이름표: 공격 배지가 이름표 미리보기에 표시되며, 크기를 50~200%로 조절할 수 있습니다.", -- draft
-	["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "이름표: 적 이름표의 내 약화 효과에 '내 약화 효과만' 설정이 추가되었습니다(기본값 켜짐).", -- draft
-	["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "이름표: 적 이름표의 내 약화 효과에 더 이상 시계 표시가 나오지 않으며, 숫자는 남은 시간에 따라 색이 바뀌고 5초 미만이면 빨간색이 됩니다.", -- draft
-	["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "이름표: 연계 점수를 가로 및 세로 오프셋으로 옮길 수 있습니다.", -- draft
-	["Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do."] = "이름표: 이름표 미리보기에서 적의 이름이 실제 이름표처럼 바 위 가운데에 표시됩니다.", -- draft
-	["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "개인 표시: '개인 표시 위에'를 켜면 공격 배지가 대상의 이름표 대신 개인 표시 위 가운데에 표시됩니다.", -- draft
-	["Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast."] = "행동 단축바: 사냥꾼의 상(Aspect), 전사의 태세, 드루이드의 변신 같은 직업 펼침 메뉴가 MelloUI 행동 단축바에서 열리고 그 주문이 시전됩니다.", -- draft
-	["Action Bars: the game's hidden stance, pet and possess bars no longer take clicks where they stood once MelloUI's bars are moved (thanks, Baine)."] = "행동 단축바: MelloUI 바를 옮긴 뒤 게임의 숨겨진 태세, 소환수, 지배 바가 원래 자리에서 클릭을 가로채지 않습니다(Baine님 감사합니다).", -- draft
-	["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "지도: 전장 안에서 지도에 내 캐릭터, 내 파티와 전장의 깃발이 표시됩니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2677,6 +2681,9 @@ Lang:Add("koKR", {
 	["Your target"] = "내 대상", -- draft
 	["The Nameplates switch is off: the game's own plate, none of MelloUI's parts on it."] = "이름표 스위치가 꺼져 있습니다: 게임 고유의 이름표이며 MelloUI의 부분은 없습니다.", -- draft
 	["Click a part to pick it; its settings open beside it."] = "부분을 눌러 고르면 옆에 설정이 열립니다.", -- draft
+	["Its buffs"] = "대상의 강화 효과", -- draft
+	["Raid marker"] = "공격대 징표", -- draft
+	["Level badge"] = "레벨 배지", -- draft
 	-- MelloUI_GroupFrames/GroupFrames.lua
 	["The aura's own icon, its time as a sweep."] = "효과 자체의 아이콘, 시간은 쓸어 가는 그림자로.", -- draft
 	["Draining Icon"] = "비워지는 아이콘", -- draft
@@ -2804,6 +2811,8 @@ Lang:Add("koKR", {
 -- stale: ["Accept a quest as soon as its giver shows it, and open a giver's only quest from its list. Grey, repeatable, daily and ignored quests are left to you, and so is an escort's or a shared quest's question."] = "제공자가 퀘스트를 보여 주는 즉시 수락하고, 목록에 퀘스트가 하나뿐이면 엽니다. 회색, 반복, 일일, 무시한 퀘스트는 직접 처리하며, 호위나 공유 퀘스트의 질문도 마찬가지입니다.", -- draft
 -- stale: ["Action Bar 1 without the game's bar art (its frame, dividers and the art of empty slots), like the other bars: MelloUI ticks Edit Mode's own Hide Bar Art for it. Only on your own Edit Mode layouts: a preset such as Modern can't be changed. Shows after a /reload. Off: the art back on the layouts MelloUI changed (or set it yourself in Edit Mode)."] = "다른 바처럼 행동 단축바 1에서 게임의 바 그림(테두리, 구분선, 빈 칸 그림)을 뺍니다: MelloUI가 편집 모드의 바 그림 숨기기를 체크합니다. 내 편집 모드 레이아웃에서만: 최신 같은 기본 레이아웃은 바꿀 수 없습니다. /reload 후에 보입니다. 끄기: MelloUI가 바꾼 레이아웃에 그림이 돌아옵니다(또는 편집 모드에서 직접 설정).", -- draft
 -- stale: ["Action Bar 1. Its keys work while it is faded. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "행동 단축바 1. 흐려진 동안에도 키가 작동합니다. 항상: 흐려지지 않음. 전투 중: 전투 밖에서 흐려지고 전투 때 돌아옴. 마우스를 올리면: 늘 흐리고 가리키는 동안 보임.", -- draft
+-- stale: ["Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast."] = "행동 단축바: 사냥꾼의 상(Aspect), 전사의 태세, 드루이드의 변신 같은 직업 펼침 메뉴가 MelloUI 행동 단축바에서 열리고 그 주문이 시전됩니다.", -- draft
+-- stale: ["Action Bars: the game's hidden stance, pet and possess bars no longer take clicks where they stood once MelloUI's bars are moved (thanks, Baine)."] = "행동 단축바: MelloUI 바를 옮긴 뒤 게임의 숨겨진 태세, 소환수, 지배 바가 원래 자리에서 클릭을 가로채지 않습니다(Baine님 감사합니다).", -- draft
 -- stale: ["Action bars and minimap: backdrops and MelloUI's square minimap for everyone, no painted skin needed; the round painted map is Oldschool's."] = "행동 단축바와 미니맵: 페인팅 스킨 없이도 모두에게 배경판과 MelloUI 사각 미니맵. 둥근 페인팅 지도는 Oldschool의 것입니다.", -- draft
 -- stale: ["Action bars, stance and pet bars, micro menu, bag bar, experience and reputation bars in the kit."] = "행동 단축바, 태세 및 소환수 바, 마이크로 메뉴, 가방 바, 경험치 및 평판 막대에 키트 적용.", -- draft
 -- stale: ["Action, pet, stance and flyout buttons."] = "행동, 소환수, 태세, 펼침 버튼.", -- draft
@@ -3129,6 +3138,7 @@ Lang:Add("koKR", {
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "미리 보기가 끝날 때까지 파티 창 자리에 지어낸 구성원과 이 목록의 표시기를. 전투 밖에서만.", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "미리 보기가 끝날 때까지 공격대 창 자리에 지어낸 구성원과 내 표시기를. 전투 밖에서만.", -- draft
 -- stale: ["Mana, rage, energy and focus you gain (+12 Rage)."] = "얻는 마나, 분노, 기력, 집중(+12 분노).", -- draft
+-- stale: ["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "지도: 전장 안에서 지도에 내 캐릭터, 내 파티와 전장의 깃발이 표시됩니다.", -- draft
 -- stale: ["Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast."] = "지도: 지역 사이 땅을 그렸습니다(안퀴라즈, 던 모로 서쪽 포함). 해안 지역이 해안까지 이어집니다.", -- draft
 -- stale: ["Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on."] = "지도: 확대해도 그림 지도가 남고, 아주 가까이서만 미니맵 지면이 겹칩니다. 휠은 부드럽게 확대하고 끌기는 미끄러지듯 이어집니다.", -- draft
 -- stale: ["Map: your quest log and the Quest List beside it (L), search, a pin to share in chat, layer switches; Questie, HandyNotes and GatherMate2 pins on it too."] = "지도: 퀘스트 목록과 그 옆의 퀘스트 리스트(L), 검색, 대화에 공유하는 핀, 레이어 스위치. Questie, HandyNotes, GatherMate2 핀도 표시.", -- draft
@@ -3169,6 +3179,12 @@ Lang:Add("koKR", {
 -- stale: ["Nameplate Tweaks is off: the game's own plate, none of MelloUI's parts on it."] = "이름표 조정이 꺼져 있습니다: 게임의 이름표, MelloUI 부분 없음.", -- draft
 -- stale: ["Nameplate health and cast bars in the kit."] = "이름표의 생명력 막대와 시전바에 키트 적용.", -- draft
 -- stale: ["Nameplates and Personal Display answer the fight: lit chunks on hits, flashing crits, cast warnings; dodges and stuns on your bars. Combat Text has a Beside look."] = "이름표와 개인 표시기가 전투에 반응: 타격 때 빛나는 조각, 번쩍이는 치명타, 시전 경고. 회피와 기절이 내 막대에. 전투 문자에 옆 스타일 추가.", -- draft
+-- stale: ["Nameplates designer: drag the name, CC icon, quest icon and swing badge anywhere on the plate; parts sharing a spot are outlined red."] = "이름표 디자이너: 이름, 군중 제어 아이콘, 퀘스트 아이콘, 스윙 배지를 이름표의 원하는 곳으로 끌어 놓으세요. 같은 자리에 겹친 요소는 빨간 테두리로 표시됩니다.", -- draft
+-- stale: ["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "이름표: 적 이름표의 내 약화 효과에 '내 약화 효과만' 설정이 추가되었습니다(기본값 켜짐).", -- draft
+-- stale: ["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "이름표: 연계 점수를 가로 및 세로 오프셋으로 옮길 수 있습니다.", -- draft
+-- stale: ["Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do."] = "이름표: 이름표 미리보기에서 적의 이름이 실제 이름표처럼 바 위 가운데에 표시됩니다.", -- draft
+-- stale: ["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "이름표: 공격 배지가 이름표 미리보기에 표시되며, 크기를 50~200%로 조절할 수 있습니다.", -- draft
+-- stale: ["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "이름표: 적 이름표의 내 약화 효과에 더 이상 시계 표시가 나오지 않으며, 숫자는 남은 시간에 따라 색이 바뀌고 5초 미만이면 빨간색이 됩니다.", -- draft
 -- stale: ["Names in chat"] = "대화의 이름", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "새 움직임: 큰 재사용 대기시간, 퀘스트 진행, 레벨업, 치명타, 연계 점수, 알림, 지역 이름, 평판 획득; 충격 효과가 대상 개체창에도.", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "새 자원이 막대 앞에서 빛나고 막대가 거기까지 자랍니다. 크게 얻으면 가장자리에서 불꽃이 튑니다(기력의 꾸준한 틱은 아님).", -- draft
@@ -3217,6 +3233,8 @@ Lang:Add("koKR", {
 -- stale: ["Party Frames (Portraits): indicators for %s"] = "파티 창(초상화): %s 표시기", -- draft
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "파티 개체창: 오른쪽 파티를 위한 가로 뒤집기; 초상화 방식에서 '내 개체창 표시' 수정; 마우스오버 강조가 마우스 아래 개체창을 밝힙니다.", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "허용되면 길드 은행에서 수리비를 냅니다. 길드가 비용을 감당할 수 없으면 내 골드를 씁니다.", -- draft
+-- stale: ["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "개인 표시: '개인 표시 위에'를 켜면 공격 배지가 대상의 이름표 대신 개인 표시 위 가운데에 표시됩니다.", -- draft
+-- stale: ["Personal Display: Tracked Spells, on Big Cooldowns' tab: tick your class's spells (Weakened Soul, Power Word: Shield, Renew, Forbearance...) to see them in a row under the bars while they last on you, with their seconds."] = "개인 디스플레이: 큰 재사용 대기시간 탭의 추적 주문 - 직업 주문(Weakened Soul, Power Word: Shield, Renew, Forbearance...)을 선택하면 자신에게 지속되는 동안 바 아래 한 줄에 남은 초와 함께 표시됩니다.", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a gold line draining under each icon, with the seconds (shown even with Percent And Spell Text off)."] = "개인 디스플레이: 주요 재사용 대기시간이 디스플레이의 금색 테두리 안 사각형 아이콘으로 표시되며, 남은 시간은 각 아이콘 아래에서 줄어드는 금색 선과 초로 표시됩니다('백분율 및 주문 텍스트'가 꺼져 있어도 표시).", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a thin line draining inside each icon, with the seconds."] = "개인 디스플레이: 주요 재사용 대기시간이 디스플레이의 금색 테두리 안 사각형 아이콘으로 표시되며, 남은 시간은 아이콘 안에서 줄어드는 가는 선과 초로 표시됩니다.", -- draft
 -- stale: ["Personal Display: the shield column keeps its colours, icons and amount in a fight."] = "개인 디스플레이: 보호막 기둥이 전투 중에도 색, 아이콘, 수치를 유지합니다.", -- draft

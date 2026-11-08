@@ -66,6 +66,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB2 = r"F:/Download-Backup/Project Web/MelloUI/Workspace/GameData/WoWExport/forever_70532/db2/"
 BUILD = "1.60.1.70532"
 OUT = os.path.join(ROOT, "MelloUI_GroupFrames", "GroupSpells.lua")
+# (2.1.24) the Personal Display's Tracked Spells list, from the same groups
+TRACK_OUT = os.path.join(ROOT, "MelloUI_PersonalDisplay", "TrackedSpells.lua")
 
 # the effects that put an aura on (APPLY_AURA, the area auras: party, raid, friend, party non-random; APPLY_AURA_2)
 AURA = {6, 35, 65, 128, 174, 202, 270}
@@ -340,6 +342,7 @@ def build(d):
     for cid, spells in srcs.items():
         token, fam = d.classes[cid]
         found = {}   # aura -> [cooldown, roots, area, lockout put on others]
+        putters = collections.defaultdict(set)   # aura -> the class's spells whose cast puts it on (Tracked Spells)
         name_cd = collections.defaultdict(int)   # a castable spell's cooldown by its name (an aura of it: Last Stand)
         for root in spells:
             name_cd[d.names.get(root)] = max(name_cd[d.names.get(root)], d.cooldown.get(root, 0))
@@ -364,6 +367,11 @@ def build(d):
                         and length >= LOCKOUT and effects and harmless(effects)):
                     f = found.setdefault(ref, [0, set(), False, None])
                     f[3] = bool(f[3]) or others
+                    putters[ref].add(root)
+        # (2.1.24, Tracked Spells) the casts that put each aura on: the spells that reach it, and the ones whose
+        # description names it as a lockout (Power Word: Shield -> Weakened Soul)
+        for sid, f in found.items():
+            putters[sid] |= f[1]
         landed = collections.defaultdict(dict)   # name -> group -> entry
         for sid, (cd, roots, area, lockout) in found.items():
             # (no length of its own: as long as the spells that put it there; one of no end, no end)
@@ -374,9 +382,11 @@ def build(d):
             if not g:
                 continue
             name = d.names[sid]
-            entry = landed[name].setdefault(g, {"ids": set(), "roots": set(), "name": name, "on": False})
+            entry = landed[name].setdefault(g, {"ids": set(), "roots": set(), "name": name, "on": False,
+                                                "from": set()})
             entry["ids"].add(sid)
             entry["roots"] |= {r for r in roots if d.names.get(r) == name}
+            entry["from"] |= putters.get(sid, set())
             # a lockout of your own listed but off from the start
             entry["on"] = entry["on"] or g != "lockout" or bool(lockout) or bool(
                 targets([e for e in d.effects.get(sid, ()) if e[0] in AURA]) & {"one", "area"})
@@ -390,6 +400,7 @@ def build(d):
             for other in groups.values():
                 entry["ids"] |= other["ids"]
                 entry["roots"] |= other["roots"]
+                entry["from"] |= other["from"]
                 entry["on"] = entry["on"] or other["on"]
             out[token][g][name] = entry
     # one entry a name: its picture and tooltip from the castable spell of that name, else its lowest aura
@@ -400,7 +411,8 @@ def build(d):
             lst = []
             for name, e in sorted(entries.items(), key=lambda kv: min(kv[1]["ids"])):
                 main = min(e["roots"]) if e["roots"] else min(e["ids"])
-                lst.append({"main": main, "ids": sorted(e["ids"]), "name": name, "off": not e["on"]})
+                lst.append({"main": main, "ids": sorted(e["ids"]), "name": name, "off": not e["on"],
+                            "from": sorted(e["from"])})
             final[token][g] = lst
     return final
 
@@ -445,6 +457,51 @@ def lua(d, data):
     return "\n".join(lines) + "\n", counts
 
 
+def tracked_lua(d, data):
+    """(2.1.24, Tracked Spells: the user's picks of BuildData/output/copychat_tracked_sketch) the Personal Display's
+    list to pick from: every class's auras of these groups that can land on you and last a while but not long (more
+    than 0, under LONG: a lasting buff is not watched by the second), each with its kind (a lockout: a debuff), its
+    length, its aura IDs and the casts that put it on"""
+    lines = [
+        "--------------------------------------------------------------------------------",
+        "-- MelloUI - Personal Display: Tracked Spells' list (WoW Forever %s), every" % BUILD,
+        "-- class's short auras that can land on you, from the client's own spell data",
+        "-- (written by Tools/group_spells_forever.py with the Group Frames' groups:",
+        "-- never edit by hand).",
+        "-- ns.TrackedSpells[class] = { { main, kind, seconds, { aura IDs }, { casts } }, ... }:",
+        "-- main the spell its name and picture come from; kind \"b\" a buff, \"d\" a",
+        "-- debuff (a lockout: Weakened Soul); seconds its length from the data; casts the",
+        "-- class's spells whose cast puts it on",
+        "--------------------------------------------------------------------------------",
+        "",
+        "local _, ns = ...",
+        "",
+        "ns.TrackedSpells = {",
+        "\tbuild = \"%s\"," % BUILD,
+    ]
+    count = 0
+    for token in sorted(data):
+        rows_ = []
+        for g in GROUPS:
+            if g == "raidbuff":
+                continue
+            for e in data[token].get(g, []):
+                lasts = max((d.length.get(i, 0) for i in e["ids"]), default=0)
+                if not (0 < lasts < LONG) or not e["from"]:
+                    continue
+                secs = lasts / 1000.0
+                rows_.append("\t\t{ %d, \"%s\", %s, { %s }, { %s } },   -- %s" % (
+                    e["main"], "d" if g == "lockout" else "b", ("%g" % secs), ", ".join(str(i) for i in e["ids"]),
+                    ", ".join(str(i) for i in e["from"]), e["name"].replace("\n", " ")))
+        if rows_:
+            lines.append("\t%s = {" % token)
+            lines.extend(rows_)
+            lines.append("\t},")
+            count += len(rows_)
+    lines.append("}")
+    return "\n".join(lines) + "\n", count
+
+
 def report(data):
     for token in sorted(data):
         print("==", token)
@@ -458,15 +515,25 @@ def main():
     d = Data()
     data = build(d)
     text, counts = lua(d, data)
+    tracked, n_tracked = tracked_lua(d, data)
     if "--check" in sys.argv:
-        # (the suite's: the data file as this tool writes it from the tables; nothing written)
-        with open(OUT, encoding="utf-8", newline="") as f:
-            same = f.read() == text
-        print(OUT, "matches" if same else "DIFFERS: run python Tools/group_spells_forever.py")
-        return 0 if same else 1
+        # (the suite's: the data files as this tool writes them from the tables; nothing written)
+        bad = 0
+        for path, want in ((OUT, text), (TRACK_OUT, tracked)):
+            try:
+                with open(path, encoding="utf-8", newline="") as f:
+                    same = f.read() == want
+            except OSError:
+                same = False
+            print(path, "matches" if same else "DIFFERS: run python Tools/group_spells_forever.py")
+            bad += 0 if same else 1
+        return 1 if bad else 0
     with open(OUT, "w", encoding="utf-8", newline="\n") as f:
         f.write(text)
     print(OUT, dict(counts), "cap", d.cap)
+    with open(TRACK_OUT, "w", encoding="utf-8", newline="\n") as f:
+        f.write(tracked)
+    print(TRACK_OUT, n_tracked, "auras")
     if "--report" in sys.argv:
         report(data)
     return 0

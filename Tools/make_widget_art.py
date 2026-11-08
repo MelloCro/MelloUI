@@ -128,7 +128,10 @@ GLYPHS = ("pause", "play", "skip", "stop", "list", "padlock", "padlockOpen", "ch
           # (1.2.4: Edit Layout's dock and Elements picker -- the user's pick A + C's settings panel of
           # BuildData/output/editlayout_dock_sketch: the dock's toggles, its buttons, the picker's rows)
           "grid", "magnet", "moon", "crosshair", "layers", "keys", "reset", "question",
-          "eye", "eyeOff", "solo", "search", "pin")
+          "eye", "eyeOff", "solo", "search", "pin",
+          # (2.1.24: the chat's Copy Chat button -- the user's pick B of BuildData/output/copychat_tracked_sketch, shown
+          # on hover; a picture of the icon set can take its place later)
+          "copy")
 
 
 def smootherstep(t):
@@ -393,6 +396,13 @@ def glyph(name):
         d.polygon(P((12, 7), (20, 7), (21, 15), (11, 15)), fill=255)
         box(7, 15, 25, 18.5, 1.2)
         line([(16, 18.5), (16, 29)], 2.4)
+    elif name == "copy":
+        # copy: two sheets, the one behind as an outline, the front one solid with its lines cut out
+        d.rounded_rectangle((12 * k, 3.5 * k, 27 * k, 21.5 * k), radius=2.5 * k, outline=255, width=int(2.6 * k))
+        d.rounded_rectangle((3.6 * k, 8.1 * k, 21.4 * k, 29.4 * k), radius=3.4 * k, fill=0)
+        box(5.5, 10, 19.5, 27.5, 2.5)
+        for y in (15, 19, 23):
+            d.rounded_rectangle((8.5 * k, (y - 0.9) * k, 16.5 * k, (y + 0.9) * k), radius=0.9 * k, fill=0)
     else:
         raise ValueError(name)
     return im.resize((CELL, CELL), Image.BOX)

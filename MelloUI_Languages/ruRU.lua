@@ -1015,6 +1015,12 @@ Lang:Add("ruRU", {
 	-- Nameplates
 	["Large crowd-control icon above the name and a quest marker on enemy nameplates."] = "Крупный значок контроля над именем и метка задания на индикаторах здоровья врагов.", -- draft
 	["Know who is stunned, who is your quest target, and who is about to be a problem."] = "Знайте, кто оглушён, кто ваша цель по заданию и кто вот-вот станет проблемой.", -- draft
+	["Own Plate Size"] = "Свой размер индикатора", -- draft
+	["The enemy plates take the width and height set here instead of the game's."] = "Вражеские индикаторы получают ширину и высоту, заданные здесь, вместо игровых.", -- draft
+	["Plate Width"] = "Ширина индикатора", -- draft
+	["The whole plate's width: the health bar and the level badge's room beside it."] = "Ширина всего индикатора: полоса здоровья и место для значка уровня рядом.", -- draft
+	["Plate Height"] = "Высота индикатора", -- draft
+	["The health bar's height."] = "Высота полосы здоровья.", -- draft
 	["Crowd Control"] = "Контроль", -- draft
 	["Large CC Icon Above Name"] = "Крупный значок контроля над именем", -- draft
 	["A large crowd-control icon above the name. Needs the game's Crowd Control nameplate option on."] = "Большой значок контроля над именем. Нужна игровая настройка контроля для индикаторов здоровья.", -- draft
@@ -1699,6 +1705,8 @@ Lang:Add("ruRU", {
 	["The column of chat buttons beside the chat: Friends, Channels and the chat menu."] = "Колонка кнопок рядом с чатом: Друзья, Каналы и меню чата.", -- draft
 	["Smooth Scrolling"] = "Плавная прокрутка", -- draft
 	["The mouse wheel scrolls the chat smoothly instead of a line at a time."] = "Колесо мыши прокручивает чат плавно, а не по строке.", -- draft
+	["Copy Chat Button"] = "Кнопка «Копировать чат»", -- draft
+	["While your mouse is on the chat, a small button at its top right corner puts the tab's lines in a window to copy, each with its time."] = "Пока мышь над чатом, маленькая кнопка в его правом верхнем углу открывает строки вкладки в окне для копирования, каждую со временем.", -- draft
 	["Channels"] = "Каналы", -- draft
 	["Short Channel Tags"] = "Короткие метки каналов", -- draft
 	["Short coloured tags instead of [Guild], [Party], [1. General] and so on."] = "Короткие цветные метки вместо [Гильдия], [Группа], [1. Общий] и т. д.", -- draft
@@ -1918,6 +1926,8 @@ Lang:Add("ruRU", {
 	["The swing badge stands centred above the display instead of on your target's nameplate."] = "Значок удара показывается по центру над панелью, а не на индикаторе здоровья вашей цели.", -- draft
 	["Big Cooldowns"] = "Крупные способности", -- draft
 	["Your big defensive cooldowns (Shield Wall, Evasion, Ice Block...) as icons above the health bar."] = "Ваши большие защитные восстановления («Глухая оборона», «Ускользание», «Ледяная глыба»...) значками над полосой здоровья.", -- draft
+	["Tracked Spells"] = "Отслеживаемые заклинания", -- draft
+	["Tick your class's spells to see them in a row under the bars while they last on you, each with its seconds. Nothing is ticked at first."] = "Отметьте заклинания своего класса, чтобы видеть их в ряду под полосами, пока они действуют на вас, с секундами. Сначала ничего не отмечено.", -- draft
 	["Percent And Spell Text"] = "Процент и текст заклинания", -- draft
 	["Health and power percent, spell names and times."] = "Процент здоровья и энергии, названия и время заклинаний.", -- draft
 	["Text Font"] = "Шрифт текста", -- draft
@@ -2294,6 +2304,9 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time."] = "Чат: пока мышь над чатом, в его правом верхнем углу появляется кнопка «Копировать чат»; она открывает строки вкладки в окне для копирования, каждую со временем.", -- draft
+	["Personal Display: Tracked Spells (Big Cooldowns' tab): tick your class's spells, like Weakened Soul or Renew, to see them under the bars while they last on you."] = "Личная панель: отслеживаемые заклинания (вкладка больших восстановлений) — отметьте заклинания своего класса, например Weakened Soul или Renew, чтобы видеть их под полосами, пока они действуют на вас.", -- draft
+	["Nameplates designer: drag and size every part of the enemy plate (cast bar, buffs, debuffs, level, raid marker, icons) and set its own width and height; overlaps are outlined red."] = "Конструктор индикаторов: перетаскивайте и масштабируйте каждую часть вражеского индикатора (полоса заклинания, баффы, дебаффы, уровень, метка рейда, значки) и задайте свою ширину и высоту; наложения обводятся красным.", -- draft
 	["Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands."] = "Карты и маршрут: вход в Excavation Site: Wetlands теперь в лагере раскопок дворфов к востоку от раскопок Вельгара, где стоит его портал.", -- draft
 	["Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away."] = "Рамки группы и рейда: участники рядом с вами больше не выглядят вне досягаемости; участник тускнеет, только когда игра определила, что он слишком далеко.", -- draft
 	["Click-casting: Clique and other click-cast addons now work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames, and the Personal Display."] = "Заклинания по клику: Clique и другие аддоны для заклинаний по клику теперь работают на рамках игрока, цели, фокуса, цели цели и питомца MelloUI, на его рамках группы и рейда и на личном индикаторе.", -- draft
@@ -2304,15 +2317,6 @@ Lang:Add("ruRU", {
 	["Swing Badge: the gold ring round your weapon fills up as your next swing nears."] = "Значок удара: золотое кольцо вокруг оружия заполняется по мере приближения следующего удара.", -- draft
 	["Personal Display: the Big Cooldowns are square in the display's gold rim, their seconds drawn and coloured as on your debuffs on the nameplates (shown even with Percent And Spell Text off)."] = "Личный индикатор: большие перезарядки — квадратные значки в золотой рамке индикатора, их секунды выглядят и окрашены так же, как у ваших эффектов на индикаторах здоровья (даже при выключенном «Тексте процентов и заклинаний»).", -- draft
 	["Personal Display: with Over The Personal Display, the swing badge and the Big Cooldowns share one row on the bars, the badge in the middle and the cooldowns beside it."] = "Личный индикатор: с параметром «Над личным индикатором» значок удара и большие перезарядки делят один ряд над полосами: значок в середине, перезарядки рядом.", -- draft
-	["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "Индикаторы здоровья: значок удара показан в предпросмотре индикатора, его размер настраивается от 50 до 200 %.", -- draft
-	["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "Индикаторы здоровья: «Только мои ослабления» для ваших ослаблений на вражеских индикаторах (включено по умолчанию).", -- draft
-	["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "Индикаторы здоровья: ваши ослабления на вражеских индикаторах больше не показывают часы, а их числа окрашиваются по оставшемуся времени, красным при менее 5 секунд.", -- draft
-	["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "Индикаторы здоровья: приёмы серии можно сдвигать по горизонтали и по вертикали.", -- draft
-	["Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do."] = "Индикаторы здоровья: в предпросмотре индикатора имя противника стоит по центру над полосой, как на самих индикаторах.", -- draft
-	["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "Личная панель: «Над личной панелью» ставит значок удара по центру над панелью, а не на индикатор здоровья вашей цели.", -- draft
-	["Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast."] = "Панели команд: классовые выпадающие меню, такие как духи охотника, стойки воина и облики друида, открываются на панелях команд MelloUI, и их заклинания применяются.", -- draft
-	["Action Bars: the game's hidden stance, pet and possess bars no longer take clicks where they stood once MelloUI's bars are moved (thanks, Baine)."] = "Панели команд: скрытые панели стоек, питомца и контроля игры больше не перехватывают щелчки на прежнем месте после перемещения панелей MelloUI (спасибо, Baine).", -- draft
-	["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "Карта: на поле боя карта показывает вас, вашу группу и флаги поля боя.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -2677,6 +2681,9 @@ Lang:Add("ruRU", {
 	["Your target"] = "Ваша цель", -- draft
 	["The Nameplates switch is off: the game's own plate, none of MelloUI's parts on it."] = "Переключатель индикаторов здоровья выключен: собственный индикатор игры, без частей MelloUI.", -- draft
 	["Click a part to pick it; its settings open beside it."] = "Щёлкните по части, чтобы выбрать её; её настройки откроются рядом.", -- draft
+	["Its buffs"] = "Его баффы", -- draft
+	["Raid marker"] = "Метка рейда", -- draft
+	["Level badge"] = "Значок уровня", -- draft
 	-- MelloUI_GroupFrames/GroupFrames.lua
 	["The aura's own icon, its time as a sweep."] = "Собственный значок эффекта, время — затемнением по кругу.", -- draft
 	["Draining Icon"] = "Убывающий значок", -- draft
@@ -2804,6 +2811,8 @@ Lang:Add("ruRU", {
 -- stale: ["Accept a quest as soon as its giver shows it, and open a giver's only quest from its list. Grey, repeatable, daily and ignored quests are left to you, and so is an escort's or a shared quest's question."] = "Принимает задание, как только его показывает тот, кто его даёт, и открывает единственное задание из его списка. Серые, повторяемые, ежедневные и игнорируемые задания остаются за вами, как и вопрос сопровождения или общего задания.", -- draft
 -- stale: ["Action Bar 1 without the game's bar art (its frame, dividers and the art of empty slots), like the other bars: MelloUI ticks Edit Mode's own Hide Bar Art for it. Only on your own Edit Mode layouts: a preset such as Modern can't be changed. Shows after a /reload. Off: the art back on the layouts MelloUI changed (or set it yourself in Edit Mode)."] = "Панель команд 1 без оформления игры (рамка, разделители и оформление пустых ячеек), как и другие панели: MelloUI ставит для неё флажок «Скрыть оформление панели» режима редактирования. Только в ваших собственных раскладках режима редактирования: готовую раскладку вроде «Современной» изменить нельзя. Видно после /reload. Выкл.: оформление возвращается в раскладках, которые изменил MelloUI (или задайте это сами в режиме редактирования).", -- draft
 -- stale: ["Action Bar 1. Its keys work while it is faded. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "Панель команд 1. Её клавиши работают, пока она погашена. «Всегда»: никогда не гаснет. «В бою»: гаснет вне боя, возвращается в бою. «При наведении»: погашена всё время, видна, пока вы на неё указываете.", -- draft
+-- stale: ["Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast."] = "Панели команд: классовые выпадающие меню, такие как духи охотника, стойки воина и облики друида, открываются на панелях команд MelloUI, и их заклинания применяются.", -- draft
+-- stale: ["Action Bars: the game's hidden stance, pet and possess bars no longer take clicks where they stood once MelloUI's bars are moved (thanks, Baine)."] = "Панели команд: скрытые панели стоек, питомца и контроля игры больше не перехватывают щелчки на прежнем месте после перемещения панелей MelloUI (спасибо, Baine).", -- draft
 -- stale: ["Action bars and minimap: backdrops and MelloUI's square minimap for everyone, no painted skin needed; the round painted map is Oldschool's."] = "Панели команд и мини-карта: подложки и квадратная мини-карта MelloUI для всех, без рисованного облика; круглая рисованная карта — в Oldschool.", -- draft
 -- stale: ["Action bars, stance and pet bars, micro menu, bag bar, experience and reputation bars in the kit."] = "Панели команд, стоек и питомца, микроменю, панель сумок, индикаторы опыта и репутации в наборе.", -- draft
 -- stale: ["Action, pet, stance and flyout buttons."] = "Кнопки действий, питомца, стоек и выпадающих меню.", -- draft
@@ -3129,6 +3138,7 @@ Lang:Add("ruRU", {
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "Выдуманные участники там, где ваши рамки группы, с индикаторами этого списка, до конца предпросмотра. Только вне боя.", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "Выдуманные участники там, где ваши рамки рейда, с вашими индикаторами, до конца предпросмотра. Только вне боя.", -- draft
 -- stale: ["Mana, rage, energy and focus you gain (+12 Rage)."] = "Мана, ярость, энергия и концентрация, которые вы получаете (+12 ярости).", -- draft
+-- stale: ["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "Карта: на поле боя карта показывает вас, вашу группу и флаги поля боя.", -- draft
 -- stale: ["Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast."] = "Карта: земли между зонами дорисованы, включая Ан'Киродж и запад Дун Морога; прибрежные зоны доходят до берега.", -- draft
 -- stale: ["Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on."] = "Карта: рисованная карта остаётся при приближении; земля мини-карты проступает поверх лишь вблизи. Колесо приближает плавно, а перетаскивание продолжает скользить.", -- draft
 -- stale: ["Map: your quest log and the Quest List beside it (L), search, a pin to share in chat, layer switches; Questie, HandyNotes and GatherMate2 pins on it too."] = "Карта: журнал заданий и «Список заданий» рядом (L), поиск, метка, которой можно поделиться в чате, переключатели слоёв; метки Questie, HandyNotes и GatherMate2 тоже на ней.", -- draft
@@ -3169,6 +3179,12 @@ Lang:Add("ruRU", {
 -- stale: ["Nameplate Tweaks is off: the game's own plate, none of MelloUI's parts on it."] = "Доработки индикаторов здоровья выключены: индикатор игры, без частей MelloUI.", -- draft
 -- stale: ["Nameplate health and cast bars in the kit."] = "Полосы здоровья и заклинаний индикаторов здоровья в наборе.", -- draft
 -- stale: ["Nameplates and Personal Display answer the fight: lit chunks on hits, flashing crits, cast warnings; dodges and stuns on your bars. Combat Text has a Beside look."] = "Индикаторы здоровья и личный дисплей отвечают на бой: подсвеченные куски при ударах, вспыхивающие криты, предупреждения о заклинаниях; уклонения и оглушения на ваших полосах. У «Текста боя» появился вид «Сбоку».", -- draft
+-- stale: ["Nameplates designer: drag the name, CC icon, quest icon and swing badge anywhere on the plate; parts sharing a spot are outlined red."] = "Конструктор индикаторов: перетаскивайте имя, значок контроля, значок задания и значок удара в любое место индикатора; элементы на одном месте обводятся красным.", -- draft
+-- stale: ["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "Индикаторы здоровья: «Только мои ослабления» для ваших ослаблений на вражеских индикаторах (включено по умолчанию).", -- draft
+-- stale: ["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "Индикаторы здоровья: приёмы серии можно сдвигать по горизонтали и по вертикали.", -- draft
+-- stale: ["Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do."] = "Индикаторы здоровья: в предпросмотре индикатора имя противника стоит по центру над полосой, как на самих индикаторах.", -- draft
+-- stale: ["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "Индикаторы здоровья: значок удара показан в предпросмотре индикатора, его размер настраивается от 50 до 200 %.", -- draft
+-- stale: ["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "Индикаторы здоровья: ваши ослабления на вражеских индикаторах больше не показывают часы, а их числа окрашиваются по оставшемуся времени, красным при менее 5 секунд.", -- draft
 -- stale: ["Names in chat"] = "Имена в чате", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "Новое движение: большие восстановления, прогресс заданий, новый уровень, криты, приёмы серии, напоминания, название зоны, рост репутации; эффекты попаданий доходят до рамки цели.", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "Новый ресурс подсвечивается впереди полосы, и она дорастает до него; большое получение искрит на краю (ровные тики энергии — нет).", -- draft
@@ -3217,6 +3233,8 @@ Lang:Add("ruRU", {
 -- stale: ["Party Frames (Portraits): indicators for %s"] = "Рамки группы (портреты): индикаторы для %s", -- draft
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "Рамки группы: «Отразить по горизонтали» для группы справа; «Показывать себя в группе» исправлено для портретов; подсветка при наведении зажигает рамку под мышью.", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "Платит за ремонт из банка гильдии, когда это разрешено. Если гильдия не может покрыть стоимость, платит ваше золото.", -- draft
+-- stale: ["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "Личная панель: «Над личной панелью» ставит значок удара по центру над панелью, а не на индикатор здоровья вашей цели.", -- draft
+-- stale: ["Personal Display: Tracked Spells, on Big Cooldowns' tab: tick your class's spells (Weakened Soul, Power Word: Shield, Renew, Forbearance...) to see them in a row under the bars while they last on you, with their seconds."] = "Личная панель: отслеживаемые заклинания на вкладке больших восстановлений — отметьте заклинания своего класса (Weakened Soul, Power Word: Shield, Renew, Forbearance...), чтобы видеть их в ряду под полосами, пока они действуют на вас, с секундами.", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a gold line draining under each icon, with the seconds (shown even with Percent And Spell Text off)."] = "Личный индикатор: большие перезарядки — квадратные значки в золотой рамке индикатора, их время — золотая линия, убывающая под каждым значком, с секундами (даже при выключенном «Тексте процентов и заклинаний»).", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a thin line draining inside each icon, with the seconds."] = "Личный индикатор: большие перезарядки — квадратные значки в золотой рамке индикатора, их время — тонкая линия, убывающая внутри каждого значка, с секундами.", -- draft
 -- stale: ["Personal Display: the shield column keeps its colours, icons and amount in a fight."] = "Личный дисплей: колонка щитов сохраняет цвета, значки и величину в бою.", -- draft

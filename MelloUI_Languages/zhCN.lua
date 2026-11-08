@@ -1015,6 +1015,12 @@ Lang:Add("zhCN", {
 	-- Nameplates
 	["Large crowd-control icon above the name and a quest marker on enemy nameplates."] = "名字上方的大号控制图标，以及敌方姓名板上的任务标记。", -- draft
 	["Know who is stunned, who is your quest target, and who is about to be a problem."] = "知道谁被晕了，谁是你的任务目标，谁马上要出麻烦。", -- draft
+	["Own Plate Size"] = "自定姓名板尺寸", -- draft
+	["The enemy plates take the width and height set here instead of the game's."] = "敌方姓名板使用这里设定的宽度和高度，而不是游戏的设置。", -- draft
+	["Plate Width"] = "姓名板宽度", -- draft
+	["The whole plate's width: the health bar and the level badge's room beside it."] = "整个姓名板的宽度：血条和旁边等级徽章的位置。", -- draft
+	["Plate Height"] = "姓名板高度", -- draft
+	["The health bar's height."] = "血条的高度。", -- draft
 	["Crowd Control"] = "控制", -- draft
 	["Large CC Icon Above Name"] = "名字上方大号控制图标", -- draft
 	["A large crowd-control icon above the name. Needs the game's Crowd Control nameplate option on."] = "名字上方的大控制图标。需要开启游戏的姓名板控制选项。", -- draft
@@ -1699,6 +1705,8 @@ Lang:Add("zhCN", {
 	["The column of chat buttons beside the chat: Friends, Channels and the chat menu."] = "聊天旁的按钮栏：好友、频道和聊天菜单。", -- draft
 	["Smooth Scrolling"] = "平滑滚动", -- draft
 	["The mouse wheel scrolls the chat smoothly instead of a line at a time."] = "鼠标滚轮平滑滚动聊天，而不是逐行跳动。", -- draft
+	["Copy Chat Button"] = "复制聊天按钮", -- draft
+	["While your mouse is on the chat, a small button at its top right corner puts the tab's lines in a window to copy, each with its time."] = "鼠标停在聊天框上时，其右上角的小按钮会把该标签的消息放进一个可复制的窗口，每行带有时间。", -- draft
 	["Channels"] = "频道", -- draft
 	["Short Channel Tags"] = "简短频道标签", -- draft
 	["Short coloured tags instead of [Guild], [Party], [1. General] and so on."] = "用简短彩色标签代替 [公会]、[小队]、[1. 综合] 等。", -- draft
@@ -1918,6 +1926,8 @@ Lang:Add("zhCN", {
 	["The swing badge stands centred above the display instead of on your target's nameplate."] = "攻击徽章居中显示在个人显示上方，而不是目标的姓名板上。", -- draft
 	["Big Cooldowns"] = "大冷却", -- draft
 	["Your big defensive cooldowns (Shield Wall, Evasion, Ice Block...) as icons above the health bar."] = "你的重要防御冷却（盾墙、闪避、寒冰屏障……）以图标显示在生命条上方。", -- draft
+	["Tracked Spells"] = "追踪法术", -- draft
+	["Tick your class's spells to see them in a row under the bars while they last on you, each with its seconds. Nothing is ticked at first."] = "勾选你职业的法术，在它们作用于你时显示在血条下方的一行中，并带有剩余秒数。默认不勾选任何法术。", -- draft
 	["Percent And Spell Text"] = "百分比和法术文字", -- draft
 	["Health and power percent, spell names and times."] = "生命值和能量百分比、法术名称和时间。", -- draft
 	["Text Font"] = "文字字体", -- draft
@@ -2294,6 +2304,9 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time."] = "聊天：鼠标停在聊天框上时，右上角会出现复制聊天按钮；它会把该标签的消息打开在可复制的窗口中，每行带有时间。", -- draft
+	["Personal Display: Tracked Spells (Big Cooldowns' tab): tick your class's spells, like Weakened Soul or Renew, to see them under the bars while they last on you."] = "个人显示：追踪法术（大型冷却标签）——勾选你职业的法术，例如 Weakened Soul 或 Renew，在它们作用于你时显示在血条下方。", -- draft
+	["Nameplates designer: drag and size every part of the enemy plate (cast bar, buffs, debuffs, level, raid marker, icons) and set its own width and height; overlaps are outlined red."] = "姓名板设计器：可拖动并缩放敌方姓名板的每个部件（施法条、增益、减益、等级、团队标记、图标），并自定宽度和高度；重叠部分以红框标出。", -- draft
 	["Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands."] = "地图和路线：Excavation Site: Wetlands 的入口现在位于维尔加挖掘场以东的矮人挖掘营地，也就是传送门所在的位置。", -- draft
 	["Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away."] = "小队和团队框体：在你附近的成员不再显示为超出范围；只有当游戏测得成员距离过远时才会变淡。", -- draft
 	["Click-casting: Clique and other click-cast addons now work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames, and the Personal Display."] = "点击施法：Clique 等点击施法插件现在可用于 MelloUI 的玩家、目标、焦点、目标的目标和宠物框体，以及其小队和团队框体和个人显示。", -- draft
@@ -2304,15 +2317,6 @@ Lang:Add("zhCN", {
 	["Swing Badge: the gold ring round your weapon fills up as your next swing nears."] = "攻击徽章：随着下一次攻击临近，环绕你武器的金色圆环会逐渐填满。", -- draft
 	["Personal Display: the Big Cooldowns are square in the display's gold rim, their seconds drawn and coloured as on your debuffs on the nameplates (shown even with Percent And Spell Text off)."] = "个人显示：重要冷却显示为个人显示金色边框中的方形图标，秒数的字体与颜色与姓名板上你的减益效果相同（即使关闭“百分比和法术文字”也会显示）。", -- draft
 	["Personal Display: with Over The Personal Display, the swing badge and the Big Cooldowns share one row on the bars, the badge in the middle and the cooldowns beside it."] = "个人显示：开启“在个人显示上方”后，攻击徽章和重要冷却共用血条上方的一行，徽章居中，冷却在其两侧。", -- draft
-	["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "姓名板：攻击徽章会显示在姓名板预览中，并可在50%到200%之间调整大小。", -- draft
-	["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "姓名板：敌方姓名板上的你的减益效果新增“只显示我的减益”设置（默认开启）。", -- draft
-	["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "姓名板：敌方姓名板上你的减益效果不再显示时钟转圈，数字按剩余时间着色，少于5秒时变为红色。", -- draft
-	["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "姓名板：连击点可以通过水平和垂直偏移移动。", -- draft
-	["Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do."] = "姓名板：姓名板预览中敌人的名字与实际姓名板一样居中显示在血条上方。", -- draft
-	["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "个人显示：“显示在个人显示上方”会把攻击徽章居中放在个人显示上方，而不是目标的姓名板上。", -- draft
-	["Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast."] = "动作条：职业弹出菜单（如猎人的守护、战士的姿态和德鲁伊的形态）可在MelloUI的动作条上打开，其法术可以施放。", -- draft
-	["Action Bars: the game's hidden stance, pet and possess bars no longer take clicks where they stood once MelloUI's bars are moved (thanks, Baine)."] = "动作条：移动MelloUI的动作条后，游戏隐藏的姿态条、宠物条和控制条不再在原位置拦截点击（感谢Baine）。", -- draft
-	["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "地图：在战场中，地图会显示你、你的队伍和战场的旗帜。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2677,6 +2681,9 @@ Lang:Add("zhCN", {
 	["Your target"] = "你的目标", -- draft
 	["The Nameplates switch is off: the game's own plate, none of MelloUI's parts on it."] = "姓名板开关已关闭：游戏自己的姓名板，上面没有 MelloUI 的部分。", -- draft
 	["Click a part to pick it; its settings open beside it."] = "点击一个部分选中它；它的设置在旁边打开。", -- draft
+	["Its buffs"] = "其增益", -- draft
+	["Raid marker"] = "团队标记", -- draft
+	["Level badge"] = "等级徽章", -- draft
 	-- MelloUI_GroupFrames/GroupFrames.lua
 	["The aura's own icon, its time as a sweep."] = "光环自己的图标，时间以扫动显示。", -- draft
 	["Draining Icon"] = "消耗图标", -- draft
@@ -2804,6 +2811,8 @@ Lang:Add("zhCN", {
 -- stale: ["Accept a quest as soon as its giver shows it, and open a giver's only quest from its list. Grey, repeatable, daily and ignored quests are left to you, and so is an escort's or a shared quest's question."] = "任务给予者一显示任务就接受，并从列表中打开给予者唯一的任务。灰色、可重复、日常和被忽略的任务留给你，护送任务或共享任务的提问也是。", -- draft
 -- stale: ["Action Bar 1 without the game's bar art (its frame, dividers and the art of empty slots), like the other bars: MelloUI ticks Edit Mode's own Hide Bar Art for it. Only on your own Edit Mode layouts: a preset such as Modern can't be changed. Shows after a /reload. Off: the art back on the layouts MelloUI changed (or set it yourself in Edit Mode)."] = "让动作条1像其他动作条一样不带游戏的动作条美术（框、分隔线和空栏位美术）：MelloUI为它勾选编辑模式自己的“隐藏动作条美术”。仅限你自己的编辑模式布局：“现代”这样的预设布局无法更改。/reload后显示。关闭：MelloUI改过的布局恢复美术（或在编辑模式中自己设置）。", -- draft
 -- stale: ["Action Bar 1. Its keys work while it is faded. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "动作条1。淡出时它的按键照常可用。总是：从不淡出。战斗中：脱离战斗时淡出，战斗时回来。鼠标悬停：一直淡出，指向时显示。", -- draft
+-- stale: ["Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast."] = "动作条：职业弹出菜单（如猎人的守护、战士的姿态和德鲁伊的形态）可在MelloUI的动作条上打开，其法术可以施放。", -- draft
+-- stale: ["Action Bars: the game's hidden stance, pet and possess bars no longer take clicks where they stood once MelloUI's bars are moved (thanks, Baine)."] = "动作条：移动MelloUI的动作条后，游戏隐藏的姿态条、宠物条和控制条不再在原位置拦截点击（感谢Baine）。", -- draft
 -- stale: ["Action bars and minimap: backdrops and MelloUI's square minimap for everyone, no painted skin needed; the round painted map is Oldschool's."] = "动作条和小地图：所有人都能用底板和MelloUI的方形小地图，无需手绘皮肤；圆形手绘地图属于Oldschool。", -- draft
 -- stale: ["Action bars, stance and pet bars, micro menu, bag bar, experience and reputation bars in the kit."] = "动作条、姿态条和宠物条、微型菜单、背包栏、经验条和声望条使用套件外观。", -- draft
 -- stale: ["Action, pet, stance and flyout buttons."] = "动作、宠物、姿态和弹出按钮。", -- draft
@@ -3129,6 +3138,7 @@ Lang:Add("zhCN", {
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "在你的小队框体位置显示虚构的成员，带上此列表的指示器，直到预览结束。仅限脱离战斗。", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "在你的团队框体位置显示虚构的成员，带上你的指示器，直到预览结束。仅限脱离战斗。", -- draft
 -- stale: ["Mana, rage, energy and focus you gain (+12 Rage)."] = "你获得的法力、怒气、能量和集中值（+12怒气）。", -- draft
+-- stale: ["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "地图：在战场中，地图会显示你、你的队伍和战场的旗帜。", -- draft
 -- stale: ["Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast."] = "地图：区域之间的土地已补绘，包括安其拉和丹莫罗以西；沿海区域延伸到海岸。", -- draft
 -- stale: ["Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on."] = "地图：放大时保留手绘地图；只有很近时才在其上淡入微缩地图地面。滚轮平滑缩放，拖动会继续滑行。", -- draft
 -- stale: ["Map: your quest log and the Quest List beside it (L), search, a pin to share in chat, layer switches; Questie, HandyNotes and GatherMate2 pins on it too."] = "地图：任务日志和旁边的任务列表（L）、搜索、可在聊天中分享的标记、图层开关；Questie、HandyNotes和GatherMate2的标记也会显示。", -- draft
@@ -3169,6 +3179,12 @@ Lang:Add("zhCN", {
 -- stale: ["Nameplate Tweaks is off: the game's own plate, none of MelloUI's parts on it."] = "姓名板调整已关闭：游戏自己的姓名板，上面没有MelloUI的部分。", -- draft
 -- stale: ["Nameplate health and cast bars in the kit."] = "姓名板的生命条和施法条使用套件外观。", -- draft
 -- stale: ["Nameplates and Personal Display answer the fight: lit chunks on hits, flashing crits, cast warnings; dodges and stuns on your bars. Combat Text has a Beside look."] = "姓名板和个人显示回应战斗：命中时亮起的伤害块、闪烁的暴击、施法警告；躲闪和昏迷显示在你的条上。战斗文字新增“侧边”样式。", -- draft
+-- stale: ["Nameplates designer: drag the name, CC icon, quest icon and swing badge anywhere on the plate; parts sharing a spot are outlined red."] = "姓名板设计器：可将名字、控制图标、任务图标和挥击徽章拖到姓名板的任意位置；重叠在同一处的部件会以红框标出。", -- draft
+-- stale: ["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "姓名板：敌方姓名板上的你的减益效果新增“只显示我的减益”设置（默认开启）。", -- draft
+-- stale: ["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "姓名板：连击点可以通过水平和垂直偏移移动。", -- draft
+-- stale: ["Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do."] = "姓名板：姓名板预览中敌人的名字与实际姓名板一样居中显示在血条上方。", -- draft
+-- stale: ["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "姓名板：攻击徽章会显示在姓名板预览中，并可在50%到200%之间调整大小。", -- draft
+-- stale: ["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "姓名板：敌方姓名板上你的减益效果不再显示时钟转圈，数字按剩余时间着色，少于5秒时变为红色。", -- draft
 -- stale: ["Names in chat"] = "聊天中的名字", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "新动效：重要冷却、任务进度、升级、暴击、连击点、提醒、区域名、声望获得；冲击效果也作用于目标框体。", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "新获得的能量在条的前方亮起，条再长到那里；大量获得时在边缘迸出火花（能量的稳定恢复不会）。", -- draft
@@ -3217,6 +3233,8 @@ Lang:Add("zhCN", {
 -- stale: ["Party Frames (Portraits): indicators for %s"] = "小队框体（头像）：%s的指示器", -- draft
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "小队框体：“水平翻转”适合右侧的小队；修复了头像样式下“显示你自己”；鼠标悬停高亮点亮鼠标下的框体。", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "允许时从公会银行支付修理费。公会无法支付时改用你自己的金币。", -- draft
+-- stale: ["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "个人显示：“显示在个人显示上方”会把攻击徽章居中放在个人显示上方，而不是目标的姓名板上。", -- draft
+-- stale: ["Personal Display: Tracked Spells, on Big Cooldowns' tab: tick your class's spells (Weakened Soul, Power Word: Shield, Renew, Forbearance...) to see them in a row under the bars while they last on you, with their seconds."] = "个人显示：大型冷却标签中的追踪法术——勾选你职业的法术（Weakened Soul、Power Word: Shield、Renew、Forbearance……），在它们作用于你时显示在血条下方的一行中，并带有剩余秒数。", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a gold line draining under each icon, with the seconds (shown even with Percent And Spell Text off)."] = "个人显示：重要冷却显示为个人显示金色边框中的方形图标，剩余时间是每个图标下方逐渐缩短的金色线条，并显示秒数（即使关闭“百分比和法术文字”也会显示）。", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a thin line draining inside each icon, with the seconds."] = "个人显示：重要冷却显示为个人显示金色边框中的方形图标，剩余时间是图标内部逐渐缩短的细线，并显示秒数。", -- draft
 -- stale: ["Personal Display: the shield column keeps its colours, icons and amount in a fight."] = "个人显示：护盾栏在战斗中保持颜色、图标和数值。", -- draft

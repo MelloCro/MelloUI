@@ -237,17 +237,17 @@ L.pages = {
 	Nameplates = { title = "Nameplates", icon = "module:Nameplates", set = "page_nameplates", designer = true,
 		flavour = "The game's nameplates: pick a kind, click a part of it, change it.",
 		elements = {
-			-- (`stage`: the enemy plate's sample, Modules/Nameplates.lua's 'nameplate' kind -- its parts picked,
-			-- never moved; `showIn`: a part your target's plate shows, listed in every state, the stage put in it
-			-- when its tab opens)
+			-- (`stage`: the enemy plate's sample, Modules/Nameplates.lua's 'nameplate' kind; 2.1.24, the Nameplate
+			-- Designer, the user's picks C A A B: everything shown at once -- your target's parts too, no states --
+			-- the name, the CC icon, the quest icon and the swing badge dragged to a place, the rest picked)
 			{ key = "enemies", label = "Enemies", line = "Enemies' and NPCs' plates",
 				stage = { kind = "nameplate", pick = "enemy" }, parts = {
 				{ key = "name", label = "Name", stage = "name" }, { key = "health", label = "Health bar", stage = "health" },
-				{ key = "threat", label = "Threat line", stage = "threat", showIn = "target" },
-				{ key = "combo", label = "Combo points", stage = "combo", showIn = "target" },
+				{ key = "threat", label = "Threat line", stage = "threat" },
+				{ key = "combo", label = "Combo points", stage = "combo" },
 				{ key = "cc", label = "CC icon", stage = "cc" }, { key = "quest", label = "Quest icon", stage = "quest" },
 				{ key = "debuffs", label = "Your debuffs", stage = "debuffs" }, { key = "auras", label = "The game's auras" },
-				{ key = "swing", label = "Swing badge", stage = "swing", showIn = "target" } } },   -- (2.1.19)
+				{ key = "swing", label = "Swing badge", stage = "swing" } } },   -- (2.1.19)
 			-- (`sample`: Party Markers' own medallion sample in the slot -- Modules/PartyMarkers.lua's corner kind)
 			{ key = "friendly", label = "Friendly players", line = "A class medallion over friendly players' names, in the open world",
 				sample = { kind = "partymarker", pick = "marker" },
@@ -840,6 +840,10 @@ function L.Define(R, Link)
 	R("Look", "Textures", "Look", "BarTextures.nameplatesTexture", { name = "Nameplates", card = "Bars", gate = NP_AREA })
 	Link("Nameplates", "enemies:health", "Look", "BarTextures.nameplatesTexture", "Bar Texture")
 	R("Nameplates", "enemies:element", "Behaviour", "Nameplates.hover")   -- (1.2.4: every plate's, the user)
+	-- (2.1.24, the Nameplate Designer's stage 2: the plate's width and height, on its health bar's part)
+	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateSize")
+	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateWidth")
+	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateHeight")
 	R("Nameplates", "enemies:threat", "General", "Nameplates.threatLine")
 	R("Nameplates", "enemies:combo", "General", "Nameplates.comboPoints")
 	R("Nameplates", "enemies:combo", "Layout", "Nameplates.comboSize")   -- (under its switch: the user, 2026-10-04)
@@ -1053,6 +1057,7 @@ function L.Define(R, Link)
 	R("Chat", "Chat Frame", "Layout", "Chat.editBoxTop", { when = NOT_MINIMAL })
 	R("Chat", "Chat Frame", "Behaviour", "Chat.editBoxWhileTyping")   -- (0.20.4: the game's Classic chat style)
 	R("Chat", "Chat Frame", "Behaviour", "Chat.smoothScroll")
+	R("Chat", "Chat Frame", "Behaviour", "Chat.copyButton")   -- (2.1.24: Copy Chat, shown on hover)
 	R("Chat", "Messages", "Text", "Chat.shortChannels")
 	R("Chat", "Messages", "Text", "Chat.hideBrackets")
 	-- (free: read by MelloUI:Notice with Tweaks, and UI Modifications, off)
@@ -1240,6 +1245,7 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "personal:swing", "General", "PersonalDisplay.swing")
 	R("UnitGroupFrames", "personal:swing", "General", "PersonalDisplay.swingOver")   -- (2.1.19: the user)
 	R("UnitGroupFrames", "personal:cooldowns", "General", "PersonalDisplay.cooldowns")
+	R("UnitGroupFrames", "personal:cooldowns", "General", "PersonalDisplay.tracked")   -- (2.1.24: Tracked Spells)
 	R("UnitGroupFrames", "personal:element", "Look", "PersonalDisplay.classColour")
 	R("UnitGroupFrames", "personal:text", "Text", "PersonalDisplay.text")
 	R("Look", "Fonts", "Text", "PersonalDisplay.textFont", { name = "Font", card = "Personal Display" })

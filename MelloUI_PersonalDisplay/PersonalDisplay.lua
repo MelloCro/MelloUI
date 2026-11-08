@@ -89,6 +89,10 @@ local T = {
 	-- long before its end an icon turns ember
 	cdPop = 0.32, cdGlide = 0.25, cdEnd = 0.3, cdEmber = 1.5,
 	cdLink = 1.5,   -- an aura of a cooldown's kind this soon after its cast: its own (its early end ends it)
+	-- (2.1.24, Tracked Spells) their row under the bars: its icons this share of the Big Cooldowns' size, at most this
+	-- many, how far under the cast bar's place; a cast of one reached you when an aura update of yours with something
+	-- added (read or not) comes this soon after it
+	trackShare = 0.8, trackMax = 6, trackDrop = 3, trackLink = 0.4,
 	-- (Motion, the user's "aproved" to the Personal Display Motion page) the part lost held this long, then drained;
 	-- the ghost's strength; the lead's lift toward white; a heavy blow's rim and its dip (how deep, how long); the low
 	-- health share, its colour's edge, its beat; a big gain's share of the bar (its spark), the spark's size (its width,
@@ -149,6 +153,10 @@ local TEXT = {
 	stunned = "Stunned",
 	interrupted = "Interrupted", castFailed = "Failed",   -- (1.2.0, Cast Motion: a cut cast's word)
 	words = { DODGE = "Dodge", PARRY = "Parry", BLOCK = "Block", MISS = "Miss" },
+	-- (2.1.24, Tracked Spells' rows on the page)
+	trackBuff = "Buff, %g s",
+	trackDebuff = "Debuff, %g s",
+	trackNone = "Your class has no short spells to track here.",
 }
 -- Preview's made-up shield (plain amounts) and casts, on the solo scene's beats (Core/Preview.lua: pull, hit 1..12,
 -- kill): the shield up at the pull, drained hit by hit to low, broken at the sixth; a heal cast; a second shield
@@ -204,6 +212,9 @@ local S = {
 	partsOn = false, previewParts = nil,   -- the column in bands (each shield its own); the preview's made-up ones
 	-- (Big Cooldowns) the ones up, in the order shown, their icons
 	cds = {}, cdOrder = {}, cdIcons = {}, cdSpare = {},   -- (cdIcons every icon made, cdSpare the free ones)
+	-- (2.1.24, Tracked Spells: their entries are in cds too, row "track") their row in order; a cast of one waiting
+	-- for an aura of yours
+	trackOrder = {}, trackWait = { at = 0, spell = nil },
 	casting = false, hopping = false, hooked = false, preview = false, previewHealth = nil,
 	watching = false,
 	reads = { shield = nil, cast = nil, path = {} },   -- what was read plain or secret (/mello personal secrets)
@@ -785,6 +796,7 @@ end
 
 local Refresh   -- (below)
 local Cds = {}  -- (Big Cooldowns: below, after Heal Light From Your Character)
+local Track = {}   -- (2.1.24, Tracked Spells: below Big Cooldowns, whose icons they wear)
 
 local function Build()
 	local ui = S.ui
@@ -3774,11 +3786,13 @@ local function OnEvent(_, event, a1, a2, a3, a4)
 		end
 	elseif event == "UNIT_AURA" then
 		Shield.Aura(a2)
+		Track.Aura(a2)   -- (2.1.24: a tracked one put on you; Cds.Aura ends one whose aura went)
 		Cds.Aura(a2)
 	elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
 		-- (a cooldown of yours cast: its spell ID plain, as Frame Effects reads its own; a secret one plays nothing)
 		if not S.preview and not Secret(a3) and type(a3) == "number" then
 			Cds.Start(a3)
+			Track.Cast(a3)   -- (2.1.24: a cast that puts a tracked one on, waiting for an aura of yours)
 			Shield.Cast(a3)   -- (a shield's: the aura it puts on you known by it)
 		elseif Secret(a3) and Db().shield ~= false then
 			Parts.Log(event, TEXT.secret)   -- (/mello shield: a cast whose spell this client hands secret)
@@ -4034,7 +4048,7 @@ function Cds.Start(spell, now)
 	now = now or GetTime()
 	local entry
 	for _, e in ipairs(S.cds) do
-		if e.spell == spell and not e.leaving then
+		if e.spell == spell and not e.leaving and not e.row then
 			entry = e
 		end
 	end
@@ -4291,8 +4305,13 @@ function Cds.Place(ic)
 	ic.top:SetScale(1 / k)
 	ic:SetAlpha(alpha)
 	ic:ClearAllPoints()
-	-- (2.1.20: its rim's depth under it too, so the rim stands on the bar's top, never over it)
-	ic:SetPoint("BOTTOM", S.ui.health.strip.fill, "TOP", x / sc, ic.above / (k * sc) + (T.cdLift + T.cdRim) / sc)
+	if ic.row == "track" then
+		-- (2.1.24, Tracked Spells) hung under the cast bar's place (`above`: its painted foot), clear of a cast
+		ic:SetPoint("TOP", S.ui.cast.strip.fill, "BOTTOM", x / sc, -(ic.above / (k * sc) + (T.trackDrop + T.cdRim) / sc))
+	else
+		-- (2.1.20: its rim's depth under it too, so the rim stands on the bar's top, never over it)
+		ic:SetPoint("BOTTOM", S.ui.health.strip.fill, "TOP", x / sc, ic.above / (k * sc) + (T.cdLift + T.cdRim) / sc)
+	end
 	ic.flare:SetAlpha(flare)
 end
 
@@ -4345,20 +4364,19 @@ function Cds.X(i, n, k)
 	return side * ((half + T.crestGap) / k + T.cdIcon / 2 + T.cdRim + slot * step)
 end
 
-function Cds.Icons()
-	local ui, list = S.ui, S.cdOrder
-	local n = math.min(#list, T.cdMax)
-	local above = Dress.Reach(ui.health)
-	local k = math.max(12, math.min(40, Num(Db().cdSize) or T.cdIcon)) / T.cdIcon
+-- one row's icons laid (`row` "track": Tracked Spells' row under the bars, centred, no crest; nil: Big Cooldowns'),
+-- `above` the painted reach their place hangs on (the health bar's over its fill; the cast bar's under it)
+local function LayRow(list, n, k, above, row)
 	local motion = not Anim.reduceMotion
 	local now = GetTime()
+	local step = T.cdIcon + 2 * T.cdRim + T.cdGap
 	for i = 1, #list do
 		local e = list[i]
 		if i > n then
 			Cds.Release(e)
 		else
 			local ic = e.icon
-			local x = Cds.X(i, n, k)
+			local x = row and (i - (n + 1) / 2) * step or Cds.X(i, n, k)
 			if not ic then
 				ic = Cds.Take()
 				e.icon = ic
@@ -4375,7 +4393,7 @@ function Cds.Icons()
 					ic.toX = x
 				end
 			end
-			ic.k, ic.above = k, above
+			ic.k, ic.above, ic.row = k, above, row
 			Cds.TimeFont(ic.secs, T.cdIcon * k)   -- (2.1.20: the debuffs' size for its size, their face as it is now)
 			if e.dur > 0 then
 				Anim:Timer(ic.timer, e.ends - e.start, false, e.start)
@@ -4387,10 +4405,20 @@ function Cds.Icons()
 			Cds.Move(ic)
 		end
 	end
+end
+
+function Cds.Icons()
+	local ui = S.ui
+	local k = math.max(12, math.min(40, Num(Db().cdSize) or T.cdIcon)) / T.cdIcon
+	local above = Dress.Reach(ui.health)
+	local _, below = Dress.Reach(ui.cast)
+	LayRow(S.cdOrder, math.min(#S.cdOrder, T.cdMax), k, above, nil)
+	LayRow(S.trackOrder, math.min(#S.trackOrder, T.trackMax), k * T.trackShare, below, "track")
 	-- (the size changed: the ones leaving keep their place at the new size)
 	for _, e in ipairs(S.cds) do
 		if e.leaving and e.icon then
-			e.icon.k, e.icon.above = k, above
+			local tracked = e.row == "track"
+			e.icon.k, e.icon.above = tracked and k * T.trackShare or k, tracked and below or above
 		end
 	end
 end
@@ -4401,22 +4429,222 @@ function Cds.Refresh()
 		return
 	end
 	wipe(S.cdOrder)
+	wipe(S.trackOrder)
 	for _, e in ipairs(S.cds) do
 		if not e.leaving then
-			S.cdOrder[#S.cdOrder + 1] = e
+			local list = e.row == "track" and S.trackOrder or S.cdOrder
+			list[#list + 1] = e
 		end
 	end
 	table.sort(S.cdOrder, CdOrder)
+	table.sort(S.trackOrder, Track.Order)
 	Cds.Icons()
 end
 
--- all put away at once (off, the preview's end)
-function Cds.Off()
-	for _, e in ipairs(S.cds) do
-		Cds.Release(e)
+-- all put away at once (off, the preview's end); `which` "cd": Big Cooldowns' only, "track": Tracked Spells' only
+function Cds.Off(which)
+	for i = #S.cds, 1, -1 do
+		local e = S.cds[i]
+		local tracked = e.row == "track"
+		if not which or (which == "track") == tracked then
+			Cds.Release(e)
+			table.remove(S.cds, i)
+		end
 	end
-	wipe(S.cds)
 	Cds.Refresh()
+end
+
+--------------------------------------------------------------------------------
+-- Tracked Spells (2.1.24; a player, S1lver, 2026-11-08: "is it possible to track specific spells like the cooldown
+-- manager does. would love to see priest weakened soul near my char"; the user's picks of
+-- BuildData/output/copychat_tracked_sketch: B, their own smaller row under the bars; a debuff's rim gold, like the
+-- rest). The spells you tick (Tracked Spells, Big Cooldowns' tab) show in a row of Big Cooldowns' own icons under the
+-- bars while they last on you, the oldest on the left, each with its seconds. Your class's list: TrackedSpells.lua
+-- (Tools/group_spells_forever.py, from the client's own spell data: the short auras of your class that can land on
+-- you, and the casts that put each on -- Weakened Soul by Power Word: Shield), Big Cooldowns' own spells left out.
+-- How one is seen: an aura update of yours read plain (out of a fight) names it, with its own time -- another priest's
+-- shield on you too; in a fight Forever hands those lists over secret, so a cast of yours that puts one on counts when
+-- an aura update of yours with something added comes within T.trackLink (it landed on you, not on someone else), its
+-- time then the data's. One ends at its time, or when its aura is seen going (Cds.Aura).
+-- Nothing at login: the list read the first time it is needed; nothing made per event.
+--------------------------------------------------------------------------------
+local TRACKED = ns and ns.TrackedSpells or {}
+
+-- the oldest on the left
+function Track.Order(a, b)
+	return a.start < b.start
+end
+
+-- your class's list, Big Cooldowns' own spells left out, and its aura and cast indexes (read once)
+function Track.List()
+	if S.trackList then
+		return S.trackList
+	end
+	local _, class = UnitClass("player")
+	local list, byAura, byCast = {}, {}, {}
+	for _, row in ipairs(type(class) == "string" and not Secret(class) and TRACKED[class] or {}) do
+		local big = false
+		for _, cast in ipairs(row[5]) do
+			big = big or CDS[cast] ~= nil
+		end
+		if not big then
+			list[#list + 1] = row
+			for _, id in ipairs(row[4]) do
+				byAura[id] = row
+			end
+			for _, cast in ipairs(row[5]) do
+				local l = byCast[cast]
+				if not l then
+					l = {}
+					byCast[cast] = l
+				end
+				l[#l + 1] = row
+			end
+		end
+	end
+	S.trackList, S.trackByAura, S.trackByCast = list, byAura, byCast
+	return list
+end
+
+-- the ticked ones (by their main spell) -- nil while none is
+local function Picked()
+	local t = Db().tracked
+	return (type(t) == "table" and next(t) ~= nil) and t or nil
+end
+
+local function TrackOn()
+	return On() and Picked() ~= nil and not S.preview
+end
+
+-- one up (again: its time from now). `secs` its length, `ends` its end when the game told it, `aura` its instance
+function Track.Up(row, secs, ends, aura)
+	local spell, now = row[1], GetTime()
+	local entry
+	for _, e in ipairs(S.cds) do
+		if e.row == "track" and e.spell == spell and not e.leaving then
+			entry = e
+		end
+	end
+	if not entry then
+		entry = { spell = spell, row = "track" }
+		S.cds[#S.cds + 1] = entry
+	end
+	local dur = secs and secs > 0 and secs or row[3]
+	ends = ends and ends > now and ends or now + dur
+	entry.kind, entry.dur, entry.ends, entry.aura = row[2], dur, ends, aura
+	entry.start = ends - dur
+	entry.ember = false
+	if entry.icon then
+		Cds.Ember(entry.icon, false)
+	end
+	C_Timer.After(ends - now + 0.05, Cds.Expire)
+	if ends - now > T.cdEmber then
+		C_Timer.After(ends - now - T.cdEmber, Cds.EmberDue)
+	end
+end
+
+-- (UNIT_SPELLCAST_SUCCEEDED, its spell ID plain) a cast that puts a tracked one on: waits for an aura of yours
+function Track.Cast(spell)
+	if not TrackOn() then
+		return
+	end
+	Track.List()
+	if S.trackByCast[spell] then
+		S.trackWait.at, S.trackWait.spell = GetTime(), spell
+	end
+end
+
+-- a plain number the game handed, else nil
+local function PlainNum(v)
+	return (not Secret(v) and type(v) == "number") and v or nil
+end
+
+-- (UNIT_AURA) a tracked one named in an update read plain (its own time), or a cast's, an update with something added
+-- coming just after it
+function Track.Aura(info)
+	if type(info) ~= "table" or not TrackOn() then
+		return
+	end
+	Track.List()
+	local picked, wait, now = Picked(), S.trackWait, GetTime()
+	local waiting = wait.spell and now - wait.at <= T.trackLink
+	local added, changed = info.addedAuras, false
+	if Secret(added) then
+		-- (in a fight: something was added, what is not told -- the cast waiting landed on you)
+		if waiting then
+			for _, row in ipairs(S.trackByCast[wait.spell] or {}) do
+				if picked[row[1]] then
+					Track.Up(row)
+					changed = true
+				end
+			end
+			wait.spell = nil
+		end
+	elseif type(added) == "table" and #added > 0 then
+		for _, aura in ipairs(added) do
+			local row = S.trackByAura[PlainNum(aura.spellId) or -1]
+			if row and picked[row[1]] then
+				Track.Up(row, PlainNum(aura.duration), PlainNum(aura.expirationTime), PlainNum(aura.auraInstanceID))
+				changed = true
+			end
+		end
+		wait.spell = nil   -- (the list told what landed: a cast on someone else puts nothing here)
+	end
+	if changed then
+		Cds.Refresh()
+	end
+end
+
+-- the setting changed: the ones no longer ticked away
+function Track.Changed()
+	local picked = Picked()
+	local gone = false
+	for _, e in ipairs(S.cds) do
+		if e.row == "track" and not e.leaving and not (picked and picked[e.spell]) then
+			Cds.End(e)
+			gone = true
+		end
+	end
+	if gone then
+		Cds.Refresh()
+	end
+end
+
+-- (the option: Tracked Spells' rows on the page) your class's list, a switch each with the spell's picture
+local ROW_ICON = 18
+function Track.Height()
+	return math.max(1, #Track.List()) * W.ROW_HEIGHT
+end
+
+function Track.Build(canvas)
+	local list = Track.List()
+	if #list == 0 then
+		W.Row(canvas, 0, W.ROW_HEIGHT, TEXT.trackNone, nil, nil)
+		return
+	end
+	for i, row in ipairs(list) do
+		local spell = row[1]
+		local api = _G.C_Spell
+		local okN, name = false, nil
+		if api and api.GetSpellName then
+			okN, name = pcall(api.GetSpellName, spell)
+		end
+		name = (okN and type(name) == "string" and not Secret(name)) and name or tostring(spell)
+		local hint = W.Tr(row[2] == "d" and TEXT.trackDebuff or TEXT.trackBuff):format(row[3])
+		local r = W.ToggleRow(canvas, (i - 1) * W.ROW_HEIGHT, name, hint, nil, function()
+			local t = Db().tracked
+			return type(t) == "table" and t[spell] == true
+		end, function(v)
+			local db = Db()
+			if type(db.tracked) ~= "table" then
+				db.tracked = {}
+			end
+			db.tracked[spell] = v and true or nil
+			MelloUI:NotifySettingChanged("PersonalDisplay", "tracked", db.tracked)
+		end, { indent = ROW_ICON + 6 })
+		local box = W.IconBox(r, ROW_ICON, SpellIcon(spell))
+		box:SetPoint("LEFT", r, "LEFT", 12, 0)
+	end
 end
 
 -- (0.21.0, the user 2026-10-12: "the swing timer needs to hide if im using the new ones") the game's own swing timers
@@ -4788,6 +5016,17 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "The swing badge stands centred above the display instead of on your target's nameplate." },
 		{ type = "toggle", key = "cooldowns", name = "Big Cooldowns",
 		  desc = "Your big defensive cooldowns (Shield Wall, Evasion, Ice Block...) as icons above the health bar." },
+		-- (2.1.24; a player, S1lver, 2026-11-08: "would love to see priest weakened soul near my char" -- the user's
+		-- pick B: their own smaller row under the bars)
+		{ type = "canvas", key = "tracked", name = "Tracked Spells", new = "2.1.24",
+		  heightAt = function()
+			return Track.Height()
+		  end,
+		  search = "track tracked spells auras buffs debuffs weakened soul forbearance renew shield cooldown manager",
+		  desc = "Tick your class's spells to see them in a row under the bars while they last on you, each with its seconds. Nothing is ticked at first.",
+		  build = function(canvas)
+			Track.Build(canvas)
+		  end },
 		{ type = "toggle", key = "text", name = "Percent And Spell Text",
 		  desc = "Health and power percent, spell names and times." },
 		{ type = "dropdown", key = "textFont", name = "Text Font", values = MelloUI.FontFaces,
@@ -5195,8 +5434,10 @@ function M:OnSettingChanged(key, _, db)
 		Cds.Refresh()
 	elseif key == "cooldowns" then
 		if not CdsOn() then
-			Cds.Off()
+			Cds.Off("cd")   -- (2.1.24: Tracked Spells' row stays)
 		end
+	elseif key == "tracked" then
+		Track.Changed()
 	elseif key == "cdSize" then
 		Cds.Icons()
 	elseif key == "chunk" or key == "lead" or key == "spend" or key == "gain" then
@@ -5228,5 +5469,6 @@ end
 M.S = S
 M.T = T
 M.Host = Host
+M.Track = Track   -- (2.1.24: Tracked Spells, for the tests)
 M.Cds = Cds
 M.Motion = Motion

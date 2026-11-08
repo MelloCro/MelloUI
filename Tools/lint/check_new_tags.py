@@ -118,6 +118,9 @@ NOT_CONFIGURATOR = {
                              "kind settings (0.21.1: one schema option, BagWindow.kinds; they edit the kinds, not "
                              "options), not options",
     "Core/Core.lua": "the copy window's Import button (MelloUI:ShowPaste), not an option",
+    "MelloUI_PersonalDisplay/PersonalDisplay.lua": "Tracked Spells' rows (2.1.24: one schema option, "
+                                                   "PersonalDisplay.tracked, tagged): a tick per spell of your class, "
+                                                   "the list's entries, not options",
     "Modules/Services.lua": "the Services menu's Stop route button (it ends the route), not an option",
     "MelloUI_Route/RouteRecorder.lua": "the road recorder's window (a developer tool, /route record): its city switches and "
                                  "buttons record roads, not options",

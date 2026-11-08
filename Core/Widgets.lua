@@ -4041,7 +4041,9 @@ do
 		bag = 28, cog = 29, flag = 30,
 		-- (1.2.4: Edit Layout's dock and Elements picker)
 		grid = 31, magnet = 32, moon = 33, crosshair = 34, layers = 35, keys = 36, reset = 37, question = 38,
-		eye = 39, eyeOff = 40, solo = 41, search = 42, pin = 43 }
+		eye = 39, eyeOff = 40, solo = 41, search = 42, pin = 43,
+		-- (2.1.24: the chat's Copy Chat button)
+		copy = 44 }
 	local ROWS = 6
 	W.GLYPH_ROWS = ROWS   -- (the sheet's rows of cells: its height is ROWS x 32 px)
 

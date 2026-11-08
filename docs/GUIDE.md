@@ -377,6 +377,8 @@ LibSharedMedia status bar textures, and reads custom files from `Media\Textures`
 `Media\CustomTextures.lua`. Every bar's texture is on **Look > Textures** (Every Bar, then each kind of bar); the frames' pages link there. Colours that Blizzard baked into its atlases (power types,
 experience, reputation, cast states) are re-applied so bars keep their meaning.
 
+- **Nameplate Designer** (2.1.24; the Nameplates page, Enemies): the preview shows every part at once (your target's combo points, threat line and swing badge too). Drag any part to a place round the plate -- the name, the cast bar, the enemy's buffs, your debuffs, the level badge, the raid marker, the CC and quest icons, the combo points, the threat line, the swing badge -- or click a + for a spot; the wheel sizes the icons and the cast bar, the arrow keys nudge, right-click hides one or puts it back in its own place. Each place is kept on the plate's health bar, so the live plates follow it. **Own Plate Size** (the Health bar part, Layout) gives the plates your **Plate Width** and **Plate Height** instead of the game's. Two parts on one spot are outlined red.
+
 ### Chat
 
 - **Parchment** (Chat > Chat Frame > Look): the chat on the kit's parchment, every line in dark ink (names with their
@@ -410,6 +412,7 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
   game knows them; Add Friend, Invite To Group, Ignore and Report, the Whisper Popup Window's four) and the answer
   box (Enter sends, Enter on an empty box or Escape lets go). The Whispers tab or the cross fold it down, Escape
   closes it. While Minimal is on it takes the Whisper Popup Window's place, and whispers stay in the main chat.
+- **Copy Chat Button** (2.1.24, on; Chat > Chat Frame > Behaviour): while your mouse is on the chat, a small round button fades in at its top right corner (with either Chat View: on the Minimal panel's lines, or on each of the game's chat windows); a click opens the tab's lines in MelloUI's copy window, selected, so Ctrl+C copies them -- each line plain (a link its name, colours and icons left out) with its time in front, the game's own time stamps when Chat Timestamps is on. Lines the game keeps secret from addons are left out.
 - Move the input box above the chat window.
 - Input Box Only While Typing (0.20.4, on; Chat > Chat Frame > Behaviour): the input box shows only
   while you type -- Enter (or /) brings it up, sending the line or Escape puts it away -- the game's
@@ -808,6 +811,7 @@ default; its settings on **Unit & Group Frames**' **Personal** frame):
   own spell data, for every class; one you cancel early (its buff gone) ends there. Nothing is drawn on your
   character. **Big Cooldown Size** (Layout, 12 to 40, 16 by default) sizes the icons; their seconds keep the
   display's text size.
+- **Tracked Spells** (2.1.24, Big Cooldowns' tab): your class's short spells that can land on you, from the game's own spell data -- the heals over time, the shields, the defensives others give you and the debuffs they leave (Weakened Soul after Power Word: Shield, Forbearance after Divine Shield); Big Cooldowns' own spells are not in it. Tick the ones you want (none at first): while one lasts on you, its icon shows in a row under the bars (under the cast bar's place, so a cast never covers it), the oldest on the left, in Big Cooldowns' look at a little under their size, with its seconds. Your own cast on yourself shows at once with its time from the data; out of a fight one someone else puts on you shows too, with its own time (in a fight the game hides those from addons).
 - **Hide The Game's Cast Bar** (on): your casts show on the display only. **Heal Light From Your Character** (on,
   with Heal Effects): a heal's light gathers at your character's middle and flies from there to your party or raid
   frames.

@@ -54,10 +54,19 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		comboX = 0, comboY = 0,   -- (2.1.19) the row moved off the bar's top edge
 		swingSize = 100,          -- (2.1.19) the swing badge on your target's plate, a percentage
 		hover = true,   -- (1.2.4: the mouseover highlight, MelloUI.FrameHover)
+		-- (2.1.24, the Nameplate Designer's stage 2) the enemy plates' own width and height, off: the game's
+		plateSize = false, plateWidth = 166, plateHeight = 12,
 		-- (the band behind the names: Text Shade's, Look > General > Text -- the
 		-- user, 2026-10-16; Name Shade's key dropped by Core.lua's MERGES)
 	},
 	options = {
+		-- (2.1.24; the user, 2026-11-08: "everything should be moveable ... resizing, height width etc")
+		{ type = "toggle", key = "plateSize", name = "Own Plate Size", new = "2.1.24",
+		  desc = "The enemy plates take the width and height set here instead of the game's." },
+		{ type = "slider", key = "plateWidth", parent = "plateSize", name = "Plate Width", min = 60, max = 300, step = 2,
+		  new = "2.1.24", desc = "The whole plate's width: the health bar and the level badge's room beside it." },
+		{ type = "slider", key = "plateHeight", parent = "plateSize", name = "Plate Height", min = 4, max = 40, step = 1,
+		  new = "2.1.24", desc = "The health bar's height." },
 		{ type = "header", name = "Crowd Control" },
 		{ type = "toggle", key = "bigCC", name = "Large CC Icon Above Name",
 		  desc = "A large crowd-control icon above the name. Needs the game's Crowd Control nameplate option on." },
@@ -189,6 +198,21 @@ end
 -- that holds the name lays it (its placer answers true), else on the game's
 -- own anchors. true while that look holds it.
 function M:PlaceName(uf)
+	-- (2.1.24) the place the Nameplate Designer gave it: there, over any look's own (the combo points' lift aside)
+	local place = M.PartPlace("name")
+	if place and uf and uf.name and uf.HealthBarsContainer then
+		M.LayPart(uf.name, uf.HealthBarsContainer, place)
+		local point = type(place.point) == "string" and place.point or "CENTER"
+		uf.name:SetJustifyH(point:find("LEFT") and "LEFT" or (point:find("RIGHT") and "RIGHT") or "CENTER")
+		local hide = place.show == false
+		uf.name:SetAlpha(hide and 0 or 1)
+		M.nameHidden[uf.name] = hide or nil
+		return true
+	end
+	if uf and uf.name and M.nameHidden[uf.name] then
+		M.nameHidden[uf.name] = nil
+		uf.name:SetAlpha(1)   -- (its place taken back: seen again)
+	end
 	local placer = Plate.placer
 	if placer and placer(uf) then
 		return true
@@ -201,6 +225,181 @@ end
 -- fn(uf) lays the name and answers true while it holds it; nil: none
 function M:SetNamePlacer(fn)
 	Plate.placer = type(fn) == "function" and fn or nil
+end
+
+--------------------------------------------------------------------------------
+-- The parts' places (2.1.24, the Nameplate Designer: docs/plans/nameplate-designer.md; the user's picks of
+-- BuildData/output/nameplate_designer_sketch, C A A B): what the designer's stage sets for a part -- { point, x, y,
+-- show } on the plate's health bar's same point (Unit Frames' places) -- laid on the live plates and on the stage
+-- alike; none: the code's own place, as before (nothing moves for anyone who never drags). A part's size stays its own
+-- option's (CC Icon Size, Quest Icon Size): the stage reads and writes it through the place
+--------------------------------------------------------------------------------
+M.PART_SIZE = { cc = "ccSize", quest = "questIconSize" }
+M.nameHidden = setmetatable({}, { __mode = "k" })   -- [a plate's name] = true while its place hides it
+
+function M.PartPlace(key)
+	local db = M.db or MelloUI:GetModuleDB("Nameplates")
+	local all = db and db.parts
+	local t = type(all) == "table" and all[key]
+	return type(t) == "table" and t or nil
+end
+
+-- (a fresh table each write: the saved one is never changed in place; a size goes to the part's own option)
+function M.SetPartPlace(key, t)
+	local db = M.db or MelloUI:GetModuleDB("Nameplates")
+	if not db then
+		return
+	end
+	local sizeKey = M.PART_SIZE[key]
+	if type(t) == "table" and sizeKey and Num(t.size) then
+		MelloUI:NotifySettingChanged("Nameplates", sizeKey, math.floor(Num(t.size) + 0.5))
+	end
+	local all = {}
+	for k, v in pairs(type(db.parts) == "table" and db.parts or {}) do
+		all[k] = v
+	end
+	if type(t) == "table" then
+		local copy = {}
+		for k, v in pairs(t) do
+			if k ~= "size" or not sizeKey then
+				copy[k] = v
+			end
+		end
+		all[key] = copy
+	else
+		all[key] = nil
+	end
+	MelloUI:NotifySettingChanged("Nameplates", "parts", next(all) and all or nil)
+end
+
+-- a place laid on a region: its point on the box's same point; `scale` the region's own (its offsets given unscaled)
+function M.LayPart(region, box, place, scale)
+	local point = type(place.point) == "string" and place.point or "CENTER"
+	local s = (Num(scale) and scale > 0) and scale or 1
+	region:ClearAllPoints()
+	region:SetPoint(point, box, point, (Num(place.x) or 0) / s, (Num(place.y) or 0) / s)
+end
+
+-- (2.1.24, stage 2) the plates' layout is MelloUI's to keep after the game's: a part placed, or Own Plate Size on
+function M.HasLayout()
+	local db = M.db
+	return db ~= nil and ((type(db.parts) == "table" and next(db.parts) ~= nil) or db.plateSize == true)
+end
+
+-- (2.1.24, stage 2) the game's own parts at their places, after its UpdateAnchors: the level badge and the raid
+-- marker (scaled to their size), the debuff and buff rows (MelloUI's debuff row hangs on the game's: it follows), the
+-- plate's width and height (Own Plate Size) and the cast bar. Widget calls on the plate's own regions only (never a
+-- field of the game's written, never its layout asked for); a part whose place is taken back gets the game's own
+-- anchors again (Blizzard_NamePlateUnitFrame.lua UpdateAnchors, Camelot's level frame: LEFT 5 off the bar's RIGHT)
+M.GAME_PARTS = { level = { "PlayerLevelDiffFrame", 15 }, raid = { "RaidTargetFrame", 22 },
+	debuffs = { "DebuffListFrame", nil, true }, buffs = { "BuffListFrame", nil, true } }
+M.laidGame = setmetatable({}, { __mode = "k" })   -- [a game region] = true while a place lays it
+M.barsLaid = setmetatable({}, { __mode = "k" })   -- [unit frame] = true while its bars are held here
+
+local function GameHome(key, region, uf, hb)
+	region:ClearAllPoints()
+	if key == "level" then
+		region:SetPoint("LEFT", hb, "RIGHT", 5, 0)
+	elseif key == "raid" then
+		region:SetPoint("RIGHT", hb, "LEFT", 0, 0)
+	elseif key == "debuffs" then
+		local get = C_CVar and C_CVar.GetCVar
+		local ok, pad = false, nil
+		if get then
+			ok, pad = pcall(get, "nameplateDebuffPadding")
+		end
+		region:SetPoint("LEFT", hb, "LEFT", 0, 0)
+		region:SetPoint("BOTTOM", uf.name or hb, "TOP", 0, (ok and tonumber(pad)) or 0)
+	elseif key == "buffs" then
+		region:SetPoint("RIGHT", uf.ClassificationFrame or hb, "LEFT", -5, 0)
+	end
+end
+
+-- the level badge's room on the bar's right (the game keeps the bar short of it while it shows), 0 when it has a place
+local function LevelRoom(uf)
+	local lf = uf.PlayerLevelDiffFrame
+	if not lf or M.PartPlace("level") or MelloUI.Safe.Call(lf, "IsShown") ~= true then
+		return 0
+	end
+	local ok, w = pcall(lf.GetWidth, lf)
+	return ((ok and Num(w)) or 15) + 5
+end
+
+-- the bars: Own Plate Size's width (the whole plate: the bar and the level badge's room) and height, and the cast
+-- bar's place -- the health bar held on the frame where it stood (over the cast bar's room), the cast bar on its place
+-- or along the frame's bottom; none of those set: the game's own anchors again
+function M.LayBars(uf, hb)
+	local cast = uf.CastBarsContainer
+	if not cast then
+		return
+	end
+	local db = M.db
+	local own = db.plateSize == true
+	local place = M.PartPlace("cast")
+	local inset = SetupOption("insetWidth", 12)
+	local gap = SetupOption("castBarToHealthBarSpacing", 2)
+	local castH = SetupOption("castBarHeight", 16)
+	if not (own or place) then
+		if M.barsLaid[uf] then
+			M.barsLaid[uf] = nil
+			cast:ClearAllPoints()
+			cast:SetPoint("BOTTOMLEFT", uf, "BOTTOMLEFT", inset, 0)
+			cast:SetPoint("BOTTOMRIGHT", uf, "BOTTOMRIGHT", -inset, 0)
+			cast:SetAlpha(1)
+			hb:ClearAllPoints()
+			hb:SetPoint("BOTTOMLEFT", cast, "TOPLEFT", 0, gap)
+			hb:SetPoint("BOTTOMRIGHT", cast, "TOPRIGHT", -LevelRoom(uf), gap)
+			hb:SetHeight(SetupOption("healthBarHeight", 20))
+		end
+		return
+	end
+	M.barsLaid[uf] = true
+	local ok, ufW = pcall(uf.GetWidth, uf)
+	local w = (own and Num(db.plateWidth)) or ((ok and Num(ufW)) and (ufW - 2 * inset)) or 166
+	local h = (own and Num(db.plateHeight)) or SetupOption("healthBarHeight", 20)
+	local room = LevelRoom(uf)
+	hb:ClearAllPoints()
+	hb:SetPoint("BOTTOMLEFT", uf, "BOTTOM", -w / 2, castH + gap)
+	hb:SetSize(math.max(10, w - room), h)
+	cast:ClearAllPoints()
+	if place then
+		M.LayPart(cast, hb, place)
+		cast:SetSize(math.max(10, w - room), Num(place.size) or castH)
+		cast:SetAlpha(place.show == false and 0 or 1)
+	else
+		cast:SetPoint("BOTTOMLEFT", uf, "BOTTOM", -w / 2, 0)
+		cast:SetSize(w, castH)
+		cast:SetAlpha(1)
+	end
+end
+
+function M.LayGameParts(uf)
+	local hb = uf and uf.HealthBarsContainer
+	if not hb then
+		return
+	end
+	M.LayBars(uf, hb)
+	local auras = uf.AurasFrame
+	for key, def in pairs(M.GAME_PARTS) do
+		local region = def[3] and (auras and auras[def[1]]) or uf[def[1]]
+		local place = M.PartPlace(key)
+		if region and place then
+			local s = (def[2] and Num(place.size)) and place.size / def[2] or 1
+			if def[2] then
+				region:SetScale(s)
+			end
+			M.LayPart(region, hb, place, s)
+			region:SetAlpha(place.show == false and 0 or 1)
+			M.laidGame[region] = true
+		elseif region and M.laidGame[region] then
+			M.laidGame[region] = nil
+			if def[2] then
+				region:SetScale(1)
+			end
+			region:SetAlpha(1)
+			GameHome(key, region, uf, hb)
+		end
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -261,6 +460,8 @@ local function AnchorCC(unitFrame)
 		return
 	end
 	local offset = ComputeOffset(unitFrame)
+	-- (2.1.24) the place the Nameplate Designer gave it, else above the name and the debuff row
+	local place = M.PartPlace("cc")
 	local cc = auras.CrowdControlListFrame
 	if cc then
 		-- the list is scaled (ResizeCCList): an offset on it is in its own,
@@ -269,13 +470,22 @@ local function AnchorCC(unitFrame)
 		if not IsPlainNumber(s) or s <= 0 then
 			s = 1
 		end
-		cc:ClearAllPoints()
-		cc:SetPoint("BOTTOM", unitFrame.HealthBarsContainer, "TOP", 0, offset / s)
+		if place then
+			M.LayPart(cc, unitFrame.HealthBarsContainer, place, s)
+		else
+			cc:ClearAllPoints()
+			cc:SetPoint("BOTTOM", unitFrame.HealthBarsContainer, "TOP", 0, offset / s)
+		end
+		cc:SetAlpha((place and place.show == false) and 0 or 1)
 	end
 	local loc = auras.LossOfControlFrame
 	if loc then
-		loc:ClearAllPoints()
-		loc:SetPoint("BOTTOM", unitFrame.HealthBarsContainer, "TOP", 0, offset)
+		if place then
+			M.LayPart(loc, unitFrame.HealthBarsContainer, place)
+		else
+			loc:ClearAllPoints()
+			loc:SetPoint("BOTTOM", unitFrame.HealthBarsContainer, "TOP", 0, offset)
+		end
 	end
 end
 
@@ -356,9 +566,15 @@ local function HookUnitFrame(unitFrame)
 			-- then the plate names' parts on it -- after the lift, so a cover's
 			-- justify is read back after the name's last layout)
 			Combo.Relaid(self)
+			if M.PartPlace("name") then
+				M:PlaceName(self)   -- (2.1.24: the place the Nameplate Designer gave it, before the names' parts)
+			end
 			Plate.Relaid(self)
-			if Active() then
+			if Active() or M.PartPlace("cc") then
 				AnchorCC(self)
+			end
+			if M.HasLayout() then
+				M.LayGameParts(self)   -- (2.1.24, stage 2: the game's own parts at their places, the plate's size)
 			end
 		end)
 	end
@@ -1421,6 +1637,13 @@ local function GetQuestIcon(unitFrame)
 	end
 	local size = M.db.questIconSize or 22
 	icon:SetSize(size, size)
+	-- (2.1.24) the place the Nameplate Designer gave it
+	local place = M.PartPlace("quest")
+	icon:SetAlpha((place and place.show == false) and 0 or 1)
+	if place and unitFrame.HealthBarsContainer then
+		M.LayPart(icon, unitFrame.HealthBarsContainer, place)
+		return icon
+	end
 	icon:ClearAllPoints()
 	-- beside the Nameplate Kit's left gem cap while it dresses the plate
 	-- (the cap stands outside the bar), else beside the raid mark / bar
@@ -1581,12 +1804,23 @@ end
 local function HangThreat(uf, line)
 	local hb = line.hb or uf
 	local rail = BracketLeft(uf) ~= nil
-	if line.hbAt == hb and line.rail == rail then
+	-- (2.1.24) the place the Nameplate Designer gave it, as wide as the bar
+	local place = M.PartPlace("threat")
+	if line.hbAt == hb and line.rail == rail and line.placeAt == place then
 		return
 	end
-	line.hbAt, line.rail = hb, rail
+	line.hbAt, line.rail, line.placeAt = hb, rail, place
 	local bar = line.bar
 	bar:ClearAllPoints()
+	if place and uf.HealthBarsContainer then
+		M.LayPart(bar, uf.HealthBarsContainer, place)
+		local ok, w = pcall(hb.GetWidth, hb)
+		bar:SetWidth((ok and Num(w)) or 100)
+		bar:SetAlpha(place.show == false and 0 or 1)
+		line.edge:SetShown(true)
+		return
+	end
+	bar:SetAlpha(1)
 	if rail then
 		bar:SetPoint("TOPLEFT", hb, "BOTTOMLEFT", 0, 0)
 		bar:SetPoint("TOPRIGHT", hb, "BOTTOMRIGHT", 0, 0)
@@ -1916,13 +2150,24 @@ function Combo.Attach(uf)
 			Combo.Lift(old, 0)
 		end
 	end
+	local s = Combo.Socket()
+	-- (2.1.24) the place the Nameplate Designer gave it: there, the name not lifted (the player placed them both)
+	local place = M.PartPlace("combo")
+	if place then
+		M.LayPart(row, uf.HealthBarsContainer, place)
+		Combo.Lay(row, s)
+		Combo.Lift(uf, 0)
+		row:SetAlpha(place.show == false and 0 or 1)
+		row:Show()
+		return
+	end
 	-- (2.1.19) at the user's offsets, on every attach (cheap: a target change, an option)
 	local x, y = Combo.Offset()
 	row:ClearAllPoints()
 	row:SetPoint("CENTER", hb, "TOP", x, y)
-	local s = Combo.Socket()
 	Combo.Lay(row, s)
 	Combo.Lift(uf, Combo.NameLift(s, y))
+	row:SetAlpha(1)
 	row:Show()
 end
 
@@ -2480,6 +2725,18 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit, power)
 		local plate = C_NamePlate.GetNamePlateForUnit(unit)
 		if Active() then
 			StylePlate(plate)
+		elseif M.HasLayout() and plate and not (plate.IsForbidden and plate:IsForbidden()) and plate.UnitFrame then
+			-- (2.1.24) the parts' places kept after the game's own layout, Big CC off too
+			HookUnitFrame(plate.UnitFrame)
+			if M.PartPlace("name") then
+				M:PlaceName(plate.UnitFrame)
+			end
+			if M.PartPlace("cc") then
+				AnchorCC(plate.UnitFrame)
+			end
+		end
+		if M.HasLayout() and plate and plate.UnitFrame and not (plate.IsForbidden and plate:IsForbidden()) then
+			M.LayGameParts(plate.UnitFrame)
 		end
 		if QuestActive() then
 			UpdateQuestIcon(plate)
@@ -2718,6 +2975,36 @@ function M:OnSettingChanged(key, value, db)
 		end
 		return
 	end
+	if key == "parts" or key == "plateSize" or key == "plateWidth" or key == "plateHeight" then
+		-- (2.1.24, the Nameplate Designer) every plate's parts at their places again: the names, the CC icons, the
+		-- game's own parts and the plate's size (stage 2), the quest icons, the combo points, the threat lines, the
+		-- swing badge
+		if C_NamePlate and C_NamePlate.GetNamePlates then
+			for _, plate in ipairs(C_NamePlate.GetNamePlates()) do
+				local uf = plate.UnitFrame
+				if uf and not (plate.IsForbidden and plate:IsForbidden()) then
+					HookUnitFrame(uf)
+					M:PlaceName(uf)
+					if db.bigCC or M.PartPlace("cc") then
+						AnchorCC(uf)
+					end
+					M.LayGameParts(uf)
+				end
+			end
+		end
+		if db.questIcon then
+			UpdateAllQuestIcons()
+		end
+		Combo.Update()
+		if db.threatLine ~= false then
+			ThreatAll()
+		end
+		local sb = MelloUI.SwingBadge
+		if sb and sb.Lay then
+			sb.Lay()
+		end
+		return
+	end
 	if db.bigCC then
 		OutOfCombat(ApplyAll)
 	else
@@ -2763,6 +3050,10 @@ do
 		NAME = "Defias Pillager", LEVEL = "17",
 		CC = "Interface\\Icons\\Ability_Sap",
 		WEAPON = "Interface\\Icons\\INV_Sword_04",   -- (2.1.19: the swing badge's weapon)
+		-- (2.1.24, stage 2) the enemy's buffs, its cast (the spell, how far along), the parts' sizes as the game makes them
+		BUFFS = { "Interface\\Icons\\Ability_Warrior_BattleShout", "Interface\\Icons\\Spell_Frost_FrostArmor02" },
+		CAST_ICON = "Interface\\Icons\\Spell_Shadow_ShadowBolt", CAST_NAME = "Shadow Bolt", CAST_FILL = 0.6,
+		RAID = 22, BUFF = 18, BUFF_GAP = 5,
 		SWING_FILL = 0.6,   -- (2.1.20: how far its ring is filled -- SwingBadge.SampleFill)
 		-- (2.1.19: the numbers coloured by the time left, as the plates' rows -- Rupture's under 5 s, red)
 		DEBUFFS = { { "Interface\\Icons\\Ability_Rogue_Garrote", "12", 12 }, { "Interface\\Icons\\Ability_Rogue_Rupture", "4", 4 } },
@@ -2813,6 +3104,7 @@ do
 		local f = CreateFrame("Frame", nil, stage.holder)
 		f:SetSize(240, 120)
 		f:EnableMouse(false)
+		f.stage = stage   -- (2.1.24: Stage.Again repaints it while a home is unread)
 		f.bar = CreateFrame("Frame", nil, f)
 		f.bar:SetFrameLevel(f:GetFrameLevel() + 2)
 		f.bg = f.bar:CreateTexture(nil, "BACKGROUND")
@@ -2901,6 +3193,32 @@ do
 			f.debuffs.times[i] = t
 		end
 		f.cc = Stage.Icon(f.top, Stage.CC)
+		-- (2.1.24, the Nameplate Designer's stage 2) the game's own parts: the raid marker left of the bar, its buffs
+		-- left of that, the cast bar under the bar (an icon, its fill, the spell's name)
+		f.raid = f.top:CreateTexture(nil, "OVERLAY")
+		f.raid:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8")
+		f.buffs = CreateFrame("Frame", nil, f.top)
+		f.buffs.icons = {}
+		for i, file in ipairs(Stage.BUFFS) do
+			f.buffs.icons[i] = Stage.Icon(f.buffs, file)
+		end
+		f.cast = CreateFrame("StatusBar", nil, f.bar)
+		local castFill = f.cast:CreateTexture(nil, "ARTWORK")
+		castFill:SetTexture(WHITE)
+		W.Paint(castFill, "selectedTrim", "vertex", 1)
+		f.cast:SetStatusBarTexture(castFill)
+		f.cast:SetMinMaxValues(0, 1)
+		f.cast:SetValue(Stage.CAST_FILL)
+		local cbg = f.cast:CreateTexture(nil, "BACKGROUND")
+		cbg:SetAllPoints(f.cast)
+		cbg:SetTexture(WHITE)
+		W.Paint(cbg, "innerPanel", "vertex", 0.9)
+		f.castIcon = f.cast:CreateTexture(nil, "ARTWORK")
+		f.castIcon:SetTexture(Stage.CAST_ICON)
+		f.castIcon:SetPoint("RIGHT", f.cast, "LEFT", -1, 0)
+		f.castText = Stage.Text(f.cast, "SystemFont_NamePlateCastBar")
+		f.castText:SetPoint("LEFT", f.cast, "LEFT", 3, 0)
+		f.castText:SetText(Stage.CAST_NAME)
 		-- (2.1.19) the swing badge right of the level box, as Core/SwingBadge.lua lays it on your target's plate
 		local sb = MelloUI.SwingBadge
 		f.swing = MelloUI.Widgets.RoundIcon(f.top, (sb and sb.T and sb.T.badge) or 24, nil)
@@ -2925,9 +3243,15 @@ do
 	function Stage.Paint(f, _, _, ctx)
 		local db = Stage.DB("Nameplates")
 		local ours = Stage.Running("Nameplates")
-		local target = ctx and ctx.state == "target"
+		-- (2.1.24, the user's pick A: the preview shows everything at once -- your target's parts too, no chips)
+		local target = true
 		local barW = Stage.Const("NAME_PLATE_WIDTH", Stage.PLATE_W) - 2 * Stage.Const("HORIZONTAL_INSET", Stage.INSET)
 		local barH = SetupOption("healthBarHeight", Stage.BAR_H)
+		-- (2.1.24, stage 2) Own Plate Size: the whole plate's width (the bar and the level badge's room), its height
+		if ours and db.plateSize == true then
+			barW = math.max(10, (Num(db.plateWidth) or barW) - (M.PartPlace("level") and 0 or Stage.LEVEL_GAP + Stage.LEVEL_W))
+			barH = Num(db.plateHeight) or barH
+		end
 		-- the health bar as Bar Textures answers for the plates (its fill and colour while it works on them; the
 		-- game's own atlas otherwise), a hostile NPC's reaction colour
 		local bt = MelloUI:GetModule("BarTextures")
@@ -2988,6 +3312,9 @@ do
 		end
 		local swingW = swing and (gap * k + badge) or 0
 		f.threat:SetShown(ours and target and db.threatLine ~= false)
+		f.threat:ClearAllPoints()   -- (2.1.24: its own place each paint -- a designer place lays it after)
+		f.threat:SetPoint("BOTTOMLEFT", f.bar, "BOTTOMLEFT")
+		f.threat:SetPoint("BOTTOMRIGHT", f.bar, "BOTTOMRIGHT")
 		-- the name, in the setup's style (LayGameName's), and its soft band
 		local styles = rawget(_G, "NamePlateConstants")
 		styles = type(styles) == "table" and styles.NAME_ANCHOR_STYLES
@@ -3052,11 +3379,33 @@ do
 			f.cc:SetPoint("LEFT", f.bar, "RIGHT", Stage.LEVEL_GAP + Stage.LEVEL_W + swingW + Stage.CC_GAP, 0)
 			above = y + nameH + Stage.SPACING + size
 		end
-		-- the quest icon (the option on), left of the bar
+		-- (2.1.24, stage 2) the raid marker left of the bar, its buffs left of that, the cast bar under the bar, as the
+		-- game lays them
+		f.raid:SetSize(Stage.RAID, Stage.RAID)
+		f.raid:ClearAllPoints()
+		f.raid:SetPoint("RIGHT", f.bar, "LEFT", 0, 0)
+		local bs = Stage.BUFF
+		f.buffs:SetSize(#f.buffs.icons * (bs + Stage.SPACING) - Stage.SPACING, bs)
+		for i, icon in ipairs(f.buffs.icons) do
+			icon:SetSize(bs, bs)
+			icon:ClearAllPoints()
+			icon:SetPoint("LEFT", f.buffs, "LEFT", (i - 1) * (bs + Stage.SPACING), 0)
+		end
+		f.buffs:ClearAllPoints()
+		f.buffs:SetPoint("RIGHT", f.raid, "LEFT", -Stage.BUFF_GAP, 0)
+		local castH = SetupOption("castBarHeight", 10)
+		f.cast:ClearAllPoints()
+		f.cast:SetPoint("TOPLEFT", f.bar, "BOTTOMLEFT", castH + 1, -SetupOption("castBarToHealthBarSpacing", 2) - 4)
+		f.cast:SetPoint("TOPRIGHT", f.bar, "BOTTOMRIGHT", 0, -SetupOption("castBarToHealthBarSpacing", 2) - 4)
+		f.cast:SetHeight(castH)
+		f.castIcon:SetSize(castH, castH)
+		-- the quest icon (the option on), left of the bar (of the raid marker's room, as the live plates')
 		local quest = ours and db.questIcon ~= false
 		local qs = Num(db.questIconSize) or 22
 		f.quest:SetSize(qs, qs)
 		f.quest:SetShown(quest)
+		f.quest:ClearAllPoints()
+		f.quest:SetPoint("RIGHT", f.raid, "LEFT", -Stage.QUEST_GAP, 0)
 		-- the sample's own size round what shows (the stage fits it), the bar placed in it
 		local left = Stage.PAD + (quest and qs + Stage.QUEST_GAP or 0) + 2
 		local right = Stage.PAD + Stage.LEVEL_GAP + Stage.LEVEL_W + swingW + (big and 0 or Stage.CC_GAP + cc)
@@ -3067,6 +3416,81 @@ do
 		f.bar:ClearAllPoints()
 		f.bar:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", left, bottom)
 		f:SetSize(left + barW + right, bottom + barH + top)
+		if Stage.Places(f, k, left, right, top, bottom, barW, barH) then
+			Stage.Again(f)
+		end
+	end
+
+	-- (2.1.24, the Nameplate Designer) the homes read off the parts as laid now (their own places: each centre on the
+	-- bar's), then the places the designer gave them laid (none while the stage reads homes: f.noPlaces) and the sample
+	-- grown round wherever they stand. true while a home could not be read yet (the sample not laid out)
+	function Stage.Places(f, k, left, right, top, bottom, barW, barH)
+		local unread = false
+		for key, field in pairs(Stage.MOVES) do
+			local r = f[field]
+			if r and r:IsShown() then
+				local x, y, w, h = Stage.Rect(f, r)
+				if x then
+					local home = Stage.homes[key] or {}
+					home.point, home.x, home.y = "CENTER", math.floor(x + 0.5), math.floor(y + 0.5)
+					local side = Stage.SIZE_OF[key]
+					home.size = side and math.floor((side == "h" and h or w) + 0.5) or nil
+					Stage.homes[key] = home
+				else
+					unread = true
+				end
+			end
+		end
+		for key, field in pairs(Stage.MOVES) do
+			local place, r = (not f.noPlaces) and M.PartPlace(key), f[field]
+			if place and r and r:IsShown() then
+				M.LayPart(r, f.bar, place, key == "swing" and k or 1)
+				local size = Num(place.size)
+				if key == "name" then
+					local point = type(place.point) == "string" and place.point or "CENTER"
+					r:SetJustifyH(point:find("LEFT") and "LEFT" or (point:find("RIGHT") and "RIGHT") or "CENTER")
+				elseif (key == "level" or key == "raid") and size then
+					r:SetSize(size, size)
+				elseif key == "cast" then
+					r:SetWidth(barW - (Fin(r:GetHeight()) or 10) - 1)
+					if size then
+						r:SetHeight(size)
+						f.castIcon:SetSize(size, size)
+					end
+				elseif key == "threat" then
+					r:SetWidth(barW)
+				end
+			end
+		end
+		for _, field in pairs(Stage.MOVES) do
+			local r = f[field]
+			if r and r:IsShown() then
+				local x, y, w, h = Stage.Rect(f, r)
+				if x then
+					left = math.max(left, Stage.PAD - (x - w / 2 + barW / 2))
+					right = math.max(right, Stage.PAD + (x + w / 2 - barW / 2))
+					top = math.max(top, Stage.PAD + (y + h / 2 - barH / 2))
+					bottom = math.max(bottom, Stage.PAD - (y - h / 2 + barH / 2))
+				end
+			end
+		end
+		f.bar:ClearAllPoints()
+		f.bar:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", left, bottom)
+		f:SetSize(left + barW + right, bottom + barH + top)
+		return unread
+	end
+
+	-- a home not read yet: the stage painted again on the next frame, a few times at most (Unit Frames' UFS.Again)
+	Stage.retry = setmetatable({}, { __mode = "k" })
+	function Stage.Again(f)
+		local n = (Stage.retry[f] or 0) + 1
+		Stage.retry[f] = n
+		local stage = f.stage
+		if n <= 5 and type(stage) == "table" and stage.Repaint then
+			MelloUI.Schedule:NextFrame(Stage.retry, function()
+				stage:Repaint()
+			end)
+		end
 	end
 
 	-- the room under the state chips, over the caption
@@ -3077,14 +3501,54 @@ do
 		return 8, Stage.ROOM_TOP, w - 16, h - Stage.ROOM_TOP - bottom
 	end
 
-	-- the parts, each picked and never moved; one that does not show (its option off, the module off, your
-	-- target's in Normal) takes no click (a hidden region keeps its rect)
+	-- the parts; one that does not show (its option off, the module off) takes no click (a hidden region keeps its
+	-- rect). (2.1.24, the Nameplate Designer, the user's picks C A A B) the ones in Stage.MOVES dragged, put on a spot,
+	-- sized and shown or hidden: their places are the module's (M.PartPlace), laid on the live plates alike; the rest
+	-- picked, never moved, until the designer's next stage (docs/plans/nameplate-designer.md)
+	-- (stage 2: the game's own parts too -- the level badge, the raid marker, the debuff and buff rows, the cast bar --
+	-- and the combo points and the threat line; the health bar's size is Own Plate Size's)
+	Stage.MOVES = { name = "name", cc = "cc", quest = "quest", swing = "swing", level = "level", raid = "raid",
+		debuffs = "debuffs", buffs = "buffs", cast = "cast", combo = "combo", threat = "threat" }
+	Stage.SIZES = { cc = { min = 16, max = 80, step = 1 }, quest = { min = 10, max = 48, step = 1 },
+		level = { min = 8, max = 40, step = 1 }, raid = { min = 8, max = 48, step = 1 }, cast = { min = 4, max = 30, step = 1 } }
+	-- which side of a part its size is (its home's): the width of the icons, the cast bar's height
+	Stage.SIZE_OF = { cc = "w", quest = "w", level = "w", raid = "w", cast = "h" }
+	Stage.homes = {}
 	function Stage.Part(key, label, field, text)
-		return { key = key, label = label, drag = false, text = text,
+		local part = { key = key, label = label, drag = false, text = text,
 			region = function(f)
 				local r = f[field]
 				return r and r:IsShown() and r or nil
 			end }
+		if Stage.MOVES[key] then
+			part.drag, part.hide, part.size = nil, true, Stage.SIZES[key]
+			part.box = function(f)
+				return f.bar
+			end
+			part.store = { get = function()
+				local place = M.PartPlace(key)
+				if not place then
+					return nil
+				end
+				local t = {}
+				for k, v in pairs(place) do
+					t[k] = v
+				end
+				local sizeKey = M.PART_SIZE[key]
+				if sizeKey then
+					local db = Stage.DB("Nameplates")
+					t.size = Num(db[sizeKey]) or (Stage.homes[key] and Stage.homes[key].size)
+				end
+				return t
+			end, set = function(_, t)
+				M.SetPartPlace(key, t)
+			end }
+			part.home = function()
+				return Stage.homes[key]
+			end
+			part.homeLabel = "Its own place"
+		end
+		return part
 	end
 
 	function Stage.Parts()
@@ -3098,9 +3562,84 @@ do
 				Stage.Part("quest", "Quest icon", "quest"),
 				Stage.Part("debuffs", "Your debuffs", "debuffs"),
 				Stage.Part("swing", "Swing badge", "swing"),   -- (2.1.19)
+				-- (2.1.24, stage 2: the game's own parts)
+				Stage.Part("cast", "Cast bar", "cast"),
+				Stage.Part("buffs", "Its buffs", "buffs"),
+				Stage.Part("raid", "Raid marker", "raid"),
+				Stage.Part("level", "Level badge", "level"),
 			}
 		end
 		return Stage.parts
+	end
+
+	-- (2.1.24) a region's centre and size in the sample's units against the bar's centre, or nil while unread
+	function Stage.Rect(f, r)
+		local okR, rx, ry = pcall(r.GetCenter, r)
+		local okB, bx, by = pcall(f.bar.GetCenter, f.bar)
+		local okS, w, h = pcall(r.GetSize, r)
+		rx, ry, bx, by, w, h = Fin(rx), Fin(ry), Fin(bx), Fin(by), Fin(w), Fin(h)
+		if not (okR and okB and okS and rx and ry and bx and by and w and h) then
+			return nil
+		end
+		local k = (Fin(r:GetEffectiveScale()) or 1) / (Fin(f.bar:GetEffectiveScale()) or 1)
+		return rx * k - bx, ry * k - by, w * k, h * k
+	end
+
+	-- (2.1.24, the user's pick A) every two parts on one spot outlined: one frame round each, made the first time
+	Stage.clash = {}
+	function Stage.Refresh(stage)
+		local f = stage and stage.main
+		if not (f and f.bar) then
+			return
+		end
+		local list = {}
+		for _, part in ipairs(Stage.Parts()) do
+			local r = (part.key ~= "health" and part.key ~= "threat" and part.key ~= "combo") and part.region(f) or nil
+			local place = Stage.MOVES[part.key] and M.PartPlace(part.key)
+			if r and not (place and place.show == false) then
+				local x, y, w, h = Stage.Rect(f, r)
+				if x then
+					list[#list + 1] = { r = r, l = x - w / 2, rt = x + w / 2, b = y - h / 2, t = y + h / 2 }
+				end
+			end
+		end
+		local hit = {}
+		for i = 1, #list do
+			for j = i + 1, #list do
+				local a, b = list[i], list[j]
+				if a.l < b.rt - 0.5 and b.l < a.rt - 0.5 and a.b < b.t - 0.5 and b.b < a.t - 0.5 then
+					hit[a.r], hit[b.r] = true, true
+				end
+			end
+		end
+		local c = MelloUI.Meaning.partClash
+		for r, frame in pairs(Stage.clash) do
+			frame:SetShown(hit[r] == true)
+		end
+		for r in pairs(hit) do
+			local frame = Stage.clash[r]
+			if not frame then
+				frame = CreateFrame("Frame", nil, f.top)
+				frame:SetFrameLevel(f.top:GetFrameLevel() + 20)
+				frame:SetPoint("TOPLEFT", r, "TOPLEFT", -2, 2)
+				frame:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", 2, -2)
+				for _, side in ipairs({ { "TOPLEFT", "TOPRIGHT", true }, { "BOTTOMLEFT", "BOTTOMRIGHT", true },
+					{ "TOPLEFT", "BOTTOMLEFT", false }, { "TOPRIGHT", "BOTTOMRIGHT", false } }) do
+					local t = frame:CreateTexture(nil, "OVERLAY")
+					t:SetTexture(WHITE)
+					t:SetVertexColor(c[1], c[2], c[3])
+					t:SetPoint(side[1], frame, side[1])
+					t:SetPoint(side[2], frame, side[2])
+					if side[3] then
+						t:SetHeight(1)
+					else
+						t:SetWidth(1)
+					end
+				end
+				Stage.clash[r] = frame
+			end
+			frame:Show()
+		end
 	end
 
 	function Stage.Empty()
@@ -3114,8 +3653,10 @@ do
 			watch = { Nameplates = true, Auras = true, CooldownText = true, BarTextures = true, UIModifications = true,
 				Tweaks = true,   -- (Tweaks: Text Shade, the band behind the name -- 2026-10-16)
 				SwingTimers = true, PersonalDisplay = true },   -- (2.1.19: the swing badge's hosts)
-			states = Stage.STATES, pickText = Stage.TEXT.pick,
+			-- (2.1.24, the user's pick A: everything at once -- no Normal / Your target chips; parts dragged now: the
+			-- engine's own caption; the overlaps outlined after each paint)
 			Main = Stage.Main, Paint = Stage.Paint, Room = Stage.Room, parts = Stage.Parts, Empty = Stage.Empty,
+			Refresh = Stage.Refresh,
 		})
 	end
 	M.Stage = Stage

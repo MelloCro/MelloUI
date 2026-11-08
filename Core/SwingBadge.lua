@@ -302,8 +302,14 @@ function Badge.Place()
 		local k = SB.PlateScale()
 		SB.Attach(big, uf, level, k)
 		SB.Attach(small, uf, level, k)
-		big:ClearAllPoints()
-		big:SetPoint("LEFT", beside, "RIGHT", T.badgeGap, 0)
+		-- (2.1.24) the place the Nameplate Designer gave it (its offsets in the plate's units: the badge is scaled)
+		local place = NP.PartPlace and NP.PartPlace("swing")
+		if place then
+			NP.LayPart(big, container, place, k)
+		else
+			big:ClearAllPoints()
+			big:SetPoint("LEFT", beside, "RIGHT", T.badgeGap, 0)
+		end
 		small:ClearAllPoints()
 		small:SetPoint("LEFT", big, "RIGHT", 3, 0)
 		Badge.BarOn(big, hb)

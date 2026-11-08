@@ -409,6 +409,18 @@ function View.Line(frame, text, r, g, b, _, _, _, event, args)
 	View.Soon()
 end
 
+-- (2.1.24, Copy Chat: ChatCopy.lua) a tab's records, oldest first, and its name; read on a click, never per line
+function View.Records(key)
+	local out, buf = {}, key and View.bufs[key]
+	if buf then
+		for j = buf.count - 1, 0, -1 do
+			out[#out + 1] = Nth(buf, j)
+		end
+	end
+	local t = key and View.tabs[key]
+	return out, t and t.button and t.button.tabName or nil
+end
+
 --------------------------------------------------------------------------------
 -- The history (0.23.1; the user, 2026-10-15: "the chat needs its history saved aswell as the whisper window"): each
 -- tab's newest lines (SAVE_LINES; the combat log's none) kept over a logout or a /reload, per character
@@ -2413,5 +2425,8 @@ function View.Apply()
 		View.frame:Hide()
 		View.PlaceStands()   -- (hidden with the view; after a fight)
 		MelloUI:Fire("drawn", "chat")
+	end
+	if M.Copy then
+		M.Copy.Hook()   -- (2.1.24: Copy Chat's button on the view or on the game's windows; off: away)
 	end
 end

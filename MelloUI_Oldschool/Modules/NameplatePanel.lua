@@ -295,6 +295,13 @@ local function CentreName(uf, hb, rep)
 	if not (active and name and rep.GetArms) then
 		return
 	end
+	-- (2.1.24) a name the Nameplate Designer placed: its place, never centred here (the core lays it)
+	local plates = MelloUI:GetModule("Nameplates")
+	if plates and plates.PartPlace and plates.PartPlace("name") then
+		centredStyle[name] = nil
+		plates:PlaceName(uf)
+		return
+	end
 	-- the game's layout comes from its setup options (plain values); the
 	-- name's own anchors read SECRET on this client (user, 2026-09-22,
 	-- /npdump: "first=? to ?", so the earlier read-then-move never ran)
@@ -319,7 +326,6 @@ local function CentreName(uf, hb, rep)
 	local railTop = (mid and mid.box and mid.box[2] or 14) * (strip.scale or 1)
 	-- (0.18.5: raised over the target's combo points where the Nameplates
 	-- module lays them, M:NameLift)
-	local plates = MelloUI:GetModule("Nameplates")
 	local lift = plates and plates.NameLift and plates:NameLift(uf) or 0
 	local y = Option("healthBarToNameAboveSpacing", 2) - railTop + lift
 	centredStyle[name] = style   -- what to put back (the style's own anchors)

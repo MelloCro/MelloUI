@@ -10,4 +10,5 @@
 
 ShieldSpells.lua
 CooldownSpells.lua
+TrackedSpells.lua
 PersonalDisplay.lua

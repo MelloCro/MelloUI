@@ -11,3 +11,4 @@
 Chat.lua
 ChatView.lua
 ChatWhispers.lua
+ChatCopy.lua

@@ -174,6 +174,11 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.24", lines = {
+		"Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time.",
+		"Personal Display: Tracked Spells (Big Cooldowns' tab): tick your class's spells, like Weakened Soul or Renew, to see them under the bars while they last on you.",
+		"Nameplates designer: drag and size every part of the enemy plate (cast bar, buffs, debuffs, level, raid marker, icons) and set its own width and height; overlaps are outlined red.",
+	} },
 	{ version = "2.1.23", lines = {
 		"Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands.",
 	} },
@@ -191,17 +196,6 @@ local CHANGELOG = {
 		"Swing Badge: the gold ring round your weapon fills up as your next swing nears.",
 		"Personal Display: the Big Cooldowns are square in the display's gold rim, their seconds drawn and coloured as on your debuffs on the nameplates (shown even with Percent And Spell Text off).",
 		"Personal Display: with Over The Personal Display, the swing badge and the Big Cooldowns share one row on the bars, the badge in the middle and the cooldowns beside it.",
-	} },
-	{ version = "2.1.19", lines = {
-		"Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %.",
-		"Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default).",
-		"Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds.",
-		"Nameplates: the combo points can be moved with a horizontal and a vertical offset.",
-		"Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do.",
-		"Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate.",
-		"Action Bars: class flyouts such as the hunter's Aspects, the warrior's stances and the druid's forms open on MelloUI's action bars, and their spells cast.",
-		"Action Bars: the game's hidden stance, pet and possess bars no longer take clicks where they stood once MelloUI's bars are moved (thanks, Baine).",
-		"Map: inside a battleground, the map shows you, your group and the battleground's flags.",
 	} },
 }
 local LINKS = {
