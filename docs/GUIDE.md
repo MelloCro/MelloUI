@@ -603,6 +603,8 @@ from the corner, update interval.
 
 ### Unit Frames
 
+**Out of range** (2.1.22): a party or raid member fades to Out Of Range Opacity only when the game has measured them as out of range, as the game's own raid frames do; a member it has not measured stays bright.
+
 **Click-casting** (2.1.21): Clique, and other click-cast addons that read its frame list, work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames and the Personal Display, as on the game's own. The Personal Display takes clicks only while such an addon is loaded (else the pointer goes through it to the world); its click area is laid out of a fight, so a zoom during one can leave it a little off the bars until the fight ends.
 
 Layout tweaks for the player, target and focus frames: names centred above the health bar and a

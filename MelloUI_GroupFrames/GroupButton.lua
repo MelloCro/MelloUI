@@ -14,7 +14,7 @@
 --                           (name, health text, icons: GroupParts)
 --   Button.Refresh(f)       everything of f's unit painted again
 --   Button.Health / Power / Name / Role / Mark / Ready / Range / Paint (f)
---   Button.InRange(unit)    the range rule (true, false or the client's secret)
+--   Button.InRange(unit)    the range rule (true, false, or the client's secret answer and its secret "checked")
 --   Button.RangeAlpha(f, unit, alpha, away)   f faded by it (away: out of range)
 --   Button.Sample(f, s)     a made-up member: s = { class, name, health (0..1),
 --                           power (0..1), role, dead, offline, mark, ready,
@@ -833,10 +833,14 @@ function Button.InRange(unit)
 	if not ok then
 		return true
 	end
-	if Secret(inRange) then
-		return inRange
+	-- (2.1.22; a player, 2026-11-08: "why does party frames act like im out of range or not close when im near?") the
+	-- game's own rule (CompactUnitFrame_UpdateInRange): out only when the client checked the range and the member is
+	-- not in it -- an unchecked one answers "not in range" too. This client's answers are secret (UnitInRange's
+	-- SecretReturns): a secret "checked" goes with the answer, Button.RangeAlpha joins the two
+	if Secret(checked) then
+		return inRange, checked
 	end
-	if not Secret(checked) and checked == false then
+	if checked == false then
 		if Ask(InCombatLockdown) ~= true then
 			local near = Ask(rawget(_G, "CheckInteractDistance"), unit, 4)
 			if near ~= nil then
@@ -845,17 +849,42 @@ function Button.InRange(unit)
 		end
 		return true
 	end
+	if Secret(inRange) then
+		return inRange
+	end
 	return inRange == true
+end
+
+-- (2.1.22) f at the client's secret answers: `alpha` only when checked (a secret, or nil: not asked) and not in range,
+-- as the game joins them -- C_CurveUtil picks a value from a secret boolean, the second pick from the first's; without
+-- it, the answer alone (the frame through SetAlphaFromBoolean)
+local function SecretAlpha(f, inRange, checked, alpha)
+	local CU = rawget(_G, "C_CurveUtil")
+	local pick = CU and CU.EvaluateColorValueFromBoolean
+	if pick and Secret(checked) then
+		local ok, near = pcall(pick, inRange, 1, alpha)
+		local okF, final = false, nil
+		if ok then
+			okF, final = pcall(pick, checked, near, 1)
+		end
+		if okF and pcall(f.SetAlpha, f, final) then
+			return
+		end
+	end
+	if f.SetAlphaFromBoolean then
+		pcall(f.SetAlphaFromBoolean, f, inRange, 1, alpha)
+	end
 end
 
 -- f faded out of range to `alpha`, whole and at once (away: out of range
 -- whatever the rule says -- a member in another group)
 function Button.RangeAlpha(f, unit, alpha, away)
-	local inRange = not away and Button.InRange(unit)
-	if Secret(inRange) then
-		if f.SetAlphaFromBoolean then
-			pcall(f.SetAlphaFromBoolean, f, inRange, 1, alpha)
-		end
+	local inRange, checked = false, nil
+	if not away then
+		inRange, checked = Button.InRange(unit)
+	end
+	if Secret(inRange) or Secret(checked) then
+		SecretAlpha(f, inRange, checked, alpha)
 		return
 	end
 	f:SetAlpha(inRange and 1 or alpha)

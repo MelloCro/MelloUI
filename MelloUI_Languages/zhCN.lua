@@ -2294,6 +2294,7 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away."] = "小队和团队框体：在你附近的成员不再显示为超出范围；只有当游戏测得成员距离过远时才会变淡。", -- draft
 	["Click-casting: Clique and other click-cast addons now work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames, and the Personal Display."] = "点击施法：Clique 等点击施法插件现在可用于 MelloUI 的玩家、目标、焦点、目标的目标和宠物框体，以及其小队和团队框体和个人显示。", -- draft
 	["Chat: Parchment now works with the Game Windows chat view too, in all three skins: the chat windows on parchment, their lines in dark ink."] = "聊天：羊皮纸现在也适用于“游戏窗口”聊天视图，三种皮肤均可：聊天窗口铺上羊皮纸，文字为深色墨水。", -- draft
 	["Dark Mode: parchment is no longer dimmed (the chat, the Quest Tracker, tooltips, windows and pages), so its dark ink stays readable."] = "暗色模式：羊皮纸不再被调暗（聊天、任务追踪器、鼠标提示、窗口和页面），深色墨水字迹保持清晰可读。", -- draft
@@ -2314,11 +2315,6 @@ Lang:Add("zhCN", {
 	["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "补给清单：现在是带搜索的按类别目录（饮料、食物、弹药、药水、合剂、卷轴、毒药、材料）：勾选要常备的每件物品并设置数量。", -- draft
 	["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "补给：猎人可以按食性常备宠物食物（肉、鱼、面包、奶酪、水果、蘑菇），清单最多容纳40行。", -- draft
 	["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "修复：MelloUI的搜索框和输入框中的文字重新从左侧开始，而不是居中。", -- draft
-	["Fixed: keys bound in Keybind Mode in place of a default key, such as those of action bar 1, now stay after logging in again."] = "修复：在按键绑定模式中替换默认按键（例如动作条1的按键）所绑定的按键，现在重新登录后仍会保留。", -- draft
-	["Fixed: inside a battleground, MelloUI's map opens on the battleground's own map, with you and your group on it."] = "修复：在战场中，MelloUI 地图会打开该战场自己的地图，并显示你和你的队伍。", -- draft
-	["Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames."] = "修复：死亡玩家和灵魂的框体周围不再残留减益或仇恨发光。", -- draft
-	["Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker."] = "路线：新增“跟随指南插件”开关（路线 > 常规），可在任务追踪器中关闭RestedXP和其他指南的步骤显示。", -- draft
-	["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars现在会在所有外观中点亮MelloUI自己的动作条和姿态条，而不是下方隐藏的游戏动作条。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2978,7 +2974,10 @@ Lang:Add("zhCN", {
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "修复：个人显示的重要冷却在战斗中引发的错误。", -- draft
 -- stale: ["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "修复：向卫兵问路后，其标记现在会显示在 MelloUI 地图上。", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "修复：点击潜行、姿态、形态和宠物按钮；极简聊天视图的聊天字体；默认外观的完整勾选标记；滑块旁的标签。", -- draft
+-- stale: ["Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames."] = "修复：死亡玩家和灵魂的框体周围不再残留减益或仇恨发光。", -- draft
 -- stale: ["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "修复：在地下城中，目标的目标及其他单位框体不再显示旧名字。", -- draft
+-- stale: ["Fixed: inside a battleground, MelloUI's map opens on the battleground's own map, with you and your group on it."] = "修复：在战场中，MelloUI 地图会打开该战场自己的地图，并显示你和你的队伍。", -- draft
+-- stale: ["Fixed: keys bound in Keybind Mode in place of a default key, such as those of action bar 1, now stay after logging in again."] = "修复：在按键绑定模式中替换默认按键（例如动作条1的按键）所绑定的按键，现在重新登录后仍会保留。", -- draft
 -- stale: ["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "修复：在中文、韩文和俄文客户端上，浮动战斗文字和角色头顶的名字不再显示为方块。", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "修复：Oldschool 框体上的能量条与生命条之间留出小间隙，目标的能量条也与生命条对齐。", -- draft
 -- stale: ["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "修复：小队、团队及其他单位框体现在会将死亡玩家和灵魂的生命条与能量条显示为空。", -- draft
@@ -3004,6 +3003,7 @@ Lang:Add("zhCN", {
 -- stale: ["Full experience"] = "完整体验", -- draft
 -- stale: ["Game menu"] = "游戏菜单", -- draft
 -- stale: ["Give every chat window the same background opacity, kept in your profile. Off, each window keeps the opacity set in its tab's menu."] = "让每个聊天窗口使用相同的背景不透明度，保存在你的配置中。关闭时每个窗口保留其标签菜单中设置的不透明度。", -- draft
+-- stale: ["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars现在会在所有外观中点亮MelloUI自己的动作条和姿态条，而不是下方隐藏的游戏动作条。", -- draft
 -- stale: ["Golden glints over the ore vein you walk up to (the game's soft targeting picks the nearest one, within about 15 yards): dim out of reach, bright once you can mine it, grey when your skill is too low."] = "你走近的矿脉上的金色闪烁（游戏的软目标选取最近的一个，约15码内）：够不着时暗淡，可以开采时明亮，技能太低时为灰色。", -- draft
 -- stale: ["Grey iron, bright red"] = "灰铁，亮红", -- draft
 -- stale: ["Group Frames Party: indicators for %s"] = "小队框体 小队：%s的指示器", -- draft
@@ -3282,6 +3282,7 @@ Lang:Add("zhCN", {
 -- stale: ["Route takes far less memory while its roads go in and while it finds routes."] = "Route 在读取道路和寻找路线时占用的内存大大减少。", -- draft
 -- stale: ["Route's World Marker over the destination. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "路线在目的地上方的世界标记。总是：从不淡出。战斗中：脱离战斗时淡出，战斗时回来。鼠标悬停：一直淡出，指向时显示。", -- draft
 -- stale: ["Route: Loading navigation... shows a loading bar, and the roads take about 20 MB less memory; notices show above the world map."] = "Route：“导航读取中……”显示读取进度条，道路少占约 20 MB 内存；通知显示在世界地图上方。", -- draft
+-- stale: ["Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker."] = "路线：新增“跟随指南插件”开关（路线 > 常规），可在任务追踪器中关闭RestedXP和其他指南的步骤显示。", -- draft
 -- stale: ["Route: a route to a place the roads don't reach starts at once; one such spot no longer blocks routes to the other continent."] = "Route：前往道路无法到达之处的路线立即开始；此类地点不再阻挡前往另一大陆的路线。", -- draft
 -- stale: ["Route: routes to the other continent are found faster and show Loading navigation... with its bar while they are."] = "Route：前往另一大陆的路线找得更快，寻找时显示“导航读取中……”及进度条。", -- draft
 -- stale: ["Route: shorter ways over open ground, out of rough hills and capitals' cliffs, never turned round mid-walk; the World Marker shows the way and follows RestedXP Guides."] = "路线：开阔地上走更短的路，避开崎岖丘陵和主城的悬崖，途中绝不掉头；世界标记指示方向并跟随RestedXP指南。", -- draft

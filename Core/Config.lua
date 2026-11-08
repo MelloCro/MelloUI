@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.22", lines = {
+		"Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away.",
+	} },
 	{ version = "2.1.21", lines = {
 		"Click-casting: Clique and other click-cast addons now work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames, and the Personal Display.",
 		"Chat: Parchment now works with the Game Windows chat view too, in all three skins: the chat windows on parchment, their lines in dark ink.",
@@ -201,13 +204,6 @@ local CHANGELOG = {
 		"Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many.",
 		"Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines.",
 		"Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle.",
-	} },
-	{ version = "2.1.17", lines = {
-		"Fixed: keys bound in Keybind Mode in place of a default key, such as those of action bar 1, now stay after logging in again.",
-		"Fixed: inside a battleground, MelloUI's map opens on the battleground's own map, with you and your group on it.",
-		"Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames.",
-		"Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker.",
-		"Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath.",
 	} },
 }
 local LINKS = {

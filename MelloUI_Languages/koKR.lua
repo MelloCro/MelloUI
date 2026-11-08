@@ -2294,6 +2294,7 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away."] = "파티 및 공격대 창: 가까이 있는 구성원이 더 이상 사거리 밖처럼 보이지 않습니다. 게임이 너무 멀다고 측정한 구성원만 흐려집니다.", -- draft
 	["Click-casting: Clique and other click-cast addons now work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames, and the Personal Display."] = "클릭 시전: Clique 등 클릭 시전 애드온이 이제 MelloUI의 플레이어, 대상, 주시 대상, 대상의 대상, 소환수 창과 파티 및 공격대 창, 개인 디스플레이에서 작동합니다.", -- draft
 	["Chat: Parchment now works with the Game Windows chat view too, in all three skins: the chat windows on parchment, their lines in dark ink."] = "채팅: 이제 '게임 창' 채팅 보기에서도 세 가지 스킨 모두 양피지를 쓸 수 있습니다. 채팅 창이 양피지 위에, 줄은 짙은 잉크로 표시됩니다.", -- draft
 	["Dark Mode: parchment is no longer dimmed (the chat, the Quest Tracker, tooltips, windows and pages), so its dark ink stays readable."] = "어두운 모드: 이제 양피지(채팅, 퀘스트 추적기, 툴팁, 창과 페이지)를 어둡게 하지 않아 짙은 잉크 글씨가 계속 잘 읽힙니다.", -- draft
@@ -2314,11 +2315,6 @@ Lang:Add("koKR", {
 	["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "보충 목록: 이제 검색이 있는 종류별 카탈로그(음료, 음식, 탄약, 물약, 비약, 두루마리, 독, 재료)로, 보관할 아이템을 체크하고 개수를 정합니다.", -- draft
 	["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "보충: 사냥꾼은 먹이 종류별(고기, 생선, 빵, 치즈, 과일, 버섯)로 소환수 먹이를 보관할 수 있으며, 목록은 40줄까지 담습니다.", -- draft
 	["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "수정: MelloUI의 검색창과 입력창의 글자가 가운데가 아니라 다시 왼쪽부터 시작합니다.", -- draft
-	["Fixed: keys bound in Keybind Mode in place of a default key, such as those of action bar 1, now stay after logging in again."] = "수정: 단축키 모드에서 기본 키(예: 행동 단축바 1의 키) 대신 지정한 키가 이제 다시 접속한 뒤에도 유지됩니다.", -- draft
-	["Fixed: inside a battleground, MelloUI's map opens on the battleground's own map, with you and your group on it."] = "수정: 전장 안에서 MelloUI 지도가 해당 전장의 지도로 열리며, 자신과 파티가 표시됩니다.", -- draft
-	["Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames."] = "수정: 죽은 플레이어와 유령의 창 주위에 더 이상 약화 효과나 위협 빛이 남지 않습니다.", -- draft
-	["Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker."] = "경로: 가이드 애드온 따르기 스위치(경로 > 일반)로 퀘스트 추적기에 RestedXP와 다른 가이드의 단계를 표시하지 않을 수 있습니다.", -- draft
-	["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars가 이제 모든 스킨에서 아래에 숨겨진 게임 기본 바 대신 MelloUI 자체 행동 단축바와 태세 바를 빛나게 합니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2978,7 +2974,10 @@ Lang:Add("koKR", {
 -- stale: ["Fixed: an error in fights from the Personal Display's Big Cooldowns."] = "수정: 개인 화면의 큰 재사용 대기시간으로 인한 전투 중 오류.", -- draft
 -- stale: ["Fixed: asking a guard for directions now puts its marker on MelloUI's map."] = "수정: 경비병에게 길을 물으면 이제 그 표시가 MelloUI 지도에 나타납니다.", -- draft
 -- stale: ["Fixed: clicks on Stealth, stance, form and pet buttons; the Chat font in the Minimal Chat View; Default's whole ticks; labels by sliders."] = "수정: 은신, 태세, 변신, 소환수 버튼 클릭. 최소 대화 보기의 대화 글꼴. 기본 스킨의 온전한 체크 표시. 슬라이더 옆 이름표.", -- draft
+-- stale: ["Fixed: dead players and ghosts no longer keep a debuff or threat glow around their frames."] = "수정: 죽은 플레이어와 유령의 창 주위에 더 이상 약화 효과나 위협 빛이 남지 않습니다.", -- draft
 -- stale: ["Fixed: in dungeons, the target of target and other unit frames no longer keep showing an old name."] = "수정: 던전에서 대상의 대상과 다른 유닛 프레임에 이전 이름이 계속 표시되지 않습니다.", -- draft
+-- stale: ["Fixed: inside a battleground, MelloUI's map opens on the battleground's own map, with you and your group on it."] = "수정: 전장 안에서 MelloUI 지도가 해당 전장의 지도로 열리며, 자신과 파티가 표시됩니다.", -- draft
+-- stale: ["Fixed: keys bound in Keybind Mode in place of a default key, such as those of action bar 1, now stay after logging in again."] = "수정: 단축키 모드에서 기본 키(예: 행동 단축바 1의 키) 대신 지정한 키가 이제 다시 접속한 뒤에도 유지됩니다.", -- draft
 -- stale: ["Fixed: on Chinese, Korean and Russian clients, floating combat text and names above characters no longer show as squares."] = "수정: 중국어, 한국어, 러시아어 클라이언트에서 떠오르는 전투 문자와 캐릭터 위 이름이 더 이상 네모로 표시되지 않습니다.", -- draft
 -- stale: ["Fixed: on Oldschool's frames the power bar keeps a small gap under the health bar, and the target's lines up with it."] = "수정: Oldschool 프레임에서 자원 바가 생명력 바 아래에 작은 간격을 두며, 대상의 자원 바도 생명력 바에 맞춰 정렬됩니다.", -- draft
 -- stale: ["Fixed: party, raid and other unit frames now show empty health and power bars for dead players and ghosts."] = "수정: 파티 창, 공격대 창 및 기타 개체창에서 죽은 플레이어와 유령의 생명력 및 자원 바가 이제 비어 있게 표시됩니다.", -- draft
@@ -3004,6 +3003,7 @@ Lang:Add("koKR", {
 -- stale: ["Full experience"] = "전체 경험", -- draft
 -- stale: ["Game menu"] = "게임 메뉴", -- draft
 -- stale: ["Give every chat window the same background opacity, kept in your profile. Off, each window keeps the opacity set in its tab's menu."] = "모든 대화창에 같은 배경 불투명도를 주고 프로필에 저장합니다. 끄면 각 창이 탭 메뉴에서 정한 불투명도를 유지합니다.", -- draft
+-- stale: ["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars가 이제 모든 스킨에서 아래에 숨겨진 게임 기본 바 대신 MelloUI 자체 행동 단축바와 태세 바를 빛나게 합니다.", -- draft
 -- stale: ["Golden glints over the ore vein you walk up to (the game's soft targeting picks the nearest one, within about 15 yards): dim out of reach, bright once you can mine it, grey when your skill is too low."] = "다가가는 광맥 위의 금빛 반짝임(게임의 소프트 대상 지정이 약 15미터 안의 가장 가까운 것을 고름): 닿지 않으면 흐리게, 캘 수 있으면 밝게, 기술이 부족하면 회색.", -- draft
 -- stale: ["Grey iron, bright red"] = "회색 철, 밝은 빨강", -- draft
 -- stale: ["Group Frames Party: indicators for %s"] = "그룹 창 파티: %s 표시기", -- draft
@@ -3282,6 +3282,7 @@ Lang:Add("koKR", {
 -- stale: ["Route takes far less memory while its roads go in and while it finds routes."] = "Route가 길을 불러오고 경로를 찾을 때 메모리를 훨씬 적게 씁니다.", -- draft
 -- stale: ["Route's World Marker over the destination. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "목적지 위 경로의 월드 마커. 항상: 흐려지지 않음. 전투 중: 전투 밖에서 흐려지고 전투 때 돌아옴. 마우스를 올리면: 늘 흐리고 가리키는 동안 보임.", -- draft
 -- stale: ["Route: Loading navigation... shows a loading bar, and the roads take about 20 MB less memory; notices show above the world map."] = "Route: '내비게이션 불러오는 중...'이 로딩 바를 보여 주고 길이 약 20 MB 덜 씁니다. 알림은 세계 지도 위에 보입니다.", -- draft
+-- stale: ["Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker."] = "경로: 가이드 애드온 따르기 스위치(경로 > 일반)로 퀘스트 추적기에 RestedXP와 다른 가이드의 단계를 표시하지 않을 수 있습니다.", -- draft
 -- stale: ["Route: a route to a place the roads don't reach starts at once; one such spot no longer blocks routes to the other continent."] = "Route: 길이 닿지 않는 곳으로 가는 경로가 바로 시작되고, 그런 지점이 다른 대륙 경로를 더는 막지 않습니다.", -- draft
 -- stale: ["Route: routes to the other continent are found faster and show Loading navigation... with its bar while they are."] = "Route: 다른 대륙 경로를 더 빨리 찾고, 찾는 동안 '내비게이션 불러오는 중...'과 바를 보여 줍니다.", -- draft
 -- stale: ["Route: shorter ways over open ground, out of rough hills and capitals' cliffs, never turned round mid-walk; the World Marker shows the way and follows RestedXP Guides."] = "경로: 트인 땅에서 더 짧은 길, 험한 언덕과 수도의 절벽을 피하고 도중에 절대 돌아서지 않음. 월드 마커가 길을 보여 주고 RestedXP 가이드를 따릅니다.", -- draft

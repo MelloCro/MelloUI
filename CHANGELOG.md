@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.22
+
+- Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away.
+
 ## 2.1.21
 
 - Click-casting: Clique and other click-cast addons now work on MelloUI's player, target, focus, target of target and pet frames, its party and raid frames, and the Personal Display.
