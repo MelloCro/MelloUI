@@ -143,7 +143,7 @@ local M = MelloUI:RegisterModule("Widgets", {
 		-- (2.1.28; Emghey in feature-requests: "It would be great to be able to pick which buffs you receive reminders
 		-- about"; the user's pick B of BuildData/output/buff_picks_sketch) your class's buffs, each with a switch for the
 		-- reminder on you and, a buff for the others, one for the group (the module itself: M is not known here yet)
-		{ type = "canvas", key = "buffPicks", name = "Which Buffs", new = "2.1.28",
+		{ type = "canvas", key = "buffPicks", name = "Which Buffs",
 		  heightAt = function()
 			return MelloUI:GetModule("Widgets").BuffPicks.Height()
 		  end,
