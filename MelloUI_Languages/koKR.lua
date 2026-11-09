@@ -2310,6 +2310,7 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Party and raid frames: a member who comes back into range is no longer left faded until the fight ends; the fade now follows them in and out of range as they move."] = "파티 및 공격대 프레임: 다시 사거리 안으로 들어온 구성원이 더 이상 전투가 끝날 때까지 흐리게 남지 않습니다. 이제 구성원이 움직여 사거리 안팎을 오갈 때 흐림 효과가 따라갑니다.", -- draft
 	["Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before."] = "Edit Layout: 게임이 숨기는 요소(툴팁, 전리품 창 ...)를 요소 목록에서 눈 아이콘을 한 번 클릭하거나 모두 표시로 보이게 할 수 있습니다. 전에는 두 번 클릭해야 했습니다.", -- draft
 	["Installer: Keep my layout now keeps your own Edit Mode layout; MelloUI's layout went in all the same."] = "설치 도우미: 내 레이아웃 유지가 이제 자신의 편집 모드 레이아웃을 그대로 둡니다. 전에는 MelloUI의 레이아웃이 그래도 적용되었습니다.", -- draft
 	["Dark Mode: the map's tooltips stay readable, and the boat and zeppelin lines and quest areas on the map keep their colours."] = "어두운 모드: 지도의 툴팁이 계속 잘 읽히고, 지도 위의 배와 비행선 노선, 퀘스트 지역이 원래 색을 유지합니다.", -- draft
@@ -2322,7 +2323,6 @@ Lang:Add("koKR", {
 	["Bags: items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "가방: 특수 가방(채광 가방, 약초 가방, 탄약 주머니, 화살통 ...)에 든 아이템은 그 가방의 색을 띠고, 창 아래쪽에 그 가방들과 채워진 정도가 표시됩니다.", -- draft
 	["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "가방: 직접 만든 종류에 규칙을 여러 개 둘 수 있습니다. 그중 하나라도 맞는 아이템은 그 종류에 들어갑니다(채광용 곡괭이와 낚싯대를 한 \"전문 기술 도구\" 종류에).", -- draft
 	["Personal Display: Track By Name (Big Cooldowns' tab): type any buff or debuff, like Fingers of Frost, to see it in the Tracked Spells row while it lasts on you."] = "개인 표시: 이름으로 추적 (큰 재사용 대기시간 탭): 서리의 손가락 같은 강화 또는 약화 효과를 입력하면, 걸려 있는 동안 추적 주문 줄에 표시됩니다.", -- draft
-	["Bags: items in MelloUI's bag window no longer get blocked with \"MelloUI took an action reserved for the Blizzard UI\": its item buttons are never made during a fight."] = "가방: MelloUI 가방 창의 아이템이 더 이상 \"MelloUI took an action reserved for the Blizzard UI\"로 막히지 않습니다. 아이템 버튼을 전투 중에 만들지 않습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2860,6 +2860,7 @@ Lang:Add("koKR", {
 -- stale: ["Bags by Kind: Bags Full Warning -- with your bags full, Empty shows a 0 slot that shakes and flashes red as the game says so."] = "종류별 가방: 가방 가득 참 경고 -- 가방이 가득 차면 빈 칸이 0 칸을 보여 주고, 게임이 알릴 때 흔들리며 빨갛게 번쩍입니다.", -- draft
 -- stale: ["Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in."] = "종류별 가방: 아이템 미끄러짐 -- 창이 다시 정렬될 때 아이템이 새 칸으로 미끄러지고, 새 아이템은 서서히 나타납니다.", -- draft
 -- stale: ["Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it."] = "종류별 가방: 굴러가는 돈 -- 가방 창의 돈이 새 합계까지 굴러가고, 주운 동전이 그리로 날아듭니다.", -- draft
+-- stale: ["Bags: items in MelloUI's bag window no longer get blocked with \"MelloUI took an action reserved for the Blizzard UI\": its item buttons are never made during a fight."] = "가방: MelloUI 가방 창의 아이템이 더 이상 \"MelloUI took an action reserved for the Blizzard UI\"로 막히지 않습니다. 아이템 버튼을 전투 중에 만들지 않습니다.", -- draft
 -- stale: ["Bar Texture (Look)"] = "막대 질감(외형)", -- draft
 -- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "바: 행동 단축바 뒤 그림자 스위치가 이제 배경판과 그림자 아래에 있으며, 검색으로도 찾을 수 있습니다.", -- draft
 -- stale: ["Browns with gold bevels"] = "금빛 경사의 갈색", -- draft

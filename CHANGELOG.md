@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.30
+
+- Party and raid frames: a member who comes back into range is no longer left faded until the fight ends; the fade now follows them in and out of range as they move.
+
 ## 2.1.29
 
 - Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before.

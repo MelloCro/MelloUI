@@ -50,6 +50,7 @@ local Perf = MelloUI.Perf:Scope("MelloUI_GroupFrames (headers)")
 local Shared = Perf.Shared
 local hooksecurefunc = Perf.hooksecurefunc
 local Text = MelloUI.Safe.Text
+local Secret = MelloUI.Safe.IsSecret
 local Num = MelloUI.Safe.Number
 local ScreenRect = MelloUI.Safe.ScreenRect
 local RD = ns.RD
@@ -935,6 +936,37 @@ local function Life(b)
 	end
 end
 
+-- (2.1.30; a player on Discord, 2026-11-09: "mello its still doing the thing with party frames" -- members beside him
+-- faded in a dungeon) UNIT_IN_RANGE_UPDATE's payload is secret on this client (SecretPayloads): its unit matched no
+-- button, so a member's fade was read again only as a fight started or ended and on a roster change -- one away at the
+-- pull stayed faded the whole fight. An event whose unit cannot be read paints every shown button, once a frame
+-- however many come
+local secretPaint, secretQueued = {}, false
+
+local function SecretPaintNow()
+	secretQueued = false
+	if not S.on then
+		wipe(secretPaint)
+		return
+	end
+	for paint in pairs(secretPaint) do
+		secretPaint[paint] = nil
+		for _, b in ipairs(buttons) do
+			if b.unit and b:IsShown() then
+				Button[paint](b)
+			end
+		end
+	end
+end
+
+local function SecretPaint(paint)
+	secretPaint[paint] = true
+	if not secretQueued then
+		secretQueued = true
+		C_Timer.After(0, SecretPaintNow)
+	end
+end
+
 local events = nil
 local OnEvent = Shared("the group frames' events", function(_, event, unit, ...)
 	if not S.on then
@@ -942,6 +974,10 @@ local OnEvent = Shared("the group frames' events", function(_, event, unit, ...)
 	end
 	local paint = UNIT_PAINT[event]
 	if paint then
+		if Secret(unit) then
+			SecretPaint(paint)
+			return
+		end
 		local set = unit and byUnit[Text(unit) or ""]
 		if set then
 			for b in pairs(set) do

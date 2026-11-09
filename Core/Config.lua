@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.30", lines = {
+		"Party and raid frames: a member who comes back into range is no longer left faded until the fight ends; the fade now follows them in and out of range as they move.",
+	} },
 	{ version = "2.1.29", lines = {
 		"Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before.",
 		"Installer: Keep my layout now keeps your own Edit Mode layout; MelloUI's layout went in all the same.",
@@ -193,9 +196,6 @@ local CHANGELOG = {
 		"Bags: items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are.",
 		"Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles).",
 		"Personal Display: Track By Name (Big Cooldowns' tab): type any buff or debuff, like Fingers of Frost, to see it in the Tracked Spells row while it lasts on you.",
-	} },
-	{ version = "2.1.25", lines = {
-		"Bags: items in MelloUI's bag window no longer get blocked with \"MelloUI took an action reserved for the Blizzard UI\": its item buttons are never made during a fight.",
 	} },
 }
 local LINKS = {

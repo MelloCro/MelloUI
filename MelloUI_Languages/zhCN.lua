@@ -2310,6 +2310,7 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Party and raid frames: a member who comes back into range is no longer left faded until the fight ends; the fade now follows them in and out of range as they move."] = "小队和团队框体：回到范围内的成员不再一直保持淡出直到战斗结束；淡出效果现在会随着成员移动进出范围而变化。", -- draft
 	["Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before."] = "Edit Layout：游戏隐藏的元素（鼠标提示、拾取窗口……）在元素列表中单击它的眼睛即可显示，“全部显示”也可以；之前需要双击。", -- draft
 	["Installer: Keep my layout now keeps your own Edit Mode layout; MelloUI's layout went in all the same."] = "安装向导：“保留我的布局”现在会保留你自己的编辑模式布局；之前仍会套用 MelloUI 的布局。", -- draft
 	["Dark Mode: the map's tooltips stay readable, and the boat and zeppelin lines and quest areas on the map keep their colours."] = "暗色模式：地图的鼠标提示保持清晰可读，地图上的船只与飞艇航线以及任务区域保持原有颜色。", -- draft
@@ -2322,7 +2323,6 @@ Lang:Add("zhCN", {
 	["Bags: items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "背包：特殊背包（矿石袋、草药包、弹药袋、箭袋……）中的物品带有该背包的颜色，窗口底部列出这些背包及其装满程度。", -- draft
 	["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "背包：自定义类别可以有多条规则，符合任意一条的物品都归入该类别（例如一个“专业工具”类别同时收纳矿工锄和鱼竿）。", -- draft
 	["Personal Display: Track By Name (Big Cooldowns' tab): type any buff or debuff, like Fingers of Frost, to see it in the Tracked Spells row while it lasts on you."] = "个人显示：按名称追踪（大型冷却页）：输入任意增益或减益效果，例如寒冰指，在它作用于你期间显示在追踪法术一行中。", -- draft
-	["Bags: items in MelloUI's bag window no longer get blocked with \"MelloUI took an action reserved for the Blizzard UI\": its item buttons are never made during a fight."] = "背包：MelloUI 背包窗口中的物品不再被“MelloUI took an action reserved for the Blizzard UI”阻止：其物品按钮绝不会在战斗中创建。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2860,6 +2860,7 @@ Lang:Add("zhCN", {
 -- stale: ["Bags by Kind: Bags Full Warning -- with your bags full, Empty shows a 0 slot that shakes and flashes red as the game says so."] = "背包分类：背包已满警告——背包满时，“空”显示一个为0的栏位，在游戏提示时晃动并闪红。", -- draft
 -- stale: ["Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in."] = "背包分类：物品滑动——窗口重新排序时物品滑到新栏位；新物品淡入。", -- draft
 -- stale: ["Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it."] = "背包分类：滚动金钱——背包窗口的金钱滚动到新数额；你拾取的钱币飞进去。", -- draft
+-- stale: ["Bags: items in MelloUI's bag window no longer get blocked with \"MelloUI took an action reserved for the Blizzard UI\": its item buttons are never made during a fight."] = "背包：MelloUI 背包窗口中的物品不再被“MelloUI took an action reserved for the Blizzard UI”阻止：其物品按钮绝不会在战斗中创建。", -- draft
 -- stale: ["Bar Texture (Look)"] = "条材质（外观）", -- draft
 -- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "动作条：动作条背后阴影的开关现在位于“底板与阴影”下，搜索也能找到。", -- draft
 -- stale: ["Browns with gold bevels"] = "带金色斜边的棕色", -- draft
