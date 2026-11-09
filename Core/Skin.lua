@@ -715,6 +715,9 @@ for name, icon in pairs({
 	page_questlist = "INV_Misc_Book_07", page_route = "Ability_Tracking", page_reminders = "INV_Misc_Bell_01",
 	page_automation = "INV_Misc_Wrench_01", page_sounds = "INV_Misc_Horn_01", page_profiles = "INV_Misc_Book_11",
 	page_oldschool = "INV_Misc_Rune_01", page_voice = "INV_Misc_Horn_03",
+	-- (2.1.30; the user, 2026-11-09: "now we need icons to match them, for all 3 themes" -- "Default A")
+	page_animations = "Spell_Holy_SurgeOfLight", page_buffs = "Spell_Holy_WordFortitude", page_map = "INV_Misc_Map02",
+	page_supporters = "INV_Misc_Coin_01",
 	cat_look = "INV_Misc_Gem_Sapphire_01", cat_frames = "INV_Misc_GroupNeedMore", cat_chat = "INV_Letter_15",
 	cat_quests = "Achievement_Quests_Completed_06", cat_sound = "INV_Misc_Horn_01",
 	btn_dungeon = "INV_Misc_Head_Dragon_Black", btn_meter = "INV_Misc_PocketWatch_01",

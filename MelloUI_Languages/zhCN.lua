@@ -2314,6 +2314,7 @@ Lang:Add("zhCN", {
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "增益和减益效果：独立的一页。增益和减益分开显示，各有自己的大小和行；选择锚点，自由的会立即显示在“编辑布局”中。", -- draft
+	["Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin."] = "配置器：动画、增益和减益效果、地图和支持者在每种外观中都有自己的图标。", -- draft
 	["Party and raid frames: a member who comes back into range is no longer left faded until the fight ends; the fade now follows them in and out of range as they move."] = "小队和团队框体：回到范围内的成员不再一直保持淡出直到战斗结束；淡出效果现在会随着成员移动进出范围而变化。", -- draft
 	["Impact Effects: hits flash on your target's nameplate in dungeons too, where the game hides how much a hit did."] = "打击效果：在游戏隐藏伤害数值的地下城中，命中也会在你目标的姓名板上闪光。", -- draft
 	["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "姓名板设计器：你的姓名板尺寸和摆放的部件在 /reload 后会保留，已在屏幕上的姓名板也一样。", -- draft

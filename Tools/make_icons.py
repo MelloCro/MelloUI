@@ -71,7 +71,9 @@ for n in ("page_look", "page_windows", "page_fader", "page_oldschool", "page_fra
           "page_minimap", "page_meter", "page_chat", "page_tooltip", "page_screentext", "page_tracker", "page_questlist",
           "page_route", "page_reminders", "page_automation", "page_voice", "page_sounds", "page_profiles",
           # (2.1.0, the user's pick of 2026-10-31: the winged heart, sheet_supporters.png)
-          "page_supporters"):
+          "page_supporters",
+          # (2.1.30, Batch 32; the user, 2026-11-09: "now we need icons to match them, for all 3 themes" -- "All A")
+          "page_animations", "page_buffs", "page_map"):
     SET.append(("pages", n, n, 64))
 for n in ("cat_look", "cat_frames", "cat_chat", "cat_quests", "cat_sound"):
     SET.append(("cats", n, n, 64))

@@ -157,7 +157,9 @@ L.pages = {
 	-- docs/plans/animations-page.md) every animation MelloUI plays, one place: Reduce Motion on top, a tab for each
 	-- place they play, a Play beside each row (CONFIG.Play); nothing left behind on the pages they came from. The glows
 	-- that tell you something (threat, resting, Debuff Glow, Low Health, Loss Of Control, Loot Sparkles) stay there
-	Animations = { title = "Animations", icon = "Interface\\Icons\\Spell_Holy_Renew", set = "fx_cooldown",
+	-- (2.1.30; the user, 2026-11-09: the newer pages' own pictures in every look -- Animations', Buffs & Debuffs', the
+	-- Map's: page_animations, page_buffs, page_map; Default's the game's, Core/Skin.lua)
+	Animations = { title = "Animations", icon = "Interface\\Icons\\Spell_Holy_Renew", set = "page_animations",
 		flavour = "Every animation MelloUI plays, in one place. Press Play beside one to see it before you choose.",
 		tabs = { "General", "Frames", "Nameplates", "Bars & Windows", "Travel" },
 		cards = { Frames = { "Heal Effects", "Cooldown Effects", "Personal Display" },
@@ -316,7 +318,7 @@ L.pages = {
 	-- (2.1.30) your buff and debuff rows, one page (its key Buffs: "auras" is /mello's aura probe): switched on, then where they stand (Anchor: the minimap, the
 	-- player frame or free), then moved in Edit Layout (Move Them); their size and rows, the debuffs apart. The
 	-- target's rows and the nameplates' stay on their frames' pages (the Unit & Group Frames' Target, Nameplates)
-	Buffs = { title = "Buffs & Debuffs", icon = "module:Auras",
+	Buffs = { title = "Buffs & Debuffs", icon = "module:Auras", set = "page_buffs",
 		flavour = "Your buffs and debuffs: switch on MelloUI's own, pick where they stand, then move them in Edit Layout.",
 		tabs = { "Your Buffs" },
 		-- (2.1.30; the user: "the sizing, spacing, per row, grow, New rows should be a thing that people can adjust
@@ -339,7 +341,7 @@ L.pages = {
 	-- row showed a bare slot) the modules' own icons named here
 	-- (Suggestion 1, point 9, 2026-11-04: Map and Dungeon Info had two settings a page) one page: Dungeon Info
 	-- (MelloUI_DungeonInfo, docs/plans/dungeon-info.md) a tab of it, its own switch that tab's first row
-	Map = { title = "Map", icon = "Interface\\Icons\\INV_Misc_Map_01", module = "Map",
+	Map = { title = "Map", icon = "Interface\\Icons\\INV_Misc_Map_01", set = "page_map", module = "Map",
 		tabs = { "Map", "Dungeon Info" } },
 	-- (1.2.4, the configurator shell; the user, 2026-10-27: "11 tabs is fine, build the Quality of Life page") the
 	-- small helpers one page, in the sketch's order: Automation's tabs (one look stage H: the vendor's repairs and

@@ -2314,6 +2314,7 @@ Lang:Add("koKR", {
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "강화 및 약화 효과: 전용 페이지. 강화와 약화 효과가 따로 놓이고 각각 크기와 줄을 정합니다. 고정점을 고르면, 자유인 것은 레이아웃 편집에 바로 보입니다.", -- draft
+	["Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin."] = "설정 창: 애니메이션, 강화 및 약화 효과, 지도, 후원자가 모든 스킨에서 고유 아이콘을 가집니다.", -- draft
 	["Party and raid frames: a member who comes back into range is no longer left faded until the fight ends; the fade now follows them in and out of range as they move."] = "파티 및 공격대 프레임: 다시 사거리 안으로 들어온 구성원이 더 이상 전투가 끝날 때까지 흐리게 남지 않습니다. 이제 구성원이 움직여 사거리 안팎을 오갈 때 흐림 효과가 따라갑니다.", -- draft
 	["Impact Effects: hits flash on your target's nameplate in dungeons too, where the game hides how much a hit did."] = "타격 효과: 게임이 타격 피해량을 숨기는 던전에서도 대상의 이름표에 타격 섬광이 표시됩니다.", -- draft
 	["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "이름표 디자이너: 이름표 크기와 배치한 부분이 /reload 후에도 유지되며, 이미 화면에 있는 이름표에도 적용됩니다.", -- draft
