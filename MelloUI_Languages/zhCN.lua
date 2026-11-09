@@ -2312,6 +2312,10 @@ Lang:Add("zhCN", {
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before."] = "Edit Layout：游戏隐藏的元素（鼠标提示、拾取窗口……）在元素列表中单击它的眼睛即可显示，“全部显示”也可以；之前需要双击。", -- draft
 	["Installer: Keep my layout now keeps your own Edit Mode layout; MelloUI's layout went in all the same."] = "安装向导：“保留我的布局”现在会保留你自己的编辑模式布局；之前仍会套用 MelloUI 的布局。", -- draft
+	["Dark Mode: the map's tooltips stay readable, and the boat and zeppelin lines and quest areas on the map keep their colours."] = "暗色模式：地图的鼠标提示保持清晰可读，地图上的船只与飞艇航线以及任务区域保持原有颜色。", -- draft
+	["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "姓名板设计器：精英图标成为可单独拖动、缩放或隐藏的部件；移动团队标记不再连带移动精英图标和敌人的增益效果。", -- draft
+	["Nameplates designer: changes now show at once on the plates already on screen."] = "姓名板设计器：修改现在会立即显示在屏幕上已有的姓名板上。", -- draft
+	["Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it."] = "聊天：极简聊天重新可以点击（聊天行、链接和“复制聊天”按钮）；自 2.1.24 起，隐藏的聊天窗口可能会挡住它。", -- draft
 	["Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want."] = "提醒：哪些增益（小部件页）：可以单独关闭某个增益，每个都有针对你自己和针对队伍的开关，只提醒你想要的。", -- draft
 	["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "微型菜单：移到自己的位置后不再跳回原处（乘坐载具后，或动作条重新显示时），编辑布局中的大小现在也作用于按钮。", -- draft
 	["Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows."] = "地图：暴风城、圣光之愿礼拜堂、湖畔镇和莫高雷的任务发布者与交付者现在标在他们真正所在的位置（Sprite Jumpsprocket 在矮人区），与路线所示一致。", -- draft
@@ -2685,6 +2689,7 @@ Lang:Add("zhCN", {
 	["Click a part to pick it; its settings open beside it."] = "点击一个部分选中它；它的设置在旁边打开。", -- draft
 	["Its buffs"] = "其增益", -- draft
 	["Raid marker"] = "团队标记", -- draft
+	["Elite icon"] = "精英图标", -- draft
 	["Level badge"] = "等级徽章", -- draft
 	-- MelloUI_GroupFrames/GroupFrames.lua
 	["The aura's own icon, its time as a sweep."] = "光环自己的图标，时间以扫动显示。", -- draft

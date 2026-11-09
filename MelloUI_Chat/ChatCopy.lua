@@ -273,10 +273,25 @@ end
 -- The hooks (once each; out of combat)
 --------------------------------------------------------------------------------
 
+-- (2.1.29; the user, on the Minimal view: Copy Chat's button "i cant click on it", "i cant click on almost anything on
+-- the chat") a script hooked on a frame switches its mouse on in the game. The game's chat windows have theirs off
+-- (FloatingChatFrame.xml: enableMouse="false"; the Minimal view holds them off too) and are top-level: a hidden one
+-- shown again (a tab's click) rose over the view and took every click on it. So a hooked frame keeps its clicks as
+-- they were -- only the pointer's coming and going reaches it -- and a game window is hooked only while it shows
+local function Clicks(f)
+	local ok, on = pcall(f.IsMouseClickEnabled or f.IsMouseEnabled, f)
+	return ok and not Secret(on) and on and true or false
+end
+
 local function HookOnce(f, fn)
 	if type(f) == "table" and f.HookScript and not S.hooked[f] then
+		local clicks = Clicks(f)
 		if pcall(f.HookScript, f, "OnEnter", fn) and pcall(f.HookScript, f, "OnLeave", Left) then
 			S.hooked[f] = true
+		end
+		if f.SetMouseClickEnabled then
+			pcall(f.SetMouseClickEnabled, f, clicks)
+			pcall(f.SetMouseMotionEnabled, f, true)
 		end
 	end
 end
@@ -286,6 +301,9 @@ local function HookNow()
 	if view and view.frame then
 		HookOnce(view.frame, ViewEnter)
 		HookOnce(view.area, ViewEnter)
+	end
+	if view and view.hiding then
+		return   -- (the Minimal view: its own lines take the pointer, the game's windows stay out of it)
 	end
 	for i = 1, tonumber(rawget(_G, "NUM_CHAT_WINDOWS")) or 10 do
 		HookOnce(rawget(_G, "ChatFrame" .. i), WindowEnter)

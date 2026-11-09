@@ -2309,6 +2309,14 @@ local function Hold(f, wheel)
 		local okA, a = pcall(f.GetAlpha, f)
 		local okM, m = pcall(f.IsMouseEnabled, f)
 		local h = { alpha = okA and Num(a) or 1, mouse = okM and Plain(m) }
+		-- (2.1.29) its clicks and the pointer kept apart where the client tells them apart: a window that takes only
+		-- the pointer (Copy Chat's hover) gets no clicks back -- EnableMouse(true) gave it both, and a top-level chat
+		-- window taking clicks rises over what is beside it
+		if f.IsMouseClickEnabled and f.IsMouseMotionEnabled then
+			local okC, c = pcall(f.IsMouseClickEnabled, f)
+			local okO, o = pcall(f.IsMouseMotionEnabled, f)
+			h.clicks, h.motion = okC and Plain(c), okO and Plain(o)
+		end
 		if wheel then
 			local okW, w = pcall(f.IsMouseWheelEnabled, f)
 			h.wheel = okW and Plain(w)
@@ -2334,7 +2342,10 @@ local function Let(f)
 	end
 	held[f] = nil
 	f:SetAlpha(h.alpha)
-	if h.mouse ~= nil then
+	if h.clicks ~= nil and h.motion ~= nil and f.SetMouseClickEnabled then
+		pcall(f.SetMouseClickEnabled, f, h.clicks)
+		pcall(f.SetMouseMotionEnabled, f, h.motion)
+	elseif h.mouse ~= nil then
 		f:EnableMouse(h.mouse)
 	end
 	if h.wheel ~= nil then

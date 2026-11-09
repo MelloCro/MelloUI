@@ -1029,8 +1029,11 @@ local function OwnLit(region)
 	end
 	local area = type(region) == "table" and AreaOf(region) or "windows"
 	-- (the configurator walk's round 2, 2026-11-04: Dark Mode darkened the configurator too) the configurator keeps its
-	-- colours: the palettes, colours and skins are chosen in it, its text laid against the palette undimmed
-	if area == "configurator" then
+	-- colours: the palettes, colours and skins are chosen in it, its text laid against the palette undimmed.
+	-- (2.1.29; the user, over MelloUI's map under Dark Mode: "the transportation lines, the quest objective circles
+	-- should not be affected by that") nor does what is drawn on a map's ground (the area "map": MelloUI's map's view,
+	-- the quest areas' layers on any map), as Dark Mode never darkens the ground under it
+	if area == "configurator" or area == "map" then
 		return true
 	end
 	return db[area] == false

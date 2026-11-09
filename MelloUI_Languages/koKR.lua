@@ -2312,6 +2312,10 @@ Lang:Add("koKR", {
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before."] = "Edit Layout: 게임이 숨기는 요소(툴팁, 전리품 창 ...)를 요소 목록에서 눈 아이콘을 한 번 클릭하거나 모두 표시로 보이게 할 수 있습니다. 전에는 두 번 클릭해야 했습니다.", -- draft
 	["Installer: Keep my layout now keeps your own Edit Mode layout; MelloUI's layout went in all the same."] = "설치 도우미: 내 레이아웃 유지가 이제 자신의 편집 모드 레이아웃을 그대로 둡니다. 전에는 MelloUI의 레이아웃이 그래도 적용되었습니다.", -- draft
+	["Dark Mode: the map's tooltips stay readable, and the boat and zeppelin lines and quest areas on the map keep their colours."] = "어두운 모드: 지도의 툴팁이 계속 잘 읽히고, 지도 위의 배와 비행선 노선, 퀘스트 지역이 원래 색을 유지합니다.", -- draft
+	["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "이름표 디자이너: 정예 아이콘이 따로 끌고, 크기를 바꾸고, 숨길 수 있는 부품이 되었습니다. 공격대 징표를 옮겨도 더 이상 정예 아이콘과 적의 강화 효과가 함께 움직이지 않습니다.", -- draft
+	["Nameplates designer: changes now show at once on the plates already on screen."] = "이름표 디자이너: 변경 사항이 이미 화면에 있는 이름표에 바로 적용됩니다.", -- draft
+	["Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it."] = "채팅: 미니멀 채팅을 다시 클릭할 수 있습니다(줄, 링크, 채팅 복사 버튼). 2.1.24부터 숨겨진 채팅창이 이를 가릴 수 있었습니다.", -- draft
 	["Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want."] = "알림: 어떤 강화 효과 (위젯 탭): 강화 효과를 하나씩 끌 수 있으며, 각각 자신용과 파티용 스위치가 따로 있어 원하는 것만 알림을 받습니다.", -- draft
 	["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "마이크로 메뉴: 자기 자리로 옮긴 뒤에 더 이상 원래 자리로 돌아가지 않으며(탈것 이용 후나 행동 단축바가 다시 나타날 때), 레이아웃 편집의 크기가 이제 버튼에도 적용됩니다.", -- draft
 	["Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows."] = "지도: 스톰윈드, 희망의 빛 예배당, 호숫골, 멀고어의 퀘스트 제공자와 완료 NPC가 이제 실제 서 있는 곳에 표시됩니다(드워프 지구의 Sprite Jumpsprocket). 경로가 보여 주는 위치와 같습니다.", -- draft
@@ -2685,6 +2689,7 @@ Lang:Add("koKR", {
 	["Click a part to pick it; its settings open beside it."] = "부분을 눌러 고르면 옆에 설정이 열립니다.", -- draft
 	["Its buffs"] = "대상의 강화 효과", -- draft
 	["Raid marker"] = "공격대 징표", -- draft
+	["Elite icon"] = "정예 아이콘", -- draft
 	["Level badge"] = "레벨 배지", -- draft
 	-- MelloUI_GroupFrames/GroupFrames.lua
 	["The aura's own icon, its time as a sweep."] = "효과 자체의 아이콘, 시간은 쓸어 가는 그림자로.", -- draft

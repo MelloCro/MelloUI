@@ -4,6 +4,10 @@
 
 - Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before.
 - Installer: Keep my layout now keeps your own Edit Mode layout; MelloUI's layout went in all the same.
+- Dark Mode: the map's tooltips stay readable, and the boat and zeppelin lines and quest areas on the map keep their colours.
+- Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it.
+- Nameplates designer: changes now show at once on the plates already on screen.
+- Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it.
 
 ## 2.1.28
 

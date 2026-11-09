@@ -2312,6 +2312,10 @@ Lang:Add("ptBR", {
 	["The people who help keep MelloUI going."] = "As pessoas que mantêm o MelloUI funcionando.", -- draft
 	["Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before."] = "Edit Layout: um elemento que o jogo esconde (a dica, a janela de saque ...) aparece com um clique no olho dele na lista de elementos, e com Mostrar tudo; antes era preciso um clique duplo.", -- draft
 	["Installer: Keep my layout now keeps your own Edit Mode layout; MelloUI's layout went in all the same."] = "Instalador: Manter meu layout agora mantém o seu próprio layout do modo de Edição; antes o layout do MelloUI era aplicado mesmo assim.", -- draft
+	["Dark Mode: the map's tooltips stay readable, and the boat and zeppelin lines and quest areas on the map keep their colours."] = "Modo escuro: as dicas do mapa continuam legíveis, e as linhas de barcos e zepelins e as áreas de missão no mapa mantêm suas cores.", -- draft
+	["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "Designer de placas de nome: o ícone de elite é uma peça própria para arrastar, redimensionar ou esconder; mover o marcador de raide não leva mais o ícone de elite e os bônus do inimigo junto.", -- draft
+	["Nameplates designer: changes now show at once on the plates already on screen."] = "Designer de placas de nome: as mudanças agora aparecem na hora nas placas que já estão na tela.", -- draft
+	["Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it."] = "Chat: o chat mínimo volta a aceitar cliques (suas linhas, links e o botão Copiar chat); desde a 2.1.24 uma janela de chat escondida podia cobri-lo.", -- draft
 	["Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want."] = "Lembretes: Quais bônus (aba Widgets): desligue bônus um a um, cada um com seu botão para você e outro para o grupo, para ser lembrado só dos que quiser.", -- draft
 	["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "Micromenu: movido para um lugar próprio, ele não volta mais (depois de um veículo ou quando a barra de ação reaparece), e o tamanho da edição de layout agora vale para os botões.", -- draft
 	["Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows."] = "Mapas: quem dá e recebe missões em Ventobravo, na Capela Esperança da Luz, em Vila Plácida e em Mulgore agora aparece onde realmente está (Sprite Jumpsprocket no Distrito dos Anões), como a rota mostra.", -- draft
@@ -2685,6 +2689,7 @@ Lang:Add("ptBR", {
 	["Click a part to pick it; its settings open beside it."] = "Clique numa parte para escolhê-la; as configurações abrem ao lado.", -- draft
 	["Its buffs"] = "Bônus dele", -- draft
 	["Raid marker"] = "Marcador de raide", -- draft
+	["Elite icon"] = "Ícone de elite", -- draft
 	["Level badge"] = "Emblema de nível", -- draft
 	-- MelloUI_GroupFrames/GroupFrames.lua
 	["The aura's own icon, its time as a sweep."] = "O próprio ícone da aura, o tempo como uma varredura.", -- draft

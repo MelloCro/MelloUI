@@ -428,8 +428,13 @@ end
 local Painter = {}
 Painter.__index = Painter
 
--- noGlow: the edge alone (the minimap: drawn again every tick)
+-- noGlow: the edge alone (the minimap: drawn again every tick). (2.1.29) the parent is drawn on a map's ground: Dark
+-- Mode's area "map", never dimmed (Modules/DarkMode.lua's OwnLit)
 function QA.Painter(parent, drawLayer, noGlow)
+	local dark = type(MelloUI.modules) == "table" and MelloUI.modules.DarkMode
+	if type(dark) == "table" and dark.Area and type(parent) == "table" then
+		dark:Area(parent, "map")
+	end
 	return setmetatable({ parent = parent, layer = drawLayer or "ARTWORK", areas = {}, spare = {}, gen = 0,
 		unit = 1, lines = 0, dabs = 0, noGlow = noGlow and true or false }, Painter)
 end

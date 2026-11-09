@@ -821,3 +821,75 @@ M.Plays = {
 function FX.CastPlayEnd()
 	FX.CastEnd(true)
 end
+
+--------------------------------------------------------------------------------
+-- /impactdump: what Impact Effects has on your target's plate now, then one hit flash played and read back (2.1.29;
+-- the user: "The Nameplate animations are gone once i resized the nameplates", Plate Height raised -- none of it
+-- seen in the simulator)
+--------------------------------------------------------------------------------
+do
+	local function S(v)
+		if Secret(v) then
+			return "<secret>"
+		end
+		return tostring(v)
+	end
+	local function Read(f, method)
+		if type(f) ~= "table" or type(f[method]) ~= "function" then
+			return "-"
+		end
+		local ok, a, b = pcall(f[method], f)
+		if not ok then
+			return "error " .. S(a)
+		end
+		return b ~= nil and (S(a) .. " x " .. S(b)) or S(a)
+	end
+	local function Frame(label, f)
+		MelloUI:Print("   %s: level %s, size %s, shown %s, visible %s, alpha %s, effective %s", label, Read(f, "GetFrameLevel"),
+			Read(f, "GetSize"), Read(f, "IsShown"), Read(f, "IsVisible"), Read(f, "GetAlpha"), Read(f, "GetEffectiveAlpha"))
+	end
+	SLASH_MELLOIMPACTDUMP1 = "/impactdump"
+	SlashCmdList.MELLOIMPACTDUMP = function()
+		MelloUI:ClearLog()
+		local np = MelloUI:GetModule("Nameplates")
+		local ndb = np and np.db or {}
+		local parts = {}
+		for k in pairs(type(ndb.parts) == "table" and ndb.parts or {}) do
+			parts[#parts + 1] = k
+		end
+		table.sort(parts)
+		MelloUI:Print("Impact Effects on: %s   the Nameplates area: %s   motion: %s", S(M.isEnabled), S(Area.On("nameplates")),
+			S(Motion()))
+		MelloUI:Print("   flash %s, chunk %s, crit %s, kill %s, evade %s, cast %s", S(On("flash")), S(On("chunk")), S(On("crit")),
+			S(On("kill")), S(On("evade")), S(On("cast")))
+		MelloUI:Print("Nameplates: Own Plate Size %s, %s x %s; placed: %s", S(ndb.plateSize), S(ndb.plateWidth), S(ndb.plateHeight),
+			#parts > 0 and table.concat(parts, ", ") or "none")
+		local okA, errA = pcall(FX.Attach)
+		local uf, bar = FX.Target()
+		MelloUI:Print("target's plate: %s   its bar: %s   attached: %s%s", S(uf ~= nil), S(bar ~= nil), S(FX.uf ~= nil),
+			okA and "" or ("   attach error: " .. S(errA)))
+		local r = Rec()
+		if not r then
+			if uf and bar then
+				local okM, errM = pcall(FX.Make, uf, bar)
+				MelloUI:Print("   no pieces; made now: %s %s", S(okM), okM and "" or S(errM))
+			end
+			MelloUI:ShowLog("impactdump")
+			return
+		end
+		Frame("bar", bar)
+		Frame("its container", uf and uf.HealthBarsContainer)
+		Frame("the flash's frame", r.top)
+		Frame("the flash", r.flashHost)
+		Frame("the glow", r.glowHost)
+		Frame("the chunk's clip", r.clip)
+		local okH, errH = pcall(HitOn, r, true)
+		MelloUI:Print("a crit played: %s%s", S(okH), okH and "" or (" " .. S(errH)))
+		C_Timer.After(0.12, function()
+			MelloUI:Print("0.12 s later:")
+			Frame("the flash", r.flashHost)
+			Frame("the glow", r.glowHost)
+			MelloUI:ShowLog("impactdump")
+		end)
+	end
+end

@@ -822,6 +822,12 @@ local function Build()
 	cf:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -T.IN, T.FOOT)
 	cf:EnableMouse(true)
 	cf:EnableMouseWheel(true)
+	-- (2.1.29) the view is the map's ground: what is drawn on it (the trails, the quest areas, the pins) keeps its
+	-- colours under Dark Mode (its area "map", Modules/DarkMode.lua)
+	local dark = type(MelloUI.modules) == "table" and MelloUI.modules.DarkMode
+	if type(dark) == "table" and dark.Area then
+		dark:Area(cf, "map")
+	end
 	win.canvas = canvas
 	canvas.onRest = SaveView
 	-- the pins over it (never scaled), laid with every view; the layers that feed them

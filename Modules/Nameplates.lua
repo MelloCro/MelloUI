@@ -291,8 +291,18 @@ end
 -- plate's width and height (Own Plate Size) and the cast bar. Widget calls on the plate's own regions only (never a
 -- field of the game's written, never its layout asked for); a part whose place is taken back gets the game's own
 -- anchors again (Blizzard_NamePlateUnitFrame.lua UpdateAnchors, Camelot's level frame: LEFT 5 off the bar's RIGHT)
+-- (2.1.29; the user, of the elite icon over a plate's name: "what is it attached to?" -- "Own part") the elite / rare
+-- icon (the game's ClassificationFrame, 20 units) a part of its own
 M.GAME_PARTS = { level = { "PlayerLevelDiffFrame", 15 }, raid = { "RaidTargetFrame", 22 },
-	debuffs = { "DebuffListFrame", nil, true }, buffs = { "BuffListFrame", nil, true } }
+	debuffs = { "DebuffListFrame", nil, true }, buffs = { "BuffListFrame", nil, true },
+	elite = { "ClassificationFrame", 20 } }
+-- (2.1.29) the game hangs the elite icon on the raid marker and its buffs on the elite icon (Blizzard_NamePlates.xml):
+-- the one before placed (or moved so), a part with no place of its own stays where the game lays it beside the bar
+M.HUNG_ON = { elite = "raid", buffs = "elite" }
+function M.Moved(key)
+	local on = M.HUNG_ON[key]
+	return on ~= nil and (M.PartPlace(on) ~= nil or M.Moved(on))
+end
 M.laidGame = setmetatable({}, { __mode = "k" })   -- [a game region] = true while a place lays it
 M.barsLaid = setmetatable({}, { __mode = "k" })   -- [unit frame] = true while its bars are held here
 
@@ -312,7 +322,17 @@ local function GameHome(key, region, uf, hb)
 		region:SetPoint("BOTTOM", uf.name or hb, "TOP", 0, (ok and tonumber(pad)) or 0)
 	elseif key == "buffs" then
 		region:SetPoint("RIGHT", uf.ClassificationFrame or hb, "LEFT", -5, 0)
+	elseif key == "elite" then
+		region:SetPoint("RIGHT", uf.RaidTargetFrame or hb, "LEFT", 0, 0)
 	end
+end
+
+-- (2.1.29) a hung part's home on the bar while the part it hangs on is moved: where the game's chain lays it with the
+-- raid marker at home (its 22 units; the elite icon's 20 and the buffs' gap of 5)
+local BAR_HOME = { elite = -22, buffs = -(22 + 20 + 5) }
+local function BarHome(key, region, hb)
+	region:ClearAllPoints()
+	region:SetPoint("RIGHT", hb, "LEFT", BAR_HOME[key] or 0, 0)
 end
 
 -- the level badge's room on the bar's right (the game keeps the bar short of it while it shows), 0 when it has a place
@@ -390,6 +410,13 @@ function M.LayGameParts(uf)
 			end
 			M.LayPart(region, hb, place, s)
 			region:SetAlpha(place.show == false and 0 or 1)
+			M.laidGame[region] = true
+		elseif region and M.Moved(key) then
+			if def[2] then
+				region:SetScale(1)
+			end
+			region:SetAlpha(1)
+			BarHome(key, region, hb)
 			M.laidGame[region] = true
 		elseif region and M.laidGame[region] then
 			M.laidGame[region] = nil
@@ -562,20 +589,7 @@ local function HookUnitFrame(unitFrame)
 	-- :585, :137 -- never per frame)
 	if type(unitFrame.UpdateAnchors) == "function" then
 		hooksecurefunc(unitFrame, "UpdateAnchors", function(self)
-			-- (the game laid the name again: lifted again over the combo points,
-			-- then the plate names' parts on it -- after the lift, so a cover's
-			-- justify is read back after the name's last layout)
-			Combo.Relaid(self)
-			if M.PartPlace("name") then
-				M:PlaceName(self)   -- (2.1.24: the place the Nameplate Designer gave it, before the names' parts)
-			end
-			Plate.Relaid(self)
-			if Active() or M.PartPlace("cc") then
-				AnchorCC(self)
-			end
-			if M.HasLayout() then
-				M.LayGameParts(self)   -- (2.1.24, stage 2: the game's own parts at their places, the plate's size)
-			end
+			M.Relay(self)
 		end)
 	end
 	-- (the plate names: the realm display -- a unit set, a friend or player
@@ -586,6 +600,26 @@ local function HookUnitFrame(unitFrame)
 	end
 	if type(unitFrame.OnUnitCleared) == "function" then
 		hooksecurefunc(unitFrame, "OnUnitCleared", Plate.Cleared)
+	end
+end
+
+-- a plate's own parts laid again after the game laid it out (its UpdateAnchors), or after a change of the Nameplate
+-- Designer's (`again`: also a place taken back, the name and the game's parts put on the game's anchors). (2.1.29; the
+-- user: "every nameplate that was visible during the changes didnt change in real time, only after hidding them") one
+-- pass for both, so a change lays a shown plate as its next show would
+function M.Relay(uf, again)
+	-- (the game laid the name again: lifted again over the combo points, then the plate names' parts on it -- after
+	-- the lift, so a cover's justify is read back after the name's last layout)
+	Combo.Relaid(uf)
+	if again or M.PartPlace("name") then
+		M:PlaceName(uf)   -- (2.1.24: the place the Nameplate Designer gave it, before the names' parts)
+	end
+	Plate.Relaid(uf)
+	if Active() or M.PartPlace("cc") then
+		AnchorCC(uf)
+	end
+	if again or M.HasLayout() then
+		M.LayGameParts(uf)   -- (2.1.24, stage 2: the game's own parts at their places, the plate's size)
 	end
 end
 
@@ -2979,16 +3013,20 @@ function M:OnSettingChanged(key, value, db)
 		-- (2.1.24, the Nameplate Designer) every plate's parts at their places again: the names, the CC icons, the
 		-- game's own parts and the plate's size (stage 2), the quest icons, the combo points, the threat lines, the
 		-- swing badge
-		if C_NamePlate and C_NamePlate.GetNamePlates then
-			for _, plate in ipairs(C_NamePlate.GetNamePlates()) do
-				local uf = plate.UnitFrame
-				if uf and not (plate.IsForbidden and plate:IsForbidden()) then
-					HookUnitFrame(uf)
-					M:PlaceName(uf)
-					if db.bigCC or M.PartPlace("cc") then
-						AnchorCC(uf)
-					end
-					M.LayGameParts(uf)
+		-- (2.1.29) each shown plate through the pass its layout runs (M.Relay) and its name's (Plate.Seen), one at a
+		-- time: a plate that fails is told and the others are laid all the same
+		local ok, list = pcall(C_NamePlate.GetNamePlates)
+		for _, plate in ipairs(ok and type(list) == "table" and list or {}) do
+			local uf = type(plate) == "table" and plate.UnitFrame
+			if uf and not (plate.IsForbidden and plate:IsForbidden()) then
+				HookUnitFrame(uf)
+				local laid, err = pcall(M.Relay, uf, true)
+				if laid then
+					laid, err = pcall(Plate.Seen, uf)
+				end
+				local tell = not laid and geterrorhandler and geterrorhandler()
+				if tell then
+					tell(err)
 				end
 			end
 		end
@@ -3054,6 +3092,7 @@ do
 		BUFFS = { "Interface\\Icons\\Ability_Warrior_BattleShout", "Interface\\Icons\\Spell_Frost_FrostArmor02" },
 		CAST_ICON = "Interface\\Icons\\Spell_Shadow_ShadowBolt", CAST_NAME = "Shadow Bolt", CAST_FILL = 0.6,
 		RAID = 22, BUFF = 18, BUFF_GAP = 5,
+		ELITE = 20, ELITE_ATLAS = "nameplates-icon-elite-gold",   -- (2.1.29: the game's ClassificationFrame, its elite icon)
 		SWING_FILL = 0.6,   -- (2.1.20: how far its ring is filled -- SwingBadge.SampleFill)
 		-- (2.1.19: the numbers coloured by the time left, as the plates' rows -- Rupture's under 5 s, red)
 		DEBUFFS = { { "Interface\\Icons\\Ability_Rogue_Garrote", "12", 12 }, { "Interface\\Icons\\Ability_Rogue_Rupture", "4", 4 } },
@@ -3197,6 +3236,9 @@ do
 		-- left of that, the cast bar under the bar (an icon, its fill, the spell's name)
 		f.raid = f.top:CreateTexture(nil, "OVERLAY")
 		f.raid:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8")
+		-- (2.1.29) the elite icon left of the raid marker's room, as the game hangs it
+		f.elite = f.top:CreateTexture(nil, "OVERLAY")
+		f.elite:SetAtlas(Stage.ELITE_ATLAS)
 		f.buffs = CreateFrame("Frame", nil, f.top)
 		f.buffs.icons = {}
 		for i, file in ipairs(Stage.BUFFS) do
@@ -3391,8 +3433,13 @@ do
 			icon:ClearAllPoints()
 			icon:SetPoint("LEFT", f.buffs, "LEFT", (i - 1) * (bs + Stage.SPACING), 0)
 		end
+		-- (2.1.29) the elite icon where the game's chain lays it with the raid marker at home (left of the marker's
+		-- room on the bar), the buffs left of it -- the live plates' rule while the marker is moved (BarHome)
+		f.elite:SetSize(Stage.ELITE, Stage.ELITE)
+		f.elite:ClearAllPoints()
+		f.elite:SetPoint("RIGHT", f.bar, "LEFT", -Stage.RAID, 0)
 		f.buffs:ClearAllPoints()
-		f.buffs:SetPoint("RIGHT", f.raid, "LEFT", -Stage.BUFF_GAP, 0)
+		f.buffs:SetPoint("RIGHT", f.elite, "LEFT", -Stage.BUFF_GAP, 0)
 		local castH = SetupOption("castBarHeight", 10)
 		f.cast:ClearAllPoints()
 		f.cast:SetPoint("TOPLEFT", f.bar, "BOTTOMLEFT", castH + 1, -SetupOption("castBarToHealthBarSpacing", 2) - 4)
@@ -3449,7 +3496,7 @@ do
 				if key == "name" then
 					local point = type(place.point) == "string" and place.point or "CENTER"
 					r:SetJustifyH(point:find("LEFT") and "LEFT" or (point:find("RIGHT") and "RIGHT") or "CENTER")
-				elseif (key == "level" or key == "raid") and size then
+				elseif (key == "level" or key == "raid" or key == "elite") and size then
 					r:SetSize(size, size)
 				elseif key == "cast" then
 					r:SetWidth(barW - (Fin(r:GetHeight()) or 10) - 1)
@@ -3508,11 +3555,12 @@ do
 	-- (stage 2: the game's own parts too -- the level badge, the raid marker, the debuff and buff rows, the cast bar --
 	-- and the combo points and the threat line; the health bar's size is Own Plate Size's)
 	Stage.MOVES = { name = "name", cc = "cc", quest = "quest", swing = "swing", level = "level", raid = "raid",
-		debuffs = "debuffs", buffs = "buffs", cast = "cast", combo = "combo", threat = "threat" }
+		debuffs = "debuffs", buffs = "buffs", cast = "cast", combo = "combo", threat = "threat", elite = "elite" }
 	Stage.SIZES = { cc = { min = 16, max = 80, step = 1 }, quest = { min = 10, max = 48, step = 1 },
-		level = { min = 8, max = 40, step = 1 }, raid = { min = 8, max = 48, step = 1 }, cast = { min = 4, max = 30, step = 1 } }
+		level = { min = 8, max = 40, step = 1 }, raid = { min = 8, max = 48, step = 1 }, cast = { min = 4, max = 30, step = 1 },
+		elite = { min = 8, max = 48, step = 1 } }
 	-- which side of a part its size is (its home's): the width of the icons, the cast bar's height
-	Stage.SIZE_OF = { cc = "w", quest = "w", level = "w", raid = "w", cast = "h" }
+	Stage.SIZE_OF = { cc = "w", quest = "w", level = "w", raid = "w", cast = "h", elite = "w" }
 	Stage.homes = {}
 	function Stage.Part(key, label, field, text)
 		local part = { key = key, label = label, drag = false, text = text,
@@ -3566,6 +3614,7 @@ do
 				Stage.Part("cast", "Cast bar", "cast"),
 				Stage.Part("buffs", "Its buffs", "buffs"),
 				Stage.Part("raid", "Raid marker", "raid"),
+				Stage.Part("elite", "Elite icon", "elite"),   -- (2.1.29)
 				Stage.Part("level", "Level badge", "level"),
 			}
 		end

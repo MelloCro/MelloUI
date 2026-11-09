@@ -1985,20 +1985,21 @@ QL.MEANING = {
 	horde = { 1, 0.3, 0.3 },      -- a transport of the Horde (meaning colour)
 }
 
--- (the palette, MelloUI's one look since onelook stage E)
+-- (the palette, MelloUI's one look since onelook stage E; text, so never dimmed by Dark Mode -- 2.1.29, the user: the
+-- map's tooltip "unreadable" under Dark Mode, its gold title darkened on the dark tooltip)
 function QL.TipColour(name)
-	local c = QL.MEANING[name] or MelloUI.Look.Palette()[name]
+	local c = QL.MEANING[name] or MelloUI.Look.Palette(nil, true)[name]
 	return c[1], c[2], c[3]
 end
 
 function QL.TipLine(tip, text, name, wrap)
-	local c = QL.MEANING[name] or MelloUI.Look.Palette()[name]
+	local c = QL.MEANING[name] or MelloUI.Look.Palette(nil, true)[name]
 	tip:AddLine(text, c[1], c[2], c[3], wrap)
 end
 
 function QL.TipTitle(tip, text, name)
 	name = name or "selectedTrim"
-	local c = QL.MEANING[name] or MelloUI.Look.Palette()[name]
+	local c = QL.MEANING[name] or MelloUI.Look.Palette(nil, true)[name]
 	tip:SetText(text, c[1], c[2], c[3])
 end
 

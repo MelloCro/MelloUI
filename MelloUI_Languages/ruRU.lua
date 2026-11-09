@@ -2312,6 +2312,10 @@ Lang:Add("ruRU", {
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
 	["Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before."] = "Edit Layout: элемент, который игра скрывает (подсказка, окно добычи ...), появляется одним щелчком по его глазу в списке элементов и кнопкой «Показать все»; раньше требовался двойной щелчок.", -- draft
 	["Installer: Keep my layout now keeps your own Edit Mode layout; MelloUI's layout went in all the same."] = "Установка: «Оставить мой макет» теперь оставляет ваш собственный макет режима редактирования; раньше всё равно ставился макет MelloUI.", -- draft
+	["Dark Mode: the map's tooltips stay readable, and the boat and zeppelin lines and quest areas on the map keep their colours."] = "Тёмный режим: подсказки карты остаются читаемыми, а линии кораблей и дирижаблей и области заданий на карте сохраняют свои цвета.", -- draft
+	["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "Конструктор индикаторов здоровья: значок элиты стал отдельной частью, которую можно перетащить, изменить в размере или скрыть; перемещение метки рейда больше не тянет за собой значок элиты и положительные эффекты противника.", -- draft
+	["Nameplates designer: changes now show at once on the plates already on screen."] = "Конструктор индикаторов здоровья: изменения теперь сразу видны на индикаторах, уже показанных на экране.", -- draft
+	["Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it."] = "Чат: минимальный чат снова принимает щелчки (строки, ссылки и кнопка «Копировать чат»); с версии 2.1.24 его могло закрывать скрытое окно чата.", -- draft
 	["Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want."] = "Напоминания: «Какие эффекты» (вкладка «Виджеты»): отключайте эффекты по одному, у каждого свой переключатель для вас и для группы, чтобы напоминания были только о нужных.", -- draft
 	["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "Микроменю: перенесённое на своё место, оно больше не прыгает обратно (после транспорта или когда снова появляется панель действий), а его размер из редактора макета теперь применяется к кнопкам.", -- draft
 	["Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows."] = "Карты: те, кто выдаёт и принимает задания в Штормграде, часовне Последней Надежды, Озёрном крае и Мулгоре, теперь отмечены там, где они стоят (Sprite Jumpsprocket в Квартале Дворфов), как показывает маршрут.", -- draft
@@ -2685,6 +2689,7 @@ Lang:Add("ruRU", {
 	["Click a part to pick it; its settings open beside it."] = "Щёлкните по части, чтобы выбрать её; её настройки откроются рядом.", -- draft
 	["Its buffs"] = "Его баффы", -- draft
 	["Raid marker"] = "Метка рейда", -- draft
+	["Elite icon"] = "Значок элиты", -- draft
 	["Level badge"] = "Значок уровня", -- draft
 	-- MelloUI_GroupFrames/GroupFrames.lua
 	["The aura's own icon, its time as a sweep."] = "Собственный значок эффекта, время — затемнением по кругу.", -- draft
