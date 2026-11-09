@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.35
+
+- Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan.
+
 ## 2.1.34
 
 - Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan.

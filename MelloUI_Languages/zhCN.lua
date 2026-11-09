@@ -2315,17 +2315,12 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "小地图：当草药或矿石插件扫描小地图时，小地图旁的增益效果不再跳到屏幕边缘，扫描结束后小地图边框总会回来。", -- draft
 	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "小地图：使用扫描小地图的草药或矿石插件（如 NodeSight）时，MelloUI 的小地图边框不再跟随鼠标；每次扫描时它会随地图一起隐藏。", -- draft
 	["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool：当 CurseForge 先于 MelloUI_Oldschool 更新 MelloUI 时，手绘外观不再在更新后关闭；同一 2.1 系列的任何 Oldschool 都可使用。", -- draft
 	["SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI."] = "SharedMedia（测试功能：欢迎试用并告诉我们效果）：SharedMedia 材质包中的字体、条材质和背景会出现在 MelloUI 的列表中，包括在 MelloUI 之后加载的材质包。", -- draft
 	["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "鼠标提示：暗色背景新增边框选项：暗色、游戏自带、无，或 SharedMedia 边框。SharedMedia 背景可用于鼠标提示、聊天框以及小队和团队框体。", -- draft
 	["Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest."] = "暗色模式：鼠标提示的金色标题和提示保持清晰可读：地图上的城市和地下城、服务栏、提醒、任务追踪等等。", -- draft
-	["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "增益和减益效果：独立的一页。增益和减益分开显示，各有自己的大小和行；选择锚点，自由的会立即显示在“编辑布局”中。", -- draft
-	["Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin."] = "配置器：动画、增益和减益效果、地图和支持者在每种外观中都有自己的图标。", -- draft
-	["Route: following a guide such as Polestar no longer gets stuck leading to an earlier step until a /reload when the game refuses a step's map pin."] = "路线：跟随 Polestar 等指南时，若游戏拒绝某一步的地图标记，不再一直卡在之前的步骤直到 /reload。", -- draft
-	["Party and raid frames: a member who comes back into range is no longer left faded until the fight ends; the fade now follows them in and out of range as they move."] = "小队和团队框体：回到范围内的成员不再一直保持淡出直到战斗结束；淡出效果现在会随着成员移动进出范围而变化。", -- draft
-	["Impact Effects: hits flash on your target's nameplate in dungeons too, where the game hides how much a hit did."] = "打击效果：在游戏隐藏伤害数值的地下城中，命中也会在你目标的姓名板上闪光。", -- draft
-	["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "姓名板设计器：你的姓名板尺寸和摆放的部件在 /reload 后会保留，已在屏幕上的姓名板也一样。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2872,6 +2867,7 @@ Lang:Add("zhCN", {
 -- stale: ["Browns with gold bevels"] = "带金色斜边的棕色", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "护甲用扣带和板甲声，武器用钢铁滑动声，戒指、项链和饰品用首饰叮当声；取下东西时皮带松开的声音。", -- draft
 -- stale: ["Buff, debuff and crowd control icons on nameplates. While Buffs & Debuffs puts your debuffs on enemy nameplates, those icons are MelloUI's own and show their own time: this switch does not reach them."] = "姓名板上的增益、减益和控制图标。当“增益和减益效果”把你的减益放到敌方姓名板上时，那些图标是MelloUI自己的，显示自己的时间：这个开关管不到它们。", -- draft
+-- stale: ["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "增益和减益效果：独立的一页。增益和减益分开显示，各有自己的大小和行；选择锚点，自由的会立即显示在“编辑布局”中。", -- draft
 -- stale: ["Buttons, checkboxes, tabs and scroll arrows: light clicks, a heavy one for Okay/Accept, a latch releasing for Cancel, Quit and abandoning a quest."] = "按钮、复选框、标签和滚动箭头：轻点击，确定/接受用重点击，取消、退出和放弃任务用松开插销的声音。", -- draft
 -- stale: ["Calendar, clock, help, channels"] = "日历、时钟、帮助、频道", -- draft
 -- stale: ["Channel the recorded lines play on; its volume slider in the game's sound settings controls them."] = "录制台词播放所用的频道；游戏声音设置中该频道的音量滑块控制它们。", -- draft
@@ -2905,6 +2901,7 @@ Lang:Add("zhCN", {
 -- stale: ["Combat Text: an aura that comes and goes every few seconds (Demonic Knowledge with your pet) is shown once."] = "战斗文字：每隔几秒出现又消失的光环（与宠物一起的恶魔知识）只显示一次。", -- draft
 -- stale: ["Combat, frames and tooltips"] = "战斗、框体和鼠标提示", -- draft
 -- stale: ["Compact raid frames, group borders and totems in the kit."] = "紧凑团队框体、小组边框和图腾使用套件外观。", -- draft
+-- stale: ["Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin."] = "配置器：动画、增益和减益效果、地图和支持者在每种外观中都有自己的图标。", -- draft
 -- stale: ["Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, then a part, drag names and values; a new Automation page."] = "配置器：单位和小队框体、姓名板、动作条和小地图都变成设计器：选一个框体，再选一个部分，拖动名字和数值；新增自动化页面。", -- draft
 -- stale: ["Cooldowns shorter than this show no text (2 s skips the global cooldown)."] = "短于此值的冷却不显示文字（2秒会跳过公共冷却）。", -- draft
 -- stale: ["Cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards for Shield Wall, a golden barrier for Divine Shield, afterimages for Evasion."] = "冷却：咆哮有冲击波，嘲讽有红色 !，盾墙有钢铁护卫，圣盾术有金色屏障，闪避有残影。", -- draft
@@ -3110,6 +3107,7 @@ Lang:Add("zhCN", {
 -- stale: ["How your heals look. By Class: Holy for priests and paladins, Nature for druids, Water for shamans (Holy for anyone else). Water: water circles your cast bar, a winding stream throws off droplets, a splash lands; a shield is a water bubble, a heal to full a geyser. Holy: gold sparks spiral into your spell's icon, a gold comet flies, a white flash and a burst of rays land, rune marks linger round the frame. Nature: green and gold ribbons circle your cast bar, ribbons fly shedding leaves, leaves burst and rise. Quiet: your cast bar's fill glows, a thin thread of light flies, the frame's border flares. Each kind lands its own way in each look: a heal over time sinks in, a shield wraps the frame in a barrier, protection puts a crest over it, a heal to full raises a column of light, a resurrection lights the fallen one's frame."] = "你的治疗看起来的样子。按职业：牧师和圣骑士为神圣，德鲁伊为自然，萨满为水（其他职业为神圣）。水：水流环绕你的施法条，一道蜿蜒的水流甩出水滴，落下一片水花；护盾是一个水泡，满血治疗是一道间歇泉。神圣：金色火花螺旋汇入你的法术图标，一颗金色彗星飞出，落下白色闪光和一束光芒，符文印记在框体周围停留。自然：绿金丝带环绕你的施法条，丝带一路洒落树叶飞去，树叶迸开升起。低调：施法条的填充发光，一缕细光飞出，框体边框亮起。每种类型在每种外观中都有自己的落点：持续治疗渗入，护盾用屏障包住框体，保护在其上放一个纹章，满血治疗升起一道光柱，复活点亮倒下之人的框体。", -- draft
 -- stale: ["Icon frames and bar backgrounds of the Essential, Utility and Buff cooldown viewers."] = "重要技能、效能技能和增益效果冷却查看器的图标框和条背景。", -- draft
 -- stale: ["Icons stay smooth and sharp at every size and UI scale: each one is drawn from a copy made for its size on your screen."] = "图标在任何大小和缩放下都平滑清晰：每个图标都由按其屏幕尺寸制作的副本绘制。", -- draft
+-- stale: ["Impact Effects: hits flash on your target's nameplate in dungeons too, where the game hides how much a hit did."] = "打击效果：在游戏隐藏伤害数值的地下城中，命中也会在你目标的姓名板上闪光。", -- draft
 -- stale: ["In Combat elements come back while you have a target, a friend too."] = "“战斗中”的元素在你有目标时回来，友方目标也算。", -- draft
 -- stale: ["In Combat elements come back while you point at them, too. (On Mouseover elements always do.)"] = "“战斗中”的元素在你指向它们时也会回来。（“鼠标悬停”的元素总是如此。）", -- draft
 -- stale: ["In Combat: a bar shows in a fight once it swings or shoots, and fades out when the fight ends (the shot bar also when Auto Shot stops). Always: each bar shows while you carry a weapon for it, at rest between swings."] = "战斗中：条在战斗中一挥击或射击就显示，战斗结束时淡出（射击条在自动射击停止时也会）。总是：携带相应武器时每条都显示，挥击间隙保持静止。", -- draft
@@ -3199,6 +3197,7 @@ Lang:Add("zhCN", {
 -- stale: ["Minimap: square, in the window frame"] = "小地图：方形，在窗口边框中", -- draft
 -- stale: ["Minimap: square, the Services bar inside its frame"] = "小地图：方形，服务栏在其边框内", -- draft
 -- stale: ["Minimap: the game's own"] = "小地图：游戏自己的", -- draft
+-- stale: ["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge; the Quest Tracker and the rest by the minimap stay put too."] = "小地图：当草药或矿石插件扫描小地图时，小地图旁的增益效果不再跳到屏幕边缘；任务追踪等小地图旁的元素也会保持原位。", -- draft
 -- stale: ["Move the chat input box above the chat window and its tabs instead of below it."] = "把聊天输入框移到聊天窗口及其标签的上方，而不是下方。", -- draft
 -- stale: ["Move the crowd-control icon from the right side of the nameplate to above the name and enlarge it. Requires Blizzard's Crowd Control nameplate aura option to be on."] = "把控制图标从姓名板右侧移到名字上方并放大。需要开启暴雪的姓名板控制光环选项。", -- draft
 -- stale: ["My colour"] = "我的颜色", -- draft
@@ -3211,6 +3210,7 @@ Lang:Add("zhCN", {
 -- stale: ["Nameplates designer: drag and size every part of the enemy plate (cast bar, buffs, debuffs, level, raid marker, icons) and set its own width and height; overlaps are outlined red."] = "姓名板设计器：可拖动并缩放敌方姓名板的每个部件（施法条、增益、减益、等级、团队标记、图标），并自定宽度和高度；重叠部分以红框标出。", -- draft
 -- stale: ["Nameplates designer: drag the name, CC icon, quest icon and swing badge anywhere on the plate; parts sharing a spot are outlined red."] = "姓名板设计器：可将名字、控制图标、任务图标和挥击徽章拖到姓名板的任意位置；重叠在同一处的部件会以红框标出。", -- draft
 -- stale: ["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "姓名板设计器：精英图标成为可单独拖动、缩放或隐藏的部件；移动团队标记不再连带移动精英图标和敌人的增益效果。", -- draft
+-- stale: ["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "姓名板设计器：你的姓名板尺寸和摆放的部件在 /reload 后会保留，已在屏幕上的姓名板也一样。", -- draft
 -- stale: ["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "姓名板：敌方姓名板上的你的减益效果新增“只显示我的减益”设置（默认开启）。", -- draft
 -- stale: ["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "姓名板：连击点可以通过水平和垂直偏移移动。", -- draft
 -- stale: ["Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do."] = "姓名板：姓名板预览中敌人的名字与实际姓名板一样居中显示在血条上方。", -- draft
@@ -3265,6 +3265,7 @@ Lang:Add("zhCN", {
 -- stale: ["Parchment and dark mode"] = "羊皮纸和暗色模式", -- draft
 -- stale: ["Parchment behind text, in dark ink. Each area has its own sheet."] = "文字背后的羊皮纸，深色墨水。每个区域有自己的纸张。", -- draft
 -- stale: ["Party Frames (Portraits): indicators for %s"] = "小队框体（头像）：%s的指示器", -- draft
+-- stale: ["Party and raid frames: a member who comes back into range is no longer left faded until the fight ends; the fade now follows them in and out of range as they move."] = "小队和团队框体：回到范围内的成员不再一直保持淡出直到战斗结束；淡出效果现在会随着成员移动进出范围而变化。", -- draft
 -- stale: ["Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away."] = "小队和团队框体：在你附近的成员不再显示为超出范围；只有当游戏测得成员距离过远时才会变淡。", -- draft
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "小队框体：“水平翻转”适合右侧的小队；修复了头像样式下“显示你自己”；鼠标悬停高亮点亮鼠标下的框体。", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "允许时从公会银行支付修理费。公会无法支付时改用你自己的金币。", -- draft
@@ -3343,6 +3344,7 @@ Lang:Add("zhCN", {
 -- stale: ["Route: Loading navigation... shows a loading bar, and the roads take about 20 MB less memory; notices show above the world map."] = "Route：“导航读取中……”显示读取进度条，道路少占约 20 MB 内存；通知显示在世界地图上方。", -- draft
 -- stale: ["Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker."] = "路线：新增“跟随指南插件”开关（路线 > 常规），可在任务追踪器中关闭RestedXP和其他指南的步骤显示。", -- draft
 -- stale: ["Route: a route to a place the roads don't reach starts at once; one such spot no longer blocks routes to the other continent."] = "Route：前往道路无法到达之处的路线立即开始；此类地点不再阻挡前往另一大陆的路线。", -- draft
+-- stale: ["Route: following a guide such as Polestar no longer gets stuck leading to an earlier step until a /reload when the game refuses a step's map pin."] = "路线：跟随 Polestar 等指南时，若游戏拒绝某一步的地图标记，不再一直卡在之前的步骤直到 /reload。", -- draft
 -- stale: ["Route: routes to the other continent are found faster and show Loading navigation... with its bar while they are."] = "Route：前往另一大陆的路线找得更快，寻找时显示“导航读取中……”及进度条。", -- draft
 -- stale: ["Route: shorter ways over open ground, out of rough hills and capitals' cliffs, never turned round mid-walk; the World Marker shows the way and follows RestedXP Guides."] = "路线：开阔地上走更短的路，避开崎岖丘陵和主城的悬崖，途中绝不掉头；世界标记指示方向并跟随RestedXP指南。", -- draft
 -- stale: ["Route: the service buttons (Repair, Innkeeper, Flight Master ...) route to the nearest one at once again."] = "Route：服务按钮（修理、旅店老板、飞行管理员……）又能立即引导到最近的一个。", -- draft

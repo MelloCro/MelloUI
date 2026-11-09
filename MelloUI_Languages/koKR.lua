@@ -2315,17 +2315,12 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "미니맵: 약초·광석 애드온이 미니맵을 스캔하는 동안 옆의 강화 효과가 더 이상 화면 가장자리로 튀지 않으며, 스캔이 끝나면 미니맵 테두리가 항상 돌아옵니다.", -- draft
 	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "미니맵: 미니맵을 스캔하는 약초·광석 애드온(NodeSight 등)을 쓸 때 MelloUI의 미니맵 테두리가 더 이상 커서를 따라다니지 않습니다. 스캔할 때마다 지도와 함께 숨겨집니다.", -- draft
 	["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool: CurseForge가 MelloUI_Oldschool보다 MelloUI를 먼저 업데이트해도 손그림 외형이 더 이상 꺼지지 않습니다. 같은 2.1 시리즈의 Oldschool이면 모두 맞습니다.", -- draft
 	["SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI."] = "SharedMedia (테스트: 사용해 보고 어땠는지 알려 주세요): SharedMedia 팩의 글꼴, 바 텍스처, 배경이 MelloUI 목록에 표시됩니다. MelloUI보다 나중에 불러오는 팩도 포함됩니다.", -- draft
 	["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "툴팁: 어두운 배경의 테두리 선택: 어두움, 게임 기본, 없음, 또는 SharedMedia 테두리. SharedMedia 배경은 툴팁, 대화창, 파티 및 공격대 프레임에 쓸 수 있습니다.", -- draft
 	["Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest."] = "어두운 모드: 툴팁의 금색 제목과 안내가 읽기 쉽게 유지됩니다: 지도의 도시와 던전, 서비스 바, 알림, 퀘스트 추적기 등.", -- draft
-	["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "강화 및 약화 효과: 전용 페이지. 강화와 약화 효과가 따로 놓이고 각각 크기와 줄을 정합니다. 고정점을 고르면, 자유인 것은 레이아웃 편집에 바로 보입니다.", -- draft
-	["Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin."] = "설정 창: 애니메이션, 강화 및 약화 효과, 지도, 후원자가 모든 스킨에서 고유 아이콘을 가집니다.", -- draft
-	["Route: following a guide such as Polestar no longer gets stuck leading to an earlier step until a /reload when the game refuses a step's map pin."] = "경로: Polestar 같은 가이드를 따를 때 게임이 한 단계의 지도 표시를 거부해도 더 이상 /reload 전까지 이전 단계로 안내하며 멈추지 않습니다.", -- draft
-	["Party and raid frames: a member who comes back into range is no longer left faded until the fight ends; the fade now follows them in and out of range as they move."] = "파티 및 공격대 프레임: 다시 사거리 안으로 들어온 구성원이 더 이상 전투가 끝날 때까지 흐리게 남지 않습니다. 이제 구성원이 움직여 사거리 안팎을 오갈 때 흐림 효과가 따라갑니다.", -- draft
-	["Impact Effects: hits flash on your target's nameplate in dungeons too, where the game hides how much a hit did."] = "타격 효과: 게임이 타격 피해량을 숨기는 던전에서도 대상의 이름표에 타격 섬광이 표시됩니다.", -- draft
-	["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "이름표 디자이너: 이름표 크기와 배치한 부분이 /reload 후에도 유지되며, 이미 화면에 있는 이름표에도 적용됩니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2872,6 +2867,7 @@ Lang:Add("koKR", {
 -- stale: ["Browns with gold bevels"] = "금빛 경사의 갈색", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "방어구에는 버클과 판금, 무기에는 강철 미끄러지는 소리, 반지, 목걸이, 장신구에는 장신구 딸깍. 무언가를 벗을 때 끈 풀리는 소리.", -- draft
 -- stale: ["Buff, debuff and crowd control icons on nameplates. While Buffs & Debuffs puts your debuffs on enemy nameplates, those icons are MelloUI's own and show their own time: this switch does not reach them."] = "이름표의 강화, 약화, 군중 제어 아이콘. 강화 및 약화 효과가 내 약화 효과를 적 이름표에 올리는 동안 그 아이콘은 MelloUI의 것이며 자체 시간을 보여 줍니다: 이 스위치는 거기에 닿지 않습니다.", -- draft
+-- stale: ["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "강화 및 약화 효과: 전용 페이지. 강화와 약화 효과가 따로 놓이고 각각 크기와 줄을 정합니다. 고정점을 고르면, 자유인 것은 레이아웃 편집에 바로 보입니다.", -- draft
 -- stale: ["Buttons, checkboxes, tabs and scroll arrows: light clicks, a heavy one for Okay/Accept, a latch releasing for Cancel, Quit and abandoning a quest."] = "버튼, 확인란, 탭, 스크롤 화살표: 가벼운 클릭, 확인/수락에는 무거운 클릭, 취소, 게임 종료, 퀘스트 포기에는 걸쇠가 풀리는 소리.", -- draft
 -- stale: ["Calendar, clock, help, channels"] = "달력, 시계, 도움말, 채널", -- draft
 -- stale: ["Channel the recorded lines play on; its volume slider in the game's sound settings controls them."] = "녹음된 줄이 재생되는 채널. 게임 소리 설정의 그 음량 슬라이더가 조절합니다.", -- draft
@@ -2905,6 +2901,7 @@ Lang:Add("koKR", {
 -- stale: ["Combat Text: an aura that comes and goes every few seconds (Demonic Knowledge with your pet) is shown once."] = "전투 문자: 몇 초마다 생겼다 사라지는 효과(소환수와의 악마의 지식)는 한 번만 표시합니다.", -- draft
 -- stale: ["Combat, frames and tooltips"] = "전투, 창, 툴팁", -- draft
 -- stale: ["Compact raid frames, group borders and totems in the kit."] = "간소화 공격대 창, 그룹 테두리, 토템에 키트 적용.", -- draft
+-- stale: ["Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin."] = "설정 창: 애니메이션, 강화 및 약화 효과, 지도, 후원자가 모든 스킨에서 고유 아이콘을 가집니다.", -- draft
 -- stale: ["Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, then a part, drag names and values; a new Automation page."] = "구성기: 개체 및 그룹 창, 이름표, 바, 미니맵이 디자이너가 됨: 창을 고르고 부분을 골라 이름과 값을 끌어 옮기세요. 새 자동화 페이지.", -- draft
 -- stale: ["Cooldowns shorter than this show no text (2 s skips the global cooldown)."] = "이보다 짧은 재사용 대기시간은 글자를 표시하지 않습니다(2초면 전역 재사용 대기시간을 건너뜀).", -- draft
 -- stale: ["Cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards for Shield Wall, a golden barrier for Divine Shield, afterimages for Evasion."] = "재사용 대기시간: 포효에는 충격파, 도발에는 빨간 !, 방패의 벽에는 강철 방어구, 천상의 보호막에는 황금 방벽, 회피에는 잔상.", -- draft
@@ -3110,6 +3107,7 @@ Lang:Add("koKR", {
 -- stale: ["How your heals look. By Class: Holy for priests and paladins, Nature for druids, Water for shamans (Holy for anyone else). Water: water circles your cast bar, a winding stream throws off droplets, a splash lands; a shield is a water bubble, a heal to full a geyser. Holy: gold sparks spiral into your spell's icon, a gold comet flies, a white flash and a burst of rays land, rune marks linger round the frame. Nature: green and gold ribbons circle your cast bar, ribbons fly shedding leaves, leaves burst and rise. Quiet: your cast bar's fill glows, a thin thread of light flies, the frame's border flares. Each kind lands its own way in each look: a heal over time sinks in, a shield wraps the frame in a barrier, protection puts a crest over it, a heal to full raises a column of light, a resurrection lights the fallen one's frame."] = "내 치유의 모습. 직업별: 사제와 성기사는 신성, 드루이드는 자연, 주술사는 물(그 외는 신성). 물: 물이 시전바를 감돌고, 굽이치는 물줄기가 물방울을 흩뿌리며, 물보라가 내려앉습니다. 보호막은 물방울, 완전 치유는 간헐천. 신성: 금빛 불꽃이 주문 아이콘으로 소용돌이치고, 금빛 혜성이 날아가며, 하얀 섬광과 광선 다발이 내려앉고, 룬 표식이 창 둘레에 남습니다. 자연: 녹색과 금색 리본이 시전바를 감돌고, 리본이 잎을 흘리며 날아가고, 잎이 터져 오릅니다. 차분: 시전바 채움이 빛나고, 가는 빛줄기가 날아가며, 창 테두리가 타오릅니다. 모든 외형에서 종류마다 내려앉는 방식이 있습니다: 지속 치유는 스며들고, 보호막은 창을 장벽으로 감싸고, 보호는 그 위에 문장을 놓고, 완전 치유는 빛기둥을 세우고, 부활은 쓰러진 이의 창을 밝힙니다.", -- draft
 -- stale: ["Icon frames and bar backgrounds of the Essential, Utility and Buff cooldown viewers."] = "핵심, 보조, 강화 효과 재사용 대기시간 보기의 아이콘 테두리와 막대 배경.", -- draft
 -- stale: ["Icons stay smooth and sharp at every size and UI scale: each one is drawn from a copy made for its size on your screen."] = "아이콘이 어떤 크기와 배율에서도 부드럽고 선명합니다: 화면 크기에 맞춘 사본으로 그립니다.", -- draft
+-- stale: ["Impact Effects: hits flash on your target's nameplate in dungeons too, where the game hides how much a hit did."] = "타격 효과: 게임이 타격 피해량을 숨기는 던전에서도 대상의 이름표에 타격 섬광이 표시됩니다.", -- draft
 -- stale: ["In Combat elements come back while you have a target, a friend too."] = "전투 중 요소가 대상이 있는 동안 돌아옵니다. 아군 대상도.", -- draft
 -- stale: ["In Combat elements come back while you point at them, too. (On Mouseover elements always do.)"] = "전투 중 요소가 가리키는 동안에도 돌아옵니다. (마우스를 올리면 요소는 항상 그렇습니다.)", -- draft
 -- stale: ["In Combat: a bar shows in a fight once it swings or shoots, and fades out when the fight ends (the shot bar also when Auto Shot stops). Always: each bar shows while you carry a weapon for it, at rest between swings."] = "전투 중: 막대가 전투 중 공격하거나 쏘면 나타나고 전투가 끝나면 사라집니다(사격 막대는 자동 사격이 멈출 때도). 항상: 해당 무기를 들고 있는 동안 각 막대가 보이며, 공격 사이에는 멈춰 있습니다.", -- draft
@@ -3199,6 +3197,7 @@ Lang:Add("koKR", {
 -- stale: ["Minimap: square, in the window frame"] = "미니맵: 사각, 창 테두리 안", -- draft
 -- stale: ["Minimap: square, the Services bar inside its frame"] = "미니맵: 사각, 테두리 안에 서비스 바", -- draft
 -- stale: ["Minimap: the game's own"] = "미니맵: 게임의 것", -- draft
+-- stale: ["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge; the Quest Tracker and the rest by the minimap stay put too."] = "미니맵: 약초·광석 애드온이 미니맵을 스캔하는 동안 옆의 강화 효과가 더 이상 화면 가장자리로 튀지 않습니다. 퀘스트 추적기 등 미니맵 옆의 요소도 제자리에 있습니다.", -- draft
 -- stale: ["Move the chat input box above the chat window and its tabs instead of below it."] = "대화 입력 상자를 대화창과 탭 아래가 아니라 위로 옮깁니다.", -- draft
 -- stale: ["Move the crowd-control icon from the right side of the nameplate to above the name and enlarge it. Requires Blizzard's Crowd Control nameplate aura option to be on."] = "군중 제어 아이콘을 이름표 오른쪽에서 이름 위로 옮기고 키웁니다. 블리자드의 이름표 군중 제어 효과 설정이 켜져 있어야 합니다.", -- draft
 -- stale: ["My colour"] = "내 색", -- draft
@@ -3211,6 +3210,7 @@ Lang:Add("koKR", {
 -- stale: ["Nameplates designer: drag and size every part of the enemy plate (cast bar, buffs, debuffs, level, raid marker, icons) and set its own width and height; overlaps are outlined red."] = "이름표 디자이너: 적 이름표의 모든 요소(시전 바, 강화 효과, 약화 효과, 레벨, 공격대 징표, 아이콘)를 끌어 놓고 크기를 조절하며, 너비와 높이도 직접 정할 수 있습니다. 겹친 요소는 빨간 테두리로 표시됩니다.", -- draft
 -- stale: ["Nameplates designer: drag the name, CC icon, quest icon and swing badge anywhere on the plate; parts sharing a spot are outlined red."] = "이름표 디자이너: 이름, 군중 제어 아이콘, 퀘스트 아이콘, 스윙 배지를 이름표의 원하는 곳으로 끌어 놓으세요. 같은 자리에 겹친 요소는 빨간 테두리로 표시됩니다.", -- draft
 -- stale: ["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "이름표 디자이너: 정예 아이콘이 따로 끌고, 크기를 바꾸고, 숨길 수 있는 부품이 되었습니다. 공격대 징표를 옮겨도 더 이상 정예 아이콘과 적의 강화 효과가 함께 움직이지 않습니다.", -- draft
+-- stale: ["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "이름표 디자이너: 이름표 크기와 배치한 부분이 /reload 후에도 유지되며, 이미 화면에 있는 이름표에도 적용됩니다.", -- draft
 -- stale: ["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "이름표: 적 이름표의 내 약화 효과에 '내 약화 효과만' 설정이 추가되었습니다(기본값 켜짐).", -- draft
 -- stale: ["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "이름표: 연계 점수를 가로 및 세로 오프셋으로 옮길 수 있습니다.", -- draft
 -- stale: ["Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do."] = "이름표: 이름표 미리보기에서 적의 이름이 실제 이름표처럼 바 위 가운데에 표시됩니다.", -- draft
@@ -3265,6 +3265,7 @@ Lang:Add("koKR", {
 -- stale: ["Parchment and dark mode"] = "양피지와 어두운 모드", -- draft
 -- stale: ["Parchment behind text, in dark ink. Each area has its own sheet."] = "글자 뒤 양피지, 짙은 잉크로. 영역마다 자체 양피지.", -- draft
 -- stale: ["Party Frames (Portraits): indicators for %s"] = "파티 창(초상화): %s 표시기", -- draft
+-- stale: ["Party and raid frames: a member who comes back into range is no longer left faded until the fight ends; the fade now follows them in and out of range as they move."] = "파티 및 공격대 프레임: 다시 사거리 안으로 들어온 구성원이 더 이상 전투가 끝날 때까지 흐리게 남지 않습니다. 이제 구성원이 움직여 사거리 안팎을 오갈 때 흐림 효과가 따라갑니다.", -- draft
 -- stale: ["Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away."] = "파티 및 공격대 창: 가까이 있는 구성원이 더 이상 사거리 밖처럼 보이지 않습니다. 게임이 너무 멀다고 측정한 구성원만 흐려집니다.", -- draft
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "파티 개체창: 오른쪽 파티를 위한 가로 뒤집기; 초상화 방식에서 '내 개체창 표시' 수정; 마우스오버 강조가 마우스 아래 개체창을 밝힙니다.", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "허용되면 길드 은행에서 수리비를 냅니다. 길드가 비용을 감당할 수 없으면 내 골드를 씁니다.", -- draft
@@ -3343,6 +3344,7 @@ Lang:Add("koKR", {
 -- stale: ["Route: Loading navigation... shows a loading bar, and the roads take about 20 MB less memory; notices show above the world map."] = "Route: '내비게이션 불러오는 중...'이 로딩 바를 보여 주고 길이 약 20 MB 덜 씁니다. 알림은 세계 지도 위에 보입니다.", -- draft
 -- stale: ["Route: a Follow Guide Addons switch (Route > General) turns off showing RestedXP's and other guides' steps in the Quest Tracker."] = "경로: 가이드 애드온 따르기 스위치(경로 > 일반)로 퀘스트 추적기에 RestedXP와 다른 가이드의 단계를 표시하지 않을 수 있습니다.", -- draft
 -- stale: ["Route: a route to a place the roads don't reach starts at once; one such spot no longer blocks routes to the other continent."] = "Route: 길이 닿지 않는 곳으로 가는 경로가 바로 시작되고, 그런 지점이 다른 대륙 경로를 더는 막지 않습니다.", -- draft
+-- stale: ["Route: following a guide such as Polestar no longer gets stuck leading to an earlier step until a /reload when the game refuses a step's map pin."] = "경로: Polestar 같은 가이드를 따를 때 게임이 한 단계의 지도 표시를 거부해도 더 이상 /reload 전까지 이전 단계로 안내하며 멈추지 않습니다.", -- draft
 -- stale: ["Route: routes to the other continent are found faster and show Loading navigation... with its bar while they are."] = "Route: 다른 대륙 경로를 더 빨리 찾고, 찾는 동안 '내비게이션 불러오는 중...'과 바를 보여 줍니다.", -- draft
 -- stale: ["Route: shorter ways over open ground, out of rough hills and capitals' cliffs, never turned round mid-walk; the World Marker shows the way and follows RestedXP Guides."] = "경로: 트인 땅에서 더 짧은 길, 험한 언덕과 수도의 절벽을 피하고 도중에 절대 돌아서지 않음. 월드 마커가 길을 보여 주고 RestedXP 가이드를 따릅니다.", -- draft
 -- stale: ["Route: the service buttons (Repair, Innkeeper, Flight Master ...) route to the nearest one at once again."] = "Route: 서비스 버튼(장비 수리, 여관주인, 비행 조련사...)이 다시 바로 가장 가까운 곳으로 안내합니다.", -- draft

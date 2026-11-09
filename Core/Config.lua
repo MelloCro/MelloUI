@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.35", lines = {
+		"Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan.",
+	} },
 	{ version = "2.1.34", lines = {
 		"Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan.",
 	} },
@@ -186,14 +189,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.31", lines = {
 		"Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest.",
-	} },
-	{ version = "2.1.30", lines = {
-		"Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once.",
-		"Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin.",
-		"Route: following a guide such as Polestar no longer gets stuck leading to an earlier step until a /reload when the game refuses a step's map pin.",
-		"Party and raid frames: a member who comes back into range is no longer left faded until the fight ends; the fade now follows them in and out of range as they move.",
-		"Impact Effects: hits flash on your target's nameplate in dungeons too, where the game hides how much a hit did.",
-		"Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too.",
 	} },
 }
 local LINKS = {

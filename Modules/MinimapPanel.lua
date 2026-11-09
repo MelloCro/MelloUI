@@ -1807,6 +1807,27 @@ function MapHidden.Each(fn)
 	end
 end
 
+-- (2.1.35; the user, 2026-11-09, of wAAs after 2.1.34: "its minimap is gone aswell") while the map is away its alpha is
+-- looked at every frame: a scanner may give it back through a SetAlpha it kept from before the hook, which the hook never
+-- hears -- the frame round the map then stayed at 0. A frame of ours, made the first time and shown only while the map
+-- is away (no poller at rest)
+function MapHidden.Watch(on)
+	local w = MapHidden.watch
+	if on then
+		if not w then
+			w = CreateFrame("Frame")
+			w:Hide()
+			Perf.SetScript(w, "OnUpdate", function()
+				MapHidden.Sync()
+			end)
+			MapHidden.watch = w
+		end
+		w:Show()
+	elseif w then
+		w:Hide()
+	end
+end
+
 function MapHidden.Sync()
 	local map = Minimap
 	local okA, a = false, nil
@@ -1819,6 +1840,7 @@ function MapHidden.Sync()
 		return
 	end
 	MapHidden.on = hide
+	MapHidden.Watch(hide)
 	if hide then
 		MapHidden.Each(function(f)
 			local okW, was = pcall(f.GetAlpha, f)
@@ -1832,6 +1854,11 @@ function MapHidden.Sync()
 		for f, was in pairs(MapHidden.kept) do
 			pcall(f.SetAlpha, f, was)
 			MapHidden.kept[f] = nil
+		end
+		-- (2.1.35; wAAs's screenshot: his buffs' timers at the screen's top edge after a scan -- the rows by the map
+		-- were placed while it was away) the column laid again now that the map is back: every follower in its place
+		if M.isEnabled and M.LayColumn then
+			M:LayColumn()
 		end
 	end
 end
@@ -2175,6 +2202,11 @@ function Column.Painted(block, l, b, r, t)
 end
 
 function M:ColumnRect()
+	-- (2.1.35) the map away under a scanner's cursor (MapHidden): unread, so every follower keeps its place (the
+	-- buffs by the map, the Quest Tracker, the rims, Route's line); the column laid again as the map comes back
+	if MapHidden.on then
+		return nil
+	end
 	local block = Column.Block()
 	local l, b, r, t = ScreenRect(block)
 	if not l then
@@ -2257,6 +2289,9 @@ function M:ColumnSide(l, r)
 end
 
 function M:ColumnPart(part)
+	if MapHidden.on then
+		return nil   -- (2.1.35: the map away under a scanner's cursor, as M:ColumnRect)
+	end
 	if part == "frame" then
 		return Column.Frame()
 	elseif part == "band" then
