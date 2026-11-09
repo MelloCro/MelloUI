@@ -623,6 +623,29 @@ function M.Relay(uf, again)
 	end
 end
 
+-- (2.1.29) every shown plate through the pass its layout runs (M.Relay), one at a time: a plate that fails is told
+-- and the others are laid all the same. `again`: a Designer change (a place taken back too; the name's pass after).
+-- (2.1.30; the user, after a /reload: "the nameplates reset back to normal, instead of staying modified how i edited
+-- them") else the module come on: the login's start-up pass switches it on a few frames after the world, so the
+-- plates shown by then had their NAME_PLATE_UNIT_ADDED before it and kept the game's layout until shown again
+function M.LayShown(again)
+	local ok, list = pcall(C_NamePlate.GetNamePlates)
+	for _, plate in ipairs(ok and type(list) == "table" and list or {}) do
+		local uf = type(plate) == "table" and plate.UnitFrame
+		if uf and not (plate.IsForbidden and plate:IsForbidden()) then
+			HookUnitFrame(uf)
+			local laid, err = pcall(M.Relay, uf, again)
+			if laid and again then
+				laid, err = pcall(Plate.Seen, uf)
+			end
+			local tell = not laid and geterrorhandler and geterrorhandler()
+			if tell then
+				tell(err)
+			end
+		end
+	end
+end
+
 local function StyleUnitFrame(unitFrame)
 	if not unitFrame or (unitFrame.IsForbidden and unitFrame:IsForbidden()) then
 		return
@@ -2939,6 +2962,9 @@ function M:OnEnable(db)
 	if db.bigCC then
 		ApplyAll()
 	end
+	if M.HasLayout() then
+		M.LayShown(false)   -- (2.1.30: the plates shown before the module came on)
+	end
 	if db.questIcon then
 		UpdateAllQuestIcons()
 	end
@@ -3013,23 +3039,8 @@ function M:OnSettingChanged(key, value, db)
 		-- (2.1.24, the Nameplate Designer) every plate's parts at their places again: the names, the CC icons, the
 		-- game's own parts and the plate's size (stage 2), the quest icons, the combo points, the threat lines, the
 		-- swing badge
-		-- (2.1.29) each shown plate through the pass its layout runs (M.Relay) and its name's (Plate.Seen), one at a
-		-- time: a plate that fails is told and the others are laid all the same
-		local ok, list = pcall(C_NamePlate.GetNamePlates)
-		for _, plate in ipairs(ok and type(list) == "table" and list or {}) do
-			local uf = type(plate) == "table" and plate.UnitFrame
-			if uf and not (plate.IsForbidden and plate:IsForbidden()) then
-				HookUnitFrame(uf)
-				local laid, err = pcall(M.Relay, uf, true)
-				if laid then
-					laid, err = pcall(Plate.Seen, uf)
-				end
-				local tell = not laid and geterrorhandler and geterrorhandler()
-				if tell then
-					tell(err)
-				end
-			end
-		end
+		-- (2.1.29) each shown plate through the pass its layout runs and its name's
+		M.LayShown(true)
 		if db.questIcon then
 			UpdateAllQuestIcons()
 		end

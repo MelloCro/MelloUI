@@ -26,6 +26,7 @@
 --                       layer's group name (the bridge's "editmode") is
 --                       shown unless a solo holds the screen
 --     K.LockedReason(entry) -> the lock's line, or nil
+--     K.ShowEntry(entry)  its plate shown: its eye on, as a click on it (2.1.30)
 --     K.Toggle(), K.Open(), K.Close(), K.IsOpen()
 --     K.Refresh()       the rows again (a sync, a lock, a pause's end)
 --     K.Counts() -> shown, total    the plates the eyes let show, of all
@@ -357,6 +358,12 @@ local function SetEye(entry, show)
 	end
 	t.hidden[key] = EyeValue(entry, show)
 	Save(t)
+end
+
+-- (2.1.30) an element's plate shown, as a click on its eye (Buffs & Debuffs' Move Them)
+function K.ShowEntry(entry)
+	SetEye(entry, true)
+	Changed()   -- (the plates laid again while Edit Layout shows; nothing else while it is closed)
 end
 
 local function SetSolo(kind, id, label)

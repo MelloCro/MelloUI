@@ -2,7 +2,10 @@
 
 ## 2.1.30
 
+- Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once.
 - Party and raid frames: a member who comes back into range is no longer left faded until the fight ends; the fade now follows them in and out of range as they move.
+- Impact Effects: hits flash on your target's nameplate in dungeons too, where the game hides how much a hit did.
+- Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too.
 
 ## 2.1.29
 

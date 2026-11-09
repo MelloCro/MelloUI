@@ -105,6 +105,9 @@ L.groups = {
 	{ title = "The look", icon = "cat_look", entries = { "Look", "Windows", "Fader", "Animations", "Oldschool" } },
 	{ title = "Frames and bars", icon = "cat_frames", entries = { "UnitGroupFrames", "Nameplates", "ActionBars", "Minimap",
 		"BarsMeters" } },
+	-- (2.1.30; the user, 2026-11-09: "navigating those settings to switch them from Default to Custom ones is a
+	-- nightmare, i want 1 dedicated category, on the Left side of the Configurator, Buffs & Debuffs")
+	{ title = "Buffs & Debuffs", icon = "cat_frames", entries = { "Buffs" } },
 	{ title = "Chat", icon = "cat_chat", entries = { "Chat" } },
 	{ title = "Quests and travel", icon = "cat_quests", entries = { "QuestTracker", "QuestList", "Route", "Map" } },
 	-- (1.2.4, the configurator shell -- the user, 2026-10-27: "11 tabs is fine, build the Quality of Life page")
@@ -189,7 +192,6 @@ L.pages = {
 			{ key = "pet", label = "Pet", line = "Your pet's frame", stage = { kind = "unitframes", pick = "pet" },
 				parts = { { key = "name", label = "Name", stage = "name" }, { key = "status", label = "Status glow" },
 				{ key = "combat", label = "Combat glow" } } },
-			{ key = "buffs", label = "Buffs", line = "Your buffs and debuffs" },
 			-- (one look C10) `stage`: the designer stage over the chips (MelloUI_GroupFrames' 'raidframe' kind, its
 			-- pick; `also`: its other picks of this frame); a part's `stage`: its part's key there ("ind:" any
 			-- indicator) -- picked on the stage, its tab opens; its tab opened, picked on the stage
@@ -311,6 +313,15 @@ L.pages = {
 	-- the Personal Display module's, off by default; MelloUI_PersonalDisplay)
 	-- (the Bars audit's point 5: the damage meter and the FPS / latency readout until stage H gives them homes;
 	-- the bars went to Bars, the Event Widgets tab with its one painted link)
+	-- (2.1.30) your buff and debuff rows, one page (its key Buffs: "auras" is /mello's aura probe): switched on, then where they stand (Anchor: the minimap, the
+	-- player frame or free), then moved in Edit Layout (Move Them); their size and rows, the debuffs apart. The
+	-- target's rows and the nameplates' stay on their frames' pages (the Unit & Group Frames' Target, Nameplates)
+	Buffs = { title = "Buffs & Debuffs", icon = "module:Auras",
+		flavour = "Your buffs and debuffs: switch on MelloUI's own, pick where they stand, then move them in Edit Layout.",
+		tabs = { "Your Buffs" },
+		-- (2.1.30; the user: "the sizing, spacing, per row, grow, New rows should be a thing that people can adjust
+		-- separatelly") a card for each block, the buffs' and the debuffs'
+		cards = { ["Your Buffs"] = { "Buffs", "Debuffs" } } },
 	BarsMeters = { title = "Damage Meter", icon = "module:Meter", set = "page_meter",
 		flavour = "The damage meter.",
 		tabs = { "Damage Meter" } },
@@ -383,8 +394,8 @@ L.words = {
 	parchment = { "Oldschool", "Parchment" },
 	fading = { "Fader", "General" },
 	characterpanel = { "Windows", pick = "CharacterPanel" },
-	buffs = { "UnitGroupFrames", "buffs:element" },
-	debuffs = { "UnitGroupFrames", "buffs:element" },
+	buffs = { "Buffs", "Your Buffs" },   -- (2.1.30: their own page)
+	debuffs = { "Buffs", "Your Buffs" },
 	classicons = { "UnitGroupFrames", "player:portrait" },
 	unitframepanel = { "Oldschool", "Frame Art" },
 	bartext = { "UnitGroupFrames", "player:values" },
@@ -463,8 +474,8 @@ function L.Define(R, Link)
 		{ key = "BarText.focus", value = true } }, line = "Only with values shown" }
 	local OWN_PLAYER = { key = "Auras.player", value = true, line = "Only with MelloUI's icons here" }
 	local OWN_TARGET = { key = "Auras.target", value = true, line = "Only with MelloUI's icons here" }
-	local OWN_ATTACHED = { all = { OWN_PLAYER, { key = "Auras.playerFrame", value = true } },
-		line = "Only when attached to the frame" }
+	local OWN_ATTACHED = { all = { OWN_PLAYER, { key = "Auras.playerAnchor", value = "frame" } },
+		line = "Only with Anchor: Unit Frame" }
 	local OWN_ANY = { any = { OWN_PLAYER, OWN_TARGET, { key = "Auras.nameplates", value = true } },
 		line = "Only with MelloUI's icons on" }
 	local TIMERS = { any = { { key = "CooldownText.actionBars", value = true }, { key = "CooldownText.nameplates", value = true } },
@@ -693,7 +704,7 @@ function L.Define(R, Link)
 	-- (one look C8) a row on several frames' tabs: one row each, the first its home, the others marked
 	-- Shared ("also ..."); `plus`, a frame with no tab here yet, named on that line only (the game's party
 	-- frames: the Party chip's Portraits style comes with C9 / C10)
-	local UGF_LABEL = { player = "Player", target = "Target", focus = "Focus", pet = "Pet", buffs = "Buffs", party = "Party",
+	local UGF_LABEL = { player = "Player", target = "Target", focus = "Focus", pet = "Pet", party = "Party",
 		raid = "Raid", personal = "Personal" }
 	local function UGF(tabs, section, id, extra)
 		for i, tab in ipairs(tabs) do
@@ -797,10 +808,17 @@ function L.Define(R, Link)
 	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.position", { when = BAR_VALUES })
 	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.offsetX", { when = BAR_VALUES })
 	UGF({ "player:values", "target:values", "focus:values" }, "Layout", "BarText.offsetY", { when = BAR_VALUES })
-	R("UnitGroupFrames", "buffs:element", "General", "Auras.player", { name = "Buffs & Debuffs On This Frame" })
+	-- (2.1.30; the user, 2026-11-09: "First you enable them, then you can choose where to anchor them, Anchor to
+	-- Minimap, Anchor to UnitFrame or Free, then the players opens the Layout Editor and Moves them") your rows' own
+	-- page, Buffs & Debuffs (they were the Unit & Group Frames' Buffs chip)
+	local BUFFS = "Your Buffs"
+	local OWN_FREE = { all = { OWN_PLAYER, { key = "Auras.playerAnchor", value = "free" } }, line = "Only with Anchor: Free" }
+	R("Buffs", BUFFS, "General", "Auras.player")
+	R("Buffs", BUFFS, "General", "Auras.playerAnchor", { when = OWN_PLAYER })
+	R("Buffs", BUFFS, "General", "Auras.#Move Them", { when = OWN_FREE })
 	R("UnitGroupFrames", "target:auras", "General", "Auras.target", { name = "Buffs & Debuffs On This Frame", gate = UF_AREA })
 	R("Look", "Fonts", "Text", "Auras.textFont", { name = "Numbers Font", card = "Buffs & Debuffs", when = OWN_ANY })
-	Link("UnitGroupFrames", "buffs:element", "Text", "Auras.textFont", "Numbers Font")
+	Link("Buffs", BUFFS, "Text", "Auras.textFont", "Numbers Font")
 	Link("UnitGroupFrames", "target:auras", "Text", "Auras.textFont", "Numbers Font")
 	R("UnitGroupFrames", "all", "General", "HealerFrames.debuffGlow")
 	-- (0.19.4: Dark Mode reaches the game's own icons of yours, never the
@@ -809,25 +827,27 @@ function L.Define(R, Link)
 	-- (0.19.9: one set of rows for your buffs -- MelloUI's own rows while
 	-- they show, else the game's buff and debuff bars in the Edit Mode
 	-- layout: Tweaks' Buff Layout; the size in pixels on both picks)
-	R("UnitGroupFrames", "buffs:element", "Layout", "Tweaks.buffSize", { name = "Icon Size" })
+	-- (2.1.30) the buffs' card: their size and rows (on the player frame, its own two)
+	R("Buffs", BUFFS, "Layout", "Tweaks.buffSize", { name = "Icon Size", card = "Buffs" })
 	R("UnitGroupFrames", "target:auras", "Layout", "Auras.targetSize", { name = "Icon Size", when = OWN_TARGET })
 	-- (0.20.1) the rows' own layout sleeps while they hang under the player frame (the target rows' look there)
-	local NOT_FRAMED = { any = { GAME_AURAS.any[1], { key = "Auras.playerFrame", value = false } },
-		line = "Not with Attach To The Player Frame" }
-	R("UnitGroupFrames", "buffs:element", "Layout", "Tweaks.buffSpacing", { when = NOT_FRAMED })
-	R("UnitGroupFrames", "buffs:element", "Layout", "Tweaks.buffPerRow", { when = NOT_FRAMED })
-	R("UnitGroupFrames", "buffs:element", "Layout", "Tweaks.buffGrow", { when = NOT_FRAMED })
-	R("UnitGroupFrames", "buffs:element", "Layout", "Tweaks.buffNewRows", { when = NOT_FRAMED })
-	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerColumn", { when = NOT_FRAMED })
-	-- (0.20.1, the user: "an option under UnitFrames -> Player to attach their own buffs and debuffs to their unitframe")
-	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerFrame", { when = OWN_PLAYER })
-	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerFrameGrow", { when = OWN_ATTACHED })
-	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.playerFrameSize", { when = OWN_ATTACHED })
-	-- (2.1.10; BaQstein, 2026-11-06: its own place and rows; the rows on its cog: only for who turns it on)
-	R("UnitGroupFrames", "buffs:element", "Layout", "Auras.separateDebuffs",
-		{ when = { all = { OWN_PLAYER, { key = "Auras.playerFrame", value = false } }, line = "Not with Attach To The Player Frame" } })
-	for _, key in ipairs({ "debuffSize", "debuffSpacing", "debuffPerRow", "debuffGrow", "debuffNewRows" }) do
-		R("UnitGroupFrames", "buffs:element", "Layout", "Auras." .. key)
+	local NOT_FRAMED = { any = { GAME_AURAS.any[1], { key = "Auras.playerAnchor", notValue = "frame" } },
+		line = "Not with Anchor: Unit Frame" }
+	R("Buffs", BUFFS, "Layout", "Tweaks.buffSpacing", { when = NOT_FRAMED, card = "Buffs" })
+	R("Buffs", BUFFS, "Layout", "Tweaks.buffPerRow", { when = NOT_FRAMED, card = "Buffs" })
+	R("Buffs", BUFFS, "Layout", "Tweaks.buffGrow", { when = NOT_FRAMED, card = "Buffs" })
+	R("Buffs", BUFFS, "Layout", "Tweaks.buffNewRows", { when = NOT_FRAMED, card = "Buffs" })
+	-- (0.20.1, the user: "an option under UnitFrames -> Player to attach their own buffs and debuffs to their unitframe";
+	-- 2.1.30: Anchor's Unit Frame)
+	R("Buffs", BUFFS, "Layout", "Auras.playerFrameGrow", { when = OWN_ATTACHED, card = "Buffs" })
+	R("Buffs", BUFFS, "Layout", "Auras.playerFrameSize", { when = OWN_ATTACHED, card = "Buffs" })
+	-- (2.1.10; BaQstein, 2026-11-06: the debuffs' own place and rows -- 2.1.30: always their own block, their card's
+	-- rows named as the buffs'; on the player frame those rows hold both)
+	local OWN_APART = { all = { OWN_PLAYER, { key = "Auras.playerAnchor", notValue = "frame" } },
+		line = "Not with Anchor: Unit Frame" }
+	for _, kn in ipairs({ { "debuffSize", "Icon Size" }, { "debuffSpacing", "Spacing" }, { "debuffPerRow", "Per Row" },
+		{ "debuffGrow", "Grow" }, { "debuffNewRows", "New Rows" } }) do
+		R("Buffs", BUFFS, "Layout", "Auras." .. kn[1], { name = kn[2], when = OWN_APART, card = "Debuffs" })
 	end
 	R("UnitGroupFrames", "target:auras", "Behaviour", "Auras.targetOnlyMine", { when = OWN_TARGET })
 	R("UnitGroupFrames", "all", "Behaviour", "HealerFrames.debuffGlowShows")
@@ -1523,9 +1543,10 @@ function L.Define(R, Link)
 	local function Fade(page, tab, key, label)
 		Link(page, tab, "Behaviour", "Fader." .. (key == "petToo" and key or "show_" .. key), label or "Fade", OWNED[key])
 	end
-	for _, key in ipairs({ "player", "target", "focus", "buffs", "party", "raid", "personal" }) do
+	for _, key in ipairs({ "player", "target", "focus", "party", "raid", "personal" }) do
 		Fade("UnitGroupFrames", key .. ":element", key)
 	end
+	Fade("Buffs", BUFFS, "buffs")   -- (2.1.30: your buffs' own page)
 	Fade("UnitGroupFrames", "pet:element", "petToo", "Fades With The Player")
 	Fade("ActionBars", "actionbars:element", "bar1", "Fade: Main Action Bar")
 	Fade("ActionBars", "menubags:micro", "micro")

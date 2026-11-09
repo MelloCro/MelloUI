@@ -1544,7 +1544,8 @@ end
 -- system's plate lies over the part (its `box`, shown by its `visible`), named for it, its lock and its page the
 -- part's; dragged, it moves the system, which the part hangs from. The system's own Edit Mode settings are not shown
 -- for it (they are the game's hidden frame's). MelloUI:EditLayoutCover(frame, spec): spec { label, page,
--- visible = fn(entry) -> shown, box = fn(entry) -> l, b, r, t (screen px) | nil, locked = fn(entry) -> reason | nil }
+-- visible = fn(entry) -> shown, box = fn(entry) -> l, b, r, t (screen px) | nil, locked = fn(entry) -> reason | nil,
+-- shows = fn(entry) -> the Elements list's eye default (2.1.30; else the game's show-list's) }
 local covers = setmetatable({}, { __mode = "k" })
 
 local function ApplyCover(entry, cover)
@@ -1576,7 +1577,19 @@ local showOf = setmetatable({}, { __mode = "k" })   -- [entry] = { system, index
 
 local function DefaultShows(entry)
 	local s = showOf[entry]
-	return s ~= nil and HIDDEN.DefaultShows(entry, s.system, s.index)
+	if not s then
+		return false
+	end
+	-- (2.1.30; the user: MelloUI's own buff rows set free "should automatically have them Visible") a cover's own
+	-- default (spec.shows), where it has one: its part stands in for the game's hidden system
+	local cover = entry.covered and covers[entry.frame]
+	if cover and type(cover.shows) == "function" then
+		local ok, shows = pcall(cover.shows, entry)
+		if ok and not Secret(shows) then
+			return shows and true or false
+		end
+	end
+	return HIDDEN.DefaultShows(entry, s.system, s.index)
 end
 
 local function Placeholder(entry, frame, system, index)

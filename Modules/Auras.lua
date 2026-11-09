@@ -40,6 +40,30 @@ end
 local Perf = MelloUI.Perf:Scope("Auras")
 local hooksecurefunc = Perf.hooksecurefunc
 
+-- (2.1.30) where your rows stand, from the two switches: the player frame first (it wins over the column), then the
+-- minimap column, else free (the game's buff bar's place, moved in Edit Layout)
+local function AnchorOf(db)
+	db = db or {}
+	if db.playerFrame then
+		return "frame"
+	elseif db.playerColumn then
+		return "minimap"
+	end
+	return "free"
+end
+
+-- (2.1.30) Move Them: Edit Layout opened on your rows' plate, its eye on (a kept "hidden" let go), so they are
+-- there to drag (the plate is the game's Buffs', which the rows hang from while free)
+local function MoveThem()
+	local entry = BuffFrame and MelloUI.MoverEntry and MelloUI:MoverEntry(BuffFrame) or nil
+	local EL = MelloUI.EditLayout
+	local K = type(EL) == "table" and EL.Picker or nil
+	if entry and K and K.ShowEntry then
+		K.ShowEntry(entry)
+	end
+	MelloUI:StartEditLayout("configurator", entry and entry.key or nil)
+end
+
 local M = MelloUI:RegisterModule("Auras", {
 	title = "Buffs & Debuffs",
 	desc = "Your own buff and debuff rows on the target frame, enemy nameplates and at your buffs, drawn by the game so they keep working in combat.",
@@ -88,29 +112,38 @@ local M = MelloUI:RegisterModule("Auras", {
 	options = {
 		{ type = "header", name = "Your Buffs" },
 		{ type = "toggle", key = "player", name = "Your Buffs And Debuffs",
-		  desc = "MelloUI's rows for your buffs and debuffs, beside the minimap or where the game's buff bar is. Right-click a buff to cancel it." },
-		{ type = "toggle", key = "playerColumn", parent = "player", name = "Attach To The Minimap Column",
-		  desc = "Your buffs line up beside the minimap and follow it. Off: they stand where the game's buff bar is." },
-		{ type = "toggle", key = "playerFrame", parent = "player", name = "Attach To The Player Frame",
-		  desc = "Your buffs and debuffs under your player frame, like the target's. They move with the frame." },
+		  desc = "MelloUI's own rows for your buffs and debuffs, in place of the game's. Right-click a buff to cancel it." },
+		-- (2.1.30; the user, 2026-11-09: "First you enable them, then you can choose where to anchor them, Anchor to
+		-- Minimap, Anchor to UnitFrame or Free") one choice over Attach To The Minimap Column and Attach To The Player
+		-- Frame (their keys kept: read by `get`, written by OnSettingChanged)
+		{ type = "dropdown", key = "playerAnchor", name = "Anchor", new = "2.1.30",
+		  values = { { value = "minimap", label = "Minimap" }, { value = "frame", label = "Unit Frame" },
+			{ value = "free", label = "Free" } },
+		  get = function(db) return AnchorOf(db) end,
+		  desc = "Where your buffs and debuffs stand. Minimap: beside the minimap, moving with it. Unit Frame: under your player frame. Free: anywhere, moved in Edit Layout." },
+		{ type = "button", name = "Move Them", text = "Edit Layout", new = "2.1.30",
+		  hint = "drag your buffs and debuffs",
+		  desc = "Opens Edit Layout, with your buffs and debuffs shown so you can drag them where you want.",
+		  onClick = function() MoveThem() end },
 		{ type = "dropdown", key = "playerFrameGrow", parent = "playerFrame", name = "Direction",
 		  values = { { value = "right", label = "Left To Right" }, { value = "left", label = "Right To Left" } },
 		  desc = "Which way your icons run under the player frame." },
 		{ type = "slider", key = "playerFrameSize", parent = "playerFrame", name = "Icon Size On The Frame", min = 14, max = 36, step = 1,
 		  desc = "The size of your buff and debuff icons under the player frame." },
-		{ type = "toggle", key = "separateDebuffs", parent = "player", name = "Separate Debuffs",
+		-- (2.1.30; the user, 2026-11-09: "i want a automatic Splitting of Buffs Container and Debuff container ... the
+		-- sizing, spacing, per row, grow, New rows should be a thing that people can adjust separatelly") your debuffs
+		-- always a block of their own (Separate Debuffs gone), their rows on the page beside the buffs'
+		{ type = "slider", key = "debuffSize", name = "Debuff Icon Size", min = 15, max = 60, step = 1,
 		  search = "debuffs apart place position move rows",
-		  desc = "Your debuffs in a block of their own, with their own place in Edit Layout and their own size and rows. Off: they are the line under your buffs." },
-		{ type = "slider", key = "debuffSize", parent = "separateDebuffs", name = "Debuff Icon Size", min = 15, max = 60, step = 1,
 		  desc = "The size of your debuff icons." },
-		{ type = "slider", key = "debuffSpacing", parent = "separateDebuffs", name = "Debuff Spacing", min = 5, max = 15, step = 1,
+		{ type = "slider", key = "debuffSpacing", name = "Debuff Spacing", min = 5, max = 15, step = 1,
 		  desc = "The space between your debuff icons." },
-		{ type = "slider", key = "debuffPerRow", parent = "separateDebuffs", name = "Debuffs Per Row", min = 1, max = 16, step = 1,
+		{ type = "slider", key = "debuffPerRow", name = "Debuffs Per Row", min = 1, max = 16, step = 1,
 		  desc = "How many debuffs fit in a row before a new row starts." },
-		{ type = "dropdown", key = "debuffGrow", parent = "separateDebuffs", name = "Debuff Grow",
+		{ type = "dropdown", key = "debuffGrow", name = "Debuff Grow",
 		  values = { { value = "left", label = "Left" }, { value = "right", label = "Right" } },
 		  desc = "Which way a row of debuffs grows." },
-		{ type = "dropdown", key = "debuffNewRows", parent = "separateDebuffs", name = "Debuff New Rows",
+		{ type = "dropdown", key = "debuffNewRows", name = "Debuff New Rows",
 		  values = { { value = "down", label = "Down" }, { value = "up", label = "Up" } },
 		  desc = "Which way new rows of debuffs go." },
 		{ type = "header", name = "Target" },
@@ -138,6 +171,9 @@ local function Try(fn, ...)
 	local ok = pcall(fn, ...)
 	return ok
 end
+
+M.AnchorOf, M.MoveThem = AnchorOf, MoveThem
+
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
@@ -810,11 +846,13 @@ end
 -- spacing, line and flow its own. It hangs from the game's Debuffs bar, as the rows hang from its Buffs bar, so Edit
 -- Layout's plate moves it and the place is the layout's (nothing of ours stored). Protected as the rows are (right-click):
 -- made, shown and placed out of combat. Never with Attach To The Player Frame: those rows hold both.
+-- (2.1.30; the user, 2026-11-09: "i want a automatic Splitting of Buffs Container and Debuff container") always, while
+-- your rows stand (Separate Debuffs gone: its key unread), by the minimap or free
 --------------------------------------------------------------------------------
 local Apart = { KEY = "Auras: your debuffs' own block", split = false }
 
 function Apart.Line()
-	return (M.db.debuffSize + (M.db.debuffSpacing or 6)) * M.db.debuffPerRow
+	return ((M.db.debuffSize or 30) + (M.db.debuffSpacing or 6)) * (M.db.debuffPerRow or 12)
 end
 
 function Apart.FlowOf()
@@ -846,7 +884,7 @@ function Apart.Relayout()
 		return
 	end
 	SpaceRows(c, M.db.debuffSpacing or 6)
-	Resize(c, M.db.debuffSize, Apart.Line())
+	Resize(c, M.db.debuffSize or 30, Apart.Line())
 	MelloUI.Kit:WhenOutOfCombat(Apart.Place, Apart.KEY)
 end
 
@@ -861,7 +899,7 @@ function Apart.Set(want)
 		local corner, gx, gy = Apart.FlowOf()
 		local spacing = M.db.debuffSpacing or 6
 		local ok, c = pcall(NewContainer, UIParent, "player", { { key = "debuffs", filter = "HARMFUL", max = 16 } },
-			{ size = M.db.debuffSize, durationBelow = true, compactTime = true, dispel = true, cancel = true,
+			{ size = M.db.debuffSize or 30, durationBelow = true, compactTime = true, dispel = true, cancel = true,
 				tooltip = "ANCHOR_BOTTOMLEFT", anchor = corner, gx = gx, gy = gy, line = Apart.Line(),
 				spacing = spacing, lineSpacing = spacing + 10, shade = true })
 		if not ok then
@@ -1238,8 +1276,9 @@ end
 -- player frame, the plate is locked and says what they move with (MelloUI:EditLayoutCover)
 local COVER_TEXT = {
 	label = "Your buffs & debuffs",
-	column = "They stand by the minimap column and move with it (Buffs & Debuffs: Attach To The Minimap Column).",
-	frame = "They hang under your player frame and move with it (Unit Frames: Attach Your Buffs And Debuffs).",
+	buffs = "Your buffs",   -- (2.1.30: the debuffs their own plate beside it)
+	column = "They stand by the minimap and move with it (Buffs & Debuffs: Anchor, Minimap). Set Anchor to Free to move them.",
+	frame = "They hang under your player frame and move with it (Buffs & Debuffs: Anchor, Unit Frame). Set Anchor to Free to move them.",
 	debuffs = "Your debuffs",
 }
 
@@ -1324,6 +1363,10 @@ Apart.cover = {
 	visible = function(entry)
 		return ApartShown() ~= nil or GameBarShown(entry)
 	end,
+	-- (2.1.30) its eye's default in Edit Layout's Elements list: shown while the block stands (it hangs free)
+	shows = function()
+		return ApartShown() ~= nil
+	end,
 	box = function()
 		local c = ApartShown()
 		if c then
@@ -1340,6 +1383,14 @@ local coverSpec = {
 	label = COVER_TEXT.label, page = "Auras",
 	visible = function(entry)
 		return ShownRows() ~= nil or GameBarShown(entry)
+	end,
+	-- (2.1.30; the user: "if they are set to Free, then the Edit Layout Should Automatically have them Visible and not
+	-- first hidden for the player to have to enable them") the eye's default: shown while the rows stand free -- the
+	-- game's Buffs is on Edit Mode's show-list, whose default follows the game's own bar, hidden for the rows. By the
+	-- minimap or on the player frame they move with those: hidden until asked for
+	shows = function()
+		local c, framed = ShownRows()
+		return c ~= nil and not framed and placedSide == nil
 	end,
 	box = function()
 		local c, framed = ShownRows()
@@ -1368,11 +1419,13 @@ end
 
 local function SetPlayer(on)
 	on = on and not inEditMode
+	-- (0.20.1) Attach To The Player Frame: those rows in place of these
+	local onFrame = on and M.db.playerFrame and Area.On("unitframes") and true or false
+	-- (2.1.30) the plate named for what stands under it: the frame's rows hold both, these the buffs alone
+	coverSpec.label = (on and not onFrame) and COVER_TEXT.buffs or COVER_TEXT.label
 	if BuffFrame and MelloUI.EditLayoutCover then
 		MelloUI:EditLayoutCover(BuffFrame, coverSpec)
 	end
-	-- (0.20.1) Attach To The Player Frame: those rows in place of these
-	local onFrame = on and M.db.playerFrame and Area.On("unitframes") and true or false
 	SetFrameRows(onFrame)
 	local rows = on and not onFrame
 	if rows and not playerRows then
@@ -1396,7 +1449,7 @@ local function SetPlayer(on)
 		Try(playerRows.SetEnabled, playerRows, rows and true or false)
 		playerRows:SetShown(rows and true or false)
 	end
-	Apart.Set((rows and M.db.separateDebuffs) and true or false)
+	Apart.Set(rows and true or false)   -- (2.1.30: your debuffs always their own block beside the rows)
 	GameBars(on and true or false)
 	Weapon.Switch(on and true or false)
 end
@@ -1591,11 +1644,35 @@ local editHooked = false
 -- audit, 2026-09-24) and the column under the minimap (the bus's 'column',
 -- told after it was laid again; the Minimap Kit switched on or off). Taken
 -- at the first enable, never at login for a player without this module.
+-- (2.1.30; the user, with Anchor Free: "Debuffs (hidden)" in Edit Layout) at Edit Layout's first open after 2.1.30, both
+-- plates' eyes on while your rows stand free -- an eye kept hidden from before (Mello's profile hid the game's Debuffs,
+-- whose plate is now your debuffs') let go once; the player's own choices after that stay
+local function ShowPlatesOnce(showing)
+	local db = M.db
+	if not (showing and M.isEnabled and db and db.player) or db.platesShown then
+		return
+	end
+	local EL = MelloUI.EditLayout
+	local K = type(EL) == "table" and EL.Picker or nil
+	if not (K and K.ShowEntry and MelloUI.MoverEntry) then
+		return
+	end
+	for _, f in ipairs({ BuffFrame or false, DebuffFrame or false }) do
+		local entry = f and MelloUI:MoverEntry(f)
+		local spec = entry and entry.covered and (f == BuffFrame and coverSpec or Apart.cover)
+		if spec and spec.shows and spec.shows(entry) then
+			K.ShowEntry(entry)
+		end
+	end
+	db.platesShown = true
+end
+
 local function WatchEditMode()
 	if editHooked then
 		return
 	end
 	editHooked = true
+	MelloUI:On("editlayout", ShowPlatesOnce, M)
 	MelloUI:On("editmode", function(entering)
 		inEditMode = entering
 		if M.isEnabled and M.db.player then
@@ -1675,14 +1752,18 @@ function M:OnSettingChanged(key, value, db)
 		Events()
 	elseif key == "playerColumn" then
 		PlacePlayer()
+	elseif key == "playerAnchor" then
+		-- (2.1.30) the one choice written to the two switches it stands for, each through the settings' path
+		local frame, column = value == "frame", value == "minimap"
+		if (db.playerFrame and true or false) ~= frame then
+			MelloUI:NotifySettingChanged("Auras", "playerFrame", frame)
+		end
+		if (db.playerColumn and true or false) ~= column then
+			MelloUI:NotifySettingChanged("Auras", "playerColumn", column)
+		end
 	elseif key == "playerSize" or key == "playerPerRow" then
 		Resize(playerRows, db.playerSize, PlayerLine())
 		Weapon.Resized()
-	elseif key == "separateDebuffs" then
-		-- (protected, as the rows: switched out of combat only)
-		MelloUI.Kit:WhenOutOfCombat(function()
-			SetPlayer(M.isEnabled and M.db.player)
-		end, Apart.KEY .. ": switched")
 	elseif key == "debuffSize" or key == "debuffPerRow" then
 		Resize(Apart.rows, db.debuffSize, Apart.Line())
 	elseif key == "debuffSpacing" or key == "debuffGrow" or key == "debuffNewRows" then

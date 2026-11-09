@@ -89,6 +89,9 @@ local FX = {
 		BLOCK = "BLOCK", ABSORB = "ABSORB", DEFLECT = "DEFLECT", REFLECT = "REFLECT" },
 	WORD_FALLBACK = { DODGE = "Dodge", PARRY = "Parry", MISS = "Miss", EVADE = "Evade", IMMUNE = "Immune",
 		RESIST = "Resist", BLOCK = "Block", ABSORB = "Absorb", DEFLECT = "Deflect", REFLECT = "Reflect" },
+	-- (2.1.30, /impactdump) the target's hits since the last dump: UNIT_COMBAT seen, while nothing attached, a WOUND
+	-- played, a WOUND whose amount was secret (counts only: nothing made per event)
+	count = { combat = 0, loose = 0, hits = 0, secret = 0 },
 	SHARD = { { -26, -16, -10 }, { -15, -8, 12 }, { -5, -3, -14 }, { 5, 4, 13 }, { 15, 9, -11 }, { 26, 16, 10 } },
 }
 
@@ -621,7 +624,13 @@ function FX.OnEvent(_, event, unit, a1, a2, a3)
 		end
 		return
 	end
+	if event == "UNIT_COMBAT" then
+		FX.count.combat = FX.count.combat + 1
+	end
 	if not (FX.uf or FX.frame) then
+		if event == "UNIT_COMBAT" then
+			FX.count.loose = FX.count.loose + 1
+		end
 		return
 	end
 	if event == "UNIT_COMBAT" then
@@ -630,8 +639,15 @@ function FX.OnEvent(_, event, unit, a1, a2, a3)
 			return
 		end
 		if action == "WOUND" then
-			local hit = not Secret(amount) and type(amount) == "number" and amount > 0
-			if hit then
+			-- (2.1.30; the user's /impactdump in a dungeon: 16 hits, 13 with a secret amount, none played) an
+			-- instance hides the amount: a WOUND is a hit all the same, only a plain 0 is none; a secret flag is a
+			-- plain hit (the crit's gold unknown)
+			local secret = Secret(amount)
+			if secret then
+				FX.count.secret = FX.count.secret + 1
+			end
+			if secret or (type(amount) == "number" and amount > 0) then
+				FX.count.hits = FX.count.hits + 1
 				FX.Hit(not Secret(flag) and flag == "CRITICAL")
 			end
 		elseif FX.WORDS[action] then
@@ -864,6 +880,15 @@ do
 			S(On("kill")), S(On("evade")), S(On("cast")))
 		MelloUI:Print("Nameplates: Own Plate Size %s, %s x %s; placed: %s", S(ndb.plateSize), S(ndb.plateWidth), S(ndb.plateHeight),
 			#parts > 0 and table.concat(parts, ", ") or "none")
+		-- (2.1.30) what the real hits did since the last dump, and the plate held before this dump takes it on again
+		local c = FX.count
+		local before = FX.uf
+		local ufNow = FX.Target()
+		MelloUI:Print("since the last dump: %s hit events on your target, %s with nothing attached, %s hits played, "
+			.. "%s with a secret amount", S(c.combat), S(c.loose), S(c.hits), S(c.secret))
+		MelloUI:Print("held before this dump: %s   its plate the target's now: %s   On Your Target Frame: %s",
+			S(before ~= nil), S(before ~= nil and before == ufNow), S(FX.frame ~= nil))
+		c.combat, c.loose, c.hits, c.secret = 0, 0, 0, 0
 		local okA, errA = pcall(FX.Attach)
 		local uf, bar = FX.Target()
 		MelloUI:Print("target's plate: %s   its bar: %s   attached: %s%s", S(uf ~= nil), S(bar ~= nil), S(FX.uf ~= nil),
