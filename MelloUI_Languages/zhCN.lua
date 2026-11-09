@@ -2308,6 +2308,8 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "微型菜单：移到自己的位置后不再跳回原处（乘坐载具后，或动作条重新显示时），编辑布局中的大小现在也作用于按钮。", -- draft
+	["Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows."] = "地图：暴风城、圣光之愿礼拜堂、湖畔镇和莫高雷的任务发布者与交付者现在标在他们真正所在的位置（Sprite Jumpsprocket 在矮人区），与路线所示一致。", -- draft
 	["Bags: items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "背包：特殊背包（矿石袋、草药包、弹药袋、箭袋……）中的物品带有该背包的颜色，窗口底部列出这些背包及其装满程度。", -- draft
 	["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "背包：自定义类别可以有多条规则，符合任意一条的物品都归入该类别（例如一个“专业工具”类别同时收纳矿工锄和鱼竿）。", -- draft
 	["Personal Display: Track By Name (Big Cooldowns' tab): type any buff or debuff, like Fingers of Frost, to see it in the Tracked Spells row while it lasts on you."] = "个人显示：按名称追踪（大型冷却页）：输入任意增益或减益效果，例如寒冰指，在它作用于你期间显示在追踪法术一行中。", -- draft
@@ -2316,7 +2318,6 @@ Lang:Add("zhCN", {
 	["Personal Display: Tracked Spells (Big Cooldowns' tab): tick your class's spells, like Weakened Soul or Renew, to see them under the bars while they last on you."] = "个人显示：追踪法术（大型冷却标签）——勾选你职业的法术，例如 Weakened Soul 或 Renew，在它们作用于你时显示在血条下方。", -- draft
 	["Nameplates designer: drag and size every part of the enemy plate (cast bar, buffs, debuffs, level, raid marker, icons) and set its own width and height; overlaps are outlined red."] = "姓名板设计器：可拖动并缩放敌方姓名板的每个部件（施法条、增益、减益、等级、团队标记、图标），并自定宽度和高度；重叠部分以红框标出。", -- draft
 	["Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands."] = "地图和路线：Excavation Site: Wetlands 的入口现在位于维尔加挖掘场以东的矮人挖掘营地，也就是传送门所在的位置。", -- draft
-	["Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away."] = "小队和团队框体：在你附近的成员不再显示为超出范围；只有当游戏测得成员距离过远时才会变淡。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3236,6 +3237,7 @@ Lang:Add("zhCN", {
 -- stale: ["Parchment and dark mode"] = "羊皮纸和暗色模式", -- draft
 -- stale: ["Parchment behind text, in dark ink. Each area has its own sheet."] = "文字背后的羊皮纸，深色墨水。每个区域有自己的纸张。", -- draft
 -- stale: ["Party Frames (Portraits): indicators for %s"] = "小队框体（头像）：%s的指示器", -- draft
+-- stale: ["Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away."] = "小队和团队框体：在你附近的成员不再显示为超出范围；只有当游戏测得成员距离过远时才会变淡。", -- draft
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "小队框体：“水平翻转”适合右侧的小队；修复了头像样式下“显示你自己”；鼠标悬停高亮点亮鼠标下的框体。", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "允许时从公会银行支付修理费。公会无法支付时改用你自己的金币。", -- draft
 -- stale: ["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "个人显示：“显示在个人显示上方”会把攻击徽章居中放在个人显示上方，而不是目标的姓名板上。", -- draft

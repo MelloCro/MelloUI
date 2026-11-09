@@ -373,6 +373,8 @@ OB.gameOf = setmetatable({}, WEAK)   -- [ours] = the game's frame it stands in f
 OB.keyOf = setmetatable({}, WEAK)    -- [ours] = its key in Core's store
 OB.followed = setmetatable({}, WEAK) -- [ours] = { game, point, scale, lift } as last followed (nil: a place of its own)
 OB.ownScale = setmetatable({}, WEAK) -- [ours] = the game's scale last put on ours at a place of its own (fr-18d: OwnScale)
+OB.baseOf = setmetatable({}, WEAK)   -- [ours] = fn(game) -> the game's own scale, where a part scales the game's frame
+                                     -- itself (2.1.27, the micro menu: OwnMicroMenu.lua's Scaled)
 
 -- ours has a place of its own: the player's Edit Layout save, a profile, the installer, an import
 local function OwnPlace(ours)
@@ -629,7 +631,7 @@ end
 -- back at 100 % after a /reload, off where it was dropped). Set only when the game's scale changed (a backdrop's fit on
 -- ours is kept, as HangOnGame keeps it)
 local function OwnScale(ours, pos)
-	local s = ScaleOn(OB.gameOf[ours])
+	local s = (OB.baseOf[ours] or ScaleOn)(OB.gameOf[ours])
 	local entry = MelloUI:MoverEntry(ours)
 	if entry then
 		entry.base = s

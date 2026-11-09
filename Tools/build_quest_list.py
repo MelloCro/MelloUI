@@ -521,6 +521,84 @@ def place_on_map(zones, places, prefer_area=0):
     return area, round(px, 1), round(py, 1), z["mapID"], round(wx, 1), round(wy, 1)
 
 
+AGREE = 30   # yards: a Wowhead point read this near a classic-db spawn of the same NPC is that spawn
+SAME_BOUNDS = 5   # yards: a zone map Classic Era's client draws within this of Forever's is the same map
+
+
+def era_zone_maps(zones):
+    """The zone maps Classic Era's client draws with other bounds than Forever's (Stormwind City, Eastern Plaguelands,
+    Mulgore and Redridge Mountains, as of 1.60.1.70338: read from both clients' UiMapAssignment, never listed), as
+    Classic Era has them: [zone dicts as load_zone_maps']. Wowhead's Forever pages tell a Classic NPC's place on such
+    a map in either client's percent, under the one uiMapId (Nixxen, 2026-11-09: Sprite Jumpsprocket at 54.6, 8.0 --
+    the Dwarven District on Classic Era's smaller Stormwind -- read on Forever's, the hills above the city)."""
+    path = os.path.join(CACHE, f"UiMapAssignment_{BUILD}.csv")
+    if not os.path.exists(path):
+        log(f"  no {os.path.basename(path)}: Wowhead's points read on Forever's maps only")
+        return []
+    import csv
+    forever = defaultdict(list)
+    for z in zones:
+        forever[z["uiMapID"]].append(z)
+    out = []
+    with open(path, encoding="utf-8") as fh:
+        for r in csv.DictReader(fh):
+            ui = int(r["UiMapID"])
+            if ui not in forever:
+                continue
+            x0, y0, x1, y1 = float(r["Region_0"]), float(r["Region_1"]), float(r["Region_3"]), float(r["Region_4"])
+            if any(max(abs(x0 - z["x0"]), abs(y0 - z["y0"]), abs(x1 - z["x1"]), abs(y1 - z["y1"])) <= SAME_BOUNDS
+                   for z in forever[ui]):
+                continue
+            f = max(forever[ui], key=lambda z: z["area"])
+            out.append(dict(f, x0=x0, y0=y0, x1=x1, y1=y1, area=abs((x1 - x0) * (y1 - y0))))
+    log(f"  {len({z['uiMapID'] for z in out})} zone maps drawn otherwise in Classic Era: "
+        + ", ".join(sorted({z["name"] for z in out})))
+    return out
+
+
+def forever_npc_place(zones, era_zones, spawns, npc_id, places, quest_zone):
+    """Where a Forever quest's NPC stands: (areaID, map x %, map y %, continent, world x, world y), or None.
+    Wowhead's map, its first point (in the quest's zone when it has one there: place_on_map), read on Forever's map --
+    unless that map is one Classic Era's client draws otherwise (era_zone_maps), where Wowhead's points may be in
+    either client's percent: then every point of the NPC on it is read on both maps, in Wowhead's order --
+      a Classic NPC (classic-db spawns it): the first reading that lies on one of its spawns -> that spawn;
+      a Forever NPC: a point whose Classic Era reading is another point's Forever reading is that place told twice,
+        skipped -- the first point left, read on Forever's map.
+    Nothing settles it (a Classic NPC no reading puts on a spawn: moved in Forever; one point only): the first point,
+    read on Forever's map, as before."""
+    first = place_on_map(zones, places, quest_zone)
+    if not (first and era_zones):
+        return first
+    pick = next((p for p in places if quest_zone and p[0] == quest_zone), places[0])
+    if not any(z["uiMapID"] == pick[1] for z in era_zones):
+        return first   # (a map both clients draw alike)
+    pts = [p for p in wh_places(read_cached("npc", npc_id)) if p[1] == pick[1]] or [pick]
+    read = [(place_on_map(zones, [p]), place_on_map(era_zones, [p])) for p in pts]
+    cm = spawns.get(("npc", npc_id)) or []
+    if cm:
+        def on_spawn(at):
+            return [(m, x, y) for m, x, y in cm if m == at[3] and math.hypot(x - at[4], y - at[5]) <= AGREE]
+        if on_spawn(first):
+            return first
+        for both in read:
+            for at in both:
+                for m, x, y in (on_spawn(at) if at else ()):
+                    loc = locate(zones, m, x, y)
+                    if loc:
+                        (z, px, py) = loc
+                        return z["areaID"], px, py, m, round(x, 1), round(y, 1)
+        return first
+
+    def twice(i):
+        e = read[i][1]
+        return e is not None and any(j != i and f is not None and f[3] == e[3] and
+                                     math.hypot(f[4] - e[4], f[5] - e[5]) <= AGREE for j, (f, _) in enumerate(read))
+    for i, (f, _) in enumerate(read):
+        if f and not twice(i):
+            return f
+    return first
+
+
 # ---------------------------------------------------------------------------
 # Quests begun by an item or an object (no NPC gives them)
 # ---------------------------------------------------------------------------
@@ -2123,6 +2201,7 @@ def main():
 
     sql = fetch_file(CMANGOS_SQL, os.path.join(CACHE, "ClassicDB.sql.gz"))
     zones, areas = load_zone_maps()
+    era_zones = era_zone_maps(zones)
     area_by_name = {name.lower(): aid for aid, name in areas.items()}
     listing = load_quests(sql)
     givers, spawns, names, venders = load_vanilla(sql)
@@ -2252,7 +2331,7 @@ def main():
             giver_name, kind = g["name"], 1
             giver_id = int(g.get("npcID") or 0)
             npc = learned.get(g["npcID"])
-            wh = place_on_map(zones, npc_pos.get(g["npcID"]), quest_zone)
+            wh = forever_npc_place(zones, era_zones, spawns, int(g["npcID"]), npc_pos.get(g["npcID"]), quest_zone)
             if npc and npc.get("mapName"):
                 giver_zone = area_by_name.get(npc["mapName"].lower(), 0)
                 gx, gy = npc["x"], npc["y"]
@@ -2300,7 +2379,7 @@ def main():
         elif qid in fenders:
             e = fenders[qid]
             ender_name, ender_id = e["name"], int(e.get("npcID") or 0)
-            wh = place_on_map(zones, npc_pos.get(ender_id), quest_zone)
+            wh = forever_npc_place(zones, era_zones, spawns, ender_id, npc_pos.get(ender_id), quest_zone)
             if wh:
                 ender_zone = wh[0]
                 ender_world = (wh[3], wh[4], wh[5])

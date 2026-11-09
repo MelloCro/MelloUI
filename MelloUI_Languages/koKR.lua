@@ -2308,6 +2308,8 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "마이크로 메뉴: 자기 자리로 옮긴 뒤에 더 이상 원래 자리로 돌아가지 않으며(탈것 이용 후나 행동 단축바가 다시 나타날 때), 레이아웃 편집의 크기가 이제 버튼에도 적용됩니다.", -- draft
+	["Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows."] = "지도: 스톰윈드, 희망의 빛 예배당, 호숫골, 멀고어의 퀘스트 제공자와 완료 NPC가 이제 실제 서 있는 곳에 표시됩니다(드워프 지구의 Sprite Jumpsprocket). 경로가 보여 주는 위치와 같습니다.", -- draft
 	["Bags: items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "가방: 특수 가방(채광 가방, 약초 가방, 탄약 주머니, 화살통 ...)에 든 아이템은 그 가방의 색을 띠고, 창 아래쪽에 그 가방들과 채워진 정도가 표시됩니다.", -- draft
 	["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "가방: 직접 만든 종류에 규칙을 여러 개 둘 수 있습니다. 그중 하나라도 맞는 아이템은 그 종류에 들어갑니다(채광용 곡괭이와 낚싯대를 한 \"전문 기술 도구\" 종류에).", -- draft
 	["Personal Display: Track By Name (Big Cooldowns' tab): type any buff or debuff, like Fingers of Frost, to see it in the Tracked Spells row while it lasts on you."] = "개인 표시: 이름으로 추적 (큰 재사용 대기시간 탭): 서리의 손가락 같은 강화 또는 약화 효과를 입력하면, 걸려 있는 동안 추적 주문 줄에 표시됩니다.", -- draft
@@ -2316,7 +2318,6 @@ Lang:Add("koKR", {
 	["Personal Display: Tracked Spells (Big Cooldowns' tab): tick your class's spells, like Weakened Soul or Renew, to see them under the bars while they last on you."] = "개인 디스플레이: 추적 주문(큰 재사용 대기시간 탭) - Weakened Soul이나 Renew 같은 직업 주문을 선택하면 자신에게 지속되는 동안 바 아래에 표시됩니다.", -- draft
 	["Nameplates designer: drag and size every part of the enemy plate (cast bar, buffs, debuffs, level, raid marker, icons) and set its own width and height; overlaps are outlined red."] = "이름표 디자이너: 적 이름표의 모든 요소(시전 바, 강화 효과, 약화 효과, 레벨, 공격대 징표, 아이콘)를 끌어 놓고 크기를 조절하며, 너비와 높이도 직접 정할 수 있습니다. 겹친 요소는 빨간 테두리로 표시됩니다.", -- draft
 	["Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands."] = "지도 및 경로: Excavation Site: Wetlands 입구가 이제 휄가르 발굴지 동쪽, 포탈이 있는 드워프 발굴 야영지에 표시됩니다.", -- draft
-	["Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away."] = "파티 및 공격대 창: 가까이 있는 구성원이 더 이상 사거리 밖처럼 보이지 않습니다. 게임이 너무 멀다고 측정한 구성원만 흐려집니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3236,6 +3237,7 @@ Lang:Add("koKR", {
 -- stale: ["Parchment and dark mode"] = "양피지와 어두운 모드", -- draft
 -- stale: ["Parchment behind text, in dark ink. Each area has its own sheet."] = "글자 뒤 양피지, 짙은 잉크로. 영역마다 자체 양피지.", -- draft
 -- stale: ["Party Frames (Portraits): indicators for %s"] = "파티 창(초상화): %s 표시기", -- draft
+-- stale: ["Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away."] = "파티 및 공격대 창: 가까이 있는 구성원이 더 이상 사거리 밖처럼 보이지 않습니다. 게임이 너무 멀다고 측정한 구성원만 흐려집니다.", -- draft
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "파티 개체창: 오른쪽 파티를 위한 가로 뒤집기; 초상화 방식에서 '내 개체창 표시' 수정; 마우스오버 강조가 마우스 아래 개체창을 밝힙니다.", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "허용되면 길드 은행에서 수리비를 냅니다. 길드가 비용을 감당할 수 없으면 내 골드를 씁니다.", -- draft
 -- stale: ["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "개인 표시: '개인 표시 위에'를 켜면 공격 배지가 대상의 이름표 대신 개인 표시 위 가운데에 표시됩니다.", -- draft

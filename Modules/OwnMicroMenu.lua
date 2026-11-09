@@ -13,8 +13,17 @@
 --     anchor point, moved with Edit Mode's kept-aside methods (ClearAllPointsBase / SetPointBase: CLAUDE.md rule 2) --
 --     again after each time the game lays its layout (EDIT_MODE_LAYOUTS_UPDATED and the rest of Own Bars' follow cues);
 --     back to its own anchors (read before ours moved it) on a Reset or when UI Modifications goes off.
--- Its Size and Orientation stay the layout's (the holder takes the shown buttons' extent). Out of a fight only (in one,
--- after it).
+-- Its Orientation stays the layout's (the holder takes the shown buttons' extent). (2.1.27; BaQstein and Sikotic,
+-- Discord: "It constantly reset position and size. I can change the size to 140% but ingame it visually resets to i
+-- think 100% while the slider stays at 140%", "the only way to fix it is to go to the blizzard ui panel and leave")
+--   * its Size: at a place of its own the game's container stands at the holder's scale (the Size Edit Layout gives
+--     it), set with Edit Mode's kept-aside SetScaleBase, back to the game's own on a Reset, while following, or off;
+--     Edit Layout's 100 % stays the game's own scale (OB.baseOf);
+--   * the game puts its container back at the Edit Mode layout's place by itself -- MicroMenu:ResetMicroMenuPosition,
+--     each time the main action bar shows and after an override bar, runs EditModeManagerFrame:UpdateSystem, which
+--     fires no layout event --: its SetPoint (Edit Mode's own, ApplySystemAnchor's) post-hooked, ours hang it on the
+--     holder again on the next frame (our own moves go through SetPointBase: never through the hook).
+-- Out of a fight only (in one, after it).
 --
 --   OwnBars.Micro                       the part: holder, Dump(print)
 --------------------------------------------------------------------------------
@@ -139,6 +148,33 @@ local function Home(game)
 	S.moved = false
 end
 
+-- (2.1.27) the game's container at the holder's scale (`holder`: a place of its own), or back at the game's own
+-- (nil); S.home the game's own scale while ours is on it, S.factor ours against it (Edit Layout's 100 %: S.Base)
+local function Scaled(game, holder)
+	local own = Finite(Call(game, "GetScale"))
+	if not own then
+		return
+	end
+	if holder then
+		S.home = S.home or own
+		local want = K.ScaleOn(holder) / K.ScaleOn(Call(game, "GetParent") or UIParent)
+		if want > 0 and math.abs(own - want) > 0.0005 then
+			pcall(Raw(game, "SetScale"), game, want)
+		end
+		S.factor = want / S.home
+	elseif S.home then
+		if math.abs(own - S.home) > 0.0005 then
+			pcall(Raw(game, "SetScale"), game, S.home)
+		end
+		S.home, S.factor = nil, nil
+	end
+end
+
+-- the game's own scale against UIParent (ours taken out): Edit Layout's 100 % for the holder
+function S.Base(game)
+	return K.ScaleOn(game) / (S.factor or 1)
+end
+
 local function Later(fn, key)
 	if InCombatLockdown() then
 		MelloUI.Kit:WhenOutOfCombat(fn, key)
@@ -153,12 +189,16 @@ local function Placed()
 	if not (OB.On(PART) and game and holder) or Later(Placed, "Own Bars: the micro menu placed") then
 		return
 	end
+	-- (2.1.27: its place first -- the holder's scale with it --, the game's container at that scale, then measured)
+	local follows = K.Place(holder)
+	S.own = not follows
+	Scaled(game, S.own and holder or nil)
 	if not Measure(game) then
 		local es = Finite(Call(game, "GetEffectiveScale")) or Finite(Call(UIParent, "GetEffectiveScale")) or 1
 		S.dx, S.dy = 0, 0
 		S.pw, S.ph = (Finite(Call(game, "GetWidth")) or 100) * es, (Finite(Call(game, "GetHeight")) or 30) * es
 	end
-	if K.Place(holder) then
+	if follows then
 		Home(game)
 		-- (hung on the game's container over its shown buttons: the stack's slot form, the container's own units)
 		K.StackOrGame(holder, game, { [holder] = { base = game, x = S.dx, y = S.dy } })
@@ -189,6 +229,7 @@ local function On()
 		end)
 	end
 	OB.gameOf[S.holder] = game
+	OB.baseOf[S.holder] = S.Base
 	OB.standing[PART] = true
 	S.placeholder = S.placeholder or { Finite(Call(game, "GetWidth")) or 100, Finite(Call(game, "GetHeight")) or 30 }
 	local anchor = Points(game)
@@ -207,6 +248,13 @@ local function On()
 		end, "Own Bars: the micro menu measured for Edit Layout")
 		-- (the game's menu narrower or wider -- a button shown or hidden by the game, a skin's pitch: measured again)
 		Perf.HookScript(game, "OnSizeChanged", OB.FollowSoon)
+		-- (2.1.27) the game putting its container back by itself (ResetMicroMenuPosition's UpdateSystem: no layout
+		-- event): hung on the holder again on the next frame, while the holder has a place of its own
+		hooksecurefunc(game, "SetPoint", function(_, _, rel)
+			if S.own and OB.On(PART) and rel ~= S.holder then
+				OB.FollowSoon()
+			end
+		end)
 		-- (2.1.3; players, 2026-11-05: the micro menu moved after a level-up and snapped back as Edit Mode opened) a
 		-- level-gated button shown lays the buttons' own grid again (MicroMenu:Layout on its MarkDirty: PLAYER_LEVEL_CHANGED)
 		-- while the container keeps its size, so its OnSizeChanged above never told us: the grid's own size too
@@ -220,7 +268,11 @@ end
 
 local function Off()
 	OB.standing[PART] = nil
+	S.own = false
 	Home(Game())
+	if Game() then
+		Scaled(Game(), nil)
+	end
 	S.saved = nil
 	if S.holder then
 		S.holder:Hide()

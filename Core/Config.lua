@@ -174,6 +174,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.27", lines = {
+		"Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons.",
+		"Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows.",
+	} },
 	{ version = "2.1.26", lines = {
 		"Bags: items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are.",
 		"Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles).",
@@ -189,9 +193,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.23", lines = {
 		"Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands.",
-	} },
-	{ version = "2.1.22", lines = {
-		"Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away.",
 	} },
 }
 local LINKS = {
