@@ -1746,12 +1746,108 @@ local function Hook()
 	end)
 end
 
+--------------------------------------------------------------------------------
+-- The map hidden by another addon (2.1.34; the user, 2026-11-09: wAAs on Discord, "the map is glitching, going to my
+-- cursor and going back to the top right again in a loop", as soon as Find Herbs is on; dying stopped it). The herb
+-- and ore addons scan the map since Forever's last update -- NodeSight 2.0.0's page: it "moves your real minimap under
+-- your mouse cursor, hidden, and slides it around" so each dot's tooltip can be read. The map stays shown for that (it
+-- must answer the mouse), so it is hidden by its own alpha; but what MelloUI lays round it -- the frame, the zone band
+-- and the game's tracking, clock and calendar buttons laid on it, all hung from the map -- went with it and stayed
+-- seen. While the map's own alpha is (near) 0 they are out of sight too: every other child of the map's container and
+-- of MinimapCluster at 0, each one's alpha kept and given back as the map comes back. A post-hook on the map's
+-- SetAlpha (that addon's write, never a path the game runs each frame), taken the first time the module is on; the
+-- map's own children (the shade, the pins) follow it by themselves. Writes alpha only: never a place or a show.
+--------------------------------------------------------------------------------
+local MapHidden = { on = false, kept = setmetatable({}, { __mode = "k" }), hooked = false, NEAR = 0.05 }
+local Secret = MelloUI.Safe.IsSecret
+
+-- a frame placed from the map: one of its points on the map, or on a frame that is (a few steps up the anchors;
+-- UIParent and the cluster end a walk). Another addon's frame that only lives in the cluster stays as it is
+function MapHidden.Hangs(f, depth)
+	depth = depth or 0
+	if depth > 6 or type(f) ~= "table" or not f.GetNumPoints then
+		return false
+	end
+	local okN, n = pcall(f.GetNumPoints, f)
+	n = okN and Num(n) or 0
+	for i = 1, n do
+		local okP, _, rel = pcall(f.GetPoint, f, i)
+		if okP and type(rel) == "table" and not Secret(rel) then
+			if rel == Minimap then
+				return true
+			end
+			if rel ~= UIParent and rel ~= MinimapCluster and MapHidden.Hangs(rel, depth + 1) then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+-- every frame round the map that is placed from it: the other children of its container and of the cluster (a frame
+-- has one parent: none comes twice; read with select, no table made per walk)
+function MapHidden.Walk(fn, map, box, ...)
+	for i = 1, select("#", ...) do
+		local child = select(i, ...)
+		if child ~= map and child ~= box and MapHidden.Hangs(child) then
+			fn(child)
+		end
+	end
+end
+
+function MapHidden.Each(fn)
+	local map = Minimap
+	local box = map and map:GetParent()
+	if box and box.GetChildren then
+		MapHidden.Walk(fn, map, box, box:GetChildren())
+	end
+	local cluster = MinimapCluster
+	if cluster and cluster ~= box and cluster.GetChildren then
+		MapHidden.Walk(fn, map, box, cluster:GetChildren())
+	end
+end
+
+function MapHidden.Sync()
+	local map = Minimap
+	local okA, a = false, nil
+	if map and map.GetAlpha then
+		okA, a = pcall(map.GetAlpha, map)
+	end
+	a = okA and Num(a) or nil
+	local hide = (M.isEnabled and a ~= nil and a < MapHidden.NEAR) and true or false
+	if hide == MapHidden.on then
+		return
+	end
+	MapHidden.on = hide
+	if hide then
+		MapHidden.Each(function(f)
+			local okW, was = pcall(f.GetAlpha, f)
+			was = okW and Num(was) or nil
+			if was and was > 0 then
+				MapHidden.kept[f] = was
+				pcall(f.SetAlpha, f, 0)
+			end
+		end)
+	else
+		for f, was in pairs(MapHidden.kept) do
+			pcall(f.SetAlpha, f, was)
+			MapHidden.kept[f] = nil
+		end
+	end
+end
+M.MapHidden = MapHidden   -- (read only: the tests)
+
 function M:OnEnable(db)
 	self.db = db
 	Hook()
 	if MinimapCluster then
 		Activate()
 	end
+	if not MapHidden.hooked and Minimap then
+		MapHidden.hooked = true
+		hooksecurefunc(Minimap, "SetAlpha", MapHidden.Sync)
+	end
+	MapHidden.Sync()
 end
 
 -- the Services bar joins or leaves the frame: it lays itself out first
@@ -2388,6 +2484,7 @@ end
 
 function M:OnDisable()
 	Deactivate()
+	MapHidden.Sync()   -- (off: everything given back)
 end
 
 --------------------------------------------------------------------------------

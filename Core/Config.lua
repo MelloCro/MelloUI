@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.34", lines = {
+		"Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan.",
+	} },
 	{ version = "2.1.33", lines = {
 		"Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits.",
 	} },
@@ -191,14 +194,6 @@ local CHANGELOG = {
 		"Party and raid frames: a member who comes back into range is no longer left faded until the fight ends; the fade now follows them in and out of range as they move.",
 		"Impact Effects: hits flash on your target's nameplate in dungeons too, where the game hides how much a hit did.",
 		"Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too.",
-	} },
-	{ version = "2.1.29", lines = {
-		"Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before.",
-		"Installer: Keep my layout now keeps your own Edit Mode layout; MelloUI's layout went in all the same.",
-		"Dark Mode: the map's tooltips stay readable, and the boat and zeppelin lines and quest areas on the map keep their colours.",
-		"Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it.",
-		"Nameplates designer: changes now show at once on the plates already on screen.",
-		"Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it.",
 	} },
 }
 local LINKS = {

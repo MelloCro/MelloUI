@@ -2315,6 +2315,7 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "小地图：使用扫描小地图的草药或矿石插件（如 NodeSight）时，MelloUI 的小地图边框不再跟随鼠标；每次扫描时它会随地图一起隐藏。", -- draft
 	["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool：当 CurseForge 先于 MelloUI_Oldschool 更新 MelloUI 时，手绘外观不再在更新后关闭；同一 2.1 系列的任何 Oldschool 都可使用。", -- draft
 	["SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI."] = "SharedMedia（测试功能：欢迎试用并告诉我们效果）：SharedMedia 材质包中的字体、条材质和背景会出现在 MelloUI 的列表中，包括在 MelloUI 之后加载的材质包。", -- draft
 	["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "鼠标提示：暗色背景新增边框选项：暗色、游戏自带、无，或 SharedMedia 边框。SharedMedia 背景可用于鼠标提示、聊天框以及小队和团队框体。", -- draft
@@ -2325,12 +2326,6 @@ Lang:Add("zhCN", {
 	["Party and raid frames: a member who comes back into range is no longer left faded until the fight ends; the fade now follows them in and out of range as they move."] = "小队和团队框体：回到范围内的成员不再一直保持淡出直到战斗结束；淡出效果现在会随着成员移动进出范围而变化。", -- draft
 	["Impact Effects: hits flash on your target's nameplate in dungeons too, where the game hides how much a hit did."] = "打击效果：在游戏隐藏伤害数值的地下城中，命中也会在你目标的姓名板上闪光。", -- draft
 	["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "姓名板设计器：你的姓名板尺寸和摆放的部件在 /reload 后会保留，已在屏幕上的姓名板也一样。", -- draft
-	["Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before."] = "Edit Layout：游戏隐藏的元素（鼠标提示、拾取窗口……）在元素列表中单击它的眼睛即可显示，“全部显示”也可以；之前需要双击。", -- draft
-	["Installer: Keep my layout now keeps your own Edit Mode layout; MelloUI's layout went in all the same."] = "安装向导：“保留我的布局”现在会保留你自己的编辑模式布局；之前仍会套用 MelloUI 的布局。", -- draft
-	["Dark Mode: the map's tooltips stay readable, and the boat and zeppelin lines and quest areas on the map keep their colours."] = "暗色模式：地图的鼠标提示保持清晰可读，地图上的船只与飞艇航线以及任务区域保持原有颜色。", -- draft
-	["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "姓名板设计器：精英图标成为可单独拖动、缩放或隐藏的部件；移动团队标记不再连带移动精英图标和敌人的增益效果。", -- draft
-	["Nameplates designer: changes now show at once on the plates already on screen."] = "姓名板设计器：修改现在会立即显示在屏幕上已有的姓名板上。", -- draft
-	["Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it."] = "聊天：极简聊天重新可以点击（聊天行、链接和“复制聊天”按钮）；自 2.1.24 起，隐藏的聊天窗口可能会挡住它。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2895,6 +2890,7 @@ Lang:Add("zhCN", {
 -- stale: ["Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time."] = "聊天：鼠标停在聊天框上时，右上角会出现复制聊天按钮；它会把该标签的消息打开在可复制的窗口中，每行带有时间。", -- draft
 -- stale: ["Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles."] = "聊天：消息空间更大：文字更小，聊天和悄悄话窗口更高，行和气泡周围空间更多。", -- draft
 -- stale: ["Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles; your text size stays after a /reload."] = "聊天：为你的消息留出更多空间：更小的文字，更高的聊天和密语窗口，行与气泡周围更宽松；/reload 后文字大小保持不变。", -- draft
+-- stale: ["Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it."] = "聊天：极简聊天重新可以点击（聊天行、链接和“复制聊天”按钮）；自 2.1.24 起，隐藏的聊天窗口可能会挡住它。", -- draft
 -- stale: ["Choose how MelloUI starts. Nothing changes until you install, and you can go back right after."] = "选择MelloUI如何开始。安装前什么都不会改变，安装后也可以马上返回。", -- draft
 -- stale: ["Class and reaction colours, the health bar and placement of tooltips. The dark backdrop only applies while the tooltip reskin is off."] = "职业和阵营关系颜色、生命条和鼠标提示的位置。深色背景仅在鼠标提示换肤关闭时生效。", -- draft
 -- stale: ["Class icons in portraits"] = "头像中的职业图标", -- draft
@@ -2918,6 +2914,7 @@ Lang:Add("zhCN", {
 -- stale: ["Cut the speech off when you close the dialog. Off by default so the NPC keeps talking while you walk away."] = "关闭对话时切断语音。默认关闭，这样你走开时NPC还会继续说。", -- draft
 -- stale: ["Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target."] = "单位框体上的暗色模式：玩家、目标、焦点、宠物、小队、首领和目标的目标。", -- draft
 -- stale: ["Dark Mode: parchment is no longer dimmed (the chat, the Quest Tracker, tooltips, windows and pages), so its dark ink stays readable."] = "暗色模式：羊皮纸不再被调暗（聊天、任务追踪器、鼠标提示、窗口和页面），深色墨水字迹保持清晰可读。", -- draft
+-- stale: ["Dark Mode: the map's tooltips stay readable, and the boat and zeppelin lines and quest areas on the map keep their colours."] = "暗色模式：地图的鼠标提示保持清晰可读，地图上的船只与飞艇航线以及任务区域保持原有颜色。", -- draft
 -- stale: ["Dark mode"] = "暗色模式", -- draft
 -- stale: ["Darken the borders of your buff and debuff icons, with a thin dark edge round each icon (0.16.0: the Icon Border switch is part of this). The game's own icons: while Buffs & Debuffs shows MelloUI's rows in their place, there is nothing here to darken (those rows take the Aura Border)."] = "调暗你的增益和减益图标的边框，每个图标周围加一道细暗边（0.16.0：“图标边框”开关属于此项）。游戏自己的图标：当“增益和减益效果”用MelloUI的行代替它们时，这里没有要调暗的东西（那些行使用“光环边框”）。", -- draft
 -- stale: ["Darkens the Blizzard artwork of unit frames, cast bars, action bars, nameplates, cooldown manager, auras and menu bars."] = "调暗单位框体、施法条、动作条、姓名板、冷却管理器、光环和菜单栏的暴雪美术。", -- draft
@@ -2952,6 +2949,7 @@ Lang:Add("zhCN", {
 -- stale: ["Edit Layout: Revert and Default place for each element; switch, make, copy, rename, delete and share Edit Mode layouts from the bar."] = "编辑布局：每个元素都有还原和默认位置；在工具栏中切换、新建、复制、重命名、删除和分享编辑模式布局。", -- draft
 -- stale: ["Edit Layout: a dock at the top, the Elements list to show, hide, lock or single out any part, and the game's Edit Mode settings in each part's box."] = "编辑布局：顶部停靠栏，元素列表可显示、隐藏、锁定或单独显示任一部分，每个部分的框中有游戏的编辑模式设置。", -- draft
 -- stale: ["Edit Layout: a top dock; every part of Edit Mode, hidden ones too, to show, hide, lock or move; the game's settings and switches in each box (bars: On Mouseover); one gold highlight."] = "编辑布局：顶部停靠栏；编辑模式的每个部分（包括隐藏的）都可显示、隐藏、锁定或移动；每个框中都有游戏的设置和开关（动作条：鼠标悬停）；统一的金色高亮。", -- draft
+-- stale: ["Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before."] = "Edit Layout：游戏隐藏的元素（鼠标提示、拾取窗口……）在元素列表中单击它的眼睛即可显示，“全部显示”也可以；之前需要双击。", -- draft
 -- stale: ["Edit Layout: attach elements as in Edit Mode; your other characters are asked again to use MelloUI's layout."] = "编辑布局：像编辑模式一样吸附元素；你的其他角色会再次被询问是否使用 MelloUI 的布局。", -- draft
 -- stale: ["Edit Layout: attach the game's elements to each other, as in Edit Mode."] = "编辑布局：像编辑模式一样，将游戏的元素彼此吸附。", -- draft
 -- stale: ["Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab."] = "编辑布局：调整伤害统计的大小时立即可见；玩家框的方框包含统计标签。", -- draft
@@ -3127,6 +3125,7 @@ Lang:Add("zhCN", {
 -- stale: ["In silver: a stack worth this or more is never thrown away (selling it at a vendor still is). 100 silver = 1 gold."] = "以银币计：价值达到或超过此数的一组物品绝不会被丢掉（在商人处出售仍可）。100银币 = 1金币。", -- draft
 -- stale: ["In the box that splits a stack (Shift-click a stack), the mouse wheel changes the amount: up adds one, down takes one, ten at a time while you hold Shift."] = "在拆分堆叠的框里（Shift+点击一个堆叠），鼠标滚轮改变数量：向上加一，向下减一，按住Shift时一次十个。", -- draft
 -- stale: ["Indicators for %s"] = "%s的指示器", -- draft
+-- stale: ["Installer: Keep my layout now keeps your own Edit Mode layout; MelloUI's layout went in all the same."] = "安装向导：“保留我的布局”现在会保留你自己的编辑模式布局；之前仍会套用 MelloUI 的布局。", -- draft
 -- stale: ["Interrupted casts show only on the Personal Display's cast bar, with their word."] = "被打断的施法只显示在个人显示的施法条上，并带有提示文字。", -- draft
 -- stale: ["Into a fight the bars rise into place; a moment after it they settle a little lower, until the next one. (To fade them out of combat: the Fader.)"] = "进入战斗时条升到位；战斗结束片刻后稍微下沉，直到下一场。（脱离战斗时淡出它们：用淡出功能。）", -- draft
 -- stale: ["Iron in the palette's own colours"] = "配色本色的铁", -- draft
@@ -3208,8 +3207,10 @@ Lang:Add("zhCN", {
 -- stale: ["Nameplate Tweaks is off: the game's own plate, none of MelloUI's parts on it."] = "姓名板调整已关闭：游戏自己的姓名板，上面没有MelloUI的部分。", -- draft
 -- stale: ["Nameplate health and cast bars in the kit."] = "姓名板的生命条和施法条使用套件外观。", -- draft
 -- stale: ["Nameplates and Personal Display answer the fight: lit chunks on hits, flashing crits, cast warnings; dodges and stuns on your bars. Combat Text has a Beside look."] = "姓名板和个人显示回应战斗：命中时亮起的伤害块、闪烁的暴击、施法警告；躲闪和昏迷显示在你的条上。战斗文字新增“侧边”样式。", -- draft
+-- stale: ["Nameplates designer: changes now show at once on the plates already on screen."] = "姓名板设计器：修改现在会立即显示在屏幕上已有的姓名板上。", -- draft
 -- stale: ["Nameplates designer: drag and size every part of the enemy plate (cast bar, buffs, debuffs, level, raid marker, icons) and set its own width and height; overlaps are outlined red."] = "姓名板设计器：可拖动并缩放敌方姓名板的每个部件（施法条、增益、减益、等级、团队标记、图标），并自定宽度和高度；重叠部分以红框标出。", -- draft
 -- stale: ["Nameplates designer: drag the name, CC icon, quest icon and swing badge anywhere on the plate; parts sharing a spot are outlined red."] = "姓名板设计器：可将名字、控制图标、任务图标和挥击徽章拖到姓名板的任意位置；重叠在同一处的部件会以红框标出。", -- draft
+-- stale: ["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "姓名板设计器：精英图标成为可单独拖动、缩放或隐藏的部件；移动团队标记不再连带移动精英图标和敌人的增益效果。", -- draft
 -- stale: ["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "姓名板：敌方姓名板上的你的减益效果新增“只显示我的减益”设置（默认开启）。", -- draft
 -- stale: ["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "姓名板：连击点可以通过水平和垂直偏移移动。", -- draft
 -- stale: ["Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do."] = "姓名板：姓名板预览中敌人的名字与实际姓名板一样居中显示在血条上方。", -- draft

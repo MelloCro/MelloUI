@@ -2315,6 +2315,7 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "미니맵: 미니맵을 스캔하는 약초·광석 애드온(NodeSight 등)을 쓸 때 MelloUI의 미니맵 테두리가 더 이상 커서를 따라다니지 않습니다. 스캔할 때마다 지도와 함께 숨겨집니다.", -- draft
 	["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool: CurseForge가 MelloUI_Oldschool보다 MelloUI를 먼저 업데이트해도 손그림 외형이 더 이상 꺼지지 않습니다. 같은 2.1 시리즈의 Oldschool이면 모두 맞습니다.", -- draft
 	["SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI."] = "SharedMedia (테스트: 사용해 보고 어땠는지 알려 주세요): SharedMedia 팩의 글꼴, 바 텍스처, 배경이 MelloUI 목록에 표시됩니다. MelloUI보다 나중에 불러오는 팩도 포함됩니다.", -- draft
 	["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "툴팁: 어두운 배경의 테두리 선택: 어두움, 게임 기본, 없음, 또는 SharedMedia 테두리. SharedMedia 배경은 툴팁, 대화창, 파티 및 공격대 프레임에 쓸 수 있습니다.", -- draft
@@ -2325,12 +2326,6 @@ Lang:Add("koKR", {
 	["Party and raid frames: a member who comes back into range is no longer left faded until the fight ends; the fade now follows them in and out of range as they move."] = "파티 및 공격대 프레임: 다시 사거리 안으로 들어온 구성원이 더 이상 전투가 끝날 때까지 흐리게 남지 않습니다. 이제 구성원이 움직여 사거리 안팎을 오갈 때 흐림 효과가 따라갑니다.", -- draft
 	["Impact Effects: hits flash on your target's nameplate in dungeons too, where the game hides how much a hit did."] = "타격 효과: 게임이 타격 피해량을 숨기는 던전에서도 대상의 이름표에 타격 섬광이 표시됩니다.", -- draft
 	["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "이름표 디자이너: 이름표 크기와 배치한 부분이 /reload 후에도 유지되며, 이미 화면에 있는 이름표에도 적용됩니다.", -- draft
-	["Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before."] = "Edit Layout: 게임이 숨기는 요소(툴팁, 전리품 창 ...)를 요소 목록에서 눈 아이콘을 한 번 클릭하거나 모두 표시로 보이게 할 수 있습니다. 전에는 두 번 클릭해야 했습니다.", -- draft
-	["Installer: Keep my layout now keeps your own Edit Mode layout; MelloUI's layout went in all the same."] = "설치 도우미: 내 레이아웃 유지가 이제 자신의 편집 모드 레이아웃을 그대로 둡니다. 전에는 MelloUI의 레이아웃이 그래도 적용되었습니다.", -- draft
-	["Dark Mode: the map's tooltips stay readable, and the boat and zeppelin lines and quest areas on the map keep their colours."] = "어두운 모드: 지도의 툴팁이 계속 잘 읽히고, 지도 위의 배와 비행선 노선, 퀘스트 지역이 원래 색을 유지합니다.", -- draft
-	["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "이름표 디자이너: 정예 아이콘이 따로 끌고, 크기를 바꾸고, 숨길 수 있는 부품이 되었습니다. 공격대 징표를 옮겨도 더 이상 정예 아이콘과 적의 강화 효과가 함께 움직이지 않습니다.", -- draft
-	["Nameplates designer: changes now show at once on the plates already on screen."] = "이름표 디자이너: 변경 사항이 이미 화면에 있는 이름표에 바로 적용됩니다.", -- draft
-	["Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it."] = "채팅: 미니멀 채팅을 다시 클릭할 수 있습니다(줄, 링크, 채팅 복사 버튼). 2.1.24부터 숨겨진 채팅창이 이를 가릴 수 있었습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2895,6 +2890,7 @@ Lang:Add("koKR", {
 -- stale: ["Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time."] = "채팅: 마우스가 채팅 위에 있는 동안 오른쪽 위 모서리에 채팅 복사 버튼이 나타납니다. 탭의 줄을 복사할 수 있는 창으로 열며, 각 줄에는 시간이 붙습니다.", -- draft
 -- stale: ["Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles."] = "대화: 메시지 공간이 더 넓게: 더 작은 글자, 더 높은 대화창과 귓속말 창, 줄과 말풍선 둘레 여백.", -- draft
 -- stale: ["Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles; your text size stays after a /reload."] = "대화: 메시지를 위한 더 넓은 공간: 더 작은 글자, 더 높은 대화창과 귓속말 창, 줄과 말풍선 주위의 여유; /reload 후에도 글자 크기 유지.", -- draft
+-- stale: ["Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it."] = "채팅: 미니멀 채팅을 다시 클릭할 수 있습니다(줄, 링크, 채팅 복사 버튼). 2.1.24부터 숨겨진 채팅창이 이를 가릴 수 있었습니다.", -- draft
 -- stale: ["Choose how MelloUI starts. Nothing changes until you install, and you can go back right after."] = "MelloUI를 어떻게 시작할지 고르세요. 설치하기 전에는 아무것도 바뀌지 않고, 설치 직후 되돌릴 수 있습니다.", -- draft
 -- stale: ["Class and reaction colours, the health bar and placement of tooltips. The dark backdrop only applies while the tooltip reskin is off."] = "직업 및 관계 색상, 생명력 막대, 툴팁 위치. 어두운 배경은 툴팁 스킨이 꺼져 있을 때만 적용됩니다.", -- draft
 -- stale: ["Class icons in portraits"] = "초상화의 직업 아이콘", -- draft
@@ -2918,6 +2914,7 @@ Lang:Add("koKR", {
 -- stale: ["Cut the speech off when you close the dialog. Off by default so the NPC keeps talking while you walk away."] = "대화를 닫으면 말을 끊습니다. 기본 꺼짐이라 떠나는 동안에도 NPC가 계속 말합니다.", -- draft
 -- stale: ["Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target."] = "개체창의 다크 모드: 플레이어, 대상, 주시 대상, 소환수, 파티, 우두머리, 대상의 대상.", -- draft
 -- stale: ["Dark Mode: parchment is no longer dimmed (the chat, the Quest Tracker, tooltips, windows and pages), so its dark ink stays readable."] = "어두운 모드: 이제 양피지(채팅, 퀘스트 추적기, 툴팁, 창과 페이지)를 어둡게 하지 않아 짙은 잉크 글씨가 계속 잘 읽힙니다.", -- draft
+-- stale: ["Dark Mode: the map's tooltips stay readable, and the boat and zeppelin lines and quest areas on the map keep their colours."] = "어두운 모드: 지도의 툴팁이 계속 잘 읽히고, 지도 위의 배와 비행선 노선, 퀘스트 지역이 원래 색을 유지합니다.", -- draft
 -- stale: ["Dark mode"] = "어두운 모드", -- draft
 -- stale: ["Darken the borders of your buff and debuff icons, with a thin dark edge round each icon (0.16.0: the Icon Border switch is part of this). The game's own icons: while Buffs & Debuffs shows MelloUI's rows in their place, there is nothing here to darken (those rows take the Aura Border)."] = "강화 및 약화 효과 아이콘의 테두리를 어둡게 하고, 각 아이콘 둘레에 얇고 어두운 가장자리를 둡니다(0.16.0: 아이콘 테두리 스위치가 여기에 포함됨). 게임의 아이콘: 강화 및 약화 효과가 그 자리에 MelloUI의 줄을 보여 주는 동안에는 여기서 어둡게 할 것이 없습니다(그 줄은 효과 테두리를 씁니다).", -- draft
 -- stale: ["Darkens the Blizzard artwork of unit frames, cast bars, action bars, nameplates, cooldown manager, auras and menu bars."] = "개체창, 시전바, 행동 단축바, 이름표, 재사용 대기시간 관리자, 효과, 메뉴 바의 블리자드 그림을 어둡게 합니다.", -- draft
@@ -2952,6 +2949,7 @@ Lang:Add("koKR", {
 -- stale: ["Edit Layout: Revert and Default place for each element; switch, make, copy, rename, delete and share Edit Mode layouts from the bar."] = "레이아웃 편집: 요소마다 되돌리기와 기본 위치; 바에서 편집 모드 레이아웃을 전환, 생성, 복사, 이름 변경, 삭제, 공유.", -- draft
 -- stale: ["Edit Layout: a dock at the top, the Elements list to show, hide, lock or single out any part, and the game's Edit Mode settings in each part's box."] = "배치 편집: 위쪽 도크, 요소 목록으로 부분을 보이기·숨기기·고정·단독 표시, 각 부분 상자에 게임 편집 모드 설정.", -- draft
 -- stale: ["Edit Layout: a top dock; every part of Edit Mode, hidden ones too, to show, hide, lock or move; the game's settings and switches in each box (bars: On Mouseover); one gold highlight."] = "레이아웃 편집: 상단 도크; 편집 모드의 모든 부분을 숨겨진 것까지 표시, 숨기기, 잠금, 이동; 각 상자에 게임의 설정과 스위치(바: 마우스를 올리면); 하나의 금색 강조.", -- draft
+-- stale: ["Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before."] = "Edit Layout: 게임이 숨기는 요소(툴팁, 전리품 창 ...)를 요소 목록에서 눈 아이콘을 한 번 클릭하거나 모두 표시로 보이게 할 수 있습니다. 전에는 두 번 클릭해야 했습니다.", -- draft
 -- stale: ["Edit Layout: attach elements as in Edit Mode; your other characters are asked again to use MelloUI's layout."] = "레이아웃 편집: 편집 모드처럼 요소를 붙이고, 다른 캐릭터에서도 MelloUI 레이아웃 사용 여부를 다시 묻습니다.", -- draft
 -- stale: ["Edit Layout: attach the game's elements to each other, as in Edit Mode."] = "레이아웃 편집: 편집 모드처럼 게임의 요소를 서로 붙입니다.", -- draft
 -- stale: ["Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab."] = "레이아웃 편집: 미터기 크기를 바꾸는 동안 바로 보이고, 플레이어 상자가 미터기 탭을 포함합니다.", -- draft
@@ -3127,6 +3125,7 @@ Lang:Add("koKR", {
 -- stale: ["In silver: a stack worth this or more is never thrown away (selling it at a vendor still is). 100 silver = 1 gold."] = "실버 단위: 이 이상 가치의 묶음은 절대 버리지 않습니다(상인에게 파는 것은 됨). 100실버 = 1골드.", -- draft
 -- stale: ["In the box that splits a stack (Shift-click a stack), the mouse wheel changes the amount: up adds one, down takes one, ten at a time while you hold Shift."] = "묶음을 나누는 상자(묶음을 Shift-클릭)에서 마우스 휠로 수량을 바꿉니다: 위로 하나 더, 아래로 하나 빼기, Shift를 누르고 있으면 열 개씩.", -- draft
 -- stale: ["Indicators for %s"] = "%s 표시기", -- draft
+-- stale: ["Installer: Keep my layout now keeps your own Edit Mode layout; MelloUI's layout went in all the same."] = "설치 도우미: 내 레이아웃 유지가 이제 자신의 편집 모드 레이아웃을 그대로 둡니다. 전에는 MelloUI의 레이아웃이 그래도 적용되었습니다.", -- draft
 -- stale: ["Interrupted casts show only on the Personal Display's cast bar, with their word."] = "차단된 시전은 개인 디스플레이의 시전 바에만 문구와 함께 표시됩니다.", -- draft
 -- stale: ["Into a fight the bars rise into place; a moment after it they settle a little lower, until the next one. (To fade them out of combat: the Fader.)"] = "전투에 들어가면 막대가 제자리로 올라오고, 끝난 잠시 뒤 다음 전투까지 조금 낮게 자리 잡습니다. (전투 밖에서 흐리게 하려면: 흐리게 하기.)", -- draft
 -- stale: ["Iron in the palette's own colours"] = "색상표 색의 철", -- draft
@@ -3208,8 +3207,10 @@ Lang:Add("koKR", {
 -- stale: ["Nameplate Tweaks is off: the game's own plate, none of MelloUI's parts on it."] = "이름표 조정이 꺼져 있습니다: 게임의 이름표, MelloUI 부분 없음.", -- draft
 -- stale: ["Nameplate health and cast bars in the kit."] = "이름표의 생명력 막대와 시전바에 키트 적용.", -- draft
 -- stale: ["Nameplates and Personal Display answer the fight: lit chunks on hits, flashing crits, cast warnings; dodges and stuns on your bars. Combat Text has a Beside look."] = "이름표와 개인 표시기가 전투에 반응: 타격 때 빛나는 조각, 번쩍이는 치명타, 시전 경고. 회피와 기절이 내 막대에. 전투 문자에 옆 스타일 추가.", -- draft
+-- stale: ["Nameplates designer: changes now show at once on the plates already on screen."] = "이름표 디자이너: 변경 사항이 이미 화면에 있는 이름표에 바로 적용됩니다.", -- draft
 -- stale: ["Nameplates designer: drag and size every part of the enemy plate (cast bar, buffs, debuffs, level, raid marker, icons) and set its own width and height; overlaps are outlined red."] = "이름표 디자이너: 적 이름표의 모든 요소(시전 바, 강화 효과, 약화 효과, 레벨, 공격대 징표, 아이콘)를 끌어 놓고 크기를 조절하며, 너비와 높이도 직접 정할 수 있습니다. 겹친 요소는 빨간 테두리로 표시됩니다.", -- draft
 -- stale: ["Nameplates designer: drag the name, CC icon, quest icon and swing badge anywhere on the plate; parts sharing a spot are outlined red."] = "이름표 디자이너: 이름, 군중 제어 아이콘, 퀘스트 아이콘, 스윙 배지를 이름표의 원하는 곳으로 끌어 놓으세요. 같은 자리에 겹친 요소는 빨간 테두리로 표시됩니다.", -- draft
+-- stale: ["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "이름표 디자이너: 정예 아이콘이 따로 끌고, 크기를 바꾸고, 숨길 수 있는 부품이 되었습니다. 공격대 징표를 옮겨도 더 이상 정예 아이콘과 적의 강화 효과가 함께 움직이지 않습니다.", -- draft
 -- stale: ["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "이름표: 적 이름표의 내 약화 효과에 '내 약화 효과만' 설정이 추가되었습니다(기본값 켜짐).", -- draft
 -- stale: ["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "이름표: 연계 점수를 가로 및 세로 오프셋으로 옮길 수 있습니다.", -- draft
 -- stale: ["Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do."] = "이름표: 이름표 미리보기에서 적의 이름이 실제 이름표처럼 바 위 가운데에 표시됩니다.", -- draft

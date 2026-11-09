@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.34
+
+- Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan.
+
 ## 2.1.33
 
 - Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits.
