@@ -2315,7 +2315,7 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
-	["SharedMedia: fonts, bar textures and backgrounds shared by other addons show in MelloUI's lists, also from packs that load after MelloUI (those were missed before)."] = "SharedMedia：其他插件共享的字体、条材质和背景会出现在 MelloUI 的列表中，包括在 MelloUI 之后加载的材质包（以前会漏掉）。", -- draft
+	["SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI."] = "SharedMedia（测试功能：欢迎试用并告诉我们效果）：SharedMedia 材质包中的字体、条材质和背景会出现在 MelloUI 的列表中，包括在 MelloUI 之后加载的材质包。", -- draft
 	["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "鼠标提示：暗色背景新增边框选项：暗色、游戏自带、无，或 SharedMedia 边框。SharedMedia 背景可用于鼠标提示、聊天框以及小队和团队框体。", -- draft
 	["Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest."] = "暗色模式：鼠标提示的金色标题和提示保持清晰可读：地图上的城市和地下城、服务栏、提醒、任务追踪等等。", -- draft
 	["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "增益和减益效果：独立的一页。增益和减益分开显示，各有自己的大小和行；选择锚点，自由的会立即显示在“编辑布局”中。", -- draft
@@ -3360,6 +3360,7 @@ Lang:Add("zhCN", {
 -- stale: ["Shade behind text"] = "文字背后的阴影", -- draft
 -- stale: ["Shade: Buffs"] = "阴影：增益效果", -- draft
 -- stale: ["Shade: Map Icons"] = "阴影：地图图标", -- draft
+-- stale: ["SharedMedia: fonts, bar textures and backgrounds shared by other addons show in MelloUI's lists, also from packs that load after MelloUI (those were missed before)."] = "SharedMedia：其他插件共享的字体、条材质和背景会出现在 MelloUI 的列表中，包括在 MelloUI 之后加载的材质包（以前会漏掉）。", -- draft
 -- stale: ["Shops, mail, bank, trainers"] = "商店、邮件、银行、训练师", -- draft
 -- stale: ["Short channel names, class-coloured names, the whisper popup, the chat buttons, smooth scrolling, the names' form (Show Names As), the Background dropdown and the art-hiding switches (which only apply while the chat reskin is off). Off: every one of them goes."] = "短频道名、职业颜色名字、悄悄话弹窗、聊天按钮、平滑滚动、名字形式（名字显示方式）、“背景”下拉列表以及隐藏美术的开关（仅在聊天换肤关闭时生效）。关闭：全部消失。", -- draft
 -- stale: ["Short lines beside your character show what you just gained: a skill point, the items you loot or receive, and what you buy. You can move them in Edit Layout."] = "角色旁的短行显示你刚获得的东西：一个技能点、你拾取或收到的物品以及你买的东西。可在“编辑布局”中移动。", -- draft

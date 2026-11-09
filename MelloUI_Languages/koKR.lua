@@ -2315,7 +2315,7 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
-	["SharedMedia: fonts, bar textures and backgrounds shared by other addons show in MelloUI's lists, also from packs that load after MelloUI (those were missed before)."] = "SharedMedia: 다른 애드온이 공유하는 글꼴, 바 텍스처, 배경이 MelloUI 목록에 표시됩니다. MelloUI보다 나중에 불러오는 팩도 포함됩니다(이전에는 빠졌습니다).", -- draft
+	["SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI."] = "SharedMedia (테스트: 사용해 보고 어땠는지 알려 주세요): SharedMedia 팩의 글꼴, 바 텍스처, 배경이 MelloUI 목록에 표시됩니다. MelloUI보다 나중에 불러오는 팩도 포함됩니다.", -- draft
 	["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "툴팁: 어두운 배경의 테두리 선택: 어두움, 게임 기본, 없음, 또는 SharedMedia 테두리. SharedMedia 배경은 툴팁, 대화창, 파티 및 공격대 프레임에 쓸 수 있습니다.", -- draft
 	["Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest."] = "어두운 모드: 툴팁의 금색 제목과 안내가 읽기 쉽게 유지됩니다: 지도의 도시와 던전, 서비스 바, 알림, 퀘스트 추적기 등.", -- draft
 	["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "강화 및 약화 효과: 전용 페이지. 강화와 약화 효과가 따로 놓이고 각각 크기와 줄을 정합니다. 고정점을 고르면, 자유인 것은 레이아웃 편집에 바로 보입니다.", -- draft
@@ -3360,6 +3360,7 @@ Lang:Add("koKR", {
 -- stale: ["Shade behind text"] = "글자 뒤 그림자", -- draft
 -- stale: ["Shade: Buffs"] = "그림자: 강화 효과", -- draft
 -- stale: ["Shade: Map Icons"] = "그림자: 지도 아이콘", -- draft
+-- stale: ["SharedMedia: fonts, bar textures and backgrounds shared by other addons show in MelloUI's lists, also from packs that load after MelloUI (those were missed before)."] = "SharedMedia: 다른 애드온이 공유하는 글꼴, 바 텍스처, 배경이 MelloUI 목록에 표시됩니다. MelloUI보다 나중에 불러오는 팩도 포함됩니다(이전에는 빠졌습니다).", -- draft
 -- stale: ["Shops, mail, bank, trainers"] = "상점, 우편, 은행, 전문가", -- draft
 -- stale: ["Short channel names, class-coloured names, the whisper popup, the chat buttons, smooth scrolling, the names' form (Show Names As), the Background dropdown and the art-hiding switches (which only apply while the chat reskin is off). Off: every one of them goes."] = "짧은 채널 이름, 직업 색상 이름, 귓속말 팝업, 대화 버튼, 부드러운 스크롤, 이름 형식(이름 표시 방식), 배경 목록, 그림을 숨기는 스위치(대화 스킨이 꺼져 있을 때만 적용). 끄기: 모두 사라집니다.", -- draft
 -- stale: ["Short lines beside your character show what you just gained: a skill point, the items you loot or receive, and what you buy. You can move them in Edit Layout."] = "캐릭터 옆의 짧은 줄이 방금 얻은 것을 보여 줍니다: 기술 점수, 줍거나 받은 아이템, 산 것. 레이아웃 편집에서 옮길 수 있습니다.", -- draft

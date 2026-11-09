@@ -2,7 +2,7 @@
 
 ## 2.1.32
 
-- SharedMedia: fonts, bar textures and backgrounds shared by other addons show in MelloUI's lists, also from packs that load after MelloUI (those were missed before).
+- SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI.
 - Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames.
 
 ## 2.1.31
