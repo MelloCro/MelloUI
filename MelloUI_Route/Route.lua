@@ -12454,6 +12454,43 @@ local function Tick()
 	end
 end
 
+-- (2.1.30; a player, following Polestar: "It sent me from org to UC, then I got to UC It wanted to send me to org
+-- again") /route guide dump: the guide following's state (Guide.Dump), the pin report, then Route's own spot and its
+-- route's legs (a continent and how it is crossed: ground, road, boat, flight), in the log's copy window
+function M.GuideDump()
+	MelloUI:ClearLog()
+	local function Say(fmt, ...)
+		MelloUI:Print(fmt, ...)
+	end
+	if M.Guide and M.Guide.Dump then
+		local ok, err = pcall(M.Guide.Dump, Say)
+		if not ok then
+			Say("the guide's part failed: %s", tostring(err))
+		end
+	end
+	M.PinReport()
+	if destination then
+		Say("Route's spot: %s, continent %s, map %s%s", tostring(destination.label), tostring(destination.cont),
+			tostring(destination.mapID), destination.fromQuest and " (a quest)" or destination.fromWaypoint and " (the map pin)" or "")
+	else
+		Say("Route's spot: none")
+	end
+	if route and type(route.points) == "table" then
+		local legs, prev = {}, nil
+		for _, p in ipairs(route.points) do
+			local key = tostring(p[1]) .. " " .. tostring(p[4])
+			if key ~= prev then
+				legs[#legs + 1] = "continent " .. key
+				prev = key
+			end
+		end
+		Say("Route's way: %s, %d points: %s", Yards(route.length or 0), #route.points, table.concat(legs, " > "))
+	else
+		Say("Route's way: none")
+	end
+	MelloUI:ShowLog("route guide dump")
+end
+
 SLASH_MELLOROUTE1 = "/route"
 SlashCmdList.MELLOROUTE = function(msg)
 	msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
@@ -12483,6 +12520,8 @@ SlashCmdList.MELLOROUTE = function(msg)
 		MelloUI:Print("user waypoint=%s supertracking waypoint=%s", okH and tostring(has) or "?",
 			C_SuperTrack and C_SuperTrack.IsSuperTrackingUserWaypoint and tostring(C_SuperTrack.IsSuperTrackingUserWaypoint()) or "?")
 		MelloUI:ShowLog("route dots")
+	elseif msg == "guide dump" then
+		M.GuideDump()   -- (2.1.30: a player's goose chases following Polestar)
 	elseif msg == "guide" or msg == "rxp" then
 		-- (the guide addons, Guides.lua: following their steps on or off; "rxp" its first name, RestedXP's alone)
 		M.db.followGuide = M.db.followGuide == false

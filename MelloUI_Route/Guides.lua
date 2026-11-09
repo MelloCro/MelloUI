@@ -36,7 +36,9 @@ local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Plain, Text, Finite = MelloUI.Safe.Value, MelloUI.Safe.Text, MelloUI.Safe.Finite
 local M = MelloUI:GetModule("Route")
 
-local Guide = { readers = {} }   -- mapID, x, y: the step laid last; active: the reader followed
+-- mapID, x, y: the pin laid last, as the game keeps it; stepMap, stepX, stepY: the step it was laid for (2.1.30: apart --
+-- a step whose map takes no pin is laid on a map above it); active: the reader followed
+local Guide = { readers = {} }
 M.Guide = Guide
 
 local SKIP = "Skip this step"   -- (a guide that skips whole steps: the box under its lines)
@@ -116,6 +118,7 @@ end
 
 function Guide.Forget()
 	Guide.mapID, Guide.x, Guide.y = nil, nil, nil
+	Guide.stepMap, Guide.stepX, Guide.stepY = nil, nil, nil
 	Guide.sig, Guide.itemSig, Guide.goalSig = nil, nil, nil
 	for _, reader in ipairs(Guide.readers) do
 		reader.sig, reader.quick, reader.lastKey = nil, nil, nil
@@ -329,33 +332,159 @@ function Guide.Refresh()
 	Apply()
 end
 
+-- (2.1.30) where the game takes the pin for a step's spot: its own map when that map may hold one, else the first map up
+-- its parents that may, the spot carried over through the world (C_Map.CanSetUserWaypointOnMap -- Polestar's own
+-- bridge asks it too: a dungeon's or a building's map refuses the pin); nil when none does
+function Guide.Pinnable(zone, x, y)
+	local CM = C_Map
+	local can = CM.CanSetUserWaypointOnMap
+	if type(can) ~= "function" then
+		return zone, x, y
+	end
+	local ok, yes = pcall(can, zone)
+	if ok and Plain(yes) == true then
+		return zone, x, y
+	end
+	local V2 = rawget(_G, "CreateVector2D")
+	if not (V2 and CM.GetWorldPosFromMapPos and CM.GetMapPosFromWorldPos and CM.GetMapInfo) then
+		return nil
+	end
+	local okW, cont, pos = pcall(CM.GetWorldPosFromMapPos, zone, V2(x, y))
+	cont = okW and tonumber(Plain(cont)) or nil
+	if not (cont and pos) then
+		return nil
+	end
+	local map = zone
+	for _ = 1, 8 do
+		local okI, info = pcall(CM.GetMapInfo, map)
+		local parent = okI and type(info) == "table" and tonumber(Plain(info.parentMapID)) or nil
+		if not parent or parent == 0 or parent == map then
+			return nil
+		end
+		map = parent
+		local okC, takes = pcall(can, map)
+		if okC and Plain(takes) == true then
+			local okP, _, mpos = pcall(CM.GetMapPosFromWorldPos, cont, pos, map)
+			local px, py
+			if okP and mpos then
+				px, py = M.VectorXY(mpos)
+			end
+			if px and py and px >= 0 and px <= 1 and py >= 0 and py <= 1 then
+				return map, px, py
+			end
+		end
+	end
+	return nil
+end
+
+-- (2.1.30; a player, 2026-11-09, following Polestar: "it bugs out after awhile", "It sent me from org to UC, then I got
+-- to UC It wanted to send me to org again until I pop out and reload") the step was noted as laid before the game took
+-- its pin: a refused pin left the step before's on the map, no longer known for ours -- kept as the player's own, every
+-- later step was left unlaid and the route led to the old spot until a /reload. Now a step is laid only once the game
+-- holds its pin, known as the game keeps it (read back); a step no map takes a pin for clears ours instead
+local function Unlaid(had)
+	if had and Ours() then
+		pcall(C_Map.ClearUserWaypoint)
+	end
+	Guide.mapID, Guide.x, Guide.y = nil, nil, nil
+	if M.db then
+		M.db.guidePin = nil
+	end
+	return false
+end
+
 function Guide.Step(force)   -- force: a click on the step (laid again, over the player's own pin too); true when laid
 	local reader = Following() and Guide.active
 	local zone, x, y = reader and reader.mapID, reader and reader.x, reader and reader.y
 	if not (zone and x and y) then
 		return
 	end
-	if not force and Same(zone, x, y, Guide.mapID, Guide.x, Guide.y) then
+	if not force and Same(zone, x, y, Guide.stepMap, Guide.stepX, Guide.stepY) then
 		return   -- this step was laid already
 	end
 	local okH, has = pcall(C_Map.HasUserWaypoint)
-	if not force and okH and Plain(has) and not Ours() then
+	has = okH and Plain(has) and true or false
+	if not force and has and not Ours() then
 		return   -- the player's own pin stays (followed again once it is gone)
 	end
 	if not (C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates) then
 		return
 	end
-	Guide.mapID, Guide.x, Guide.y = zone, x, y
-	if not pcall(C_Map.SetUserWaypoint, UiMapPoint.CreateFromCoordinates(zone, x, y)) then
-		return false
+	Guide.stepMap, Guide.stepX, Guide.stepY = zone, x, y
+	local pm, px, py = Guide.Pinnable(zone, x, y)
+	if not pm or not pcall(C_Map.SetUserWaypoint, UiMapPoint.CreateFromCoordinates(pm, px, py)) then
+		return Unlaid(has)
 	end
+	-- (the pin as the game keeps it: a client that moves it to another map or rounds it still knows it for ours)
+	local okG, point = pcall(C_Map.GetUserWaypoint)
+	local gm, gx, gy
+	if okG and type(point) == "table" then
+		gm = tonumber(Plain(point.uiMapID))
+		gx, gy = M.VectorXY(point.position)
+	end
+	if not (gm and gx and gy) then
+		return Unlaid(has)   -- (taken without a word and not there: nothing of ours stands)
+	end
+	Guide.mapID, Guide.x, Guide.y = gm, gx, gy
 	if M.db then
-		M.db.guidePin = { zone, x, y }   -- (known for ours after a /reload: Laid)
+		M.db.guidePin = { gm, gx, gy }   -- (known for ours after a /reload: Laid)
 	end
 	if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
 		pcall(C_SuperTrack.SetSuperTrackedUserWaypoint, true)
 	end
 	return true
+end
+
+-- (2.1.30; a player, following Polestar: "It sent me from org to UC, then I got to UC It wanted to send me to org
+-- again") /route guide dump: what the following holds now -- the guide followed and its spot, the step laid, the pin
+-- as the game keeps it and whether it is ours, each hooked guide's own state (a reader's Dump). say(fmt, ...) prints
+local function Spot(m, x, y)
+	m, x, y = tonumber(m), tonumber(x), tonumber(y)
+	return (m and x and y) and string.format("map %d at %.4f, %.4f", m, x, y) or "none"
+end
+function Guide.Dump(say)
+	say("Following guides: %s", Following() and "on" or "off (/route guide turns it on)")
+	local active = Guide.active
+	for _, r in ipairs(Guide.readers) do
+		if r.hooked then
+			say("   %s: hooked, %s%s", r.name, r.runs and "has a step" or "no step", r == active and ", FOLLOWED" or "")
+		end
+	end
+	if active then
+		say("   its step: %s", tostring(active.steps and active.steps.title or "-"))
+		say("   its spot: %s", Spot(active.mapID, active.x, active.y))
+	end
+	say("   the step laid: %s", Spot(Guide.stepMap, Guide.stepX, Guide.stepY))
+	if Guide.stepMap then
+		local can = C_Map.CanSetUserWaypointOnMap
+		local okC, takes = pcall(can, Guide.stepMap)
+		local pm, px, py = Guide.Pinnable(Guide.stepMap, Guide.stepX, Guide.stepY)
+		say("   its map takes a pin: %s; the pin goes on: %s", tostring(okC and Plain(takes)),
+			pm and Spot(pm, px, py) or "no map takes one")
+	end
+	local kept = M.db and M.db.guidePin
+	say("   the pin laid (as the game keeps it): %s; kept over a /reload: %s", Spot(Guide.mapID, Guide.x, Guide.y),
+		type(kept) == "table" and Spot(kept[1], kept[2], kept[3]) or "none")
+	local okH, has = pcall(C_Map.HasUserWaypoint)
+	if okH and Plain(has) then
+		local ok, point = pcall(C_Map.GetUserWaypoint)
+		local px, py
+		if ok and type(point) == "table" then
+			px, py = M.VectorXY(point.position)
+		end
+		say("   the game's map pin: %s, ours: %s", Spot(ok and type(point) == "table" and Plain(point.uiMapID), px, py),
+			tostring(Ours()))
+	else
+		say("   the game's map pin: none")
+	end
+	for _, r in ipairs(Guide.readers) do
+		if r.hooked and r.Dump then
+			local ok, err = pcall(r.Dump, say)
+			if not ok then
+				say("   %s: its dump failed (%s)", r.name, tostring(err))
+			end
+		end
+	end
 end
 
 -- the followed guide's step for the Quest Tracker (the user, 2026-10-18: its steps "shown in the quest tracker", with
@@ -473,7 +602,7 @@ function Guide.Repin()
 end
 
 -- a right-click on the step (the user, 2026-10-18: "a way to remove the waypoint, by right clicking on the
--- step"): the pin laid for it taken off, the route and the World Marker with it; the step stays laid (Guide.mapID),
+-- step"): the pin laid for it taken off, the route and the World Marker with it; the step stays laid (Guide.stepMap),
 -- so following does not put it back before the next step or a click. A pin of the player's own stays.
 function Guide.Unpin()
 	local okH, has = pcall(C_Map.HasUserWaypoint)
@@ -1145,6 +1274,53 @@ do
 			end
 		end
 		return out
+	end
+
+	-- (2.1.30, /route guide dump) its own state: the guide and step its engine is on, its arrow's target and whatever took
+	-- it over (a goal or map click, a trip to a service), the places it hands the target to, a guide choice waiting
+	function polestar.Dump(say)
+		-- (a call's answer as words: yes / no for true / false -- Pcall's nil for false would read as "nothing")
+		local function Said(fn, ...)
+			if type(fn) ~= "function" then
+				return "-"
+			end
+			local ok, v = pcall(fn, ...)
+			v = ok and Plain(v)
+			if not ok then
+				return "error"
+			elseif v == true then
+				return "yes"
+			elseif v == false or v == nil then
+				return "no"
+			end
+			return tostring(v)
+		end
+		local t, e, nav = P(), Engine(), Nav()
+		if not (t and e) then
+			say("   Polestar: not loaded")
+			return
+		end
+		local guide = Pcall(e.GetGuide)
+		say("   Polestar's guide: %s (id %s), step %s of %s", tostring(type(guide) == "table" and Text(guide.title) or "none"),
+			tostring(type(guide) == "table" and Plain(guide.id)), tostring(Pcall(e.GetStepIndex)), tostring(Pcall(e.GetStepCount)))
+		local target = nav and Pcall(nav.GetTarget)
+		if type(target) == "table" then
+			local ok, m, x, y = pcall(nav.LiveCoords, target)
+			x, y = ok and Finite(x), ok and Finite(y)
+			say("   its arrow's target: %s (zone %s); the client's frame: %s", tostring(Text(target.label) or Text(target.name)
+				or Text(target.title) or "-"), tostring(Pcall(nav.GetTargetZoneName)),
+				(x and y) and Spot(Plain(m), x / 100, y / 100) or "unknown")
+			local nb = rawget(nav, "nearby")
+			local trip = type(nb) == "table" and Pcall(nb.Trip)
+			say("   taken over (a goal or map click, a trip): %s%s", Said(nav.IsOverride),
+				type(trip) == "table" and (", a trip to " .. tostring(Text(trip.name)) .. " (" .. tostring(Text(trip.label)) .. ")")
+				or "")
+		else
+			say("   its arrow's target: none")
+		end
+		say("   handed to Shortest Path: %s; its own map pin: %s; TomTom's arrow: %s; a guide choice waiting: %s",
+			Said(nav and nav.HandedOff), Said(t.Get, "nav.blizzardWaypoint"), Said(nav and nav.UsingTomTomArrow),
+			Said(e.PendingRouteChoice))
 	end
 
 	function polestar.Frames()
