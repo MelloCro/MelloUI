@@ -62,7 +62,7 @@ local M = MelloUI:RegisterModule("Tooltip", {
 		  desc = "How solid the Dark background is." },
 		-- (2.1.32; the user, 2026-11-09, of SharedMedia: "can we make MelloUI Compatible with them?") the Dark look's
 		-- border: the palette's line, the game's own art, none, or a border a SharedMedia addon shares (appended)
-		{ type = "dropdown", key = "border", name = "Border", new = "2.1.32", values = {
+		{ type = "dropdown", key = "border", name = "Border", values = {
 			{ value = "dark", label = "Dark" },
 			{ value = "game", label = "Game" },
 			{ value = "none", label = "None" },
