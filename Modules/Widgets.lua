@@ -140,6 +140,18 @@ local M = MelloUI:RegisterModule("Widgets", {
 		  desc = "One of your own buffs is missing on you. Click to cast it." },
 		{ type = "toggle", key = "groupBuffs", name = "Your Buffs On The Group",
 		  desc = "Group members are missing a buff you can cast. Click to cast it on them." },
+		-- (2.1.28; Emghey in feature-requests: "It would be great to be able to pick which buffs you receive reminders
+		-- about"; the user's pick B of BuildData/output/buff_picks_sketch) your class's buffs, each with a switch for the
+		-- reminder on you and, a buff for the others, one for the group (the module itself: M is not known here yet)
+		{ type = "canvas", key = "buffPicks", name = "Which Buffs", new = "2.1.28",
+		  heightAt = function()
+			return MelloUI:GetModule("Widgets").BuffPicks.Height()
+		  end,
+		  search = "buffs reminder pick choose which single fortitude intellect mark wild inner fire armor spirit group",
+		  desc = "Your class's buffs, each with a switch for its reminder on you and one for the group. All on at first.",
+		  build = function(canvas)
+			MelloUI:GetModule("Widgets").BuffPicks.Build(canvas)
+		  end },
 	},
 })
 
@@ -281,6 +293,8 @@ local TEXT = {
 	groupLabel = "Your Buffs On The Group", groupOne = "%s is without your %s", groupMany = "%d without your %s",
 	groupAll = "%d without your buffs", groupList = "%s: %s", groupMore = "%s and %d more",
 	groupHint = "Click: cast it on them, one by one.",
+	-- (2.1.28) Which Buffs' rows
+	picksYou = "You", picksGroup = "Group", picksOr = "or %s", picksNone = "Your class has no buffs these reminders check.",
 	qiLabel = "Quest Items", qiUse = "Click to use", qiHint = "Click: use it.", qiBags = "%d in your bags",
 	qiFor = "For %s",
 	healerLabel = "Healer Drinking", healerOne = "%s is drinking", healerTwo = "%s and %s are drinking",
@@ -1953,6 +1967,76 @@ local function MyBuffs()
 	return buffs.mine
 end
 
+-- (2.1.28; Emghey: "pick which buffs you receive reminders about"; the user's pick B of buff_picks_sketch) a buff left out
+-- of a reminder: db.buffOff[its spell cast] (on you), db.groupBuffOff (on the group); every buff on at first. The
+-- option's rows: a heading naming the two columns, then a row per buff of your class (its icon, its name, the others it
+-- counts -- the armors --, a switch for you and, a buff for the others, one for the group)
+local Picks = { ICON = 18, YOU_X = -75, GROUP_X = -25 }   -- (the columns' middles from the row's right: the switches'
+                                                          -- 26 px, the configurator's 12 px edge, 24 px between)
+M.BuffPicks = Picks
+
+function Picks.On(b, field)
+	local t = M.db and M.db[field]
+	return not (type(t) == "table" and t[b.spells[1]])
+end
+
+function Picks.List()
+	local _, class = Ask(UnitClass, "player")
+	return (not Secret(class) and type(class) == "string") and BUFF.CLASS[class] or nil
+end
+
+function Picks.Height()
+	local list = Picks.List()
+	return (list and #list + 1 or 1) * MelloUI.Widgets.ROW_HEIGHT
+end
+
+function Picks.Switch(r, b, field, x)
+	local W, id = MelloUI.Widgets, b.spells[1]
+	local sw = W.Switch(r, function()
+		return Picks.On(b, field)
+	end, function(on)
+		local t = {}
+		for k, v in pairs(M.db and type(M.db[field]) == "table" and M.db[field] or t) do
+			t[k] = v
+		end
+		t[id] = (not on) and true or nil
+		MelloUI:NotifySettingChanged("Widgets", field, next(t) ~= nil and t or nil)
+	end)
+	sw:SetPoint("CENTER", r, "RIGHT", x, 0)
+	return sw
+end
+
+function Picks.Build(canvas)
+	local W = MelloUI.Widgets
+	local list = Picks.List()
+	if not list then
+		W.Row(canvas, 0, W.ROW_HEIGHT, TEXT.picksNone, nil, nil)
+		return
+	end
+	local head = W.Row(canvas, 0, W.ROW_HEIGHT, "", nil, nil)
+	W.Text(head, "GameFontHighlightSmall", W.Tr(TEXT.picksYou), "text"):SetPoint("CENTER", head, "RIGHT", Picks.YOU_X, 0)
+	W.Text(head, "GameFontHighlightSmall", W.Tr(TEXT.picksGroup), "text"):SetPoint("CENTER", head, "RIGHT", Picks.GROUP_X, 0)
+	for i, b in ipairs(list) do
+		local alt
+		if b.any and #b.spells > 1 then
+			local others = {}
+			for j = 2, #b.spells do
+				others[#others + 1] = Spell(b.spells[j], nil)
+			end
+			alt = #others > 0 and W.Tr(TEXT.picksOr):format(table.concat(others, ", ")) or nil
+		end
+		local r = W.Row(canvas, i * W.ROW_HEIGHT, W.ROW_HEIGHT, Spell(b.spells[1], tostring(b.spells[1])), alt, nil,
+			{ indent = Picks.ICON + 6 })
+		W.IconBox(r, Picks.ICON, SpellIcon(b.spells[1])):SetPoint("LEFT", r, "LEFT", 12, 0)
+		Picks.Switch(r, b, "buffOff", Picks.YOU_X)
+		if b.group then
+			Picks.Switch(r, b, "groupBuffOff", Picks.GROUP_X)
+		else
+			W.Text(r, "GameFontHighlight", "-", "text"):SetPoint("CENTER", r, "RIGHT", Picks.GROUP_X, 0)
+		end
+	end
+end
+
 -- one of a buff's spells on the unit: true (and which), false, or nil (not
 -- known: a secret answer)
 local function Wears(unit, b)
@@ -2005,7 +2089,10 @@ local function BuffsRead()
 	wipe(now)
 	for i = 1, #mine do
 		local b = mine[i]
-		local on, which = Wears("player", b)
+		local on, which = true, nil   -- (2.1.28: a buff left out counts as on)
+		if Picks.On(b, "buffOff") then
+			on, which = Wears("player", b)
+		end
 		if on == nil then
 			return buffs.active
 		elseif on then
@@ -2071,7 +2158,8 @@ local function GroupRead()
 			local name = Text((Ask(UnitName, unit)))
 			for j = 1, #mine do
 				local b = mine[j]
-				if b.group and name and (b.group == "all" or (not Secret(class) and BUFF.MANA[class])) then
+				if b.group and name and Picks.On(b, "groupBuffOff")
+					and (b.group == "all" or (not Secret(class) and BUFF.MANA[class])) then
 					local on = Wears(unit, b)
 					if on == false then
 						local list = group.lists[b]
@@ -3510,5 +3598,9 @@ function M:OnSettingChanged(key, value, db)
 		end
 	elseif key == "bagsAt" then
 		Refresh("bags", true)
+	elseif key == "buffOff" then   -- (2.1.28: Which Buffs)
+		Refresh("buffs", true)
+	elseif key == "groupBuffOff" then
+		Refresh("groupBuffs", true)
 	end
 end

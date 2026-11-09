@@ -776,6 +776,8 @@ Lang:Add("zhCN", {
 	["One of your own buffs is missing on you. Click to cast it."] = "你身上缺少一个你自己的增益。点击施放。", -- draft
 	["Your Buffs On The Group"] = "队伍上的你的增益", -- draft
 	["Group members are missing a buff you can cast. Click to cast it on them."] = "小队成员缺少你能施放的增益。点击为他们施放。", -- draft
+	["Which Buffs"] = "哪些增益", -- draft
+	["Your class's buffs, each with a switch for its reminder on you and one for the group. All on at first."] = "你职业的增益效果，每个都有一个针对你自己的提醒开关和一个针对队伍的开关。初始全部开启。", -- draft
 	-- Discard
 	["Discard"] = "丢弃", -- draft
 	["A button on the bag and loot windows that throws away your cheapest grey or white junk to free a slot (sells it at a vendor)."] = "背包和拾取窗口上的一个按钮，丢掉你最便宜的灰色或白色垃圾以腾出一个栏位（在商人处则出售）。", -- draft
@@ -2308,6 +2310,7 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want."] = "提醒：哪些增益（小部件页）：可以单独关闭某个增益，每个都有针对你自己和针对队伍的开关，只提醒你想要的。", -- draft
 	["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "微型菜单：移到自己的位置后不再跳回原处（乘坐载具后，或动作条重新显示时），编辑布局中的大小现在也作用于按钮。", -- draft
 	["Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows."] = "地图：暴风城、圣光之愿礼拜堂、湖畔镇和莫高雷的任务发布者与交付者现在标在他们真正所在的位置（Sprite Jumpsprocket 在矮人区），与路线所示一致。", -- draft
 	["Bags: items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "背包：特殊背包（矿石袋、草药包、弹药袋、箭袋……）中的物品带有该背包的颜色，窗口底部列出这些背包及其装满程度。", -- draft
@@ -2317,7 +2320,6 @@ Lang:Add("zhCN", {
 	["Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time."] = "聊天：鼠标停在聊天框上时，右上角会出现复制聊天按钮；它会把该标签的消息打开在可复制的窗口中，每行带有时间。", -- draft
 	["Personal Display: Tracked Spells (Big Cooldowns' tab): tick your class's spells, like Weakened Soul or Renew, to see them under the bars while they last on you."] = "个人显示：追踪法术（大型冷却标签）——勾选你职业的法术，例如 Weakened Soul 或 Renew，在它们作用于你时显示在血条下方。", -- draft
 	["Nameplates designer: drag and size every part of the enemy plate (cast bar, buffs, debuffs, level, raid marker, icons) and set its own width and height; overlaps are outlined red."] = "姓名板设计器：可拖动并缩放敌方姓名板的每个部件（施法条、增益、减益、等级、团队标记、图标），并自定宽度和高度；重叠部分以红框标出。", -- draft
-	["Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands."] = "地图和路线：Excavation Site: Wetlands 的入口现在位于维尔加挖掘场以东的矮人挖掘营地，也就是传送门所在的位置。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3148,6 +3150,7 @@ Lang:Add("zhCN", {
 -- stale: ["Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast."] = "地图：区域之间的土地已补绘，包括安其拉和丹莫罗以西；沿海区域延伸到海岸。", -- draft
 -- stale: ["Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on."] = "地图：放大时保留手绘地图；只有很近时才在其上淡入微缩地图地面。滚轮平滑缩放，拖动会继续滑行。", -- draft
 -- stale: ["Map: your quest log and the Quest List beside it (L), search, a pin to share in chat, layer switches; Questie, HandyNotes and GatherMate2 pins on it too."] = "地图：任务日志和旁边的任务列表（L）、搜索、可在聊天中分享的标记、图层开关；Questie、HandyNotes和GatherMate2的标记也会显示。", -- draft
+-- stale: ["Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands."] = "地图和路线：Excavation Site: Wetlands 的入口现在位于维尔加挖掘场以东的矮人挖掘营地，也就是传送门所在的位置。", -- draft
 -- stale: ["Mark every known quest giver on the zone map with a ! or ? coloured by what you can do there. Hover for the quests, click to track the giver. The List tab's choices apply to the pins too: where quests start (for quests not taken yet), the other faction's and other classes' quests, the levels above yours, and Events (a holiday's givers show while the list shows Events or the quest is in your log)."] = "在区域地图上用!或?标出每个已知的任务给予者，颜色表示你在那里能做什么。悬停查看任务，点击追踪该给予者。“列表”标签的选项也作用于地图标记：任务从哪里开始（对尚未接的任务）、另一阵营和其他职业的任务、高出你的等级，以及活动（节日的任务给予者在列表显示活动或任务在你的日志中时显示）。", -- draft
 -- stale: ["Mark instance entrances on the zone maps. Hover for the level range and your quest progress, click to list its quests. Entrances of new instances are learned the first time you walk in."] = "在区域地图上标出副本入口。悬停查看等级范围和你的任务进度，点击列出它的任务。新副本的入口在你第一次走进去时记录。", -- draft
 -- stale: ["Mark on the zone map where the quests in your log are done: an outline round each objective's area with one mark for it (a sword to kill, a bag to collect, a cog to use, a flag to explore) and its progress, and the single places as small dots when you zoom in. Hover a mark for the quest, the objective and what drops it; click it for a waypoint. A done objective's marks go; a done quest shows only its hand-in ?."] = "在区域地图上标出日志中任务的完成地点：每个目标区域外围一圈轮廓并带一个标记（剑表示击杀，袋子表示收集，齿轮表示使用，旗帜表示探索）及其进度，放大时单独的地点显示为小点。悬停标记查看任务、目标以及谁会掉落；点击设置路径点。已完成目标的标记消失；已完成的任务只显示交任务的?。", -- draft

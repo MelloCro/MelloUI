@@ -776,6 +776,8 @@ Lang:Add("koKR", {
 	["One of your own buffs is missing on you. Click to cast it."] = "내 강화 효과 하나가 빠져 있습니다. 클릭하면 시전합니다.", -- draft
 	["Your Buffs On The Group"] = "파티의 내 강화 효과", -- draft
 	["Group members are missing a buff you can cast. Click to cast it on them."] = "파티원에게 내가 걸 수 있는 강화 효과가 없습니다. 클릭하면 걸어 줍니다.", -- draft
+	["Which Buffs"] = "어떤 강화 효과", -- draft
+	["Your class's buffs, each with a switch for its reminder on you and one for the group. All on at first."] = "직업의 강화 효과마다 자신에 대한 알림 스위치와 파티에 대한 스위치가 있습니다. 처음에는 모두 켜져 있습니다.", -- draft
 	-- Discard
 	["Discard"] = "버리기", -- draft
 	["A button on the bag and loot windows that throws away your cheapest grey or white junk to free a slot (sells it at a vendor)."] = "가방과 전리품 창에서 가장 싼 회색이나 흰색 잡동사니를 버려 칸을 비우는 버튼(상인 앞에서는 팝니다).", -- draft
@@ -2308,6 +2310,7 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want."] = "알림: 어떤 강화 효과 (위젯 탭): 강화 효과를 하나씩 끌 수 있으며, 각각 자신용과 파티용 스위치가 따로 있어 원하는 것만 알림을 받습니다.", -- draft
 	["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "마이크로 메뉴: 자기 자리로 옮긴 뒤에 더 이상 원래 자리로 돌아가지 않으며(탈것 이용 후나 행동 단축바가 다시 나타날 때), 레이아웃 편집의 크기가 이제 버튼에도 적용됩니다.", -- draft
 	["Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows."] = "지도: 스톰윈드, 희망의 빛 예배당, 호숫골, 멀고어의 퀘스트 제공자와 완료 NPC가 이제 실제 서 있는 곳에 표시됩니다(드워프 지구의 Sprite Jumpsprocket). 경로가 보여 주는 위치와 같습니다.", -- draft
 	["Bags: items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "가방: 특수 가방(채광 가방, 약초 가방, 탄약 주머니, 화살통 ...)에 든 아이템은 그 가방의 색을 띠고, 창 아래쪽에 그 가방들과 채워진 정도가 표시됩니다.", -- draft
@@ -2317,7 +2320,6 @@ Lang:Add("koKR", {
 	["Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time."] = "채팅: 마우스가 채팅 위에 있는 동안 오른쪽 위 모서리에 채팅 복사 버튼이 나타납니다. 탭의 줄을 복사할 수 있는 창으로 열며, 각 줄에는 시간이 붙습니다.", -- draft
 	["Personal Display: Tracked Spells (Big Cooldowns' tab): tick your class's spells, like Weakened Soul or Renew, to see them under the bars while they last on you."] = "개인 디스플레이: 추적 주문(큰 재사용 대기시간 탭) - Weakened Soul이나 Renew 같은 직업 주문을 선택하면 자신에게 지속되는 동안 바 아래에 표시됩니다.", -- draft
 	["Nameplates designer: drag and size every part of the enemy plate (cast bar, buffs, debuffs, level, raid marker, icons) and set its own width and height; overlaps are outlined red."] = "이름표 디자이너: 적 이름표의 모든 요소(시전 바, 강화 효과, 약화 효과, 레벨, 공격대 징표, 아이콘)를 끌어 놓고 크기를 조절하며, 너비와 높이도 직접 정할 수 있습니다. 겹친 요소는 빨간 테두리로 표시됩니다.", -- draft
-	["Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands."] = "지도 및 경로: Excavation Site: Wetlands 입구가 이제 휄가르 발굴지 동쪽, 포탈이 있는 드워프 발굴 야영지에 표시됩니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3148,6 +3150,7 @@ Lang:Add("koKR", {
 -- stale: ["Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast."] = "지도: 지역 사이 땅을 그렸습니다(안퀴라즈, 던 모로 서쪽 포함). 해안 지역이 해안까지 이어집니다.", -- draft
 -- stale: ["Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on."] = "지도: 확대해도 그림 지도가 남고, 아주 가까이서만 미니맵 지면이 겹칩니다. 휠은 부드럽게 확대하고 끌기는 미끄러지듯 이어집니다.", -- draft
 -- stale: ["Map: your quest log and the Quest List beside it (L), search, a pin to share in chat, layer switches; Questie, HandyNotes and GatherMate2 pins on it too."] = "지도: 퀘스트 목록과 그 옆의 퀘스트 리스트(L), 검색, 대화에 공유하는 핀, 레이어 스위치. Questie, HandyNotes, GatherMate2 핀도 표시.", -- draft
+-- stale: ["Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands."] = "지도 및 경로: Excavation Site: Wetlands 입구가 이제 휄가르 발굴지 동쪽, 포탈이 있는 드워프 발굴 야영지에 표시됩니다.", -- draft
 -- stale: ["Mark every known quest giver on the zone map with a ! or ? coloured by what you can do there. Hover for the quests, click to track the giver. The List tab's choices apply to the pins too: where quests start (for quests not taken yet), the other faction's and other classes' quests, the levels above yours, and Events (a holiday's givers show while the list shows Events or the quest is in your log)."] = "알려진 모든 퀘스트 제공자를 지역 지도에 그곳에서 할 수 있는 것에 따라 색칠한 ! 또는 ?로 표시합니다. 가리키면 퀘스트, 누르면 그 제공자를 추적합니다. 목록 탭의 선택이 핀에도 적용됩니다: 퀘스트가 시작되는 곳(아직 받지 않은 퀘스트), 다른 진영과 다른 직업의 퀘스트, 내 레벨 위의 레벨, 이벤트(목록이 이벤트를 보여 주거나 퀘스트가 목록에 있으면 축제의 제공자가 보임).", -- draft
 -- stale: ["Mark instance entrances on the zone maps. Hover for the level range and your quest progress, click to list its quests. Entrances of new instances are learned the first time you walk in."] = "지역 지도에 인스턴스 입구를 표시합니다. 가리키면 레벨 범위와 퀘스트 진행도, 누르면 그 퀘스트 목록. 새 인스턴스의 입구는 처음 들어갈 때 기억합니다.", -- draft
 -- stale: ["Mark on the zone map where the quests in your log are done: an outline round each objective's area with one mark for it (a sword to kill, a bag to collect, a cog to use, a flag to explore) and its progress, and the single places as small dots when you zoom in. Hover a mark for the quest, the objective and what drops it; click it for a waypoint. A done objective's marks go; a done quest shows only its hand-in ?."] = "목록의 퀘스트를 하는 곳을 지역 지도에 표시합니다: 각 목표 지역 둘레의 윤곽과 표시 하나(처치는 검, 수집은 가방, 사용은 톱니, 탐험은 깃발), 그리고 진행도. 확대하면 낱개 장소는 작은 점으로. 표시를 가리키면 퀘스트, 목표, 떨어뜨리는 것, 누르면 경유지. 완료한 목표의 표시는 사라지고, 완료한 퀘스트는 완료 ?만 보입니다.", -- draft

@@ -122,6 +122,8 @@ NOT_CONFIGURATOR = {
                                                    "PersonalDisplay.tracked, tagged): a tick per spell of your class, "
                                                    "the list's entries, not options",
     "Modules/Services.lua": "the Services menu's Stop route button (it ends the route), not an option",
+    "Modules/Widgets.lua": "Which Buffs' rows (2.1.28: one schema option, Widgets.buffPicks, tagged): a switch per buff "
+                           "of your class for you and one for the group, the list's entries, not options",
     "MelloUI_Route/RouteRecorder.lua": "the road recorder's window (a developer tool, /route record): its city switches and "
                                  "buttons record roads, not options",
     "Core/EditLayout.lua": "Edit Layout's own control bar and right-click box: a mode's controls, not options",

@@ -1644,6 +1644,11 @@ others out on hover; in a fight the tooltip says the click cannot):
   your Power Word: Fortitude"; Arcane Intellect and Divine Spirit only on those who use mana), their
   names in the tooltip; the dead, offline and far away left out; not read in a fight. A click
   casts it on the first one missing it, then the next.
+- **Which Buffs** (2.1.28, under them): your class's buffs, each with its icon, a switch for its
+  reminder on you and, for a buff that goes on others, one for the group (all on at first). Switch
+  Inner Fire off and Your Buffs never asks for it; switch Fortitude's group switch off and the group
+  reminder leaves it out while Your Buffs still asks for it on you. A class with none of these buffs
+  shows one line saying so.
 Each comes up when something goes missing and at the usual moments, and a right click (Not now)
 lasts until everything is back on and something goes missing again.
 

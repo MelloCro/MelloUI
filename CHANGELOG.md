@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.28
+
+- Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want.
+
 ## 2.1.27
 
 - Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons.

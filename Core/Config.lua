@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.28", lines = {
+		"Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want.",
+	} },
 	{ version = "2.1.27", lines = {
 		"Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons.",
 		"Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows.",
@@ -190,9 +193,6 @@ local CHANGELOG = {
 		"Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time.",
 		"Personal Display: Tracked Spells (Big Cooldowns' tab): tick your class's spells, like Weakened Soul or Renew, to see them under the bars while they last on you.",
 		"Nameplates designer: drag and size every part of the enemy plate (cast bar, buffs, debuffs, level, raid marker, icons) and set its own width and height; overlaps are outlined red.",
-	} },
-	{ version = "2.1.23", lines = {
-		"Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands.",
 	} },
 }
 local LINKS = {

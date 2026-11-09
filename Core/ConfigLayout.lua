@@ -1372,7 +1372,7 @@ function L.Define(R, Link)
 	R("QualityOfLife", "Widgets", "General", "Widgets.!enabled", { name = "Widgets" })
 	for _, key in ipairs({ "loot", "corpse", "timed", "summon", "resurrect", "ready", "threat", "whisper", "pet", "auction",
 		"craft", "cooldown", "questItem", "healer", "rare", "rareSound",
-		"bags", "bagsAt", "talents", "wellfed", "weapon", "buffs", "groupBuffs" }) do
+		"bags", "bagsAt", "talents", "wellfed", "weapon", "buffs", "groupBuffs", "buffPicks" }) do   -- (2.1.28: Which Buffs)
 		-- (0.19.4: the whisper row is raised by Chat's popup alone; 0.23.0: or the Minimal Chat View's whisper window)
 		R("QualityOfLife", "Widgets", "General", "Widgets." .. key, key == "whisper"
 			and { when = { any = { { key = "Chat.whisperPopup", value = true }, { key = "Chat.view", value = "minimal" } },
