@@ -194,7 +194,7 @@ Perf.SetScript(frame, "OnEnter", function(self)
 	local bandwidthIn, bandwidthOut, home, world = GetNetStats()
 	-- the palette's gold and text, as MelloUI's one tooltip (W.ShowTooltip);
 	-- the FPS and latency figures keep their good -> bad gradient
-	local P = MelloUI.Look.Palette()
+	local P = MelloUI.Look.TipPalette()
 	local gold, ink = P.selectedTrim, P.text
 	GameTooltip:AddLine("MelloUI Stats", gold[1], gold[2], gold[3])
 	GameTooltip:AddDoubleLine("FPS", string.format("%d", math.floor((GetFramerate() or 0) + 0.5)), ink[1], ink[2], ink[3], Gradient(GetFramerate() or 0, 60, 20))

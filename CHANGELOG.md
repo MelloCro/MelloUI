@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.31
+
+- Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest.
+
 ## 2.1.30
 
 - Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once.

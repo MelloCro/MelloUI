@@ -1459,7 +1459,7 @@ Tip = function(self)
 	end
 	-- (the title in gold, the lines and the hints in the body text: small
 	-- text is never mutedText, the palette rule)
-	local P = MelloUI.Look.Palette()
+	local P = MelloUI.Look.TipPalette()
 	local gold, text = P.selectedTrim, P.text
 	GameTooltip:SetOwner(self, PLACES[ui.place].tip)
 	if not key then
@@ -4269,7 +4269,7 @@ local function Column()
 		if not spec then
 			return
 		end
-		local P = MelloUI.Look.Palette()
+		local P = MelloUI.Look.TipPalette()
 		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(owner, "ANCHOR_TOP")
 		GameTooltip:SetText(Rem:Label(key), gold[1], gold[2], gold[3])
@@ -4300,7 +4300,7 @@ local function Column()
 		if not a then
 			return
 		end
-		local P = MelloUI.Look.Palette()
+		local P = MelloUI.Look.TipPalette()
 		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(owner or b, "ANCHOR_BOTTOMRIGHT")
 		GameTooltip:SetText(Value(a.tip, b.row.key) or "", gold[1], gold[2], gold[3])
@@ -4484,7 +4484,7 @@ local function Column()
 
 	-- the fold row: what waits in it, a click its list
 	FoldEnter = Shared("OnEnter on the widget column's fold row", function(self)
-		local P = MelloUI.Look.Palette()
+		local P = MelloUI.Look.TipPalette()
 		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
 		GameTooltip:SetText(TEXT.foldTitle, gold[1], gold[2], gold[3])

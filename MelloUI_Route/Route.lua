@@ -11625,7 +11625,7 @@ do
 		if not (secs or slot == F.wanted) then
 			return
 		end
-		local P = MelloUI.Look.Palette()
+		local P = MelloUI.Look.TipPalette()
 		if secs then
 			local c = P.text
 			tip:AddLine("Flight time: about " .. Clock(secs), c[1], c[2], c[3])

@@ -655,7 +655,7 @@ local function EntranceFill(tip, pin)
 		source = d.source }, false)
 	local _, inst = DungeonInfoOf(pin)
 	if inst then
-		local P = MelloUI.Look.Palette()
+		local P = MelloUI.Look.TipPalette()
 		local gold, text = P.selectedTrim, P.text
 		local line = BossLine(inst)
 		if line then

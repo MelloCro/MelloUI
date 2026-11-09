@@ -2313,6 +2313,7 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest."] = "어두운 모드: 툴팁의 금색 제목과 안내가 읽기 쉽게 유지됩니다: 지도의 도시와 던전, 서비스 바, 알림, 퀘스트 추적기 등.", -- draft
 	["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "강화 및 약화 효과: 전용 페이지. 강화와 약화 효과가 따로 놓이고 각각 크기와 줄을 정합니다. 고정점을 고르면, 자유인 것은 레이아웃 편집에 바로 보입니다.", -- draft
 	["Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin."] = "설정 창: 애니메이션, 강화 및 약화 효과, 지도, 후원자가 모든 스킨에서 고유 아이콘을 가집니다.", -- draft
 	["Route: following a guide such as Polestar no longer gets stuck leading to an earlier step until a /reload when the game refuses a step's map pin."] = "경로: Polestar 같은 가이드를 따를 때 게임이 한 단계의 지도 표시를 거부해도 더 이상 /reload 전까지 이전 단계로 안내하며 멈추지 않습니다.", -- draft
@@ -2328,9 +2329,6 @@ Lang:Add("koKR", {
 	["Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want."] = "알림: 어떤 강화 효과 (위젯 탭): 강화 효과를 하나씩 끌 수 있으며, 각각 자신용과 파티용 스위치가 따로 있어 원하는 것만 알림을 받습니다.", -- draft
 	["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "마이크로 메뉴: 자기 자리로 옮긴 뒤에 더 이상 원래 자리로 돌아가지 않으며(탈것 이용 후나 행동 단축바가 다시 나타날 때), 레이아웃 편집의 크기가 이제 버튼에도 적용됩니다.", -- draft
 	["Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows."] = "지도: 스톰윈드, 희망의 빛 예배당, 호숫골, 멀고어의 퀘스트 제공자와 완료 NPC가 이제 실제 서 있는 곳에 표시됩니다(드워프 지구의 Sprite Jumpsprocket). 경로가 보여 주는 위치와 같습니다.", -- draft
-	["Bags: items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "가방: 특수 가방(채광 가방, 약초 가방, 탄약 주머니, 화살통 ...)에 든 아이템은 그 가방의 색을 띠고, 창 아래쪽에 그 가방들과 채워진 정도가 표시됩니다.", -- draft
-	["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "가방: 직접 만든 종류에 규칙을 여러 개 둘 수 있습니다. 그중 하나라도 맞는 아이템은 그 종류에 들어갑니다(채광용 곡괭이와 낚싯대를 한 \"전문 기술 도구\" 종류에).", -- draft
-	["Personal Display: Track By Name (Big Cooldowns' tab): type any buff or debuff, like Fingers of Frost, to see it in the Tracked Spells row while it lasts on you."] = "개인 표시: 이름으로 추적 (큰 재사용 대기시간 탭): 서리의 손가락 같은 강화 또는 약화 효과를 입력하면, 걸려 있는 동안 추적 주문 줄에 표시됩니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2870,6 +2868,8 @@ Lang:Add("koKR", {
 -- stale: ["Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in."] = "종류별 가방: 아이템 미끄러짐 -- 창이 다시 정렬될 때 아이템이 새 칸으로 미끄러지고, 새 아이템은 서서히 나타납니다.", -- draft
 -- stale: ["Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it."] = "종류별 가방: 굴러가는 돈 -- 가방 창의 돈이 새 합계까지 굴러가고, 주운 동전이 그리로 날아듭니다.", -- draft
 -- stale: ["Bags: items in MelloUI's bag window no longer get blocked with \"MelloUI took an action reserved for the Blizzard UI\": its item buttons are never made during a fight."] = "가방: MelloUI 가방 창의 아이템이 더 이상 \"MelloUI took an action reserved for the Blizzard UI\"로 막히지 않습니다. 아이템 버튼을 전투 중에 만들지 않습니다.", -- draft
+-- stale: ["Bags: items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "가방: 특수 가방(채광 가방, 약초 가방, 탄약 주머니, 화살통 ...)에 든 아이템은 그 가방의 색을 띠고, 창 아래쪽에 그 가방들과 채워진 정도가 표시됩니다.", -- draft
+-- stale: ["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "가방: 직접 만든 종류에 규칙을 여러 개 둘 수 있습니다. 그중 하나라도 맞는 아이템은 그 종류에 들어갑니다(채광용 곡괭이와 낚싯대를 한 \"전문 기술 도구\" 종류에).", -- draft
 -- stale: ["Bar Texture (Look)"] = "막대 질감(외형)", -- draft
 -- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "바: 행동 단축바 뒤 그림자 스위치가 이제 배경판과 그림자 아래에 있으며, 검색으로도 찾을 수 있습니다.", -- draft
 -- stale: ["Browns with gold bevels"] = "금빛 경사의 갈색", -- draft
@@ -3263,6 +3263,7 @@ Lang:Add("koKR", {
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "파티 개체창: 오른쪽 파티를 위한 가로 뒤집기; 초상화 방식에서 '내 개체창 표시' 수정; 마우스오버 강조가 마우스 아래 개체창을 밝힙니다.", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "허용되면 길드 은행에서 수리비를 냅니다. 길드가 비용을 감당할 수 없으면 내 골드를 씁니다.", -- draft
 -- stale: ["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "개인 표시: '개인 표시 위에'를 켜면 공격 배지가 대상의 이름표 대신 개인 표시 위 가운데에 표시됩니다.", -- draft
+-- stale: ["Personal Display: Track By Name (Big Cooldowns' tab): type any buff or debuff, like Fingers of Frost, to see it in the Tracked Spells row while it lasts on you."] = "개인 표시: 이름으로 추적 (큰 재사용 대기시간 탭): 서리의 손가락 같은 강화 또는 약화 효과를 입력하면, 걸려 있는 동안 추적 주문 줄에 표시됩니다.", -- draft
 -- stale: ["Personal Display: Tracked Spells (Big Cooldowns' tab): tick your class's spells, like Weakened Soul or Renew, to see them under the bars while they last on you."] = "개인 디스플레이: 추적 주문(큰 재사용 대기시간 탭) - Weakened Soul이나 Renew 같은 직업 주문을 선택하면 자신에게 지속되는 동안 바 아래에 표시됩니다.", -- draft
 -- stale: ["Personal Display: Tracked Spells, on Big Cooldowns' tab: tick your class's spells (Weakened Soul, Power Word: Shield, Renew, Forbearance...) to see them in a row under the bars while they last on you, with their seconds."] = "개인 디스플레이: 큰 재사용 대기시간 탭의 추적 주문 - 직업 주문(Weakened Soul, Power Word: Shield, Renew, Forbearance...)을 선택하면 자신에게 지속되는 동안 바 아래 한 줄에 남은 초와 함께 표시됩니다.", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their seconds drawn and coloured as on your debuffs on the nameplates (shown even with Percent And Spell Text off)."] = "개인 디스플레이: 주요 재사용 대기시간이 디스플레이의 금색 테두리 안 사각형 아이콘으로 표시되며, 초는 이름표의 내 약화 효과와 같은 모양과 색으로 표시됩니다('백분율 및 주문 텍스트'가 꺼져 있어도 표시).", -- draft

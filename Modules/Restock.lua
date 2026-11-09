@@ -745,7 +745,7 @@ local function RemTooltip(_, tip)
 	if type(tip) ~= "table" or type(tip.AddDoubleLine) ~= "function" then
 		return
 	end
-	local P = MelloUI.Look.Palette()
+	local P = MelloUI.Look.TipPalette()
 	local text, gold = P.text, P.selectedTrim
 	for i = 1, list.n do
 		if state.active[i] and list.amount[i] > 0 then

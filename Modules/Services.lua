@@ -2715,7 +2715,7 @@ end
 -- button's below -- the service's name and the nearest one in the gold, the
 -- hints in the text colour (0.14.0: the palettes; greys of its own before)
 local function BarTooltip(self)
-	local P = MelloUI.Look.Palette()
+	local P = MelloUI.Look.TipPalette()
 	local gold, text = P.selectedTrim, P.text
 	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 	GameTooltip:SetText(self.kind.label, gold[1], gold[2], gold[3])
@@ -2743,7 +2743,7 @@ end
 -- distance (each kind's look, kept NEAREST_KEEP s), palette colours
 local function GroupTooltip(self)
 	local group = self.group
-	local P = MelloUI.Look.Palette()
+	local P = MelloUI.Look.TipPalette()
 	local gold, text, muted = P.selectedTrim, P.text, P.mutedText
 	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 	GameTooltip:SetText(group.label, gold[1], gold[2], gold[3])
@@ -3554,7 +3554,7 @@ local function CreateButton()
 	Perf.SetScript(button, "OnEnter", function(self)
 		-- (the palette's gold and text, as MelloUI's one tooltip; the reskin
 		-- off, the game's)
-		local P = MelloUI.Look.Palette()
+		local P = MelloUI.Look.TipPalette()
 		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 		GameTooltip:SetText("Services", gold[1], gold[2], gold[3])

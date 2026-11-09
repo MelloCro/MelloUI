@@ -68,7 +68,8 @@
 --   Look.ColumnButton(button, glyph, paintedOnly)   a button in the chat's
 --       column: the game's column button in its look
 --   (wave 3)
---   Look.Palette() -> the palette's keys as the look shows them (tooltips)
+--   Look.Palette() -> the palette's keys as the look shows them
+--   Look.TipPalette() -> the same for a tooltip's words: never dimmed by Dark Mode (2.1.30)
 --   Look.Paint(region, key, "backdrop" | "border", alpha)   a backdrop: the
 --       tooltip's own colours in the game's look
 --   Look.GameSwing(track, fill, hand, on, height)   the game's swing bar
@@ -937,6 +938,13 @@ function Look.Palette(area, text, region)
 		return Dimmed(DIMS.own, palette, 0)
 	end
 	return Dimmed(DIMS.game, palette, gameGen)
+end
+
+-- (2.1.30; the user's screenshots, Dark Mode on: the map's tooltips with their gold titles dimmed into their box) the
+-- palette for a tooltip's words -- its title's and hints' gold as much as its lines' text: Dark Mode darkens surfaces,
+-- never words (Look.Palette dims every key but text and mutedText). Every tooltip MelloUI writes reads this
+function Look.TipPalette()
+	return Look.Palette(nil, true)
 end
 
 function Look.Paint(region, key, how, alpha, area)

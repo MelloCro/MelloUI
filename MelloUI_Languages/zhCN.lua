@@ -2313,6 +2313,7 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest."] = "暗色模式：鼠标提示的金色标题和提示保持清晰可读：地图上的城市和地下城、服务栏、提醒、任务追踪等等。", -- draft
 	["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "增益和减益效果：独立的一页。增益和减益分开显示，各有自己的大小和行；选择锚点，自由的会立即显示在“编辑布局”中。", -- draft
 	["Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin."] = "配置器：动画、增益和减益效果、地图和支持者在每种外观中都有自己的图标。", -- draft
 	["Route: following a guide such as Polestar no longer gets stuck leading to an earlier step until a /reload when the game refuses a step's map pin."] = "路线：跟随 Polestar 等指南时，若游戏拒绝某一步的地图标记，不再一直卡在之前的步骤直到 /reload。", -- draft
@@ -2328,9 +2329,6 @@ Lang:Add("zhCN", {
 	["Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want."] = "提醒：哪些增益（小部件页）：可以单独关闭某个增益，每个都有针对你自己和针对队伍的开关，只提醒你想要的。", -- draft
 	["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "微型菜单：移到自己的位置后不再跳回原处（乘坐载具后，或动作条重新显示时），编辑布局中的大小现在也作用于按钮。", -- draft
 	["Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows."] = "地图：暴风城、圣光之愿礼拜堂、湖畔镇和莫高雷的任务发布者与交付者现在标在他们真正所在的位置（Sprite Jumpsprocket 在矮人区），与路线所示一致。", -- draft
-	["Bags: items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "背包：特殊背包（矿石袋、草药包、弹药袋、箭袋……）中的物品带有该背包的颜色，窗口底部列出这些背包及其装满程度。", -- draft
-	["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "背包：自定义类别可以有多条规则，符合任意一条的物品都归入该类别（例如一个“专业工具”类别同时收纳矿工锄和鱼竿）。", -- draft
-	["Personal Display: Track By Name (Big Cooldowns' tab): type any buff or debuff, like Fingers of Frost, to see it in the Tracked Spells row while it lasts on you."] = "个人显示：按名称追踪（大型冷却页）：输入任意增益或减益效果，例如寒冰指，在它作用于你期间显示在追踪法术一行中。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2870,6 +2868,8 @@ Lang:Add("zhCN", {
 -- stale: ["Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in."] = "背包分类：物品滑动——窗口重新排序时物品滑到新栏位；新物品淡入。", -- draft
 -- stale: ["Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it."] = "背包分类：滚动金钱——背包窗口的金钱滚动到新数额；你拾取的钱币飞进去。", -- draft
 -- stale: ["Bags: items in MelloUI's bag window no longer get blocked with \"MelloUI took an action reserved for the Blizzard UI\": its item buttons are never made during a fight."] = "背包：MelloUI 背包窗口中的物品不再被“MelloUI took an action reserved for the Blizzard UI”阻止：其物品按钮绝不会在战斗中创建。", -- draft
+-- stale: ["Bags: items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "背包：特殊背包（矿石袋、草药包、弹药袋、箭袋……）中的物品带有该背包的颜色，窗口底部列出这些背包及其装满程度。", -- draft
+-- stale: ["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "背包：自定义类别可以有多条规则，符合任意一条的物品都归入该类别（例如一个“专业工具”类别同时收纳矿工锄和鱼竿）。", -- draft
 -- stale: ["Bar Texture (Look)"] = "条材质（外观）", -- draft
 -- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "动作条：动作条背后阴影的开关现在位于“底板与阴影”下，搜索也能找到。", -- draft
 -- stale: ["Browns with gold bevels"] = "带金色斜边的棕色", -- draft
@@ -3263,6 +3263,7 @@ Lang:Add("zhCN", {
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "小队框体：“水平翻转”适合右侧的小队；修复了头像样式下“显示你自己”；鼠标悬停高亮点亮鼠标下的框体。", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "允许时从公会银行支付修理费。公会无法支付时改用你自己的金币。", -- draft
 -- stale: ["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "个人显示：“显示在个人显示上方”会把攻击徽章居中放在个人显示上方，而不是目标的姓名板上。", -- draft
+-- stale: ["Personal Display: Track By Name (Big Cooldowns' tab): type any buff or debuff, like Fingers of Frost, to see it in the Tracked Spells row while it lasts on you."] = "个人显示：按名称追踪（大型冷却页）：输入任意增益或减益效果，例如寒冰指，在它作用于你期间显示在追踪法术一行中。", -- draft
 -- stale: ["Personal Display: Tracked Spells (Big Cooldowns' tab): tick your class's spells, like Weakened Soul or Renew, to see them under the bars while they last on you."] = "个人显示：追踪法术（大型冷却标签）——勾选你职业的法术，例如 Weakened Soul 或 Renew，在它们作用于你时显示在血条下方。", -- draft
 -- stale: ["Personal Display: Tracked Spells, on Big Cooldowns' tab: tick your class's spells (Weakened Soul, Power Word: Shield, Renew, Forbearance...) to see them in a row under the bars while they last on you, with their seconds."] = "个人显示：大型冷却标签中的追踪法术——勾选你职业的法术（Weakened Soul、Power Word: Shield、Renew、Forbearance……），在它们作用于你时显示在血条下方的一行中，并带有剩余秒数。", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their seconds drawn and coloured as on your debuffs on the nameplates (shown even with Percent And Spell Text off)."] = "个人显示：重要冷却显示为个人显示金色边框中的方形图标，秒数的字体与颜色与姓名板上你的减益效果相同（即使关闭“百分比和法术文字”也会显示）。", -- draft

@@ -407,7 +407,7 @@ local ItemEnter = Perf.Shared("OnEnter on Dungeon Info's item rows", function(se
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 		pcall(GameTooltip.SetItemByID, GameTooltip, self.item)
 		-- (1.2.2) who drops it (the trash's), and where it is known from when not the data
-		local d, c = self.d, MelloUI.Look.Palette().text
+		local d, c = self.d, MelloUI.Look.TipPalette().text
 		if d and d.mobs and d.mobs ~= "" then
 			GameTooltip:AddLine(TEXT.droppedBy:format(d.mobs), c[1], c[2], c[3], true)
 		end

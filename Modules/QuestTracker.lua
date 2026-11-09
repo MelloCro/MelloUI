@@ -2108,7 +2108,7 @@ local function OnBlockEnter(block, onMark)
 		-- (a guide's step: a click marks it on the map again -- GUIDE, below)
 		GameTooltip:SetOwner(block, "ANCHOR_LEFT")
 		GameTooltip:SetText(block.title:GetText() or "")
-		local c = MelloUI.Look.Palette().text
+		local c = MelloUI.Look.TipPalette().text
 		GameTooltip:AddLine("Click: mark this step on the map again  -  Right-click: remove its mark", c[1], c[2], c[3], true)
 		GameTooltip:Show()
 		Act.Lit(block, true)
@@ -2124,7 +2124,7 @@ local function OnBlockEnter(block, onMark)
 		if not (link and pcall(GameTooltip.SetHyperlink, GameTooltip, link)) then
 			GameTooltip:SetText(block.title:GetText() or "")
 		end
-		local c = MelloUI.Look.Palette().text   -- (a hint: small text is never mutedText)
+		local c = MelloUI.Look.TipPalette().text   -- (a hint: small text is never mutedText)
 		GameTooltip:AddLine("Click: open the recipe  -  Shift-click: stop tracking", c[1], c[2], c[3], true)
 		GameTooltip:Show()
 		Act.Lit(block, true)
@@ -2137,7 +2137,7 @@ local function OnBlockEnter(block, onMark)
 	if not pcall(GameTooltip.SetHyperlink, GameTooltip, "quest:" .. block.questID) then
 		GameTooltip:SetText(block.title:GetText() or "")
 	end
-	local c = MelloUI.Look.Palette().text
+	local c = MelloUI.Look.TipPalette().text
 	-- its difficulty in words (the gem's colour on the paper: 0.24.0, the five pips' words before)
 	local QI = MelloUI.QuestInk
 	local name = block.tier and QI and QI.TIER_NAME and QI.TIER_NAME[block.tier]
@@ -2271,7 +2271,7 @@ local function NewBlock()
 		if InCombatLockdown() then
 			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 			pcall(GameTooltip.SetHyperlink, GameTooltip, self.itemLink)
-			local c = MelloUI.Look.Palette().text
+			local c = MelloUI.Look.TipPalette().text
 			GameTooltip:AddLine("Out of combat, a click uses it.", c[1], c[2], c[3], true)
 			GameTooltip:Show()
 		end
@@ -3633,7 +3633,7 @@ local function SectionCog(row, spec)
 			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 			GameTooltip:SetText(sp and sp.tip or "Settings")
 			if sp and sp.hint then
-				local c = MelloUI.Look.Palette().text   -- (a hint: small text is never mutedText)
+				local c = MelloUI.Look.TipPalette().text   -- (a hint: small text is never mutedText)
 				GameTooltip:AddLine(sp.hint, c[1], c[2], c[3], true)
 			end
 			GameTooltip:Show()

@@ -1041,7 +1041,7 @@ end
 --------------------------------------------------------------------------------
 
 function W.ShowTooltip(owner, title, body, line, anchor)
-	local P = MelloUI.Look.Palette()   -- (the palette's gold and text colour)
+	local P = MelloUI.Look.TipPalette()   -- (the palette's gold and text colour)
 	local gold, text = P.selectedTrim, P.text
 	GameTooltip:SetOwner(owner, anchor or "ANCHOR_RIGHT")
 	GameTooltip:SetText(W.Tr(title), gold[1], gold[2], gold[3])
@@ -7446,7 +7446,7 @@ local RailTipEnter = Shared("OnEnter on a NavRail entry (tooltip)", function(row
 	if not (clippedName or tip) then
 		return
 	end
-	local P = MelloUI.Look.Palette()   -- (the palette's gold and text colour)
+	local P = MelloUI.Look.TipPalette()   -- (the palette's gold and text colour)
 	local gold, text = P.selectedTrim, P.text
 	local rail = railOf[row]
 	GameTooltip:SetOwner(row, rail and rail.spec.tipAnchor or "ANCHOR_RIGHT")

@@ -89,9 +89,6 @@ local FX = {
 		BLOCK = "BLOCK", ABSORB = "ABSORB", DEFLECT = "DEFLECT", REFLECT = "REFLECT" },
 	WORD_FALLBACK = { DODGE = "Dodge", PARRY = "Parry", MISS = "Miss", EVADE = "Evade", IMMUNE = "Immune",
 		RESIST = "Resist", BLOCK = "Block", ABSORB = "Absorb", DEFLECT = "Deflect", REFLECT = "Reflect" },
-	-- (2.1.30, /impactdump) the target's hits since the last dump: UNIT_COMBAT seen, while nothing attached, a WOUND
-	-- played, a WOUND whose amount was secret (counts only: nothing made per event)
-	count = { combat = 0, loose = 0, hits = 0, secret = 0 },
 	SHARD = { { -26, -16, -10 }, { -15, -8, 12 }, { -5, -3, -14 }, { 5, 4, 13 }, { 15, 9, -11 }, { 26, 16, 10 } },
 }
 
@@ -624,13 +621,7 @@ function FX.OnEvent(_, event, unit, a1, a2, a3)
 		end
 		return
 	end
-	if event == "UNIT_COMBAT" then
-		FX.count.combat = FX.count.combat + 1
-	end
 	if not (FX.uf or FX.frame) then
-		if event == "UNIT_COMBAT" then
-			FX.count.loose = FX.count.loose + 1
-		end
 		return
 	end
 	if event == "UNIT_COMBAT" then
@@ -639,15 +630,10 @@ function FX.OnEvent(_, event, unit, a1, a2, a3)
 			return
 		end
 		if action == "WOUND" then
-			-- (2.1.30; the user's /impactdump in a dungeon: 16 hits, 13 with a secret amount, none played) an
-			-- instance hides the amount: a WOUND is a hit all the same, only a plain 0 is none; a secret flag is a
-			-- plain hit (the crit's gold unknown)
-			local secret = Secret(amount)
-			if secret then
-				FX.count.secret = FX.count.secret + 1
-			end
-			if secret or (type(amount) == "number" and amount > 0) then
-				FX.count.hits = FX.count.hits + 1
+			-- (2.1.30; the user's /impactdump in a dungeon -- since gone, the case closed: 16 hits, 13 with a secret
+			-- amount, none played) an instance hides the amount: a WOUND is a hit all the same, only a plain 0 is none;
+			-- a secret flag is a plain hit (the crit's gold unknown)
+			if Secret(amount) or (type(amount) == "number" and amount > 0) then
 				FX.Hit(not Secret(flag) and flag == "CRITICAL")
 			end
 		elseif FX.WORDS[action] then
@@ -836,85 +822,4 @@ M.Plays = {
 
 function FX.CastPlayEnd()
 	FX.CastEnd(true)
-end
-
---------------------------------------------------------------------------------
--- /impactdump: what Impact Effects has on your target's plate now, then one hit flash played and read back (2.1.29;
--- the user: "The Nameplate animations are gone once i resized the nameplates", Plate Height raised -- none of it
--- seen in the simulator)
---------------------------------------------------------------------------------
-do
-	local function S(v)
-		if Secret(v) then
-			return "<secret>"
-		end
-		return tostring(v)
-	end
-	local function Read(f, method)
-		if type(f) ~= "table" or type(f[method]) ~= "function" then
-			return "-"
-		end
-		local ok, a, b = pcall(f[method], f)
-		if not ok then
-			return "error " .. S(a)
-		end
-		return b ~= nil and (S(a) .. " x " .. S(b)) or S(a)
-	end
-	local function Frame(label, f)
-		MelloUI:Print("   %s: level %s, size %s, shown %s, visible %s, alpha %s, effective %s", label, Read(f, "GetFrameLevel"),
-			Read(f, "GetSize"), Read(f, "IsShown"), Read(f, "IsVisible"), Read(f, "GetAlpha"), Read(f, "GetEffectiveAlpha"))
-	end
-	SLASH_MELLOIMPACTDUMP1 = "/impactdump"
-	SlashCmdList.MELLOIMPACTDUMP = function()
-		MelloUI:ClearLog()
-		local np = MelloUI:GetModule("Nameplates")
-		local ndb = np and np.db or {}
-		local parts = {}
-		for k in pairs(type(ndb.parts) == "table" and ndb.parts or {}) do
-			parts[#parts + 1] = k
-		end
-		table.sort(parts)
-		MelloUI:Print("Impact Effects on: %s   the Nameplates area: %s   motion: %s", S(M.isEnabled), S(Area.On("nameplates")),
-			S(Motion()))
-		MelloUI:Print("   flash %s, chunk %s, crit %s, kill %s, evade %s, cast %s", S(On("flash")), S(On("chunk")), S(On("crit")),
-			S(On("kill")), S(On("evade")), S(On("cast")))
-		MelloUI:Print("Nameplates: Own Plate Size %s, %s x %s; placed: %s", S(ndb.plateSize), S(ndb.plateWidth), S(ndb.plateHeight),
-			#parts > 0 and table.concat(parts, ", ") or "none")
-		-- (2.1.30) what the real hits did since the last dump, and the plate held before this dump takes it on again
-		local c = FX.count
-		local before = FX.uf
-		local ufNow = FX.Target()
-		MelloUI:Print("since the last dump: %s hit events on your target, %s with nothing attached, %s hits played, "
-			.. "%s with a secret amount", S(c.combat), S(c.loose), S(c.hits), S(c.secret))
-		MelloUI:Print("held before this dump: %s   its plate the target's now: %s   On Your Target Frame: %s",
-			S(before ~= nil), S(before ~= nil and before == ufNow), S(FX.frame ~= nil))
-		c.combat, c.loose, c.hits, c.secret = 0, 0, 0, 0
-		local okA, errA = pcall(FX.Attach)
-		local uf, bar = FX.Target()
-		MelloUI:Print("target's plate: %s   its bar: %s   attached: %s%s", S(uf ~= nil), S(bar ~= nil), S(FX.uf ~= nil),
-			okA and "" or ("   attach error: " .. S(errA)))
-		local r = Rec()
-		if not r then
-			if uf and bar then
-				local okM, errM = pcall(FX.Make, uf, bar)
-				MelloUI:Print("   no pieces; made now: %s %s", S(okM), okM and "" or S(errM))
-			end
-			MelloUI:ShowLog("impactdump")
-			return
-		end
-		Frame("bar", bar)
-		Frame("its container", uf and uf.HealthBarsContainer)
-		Frame("the flash's frame", r.top)
-		Frame("the flash", r.flashHost)
-		Frame("the glow", r.glowHost)
-		Frame("the chunk's clip", r.clip)
-		local okH, errH = pcall(HitOn, r, true)
-		MelloUI:Print("a crit played: %s%s", S(okH), okH and "" or (" " .. S(errH)))
-		C_Timer.After(0.12, function()
-			MelloUI:Print("0.12 s later:")
-			Frame("the flash", r.flashHost)
-			Frame("the glow", r.glowHost)
-			MelloUI:ShowLog("impactdump")
-		end)
-	end
 end
