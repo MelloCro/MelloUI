@@ -31,8 +31,15 @@ local function Version(addon)
 	return version ~= "" and version or nil
 end
 
+-- (2.1.33; the user, 2026-11-09: "people complain that the oldschool look broke" -- the CurseForge app brings
+-- MelloUI's file and this one's apart) another patch of the same major.minor fits (MelloUI.OldschoolFits, Core.lua,
+-- which also takes back an older file's exact refusal at the login); another series is refused
+local function Series(version)
+	return tostring(version or ""):match("^(%d+%.%d+)%.")
+end
+
 local mine, theirs = MelloUI.version, Version(ADDON)
 MelloUI.Oldschool = { version = theirs }
-if theirs and mine and mine ~= "dev" and theirs ~= mine then
+if theirs and mine and mine ~= "dev" and theirs ~= mine and not (Series(theirs) and Series(theirs) == Series(mine)) then
 	MelloUI.Oldschool.refused = string.format("MelloUI Oldschool is from MelloUI %s, not %s", theirs, tostring(mine))
 end

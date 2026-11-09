@@ -2315,6 +2315,7 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool：当 CurseForge 先于 MelloUI_Oldschool 更新 MelloUI 时，手绘外观不再在更新后关闭；同一 2.1 系列的任何 Oldschool 都可使用。", -- draft
 	["SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI."] = "SharedMedia（测试功能：欢迎试用并告诉我们效果）：SharedMedia 材质包中的字体、条材质和背景会出现在 MelloUI 的列表中，包括在 MelloUI 之后加载的材质包。", -- draft
 	["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "鼠标提示：暗色背景新增边框选项：暗色、游戏自带、无，或 SharedMedia 边框。SharedMedia 背景可用于鼠标提示、聊天框以及小队和团队框体。", -- draft
 	["Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest."] = "暗色模式：鼠标提示的金色标题和提示保持清晰可读：地图上的城市和地下城、服务栏、提醒、任务追踪等等。", -- draft
@@ -2330,7 +2331,6 @@ Lang:Add("zhCN", {
 	["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "姓名板设计器：精英图标成为可单独拖动、缩放或隐藏的部件；移动团队标记不再连带移动精英图标和敌人的增益效果。", -- draft
 	["Nameplates designer: changes now show at once on the plates already on screen."] = "姓名板设计器：修改现在会立即显示在屏幕上已有的姓名板上。", -- draft
 	["Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it."] = "聊天：极简聊天重新可以点击（聊天行、链接和“复制聊天”按钮）；自 2.1.24 起，隐藏的聊天窗口可能会挡住它。", -- draft
-	["Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want."] = "提醒：哪些增益（小部件页）：可以单独关闭某个增益，每个都有针对你自己和针对队伍的开关，只提醒你想要的。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3321,6 +3321,7 @@ Lang:Add("zhCN", {
 -- stale: ["Remind you when your bags are almost full; it stays, in a fight too, until you make room. Click it for the way to the nearest vendor."] = "背包快满时提醒你；一直保留（战斗中也是），直到你腾出空间。点击查看前往最近商人的路线。", -- draft
 -- stale: ["Remind you when your gear is wearing out. Broken gear goes to the top of the list."] = "装备快磨损时提醒你。损坏的装备排在列表最前面。", -- draft
 -- stale: ["Reminders & Widgets"] = "提醒和小部件", -- draft
+-- stale: ["Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want."] = "提醒：哪些增益（小部件页）：可以单独关闭某个增益，每个都有针对你自己和针对队伍的开关，只提醒你想要的。", -- draft
 -- stale: ["Remove the gold and bronze colours so the art becomes grey before it is darkened."] = "去掉金色和青铜色，让美术在调暗前先变成灰色。", -- draft
 -- stale: ["Repair all equipped and carried items when a merchant that can repair is opened."] = "打开可修理的商人时修理所有已装备和携带的物品。", -- draft
 -- stale: ["Repair your gear and sell junk automatically at a merchant."] = "在商人处自动修理装备并出售垃圾。", -- draft

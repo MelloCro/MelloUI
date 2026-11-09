@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.33", lines = {
+		"Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits.",
+	} },
 	{ version = "2.1.32", lines = {
 		"SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI.",
 		"Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames.",
@@ -196,9 +199,6 @@ local CHANGELOG = {
 		"Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it.",
 		"Nameplates designer: changes now show at once on the plates already on screen.",
 		"Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it.",
-	} },
-	{ version = "2.1.28", lines = {
-		"Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want.",
 	} },
 }
 local LINKS = {

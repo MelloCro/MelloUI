@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.33
+
+- Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits.
+
 ## 2.1.32
 
 - SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI.

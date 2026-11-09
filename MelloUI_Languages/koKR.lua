@@ -2315,6 +2315,7 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool: CurseForge가 MelloUI_Oldschool보다 MelloUI를 먼저 업데이트해도 손그림 외형이 더 이상 꺼지지 않습니다. 같은 2.1 시리즈의 Oldschool이면 모두 맞습니다.", -- draft
 	["SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI."] = "SharedMedia (테스트: 사용해 보고 어땠는지 알려 주세요): SharedMedia 팩의 글꼴, 바 텍스처, 배경이 MelloUI 목록에 표시됩니다. MelloUI보다 나중에 불러오는 팩도 포함됩니다.", -- draft
 	["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "툴팁: 어두운 배경의 테두리 선택: 어두움, 게임 기본, 없음, 또는 SharedMedia 테두리. SharedMedia 배경은 툴팁, 대화창, 파티 및 공격대 프레임에 쓸 수 있습니다.", -- draft
 	["Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest."] = "어두운 모드: 툴팁의 금색 제목과 안내가 읽기 쉽게 유지됩니다: 지도의 도시와 던전, 서비스 바, 알림, 퀘스트 추적기 등.", -- draft
@@ -2330,7 +2331,6 @@ Lang:Add("koKR", {
 	["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "이름표 디자이너: 정예 아이콘이 따로 끌고, 크기를 바꾸고, 숨길 수 있는 부품이 되었습니다. 공격대 징표를 옮겨도 더 이상 정예 아이콘과 적의 강화 효과가 함께 움직이지 않습니다.", -- draft
 	["Nameplates designer: changes now show at once on the plates already on screen."] = "이름표 디자이너: 변경 사항이 이미 화면에 있는 이름표에 바로 적용됩니다.", -- draft
 	["Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it."] = "채팅: 미니멀 채팅을 다시 클릭할 수 있습니다(줄, 링크, 채팅 복사 버튼). 2.1.24부터 숨겨진 채팅창이 이를 가릴 수 있었습니다.", -- draft
-	["Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want."] = "알림: 어떤 강화 효과 (위젯 탭): 강화 효과를 하나씩 끌 수 있으며, 각각 자신용과 파티용 스위치가 따로 있어 원하는 것만 알림을 받습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3321,6 +3321,7 @@ Lang:Add("koKR", {
 -- stale: ["Remind you when your bags are almost full; it stays, in a fight too, until you make room. Click it for the way to the nearest vendor."] = "가방이 거의 가득 차면 알리며, 공간을 만들 때까지 전투 중에도 남아 있습니다. 누르면 가장 가까운 상인으로 가는 길.", -- draft
 -- stale: ["Remind you when your gear is wearing out. Broken gear goes to the top of the list."] = "장비가 닳고 있으면 알립니다. 부서진 장비가 목록 맨 위로 갑니다.", -- draft
 -- stale: ["Reminders & Widgets"] = "알림과 위젯", -- draft
+-- stale: ["Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want."] = "알림: 어떤 강화 효과 (위젯 탭): 강화 효과를 하나씩 끌 수 있으며, 각각 자신용과 파티용 스위치가 따로 있어 원하는 것만 알림을 받습니다.", -- draft
 -- stale: ["Remove the gold and bronze colours so the art becomes grey before it is darkened."] = "금색과 청동색을 없애 그림을 어둡게 하기 전에 회색으로 만듭니다.", -- draft
 -- stale: ["Repair all equipped and carried items when a merchant that can repair is opened."] = "수리할 수 있는 상인을 열면 착용하고 지닌 모든 아이템을 수리합니다.", -- draft
 -- stale: ["Repair your gear and sell junk automatically at a merchant."] = "상인에게서 장비를 자동으로 수리하고 잡동사니를 팝니다.", -- draft

@@ -5927,6 +5927,25 @@ end
 -- 2026-10-28: "make sure that all 3 Themes follow the same Profiles, no more
 -- separate profiles depending on the Theme"; its "MelloUI" carries the
 -- painted reskin's own settings too, Tools/installer/bake_full.py). The
+-- (2.1.33; the user, 2026-11-09: "people complain that the oldschool look broke" -- after 2.1.32 the CurseForge app
+-- brought MelloUI's file before MelloUI_Oldschool's, a CurseForge project of its own whose file is approved apart, and
+-- an Oldschool from the version before refused itself: its painted look off until both matched, after every release)
+-- An Oldschool from the same major.minor fits: its refusal -- its own Oldschool.lua's, an older file's exact check
+-- among them -- taken back at the login, before the palette and any module reads it. Another series stays refused.
+function MelloUI.OldschoolFits(theirs, mine)
+	local a1, a2 = tostring(theirs or ""):match("^(%d+)%.(%d+)%.")
+	local b1, b2 = tostring(mine or ""):match("^(%d+)%.(%d+)%.")
+	return a1 ~= nil and a1 == b1 and a2 == b2
+end
+
+function MelloUI:OldschoolFit()
+	local oldschool = rawget(self, "Oldschool")
+	if type(oldschool) == "table" and oldschool.refused and MelloUI.OldschoolFits(oldschool.version, self.version) then
+		oldschool.refused = nil
+		oldschool.near = true   -- (another patch of the same series: dressed all the same)
+	end
+end
+
 -- frozen "MelloUI Oldschool" of 1.0 is no longer shipped nor applied: a
 -- player's copy of it in the list stays theirs (MelloUI:Profiles never
 -- deletes one).
@@ -6460,6 +6479,8 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 			self:InitDB()
 		end
 		self:AdoptSavedVariables("PLAYER_LOGIN")
+		-- (2.1.33) an Oldschool from another patch of the same series dresses: before the palette and the modules
+		self:OldschoolFit()
 		-- (saved variables still missing here: the settings are a new
 		-- player's)
 		-- (no line for it: a new player gets the installer a few seconds in,
