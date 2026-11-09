@@ -656,8 +656,12 @@ end
 
 function I:SetupDraft(picks)
 	picks = type(picks) == "table" and picks or self:DefaultPicks()
-	-- (Mello's layout: in when the fit passes, I:LayoutOn; Keep my layout: never)
-	local d = { skin = picks.skin, layout = picks.layout == "own" and false or nil }
+	-- (Mello's layout: in when the fit passes, I:LayoutOn; Keep my layout: never -- 2.1.29: false set apart, as
+	-- 1.2.4's `and false or nil` gave nil and Keep my layout put Mello's in all the same)
+	local d = { skin = picks.skin }
+	if picks.layout == "own" then
+		d.layout = false
+	end
 	local skin = self.SkinOf(d)
 	d.skin = skin
 	-- the skin, whole: its settings and the switches it needs (MelloUI.Skin.SETS, the same as Look > General's Skin)

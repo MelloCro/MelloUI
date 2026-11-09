@@ -174,6 +174,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.29", lines = {
+		"Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before.",
+		"Installer: Keep my layout now keeps your own Edit Mode layout; MelloUI's layout went in all the same.",
+	} },
 	{ version = "2.1.28", lines = {
 		"Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want.",
 	} },
@@ -188,11 +192,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.25", lines = {
 		"Bags: items in MelloUI's bag window no longer get blocked with \"MelloUI took an action reserved for the Blizzard UI\": its item buttons are never made during a fight.",
-	} },
-	{ version = "2.1.24", lines = {
-		"Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time.",
-		"Personal Display: Tracked Spells (Big Cooldowns' tab): tick your class's spells, like Weakened Soul or Renew, to see them under the bars while they last on you.",
-		"Nameplates designer: drag and size every part of the enemy plate (cast bar, buffs, debuffs, level, raid marker, icons) and set its own width and height; overlaps are outlined red.",
 	} },
 }
 local LINKS = {

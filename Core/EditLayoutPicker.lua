@@ -213,12 +213,17 @@ local function Eye(entry)
 end
 
 -- the kept value for an eye set to `show`: nothing while that is its default (a default may change: the game shows
--- it, the player's own box), else the choice
+-- it, the player's own box), else the choice. (2.1.29; the user: a hidden Tooltip's eye "does nothing, instead i
+-- have to double click it") false spelled out: 1.2.4's `and false or nil` gave nil, so an eye, a row's click, a
+-- group's eye and Show all never showed a system the game hides
 local function EyeValue(entry, show)
 	if not show then
 		return true
 	end
-	return (not DefaultShows(entry)) and false or nil
+	if DefaultShows(entry) then
+		return nil
+	end
+	return false
 end
 
 local function LockedKey(key)

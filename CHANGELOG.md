@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.29
+
+- Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before.
+- Installer: Keep my layout now keeps your own Edit Mode layout; MelloUI's layout went in all the same.
+
 ## 2.1.28
 
 - Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want.
