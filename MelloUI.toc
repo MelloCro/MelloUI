@@ -15,6 +15,7 @@
 Core\Core.lua
 Core\Perf.lua
 Core\Schedule.lua
+Core\SharedMedia.lua
 Core\Companions.lua
 Core\Overlaps.lua
 Core\QuestObjectives.lua

@@ -17,6 +17,7 @@ local Perf = MelloUI.Perf:Scope("Tooltip")
 local hooksecurefunc = Perf.hooksecurefunc
 local Num = MelloUI.Safe.Number
 local Secret = MelloUI.Safe.IsSecret
+local SM = MelloUI.SharedMedia
 
 local Background   -- (the Background dropdown's reading: below, 0.16.0)
 
@@ -31,6 +32,8 @@ local M = MelloUI:RegisterModule("Tooltip", {
 		darkBackdrop = true,
 		backdropAlpha = 0.9,
 		darkBorder = true,
+		backgroundFile = false,   -- (2.1.32) a SharedMedia background under the Dark look (the Background dropdown's)
+		border = "dark",          -- (2.1.32) the Dark look's border: dark, game, none or a SharedMedia border
 		classBorder = false,
 		classHealth = true,
 		hideHealthBar = true,
@@ -54,9 +57,17 @@ local M = MelloUI:RegisterModule("Tooltip", {
 			{ value = "dark", label = "Dark" },
 			{ value = "game", label = "Game" },
 		  }, get = function(db) return Background(db) end,
-		  desc = "The tooltips' background: a flat near-black box with a dark border in your palette's colours (Dark), or the game's own." },
+		  desc = "The tooltips' background: a flat near-black box with a dark border in your palette's colours (Dark), the game's own, or one shared by a SharedMedia addon." },
 		{ type = "slider", key = "backdropAlpha", name = "Backdrop Opacity", min = 0.3, max = 1, step = 0.05, percent = true,
 		  desc = "How solid the Dark background is." },
+		-- (2.1.32; the user, 2026-11-09, of SharedMedia: "can we make MelloUI Compatible with them?") the Dark look's
+		-- border: the palette's line, the game's own art, none, or a border a SharedMedia addon shares (appended)
+		{ type = "dropdown", key = "border", name = "Border", new = "2.1.32", values = {
+			{ value = "dark", label = "Dark" },
+			{ value = "game", label = "Game" },
+			{ value = "none", label = "None" },
+		  },
+		  desc = "The border round the Dark background: a dark line in your palette's colour, the game's own, none, or one shared by a SharedMedia addon." },
 		{ type = "toggle", key = "classBorder", name = "Class / Reaction Border",
 		  desc = "Colours a unit tooltip's border by class (players) or reaction (NPCs)." },
 		{ type = "header", name = "Units" },
@@ -122,7 +133,11 @@ Background = function(db)
 	if M.painted and not (ui and ui.TooltipPanel == false) then
 		return (ui and ui.parchment_tooltip == true) and "parchment" or "painted"
 	end
-	return (db and db.darkBackdrop) and "dark" or "game"
+	-- (2.1.32) a SharedMedia background under the Dark look is the pick itself (its pack taken out: Dark)
+	if db and db.darkBackdrop then
+		return SM.Pick("background", db.backgroundFile) or "dark"
+	end
+	return "game"
 end
 M.Background = Background   -- (read only: the tests)
 
@@ -156,9 +171,11 @@ local function SetBackground(value)
 	if painted then
 		Put("UIModifications", "parchment_tooltip", value == "parchment")
 	end
-	local dark = value == "dark"
+	local file = SM.Pick("background", value)
+	local dark = value == "dark" or file ~= nil
 	if M.db then
 		M.db.darkBackdrop, M.db.darkBorder = dark, dark
+		M.db.backgroundFile = file or false
 	end
 end
 
@@ -179,6 +196,56 @@ end
 --------------------------------------------------------------------------------
 -- Backdrop
 --------------------------------------------------------------------------------
+
+-- (2.1.32) SharedMedia's on the Dark look (MelloUI.SharedMedia): a background on the backdrop's centre, tiled in its
+-- own colours at Backdrop Opacity -- laid again after each of the game's SharedTooltip_SetBackdropStyle, as the
+-- colours are -- and a border on a frame of ours over the backdrop (the game's border hidden by its colour), made
+-- the first time a tooltip wears one. Kept here by tooltip, never as keys on the game's frames
+local Media = {
+	EDGE = 16,   -- the border's size: the game's tooltip border's in its old backdrop (TOOLTIP_BACKDROP_STYLE_DEFAULT)
+	centre = setmetatable({}, { __mode = "k" }),   -- [tooltip] = true: its centre wears a SharedMedia background
+	edge = setmetatable({}, { __mode = "k" }),     -- [tooltip] = its border frame (ours)
+	edgeFile = setmetatable({}, { __mode = "k" }),   -- [border frame] = the file its backdrop wears
+}
+
+-- the game's own centre art back on a tooltip that wore ours (the next SharedTooltip_SetBackdropStyle lays it too)
+function Media.Uncentre(tooltip, nine)
+	if not Media.centre[tooltip] then
+		return
+	end
+	Media.centre[tooltip] = nil
+	local centre = nine.Center
+	if centre then
+		local layouts = rawget(_G, "NineSliceLayouts")
+		local layout = type(layouts) == "table" and layouts.TooltipDefaultLayout
+		local atlas = type(layout) == "table" and type(layout.Center) == "table" and layout.Center.atlas
+		SM.Unlay(centre)
+		centre:SetAtlas(type(atlas) == "string" and atlas or "Tooltip-NineSlice-Center")
+	end
+end
+
+function Media.Unedge(tooltip)
+	local f = Media.edge[tooltip]
+	if f then
+		f:Hide()
+	end
+end
+
+function Media.Edge(tooltip, nine, file, r, g, b, a)
+	local f = Media.edge[tooltip]
+	if not f then
+		f = CreateFrame("Frame", nil, nine, "BackdropTemplate")
+		f:SetAllPoints(nine)
+		Media.edge[tooltip] = f
+	end
+	if Media.edgeFile[f] ~= file then
+		Media.edgeFile[f] = file
+		f:SetBackdrop({ edgeFile = file, edgeSize = Media.EDGE })
+	end
+	f:SetBackdropBorderColor(r, g, b, a)
+	f:Show()
+end
+M.Media = Media   -- (read only: the tests)
 
 local function StyleBackdrop(tooltip)
 	if not M.isEnabled or not tooltip or not tooltip.NineSlice then
@@ -205,15 +272,40 @@ local function StyleBackdrop(tooltip)
 	local db = M.db
 	local nine = tooltip.NineSlice
 	if db.darkBackdrop and nine.SetCenterColor then
-		local c = MelloUI.Palette[BACKDROP]
-		nine:SetCenterColor(c[1], c[2], c[3], db.backdropAlpha or 0.9)
+		local file = nine.Center and SM.Pick("background", db.backgroundFile)
+		if file then
+			Media.centre[tooltip] = true
+			SM.Lay(nine.Center, file, db.backdropAlpha or 0.9)
+		else
+			Media.Uncentre(tooltip, nine)
+			local c = MelloUI.Palette[BACKDROP]
+			nine:SetCenterColor(c[1], c[2], c[3], db.backdropAlpha or 0.9)
+		end
 	end
 	if nine.SetBorderColor then
+		-- the border's colour: the class's on a unit (Class / Reaction Border), else the Dark look's Border -- the
+		-- palette's line, the game's art as it is, none -- and a SharedMedia border in its own colours
+		local look = db.darkBorder and (db.border or "dark") or nil
+		local file = look and SM.Pick("border", look)
+		local r, g, b, a
 		if unitColor and db.classBorder and tooltip == GameTooltip then
-			nine:SetBorderColor(unitColor[1], unitColor[2], unitColor[3], 1)
-		elseif db.darkBorder then
+			r, g, b, a = unitColor[1], unitColor[2], unitColor[3], 1
+		elseif file or look == "game" then
+			r, g, b, a = 1, 1, 1, 1
+		elseif look == "none" then
+			r, g, b, a = 1, 1, 1, 0
+		elseif look then
 			local c = MelloUI.Palette[BORDER]
-			nine:SetBorderColor(c[1], c[2], c[3], 1)
+			r, g, b, a = c[1], c[2], c[3], 1
+		end
+		if file then
+			nine:SetBorderColor(1, 1, 1, 0)
+			Media.Edge(tooltip, nine, file, r, g, b, a)
+		else
+			Media.Unedge(tooltip)
+			if r then
+				nine:SetBorderColor(r, g, b, a)
+			end
 		end
 	end
 end
@@ -231,6 +323,8 @@ local function RestoreBackdrop(tooltip)
 		return
 	end
 	local nine = tooltip.NineSlice
+	Media.Uncentre(tooltip, nine)
+	Media.Unedge(tooltip)
 	if nine.SetCenterColor and TOOLTIP_DEFAULT_BACKGROUND_COLOR then
 		local r, g, b = TOOLTIP_DEFAULT_BACKGROUND_COLOR:GetRGB()
 		nine:SetCenterColor(r, g, b, 1)
@@ -760,12 +854,19 @@ function M:OnEnable(db)
 	self.db = db
 	InstallHooks()
 	MelloUI:On("palette", OnPalette, PALETTE_OWNER)
+	-- (2.1.32) a SharedMedia pack's backgrounds and borders in later: a tooltip wearing a pick of theirs laid again
+	MelloUI:On("sharedmedia", function(kinds)
+		if kinds.background or kinds.border then
+			ApplyAll()
+		end
+	end, PALETTE_OWNER)
 	MelloUI.Widgets.OnBarTexture("tooltip", OnBarTexture, BAR_OWNER)
 	ApplyAll()
 end
 
 function M:OnDisable()
 	MelloUI:Off(PALETTE_OWNER, "palette")
+	MelloUI:Off(PALETTE_OWNER, "sharedmedia")
 	MelloUI:Off(BAR_OWNER)
 	unitColor = nil
 	Fade.Stop(true)
@@ -785,6 +886,26 @@ function M:OnSettingChanged(key, value, db)
 		end
 	end
 	ApplyAll(true)
+end
+
+-- (2.1.32) the Background and Border dropdowns: SharedMedia's backgrounds and borders at their ends (MelloUI.SharedMedia),
+-- again when a pack registers more (the bus: the lists only, at any time; the looks above while on)
+do
+	local function Lists()
+		for _, o in ipairs(M.options or {}) do
+			if o.key == "background" and type(o.values) == "table" then
+				SM.Merge(o.values, "background")
+			elseif o.key == "border" and type(o.values) == "table" then
+				SM.Merge(o.values, "border")
+			end
+		end
+	end
+	Lists()
+	MelloUI:On("sharedmedia", function(kinds)
+		if kinds.background or kinds.border then
+			Lists()
+		end
+	end, "Tooltip lists")
 end
 
 MelloUI:Profile("Tooltip", "unit tooltips", OnUnitTooltip)

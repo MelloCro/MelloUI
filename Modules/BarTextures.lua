@@ -11,8 +11,8 @@
 -- cast bar yellow / green / red), so bars keep their meaning.
 --
 -- Textures: shipped ones in Media\Textures, anything registered with
--- LibSharedMedia-3.0 by another addon, two Blizzard textures, and custom files
--- listed in Media\CustomTextures.lua.
+-- LibSharedMedia-3.0 by another addon (MelloUI.SharedMedia, Core/SharedMedia.lua: a pack loading after MelloUI too,
+-- 2.1.32), two Blizzard textures, and custom files listed in Media\CustomTextures.lua.
 --------------------------------------------------------------------------------
 
 local ADDON_NAME, ns = ...
@@ -91,11 +91,8 @@ local function BuildTextureList()
 			end
 		end
 	end
-	local LSM = LibStub and LibStub:GetLibrary("LibSharedMedia-3.0", true)
-	if LSM then
-		for _, name in ipairs(LSM:List("statusbar")) do
-			Add(LSM:Fetch("statusbar", name), name)
-		end
+	for _, entry in ipairs(MelloUI.SharedMedia.List("statusbar")) do
+		Add(entry.value, entry.label)
 	end
 	return list
 end
@@ -103,17 +100,34 @@ end
 -- (one look Q3, the user 2026-10-15) each area's Bar Texture: "shared" (the
 -- Look page's Every Bar, `texture`), "game" (the game's own art; on MelloUI's
 -- own bars, a plain fill: "Plain") or a picture of its own. The lists are
--- made once, at load, from the one texture list
-local TEXTURES = BuildTextureList()
-local AREA_LISTS = {}
-for i, label in ipairs({ "The game's", "Plain" }) do
-	local list = { { value = "shared", label = "Same as Every Bar" }, { value = "game", label = label } }
-	for _, e in ipairs(TEXTURES) do
-		if e.value ~= "default" then
-			list[#list + 1] = e
+-- made at load from the one texture list, and made again in place when a
+-- SharedMedia pack registers bar textures later (2.1.32: the bus's "sharedmedia")
+local TEXTURES = {}
+local AREA_LISTS = {
+	{ { value = "shared", label = "Same as Every Bar" }, { value = "game", label = "The game's" } },
+	{ { value = "shared", label = "Same as Every Bar" }, { value = "game", label = "Plain" } },
+}
+do
+	local function Fill()
+		local fresh = BuildTextureList()
+		MelloUI.SharedMedia.Into(TEXTURES, 0, fresh)
+		for _, list in ipairs(AREA_LISTS) do
+			for i = #list, 3, -1 do
+				list[i] = nil
+			end
+			for _, e in ipairs(fresh) do
+				if e.value ~= "default" then
+					list[#list + 1] = e
+				end
+			end
 		end
 	end
-	AREA_LISTS[i] = list
+	Fill()
+	MelloUI:On("sharedmedia", function(kinds)
+		if kinds.statusbar then
+			Fill()
+		end
+	end, "Bar Textures' list")
 end
 
 local M = MelloUI:RegisterModule("BarTextures", {

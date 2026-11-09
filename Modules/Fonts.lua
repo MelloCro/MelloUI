@@ -7,8 +7,8 @@
 -- can be switched off again without a reload.
 --
 -- Available fonts: the four fonts shipped with the game, any font registered
--- with LibSharedMedia-3.0 by another addon, and custom .ttf files listed in
--- Media\CustomFonts.lua.
+-- with LibSharedMedia-3.0 by another addon (MelloUI.SharedMedia, Core/SharedMedia.lua: a pack loading after MelloUI
+-- too, 2.1.32), and custom .ttf files listed in Media\CustomFonts.lua.
 --
 -- Not covered: floating combat text in the world and the 3D name text above
 -- characters. Those are read from the Fonts folder at startup and cannot be
@@ -24,6 +24,7 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- MelloUI:StyleFont reads from a font object and takes from its callers
 local SafeText = MelloUI.Safe.Text
 local SafeNumber = MelloUI.Safe.Number
+local SM = MelloUI.SharedMedia
 
 local DEFAULT_FONT = "Fonts\\FRIZQT__.TTF"
 
@@ -59,12 +60,9 @@ local function BuildFontList()
 		end
 	end
 
-	-- Fonts shared by other addons through LibSharedMedia-3.0.
-	local LSM = LibStub and LibStub:GetLibrary("LibSharedMedia-3.0", true)
-	if LSM then
-		for _, name in ipairs(LSM:List("font")) do
-			Add(LSM:Fetch("font", name), name)
-		end
+	-- Fonts shared by other addons through LibSharedMedia-3.0 (MelloUI.SharedMedia: the reader)
+	for _, entry in ipairs(SM.List("font")) do
+		Add(entry.value, entry.label)
 	end
 
 	table.sort(list, function(a, b)
@@ -78,26 +76,43 @@ end
 -- (one look C11, Q2) the faces a part of a frame picks for its own text:
 -- MelloUI.FontFaces, the one table every part's Font row hands its schema --
 -- "Shared" (the face the text wears without one: today's), then this list,
--- made once, at load, as the roles' own lists (a LibSharedMedia font shows
--- when the addon sharing it loads before MelloUI; every module with a Font row
--- loads after this file); MelloUI:FaceOf(value) is the one resolver -- the face's path, nil for
+-- made at load, as the roles' own lists, and made again in place when a
+-- SharedMedia pack registers fonts later (2.1.32: the packs load after MelloUI,
+-- the bus's "sharedmedia"); MelloUI:FaceOf(value) is the one resolver -- the face's path, nil for
 -- "shared", nothing, or a face no longer listed (a font file taken out of
 -- Media\Fonts: the text keeps its shared face). A part's face works with this
 -- module on or off: it is the part's own setting.
+local roleLists = {}   -- every role's list (BuildRoleList's), refilled with the faces
+local knownFonts = nil   -- (Semibold's, below: dropped when the faces are refilled)
 do
 	local known = {}
 	local faces = { { value = "shared", label = "Shared" } }
 	MelloUI.FontFaces = faces
-	for _, entry in ipairs(BuildFontList()) do
-		faces[#faces + 1] = entry
-		known[entry.value] = true
+	local function Fill()
+		local fresh = BuildFontList()
+		wipe(known)
+		for _, entry in ipairs(fresh) do
+			known[entry.value] = true
+		end
+		SM.Into(faces, 1, fresh)
+		for _, list in ipairs(roleLists) do
+			SM.Into(list, 1, fresh)
+		end
+		knownFonts = nil
 	end
+	Fill()
+	-- (a pack's font asked for before the bus has refilled the lists: the reader knows it already)
 	function MelloUI:FaceOf(value)
-		if type(value) == "string" and known[value] then
+		if type(value) == "string" and (known[value] or SM.Known("font", value)) then
 			return value
 		end
 		return nil
 	end
+	MelloUI:On("sharedmedia", function(kinds)
+		if kinds.font then
+			Fill()
+		end
+	end, "Fonts' faces")
 end
 
 -- The game draws its text with four faces; every font object descends from
@@ -140,6 +155,7 @@ local function BuildRoleList()
 	for _, entry in ipairs(BuildFontList()) do
 		list[#list + 1] = entry
 	end
+	roleLists[#roleLists + 1] = list
 	return list
 end
 
@@ -382,7 +398,6 @@ end
 
 -- A face's semibold cut, when the font list has one ("...-Regular.ttf" ->
 -- "...-SemiBold.ttf"): the chat's face on the parchment by default
-local knownFonts = nil
 local function Semibold(path)
 	if type(path) ~= "string" then
 		return nil

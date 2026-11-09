@@ -1077,6 +1077,8 @@ Lang:Add("zhCN", {
 	["Game"] = "游戏", -- draft
 	["Backdrop Opacity"] = "背景不透明度", -- draft
 	["How solid the Dark background is."] = "暗色背景的不透明度。", -- draft
+	["Border"] = "边框", -- draft
+	["The border round the Dark background: a dark line in your palette's colour, the game's own, none, or one shared by a SharedMedia addon."] = "暗色背景的边框：调色板颜色的暗色线条、游戏自带的、无，或由 SharedMedia 插件共享的边框。", -- draft
 	["Class / Reaction Border"] = "职业 / 关系边框", -- draft
 	["Colours a unit tooltip's border by class (players) or reaction (NPCs)."] = "按职业（玩家）或反应（NPC）为单位说明条的边框着色。", -- draft
 	["Units"] = "单位", -- draft
@@ -1690,7 +1692,7 @@ Lang:Add("zhCN", {
 	["How the chat looks. Game Windows: the game's windows and tabs. Minimal: one panel with round tabs, each message under its sender, and buttons to pick a channel."] = "聊天的外观。游戏窗口：游戏的窗口和标签。简约：一个带圆形标签的面板，每条消息位于发送者下方，并有选择频道的按钮。", -- draft
 	["Game Windows"] = "游戏窗口", -- draft
 	["Minimal"] = "极简", -- draft
-	["The chat's background: Dark, the game's own, or none."] = "聊天背景：暗色、游戏自带，或无。", -- draft
+	["The chat's background: Dark, the game's own, none, or one shared by a SharedMedia addon."] = "聊天框背景：暗色、游戏自带、无，或由 SharedMedia 插件共享的背景。", -- draft
 	["Set The Background Opacity"] = "统一背景不透明度", -- draft
 	["Every chat window uses the same background opacity. Off: each keeps its own."] = "所有聊天窗口使用相同的背景不透明度。关闭：各自保留自己的。", -- draft
 	["How solid the chat windows' background is."] = "聊天窗口背景的不透明度。", -- draft
@@ -2099,7 +2101,6 @@ Lang:Add("zhCN", {
 	["The look of the whole interface: its skin, the soft shade, every font and texture, the colours, icons and Dark Mode. The painted reskin and its palettes are on the Oldschool page."] = "整个界面的外观：风格、柔和阴影、所有字体和材质、颜色、图标和暗色模式。手绘皮肤及其调色板在 Oldschool 页面。", -- draft
 	["The minimap and the Services bar under it: pick one, click a part, change it."] = "小地图及其下方的服务栏：选一个，点击某个部分，修改它。", -- draft
 	["Coordinates"] = "坐标", -- draft
-	["Border"] = "边框", -- draft
 	["Its settings: Route (Quests and travel)"] = "它的设置：路线（任务和旅行）", -- draft
 	["Route trail"] = "路线轨迹", -- draft
 	["Its settings: Quest List, its Map tab"] = "其设置：任务列表的“地图”标签", -- draft
@@ -2262,7 +2263,8 @@ Lang:Add("zhCN", {
 	["Not with the Minimal Chat View: its whisper window takes the whispers"] = "极简聊天视图下不适用：悄悄话由它的悄悄话窗口接收", -- draft
 	["Tooltip Background"] = "说明条背景", -- draft
 	["Tooltip Background Opacity"] = "说明条背景不透明度", -- draft
-	["Only for the Dark background"] = "仅用于深色背景", -- draft
+	["Only for the Dark background or a SharedMedia one"] = "仅适用于暗色背景或 SharedMedia 背景", -- draft
+	["Tooltip Border"] = "鼠标提示边框", -- draft
 	["Only while the health bar shows (Hide Health Bar off)"] = "仅在显示生命条时", -- draft
 	["MelloUI Combat Text"] = "MelloUI战斗文字", -- draft
 	["Only while MelloUI draws Your Damage"] = "仅在MelloUI绘制“你的伤害”时", -- draft
@@ -2313,6 +2315,8 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["SharedMedia: fonts, bar textures and backgrounds shared by other addons show in MelloUI's lists, also from packs that load after MelloUI (those were missed before)."] = "SharedMedia：其他插件共享的字体、条材质和背景会出现在 MelloUI 的列表中，包括在 MelloUI 之后加载的材质包（以前会漏掉）。", -- draft
+	["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "鼠标提示：暗色背景新增边框选项：暗色、游戏自带、无，或 SharedMedia 边框。SharedMedia 背景可用于鼠标提示、聊天框以及小队和团队框体。", -- draft
 	["Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest."] = "暗色模式：鼠标提示的金色标题和提示保持清晰可读：地图上的城市和地下城、服务栏、提醒、任务追踪等等。", -- draft
 	["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "增益和减益效果：独立的一页。增益和减益分开显示，各有自己的大小和行；选择锚点，自由的会立即显示在“编辑布局”中。", -- draft
 	["Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin."] = "配置器：动画、增益和减益效果、地图和支持者在每种外观中都有自己的图标。", -- draft
@@ -2327,8 +2331,6 @@ Lang:Add("zhCN", {
 	["Nameplates designer: changes now show at once on the plates already on screen."] = "姓名板设计器：修改现在会立即显示在屏幕上已有的姓名板上。", -- draft
 	["Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it."] = "聊天：极简聊天重新可以点击（聊天行、链接和“复制聊天”按钮）；自 2.1.24 起，隐藏的聊天窗口可能会挡住它。", -- draft
 	["Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want."] = "提醒：哪些增益（小部件页）：可以单独关闭某个增益，每个都有针对你自己和针对队伍的开关，只提醒你想要的。", -- draft
-	["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "微型菜单：移到自己的位置后不再跳回原处（乘坐载具后，或动作条重新显示时），编辑布局中的大小现在也作用于按钮。", -- draft
-	["Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows."] = "地图：暴风城、圣光之愿礼拜堂、湖畔镇和莫高雷的任务发布者与交付者现在标在他们真正所在的位置（Sprite Jumpsprocket 在矮人区），与路线所示一致。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3166,6 +3168,7 @@ Lang:Add("zhCN", {
 -- stale: ["Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on."] = "地图：放大时保留手绘地图；只有很近时才在其上淡入微缩地图地面。滚轮平滑缩放，拖动会继续滑行。", -- draft
 -- stale: ["Map: your quest log and the Quest List beside it (L), search, a pin to share in chat, layer switches; Questie, HandyNotes and GatherMate2 pins on it too."] = "地图：任务日志和旁边的任务列表（L）、搜索、可在聊天中分享的标记、图层开关；Questie、HandyNotes和GatherMate2的标记也会显示。", -- draft
 -- stale: ["Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands."] = "地图和路线：Excavation Site: Wetlands 的入口现在位于维尔加挖掘场以东的矮人挖掘营地，也就是传送门所在的位置。", -- draft
+-- stale: ["Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows."] = "地图：暴风城、圣光之愿礼拜堂、湖畔镇和莫高雷的任务发布者与交付者现在标在他们真正所在的位置（Sprite Jumpsprocket 在矮人区），与路线所示一致。", -- draft
 -- stale: ["Mark every known quest giver on the zone map with a ! or ? coloured by what you can do there. Hover for the quests, click to track the giver. The List tab's choices apply to the pins too: where quests start (for quests not taken yet), the other faction's and other classes' quests, the levels above yours, and Events (a holiday's givers show while the list shows Events or the quest is in your log)."] = "在区域地图上用!或?标出每个已知的任务给予者，颜色表示你在那里能做什么。悬停查看任务，点击追踪该给予者。“列表”标签的选项也作用于地图标记：任务从哪里开始（对尚未接的任务）、另一阵营和其他职业的任务、高出你的等级，以及活动（节日的任务给予者在列表显示活动或任务在你的日志中时显示）。", -- draft
 -- stale: ["Mark instance entrances on the zone maps. Hover for the level range and your quest progress, click to list its quests. Entrances of new instances are learned the first time you walk in."] = "在区域地图上标出副本入口。悬停查看等级范围和你的任务进度，点击列出它的任务。新副本的入口在你第一次走进去时记录。", -- draft
 -- stale: ["Mark on the zone map where the quests in your log are done: an outline round each objective's area with one mark for it (a sword to kill, a bag to collect, a cog to use, a flag to explore) and its progress, and the single places as small dots when you zoom in. Hover a mark for the quest, the objective and what drops it; click it for a waypoint. A done objective's marks go; a done quest shows only its hand-in ?."] = "在区域地图上标出日志中任务的完成地点：每个目标区域外围一圈轮廓并带一个标记（剑表示击杀，袋子表示收集，齿轮表示使用，旗帜表示探索）及其进度，放大时单独的地点显示为小点。悬停标记查看任务、目标以及谁会掉落；点击设置路径点。已完成目标的标记消失；已完成的任务只显示交任务的?。", -- draft
@@ -3190,6 +3193,7 @@ Lang:Add("zhCN", {
 -- stale: ["MelloUI's rows for your buffs and debuffs, beside the minimap or where the game's buff bar is. Right-click a buff to cancel it."] = "MelloUI 的增益和减益行，位于微缩地图旁或游戏增益栏的位置。右键点击增益可取消。", -- draft
 -- stale: ["MelloUI's tweaks to the unit frames: names, glows and the party's levels."] = "MelloUI 对单位框体的调整：名字、光晕和小队等级。", -- draft
 -- stale: ["MelloUI's windows show Cyrillic, Chinese and Korean names in the game's letters instead of boxes; buttons grow to fit a longer label."] = "MelloUI的窗口用游戏的字形显示西里尔文、中文和韩文名字，而不是方块；按钮会变宽以容纳更长的标签。", -- draft
+-- stale: ["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "微型菜单：移到自己的位置后不再跳回原处（乘坐载具后，或动作条重新显示时），编辑布局中的大小现在也作用于按钮。", -- draft
 -- stale: ["Mine"] = "我的", -- draft
 -- stale: ["Minimap ring, zone text header, day/night indicator frame, tracking, calendar, zoom and addon buttons."] = "小地图圆环、区域名称标题、昼夜指示框、追踪、日历、缩放和插件按钮。", -- draft
 -- stale: ["Minimap: round, in the painted ring"] = "小地图：圆形，在手绘圆环中", -- draft
@@ -3240,6 +3244,7 @@ Lang:Add("zhCN", {
 -- stale: ["One look: its own look, Gilded Slate colours, the Fredoka font and a new logo, reskin or not; the installer sets up the new layout. The painted reskin is MelloUI Oldschool."] = "统一外观：自己的样式、Gilded Slate配色、Fredoka字体和新标志，换肤与否均可；安装器会设置新布局。手绘换肤即MelloUI Oldschool。", -- draft
 -- stale: ["One seamless map of the whole world: zoom from Azeroth down to a zone with the mouse wheel and drag to look around."] = "一张无缝的全世界地图：用鼠标滚轮从艾泽拉斯一直缩放到某个区域，拖动查看四周。", -- draft
 -- stale: ["One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Move it in Edit Layout."] = "当MelloUI有消息告诉你时，在屏幕上方三分之一处显示一行短文字：设定或完成了路线、记住了一个服务、列出了地下城的任务。几秒后淡出。可在“编辑布局”中移动。", -- draft
+-- stale: ["Only for the Dark background"] = "仅用于深色背景", -- draft
 -- stale: ["Only when attached to the frame"] = "仅在贴附框体时", -- draft
 -- stale: ["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "仅在极简聊天视图或手绘聊天时", -- draft
 -- stale: ["Only without the painted cast bars"] = "仅在不使用手绘施法条时", -- draft
@@ -3445,6 +3450,7 @@ Lang:Add("zhCN", {
 -- stale: ["The chat windows with their tabs, buttons, the Friends button and the line you type in. They come back while you type. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "聊天窗口及其标签、按钮、好友按钮和输入行。你打字时它们会回来。总是：从不淡出。战斗中：脱离战斗时淡出，战斗时回来。鼠标悬停：一直淡出，指向时显示。", -- draft
 -- stale: ["The chat windows' background: a dark panel of the palette behind the window, its tabs and its input box (Dark), the game's own (Game), or none at all (None). Under the painted chat (its Painted Skin, the reskin on) its stone instead. With the Minimal Chat View: None leaves its panel clear, Dark and Game keep its dark panel; Parchment lays the parchment sheet over it."] = "聊天窗口的背景：窗口、标签和输入框后面的配色深色面板（深色），游戏自己的（游戏），或完全没有（无）。在手绘聊天下（它的手绘皮肤，换肤开启）改用它的石材。使用极简聊天视图时：无让它的面板透明，深色和游戏保留它的深色面板；羊皮纸在上面铺一张羊皮纸。", -- draft
 -- stale: ["The chat windows' messages, the chat's input box and the whisper windows. The same face as the Interface text unless you choose otherwise (the Chat & numbers face while that is the game's), so the chat follows the Font Styles and your own choice of reading face. The size stays the chat's own (Chat & numbers size)."] = "聊天窗口的消息、聊天输入框和悄悄话窗口。默认与“界面文字”相同，除非你另选（当“聊天和数字”为游戏字体时用它），这样聊天会跟随字体风格和你自己选择的阅读字体。大小仍是聊天自己的（“聊天和数字”大小）。", -- draft
+-- stale: ["The chat's background: Dark, the game's own, or none."] = "聊天背景：暗色、游戏自带，或无。", -- draft
 -- stale: ["The chosen health bar colour wins over the game's own recolouring of health bars (the aggro / threat display on nameplates and unit frames): whenever the game sets its colour, yours is put back. Off: the game's threat colours show."] = "所选的生命条颜色胜过游戏自己对生命条的重新着色（姓名板和单位框体上的仇恨 / 威胁显示）：每当游戏设置它的颜色，你的颜色就会被放回去。关闭：显示游戏的仇恨颜色。", -- draft
 -- stale: ["The colour behind the health bar with My Colour."] = "选择“我的颜色”时生命条后面的颜色。", -- draft
 -- stale: ["The colour behind the health bar: one of yours, or the member's class colour."] = "生命条后面的颜色：你的一种颜色，或该成员的职业颜色。", -- draft

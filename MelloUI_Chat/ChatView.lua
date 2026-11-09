@@ -2169,7 +2169,15 @@ end
 function View.Ground()
 	local frame = View.frame
 	if frame and frame.panelFill then
-		W.Paint(frame.panelFill, "innerPanel", "fill", PanelAlpha())
+		-- (2.1.32) a SharedMedia background picked in the Dark look's place (Chat.lua, M.Dark.File) at the same alpha
+		local file = M.Dark and M.Dark.File and M.Dark.File()
+		if file then
+			MelloUI.Painter.Unpaint(frame.panelFill, "fill")
+			MelloUI.SharedMedia.Lay(frame.panelFill, file, PanelAlpha())
+		else
+			MelloUI.SharedMedia.Unlay(frame.panelFill)
+			W.Paint(frame.panelFill, "innerPanel", "fill", PanelAlpha())
+		end
 	end
 end
 

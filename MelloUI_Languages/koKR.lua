@@ -1077,6 +1077,8 @@ Lang:Add("koKR", {
 	["Game"] = "게임", -- draft
 	["Backdrop Opacity"] = "배경 불투명도", -- draft
 	["How solid the Dark background is."] = "어두운 배경의 불투명도.", -- draft
+	["Border"] = "테두리", -- draft
+	["The border round the Dark background: a dark line in your palette's colour, the game's own, none, or one shared by a SharedMedia addon."] = "어두운 배경의 테두리: 팔레트 색의 어두운 선, 게임 기본, 없음, 또는 SharedMedia 애드온이 공유하는 테두리.", -- draft
 	["Class / Reaction Border"] = "직업 / 관계 테두리", -- draft
 	["Colours a unit tooltip's border by class (players) or reaction (NPCs)."] = "개체 툴팁 테두리를 직업(플레이어) 또는 반응(NPC) 색으로.", -- draft
 	["Units"] = "개체", -- draft
@@ -1690,7 +1692,7 @@ Lang:Add("koKR", {
 	["How the chat looks. Game Windows: the game's windows and tabs. Minimal: one panel with round tabs, each message under its sender, and buttons to pick a channel."] = "대화창 모습. 게임 창: 게임 창과 탭. 최소: 둥근 탭의 패널 하나, 보낸 사람 아래 메시지, 채널 선택 버튼.", -- draft
 	["Game Windows"] = "게임 창", -- draft
 	["Minimal"] = "최소", -- draft
-	["The chat's background: Dark, the game's own, or none."] = "대화창 배경: 어두움, 게임 기본, 없음.", -- draft
+	["The chat's background: Dark, the game's own, none, or one shared by a SharedMedia addon."] = "대화창 배경: 어두움, 게임 기본, 없음, 또는 SharedMedia 애드온이 공유하는 배경.", -- draft
 	["Set The Background Opacity"] = "배경 불투명도 정하기", -- draft
 	["Every chat window uses the same background opacity. Off: each keeps its own."] = "모든 대화창이 같은 배경 투명도를 씁니다. 끄면: 창마다 따로.", -- draft
 	["How solid the chat windows' background is."] = "대화창 배경 불투명도.", -- draft
@@ -2099,7 +2101,6 @@ Lang:Add("koKR", {
 	["The look of the whole interface: its skin, the soft shade, every font and texture, the colours, icons and Dark Mode. The painted reskin and its palettes are on the Oldschool page."] = "인터페이스 전체의 모습: 스킨, 부드러운 그림자, 모든 글꼴과 텍스처, 색, 아이콘, 다크 모드. 그림 리스킨과 팔레트는 Oldschool 페이지에 있습니다.", -- draft
 	["The minimap and the Services bar under it: pick one, click a part, change it."] = "미니맵과 그 아래 서비스 바: 하나를 골라 부분을 누르고 바꾸세요.", -- draft
 	["Coordinates"] = "좌표", -- draft
-	["Border"] = "테두리", -- draft
 	["Its settings: Route (Quests and travel)"] = "설정: 경로(퀘스트와 이동)", -- draft
 	["Route trail"] = "경로 자취", -- draft
 	["Its settings: Quest List, its Map tab"] = "설정: 퀘스트 목록의 지도 탭", -- draft
@@ -2262,7 +2263,8 @@ Lang:Add("koKR", {
 	["Not with the Minimal Chat View: its whisper window takes the whispers"] = "최소 대화 보기에서는 아님: 그 귓속말 창이 귓속말을 받습니다", -- draft
 	["Tooltip Background"] = "툴팁 배경", -- draft
 	["Tooltip Background Opacity"] = "툴팁 배경 불투명도", -- draft
-	["Only for the Dark background"] = "어두운 배경에서만", -- draft
+	["Only for the Dark background or a SharedMedia one"] = "어두운 배경이나 SharedMedia 배경에만", -- draft
+	["Tooltip Border"] = "툴팁 테두리", -- draft
 	["Only while the health bar shows (Hide Health Bar off)"] = "생명력 막대가 보일 때만", -- draft
 	["MelloUI Combat Text"] = "MelloUI 전투 문자", -- draft
 	["Only while MelloUI draws Your Damage"] = "MelloUI가 내 피해를 그리는 동안만", -- draft
@@ -2313,6 +2315,8 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["SharedMedia: fonts, bar textures and backgrounds shared by other addons show in MelloUI's lists, also from packs that load after MelloUI (those were missed before)."] = "SharedMedia: 다른 애드온이 공유하는 글꼴, 바 텍스처, 배경이 MelloUI 목록에 표시됩니다. MelloUI보다 나중에 불러오는 팩도 포함됩니다(이전에는 빠졌습니다).", -- draft
+	["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "툴팁: 어두운 배경의 테두리 선택: 어두움, 게임 기본, 없음, 또는 SharedMedia 테두리. SharedMedia 배경은 툴팁, 대화창, 파티 및 공격대 프레임에 쓸 수 있습니다.", -- draft
 	["Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest."] = "어두운 모드: 툴팁의 금색 제목과 안내가 읽기 쉽게 유지됩니다: 지도의 도시와 던전, 서비스 바, 알림, 퀘스트 추적기 등.", -- draft
 	["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "강화 및 약화 효과: 전용 페이지. 강화와 약화 효과가 따로 놓이고 각각 크기와 줄을 정합니다. 고정점을 고르면, 자유인 것은 레이아웃 편집에 바로 보입니다.", -- draft
 	["Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin."] = "설정 창: 애니메이션, 강화 및 약화 효과, 지도, 후원자가 모든 스킨에서 고유 아이콘을 가집니다.", -- draft
@@ -2327,8 +2331,6 @@ Lang:Add("koKR", {
 	["Nameplates designer: changes now show at once on the plates already on screen."] = "이름표 디자이너: 변경 사항이 이미 화면에 있는 이름표에 바로 적용됩니다.", -- draft
 	["Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it."] = "채팅: 미니멀 채팅을 다시 클릭할 수 있습니다(줄, 링크, 채팅 복사 버튼). 2.1.24부터 숨겨진 채팅창이 이를 가릴 수 있었습니다.", -- draft
 	["Reminders: Which Buffs (Widgets tab): switch single buffs off, each with its own switch for you and one for the group, so you are only reminded about the ones you want."] = "알림: 어떤 강화 효과 (위젯 탭): 강화 효과를 하나씩 끌 수 있으며, 각각 자신용과 파티용 스위치가 따로 있어 원하는 것만 알림을 받습니다.", -- draft
-	["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "마이크로 메뉴: 자기 자리로 옮긴 뒤에 더 이상 원래 자리로 돌아가지 않으며(탈것 이용 후나 행동 단축바가 다시 나타날 때), 레이아웃 편집의 크기가 이제 버튼에도 적용됩니다.", -- draft
-	["Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows."] = "지도: 스톰윈드, 희망의 빛 예배당, 호숫골, 멀고어의 퀘스트 제공자와 완료 NPC가 이제 실제 서 있는 곳에 표시됩니다(드워프 지구의 Sprite Jumpsprocket). 경로가 보여 주는 위치와 같습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3166,6 +3168,7 @@ Lang:Add("koKR", {
 -- stale: ["Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on."] = "지도: 확대해도 그림 지도가 남고, 아주 가까이서만 미니맵 지면이 겹칩니다. 휠은 부드럽게 확대하고 끌기는 미끄러지듯 이어집니다.", -- draft
 -- stale: ["Map: your quest log and the Quest List beside it (L), search, a pin to share in chat, layer switches; Questie, HandyNotes and GatherMate2 pins on it too."] = "지도: 퀘스트 목록과 그 옆의 퀘스트 리스트(L), 검색, 대화에 공유하는 핀, 레이어 스위치. Questie, HandyNotes, GatherMate2 핀도 표시.", -- draft
 -- stale: ["Maps and Route: the entrance of Excavation Site: Wetlands now sits at the dwarves' dig camp east of Whelgar's Excavation Site, where its portal stands."] = "지도 및 경로: Excavation Site: Wetlands 입구가 이제 휄가르 발굴지 동쪽, 포탈이 있는 드워프 발굴 야영지에 표시됩니다.", -- draft
+-- stale: ["Maps: quest givers and turn-ins in Stormwind, Light's Hope Chapel, Lakeshire and Mulgore now sit where they stand (Sprite Jumpsprocket in the Dwarven District), as the route shows."] = "지도: 스톰윈드, 희망의 빛 예배당, 호숫골, 멀고어의 퀘스트 제공자와 완료 NPC가 이제 실제 서 있는 곳에 표시됩니다(드워프 지구의 Sprite Jumpsprocket). 경로가 보여 주는 위치와 같습니다.", -- draft
 -- stale: ["Mark every known quest giver on the zone map with a ! or ? coloured by what you can do there. Hover for the quests, click to track the giver. The List tab's choices apply to the pins too: where quests start (for quests not taken yet), the other faction's and other classes' quests, the levels above yours, and Events (a holiday's givers show while the list shows Events or the quest is in your log)."] = "알려진 모든 퀘스트 제공자를 지역 지도에 그곳에서 할 수 있는 것에 따라 색칠한 ! 또는 ?로 표시합니다. 가리키면 퀘스트, 누르면 그 제공자를 추적합니다. 목록 탭의 선택이 핀에도 적용됩니다: 퀘스트가 시작되는 곳(아직 받지 않은 퀘스트), 다른 진영과 다른 직업의 퀘스트, 내 레벨 위의 레벨, 이벤트(목록이 이벤트를 보여 주거나 퀘스트가 목록에 있으면 축제의 제공자가 보임).", -- draft
 -- stale: ["Mark instance entrances on the zone maps. Hover for the level range and your quest progress, click to list its quests. Entrances of new instances are learned the first time you walk in."] = "지역 지도에 인스턴스 입구를 표시합니다. 가리키면 레벨 범위와 퀘스트 진행도, 누르면 그 퀘스트 목록. 새 인스턴스의 입구는 처음 들어갈 때 기억합니다.", -- draft
 -- stale: ["Mark on the zone map where the quests in your log are done: an outline round each objective's area with one mark for it (a sword to kill, a bag to collect, a cog to use, a flag to explore) and its progress, and the single places as small dots when you zoom in. Hover a mark for the quest, the objective and what drops it; click it for a waypoint. A done objective's marks go; a done quest shows only its hand-in ?."] = "목록의 퀘스트를 하는 곳을 지역 지도에 표시합니다: 각 목표 지역 둘레의 윤곽과 표시 하나(처치는 검, 수집은 가방, 사용은 톱니, 탐험은 깃발), 그리고 진행도. 확대하면 낱개 장소는 작은 점으로. 표시를 가리키면 퀘스트, 목표, 떨어뜨리는 것, 누르면 경유지. 완료한 목표의 표시는 사라지고, 완료한 퀘스트는 완료 ?만 보입니다.", -- draft
@@ -3190,6 +3193,7 @@ Lang:Add("koKR", {
 -- stale: ["MelloUI's rows for your buffs and debuffs, beside the minimap or where the game's buff bar is. Right-click a buff to cancel it."] = "미니맵 옆이나 게임 강화 효과 바 자리의 MelloUI 강화·약화 효과 줄. 강화 효과를 오른쪽 클릭하면 취소합니다.", -- draft
 -- stale: ["MelloUI's tweaks to the unit frames: names, glows and the party's levels."] = "개체창에 대한 MelloUI 조정: 이름, 빛, 파티 레벨.", -- draft
 -- stale: ["MelloUI's windows show Cyrillic, Chinese and Korean names in the game's letters instead of boxes; buttons grow to fit a longer label."] = "MelloUI 창이 키릴 문자, 중국어, 한국어 이름을 네모 대신 게임의 글자로 보여 주며, 버튼은 더 긴 이름에 맞춰 넓어집니다.", -- draft
+-- stale: ["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "마이크로 메뉴: 자기 자리로 옮긴 뒤에 더 이상 원래 자리로 돌아가지 않으며(탈것 이용 후나 행동 단축바가 다시 나타날 때), 레이아웃 편집의 크기가 이제 버튼에도 적용됩니다.", -- draft
 -- stale: ["Mine"] = "내 것", -- draft
 -- stale: ["Minimap ring, zone text header, day/night indicator frame, tracking, calendar, zoom and addon buttons."] = "미니맵 고리, 지역 이름 머리글, 낮/밤 표시 테두리, 추적, 달력, 확대/축소, 애드온 버튼.", -- draft
 -- stale: ["Minimap: round, in the painted ring"] = "미니맵: 원형, 페인팅 고리 안", -- draft
@@ -3240,6 +3244,7 @@ Lang:Add("koKR", {
 -- stale: ["One look: its own look, Gilded Slate colours, the Fredoka font and a new logo, reskin or not; the installer sets up the new layout. The painted reskin is MelloUI Oldschool."] = "하나의 외형: 자체 외형, Gilded Slate 색, Fredoka 글꼴과 새 로고, 스킨과 상관없이. 설치기가 새 레이아웃을 설정합니다. 페인팅 스킨은 MelloUI Oldschool입니다.", -- draft
 -- stale: ["One seamless map of the whole world: zoom from Azeroth down to a zone with the mouse wheel and drag to look around."] = "온 세상을 잇는 하나의 지도: 마우스 휠로 아제로스에서 지역까지 확대하고, 끌어서 둘러봅니다.", -- draft
 -- stale: ["One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Move it in Edit Layout."] = "MelloUI가 전할 소식이 있을 때 화면 위쪽 3분의 1에 나타나는 짧은 한 줄: 경로 설정 또는 완료, 기억된 서비스, 목록에 오른 던전 퀘스트. 몇 초 뒤 사라집니다. 레이아웃 편집에서 옮길 수 있습니다.", -- draft
+-- stale: ["Only for the Dark background"] = "어두운 배경에서만", -- draft
 -- stale: ["Only when attached to the frame"] = "창에 붙였을 때만", -- draft
 -- stale: ["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "최소 대화 보기나 페인팅 대화에서만", -- draft
 -- stale: ["Only without the painted cast bars"] = "페인팅 시전바가 없을 때만", -- draft
@@ -3445,6 +3450,7 @@ Lang:Add("koKR", {
 -- stale: ["The chat windows with their tabs, buttons, the Friends button and the line you type in. They come back while you type. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "탭, 버튼, 친구 버튼, 입력 줄이 있는 대화창. 입력하는 동안 돌아옵니다. 항상: 흐려지지 않음. 전투 중: 전투 밖에서 흐려지고 전투 때 돌아옴. 마우스를 올리면: 늘 흐리고 가리키는 동안 보임.", -- draft
 -- stale: ["The chat windows' background: a dark panel of the palette behind the window, its tabs and its input box (Dark), the game's own (Game), or none at all (None). Under the painted chat (its Painted Skin, the reskin on) its stone instead. With the Minimal Chat View: None leaves its panel clear, Dark and Game keep its dark panel; Parchment lays the parchment sheet over it."] = "대화창의 배경: 창, 탭, 입력 상자 뒤의 색상표 어두운 패널(어두움), 게임의 것(게임), 또는 전혀 없음(없음). 페인팅 대화(그 페인팅 스킨, 스킨 켜짐) 아래에서는 대신 그 돌. 최소 대화 보기에서는: 없음은 패널을 비우고, 어두움과 게임은 어두운 패널을 유지하며, 양피지는 그 위에 양피지를 깝니다.", -- draft
 -- stale: ["The chat windows' messages, the chat's input box and the whisper windows. The same face as the Interface text unless you choose otherwise (the Chat & numbers face while that is the game's), so the chat follows the Font Styles and your own choice of reading face. The size stays the chat's own (Chat & numbers size)."] = "대화창의 메시지, 대화 입력 상자, 귓속말 창. 따로 고르지 않으면 인터페이스 글자와 같은 글꼴(대화와 숫자가 게임 글꼴일 때는 그 글꼴)이라, 대화가 글꼴 스타일과 직접 고른 읽기 글꼴을 따릅니다. 크기는 대화 자체의 크기(대화와 숫자 크기)를 유지합니다.", -- draft
+-- stale: ["The chat's background: Dark, the game's own, or none."] = "대화창 배경: 어두움, 게임 기본, 없음.", -- draft
 -- stale: ["The chosen health bar colour wins over the game's own recolouring of health bars (the aggro / threat display on nameplates and unit frames): whenever the game sets its colour, yours is put back. Off: the game's threat colours show."] = "고른 생명력 막대 색이 게임의 생명력 막대 재색칠(이름표와 개체창의 어그로 / 위협 표시)보다 우선합니다: 게임이 색을 바꿀 때마다 내 색을 되돌립니다. 끄기: 게임의 위협 색이 보입니다.", -- draft
 -- stale: ["The colour behind the health bar with My Colour."] = "내 색일 때 생명력 막대 뒤의 색.", -- draft
 -- stale: ["The colour behind the health bar: one of yours, or the member's class colour."] = "생명력 막대 뒤의 색: 내 색 중 하나, 또는 구성원의 직업 색.", -- draft

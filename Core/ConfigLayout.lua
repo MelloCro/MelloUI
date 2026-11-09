@@ -1092,9 +1092,17 @@ function L.Define(R, Link)
 	-- Tooltip
 	R("QualityOfLife", "Tooltip", "General", "UIModifications.qol_Tooltip")
 	R("Look", "Textures", "Look", "Tooltip.background", { name = "Tooltip Background", card = "Backgrounds" })
+	-- (2.1.32) the Dark look, or a SharedMedia background in its place (the Background reads that file's path): not
+	-- the game's, nor the painted skin's
+	local TIP_DARK = { all = { { key = "Tooltip.background", notValue = "game" },
+		{ key = "Tooltip.background", notValue = "painted" }, { key = "Tooltip.background", notValue = "parchment" } },
+		line = "Only for the Dark background or a SharedMedia one" }
 	R("Look", "Textures", "Look", "Tooltip.backdropAlpha", { name = "Tooltip Background Opacity", card = "Backgrounds",
-		when = { key = "Tooltip.background", value = "dark", line = "Only for the Dark background" } })
+		when = TIP_DARK })
 	Link("QualityOfLife", "Tooltip", "Look", "Tooltip.background", "Background")
+	-- (2.1.32; the user, 2026-11-09, of SharedMedia) the Dark look's border, with the tooltips' other border row
+	R("Look", "Textures", "Look", "Tooltip.border", { name = "Tooltip Border", card = "Borders", when = TIP_DARK })
+	Link("QualityOfLife", "Tooltip", "Look", "Tooltip.border", "Border", { when = TIP_DARK })
 	-- (0.19.4: Hide Health Bar, on by default, leaves nothing to dress)
 	local HEALTH_BAR = { key = "Tooltip.hideHealthBar", value = false, line = "Only while the health bar shows (Hide Health Bar off)" }
 	R("Look", "Textures", "Look", "BarTextures.tooltipTexture", { name = "Tooltip Health Bar", card = "Bars", when = HEALTH_BAR })

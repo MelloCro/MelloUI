@@ -66,6 +66,9 @@ end
 -- (0.20.1, the user: "i want to be able to change the background on the raid unitframes") Background: a flat colour
 -- (Background Colour, as before) or one of the kit's shared backgrounds (Kit.buttonLooks.backgrounds: the tiles and the
 -- gradients, the window backgrounds' own list), or none (GroupButton's Paint lays it)
+-- (2.1.32; the user, 2026-11-09, of SharedMedia: "can we make MelloUI Compatible with them?") and the backgrounds a
+-- SharedMedia addon shares, at the end (MelloUI.SharedMedia; again when a pack registers more, the frames painted
+-- again while they wear one of theirs)
 function RD.BackgroundTextures()
 	local out = { { value = "flat", label = "Flat colour" } }
 	local Kit = MelloUI.Kit
@@ -74,8 +77,19 @@ function RD.BackgroundTextures()
 			out[#out + 1] = { value = v.value, label = v.label }
 		end
 	end
+	RD.backgrounds = MelloUI.SharedMedia.Merge(out, "background")
 	return out
 end
+MelloUI:On("sharedmedia", function(kinds)
+	if not (kinds.background and RD.backgrounds) then
+		return
+	end
+	MelloUI.SharedMedia.Merge(RD.backgrounds, "background")
+	local db = RD.module and RD.module.isEnabled and RD.module.db
+	if db and type(db.backgroundTexture) == "string" and db.backgroundTexture:find("[\\/]") and ns.Headers then
+		ns.Headers:Repaint()
+	end
+end, "Group Frames backgrounds")
 
 RD.TEXT = {
 	noSpell = "Group Frames: no spell named \"%s\" (type its name as the game writes it, or its spell ID).",

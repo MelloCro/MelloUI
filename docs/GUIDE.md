@@ -373,7 +373,8 @@ Swaps the fill texture of health and power bars (player, target, focus, pet, par
 target-of-target), raid-style party and raid frames, nameplate health and cast bars, the personal resource display, the
 experience / reputation / honor bars, cast bars and the cooldown manager bars. Ships with
 Flat, Smooth, Gloss and Minimalist textures, lists the two Blizzard bar textures and any
-LibSharedMedia status bar textures, and reads custom files from `Media\Textures` listed in
+LibSharedMedia status bar textures (also from a SharedMedia pack that loads after MelloUI: the list catches up as it
+registers them), and reads custom files from `Media\Textures` listed in
 `Media\CustomTextures.lua`. Every bar's texture is on **Look > Textures** (Every Bar, then each kind of bar); the frames' pages link there. Colours that Blizzard baked into its atlases (power types,
 experience, reputation, cast states) are re-applied so bars keep their meaning.
 
@@ -575,6 +576,12 @@ class coloured player names, the tooltip health bar hidden by default (or shown 
 Textures fill and class / reaction colour), optional hiding of unit tooltips in combat, anchoring
 at or right of the cursor, and a tooltip scale. Blizzard's tooltip health bar fields are never written, since
 its update path compares secret health values and must stay untainted.
+
+**SharedMedia** (2.1.32): the backgrounds and borders other addons share through LibSharedMedia-3.0 join the
+**Background** list (tooltips, the chat, the party and raid frames) and the tooltips' **Border** list (Dark, Game,
+None and theirs; Look > Textures, Borders). A SharedMedia background is the Dark look on that picture, tiled in its own
+colours at the background's opacity; a SharedMedia border replaces the tooltip's own. A pick whose pack was taken out
+falls back to Dark. MelloUI only reads SharedMedia: its own fonts and textures are not shared there.
 
 **Fade Delay** (0.1 to 1 second, 0.4 by default): when your cursor leaves a creature or an object, its tooltip
 stays fully visible this long, then fades out in a quarter of a second. Pointing at something else meanwhile
@@ -876,7 +883,8 @@ The "Titles & headers" role is Enchanted Land by default and drives the kit's ti
 as the game's title font objects; "Keep the game's" puts Morpheus back on both.
 
 Replaces the font of every global font object and the chat windows. Choose between the
-four fonts shipped with the game, fonts other addons register with LibSharedMedia-3.0, or
+four fonts shipped with the game, fonts other addons register with LibSharedMedia-3.0 (a SharedMedia pack loading
+after MelloUI included), or
 your own `.ttf` files placed in `Media\Fonts` and listed in `Media\CustomFonts.lua`
 (new font files need a full client restart). One face per role: interface text, chat and
 numbers, titles and headers, damage numbers. The interface text, chat and numbers, and titles and

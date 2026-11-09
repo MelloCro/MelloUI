@@ -91,7 +91,7 @@ local M = MelloUI:RegisterModule("Chat", {
 			local v = Background(db)
 			return (v == "game" and db and db.view == "minimal") and "dark" or v
 		  end,
-		  desc = "The chat's background: Dark, the game's own, or none." },
+		  desc = "The chat's background: Dark, the game's own, none, or one shared by a SharedMedia addon." },
 		{ type = "toggle", key = "windowAlphaOn", name = "Set The Background Opacity",
 		  desc = "Every chat window uses the same background opacity. Off: each keeps its own." },
 		{ type = "slider", key = "windowAlpha", parent = "windowAlphaOn", name = "Background Opacity", min = 0, max = 1, step = 0.05, percent = true,
@@ -580,8 +580,17 @@ M.Dark = {
 	on = false, alpha = 0.8, hooked = false,
 }
 
+-- (2.1.32) Dark, or a SharedMedia background picked in its place (Background: the pick, a path)
 function M.Dark.Active()
-	return (M.isEnabled and M.db and Background(M.db) == "dark" and not ArtCovered()) and true or false
+	local look = M.isEnabled and M.db and Background(M.db)
+	return (look and look ~= "game" and look ~= "none" and not ArtCovered()) and true or false
+end
+
+-- (2.1.32; the user, 2026-11-09, of SharedMedia: "can we make MelloUI Compatible with them?") the SharedMedia
+-- background the chat wears in the Dark look's place (MelloUI.SharedMedia), nil for Dark itself
+function M.Dark.File()
+	local look = M.db and Background(M.db)
+	return (look ~= "dark" and look ~= "game" and look ~= "none") and look or nil
 end
 
 -- a plate on `owner`: the fill where `kind` lies, its four 1 px edges, a
@@ -598,7 +607,7 @@ function M.Dark.Make(owner, kind, rect)
 	else
 		fill:SetAllPoints(rect)
 	end
-	local p = { fill = fill, edges = W.Edges(owner, "border", "BORDER", fill) }
+	local p = { fill = fill, edges = W.Edges(owner, "border", "BORDER", fill), kind = kind }
 	if kind == "tab" then
 		p.lit = owner:CreateTexture(nil, "HIGHLIGHT")
 		p.lit:SetAllPoints(fill)
@@ -609,8 +618,17 @@ function M.Dark.Make(owner, kind, rect)
 end
 
 function M.Dark.Paint(p, fillKey, edgeKey)
-	local W = MelloUI.Widgets
-	W.Paint(p.fill, fillKey, "fill", M.Dark.alpha)
+	local W, SM = MelloUI.Widgets, MelloUI.SharedMedia
+	-- (2.1.32) a SharedMedia background on the window and its button column, at the fill's alpha (the tabs and the
+	-- input box keep the dark); off it again before the palette's fill
+	local file = (p.kind == "window" or p.kind == "column") and M.Dark.File()
+	if file then
+		MelloUI.Painter.Unpaint(p.fill, "fill")
+		SM.Lay(p.fill, file, M.Dark.alpha)
+	else
+		SM.Unlay(p.fill)
+		W.Paint(p.fill, fillKey, "fill", M.Dark.alpha)
+	end
 	for i = 1, #p.edges do
 		W.Paint(p.edges[i], edgeKey, "fill", 1)
 	end
@@ -4031,6 +4049,10 @@ Background = function(db)
 	if pick == "dark" then
 		return "dark"
 	end
+	-- (2.1.32) a SharedMedia background, a file's path: the pick itself while its pack lists it, else Dark
+	if type(pick) == "string" and pick:find("[\\/]") then
+		return MelloUI.SharedMedia.Pick("background", pick) or "dark"
+	end
 	return "game"
 end
 M.Background = Background   -- (read only: the tests)
@@ -4072,8 +4094,9 @@ function M.BackgroundChoices()
 end
 
 function M.SetBackground(value)
-	-- (one look: Dark, Game or None; the painted skin and its paper are switches of their own)
-	if value ~= "dark" and value ~= "game" and value ~= "none" then
+	-- (one look: Dark, Game or None; the painted skin and its paper are switches of their own; 2.1.32: or a
+	-- SharedMedia background, the Dark look with that file)
+	if value ~= "dark" and value ~= "game" and value ~= "none" and not MelloUI.SharedMedia.Pick("background", value) then
 		return
 	end
 	if M.db and (M.db.hideBackground and true or false) ~= (value == "none") then
@@ -4108,6 +4131,32 @@ function M:OpenWhisper(key)
 		f.box:SetFocus()
 	end
 	return true
+end
+
+-- (2.1.32) the Background dropdown: SharedMedia's backgrounds at its end (MelloUI.SharedMedia), again when a pack
+-- registers more -- and the look laid again, a pick of theirs in it
+do
+	local SM = MelloUI.SharedMedia
+	local function Lists()
+		for _, o in ipairs(M.options or {}) do
+			if o.key == "background" and type(o.values) == "table" then
+				SM.Merge(o.values, "background")
+			end
+		end
+	end
+	Lists()
+	MelloUI:On("sharedmedia", function(kinds)
+		if not kinds.background then
+			return
+		end
+		Lists()
+		if M.isEnabled then
+			ApplyArt()
+			if M.View and M.View.on and M.View.Ground then
+				M.View.Ground()
+			end
+		end
+	end, "Chat backgrounds")
 end
 
 function M:OnEnable(db)

@@ -429,7 +429,14 @@ function Button.Paint(f)
 	-- density, a gradient laid over the whole frame), else the flat fill in the Background Colour; none: see-through
 	local bg, Kit = f.background, MelloUI.Kit
 	local look = db.backgroundTexture or "flat"
-	local piece = look ~= "flat" and Kit and Kit.buttonLooks and Kit.buttonLooks.backgroundPiece[look]
+	-- (2.1.32) a background a SharedMedia addon shares (a file's path): tiled in its own colours at Background Opacity;
+	-- its pack taken out, Flat
+	local SM = MelloUI.SharedMedia
+	local file = SM.Pick("background", look)
+	if not file and type(look) == "string" and look:find("[\\/]") then
+		look = "flat"
+	end
+	local piece = not file and look ~= "flat" and Kit and Kit.buttonLooks and Kit.buttonLooks.backgroundPiece[look]
 	-- (1.2.4) Flat under the Default skin: the game's dark ground, tiled, in its own colours while the Background
 	-- Colour is one of the palette's (the skin's: the palette follows it), else in the player's colour
 	local Skin = look == "flat" and GameSkin() or nil
@@ -440,15 +447,24 @@ function Button.Paint(f)
 		bg:SetTexture(WHITE)
 		bg:SetTexCoord(0, 1, 0, 1)
 	end
-	if piece then
+	if file then
+		if Kit and Kit.pieceNameOf[bg] then
+			Kit.pieceOf[bg], Kit.pieceNameOf[bg], Kit.backgroundOf[bg] = nil, nil, nil
+		end
+		SM.Lay(bg, file, db.backgroundAlpha or 0.9)
+	elseif piece then
+		SM.Unlay(bg)
 		if Kit.pieceNameOf[bg] ~= piece then
 			Kit:Apply(bg, piece)
 		end
 		Kit:Retile(bg)
 		bg:SetVertexColor(1, 1, 1, db.backgroundAlpha or 0.9)
 	else
-		if Kit and Kit.pieceNameOf[bg] then
-			Kit.pieceOf[bg], Kit.pieceNameOf[bg], Kit.backgroundOf[bg] = nil, nil, nil
+		local was = SM.Unlay(bg)
+		if (Kit and Kit.pieceNameOf[bg]) or was then
+			if Kit then
+				Kit.pieceOf[bg], Kit.pieceNameOf[bg], Kit.backgroundOf[bg] = nil, nil, nil
+			end
 			bg:SetTexture(WHITE)
 			bg:SetTexCoord(0, 1, 0, 1)
 		end
