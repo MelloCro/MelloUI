@@ -812,6 +812,7 @@ default; its settings on **Unit & Group Frames**' **Personal** frame):
   character. **Big Cooldown Size** (Layout, 12 to 40, 16 by default) sizes the icons; their seconds keep the
   display's text size.
 - **Tracked Spells** (2.1.24, Big Cooldowns' tab): your class's short spells that can land on you, from the game's own spell data -- the heals over time, the shields, the defensives others give you and the debuffs they leave (Weakened Soul after Power Word: Shield, Forbearance after Divine Shield); Big Cooldowns' own spells are not in it. Tick the ones you want (none at first): while one lasts on you, its icon shows in a row under the bars (under the cast bar's place, so a cast never covers it), the oldest on the left, in Big Cooldowns' look at a little under their size, with its seconds. Your own cast on yourself shows at once with its time from the data; out of a fight one someone else puts on you shows too, with its own time (in a fight the game hides those from addons).
+- **Track By Name** (2.1.26, under Tracked Spells): any buff or debuff on you by its name, for the spells the list can't know (a talent's proc the server adds, like Fingers of Frost). Type its name or spell ID and press **+ Add** (a spell ID is kept as its name); each name has its row with **Remove**. While an aura of that name lasts on you, it shows in the Tracked Spells row with its own time; an aura with no time of its own (a form, a stance) does not. Out of a fight the game always tells it; in a fight only for the spells it doesn't hide from addons, so a hidden one shows only out of a fight (or ends at its time when it goes in one).
 - **Hide The Game's Cast Bar** (on): your casts show on the display only. **Heal Light From Your Character** (on,
   with Heal Effects): a heal's light gathers at your character's middle and flies from there to your party or raid
   frames.
@@ -1722,8 +1723,10 @@ the item there and it always goes under that kind; drop it on its own kind's **+
 under its row. It takes the items you drop on its **+** slot, and the ones its rule matches: an
 **Item Type** and **Subtype**, a word the name contains (**Name Contains**) and a **Quality** (one, or
 Uncommon, Rare or Epic or better); every part you set must hold, and with none set it takes only what
-you drop on it. Own kinds take their items before the game's kinds (after Recent and the items you
-placed), the higher on the list first. Every kind, the game's and your own, can be renamed: double-click
+you drop on it. **Add Rule** (2.1.26) gives it another rule, with the same four parts: an item matching
+any one of its rules goes in the kind (one Profession Tool kind for Weapon > Miscellaneous and Weapon >
+Fishing Poles); with several, each rule has its heading and **Remove Rule**. Own kinds take their items
+before the game's kinds (after Recent and the items you placed), the higher on the list first. Every kind, the game's and your own, can be renamed: double-click
 its name, or type it in its settings (the cog on its row). There each kind also has **Split By Type**:
 its items under a heading for each item type, in its place (Consumable into Potion, Elixir, Food &
 Drink ... in the game's own words; Trade Goods into Cloth, Leather, Metal & Stone, Herbs ..., as
@@ -1733,6 +1736,12 @@ kinds). **Recent Lasts**: until the bags close, until you hover the item, or for
 Layout section: **Columns** (8 to 16 slots across), **Item Size**
 (30 to 46, the game's own is 37), **Fold Empty Slots** (off: every empty slot shows) and **Sort
 Items By**: quality, name, newest first (the order you picked them up in) or item level.
+
+**Special Bags** (2.1.26, on; Windows, the Bags pick, Look): an item in a special bag (a mining bag, an
+herb bag, an ammo pouch, a quiver, a soul bag ...) wears that bag type's colour, a rim round its slot and
+a mark in its bottom-left corner (in Oldschool the painted rim itself takes the colour), and so does that
+bag's free slot under Empty. The window's foot lists your special bags, each in its colour with how
+many of its slots are filled ("Mining Sack 4/4"). The bank's special bags show their colour too.
 
 **Bank by Kind** (0.21.1, on; Windows, the Bank pick, General): your bank in the same kinds, inside the game's
 bank window, where its grid stood: the Kinds list's order, lines and groups, your own kinds and their rules,

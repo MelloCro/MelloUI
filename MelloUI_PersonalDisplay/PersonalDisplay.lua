@@ -157,6 +157,13 @@ local TEXT = {
 	trackBuff = "Buff, %g s",
 	trackDebuff = "Debuff, %g s",
 	trackNone = "Your class has no short spells to track here.",
+	-- (2.1.26, Track By Name's rows)
+	trackNameLabel = "Add by name",
+	trackNameTip = "a buff or debuff on you",
+	trackNameHint = "Spell name or ID",
+	trackNameAdd = "+ Add",
+	trackNameRemove = "Remove",
+	trackNamed = "by its name",
 }
 -- Preview's made-up shield (plain amounts) and casts, on the solo scene's beats (Core/Preview.lua: pull, hit 1..12,
 -- kill): the shield up at the pull, drained hit by hit to low, broken at the sixth; a heal cast; a second shield
@@ -4513,20 +4520,20 @@ local function Picked()
 end
 
 local function TrackOn()
-	return On() and Picked() ~= nil and not S.preview
+	return On() and (Picked() ~= nil or Track.Names() ~= nil) and not S.preview
 end
 
 -- one up (again: its time from now). `secs` its length, `ends` its end when the game told it, `aura` its instance
 function Track.Up(row, secs, ends, aura)
-	local spell, now = row[1], GetTime()
+	local spell, now, byName = row[1], GetTime(), row.byName
 	local entry
 	for _, e in ipairs(S.cds) do
-		if e.row == "track" and e.spell == spell and not e.leaving then
+		if e.row == "track" and not e.leaving and e.byName == byName and (byName or e.spell == spell) then
 			entry = e
 		end
 	end
 	if not entry then
-		entry = { spell = spell, row = "track" }
+		entry = { spell = spell, row = "track", byName = byName }   -- (byName: Track By Name's, its name lowered)
 		S.cds[#S.cds + 1] = entry
 	end
 	local dur = secs and secs > 0 and secs or row[3]
@@ -4566,7 +4573,7 @@ function Track.Aura(info)
 		return
 	end
 	Track.List()
-	local picked, wait, now = Picked(), S.trackWait, GetTime()
+	local picked, wait, now = Picked() or Track.NONE, S.trackWait, GetTime()
 	local waiting = wait.spell and now - wait.at <= T.trackLink
 	local added, changed = info.addedAuras, false
 	if Secret(added) then
@@ -4590,6 +4597,9 @@ function Track.Aura(info)
 		end
 		wait.spell = nil   -- (the list told what landed: a cast on someone else puts nothing here)
 	end
+	if Track.Names() and Track.ByName() then
+		changed = true
+	end
 	if changed then
 		Cds.Refresh()
 	end
@@ -4600,10 +4610,22 @@ function Track.Changed()
 	local picked = Picked()
 	local gone = false
 	for _, e in ipairs(S.cds) do
-		if e.row == "track" and not e.leaving and not (picked and picked[e.spell]) then
-			Cds.End(e)
-			gone = true
+		if e.row == "track" and not e.leaving then
+			local keep
+			if e.byName then
+				keep = Track.HasName(e.byName)
+			else
+				keep = picked and picked[e.spell]
+			end
+			if not keep then
+				Cds.End(e)
+				gone = true
+			end
 		end
+	end
+	-- (a name just added: one already on you shows now)
+	if TrackOn() and Track.Names() and Track.ByName() then
+		gone = true
 	end
 	if gone then
 		Cds.Refresh()
@@ -4645,6 +4667,209 @@ function Track.Build(canvas)
 		local box = W.IconBox(r, ROW_ICON, SpellIcon(spell))
 		box:SetPoint("LEFT", r, "LEFT", 12, 0)
 	end
+end
+
+--------------------------------------------------------------------------------
+-- Track By Name (2.1.26; Naz on Discord: Fingers of Frost, a talent Forever's server adds, which the client's own
+-- spell data -- Tracked Spells' list -- never holds; the user: "Track by name"). The names you add (db.trackNames, as
+-- typed; a spell ID typed is kept as its spell's name) show in Tracked Spells' row while an aura of that name lasts on
+-- you, a buff or a debuff, with its own time. Each aura update of yours asks the game for an aura of each name
+-- (C_UnitAuras.GetAuraDataBySpellName): out of a fight it always answers; in one only for the spells it flags as never
+-- secret, the rest answer nothing -- so nothing there ends one either, unless that name has been told in a fight
+-- before (S.trackPlain: then nothing is its going), its time ends it otherwise. An aura with no time of its own (a
+-- stance, a form) is not shown: the row is for what wears off. A ticked spell of the list showing the same aura wins.
+--------------------------------------------------------------------------------
+Track.NONE = {}   -- (an empty list, read only)
+Track.FILTERS = { "HELPFUL", "HARMFUL" }
+
+-- the names added, as typed (nil while none is)
+function Track.Names()
+	local t = Db().trackNames
+	return (type(t) == "table" and #t > 0) and t or nil
+end
+
+function Track.HasName(key)
+	for _, name in ipairs(Track.Names() or Track.NONE) do
+		if type(name) == "string" and name:lower() == key then
+			return true
+		end
+	end
+	return false
+end
+
+-- an aura of that name on you, read plain: its data and its kind ("b" a buff, "d" a debuff) -- nil while the game
+-- tells none (none there, or a secret one in a fight)
+function Track.Find(name)
+	local api = _G.C_UnitAuras
+	local get = api and api.GetAuraDataBySpellName
+	if type(get) ~= "function" then
+		return nil
+	end
+	for i = 1, #Track.FILTERS do
+		local ok, aura = pcall(get, "player", name, Track.FILTERS[i])
+		if ok and type(aura) == "table" and not Secret(aura) and PlainNum(aura.spellId) then
+			return aura, i == 1 and "b" or "d"
+		end
+	end
+	return nil
+end
+
+-- every name asked: up (new, or its end moved), or ended when the game said plainly it is gone; true when the row
+-- changed
+function Track.ByName()
+	Track.List()
+	S.trackNameRows = S.trackNameRows or {}
+	S.trackPlain = S.trackPlain or {}
+	local picked, fight, changed = Picked() or Track.NONE, InCombatLockdown(), false
+	for _, name in ipairs(Track.Names() or Track.NONE) do
+		if type(name) == "string" and name ~= "" then
+			local key = name:lower()
+			local aura, kind = Track.Find(name)
+			local spell = aura and PlainNum(aura.spellId)
+			local dur, ends = aura and PlainNum(aura.duration), aura and PlainNum(aura.expirationTime)
+			local listed = spell and S.trackByAura[spell]
+			if fight and aura then
+				S.trackPlain[key] = true
+			end
+			local entry
+			for _, e in ipairs(S.cds) do
+				if e.row == "track" and e.byName == key and not e.leaving then
+					entry = e
+				end
+			end
+			if aura and dur and dur > 0 and ends and not (listed and picked[listed[1]]) then
+				local id = PlainNum(aura.auraInstanceID)
+				if not (entry and math.abs(entry.ends - ends) < 0.05 and entry.aura == id) then
+					local row = S.trackNameRows[key] or { byName = key }
+					S.trackNameRows[key] = row
+					row[1], row[2], row[3] = spell, kind, dur
+					Track.Up(row, dur, ends, id)
+					changed = true
+				end
+			elseif entry and not aura and (not fight or S.trackPlain[key]) then
+				Cds.End(entry)
+				changed = true
+			end
+		end
+	end
+	return changed
+end
+
+-- a typed name or spell ID: the name kept (an ID's spell name; a name as typed), nil when nothing was typed or the
+-- name is in the list already
+function Track.Resolve(typed)
+	typed = type(typed) == "string" and typed:gsub("^%s+", ""):gsub("%s+$", "") or ""
+	if typed == "" then
+		return nil
+	end
+	local id = tonumber(typed)
+	if id then
+		local api = _G.C_Spell
+		local ok, name = false, nil
+		if api and api.GetSpellName then
+			ok, name = pcall(api.GetSpellName, id)
+		end
+		typed = (ok and type(name) == "string" and not Secret(name) and name ~= "") and name or typed
+	end
+	if Track.HasName(typed:lower()) then
+		return nil
+	end
+	return typed
+end
+
+function Track.SaveNames(list)
+	MelloUI:NotifySettingChanged("PersonalDisplay", "trackNames", #list > 0 and list or nil)
+end
+
+function Track.AddName(typed)
+	local name = Track.Resolve(typed)
+	if not name then
+		return false
+	end
+	local list = {}
+	for _, n in ipairs(Track.Names() or Track.NONE) do
+		list[#list + 1] = n
+	end
+	list[#list + 1] = name
+	Track.SaveNames(list)
+	return true
+end
+
+function Track.RemoveName(i)
+	local list = {}
+	for j, n in ipairs(Track.Names() or Track.NONE) do
+		if j ~= i then
+			list[#list + 1] = n
+		end
+	end
+	Track.SaveNames(list)
+end
+
+-- (the option: its rows on the page) the box to add a name, then a row per name with its picture and Remove
+function Track.NamesHeight()
+	return (1 + #(Track.Names() or Track.NONE)) * W.ROW_HEIGHT
+end
+
+function Track.BuildNames(canvas)
+	local row = W.Row(canvas, 0, W.ROW_HEIGHT, TEXT.trackNameLabel, TEXT.trackNameTip, nil)
+	local box = CreateFrame("EditBox", nil, row)
+	box:SetSize(150, 20)
+	box:SetAutoFocus(false)
+	box:SetFontObject("MelloUIFont_GameFontHighlightSmall")
+	box:SetTextInsets(4, 4, 0, 0)
+	box:SetMaxLetters(64)
+	W.FlatField(box)
+	local hint = W.Text(box, "GameFontHighlightSmall", W.Tr(TEXT.trackNameHint), "text")
+	hint:SetPoint("LEFT", box, "LEFT", 4, 0)
+	local add = W.Button(row, W.Tr(TEXT.trackNameAdd), 56, nil, { height = 20 })
+	add:SetPoint("RIGHT", row, "RIGHT", -12, 0)
+	box:SetPoint("RIGHT", add, "LEFT", -4, 0)
+	local function Add()
+		if Track.AddName(box:GetText()) then
+			box:SetText("")
+			box:ClearFocus()
+			Track.LayNames(canvas)
+		end
+	end
+	box:SetScript("OnTextChanged", function(self)
+		hint:SetShown(self:GetText() == "")
+	end)
+	box:SetScript("OnEscapePressed", function(self)
+		self:ClearFocus()
+	end)
+	box:SetScript("OnEnterPressed", Add)
+	add:HookScript("OnClick", Add)
+	canvas.trackBox, canvas.trackRows = box, {}
+	Track.LayNames(canvas)
+end
+
+-- the names' rows laid again (made as many as there are names, kept), the canvas's height with them
+function Track.LayNames(canvas)
+	local names = Track.Names() or Track.NONE
+	local rows = canvas.trackRows
+	for i, name in ipairs(names) do
+		local r = rows[i]
+		if not r then
+			r = W.Row(canvas, i * W.ROW_HEIGHT, W.ROW_HEIGHT, name, W.Tr(TEXT.trackNamed), nil, { indent = ROW_ICON + 6 })
+			r.icon = W.IconBox(r, ROW_ICON, nil)
+			r.icon:SetPoint("LEFT", r, "LEFT", 12, 0)
+			r.remove = W.Button(r, W.Tr(TEXT.trackNameRemove), 70, nil, { height = 20 })
+			r.remove:SetPoint("RIGHT", r, "RIGHT", -12, 0)
+			r.remove:HookScript("OnClick", function()
+				Track.RemoveName(r.index)
+				Track.LayNames(canvas)
+			end)
+			rows[i] = r
+		end
+		r.index = i
+		r.label:SetText(name)
+		r.icon:SetIcon(SpellIcon(name))
+		r:Show()
+	end
+	for i = #names + 1, #rows do
+		rows[i]:Hide()
+	end
+	W.CanvasHeight(canvas, Track.NamesHeight())
 end
 
 -- (0.21.0, the user 2026-10-12: "the swing timer needs to hide if im using the new ones") the game's own swing timers
@@ -5026,6 +5251,17 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "Tick your class's spells to see them in a row under the bars while they last on you, each with its seconds. Nothing is ticked at first.",
 		  build = function(canvas)
 			Track.Build(canvas)
+		  end },
+		-- (2.1.26; Naz on Discord: Fingers of Frost, a talent Forever's server adds -- the client's own spell data, the
+		-- list above, never holds it; the user: "Track by name") any buff or debuff on you, by its name
+		{ type = "canvas", key = "trackNames", name = "Track By Name", new = "2.1.26",
+		  heightAt = function()
+			return Track.NamesHeight()
+		  end,
+		  search = "track tracked name spell buff debuff proc talent fingers of frost custom own add",
+		  desc = "Type a buff or debuff's name (or its spell ID) to see it in the Tracked Spells row while it lasts on you, like a talent's proc. In a fight the game tells only some spells; those it keeps hidden show out of a fight.",
+		  build = function(canvas)
+			Track.BuildNames(canvas)
 		  end },
 		{ type = "toggle", key = "text", name = "Percent And Spell Text",
 		  desc = "Health and power percent, spell names and times." },
@@ -5436,7 +5672,7 @@ function M:OnSettingChanged(key, _, db)
 		if not CdsOn() then
 			Cds.Off("cd")   -- (2.1.24: Tracked Spells' row stays)
 		end
-	elseif key == "tracked" then
+	elseif key == "tracked" or key == "trackNames" then
 		Track.Changed()
 	elseif key == "cdSize" then
 		Cds.Icons()

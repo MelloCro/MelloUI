@@ -226,18 +226,6 @@ local LIGHT = { 1, 0.5 }                             -- the copies' strengths (t
 local lights = setmetatable({}, { __mode = "k" })   -- [rim] = its light copies
 local tinted = setmetatable({}, { __mode = "k" })   -- [rim] = true while it wears a bag type's colour
 local familyOf = {}                                -- [bag ID] = its type's colour this layout (false: none)
-local familyBits = nil                             -- the bag types, lowest bit first (listed at the first read)
-
-local function FamilyBits()
-	if not familyBits then
-		familyBits = {}
-		for bitValue in pairs(MelloUI.Meaning.bagFamily) do
-			familyBits[#familyBits + 1] = bitValue
-		end
-		table.sort(familyBits)
-	end
-	return familyBits
-end
 
 local function BagColour(bag)
 	if not bag or bag == 0 then
@@ -249,17 +237,8 @@ local function BagColour(bag)
 		local C = C_Container
 		if C and C.GetContainerNumFreeSlots then
 			local ok, _, family = pcall(C.GetContainerNumFreeSlots, bag)
-			family = ok and SafeNumber(family) or nil
-			if family and family > 0 then
-				local bits = FamilyBits()
-				for i = 1, #bits do
-					local b = bits[i]
-					if bit.band(family, b) ~= 0 then
-						c = MelloUI.Meaning.bagFamily[b]
-						break
-					end
-				end
-			end
+			-- (2.1.26: the one reading of a bag type's colour, Core's, the bag window's Special Bags too)
+			c = MelloUI.BagTypeColour(ok and SafeNumber(family) or nil) or false
 		end
 		familyOf[bag] = c
 	end
@@ -419,6 +398,12 @@ function M:DressSlots(buttons, count, pitch)
 	end
 	DressButtons(buttons, count, pitch)
 	return true
+end
+
+-- (2.1.26) whether the dressed slots wear their bag type's colour on the kit's rim (TintSlot): the bag window's
+-- Special Bags then leaves the rim to it and adds only its corner mark
+function M:TintsSlots()
+	return (active and skin) and true or false
 end
 
 -- The Window Background as saved, read whether this module is on or off (0.19.4, the options audit): the bag window

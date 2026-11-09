@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.26
+
+- Bags: items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are.
+- Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles).
+- Personal Display: Track By Name (Big Cooldowns' tab): type any buff or debuff, like Fingers of Frost, to see it in the Tracked Spells row while it lasts on you.
+
 ## 2.1.25
 
 - Bags: items in MelloUI's bag window no longer get blocked with "MelloUI took an action reserved for the Blizzard UI": its item buttons are never made during a fight.

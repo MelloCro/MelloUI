@@ -101,7 +101,7 @@ M = MelloUI:RegisterModule("BagWindow", {
 	enabledByDefault = true,
 	keep = { "seen", "seenN" },   -- (1.2.4, pr-01's G1) the player's own record of the items seen: never in a profile
 	defaults = { recentFor = "close", columns = 10, itemSize = 37, foldEmpty = true, sortBy = "quality", bank = true,
-		lootFlight = true, itemsGlide = true, moneyRoll = true, fullWarning = true },
+		lootFlight = true, itemsGlide = true, moneyRoll = true, fullWarning = true, specialBags = true },
 	options = {
 		-- (0.20.4; the user, 2026-10-11: "the categories have a priority, whats shown on top ... most people have their
 		-- hearthstone on top", look A of bag_kinds_sketch: the kinds in the player's order, lines and groups among them,
@@ -135,6 +135,12 @@ M = MelloUI:RegisterModule("BagWindow", {
 		  desc = "The size of the item slots. 37 is the game's size." },
 		{ type = "toggle", key = "foldEmpty", name = "Fold Empty Slots",
 		  desc = "All empty slots shown as one, with their count." },
+		-- (2.1.26; Nixxen in feature-requests: "it would be nice to see which items were currently in that bag", the
+		-- user's pick 1B of BuildData/output/bag_special_kinds_sketch) a special bag's slots in its colour, the bags at
+		-- the window's foot
+		{ type = "toggle", key = "specialBags", name = "Special Bags", new = "2.1.26",
+		  search = "special bag profession mining herb ammo pouch quiver soul shard enchanting colour color",
+		  desc = "Items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are." },
 		{ type = "dropdown", key = "sortBy", name = "Sort Items By", values = SORT_BY,
 		  desc = "How items are ordered inside each kind." },
 		-- (0.21.3; the user, 2026-10-13: "Yes to all" to the animation previews, and "more impactfull animations
@@ -242,6 +248,13 @@ local TEXT = {
 	splitTip = "a heading for each item type",
 	takes = "Takes",
 	takesTip = "what matches all of these (none set: only what you drop on it)",
+	-- (2.1.26) several rules in one kind
+	takesAny = "what matches any one of these rules (all of a rule's fields)",
+	rule = "Rule %d",
+	addRule = "Add Rule",
+	removeRule = "Remove Rule",
+	-- (2.1.26) Special Bags: a bag the game gives no name
+	specialBag = "Special bag",
 	itemType = "Item Type",
 	subtype = "Subtype",
 	nameHas = "Name Contains",
@@ -487,18 +500,30 @@ local function ReadOrder()
 end
 M.ReadOrder = ReadOrder   -- (the tests)
 
--- (0.21.1) the own kinds with a rule, in the list's order (one table, reused): what KindOf asks
+-- (0.21.1) the own kinds' rules, in the list's order (one table, reused): what KindOf asks. (2.1.26, Nixxen: "add
+-- multiple filters to one kind"; the user's pick 2A of bag_special_kinds_sketch) a kind may hold several: its first
+-- in its own fields, the others in its `more` ({ class, subclass, nameHas, quality } each); an item matching any one
+-- is the kind's, a rule with nothing set takes nothing
 local rules = {}
 local function Rules()
 	local n = 0
 	for _, v in ipairs(ReadOrder()) do
 		local o = Own(v)
-		local has = o and type(o.nameHas) == "string" and o.nameHas:match("%S") and o.nameHas:lower() or nil
-		if o and (Num(o.class) or Num(o.subclass) or has or Num(o.quality)) then
-			n = n + 1
-			local r = rules[n] or {}
-			rules[n] = r
-			r.key, r.class, r.subclass, r.quality, r.nameHas = v, Num(o.class), Num(o.subclass), Num(o.quality), has
+		local more = o and type(o.more) == "table" and o.more or nil
+		for i = 0, more and #more or 0 do
+			local src = o
+			if i > 0 then
+				src = more[i]
+			end
+			local has = type(src) == "table" and type(src.nameHas) == "string" and src.nameHas:match("%S")
+				and src.nameHas:lower() or nil
+			if type(src) == "table" and (Num(src.class) or Num(src.subclass) or has or Num(src.quality)) then
+				n = n + 1
+				local r = rules[n] or {}
+				rules[n] = r
+				r.key, r.class, r.subclass, r.quality, r.nameHas = v, Num(src.class), Num(src.subclass),
+					Num(src.quality), has
+			end
 		end
 	end
 	for i = #rules, n + 1, -1 do
@@ -539,6 +564,7 @@ end
 --------------------------------------------------------------------------------
 
 local win = { tab = "bags" }   -- the window's parts (made on the first open); tab: the side tab shown ("reagent": the Reagent Bag)
+local SB = {}   -- (2.1.26) Special Bags: a special bag's slots in its colour, the bags at the foot (set below, The item buttons)
 -- (0.22.1) the window's motion (Items Glide, Rolling Money, Bags Full Warning; previews round 2): each button's last laid
 -- place in the content [b] = { x, y }, the rest set with its code below (the end of this file)
 local Move = { at = setmetatable({}, { __mode = "k" }), GLIDE = 0.3, POP = 0.25, TAB = 0.18 }
@@ -556,11 +582,14 @@ local RECENT_MINUTES = 5
 --   made, undressed  every button made, in order, and how many since the last dressing; entries, nEntries the items
 --   read; byKind [kind] = its entries; empties, nEmpties the free slots shown; junkWorth (copper; nil while an item's
 --   price is not known yet); parts [split kind] = its parts this layout; headings, folds [kind]; groupHeads [group];
---   lines, pluses (made as many as a layout lays); stamp (a layout's); holding (an item held at its last layout)
+--   lines, pluses (made as many as a layout lays); stamp (a layout's); holding (an item held at its last layout);
+--   bagColour [bag] = a special bag's colour this read (false: a normal bag), special / nSpecial its special bags
+--   ({ bag, colour, used, slots }, 2.1.26)
 local function NewView(name, containers, recent)
 	local v = { name = name, containers = containers, recent = recent, holders = {}, slots = {}, made = {},
 		undressed = 0, entries = {}, nEntries = 0, byKind = {}, empties = {}, nEmpties = 0, junkWorth = 0, parts = {},
-		headings = {}, folds = {}, groupHeads = {}, lines = {}, pluses = {}, dressedPitch = nil, stamp = 0, holding = false }
+		headings = {}, folds = {}, groupHeads = {}, lines = {}, pluses = {}, dressedPitch = nil, stamp = 0, holding = false,
+		bagColour = {}, special = {}, nSpecial = 0 }   -- (2.1.26, Special Bags: SB)
 	for _, k in ipairs(KINDS) do
 		v.byKind[k.key] = {}
 	end
@@ -790,6 +819,9 @@ local function ReadBags()
 		wipe(list)
 	end
 	readStamp = readStamp + 1
+	wipe(S.bagColour)
+	S.nSpecial = 0
+	SB.kit = SB.KitTints()
 	local normalFree, normalBag, normalSlot = 0, nil, nil
 	wipe(familyFree)
 	wipe(familyBag)
@@ -809,10 +841,15 @@ local function ReadBags()
 			local ok, _, fam = pcall(C.GetContainerNumFreeSlots, bag)
 			family = ok and Num(fam) or 0
 		end
+		-- (2.1.26) Special Bags: the bag's colour by its type (never the Reagent Bag's), its items counted
+		local colour = bag ~= G.REAGENT and SB.On() and MelloUI.BagTypeColour(family) or false
+		S.bagColour[bag] = colour
+		local used = 0
 		for slot = 1, n do
 			local info = C.GetContainerItemInfo(bag, slot)
 			local itemID = info and Num(info.itemID)
 			if itemID then
+				used = used + 1
 				S.nEntries = S.nEntries + 1
 				local e = Entry(S.nEntries)
 				e.bag, e.slot, e.itemID, e.info = bag, slot, itemID, info
@@ -880,6 +917,12 @@ local function ReadBags()
 					familyBag[family], familySlot[family] = bag, slot
 				end
 			end
+		end
+		if colour then
+			S.nSpecial = S.nSpecial + 1
+			local sp = S.special[S.nSpecial] or {}
+			S.special[S.nSpecial] = sp
+			sp.bag, sp.colour, sp.used, sp.slots = bag, colour, used, n
 		end
 	end
 	local seen = M.db and type(M.db.seen) == "table" and M.db.seen or nil
@@ -1037,15 +1080,147 @@ local function Fill(b, e)
 	b:UpdateCooldown(texture)
 	b:SetReadable(info and info.isReadable)
 	b:SetMatchesSearch(not (info and info.isFiltered))
+	SB.Mark(b, e and e.bag)
 end
 
--- the free slots' button: empty, the number of free slots on it
-local function FillEmpty(b, free)
+-- the free slots' button: empty, the number of free slots on it; `bag` the one the slot is of (a special bag's free
+-- slots wear its colour)
+local function FillEmpty(b, free, bag)
 	Fill(b, nil)
+	SB.Mark(b, bag)
 	if free then
 		b.Count:SetText(free)
 		b.Count:Show()
 	end
+end
+
+-- (2.1.26; Nixxen in feature-requests: "it would be nice to see which items were currently in that bag", the user's
+-- pick 1B of BuildData/output/bag_special_kinds_sketch) Special Bags: a slot of a special bag (a mining bag, an herb
+-- bag, an ammo pouch, a quiver ...) wears its bag type's colour (MelloUI.BagTypeColour, Meaning.bagFamily) -- a rim
+-- round the slot (not while Oldschool's painted rims wear it: BackpackPanel:TintsSlots) and a mark in its
+-- bottom-left corner (the top-left one is the quality gem's, the bottom-right the count's), under the game's own dim
+-- (the search's, OVERLAY 4 and 5); the bags themselves at the window's foot with how full they are (SB.Key). The marks
+-- made the first time a slot sits in such a bag, kept in this file's table (nothing on the game's button)
+SB.marks = setmetatable({}, { __mode = "k" })   -- [button] = { edges = 4 textures, shade, corner, on }
+SB.RIM, SB.CORNER = 2, 0.3   -- the rim's width (the button's units); the corner mark's side, of the button's
+SB.WHITE = "Interface\\Buttons\\WHITE8X8"
+SB.parts = {}   -- the foot's text, a bag a part (reused)
+
+function SB.On()
+	return not (M.db and M.db.specialBags == false)
+end
+
+function SB.KitTints()
+	local panel = MelloUI:GetModule("BackpackPanel")
+	return panel and panel.TintsSlots and panel:TintsSlots() or false
+end
+
+-- a triangle in the slot's bottom-left corner: a square, its top-right corner laid on its top-left
+-- (SetVertexOffset, UPPER_RIGHT_VERTEX)
+function SB.Wedge(b, side, sub)
+	local t = b:CreateTexture(nil, "OVERLAY", nil, sub)
+	t:SetTexture(SB.WHITE)
+	t:SetSize(side, side)
+	t:SetPoint("BOTTOMLEFT", b, "BOTTOMLEFT", 0, 0)
+	if t.SetVertexOffset then
+		t:SetVertexOffset(3, -side, 0)
+	end
+	return t
+end
+
+function SB.Make(b)
+	local m = { edges = {} }
+	local e, r = m.edges, SB.RIM
+	for i = 1, 4 do
+		e[i] = b:CreateTexture(nil, "OVERLAY", nil, 1)
+		e[i]:SetTexture(SB.WHITE)
+	end
+	e[1]:SetPoint("TOPLEFT", b, "TOPLEFT", 0, 0)
+	e[1]:SetPoint("BOTTOMRIGHT", b, "TOPRIGHT", 0, -r)
+	e[2]:SetPoint("TOPLEFT", b, "BOTTOMLEFT", 0, r)
+	e[2]:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 0, 0)
+	e[3]:SetPoint("TOPLEFT", b, "TOPLEFT", 0, -r)
+	e[3]:SetPoint("BOTTOMRIGHT", b, "BOTTOMLEFT", r, r)
+	e[4]:SetPoint("TOPLEFT", b, "TOPRIGHT", -r, -r)
+	e[4]:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 0, r)
+	local side = math.floor(G.BASE * SB.CORNER + 0.5)
+	m.shade = SB.Wedge(b, side + 2, 2)   -- (a dark edge along the mark's long side)
+	W.Paint(m.shade, "innerPanel", "vertex", 0.85)
+	m.corner = SB.Wedge(b, side, 3)
+	return m
+end
+
+function SB.Mark(b, bag)
+	local c = bag and S.bagColour[bag] or false
+	local m = SB.marks[b]
+	if not c then
+		if m and m.on then
+			m.on = false
+			for i = 1, 4 do
+				m.edges[i]:Hide()
+			end
+			m.shade:Hide()
+			m.corner:Hide()
+		end
+		return
+	end
+	if not m then
+		m = SB.Make(b)
+		SB.marks[b] = m
+	end
+	m.on = true
+	local rim = not SB.kit
+	for i = 1, 4 do
+		local t = m.edges[i]
+		t:SetVertexColor(c[1], c[2], c[3])
+		t:SetShown(rim)
+	end
+	m.corner:SetVertexColor(c[1], c[2], c[3])
+	m.corner:Show()
+	m.shade:Show()
+end
+M.SpecialBags = SB   -- (the tests)
+
+-- the special bags at the window's foot, left of the money: each one's colour, its name, its items of its slots (the
+-- bags only, not the Reagent Bag's tab)
+function SB.Key()
+	local f, key = win.frame, win.specialKey
+	if win.tab == "reagent" or BAGS.nSpecial == 0 or not f then
+		if key then
+			key:Hide()
+		end
+		return
+	end
+	if not key then
+		key = W.Text(f, "GameFontHighlightSmall", "", "text")
+		key:SetJustifyH("LEFT")
+		key:SetWordWrap(false)
+		win.specialKey = key
+	end
+	wipe(SB.parts)
+	local C = C_Container
+	for i = 1, BAGS.nSpecial do
+		local sp = BAGS.special[i]
+		local c = sp.colour
+		local ok, name = pcall(C and C.GetBagName or error, sp.bag)
+		name = ok and MelloUI.Safe.Text(name) or nil
+		SB.parts[i] = ("|T%s:10:10:0:0:8:8:0:8:0:8:%d:%d:%d|t %s %d/%d"):format(SB.WHITE,
+			math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5), math.floor(c[3] * 255 + 0.5),
+			(name and name ~= "") and name or TEXT.specialBag, sp.used, sp.slots)
+	end
+	for i = #SB.parts, BAGS.nSpecial + 1, -1 do
+		SB.parts[i] = nil
+	end
+	key:SetText(table.concat(SB.parts, "    "))
+	key:ClearAllPoints()
+	if win.coins and win.coins:IsShown() then
+		key:SetPoint("LEFT", win.coins, "LEFT", 8, 0)
+	else
+		key:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", G.INSET, G.MONEY_Y_NOW)
+	end
+	local money = win.money and win.money:GetWidth() or 0
+	key:SetWidth(math.max(40, G.WIDTH - 2 * G.INSET - money - 16))
+	key:Show()
 end
 
 -- every button made since the last time dressed as the game's bag slots
@@ -1633,7 +1808,7 @@ local function LayKinds()
 						local e = S.empties[j]
 						local b = SlotButton(e.bag, e.slot)
 						if b then   -- (2.1.25: none made in a fight)
-							FillEmpty(b, e.free)
+							FillEmpty(b, e.free, e.bag)
 							Place(b, x + ((j - 1) % cols) * G.PITCH, y + G.HEAD + math.floor((j - 1) / cols) * G.PITCH)
 						end
 						h.free = h.free + (e.free or 1)
@@ -1716,6 +1891,7 @@ function M:Layout()
 	Move.Before()   -- (0.22.1: whether this layout glides)
 	local height = LayKinds()
 	Move.After()
+	SB.Key()
 	-- For 5 Minutes: laid out again as the first item leaves Recent (one
 	-- timer at a time, unless an earlier end comes)
 	if recentEnds and not (win.expiryAt and win.expiryAt <= recentEnds) then
@@ -3029,9 +3205,12 @@ local function KindRename(i, text)
 end
 
 -- (0.21.1, the user's pick 2A of bag_own_kinds_sketch) a kind's settings, opened under its row: its name; Split By
--- Type; an own kind's rule (an item type and subtype, a word in the name, a quality: all set must hold); the items
--- dropped on it, forgotten; an own kind removed. The controls made once on the list's holder, filled for the kind open
-local D = { LABEL_X = 12, FIELD_X = 150, ROW = 32, FIELD_W = 220 }   -- (one table: the file's locals)
+-- Type; an own kind's rule (an item type and subtype, a word in the name, a quality: all set must hold) -- since
+-- 2.1.26 its rules, Add Rule and Remove Rule (an item matching any one rule); the items dropped on it, forgotten; an
+-- own kind removed. The controls made once on the list's holder (a rule's as the kind first needs it), filled for the
+-- kind open
+local D = { LABEL_X = 12, FIELD_X = 150, ROW = 32, FIELD_W = 220, MAX_RULES = 8,   -- (one table: the file's locals)
+	FIELDS = { "class", "subclass", "nameHas", "quality" } }
 D.CLASSES = { 0, 1, 2, 4, 3, 5, 6, 7, 9, 11, 12, 13, 15 }   -- the item types an own kind may take (Enum.ItemClass)
 D.subValues = {}   -- [classID] = its subtypes' values, read on first need
 
@@ -3099,7 +3278,7 @@ D.BoxSave = Shared("OnEnterPressed / OnEditFocusLost in a bag kind's settings bo
 		SetName(key, text)
 	elseif Own(key) then
 		text = type(text) == "string" and text:gsub("^%s+", ""):gsub("%s+$", "") or ""
-		SetOwn(key, "nameHas", text ~= "" and text or nil)
+		D.SetRule(key, box.rule or 1, "nameHas", text ~= "" and text or nil)
 	end
 	box:ClearFocus()
 	box.saving = false
@@ -3131,10 +3310,120 @@ function D.Label(holder, text, font, key)
 	return W.Text(holder, font or "GameFontHighlight", text, key or "text")
 end
 
--- an own kind's rule field read (nil: not set)
-function D.Rule(key, field)
+-- an own kind's rule `i` (1, the first: the kind's own fields; the others its `more`), its field read (nil: not set)
+function D.RuleOf(key, i)
 	local o = Own(key)
-	return o and Num(o[field]) or nil
+	if not o or (i or 1) == 1 then
+		return o
+	end
+	local r = type(o.more) == "table" and o.more[i - 1] or nil
+	return type(r) == "table" and r or nil
+end
+
+function D.Rule(key, field, i)
+	local r = D.RuleOf(key, i)
+	return r and Num(r[field]) or nil
+end
+
+-- how many rules an own kind holds (at least its first)
+function D.Count(key)
+	local o = Own(key)
+	return 1 + (o and type(o.more) == "table" and #o.more or 0)
+end
+
+-- a rule's field (or two) set; a rule added (an empty one, under the others); a rule removed (the first: the second
+-- takes its place in the kind's own fields)
+function D.SetRule(key, i, field, value, field2, value2)
+	if (i or 1) == 1 then
+		return SetOwn(key, field, value, field2, value2)
+	end
+	local own = Copy(M.db.ownKinds)
+	local e = Copy(own[key])
+	local more = Copy(e.more)
+	local r = Copy(more[i - 1])
+	r[field] = value
+	if field2 then
+		r[field2] = value2
+	end
+	more[i - 1], e.more, own[key] = r, more, e
+	Save("ownKinds", own)
+end
+
+function D.AddRule(key)
+	local own = Copy(M.db.ownKinds)
+	local e = Copy(own[key])
+	local more = Copy(e.more)
+	more[#more + 1] = {}
+	e.more, own[key] = more, e
+	Save("ownKinds", own)
+end
+
+function D.RemoveRule(key, i)
+	local own = Copy(M.db.ownKinds)
+	local e = Copy(own[key])
+	local more = Copy(e.more)
+	if i == 1 then
+		local second = type(more[1]) == "table" and more[1] or ALL_ON
+		for _, f in ipairs(D.FIELDS) do
+			e[f] = second[f]
+		end
+		table.remove(more, 1)
+	elseif more[i - 1] then
+		table.remove(more, i - 1)
+	end
+	e.more = #more > 0 and more or nil
+	own[key] = e
+	Save("ownKinds", own)
+end
+M.AddRule, M.RemoveRule, M.SetRule = D.AddRule, D.RemoveRule, D.SetRule   -- (the tests)
+
+-- one rule's controls, made as the kind first needs them (the first's also c.type, c.sub, c.has, c.quality): its
+-- heading and Remove Rule (while the kind holds several), its item type, subtype, word in the name, quality
+function D.RuleSet(holder, c, i)
+	local s = c.rules[i]
+	if s then
+		return s
+	end
+	s = {}
+	s.head = D.Label(holder, TEXT.rule:format(i), "GameFontNormal", "selectedTrim")
+	s.drop = W.Button(holder, TEXT.removeRule, 110, nil, { height = 20, onClick = function()
+		MelloUI:PlayUISound("check_off")
+		D.RemoveRule(holder.key, i)
+		RefreshKinds()
+	end })
+	s.typeLabel = D.Label(holder, TEXT.itemType)
+	s.type = W.Dropdown(holder, D.FIELD_W, function()
+		return D.Rule(holder.key, "class", i) or -1
+	end, function(v)
+		v = Num(v)
+		D.SetRule(holder.key, i, "class", (v and v >= 0) and v or nil, "subclass", nil)
+		RefreshKinds()
+	end, D.Types())
+	s.subLabel = D.Label(holder, TEXT.subtype)
+	s.sub = W.Dropdown(holder, D.FIELD_W, function()
+		return D.Rule(holder.key, "subclass", i) or -1
+	end, function(v)
+		v = Num(v)
+		D.SetRule(holder.key, i, "subclass", (v and v >= 0) and v or nil)
+		RefreshKinds()
+	end, D.Subtypes(nil))
+	s.hasLabel = D.Label(holder, TEXT.nameHas)
+	s.has = D.Box(holder, "nameHas")
+	s.has.rule = i
+	s.qualityLabel = D.Label(holder, TEXT.quality)
+	s.quality = W.Dropdown(holder, 160, function()
+		return D.Rule(holder.key, "quality", i) or -1
+	end, function(v)
+		v = Num(v)
+		D.SetRule(holder.key, i, "quality", (v and v >= 0) and v or nil)
+		RefreshKinds()
+	end, D.Qualities())
+	s.parts = { s.head, s.drop, s.typeLabel, s.type, s.subLabel, s.sub, s.hasLabel, s.has, s.qualityLabel, s.quality }
+	c.rules[i] = s
+	if i == 1 then
+		c.type, c.sub, c.has, c.quality = s.type, s.sub, s.has, s.quality
+	end
+	return s
 end
 
 function D.Make(holder)
@@ -3154,32 +3443,13 @@ function D.Make(holder)
 	c.splitTip = D.Label(holder, TEXT.splitTip, "GameFontHighlightSmall")
 	c.takes = D.Label(holder, TEXT.takes, "GameFontNormal", "selectedTrim")
 	c.takesTip = D.Label(holder, TEXT.takesTip, "GameFontHighlightSmall")
-	c.typeLabel = D.Label(holder, TEXT.itemType)
-	c.type = W.Dropdown(holder, D.FIELD_W, function()
-		return D.Rule(holder.key, "class") or -1
-	end, function(v)
-		v = Num(v)
-		SetOwn(holder.key, "class", (v and v >= 0) and v or nil, "subclass", nil)
+	c.rules = {}
+	D.RuleSet(holder, c, 1)
+	c.addRule = W.Button(holder, TEXT.addRule, 110, nil, { onClick = function()
+		MelloUI:PlayUISound("check_on")
+		D.AddRule(holder.key)
 		RefreshKinds()
-	end, D.Types())
-	c.subLabel = D.Label(holder, TEXT.subtype)
-	c.sub = W.Dropdown(holder, D.FIELD_W, function()
-		return D.Rule(holder.key, "subclass") or -1
-	end, function(v)
-		v = Num(v)
-		SetOwn(holder.key, "subclass", (v and v >= 0) and v or nil)
-		RefreshKinds()
-	end, D.Subtypes(nil))
-	c.hasLabel = D.Label(holder, TEXT.nameHas)
-	c.has = D.Box(holder, "nameHas")
-	c.qualityLabel = D.Label(holder, TEXT.quality)
-	c.quality = W.Dropdown(holder, 160, function()
-		return D.Rule(holder.key, "quality") or -1
-	end, function(v)
-		v = Num(v)
-		SetOwn(holder.key, "quality", (v and v >= 0) and v or nil)
-		RefreshKinds()
-	end, D.Qualities())
+	end })
 	c.dropped = D.Label(holder, "")
 	c.forget = W.Button(holder, TEXT.forget, 110, nil, { onClick = function()
 		MelloUI:PlayUISound("check_off")
@@ -3210,7 +3480,12 @@ end
 
 function D.Rows(r)
 	local split, own, drops = D.Parts(r.id)
-	local px = 12 + D.ROW * (1 + (split and 1 or 0) + (own and 5 or 0) + (drops and 1 or 0))
+	local px = 12 + D.ROW * (1 + (split and 1 or 0) + (drops and 1 or 0))
+	if own then
+		-- Takes, each rule's four rows (and its heading while several), Add Rule
+		local n = D.Count(r.id)
+		px = px + D.ROW + n * 4 * D.ROW + (n > 1 and n * (D.ROW - 6) or 0) + D.ROW
+	end
 	return math.ceil((px + 6) / 26)
 end
 
@@ -3240,33 +3515,56 @@ function D.Fill(holder, r)
 		At(c.splitTip, D.FIELD_X, y + 6)
 		y = y + D.ROW
 	end
-	for _, part in ipairs({ c.takes, c.takesTip, c.typeLabel, c.type, c.subLabel, c.sub, c.hasLabel, c.has,
-		c.qualityLabel, c.quality, c.remove }) do
+	local nRules = own and D.Count(key) or 0
+	for _, part in ipairs({ c.takes, c.takesTip, c.addRule, c.remove }) do
 		part:SetShown(own)
 	end
+	for i, s in ipairs(c.rules) do
+		if i > nRules then
+			for _, part in ipairs(s.parts) do
+				part:Hide()
+			end
+		end
+	end
 	if own then
+		c.takesTip:SetText(nRules > 1 and TEXT.takesAny or TEXT.takesTip)
 		At(c.takes, D.LABEL_X, y + 4)
 		At(c.takesTip, D.LABEL_X + 60, y + 6)
 		y = y + D.ROW - 6
-		At(c.typeLabel, D.LABEL_X, y + 4)
-		At(c.type, D.FIELD_X, y)
-		c.type:Refresh()
-		y = y + D.ROW
-		At(c.subLabel, D.LABEL_X, y + 4)
-		At(c.sub, D.FIELD_X, y)
-		c.sub:SetValues(D.Subtypes(D.Rule(key, "class")))
-		c.sub:Refresh()
-		y = y + D.ROW
-		At(c.hasLabel, D.LABEL_X, y + 4)
-		At(c.has, D.FIELD_X, y)
-		if not c.has:HasFocus() then
-			local o = Own(key)
-			c.has:SetText(o and type(o.nameHas) == "string" and o.nameHas or "")
+		for i = 1, nRules do
+			local s = D.RuleSet(holder, c, i)
+			local several = nRules > 1
+			s.head:SetShown(several)
+			s.drop:SetShown(several)
+			if several then
+				y = y + 6
+				At(s.head, D.LABEL_X, y + 4)
+				At(s.drop, D.FIELD_X + D.FIELD_W - 110, y)
+				y = y + D.ROW - 12
+			end
+			At(s.typeLabel, D.LABEL_X, y + 4)
+			At(s.type, D.FIELD_X, y)
+			s.type:Refresh()
+			y = y + D.ROW
+			At(s.subLabel, D.LABEL_X, y + 4)
+			At(s.sub, D.FIELD_X, y)
+			s.sub:SetValues(D.Subtypes(D.Rule(key, "class", i)))
+			s.sub:Refresh()
+			y = y + D.ROW
+			At(s.hasLabel, D.LABEL_X, y + 4)
+			At(s.has, D.FIELD_X, y)
+			if not s.has:HasFocus() then
+				local rule = D.RuleOf(key, i)
+				s.has:SetText(rule and type(rule.nameHas) == "string" and rule.nameHas or "")
+			end
+			y = y + D.ROW
+			At(s.qualityLabel, D.LABEL_X, y + 4)
+			At(s.quality, D.FIELD_X, y)
+			s.quality:Refresh()
+			y = y + D.ROW
 		end
-		y = y + D.ROW
-		At(c.qualityLabel, D.LABEL_X, y + 4)
-		At(c.quality, D.FIELD_X, y)
-		c.quality:Refresh()
+		At(c.addRule, D.FIELD_X, y)
+		c.addRule:SetEnabled(nRules < D.MAX_RULES)
 		y = y + D.ROW + 6
 	end
 	c.dropped:SetShown(drops)

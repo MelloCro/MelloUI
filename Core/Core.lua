@@ -431,6 +431,30 @@ MelloUI.Meaning = {
 	-- MelloUI_GroupFrames/GroupButton.lua)
 	groupGrey = { 0.5, 0.5, 0.5, hex = "808080" },         -- (meaning colour)
 }
+-- (2.1.26) a special bag's colour by its bag type -- the family C_Container.GetContainerNumFreeSlots hands over, a
+-- plain number (the caller reads it safely) -- the lowest of its bits Meaning.bagFamily has; nil: a normal bag. The
+-- one reading for Oldschool's tinted rims and the bag window's Special Bags marks
+do
+	local bits   -- the bag types, lowest bit first (listed at the first read)
+	function MelloUI.BagTypeColour(family)
+		if type(family) ~= "number" or family <= 0 then
+			return nil
+		end
+		if not bits then
+			bits = {}
+			for b in pairs(MelloUI.Meaning.bagFamily) do
+				bits[#bits + 1] = b
+			end
+			table.sort(bits)
+		end
+		for i = 1, #bits do
+			if bit.band(family, bits[i]) ~= 0 then
+				return MelloUI.Meaning.bagFamily[bits[i]]
+			end
+		end
+		return nil
+	end
+end
 MelloUI.moduleOrder = {}
 
 local DB_VERSION = 1
