@@ -116,12 +116,12 @@ local M = MelloUI:RegisterModule("Auras", {
 		-- (2.1.30; the user, 2026-11-09: "First you enable them, then you can choose where to anchor them, Anchor to
 		-- Minimap, Anchor to UnitFrame or Free") one choice over Attach To The Minimap Column and Attach To The Player
 		-- Frame (their keys kept: read by `get`, written by OnSettingChanged)
-		{ type = "dropdown", key = "playerAnchor", name = "Anchor", new = "2.1.30",
+		{ type = "dropdown", key = "playerAnchor", name = "Anchor",
 		  values = { { value = "minimap", label = "Minimap" }, { value = "frame", label = "Unit Frame" },
 			{ value = "free", label = "Free" } },
 		  get = function(db) return AnchorOf(db) end,
 		  desc = "Where your buffs and debuffs stand. Minimap: beside the minimap, moving with it. Unit Frame: under your player frame. Free: anywhere, moved in Edit Layout." },
-		{ type = "button", name = "Move Them", text = "Edit Layout", new = "2.1.30",
+		{ type = "button", name = "Move Them", text = "Edit Layout",
 		  hint = "drag your buffs and debuffs",
 		  desc = "Opens Edit Layout, with your buffs and debuffs shown so you can drag them where you want.",
 		  onClick = function() MoveThem() end },
