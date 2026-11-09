@@ -5254,7 +5254,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  end },
 		-- (2.1.26; Naz on Discord: Fingers of Frost, a talent Forever's server adds -- the client's own spell data, the
 		-- list above, never holds it; the user: "Track by name") any buff or debuff on you, by its name
-		{ type = "canvas", key = "trackNames", name = "Track By Name", new = "2.1.26",
+		{ type = "canvas", key = "trackNames", name = "Track By Name",
 		  heightAt = function()
 			return Track.NamesHeight()
 		  end,

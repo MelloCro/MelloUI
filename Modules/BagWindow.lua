@@ -138,7 +138,7 @@ M = MelloUI:RegisterModule("BagWindow", {
 		-- (2.1.26; Nixxen in feature-requests: "it would be nice to see which items were currently in that bag", the
 		-- user's pick 1B of BuildData/output/bag_special_kinds_sketch) a special bag's slots in its colour, the bags at
 		-- the window's foot
-		{ type = "toggle", key = "specialBags", name = "Special Bags", new = "2.1.26",
+		{ type = "toggle", key = "specialBags", name = "Special Bags",
 		  search = "special bag profession mining herb ammo pouch quiver soul shard enchanting colour color",
 		  desc = "Items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are." },
 		{ type = "dropdown", key = "sortBy", name = "Sort Items By", values = SORT_BY,
