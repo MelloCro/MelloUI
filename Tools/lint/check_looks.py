@@ -140,8 +140,9 @@ ART_TOO = ["Core/GameLook.lua", "Core/Widgets.lua", "Modules/KitWindow.lua"]
 # MelloUI.Look's keys after stage E: onelook/lookcore K1's set (docs/plans/onelook-e-plans/E1v2.md: no AREA, On, Watch,
 # Hide, Show, Only, Pieces, Panel, Bar, GameFrame(Shown), GameBar(Parts), GameSwing(Parts), ColumnButton(Plate) ...)
 # (1.2.4, Dark Mode's one Brightness over MelloUI's own UI: SetDim / DimStamp, the palette's dimmed copy -- Palette's)
+# (2.1.31, Dark Mode never dims a tooltip's words: TipPalette, the palette undimmed for text on a tooltip -- Palette's)
 FINAL = ("Art", "ART", "Palette", "Text", "Tint", "RoleColour", "Colour", "Paint", "Unpaint", "Solid", "Mark", "Plate",
-         "Ring", "RingState", "Count", "CountShown", "ClassIcon", "Outline", "Shadow", "SetDim", "DimStamp")
+         "Ring", "RingState", "Count", "CountShown", "ClassIcon", "Outline", "Shadow", "SetDim", "DimStamp", "TipPalette")
 KEPT_ART = ("rareMark", "rareEliteMark")   # (the Rare Alert's crest: the game's own rank icons)
 DEAD_AREAS = ("own", "questTracker", "questList", "loot")   # (always on since stage C; their entries go in stage I)
 
