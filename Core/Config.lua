@@ -174,6 +174,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.36", lines = {
+		"Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed.",
+	} },
 	{ version = "2.1.35", lines = {
 		"Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan.",
 	} },
@@ -186,9 +189,6 @@ local CHANGELOG = {
 	{ version = "2.1.32", lines = {
 		"SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI.",
 		"Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames.",
-	} },
-	{ version = "2.1.31", lines = {
-		"Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest.",
 	} },
 }
 local LINKS = {

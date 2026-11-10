@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.36
+
+- Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed.
+
 ## 2.1.35
 
 - Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan.

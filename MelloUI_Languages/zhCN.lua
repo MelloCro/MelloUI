@@ -2315,12 +2315,12 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "地图：拖动右下角的手柄即可调整地图大小（旁边的任务日志保持原大小），拖动标题栏即可移动地图，无需编辑布局。", -- draft
 	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "小地图：当草药或矿石插件扫描小地图时，小地图旁的增益效果不再跳到屏幕边缘，扫描结束后小地图边框总会回来。", -- draft
 	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "小地图：使用扫描小地图的草药或矿石插件（如 NodeSight）时，MelloUI 的小地图边框不再跟随鼠标；每次扫描时它会随地图一起隐藏。", -- draft
 	["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool：当 CurseForge 先于 MelloUI_Oldschool 更新 MelloUI 时，手绘外观不再在更新后关闭；同一 2.1 系列的任何 Oldschool 都可使用。", -- draft
 	["SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI."] = "SharedMedia（测试功能：欢迎试用并告诉我们效果）：SharedMedia 材质包中的字体、条材质和背景会出现在 MelloUI 的列表中，包括在 MelloUI 之后加载的材质包。", -- draft
 	["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "鼠标提示：暗色背景新增边框选项：暗色、游戏自带、无，或 SharedMedia 边框。SharedMedia 背景可用于鼠标提示、聊天框以及小队和团队框体。", -- draft
-	["Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest."] = "暗色模式：鼠标提示的金色标题和提示保持清晰可读：地图上的城市和地下城、服务栏、提醒、任务追踪等等。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2912,6 +2912,7 @@ Lang:Add("zhCN", {
 -- stale: ["Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target."] = "单位框体上的暗色模式：玩家、目标、焦点、宠物、小队、首领和目标的目标。", -- draft
 -- stale: ["Dark Mode: parchment is no longer dimmed (the chat, the Quest Tracker, tooltips, windows and pages), so its dark ink stays readable."] = "暗色模式：羊皮纸不再被调暗（聊天、任务追踪器、鼠标提示、窗口和页面），深色墨水字迹保持清晰可读。", -- draft
 -- stale: ["Dark Mode: the map's tooltips stay readable, and the boat and zeppelin lines and quest areas on the map keep their colours."] = "暗色模式：地图的鼠标提示保持清晰可读，地图上的船只与飞艇航线以及任务区域保持原有颜色。", -- draft
+-- stale: ["Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest."] = "暗色模式：鼠标提示的金色标题和提示保持清晰可读：地图上的城市和地下城、服务栏、提醒、任务追踪等等。", -- draft
 -- stale: ["Dark mode"] = "暗色模式", -- draft
 -- stale: ["Darken the borders of your buff and debuff icons, with a thin dark edge round each icon (0.16.0: the Icon Border switch is part of this). The game's own icons: while Buffs & Debuffs shows MelloUI's rows in their place, there is nothing here to darken (those rows take the Aura Border)."] = "调暗你的增益和减益图标的边框，每个图标周围加一道细暗边（0.16.0：“图标边框”开关属于此项）。游戏自己的图标：当“增益和减益效果”用MelloUI的行代替它们时，这里没有要调暗的东西（那些行使用“光环边框”）。", -- draft
 -- stale: ["Darkens the Blizzard artwork of unit frames, cast bars, action bars, nameplates, cooldown manager, auras and menu bars."] = "调暗单位框体、施法条、动作条、姓名板、冷却管理器、光环和菜单栏的暴雪美术。", -- draft

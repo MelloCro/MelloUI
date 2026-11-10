@@ -71,6 +71,8 @@ local TEXT = {
 	title = "Map",
 	hint = "Wheel: zoom   Drag: look around   Click: in   Right-click: out   Middle-click: find me   Ctrl-click: your pin",
 	pinLabel = "Your pin",
+	grip = "Drag to size the map",
+	gripBody = "The quest log beside it keeps its size. Right-click: the standard size and place.",
 	pinNotice = "Route: to your pin",
 	pinNone = "The map cannot set a pin there: click on land.",
 	pinOff = "Turn on Route or the Quest List to set a pin on the map.",
@@ -111,10 +113,10 @@ M = MelloUI:RegisterModule("Map", {
 	flavour = "The whole world on one sheet, from the continents down to a village.",
 	group = "Quests and travel", navOrder = 4,
 	enabledByDefault = true,
-	defaults = { dungeonMaps = true },
+	defaults = { dungeonMaps = true, mapShare = false },
 	-- (1.0) the window's own state, the player's: where it looked, its quest log open and on which tab -- never in a
 	-- profile or the installer's Full (its layers and Tracked Only travel)
-	keep = { "view", "log", "logTab", "logMode" },
+	keep = { "view", "log", "logTab", "logMode", "mapShare" },
 	options = {
 		{ type = "button", name = TEXT.open, text = "Open",
 		  desc = "Opens MelloUI's map. Your map key (M) and /mellomap open it too.",
@@ -597,7 +599,10 @@ local function Size()
 	local sh = Finite(UIParent:GetHeight()) or 720
 	local LT = Log.T
 	local side = LT.GAP + LT.RAIL + LT.GAP + LT.W
-	local w = max(T.MIN_W, min(floor(sw * T.SHARE), floor(sw * T.WIDE) - 2 * T.PAD - side))
+	-- (2.1.36) the share the player sized it to with its grip, else SHARE
+	local own = M.db and Finite(M.db.mapShare)
+	local share = (own and own >= 0.15 and own <= T.WIDE) and own or T.SHARE
+	local w = max(T.MIN_W, min(floor(sw * share), floor(sw * T.WIDE) - 2 * T.PAD - side))
 	local rest = T.TOP + T.FOOT + T.PAD + 2 * T.IN
 	local h = floor((w - 2 * T.IN) * 668 / 1002) + rest
 	if h > sh * 0.9 then
@@ -656,6 +661,141 @@ local function Lay(sh)
 	win.edge = edge
 	Unfold(win.e or 0, true)
 end
+
+--------------------------------------------------------------------------------
+-- The map sized by its grip (2.1.36; the user, 2026-11-10, of a player on CurseForge: "is it possible to allow the
+-- map to be resized without having to open edit mode like adding a window resizer in the corner where you can drag it
+-- to make it bigger or smaller", "Resizing the map to be a smaller window also resizes the quest log to where it is
+-- difficult to read on an ultra wide display"): W.SizeGrip at the map's bottom-right corner. A drag sizes the MAP --
+-- its 3 : 2 kept, the window round it -- never the quest log's column beside it (Edit Layout's Size scales the whole
+-- window, the column with it); the size kept as a share of the screen's width (Size, mapShare), the window's top-left
+-- corner kept where it stands while the grip is held. Right-click: the standard size and place back. Bounds: MIN_W,
+-- the window with the column at most WIDE of the screen, 90 % of its height
+--------------------------------------------------------------------------------
+local Grip = { on = false, STEP = 2 }
+
+-- the least and the most map width
+function Grip.Bounds()
+	local sw = Finite(UIParent:GetWidth()) or 1280
+	local sh = Finite(UIParent:GetHeight()) or 720
+	local LT = Log.T
+	local side = LT.GAP + LT.RAIL + LT.GAP + LT.W
+	local rest = T.TOP + T.FOOT + T.PAD + 2 * T.IN
+	local most = floor(sw * T.WIDE) - 2 * T.PAD - side
+	local tallest = floor((sh * 0.9 - rest) * 1002 / 668) + 2 * T.IN
+	return T.MIN_W, max(T.MIN_W, min(most, tallest))
+end
+
+-- the map at width `w` (in bounds): the window's height from its 3 : 2, its width through Unfold (the column as it is)
+function Grip.Apply(w)
+	local lo, hi = Grip.Bounds()
+	w = floor(max(lo, min(hi, w)) + 0.5)
+	if w == win.mapW then
+		return
+	end
+	win.mapW = w
+	local rest = T.TOP + T.FOOT + T.PAD + 2 * T.IN
+	win.frame:SetHeight(floor((w - 2 * T.IN) * 668 / 1002) + rest)
+	win.body:SetWidth(w)
+	Unfold(win.e or 0, true)
+end
+
+-- the cursor in the window's own units
+function Grip.Cursor()
+	local x, y = GetCursorPosition()
+	local s = Finite(win.frame:GetEffectiveScale()) or 1
+	if s <= 0 then
+		s = 1
+	end
+	return (Finite(x) or 0) / s, (Finite(y) or 0) / s
+end
+
+-- the place kept through the mover's store (as its own title drag keeps it): measured, saved, hung by it again
+function Grip.Keep()
+	local entry = MelloUI:MoverEntry(win.frame)
+	if entry and entry.key ~= nil and MelloUI:SavePosition(entry.key, win.frame) then
+		MelloUI:RestorePosition(entry.key, win.frame)
+	end
+end
+
+-- the window hung by its top-left corner where it stands, so a drag at the bottom-right corner leaves the rest of it
+-- in place and the grip stays under the cursor; the most map width that keeps it on the screen from there
+function Grip.Pin()
+	local f = win.frame
+	local fs, us = Finite(f:GetEffectiveScale()), Finite(UIParent:GetEffectiveScale())
+	local l, t, r, b = Finite(f:GetLeft()), Finite(f:GetTop()), Finite(f:GetRight()), Finite(f:GetBottom())
+	local sw = Finite(UIParent:GetWidth())
+	if not (fs and us and l and t and r and b and sw) or fs <= 0 then
+		return nil
+	end
+	MelloUI:PlaceEntryAt(MelloUI:MoverEntry(win.frame), "TOPLEFT", UIParent, "BOTTOMLEFT", l, t)
+	local now = win.mapW or 0
+	return max(now, now + floor(min(sw * us / fs - r, b * 1002 / 668)))
+end
+
+-- while the grip is held (its OnUpdate, on only then): right and down make it bigger, whichever moved further
+function Grip.Follow(grip)
+	if not (Grip.on and IsMouseButtonDown("LeftButton")) then
+		Grip.Stop(grip)
+		return
+	end
+	local x, y = Grip.Cursor()
+	local dx, dy = x - Grip.x, (Grip.y - y) * 1002 / 668
+	local w = Grip.w + (math.abs(dx) >= math.abs(dy) and dx or dy)
+	if Grip.room then
+		w = min(w, Grip.room)
+	end
+	if math.abs(w - (Grip.last or 0)) >= Grip.STEP then
+		Grip.last = w
+		Grip.Apply(w)
+	end
+end
+
+function Grip.Stop(grip)
+	if not Grip.on then
+		return
+	end
+	Grip.on = false
+	Perf.SetScript(grip, "OnUpdate", nil)
+	local sw = Finite(UIParent:GetWidth())
+	if M.db and sw and sw > 0 and win.mapW then
+		M.db.mapShare = math.floor(win.mapW / sw * 10000 + 0.5) / 10000
+	end
+	Grip.Keep()
+end
+
+function Grip.Down(grip, button)
+	if InCombatLockdown() and win.frame:IsProtected() then
+		return
+	end
+	if button == "RightButton" then
+		if M.db then
+			M.db.mapShare = false
+		end
+		-- (and its standard place: the standard size seldom fits from where a smaller map was put)
+		local entry = MelloUI:MoverEntry(win.frame)
+		if entry and entry.key ~= nil then
+			MelloUI:ForgetPosition(entry.key)
+		end
+		Grip.Apply((Size()))
+		Home(win.frame)
+		MelloUI:PlayUISound("tick")
+		return
+	end
+	if button ~= "LeftButton" then
+		return
+	end
+	Grip.room = Grip.Pin()
+	Grip.on, Grip.w, Grip.last = true, win.mapW, win.mapW
+	Grip.x, Grip.y = Grip.Cursor()
+	Perf.SetScript(grip, "OnUpdate", Grip.Follow)
+end
+
+function Grip.Up(grip)
+	Grip.Stop(grip)
+end
+
+M.Grip = Grip   -- (read only: the tests)
 
 -- the view laid again on the canvas's size: the first one (the one kept, else your zone) the first time it has a
 -- size -- at the show, or at a later size change when the show came before the layout
@@ -811,7 +951,9 @@ local function Build()
 	win.shell = Kit:OwnWindow(f, {
 		area = "config", ring = { at = "tl", texture = ICON }, plate = "rail",
 		title = TEXT.title, close = true, escape = true, fit = true, sounds = true,
-		mover = { key = "MelloUIMap", label = TEXT.title, page = "Map", default = Home },
+		-- (2.1.36: dragged by its title bar at any time, Edit Layout not needed -- the player's "moveable on screen like
+		-- a window you can drag")
+		mover = { key = "MelloUIMap", label = TEXT.title, page = "Map", default = Home, plainDrag = "always" },
 	})
 	local body = W.Panel(f)
 	win.body = body
@@ -868,6 +1010,9 @@ local function Build()
 	win.name = name
 	ShowName(false)
 	HookCanvas(cf)
+	-- (2.1.36) the map's own size grip, in the bottom-right corner of the map (above the canvas and its pins)
+	win.grip = W.SizeGrip(body, { corner = "BOTTOMRIGHT", level = 30, tip = TEXT.grip, body = TEXT.gripBody,
+		onDown = Grip.Down, onUp = Grip.Up })
 	Dungeon.Init(win, HookCanvas)
 	Perf.HookScript(f, "OnShow", Shown)
 	Perf.HookScript(f, "OnHide", Hidden)

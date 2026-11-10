@@ -8718,6 +8718,83 @@ end
 
 -- W.PlusMark(tex, size, lit): the kit's gold plus glyph on a texture, lit under the mouse (0.20.4: the bag window's
 -- drop slots)
+-- W.SizeGrip(frame, opts) -> grip: the one corner grip a frame is sized by (2.1.36; the user, 2026-11-10, of a player on
+-- CurseForge: "is it possible to allow the map to be resized without having to open edit mode like adding a window
+-- resizer in the corner" -- lifted from the Quest Tracker's, 0.25.0): six dots in a triangle in its corner in the
+-- palette's trim, the selected gold under the pointer, a tooltip. opts: corner ("BOTTOMLEFT" | "BOTTOMRIGHT", the
+-- default), x, y (in from that corner, default 3), level (over `frame` by this, default 10), tip / body (the tooltip's
+-- title and line), anchor (its side, default ANCHOR_LEFT), onDown(grip, button) / onUp(grip, button). The sizing is the
+-- caller's (StartSizing, or a drag of its own). The handlers are shared: nothing made per grip but its frame and dots
+do
+	local DOTS = { { 2, 2 }, { 6, 2 }, { 10, 2 }, { 2, 6 }, { 6, 6 }, { 2, 10 } }
+	local grips = setmetatable({}, weakKeys)   -- [grip] = { dots, tip, body, anchor, onDown, onUp }
+
+	local function PaintGrip(g, key)
+		for _, dot in ipairs(g.dots) do
+			W.Paint(dot, key, "vertex", 1)
+		end
+	end
+	local GripEnter = Shared("OnEnter on MelloUI's size grips", function(self)
+		local g = grips[self]
+		if not g then
+			return
+		end
+		self:SetAlpha(1)
+		PaintGrip(g, "selectedTrim")
+		if g.tip then
+			W.ShowTooltip(self, g.tip, g.body, nil, g.anchor)
+		end
+	end, "script")
+	local GripLeave = Shared("OnLeave on MelloUI's size grips", function(self)
+		local g = grips[self]
+		if g then
+			self:SetAlpha(0.35)
+			PaintGrip(g, "trim")
+		end
+		GameTooltip:Hide()
+	end, "script")
+	local GripDown = Shared("OnMouseDown on MelloUI's size grips", function(self, button)
+		local g = grips[self]
+		if g and g.onDown then
+			g.onDown(self, button)
+		end
+	end, "script")
+	local GripUp = Shared("OnMouseUp on MelloUI's size grips", function(self, button)
+		local g = grips[self]
+		if g and g.onUp then
+			g.onUp(self, button)
+		end
+	end, "script")
+
+	function W.SizeGrip(frame, opts)
+		opts = opts or {}
+		local corner = opts.corner == "BOTTOMLEFT" and "BOTTOMLEFT" or "BOTTOMRIGHT"
+		local left = corner == "BOTTOMLEFT"
+		local grip = CreateFrame("Button", nil, frame)
+		grip:SetSize(16, 16)
+		local inX, inY = opts.x or 3, opts.y or 3
+		grip:SetPoint(corner, frame, corner, left and inX or -inX, inY)
+		grip:SetFrameLevel(frame:GetFrameLevel() + (opts.level or 10))
+		local g = { dots = {}, tip = opts.tip, body = opts.body, anchor = opts.anchor or "ANCHOR_LEFT",
+			onDown = opts.onDown, onUp = opts.onUp }
+		for _, d in ipairs(DOTS) do
+			local dot = grip:CreateTexture(nil, "OVERLAY")
+			dot:SetTexture(WHITE)
+			dot:SetSize(2, 2)
+			dot:SetPoint(corner, grip, corner, left and d[1] or -d[1], d[2])
+			g.dots[#g.dots + 1] = dot
+		end
+		grips[grip] = g
+		PaintGrip(g, "trim")
+		grip:SetAlpha(0.35)
+		Perf.SetScript(grip, "OnEnter", GripEnter)
+		Perf.SetScript(grip, "OnLeave", GripLeave)
+		Perf.SetScript(grip, "OnMouseDown", GripDown)
+		Perf.SetScript(grip, "OnMouseUp", GripUp)
+		return grip
+	end
+end
+
 function W.PlusMark(tex, size, lit)
 	return KC.Lay(tex, size, size, "plus", nil, lit and "hover" or "normal", 1, true)
 end

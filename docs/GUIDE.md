@@ -65,6 +65,7 @@ It comes in two parts, and you need both. Remade for 0.18.3: every voice at a be
 
 ## 🗺️ The map that actually helps
 
+- **Your size, your place:** drag the dotted grip in the map's bottom-right corner to make the map bigger or smaller (its quest log keeps its size, so it stays readable on any screen; right-click the grip for the standard size and place), and drag its title bar to move the window. No Edit Layout needed.
 - **One window, nothing covered:** your quest log, the map's layers and Dungeon Info open in a panel beside the whole map. The round buttons between them pick one (L opens your quests); click the lit one to fold the panel away and the window narrows to the map.
 - **Quest List:** every quest in the zone next to your map. Who gives it, where they stand, what's left to do, how much of the zone you've finished. Filters for dungeons, raids, class quests, attunements, events.
 - **Pins for everything:** quest givers, hand-ins, dungeon doors, boats, zeppelins, flight masters. Click a door to see its quests, click a boat to get routed to the dock.

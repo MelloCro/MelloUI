@@ -4115,42 +4115,12 @@ local function Build()
 		frame:SetResizeBounds(FOLLOW_MIN, HEADER_H + 60, FOLLOW_MAX, 1200)
 	end
 	local widthHeld = false
-	local grip = CreateFrame("Button", nil, frame)
-	grip:SetSize(16, 16)
-	grip:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 3, 3)
-	grip:SetFrameLevel(frame:GetFrameLevel() + 10)
 	-- (0.25.0) six dots in the palette's trim, a triangle in the bottom-left corner, the selected gold under the
-	-- pointer (the game's 1x size grabber, mirrored, until then)
-	local W = MelloUI.Widgets
-	local dots = {}
-	local function PaintDots(key)
-		if type(W) == "table" and W.Paint then
-			for _, dot in ipairs(dots) do
-				W.Paint(dot, key, "vertex", 1)
-			end
-		end
-	end
-	for _, d in ipairs({ { 2, 2 }, { 6, 2 }, { 10, 2 }, { 2, 6 }, { 6, 6 }, { 2, 10 } }) do
-		local dot = grip:CreateTexture(nil, "OVERLAY")
-		dot:SetTexture("Interface\\Buttons\\WHITE8X8")
-		dot:SetSize(2, 2)
-		dot:SetPoint("BOTTOMLEFT", grip, "BOTTOMLEFT", d[1], d[2])
-		dots[#dots + 1] = dot
-	end
-	PaintDots("trim")
-	grip:SetAlpha(0.35)
-	Perf.SetScript(grip, "OnEnter", function(self)
-		self:SetAlpha(1)
-		PaintDots("selectedTrim")
-		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-		GameTooltip:SetText("Drag to size the tracker")
-		GameTooltip:Show()
-	end)
-	Perf.SetScript(grip, "OnLeave", function(self)
-		self:SetAlpha(0.35)
-		PaintDots("trim")
-		GameTooltip:Hide()
-	end)
+	-- pointer (the game's 1x size grabber, mirrored, until then); 2.1.36: W.SizeGrip, the one grip (the map's too)
+	-- (a world without the widgets, as before: the grip all the same, unpainted)
+	local Wd = MelloUI.Widgets
+	local grip = (type(Wd) == "table" and Wd.SizeGrip)
+		and Wd.SizeGrip(frame, { corner = "BOTTOMLEFT", tip = "Drag to size the tracker" }) or CreateFrame("Button", nil, frame)
 	Perf.SetScript(grip, "OnMouseDown", function(_, button)
 		if button ~= "LeftButton" then
 			return

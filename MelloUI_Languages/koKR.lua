@@ -2315,12 +2315,12 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "지도: 오른쪽 아래 모서리의 손잡이를 끌어 지도 크기를 바꾸고(옆의 퀘스트 목록은 크기가 그대로), 제목 표시줄을 끌어 옮길 수 있습니다. 레이아웃 편집이 필요 없습니다.", -- draft
 	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "미니맵: 약초·광석 애드온이 미니맵을 스캔하는 동안 옆의 강화 효과가 더 이상 화면 가장자리로 튀지 않으며, 스캔이 끝나면 미니맵 테두리가 항상 돌아옵니다.", -- draft
 	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "미니맵: 미니맵을 스캔하는 약초·광석 애드온(NodeSight 등)을 쓸 때 MelloUI의 미니맵 테두리가 더 이상 커서를 따라다니지 않습니다. 스캔할 때마다 지도와 함께 숨겨집니다.", -- draft
 	["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool: CurseForge가 MelloUI_Oldschool보다 MelloUI를 먼저 업데이트해도 손그림 외형이 더 이상 꺼지지 않습니다. 같은 2.1 시리즈의 Oldschool이면 모두 맞습니다.", -- draft
 	["SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI."] = "SharedMedia (테스트: 사용해 보고 어땠는지 알려 주세요): SharedMedia 팩의 글꼴, 바 텍스처, 배경이 MelloUI 목록에 표시됩니다. MelloUI보다 나중에 불러오는 팩도 포함됩니다.", -- draft
 	["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "툴팁: 어두운 배경의 테두리 선택: 어두움, 게임 기본, 없음, 또는 SharedMedia 테두리. SharedMedia 배경은 툴팁, 대화창, 파티 및 공격대 프레임에 쓸 수 있습니다.", -- draft
-	["Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest."] = "어두운 모드: 툴팁의 금색 제목과 안내가 읽기 쉽게 유지됩니다: 지도의 도시와 던전, 서비스 바, 알림, 퀘스트 추적기 등.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2912,6 +2912,7 @@ Lang:Add("koKR", {
 -- stale: ["Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target."] = "개체창의 다크 모드: 플레이어, 대상, 주시 대상, 소환수, 파티, 우두머리, 대상의 대상.", -- draft
 -- stale: ["Dark Mode: parchment is no longer dimmed (the chat, the Quest Tracker, tooltips, windows and pages), so its dark ink stays readable."] = "어두운 모드: 이제 양피지(채팅, 퀘스트 추적기, 툴팁, 창과 페이지)를 어둡게 하지 않아 짙은 잉크 글씨가 계속 잘 읽힙니다.", -- draft
 -- stale: ["Dark Mode: the map's tooltips stay readable, and the boat and zeppelin lines and quest areas on the map keep their colours."] = "어두운 모드: 지도의 툴팁이 계속 잘 읽히고, 지도 위의 배와 비행선 노선, 퀘스트 지역이 원래 색을 유지합니다.", -- draft
+-- stale: ["Dark Mode: tooltips keep their gold titles and hints readable: the map's cities and dungeons, the Services bar, reminders, the Quest Tracker and the rest."] = "어두운 모드: 툴팁의 금색 제목과 안내가 읽기 쉽게 유지됩니다: 지도의 도시와 던전, 서비스 바, 알림, 퀘스트 추적기 등.", -- draft
 -- stale: ["Dark mode"] = "어두운 모드", -- draft
 -- stale: ["Darken the borders of your buff and debuff icons, with a thin dark edge round each icon (0.16.0: the Icon Border switch is part of this). The game's own icons: while Buffs & Debuffs shows MelloUI's rows in their place, there is nothing here to darken (those rows take the Aura Border)."] = "강화 및 약화 효과 아이콘의 테두리를 어둡게 하고, 각 아이콘 둘레에 얇고 어두운 가장자리를 둡니다(0.16.0: 아이콘 테두리 스위치가 여기에 포함됨). 게임의 아이콘: 강화 및 약화 효과가 그 자리에 MelloUI의 줄을 보여 주는 동안에는 여기서 어둡게 할 것이 없습니다(그 줄은 효과 테두리를 씁니다).", -- draft
 -- stale: ["Darkens the Blizzard artwork of unit frames, cast bars, action bars, nameplates, cooldown manager, auras and menu bars."] = "개체창, 시전바, 행동 단축바, 이름표, 재사용 대기시간 관리자, 효과, 메뉴 바의 블리자드 그림을 어둡게 합니다.", -- draft
