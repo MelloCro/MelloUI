@@ -2315,13 +2315,14 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Chat: shift-click an item, spell or quest to link it in MelloUI's whisper window and whisper popups, as in the game's chat box."] = "채팅: Shift-클릭으로 아이템, 주문 또는 퀘스트를 MelloUI의 귓속말 창과 귓속말 팝업에도 링크할 수 있습니다. 게임 채팅 상자와 같습니다.", -- draft
+	["Action bars: the stance bar's backdrop fits the stances you have again, instead of the width of ten buttons."] = "행동 단축바: 태세 단축바의 배경이 다시 열 개 버튼 너비가 아니라 가진 태세에 맞춰집니다.", -- draft
 	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "가방, 전투 기록, 재보충 목록: 제목 표시줄을 끌어 옮기고 모서리의 손잡이를 끌어 크기를 바꿉니다(가방: 열 수). 지도와 같습니다.", -- draft
 	["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "채팅: 미니멀 채팅 보기의 채널 목록을 아이콘만 남도록 접을 수 있습니다(가장자리의 작은 손잡이 또는 채팅 페이지의 '채널 목록 아이콘만'). 메시지를 위한 공간이 넓어집니다.", -- draft
 	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "후원자 페이지: 이름이 이제 등급마다 하나씩, 세 개의 움직이는 깃발에 걸리며 MelloUI의 Patreon과 Discord 주소는 복사 상자에 표시됩니다.", -- draft
 	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "지도: 오른쪽 아래 모서리의 손잡이를 끌어 지도 크기를 바꾸고(옆의 퀘스트 목록은 크기가 그대로), 제목 표시줄을 끌어 옮길 수 있습니다. 레이아웃 편집이 필요 없습니다.", -- draft
 	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "미니맵: 약초·광석 애드온이 미니맵을 스캔하는 동안 옆의 강화 효과가 더 이상 화면 가장자리로 튀지 않으며, 스캔이 끝나면 미니맵 테두리가 항상 돌아옵니다.", -- draft
 	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "미니맵: 미니맵을 스캔하는 약초·광석 애드온(NodeSight 등)을 쓸 때 MelloUI의 미니맵 테두리가 더 이상 커서를 따라다니지 않습니다. 스캔할 때마다 지도와 함께 숨겨집니다.", -- draft
-	["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool: CurseForge가 MelloUI_Oldschool보다 MelloUI를 먼저 업데이트해도 손그림 외형이 더 이상 꺼지지 않습니다. 같은 2.1 시리즈의 Oldschool이면 모두 맞습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3238,6 +3239,7 @@ Lang:Add("koKR", {
 -- stale: ["Oldschool's action bars keep their painted frames and boxed unit frame borders clear the name; Default's player frame stays sharp."] = "올드스쿨의 행동 단축바가 페인팅 테두리를 유지하고, 상자형 유닛 프레임 테두리가 이름을 가리지 않습니다. 기본 스킨의 플레이어 프레임이 선명하게 유지됩니다.", -- draft
 -- stale: ["Oldschool's action bars keep their painted frames."] = "Oldschool의 행동 단축바가 그림 테두리를 유지합니다.", -- draft
 -- stale: ["Oldschool's action bars keep their painted frames; Default's player frame stays sharp when scaled up."] = "Oldschool의 행동 단축바는 그려진 테두리를 유지하고, Default의 플레이어 프레임은 확대해도 선명합니다.", -- draft
+-- stale: ["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool: CurseForge가 MelloUI_Oldschool보다 MelloUI를 먼저 업데이트해도 손그림 외형이 더 이상 꺼지지 않습니다. 같은 2.1 시리즈의 Oldschool이면 모두 맞습니다.", -- draft
 -- stale: ["On a quest's tooltip in the Quest List, name your other characters who have done the quest or have it in their quest log. A character is noted each time it logs out; /mello alts lists them and forgets a deleted one."] = "퀘스트 리스트의 퀘스트 툴팁에 그 퀘스트를 했거나 목록에 가진 다른 캐릭터의 이름을 보여 줍니다. 캐릭터는 접속을 끊을 때마다 기록되며, /mello alts 가 목록을 보여 주고 지운 캐릭터를 잊습니다.", -- draft
 -- stale: ["On the game's nameplates: the large crowd-control icon above the name, the quest marker on enemies you still need, the threat line, the combo points on your target's plate, the names' form (Show Names As) and the soft shade behind the names (Name Shade). Off: all six go. Works with or without the reskin."] = "게임의 이름표에서: 이름 위의 큰 군중 제어 아이콘, 아직 필요한 적에게 붙는 퀘스트 표시, 위협 수준 선, 대상 이름표의 연계 점수, 이름 형식(이름 표시 방식), 이름 뒤의 부드러운 그림자(이름 그림자). 끄기: 여섯 가지 모두 사라집니다. 스킨과 관계없이 작동합니다.", -- draft
 -- stale: ["On the target, show only the debuffs you put on it."] = "대상에게 내가 건 약화 효과만 표시합니다.", -- draft

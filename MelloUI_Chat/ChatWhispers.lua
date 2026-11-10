@@ -1020,6 +1020,7 @@ local function Build()
 	Perf.SetScript(box, "OnEditFocusGained", Placeholder)
 	Perf.SetScript(box, "OnEditFocusLost", Placeholder)
 	Perf.SetScript(box, "OnTextChanged", Placeholder)
+	M.TakeLinks(box)   -- a shift-clicked item, spell or quest goes in, as into the game's chat box
 	WV.box = box
 	-- its hint inside it (the box always shown: its field's light colours, never ink)
 	WV.boxHint = box:CreateFontString(nil, "ARTWORK", "MelloUIFont_GameFontDisable")

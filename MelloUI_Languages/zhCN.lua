@@ -2315,13 +2315,14 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Chat: shift-click an item, spell or quest to link it in MelloUI's whisper window and whisper popups, as in the game's chat box."] = "聊天：按住 Shift 点击物品、法术或任务，即可在 MelloUI 的密语窗口和密语弹窗中链接，与游戏聊天框相同。", -- draft
+	["Action bars: the stance bar's backdrop fits the stances you have again, instead of the width of ten buttons."] = "动作条：姿态条的背景再次贴合你拥有的姿态，而不是十个按钮的宽度。", -- draft
 	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "背包、战斗历史和补货列表：拖动标题栏即可移动，拖动角落的手柄即可调整大小（背包：列数），与地图相同。", -- draft
 	["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "聊天：极简聊天视图的频道列表可以折叠为仅图标（点击其边缘的小把手，或在聊天页面开启“频道列表仅显示图标”），为消息留出更多空间。", -- draft
 	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "支持者页面：名字现在挂在三面动态旗帜上，每个等级一面，MelloUI 的 Patreon 和 Discord 地址显示在复制框中。", -- draft
 	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "地图：拖动右下角的手柄即可调整地图大小（旁边的任务日志保持原大小），拖动标题栏即可移动地图，无需编辑布局。", -- draft
 	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "小地图：当草药或矿石插件扫描小地图时，小地图旁的增益效果不再跳到屏幕边缘，扫描结束后小地图边框总会回来。", -- draft
 	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "小地图：使用扫描小地图的草药或矿石插件（如 NodeSight）时，MelloUI 的小地图边框不再跟随鼠标；每次扫描时它会随地图一起隐藏。", -- draft
-	["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool：当 CurseForge 先于 MelloUI_Oldschool 更新 MelloUI 时，手绘外观不再在更新后关闭；同一 2.1 系列的任何 Oldschool 都可使用。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3238,6 +3239,7 @@ Lang:Add("zhCN", {
 -- stale: ["Oldschool's action bars keep their painted frames and boxed unit frame borders clear the name; Default's player frame stays sharp."] = "怀旧的动作条保留手绘边框，方框样式的单位框体边框不再遮住名字；默认外观的玩家框体保持清晰。", -- draft
 -- stale: ["Oldschool's action bars keep their painted frames."] = "Oldschool 的动作条保持其手绘边框。", -- draft
 -- stale: ["Oldschool's action bars keep their painted frames; Default's player frame stays sharp when scaled up."] = "Oldschool 的动作条保留其手绘边框；Default 的玩家框体放大后依然清晰。", -- draft
+-- stale: ["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool：当 CurseForge 先于 MelloUI_Oldschool 更新 MelloUI 时，手绘外观不再在更新后关闭；同一 2.1 系列的任何 Oldschool 都可使用。", -- draft
 -- stale: ["On a quest's tooltip in the Quest List, name your other characters who have done the quest or have it in their quest log. A character is noted each time it logs out; /mello alts lists them and forgets a deleted one."] = "在任务列表中任务的鼠标提示上，列出已完成该任务或日志中有该任务的其他角色。角色每次登出时记录；/mello alts列出它们并忘记已删除的角色。", -- draft
 -- stale: ["On the game's nameplates: the large crowd-control icon above the name, the quest marker on enemies you still need, the threat line, the combo points on your target's plate, the names' form (Show Names As) and the soft shade behind the names (Name Shade). Off: all six go. Works with or without the reskin."] = "在游戏的姓名板上：名字上方的大号控制图标、你仍需要的敌人身上的任务标记、仇恨线、目标姓名板上的连击点数、名字形式（名字显示方式）以及名字后的柔和阴影（名字阴影）。关闭：六项全部消失。无论是否换肤都可用。", -- draft
 -- stale: ["On the target, show only the debuffs you put on it."] = "在目标上只显示你施加的减益。", -- draft

@@ -77,7 +77,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		  },
 		  desc = "How the chat looks. Game Windows: the game's windows and tabs. Minimal: one panel with round tabs, each message under its sender, and buttons to pick a channel." },
 		-- (2.1.37; NiceGuyBadGamer in feature-requests: the Minimal view's channel list as icons only, room for the lines)
-		{ type = "toggle", key = "railIcons", name = "Channel List As Icons", new = "2.1.37",
+		{ type = "toggle", key = "railIcons", name = "Channel List As Icons",
 		  desc = "The Minimal Chat View's channel list shows only its icons, leaving more room for the messages. Point at an icon for its name. The small handle on the list's edge does the same." },
 		-- (0.16.0: the chat windows' look in one: Dark Mode's, the game's or
 		-- none; the settings it sets keep their own keys -- Dark Mode's chat,
@@ -3381,6 +3381,43 @@ local function PopupsFollowLook(on)
 	end
 end
 
+-- Links into MelloUI's own chat boxes (2.1.38; S1lver on Discord: "linking gear in chat, is not working in the
+-- whisper window ... it works in normal caht when shift+click"). A shift-click puts a link through the game's
+-- ChatFrameUtil.InsertLink, which knows only the game's chat boxes; one post-hook (made with the first own box) puts
+-- it into the own box that has the keyboard. The game's box, when it still holds the keyboard, takes the link itself.
+local Links = { boxes = {} }
+
+function Links.Insert(text)
+	if text == nil then
+		return
+	end
+	for box in pairs(Links.boxes) do
+		if box:IsShown() and box:HasFocus() then
+			pcall(box.Insert, box, text)
+			return
+		end
+	end
+end
+
+function M.TakeLinks(box)
+	if not box or Links.boxes[box] then
+		return
+	end
+	Links.boxes[box] = true
+	if Links.hooked then
+		return
+	end
+	Links.hooked = true
+	local util = rawget(_G, "ChatFrameUtil")
+	if type(util) == "table" and type(util.InsertLink) == "function" then
+		hooksecurefunc(util, "InsertLink", Links.Insert)
+	end
+	-- (the old name another addon may still call: the same function before the hook, so one call inserts once)
+	if type(rawget(_G, "ChatEdit_InsertLink")) == "function" then
+		hooksecurefunc("ChatEdit_InsertLink", Links.Insert)
+	end
+end
+
 -- An answer. Called from the box's OnEnterPressed, so it is the key press the
 -- game wants behind a chat message.
 local function SendWhisper(f, text)
@@ -3496,6 +3533,7 @@ local function CreatePopup(key, kind, target, title)
 	Perf.SetScript(box, "OnEscapePressed", function(self)
 		self:ClearFocus()
 	end)
+	M.TakeLinks(box)   -- a shift-clicked item, spell or quest goes in, as into the game's chat box
 	f.box = box
 	InkPopup(f)
 

@@ -174,6 +174,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.38", lines = {
+		"Chat: shift-click an item, spell or quest to link it in MelloUI's whisper window and whisper popups, as in the game's chat box.",
+		"Action bars: the stance bar's backdrop fits the stances you have again, instead of the width of ten buttons.",
+	} },
 	{ version = "2.1.37", lines = {
 		"Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map.",
 		"Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages.",
@@ -187,9 +191,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.34", lines = {
 		"Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan.",
-	} },
-	{ version = "2.1.33", lines = {
-		"Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits.",
 	} },
 }
 local LINKS = {

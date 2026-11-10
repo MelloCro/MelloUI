@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.38
+
+- Chat: shift-click an item, spell or quest to link it in MelloUI's whisper window and whisper popups, as in the game's chat box.
+- Action bars: the stance bar's backdrop fits the stances you have again, instead of the width of ten buttons.
+
 ## 2.1.37
 
 - Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map.

@@ -188,6 +188,18 @@ local function Entry(bar)
 	return entry
 end
 
+-- the stance / pet / possess bars, the game's or Own Bars' in their place (2.1.38; BaQstein: "The backdrop of the
+-- stance bar doesnt fit to the icons" -- Own Bars' stance bar, MelloUIStanceBar, counted its hidden buttons too)
+local SHOWN_ONLY = { "StanceBar", "PetActionBar", "PossessActionBar" }
+local function ShownOnly(bar)
+	for _, name in ipairs(SHOWN_ONLY) do
+		if bar == rawget(_G, name) or bar == OwnG(name) then
+			return true
+		end
+	end
+	return false
+end
+
 -- The buttons' rect of a bar (the ones its layout shows, in screen px, into
 -- `into` or a new table), and one button's size.
 local function ButtonsRect(bar, into)
@@ -200,7 +212,7 @@ local function ButtonsRect(bar, into)
 	-- the stance / pet / possess bars keep buttons for forms and spells the
 	-- character does not have, hidden: only the shown ones count there (an
 	-- action bar's empty buttons hide too, so its layout's count is used)
-	local shownOnly = bar == _G.StanceBar or bar == _G.PetActionBar or bar == _G.PossessActionBar
+	local shownOnly = ShownOnly(bar)
 	local rl, rb, rr, rt, size
 	for i, button in ipairs(entry.buttons) do
 		if i <= count and (not shownOnly or button:IsShown()) then
