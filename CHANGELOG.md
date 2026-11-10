@@ -3,6 +3,8 @@
 ## 2.1.37
 
 - Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map.
+- Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages.
+- Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box.
 
 ## 2.1.36
 

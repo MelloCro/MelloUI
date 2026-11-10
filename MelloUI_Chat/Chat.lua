@@ -65,6 +65,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		smoothScroll = true,
 		copyButton = true,
 		view = "game",
+		railIcons = false,
 	},
 	options = {
 		{ type = "header", name = "Appearance" },
@@ -75,6 +76,9 @@ local M = MelloUI:RegisterModule("Chat", {
 			{ value = "minimal", label = "Minimal" },
 		  },
 		  desc = "How the chat looks. Game Windows: the game's windows and tabs. Minimal: one panel with round tabs, each message under its sender, and buttons to pick a channel." },
+		-- (2.1.37; NiceGuyBadGamer in feature-requests: the Minimal view's channel list as icons only, room for the lines)
+		{ type = "toggle", key = "railIcons", name = "Channel List As Icons", new = "2.1.37",
+		  desc = "The Minimal Chat View's channel list shows only its icons, leaving more room for the messages. Point at an icon for its name. The small handle on the list's edge does the same." },
 		-- (0.16.0: the chat windows' look in one: Dark Mode's, the game's or
 		-- none; the settings it sets keep their own keys -- Dark Mode's chat,
 		-- hideBackground -- read by `get`, written by OnSettingChanged. One
@@ -4218,6 +4222,10 @@ function M:OnSettingChanged(key, value, db)
 		SetWhisperPopup(value)
 	elseif key == "editBoxWhileTyping" then
 		SetTypingOnly(true)
+	elseif key == "railIcons" then
+		if M.View and M.View.SetFolded then
+			M.View.SetFolded()
+		end
 	elseif key == "view" then
 		M.BackgroundChoices()
 		if M.View then

@@ -57,6 +57,11 @@ local RAIL_W, ROW_H, ICON, LETTER, PAD = 112, 34, 24, 24, 6
 -- 12 off the top and the right, 10 over the buttons; a wrapped line's own lines 1 apart)
 local GAP_RUN, GAP_LINE, GAP_PLAIN, INDENT, RUN_SECONDS = 10, 2, 3, 10, 120
 View.RAIL_W = RAIL_W   -- (the whisper window's people list as wide: its divider under the rail's, ChatWhispers.lua)
+-- (2.1.37; NiceGuyBadGamer in feature-requests, "Move chat tabs": the rail takes room the messages need on a small
+-- screen; the user offered "the option to colapse the channel names into icons only" -- "Sure would!") the rail
+-- folded to its round icons (Chat's railIcons: the Chat page's switch, or the fold handle on the rail's edge), the
+-- names in the tabs' tooltips, the lines taking the room
+local RAIL_ICONS_W = 44
 -- (lk-12, stage 5; the user's pick 2A of default_windows_sketch, 2026-10-29: "the four channels as the game's tabs on
 -- top; the twelve buttons in one row under the typing box") Under the Default skin the rail's tabs are the game's chat
 -- tabs (MelloUI.Skin.ChatTab) in a row along the view's top, the lines and the line you type in across the whole
@@ -100,6 +105,10 @@ local TEXT = {
 	whispers = "Whispers",
 	whispersTip = "Your whisper conversations, in one window that opens above the chat. Click again to fold it away."
 		.. "\nDrag it up or down to move it on the rail.",
+	fold = "Show icons only",
+	foldTip = "Folds the channel list to its icons: more room for the messages. Point at an icon for its name.",
+	unfold = "Show the names",
+	unfoldTip = "Shows the channel list with its names again.",
 }
 -- the links that show a tooltip under the pointer (the game's own SetHyperlink kinds)
 local TIP_LINKS = { item = true, spell = true, enchant = true, quest = true, achievement = true, currency = true,
@@ -1029,6 +1038,21 @@ local function InFight()
 	return InCombatLockdown() and true or false
 end
 
+-- the rail folded to its icons (railIcons; never with the tabs along the top)
+local function Folded()
+	return not View.topLaid and M.db ~= nil and M.db.railIcons == true
+end
+
+-- the rail's width now, and a tab's strip on it (its round button and, unfolded, its name)
+local function RailW()
+	return Folded() and RAIL_ICONS_W or RAIL_W
+end
+View.RailW = RailW
+
+local function HitW()
+	return math.max(ICON + 4, RailW() - 18)
+end
+
 -- fn now, or once the fight is over (true: it waits)
 local function WhenCalm(fn, key)
 	if InFight() then
@@ -1225,7 +1249,7 @@ local function NewTab(glyph, kind, bufKey)
 	local hit = CreateFrame("Button", nil, rail)
 	hit:SetPoint("TOPLEFT", b, "TOPLEFT", -2, 2)
 	hit:SetPoint("BOTTOMLEFT", b, "BOTTOMLEFT", -2, -2)
-	hit:SetWidth(RAIL_W - 18)   -- (to the rail's right, short of its bar)
+	hit:SetWidth(HitW())   -- (to the rail's right, short of its bar)
 	hit:SetFrameLevel(b:GetFrameLevel() + 3)
 	hit:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 	hit:RegisterForDrag("LeftButton")
@@ -1373,6 +1397,7 @@ function View.PlaceRail()
 	local n = #View.order
 	local fits = math.max(1, math.floor((height - 4) / step))
 	View.railOffset = math.max(0, math.min(View.railOffset, n - fits))
+	local named, hitW = not Folded(), HitW()
 	wipe(placed)
 	for idx, t in ipairs(View.order) do
 		placed[t] = true
@@ -1389,7 +1414,8 @@ function View.PlaceRail()
 		t.label:SetPoint("LEFT", t.button, "RIGHT", 6, 0)
 		t.label:SetPoint("RIGHT", rail, "RIGHT", -8, 0)
 		t.button:SetShown(shown or t == drag.t)
-		t.label:SetShown(shown or t == drag.t)
+		t.label:SetShown((shown or t == drag.t) and named)
+		t.hit:SetWidth(hitW)
 		t.hit:SetShown(shown or t == drag.t)
 	end
 	for _, t in pairs(View.tabs) do
@@ -1498,7 +1524,7 @@ function View.UnTop(t)
 	hit:ClearAllPoints()
 	hit:SetPoint("TOPLEFT", b, "TOPLEFT", -2, 2)
 	hit:SetPoint("BOTTOMLEFT", b, "BOTTOMLEFT", -2, -2)
-	hit:SetWidth(RAIL_W - 18)
+	hit:SetWidth(HitW())
 	t.topX, t.topW = nil, nil
 	View.CountHome(b)
 end
@@ -1932,6 +1958,44 @@ function View.Fit()
 	area:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -12, ROW_H + 10 + lift)
 end
 
+-- (2.1.37) the fold handle: its arrow pointing the way a click folds the rail, its tooltip saying so
+function View.FoldLook()
+	local fold = View.fold
+	if fold then
+		W.FlatDir(fold.arrow, Folded() and "right" or "left")
+	end
+end
+
+local FoldClick = Perf.Shared("OnClick on the chat view's fold handle", function()
+	MelloUI:PlayUISound("tick")
+	MelloUI:NotifySettingChanged("Chat", "railIcons", not (M.db and M.db.railIcons == true))
+	MelloUI:RefreshConfig()
+end, "script")
+
+local FoldEnter = Perf.Shared("OnEnter on the chat view's fold handle", function(f)
+	W.FlatState(f.plate, true)
+	local folded = Folded()
+	W.ShowTooltip(f, folded and TEXT.unfold or TEXT.fold, folded and TEXT.unfoldTip or TEXT.foldTip)
+end, "script")
+
+local FoldLeave = Perf.Shared("OnLeave on the chat view's fold handle", function(f)
+	W.FlatState(f.plate, false)
+	W.TipLeave(f)
+end, "script")
+
+-- the rail folded or unfolded (railIcons changed): the frame laid again, the tabs, the line you type in. In a fight
+-- once it is over (the tabs' stand-ins cannot follow there)
+function View.SetFolded()
+	if not View.frame or WhenCalm(View.SetFolded, "Chat view: the rail folded") then
+		return
+	end
+	View.LayFrame()
+	View.PlaceRail()
+	if View.on then
+		View.PlaceEditBoxes(true)
+	end
+end
+
 -- (lk-12, stage 5) the frame's parts as the skin has them: the rail down the left (Modern, Oldschool), or the game's
 -- chat tabs along the view's top over it (Default: View.topLaid) with the lines across the whole width, no divider and
 -- no mark, the box's edges down (the game's chat box has none; its gold rim stands down there too: Rims:OwnEdge)
@@ -1950,9 +2014,22 @@ function View.LayFrame()
 		rail:SetHeight(Skin.CHAT_TAB.height)
 	else
 		rail:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, -4)
-		rail:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", RAIL_W - 2, ROW_H + 4)
+		rail:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", RailW() - 2, ROW_H + 4)
 	end
-	area:SetPoint("TOPLEFT", frame, "TOPLEFT", top and View.TOP.inset or (RAIL_W + 16), -12)
+	local rw = RailW()
+	area:SetPoint("TOPLEFT", frame, "TOPLEFT", top and View.TOP.inset or (rw + 16), -12)
+	View.divider:ClearAllPoints()
+	View.divider:SetPoint("TOPLEFT", frame, "TOPLEFT", rw, -8)
+	View.divider:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", rw, ROW_H + 4)
+	if View.bar then
+		View.bar:ClearAllPoints()
+		View.bar:SetPoint("TOPLEFT", frame, "TOPLEFT", rw - 5, -8)
+		View.bar:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", rw - 5, ROW_H + 4)
+	end
+	if View.fold then
+		View.fold:SetShown(not top)
+		View.FoldLook()
+	end
 	View.divider:SetShown(not top)
 	if top then
 		View.mark:Hide()
@@ -1979,7 +2056,7 @@ local function Build()
 	-- the rail: clipped, the wheel scrolls its tabs; its divider, the open tab's mark on it
 	local rail = CreateFrame("Frame", nil, frame)
 	rail:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, -4)
-	rail:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", RAIL_W - 2, ROW_H + 4)
+	rail:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", RailW() - 2, ROW_H + 4)
 	rail:SetClipsChildren(true)
 	rail:EnableMouseWheel(true)
 	rail:SetScript("OnMouseWheel", function(_, delta)
@@ -1991,16 +2068,16 @@ local function Build()
 	View.rail = rail
 	local divider = W.HairSolid(frame, "ARTWORK")
 	divider:SetWidth(1)
-	divider:SetPoint("TOPLEFT", frame, "TOPLEFT", RAIL_W, -8)
-	divider:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", RAIL_W, ROW_H + 4)
+	divider:SetPoint("TOPLEFT", frame, "TOPLEFT", RailW(), -8)
+	divider:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", RailW(), ROW_H + 4)
 	View.divider = divider
 	local mark = W.Solid(frame, "OVERLAY", "selectedTrim")
 	mark:SetWidth(3)
 	View.mark = mark
 	-- the rail's bar (shown while its tabs do not all fit) and the line a dragged tab lands on
 	local bar = W.ThinScrollBar(frame, 3)
-	bar:SetPoint("TOPLEFT", frame, "TOPLEFT", RAIL_W - 5, -8)
-	bar:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", RAIL_W - 5, ROW_H + 4)
+	bar:SetPoint("TOPLEFT", frame, "TOPLEFT", RailW() - 5, -8)
+	bar:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", RailW() - 5, ROW_H + 4)
 	bar:Hide()
 	bar:SetScript("OnValueChanged", function(self, value)
 		if View.railLaying then
@@ -2016,6 +2093,20 @@ local function Build()
 		View.PlaceRail()
 	end)
 	View.bar = bar
+	-- (2.1.37) the fold handle on the rail's edge, halfway down: icons only, or the names again
+	local fold = CreateFrame("Button", nil, frame)
+	fold:SetSize(14, 30)
+	fold:SetFrameLevel(frame:GetFrameLevel() + 8)
+	fold:SetPoint("CENTER", divider, "CENTER", 0, 0)
+	fold.plate = W.FlatOver(fold, "button")
+	local arrow = CreateFrame("Frame", nil, fold)
+	arrow:SetPoint("CENTER")
+	arrow:SetSize(12, 12)
+	fold.arrow = W.FlatOver(arrow, "arrow", { dir = "left", glyph = true })
+	Perf.SetScript(fold, "OnClick", FoldClick)
+	Perf.SetScript(fold, "OnEnter", FoldEnter)
+	Perf.SetScript(fold, "OnLeave", FoldLeave)
+	View.fold = fold
 	local drop = W.Solid(rail, "OVERLAY", "selectedTrim")
 	drop:SetHeight(2)
 	drop:Hide()
@@ -2042,7 +2133,7 @@ local function Build()
 	hair:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, ROW_H)
 	-- the lines' holder: clips, takes the wheel and the links
 	local area = CreateFrame("Frame", nil, frame)
-	area:SetPoint("TOPLEFT", frame, "TOPLEFT", RAIL_W + 16, -12)
+	area:SetPoint("TOPLEFT", frame, "TOPLEFT", RailW() + 16, -12)
 	area:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -12, ROW_H + 10)
 	area:SetClipsChildren(true)
 	area:EnableMouseWheel(true)
@@ -2258,7 +2349,7 @@ local function PlaceEditBoxes(on)
 			end
 			box:SetFrameLevel(View.frame:GetFrameLevel() + 20)
 			box:ClearAllPoints()
-			box:SetPoint("BOTTOMLEFT", View.frame, "BOTTOMLEFT", (View.topLaid and 0 or RAIL_W) + 4, ROW_H + 2)
+			box:SetPoint("BOTTOMLEFT", View.frame, "BOTTOMLEFT", (View.topLaid and 0 or RailW()) + 4, ROW_H + 2)
 			box:SetPoint("BOTTOMRIGHT", View.frame, "BOTTOMRIGHT", -4, ROW_H + 2)
 			if not boxHooked[box] then
 				boxHooked[box] = true
@@ -2278,6 +2369,7 @@ local function PlaceEditBoxes(on)
 		M.SetEditBoxOnTop(M.db and M.db.editBoxTop)   -- (the Chat module's own place again)
 	end
 end
+View.PlaceEditBoxes = PlaceEditBoxes   -- (2.1.37: the rail folded, View.SetFolded)
 
 -- (lk-12) MelloUI.Skin's follower: a Default / Modern switch lays the frame again for the skin (the tabs along the top,
 -- or the rail), the line you type in, the box's alpha and the lines with it

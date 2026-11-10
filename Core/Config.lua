@@ -176,6 +176,8 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "2.1.37", lines = {
 		"Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map.",
+		"Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages.",
+		"Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box.",
 	} },
 	{ version = "2.1.36", lines = {
 		"Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed.",
@@ -6869,80 +6871,23 @@ end   -- (the Profiles block)
 --------------------------------------------------------------------------------
 -- Supporters page (2.1.0; the user, 2026-10-31: "a Supporters page that lists them all in the Configurator"): the
 -- people who support MelloUI, by tier, from Media/SupportersData.lua (MelloUI_Supporters, written before each
--- release by MBot's `npm run supporters` from the supporter roles on MelloUI's Discord). Names only: no link, no
--- price, nothing that asks -- an add-on may not ask for donations (Blizzard's add-on policy; docs/plans/patreon.md).
--- Made on its first open, like every page.
+-- release by MBot's `npm run supporters` from the supporter roles on MelloUI's Discord). 2.1.37 (the user,
+-- 2026-11-10: "reworking the supporters page, with the 3 banners", built from the sketch they picked): the names on
+-- three tier banners, with an invite line and Patreon and Discord in a copy box (the user's decision of 2026-11-03,
+-- docs/plans/patreon.md: no price, nothing behind a tier) -- MelloUI.SupportersHall, Core/SupportersHall.lua. Made on
+-- its first open, like every page.
 --------------------------------------------------------------------------------
-
--- the tiers top-down: the data's key, the heading over its names
-CONFIG.SUPPORTER_TIERS = {
-	{ key = "legend", heading = "Legends" },
-	{ key = "champion", heading = "Champions" },
-	{ key = "supporter", heading = "Supporters" },
-}
-CONFIG.SUPPORTER_COLS, CONFIG.SUPPORTER_ROW = 3, 20   -- names a line, a line's height
 
 function CONFIG.BuildSupportersPage(width)
 	local meta = CONFIG.SUPPORTERS_META
 	local page = NewPage("Supporters", width)
 	BuildPageHeader(page, meta.title, meta.flavour, nil)
 	local sec = NewSection(page, "Supporters")
-	SectionPanel(sec)
 	page.section = sec
-
-	local inner = width - PAD * 2 - 8
-	local desc = Text(sec, "GameFontHighlight",
-		"MelloUI is free for everyone and always will be. These are the people who help keep it going. Thank you, all of you!",
-		C.text)
-	desc:SetPoint("TOPLEFT", 4, -4)
-	desc:SetWidth(inner)
-	desc:SetWordWrap(true)
-	local y = 4 + WrappedHeight(desc, 16) + 14
-
 	local data = rawget(_G, "MelloUI_Supporters")
-	data = type(data) == "table" and data or {}
-	local cols = CONFIG.SUPPORTER_COLS
-	local colW = math.floor((inner - 8) / cols)
-	local heads = {}
-	for _, tier in ipairs(CONFIG.SUPPORTER_TIERS) do
-		local names = data[tier.key]
-		if type(names) == "table" and #names > 0 then
-			heads[#heads + 1] = W.Header(sec, y, tier.heading, { inset = SEC_INSET })
-			y = y + W.HEADER_HEIGHT + 6
-			for i, name in ipairs(names) do
-				local col = (i - 1) % cols
-				-- (a name as it is, never looked up in the language; a pipe would start the game's markup)
-				local fs = W.Text(sec, "GameFontHighlight", (tostring(name):gsub("|", "||")), C.text)
-				fs:SetPoint("TOPLEFT", 12 + col * colW, -y)
-				fs:SetWidth(colW - 8)
-				fs:SetJustifyH("LEFT")
-				fs:SetWordWrap(false)
-				if col == cols - 1 or i == #names then
-					y = y + CONFIG.SUPPORTER_ROW
-				end
-			end
-			y = y + 10
-		end
-	end
-	if #heads == 0 then
-		local empty = Text(sec, "GameFontHighlight", "No names here yet. They show up with each MelloUI update.", C.text)
-		empty:SetPoint("TOPLEFT", 4, -y)
-		y = y + 16 + 10
-	end
-	if type(data.updated) == "string" and data.updated ~= "" then
-		local when = W.Text(sec, "GameFontHighlight", MelloUI.Lang.F("As of %s", data.updated), C.sub)
-		when:SetPoint("TOPLEFT", 4, -y)
-		y = y + 16
-	end
-
-	CONFIG.PaperCard(sec)   -- (the kit look's parchment: the texts in ink, the headings too)
-	local QI = KIT and rawget(MelloUI, "QuestInk")
-	for _, h in ipairs(heads) do
-		if QI and QI.inkOn and not QI.inkOn[h.label] then
-			CONFIG.Paper(h)
-		end
-	end
-	sec.y = y + 12
+	sec.y = MelloUI.SupportersHall.Build(sec, width - PAD * 2, type(data) == "table" and data or {}, SKIN)
+	CONFIG.PaperCard(sec)   -- (the kit look's parchment: the thanks in ink; the banners' names stay on their cloth)
+	sec.needsPanel = nil   -- (no panel: the banners hang on the window's own dark ground, as sketched)
 	page:Finish()
 	return page
 end

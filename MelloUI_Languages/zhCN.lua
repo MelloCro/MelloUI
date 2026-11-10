@@ -2316,6 +2316,8 @@ Lang:Add("zhCN", {
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "背包、战斗历史和补货列表：拖动标题栏即可移动，拖动角落的手柄即可调整大小（背包：列数），与地图相同。", -- draft
+	["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "聊天：极简聊天视图的频道列表可以折叠为仅图标（点击其边缘的小把手，或在聊天页面开启“频道列表仅显示图标”），为消息留出更多空间。", -- draft
+	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "支持者页面：名字现在挂在三面动态旗帜上，每个等级一面，MelloUI 的 Patreon 和 Discord 地址显示在复制框中。", -- draft
 	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "地图：拖动右下角的手柄即可调整地图大小（旁边的任务日志保持原大小），拖动标题栏即可移动地图，无需编辑布局。", -- draft
 	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "小地图：当草药或矿石插件扫描小地图时，小地图旁的增益效果不再跳到屏幕边缘，扫描结束后小地图边框总会回来。", -- draft
 	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "小地图：使用扫描小地图的草药或矿石插件（如 NodeSight）时，MelloUI 的小地图边框不再跟随鼠标；每次扫描时它会随地图一起隐藏。", -- draft
@@ -2468,11 +2470,6 @@ Lang:Add("zhCN", {
 	["Not imported: %s."] = "未导入：%s。", -- draft
 	["Profile '%s' imported (%d settings). Load it from the list to use it."] = "配置“%s”已导入（%d项设置）。从列表中载入即可使用。", -- draft
 	["No profiles yet. Type a name above and save the current settings."] = "还没有配置。在上方输入名字并保存当前设置。", -- draft
-	["Legends"] = "传奇", -- draft
-	["Champions"] = "冠军", -- draft
-	["MelloUI is free for everyone and always will be. These are the people who help keep it going. Thank you, all of you!"] = "MelloUI 对所有人免费，并且永远免费。这些是帮助它持续发展的人们。谢谢你们每一位！", -- draft
-	["No names here yet. They show up with each MelloUI update."] = "这里还没有名字。它们会随每次 MelloUI 更新出现。", -- draft
-	["As of %s"] = "截至 %s", -- draft
 	["Search options"] = "搜索选项", -- draft
 	["Nothing found. Try another word."] = "什么都没找到。换个词试试。", -- draft
 	["%d more. Type more letters to narrow it down."] = "还有%d项。多输入几个字缩小范围。", -- draft
@@ -2847,6 +2844,7 @@ Lang:Add("zhCN", {
 -- stale: ["Another action is in progress, can't do that while moving, while stunned or while mounted."] = "另一个动作正在进行，移动、昏迷或骑乘时无法那么做。", -- draft
 -- stale: ["Anyone's"] = "任何人的", -- draft
 -- stale: ["As a ghost: how far your body is and which way, and a ring until you can come back. Click it for the way there; at your body, Resurrect. The game's own Resurrect popup is see-through and click-through meanwhile."] = "作为灵魂时：尸体有多远、在哪个方向，以及一个圆环显示何时可以复活。点击查看路线；到达尸体处时为复活。此时游戏自己的复活弹窗透明且可点击穿透。", -- draft
+-- stale: ["As of %s"] = "截至 %s", -- draft
 -- stale: ["As you arrive, the place is put out: the World Marker's mark sinks onto it in a ring of light with a few sparks. Not with Reduce Motion."] = "你到达时，地点熄灭：世界标记的标记在一圈光和几点火花中沉落在上面。“减少动态效果”开启时不会。", -- draft
 -- stale: ["At a flight master: where your route flies to, on the flight map's title band, with a bead of your trail on that flight point. Pointing at a flight point also shows about how long the flight takes."] = "在飞行管理员处：在飞行地图的标题横带上显示你的路线飞往哪里，并在那个飞行点上放一颗路线珠子。指向飞行点时也显示飞行大约需要多久。", -- draft
 -- stale: ["At a merchant who sells what you are low on, a small list beside the shop window: each item, how many and the price, and the total. Nothing is bought until you click Buy."] = "在出售你缺少物品的商人处，商店窗口旁一个小清单：每件物品、数量和价格，以及总价。点击“购买”之前什么都不买。", -- draft
@@ -2869,6 +2867,7 @@ Lang:Add("zhCN", {
 -- stale: ["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "增益和减益效果：独立的一页。增益和减益分开显示，各有自己的大小和行；选择锚点，自由的会立即显示在“编辑布局”中。", -- draft
 -- stale: ["Buttons, checkboxes, tabs and scroll arrows: light clicks, a heavy one for Okay/Accept, a latch releasing for Cancel, Quit and abandoning a quest."] = "按钮、复选框、标签和滚动箭头：轻点击，确定/接受用重点击，取消、退出和放弃任务用松开插销的声音。", -- draft
 -- stale: ["Calendar, clock, help, channels"] = "日历、时钟、帮助、频道", -- draft
+-- stale: ["Champions"] = "冠军", -- draft
 -- stale: ["Channel the recorded lines play on; its volume slider in the game's sound settings controls them."] = "录制台词播放所用的频道；游戏声音设置中该频道的音量滑块控制它们。", -- draft
 -- stale: ["Chat & Map"] = "聊天和地图", -- draft
 -- stale: ["Chat View: Background Parchment puts the chat and the whisper window on the parchment sheet in dark ink."] = "聊天视图：背景“羊皮纸”把聊天和悄悄话窗口铺到羊皮纸上，使用深色墨水。", -- draft
@@ -3145,6 +3144,7 @@ Lang:Add("zhCN", {
 -- stale: ["Leave out the beta's \"Press F6 to submit an issue for this ...\" line, and the gap above it, from creature, item, spell and quest tooltips. The key still opens the issue report while the tooltip shows."] = "从生物、物品、法术和任务的鼠标提示中去掉测试版的“Press F6 to submit an issue for this ...”这一行及其上方的空隙。鼠标提示显示时按键仍可打开问题报告。", -- draft
 -- stale: ["Leave quests that are grey for you (far below your level, as the game colours them) off the zone map until you take them. Quests in your log and the one you track still show."] = "在你接下之前，不在区域地图上显示对你而言为灰色的任务（远低于你的等级，按游戏的着色）。日志中的任务和你追踪的任务仍会显示。", -- draft
 -- stale: ["Leave the coloured magic / curse / poison / disease debuff borders untouched: on your buff and debuff icons (Buffs & Debuffs) and on the Cooldown Manager's icons (its Dark Mode)."] = "不改动魔法 / 诅咒 / 中毒 / 疾病减益的彩色边框：在你的增益和减益图标上（增益和减益效果）和冷却管理器的图标上（它的暗色模式）。", -- draft
+-- stale: ["Legends"] = "传奇", -- draft
 -- stale: ["Length"] = "长度", -- draft
 -- stale: ["Level Up Card: its own place, movable in Edit Layout, bigger, everything fits."] = "升级卡片：有自己的位置，可在编辑布局中移动，更大，内容全部放得下。", -- draft
 -- stale: ["Level Up Card: what each level gave you, and the spells now waiting at your trainer."] = "升级卡片：每一级带给你的提升，以及训练师处等你学习的法术。", -- draft
@@ -3176,6 +3176,7 @@ Lang:Add("zhCN", {
 -- stale: ["Mello's fonts"] = "Mello的字体", -- draft
 -- stale: ["Mello's layout, looks and features, set up for your screen."] = "Mello的布局、外观和功能，按你的屏幕设置。", -- draft
 -- stale: ["Mello's modules and their settings"] = "Mello的模块及其设置", -- draft
+-- stale: ["MelloUI is free for everyone and always will be. These are the people who help keep it going. Thank you, all of you!"] = "MelloUI 对所有人免费，并且永远免费。这些是帮助它持续发展的人们。谢谢你们每一位！", -- draft
 -- stale: ["MelloUI is set up."] = "MelloUI已设置完成。", -- draft
 -- stale: ["MelloUI's Quest Tracker on a parchment sheet, its text in dark ink. Works with the reskin on or off."] = "MelloUI的任务追踪器铺在羊皮纸上，文字为深色墨水。换肤开启或关闭都可用。", -- draft
 -- stale: ["MelloUI's Quest Tracker. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "MelloUI的任务追踪器。总是：从不淡出。战斗中：脱离战斗时淡出，战斗时回来。鼠标悬停：一直淡出，指向时显示。", -- draft
@@ -3225,6 +3226,7 @@ Lang:Add("zhCN", {
 -- stale: ["New: an Action Bars switch on the Bars page."] = "新增：动作条页面上的动作条开关。", -- draft
 -- stale: ["No Edit Mode change"] = "编辑模式不变", -- draft
 -- stale: ["No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing."] = "不再使用：挥击计时条是圆形边缘加扁平条，没有边框，所以这一项不会改变任何东西。", -- draft
+-- stale: ["No names here yet. They show up with each MelloUI update."] = "这里还没有名字。它们会随每次 MelloUI 更新出现。", -- draft
 -- stale: ["No reskin, features on"] = "不换肤，开启功能", -- draft
 -- stale: ["Not enough energy, rage, mana or focus, and no combo points."] = "能量、怒气、法力或集中值不足，以及没有连击点数。", -- draft
 -- stale: ["Not with Attach To The Player Frame"] = "不能与附着到玩家框架同时使用", -- draft

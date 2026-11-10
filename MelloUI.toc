@@ -45,6 +45,7 @@ Core\FrameHover.lua
 Core\LevelCard.lua
 Core\SwingBadge.lua
 Core\Config.lua
+Core\SupportersHall.lua
 Core\ConfigLayout.lua
 Core\ConfigPreview.lua
 Core\ConfigMotion.xml

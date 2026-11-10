@@ -2316,6 +2316,8 @@ Lang:Add("koKR", {
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "가방, 전투 기록, 재보충 목록: 제목 표시줄을 끌어 옮기고 모서리의 손잡이를 끌어 크기를 바꿉니다(가방: 열 수). 지도와 같습니다.", -- draft
+	["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "채팅: 미니멀 채팅 보기의 채널 목록을 아이콘만 남도록 접을 수 있습니다(가장자리의 작은 손잡이 또는 채팅 페이지의 '채널 목록 아이콘만'). 메시지를 위한 공간이 넓어집니다.", -- draft
+	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "후원자 페이지: 이름이 이제 등급마다 하나씩, 세 개의 움직이는 깃발에 걸리며 MelloUI의 Patreon과 Discord 주소는 복사 상자에 표시됩니다.", -- draft
 	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "지도: 오른쪽 아래 모서리의 손잡이를 끌어 지도 크기를 바꾸고(옆의 퀘스트 목록은 크기가 그대로), 제목 표시줄을 끌어 옮길 수 있습니다. 레이아웃 편집이 필요 없습니다.", -- draft
 	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "미니맵: 약초·광석 애드온이 미니맵을 스캔하는 동안 옆의 강화 효과가 더 이상 화면 가장자리로 튀지 않으며, 스캔이 끝나면 미니맵 테두리가 항상 돌아옵니다.", -- draft
 	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "미니맵: 미니맵을 스캔하는 약초·광석 애드온(NodeSight 등)을 쓸 때 MelloUI의 미니맵 테두리가 더 이상 커서를 따라다니지 않습니다. 스캔할 때마다 지도와 함께 숨겨집니다.", -- draft
@@ -2468,11 +2470,6 @@ Lang:Add("koKR", {
 	["Not imported: %s."] = "가져오지 못함: %s.", -- draft
 	["Profile '%s' imported (%d settings). Load it from the list to use it."] = "프로필 '%s'을(를) 가져왔습니다(설정 %d개). 쓰려면 목록에서 불러오세요.", -- draft
 	["No profiles yet. Type a name above and save the current settings."] = "아직 프로필이 없습니다. 위에 이름을 입력하고 현재 설정을 저장하세요.", -- draft
-	["Legends"] = "전설", -- draft
-	["Champions"] = "챔피언", -- draft
-	["MelloUI is free for everyone and always will be. These are the people who help keep it going. Thank you, all of you!"] = "MelloUI는 모두에게 무료이며 앞으로도 그렇습니다. 이분들이 MelloUI가 계속 나아가도록 도와주고 있습니다. 모두 감사합니다!", -- draft
-	["No names here yet. They show up with each MelloUI update."] = "아직 이름이 없습니다. MelloUI 업데이트마다 추가됩니다.", -- draft
-	["As of %s"] = "%s 기준", -- draft
 	["Search options"] = "설정 검색", -- draft
 	["Nothing found. Try another word."] = "찾지 못했습니다. 다른 단어를 써 보세요.", -- draft
 	["%d more. Type more letters to narrow it down."] = "%d개 더. 글자를 더 입력해 좁히세요.", -- draft
@@ -2847,6 +2844,7 @@ Lang:Add("koKR", {
 -- stale: ["Another action is in progress, can't do that while moving, while stunned or while mounted."] = "다른 행동이 진행 중, 이동 중이나 기절 중이나 탈것 탄 채로는 불가.", -- draft
 -- stale: ["Anyone's"] = "누구의 것이든", -- draft
 -- stale: ["As a ghost: how far your body is and which way, and a ring until you can come back. Click it for the way there; at your body, Resurrect. The game's own Resurrect popup is see-through and click-through meanwhile."] = "유령일 때: 시체까지의 거리와 방향, 돌아갈 수 있을 때까지의 고리. 누르면 길을 보여 줍니다. 시체에 닿으면 부활. 그동안 게임의 부활 팝업은 투명하고 클릭이 통과합니다.", -- draft
+-- stale: ["As of %s"] = "%s 기준", -- draft
 -- stale: ["As you arrive, the place is put out: the World Marker's mark sinks onto it in a ring of light with a few sparks. Not with Reduce Motion."] = "도착하면 장소가 꺼집니다: 월드 마커의 표시가 몇 개의 불꽃과 함께 빛의 고리 속에 그 위로 가라앉습니다. 움직임 줄이기에서는 아님.", -- draft
 -- stale: ["At a flight master: where your route flies to, on the flight map's title band, with a bead of your trail on that flight point. Pointing at a flight point also shows about how long the flight takes."] = "비행 조련사에게서: 비행 지도 제목 띠에 경로가 날아갈 곳을, 그 비행 지점에 자취 구슬을. 비행 지점을 가리키면 비행에 걸리는 대략의 시간도 보입니다.", -- draft
 -- stale: ["At a merchant who sells what you are low on, a small list beside the shop window: each item, how many and the price, and the total. Nothing is bought until you click Buy."] = "부족한 것을 파는 상인에게서, 상점 창 옆의 작은 목록: 각 아이템, 수량과 가격, 합계. 구매를 누르기 전에는 아무것도 사지 않습니다.", -- draft
@@ -2869,6 +2867,7 @@ Lang:Add("koKR", {
 -- stale: ["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "강화 및 약화 효과: 전용 페이지. 강화와 약화 효과가 따로 놓이고 각각 크기와 줄을 정합니다. 고정점을 고르면, 자유인 것은 레이아웃 편집에 바로 보입니다.", -- draft
 -- stale: ["Buttons, checkboxes, tabs and scroll arrows: light clicks, a heavy one for Okay/Accept, a latch releasing for Cancel, Quit and abandoning a quest."] = "버튼, 확인란, 탭, 스크롤 화살표: 가벼운 클릭, 확인/수락에는 무거운 클릭, 취소, 게임 종료, 퀘스트 포기에는 걸쇠가 풀리는 소리.", -- draft
 -- stale: ["Calendar, clock, help, channels"] = "달력, 시계, 도움말, 채널", -- draft
+-- stale: ["Champions"] = "챔피언", -- draft
 -- stale: ["Channel the recorded lines play on; its volume slider in the game's sound settings controls them."] = "녹음된 줄이 재생되는 채널. 게임 소리 설정의 그 음량 슬라이더가 조절합니다.", -- draft
 -- stale: ["Chat & Map"] = "대화와 지도", -- draft
 -- stale: ["Chat View: Background Parchment puts the chat and the whisper window on the parchment sheet in dark ink."] = "대화 보기: 배경 양피지가 대화와 귓속말 창을 짙은 잉크로 양피지 위에 놓습니다.", -- draft
@@ -3145,6 +3144,7 @@ Lang:Add("koKR", {
 -- stale: ["Leave out the beta's \"Press F6 to submit an issue for this ...\" line, and the gap above it, from creature, item, spell and quest tooltips. The key still opens the issue report while the tooltip shows."] = "생물, 아이템, 주문, 퀘스트 툴팁에서 베타의 \"Press F6 to submit an issue for this ...\" 줄과 그 위 공간을 뺍니다. 툴팁이 보이는 동안 그 키는 여전히 문제 보고를 엽니다.", -- draft
 -- stale: ["Leave quests that are grey for you (far below your level, as the game colours them) off the zone map until you take them. Quests in your log and the one you track still show."] = "나에게 회색인 퀘스트(게임이 색칠하는 대로 레벨보다 훨씬 낮음)를 받을 때까지 지역 지도에서 뺍니다. 목록의 퀘스트와 추적하는 퀘스트는 계속 보입니다.", -- draft
 -- stale: ["Leave the coloured magic / curse / poison / disease debuff borders untouched: on your buff and debuff icons (Buffs & Debuffs) and on the Cooldown Manager's icons (its Dark Mode)."] = "마법 / 저주 / 독 / 질병 약화 효과의 색 테두리를 건드리지 않습니다: 내 강화 및 약화 효과 아이콘(강화 및 약화 효과)과 재사용 대기시간 관리자의 아이콘(그 어두운 모드)에서.", -- draft
+-- stale: ["Legends"] = "전설", -- draft
 -- stale: ["Length"] = "길이", -- draft
 -- stale: ["Level Up Card: its own place, movable in Edit Layout, bigger, everything fits."] = "레벨 업 카드: 자체 위치, 레이아웃 편집에서 이동 가능, 더 크고 모든 내용이 들어갑니다.", -- draft
 -- stale: ["Level Up Card: what each level gave you, and the spells now waiting at your trainer."] = "레벨 업 카드: 각 레벨이 준 것과 상급자에게서 기다리는 주문.", -- draft
@@ -3176,6 +3176,7 @@ Lang:Add("koKR", {
 -- stale: ["Mello's fonts"] = "Mello의 글꼴", -- draft
 -- stale: ["Mello's layout, looks and features, set up for your screen."] = "화면에 맞춰 설정한 Mello의 레이아웃, 외형, 기능.", -- draft
 -- stale: ["Mello's modules and their settings"] = "Mello의 모듈과 그 설정", -- draft
+-- stale: ["MelloUI is free for everyone and always will be. These are the people who help keep it going. Thank you, all of you!"] = "MelloUI는 모두에게 무료이며 앞으로도 그렇습니다. 이분들이 MelloUI가 계속 나아가도록 도와주고 있습니다. 모두 감사합니다!", -- draft
 -- stale: ["MelloUI is set up."] = "MelloUI 설정을 마쳤습니다.", -- draft
 -- stale: ["MelloUI's Quest Tracker on a parchment sheet, its text in dark ink. Works with the reskin on or off."] = "MelloUI의 퀘스트 추적기를 양피지 위에, 글자는 짙은 잉크로. 스킨을 켜든 끄든 작동합니다.", -- draft
 -- stale: ["MelloUI's Quest Tracker. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "MelloUI의 퀘스트 추적기. 항상: 흐려지지 않음. 전투 중: 전투 밖에서 흐려지고 전투 때 돌아옴. 마우스를 올리면: 늘 흐리고 가리키는 동안 보임.", -- draft
@@ -3225,6 +3226,7 @@ Lang:Add("koKR", {
 -- stale: ["New: an Action Bars switch on the Bars page."] = "새 기능: 바 페이지의 행동 단축바 스위치.", -- draft
 -- stale: ["No Edit Mode change"] = "편집 모드 변경 없음", -- draft
 -- stale: ["No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing."] = "더 이상 쓰이지 않음: 자동 공격 타이머는 둥근 테두리와 평평한 막대를 쓰고 테두리가 없으므로 이 설정은 아무것도 바꾸지 않습니다.", -- draft
+-- stale: ["No names here yet. They show up with each MelloUI update."] = "아직 이름이 없습니다. MelloUI 업데이트마다 추가됩니다.", -- draft
 -- stale: ["No reskin, features on"] = "스킨 없이 기능 켜기", -- draft
 -- stale: ["Not enough energy, rage, mana or focus, and no combo points."] = "기력, 분노, 마나, 집중이 부족하거나 연계 점수가 없음.", -- draft
 -- stale: ["Not with Attach To The Player Frame"] = "플레이어 프레임에 붙이기와 함께 사용 불가", -- draft

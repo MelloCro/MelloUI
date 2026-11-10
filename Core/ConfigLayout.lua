@@ -1058,6 +1058,9 @@ function L.Define(R, Link)
 	-- either normal look, and parchment even with the reskin off": the chat's paper its own switch, as the Quest
 	-- Tracker's (Kit.ownParchments); the Background's Parchment until then; Oldschool > Parchment links to it)
 	R("Chat", "Chat Frame", "Look", "UIModifications.parchment_chat", { name = "Parchment", free = true, when = CHAT_PAPER })
+	-- (2.1.37) the Minimal view's channel list folded to its icons (its handle on the list's edge does the same)
+	R("Chat", "Chat Frame", "Look", "Chat.railIcons", { when = { key = "Chat.view", value = "minimal",
+		line = "Only with the Minimal Chat View" } })
 	-- (the game's windows' ground, asleep under the painted chat, which lays its own; the Minimal Chat View's panel)
 	Link("Chat", "Chat Frame", "Look", "Chat.background", "Background")
 	R("Look", "Textures", "Look", "Chat.background", { name = "Chat Background", card = "Backgrounds", when = { any = { { key = "UIModifications.reskin", value = false },

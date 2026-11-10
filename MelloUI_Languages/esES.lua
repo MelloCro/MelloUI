@@ -2316,6 +2316,8 @@ Lang:Add("esES", {
 	["Supporters"] = "Colaboradores", -- draft
 	["The people who help keep MelloUI going."] = "Las personas que mantienen MelloUI en marcha.", -- draft
 	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "Bolsas, historial de combates y lista de reabastecimiento: arrastra la barra de título para moverlas y el asa de una esquina para cambiar su tamaño (las bolsas: las columnas), como el mapa.", -- draft
+	["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "Chat: la lista de canales de la vista de chat mínima se pliega a sus iconos (el pequeño asa en su borde, o Lista de canales como iconos en la página de Chat), dejando más espacio a los mensajes.", -- draft
+	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "Página de patrocinadores: los nombres cuelgan ahora de tres estandartes animados, uno por nivel, con el Patreon y el Discord de MelloUI en un cuadro para copiar.", -- draft
 	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "Mapa: arrastra el asa de la esquina inferior derecha para cambiar el tamaño del mapa (el registro de misiones de al lado mantiene su tamaño), y arrastra su barra de título para moverlo, sin editar el diseño.", -- draft
 	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "Minimapa: mientras un addon de hierbas o minerales escanea el minimapa, tus beneficios al lado ya no saltan al borde de la pantalla, y el marco del minimapa siempre vuelve tras el escaneo.", -- draft
 	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "Minimapa: con un addon de hierbas o minerales que escanea el minimapa (NodeSight y similares), el marco del minimapa de MelloUI ya no sigue al cursor; se oculta con el mapa durante cada escaneo.", -- draft
@@ -2468,11 +2470,6 @@ Lang:Add("esES", {
 	["Not imported: %s."] = "No importado: %s.", -- draft
 	["Profile '%s' imported (%d settings). Load it from the list to use it."] = "Perfil «%s» importado (%d ajustes). Cárgalo desde la lista para usarlo.", -- draft
 	["No profiles yet. Type a name above and save the current settings."] = "Aún no hay perfiles. Escribe un nombre arriba y guarda los ajustes actuales.", -- draft
-	["Legends"] = "Leyendas", -- draft
-	["Champions"] = "Campeones", -- draft
-	["MelloUI is free for everyone and always will be. These are the people who help keep it going. Thank you, all of you!"] = "MelloUI es gratis para todos y siempre lo será. Estas son las personas que lo mantienen en marcha. ¡Gracias a todos!", -- draft
-	["No names here yet. They show up with each MelloUI update."] = "Aún no hay nombres. Aparecen con cada actualización de MelloUI.", -- draft
-	["As of %s"] = "A fecha de %s", -- draft
 	["Search options"] = "Buscar opciones", -- draft
 	["Nothing found. Try another word."] = "No se encontró nada. Prueba otra palabra.", -- draft
 	["%d more. Type more letters to narrow it down."] = "%d más. Escribe más letras para acotar.", -- draft
@@ -2847,6 +2844,7 @@ Lang:Add("esES", {
 -- stale: ["Another action is in progress, can't do that while moving, while stunned or while mounted."] = "Otra acción en curso, no se puede en movimiento, aturdido o montado.", -- draft
 -- stale: ["Anyone's"] = "De cualquiera", -- draft
 -- stale: ["As a ghost: how far your body is and which way, and a ring until you can come back. Click it for the way there; at your body, Resurrect. The game's own Resurrect popup is see-through and click-through meanwhile."] = "Como fantasma: a qué distancia está tu cuerpo y en qué dirección, y un anillo hasta que puedas volver. Púlsalo para ver el camino; junto a tu cuerpo, Resucitar. La ventana Resucitar del juego es transparente y deja pasar los clics mientras tanto.", -- draft
+-- stale: ["As of %s"] = "A fecha de %s", -- draft
 -- stale: ["As you arrive, the place is put out: the World Marker's mark sinks onto it in a ring of light with a few sparks. Not with Reduce Motion."] = "Al llegar, el lugar se apaga: la marca del Marcador del mundo se posa en él en un anillo de luz con unas chispas. No con Reducir movimiento.", -- draft
 -- stale: ["At a flight master: where your route flies to, on the flight map's title band, with a bead of your trail on that flight point. Pointing at a flight point also shows about how long the flight takes."] = "En un maestro de vuelo: adónde vuela tu ruta, en la franja de título del mapa de vuelo, con una cuenta de tu rastro en ese punto de vuelo. Señalar un punto de vuelo también muestra cuánto dura aproximadamente el vuelo.", -- draft
 -- stale: ["At a merchant who sells what you are low on, a small list beside the shop window: each item, how many and the price, and the total. Nothing is bought until you click Buy."] = "En un mercader que vende lo que te falta, una pequeña lista junto a la ventana de la tienda: cada objeto, cuántos y el precio, y el total. No se compra nada hasta que pulsas Comprar.", -- draft
@@ -2869,6 +2867,7 @@ Lang:Add("esES", {
 -- stale: ["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "Beneficios y perjuicios: una página propia. Van por separado, cada uno con su tamaño y sus filas; elige un anclaje y, en Libre, se ven al instante en Editar diseño.", -- draft
 -- stale: ["Buttons, checkboxes, tabs and scroll arrows: light clicks, a heavy one for Okay/Accept, a latch releasing for Cancel, Quit and abandoning a quest."] = "Botones, casillas, pestañas y flechas de desplazamiento: clics ligeros, uno pesado para Aceptar, un pestillo que se suelta para Cancelar, Salir y abandonar una misión.", -- draft
 -- stale: ["Calendar, clock, help, channels"] = "Calendario, reloj, ayuda, canales", -- draft
+-- stale: ["Champions"] = "Campeones", -- draft
 -- stale: ["Channel the recorded lines play on; its volume slider in the game's sound settings controls them."] = "Canal en el que suenan las líneas grabadas; su deslizador de volumen en los ajustes de sonido del juego las controla.", -- draft
 -- stale: ["Chat & Map"] = "Chat y mapa", -- draft
 -- stale: ["Chat View: Background Parchment puts the chat and the whisper window on the parchment sheet in dark ink."] = "Vista del chat: Fondo Pergamino pone el chat y la ventana de susurros sobre la hoja de pergamino en tinta oscura.", -- draft
@@ -3145,6 +3144,7 @@ Lang:Add("esES", {
 -- stale: ["Leave out the beta's \"Press F6 to submit an issue for this ...\" line, and the gap above it, from creature, item, spell and quest tooltips. The key still opens the issue report while the tooltip shows."] = "Quita la línea de la beta «Press F6 to submit an issue for this ...», y el hueco sobre ella, de las descripciones de criaturas, objetos, hechizos y misiones. La tecla sigue abriendo el informe mientras se muestra la descripción.", -- draft
 -- stale: ["Leave quests that are grey for you (far below your level, as the game colours them) off the zone map until you take them. Quests in your log and the one you track still show."] = "Deja fuera del mapa de zona las misiones grises para ti (muy por debajo de tu nivel, según las colorea el juego) hasta que las cojas. Las misiones de tu registro y la que rastreas siguen viéndose.", -- draft
 -- stale: ["Leave the coloured magic / curse / poison / disease debuff borders untouched: on your buff and debuff icons (Buffs & Debuffs) and on the Cooldown Manager's icons (its Dark Mode)."] = "Deja intactos los bordes de color de los perjuicios de magia / maldición / veneno / enfermedad: en tus iconos de beneficios y perjuicios (Beneficios y perjuicios) y en los iconos del gestor de tiempos de reutilización (su modo oscuro).", -- draft
+-- stale: ["Legends"] = "Leyendas", -- draft
 -- stale: ["Length"] = "Longitud", -- draft
 -- stale: ["Level Up Card: its own place, movable in Edit Layout, bigger, everything fits."] = "Tarjeta de subida de nivel: su propio lugar, movible en Editar diseño, más grande, todo cabe.", -- draft
 -- stale: ["Level Up Card: what each level gave you, and the spells now waiting at your trainer."] = "Tarjeta de nivel: lo que te dio cada nivel y los hechizos que te esperan en tu instructor.", -- draft
@@ -3176,6 +3176,7 @@ Lang:Add("esES", {
 -- stale: ["Mello's fonts"] = "Las fuentes de Mello", -- draft
 -- stale: ["Mello's layout, looks and features, set up for your screen."] = "El diseño, el aspecto y las funciones de Mello, configurados para tu pantalla.", -- draft
 -- stale: ["Mello's modules and their settings"] = "Los módulos de Mello y sus ajustes", -- draft
+-- stale: ["MelloUI is free for everyone and always will be. These are the people who help keep it going. Thank you, all of you!"] = "MelloUI es gratis para todos y siempre lo será. Estas son las personas que lo mantienen en marcha. ¡Gracias a todos!", -- draft
 -- stale: ["MelloUI is set up."] = "MelloUI está configurado.", -- draft
 -- stale: ["MelloUI's Quest Tracker on a parchment sheet, its text in dark ink. Works with the reskin on or off."] = "El rastreador de misiones de MelloUI sobre una hoja de pergamino, su texto en tinta oscura. Funciona con el aspecto pintado activado o no.", -- draft
 -- stale: ["MelloUI's Quest Tracker. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "El rastreador de misiones de MelloUI. Siempre: nunca desvanecido. En combate: desvanecido fuera de combate, de vuelta en combate. Al pasar el ratón: desvanecido todo el tiempo, visible mientras lo señalas.", -- draft
@@ -3225,6 +3226,7 @@ Lang:Add("esES", {
 -- stale: ["New: an Action Bars switch on the Bars page."] = "Nuevo: un interruptor de Barras de acción en la página Barras.", -- draft
 -- stale: ["No Edit Mode change"] = "Sin cambios en el Modo edición", -- draft
 -- stale: ["No longer used: the swing timers have a round rim and a flat bar and wear no frame, so this changes nothing."] = "Ya no se usa: los temporizadores de golpe tienen un contorno redondo y una barra plana y no llevan marco, así que esto no cambia nada.", -- draft
+-- stale: ["No names here yet. They show up with each MelloUI update."] = "Aún no hay nombres. Aparecen con cada actualización de MelloUI.", -- draft
 -- stale: ["No reskin, features on"] = "Sin aspecto pintado, funciones activas", -- draft
 -- stale: ["Not enough energy, rage, mana or focus, and no combo points."] = "Sin suficiente energía, ira, maná o enfoque, y sin puntos de combo.", -- draft
 -- stale: ["Not with Attach To The Player Frame"] = "No con Anclar al marco del jugador", -- draft

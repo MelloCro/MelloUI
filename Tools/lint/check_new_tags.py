@@ -118,6 +118,8 @@ NOT_CONFIGURATOR = {
                              "kind settings (0.21.1: one schema option, BagWindow.kinds; they edit the kinds, not "
                              "options), not options",
     "Core/Core.lua": "the copy window's Import button (MelloUI:ShowPaste), not an option",
+    "Core/SupportersHall.lua": "the Supporters page's Patreon and Discord buttons (each shows its address in the copy "
+                               "box), not options",
     "MelloUI_PersonalDisplay/PersonalDisplay.lua": "Tracked Spells' rows (2.1.24: one schema option, "
                                                    "PersonalDisplay.tracked, tagged): a tick per spell of your class, "
                                                    "the list's entries, not options",
