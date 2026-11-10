@@ -34,6 +34,7 @@ Press **Edit Layout** at the top of the settings window (or type `/mello edit`).
 - Works with the reskin off as well.
 - A moved bag keeps the bags the game stacks on it (above it, then in columns to its left) on the screen with it, wherever you put it.
 - Edit Layout replaces Unlock the Windows, Auto Snapping and Reset positions (0.15.0): its bar has the Snap switch and Reset all.
+- **MelloUI's own windows without Edit Layout** (2.1.36 the map, 2.1.37 the bags, the Fight History and the Restock list): drag a window's title bar to move it, and the dotted grip in a corner to size it (the bags: their columns; the Restock list: its height). The grip stays under your pointer and the window never grows off the screen. Right-click the grip for the standard size.
 
 ## 🔊 Every click has a new sound
 

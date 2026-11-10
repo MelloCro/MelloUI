@@ -2315,12 +2315,11 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "가방, 전투 기록, 재보충 목록: 제목 표시줄을 끌어 옮기고 모서리의 손잡이를 끌어 크기를 바꿉니다(가방: 열 수). 지도와 같습니다.", -- draft
 	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "지도: 오른쪽 아래 모서리의 손잡이를 끌어 지도 크기를 바꾸고(옆의 퀘스트 목록은 크기가 그대로), 제목 표시줄을 끌어 옮길 수 있습니다. 레이아웃 편집이 필요 없습니다.", -- draft
 	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "미니맵: 약초·광석 애드온이 미니맵을 스캔하는 동안 옆의 강화 효과가 더 이상 화면 가장자리로 튀지 않으며, 스캔이 끝나면 미니맵 테두리가 항상 돌아옵니다.", -- draft
 	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "미니맵: 미니맵을 스캔하는 약초·광석 애드온(NodeSight 등)을 쓸 때 MelloUI의 미니맵 테두리가 더 이상 커서를 따라다니지 않습니다. 스캔할 때마다 지도와 함께 숨겨집니다.", -- draft
 	["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool: CurseForge가 MelloUI_Oldschool보다 MelloUI를 먼저 업데이트해도 손그림 외형이 더 이상 꺼지지 않습니다. 같은 2.1 시리즈의 Oldschool이면 모두 맞습니다.", -- draft
-	["SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI."] = "SharedMedia (테스트: 사용해 보고 어땠는지 알려 주세요): SharedMedia 팩의 글꼴, 바 텍스처, 배경이 MelloUI 목록에 표시됩니다. MelloUI보다 나중에 불러오는 팩도 포함됩니다.", -- draft
-	["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "툴팁: 어두운 배경의 테두리 선택: 어두움, 게임 기본, 없음, 또는 SharedMedia 테두리. SharedMedia 배경은 툴팁, 대화창, 파티 및 공격대 프레임에 쓸 수 있습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3365,6 +3364,7 @@ Lang:Add("koKR", {
 -- stale: ["Shade behind text"] = "글자 뒤 그림자", -- draft
 -- stale: ["Shade: Buffs"] = "그림자: 강화 효과", -- draft
 -- stale: ["Shade: Map Icons"] = "그림자: 지도 아이콘", -- draft
+-- stale: ["SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI."] = "SharedMedia (테스트: 사용해 보고 어땠는지 알려 주세요): SharedMedia 팩의 글꼴, 바 텍스처, 배경이 MelloUI 목록에 표시됩니다. MelloUI보다 나중에 불러오는 팩도 포함됩니다.", -- draft
 -- stale: ["SharedMedia: fonts, bar textures and backgrounds shared by other addons show in MelloUI's lists, also from packs that load after MelloUI (those were missed before)."] = "SharedMedia: 다른 애드온이 공유하는 글꼴, 바 텍스처, 배경이 MelloUI 목록에 표시됩니다. MelloUI보다 나중에 불러오는 팩도 포함됩니다(이전에는 빠졌습니다).", -- draft
 -- stale: ["Shops, mail, bank, trainers"] = "상점, 우편, 은행, 전문가", -- draft
 -- stale: ["Short channel names, class-coloured names, the whisper popup, the chat buttons, smooth scrolling, the names' form (Show Names As), the Background dropdown and the art-hiding switches (which only apply while the chat reskin is off). Off: every one of them goes."] = "짧은 채널 이름, 직업 색상 이름, 귓속말 팝업, 대화 버튼, 부드러운 스크롤, 이름 형식(이름 표시 방식), 배경 목록, 그림을 숨기는 스위치(대화 스킨이 꺼져 있을 때만 적용). 끄기: 모두 사라집니다.", -- draft
@@ -3629,6 +3629,7 @@ Lang:Add("koKR", {
 -- stale: ["The workbench when an item is crafted."] = "아이템을 제작하면 작업대 소리.", -- draft
 -- stale: ["Three numbers on top of your frame: the sword this fight's damage per second, the hourglass this run's, the cross your healing per second. Live in a fight, the last fight's after it. Move them in Edit Layout (Your Values)."] = "내 창 위의 세 숫자: 칼은 이번 전투의 초당 피해, 모래시계는 이번 던전의 것, 십자는 초당 치유. 전투 중에는 실시간, 전투 후에는 마지막 전투의 값. 레이아웃 편집(내 값)에서 옮기세요.", -- draft
 -- stale: ["Titles, headers, dialog names, mail and book text, and the kit's title face on the painted plates; a Font Style puts it back to 100% (its faces bring their own correction). Not the Quest Tracker's title and section headers or Combat Text's notices: they have sizes of their own."] = "제목, 머리글, 대화 이름, 우편과 책 글자, 페인팅 명판 위 키트의 제목 글꼴. 글꼴 스타일은 이를 100%로 되돌립니다(그 글꼴들이 자체 보정을 가져옴). 퀘스트 추적기의 제목과 구역 머리글, 전투 문자의 알림은 제외: 자체 크기가 있습니다.", -- draft
+-- stale: ["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "툴팁: 어두운 배경의 테두리 선택: 어두움, 게임 기본, 없음, 또는 SharedMedia 테두리. SharedMedia 배경은 툴팁, 대화창, 파티 및 공격대 프레임에 쓸 수 있습니다.", -- draft
 -- stale: ["Tooltips colour guilds, factions, levels and quest objectives. Macro Backup is gone: the game keeps your settings."] = "툴팁이 길드, 진영, 레벨, 퀘스트 목표를 색으로 구분합니다. 매크로 백업은 사라짐: 게임이 설정을 보관합니다.", -- draft
 -- stale: ["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "UI 그림자가 이제 개인 표시기에도 적용되며, 자체 스위치와 그림자 강도 슬라이더를 사용합니다.", -- draft
 -- stale: ["Under 35% health the health bar turns ember."] = "생명력이 35% 미만이면 생명력 막대가 불씨 색이 됩니다.", -- draft

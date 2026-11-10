@@ -155,7 +155,7 @@ local M = MelloUI:RegisterModule("Meter", {
 	enabledByDefault = true,
 	-- the player's own game settings, given back when off (the game's meter;
 	-- the party's pets, given back once since fr-10): never in a profile
-	keep = { "savedMeter", "savedPets" },
+	keep = { "savedMeter", "savedPets", "historyW", "historyH" },   -- (2.1.37: the Fight History's size, the screen's)
 	defaults = {
 		values = true,
 		party = true,
@@ -169,6 +169,7 @@ local M = MelloUI:RegisterModule("Meter", {
 		railHeight = 4,
 		summary = true,
 		history = true,
+		historyW = false, historyH = false,   -- (2.1.37) the Fight History's own size (its grip); false: the standard
 		historySize = T.HISTORY,
 		raid = true,
 	},

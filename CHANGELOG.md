@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.37
+
+- Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map.
+
 ## 2.1.36
 
 - Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed.

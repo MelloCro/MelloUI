@@ -216,6 +216,8 @@ M.G = G   -- (the tests)
 
 local TEXT = {
 	title = "Bags",
+	grip = "Drag to size your bags",
+	gripBody = "Wider or narrower changes the columns. Right-click: the standard size.",
 	fold = "Click to fold this kind into one slot.",
 	unfold = "Click to show every item of this kind.",
 	sell = "Sell Junk",
@@ -2554,6 +2556,38 @@ do
 	end
 end
 
+-- (2.1.37; the user, 2026-11-10, after the map's grip: "what can we do for other windows then?") the bag window sized
+-- by its grip: across, the columns (8 to 16, Columns: Grid's own setting, so the configurator's slider shows it); its
+-- height stays the items'. Held by the side across from the grip and the screen edge it stands nearer (bags low on the
+-- screen grow up), so the grip stays under the pointer
+local Cols = {}
+
+function Cols.Pin(f)
+	local x, y = f:GetCenter()
+	local s = f:GetEffectiveScale() / UIParent:GetEffectiveScale()
+	x, y = (Num(x) or 0) * s, (Num(y) or 0) * s
+	local low = y < (Num(UIParent:GetHeight()) or 768) / 2
+	local right = x > (Num(UIParent:GetWidth()) or 1024) / 2
+	return (low and "BOTTOM" or "TOP") .. (right and "RIGHT" or "LEFT")
+end
+
+function Cols.Start()
+	return G.COLS
+end
+
+function Cols.Drag(from, gx, _, roomX)
+	from = from or G.COLS
+	local cols = from + math.floor(gx / G.PITCH + 0.5)
+	cols = Clamp(math.min(cols, from + math.floor(roomX / G.PITCH)), 8, 16, 10)
+	if M.db and cols ~= Clamp(M.db.columns, 8, 16, 10) then
+		MelloUI:NotifySettingChanged("BagWindow", "columns", cols)
+	end
+end
+
+function Cols.Reset()
+	MelloUI:NotifySettingChanged("BagWindow", "columns", 10)
+end
+
 local function Build()
 	local f = CreateFrame("Frame", "MelloUIBagWindow", UIParent)
 	f:SetFrameStrata("MEDIUM")
@@ -2577,7 +2611,8 @@ local function Build()
 		-- (the backpack's portrait: 0.25.0 the backpack of MelloUI's icon set, the game's 1x button art until then)
 		ring = { at = "tl", texture = W.IconPath("bag_backpack"), game = true, bag = 0 },
 		title = TEXT.title, close = true, escape = true, fit = true, background = WindowBackground,
-		mover = { key = "MelloUIBagWindow", label = TEXT.title, page = "Windows", default = M.Home },
+		mover = { key = "MelloUIBagWindow", label = TEXT.title, page = "Windows", default = M.Home,
+			plainDrag = "always" },
 		inset = G.SIDE,
 	})
 	MelloUI:On("setting", BackgroundChanged, "Bag window background")
@@ -2655,6 +2690,9 @@ local function Build()
 	win.sell:Hide()
 	M.MakeTabs(f)   -- (0.22.0) the Backpack and Reagent Bag side tabs
 	W.Dress(f, win.shell)
+	-- (2.1.37) the size grip: wider or narrower, the columns (W.SizeGrip's drag; Columns: Grid's setting)
+	win.grip = W.SizeGrip(f, { corner = "auto", x = 2, y = 2, level = 30, tip = TEXT.grip, body = TEXT.gripBody,
+		size = { pin = Cols.Pin, start = Cols.Start, drag = Cols.Drag, reset = Cols.Reset } })
 	-- the look switched: the slots dressed as the game's bag slots, or left in the game's look; the money's ink with
 	-- the page (the Window Background is the kit look's)
 	win.shell:OnKit(function(_, on)

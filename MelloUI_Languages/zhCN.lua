@@ -2315,12 +2315,11 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "背包、战斗历史和补货列表：拖动标题栏即可移动，拖动角落的手柄即可调整大小（背包：列数），与地图相同。", -- draft
 	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "地图：拖动右下角的手柄即可调整地图大小（旁边的任务日志保持原大小），拖动标题栏即可移动地图，无需编辑布局。", -- draft
 	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "小地图：当草药或矿石插件扫描小地图时，小地图旁的增益效果不再跳到屏幕边缘，扫描结束后小地图边框总会回来。", -- draft
 	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "小地图：使用扫描小地图的草药或矿石插件（如 NodeSight）时，MelloUI 的小地图边框不再跟随鼠标；每次扫描时它会随地图一起隐藏。", -- draft
 	["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool：当 CurseForge 先于 MelloUI_Oldschool 更新 MelloUI 时，手绘外观不再在更新后关闭；同一 2.1 系列的任何 Oldschool 都可使用。", -- draft
-	["SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI."] = "SharedMedia（测试功能：欢迎试用并告诉我们效果）：SharedMedia 材质包中的字体、条材质和背景会出现在 MelloUI 的列表中，包括在 MelloUI 之后加载的材质包。", -- draft
-	["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "鼠标提示：暗色背景新增边框选项：暗色、游戏自带、无，或 SharedMedia 边框。SharedMedia 背景可用于鼠标提示、聊天框以及小队和团队框体。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3365,6 +3364,7 @@ Lang:Add("zhCN", {
 -- stale: ["Shade behind text"] = "文字背后的阴影", -- draft
 -- stale: ["Shade: Buffs"] = "阴影：增益效果", -- draft
 -- stale: ["Shade: Map Icons"] = "阴影：地图图标", -- draft
+-- stale: ["SharedMedia (a test: try it and tell us how it goes): fonts, bar textures and backgrounds from SharedMedia packs show in MelloUI's lists, also from packs that load after MelloUI."] = "SharedMedia（测试功能：欢迎试用并告诉我们效果）：SharedMedia 材质包中的字体、条材质和背景会出现在 MelloUI 的列表中，包括在 MelloUI 之后加载的材质包。", -- draft
 -- stale: ["SharedMedia: fonts, bar textures and backgrounds shared by other addons show in MelloUI's lists, also from packs that load after MelloUI (those were missed before)."] = "SharedMedia：其他插件共享的字体、条材质和背景会出现在 MelloUI 的列表中，包括在 MelloUI 之后加载的材质包（以前会漏掉）。", -- draft
 -- stale: ["Shops, mail, bank, trainers"] = "商店、邮件、银行、训练师", -- draft
 -- stale: ["Short channel names, class-coloured names, the whisper popup, the chat buttons, smooth scrolling, the names' form (Show Names As), the Background dropdown and the art-hiding switches (which only apply while the chat reskin is off). Off: every one of them goes."] = "短频道名、职业颜色名字、悄悄话弹窗、聊天按钮、平滑滚动、名字形式（名字显示方式）、“背景”下拉列表以及隐藏美术的开关（仅在聊天换肤关闭时生效）。关闭：全部消失。", -- draft
@@ -3629,6 +3629,7 @@ Lang:Add("zhCN", {
 -- stale: ["The workbench when an item is crafted."] = "制造出物品时的工作台声。", -- draft
 -- stale: ["Three numbers on top of your frame: the sword this fight's damage per second, the hourglass this run's, the cross your healing per second. Live in a fight, the last fight's after it. Move them in Edit Layout (Your Values)."] = "你框体上方三个数字：剑是本场战斗的每秒伤害，沙漏是本次副本的，十字是你的每秒治疗。战斗中实时显示，战斗后显示上一场的。可在“编辑布局”（你的数值）中移动。", -- draft
 -- stale: ["Titles, headers, dialog names, mail and book text, and the kit's title face on the painted plates; a Font Style puts it back to 100% (its faces bring their own correction). Not the Quest Tracker's title and section headers or Combat Text's notices: they have sizes of their own."] = "标题、题头、对话名字、邮件和书籍文字，以及手绘牌匾上套件的标题字体；字体风格会把它恢复到100%（它的字体自带校正）。不包括任务追踪器的标题和分区题头，也不包括战斗文字的通知：它们有自己的大小。", -- draft
+-- stale: ["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "鼠标提示：暗色背景新增边框选项：暗色、游戏自带、无，或 SharedMedia 边框。SharedMedia 背景可用于鼠标提示、聊天框以及小队和团队框体。", -- draft
 -- stale: ["Tooltips colour guilds, factions, levels and quest objectives. Macro Backup is gone: the game keeps your settings."] = "鼠标提示为公会、阵营、等级和任务目标着色。宏备份已移除：游戏会保存你的设置。", -- draft
 -- stale: ["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "界面阴影现在覆盖个人显示，有自己的开关和阴影强度滑块。", -- draft
 -- stale: ["Under 35% health the health bar turns ember."] = "生命值低于35%时生命条变成余烬色。", -- draft

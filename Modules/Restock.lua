@@ -89,11 +89,13 @@ local M = MelloUI:RegisterModule("Restock", {
 	icon = "Interface\\Icons\\INV_Drink_07",
 	flavour = "Water, bread and arrows, topped up before they run out.",
 	-- (no group: its rows sit on the Reminders page, Modules/Reminders.lua)
-	keep = { "^list_" },   -- each character's own list (ListKey): never in a profile, never wiped by one
+	keep = { "^list_", "listH" },   -- each character's own list (ListKey): never in a profile, never wiped by one;
+	-- (2.1.37) the list window's height, the screen's
 	enabledByDefault = true,
 	defaults = {
 		below = 0.5,
 		shopPanel = true,
+		listH = false,   -- (2.1.37) the list window's own height (its grip); false: the standard
 	},
 	-- (no header and no switch of its own for the reminder: the Reminders page
 	-- lays these rows on its Restock tab, under this module's switch, which is
@@ -2389,11 +2391,43 @@ local ResetClick = Shared("OnClick on the Restock List's Suggested", function()
 	MelloUI:Confirm(RESET_ASK)
 end, "script")
 
+-- (2.1.37; the user, 2026-11-10, after the map's grip: "what can we do for other windows then?") the list window made
+-- taller by its grip, from the standard height up as far as the screen has room (its width is its page's)
+local Taller = {}
+
+function Taller.Start()
+	return Num(win.frame:GetHeight()) or LIST_H
+end
+
+function Taller.Drag(from, _, gy)
+	win.frame:SetHeight(max(LIST_H, floor((from or LIST_H) + gy)))
+	if win.frame:IsShown() then
+		ListLayout()
+	end
+end
+
+function Taller.Stop()
+	if M.db then
+		local h = floor(win.frame:GetHeight() + 0.5)
+		M.db.listH = h > LIST_H and h or false
+	end
+end
+
+function Taller.Reset()
+	if M.db then
+		M.db.listH = false
+	end
+	win.frame:SetHeight(LIST_H)
+	if win.frame:IsShown() then
+		ListLayout()
+	end
+end
+
 local function BuildList()
 	local f = CreateFrame("Frame", "MelloUIRestockList", UIParent)
 	f:SetFrameStrata("DIALOG")
 	f:SetToplevel(true)
-	f:SetSize(LIST_W, LIST_H)
+	f:SetSize(LIST_W, max(LIST_H, Num(M.db and M.db.listH) or 0))
 	f:EnableMouse(true)
 	f:SetClampedToScreen(true)
 	f:Hide()
@@ -2405,7 +2439,7 @@ local function BuildList()
 	win.shell = MelloUI.Kit:OwnWindow(f, {
 		area = "config", ring = { at = "tl" }, plate = "rail", title = "Restock List",
 		close = true, escape = true, fit = true, sounds = true,
-		mover = { key = "MelloUIRestockList", label = "Restock list", page = "Restock" },
+		mover = { key = "MelloUIRestockList", label = "Restock list", page = "Restock", plainDrag = "always" },
 	})
 	-- the kinds: the configurator's own side list (W.NavRail), in its box
 	win.rail = W.NavRail(f, { width = RAIL_W, rowHeight = 34, iconSize = 22, scroll = false, box = true,
@@ -2493,6 +2527,10 @@ local function BuildList()
 	win.pager:Show(win.page, 0, true)
 	win.shell:OnKit(Lay)
 	W.Dress(f, win.shell)
+	-- (2.1.37) the size grip (W.SizeGrip's drag): taller, more of the list in view
+	win.grip = W.SizeGrip(f, { corner = "auto", level = 30, tip = "Drag to make the list taller",
+		body = "Right-click: the standard size.",
+		size = { start = Taller.Start, drag = Taller.Drag, stop = Taller.Stop, reset = Taller.Reset } })
 	return f
 end
 

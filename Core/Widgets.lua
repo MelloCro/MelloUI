@@ -8723,16 +8723,170 @@ end
 -- resizer in the corner" -- lifted from the Quest Tracker's, 0.25.0): six dots in a triangle in its corner in the
 -- palette's trim, the selected gold under the pointer, a tooltip. opts: corner ("BOTTOMLEFT" | "BOTTOMRIGHT", the
 -- default), x, y (in from that corner, default 3), level (over `frame` by this, default 10), tip / body (the tooltip's
--- title and line), anchor (its side, default ANCHOR_LEFT), onDown(grip, button) / onUp(grip, button). The sizing is the
--- caller's (StartSizing, or a drag of its own). The handlers are shared: nothing made per grip but its frame and dots
+-- title and line), anchor (its side, default ANCHOR_LEFT), onDown(grip, button) / onUp(grip, button): the sizing the
+-- caller's (the Quest Tracker's StartSizing). Or (2.1.37; the user, 2026-11-10, after the map's: "what can we do for
+-- other windows then?") opts.size, the one drag every own window is sized by:
+--   size = { window,          the window sized (its place kept by the mover's store; default `frame`)
+--            pin,             its corner held where it stands while the grip is held (default the one across from
+--                             the grip; or a function(window) -> point), so the grip stays under the pointer
+--            start(),         at the press: what the drag starts from (handed back to drag and stop)
+--            drag(from, gx, gy, roomX, roomY),  gx, gy: how far the grip moved outward (bigger), in the window's
+--                             units; roomX, roomY: the most it may grow there and stay on the screen
+--            stop(from),      let go (the size kept); the place is kept after it
+--            reset() }        a right-click: the standard size (true back: it placed the window itself; else it
+--                             stays where it stands, held by the same corner, pulled onto the screen when needed)
+-- corner = "auto" (with size): the grip in the bottom corner on the screen's open side -- the left one while the
+-- window stands in the screen's right half -- laid again at each show and after each drag. The handlers are shared:
+-- nothing made per grip but its frame and dots
 do
 	local DOTS = { { 2, 2 }, { 6, 2 }, { 10, 2 }, { 2, 6 }, { 6, 6 }, { 2, 10 } }
-	local grips = setmetatable({}, weakKeys)   -- [grip] = { dots, tip, body, anchor, onDown, onUp }
+	local grips = setmetatable({}, weakKeys)   -- [grip] = { dots, tip, body, anchor, onDown, onUp, size, ... }
+	local ACROSS = { BOTTOMRIGHT = "TOPLEFT", BOTTOMLEFT = "TOPRIGHT" }
+	local STEP = 2   -- (the least change a drag hands on)
 
 	local function PaintGrip(g, key)
 		for _, dot in ipairs(g.dots) do
 			W.Paint(dot, key, "vertex", 1)
 		end
+	end
+
+	-- the grip and its dots in `corner` of its frame
+	local function Corner(grip, g, corner)
+		g.corner = corner
+		local left = corner == "BOTTOMLEFT"
+		grip:ClearAllPoints()
+		grip:SetPoint(corner, g.frame, corner, left and g.inX or -g.inX, g.inY)
+		for i, dot in ipairs(g.dots) do
+			local d = DOTS[i]
+			dot:ClearAllPoints()
+			dot:SetPoint(corner, grip, corner, left and d[1] or -d[1], d[2])
+		end
+	end
+
+	-- the screen in the window's own units, and the window's edges in them (nil while unreadable)
+	local function GripEdges(f)
+		local fs, us = Num(f:GetEffectiveScale()), Num(UIParent:GetEffectiveScale())
+		local l, t, r, b = Num(f:GetLeft()), Num(f:GetTop()), Num(f:GetRight()), Num(f:GetBottom())
+		local sw, sh = Num(UIParent:GetWidth()), Num(UIParent:GetHeight())
+		if not (fs and us and l and t and r and b and sw and sh) or fs <= 0 then
+			return nil
+		end
+		local k = us / fs
+		return l, t, r, b, sw * k, sh * k
+	end
+
+	-- corner = "auto": the bottom corner on the open side
+	local function AutoCorner(grip)
+		local g = grips[grip]
+		if not (g and g.auto) then
+			return
+		end
+		local l, _, r, _, sw = GripEdges(g.size.window)
+		if l then
+			Corner(grip, g, (l + r) / 2 > sw / 2 and "BOTTOMLEFT" or "BOTTOMRIGHT")
+		end
+	end
+
+	-- the pointer in the window's own units
+	local function Cursor(f)
+		local x, y = GetCursorPosition()
+		local s = Num(f:GetEffectiveScale()) or 1
+		if s <= 0 then
+			s = 1
+		end
+		return (Num(x) or 0) / s, (Num(y) or 0) / s
+	end
+
+	-- the window hung by `pin` where it stands (through the mover, its own SetPoint); the room to grow on the screen
+	-- toward the grip, across and down/up from that corner
+	local function GripPin(g)
+		local f = g.size.window
+		local l, t, r, b, sw, sh = GripEdges(f)
+		if not l then
+			return nil
+		end
+		local pin = g.size.pin
+		if type(pin) == "function" then
+			pin = pin(f)
+		end
+		pin = type(pin) == "string" and pin or ACROSS[g.corner]
+		local right, bottom = pin:find("RIGHT") ~= nil, pin:find("BOTTOM") ~= nil
+		MelloUI:PlaceEntryAt(MelloUI:MoverEntry(f), pin, UIParent, "BOTTOMLEFT", right and r or l, bottom and b or t)
+		g.pinRight, g.pinBottom = right, bottom
+		return math.max(0, right and l or sw - r), math.max(0, bottom and sh - t or b)
+	end
+
+	-- its place kept by the mover's store (as its own title drag keeps it): measured, saved, hung by it again
+	local function Keep(f)
+		local entry = MelloUI:MoverEntry(f)
+		if entry and entry.key ~= nil and MelloUI:SavePosition(entry.key, f) then
+			MelloUI:RestorePosition(entry.key, f)
+		end
+	end
+
+	local function Let(grip)
+		local g = grips[grip]
+		if not (g and g.held) then
+			return
+		end
+		g.held = false
+		Perf.SetScript(grip, "OnUpdate", nil)
+		if g.size.stop then
+			g.size.stop(g.from)
+		end
+		Keep(g.size.window)
+		AutoCorner(grip)
+	end
+	local Follow = Shared("OnUpdate on a held size grip", function(self)
+		local g = grips[self]
+		if not (g and g.held and IsMouseButtonDown("LeftButton")) then
+			Let(self)
+			return
+		end
+		local x, y = Cursor(g.size.window)
+		local gx, gy = x - g.x, g.y - y
+		if g.pinRight then
+			gx = -gx
+		end
+		if g.pinBottom then
+			gy = -gy
+		end
+		gx, gy = math.min(gx, g.roomX), math.min(gy, g.roomY)
+		if math.abs(gx - g.gx) >= STEP or math.abs(gy - g.gy) >= STEP then
+			g.gx, g.gy = gx, gy
+			g.size.drag(g.from, gx, gy, g.roomX, g.roomY)
+		end
+	end, "script")
+
+	local function SizeDown(grip, button)
+		local g = grips[grip]
+		local f = g.size.window
+		if InCombatLockdown() and f:IsProtected() then
+			return
+		end
+		if button == "RightButton" then
+			if g.size.reset then
+				GripPin(g)
+				if not g.size.reset() then
+					MelloUI:FitOnScreen(f)
+					Keep(f)
+				end
+				AutoCorner(grip)
+				MelloUI:PlayUISound("tick")
+			end
+			return
+		end
+		if button ~= "LeftButton" then
+			return
+		end
+		local roomX, roomY = GripPin(g)
+		if not roomX then
+			return
+		end
+		g.held, g.roomX, g.roomY, g.gx, g.gy = true, roomX, roomY, 0, 0
+		g.from = g.size.start and g.size.start() or nil
+		g.x, g.y = Cursor(f)
+		Perf.SetScript(grip, "OnUpdate", Follow)
 	end
 	local GripEnter = Shared("OnEnter on MelloUI's size grips", function(self)
 		local g = grips[self]
@@ -8755,42 +8909,52 @@ do
 	end, "script")
 	local GripDown = Shared("OnMouseDown on MelloUI's size grips", function(self, button)
 		local g = grips[self]
-		if g and g.onDown then
+		if g and g.size then
+			SizeDown(self, button)
+		elseif g and g.onDown then
 			g.onDown(self, button)
 		end
 	end, "script")
 	local GripUp = Shared("OnMouseUp on MelloUI's size grips", function(self, button)
 		local g = grips[self]
-		if g and g.onUp then
+		if g and g.size then
+			Let(self)
+		elseif g and g.onUp then
 			g.onUp(self, button)
 		end
 	end, "script")
+	local GripShow = Shared("OnShow on MelloUI's size grips", AutoCorner, "script")
 
 	function W.SizeGrip(frame, opts)
 		opts = opts or {}
-		local corner = opts.corner == "BOTTOMLEFT" and "BOTTOMLEFT" or "BOTTOMRIGHT"
-		local left = corner == "BOTTOMLEFT"
+		local size = type(opts.size) == "table" and type(opts.size.drag) == "function" and opts.size or nil
+		local auto = size ~= nil and opts.corner == "auto"
 		local grip = CreateFrame("Button", nil, frame)
 		grip:SetSize(16, 16)
-		local inX, inY = opts.x or 3, opts.y or 3
-		grip:SetPoint(corner, frame, corner, left and inX or -inX, inY)
 		grip:SetFrameLevel(frame:GetFrameLevel() + (opts.level or 10))
 		local g = { dots = {}, tip = opts.tip, body = opts.body, anchor = opts.anchor or "ANCHOR_LEFT",
-			onDown = opts.onDown, onUp = opts.onUp }
-		for _, d in ipairs(DOTS) do
+			onDown = opts.onDown, onUp = opts.onUp, frame = frame, inX = opts.x or 3, inY = opts.y or 3, auto = auto }
+		if size then
+			size.window = size.window or frame
+			g.size = size
+		end
+		for _ = 1, #DOTS do
 			local dot = grip:CreateTexture(nil, "OVERLAY")
 			dot:SetTexture(WHITE)
 			dot:SetSize(2, 2)
-			dot:SetPoint(corner, grip, corner, left and d[1] or -d[1], d[2])
 			g.dots[#g.dots + 1] = dot
 		end
 		grips[grip] = g
+		Corner(grip, g, opts.corner == "BOTTOMLEFT" and "BOTTOMLEFT" or "BOTTOMRIGHT")
 		PaintGrip(g, "trim")
 		grip:SetAlpha(0.35)
 		Perf.SetScript(grip, "OnEnter", GripEnter)
 		Perf.SetScript(grip, "OnLeave", GripLeave)
 		Perf.SetScript(grip, "OnMouseDown", GripDown)
 		Perf.SetScript(grip, "OnMouseUp", GripUp)
+		if auto then
+			Perf.SetScript(grip, "OnShow", GripShow)
+		end
 		return grip
 	end
 end

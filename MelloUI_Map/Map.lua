@@ -672,7 +672,7 @@ end
 -- corner kept where it stands while the grip is held. Right-click: the standard size and place back. Bounds: MIN_W,
 -- the window with the column at most WIDE of the screen, 90 % of its height
 --------------------------------------------------------------------------------
-local Grip = { on = false, STEP = 2 }
+local Grip = {}
 
 -- the least and the most map width
 function Grip.Bounds()
@@ -700,99 +700,39 @@ function Grip.Apply(w)
 	Unfold(win.e or 0, true)
 end
 
--- the cursor in the window's own units
-function Grip.Cursor()
-	local x, y = GetCursorPosition()
-	local s = Finite(win.frame:GetEffectiveScale()) or 1
-	if s <= 0 then
-		s = 1
-	end
-	return (Finite(x) or 0) / s, (Finite(y) or 0) / s
+-- the grip's drag (W.SizeGrip's size, the one drag every own window is sized by: the window held by its top-left
+-- corner, the grip under the pointer, the place kept after): right and down make it bigger, whichever moved further,
+-- the map's 3 : 2 -- as far as the screen has room
+function Grip.Start()
+	return win.mapW
 end
 
--- the place kept through the mover's store (as its own title drag keeps it): measured, saved, hung by it again
-function Grip.Keep()
-	local entry = MelloUI:MoverEntry(win.frame)
-	if entry and entry.key ~= nil and MelloUI:SavePosition(entry.key, win.frame) then
-		MelloUI:RestorePosition(entry.key, win.frame)
-	end
+function Grip.Drag(from, gx, gy, roomX, roomY)
+	local dy = gy * 1002 / 668
+	local room = min(roomX, roomY * 1002 / 668)
+	Grip.Apply((from or 0) + min(room, math.abs(gx) >= math.abs(dy) and gx or dy))
 end
 
--- the window hung by its top-left corner where it stands, so a drag at the bottom-right corner leaves the rest of it
--- in place and the grip stays under the cursor; the most map width that keeps it on the screen from there
-function Grip.Pin()
-	local f = win.frame
-	local fs, us = Finite(f:GetEffectiveScale()), Finite(UIParent:GetEffectiveScale())
-	local l, t, r, b = Finite(f:GetLeft()), Finite(f:GetTop()), Finite(f:GetRight()), Finite(f:GetBottom())
-	local sw = Finite(UIParent:GetWidth())
-	if not (fs and us and l and t and r and b and sw) or fs <= 0 then
-		return nil
-	end
-	MelloUI:PlaceEntryAt(MelloUI:MoverEntry(win.frame), "TOPLEFT", UIParent, "BOTTOMLEFT", l, t)
-	local now = win.mapW or 0
-	return max(now, now + floor(min(sw * us / fs - r, b * 1002 / 668)))
-end
-
--- while the grip is held (its OnUpdate, on only then): right and down make it bigger, whichever moved further
-function Grip.Follow(grip)
-	if not (Grip.on and IsMouseButtonDown("LeftButton")) then
-		Grip.Stop(grip)
-		return
-	end
-	local x, y = Grip.Cursor()
-	local dx, dy = x - Grip.x, (Grip.y - y) * 1002 / 668
-	local w = Grip.w + (math.abs(dx) >= math.abs(dy) and dx or dy)
-	if Grip.room then
-		w = min(w, Grip.room)
-	end
-	if math.abs(w - (Grip.last or 0)) >= Grip.STEP then
-		Grip.last = w
-		Grip.Apply(w)
-	end
-end
-
-function Grip.Stop(grip)
-	if not Grip.on then
-		return
-	end
-	Grip.on = false
-	Perf.SetScript(grip, "OnUpdate", nil)
+function Grip.Stop()
 	local sw = Finite(UIParent:GetWidth())
 	if M.db and sw and sw > 0 and win.mapW then
 		M.db.mapShare = math.floor(win.mapW / sw * 10000 + 0.5) / 10000
 	end
-	Grip.Keep()
 end
 
-function Grip.Down(grip, button)
-	if InCombatLockdown() and win.frame:IsProtected() then
-		return
+-- a right-click: the standard size, and its standard place (the standard size seldom fits from where a smaller map
+-- was put): placed here
+function Grip.Reset()
+	if M.db then
+		M.db.mapShare = false
 	end
-	if button == "RightButton" then
-		if M.db then
-			M.db.mapShare = false
-		end
-		-- (and its standard place: the standard size seldom fits from where a smaller map was put)
-		local entry = MelloUI:MoverEntry(win.frame)
-		if entry and entry.key ~= nil then
-			MelloUI:ForgetPosition(entry.key)
-		end
-		Grip.Apply((Size()))
-		Home(win.frame)
-		MelloUI:PlayUISound("tick")
-		return
+	local entry = MelloUI:MoverEntry(win.frame)
+	if entry and entry.key ~= nil then
+		MelloUI:ForgetPosition(entry.key)
 	end
-	if button ~= "LeftButton" then
-		return
-	end
-	Grip.room = Grip.Pin()
-	Grip.on, Grip.w, Grip.last = true, win.mapW, win.mapW
-	Grip.x, Grip.y = Grip.Cursor()
-	Perf.SetScript(grip, "OnUpdate", Grip.Follow)
-end
-
-function Grip.Up(grip)
-	Grip.Stop(grip)
+	Grip.Apply((Size()))
+	Home(win.frame)
+	return true
 end
 
 M.Grip = Grip   -- (read only: the tests)
@@ -1012,7 +952,7 @@ local function Build()
 	HookCanvas(cf)
 	-- (2.1.36) the map's own size grip, in the bottom-right corner of the map (above the canvas and its pins)
 	win.grip = W.SizeGrip(body, { corner = "BOTTOMRIGHT", level = 30, tip = TEXT.grip, body = TEXT.gripBody,
-		onDown = Grip.Down, onUp = Grip.Up })
+		size = { window = f, start = Grip.Start, drag = Grip.Drag, stop = Grip.Stop, reset = Grip.Reset } })
 	Dungeon.Init(win, HookCanvas)
 	Perf.HookScript(f, "OnShow", Shown)
 	Perf.HookScript(f, "OnHide", Hidden)

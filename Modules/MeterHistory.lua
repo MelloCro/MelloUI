@@ -86,6 +86,8 @@ local FACE_OPTS = { shade = "windows" }
 
 local TEXT = {
 	title = "Fight History",
+	grip = "Drag to size the window",
+	gripBody = "Right-click: the standard size.",
 	thisRun = "This run",
 	runLine = "%s, %d fights, %s",
 	runLineOne = "%s, 1 fight, %s",
@@ -806,11 +808,41 @@ local function BarTexture()
 	end
 end
 
+-- (2.1.37; the user, 2026-11-10, after the map's grip: "what can we do for other windows then?") the window sized by
+-- its grip, from the standard size up as far as the screen has room: the list shows more fights, the bars run wider
+local Sized = { w = H.WIDTH, h = H.HEIGHT }
+
+function Sized.Start()
+	Sized.w, Sized.h = Num(win.frame:GetWidth()) or H.WIDTH, Num(win.frame:GetHeight()) or H.HEIGHT
+	return Sized
+end
+
+function Sized.Drag(from, gx, gy)
+	win.frame:SetSize(max(H.WIDTH, floor(from.w + gx)), max(H.HEIGHT, floor(from.h + gy)))
+	LayAll()
+end
+
+function Sized.Stop()
+	if M.db then
+		local w, h = floor(win.frame:GetWidth() + 0.5), floor(win.frame:GetHeight() + 0.5)
+		M.db.historyW = w > H.WIDTH and w or false
+		M.db.historyH = h > H.HEIGHT and h or false
+	end
+end
+
+function Sized.Reset()
+	if M.db then
+		M.db.historyW, M.db.historyH = false, false
+	end
+	win.frame:SetSize(H.WIDTH, H.HEIGHT)
+	LayAll()
+end
+
 local function Build()
 	local f = CreateFrame("Frame", "MelloUIFightHistory", UIParent)
 	f:SetFrameStrata("DIALOG")
 	f:SetToplevel(true)
-	f:SetSize(H.WIDTH, H.HEIGHT)
+	f:SetSize(max(H.WIDTH, Num(M.db and M.db.historyW) or 0), max(H.HEIGHT, Num(M.db and M.db.historyH) or 0))
 	f:EnableMouse(true)
 	f:SetClampedToScreen(true)
 	f:Hide()
@@ -820,7 +852,8 @@ local function Build()
 	win.shell = Kit:OwnWindow(f, {
 		area = "config", ring = { at = "tl", texture = class and Meter.ClassIcon(class) or nil }, plate = "rail",
 		title = TEXT.title, close = true, escape = true, fit = true, sounds = true,
-		mover = { key = "MelloUIFightHistory", label = TEXT.title, page = "BarsMeters", default = Home },
+		mover = { key = "MelloUIFightHistory", label = TEXT.title, page = "BarsMeters", default = Home,
+			plainDrag = "always" },
 		-- (the modern look: the brand row at the list column's head, the drag
 		-- band the top GRAB, the close on the brand row's line)
 		brand = { shape = "row", grab = -H.GRAB, close = { -H.CLOSE_X, -H.CLOSE_Y } },
@@ -922,6 +955,9 @@ local function Build()
 	win.shell:OnKit(Lay)
 	W.OnBarTexture("statusbars", BarTexture, "Fight History bars")
 	W.Dress(f, win.shell)
+	-- (2.1.37) the size grip (W.SizeGrip's drag): wider and taller, the list and the bars with it
+	win.grip = W.SizeGrip(f, { corner = "auto", level = 30, tip = TEXT.grip, body = TEXT.gripBody,
+		size = { start = Sized.Start, drag = Sized.Drag, stop = Sized.Stop, reset = Sized.Reset } })
 	return f
 end
 
