@@ -110,33 +110,11 @@ AddonPins.S = S
 -- (Polestar's pins stay on the game's map; on this one its guide's goals are this map's marks already: MapObjectives)
 --------------------------------------------------------------------------------
 
-local GIVER_ATLAS, ENDER_ATLAS = "QuestNormal", "QuestTurnin"
-local QUESTIE_LOOK = {
-	available = { atlas = GIVER_ATLAS, cover = "giver" },
-	available_gray = { atlas = GIVER_ATLAS, grey = true, cover = "giver" },
-	repeatable = { atlas = GIVER_ATLAS, cover = "giver" },
-	eventquest = { atlas = GIVER_ATLAS, cover = "giver" },
-	pvpquest = { atlas = GIVER_ATLAS, cover = "giver" },
-	complete = { atlas = ENDER_ATLAS, cover = "ender" },
-	incomplete = { atlas = ENDER_ATLAS, grey = true, cover = "ender" },
-	repeatable_complete = { atlas = ENDER_ATLAS, cover = "ender" },
-	eventquest_complete = { atlas = ENDER_ATLAS, cover = "ender" },
-	pvpquest_complete = { atlas = ENDER_ATLAS, cover = "ender" },
-	slay = { icon = "kill", cover = "objective" },
-	slay_mono = { icon = "kill", cover = "objective" },
-	loot = { icon = "pin_collect", cover = "objective" },
-	loot_mono = { icon = "pin_collect", cover = "objective" },
-	object = { icon = "obj_use", cover = "objective" },
-	object_mono = { icon = "obj_use", cover = "objective" },
-	interact = { icon = "obj_use", cover = "objective" },
-	talk = { icon = "chat_general", cover = "objective" },
-	chatbubblegossipicon = { icon = "chat_general", cover = "objective" },
-	event = { icon = "obj_explore", cover = "objective" },
-	chest = { icon = "ql_chest" },
-}
+-- (2.1.39) the pictures are the core's (Core/QuestieLook.lua): one table for this map, the minimap and the game's map
+local QUESTIE_LOOK = MelloUI.QuestieLook.ICONS
 AddonPins.QUESTIE_LOOK = QUESTIE_LOOK
 local QUESTIE_PARTS = { "texture", "glowTexture", "overlayTexture" }   -- (QuestieFrame.lua's own pictures)
-local ICONS = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\"
+local ICONS = MelloUI.QuestieLook.ICON_DIR
 local styled = setmetatable({}, { __mode = "k" })   -- [Questie's frame] = our picture on it
 
 -- a Questie icon's look: its picture's file name (data.Icon, else the texture's own), nil for one of no look of ours
@@ -152,17 +130,29 @@ local function QuestieLook(icon)
 	return name and QUESTIE_LOOK[name:lower()] or nil
 end
 
--- what this map shows of the quests already (taken once a pass): MapObjectives' givers shown and objectives laid
+-- what this map shows of the quests already (taken once a pass): MapObjectives' givers shown and objectives laid;
+-- (2.1.39; the user, 2026-11-10: "didnt i say that we provide the look? this way we have lost our own function which i
+-- like very much") and this map's own layers of them: while the quest givers' layer (quests) or the objectives' layer
+-- is on, it draws that kind itself -- MelloUI's filters, areas and motions -- and Questie's of that kind are never
+-- borrowed; with the layer switched off, Questie's fill in, in MelloUI's pictures
 local function Cover()
 	local O = ns.Objectives
 	if not (O and O.GiversShown and O.Laid) then
 		return nil
 	end
 	local ok, givers = pcall(O.GiversShown)
-	return { givers = ok and type(givers) == "table" and givers or {}, laid = O.Laid }
+	local Map = MelloUI.modules and MelloUI.modules.Map
+	local on = type(Map) == "table" and type(Map.LayerOn) == "function"
+	return { givers = ok and type(givers) == "table" and givers or {}, laid = O.Laid,
+		quests = on and Map:LayerOn("quests") and true or false,
+		objectives = on and Map:LayerOn("objectives") and true or false }
 end
 
 local function Covered(look, icon, cover)
+	if cover and ((look.cover == "objective" and cover.objectives)
+		or ((look.cover == "giver" or look.cover == "ender") and cover.quests)) then
+		return true
+	end
 	local data = rawget(icon, "data")
 	local q = cover and look.cover and type(data) == "table" and Finite(data.Id)
 	if not q then
@@ -319,7 +309,11 @@ local function Place(entry, icon, t, cover)
 	end
 	-- (2.1.4) Questie's: a quest this map shows already is not drawn twice; the rest in MelloUI's own look
 	local look = entry.questie and QuestieLook(icon) or nil
-	if look and Covered(look, icon, cover) then
+	local covered = look and Covered(look, icon, cover) or false
+	if entry.questie then
+		MelloUI.QuestieLook.Unlist(icon, covered)   -- (2.1.39: left out of Questie's tooltip too)
+	end
+	if covered then
 		if S.owner[icon] then
 			Drop(icon)
 			Release(icon)

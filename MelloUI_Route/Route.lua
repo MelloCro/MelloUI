@@ -10993,11 +10993,13 @@ do
 
 	function M:ObjectivePlaces(questID)
 		questID = MelloUI.Safe.Number(questID)
-		local data = MelloUI_QuestObjectiveData
-		if not (questID and type(data) == "table" and type(data[questID]) == "string" and C_QuestLog and C_QuestLog.IsComplete) then
+		-- (2.1.39: any quest with places -- the Companion's or the player's QuestieDB's, Core/QuestSource.lua -- through
+		-- the one reader; asked without decoding (QO.Has), and not at all once its places are made)
+		local QO = MelloUI.QuestObjectives
+		local e = questID and places[questID]
+		if not (questID and (e or (QO and QO.Has(questID))) and C_QuestLog and C_QuestLog.IsComplete) then
 			return nil
 		end
-		local e = places[questID]
 		-- (a quest that needs items: its open places as the route has them,
 		-- each needed item held or not with them, asked each time -- the bags
 		-- are not the quest log, a needed item looted changes no objective)

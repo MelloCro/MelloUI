@@ -41,6 +41,8 @@ local M = MelloUI:RegisterModule("Nameplates", {
 	group = "Frames and bars", navOrder = 2,
 	-- (2.1.6: the Nameplates area's switch -- MelloUI.Area, Core.lua's Areas: off, nothing of MelloUI's on a plate)
 	tweak = { label = "Nameplates", desc = "MelloUI on the nameplates: the large CC icon, quest markers, the threat line, combo points, name shading, your debuffs, cooldown timers, impact effects, the swing badge and party markers. Off: the game's own plates, untouched.", order = 4 },
+	-- (2.1.39) a step done once, never in a profile: Questie's own plate icons switched off (QuestieIconsOff)
+	keep = { "questieIconsOff" },
 	defaults = {
 		nameFormat = "both",   -- set by UI Modifications' "Show Names As" (one setting for every name)
 		bigCC = true,
@@ -2944,8 +2946,32 @@ function M:OnLoginWorld(...)
 	MelloUI:ReplayWorld(eventFrame, ...)
 end
 
+-- (2.1.39; the user, 2026-11-10: "Questie Icons on the nameplates should not enable by their own, disable them, we use
+-- our own icons how they already are set in the Nameplate Preview") Questie's own quest icons over the plates
+-- switched off once, while MelloUI's Quest Icon is on: its profile's nameplateEnabled, which Questie reads as each
+-- plate comes (one already drawn goes with its plate). The one setting of another addon's MelloUI writes, at the
+-- user's word, once: remembered (questieIconsOff), so a player who switches them on again in Questie keeps them
+function M.QuestieIconsOff()
+	local db = M.db
+	if not (M.isEnabled and db and db.questIcon) or db.questieIconsOff then
+		return false
+	end
+	local Q = rawget(_G, "Questie")
+	local qdb = type(Q) == "table" and rawget(Q, "db")
+	local profile = type(qdb) == "table" and qdb.profile
+	if type(profile) ~= "table" then
+		return false
+	end
+	if profile.nameplateEnabled ~= false then
+		profile.nameplateEnabled = false
+	end
+	db.questieIconsOff = true
+	return true
+end
+
 function M:OnEnable(db)
 	self.db = db
+	M.QuestieIconsOff()
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 	-- (retail's Forever look: the plates' level badges, M.ForeverArt)
@@ -3016,6 +3042,7 @@ function M:OnSettingChanged(key, value, db)
 	end
 	if key == "questIcon" or key == "questIconSize" then
 		if db.questIcon then
+			M.QuestieIconsOff()   -- (2.1.39: Questie's own plate icons off, once, as at the login)
 			UpdateAllQuestIcons()
 		else
 			HideAllQuestIcons()

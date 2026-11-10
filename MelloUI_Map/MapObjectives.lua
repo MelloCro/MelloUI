@@ -101,15 +101,18 @@ end
 
 -- the Companion's data: asked for once a session (a refusal is the Companion's own notice)
 function Objectives.Data()
+	-- (2.1.39) the player's QuestieDB has places too (Core/QuestSource.lua); the Companion still asked for once, for
+	-- the quests it lacks
+	local questie = MelloUI.QuestSource and MelloUI.QuestSource.Lib() ~= nil
 	if rawget(_G, "MelloUI_QuestObjectiveData") then
 		return true
 	end
 	if S.asked or not MelloUI.LoadCompanion then
-		return false
+		return questie or false
 	end
 	S.asked = true
 	local ok = pcall(MelloUI.LoadCompanion, MelloUI)
-	return ok and rawget(_G, "MelloUI_QuestObjectiveData") ~= nil
+	return questie or (ok and rawget(_G, "MelloUI_QuestObjectiveData") ~= nil)
 end
 
 -- the quests in the log to show: not complete, not hidden, (Only The Tracked Quests) watched; (2.1.0) the complete

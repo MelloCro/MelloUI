@@ -1717,6 +1717,13 @@ local function WorldFaceFits(face)
 	return locale ~= "ruRU" or Family.Cyrillic(face)
 end
 
+-- (2.1.39) another addon's one-file texts (Questie's tracker lines: Core/QuestieLook.lua): the face a role draws in now
+-- while this module is on (nil: the game's own), and whether a face has the client's letters (as the world's texts)
+MelloUI.FaceFits = WorldFaceFits
+function MelloUI.FontFace(roleKey)
+	return M.isEnabled and ChosenFont(roleKey) or nil
+end
+
 local function ApplyWorldFonts(db)
 	for roleKey, globals in pairs(WORLD_FONT_GLOBALS) do
 		local face = ChosenFont(roleKey, db)

@@ -120,6 +120,8 @@ NOT_CONFIGURATOR = {
     "Core/Core.lua": "the copy window's Import button (MelloUI:ShowPaste), not an option",
     "Core/SupportersHall.lua": "the Supporters page's Patreon and Discord buttons (each shows its address in the copy "
                                "box), not options",
+    "MelloUI_Map/Map.lua": "the map's icon size slider in its own title row (2.1.39: the map's state, Map.iconScale, "
+                           "as its layer switches are), not a configurator option",
     "MelloUI_PersonalDisplay/PersonalDisplay.lua": "Tracked Spells' rows (2.1.24: one schema option, "
                                                    "PersonalDisplay.tracked, tagged): a tick per spell of your class, "
                                                    "the list's entries, not options",

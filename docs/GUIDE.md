@@ -69,7 +69,7 @@ It comes in two parts, and you need both. Remade for 0.18.3: every voice at a be
 - **Your size, your place:** drag the dotted grip in the map's bottom-right corner to make the map bigger or smaller (its quest log keeps its size, so it stays readable on any screen; right-click the grip for the standard size and place), and drag its title bar to move the window. No Edit Layout needed.
 - **One window, nothing covered:** your quest log, the map's layers and Dungeon Info open in a panel beside the whole map. The round buttons between them pick one (L opens your quests); click the lit one to fold the panel away and the window narrows to the map.
 - **Quest List:** every quest in the zone next to your map. Who gives it, where they stand, what's left to do, how much of the zone you've finished. Filters for dungeons, raids, class quests, attunements, events.
-- **Pins for everything:** quest givers, hand-ins, dungeon doors, boats, zeppelins, flight masters. Click a door to see its quests, click a boat to get routed to the dock.
+- **Pins for everything:** quest givers, hand-ins, dungeon doors, boats, zeppelins, flight masters. Click a door to see its quests, click a boat to get routed to the dock. The **Icons** slider in the map's title row makes every icon on it bigger or smaller (50 to 200 %), other addons' icons such as Questie's too.
 - **Smart Route:** a trail of red dots along real roads to wherever you're going, plus an arrow. Cut a corner or take a shortcut? It just keeps going instead of nagging you to turn around. It learns the roads you walk.
 - **Service Finder:** need a mailbox, a repair guy, an inn, a trainer? Little icons under the minimap. Click one, the arrow takes you to the nearest.
 - **Nearest quest first:** MelloUI's Quest Tracker sorts your quests by distance, shows how far each one is and who takes a finished quest back.
@@ -473,7 +473,9 @@ Moves the crowd-control icon on enemy nameplates from the right side to above th
 the loss-of-control icon on enemy player nameplates the same way. Blizzard's own "Crowd
 Control" nameplate aura option must be on. Also adds a yellow quest marker left of the health
 bar on enemies that still count for an unfinished quest objective (Forever's default
-nameplates have no quest icon), read from the unit tooltip data.
+nameplates have no quest icon), read from the unit tooltip data. (2.1.39) With Questie installed, its own
+quest icons over the plates are switched off once, so only this marker shows (the one setting of Questie's
+MelloUI writes, and only once: switch them on again in Questie's options to keep them).
 
 In the configurator, Nameplates > Enemies shows a sample of an enemy's plate drawn with these settings (the
 name, level and icons made up): click a part of it (the name, the health bar, the CC icon, the quest icon, your
@@ -1081,6 +1083,24 @@ Commands: `/vo stop`, `/vo pause`, `/vo skip`, `/vo read`, `/vo test`, `/vo voic
 `/vo packs`, `/vo lines`, `/vo reset`.
 
 ### Quest List
+
+With Questie installed (2.1.39), the Quest List, its map pins, the objective marks and Route take their quests,
+givers, turn-ins and objective places from Questie's quest database (QuestieDB, which Questie brings), the newest
+quest data there is; a quest it does not have yet keeps MelloUI's own. QuestieDB alone is enough: Questie itself
+may be switched off. Its rules decide what you can take now, as Questie's own do: a quest that needs an earlier
+quest, a breadcrumb handed in, a spell or a profession first waits in the list (its tooltip says what for).
+With Questie itself running, MelloUI's own quest givers, objective marks and quest areas stay, fed by Questie's
+data, and Questie's icons of the same kind stay out of sight wherever MelloUI draws that kind (MelloUI's map: while
+its quest givers' or objectives' layer is on; the game's map: while Quest Givers On Zone Maps or Objective Marks is
+on; the minimap: while Objective Marks On The Minimap is on). Switch one of MelloUI's off and Questie's fill in there,
+in MelloUI's pictures; Questie's quest givers on the minimap (MelloUI has none there) always show, in MelloUI's marks.
+Hovering one of Questie's icons that still show lists only what is not drawn by MelloUI already: Questie's tooltip
+gathers the quests of every icon of its own nearby (a dungeon's quests all sit on its entrance), and leaves out the
+ones MelloUI keeps out of sight. No setting of Questie's is changed. Its tracker: see Quest Tracker.
+
+The map's quest tooltips (MelloUI's givers and objective marks, on its map, the game's map and the minimap) show a
+mob's name in red and an NPC's in green, as the game tells foe from friend, levels in their difficulty colour, and an
+objective's count red until it is done, then green.
 
 A page in the world map's quest log, styled like the quest log, listing the quests picked up
 in a zone. A button on the quest log's top row, where the game shows its quest count, switches the
@@ -1960,6 +1980,29 @@ bars in the bracket. Hooks only schedule work; nothing is laid out while Edit Mo
 in combat. `/trdump` prints the tracker, its header, every module and every shown block.
 
 ### Quest Tracker
+
+(2.1.39) Each quest shows the XP it gives at your level beside its name (Quest XP, on the Quest Tracker
+page; the game's own figure). With Questie installed, its distances, objective places and turn-ins come from
+Questie's database. While Questie's own tracker is on (Enable Tracker, on the Tracker tab of Questie's options),
+MelloUI's steps aside and Questie's wears MelloUI's look: the panel with the gold rim at this tracker's Background
+Opacity, its title and zones in the title face and gold with a hairline under each, its lines in the interface
+face at Questie's own sizes, the Configurator's + and - glyphs and the item trays. Each quest line carries this
+tracker's own quest mark, whatever Questie's version (from 12.6 in the slot Questie keeps for its focus button;
+before, at the line's left edge, or past its quest item; none on a line with two items): the gold ! under way, the
+green ? when done, Route's flag while followed; a click follows the quest with Route, as here, a right-click opens
+Questie's own quest menu (its focus there too). A leveling guide's steps (RestedXP, Follow The Arrow, APR) stay MelloUI's: while Questie's
+tracker shows and a guide runs, this tracker lists the guide's steps alone, docked under Questie's and growing down
+(on top of it only when the screen has no room below); tracked recipes join them only with a Questie that lists none
+itself (Questie 12.6 on shows its own Recipes section, in MelloUI's look, so they never show twice). Docked, it has
+no title row, takes Questie's width, and moves and hides with it. While MelloUI's map is on, a
+click on a quest in Questie's tracker (and its menu's quest log choice) opens the quest's page in MelloUI's map's
+quest log, as a click in this tracker does, and Questie's Show on Map choices open MelloUI's map on that zone;
+with MelloUI's map off, or in the Gamepad UI, Questie opens the game's own as before. Everything it does stays
+Questie's (its order, clicks, menus, sizes and place). Never both: switching Questie's tracker off brings this one
+back at once; with this tracker switched off, Questie's keeps its own look. Its quests stay open in dungeons, as this
+tracker's do: Questie folds its tracker to its heading there by default (Minimize In Instances, on the Tracker tab of
+Questie's options), so MelloUI switches that off once, the first time Questie's tracker stands in this one's place.
+Switch it on again in Questie to keep the fold; MelloUI never touches it again.
 
 A quest tracker of MelloUI's own in the game's tracker's place (off by default), because the
 game's tracker on this client does not scroll. The mouse wheel scrolls the list. In the painted

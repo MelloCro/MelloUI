@@ -174,6 +174,20 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.39", lines = {
+		"Quests: with Questie installed, the Quest List, its map pins, the objective marks and Route use Questie's quest database for the newest quest data; MelloUI's own fills any gaps.",
+		"Quest List: with Questie installed, a quest you cannot take yet (an earlier quest, a breadcrumb, a spell or a profession first) waits in the list, no longer shown as ready.",
+		"Map: with Questie installed, MelloUI's quest givers, objective marks and quest areas stay and Questie's icons of the same kind hide, no more double icons; its others wear MelloUI's pictures.",
+		"Map: an Icons slider in the map's title row sizes every icon on the map, from 50 to 200 %, Questie's too.",
+		"Map: with Questie installed, hovering one of Questie's icons no longer lists the quests MelloUI's own marks already show nearby (a dungeon's quests at its entrance).",
+		"Map: more colour in the quest tooltips: a mob's name red, an NPC's green, levels in their difficulty colour, and an objective's count red until done, green once done.",
+		"Quest Tracker: each quest's XP beside its name (Quest XP).",
+		"Quest Tracker: with Questie's tracker on, MelloUI's steps aside and Questie's wears MelloUI's look, never both at once; its quests stay open in dungeons.",
+		"Quest Tracker: with Questie's tracker on, a leveling guide's steps (RestedXP, Follow The Arrow, APR), and tracked recipes where Questie lists none, dock under it in MelloUI's look.",
+		"Quest Tracker: each quest in Questie's tracker carries MelloUI's quest mark, on any Questie version: a click follows it with Route, a right-click opens Questie's menu.",
+		"Quest Tracker: with MelloUI's map on, a click on a quest in Questie's tracker opens it in MelloUI's map and its quest log, and Questie's Show on Map opens MelloUI's map.",
+		"Nameplates: with Questie installed, its own quest icons over the plates are switched off once for MelloUI's Quest Icon; switch them on in Questie to keep them.",
+	} },
 	{ version = "2.1.38", lines = {
 		"Chat: shift-click an item, spell or quest to link it in MelloUI's whisper window and whisper popups, as in the game's chat box.",
 		"Action bars: the stance bar's backdrop fits the stances you have again, instead of the width of ten buttons.",
@@ -188,9 +202,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.35", lines = {
 		"Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan.",
-	} },
-	{ version = "2.1.34", lines = {
-		"Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan.",
 	} },
 }
 local LINKS = {

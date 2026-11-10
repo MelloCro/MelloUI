@@ -264,16 +264,22 @@ local function OwnOf(spec)
 	return spec.own and Icons.Drawn and Icons.Drawn(spec.own) and spec.own or nil
 end
 
+-- (2.1.39; the user, 2026-11-10: "we need a scale slider on the map itself to scale its icons"; the pick: the title
+-- row) every pin's size times this -- the map's own, Questie's restyled icons alike (Pins.SetScale, Map.lua's slider)
+Pins.scale = 1
+Pins.SCALE_MIN, Pins.SCALE_MAX = 0.5, 2
+
 local sizes = setmetatable({}, { __mode = "k" })
 local function PinPx(spec)
 	local s = sizes[spec]
 	if not s then
-		s = spec.size or 16
+		s = (spec.size or 16) * Pins.scale
 		local Skin = rawget(MelloUI, "Skin")
 		local pic = Skin and spec.icon and Skin.Icon(OwnOf(spec) or spec.icon)
 		if pic and pic.grow then
-			s = floor(s * pic.grow + 0.5)
+			s = s * pic.grow
 		end
+		s = floor(s + 0.5)
 		sizes[spec] = s
 	end
 	return s
@@ -804,7 +810,7 @@ local function Apart(self, k)
 		table.sort(list, ByPlace)
 		-- merged: a pin within `merge` px of a first one (by place) is held by it
 		if layer.merge then
-			local r = layer.merge / k
+			local r = layer.merge * Pins.scale / k   -- (2.1.39: bigger icons touch sooner)
 			local r2, firsts = r * r, a.firsts or {}
 			a.firsts = wipe(firsts)
 			for _, pin in ipairs(list) do
@@ -1119,6 +1125,16 @@ local function Restyle()
 end
 MelloUI:On("skin", Restyle, Pins)
 MelloUI:On("icons", Restyle, Pins)
+
+-- (2.1.39) the icons' scale (SCALE_MIN .. SCALE_MAX): every pin dressed again at its new size, as for a look switch
+function Pins.SetScale(k)
+	k = tonumber(k) or 1
+	k = math.min(Pins.SCALE_MAX, math.max(Pins.SCALE_MIN, k))
+	if k ~= Pins.scale then
+		Pins.scale = k
+		Restyle()
+	end
+end
 
 -- every pin of a layer (the tests and the dump)
 function Pins:Each(name, fn)

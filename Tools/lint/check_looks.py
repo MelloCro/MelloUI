@@ -111,7 +111,8 @@ OWN = {
     "Quest List": ["MelloUI_QuestList/QuestList.lua", "MelloUI_QuestList/QuestListMap.lua",
                    "MelloUI_QuestList/QuestListTips.lua", "MelloUI_QuestList/QuestListObjectives.lua",
                    "MelloUI_QuestList/QuestListPanel.lua"],
-    "Quest Tracker": ["Modules/QuestTracker.lua"],
+    # (2.1.39: Core/QuestieLook.lua, Questie's tracker, map icons and tooltip in MelloUI's look, MelloUI's tracker aside)
+    "Quest Tracker": ["Modules/QuestTracker.lua", "Core/QuestieLook.lua"],
     "Party Markers": ["Modules/PartyMarkers.lua"],
     "Chat (its own parts)": ["MelloUI_Chat/Chat.lua", "MelloUI_Chat/ChatView.lua", "MelloUI_Chat/ChatWhispers.lua"],
     "FPS / Latency": ["Modules/Stats.lua"],

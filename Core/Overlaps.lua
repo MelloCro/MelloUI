@@ -17,6 +17,13 @@
 --   bus "overlap" (job)             its setting for a job changed: a module
 --                                   that holds what it shows reads it again
 --
+-- Questie (2.1.39): its own tracker only (questTracker: MelloUI's steps aside,
+-- Questie's dressed in MelloUI's look, Core/QuestieLook.lua). Its map and
+-- minimap icons never take MelloUI's jobs: MelloUI's givers, objective marks
+-- and quest areas stay, and Questie's icons of the same kind hide where
+-- MelloUI draws them (the user, 2026-11-10: "we have lost our own function
+-- which i like very much"; Core/QuestieLook.lua).
+--
 -- Polestar 0.2.6 (its settings by path, Polestar.Get; Shift held at the
 -- window skips its merchant, quest and reward automation, as its own code
 -- does; its quest data's features only while Polestar_QuestDB runs).
@@ -90,14 +97,44 @@ local function DataRuns(P)
 	return ok and Plain(on) and true or false
 end
 
+-- (2.1.39) Questie's jobs: its profile's switches (Questie.db.profile, AceDB; read, never written), every one on --
+-- nil counts as on, Questie's own defaults. Only its tracker (the user, 2026-11-10: "Questie Function but our Look":
+-- MelloUI's tracker steps aside -- Modules/QuestTracker.lua)
+local QUESTIE = "Questie"
+local QUESTIE_JOBS = {
+	questTracker = { "trackerEnabled" },
+}
+O.QUESTIE_JOBS = QUESTIE_JOBS
+
+-- Questie's profile when the addon runs, else nil
+local function QuestieProfile()
+	local Q = rawget(_G, QUESTIE)
+	local db = type(Q) == "table" and rawget(Q, "db")
+	local profile = type(db) == "table" and db.profile
+	return type(profile) == "table" and profile or nil
+end
+
+local function ByQuestie(job)
+	local spec, profile = QUESTIE_JOBS[job], QuestieProfile()
+	if not (spec and profile) then
+		return nil
+	end
+	for _, key in ipairs(spec) do
+		if Plain(profile[key]) == false then
+			return nil
+		end
+	end
+	return QUESTIE
+end
+
 function O.By(job)
 	local spec, P = JOBS[job], Polestar()
 	if not (spec and P) or (spec.shift and Shift()) or (spec.data and not DataRuns(P)) then
-		return nil
+		return ByQuestie(job)
 	end
 	for _, path in ipairs(spec) do
 		if Get(P, path) ~= true then
-			return nil
+			return ByQuestie(job)
 		end
 	end
 	return POLESTAR

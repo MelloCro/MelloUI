@@ -183,6 +183,11 @@ local function RowByID()
 	return rowByID
 end
 QL.RowByID = RowByID   -- (the quest tooltips read the turn-ins of the log's quests through it)
+-- (2.1.39) the rows made from QuestieDB in their place (Core/QuestSource.lua): the lookup made again on next use
+MelloUI:On("questsource", function()
+	rowByID = nil
+	QL.ForgetNeeds()
+end, "Quest List: the quests' rows")
 
 -- Who takes a quest back, and where (0.14.0, the tracker's turn-in line):
 -- name, npcID, cont, wx, wy, zoneName, from the data -- npcID nil when the
@@ -194,6 +199,12 @@ QL.RowByID = RowByID   -- (the quest tooltips read the turn-ins of the log's que
 function MelloUI:QuestTurnIn(questID)
 	if IsSecret(questID) or type(questID) ~= "number" then
 		return nil
+	end
+	-- (2.1.39; the user, 2026-11-10: Questie's info in MelloUI's tracker) the rows from the player's QuestieDB made
+	-- when the tracker first asks, the Quest List on or off (Core/QuestSource.lua); MelloUI's own until they are
+	local QS = MelloUI.QuestSource
+	if QS and not QS.Ready() and QS.Lib() then
+		QS.WhenReady(function() end)
 	end
 	local row = RowByID()[questID]
 	local name = row and row[QL.F_ENDER]
@@ -981,9 +992,14 @@ local function TakenOrDone(questID)
 	return QL.IsCompleted(questID) or QL.IsOnQuest(questID)
 end
 
--- [questID] = its group of the data's `exclusive`, made on first use
+-- [questID] = its group of the data's `exclusive`, made on first use; (2.1.39) a quest of QuestieDB's: its own
+-- group (exclusiveOf, Core/QuestSource.lua), or none
 local exclusiveOf = nil
 local function ExclusiveOf(questID)
+	local needs = Needs()
+	if needs.fromQuestie and needs.fromQuestie[questID] then
+		return needs.exclusiveOf and needs.exclusiveOf[questID]
+	end
 	if not exclusiveOf then
 		exclusiveOf = {}
 		for _, members in ipairs(Needs().exclusive or NO_NEEDS) do
@@ -993,6 +1009,11 @@ local function ExclusiveOf(questID)
 		end
 	end
 	return exclusiveOf[questID]
+end
+
+-- (2.1.39) the needs read again (the rows and needs made from QuestieDB: Core/QuestSource.lua)
+function QL.ForgetNeeds()
+	exclusiveOf = nil
 end
 
 -- The character's standing with a faction (the reputation bar's value: 0 is
@@ -1016,6 +1037,24 @@ local function Standing(factionID)
 		value = ok and QL.Plain(value)
 	end
 	return type(value) == "number" and value or nil
+end
+
+-- (2.1.39) a spell the character knows: true / false, nil when it cannot be read (QuestieDB's requiredSpell)
+local function KnowsSpell(spellID)
+	for _, name in ipairs({ "IsPlayerSpell", "IsSpellKnown" }) do
+		local fn = rawget(_G, name)
+		if type(fn) == "function" then
+			local ok, known = pcall(fn, spellID)
+			if ok and not IsSecret(known) then
+				if known then
+					return true
+				end
+			else
+				return nil
+			end
+		end
+	end
+	return false
 end
 
 -- A profession's skill (with its bonuses, as the server counts it); 0 when not
@@ -1050,10 +1089,20 @@ function QL.Closed(row)
 	-- (0.19.5; user, 2026-10-06: "only the ones i can pick up") the next
 	-- quest of its chain taken or done (cmangos' Player::SatisfyQuestNextChain)
 	local nextChain = needs.nextChain and needs.nextChain[id]
-	if not (maxLevel or target or group or below or nextChain) or TakenOrDone(id) then
+	-- (2.1.39, QuestieDB's rules) offered only until another quest is done; a spell the character must not know
+	local untilDone = needs.untilDone and needs.untilDone[id]
+	local spell = needs.spells and needs.spells[id]
+	local notSpell = spell and spell < 0 and -spell
+	if not (maxLevel or target or group or below or nextChain or untilDone or notSpell) or TakenOrDone(id) then
 		return false
 	end
 	if nextChain and TakenOrDone(nextChain) then
+		return true
+	end
+	if untilDone and QL.IsCompleted(untilDone) then
+		return true
+	end
+	if notSpell and KnowsSpell(notSpell) == true then
 		return true
 	end
 	if maxLevel and (QL.Plain(UnitLevel("player")) or 0) > maxLevel then
@@ -1264,6 +1313,15 @@ function QL.Unmet(row, depth)
 			end
 		end
 	end
+	-- (2.1.39, QuestieDB's rules) a spell to know first; another quest in the log that keeps it back
+	local spell = needs.spells and needs.spells[id]
+	if spell and spell > 0 and KnowsSpell(spell) == false then
+		return "spell", spell
+	end
+	local disabledBy = needs.disabledBy and needs.disabledBy[id]
+	if disabledBy and QL.IsOnQuest(disabledBy) then
+		return "notwhile", disabledBy
+	end
 	-- (0.19.5) the server's condition, where the client can tell
 	local cond = needs.cond and needs.cond[id]
 	if cond and QL.CondMet(cond, depth) == false then
@@ -1314,6 +1372,18 @@ function QL.UnmetText(kind, a, b)
 		return ("Hand in %s first"):format(crumb and crumb[QL.F_TITLE] or "the quest that leads here")
 	elseif kind == "cond" then
 		return a
+	elseif kind == "spell" then
+		local CS = rawget(_G, "C_Spell")
+		local fn = (type(CS) == "table" and CS.GetSpellName) or rawget(_G, "GetSpellInfo")
+		local okS, name = false, nil
+		if type(fn) == "function" then
+			okS, name = pcall(fn, a)
+		end
+		name = okS and QL.Plain(name)
+		return ("Needs %s"):format(type(name) == "string" and name ~= "" and name or "a spell first")
+	elseif kind == "notwhile" then
+		local other = RowByID()[a]
+		return ("Not while you have %s in your log"):format(other and other[QL.F_TITLE] or "another quest")
 	elseif kind == "refused" then
 		return ("Not offered when you last talked to %s"):format(b or "its giver")
 	end
@@ -1976,14 +2046,35 @@ end
 --   QL.TipTitle(tip, text[, name])       the first line (selectedTrim when no name)
 --   QL.TipLine(tip, text, name[, wrap])  one more line
 --   QL.TipColour(name) -> r, g, b
+--   QL.TipPaint(text, name | r, g, b) -> text   a part of a line in a colour
 --------------------------------------------------------------------------------
 
+-- (2.1.39, foe and friend: the user, 2026-11-10, of the map's objective tooltip: "its tooltip needs more Colour, maybe
+-- coloring the Mob names, the progress numbers, and npc names"; picked B, "foes red, friends green": a creature's name
+-- red and an NPC's green, as the game tells foe from friend, and an objective's count red until done, green once done)
 QL.MEANING = {
 	questGold = { 1, 0.82, 0 },   -- a quest to pick up or hand in: the game's own "!" and "?" gold (meaning colour)
 	pinHint = { 0.6, 0.8, 1 },    -- the map's quest-giver blue: a map pin's or waypoint's click, the tracked giver's name (meaning colour)
 	alliance = { 0.3, 0.6, 1 },   -- a transport of the Alliance (meaning colour)
 	horde = { 1, 0.3, 0.3 },      -- a transport of the Horde (meaning colour)
+	foe = { 1, 0.38, 0.32 },      -- a creature's name, an objective's count not done yet: the game's red of a foe (meaning colour)
+	friend = { 0.45, 0.95, 0.45 }, -- an NPC's name, an objective's count done: the game's green of a friend (meaning colour)
 }
+
+do
+	local function Byte(v)
+		return math.floor(math.min(1, math.max(0, v)) * 255 + 0.5)
+	end
+
+	function QL.TipPaint(text, name, g, b)
+		local r = name
+		if type(name) == "string" then
+			local c = QL.MEANING[name] or MelloUI.Look.Palette(nil, true)[name]
+			r, g, b = c[1], c[2], c[3]
+		end
+		return string.format("|cff%02x%02x%02x%s|r", Byte(r), Byte(g), Byte(b), text)
+	end
+end
 
 -- (the palette, MelloUI's one look since onelook stage E; text, so never dimmed by Dark Mode -- 2.1.29, the user: the
 -- map's tooltip "unreadable" under Dark Mode, its gold title darkened on the dark tooltip)
@@ -2411,6 +2502,17 @@ function M:OnEnable(db)
 		return
 	end
 	if not WorldMapFrame then
+		return
+	end
+	-- (2.1.39) the quests' rows from the player's QuestieDB when there is one (Core/QuestSource.lua): made after the
+	-- login a few ms a frame; the list switches on once they are there
+	local QS = MelloUI.QuestSource
+	if QS and not QS.Ready() then
+		QS.WhenReady(function()
+			if self.isEnabled and self.db then
+				self:OnEnable(self.db)
+			end
+		end)
 		return
 	end
 	-- the quest tooltips (QuestListTips.lua): their two post-calls, once;

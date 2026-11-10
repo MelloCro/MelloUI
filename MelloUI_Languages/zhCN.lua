@@ -1332,6 +1332,8 @@ Lang:Add("zhCN", {
 	["The nearest quest on top, after the one you follow. Needs Route."] = "最近的任务排在上方，在你跟随的任务之后。需要 Route。", -- draft
 	["Distances"] = "距离", -- draft
 	["How far each quest is, beside its name. Needs Route."] = "每个任务名字旁显示距离。需要 Route。", -- draft
+	["Quest XP"] = "任务经验", -- draft
+	["The XP each quest gives at your level, beside its name (the game's own figure; none at the top level)."] = "每个任务在你当前等级可获得的经验值，显示在任务名称旁（游戏自身的数值；满级时不显示）。", -- draft
 	["Turn-in Line"] = "交任务行", -- draft
 	["A finished quest says who takes it and where."] = "完成的任务显示由谁接收、在哪里。", -- draft
 	["Reset Position"] = "重置位置", -- draft
@@ -1692,6 +1694,8 @@ Lang:Add("zhCN", {
 	["How the chat looks. Game Windows: the game's windows and tabs. Minimal: one panel with round tabs, each message under its sender, and buttons to pick a channel."] = "聊天的外观。游戏窗口：游戏的窗口和标签。简约：一个带圆形标签的面板，每条消息位于发送者下方，并有选择频道的按钮。", -- draft
 	["Game Windows"] = "游戏窗口", -- draft
 	["Minimal"] = "极简", -- draft
+	["Channel List As Icons"] = "频道列表仅显示图标", -- draft
+	["The Minimal Chat View's channel list shows only its icons, leaving more room for the messages. Point at an icon for its name. The small handle on the list's edge does the same."] = "极简聊天视图的频道列表只显示图标，为消息留出更多空间。将鼠标指向图标可查看名称。列表边缘的小把手也能实现同样效果。", -- draft
 	["The chat's background: Dark, the game's own, none, or one shared by a SharedMedia addon."] = "聊天框背景：暗色、游戏自带、无，或由 SharedMedia 插件共享的背景。", -- draft
 	["Set The Background Opacity"] = "统一背景不透明度", -- draft
 	["Every chat window uses the same background opacity. Off: each keeps its own."] = "所有聊天窗口使用相同的背景不透明度。关闭：各自保留自己的。", -- draft
@@ -2254,6 +2258,7 @@ Lang:Add("zhCN", {
 	["Use MelloUI's Damage Meter (replaces the game's)"] = "使用MelloUI的伤害统计（取代游戏的）", -- draft
 	["Only for the game's meter (MelloUI's meter off)"] = "仅用于游戏的统计（MelloUI统计关闭）", -- draft
 	["Only with Chat Tweaks on or the painted chat (its Painted Skin, the reskin on)"] = "仅在开启聊天调整或使用彩绘聊天（其彩绘外观，重绘开启）时", -- draft
+	["Only with the Minimal Chat View"] = "仅在极简聊天视图下", -- draft
 	["Chat Background"] = "聊天背景", -- draft
 	["Only without the painted chat, or with the Minimal Chat View"] = "仅在不使用手绘聊天或使用极简聊天视图时", -- draft
 	["Backgrounds"] = "背景", -- draft
@@ -2315,6 +2320,18 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Quests: with Questie installed, the Quest List, its map pins, the objective marks and Route use Questie's quest database for the newest quest data; MelloUI's own fills any gaps."] = "任务：安装 Questie 后，任务列表、其地图标记、目标标记和路线将使用 Questie 的任务数据库获取最新任务数据；MelloUI 自带的数据会补足缺失部分。", -- draft
+	["Quest List: with Questie installed, a quest you cannot take yet (an earlier quest, a breadcrumb, a spell or a profession first) waits in the list, no longer shown as ready."] = "任务列表：安装 Questie 后，暂时无法接取的任务（需要先完成前置任务、引导任务，或先学会某个法术或专业）会在列表中等待，不再显示为可接取。", -- draft
+	["Map: with Questie installed, MelloUI's quest givers, objective marks and quest areas stay and Questie's icons of the same kind hide, no more double icons; its others wear MelloUI's pictures."] = "地图：安装 Questie 后，MelloUI 的任务发布者、目标标记和任务区域保留，Questie 同类图标隐藏，不再出现重复图标；它的其他图标改用 MelloUI 的图案。", -- draft
+	["Map: an Icons slider in the map's title row sizes every icon on the map, from 50 to 200 %, Questie's too."] = "地图：地图标题栏中的“图标”滑块可调整地图上所有图标的大小，范围 50% 到 200%，Questie 的图标也包括在内。", -- draft
+	["Map: with Questie installed, hovering one of Questie's icons no longer lists the quests MelloUI's own marks already show nearby (a dungeon's quests at its entrance)."] = "地图：安装 Questie 后，悬停 Questie 的图标时不再列出 MelloUI 自己的标记已在附近显示的任务（地下城入口处的地下城任务）。", -- draft
+	["Map: more colour in the quest tooltips: a mob's name red, an NPC's green, levels in their difficulty colour, and an objective's count red until done, green once done."] = "地图：任务提示更加多彩：怪物名字为红色，NPC 名字为绿色，等级显示其难度颜色，目标计数在完成前为红色，完成后为绿色。", -- draft
+	["Quest Tracker: each quest's XP beside its name (Quest XP)."] = "任务追踪：每个任务名称旁显示其经验值（任务经验）。", -- draft
+	["Quest Tracker: with Questie's tracker on, MelloUI's steps aside and Questie's wears MelloUI's look, never both at once; its quests stay open in dungeons."] = "任务追踪：Questie 的追踪器开启时，MelloUI 的追踪器让位，Questie 的换上 MelloUI 的外观，两者从不同时出现；在地下城中其任务保持展开。", -- draft
+	["Quest Tracker: with Questie's tracker on, a leveling guide's steps (RestedXP, Follow The Arrow, APR), and tracked recipes where Questie lists none, dock under it in MelloUI's look."] = "任务追踪：开启 Questie 的追踪器时，升级指南（RestedXP、Follow The Arrow、APR）的步骤，以及 Questie 不显示时的追踪配方，会以 MelloUI 的外观停靠在其下方。", -- draft
+	["Quest Tracker: each quest in Questie's tracker carries MelloUI's quest mark, on any Questie version: a click follows it with Route, a right-click opens Questie's menu."] = "任务追踪：无论 Questie 是哪个版本，其追踪器中的每个任务都带有 MelloUI 的任务标记：点击即用 Route 跟随它，右键点击打开 Questie 的菜单。", -- draft
+	["Quest Tracker: with MelloUI's map on, a click on a quest in Questie's tracker opens it in MelloUI's map and its quest log, and Questie's Show on Map opens MelloUI's map."] = "任务追踪：开启 MelloUI 地图时，在 Questie 追踪器中点击任务会在 MelloUI 的地图及其任务日志中打开，Questie 的“在地图上显示”也会打开 MelloUI 的地图。", -- draft
+	["Nameplates: with Questie installed, its own quest icons over the plates are switched off once for MelloUI's Quest Icon; switch them on in Questie to keep them."] = "姓名板：安装 Questie 后，其姓名板上方的任务图标会被关闭一次，改用 MelloUI 的任务图标；如需保留，可在 Questie 中重新开启。", -- draft
 	["Chat: shift-click an item, spell or quest to link it in MelloUI's whisper window and whisper popups, as in the game's chat box."] = "聊天：按住 Shift 点击物品、法术或任务，即可在 MelloUI 的密语窗口和密语弹窗中链接，与游戏聊天框相同。", -- draft
 	["Action bars: the stance bar's backdrop fits the stances you have again, instead of the width of ten buttons."] = "动作条：姿态条的背景再次贴合你拥有的姿态，而不是十个按钮的宽度。", -- draft
 	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "背包、战斗历史和补货列表：拖动标题栏即可移动，拖动角落的手柄即可调整大小（背包：列数），与地图相同。", -- draft
@@ -2322,7 +2339,6 @@ Lang:Add("zhCN", {
 	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "支持者页面：名字现在挂在三面动态旗帜上，每个等级一面，MelloUI 的 Patreon 和 Discord 地址显示在复制框中。", -- draft
 	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "地图：拖动右下角的手柄即可调整地图大小（旁边的任务日志保持原大小），拖动标题栏即可移动地图，无需编辑布局。", -- draft
 	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "小地图：当草药或矿石插件扫描小地图时，小地图旁的增益效果不再跳到屏幕边缘，扫描结束后小地图边框总会回来。", -- draft
-	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "小地图：使用扫描小地图的草药或矿石插件（如 NodeSight）时，MelloUI 的小地图边框不再跟随鼠标；每次扫描时它会随地图一起隐藏。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3200,6 +3216,7 @@ Lang:Add("zhCN", {
 -- stale: ["Minimap: square, the Services bar inside its frame"] = "小地图：方形，服务栏在其边框内", -- draft
 -- stale: ["Minimap: the game's own"] = "小地图：游戏自己的", -- draft
 -- stale: ["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge; the Quest Tracker and the rest by the minimap stay put too."] = "小地图：当草药或矿石插件扫描小地图时，小地图旁的增益效果不再跳到屏幕边缘；任务追踪等小地图旁的元素也会保持原位。", -- draft
+-- stale: ["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "小地图：使用扫描小地图的草药或矿石插件（如 NodeSight）时，MelloUI 的小地图边框不再跟随鼠标；每次扫描时它会随地图一起隐藏。", -- draft
 -- stale: ["Move the chat input box above the chat window and its tabs instead of below it."] = "把聊天输入框移到聊天窗口及其标签的上方，而不是下方。", -- draft
 -- stale: ["Move the crowd-control icon from the right side of the nameplate to above the name and enlarge it. Requires Blizzard's Crowd Control nameplate aura option to be on."] = "把控制图标从姓名板右侧移到名字上方并放大。需要开启暴雪的姓名板控制光环选项。", -- draft
 -- stale: ["My colour"] = "我的颜色", -- draft

@@ -693,7 +693,11 @@ function QL.MarkTip(tip, kind, data, hints)
 		-- (0.25.0, the user: "too much text, it only needs to show important stuff": who or what it is, its quests
 		-- one line each -- title and level, how it stands, an event's name when only then -- and one line of what a
 		-- click does)
-		QL.TipTitle(tip, data.giver ~= "" and data.giver or "Quest giver")
+		-- (2.1.39, the user's pick B) an NPC's name a friend's green; an object's, an item's, a dungeon's the title's gold
+		local first = data.quests[1]
+		local npc = data.giver ~= "" and not data.item and first
+			and (first.state == "ready" or first.row[QL.F_KIND] ~= 2)
+		QL.TipTitle(tip, data.giver ~= "" and data.giver or "Quest giver", npc and "friend" or nil)
 		if data.item == "drop" then
 			Line(tip, "An item that begins a quest drops here", "text", true)
 		elseif data.item == "pickup" then

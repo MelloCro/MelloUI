@@ -138,19 +138,54 @@ local function Decode(packed, needed, made)
 	return list
 end
 
--- the data's own entries of a quest (decoded once, the last few kept)
+-- (2.1.39) QuestieDB's entries of a quest (Core/QuestSource.lua) with MelloUI's own needed items and made marks
+-- carried over by kind and name; an own entry QuestieDB has no match for kept after them (its needed items stay
+-- Route's); nil when QuestieDB has none for it
+local function Merged(questID, own)
+	local QS = MelloUI.QuestSource
+	local entries = QS and QS.Objectives(questID)
+	if not entries then
+		return nil
+	end
+	local list = {}
+	for i, e in ipairs(entries) do
+		list[i] = e
+	end
+	for _, o in ipairs(own or {}) do
+		local match
+		for _, e in ipairs(entries) do
+			if e[1] == o[1] and e[2] == o[2] and e[4] == o[4] then
+				match = e
+				break
+			end
+		end
+		if match then
+			if o.gates and not match.gates then
+				match.gates, match.made = o.gates, o.made
+			end
+		elseif o.gates then
+			list[#list + 1] = o
+		end
+	end
+	return list
+end
+
+-- the data's own entries of a quest (decoded once, the last few kept); QuestieDB's first when the player has it
 local function DataOf(questID)
 	local list = decoded[questID]
 	if list then
 		return list
 	end
 	local packed = MelloUI_QuestObjectiveData and MelloUI_QuestObjectiveData[questID]
-	if type(packed) ~= "string" then
+	if type(packed) == "string" then
+		local needed = MelloUI_QuestNeededItems and MelloUI_QuestNeededItems[questID]
+		local made = MelloUI_QuestMadeItems and MelloUI_QuestMadeItems[questID]
+		list = Decode(packed, type(needed) == "string" and needed or nil, type(made) == "string" and made or nil)
+	end
+	list = Merged(questID, list) or list
+	if not list then
 		return nil
 	end
-	local needed = MelloUI_QuestNeededItems and MelloUI_QuestNeededItems[questID]
-	local made = MelloUI_QuestMadeItems and MelloUI_QuestMadeItems[questID]
-	list = Decode(packed, type(needed) == "string" and needed or nil, type(made) == "string" and made or nil)
 	decoded[questID] = list
 	order[#order + 1] = questID
 	if #order > KEPT then
@@ -173,6 +208,21 @@ end
 -- the data's entries, then the learned ones (a list of its own, made again
 -- when one is learned: QO.learnedLists)
 QO.learnedLists = {}
+-- (2.1.39) whether a quest has places at all, without decoding them (Route asks it for every quest of the log; the
+-- decoded keep only the last few): the Companion's data, a decoded one, or QuestieDB's (Core/QuestSource.lua keeps
+-- its own)
+function QO.Has(questID)
+	if decoded[questID] then
+		return true
+	end
+	local packed = MelloUI_QuestObjectiveData and MelloUI_QuestObjectiveData[questID]
+	if type(packed) == "string" then
+		return true
+	end
+	local QS = MelloUI.QuestSource
+	return QS and QS.Objectives(questID) and true or false
+end
+
 function QO.Of(questID)
 	local data, learned = DataOf(questID), LearnedOf(questID)
 	if not learned then
@@ -198,6 +248,12 @@ end
 -- "<from><name>^<lo>^<hi>^<chance>;...~" per objective (MelloUI_QuestObjective
 -- Sources). Not kept: asked for when a mark's tooltip shows.
 function QO.Sources(questID)
+	-- (2.1.39) QuestieDB's, in its entries' order, when it gave the quest's entries (QO.Of)
+	local QS = MelloUI.QuestSource
+	local fromQuestie = QS and QS.Objectives(questID) and QS.Sources(questID)
+	if fromQuestie then
+		return fromQuestie
+	end
 	local packed = MelloUI_QuestObjectiveSources and MelloUI_QuestObjectiveSources[questID]
 	if type(packed) ~= "string" then
 		return nil

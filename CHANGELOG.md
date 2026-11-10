@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.1.39
+
+- Quests: with Questie installed, the Quest List, its map pins, the objective marks and Route use Questie's quest database for the newest quest data; MelloUI's own fills any gaps.
+- Quest List: with Questie installed, a quest you cannot take yet (an earlier quest, a breadcrumb, a spell or a profession first) waits in the list, no longer shown as ready.
+- Map: with Questie installed, MelloUI's quest givers, objective marks and quest areas stay and Questie's icons of the same kind hide, no more double icons; its others wear MelloUI's pictures.
+- Map: an Icons slider in the map's title row sizes every icon on the map, from 50 to 200 %, Questie's too.
+- Map: with Questie installed, hovering one of Questie's icons no longer lists the quests MelloUI's own marks already show nearby (a dungeon's quests at its entrance).
+- Map: more colour in the quest tooltips: a mob's name red, an NPC's green, levels in their difficulty colour, and an objective's count red until done, green once done.
+- Quest Tracker: each quest's XP beside its name (Quest XP).
+- Quest Tracker: with Questie's tracker on, MelloUI's steps aside and Questie's wears MelloUI's look (panel, gold headings, fonts, buttons); never both at once.
+- Quest Tracker: with Questie's tracker in MelloUI's place, its quests stay open in dungeons: Questie's Minimize In Instances is switched off once; switch it on in Questie to keep it.
+- Quest Tracker: with Questie's tracker on, a leveling guide's steps (RestedXP, Follow The Arrow, APR), and tracked recipes where Questie lists none, dock under it in MelloUI's look.
+- Quest Tracker: each quest in Questie's tracker carries MelloUI's quest mark, on any Questie version: a click follows it with Route, a right-click opens Questie's menu.
+- Quest Tracker: with MelloUI's map on, a click on a quest in Questie's tracker opens it in MelloUI's map and its quest log, and Questie's Show on Map opens MelloUI's map.
+- Nameplates: with Questie installed, its own quest icons over the plates are switched off once for MelloUI's Quest Icon; switch them on in Questie to keep them.
+
 ## 2.1.38
 
 - Chat: shift-click an item, spell or quest to link it in MelloUI's whisper window and whisper popups, as in the game's chat box.

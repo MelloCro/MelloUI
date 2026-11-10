@@ -1332,6 +1332,8 @@ Lang:Add("deDE", {
 	["The nearest quest on top, after the one you follow. Needs Route."] = "Die nächste Quest oben, nach der, der du folgst. Braucht Route.", -- draft
 	["Distances"] = "Entfernungen", -- draft
 	["How far each quest is, beside its name. Needs Route."] = "Wie weit jede Quest entfernt ist, neben ihrem Namen. Braucht Route.", -- draft
+	["Quest XP"] = "Quest-EP", -- draft
+	["The XP each quest gives at your level, beside its name (the game's own figure; none at the top level)."] = "Die EP, die jede Quest auf deiner Stufe gibt, neben ihrem Namen (der Wert des Spiels; auf der Höchststufe keiner).", -- draft
 	["Turn-in Line"] = "Abgabezeile", -- draft
 	["A finished quest says who takes it and where."] = "Eine fertige Quest sagt, wer sie annimmt und wo.", -- draft
 	["Reset Position"] = "Position zurücksetzen", -- draft
@@ -1692,6 +1694,8 @@ Lang:Add("deDE", {
 	["How the chat looks. Game Windows: the game's windows and tabs. Minimal: one panel with round tabs, each message under its sender, and buttons to pick a channel."] = "Wie der Chat aussieht. Spielfenster: die Fenster und Reiter des Spiels. Minimal: ein Feld mit runden Reitern, jede Nachricht unter ihrem Absender, und Knöpfe zur Kanalwahl.", -- draft
 	["Game Windows"] = "Spielfenster", -- draft
 	["Minimal"] = "Minimal", -- draft
+	["Channel List As Icons"] = "Kanalliste als Symbole", -- draft
+	["The Minimal Chat View's channel list shows only its icons, leaving more room for the messages. Point at an icon for its name. The small handle on the list's edge does the same."] = "Die Kanalliste der minimalen Chatansicht zeigt nur ihre Symbole und lässt mehr Platz für die Nachrichten. Zeige auf ein Symbol für seinen Namen. Der kleine Griff am Rand der Liste macht dasselbe.", -- draft
 	["The chat's background: Dark, the game's own, none, or one shared by a SharedMedia addon."] = "Der Hintergrund des Chats: Dunkel, der des Spiels, keiner oder einer, den ein SharedMedia-Addon teilt.", -- draft
 	["Set The Background Opacity"] = "Hintergrunddeckkraft festlegen", -- draft
 	["Every chat window uses the same background opacity. Off: each keeps its own."] = "Jedes Chatfenster nutzt dieselbe Hintergrundtransparenz. Aus: jedes behält seine eigene.", -- draft
@@ -2254,6 +2258,7 @@ Lang:Add("deDE", {
 	["Use MelloUI's Damage Meter (replaces the game's)"] = "MelloUIs Schadensanzeige nutzen (ersetzt die des Spiels)", -- draft
 	["Only for the game's meter (MelloUI's meter off)"] = "Nur für die Anzeige des Spiels (MelloUIs Anzeige aus)", -- draft
 	["Only with Chat Tweaks on or the painted chat (its Painted Skin, the reskin on)"] = "Nur mit eingeschalteten Chat-Anpassungen oder dem gemalten Chat (sein gemalter Skin, die Neugestaltung an)", -- draft
+	["Only with the Minimal Chat View"] = "Nur mit der minimalen Chatansicht", -- draft
 	["Chat Background"] = "Chathintergrund", -- draft
 	["Only without the painted chat, or with the Minimal Chat View"] = "Nur ohne den gemalten Chat oder mit der Minimalen Chatansicht", -- draft
 	["Backgrounds"] = "Hintergründe", -- draft
@@ -2315,6 +2320,18 @@ Lang:Add("deDE", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Deine ganze Einrichtung unter einem Namen. Speichere sie, lade sie oder mach sie zum Standard für eine frische Installation.", -- draft
 	["Supporters"] = "Unterstützer", -- draft
 	["The people who help keep MelloUI going."] = "Die Menschen, die MelloUI am Laufen halten.", -- draft
+	["Quests: with Questie installed, the Quest List, its map pins, the objective marks and Route use Questie's quest database for the newest quest data; MelloUI's own fills any gaps."] = "Quests: Mit installiertem Questie nutzen die Questliste, ihre Kartenmarkierungen, die Zielmarkierungen und die Route Questies Questdatenbank für die neuesten Questdaten; MelloUIs eigene füllt Lücken.", -- draft
+	["Quest List: with Questie installed, a quest you cannot take yet (an earlier quest, a breadcrumb, a spell or a profession first) waits in the list, no longer shown as ready."] = "Questliste: Mit installiertem Questie wartet eine Quest, die du noch nicht annehmen kannst (zuerst eine frühere Quest, ein Hinweis, ein Zauber oder ein Beruf), in der Liste und wird nicht mehr als bereit angezeigt.", -- draft
+	["Map: with Questie installed, MelloUI's quest givers, objective marks and quest areas stay and Questie's icons of the same kind hide, no more double icons; its others wear MelloUI's pictures."] = "Karte: Mit installiertem Questie bleiben MelloUIs Questgeber, Zielmarkierungen und Questgebiete, und Questies Symbole derselben Art werden ausgeblendet, keine doppelten Symbole mehr; seine übrigen tragen MelloUIs Bilder.", -- draft
+	["Map: an Icons slider in the map's title row sizes every icon on the map, from 50 to 200 %, Questie's too."] = "Karte: Ein Symbole-Regler in der Titelleiste der Karte ändert die Größe aller Symbole auf der Karte, von 50 bis 200 %, auch Questies.", -- draft
+	["Map: with Questie installed, hovering one of Questie's icons no longer lists the quests MelloUI's own marks already show nearby (a dungeon's quests at its entrance)."] = "Karte: Mit Questie zeigt das Überfahren eines Questie-Symbols nicht mehr die Quests, die MelloUIs eigene Markierungen in der Nähe schon zeigen (die Quests eines Dungeons an seinem Eingang).", -- draft
+	["Map: more colour in the quest tooltips: a mob's name red, an NPC's green, levels in their difficulty colour, and an objective's count red until done, green once done."] = "Karte: Mehr Farbe in den Quest-Tooltips: der Name eines Gegners rot, der eines NPCs grün, Stufen in ihrer Schwierigkeitsfarbe und der Zähler eines Ziels rot bis erledigt, dann grün.", -- draft
+	["Quest Tracker: each quest's XP beside its name (Quest XP)."] = "Questverfolgung: Die EP jeder Quest neben ihrem Namen (Quest-EP).", -- draft
+	["Quest Tracker: with Questie's tracker on, MelloUI's steps aside and Questie's wears MelloUI's look, never both at once; its quests stay open in dungeons."] = "Questverfolgung: Mit Questies Verfolgung tritt MelloUIs beiseite und Questies trägt MelloUIs Aussehen, nie beide zugleich; ihre Quests bleiben in Dungeons offen.", -- draft
+	["Quest Tracker: with Questie's tracker on, a leveling guide's steps (RestedXP, Follow The Arrow, APR), and tracked recipes where Questie lists none, dock under it in MelloUI's look."] = "Questverfolgung: Bei eingeschalteter Questie-Verfolgung docken die Schritte eines Levelguides (RestedXP, Follow The Arrow, APR) und verfolgte Rezepte, wo Questie keine auflistet, darunter an, in MelloUIs Aussehen.", -- draft
+	["Quest Tracker: each quest in Questie's tracker carries MelloUI's quest mark, on any Questie version: a click follows it with Route, a right-click opens Questie's menu."] = "Questverfolgung: Jede Quest in Questies Verfolgung trägt MelloUIs Quest-Markierung, mit jeder Questie-Version: Ein Klick folgt ihr mit Route, ein Rechtsklick öffnet Questies Menü.", -- draft
+	["Quest Tracker: with MelloUI's map on, a click on a quest in Questie's tracker opens it in MelloUI's map and its quest log, and Questie's Show on Map opens MelloUI's map."] = "Questverfolgung: Bei eingeschalteter MelloUI-Karte öffnet ein Klick auf eine Quest in Questies Verfolgung sie in MelloUIs Karte und deren Questlog, und Questies „Auf Karte zeigen“ öffnet MelloUIs Karte.", -- draft
+	["Nameplates: with Questie installed, its own quest icons over the plates are switched off once for MelloUI's Quest Icon; switch them on in Questie to keep them."] = "Namensplaketten: Mit installiertem Questie werden dessen eigene Quest-Symbole über den Plaketten einmalig zugunsten von MelloUIs Quest-Symbol ausgeschaltet; schalte sie in Questie wieder an, um sie zu behalten.", -- draft
 	["Chat: shift-click an item, spell or quest to link it in MelloUI's whisper window and whisper popups, as in the game's chat box."] = "Chat: Mit Umschalt-Klick verlinkst du einen Gegenstand, Zauber oder eine Quest jetzt auch im Flüsterfenster und in den Flüster-Pop-ups von MelloUI, wie im Chatfeld des Spiels.", -- draft
 	["Action bars: the stance bar's backdrop fits the stances you have again, instead of the width of ten buttons."] = "Aktionsleisten: Der Hintergrund der Haltungsleiste passt wieder zu deinen Haltungen statt zur Breite von zehn Tasten.", -- draft
 	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "Taschen, Kampfverlauf und Auffüllliste: Zieh die Titelleiste, um sie zu verschieben, und den Griff in einer Ecke, um ihre Größe zu ändern (bei den Taschen: die Spalten), wie bei der Karte.", -- draft
@@ -2322,7 +2339,6 @@ Lang:Add("deDE", {
 	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "Unterstützer-Seite: Die Namen hängen jetzt an drei animierten Bannern, eines pro Stufe, mit MelloUIs Patreon und Discord in einem Kopierfeld.", -- draft
 	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "Karte: Zieh den Griff in der unteren rechten Ecke, um die Karte zu vergrößern oder zu verkleinern (das Questlog daneben behält seine Größe), und zieh die Titelleiste, um sie zu verschieben, ohne Layout-Bearbeitung.", -- draft
 	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "Minikarte: Während ein Kräuter- oder Erz-Addon die Minikarte abtastet, springen deine Buffs daneben nicht mehr an den Bildschirmrand, und der Rahmen der Minikarte kommt nach dem Abtasten immer zurück.", -- draft
-	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "Minikarte: Mit einem Kräuter- oder Erz-Addon, das die Minikarte abtastet (NodeSight und ähnliche), folgt MelloUIs Minikartenrahmen nicht mehr dem Mauszeiger; er verschwindet bei jedem Abtasten mit der Karte.", -- draft
 	["Report a problem"] = "Ein Problem melden", -- draft
 	["Voice pack"] = "Stimmenpaket", -- draft
 	["open or close this window"] = "dieses Fenster öffnen oder schließen", -- draft
@@ -3206,6 +3222,7 @@ Lang:Add("deDE", {
 -- stale: ["Minimap: square, the Services bar inside its frame"] = "Minikarte: eckig, die Dienste-Leiste in ihrem Rahmen", -- draft
 -- stale: ["Minimap: the game's own"] = "Minikarte: die des Spiels", -- draft
 -- stale: ["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge; the Quest Tracker and the rest by the minimap stay put too."] = "Minikarte: Während ein Kräuter- oder Erz-Addon die Minikarte abtastet, springen deine Buffs daneben nicht mehr an den Bildschirmrand; die Questverfolgung und der Rest an der Minikarte bleiben auch an ihrem Platz.", -- draft
+-- stale: ["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "Minikarte: Mit einem Kräuter- oder Erz-Addon, das die Minikarte abtastet (NodeSight und ähnliche), folgt MelloUIs Minikartenrahmen nicht mehr dem Mauszeiger; er verschwindet bei jedem Abtasten mit der Karte.", -- draft
 -- stale: ["Move the chat input box above the chat window and its tabs instead of below it."] = "Verschiebt das Chat-Eingabefeld über das Chatfenster und seine Reiter statt darunter.", -- draft
 -- stale: ["Move the crowd-control icon from the right side of the nameplate to above the name and enlarge it. Requires Blizzard's Crowd Control nameplate aura option to be on."] = "Verschiebt das Kontrollverlust-Symbol von der rechten Seite der Namensplakette über den Namen und vergrößert es. Braucht Blizzards Auren-Option „Kontrollverlust“ für Namensplaketten.", -- draft
 -- stale: ["My colour"] = "Meine Farbe", -- draft

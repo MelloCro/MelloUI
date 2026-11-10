@@ -1332,6 +1332,8 @@ Lang:Add("koKR", {
 	["The nearest quest on top, after the one you follow. Needs Route."] = "따라가는 퀘스트 다음에 가장 가까운 퀘스트를 위로. Route가 필요합니다.", -- draft
 	["Distances"] = "거리", -- draft
 	["How far each quest is, beside its name. Needs Route."] = "퀘스트 이름 옆에 거리. Route가 필요합니다.", -- draft
+	["Quest XP"] = "퀘스트 경험치", -- draft
+	["The XP each quest gives at your level, beside its name (the game's own figure; none at the top level)."] = "각 퀘스트가 현재 레벨에서 주는 경험치를 이름 옆에 표시합니다(게임 자체 수치, 최고 레벨에서는 표시 안 함).", -- draft
 	["Turn-in Line"] = "완료 줄", -- draft
 	["A finished quest says who takes it and where."] = "완료한 퀘스트는 누가 어디서 받는지 알려 줍니다.", -- draft
 	["Reset Position"] = "위치 초기화", -- draft
@@ -1692,6 +1694,8 @@ Lang:Add("koKR", {
 	["How the chat looks. Game Windows: the game's windows and tabs. Minimal: one panel with round tabs, each message under its sender, and buttons to pick a channel."] = "대화창 모습. 게임 창: 게임 창과 탭. 최소: 둥근 탭의 패널 하나, 보낸 사람 아래 메시지, 채널 선택 버튼.", -- draft
 	["Game Windows"] = "게임 창", -- draft
 	["Minimal"] = "최소", -- draft
+	["Channel List As Icons"] = "채널 목록 아이콘만", -- draft
+	["The Minimal Chat View's channel list shows only its icons, leaving more room for the messages. Point at an icon for its name. The small handle on the list's edge does the same."] = "미니멀 채팅 보기의 채널 목록에 아이콘만 표시해 메시지 공간을 넓힙니다. 아이콘을 가리키면 이름이 나옵니다. 목록 가장자리의 작은 손잡이도 같은 기능을 합니다.", -- draft
 	["The chat's background: Dark, the game's own, none, or one shared by a SharedMedia addon."] = "대화창 배경: 어두움, 게임 기본, 없음, 또는 SharedMedia 애드온이 공유하는 배경.", -- draft
 	["Set The Background Opacity"] = "배경 불투명도 정하기", -- draft
 	["Every chat window uses the same background opacity. Off: each keeps its own."] = "모든 대화창이 같은 배경 투명도를 씁니다. 끄면: 창마다 따로.", -- draft
@@ -2254,6 +2258,7 @@ Lang:Add("koKR", {
 	["Use MelloUI's Damage Meter (replaces the game's)"] = "MelloUI 피해량 측정기 사용(게임의 것을 대신함)", -- draft
 	["Only for the game's meter (MelloUI's meter off)"] = "게임 측정기에서만(MelloUI 측정기 꺼짐)", -- draft
 	["Only with Chat Tweaks on or the painted chat (its Painted Skin, the reskin on)"] = "채팅 조정을 켜거나 채색된 채팅(채색 스킨, 리스킨 켜짐)일 때만", -- draft
+	["Only with the Minimal Chat View"] = "미니멀 채팅 보기에서만", -- draft
 	["Chat Background"] = "대화 배경", -- draft
 	["Only without the painted chat, or with the Minimal Chat View"] = "페인팅 대화가 없거나 최소 대화 보기일 때만", -- draft
 	["Backgrounds"] = "배경", -- draft
@@ -2315,6 +2320,18 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Quests: with Questie installed, the Quest List, its map pins, the objective marks and Route use Questie's quest database for the newest quest data; MelloUI's own fills any gaps."] = "퀘스트: Questie가 설치되어 있으면 퀘스트 목록, 지도 표시, 목표 표시와 경로가 최신 퀘스트 데이터를 위해 Questie의 퀘스트 데이터베이스를 사용합니다. 빠진 부분은 MelloUI 자체 데이터가 채웁니다.", -- draft
+	["Quest List: with Questie installed, a quest you cannot take yet (an earlier quest, a breadcrumb, a spell or a profession first) waits in the list, no longer shown as ready."] = "퀘스트 목록: Questie가 설치되어 있으면 아직 받을 수 없는 퀘스트(먼저 이전 퀘스트, 안내 퀘스트, 주문이나 전문 기술이 필요한 경우)는 목록에서 대기하며 더 이상 받을 수 있는 것으로 표시되지 않습니다.", -- draft
+	["Map: with Questie installed, MelloUI's quest givers, objective marks and quest areas stay and Questie's icons of the same kind hide, no more double icons; its others wear MelloUI's pictures."] = "지도: Questie가 설치되어 있으면 MelloUI의 퀘스트 제공자, 목표 표시와 퀘스트 지역은 그대로 두고 같은 종류의 Questie 아이콘은 숨깁니다. 더 이상 아이콘이 겹치지 않으며, 다른 Questie 아이콘은 MelloUI의 그림을 씁니다.", -- draft
+	["Map: an Icons slider in the map's title row sizes every icon on the map, from 50 to 200 %, Questie's too."] = "지도: 지도 제목 줄의 아이콘 슬라이더로 지도 위 모든 아이콘의 크기를 50~200%로 조절합니다. Questie 아이콘도 포함됩니다.", -- draft
+	["Map: with Questie installed, hovering one of Questie's icons no longer lists the quests MelloUI's own marks already show nearby (a dungeon's quests at its entrance)."] = "지도: Questie를 설치하면 Questie 아이콘에 마우스를 올렸을 때 MelloUI 표시가 이미 근처에 보여 주는 퀘스트를 더 이상 나열하지 않습니다(던전 입구의 던전 퀘스트).", -- draft
+	["Map: more colour in the quest tooltips: a mob's name red, an NPC's green, levels in their difficulty colour, and an objective's count red until done, green once done."] = "지도: 퀘스트 툴팁에 색이 더해집니다. 적의 이름은 빨간색, NPC의 이름은 초록색, 레벨은 난이도 색, 목표 수치는 완료 전까지 빨간색, 완료하면 초록색입니다.", -- draft
+	["Quest Tracker: each quest's XP beside its name (Quest XP)."] = "퀘스트 추적: 퀘스트 이름 옆에 경험치를 표시합니다(퀘스트 경험치).", -- draft
+	["Quest Tracker: with Questie's tracker on, MelloUI's steps aside and Questie's wears MelloUI's look, never both at once; its quests stay open in dungeons."] = "퀘스트 추적: Questie 추적기가 켜져 있으면 MelloUI 추적기는 물러나고 Questie 추적기가 MelloUI의 모습을 입으며, 둘이 함께 나오지 않습니다. 던전에서도 퀘스트가 펼쳐진 채로 유지됩니다.", -- draft
+	["Quest Tracker: with Questie's tracker on, a leveling guide's steps (RestedXP, Follow The Arrow, APR), and tracked recipes where Questie lists none, dock under it in MelloUI's look."] = "퀘스트 추적: Questie의 추적기가 켜져 있으면 레벨링 가이드(RestedXP, Follow The Arrow, APR)의 단계와, Questie가 보여주지 않을 때의 추적 중인 제조법이 MelloUI의 모습으로 그 아래에 붙습니다.", -- draft
+	["Quest Tracker: each quest in Questie's tracker carries MelloUI's quest mark, on any Questie version: a click follows it with Route, a right-click opens Questie's menu."] = "퀘스트 추적: Questie 버전과 관계없이 Questie 추적기의 각 퀘스트에 MelloUI의 퀘스트 표시가 붙습니다. 클릭하면 Route로 따라가고, 오른쪽 클릭은 Questie의 메뉴를 엽니다.", -- draft
+	["Quest Tracker: with MelloUI's map on, a click on a quest in Questie's tracker opens it in MelloUI's map and its quest log, and Questie's Show on Map opens MelloUI's map."] = "퀘스트 추적: MelloUI 지도가 켜져 있으면 Questie 추적기에서 퀘스트를 클릭할 때 MelloUI 지도와 그 퀘스트 목록에서 열리고, Questie의 '지도에 표시'도 MelloUI 지도를 엽니다.", -- draft
+	["Nameplates: with Questie installed, its own quest icons over the plates are switched off once for MelloUI's Quest Icon; switch them on in Questie to keep them."] = "이름표: Questie가 설치되어 있으면 이름표 위의 Questie 퀘스트 아이콘을 한 번 끄고 MelloUI의 퀘스트 아이콘을 씁니다. 유지하려면 Questie에서 다시 켜세요.", -- draft
 	["Chat: shift-click an item, spell or quest to link it in MelloUI's whisper window and whisper popups, as in the game's chat box."] = "채팅: Shift-클릭으로 아이템, 주문 또는 퀘스트를 MelloUI의 귓속말 창과 귓속말 팝업에도 링크할 수 있습니다. 게임 채팅 상자와 같습니다.", -- draft
 	["Action bars: the stance bar's backdrop fits the stances you have again, instead of the width of ten buttons."] = "행동 단축바: 태세 단축바의 배경이 다시 열 개 버튼 너비가 아니라 가진 태세에 맞춰집니다.", -- draft
 	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "가방, 전투 기록, 재보충 목록: 제목 표시줄을 끌어 옮기고 모서리의 손잡이를 끌어 크기를 바꿉니다(가방: 열 수). 지도와 같습니다.", -- draft
@@ -2322,7 +2339,6 @@ Lang:Add("koKR", {
 	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "후원자 페이지: 이름이 이제 등급마다 하나씩, 세 개의 움직이는 깃발에 걸리며 MelloUI의 Patreon과 Discord 주소는 복사 상자에 표시됩니다.", -- draft
 	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "지도: 오른쪽 아래 모서리의 손잡이를 끌어 지도 크기를 바꾸고(옆의 퀘스트 목록은 크기가 그대로), 제목 표시줄을 끌어 옮길 수 있습니다. 레이아웃 편집이 필요 없습니다.", -- draft
 	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "미니맵: 약초·광석 애드온이 미니맵을 스캔하는 동안 옆의 강화 효과가 더 이상 화면 가장자리로 튀지 않으며, 스캔이 끝나면 미니맵 테두리가 항상 돌아옵니다.", -- draft
-	["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "미니맵: 미니맵을 스캔하는 약초·광석 애드온(NodeSight 등)을 쓸 때 MelloUI의 미니맵 테두리가 더 이상 커서를 따라다니지 않습니다. 스캔할 때마다 지도와 함께 숨겨집니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3200,6 +3216,7 @@ Lang:Add("koKR", {
 -- stale: ["Minimap: square, the Services bar inside its frame"] = "미니맵: 사각, 테두리 안에 서비스 바", -- draft
 -- stale: ["Minimap: the game's own"] = "미니맵: 게임의 것", -- draft
 -- stale: ["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge; the Quest Tracker and the rest by the minimap stay put too."] = "미니맵: 약초·광석 애드온이 미니맵을 스캔하는 동안 옆의 강화 효과가 더 이상 화면 가장자리로 튀지 않습니다. 퀘스트 추적기 등 미니맵 옆의 요소도 제자리에 있습니다.", -- draft
+-- stale: ["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "미니맵: 미니맵을 스캔하는 약초·광석 애드온(NodeSight 등)을 쓸 때 MelloUI의 미니맵 테두리가 더 이상 커서를 따라다니지 않습니다. 스캔할 때마다 지도와 함께 숨겨집니다.", -- draft
 -- stale: ["Move the chat input box above the chat window and its tabs instead of below it."] = "대화 입력 상자를 대화창과 탭 아래가 아니라 위로 옮깁니다.", -- draft
 -- stale: ["Move the crowd-control icon from the right side of the nameplate to above the name and enlarge it. Requires Blizzard's Crowd Control nameplate aura option to be on."] = "군중 제어 아이콘을 이름표 오른쪽에서 이름 위로 옮기고 키웁니다. 블리자드의 이름표 군중 제어 효과 설정이 켜져 있어야 합니다.", -- draft
 -- stale: ["My colour"] = "내 색", -- draft

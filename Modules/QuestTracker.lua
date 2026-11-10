@@ -54,7 +54,8 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 	enabledByDefault = false,
 	-- where the layout fit hung the game's tracker (Unplaced, below): this
 	-- machine's fact, never in a profile, never set by a setup
-	keep = { "fitAnchor", "fitAnchorWas" },
+	-- (2.1.39) questieInstancesOpen: Questie's Minimize In Instances switched off once (Core/QuestieLook.lua)
+	keep = { "fitAnchor", "fitAnchorWas", "questieInstancesOpen" },
 	defaults = {
 		-- the user's settings, 2026-09-23 ("Height 500 by default, width 300,
 		-- scale 100%, font size 13 and scroll step 25"); 0 in Height / Width
@@ -77,6 +78,7 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		-- on the tracker plate"): Nearest, below
 		nearestFirst = true,
 		showDistance = true,
+		showXP = true,   -- (2.1.39: the user asked for it)
 		turnInLine = true,
 		progressMotion = true,
 	},
@@ -113,6 +115,9 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		  desc = "The nearest quest on top, after the one you follow. Needs Route." },
 		{ type = "toggle", key = "showDistance", name = "Distances",
 		  desc = "How far each quest is, beside its name. Needs Route." },
+		-- (2.1.39; the user, 2026-11-10: "Yes, show XP")
+		{ type = "toggle", key = "showXP", name = "Quest XP", new = "2.1.39",
+		  desc = "The XP each quest gives at your level, beside its name (the game's own figure; none at the top level)." },
 		{ type = "toggle", key = "turnInLine", name = "Turn-in Line",
 		  desc = "A finished quest says who takes it and where." },
 		{ type = "button", name = "Reset Position", text = "Reset",
@@ -251,7 +256,28 @@ end
 -- game's tracker may be scaled by the window mover, and its width is then
 -- not ours: the lines ran past the list and were cut, user screenshot
 -- 2026-09-23)
+-- (2.1.39; the user, 2026-11-10: "the Questie Tracker now does not show the stepps of the leveling addons anymore?",
+-- then "Guide step on Questie's", and of the tracked recipes "Yes, dock them too") while Questie's own tracker is on
+-- (this one steps aside: Core/Overlaps.lua), a leveling guide's steps stay MelloUI's (Questie's tracker has none), and
+-- the tracked recipes while Questie's cannot list them (12.6 on it does: QuestieLook.TracksRecipes; never twice): this
+-- tracker lists them alone, docked on Questie's tracker as one panel --
+-- its title row out, Questie's width and scale, under it, growing down (on top where the screen ends), moved and
+-- hidden with it (Core/QuestieLook.lua tells when it moves or changes). Dock.base: Questie's tracker while docked; Dock.width: its
+-- width, this tracker's own then (Dock.Lay, after LayFrame)
+local Dock = { base = nil, width = nil, GAP = 0, open = nil }   -- (open: Questie's width while it was last unfolded)
+
+-- Questie's tracker folded to its heading (its header's click; its own option in a dungeon): read, never written
+function Dock.Folded()
+	local Q = rawget(_G, "Questie")
+	local qdb = type(Q) == "table" and rawget(Q, "db")
+	local char = type(qdb) == "table" and qdb.char
+	return type(char) == "table" and char.isTrackerExpanded == false
+end
+
 local function FrameWidth()
+	if Dock.base and Dock.width then
+		return Dock.width
+	end
 	local set = followW or SetWidth()
 	if set > 0 then
 		return set
@@ -532,6 +558,10 @@ local SIDE = { TOPLEFT = { 0, 1 }, TOP = { 0.5, 1 }, TOPRIGHT = { 1, 1 }, LEFT =
 -- own place and Scale passed by, nothing written: the mover's default,
 -- Edit Layout's reset before it is saved)
 local function LayFrame(home)
+	if Dock.base then
+		Dock.Lay()
+		return
+	end
 	local scale = home and 1 or tonumber(M.db and M.db.scale) or 1
 	local set = SetWidth()
 	-- the minimap's width while it follows it, laid as a set width
@@ -664,6 +694,57 @@ end
 -- Laid as its settings say; not while Edit Layout holds a change of it (its
 -- session keeps it where the player put it): laid again when the session
 -- lets go of it ('mover' "released": Listen)
+-- docked (Dock, above): on Questie's tracker at its scale (as LayFrame's: through the kit) and its width; under it, on
+-- top of it when the screen has no room below; laid again at every rebuild and every change of Questie's
+function Dock.Lay()
+	local base = Dock.base
+	last.valid = false
+	local okB, be = pcall(base.GetEffectiveScale, base)
+	local okU, ue = pcall(UIParent.GetEffectiveScale, UIParent)
+	be, ue = okB and Plain(be) or nil, okU and Plain(ue) or nil
+	local scale = (be and ue and ue > 0) and be / ue or 1
+	local Kit = MelloUI.Kit
+	if Kit and Kit.SetFrameScale then
+		Kit:SetFrameScale(frame, scale)
+	else
+		frame:SetScale(scale)
+	end
+	local okW, w = pcall(base.GetWidth, base)
+	w = okW and Plain(w) or nil
+	-- (the user, 2026-11-10, a screenshot: "this is how the folded quest tracker looks" -- a guide's steps crammed under
+	-- Questie's heading) folded, Questie's tracker is as wide as its heading: the dock keeps the width Questie's had
+	-- open (else this tracker's own), standing out to the right under it
+	if w and not Dock.Folded() then
+		Dock.open = w
+	else
+		local own = followW or SetWidth()
+		w = math.max(w or 0, Dock.open or (own > 0 and own or FALLBACK_W))
+	end
+	Dock.width = math.max(LEAST_W, w or LEAST_W)
+	frame:SetWidth(Dock.width)
+	frame:ClearAllPoints()
+	-- (the user, 2026-11-10: "the leveling addon section on top is expanding upwards, which leads to it overlapping
+	-- with the map, can we make it expand downward instead?") under Questie's tracker, growing down; on top of it
+	-- only when the screen has no room left below
+	local okB2, bottom = pcall(base.GetBottom, base)
+	local okH, h = pcall(frame.GetHeight, frame)
+	bottom, h = okB2 and Plain(bottom) or nil, okH and Plain(h) or nil
+	-- (folded, wider than Questie's heading; the user's next screenshot, "now it looks like this when colapsed": lined
+	-- up on the wrong edge, out past the minimap's column) its edge the one Questie's tracker is anchored by (its own
+	-- corner, trackerSetpoint: the edge that stays when it folds) -- left, right, or its middle
+	local okP, point = pcall(base.GetPoint, base, 1)
+	point = okP and Plain(point) or nil
+	local side = "LEFT"
+	if type(point) == "string" then
+		side = (point:find("RIGHT") and "RIGHT") or (point:find("LEFT") and "LEFT") or ""
+	end
+	if bottom and h and bottom * scale < h * scale then
+		frame:SetPoint("BOTTOM" .. side, base, "TOP" .. side, 0, Dock.GAP)
+	else
+		frame:SetPoint("TOP" .. side, base, "BOTTOM" .. side, 0, -Dock.GAP)
+	end
+end
+
 local function Place()
 	local LS = MelloUI.LayoutSession
 	if moverEntry and LS and LS.Holds(moverEntry) then
@@ -856,6 +937,7 @@ end
 -- sections' lines stand down. Modern as before. Made at the first need, laid again at a switch and at every heading's
 -- lay (Art.SectionLook)
 Art.BACKING = { colour = "innerPanel", alpha = 0.7, feather = 8, featherY = 8, sublevel = -7 }
+M.BACKING = Art.BACKING   -- (2.1.39: Questie's tracker in this one's place wears the same, Core/QuestieLook.lua)
 
 function Art.GameLook(k, isDefault)
 	local game = isDefault and true or false
@@ -2182,6 +2264,9 @@ function Act.MarkIcon(complete, followed)
 	end
 	return paths[key]
 end
+-- (2.1.39; the user's pick A of questie_focus_sketch, 2026-11-10: "A, our marks") Questie's tracker's focus buttons
+-- wear these same marks (Core/QuestieLook.lua): one look for a quest's mark, whichever tracker shows it
+M.MarkIcon = Act.MarkIcon
 Act.OnMarkClick = Perf.Shared("OnClick on a Quest Tracker mark", function(m, button)
 	Act.MarkClick(m.block, button)
 end, "script")
@@ -3205,6 +3290,40 @@ local function ItemCooldown(item)
 	end
 end
 
+-- (2.1.39; the user, 2026-11-10: each quest's XP in MelloUI's tracker, "Yes, show XP") its XP at your level, right of
+-- its title's first line and left of its distance, in the distance's own type (the game's own figure: the quest
+-- is in the log, GetQuestLogRewardXP; none at the top level or for a quest without XP)
+local Xp = { GAP = 6 }
+function Xp.Lay(block, id, right, ink)
+	local fs = block.xp
+	local get = rawget(_G, "GetQuestLogRewardXP")
+	local xp = 0
+	if M.db and M.db.showXP ~= false and type(get) == "function" then
+		local ok, v = pcall(get, id)
+		xp = ok and MelloUI.Safe.Number(v) or 0
+	end
+	if xp <= 0 then
+		if fs then
+			fs:Hide()
+		end
+		return 0
+	end
+	if not fs then
+		fs = block:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
+		fs:SetJustifyH("RIGHT")
+		fs:SetWordWrap(false)
+		block.xp = fs
+	end
+	StyleText(fs, TitleSize() - 1)
+	Near.Faded(fs, ink)
+	fs:ClearAllPoints()
+	fs:SetPoint("RIGHT", block, "TOPLEFT", right, -TitleSize() / 2 - 1)
+	local breakUp = rawget(_G, "BreakUpLargeNumbers")
+	fs:SetText((type(breakUp) == "function" and breakUp(xp) or tostring(xp)) .. " XP")
+	fs:Show()
+	return (MelloUI.Safe.Number(fs:GetStringWidth()) or 0) + Xp.GAP
+end
+
 -- Fill a block from the quest log; returns its height.
 local function FillBlock(block, questID, width, followedID)
 	local logIndex = C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetLogIndexForQuestID(questID)
@@ -3289,7 +3408,9 @@ local function FillBlock(block, questID, width, followedID)
 	local gem = c and QI.GemCode and QI.GemCode(c[1], c[2], c[3], TitleSize()) or ""
 	-- its distance at the right of its first line (Nearest first, above; 0 when none shows)
 	local distRoom = Near.Lay(block, questID, textWidth, ink)
-	t:SetWidth(textWidth - TEXT_X - distRoom)
+	-- (2.1.39) its XP left of the distance (Xp, above)
+	local xpRoom = Xp.Lay(block, questID, textWidth - distRoom, ink)
+	t:SetWidth(textWidth - TEXT_X - distRoom - xpRoom)
 	t:SetText(gem .. (level and string.format("[%d] %s", level, title) or title))
 	t:SetTextColor(DifficultyColor(level))
 	if ink then
@@ -3505,6 +3626,9 @@ local function FillRecipeBlock(block, entry, width)
 		block.dist:Hide()
 		block.distValue, block.distLabel, block.distRoom = nil, nil, 0
 	end
+	if block.xp then
+		block.xp:Hide()   -- (2.1.39: nor its XP)
+	end
 	local ui = C_TradeSkillUI
 	local name
 	if ui.GetRecipeInfo then
@@ -3672,6 +3796,9 @@ local function FillGuideBlock(block, data, width)
 		block.dist:Hide()
 		block.distValue, block.distLabel, block.distRoom = nil, nil, 0
 	end
+	if block.xp then
+		block.xp:Hide()   -- (2.1.39: nor its XP)
+	end
 	local t = block.title
 	StyleText(t, TitleSize())
 	t:ClearAllPoints()
@@ -3830,6 +3957,38 @@ local function Rebuild()
 	if not (frame and M.isEnabled) then
 		return
 	end
+	-- (2.1.39) while Questie's own tracker is on, this one steps aside (Core/Overlaps.lua's questTracker; Questie's is
+	-- dressed in MelloUI's look: Core/QuestieLook.lua) -- all but a leveling guide's steps and the tracked recipes
+	-- (the user: "Yes, dock them too"; the recipes only where Questie's tracker cannot list them: before 12.6), docked
+	-- on Questie's (Dock)
+	local OV = rawget(MelloUI, "Overlaps")
+	local aside = type(OV) == "table" and type(OV.By) == "function" and OV.By("questTracker") and true or false
+	local recipes = TrackedRecipes()
+	local QK = aside and rawget(MelloUI, "QuestieLook")
+	if type(QK) == "table" and type(QK.TracksRecipes) == "function" and QK.TracksRecipes() then
+		recipes = {}   -- (Questie 12.6 on lists them itself, in MelloUI's look: never twice)
+	end
+	local base = aside and (GUIDE.data or #recipes > 0) and rawget(_G, "Questie_BaseFrame") or nil
+	base = base and base:IsShown() and base or nil
+	if base ~= Dock.base then
+		Dock.base = base
+		header:SetShown(not base)
+		header:SetHeight(base and 1 or HEADER_H)
+		if frame.grip then
+			frame.grip:SetShown(not base)   -- (docked: Questie's size)
+		end
+		if looks.kit and looks.kit.hair then
+			looks.kit.hair:SetShown(not base)
+		end
+		if not base then
+			Dock.width = nil
+			last.valid = false
+			Place()
+		end
+	end
+	if base then
+		Dock.Lay()
+	end
 	-- scrolled to the end: the view follows the list's end when it grows
 	local wasMax = MaxScroll()
 	local atEnd = wasMax > 0 and scrollOffset >= wasMax - 1
@@ -3843,8 +4002,7 @@ local function Rebuild()
 	if followedID == nil or followedID == 0 then
 		followedID = RoutePinned() or followedID
 	end
-	local quests = WatchedQuests()
-	local recipes = TrackedRecipes()
+	local quests = aside and {} or WatchedQuests()
 	-- a block per quest (keyed by its ID) and per recipe ("r<id>/<recraft>"),
 	-- the same block for the same entry across rebuilds
 	local function RecipeKey(entry)
@@ -3932,14 +4090,20 @@ local function Rebuild()
 	local entries = #quests + #recipes + (guide and 1 or 0)
 
 	-- the frame's height: the header and the list, up to the height allowed
-	local collapsed = M.db.collapsed
+	local collapsed = M.db.collapsed and not base   -- (docked: no title row, nothing to fold it by)
+	local headH = base and 0 or HEADER_H
 	clip:SetShown(not collapsed)
-	local listH = collapsed and 0 or math.min(contentHeight, MaxHeight() - HEADER_H - INSET * 2)
-	local total = HEADER_H + (collapsed and 6 or (INSET + listH + INSET))
-	frame:SetHeight(math.max(HEADER_H + 6, total))
+	local listH = collapsed and 0 or math.min(contentHeight, MaxHeight() - headH - INSET * 2)
+	local total = headH + (collapsed and 6 or (INSET + listH + INSET))
+	frame:SetHeight(math.max(headH + 6, total))
+	if base then
+		Dock.Lay()   -- (its height known: under Questie's, or on top of it)
+	end
 	-- nothing watched: nothing shown, as the game's tracker; in Edit Mode the
-	-- game's own is out to be moved, and this one waits
-	frame:SetShown(entries > 0 and not inEditMode)
+	-- game's own is out to be moved, and this one waits; (2.1.39; the user, 2026-11-10: "Questie Function but our
+	-- Look ... if questie has a quest tracker, i want its functions and layout, but our Look and feel") while Questie's
+	-- own tracker is on, only docked (above)
+	frame:SetShown(entries > 0 and not inEditMode and (not aside or base ~= nil))
 	Motion.ListDone(questsOpen, entries > 0)   -- (1.2.0: after the show: the first list shown makes it ready)
 	-- the view stays where it was (clamped to the new length), or at the
 	-- end when it was there
@@ -4051,7 +4215,8 @@ local function Build()
 			label = "Quest Tracker", page = "QuestTracker", anchor = "TOPRIGHT", placeholder = true, category = "quests",
 			min = 0.6, max = 1.6,   -- (its size: this wheel's, kept in M.db.scale; 0.16.0: the Scale slider is gone)
 			when = function()
-				return M.isEnabled and true or false
+				-- (2.1.39: docked on Questie's tracker, it goes where Questie's goes: Dock)
+				return M.isEnabled and not Dock.base and true or false
 			end,
 			-- (pos: Edit Layout's pending place, its TOPRIGHT from the side of
 			-- the screen it stands in, in Core's form -- relPoint none: the
@@ -4562,6 +4727,14 @@ local function Listen()
 	-- for); Route switched on or off (its 'where' asked again, the order and
 	-- the distances laid again)
 	MelloUI:On("where", Near.OnWhere, Near.OWNER)
+	-- (2.1.39; the user, 2026-11-10: "Do not even consider having both Questie Tracker and our own tracker active at the
+	-- same time") Questie's tracker switched on or off (told after its own Update: Core/QuestieLook.lua): this one steps
+	-- aside or comes back at once
+	MelloUI:On("overlap", function(job)
+		if job == "questTracker" and M.isEnabled and frame then
+			MarkDirty()
+		end
+	end, M)
 	MelloUI:On("module", function(name)
 		if name == "Route" then
 			Near.wanting = nil

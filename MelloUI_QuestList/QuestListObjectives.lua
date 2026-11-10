@@ -110,15 +110,18 @@ end
 -- The data, loaded with the first map that has a quest to show (once a
 -- session: a refusal is the Companion's own notice)
 local function DataReady()
+	-- (2.1.39) the player's QuestieDB has places too (Core/QuestSource.lua); the Companion still asked for once, for
+	-- the quests it lacks
+	local questie = MelloUI.QuestSource and MelloUI.QuestSource.Lib() ~= nil
 	if MelloUI_QuestObjectiveData then
 		return true
 	end
 	if O.asked or not MelloUI.LoadCompanion then
-		return false
+		return questie or false
 	end
 	O.asked = true
 	local ok = MelloUI:LoadCompanion()
-	return ok and MelloUI_QuestObjectiveData ~= nil
+	return questie or (ok and MelloUI_QuestObjectiveData ~= nil)
 end
 
 -- (1.2.0) world yards to a map's 0..1: the client's own answer at three points by a place (one ask a point
@@ -619,6 +622,22 @@ local function Chance(pct)
 end
 
 local FROM = { "From", "In", "Sold by" }   -- a creature drops it, an object holds it, a vendor sells it
+-- (2.1.39, the user's pick B) the name's colour: a creature a foe's red, a vendor a friend's green, an object the text's
+local FROM_COLOUR = { [1] = "foe", [3] = "friend" }
+
+-- the objective's line with its count ("3/20") in the colour of how it stands: red until done, green once done
+local function Counted(text, t)
+	local have, need = t and t[7], t and t[8]
+	if type(text) ~= "string" or not (have and need and need > 0) then
+		return text
+	end
+	local count = string.format("%d/%d", have, need)
+	local a, b = text:find(count, 1, true)
+	if not a then
+		return text
+	end
+	return text:sub(1, a - 1) .. QL.TipPaint(count, have >= need and "friend" or "foe") .. text:sub(b + 1)
+end
 
 -- the mark's tooltip (QuestListMap's MarkEnter, kind "objective"; the minimap's marks, O.MiniEnter); `hints`: its click
 -- line (only where the mark takes the click); `after`: (2.1.0) the quest of the lines above (marks stacked on the
@@ -633,13 +652,15 @@ function O.Tip(tip, data, Line, hints, after)
 		Line(tip, title, "selectedTrim")
 	end
 	local t = data.line
-	Line(tip, (t and t[6]) or data.name, "text")
+	Line(tip, Counted((t and t[6]) or data.name, t), "text")
 	local sources = MelloUI.QuestObjectives.Sources(data.questID)
 	for _, s in ipairs(sources and sources[data.index] or {}) do
-		local levels = s[3] > 0 and (s[3] == s[4] and string.format(" (level %d)", s[3])
-			or string.format(" (level %d-%d)", s[3], s[4])) or ""
+		-- (2.1.39) the levels in their difficulty colour, as the quests' own
+		local levels = s[3] > 0 and (" " .. QL.TipPaint(s[3] == s[4] and string.format("(level %d)", s[3])
+			or string.format("(level %d-%d)", s[3], s[4]), QL.DifficultyColor(s[4]))) or ""
 		local chance = Chance(s[5])
-		Line(tip, string.format("%s %s%s%s", FROM[s[1]] or "From", s[2], levels, chance and (", " .. chance) or ""), "text", true)
+		local name = FROM_COLOUR[s[1]] and QL.TipPaint(s[2], FROM_COLOUR[s[1]]) or s[2]
+		Line(tip, string.format("%s %s%s%s", FROM[s[1]] or "From", name, levels, chance and (", " .. chance) or ""), "text", true)
 	end
 	if hints then
 		Line(tip, "Click to set a waypoint here.", "pinHint")

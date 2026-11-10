@@ -35,6 +35,7 @@ ns.Search = Search
 local T = {
 	W = 240, H = 20,            -- the box
 	RIGHT = -44, TOP = -7,      -- its place in the title row (left of the close button)
+	GAP = 12,                   -- (2.1.39) from the icons' slider's label, left of which it stands
 	LIST_W = 320, ROWS = 10, ROW_H = 26, ICON = 18, PAD = 6,
 	ZOOM = 6,                   -- a point found: the map at least this close
 	ICONS = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\",
@@ -348,7 +349,12 @@ function Search.Init(win)
 	local f = win.frame
 	local box = CreateFrame("EditBox", nil, f, "SearchBoxTemplate")
 	box:SetSize(T.W, T.H)
-	box:SetPoint("TOPRIGHT", f, "TOPRIGHT", T.RIGHT, T.TOP)
+	if win.iconLabel then
+		-- (2.1.39) left of the icons' slider (Map.lua), which stands where the box stood
+		box:SetPoint("RIGHT", win.iconLabel, "LEFT", -T.GAP, 0)
+	else
+		box:SetPoint("TOPRIGHT", f, "TOPRIGHT", T.RIGHT, T.TOP)
+	end
 	box:SetAutoFocus(false)
 	box:SetFrameLevel(f:GetFrameLevel() + 20)
 	if box.Instructions then

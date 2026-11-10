@@ -60,6 +60,7 @@ local T = {
 	WIDE = 0.95,       -- ... (2.1.0) the window with the column out at most this share (the map narrower to fit)
 	MIN_W = 480,       -- (2.1.0: 640 before the column stood beside it; a 4 : 3 screen at UI scale 1 takes the two)
 	PAD = 14, TOP = 34, FOOT = 24, IN = 1,
+	ICONS_W = 120, ICONS_RIGHT = -44, ICONS_TOP = -7,   -- (2.1.39) the icons' slider in the title row, left of the close
 	HOVER = 0.1,       -- the name under the cursor read at most this often
 	CLICK = 4,         -- a press that moved less than this is a click
 	PIN_ZOOM = 6,      -- a shared pin opened: the map at least this close
@@ -73,6 +74,10 @@ local TEXT = {
 	pinLabel = "Your pin",
 	grip = "Drag to size the map",
 	gripBody = "The quest log beside it keeps its size. Right-click: the standard size and place.",
+	icons = "Icons",
+	iconsTip = "Icon Size",
+	iconsBody = "The size of every icon on the map: quest givers, objectives, flight masters and the icons other addons "
+		.. "put on it, such as Questie's.",
 	pinNotice = "Route: to your pin",
 	pinNone = "The map cannot set a pin there: click on land.",
 	pinOff = "Turn on Route or the Quest List to set a pin on the map.",
@@ -113,7 +118,7 @@ M = MelloUI:RegisterModule("Map", {
 	flavour = "The whole world on one sheet, from the continents down to a village.",
 	group = "Quests and travel", navOrder = 4,
 	enabledByDefault = true,
-	defaults = { dungeonMaps = true, mapShare = false },
+	defaults = { dungeonMaps = true, mapShare = false, iconScale = 1 },   -- (2.1.39: iconScale, the title row's slider)
 	-- (1.0) the window's own state, the player's: where it looked, its quest log open and on which tab -- never in a
 	-- profile or the installer's Full (its layers and Tracked Only travel)
 	keep = { "view", "log", "logTab", "logMode", "mapShare" },
@@ -432,6 +437,11 @@ local function SetLayer(key, on)
 		else
 			AddonPins.Close()
 		end
+	end
+	-- (2.1.39) the quest givers' or objectives' layer on or off: Questie's icons of that kind looked at again (shown
+	-- here, in MelloUI's pictures, only while MelloUI's own layer of them is off: MapAddonPins' Cover)
+	if (key == "quests" or key == "objectives") and shown and AddonPins.Recheck then
+		AddonPins.Recheck()
 	end
 	win.pins:Lay()
 	Log.LayersChanged()
@@ -937,7 +947,25 @@ local function Build()
 	win.module = M
 	win.Unfold = Unfold
 	Log.Init(win)
-	-- (M4) the search in the title row
+	-- (2.1.39; the user, 2026-11-10: "we need a scale slider on the map itself to scale its icons"; the pick: the
+	-- title row, right of the search) the icons' size, every pin's (MapPins.lua's Pins.SetScale)
+	Pins.SetScale(M.db.iconScale)
+	local scale = W.Slider(f, T.ICONS_W, function()
+		return Pins.scale
+	end, function(v)
+		M.db.iconScale = v
+		Pins.SetScale(v)
+	end, { min = Pins.SCALE_MIN, max = Pins.SCALE_MAX, step = 0.05, percent = true })
+	scale:SetPoint("TOPRIGHT", f, "TOPRIGHT", T.ICONS_RIGHT, T.ICONS_TOP)
+	scale:SetFrameLevel(f:GetFrameLevel() + 20)
+	local label = W.Text(f, "GameFontHighlight", TEXT.icons, "text")
+	label:SetPoint("RIGHT", scale, "LEFT", -6, 0)
+	Perf.HookScript(scale.Slider, "OnEnter", function()
+		W.ShowTooltip(scale, TEXT.iconsTip, TEXT.iconsBody, nil, "ANCHOR_BOTTOM")
+	end)
+	Perf.HookScript(scale.Slider, "OnLeave", W.TipLeave)
+	win.iconScale, win.iconLabel = scale, label
+	-- (M4) the search in the title row (2.1.39: left of the icons' slider)
 	Search.Init(win)
 	-- (2.1.0) the layers' page, the rail's gear; the layers as they were left
 	Log.Layers({ switches = SWITCHES, groups = GROUPS, on = LayerOn, set = SetLayer })
