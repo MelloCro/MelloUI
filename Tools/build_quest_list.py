@@ -178,8 +178,10 @@ def load_vanilla(sql):
 # ---------------------------------------------------------------------------
 
 # Forever's new dungeons, where Wowhead's list has no levels: {instance: (min, max)} (foreverdb; Icy Veins and Method
-# agree on the Excavation Site, 2026-10-20). The City of Dalaran under both its area ids.
-FOREVER_LEVELS = {16919: (13, 20), 16611: (15, 22), 16732: (26, 33), 16544: (28, 35), 16560: (28, 35)}
+# agree on the Excavation Site, 2026-10-20). The City of Dalaran under both its area ids. Krol'dok Stronghold
+# (2.1.40): Blizzard's corrected 40-45 (Icy Veins, Warcraft Tavern; the client's own ContentTuning 6326 says 40).
+FOREVER_LEVELS = {16919: (13, 20), 16611: (15, 22), 16732: (26, 33), 16544: (28, 35), 16560: (28, 35),
+                  16842: (40, 45)}
 
 
 def load_wowhead_zones():
@@ -1110,6 +1112,13 @@ FOREVER_ENTRANCES = [
     # the portal at the titan overlook in the Shaper's Terrace's own area, north of Un'Goro (no map row yet; a green
     # portal stands 350 yd north-west of it, an older one under Marshal's Refuge)
     (0, "The Shaper's Terrace", 1, -5924.0, -970.1, 0),
+    # Krol'dok Stronghold (2.1.40; a player, 2026-11-10: "Krol'Dok Stronghold Dungeon location is here", an arrow on
+    # their map): the cave at the foot of the stream west of the fortress's gate, in the Riverglades. The cave
+    # tunnel building placed there (md_cavetunnel01, at -7691.1, -3706.7, turned 356) carries an instance portal in
+    # its doodad set "set_Instance", which the placement does not show; this is that portal (its building's turn by
+    # the same convention, which puts Scarlet Monastery's two building portals within 4 yd of their doors), 10 yd
+    # from the player's arrow. The newer client's map row (3039) is past this tool's Map table: its name is given.
+    (3039, "Krol'dok Stronghold", 0, -7647.2, -3711.4, 0),
 ]
 
 # Zeppelin towers stand outside the city bounds; name them by hand.
@@ -1369,11 +1378,20 @@ def arc_side(here, there):
     return best[1]
 
 
-def add_entrance(entrances, zones, used_dungeons, area_of_map, dungeon_by_name, inst, name, cont, wx, wy, kind, side):
-    """One door: its dungeon (the map's area, else its name), a build-time zone guess, its side (0 both)."""
+def add_entrance(entrances, zones, used_dungeons, area_of_map, dungeon_by_name, inst, name, cont, wx, wy, kind, side,
+                 own_area=None):
+    """One door: its dungeon (the map's area, else its name), a build-time zone guess, its side (0 both).
+    (2.1.40) An instance Wowhead's cached list lacks (Krol'dok Stronghold, newer than the page) becomes a dungeon
+    by its door, under the client's own area for the instance map, when that area bears the door's name."""
     did = area_of_map.get(inst, 0)
     if did not in used_dungeons:
-        did = dungeon_by_name.get(re.sub(r"^the ", "", name.lower()), 0)
+        key = re.sub(r"^the ", "", name.lower())
+        did = dungeon_by_name.get(key, 0)
+        area = (own_area or {}).get(inst)
+        if not did and area and re.sub(r"^the ", "", area[1].lower()) == key:
+            did = area[0]
+            used_dungeons[did] = area[1]
+            dungeon_by_name[key] = did
     loc = locate(zones, cont, wx, wy)
     entrances.append((did, name, cont, round(wx, 1), round(wy, 1),
                       loc[0]["areaID"] if loc else 0, loc[1] if loc else 0, loc[2] if loc else 0, kind, side))
@@ -1389,10 +1407,14 @@ def build_map_points(sql, zones, used_dungeons, raids):
     for mid, m in maps.items():
         if int(m.get("AreaTableID") or 0):
             area_of_map[mid] = int(m["AreaTableID"])
+    # (the area table may be newer than the map table: each map's first top-level area, for a door's dungeon)
+    own_area = {}
     for r in db2("AreaTable"):
         cont, parent = int(r.get("ContinentID") or -1), int(r.get("ParentAreaID") or 0)
         if cont in maps and parent == 0 and cont not in area_of_map:
             area_of_map[cont] = int(r["ID"])
+        if parent == 0:
+            own_area.setdefault(cont, (int(r["ID"]), r["AreaName_lang"]))
     dungeon_by_name = {re.sub(r"^the ", "", name.lower()): did for did, name in used_dungeons.items()}
 
     entrances, seen = [], set()
@@ -1425,7 +1447,7 @@ def build_map_points(sql, zones, used_dungeons, raids):
     for inst, name, cont, wx, wy, side in FOREVER_ENTRANCES:
         m = maps.get(inst)
         add_entrance(entrances, zones, used_dungeons, area_of_map, dungeon_by_name, inst, name or m["MapName_lang"],
-                     cont, wx, wy, 2 if m and m["InstanceType"] == "2" else 1, side)
+                     cont, wx, wy, 2 if m and m["InstanceType"] == "2" else 1, side, own_area)
     entrances.sort(key=lambda e: (e[1], e[2], e[3]))
     log(f"  {len(entrances)} instance entrances ({sum(1 for e in entrances if e[0] == 0)} without a Wowhead instance id)")
 

@@ -1275,6 +1275,8 @@ Lang:Add("zhCN", {
 	["The size of the item slots. 37 is the game's size."] = "物品格的大小。37 为游戏大小。", -- draft
 	["Fold Empty Slots"] = "折叠空栏位", -- draft
 	["All empty slots shown as one, with their count."] = "所有空格合并为一格，并显示数量。", -- draft
+	["Reagent Bag With The Bags"] = "材料包与背包一起显示", -- draft
+	["The Reagent Bag's items among your bags' kinds in one view, its slots in its own colour and its free slots in an Empty slot of their own, instead of on its own side tab."] = "材料包的物品在一个视图中与背包各类别放在一起，其格子使用自己的颜色，空格子放入单独的“空”格子，而不是在它自己的侧边标签页。", -- draft
 	["Special Bags"] = "特殊背包", -- draft
 	["Items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "特殊背包（矿石袋、草药包、弹药袋、箭袋……）中的物品带有该背包的颜色，窗口底部列出这些背包及其装满程度。", -- draft
 	["Sort Items By"] = "物品排序方式", -- draft
@@ -1723,6 +1725,8 @@ Lang:Add("zhCN", {
 	["Short coloured tags instead of [Guild], [Party], [1. General] and so on."] = "用简短彩色标签代替 [公会]、[小队]、[1. 综合] 等。", -- draft
 	["Hide Brackets"] = "隐藏方括号", -- draft
 	["Removes the brackets around the short tags."] = "去掉简短标签周围的括号。", -- draft
+	["Chat Timestamps"] = "聊天时间戳", -- draft
+	["The time before each chat line, or None for no time. It is the game's own Chat Timestamps setting, and both chat views follow it."] = "每行聊天前的时间，或选“无”不显示时间。这是游戏自己的“聊天时间戳”设置，两种聊天视图都随之变化。", -- draft
 	["Whisper Popup Window"] = "悄悄话弹窗", -- draft
 	["Each whisper opens a small window for that person, with a box to answer in. Whispers still show in the chat."] = "每条悄悄话为对方打开一个小窗口，带回复框。悄悄话仍会显示在聊天中。", -- draft
 	-- CombatText
@@ -2320,6 +2324,12 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Bags: the new Reagent Bag With The Bags option shows the Reagent Bag's items in your bags' one view, its slots in lime and its free slots counted in an Empty slot of their own."] = "背包：新的“材料包与背包一起显示”选项在背包的统一视图中显示材料包的物品，其格子显示为青柠色，空格子单独计入一个“空”格子。", -- draft
+	["Chat: the short channel tags (G, P, R ...) wear the game's own chat colours, and with Short Channel Tags on the Minimal Chat View's headers show only the tag."] = "聊天：频道简写（G、P、R……）使用游戏自己的聊天颜色，开启“频道简写”后，极简聊天视图的标题行只显示简写。", -- draft
+	["Chat: a Chat Timestamps option on the Chat page sets the game's own chat timestamps, None hides them; the Minimal Chat View follows it."] = "聊天：聊天页面上的“聊天时间戳”选项设置游戏自己的聊天时间戳，选“无”即隐藏；极简聊天视图随之变化。", -- draft
+	["Chat: a Copy button on the whisper windows puts the whole conversation in a window to copy, links and long messages included."] = "聊天：密语窗口上的“复制”按钮会把整段对话放进一个可复制的窗口，包括链接和长消息。", -- draft
+	["Map: the first time you open the map after logging in, it shows your current zone (a city's own map in a city) instead of the whole world."] = "地图：登录后第一次打开地图时，会显示你当前所在的区域（在城市里显示城市自己的地图），而不是整个世界。", -- draft
+	["Map: Krol'dok Stronghold's entrance (levels 40-45) shows in the Riverglades, at the cave west of the fortress, and Route takes you there."] = "地图：克罗多克要塞的入口（等级40-45）显示在河林，位于要塞西边的洞穴处，Route会带你前往。", -- draft
 	["Quests: with Questie installed, the Quest List, its map pins, the objective marks and Route use Questie's quest database for the newest quest data; MelloUI's own fills any gaps."] = "任务：安装 Questie 后，任务列表、其地图标记、目标标记和路线将使用 Questie 的任务数据库获取最新任务数据；MelloUI 自带的数据会补足缺失部分。", -- draft
 	["Quest List: with Questie installed, a quest you cannot take yet (an earlier quest, a breadcrumb, a spell or a profession first) waits in the list, no longer shown as ready."] = "任务列表：安装 Questie 后，暂时无法接取的任务（需要先完成前置任务、引导任务，或先学会某个法术或专业）会在列表中等待，不再显示为可接取。", -- draft
 	["Map: with Questie installed, MelloUI's quest givers, objective marks and quest areas stay and Questie's icons of the same kind hide, no more double icons; its others wear MelloUI's pictures."] = "地图：安装 Questie 后，MelloUI 的任务发布者、目标标记和任务区域保留，Questie 同类图标隐藏，不再出现重复图标；它的其他图标改用 MelloUI 的图案。", -- draft
@@ -2338,7 +2348,6 @@ Lang:Add("zhCN", {
 	["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "聊天：极简聊天视图的频道列表可以折叠为仅图标（点击其边缘的小把手，或在聊天页面开启“频道列表仅显示图标”），为消息留出更多空间。", -- draft
 	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "支持者页面：名字现在挂在三面动态旗帜上，每个等级一面，MelloUI 的 Patreon 和 Discord 地址显示在复制框中。", -- draft
 	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "地图：拖动右下角的手柄即可调整地图大小（旁边的任务日志保持原大小），拖动标题栏即可移动地图，无需编辑布局。", -- draft
-	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "小地图：当草药或矿石插件扫描小地图时，小地图旁的增益效果不再跳到屏幕边缘，扫描结束后小地图边框总会回来。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3215,6 +3224,7 @@ Lang:Add("zhCN", {
 -- stale: ["Minimap: square, in the window frame"] = "小地图：方形，在窗口边框中", -- draft
 -- stale: ["Minimap: square, the Services bar inside its frame"] = "小地图：方形，服务栏在其边框内", -- draft
 -- stale: ["Minimap: the game's own"] = "小地图：游戏自己的", -- draft
+-- stale: ["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "小地图：当草药或矿石插件扫描小地图时，小地图旁的增益效果不再跳到屏幕边缘，扫描结束后小地图边框总会回来。", -- draft
 -- stale: ["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge; the Quest Tracker and the rest by the minimap stay put too."] = "小地图：当草药或矿石插件扫描小地图时，小地图旁的增益效果不再跳到屏幕边缘；任务追踪等小地图旁的元素也会保持原位。", -- draft
 -- stale: ["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "小地图：使用扫描小地图的草药或矿石插件（如 NodeSight）时，MelloUI 的小地图边框不再跟随鼠标；每次扫描时它会随地图一起隐藏。", -- draft
 -- stale: ["Move the chat input box above the chat window and its tabs instead of below it."] = "把聊天输入框移到聊天窗口及其标签的上方，而不是下方。", -- draft

@@ -66,6 +66,7 @@ It comes in two parts, and you need both. Remade for 0.18.3: every voice at a be
 
 ## 🗺️ The map that actually helps
 
+- **Opens where you are:** the first time you open the map after logging in, it shows your current zone, a city's own map in a city (2.1.40); after that, each open centres on you at the zoom you left it.
 - **Your size, your place:** drag the dotted grip in the map's bottom-right corner to make the map bigger or smaller (its quest log keeps its size, so it stays readable on any screen; right-click the grip for the standard size and place), and drag its title bar to move the window. No Edit Layout needed.
 - **One window, nothing covered:** your quest log, the map's layers and Dungeon Info open in a panel beside the whole map. The round buttons between them pick one (L opens your quests); click the lit one to fold the panel away and the window narrows to the map.
 - **Quest List:** every quest in the zone next to your map. Who gives it, where they stand, what's left to do, how much of the zone you've finished. Filters for dungeons, raids, class quests, attunements, events.
@@ -413,7 +414,9 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
   once) with every conversation: the people on the left (class picture, unread count, a dot while a friend, guild
   member or Battle.net friend is online, how long ago, the last line), the talk in bubbles (theirs left, yours
   right, the name and time over the first of a run), the person's header (name, level, class and zone where the
-  game knows them; Add Friend, Invite To Group, Ignore and Report, the Whisper Popup Window's four) and the answer
+  game knows them; Copy, Add Friend, Invite To Group, Ignore and Report, the Whisper Popup Window's five -- 2.1.40:
+  Copy puts the whole conversation, each line with its time, links and long messages whole, in a window to copy
+  with Ctrl+C) and the answer
   box (Enter sends, Enter on an empty box or Escape lets go). The Whispers tab or the cross fold it down, Escape
   closes it. While Minimal is on it takes the Whisper Popup Window's place, and whispers stay in the main chat.
 - **Copy Chat Button** (2.1.24, on; Chat > Chat Frame > Behaviour): while your mouse is on the chat, a small round button fades in at its top right corner (with either Chat View: on the Minimal panel's lines, or on each of the game's chat windows); a click opens the tab's lines in MelloUI's copy window, selected, so Ctrl+C copies them -- each line plain (a link its name, colours and icons left out) with its time in front, the game's own time stamps when Chat Timestamps is on. Lines the game keeps secret from addons are left out.
@@ -432,9 +435,15 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
   buttons (the kit's rim, a dark disc, our glyph); every click and menu stays the game's, so the
   language you pick is the game's own choice. While you speak more than one language, the one you
   speak shows at the right end of the line you type in, and what you type stays clear of it.
-- Short, saturated channel tags: G for Guild (green), P for Party, R for Raid, RW for Raid
-  Warning, W for whispers, and G, T, LD, WD, LFG for the numbered channels. Brackets can be
-  removed as well.
+- Short channel tags (Short Channel Tags, on): G for Guild, P for Party, R for Raid, RW for Raid
+  Warning, W for whispers, and G, T, LD, WD, LFG for the numbered channels, each in the game's own
+  chat colour of that chat (2.1.40: the colours you set in the game's chat settings follow). Brackets can be
+  removed as well (Hide Brackets). The Minimal Chat View's headers follow them: the tag alone, or the
+  channel's name with Short Channel Tags off.
+- Chat Timestamps (2.1.40; Chat > Messages > Text): the time before each chat line, None for no time,
+  or one of the game's six formats. It is the game's own Chat Timestamps setting, so both chat views
+  follow it; until you pick one here, the Minimal Chat View keeps its 15:27 times while the game's is
+  None.
 - Class coloured player names in every chat type through Blizzard's own override CVar.
 - Border Opacity (100 % by default): how solid the painted border round the chat windows and their
   button column is, its soft shade with it (the Painted and Parchment backgrounds).
@@ -444,8 +453,9 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
   which the game's own per-character value cannot. While it is on, the game's opacity slider on
   a chat tab changes it for every window; off, MelloUI never writes the opacity and the windows
   keep what they have.
-- Whisper Popup Window: each conversation gets a small window of its own. Its header has four
-  buttons (0.16.0): Add Friend, Invite To Group, Ignore (it asks first) and Report. Report opens
+- Whisper Popup Window: each conversation gets a small window of its own. Its header has five
+  buttons: Copy (2.1.40: the conversation in a window to copy), Add Friend, Invite To Group, Ignore (it
+  asks first) and Report (0.16.0). Report opens
   the game's own report window for their last whisper; it is the chat's own "report this line"
   link, clicked through the chat frame's own handler, so the game lets the report be sent. A
   button dims when there is nothing to do (a friend already, in your group, ignored, no whisper
@@ -1778,6 +1788,12 @@ herb bag, an ammo pouch, a quiver, a soul bag ...) wears that bag type's colour,
 a mark in its bottom-left corner (in Oldschool the painted rim itself takes the colour), and so does that
 bag's free slot under Empty. The window's foot lists your special bags, each in its colour with how
 many of its slots are filled ("Mining Sack 4/4"). The bank's special bags show their colour too.
+
+**Reagent Bag With The Bags** (2.1.40, off; Windows, the Bags pick, Layout): the Reagent Bag in your bags' one
+view instead of on its own side tab. Its items join their kinds with the rest, its slots in lime (the rim and the
+corner mark, as Special Bags marks a special bag), its free slots fold into an Empty slot of their own with their
+count (beside the normal bags' and each special bag's), and the window's foot lists it with how full it is
+("Reagent Bag 8/20"). The Backpack and Reagent Bag side tabs go while it is on.
 
 **Bank by Kind** (0.21.1, on; Windows, the Bank pick, General): your bank in the same kinds, inside the game's
 bank window, where its grid stood: the Kinds list's order, lines and groups, your own kinds and their rules,

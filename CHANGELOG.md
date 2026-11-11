@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.40
+
+- Bags: the new Reagent Bag With The Bags option shows the Reagent Bag's items in your bags' one view, its slots in lime and its free slots counted in an Empty slot of their own.
+- Chat: the short channel tags (G, P, R ...) wear the game's own chat colours, and with Short Channel Tags on the Minimal Chat View's headers show only the tag.
+- Chat: a Chat Timestamps option on the Chat page sets the game's own chat timestamps, None hides them; the Minimal Chat View follows it.
+- Chat: a Copy button on the whisper windows puts the whole conversation in a window to copy, links and long messages included.
+- Map: the first time you open the map after logging in, it shows your current zone (a city's own map in a city) instead of the whole world.
+- Map: Krol'dok Stronghold's entrance (levels 40-45) shows in the Riverglades, at the cave west of the fortress, and Route takes you there.
+
 ## 2.1.39
 
 - Quests: with Questie installed, the Quest List, its map pins, the objective marks and Route use Questie's quest database for the newest quest data; MelloUI's own fills any gaps.

@@ -144,14 +144,40 @@ local function WindowInfo(id)
 	return Plain(name), Plain(shown), Plain(docked)
 end
 
--- the time a line came in, as the header shows it (made once a minute)
-local clockAt, clockText = -1, ""
-function View.Clock()
-	local m = math.floor(time() / 60)
-	if m ~= clockAt then
-		clockAt, clockText = m, date("%H:%M")
+-- (2.1.40; players, through the user: "hidding the chat timestamps" -- the user's picks "One Chat Timestamps setting"
+-- and "Minimal keeps 15:27") the time a line came in, as the header shows it: in the game's own Chat Timestamps (its
+-- showTimestamps CVar, also the Chat page's Chat Timestamps row) -- none: no time; until a player has picked one on
+-- that row, the view's own 15:27 as before (the game's default is none, and this view always showed its time)
+function View.StampFormat()
+	local ok, fmt = pcall(GetCVar, "showTimestamps")
+	fmt = ok and Plain(fmt) or nil
+	if type(fmt) ~= "string" or fmt == "" or fmt == "none" then
+		if M.db and M.db.timestamps then
+			return nil   -- (None picked: no time)
+		end
+		return "%H:%M"
 	end
-	return clockText
+	return fmt
+end
+
+local stampAt, stampFmt, stampText = nil, nil, ""   -- (the last one made: lines come by the second)
+function View.Stamp(ts)
+	local fmt = View.StampFormat()
+	if not fmt then
+		return ""
+	end
+	ts = ts or time()
+	if ts ~= stampAt or fmt ~= stampFmt then
+		stampAt, stampFmt = ts, fmt
+		local ok, text = pcall(date, fmt, ts)
+		stampText = (ok and type(text) == "string") and (text:gsub("%s+$", "")) or ""
+	end
+	return stampText
+end
+
+-- the time of now, as a header shows it (the whisper window's)
+function View.Clock()
+	return View.Stamp(time())
 end
 
 --------------------------------------------------------------------------------
@@ -295,21 +321,29 @@ local function ClassColour(guid)
 	return nil
 end
 
--- the channel's short tag and its name ("[T] Trade"), from the Chat module's tags
-local function Tag(chatType, args)
-	local channel = chatType == "CHANNEL" and Plain(args[9]) or nil
+-- the channel in a run's header, as the Game Windows view shortens it (2.1.40; players, through the user: "reduce the
+-- channel name to only Green G for guild, Blue P for Party, Orange R for Raid etc, using the games colours" -- the
+-- user's pick "Follow Short Channel Tags"): with Short Channel Tags on its tag alone ("G", "[G]" without Hide
+-- Brackets), off its name ("Guild", "Trade"); a channel with no tag its name; in the game's own colour of its chat type
+-- (M.TagHex: the player's chat colours, a numbered channel's by its number `index`)
+local function Tag(chatType, channel, index)
 	local short, hex = nil, nil
 	if M.ShortTag then
-		short, hex = M.ShortTag(chatType, channel)
+		short, hex = M.ShortTag(chatType, channel, index)
 	end
 	local name = TYPE_NAME[chatType]
 	if chatType == "CHANNEL" then
 		name = type(channel) == "string" and channel:gsub("%s*%-.*$", "") or nil
 	end
-	if not (short or name) then
+	local db = M.db
+	local text = name
+	if short and db and db.shortChannels then
+		text = db.hideBrackets and short or ("[" .. short .. "]")
+	end
+	if not text then
 		return nil
 	end
-	local text = (short and ("[" .. short .. "]") or "") .. ((short and name) and " " or "") .. (name or "")
+	hex = hex or (M.TagHex and M.TagHex(chatType, index, nil))
 	return hex and ("|cff" .. hex .. text .. "|r") or text
 end
 
@@ -377,7 +411,9 @@ function View.Line(frame, text, r, g, b, _, _, _, event, args)
 	rec.r, rec.g, rec.b = r or 1, g or 1, b or 1
 	rec.body, rec.headed, rec.key, rec.name, rec.tag = text, false, nil, nil, nil
 	rec.cr, rec.cg, rec.cb = nil, nil, nil
-	rec.at, rec.time, rec.ts = GetTime(), View.Clock(), time()
+	rec.ct, rec.cn, rec.ci = nil, nil, nil
+	rec.ts = time()
+	rec.at, rec.time = GetTime(), View.Stamp(rec.ts)
 	if type(event) == "string" and type(args) == "table" then
 		local chatType = event:sub(10)   -- CHAT_MSG_<type>
 		if HEADED[chatType] then
@@ -401,7 +437,12 @@ function View.Line(frame, text, r, g, b, _, _, _, event, args)
 			local cr, cg, cb = ClassColour(args[12])
 			rec.nr, rec.ng, rec.nb = cr or rec.r, cg or rec.g, cb or rec.b
 			rec.cr, rec.cg, rec.cb = cr, cg, cb   -- (the gem's on the paper: nil, no gem)
-			rec.tag = Tag(chatType, args)
+			-- (2.1.40) its chat type and channel kept: its tag laid anew when the tags' settings or colours change
+			rec.ct = chatType
+			if chatType == "CHANNEL" then
+				rec.cn, rec.ci = Plain(args[9]), Num(args[8])
+			end
+			rec.tag = Tag(rec.ct, rec.cn, rec.ci)
 		end
 	end
 	if View.seeding then
@@ -416,6 +457,24 @@ function View.Line(frame, text, r, g, b, _, _, _, event, args)
 		View.offset = math.min(View.offset + 1, buf.count - 1)   -- (scrolled back: the view holds still)
 	end
 	View.Soon()
+end
+
+-- (2.1.40) every kept line's tag and time laid anew: Short Channel Tags, Hide Brackets, Chat Timestamps or the game's
+-- chat colours changed (Chat.lua); a line kept from before 2.1.40 keeps the tag it came with (no chat type of it)
+function View.Restamp()
+	for _, buf in pairs(View.bufs) do
+		for _, rec in pairs(buf.items) do
+			if rec.ct then
+				rec.tag = Tag(rec.ct, rec.cn, rec.ci)
+			end
+			if rec.ts then
+				rec.time = View.Stamp(rec.ts)
+			end
+		end
+	end
+	if View.on then
+		View.Soon()
+	end
 end
 
 -- (2.1.24, Copy Chat: ChatCopy.lua) a tab's records, oldest first, and its name; read on a click, never per line
@@ -471,7 +530,11 @@ local function Restore(bufKey, saveKey)
 			end
 			rec.body, rec.r, rec.g, rec.b = s.tx, Num(s.r) or 1, Num(s.g) or 1, Num(s.b) or 1
 			rec.headed, rec.key, rec.name, rec.tag, rec.time = s.h and true or false, s.k, s.n, s.tg, s.tm
+			rec.ct, rec.cn, rec.ci = s.ct, s.cn, Num(s.ci)   -- (2.1.40: its tag laid anew from these; older: none)
 			rec.ts = Num(s.ts)
+			if rec.ts then
+				rec.time = View.Stamp(rec.ts)   -- (2.1.40: in the Chat Timestamps of now)
+			end
 			rec.at = now - math.max(0, clock - (rec.ts or clock))
 			rec.nr, rec.ng, rec.nb = Num(s.nr), Num(s.ng), Num(s.nb)
 			rec.cr, rec.cg, rec.cb = Num(s.cr), Num(s.cg), Num(s.cb)
@@ -486,7 +549,7 @@ local function Kept(rec)
 	end
 	return { tx = rec.body, r = rec.r, g = rec.g, b = rec.b, h = rec.headed or nil, k = rec.key, n = rec.name,
 		tg = rec.tag, tm = rec.time, ts = rec.ts, nr = rec.nr, ng = rec.ng, nb = rec.nb, cr = rec.cr, cg = rec.cg,
-		cb = rec.cb }
+		cb = rec.cb, ct = rec.ct, cn = rec.cn, ci = rec.ci }
 end
 
 -- every tab's newest lines (and the whisper window's conversations) into the history: at logout

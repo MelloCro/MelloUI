@@ -1275,6 +1275,8 @@ Lang:Add("ptBR", {
 	["The size of the item slots. 37 is the game's size."] = "O tamanho dos espaços de item. 37 é o tamanho do jogo.", -- draft
 	["Fold Empty Slots"] = "Recolher espaços vazios", -- draft
 	["All empty slots shown as one, with their count."] = "Todos os espaços vazios mostrados como um, com a contagem.", -- draft
+	["Reagent Bag With The Bags"] = "Bolsa de reagentes com as bolsas", -- draft
+	["The Reagent Bag's items among your bags' kinds in one view, its slots in its own colour and its free slots in an Empty slot of their own, instead of on its own side tab."] = "Os itens da bolsa de reagentes entre os tipos das suas bolsas em uma só visão, seus espaços na sua própria cor e seus espaços livres em um espaço Vazio próprio, em vez de na sua própria aba lateral.", -- draft
 	["Special Bags"] = "Bolsas especiais", -- draft
 	["Items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "Os itens de uma bolsa especial (bolsa de mineração, bolsa de ervas, bolsa de munição, aljava...) usam a cor dessa bolsa, e o rodapé da janela lista essas bolsas com o quanto estão cheias.", -- draft
 	["Sort Items By"] = "Ordenar itens por", -- draft
@@ -1723,6 +1725,8 @@ Lang:Add("ptBR", {
 	["Short coloured tags instead of [Guild], [Party], [1. General] and so on."] = "Etiquetas curtas coloridas em vez de [Guilda], [Grupo], [1. Geral] e assim por diante.", -- draft
 	["Hide Brackets"] = "Esconder colchetes", -- draft
 	["Removes the brackets around the short tags."] = "Tira os colchetes das etiquetas curtas.", -- draft
+	["Chat Timestamps"] = "Horário do chat", -- draft
+	["The time before each chat line, or None for no time. It is the game's own Chat Timestamps setting, and both chat views follow it."] = "A hora antes de cada linha do chat, ou Nenhum para nenhuma hora. É o ajuste Horário do chat do próprio jogo, e as duas visões do chat o seguem.", -- draft
 	["Whisper Popup Window"] = "Janela de sussurro", -- draft
 	["Each whisper opens a small window for that person, with a box to answer in. Whispers still show in the chat."] = "Cada sussurro abre uma pequena janela para essa pessoa, com uma caixa para responder. Sussurros ainda aparecem no bate-papo.", -- draft
 	-- CombatText
@@ -2320,6 +2324,12 @@ Lang:Add("ptBR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toda a sua configuração sob um nome. Salve, carregue ou torne-a o padrão de uma instalação nova.", -- draft
 	["Supporters"] = "Apoiadores", -- draft
 	["The people who help keep MelloUI going."] = "As pessoas que mantêm o MelloUI funcionando.", -- draft
+	["Bags: the new Reagent Bag With The Bags option shows the Reagent Bag's items in your bags' one view, its slots in lime and its free slots counted in an Empty slot of their own."] = "Bolsas: a nova opção Bolsa de reagentes com as bolsas mostra os itens da bolsa de reagentes na visão única das suas bolsas, seus espaços em verde-limão e seus espaços livres contados em um espaço Vazio próprio.", -- draft
+	["Chat: the short channel tags (G, P, R ...) wear the game's own chat colours, and with Short Channel Tags on the Minimal Chat View's headers show only the tag."] = "Chat: as etiquetas curtas de canal (G, P, R ...) usam as cores de chat do próprio jogo, e com Etiquetas curtas de canal os cabeçalhos da visão de chat mínima mostram só a etiqueta.", -- draft
+	["Chat: a Chat Timestamps option on the Chat page sets the game's own chat timestamps, None hides them; the Minimal Chat View follows it."] = "Chat: uma opção Horário do chat na página de Chat ajusta o horário do próprio jogo, Nenhum o esconde; a visão de chat mínima o segue.", -- draft
+	["Chat: a Copy button on the whisper windows puts the whole conversation in a window to copy, links and long messages included."] = "Chat: um botão Copiar nas janelas de sussurro coloca a conversa inteira em uma janela para copiar, links e mensagens longas incluídos.", -- draft
+	["Map: the first time you open the map after logging in, it shows your current zone (a city's own map in a city) instead of the whole world."] = "Mapa: na primeira vez que você abre o mapa depois de entrar, ele mostra sua zona atual (o mapa próprio de uma cidade dentro dela) em vez do mundo inteiro.", -- draft
+	["Map: Krol'dok Stronghold's entrance (levels 40-45) shows in the Riverglades, at the cave west of the fortress, and Route takes you there."] = "Mapa: a entrada da Fortaleza de Krol'Dok (níveis 40-45) aparece nas Sendas do Rio, na caverna a oeste da fortaleza, e o Route leva você até lá.", -- draft
 	["Quests: with Questie installed, the Quest List, its map pins, the objective marks and Route use Questie's quest database for the newest quest data; MelloUI's own fills any gaps."] = "Missões: com o Questie instalado, a lista de missões, seus marcadores no mapa, as marcas de objetivos e a rota usam o banco de dados de missões do Questie para os dados mais recentes; o do MelloUI preenche as lacunas.", -- draft
 	["Quest List: with Questie installed, a quest you cannot take yet (an earlier quest, a breadcrumb, a spell or a profession first) waits in the list, no longer shown as ready."] = "Lista de missões: com o Questie instalado, uma missão que você ainda não pode pegar (antes uma missão anterior, uma de introdução, um feitiço ou uma profissão) espera na lista e não aparece mais como pronta.", -- draft
 	["Map: with Questie installed, MelloUI's quest givers, objective marks and quest areas stay and Questie's icons of the same kind hide, no more double icons; its others wear MelloUI's pictures."] = "Mapa: com o Questie instalado, os doadores de missões, marcas de objetivo e áreas de missão do MelloUI ficam e os ícones do Questie do mesmo tipo se escondem, sem ícones duplicados; os outros usam as imagens do MelloUI.", -- draft
@@ -2338,7 +2348,6 @@ Lang:Add("ptBR", {
 	["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "Chat: a lista de canais da visualização de chat mínima recolhe para seus ícones (a pequena alça na borda, ou Lista de canais como ícones na página de Chat), deixando mais espaço para as mensagens.", -- draft
 	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "Página de apoiadores: os nomes agora ficam em três estandartes animados, um por nível, com o Patreon e o Discord do MelloUI em uma caixa para copiar.", -- draft
 	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "Mapa: arraste a alça no canto inferior direito para redimensionar o mapa (o registro de missões ao lado mantém seu tamanho), e arraste a barra de título para movê-lo, sem precisar editar o layout.", -- draft
-	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "Minimapa: enquanto um addon de ervas ou minérios varre o minimapa, seus bônus ao lado não pulam mais para a borda da tela, e a moldura do minimapa sempre volta depois da varredura.", -- draft
 	["Report a problem"] = "Relatar um problema", -- draft
 	["Voice pack"] = "Pacote de vozes", -- draft
 	["open or close this window"] = "abre ou fecha esta janela", -- draft
@@ -3215,6 +3224,7 @@ Lang:Add("ptBR", {
 -- stale: ["Minimap: square, in the window frame"] = "Minimapa: quadrado, na moldura de janela", -- draft
 -- stale: ["Minimap: square, the Services bar inside its frame"] = "Minimapa: quadrado, a barra de Serviços dentro da moldura", -- draft
 -- stale: ["Minimap: the game's own"] = "Minimapa: o do jogo", -- draft
+-- stale: ["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "Minimapa: enquanto um addon de ervas ou minérios varre o minimapa, seus bônus ao lado não pulam mais para a borda da tela, e a moldura do minimapa sempre volta depois da varredura.", -- draft
 -- stale: ["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge; the Quest Tracker and the rest by the minimap stay put too."] = "Minimapa: enquanto um addon de ervas ou minérios varre o minimapa, seus bônus ao lado não pulam mais para a borda da tela; o rastreador de missões e o resto junto ao minimapa também ficam no lugar.", -- draft
 -- stale: ["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "Minimapa: com um addon de ervas ou minérios que varre o minimapa (NodeSight e parecidos), a moldura do minimapa do MelloUI não segue mais o cursor; ela some junto com o mapa em cada varredura.", -- draft
 -- stale: ["Move the chat input box above the chat window and its tabs instead of below it."] = "Põe a caixa de texto do bate-papo acima da janela de bate-papo e das abas em vez de embaixo.", -- draft

@@ -101,7 +101,8 @@ M = MelloUI:RegisterModule("BagWindow", {
 	enabledByDefault = true,
 	keep = { "seen", "seenN" },   -- (1.2.4, pr-01's G1) the player's own record of the items seen: never in a profile
 	defaults = { recentFor = "close", columns = 10, itemSize = 37, foldEmpty = true, sortBy = "quality", bank = true,
-		lootFlight = true, itemsGlide = true, moneyRoll = true, fullWarning = true, specialBags = true },
+		lootFlight = true, itemsGlide = true, moneyRoll = true, fullWarning = true, specialBags = true,
+		reagentWithBags = false },
 	options = {
 		-- (0.20.4; the user, 2026-10-11: "the categories have a priority, whats shown on top ... most people have their
 		-- hearthstone on top", look A of bag_kinds_sketch: the kinds in the player's order, lines and groups among them,
@@ -135,6 +136,12 @@ M = MelloUI:RegisterModule("BagWindow", {
 		  desc = "The size of the item slots. 37 is the game's size." },
 		{ type = "toggle", key = "foldEmpty", name = "Fold Empty Slots",
 		  desc = "All empty slots shown as one, with their count." },
+		-- (2.1.40; TribalInstincts on Discord: "Ideally, I'd like to be able to see everything I have in one view. With
+		-- the same dedicated Empty counter for each bag type"; the user's pick C, Lime, of
+		-- BuildData/output/bag_reagent_oneview_sketch) the Reagent Bag in the bags' one view, not on its side tab
+		{ type = "toggle", key = "reagentWithBags", name = "Reagent Bag With The Bags", new = "2.1.40",
+		  search = "reagent bag one view together tab empty lime",
+		  desc = "The Reagent Bag's items among your bags' kinds in one view, its slots in its own colour and its free slots in an Empty slot of their own, instead of on its own side tab." },
 		-- (2.1.26; Nixxen in feature-requests: "it would be nice to see which items were currently in that bag", the
 		-- user's pick 1B of BuildData/output/bag_special_kinds_sketch) a special bag's slots in its colour, the bags at
 		-- the window's foot
@@ -605,7 +612,8 @@ local function HeldBags(all)
 	local inv = Constants and Constants.InventoryConstants
 	local last = inv and Num(inv.NumBagSlots) or 4
 	local n = 0
-	if win.tab == "reagent" and not all then
+	local together = SB.Together()   -- (2.1.40: the Reagent Bag in the bags' view)
+	if win.tab == "reagent" and not all and not together then
 		n = 1
 		heldBags[1] = G.REAGENT
 	else
@@ -613,7 +621,7 @@ local function HeldBags(all)
 			n = n + 1
 			heldBags[n] = bag
 		end
-		if all then
+		if all or together then
 			n = n + 1
 			heldBags[n] = G.REAGENT
 		end
@@ -843,8 +851,20 @@ local function ReadBags()
 			local ok, _, fam = pcall(C.GetContainerNumFreeSlots, bag)
 			family = ok and Num(fam) or 0
 		end
-		-- (2.1.26) Special Bags: the bag's colour by its type (never the Reagent Bag's), its items counted
-		local colour = bag ~= G.REAGENT and SB.On() and MelloUI.BagTypeColour(family) or false
+		-- (2.1.26) Special Bags: the bag's colour by its type, its items counted; (2.1.40) the Reagent Bag's own colour
+		-- only while it shows with the bags (Reagent Bag With The Bags), and its free slots folded apart from the
+		-- normal bags' (it takes only reagents) whatever the type the game gives it
+		local colour = false
+		if SB.On() then
+			if bag == G.REAGENT then
+				colour = SB.Together() and MelloUI.ReagentBagColour() or false
+			else
+				colour = MelloUI.BagTypeColour(family) or false
+			end
+		end
+		if bag == G.REAGENT then
+			family = "reagent"
+		end
 		S.bagColour[bag] = colour
 		local used = 0
 		for slot = 1, n do
@@ -1110,6 +1130,12 @@ SB.parts = {}   -- the foot's text, a bag a part (reused)
 
 function SB.On()
 	return not (M.db and M.db.specialBags == false)
+end
+
+-- (2.1.40) Reagent Bag With The Bags: the Reagent Bag's items and free slots in the bags' one view (HeldBags), its
+-- slots in its own colour (MelloUI.ReagentBagColour, with Special Bags), its free slots folded apart, no side tabs
+function SB.Together()
+	return (M.db and M.db.reagentWithBags == true) and true or false
 end
 
 function SB.KitTints()
@@ -1993,7 +2019,7 @@ local function Sync(how)
 			f:Hide()
 		end
 	elseif not shown then
-		win.tab = (reagent and not open) and "reagent" or "bags"
+		win.tab = (reagent and not open and not SB.Together()) and "reagent" or "bags"
 		M:Open()
 	elseif how == "flip" then
 		M.SetTab(win.tab == "reagent" and "bags" or "reagent", true)
@@ -2516,7 +2542,9 @@ do
 	-- the tabs laid (each layout): shown while a Reagent Bag is on (else the bags, no tab), its own icon on its tab
 	function M.LayTabs()
 		local n = Num(C_Container.GetContainerNumSlots(G.REAGENT)) or 0
-		if n == 0 then
+		-- (2.1.40) Reagent Bag With The Bags: one view, no tabs
+		local together = SB.Together()
+		if n == 0 or together then
 			win.tab = "bags"
 		end
 		local tabs = win.tabs
@@ -2524,7 +2552,7 @@ do
 			return
 		end
 		for _, key in ipairs(TABS) do
-			tabs[key]:SetShown(n > 0)
+			tabs[key]:SetShown(n > 0 and not together)
 		end
 		if n > 0 then
 			local ok, inv = pcall(C_Container.ContainerIDToInventoryID, G.REAGENT)
@@ -2541,7 +2569,8 @@ do
 	-- a tab picked (its click, an item held over it, the game's bag buttons: Sync); `soon`: laid out on the next
 	-- frame
 	function M.SetTab(key, soon)
-		key = key == "reagent" and "reagent" or "bags"
+		-- (2.1.40: with the Reagent Bag in the bags' view, the one view only)
+		key = (key == "reagent" and not SB.Together()) and "reagent" or "bags"
 		if win.tab == key then
 			return
 		end

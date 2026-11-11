@@ -174,6 +174,14 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.40", lines = {
+		"Bags: the new Reagent Bag With The Bags option shows the Reagent Bag's items in your bags' one view, its slots in lime and its free slots counted in an Empty slot of their own.",
+		"Chat: the short channel tags (G, P, R ...) wear the game's own chat colours, and with Short Channel Tags on the Minimal Chat View's headers show only the tag.",
+		"Chat: a Chat Timestamps option on the Chat page sets the game's own chat timestamps, None hides them; the Minimal Chat View follows it.",
+		"Chat: a Copy button on the whisper windows puts the whole conversation in a window to copy, links and long messages included.",
+		"Map: the first time you open the map after logging in, it shows your current zone (a city's own map in a city) instead of the whole world.",
+		"Map: Krol'dok Stronghold's entrance (levels 40-45) shows in the Riverglades, at the cave west of the fortress, and Route takes you there.",
+	} },
 	{ version = "2.1.39", lines = {
 		"Quests: with Questie installed, the Quest List, its map pins, the objective marks and Route use Questie's quest database for the newest quest data; MelloUI's own fills any gaps.",
 		"Quest List: with Questie installed, a quest you cannot take yet (an earlier quest, a breadcrumb, a spell or a profession first) waits in the list, no longer shown as ready.",
@@ -199,9 +207,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.36", lines = {
 		"Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed.",
-	} },
-	{ version = "2.1.35", lines = {
-		"Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan.",
 	} },
 }
 local LINKS = {

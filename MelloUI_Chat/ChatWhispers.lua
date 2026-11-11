@@ -126,6 +126,29 @@ local function Touch(c)
 	table.insert(order, 1, c)
 end
 
+-- (2.1.40; a player, through the user: "also make us able to copy text from whispers") the open conversation as plain
+-- lines for the header's Copy (Chat.lua's action), oldest first: "[time] who: text", the whole text however long the
+-- bubble shows it, each plain as Copy Chat makes it (M.Copy.Plain); a line with a secret part left out
+function WV.CopyLines()
+	local out, c, plain = {}, WV.current, M.Copy and M.Copy.Plain
+	if not (c and plain) then
+		return out
+	end
+	local shown = WV.Shown(c)
+	local them = not Secret(shown) and plain(tostring(shown)) or nil
+	for j = c.count - 1, 0, -1 do
+		local rec = Nth(c, j)
+		local text = rec and plain(rec.text)
+		local who = rec and (rec.mine and TEXT.you or them)
+		if text and who then
+			local stamp = type(rec.time) == "string" and not Secret(rec.time) and rec.time ~= ""
+				and ("[" .. rec.time .. "] ") or ""
+			out[#out + 1] = stamp .. who .. ": " .. text
+		end
+	end
+	return out
+end
+
 function WV.Total()
 	local n = 0
 	for _, c in pairs(WV.convs) do
@@ -761,7 +784,7 @@ local function LayActions()
 	for i = #parts.ACTIONS, 1, -1 do
 		local id = parts.ACTIONS[i]
 		local b = acts[id]
-		b.wanted = WV.current ~= nil and (kind ~= "BN_WHISPER" or id == "invite" or id == "report")
+		b.wanted = WV.current ~= nil and (kind ~= "BN_WHISPER" or id == "invite" or id == "report" or id == "copy")
 		b:SetKit(Kit)
 		b:ClearAllPoints()
 		if b.wanted then
@@ -955,6 +978,7 @@ local function Build()
 	headLine:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 6, 0)
 	headLine:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -8, 0)
 	WV.shim.head = head
+	WV.shim.CopyLines = WV.CopyLines   -- (2.1.40: the header's Copy, this window's open conversation)
 	P().MakeActions(WV.shim, BUTTON)
 	-- the talk: clipped, the wheel scrolls it by bubble, links click as in the chat
 	local talk = CreateFrame("Frame", nil, f)

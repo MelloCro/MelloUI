@@ -64,6 +64,7 @@ local function PlainText(s)
 	s = s:gsub("||", "|")
 	return s
 end
+Copy.Plain = PlainText   -- (2.1.40: the whisper windows' Copy, Chat.lua's M.Whisper.PopupLines and ChatWhispers.lua)
 
 -- the game's own chat time stamps are on (the Chat Timestamps setting): its lines carry their time already
 local function GameStamps()
@@ -81,7 +82,9 @@ local function RecordLine(rec)
 	if not body then
 		return nil
 	end
-	local stamp = type(rec.time) == "string" and not Secret(rec.time) and ("[" .. rec.time .. "] ") or ""
+	-- (2.1.40: no time with Chat Timestamps None -- rec.time "" -- no empty brackets)
+	local stamp = type(rec.time) == "string" and not Secret(rec.time) and rec.time ~= "" and ("[" .. rec.time .. "] ")
+		or ""
 	if rec.headed then
 		local name = PlainText(rec.name)
 		if not name then

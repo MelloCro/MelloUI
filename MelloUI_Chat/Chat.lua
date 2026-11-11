@@ -128,6 +128,38 @@ local M = MelloUI:RegisterModule("Chat", {
 		  desc = "Short coloured tags instead of [Guild], [Party], [1. General] and so on." },
 		{ type = "toggle", key = "hideBrackets", parent = "shortChannels", name = "Hide Brackets",
 		  desc = "Removes the brackets around the short tags." },
+		-- (2.1.40; players, through the user, 2026-11-11: "hidding the chat timestamps"; the user's picks "One Chat
+		-- Timestamps setting" and "Minimal keeps 15:27") the game's own Chat Timestamps (its showTimestamps CVar),
+		-- which both chat views follow; never picked here and none in the game, the Minimal view keeps its 15:27
+		{ type = "dropdown", key = "timestamps", name = "Chat Timestamps", new = "2.1.40",
+		  search = "timestamp time stamp clock hide time",
+		  values = (function()
+			-- the game's own formats (its Social settings' list), each shown as 15:27:32 shows in it (the game's time and
+			-- date; a world without them shows the formats)
+			local okE, example = pcall(rawget(_G, "time"), { year = 2010, month = 12, day = 15, hour = 15, min = 27,
+				sec = 32 })
+			local list = { { value = "none", label = "None" } }
+			for _, pair in ipairs({ { "TIMESTAMP_FORMAT_HHMM", "%I:%M " }, { "TIMESTAMP_FORMAT_HHMMSS", "%I:%M:%S " },
+				{ "TIMESTAMP_FORMAT_HHMM_AMPM", "%I:%M %p " }, { "TIMESTAMP_FORMAT_HHMMSS_AMPM", "%I:%M:%S %p " },
+				{ "TIMESTAMP_FORMAT_HHMM_24HR", "%H:%M " }, { "TIMESTAMP_FORMAT_HHMMSS_24HR", "%H:%M:%S " } }) do
+				local fmt = rawget(_G, pair[1])
+				fmt = type(fmt) == "string" and fmt or pair[2]
+				local ok, label = pcall(rawget(_G, "date"), fmt, okE and example or nil)
+				list[#list + 1] = { value = fmt, label = ok and type(label) == "string" and label:gsub("%s+$", "") or fmt }
+			end
+			return list
+		  end)(),
+		  get = function(db)
+			local ok, v = pcall(GetCVar, "showTimestamps")
+			v = ok and type(v) == "string" and v or "none"
+			-- (never picked here, none in the game: the Minimal view's own 15:27 -- what it shows)
+			if v == "none" and not (db and db.timestamps) and db and db.view == "minimal" then
+				local fmt = rawget(_G, "TIMESTAMP_FORMAT_HHMM_24HR")
+				return type(fmt) == "string" and fmt or "%H:%M "
+			end
+			return v
+		  end,
+		  desc = "The time before each chat line, or None for no time. It is the game's own Chat Timestamps setting, and both chat views follow it." },
 		{ type = "header", name = "Whispers" },
 		{ type = "toggle", key = "whisperPopup", name = "Whisper Popup Window",
 		  desc = "Each whisper opens a small window for that person, with a box to answer in. Whispers still show in the chat." },
@@ -976,28 +1008,51 @@ local SHORT_CHANNELS = {
 	world            = { "W",   "ffe066" },
 }
 
--- a chat type's short tag and its colour (hex), a numbered channel's by its name: the chat view's headers
-function M.ShortTag(chatType, channelName)
+-- (2.1.40; players, through the user, 2026-11-11: "reduce the channel name to only Green G for guild, Blue P for
+-- Party, Orange R for Raid etc, using the games colours") a tag's colour is the game's own for its chat type --
+-- ChatTypeInfo, as the player set it in the game's chat colours; a numbered channel's by its number -- read as a line
+-- is shortened, so a colour changed in the game shows on the next line; the tables' colours above only where the
+-- game gives none
+function M.TagHex(chatType, index, fallback)
+	local types = rawget(_G, "ChatTypeInfo")
+	local info = type(types) == "table" and ((chatType == "CHANNEL" and index and types["CHANNEL" .. index])
+		or types[chatType]) or nil
+	if type(info) == "table" then
+		local r, g, b = info.r, info.g, info.b
+		if not (Secret(r) or Secret(g) or Secret(b)) and type(r) == "number" and type(g) == "number"
+			and type(b) == "number" then
+			return ("%02x%02x%02x"):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5),
+				math.floor(b * 255 + 0.5))
+		end
+	end
+	return fallback
+end
+
+-- a chat type's short tag and its colour (hex), a numbered channel's by its name (and its number, for its colour):
+-- the chat view's headers
+function M.ShortTag(chatType, channelName, channelIndex)
 	local entry = SHORT_TYPES[chatType]
 	if chatType == "CHANNEL" and type(channelName) == "string" then
 		entry = SHORT_CHANNELS[(channelName:gsub("%s%-%s.*", "")):lower():gsub("%s+", "")]
 	end
 	if entry then
-		return entry[1], entry[2]
+		return entry[1], M.TagHex(chatType, channelIndex, entry[2])
 	end
 	return nil
 end
 
-local function BuildTag(entry)
-	local text = entry[2] and ("|cff" .. entry[2] .. entry[1] .. "|r") or entry[1]
+local function BuildTag(entry, chatType)
+	local hex = M.TagHex(chatType, nil, entry[2])
+	local text = hex and ("|cff" .. hex .. entry[1] .. "|r") or entry[1]
 	return "[" .. text .. "]"
 end
 
 local WHISPERS = { WHISPER = true, BN_WHISPER = true, WHISPER_INFORM = true, BN_WHISPER_INFORM = true }
 
 -- The game's own line starts, as patterns: each chat type's format (read,
--- never written) with its sender, a player link, captured; and the short
--- start that replaces it. Built once.
+-- never written) with its sender, a player link, captured; and its chat type,
+-- whose short start replaces it (laid as the line comes: the tag's colour is
+-- the game's of that moment). Built once.
 local typePatterns = nil
 
 local function TypePatterns()
@@ -1005,15 +1060,12 @@ local function TypePatterns()
 		return typePatterns
 	end
 	typePatterns = {}
-	for chatType, entry in pairs(SHORT_TYPES) do
+	for chatType in pairs(SHORT_TYPES) do
 		local format = _G["CHAT_" .. chatType .. "_GET"]
 		if type(format) == "string" and format:find("%s", 1, true) then
 			local escaped = format:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")
 			local pattern = escaped:gsub("%%%%s", "(|H.-|h.-|h)", 1)
-			-- whispers carry no channel link in the game's format; kept so
-			local short = WHISPERS[chatType] and (BuildTag(entry) .. " %1: ")
-				or ("|Hchannel:" .. chatType .. "|h" .. BuildTag(entry) .. "|h %1: ")
-			typePatterns[#typePatterns + 1] = { pattern, short }
+			typePatterns[#typePatterns + 1] = { pattern, chatType }
 		end
 	end
 	-- the longest first: "Party Leader" before "Party"
@@ -1021,7 +1073,9 @@ local function TypePatterns()
 	return typePatterns
 end
 
-local function ShortChannelName(communityChannelArg)
+-- a numbered channel's short name in the game's colour of its number (`index`; 2.1.40), a channel this file has no
+-- tag for by its first letter, in that colour too
+local function ShortChannelName(communityChannelArg, index)
 	local _, name = communityChannelArg:match("(%d+. )(.*)")
 	name = name or communityChannelArg
 	if ChatFrameUtil and ChatFrameUtil.ResolveChannelName then
@@ -1030,14 +1084,13 @@ local function ShortChannelName(communityChannelArg)
 	local base = name:gsub("%s%-%s.*", "")
 	local key = base:lower():gsub("%s+", "")
 	local entry = SHORT_CHANNELS[key]
-	if entry then
-		return "|cff" .. entry[2] .. entry[1] .. "|r"
-	end
-	return base:sub(1, 1):upper()
+	local letter = entry and entry[1] or base:sub(1, 1):upper()
+	local hex = M.TagHex("CHANNEL", index, entry and entry[2] or nil)
+	return hex and ("|cff" .. hex .. letter .. "|r") or letter
 end
 
 local function ShortChannel(open, name, close)
-	local ok, short = pcall(ShortChannelName, name)
+	local ok, short = pcall(ShortChannelName, name, open:match(":(%d+)|h$"))
 	if ok and type(short) == "string" and short ~= "" then
 		return open .. "[" .. short .. "]" .. close
 	end
@@ -1060,9 +1113,14 @@ end
 -- then a numbered channel's name, then the brackets
 local function Shorten(text)
 	for _, tp in ipairs(TypePatterns()) do
-		local new, n = text:gsub(tp[1], tp[2], 1)
-		if n > 0 then
-			text = new
+		local s, e, who = text:find(tp[1])
+		if s then
+			-- (whispers carry no channel link in the game's format; kept so)
+			local chatType = tp[2]
+			local tag = BuildTag(SHORT_TYPES[chatType], chatType)
+			local short = WHISPERS[chatType] and (tag .. " " .. who .. ": ")
+				or ("|Hchannel:" .. chatType .. "|h" .. tag .. "|h " .. who .. ": ")
+			text = text:sub(1, s - 1) .. short .. text:sub(e + 1)
 			break
 		end
 	end
@@ -1307,8 +1365,20 @@ end
 do
 	local watch = CreateFrame("Frame")
 	watch:RegisterEvent("UPDATE_CHAT_COLOR")
-	Perf.SetScript(watch, "OnEvent", function()
-		inkByColour = nil
+	-- (2.1.40) the game's Chat Timestamps changed (its own options, or the Chat page's row): the Minimal view's times
+	-- anew; a chat colour changed: its tags too (a tag's colour is the game's)
+	watch:RegisterEvent("CVAR_UPDATE")
+	Perf.SetScript(watch, "OnEvent", function(_, event, name)
+		if event == "CVAR_UPDATE" and (Secret(name) or name ~= "showTimestamps") then
+			return
+		end
+		if event == "UPDATE_CHAT_COLOR" then
+			inkByColour = nil
+		end
+		local view = M.View
+		if view and view.on and view.Restamp then
+			view.Restamp()
+		end
 	end)
 end
 
@@ -3105,10 +3175,14 @@ end
 -- do (a friend already, in the group, ignored, no whisper from them yet),
 -- read again with every whisper and click.
 local W = MelloUI.Widgets
-local ACTIONS = { "friend", "invite", "ignore", "report" }
+-- (2.1.40; a player, through the user, 2026-11-11: "also make us able to copy text from whispers" -- a link whispered
+-- could not be copied) Copy first: the conversation in MelloUI's copy window (M.Copy's look, each line with its time)
+local ACTIONS = { "copy", "friend", "invite", "ignore", "report" }
 local ACTION_SIZE, ACTION_STEP = 15, 18   -- inside the band's dark part (16.8 tall on the kit's plate), 3 apart
 local ACTION_GEM = 0.3                    -- the plate's right cap: its end ornament's share (lists/header_cap_r, measured: the diamond's tip)
 local ACTION_TEXT = {
+	copy = { title = "Copy", desc = "Your conversation with %s in a window, ready to copy (Ctrl+C).",
+		away = "Nothing to copy yet." },
 	friend = { title = "Add Friend", desc = "Add %s to your friends list.", done = "Already on your friends list." },
 	invite = { title = "Invite To Group", desc = "Invite %s to your party.", done = "Already in your group.",
 		away = "Not in the game right now." },
@@ -3264,7 +3338,17 @@ local function ActionClick(self)
 	end
 	local target = f.target
 	MelloUI:PlayUISound("tab")
-	if id == "friend" then
+	if id == "copy" then
+		-- (2.1.40) the conversation's lines, each "[time] who: text" plain (a secret one left out): the whisper window's
+		-- own (its CopyLines) or a popup's kept parts (M.Whisper.PopupLines)
+		local lines = f.CopyLines and f.CopyLines(f) or M.Whisper.PopupLines(f)
+		if #lines == 0 then
+			MelloUI:Print(ACTION_TEXT.copy.away)
+		else
+			MelloUI:ShowText(("%s  (%d lines)"):format(PopupWho(f), #lines), table.concat(lines, "\n"))
+		end
+		return
+	elseif id == "friend" then
 		-- (the game wants a click behind it: this is one)
 		pcall(C_FriendList.AddFriend, target)
 	elseif id == "invite" then
@@ -3318,7 +3402,7 @@ local function MakeActions(f, size)
 	for _, id in ipairs(ACTIONS) do
 		local b = W.GlyphButton(f.head, size or ACTION_SIZE, id)   -- (size: the minimal chat's whisper window's, 0.23.0)
 		b.popup, b.id = f, id
-		b.wanted = f.kind ~= "BN_WHISPER" or id == "invite" or id == "report"
+		b.wanted = f.kind ~= "BN_WHISPER" or id == "invite" or id == "report" or id == "copy"
 		Perf.SetScript(b, "OnClick", ActionClick)
 		Perf.SetScript(b, "OnEnter", ActionEnter)
 		Perf.SetScript(b, "OnLeave", ActionLeave)
@@ -3914,6 +3998,22 @@ M.Whisper = {
 	end,
 }
 
+-- (2.1.40, Copy) a popup's conversation as plain lines, oldest first: "[time] who: text" from its kept parts (its
+-- lineLog), each plain as Copy Chat makes it (M.Copy.Plain); a line with a secret part left out
+function M.Whisper.PopupLines(f)
+	local out, plain = {}, M.Copy and M.Copy.Plain
+	if not plain then
+		return out
+	end
+	for _, e in ipairs(f.lineLog or {}) do
+		local who, text = plain(e.who), plain(e.text)
+		if who and text then
+			out[#out + 1] = ("[%s] %s: %s"):format(tostring(e.stamp or ""), who, text)
+		end
+	end
+	return out
+end
+
 --------------------------------------------------------------------------------
 -- Module lifecycle
 --------------------------------------------------------------------------------
@@ -4249,8 +4349,21 @@ function M:OnSettingChanged(key, value, db)
 		Speak.Update()
 	elseif key == "editBoxTop" then
 		SetEditBoxOnTop(value)
-	elseif key == "shortChannels" then
-		HookLines()
+	elseif key == "shortChannels" or key == "hideBrackets" then
+		if key == "shortChannels" then
+			HookLines()
+		end
+		if M.View and M.View.Restamp then
+			M.View.Restamp()   -- (2.1.40: the Minimal view's headers follow the tags too)
+		end
+	elseif key == "timestamps" then
+		-- (2.1.40) the game's own Chat Timestamps: its CVar written (its CVAR_UPDATE lays the view's times anew)
+		if type(value) == "string" then
+			pcall(SetCVar, "showTimestamps", value)
+		end
+		if M.View and M.View.Restamp then
+			M.View.Restamp()
+		end
 	elseif key == "background" then
 		M.SetBackground(value)
 		if M.View then

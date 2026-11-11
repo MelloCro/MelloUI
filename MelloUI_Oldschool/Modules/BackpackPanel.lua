@@ -231,6 +231,10 @@ local function BagColour(bag)
 	if not bag or bag == 0 then
 		return false   -- (the backpack itself: a normal bag)
 	end
+	-- (2.1.40) the Reagent Bag: its own colour only while the bag window shows it with the bags (Core's one reading)
+	if bag == (Enum and Enum.BagIndex and Enum.BagIndex.ReagentBag or 5) then
+		return MelloUI.ReagentBagColour and MelloUI.ReagentBagColour() or false
+	end
 	local c = familyOf[bag]
 	if c == nil then
 		c = false

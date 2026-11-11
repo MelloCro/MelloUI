@@ -1275,6 +1275,8 @@ Lang:Add("koKR", {
 	["The size of the item slots. 37 is the game's size."] = "아이템 칸 크기. 37이 게임 크기입니다.", -- draft
 	["Fold Empty Slots"] = "빈 칸 접기", -- draft
 	["All empty slots shown as one, with their count."] = "빈 칸 전부를 개수와 함께 한 칸으로.", -- draft
+	["Reagent Bag With The Bags"] = "재료 가방을 가방과 함께", -- draft
+	["The Reagent Bag's items among your bags' kinds in one view, its slots in its own colour and its free slots in an Empty slot of their own, instead of on its own side tab."] = "재료 가방의 아이템을 한 보기에서 가방의 종류와 함께 표시하고, 그 칸은 고유한 색으로, 빈 칸은 별도의 '빈 칸'에 표시합니다. 별도의 측면 탭 대신입니다.", -- draft
 	["Special Bags"] = "특수 가방", -- draft
 	["Items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "특수 가방(채광 가방, 약초 가방, 탄약 주머니, 화살통 ...)에 든 아이템은 그 가방의 색을 띠고, 창 아래쪽에 그 가방들과 채워진 정도가 표시됩니다.", -- draft
 	["Sort Items By"] = "아이템 정렬 기준", -- draft
@@ -1723,6 +1725,8 @@ Lang:Add("koKR", {
 	["Short coloured tags instead of [Guild], [Party], [1. General] and so on."] = "[길드], [파티], [1. 일반] 대신 짧은 색 태그.", -- draft
 	["Hide Brackets"] = "대괄호 숨기기", -- draft
 	["Removes the brackets around the short tags."] = "짧은 태그의 괄호를 없앱니다.", -- draft
+	["Chat Timestamps"] = "채팅 시간 표시", -- draft
+	["The time before each chat line, or None for no time. It is the game's own Chat Timestamps setting, and both chat views follow it."] = "각 채팅 줄 앞의 시간, 또는 '없음'이면 시간을 표시하지 않습니다. 게임 자체의 채팅 시간 표시 설정이며, 두 채팅 보기 모두 이를 따릅니다.", -- draft
 	["Whisper Popup Window"] = "귓속말 팝업 창", -- draft
 	["Each whisper opens a small window for that person, with a box to answer in. Whispers still show in the chat."] = "귓속말마다 그 사람의 작은 창과 답장 칸이 열립니다. 귓속말은 대화창에도 계속 보입니다.", -- draft
 	-- CombatText
@@ -2320,6 +2324,12 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Bags: the new Reagent Bag With The Bags option shows the Reagent Bag's items in your bags' one view, its slots in lime and its free slots counted in an Empty slot of their own."] = "가방: 새 옵션 '재료 가방을 가방과 함께'는 재료 가방의 아이템을 가방 통합 보기에 표시하고, 그 칸은 라임색으로, 빈 칸은 별도의 '빈 칸'에 개수로 표시합니다.", -- draft
+	["Chat: the short channel tags (G, P, R ...) wear the game's own chat colours, and with Short Channel Tags on the Minimal Chat View's headers show only the tag."] = "채팅: 짧은 채널 표시(G, P, R ...)가 게임 자체의 채팅 색을 사용하며, 짧은 채널 표시를 켜면 최소 채팅 보기의 머리줄에 표시만 나타납니다.", -- draft
+	["Chat: a Chat Timestamps option on the Chat page sets the game's own chat timestamps, None hides them; the Minimal Chat View follows it."] = "채팅: 채팅 페이지의 '채팅 시간 표시' 옵션이 게임 자체의 채팅 시간 표시를 설정하며, '없음'은 숨깁니다. 최소 채팅 보기도 이를 따릅니다.", -- draft
+	["Chat: a Copy button on the whisper windows puts the whole conversation in a window to copy, links and long messages included."] = "채팅: 귓속말 창의 복사 버튼이 링크와 긴 메시지를 포함한 대화 전체를 복사할 수 있는 창에 담습니다.", -- draft
+	["Map: the first time you open the map after logging in, it shows your current zone (a city's own map in a city) instead of the whole world."] = "지도: 접속 후 처음 지도를 열면 세계 전체 대신 현재 지역(도시에서는 그 도시의 지도)을 보여 줍니다.", -- draft
+	["Map: Krol'dok Stronghold's entrance (levels 40-45) shows in the Riverglades, at the cave west of the fortress, and Route takes you there."] = "지도: 크롤도크 보루의 입구(레벨 40-45)가 강물터의 요새 서쪽 동굴에 표시되며, Route가 그곳까지 안내합니다.", -- draft
 	["Quests: with Questie installed, the Quest List, its map pins, the objective marks and Route use Questie's quest database for the newest quest data; MelloUI's own fills any gaps."] = "퀘스트: Questie가 설치되어 있으면 퀘스트 목록, 지도 표시, 목표 표시와 경로가 최신 퀘스트 데이터를 위해 Questie의 퀘스트 데이터베이스를 사용합니다. 빠진 부분은 MelloUI 자체 데이터가 채웁니다.", -- draft
 	["Quest List: with Questie installed, a quest you cannot take yet (an earlier quest, a breadcrumb, a spell or a profession first) waits in the list, no longer shown as ready."] = "퀘스트 목록: Questie가 설치되어 있으면 아직 받을 수 없는 퀘스트(먼저 이전 퀘스트, 안내 퀘스트, 주문이나 전문 기술이 필요한 경우)는 목록에서 대기하며 더 이상 받을 수 있는 것으로 표시되지 않습니다.", -- draft
 	["Map: with Questie installed, MelloUI's quest givers, objective marks and quest areas stay and Questie's icons of the same kind hide, no more double icons; its others wear MelloUI's pictures."] = "지도: Questie가 설치되어 있으면 MelloUI의 퀘스트 제공자, 목표 표시와 퀘스트 지역은 그대로 두고 같은 종류의 Questie 아이콘은 숨깁니다. 더 이상 아이콘이 겹치지 않으며, 다른 Questie 아이콘은 MelloUI의 그림을 씁니다.", -- draft
@@ -2338,7 +2348,6 @@ Lang:Add("koKR", {
 	["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "채팅: 미니멀 채팅 보기의 채널 목록을 아이콘만 남도록 접을 수 있습니다(가장자리의 작은 손잡이 또는 채팅 페이지의 '채널 목록 아이콘만'). 메시지를 위한 공간이 넓어집니다.", -- draft
 	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "후원자 페이지: 이름이 이제 등급마다 하나씩, 세 개의 움직이는 깃발에 걸리며 MelloUI의 Patreon과 Discord 주소는 복사 상자에 표시됩니다.", -- draft
 	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "지도: 오른쪽 아래 모서리의 손잡이를 끌어 지도 크기를 바꾸고(옆의 퀘스트 목록은 크기가 그대로), 제목 표시줄을 끌어 옮길 수 있습니다. 레이아웃 편집이 필요 없습니다.", -- draft
-	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "미니맵: 약초·광석 애드온이 미니맵을 스캔하는 동안 옆의 강화 효과가 더 이상 화면 가장자리로 튀지 않으며, 스캔이 끝나면 미니맵 테두리가 항상 돌아옵니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3215,6 +3224,7 @@ Lang:Add("koKR", {
 -- stale: ["Minimap: square, in the window frame"] = "미니맵: 사각, 창 테두리 안", -- draft
 -- stale: ["Minimap: square, the Services bar inside its frame"] = "미니맵: 사각, 테두리 안에 서비스 바", -- draft
 -- stale: ["Minimap: the game's own"] = "미니맵: 게임의 것", -- draft
+-- stale: ["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "미니맵: 약초·광석 애드온이 미니맵을 스캔하는 동안 옆의 강화 효과가 더 이상 화면 가장자리로 튀지 않으며, 스캔이 끝나면 미니맵 테두리가 항상 돌아옵니다.", -- draft
 -- stale: ["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge; the Quest Tracker and the rest by the minimap stay put too."] = "미니맵: 약초·광석 애드온이 미니맵을 스캔하는 동안 옆의 강화 효과가 더 이상 화면 가장자리로 튀지 않습니다. 퀘스트 추적기 등 미니맵 옆의 요소도 제자리에 있습니다.", -- draft
 -- stale: ["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "미니맵: 미니맵을 스캔하는 약초·광석 애드온(NodeSight 등)을 쓸 때 MelloUI의 미니맵 테두리가 더 이상 커서를 따라다니지 않습니다. 스캔할 때마다 지도와 함께 숨겨집니다.", -- draft
 -- stale: ["Move the chat input box above the chat window and its tabs instead of below it."] = "대화 입력 상자를 대화창과 탭 아래가 아니라 위로 옮깁니다.", -- draft

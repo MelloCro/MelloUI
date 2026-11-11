@@ -1275,6 +1275,8 @@ Lang:Add("ruRU", {
 	["The size of the item slots. 37 is the game's size."] = "Размер ячеек предметов. 37 — размер игры.", -- draft
 	["Fold Empty Slots"] = "Сворачивать пустые ячейки", -- draft
 	["All empty slots shown as one, with their count."] = "Все пустые ячейки показаны одной, с числом.", -- draft
+	["Reagent Bag With The Bags"] = "Сумка реагентов вместе с сумками", -- draft
+	["The Reagent Bag's items among your bags' kinds in one view, its slots in its own colour and its free slots in an Empty slot of their own, instead of on its own side tab."] = "Предметы сумки реагентов среди видов ваших сумок в одном виде, её ячейки своего цвета, а свободные ячейки в отдельной ячейке «Пусто», вместо её собственной боковой вкладки.", -- draft
 	["Special Bags"] = "Особые сумки", -- draft
 	["Items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "Предметы в особой сумке (сумка шахтера, сумка травника, подсумок, колчан...) окрашены в цвет этой сумки, а внизу окна перечислены эти сумки и насколько они заполнены.", -- draft
 	["Sort Items By"] = "Сортировать предметы по", -- draft
@@ -1723,6 +1725,8 @@ Lang:Add("ruRU", {
 	["Short coloured tags instead of [Guild], [Party], [1. General] and so on."] = "Короткие цветные метки вместо [Гильдия], [Группа], [1. Общий] и т. д.", -- draft
 	["Hide Brackets"] = "Скрыть скобки", -- draft
 	["Removes the brackets around the short tags."] = "Убирает скобки вокруг коротких меток.", -- draft
+	["Chat Timestamps"] = "Время в чате", -- draft
+	["The time before each chat line, or None for no time. It is the game's own Chat Timestamps setting, and both chat views follow it."] = "Время перед каждой строкой чата или «Нет» без времени. Это собственная настройка игры «Время в чате», и оба вида чата следуют ей.", -- draft
 	["Whisper Popup Window"] = "Всплывающее окно шёпота", -- draft
 	["Each whisper opens a small window for that person, with a box to answer in. Whispers still show in the chat."] = "Каждый шёпот открывает маленькое окно для этого человека с полем ответа. Шёпот по-прежнему виден в чате.", -- draft
 	-- CombatText
@@ -2320,6 +2324,12 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["Bags: the new Reagent Bag With The Bags option shows the Reagent Bag's items in your bags' one view, its slots in lime and its free slots counted in an Empty slot of their own."] = "Сумки: новая настройка «Сумка реагентов вместе с сумками» показывает предметы сумки реагентов в общем виде ваших сумок, её ячейки цвета лайма, а свободные ячейки считаются в отдельной ячейке «Пусто».", -- draft
+	["Chat: the short channel tags (G, P, R ...) wear the game's own chat colours, and with Short Channel Tags on the Minimal Chat View's headers show only the tag."] = "Чат: короткие метки каналов (G, P, R ...) окрашены в собственные цвета чата игры, а с «Короткими метками каналов» заголовки минимального вида чата показывают только метку.", -- draft
+	["Chat: a Chat Timestamps option on the Chat page sets the game's own chat timestamps, None hides them; the Minimal Chat View follows it."] = "Чат: настройка «Время в чате» на странице чата задаёт собственное время сообщений игры, «Нет» скрывает его; минимальный вид чата следует ей.", -- draft
+	["Chat: a Copy button on the whisper windows puts the whole conversation in a window to copy, links and long messages included."] = "Чат: кнопка «Копировать» в окнах шёпота помещает весь разговор в окно для копирования, включая ссылки и длинные сообщения.", -- draft
+	["Map: the first time you open the map after logging in, it shows your current zone (a city's own map in a city) instead of the whole world."] = "Карта: при первом открытии карты после входа в игру она показывает вашу текущую зону (в городе — его собственную карту), а не весь мир.", -- draft
+	["Map: Krol'dok Stronghold's entrance (levels 40-45) shows in the Riverglades, at the cave west of the fortress, and Route takes you there."] = "Карта: вход в Крепость Крол'док (уровни 40-45) показан в Лесоречье, у пещеры к западу от крепости, и Route ведёт вас туда.", -- draft
 	["Quests: with Questie installed, the Quest List, its map pins, the objective marks and Route use Questie's quest database for the newest quest data; MelloUI's own fills any gaps."] = "Задания: если установлен Questie, список заданий, его метки на карте, метки целей и маршрут берут данные из базы заданий Questie — самые свежие; собственная база MelloUI восполняет пробелы.", -- draft
 	["Quest List: with Questie installed, a quest you cannot take yet (an earlier quest, a breadcrumb, a spell or a profession first) waits in the list, no longer shown as ready."] = "Список заданий: если установлен Questie, задание, которое пока нельзя взять (сначала предыдущее задание, вводное задание, заклинание или профессия), ждёт в списке и больше не показывается как доступное.", -- draft
 	["Map: with Questie installed, MelloUI's quest givers, objective marks and quest areas stay and Questie's icons of the same kind hide, no more double icons; its others wear MelloUI's pictures."] = "Карта: если установлен Questie, выдающие задания, метки целей и области заданий MelloUI остаются, а значки Questie того же вида скрываются, больше никаких двойных значков; остальные его значки получают изображения MelloUI.", -- draft
@@ -2338,7 +2348,6 @@ Lang:Add("ruRU", {
 	["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "Чат: список каналов минимального вида чата сворачивается до значков (маленькая ручка на его краю или «Список каналов значками» на странице «Чат»), оставляя больше места сообщениям.", -- draft
 	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "Страница поддержавших: имена теперь висят на трёх анимированных знамёнах, по одному на уровень, а Patreon и Discord MelloUI — в окне для копирования.", -- draft
 	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "Карта: потяните за уголок в правом нижнем углу, чтобы изменить размер карты (журнал заданий рядом сохраняет свой размер), и перетащите заголовок, чтобы переместить её, без редактора раскладки.", -- draft
-	["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "Миникарта: пока аддон трав или руды сканирует миникарту, ваши баффы рядом с ней больше не прыгают к краю экрана, а рамка миникарты всегда возвращается после сканирования.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -3215,6 +3224,7 @@ Lang:Add("ruRU", {
 -- stale: ["Minimap: square, in the window frame"] = "Мини-карта: квадратная, в рамке окна", -- draft
 -- stale: ["Minimap: square, the Services bar inside its frame"] = "Мини-карта: квадратная, панель «Услуги» внутри её рамки", -- draft
 -- stale: ["Minimap: the game's own"] = "Мини-карта: игровая", -- draft
+-- stale: ["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge, and the minimap's frame always comes back after the scan."] = "Миникарта: пока аддон трав или руды сканирует миникарту, ваши баффы рядом с ней больше не прыгают к краю экрана, а рамка миникарты всегда возвращается после сканирования.", -- draft
 -- stale: ["Minimap: while a herb or ore addon scans the minimap, your buffs beside it no longer jump to the screen's edge; the Quest Tracker and the rest by the minimap stay put too."] = "Миникарта: пока аддон трав или руды сканирует миникарту, ваши баффы рядом с ней больше не прыгают к краю экрана; отслеживание заданий и остальное у миникарты тоже остаются на месте.", -- draft
 -- stale: ["Minimap: with a herb or ore addon that scans the minimap (NodeSight and the like), MelloUI's minimap frame no longer follows your cursor; it hides with the map during each scan."] = "Миникарта: с аддоном трав или руды, который сканирует миникарту (NodeSight и подобные), рамка миникарты MelloUI больше не следует за курсором; она скрывается вместе с картой при каждом сканировании.", -- draft
 -- stale: ["Move the chat input box above the chat window and its tabs instead of below it."] = "Ставит поле ввода чата над окном чата и его вкладками, а не под ними.", -- draft

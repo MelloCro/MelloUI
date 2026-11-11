@@ -116,7 +116,7 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		{ type = "toggle", key = "showDistance", name = "Distances",
 		  desc = "How far each quest is, beside its name. Needs Route." },
 		-- (2.1.39; the user, 2026-11-10: "Yes, show XP")
-		{ type = "toggle", key = "showXP", name = "Quest XP", new = "2.1.39",
+		{ type = "toggle", key = "showXP", name = "Quest XP",
 		  desc = "The XP each quest gives at your level, beside its name (the game's own figure; none at the top level)." },
 		{ type = "toggle", key = "turnInLine", name = "Turn-in Line",
 		  desc = "A finished quest says who takes it and where." },

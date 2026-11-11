@@ -148,21 +148,29 @@ local function SaveView()
 	M.db.view = { x = c.cx / c.W, y = c.cy / c.H, z = c.z }
 end
 
--- the view of the first open: the one kept, else the player's zone (or the world); every open then centres on the
--- player (Refit)
+-- the view of the first open after a login: the player's zone framed (2.1.40; Nixxen on Discord: "When opening the
+-- world map after logging in, could it show the current zone instead of the full map? E.g., if you are in Ironforge,
+-- it shows the local ironforge map. If you are in Dun Morogh, it shows the Dun Morogh Map" -- before, the view kept
+-- from the last session, often the whole map) -- a city its own map, a place this map has not (a cave, a building's
+-- floor) its nearest parent it has; else the view kept, else the world. Every open then centres on the player at the
+-- zoom it has (Refit)
 local function StartView(c)
+	local ok, id = pcall(C_Map.GetBestMapForUnit, "player")
+	id = ok and Finite(id) or nil
+	for _ = 1, 4 do
+		local p = id and c.byID[id]
+		if p then
+			return c:FitOf(p)
+		end
+		local okI, info = pcall(C_Map.GetMapInfo, id or 0)
+		id = okI and type(info) == "table" and Finite(info.parentMapID) or nil
+	end
 	local v = M.db and M.db.view
 	if type(v) == "table" then
 		local x, y, z = Finite(v.x), Finite(v.y), Finite(v.z)
 		if x and y and z then
 			return x * c.W, y * c.H, z
 		end
-	end
-	local ok, id = pcall(C_Map.GetBestMapForUnit, "player")
-	id = ok and Finite(id) or nil
-	local p = id and c.byID[id]
-	if p then
-		return c:FitOf(p)
 	end
 	return c.W / 2, c.H / 2, 1
 end
@@ -757,17 +765,18 @@ local function Refit(onPlayer)
 		return
 	end
 	c.box[5] = nil
+	-- (2.1.40) the first open after a login: the player's zone framed whole (StartView), not the player at its zoom --
+	-- a canvas never laid has no centre yet (it is made with zoom 1, the whole world: what every first open showed)
+	if not c.cx then
+		c:SetView(StartView(c))
+		return
+	end
 	local x, y
 	if onPlayer then
 		x, y = Layers.PlayerPoint()
 	end
 	if x and y then
-		local z = c.z
-		if not z then
-			local _, _, kept = StartView(c)
-			z = kept
-		end
-		c:SetView(x, y, z)
+		c:SetView(x, y, c.z)
 	elseif c.cx then
 		c:SetView(c.cx, c.cy, c.z)
 	else

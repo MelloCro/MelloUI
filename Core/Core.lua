@@ -356,6 +356,9 @@ MelloUI.Meaning = {
 		[0x8000] = Hex("#46AAAA"),   -- fishing (meaning colour)
 		[0x10000] = Hex("#DC6446"),  -- cooking (meaning colour)
 	},
+	-- (2.1.40, the user's pick C, Lime, of bag_reagent_oneview_sketch) the Reagent Bag's slots while the bag window
+	-- shows it with the bags (MelloUI.ReagentBagColour): a yellow-green, away from the herb bag's green
+	bagReagent = Hex("#B9D84A"),   -- the Reagent Bag (meaning colour)
 	-- (0.16.0, the user's picks of route_marks_sketch: Route's red, the way
 	-- and the destination -- the trail's dots on the map and the minimap, the
 	-- World Marker's beam with the light at its foot; Modules/Route.lua)
@@ -453,6 +456,13 @@ do
 			end
 		end
 		return nil
+	end
+
+	-- (2.1.40) the Reagent Bag's colour while the bag window shows it with the bags (BagWindow's Reagent Bag With The
+	-- Bags), nil otherwise (on its own side tab it needs none): the same one reading for both
+	function MelloUI.ReagentBagColour()
+		local db = MelloUI.GetModuleDB and MelloUI:GetModuleDB("BagWindow")
+		return (type(db) == "table" and db.reagentWithBags == true) and MelloUI.Meaning.bagReagent or nil
 	end
 end
 MelloUI.moduleOrder = {}

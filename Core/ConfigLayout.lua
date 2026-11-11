@@ -691,7 +691,8 @@ function L.Define(R, Link)
 	-- (2.1.26, the user's pick 1B of bag_special_kinds_sketch) the bag window by kind's: a special bag's slots in its colour
 	R("Windows", "Windows", "Look", { BackpackPanel = "BagWindow.specialBags", BankPanel = "BagWindow.specialBags" }, { free = true })
 	R("Windows", "Windows", "Layout", { BackpackPanel = "Tweaks.bagSlotsOnBags" }, { name = "Bag Slots On Bag Window" })
-	for _, key in ipairs({ "columns", "itemSize", "foldEmpty", "sortBy" }) do
+	-- (2.1.40, reagentWithBags: the Reagent Bag in the bags' one view, after Fold Empty Slots, whose Empty it joins)
+	for _, key in ipairs({ "columns", "itemSize", "foldEmpty", "reagentWithBags", "sortBy" }) do
 		R("Windows", "Windows", "Layout", { BackpackPanel = "BagWindow." .. key }, { free = true })
 	end
 	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.bagButton", LootPanel = "Discard.lootButton" }, { name = "Discard Button" })
@@ -1087,6 +1088,7 @@ function L.Define(R, Link)
 	R("Chat", "Chat Frame", "Behaviour", "Chat.copyButton")   -- (2.1.24: Copy Chat, shown on hover)
 	R("Chat", "Messages", "Text", "Chat.shortChannels")
 	R("Chat", "Messages", "Text", "Chat.hideBrackets")
+	R("Chat", "Messages", "Text", "Chat.timestamps")   -- (2.1.40: the game's own Chat Timestamps, both views')
 	-- (free: read by MelloUI:Notice with Tweaks, and UI Modifications, off)
 	-- (0.23.0: the Minimal Chat View's whisper window takes the whispers while it is on)
 	R("Chat", "Whispers", "General", "Chat.whisperPopup", { when = { key = "Chat.view", notValue = "minimal",
