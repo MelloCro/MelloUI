@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.45
+
+- Custom Sounds: a new Your Sounds tab changes any sound, Level Up and Rare Alert included, to another of MelloUI's, the game's own, none, or a SharedMedia sound, your own files too.
+
 ## 2.1.44
 
 - Configurator: a new Addons page lists the addons MelloUI works with: what it does with each, their links, who does which job, and a switch to stop MelloUI using one.

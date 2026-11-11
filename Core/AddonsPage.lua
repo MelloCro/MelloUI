@@ -252,7 +252,6 @@ local function Card(parent, e, width, skin, ctx)
 	card.pill = pill
 	local y = T.HEAD_H
 	if e.switch ~= false then
-		card.new = "2.1.44"   -- (Use with MelloUI, below: new in this update)
 		local sw = W.Switch(card, function()
 			return I.Use(e.key)
 		end, function(on)

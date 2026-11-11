@@ -1,0 +1,5 @@
+Put your .ogg and .mp3 files in this folder, then add a line for each one in MySounds.lua.
+
+Simple names work best: letters, numbers, - and _ only, no spaces or accents. For example air_horn.ogg or gong-2.mp3.
+
+The whole guide: https://github.com/MelloCro/MelloUI/blob/main/docs/custom-sounds.md

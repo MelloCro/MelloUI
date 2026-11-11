@@ -1552,15 +1552,17 @@ do
 		if not sound then
 			return
 		end
-		-- the Custom Sounds module, when it is on, plays its own click instead
-		if self.PlayCustomUISound and self:PlayCustomUISound(kind) then
+		-- the Custom Sounds module, when it is on, plays its own click instead (2.1.45: or the player's pick, Your
+		-- Sounds; "game" when the pick is the game's own: the kit, never MelloUI's file)
+		local custom = self.PlayCustomUISound and self:PlayCustomUISound(kind)
+		if custom == true then
 			return
 		end
 		-- (1.2.4, the user, 2026-10-28: "The Default Profile should use games own sounds so nothing changes there")
 		-- while the sound set is the game's own (the Default skin: Custom Sounds' SoundSet, its one answer) MelloUI's
 		-- soft clicks give way to the kit they stand for: the game's own click (Custom Sounds, which plays nothing
 		-- then, leaves the kit be)
-		local game = sound.soft and self.SoundSet and self:SoundSet() == "game"
+		local game = custom == "game" or (sound.soft and self.SoundSet and self:SoundSet() == "game")
 		if sound.path and not game then
 			local ok, played = pcall(PlaySoundFile, sound.path, "SFX")
 			if ok and played then

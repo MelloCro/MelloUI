@@ -165,7 +165,7 @@ CONFIG.SUPPORTERS_META = { icon = "Interface\\AddOns\\MelloUI\\Media\\Textures\\
 	title = "Supporters", flavour = "The people who help keep MelloUI going." }
 -- (2.1.44) the Addons page after Profiles (CONFIG.BuildAddonsPage; Core/AddonsPage.lua, Core/Integrations.lua)
 CONFIG.ADDONS_META = { icon = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\svc_addons", title = "Addons",
-	flavour = "The addons MelloUI works with: what it does with each one, and where their settings are.", new = "2.1.44" }
+	flavour = "The addons MelloUI works with: what it does with each one, and where their settings are." }
 local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 
 -- Shown on the Home page under "What's new". A short list in a player's
@@ -177,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.45", lines = {
+		"Custom Sounds: a new Your Sounds tab changes any sound, Level Up and Rare Alert included, to another of MelloUI's, the game's own, none, or a SharedMedia sound, your own files too.",
+	} },
 	{ version = "2.1.44", lines = {
 		"Configurator: a new Addons page lists the addons MelloUI works with: what it does with each, their links, who does which job, and a switch to stop MelloUI using one.",
 	} },
@@ -202,14 +205,6 @@ local CHANGELOG = {
 		"Map: a Map Coordinates option shows your coordinates in the line under the map, and the mouse's while it is over the map.",
 		"Minimap: a Minimap Coordinates option shows your coordinates under the minimap, and the mouse's in gold while it is over the minimap. It takes the place of Hide Minimap Coordinates.",
 		"Dark Mode: gold words no longer darken with it, like the MelloUI button in the Game Menu, the chat's headers and the map's quest counts; only the frames and backgrounds darken.",
-	} },
-	{ version = "2.1.40", lines = {
-		"Bags: the new Reagent Bag With The Bags option shows the Reagent Bag's items in your bags' one view, its slots in lime and its free slots counted in an Empty slot of their own.",
-		"Chat: the short channel tags (G, P, R ...) wear the game's own chat colours, and with Short Channel Tags on the Minimal Chat View's headers show only the tag.",
-		"Chat: a Chat Timestamps option on the Chat page sets the game's own chat timestamps, None hides them; the Minimal Chat View follows it.",
-		"Chat: a Copy button on the whisper windows puts the whole conversation in a window to copy, links and long messages included.",
-		"Map: the first time you open the map after logging in, it shows your current zone (a city's own map in a city) instead of the whole world.",
-		"Map: Krol'dok Stronghold's entrance (levels 40-45) shows in the Riverglades, at the cave west of the fortress, and Route takes you there.",
 	} },
 }
 local LINKS = {
@@ -3340,7 +3335,9 @@ local SLIDER_KEYS = { "min", "max", "step", "percent", "format" }
 -- the module's `Plays[word]` (Core.lua's registry header), played by Preview:Once (Core/Preview.lua). Left of the
 -- control, or of its cog; fields of CONFIG (Config.lua is near Lua's 200 locals)
 CONFIG.PLAY = { SIZE = 22, GAP = 10, TIP = "Play", TIP_BODY = "Plays this animation once, so you can see it.",
-	OFF = "%s is off: switch it on to see it." }
+	OFF = "%s is off: switch it on to see it.", SOUND_BODY = "Plays the sound you picked." }
+-- (2.1.45, Custom Sounds' Your Sounds) an option with `sound`: its play is a sound, heard at once -- no aside of the
+-- configurator, no click before it, not held back by Reduce Motion or combat (Preview:Once's are an animation's)
 function CONFIG.PlayOf(shape)
 	local mod = shape and shape.mod
 	local word = mod and (shape.kind == "module" and mod.play or (shape.opt and shape.opt.play)) or nil
@@ -3352,6 +3349,10 @@ CONFIG.PlayClick = Shared("OnClick on a row's Play", function(b)
 	local now = e and (Current(e.page, e.r) or e.shape)
 	local fn = now and CONFIG.PlayOf(now)
 	if not fn then
+		return
+	end
+	if now.opt and now.opt.sound then
+		pcall(fn)
 		return
 	end
 	MelloUI:PlayUISound("menu_button")
@@ -3371,7 +3372,7 @@ function CONFIG.Play(e, control, span, t)
 	Perf.SetScript(b, "OnClick", CONFIG.PlayClick)
 	b:SetPoint("RIGHT", e.cog or control, "LEFT", -P.GAP, 0)
 	b.melloEntry = e
-	PageTip(b, P.TIP, P.TIP_BODY)
+	PageTip(b, P.TIP, (e.shape.opt and e.shape.opt.sound) and P.SOUND_BODY or P.TIP_BODY)
 	W.RowPlateChild(row, b)
 	W.ClipRow(row, b, span + (e.cog and CONFIG.COG.SIZE + CONFIG.COG.GAP or 0) + P.SIZE + P.GAP)
 	e.play = b

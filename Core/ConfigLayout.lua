@@ -355,7 +355,9 @@ L.pages = {
 	VoiceOver = { title = "Voice Over", icon = "module:VoiceOver", set = "page_voice", module = "VoiceOver",
 		tabs = { "Reading", "Voices", "Sound Packs", "Widget" } },
 	CustomSounds = { title = "Custom Sounds", icon = "module:CustomSounds", set = "page_sounds", module = "CustomSounds",
-		tabs = { "Sounds", "Preview" } },
+		tabs = { "Sounds", "Your Sounds", "Preview" },
+		cards = { ["Your Sounds"] = { "Your Sounds", "Clicks and windows", "Items", "Groups and quests",
+			"Character and world", "MelloUI's own", "MelloUI's alerts" } } },
 	Profiles = { title = "Profiles", own = true },
 }
 
@@ -1557,6 +1559,51 @@ function L.Define(R, Link)
 	R("CustomSounds", "Sounds", "General", "CustomSounds.scrollWheel")
 	R("CustomSounds", "Sounds", "General", "CustomSounds.hover")
 	R("CustomSounds", "Sounds", "Sound", "CustomSounds.channel")
+	-- (2.1.45, Your Sounds: the custom_sounds sketch's tab) every sound's pick, in its group's card
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.yours", { card = "Your Sounds" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_UI_Click_Light", { card = "Clicks and windows" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_UI_Click_Heavy", { card = "Clicks and windows" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_UI_Cancel", { card = "Clicks and windows" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Scroll_Parchment", { card = "Clicks and windows" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Page_Turn", { card = "Clicks and windows" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_UI_Hover", { card = "Clicks and windows" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Scroll_Wheel", { card = "Clicks and windows" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Inventory_Pickup", { card = "Items" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Inventory_Move", { card = "Items" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Inventory_Drop", { card = "Items" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Rare_Item_Interaction", { card = "Items" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Equip_Armor", { card = "Items" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Unequip_Armor", { card = "Items" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Equip_Weapon", { card = "Items" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Equip_Accessory", { card = "Items" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Craft_Item", { card = "Items" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Vendor_Buy", { card = "Items" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Vendor_Sell", { card = "Items" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Loot_Coins", { card = "Items" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Social_GroupInvite", { card = "Groups and quests" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Social_Whisper", { card = "Groups and quests" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_DungeonFinder_Queue", { card = "Groups and quests" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_DungeonFinder_QueueDropped", { card = "Groups and quests" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_DungeonFinder_Ready", { card = "Groups and quests" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_UI_Success", { card = "Groups and quests" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_UI_Error", { card = "Groups and quests" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_UI_TargetSelect", { card = "Character and world" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Character_LevelUp", { card = "Character and world" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_SpellIcon_Drag", { card = "Character and world" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_SpellIcon_Place", { card = "Character and world" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Map_Ping", { card = "Character and world" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_check_on", { card = "MelloUI's own" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_check_off", { card = "MelloUI's own" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_tab", { card = "MelloUI's own" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_page", { card = "MelloUI's own" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_notice_track", { card = "MelloUI's own" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_notice_arrive", { card = "MelloUI's own" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_notice_learn", { card = "MelloUI's own" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_notice_fail", { card = "MelloUI's own" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_rare", { card = "MelloUI's alerts" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_marker", { card = "MelloUI's alerts" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_waypoint_set", { card = "MelloUI's alerts" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_waypoint_clear", { card = "MelloUI's alerts" })
 	R("CustomSounds", "Preview", "Sound", { prefix = "CustomSounds.#" })   -- (the Play buttons, in the module's order)
 
 	-- (one look, Q5 -- ugf-audit.md section 14, bars-audit.md: the user's yes) each frame's and bar's Fade is found on

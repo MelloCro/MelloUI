@@ -138,3 +138,26 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "${GITHUB_REF_NAME}" "$RUNNER_TEMP"/oldschool-release/*.zip --repo "${GITHUB_REPOSITORY}"
+
+  # MelloUI_MySounds (2.1.45, Custom Sounds' Your Sounds; docs/custom-sounds.md): the folder players put their own
+  # sounds in, zipped and attached to every release on GitHub, never uploaded to CurseForge (an update there would
+  # replace the folder and wipe the sounds put in it). Tools/ never ships in MelloUI's zip.
+  mysounds:
+    needs: release
+    if: needs.release.outputs.publish == 'yes'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Zip MelloUI_MySounds and attach it to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ ! -f Tools/mysounds/MelloUI_MySounds/MelloUI_MySounds.toc ]; then
+            echo "no MelloUI_MySounds template: nothing to attach"
+            exit 0
+          fi
+          cd Tools/mysounds
+          zip -qr "$RUNNER_TEMP/MelloUI_MySounds.zip" MelloUI_MySounds
+          gh release upload "${GITHUB_REF_NAME}" "$RUNNER_TEMP/MelloUI_MySounds.zip" --repo "${GITHUB_REPOSITORY}"

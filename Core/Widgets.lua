@@ -1505,7 +1505,9 @@ end
 --   box.Text, box.melloGet / melloSet / melloValues
 -- The list (the flyout's list mode): a row per entry, LIST_ROW_H high, the
 -- chosen one marked in gold, a row's tooltip its entry's; a click on a row
--- sets it and closes the list. A long list (user, 2026-09-26: "the list
+-- sets it and closes the list. An entry with `heading = true` (2.1.45, the
+-- Your Sounds lists) is a group's title, no choice: its label small, gold
+-- and in capitals with a rule after it, never lit or picked. A long list (user, 2026-09-26: "the list
 -- does not have a slider option and is way too big" -- the Fonts dropdown's
 -- sixty faces ran off the screen) shows at most MENU_ROWS entries and never
 -- more than MENU_SCREEN of the screen, the rest by the wheel or its scroll
@@ -6121,6 +6123,21 @@ do
 		W.Paint(row.label, (row.chosen and not lit) and "selectedTrim" or "text", "text")
 	end
 
+	-- a heading's own text and rule, made the first time the row shows one (2.1.45)
+	local function HeadParts(row)
+		if row.head then
+			return
+		end
+		row.head = W.Text(row, "GameFontHighlightSmall", nil, "selectedTrim")
+		row.head:SetWordWrap(false)
+		row.head:SetPoint("LEFT", row, "LEFT", LIST_PAD, 0)
+		row.rule = row:CreateTexture(nil, "ARTWORK")
+		row.rule:SetHeight(1)
+		row.rule:SetPoint("LEFT", row.head, "RIGHT", 6, 0)
+		row.rule:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+		W.Paint(row.rule, "border", "fill", 1)
+	end
+
 	local ListRowEnter = Shared("OnEnter on a dropdown list's row", function(row)
 		row.lit = true
 		RowLook(row)
@@ -6151,7 +6168,7 @@ do
 		local menu = row.menu
 		local box = menu and menu.box
 		local entry = row.entry
-		if not (box and entry) then
+		if not (box and entry) or entry.heading then
 			return
 		end
 		MelloUI:PlayUISound("option_on")
@@ -6196,8 +6213,19 @@ do
 			local entry = values[top + i]
 			if entry then
 				row.entry = entry
-				row.label:SetText(EntryText(entry))
-				row.chosen = entry.value == chosen
+				local head = entry.heading and true or false
+				if head then
+					HeadParts(row)
+					row.head:SetText(EntryText(entry):upper())
+				end
+				if row.head then
+					row.head:SetShown(head)
+					row.rule:SetShown(head)
+				end
+				row.label:SetShown(not head)
+				row:EnableMouse(not head)
+				row.label:SetText(head and "" or EntryText(entry))
+				row.chosen = not head and entry.value == chosen
 				row.mark:SetShown(row.chosen)
 				RowLook(row)
 				row:Show()

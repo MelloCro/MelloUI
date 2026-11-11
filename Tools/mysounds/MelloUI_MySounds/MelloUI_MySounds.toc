@@ -1,0 +1,10 @@
+## Interface: 16001
+## Title: MelloUI My Sounds
+## Notes: Your own sounds, for MelloUI's Custom Sounds and every addon that uses SharedMedia.
+## Author: MelloUI
+## Version: 1.0
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
+MySounds.lua

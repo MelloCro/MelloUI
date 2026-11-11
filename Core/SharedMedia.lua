@@ -5,10 +5,11 @@
 -- etc, can we make MelloUI Compatible with them?" -- picked "Only reading theirs": MelloUI's own media are not
 -- registered there.) The one reader for every list MelloUI offers them in: the fonts (Modules/Fonts.lua), the bar
 -- textures (Modules/BarTextures.lua), the backgrounds (the tooltips, the chat, the party and raid frames) and the
--- borders (the tooltips).
+-- borders (the tooltips), and (2.1.45) the sounds (Custom Sounds' Your Sounds tab).
 --   SM.List(kind) -> { { value = path, label = name }, ... }
---       the media of a kind ("font", "statusbar", "background", "border") the library lists now, in its order (by
---       name); empty without the library. Paths only: MelloUI's pickers keep a path (a file ID is passed by)
+--       the media of a kind ("font", "statusbar", "background", "border", "sound") the library lists now, in its order
+--       (by name); empty without the library. Paths only: MelloUI's pickers keep a path (a file ID is passed by; a
+--       sound's is kept, PlaySoundFile plays either)
 --   SM.Known(kind, value) -> true | nil
 --       a path the library lists now (a pick whose pack was taken out: nil -- the look falls back to its own)
 --   SM.Flush()
@@ -33,7 +34,7 @@ local _, ns = ...
 local MelloUI = ns.MelloUI
 
 local SM = {
-	KINDS = { "font", "statusbar", "background", "border" },
+	KINDS = { "font", "statusbar", "background", "border", "sound" },
 	lists = {},    -- [kind] = the library's media of that kind (made on first ask)
 	known = {},    -- [kind] = { [path] = true }
 	dirty = {},    -- [kind] = true: registered since the list was made
@@ -62,14 +63,18 @@ local function Find()
 end
 SM.Find = Find   -- (read only: the tests)
 
+-- (2.1.45, the Addons page's switch: SharedMedia off, MelloUI lists none of it; read as the lists are made, a /reload
+-- after the switch)
 local function Build(kind)
 	local list, known = {}, {}
-	if lib then
+	local I = MelloUI.Integrations
+	if lib and not (I and I.Use and not I.Use("SharedMedia")) then
 		local ok, names = pcall(lib.List, lib, kind)
 		if ok and type(names) == "table" then
 			for _, name in ipairs(names) do
 				local got, path = pcall(lib.Fetch, lib, kind, name, true)
-				if got and type(path) == "string" and path ~= "" and type(name) == "string" and not known[path] then
+				local usable = (type(path) == "string" and path ~= "") or (kind == "sound" and type(path) == "number")
+				if got and usable and type(name) == "string" and not known[path] then
 					known[path] = true
 					list[#list + 1] = { value = path, label = name }
 				end
@@ -99,7 +104,7 @@ function SM.List(kind)
 end
 
 function SM.Known(kind, value)
-	if type(value) ~= "string" then
+	if type(value) ~= "string" and type(value) ~= "number" then
 		return nil
 	end
 	SM.Flush()

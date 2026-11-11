@@ -160,6 +160,102 @@ for _, entry in ipairs(PREVIEW) do
 		onClick = function(module) module:Preview(name) end }
 end
 
+--------------------------------------------------------------------------------
+-- Your Sounds (2.1.45; the user, 2026-11-11: "Every custom sound we have there, i want people to be able to change
+-- them to their liking" -- the custom_sounds sketch's tab, docs/plans/custom-sounds.md): every sound of the library
+-- and MelloUI's own (its clicks, the notice's chimes, its alerts), each with a list and a Play. A pick is the setting
+-- "pick_<id>" (a library name, or a MelloUI:PlayUISound kind for MelloUI's own): "mello" (MelloUI's sound, the
+-- playing set's, as before), "game" (the game's own: offered where the game has one, a file that sound replaces),
+-- "none", "mello:<file>" (another of MelloUI's sounds, the playing set's file where it has one) or a SharedMedia
+-- pack's path (the player's own files too, MelloUI_MySounds; a pack taken out plays MelloUI's sound again). A pick
+-- plays in every skin, the Default skin's too; a group's switch on the Sounds tab still gives its sounds back to the
+-- game. One table (the file's locals are many)
+--------------------------------------------------------------------------------
+
+local Yours = {
+	GROUPS = {
+		{ "Clicks and windows", { "UI_Click_Light", "UI_Click_Heavy", "UI_Cancel", "Scroll_Parchment", "Page_Turn",
+			"UI_Hover", "Scroll_Wheel" } },
+		{ "Items", { "Inventory_Pickup", "Inventory_Move", "Inventory_Drop", "Rare_Item_Interaction", "Equip_Armor",
+			"Unequip_Armor", "Equip_Weapon", "Equip_Accessory", "Craft_Item", "Vendor_Buy", "Vendor_Sell", "Loot_Coins" } },
+		{ "Groups and quests", { "Social_GroupInvite", "Social_Whisper", "DungeonFinder_Queue",
+			"DungeonFinder_QueueDropped", "DungeonFinder_Ready", "UI_Success", "UI_Error" } },
+		{ "Character and world", { "UI_TargetSelect", "Character_LevelUp", "SpellIcon_Drag", "SpellIcon_Place",
+			"Map_Ping" } },
+		{ "MelloUI's own", { "check_on", "check_off", "tab", "page", "notice_track", "notice_arrive", "notice_learn",
+			"notice_fail" } },
+		{ "MelloUI's alerts", { "rare", "marker", "waypoint_set", "waypoint_clear" } },
+	},
+	-- a library file or one of MelloUI's own kinds -> its name on its row and in the lists
+	LABEL = {
+		UI_Click_Light = "Light Click", UI_Click_Heavy = "Heavy Click", UI_Cancel = "Cancel and Close",
+		Scroll_Parchment = "Scroll Arrows", Page_Turn = "Page Turn", UI_Hover = "Hover Tick", Scroll_Wheel = "Scroll Wheel",
+		Inventory_Pickup = "Item Picked Up", Inventory_Move = "Item Moved", Inventory_Drop = "Item Put Down",
+		Rare_Item_Interaction = "Rare Item", Equip_Armor = "Armour On", Unequip_Armor = "Armour Off",
+		Equip_Weapon = "Weapon On", Equip_Accessory = "Jewellery On", Craft_Item = "Item Crafted", Vendor_Buy = "Buying",
+		Vendor_Sell = "Selling", Loot_Coins = "Coins Looted", Social_GroupInvite = "Group Invite",
+		Social_Whisper = "Whisper", DungeonFinder_Queue = "Queue Joined", DungeonFinder_QueueDropped = "Queue Left",
+		DungeonFinder_Ready = "Group Ready", UI_Success = "Success", UI_Error = "Error",
+		UI_TargetSelect = "Target Selected", Character_LevelUp = "Level Up", SpellIcon_Drag = "Spell Picked Up",
+		SpellIcon_Place = "Spell Placed", Map_Ping = "Map Ping",
+		Check_On = "Checkbox On", Check_Off = "Checkbox Off", Tab = "Tab", Page = "Page",
+		Notice_Track = "Notice: Tracked", Notice_Arrive = "Notice: Arrived", Notice_Learn = "Notice: Learned",
+		Notice_Fail = "Notice: Failed", RareMob_Ward = "Rare Alert", Quest_TrackChange = "Route Arrival",
+		check_on = "Checkbox On", check_off = "Checkbox Off", tab = "Tab", page = "Page",
+		notice_track = "Notice: Tracked", notice_arrive = "Notice: Arrived", notice_learn = "Notice: Learned",
+		notice_fail = "Notice: Failed", rare = "Rare Alert", marker = "Route Arrival", waypoint_set = "Waypoint Set",
+		waypoint_clear = "Waypoint Cleared",
+	},
+	-- MelloUI's own kinds: where each plays (a library sound's row: the Preview tab's line)
+	HINT = {
+		check_on = "MelloUI's checkboxes and switches turned on", check_off = "MelloUI's checkboxes and switches turned off",
+		tab = "MelloUI's tabs and plain buttons", page = "MelloUI's pages and windows opening",
+		notice_track = "The on-screen notice: a quest or place tracked", notice_arrive = "The on-screen notice: you arrived",
+		notice_learn = "The on-screen notice: something learned", notice_fail = "The on-screen notice: something failed",
+		rare = "Rare Alert: a rare spotted", marker = "Route's World Marker: a new destination, or arriving at one",
+		waypoint_set = "A waypoint placed", waypoint_clear = "A waypoint cleared",
+	},
+	-- the kinds heard on the Master channel, as MelloUI plays them (the notice's chimes, the Rare Alert)
+	MASTER = { notice_track = true, notice_arrive = true, notice_learn = true, notice_fail = true, rare = true },
+	-- MelloUI's clicks: Clicks' switch gives them back too
+	CLICK = { check_on = true, check_off = true, tab = true, page = true },
+	-- the files MelloUI's alerts play beside the library's, in the lists after it
+	EXTRA = { "Check_On", "Check_Off", "Tab", "Page", "Notice_Track", "Notice_Arrive", "Notice_Learn", "Notice_Fail",
+		"RareMob_Ward", "Quest_TrackChange" },
+	KEY = {},     -- id -> its setting's key, made once
+	OPT = {},     -- id -> its option (its list the one without the game's own where the game has none)
+	MINE = {},    -- "mello:<file>" -> { the Modern set's path, the Gothic set's }
+	GAME = {},    -- a library name -> the game's file it replaces (the lowest id; its Play while the pick is the game's)
+	-- the two lists, filled where the paths are made (below), the SharedMedia part again on the bus
+	LIST = { game = {}, plain = {} },
+	GUIDE = "https://github.com/MelloCro/MelloUI/blob/main/docs/custom-sounds.md",
+	INTRO = "Every sound Custom Sounds plays, yours to change: MelloUI's sound, the game's own, none, or any sound from SharedMedia, your own files included. A pick plays in every skin. Add your own files with the guide:",
+}
+MelloUI.CustomSoundsYours = Yours   -- (read only: the tests)
+
+options[#options + 1] = { type = "canvas", key = "yours", name = "Your Sounds", new = "2.1.45", height = 82,
+	search = "own sounds custom files sharedmedia shared media mysounds pick change replace guide",
+	desc = "Change any sound to another: yours, a SharedMedia pack's, the game's own or none.",
+	build = function(canvas, width)
+		Yours.Build(canvas, width)
+	end }
+for _, group in ipairs(Yours.GROUPS) do
+	for _, id in ipairs(group[2]) do
+		local key = "pick_" .. id
+		Yours.KEY[id] = key
+		defaults[key] = "mello"
+		local opt = { type = "dropdown", key = key, name = Yours.LABEL[id], values = Yours.LIST.game, play = id,
+			sound = true, new = "2.1.45", desc = Yours.HINT[id], search = "sound pick custom own sharedmedia" }
+		Yours.OPT[id] = opt
+		options[#options + 1] = opt
+	end
+end
+for _, entry in ipairs(PREVIEW) do
+	if Yours.OPT[entry[1]] then
+		Yours.OPT[entry[1]].desc = entry[3]
+	end
+end
+
 local M = MelloUI:RegisterModule("CustomSounds", {
 	title = "Custom Sounds",
 	desc = "Replaces the interface's sounds with MelloUI's own, in the set of your skin: clicks, windows, bags, gear, vendors and more. The Default skin keeps the game's own sounds.",
@@ -434,6 +530,74 @@ for name in pairs(SOUNDS) do
 	calls[name], firstMs[name], slowestMs[name] = 0, 0, 0
 end
 
+-- (2.1.45, Your Sounds) the lists: MelloUI's sound, the game's own (the list for a sound the game has one of), None,
+-- then MelloUI's sounds, then SharedMedia's (Yours.Shared); the game's file each library sound replaces
+do
+	for file, entry in pairs(FILES) do
+		local name = entry[1]
+		if not Yours.GAME[name] or file < Yours.GAME[name] then
+			Yours.GAME[name] = file
+		end
+	end
+	local game, plain = Yours.LIST.game, Yours.LIST.plain
+	local mello = { value = "mello", label = "MelloUI's sound" }
+	local none = { value = "none", label = "None" }
+	game[1], game[2], game[3] = mello, { value = "game", label = "The game's own" }, none
+	plain[1], plain[2] = mello, none
+	local head = { heading = true, label = "MelloUI's sounds" }
+	game[#game + 1], plain[#plain + 1] = head, head
+	local function Mine(file)
+		local value = "mello:" .. file
+		local modern = MODERN_PATHS[file] or (SOUND_PATH .. file .. ".ogg")
+		Yours.MINE[value] = { modern, GOTHIC_PATHS[file] or modern }
+		local e = { value = value, label = Yours.LABEL[file] }
+		game[#game + 1], plain[#plain + 1] = e, e
+	end
+	for _, group in ipairs(Yours.GROUPS) do
+		for _, id in ipairs(group[2]) do
+			if SOUNDS[id] then
+				Mine(id)
+			end
+		end
+	end
+	for _, file in ipairs(Yours.EXTRA) do
+		Mine(file)
+	end
+	Yours.HEAD = { #game, #plain }   -- (the entries before SharedMedia's: kept when they are made again)
+	for id, opt in pairs(Yours.OPT) do
+		if SOUNDS[id] and not Yours.GAME[id] then
+			opt.values = plain
+		end
+	end
+end
+
+-- SharedMedia's sounds at the lists' end, under their heading (in place: the options hold the lists), made again when
+-- a pack registers more (the bus's "sharedmedia"); the library's own "None" (silence) left out, None is ours
+local SHARED_HEAD = { heading = true, label = "From SharedMedia" }
+function Yours.Shared()
+	local SM = MelloUI.SharedMedia
+	local fresh = SM and SM.List("sound") or {}
+	local game, plain = Yours.LIST.game, Yours.LIST.plain
+	for i = #game, Yours.HEAD[1] + 1, -1 do
+		game[i] = nil
+	end
+	for i = #plain, Yours.HEAD[2] + 1, -1 do
+		plain[i] = nil
+	end
+	local any = false
+	for _, e in ipairs(fresh) do
+		-- (its "None": file 1 in its newer copies, Interface\Quiet.ogg in older ones)
+		if not (e.value == 1 or (type(e.value) == "string" and e.value:lower():find("interface\\quiet.ogg", 1, true))) then
+			if not any then
+				any = true
+				game[#game + 1], plain[#plain + 1] = SHARED_HEAD, SHARED_HEAD
+			end
+			game[#game + 1], plain[#plain + 1] = e, e
+		end
+	end
+end
+Yours.Shared()
+
 local EVENTS_MAX = 60
 -- the last sound events, for /sfxdump: { time, format, how many values, up
 -- to five values }, each slot made once and then reused
@@ -527,8 +691,71 @@ function MelloUI:SoundSet()
 	return CurrentSet()
 end
 
+-- (2.1.45, Your Sounds) what a sound's pick plays: false (None), a path or a file id (another of MelloUI's sounds, a
+-- SharedMedia pack's), "game" (the game's own), or nil (MelloUI's sound: "mello", or a pack taken out)
+function Yours.Resolve(id)
+	local key = Yours.KEY[id]
+	local v = key and M.db and M.db[key]
+	if v == nil or v == "mello" then
+		return nil
+	end
+	if v == "none" then
+		return false
+	end
+	if v == "game" then
+		return "game"
+	end
+	local mine = Yours.MINE[v]
+	if mine then
+		return CurrentSet() == "gothic" and mine[2] or mine[1]
+	end
+	local SM = MelloUI.SharedMedia
+	if SM and SM.Known("sound", v) then
+		return v
+	end
+	return nil
+end
+local Resolve = Yours.Resolve
+
+-- whether MelloUI takes a sound from the game (its files muted, the pick or MelloUI's sound played): while a set
+-- plays, every sound but one given back to the game; under the Default skin (no set) only a sound picked
+local function Takes(id)
+	local r = Resolve(id)
+	if CurrentSet() == "game" then
+		return r ~= nil and r ~= "game"
+	end
+	return r ~= "game"
+end
+
+-- (the Default skin) a group's switch lets its sounds play while any library sound is picked (Yours.any, counted
+-- again as a setting, the skin or SharedMedia's list changes); Hover Ticks and Scroll Wheel, which run looks of their
+-- own while on, only while their own sound is
+Yours.ONLY = { hover = "UI_Hover", scrollWheel = "Scroll_Wheel" }
+function Yours.Count()
+	Yours.any = false
+	if CurrentSet() ~= "game" then
+		return
+	end
+	for id in pairs(Yours.KEY) do
+		if SOUNDS[id] and Takes(id) then
+			Yours.any = true
+			return
+		end
+	end
+end
+
 local function GroupOn(group)
-	return M.isEnabled and M.db and M.db[group] and CurrentSet() ~= "game" and true or false
+	if not (M.isEnabled and M.db and M.db[group]) then
+		return false
+	end
+	if CurrentSet() == "game" then
+		local only = Yours.ONLY[group]
+		if only then
+			return Takes(only)
+		end
+		return Yours.any == true
+	end
+	return true
 end
 
 -- an event's format with the reason joined on, made once for each pair
@@ -571,11 +798,14 @@ local function PlayFile(name, channel)
 end
 
 local PLAYED, SKIPPED, FAILED = "%s played ", "%s skipped (%.2fs after the last) ", "%s FAILED to play (%s) "
+local GIVEN, SILENT = "%s left to the game (its pick) ", "%s silent (None picked) "
 
 -- The named file, once per its gap; returns whether it started. `why` says
 -- what set it off: a format for `a` and `b`, filled in only when the log is
 -- read. `channel`: the module's own unless given (the notice's chimes).
-local function Play(name, why, a, b, channel)
+-- (2.1.45) `id`: the pick it plays (Your Sounds), the name's own unless given
+-- (MelloUI's own kinds play a library file under their own pick)
+local function Play(name, why, a, b, channel, id)
 	local gap = SOUNDS[name]
 	if not gap then
 		return false
@@ -587,7 +817,23 @@ local function Play(name, why, a, b, channel)
 		Note(Joined(SKIPPED, why), name, now - last, a, b)
 		return false
 	end
-	local ok, willPlay = PlayFile(name, channel or (M.db and M.db.channel) or "SFX")
+	local pick = Resolve(id or name)
+	if pick == "game" or (pick == nil and CurrentSet() == "game") then
+		Note(Joined(GIVEN, why), name, a, b)
+		return false
+	end
+	if pick == false then
+		lastPlayed[name] = now
+		Note(Joined(SILENT, why), name, a, b)
+		return true
+	end
+	channel = channel or (M.db and M.db.channel) or "SFX"
+	local ok, willPlay
+	if pick then
+		ok, willPlay = pcall(PlaySoundFile, pick, channel)
+	else
+		ok, willPlay = PlayFile(name, channel)
+	end
 	if ok and willPlay then
 		lastPlayed[name] = now
 		Note(Joined(PLAYED, why), name, a, b)
@@ -621,7 +867,7 @@ local function ApplyMutes()
 		return
 	end
 	for file, entry in pairs(FILES) do
-		local want = GroupOn(entry[2])
+		local want = GroupOn(entry[2]) and Takes(entry[1])
 		if want and not muted[file] then
 			if pcall(MuteSoundFile, file) then
 				muted[file] = true
@@ -1429,6 +1675,7 @@ function ApplySet()
 	local was = set
 	set = nil
 	if CurrentSet() ~= was then
+		Yours.Count()
 		ApplyMutes()
 		ApplyHover()
 		ApplyWheel()
@@ -1463,20 +1710,101 @@ local OWN_SOUNDS = {
 }
 local NOTICE = { notice_track = true, notice_arrive = true, notice_learn = true, notice_fail = true }
 
+-- (2.1.45, Your Sounds) a kind's pick first, in every skin: "game" answered as such (Core plays the game's kit,
+-- never MelloUI's file), None as played (silence), another sound played on the kind's channel; MelloUI's clicks
+-- only while Clicks is on. MelloUI's sound: as before
 function MelloUI:PlayCustomUISound(kind)
 	if not M.isEnabled then
 		return false
 	end
 	local own = OWN_SOUNDS[CurrentSet()]
 	local name = own and own[kind]
+	local pick = Yours.KEY[kind] and Resolve(kind)
+	if pick == "game" then
+		return "game"
+	end
+	-- (answered true however it went: a play inside its sound's gap, or a pick's file the game would not play, is no
+	-- cue for MelloUI's own file -- None stays silent)
+	if pick ~= nil and not (Yours.CLICK[kind] and not (M.db and M.db.clicks)) then
+		local channel = Yours.MASTER[kind] and "Master" or nil
+		if name then
+			Play(name, "%s picked", kind, nil, channel, kind)
+		elseif pick then
+			pcall(PlaySoundFile, pick, channel or (M.db and M.db.channel) or "SFX")
+		end
+		return true
+	end
 	if not name then
 		return false
 	end
 	if NOTICE[kind] then
-		return Play(name, "notice %s", kind, nil, "Master")
+		return Play(name, "notice %s", kind, nil, "Master", kind)
 	end
-	return GroupOn("clicks") and Play(name, "configurator %s", kind) or false
+	return GroupOn("clicks") and Play(name, "configurator %s", kind, nil, nil, kind) or false
 end
+
+-- (2.1.45) a Your Sounds row's Play: its pick as it plays now, whichever group is on (the row sleeps while the module
+-- is off). MelloUI's own kinds with MelloUI's sound or the game's: PlayUISound itself, which plays just that
+function Yours.Play(id)
+	local channel = Yours.MASTER[id] and "Master" or (M.db and M.db.channel) or "SFX"
+	local pick = Resolve(id)
+	if not SOUNDS[id] and (pick == nil or pick == "game") then
+		lastPlayed[(OWN_SOUNDS[CurrentSet()] or OWN_SOUNDS.modern)[id] or id] = false
+		MelloUI:PlayUISound(id)
+		return true
+	end
+	if pick == false then
+		return true
+	end
+	if pick == nil and CurrentSet() == "game" then
+		pick = "game"
+	end
+	if pick == "game" then
+		pick = Yours.GAME[id]
+		if not pick then
+			return true
+		end
+	end
+	if pick then
+		pcall(PlaySoundFile, pick, channel)
+	else
+		PlayFile(id, channel)
+	end
+	return true
+end
+M.Plays = {}
+for id in pairs(Yours.KEY) do
+	M.Plays[id] = function()
+		return Yours.Play(id)
+	end
+end
+
+-- (2.1.45) the Your Sounds tab's top: what the lists offer, and the guide to adding your own files
+function Yours.Build(canvas, width)
+	local W = MelloUI.Widgets
+	local inner = math.max(100, width - 28)
+	local text = W.Text(canvas, "GameFontHighlight", W.Tr(Yours.INTRO), "text")
+	text:SetPoint("TOPLEFT", canvas, "TOPLEFT", 14, -6)
+	text:SetWidth(inner)
+	text:SetJustifyH("LEFT")
+	local AP = MelloUI.AddonsPage
+	if AP and AP.LinkBox then
+		local link = AP.LinkBox(canvas, Yours.GUIDE, math.min(520, inner))
+		link:SetPoint("TOPLEFT", text, "BOTTOMLEFT", 0, -10)
+	end
+end
+
+-- a pack registered sounds: the lists made again; the Default skin's mutes for a pick that plays now
+MelloUI:On("sharedmedia", function(kinds)
+	if not kinds.sound then
+		return
+	end
+	Yours.Shared()
+	if M.isEnabled then
+		Yours.Count()
+		ApplyMutes()
+	end
+end, "Custom Sounds' Your Sounds lists")
 
 --------------------------------------------------------------------------------
 -- Module
@@ -1502,6 +1830,7 @@ function M:OnEnable(db)
 	end
 	enteredWorld = GetTime()
 	lastQueued = Queued()
+	Yours.Count()
 	ApplyMutes()
 	ApplyHover()
 	ApplyWheel()
@@ -1519,6 +1848,7 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
+	Yours.Count()
 	ApplyMutes()
 	ApplyHover()
 	ApplyWheel()

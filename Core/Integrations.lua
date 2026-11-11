@@ -8,7 +8,7 @@
 -- Questie in Core/QuestSource.lua, Core/QuestieLook.lua, MelloUI_Map/MapAddonPins.lua and Modules/Nameplates.lua;
 -- RareScanner in Core/RareScannerLook.lua; Polestar in Core/Overlaps.lua; GatherMate2 and HandyNotes in
 -- MapAddonPins' sources; the guides (RestedXP, Zygor, TomTom, Polestar's) in MelloUI_Route/Guides.lua; Clique in
--- MelloUI:ClickCast. Off, MelloUI leaves that addon alone (its look, its data, its settings) from the next /reload --
+-- MelloUI:ClickCast; SharedMedia in Core/SharedMedia.lua (2.1.45: the sounds too). Off, MelloUI leaves that addon alone (its look, its data, its settings) from the next /reload --
 -- but two quest trackers never show at once (Core/Overlaps.lua's questTracker stays).
 -- Shown by the configurator's Addons page (Core/AddonsPage.lua). Nothing at login: read when asked.
 --   I.GROUPS, I.LIST, I.ByKey     the addons by group, in the page's order
@@ -72,6 +72,7 @@ I.GROUPS = {
 	{ key = "quests", name = "Quests and guides" },
 	{ key = "map", name = "Map and minimap" },
 	{ key = "frames", name = "Frames" },
+	{ key = "look", name = "Look and sound" },
 }
 
 -- an addon: key (its switch's key), name, folders (any one loaded: installed), group, url (its page: the configurator
@@ -225,6 +226,21 @@ I.LIST = {
 	  links = {},
 	  parts = { { "its click-casting", function()
 		return rawget(_G, "ClickCastHeader") ~= nil
+	  end } } },
+	-- (2.1.32 read its media; 2.1.45, Custom Sounds' Your Sounds: its sounds, the player's own files through the
+	-- MelloUI_MySounds template, docs/custom-sounds.md) the library any pack brings: working while it is found
+	{ key = "SharedMedia", name = "SharedMedia", folders = { "SharedMedia" }, group = "look",
+	  url = "https://www.curseforge.com/wow/addons/sharedmedia",
+	  does = {
+		"Its fonts, bar textures, backgrounds and borders in MelloUI's lists, and those of any pack that shares them.",
+		"Its sounds in Custom Sounds' Your Sounds lists, your own files too (the MelloUI_MySounds guide).",
+	  },
+	  short = "Its fonts, textures and sounds in MelloUI's lists",
+	  links = { { "Fonts", id = "Fonts.style" }, { "Bar textures", id = "BarTextures.texture" },
+		{ "Your Sounds", id = "CustomSounds.yours" } },
+	  parts = { { "the shared media library", function()
+		local SM = rawget(MelloUI, "SharedMedia")
+		return not (SM and SM.Find) or SM.Find() ~= nil
 	  end } } },
 }
 I.ByKey = {}
