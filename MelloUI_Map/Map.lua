@@ -143,7 +143,7 @@ M = MelloUI:RegisterModule("Map", {
 		  desc = "Your coordinates in the line under the map, and the mouse's while it is over the map." },
 		-- (2.1.42; CurseForge: "Any way to enable the 'Fog of War' on the Map", "We need fog of war!"; the user's picks
 		-- of fog_sketch: on C, hidden as on the game's map; off A, as before; off by default) MapCanvas.lua's Canvas.fog
-		{ type = "toggle", key = "fog", name = "Fog Of War", new = "2.1.42",
+		{ type = "toggle", key = "fog", name = "Fog Of War",
 		  desc = "Places you haven't explored stay hidden on the map, as on the game's own world map, until you walk there. Off: they show faintly." },
 	},
 })
@@ -496,8 +496,9 @@ local function SetLayer(key, on)
 		end
 	end
 	-- (2.1.39) the quest givers' or objectives' layer on or off: Questie's icons of that kind looked at again (shown
-	-- here, in MelloUI's pictures, only while MelloUI's own layer of them is off: MapAddonPins' Cover)
-	if (key == "quests" or key == "objectives") and shown and AddonPins.Recheck then
+	-- here, in MelloUI's pictures, only while MelloUI's own layer of them is off: MapAddonPins' Cover); (2.1.43) the
+	-- flight masters' too: Questie's own then shown or not (MapAddonPins.TOWN)
+	if (key == "quests" or key == "objectives" or key == "flights") and shown and AddonPins.Recheck then
 		AddonPins.Recheck()
 	end
 	win.pins:Lay()

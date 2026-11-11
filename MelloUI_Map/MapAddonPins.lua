@@ -117,17 +117,28 @@ local QUESTIE_PARTS = { "texture", "glowTexture", "overlayTexture" }   -- (Quest
 local ICONS = MelloUI.QuestieLook.ICON_DIR
 local styled = setmetatable({}, { __mode = "k" })   -- [Questie's frame] = our picture on it
 
--- a Questie icon's look: its picture's file name (data.Icon, else the texture's own), nil for one of no look of ours
+-- a Questie icon's look: its kind (2.1.43, the core's QL.Look: Questie's data.Icon type, whatever picture the player
+-- picked), else its picture's file name (data.Icon, else the texture's own), nil for one of no look of ours
 local function QuestieLook(icon)
+	local tex = rawget(icon, "texture")
+	local ok, p = pcall(tex and tex.GetTexture, tex)
+	return MelloUI.QuestieLook.Look(icon, ok and Text(p) or nil)
+end
+
+-- (2.1.43; the user's pick, 2026-11-11: "Hide Questie's town icons that MelloUI already draws") Questie's townsfolk
+-- (its "manual" icons: one flight master, inn and mailbox a zone, the game's tracking pictures) of a kind this map
+-- draws itself: [the picture's file name] = the map's layer that draws it. Its inns and mailboxes stay (none here)
+local TOWN = { flightmaster = "flights" }
+AddonPins.TOWN = TOWN
+local function Town(icon)
 	local data = rawget(icon, "data")
-	local path = type(data) == "table" and Text(data.Icon) or nil
-	if not path then
-		local tex = rawget(icon, "texture")
-		local ok, p = pcall(tex and tex.GetTexture, tex)
-		path = ok and Text(p) or nil
+	if type(data) ~= "table" or data.Type ~= "manual" then
+		return nil
 	end
-	local name = type(path) == "string" and path:match("([^\\/]+)%.%w+$")
-	return name and QUESTIE_LOOK[name:lower()] or nil
+	local path = Text(data.Icon)
+	local name = path and path:match("([^\\/]+)$")
+	name = name and name:gsub("%.%w+$", ""):lower()
+	return name and TOWN[name] or nil
 end
 
 -- what this map shows of the quests already (taken once a pass): MapObjectives' givers shown and objectives laid;
@@ -145,7 +156,8 @@ local function Cover()
 	local on = type(Map) == "table" and type(Map.LayerOn) == "function"
 	return { givers = ok and type(givers) == "table" and givers or {}, laid = O.Laid,
 		quests = on and Map:LayerOn("quests") and true or false,
-		objectives = on and Map:LayerOn("objectives") and true or false }
+		objectives = on and Map:LayerOn("objectives") and true or false,
+		flights = on and Map:LayerOn("flights") and true or false }
 end
 
 local function Covered(look, icon, cover)
@@ -307,9 +319,11 @@ local function Place(entry, icon, t, cover)
 	if icon.IsProtected and icon:IsProtected() then
 		return
 	end
-	-- (2.1.4) Questie's: a quest this map shows already is not drawn twice; the rest in MelloUI's own look
+	-- (2.1.4) Questie's: a quest this map shows already is not drawn twice; the rest in MelloUI's own look; (2.1.43) its
+	-- townsfolk of a kind this map draws (its flight masters) not twice either
 	local look = entry.questie and QuestieLook(icon) or nil
-	local covered = look and Covered(look, icon, cover) or false
+	local town = entry.questie and not look and Town(icon) or nil
+	local covered = (look and Covered(look, icon, cover)) or (town and cover and cover[town]) or false
 	if entry.questie then
 		MelloUI.QuestieLook.Unlist(icon, covered)   -- (2.1.39: left out of Questie's tooltip too)
 	end
@@ -605,6 +619,42 @@ Sources[2] = function(id, add)
 	end
 end
 
+-- (2.1.43; the user: "Rarescanner is the engine, we provide the look"; the pick B of rarescanner_sketch) RareScanner:
+-- what it would lay on the game's map for the zone (its own provider, hosted: Core/RareScannerLook.lua) -- its rares,
+-- treasures and events, its filters -- as MelloUI's seals (MelloUI's icon on a plate, the rim its state); the tooltip
+-- MelloUI's (the name, its kind and state), a click your pin there (Route's way)
+local function RareTip(tooltip, pin)
+	local RL = MelloUI.RareScannerLook
+	local P = MelloUI.Look and MelloUI.Look.TipPalette and MelloUI.Look.TipPalette() or MelloUI.Palette
+	local title, what, names = RL.Lines(pin.spec.data)
+	local g, t, m = P.selectedTrim, P.text, P.mutedText
+	tooltip:SetText(title, g[1], g[2], g[3])
+	tooltip:AddLine(what, t[1], t[2], t[3])
+	if names then
+		tooltip:AddLine(names, t[1], t[2], t[3], true)
+	end
+	tooltip:AddLine(RL.TEXT.by, m[1], m[2], m[3])
+end
+local function RareClick(pin)
+	local Map = MelloUI.modules and MelloUI.modules.Map
+	if type(Map) == "table" and Map.PinOn then
+		Map:PinOn(pin, (MelloUI.RareScannerLook.Lines(pin.spec.data)))
+	end
+end
+Sources[3] = function(id, add)
+	local RL = MelloUI.RareScannerLook
+	if not (RL and RL.On()) then
+		return
+	end
+	for i, POI in ipairs(RL.POIs(id) or {}) do
+		local x, y = Finite(POI.x), Finite(POI.y)
+		if x and y then
+			local spec = RL.Seal(POI)
+			spec.fillTip, spec.click, spec.data = RareTip, RareClick, POI
+			add("rs:" .. id .. ":" .. tostring(POI.entityID or i) .. ":" .. x .. ":" .. y, Finite(POI.mapID) or id, x, y, spec)
+		end
+	end
+end
 local building   -- the zone being built (its pins' keys)
 local function AddNode(key, mapID, x, y, spec)
 	if spec.icon or spec.atlas then
@@ -648,7 +698,8 @@ end
 local function Zones()
 	local c = S.canvas
 	S.cut = c.cuts
-	if c.z < T.ZONE_FROM or not (Ace("HandyNotes") or Ace("GatherMate2")) then
+	local RL = MelloUI.RareScannerLook
+	if c.z < T.ZONE_FROM or not (Ace("HandyNotes") or Ace("GatherMate2") or (RL and RL.On())) then
 		return
 	end
 	local box = c.box
@@ -886,6 +937,11 @@ function AddonPins.Close()
 	end
 	wipe(S.queue)
 	DropZones()
+	-- (2.1.43: RareScanner asked again at the next open: what was killed or opened since)
+	local RL = MelloUI.RareScannerLook
+	if RL and RL.Forget then
+		RL.Forget()
+	end
 end
 
 function AddonPins.Tick()

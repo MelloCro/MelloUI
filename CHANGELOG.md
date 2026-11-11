@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.43
+
+- Map: with RareScanner installed, its rares, treasures and events show on MelloUI's map as MelloUI's icons on a plate; the rim shows if you just saw one, haven't found it yet or are done.
+- Minimap: RareScanner's icons on the minimap wear the same look.
+- Rare Alert: a rare RareScanner finds comes up in MelloUI's Rare Alert with its place; RareScanner's own alert button is switched off once, switch it on in RareScanner to keep it.
+- Map: with Questie installed, its objective icons (swords, sacks ...) no longer show over MelloUI's quest areas and marks; MelloUI now knows Questie's icons by their kind, not their picture.
+- Map: Questie's flight master icons stay hidden while the map's Flight masters layer shows MelloUI's own.
+- Map: quest areas that touch now show one outline instead of a stack of rings; each objective keeps its marks where it is done, and hovering a mark shows its own area inside.
+- Minimap: quest areas that touch show one outline there too, and hovering a quest mark lifts it and shows its own area, as on the map.
+
 ## 2.1.42
 
 - Map: a Fog Of War option keeps the places you haven't explored hidden on the map, as on the game's own world map, until you walk there.

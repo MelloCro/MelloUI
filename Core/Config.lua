@@ -174,6 +174,15 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.43", lines = {
+		"Map: with RareScanner installed, its rares, treasures and events show on MelloUI's map as MelloUI's icons on a plate; the rim shows if you just saw one, haven't found it yet or are done.",
+		"Minimap: RareScanner's icons on the minimap wear the same look.",
+		"Rare Alert: a rare RareScanner finds comes up in MelloUI's Rare Alert with its place; RareScanner's own alert button is switched off once, switch it on in RareScanner to keep it.",
+		"Map: with Questie installed, its objective icons (swords, sacks ...) no longer show over MelloUI's quest areas and marks; MelloUI now knows Questie's icons by their kind, not their picture.",
+		"Map: Questie's flight master icons stay hidden while the map's Flight masters layer shows MelloUI's own.",
+		"Map: quest areas that touch now show one outline instead of a stack of rings; each objective keeps its marks where it is done, and hovering a mark shows its own area inside.",
+		"Minimap: quest areas that touch show one outline there too, and hovering a quest mark lifts it and shows its own area, as on the map.",
+	} },
 	{ version = "2.1.42", lines = {
 		"Map: a Fog Of War option keeps the places you haven't explored hidden on the map, as on the game's own world map, until you walk there.",
 		"Chat: the whisper window now stays on top of other windows, like the map and the bags, while it is open.",
@@ -209,10 +218,6 @@ local CHANGELOG = {
 		"Quest Tracker: each quest in Questie's tracker carries MelloUI's quest mark, on any Questie version: a click follows it with Route, a right-click opens Questie's menu.",
 		"Quest Tracker: with MelloUI's map on, a click on a quest in Questie's tracker opens it in MelloUI's map and its quest log, and Questie's Show on Map opens MelloUI's map.",
 		"Nameplates: with Questie installed, its own quest icons over the plates are switched off once for MelloUI's Quest Icon; switch them on in Questie to keep them.",
-	} },
-	{ version = "2.1.38", lines = {
-		"Chat: shift-click an item, spell or quest to link it in MelloUI's whisper window and whisper popups, as in the game's chat box.",
-		"Action bars: the stance bar's backdrop fits the stances you have again, instead of the width of ten buttons.",
 	} },
 }
 local LINKS = {

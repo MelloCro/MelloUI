@@ -90,6 +90,7 @@ local T = {
 	GLOW_A = 0.25,    -- a dab's alpha (a few overlap: the band about a third)
 	GLOW_REST = 0.65, -- the glow frame's alpha at rest; a lit area's (hovered) 1, a swell's top 1
 	MAX_LINES = 1200, -- one area's lines, and its dabs, at most
+	JOIN_NEAR = 120,  -- (2.1.43) yards between two areas' nearest places that draws them as one (two lone circles touch)
 }
 QA.T = T
 
@@ -410,6 +411,142 @@ function QA.Places(entry)
 		end
 	end
 	return pxs, pys, table.concat(parts, ";")
+end
+
+--------------------------------------------------------------------------------
+-- (2.1.43) Areas that touch, drawn as one. The user, 2026-11-11, on Hillsbrad Fields (ten objectives, ten rings over
+-- the same farms: "we dont need so many icons"), their pick B of BuildData/output/quest_areas_merge_sketch: areas whose
+-- places lie within JOIN_NEAR yards of each other's show one outline at rest; each objective keeps its own marks and
+-- dots where it is done, and while one of its marks is hovered its own area shows lit inside, the outline stepped back.
+-- One rule for every map that draws them: MelloUI's map, the game's map and the minimap.
+--   QA.Keep(g, xs, ys, cont)   a map's group (one area: key, shape) keeps its places (QA.Places' lists are reused)
+--   QA.Join(groups) -> joins   the groups that touch: each join { key, shape, cont, xs, ys, members, role = "join" },
+--                              each member's .join it and .role "member"; a lone group's both nil
+--   QA.Lit(area, key, dim) -> frame alpha, glow alpha   an area's look, `key` the hovered mark's area (nil: at rest):
+--                              a member out of sight but while it is the hovered one, the outline lit at rest
+--   QA.Rest(area, key, dim)    that look at once (a lay; an area held for its out-motion left alone)
+--------------------------------------------------------------------------------
+
+function QA.Keep(g, xs, ys, cont)
+	local kx, ky = {}, {}
+	for i = 1, #xs do
+		kx[i], ky[i] = xs[i], ys[i]
+	end
+	g.xs, g.ys, g.cont = kx, ky, cont
+	return g
+end
+
+-- two groups' places within JOIN_NEAR of each other (their boxes, grown by it, tested first)
+local function Touch(a, b, near2)
+	local axs, ays, bxs, bys = a.xs, a.ys, b.xs, b.ys
+	for i = 1, #axs do
+		local x, y = axs[i], ays[i]
+		for j = 1, #bxs do
+			local dx, dy = x - bxs[j], y - bys[j]
+			if dx * dx + dy * dy < near2 then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+local function Box(g, grow)
+	local x0, y0, x1, y1 = huge, huge, -huge, -huge
+	for i = 1, #g.xs do
+		local x, y = g.xs[i], g.ys[i]
+		if x < x0 then x0 = x end
+		if x > x1 then x1 = x end
+		if y < y0 then y0 = y end
+		if y > y1 then y1 = y end
+	end
+	return x0 - grow, y0 - grow, x1 + grow, y1 + grow
+end
+
+function QA.Join(groups)
+	local n, up, boxes = #groups, {}, {}
+	local near = T.JOIN_NEAR
+	for i = 1, n do
+		local g = groups[i]
+		up[i] = i
+		g.join, g.role = nil, nil
+		if g.xs then
+			boxes[i] = { Box(g, near / 2) }
+		end
+	end
+	local function Root(i)
+		while up[i] ~= i do
+			up[i] = up[up[i]]
+			i = up[i]
+		end
+		return i
+	end
+	local near2 = near * near
+	for i = 1, n - 1 do
+		local a, ba = groups[i], boxes[i]
+		for j = i + 1, n do
+			local b, bb = groups[j], boxes[j]
+			if ba and bb and a.cont == b.cont and ba[1] <= bb[3] and bb[1] <= ba[3] and ba[2] <= bb[4] and bb[2] <= ba[4]
+				and Root(i) ~= Root(j) and Touch(a, b, near2) then
+				up[Root(i)] = Root(j)
+			end
+		end
+	end
+	local byRoot, joins = {}, {}
+	for i = 1, n do
+		local r = Root(i)
+		byRoot[r] = byRoot[r] or {}
+		local list = byRoot[r]
+		list[#list + 1] = groups[i]
+	end
+	for i = 1, n do
+		local list = byRoot[i]
+		if list and #list > 1 then
+			local keys, xs, ys, seen = {}, {}, {}, {}
+			for _, g in ipairs(list) do
+				keys[#keys + 1] = g.key
+				for k = 1, #g.xs do
+					-- (a place two objectives share counted once: the field, so the outline, as one place's)
+					local id = floor(g.xs[k]) .. "," .. floor(g.ys[k])
+					if not seen[id] then
+						seen[id] = true
+						xs[#xs + 1], ys[#ys + 1] = g.xs[k], g.ys[k]
+					end
+				end
+			end
+			table.sort(keys)
+			local key = "join|" .. table.concat(keys, "|")
+			local shape = QA.Shape(key, xs, ys)
+			if shape then
+				local join = { key = key, shape = shape, cont = list[1].cont, xs = xs, ys = ys, members = list, role = "join" }
+				for _, g in ipairs(list) do
+					g.join, g.role = join, "member"
+				end
+				joins[#joins + 1] = join
+			end
+		end
+	end
+	return joins
+end
+
+function QA.Lit(area, key, dim)
+	local role = area.role
+	if role == "member" then
+		local on = key ~= nil and area.key == key
+		return on and 1 or 0, on and 1 or T.GLOW_REST
+	elseif role == "join" then
+		return key == nil and 1 or dim, T.GLOW_REST
+	end
+	return (key == nil or area.key == key) and 1 or dim, (key ~= nil and area.key == key) and 1 or T.GLOW_REST
+end
+
+function QA.Rest(area, key, dim)
+	if not area or area.hold then
+		return
+	end
+	local a, g = QA.Lit(area, key, dim)
+	area.frame:SetAlpha(a)
+	area.glow:SetAlpha(g)
 end
 
 -- (the tests, /mellomap dump) the shapes kept

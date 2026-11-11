@@ -73,6 +73,8 @@ It comes in two parts, and you need both. Remade for 0.18.3: every voice at a be
 - **One window, nothing covered:** your quest log, the map's layers and Dungeon Info open in a panel beside the whole map. The round buttons between them pick one (L opens your quests); click the lit one to fold the panel away and the window narrows to the map.
 - **Quest List:** every quest in the zone next to your map. Who gives it, where they stand, what's left to do, how much of the zone you've finished. Filters for dungeons, raids, class quests, attunements, events.
 - **Pins for everything:** quest givers, hand-ins, dungeon doors, boats, zeppelins, flight masters. Click a door to see its quests, click a boat to get routed to the dock. The **Icons** slider in the map's title row makes every icon on it bigger or smaller (50 to 200 %), other addons' icons such as Questie's too.
+- **RareScanner:** with RareScanner installed, its rares, treasures and events show on the map in MelloUI's look (2.1.43): MelloUI's icon on a plate, its rim gold with a glow for one you just saw, red for one you haven't found yet, muted for one you found before, and faded once it's killed or opened. Hover one for its name and state, click it to put your pin there. RareScanner decides what shows (its own filters and options); its icons on the minimap wear the same look.
+- **Quest areas that touch:** areas whose places lie within about 120 yards of each other show one gold outline instead of a stack of rings (2.1.43). Each objective keeps its marks and its white dots where it is done; hover one of its marks and its own area shows lit inside the outline, which steps back with the other marks. The same on the game's own map and on the minimap (a minimap mark lifts when you hover it, as on the map).
 - **Smart Route:** a trail of red dots along real roads to wherever you're going, plus an arrow. Cut a corner or take a shortcut? It just keeps going instead of nagging you to turn around. It learns the roads you walk.
 - **Service Finder:** need a mailbox, a repair guy, an inn, a trainer? Little icons under the minimap. Click one, the arrow takes you to the nearest.
 - **Nearest quest first:** MelloUI's Quest Tracker sorts your quests by distance, shows how far each one is and who takes a finished quest back.
@@ -1114,6 +1116,9 @@ in MelloUI's pictures; Questie's quest givers on the minimap (MelloUI has none t
 Hovering one of Questie's icons that still show lists only what is not drawn by MelloUI already: Questie's tooltip
 gathers the quests of every icon of its own nearby (a dungeon's quests all sit on its entrance), and leaves out the
 ones MelloUI keeps out of sight. No setting of Questie's is changed. Its tracker: see Quest Tracker.
+MelloUI knows each of Questie's icons by its kind as Questie keeps it (2.1.43), so the pictures you pick in
+Questie's options change nothing here. On MelloUI's map Questie's flight masters stay out of sight while the
+map's Flight masters layer is on (MelloUI's own show there); its inns and mailboxes always show.
 
 The map's quest tooltips (MelloUI's givers and objective marks, on its map, the game's map and the minimap) show a
 mob's name in red and an NPC's in green, as the game tells foe from friend, levels in their difficulty colour, and an
@@ -1664,6 +1669,9 @@ Widgets tab:
   or a minute after it was last seen. To try it without a rare: `/mello widgets rare` (your target
   as a rare, else a sample one, its place a little north-east of you) or `/mello widgets rare
   elite`.
+  (2.1.43) With RareScanner installed, a rare it finds comes up here too, at its place on
+  RareScanner's map, and RareScanner's own alert button is switched off once (switch it on again in
+  RareScanner's options to keep it; MelloUI never writes it again).
 
 And three more reminders by the portrait: **Bags Almost Full** (at **Free Slots**, 2; a click shows
 the way to the nearest vendor), **Talent Points** and **Well Fed Ending** (its last two minutes).

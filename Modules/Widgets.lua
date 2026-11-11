@@ -82,7 +82,9 @@ local M = MelloUI:RegisterModule("Widgets", {
 	icon = "Interface\\Icons\\INV_Misc_PocketWatch_01",
 	flavour = "What needs you now, in one small column.",
 	-- (no group: its rows sit on the Reminders page's Widgets tab, Core/ConfigLayout.lua)
-	keep = { "^cd_" },   -- each character's profession cooldowns (cd_<GUID>): never in a profile
+	-- each character's profession cooldowns (cd_<GUID>): never in a profile; (2.1.43) RareScanner's alert button
+	-- switched off once here (Core/RareScannerLook.lua)
+	keep = { "^cd_", "rareScannerAlertOff" },
 	enabledByDefault = true,
 	defaults = {
 		loot = true, corpse = true, timed = true, summon = true, resurrect = true, ready = true, threat = true, whisper = true,
@@ -2848,6 +2850,16 @@ function rare.Unit(unit)
 		return
 	end
 	rare.Spot(kind, name, rare.Npc((Ask(UnitGUID, unit))))
+end
+
+-- (2.1.43; the user: "Rarescanner is the engine ... we already have the rare notification in our widget") a rare
+-- another addon spotted -- RareScanner's finds, Core/RareScannerLook.lua -- through the same path as ours (one row, the
+-- same creature or name never twice)
+function M:RareSpot(kind, name, npc, mapID, x, y)
+	if not On("rare") or type(name) ~= "string" then
+		return
+	end
+	rare.Spot(kind == "rareelite" and "rareelite" or "rare", name, npc, nil, mapID, x, y)
 end
 
 -- /mello widgets rare [elite] (the user, 2026-10-04: "how can i test the

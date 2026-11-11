@@ -865,8 +865,9 @@ end
 --------------------------------------------------------------------------------
 -- Questie's icons in MelloUI's pictures (the user, 2026-11-10: "if Questie is Drawing Icons on the Map and Minimap,
 -- replace its icons with ours"; 2.1.4 for MelloUI's map: "Those polestar and questie icons need to be replaced by our
--- own, we have the library for it, and match the themes"). An icon of Questie's is known by its picture's file name
--- (Questie.icons); `cover` says what MelloUI's map shows of the quest already (MapAddonPins: nothing twice)
+-- own, we have the library for it, and match the themes"). An icon of Questie's is known by its kind (QL.Look: its
+-- data.Icon type, 2.1.43), else its picture's file name (Questie.icons); `cover` says what MelloUI's map shows of the
+-- quest already (MapAddonPins: nothing twice)
 --------------------------------------------------------------------------------
 
 local GIVER_ATLAS, ENDER_ATLAS = "QuestNormal", "QuestTurnin"
@@ -901,6 +902,51 @@ function QL.IconLook(path)
 	path = MelloUI.Safe.Text(path)
 	local name = type(path) == "string" and path:match("([^\\/]+)%.%w+$")
 	return name and QL.ICONS[name:lower()] or nil
+end
+
+-- (2.1.43; the user, 2026-11-11, a screenshot of MelloUI's map: Questie's swords and sacks over MelloUI's quest areas,
+-- "the Questie icons are just too much") an icon's look by its kind as Questie keeps it: data.Icon, the number of its
+-- Questie.ICON_TYPE_* (SLAY 1, LOOT 2 ...: Questie.lua), set before its picture and whatever picture the player picked
+-- for that kind in Questie's options; else by its picture's file name (data.Icon a path, then the picture's own)
+local typeNames   -- [Questie's ICON_TYPE number] = its name, lower case ("slay", "available" ...)
+local function TypeNames()
+	if typeNames then
+		return typeNames
+	end
+	local Q = rawget(_G, "Questie")
+	if type(Q) ~= "table" then
+		return nil
+	end
+	local names, n = {}, 0
+	for k, v in pairs(Q) do
+		local name = type(k) == "string" and k:match("^ICON_TYPE_(.+)$")
+		if name and Number(v) then
+			names[v] = name:lower()
+			n = n + 1
+		end
+	end
+	if n > 0 then
+		typeNames = names
+	end
+	return names
+end
+QL.TypeNames = TypeNames
+
+function QL.Look(icon, path)
+	local data = rawget(icon, "data")
+	if type(data) == "table" then
+		local kind = Number(data.Icon)
+		local names = kind and TypeNames()
+		local look = names and names[kind] and QL.ICONS[names[kind]]
+		if look then
+			return look
+		end
+		look = QL.IconLook(data.Icon)
+		if look then
+			return look
+		end
+	end
+	return QL.IconLook(path)
 end
 
 local swapped = setmetatable({}, { __mode = "k" })   -- [Questie's icon picture] = its overlay, while ours is on it
@@ -981,7 +1027,7 @@ local function Restyle(icon)
 	if not tex then
 		return
 	end
-	local look = QL.IconLook(iconPaths[icon])
+	local look = QL.Look(icon, iconPaths[icon])
 	local mini = rawget(icon, "miniMapIcon") and true or false
 	if look and Drawn(look, mini) then
 		Unswap(tex)

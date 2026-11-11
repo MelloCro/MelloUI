@@ -2335,6 +2335,13 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Map: with RareScanner installed, its rares, treasures and events show on MelloUI's map as MelloUI's icons on a plate; the rim shows if you just saw one, haven't found it yet or are done."] = "지도: RareScanner가 설치되어 있으면 그 희귀 몹, 보물, 이벤트가 MelloUI 지도에 판 위의 MelloUI 아이콘으로 표시됩니다. 테두리는 방금 봤는지, 아직 못 찾았는지, 이미 끝냈는지를 알려 줍니다.", -- draft
+	["Minimap: RareScanner's icons on the minimap wear the same look."] = "미니맵: 미니맵의 RareScanner 아이콘도 같은 모습으로 바뀝니다.", -- draft
+	["Rare Alert: a rare RareScanner finds comes up in MelloUI's Rare Alert with its place; RareScanner's own alert button is switched off once, switch it on in RareScanner to keep it."] = "희귀 경보: RareScanner가 찾은 희귀 몹이 위치와 함께 MelloUI의 희귀 경보에 뜹니다. RareScanner 자체 경보 버튼은 한 번 꺼지며, 유지하려면 RareScanner에서 다시 켜세요.", -- draft
+	["Map: with Questie installed, its objective icons (swords, sacks ...) no longer show over MelloUI's quest areas and marks; MelloUI now knows Questie's icons by their kind, not their picture."] = "지도: Questie가 설치되어 있으면 그 목표 아이콘(검, 자루 등)이 더 이상 MelloUI의 퀘스트 구역과 표시 위에 나타나지 않습니다. 이제 MelloUI는 Questie 아이콘을 그림이 아니라 종류로 알아봅니다.", -- draft
+	["Map: Questie's flight master icons stay hidden while the map's Flight masters layer shows MelloUI's own."] = "지도: 지도의 비행 조련사 레이어가 MelloUI의 표시를 보여 주는 동안 Questie의 비행 조련사 아이콘은 숨겨집니다.", -- draft
+	["Map: quest areas that touch now show one outline instead of a stack of rings; each objective keeps its marks where it is done, and hovering a mark shows its own area inside."] = "지도: 서로 닿는 퀘스트 구역은 이제 여러 겹의 고리 대신 하나의 윤곽으로 표시됩니다. 각 목표의 표시는 수행하는 곳에 그대로 있고, 표시에 마우스를 올리면 그 목표의 구역이 안쪽에 나타납니다.", -- draft
+	["Minimap: quest areas that touch show one outline there too, and hovering a quest mark lifts it and shows its own area, as on the map."] = "미니맵: 서로 닿는 퀘스트 구역이 미니맵에서도 하나의 윤곽으로 표시되며, 퀘스트 표시에 마우스를 올리면 지도에서처럼 표시가 떠오르고 그 구역이 나타납니다.", -- draft
 	["Map: a Fog Of War option keeps the places you haven't explored hidden on the map, as on the game's own world map, until you walk there."] = "지도: 전쟁 안개 옵션이 탐험하지 않은 장소를 게임의 세계 지도처럼 그곳에 가기 전까지 지도에서 숨깁니다.", -- draft
 	["Chat: the whisper window now stays on top of other windows, like the map and the bags, while it is open."] = "채팅: 귓속말 창이 열려 있는 동안 지도와 가방 같은 다른 창보다 위에 표시됩니다.", -- draft
 	["Chat: right-click a person in the whisper window to remove that conversation, or all of them; they are gone from the saved history too."] = "채팅: 귓속말 창에서 사람을 오른쪽 클릭하면 그 대화나 모든 대화를 지울 수 있으며, 저장된 기록에서도 사라집니다.", -- draft
@@ -2363,8 +2370,6 @@ Lang:Add("koKR", {
 	["Quest Tracker: each quest in Questie's tracker carries MelloUI's quest mark, on any Questie version: a click follows it with Route, a right-click opens Questie's menu."] = "퀘스트 추적: Questie 버전과 관계없이 Questie 추적기의 각 퀘스트에 MelloUI의 퀘스트 표시가 붙습니다. 클릭하면 Route로 따라가고, 오른쪽 클릭은 Questie의 메뉴를 엽니다.", -- draft
 	["Quest Tracker: with MelloUI's map on, a click on a quest in Questie's tracker opens it in MelloUI's map and its quest log, and Questie's Show on Map opens MelloUI's map."] = "퀘스트 추적: MelloUI 지도가 켜져 있으면 Questie 추적기에서 퀘스트를 클릭할 때 MelloUI 지도와 그 퀘스트 목록에서 열리고, Questie의 '지도에 표시'도 MelloUI 지도를 엽니다.", -- draft
 	["Nameplates: with Questie installed, its own quest icons over the plates are switched off once for MelloUI's Quest Icon; switch them on in Questie to keep them."] = "이름표: Questie가 설치되어 있으면 이름표 위의 Questie 퀘스트 아이콘을 한 번 끄고 MelloUI의 퀘스트 아이콘을 씁니다. 유지하려면 Questie에서 다시 켜세요.", -- draft
-	["Chat: shift-click an item, spell or quest to link it in MelloUI's whisper window and whisper popups, as in the game's chat box."] = "채팅: Shift-클릭으로 아이템, 주문 또는 퀘스트를 MelloUI의 귓속말 창과 귓속말 팝업에도 링크할 수 있습니다. 게임 채팅 상자와 같습니다.", -- draft
-	["Action bars: the stance bar's backdrop fits the stances you have again, instead of the width of ten buttons."] = "행동 단축바: 태세 단축바의 배경이 다시 열 개 버튼 너비가 아니라 가진 태세에 맞춰집니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft

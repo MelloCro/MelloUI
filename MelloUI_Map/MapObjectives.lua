@@ -328,7 +328,7 @@ function GuideGroups(goals, byShape, n, QA)
 			if shape then
 				local g = byShape[shape]
 				if not g then
-					g = { key = key, shape = shape, a = a, objs = {} }
+					g = QA.Keep({ key = key, shape = shape, a = a, objs = {} }, xs, ys, goal.cont)
 					byShape[shape] = g
 					S.groups[#S.groups + 1] = g
 					for i = 1, #xs do
@@ -411,12 +411,19 @@ local function Areas()
 	local box = c.box
 	painter:Begin()
 	if box and box[1] then
-		for _, g in ipairs(S.groups) do
-			if g.x1 >= box[1] and g.x0 <= box[3] and g.y1 >= box[2] and g.y0 <= box[4] then
-				local area = painter:Area(g.key, g.shape, g.project, stride)
-				if g.fresh then
-					g.fresh = false
-					MelloUI.QuestAreas.TraceIn(area, MelloUI.QuestAreas.T.TRACE, g.delay or 0)
+		local QA = MelloUI.QuestAreas
+		-- (2.1.43) the groups and the joined outlines: a joined group's own area kept out of sight but while one of its
+		-- marks is hovered (QA.Lit)
+		for _, list in ipairs({ S.groups, S.joins or NONE }) do
+			for _, g in ipairs(list) do
+				if g.x1 >= box[1] and g.x0 <= box[3] and g.y1 >= box[2] and g.y0 <= box[4] then
+					local area = painter:Area(g.key, g.shape, g.project, stride)
+					area.role = g.role
+					QA.Rest(area, S.hoverKey, T.DIM)
+					if g.fresh then
+						g.fresh = false
+						QA.TraceIn(area, QA.T.TRACE, g.delay or 0)
+					end
 				end
 			end
 		end
@@ -653,6 +660,7 @@ function Objectives.Lay()
 	S.last, S.now = S.now, S.last
 	wipe(S.now)
 	wipe(S.groups)
+	S.joins = NONE
 	S.k, S.cuts = nil, nil
 	Holder()
 	local layer = pins.layers.objectives
@@ -694,7 +702,7 @@ function Objectives.Lay()
 						if shape then
 							local g = byShape[shape]
 							if not g then
-								g = { key = key, shape = shape, a = a, objs = {} }
+								g = QA.Keep({ key = key, shape = shape, a = a, objs = {} }, xs, ys, entry[4])
 								byShape[shape] = g
 								S.groups[#S.groups + 1] = g
 								for i = 1, #xs do
@@ -710,6 +718,8 @@ function Objectives.Lay()
 			end
 		end
 		GuideGroups(guide, byShape, n, QA)
+		-- (2.1.43, the user's pick B) the areas that touch: one outline at rest (QA.Join)
+		S.joins = QA.Join(S.groups)
 		local mx0, my0
 		if ns.Layers and ns.Layers.PlayerPoint then
 			mx0, my0 = ns.Layers.PlayerPoint()
@@ -802,12 +812,39 @@ function Objectives.Lay()
 			end
 			g.delay = delay or 0
 		end
+		-- each joined outline: in the world as its first member's continent, its box, drawn round with the earliest
+		for _, j in ipairs(S.joins) do
+			local a = j.members[1].a
+			j.a = a
+			j.project = function(x, y)
+				local wx, wy = At(a, x, y)
+				return wx, -wy
+			end
+			local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
+			for _, loop in ipairs(j.shape.loops) do
+				for i = 1, #loop - 1, 2 do
+					local wx, wy = At(a, loop[i], loop[i + 1])
+					if wx < x0 then x0 = wx end
+					if wx > x1 then x1 = wx end
+					if wy < y0 then y0 = wy end
+					if wy > y1 then y1 = wy end
+				end
+			end
+			j.x0, j.y0, j.x1, j.y1 = x0, y0, x1, y1
+			j.fresh = not S.seen[j.key]
+			S.seen[j.key] = true
+			local delay = math.huge
+			for _, g in ipairs(j.members) do
+				delay = math.min(delay, g.delay or 0)
+			end
+			j.delay = delay < math.huge and delay or 0
+		end
 	end
 	Summary(layer and layer.on)
 	Gone(live)
 	Areas()
 	for _, g in ipairs(S.groups) do
-		local area = g.bump and S.painter.areas[g.key]
+		local area = g.bump and S.painter.areas[(g.join or g).key]   -- (a joined one's: its outline swells)
 		if area then
 			QA.Swell(area)
 		end
@@ -853,10 +890,13 @@ function Objectives.Hover(pin)
 	end
 	S.hoverKey = key
 	if S.painter then
+		local QA = MelloUI.QuestAreas
 		for _, area in pairs(S.painter.areas) do
 			if not area.hold then
-				Anim:To(area.frame, "alpha", (key == nil or area.key == key) and 1 or T.DIM, 0.15)
-				Anim:To(area.glow, "alpha", (key ~= nil and area.key == key) and 1 or MelloUI.QuestAreas.T.GLOW_REST, 0.15)
+				-- (2.1.43) a joined objective's own area shown lit inside its outline, the outline stepped back (QA.Lit)
+				local a, g = QA.Lit(area, key, T.DIM)
+				Anim:To(area.frame, "alpha", a, 0.15)
+				Anim:To(area.glow, "alpha", g, 0.15)
 			end
 		end
 	end

@@ -66,11 +66,11 @@ local M = MelloUI:RegisterModule("SwingTimers", {
 		-- (2.1.42; CurseForge: the ring "is hard to see often times. More width and color options for that bar would be
 		-- awesome"; the user's picks of swing_ring_sketch: Thin by default, a colour wheel) the ring that fills, on
 		-- every swing badge (the Personal Display's too: Core/SwingBadge.lua's SB.RingLook)
-		{ type = "dropdown", key = "ringWidth", name = "Swing Ring Width", new = "2.1.42", values = {
+		{ type = "dropdown", key = "ringWidth", name = "Swing Ring Width", values = {
 			{ value = "thin", label = "Thin" }, { value = "medium", label = "Medium" }, { value = "thick", label = "Thick" },
 		  },
 		  desc = "How wide the ring round the swing badge is, the one that fills as your next swing nears. The Personal Display's badge wears it too." },
-		{ type = "colour", key = "ringColour", name = "Swing Ring Colour", new = "2.1.42",
+		{ type = "colour", key = "ringColour", name = "Swing Ring Colour",
 		  desc = "The colour of the ring that fills as your next swing nears; the palette's gold until you pick one. The Personal Display's badge wears it too." },
 	},
 })

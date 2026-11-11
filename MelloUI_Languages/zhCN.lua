@@ -2335,6 +2335,13 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Map: with RareScanner installed, its rares, treasures and events show on MelloUI's map as MelloUI's icons on a plate; the rim shows if you just saw one, haven't found it yet or are done."] = "地图：安装 RareScanner 后，它的稀有怪、宝藏和事件会以 MelloUI 的底座图标显示在 MelloUI 地图上；边框表示你刚刚看到、尚未找到还是已经完成。", -- draft
+	["Minimap: RareScanner's icons on the minimap wear the same look."] = "小地图：小地图上的 RareScanner 图标也换成同样的外观。", -- draft
+	["Rare Alert: a rare RareScanner finds comes up in MelloUI's Rare Alert with its place; RareScanner's own alert button is switched off once, switch it on in RareScanner to keep it."] = "稀有警报：RareScanner 找到的稀有怪会带着位置出现在 MelloUI 的稀有警报中；RareScanner 自己的警报按钮会被关闭一次，如需保留，可在 RareScanner 中重新开启。", -- draft
+	["Map: with Questie installed, its objective icons (swords, sacks ...) no longer show over MelloUI's quest areas and marks; MelloUI now knows Questie's icons by their kind, not their picture."] = "地图：安装 Questie 后，它的目标图标（剑、袋子等）不再显示在 MelloUI 自己的任务区域和标记上方；MelloUI 现在按类型而非图片识别 Questie 的图标。", -- draft
+	["Map: Questie's flight master icons stay hidden while the map's Flight masters layer shows MelloUI's own."] = "地图：当地图的“飞行管理员”图层显示 MelloUI 自己的图标时，Questie 的飞行管理员图标会保持隐藏。", -- draft
+	["Map: quest areas that touch now show one outline instead of a stack of rings; each objective keeps its marks where it is done, and hovering a mark shows its own area inside."] = "地图：相互接触的任务区域现在只显示一个轮廓，不再叠成一圈圈的环；每个目标的标记仍留在完成它的地方，鼠标悬停在标记上时会在里面显示它自己的区域。", -- draft
+	["Minimap: quest areas that touch show one outline there too, and hovering a quest mark lifts it and shows its own area, as on the map."] = "小地图：相互接触的任务区域在小地图上也只显示一个轮廓，鼠标悬停在任务标记上时，它会像在地图上一样浮起并显示自己的区域。", -- draft
 	["Map: a Fog Of War option keeps the places you haven't explored hidden on the map, as on the game's own world map, until you walk there."] = "地图：新增“战争迷雾”选项，你尚未探索的地方会在地图上保持隐藏，就像游戏自带的世界地图一样，直到你走到那里。", -- draft
 	["Chat: the whisper window now stays on top of other windows, like the map and the bags, while it is open."] = "聊天：密语窗口打开时现在会保持在其他窗口（例如地图和背包）之上。", -- draft
 	["Chat: right-click a person in the whisper window to remove that conversation, or all of them; they are gone from the saved history too."] = "聊天：在密语窗口中右键点击一个人，可移除该对话或全部对话；它们也会从保存的记录中删除。", -- draft
@@ -2363,8 +2370,6 @@ Lang:Add("zhCN", {
 	["Quest Tracker: each quest in Questie's tracker carries MelloUI's quest mark, on any Questie version: a click follows it with Route, a right-click opens Questie's menu."] = "任务追踪：无论 Questie 是哪个版本，其追踪器中的每个任务都带有 MelloUI 的任务标记：点击即用 Route 跟随它，右键点击打开 Questie 的菜单。", -- draft
 	["Quest Tracker: with MelloUI's map on, a click on a quest in Questie's tracker opens it in MelloUI's map and its quest log, and Questie's Show on Map opens MelloUI's map."] = "任务追踪：开启 MelloUI 地图时，在 Questie 追踪器中点击任务会在 MelloUI 的地图及其任务日志中打开，Questie 的“在地图上显示”也会打开 MelloUI 的地图。", -- draft
 	["Nameplates: with Questie installed, its own quest icons over the plates are switched off once for MelloUI's Quest Icon; switch them on in Questie to keep them."] = "姓名板：安装 Questie 后，其姓名板上方的任务图标会被关闭一次，改用 MelloUI 的任务图标；如需保留，可在 Questie 中重新开启。", -- draft
-	["Chat: shift-click an item, spell or quest to link it in MelloUI's whisper window and whisper popups, as in the game's chat box."] = "聊天：按住 Shift 点击物品、法术或任务，即可在 MelloUI 的密语窗口和密语弹窗中链接，与游戏聊天框相同。", -- draft
-	["Action bars: the stance bar's backdrop fits the stances you have again, instead of the width of ten buttons."] = "动作条：姿态条的背景再次贴合你拥有的姿态，而不是十个按钮的宽度。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft

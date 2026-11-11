@@ -57,7 +57,7 @@ local Finite = MelloUI.Safe.Finite
 local Secret = MelloUI.Safe.IsSecret
 
 local O = { dots = {}, ndots = 0, zoomedIn = nil, asked = false, painter = nil, scale = nil, groups = {},
-	seen = {}, counts = {}, last = {}, now = {}, lastMap = nil, hidden = true, ghosts = {}, areaOf = {} }
+	seen = {}, counts = {}, last = {}, now = {}, lastMap = nil, hidden = true, ghosts = {}, areaOf = {}, joinOf = {} }
 QL.Objectives = O
 
 local DOT_PX = 12               -- a place's dot on the screen (10 until the bead, 0.25.0)
@@ -342,6 +342,7 @@ function O.Add(map, mapID)
 	O.last, O.now = O.now, O.last
 	wipe(O.now)
 	wipe(O.areaOf)
+	wipe(O.joinOf)
 	local list = LogQuests(QL.M.db.objectiveTrackedOnly)
 	local canvas = map:GetCanvas()
 	local W, H = QL.Plain(canvas:GetWidth()), QL.Plain(canvas:GetHeight())
@@ -377,7 +378,7 @@ function O.Add(map, mapID)
 			if shape then
 				local g = byShape[shape]
 				if not g then
-					g = { key = key, shape = shape, a = a, objs = {} }
+					g = QA.Keep({ key = key, shape = shape, a = a, objs = {} }, xs, ys, entry[4])
 					byShape[shape] = g
 					order[#order + 1] = g
 					-- the places' dots (zoomed in), those on the map
@@ -398,7 +399,10 @@ function O.Add(map, mapID)
 	scale = okS and Finite(scale) or 1
 	wipe(O.groups)
 	local meX, meY = Me(mapID)
-	for _, g in ipairs(order) do
+	-- (2.1.43, the user's pick B) the areas that touch: one outline at rest, each objective's own area while one of its
+	-- marks is hovered (QA.Join, QA.Lit: as on MelloUI's map)
+	local joins = QA.Join(order)
+	local function Lay(g)
 		local a = g.a
 		if not perStep then
 			local x1 = MapXY(a, 0, 0)
@@ -414,6 +418,26 @@ function O.Add(map, mapID)
 		g.stride = O.Stride(g, scale)
 		O.groups[#O.groups + 1] = g
 		local area = painter:Area(g.key, g.shape, g.project, g.stride)
+		area.role = g.role
+		QA.Rest(area, nil, DIM)
+		return area
+	end
+	for _, j in ipairs(joins) do
+		j.a = j.members[1].a
+		local area = Lay(j)
+		O.areaOf[j.key] = area
+		local fresh = not O.seen[j.key]
+		O.seen[j.key] = true
+		if fresh then
+			QA.TraceIn(area, QA.T.TRACE, 0)
+		end
+		for _, g in ipairs(j.members) do
+			O.joinOf[g.key] = j.key
+		end
+	end
+	for _, g in ipairs(order) do
+		local a = g.a
+		local area = Lay(g)
 		local fresh = not O.seen[g.key]
 		O.seen[g.key] = true
 		local delay = 0
@@ -459,7 +483,7 @@ function O.Add(map, mapID)
 	-- the progress: an area whose count went up swells once
 	for _, seen in pairs(O.now) do
 		local d = seen[1]
-		local area = d and d.bump and O.areaOf[seen.area]
+		local area = d and d.bump and O.areaOf[O.joinOf[seen.area] or seen.area]   -- (a joined one's: its outline)
 		if area then
 			QA.Swell(area)
 		end
@@ -571,10 +595,13 @@ function O.Hover(b, on)
 	MelloUI.QuestAreas.MarkLift(b, b.Icon, MARK, on)
 	local key = on and data.area or nil
 	if O.painter then
+		local QA = MelloUI.QuestAreas
 		O.painter:Each(function(area)
 			if not area.hold then
-				Anim:To(area.frame, "alpha", (key == nil or area.key == key) and 1 or DIM, 0.15)
-				Anim:To(area.glow, "alpha", (key ~= nil and area.key == key) and 1 or MelloUI.QuestAreas.T.GLOW_REST, 0.15)
+				-- (2.1.43) a joined objective's own area shown lit inside its outline, the outline stepped back (QA.Lit)
+				local a, g = QA.Lit(area, key, DIM)
+				Anim:To(area.frame, "alpha", a, 0.15)
+				Anim:To(area.glow, "alpha", g, 0.15)
 			end
 		end)
 	end
@@ -842,7 +869,7 @@ function O.MiniBuild()
 				if shape then
 					local g = byShape[shape]
 					if not g then
-						g = { key = key, shape = shape, a = a, cont = a.cont, objs = {} }
+						g = QA.Keep({ key = key, shape = shape, a = a, objs = {} }, xs, ys, a.cont)
 						-- its box in Route's yards (the tick draws the areas near you only)
 						local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
 						for _, loop in ipairs(shape.loops) do
@@ -878,12 +905,36 @@ function O.MiniBuild()
 							fresh = true }
 					end
 				end
+				-- (a joined one's own area was never drawn: nothing to draw back; its outline is laid anew)
 				local g = was[seen.area]
-				if g and not byShape[g.shape] and not g.leaving then
+				if g and not g.join and not byShape[g.shape] and not g.leaving then
 					g.leaving = true
 					mini.leaving[#mini.leaving + 1] = g
 				end
 			end
+		end
+	end
+	-- (2.1.43, the user's pick B; "The minimap icons need to match in both look and functionality") the areas that touch:
+	-- one outline, as on the maps; a joined objective's own area drawn only while one of its marks is hovered
+	mini.joins = QA and QA.Join(mini.areas) or {}
+	for _, j in ipairs(mini.joins) do
+		local a = j.members[1].a
+		j.a = a
+		local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
+		for _, loop in ipairs(j.shape.loops) do
+			for i = 1, #loop - 1, 2 do
+				local rx, ry = Carry(a, loop[i], loop[i + 1])
+				if rx < x0 then x0 = rx end
+				if rx > x1 then x1 = rx end
+				if ry < y0 then y0 = ry end
+				if ry > y1 then y1 = ry end
+			end
+		end
+		j.x0, j.y0, j.x1, j.y1 = x0, y0, x1, y1
+		j.fresh = live and not mini.seen[j.key]
+		mini.seen[j.key] = true
+		for _, g in ipairs(j.members) do
+			g.fresh = false
 		end
 	end
 	-- the points: a mark a loop of each area, its objectives' side by side
@@ -933,11 +984,16 @@ function O.MiniEnter(f)
 	end
 	wipe(under)
 	under[p.questID * 100 + p.index] = true
+	-- (2.1.43; the user: "The minimap icons need to match in both look and functionality") as a map's mark: it lifts,
+	-- its own area lit (a joined one's drawn inside its outline), the other areas and their marks stepped back
+	local mini = O.mini
+	mini.hoverKey = p.area and p.area.key or nil
+	mini.hoverFrame = f
+	MelloUI.QuestAreas.MarkLift(f, f.icon, f.atSize or MINI.MARK, true)
 	local tip, Line = GameTooltip, QL.TipLine
 	tip:SetOwner(f, "ANCHOR_CURSOR")
 	O.Tip(tip, p, Line, false)
 	local after = p.questID
-	local mini = O.mini
 	for i = 1, mini.n do
 		local q = mini.points[i]
 		local qf = q.frame
@@ -953,10 +1009,15 @@ function O.MiniEnter(f)
 	tip:Show()
 end
 
--- (the mark's own tooltip only: left, or hidden under the cursor)
+-- (the mark's own tooltip only: left, or hidden under the cursor) and its lift and lit area, all back
 function O.MiniLeave(f)
 	if GameTooltip:GetOwner() == f then
 		GameTooltip:Hide()
+	end
+	local mini = O.mini
+	if mini.hoverFrame == f then
+		mini.hoverKey, mini.hoverFrame = nil, nil
+		MelloUI.QuestAreas.MarkLift(f, f.icon, f.atSize or MINI.MARK, false)
 	end
 end
 
@@ -1103,6 +1164,8 @@ local function MiniArea(painter, g, px, py, reach)
 	box[1], box[2] = math.min(x1, x2, x3, x4), math.min(y1, y2, y3, y4)
 	box[3], box[4] = math.max(x1, x2, x3, x4), math.max(y1, y2, y3, y4)
 	local area = painter:Area(g.key, g.shape, MiniProject, stride, MiniClip, box)
+	area.role = g.role
+	QA.Rest(area, O.mini.hoverKey, DIM)
 	if g.fresh and area.new then
 		g.fresh = false
 		QA.TraceIn(area, QA.T.TRACE)
@@ -1145,8 +1208,17 @@ function O.MiniDraw(cont, round, R, RX, RY)
 		mHW, mHH, mRound, mR, mRX, mRY = (w or 0) / 2, (h or 0) / 2, round, R, RX, RY
 		mCont, mPPY = cont, v.ppy or 1
 		local reach = math.max(R, RX, RY) / (v.ppy or 1) + QA.T.RADIUS
+		-- (2.1.43) the lone areas and the joined outlines; a joined objective's own one while its mark is hovered
+		local hover = mini.hoverKey
 		for _, g in ipairs(mini.areas) do
-			MiniArea(painter, g, v.px, v.py, reach)
+			if not g.join or g.key == hover then
+				MiniArea(painter, g, v.px, v.py, reach)
+			end
+		end
+		for _, j in ipairs(mini.joins or mini.areas) do
+			if j.role == "join" then
+				MiniArea(painter, j, v.px, v.py, reach)
+			end
 		end
 		for i = #mini.leaving, 1, -1 do
 			local g = mini.leaving[i]
@@ -1221,6 +1293,10 @@ function O.MiniDraw(cont, round, R, RX, RY)
 				end
 				f = MiniMark(p, p.kind, size)
 				Route.MarkPlace(f, size, frame, "CENTER", gx, gy)
+				-- (2.1.43, as on the maps) a mark hovered: the other areas' marks step back
+				if hover and p.area and p.area.key ~= hover then
+					alpha = alpha * DIM_MARK
+				end
 				if not (MelloUI.Anim and MelloUI.Anim:IsRunning(f, "drive")) then
 					f:SetAlpha(alpha)
 				end
@@ -1231,7 +1307,7 @@ function O.MiniDraw(cont, round, R, RX, RY)
 				elseif p.bump then
 					p.bump = nil
 					QA.MarkBump(f, f.icon, size)
-				elseif p.area and p.area.stepIn then
+				elseif p.area and (p.area.join or p.area).stepIn then   -- (a joined one's: you in its outline)
 					QA.MarkBump(f, f.icon, size, true)
 				end
 				p.shownAt = true
@@ -1247,6 +1323,9 @@ function O.MiniDraw(cont, round, R, RX, RY)
 		end
 		for _, g in ipairs(mini.areas) do
 			g.stepIn = nil
+		end
+		for _, j in ipairs(mini.joins or mini.areas) do
+			j.stepIn = nil
 		end
 		-- the done marks' ghosts: their tick and their way out, where their mark stood
 		for i = #mini.ghosts, 1, -1 do

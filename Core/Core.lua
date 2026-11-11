@@ -383,6 +383,9 @@ MelloUI.Meaning = {
 	-- (0.18.5, the Rare Alert, the user's pick A of rare_alert_sketch: a rare's
 	-- name in the game's silver, as its crest's metal; a rare elite's stays gold)
 	rareSilver = Hex("#D2D6DC"),       -- (meaning colour)
+	-- (2.1.43, the user's pick B of rarescanner_sketch: RareScanner's "not found yet" -- its red -- on the plate's rim;
+	-- Core/RareScannerLook.lua)
+	rareNotFound = Hex("#FF6152"),     -- (meaning colour)
 	-- (2.1.24, the Nameplate Designer, the user's pick A: two parts on one spot outlined, a warning)
 	partClash = Hex("#E0612E"),        -- (meaning colour)
 	-- (0.19.8, the user's pick C of button_press_sketch: an action's icon out

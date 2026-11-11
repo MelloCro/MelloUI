@@ -321,8 +321,11 @@ CHECKS = {
                   "soft-shaded lines that stack, hold and fade (Gains, Combat Text's feed)"),
     # the map's pin pool used from any file but the Quest List's marks: each
     # pool call marks the map's scroll state dirty from MelloUI code
+    # (2.1.43: Core/RareScannerLook.lua DEFINES these on its stand-in map -- the map RareScanner's own world map
+    # provider is hosted on, the game's map never touched -- it calls none)
     "map-pool-call": (ref(r"AcquirePin|RemovePin|RemoveAllPinsByTemplate|MarkCanvasDirty"),
-                      {"bare": True, "skip": ["MelloUI_QuestList/QuestListMap.lua", "Modules/QuestListMap.lua"]},
+                      {"bare": True, "skip": ["MelloUI_QuestList/QuestListMap.lua", "Modules/QuestListMap.lua",
+                                              "Core/RareScannerLook.lua"]},
                       "the map's pin pool outside the Quest List's marks (Modules/QuestListMap.lua, which "
                       "keep out of it in the Gamepad UI): MelloUI's own layer on the map canvas, as Route "
                       "draws its line"),
