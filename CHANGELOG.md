@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.42
+
+- Map: a Fog Of War option keeps the places you haven't explored hidden on the map, as on the game's own world map, until you walk there.
+- Chat: the whisper window now stays on top of other windows, like the map and the bags, while it is open.
+- Chat: right-click a person in the whisper window to remove that conversation, or all of them; they are gone from the saved history too.
+- Chat: the whisper window lists every conversation the first time it opens after logging in, not only the first two.
+- Swing timer: Swing Ring Width (Thin, Medium, Thick) and Swing Ring Colour options for the ring that fills round the swing badge; the part still to fill is now a dark track, easier to see.
+- Edit Layout: the game's own swing timers no longer show there while MelloUI's swing badge takes their place.
+- Dark Mode: an action button's gold frame for an active stance or a queued spell stays bright, as do its pressed, hover and out-of-range frames; only the plain frames darken.
+
 ## 2.1.41
 
 - Map: a Map Coordinates option shows your coordinates in the line under the map, and the mouse's while it is over the map.

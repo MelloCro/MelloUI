@@ -66,6 +66,7 @@ It comes in two parts, and you need both. Remade for 0.18.3: every voice at a be
 
 ## 🗺️ The map that actually helps
 
+- **Fog Of War:** switch it on (Map page) and the places you haven't explored stay hidden, as on the game's own world map, until you walk there; off, they show faintly (2.1.42).
 - **Coordinates:** switch on **Map Coordinates** (Map page) for your coordinates in the line under the map, and the mouse's while it is over the map, on the zone the line names (2.1.41). **Minimap Coordinates** (Minimap page, the Coordinates part) puts yours right under the map picture, and the mouse's in gold while it is over the minimap: with the Services row in the minimap's frame, at the right end of the line with the "Services" title, just left of Route's distance when that shows. Nothing under the minimap moves. Both follow the game's own choice of tenths or whole numbers.
 - **Opens where you are:** the first time you open the map after logging in, it shows your current zone, a city's own map in a city (2.1.40); after that, each open centres on you at the zoom you left it.
 - **Your size, your place:** drag the dotted grip in the map's bottom-right corner to make the map bigger or smaller (its quest log keeps its size, so it stays readable on any screen; right-click the grip for the standard size and place), and drag its title bar to move the window. No Edit Layout needed.
@@ -419,7 +420,10 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
   Copy puts the whole conversation, each line with its time, links and long messages whole, in a window to copy
   with Ctrl+C) and the answer
   box (Enter sends, Enter on an empty box or Escape lets go). The Whispers tab or the cross fold it down, Escape
-  closes it. While Minimal is on it takes the Whisper Popup Window's place, and whispers stay in the main chat.
+  closes it. While Minimal is on it takes the Whisper Popup Window's place, and whispers stay in the main chat. (2.1.42) It
+  stands over every other window while it is out (the map, the bags; tooltips and the game's menus still over
+  it). Right-click a person for Remove Conversation or Remove All Conversations: they leave the list and the
+  saved history; nothing happens to them in the game, and a new whisper from them starts a new conversation.
 - **Copy Chat Button** (2.1.24, on; Chat > Chat Frame > Behaviour): while your mouse is on the chat, a small round button fades in at its top right corner (with either Chat View: on the Minimal panel's lines, or on each of the game's chat windows); a click opens the tab's lines in MelloUI's copy window, selected, so Ctrl+C copies them -- each line plain (a link its name, colours and icons left out) with its time in front, the game's own time stamps when Chat Timestamps is on. Lines the game keeps secret from addons are left out.
 - Move the input box above the chat window.
 - Input Box Only While Typing (0.20.4, on; Chat > Chat Frame > Behaviour): the input box shows only
@@ -1904,33 +1908,23 @@ summary and the History.
 
 ### Swing Timers
 
-A shot bar and a melee bar in MelloUI's look **in place of the game's swing timers** (Frames
-and bars, Swing Timers; 0.17.1). Off by default. While it is on, the game's own swing timers are
-switched off (its "Show Swing Timer" setting, out of combat) and stay off: switched on in the game's
-settings, they go off again (after a fight, if you are in one), so the two never show together. Your
-own choice comes back when you switch MelloUI's off. While the Personal Display shows your swing on its rails
-(**Swing On The Rails**, on), these bars step aside.
+Your swing timer as a **swing badge** in place of the game's swing timers (Bars > Swing Timers; the bars of 0.17.1 gave
+way to the badge in 1.2.0). Off by default. While it is on, the game's own swing timers are switched off (its "Show
+Swing Timer" setting, out of combat) and stay off; your own choice comes back when you switch MelloUI's off. The
+Personal Display's **Swing Badge** wears the same badge; while it shows it, this one steps aside.
 
-- **Shot Bar**: a bow, gun, crossbow or thrown weapon's Auto Shot, in two stages. First the
-  reload: cream, it shrinks from both ends to the middle, and you can move. Then the aim, the
-  last half second: red, it grows from the middle while you stand still ("Hold"). Moving holds
-  the shot back: the red empties and waits ("Moving") and starts again when you stop. Full cream
-  again at each shot; it fades out when Auto Shot stops.
-- **Melee Bar**: each swing of your main hand, pale, shrinking to the middle; full again at the
-  next swing. A wand's shots ("Shoot (wand)") count down on it too.
-- **Off Hand Bar**: a thinner bar under it for your off-hand weapon, while you carry one.
-- **The look**: the Round rim, your weapon's icon in a round rim left of a flat dark bar, the seconds past its
-  right end (**Seconds**). The fill wears the cast bar's Bar Texture (Look > Textures > Cast Bars). The swing
-  timers' settings are on Bars > Swing Timers.
-- **Show**: In Combat (a bar shows in a fight once it swings or shoots, and fades out when the
-  fight ends) or Always (each bar at rest while you carry a weapon for it).
-- **Width** and **Height**; out of range a bar dims, as the game's does. Move them in Edit Layout
-  (Shot Timer and Swing Timer, just above your cast bar at first); right-click them there for
-  Width and Height too.
+- **The badge**: your weapon in a ring on your target's nameplate (with no plate for your target, above your cast bar:
+  move it in Edit Layout, "Swing Timer"). The ring fills as your next swing nears; the blow strikes as it lands (a
+  critical one gold, a dodge or parry bounced back with the game's word). Auto Shot aims in red; a wand gathers its
+  motes. Out of range it dims.
+- **Shots**, **Melee Swings**, **Off Hand**: which swings it shows (the off hand on a smaller badge beside it).
+- **Swing Ring Width** (2.1.42): Thin (as before), Medium or Thick. **Swing Ring Colour** (2.1.42): a colour wheel,
+  the palette's gold until you pick one. The part still to fill is a dark track. Both badges wear them; with Swing
+  Timers off they follow the Personal Display's switch. Its size: Nameplates > Enemies, Swing Badge Size.
+- While the badge stands in, Edit Layout shows no plates for the game's own swing timers (2.1.42).
 
-The bars are counted down by the game itself, not by MelloUI each frame, so they cost no frame
-rate. `/mello swing log` prints 20 seconds of your swings and shots as the game reports them, to
-copy from `/mellolog`.
+The timing is the game's own, not counted by MelloUI each frame. `/mello swing log` prints 20 seconds of your swings and
+shots as the game reports them, to copy from `/mellolog`.
 
 ### Minimap Panel
 

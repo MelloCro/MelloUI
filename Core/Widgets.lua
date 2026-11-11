@@ -3564,6 +3564,13 @@ do
 		if Kit and Kit.RegisterTexture then
 			Kit:RegisterTexture(t)
 		end
+		-- (2.1.42; the user: "Qued spells and active stances also get dimmed on darkmode") a state's frame -- active
+		-- (checked: a stance on, a spell queued), pressed, hovered, out of range -- is a signal: full brightness under
+		-- Dark Mode (Modules/DarkMode.lua's M.Signal); the plain and empty frames are the surface it darkens
+		local dark = MelloUI.modules and MelloUI.modules.DarkMode
+		if type(dark) == "table" and dark.Signal then
+			dark.Signal(t, state ~= "normal" and state ~= "empty")
+		end
 		if t.SetTextureSliceMargins and t.SetTextureSliceMode and t.SetScale then
 			t:SetTextureSliceMargins(FRAME_CORNER, FRAME_CORNER, FRAME_CORNER, FRAME_CORNER)
 			t:SetTextureSliceMode(Enum and Enum.UITextureSliceMode and Enum.UITextureSliceMode.Stretched or 0)

@@ -3733,6 +3733,12 @@ do
 					tex:SetBlendMode("ADD")
 				end
 				Kit.pieceOf[tex] = true   -- ours: never faded as the game's art
+				-- (2.1.42: the active look shows a state -- a stance on, a spell queued: a signal, full brightness under
+				-- Dark Mode, Modules/DarkMode.lua's M.Signal; marked before its first paint)
+				local dark = MelloUI.modules and MelloUI.modules.DarkMode
+				if type(dark) == "table" and dark.Signal then
+					dark.Signal(tex, true)
+				end
 				Kit:Paint(tex, layer == 1 and "selectedTrim" or "innerPanel", "vertex", 1)
 				tex:Hide()
 				list[i] = tex

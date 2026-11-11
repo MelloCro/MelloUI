@@ -850,6 +850,13 @@ Lang:Add("koKR", {
 	["Your main hand's swings on the swing badge. Wand shots too."] = "스윙 배지의 주무기 스윙. 마법봉 사격도 포함됩니다.", -- draft
 	["Off Hand"] = "보조장비", -- draft
 	["Your off hand's swings on a smaller badge."] = "더 작은 배지의 보조장비 스윙.", -- draft
+	["Swing Ring Width"] = "공격 고리 두께", -- draft
+	["How wide the ring round the swing badge is, the one that fills as your next swing nears. The Personal Display's badge wears it too."] = "다음 공격이 다가올수록 차오르는, 공격 배지 둘레 고리의 두께입니다. 개인 디스플레이의 배지도 이 고리를 씁니다.", -- draft
+	["Thin"] = "얇게", -- draft
+	["Medium"] = "보통", -- draft
+	["Thick"] = "두껍게", -- draft
+	["Swing Ring Colour"] = "공격 고리 색상", -- draft
+	["The colour of the ring that fills as your next swing nears; the palette's gold until you pick one. The Personal Display's badge wears it too."] = "다음 공격이 다가올수록 차오르는 고리의 색상입니다. 직접 고르기 전까지는 팔레트의 금색입니다. 개인 디스플레이의 배지도 이 고리를 씁니다.", -- draft
 	-- PartyMarkers
 	["Party Markers"] = "파티 표시", -- draft
 	["A class medallion over your party members' nameplates, ringed in their role's colour. Open world only."] = "파티원 이름표 위에 역할 색 고리를 두른 직업 메달. 야외에서만.", -- draft
@@ -1406,6 +1413,8 @@ Lang:Add("koKR", {
 	["Inside a dungeon or raid the map opens on its own map (Blizzard's drawings for the classic ones), Dungeon Info's bosses and loot beside it. From outside, a click on its door or on its row in Dungeon Info shows it."] = "던전이나 공격대 안에서는 지도가 그곳의 지도로 열리고(클래식 던전은 블리자드의 그림), 옆에 던전 정보의 우두머리와 전리품이 표시됩니다. 밖에서는 입구나 던전 정보의 해당 줄을 클릭하면 볼 수 있습니다.", -- draft
 	["Map Coordinates"] = "지도 좌표", -- draft
 	["Your coordinates in the line under the map, and the mouse's while it is over the map."] = "지도 아래 줄에 내 좌표를, 마우스가 지도 위에 있는 동안에는 마우스 위치의 좌표도 표시합니다.", -- draft
+	["Fog Of War"] = "전쟁 안개", -- draft
+	["Places you haven't explored stay hidden on the map, as on the game's own world map, until you walk there. Off: they show faintly."] = "탐험하지 않은 장소는 게임의 세계 지도처럼 그곳에 가기 전까지 지도에서 숨겨집니다. 끄면 흐리게 표시됩니다.", -- draft
 	-- CharacterPanel
 	["Character Panel"] = "캐릭터 패널", -- draft
 	["The character window dressed in the painted kit: stone frame, slot rims, framed panes and stats, all on the game's own layout."] = "페인팅 키트를 입힌 캐릭터 창: 돌 테두리, 칸 테두리, 테를 두른 창과 능력치, 모두 게임의 배치 그대로.", -- draft
@@ -2326,6 +2335,13 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Map: a Fog Of War option keeps the places you haven't explored hidden on the map, as on the game's own world map, until you walk there."] = "지도: 전쟁 안개 옵션이 탐험하지 않은 장소를 게임의 세계 지도처럼 그곳에 가기 전까지 지도에서 숨깁니다.", -- draft
+	["Chat: the whisper window now stays on top of other windows, like the map and the bags, while it is open."] = "채팅: 귓속말 창이 열려 있는 동안 지도와 가방 같은 다른 창보다 위에 표시됩니다.", -- draft
+	["Chat: right-click a person in the whisper window to remove that conversation, or all of them; they are gone from the saved history too."] = "채팅: 귓속말 창에서 사람을 오른쪽 클릭하면 그 대화나 모든 대화를 지울 수 있으며, 저장된 기록에서도 사라집니다.", -- draft
+	["Chat: the whisper window lists every conversation the first time it opens after logging in, not only the first two."] = "채팅: 접속 후 처음 귓속말 창을 열 때 처음 두 개만이 아니라 모든 대화가 표시됩니다.", -- draft
+	["Swing timer: Swing Ring Width (Thin, Medium, Thick) and Swing Ring Colour options for the ring that fills round the swing badge; the part still to fill is now a dark track, easier to see."] = "공격 타이머: 공격 배지 둘레에 차오르는 고리에 공격 고리 두께(얇게, 보통, 두껍게)와 공격 고리 색상 옵션이 생겼고, 아직 차지 않은 부분은 이제 어두운 트랙이라 더 잘 보입니다.", -- draft
+	["Edit Layout: the game's own swing timers no longer show there while MelloUI's swing badge takes their place."] = "레이아웃 편집: MelloUI의 공격 배지가 대신하는 동안 게임 자체 공격 타이머는 더 이상 그곳에 표시되지 않습니다.", -- draft
+	["Dark Mode: an action button's gold frame for an active stance or a queued spell stays bright, as do its pressed, hover and out-of-range frames; only the plain frames darken."] = "어두운 모드: 활성 태세나 대기 중인 주문을 나타내는 행동 단축 버튼의 금색 테두리는 밝게 유지되며, 누름·마우스 올림·사거리 밖 테두리도 마찬가지입니다. 기본 테두리만 어두워집니다.", -- draft
 	["Map: a Map Coordinates option shows your coordinates in the line under the map, and the mouse's while it is over the map."] = "지도: 지도 좌표 옵션이 지도 아래 줄에 내 좌표를, 마우스가 지도 위에 있는 동안에는 마우스 위치의 좌표도 표시합니다.", -- draft
 	["Minimap: a Minimap Coordinates option shows your coordinates under the minimap, and the mouse's in gold while it is over the minimap. It takes the place of Hide Minimap Coordinates."] = "미니맵: 미니맵 좌표 옵션이 미니맵 아래에 내 좌표를, 마우스가 미니맵 위에 있는 동안에는 마우스 위치의 좌표를 금색으로 표시합니다. 미니맵 좌표 숨기기를 대신합니다.", -- draft
 	["Dark Mode: gold words no longer darken with it, like the MelloUI button in the Game Menu, the chat's headers and the map's quest counts; only the frames and backgrounds darken."] = "어두운 모드: 게임 메뉴의 MelloUI 버튼, 채팅 머리글, 지도의 퀘스트 수 같은 금색 글자가 더 이상 함께 어두워지지 않습니다. 테두리와 배경만 어두워집니다.", -- draft
@@ -2349,9 +2365,6 @@ Lang:Add("koKR", {
 	["Nameplates: with Questie installed, its own quest icons over the plates are switched off once for MelloUI's Quest Icon; switch them on in Questie to keep them."] = "이름표: Questie가 설치되어 있으면 이름표 위의 Questie 퀘스트 아이콘을 한 번 끄고 MelloUI의 퀘스트 아이콘을 씁니다. 유지하려면 Questie에서 다시 켜세요.", -- draft
 	["Chat: shift-click an item, spell or quest to link it in MelloUI's whisper window and whisper popups, as in the game's chat box."] = "채팅: Shift-클릭으로 아이템, 주문 또는 퀘스트를 MelloUI의 귓속말 창과 귓속말 팝업에도 링크할 수 있습니다. 게임 채팅 상자와 같습니다.", -- draft
 	["Action bars: the stance bar's backdrop fits the stances you have again, instead of the width of ten buttons."] = "행동 단축바: 태세 단축바의 배경이 다시 열 개 버튼 너비가 아니라 가진 태세에 맞춰집니다.", -- draft
-	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "가방, 전투 기록, 재보충 목록: 제목 표시줄을 끌어 옮기고 모서리의 손잡이를 끌어 크기를 바꿉니다(가방: 열 수). 지도와 같습니다.", -- draft
-	["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "채팅: 미니멀 채팅 보기의 채널 목록을 아이콘만 남도록 접을 수 있습니다(가장자리의 작은 손잡이 또는 채팅 페이지의 '채널 목록 아이콘만'). 메시지를 위한 공간이 넓어집니다.", -- draft
-	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "후원자 페이지: 이름이 이제 등급마다 하나씩, 세 개의 움직이는 깃발에 걸리며 MelloUI의 Patreon과 Discord 주소는 복사 상자에 표시됩니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2886,6 +2899,7 @@ Lang:Add("koKR", {
 -- stale: ["Bags by Kind: Bags Full Warning -- with your bags full, Empty shows a 0 slot that shakes and flashes red as the game says so."] = "종류별 가방: 가방 가득 참 경고 -- 가방이 가득 차면 빈 칸이 0 칸을 보여 주고, 게임이 알릴 때 흔들리며 빨갛게 번쩍입니다.", -- draft
 -- stale: ["Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in."] = "종류별 가방: 아이템 미끄러짐 -- 창이 다시 정렬될 때 아이템이 새 칸으로 미끄러지고, 새 아이템은 서서히 나타납니다.", -- draft
 -- stale: ["Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it."] = "종류별 가방: 굴러가는 돈 -- 가방 창의 돈이 새 합계까지 굴러가고, 주운 동전이 그리로 날아듭니다.", -- draft
+-- stale: ["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "가방, 전투 기록, 재보충 목록: 제목 표시줄을 끌어 옮기고 모서리의 손잡이를 끌어 크기를 바꿉니다(가방: 열 수). 지도와 같습니다.", -- draft
 -- stale: ["Bags: items in MelloUI's bag window no longer get blocked with \"MelloUI took an action reserved for the Blizzard UI\": its item buttons are never made during a fight."] = "가방: MelloUI 가방 창의 아이템이 더 이상 \"MelloUI took an action reserved for the Blizzard UI\"로 막히지 않습니다. 아이템 버튼을 전투 중에 만들지 않습니다.", -- draft
 -- stale: ["Bags: items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "가방: 특수 가방(채광 가방, 약초 가방, 탄약 주머니, 화살통 ...)에 든 아이템은 그 가방의 색을 띠고, 창 아래쪽에 그 가방들과 채워진 정도가 표시됩니다.", -- draft
 -- stale: ["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "가방: 직접 만든 종류에 규칙을 여러 개 둘 수 있습니다. 그중 하나라도 맞는 아이템은 그 종류에 들어갑니다(채광용 곡괭이와 낚싯대를 한 \"전문 기술 도구\" 종류에).", -- draft
@@ -2914,6 +2928,7 @@ Lang:Add("koKR", {
 -- stale: ["Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time."] = "채팅: 마우스가 채팅 위에 있는 동안 오른쪽 위 모서리에 채팅 복사 버튼이 나타납니다. 탭의 줄을 복사할 수 있는 창으로 열며, 각 줄에는 시간이 붙습니다.", -- draft
 -- stale: ["Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles."] = "대화: 메시지 공간이 더 넓게: 더 작은 글자, 더 높은 대화창과 귓속말 창, 줄과 말풍선 둘레 여백.", -- draft
 -- stale: ["Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles; your text size stays after a /reload."] = "대화: 메시지를 위한 더 넓은 공간: 더 작은 글자, 더 높은 대화창과 귓속말 창, 줄과 말풍선 주위의 여유; /reload 후에도 글자 크기 유지.", -- draft
+-- stale: ["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "채팅: 미니멀 채팅 보기의 채널 목록을 아이콘만 남도록 접을 수 있습니다(가장자리의 작은 손잡이 또는 채팅 페이지의 '채널 목록 아이콘만'). 메시지를 위한 공간이 넓어집니다.", -- draft
 -- stale: ["Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it."] = "채팅: 미니멀 채팅을 다시 클릭할 수 있습니다(줄, 링크, 채팅 복사 버튼). 2.1.24부터 숨겨진 채팅창이 이를 가릴 수 있었습니다.", -- draft
 -- stale: ["Choose how MelloUI starts. Nothing changes until you install, and you can go back right after."] = "MelloUI를 어떻게 시작할지 고르세요. 설치하기 전에는 아무것도 바뀌지 않고, 설치 직후 되돌릴 수 있습니다.", -- draft
 -- stale: ["Class and reaction colours, the health bar and placement of tooltips. The dark backdrop only applies while the tooltip reskin is off."] = "직업 및 관계 색상, 생명력 막대, 툴팁 위치. 어두운 배경은 툴팁 스킨이 꺼져 있을 때만 적용됩니다.", -- draft
@@ -3443,6 +3458,7 @@ Lang:Add("koKR", {
 -- stale: ["Star the items you want: a loot roll for one shines gold and lights Need. Pick Up Quests: Route takes you to all of a dungeon's quests in the fastest order."] = "원하는 아이템에 별표: 그 아이템 주사위가 금빛으로 빛나고 입찰을 강조합니다. 퀘스트 받기: Route가 던전 퀘스트 전부를 가장 빠른 순서로 안내합니다.", -- draft
 -- stale: ["Strength"] = "강도", -- draft
 -- stale: ["Supplies, mail, repairs and training: a gentle nudge beside your portrait, never a nag. With the widgets for loot rolls, summons and the rest, and the FPS / latency readout."] = "보급품, 우편, 수리, 훈련: 잔소리가 아니라 초상화 옆의 가벼운 귀띔. 전리품 주사위, 소환 등의 위젯과 FPS / 지연 시간 표시도.", -- draft
+-- stale: ["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "후원자 페이지: 이름이 이제 등급마다 하나씩, 세 개의 움직이는 깃발에 걸리며 MelloUI의 Patreon과 Discord 주소는 복사 상자에 표시됩니다.", -- draft
 -- stale: ["Swing Badge: the gold ring round your weapon fills up as your next swing nears."] = "공격 배지: 다음 공격이 다가올수록 무기를 둘러싼 금색 고리가 채워집니다.", -- draft
 -- stale: ["Swing Badge: the strike shows when your blow lands; crits and parries show on the blow they belong to."] = "스윙 배지: 공격이 맞을 때 타격이 보이고, 치명타와 막음은 해당 공격에 표시됩니다.", -- draft
 -- stale: ["Swing On The Rails"] = "레일 위 공격", -- draft

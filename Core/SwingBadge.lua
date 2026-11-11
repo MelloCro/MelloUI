@@ -83,6 +83,18 @@ SB.ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\"
 SB.ROUND = "Interface\\CHARACTERFRAME\\TempPortraitAlphaMask"
 SB.RING = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\ring_gold"   -- (2.1.20: the ring that fills)
 SB.RING_DIM = 0.35   -- (the ring's alpha under the part still to fill)
+-- (2.1.42; CurseForge: the ring "is hard to see often times. More width and color options for that bar would be
+-- awesome"; the user's picks of Workspace/BuildData/output/swing_ring_sketch: Thin, Medium, Thick -- Thin by default;
+-- a colour wheel, the palette's gold until picked; a dark track under the part still to fill) the rings that fill, white
+-- bands tinted (Tools/make_swing_rings.py), and the track's paint; Swing Timers' Swing Ring Width / Colour (read by both
+-- hosts: the Personal Display's badge wears the same ring)
+SB.RINGS = {
+	thin = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Swing\\ring_thin",
+	medium = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Swing\\ring_medium",
+	thick = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Swing\\ring_thick",
+}
+SB.RING_COLOUR = "palette:selectedTrim"
+SB.TRACK_KEY, SB.TRACK_ALPHA = "innerPanel", 0.85
 SB.WHITE = "Interface\\Buttons\\WHITE8X8"
 SB.GOLD, SB.STEEL, SB.ARCANE = { 1, 0.8, 0.35 }, { 0.75, 0.8, 0.9 }, { 0.78, 0.67, 1 }
 SB.PLAIN = { 1, 1, 1 }
@@ -163,6 +175,8 @@ function Badge.Make(small)
 	ring:EnableMouse(false)   -- (a picture in a rim)
 	ring:SetKit(W.KitFor("unitframes"))
 	b.ring = ring
+	-- (2.1.42) the dark track under the ring's part still to fill (Badge.Look)
+	b.track = SB.Track(ring)
 	local sweep = CreateFrame("Cooldown", nil, ring, "CooldownFrameTemplate")
 	sweep:SetAllPoints(ring.icon)
 	Try(sweep, "SetSwipeTexture", SB.ROUND)
@@ -373,22 +387,56 @@ function Badge.Weapon(b, hand)
 	b.kind = SB.STAB[sub] and "stab" or "chop"
 end
 
+-- (2.1.42) the ring as Swing Timers' Swing Ring Width and Colour have it (its settings read whether the module is on or
+-- not: the Personal Display's badge wears the same ring): its band's file, its colour
+function SB.RingLook()
+	local db = MelloUI:GetModuleDB("SwingTimers")
+	local width = type(db) == "table" and SB.RINGS[db.ringWidth] and db.ringWidth or "thin"
+	local r, g, b = W.ColourValue(type(db) == "table" and db.ringColour or SB.RING_COLOUR)
+	return SB.RINGS[width], r, g, b
+end
+
+-- (2.1.42) a ring's dark track: its band (the width's) in the palette's darkest, under the sweep (the ring's child
+-- frame) -- made with the ring, laid by SB.LayTrack
+function SB.Track(ring)
+	local t = ring:CreateTexture(nil, "OVERLAY", nil, 7)
+	t:SetAllPoints(ring)
+	t:Hide()
+	return t
+end
+
+function SB.LayTrack(t, file, on)
+	if not t then
+		return
+	end
+	t:SetShown(on)
+	if on then
+		t:SetTexture(file)
+		W.Paint(t, SB.TRACK_KEY, "vertex", SB.TRACK_ALPHA)
+	end
+end
+
 -- (2.1.20) the sweep's look for the ring the badge wears now: the plain ring fills (the sweep the ring's own art over
 -- the whole ring, the elapsed share lit -- reversed -- over the ring dimmed), the kit's painted rim keeps the shade
--- over the weapon (its rim is no ring to fill). Set each run (a skin's switch may have laid the ring anew)
+-- over the weapon (its rim is no ring to fill). Set each run (a skin's switch may have laid the ring anew).
+-- (2.1.42) the ring that fills is Swing Ring Width's band in Swing Ring Colour, over its dark track (the plain rim
+-- under it hidden: the track is the ring's ground now)
 function Badge.Look(b)
 	local ring, sweep = b.ring, b.sweep
 	local fill = not ring.kitLaid
-	ring.plainRim:SetAlpha(fill and SB.RING_DIM or 1)
-	if b.fill == fill then
+	local file, r, g, bl = SB.RingLook()
+	ring.plainRim:SetAlpha(fill and 0 or 1)
+	local key = fill and (file .. ":" .. r .. ":" .. g .. ":" .. bl) or "kit"
+	if b.fill == fill and b.lookKey == key then
 		return
 	end
-	b.fill = fill
+	b.fill, b.lookKey = fill, key
+	SB.LayTrack(b.track, file, fill)
 	sweep:ClearAllPoints()
 	if fill then
 		sweep:SetAllPoints(ring)
-		Try(sweep, "SetSwipeTexture", SB.RING)
-		Try(sweep, "SetSwipeColor", 1, 1, 1, 1)
+		Try(sweep, "SetSwipeTexture", file)
+		Try(sweep, "SetSwipeColor", r, g, bl, 1)
 		Try(sweep, "SetReverse", true)
 	else
 		sweep:SetAllPoints(ring.icon)
@@ -398,17 +446,30 @@ function Badge.Look(b)
 	end
 end
 
+-- (2.1.42) every badge made laid again in the ring's look now: Swing Ring Width or Colour moved (Swing Timers'
+-- OnSettingChanged), a new palette (the colour the palette's gold until picked)
+function SB.Restyle()
+	for _, b in ipairs(Badge.list) do
+		if b.ring then
+			b.lookKey = nil
+			Badge.Look(b)
+		end
+	end
+end
+MelloUI:On("palette", function()
+	SB.Restyle()
+end, "SwingBadge: the ring's colour")
+
 -- (2.1.20) a ring that is no badge -- the nameplate preview's sample (Modules/Nameplates.lua's stage) -- worn as a
 -- badge's is in a fight: the plain ring dimmed, its gold filled `share` of the way and held there (Cooldown:Pause; a
 -- client without it fills on to the end); the kit's painted rim whole, nothing over it
 function SB.SampleFill(ring, share)
 	local fill = ring.melloFill
 	if not fill then
+		ring.melloTrack = SB.Track(ring)   -- (2.1.42: the dark track, as a badge's)
 		fill = CreateFrame("Cooldown", nil, ring, "CooldownFrameTemplate")
 		fill:SetAllPoints(ring)
 		fill:EnableMouse(false)
-		Try(fill, "SetSwipeTexture", SB.RING)
-		Try(fill, "SetSwipeColor", 1, 1, 1, 1)
 		Try(fill, "SetReverse", true)
 		Try(fill, "SetDrawEdge", false)
 		Try(fill, "SetDrawBling", false)
@@ -416,7 +477,12 @@ function SB.SampleFill(ring, share)
 		ring.melloFill = fill
 	end
 	local plain = not ring.kitLaid
-	ring.plainRim:SetAlpha(plain and SB.RING_DIM or 1)
+	-- (2.1.42) the ring as a badge wears it: Swing Ring Width's band in Swing Ring Colour over the dark track
+	local file, r, g, b = SB.RingLook()
+	Try(fill, "SetSwipeTexture", file)
+	Try(fill, "SetSwipeColor", r, g, b, 1)
+	SB.LayTrack(ring.melloTrack, file, plain)
+	ring.plainRim:SetAlpha(plain and 0 or 1)
 	fill:SetShown(plain)
 	if plain then
 		Try(fill, "SetCooldown", GetTime() - SB.SAMPLE_SPAN * share, SB.SAMPLE_SPAN)

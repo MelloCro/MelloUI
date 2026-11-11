@@ -814,7 +814,10 @@ end
 
 -- a map's pieces (its tiles past the base's: made again when the client tells of new ones): the ones the client
 -- calls explored (C_MapExplorationInfo) full; then (M2, the user's pick H) every other piece the map has (MapData,
--- the client's tables) faint: a place not explored yet, still readable
+-- the client's tables) faint: a place not explored yet, still readable -- (2.1.42; CurseForge: "We need fog of war!";
+-- the user's pick C of fog_sketch) unless Fog Of War is on (Canvas.fog, Map.lua sets it): then none, as on the game's
+-- own map (only the zone's plain ground until you walk there)
+Canvas.fog = false
 function Canvas.AddExplored(p)
 	local tiles, tw = p.tiles, p.tileW
 	if not (tiles and tw) then
@@ -842,7 +845,7 @@ function Canvas.AddExplored(p)
 		end
 	end
 	local data = ns.MapData
-	local all = p.artID and data and data.pieces and data.pieces[p.artID]
+	local all = not Canvas.fog and p.artID and data and data.pieces and data.pieces[p.artID]
 	for _, q in ipairs(all or EMPTY) do
 		if not seen[q[1] .. ":" .. q[2] .. ":" .. q[3] .. ":" .. q[4]] then
 			AddPiece(p, q[1], q[2], q[3], q[4], q, 4, 0, T.UNEXPLORED)

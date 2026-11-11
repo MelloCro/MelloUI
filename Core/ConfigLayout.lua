@@ -954,6 +954,9 @@ function L.Define(R, Link)
 	R("ActionBars", "swing:shot", "General", "SwingTimers.shot")
 	R("ActionBars", "swing:melee", "General", "SwingTimers.melee")
 	R("ActionBars", "swing:offhand", "General", "SwingTimers.offhand")
+	-- (2.1.42: the badge's ring; with Swing Timers off they follow the Personal Display, whose badge wears it too)
+	R("ActionBars", "swing:element", "Look", "SwingTimers.ringWidth", { owner = "PersonalDisplay" })
+	R("ActionBars", "swing:element", "Look", "SwingTimers.ringColour", { owner = "PersonalDisplay" })
 	-- XP & Rep: the bars' look; the XP bar's light and Level Up (one look C13b: Tweaks'), each bar's backdrop
 	-- (2026-10-20, the user's sheet: MelloUI's frame, track, notches and light on the bars, first)
 	R("ActionBars", "xprep:element", "Look", "ActionBars.statusFrame")
@@ -1379,6 +1382,7 @@ function L.Define(R, Link)
 	R("Map", "Map", "General", "Map.#Open The Map")
 	R("Map", "Map", "General", "Map.dungeonMaps")
 	R("Map", "Map", "General", "Map.coords")   -- (2.1.41: yours and the mouse's, in the footer)
+	R("Map", "Map", "General", "Map.fog")   -- (2.1.42: Fog Of War)
 	R("Map", "Dungeon Info", "General", "DungeonInfo.!enabled", { name = "Dungeon Info" })
 	R("Map", "Dungeon Info", "General", "DungeonInfo.#Open Dungeon Info")
 	R("Map", "Dungeon Info", "General", "DungeonInfo.doorRow")
@@ -1630,6 +1634,12 @@ function L.Define(R, Link)
 
 	-- (the swing bars wear the cast bar's Bar Texture)
 	Link("ActionBars", "swing:element", "Look", "BarTextures.castbarsTexture", "Bar Texture (Cast Bar)")
+	-- (2.1.42; the user: "Yes, add the links") the swing badge's ring, where its other settings are: the Personal
+	-- Display's badge part and the nameplate's (its size); the rows themselves on Bars > Swing Timers
+	for _, at in ipairs({ { "UnitGroupFrames", "personal:swing" }, { "Nameplates", "enemies:swing" } }) do
+		Link(at[1], at[2], "Look", "SwingTimers.ringWidth", "Swing Ring Width")
+		Link(at[1], at[2], "Look", "SwingTimers.ringColour", "Swing Ring Colour")
+	end
 	Link("Chat", "Chat Frame", "Look", "UIModifications.shade_chat", "UI Shade")
 	Link("Chat", "Chat Frame", "Text", "Fonts.scaleChat", "Chat Size")
 	Link("Chat", "Whispers", "Look", "UIModifications.parchment_whisper", "Parchment",

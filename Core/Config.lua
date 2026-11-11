@@ -174,6 +174,15 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.42", lines = {
+		"Map: a Fog Of War option keeps the places you haven't explored hidden on the map, as on the game's own world map, until you walk there.",
+		"Chat: the whisper window now stays on top of other windows, like the map and the bags, while it is open.",
+		"Chat: right-click a person in the whisper window to remove that conversation, or all of them; they are gone from the saved history too.",
+		"Chat: the whisper window lists every conversation the first time it opens after logging in, not only the first two.",
+		"Swing timer: Swing Ring Width (Thin, Medium, Thick) and Swing Ring Colour options for the ring that fills round the swing badge; the part still to fill is now a dark track, easier to see.",
+		"Edit Layout: the game's own swing timers no longer show there while MelloUI's swing badge takes their place.",
+		"Dark Mode: an action button's gold frame for an active stance or a queued spell stays bright, as do its pressed, hover and out-of-range frames; only the plain frames darken.",
+	} },
 	{ version = "2.1.41", lines = {
 		"Map: a Map Coordinates option shows your coordinates in the line under the map, and the mouse's while it is over the map.",
 		"Minimap: a Minimap Coordinates option shows your coordinates under the minimap, and the mouse's in gold while it is over the minimap. It takes the place of Hide Minimap Coordinates.",
@@ -204,11 +213,6 @@ local CHANGELOG = {
 	{ version = "2.1.38", lines = {
 		"Chat: shift-click an item, spell or quest to link it in MelloUI's whisper window and whisper popups, as in the game's chat box.",
 		"Action bars: the stance bar's backdrop fits the stances you have again, instead of the width of ten buttons.",
-	} },
-	{ version = "2.1.37", lines = {
-		"Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map.",
-		"Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages.",
-		"Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box.",
 	} },
 }
 local LINKS = {
@@ -3501,6 +3505,12 @@ local function Shown(b, v)
 	local opt = b.opt
 	if not opt or v == nil or type(v) == "boolean" then
 		return v
+	end
+	-- (2.1.42: a colour shown as a chip of it, not its raw "#rrggbb" or "palette:key" -- a link to Swing Ring Colour)
+	if opt.type == "colour" then
+		local r, g, bl = W.ColourValue(v)
+		return string.format("|TInterface\\Buttons\\WHITE8X8:12:24:0:0:8:8:0:8:0:8:%d:%d:%d|t",
+			math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(bl * 255 + 0.5))
 	end
 	if opt.type == "slider" then
 		if opt.format then

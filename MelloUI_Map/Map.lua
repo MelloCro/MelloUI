@@ -123,8 +123,8 @@ M = MelloUI:RegisterModule("Map", {
 	flavour = "The whole world on one sheet, from the continents down to a village.",
 	group = "Quests and travel", navOrder = 4,
 	enabledByDefault = true,
-	-- (2.1.39: iconScale, the title row's slider; 2.1.41: coords, the footer's coordinates)
-	defaults = { dungeonMaps = true, mapShare = false, iconScale = 1, coords = false },
+	-- (2.1.39: iconScale, the title row's slider; 2.1.41: coords, the footer's coordinates; 2.1.42: fog, Fog Of War)
+	defaults = { dungeonMaps = true, mapShare = false, iconScale = 1, coords = false, fog = false },
 	-- (1.0) the window's own state, the player's: where it looked, its quest log open and on which tab -- never in a
 	-- profile or the installer's Full (its layers and Tracked Only travel)
 	keep = { "view", "log", "logTab", "logMode", "mapShare" },
@@ -139,8 +139,12 @@ M = MelloUI:RegisterModule("Map", {
 		  desc = "Inside a dungeon or raid the map opens on its own map (Blizzard's drawings for the classic ones), Dungeon Info's bosses and loot beside it. From outside, a click on its door or on its row in Dungeon Info shows it." },
 		-- (2.1.41; players: "Enable Map and minimap Coordinates"; the user, 2026-11-11: "your Current Character
 		-- Coordinates, and the Coordinates where your mouse is"; the pick A of coords_sketch: words in the footer)
-		{ type = "toggle", key = "coords", name = "Map Coordinates", new = "2.1.41",
+		{ type = "toggle", key = "coords", name = "Map Coordinates",
 		  desc = "Your coordinates in the line under the map, and the mouse's while it is over the map." },
+		-- (2.1.42; CurseForge: "Any way to enable the 'Fog of War' on the Map", "We need fog of war!"; the user's picks
+		-- of fog_sketch: on C, hidden as on the game's map; off A, as before; off by default) MapCanvas.lua's Canvas.fog
+		{ type = "toggle", key = "fog", name = "Fog Of War", new = "2.1.42",
+		  desc = "Places you haven't explored stay hidden on the map, as on the game's own world map, until you walk there. Off: they show faintly." },
 	},
 })
 
@@ -970,6 +974,7 @@ local function Build()
 	local body = W.Panel(f)
 	win.body = body
 	-- the canvas over the body, the name under the cursor on the line below it (on the panel: dark ground)
+	Canvas.fog = M.db.fog and true or false   -- (2.1.42: Fog Of War, before the first places are laid)
 	local canvas = Canvas.New(body)
 	local cf = canvas.frame
 	cf:SetPoint("TOPLEFT", body, "TOPLEFT", T.IN, -T.IN)
@@ -1411,11 +1416,31 @@ function M:OnInit(db)
 	self.db = db
 end
 
+-- (2.1.42) Fog Of War as the setting has it: the places laid again with their unexplored pieces, or without
+local function Fog()
+	local on = M.db and M.db.fog and true or false
+	if Canvas.fog == on then
+		return
+	end
+	Canvas.fog = on
+	if win.canvas then
+		win.canvas:Explored()
+	end
+end
+
 function M:OnEnable(db)
 	self.db = db or self.db
 	TakeKeys(true)
 	TakeHeader(true)
 	Dungeon.Listen(true)   -- (2.1.0: the bosses down this run, for a dungeon's plan)
+	Fog()   -- (a profile's)
+end
+
+function M:OnSettingChanged(key, _, db)
+	self.db = db or self.db
+	if key == "fog" then
+		Fog()
+	end
 end
 
 -- (MelloUI.Map:Show(uiMapID), the API's) the map opened, framed on that map

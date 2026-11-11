@@ -1020,9 +1020,32 @@ local function AreaOf(region)
 	return "windows"
 end
 
+-- (2.1.42; the user: "Qued spells and active stances also get dimmed on darkmode") a part that shows a state -- an
+-- action button's frame while checked (an active stance, a queued spell), pressed, hovered or out of range, a gold
+-- glow, the painted kit's active look -- is a signal, never a surface: kept at full brightness as words are, whatever
+-- its area. M.Signal(region, on): Widgets' W.FrameArt and the kit's active look mark theirs; the kit's shade laid again
+local signals = setmetatable({}, { __mode = "k" })
+function M.Signal(region, on)
+	if type(region) ~= "table" then
+		return
+	end
+	on = on and true or nil
+	if signals[region] == on then
+		return
+	end
+	signals[region] = on
+	local Kit = MelloUI.Kit
+	if type(Kit) == "table" and Kit.Reshade then
+		Kit:Reshade(region)
+	end
+end
+
 -- a part of MelloUI's own kept at full brightness under Dark Mode: its area switched off -- the painted reskin's
--- pieces too (they stand where the game's art stood, on its frames); no region: the windows'
+-- pieces too (they stand where the game's art stood, on its frames); no region: the windows'; (2.1.42) a signal
 local function OwnLit(region)
+	if type(region) == "table" and signals[region] then
+		return true
+	end
 	local db = M.db
 	if not db then
 		return false

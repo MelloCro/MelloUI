@@ -626,13 +626,23 @@ end
 -- the game's there lay over ours and took every press (the user, 2026-11-01: "i cant move the bag bars and exp /
 -- reputation bar"). Registering such a system is refused already (Others); its plate is refused here
 local OWN_HELD = "MelloUI's own stand in for it"
+-- (2.1.42; CurseForge: "in edit mode there are swing timers shown that seem to not do anything, maybe fragments from the
+-- Blizzard UI or older versions") a system whose frames MelloUI holds off by the game's own CVar while its own stands
+-- in: the game's swing timers while the swing badge does (Swing Timers or the Personal Display's, MelloUI:HoldCVar) --
+-- no plate, no Elements row, as for the bars above
+local HELD_BY_CVAR = { SwingTimer = "showSwingTimer" }
 local function OwnHolds(frame)
-	local own = MelloUI.OwnBars
-	if not own then
+	local system, index = SystemOf(frame)
+	if system == nil then
 		return false
 	end
-	local system, index = SystemOf(frame)
-	return system ~= nil and own.Holds(SystemName(system), index) and true or false
+	local name = SystemName(system)
+	local cvar = HELD_BY_CVAR[name]
+	if cvar and MelloUI:CVarHeldBy(cvar) then
+		return true
+	end
+	local own = MelloUI.OwnBars
+	return own ~= nil and own.Holds(name, index) and true or false
 end
 
 -- one system: why it gets no plate, else nil and its rect (UI units)

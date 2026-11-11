@@ -62,6 +62,7 @@ local FACE, PADX, PADY, TX, RX = 16, 10, 6, 36, 10
 local GAP_RUN, GAP_IN, SHARE = 12, 5, 0.66           -- between runs, inside one; a bubble's widest share of the talk
 local CAP, LAY, RUN_SECONDS = 200, 30, 120          -- lines kept per conversation; bubbles laid at most
 local OPEN_TIME, CLOSE_TIME, BUTTON = 0.28, 0.18, 20
+local T_STRATA = "DIALOG"   -- (2.1.42) the window's layer: over every window, under tooltips and the game's menus
 local SAVE_CONVS, SAVE_WHISPERS = 30, 100   -- kept over a logout: the newest conversations, their newest lines
 -- someone whose class is not known: the chat's whisper button of MelloUI's icon set (0.25.0; the game's whisper
 -- icon until then), shown whole in the face's place
@@ -73,6 +74,8 @@ local TEXT = {
 	you = "You",
 	level = "Level %d",
 	now = "now",
+	remove = "Remove Conversation",          -- (2.1.42: a person's right-click menu, WV.PersonMenu)
+	removeAll = "Remove All Conversations",
 }
 
 local function P()
@@ -342,7 +345,68 @@ end
 -- The people
 --------------------------------------------------------------------------------
 
-local RowClick = Perf.Shared("OnClick on a whisper window person", function(row)
+-- (2.1.42; atus_dr on CurseForge: "it would be great to have a button to remove chat contacts, as the list seems to be
+-- growing endlessly"; the user's pick B of Workspace/BuildData/output/whisper_remove_sketch: right-click a person) a
+-- conversation forgotten: off the list, its lines gone, out of the saved history with it (WV.Save writes the list as
+-- it is); nothing done to the person in the game. A whisper from them later starts a new one. The open one removed:
+-- the next one up opens (none: the window's empty text)
+function WV.Remove(c)
+	if not (c and WV.convs[c.key] == c) then
+		return
+	end
+	-- (the widget's row told: read)
+	MelloUI:Fire("whisper", c.key, WV.Shown(c), c.classHex, nil, false, true)
+	WV.convs[c.key] = nil
+	local order = WV.order
+	for i = #order, 1, -1 do
+		if order[i] == c then
+			table.remove(order, i)
+		end
+	end
+	if WV.current == c then
+		WV.Select(order[1])
+	else
+		WV.LayList()
+		if View.WhisperCount then
+			View.WhisperCount(false)
+		end
+	end
+end
+
+function WV.RemoveAll()
+	for k, c in pairs(WV.convs) do
+		MelloUI:Fire("whisper", k, WV.Shown(c), c.classHex, nil, false, true)
+	end
+	wipe(WV.convs)
+	wipe(WV.order)
+	WV.listOffset = 0
+	WV.Select(nil)
+end
+
+-- a person right-clicked: the game's own context menu (as the chat's channel tabs, ChatView.lua's View.ChannelMenu),
+-- their name over Remove Conversation and Remove All Conversations
+function WV.PersonMenu(row)
+	local c = row and row.conv
+	if not (c and MenuUtil and MenuUtil.CreateContextMenu) then
+		return
+	end
+	local name = WV.Shown(c)
+	MenuUtil.CreateContextMenu(row, function(_, root)
+		root:CreateTitle((not Secret(name) and type(name) == "string") and name or TEXT.title)
+		root:CreateButton(TEXT.remove, function()
+			WV.Remove(c)
+		end)
+		root:CreateButton(TEXT.removeAll, function()
+			WV.RemoveAll()
+		end)
+	end)
+end
+
+local RowClick = Perf.Shared("OnClick on a whisper window person", function(row, button)
+	if button == "RightButton" then
+		WV.PersonMenu(row)
+		return
+	end
 	if row.conv and row.conv ~= WV.current then
 		MelloUI:PlayUISound("tab")
 		WV.Select(row.conv)
@@ -374,7 +438,7 @@ local function Row(i)
 	end
 	row = CreateFrame("Button", nil, WV.list)
 	row:SetHeight(ROW_H)
-	row:RegisterForClicks("LeftButtonUp")
+	row:RegisterForClicks("LeftButtonUp", "RightButtonUp")   -- (2.1.42: the right button, its menu: WV.PersonMenu)
 	row.fill = W.Solid(row, "BACKGROUND", "hover", 0.6)
 	row.fill:SetAllPoints(row)
 	row.fill:Hide()
@@ -893,7 +957,10 @@ local function Build()
 	local view = View.frame
 	local holder = CreateFrame("Frame", nil, UIParent)
 	holder:SetAllPoints(UIParent)
-	holder:SetFrameStrata(view:GetFrameStrata())
+	-- (2.1.42; atus_dr on CurseForge: "Could you make it a frame with the highest possible strata so that it can never be
+	-- obscured by any other UI elements?"; the user's pick: always on top, no option) over every window while it is
+	-- out -- the map, the bags (HIGH) -- tooltips and the game's menus still above it; the chat's own layer until then
+	holder:SetFrameStrata(T_STRATA)
 	holder:SetFrameLevel(view:GetFrameLevel() + 30)
 	holder:EnableMouse(false)
 	local f = CreateFrame("Frame", "MelloUIWhispers", holder)
@@ -934,6 +1001,13 @@ local function Build()
 	list:SetScript("OnMouseWheel", function(_, delta)
 		WV.listOffset = WV.listOffset - delta
 		WV.LayList()
+	end)
+	-- (2.1.42) laid again once it has its height: at the first open the list was laid before it had one, as if a
+	-- single person fit (the third and later missing until the next whisper)
+	list:SetScript("OnSizeChanged", function()
+		if WV.open then
+			WV.LayList()
+		end
 	end)
 
 	WV.list = list

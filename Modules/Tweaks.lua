@@ -98,7 +98,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		{ type = "toggle", key = "hideBagBar", name = "Hide Bag Bar",
 		  desc = "Hides the bag bar. Your bag keys still work; it shows in Edit Mode." },
 		-- (2.1.41; players: "Enable Map and minimap Coordinates"; the user's pick A of coords_sketch)
-		{ type = "toggle", key = "minimapCoords", name = "Minimap Coordinates", new = "2.1.41",
+		{ type = "toggle", key = "minimapCoords", name = "Minimap Coordinates",
 		  desc = "Your coordinates under the minimap, and the mouse's while it is over the minimap." },
 		{ type = "toggle", key = "bagSlotsOnBags", parent = "hideBagBar", name = "Bag Slots On Bag Window",
 		  desc = "With the bag bar hidden, the bag slots show under the bag window, so you can still swap bags." },

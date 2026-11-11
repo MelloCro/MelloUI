@@ -54,7 +54,8 @@ local M = MelloUI:RegisterModule("SwingTimers", {
 	keep = { "savedSwing" },
 	-- (1.2.0: the bars' Seconds, Width, Height and Show went with them -- an old save's dropped at each enable, Retired;
 	-- the one look's `look` before them)
-	defaults = { shot = true, melee = true, offhand = true },
+	-- (2.1.42: ringWidth, ringColour -- the badge's ring, SwingBadge's SB.RingLook, both hosts')
+	defaults = { shot = true, melee = true, offhand = true, ringWidth = "thin", ringColour = "palette:selectedTrim" },
 	options = {
 		{ type = "toggle", key = "shot", name = "Shots",
 		  desc = "Your Auto Shot on the swing badge: reload, then aim." },
@@ -62,6 +63,15 @@ local M = MelloUI:RegisterModule("SwingTimers", {
 		  desc = "Your main hand's swings on the swing badge. Wand shots too." },
 		{ type = "toggle", key = "offhand", name = "Off Hand",
 		  desc = "Your off hand's swings on a smaller badge." },
+		-- (2.1.42; CurseForge: the ring "is hard to see often times. More width and color options for that bar would be
+		-- awesome"; the user's picks of swing_ring_sketch: Thin by default, a colour wheel) the ring that fills, on
+		-- every swing badge (the Personal Display's too: Core/SwingBadge.lua's SB.RingLook)
+		{ type = "dropdown", key = "ringWidth", name = "Swing Ring Width", new = "2.1.42", values = {
+			{ value = "thin", label = "Thin" }, { value = "medium", label = "Medium" }, { value = "thick", label = "Thick" },
+		  },
+		  desc = "How wide the ring round the swing badge is, the one that fills as your next swing nears. The Personal Display's badge wears it too." },
+		{ type = "colour", key = "ringColour", name = "Swing Ring Colour", new = "2.1.42",
+		  desc = "The colour of the ring that fills as your next swing nears; the palette's gold until you pick one. The Personal Display's badge wears it too." },
 	},
 })
 
@@ -263,9 +273,13 @@ function M:OnDisable()
 	end
 end
 
--- (Shots, Melee Swings, Off Hand: read at each swing, Host.Wants)
-function M:OnSettingChanged(_, _, db)
+-- (Shots, Melee Swings, Off Hand: read at each swing, Host.Wants; 2.1.42: the ring's width and colour laid again on
+-- every badge made)
+function M:OnSettingChanged(key, _, db)
 	self.db = db or self.db
+	if key == "ringWidth" or key == "ringColour" then
+		SB.Restyle()
+	end
 end
 
 -- for the tests and /mello swing: the state and the host

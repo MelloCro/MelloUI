@@ -850,6 +850,13 @@ Lang:Add("zhCN", {
 	["Your main hand's swings on the swing badge. Wand shots too."] = "挥击徽章上的主手挥击。魔杖射击也包括在内。", -- draft
 	["Off Hand"] = "副手", -- draft
 	["Your off hand's swings on a smaller badge."] = "副手挥击显示在较小的徽章上。", -- draft
+	["Swing Ring Width"] = "攻击圆环宽度", -- draft
+	["How wide the ring round the swing badge is, the one that fills as your next swing nears. The Personal Display's badge wears it too."] = "攻击徽章周围圆环的宽度，该圆环会随着下一次攻击临近而填满。个人显示的徽章也使用它。", -- draft
+	["Thin"] = "细", -- draft
+	["Medium"] = "中", -- draft
+	["Thick"] = "粗", -- draft
+	["Swing Ring Colour"] = "攻击圆环颜色", -- draft
+	["The colour of the ring that fills as your next swing nears; the palette's gold until you pick one. The Personal Display's badge wears it too."] = "随着下一次攻击临近而填满的圆环的颜色；在你选择之前使用配色的金色。个人显示的徽章也使用它。", -- draft
 	-- PartyMarkers
 	["Party Markers"] = "队伍标记", -- draft
 	["A class medallion over your party members' nameplates, ringed in their role's colour. Open world only."] = "小队成员友方姓名板上方的职业徽章，外环为其职责颜色。仅限野外。", -- draft
@@ -1406,6 +1413,8 @@ Lang:Add("zhCN", {
 	["Inside a dungeon or raid the map opens on its own map (Blizzard's drawings for the classic ones), Dungeon Info's bosses and loot beside it. From outside, a click on its door or on its row in Dungeon Info shows it."] = "在地下城或团队副本中，地图会打开它自己的地图（经典副本使用暴雪的绘图），旁边是地下城信息中的首领和战利品。在外面时，点击它的入口或地下城信息中对应的行即可查看。", -- draft
 	["Map Coordinates"] = "地图坐标", -- draft
 	["Your coordinates in the line under the map, and the mouse's while it is over the map."] = "在地图下方的一行显示你的坐标，鼠标在地图上时还显示鼠标所在位置的坐标。", -- draft
+	["Fog Of War"] = "战争迷雾", -- draft
+	["Places you haven't explored stay hidden on the map, as on the game's own world map, until you walk there. Off: they show faintly."] = "你尚未探索的地方会在地图上保持隐藏，就像游戏自带的世界地图一样，直到你走到那里。关闭：它们以淡色显示。", -- draft
 	-- CharacterPanel
 	["Character Panel"] = "角色面板", -- draft
 	["The character window dressed in the painted kit: stone frame, slot rims, framed panes and stats, all on the game's own layout."] = "角色窗口穿上手绘套件：石框、栏位边缘、带框的窗格和属性，全部在游戏自己的布局上。", -- draft
@@ -2326,6 +2335,13 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Map: a Fog Of War option keeps the places you haven't explored hidden on the map, as on the game's own world map, until you walk there."] = "地图：新增“战争迷雾”选项，你尚未探索的地方会在地图上保持隐藏，就像游戏自带的世界地图一样，直到你走到那里。", -- draft
+	["Chat: the whisper window now stays on top of other windows, like the map and the bags, while it is open."] = "聊天：密语窗口打开时现在会保持在其他窗口（例如地图和背包）之上。", -- draft
+	["Chat: right-click a person in the whisper window to remove that conversation, or all of them; they are gone from the saved history too."] = "聊天：在密语窗口中右键点击一个人，可移除该对话或全部对话；它们也会从保存的记录中删除。", -- draft
+	["Chat: the whisper window lists every conversation the first time it opens after logging in, not only the first two."] = "聊天：登录后第一次打开密语窗口时会列出所有对话，而不再只显示前两个。", -- draft
+	["Swing timer: Swing Ring Width (Thin, Medium, Thick) and Swing Ring Colour options for the ring that fills round the swing badge; the part still to fill is now a dark track, easier to see."] = "攻击计时：为攻击徽章周围逐渐填满的圆环新增“攻击圆环宽度”（细、中、粗）和“攻击圆环颜色”选项；尚未填满的部分现在是一条暗色轨道，更容易看清。", -- draft
+	["Edit Layout: the game's own swing timers no longer show there while MelloUI's swing badge takes their place."] = "编辑布局：当 MelloUI 的攻击徽章取代游戏自带的攻击计时器时，后者不再显示在那里。", -- draft
+	["Dark Mode: an action button's gold frame for an active stance or a queued spell stays bright, as do its pressed, hover and out-of-range frames; only the plain frames darken."] = "暗色模式：动作按钮在姿态激活或法术排队时的金色边框保持明亮，按下、鼠标悬停和超出距离时的边框也是如此；只有普通边框会变暗。", -- draft
 	["Map: a Map Coordinates option shows your coordinates in the line under the map, and the mouse's while it is over the map."] = "地图：新增“地图坐标”选项，在地图下方的一行显示你的坐标，鼠标在地图上时还显示鼠标所在位置的坐标。", -- draft
 	["Minimap: a Minimap Coordinates option shows your coordinates under the minimap, and the mouse's in gold while it is over the minimap. It takes the place of Hide Minimap Coordinates."] = "小地图：新增“小地图坐标”选项，在小地图下方显示你的坐标，鼠标在小地图上时以金色显示鼠标所在位置的坐标。它取代了“隐藏小地图坐标”。", -- draft
 	["Dark Mode: gold words no longer darken with it, like the MelloUI button in the Game Menu, the chat's headers and the map's quest counts; only the frames and backgrounds darken."] = "暗色模式：金色文字不再随之变暗，例如游戏菜单中的 MelloUI 按钮、聊天的标题和地图上的任务计数；只有框架和背景会变暗。", -- draft
@@ -2349,9 +2365,6 @@ Lang:Add("zhCN", {
 	["Nameplates: with Questie installed, its own quest icons over the plates are switched off once for MelloUI's Quest Icon; switch them on in Questie to keep them."] = "姓名板：安装 Questie 后，其姓名板上方的任务图标会被关闭一次，改用 MelloUI 的任务图标；如需保留，可在 Questie 中重新开启。", -- draft
 	["Chat: shift-click an item, spell or quest to link it in MelloUI's whisper window and whisper popups, as in the game's chat box."] = "聊天：按住 Shift 点击物品、法术或任务，即可在 MelloUI 的密语窗口和密语弹窗中链接，与游戏聊天框相同。", -- draft
 	["Action bars: the stance bar's backdrop fits the stances you have again, instead of the width of ten buttons."] = "动作条：姿态条的背景再次贴合你拥有的姿态，而不是十个按钮的宽度。", -- draft
-	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "背包、战斗历史和补货列表：拖动标题栏即可移动，拖动角落的手柄即可调整大小（背包：列数），与地图相同。", -- draft
-	["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "聊天：极简聊天视图的频道列表可以折叠为仅图标（点击其边缘的小把手，或在聊天页面开启“频道列表仅显示图标”），为消息留出更多空间。", -- draft
-	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "支持者页面：名字现在挂在三面动态旗帜上，每个等级一面，MelloUI 的 Patreon 和 Discord 地址显示在复制框中。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2886,6 +2899,7 @@ Lang:Add("zhCN", {
 -- stale: ["Bags by Kind: Bags Full Warning -- with your bags full, Empty shows a 0 slot that shakes and flashes red as the game says so."] = "背包分类：背包已满警告——背包满时，“空”显示一个为0的栏位，在游戏提示时晃动并闪红。", -- draft
 -- stale: ["Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in."] = "背包分类：物品滑动——窗口重新排序时物品滑到新栏位；新物品淡入。", -- draft
 -- stale: ["Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it."] = "背包分类：滚动金钱——背包窗口的金钱滚动到新数额；你拾取的钱币飞进去。", -- draft
+-- stale: ["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "背包、战斗历史和补货列表：拖动标题栏即可移动，拖动角落的手柄即可调整大小（背包：列数），与地图相同。", -- draft
 -- stale: ["Bags: items in MelloUI's bag window no longer get blocked with \"MelloUI took an action reserved for the Blizzard UI\": its item buttons are never made during a fight."] = "背包：MelloUI 背包窗口中的物品不再被“MelloUI took an action reserved for the Blizzard UI”阻止：其物品按钮绝不会在战斗中创建。", -- draft
 -- stale: ["Bags: items in a special bag (a mining bag, an herb bag, an ammo pouch, a quiver ...) wear that bag's colour, and the window's foot lists those bags with how full they are."] = "背包：特殊背包（矿石袋、草药包、弹药袋、箭袋……）中的物品带有该背包的颜色，窗口底部列出这些背包及其装满程度。", -- draft
 -- stale: ["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "背包：自定义类别可以有多条规则，符合任意一条的物品都归入该类别（例如一个“专业工具”类别同时收纳矿工锄和鱼竿）。", -- draft
@@ -2914,6 +2928,7 @@ Lang:Add("zhCN", {
 -- stale: ["Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time."] = "聊天：鼠标停在聊天框上时，右上角会出现复制聊天按钮；它会把该标签的消息打开在可复制的窗口中，每行带有时间。", -- draft
 -- stale: ["Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles."] = "聊天：消息空间更大：文字更小，聊天和悄悄话窗口更高，行和气泡周围空间更多。", -- draft
 -- stale: ["Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles; your text size stays after a /reload."] = "聊天：为你的消息留出更多空间：更小的文字，更高的聊天和密语窗口，行与气泡周围更宽松；/reload 后文字大小保持不变。", -- draft
+-- stale: ["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "聊天：极简聊天视图的频道列表可以折叠为仅图标（点击其边缘的小把手，或在聊天页面开启“频道列表仅显示图标”），为消息留出更多空间。", -- draft
 -- stale: ["Chat: the Minimal chat takes clicks again (its lines, links and the Copy Chat button); since 2.1.24 a hidden chat window could cover it."] = "聊天：极简聊天重新可以点击（聊天行、链接和“复制聊天”按钮）；自 2.1.24 起，隐藏的聊天窗口可能会挡住它。", -- draft
 -- stale: ["Choose how MelloUI starts. Nothing changes until you install, and you can go back right after."] = "选择MelloUI如何开始。安装前什么都不会改变，安装后也可以马上返回。", -- draft
 -- stale: ["Class and reaction colours, the health bar and placement of tooltips. The dark backdrop only applies while the tooltip reskin is off."] = "职业和阵营关系颜色、生命条和鼠标提示的位置。深色背景仅在鼠标提示换肤关闭时生效。", -- draft
@@ -3443,6 +3458,7 @@ Lang:Add("zhCN", {
 -- stale: ["Star the items you want: a loot roll for one shines gold and lights Need. Pick Up Quests: Route takes you to all of a dungeon's quests in the fastest order."] = "为想要的物品加星：它的掉落掷骰会发出金光并突出“需求”。接取任务：Route 按最快顺序带你接取地下城的所有任务。", -- draft
 -- stale: ["Strength"] = "强度", -- draft
 -- stale: ["Supplies, mail, repairs and training: a gentle nudge beside your portrait, never a nag. With the widgets for loot rolls, summons and the rest, and the FPS / latency readout."] = "补给、邮件、修理和训练：头像旁轻轻一点，从不唠叨。还有拾取掷骰、召唤等小部件，以及FPS / 延迟读数。", -- draft
+-- stale: ["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "支持者页面：名字现在挂在三面动态旗帜上，每个等级一面，MelloUI 的 Patreon 和 Discord 地址显示在复制框中。", -- draft
 -- stale: ["Swing Badge: the gold ring round your weapon fills up as your next swing nears."] = "攻击徽章：随着下一次攻击临近，环绕你武器的金色圆环会逐渐填满。", -- draft
 -- stale: ["Swing Badge: the strike shows when your blow lands; crits and parries show on the blow they belong to."] = "挥击徽章：攻击命中时显示挥击；暴击和招架显示在对应的那次攻击上。", -- draft
 -- stale: ["Swing On The Rails"] = "轨道上的挥击", -- draft
