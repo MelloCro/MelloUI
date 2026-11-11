@@ -2953,7 +2953,8 @@ end
 -- user's word, once: remembered (questieIconsOff), so a player who switches them on again in Questie keeps them
 function M.QuestieIconsOff()
 	local db = M.db
-	if not (M.isEnabled and db and db.questIcon) or db.questieIconsOff then
+	local I = rawget(MelloUI, "Integrations")   -- (2.1.44: never while Questie's switch on the Addons page is off)
+	if not (M.isEnabled and db and db.questIcon) or db.questieIconsOff or (I and not I.Use("Questie")) then
 		return false
 	end
 	local Q = rawget(_G, "Questie")

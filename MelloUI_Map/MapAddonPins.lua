@@ -321,10 +321,12 @@ local function Place(entry, icon, t, cover)
 	end
 	-- (2.1.4) Questie's: a quest this map shows already is not drawn twice; the rest in MelloUI's own look; (2.1.43) its
 	-- townsfolk of a kind this map draws (its flight masters) not twice either
-	local look = entry.questie and QuestieLook(icon) or nil
-	local town = entry.questie and not look and Town(icon) or nil
+	-- (2.1.44: Questie's icons as any addon's while its switch on the Addons page, Use with MelloUI, is off)
+	local questie = entry.questie and MelloUI.QuestieLook.Used()
+	local look = questie and QuestieLook(icon) or nil
+	local town = questie and not look and Town(icon) or nil
 	local covered = (look and Covered(look, icon, cover)) or (town and cover and cover[town]) or false
-	if entry.questie then
+	if questie then
 		MelloUI.QuestieLook.Unlist(icon, covered)   -- (2.1.39: left out of Questie's tooltip too)
 	end
 	if covered then
@@ -526,8 +528,14 @@ end
 local Sources = {}
 
 -- HandyNotes: every enabled plugin's nodes of the zone (GetNodes2: their own map, 0..1 there)
+-- (2.1.44) an addon's nodes only while its switch on the Addons page, Use with MelloUI, is on (Core/Integrations.lua)
+local function Used(key)
+	local I = rawget(MelloUI, "Integrations")
+	return not (I and not I.Use(key))
+end
+
 Sources[1] = function(id, add)
-	local hn = Ace("HandyNotes")
+	local hn = Used("HandyNotes") and Ace("HandyNotes")
 	if not (hn and type(hn.plugins) == "table" and hn.db and hn.db.profile) then
 		return
 	end
@@ -579,7 +587,7 @@ end
 
 -- GatherMate2: the zone's nodes of each kind it shows (its own filters), its own pictures
 Sources[2] = function(id, add)
-	local gm = Ace("GatherMate2")
+	local gm = Used("GatherMate2") and Ace("GatherMate2")
 	if not (gm and gm.db and gm.db.profile and type(gm.db_types) == "table" and type(gm.GetNodesForZone) == "function") then
 		return
 	end

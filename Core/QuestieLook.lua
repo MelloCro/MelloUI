@@ -73,11 +73,18 @@ local function Tracker()
 	return type(m) == "table" and m or nil
 end
 
+-- (2.1.44) Questie's switch on the Addons page, Use with MelloUI (Core/Integrations.lua): off, Questie in its own look
+local function Used()
+	local I = rawget(MelloUI, "Integrations")
+	return not (I and not I.Use("Questie"))
+end
+QL.Used = Used
+
 -- dressed: MelloUI's Quest Tracker on, stepped aside for Questie's
 local function On()
 	local m = Tracker()
 	local OV = rawget(MelloUI, "Overlaps")
-	return (m and m.isEnabled and type(OV) == "table" and type(OV.By) == "function"
+	return (Used() and m and m.isEnabled and type(OV) == "table" and type(OV.By) == "function"
 		and OV.By("questTracker") == "Questie") and true or false
 end
 
@@ -1027,7 +1034,7 @@ local function Restyle(icon)
 	if not tex then
 		return
 	end
-	local look = QL.Look(icon, iconPaths[icon])
+	local look = Used() and QL.Look(icon, iconPaths[icon]) or nil
 	local mini = rawget(icon, "miniMapIcon") and true or false
 	if look and Drawn(look, mini) then
 		Unswap(tex)

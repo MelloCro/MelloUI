@@ -46,6 +46,11 @@ QS.counts = nil        -- after the build: { questie = rows made, own = MelloUI'
 
 -- QuestieDB, when it is there and speaks a contract this reader knows; else nil
 function QS.Lib()
+	-- (2.1.44: none while Questie's switch on the Addons page, Use with MelloUI, is off -- Core/Integrations.lua)
+	local I = rawget(MelloUI, "Integrations")
+	if I and not I.Use("Questie") then
+		return nil
+	end
 	if lib == nil then
 		local L = rawget(_G, "LibQuestieDB")
 		lib = false

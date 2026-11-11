@@ -2,7 +2,7 @@
 ## Title: |cff9b8cffMello|rUI
 ## Notes: Module based UI tweaks for World of Warcraft: Forever. Type /mello to configure.
 ## Author: Mello
-## Version: 2.1.43
+## Version: 2.1.44
 ## SavedVariables: MelloUIDB, MelloUIVoiceLines, MelloUIRoutes, MelloUIRoadRecords, MelloUIQuestPlaces, MelloUIQuestRecord
 ## SavedVariablesPerCharacter: MelloUIFights, MelloUIQuestOffers, MelloUIChatHistory
 ## OptionalDeps: LibSharedMedia-3.0
@@ -13,6 +13,7 @@
 ## X-Curse-Project-ID: 1702190
 
 Core\Core.lua
+Core\Integrations.lua
 Core\Perf.lua
 Core\Schedule.lua
 Core\SharedMedia.lua
@@ -50,6 +51,7 @@ Core\LevelCard.lua
 Core\SwingBadge.lua
 Core\Config.lua
 Core\SupportersHall.lua
+Core\AddonsPage.lua
 Core\ConfigLayout.lua
 Core\ConfigPreview.lua
 Core\ConfigMotion.xml

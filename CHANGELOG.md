@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.44
+
+- Configurator: a new Addons page lists the addons MelloUI works with: what it does with each, their links, who does which job, and a switch to stop MelloUI using one.
+
 ## 2.1.43
 
 - Map: with RareScanner installed, its rares, treasures and events show on MelloUI's map as MelloUI's icons on a plate; the rim shows if you just saw one, haven't found it yet or are done.

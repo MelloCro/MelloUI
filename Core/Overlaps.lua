@@ -72,8 +72,13 @@ local NOTES = {
 O.NOTES = NOTES
 
 -- its namespace when it is loaded and has its settings, else nil
+-- (2.1.44: not while its switch on the Addons page, Use with MelloUI, is off -- Core/Integrations.lua)
 local function Polestar()
 	local P = rawget(_G, POLESTAR)
+	local I = rawget(MelloUI, "Integrations")
+	if I and not I.Use(POLESTAR) then
+		return nil
+	end
 	return type(P) == "table" and type(rawget(P, "Get")) == "function" and P or nil
 end
 

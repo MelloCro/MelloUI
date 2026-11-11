@@ -163,6 +163,9 @@ local PROFILES_META = { icon = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Ico
 -- (2.1.0) the Supporters page under Profiles (CONFIG.BuildSupportersPage)
 CONFIG.SUPPORTERS_META = { icon = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\page_supporters",
 	title = "Supporters", flavour = "The people who help keep MelloUI going." }
+-- (2.1.44) the Addons page after Profiles (CONFIG.BuildAddonsPage; Core/AddonsPage.lua, Core/Integrations.lua)
+CONFIG.ADDONS_META = { icon = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\svc_addons", title = "Addons",
+	flavour = "The addons MelloUI works with: what it does with each one, and where their settings are.", new = "2.1.44" }
 local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 
 -- Shown on the Home page under "What's new". A short list in a player's
@@ -174,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.44", lines = {
+		"Configurator: a new Addons page lists the addons MelloUI works with: what it does with each, their links, who does which job, and a switch to stop MelloUI using one.",
+	} },
 	{ version = "2.1.43", lines = {
 		"Map: with RareScanner installed, its rares, treasures and events show on MelloUI's map as MelloUI's icons on a plate; the rim shows if you just saw one, haven't found it yet or are done.",
 		"Minimap: RareScanner's icons on the minimap wear the same look.",
@@ -204,20 +210,6 @@ local CHANGELOG = {
 		"Chat: a Copy button on the whisper windows puts the whole conversation in a window to copy, links and long messages included.",
 		"Map: the first time you open the map after logging in, it shows your current zone (a city's own map in a city) instead of the whole world.",
 		"Map: Krol'dok Stronghold's entrance (levels 40-45) shows in the Riverglades, at the cave west of the fortress, and Route takes you there.",
-	} },
-	{ version = "2.1.39", lines = {
-		"Quests: with Questie installed, the Quest List, its map pins, the objective marks and Route use Questie's quest database for the newest quest data; MelloUI's own fills any gaps.",
-		"Quest List: with Questie installed, a quest you cannot take yet (an earlier quest, a breadcrumb, a spell or a profession first) waits in the list, no longer shown as ready.",
-		"Map: with Questie installed, MelloUI's quest givers, objective marks and quest areas stay and Questie's icons of the same kind hide, no more double icons; its others wear MelloUI's pictures.",
-		"Map: an Icons slider in the map's title row sizes every icon on the map, from 50 to 200 %, Questie's too.",
-		"Map: with Questie installed, hovering one of Questie's icons no longer lists the quests MelloUI's own marks already show nearby (a dungeon's quests at its entrance).",
-		"Map: more colour in the quest tooltips: a mob's name red, an NPC's green, levels in their difficulty colour, and an objective's count red until done, green once done.",
-		"Quest Tracker: each quest's XP beside its name (Quest XP).",
-		"Quest Tracker: with Questie's tracker on, MelloUI's steps aside and Questie's wears MelloUI's look, never both at once; its quests stay open in dungeons.",
-		"Quest Tracker: with Questie's tracker on, a leveling guide's steps (RestedXP, Follow The Arrow, APR), and tracked recipes where Questie lists none, dock under it in MelloUI's look.",
-		"Quest Tracker: each quest in Questie's tracker carries MelloUI's quest mark, on any Questie version: a click follows it with Route, a right-click opens Questie's menu.",
-		"Quest Tracker: with MelloUI's map on, a click on a quest in Questie's tracker opens it in MelloUI's map and its quest log, and Questie's Show on Map opens MelloUI's map.",
-		"Nameplates: with Questie installed, its own quest icons over the plates are switched off once for MelloUI's Quest Icon; switch them on in Questie to keep them.",
 	} },
 }
 local LINKS = {
@@ -2180,6 +2172,12 @@ do
 		if w == "home" then
 			return "Home"
 		end
+		-- (2.1.44) the Addons page, its Compatibility tab by its own name
+		if w == "addons" then
+			return "Addons"
+		elseif w == "compatibility" then
+			return "Addons", "Compatibility"
+		end
 		local t = all.extra[w] or all.modules[w]
 		if t and t[1] and resolved.pages[t[1]] then
 			return t[1], t[2], t.pick
@@ -2203,6 +2201,8 @@ local function PageMeta(key)
 		return PROFILES_META.icon, PROFILES_META.flavour
 	elseif key == "Supporters" then
 		return CONFIG.SUPPORTERS_META.icon, CONFIG.SUPPORTERS_META.flavour
+	elseif key == "Addons" then
+		return CONFIG.ADDONS_META.icon, CONFIG.ADDONS_META.flavour
 	end
 	local L = MelloUI.ConfigLayout
 	local def = L and L.pages and L.pages[key]
@@ -6927,6 +6927,42 @@ function CONFIG.BuildSupportersPage(width)
 end
 
 --------------------------------------------------------------------------------
+-- Addons page (2.1.44; the user, 2026-11-11: "focus on other addon integration from now on", "a compatibility tab
+-- with all compatible addons and a link for them"; the sketch BuildData/output/addons_page_sketch, "Looks good"):
+-- three tabs -- Installed (a card per installed addon), Compatibility (every addon MelloUI works with and its link),
+-- Who does what -- their content MelloUI.AddonsPage's (Core/AddonsPage.lua), from MelloUI.Integrations. Each tab's
+-- cards and boxes are their own panels (no section panel); their live parts laid again at each show (the refreshers)
+--------------------------------------------------------------------------------
+
+function CONFIG.BuildAddonsPage(width)
+	local meta = CONFIG.ADDONS_META
+	local page = NewPage("Addons", width)
+	BuildPageHeader(page, meta.title, meta.flavour, nil)
+	local AP = MelloUI.AddonsPage
+	local inner = width - PAD * 2
+	local ctx = {
+		Jump = function(id)
+			CONFIG.JumpFrom(page, id)
+		end,
+		OpenMapLayers = function()
+			local was = window ~= nil and window:IsShown()
+			local map = MelloUI.modules and MelloUI.modules.Map
+			if map and map.OpenLayers and map:OpenLayers() then
+				CONFIG.Away(rawget(_G, "MelloUIMapFrame"), was)
+			end
+		end,
+	}
+	for _, tab in ipairs({ { "Installed", AP.Installed }, { "Compatibility", AP.Compatibility },
+		{ "Who does what", AP.Jobs } }) do
+		local sec = NewSection(page, tab[1])
+		sec.y = tab[2](sec, inner, SKIN, ctx)
+		sec.needsPanel = nil
+	end
+	page:Finish()
+	return page
+end
+
+--------------------------------------------------------------------------------
 -- Window (1.2.4, the shell; the user's sketch of 2026-10-27, docs/plans/configurator-shell.md): the painting, the
 -- side column (the brand, the fixed entries, the search box, the grouped list, the version line), the header (the
 -- page's title, flavour, switch and tabs; the close), the content (the page area) and the footer (Reset this page,
@@ -6942,8 +6978,8 @@ CONFIG.SHELL = { area = "config", painting = CONFIG.PAINTING, title = "MelloUI",
 	sounds = true, mover = { key = "MelloUIConfigFrame", plainDrag = "always", group = "tool" } }
 -- the side column's fixed entries, over the search box (the sketch's: Edit Layout an action, the others pages; Home
 -- first since Suggestion 1 point 6, 2026-11-04 -- the window opens on it)
-CONFIG.FIXED = { "Home", "EditLayout", "Look", "Profiles", "Supporters" }
-CONFIG.FIXED_KEY = { EditLayout = true, Look = true, Home = true, Profiles = true, Supporters = true }
+CONFIG.FIXED = { "Home", "EditLayout", "Look", "Profiles", "Addons", "Supporters" }
+CONFIG.FIXED_KEY = { EditLayout = true, Look = true, Home = true, Profiles = true, Addons = true, Supporters = true }
 
 -- The side list's groups (0.15.0: Core/ConfigLayout.lua's `groups`, the
 -- grouped rail the user picked; made once, at the first open): a header per
@@ -7249,7 +7285,7 @@ local function Build()
 			if nav.key == "Home" then
 				Entry({ kind = "page", key = "Home", new = new }, nav.text, nil, nav.tip)
 				HomeSearch(AddHome)
-			elseif nav.key == "Profiles" or nav.key == "Supporters" then
+			elseif nav.key == "Profiles" or nav.key == "Supporters" or nav.key == "Addons" then
 				Entry({ kind = "page", key = nav.key, new = new }, nav.text, nil, nav.tip)
 			elseif nav.key ~= "EditLayout" then   -- (Edit Layout: the entry below)
 				AddLayoutPage(nav.key, nav, g.title)
@@ -7965,7 +8001,8 @@ end
 -- made with the window (MelloUI:ConfigTour). A name that is not a page is
 -- taken as a /mello word (a module's name: the page it lives on)
 local function TourKey(name)
-	if pages[name] or name == "Home" or name == "Profiles" or name == "Supporters" or Lay.Get().pages[name] then
+	if pages[name] or name == "Home" or name == "Profiles" or name == "Supporters" or name == "Addons"
+		or Lay.Get().pages[name] then
 		return name
 	end
 	return Lay.Word(name) or name
@@ -8044,7 +8081,8 @@ do
 			else
 				local p = lay.pages[key]
 				local icon, tip = PageMeta(key)
-				local new = (key == "Home" and HomeNew()) or (p and p.new) or nil
+				local new = (key == "Home" and HomeNew()) or (p and p.new)
+					or (key == "Addons" and MelloUI:IsNew(CONFIG.ADDONS_META.new)) or nil
 				entries[#entries + 1] = { key = key, text = PageTitle(key), icon = icon, tip = tip, new = new or nil,
 					module = p and p.def.module or nil }
 			end
@@ -8572,6 +8610,8 @@ local function GetPage(name)
 		page = BuildProfilesPage(window.pageWidth)
 	elseif name == "Supporters" then
 		page = CONFIG.BuildSupportersPage(window.pageWidth)
+	elseif name == "Addons" then
+		page = CONFIG.BuildAddonsPage(window.pageWidth)
 	else
 		page = BuildElementPage(name, window.pageWidth)
 		if not page then
@@ -8754,7 +8794,8 @@ function MelloUI:OpenConfig(word)
 		page:SetPick(pick)
 	end
 	if tab then
-		for i, t in ipairs(page.lay and page.lay.tabs or EMPTY) do
+		-- (a page of no layout -- Addons, 2.1.44 -- its tabs are its sections, by their names)
+		for i, t in ipairs(page.lay and page.lay.tabs or page.sections or EMPTY) do
 			local sec = page.sections[i]
 			if t.name == tab and sec and page.current ~= sec then
 				page:Select(sec, wasShown)

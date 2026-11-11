@@ -264,13 +264,22 @@ local function Read(reader)
 end
 
 -- the guide followed: the active one while it runs; else a running guide with steps, else TomTom's arrow
+-- (2.1.44) a guide whose switch on the Addons page, Use with MelloUI, is off is never followed (Core/Integrations.lua)
+local INTEGRATION = { rxp = "RestedXP", zygor = "Zygor", tomtom = "TomTom", polestar = "Polestar" }
+local function Allowed(reader)
+	local I = rawget(MelloUI, "Integrations")
+	local key = INTEGRATION[reader.key]
+	return not (I and key and not I.Use(key))
+end
+Guide.Allowed = Allowed
+
 local function Choose()
-	if Guide.active and Guide.active.runs then
+	if Guide.active and Guide.active.runs and Allowed(Guide.active) then
 		return Guide.active
 	end
 	local arrow
 	for _, reader in ipairs(Guide.readers) do
-		if reader.runs then
+		if reader.runs and Allowed(reader) then
 			if reader.Steps then
 				return reader
 			end
@@ -290,7 +299,7 @@ end
 
 -- a reader's post-hook: its step read again; one whose step changed takes over, a guide with steps over a bare arrow
 function Guide.Changed(reader)
-	if not (Following() and reader.hooked) then
+	if not (Following() and reader.hooked and Allowed(reader)) then
 		return
 	end
 	local sig = Read(reader)

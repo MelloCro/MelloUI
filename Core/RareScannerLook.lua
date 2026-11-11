@@ -56,8 +56,11 @@ local function Loaded()
 	return ok and on == true
 end
 
+-- (2.1.44) and its switch on the Addons page, Use with MelloUI (Core/Integrations.lua)
 function RL.On()
+	local I = rawget(MelloUI, "Integrations")
 	return type(rawget(_G, "RareScannerDataProviderMixin")) == "table" and Loaded()
+		and not (I and not I.Use("RareScanner"))
 end
 
 local function Addon()

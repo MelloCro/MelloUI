@@ -87,6 +87,7 @@ BUILDERS = {"W.ToggleRow": 3, "W.SliderRow": 3, "W.DropdownRow": 3, "W.ButtonRow
             "W.Switch": 1, "W.Dropdown": 1, "W.Slider": 1, "W.Button": 2}
 OWN_FILES = {
     "Core/Config.lua": {},
+    "Core/AddonsPage.lua": {},   # (2.1.44: the Addons page's cards, Core/Config.lua's CONFIG.BuildAddonsPage)
 }
 # (0.15.0: Modules/DynamicUI.lua and its PARCHMENTS and LAYOUT lists went with the configurator rebuild; their rows
 # are UI Modifications' definitions, laid out on the Look and element pages -- MOVED below)
@@ -166,6 +167,9 @@ NOT_OPTIONS = {
 # their own, they pick, copy, reset or jump -- so they never carry a New tag (the rebuild's own texts say so), by
 # their id in this check: why
 PAGE_TOOLS = {
+    "Core/AddonsPage.lua:Button(Tr(TEXT.back))": "the Addons page's Switch back on (2.1.44): puts back a setting of another addon that MelloUI switched off once; no setting of MelloUI's",
+    "Core/AddonsPage.lua:Button(Tr(link[1]))": "the Addons page's settings buttons (2.1.44): each opens a setting where it lives (its page and row, or the map's layers), sets nothing",
+    "Core/AddonsPage.lua:EditBox(box)": "the Addons page's link boxes (2.1.44): an address to copy, read only",
     "Core/Config.lua:W.Dropdown(line)": "a picker page's picker (the frame, bar or window the page's rows are for)",
     "Core/Config.lua:W.Dropdown(line)#2": "a picker page's Copy from (copies the page's per-pick settings between "
                                           "picks)",

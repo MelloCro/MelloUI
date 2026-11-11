@@ -1130,6 +1130,22 @@ function M:OpenDungeonInfo()
 	return Log.IsDungeonInfo()
 end
 
+-- (2.1.44, the configurator's Addons page: an addon's "Map layers") the map with its layers' page out (the gear's)
+function M:OpenLayers()
+	if not self.isEnabled then
+		MelloUI:Print(TEXT.off)
+		return false
+	end
+	if not win.frame then
+		Build()
+	end
+	local opening = win.opening or not win.frame:IsShown()
+	win.frame:Show()
+	Log.Mode("layers", opening)
+	Log.SetOut(true, opening)
+	return true
+end
+
 -- the map shown with Dungeon Info out (Dungeon Info's key toggles it)
 function M:DungeonInfoShown()
 	return win.frame ~= nil and win.frame:IsShown() and Log.IsDungeonInfo()

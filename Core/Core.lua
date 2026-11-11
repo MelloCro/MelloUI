@@ -386,6 +386,8 @@ MelloUI.Meaning = {
 	-- (2.1.43, the user's pick B of rarescanner_sketch: RareScanner's "not found yet" -- its red -- on the plate's rim;
 	-- Core/RareScannerLook.lua)
 	rareNotFound = Hex("#FF6152"),     -- (meaning colour)
+	addonWorking = Hex("#7AC860"),     -- (2.1.44, the Addons page: an integration that works) (meaning colour)
+	addonPartly = Hex("#E08A1E"),      -- (2.1.44: one whose addon changed under it, a part off) (meaning colour)
 	-- (2.1.24, the Nameplate Designer, the user's pick A: two parts on one spot outlined, a warning)
 	partClash = Hex("#E0612E"),        -- (meaning colour)
 	-- (0.19.8, the user's pick C of button_press_sketch: an action's icon out
@@ -806,7 +808,9 @@ end
 --   MelloUI:ClickCast(button)   a secure unit button of ours offered to the click-cast addons
 --   MelloUI:ClickCastOn() -> true while a click-cast addon is there (its table or Clique's header)
 function MelloUI:ClickCast(button)
-	if type(button) ~= "table" then
+	-- (2.1.44: not while Clique's switch on the Addons page, Use with MelloUI, is off -- Core/Integrations.lua)
+	local I = rawget(MelloUI, "Integrations")
+	if type(button) ~= "table" or (I and not I.Use("Clique")) then
 		return
 	end
 	local list = rawget(_G, "ClickCastFrames")
@@ -818,6 +822,10 @@ function MelloUI:ClickCast(button)
 end
 
 function MelloUI:ClickCastOn()
+	local I = rawget(MelloUI, "Integrations")
+	if I and not I.Use("Clique") then
+		return false
+	end
 	return rawget(_G, "ClickCastHeader") ~= nil
 		or (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Clique") and true) or false
 end
