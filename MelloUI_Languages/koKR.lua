@@ -556,8 +556,8 @@ Lang:Add("koKR", {
 	["Hides the micro menu. It shows in Edit Mode."] = "마이크로 메뉴를 숨깁니다. 편집 모드에서는 보입니다.", -- draft
 	["Hide Bag Bar"] = "가방 바 숨기기", -- draft
 	["Hides the bag bar. Your bag keys still work; it shows in Edit Mode."] = "가방 바를 숨깁니다. 가방 단축키는 계속 작동하며 편집 모드에서는 보입니다.", -- draft
-	["Hide Minimap Coordinates"] = "미니맵 좌표 숨기기", -- draft
-	["Hides the coordinates under the minimap."] = "미니맵 아래 좌표를 숨깁니다.", -- draft
+	["Minimap Coordinates"] = "미니맵 좌표", -- draft
+	["Your coordinates under the minimap, and the mouse's while it is over the minimap."] = "미니맵 아래에 내 좌표를, 마우스가 미니맵 위에 있는 동안에는 마우스 위치의 좌표도 표시합니다.", -- draft
 	["Bag Slots On Bag Window"] = "가방 창의 가방 칸", -- draft
 	["With the bag bar hidden, the bag slots show under the bag window, so you can still swap bags."] = "가방 바를 숨기면 가방 창 아래에 가방 칸이 보여 가방을 계속 바꿀 수 있습니다.", -- draft
 	["Collapse Arrow"] = "접기 화살표", -- draft
@@ -1404,6 +1404,8 @@ Lang:Add("koKR", {
 	["Open"] = "열기", -- draft
 	["Dungeon Maps"] = "던전 지도", -- draft
 	["Inside a dungeon or raid the map opens on its own map (Blizzard's drawings for the classic ones), Dungeon Info's bosses and loot beside it. From outside, a click on its door or on its row in Dungeon Info shows it."] = "던전이나 공격대 안에서는 지도가 그곳의 지도로 열리고(클래식 던전은 블리자드의 그림), 옆에 던전 정보의 우두머리와 전리품이 표시됩니다. 밖에서는 입구나 던전 정보의 해당 줄을 클릭하면 볼 수 있습니다.", -- draft
+	["Map Coordinates"] = "지도 좌표", -- draft
+	["Your coordinates in the line under the map, and the mouse's while it is over the map."] = "지도 아래 줄에 내 좌표를, 마우스가 지도 위에 있는 동안에는 마우스 위치의 좌표도 표시합니다.", -- draft
 	-- CharacterPanel
 	["Character Panel"] = "캐릭터 패널", -- draft
 	["The character window dressed in the painted kit: stone frame, slot rims, framed panes and stats, all on the game's own layout."] = "페인팅 키트를 입힌 캐릭터 창: 돌 테두리, 칸 테두리, 테를 두른 창과 능력치, 모두 게임의 배치 그대로.", -- draft
@@ -2324,6 +2326,9 @@ Lang:Add("koKR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "전체 설정을 이름 하나로. 저장하고, 불러오고, 새 설치의 기본값으로 정하세요.", -- draft
 	["Supporters"] = "후원자", -- draft
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
+	["Map: a Map Coordinates option shows your coordinates in the line under the map, and the mouse's while it is over the map."] = "지도: 지도 좌표 옵션이 지도 아래 줄에 내 좌표를, 마우스가 지도 위에 있는 동안에는 마우스 위치의 좌표도 표시합니다.", -- draft
+	["Minimap: a Minimap Coordinates option shows your coordinates under the minimap, and the mouse's in gold while it is over the minimap. It takes the place of Hide Minimap Coordinates."] = "미니맵: 미니맵 좌표 옵션이 미니맵 아래에 내 좌표를, 마우스가 미니맵 위에 있는 동안에는 마우스 위치의 좌표를 금색으로 표시합니다. 미니맵 좌표 숨기기를 대신합니다.", -- draft
+	["Dark Mode: gold words no longer darken with it, like the MelloUI button in the Game Menu, the chat's headers and the map's quest counts; only the frames and backgrounds darken."] = "어두운 모드: 게임 메뉴의 MelloUI 버튼, 채팅 머리글, 지도의 퀘스트 수 같은 금색 글자가 더 이상 함께 어두워지지 않습니다. 테두리와 배경만 어두워집니다.", -- draft
 	["Bags: the new Reagent Bag With The Bags option shows the Reagent Bag's items in your bags' one view, its slots in lime and its free slots counted in an Empty slot of their own."] = "가방: 새 옵션 '재료 가방을 가방과 함께'는 재료 가방의 아이템을 가방 통합 보기에 표시하고, 그 칸은 라임색으로, 빈 칸은 별도의 '빈 칸'에 개수로 표시합니다.", -- draft
 	["Chat: the short channel tags (G, P, R ...) wear the game's own chat colours, and with Short Channel Tags on the Minimal Chat View's headers show only the tag."] = "채팅: 짧은 채널 표시(G, P, R ...)가 게임 자체의 채팅 색을 사용하며, 짧은 채널 표시를 켜면 최소 채팅 보기의 머리줄에 표시만 나타납니다.", -- draft
 	["Chat: a Chat Timestamps option on the Chat page sets the game's own chat timestamps, None hides them; the Minimal Chat View follows it."] = "채팅: 채팅 페이지의 '채팅 시간 표시' 옵션이 게임 자체의 채팅 시간 표시를 설정하며, '없음'은 숨깁니다. 최소 채팅 보기도 이를 따릅니다.", -- draft
@@ -2347,7 +2352,6 @@ Lang:Add("koKR", {
 	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "가방, 전투 기록, 재보충 목록: 제목 표시줄을 끌어 옮기고 모서리의 손잡이를 끌어 크기를 바꿉니다(가방: 열 수). 지도와 같습니다.", -- draft
 	["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "채팅: 미니멀 채팅 보기의 채널 목록을 아이콘만 남도록 접을 수 있습니다(가장자리의 작은 손잡이 또는 채팅 페이지의 '채널 목록 아이콘만'). 메시지를 위한 공간이 넓어집니다.", -- draft
 	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "후원자 페이지: 이름이 이제 등급마다 하나씩, 세 개의 움직이는 깃발에 걸리며 MelloUI의 Patreon과 Discord 주소는 복사 상자에 표시됩니다.", -- draft
-	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "지도: 오른쪽 아래 모서리의 손잡이를 끌어 지도 크기를 바꾸고(옆의 퀘스트 목록은 크기가 그대로), 제목 표시줄을 끌어 옮길 수 있습니다. 레이아웃 편집이 필요 없습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3067,6 +3071,7 @@ Lang:Add("koKR", {
 -- stale: ["Heals burst, seal onto the portrait or close round the frame as a shield; cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards, golden barriers, afterimages."] = "치유가 터지고, 초상화에 봉인되거나 보호막으로 개체창을 감쌉니다. 재사용 대기시간: 포효에는 충격파, 도발에는 빨간 !, 강철 방어구, 황금 방벽, 잔상.", -- draft
 -- stale: ["Health and power percent, spell names and times, and your shield's amount."] = "생명력·자원 백분율, 주문 이름과 시간, 보호막 양.", -- draft
 -- stale: ["Health bar backgrounds/borders and cast bars on nameplates."] = "이름표의 생명력 막대 배경/테두리와 시전바.", -- draft
+-- stale: ["Hide Minimap Coordinates"] = "미니맵 좌표 숨기기", -- draft
 -- stale: ["Hide Quests More Than N Levels Above Me"] = "N레벨 넘게 높은 퀘스트 숨기기", -- draft
 -- stale: ["Hide the PvP badge beside the portrait of the player, target and focus frames: the diamond with your honour rank, or the faction icon, that shows while you or they are flagged for PvP."] = "플레이어, 대상, 주시 대상 창 초상화 옆의 PvP 휘장을 숨깁니다: 나나 그들이 PvP 상태일 때 보이는 명예 계급 마름모 또는 진영 아이콘.", -- draft
 -- stale: ["Hide the background art behind the chat tabs. The tab text stays."] = "대화 탭 뒤의 배경 그림을 숨깁니다. 탭 글자는 남습니다.", -- draft
@@ -3078,6 +3083,7 @@ Lang:Add("koKR", {
 -- stale: ["Hide the player coordinates the client writes under the minimap."] = "클라이언트가 미니맵 아래에 쓰는 플레이어 좌표를 숨깁니다.", -- draft
 -- stale: ["Hide the red flash around the player, target, focus, pet and party frames while in combat or when a target attacks."] = "전투 중이거나 대상이 공격할 때 플레이어, 대상, 주시 대상, 소환수, 파티 창 둘레의 빨간 번쩍임을 숨깁니다.", -- draft
 -- stale: ["Hide the row of menu buttons (character, spellbook, talents, ...). Still shown while Edit Mode is open."] = "메뉴 버튼 줄(캐릭터, 마법책, 특성, ...)을 숨깁니다. 편집 모드가 열려 있는 동안에는 보입니다.", -- draft
+-- stale: ["Hides the coordinates under the minimap."] = "미니맵 아래 좌표를 숨깁니다.", -- draft
 -- stale: ["Hides the main bar's art, like the other bars. Only on your own Edit Mode layouts, not the presets; shows after a /reload."] = "다른 단축바처럼 주 단축바 아트를 숨깁니다. 내 편집 모드 배치에서만, 프리셋은 제외; /reload 후 보입니다.", -- draft
 -- stale: ["Hides the red error messages you choose (not enough energy, not ready yet, out of range...) from the middle of the screen."] = "고른 빨간 오류 메시지(기력이 부족합니다, 아직 준비되지 않았습니다, 사거리 밖...)를 화면 가운데에서 숨깁니다.", -- draft
 -- stale: ["Hides the red flash around unit frames in combat."] = "전투 중 개체창 둘레 빨간 번쩍임을 숨깁니다.", -- draft
@@ -3186,6 +3192,7 @@ Lang:Add("koKR", {
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "미리 보기가 끝날 때까지 파티 창 자리에 지어낸 구성원과 이 목록의 표시기를. 전투 밖에서만.", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "미리 보기가 끝날 때까지 공격대 창 자리에 지어낸 구성원과 내 표시기를. 전투 밖에서만.", -- draft
 -- stale: ["Mana, rage, energy and focus you gain (+12 Rage)."] = "얻는 마나, 분노, 기력, 집중(+12 분노).", -- draft
+-- stale: ["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "지도: 오른쪽 아래 모서리의 손잡이를 끌어 지도 크기를 바꾸고(옆의 퀘스트 목록은 크기가 그대로), 제목 표시줄을 끌어 옮길 수 있습니다. 레이아웃 편집이 필요 없습니다.", -- draft
 -- stale: ["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "지도: 전장 안에서 지도에 내 캐릭터, 내 파티와 전장의 깃발이 표시됩니다.", -- draft
 -- stale: ["Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast."] = "지도: 지역 사이 땅을 그렸습니다(안퀴라즈, 던 모로 서쪽 포함). 해안 지역이 해안까지 이어집니다.", -- draft
 -- stale: ["Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on."] = "지도: 확대해도 그림 지도가 남고, 아주 가까이서만 미니맵 지면이 겹칩니다. 휠은 부드럽게 확대하고 끌기는 미끄러지듯 이어집니다.", -- draft

@@ -184,8 +184,9 @@ end
 -- Colours: the palette's, or the chat's inks on the paper (the whisper window's too)
 --------------------------------------------------------------------------------
 
+-- (2.1.41) for words: the palette for text, never dimmed by Dark Mode (it darkens surfaces, never words)
 local function Pal(key)
-	local pal = (MelloUI.Look and MelloUI.Look.Palette and MelloUI.Look.Palette()) or MelloUI.Palette
+	local pal = (MelloUI.Look and MelloUI.Look.Palette and MelloUI.Look.Palette(nil, true)) or MelloUI.Palette
 	local c = pal[key] or pal.text
 	return c[1], c[2], c[3]
 end

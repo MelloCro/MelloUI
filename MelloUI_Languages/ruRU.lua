@@ -556,8 +556,8 @@ Lang:Add("ruRU", {
 	["Hides the micro menu. It shows in Edit Mode."] = "Скрывает микроменю. В режиме редактирования оно видно.", -- draft
 	["Hide Bag Bar"] = "Скрыть панель сумок", -- draft
 	["Hides the bag bar. Your bag keys still work; it shows in Edit Mode."] = "Скрывает панель сумок. Клавиши сумок работают; в режиме редактирования она видна.", -- draft
-	["Hide Minimap Coordinates"] = "Скрыть координаты мини-карты", -- draft
-	["Hides the coordinates under the minimap."] = "Скрывает координаты под мини-картой.", -- draft
+	["Minimap Coordinates"] = "Координаты мини-карты", -- draft
+	["Your coordinates under the minimap, and the mouse's while it is over the minimap."] = "Ваши координаты под мини-картой и координаты курсора, пока он над мини-картой.", -- draft
 	["Bag Slots On Bag Window"] = "Ячейки сумок в окне сумок", -- draft
 	["With the bag bar hidden, the bag slots show under the bag window, so you can still swap bags."] = "При скрытой панели сумок ячейки сумок показываются под окном сумок, чтобы их можно было менять.", -- draft
 	["Collapse Arrow"] = "Стрелка сворачивания", -- draft
@@ -1404,6 +1404,8 @@ Lang:Add("ruRU", {
 	["Open"] = "Открыть", -- draft
 	["Dungeon Maps"] = "Карты подземелий", -- draft
 	["Inside a dungeon or raid the map opens on its own map (Blizzard's drawings for the classic ones), Dungeon Info's bosses and loot beside it. From outside, a click on its door or on its row in Dungeon Info shows it."] = "В подземелье или рейде карта открывается на его собственной карте (рисунки Blizzard для классических), рядом — боссы и добыча из «Сведений о подземельях». Снаружи её показывает щелчок по его входу или по его строке в «Сведениях о подземельях».", -- draft
+	["Map Coordinates"] = "Координаты на карте", -- draft
+	["Your coordinates in the line under the map, and the mouse's while it is over the map."] = "Ваши координаты в строке под картой и координаты курсора, пока он над картой.", -- draft
 	-- CharacterPanel
 	["Character Panel"] = "Панель персонажа", -- draft
 	["The character window dressed in the painted kit: stone frame, slot rims, framed panes and stats, all on the game's own layout."] = "Окно персонажа в рисованном наборе: каменная рамка, ободки ячеек, обрамлённые панели и характеристики, всё в раскладке игры.", -- draft
@@ -2324,6 +2326,9 @@ Lang:Add("ruRU", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Вся ваша настройка под одним именем. Сохраните, загрузите или сделайте её стандартной для новой установки.", -- draft
 	["Supporters"] = "Спонсоры", -- draft
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
+	["Map: a Map Coordinates option shows your coordinates in the line under the map, and the mouse's while it is over the map."] = "Карта: параметр «Координаты на карте» показывает ваши координаты в строке под картой и координаты курсора, пока он над картой.", -- draft
+	["Minimap: a Minimap Coordinates option shows your coordinates under the minimap, and the mouse's in gold while it is over the minimap. It takes the place of Hide Minimap Coordinates."] = "Мини-карта: параметр «Координаты мини-карты» показывает ваши координаты под мини-картой и координаты курсора золотым цветом, пока он над мини-картой. Он заменяет «Скрыть координаты мини-карты».", -- draft
+	["Dark Mode: gold words no longer darken with it, like the MelloUI button in the Game Menu, the chat's headers and the map's quest counts; only the frames and backgrounds darken."] = "Тёмный режим: золотой текст больше не затемняется вместе с ним, например кнопка MelloUI в меню игры, заголовки чата и счётчики заданий на карте; затемняются только рамки и фоны.", -- draft
 	["Bags: the new Reagent Bag With The Bags option shows the Reagent Bag's items in your bags' one view, its slots in lime and its free slots counted in an Empty slot of their own."] = "Сумки: новая настройка «Сумка реагентов вместе с сумками» показывает предметы сумки реагентов в общем виде ваших сумок, её ячейки цвета лайма, а свободные ячейки считаются в отдельной ячейке «Пусто».", -- draft
 	["Chat: the short channel tags (G, P, R ...) wear the game's own chat colours, and with Short Channel Tags on the Minimal Chat View's headers show only the tag."] = "Чат: короткие метки каналов (G, P, R ...) окрашены в собственные цвета чата игры, а с «Короткими метками каналов» заголовки минимального вида чата показывают только метку.", -- draft
 	["Chat: a Chat Timestamps option on the Chat page sets the game's own chat timestamps, None hides them; the Minimal Chat View follows it."] = "Чат: настройка «Время в чате» на странице чата задаёт собственное время сообщений игры, «Нет» скрывает его; минимальный вид чата следует ей.", -- draft
@@ -2347,7 +2352,6 @@ Lang:Add("ruRU", {
 	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "Сумки, история боёв и список пополнения: перетащите заголовок, чтобы переместить их, и уголок, чтобы изменить размер (у сумок — число столбцов), как у карты.", -- draft
 	["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "Чат: список каналов минимального вида чата сворачивается до значков (маленькая ручка на его краю или «Список каналов значками» на странице «Чат»), оставляя больше места сообщениям.", -- draft
 	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "Страница поддержавших: имена теперь висят на трёх анимированных знамёнах, по одному на уровень, а Patreon и Discord MelloUI — в окне для копирования.", -- draft
-	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "Карта: потяните за уголок в правом нижнем углу, чтобы изменить размер карты (журнал заданий рядом сохраняет свой размер), и перетащите заголовок, чтобы переместить её, без редактора раскладки.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -3067,6 +3071,7 @@ Lang:Add("ruRU", {
 -- stale: ["Heals burst, seal onto the portrait or close round the frame as a shield; cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards, golden barriers, afterimages."] = "Исцеления взрываются, запечатываются на портрете или смыкаются щитом вокруг рамки; восстановление: ударные волны для рыка, красный ! для провокации, стальные щиты, золотые барьеры, остаточные образы.", -- draft
 -- stale: ["Health and power percent, spell names and times, and your shield's amount."] = "Здоровье и ресурс в процентах, названия и время заклинаний и величина щита.", -- draft
 -- stale: ["Health bar backgrounds/borders and cast bars on nameplates."] = "Фон/рамки полос здоровья и полосы заклинаний на индикаторах здоровья.", -- draft
+-- stale: ["Hide Minimap Coordinates"] = "Скрыть координаты мини-карты", -- draft
 -- stale: ["Hide Quests More Than N Levels Above Me"] = "Скрыть задания выше на N уровней", -- draft
 -- stale: ["Hide the PvP badge beside the portrait of the player, target and focus frames: the diamond with your honour rank, or the faction icon, that shows while you or they are flagged for PvP."] = "Скрывает значок PvP рядом с портретом на рамках игрока, цели и фокуса: ромб с вашим званием чести или значок фракции, видный, пока вы или они в режиме PvP.", -- draft
 -- stale: ["Hide the background art behind the chat tabs. The tab text stays."] = "Скрывает оформление за вкладками чата. Текст вкладок остаётся.", -- draft
@@ -3078,6 +3083,7 @@ Lang:Add("ruRU", {
 -- stale: ["Hide the player coordinates the client writes under the minimap."] = "Скрывает координаты игрока, которые клиент пишет под мини-картой.", -- draft
 -- stale: ["Hide the red flash around the player, target, focus, pet and party frames while in combat or when a target attacks."] = "Скрывает красную вспышку вокруг рамок игрока, цели, фокуса, питомца и группы в бою или когда цель атакует.", -- draft
 -- stale: ["Hide the row of menu buttons (character, spellbook, talents, ...). Still shown while Edit Mode is open."] = "Скрывает ряд кнопок меню (персонаж, книга заклинаний, таланты, ...). По-прежнему видно, пока открыт режим редактирования.", -- draft
+-- stale: ["Hides the coordinates under the minimap."] = "Скрывает координаты под мини-картой.", -- draft
 -- stale: ["Hides the main bar's art, like the other bars. Only on your own Edit Mode layouts, not the presets; shows after a /reload."] = "Скрывает графику главной панели, как у других панелей. Только в ваших раскладках режима редактирования, не в готовых; видно после /reload.", -- draft
 -- stale: ["Hides the red error messages you choose (not enough energy, not ready yet, out of range...) from the middle of the screen."] = "Скрывает из центра экрана выбранные вами красные сообщения об ошибках (недостаточно энергии, ещё не готово, слишком далеко...).", -- draft
 -- stale: ["Hides the red flash around unit frames in combat."] = "Скрывает красную вспышку вокруг рамок юнитов в бою.", -- draft
@@ -3186,6 +3192,7 @@ Lang:Add("ruRU", {
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "Выдуманные участники там, где ваши рамки группы, с индикаторами этого списка, до конца предпросмотра. Только вне боя.", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "Выдуманные участники там, где ваши рамки рейда, с вашими индикаторами, до конца предпросмотра. Только вне боя.", -- draft
 -- stale: ["Mana, rage, energy and focus you gain (+12 Rage)."] = "Мана, ярость, энергия и концентрация, которые вы получаете (+12 ярости).", -- draft
+-- stale: ["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "Карта: потяните за уголок в правом нижнем углу, чтобы изменить размер карты (журнал заданий рядом сохраняет свой размер), и перетащите заголовок, чтобы переместить её, без редактора раскладки.", -- draft
 -- stale: ["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "Карта: на поле боя карта показывает вас, вашу группу и флаги поля боя.", -- draft
 -- stale: ["Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast."] = "Карта: земли между зонами дорисованы, включая Ан'Киродж и запад Дун Морога; прибрежные зоны доходят до берега.", -- draft
 -- stale: ["Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on."] = "Карта: рисованная карта остаётся при приближении; земля мини-карты проступает поверх лишь вблизи. Колесо приближает плавно, а перетаскивание продолжает скользить.", -- draft

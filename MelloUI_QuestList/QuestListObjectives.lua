@@ -588,7 +588,7 @@ end
 -- the mark's look: its kind's icon on its lift (a pin's glow, the skull's soft shade: MelloUI.Shade:Lift, the soft
 -- round shade under the skull alone until then), its progress under it
 function O.Dress(b, data)
-	local gold = MelloUI.Look.Palette().selectedTrim
+	local gold = MelloUI.Look.Palette(nil, true).selectedTrim   -- (2.1.41: the label's words, never dimmed by Dark Mode)
 	b:SetSize(MARK, MARK)
 	b.Bg:Hide()
 	b.Icon:ClearAllPoints()

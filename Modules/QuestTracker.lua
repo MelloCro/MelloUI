@@ -2895,7 +2895,7 @@ do
 		if QI then
 			QI.Plain(fs)
 		end
-		local c = MelloUI.Look.Palette().text
+		local c = MelloUI.Look.Palette(nil, true).text   -- (words: the palette for text, never dimmed)
 		fs:SetTextColor(c[1], c[2], c[3], Near.DIST_ALPHA)
 	end
 

@@ -139,7 +139,7 @@ M = MelloUI:RegisterModule("BagWindow", {
 		-- (2.1.40; TribalInstincts on Discord: "Ideally, I'd like to be able to see everything I have in one view. With
 		-- the same dedicated Empty counter for each bag type"; the user's pick C, Lime, of
 		-- BuildData/output/bag_reagent_oneview_sketch) the Reagent Bag in the bags' one view, not on its side tab
-		{ type = "toggle", key = "reagentWithBags", name = "Reagent Bag With The Bags", new = "2.1.40",
+		{ type = "toggle", key = "reagentWithBags", name = "Reagent Bag With The Bags",
 		  search = "reagent bag one view together tab empty lime",
 		  desc = "The Reagent Bag's items among your bags' kinds in one view, its slots in its own colour and its free slots in an Empty slot of their own, instead of on its own side tab." },
 		-- (2.1.26; Nixxen in feature-requests: "it would be nice to see which items were currently in that bag", the

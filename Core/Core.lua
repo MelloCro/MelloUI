@@ -326,9 +326,12 @@ end
 -- A palette colour as a chat / font-string colour code: "|cffAE8546"
 -- (docs/plans/game-look.md wave 4: the palette as MelloUI.Look shows it --
 -- the game's own colours by the same keys with the reskin off)
+-- (2.1.41; the user, of the coordinates' gold and the Game Menu's "Mello" under Dark Mode: "why do you keep making
+-- numbers and letters who are affected by Dark Mode") a code colours words: the palette for text, never dimmed (Dark
+-- Mode darkens surfaces, never words: Look.Palette(area, true))
 function MelloUI:PaletteCode(role)
 	local Look = self.Look
-	local c = (type(Look) == "table" and type(Look.Palette) == "function" and Look.Palette() or self.Palette)[role]
+	local c = (type(Look) == "table" and type(Look.Palette) == "function" and Look.Palette(nil, true) or self.Palette)[role]
 	return "|cff" .. (c and c.hex or "FFFFFF")
 end
 
@@ -5746,6 +5749,20 @@ do
 					t.qolFolded = true
 				end
 			end
+		end,
+		-- (2.1.41) Hide Minimap Coordinates gave way to Minimap Coordinates (MelloUI's own line, Core/Coords.lua; the
+		-- game's own always hidden): a saved off of the old -- the game's line shown -- carried as the new one on;
+		-- the old key dropped (only a save, profile or settings text from before has it: no later choice is undone;
+		-- the new key may hold its default already, filled in at the module's init)
+		function(self)
+			local tw = Raw(self, "Tweaks")
+			if not tw or tw.hideMinimapCoords == nil then
+				return
+			end
+			if tw.hideMinimapCoords == false then
+				tw.minimapCoords = true
+			end
+			tw.hideMinimapCoords = nil
 		end,
 	}
 

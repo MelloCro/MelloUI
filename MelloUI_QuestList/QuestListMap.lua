@@ -634,7 +634,9 @@ function QL.DressMark(self, kind, data)
 		local palette = MelloUI.Look.Palette()
 		local ground = palette.innerPanel
 		local done = data.done >= data.total
-		local ink = done and palette.text or palette.selectedTrim
+		-- (2.1.41) the count's words in the palette for text: Dark Mode dims the ground under it, never the count
+		local words = MelloUI.Look.Palette(nil, true)
+		local ink = done and words.text or words.selectedTrim
 		self.Icon:Hide()
 		self.Bg:Show()
 		self.Bg:SetColorTexture(ground[1], ground[2], ground[3], 0.7)

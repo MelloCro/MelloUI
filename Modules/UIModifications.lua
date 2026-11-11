@@ -1123,7 +1123,8 @@ function M:OnEnable(db)
 		if db.qol_Tweaks == false then
 			local tw = MelloUI:GetModuleDB("Tweaks")
 			if tw then
-				tw.hideMicroMenu, tw.hideBagBar, tw.hideMinimapCoords, tw.chatNotices = false, false, false, false
+				-- (2.1.41: the coordinates under the minimap shown -- MelloUI's own line now, Minimap Coordinates)
+				tw.hideMicroMenu, tw.hideBagBar, tw.minimapCoords, tw.chatNotices = false, false, true, false
 				tw.worldTextScale = 1
 			end
 		end

@@ -174,6 +174,11 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.41", lines = {
+		"Map: a Map Coordinates option shows your coordinates in the line under the map, and the mouse's while it is over the map.",
+		"Minimap: a Minimap Coordinates option shows your coordinates under the minimap, and the mouse's in gold while it is over the minimap. It takes the place of Hide Minimap Coordinates.",
+		"Dark Mode: gold words no longer darken with it, like the MelloUI button in the Game Menu, the chat's headers and the map's quest counts; only the frames and backgrounds darken.",
+	} },
 	{ version = "2.1.40", lines = {
 		"Bags: the new Reagent Bag With The Bags option shows the Reagent Bag's items in your bags' one view, its slots in lime and its free slots counted in an Empty slot of their own.",
 		"Chat: the short channel tags (G, P, R ...) wear the game's own chat colours, and with Short Channel Tags on the Minimal Chat View's headers show only the tag.",
@@ -204,9 +209,6 @@ local CHANGELOG = {
 		"Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map.",
 		"Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages.",
 		"Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box.",
-	} },
-	{ version = "2.1.36", lines = {
-		"Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed.",
 	} },
 }
 local LINKS = {

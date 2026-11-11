@@ -7843,6 +7843,11 @@ function M.PlaceDistanceLine()
 	end
 end
 
+-- (2.1.41) the distance line's text (Core/Coords.lua's coordinates stand just left of it on its line), or nil
+function M:DistanceLineText()
+	return mm and mm.text or nil
+end
+
 -- whether the distance line stands under the minimap now (a route or a
 -- destination, Distance Under The Minimap on)
 function M:DistanceLineShown()

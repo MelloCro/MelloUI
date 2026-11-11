@@ -556,8 +556,8 @@ Lang:Add("frFR", {
 	["Hides the micro menu. It shows in Edit Mode."] = "Masque le micro-menu. Il s'affiche en mode Édition.",
 	["Hide Bag Bar"] = "Masquer la barre de sacs",
 	["Hides the bag bar. Your bag keys still work; it shows in Edit Mode."] = "Masque la barre de sacs. Vos touches de sacs marchent toujours ; elle s'affiche en mode Édition.",
-	["Hide Minimap Coordinates"] = "Masquer les coordonnées de la minicarte",
-	["Hides the coordinates under the minimap."] = "Masque les coordonnées sous la minicarte.",
+	["Minimap Coordinates"] = "Coordonnées de la minicarte", -- draft
+	["Your coordinates under the minimap, and the mouse's while it is over the minimap."] = "Vos coordonnées sous la minicarte, et celles de la souris quand elle survole la minicarte.", -- draft
 	["Bag Slots On Bag Window"] = "Emplacements de sac sur la fenêtre des sacs",
 	["With the bag bar hidden, the bag slots show under the bag window, so you can still swap bags."] = "Barre de sacs masquée, les emplacements de sacs s'affichent sous la fenêtre des sacs, pour pouvoir changer de sac.",
 	["Collapse Arrow"] = "Flèche de repli",
@@ -1404,6 +1404,8 @@ Lang:Add("frFR", {
 	["Open"] = "Ouvrir",
 	["Dungeon Maps"] = "Cartes des donjons",
 	["Inside a dungeon or raid the map opens on its own map (Blizzard's drawings for the classic ones), Dungeon Info's bosses and loot beside it. From outside, a click on its door or on its row in Dungeon Info shows it."] = "Dans un donjon ou un raid, la carte s'ouvre sur sa propre carte (les dessins de Blizzard pour les classiques), avec les boss et le butin d'Infos des donjons à côté. De l'extérieur, un clic sur son entrée ou sur sa ligne dans Infos des donjons l'affiche.",
+	["Map Coordinates"] = "Coordonnées de la carte", -- draft
+	["Your coordinates in the line under the map, and the mouse's while it is over the map."] = "Vos coordonnées sur la ligne sous la carte, et celles de la souris quand elle survole la carte.", -- draft
 	-- CharacterPanel
 	["Character Panel"] = "Panneau du personnage",
 	["The character window dressed in the painted kit: stone frame, slot rims, framed panes and stats, all on the game's own layout."] = "La fenêtre du personnage dans l'habillage graphique de MelloUI : cadre de pierre, bords d'emplacements, volets encadrés et caractéristiques, le tout sur la disposition du jeu.",
@@ -2324,6 +2326,9 @@ Lang:Add("frFR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toute votre configuration sous un nom. Enregistrez-la, chargez-la, ou faites-en la configuration par défaut d'une nouvelle installation.",
 	["Supporters"] = "Soutiens",
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.",
+	["Map: a Map Coordinates option shows your coordinates in the line under the map, and the mouse's while it is over the map."] = "Carte : une option Coordonnées de la carte affiche vos coordonnées sur la ligne sous la carte, et celles de la souris quand elle survole la carte.", -- draft
+	["Minimap: a Minimap Coordinates option shows your coordinates under the minimap, and the mouse's in gold while it is over the minimap. It takes the place of Hide Minimap Coordinates."] = "Minicarte : une option Coordonnées de la minicarte affiche vos coordonnées sous la minicarte, et celles de la souris en doré quand elle survole la minicarte. Elle remplace Masquer les coordonnées de la minicarte.", -- draft
+	["Dark Mode: gold words no longer darken with it, like the MelloUI button in the Game Menu, the chat's headers and the map's quest counts; only the frames and backgrounds darken."] = "Mode sombre : les textes dorés ne s'assombrissent plus avec lui, comme le bouton MelloUI du menu du jeu, les en-têtes du chat et les compteurs de quêtes de la carte ; seuls les cadres et les fonds s'assombrissent.", -- draft
 	["Bags: the new Reagent Bag With The Bags option shows the Reagent Bag's items in your bags' one view, its slots in lime and its free slots counted in an Empty slot of their own."] = "Sacs : la nouvelle option Sac de composants avec les sacs montre les objets du sac de composants dans la vue unique de vos sacs, ses emplacements en vert citron et ses emplacements libres comptés dans un emplacement Vide à part.", -- draft
 	["Chat: the short channel tags (G, P, R ...) wear the game's own chat colours, and with Short Channel Tags on the Minimal Chat View's headers show only the tag."] = "Discussion : les abréviations courtes des canaux (G, P, R ...) prennent les couleurs de discussion du jeu, et avec Abréviations courtes des canaux les en-têtes de la vue de discussion minimale n'affichent que l'abréviation.", -- draft
 	["Chat: a Chat Timestamps option on the Chat page sets the game's own chat timestamps, None hides them; the Minimal Chat View follows it."] = "Discussion : une option Horodatage de la discussion sur la page Discussion règle l'horodatage du jeu, Aucun le masque ; la vue de discussion minimale le suit.", -- draft
@@ -2347,7 +2352,6 @@ Lang:Add("frFR", {
 	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "Sacs, historique des combats et liste de réapprovisionnement : faites glisser la barre de titre pour les déplacer et la poignée d'un coin pour les redimensionner (pour les sacs, ajustez le nombre de colonnes), comme pour la carte.",
 	["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "Discussion : la liste des canaux de la vue compacte se replie en icônes (avec la petite poignée sur son bord ou l'option Liste des canaux en icônes dans les réglages de discussion), afin de laisser plus de place aux messages.",
 	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "Page des contributeurs : les noms figurent désormais sur trois bannières animées, une par palier, avec les liens Patreon et Discord de MelloUI dans une zone de copie.",
-	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "Carte : faites glisser la poignée du coin inférieur droit pour redimensionner la carte (le journal des quêtes adjacent garde sa taille), puis faites glisser la barre de titre pour déplacer la carte, sans passer par Modifier la disposition.",
 	["Report a problem"] = "Signaler un problème",
 	["Voice pack"] = "Pack de voix",
 	["open or close this window"] = "ouvrir ou fermer cette fenêtre",
@@ -3067,6 +3071,7 @@ Lang:Add("frFR", {
 -- stale: ["Heals burst, seal onto the portrait or close round the frame as a shield; cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards, golden barriers, afterimages."] = "Les soins éclatent, se scellent sur le portrait ou se referment en bouclier autour du cadre ; temps de recharge : ondes de choc pour un cri, un ! rouge pour une provocation, gardes d'acier, barrières dorées, images rémanentes.", -- draft
 -- stale: ["Health and power percent, spell names and times, and your shield's amount."] = "Vie et ressource en pourcentage, noms et durées des sorts, et le montant de votre bouclier.", -- draft
 -- stale: ["Health bar backgrounds/borders and cast bars on nameplates."] = "Fonds/bordures des barres de vie et barres d'incantation sur les barres d'info.", -- draft
+-- stale: ["Hide Minimap Coordinates"] = "Masquer les coordonnées de la minicarte",
 -- stale: ["Hide Quests More Than N Levels Above Me"] = "Masquer les quêtes de plus de N niveaux au-dessus", -- draft
 -- stale: ["Hide the PvP badge beside the portrait of the player, target and focus frames: the diamond with your honour rank, or the faction icon, that shows while you or they are flagged for PvP."] = "Masque l'insigne JcJ à côté du portrait des cadres du joueur, de la cible et de la focalisation : le losange avec votre rang d'honneur, ou l'icône de faction, affiché quand vous ou eux êtes marqués JcJ.", -- draft
 -- stale: ["Hide the background art behind the chat tabs. The tab text stays."] = "Masque le décor derrière les onglets de discussion. Le texte des onglets reste.", -- draft
@@ -3078,6 +3083,7 @@ Lang:Add("frFR", {
 -- stale: ["Hide the player coordinates the client writes under the minimap."] = "Masque les coordonnées du joueur que le client écrit sous la minicarte.", -- draft
 -- stale: ["Hide the red flash around the player, target, focus, pet and party frames while in combat or when a target attacks."] = "Masque le flash rouge autour des cadres du joueur, de la cible, de la focalisation, du familier et du groupe en combat ou quand une cible attaque.", -- draft
 -- stale: ["Hide the row of menu buttons (character, spellbook, talents, ...). Still shown while Edit Mode is open."] = "Masque la rangée de boutons de menu (personnage, grimoire, talents, ...). Toujours visible tant que le mode Édition est ouvert.", -- draft
+-- stale: ["Hides the coordinates under the minimap."] = "Masque les coordonnées sous la minicarte.",
 -- stale: ["Hides the main bar's art, like the other bars. Only on your own Edit Mode layouts, not the presets; shows after a /reload."] = "Masque les graphismes de la barre principale, comme les autres barres. Seulement sur vos dispositions du mode Édition, pas les préréglages ; s'affiche après un /reload.", -- draft
 -- stale: ["Hides the red error messages you choose (not enough energy, not ready yet, out of range...) from the middle of the screen."] = "Masque au centre de l'écran les messages d'erreur rouges que vous choisissez (pas assez d'énergie, pas encore prêt, hors de portée...).", -- draft
 -- stale: ["Hides the red flash around unit frames in combat."] = "Masque le flash rouge autour des cadres d'unité en combat.", -- draft
@@ -3186,6 +3192,7 @@ Lang:Add("frFR", {
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "Des membres inventés là où sont vos cadres de groupe, les indicateurs de cette liste dessus, jusqu'à la fin de l'aperçu. Hors combat seulement.", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "Des membres inventés là où sont vos cadres de raid, vos indicateurs dessus, jusqu'à la fin de l'aperçu. Hors combat seulement.", -- draft
 -- stale: ["Mana, rage, energy and focus you gain (+12 Rage)."] = "Le mana, la rage, l'énergie et la focalisation que vous gagnez (+12 Rage).", -- draft
+-- stale: ["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "Carte : faites glisser la poignée du coin inférieur droit pour redimensionner la carte (le journal des quêtes adjacent garde sa taille), puis faites glisser la barre de titre pour déplacer la carte, sans passer par Modifier la disposition.",
 -- stale: ["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "Carte : dans un champ de bataille, la carte affiche votre personnage, votre groupe et les drapeaux du champ de bataille.", -- draft
 -- stale: ["Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast."] = "Carte : les terres entre les zones sont peintes, dont Ahn'Qiraj et l'ouest de Dun Morogh ; les zones côtières vont jusqu'à la côte.", -- draft
 -- stale: ["Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on."] = "Carte : la carte peinte reste quand vous zoomez ; le sol de la minicarte ne s'y fond que de très près. La molette zoome en douceur, et un glisser continue sur sa lancée.", -- draft

@@ -556,8 +556,8 @@ Lang:Add("zhCN", {
 	["Hides the micro menu. It shows in Edit Mode."] = "隐藏微型菜单。在编辑模式中显示。", -- draft
 	["Hide Bag Bar"] = "隐藏背包栏", -- draft
 	["Hides the bag bar. Your bag keys still work; it shows in Edit Mode."] = "隐藏背包栏。背包按键仍可用；在编辑模式中显示。", -- draft
-	["Hide Minimap Coordinates"] = "隐藏小地图坐标", -- draft
-	["Hides the coordinates under the minimap."] = "隐藏微缩地图下方的坐标。", -- draft
+	["Minimap Coordinates"] = "小地图坐标", -- draft
+	["Your coordinates under the minimap, and the mouse's while it is over the minimap."] = "在小地图下方显示你的坐标，鼠标在小地图上时还显示鼠标所在位置的坐标。", -- draft
 	["Bag Slots On Bag Window"] = "背包窗口上的背包栏位", -- draft
 	["With the bag bar hidden, the bag slots show under the bag window, so you can still swap bags."] = "背包栏隐藏时，背包栏位显示在背包窗口下方，仍可更换背包。", -- draft
 	["Collapse Arrow"] = "折叠箭头", -- draft
@@ -1404,6 +1404,8 @@ Lang:Add("zhCN", {
 	["Open"] = "打开", -- draft
 	["Dungeon Maps"] = "地下城地图", -- draft
 	["Inside a dungeon or raid the map opens on its own map (Blizzard's drawings for the classic ones), Dungeon Info's bosses and loot beside it. From outside, a click on its door or on its row in Dungeon Info shows it."] = "在地下城或团队副本中，地图会打开它自己的地图（经典副本使用暴雪的绘图），旁边是地下城信息中的首领和战利品。在外面时，点击它的入口或地下城信息中对应的行即可查看。", -- draft
+	["Map Coordinates"] = "地图坐标", -- draft
+	["Your coordinates in the line under the map, and the mouse's while it is over the map."] = "在地图下方的一行显示你的坐标，鼠标在地图上时还显示鼠标所在位置的坐标。", -- draft
 	-- CharacterPanel
 	["Character Panel"] = "角色面板", -- draft
 	["The character window dressed in the painted kit: stone frame, slot rims, framed panes and stats, all on the game's own layout."] = "角色窗口穿上手绘套件：石框、栏位边缘、带框的窗格和属性，全部在游戏自己的布局上。", -- draft
@@ -2324,6 +2326,9 @@ Lang:Add("zhCN", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 	["Supporters"] = "支持者", -- draft
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
+	["Map: a Map Coordinates option shows your coordinates in the line under the map, and the mouse's while it is over the map."] = "地图：新增“地图坐标”选项，在地图下方的一行显示你的坐标，鼠标在地图上时还显示鼠标所在位置的坐标。", -- draft
+	["Minimap: a Minimap Coordinates option shows your coordinates under the minimap, and the mouse's in gold while it is over the minimap. It takes the place of Hide Minimap Coordinates."] = "小地图：新增“小地图坐标”选项，在小地图下方显示你的坐标，鼠标在小地图上时以金色显示鼠标所在位置的坐标。它取代了“隐藏小地图坐标”。", -- draft
+	["Dark Mode: gold words no longer darken with it, like the MelloUI button in the Game Menu, the chat's headers and the map's quest counts; only the frames and backgrounds darken."] = "暗色模式：金色文字不再随之变暗，例如游戏菜单中的 MelloUI 按钮、聊天的标题和地图上的任务计数；只有框架和背景会变暗。", -- draft
 	["Bags: the new Reagent Bag With The Bags option shows the Reagent Bag's items in your bags' one view, its slots in lime and its free slots counted in an Empty slot of their own."] = "背包：新的“材料包与背包一起显示”选项在背包的统一视图中显示材料包的物品，其格子显示为青柠色，空格子单独计入一个“空”格子。", -- draft
 	["Chat: the short channel tags (G, P, R ...) wear the game's own chat colours, and with Short Channel Tags on the Minimal Chat View's headers show only the tag."] = "聊天：频道简写（G、P、R……）使用游戏自己的聊天颜色，开启“频道简写”后，极简聊天视图的标题行只显示简写。", -- draft
 	["Chat: a Chat Timestamps option on the Chat page sets the game's own chat timestamps, None hides them; the Minimal Chat View follows it."] = "聊天：聊天页面上的“聊天时间戳”选项设置游戏自己的聊天时间戳，选“无”即隐藏；极简聊天视图随之变化。", -- draft
@@ -2347,7 +2352,6 @@ Lang:Add("zhCN", {
 	["Bags, Fight History and the Restock list: drag the title bar to move them and the grip in a corner to size them (the bags: the columns), like the map."] = "背包、战斗历史和补货列表：拖动标题栏即可移动，拖动角落的手柄即可调整大小（背包：列数），与地图相同。", -- draft
 	["Chat: the Minimal Chat View's channel list folds to its icons (the small handle on its edge, or Channel List As Icons on the Chat page), leaving more room for the messages."] = "聊天：极简聊天视图的频道列表可以折叠为仅图标（点击其边缘的小把手，或在聊天页面开启“频道列表仅显示图标”），为消息留出更多空间。", -- draft
 	["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "支持者页面：名字现在挂在三面动态旗帜上，每个等级一面，MelloUI 的 Patreon 和 Discord 地址显示在复制框中。", -- draft
-	["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "地图：拖动右下角的手柄即可调整地图大小（旁边的任务日志保持原大小），拖动标题栏即可移动地图，无需编辑布局。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3067,6 +3071,7 @@ Lang:Add("zhCN", {
 -- stale: ["Heals burst, seal onto the portrait or close round the frame as a shield; cooldowns: shockwaves for a roar, a red ! for a taunt, steel guards, golden barriers, afterimages."] = "治疗迸发、封印在头像上或化作护盾包住框体；冷却：咆哮有冲击波，嘲讽有红色 !，还有钢铁护卫、金色屏障与残影。", -- draft
 -- stale: ["Health and power percent, spell names and times, and your shield's amount."] = "生命和能量百分比、法术名和时间，以及护盾数值。", -- draft
 -- stale: ["Health bar backgrounds/borders and cast bars on nameplates."] = "姓名板上的生命条背景/边框和施法条。", -- draft
+-- stale: ["Hide Minimap Coordinates"] = "隐藏小地图坐标", -- draft
 -- stale: ["Hide Quests More Than N Levels Above Me"] = "隐藏高出我N级以上的任务", -- draft
 -- stale: ["Hide the PvP badge beside the portrait of the player, target and focus frames: the diamond with your honour rank, or the faction icon, that shows while you or they are flagged for PvP."] = "隐藏玩家、目标和焦点框体头像旁的PvP徽章：你或他们开启PvP时显示的带荣誉军衔的菱形或阵营图标。", -- draft
 -- stale: ["Hide the background art behind the chat tabs. The tab text stays."] = "隐藏聊天标签后面的背景美术。标签文字保留。", -- draft
@@ -3078,6 +3083,7 @@ Lang:Add("zhCN", {
 -- stale: ["Hide the player coordinates the client writes under the minimap."] = "隐藏客户端写在小地图下方的玩家坐标。", -- draft
 -- stale: ["Hide the red flash around the player, target, focus, pet and party frames while in combat or when a target attacks."] = "隐藏战斗中或目标攻击时玩家、目标、焦点、宠物和小队框体周围的红色闪光。", -- draft
 -- stale: ["Hide the row of menu buttons (character, spellbook, talents, ...). Still shown while Edit Mode is open."] = "隐藏那一排菜单按钮（角色、法术书、天赋……）。编辑模式打开时仍显示。", -- draft
+-- stale: ["Hides the coordinates under the minimap."] = "隐藏微缩地图下方的坐标。", -- draft
 -- stale: ["Hides the main bar's art, like the other bars. Only on your own Edit Mode layouts, not the presets; shows after a /reload."] = "像其他动作条一样隐藏主动作条的美术。仅限你自己的编辑模式布局，不含预设；/reload 后显示。", -- draft
 -- stale: ["Hides the red error messages you choose (not enough energy, not ready yet, out of range...) from the middle of the screen."] = "从屏幕中央隐藏你选择的红色错误信息（能量值不足、还没有准备好、距离太远……）。", -- draft
 -- stale: ["Hides the red flash around unit frames in combat."] = "隐藏战斗中单位框体周围的红色闪光。", -- draft
@@ -3186,6 +3192,7 @@ Lang:Add("zhCN", {
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "在你的小队框体位置显示虚构的成员，带上此列表的指示器，直到预览结束。仅限脱离战斗。", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "在你的团队框体位置显示虚构的成员，带上你的指示器，直到预览结束。仅限脱离战斗。", -- draft
 -- stale: ["Mana, rage, energy and focus you gain (+12 Rage)."] = "你获得的法力、怒气、能量和集中值（+12怒气）。", -- draft
+-- stale: ["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "地图：拖动右下角的手柄即可调整地图大小（旁边的任务日志保持原大小），拖动标题栏即可移动地图，无需编辑布局。", -- draft
 -- stale: ["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "地图：在战场中，地图会显示你、你的队伍和战场的旗帜。", -- draft
 -- stale: ["Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast."] = "地图：区域之间的土地已补绘，包括安其拉和丹莫罗以西；沿海区域延伸到海岸。", -- draft
 -- stale: ["Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on."] = "地图：放大时保留手绘地图；只有很近时才在其上淡入微缩地图地面。滚轮平滑缩放，拖动会继续滑行。", -- draft

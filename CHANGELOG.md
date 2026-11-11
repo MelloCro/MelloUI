@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.41
+
+- Map: a Map Coordinates option shows your coordinates in the line under the map, and the mouse's while it is over the map.
+- Minimap: a Minimap Coordinates option shows your coordinates under the minimap, and the mouse's in gold while it is over the minimap. It takes the place of Hide Minimap Coordinates.
+- Dark Mode: gold words no longer darken with it, like the MelloUI button in the Game Menu, the chat's headers and the map's quest counts; only the frames and backgrounds darken.
+
 ## 2.1.40
 
 - Bags: the new Reagent Bag With The Bags option shows the Reagent Bag's items in your bags' one view, its slots in lime and its free slots counted in an Empty slot of their own.

@@ -66,6 +66,7 @@ It comes in two parts, and you need both. Remade for 0.18.3: every voice at a be
 
 ## 🗺️ The map that actually helps
 
+- **Coordinates:** switch on **Map Coordinates** (Map page) for your coordinates in the line under the map, and the mouse's while it is over the map, on the zone the line names (2.1.41). **Minimap Coordinates** (Minimap page, the Coordinates part) puts yours right under the map picture, and the mouse's in gold while it is over the minimap: with the Services row in the minimap's frame, at the right end of the line with the "Services" title, just left of Route's distance when that shows. Nothing under the minimap moves. Both follow the game's own choice of tenths or whole numbers.
 - **Opens where you are:** the first time you open the map after logging in, it shows your current zone, a city's own map in a city (2.1.40); after that, each open centres on you at the zoom you left it.
 - **Your size, your place:** drag the dotted grip in the map's bottom-right corner to make the map bigger or smaller (its quest log keeps its size, so it stays readable on any screen; right-click the grip for the standard size and place), and drag its title bar to move the window. No Edit Layout needed.
 - **One window, nothing covered:** your quest log, the map's layers and Dungeon Info open in a panel beside the whole map. The round buttons between them pick one (L opens your quests); click the lit one to fold the panel away and the window narrows to the map.
@@ -546,8 +547,10 @@ top corners (on the bar's top when the name sits inside the bar).
   themselves, so a bag can be dropped into a slot. It is the game's own arrow and setting
   (expandBagBar, remembered by the game), which this client keeps hidden; the bar keeps its
   size, so the bottom row does not move.
-- Hide the player coordinates the client writes under the minimap ("Hide Minimap
-  Coordinates", on by default).
+- The player coordinates the client writes under the minimap stay hidden: "Minimap
+  Coordinates" (2.1.41, off by default, on the Minimap page) shows MelloUI's own line
+  there instead, yours and the mouse's while it is over the minimap. It took the place of
+  Hide Minimap Coordinates; with that one off, the new one starts on.
 - "Chat Notices" (on by default) covers the lines MelloUI writes to chat on its own: a
   learned dungeon entrance, hints. Replies to slash
   commands always show.

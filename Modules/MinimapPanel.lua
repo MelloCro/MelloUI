@@ -1103,7 +1103,10 @@ function M.RailName()
 		return
 	end
 	local route = MelloUI:GetModule("Route")
-	local left = (d.shares and route and route.DistanceLineShown and route:DistanceLineShown()) and true or false
+	-- (2.1.41: the coordinates at the rail's right end too, Minimap Coordinates; Core/Coords.lua)
+	local coords = rawget(MelloUI, "Coords")
+	local left = (d.shares and ((route and route.DistanceLineShown and route:DistanceLineShown())
+		or (coords and coords.MinimapLineHeight and coords.MinimapLineHeight()))) and true or false
 	-- (0.24.0) on the Chat panel always at the left, as the chat's headings, in
 	-- line with the map's edge (Route's line at the right end still)
 	local where = d.panel and "panel" or left
@@ -1991,7 +1994,10 @@ M.Lay = {
 -- shows and is not merged into that frame, and Route's distance line. Kept
 -- here whether this module is on or not (the minimap's column either way):
 --   M:ColumnSlot(part)  where a part hangs its TOP from: region, its point,
---                       x, y ("services": the bar, "route": the distance line)
+--                       x, y ("services": the bar, "route": the distance line,
+--                       "coords": the coordinates, 2.1.41, Core/Coords.lua:
+--                       the distance line's slot, just left of Route's text
+--                       while it shows; that text keeps room for them)
 --   M:ColumnRect()      the stack on the screen, the distance line's slot
 --                       included while Route keeps the line, and what is
 --                       painted past the frames (the square frame's bottom
@@ -2002,7 +2008,7 @@ M.Lay = {
 --   M:LayColumn()       something in it changed: the bus's 'column' goes out
 --                       on the next frame, once for everything of that frame
 --   M:ColumnPart(part)  one part of the column of layout E (M.COLUMN_PARTS:
---                       "band", "map", "services", "route", "tracker": the
+--                       "band", "map", "services", "route", "coords", "tracker": the
 --                       parts, NOT their order) or "frame" (the painted
 --                       frame round the map: the kit ring's opaque part, the
 --                       square border): left, bottom, right, top on the
@@ -2103,6 +2109,27 @@ function Column.LineHeight()
 	return route and route.ColumnLine and route:ColumnLine() or nil
 end
 
+-- (2.1.41) the coordinates' line's height while it is on (Tweaks' Minimap Coordinates, Core/Coords.lua), else nil;
+-- the room it takes beside Route's distance on their one line
+function Column.CoordsHeight()
+	local C = rawget(MelloUI, "Coords")
+	return C and C.MinimapLineHeight and C.MinimapLineHeight() or nil
+end
+
+function Column.CoordsWidth()
+	local C = rawget(MelloUI, "Coords")
+	return C and C.MinimapLineWidth and C.MinimapLineWidth() or nil
+end
+
+-- the distance line's slot's height: Route's line or the coordinates (they share it), the taller; nil: neither
+function Column.SlotHeight()
+	local a, b = Column.LineHeight(), Column.CoordsHeight()
+	if a and b then
+		return math.max(a, b)
+	end
+	return a or b
+end
+
 -- the Services bar's edges on the screen, its height the row's as Services
 -- gives it (ServicesRow; the bar's own until Services says)
 function Column.BarRect(bar)
@@ -2120,6 +2147,9 @@ end
 
 function M:ColumnSlot(part)
 	local map = M:MapFrame()
+	-- (2.1.41; the user's pick, 2026-11-11: "Right under the map picture") the coordinates share the distance line's
+	-- slot (Core/Coords.lua stands them just left of Route's text while it shows); Route's text keeps room for them
+	local coords = part == "coords"
 	if part == "services" then
 		if Column.Merged() then
 			return map, "BOTTOM", 0, -M:DividerHeight()
@@ -2133,7 +2163,7 @@ function M:ColumnSlot(part)
 	-- (M.RailName). Fifth and sixth values: the line's justify and the width
 	-- it may take (the rail less its two ends and the name), or nil
 	if Column.Merged() and ServicesBar() and ServicesRow() then
-		local h = Column.LineHeight() or LINE_H
+		local h = Column.SlotHeight() or LINE_H
 		local d = skin and skin.divider
 		local w = PlainWidth(d, nil)
 		local nameW = 0
@@ -2141,8 +2171,14 @@ function M:ColumnSlot(part)
 			local ok, sw = pcall(d.text.GetStringWidth, d.text)
 			nameW = ok and MelloUI.Safe.Number(sw) or 0
 		end
-		local maxW = w and math.max(40, w - 2 * RAIL_PAD - nameW - 8) or nil
-		return map, "BOTTOMRIGHT", -RAIL_PAD, -math.max(LINE_GAP, (DIVIDER_H - h) / 2), "RIGHT", maxW
+		-- (2.1.41) with the coordinates on, the panel's rail (its name at its very start, M.RailName) ends the line at
+		-- its very end too, and Route's text keeps room for the coordinates beside it
+		local panel = d and d.panel
+		local leftPad = panel and 0 or RAIL_PAD
+		local rightPad = (panel and Column.CoordsHeight()) and 0 or RAIL_PAD
+		local beside = (not coords and Column.CoordsWidth()) or 0
+		local maxW = w and math.max(40, w - leftPad - rightPad - nameW - 8 - beside) or nil
+		return map, "BOTTOMRIGHT", -rightPad, -math.max(LINE_GAP, (DIVIDER_H - h) / 2), "RIGHT", maxW
 	end
 	-- the distance line: 2 px under the map as it always lay (square and
 	-- merged too: nothing moves for a user who changes nothing, user,
@@ -2156,7 +2192,7 @@ function M:ColumnSlot(part)
 		s = okS and Num(s) or nil
 		if bottom and barBottom and s then
 			local top = bottom - LINE_GAP * s
-			local h = Column.LineHeight() or LINE_H
+			local h = Column.SlotHeight() or LINE_H
 			if top - h * s < barTop and top > barBottom then
 				return bar, "BOTTOM", 0, -LINE_GAP
 			end
@@ -2221,7 +2257,8 @@ function M:ColumnRect()
 		end
 		l, b, r, t = math.min(l, bl), math.min(b, bb), math.max(r, br), math.max(t, bt)
 	end
-	local h = Column.LineHeight()
+	-- (2.1.41: the slot kept for Route's line or the coordinates, which share it)
+	local h = Column.SlotHeight()
 	if h then
 		local rel, _, _, y = self:ColumnSlot("route")
 		local _, relBottom = ScreenRect(rel)
@@ -2260,7 +2297,7 @@ end
 -- distance line stands between the map and the Services row while the bar's
 -- distance leaves it room, and Header Underneath puts the band under the
 -- map. The order as it stands: M:ColumnOrder().
-M.COLUMN_PARTS = { "band", "map", "services", "route", "tracker" }
+M.COLUMN_PARTS = { "band", "map", "services", "route", "coords", "tracker" }
 
 -- the painted frame round the map: the kit ring's opaque part (its piece's
 -- box on its canvas: MinimapKit's RingRect) while it shows, else the map's block
@@ -2313,6 +2350,19 @@ function M:ColumnPart(part)
 		local h = Minimap and Column.LineHeight()
 		if h then
 			local rel, _, _, y = self:ColumnSlot("route")
+			local _, relBottom = ScreenRect(rel)
+			local l, _, r = ScreenRect(M:MapFrame())
+			local s = EffScale(Minimap)
+			if relBottom and l and s then
+				local top = relBottom + y * s
+				return l, top - h * s, r, top
+			end
+		end
+	elseif part == "coords" then
+		-- (2.1.41) the coordinates' line's slot, as the distance line's
+		local h = Minimap and Column.CoordsHeight()
+		if h then
+			local rel, _, _, y = self:ColumnSlot("coords")
 			local _, relBottom = ScreenRect(rel)
 			local l, _, r = ScreenRect(M:MapFrame())
 			local s = EffScale(Minimap)

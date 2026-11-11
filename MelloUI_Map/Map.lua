@@ -61,7 +61,9 @@ local T = {
 	MIN_W = 480,       -- (2.1.0: 640 before the column stood beside it; a 4 : 3 screen at UI scale 1 takes the two)
 	PAD = 14, TOP = 34, FOOT = 24, IN = 1,
 	ICONS_W = 120, ICONS_RIGHT = -44, ICONS_TOP = -7,   -- (2.1.39) the icons' slider in the title row, left of the close
-	HOVER = 0.1,       -- the name under the cursor read at most this often
+	HOVER = 0.1,       -- the name under the cursor read at most this often (2.1.41: the coordinates too)
+	COORDS_RIGHT = 24, COORDS_GAP = 12,   -- (2.1.41) the footer's coordinates: this far from its right (the grip's
+	                                      -- 16 in the corner), the name this far left of them
 	CLICK = 4,         -- a press that moved less than this is a click
 	PIN_ZOOM = 6,      -- a shared pin opened: the map at least this close
 	FLING_SMOOTH = 0.05,   -- (2026-10-21) the drag's speed smoothed over about this many seconds ...
@@ -86,6 +88,9 @@ local TEXT = {
 	open = "Open The Map",
 	usage = "/mellomap: open or close the map | /mellomap share: your pin's link in the chat | /mellomap dump: its places and the view, to copy",
 	off = "The map is off: switch it on in /mello (Quests and travel > Map).",
+	you = "You",       -- (2.1.41: the footer's coordinates)
+	mouse = "Mouse",
+	coordsGap = "    ",
 }
 
 -- (after M4; the user, 2026-10-20: "Layer switches", a button on the map, "Objectives on, rares off") what the map
@@ -118,7 +123,8 @@ M = MelloUI:RegisterModule("Map", {
 	flavour = "The whole world on one sheet, from the continents down to a village.",
 	group = "Quests and travel", navOrder = 4,
 	enabledByDefault = true,
-	defaults = { dungeonMaps = true, mapShare = false, iconScale = 1 },   -- (2.1.39: iconScale, the title row's slider)
+	-- (2.1.39: iconScale, the title row's slider; 2.1.41: coords, the footer's coordinates)
+	defaults = { dungeonMaps = true, mapShare = false, iconScale = 1, coords = false },
 	-- (1.0) the window's own state, the player's: where it looked, its quest log open and on which tab -- never in a
 	-- profile or the installer's Full (its layers and Tracked Only travel)
 	keep = { "view", "log", "logTab", "logMode", "mapShare" },
@@ -131,6 +137,10 @@ M = MelloUI:RegisterModule("Map", {
 		-- loot seen on the right side of the map") MapDungeon.lua
 		{ type = "toggle", key = "dungeonMaps", name = "Dungeon Maps",
 		  desc = "Inside a dungeon or raid the map opens on its own map (Blizzard's drawings for the classic ones), Dungeon Info's bosses and loot beside it. From outside, a click on its door or on its row in Dungeon Info shows it." },
+		-- (2.1.41; players: "Enable Map and minimap Coordinates"; the user, 2026-11-11: "your Current Character
+		-- Coordinates, and the Coordinates where your mouse is"; the pick A of coords_sketch: words in the footer)
+		{ type = "toggle", key = "coords", name = "Map Coordinates", new = "2.1.41",
+		  desc = "Your coordinates in the line under the map, and the mouse's while it is over the map." },
 	},
 })
 
@@ -250,19 +260,54 @@ local function PinTip(pin)
 	end
 end
 
--- the deepest map under the cursor (names the footer), the pin under it (its tooltip)
+-- (2.1.41) the footer's right: your coordinates, and the mouse's while it is over the map (on the map under it, the
+-- one the footer names), in MelloUI.Coords' words; nothing while Map Coordinates is off. Set only when it changed
+local function ShowCoords()
+	local fs = win.coords
+	if not fs then
+		return
+	end
+	local text = ""
+	if M.db and M.db.coords then
+		local C = MelloUI.Coords
+		local gold = MelloUI:PaletteCode("selectedTrim")
+		local _, px, py = C.Player()
+		local you = px and C.Text(px, py)
+		local mouse = win.mouseX and C.Text(win.mouseX, win.mouseY)
+		if you then
+			text = gold .. TEXT.you .. "|r " .. you
+		end
+		if mouse then
+			text = (text ~= "" and (text .. TEXT.coordsGap) or "") .. gold .. TEXT.mouse .. "|r " .. mouse
+		end
+	end
+	if text ~= win.shownCoords then
+		win.shownCoords = text
+		fs:SetText(text)
+	end
+end
+
+-- the deepest map under the cursor (names the footer; 2.1.41: the mouse's place on it), the pin under it (its tooltip)
 local function Hover()
 	local c = win.canvas
 	local x, y = c:Cursor()
+	win.mouseX, win.mouseY = nil, nil
 	if not x then
 		ShowName(nil)
 		PinTip(nil)
+		ShowCoords()
 		return
 	end
 	PinTip(not win.drag.on and win.pins:At(x, y) or nil)
 	local path = c:Path(x, y, win.path)
 	local p = path[#path]
-	ShowName(p and p.kind ~= "world" and p.name or nil)
+	local named = p and p.kind ~= "world" and p
+	ShowName(named and p.name or nil)
+	if named and not Dungeon.Shown() and p.w and p.h and p.w > 0 and p.h > 0 then
+		local wx, wy = c:Point(x, y)
+		win.mouseX, win.mouseY = (wx - p.left) / p.w, (wy - p.top) / p.h
+	end
+	ShowCoords()
 end
 
 -- one handler while the cursor is over the canvas or a drag runs: the drag's pan (the point grabbed held under the
@@ -603,6 +648,8 @@ local function Canvas_OnLeave()
 	win.over = false
 	ShowName(nil)
 	PinTip(nil)
+	win.mouseX, win.mouseY = nil, nil
+	ShowCoords()
 end
 
 --------------------------------------------------------------------------------
@@ -869,6 +916,12 @@ local function Frame_OnUpdate(_, elapsed)
 	AddonPins.Tick()
 	Objectives.Tick(elapsed)
 	Log.Tick()
+	-- (2.1.41) your coordinates as you walk (T.HOVER apart; the mouse's with the name, Hover)
+	win.coordsIn = (win.coordsIn or 0) - elapsed
+	if win.coordsIn <= 0 then
+		win.coordsIn = T.HOVER
+		ShowCoords()
+	end
 end
 
 local function Frame_OnEvent(_, event)
@@ -979,9 +1032,16 @@ local function Build()
 	-- (2.1.0) the layers' page, the rail's gear; the layers as they were left
 	Log.Layers({ switches = SWITCHES, groups = GROUPS, on = LayerOn, set = SetLayer })
 	ApplyLayers()
+	-- (2.1.41) the coordinates at the line's right, clear of the size grip; the name (or the hint) up to them
+	local coords = W.Text(body, "GameFontHighlight", nil, "text")
+	coords:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -T.COORDS_RIGHT, 5)
+	coords:SetJustifyH("RIGHT")
+	coords:SetJustifyV("BOTTOM")
+	coords:SetWordWrap(false)
+	win.coords = coords
 	local name = W.Text(body, "GameFontHighlight", nil, "text")
 	name:SetPoint("BOTTOMLEFT", body, "BOTTOMLEFT", 8, 5)
-	name:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -8, 5)
+	name:SetPoint("BOTTOMRIGHT", coords, "BOTTOMLEFT", -T.COORDS_GAP, 0)
 	name:SetJustifyV("BOTTOM")
 	name:SetWordWrap(false)
 	win.name = name

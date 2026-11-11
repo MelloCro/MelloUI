@@ -59,7 +59,9 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		hideBagBar = false,
 		bagSlotsOnBags = true,
 		bagBarFold = true,
-		hideMinimapCoords = true,
+		-- (2.1.41) MelloUI's own line under the minimap (Core/Coords.lua); the game's own line is always hidden
+		-- (HIDE_ALWAYS). Took the place of Hide Minimap Coordinates: a saved off of that carried (Core.lua's merges)
+		minimapCoords = false,
 		worldTextScale = 1,
 		chatNotices = true,
 		-- the on-screen notice's (Core/Notice.lua reads them, Tweaks on or off)
@@ -95,8 +97,9 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		  desc = "Hides the micro menu. It shows in Edit Mode." },
 		{ type = "toggle", key = "hideBagBar", name = "Hide Bag Bar",
 		  desc = "Hides the bag bar. Your bag keys still work; it shows in Edit Mode." },
-		{ type = "toggle", key = "hideMinimapCoords", name = "Hide Minimap Coordinates",
-		  desc = "Hides the coordinates under the minimap." },
+		-- (2.1.41; players: "Enable Map and minimap Coordinates"; the user's pick A of coords_sketch)
+		{ type = "toggle", key = "minimapCoords", name = "Minimap Coordinates", new = "2.1.41",
+		  desc = "Your coordinates under the minimap, and the mouse's while it is over the minimap." },
 		{ type = "toggle", key = "bagSlotsOnBags", parent = "hideBagBar", name = "Bag Slots On Bag Window",
 		  desc = "With the bag bar hidden, the bag slots show under the bag window, so you can still swap bags." },
 		{ type = "toggle", key = "bagBarFold", name = "Collapse Arrow",
@@ -214,12 +217,16 @@ hiddenParent:Hide()
 local HIDE_TARGETS = {
 	hideMicroMenu = function() return MicroMenuContainer end,
 	hideBagBar = function() return OwnG("BagsBar") end,
-	hideMinimapCoords = function()
+	gameMinimapCoords = function()
 		return (Minimap and Minimap.PlayerCoords)
 			or (MinimapCluster and MinimapCluster.MinimapContainer and MinimapCluster.MinimapContainer.PlayerCoords)
 			or (MinimapCluster and MinimapCluster.PlayerCoords)
 	end,
 }
+
+-- (2.1.41) hidden whenever Tweaks is on, no switch of their own: the game's line under the minimap (MelloUI's own
+-- takes its place, Minimap Coordinates; never two)
+local HIDE_ALWAYS = { gameMinimapCoords = true }
 
 local originalParents = setmetatable({}, { __mode = "k" })
 local editModeActive = false
@@ -247,7 +254,7 @@ local function UpdateHiddenFrames()
 	local db = M.db
 	for key, getter in pairs(HIDE_TARGETS) do
 		local frame = getter()
-		local shouldHide = M.isEnabled and db and db[key] and not editModeActive
+		local shouldHide = M.isEnabled and db and (HIDE_ALWAYS[key] or db[key]) and not editModeActive
 		local was = hiddenBy[key]
 		if was and was ~= frame then
 			SetFrameHidden(was, false)
@@ -2340,6 +2347,7 @@ function M:OnEnable(db)
 		editModeActive = EditModeManagerFrame:IsEditModeActive()
 	end
 	UpdateHiddenFrames()
+	MelloUI.Coords.Minimap(db.minimapCoords)
 	if WorldTextScaleWanted(db) then
 		ApplyWorldTextScale(db.worldTextScale)
 	end
@@ -2354,6 +2362,7 @@ function M:OnDisable()
 	-- follows and syncs again)
 	Gems.Sync()
 	UpdateHiddenFrames()
+	MelloUI.Coords.Minimap(false)
 	RestoreWorldTextScale()
 	Level.Listen()
 	XP.Listen()
@@ -2378,6 +2387,8 @@ function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if HIDE_TARGETS[key] or key == "bagSlotsOnBags" or key == "bagBarFold" then
 		UpdateHiddenFrames()
+	elseif key == "minimapCoords" then
+		MelloUI.Coords.Minimap(value)
 	elseif key == "worldTextScale" then
 		ApplyWorldTextScale(value)
 	elseif key == "splitWheel" or key == "splitHalf" then

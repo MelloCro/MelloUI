@@ -131,7 +131,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		-- (2.1.40; players, through the user, 2026-11-11: "hidding the chat timestamps"; the user's picks "One Chat
 		-- Timestamps setting" and "Minimal keeps 15:27") the game's own Chat Timestamps (its showTimestamps CVar),
 		-- which both chat views follow; never picked here and none in the game, the Minimal view keeps its 15:27
-		{ type = "dropdown", key = "timestamps", name = "Chat Timestamps", new = "2.1.40",
+		{ type = "dropdown", key = "timestamps", name = "Chat Timestamps",
 		  search = "timestamp time stamp clock hide time",
 		  values = (function()
 			-- the game's own formats (its Social settings' list), each shown as 15:27:32 shows in it (the game's time and
