@@ -1376,7 +1376,8 @@ local function PlaceBand(onFrame, f, b, groups)
 	if not band then
 		return
 	end
-	local movers = { band, cluster.Tracking, _G.GameTimeFrame, _G.TimeManagerClockButton }
+	-- Preserve the saved slots if an optional control is absent.
+	local movers = { band, cluster.Tracking or false, _G.GameTimeFrame or false, _G.TimeManagerClockButton }
 	if onFrame then
 		if not skin.bandSaved then
 			-- (a level as an offset from the map's: put back over a map a click
@@ -1409,14 +1410,21 @@ local function PlaceBand(onFrame, f, b, groups)
 		-- (0.24.0) the Chat panel's zone row
 		if b.panel then
 			PanelBand(f, band, groups)
-			skin.bandMerged = true
-			return
+		else
+			BandUnpanel()
+			-- The painted skin positions the band and its controls on the top rail.
+			if not (Dress.on and dresser:BandOnRail(f, b, groups)) then
+				return
+			end
 		end
-		BandUnpanel()
-		-- (a rail family's or the border library's frame: the zone band on its top rail, the tracking button and the
-		-- calendar on the plate's caps -- the painted skin's, which alone draws those borders: Border)
-		if not (Dress.on and dresser:BandOnRail(f, b, groups)) then
-			return
+		-- When the zone button doubles as the band, it spans the tracking and calendar buttons.
+		if band == cluster.ZoneTextButton then
+			local level = band:GetFrameLevel()
+			for _, button in pairs({ cluster.Tracking, _G.GameTimeFrame }) do
+				if button:GetFrameLevel() <= level then
+					button:SetFrameLevel(level + 1)
+				end
+			end
 		end
 		skin.bandMerged = true
 	elseif skin.bandMerged then
