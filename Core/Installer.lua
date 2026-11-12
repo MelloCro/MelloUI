@@ -2586,6 +2586,12 @@ local function AltCheck()
 	if not key or um[key] ~= nil or not TookLayout(um) or not MelloUI.EditModeState then
 		return
 	end
+	-- (2.1.46) the character's profile carries its Edit Mode layout and puts it in at the login (Core.lua's
+	-- ApplyProfileEditMode): nothing to ask
+	if type(um.emKind) == "string" then
+		SetOwn(key, true)
+		return
+	end
 	local ok, state = pcall(MelloUI.EditModeState, MelloUI)
 	if not (ok and type(state) == "table" and state.hadMello and state.activeName ~= nil and state.name ~= nil) then
 		return

@@ -1432,6 +1432,9 @@ function View.PlaceStands()
 	for _, b in ipairs(View.buttons or {}) do
 		Stand(b, b.gameButton, "1")
 	end
+	for _, b in ipairs(View.Log and View.Log.tabs or {}) do
+		Stand(b, b.gameButton, "1")   -- (2.1.46: the combat log's filters, the game's buttons pressed)
+	end
 	local place = MelloUI.Reminders and MelloUI.Reminders.OverlayPlace
 	for b, p in pairs(stand) do
 		local over = (b.entry and b.entry.hit) or b   -- (a tab's strip: its name too)
@@ -1802,6 +1805,7 @@ function View.Select(key)
 	View.Lit()
 	View.Counts()
 	View.Fonts()   -- (each window its own size)
+	View.Log.Show()   -- (2.1.46: the combat log's filters over its lines)
 	View.Lay()
 end
 
@@ -2081,7 +2085,7 @@ function View.LayFrame()
 		rail:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", RailW() - 2, ROW_H + 4)
 	end
 	local rw = RailW()
-	area:SetPoint("TOPLEFT", frame, "TOPLEFT", top and View.TOP.inset or (rw + 16), -12)
+	area:SetPoint("TOPLEFT", frame, "TOPLEFT", top and View.TOP.inset or (rw + 16), -(12 + View.Log.Inset()))
 	View.divider:ClearAllPoints()
 	View.divider:SetPoint("TOPLEFT", frame, "TOPLEFT", rw, -8)
 	View.divider:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", rw, ROW_H + 4)
@@ -2101,6 +2105,235 @@ function View.LayFrame()
 	for _, edge in ipairs(frame.panelEdges or {}) do
 		edge:SetShown(not top)
 	end
+end
+
+--------------------------------------------------------------------------------
+-- The combat log under the view (2.1.46; sh4dd0w, Discord, 2026-11-11: the Combat Log tab "only displayed some useless
+-- information such as crafts", live hits and heals never showed, and "closing the Blizzard combat-log filters window
+-- then dumped a bunch of fight lines"; the user: "Fix all of it now, also the 2 missing log tabs").
+-- Blizzard_CombatLog has the engine send its fight lines only while its window shows: its OnHide turns them off
+-- (C_CombatLog.SetFilteredEventsEnabled(false)), its OnShow on again with a refilter of the whole log. The view keeps
+-- the game's windows out of sight and the dock on another tab, so no fight line ever came. While the view is on:
+--   * the lines kept on: the engine's switch put back on after the game turns it off (a post-hook on the switch;
+--     nothing of the game's window shown, moved or written), the game's own state given back when the view goes off
+--   * a refilter (a filter picked, the filters window closed): the log's copy emptied with the game's window (its
+--     Clear), the replayed lines passed by while it runs, and read again from the game's window when it is over --
+--     no backlog dumped as new lines
+--   * the game's quick filters (its buttons over its log: "My Actions", "What happened to me?" and any the player
+--     made) as a row of tabs over the lines while the Combat Log tab is open, the one in use lit; each pressed through
+--     a secure stand-in on the game's own button (its OnClick, the game's code, runs untainted: the tabs' right click)
+-- Nothing at login: hooked as the view is built, the row made the first time the Combat Log tab opens.
+--------------------------------------------------------------------------------
+
+local Log = { busy = false, keep = false, tabs = {}, H = 26, GAP = 4 }
+View.Log = Log
+TEXT.logFilterTip = "The game's combat log filter: what the Combat Log tab shows."
+
+function Log.Frame()
+	return rawget(_G, "COMBATLOG")
+end
+
+-- the engine's fight lines on while the view is (the game's own state otherwise: on while its window shows)
+function Log.Keep(on)
+	local CL = rawget(_G, "C_CombatLog")
+	local api = CL and CL.SetFilteredEventsEnabled
+	local log = Log.Frame()
+	if type(api) ~= "function" or not log then
+		return
+	end
+	Log.keep = on and true or false
+	local okS, shown = pcall(log.IsShown, log)
+	local want = Log.keep or (okS and shown == true)
+	Log.setting = true
+	pcall(api, want and true or false)
+	Log.setting = false
+end
+
+-- the game turned them off (its window hidden by the dock): on again while the view is on
+function Log.Switched(enabled)
+	if Log.keep and not Log.setting and enabled ~= true then
+		Log.Keep(true)
+	end
+end
+
+-- the log's copy emptied (the game's window cleared: a refilter's start, the entries cleared)
+function Log.Cleared()
+	local buf = View.bufs[Log.Frame()]
+	if buf then
+		buf.count, buf.last = 0, 0
+	end
+	if View.on and View.tab == Log.Frame() then
+		View.Lay()
+	end
+end
+
+function Log.Started()
+	Log.busy = true
+end
+
+-- a refilter over: the copy read again from the game's window, the filter in use lit
+function Log.Finished()
+	Log.busy = false
+	local log = Log.Frame()
+	if not (log and View.bufs[log]) then
+		return
+	end
+	Log.Cleared()
+	if View.on then
+		Seed(log)
+		if View.tab == log then
+			View.Lay()
+		end
+		Log.Refresh()
+	end
+end
+
+-- hooked once, as the view is built (Blizzard_CombatLog loads with the chat; its filters' functions when it does)
+function Log.Hook()
+	local log = Log.Frame()
+	local CL = rawget(_G, "C_CombatLog")
+	if not Log.switchHooked and CL and type(CL.SetFilteredEventsEnabled) == "function" then
+		Log.switchHooked = true
+		hooksecurefunc(CL, "SetFilteredEventsEnabled", Log.Switched)
+	end
+	if log and not Log.clearHooked and log.Clear then
+		Log.clearHooked = true
+		hooksecurefunc(log, "Clear", Log.Cleared)
+	end
+	local ER = rawget(_G, "EventRegistry")
+	if not Log.refilterHooked and ER and ER.RegisterCallback then
+		Log.refilterHooked = true
+		ER:RegisterCallback("OnCombatLogRefilterStarted", Log.Started, Log)
+		ER:RegisterCallback("OnCombatLogRefilterFinished", Log.Finished, Log)
+	end
+	-- (a filter picked: every pick goes through the engine's ApplyFilterSettings -- the game's own update of its
+	-- buttons is called through a local of its file, out of a hook's reach; a group joined or left: by name)
+	if not Log.filterHooked and CL and type(CL.ApplyFilterSettings) == "function" then
+		Log.filterHooked = true
+		hooksecurefunc(CL, "ApplyFilterSettings", function()
+			Log.Refresh()
+		end)
+	end
+	if not Log.buttonsHooked and type(rawget(_G, "Blizzard_CombatLog_Update_QuickButtons")) == "function" then
+		Log.buttonsHooked = true
+		hooksecurefunc("Blizzard_CombatLog_Update_QuickButtons", function()
+			Log.Refresh()
+		end)
+	end
+end
+
+-- the game's quick filter buttons as it shows them (CombatLogQuickButtonFrameButton<n>, made by its filters)
+local gameFilters = {}
+function Log.GameButtons()
+	wipe(gameFilters)
+	for i = 1, 20 do
+		local gb = rawget(_G, "CombatLogQuickButtonFrameButton" .. i)
+		if not gb then
+			break
+		end
+		local okS, shown = pcall(gb.IsShown, gb)
+		if okS and shown == true then
+			gameFilters[#gameFilters + 1] = gb
+		end
+	end
+	return gameFilters
+end
+
+-- the filter in use (the game's: its saved filters' current one; nil while a temporary one is)
+function Log.Current()
+	local filters = rawget(_G, "Blizzard_CombatLog_Filters")
+	local settings = rawget(_G, "Blizzard_CombatLog_CurrentSettings")
+	if type(filters) ~= "table" or (type(settings) == "table" and settings.isTemp) then
+		return nil
+	end
+	return Num(filters.currentFilter)
+end
+
+-- a tab of the row (made once, used again)
+local function LogTab(i)
+	local tab = Log.tabs[i]
+	if tab then
+		return tab
+	end
+	tab = CreateFrame("Button", nil, Log.row)
+	local fs = tab:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlight")
+	tab:SetFontString(fs)
+	tab.Text = fs
+	W.FlatTab(tab)
+	tab.tipText = TEXT.logFilterTip
+	Log.tabs[i] = tab
+	return tab
+end
+
+-- the row as the game's filters stand: its names, the one in use lit, each tab's stand-in on the game's button
+function Log.Refresh()
+	local row = Log.row
+	if not (row and row:IsShown()) then
+		return
+	end
+	local current = Log.Current()
+	local list = Log.GameButtons()
+	local x = 0
+	for i, gb in ipairs(list) do
+		local tab = LogTab(i)
+		local okT, name = pcall(gb.GetText, gb)
+		name = okT and Plain(name)
+		tab:SetText(type(name) == "string" and name or "")
+		tab.tipTitle = tab:GetText()
+		W.TabFit(tab, 10)
+		tab:ClearAllPoints()
+		tab:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", x, 0)
+		local okW, w = pcall(tab.GetWidth, tab)
+		x = x + ((okW and Num(w)) or 60) + Log.GAP
+		local okI, id = pcall(gb.GetID, gb)
+		tab:SetSelected(current ~= nil and okI and Num(id) == current)
+		tab:Show()
+		if tab.gameButton ~= gb then
+			tab.gameButton = gb
+			local p = stand[tab]
+			if p and not InFight() then
+				p:SetAttribute("clickbutton1", gb)
+			end
+		end
+	end
+	for i = #list + 1, #Log.tabs do
+		Log.tabs[i]:Hide()
+	end
+	View.PlaceStands()
+end
+
+-- the row shown while the Combat Log tab is open (the lines under it), else away
+function Log.Show()
+	local log = Log.Frame()
+	local want = View.on and log ~= nil and View.tab == log and #Log.GameButtons() > 0
+	if want and not Log.row then
+		local row = CreateFrame("Frame", nil, View.frame)
+		row:SetHeight(Log.H)
+		Log.row = row
+	end
+	local row = Log.row
+	if not row then
+		return
+	end
+	local was = row:IsShown()
+	row:SetShown(want)
+	if want then
+		row:ClearAllPoints()
+		local x = View.topLaid and View.TOP.inset or (RailW() + 16)
+		row:SetPoint("TOPLEFT", View.frame, "TOPLEFT", x, -8)
+		row:SetPoint("TOPRIGHT", View.frame, "TOPRIGHT", -12, -8)
+		Log.Refresh()
+	else
+		View.PlaceStands()
+	end
+	if was ~= want then
+		View.LayFrame()   -- (the lines under the row, or up to the top again)
+	end
+end
+
+-- how far the lines stand under the frame's top for the row (0 while it is away)
+function Log.Inset()
+	return (Log.row and Log.row:IsShown()) and (Log.H + Log.GAP) or 0
 end
 
 local function Build()
@@ -2226,11 +2459,13 @@ local function Build()
 	local log = rawget(_G, "COMBATLOG")
 	if log and log.AddMessage then
 		hooksecurefunc(log, "AddMessage", function(f, text, r, g, b)
-			if View.on then
+			if View.on and not Log.busy then
 				View.Line(f, text, r, g, b)
 			end
 		end)
 	end
+	-- (2.1.46) its lines kept coming while the view is on, a refilter read again, its filters as tabs (Log)
+	Log.Hook()
 	-- a window made, renamed, closed or docked (the game's tab menu: the stand-ins' right click): the rail again
 	-- (after a fight: the stand-ins)
 	local function WindowsChanged()
@@ -2581,6 +2816,8 @@ function View.Apply()
 			end
 		end
 		View.WhisperCount(false)
+		Log.Keep(true)   -- (2.1.46: the combat log's fight lines kept coming under the view)
+		Log.Show()
 		View.Lay()
 		if not was then
 			MelloUI:Fire("drawn", "chat")   -- (the dock's plate: View.DrawnRect)
@@ -2597,6 +2834,8 @@ function View.Apply()
 		end
 		HideGame(false)
 		PlaceEditBoxes(false)
+		Log.Keep(false)   -- (the game's own again: on while its window shows)
+		Log.Show()
 		View.frame:Hide()
 		View.PlaceStands()   -- (hidden with the view; after a fight)
 		MelloUI:Fire("drawn", "chat")

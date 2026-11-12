@@ -6180,6 +6180,30 @@ local function SerializeWithPlaces(self)
 	return text
 end
 
+-- (2.1.46) the active Edit Mode layout into the settings (UI Modifications' emKind / emName / emText), so the profile
+-- written next carries it whole (Core/EditModeLayout.lua's EditModeForProfile); unreadable: the last one kept. And
+-- putting a profile's back: this character's layout made the profile's (EditModeToProfile) -- a load, the login
+function MelloUI:RecordEditMode()
+	if not self.EditModeForProfile then
+		return
+	end
+	local ok, kind, name, text = pcall(self.EditModeForProfile, self)
+	local um = ok and kind and self:GetModuleDB("UIModifications")
+	if type(um) == "table" then
+		um.emKind, um.emName, um.emText = kind, name, text
+	end
+end
+
+function MelloUI:ApplyProfileEditMode()
+	local um = self:GetModuleDB("UIModifications")
+	if self.EditModeToProfile and type(um) == "table" and type(um.emKind) == "string" then
+		local ok, err = pcall(self.EditModeToProfile, self, um.emKind, um.emName, um.emText)
+		if not ok then
+			geterrorhandler()(err)
+		end
+	end
+end
+
 -- `plain` (2.1.0): the settings only, no places measured -- the installer's restore point ("Before install", saved in
 -- the middle of an install: the elements' registration the measure runs held its fit up for good, inst/setup C8)
 function MelloUI:SaveProfile(name, plain)
@@ -6190,8 +6214,25 @@ function MelloUI:SaveProfile(name, plain)
 	if name == self.FRESH_PROFILE then
 		return false, "'" .. name .. "' is built in"
 	end
+	-- (2.1.46) the player's save: the changes into this character's profile first, then the new one is this
+	-- character's; the installer's restore point (plain) is no character's
+	local mine = not plain and self.CharacterProfile and self:CharacterProfile() or nil
+	if mine ~= nil and name ~= mine then
+		self:SaveCharacterProfile(true)
+	end
+	if not plain then
+		self:RecordEditMode()
+	end
 	self:Profiles()[name] = StampPlaces(self, StripPersonal(self, plain and self:SerializeSettings() or SerializeWithPlaces(self)))
+	-- (saved over another character's own profile: written, as asked, but it stays that character's; this one keeps
+	-- its own)
+	if not plain and self.ProfileUser and self:ProfileUser(name) then
+		return true
+	end
 	self.db.activeProfile = name
+	if not plain and self.SetCharacterProfile then
+		self:SetCharacterProfile(name)
+	end
 	return true
 end
 
@@ -6206,6 +6247,14 @@ function MelloUI:DeleteProfile(name)
 	end
 	if self.db.activeProfile == name then
 		self.db.activeProfile = nil
+	end
+	-- (2.1.46) the characters that used it: each gets its own copy at its next logout or login
+	if type(self.db.charProfiles) == "table" then
+		for key, used in pairs(self.db.charProfiles) do
+			if used == name then
+				self.db.charProfiles[key] = nil
+			end
+		end
 	end
 	return true
 end
@@ -6429,14 +6478,253 @@ function MelloUI:ImportProfile(name, str)
 	return true, known, total
 end
 
+--------------------------------------------------------------------------------
+-- Each character's own profile (2.1.46; the user, 2026-11-12: "more and more people complain about their profiles not
+-- getting saved properly, and when playing alts the ui breaks when loding the profile they set up, in some cases
+-- breaks the profile when returning to their main character" -- the picked answer "Own copy per character"). The
+-- settings stay the account's (MelloUIDB, one set live); which profile they are is each character's:
+--   db.charProfiles[key] = name   the profile this character uses (key: its GUID's letters and digits)
+-- * the login (CharacterProfileAtLogin, before any module reads a setting): a character whose profile is not the one
+--   live gets it put in place (the one live went into its own character's profile at that one's logout); a new
+--   character gets its own copy of what is live, under its name ("Name", else "Name - Realm", else "Name 2" ...);
+--   the first login since this came adopts the live profile as that character's (its settings are that profile's)
+-- * the changes follow (SaveCharacterProfile): at every logout and /reload, and before the player loads or saves
+--   another profile, the settings go into this character's profile, its elements' places measured -- a profile is
+--   never a stale copy. One that cannot hold them (the built-in Everything Off, none, a deleted one) becomes the
+--   character's own named copy, unless the settings are still the built-in's
+-- * a load or a save by the player makes that profile this character's; the installer's restore point (a plain
+--   save) never does, and loading this character's own profile again goes back to how it was saved
+-- Nothing per frame, nothing at login but the one lookup (and the one load when the character's profile is another).
+--------------------------------------------------------------------------------
+do
+	-- this character's key, nil while unreadable (as Route's and the installer's per-character keys)
+	local function Key()
+		local ok, guid = pcall(UnitGUID, "player")
+		if not ok or Safe.IsSecret(guid) or type(guid) ~= "string" or guid == "" then
+			return nil
+		end
+		return (guid:gsub("[^%w]", ""))
+	end
+	MelloUI.CharacterKey = Key   -- (read only: the tests, /mello status)
+
+	local function Owners(self)
+		if type(self.db.charProfiles) ~= "table" then
+			self.db.charProfiles = {}
+		end
+		return self.db.charProfiles
+	end
+
+	-- a name the game gave, plain and not empty (Safe.Text), else nil
+	local function Named(v)
+		v = Safe.Text(v)
+		return v ~= "" and v or nil
+	end
+
+	-- a free name for this character's own profile
+	local function OwnName(self, profiles)
+		local okN, name = pcall(UnitName, "player")
+		name = okN and Named(name) or "My Setup"
+		if profiles[name] == nil and name ~= self.FRESH_PROFILE then
+			return name
+		end
+		local okR, realm = pcall(GetRealmName)
+		realm = okR and Named(realm) or nil
+		if realm and profiles[name .. " - " .. realm] == nil then
+			return name .. " - " .. realm
+		end
+		for i = 2, 999 do
+			if profiles[name .. " " .. i] == nil then
+				return name .. " " .. i
+			end
+		end
+		return name .. " " .. tostring(time())
+	end
+
+	-- the same entries in any order (the built-in profile's text against the live settings')
+	local function SameEntries(a, b)
+		if a == b then
+			return true
+		end
+		if type(a) ~= "string" or type(b) ~= "string" then
+			return false
+		end
+		local set, n = {}, 0
+		for entry in a:gmatch("[^;]+") do
+			set[entry] = true
+			n = n + 1
+		end
+		for entry in b:gmatch("[^;]+") do
+			if not set[entry] then
+				return false
+			end
+			n = n - 1
+		end
+		return n == 0
+	end
+
+	-- the live settings as a profile's text, as SaveProfile writes it (`places`: the elements' places measured; the
+	-- active Edit Mode layout recorded, but at a login's copy: the layout there is this character's, not yet the
+	-- profile's -- `keepLayout`)
+	local function LiveText(self, places, keepLayout)
+		if type(self.SerializeSettings) ~= "function" then
+			return nil   -- (a world without Core/Backup.lua's serializer: nothing to write)
+		end
+		if not keepLayout then
+			self:RecordEditMode()
+		end
+		return StampPlaces(self, StripPersonal(self, places and SerializeWithPlaces(self) or self:SerializeSettings()))
+	end
+
+	-- this character's profile's name (nil: none known yet, or the character unreadable)
+	function MelloUI:CharacterProfile()
+		local key = Key()
+		return key and type(self.db.charProfiles) == "table" and self.db.charProfiles[key] or nil
+	end
+
+	-- the key of ANOTHER character using `name` (nil: none, the built-in profile, or only this one)
+	function MelloUI:ProfileUser(name)
+		if type(name) ~= "string" or name == self.FRESH_PROFILE or type(self.db.charProfiles) ~= "table" then
+			return nil
+		end
+		local me = Key()
+		for key, used in pairs(self.db.charProfiles) do
+			if used == name and key ~= me then
+				return key
+			end
+		end
+		return nil
+	end
+
+	-- the name of this character's own copy of another character's profile: "<name> (<character>)", that one again
+	-- while it is this character's (a load of the same profile refreshes it), else numbered
+	function MelloUI:CopyProfileName(name)
+		local profiles = self:Profiles()
+		local okN, who = pcall(UnitName, "player")
+		who = okN and Named(who) or "My Setup"
+		local base = name .. " (" .. who .. ")"
+		local function Free(n)
+			return profiles[n] == nil or (self:CharacterProfile() == n and not self:ProfileUser(n))
+		end
+		if Free(base) then
+			return base
+		end
+		for i = 2, 999 do
+			if Free(base .. " " .. i) then
+				return base .. " " .. i
+			end
+		end
+		return base .. " " .. tostring(time())
+	end
+
+	-- `name` made this character's profile (the player loaded or saved it)
+	function MelloUI:SetCharacterProfile(name)
+		local key = Key()
+		if key and type(name) == "string" then
+			Owners(self)[key] = name
+		end
+	end
+
+	-- the settings into this character's profile -> the name written, nil when nothing was (the character unreadable,
+	-- the settings still the built-in profile's). (A fresh install's first session works on the table its logout hands
+	-- the client -- dbIsTemporary all along -- so it is saved into that one.)
+	function MelloUI:SaveCharacterProfile(places)
+		local key = Key()
+		if not key then
+			return nil
+		end
+		local owners = Owners(self)
+		local profiles = self:Profiles()
+		local name = owners[key]
+		local text = LiveText(self, places)
+		if text == nil then
+			return nil
+		end
+		if name == nil or name == self.FRESH_PROFILE or type(profiles[name]) ~= "string" then
+			if name == self.FRESH_PROFILE and SameEntries(text, StripPersonal(self, profiles[name])) then
+				return nil
+			end
+			name = OwnName(self, profiles)
+			owners[key] = name
+		end
+		profiles[name] = text
+		self.db.activeProfile = name
+		return name
+	end
+
+	-- the login: this character's profile in place (before any module reads a setting) -> true when it was loaded.
+	-- Not while the settings are a stand-in (none saved yet, or the client still bringing them: asked again then)
+	function MelloUI:CharacterProfileAtLogin()
+		local key = Key()
+		if not key or self.dbIsTemporary or type(self.SerializeSettings) ~= "function" then
+			return false
+		end
+		local db = self.db
+		local first = type(db.charProfiles) ~= "table"
+		local owners = Owners(self)
+		-- (read as saved: the list made up -- the shipped ones copied in, the default chosen -- only when one is written)
+		local profiles = type(db.profiles) == "table" and db.profiles or {}
+		local want, active = owners[key], db.activeProfile
+		if want ~= nil and type(profiles[want]) == "string" then
+			if want == active then
+				return false
+			end
+			self:ApplySettingsText(profiles[want])
+			db.activeProfile = want
+			self.profileAppliedAtLogin = want
+			return true
+		end
+		local saved = type(active) == "string" and active ~= self.FRESH_PROFILE and type(profiles[active]) == "string"
+		if first and saved then
+			owners[key] = active
+			return false
+		end
+		-- a new character (or its profile deleted): its own copy of what is live
+		local text = saved and profiles[active] or LiveText(self, false, true)
+		if text == nil then
+			return false
+		end
+		profiles = self:Profiles()
+		local name = OwnName(self, profiles)
+		profiles[name] = text
+		owners[key] = name
+		db.activeProfile = name
+		-- (the copy put in place too: the places the last save measured -- every element, the ones a later version
+		-- adds included -- stand in the store from the first frame, as on the character it came from)
+		if saved then
+			self:ApplySettingsText(text)
+			self.profileAppliedAtLogin = name
+			return true
+		end
+		return false
+	end
+end
+
 function MelloUI:LoadProfile(name)
 	local text = self:Profiles()[name]
 	if type(text) ~= "string" then
 		return false
 	end
+	-- (2.1.46) the changes made since into this character's profile first, unless that is the one loaded (loading
+	-- it again goes back to how it was saved)
+	local mine = self:CharacterProfile()
+	if mine ~= nil and name ~= mine then
+		self:SaveCharacterProfile(true)
+	end
+	text = self:Profiles()[name]
 	self:ApplySettingsText(text)
-	self.db.activeProfile = name
-	return true
+	-- (another character's own profile: this one gets its own copy -- nothing it changes reaches that character)
+	local use = name
+	if name ~= mine and self:ProfileUser(name) then
+		use = self:CopyProfileName(name)
+		self:Profiles()[use] = text
+	end
+	self.db.activeProfile = use
+	self:SetCharacterProfile(use)
+	-- (the game's frames where the profile's Edit Mode layout puts them)
+	if self.initialized then
+		self:ApplyProfileEditMode()
+	end
+	return true   -- (the copy's name: MelloUI:CharacterProfile())
 end
 
 -- (2.1.0, pr-03; the user picked "Profile fit on load": a shared layout lands right on any screen shape) Whether the
@@ -6526,6 +6814,12 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 		-- (no line for it: a new player gets the installer a few seconds in,
 		-- Core/Installer.lua's one login check)
 		self:ApplyDefaultProfileIfFresh()
+		-- (2.1.46) this character's own profile in place, before any module reads a setting; its Edit Mode layout
+		-- once the login is over (the game's layouts read by then)
+		self:CharacterProfileAtLogin()
+		self:AfterLogin(function()
+			self:ApplyProfileEditMode()
+		end)
 		-- the palette the settings name, before any module draws (only the
 		-- table: nothing is on the screen to repaint yet)
 		ApplyStoredPalette(self, false)
@@ -6554,6 +6848,11 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 		local began = debugprofilestop()
 		-- Whatever table we have been editing is the one that must be saved.
 		self:AdoptSavedVariables("PLAYER_LOGOUT")
+		-- (2.1.46) the session's changes into this character's profile (logout and /reload alike)
+		local okSave, err = pcall(self.SaveCharacterProfile, self, true)
+		if not okSave then
+			geterrorhandler()(err)
+		end
 		MelloUIDB = self.db
 		if self.Perf and self.Perf.LogoutStep then
 			self.Perf.LogoutStep("Core: the settings handed over", debugprofilestop() - began)
@@ -6571,7 +6870,10 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 			end
 		end
 		if self:AdoptSavedVariables("PLAYER_ENTERING_WORLD") then
-			self:RestartModules()
+			-- (2.1.46: this character's profile, which restarts them itself when it is another)
+			if not self:CharacterProfileAtLogin() then
+				self:RestartModules()
+			end
 		end
 		if not self.menuTipTimer then
 			-- a few seconds in, after the login spam and a possible late settings load
@@ -6588,7 +6890,9 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 					return
 				end
 				if self:AdoptSavedVariables("late poll " .. ticks .. "s") then
-					self:RestartModules()
+					if not self:CharacterProfileAtLogin() then
+						self:RestartModules()
+					end
 					self:Notice("Settings loaded late by the client and applied.")
 					ticker:Cancel()
 					self.adoptTicker = nil

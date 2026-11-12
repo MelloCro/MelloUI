@@ -2,8 +2,8 @@
 -- people who support MelloUI, by tier, shown on the configurator's Supporters page (Core/Config.lua). Do not edit by
 -- hand: a name to leave out goes in the bot's supporters-exclude.txt.
 MelloUI_Supporters = {
-	updated = "2026-11-10",
-	legend = {},
+	updated = "2026-11-12",
+	legend = { "Poko" },
 	champion = {},
 	supporter = { "NiceGuyBadGamer", "TribalInstincts" },
 }

@@ -69,6 +69,10 @@ Download the [release zip](https://github.com/MelloCro/MelloUI/releases/latest) 
 - Classic quests, NPCs and drops: the [cmangos classic-db](https://github.com/cmangos/classic-db) (GPL-3.0); the data files made from it are GPL-3.0 too.
 
 <!-- legends:start (written by MBot's `npm run supporters`; empty until there is a Legend) -->
+## Legends
+
+Thank you to MelloUI's Legends, who help keep it going: Poko 🧡
+
 <!-- legends:end -->
 
 ## License

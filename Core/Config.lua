@@ -159,7 +159,7 @@ local C = {
 
 local HOME_FLAVOUR = "Module based interface tweaks for World of Warcraft: Forever."
 local PROFILES_META = { icon = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\page_profiles", title = "Profiles",
-	flavour = "Your whole setup under one name. Save it, load it, or make it the default for a fresh install." }
+	flavour = "Your whole setup under one name. Each character keeps its own, and your changes are saved into it as you play." }
 -- (2.1.0) the Supporters page under Profiles (CONFIG.BuildSupportersPage)
 CONFIG.SUPPORTERS_META = { icon = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\page_supporters",
 	title = "Supporters", flavour = "The people who help keep MelloUI going." }
@@ -177,6 +177,13 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.46", lines = {
+		"Profiles: each character now keeps its own profile and gets it back at login, so setting up an alt no longer changes your main. A new character starts with a copy of the one last used.",
+		"Profiles: your changes are saved into your character's profile as you play, at every logout and /reload, so loading it later never brings back an older copy.",
+		"Profiles: a profile now carries your Edit Mode layout too, so the action bars, bags and every frame you moved stand in the same place on every character that uses it.",
+		"Chat: with the Minimal Chat View, the Combat Log tab now shows your fights as they happen, and closing the game's combat log filters no longer dumps old fight lines into it.",
+		"Chat: the Combat Log tab has the game's two filters back as tabs over its lines, My actions and What happened to me?",
+	} },
 	{ version = "2.1.45", lines = {
 		"Custom Sounds: a new Your Sounds tab changes any sound, Level Up and Rare Alert included, to another of MelloUI's, the game's own, none, or a SharedMedia sound, your own files too.",
 	} },
@@ -200,11 +207,6 @@ local CHANGELOG = {
 		"Swing timer: Swing Ring Width (Thin, Medium, Thick) and Swing Ring Colour options for the ring that fills round the swing badge; the part still to fill is now a dark track, easier to see.",
 		"Edit Layout: the game's own swing timers no longer show there while MelloUI's swing badge takes their place.",
 		"Dark Mode: an action button's gold frame for an active stance or a queued spell stays bright, as do its pressed, hover and out-of-range frames; only the plain frames darken.",
-	} },
-	{ version = "2.1.41", lines = {
-		"Map: a Map Coordinates option shows your coordinates in the line under the map, and the mouse's while it is over the map.",
-		"Minimap: a Minimap Coordinates option shows your coordinates under the minimap, and the mouse's in gold while it is over the minimap. It takes the place of Hide Minimap Coordinates.",
-		"Dark Mode: gold words no longer darken with it, like the MelloUI button in the Game Menu, the chat's headers and the map's quest counts; only the frames and backgrounds darken.",
 	} },
 }
 local LINKS = {
@@ -5904,23 +5906,42 @@ function CONFIG.OfferProfileFit(name)
 		return
 	end
 	local due, made = MelloUI:ProfileFitDue()
-	local layoutDue = not due and name ~= MelloUI.FRESH_PROFILE and MelloUI.MelloLayoutActive
-		and MelloUI:MelloLayoutActive() == false
+	-- (2.1.46: a profile that carries its Edit Mode layout put it in with the load -- no question about Mello's)
+	local um = MelloUI:GetModuleDB("UIModifications")
+	local layoutDue = not due and name ~= MelloUI.FRESH_PROFILE and not (type(um) == "table" and um.emKind)
+		and MelloUI.MelloLayoutActive and MelloUI:MelloLayoutActive() == false
 	if not (due or layoutDue) then
 		return
 	end
+	-- (2.1.46; the user's report of 2026-11-12, a profile loaded on an alt: its bars on the alt's own Edit Mode
+	-- layout, which the game keeps per character) the account holds MelloUI's layout for this screen already (another
+	-- character put it in): made active on this one, nothing fitted or saved -- the installer's alt answer
+	local have
+	if layoutDue and MelloUI.EditModeState then
+		local ok, state = pcall(MelloUI.EditModeState, MelloUI)
+		have = ok and type(state) == "table" and state.hadMello and state.name or nil
+	end
 	MelloUI:Confirm({
-		text = layoutDue and "This profile places the action bars, the experience bar, the bags and the micro menu through MelloUI's Edit Mode layout, which is not the active one. Put it in, fitted to this screen? The installer does it, and you can go back right after."
+		text = have and "This profile's action bars, experience bar, bags and micro menu follow MelloUI's Edit Mode layout, which this character does not use yet. Use it on this character too?"
+			or layoutDue and "This profile places the action bars, the experience bar, the bags and the micro menu through MelloUI's Edit Mode layout, which is not the active one. Put it in, fitted to this screen? The installer does it, and you can go back right after."
 			or made and "This profile was made on a screen of another size or shape. Fit its layout to this screen? The installer fits it, and you can go back right after."
 			or "This profile does not say which screen it was made on. Fit its layout to this screen? The installer fits it, and you can go back right after.",
-		accept = "Fit to this screen",
+		accept = have and "Use it" or "Fit to this screen",
 		cancel = "Not now",
-		onAccept = FitAccepted,
+		onAccept = have and function()
+			MelloUI:ActivateEditModeLayout(have)
+		end or FitAccepted,
 	})
 end
 local function LoadAccepted(name)
 	if MelloUI:LoadProfile(name) then
-		MelloUI:Print("Profile '%s' loaded.", name)
+		local use = MelloUI.CharacterProfile and MelloUI:CharacterProfile()
+		if use and use ~= name then
+			-- (2.1.46: another character's profile -- this one's own copy of it)
+			MelloUI:Print("Profile '%s' loaded as this character's own copy, '%s'.", name, use)
+		else
+			MelloUI:Print("Profile '%s' loaded.", name)
+		end
 		CONFIG.OfferProfileFit(name)
 	end
 	MelloUI:RefreshConfig()
@@ -5929,8 +5950,13 @@ function ConfirmLoadProfile(name)
 	if type(name) ~= "string" or name == "" then
 		return
 	end
+	-- (2.1.46: the settings in use are this character's profile, saved as it goes; its own profile again goes back
+	-- to how it was last saved)
+	local mine = MelloUI.CharacterProfile and MelloUI:CharacterProfile()
 	MelloUI:Confirm({
-		text = ("Load the profile '%s'? Your current settings are replaced; save them as a profile first to keep them."):format(name),
+		text = name == mine and MelloUI.Lang.F("Go back to '%s' as it was last saved? The changes since are dropped.", name)
+			or mine and MelloUI.Lang.F("Load the profile '%s' on this character? Your current setup stays saved in '%s'.", name, mine)
+			or MelloUI.Lang.F("Load the profile '%s'? Your current settings are replaced; save them as a profile first to keep them.", name),
 		accept = "Load",
 		cancel = "Cancel",
 		onAccept = function()
@@ -6753,9 +6779,11 @@ function RefreshProfilesPage()
 	-- built-in one, and the status must name the default the rows mark)
 	local names = FillProfileNames(pageNames)
 	local gold, muted = MelloUI:PaletteCode("selectedTrim"), MelloUI:PaletteCode("mutedText")
-	local active = db.activeProfile and (gold .. db.activeProfile .. "|r") or (muted .. "none|r")
+	-- (2.1.46) the profile this character uses (each keeps its own: MelloUI:CharacterProfile)
+	local mine = MelloUI.CharacterProfile and MelloUI:CharacterProfile() or db.activeProfile
+	local active = mine and (gold .. mine .. "|r") or (muted .. "none|r")
 	local default = db.defaultProfile and (gold .. db.defaultProfile .. "|r") or (muted .. "none|r")
-	sec.status:SetText(MelloUI.Lang.F("Active: %s      Default on a fresh install: %s", active, default))
+	sec.status:SetText(MelloUI.Lang.F("This character: %s      Default on a fresh install: %s", active, default))
 	-- new row frames within the frame's one budget of rows (the one row
 	-- under way finished), the rest on the next frame: a long list's first
 	-- show never makes them all in one frame. Their room is kept (sec.y).
@@ -6821,8 +6849,9 @@ function BuildProfilesPage(width)
 	desc:SetWidth(width - PAD * 2 - 8)
 	desc:SetWordWrap(true)
 	-- what is true for a player: profiles are kept with the settings; the
-	-- ones shipped in the addon's files are always there
-	desc:SetText("A profile is a copy of every setting of every module. It leaves out your Dark Mode and what belongs to your characters: the flight points they know, game settings MelloUI borrowed, and steps done once; loading a profile never touches those. The one marked default is applied when MelloUI starts with no settings at all, such as on a fresh install. Load asks before it replaces your settings. Profiles you save here are kept with your settings; Share gives a string to pass one on, and Import as brings one in. The profiles that come with MelloUI are always here.")
+	-- ones shipped in the addon's files are always there; (2.1.46) each
+	-- character its own, the changes saved into it
+	desc:SetText("A profile is every setting of every module. Each character uses its own: a new character starts with a copy of the one last used, and your changes are saved into it as you play, at every logout and /reload. Load puts another profile on this character (its own again goes back to how it was last saved); Save current as makes a new one for it. A profile leaves out your Dark Mode and what belongs to your characters: the flight points they know, game settings MelloUI borrowed, and steps done once. The one marked default is applied when MelloUI starts with no settings at all, such as on a fresh install. Share gives a string to pass one on, and Import as brings one in. The profiles that come with MelloUI are always here.")
 	local y = 4 + WrappedHeight(desc, 16) + 16
 
 	sec.nameBox = CreateFrame("EditBox", nil, sec, "InputBoxTemplate")

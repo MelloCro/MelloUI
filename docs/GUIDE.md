@@ -161,7 +161,7 @@ Close it without installing and nothing changes. Run it again any time: **Instal
 
 ## 💾 Your settings are safe
 
-The game saves your settings like any addon's, so they're still there after a restart. Profiles let you save and load whole setups too.
+The game saves your settings like any addon's, so they're still there after a restart. Each character keeps its own profile (2.1.46): your changes go into it as you play, and every character comes back as you left it.
 
 Earlier versions could keep a copy in your account macros (**Macro Backup**, from the time the game did not bring settings back after a restart). It is gone: the `MelloUI1`, `MelloUI2`... macros it kept are removed by themselves at your next login, so their slots are free again.
 
@@ -194,6 +194,8 @@ Start the game. The settings window has its own **MelloUI** button in the game m
 Everything below is the detailed reference: profiles, every slash command, what each module does exactly, and how to build and release the addon.
 
 ## Profiles
+
+**Each character its own (2.1.46).** The settings are the account's, one set live at a time; which profile they are is each character's (`MelloUIDB.charProfiles`, by the character's GUID). At login a character whose profile is not the one live gets it put in place before any module starts; a new character gets its own copy of the one last used, named after it ("Name", else "Name - Realm", else "Name 2"). The settings are saved into the character's profile at every logout and /reload and before the player loads or saves another, so a profile is never a stale copy. Loading another character's profile gives this one its own copy ("main profile (Alt)"): nothing one character changes reaches another; loading the character's own profile again goes back to how it was last saved. A profile also carries the active Edit Mode layout whole (UI Modifications' `emKind` / `emName` / `emText`: the game's share string, recorded at every save, the logout's included; `MelloUI:RecordEditMode`), so the game's frames Edit Layout and Edit Mode move -- every system, those a later client adds too -- stand where the profile has them: putting a profile on a character (a load, its login) makes that character's layout the profile's, in its own character layout **MelloUI Profile** (never the account's shared ones; `MelloUI:EditModeToProfile`, after a fight or Edit Mode's close), and nothing is written when it already reads as the profile's. MelloUI's own elements' places are in the store and measured into every save (`SnapshotPlaces`: any mover registered, a new one included). A profile without a layout (saved before 2.1.46) offers MelloUI's layout as before. The Profiles page and Home name the profile **this character** uses.
 
 The MelloUI settings have a **Profiles** page. "Save current as" stores every setting of every
 module under a name, with where everything on the screen stands as you save it: the action bars, the bag bar, the
@@ -932,6 +934,8 @@ ring. A spec cannot be read for other players on this client without inspecting 
 is the class.
 The options live on Nameplates > Friendly players, where a made-up party member's marker shows them
 as they are set.
+
+**The combat log under Minimal** (2.1.46; MelloUI_Chat/ChatView.lua's Log): Blizzard_CombatLog has the engine send its fight lines only while its window shows (its OnHide: `C_CombatLog.SetFilteredEventsEnabled(false)`), and the view keeps the game's windows out of sight, so the Combat Log tab got crafts and skill-ups only. While the view is on the switch is put back on after the game turns it off (a post-hook; the game's window never shown or moved), and the game's own state comes back when it goes off. A refilter (a filter picked, the filters window closed) empties the tab's copy with the game's window, passes the replay by and reads the window again when it is over. The game's quick filters (My actions, What happened to me?, any the player made) stand as tabs over the Combat Log tab's lines, the one in use lit, each pressed through a secure stand-in on the game's own button.
 
 ### Custom Sounds
 

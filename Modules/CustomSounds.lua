@@ -233,7 +233,7 @@ local Yours = {
 }
 MelloUI.CustomSoundsYours = Yours   -- (read only: the tests)
 
-options[#options + 1] = { type = "canvas", key = "yours", name = "Your Sounds", new = "2.1.45", height = 82,
+options[#options + 1] = { type = "canvas", key = "yours", name = "Your Sounds", height = 82,
 	search = "own sounds custom files sharedmedia shared media mysounds pick change replace guide",
 	desc = "Change any sound to another: yours, a SharedMedia pack's, the game's own or none.",
 	build = function(canvas, width)
@@ -245,7 +245,7 @@ for _, group in ipairs(Yours.GROUPS) do
 		Yours.KEY[id] = key
 		defaults[key] = "mello"
 		local opt = { type = "dropdown", key = key, name = Yours.LABEL[id], values = Yours.LIST.game, play = id,
-			sound = true, new = "2.1.45", desc = Yours.HINT[id], search = "sound pick custom own sharedmedia" }
+			sound = true, desc = Yours.HINT[id], search = "sound pick custom own sharedmedia" }
 		Yours.OPT[id] = opt
 		options[#options + 1] = opt
 	end

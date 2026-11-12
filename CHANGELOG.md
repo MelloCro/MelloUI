@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.46
+
+- Profiles: each character now keeps its own profile and gets it back at login, so setting up an alt no longer changes your main. A new character starts with a copy of the one last used.
+- Profiles: your changes are saved into your character's profile as you play, at every logout and /reload, so loading it later never brings back an older copy.
+- Profiles: a profile now carries your Edit Mode layout too, so the action bars, bags and every frame you moved stand in the same place on every character that uses it.
+- Chat: with the Minimal Chat View, the Combat Log tab now shows your fights as they happen, and closing the game's combat log filters no longer dumps old fight lines into it.
+- Chat: the Combat Log tab has the game's two filters back as tabs over its lines, My actions and What happened to me?
+
 ## 2.1.45
 
 - Custom Sounds: a new Your Sounds tab changes any sound, Level Up and Rare Alert included, to another of MelloUI's, the game's own, none, or a SharedMedia sound, your own files too.
