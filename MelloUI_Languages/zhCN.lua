@@ -2337,6 +2337,7 @@ Lang:Add("zhCN", {
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Configurator: a new Addons page lists the addons MelloUI works with: what it does with each, their links, who does which job, and a switch to stop MelloUI using one."] = "设置窗口：新的“插件”页面列出与 MelloUI 配合的插件：MelloUI 对每个插件做什么、它们的链接、哪项工作由谁负责，以及一个让 MelloUI 不再使用某个插件的开关。", -- draft
 	["Custom Sounds: a new Your Sounds tab changes any sound, Level Up and Rare Alert included, to another of MelloUI's, the game's own, none, or a SharedMedia sound, your own files too."] = "自定义音效：新的“我的音效”标签页可把任何音效（包括升级和稀有警报）换成 MelloUI 的其他音效、游戏原声、无，或 SharedMedia 音效，也包括你自己的文件。", -- draft
+	["Profiles: a /reload or a login no longer switches your Edit Mode layout back to Modern; your character keeps the layout you picked."] = "配置：/reload 或登录不再把你的编辑模式布局切回“现代”；你的角色会保留你选择的布局。", -- draft
 	["Chat: with the Minimal Chat View, the Combat Log tab now shows your fights as they happen, and closing the game's combat log filters no longer dumps old fight lines into it."] = "聊天：使用极简聊天视图时，战斗记录标签页现在会实时显示你的战斗，关闭游戏的战斗记录过滤器也不会再把旧的战斗行倒进来。", -- draft
 	["Chat: the Combat Log tab has the game's two filters back as tabs over its lines, My actions and What happened to me?"] = "聊天：战斗记录标签页的行上方重新有了游戏的两个过滤器标签：我的动作、我发生了什么？", -- draft
 	["The game's combat log filter: what the Combat Log tab shows."] = "游戏的战斗记录过滤器：战斗记录标签页显示的内容。", -- draft

@@ -177,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.47", lines = {
+		"Profiles: a /reload or a login no longer switches your Edit Mode layout back to Modern; your character keeps the layout you picked.",
+	} },
 	{ version = "2.1.46", lines = {
 		"Profiles: each character now keeps its own profile and gets it back at login, so setting up an alt no longer changes your main. A new character starts with a copy of the one last used.",
 		"Profiles: your changes are saved into your character's profile as you play, at every logout and /reload, so loading it later never brings back an older copy.",
@@ -198,15 +201,6 @@ local CHANGELOG = {
 		"Map: Questie's flight master icons stay hidden while the map's Flight masters layer shows MelloUI's own.",
 		"Map: quest areas that touch now show one outline instead of a stack of rings; each objective keeps its marks where it is done, and hovering a mark shows its own area inside.",
 		"Minimap: quest areas that touch show one outline there too, and hovering a quest mark lifts it and shows its own area, as on the map.",
-	} },
-	{ version = "2.1.42", lines = {
-		"Map: a Fog Of War option keeps the places you haven't explored hidden on the map, as on the game's own world map, until you walk there.",
-		"Chat: the whisper window now stays on top of other windows, like the map and the bags, while it is open.",
-		"Chat: right-click a person in the whisper window to remove that conversation, or all of them; they are gone from the saved history too.",
-		"Chat: the whisper window lists every conversation the first time it opens after logging in, not only the first two.",
-		"Swing timer: Swing Ring Width (Thin, Medium, Thick) and Swing Ring Colour options for the ring that fills round the swing badge; the part still to fill is now a dark track, easier to see.",
-		"Edit Layout: the game's own swing timers no longer show there while MelloUI's swing badge takes their place.",
-		"Dark Mode: an action button's gold frame for an active stance or a queued spell stays bright, as do its pressed, hover and out-of-range frames; only the plain frames darken.",
 	} },
 }
 local LINKS = {

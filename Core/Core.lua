@@ -6181,16 +6181,22 @@ local function SerializeWithPlaces(self)
 end
 
 -- (2.1.46) the active Edit Mode layout into the settings (UI Modifications' emKind / emName / emText), so the profile
--- written next carries it whole (Core/EditModeLayout.lua's EditModeForProfile); unreadable: the last one kept. And
--- putting a profile's back: this character's layout made the profile's (EditModeToProfile) -- a load, the login
+-- written next carries it (Core/EditModeLayout.lua's EditModeForProfile): its kind and name, and its share string when
+-- the game gives it. (2.1.47) Unreadable: none recorded -- never an older one kept (a stale "Modern" was put back over
+-- the player's own layout). And putting a profile's back (EditModeToProfile): a load, a new character's first login
 function MelloUI:RecordEditMode()
 	if not self.EditModeForProfile then
 		return
 	end
+	local um = self:GetModuleDB("UIModifications")
+	if type(um) ~= "table" then
+		return
+	end
 	local ok, kind, name, text = pcall(self.EditModeForProfile, self)
-	local um = ok and kind and self:GetModuleDB("UIModifications")
-	if type(um) == "table" then
+	if ok and type(kind) == "string" and type(name) == "string" then
 		um.emKind, um.emName, um.emText = kind, name, text
+	else
+		um.emKind, um.emName, um.emText = nil, nil, nil
 	end
 end
 
@@ -6654,6 +6660,7 @@ do
 	-- the login: this character's profile in place (before any module reads a setting) -> true when it was loaded.
 	-- Not while the settings are a stand-in (none saved yet, or the client still bringing them: asked again then)
 	function MelloUI:CharacterProfileAtLogin()
+		self.newCharacterProfile = nil
 		local key = Key()
 		if not key or self.dbIsTemporary or type(self.SerializeSettings) ~= "function" then
 			return false
@@ -6693,6 +6700,7 @@ do
 		if saved then
 			self:ApplySettingsText(text)
 			self.profileAppliedAtLogin = name
+			self.newCharacterProfile = true   -- (its Edit Mode layout put in once the login is over: the copy's)
 			return true
 		end
 		return false
@@ -6814,12 +6822,17 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 		-- (no line for it: a new player gets the installer a few seconds in,
 		-- Core/Installer.lua's one login check)
 		self:ApplyDefaultProfileIfFresh()
-		-- (2.1.46) this character's own profile in place, before any module reads a setting; its Edit Mode layout
-		-- once the login is over (the game's layouts read by then)
+		-- (2.1.46) this character's own profile in place, before any module reads a setting. (2.1.47; players, 2026-11-12:
+		-- "When I reload my blizzard edit mode reset back to Modern", "for a brief second my bars are placed correctly,
+		-- then everything is moved and my edit mode profile is back to Modern(preset)") Edit Mode is never touched at a
+		-- returning character's login or /reload: the game keeps each character's own active layout already. Only a new
+		-- character's first login puts its copied profile's layout in (and a profile the player loads: LoadProfile)
 		self:CharacterProfileAtLogin()
-		self:AfterLogin(function()
-			self:ApplyProfileEditMode()
-		end)
+		if self.newCharacterProfile then
+			self:AfterLogin(function()
+				self:ApplyProfileEditMode()
+			end)
+		end
 		-- the palette the settings name, before any module draws (only the
 		-- table: nothing is on the screen to repaint yet)
 		ApplyStoredPalette(self, false)

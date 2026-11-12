@@ -2248,27 +2248,26 @@ do
 end
 
 --------------------------------------------------------------------------------
--- (2.1.46) The Edit Mode layout a profile carries (the user, 2026-11-12: "I want this profile issue to be fixed once
--- and for all, i dont want people to tell me, i moved x thing here, saved the profile, loaded on another character
--- and x thing is somewhere else, make sure that even if we add things to the addon, they also imidietlly get saved by
--- the profile"). The game's frames Edit Layout and Edit Mode move (the action bars, the bags, the micro menu, the
--- experience bar ...) stand where the ACTIVE Edit Mode layout puts them, and the game keeps the active layout per
--- character: a profile now carries that layout whole -- every system, its place and its settings, and any system a
--- later client adds -- as the game's own share string (UI Modifications' emKind / emName / emText, written by
--- Core.lua's MelloUI:RecordEditMode on every save, the logout's included). Putting a profile on a character makes
--- that character's layout the profile's: a preset made active by name; a saved layout's string put into this
--- character's OWN character layout and made active -- never into an account layout, which every character shares,
--- so nothing one character's Edit Layout does reaches another (the other's next login puts its own back).
+-- (2.1.46) The Edit Mode layout a profile carries (the user, 2026-11-12: "i moved x thing here, saved the profile,
+-- loaded on another character and x thing is somewhere else"): the game's frames Edit Layout and Edit Mode move stand
+-- where the ACTIVE Edit Mode layout puts them, and the game keeps the active layout per character. A profile records
+-- the active layout's kind, name and share string (UI Modifications' emKind / emName / emText: Core.lua's
+-- MelloUI:RecordEditMode at every save, the logout's included); putting the profile on a character (a load by the
+-- player, a new character's first login -- never a returning character's login or /reload) makes that layout active.
+-- (2.1.47; players, 2026-11-12: "When I reload my blizzard edit mode reset back to Modern", "for a brief second my bars
+-- are placed correctly, then everything is moved and my edit mode profile is back to Modern(preset)") Made active BY
+-- NAME, through the path the installer's alt answer has used in the real client since 1.0 (MelloUI:
+-- ActivateEditModeLayout); put in from its string through the installer's own Put only when no layout of that name is
+-- left (another character's own); nothing at all when the active one has that name and kind already. 2.1.46's own
+-- character layout ("MelloUI Profile", rebuilt from the string whenever the strings differed) is gone: the real
+-- client lost it over a reload and fell back to Modern.
 --   MelloUI:EditModeForProfile() -> kind, name, text | nil      read only: the active layout's kind ("preset" |
---       "account" | "character"), its name and share string (nil text for a preset); nil when unreadable
---   MelloUI:EditModeToProfile(kind, name, text) -> ok, why       this character's active layout made the profile's:
---       nothing when it already reads as that string (or is that preset); in a fight or with Edit Mode open, when
---       that ends (the newest wins). A layout replaced while active shows from the next reload (the line to type it)
+--       "account" | "character"), its name, its share string (nil when the game does not give it, and for a preset);
+--       nil when the active layout cannot be read
+--   MelloUI:EditModeToProfile(kind, name, text) -> ok, why       that layout made active on this character (see above);
+--       in a fight or with Edit Mode open, when that ends
 --------------------------------------------------------------------------------
 do
-	local OWN = "MelloUI Profile"
-	MelloUI.EDIT_MODE_OWN = OWN   -- (read only: the tests, /mello layout check)
-
 	local function KindName(layout)
 		local t = TypeOf(layout)
 		if t ~= nil and t == LayoutType("Preset") then
@@ -2309,69 +2308,7 @@ do
 			return nil
 		end
 		local kind = KindName(active)
-		if kind == "preset" then
-			return kind, name, nil
-		end
-		local text = StringOf(active)
-		if not text then
-			return nil
-		end
-		return kind, name, text
-	end
-
-	-- the profile's string into this character's own layout, made active
-	local function ToOwn(text)
-		local full, info, presets = FullList()
-		if not full then
-			return false, TEXT.noRead
-		end
-		local okI, new = pcall(C_EditMode.ConvertStringToLayoutInfo, text)
-		if not okI or type(new) ~= "table" then
-			return false, TEXT.noRead
-		end
-		local character = LayoutType("Character")
-		new.layoutType = character
-		new.layoutName = OWN
-		FixStyle(new)
-		local index = Find(full, OWN, character)
-		local replaced = index ~= nil
-		if replaced then
-			full[index] = new
-		else
-			local room, most = RoomFor(full, character)
-			if not room then
-				return false, TEXT.noRoom:format(most)
-			end
-			index = InsertAt(full, presets, character)
-			tinsert(full, index, new)
-		end
-		info.layouts = full
-		local okS, err = pcall(C_EditMode.SaveLayouts, info)
-		if not okS then
-			Note("profile layout: refused by SaveLayouts: %s", tostring(err))
-			return false, TEXT.noSave:format(tostring(err))
-		end
-		-- (as Put: told, the game lays it out at once; the active one replaced shows from the next reload)
-		local told = true
-		if replaced then
-			if info.activeLayout ~= index and C_EditMode.SetActiveLayout then
-				pcall(C_EditMode.SetActiveLayout, index)
-			else
-				told = false
-			end
-		elseif C_EditMode.OnLayoutAdded then
-			pcall(C_EditMode.OnLayoutAdded, index, true, true)
-		elseif C_EditMode.SetActiveLayout then
-			pcall(C_EditMode.SetActiveLayout, index)
-		end
-		Note("profile layout put into '%s' at %d (%s); laid out: %s", OWN, index, replaced and "replaced" or "added",
-			told and "yes" or "after a reload")
-		Unread(not told)
-		MelloUI:Fire("editmodelayout", "put", OWN)
-		if not told then
-			MelloUI:SayEditModeReload()
-		end
-		return true
+		return kind, name, kind ~= "preset" and StringOf(active) or nil
 	end
 
 	local pending   -- { kind, name, text }: the newest, waiting for the fight or Edit Mode to end
@@ -2390,7 +2327,7 @@ do
 	end
 
 	function MelloUI:EditModeToProfile(kind, name, text)
-		if type(kind) ~= "string" or not Api() then
+		if type(kind) ~= "string" or type(name) ~= "string" or not Api() then
 			return false
 		end
 		local why = Blocked()
@@ -2416,26 +2353,31 @@ do
 		if not full then
 			return false, TEXT.noRead
 		end
-		local active, at = ActiveOf(full, info)
-		if kind == "preset" then
-			if active and KindName(active) == "preset" and NameOf(active) == name then
-				return true
-			end
-			for i, layout in ipairs(full) do
-				if KindName(layout) == "preset" and NameOf(layout) == name and C_EditMode.SetActiveLayout then
+		local active = ActiveOf(full, info)
+		if active and NameOf(active) == name and KindName(active) == kind then
+			return true   -- (the profile's layout is the one in use)
+		end
+		for i, layout in ipairs(full) do
+			if NameOf(layout) == name and KindName(layout) == kind then
+				if kind == "preset" then
 					local ok, err = pcall(C_EditMode.SetActiveLayout, i)
-					Note("profile layout: preset '%s' made active: %s", tostring(name), ok and "yes" or tostring(err))
+					Note("profile layout: preset '%s' made active: %s", name, ok and "yes" or tostring(err))
 					return ok, not ok and tostring(err) or nil
 				end
+				Note("profile layout: '%s' made active", name)
+				return MelloUI:ActivateEditModeLayout(name)
 			end
+		end
+		-- (gone: another character's own, a deleted one) put in from its string, as the installer puts its own in
+		if kind == "preset" or type(text) ~= "string" or text == "" or not C_EditMode.ConvertStringToLayoutInfo then
 			return false, TEXT.gone
 		end
-		if type(text) ~= "string" or text == "" then
-			return false
+		local okI, info2 = pcall(C_EditMode.ConvertStringToLayoutInfo, text)
+		if not okI or type(info2) ~= "table" then
+			return false, TEXT.noRead
 		end
-		if active and at and KindName(active) ~= "preset" and StringOf(active) == text then
-			return true   -- (as the profile has it already)
-		end
-		return ToOwn(text)
+		info2.layoutName = name
+		Note("profile layout: '%s' put in from its string", name)
+		return MelloUI:ApplyEditModeLayout(true, info2)
 	end
 end

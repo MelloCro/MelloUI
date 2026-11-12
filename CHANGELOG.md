@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.47
+
+- Profiles: a /reload or a login no longer switches your Edit Mode layout back to Modern; your character keeps the layout you picked.
+
 ## 2.1.46
 
 - Profiles: each character now keeps its own profile and gets it back at login, so setting up an alt no longer changes your main. A new character starts with a copy of the one last used.
