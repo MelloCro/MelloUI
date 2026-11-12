@@ -2,9 +2,16 @@
 
 ## 2.1.49
 
+- Gamepad: MelloUI works with a controller in the game's Gamepad mode: its windows, the configurator and their lists are walked with the D-pad, with the controller's buttons shown.
+- Gamepad: MelloUI's map opens on its quest list; the left stick moves the map's cursor without walking you, and the D-pad switches between the map and the quests.
+- Gamepad: the action bars show the game's controller bars in MelloUI's look; hold one trigger or both and that bar grows. Bind and Edit Action Bars work as in the game.
+- Gamepad: each part of the controller bars moves on its own in Edit Layout, and your Action Bars 1-4 are copied to the controller's bars once, into empty slots only.
+- Gamepad: in MelloUI's bag window A picks up, X uses or sells and Y opens More: Bind to Action Bar, Split Stack, Destroy Item and Feed to Pet.
+- Gamepad: the controller's Game Menu opens MelloUI with Triangle.
 - Bags: the Bags by Kind switch is now called MelloUI Bag Window, which is what it turns on and off.
 - Bags: with Baganator, Bagnon, ArkInventory or BetterBags installed, MelloUI's bag window steps aside, so B opens one bag window. The Addons page lists them, each with its switch.
 - Chat: the whisper window now keeps your Battle.net friends' conversations over a logout too, and answering still reaches them after you log in again.
+- Minimap: quest objectives look the same as on MelloUI's map, with the glowing quest areas, the same icons and a dot for each spot, and they show right after you log in.
 
 ## 2.1.48
 

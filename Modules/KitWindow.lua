@@ -1269,6 +1269,11 @@ function Kit:OwnWindow(frame, opts)
 		return shell:Replace(region, ropts)
 	end
 	shells[frame] = shell
+	-- (2.1.49) the pad drives it while it shows in the Gamepad UI (MelloUI.Gamepad: D-pad, A, B closes it)
+	local Pad = rawget(MelloUI, "Gamepad")
+	if Pad then
+		Pad.Window(frame, { shell = shell })
+	end
 	local base = frame:GetFrameLevel()
 	if opts.painting then
 		return self:OwnPaintedWindow(shell, opts)
@@ -1510,6 +1515,14 @@ end
 --                              a column of buttons in the accept button's
 --                              place, fn() once its button closed it; the
 --                              cancel button under them (optional)
+--     pad = { keys = { KEY = name }, press = fn },
+--                              (2.1.49) answered by the pad's buttons in the
+--                              Gamepad UI (Bind to Action Bar's "press the
+--                              combination"): MelloUI.Gamepad reads those
+--                              keys for it while it shows (G.Own), fn(name,
+--                              down, say) -> "done" (accepted), "cancel" or
+--                              nil (asked on; say(text) words it anew); the
+--                              cancel button alone (optional)
 --   })
 -- One dialog for all of MelloUI's questions (one system per job): an own
 -- window on the shell above -- the corner ring with the emblem, "MelloUI"
@@ -1661,11 +1674,12 @@ local function ConfirmLay(sh)
 		b:SetPoint("BOTTOM", f, "BOTTOM", 0, y + (rows - i + 1) * (CONFIRM_BUTTON_H + CONFIRM_ROW))
 		b:SetShown(i <= rows)
 	end
-	confirm.accept:SetShown(rows == 0)
+	local padded = confirm.opts and confirm.opts.pad and true or false   -- (the pad answers it: no accept button)
+	confirm.accept:SetShown(rows == 0 and not padded)
 	confirm.accept:ClearAllPoints()
 	confirm.accept:SetPoint("BOTTOMRIGHT", f, "BOTTOM", -CONFIRM_GAP / 2, y)
 	confirm.cancel:ClearAllPoints()
-	if rows > 0 then
+	if rows > 0 or padded then
 		confirm.cancel:SetPoint("BOTTOM", f, "BOTTOM", 0, y)
 	else
 		confirm.cancel:SetPoint("BOTTOMLEFT", f, "BOTTOM", CONFIRM_GAP / 2, y)
@@ -1704,6 +1718,31 @@ local function BuildConfirm()
 	shell:OnKit(ConfirmLay)
 end
 
+-- the pad's own reading of a question (opts.pad) for MelloUI.Gamepad, else nil (driven as any window)
+-- (and its text said anew while it shows: fn's third argument, say(text) -- a question that counts, the bag window's
+-- Split Stack)
+local function Say(text)
+	if confirm.frame and confirm.frame:IsShown() then
+		confirm.text:SetText(MelloUI.Lang.T(text) or "")
+		ConfirmLay(confirm.shell)
+		confirm.shell:Fit()
+	end
+end
+
+local function PadSpec(pad)
+	if type(pad) ~= "table" or type(pad.keys) ~= "table" or type(pad.press) ~= "function" then
+		return nil
+	end
+	return { keys = pad.keys, press = function(name, down)
+		local said = pad.press(name, down, Say)
+		if said == "done" then
+			Answer(true)
+		elseif said == "cancel" then
+			Answer(false)
+		end
+	end }
+end
+
 function MelloUI:Confirm(opts)
 	if type(opts) ~= "table" then
 		return
@@ -1712,6 +1751,10 @@ function MelloUI:Confirm(opts)
 		BuildConfirm()
 	end
 	local f = confirm.frame
+	local Pad = rawget(MelloUI, "Gamepad")
+	if Pad and Pad.Own then
+		Pad.Own(f, PadSpec(opts.pad))
+	end
 	local replaced = confirm.opts
 	confirm.opts = opts
 	HoldEscape()

@@ -2579,6 +2579,9 @@ function M:OnEnable(db)
 	QL.StartOutsideTicker()
 	if QL.Objectives then
 		QL.Objectives.GameMarks()   -- (the game's own quest areas off while the objective marks are on)
+		-- (2.1.49) the minimap's marks laid for the quests already in the log: with QuestieDB this runs after the
+		-- quests' rows are made (above), when the login's QUEST_LOG_UPDATEs have passed (none of them reached us)
+		QL.Objectives.MiniSoon()
 	end
 end
 

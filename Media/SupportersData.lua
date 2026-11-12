@@ -4,6 +4,6 @@
 MelloUI_Supporters = {
 	updated = "2026-11-12",
 	legend = { "Poko" },
-	champion = {},
+	champion = { "AntoineS" },
 	supporter = { "NiceGuyBadGamer", "TribalInstincts" },
 }

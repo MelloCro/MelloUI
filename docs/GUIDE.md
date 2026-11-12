@@ -2255,6 +2255,15 @@ holds the side list, the pages and every option's one place, so a new option is 
 entry here and its line there (one with no line lands at the end of its module's page, under
 Advanced, and the checks name it).
 
+**A window and the pad** (2.1.49; `Core/Gamepad.lua`, docs/plans/gamepad.md). In the game's
+Gamepad UI the D-pad, A and B drive MelloUI's own windows through `MelloUI.Gamepad`, never the
+game's pad code. A window made with `Kit:OwnWindow` has it already. A window of its own calls
+`MelloUI.Gamepad.Window(frame, { back = fn, first = fn })`, a list or flyout over a window
+`MelloUI.Gamepad.Popup(frame, { back = fn })`; `MelloUI.Gamepad.Skip(frame)` keeps a drag strip
+or a click catcher out of the stops, `MelloUI.Gamepad.Focusable(frame)` makes a frame of ours
+with its own click one. A part that decided something by the mode at its start listens to the
+bus's `gamepad` (on / off).
+
 ## Notes on the Forever client
 
 - Interface version is `16001` (1.60.1). The addon directory is `_forever_`.

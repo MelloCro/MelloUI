@@ -94,7 +94,9 @@ local TEXT = {
 	mouseover = "On Mouseover",
 }
 
-local A = { bars = {}, built = nil, buttons = {}, byAction = {}, gameOf = {}, wantShown = {} }
+-- (shows: the buttons that only show a slot they are told -- A.ShowButton, the gamepad bars' -- kept up to date with
+-- ours, never bound)
+local A = { bars = {}, built = nil, buttons = {}, shows = {}, byAction = {}, gameOf = {}, wantShown = {} }
 OB.Actions = A
 local FLY = { panels = {} }   -- (2.1.19) the flyouts of ours (the section Flyouts)
 A.Flyouts = FLY
@@ -932,6 +934,50 @@ local function NewButton(bar, n, i, page)
 	return btn
 end
 
+-- (2.1.49) a button that only shows the action slot it is told (btn.slot, then btn:UpdateAction()): the gamepad
+-- bars' picture of the game's crossbar (Modules/OwnPadBars.lua), whose own buttons act. Insecure (moved and sized in a
+-- fight too), no clicks, no drags, no key of its own (never bound: Bind and Keybind Mode pass it by); its cooldown,
+-- usable, range, count, proc glow and checked state kept up to date as ours are (Each, Live, byAction). `parent` is
+-- its bar for its look: showGrid (empty slots seen), hideBarArt (the plain slot)
+function A.ShowButton(parent, name)
+	local ok, btn = pcall(CreateFrame, "CheckButton", name, parent, "ActionButtonTemplate")
+	if not ok or type(btn) ~= "table" then
+		return nil
+	end
+	OB.mine[btn] = true
+	for k, fn in pairs(B) do
+		btn[k] = fn
+	end
+	btn.CalcAction = A.ShownSlot
+	btn.UpdateHotkeys = A.NoHotkey
+	btn.bar, btn.index = parent, 0
+	btn:RegisterForClicks()
+	btn:RegisterForDrag()
+	pcall(btn.ClearAttribute, btn, "ping-receiver")
+	Perf.HookScript(btn, "OnEnter", OnEnter)
+	Perf.HookScript(btn, "OnLeave", OnLeave)
+	if type(btn.UpdateButtonArt) == "function" then
+		pcall(btn.UpdateButtonArt, btn)
+	end
+	local hidden = rawget(_G, "ActionButton_UpdateCooldownNumberHidden")
+	if type(hidden) == "function" then
+		pcall(hidden, btn)
+	end
+	btn.flashtime = 0
+	btn:UpdateHotkeys()
+	A.shows[#A.shows + 1] = btn
+	return btn
+end
+
+function A.ShownSlot(self)
+	return self.slot
+end
+
+function A.NoHotkey(self)
+	self.HotKey:SetText("")
+	self.HotKey:Hide()
+end
+
 -- the bar's art (Action Bar 1: the game's BorderArt and page number, MainActionBar.xml's, at its offsets)
 local function PageText(bar)
 	local page = bar.ActionBarPageNumber
@@ -1300,6 +1346,11 @@ function BAR.UpdateGridLayout(bar)
 		btn:UpdateHotkeys()
 	end
 	bar.laidFrom = A.Signature(n)
+	-- (2.1.49) in the Gamepad UI Bars 1-4 stand aside for the gamepad bars, the game's crossbar (Modules/OwnPadBars.lua)
+	local Pad = OB.Pad
+	if Pad and Pad.Holds(n) then
+		Pad.LayBar(bar)
+	end
 	-- (the Fader's On Mouseover is that module's own: the box's pick goes there)
 	MelloUI:Fire("ownbars:actions", n)
 end
@@ -1392,11 +1443,19 @@ local function Each(fn)
 	for _, btn in ipairs(A.buttons) do
 		fn(btn)
 	end
+	for _, btn in ipairs(A.shows) do
+		fn(btn)
+	end
 end
 
 -- (the frequent events: only the buttons that hold an action and show -- a bar shown again lays its own, OnShow)
 local function Live(fn)
 	for _, btn in ipairs(A.buttons) do
+		if btn.hasAction and btn:IsVisible() then
+			fn(btn)
+		end
+	end
+	for _, btn in ipairs(A.shows) do
 		if btn.hasAction and btn:IsVisible() then
 			fn(btn)
 		end

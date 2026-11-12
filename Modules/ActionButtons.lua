@@ -81,8 +81,10 @@ local M = MelloUI:RegisterModule("ActionButtons", {
 -- The bars whose buttons are lit (Blizzard_ActionBar: each bar's
 -- actionButtons); the range and usable colours only on buttons that have an
 -- action's usable update (the action bars' mixin)
+-- (2.1.49: MelloUIPadBars, the gamepad bars' buttons -- Modules/OwnPadBars.lua; no key of their own, so Keybind Mode
+-- passes them by)
 local BARS = { "MainActionBar", "MultiBarBottomLeft", "MultiBarBottomRight", "MultiBarRight", "MultiBarLeft",
-	"MultiBar5", "MultiBar6", "MultiBar7", "StanceBar", "PetActionBar", "PossessActionBar" }
+	"MultiBar5", "MultiBar6", "MultiBar7", "StanceBar", "PetActionBar", "PossessActionBar", "MelloUIPadBars" }
 local EXTRA = { "ExtraActionButton1" }
 local FLAT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Flat"
 local LIGHT = { SUB = 5, ALPHA = 0.42 }   -- the light: OVERLAY sublevel, its strength (pick B)

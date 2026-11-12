@@ -1080,6 +1080,98 @@ function M:Search()
 	return Search
 end
 
+-- (2.1.49) the Gamepad UI's cover of the game's map (MapGamepad.lua): the window's table, the map's width for a window
+-- of height h (its 3 : 2 kept, as the grip sizes it), the standard width (the player's grip size or the default), the
+-- pin under a canvas point -- its press (the pin's click, a pin of several spread) and its tooltip
+function M:Window()
+	return win
+end
+
+function M.MapWidthFor(h)
+	local rest = T.TOP + T.FOOT + T.PAD + 2 * T.IN
+	return floor((h - rest) * 1002 / 668) + 2 * T.IN
+end
+
+function M.StandardWidth()
+	return (Size())
+end
+
+function M.PadPress(x, y)
+	local pin = x and win.pins and win.pins:At(x, y)
+	if pin and pin.members then
+		Spread(pin)
+		return true
+	elseif pin and pin.spec.click then
+		pin.spec.click(pin, "LeftButton", pin.spec.enter and PinAnchor(pin) or nil)
+		return true
+	end
+	return false
+end
+
+function M.PadHover(x, y)
+	PinTip(x and win.pins and win.pins:At(x, y) or nil)
+end
+
+-- (the pad's own buttons on the map, MapGamepad.lua) the player's place in the middle at the zoom kept (as each open
+-- does); your pin at a canvas point (Ctrl-click's: Route's way there); the quest column out on its quests' page for
+-- the D-pad (its frame)
+function M.PadMe()
+	local c = win.canvas
+	local x, y = Layers.PlayerPoint()
+	if not (x and y and c and c.cx) then
+		return false
+	end
+	c:Glide(x, y, c.z)
+	return true
+end
+
+function M.PadPin(x, y)
+	return SetPin(x, y)
+end
+
+function M.PadQuests(page)
+	if not win.frame then
+		return nil
+	end
+	page = page or "log"
+	if not Log.IsOn(page) then
+		Log.Mode(page)
+		Log.SetOut(true)
+	end
+	return Log.Column()
+end
+
+-- (the column's B and Y, as the game's quest view) a page over the list showing; B back from it ("map": the layers'
+-- page closed, back on the map; "list": a quest's page back to the list); Y on a control: the button to focus
+function M.PadOnPage()
+	return Log.PadOnPage()
+end
+
+function M.PadBack()
+	return Log.PadBack()
+end
+
+-- the control the column's page starts on
+function M.PadFirst()
+	return Log.PadFirst()
+end
+
+function M.PadMore(control)
+	return Log.PadMore(control)
+end
+
+-- the window back at its own place (its saved one, else its home) and its own size, after the cover
+function M.PlaceBack()
+	local f = win.frame
+	if not f then
+		return
+	end
+	Grip.Apply((Size()))
+	if not MelloUI:RestorePosition("MelloUIMap", f) then
+		Home(f)
+	end
+end
+
 function M:Toggle(show)
 	if not self.isEnabled then
 		MelloUI:Print(TEXT.off)
@@ -1232,6 +1324,12 @@ local function Dump()
 			p.tiles and #p.tiles or "-")
 	end)
 	out[#out + 1] = string.format("caves %d, %d in view now", caves, cavesLive)
+	-- (2.1.49) the Gamepad UI's cover of the game's map (MapGamepad.lua)
+	if ns.Pad and ns.Pad.Dump then
+		ns.Pad.Dump(function(line)
+			out[#out + 1] = line
+		end)
+	end
 	return table.concat(out, "\n")
 end
 

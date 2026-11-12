@@ -40,15 +40,19 @@
 --       inside, by each loop's first stretch), marks = { {x, y, loop}, ... },
 --       box = { {x0, y0, x1, y1}, ... } (each loop's) }
 --   QA.Painter(parent[, drawLayer[, noGlow]]) -> painter (noGlow: the edge
---       alone -- the minimap, laid again every tick)
+--       alone; 2.1.49: the minimap draws the glow too, as the maps do)
 --       painter:Begin()                 a new lay
---       painter:Area(key, shape, project, stride, clip, box) -> area
+--       painter:Area(key, shape, project, stride, clip, box, fits) -> area
 --           the shape drawn (made or kept): each loop's every `stride`th
 --           point through project(x, y) -> px, py (the parent's units from
 --           its TOPLEFT, y negative downward), each stretch through clip(ax,
 --           ay, bx, by) -> the part to draw or nil (the minimap's round or
---           square); a loop whose box misses `box` (the shape's units)
---           skipped. A place or a size written only when it changed
+--           square), each glow dab through fits(x, y, r) (the same: a dab
+--           off the map left out); a loop whose box misses `box` (the
+--           shape's units) skipped. A place or a size written only when it
+--           changed
+--   QA.KIND_ICON[kind]      an objective's mark (the icon set's), one table
+--                           for MelloUI's map and the minimap
 --       painter:End()                   the areas not drawn since Begin go
 --                                       (one held for its out-motion stays)
 --       painter:Scale(u)                the parent's units a screen pixel:
@@ -93,6 +97,10 @@ local T = {
 	JOIN_NEAR = 120,  -- (2.1.43) yards between two areas' nearest places that draws them as one (two lone circles touch)
 }
 QA.T = T
+
+-- (2.1.49; the user, 2026-11-12: "the minimap should show the exact same way as the Big Map does") an objective's mark by
+-- its kind (QuestObjectives': creature, object, item, area), the icon set's: one table for MelloUI's map and the minimap
+QA.KIND_ICON = { "kill", "pin_collect", "pin_collect", "obj_explore" }
 
 local LEVEL = exp(-T.RADIUS * T.RADIUS / (2 * T.SIGMA * T.SIGMA))
 local REACH = 2.6 * T.SIGMA   -- a place's hill counted to here (past it under a twentieth of the edge's level)
@@ -672,7 +680,9 @@ end
 -- the projected points of a loop, kept between laps (no table a lay)
 local qx, qy = {}, {}
 
-function Painter:Area(key, shape, project, stride, clip, box)
+-- fits(x, y, r) (optional; 2.1.49, the minimap): whether a glow dab of radius r at x, y (the parent's units) lies on the
+-- map's round or square; one that does not is left out (the lines are cut by clip, a dab is whole or none)
+function Painter:Area(key, shape, project, stride, clip, box, fits)
 	local area = self.areas[key]
 	if not area then
 		area = table.remove(self.spare)
@@ -744,16 +754,22 @@ function Painter:Area(key, shape, project, stride, clip, box)
 					local p = s == 1 and count or s - 1
 					local tx, ty = (bx or ax) - (qx[p] or ax), (by or ay) - (qy[p] or ay)
 					local len = sqrt(tx * tx + ty * ty)
+					local nx, ny
+					if len > 0 then
+						nx, ny = -ty / len, tx / len   -- (the left normal, y up)
+						if not inLeft then
+							nx, ny = -nx, -ny
+						end
+						if fits and not fits(ax + nx * T.GLOW_IN * u, ay + ny * T.GLOW_IN * u, T.GLOW_PX * u / 2) then
+							len = 0
+						end
+					end
 					if len > 0 then
 						ndabs = ndabs + 1
 						local d = area.dabs[ndabs]
 						if not d then
 							d = NewDab(self, area)
 							area.dabs[ndabs] = d
-						end
-						local nx, ny = -ty / len, tx / len   -- (the left normal, y up)
-						if not inLeft then
-							nx, ny = -nx, -ny
 						end
 						d.px, d.py, d.nx, d.ny, d.k, d.count = ax, ay, nx, ny, s, count
 						PlaceDab(d, area.glow, u)

@@ -2,7 +2,7 @@
 ## Title: |cff9b8cffMello|rUI
 ## Notes: Module based UI tweaks for World of Warcraft: Forever. Type /mello to configure.
 ## Author: Mello
-## Version: 2.1.48
+## Version: 2.1.49
 ## SavedVariables: MelloUIDB, MelloUIVoiceLines, MelloUIRoutes, MelloUIRoadRecords, MelloUIQuestPlaces, MelloUIQuestRecord
 ## SavedVariablesPerCharacter: MelloUIFights, MelloUIQuestOffers, MelloUIChatHistory
 ## OptionalDeps: LibSharedMedia-3.0
@@ -29,6 +29,7 @@ Core\Anim.lua
 Core\Icons.lua
 Core\Skin.lua
 Core\Widgets.lua
+Core\Gamepad.lua
 Core\Shade.lua
 Core\Rims.lua
 Core\Outline.lua
@@ -95,6 +96,7 @@ Modules\OwnBars.lua
 Modules\OwnActionBars.lua
 Modules\OwnSpecialBars.lua
 Modules\OwnMicroMenu.lua
+Modules\OwnPadBars.lua
 Modules\DarkMode.lua
 Modules\Fonts.lua
 Modules\ClassIcons.lua

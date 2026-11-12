@@ -1685,6 +1685,74 @@ function Log.Tick()
 	end
 end
 
+-- (2.1.49, the pad over the game's map: MapGamepad.lua through M.PadQuests) the column: the part of the window the
+-- D-pad walks there
+function Log.Column()
+	return S.col
+end
+
+-- (the pad in the column, as the game's quest view: B steps back, Y "More") a page over the quest list showing: a
+-- quest's, or the layers' (the map's options, Y on the map)
+function Log.PadOnPage()
+	return S.built and S.pager and (S.mode == "layers" or S.pager:Current() ~= S.list) or false
+end
+
+-- B there: the layers' page back to the quests, the map's again ("map"); a quest's page back to the list ("list", its
+-- row: the focus back where it was, as the game's)
+function Log.PadBack()
+	if not (S.built and S.pager) then
+		return nil
+	elseif S.mode == "layers" then
+		Log.Mode("log")
+		return "map"
+	elseif S.pager:Current() ~= S.list then
+		Log.Back()
+		for _, r in ipairs(S.rows) do
+			if r.id and r.id == S.selected and r:IsShown() then
+				return "list", r
+			end
+		end
+		return "list"
+	end
+	return nil
+end
+
+-- the control the column's page starts on (the game's quest view opens on its first heading): the layers' first row,
+-- a quest's page's first button, else the list's first heading (or row)
+function Log.PadFirst()
+	if not (S.built and S.pager) then
+		return nil
+	elseif S.mode == "layers" then
+		local r = S.layerRows and S.layerRows[1]
+		return r and r:IsShown() and r or nil
+	elseif S.pager:Current() ~= S.list then
+		return Log.PadMore(nil)
+	end
+	local h, r = S.heads[1], S.rows[1]
+	return (h and h:IsShown() and h) or (r and r:IsShown() and r) or nil
+end
+
+-- Y on a control of the column: a quest's row opens its page; on a quest's page -> its first button shown (Show,
+-- Route, Share, Tracked, Abandon), for the focus
+function Log.PadMore(control)
+	if not (S.built and S.pager and S.buttons) then
+		return nil
+	end
+	if control and control.id and control:GetParent() == S.list and not Log.Select(control.id) then
+		return nil
+	end
+	if S.pager:Current() == S.list then
+		return nil
+	end
+	for _, key in ipairs(BUTTON_ORDER) do
+		local b = S.buttons[key]
+		if b and b:IsShown() then
+			return b
+		end
+	end
+	return nil
+end
+
 function Log.Shown()
 	S.shown = true
 	if not S.built then

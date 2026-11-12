@@ -758,9 +758,10 @@ end
 --                first: MINI.WAIT seconds after it), never a tick; their
 --                places carried to Route's yards by Route:WorldYards (an
 --                affine of three of its answers a continent)
---   a tick       (Route's minimap tick) the areas round you drawn thin under
---                Route's trail (the edge alone, clipped to the map's round or
---                square), a mark per area loop (the maps' marks; objectives
+--   a tick       (Route's minimap tick) the areas round you drawn under
+--                Route's trail (2.1.49: the edge and its glow, as on the
+--                maps, clipped to the map's round or square), a dot a place,
+--                a mark per area loop (the maps' marks; objectives
 --                sharing an area side by side) -- the objective's kind -- and,
 --                for the three nearest a little beyond the edge (within
 --                MINI.BEYOND of its radius), a smaller mark on its edge with a
@@ -782,10 +783,18 @@ end
 --                stepping into an area: its edge swells once, its marks lift
 --                once
 --------------------------------------------------------------------------------
+-- (2.1.49; the user, 2026-11-12: "Minimap quest icons dont match the Map Quest icons, the minimap should show the exact
+-- same way as the Big Map does") as MelloUI's map draws them, at the minimap's size: the areas with their glow inside
+-- (QuestAreas' painter; a dab that would cross the map's edge left out: MINI.GLOW_FIT of its radius must lie on the
+-- map), the marks in the map's pictures (QuestAreas.KIND_ICON), a dot a place (the map's map_dot, MINI.DOT px: the
+-- map's DOT_SIZE as MINI.MARK is its MARK_SIZE) under the marks; and laid once the Quest List comes on at the login
+-- (QuestList.lua's OnEnable: with QuestieDB it waits for the quests' rows and missed the login's log events)
 local MINI = { WAIT = 10, BEYOND = 1.7, MARK = 14, EDGE_MARK = 12, OWNER = "Quest List objectives",
-	SEG_PX = 6, SIDE_PX = 8, RIM = 10, FADE = 0.85 }
+	SEG_PX = 6, SIDE_PX = 8, RIM = 10, FADE = 0.85, DOT = 8, GLOW_FIT = 0.6 }
+O.MINI = MINI
 O.mini = { points = {}, n = 0, areas = {}, leaving = {}, ghosts = {}, ghostFrames = {}, counts = {}, of = {}, seen = {},
-	queued = false, built = false, painter = nil, holder = nil, readyAt = (GetTime and GetTime() or 0) + MINI.WAIT }
+	queued = false, built = false, painter = nil, holder = nil, readyAt = (GetTime and GetTime() or 0) + MINI.WAIT,
+	dots = {}, ndots = 0, dotHolder = nil }
 
 function O.MiniWanted()
 	local M, R, OV = QL.M, MelloUI.Route, MelloUI.Overlaps
@@ -882,6 +891,12 @@ function O.MiniBuild()
 							end
 						end
 						g.x0, g.y0, g.x1, g.y1 = x0, y0, x1, y1
+						-- (2.1.49) its places in Route's yards: a dot each, as on the map (QA.Places' lists are reused)
+						local places = {}
+						for i = 1, #xs do
+							places[2 * i - 1], places[2 * i] = Carry(a, xs[i], ys[i])
+						end
+						g.places = places
 						g.fresh = live and not mini.seen[key]
 						mini.seen[key] = true
 						byShape[shape] = g
@@ -1044,7 +1059,7 @@ local function MiniMark(p, kind, size)
 	end
 	if f.kind ~= kind then
 		f.kind = kind
-		local icon = OBJ_ICON[kind] or "goal_pin"
+		local icon = MelloUI.QuestAreas.KIND_ICON[kind] or "goal_pin"   -- (2.1.49: MelloUI's map's pictures)
 		MelloUI.Widgets.Icon(f.icon, icon)
 		MelloUI.Shade:Lift(f.icon, icon, MINI.MARK)
 	end
@@ -1100,9 +1115,78 @@ local function MiniPainter()
 		h:SetFrameLevel(math.max(0, mm:GetFrameLevel() - 1))
 		h:EnableMouse(false)
 		mini.holder = h
-		mini.painter = MelloUI.QuestAreas.Painter(h, "ARTWORK", true)
+		mini.painter = MelloUI.QuestAreas.Painter(h, "ARTWORK")   -- (2.1.49: the glow too, as on the maps)
 	end
 	return mini.painter
+end
+
+-- (2.1.49) a glow dab of radius r at x, y (the holder's units from its TOPLEFT) on the map's round or square: its
+-- MINI.GLOW_FIT part inside (the dab's soft rim may reach under the border)
+local function MiniFits(x, y, r)
+	x, y, r = x - mHW, y + mHH, r * MINI.GLOW_FIT
+	if mRound then
+		return x * x + y * y <= (mR - r) * (mR - r) and r < mR
+	end
+	return math.abs(x) <= mRX - r and math.abs(y) <= mRY - r
+end
+
+-- (2.1.49) the dots: a place each (MelloUI's map's map_dot) on a frame of their own between the areas and the marks,
+-- made at their first draw, placed only when moved half a pixel or more (Route.MarkPlace's rule)
+local function MiniDot(i, frame)
+	local mini = O.mini
+	local t = mini.dots[i]
+	if not t then
+		local h = mini.dotHolder
+		if not h then
+			h = CreateFrame("Frame", nil, frame)
+			h:SetAllPoints(frame)
+			h:SetFrameLevel(frame:GetFrameLevel() + 1)
+			h:EnableMouse(false)
+			mini.dotHolder = h
+		end
+		t = h:CreateTexture(nil, "ARTWORK")
+		MelloUI.Widgets.Icon(t, "map_dot")
+		t:SetSize(MINI.DOT, MINI.DOT)
+		mini.dots[i] = t
+	end
+	return t
+end
+
+local function MiniDots(frame, cont, px, py, reach, round, R, RX, RY)
+	local mini, Offset = O.mini, MelloUI.Route.MinimapOffset
+	local m, n = MINI.DOT / 2, 0
+	for _, g in ipairs(mini.areas) do
+		local places = g.places
+		if places and g.cont == cont and g.x1 >= px - reach and g.x0 <= px + reach and g.y1 >= py - reach
+			and g.y0 <= py + reach then
+			for i = 1, #places - 1, 2 do
+				local gx, gy = Offset(places[i], places[i + 1])
+				local on
+				if round then
+					on = gx * gx + gy * gy <= (R - m) * (R - m)
+				else
+					on = math.abs(gx) <= RX - m and math.abs(gy) <= RY - m
+				end
+				if on then
+					n = n + 1
+					local t = MiniDot(n, frame)
+					local ax, ay = t.atX, t.atY
+					if not ax or (gx - ax) * (gx - ax) + (gy - ay) * (gy - ay) >= 0.25 then
+						t.atX, t.atY = gx, gy
+						t:ClearAllPoints()
+						t:SetPoint("CENTER", frame, "CENTER", gx, gy)
+					end
+					if not t:IsShown() then
+						t:Show()
+					end
+				end
+			end
+		end
+	end
+	for i = n + 1, mini.ndots do
+		mini.dots[i]:Hide()
+	end
+	mini.ndots = n
 end
 
 local function MiniAreaGone(area)
@@ -1163,7 +1247,7 @@ local function MiniArea(painter, g, px, py, reach)
 	local x4, y4 = Back(g.a, px + reach, py + reach)
 	box[1], box[2] = math.min(x1, x2, x3, x4), math.min(y1, y2, y3, y4)
 	box[3], box[4] = math.max(x1, x2, x3, x4), math.max(y1, y2, y3, y4)
-	local area = painter:Area(g.key, g.shape, MiniProject, stride, MiniClip, box)
+	local area = painter:Area(g.key, g.shape, MiniProject, stride, MiniClip, box, MiniFits)
 	area.role = g.role
 	QA.Rest(area, O.mini.hoverKey, DIM)
 	if g.fresh and area.new then
@@ -1227,6 +1311,8 @@ function O.MiniDraw(cont, round, R, RX, RY)
 				table.remove(mini.leaving, i)
 			end
 		end
+		-- (2.1.49) the places' dots, as on the map
+		MiniDots(frame, cont, v.px, v.py, reach, round, R, RX, RY)
 		-- the marks: inside, or among the three nearest beyond the edge
 		local e1, e2, e3, d1, d2, d3 = nil, nil, nil, math.huge, math.huge, math.huge
 		for i = 1, mini.n do
@@ -1336,7 +1422,7 @@ function O.MiniDraw(cont, round, R, RX, RY)
 					f = GhostFrame(frame)
 					gh.frame = f
 					f.ghost = true
-					local icon = OBJ_ICON[gh.kind] or "goal_pin"
+					local icon = QA.KIND_ICON[gh.kind] or "goal_pin"
 					MelloUI.Widgets.Icon(f.icon, icon)
 					f.icon:SetSize(MINI.MARK, MINI.MARK)
 				end
@@ -1368,6 +1454,10 @@ function O.MiniDraw(cont, round, R, RX, RY)
 			f.ghost = nil
 		end
 		wipe(mini.ghosts)
+		for i = 1, mini.ndots do
+			mini.dots[i]:Hide()
+		end
+		mini.ndots = 0
 	end
 	if painter then
 		painter:End()

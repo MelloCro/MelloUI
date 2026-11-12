@@ -269,6 +269,65 @@ def disc(size, inner=None, edge=1.0):
     return Image.fromarray(img, "RGBA")
 
 
+# (2.1.49) the pad's button glyphs (Core/Gamepad.lua; the user's pick 1 "Coin" of BuildData/output/gamepad_sketch):
+# drawn white on a square the coin's size (badge_disc under it in innerPanel, badge_edge round it in selectedTrim; a
+# letter is a font string), so a shape lies on the coin as it is laid: the PlayStation faces (cross, circle, square,
+# triangle), a D-pad arm (an arrow up: turned for the others), the D-pad, a stick's ring; and the bumpers' and
+# triggers' pill (64 x 32: its fill and its edge, as the badge's).
+PAD_SHAPES = ("cross", "circle", "square", "triangle", "arrow", "dpad", "stick")
+PAD_SS = 4
+
+
+def pad_shape(name, size):
+    """a pad glyph's shape, white on clear, `size` square"""
+    from PIL import ImageDraw
+    n = size * PAD_SS
+    img = Image.new("RGBA", (n, n), (255, 255, 255, 0))
+    d = ImageDraw.Draw(img)
+    c, s, t = n / 2, n * 0.24, max(1, round(n * 0.08))
+    ink = (255, 255, 255, 255)
+    if name == "cross":
+        k = s * 0.95
+        d.line((c - k, c - k, c + k, c + k), fill=ink, width=t)
+        d.line((c - k, c + k, c + k, c - k), fill=ink, width=t)
+    elif name == "circle":
+        d.ellipse((c - s, c - s, c + s, c + s), outline=ink, width=t)
+    elif name == "square":
+        k = s * 0.88
+        d.rectangle((c - k, c - k, c + k, c + k), outline=ink, width=t)
+    elif name == "triangle":
+        k = s * 1.08
+        d.line([(c, c - k), (c + k, c + k * 0.72), (c - k, c + k * 0.72), (c, c - k)], fill=ink, width=t,
+               joint="curve")
+    elif name == "arrow":
+        k = n * 0.27
+        d.polygon([(c, c - k), (c + k, c + k * 0.6), (c - k, c + k * 0.6)], fill=ink)
+    elif name == "dpad":
+        a, b = n * 0.30, n * 0.10
+        d.rectangle((c - b, c - a, c + b, c + a), fill=ink)
+        d.rectangle((c - a, c - b, c + a, c + b), fill=ink)
+    elif name == "stick":
+        k = n * 0.31
+        d.ellipse((c - k, c - k, c + k, c + k), outline=ink, width=max(1, round(n * 0.055)))
+    return scaled(img, size)
+
+
+def pad_pill(edge, size):
+    """the bumpers' and triggers' pill, `size` (w, h) 2:1: its fill, or (`edge`) its ring as badge_edge's"""
+    from PIL import ImageDraw
+    w, h = size[0] * PAD_SS, size[1] * PAD_SS
+    img = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+    d = ImageDraw.Draw(img)
+    inset = PAD_SS   # (the badge's one texel from its edge)
+    box = (inset, inset, w - inset - 1, h - inset - 1)
+    if edge:
+        d.rounded_rectangle(box, radius=(h - 2 * inset) / 2, outline=(255, 255, 255, 255),
+                            width=max(1, round(h * 0.075 + PAD_SS * 0.5)))
+    else:
+        d.rounded_rectangle(box, radius=(h - 2 * inset) / 2, fill=(255, 255, 255, 255))
+    return img.convert("RGBa").resize(size, Image.LANCZOS).convert("RGBA")
+
+
 # (2026-10-20) the configurator's stretchable pieces (Batches 18 and 20, icons_v2/work/cut_pieces.py): each scaled to a
 # power-of-two width at its own aspect and laid at the top left of a power-of-two canvas -- its picture's height
 # there is round(height * width / its width); Core/Widgets.lua's MODERN table holds those heights and the ends' widths
@@ -697,6 +756,11 @@ def files():
     # the count badge: a disc and its edge, white (Look.Count paints them innerPanel and trim)
     out.append(("badge_disc", disc(64)))
     out.append(("badge_edge", disc(64, inner=64 / 2 - 1 - 64 * 0.075)))
+    # (2.1.49) the pad's glyphs (Core/Gamepad.lua)
+    for name in PAD_SHAPES:
+        out.append(("pad_" + name, pad_shape(name, 64)))
+    out.append(("pad_pill_disc", pad_pill(False, (64, 32))))
+    out.append(("pad_pill_edge", pad_pill(True, (64, 32))))
     return out
 
 
@@ -724,6 +788,10 @@ def bigs():
     out.append(("ring_gold", load("ring", "ring_gold_256"), 128))
     out.append(("badge_disc", disc(256), 64))
     out.append(("badge_edge", disc(256, inner=256 / 2 - 1 - 256 * 0.075), 64))
+    for name in PAD_SHAPES:
+        out.append(("pad_" + name, pad_shape(name, 256), 64))
+    out.append(("pad_pill_disc", pad_pill(False, (128, 64)), "64x32"))
+    out.append(("pad_pill_edge", pad_pill(True, (128, 64)), "64x32"))
     return out
 
 

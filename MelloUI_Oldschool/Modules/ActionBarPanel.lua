@@ -125,6 +125,15 @@ local function OwnG(name)
 	return _G[name]
 end
 
+-- (2.1.49) MelloUI's gamepad bars' buttons (the core's Modules/OwnPadBars.lua: its holder, once built), dressed as the
+-- bars are
+local function PadBars()
+	local OB = MelloUI.OwnBars
+	local P = OB and rawget(OB, "Pad")
+	local h = type(P) == "table" and rawget(P, "header") or nil
+	return type(h) == "table" and type(rawget(h, "actionButtons")) == "table" and h or nil
+end
+
 local function Replace(region, opts)
 	if not region then
 		return nil
@@ -1438,6 +1447,7 @@ local function Build()
 	for _, name in ipairs(BAR_NAMES) do
 		Try(name, SkinBar, OwnG(name))
 	end
+	Try("gamepad bars", SkinBar, PadBars())
 	Try("end caps", SkinCaps, rawget(_G, "MainActionBar"))
 	Try("micro menu", SkinMicroMenu)
 	Try("bag bar", SkinBagBar)
@@ -1595,6 +1605,7 @@ local function OwnBarsListen()
 					for _, name in ipairs(BAR_NAMES) do
 						SkinBar(OwnG(name))
 					end
+					SkinBar(PadBars())
 					for bar in pairs(skin.bars) do
 						RefitBar(bar)
 					end

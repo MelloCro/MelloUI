@@ -161,8 +161,13 @@ function Band:Paint()
 	local c = palette[self.colour] or MelloUI.Meaning[self.colour] or palette[DEFAULT_COLOUR]
 	local a = self.alpha
 	local slices = self.slices
+	-- (2.1.49, the gamepad test in game: a focused search box filled orange) a hollow band's middle stays clear: this
+	-- client's SetVertexColor sets the texture's own alpha too, so its colour's alpha is 0 -- the hollow's SetAlpha(0)
+	-- alone came back on every paint (the mouseover light, Edit Layout's halo, the widgets' glow filled too)
+	local mid = self.hollow and self.mid
 	for i = 1, #slices do
-		slices[i]:SetVertexColor(c[1], c[2], c[3], a)
+		local s = slices[i]
+		s:SetVertexColor(c[1], c[2], c[3], s == mid and 0 or a)
 	end
 end
 
@@ -345,7 +350,8 @@ function Shade:Band(parent, opts)
 		end
 	end
 	if opts.hollow then
-		band.mid:SetAlpha(0)   -- (its anchors kept: the edges hang on it)
+		band.hollow = true
+		band.mid:SetAlpha(0)   -- (its anchors kept: the edges hang on it; Paint keeps its colour's alpha 0)
 	end
 	band:Paint()
 	if opts.region then

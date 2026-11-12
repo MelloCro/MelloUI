@@ -2274,6 +2274,7 @@ do
 		local plate = close:CreateTexture(nil, "ARTWORK")
 		plate.melloOn = close
 		close.melloPlate = plate
+		close.melloClose = true   -- (2.1.49: the pad's B coin goes under it, MelloUI.Gamepad)
 		Perf.HookScript(close, "OnMouseDown", CloseDown)
 		Perf.HookScript(close, "OnMouseUp", CloseUp)
 		FlatHooks(close, CloseLook)
@@ -6420,6 +6421,31 @@ do
 		menu.catcher:Show()
 		menu:Show()
 		MelloUI:PlayUISound("tab")
+		-- (2.1.49) in the Gamepad UI the pad goes into the list until it closes: B closes it, the chosen row first
+		local Pad = rawget(MelloUI, "Gamepad")
+		if Pad and Pad.On() then
+			Pad.Popup(menu, { back = Menu.PadBack, first = Menu.PadFirst })
+		end
+	end
+
+	-- the pad's B on an open list: closed as Escape closes it; its first stop: the chosen entry's row
+	function Menu.PadBack(menu)
+		Menu.Close(menu)
+		return true
+	end
+
+	function Menu.PadFirst(menu)
+		local values, top, rows = menu.listValues, menu.listTop or 0, menu.rows
+		if not (values and rows) then
+			return nil
+		end
+		for i = 1, #rows do
+			local entry = values[top + i]
+			if entry and entry.value == menu.listChosen and rows[i]:IsShown() then
+				return rows[i]
+			end
+		end
+		return nil
 	end
 
 	function Menu.Close(menu)

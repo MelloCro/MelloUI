@@ -178,9 +178,16 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "2.1.49", lines = {
+		"Gamepad: MelloUI works with a controller in the game's Gamepad mode: its windows, the configurator and their lists are walked with the D-pad, with the controller's buttons shown.",
+		"Gamepad: MelloUI's map opens on its quest list; the left stick moves the map's cursor without walking you, and the D-pad switches between the map and the quests.",
+		"Gamepad: the action bars show the game's controller bars in MelloUI's look; hold one trigger or both and that bar grows. Bind and Edit Action Bars work as in the game.",
+		"Gamepad: each part of the controller bars moves on its own in Edit Layout, and your Action Bars 1-4 are copied to the controller's bars once, into empty slots only.",
+		"Gamepad: in MelloUI's bag window A picks up, X uses or sells and Y opens More: Bind to Action Bar, Split Stack, Destroy Item and Feed to Pet.",
+		"Gamepad: the controller's Game Menu opens MelloUI with Triangle.",
 		"Bags: the Bags by Kind switch is now called MelloUI Bag Window, which is what it turns on and off.",
 		"Bags: with Baganator, Bagnon, ArkInventory or BetterBags installed, MelloUI's bag window steps aside, so B opens one bag window. The Addons page lists them, each with its switch.",
 		"Chat: the whisper window now keeps your Battle.net friends' conversations over a logout too, and answering still reaches them after you log in again.",
+		"Minimap: quest objectives look the same as on MelloUI's map, with the glowing quest areas, the same icons and a dot for each spot, and they show right after you log in.",
 	} },
 	{ version = "2.1.48", lines = {
 		"Minimap: the tracking and calendar buttons on the minimap's top bar take their clicks again, instead of opening the world map.",
@@ -8863,8 +8870,9 @@ end
 --   * a child of UIParent at the menu's strata, a few levels over it; nothing
 --     is written on the menu, its button pool or its buttons (the menu's
 --     OnShow / OnHide and SetAlpha are post-hooks)
---   * made at the menu's first show with the mouse UI, never at login; never
---     made or shown while the game's Gamepad UI is on (there: /mello)
+--   * made at the menu's first show, never at login; never put among the
+--     menu's own buttons while the game's Gamepad UI is on: there (2.1.49)
+--     the pill under the menu's prompts, Triangle on it (pad.Show, below)
 --   * centred under the menu
 --   * at the menu's alpha, which Windows Fade In eases in as it opens
 -- Its look (2026-10-20, the user's pick B of the game menu sheet: "i would
@@ -8968,11 +8976,56 @@ do
 		end
 	end
 
-	local function MenuShown(menu)
-		-- (1.2.4: the entry inside the menu -- PlaceEntry, from the menu's layout, which runs before this -- with the
-		-- mouse UI; the pill only as the fallback)
-		menuParts.open = true
-		if MelloUI.Safe.GamepadUI() or (Inside() and menuParts.placed) then
+	-- (2.1.49; the user, 2026-11-12: "can we now add MelloUI Game Menu Button to the Controller Game Menu?", then the
+	-- pick "Triangle shortcut") In the Gamepad UI: the pill under the menu's prompts, a Triangle coin on it; Triangle
+	-- (MelloUI.Gamepad's G.Own on the pill: that one key, `over` the game's menu) clicks a secure button of ours whose
+	-- click is the game's own close of the menu -- the button the game's navigation binds Circle to
+	-- (InputFunctionBindingButton_PAD2, its AttemptClose: the menu's own SmartNavigationCloseHandler) -- and after it
+	-- opens the configurator. Nothing of the menu's is written or called by us: the menu closes in the game's own secure
+	-- run (a MelloUI frame among the menu's buttons froze the game in 0.15.0: the game's CreateFrame hook and its
+	-- navigation walk the menu's frames, so the pill stays under UIParent). Out of a fight only.
+	local pad = {}
+	function pad.Click(_, _, down)
+		if down then
+			MelloUI:PlayUISound("menu_button")
+			MelloUI:OpenConfig()
+		end
+	end
+	-- the secure button (made once, out of a fight), its target the game's Circle button: true when Triangle can
+	-- close the menu now
+	function pad.Arm()
+		local close = rawget(_G, "InputFunctionBindingButton_PAD2")
+		if InCombatLockdown() or type(close) ~= "table" then
+			return false
+		end
+		local b = pad.secure
+		if not b then
+			b = CreateFrame("Button", "MelloUIGameMenuPad", UIParent, "SecureActionButtonTemplate")
+			b:RegisterForClicks("AnyDown")
+			b:SetAttribute("useOnKeyDown", true)
+			b:SetAttribute("type", "click")
+			b:Hide()
+			Perf.SetScript(b, "PostClick", pad.Click)
+			pad.secure = b
+		end
+		b:SetAttribute("clickbutton", close)
+		return true
+	end
+	-- under the game's prompts while they show (they come after the menu, as the game's pad UI takes it), else under
+	-- the menu
+	function pad.Place(menu)
+		local footer = rawget(menu, "gamepadFooter")
+		local legend = type(footer) == "table" and rawget(footer, "inputLegend") or nil
+		menuButton:ClearAllPoints()
+		if type(legend) == "table" and legend.IsVisible and legend:IsVisible() then
+			menuButton:SetPoint("TOP", legend, "BOTTOM", MENU.X, -8)
+		else
+			menuButton:SetPoint("TOP", menu, "BOTTOM", MENU.X, MENU.Y)
+		end
+	end
+	-- the pill in the Gamepad UI, Triangle on it (hidden in a fight, or with no close of the game's to click)
+	function pad.Show(menu)
+		if not pad.Arm() then
 			if menuButton then
 				menuButton:Hide()
 			end
@@ -8981,6 +9034,56 @@ do
 		if not menuButton then
 			MakeMenuButton(menu)
 		end
+		local G = MelloUI.Gamepad
+		if not pad.coin then
+			pad.coin = G.Coin()
+			pad.coin:SetParent(menuButton)
+			pad.coin:SetPoint("RIGHT", menuButton, "RIGHT", -12, 0)
+			G.Own(menuButton, { keys = { PAD4 = "click:MelloUIGameMenuPad" }, over = true })
+		end
+		local level = MelloUI.Safe.Number(menu:GetFrameLevel())
+		if level then
+			level = math.min(level + 5, 10000)
+			menuButton:SetFrameLevel(level)
+			menuParts.glow:SetFrameLevel(level + 1)
+			menuParts.badge:SetFrameLevel(level + 2)
+			pad.coin:SetFrameLevel(level + 3)
+		end
+		MenuLook()
+		G.SetCoin(pad.coin, "PAD4")
+		pad.coin:Show()
+		FollowAlpha(menu, menu:GetAlpha())
+		pad.Place(menu)
+		menuButton:Show()
+		C_Timer.After(0.1, function()
+			if menuButton:IsShown() and menu:IsShown() then
+				pad.Place(menu)
+			end
+		end)
+	end
+
+	local function MenuShown(menu)
+		-- (1.2.4: the entry inside the menu -- PlaceEntry, from the menu's layout, which runs before this -- with the
+		-- mouse UI; the pill only as the fallback. 2.1.49: the Gamepad UI's pill, pad.Show)
+		menuParts.open = true
+		if MelloUI.Safe.GamepadUI() then
+			pad.Show(menu)
+			return
+		end
+		if Inside() and menuParts.placed then
+			if menuButton then
+				menuButton:Hide()
+			end
+			return
+		end
+		if not menuButton then
+			MakeMenuButton(menu)
+		end
+		if pad.coin then
+			pad.coin:Hide()
+		end
+		menuButton:ClearAllPoints()
+		menuButton:SetPoint("TOP", menu, "BOTTOM", MENU.X, MENU.Y)
 		-- (over the menu: a level read again each show, the menu is toplevel and
 		-- rises as it shows; a raise while it shows can pass it, which under
 		-- the menu's edge covers nothing; the glow, then the badge over the pill)
@@ -9018,7 +9121,15 @@ do
 
 	local function MenuHidden()
 		menuParts.open = false
-		if menuButton then
+		if menuButton and pad.coin and pad.coin:IsShown() then
+			-- (the Gamepad UI's pill: let go on the next frame, out of the game's own close of the menu, which runs this
+			-- hook -- its Triangle given back there, not in the game's run)
+			C_Timer.After(0, function()
+				if not menuParts.open then
+					menuButton:Hide()
+				end
+			end)
+		elseif menuButton then
 			menuButton:Hide()
 		end
 		EntryAway()

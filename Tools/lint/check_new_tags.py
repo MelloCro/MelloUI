@@ -153,6 +153,8 @@ NOT_CONFIGURATOR = {
 NOT_OPTIONS = {
     "Core/Config.lua:Button(MelloUI)": "MelloUI's own entry at the game's Escape menu (it opens the configurator)",
     "Core/Config.lua:Button(entry)": "MelloUI's entry inside the game's Escape menu (gm-01, 2026-11-01: it opens the configurator)",
+    "Core/Config.lua:Button(b)": "the Game Menu's controller shortcut (2.1.49, MelloUIGameMenuPad: a hidden secure button "
+                                 "Triangle presses -- it closes the menu and opens the configurator)",
     # (1.2.4, the configurator's shell -- docs/plans/configurator-shell.md: the window's own controls moved to its
     # painted header and footer, none of them an option)
     "Core/Config.lua:Button(Close)": "the configurator's footer Close (it closes the window)",

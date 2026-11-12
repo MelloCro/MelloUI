@@ -224,6 +224,21 @@ M.G = G   -- (the tests)
 
 local TEXT = {
 	title = "Bags",
+	-- (2.1.49) the pad's prompts under the window (the game's backpack's words)
+	padSelect = "Select",
+	padUse = "Use",
+	padEquip = "Equip",
+	padOpen = "Open",
+	padSell = "Sell",
+	padClose = "Close",
+	-- (Y's menu: the game's own words where it has them, CONTEXT_ACTION_LABEL_*)
+	padMore = "More",
+	padFeed = "Feed to Pet",
+	padBind = "Bind to Action Bar",
+	padDestroy = "Destroy Item",
+	padSplit = "Split Stack",
+	padDestroyAsk = "Destroy %s? It cannot be undone.\nPress %s to destroy it, %s to keep it.",
+	padSplitAsk = "Split %s: %d of %d.\nD-pad left / right: one fewer / more, up / down: ten. %s splits them off, %s cancels.",
 	grip = "Drag to size your bags",
 	gripBody = "Wider or narrower changes the columns. Right-click: the standard size.",
 	fold = "Click to fold this kind into one slot.",
@@ -1071,7 +1086,10 @@ local function SlotButton(bag, slot)
 		end
 		local bug = MelloUI.Perf.bug   -- (2.1.15: how it was made, for /mellobug: BUG.Made)
 		local secure = bug and bug.Secure()
-		b = CreateFrame("ItemButton", nil, Holder(bag), "ContainerFrameItemButtonTemplate")
+		-- (2.1.49) named: the pad's A and X are bound to a slot's own click by its name (the game allows a use or a
+		-- sale only from the player's click: The pad, below)
+		M.slotNames = (M.slotNames or 0) + 1
+		b = CreateFrame("ItemButton", "MelloUIBagSlot" .. M.slotNames, Holder(bag), "ContainerFrameItemButtonTemplate")
 		if bug then
 			pcall(bug.Made, b, secure)
 		end
@@ -2629,6 +2647,351 @@ function Cols.Reset()
 	MelloUI:NotifySettingChanged("BagWindow", "columns", 10)
 end
 
+--------------------------------------------------------------------------------
+-- The pad (2.1.49; the user, 2026-11-12, at a vendor with a controller: "the controls dont appear on the backpack,
+-- picking up the item with "X" leads to me not being able to drop it anymore", then "MelloUI's bag, controller-ready")
+-- In the Gamepad UI the game's frame manager focuses the game's own backpack -- held hidden under this window's holder
+-- -- so its keys went to slots nobody saw. This window reads the pad itself while it holds it (MelloUI.Gamepad's
+-- G.Own), with the game's backpack's own buttons (ContainerFrameCombinedBagsMixin:SetupGamepad): the D-pad walks the
+-- window (the gold frame), A a slot's left click (pick up, put down), X its right click (use, equip, open, sell at a
+-- vendor) -- both the slot's own click through the binding, by its name (spec.direct: the game takes a use or a sale
+-- only from the player's click) --, B a held item put back first, else the window's own steps and its close (as
+-- Escape). A strip of the pad's coins under the window says them, X's word by the focused slot. While the game's
+-- frame manager focuses a window of its own that shows (the vendor's, with its L2 / R2), the pad is the game's; back
+-- on the backpack, this window's again.
+--------------------------------------------------------------------------------
+
+do   -- (its locals in a block: the file's main chunk is near Lua's 200)
+	local PAD_KEYS = {
+		PADDUP = "UP", PADDDOWN = "DOWN", PADDLEFT = "LEFT", PADDRIGHT = "RIGHT",
+		PAD1 = "A", PAD2 = "BACK", PAD3 = "X", PAD4 = "MORE",
+		PADLSHOULDER = "NONE", PADRSHOULDER = "NONE",   -- (LB / RB a tab row's: MelloUI.Gamepad binds them)
+	}
+	M.PAD_KEYS = PAD_KEYS
+
+	local PadPress = Shared("the bag window's pad keys", function(name, down)
+		if down and name == "MORE" then
+			local Pad = MelloUI.Gamepad
+			M.PadMore(Pad and Pad.Current and Pad.Current())
+			return
+		end
+		if not down or name ~= "BACK" then
+			return
+		end
+		if GetCursorInfo() then
+			ClearCursor()   -- (the game's own Back: a held item put back where it came from first)
+			return
+		end
+		local Pad = MelloUI.Gamepad
+		if Pad and Pad.Back then
+			Pad.Back()
+		end
+	end, "script")
+	M.PadPress = PadPress
+
+	-- X's word for a focused slot (nil: X does nothing there, its prompt hidden)
+	local function PadWord(c)
+		if not (c and c.GetBagID and c.GetID and C_Container and C_Container.GetContainerItemInfo) then
+			return nil
+		end
+		local okBag, bag = pcall(c.GetBagID, c)
+		local okInfo, info = false, nil
+		if okBag and bag then
+			okInfo, info = pcall(C_Container.GetContainerItemInfo, bag, c:GetID())
+		end
+		if not (okInfo and type(info) == "table") then
+			return nil
+		end
+		local merchant = rawget(_G, "MerchantFrame")
+		if merchant and merchant:IsShown() then
+			return TEXT.padSell
+		end
+		if info.hasLoot then
+			return TEXT.padOpen
+		end
+		local link, I = info.hyperlink, rawget(_G, "C_Item")
+		if link and I and I.IsEquippableItem then
+			local ok, yes = pcall(I.IsEquippableItem, link)
+			if ok and yes then
+				return TEXT.padEquip
+			end
+		end
+		if link and I and I.GetItemSpell then
+			local ok, spell = pcall(I.GetItemSpell, link)
+			if ok and spell then
+				return TEXT.padUse
+			end
+		end
+		return nil
+	end
+	M.PadWord = PadWord
+
+	-- Y's menu on a focused slot: the game's backpack's More (ContainerFrame.lua, itemMoreActions), its entries as it
+	-- shows them -- Feed to Pet (a hunter whose pet eats it), Bind to Action Bar (an item that is used), Destroy Item,
+	-- Split Stack (more than one); nothing while an item is held or at a vendor (the game's own rule). The menu and each
+	-- step are MelloUI's questions (MelloUI:Confirm: the pad drives them; every look -- Modern, Default, Oldschool)
+	local FEED_PET = 6991   -- (the game's FEED_PET_SPELL_ID)
+
+	local function Word(global, fallback)
+		local w = rawget(_G, global)
+		return type(w) == "string" and w ~= "" and w or fallback
+	end
+
+	local function Call(fn, ...)
+		if type(fn) ~= "function" then
+			return false, nil
+		end
+		return pcall(fn, ...)
+	end
+
+	-- a focused slot's bag, slot and item (nil: no item there)
+	local function SlotOf(c)
+		local C = rawget(_G, "C_Container")
+		if not (c and c.GetBagID and c.GetID and type(C) == "table") then
+			return nil
+		end
+		local okBag, bag = pcall(c.GetBagID, c)
+		bag = okBag and Num(bag) or nil
+		local slot = bag and Num(c:GetID())
+		if not slot then
+			return nil
+		end
+		local ok, info = Call(C.GetContainerItemInfo, bag, slot)
+		if not (ok and type(info) == "table" and Num(info.itemID)) then
+			return nil
+		end
+		return bag, slot, info
+	end
+
+	-- the item in its slot still, picked up onto the cursor (nil: not there, or the cursor busy)
+	local function Lift(bag, slot, id)
+		if GetCursorInfo() then
+			return false
+		end
+		local ok, info = Call(C_Container.GetContainerItemInfo, bag, slot)
+		if not (ok and type(info) == "table" and Num(info.itemID) == id) then
+			return false
+		end
+		Call(C_Container.PickupContainerItem, bag, slot)
+		local kind, got = GetCursorInfo()
+		return kind == "item" and Num(got) == id
+	end
+
+	local function Feed(bag, slot, id)
+		if Lift(bag, slot, id) then
+			local I = rawget(_G, "C_Item")
+			Call((type(I) == "table" and I.DropItemOnUnit) or rawget(_G, "DropItemOnUnit"), "pet")
+		end
+		if GetCursorInfo() then
+			ClearCursor()
+		end
+	end
+
+	-- a pad button's name as the pad's own labels say it (MelloUI.Gamepad's faces: "X", "Square")
+	local function PadName(key)
+		local Pad = MelloUI.Gamepad
+		local faces = Pad and Pad.FACES and Pad.FACES[Pad.Style and Pad.Style() or "Letters"] or nil
+		local n = faces and faces[key] or key
+		return n:sub(1, 1) == "@" and (n:sub(2, 2):upper() .. n:sub(3)) or n
+	end
+
+	-- Destroy: asked first, answered with X (not A: a quick second press of the menu's A never throws an item away);
+	-- deleted in that press's own run (the game deletes only from the player's press: Discard's way). The other face
+	-- buttons and the D-pad do nothing meanwhile ("NONE": never the game's own -- A a jump, the D-pad a spell)
+	local DESTROY_KEYS = { PAD3 = "DESTROY", PAD2 = "KEEP", PAD1 = "NONE", PAD4 = "NONE", PADDUP = "NONE",
+		PADDDOWN = "NONE", PADDLEFT = "NONE", PADDRIGHT = "NONE" }
+	local function Destroy(bag, slot, id, link)
+		MelloUI:Confirm({
+			text = TEXT.padDestroyAsk:format(link, PadName("PAD3"), PadName("PAD2")),
+			pad = { keys = DESTROY_KEYS, press = function(name, down)
+				if not down then
+					return nil
+				end
+				if name == "DESTROY" then
+					if Lift(bag, slot, id) then
+						Call(rawget(_G, "DeleteCursorItem"))
+					end
+					if GetCursorInfo() then
+						ClearCursor()   -- (the game did not let it go: back in its slot)
+					end
+					return "done"
+				end
+				return name == "KEEP" and "cancel" or nil
+			end },
+		})
+	end
+
+	-- Split Stack: MelloUI's question counting the part (the user's ask, 2026-11-12: every look, Oldschool or not). Not
+	-- the game's split box: opened from MelloUI in the Gamepad UI it hands itself to the game's frame manager from its
+	-- OnShow -- that run MelloUI's, tainted (the 0.15.0 freeze's kind) -- and its own key handler takes the pad's
+	-- buttons before any binding (the simulator, 2026-11-12). From 1 (the game's start): D-pad left / right one, up /
+	-- down ten; A splits that many off onto the cursor (A puts them down, B back), B cancels
+	local SPLIT_KEYS = { PADDLEFT = "LESS", PADDRIGHT = "MORE", PADDDOWN = "LESS10", PADDUP = "MORE10", PAD1 = "SPLIT",
+		PAD2 = "CANCEL", PAD3 = "NONE", PAD4 = "NONE" }
+
+	local function SplitText(link, n, count)
+		return TEXT.padSplitAsk:format(link, n, count, PadName("PAD1"), PadName("PAD2"))
+	end
+
+	local function SplitAsk(bag, slot, id, link, count)
+		local n = 1
+		MelloUI:Confirm({
+			text = SplitText(link, n, count),
+			pad = { keys = SPLIT_KEYS, press = function(name, down, say)
+				if not down then
+					return nil
+				end
+				if name == "CANCEL" then
+					return "cancel"
+				end
+				if name == "SPLIT" then
+					local ok, info = Call(C_Container.GetContainerItemInfo, bag, slot)
+					if not GetCursorInfo() and ok and type(info) == "table" and Num(info.itemID) == id
+						and (Num(info.stackCount) or 0) >= n and not info.isLocked then
+						Call(C_Container.SplitContainerItem, bag, slot, n)
+					end
+					return "done"
+				end
+				local step = (name == "LESS" or name == "MORE") and 1 or 10
+				local sign = (name == "LESS" or name == "LESS10") and -1 or 1
+				n = math.min(count, math.max(1, n + sign * step))
+				if type(say) == "function" then
+					say(SplitText(link, n, count))
+				end
+				return nil
+			end },
+		})
+	end
+
+	-- the entries for a focused slot, and its item's link (nil: no menu)
+	local function MoreEntries(c)
+		local bag, slot, info = SlotOf(c)
+		if not bag or GetCursorInfo() then
+			return nil
+		end
+		local merchant = rawget(_G, "MerchantFrame")
+		if merchant and merchant:IsShown() then
+			return nil
+		end
+		local id = Num(info.itemID)
+		local link = MelloUI.Safe.Text(info.hyperlink) or ("item " .. id)
+		local list = {}
+		local _, class = UnitClass("player")
+		if class == "HUNTER" then
+			local Spells, Pet = rawget(_G, "C_Spell"), rawget(_G, "C_PetInfo")
+			local okU, usable = Call(type(Spells) == "table" and Spells.IsSpellUsable, FEED_PET)
+			local okE, eats = Call(type(Pet) == "table" and Pet.CanPetEatItem, id)
+			if okU and usable == true and okE and eats == true then
+				list[#list + 1] = { label = Word("CONTEXT_ACTION_LABEL_FEED_TO_PET", TEXT.padFeed), onClick = function()
+					Feed(bag, slot, id)
+				end }
+			end
+		end
+		local Pad = MelloUI.OwnBars and MelloUI.OwnBars.Pad
+		local I = rawget(_G, "C_Item")
+		local okUse, usableItem = Call(type(I) == "table" and I.IsUsableItem, id)
+		if Pad and Pad.BindItem and okUse and usableItem == true then
+			list[#list + 1] = { label = Word("CONTEXT_ACTION_LABEL_BIND_TO_GAMEPAD_ACTION_BAR", TEXT.padBind),
+				onClick = function()
+					Pad.BindItem(id, link)
+				end }
+		end
+		list[#list + 1] = { label = Word("CONTEXT_ACTION_LABEL_DESTROY_ITEM", TEXT.padDestroy), onClick = function()
+			Destroy(bag, slot, id, link)
+		end }
+		local count = Num(info.stackCount) or 1
+		if count > 1 and not info.isLocked then
+			list[#list + 1] = { label = Word("CONTEXT_ACTION_LABEL_SPLIT_ITEM_STACK", TEXT.padSplit), onClick = function()
+				SplitAsk(bag, slot, id, link, count)
+			end }
+		end
+		return list, link
+	end
+	M.PadMoreEntries = MoreEntries
+
+	function M.PadMore(c)
+		local list, link = MoreEntries(c)
+		if not list or #list == 0 or InCombatLockdown() then
+			return
+		end
+		MelloUI:Confirm({ text = link, choices = list })
+	end
+
+	-- the strip of prompts under the window (made at the first time the pad holds it): A, X (by the slot), Y, B
+	local function PadStripMake()
+		if win.strip then
+			return win.strip
+		end
+		local Pad, f = MelloUI.Gamepad, win.frame
+		local strip = CreateFrame("Frame", nil, f)
+		strip:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 0, -4)
+		strip:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, -4)
+		strip:SetHeight(24)
+		strip:EnableMouse(false)
+		W.Solid(strip, "BACKGROUND", "innerPanel", 0.9):SetAllPoints(strip)
+		strip.items = {}
+		for i, key in ipairs({ "PAD1", "PAD3", "PAD4", "PAD2" }) do
+			local coin = Pad.Coin()
+			coin:SetParent(strip)
+			coin:SetFrameLevel(strip:GetFrameLevel() + 2)
+			local words = W.Text(strip, "GameFontHighlight", "", "text")
+			words:SetPoint("LEFT", coin, "RIGHT", 4, 0)
+			strip.items[i] = { coin = coin, words = words, key = key }
+		end
+		strip:Hide()
+		win.strip = strip
+		return strip
+	end
+
+	-- the strip shown while the pad holds this window, its X by the focused slot (laid left to right, a hidden one skipped)
+	local function PadStrip(c)
+		local Pad, f = MelloUI.Gamepad, win.frame
+		local on = f ~= nil and Pad ~= nil and Pad.Holder ~= nil and Pad.Holder() == f
+		if not on then
+			if win.strip then
+				win.strip:Hide()
+			end
+			return
+		end
+		local strip = PadStripMake()
+		c = c or Pad.Current()
+		local word = PadWord(c)
+		local more = MoreEntries(c) and TEXT.padMore or nil
+		local texts = { TEXT.padSelect, word, more, TEXT.padClose }
+		local prev, tall = nil, 24
+		for i, item in ipairs(strip.items) do
+			local text = texts[i]
+			item.coin:ClearAllPoints()
+			if text then
+				if prev then
+					item.coin:SetPoint("LEFT", prev, "RIGHT", 14, 0)
+				else
+					item.coin:SetPoint("LEFT", strip, "LEFT", 8, 0)
+				end
+				Pad.SetCoin(item.coin, item.key)
+				item.words:SetText(text)
+				item.coin:Show()
+				item.words:Show()
+				prev = item.words
+				tall = math.max(tall, (Num(item.coin:GetHeight()) or 0) * (Num(item.coin:GetScale()) or 1) + 4)
+			else
+				item.coin:Hide()
+				item.words:Hide()
+			end
+		end
+		strip:SetHeight(tall)
+		strip:Show()
+	end
+	M.PadStrip = PadStrip
+
+	MelloUI:On("gamepad:nav", function()
+		PadStrip()
+	end, "Bag window: the pad's prompts (the pad taken or given back)")
+	MelloUI:On("gamepad:focus", function(c)
+		PadStrip(c)
+	end, "Bag window: the pad's prompts (the focus moved)")
+end
+
 local function Build()
 	local f = CreateFrame("Frame", "MelloUIBagWindow", UIParent)
 	f:SetFrameStrata("MEDIUM")
@@ -2657,6 +3020,12 @@ local function Build()
 		inset = G.SIDE,
 	})
 	MelloUI:On("setting", BackgroundChanged, "Bag window background")
+	-- (2.1.49) in the Gamepad UI the window reads the pad itself while it holds it: The pad, above (after the shell:
+	-- Kit:OwnWindow registers the window with MelloUI.Gamepad first)
+	local Pad = MelloUI.Gamepad
+	if Pad and Pad.Own then
+		Pad.Own(f, { keys = M.PAD_KEYS, press = M.PadPress, nav = f, direct = true })
+	end
 	-- the items, on the own windows' dark panel (user, 2026-10-04: "this part should have a darker background for
 	-- clarity and less eye strain, that part should scale with the inventory size"; WINDOW-RULES 2e): W.Panel, the
 	-- game's inset in its look, held round the items by its corners so it grows and shrinks with them
