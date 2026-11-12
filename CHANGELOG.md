@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.48
+
+- Minimap: the tracking and calendar buttons on the minimap's top bar take their clicks again, instead of opening the world map.
+
 ## 2.1.47
 
 - Profiles: a /reload or a login no longer switches your Edit Mode layout back to Modern; your character keeps the layout you picked.

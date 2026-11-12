@@ -177,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.48", lines = {
+		"Minimap: the tracking and calendar buttons on the minimap's top bar take their clicks again, instead of opening the world map.",
+	} },
 	{ version = "2.1.47", lines = {
 		"Profiles: a /reload or a login no longer switches your Edit Mode layout back to Modern; your character keeps the layout you picked.",
 	} },
@@ -192,15 +195,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.44", lines = {
 		"Configurator: a new Addons page lists the addons MelloUI works with: what it does with each, their links, who does which job, and a switch to stop MelloUI using one.",
-	} },
-	{ version = "2.1.43", lines = {
-		"Map: with RareScanner installed, its rares, treasures and events show on MelloUI's map as MelloUI's icons on a plate; the rim shows if you just saw one, haven't found it yet or are done.",
-		"Minimap: RareScanner's icons on the minimap wear the same look.",
-		"Rare Alert: a rare RareScanner finds comes up in MelloUI's Rare Alert with its place; RareScanner's own alert button is switched off once, switch it on in RareScanner to keep it.",
-		"Map: with Questie installed, its objective icons (swords, sacks ...) no longer show over MelloUI's quest areas and marks; MelloUI now knows Questie's icons by their kind, not their picture.",
-		"Map: Questie's flight master icons stay hidden while the map's Flight masters layer shows MelloUI's own.",
-		"Map: quest areas that touch now show one outline instead of a stack of rings; each objective keeps its marks where it is done, and hovering a mark shows its own area inside.",
-		"Minimap: quest areas that touch show one outline there too, and hovering a quest mark lifts it and shows its own area, as on the map.",
 	} },
 }
 local LINKS = {
