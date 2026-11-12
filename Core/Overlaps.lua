@@ -24,6 +24,10 @@
 -- MelloUI draws them (the user, 2026-11-10: "we have lost our own function
 -- which i like very much"; Core/QuestieLook.lua).
 --
+-- Bag addons (2.1.49; pmyszczynski, GitHub issue #8: "With both enabled, pressing B shows two bag interfaces"): the
+-- "bags" job -- Baganator, Bagnon, ArkInventory or BetterBags loaded (and its Use with MelloUI switch on, the Addons
+-- page): MelloUI's bag window and its bank by kind step aside (Modules/BagWindow.lua), as if switched off.
+--
 -- Polestar 0.2.6 (its settings by path, Polestar.Get; Shift held at the
 -- window skips its merchant, quest and reward automation, as its own code
 -- does; its quest data's features only while Polestar_QuestDB runs).
@@ -132,7 +136,26 @@ local function ByQuestie(job)
 	return QUESTIE
 end
 
+-- (2.1.49) the bag addons whose bag window MelloUI's makes room for, in the Addons page's order (Core/Integrations.lua)
+O.BAG_ADDONS = { "Baganator", "Bagnon", "ArkInventory", "BetterBags" }
+local function ByBags()
+	local I = rawget(MelloUI, "Integrations")
+	if type(I) ~= "table" or type(I.ByKey) ~= "table" then
+		return nil
+	end
+	for _, key in ipairs(O.BAG_ADDONS) do
+		local e = I.ByKey[key]
+		if e and I.Installed(e) and I.Use(key) then
+			return e.name
+		end
+	end
+	return nil
+end
+
 function O.By(job)
+	if job == "bags" then
+		return ByBags()
+	end
 	local spec, P = JOBS[job], Polestar()
 	if not (spec and P) or (spec.shift and Shift()) or (spec.data and not DataRuns(P)) then
 		return ByQuestie(job)

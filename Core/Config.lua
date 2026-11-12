@@ -177,6 +177,11 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.49", lines = {
+		"Bags: the Bags by Kind switch is now called MelloUI Bag Window, which is what it turns on and off.",
+		"Bags: with Baganator, Bagnon, ArkInventory or BetterBags installed, MelloUI's bag window steps aside, so B opens one bag window. The Addons page lists them, each with its switch.",
+		"Chat: the whisper window now keeps your Battle.net friends' conversations over a logout too, and answering still reaches them after you log in again.",
+	} },
 	{ version = "2.1.48", lines = {
 		"Minimap: the tracking and calendar buttons on the minimap's top bar take their clicks again, instead of opening the world map.",
 	} },
@@ -192,9 +197,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.45", lines = {
 		"Custom Sounds: a new Your Sounds tab changes any sound, Level Up and Rare Alert included, to another of MelloUI's, the game's own, none, or a SharedMedia sound, your own files too.",
-	} },
-	{ version = "2.1.44", lines = {
-		"Configurator: a new Addons page lists the addons MelloUI works with: what it does with each, their links, who does which job, and a switch to stop MelloUI using one.",
 	} },
 }
 local LINKS = {

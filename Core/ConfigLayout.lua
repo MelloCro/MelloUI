@@ -670,7 +670,8 @@ function L.Define(R, Link)
 	-- Tweaks' (one look, D3): live on every pick, the painted skin on or off
 	-- (asleep only with UI Modifications off, as Tweaks and the gems are)
 	-- (0.19.0) the bag window by kind, MelloUI's own (either look; works with UI Modifications off)
-	R("Windows", "Windows", "General", { BackpackPanel = "BagWindow.!enabled" }, { name = "Bags by Kind", free = true })
+	-- (2.1.49; pmyszczynski, GitHub issue #8: the switch read as a sorting option; it is the whole window)
+	R("Windows", "Windows", "General", { BackpackPanel = "BagWindow.!enabled" }, { name = "MelloUI Bag Window", free = true })
 	-- (its kinds, the user's picks of 2026-10-04 -- since 0.20.4 one list, Kinds, their order, lines and groups; since
 	-- 0.21.1 own kinds and each kind's settings in it, Split Trade Goods Trade Goods' own Split By Type there; its
 	-- layout's below, after Bag Slots On Bag Window)

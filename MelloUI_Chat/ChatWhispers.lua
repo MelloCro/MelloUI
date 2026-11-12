@@ -110,6 +110,43 @@ local function Conv(key, kind, target, title)
 	return c
 end
 
+-- (2.1.49; the user, 2026-11-12: "it does not save bnet conversations") A Battle.net friend's conversation is keyed by
+-- their BattleTag ("Name#1234": plain and the same at every login), never by the account id the game gives anew each
+-- login nor by the name it shows (a protected K-string, gone after a logout); the id is looked up for the session --
+-- as a whisper comes in, as the kept conversations come back, before an answer goes out.
+--   WV.BattleTag(bnID) -> "Name#1234" | nil       WV.FriendID(battleTag) -> this session's id, its shown name | nil
+function WV.BattleTag(bnID)
+	if not (C_BattleNet and C_BattleNet.GetAccountInfoByID) or Secret(bnID) or bnID == nil then
+		return nil
+	end
+	local ok, info = pcall(C_BattleNet.GetAccountInfoByID, bnID)
+	local tag = ok and type(info) == "table" and Text(info.battleTag) or nil
+	return tag ~= "" and tag or nil
+end
+
+function WV.FriendID(battleTag)
+	local numFriends = rawget(_G, "BNGetNumFriends")
+	local count = type(numFriends) == "function" and Num((numFriends())) or nil
+	if type(battleTag) ~= "string" or not count or not (C_BattleNet and C_BattleNet.GetFriendAccountInfo) then
+		return nil
+	end
+	for i = 1, count do
+		local ok, info = pcall(C_BattleNet.GetFriendAccountInfo, i)
+		if ok and type(info) == "table" and Text(info.battleTag) == battleTag then
+			local id = Num(info.bnetAccountID)
+			if id then
+				return id, info.accountName
+			end
+		end
+	end
+	return nil
+end
+
+-- the name part of a BattleTag ("Name" of "Name#1234"): a kept conversation's name until the friend's own shows
+local function TagName(tag)
+	return type(tag) == "string" and (tag:match("^([^#]+)") or tag) or nil
+end
+
 -- the j-th newest line of a conversation (0: the newest)
 local function Nth(c, j)
 	if j >= c.count then
@@ -181,7 +218,8 @@ local function OnEvent(_, event, text, sender, ...)
 		if Secret(bnID) or not bnID then
 			return
 		end
-		key, target, title = "BN:" .. tostring(bnID), bnID, sender
+		local tag = WV.BattleTag(bnID)
+		key, target, title = tag and ("BT:" .. tag) or ("BN:" .. tostring(bnID)), bnID, sender
 		classFile, level = parts.BattleNetIdentity(bnID)
 	else
 		-- the name keys the conversation, so a secret one cannot open one: the whisper is still in the chat
@@ -194,6 +232,10 @@ local function OnEvent(_, event, text, sender, ...)
 		classFile, level = parts.CharacterIdentity(sender, guid)
 	end
 	local c = Conv(key, how.kind, target, title)
+	if how.kind == "BN_WHISPER" then
+		-- (a kept one: today's id and the friend's own name now)
+		c.target, c.title, c.battleTag = target, title, key:match("^BT:(.+)$") or c.battleTag
+	end
 	c.guid = guid or c.guid
 	if how.incoming then
 		c.reportLine = Num((select(9, ...))) or c.reportLine
@@ -248,8 +290,8 @@ local events   -- (made the first time the minimal chat comes on: nothing at loa
 -- The history (0.23.1; the user, 2026-10-15: "the chat needs its history saved aswell as the whisper window"): the
 -- newest conversations (SAVE_CONVS) and their newest lines (SAVE_WHISPERS), their unread counts with them, kept over a
 -- logout in the chat view's history (MelloUIChatHistory.whispers) and laid back as the minimal chat comes on. A
--- character's only: a Battle.net conversation is keyed by an id the game gives anew each login. A SECRET line is never
--- kept.
+-- character's and (2.1.49) a Battle.net friend's, by their BattleTag (its id looked up again: WV.FriendID). A SECRET
+-- line is never kept.
 --------------------------------------------------------------------------------
 
 function WV.Save(hist)
@@ -258,7 +300,8 @@ function WV.Save(hist)
 		if #order >= SAVE_CONVS then
 			break
 		end
-		if c.kind == "WHISPER" and type(c.key) == "string" and type(c.target) == "string" and not Secret(c.title) then
+		local bnet = c.kind == "BN_WHISPER" and type(c.battleTag) == "string"
+		if (bnet or (c.kind == "WHISPER" and type(c.target) == "string" and not Secret(c.title))) and type(c.key) == "string" then
 			local lines = {}
 			for j = math.min(c.count, SAVE_WHISPERS) - 1, 0, -1 do
 				local rec = Nth(c, j)
@@ -268,8 +311,10 @@ function WV.Save(hist)
 			end
 			if #lines > 0 then
 				order[#order + 1] = c.key
-				convs[c.key] = { title = c.title, target = c.target, class = Text(c.classFile), hex = Text(c.classHex),
-					level = Num(c.level), guid = Text(c.guid), unread = c.unread, lines = lines }
+				-- (a Battle.net friend's: their BattleTag kept, the name and id the game gives each login never)
+				convs[c.key] = { title = bnet and TagName(c.battleTag) or c.title, target = not bnet and c.target or nil,
+					kind = bnet and "BN_WHISPER" or nil, tag = bnet and c.battleTag or nil, class = Text(c.classFile),
+					hex = Text(c.classHex), level = Num(c.level), guid = Text(c.guid), unread = c.unread, lines = lines }
 			end
 		end
 	end
@@ -290,8 +335,16 @@ function WV.Load()
 	local now, clock = GetTime(), time()
 	for _, key in ipairs(w.order) do
 		local s = w.convs[key]
-		if type(s) == "table" and type(s.lines) == "table" and type(s.target) == "string" and not WV.convs[key] then
-			local c = Conv(key, "WHISPER", s.target, type(s.title) == "string" and s.title or s.target)
+		local bnet = type(s) == "table" and s.kind == "BN_WHISPER" and type(s.tag) == "string"
+		if type(s) == "table" and type(s.lines) == "table" and (bnet or type(s.target) == "string") and not WV.convs[key] then
+			local c
+			if bnet then
+				local id, shown = WV.FriendID(s.tag)
+				c = Conv(key, "BN_WHISPER", id, shown or (type(s.title) == "string" and s.title) or TagName(s.tag))
+				c.battleTag = s.tag
+			else
+				c = Conv(key, "WHISPER", s.target, type(s.title) == "string" and s.title or s.target)
+			end
 			c.classFile, c.classHex, c.level, c.guid = Text(s.class), Text(s.hex), Num(s.level), Text(s.guid)
 			for _, l in ipairs(s.lines) do
 				if type(l) == "table" and type(l.tx) == "string" then
@@ -1106,7 +1159,13 @@ local function Build()
 	Perf.SetScript(box, "OnEnterPressed", function(self)
 		local text = self:GetText()
 		self:SetText("")
-		if WV.current and text and text:find("%S") then
+		local c = WV.current
+		if c and c.kind == "BN_WHISPER" and c.target == nil and c.battleTag then
+			local id, shown = WV.FriendID(c.battleTag)
+			c.target, c.title = id, shown or c.title
+			WV.shim.target = id
+		end
+		if c and text and text:find("%S") and not (c.kind == "BN_WHISPER" and c.target == nil) then
 			P().SendWhisper(WV.shim, text)
 		else
 			self:ClearFocus()

@@ -8,7 +8,8 @@
 -- Questie in Core/QuestSource.lua, Core/QuestieLook.lua, MelloUI_Map/MapAddonPins.lua and Modules/Nameplates.lua;
 -- RareScanner in Core/RareScannerLook.lua; Polestar in Core/Overlaps.lua; GatherMate2 and HandyNotes in
 -- MapAddonPins' sources; the guides (RestedXP, Zygor, TomTom, Polestar's) in MelloUI_Route/Guides.lua; Clique in
--- MelloUI:ClickCast; SharedMedia in Core/SharedMedia.lua (2.1.45: the sounds too). Off, MelloUI leaves that addon alone (its look, its data, its settings) from the next /reload --
+-- MelloUI:ClickCast; SharedMedia in Core/SharedMedia.lua (2.1.45: the sounds too); the bag addons in Core/Overlaps.lua's
+-- "bags" job (2.1.49: MelloUI's bag window steps aside). Off, MelloUI leaves that addon alone (its look, its data, its settings) from the next /reload --
 -- but two quest trackers never show at once (Core/Overlaps.lua's questTracker stays).
 -- Shown by the configurator's Addons page (Core/AddonsPage.lua). Nothing at login: read when asked.
 --   I.GROUPS, I.LIST, I.ByKey     the addons by group, in the page's order
@@ -73,7 +74,13 @@ I.GROUPS = {
 	{ key = "map", name = "Map and minimap" },
 	{ key = "frames", name = "Frames" },
 	{ key = "look", name = "Look and sound" },
+	{ key = "bags", name = "Bags" },
 }
+
+-- (2.1.49) the bag addons' lines: one for all of them
+local BAG_DOES = { "Its bag window shows your bags: MelloUI's bag window and its bank by kind step aside while it runs, so B opens one bag window." }
+local BAG_SHORT = "Its bags in place of MelloUI's bag window"
+local BAG_LINKS = { { "MelloUI Bag Window", id = "BagWindow.columns" } }
 
 -- an addon: key (its switch's key), name, folders (any one loaded: installed), group, url (its page: the configurator
 -- opens no web page, its copy box does), switch (false: nothing of MelloUI's to switch off -- it only stays clear),
@@ -227,6 +234,25 @@ I.LIST = {
 	  parts = { { "its click-casting", function()
 		return rawget(_G, "ClickCastHeader") ~= nil
 	  end } } },
+	-- (2.1.49; pmyszczynski, GitHub issue #8: "With both enabled, pressing B shows two bag interfaces") the bag addons:
+	-- while one runs, MelloUI's bag window and its bank by kind step aside (Core/Overlaps.lua's "bags" job), so B opens
+	-- one bag window; its switch off, MelloUI's comes back
+	{ key = "Baganator", name = "Baganator", folders = { "Baganator" }, group = "bags",
+	  url = "https://www.curseforge.com/wow/addons/baganator",
+	  does = BAG_DOES, short = BAG_SHORT, links = BAG_LINKS,
+	  parts = { { "its bags", function() return Global("Baganator") ~= nil end } } },
+	{ key = "Bagnon", name = "Bagnon", folders = { "Bagnon" }, group = "bags",
+	  url = "https://www.curseforge.com/wow/addons/bagnon",
+	  does = BAG_DOES, short = BAG_SHORT, links = BAG_LINKS,
+	  parts = { { "its bags", function() return Global("Bagnon") ~= nil end } } },
+	{ key = "ArkInventory", name = "ArkInventory", folders = { "ArkInventory" }, group = "bags",
+	  url = "https://www.curseforge.com/wow/addons/ark-inventory",
+	  does = BAG_DOES, short = BAG_SHORT, links = BAG_LINKS,
+	  parts = { { "its bags", function() return Global("ArkInventory") ~= nil end } } },
+	{ key = "BetterBags", name = "BetterBags", folders = { "BetterBags" }, group = "bags",
+	  url = "https://www.curseforge.com/wow/addons/better-bags",
+	  does = BAG_DOES, short = BAG_SHORT, links = BAG_LINKS,
+	  parts = { { "its bags", function() return Ace("BetterBags") ~= nil or Global("BetterBags") ~= nil end } } },
 	-- (2.1.32 read its media; 2.1.45, Custom Sounds' Your Sounds: its sounds, the player's own files through the
 	-- MelloUI_MySounds template, docs/custom-sounds.md) the library any pack brings: working while it is found
 	{ key = "SharedMedia", name = "SharedMedia", folders = { "SharedMedia" }, group = "look",
@@ -382,6 +408,9 @@ function I.Jobs()
 		rows[#rows + 1] = { "Rare alerts", "MelloUI's Rare Alert",
 			(Used("RareScanner") and w and w.rareScannerAlertOff) and "RareScanner's own alert button switched off once" or nil }
 	end
+	-- (2.1.49) the bag window
+	local bags = By("bags")
+	rows[#rows + 1] = { "Bag window", bags or "MelloUI's Bag Window", bags and "MelloUI's bag window steps aside" or nil }
 	rows[#rows + 1] = { "Rares, treasures and events on the map",
 		Used("RareScanner") and "RareScanner's finds, in MelloUI's look" or "Not shown (RareScanner adds them)" }
 	local polestar = Used("Polestar")

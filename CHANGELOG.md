@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.49
+
+- Bags: the Bags by Kind switch is now called MelloUI Bag Window, which is what it turns on and off.
+- Bags: with Baganator, Bagnon, ArkInventory or BetterBags installed, MelloUI's bag window steps aside, so B opens one bag window. The Addons page lists them, each with its switch.
+- Chat: the whisper window now keeps your Battle.net friends' conversations over a logout too, and answering still reaches them after you log in again.
+
 ## 2.1.48
 
 - Minimap: the tracking and calendar buttons on the minimap's top bar take their clicks again, instead of opening the world map.

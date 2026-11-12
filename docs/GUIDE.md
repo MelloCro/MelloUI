@@ -935,6 +935,8 @@ is the class.
 The options live on Nameplates > Friendly players, where a made-up party member's marker shows them
 as they are set.
 
+**Battle.net whispers kept** (2.1.49; MelloUI_Chat/ChatWhispers.lua): a Battle.net friend's conversation is keyed by their BattleTag (`WV.BattleTag`: plain, the same at every login), never by the account id the game gives anew each login nor by the protected name it shows; kept over a logout with the character conversations, it comes back with the friend's id for the session from the friend list (`WV.FriendID`), looked up again before an answer goes out.
+
 **The combat log under Minimal** (2.1.46; MelloUI_Chat/ChatView.lua's Log): Blizzard_CombatLog has the engine send its fight lines only while its window shows (its OnHide: `C_CombatLog.SetFilteredEventsEnabled(false)`), and the view keeps the game's windows out of sight, so the Combat Log tab got crafts and skill-ups only. While the view is on the switch is put back on after the game turns it off (a post-hook; the game's window never shown or moved), and the game's own state comes back when it goes off. A refilter (a filter picked, the filters window closed) empties the tab's copy with the game's window, passes the replay by and reads the window again when it is over. The game's quick filters (My actions, What happened to me?, any the player made) stand as tabs over the Combat Log tab's lines, the one in use lit, each pressed through a secure stand-in on the game's own button.
 
 ### Custom Sounds
@@ -1745,7 +1747,7 @@ slider per line and Remove, Add a line, Suggested (click twice) to go back to th
 suggestions, and it takes items dropped from your bags or from a shop. Counting runs just after
 your bags change, never in combat.
 
-### Bags by Kind
+### MelloUI Bag Window
 
 Your bags in one window of MelloUI's own (0.19.0, on), each kind of item under its own gold
 heading. The kinds follow the game's item types (0.20.4): **Recent** (what you picked up lately; it
@@ -1766,9 +1768,12 @@ Bag Window) come along. The bags still open and close as the game
 opens them: the bag key, the backpack button, a vendor, the bank, the mailbox, a trade, the auction
 house; the bank's own bags keep their windows. The window wears the painted look with the reskin
 and the game's without it (in the painted look its page shows the bags' **Window Background**, as the bank
-does; on Parchment the gold count is in dark ink), and moves in Edit Layout. **Bags by Kind** is on the Windows page (Bags,
+does; on Parchment the gold count is in dark ink), and moves in Edit Layout. **MelloUI Bag Window** (called Bags by Kind before 2.1.49) is on the Windows page (Bags,
 General); off, you get the game's bag window back. While it is on, the game's Combined Bags setting
-is held on (it comes back as you had it when you switch Bags by Kind off).
+is held on (it comes back as you had it when you switch it off). While another bag addon runs -- Baganator, Bagnon,
+ArkInventory or BetterBags (2.1.49; GitHub issue #8) -- this window and its bank by kind step aside by themselves, so B
+opens one bag window (Core/Overlaps.lua's "bags" job; each addon's card on the Addons page, its Use with MelloUI off
+brings MelloUI's back).
 
 **Loot Flight** (0.21.3, on; Animations > Bars & Windows): an item you loot flies from where you picked it up
 (where the pointer was: on the corpse, or on the loot window's row) into its slot in the window, laid out

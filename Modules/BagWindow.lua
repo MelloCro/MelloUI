@@ -92,9 +92,10 @@ local KINDS_PAD = 12
 
 local M   -- (the Kinds row's build reads it)
 M = MelloUI:RegisterModule("BagWindow", {
-	title = "Bags by Kind",
+	-- (2.1.49; pmyszczynski, GitHub issue #8: "Bags by Kind" read as a sorting option, but it is the whole window)
+	title = "MelloUI Bag Window",
 	slash = "bags",   -- (0.21.3: /mello bags loot, /mello bags coins)
-	desc = "Your bags in one window, sorted by kind: new items, gear, quest items, consumables, junk and more.",
+	desc = "MelloUI's own bag window: your bags in one window, sorted by kind (new items, gear, quest items, consumables, junk and more). Off: the game's bags. While Baganator, Bagnon, ArkInventory or BetterBags runs it steps aside by itself (the Addons page).",
 	icon = "Interface\\Icons\\INV_Misc_Bag_08",
 	flavour = "A place for everything, and everything under its heading.",
 	-- (no group: its rows sit on the Windows page, the bag window's)
@@ -232,7 +233,7 @@ local TEXT = {
 	free = "%d free |4slot:slots;",
 	sort = "Clean Up Bags",
 	settings = "Bag Settings",
-	settingsTip = "Bags by Kind's options: its kinds and its layout (Windows > Bags).",
+	settingsTip = "The bag window's options: its kinds and its layout (Windows > Bags).",
 	-- (0.22.0) the side tabs
 	backpack = "Backpack",
 	reagentBag = "Reagent Bag",
@@ -2004,7 +2005,18 @@ local Capture   -- (below)
 -- on the next frame: the game's own close of both goes on in this one). The Reagent Bag opened while the window shows
 -- keeps the tab (the bag key opens the backpack, then the Reagent Bag). A tab the player picked stays while nothing
 -- of it closes.
+-- (2.1.49; pmyszczynski, GitHub issue #8) another bag addon showing the bags (Core/Overlaps.lua's "bags" job): this
+-- window and its bank by kind step aside, as if switched off -- B opens one bag window. Read at each Apply (the module
+-- on, a setting, the Addons page's switch: a /reload)
+function M.Aside()
+	local OV = rawget(MelloUI, "Overlaps")
+	return type(OV) == "table" and type(OV.By) == "function" and OV.By("bags") or nil
+end
+
 local function Sync(how)
+	if M.Aside() then
+		return
+	end
 	if M.isEnabled and not captured and M.pending and not InCombatLockdown() then
 		Capture()   -- (switched on while the bags were open: now they are closed)
 	end
@@ -2875,7 +2887,7 @@ function M:Apply()
 	end
 	events:RegisterEvent("PLAYER_REGEN_ENABLED")
 	events:RegisterEvent("PLAYER_REGEN_DISABLED")   -- (2.1.25: the buttons made before a fight's lockdown)
-	if self.isEnabled then
+	if self.isEnabled and not M.Aside() then
 		Hook()
 		Capture()
 	else
@@ -2899,7 +2911,7 @@ local BANK_FOOT = 118            -- the window under its grid (the game's: 460 f
 local BANK_MIN = 460             -- the game's own height for its smallest grid
 
 local function BankOn()
-	return M.isEnabled and M.db and M.db.bank ~= false and true or false
+	return M.isEnabled and M.db and M.db.bank ~= false and not M.Aside() and true or false
 end
 
 local function BankParts()
@@ -4039,8 +4051,8 @@ M.Fly = Fly   -- (the tests)
 -- quality, one after another. /mello bags coins: quest money flying in
 Fly.SAMPLE = { poor = 0, common = 1, uncommon = 2, rare = 3, epic = 4, legendary = 5, MONEY = 1234,
 	ICON = "Interface\\Icons\\INV_Misc_QuestionMark", NAME = "a made-up item", GAP = 1.4, GAP_BIG = 2.2,
-	off = "Bags by Kind: Loot Flight is off (Animations > Bars & Windows), or Reduce Motion is on.",
-	none = "Bags by Kind: no item is shown in the bag window to fly into." }
+	off = "Bag window: Loot Flight is off (Animations > Bars & Windows), or Reduce Motion is on.",
+	none = "Bag window: no item is shown in the bag window to fly into." }
 
 function Fly.Sample(quality)
 	local anim = MelloUI.Anim
@@ -4427,7 +4439,7 @@ M.Move = Move   -- (the tests)
 Move.SAMPLE_MONEY = 12345
 M.SlashWords.full = function()
 	if not (M.db and M.db.fullWarning ~= false) or MelloUI.Anim.reduceMotion then
-		MelloUI:Print("Bags by Kind: Bags Full Warning is off (Animations > Bars & Windows), or Reduce Motion is on.")
+		MelloUI:Print("Bag window: Bags Full Warning is off (Animations > Bars & Windows), or Reduce Motion is on.")
 		return
 	end
 	Move.Warn()
@@ -4435,9 +4447,9 @@ end
 M.SlashWords.money = function()
 	local now = Move.Shown()
 	if not (M.db and M.db.moneyRoll ~= false) or MelloUI.Anim.reduceMotion then
-		MelloUI:Print("Bags by Kind: Rolling Money is off (Animations > Bars & Windows), or Reduce Motion is on.")
+		MelloUI:Print("Bag window: Rolling Money is off (Animations > Bars & Windows), or Reduce Motion is on.")
 	elseif not (now and win.frame and win.frame:IsShown()) then
-		MelloUI:Print("Bags by Kind: open your bags to see the money roll.")
+		MelloUI:Print("Bag window: open your bags to see the money roll.")
 	else
 		Move.Roll(math.max(0, now - Move.SAMPLE_MONEY), now)
 	end
@@ -4447,7 +4459,7 @@ end
 -- and how long it lasts. Loot Flight: an epic item flies in (into a slot of yours while the window shows, else to
 -- the bag button); Items Glide: two items of one row trade places; Rolling Money: the sum rolls up to yours; Bags
 -- Full Warning: the warning as the game's "Inventory is full." plays it. The window opened where the play needs it
-Move.PLAY = { OPEN = 0.3, NONE = "Bags by Kind: no two items in one row to move -- put some in your bags first." }
+Move.PLAY = { OPEN = 0.3, NONE = "Bag window: no two items in one row to move -- put some in your bags first." }
 
 -- the window shown (opened now when it was not): the seconds to wait for its layout
 function Move.OpenForPlay()
