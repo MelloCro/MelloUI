@@ -8002,10 +8002,15 @@ end
 local function Config_OnLanguage()
 	W.ClosePictureMenu(window)
 	for _, set in pairs(pagesBy) do
-		for name, page in pairs(set) do
+		-- Hide every old page before clearing its set; removing keys during pairs can skip pages.
+		for _, page in pairs(set) do
 			page:Hide()
-			set[name] = nil
+			-- The page title and flavour live in window.head, outside the page frame.
+			if page.head then
+				page.head:Hide()
+			end
 		end
+		wipe(set)
 	end
 	for _, set in pairs(buildingBy) do
 		wipe(set)
