@@ -1530,7 +1530,7 @@ local function Fill(f)
 			local count, have = plan.count[i], state.have[e] or 0
 			if row.countWas ~= count or row.haveWas ~= have then
 				row.countWas, row.haveWas = count, have
-				row.amount:SetText("+" .. count .. " (have " .. have .. ")")
+				row.amount:SetText(MelloUI.Lang.F("+%d (have %d)", count, have))
 			end
 			if row.costWas ~= plan.cost[i] then
 				row.costWas = plan.cost[i]
@@ -1567,11 +1567,11 @@ local function Fill(f)
 	lines[1], lines[2], lines[3] = nil, nil, nil
 	if short then
 		k = k + 1
-		lines[k] = short
+		lines[k] = W.Tr(short)   -- (woofix's PR #10: the notes through the translations)
 	end
 	if unticked then
 		k = k + 1
-		lines[k] = "Untick to skip it here and at every shop, until you tick it again."
+		lines[k] = W.Tr("Untick to skip it here and at every shop, until you tick it again.")
 	end
 	if plan.notN > 0 then
 		k = k + 1
@@ -1596,14 +1596,14 @@ local function Fill(f)
 	f:SetHeight(HEAD + shown * ROW_H + FOOT + (n - 1) * Pick.NOTE_H)
 	if f.totalWas ~= plan.total or f.moneyWas ~= plan.money then
 		f.totalWas, f.moneyWas = plan.total, plan.money
-		local text = "Total: " .. CoinText(plan.total)
+		local text = W.Tr("Total:") .. " " .. CoinText(plan.total)
 		if plan.money then
-			text = text .. "   Left after: " .. CoinText(max(0, plan.money - plan.total))
+			text = text .. "   " .. W.Tr("Left after:") .. " " .. CoinText(max(0, plan.money - plan.total))
 		end
 		f.total:SetText(text)
 	end
 	if not buy.on then
-		f.buy:SetText("Buy")
+		f.buy:SetText(W.Tr("Buy"))
 		f.buy:SetEnabled(plan.ticked > 0)
 	end
 end
@@ -1816,7 +1816,7 @@ BuyStart = function()
 	end
 	local f = shop.frame
 	if f then
-		f.buy:SetText("Buying…")
+		f.buy:SetText(W.Tr("Buying…"))
 		f.buy:SetEnabled(false)
 	end
 	if state.frame then

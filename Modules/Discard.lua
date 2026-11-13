@@ -493,6 +493,11 @@ local function NameOf(c)
 	return c.link and c.link:match("%[(.-)%]") or ("item " .. c.itemID)
 end
 
+local function Tr(text)
+	local W = MelloUI.Widgets
+	return W and W.Tr and W.Tr(text) or text
+end
+
 -- (2.1.50, the user's picks T1-T3 of restock_discard_sketch) the tooltip: the item and its worth (with AHledger, its
 -- auction worth and the vendor's beside it), what Sell holds back for the auction, the right-click, the credit
 local function Tip(self)
@@ -502,7 +507,7 @@ local function Tip(self)
 	local tr, tg, tb = P[1], P[2], P[3]
 	local credit = nil
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-	GameTooltip:SetText(selling and "Sell Cheapest Junk" or "Discard Cheapest Junk", 1, 1, 1)
+	GameTooltip:SetText(Tr(selling and "Sell Cheapest Junk" or "Discard Cheapest Junk"), 1, 1, 1)
 	if c then
 		local count = c.count > 1 and (" x" .. c.count) or ""
 		if not selling and c.auction and c.auction > c.price then
@@ -513,7 +518,7 @@ local function Tip(self)
 			GameTooltip:AddLine(string.format("%s%s, %s", c.link or "?", count, Money(c.vendor or c.value)), 1, 1, 1)
 		end
 	else
-		GameTooltip:AddLine("Nothing to throw away.", 0.7, 0.7, 0.7)
+		GameTooltip:AddLine(Tr("Nothing to throw away."), 0.7, 0.7, 0.7)
 	end
 	if held then
 		local more = nheld > 1 and string.format(" and %d more", nheld - 1) or ""
@@ -530,7 +535,7 @@ local function Tip(self)
 		GameTooltip:AddLine(Credit(credit.itemID), tr, tg, tb)
 	end
 	if self.source == "loot" and not selling then
-		GameTooltip:AddLine("Only when the loot is worth more.", 0.7, 0.7, 0.7, true)
+		GameTooltip:AddLine(Tr("Only when the loot is worth more."), 0.7, 0.7, 0.7, true)
 	end
 	GameTooltip:Show()
 end

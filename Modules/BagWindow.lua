@@ -73,6 +73,11 @@ local Look = MelloUI.Look
 local Secret = MelloUI.Safe.IsSecret
 local Num = MelloUI.Safe.Number
 
+local function F(fmt, ...)
+	W.Tr(fmt) -- load the selected catalogue before formatting a translated string
+	return MelloUI.Lang.F(fmt, ...)
+end
+
 -- (the user, 2026-10-04: "what kind of customization options can we give the players?" -- the kinds and the layout
 -- picked; their own kinds, saved searches, come with a sketch first)
 local RECENT_FOR = {
@@ -363,15 +368,15 @@ local function KnownKind(key)
 end
 local function KindName(key)
 	local o = Own(key)
+	local name
 	if o then
-		return type(o.name) == "string" and o.name ~= "" and o.name or TEXT.newKind
+		name = type(o.name) == "string" and o.name ~= "" and o.name or TEXT.newKind
+	else
+		local names = M.db and type(M.db.kindNames) == "table" and M.db.kindNames
+		local n = names and names[key]
+		name = type(n) == "string" and n ~= "" and n or (KIND[key] and KIND[key].name or tostring(key))
 	end
-	local names = M.db and type(M.db.kindNames) == "table" and M.db.kindNames
-	local n = names and names[key]
-	if type(n) == "string" and n ~= "" then
-		return n
-	end
-	return KIND[key] and KIND[key].name or tostring(key)
+	return W.Tr(name)
 end
 local function Split(key)
 	local t = M.db and type(M.db.kindSplit) == "table" and M.db.kindSplit
@@ -1328,12 +1333,12 @@ end, "script")
 
 local HeadingEnter = Shared("OnEnter on a bag window heading", function(self)
 	if self.key == "empty" then
-		W.ShowTooltip(self, self.name, TEXT.free:format(self.free or 0))
+		W.ShowTooltip(self, self.name, F(TEXT.free, self.free or 0))
 		return
 	end
 	local body = Folded(self.key) and TEXT.unfold or TEXT.fold
 	if self.key == "junk" and S.junkWorth and S.junkWorth > 0 then
-		body = TEXT.worth:format(GetMoneyString(S.junkWorth, true)) .. "\n" .. body
+		body = F(TEXT.worth, GetMoneyString(S.junkWorth, true)) .. "\n" .. body
 	end
 	W.ShowTooltip(self, self.name, body)
 end, "script")
@@ -1345,7 +1350,7 @@ local function Heading(key, name)
 	if h then
 		if h.name ~= name then
 			h.name = name   -- (0.21.1: renamed)
-			h.text:SetText(name)
+			h.text:SetText(W.Tr(name))
 		end
 		return h
 	end
@@ -1516,7 +1521,7 @@ local PlusEnter = Shared("OnEnter on a bag window + slot", function(self)
 	local kind = PlaceKind(self.placeKind)
 	local id = CursorItem()
 	local name = KindName(kind)
-	W.ShowTooltip(self, name, (id and NaturalKind(id) == kind) and TEXT.placeBack or TEXT.placeTip:format(name))
+	W.ShowTooltip(self, name, (id and NaturalKind(id) == kind) and TEXT.placeBack or F(TEXT.placeTip, name))
 end, "script")
 
 local PlusLeave = Shared("OnLeave on a bag window + slot", function(self)
@@ -2441,7 +2446,7 @@ do
 		local held = CursorItem() ~= nil
 		local free, all = Room(key)
 		W.ShowTooltip(tab, key == "reagent" and TEXT.reagentBag or TEXT.backpack,
-			held and TEXT.tabDrop or TEXT.tabFree:format(free, all), nil, "ANCHOR_LEFT")
+			held and TEXT.tabDrop or F(TEXT.tabFree, free, all), nil, "ANCHOR_LEFT")
 		if held and key ~= win.tab then
 			win.holdTab, win.holdAt = tab, GetTime()
 			C_Timer.After(HOLD, Held)
@@ -2734,7 +2739,7 @@ do   -- (its locals in a block: the file's main chunk is near Lua's 200)
 
 	local function Word(global, fallback)
 		local w = rawget(_G, global)
-		return type(w) == "string" and w ~= "" and w or fallback
+		return W.Tr(type(w) == "string" and w ~= "" and w or fallback)
 	end
 
 	local function Call(fn, ...)
@@ -2802,7 +2807,7 @@ do   -- (its locals in a block: the file's main chunk is near Lua's 200)
 		PADDDOWN = "NONE", PADDLEFT = "NONE", PADDRIGHT = "NONE" }
 	local function Destroy(bag, slot, id, link)
 		MelloUI:Confirm({
-			text = TEXT.padDestroyAsk:format(link, PadName("PAD3"), PadName("PAD2")),
+			text = F(TEXT.padDestroyAsk, link, PadName("PAD3"), PadName("PAD2")),
 			pad = { keys = DESTROY_KEYS, press = function(name, down)
 				if not down then
 					return nil
@@ -2830,7 +2835,7 @@ do   -- (its locals in a block: the file's main chunk is near Lua's 200)
 		PAD2 = "CANCEL", PAD3 = "NONE", PAD4 = "NONE" }
 
 	local function SplitText(link, n, count)
-		return TEXT.padSplitAsk:format(link, n, count, PadName("PAD1"), PadName("PAD2"))
+		return F(TEXT.padSplitAsk, link, n, count, PadName("PAD1"), PadName("PAD2"))
 	end
 
 	local function SplitAsk(bag, slot, id, link, count)
@@ -3014,8 +3019,8 @@ local function Build()
 		area = AREA, plate = "rail",
 		-- (the backpack's portrait: 0.25.0 the backpack of MelloUI's icon set, the game's 1x button art until then)
 		ring = { at = "tl", texture = W.IconPath("bag_backpack"), game = true, bag = 0 },
-		title = TEXT.title, close = true, escape = true, fit = true, background = WindowBackground,
-		mover = { key = "MelloUIBagWindow", label = TEXT.title, page = "Windows", default = M.Home,
+		title = W.Tr(TEXT.title), close = true, escape = true, fit = true, background = WindowBackground,
+		mover = { key = "MelloUIBagWindow", label = W.Tr(TEXT.title), page = "Windows", default = M.Home,
 			plainDrag = "always" },
 		inset = G.SIDE,
 	})
@@ -3434,9 +3439,9 @@ end
 
 -- (0.21.1) a kind's note on its row: your own, split by type (else the game's kind's own note)
 local function KindNote(v)
-	local note = IsOwn(v) and TEXT.ownNote or (KIND[v] and KIND[v].note) or nil
+	local note = IsOwn(v) and W.Tr(TEXT.ownNote) or (KIND[v] and W.Tr(KIND[v].note)) or nil
 	if Split(v) and v ~= "recent" and v ~= "empty" then
-		note = note and (note .. ", " .. TEXT.splitNote) or TEXT.splitNote
+		note = note and (note .. ", " .. W.Tr(TEXT.splitNote)) or W.Tr(TEXT.splitNote)
 	end
 	return note
 end
@@ -3450,7 +3455,7 @@ local function KindRows()
 			rows[i] = { kind = "line", removable = true }
 		elseif IsGroup(v) then
 			inGroup = true
-			rows[i] = { kind = "group", label = v:sub(7), removable = true, renamable = true }
+			rows[i] = { kind = "group", label = W.Tr(v:sub(7)), removable = true, renamable = true }
 		else
 			local k = KIND[v]
 			local ticked = nil
@@ -3596,7 +3601,7 @@ end
 -- an own kind removed (asked first): its entry, its place, its tick, split and fold, the items dropped on it
 local function RemoveKind(key)
 	MelloUI:Confirm({
-		text = TEXT.removeAsk:format(KindName(key)),
+		text = F(TEXT.removeAsk, KindName(key)),
 		accept = TEXT.removeAccept,
 		onAccept = function()
 			local own = Copy(M.db.ownKinds)
@@ -3708,7 +3713,7 @@ function D.Qualities()
 			D.qualities[#D.qualities + 1] = { value = q, label = names[q] }
 		end
 		for q = 2, 4 do
-			D.qualities[#D.qualities + 1] = { value = 10 + q, label = TEXT.orBetter:format(names[q]) }
+			D.qualities[#D.qualities + 1] = { value = 10 + q, label = F(TEXT.orBetter, W.Tr(names[q])) }
 		end
 	end
 	return D.qualities
@@ -3833,7 +3838,7 @@ function D.RuleSet(holder, c, i)
 		return s
 	end
 	s = {}
-	s.head = D.Label(holder, TEXT.rule:format(i), "GameFontNormal", "selectedTrim")
+	s.head = D.Label(holder, F(TEXT.rule, i), "GameFontNormal", "selectedTrim")
 	s.drop = W.Button(holder, TEXT.removeRule, 110, nil, { height = 20, onClick = function()
 		MelloUI:PlayUISound("check_off")
 		D.RemoveRule(holder.key, i)
@@ -4019,7 +4024,7 @@ function D.Fill(holder, r)
 	c.forget:SetShown(drops)
 	if drops then
 		local n = PlacedOn(key)
-		c.dropped:SetText(TEXT.dropped:format(n))
+		c.dropped:SetText(F(TEXT.dropped, n))
 		At(c.dropped, D.LABEL_X, y + 5)
 		At(c.forget, D.FIELD_X + 80, y)
 		c.forget:SetEnabled(n > 0)
@@ -4261,7 +4266,7 @@ function Fly.Launch(r)
 		-- a legendary: its name on the screen, in its colour; the window's
 		-- border flashing as it lands
 		if r.name and tint then
-			MelloUI:Announce("Legendary: |cff" .. tint.hex:sub(2) .. r.name .. "|r")
+			MelloUI:Announce(W.Tr("Legendary: ") .. "|cff" .. tint.hex:sub(2) .. r.name .. "|r")
 		end
 		local st = FX.state[layer]
 		if frame and frame:IsShown() and st and st.loot then

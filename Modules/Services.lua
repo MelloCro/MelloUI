@@ -33,6 +33,15 @@ local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Services")
 local C_Timer = Perf.C_Timer
+local function Tr(text)
+	local W = MelloUI.Widgets
+	return W and W.Tr and W.Tr(text) or text
+end
+
+local function F(text, ...)
+	local Lang = MelloUI.Lang
+	return Lang and Lang.F(text, ...) or string.format(text, ...)
+end
 
 local M = MelloUI:RegisterModule("Services", {
 	title = "Services",
@@ -1665,7 +1674,7 @@ function Addon.Fill(row, e)
 	else
 		Pic(row.icon, e.icon, ROUND_CROP)
 	end
-	row.label:SetText(e.label)
+	row.label:SetText(Tr(e.label))
 	row.where:SetText("")
 	MelloUI.Look.Tint(row.label, "text")
 	row.icon:SetDesaturated(false)
@@ -2224,7 +2233,7 @@ local function CreateMenu()
 	menu.hint:SetPoint("LEFT", menu.stop, "RIGHT", 8, 0)
 	menu.hint:SetPoint("RIGHT", -12, 0)
 	menu.hint:SetJustifyH("LEFT")
-	menu.hint:SetText("nearest by road")
+	menu.hint:SetText(Tr("nearest by road"))
 	MelloUI.Look.Text(menu.hint, "note", nil, { object = "GameFontHighlightSmall" })
 	menu:SetHeight(30 + #KINDS * ROW_HEIGHT + 34)
 	menu:Hide()
@@ -2250,7 +2259,7 @@ end
 local function FillRow(row, kind, tray)
 	row.kind = kind
 	Pic(row.icon, kind.icon, ROUND_CROP)
-	row.label:SetText(kind.label)
+	row.label:SetText(Tr(kind.label))
 	local s = slotOf[kind]
 	if not s.nearestAt or GetTime() - s.nearestAt > NEAREST_KEEP then
 		FindNearest(s)
@@ -2259,7 +2268,7 @@ local function FillRow(row, kind, tray)
 	if c then
 		row.where:SetText(DistanceText(s, not tray))
 	else
-		row.where:SetText(Route() and "none known here" or "Route module off")
+		row.where:SetText(Tr(Route() and "none known here" or "Route module off"))
 	end
 	Tint(row.label, c and "text" or "mutedText")
 	Tint(row.where, c and "selectedTrim" or "mutedText")
@@ -2272,7 +2281,7 @@ end
 function Errand.Fill(row, e)
 	row.kind = e
 	Pic(row.icon, e.icon, ROUND_CROP)
-	row.label:SetText(e.label)
+	row.label:SetText(Tr(e.label))
 	local text, key = Errand.Status(e)
 	row.where:SetText(text)
 	Tint(row.label, "text")
@@ -2288,8 +2297,8 @@ end
 function Pick.Fill(row, e)
 	row.kind = e
 	Pic(row.icon, not e.prof and e.kind.icon or nil, ROUND_CROP)
-	row.label:SetText(e.label)
-	row.where:SetText(e.yours and "yours" or "")
+	row.label:SetText(Tr(e.label))
+	row.where:SetText(e.yours and Tr("yours") or "")
 	Tint(row.label, "text")
 	Tint(row.where, "selectedTrim")
 	row.icon:SetDesaturated(false)
@@ -2317,7 +2326,7 @@ local function FillMenu(group)
 			row:Hide()
 		end
 	end
-	menu.title:SetText(group and group.label or "Nearest ...")
+	menu.title:SetText(Tr(group and group.label or "Nearest ..."))
 	if group then
 		menu.stop:Hide()
 		menu.hint:Hide()
@@ -2751,23 +2760,23 @@ local function BarTooltip(self)
 	local P = MelloUI.Look.TipPalette()
 	local gold, text = P.selectedTrim, P.text
 	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-	GameTooltip:SetText(self.kind.label, gold[1], gold[2], gold[3])
+	GameTooltip:SetText(Tr(self.kind.label), gold[1], gold[2], gold[3])
 	local c = self.slot.nearest
 	if c then
 		local sub = CleanSub(c.sub)
-		GameTooltip:AddLine(string.format("Nearest: %s%s, %s", c.name, sub ~= "" and (" (" .. sub .. ")") or "", Yards(c.distance)),
+		GameTooltip:AddLine(F("Nearest: %s%s, %s", c.name, sub ~= "" and (" (" .. sub .. ")") or "", Yards(c.distance)),
 			gold[1], gold[2], gold[3])
 		if self.kind.trainer == "profession" then
-			GameTooltip:AddLine("Click to pick a profession and route to its nearest trainer. Right-click stops the route.",
+			GameTooltip:AddLine(Tr("Click to pick a profession and route to its nearest trainer. Right-click stops the route."),
 				text[1], text[2], text[3], true)
 		else
-			GameTooltip:AddLine("Click to route there by road. Right-click stops the route.", text[1], text[2], text[3], true)
+			GameTooltip:AddLine(Tr("Click to route there by road. Right-click stops the route."), text[1], text[2], text[3], true)
 		end
 	elseif Route() then
-		GameTooltip:AddLine("None known on this continent yet; it is remembered the first time you use one.",
+		GameTooltip:AddLine(Tr("None known on this continent yet; it is remembered the first time you use one."),
 			text[1], text[2], text[3], true)
 	else
-		GameTooltip:AddLine("The Route module is off.", text[1], text[2], text[3])
+		GameTooltip:AddLine(Tr("The Route module is off."), text[1], text[2], text[3])
 	end
 	GameTooltip:Show()
 end
@@ -2779,12 +2788,12 @@ local function GroupTooltip(self)
 	local P = MelloUI.Look.TipPalette()
 	local gold, text, muted = P.selectedTrim, P.text, P.mutedText
 	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-	GameTooltip:SetText(group.label, gold[1], gold[2], gold[3])
+	GameTooltip:SetText(Tr(group.label), gold[1], gold[2], gold[3])
 	if group.addons then
 		for _, e in ipairs(group.kinds) do
-			GameTooltip:AddLine(e.label, text[1], text[2], text[3])
+			GameTooltip:AddLine(Tr(e.label), text[1], text[2], text[3])
 		end
-		GameTooltip:AddLine("Click for your addons' minimap buttons. A click on one there is the addon's own.",
+		GameTooltip:AddLine(Tr("Click for your addons' minimap buttons. A click on one there is the addon's own."),
 			text[1], text[2], text[3], true)
 		GameTooltip:Show()
 		return
@@ -3604,9 +3613,9 @@ local function CreateButton()
 		local P = MelloUI.Look.TipPalette()
 		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-		GameTooltip:SetText("Services", gold[1], gold[2], gold[3])
-		GameTooltip:AddLine("Click: the list of the nearest services.", text[1], text[2], text[3], true)
-		GameTooltip:AddLine("Right-click: stop the route.  Drag: move the button.", text[1], text[2], text[3], true)
+		GameTooltip:SetText(Tr("Services"), gold[1], gold[2], gold[3])
+		GameTooltip:AddLine(Tr("Click: the list of the nearest services."), text[1], text[2], text[3], true)
+		GameTooltip:AddLine(Tr("Right-click: stop the route.  Drag: move the button."), text[1], text[2], text[3], true)
 		GameTooltip:Show()
 	end)
 	Perf.SetScript(button, "OnLeave", function() GameTooltip:Hide() end)
