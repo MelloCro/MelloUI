@@ -30,6 +30,9 @@
 --   consumables  with Consumables Too on (off by default): food, drink, potions and the other consumables may go
 --                too, grey or white, still never what a Restock line keeps (its item; of a family -- drink, food,
 --                ammunition -- the best level in the bags, the older ones may go; a pet's diet)
+--   (2.1.51; Nixxen: "trade goods ... light leather, ruined leather scraps, boar meat")
+--   trade goods  with Trade Goods Too on (off by default): crafting materials and the other trade goods may go too,
+--                grey or white, under the same rules (the worth cap, the Restock list, what is kept)
 --   kept         never what this character keeps: a right-click on the button keeps the item it would take (its
 --                tooltip says so, then names the next one); the Restock List's Never Discard page lets one go
 --   auction      (2.1.50; Nixxen: "AHLedger") with AHledger installed and on (the Addons page's switch), an item
@@ -67,12 +70,16 @@ local M = MelloUI:RegisterModule("Discard", {
 	flavour = "Full bags? The cheapest junk makes room, never anything worth keeping.",
 	-- (no group: its rows sit on the Windows page, the bag and loot windows' Behaviour)
 	enabledByDefault = true,
-	defaults = { bagButton = true, lootButton = true, keepWorth = 100, consumables = false },
+	defaults = { bagButton = true, lootButton = true, keepWorth = 100, consumables = false, tradeGoods = false },
 	options = {
 		{ type = "toggle", key = "bagButton", name = "Discard Button",
 		  desc = "A button on the bag window that throws away your cheapest junk item (sells it at a vendor). Never consumables, materials, quest items or your Restock list. A white item asks first." },
 		{ type = "toggle", key = "consumables", name = "Consumables Too", new = "2.1.50",
 		  desc = "Food, drink, potions and other consumables can be thrown away too, the cheapest first. Never what your Restock list keeps (of its drink, food or ammo the best you carry) or what you keep with a right-click on the Discard button." },
+		-- (2.1.51; Nixxen: "trade goods, where you can end up with some random items from a chest that is not worth
+		-- much, and you will not use. Some light leather, ruined leather scraps, boar meat")
+		{ type = "toggle", key = "tradeGoods", name = "Trade Goods Too", new = "2.1.51",
+		  desc = "Cheap crafting materials and other trade goods, such as light leather or boar meat, can be thrown away too, the cheapest first. Never what your Restock list keeps or what you keep with a right-click on the Discard button." },
 		{ type = "toggle", key = "lootButton", name = "Discard Button On Loot",
 		  desc = "The same button on the loot window. It only throws something away for loot worth more." },
 		{ type = "slider", key = "keepWorth", name = "Never Throw Away Items Worth", min = 1, max = 1000, step = 1,
@@ -96,6 +103,7 @@ local KEEP_CLASS = {
 }
 local MISC, JUNK = 15, 0                  -- a white miscellaneous item: its junk only
 local CONSUMABLE = 0                      -- (2.1.50) the class Consumables Too lets go
+local TRADE_GOODS = 7                     -- (2.1.51) the class Trade Goods Too lets go
 
 --------------------------------------------------------------------------------
 -- Reads (each guarded: a secret or refused answer is nil)
@@ -172,12 +180,16 @@ local function OnRestockList(itemID)
 end
 
 -- whether the rules let this kind of item go: quality, class, subclass
-function M.KindAllowed(quality, classID, subclassID, consumables)
+function M.KindAllowed(quality, classID, subclassID, consumables, tradeGoods)
 	if quality ~= 0 and quality ~= 1 then
 		return false
 	end
 	-- (2.1.50) Consumables Too: a consumable, grey or white
 	if consumables and classID == CONSUMABLE then
+		return true
+	end
+	-- (2.1.51) Trade Goods Too: a trade good (crafting materials, meat, leather), grey or white
+	if tradeGoods and classID == TRADE_GOODS then
 		return true
 	end
 	if classID == nil or KEEP_CLASS[classID] then
@@ -270,7 +282,8 @@ function M.Candidate(bag, slot)
 		return nil
 	end
 	local price, classID, subclassID = ItemFacts(itemID)
-	if not (price and price > 0) or not M.KindAllowed(quality, classID, subclassID, M.db and M.db.consumables) then
+	if not (price and price > 0)
+		or not M.KindAllowed(quality, classID, subclassID, M.db and M.db.consumables, M.db and M.db.tradeGoods) then
 		return nil
 	end
 	if M.Kept(itemID) then
@@ -437,9 +450,14 @@ function M.Click(source)
 		elseif valuable > 0 then
 			Say("Discard: nothing cheap enough to throw away -- your junk is worth %s or more a stack (Never Throw Away Items Worth).",
 				Money((Num(M.db and M.db.keepWorth) or 100) * 100))
+		elseif M.db and M.db.consumables and M.db.tradeGoods then
+			-- (2.1.51) the line says what the switches let go
+			Say("Discard: nothing to throw away (grey and white junk, consumables and trade goods go, never quest items or what you keep).")
 		elseif M.db and M.db.consumables then
 			-- (2.1.50) with Consumables Too on, food and potions may go: the line no longer says they never do
 			Say("Discard: nothing to throw away (grey and white junk and consumables go, never materials, quest items or what you keep).")
+		elseif M.db and M.db.tradeGoods then
+			Say("Discard: nothing to throw away (grey and white junk and trade goods go, never food, potions, quest items or what you keep).")
 		else
 			Say("Discard: nothing to throw away (only grey and white junk goes, never food, potions, materials or quest items).")
 		end
@@ -527,9 +545,12 @@ local function Tip(self)
 		credit = credit or held
 	end
 	if c then
-		-- (2.1.50) the right-click: in the game's green of a use line
+		-- (2.1.50) the right-click: in the game's green of a use line; (2.1.51; Nixxen: "The tooltip for the discard
+		-- should probably say left click to discard as well") the left-click's first, what it does here
 		local g = rawget(_G, "GREEN_FONT_COLOR")
-		GameTooltip:AddLine("Right-click: always keep " .. NameOf(c), g and g.r or 0, g and g.g or 1, g and g.b or 0)
+		local gr, gg, gb = g and g.r or 0, g and g.g or 1, g and g.b or 0
+		GameTooltip:AddLine(Tr(selling and "Left-click: sell it" or "Left-click: throw it away"), gr, gg, gb)
+		GameTooltip:AddLine("Right-click: always keep " .. NameOf(c), gr, gg, gb)
 	end
 	if credit then
 		GameTooltip:AddLine(Credit(credit.itemID), tr, tg, tb)

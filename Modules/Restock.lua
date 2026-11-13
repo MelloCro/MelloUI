@@ -776,7 +776,7 @@ local SPEC = {
 	onClick = RemClick, persistent = RemPersistent, tooltip = RemTooltip,
 	dismiss = "rest",   -- Not now: until a rest area is entered again (the user's pick)
 	hint = "Click: the way to the nearest shop that sells it",
-	kind = "vendor", letters = nil, skip = nil, extra = nil,
+	kind = "vendor", letters = nil, skip = nil, extra = nil, atLeast = nil,
 }
 
 -- the widget told when what check() or text() says changed
@@ -961,7 +961,7 @@ end
 -- Errands group's Restock)
 --------------------------------------------------------------------------------
 
-local route = { letters = "", skip = {}, extra = {}, what = "", label = "Restock", fallback = nil }
+local route = { letters = "", skip = {}, extra = {}, what = "", label = "Restock", fallback = nil, atLeast = {} }
 local wantKeys = {}
 
 -- what to shop for: the low lines, or every line when none is low (a trip
@@ -1009,6 +1009,15 @@ local function RouteOpts(keys, n)
 	end
 	route.letters = (s.d and "d" or "") .. (s.f and "f" or "") .. (s.a and "a" or "") .. (s.b and "b" or "") .. (s.r and "r" or "")
 	route.fallback = (s.d or s.f) and "innkeeper" or nil
+	-- (2.1.51; Nixxen: the route led to "Kreg Bilmn ... only has the level 0 drink") of drink, food and ammunition the
+	-- best you carry: a shop must sell one at least as good (Services' LevelsOk), as the shop's list offers no worse
+	local least = route.atLeast
+	wipe(least)
+	for letter in ("dfab"):gmatch(".") do   -- (Pick.NO_DOWNGRADE's families)
+		if s[letter] and state.famBest[letter] then
+			least[letter] = state.famBest[letter]
+		end
+	end
 	route.what = "vendor with " .. Words(keys, n)
 	wipe(route.skip)
 	wipe(route.extra)
@@ -1053,11 +1062,11 @@ end
 -- recorded, never per check (the route's tables, filled in place)
 ReachOpts = function(active)
 	if not active then
-		SPEC.letters, SPEC.skip, SPEC.extra = nil, nil, nil
+		SPEC.letters, SPEC.skip, SPEC.extra, SPEC.atLeast = nil, nil, nil, nil
 		return
 	end
 	local opts = RouteOpts(LowKeys())
-	SPEC.letters, SPEC.skip, SPEC.extra = opts.letters, opts.skip, opts.extra
+	SPEC.letters, SPEC.skip, SPEC.extra, SPEC.atLeast = opts.letters, opts.skip, opts.extra, opts.atLeast
 end
 
 -- (lines no family covers: letters "", which Services reads as no shipped
@@ -1242,6 +1251,7 @@ end
 -- and the gold go
 local function Plan()
 	plan.n, plan.total, plan.short, plan.anyLow, plan.ticked, plan.notN = 0, 0, nil, false, 0, 0
+	plan.notLow = false   -- (2.1.51) a low line among those not offered: Pick.TellNotOffered
 	local money = Money()
 	plan.money = money
 	local level = Level()
@@ -1254,6 +1264,9 @@ local function Plan()
 			if not Planned(j) and plan.notN < SHOP_ROWS then
 				plan.notN = plan.notN + 1
 				plan.notName[plan.notN], plan.notKey[plan.notN] = m.name[j], key
+				if state.low[e] then
+					plan.notLow = true
+				end
 			end
 			j = nil
 		end
@@ -1514,6 +1527,16 @@ function Pick.NotOffered()
 	return text
 end
 
+-- (2.1.51; Nixxen: at a merchant who only had a drink below the one carried, "I did not get the 'Not offered' note" --
+-- the list opens only with something low to buy; the user's pick B) the list staying shut while something low is left
+-- out (only worse here than what you carry): said once on the screen's line this visit, as the list's note says it
+function Pick.TellNotOffered()
+	if plan.notN > 0 and plan.notLow and not shop.toldNot then
+		shop.toldNot = true
+		MelloUI:Announce("Restock: " .. Pick.NotOffered())
+	end
+end
+
 -- the plan onto the panel (made again only where a text changed)
 local function Fill(f)
 	local shown = min(plan.n, MAX_ROWS)
@@ -1683,6 +1706,7 @@ local function ShopLook()
 		Plan()
 		if not (plan.n > 0 and plan.anyLow) then
 			HidePanel()
+			Pick.TellNotOffered()
 		elseif shop.frame then
 			ShowPanel()
 		else
@@ -2859,6 +2883,7 @@ local function OnEvent(_, event, arg1)
 		Dirty()
 	elseif event == "MERCHANT_SHOW" then
 		shop.open, shop.snoozed, shop.done, shop.learned = true, false, false, false
+		shop.toldNot = false   -- (2.1.51) Pick.TellNotOffered: once a visit
 		ShopEvents(true)
 		-- the frame after (Vendor's repair and junk sale go first)
 		MelloUI.Kit:NextFrame("Restock shop", ShopSoon)

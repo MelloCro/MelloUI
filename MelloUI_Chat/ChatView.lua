@@ -2343,11 +2343,13 @@ end
 
 function Log.Started()
 	Log.busy = true
+	Log.Progress(0)
 end
 
 -- a refilter over: the copy read again from the game's window, the filter in use lit
 function Log.Finished()
 	Log.busy = false
+	Log.Progress(1)   -- (the bar away)
 	local log = Log.Frame()
 	if not (log and View.bufs[log]) then
 		return
@@ -2378,6 +2380,9 @@ function Log.Hook()
 	if not Log.refilterHooked and ER and ER.RegisterCallback then
 		Log.refilterHooked = true
 		ER:RegisterCallback("OnCombatLogRefilterStarted", Log.Started, Log)
+		ER:RegisterCallback("OnCombatLogRefilterUpdate", function(_, progress)
+			Log.Progress(progress)
+		end, Log)
 		ER:RegisterCallback("OnCombatLogRefilterFinished", Log.Finished, Log)
 	end
 	-- (a filter picked: every pick goes through the engine's ApplyFilterSettings -- the game's own update of its
@@ -2483,7 +2488,11 @@ function Log.Show()
 	if want and not Log.row then
 		local row = CreateFrame("Frame", nil, View.frame)
 		row:SetHeight(Log.H)
+		-- (2.1.51; the user's screenshots: the row over the first lines) made hidden: a new frame is shown, so its first
+		-- show read as no change and the frame was never laid with the lines under it
+		row:Hide()
 		Log.row = row
+		Log.MakeBar(row)
 	end
 	local row = Log.row
 	if not row then
@@ -2503,6 +2512,45 @@ function Log.Show()
 	if was ~= want then
 		View.LayFrame()   -- (the lines under the row, or up to the top again)
 	end
+end
+
+-- (2.1.51; the user: "the default one has a Progress bar when loading, the Minimal one does not") a refilter's
+-- progress under the filters' row, as the game's bar over its buttons: the on-screen line's bar (Core/Notice.lua) --
+-- a dark track, the Bar Texture's fill with soft ends in the palette's gold -- shown from the refilter's start to its
+-- end, in the gap between the row and the lines. Made with the row (the Combat Log tab's first open)
+Log.BAR_H, Log.BAR_GAP = 4, 2
+function Log.MakeBar(row)
+	local track = CreateFrame("Frame", nil, row)
+	W.Panel(track, { on = true, alpha = 0.85 })
+	track:SetPoint("TOPLEFT", row, "BOTTOMLEFT", 0, -Log.BAR_GAP)
+	track:SetPoint("TOPRIGHT", row, "BOTTOMRIGHT", 0, -Log.BAR_GAP)
+	track:SetHeight(Log.BAR_H)
+	track:Hide()
+	local fill = CreateFrame("StatusBar", nil, track)
+	fill:SetPoint("TOPLEFT", track, "TOPLEFT", 1, -1)
+	fill:SetPoint("BOTTOMRIGHT", track, "BOTTOMRIGHT", -1, 1)
+	fill:SetStatusBarTexture(W.BarFill())
+	W.SoftEnds(fill)   -- (every bar's ends soft: the user, 2026-10-16)
+	fill:SetMinMaxValues(0, 1)
+	fill:SetValue(0)
+	W.Paint(fill:GetStatusBarTexture(), "selectedTrim", "vertex")
+	-- a Bar Texture chosen or switched: the fill dressed again
+	W.OnBarTexture(nil, function()
+		fill:SetStatusBarTexture(W.BarFill())
+		W.Paint(fill:GetStatusBarTexture(), "selectedTrim", "vertex")
+	end, Log)
+	Log.track, Log.fill = track, fill
+end
+
+-- the refilter's share done (0 to 1, the game's OnCombatLogRefilterUpdate); the bar away once it is over
+function Log.Progress(share)
+	local fill = Log.fill
+	if not fill then
+		return
+	end
+	share = Num(share) or 0
+	fill:SetValue(share < 0 and 0 or share > 1 and 1 or share)
+	Log.track:SetShown(Log.busy and true or false)
 end
 
 -- how far the lines stand under the frame's top for the row (0 while it is away)

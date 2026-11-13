@@ -799,6 +799,7 @@ local function Measure(key)
 	if type(fn) == "function" then
 		local profession, letters, skip, extra = spec.profession, spec.letters, spec.skip, spec.extra
 		NEAR_OPTS.profession, NEAR_OPTS.letters, NEAR_OPTS.skip, NEAR_OPTS.extra = profession, letters, skip, extra
+		NEAR_OPTS.atLeast = spec.atLeast   -- (2.1.51) Restock's least levels: the reach as its route goes
 		local ok, d, n = pcall(fn, services, spec.kind, (profession or letters or skip or extra) and NEAR_OPTS or nil)
 		if ok then
 			yards, name = Num(d), n

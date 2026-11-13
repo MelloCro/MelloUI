@@ -706,6 +706,12 @@ end
 
 -- where the spark starts: the character's chest, as Route's wisp has it -- the screen's middle, WISP_FROM under it
 local function SparkFrom()
+	-- (2.1.51) the world's screen's middle: Offhand's main screen while it runs (MelloUI.Integrations.PlayArea)
+	local I = rawget(MelloUI, "Integrations")
+	if I and I.PlayArea then
+		local l, b, w, h = I.PlayArea()
+		return l + w / 2, b + h / 2 + Card.WISP_FROM
+	end
 	return UIParent:GetWidth() / 2, UIParent:GetHeight() / 2 + Card.WISP_FROM
 end
 

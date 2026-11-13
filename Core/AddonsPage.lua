@@ -39,7 +39,9 @@ AP.T = T
 local ICONS = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\"
 local ICON_OF = { Questie = "quest_mark", RestedXP = "track_todo", Zygor = "track_todo", Polestar = "track_todo",
 	TomTom = "arrow_player", RareScanner = "kill_rare", GatherMate2 = "pin_collect", HandyNotes = "page_map",
-	NodeSight = "page_minimap", Lueur = "page_minimap", Clique = "page_frames" }
+	NodeSight = "page_minimap", Lueur = "page_minimap", Clique = "page_frames",
+	FollowTheArrow = "track_todo", APR = "track_todo", Guidelime = "track_todo", FlowUp = "track_todo",   -- (2.1.51: the guides as the others)
+	Offhand = "page_windows" }   -- (2.1.51: the screens' layout)
 
 local TEXT = {
 	use = "Use with MelloUI",
@@ -62,6 +64,9 @@ local TEXT = {
 	ask = "Ask for it in the addon requests channel on MelloUI's Discord:",
 	jobs = "Who does what",
 	colJob = "Job", colBy = "Done by",
+	-- (2.1.51) a guide's card: its own arrow beside MelloUI's World Marker
+	arrow = "Show its own arrow too",
+	arrowTip = "Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way.",
 }
 AP.TEXT = TEXT
 AP.DISCORD = "https://discord.com/channels/1552056753833648140/1570155693305110558"
@@ -234,6 +239,11 @@ local function Lines(card, y, lines, width)
 	return y
 end
 
+-- (2.1.51) a guide card's arrow switch: what it does, under the pointer
+local ArrowTipEnter = Perf.Shared("OnEnter on the Addons page's arrow switches", function(self)
+	W.ShowTooltip(self, self.melloTipTitle, self.melloTipBody)
+end, "script")
+
 local function Card(parent, e, width, skin, ctx)
 	local card = W.Panel(parent)
 	card:SetWidth(width)
@@ -282,6 +292,28 @@ local function Card(parent, e, width, skin, ctx)
 	local by = 4
 	by = Heading(body, by, TEXT.does)
 	by = Lines(body, by, e.does, width)
+	-- (2.1.51; the user: "a checkbox if people want to see the 'Arrow' of that specific addon aswell as the MelloUI
+	-- Navigation World Marker") a guide Route follows: its own arrow shown too, or veiled (Route's Guide.ArrowShown;
+	-- the setting is Route's, in the profile). No Route: no row
+	local route = e.arrow and MelloUI:GetModule("Route")
+	local G = route and route.Guide
+	if G and G.ArrowShown then
+		local label = W.Text(body, "GameFontHighlight", Tr(TEXT.arrow), "text")
+		label:SetPoint("TOPLEFT", body, "TOPLEFT", T.PAD + 4, -(by + 8))
+		local sw = W.Switch(body, function()
+			return G.ArrowShown(e.arrow)
+		end, function(on)
+			G.SetArrowShown(e.arrow, on)
+		end)
+		sw:SetPoint("TOPRIGHT", body, "TOPRIGHT", -T.PAD, -(by + 4))
+		sw.melloTipTitle, sw.melloTipBody = Tr(TEXT.arrow), Tr(TEXT.arrowTip)
+		Perf.HookScript(sw, "OnEnter", ArrowTipEnter)
+		Perf.HookScript(sw, "OnLeave", W.TipLeave)
+		W.NewTag(sw:GetParent(), label, "2.1.51")   -- (the New tag after its label, while 2.1.51 is new)
+		card.arrowSwitch = sw
+		Rule(body, by + T.ROW_H - 2)
+		by = by + T.ROW_H
+	end
 	if #e.links > 0 then
 		by = Heading(body, by + 4, TEXT.settings)
 		local x = T.PAD + 4
@@ -326,7 +358,7 @@ local function Card(parent, e, width, skin, ctx)
 		PillShow(pill, state)
 		local line
 		if e.switch == false then
-			line = Tr(TEXT.noSwitch)
+			line = Tr(e.noSwitch or TEXT.noSwitch)   -- (2.1.51: an entry's own line, Guidelime's: switched with TomTom)
 		elseif state == "partly" then
 			line = MelloUI.Lang.F(TEXT.partlyLine, why or "")
 		elseif state == "off" then
@@ -345,6 +377,9 @@ local function Card(parent, e, width, skin, ctx)
 		body:SetPoint("TOPLEFT", card, "TOPLEFT", 0, -(card.afterNote + nh))
 		if card.switch then
 			card.switch:Refresh()
+		end
+		if card.arrowSwitch then
+			card.arrowSwitch:Refresh()   -- (2.1.51: the setting may have changed with a profile)
 		end
 		local now = {}
 		for _, fix in ipairs(I.Changed(e)) do

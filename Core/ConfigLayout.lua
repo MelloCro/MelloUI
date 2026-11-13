@@ -701,6 +701,7 @@ function L.Define(R, Link)
 	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.bagButton", LootPanel = "Discard.lootButton" }, { name = "Discard Button" })
 	-- (2.1.50, Nixxen's request) beside it: consumables may go too
 	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.consumables", LootPanel = "Discard.consumables" }, { name = "Consumables Too" })
+	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.tradeGoods", LootPanel = "Discard.tradeGoods" }, { name = "Trade Goods Too" })   -- (2.1.51, Nixxen)
 	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.keepWorth", LootPanel = "Discard.keepWorth" }, { name = "Never Throw Away Items Worth" })
 	-- (0.22.0, a player's request: the split box's mouse wheel and ½, Tweaks' -- either look)
 	R("Windows", "Windows", "Behaviour", { StackSplitPanel = "Tweaks.splitWheel" })

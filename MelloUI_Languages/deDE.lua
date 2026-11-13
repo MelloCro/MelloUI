@@ -2473,6 +2473,22 @@ Lang:Add("deDE", {
 	["Its steps on the tracker; Route follows them"] = "Seine Schritte im Tracker; Route folgt ihnen", -- draft
 	["Its jobs go before MelloUI's; Route follows its guide"] = "Seine Aufgaben gehen MelloUIs vor; Route folgt seinem Guide", -- draft
 	["Route follows its waypoints"] = "Route folgt seinen Wegpunkten", -- draft
+	-- (2.1.51) the Addons page: the leveling guides, a guide's own arrow beside the World Marker
+	["Show its own arrow too"] = "Auch seinen eigenen Pfeil zeigen", -- draft
+	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Sein Pfeil bleibt neben MelloUIs Weltmarkierung sichtbar, solange Route ihm folgt. Aus: Nur die Weltmarkierung zeigt den Weg.", -- draft
+	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step frame hidden)."] = "Route folgt den Schritten des Guides, und seine Schritte erscheinen in MelloUIs Questverfolgung mit einem Kästchen zum Überspringen des Schritts (sein eigenes Schrittfenster ausgeblendet).", -- draft
+	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step panel hidden)."] = "Route folgt den Schritten des Guides, und seine Schritte erscheinen in MelloUIs Questverfolgung mit einem Kästchen zum Überspringen des Schritts (sein eigenes Schrittfeld ausgeblendet).", -- draft
+	["With its own Use TomTom arrow option on, Route follows its steps through TomTom's arrow (TomTom's card shows that arrow or not)."] = "Ist seine eigene Option für den TomTom-Pfeil an, folgt Route seinen Schritten über TomToms Pfeil (TomToms Karte zeigt diesen Pfeil oder nicht).", -- draft
+	["Route follows its steps through TomTom"] = "Route folgt seinen Schritten über TomTom", -- draft
+	["Followed through TomTom: TomTom's card switches it, and shows its arrow or not."] = "Über TomTom verfolgt: TomToms Karte schaltet es und zeigt seinen Pfeil oder nicht.", -- draft
+	["Route follows the map pin it lays for each step, so MelloUI's route and World Marker lead there."] = "Route folgt der Kartennadel, die es für jeden Schritt setzt, sodass MelloUIs Route und Weltmarkierung dorthin führen.", -- draft
+	["Its steps and arrow stay in its own window (it keeps its steps to itself); its own Arrow option shows its arrow or not."] = "Seine Schritte und sein Pfeil bleiben in seinem eigenen Fenster (es behält seine Schritte für sich); seine eigene Pfeil-Option zeigt seinen Pfeil oder nicht.", -- draft
+	["With another leveling guide loaded too, MelloUI asks at login which one to keep."] = "Ist auch ein anderer Levelguide geladen, fragt MelloUI beim Einloggen, welcher bleiben soll.", -- draft
+	["Route follows the map pins it lays"] = "Route folgt den Kartennadeln, die es setzt", -- draft
+	["Route follows any map pin, FlowUp's too: nothing of MelloUI's to switch off."] = "Route folgt jeder Kartennadel, auch der von FlowUp: Bei MelloUI gibt es nichts auszuschalten.", -- draft
+	["The World Marker's arrow round your character, its wisp and the Level Up card's wisp center on the main screen it keeps for the game, not between your screens."] = "Der Pfeil der Weltmarkierung um deinen Charakter, ihr Irrlicht und das Irrlicht der Stufenaufstiegskarte richten sich auf den Hauptbildschirm aus, den es für das Spiel freihält, nicht zwischen deinen Bildschirmen.", -- draft
+	["MelloUI's character-centered parts on its main screen"] = "MelloUIs Teile um den Charakter auf seinem Hauptbildschirm", -- draft
+	["its main screen"] = "sein Hauptbildschirm", -- draft
 	["Its finds in MelloUI's look, and on Rare Alert"] = "Seine Funde in MelloUIs Look und im Seltenen-Alarm", -- draft
 	["Its gathering nodes on MelloUI's map"] = "Seine Sammelpunkte auf MelloUIs Karte", -- draft
 	["Its notes on MelloUI's map"] = "Seine Notizen auf MelloUIs Karte", -- draft

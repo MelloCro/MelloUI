@@ -632,6 +632,34 @@ end
 -- y } visited after the remembered ones }. The side (Route's shared rule, 0
 -- for a Neutral character) and the continent are the player's; 1,322 rows
 -- since 0.14.0's vendors, each tested for its kind first.
+-- (2.1.51; Nixxen: the route "selects the nearest 'general supplies' vendor ... Kreg only has the level 0 drink")
+-- filter.atLeast { [family letter] = level } (Restock's: the best of it you carry): a vendor row counts only by a
+-- family it sells at that level or above (its 9th field, the data's "d45f35"), or one asked for without a level; a
+-- row with no levels is kept as before. LevelsOk(row, filter)
+local LevelsOk
+do
+	local PAT = { d = "d(%d+)", f = "f(%d+)", a = "a(%d+)", b = "b(%d+)" }
+	LevelsOk = function(row, filter)
+		local least = filter and filter.atLeast
+		local letters, levels = row[8], row[9]
+		if not least or type(letters) ~= "string" or type(levels) ~= "string" then
+			return true
+		end
+		local wanted = filter.letters or letters
+		for i = 1, #wanted do
+			local c = wanted:sub(i, i)
+			if letters:find(c, 1, true) then
+				local min = least[c]
+				local lv = PAT[c] and tonumber(levels:match(PAT[c]))
+				if not min or not lv or lv >= min then
+					return true
+				end
+			end
+		end
+		return false
+	end
+end
+
 local function EachCandidate(kind, profession, visit, skip, lazy, cur, stopAt, keep, filter)
 	PreparePass(kind)   -- again on going on: another pass may have run since
 	local phase, pos = 1, 0
@@ -652,7 +680,7 @@ local function EachCandidate(kind, profession, visit, skip, lazy, cur, stopAt, k
 			while row ~= nil do
 				if row[1] == kind.data and (row[4] == 0 or row[4] == side) and not (skip and skip[row])
 					and not (names and names[row[2]]) and (not pattern or (type(row[8]) == "string" and row[8]:find(pattern)))
-					and Wanted(kind, profession, row[3]) then
+					and LevelsOk(row, filter) and Wanted(kind, profession, row[3]) then
 					if visit(row, row[2], row[3], row[5], row[6], row[7]) then
 						return false
 					end
@@ -959,6 +987,9 @@ do
 		-- (letters of no family match no row: "%z", a character no row's letters hold)
 		scratch.pattern = letters ~= "" and ("[" .. letters .. "]") or (given and "%z" or nil)
 		scratch.skip, scratch.extra = skip, extra
+		-- (2.1.51) the least level of each family asked for (LevelsOk), and the families it is about
+		scratch.atLeast = type(opts.atLeast) == "table" and opts.atLeast or nil
+		scratch.letters = letters ~= "" and letters or nil
 		return scratch
 	end
 end

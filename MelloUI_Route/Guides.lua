@@ -16,7 +16,8 @@
 --   * its step's lines go to the Quest Tracker (the bus's "guide",
 --     Guide.Publish), its items to the quest item widget ("guideitem",
 --     Guide.PublishItems);
---   * its own arrow and window are veiled (Guide.Veil).
+--   * its own arrow and window are veiled (Guide.Veil); (2.1.51) its arrow left showing while its card on the
+--     Addons page says so (Guide.ArrowShown).
 -- Several running: the one whose step changed last is followed, a guide with
 -- steps before TomTom's bare arrow. Read only, post-hooks only, every read
 -- guarded: an addon of another shape does nothing. /route guide (or /route rxp)
@@ -24,7 +25,7 @@
 --
 -- Guidelime keeps its steps to itself (no global state); its own "Use TomTom
 -- arrow" option hands its spot to TomTom, which is followed. QuestMaster,
--- Shortest Path, Adventure Guide and ForeverWisp's marker mode lay the game's
+-- Shortest Path, Adventure Guide, ForeverWisp's marker mode and (2.1.51) FlowUp lay the game's
 -- pin themselves: Route follows them with no reader.
 --------------------------------------------------------------------------------
 
@@ -45,6 +46,24 @@ local SKIP = "Skip this step"   -- (a guide that skips whole steps: the box unde
 
 local function Following()
 	return M.isEnabled and M.db and M.db.followGuide ~= false or false
+end
+
+-- (2.1.51; the user: "a checkbox if people want to see the 'Arrow' of that specific addon aswell as the MelloUI
+-- Navigation World Marker") a guide's own arrow left showing beside the World Marker while it is followed (its window
+-- still veiled): the switch on its card of the Addons page (Core/AddonsPage.lua), Route's setting
+-- guideArrow_<reader key>, in the profile with Route's others; off by default, as before
+function Guide.ArrowShown(key)
+	return (M.db and M.db["guideArrow_" .. tostring(key)] == true) and true or false
+end
+
+function Guide.SetArrowShown(key, on)
+	if not (M.db and type(key) == "string") then
+		return
+	end
+	M.db["guideArrow_" .. key] = on and true or nil
+	if Guide.Veil then
+		Guide.Veil()   -- (a frame holding secure buttons waits for the fight's end there)
+	end
 end
 
 -- fn(...)'s first result, guarded: nil when fn is missing, raised, or that result is secret
@@ -182,6 +201,13 @@ do
 		hooksecurefunc(frame, "SetAlpha", function(self, a) Rewritten(self, "alpha", a) end)
 	end
 
+	-- (2.1.51, /route guide dump) a guide's frame under the veil: "veiled", "given back" (watched, not veiled) or
+	-- "never veiled"
+	function Guide.VeilState(frame)
+		local v = veil[frame]
+		return v and "veiled" or v == false and "given back" or "never veiled"
+	end
+
 	-- every watched frame veiled when it is the followed guide's, given back otherwise
 	function Guide.Veil()
 		local want = {}
@@ -194,6 +220,13 @@ do
 					if veil[frame] == nil then
 						Watch(frame)
 					end
+				end
+			end
+			-- (2.1.51) its own arrow shown beside the World Marker: left out of the veil (given back if veiled)
+			if reader.Arrows and Guide.ArrowShown(reader.key) then
+				local okA, arrows = pcall(reader.Arrows)
+				for _, frame in ipairs(okA and type(arrows) == "table" and arrows or {}) do
+					want[frame] = nil
 				end
 			end
 		end
@@ -265,7 +298,8 @@ end
 
 -- the guide followed: the active one while it runs; else a running guide with steps, else TomTom's arrow
 -- (2.1.44) a guide whose switch on the Addons page, Use with MelloUI, is off is never followed (Core/Integrations.lua)
-local INTEGRATION = { rxp = "RestedXP", zygor = "Zygor", tomtom = "TomTom", polestar = "Polestar" }
+local INTEGRATION = { rxp = "RestedXP", zygor = "Zygor", tomtom = "TomTom", polestar = "Polestar",
+	fta = "FollowTheArrow", apr = "APR" }   -- (2.1.51: these two on the Addons page too)
 local function Allowed(reader)
 	local I = rawget(MelloUI, "Integrations")
 	local key = INTEGRATION[reader.key]
@@ -462,6 +496,21 @@ function Guide.Dump(say)
 	if active then
 		say("   its step: %s", tostring(active.steps and active.steps.title or "-"))
 		say("   its spot: %s", Spot(active.mapID, active.x, active.y))
+	end
+	-- (2.1.51; the user: "I have enabled the Rested XP arrow, but its not showing ingame") each hooked guide's own
+	-- arrow: its Show its own arrow too switch, shown by the guide or not, its alpha, scale and place, MelloUI's veil
+	for _, r in ipairs(Guide.readers) do
+		if r.hooked and r.Arrows then
+			local ok, arrows = pcall(r.Arrows)
+			for _, f in ipairs(ok and type(arrows) == "table" and arrows or {}) do
+				local okR, l, b = pcall(f.GetRect, f)
+				l, b = okR and Finite(l), okR and Finite(b)
+				say("   %s's arrow (%s): switch %s, %s by it, alpha %s, scale %s, at %s, %s", r.name,
+					tostring(f.GetName and f:GetName() or "-"), Guide.ArrowShown(r.key) and "on" or "off",
+					f:IsShown() and "shown" or "hidden", tostring(Finite(f:GetAlpha())), tostring(Finite(f:GetScale())),
+					(l and b) and string.format("%d, %d", l, b) or "nowhere", Guide.VeilState(f))
+			end
+		end
 	end
 	say("   the step laid: %s", Spot(Guide.stepMap, Guide.stepX, Guide.stepY))
 	if Guide.stepMap then
@@ -785,6 +834,26 @@ do
 		return List(rawget(_G, "RXPFrame"), rawget(_G, "RXPG_ARROW"), rawget(_G, "RXPItemFrame"))
 	end
 
+	function rxp.Arrows()   -- (2.1.51: Guide.ArrowShown)
+		return List(rawget(_G, "RXPG_ARROW"))
+	end
+
+	-- (2.1.51, /route guide dump) what RestedXP itself decides about its arrow: its Disable arrow option, its own hiding
+	-- (no waypoint, in an instance), its window shown or not, its guide and the arrow's target
+	function rxp.Dump(say)
+		local R = rawget(_G, "RXP")
+		local profile = type(R) == "table" and type(R.settings) == "table" and type(R.settings.profile) == "table"
+			and R.settings.profile or {}
+		local af = type(R) == "table" and rawget(R, "arrowFrame")
+		local el = type(af) == "table" and rawget(af, "element")
+		local guide = type(R) == "table" and rawget(R, "currentGuide")
+		say("   RestedXP: its guide %s; its Disable arrow %s, its arrow hidden by it %s, its window shown %s, other "
+			.. "continent %s; the arrow's target %s", tostring(type(guide) == "table" and guide.name),
+			tostring(profile.disableArrow), tostring(type(R) == "table" and rawget(R, "hideArrow")),
+			tostring(profile.showEnabled), tostring(type(af) == "table" and rawget(af, "wrongContinent")),
+			type(el) == "table" and string.format("%s %s, %s", tostring(el.zone), tostring(el.x), tostring(el.y)) or "none")
+	end
+
 	Guide.readers[#Guide.readers + 1] = rxp
 end
 
@@ -901,6 +970,10 @@ do
 	function fta.Frames()
 		return List(rawget(_G, "FollowTheArrowGuide"), rawget(_G, "FollowTheArrowArrow"),
 			rawget(_G, "FollowTheArrowItemButton"), rawget(_G, "FollowTheArrowTargetButton"))
+	end
+
+	function fta.Arrows()   -- (2.1.51: Guide.ArrowShown)
+		return List(rawget(_G, "FollowTheArrowArrow"))
 	end
 
 	Guide.readers[#Guide.readers + 1] = fta
@@ -1056,6 +1129,11 @@ do
 	function apr.Frames()
 		local t = A()
 		return List(t and rawget(t, "ArrowFrame"), rawget(_G, "CurrentStepScreenPanel"))
+	end
+
+	function apr.Arrows()   -- (2.1.51: Guide.ArrowShown)
+		local t = A()
+		return List(t and rawget(t, "ArrowFrame"))
 	end
 
 	Guide.readers[#Guide.readers + 1] = apr
@@ -1332,14 +1410,22 @@ do
 			Said(e.PendingRouteChoice))
 	end
 
-	function polestar.Frames()
+	-- its arrow: its own, or TomTom's when it hands its arrow there
+	local function Arrow()
 		local nav = Nav()
-		local arrow = rawget(_G, "PolestarNavArrow")
 		if nav and Pcall(nav.UsingTomTomArrow) then
-			arrow = rawget(_G, "TomTomCrazyArrow")   -- (its arrow handed to TomTom's: that one)
+			return rawget(_G, "TomTomCrazyArrow")   -- (its arrow handed to TomTom's: that one)
 		end
-		return List(arrow, rawget(_G, "PolestarGuideFrame"), rawget(_G, "PolestarQuestItemButton"),
+		return rawget(_G, "PolestarNavArrow")
+	end
+
+	function polestar.Frames()
+		return List(Arrow(), rawget(_G, "PolestarGuideFrame"), rawget(_G, "PolestarQuestItemButton"),
 			rawget(_G, "PolestarHearthButton"))
+	end
+
+	function polestar.Arrows()   -- (2.1.51: Guide.ArrowShown)
+		return List(Arrow())
 	end
 
 	-- its minimap route, trail and target pin (the user's pick, 2026-10-31: "one route"), on frames with no name: off
@@ -1551,6 +1637,12 @@ do
 			type(pointer) == "table" and pointer.ArrowFrame or nil, type(pointer) == "table" and pointer.arrow or nil)
 	end
 
+	function zygor.Arrows()   -- (2.1.51: Guide.ArrowShown)
+		local z = Z()
+		local pointer = z and z.Pointer
+		return List(type(pointer) == "table" and pointer.ArrowFrame or nil, type(pointer) == "table" and pointer.arrow or nil)
+	end
+
 	-- /route zygor (2.1.9): what is really there, in the copy window, for a reader written without the addon at hand
 	function Guide.DumpZygor()
 		MelloUI:ClearLog()
@@ -1706,6 +1798,10 @@ do
 		return List(rawget(_G, "TomTomCrazyArrow"))
 	end
 
+	function tomtom.Arrows()   -- (2.1.51: Guide.ArrowShown; Guidelime's arrow through it too)
+		return List(rawget(_G, "TomTomCrazyArrow"))
+	end
+
 	Guide.readers[#Guide.readers + 1] = tomtom
 end
 
@@ -1730,6 +1826,9 @@ do
 		{ "Guidelime", "Guidelime" },
 		{ "ForeverWisp", "ForeverWisp" },
 		{ "Polestar", "Polestar" },
+		-- (2.1.51; the user installed it) FlowUp: its own map pin, followed with no reader; another guide's pin
+		-- tracked stops it laying its own (it takes a tracked pin for the player's), so one guide at a time
+		{ "FlowUp", "FlowUp" },
 	}
 
 	local function AddOns()

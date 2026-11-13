@@ -8327,16 +8327,28 @@ end
 -- returns its place as a share of the screen, centre 0.5 / 0.5, and how far
 -- it is from the centre in screen heights, squared (a wide screen does not
 -- skew it).
+-- (2.1.51; Shumi: with Offhand's two screens "the route arrow ... is centered between the two screens instead of being
+-- centered on my character") the screen the world is drawn on, in UIParent's units -> left, bottom, width, height:
+-- Offhand's main screen while it runs (MelloUI.Integrations.PlayArea), else UIParent whole. The place's share, the
+-- ring round the character and the wisp's start are all of it
+function Beacon.Area()
+	local I = rawget(MelloUI, "Integrations")
+	if I and I.PlayArea then
+		return I.PlayArea()
+	end
+	return 0, 0, UIParent:GetWidth(), UIParent:GetHeight()
+end
+
 local function ScreenPlace(nav, x, y, wasOff)
 	if not (x and y) then
 		return nil
 	end
 	local scale = nav:GetEffectiveScale() / UIParent:GetEffectiveScale()
-	local w, h = UIParent:GetWidth(), UIParent:GetHeight()
+	local l, b, w, h = Beacon.Area()
 	if not (w and h and w > 0 and h > 0) then
 		return nil
 	end
-	local fx, fy = x * scale / w, y * scale / h
+	local fx, fy = (x * scale - l) / w, (y * scale - b) / h
 	if not (fx > -math.huge and fx < math.huge and fy > -math.huge and fy < math.huge) then
 		return nil   -- (NaN or endless: no place; the marker waits for a real one)
 	end
@@ -8917,7 +8929,8 @@ end
 -- where it starts: the character's chest, the screen's middle at the zoom
 -- (UIParent's own size, as the edge arrow's angle reads it)
 function Beacon.WispFrom()
-	return UIParent:GetWidth() / 2, UIParent:GetHeight() / 2 + Beacon.WISP_FROM * Beacon.RingScale()
+	local l, b, w, h = Beacon.Area()   -- (2.1.51: the world's screen's middle -- Offhand's main one)
+	return l + w / 2, b + h / 2 + Beacon.WISP_FROM * Beacon.RingScale()
 end
 
 -- where it flies to this frame, in UIParent's units: the mark -- the
@@ -8934,8 +8947,9 @@ function Beacon.WispTo()
 	local ui = UIParent:GetEffectiveScale()
 	if f.off then
 		local k = f.ringK or Beacon.RingScale()
-		return UIParent:GetWidth() / 2 + math.cos(f.angle) * RING_X * k,
-			UIParent:GetHeight() / 2 + (math.sin(f.angle) * RING_Y + RING_DY) * k, true
+		local l, b, w, h = Beacon.Area()   -- (2.1.51: the ring's middle, as the tick laid it)
+		return l + w / 2 + math.cos(f.angle) * RING_X * k,
+			b + h / 2 + (math.sin(f.angle) * RING_Y + RING_DY) * k, true
 	end
 	if not (f.lastX and f.lastY) then
 		return nil
@@ -9976,7 +9990,8 @@ local function MarkerTick(self, elapsed)
 		-- the direction from the screen's centre to where the game puts the
 		-- place (in screen units, so a wide screen does not skew it); the
 		-- arrow slides round the ring the short way, eased so it does not jitter
-		local want = math.atan2((fy - 0.5) * UIParent:GetHeight(), (fx - 0.5) * UIParent:GetWidth())
+		local al, ab, aw, ah = Beacon.Area()   -- (2.1.51: the world's screen -- Offhand's main one)
+		local want = math.atan2((fy - 0.5) * ah, (fx - 0.5) * aw)
 		if not (self.angle > -math.huge and self.angle < math.huge) then
 			self.angle = want   -- (never stuck on a NaN: it would be set every tick after)
 		end
@@ -9991,7 +10006,8 @@ local function MarkerTick(self, elapsed)
 		local k = Beacon.RingScale()
 		self.ringK = k
 		self:ClearAllPoints()
-		self:SetPoint("CENTER", UIParent, "CENTER", math.cos(self.angle) * RING_X * k, (math.sin(self.angle) * RING_Y + RING_DY) * k)
+		self:SetPoint("CENTER", UIParent, "BOTTOMLEFT", al + aw / 2 + math.cos(self.angle) * RING_X * k,
+			ab + ah / 2 + (math.sin(self.angle) * RING_Y + RING_DY) * k)
 		self.edge:SetRotation(self.angle - math.pi / 2)
 		if self.shade and self.shade.edgeOn then
 			TextShade.Edge(self, true)   -- (its shade turned with it)

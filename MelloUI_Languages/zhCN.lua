@@ -2473,6 +2473,22 @@ Lang:Add("zhCN", {
 	["Its steps on the tracker; Route follows them"] = "它的步骤显示在追踪器中；路线会跟随", -- draft
 	["Its jobs go before MelloUI's; Route follows its guide"] = "它的工作优先于 MelloUI；路线跟随它的指南", -- draft
 	["Route follows its waypoints"] = "路线跟随它的路径点", -- draft
+	-- (2.1.51) the Addons page: the leveling guides, a guide's own arrow beside the World Marker
+	["Show its own arrow too"] = "同时显示它自己的箭头", -- draft
+	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Route 跟随它时，它的箭头会和 MelloUI 的世界标记一起留在屏幕上。关闭：只有世界标记指路。", -- draft
+	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step frame hidden)."] = "Route 跟随指南的步骤，步骤显示在 MelloUI 的任务追踪器中，并带有跳过此步骤的勾选框（隐藏它自己的步骤窗口）。", -- draft
+	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step panel hidden)."] = "Route 跟随指南的步骤，步骤显示在 MelloUI 的任务追踪器中，并带有跳过此步骤的勾选框（隐藏它自己的步骤面板）。", -- draft
+	["With its own Use TomTom arrow option on, Route follows its steps through TomTom's arrow (TomTom's card shows that arrow or not)."] = "开启它自己的 TomTom 箭头选项后，Route 通过 TomTom 的箭头跟随它的步骤（TomTom 的卡片决定是否显示该箭头）。", -- draft
+	["Route follows its steps through TomTom"] = "Route 通过 TomTom 跟随它的步骤", -- draft
+	["Followed through TomTom: TomTom's card switches it, and shows its arrow or not."] = "通过 TomTom 跟随：由 TomTom 的卡片开关它，并决定是否显示它的箭头。", -- draft
+	["Route follows the map pin it lays for each step, so MelloUI's route and World Marker lead there."] = "Route 跟随它为每个步骤放置的地图标记，让 MelloUI 的路线和世界标记带你前往。", -- draft
+	["Its steps and arrow stay in its own window (it keeps its steps to itself); its own Arrow option shows its arrow or not."] = "它的步骤和箭头留在它自己的窗口里（它不公开自己的步骤）；它自己的箭头选项决定是否显示箭头。", -- draft
+	["With another leveling guide loaded too, MelloUI asks at login which one to keep."] = "如果同时加载了其他升级指南，MelloUI 会在登录时询问保留哪一个。", -- draft
+	["Route follows the map pins it lays"] = "Route 跟随它放置的地图标记", -- draft
+	["Route follows any map pin, FlowUp's too: nothing of MelloUI's to switch off."] = "Route 跟随任何地图标记，包括 FlowUp 的：MelloUI 这边没有需要关闭的。", -- draft
+	["The World Marker's arrow round your character, its wisp and the Level Up card's wisp center on the main screen it keeps for the game, not between your screens."] = "世界标记围绕角色的箭头、它的小精灵以及升级卡片的小精灵，都以它留给游戏的主屏幕为中心，而不是在两块屏幕之间。", -- draft
+	["MelloUI's character-centered parts on its main screen"] = "MelloUI 以角色为中心的部件位于它的主屏幕", -- draft
+	["its main screen"] = "它的主屏幕", -- draft
 	["Its finds in MelloUI's look, and on Rare Alert"] = "它的发现换成 MelloUI 外观，并显示在稀有警报中", -- draft
 	["Its gathering nodes on MelloUI's map"] = "它的采集点显示在 MelloUI 地图上", -- draft
 	["Its notes on MelloUI's map"] = "它的标注显示在 MelloUI 地图上", -- draft

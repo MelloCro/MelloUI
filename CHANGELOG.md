@@ -4,6 +4,13 @@
 
 - Dark Mode: the minimap's tracking and calendar icons stay bright instead of turning dark.
 - Dungeon Info: Ctrl+Click on an item tries it on and Shift+Click links it in chat. In 2.1.50 both did nothing.
+- Chat: in the Minimal view, the Combat Log's My actions and What happened to me? tabs no longer cover its first lines, and a bar shows its loading progress, like the game's.
+- Minimap: with Questie, the minimap looks as it does without it. No second ! or ? beside the game's own quest marks, and no extra quest or town icons of Questie's.
+- Discard: a new Trade Goods Too switch lets cheap crafting materials like light leather or boar meat go too, and the button's tooltip now says what a left-click does.
+- Restock: the way to a shop for drink, food or ammo passes by shops that only sell worse than you carry. A shop with only worse says so on screen.
+- Action Bars: the pet, stance and possess bars follow a smaller Icon Size from Edit Mode, so their icons no longer lie over each other.
+- Addons page: Follow The Arrow, Azeroth Pilot Reloaded, Guidelime and FlowUp are listed now, and the guides' cards have Show its own arrow too, beside the World Marker.
+- Route: with Offhand on two screens, the World Marker's arrow and wisp and the Level Up card's wisp center on your character's screen, not between the screens.
 
 ## 2.1.50
 

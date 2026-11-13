@@ -349,12 +349,15 @@ local function Lay(kind)
 	for i, btn in ipairs(bar.buttons) do
 		local gb = rawget(_G, KINDS[kind].prefix .. i)
 		local bl, bt = Finite(Call(gb, "GetLeft")), Finite(Call(gb, "GetTop"))
-		local bs = Finite(Call(gb, "GetScale")) or 1
+		local es = Finite(Call(gb, "GetEffectiveScale"))
+		-- (2.1.51; Shumi's pet bar: its icons laid over each other, doubled hotkeys) the button's size against the game's
+		-- bar: Edit Mode's Icon Size scales each button's `container` (EditModeActionBarSystemMixin:
+		-- UpdateSystemSettingIconSize), never the button, so its own GetScale stays 1 -- the effective scales hold it
+		local bs = (es and es > 0 and gs > 0) and es / gs or Finite(Call(gb, "GetScale")) or 1
 		btn:ClearAllPoints()
 		btn:SetScale(bs)
 		local x, y
-		if gl and gt and bl and bt and (Finite(Call(gb, "GetEffectiveScale")) or 0) > 0 then
-			local es = Finite(Call(gb, "GetEffectiveScale"))
+		if gl and gt and bl and bt and es and es > 0 then
 			x, y = (bl * es - gl * gs) / gs, (bt * es - gt * gs) / gs
 		else
 			x, y = (i - 1) * (BUTTON + 2) * bs, 0

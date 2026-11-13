@@ -2473,6 +2473,22 @@ Lang:Add("koKR", {
 	["Its steps on the tracker; Route follows them"] = "단계가 추적기에 표시되고 경로가 따라감", -- draft
 	["Its jobs go before MelloUI's; Route follows its guide"] = "작업이 MelloUI보다 우선, 경로가 가이드를 따라감", -- draft
 	["Route follows its waypoints"] = "경로가 웨이포인트를 따라감", -- draft
+	-- (2.1.51) the Addons page: the leveling guides, a guide's own arrow beside the World Marker
+	["Show its own arrow too"] = "자체 화살표도 표시", -- draft
+	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Route가 따라가는 동안 그 화살표가 MelloUI의 월드 마커 옆에 화면에 남습니다. 끄기: 월드 마커만 길을 안내합니다.", -- draft
+	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step frame hidden)."] = "Route가 가이드의 단계를 따라가며, 단계는 단계 건너뛰기 상자와 함께 MelloUI의 퀘스트 추적기에 표시됩니다(자체 단계 창은 숨김).", -- draft
+	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step panel hidden)."] = "Route가 가이드의 단계를 따라가며, 단계는 단계 건너뛰기 상자와 함께 MelloUI의 퀘스트 추적기에 표시됩니다(자체 단계 패널은 숨김).", -- draft
+	["With its own Use TomTom arrow option on, Route follows its steps through TomTom's arrow (TomTom's card shows that arrow or not)."] = "자체 TomTom 화살표 옵션을 켜면 Route가 TomTom의 화살표를 통해 그 단계를 따라갑니다(TomTom 카드에서 그 화살표 표시 여부를 정합니다).", -- draft
+	["Route follows its steps through TomTom"] = "Route가 TomTom을 통해 그 단계를 따라갑니다", -- draft
+	["Followed through TomTom: TomTom's card switches it, and shows its arrow or not."] = "TomTom을 통해 따라감: TomTom 카드에서 켜고 끄며, 그 화살표 표시 여부도 정합니다.", -- draft
+	["Route follows the map pin it lays for each step, so MelloUI's route and World Marker lead there."] = "Route가 각 단계마다 그것이 놓는 지도 핀을 따라가므로, MelloUI의 경로와 월드 마커가 그곳으로 안내합니다.", -- draft
+	["Its steps and arrow stay in its own window (it keeps its steps to itself); its own Arrow option shows its arrow or not."] = "단계와 화살표는 자체 창에 그대로 있습니다(단계는 공개하지 않음). 자체 화살표 옵션으로 화살표를 표시하거나 숨깁니다.", -- draft
+	["With another leveling guide loaded too, MelloUI asks at login which one to keep."] = "다른 레벨링 가이드도 함께 불러오면, MelloUI가 접속할 때 어느 것을 남길지 묻습니다.", -- draft
+	["Route follows the map pins it lays"] = "Route가 그것이 놓는 지도 핀을 따라갑니다", -- draft
+	["Route follows any map pin, FlowUp's too: nothing of MelloUI's to switch off."] = "Route는 FlowUp의 것을 포함해 모든 지도 핀을 따라갑니다: MelloUI에서 끌 것이 없습니다.", -- draft
+	["The World Marker's arrow round your character, its wisp and the Level Up card's wisp center on the main screen it keeps for the game, not between your screens."] = "캐릭터 주위를 도는 월드 마커 화살표, 그 도깨비불, 레벨 업 카드의 도깨비불이 화면 사이가 아니라 게임용으로 남겨 둔 주 화면의 가운데에 놓입니다.", -- draft
+	["MelloUI's character-centered parts on its main screen"] = "캐릭터 중심의 MelloUI 요소를 그 주 화면에", -- draft
+	["its main screen"] = "그 주 화면", -- draft
 	["Its finds in MelloUI's look, and on Rare Alert"] = "찾은 것을 MelloUI 모습으로, 희귀 경보에도 표시", -- draft
 	["Its gathering nodes on MelloUI's map"] = "채집 지점을 MelloUI 지도에 표시", -- draft
 	["Its notes on MelloUI's map"] = "메모를 MelloUI 지도에 표시", -- draft

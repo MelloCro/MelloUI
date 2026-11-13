@@ -999,7 +999,7 @@ end
 -- MelloUI draws this kind of quest mark here itself now -- the Quest List's objective marks on the minimap (its
 -- MiniWanted), its givers and objective marks on the game's map (mapPins, objectiveMarks; MelloUI's own map: its
 -- MapAddonPins lends it only what its layers leave out) -- so Questie's of that kind stay out of sight there, its
--- mouse off (no tooltip from an icon not seen). Quest givers on the minimap are Questie's alone: MelloUI has none there
+-- mouse off (no tooltip from an icon not seen). The minimap's givers, enders and townsfolk: QL.MiniOwn (2.1.51)
 local function Drawn(look, mini)
 	local Q = rawget(MelloUI, "QuestList")
 	local M = type(Q) == "table" and rawget(Q, "M")
@@ -1042,19 +1042,26 @@ local function Unhide(icon)
 	end
 end
 
--- (2.1.50; the user, 2026-11-13: "do the flight masters too") MelloUI's map's flight masters on the minimap (its
--- Flight masters layer on: MelloUI_Map's MapLayers, the same switch as its map's)
-local function MiniFlights()
-	local mods = rawget(MelloUI, "modules")
-	local Map = type(mods) == "table" and rawget(mods, "Map")
-	return type(Map) == "table" and type(Map.MiniFlightsOn) == "function" and Map:MiniFlightsOn() and true or false
-end
-
 local function Hide(icon, tex)
 	Unswap(tex)
 	hidden[icon] = true
 	Parts(icon, 0)
 	icon:EnableMouse(false)
+end
+
+-- (2.1.51; the user, 2026-11-13, at Camp Taurajo: "there are double quest icons on the minimap when i use Questie, fix
+-- that", then at the Crossroads, two pictures: "Picture1 without questie, picture 2 with questie") the minimap as it is
+-- without Questie: this client's minimap marks an NPC's quests itself (the game's ! and ?, the very pictures MelloUI
+-- laid on Questie's), its tracking menu the townsfolk, MelloUI's map its flight masters (MapLayers' MiniFlights) -- so
+-- every quest giver and ender of Questie's (an NPC's, an object's, an item's, a grey one) and its townsfolk (its
+-- "manual" icons: mailboxes, inns, flight masters ...) out of sight there. Its objectives follow MelloUI's own marks
+-- (Drawn). On the maps: unchanged
+function QL.MiniOwn(icon, look)
+	if look and (look.cover == "giver" or look.cover == "ender") then
+		return true
+	end
+	local data = rawget(icon, "data")
+	return type(data) == "table" and data.Type == "manual"
 end
 
 -- an icon of Questie's laid again: out of sight where MelloUI draws its kind, else MelloUI's picture on it
@@ -1069,8 +1076,8 @@ local function Restyle(icon)
 		Hide(icon, tex)
 		return
 	end
-	-- (2.1.50) its flight masters on the minimap while MelloUI's map lays its own there
-	if mini and Used() and QL.Town(icon) == "flights" and MiniFlights() then
+	-- (2.1.51) its quest marks and townsfolk on the minimap: the game's own and MelloUI's there
+	if mini and Used() and QL.MiniOwn(icon, look) then
 		Hide(icon, tex)
 		return
 	end
@@ -1238,10 +1245,73 @@ local function DumpChildren(...)
 	end
 	MelloUI:Print("  other pictures in sight on the minimap: %d", n)
 end
+-- (2.1.51; the user, 2026-11-13, at the Tidus Stair: "Questie is still showing its Quest Icon on the Minimap aswell as
+-- we show our own", while every Questie icon above was out of sight) every picture in sight near you on the minimap,
+-- whoever drew it, MelloUI's own too (Route's layer: the Quest List's marks, the goal): within NEAR screen px of the
+-- minimap's middle, your place. A mark you see there that the list leaves out is the game's own (its blips are no
+-- frames). A dump only: its tables made on the command
+local NEAR, NEAR_MAX = 30, 20
+local NearIn
+local function NearRegions(frame, scale, cx, cy, found, ...)
+	for i = 1, select("#", ...) do
+		local region = select(i, ...)
+		local okV, vis = pcall(region.IsVisible, region)
+		local okA, a = pcall(region.GetAlpha, region)
+		local okC, x, y = pcall(region.GetCenter, region)
+		local okW, w = pcall(region.GetWidth, region)
+		x, y, w = okC and MelloUI.Safe.Finite(x), okC and MelloUI.Safe.Finite(y), okW and MelloUI.Safe.Finite(w)
+		if region.GetTexture and okV and vis == true and okA and Number(a) and a > 0 and x and y and w and w * scale <= 60 then
+			local d = math.sqrt((x * scale - cx) ^ 2 + (y * scale - cy) ^ 2)
+			if d <= NEAR then
+				local okAt, atlas = pcall(region.GetAtlas or function() end, region)
+				atlas = okAt and MelloUI.Safe.Text(atlas) or nil
+				local okD, debug = pcall(frame.GetDebugName, frame)
+				found[#found + 1] = { d = d, text = string.format("%s, %s, %d px, %d px from you, alpha %.2f",
+					tostring(okD and debug or "?"), atlas and ("atlas " .. atlas) or DumpFile(region), math.floor(w * scale + 0.5),
+					math.floor(d + 0.5), a) }
+			end
+		end
+	end
+end
+local function NearChildren(cx, cy, depth, found, ...)
+	for i = 1, select("#", ...) do
+		local child = select(i, ...)
+		local okV, vis = pcall(child.IsVisible, child)
+		if okV and vis == true then
+			NearIn(child, cx, cy, depth + 1, found)
+		end
+	end
+end
+function NearIn(frame, cx, cy, depth, found)
+	local okS, scale = pcall(frame.GetEffectiveScale, frame)
+	scale = okS and MelloUI.Safe.Finite(scale) or 1
+	NearRegions(frame, scale, cx, cy, found, frame:GetRegions())
+	if depth < 5 then
+		NearChildren(cx, cy, depth, found, frame:GetChildren())
+	end
+end
+local function DumpNear(mm)
+	local okC, x, y = pcall(mm.GetCenter, mm)
+	local okS, scale = pcall(mm.GetEffectiveScale, mm)
+	x, y, scale = okC and MelloUI.Safe.Finite(x), okC and MelloUI.Safe.Finite(y), okS and MelloUI.Safe.Finite(scale)
+	if not (x and y and scale) then
+		MelloUI:Print("  near you on the minimap: its place unreadable")
+		return
+	end
+	local found = {}
+	NearIn(mm, x * scale, y * scale, 1, found)
+	table.sort(found, function(p, q) return p.d < q.d end)
+	MelloUI:Print("== Pictures near you on the minimap (within %d px; a mark not listed is the game's own): %d", NEAR, #found)
+	for i = 1, math.min(#found, NEAR_MAX) do
+		MelloUI:Print("  %s", found[i].text)
+	end
+end
+
 local function DumpMinimap()
 	local mm = rawget(_G, "Minimap")
 	if mm then
 		DumpChildren(mm:GetChildren())
+		DumpNear(mm)
 	end
 end
 
@@ -1281,7 +1351,9 @@ function QL.Dump()
 			local glowSeen = okG and ga ~= 0 and glow:IsShown()
 			-- (and every cog: Questie's object and interact icons, whatever MelloUI made of them)
 			local cog = kind == "object" or kind == "object_mono" or kind == "interact"
-			if mini and (state == "Questie's own" or glowSeen or cog) and samples < 6 and icon:IsShown() then
+			-- (2.1.51: and one in no state of MelloUI's -- "other": its picture neither Questie's file nor MelloUI's)
+			if mini and (state == "Questie's own" or state == "other" or glowSeen or cog) and samples < 6
+				and icon:IsShown() then
 				samples = samples + 1
 				local parent = icon:GetParent()
 				local look = QL.Look(icon, iconPaths[icon])

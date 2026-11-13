@@ -1706,6 +1706,7 @@ def build_services(sql, spawns):
 # each class has new spells.
 
 FAMILIES = "dfabr"          # drink, food, arrows, bullets, reagents: the vendor rows' letters (Services reads these)
+LEVELLED = "dfab"           # (2.1.51) the families whose best level a vendor row carries (Restock: no downgrades)
 # (2.1.18; the user, 2026-11-08: "pick and choose each consumable", a catalogue by kind) restockItems' kinds: the
 # families, then p potions and bandages, e elixirs and flasks, o rogue poisons and their recipes' reagents, s scrolls
 # (their own kind: the user, 2026-11-08, "You have categorized Scrolls under Elixirs?")
@@ -1992,6 +1993,24 @@ def build_restock(sql, zones, pages):
                 fams.add(wh_goods[iid][0])
         return "".join(f for f in FAMILIES if f in fams)
 
+    # (2.1.51; Nixxen: the route "selects the nearest 'general supplies' vendor ... Kreg only has the level 0 drink";
+    # the user: "All four") a vendor row's levels after its letters: of drink, food, arrows and bullets, the best
+    # RequiredLevel it sells ("d45f35b10"), so Restock's route passes by a shop with only worse goods than you carry
+    def levels_of(iids):
+        best = {}
+        for iid in iids:
+            if iid in items:
+                if not buyable(iid):
+                    continue
+                fam, level = item_family(items[iid]), int(items[iid].get("RequiredLevel") or 0)
+            elif iid in wh_goods:
+                fam, level = wh_goods[iid][0], int(wh_goods[iid][1] or 0)
+            else:
+                continue
+            if fam and fam in LEVELLED and level > best.get(fam, -1):
+                best[fam] = level
+        return "".join(f"{f}{best[f]}" for f in LEVELLED if f in best)
+
     # Event vendors: spawns tied to a game event, and every vendor sharing a
     # subname mostly made of those (the Winter Veil vendors that stand all year in classic-db).
     event_only, per_sub = set(), defaultdict(lambda: [0, 0])
@@ -2029,7 +2048,9 @@ def build_restock(sql, zones, pages):
                     any(p[0] == map_id and math.hypot(p[1] - wx, p[2] - wy) < 50 for p in placed):
                 continue
             placed.append((map_id, wx, wy))
-            vendor_rows.append(("vendor", r["Name"], sub, side, map_id, round(wx, 1), round(wy, 1), letters))
+            levels = levels_of(sells.get(e, set()) | wh_sells.get(e, set()))
+            vendor_rows.append(("vendor", r["Name"], sub, side, map_id, round(wx, 1), round(wy, 1), letters)
+                               + ((levels,) if levels else ()))
             for f in letters:
                 stats[f"vendor rows selling {f}"] += 1
         if not placed:
@@ -2076,7 +2097,10 @@ def build_restock(sql, zones, pages):
             done.append((at[3], at[4], at[5]))
             for kind in kinds:
                 row = (kind, p["name"], tag, side, at[3], at[4], at[5])
-                forever_rows.append(row + (letters,) if kind == "vendor" else row)
+                if kind == "vendor":
+                    levels = levels_of(wh_sells.get(nid, ()))
+                    row = row + (letters,) + ((levels,) if levels else ())
+                forever_rows.append(row)
                 stats[f"Forever {kind} rows"] += 1
                 if at[3] not in (0, 1):
                     stats[f"Forever rows on map {at[3]}"] += 1
@@ -2512,6 +2536,7 @@ def main():
         fh.write("\t},\n\t-- services: kind (repair, mailbox, innkeeper, auction, banker, trainer, vendor, stable), name, subname,\n")
         fh.write("\t-- side (0 both, 1 Alliance, 2 Horde), continent (world map id), world x, world y;\n")
         fh.write("\t-- a vendor row adds the restock families it sells (d drink, f food, a arrows, b bullets, r class reagents)\n")
+        fh.write("\t-- and the best required level it sells of each of d, f, a, b (\"d45f35\"; none: no field)\n")
         fh.write("\tservices = {\n")
         # (2.1.50) the stable masters, the newest kind, after every older row (in their own order), so the rows of the
         # files before it stay as they were, a new kind added at the end (v140/data A5)

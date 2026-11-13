@@ -86,7 +86,9 @@ local BAG_LINKS = { { "MelloUI Bag Window", id = "BagWindow.columns" } }
 -- opens no web page, its copy box does), switch (false: nothing of MelloUI's to switch off -- it only stays clear),
 -- does (what MelloUI does with it, a line each), short (the Compatibility tab's one line), links (its settings in
 -- MelloUI: { label, id = an option's "Module.key" | map = true: the map's layers }), parts ({ name, Check }),
--- changed (fn -> the list I.Changed hands out)
+-- changed (fn -> the list I.Changed hands out), arrow (2.1.51: a guide Route follows, by its reader's key in
+-- MelloUI_Route/Guides.lua: its card's switch, its own arrow shown beside the World Marker -- Guide.ArrowShown),
+-- noSwitch (with switch = false: the card's own line in place of "Nothing to switch")
 I.LIST = {
 	{ key = "Questie", name = "Questie", folders = { "Questie" }, group = "quests",
 	  url = "https://www.curseforge.com/wow/addons/questie",
@@ -136,7 +138,7 @@ I.LIST = {
 		end
 		return out
 	  end },
-	{ key = "RestedXP", name = "RestedXP Guide", folders = { "RXPGuides" }, group = "quests",
+	{ key = "RestedXP", name = "RestedXP Guide", folders = { "RXPGuides" }, group = "quests", arrow = "rxp",
 	  url = "https://www.curseforge.com/wow/addons/restedxp-guide",
 	  does = { "Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden)." },
 	  short = "Its steps on the tracker; Route follows them",
@@ -145,14 +147,14 @@ I.LIST = {
 		return Global("RXP") ~= nil
 	  end } } },
 	{ key = "Zygor", name = "Zygor Guides", folders = { "ZygorGuidesViewerForever", "ZygorGuidesViewer" }, group = "quests",
-	  url = "https://zygorguides.com",
+	  arrow = "zygor", url = "https://zygorguides.com",
 	  does = { "Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden)." },
 	  short = "Its steps on the tracker; Route follows them",
 	  links = { { "Quest Tracker", id = "QuestTracker.showXP" } },
 	  parts = { { "its guide", function()
 		return (Global("ZGV") or Global("ZygorGuidesViewer")) ~= nil
 	  end } } },
-	{ key = "Polestar", name = "Polestar", folders = { "Polestar" }, group = "quests",
+	{ key = "Polestar", name = "Polestar", folders = { "Polestar" }, group = "quests", arrow = "polestar",
 	  url = "https://github.com/fitzforge/polestar",
 	  does = { "The jobs it does while its own switches are on go before MelloUI's (Who does what lists them).",
 		"Route follows its guide's steps." },
@@ -162,7 +164,7 @@ I.LIST = {
 		local P = Global("Polestar")
 		return P ~= nil and type(rawget(P, "Get")) == "function"
 	  end } } },
-	{ key = "TomTom", name = "TomTom", folders = { "TomTom" }, group = "quests",
+	{ key = "TomTom", name = "TomTom", folders = { "TomTom" }, group = "quests", arrow = "tomtom",
 	  url = "https://www.curseforge.com/wow/addons/tomtom",
 	  does = { "Route follows its waypoint arrow." },
 	  short = "Route follows its waypoints",
@@ -171,6 +173,40 @@ I.LIST = {
 		local T = Global("TomTom")
 		return T ~= nil and type(T.SetCrazyArrow) == "function"
 	  end } } },
+	-- (2.1.51; the user: "we didnt add under 'Addons' category, all the Different Leveling Addons that we provide
+	-- Compatibility with") the guides Route follows since 1.2.0 (MelloUI_Route/Guides.lua), links from CurseForge
+	{ key = "FollowTheArrow", name = "Follow The Arrow", folders = { "FollowTheArrow" }, group = "quests", arrow = "fta",
+	  url = "https://www.curseforge.com/wow/addons/follow-the-arrow",
+	  does = { "Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step frame hidden)." },
+	  short = "Its steps on the tracker; Route follows them",
+	  links = { { "Quest Tracker", id = "QuestTracker.showXP" } },
+	  parts = { { "its guide", function()
+		local F = Global("FollowTheArrow")
+		return F ~= nil and type(F.On) == "function"
+	  end } } },
+	{ key = "APR", name = "Azeroth Pilot Reloaded", folders = { "APR" }, group = "quests", arrow = "apr",
+	  url = "https://www.curseforge.com/wow/addons/azeroth-pilot-reloaded",
+	  does = { "Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step panel hidden)." },
+	  short = "Its steps on the tracker; Route follows them",
+	  links = { { "Quest Tracker", id = "QuestTracker.showXP" } },
+	  parts = { { "its guide", function()
+		local A = Global("APR")
+		return A ~= nil and type(rawget(A, "currentStep")) == "table"
+	  end } } },
+	{ key = "Guidelime", name = "Guidelime", folders = { "Guidelime" }, group = "quests", switch = false,
+	  url = "https://www.curseforge.com/wow/addons/guidelime",
+	  does = { "With its own Use TomTom arrow option on, Route follows its steps through TomTom's arrow (TomTom's card shows that arrow or not)." },
+	  short = "Route follows its steps through TomTom", links = {},
+	  noSwitch = "Followed through TomTom: TomTom's card switches it, and shows its arrow or not." },
+	-- (2.1.51; the user installed it) FlowUp keeps its steps to itself: Route follows the game's map pin it lays; its
+	-- arrow is part of its own window (drawn every frame), so MelloUI leaves it to FlowUp's own Arrow option
+	{ key = "FlowUp", name = "FlowUp", folders = { "FlowUp" }, group = "quests", switch = false,
+	  url = "https://flowup-wow.com",
+	  does = { "Route follows the map pin it lays for each step, so MelloUI's route and World Marker lead there.",
+		"Its steps and arrow stay in its own window (it keeps its steps to itself); its own Arrow option shows its arrow or not.",
+		"With another leveling guide loaded too, MelloUI asks at login which one to keep." },
+	  short = "Route follows the map pins it lays", links = {},
+	  noSwitch = "Route follows any map pin, FlowUp's too: nothing of MelloUI's to switch off." },
 	{ key = "RareScanner", name = "RareScanner", folders = { "RareScanner" }, group = "map",
 	  url = "https://www.curseforge.com/wow/addons/rarescanner",
 	  does = { "Its rares, treasures and events on MelloUI's map and minimap, as MelloUI's icons on a plate.",
@@ -217,6 +253,18 @@ I.LIST = {
 	  parts = { { "its notes", function()
 		local hn = Ace("HandyNotes")
 		return hn ~= nil and type(hn.plugins) == "table"
+	  end } } },
+	-- (2.1.51; Shumi's report) Offhand keeps the game on one screen and panels on another: what centres on the character
+	-- centres on its main screen (I.PlayArea)
+	{ key = "Offhand", name = "Offhand", folders = { "Offhand" }, group = "frames",
+	  url = "https://offhand-wow.onrender.com/",   -- (its TOC's X-Website)
+	  does = { "The World Marker's arrow round your character, its wisp and the Level Up card's wisp center on the main screen it keeps for the game, not between your screens." },
+	  short = "MelloUI's character-centered parts on its main screen",
+	  links = {},
+	  parts = { { "its main screen", function()
+		local O = Global("Offhand")
+		local api = O and rawget(O, "API")
+		return type(api) == "table" and type(api.GetMainhandFrame) == "function"
 	  end } } },
 	{ key = "NodeSight", name = "NodeSight", folders = { "NodeSight" }, group = "map", switch = false,
 	  url = "https://www.curseforge.com/wow/addons/node-sight",
@@ -301,6 +349,30 @@ local function Store()
 		db.integrations = {}
 	end
 	return db.integrations
+end
+
+-- (2.1.51; Shumi, Discord: with Offhand's two screens "the route arrow ... is centered between the two screens instead
+-- of being centered on my character") where the game's world is drawn, in UIParent's units -> left, bottom, width,
+-- height: Offhand's main screen (its OffhandMainhandFrame, Offhand.API.GetMainhandFrame) while Offhand runs with its
+-- switch on, else UIParent whole. What centres on the character reads it: the World Marker's ring and wisp
+-- (MelloUI_Route), the Level Up card's wisp (Core/LevelCard.lua)
+function I.PlayArea()
+	local W, H = UIParent:GetWidth(), UIParent:GetHeight()
+	local O = Global("Offhand")
+	local api = O and rawget(O, "API")
+	local get = type(api) == "table" and api.GetMainhandFrame
+	if type(get) == "function" and I.Use("Offhand") then
+		local ok, f = pcall(get)
+		if ok and type(f) == "table" and f.GetRect then
+			local okR, l, b, w, h = pcall(f.GetRect, f)
+			local Finite = MelloUI.Safe.Finite
+			l, b, w, h = okR and Finite(l), okR and Finite(b), okR and Finite(w), okR and Finite(h)
+			if l and b and w and h and w > 0 and h > 0 then
+				return l, b, w, h
+			end
+		end
+	end
+	return 0, 0, W, H
 end
 
 function I.Use(key)

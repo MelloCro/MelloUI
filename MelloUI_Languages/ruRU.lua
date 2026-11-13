@@ -2473,6 +2473,22 @@ Lang:Add("ruRU", {
 	["Its steps on the tracker; Route follows them"] = "Его шаги в трекере; маршрут следует им", -- draft
 	["Its jobs go before MelloUI's; Route follows its guide"] = "Его задачи идут раньше задач MelloUI; маршрут следует его гайду", -- draft
 	["Route follows its waypoints"] = "Маршрут следует его путевым точкам", -- draft
+	-- (2.1.51) the Addons page: the leveling guides, a guide's own arrow beside the World Marker
+	["Show its own arrow too"] = "Показывать и его собственную стрелку", -- draft
+	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Его стрелка остаётся на экране рядом с мировым маркером MelloUI, пока Route следует за ним. Выкл.: путь указывает только мировой маркер.", -- draft
+	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step frame hidden)."] = "Route следует шагам гайда, а его шаги показываются в отслеживании заданий MelloUI с флажком пропуска шага (его собственное окно шагов скрыто).", -- draft
+	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step panel hidden)."] = "Route следует шагам гайда, а его шаги показываются в отслеживании заданий MelloUI с флажком пропуска шага (его собственная панель шагов скрыта).", -- draft
+	["With its own Use TomTom arrow option on, Route follows its steps through TomTom's arrow (TomTom's card shows that arrow or not)."] = "Если включена его собственная настройка стрелки TomTom, Route следует его шагам через стрелку TomTom (карточка TomTom показывает эту стрелку или нет).", -- draft
+	["Route follows its steps through TomTom"] = "Route следует его шагам через TomTom", -- draft
+	["Followed through TomTom: TomTom's card switches it, and shows its arrow or not."] = "Отслеживается через TomTom: карточка TomTom включает его и показывает его стрелку или нет.", -- draft
+	["Route follows the map pin it lays for each step, so MelloUI's route and World Marker lead there."] = "Route следует за меткой на карте, которую он ставит для каждого шага, так что маршрут и мировой маркер MelloUI ведут туда.", -- draft
+	["Its steps and arrow stay in its own window (it keeps its steps to itself); its own Arrow option shows its arrow or not."] = "Его шаги и стрелка остаются в его собственном окне (шаги он держит при себе); его собственная настройка стрелки показывает её или нет.", -- draft
+	["With another leveling guide loaded too, MelloUI asks at login which one to keep."] = "Если загружен и другой гайд по прокачке, MelloUI при входе спрашивает, какой оставить.", -- draft
+	["Route follows the map pins it lays"] = "Route следует за метками на карте, которые он ставит", -- draft
+	["Route follows any map pin, FlowUp's too: nothing of MelloUI's to switch off."] = "Route следует за любой меткой на карте, в том числе FlowUp: в MelloUI нечего выключать.", -- draft
+	["The World Marker's arrow round your character, its wisp and the Level Up card's wisp center on the main screen it keeps for the game, not between your screens."] = "Стрелка мирового маркера вокруг персонажа, её огонёк и огонёк карточки уровня центрируются на главном экране, который он оставляет для игры, а не между вашими экранами.", -- draft
+	["MelloUI's character-centered parts on its main screen"] = "Элементы MelloUI вокруг персонажа — на его главном экране", -- draft
+	["its main screen"] = "его главный экран", -- draft
 	["Its finds in MelloUI's look, and on Rare Alert"] = "Его находки в стиле MelloUI и в оповещении о редких", -- draft
 	["Its gathering nodes on MelloUI's map"] = "Его точки сбора на карте MelloUI", -- draft
 	["Its notes on MelloUI's map"] = "Его заметки на карте MelloUI", -- draft
