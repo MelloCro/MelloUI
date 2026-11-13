@@ -128,7 +128,15 @@ MelloUI.Widgets = W
 -- (the languages, Core.lua's Languages section: every label, hint, tooltip, choice and heading a builder draws passes
 -- through W.Tr -- the English as it is while no language table is in use; never a chat line, a name or a number. A
 -- field, not a local: Widgets.lua's headroom. A world without Core.lua's: the text as it is)
-W.Tr = MelloUI.Lang and MelloUI.Lang.T or function(text) return text end
+local Lang = MelloUI.Lang
+local languageReady = false
+W.Tr = function(text)
+	if Lang and not languageReady then
+		languageReady = true
+		Lang:Load()
+	end
+	return Lang and Lang.T(text) or text
+end
 
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- a round icon's, a slider's knob
@@ -659,7 +667,7 @@ function W.Text(parent, font, text, key)
 	fs:SetJustifyH("LEFT")
 	fs:SetJustifyV("TOP")
 	if text then
-		fs:SetText(text)
+		fs:SetText(W.Tr(text))
 	end
 	if key then
 		W.Paint(fs, key, "text")
