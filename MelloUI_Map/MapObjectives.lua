@@ -483,7 +483,6 @@ local function GhostSpec(kind)
 end
 
 local function TickLook(tex)
-	local W = MelloUI.Widgets
 	if W and W.Glyph then
 		W.Glyph(tex, "check", 0.02)
 	end
@@ -497,7 +496,6 @@ local function GhostStep(g, v)
 	local t = v * (QT.TICK + QT.HOLD + QT.GONE)
 	local draw = math.min(1, t / QT.TICK)
 	local tick = g.tick
-	local W = MelloUI.Widgets
 	if tick and tick.tex and tick.shown and W and W.Glyph then
 		local p = draw < 0.02 and 0.02 or draw
 		W.Glyph(tick.tex, "check", p)
