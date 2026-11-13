@@ -2486,7 +2486,7 @@ Near.n = 0                             -- the quests in Near.order
 Near.order = {}                        -- the quest IDs as laid, top to bottom
 Near.dist = {}                         -- [questID] = yards from the player now, or nil
 Near.key = {}                          -- [questID] = the distance it is sorted by
-Near.turnIn = {}                       -- [questID] = its turn-in line, or false
+Near.turnIn = {}                       -- [questID] = raw turn-in names and place, or false (formatted in the active language)
 Near.filled = {}                       -- [questID] = -1 done, else its objectives finished, as last drawn
                                        -- (and 100 for each needed item's line shown: FillBlock)
 Near.stamp = 0                         -- bumped when the player's map or the quest log changed
@@ -2511,6 +2511,14 @@ do
 	local PLACE_REACH = 300               -- a turn-in's place: a named one this near
 	local SAMPLE = "000 yd"               -- the room a distance keeps
 	local TURN_IN, TURN_IN_AT = "Turn in: %s", "Turn in: %s, %s"
+
+	local function TurnInText(info)
+		if type(info) ~= "table" then
+			return nil
+		end
+		local W = MelloUI.Widgets
+		return info.place and W.Tr(TURN_IN_AT):format(info.name, info.place) or W.Tr(TURN_IN):format(info.name)
+	end
 
 	local function Wipe(t)
 		for k in pairs(t) do
@@ -3117,7 +3125,7 @@ do
 		end
 		local line = Near.turnIn[id]
 		if line ~= nil then
-			return line or nil
+			return TurnInText(line) or nil
 		end
 		line = false
 		local TurnIn = MelloUI.QuestTurnIn
@@ -3135,11 +3143,11 @@ do
 				if not (type(place) == "string" and place ~= "") then
 					place = type(zoneName) == "string" and zoneName ~= "" and zoneName or nil
 				end
-				line = place and string.format(TURN_IN_AT, name, place) or string.format(TURN_IN, name)
+				line = { name = name, place = place }
 			end
 		end
 		Near.turnIn[id] = line
-		return line or nil
+		return TurnInText(line) or nil
 	end
 
 	-- the title row's arrow: lit while on (the Configurator's flat arrow,
@@ -4823,6 +4831,11 @@ local function Listen()
 	MelloUI:On("fonts", function()
 		if M.isEnabled and frame then
 			ApplyLook()
+			MarkDirty()
+		end
+	end, M)
+	MelloUI:On("language", function()
+		if M.isEnabled and frame then
 			MarkDirty()
 		end
 	end, M)

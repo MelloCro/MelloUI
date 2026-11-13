@@ -26,6 +26,7 @@ local MelloUI = (ns and ns.MelloUI) or _G.MelloUI
 local Perf = MelloUI.Perf:Scope("MelloUI_DungeonInfo (Dungeon Info)")
 local Safe = MelloUI.Safe
 local Secret, Num, Text = Safe.IsSecret, Safe.Number, Safe.Text
+local W = MelloUI.Widgets
 
 local J = {}
 MelloUI.DungeonInfo = J
@@ -519,7 +520,7 @@ end
 function J.Open(key, encounterID)
 	local map = MelloUI:GetModule("Map")
 	if not (map and map.isEnabled and map.OpenDungeonInfo) then
-		MelloUI:Print(TEXT.mapOff)
+		MelloUI:Print(W.Tr(TEXT.mapOff))
 		return false
 	end
 	map:OpenDungeonInfo()
@@ -552,7 +553,7 @@ SlashCmdList.MELLODUNGEONINFO = function(msg)
 		if text then
 			MelloUI:ShowText(TEXT.exportTitle, TEXT.exportHelp .. "\n\n" .. text)
 		else
-			MelloUI:Print(TEXT.exportNone)
+			MelloUI:Print(W.Tr(TEXT.exportNone))
 		end
 		return
 	end
@@ -560,8 +561,8 @@ SlashCmdList.MELLODUNGEONINFO = function(msg)
 	if inst then
 		J.Open(inst.key)
 	else
-		MelloUI:Print(TEXT.notFound, msg)
-		MelloUI:Print(TEXT.usage)
+		MelloUI:Print(W.Tr(TEXT.notFound):format(msg))
+		MelloUI:Print(W.Tr(TEXT.usage))
 	end
 end
 

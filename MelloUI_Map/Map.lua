@@ -279,10 +279,10 @@ local function ShowCoords()
 		local you = px and C.Text(px, py)
 		local mouse = win.mouseX and C.Text(win.mouseX, win.mouseY)
 		if you then
-			text = gold .. TEXT.you .. "|r " .. you
+			text = gold .. W.Tr(TEXT.you) .. "|r " .. you
 		end
 		if mouse then
-			text = (text ~= "" and (text .. TEXT.coordsGap) or "") .. gold .. TEXT.mouse .. "|r " .. mouse
+			text = (text ~= "" and (text .. TEXT.coordsGap) or "") .. gold .. W.Tr(TEXT.mouse) .. "|r " .. mouse
 		end
 	end
 	if text ~= win.shownCoords then
@@ -403,16 +403,18 @@ end
 -- own; with neither, the game's own map pin alone
 local function PinTo(mapID, mx, my, label)
 	local QL, R = QuestList(), rawget(MelloUI, "Route")
+	label = W.Tr(label or TEXT.pinLabel)
+	local notice = W.Tr(TEXT.pinNotice)
 	local ok, chimed
 	if QL then
-		ok, chimed = QL.RouteToPoint(mapID, mx, my, label, TEXT.pinNotice)
+		ok, chimed = QL.RouteToPoint(mapID, mx, my, label, notice)
 	elseif R and R.isEnabled and R.SetDestinationTo then
-		ok = R:SetDestinationTo({ mapID = mapID, x = mx, y = my }, label, true, TEXT.pinNotice)
+		ok = R:SetDestinationTo({ mapID = mapID, x = mx, y = my }, label, true, notice)
 		chimed = ok and R.AnnounceSounds ~= nil and R:AnnounceSounds()
 	elseif C_Map.SetUserWaypoint and UiMapPoint then
 		ok = pcall(C_Map.SetUserWaypoint, UiMapPoint.CreateFromCoordinates(mapID, mx, my))
 	else
-		MelloUI:Print(TEXT.pinOff)
+		MelloUI:Print(W.Tr(TEXT.pinOff))
 		return false
 	end
 	if ok then
@@ -421,7 +423,7 @@ local function PinTo(mapID, mx, my, label)
 			MelloUI:PlayUISound("waypoint_set")
 		end
 	else
-		MelloUI:Print(TEXT.pinNone)
+		MelloUI:Print(W.Tr(TEXT.pinNone))
 	end
 	return ok and true or false
 end
@@ -431,7 +433,7 @@ local function SetPin(x, y)
 	local path = c:Path(x, y, win.path)
 	local p = path[#path]
 	if not p or p.kind == "world" then
-		MelloUI:Print(TEXT.pinNone)
+		MelloUI:Print(W.Tr(TEXT.pinNone))
 		return false
 	end
 	local wx, wy = c:Point(x, y)
@@ -443,7 +445,7 @@ function M:PinOn(pin, label)
 	local c = win.canvas
 	local p = c and pin and pin.wx and c:PlaceAt(pin.wx, pin.wy)
 	if not p then
-		MelloUI:Print(TEXT.pinNone)
+		MelloUI:Print(W.Tr(TEXT.pinNone))
 		return false
 	end
 	return PinTo(p.id, (pin.wx - p.left) / p.w, (pin.wy - p.top) / p.h, label or TEXT.pinLabel)
@@ -528,7 +530,7 @@ function M:SharePin()
 	link = ok and Text(link) or nil
 	local A = rawget(MelloUI, "QuestActs")
 	if not (link and A and A.InsertLink and A.InsertLink(link)) then
-		MelloUI:Print(TEXT.pinNoShare)
+		MelloUI:Print(W.Tr(TEXT.pinNoShare))
 		return false
 	end
 	return true
@@ -1187,7 +1189,7 @@ end
 
 function M:Toggle(show)
 	if not self.isEnabled then
-		MelloUI:Print(TEXT.off)
+		MelloUI:Print(W.Tr(TEXT.off))
 		return
 	end
 	if not win.frame then
@@ -1202,7 +1204,7 @@ end
 -- (the quest log's key, L) the map with your quests beside it; again while they show: the map closed
 function M:ToggleLog()
 	if not self.isEnabled then
-		MelloUI:Print(TEXT.off)
+		MelloUI:Print(W.Tr(TEXT.off))
 		return
 	end
 	if not win.frame then
@@ -1222,7 +1224,7 @@ end
 -- (1.2.0) the map with Dungeon Info beside it (MelloUI_DungeonInfo's J.Open; the page is its own to show)
 function M:OpenDungeonInfo()
 	if not self.isEnabled then
-		MelloUI:Print(TEXT.off)
+		MelloUI:Print(W.Tr(TEXT.off))
 		return false
 	end
 	if not win.frame then
@@ -1238,7 +1240,7 @@ end
 -- (2.1.44, the configurator's Addons page: an addon's "Map layers") the map with its layers' page out (the gear's)
 function M:OpenLayers()
 	if not self.isEnabled then
-		MelloUI:Print(TEXT.off)
+		MelloUI:Print(W.Tr(TEXT.off))
 		return false
 	end
 	if not win.frame then
@@ -1612,7 +1614,7 @@ SlashCmdList.MELLOMAP = function(msg)
 	elseif cmd == "" then
 		M:Toggle()
 	else
-		MelloUI:Print(TEXT.usage)
+		MelloUI:Print(W.Tr(TEXT.usage))
 	end
 end
 

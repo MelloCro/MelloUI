@@ -230,6 +230,7 @@ local TEXT = {
 RL.TEXT = TEXT
 function RL.Lines(POI)
 	local state, kind = RL.State(POI), RL.Kind(POI)
+	local W = MelloUI.Widgets
 	local names = {}
 	if POI.isGroup and type(POI.POIs) == "table" then
 		for _, p in ipairs(POI.POIs) do
@@ -239,8 +240,8 @@ function RL.Lines(POI)
 			end
 		end
 	end
-	local title = Text(POI.name) or names[1] or TEXT[kind]
-	local what = TEXT[kind] .. "  \194\183  " .. ((state == "done" and kind == "treasure") and TEXT.opened or TEXT[state])
+	local title = Text(POI.name) or names[1] or W.Tr(TEXT[kind])
+	local what = W.Tr(TEXT[kind]) .. "  \194\183  " .. W.Tr((state == "done" and kind == "treasure") and TEXT.opened or TEXT[state])
 	return title, what, #names > 1 and table.concat(names, ", ") or nil
 end
 

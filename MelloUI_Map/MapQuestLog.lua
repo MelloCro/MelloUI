@@ -301,9 +301,9 @@ local function QuestLine(e)
 	if e.complete then
 		local name, _, _, _, zone = TurnIn(e.id)
 		if name then
-			return TEXT.handInTo:format(zone and (name .. ", " .. zone) or name)
+			return W.Tr(TEXT.handInTo):format(zone and (name .. ", " .. zone) or name)
 		end
-		return TEXT.handIn
+		return W.Tr(TEXT.handIn)
 	end
 	wipe(lineParts)
 	local lines = MelloUI.QuestObjectives.Lines(e.id)
@@ -518,7 +518,7 @@ function Log.Lay()
 		y = 40
 	end
 	local tab = S.tabs.quests
-	tab:SetText(S.quests > 0 and (TEXT.title .. "  " .. S.quests) or TEXT.title)
+	tab:SetText(W.Tr(TEXT.title) .. (S.quests > 0 and ("  " .. S.quests) or ""))
 	PanelTemplates_TabResize(tab, 8)
 	PageHeight(page, max(y + T.PAD, 1))
 end
@@ -668,7 +668,7 @@ local function ReadLabel()
 	local reading = VO and VO.Reading() and true or false
 	if reading ~= b.reading then
 		b.reading = reading
-		b.label:SetText(reading and TEXT.stop or TEXT.read)
+		b.label:SetText(W.Tr(reading and TEXT.stop or TEXT.read))
 	end
 end
 
@@ -684,13 +684,13 @@ local function Buttons(id)
 		ReadLabel()
 	end
 	local followed = A and A.Followed and A.Followed() == id
-	B.route.label:SetText(followed and TEXT.routing or TEXT.route)
+	B.route.label:SetText(W.Tr(followed and TEXT.routing or TEXT.route))
 	B.route:SetOn(A ~= nil)
 	B.route.lit:SetShown(followed and true or false)
 	B.share:SetOn(A and A.Shareable and A.Shareable(id) or false)
 	local watched = Watched(id)
 	B.track:SetIcon(T.ICONS .. (watched and "ctl_check_on" or "ctl_check_off"))
-	B.track.label:SetText(watched and TEXT.tracked or TEXT.track)
+	B.track.label:SetText(W.Tr(watched and TEXT.tracked or TEXT.track))
 	B.abandon:SetOn(A and A.CanAbandon and A.CanAbandon(id) or false)
 end
 
@@ -704,7 +704,7 @@ local function FillPage(id)
 	P.title:SetText(e.title)
 	y = Place(P.title, y, 4)
 	local QI = MelloUI.QuestInk
-	local info = e.level and TEXT.level:format(e.level) or ""
+	local info = e.level and W.Tr(TEXT.level):format(e.level) or ""
 	if e.zone ~= "" then
 		info = info ~= "" and (info .. TEXT.sep .. e.zone) or e.zone
 	end
@@ -783,7 +783,7 @@ local function FillPage(id)
 		parts[#parts + 1] = coins
 	end
 	if xp > 0 then
-		parts[#parts + 1] = TEXT.xp:format(xp)
+		parts[#parts + 1] = W.Tr(TEXT.xp):format(xp)
 	end
 	if #parts > 0 then
 		P.money:SetText(table.concat(parts, TEXT.sep))

@@ -644,7 +644,7 @@ local function RareTip(tooltip, pin)
 	if names then
 		tooltip:AddLine(names, t[1], t[2], t[3], true)
 	end
-	tooltip:AddLine(RL.TEXT.by, m[1], m[2], m[3])
+	tooltip:AddLine(MelloUI.Widgets.Tr(RL.TEXT.by), m[1], m[2], m[3])
 end
 local function RareClick(pin)
 	local Map = MelloUI.modules and MelloUI.modules.Map

@@ -57,6 +57,7 @@
 local _, ns = ...
 local MelloUI = (ns and ns.MelloUI) or _G.MelloUI
 local Safe = MelloUI.Safe
+local W = MelloUI.Widgets
 local Plain, Finite, Secret = Safe.Value, Safe.Finite, Safe.IsSecret
 local ipairs, pcall, type, wipe = ipairs, pcall, type, wipe
 local floor = math.floor
@@ -596,12 +597,12 @@ local function QuestTip(pin)
 		for _, m in ipairs(pin.members) do
 			questLines[#questLines + 1] = m.data.title or ""
 		end
-		questLines[#questLines + 1] = TEXT.spread
-		return TEXT.quests:format(#pin.members), table.concat(questLines, "\n")
+		questLines[#questLines + 1] = W.Tr(TEXT.spread)
+		return W.Tr(TEXT.quests):format(#pin.members), table.concat(questLines, "\n")
 	end
 	local d = pin.data
 	if d.ready then
-		questLines[1] = d.to and TEXT.handInTo:format(d.to) or TEXT.handIn
+		questLines[1] = d.to and W.Tr(TEXT.handInTo):format(d.to) or W.Tr(TEXT.handIn)
 	elseif MelloUI.QuestObjectives and MelloUI.QuestObjectives.Lines then
 		-- (what is still to do: the quest's own objective lines, the game's words)
 		local ok, lines = pcall(MelloUI.QuestObjectives.Lines, d.questID)
@@ -611,7 +612,7 @@ local function QuestTip(pin)
 			end
 		end
 	end
-	questLines[#questLines + 1] = TEXT.show
+	questLines[#questLines + 1] = W.Tr(TEXT.show)
 	return d.title or "", table.concat(questLines, "\n")
 end
 
