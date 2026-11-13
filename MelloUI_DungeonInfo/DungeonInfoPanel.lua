@@ -409,16 +409,16 @@ local ItemEnter = Perf.Shared("OnEnter on Dungeon Info's item rows", function(se
 		-- (1.2.2) who drops it (the trash's), and where it is known from when not the data
 		local d, c = self.d, MelloUI.Look.TipPalette().text
 		if d and d.mobs and d.mobs ~= "" then
-		GameTooltip:AddLine(W.Tr(TEXT.droppedBy):format(d.mobs), c[1], c[2], c[3], true)
+			GameTooltip:AddLine(W.Tr(TEXT.droppedBy):format(d.mobs), c[1], c[2], c[3], true)
 		end
 		if d and d.src == "everloot" then
-		GameTooltip:AddLine(W.Tr(TEXT.everloot), c[1], c[2], c[3], true)
+			GameTooltip:AddLine(W.Tr(TEXT.everloot), c[1], c[2], c[3], true)
 		elseif d and d.src == "curated" then
-		GameTooltip:AddLine(W.Tr(TEXT.curated), c[1], c[2], c[3], true)
+			GameTooltip:AddLine(W.Tr(TEXT.curated), c[1], c[2], c[3], true)
 		elseif d and d.src == "listed" then
-		GameTooltip:AddLine(W.Tr(TEXT.listed), c[1], c[2], c[3], true)
+			GameTooltip:AddLine(W.Tr(TEXT.listed), c[1], c[2], c[3], true)
 		elseif d and d.src == "seen" then
-		GameTooltip:AddLine(W.Tr(TEXT.seenTip), c[1], c[2], c[3], true)
+			GameTooltip:AddLine(W.Tr(TEXT.seenTip), c[1], c[2], c[3], true)
 		end
 		GameTooltip:Show()
 	end
