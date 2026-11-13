@@ -177,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.52", lines = {
+		"Map: with Questie, every quest ! and ? is Questie's, in MelloUI's look, so Questie's quest level options decide which quests show. Point at one for its quests.",
+	} },
 	{ version = "2.1.51", lines = {
 		"Dark Mode: the minimap's tracking and calendar icons stay bright instead of turning dark.",
 		"Dungeon Info: Ctrl+Click on an item tries it on and Shift+Click links it in chat. In 2.1.50 both did nothing.",
@@ -216,9 +219,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.48", lines = {
 		"Minimap: the tracking and calendar buttons on the minimap's top bar take their clicks again, instead of opening the world map.",
-	} },
-	{ version = "2.1.47", lines = {
-		"Profiles: a /reload or a login no longer switches your Edit Mode layout back to Modern; your character keeps the layout you picked.",
 	} },
 }
 local LINKS = {

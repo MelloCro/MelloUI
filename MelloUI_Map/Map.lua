@@ -99,7 +99,8 @@ local TEXT = {
 -- icon (the map's own picture of it, as the look draws it: MelloUI.Icons)
 local GROUPS = { "Quests", "Travel", "People and more" }
 local SWITCHES = {
-	{ key = "quests", label = "Quest givers", layers = { "quests" }, group = 1, icon = "quest_mark" },
+	-- (2.1.51) Questie's givers too while they are the givers (MapAddonPins' LAYER.questGivers)
+	{ key = "quests", label = "Quest givers", layers = { "quests", "quests_questie" }, group = 1, icon = "quest_mark" },
 	{ key = "objectives", label = "Your quests' objectives", layers = { "objectives", "objective_dots", "objective_quests" },
 	  group = 1, icon = "track_todo" },
 	{ key = "flights", label = "Flight masters", layers = { "flights" }, group = 2, icon = "svc_flight" },
@@ -490,8 +491,10 @@ local function SetLayer(key, on)
 	local shown = win.frame and win.frame:IsShown()
 	if key == "objectives" and shown then
 		Objectives.Lay()
-	elseif key == "addons" and shown then
-		if on then
+	elseif (key == "addons" or key == "quests") and shown then
+		-- (2.1.51) borrowing while either is wanted: other addons' icons, or Questie's givers, the givers then
+		-- (MapAddonPins' Wanted); each on its own layer, which its switch shows or hides
+		if AddonPins.Wanted() then
 			AddonPins.Open()
 		else
 			AddonPins.Close()
@@ -1318,6 +1321,66 @@ local function F(v)
 	return v and string.format("%.4f", v) or "-"
 end
 
+-- (2.1.52; the user, 2026-11-13, of quest marks on this map: "I still cant mouseover them to have the tooltip") /mmap
+-- here: what lies under the mouse -- the frames the game says the mouse is over (GetMouseFoci), then every pin within
+-- HERE px of it on each layer: MelloUI's own (its layer, its quest or giver) or another addon's frame (Questie's: its
+-- kind, quest, Questie's own hidden mark, its picture shown, its vertex alpha -- Questie's tooltip shows nothing at 0 --
+-- its mouse, its OnEnter). A dump only: its tables made on the command
+local HERE = 14
+local function Here()
+	local out = {}
+	local function Add(...)
+		out[#out + 1] = string.format(...)
+	end
+	local okF, foci = pcall(rawget(_G, "GetMouseFoci") or error)
+	Add("The game: the mouse is over")
+	for i, f in ipairs(okF and type(foci) == "table" and foci or {}) do
+		local okN, name = pcall(f.GetDebugName, f)
+		Add("  %d. %s", i, tostring(okN and name or "?"))
+	end
+	local pins = win.pins
+	if not (pins and win.frame and win.frame:IsShown()) then
+		Add("The map is not open.")
+		return table.concat(out, "\n")
+	end
+	local cx, cy = GetCursorPosition()
+	Add("Pins within %d px of the mouse:", HERE)
+	for name, layer in pairs(pins.layers) do
+		local lf = layer.frame
+		local s, left, top = lf:GetEffectiveScale(), lf:GetLeft(), lf:GetTop()
+		if s and left and top then
+			local mx, my = cx / s - left, top - cy / s
+			for key, pin in pairs(layer.pins) do
+				if pin.shown and pin.x and pin.y and math.abs(pin.x - mx) <= HERE and math.abs(pin.y - my) <= HERE then
+					local f = pin.spec and pin.spec.frame
+					if f then
+						local d = rawget(f, "data")
+						local tex = rawget(f, "texture")
+						local okV, _, _, _, va = pcall(tex and tex.GetVertexColor, tex)
+						local okL, fname = pcall(f.GetDebugName, f)
+						Add("  [%s, layer %s] another addon's frame %s: kind %s, quest %s %s, its hidden %s, shown %s, "
+							.. "visible %s, its picture shown %s, vertex alpha %s, mouse %s, OnEnter %s, alpha %s, %s %s",
+							name, tostring(layer.on), tostring(okL and fname or "?"),
+							tostring(type(d) == "table" and d.Type), tostring(type(d) == "table" and d.Id),
+							tostring(type(d) == "table" and d.Name), tostring(rawget(f, "hidden")), tostring(f:IsShown()),
+							tostring(f:IsVisible()), tostring(tex and tex:IsShown()), tostring(okV and va),
+							tostring(f:IsMouseEnabled()), tostring(f:GetScript("OnEnter") ~= nil), tostring(f:GetAlpha()),
+							f:GetFrameStrata(), tostring(f:GetFrameLevel()))
+					else
+						local d = pin.data
+						Add("  [%s, layer %s] MelloUI's pin %s: quest %s %s, giver %s", name, tostring(layer.on),
+							tostring(key), tostring(type(d) == "table" and d.questID), tostring(type(d) == "table" and d.title),
+							tostring(type(d) == "table" and d.giver))
+					end
+				end
+			end
+		end
+	end
+	local look = rawget(MelloUI, "QuestieLook")
+	Add("Questie's givers are the givers: %s", tostring(look and look.Givers and look.Givers()))
+	return table.concat(out, "\n")
+end
+
 local function Dump()
 	local c = win.canvas
 	if not (c and c.places) then
@@ -1614,6 +1677,8 @@ SlashCmdList.MELLOMAP = function(msg)
 	local cmd = strtrim(msg or ""):lower()
 	if cmd == "dump" then
 		MelloUI:ShowText("Map", Dump())
+	elseif cmd == "here" then   -- (2.1.52: what lies under the mouse; Here)
+		MelloUI:ShowText("Map: under the mouse", Here())
 	elseif cmd == "share" then
 		M:SharePin()
 	elseif cmd == "" then

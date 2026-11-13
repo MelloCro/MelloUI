@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.52
+
+- Map: with Questie, every quest ! and ? on the map is Questie's, in MelloUI's look: its quest givers take the place of MelloUI's own, so Questie's quest level options decide which quests show. The map's Quest givers switch shows or hides them, and pointing at one shows its quests.
+
 ## 2.1.51
 
 - Dark Mode: the minimap's tracking and calendar icons stay bright instead of turning dark.

@@ -1126,11 +1126,15 @@ givers, turn-ins and objective places from Questie's quest database (QuestieDB, 
 quest data there is; a quest it does not have yet keeps MelloUI's own. QuestieDB alone is enough: Questie itself
 may be switched off. Its rules decide what you can take now, as Questie's own do: a quest that needs an earlier
 quest, a breadcrumb handed in, a spell or a profession first waits in the list (its tooltip says what for).
-With Questie itself running, MelloUI's own quest givers, objective marks and quest areas stay, fed by Questie's
-data, and Questie's icons of the same kind stay out of sight wherever MelloUI draws that kind (MelloUI's map: while
-its quest givers' or objectives' layer is on; the game's map: while Quest Givers On Zone Maps or Objective Marks is
-on; the minimap: while Objective Marks On The Minimap is on). Switch one of MelloUI's off and Questie's fill in there,
-in MelloUI's pictures; Questie's quest givers on the minimap (MelloUI has none there) always show, in MelloUI's marks.
+With Questie itself running (and used with MelloUI on the Addons page), its quest givers and turn-ins are the ones
+shown (2.1.52): MelloUI's own step aside on every map (the map's own ! and ? of your quests too), and Questie's are drawn in MelloUI's marks, so Questie's own
+choices decide which quests show (its Quest Level Options: only quests that grant experience, all low ones, a set
+number of levels below you, or between two levels). On MelloUI's map the Quest givers switch shows or hides them,
+whatever Other addons' pins is set to; on the game's map Quest Givers On Zone Maps does. MelloUI's objective marks and
+quest areas stay, fed by Questie's data, and Questie's objective icons stay out of sight wherever MelloUI draws them
+(MelloUI's map: while its objectives' layer is on; the game's map: while Objective Marks is on; the minimap: while
+Objective Marks On The Minimap is on). On the minimap, the quest givers are the game's own marks (Questie's stay out of
+sight there, so nothing shows twice); the game only lets addons show or hide its grey ones as a whole.
 Hovering one of Questie's icons that still show lists only what is not drawn by MelloUI already: Questie's tooltip
 gathers the quests of every icon of its own nearby (a dungeon's quests all sit on its entrance), and leaves out the
 ones MelloUI keeps out of sight. No setting of Questie's is changed. Its tracker: see Quest Tracker.

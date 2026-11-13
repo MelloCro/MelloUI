@@ -944,7 +944,19 @@ end
 -- (the seamless map, MelloUI_Map) the quest givers a map shows, grouped by giver and place: each group { giver, x,
 -- y (on mapID), quests = { { row, state } } (by level), state (its highest), tracked, item }, done ones only with
 -- Pin Completed or tracked -- the Quest List's marks and MelloUI_Map's pins alike
+-- (2.1.51; the user: "i dont want melloUI Quests to show if Questie is active") Questie's givers are the givers while
+-- it is loaded and used with MelloUI (Core/QuestieLook.lua's QL.Givers): none of the Quest List's on any map then
+local NO_GROUPS = {}   -- (shared, never written: its readers only walk it)
+local function QuestieGivers()
+	local look = rawget(MelloUI, "QuestieLook")
+	return look and look.Givers and look.Givers() and true or false
+end
+QL.QuestieGivers = QuestieGivers
+
 function QL.GiverGroups(mapID, mapName)
+	if QuestieGivers() then
+		return NO_GROUPS
+	end
 	local level = QL.Plain(UnitLevel("player")) or 60
 	local groups, order = {}, {}
 	local function Consider(row, x, y, who, state, item)
@@ -1307,6 +1319,9 @@ end
 -- pin per instance with the entrance's own icon, beside its door, while any
 -- of them can still be picked up. A click routes to the entrance.
 local function AddInstanceStartPins(map, mapID, mapName)
+	if QuestieGivers() then   -- (2.1.51: Questie's givers are the givers, its dungeon starters too)
+		return
+	end
 	local level = QL.Plain(UnitLevel("player")) or 60
 	local groups = {}
 	local rows = {}

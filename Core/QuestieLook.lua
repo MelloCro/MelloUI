@@ -80,6 +80,16 @@ local function Used()
 end
 QL.Used = Used
 
+-- (2.1.51; the user, 2026-11-13, Questie's Quest Level Options at a set level below the player and MelloUI's map still
+-- full of low quests: "i dont want melloUI Quests to show if Questie is active") Questie decides which quest givers and
+-- turn-ins show while it is loaded and used with MelloUI (the Addons page): MelloUI's own step aside on every map (the
+-- Quest List's QL.GiverGroups and its dungeon starters) and Questie's are drawn by its own rules -- its level options
+-- too -- in MelloUI's pictures; a map's Quest givers switch shows or hides them. MelloUI's objective marks and quest
+-- areas stay MelloUI's (the user, 2026-11-10: "our own function which i like very much")
+function QL.Givers()
+	return type(rawget(_G, "Questie")) == "table" and Used()
+end
+
 -- dressed: MelloUI's Quest Tracker on, stepped aside for Questie's
 local function On()
 	local m = Tracker()
@@ -1017,6 +1027,10 @@ local function Drawn(look, mini)
 	if look.cover == "objective" then
 		return M.db.objectiveMarks and true or false
 	end
+	-- (2.1.51) Questie's givers are the givers (QL.Givers): the Quest List's Quest Givers On The Map shows or hides them
+	if QL.Givers() then
+		return not M.db.mapPins
+	end
 	return M.db.mapPins and true or false
 end
 
@@ -1068,6 +1082,13 @@ function QL.MiniOwn(icon, look)
 	return type(data) == "table" and data.Type == "manual"
 end
 
+-- (2.1.51) told when Questie sets the picture of an icon MelloUI's own map dresses (MapAddonPins: its own pictures kept
+-- hidden under MelloUI's; Questie's UpdateTexture shows its glow again)
+local mapPictures = {}
+function QL.OnMapPicture(fn)
+	mapPictures[#mapPictures + 1] = fn
+end
+
 -- an icon of Questie's laid again: out of sight where MelloUI draws its kind, else MelloUI's picture on it
 local function Restyle(icon)
 	local tex = rawget(icon, "texture")
@@ -1088,6 +1109,11 @@ local function Restyle(icon)
 	Unhide(icon)
 	if not look or (not mini and MapOurs()) then
 		Unswap(tex)
+		if not mini and MapOurs() then
+			for _, fn in ipairs(mapPictures) do
+				fn(icon)
+			end
+		end
 		return
 	end
 	if look.atlas then
@@ -1488,6 +1514,17 @@ function QL.Unlist(icon, on)
 	unlisted[icon] = on and true or nil
 end
 
+-- (2.1.52; the user, 2026-11-14, of Questie's givers on MelloUI's map: "it only shows the tooltips of the quests from my
+-- Current Zone") Questie gathers a world-map icon's tooltip from the icons pinned on the game's own world map (its
+-- pins library's worldmapProvider:GetMap():EnumeratePinsByTemplate), which stays on your zone while MelloUI's map is
+-- open: a giver of another zone found nothing there and showed no tooltip. While the hovered icon is one MelloUI's map
+-- holds (MapAddonPins tells them: QL.MapIcons), the library's provider -- a field of Questie's own library table, never
+-- Blizzard's -- is for that call a stand-in whose map lists the icons MelloUI's map holds; put back right after
+local mapIcons   -- fn() -> [Questie's icon] = true: the ones MelloUI's map holds now
+function QL.MapIcons(fn)
+	mapIcons = fn
+end
+
 local function WrapTooltip()
 	local T = Questie("MapIconTooltip")
 	local show = T and rawget(T, "ShowOnTooltip")
@@ -1504,6 +1541,39 @@ local function WrapTooltip()
 		end
 		return n
 	end
+	-- (2.1.52) the stand-in: one pin record per icon, kept; the set filled for one tooltip, emptied after it
+	local pinOf = setmetatable({}, { __mode = "k" })
+	local set = {}
+	local standMap = { EnumeratePinsByTemplate = function()
+		return next, set
+	end }
+	local standProvider = { GetMap = function()
+		return standMap
+	end }
+	local function Lend(self)
+		if not (mapIcons and MapOurs() and type(self) == "table" and not rawget(self, "miniMapIcon")) then
+			return nil
+		end
+		local held = mapIcons()
+		if not (type(held) == "table" and held[self]) then
+			return nil
+		end
+		local okP, lib = pcall(rawget(_G, "LibStub"), QL.PINS, true)
+		if not (okP and type(lib) == "table" and rawget(lib, "worldmapProvider")) then
+			return nil
+		end
+		for icon in pairs(held) do
+			local pin = pinOf[icon]
+			if not pin then
+				pin = { icon = icon }
+				pinOf[icon] = pin
+			end
+			set[pin] = true
+		end
+		local real = lib.worldmapProvider
+		lib.worldmapProvider = standProvider
+		return lib, real
+	end
 	T.ShowOnTooltip = function(...)
 		local n = 0
 		for icon in pairs(hidden) do
@@ -1514,7 +1584,14 @@ local function WrapTooltip()
 				n = Hold(icon, n)
 			end
 		end
+		local lib, real = Lend((...))
 		local ok, err = pcall(show, ...)
+		if lib then
+			lib.worldmapProvider = real
+			for pin in pairs(set) do
+				set[pin] = nil
+			end
+		end
 		for i = n, 1, -1 do
 			local icon = icons[i]
 			icon.hidden = before[i]

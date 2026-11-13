@@ -643,7 +643,12 @@ end
 local function Summary(on)
 	local pins = S.pins
 	pins:Clear("objective_quests")
-	if not on then
+	-- (2.1.52; the user, 2026-11-13, three "!" beside Questie's givers on this map with no tooltip of Questie's: "this
+	-- is a overlap of MelloUI Quests and Questie FIX THIS, not a single Quest from MelloUI Quest data must not show when
+	-- Questie is Active") a quest's own "!" and "?" here are Questie's while it is active (QuestieLook's Givers: its
+	-- turn-ins and its quests' marks); the objectives' marks and areas stay
+	local QLook = MelloUI.QuestieLook
+	if not on or (QLook and QLook.Givers and QLook.Givers()) then
 		return
 	end
 	for _, questID in ipairs(S.quests) do
