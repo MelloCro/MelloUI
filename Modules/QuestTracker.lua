@@ -114,7 +114,7 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		{ type = "header", name = "Nearest First" },
 		{ type = "toggle", key = "nearestFirst", name = "Nearest Quest First",
 		  desc = "The nearest quest on top, after the one you follow. Needs Route." },
-		{ type = "toggle", key = "nearestTurnIn", name = "Nearest Turn In", new = "2.1.50",
+		{ type = "toggle", key = "nearestTurnIn", name = "Nearest Turn In",
 		  desc = "Follows the nearest quest that is ready to hand in, and the next nearest once it is turned in. Needs Route." },
 		{ type = "toggle", key = "showDistance", name = "Distances",
 		  desc = "How far each quest is, beside its name. Needs Route." },

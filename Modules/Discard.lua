@@ -74,7 +74,7 @@ local M = MelloUI:RegisterModule("Discard", {
 	options = {
 		{ type = "toggle", key = "bagButton", name = "Discard Button",
 		  desc = "A button on the bag window that throws away your cheapest junk item (sells it at a vendor). Never consumables, materials, quest items or your Restock list. A white item asks first." },
-		{ type = "toggle", key = "consumables", name = "Consumables Too", new = "2.1.50",
+		{ type = "toggle", key = "consumables", name = "Consumables Too",
 		  desc = "Food, drink, potions and other consumables can be thrown away too, the cheapest first. Never what your Restock list keeps (of its drink, food or ammo the best you carry) or what you keep with a right-click on the Discard button." },
 		-- (2.1.51; Nixxen: "trade goods, where you can end up with some random items from a chest that is not worth
 		-- much, and you will not use. Some light leather, ruined leather scraps, boar meat")

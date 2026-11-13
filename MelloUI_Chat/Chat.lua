@@ -163,7 +163,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		  desc = "The time before each chat line, or None for no time. It is the game's own Chat Timestamps setting, and both chat views follow it." },
 		-- (2.1.50; the user, 2026-11-13, of a Community invite written as an item: "Shield my users to spot such links";
 		-- the user's pick B of fake_link_sketch -- ChatView.lua View.Fake)
-		{ type = "toggle", key = "fakeLinks", name = "Fake Link Warning", new = "2.1.50",
+		{ type = "toggle", key = "fakeLinks", name = "Fake Link Warning",
 		  search = "scam spam fake link invite community disguised phishing",
 		  desc = "A link whose words hide what it really is, like a Community invite written as an item, shows its words in grey with a red FAKE LINK after them, and clicking it opens nothing. Point at it to see what it is." },
 		{ type = "header", name = "Whispers" },
