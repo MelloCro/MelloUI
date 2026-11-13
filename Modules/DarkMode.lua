@@ -809,9 +809,10 @@ local function ApplyMinimap()
 		if not cluster.BorderTop then
 			CollectButtonStateTextures(cluster.ZoneTextButton, list)
 		end
+		-- (2.1.51; AntoineS, Discord: "on the minimap when you have DarkMode on both Icons are also Dark now") the
+		-- tracking button's round background only: its magnifier is a picture, and pictures stay lit as words do
 		if cluster.Tracking then
 			list[#list + 1] = cluster.Tracking.Background
-			CollectButtonStateTextures(cluster.Tracking.Button, list)
 		end
 		-- Camelot day / night cycle indicator: only its border ring, not the sun / moon art.
 		CollectRegionsByAtlas(cluster.DielFrame, "UI-HUD-Minimap-Frame-Cycle", list)
@@ -821,7 +822,7 @@ local function ApplyMinimap()
 		CollectButtonStateTextures(Minimap.ZoomIn, list)
 		CollectButtonStateTextures(Minimap.ZoomOut, list)
 	end
-	CollectButtonStateTextures(GameTimeFrame, list)
+	-- (2.1.51) the calendar (GameTimeFrame) never: its every texture is its picture, the day's (as the tracking icon)
 	CollectButtonStateTextures(AddonCompartmentFrame, list)
 	CollectButtonStateTextures(ExpansionLandingPageMinimapButton, list)
 

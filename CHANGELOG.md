@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.51
+
+- Dark Mode: the minimap's tracking and calendar icons stay bright instead of turning dark.
+- Dungeon Info: Ctrl+Click on an item tries it on and Shift+Click links it in chat. In 2.1.50 both did nothing.
+
 ## 2.1.50
 
 - Map: the world map stays smooth however many quests you carry: no pause on open and no grey map at the middle zooms. The quest areas look exactly as before.

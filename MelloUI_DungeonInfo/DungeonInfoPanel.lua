@@ -429,9 +429,22 @@ local ItemClick = Perf.Shared("OnClick on Dungeon Info's item rows", function(se
 	-- there as well to show how it looks on your character" -- Ctrl-click: tried on in the dressing room. The game's
 	-- own modified clicks, HandleModifiedItemClick)
 	if self.item and IsModifiedClick and (IsModifiedClick("CHATLINK") or IsModifiedClick("DRESSUP")) then
-		local ok, _, link = pcall(GetItemInfo, self.item)
+		-- (2.1.51; the user: "Neither Linking nor the Preview work") this client has no global GetItemInfo: C_Item's,
+		-- as the bag window reads it. An item not loaded yet: asked for (a Shift-click links it next time), and tried on
+		-- by its id meanwhile (the dressing room takes an item string)
+		local GetInfo = (C_Item and C_Item.GetItemInfo) or rawget(_G, "GetItemInfo")
+		local ok, _, link = pcall(GetInfo, self.item)
+		link = ok and link or nil
+		if not link then
+			if C_Item and C_Item.RequestLoadItemDataByID then
+				pcall(C_Item.RequestLoadItemDataByID, self.item)
+			end
+			if IsModifiedClick("DRESSUP") then
+				link = "item:" .. tostring(self.item)
+			end
+		end
 		local handle = rawget(_G, "HandleModifiedItemClick")
-		if ok and link and handle then
+		if link and handle then
 			pcall(handle, link)
 		end
 	elseif self.inst and self.mine then

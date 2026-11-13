@@ -177,6 +177,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.51", lines = {
+		"Dark Mode: the minimap's tracking and calendar icons stay bright instead of turning dark.",
+		"Dungeon Info: Ctrl+Click on an item tries it on and Shift+Click links it in chat. In 2.1.50 both did nothing.",
+	} },
 	{ version = "2.1.50", lines = {
 		"Map: the world map stays smooth however many quests you carry: no pause on open and no grey map at the middle zooms. The quest areas look exactly as before.",
 		"Restock: untick a row of the shopping list to skip that item at every shop, and food, drink and ammo below the best you carry are no longer offered.",
@@ -208,13 +212,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.47", lines = {
 		"Profiles: a /reload or a login no longer switches your Edit Mode layout back to Modern; your character keeps the layout you picked.",
-	} },
-	{ version = "2.1.46", lines = {
-		"Profiles: each character now keeps its own profile and gets it back at login, so setting up an alt no longer changes your main. A new character starts with a copy of the one last used.",
-		"Profiles: your changes are saved into your character's profile as you play, at every logout and /reload, so loading it later never brings back an older copy.",
-		"Profiles: a profile now carries your Edit Mode layout too, so the action bars, bags and every frame you moved stand in the same place on every character that uses it.",
-		"Chat: with the Minimal Chat View, the Combat Log tab now shows your fights as they happen, and closing the game's combat log filters no longer dumps old fight lines into it.",
-		"Chat: the Combat Log tab has the game's two filters back as tabs over its lines, My actions and What happened to me?",
 	} },
 }
 local LINKS = {
