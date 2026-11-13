@@ -1160,6 +1160,7 @@ local function ZoneProgress(map, mapID, name)
 	if total == 0 then
 		return
 	end
+	local W = MelloUI.Widgets
 	local f = ZoneRing()
 	local share = done / total
 	local held = share > ZP.FULL and ZP.FULL or share
