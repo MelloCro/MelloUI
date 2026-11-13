@@ -355,18 +355,23 @@ local SHORTER = SIZE_W + GAP      -- the search box's room given up (30)
 local MIN_SEARCH = 40             -- the search box never narrower
 local AREA = { bags = "backpack", loot = "loot", kinds = "backpack" }
 
+local function Tr(text)
+	local W = MelloUI.Widgets
+	return W and W.Tr and W.Tr(text) or text
+end
+
 local function Tip(self)
 	local selling = AtVendor()
 	local c = M.Cheapest(selling)
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-	GameTooltip:SetText(selling and "Sell Cheapest Junk" or "Discard Cheapest Junk", 1, 1, 1)
+	GameTooltip:SetText(Tr(selling and "Sell Cheapest Junk" or "Discard Cheapest Junk"), 1, 1, 1)
 	if c then
 		GameTooltip:AddLine(string.format("%s%s, %s", c.link or "?", c.count > 1 and (" x" .. c.count) or "", Money(c.value)), 1, 1, 1)
 	else
-		GameTooltip:AddLine("Nothing to throw away.", 0.7, 0.7, 0.7)
+		GameTooltip:AddLine(Tr("Nothing to throw away."), 0.7, 0.7, 0.7)
 	end
 	if self.source == "loot" and not selling then
-		GameTooltip:AddLine("Only when the loot is worth more.", 0.7, 0.7, 0.7, true)
+		GameTooltip:AddLine(Tr("Only when the loot is worth more."), 0.7, 0.7, 0.7, true)
 	end
 	GameTooltip:Show()
 end
