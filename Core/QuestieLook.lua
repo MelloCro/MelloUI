@@ -1020,24 +1020,23 @@ local function Drawn(look, mini)
 	return M.db.mapPins and true or false
 end
 
-local QUESTIE_PARTS = { "texture", "glowTexture", "overlayTexture" }   -- (its icon frame's own pictures)
 local iconPaths = setmetatable({}, { __mode = "k" })   -- [Questie's icon] = the picture Questie gave it
 local hidden = setmetatable({}, { __mode = "k" })      -- [Questie's icon] = true while MelloUI draws its kind there
 local unlisted = setmetatable({}, { __mode = "k" })    -- [Questie's icon] = true while MelloUI's map leaves it out
+local ownAlpha = setmetatable({}, { __mode = "k" })    -- [Questie's icon] = its frame's own alpha while out of sight
 
-local function Parts(icon, alpha)
-	for _, key in ipairs(QUESTIE_PARTS) do
-		local part = rawget(icon, key)
-		if part and part.SetAlpha then
-			part:SetAlpha(alpha)
-		end
-	end
-end
-
+-- (2.1.51; the user, 2026-11-13, a minimap in Hillsbrad full of Questie's swords beside MelloUI's own marks: "why are we
+-- going back and fourth on the Quest Icons on the minimap"; /qlmap questie: every one "out of sight", its picture and
+-- glow at 1 or at Questie's fade, 0.71) out of sight by the icon frame's own alpha, never its pictures': on this client
+-- a picture's alpha and its vertex colour's are one value, and Questie fades its minimap icons by distance with
+-- SetVertexColor (its SetFade, on each change as you move), which wrote MelloUI's 0 back to its fade. The frame's alpha
+-- Questie writes only in UpdateTexture and when it lets the frame go (FramePool's UnloadFrame), and MelloUI's hooks on
+-- both run right after; its own value (1, or 0.5 for a party member's objective) is kept and given back
 local function Unhide(icon)
 	if hidden[icon] then
 		hidden[icon] = nil
-		Parts(icon, 1)
+		icon:SetAlpha(ownAlpha[icon] or 1)
+		ownAlpha[icon] = nil
 		icon:EnableMouse(true)
 	end
 end
@@ -1045,7 +1044,12 @@ end
 local function Hide(icon, tex)
 	Unswap(tex)
 	hidden[icon] = true
-	Parts(icon, 0)
+	local okA, a = pcall(icon.GetAlpha, icon)
+	a = okA and Number(a)
+	if a and a > 0 then   -- (Questie's own, written since: kept; our 0 never taken for it)
+		ownAlpha[icon] = a
+	end
+	icon:SetAlpha(0)
 	icon:EnableMouse(false)
 end
 
@@ -1176,11 +1180,17 @@ end
 -- as MelloUI lays them, in the copy window: what decides (Use with MelloUI, MelloUI's minimap marks, MelloUI's map, the
 -- hooks), every icon by place, kind and what shows (out of sight, MelloUI's picture, Questie's own), and a few minimap
 -- icons that still show Questie's own picture
-local function DumpState(tex)
+-- (2.1.51) an icon frame at alpha 0: out of sight whatever its pictures say (MelloUI hides the frame, Hide above)
+local function FrameOut(frame)
+	local ok, a = pcall(frame.GetEffectiveAlpha, frame)
+	return ok and a == 0
+end
+
+local function DumpState(tex, icon)
 	local okT, path = pcall(tex.GetTexture, tex)
 	path = okT and MelloUI.Safe.Text(path) or ""
 	local okA, a = pcall(tex.GetAlpha, tex)
-	if okA and a == 0 then
+	if (okA and a == 0) or (icon and FrameOut(icon)) then
 		return "out of sight", a
 	end
 	if swapped[tex] ~= nil then
@@ -1208,6 +1218,9 @@ local function SeenIn(...)
 	end
 end
 local function SeenPicture(frame)
+	if FrameOut(frame) then
+		return nil
+	end
 	return SeenIn(frame:GetRegions())
 end
 
@@ -1283,6 +1296,9 @@ local function NearChildren(cx, cy, depth, found, ...)
 	end
 end
 function NearIn(frame, cx, cy, depth, found)
+	if FrameOut(frame) then   -- (a frame at alpha 0, its children too: nothing of it in sight)
+		return
+	end
 	local okS, scale = pcall(frame.GetEffectiveScale, frame)
 	scale = okS and MelloUI.Safe.Finite(scale) or 1
 	NearRegions(frame, scale, cx, cy, found, frame:GetRegions())
@@ -1336,7 +1352,7 @@ function QL.Dump()
 		if type(data) == "table" and tex then
 			local kind = Number(data.Icon)
 			kind = kind and names[kind] or tostring(data.Type)
-			local state, a = DumpState(tex)
+			local state, a = DumpState(tex, icon)
 			local mini = rawget(icon, "miniMapIcon") and true or false
 			local key = (mini and "minimap " or "map ") .. kind .. ": " .. state
 			if not counts[key] then
@@ -1348,7 +1364,7 @@ function QL.Dump()
 			-- of a shown minimap icon still in sight: what MelloUI made of it
 			local glow = rawget(icon, "glowTexture")
 			local okG, ga = pcall(glow and glow.GetAlpha, glow)
-			local glowSeen = okG and ga ~= 0 and glow:IsShown()
+			local glowSeen = okG and ga ~= 0 and glow:IsShown() and not FrameOut(icon)
 			-- (and every cog: Questie's object and interact icons, whatever MelloUI made of them)
 			local cog = kind == "object" or kind == "object_mono" or kind == "interact"
 			-- (2.1.51: and one in no state of MelloUI's -- "other": its picture neither Questie's file nor MelloUI's)

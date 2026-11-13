@@ -181,7 +181,7 @@ local CHANGELOG = {
 		"Dark Mode: the minimap's tracking and calendar icons stay bright instead of turning dark.",
 		"Dungeon Info: Ctrl+Click on an item tries it on and Shift+Click links it in chat. In 2.1.50 both did nothing.",
 		"Chat: in the Minimal view, the Combat Log's My actions and What happened to me? tabs no longer cover its first lines, and a bar shows its loading progress, like the game's.",
-		"Minimap: with Questie, the minimap looks as it does without it, with no second ! or ? beside the game's quest marks.",
+		"Minimap: with Questie, the minimap looks as it does without it: no second ! or ?, and Questie's objective icons no longer come back beside MelloUI's as you move.",
 		"Discard: a new Trade Goods Too switch lets cheap crafting materials like light leather or boar meat go too, and the button's tooltip now says what a left-click does.",
 		"Restock: the way to a shop for drink, food or ammo passes by shops that only sell worse than you carry. A shop with only worse says so on screen.",
 		"Action Bars: the pet, stance and possess bars follow a smaller Icon Size from Edit Mode, so their icons no longer lie over each other.",
