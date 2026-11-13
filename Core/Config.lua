@@ -6362,7 +6362,7 @@ local EarlierClick = Shared("OnClick on the configurator's Earlier versions", fu
 	MelloUI:PlayUISound("tab")
 	local sec = page.homeSection
 	if EARLIER_BY_WORKER then
-		self:SetText("Loading…")
+		self:SetText(W.Tr("Loading…"))
 		self:SetEnabled(false)
 		for i = card.shownVersions + 1, #CHANGELOG do
 			Queue(sec, { RunVersion, CHANGELOG[i] }, HomeJob)
@@ -6693,7 +6693,7 @@ local ProfileShareClick = Shared("OnClick on the configurator's profile Share", 
 	end
 	local str, err = MelloUI:ExportProfile(name)
 	if str then
-		MelloUI:ShowText(string.format("share string of '%s' (%d characters)", name, #str), str)
+		MelloUI:ShowText(MelloUI.Lang.F("share string of '%s' (%d characters)", name, #str), str)
 	else
 		MelloUI:Print("Could not share '%s': %s.", name, err)
 	end
@@ -6719,7 +6719,7 @@ local function ProfileRowFrame(sec, i)
 	row.load = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
 	row.load:SetSize(60, 22)
 	row.load:SetPoint("LEFT", row.name, "RIGHT", 6, 0)
-	row.load:SetText("Load")
+	row.load:SetText(W.Tr("Load"))
 	W.FlatButton(row.load)
 	row.default = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
 	row.default:SetSize(100, 22)
@@ -6728,12 +6728,12 @@ local function ProfileRowFrame(sec, i)
 	row.delete = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
 	row.delete:SetSize(60, 22)
 	row.delete:SetPoint("LEFT", row.default, "RIGHT", 4, 0)
-	row.delete:SetText("Delete")
+	row.delete:SetText(W.Tr("Delete"))
 	W.FlatButton(row.delete)
 	row.share = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
 	row.share:SetSize(60, 22)
 	row.share:SetPoint("LEFT", row.delete, "RIGHT", 4, 0)
-	row.share:SetText("Share")
+	row.share:SetText(W.Tr("Share"))
 	W.FlatButton(row.share)
 	row.baked = Text(row, "GameFontHighlightSmall", nil, C.sub)
 	row.baked:SetPoint("LEFT", row.share, "RIGHT", 10, 0)
@@ -6807,10 +6807,10 @@ function RefreshProfilesPage()
 		row.profileName = name
 		row.name:SetText(name)
 		local isDefault = db.defaultProfile == name
-		row.default:SetText(isDefault and ("Default  " .. MelloUI:PaletteCode("selectedTrim") .. "*|r") or "Set default")
+		row.default:SetText(isDefault and (W.Tr("Default") .. "  " .. MelloUI:PaletteCode("selectedTrim") .. "*|r") or W.Tr("Set default"))
 		local builtIn = name == MelloUI.FRESH_PROFILE
 		-- one shipped in the addon's files, or one of the player's own
-		row.baked:SetText(builtIn and "built in" or (MelloUI:IsProfileBaked(name) and "comes with MelloUI" or "yours"))
+		row.baked:SetText(W.Tr(builtIn and "built in" or (MelloUI:IsProfileBaked(name) and "comes with MelloUI" or "yours")))
 		row.delete:SetEnabled(not builtIn)
 		row:Show()
 	end
@@ -6848,7 +6848,7 @@ function BuildProfilesPage(width)
 	-- what is true for a player: profiles are kept with the settings; the
 	-- ones shipped in the addon's files are always there; (2.1.46) each
 	-- character its own, the changes saved into it
-	desc:SetText("A profile is every setting of every module. Each character uses its own: a new character starts with a copy of the one last used, and your changes are saved into it as you play, at every logout and /reload. Load puts another profile on this character (its own again goes back to how it was last saved); Save current as makes a new one for it. A profile leaves out your Dark Mode and what belongs to your characters: the flight points they know, game settings MelloUI borrowed, and steps done once. The one marked default is applied when MelloUI starts with no settings at all, such as on a fresh install. Share gives a string to pass one on, and Import as brings one in. The profiles that come with MelloUI are always here.")
+	desc:SetText(W.Tr("A profile is every setting of every module. Each character uses its own: a new character starts with a copy of the one last used, and your changes are saved into it as you play, at every logout and /reload. Load puts another profile on this character (its own again goes back to how it was last saved); Save current as makes a new one for it. A profile leaves out your Dark Mode and what belongs to your characters: the flight points they know, game settings MelloUI borrowed, and steps done once. The one marked default is applied when MelloUI starts with no settings at all, such as on a fresh install. Share gives a string to pass one on, and Import as brings one in. The profiles that come with MelloUI are always here."))
 	local y = 4 + WrappedHeight(desc, 16) + 16
 
 	sec.nameBox = CreateFrame("EditBox", nil, sec, "InputBoxTemplate")
@@ -6861,7 +6861,7 @@ function BuildProfilesPage(width)
 	sec.save = CreateFrame("Button", nil, sec, "UIPanelButtonTemplate")
 	sec.save:SetSize(150, 22)
 	sec.save:SetPoint("LEFT", sec.nameBox, "RIGHT", 8, 0)
-	sec.save:SetText("Save current as")
+	sec.save:SetText(W.Tr("Save current as"))
 	W.FlatButton(sec.save)
 	local function Save()
 		local name = sec.nameBox:GetText()
@@ -6881,7 +6881,7 @@ function BuildProfilesPage(width)
 	sec.import = CreateFrame("Button", nil, sec, "UIPanelButtonTemplate")
 	sec.import:SetSize(150, 22)
 	sec.import:SetPoint("LEFT", sec.save, "RIGHT", 6, 0)
-	sec.import:SetText("Import as")
+	sec.import:SetText(W.Tr("Import as"))
 	W.FlatButton(sec.import)
 	Perf.SetScript(sec.import, "OnClick", function()
 		local name = sec.nameBox:GetText():gsub("^%s+", ""):gsub("%s+$", "")
@@ -6890,7 +6890,7 @@ function BuildProfilesPage(width)
 			sec.nameBox:SetFocus()
 			return
 		end
-		MelloUI:ShowPaste(string.format("paste a MelloUI profile string for '%s'", name), function(text)
+		MelloUI:ShowPaste(MelloUI.Lang.F("paste a MelloUI profile string for '%s'", name), function(text)
 			local ok, known, total = MelloUI:ImportProfile(name, text)
 			if not ok then
 				MelloUI:Print("Not imported: %s.", known)
@@ -9832,12 +9832,12 @@ SlashCmdList.MELLOUI = function(msg)
 		elseif sub == "export" and name ~= "" then
 			local str, err = MelloUI:ExportProfile(name)
 			if str then
-				MelloUI:ShowText(string.format("share string of '%s' (%d characters)", name, #str), str)
+				MelloUI:ShowText(MelloUI.Lang.F("share string of '%s' (%d characters)", name, #str), str)
 			else
 				MelloUI:Print("Could not share '%s': %s.", name, err)
 			end
 		elseif sub == "import" and name ~= "" then
-			MelloUI:ShowPaste(string.format("paste a MelloUI profile string for '%s'", name), function(text)
+			MelloUI:ShowPaste(MelloUI.Lang.F("paste a MelloUI profile string for '%s'", name), function(text)
 				local ok, known, total = MelloUI:ImportProfile(name, text)
 				if not ok then
 					MelloUI:Print("Not imported: %s.", known)
