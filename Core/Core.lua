@@ -3853,10 +3853,11 @@ end
 -- Show `text` to be selected and copied.
 function MelloUI:ShowText(title, text)
 	local f = CopyFrame()
+	local W = MelloUI.Widgets
 	f.onAccept = nil
 	f.accept:Hide()
-	f.hint:SetText("Ctrl+A, Ctrl+C to copy  -  Esc closes")
-	f.title:SetText(COPY_TITLE .. (title or ""))
+	f.hint:SetText(W.Tr("Ctrl+A, Ctrl+C to copy  -  Esc closes"))
+	f.title:SetText(COPY_TITLE .. W.Tr(title or ""))
 	f.text = text or ""
 	f.edit:SetText(f.text)
 	f:Show()
@@ -3868,10 +3869,11 @@ end
 -- closes when it returns true.
 function MelloUI:ShowPaste(title, onAccept)
 	local f = CopyFrame()
+	local W = MelloUI.Widgets
 	f.onAccept = onAccept
 	f.accept:Show()
-	f.hint:SetText("Ctrl+V to paste  -  Esc closes")
-	f.title:SetText(COPY_TITLE .. (title or ""))
+	f.hint:SetText(W.Tr("Ctrl+V to paste  -  Esc closes"))
+	f.title:SetText(COPY_TITLE .. W.Tr(title or ""))
 	f.text = ""
 	f.edit:SetText("")
 	f:Show()
