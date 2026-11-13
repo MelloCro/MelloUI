@@ -118,7 +118,7 @@ local function Build()
 				if Safe.Value(info.isHeader) then
 					zone = Text(info.title) or ""
 				elseif Finite(info.questID) then
-			Add(index, "log", info.title, zone ~= "" and (W.Tr(TEXT.log) .. ", " .. zone) or TEXT.log, T.ICONS .. "track_todo",
+				Add(index, "log", info.title, zone ~= "" and (W.Tr(TEXT.log) .. ", " .. zone) or W.Tr(TEXT.log), T.ICONS .. "track_todo",
 						{ questID = Finite(info.questID) })
 				end
 			end
@@ -141,7 +141,7 @@ local function Build()
 				local wx, wy = point(row[QL.F_CONT], row[QL.F_WX], row[QL.F_WY])
 				if wx then
 					local giver = Text(row[QL.F_GIVER]) or ""
-					Add(index, "quest", row[QL.F_TITLE], giver ~= "" and (W.Tr(TEXT.quest) .. " : " .. giver) or TEXT.quest,
+					Add(index, "quest", row[QL.F_TITLE], giver ~= "" and W.Tr("Quest: %s"):format(giver) or W.Tr(TEXT.quest),
 						T.ICONS .. "quest_mark", { wx = wx, wy = wy })
 					local gkey = giver .. ":" .. math.floor(wx) .. ":" .. math.floor(wy)
 					if giver ~= "" and not givers[gkey] then
