@@ -1016,7 +1016,7 @@ local function Divider(f)
 	d.textLayer:SetAllPoints(d)
 	d.textLayer:SetFrameLevel(d:GetFrameLevel() + 4)
 	d.text = d.textLayer:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
-	d.text:SetText("Services")
+	d.text:SetText(MelloUI.Widgets.Tr("Services"))
 	d:Hide()
 	skin.divider = d
 	return d
