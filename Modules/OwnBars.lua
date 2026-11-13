@@ -1615,6 +1615,7 @@ function BAR.Layout(self)
 		if button.UpdateOrientation then
 			button:UpdateOrientation(horizontal)
 		end
+		B.TurnArt(button)
 	end
 	local long = self:GetBagBarLength()
 	if horizontal then
@@ -1753,6 +1754,96 @@ function BTN.KeyRingArt(self)
 		self:UpdateTextures()
 	end
 end
+
+-- The key ring's art in a column. There the game's code makes the button 45 x 33 and turns its textures a quarter
+-- turn (about each texture's own middle), but leaves them the row's sizes and anchors: the frame hung off the
+-- button's lower left and the slot showed tall on a wide button. Here each texture gets the size that shows right
+-- once turned, about the button's middle, and the mask's sides swap; back on a row all is as the template made it.
+-- (The game's turn is seen in game, not read from its code.) Run after the bar's layout and after each
+-- UpdateTextures, which sizes the frame again. (On B: the bar's Layout, above, calls it.)
+local function ShowsAs(t, w, h)
+	local r = Finite(Call(t, "GetRotation")) or 0
+	if math.abs(math.sin(r)) > 0.5 then   -- (a quarter turned: the sides swap on the screen)
+		t:SetSize(h, w)
+	else
+		t:SetSize(w, h)
+	end
+end
+
+B.TurnArt = Shared("Own Bars: the key ring's art turned with the button", function(b)
+	if b.ownKind ~= "keyring" then
+		return
+	end
+	local w, h = b.ownArtW, b.ownArtH
+	local bw, bh = Finite(b:GetWidth()), Finite(b:GetHeight())
+	if not (w and h and bw and bh) then
+		return
+	end
+	local turned = (w - h) * (bw - bh) < 0   -- (the art tall and the button wide, or the other way round)
+	if not turned and not b.ownTurned then
+		return   -- (on a row, never turned: the game's own layout as it is)
+	end
+	b.ownTurned = turned
+	local normal, pushed = b:GetNormalTexture(), b:GetPushedTexture()
+	local icon, light = b.icon, b:GetHighlightTexture()
+	-- which way: the art is lopsided (on a row the frame stands nearer the button's left side than its right) and the
+	-- game turns it the same way whichever way the column runs, the narrow side down. On a column that runs up that
+	-- left a gap at the bar's end, so there it is turned half a turn further. The game sets its own turn again on
+	-- its passes: it is read whenever it is not the one set here last.
+	local rot = 0
+	if turned then
+		local r = Finite(Call(normal, "GetRotation")) or 0
+		if not (b.ownRot and math.abs(math.sin((r - b.ownRot) / 2)) < 0.01) then
+			b.gameRot = r
+		end
+		rot = b.gameRot or r
+		if B.bar and B.bar.direction == B.UP then
+			rot = rot + math.pi
+		end
+		b.ownRot = rot
+	else
+		b.ownRot, b.gameRot = nil, nil
+	end
+	-- the frame: the art's own size, on a row at the template's point
+	for i = 1, 2 do
+		local t = normal
+		if i == 2 then
+			t = pushed
+		end
+		if t then
+			local at = b.ownArtAt and b.ownArtAt[i]
+			Call(t, "SetRotation", rot)
+			t:ClearAllPoints()
+			if turned or not at then
+				t:SetPoint("CENTER", b, "CENTER")
+			else
+				t:SetPoint(at[1], b, at[2], at[3], at[4])
+			end
+			ShowsAs(t, turned and h or w, turned and w or h)
+		end
+	end
+	-- the icon and the highlight: the button's size
+	for i = 1, 2 do
+		local t = icon
+		if i == 2 then
+			t = light
+		end
+		if t then
+			Call(t, "SetRotation", rot)
+			t:ClearAllPoints()
+			if turned then
+				t:SetPoint("CENTER", b, "CENTER")
+				ShowsAs(t, bw, bh)
+			else
+				t:SetAllPoints(b)
+			end
+		end
+	end
+	local mask, mw, mh = b.SquareMask, b.ownMaskW, b.ownMaskH
+	if mask and mw and mh then
+		mask:SetSize(turned and mh or mw, turned and mw or mh)
+	end
+end, "hook")
 
 function BTN.FlyIn(self, icon)
 	if not icon or MelloUI.Anim.reduceMotion or not self.FlyInAnim then
@@ -2051,6 +2142,22 @@ local function NewButton(bar, gameName, game)
 	end
 	pcall(b.UpdateTextures, b)
 	if kind == "keyring" then
+		-- the art's and the mask's own sizes, read while the button lies as the template made it: B.TurnArt
+		local normal = Call(b, "GetNormalTexture")
+		b.ownArtW = Finite(b.normalAndPushedTextureWidth) or Finite(Call(normal, "GetWidth"))
+		b.ownArtH = Finite(b.normalAndPushedTextureHeight) or Finite(Call(normal, "GetHeight"))
+		b.ownMaskW, b.ownMaskH = Finite(Call(b.SquareMask, "GetWidth")), Finite(Call(b.SquareMask, "GetHeight"))
+		-- where the template hangs the frame on a row: the normal texture's point, then the pushed one's
+		b.ownArtAt = {}
+		for i, t in ipairs({ normal, Call(b, "GetPushedTexture") }) do
+			local point, _, relPoint, x, y = Call(t, "GetPoint", 1)
+			if type(point) == "string" and type(relPoint) == "string" then
+				b.ownArtAt[i] = { point, relPoint, Finite(x) or 0, Finite(y) or 0 }
+			end
+		end
+		if type(b.UpdateTextures) == "function" then
+			hooksecurefunc(b, "UpdateTextures", B.TurnArt)
+		end
 		pcall(BTN.KeyRingArt, b)
 	elseif kind == "backpack" then
 		pcall(b.SetCountShown, b, GetCVar("displayFreeBagSlots") == "1")

@@ -516,10 +516,11 @@ end
 -- its layout run: after each of its passes the slots are chained from the
 -- arrow with the game's own anchors (BagsBarMixin:Layout's). The bar keeps
 -- its size (the game centres the bottom row on it, so a fold moves nothing
--- else); should the arrow not fit in the bar's own room, the backpack steps
--- out on its side by the rest. The game's frame art round the bar follows
--- what shows. The arrow's look: the game's art, or the kit's flat arrow
--- (ActionBarPanel). Told on the bus: 'bagbar' (the backdrops).
+-- else) and the backpack its place at the bar's end; should the arrow not
+-- fit in the bar's own room, the last bag runs past the bar's far end by
+-- the rest. The game's frame art round the bar follows what shows. The
+-- arrow's look: the game's art, or the kit's flat arrow (ActionBarPanel).
+-- Told on the bus: 'bagbar' (the backdrops).
 --------------------------------------------------------------------------------
 
 Fold.CVAR = "expandBagBar"
@@ -674,21 +675,11 @@ function Fold.Lay(open)
 			beyond = beyond + gap + Fold.Len(button, horizontal)
 		end
 	end
-	-- the backpack in its place, stepped out by what the bar has no room for
-	local over = Fold.Len(pack, horizontal) + beyond - Fold.Len(bar, horizontal)
-	over = over > 0.5 and over or 0
-	local dx, dy = 0, 0
-	if point == "RIGHT" then
-		dx = over
-	elseif point == "LEFT" then
-		dx = -over
-	elseif point == "BOTTOM" then
-		dy = -over
-	else
-		dy = over
-	end
+	-- the backpack at the bar's end, open or folded: stepping it out by what
+	-- the bar has no room for (the arrow) while open made it jump on every
+	-- fold; the rest runs past the bar's far end, on the bags' side
 	pack:ClearAllPoints()
-	pack:SetPoint(point, bar, point, dx, dy)
+	pack:SetPoint(point, bar, point)
 	-- folded: no divider between buttons that are not there
 	if not open then
 		Fold.HideDividers(bar)
