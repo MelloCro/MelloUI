@@ -743,6 +743,13 @@ Lang:Add("frFR", {
 	["Auto Sell Junk"] = "Vente auto de la camelote",
 	["Sells grey items at a merchant."] = "Vend les objets gris chez un marchand.",
 	["Report In Chat"] = "Rapport dans la discussion",
+	["|cffff4040Not enough gold to repair|r (%s needed)."] = "|cffff4040Pas assez d’or pour réparer|r (montant requis : %s).", -- draft
+	["Repaired for %s."] = "Réparation effectuée : %s.", -- draft
+	["Repaired for %s (guild funds)."] = "Réparation effectuée avec les fonds de guilde : %s.", -- draft
+	["The guild bank could not pay: repaired for %s from your own gold."] = "La banque de guilde n’a pas pu payer ; réparation réglée avec votre or : %s.", -- draft
+	["The guild bank could not pay for the repair (%s needed)."] = "La banque de guilde n’a pas pu payer la réparation (montant requis : %s).", -- draft
+	["Sold %d junk item%s for %s."] = "Vente de camelote : %d objet%s, montant reçu : %s.", -- draft
+	["Sold %d junk item%s."] = "Vente de camelote : %d objet%s.", -- draft
 	["Writes the repair cost and the gold from junk in the chat."] = "Écrit dans la discussion le coût des réparations et l'or tiré de la camelote.",
 	-- Services
 	["Services"] = "Services",
