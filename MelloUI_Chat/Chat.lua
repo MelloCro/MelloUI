@@ -66,6 +66,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		copyButton = true,
 		view = "game",
 		railIcons = false,
+		fakeLinks = true,
 	},
 	options = {
 		{ type = "header", name = "Appearance" },
@@ -160,6 +161,11 @@ local M = MelloUI:RegisterModule("Chat", {
 			return v
 		  end,
 		  desc = "The time before each chat line, or None for no time. It is the game's own Chat Timestamps setting, and both chat views follow it." },
+		-- (2.1.50; the user, 2026-11-13, of a Community invite written as an item: "Shield my users to spot such links";
+		-- the user's pick B of fake_link_sketch -- ChatView.lua View.Fake)
+		{ type = "toggle", key = "fakeLinks", name = "Fake Link Warning", new = "2.1.50",
+		  search = "scam spam fake link invite community disguised phishing",
+		  desc = "A link whose words hide what it really is, like a Community invite written as an item, shows its words in grey with a red FAKE LINK after them, and clicking it opens nothing. Point at it to see what it is." },
 		{ type = "header", name = "Whispers" },
 		{ type = "toggle", key = "whisperPopup", name = "Whisper Popup Window",
 		  desc = "Each whisper opens a small window for that person, with a box to answer in. Whispers still show in the chat." },
@@ -1245,6 +1251,9 @@ local function Rewritten(t)
 	if lineStyle then
 		t = ShortNames(t, lineStyle)
 	end
+	if M.lineFake then
+		t = M.View.Fake.Mark(t)   -- (2.1.50: a disguised link made harmless and marked, Fake Link Warning)
+	end
 	return t
 end
 
@@ -1265,7 +1274,9 @@ local function OnLineAdded(chatFrame, text, ...)
 	end
 	NoteCommunityAuthor(text)
 	local short, style = Active("shortChannels"), NameStyle()
-	if transformFailed or not (short or style) then
+	-- (2.1.50) a disguised link in it (Fake Link Warning: ChatView.lua View.Fake; its own secret test first)
+	local fake = view and view.Fake and view.Fake.Has(text) or false
+	if transformFailed or not (short or style or fake) then
 		return
 	end
 	-- the secret test before any other: this client refuses even `text == nil`
@@ -1274,10 +1285,10 @@ local function OnLineAdded(chatFrame, text, ...)
 		return
 	end
 	-- the outer line's state kept, should a line ever be added during the walk
-	local outerText, outerShort, outerStyle = lineText, lineShort, lineStyle
-	lineText, lineShort, lineStyle = text, short, style
+	local outerText, outerShort, outerStyle, outerFake = lineText, lineShort, lineStyle, M.lineFake
+	lineText, lineShort, lineStyle, M.lineFake = text, short, style, fake
 	local ok = pcall(chatFrame.TransformMessages, chatFrame, IsThisLine, Rewrite)
-	lineText, lineShort, lineStyle = outerText, outerShort, outerStyle
+	lineText, lineShort, lineStyle, M.lineFake = outerText, outerShort, outerStyle, outerFake
 	if not ok then
 		transformFailed = true
 	end
@@ -2618,6 +2629,13 @@ local function HookLines()
 			WatchShade(frame, ChatInked)
 			-- and the wheel glides on it (Smooth Scrolling)
 			Smooth.Watch(frame, true)
+			-- (2.1.50) the pointer on a disguised link: what it really is (Fake Link Warning, ChatView.lua View.Fake;
+			-- post-hooks, the game's click untouched)
+			local fake = M.View and M.View.Fake
+			if fake then
+				Perf.HookScript(frame, "OnHyperlinkEnter", fake.Enter)
+				Perf.HookScript(frame, "OnHyperlinkLeave", fake.Leave)
+			end
 		end
 	end
 	local QI = MelloUI.QuestInk
@@ -2830,7 +2848,9 @@ WriteWhisperLine = function(f, e)
 	elseif e.classHex then
 		who = "|c" .. e.classHex .. who .. "|r"
 	end
-	local line = ("%s%s|r %s: %s"):format(stamp, e.stamp, who, e.text)
+	local fake = M.View and M.View.Fake   -- (2.1.50: a disguised link marked, Fake Link Warning)
+	local words = fake and fake.Mark(e.text) or e.text
+	local line = ("%s%s|r %s: %s"):format(stamp, e.stamp, who, words)
 	if ink then
 		-- the joined line, not only the words: a secret name makes it secret too
 		if not Secret(line) then
@@ -2839,7 +2859,7 @@ WriteWhisperLine = function(f, e)
 		r, g, b = ChatInk(r, g, b)
 	end
 	if not pcall(f.msgs.AddMessage, f.msgs, line, r, g, b) then
-		f.msgs:AddMessage(e.text, r, g, b)
+		f.msgs:AddMessage(words, r, g, b)
 	end
 end
 
@@ -3572,10 +3592,12 @@ local function CreatePopup(key, kind, target, title)
 	msgs:SetJustifyH("LEFT")
 	msgs:SetFading(false)
 	msgs:SetMaxLines(250)
+	-- (2.1.50) the chat's own links (ChatView.lua View.Links): a click the game's, a disguised link opening nothing, a
+	-- real invite saying where invites open -- the game keeps an invite's answer from addons (Fake Link Warning)
 	msgs:SetHyperlinksEnabled(true)
-	Perf.SetScript(msgs, "OnHyperlinkClick", function(self, link, text, button)
-		SetItemRef(link, text, button, self)
-	end)
+	if M.View then
+		M.View.Links(msgs)
+	end
 	msgs:EnableMouseWheel(true)
 	Perf.SetScript(msgs, "OnMouseWheel", function(self, delta)
 		if delta > 0 then
@@ -4390,6 +4412,14 @@ function M:OnSettingChanged(key, value, db)
 		end
 	elseif key == "copyButton" and M.Copy then
 		M.Copy.Hook()   -- (2.1.24: on, the hooks; off, the button away)
+	elseif key == "fakeLinks" then
+		-- (2.1.50) the Chat View's and the whisper window's lines laid anew; the game's windows mark the lines to come
+		if M.View and M.View.on then
+			M.View.Soon()
+		end
+		if M.Whispers and M.Whispers.LayTalk then
+			M.Whispers.LayTalk()
+		end
 	end
 end
 

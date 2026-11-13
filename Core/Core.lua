@@ -386,6 +386,9 @@ MelloUI.Meaning = {
 	-- (2.1.43, the user's pick B of rarescanner_sketch: RareScanner's "not found yet" -- its red -- on the plate's rim;
 	-- Core/RareScannerLook.lua)
 	rareNotFound = Hex("#FF6152"),     -- (meaning colour)
+	-- (2.1.50, the user's pick B of fake_link_sketch: Fake Link Warning's FAKE LINK and its card's title; the chat's
+	-- ChatView.lua View.Fake)
+	fakeLink = Hex("#FF6152"),         -- (meaning colour)
 	addonWorking = Hex("#7AC860"),     -- (2.1.44, the Addons page: an integration that works) (meaning colour)
 	addonPartly = Hex("#E08A1E"),      -- (2.1.44: one whose addon changed under it, a part off) (meaning colour)
 	-- (2.1.24, the Nameplate Designer, the user's pick A: two parts on one spot outlined, a warning)

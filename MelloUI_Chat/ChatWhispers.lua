@@ -710,7 +710,7 @@ function WV.LayTalk()
 		local text, ground = b.text, b.ground
 		local mine = rec.mine
 		text:SetWidth(widest)
-		pcall(text.SetText, text, rec.text)
+		pcall(text.SetText, text, View.Fake.Mark(rec.text))   -- (2.1.50: a disguised link marked, Fake Link Warning)
 		-- a plain line's bubble shrinks to its text (a secret one keeps the full width: nothing of it is read)
 		if not Secret(rec.text) then
 			local okU, w = pcall(text.GetUnboundedStringWidth, text)

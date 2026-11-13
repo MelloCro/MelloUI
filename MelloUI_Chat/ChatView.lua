@@ -385,7 +385,7 @@ end
 
 -- (2.1.8) a line with no header (a friend come online, a roll): the player links in its words, in that form too
 function View.BodyShown(rec)
-	local text = View.Codes(rec.body)
+	local text = View.Codes(View.Fake.Mark(rec.body))   -- (2.1.50: a disguised link marked, Fake Link Warning)
 	local style = not rec.headed and not Secret(text) and type(text) == "string" and M.Whisper.NameStyle()
 	return style and M.Whisper.ShortNames(text, style) or text
 end
@@ -944,13 +944,184 @@ function View.Scroll(delta)
 end
 
 --------------------------------------------------------------------------------
--- Links: a click is the game's (SetItemRef), an item or a spell shows its tooltip under the pointer. (0.25.0) A map
--- pin's link (anyone's shared pin: the game's own worldmap link) opens on MelloUI's map while it is on -- your pin
--- set there, Route on its way -- never the game's map; a modified click stays the game's (Shift: into the chat line)
+-- Fake Link Warning (2.1.50; the user, 2026-11-13, of a whisper whose "[Gloomshroud Armor]" was a Community invite,
+-- its click in the Chat View an Action Blocked error: "I would rather Shield my users to spot such links in some way so
+-- that they cant be scammed"; the user's pick B of BuildData/output/fake_link_sketch: the words kept in grey, a red
+-- FAKE LINK after them -- the game's text draws no strike, so grey alone)
+-- The words on an invite link are the sender's own. The game writes its own as CLUB_INVITE_HYPERLINK_TEXT ("[Join:
+-- %s]") and a finder link as CLUB_FINDER_LINK_GUILD / _COMMUNITY (ItemRef.lua); a link of those kinds with other
+-- words is a disguise. It becomes an addon link of MelloUI's (Fake.PREFIX), which the game's own click handler in
+-- every window answers by opening nothing (ItemRefHandlersShared: the AddOn link), its words grey and FAKE LINK after
+-- them; the pointer on it shows what it really is (Fake.Card). Item, spell and quest links the game checks itself.
+-- A real invite clicked in MelloUI's own chat is never handed to the game: the game keeps an invite's answer from
+-- addons (C_Club.GetLastTicketResponse, ADDON_ACTION_FORBIDDEN in the user's /mellobug, 2026-11-13) and the listener
+-- it makes in that click stays MelloUI's until a /reload. One line says where invites open instead.
+-- One check for every window: the Chat View's lines (View.BodyShown), the whisper window's bubbles, the game's chat
+-- windows (Chat.lua's rewrite after AddMessage, its hover hooks) and the whisper popup. A line is read only when it
+-- has a club link in it; a secret line never.
 --------------------------------------------------------------------------------
 
-local LinkClick = Perf.Shared("OnHyperlinkClick on the chat view", function(_, link, text, button)
+View.Fake = {
+	PREFIX = "addon:MelloUI:fake:",
+	TAG = "FAKE LINK",
+	-- the kinds judged, each with the game's own words for it (its global strings, made into patterns at the first
+	-- such line: made)
+	KINDS = { clubTicket = { "CLUB_INVITE_HYPERLINK_TEXT" },
+		clubFinder = { "CLUB_FINDER_LINK_GUILD", "CLUB_FINDER_LINK_COMMUNITY" } },
+	WHAT = { clubTicket = "A Community invite", clubFinder = "A guild or community finder link" },
+	MAGIC = "[%^%$%(%)%%%.%[%]%*%+%-%?]",
+	made = {},
+	TEXT = {
+		title = "Fake link",
+		dressed = "%s dressed up as \"%s\".",
+		hidden = "%s with words that hide what it is.",
+		why = "Links like this pull you into spam and scam communities. MelloUI won't open it.",
+		reportHere = "Report the sender: Report at the top of this window.",
+		report = "Report the sender: right-click their name, then Report.",
+		invite = "Invites open from Guild & Communities. Ask the sender to invite you there.",
+	},
+}
+
+do
+	local Fake = View.Fake
+
+	-- words with their colour codes out (the brackets kept)
+	function Fake.Plain(s)
+		s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+		return s
+	end
+
+	-- a link's words as they read: colour codes out, one pair of brackets off
+	function Fake.Words(s)
+		s = Fake.Plain(s)
+		return s:match("^%[(.*)%]$") or s
+	end
+
+	-- the game's words for a kind as patterns, its name (the "%s") any words
+	function Fake.Patterns(kind)
+		local list = Fake.made[kind]
+		if list then
+			return list
+		end
+		list = {}
+		for _, name in ipairs(Fake.KINDS[kind]) do
+			local fmt = rawget(_G, name)
+			local before, after
+			if type(fmt) == "string" and not Secret(fmt) then
+				before, after = Fake.Words(fmt):match("^(.-)%%[%d%$]*s(.*)$")
+			end
+			if before then
+				list[#list + 1] = "^" .. (before:gsub(Fake.MAGIC, "%%%0")) .. ".+" .. (after:gsub(Fake.MAGIC, "%%%0")) .. "$"
+			end
+		end
+		Fake.made[kind] = list
+		return list
+	end
+
+	-- whether a link carries the game's own words for its kind (a kind not judged, or a client without the game's
+	-- words: true -- never a warning on a guess)
+	function Fake.Honest(kind, words)
+		local list = Fake.KINDS[kind] and Fake.Patterns(kind)
+		if not list or #list == 0 then
+			return true
+		end
+		for i = 1, #list do
+			if words:find(list[i]) then
+				return true
+			end
+		end
+		return false
+	end
+
+	-- (gsub's) a disguised link made MelloUI's, its words grey and the tag after them; nil keeps a real one
+	function Fake.Unmask(kind, _, shown)
+		if Fake.Honest(kind, Fake.Words(shown)) then
+			return nil
+		end
+		return "|H" .. Fake.PREFIX .. kind .. "|h" .. Fake.grey .. Fake.Plain(shown) .. "|r " .. Fake.red .. Fake.TAG
+			.. "|r|h"
+	end
+
+	-- whether a line has a link to judge while the warning is on (a secret line is never read)
+	function Fake.Has(text)
+		if Secret(text) or type(text) ~= "string" then
+			return false
+		end
+		return text:find("|Hclub", 1, true) ~= nil and M.isEnabled and M.db and M.db.fakeLinks and true or false
+	end
+
+	-- a line with every disguised link in it made harmless and marked; any other line as it came
+	function Fake.Mark(text)
+		if not Fake.Has(text) then
+			return text
+		end
+		Fake.grey, Fake.red = MelloUI:PaletteCode("mutedText"), "|cff" .. MelloUI.Meaning.fakeLink.hex
+		return (text:gsub("|H(club%a+):([^|]*)|h(.-)|h", Fake.Unmask))
+	end
+
+	-- the card under the pointer on a marked link: what it really is (false: not one of MelloUI's)
+	function Fake.Card(owner, link, text)
+		if Secret(link) or type(link) ~= "string" or link:sub(1, #Fake.PREFIX) ~= Fake.PREFIX then
+			return false
+		end
+		local what = Fake.WHAT[link:sub(#Fake.PREFIX + 1)] or "A link"
+		local name = not Secret(text) and type(text) == "string" and text:match("^|c%x%x%x%x%x%x%x%x(.-)|r")
+		name = name and Fake.Words(name) or ""
+		local P, red = MelloUI.Palette, MelloUI.Meaning.fakeLink
+		local whispers = M.Whispers
+		GameTooltip:SetOwner(owner, "ANCHOR_CURSOR")
+		GameTooltip:SetText(Fake.TEXT.title, red[1], red[2], red[3])
+		GameTooltip:AddLine(name ~= "" and Fake.TEXT.dressed:format(what, name) or Fake.TEXT.hidden:format(what),
+			P.text[1], P.text[2], P.text[3], true)
+		GameTooltip:AddLine(Fake.TEXT.why, P.text[1], P.text[2], P.text[3], true)
+		GameTooltip:AddLine((whispers and owner == whispers.talk) and Fake.TEXT.reportHere or Fake.TEXT.report,
+			P.text[1], P.text[2], P.text[3], true)
+		GameTooltip:Show()
+		Fake.owner = owner
+		return true
+	end
+
+	-- the game's chat windows (Chat.lua's hover hooks): the card on a marked link, and away again
+	function Fake.Enter(frame, link, text)
+		Fake.Card(frame, link, text)
+	end
+
+	function Fake.Leave(frame)
+		if Fake.owner == frame then
+			Fake.owner = nil
+			if GameTooltip:IsOwned(frame) then
+				GameTooltip:Hide()
+			end
+		end
+	end
+
+	-- a click in MelloUI's own chat: a marked link opens nothing (its card shows), a real invite says where invites
+	-- open; true when the click was taken here
+	function Fake.Click(owner, link, text)
+		if link:sub(1, #Fake.PREFIX) == Fake.PREFIX then
+			Fake.Card(owner, link, text)
+			return true
+		end
+		if link:sub(1, 11) == "clubTicket:" and not IsModifiedClick() then
+			MelloUI:Announce(Fake.TEXT.invite, "info")
+			return true
+		end
+		return false
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Links: a click is the game's (SetItemRef), an item or a spell shows its tooltip under the pointer. (0.25.0) A map
+-- pin's link (anyone's shared pin: the game's own worldmap link) opens on MelloUI's map while it is on -- your pin
+-- set there, Route on its way -- never the game's map; a modified click stays the game's (Shift: into the chat line).
+-- (2.1.50) A marked link and a real invite are Fake Link Warning's (View.Fake.Click, above)
+--------------------------------------------------------------------------------
+
+local LinkClick = Perf.Shared("OnHyperlinkClick on the chat view", function(owner, link, text, button)
 	if Secret(link) or type(link) ~= "string" then
+		return
+	end
+	if View.Fake.Click(owner, link, text) then
 		return
 	end
 	if button == "LeftButton" and link:sub(1, 9) == "worldmap:" and not (IsShiftKeyDown() or IsControlKeyDown()) then
@@ -967,9 +1138,12 @@ local LinkClick = Perf.Shared("OnHyperlinkClick on the chat view", function(_, l
 	end
 end, "script")
 
-local LinkEnter = Perf.Shared("OnHyperlinkEnter on the chat view", function(owner, link)
+local LinkEnter = Perf.Shared("OnHyperlinkEnter on the chat view", function(owner, link, text)
 	if Secret(link) or type(link) ~= "string" then
 		return
+	end
+	if View.Fake.Card(owner, link, text) then
+		return   -- (2.1.50: a marked link's card)
 	end
 	local kind = link:match("^(%a+):")
 	if not (kind and TIP_LINKS[kind]) then
