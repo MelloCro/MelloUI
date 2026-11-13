@@ -1832,7 +1832,7 @@ Lang:Add("frFR", {
 	["Border Opacity"] = "Opacité de la bordure",
 	["How solid the painted border around the chat is."] = "L'opacité de la bordure peinte autour de la discussion.",
 	["Hide Input Box Art"] = "Masquer le décor de la zone de saisie",
-	["Hides the border and background of the chat's input line."] = "Masque la bordure et le fond de la ligne de saisie de la di…71646 tokens truncated…est of Dun Morogh among it; coastal zones reach the coast."] = "Carte : les terres entre les zones sont peintes, dont Ahn'Qiraj et l'ouest de Dun Morogh ; les zones côtières vont jusqu'à la côte.",
+	["Hides the border and background of the chat's input line."] = "Masque la bordure et le fond de la ligne de saisie de la discussion.",
 	["Hide Tab Background"] = "Masquer le fond des onglets",
 	["Hides the background behind the chat tabs. Their names stay."] = "Masque le fond derrière les onglets de discussion. Leurs noms restent.",
 	["Tabs Only On Mouseover"] = "Onglets seulement au survol",
