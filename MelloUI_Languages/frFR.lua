@@ -3240,7 +3240,7 @@ Lang:Add("frFR", {
 	["Put it on your list"] = "Ajouter à votre liste",
 	["A loot roll marks the items on your list when one drops."] = "Le jet de butin signale les objets de votre liste lorsqu'ils tombent.",
 	["In your log"] = "Dans votre journal",
-	["Done"] = "Terminée",
+	["Done"] = "Terminé",
 	["From level %d"] = "À partir du niveau %d",
 	["After an earlier quest"] = "Après une quête précédente",
 	["Starts a quest"] = "Lance une quête",
@@ -3313,6 +3313,10 @@ Lang:Add("frFR", {
 	["%d of %d done, %d left"] = "Progression : %d/%d, encore %d",
 	[" (%d you can take now)"] = " (%d quêtes disponibles)",
 	["Dock"] = "Quai",
+	["%s at %s"] = "%s : %s",
+	["Quest: %s"] = "Quête : %s",
+	["Door: %s"] = "Entrée : %s",
+	["%s, level %d to %d"] = "%s, niveau %d à %d",
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):
