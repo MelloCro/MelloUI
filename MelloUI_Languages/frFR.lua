@@ -660,6 +660,18 @@ Lang:Add("frFR", {
 	["Writes the repair cost and the gold from junk in the chat."] = "Écrit dans la discussion le coût des réparations et l'or tiré de la camelote.",
 	-- Services
 	["Services"] = "Services",
+	["nearest by road"] = "Le plus proche par la route", -- draft
+	["none known here"] = "Aucun connu ici", -- draft
+	["Route module off"] = "Module Route désactivé", -- draft
+	["Nearest ..."] = "Services les plus proches…", -- draft
+	["Nearest: %s%s, %s"] = "Le plus proche : %s%s, %s", -- draft
+	["Click to pick a profession and route to its nearest trainer. Right-click stops the route."] = "Cliquez pour choisir un métier et rejoindre le maître le plus proche. Un clic droit arrête l’itinéraire.", -- draft
+	["Click to route there by road. Right-click stops the route."] = "Cliquez pour y aller par la route. Un clic droit arrête l’itinéraire.", -- draft
+	["None known on this continent yet; it is remembered the first time you use one."] = "Aucun connu sur ce continent pour le moment ; l’emplacement est mémorisé à la première utilisation.", -- draft
+	["The Route module is off."] = "Le module Route est désactivé.", -- draft
+	["Click for your addons' minimap buttons. A click on one there is the addon's own."] = "Cliquez pour afficher les boutons de minicarte de vos addons. Cliquer sur l’un d’eux déclenche l’action de l’addon.", -- draft
+	["Click: the list of the nearest services."] = "Clic : liste des services les plus proches.", -- draft
+	["Right-click: stop the route.  Drag: move the button."] = "Clic droit : arrêter l’itinéraire. Faire glisser : déplacer le bouton.", -- draft
 	["Buttons under the minimap that route you to the nearest repair, mailbox, inn, flight master, bank or trainer."] = "Des boutons sous la minicarte qui vous guident vers la réparation, la boîte aux lettres, l'auberge, le maître de vol, la banque ou le maître de classe le plus proche.",
 	["Repair, mailbox, innkeeper, bank... the nearest one is a click under the minimap."] = "Réparation, boîte aux lettres, aubergiste, banque... le plus proche est à un clic sous la minicarte.",
 	["Icon Bar Under The Minimap"] = "Barre d'icônes sous la minicarte",
@@ -723,6 +735,13 @@ Lang:Add("frFR", {
 	["At a merchant, a shopping list of what you are low on. Nothing is bought until you click Buy."] = "Chez un marchand, une liste de ce qui vous manque. Rien n'est acheté avant un clic sur Acheter.",
 	["Restock List"] = "Liste de réapprovisionnement",
 	["What to keep in your bags, and how many. Each character has its own list. /restock opens it too."] = "Ce qu'il faut garder dans vos sacs, et en quelle quantité. Chaque personnage a sa liste. /restock l'ouvre aussi.",
+	["+%d (have %d)"] = "+%d (en stock : %d)", -- draft
+	["Total:"] = "Total :", -- draft
+	["Left after:"] = "Reste après achat :", -- draft
+	["Not all of it fits in your bags."] = "Tout ne rentre pas dans vos sacs.", -- draft
+	["Not enough gold for all of it."] = "Vous n'avez pas assez d'or pour tout acheter.", -- draft
+	["Buy"] = "Acheter", -- draft
+	["Buying…"] = "Achat en cours…", -- draft
 	["Edit"] = "Modifier",
 	-- Widgets
 	["Widgets"] = "Widgets",
@@ -786,6 +805,10 @@ Lang:Add("frFR", {
 	["A button on the bag window that throws away your cheapest junk item (sells it at a vendor). Never consumables, materials, quest items or your Restock list. A white item asks first."] = "Un bouton sur la fenêtre des sacs qui jette votre camelote la moins chère (la vend chez un marchand). Jamais les consommables, matériaux, objets de quête ou votre liste de réapprovisionnement. Un objet blanc demande d'abord.",
 	["Discard Button On Loot"] = "Bouton Jeter sur le butin",
 	["The same button on the loot window. It only throws something away for loot worth more."] = "Le même bouton sur la fenêtre de butin. Il ne jette que pour un butin qui vaut plus.",
+	["Sell Cheapest Junk"] = "Vendre la camelote la moins chère", -- draft
+	["Discard Cheapest Junk"] = "Jeter la camelote la moins chère", -- draft
+	["Nothing to throw away."] = "Rien à jeter.", -- draft
+	["Only when the loot is worth more."] = "Uniquement si le butin a plus de valeur.", -- draft
 	["Never Throw Away Items Worth"] = "Ne jamais jeter les objets valant",
 	["Stacks worth this many silver or more are never thrown away (they can still be sold)."] = "Les piles valant au moins cette somme ne sont jamais jetées (elles peuvent toujours être vendues).",
 	-- Gains
@@ -2331,8 +2354,11 @@ Lang:Add("frFR", {
 	["Type /reload to finish switching the language."] = "Tapez /reload pour finir de changer de langue.",
 	["Language"] = "Langue",
 	-- Core/Config.lua
+	["Ctrl+A, Ctrl+C to copy  -  Esc closes"] = "Ctrl+A, Ctrl+C pour copier  –  Échap pour fermer", -- draft
+	["Ctrl+V to paste  -  Esc closes"] = "Ctrl+V pour coller  –  Échap pour fermer", -- draft
 	["Module based interface tweaks for World of Warcraft: Forever."] = "Des réglages d'interface par modules pour World of Warcraft: Forever.",
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toute votre configuration sous un nom. Enregistrez-la, chargez-la, ou faites-en la configuration par défaut d'une nouvelle installation.",
+	["A profile is every setting of every module. Each character uses its own: a new character starts with a copy of the one last used, and your changes are saved into it as you play, at every logout and /reload. Load puts another profile on this character (its own again goes back to how it was last saved); Save current as makes a new one for it. A profile leaves out your Dark Mode and what belongs to your characters: the flight points they know, game settings MelloUI borrowed, and steps done once. The one marked default is applied when MelloUI starts with no settings at all, such as on a fresh install. Share gives a string to pass one on, and Import as brings one in. The profiles that come with MelloUI are always here."] = "Un profil est une copie de chaque réglage de chaque module. Il laisse de côté votre mode sombre et ce qui appartient à vos personnages : les points de vol qu'ils connaissent, les réglages du jeu empruntés par MelloUI, et les étapes faites une fois ; charger un profil n'y touche jamais. Celui marqué par défaut s'applique quand MelloUI démarre sans aucun réglage, comme à une nouvelle installation. Charger demande avant de remplacer vos réglages. Les profils enregistrés ici sont gardés avec vos réglages ; Partager donne une chaîne pour en transmettre un, et Importer sous en fait entrer un. Les profils fournis avec MelloUI sont toujours là.", -- draft
 	["Supporters"] = "Soutiens",
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.",
 	["Configurator: a new Addons page lists the addons MelloUI works with: what it does with each, their links, who does which job, and a switch to stop MelloUI using one."] = "Configurateur : une nouvelle page Addons liste les addons avec lesquels MelloUI fonctionne : ce qu'il fait avec chacun, leurs liens, qui fait quelle tâche, et un interrupteur pour que MelloUI cesse d'en utiliser un.", -- draft
@@ -2689,6 +2715,8 @@ Lang:Add("frFR", {
 	["Active: %s      Default on a fresh install: %s"] = "Actif : %s      Par défaut à une nouvelle installation : %s",
 	["Set default"] = "Définir par défaut",
 	["built in"] = "intégré",
+	["comes with MelloUI"] = "fourni avec MelloUI", -- draft
+	["yours"] = "personnel", -- draft
 	["A profile is a copy of every setting of every module. It leaves out your Dark Mode and what belongs to your characters: the flight points they know, game settings MelloUI borrowed, and steps done once; loading a profile never touches those. The one marked default is applied when MelloUI starts with no settings at all, such as on a fresh install. Load asks before it replaces your settings. Profiles you save here are kept with your settings; Share gives a string to pass one on, and Import as brings one in. The profiles that come with MelloUI are always here."] = "Un profil est une copie de chaque réglage de chaque module. Il laisse de côté votre mode sombre et ce qui appartient à vos personnages : les points de vol qu'ils connaissent, les réglages du jeu empruntés par MelloUI, et les étapes faites une fois ; charger un profil n'y touche jamais. Celui marqué par défaut s'applique quand MelloUI démarre sans aucun réglage, comme à une nouvelle installation. Charger demande avant de remplacer vos réglages. Les profils enregistrés ici sont gardés avec vos réglages ; Partager donne une chaîne pour en transmettre un, et Importer sous en fait entrer un. Les profils fournis avec MelloUI sont toujours là.",
 	["Save current as"] = "Enregistrer l'actuel sous",
 	["Profile '%s' saved."] = "Profil « %s » enregistré.",
