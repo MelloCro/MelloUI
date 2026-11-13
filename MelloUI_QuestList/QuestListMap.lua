@@ -733,7 +733,7 @@ function QL.MarkTip(tip, kind, data, hints)
 		local lv = data.dungeonID ~= 0 and QL.Data().dungeonLevel and QL.Data().dungeonLevel[data.dungeonID]
 		local what = W.Tr(data.raid and "Raid" or "Dungeon")
 		if lv and lv[1] > 0 then
-			Line(tip, W.Tr("%s, levels %d-%d"):format(what, lv[1], lv[2] > 0 and lv[2] or lv[1]), "text")
+			Line(tip, W.Tr("%s, level %d to %d"):format(what, lv[1], lv[2] > 0 and lv[2] or lv[1]), "text")
 		else
 			Line(tip, what, "text")
 		end
@@ -755,7 +755,7 @@ function QL.MarkTip(tip, kind, data, hints)
 		end
 	elseif kind == "transport" then
 		QL.TipTitle(tip, data.label)
-		Line(tip, W.Tr(TRANSPORT_PLACE[data.kind] or "Dock") .. " : " .. data.dock, "text")
+		Line(tip, W.Tr("%s at %s"):format(W.Tr(TRANSPORT_PLACE[data.kind] or "Dock"), data.dock), "text")
 		if data.faction == 1 then
 			Line(tip, W.Tr("Alliance"), "alliance")
 		elseif data.faction == 2 then
