@@ -376,7 +376,7 @@ local function Stops(inst)
 			end
 			if not s then
 				s = { wcont = cont, wx = wx, wy = wy, label = giver, hold = true, quests = {}, titles = {},
-				 notice = mark .. W.Tr(TT.notice):format(giver) }
+					notice = mark .. W.Tr(TT.notice):format(giver) }
 				stops[#stops + 1] = s
 			end
 			s.quests[#s.quests + 1] = row[F.ID]
@@ -387,7 +387,7 @@ local function Stops(inst)
 	local doorStop
 	if door and #stops > 0 then
 		doorStop = { wcont = door.cont, wx = door.wx, wy = door.wy, label = inst.name, hold = false, door = true,
-			 notice = mark .. W.Tr(TT.notice):format(inst.name) }
+			notice = mark .. W.Tr(TT.notice):format(inst.name) }
 	end
 	return stops, doorStop
 end
@@ -443,7 +443,7 @@ local function Price(cur)
 	local pcont, px, py = R:Where()
 	if not pcont then
 		cur.status = "ended"
-				MelloUI:Print(W.Tr(TT.noPlace))
+		MelloUI:Print(W.Tr(TT.noPlace))
 		Refresh()
 		return
 	end
@@ -774,7 +774,7 @@ function Trip.LayPage()
 			r.icon:SetTexCoord(0, 1, 0, 1)
 		end
 		r.icon:SetShown(passed or s.door == true)
-		r.title:SetText(s.door and (W.Tr(TT.door) .. " : " .. s.label) or s.label)
+		r.title:SetText(s.door and (W.Tr("Door: %s"):format(s.label)) or s.label)
 		W.Paint(r.title, now and "selectedTrim" or "text", "text")
 		r.line:SetText(s.door and W.Tr(TT.doorLine) or table.concat(s.titles, ", "))
 		r.time:SetText(cur.status ~= "pricing" and not passed and cur.secs[i] and ("+" .. Took(cur.secs[i])) or "")
