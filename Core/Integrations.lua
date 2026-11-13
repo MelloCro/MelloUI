@@ -9,7 +9,7 @@
 -- RareScanner in Core/RareScannerLook.lua; Polestar in Core/Overlaps.lua; GatherMate2 and HandyNotes in
 -- MapAddonPins' sources; the guides (RestedXP, Zygor, TomTom, Polestar's) in MelloUI_Route/Guides.lua; Clique in
 -- MelloUI:ClickCast; SharedMedia in Core/SharedMedia.lua (2.1.45: the sounds too); the bag addons in Core/Overlaps.lua's
--- "bags" job (2.1.49: MelloUI's bag window steps aside). Off, MelloUI leaves that addon alone (its look, its data, its settings) from the next /reload --
+-- "bags" job (2.1.49: MelloUI's bag window steps aside); AHledger's auction prices in Modules/Discard.lua (2.1.50). Off, MelloUI leaves that addon alone (its look, its data, its settings) from the next /reload --
 -- but two quest trackers never show at once (Core/Overlaps.lua's questTracker stays).
 -- Shown by the configurator's Addons page (Core/AddonsPage.lua). Nothing at login: read when asked.
 --   I.GROUPS, I.LIST, I.ByKey     the addons by group, in the page's order
@@ -253,6 +253,20 @@ I.LIST = {
 	  url = "https://www.curseforge.com/wow/addons/better-bags",
 	  does = BAG_DOES, short = BAG_SHORT, links = BAG_LINKS,
 	  parts = { { "its bags", function() return Ace("BetterBags") ~= nil or Global("BetterBags") ~= nil end } } },
+	-- (2.1.50; Nixxen, 2026-11-12: "AHLedger", the user's picks of restock_discard_sketch) its auction prices in
+	-- Discard, through its API (AHledgerAPI, from its 0.9.8), its credit wherever they show
+	{ key = "AHledger", name = "AHledger", folders = { "AHledger" }, group = "bags",
+	  url = "https://www.curseforge.com/wow/addons/ahledger",
+	  does = {
+		"Its auction prices in Discard: an item is worth its auction price when that is more than the vendor's, so the cheapest goes first by that worth.",
+		"At a vendor, Discard's Sell skips what sells for clearly more at the auction house.",
+	  },
+	  short = "Its auction prices in Discard",
+	  links = { { "Discard Button", id = "Discard.bagButton" } },
+	  parts = { { "its prices", function()
+		local api = Global("AHledgerAPI")
+		return api ~= nil and type(api.GetMedian) == "function"
+	  end } } },
 	-- (2.1.32 read its media; 2.1.45, Custom Sounds' Your Sounds: its sounds, the player's own files through the
 	-- MelloUI_MySounds template, docs/custom-sounds.md) the library any pack brings: working while it is found
 	{ key = "SharedMedia", name = "SharedMedia", folders = { "SharedMedia" }, group = "look",

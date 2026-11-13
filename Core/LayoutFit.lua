@@ -46,7 +46,8 @@
 --               reads it), hideBagBar, statsOn,
 --               actionSlots ([slot] = true: the hidden bars that hold an
 --               action are shown), column { kit, shape, border, merge, bar,
---               groups, barOffset, roundIcons, match, mapW, mapH, fitMap }
+--               groups, barOffset, roundIcons, match, mapW, mapH, fitMap,
+--               allRows (2.1.50: All Buttons' rows, the character's) }
 --               (the minimap column of layout E: the Minimap Kit on, its
 --               shape, square border and Merge With Services; the Services
 --               bar shown, its Groups layout, distance and round icons; the
@@ -1081,6 +1082,7 @@ local function MelloFrom(inputs)
 		column = { kit = Bool(c.kit, D.kit), shape = Str(c.shape, D.shape), border = Column.RAILS[border] and border or D.border,
 			merge = Bool(c.merge, D.merge), bar = Bool(c.bar, D.bar), groups = Bool(c.groups, D.groups), barOffset = Num(c.barOffset) or D.barOffset,
 			roundIcons = Bool(c.roundIcons, D.roundIcons), match = Bool(c.match, D.match), mapW = MapSide(c.mapW), mapH = MapSide(c.mapH),
+			allRows = max(1, floor(Num(c.allRows) or 2)),   -- (2.1.50) All Buttons' rows: Column.AllRows
 			-- (the caller writes places.minimap, so the fit may make the
 			-- kit's map smaller; else it stays as it is)
 			fitMap = Bool(c.fitMap, false) },
@@ -1506,6 +1508,15 @@ function Column.KitRow(col, row, sw)
 	return buf
 end
 
+-- (2.1.50) All Buttons with other than two rows (a hunter's three: Services' Stable Master, M.AllRows): the heights
+-- above are two cells and three gaps (`gap`: 4 merged, else Services' GAP 5), so each row more is one cell and one gap
+-- more. Into col.rowsBuf.
+function Column.AllRows(col, row, rows, gap)
+	local buf = col.rowsBuf
+	buf[1], buf[2], buf[3] = row[1], row[2] + (rows - 2) * (row[2] - gap) / 2, row[3]
+	return buf
+end
+
 function Column.Put(into, l, t, r, b)
 	into[1], into[2], into[3], into[4] = l, t, r, b
 	return into
@@ -1530,7 +1541,7 @@ function Column.Model(f)
 	end
 	Solve(f)
 	if not col then
-		col = { map = {}, frame = {}, piece = {}, barRect = {}, loose = {}, rowBuf = {} }
+		col = { map = {}, frame = {}, piece = {}, barRect = {}, loose = {}, rowBuf = {}, rowsBuf = {} }
 		f.col = col
 	end
 	local c = f.mello.column
@@ -1566,6 +1577,9 @@ function Column.Model(f)
 		end
 		if sw then
 			row = Column.KitRow(col, row, sw)
+		end
+		if not c.groups and c.allRows ~= 2 then
+			row = Column.AllRows(col, row, c.allRows, merged and 4 or 5)
 		end
 	end
 	local map, frame, piece = Column.Put(col.map, mL, mT, mR, mB), col.frame, col.piece
@@ -4294,9 +4308,9 @@ local function KeyOf(info, W, H, inputs, opts, job)
 		tostring(t.pos and t.pos.x), tostring(t.pos and t.pos.y), tostring(m.hideBagBar), tostring(m.statsOn), tostring(m.own))
 	parts[#parts + 1] = concat(m.bars, ",")
 	local c, a = m.column, m.auras
-	parts[#parts + 1] = format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s", tostring(c.kit), c.shape, c.border, tostring(c.merge), tostring(c.bar),
+	parts[#parts + 1] = format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s", tostring(c.kit), c.shape, c.border, tostring(c.merge), tostring(c.bar),
 		tostring(c.groups), tostring(c.barOffset), tostring(c.roundIcons), tostring(c.match), tostring(a.rows), tostring(a.attached),
-		tostring(a.size), tostring(a.perRow), tostring(a.fit), tostring(c.mapW), tostring(c.mapH), tostring(c.fitMap))
+		tostring(a.size), tostring(a.perRow), tostring(a.fit), tostring(c.mapW), tostring(c.mapH), tostring(c.fitMap), tostring(c.allRows))
 	local names = {}
 	for name in pairs(m.positions) do
 		names[#names + 1] = name
@@ -4493,6 +4507,9 @@ function LayoutFit:Inputs(read)
 			merge = read("MinimapPanel", "servicesMerge") ~= false, bar = (read("Services") and read("Services", "showBar") ~= false) and true or false,
 			groups = read("Services", "buttonLayout") ~= "all", barOffset = tonumber(read("Services", "barOffset")),
 			roundIcons = read("Services", "roundIcons") ~= false,
+			-- (2.1.50) All Buttons' rows: the character's, not a setting (a hunter's Stable Master makes three)
+			allRows = MelloUI.modules and MelloUI.modules.Services and MelloUI.modules.Services.AllRows
+				and MelloUI.modules.Services.AllRows() or 2,
 			match = (read("QuestTracker") and read("QuestTracker", "matchMinimap") ~= false) and true or false,
 			mapW = tonumber(read("MinimapPanel", "width")), mapH = tonumber(read("MinimapPanel", "height")) },
 		auras = { rows = (read("Auras") and read("Auras", "player") ~= false) and true or false, attached = read("Auras", "playerColumn") ~= false,

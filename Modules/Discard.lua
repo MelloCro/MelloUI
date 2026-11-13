@@ -25,6 +25,18 @@
 --                should never be the case"): a stack worth more than Never
 --                Throw Away Items Worth (1 gold by default) is kept --
 --                selling it at a vendor is fine (nothing is lost)
+--   (2.1.50; Nixxen, 2026-11-12: "an 'ok to throw away consumables', but keep a whitelist of items we want to keep",
+--   the user's picks of BuildData/output/restock_discard_sketch)
+--   consumables  with Consumables Too on (off by default): food, drink, potions and the other consumables may go
+--                too, grey or white, still never what a Restock line keeps (its item; of a family -- drink, food,
+--                ammunition -- the best level in the bags, the older ones may go; a pet's diet)
+--   kept         never what this character keeps: a right-click on the button keeps the item it would take (its
+--                tooltip says so, then names the next one); the Restock List's Never Discard page lets one go
+--   auction      (2.1.50; Nixxen: "AHLedger") with AHledger installed and on (the Addons page's switch), an item
+--                is worth its auction median when that is more than the vendor's price: the cheapest goes first by
+--                that worth, and Never Throw Away Items Worth counts it; at a vendor Sell skips what the auction
+--                pays clearly more for (SELL_MARGIN, after the house's cut). Its prices show in the tooltip only,
+--                with the credit AHledger asks for (and "the copy it ships with" while it has no synced prices)
 -- Which one: the stack worth least (the vendor's price times the stack);
 -- a tie: grey before white, then the first in the bags.
 -- Asking first: a white item is named with its value and only goes on
@@ -55,10 +67,12 @@ local M = MelloUI:RegisterModule("Discard", {
 	flavour = "Full bags? The cheapest junk makes room, never anything worth keeping.",
 	-- (no group: its rows sit on the Windows page, the bag and loot windows' Behaviour)
 	enabledByDefault = true,
-	defaults = { bagButton = true, lootButton = true, keepWorth = 100 },
+	defaults = { bagButton = true, lootButton = true, keepWorth = 100, consumables = false },
 	options = {
 		{ type = "toggle", key = "bagButton", name = "Discard Button",
 		  desc = "A button on the bag window that throws away your cheapest junk item (sells it at a vendor). Never consumables, materials, quest items or your Restock list. A white item asks first." },
+		{ type = "toggle", key = "consumables", name = "Consumables Too", new = "2.1.50",
+		  desc = "Food, drink, potions and other consumables can be thrown away too, the cheapest first. Never what your Restock list keeps (of its drink, food or ammo the best you carry) or what you keep with a right-click on the Discard button." },
 		{ type = "toggle", key = "lootButton", name = "Discard Button On Loot",
 		  desc = "The same button on the loot window. It only throws something away for loot worth more." },
 		{ type = "slider", key = "keepWorth", name = "Never Throw Away Items Worth", min = 1, max = 1000, step = 1,
@@ -81,6 +95,7 @@ local KEEP_CLASS = {
 	[19] = true,   -- profession items
 }
 local MISC, JUNK = 15, 0                  -- a white miscellaneous item: its junk only
+local CONSUMABLE = 0                      -- (2.1.50) the class Consumables Too lets go
 
 --------------------------------------------------------------------------------
 -- Reads (each guarded: a secret or refused answer is nil)
@@ -103,12 +118,48 @@ local function ItemFacts(itemID)
 	return Num(price), Num(classID), Num(subclassID)
 end
 
+-- (2.1.50) AHledger's auction median of one (copper), nil without it (not installed, its switch off on the Addons
+-- page, no price on this market). Its API (AHledgerAPI, from its 0.9.8) never raises; guarded all the same
+local AUCTION_CUT = 0.95   -- the auction house keeps 5% of a sale
+local SELL_MARGIN = 1.5    -- at a vendor, kept when the auction (after its cut) pays at least this much more
+local function Auction(itemID)
+	local I = MelloUI.Integrations
+	if I and I.Use and not I.Use("AHledger") then
+		return nil
+	end
+	local api = rawget(_G, "AHledgerAPI")
+	if type(api) ~= "table" or type(api.GetMedian) ~= "function" then
+		return nil
+	end
+	local median = Num((Ask(api.GetMedian, itemID)))
+	return median and median > 0 and median or nil
+end
+
+-- the credit line AHledger asks for wherever its prices show; while it runs on the prices it ships with (no sync), it
+-- says so, as AHledger does
+local function Credit(itemID)
+	local api = rawget(_G, "AHledgerAPI")
+	local text = type(api) == "table" and type(api.CREDIT) == "string" and api.CREDIT or "Prices from AHledger (ahledger.com)"
+	local p = type(api) == "table" and Ask(api.GetPrice, itemID)
+	if type(p) == "table" and p.snapshot == true then
+		text = text .. ", the copy it ships with"
+	end
+	return text
+end
+
 -- an item line of the Restock list (its families -- food, drink, ammunition,
 -- reagents -- are kept by their class already)
 local function OnRestockList(itemID)
 	local restock = MelloUI:GetModule("Restock")
 	if not (restock and restock.isEnabled and restock.Entries and restock.Entry) then
 		return false
+	end
+	-- (2.1.50) a line that counts it: its own, or its family's (a drink while the list keeps drink)
+	if restock.Counts then
+		local ok, counts = pcall(restock.Counts, restock, itemID)
+		if ok and counts then
+			return true
+		end
 	end
 	local ok, n = pcall(restock.Entries, restock)
 	for i = 1, (ok and Num(n)) or 0 do
@@ -121,9 +172,13 @@ local function OnRestockList(itemID)
 end
 
 -- whether the rules let this kind of item go: quality, class, subclass
-function M.KindAllowed(quality, classID, subclassID)
+function M.KindAllowed(quality, classID, subclassID, consumables)
 	if quality ~= 0 and quality ~= 1 then
 		return false
+	end
+	-- (2.1.50) Consumables Too: a consumable, grey or white
+	if consumables and classID == CONSUMABLE then
+		return true
 	end
 	if classID == nil or KEEP_CLASS[classID] then
 		return false
@@ -134,6 +189,67 @@ function M.KindAllowed(quality, classID, subclassID)
 		return classID == MISC and subclassID == JUNK
 	end
 	return true
+end
+
+-- (2.1.50) what this character keeps: never thrown away nor sold. Kept as text, the item ids (the setting
+-- "keep_<guid>"); the Restock List's Never Discard page shows them
+local keep = { text = false, ids = {}, guid = false, key = nil }
+
+local function KeepKey()
+	local guid = MelloUI.Safe.Text((Ask(UnitGUID, "player")))
+	if not guid then
+		return nil
+	end
+	if keep.guid ~= guid then
+		keep.guid, keep.key = guid, "keep_" .. guid:gsub("[^%w]", "")
+	end
+	return keep.key
+end
+
+function M.Kept(itemID)
+	local key = KeepKey()
+	local text = key and M.db and MelloUI.Safe.Text(M.db[key]) or ""
+	if text ~= keep.text then
+		keep.text = text
+		for k in pairs(keep.ids) do
+			keep.ids[k] = nil
+		end
+		for w in text:gmatch("%d+") do
+			keep.ids[tonumber(w)] = true
+		end
+	end
+	return itemID ~= nil and keep.ids[itemID] == true
+end
+
+-- the kept items, into out (by id)
+function M.KeepList(out)
+	M.Kept(nil)
+	for k in pairs(keep.ids) do
+		out[#out + 1] = k
+	end
+	table.sort(out)
+	return out
+end
+
+function M.Keep(itemID, on)
+	local key = KeepKey()
+	if not (key and M.db and itemID) then
+		return
+	end
+	M.Kept(itemID)
+	keep.ids[itemID] = on and true or nil
+	local parts = {}
+	for k in pairs(keep.ids) do
+		parts[#parts + 1] = k
+	end
+	table.sort(parts)
+	local text = table.concat(parts, " ")
+	keep.text = text
+	MelloUI:NotifySettingChanged("Discard", key, text)
+	local restock = MelloUI:GetModule("Restock")
+	if restock and restock.KeepChanged then
+		restock:KeepChanged()
+	end
 end
 
 -- one bag slot as a candidate, or nil when it must stay
@@ -154,7 +270,10 @@ function M.Candidate(bag, slot)
 		return nil
 	end
 	local price, classID, subclassID = ItemFacts(itemID)
-	if not (price and price > 0) or not M.KindAllowed(quality, classID, subclassID) then
+	if not (price and price > 0) or not M.KindAllowed(quality, classID, subclassID, M.db and M.db.consumables) then
+		return nil
+	end
+	if M.Kept(itemID) then
 		return nil
 	end
 	local quest = Ask(C.GetContainerItemQuestInfo, bag, slot)
@@ -164,8 +283,11 @@ function M.Candidate(bag, slot)
 	if OnRestockList(itemID) then
 		return nil
 	end
-	return { bag = bag, slot = slot, itemID = itemID, count = count, quality = quality, price = price,
-		value = price * count, link = Value(info.hyperlink), icon = Num(info.iconFileID) }
+	-- (2.1.50) its worth: the auction's median when that is more (AHledger), else the vendor's; vendor: what a sale pays
+	local auction = Auction(itemID)
+	local unit = (auction and auction > price) and auction or price
+	return { bag = bag, slot = slot, itemID = itemID, count = count, quality = quality, price = price, auction = auction,
+		value = unit * count, vendor = price * count, link = Value(info.hyperlink), icon = Num(info.iconFileID) }
 end
 
 -- the bags' slots: the backpack and the four bags
@@ -195,21 +317,27 @@ end
 
 -- the cheapest candidate; selling: whatever its value, else under the limit
 -- (a valuable stack is never thrown away). Also how many were kept for
--- their value, for the message.
+-- their value, for the message; (2.1.50) selling: the cheapest of those
+-- held back for the auction's price and how many (AHledger)
 function M.Cheapest(selling)
 	local limit = ((Num(M.db and M.db.keepWorth) or 100) * 100)
-	local best, valuable = nil, 0
+	local best, valuable, held, nheld = nil, 0, nil, 0
 	EachSlot(function(bag, slot)
 		local c = M.Candidate(bag, slot)
 		if c then
-			if not selling and c.value >= limit then
+			if selling and c.auction and c.auction * AUCTION_CUT >= SELL_MARGIN * c.price then
+				nheld = nheld + 1
+				if not held or Better(c, held) then
+					held = c
+				end
+			elseif not selling and c.value >= limit then
 				valuable = valuable + 1
 			elseif not best or Better(c, best) then
 				best = c
 			end
 		end
 	end)
-	return best, valuable
+	return best, valuable, held, nheld
 end
 
 -- what the loot window holds worth most: an item's vendor value times its
@@ -274,7 +402,7 @@ function M.Act(c, selling)
 	local C = C_Container
 	if selling then
 		Ask(C.UseContainerItem, c.bag, c.slot)
-		Say("Sold %s%s for %s.", name, c.count > 1 and (" x" .. c.count) or "", Money(c.value))
+		Say("Sold %s%s for %s.", name, c.count > 1 and (" x" .. c.count) or "", Money(c.vendor or c.value))
 		return true
 	end
 	if Ask(GetCursorInfo) ~= nil then
@@ -295,18 +423,23 @@ function M.Act(c, selling)
 		Say("Discard: the game did not let MelloUI throw %s away; it is back in your bags.", name)
 		return false
 	end
-	Say("Threw away %s%s (worth %s).", name, c.count > 1 and (" x" .. c.count) or "", Money(c.value))
+	Say("Threw away %s%s (worth %s).", name, c.count > 1 and (" x" .. c.count) or "", Money(c.vendor or c.value))
 	return true
 end
 
 -- the button's click: from the bags ("bags") or the loot window ("loot")
 function M.Click(source)
 	local selling = AtVendor()
-	local c, valuable = M.Cheapest(selling)
+	local c, valuable, _, nheld = M.Cheapest(selling)
 	if not c then
-		if valuable > 0 then
+		if selling and nheld > 0 then
+			Say("Discard: nothing to sell -- what is left sells for more at the auction house (AHledger's prices).")
+		elseif valuable > 0 then
 			Say("Discard: nothing cheap enough to throw away -- your junk is worth %s or more a stack (Never Throw Away Items Worth).",
 				Money((Num(M.db and M.db.keepWorth) or 100) * 100))
+		elseif M.db and M.db.consumables then
+			-- (2.1.50) with Consumables Too on, food and potions may go: the line no longer says they never do
+			Say("Discard: nothing to throw away (grey and white junk and consumables go, never materials, quest items or what you keep).")
 		else
 			Say("Discard: nothing to throw away (only grey and white junk goes, never food, potions, materials or quest items).")
 		end
@@ -327,7 +460,7 @@ function M.Click(source)
 	if c.quality >= 1 and not selling then
 		MelloUI:Confirm({
 			text = string.format("Throw away %s%s (worth %s)?", c.link or "this item", c.count > 1 and (" x" .. c.count) or "",
-				Money(c.value)),
+				Money(c.vendor or c.value)),
 			accept = "Discard",
 			onAccept = function()
 				M.Act(c, false)
@@ -355,15 +488,46 @@ local SHORTER = SIZE_W + GAP      -- the search box's room given up (30)
 local MIN_SEARCH = 40             -- the search box never narrower
 local AREA = { bags = "backpack", loot = "loot", kinds = "backpack" }
 
+-- (2.1.50) an item's name out of its link
+local function NameOf(c)
+	return c.link and c.link:match("%[(.-)%]") or ("item " .. c.itemID)
+end
+
+-- (2.1.50, the user's picks T1-T3 of restock_discard_sketch) the tooltip: the item and its worth (with AHledger, its
+-- auction worth and the vendor's beside it), what Sell holds back for the auction, the right-click, the credit
 local function Tip(self)
 	local selling = AtVendor()
-	local c = M.Cheapest(selling)
+	local c, _, held, nheld = M.Cheapest(selling)
+	local P = MelloUI.Palette.text
+	local tr, tg, tb = P[1], P[2], P[3]
+	local credit = nil
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 	GameTooltip:SetText(selling and "Sell Cheapest Junk" or "Discard Cheapest Junk", 1, 1, 1)
 	if c then
-		GameTooltip:AddLine(string.format("%s%s, %s", c.link or "?", c.count > 1 and (" x" .. c.count) or "", Money(c.value)), 1, 1, 1)
+		local count = c.count > 1 and (" x" .. c.count) or ""
+		if not selling and c.auction and c.auction > c.price then
+			GameTooltip:AddLine(string.format("%s%s, %s at auction (vendor %s)", c.link or "?", count, Money(c.value),
+				Money(c.vendor)), 1, 1, 1)
+			credit = c
+		else
+			GameTooltip:AddLine(string.format("%s%s, %s", c.link or "?", count, Money(c.vendor or c.value)), 1, 1, 1)
+		end
 	else
 		GameTooltip:AddLine("Nothing to throw away.", 0.7, 0.7, 0.7)
+	end
+	if held then
+		local more = nheld > 1 and string.format(" and %d more", nheld - 1) or ""
+		GameTooltip:AddLine(string.format("Kept, worth more at auction: %s%s (%s)%s", NameOf(held),
+			held.count > 1 and (" x" .. held.count) or "", Money(held.auction * held.count), more), tr, tg, tb, true)
+		credit = credit or held
+	end
+	if c then
+		-- (2.1.50) the right-click: in the game's green of a use line
+		local g = rawget(_G, "GREEN_FONT_COLOR")
+		GameTooltip:AddLine("Right-click: always keep " .. NameOf(c), g and g.r or 0, g and g.g or 1, g and g.b or 0)
+	end
+	if credit then
+		GameTooltip:AddLine(Credit(credit.itemID), tr, tg, tb)
 	end
 	if self.source == "loot" and not selling then
 		GameTooltip:AddLine("Only when the loot is worth more.", 0.7, 0.7, 0.7, true)
@@ -371,9 +535,27 @@ local function Tip(self)
 	GameTooltip:Show()
 end
 
+-- (2.1.50) the right-click: the item the button would take kept from now on; its tooltip names the next one
+function M.KeepClick(self)
+	local c = M.Cheapest(AtVendor())
+	if not c then
+		return
+	end
+	M.Keep(c.itemID, true)
+	MelloUI:PlayUISound("check_on")
+	Say("Discard: %s is kept now (the Restock List's Never Discard page lets it go).", c.link or ("item " .. c.itemID))
+	if self and GameTooltip:IsOwned(self) then
+		Tip(self)
+	end
+end
+
 -- (the scripts handed in first: a SetScript after the plate's hooks would drop them)
 local BUTTON_SCRIPTS = {
-	OnClick = function(self)
+	OnClick = function(self, button)
+		if button == "RightButton" then
+			M.KeepClick(self)
+			return
+		end
 		M.Click(self.source)
 	end,
 	OnEnter = Tip,
@@ -387,6 +569,7 @@ local function MakeButton(source, parent)
 	-- the controls' icon plate under the bin, whatever the window wears
 	-- (W.PlateButton: the bag window's Settings is the same button)
 	local b, glyph = W.PlateButton(parent, SIZE_W, SIZE_H, GLYPH, AREA[source], BUTTON_SCRIPTS, "bin")
+	b:RegisterForClicks("LeftButtonUp", "RightButtonUp")   -- (2.1.50: the right-click keeps)
 	b.source = source
 	W.Glyph(glyph, "bin")
 	buttons[source] = b

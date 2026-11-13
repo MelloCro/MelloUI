@@ -904,6 +904,20 @@ QL.ICONS = {
 QL.ICON_DIR = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\"
 QL.GREY_ALPHA = 0.75   -- (a greyed mark's: MapAddonPins')
 
+-- (2.1.43, MapAddonPins; 2.1.50 here, one table for the map and the minimap) Questie's townsfolk (its "manual" icons:
+-- the game's tracking pictures) of a kind MelloUI draws itself: [the picture's file name] = MelloUI's map's layer
+QL.TOWN = { flightmaster = "flights" }
+function QL.Town(icon)
+	local data = rawget(icon, "data")
+	if type(data) ~= "table" or data.Type ~= "manual" then
+		return nil
+	end
+	local path = MelloUI.Safe.Text(data.Icon)
+	local name = path and path:match("([^\\/]+)$")
+	name = name and name:gsub("%.%w+$", ""):lower()
+	return name and QL.TOWN[name] or nil
+end
+
 -- a picture's look by its file's name, nil for one of no look of ours
 function QL.IconLook(path)
 	path = MelloUI.Safe.Text(path)
@@ -1028,6 +1042,21 @@ local function Unhide(icon)
 	end
 end
 
+-- (2.1.50; the user, 2026-11-13: "do the flight masters too") MelloUI's map's flight masters on the minimap (its
+-- Flight masters layer on: MelloUI_Map's MapLayers, the same switch as its map's)
+local function MiniFlights()
+	local mods = rawget(MelloUI, "modules")
+	local Map = type(mods) == "table" and rawget(mods, "Map")
+	return type(Map) == "table" and type(Map.MiniFlightsOn) == "function" and Map:MiniFlightsOn() and true or false
+end
+
+local function Hide(icon, tex)
+	Unswap(tex)
+	hidden[icon] = true
+	Parts(icon, 0)
+	icon:EnableMouse(false)
+end
+
 -- an icon of Questie's laid again: out of sight where MelloUI draws its kind, else MelloUI's picture on it
 local function Restyle(icon)
 	local tex = rawget(icon, "texture")
@@ -1037,10 +1066,12 @@ local function Restyle(icon)
 	local look = Used() and QL.Look(icon, iconPaths[icon]) or nil
 	local mini = rawget(icon, "miniMapIcon") and true or false
 	if look and Drawn(look, mini) then
-		Unswap(tex)
-		hidden[icon] = true
-		Parts(icon, 0)
-		icon:EnableMouse(false)
+		Hide(icon, tex)
+		return
+	end
+	-- (2.1.50) its flight masters on the minimap while MelloUI's map lays its own there
+	if mini and Used() and QL.Town(icon) == "flights" and MiniFlights() then
+		Hide(icon, tex)
 		return
 	end
 	Unhide(icon)
@@ -1071,6 +1102,18 @@ local function OnIconTexture(icon, path)
 	Restyle(icon)
 end
 
+-- (2.1.50) the others that dress Questie's icons (MelloUI's map: MapAddonPins) told when Questie lets one go, so their
+-- dressing goes with it and never follows the pooled frame into its next use (the minimap's)
+local releases = {}
+function QL.OnRelease(fn)
+	releases[#releases + 1] = fn
+end
+function QL.Released(icon)
+	for _, fn in ipairs(releases) do
+		fn(icon)
+	end
+end
+
 local function OnIconUnload(icon)
 	iconPaths[icon] = nil
 	unlisted[icon] = nil
@@ -1079,18 +1122,204 @@ local function OnIconUnload(icon)
 	if tex then
 		Unswap(tex)
 	end
+	QL.Released(icon)
+end
+
+-- (2.1.50; the user, 2026-11-13, a screenshot: "im still seeing Questie Icons on the minimap", Questie's loot sacks
+-- beside MelloUI's own marks) an icon laid by these rules whatever way it came: every icon Questie places on the
+-- minimap is laid there and then (a post-hook on its pins library's own table, QL.PINS: never a yielding function),
+-- not only when Questie sets its picture; a frame whose UpdateTexture is not the hooked one (made before the hook, or
+-- given another since) gets the hook on its own copy, once; a picture never seen through the hook read off the frame
+local adopted = setmetatable({}, { __mode = "k" })   -- [Questie's icon] = true: the hooks on its own functions
+local hookedFn, hookedUnload   -- QuestieFrame.private's UpdateTexture and Unload with MelloUI's hooks (a new frame's)
+QL.PINS = "HereBeDragonsQuestie-Pins-2.0"
+-- (the hooks on an adopted frame's own functions: one handler each for every frame, one row in /melloperf)
+local FrameTexture = Perf.Shared("UpdateTexture on Questie's adopted icons", OnIconTexture)
+local FrameUnload = Perf.Shared("Unload on Questie's adopted icons", OnIconUnload)
+
+local function Adopt(icon)
+	local tex = type(icon) == "table" and rawget(icon, "texture")
+	if not tex then
+		return
+	end
+	local fn, un = rawget(icon, "UpdateTexture"), rawget(icon, "Unload")
+	if type(fn) == "function" and fn ~= hookedFn and not adopted[icon] then
+		adopted[icon] = true
+		hooksecurefunc(icon, "UpdateTexture", FrameTexture)
+		if type(un) == "function" and un ~= hookedUnload then
+			hooksecurefunc(icon, "Unload", FrameUnload)
+		end
+	end
+	if iconPaths[icon] == nil then
+		local ok, p = pcall(tex.GetTexture, tex)
+		iconPaths[icon] = ok and MelloUI.Safe.Text(p) or false
+	end
+	Restyle(icon)
+end
+QL.Adopt = Adopt
+
+-- (Questie's pins library placed an icon on the minimap: its own)
+local function OnMinimapPin(_, ref, icon)
+	if ref ~= nil and ref == rawget(_G, "Questie") then
+		Adopt(icon)
+	end
+end
+
+-- (2.1.50) /qlmap questie (QL.Dump; a mode of the Quest List's dump, MelloUI_QuestList/QuestList.lua): Questie's icons
+-- as MelloUI lays them, in the copy window: what decides (Use with MelloUI, MelloUI's minimap marks, MelloUI's map, the
+-- hooks), every icon by place, kind and what shows (out of sight, MelloUI's picture, Questie's own), and a few minimap
+-- icons that still show Questie's own picture
+local function DumpState(tex)
+	local okT, path = pcall(tex.GetTexture, tex)
+	path = okT and MelloUI.Safe.Text(path) or ""
+	local okA, a = pcall(tex.GetAlpha, tex)
+	if okA and a == 0 then
+		return "out of sight", a
+	end
+	if swapped[tex] ~= nil then
+		return "MelloUI's picture", a
+	end
+	return path:find("Questie") and "Questie's own" or "other", a
+end
+
+-- the file a region draws, as the client gives it (a path, or a file's number), "?" if it gives none or a secret
+local function DumpFile(region)
+	local ok, file = pcall(region.GetTextureFilePath or region.GetTexture, region)
+	file = ok and (MelloUI.Safe.Text(file) or Number(file)) or nil
+	return tostring(file or "?")
+end
+
+-- the first picture of a frame still in sight (shown, not out of sight): its file
+local function SeenIn(...)
+	for i = 1, select("#", ...) do
+		local region = select(i, ...)
+		local okV, vis = pcall(region.IsVisible, region)
+		local okA, a = pcall(region.GetAlpha, region)
+		if region.GetTexture and okV and vis == true and okA and Number(a) and a > 0 then
+			return DumpFile(region)
+		end
+	end
+end
+local function SeenPicture(frame)
+	return SeenIn(frame:GetRegions())
+end
+
+-- (2.1.50; the user, 2026-11-13: a cog on the minimap while the icons above were all out of sight) every other
+-- icon-sized picture still in sight on the minimap, whoever drew it: a Questie icon frame with no quest's data, another
+-- addon's pin, a button (its name in the frame tree, its size, the file it draws). Left out: Questie's icons counted
+-- above, RareScanner's pins (their POI: MelloUI's look, Core/RareScannerLook.lua), MelloUI's own frames
+-- (one child: in sight and counted, a line for the first ten)
+local function DumpChild(n, child)
+	local name = MelloUI.Safe.Text(child:GetName())
+	local questie = rawget(child, "texture") and rawget(child, "glowTexture") and true or false
+	local counted = questie and type(rawget(child, "data")) == "table"
+	local w = MelloUI.Safe.Finite(child:GetWidth())
+	local okV, vis = pcall(child.IsVisible, child)
+	if not (okV and vis == true and not counted and rawget(child, "POI") == nil and w and w > 0 and w <= 40
+		and not (name and name:find("^MelloUI"))) then
+		return n
+	end
+	local file = SeenPicture(child)
+	if not file then
+		return n
+	end
+	n = n + 1
+	if n <= 10 then
+		local okD, debug = pcall(child.GetDebugName, child)
+		MelloUI:Print("  also on the minimap: %s, %d px, draws %s%s", tostring(okD and debug or name),
+			math.floor(w + 0.5), file, questie and " (a Questie icon without a quest)" or "")
+	end
+	return n
+end
+local function DumpChildren(...)
+	local n = 0
+	for i = 1, select("#", ...) do
+		n = DumpChild(n, (select(i, ...)))
+	end
+	MelloUI:Print("  other pictures in sight on the minimap: %d", n)
+end
+local function DumpMinimap()
+	local mm = rawget(_G, "Minimap")
+	if mm then
+		DumpChildren(mm:GetChildren())
+	end
+end
+
+function QL.Dump()
+	MelloUI:ClearLog()
+	local Q = rawget(MelloUI, "QuestList")
+	local O = type(Q) == "table" and rawget(Q, "Objectives")
+	local okW, wanted = pcall(function()
+		return O and O.MiniWanted()
+	end)
+	MelloUI:Print("== Questie's icons: Use with MelloUI %s, MelloUI's minimap marks %s, MelloUI's map %s; hooks: picture %s, "
+		.. "minimap pins %s", tostring(Used()), tostring(okW and wanted), tostring(MapOurs()), tostring(hookedFn ~= nil),
+		tostring(S.pinsHooked == true))
+	local counts, order, samples = {}, {}, 0
+	local names = TypeNames() or {}
+	for i = 1, 100000 do
+		local icon = rawget(_G, "QuestieFrame" .. i)
+		if not icon then
+			break
+		end
+		local data, tex = rawget(icon, "data"), rawget(icon, "texture")
+		if type(data) == "table" and tex then
+			local kind = Number(data.Icon)
+			kind = kind and names[kind] or tostring(data.Type)
+			local state, a = DumpState(tex)
+			local mini = rawget(icon, "miniMapIcon") and true or false
+			local key = (mini and "minimap " or "map ") .. kind .. ": " .. state
+			if not counts[key] then
+				counts[key] = 0
+				order[#order + 1] = key
+			end
+			counts[key] = counts[key] + 1
+			-- (2.1.50; the user, 2026-11-13: "the cogwheel icon is still questies" -- its glow ring too) every part
+			-- of a shown minimap icon still in sight: what MelloUI made of it
+			local glow = rawget(icon, "glowTexture")
+			local okG, ga = pcall(glow and glow.GetAlpha, glow)
+			local glowSeen = okG and ga ~= 0 and glow:IsShown()
+			-- (and every cog: Questie's object and interact icons, whatever MelloUI made of them)
+			local cog = kind == "object" or kind == "object_mono" or kind == "interact"
+			if mini and (state == "Questie's own" or glowSeen or cog) and samples < 6 and icon:IsShown() then
+				samples = samples + 1
+				local parent = icon:GetParent()
+				local look = QL.Look(icon, iconPaths[icon])
+				MelloUI:Print("  QuestieFrame%d: %s, Icon %s, quest %s, alpha %s, glow %s; seen %s, out of sight %s, own "
+					.. "hook %s, its UpdateTexture the hooked one %s, on %s; look %s, cover %s, drawn here %s; in sight: %s",
+					i, tostring(data.Type), tostring(data.Icon), tostring(data.Id), tostring(a),
+					tostring(glowSeen and ga or "off"), tostring(iconPaths[icon] ~= nil), tostring(hidden[icon] == true),
+					tostring(adopted[icon] == true), tostring(rawget(icon, "UpdateTexture") == hookedFn),
+					tostring(parent and parent:GetName()), tostring(look and (look.icon or look.atlas)),
+					tostring(look and look.cover), tostring(look and Drawn(look, true)), SeenPicture(icon) or "nothing")
+			end
+		end
+	end
+	table.sort(order)
+	for _, key in ipairs(order) do
+		MelloUI:Print("  %s  x%d", key, counts[key])
+	end
+	DumpMinimap()
+	MelloUI:ShowLog("qlmap questie")
+end
+
+-- (2.1.50) another dresser gave an icon's pictures back (MapAddonPins): laid again by these rules, if Questie shows it
+function QL.Relay(icon)
+	if iconPaths[icon] ~= nil then
+		Restyle(icon)
+	end
 end
 
 -- a switch of MelloUI's moved (the Quest List's marks, its module, Route's, the map's): every icon Questie shows
--- laid again (its frame pool's frames, by their names; only the ones it gave a picture)
+-- laid again (its frame pool's frames, by their names; (2.1.50) every one with a quest's data or a picture, Adopt)
 function QL.RestyleIcons()
 	for i = 1, 100000 do
 		local icon = rawget(_G, "QuestieFrame" .. i)
 		if not icon then
 			break
 		end
-		if iconPaths[icon] then
-			Restyle(icon)
+		if iconPaths[icon] or rawget(icon, "data") then
+			Adopt(icon)
 		end
 	end
 end
@@ -1220,14 +1449,21 @@ Perf.SetScript(login, "OnEvent", function(self)
 	if S.hooked then
 		return
 	end
-	WrapOpeners()
-	WrapTooltip()
-	-- its icons' own functions (its frame pool's; each icon takes them when it is made, after this)
+	-- its icons' own functions (its frame pool's; each icon takes them when it is made, after this); (2.1.50) first,
+	-- before the tracker's openers and tooltip
 	local QF = Questie("QuestieFrame")
 	local private = QF and rawget(QF, "private")
 	if type(private) == "table" and type(private.UpdateTexture) == "function" and type(private.Unload) == "function" then
 		hooksecurefunc(private, "UpdateTexture", OnIconTexture)
 		hooksecurefunc(private, "Unload", OnIconUnload)
+		hookedFn, hookedUnload = private.UpdateTexture, private.Unload
+		-- (2.1.50) each icon placed on the minimap by its pins library (Adopt)
+		local LS = rawget(_G, "LibStub")
+		local okP, pins = pcall(LS, QL.PINS, true)
+		if okP and type(pins) == "table" and type(pins.AddMinimapIconMap) == "function" then
+			hooksecurefunc(pins, "AddMinimapIconMap", OnMinimapPin)
+			S.pinsHooked = true
+		end
 		MelloUI:On("module", function(name)
 			if ICON_SWITCHES[name] then
 				QL.RestyleIcons()
@@ -1238,7 +1474,15 @@ Perf.SetScript(login, "OnEvent", function(self)
 				QL.RestyleIcons()
 			end
 		end, OnIconTexture)
+		-- (2.1.50: another addon took the minimap's objective marks over or gave them back, Overlaps)
+		MelloUI:On("overlap", function(job)
+			if job == "minimapObjectives" then
+				QL.RestyleIcons()
+			end
+		end, OnIconTexture)
 	end
+	WrapOpeners()
+	WrapTooltip()
 	local QT = Questie("QuestieTracker")
 	if not (QT and type(QT.Update) == "function") then
 		return

@@ -501,10 +501,23 @@ local function SetLayer(key, on)
 	if (key == "quests" or key == "objectives" or key == "flights") and shown and AddonPins.Recheck then
 		AddonPins.Recheck()
 	end
+	-- (2.1.50) the flight masters on the minimap follow this switch (Layers.MiniFlights), Questie's there looked at again
+	if key == "flights" then
+		Layers.MiniFlights(on and M.isEnabled)
+		local look = MelloUI.QuestieLook
+		if look and look.RestyleIcons then
+			look.RestyleIcons()
+		end
+	end
 	win.pins:Lay()
 	Log.LayersChanged()
 end
 M.SetLayer, M.LayerOn = function(_, key, on) SetLayer(key, on) end, function(_, key) return LayerOn(key) end
+-- (2.1.50) MelloUI's flight masters on the minimap now (Route on too): Core/QuestieLook.lua hides Questie's there
+function M:MiniFlightsOn()
+	local R = MelloUI.Route
+	return self.isEnabled and Layers.mini.want and type(R) == "table" and R.isEnabled and true or false
+end
 
 -- your pin's link in the chat: the game's own map pin link (C_Map.GetUserWaypointHyperlink), which anyone can click
 function M:SharePin()
@@ -1549,6 +1562,7 @@ function M:OnEnable(db)
 	TakeHeader(true)
 	Dungeon.Listen(true)   -- (2.1.0: the bosses down this run, for a dungeon's plan)
 	Fog()   -- (a profile's)
+	Layers.MiniFlights(LayerOn("flights"))   -- (2.1.50: the flight masters on the minimap)
 end
 
 function M:OnSettingChanged(key, _, db)
@@ -1577,6 +1591,7 @@ function M:OnDisable()
 	TakeKeys(false)
 	TakeHeader(false)
 	Dungeon.Listen(false)
+	Layers.MiniFlights(false)   -- (2.1.50)
 	if win.frame then
 		Dungeon.Hide()
 	end

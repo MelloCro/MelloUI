@@ -77,6 +77,7 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		-- default, with the followed quest staying on top; there is a toggle
 		-- on the tracker plate"): Nearest, below
 		nearestFirst = true,
+		nearestTurnIn = false,   -- (2.1.50) Near.TurnIn, below
 		showDistance = true,
 		showXP = true,   -- (2.1.39: the user asked for it)
 		turnInLine = true,
@@ -113,6 +114,8 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		{ type = "header", name = "Nearest First" },
 		{ type = "toggle", key = "nearestFirst", name = "Nearest Quest First",
 		  desc = "The nearest quest on top, after the one you follow. Needs Route." },
+		{ type = "toggle", key = "nearestTurnIn", name = "Nearest Turn In", new = "2.1.50",
+		  desc = "Follows the nearest quest that is ready to hand in, and the next nearest once it is turned in. Needs Route." },
 		{ type = "toggle", key = "showDistance", name = "Distances",
 		  desc = "How far each quest is, beside its name. Needs Route." },
 		-- (2.1.39; the user, 2026-11-10: "Yes, show XP")
@@ -1704,6 +1707,12 @@ local function ApplyLook()
 			AtEdge(header.nearest, header, 4, true)
 		end
 		Near.RefreshToggle()
+		-- (2.1.50) Nearest Turn In's check mark left of the arrow
+		if header.turnIn then
+			header.turnIn:ClearAllPoints()
+			header.turnIn:SetPoint("RIGHT", header.nearest, "LEFT", -6, 0)
+			Near.RefreshTurnIn()
+		end
 	end
 end
 
@@ -2721,11 +2730,62 @@ do
 
 	-- A rebuild's order: `list` (the watch order, the rebuild's own table)
 	-- put in order in place, and kept as Near.order
+	-- (2.1.50; Tereith, Discord: "can you make one called 'Nearest Turn in' ... would be nice to just follow the
+	-- nearest and go next for next", the user's pick G2 of BuildData/output/craft_stable_turnin_sketch) Nearest Turn
+	-- In: while it is on, the followed quest is kept as long as it is ready to hand in; else the nearest one that is
+	-- (by its turn-in's settled distance) is followed -- on the next frame, never inside a rebuild. The game's
+	-- super-track is the follow, as a click on a quest's mark
+	function Near.TurnInOn()
+		return M.db and M.db.nearestTurnIn == true or false
+	end
+
+	local function Ready(id)
+		local ok, complete = pcall(C_QuestLog.IsComplete, id)
+		return ok and Plain(complete) == true
+	end
+
+	local function FollowNow()
+		local id = Near.turnInWant
+		Near.turnInWant = nil
+		if id and C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID then
+			if securecallfunction then
+				securecallfunction(C_SuperTrack.SetSuperTrackedQuestID, id)
+			else
+				pcall(C_SuperTrack.SetSuperTrackedQuestID, id)
+			end
+		end
+	end
+
+	function Near.PickTurnIn(list, followedID)
+		if followedID and followedID ~= 0 and Ready(followedID) then
+			return
+		end
+		-- (the nearest by its turn-in; none with a known place: the first ready one in the tracker's order)
+		local best, bestD, first = nil, nil, nil
+		for i = 1, #list do
+			local id = list[i]
+			local d = key[id]
+			if (d and (bestD == nil or d < bestD)) or not first then
+				if Ready(id) then
+					first = first or id
+					if d and (bestD == nil or d < bestD) then
+						best, bestD = id, d
+					end
+				end
+			end
+		end
+		best = best or first
+		if best and best ~= followedID and Near.turnInWant ~= best then
+			Near.turnInWant = best
+			C_Timer.After(0, FollowNow)
+		end
+	end
+
 	function Near.Order(list, followedID, open)
 		Near.followed, Near.open = followedID, open
 		local R = Route()
 		-- (the Quests section folded: nothing laid, nothing to measure)
-		local live = open and R ~= nil and (Near.On() or Near.ShowDist()) or false
+		local live = open and R ~= nil and (Near.On() or Near.ShowDist() or Near.TurnInOn()) or false
 		Near.live = live
 		if live then
 			Where(R)
@@ -2754,6 +2814,9 @@ do
 					end
 				end
 				Settle(id, Measure(R, id))
+			end
+			if pcont and Near.TurnInOn() then
+				Near.PickTurnIn(list, followedID)
 			end
 		end
 		Near.hadPlace = pcont ~= nil
@@ -3124,6 +3187,64 @@ do
 	function Near.OnToggleClick()
 		M.db.nearestFirst = not Near.On()
 		MelloUI:NotifySettingChanged(M.name, "nearestFirst", M.db.nearestFirst)
+	end
+
+	-- (2.1.50, the pick G2) Nearest Turn In's toggle: the widget set's check mark in the palette's text colour, drawn
+	-- as the arrow beside it is -- dimmed while off, whole while on or under the pointer
+	Near.TURNIN_TIP = "Nearest Turn In"
+	Near.TURNIN_ON = "On: follows the nearest quest that is ready to hand in, then the next nearest once it is turned in. Click to stop."
+	Near.TURNIN_OFF = "Off: click to follow the nearest quest that is ready to hand in, one after another."
+
+	function Near.RefreshTurnIn()
+		local button = header and header.turnIn
+		if not button then
+			return
+		end
+		local tex = button.glyph
+		if not tex then
+			tex = button:CreateTexture(nil, "ARTWORK")
+			tex:SetAllPoints(button)
+			local W = MelloUI.Widgets
+			if type(W) == "table" and W.Glyph then
+				W.Glyph(tex, "check")
+			end
+			if type(W) == "table" and W.Paint then
+				W.Paint(tex, "text", "vertex")
+			end
+			button.glyph = tex
+		end
+		tex:SetAlpha((Near.TurnInOn() or button.lit) and 1 or 0.4)
+	end
+
+	function Near.OnTurnInEnter(button)
+		button.lit = true
+		Near.RefreshTurnIn()
+		local body = Near.TurnInOn() and Near.TURNIN_ON or Near.TURNIN_OFF
+		local line = not Route() and Near.TIP_ROUTE or nil
+		local W = MelloUI.Widgets
+		if type(W) == "table" and W.ShowTooltip then
+			W.ShowTooltip(button, Near.TURNIN_TIP, body, line, "ANCHOR_LEFT")
+			return
+		end
+		GameTooltip:SetOwner(button, "ANCHOR_LEFT")
+		GameTooltip:SetText(Near.TURNIN_TIP)
+		if line then
+			GameTooltip:AddLine(line, nil, nil, nil, true)
+		end
+		GameTooltip:AddLine(body, nil, nil, nil, true)
+		GameTooltip:Show()
+	end
+
+	function Near.OnTurnInLeave(button)
+		GameTooltip:Hide()
+		button.lit = nil
+		Near.RefreshTurnIn()
+	end
+
+	function Near.OnTurnInClick()
+		M.db.nearestTurnIn = not Near.TurnInOn()
+		MelloUI:PlayUISound(M.db.nearestTurnIn and "check_on" or "check_off")
+		MelloUI:NotifySettingChanged(M.name, "nearestTurnIn", M.db.nearestTurnIn)
 	end
 end
 
@@ -4199,6 +4320,14 @@ local function Build()
 	Perf.SetScript(nearest, "OnEnter", Near.OnToggleEnter)
 	Perf.SetScript(nearest, "OnLeave", Near.OnToggleLeave)
 	header.nearest = nearest
+	-- (2.1.50) Nearest Turn In: left of the arrow (placed by ApplyLook, drawn by Near.RefreshTurnIn)
+	local turnIn = CreateFrame("Button", nil, textLayer)
+	turnIn:SetSize(16, 16)
+	turnIn:SetPoint("RIGHT", nearest, "LEFT", -6, 0)
+	Perf.SetScript(turnIn, "OnClick", Near.OnTurnInClick)
+	Perf.SetScript(turnIn, "OnEnter", Near.OnTurnInEnter)
+	Perf.SetScript(turnIn, "OnLeave", Near.OnTurnInLeave)
+	header.turnIn = turnIn
 
 	-- moved like every other window in Edit Layout (its plate: dragged,
 	-- snapped, the wheel scales it -- user, 2026-09-23: "the mousewheel does

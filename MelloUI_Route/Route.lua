@@ -6534,6 +6534,12 @@ end
 -- the character knows its own points. Those are kept as the map opens
 -- (KnownFlightsHere), so a point learned there is usable at once; they are
 -- only ever added to, so once there is one the walk is not needed again.
+-- (2.1.50) the flight points (your side's and the neutral ones): [id] = { cont, x, y (Route's yards), name, links },
+-- read only -- MelloUI's map's flight masters on the minimap (MelloUI_Map/MapLayers.lua)
+function M.Taxis()
+	return taxis
+end
+
 function M:IsTaxiUsable(id)
 	local t = taxis and taxis[id]
 	if not t then
@@ -12794,6 +12800,9 @@ function M:OnEnable(db)
 		mm.ticking = true
 		Perf.SetScript(mm, "OnUpdate", MinimapTick)
 	end
+	-- (2.1.50) a module that wanted the minimap layer before it was made (MelloUI's map's flight masters: the Map module
+	-- comes on first) drawn from now on, not only after the next destination's Redraw
+	M.MinimapShown()
 	eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 	pcall(eventFrame.RegisterEvent, eventFrame, "USER_WAYPOINT_UPDATED")
 	pcall(eventFrame.RegisterEvent, eventFrame, "SUPER_TRACKING_CHANGED")

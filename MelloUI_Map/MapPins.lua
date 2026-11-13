@@ -41,7 +41,11 @@
 --                                    other art)
 --   pins:SetAt(name, key, uiMapID, x, y, spec)  the same at a map's position
 --   pins:Remove(name, key) / pins:Clear(name)
---   pins:Lay()                       the canvas's view laid (canvas.onView)
+--   pins:Lay()                       the canvas's view laid (canvas.onView). (2.1.50; the user: "Adding a
+--                                    safeguard how many icons are shown at each zoom factor might be the
+--                                    solution") at most Pins.Cap(zoom) pins shown (T.CAP): the layers by
+--                                    opts.priority (default their order: the player first, the places' dots
+--                                    last), then the nearest the view's middle -- sorted when the cull box is cut
 --   pins:At(x, y) -> pin             the topmost tip- or click-pin under a canvas point
 --   pin.dx                           (1.2.0) px the pin stands right of its point (marks side by side)
 -- (1.2.0; the user's "all eight" of BuildData/output/animation_previews/map_marks.html) a pin's moments, one-shot on
@@ -115,6 +119,9 @@ local T = {
 	FRAME_EMBLEM = 0.72,   -- (qu-04) an emblem inside a look's own seal picture (Oldschool's frame): this share of it
 	LABEL_GAP = { 4, 14 },   -- px from a pin's edge a name may stand, the near ring first
 	LABEL_PAD = 3,
+	-- (2.1.50) the pins shown at most, by zoom (canvas.z: a continent below 2.5, a zone filling the view about 19):
+	-- { below this zoom, at most }, the last for any zoom past them. Redridge with 16 quests showed 417 at its most
+	CAP = { { 2.5, 300 }, { 10, 500 }, { 25, 700 }, { math.huge, 900 } },
 	NAME_SHADE = 0.6,   -- the soft shade under a name (the zone names')
 }
 Pins.T = T
@@ -132,6 +139,9 @@ function Pins.New(canvas)
 	frame:EnableMouse(false)
 	local self = setmetatable({
 		canvas = canvas, frame = frame, layers = {}, cells = {}, near = {}, shownList = {}, gen = 0, cut = nil,
+		-- (2.1.50) the pins gathered by their layer's priority (buckets, the priorities highest first), last view's
+		-- shown list (the two swapped each view), the view's stamp
+		buckets = {}, priorities = {}, shownPrev = {}, stamp = 0,
 		dirty = true,
 		-- (2.1.0) the pins kept apart: the layers that take part (the highest first), the zoom and the cull box they were
 		-- worked out at, a pin of them set or gone since; the names' boxes shown now
@@ -152,8 +162,15 @@ function Pins:Layer(name, order, opts)
 	f:SetFrameLevel(self.frame:GetFrameLevel() + (order or 1))
 	f:EnableMouse(false)
 	layer = { name = name, frame = f, pins = {}, pool = {}, on = true, minZ = opts.minZ or 0, maxZ = opts.maxZ or math.huge,
-		order = order or 1, merge = opts.merge, nudge = opts.nudge and true or nil }
+		order = order or 1, merge = opts.merge, nudge = opts.nudge and true or nil,
+		priority = opts.priority or order or 1 }
 	self.layers[name] = layer
+	if not self.buckets[layer.priority] then
+		self.buckets[layer.priority] = {}
+		local list = self.priorities
+		list[#list + 1] = layer.priority
+		table.sort(list, function(a, b) return a > b end)
+	end
 	if layer.merge or layer.nudge then
 		local list = self.apartLayers
 		list[#list + 1] = layer
@@ -712,6 +729,16 @@ function Pins:Clear(name)
 end
 
 -- the pins of the cells in the canvas's cull box (again when it is cut again, or a pin was set or went)
+-- (2.1.50) the pins shown at most at this zoom (T.CAP)
+function Pins.Cap(z)
+	for _, band in ipairs(T.CAP) do
+		if (z or 0) < band[1] then
+			return band[2]
+		end
+	end
+	return T.CAP[#T.CAP][2]
+end
+
 local function Gather(self)
 	local c = self.canvas
 	local box = c.box
@@ -721,26 +748,55 @@ local function Gather(self)
 	local gen = self.gen
 	local cx0, cy0 = floor(box[1] / T.CELL), floor(box[2] / T.CELL)
 	local cx1, cy1 = floor(box[3] / T.CELL), floor(box[4] / T.CELL)
+	-- (2.1.50) the pins most wanted first, with no sort: by their layer's priority (a bucket each), and in a bucket
+	-- the nearest the cull box's middle first -- the cells taken in rings out from the middle one (pin.ring: its ring)
+	local mx, my = (box[1] + box[3]) / 2, (box[2] + box[4]) / 2
+	local ccx, ccy = floor(mx / T.CELL), floor(my / T.CELL)
+	local buckets = self.buckets
+	for _, list in pairs(buckets) do
+		wipe(list)
+	end
 	local cells = self.cells
-	for gx = cx0, cx1 do
-		for gy = cy0, cy1 do
-			local cell = cells[gx * 4096 + gy]
-			if cell then
-				for pin in pairs(cell) do
-					near[#near + 1] = pin
-					pin.gen = gen
-				end
+	local R = math.max(ccx - cx0, cx1 - ccx, ccy - cy0, cy1 - ccy)
+	local function Take(gx, gy, r)
+		if gx < cx0 or gx > cx1 or gy < cy0 or gy > cy1 then
+			return
+		end
+		local cell = cells[gx * 4096 + gy]
+		if cell then
+			for pin in pairs(cell) do
+				local list = buckets[pin.layer.priority]
+				list[#list + 1] = pin
+				pin.gen, pin.ringAt = gen, r
 			end
 		end
 	end
-	-- (shown before, gathered no more: hidden)
+	for r = 0, R do
+		if r == 0 then
+			Take(ccx, ccy, 0)
+		else
+			for gx = ccx - r, ccx + r do
+				Take(gx, ccy - r, r)
+				Take(gx, ccy + r, r)
+			end
+			for gy = ccy - r + 1, ccy + r - 1 do
+				Take(ccx - r, gy, r)
+				Take(ccx + r, gy, r)
+			end
+		end
+	end
+	for _, priority in ipairs(self.priorities) do
+		for _, pin in ipairs(buckets[priority]) do
+			near[#near + 1] = pin
+		end
+	end
+	-- (shown before, gathered no more: hidden; the list kept for Lay, which hides the ones it does not lay again)
 	local list = self.shownList
 	for i = #list, 1, -1 do
 		local pin = list[i]
 		if pin.gen ~= gen then
 			HideTex(pin)
 		end
-		list[i] = nil
 	end
 	self.cut, self.dirty = c.cuts, false
 end
@@ -918,14 +974,23 @@ function Pins:Lay()
 	end
 	local x0, y0 = c.cx - c.cw / (2 * k), c.cy - c.ch / (2 * k)
 	local w, h, m = c.cw, c.ch, T.MARGIN
-	local list = self.shownList
+	-- (2.1.50) the shown lists swapped: this view's filled, last view's (prev) for the pins not laid again; the walk
+	-- stops at the zoom's cap -- a view's work at most the cap's and last view's, whatever the pins gathered
+	local prev, list = self.shownList, self.shownPrev
+	self.shownList, self.shownPrev = list, prev
+	local stamp = self.stamp + 1
+	self.stamp = stamp
 	local n, nl = 0, 0
 	local gen = self.apartGen
+	local cap = Pins.Cap(c.z)
 	for _, pin in ipairs(self.near) do
+		if n >= cap then
+			break
+		end
 		local layer = pin.layer
 		local x, y = (pin.wx - x0) * k + (pin.dx or 0) + (pin.nx or 0), (pin.wy - y0) * k + (pin.ny or 0)
-		if layer.on and c.z >= layer.minZ and c.z <= layer.maxZ and x > -m and x < w + m and y > -m and y < h + m
-			and not pin.under then
+		if layer.on and c.z >= layer.minZ and c.z <= layer.maxZ and x > -m and x < w + m and y > -m
+			and y < h + m and not pin.under then
 			local tex = pin.tex
 			local frame = pin.spec.frame
 			if not tex then
@@ -980,12 +1045,21 @@ function Pins:Lay()
 			end
 			n = n + 1
 			list[n] = pin
+			pin.laid = stamp
 		elseif pin.shown then
 			HideTex(pin)
 		end
 	end
 	for i = n + 1, #list do
 		list[i] = nil
+	end
+	-- (last view's shown, not laid in this one: past the cap, or past where the walk stopped)
+	for i = #prev, 1, -1 do
+		local pin = prev[i]
+		if pin.laid ~= stamp and pin.shown then
+			HideTex(pin)
+		end
+		prev[i] = nil
 	end
 	self.count = n
 	self.nLabels = nl

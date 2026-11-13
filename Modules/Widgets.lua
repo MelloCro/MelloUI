@@ -282,7 +282,7 @@ local TEXT = {
 	auctionLabel = "Auction House", outbid = "Outbid: %s", sold = "Sold: %s", won = "Won: %s", expired = "Expired: %s",
 	anItem = "an item", auctionFoot = "Click one: the way to a mailbox",
 	auctionHint = "Click: the way to the nearest mailbox",
-	craftLabel = "Crafting", crafting = "Crafting %d of %d", stop = "Stop", stopDesc = "Stops after this one.",
+	craftLabel = "Crafting", crafting = "Crafting %d of %d", craftLeft = "%s left", stop = "Stop", stopDesc = "Stops after this one.",
 	cdLabel = "Profession Cooldowns", cdReady = "%s ready", cdLine = "%s: the cooldown is over", cdLineItem = "The cooldown is over",
 	bagsLabel = "Bags Almost Full", bags = "Bags: %d free slots", bagsOne = "Bags: 1 free slot", bagsFull = "Bags: full",
 	bagsHint = "Click: the way to the nearest vendor",
@@ -457,6 +457,17 @@ local LOOT = {
 		local r = loot.rolls[1]
 		if r and tip.SetLootRollItem then
 			pcall(tip.SetLootRollItem, tip, r.id)
+		end
+	end,
+	-- (2.1.50, asked on Discord: "CTRL + Click to show how items look on your character in the need and greed loot roll
+	-- window") Ctrl-click: the item tried on in the dressing room, Shift-click: linked in the chat -- the game's own
+	-- modified clicks (HandleModifiedItemClick); a plain click does nothing, as before
+	onClick = function()
+		local r = loot.rolls[1]
+		local link = r and Text((Ask(_G.GetLootRollItemLink, r.id)))
+		local fn = rawget(_G, "HandleModifiedItemClick")
+		if link and fn then
+			pcall(fn, link)
 		end
 	end,
 	actions = {
@@ -1374,6 +1385,18 @@ local CRAFT = {
 		if craft.castAt and craft.castFor then
 			return craft.castAt, craft.castFor
 		end
+	end,
+	-- (2.1.50; TribalInstincts, Discord: "would love it more if it did the math for me for how long the whole stack
+	-- will take", the user's pick A of BuildData/output/craft_stable_turnin_sketch) the time on the right the whole
+	-- stack's: this cast's time left and the casts after it at this one's length (between two casts: the ones to go,
+	-- each at that length). The ring still fills with each cast
+	time = function(_, left)
+		local per = craft.castFor
+		if not per then
+			return left and TEXT.craftLeft:format(Clock(left)) or nil
+		end
+		local after = math.max(0, craft.total - craft.done - 1)
+		return TEXT.craftLeft:format(Clock((left or per) + after * per))
 	end,
 	actions = {
 		{ glyph = "stop", tip = TEXT.stop, desc = TEXT.stopDesc, secure = function() return "/stopcasting" end },

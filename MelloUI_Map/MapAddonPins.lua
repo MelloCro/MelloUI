@@ -128,18 +128,10 @@ end
 -- (2.1.43; the user's pick, 2026-11-11: "Hide Questie's town icons that MelloUI already draws") Questie's townsfolk
 -- (its "manual" icons: one flight master, inn and mailbox a zone, the game's tracking pictures) of a kind this map
 -- draws itself: [the picture's file name] = the map's layer that draws it. Its inns and mailboxes stay (none here)
-local TOWN = { flightmaster = "flights" }
+-- (2.1.50: the core's table and test, MelloUI.QuestieLook.TOWN / Town -- one for this map and the minimap)
+local TOWN = MelloUI.QuestieLook.TOWN
 AddonPins.TOWN = TOWN
-local function Town(icon)
-	local data = rawget(icon, "data")
-	if type(data) ~= "table" or data.Type ~= "manual" then
-		return nil
-	end
-	local path = Text(data.Icon)
-	local name = path and path:match("([^\\/]+)$")
-	name = name and name:gsub("%.%w+$", ""):lower()
-	return name and TOWN[name] or nil
-end
+local Town = MelloUI.QuestieLook.Town
 
 -- what this map shows of the quests already (taken once a pass): MapObjectives' givers shown and objectives laid;
 -- (2.1.39; the user, 2026-11-10: "didnt i say that we provide the look? this way we have lost our own function which i
@@ -214,10 +206,14 @@ local function Restyle(icon, look)
 	end
 end
 
--- Questie's frame as it was (given back: its library shows it on the game's map too)
-local function Unstyle(icon)
+-- Questie's frame as it was (given back: its library shows it on the game's map too); (2.1.50; the user, 2026-11-13:
+-- "im still seeing Questie Icons on the minimap") only while our picture is on it -- Questie's frames are pooled, and
+-- one given back late may be a minimap icon by then, which the core keeps out of sight: its pictures given back, then
+-- the core's rules laid on it again (MelloUI.QuestieLook.Relay); `quiet`: Questie let it go (its Unload), the next use
+-- lays it
+local function Unstyle(icon, quiet)
 	local tex = styled[icon]
-	if not tex then
+	if not (tex and tex:IsShown()) then
 		return
 	end
 	tex:Hide()
@@ -231,7 +227,14 @@ local function Unstyle(icon)
 			part:SetAlpha(1)
 		end
 	end
+	if not quiet then
+		MelloUI.QuestieLook.Relay(icon)
+	end
 end
+-- (2.1.50) Questie let an icon go: our picture goes with it, never onto the frame's next use
+MelloUI.QuestieLook.OnRelease(function(icon)
+	Unstyle(icon, true)
+end)
 AddonPins.Restyled = function(icon)
 	local tex = styled[icon]
 	return tex ~= nil and tex:IsShown() and tex or nil

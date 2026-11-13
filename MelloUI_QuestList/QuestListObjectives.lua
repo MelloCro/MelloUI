@@ -250,7 +250,7 @@ function O.Zoom(map)
 				local stride = O.Stride(g, s)
 				if stride ~= g.stride then
 					g.stride = stride
-					O.painter:Area(g.key, g.shape, g.project, stride)
+					O.painter:Area(g.key, g.shape, g.project, stride, nil, nil, nil, g.role)
 				end
 			end
 		end
@@ -374,7 +374,7 @@ function O.Add(map, mapID)
 		EachOpen(questID, function(index, entry, t)
 			local xs, ys, key = QA.Places(entry)
 			local a = #xs > 0 and Affine(mapID, entry[4], xs[1], ys[1])
-			local shape = a and QA.Shape(key, xs, ys)
+			local shape = a and QA.Ask(key, xs, ys)   -- (2.1.50: built across frames when big; laid again when ready)
 			if shape then
 				local g = byShape[shape]
 				if not g then
@@ -417,7 +417,7 @@ function O.Add(map, mapID)
 		end
 		g.stride = O.Stride(g, scale)
 		O.groups[#O.groups + 1] = g
-		local area = painter:Area(g.key, g.shape, g.project, g.stride)
+		local area = painter:Area(g.key, g.shape, g.project, g.stride, nil, nil, nil, g.role)
 		area.role = g.role
 		QA.Rest(area, nil, DIM)
 		return area
@@ -599,9 +599,7 @@ function O.Hover(b, on)
 		O.painter:Each(function(area)
 			if not area.hold then
 				-- (2.1.43) a joined objective's own area shown lit inside its outline, the outline stepped back (QA.Lit)
-				local a, g = QA.Lit(area, key, DIM)
-				Anim:To(area.frame, "alpha", a, 0.15)
-				Anim:To(area.glow, "alpha", g, 0.15)
+				QA.Fade(area, key, DIM, 0.15)
 			end
 		end)
 	end
@@ -709,6 +707,14 @@ local queued = false
 local function Relay()
 	queued = false
 	QL.RefreshPins()
+end
+
+-- (2.1.50) a quest area built across frames is ready (MelloUI.QuestAreas.Ask): the zone map and the minimap again, as
+-- for the log's change (O.LogChanged is below: looked up when the bus calls)
+if MelloUI.On then
+	MelloUI:On("questareas:ready", function()
+		O.LogChanged()
+	end, "Quest List: quest areas ready")
 end
 
 function O.LogChanged()
@@ -874,7 +880,7 @@ function O.MiniBuild()
 			EachOpen(questID, function(index, entry, t)
 				local xs, ys, key = QA.Places(entry)
 				local a = #xs > 0 and Yards(R, entry[4], xs[1], ys[1])
-				local shape = a and QA.Shape(key, xs, ys)
+				local shape = a and QA.Ask(key, xs, ys)   -- (2.1.50: as the zone map's)
 				if shape then
 					local g = byShape[shape]
 					if not g then
@@ -1247,7 +1253,7 @@ local function MiniArea(painter, g, px, py, reach)
 	local x4, y4 = Back(g.a, px + reach, py + reach)
 	box[1], box[2] = math.min(x1, x2, x3, x4), math.min(y1, y2, y3, y4)
 	box[3], box[4] = math.max(x1, x2, x3, x4), math.max(y1, y2, y3, y4)
-	local area = painter:Area(g.key, g.shape, MiniProject, stride, MiniClip, box, MiniFits)
+	local area = painter:Area(g.key, g.shape, MiniProject, stride, MiniClip, box, MiniFits, g.role)
 	area.role = g.role
 	QA.Rest(area, O.mini.hoverKey, DIM)
 	if g.fresh and area.new then

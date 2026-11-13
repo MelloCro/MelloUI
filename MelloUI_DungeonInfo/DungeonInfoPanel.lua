@@ -425,11 +425,14 @@ local ItemEnter = Perf.Shared("OnEnter on Dungeon Info's item rows", function(se
 end, "script")
 
 local ItemClick = Perf.Shared("OnClick on Dungeon Info's item rows", function(self)
-	-- (Shift-click: the item linked in the chat, as anywhere in the game)
-	if self.item and IsModifiedClick and IsModifiedClick("CHATLINK") then
+	-- (Shift-click: the item linked in the chat, as anywhere in the game; 2.1.50, asked on Discord: "ctrl click it
+	-- there as well to show how it looks on your character" -- Ctrl-click: tried on in the dressing room. The game's
+	-- own modified clicks, HandleModifiedItemClick)
+	if self.item and IsModifiedClick and (IsModifiedClick("CHATLINK") or IsModifiedClick("DRESSUP")) then
 		local ok, _, link = pcall(GetItemInfo, self.item)
-		if ok and link and ChatEdit_InsertLink then
-			ChatEdit_InsertLink(link)
+		local handle = rawget(_G, "HandleModifiedItemClick")
+		if ok and link and handle then
+			pcall(handle, link)
 		end
 	elseif self.inst and self.mine then
 		MelloUI:PlayUISound("click")

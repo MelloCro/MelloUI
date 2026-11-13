@@ -491,6 +491,7 @@ local state = {
 	dirty = true,     -- the bags changed since the last count
 	pass = 0, seen = {},
 	famHave = { d = 0, f = 0, a = 0, b = 0, r = 0 },
+	famBest = {},     -- (2.1.50) [letter] = the highest level of that family's items in the bags
 	have = {}, low = {}, active = {},
 	lowCount = 0, lowMask = -1, version = -1,
 	told = nil, toldActive = nil,
@@ -524,9 +525,12 @@ end
 -- (2.1.18) and the diets': every food of a diet in the bags, whatever its level (a pet's, not the character's)
 local function CountFamilies(level)
 	local F = Families()
-	local famHave, seen = state.famHave, state.seen
+	local famHave, famBest, seen = state.famHave, state.famBest, state.seen
 	for k in pairs(famHave) do
 		famHave[k] = 0
+	end
+	for k in pairs(famBest) do
+		famBest[k] = nil
 	end
 	if not list.families or not C_Container then
 		return
@@ -546,6 +550,9 @@ local function CountFamilies(level)
 					local n = ItemCount(id)
 					if family and F.level[id] <= level and ClassOk(F.classes[id], F.classBit) then
 						famHave[family] = (famHave[family] or 0) + n
+						if n > 0 and F.level[id] > (famBest[family] or -1) then
+							famBest[family] = F.level[id]
+						end
 					end
 					if diet then
 						local key = DIET_KEY[diet]
@@ -1086,6 +1093,10 @@ end
 local plan = {
 	n = 0, merch = {}, entry = {}, count = {}, cost = {},   -- the rows: merchant slot, list line, items, copper
 	total = 0, money = nil, short = nil, anyLow = false,
+	-- (2.1.50) skip[r]: the row's item unticked (shown dimmed, not bought, not in the total); ticked: the rows Buy buys
+	skip = {}, ticked = 0,
+	-- (2.1.50) the lines' items not offered: of a family the bags hold better of (names, the lines' keys)
+	notN = 0, notName = {}, notKey = {}, notText = "",
 }
 local shop = { open = false, snoozed = false, done = false, frame = nil, rows = {} }
 -- (lastRow, lastN, lastCost: the purchase sent last, taken off the count
@@ -1165,6 +1176,58 @@ local function BestFor(key, level)
 	return best
 end
 
+-- (2.1.50; Nixxen, 2026-11-12: "Would love a way to unselect items we do not want to buy in the restock popup", the
+-- user's pick A of BuildData/output/restock_discard_sketch) the shop's items this character unticked: never bought, at
+-- any shop, until ticked again. Kept as text, the item ids (the setting "skip_<guid>", beside the list's)
+-- (one table: the file is near Lua's 200 locals)
+local Pick = { text = false, ids = {}, notKeys = {}, NONE = {} }
+
+function Pick.Key()
+	local key = ListKey()
+	return key and ("skip_" .. key:sub(6)) or nil
+end
+
+function Pick.Skipped(id)
+	local key = Pick.Key()
+	local text = key and M.db and Text(M.db[key]) or ""
+	if text ~= Pick.text then
+		Pick.text = text
+		for k in pairs(Pick.ids) do
+			Pick.ids[k] = nil
+		end
+		for w in text:gmatch("%d+") do
+			Pick.ids[tonumber(w)] = true
+		end
+	end
+	return Pick.ids[id] == true
+end
+
+function Pick.Set(id, on)
+	local key = Pick.Key()
+	if not (key and M.db and id) then
+		return
+	end
+	Pick.Skipped(id)
+	Pick.ids[id] = on and true or nil
+	local parts = {}
+	for k in pairs(Pick.ids) do
+		parts[#parts + 1] = k
+	end
+	table.sort(parts)
+	local text = table.concat(parts, " ")
+	Pick.text = text
+	MelloUI:NotifySettingChanged("Restock", key, text)
+end
+
+-- (2.1.50; Nixxen: "perhaps a level filter on the restock items", the user's pick N1) a drink, food or ammunition line
+-- never offers an item of a lower level than the best of its family already in the bags: left out, and named
+Pick.NO_DOWNGRADE = { d = true, f = true, a = true, b = true }
+
+function Pick.Downgrade(key, j)
+	local best = Pick.NO_DOWNGRADE[key] and state.famBest[key]
+	return best ~= nil and (Families().level[merchant.id[j]] or 0) < best
+end
+
 local function Planned(j)
 	for r = 1, plan.n do
 		if plan.merch[r] == j then
@@ -1178,7 +1241,7 @@ end
 -- back up to the amount in whole purchases, as far as the stock, the bags
 -- and the gold go
 local function Plan()
-	plan.n, plan.total, plan.short, plan.anyLow = 0, 0, nil, false
+	plan.n, plan.total, plan.short, plan.anyLow, plan.ticked, plan.notN = 0, 0, nil, false, 0, 0
 	local money = Money()
 	plan.money = money
 	local level = Level()
@@ -1187,26 +1250,35 @@ local function Plan()
 	for e = 1, list.n do
 		local key, amount, have = list.key[e], list.amount[e], state.have[e] or 0
 		local j = state.active[e] and amount > have and plan.n < SHOP_ROWS and BestFor(key, level) or nil
+		if j and Pick.Downgrade(key, j) then
+			if not Planned(j) and plan.notN < SHOP_ROWS then
+				plan.notN = plan.notN + 1
+				plan.notName[plan.notN], plan.notKey[plan.notN] = m.name[j], key
+			end
+			j = nil
+		end
 		if j and not Planned(j) then
 			local id, bundle, price = m.id[j], m.bundle[j], m.price[j]
+			local skipped = Pick.Skipped(id)
 			local buys = ceil((amount - have) / bundle)
 			local avail = m.avail[j]
 			if avail and avail >= 0 and buys > avail then
 				buys = avail
 			end
 			-- the bags: what fits on this item's stacks and in the free slots
-			-- it may take (ammunition: its quiver or pouch first)
+			-- it may take (ammunition: its quiver or pouch first); an unticked
+			-- row takes neither room nor gold
 			local stack = StackSize(id)
 			local own = ItemCount(id) % stack
 			local room = own > 0 and (stack - own) or 0
 			local letter = F.of[id]
 			local special = letter == "a" and quiver or letter == "b" and pouch or 0
 			local fits = room + (general + special) * stack
-			if buys * bundle > fits then
+			if not skipped and buys * bundle > fits then
 				buys = floor(fits / bundle)
 				plan.short = "bags"
 			end
-			if money and price > 0 then
+			if not skipped and money and price > 0 then
 				local afford = floor((money - plan.total) / price)
 				if buys > afford then
 					buys = max(0, afford)
@@ -1215,20 +1287,24 @@ local function Plan()
 			end
 			if buys > 0 then
 				local items = buys * bundle
-				local slots = ceil(max(0, items - room) / stack)
-				local fromSpecial = min(special, slots)
-				if letter == "a" then
-					quiver = quiver - fromSpecial
-				elseif letter == "b" then
-					pouch = pouch - fromSpecial
-				else
-					fromSpecial = 0
+				if not skipped then
+					local slots = ceil(max(0, items - room) / stack)
+					local fromSpecial = min(special, slots)
+					if letter == "a" then
+						quiver = quiver - fromSpecial
+					elseif letter == "b" then
+						pouch = pouch - fromSpecial
+					else
+						fromSpecial = 0
+					end
+					general = general - (slots - fromSpecial)
+					plan.total = plan.total + buys * price
+					plan.ticked = plan.ticked + 1
 				end
-				general = general - (slots - fromSpecial)
 				local r = plan.n + 1
 				plan.n = r
 				plan.merch[r], plan.entry[r], plan.count[r], plan.cost[r] = j, e, items, buys * price
-				plan.total = plan.total + buys * price
+				plan.skip[r] = skipped
 				if state.low[e] then
 					plan.anyLow = true
 				end
@@ -1243,6 +1319,10 @@ end
 -- its amount and price; 36 + 16 x 26 + 74 = 526 -- 2.1.18: the list holds 40
 -- lines now, a visit plans SHOP_ROWS of them)
 local PANEL_W, PAD, HEAD, ROW_H, FOOT, MAX_ROWS = 320, 12, 36, 26, 74, SHOP_ROWS
+-- (2.1.50, the pick A) a tick box at each row's start: the panel wider by its column, the rest as it was; an unticked
+-- row dimmed; a note a line (the bags or the gold, the ticks', what was not offered), the panel taller by each past one
+Pick.COL, Pick.SIZE, Pick.DIM, Pick.NOTE_H, Pick.NOTE_PX = 24, 23, 0.38, 16, 10
+PANEL_W = PANEL_W + Pick.COL
 local PANEL_AREA = "config"   -- the panel's look: the reskin's, as MelloUI's own windows (Kit.Areas)
 
 local RowEnter = Shared("OnEnter on the Restock shop rows", function(row)
@@ -1272,6 +1352,21 @@ local EditClick = Shared("OnClick on the Restock shop's Edit list", function()
 	M:OpenList()
 end, "script")
 
+-- a row's tick: its item bought or skipped, here and at every shop (the plan again: the total, Buy)
+function Pick.TickGet(tick)
+	local r = tick.row.planRow
+	return r ~= nil and not plan.skip[r]
+end
+
+function Pick.TickSet(tick, on)
+	local r = tick.row.planRow
+	local j = r and plan.merch[r]
+	if j and not buy.on then
+		Pick.Set(merchant.id[j], not on)
+		ShopRefresh()
+	end
+end
+
 local function ShopRow(f, i)
 	local row = CreateFrame("Frame", nil, f)
 	row:SetHeight(ROW_H)
@@ -1282,9 +1377,15 @@ local function ShopRow(f, i)
 		row.band = MelloUI.Look.Solid(row, "BACKGROUND", "mainWindow", 0.85)
 		row.band:SetAllPoints(row)
 	end
+	local tick = nil
+	tick = W.Switch(row, function() return Pick.TickGet(tick) end, function(on) Pick.TickSet(tick, on) end)
+	tick.row = row
+	tick:SetScale(Pick.SIZE / tick:GetWidth())
+	tick:SetPoint("LEFT", row, "LEFT", 1 / tick:GetScale(), 0)
+	row.tick = tick
 	row.icon = row:CreateTexture(nil, "ARTWORK")
 	row.icon:SetSize(20, 20)
-	row.icon:SetPoint("LEFT", row, "LEFT", 4, 0)
+	row.icon:SetPoint("LEFT", row, "LEFT", 4 + Pick.COL, 0)
 	row.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
 	row.price = Style(W.Text(row, "GameFontHighlight", nil, "text"), "fontText", _G.GameFontHighlight)
 	row.price:SetPoint("RIGHT", row, "RIGHT", -4, 0)
@@ -1350,10 +1451,17 @@ local function BuildPanel()
 	f.total:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PAD + 2, 50)
 	f.total:SetPoint("RIGHT", f, "RIGHT", -PAD, 0)
 	f.total:SetWordWrap(false)
-	f.note = Style(W.Text(f, "GameFontHighlight", nil, "text"), "fontText", _G.GameFontHighlight)
-	f.note:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PAD + 2, 34)
-	f.note:SetPoint("RIGHT", f, "RIGHT", -PAD, 0)
-	f.note:SetWordWrap(false)
+	-- (2.1.50) the notes: a line each, the first just over the buttons (f.note), the total over them all; smaller than
+	-- the rows, as the sketch drew them (in the text colour: muted text is never small body text)
+	f.notes = {}
+	for i = 1, 3 do
+		local note = Style(W.Text(f, "GameFontHighlightSmall", nil, "text"), "fontText", _G.GameFontHighlightSmall, Pick.NOTE_PX)
+		note:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PAD + 2, 34 + (i - 1) * Pick.NOTE_H)
+		note:SetPoint("RIGHT", f, "RIGHT", -PAD, 0)
+		note:SetWordWrap(false)
+		f.notes[i] = note
+	end
+	f.note = f.notes[1]
 	f.buy = W.Button(f, "Buy", 90, nil, { onClick = BuyClick, gold = true })
 	f.buy:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PAD, 10)
 	f.notNow = W.Button(f, "Not now", 90, nil, { onClick = NotNowClick })
@@ -1381,6 +1489,31 @@ local function Place(f)
 	end
 end
 
+-- "Not offered: Refreshing Spring Water. You carry better drink." (made again only when what was left out changed)
+function Pick.NotOffered()
+	local notKeys = Pick.notKeys
+	local said = plan.notName[1]
+	local n = 0
+	for i = 1, plan.notN do
+		if i > 1 then
+			said = said .. ", " .. plan.notName[i]
+		end
+		local key, seen = plan.notKey[i], false
+		for x = 1, n do
+			if notKeys[x] == key then
+				seen = true
+			end
+		end
+		if not seen then
+			n = n + 1
+			notKeys[n] = key
+		end
+	end
+	local text = "Not offered: " .. (said or "") .. ". You carry better " .. Words(notKeys, n) .. "."
+	plan.notText = text
+	return text
+end
+
 -- the plan onto the panel (made again only where a text changed)
 local function Fill(f)
 	local shown = min(plan.n, MAX_ROWS)
@@ -1403,13 +1536,64 @@ local function Fill(f)
 				row.costWas = plan.cost[i]
 				row.price:SetText(CoinText(plan.cost[i]))
 			end
+			local a = plan.skip[i] and Pick.DIM or 1
+			if row.alphaWas ~= a then
+				row.alphaWas = a
+				row.icon:SetAlpha(a)
+				row.name:SetAlpha(a)
+				row.amount:SetAlpha(a)
+				row.price:SetAlpha(a)
+			end
+			row.tick:Refresh()
+			row.tick:SetEnabled(not buy.on)
 			row:Show()
 		else
 			row.planRow = nil
 			row:Hide()
 		end
 	end
-	f:SetHeight(HEAD + shown * ROW_H + FOOT)
+	-- the notes: the bags or the gold; the ticks' (a row unticked); what was not offered (N1)
+	local notes, k = f.notes, 0
+	local short = plan.short == "bags" and "Not all of it fits in your bags."
+		or plan.short == "gold" and "Not enough gold for all of it." or nil
+	local unticked = false
+	for i = 1, shown do
+		if plan.skip[i] then
+			unticked = true
+		end
+	end
+	local lines = f.lines or {}
+	f.lines = lines
+	lines[1], lines[2], lines[3] = nil, nil, nil
+	if short then
+		k = k + 1
+		lines[k] = short
+	end
+	if unticked then
+		k = k + 1
+		lines[k] = "Untick to skip it here and at every shop, until you tick it again."
+	end
+	if plan.notN > 0 then
+		k = k + 1
+		lines[k] = Pick.NotOffered()
+	end
+	local n = max(1, k)
+	for i = 1, 3 do
+		-- (read top down: the last line just over the buttons)
+		local text = i <= k and lines[k - i + 1] or ""
+		local note = notes[i]
+		if note.textWas ~= text then
+			note.textWas = text
+			note:SetText(text)
+		end
+	end
+	if f.notesWas ~= n then
+		f.notesWas = n
+		f.total:ClearAllPoints()
+		f.total:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PAD + 2, 50 + (n - 1) * Pick.NOTE_H)
+		f.total:SetPoint("RIGHT", f, "RIGHT", -PAD, 0)
+	end
+	f:SetHeight(HEAD + shown * ROW_H + FOOT + (n - 1) * Pick.NOTE_H)
 	if f.totalWas ~= plan.total or f.moneyWas ~= plan.money then
 		f.totalWas, f.moneyWas = plan.total, plan.money
 		local text = "Total: " .. CoinText(plan.total)
@@ -1418,15 +1602,9 @@ local function Fill(f)
 		end
 		f.total:SetText(text)
 	end
-	local note = plan.short == "bags" and "Not all of it fits in your bags."
-		or plan.short == "gold" and "Not enough gold for all of it." or ""
-	if f.noteWas ~= note then
-		f.noteWas = note
-		f.note:SetText(note)
-	end
 	if not buy.on then
 		f.buy:SetText("Buy")
-		f.buy:SetEnabled(plan.n > 0)
+		f.buy:SetEnabled(plan.ticked > 0)
 	end
 end
 
@@ -1629,12 +1807,12 @@ end
 
 -- the Buy button's click: the only way anything is bought
 BuyStart = function()
-	if buy.on or buy.waiting or plan.n == 0 or not MerchantOpen() then
+	if buy.on or buy.waiting or plan.ticked == 0 or not MerchantOpen() then
 		return
 	end
 	buy.on, buy.row, buy.spent, buy.lastRow = true, 1, 0, nil
 	for r = 1, plan.n do
-		buy.left[r], buy.bought[r] = plan.count[r], 0
+		buy.left[r], buy.bought[r] = (not plan.skip[r]) and plan.count[r] or 0, 0
 	end
 	local f = shop.frame
 	if f then
@@ -1671,7 +1849,9 @@ end
 -- keep. Pet Food (hunters): the six diets, the ones the pet out eats marked
 -- (C_PetInfo.CanPetEatItem on an item of each). Items on the list that no
 -- page lists (one dropped from the bags): Other. An item dropped on the window
--- is added, as before.
+-- is added, as before. (2.1.50, the user's pick K1 of restock_discard_sketch)
+-- Never Discard: what Discard keeps for this character (its right-click), a
+-- tick each to let one go; the rail shows it while something is kept.
 --------------------------------------------------------------------------------
 
 local LIST_W, LIST_H, RAIL_W, LIST_TOP, INTRO_H, LIST_FOOT = 680, 560, 168, 66, 76, 56
@@ -1682,8 +1862,8 @@ local ROW_STEP = W.SLIDER_ROW_HEIGHT or 40
 local NEAR_BELOW, NEAR_ABOVE = 20, 10   -- the levels a page lists around the character's
 local ROW_INDENT = 64                   -- the name's room left of it: the tick and the icon
 local win = { frame = nil, body = nil, rail = nil, pager = nil, page = nil, rows = {}, pools = { stack = {}, ammo = {},
-	item = {} }, kind = nil, shell = nil, lines = {}, scratch = {}, seenKeys = {}, onKeys = {}, offKeys = {},
-	query = nil, queryText = nil }
+	item = {}, keep = {} }, kind = nil, shell = nil, lines = {}, scratch = {}, seenKeys = {}, onKeys = {}, offKeys = {},
+	query = nil, queryText = nil, keepLeft = {} }
 local ListLayout   -- (below)
 
 -- the kinds, in the rail's order: `any` the family lines first, `letters` the data's kinds listed, `diets` the six
@@ -1701,6 +1881,7 @@ local KINDS = {
 	{ key = "poisons", text = "Poisons", letters = "o", icon = 6947, classes = { ROGUE = true } },
 	{ key = "reagents", text = "Reagents", letters = "r", icon = 17020 },
 	{ key = "other", text = "Other", other = true, icon = "Interface\\Icons\\INV_Misc_Bag_08" },
+	{ key = "keep", text = "Never Discard", keep = true, icon = W.IconPath("btn_discard") },
 }
 local KIND_OF = {}
 for _, k in ipairs(KINDS) do
@@ -1714,6 +1895,9 @@ local INTRO = {
 	pet = "A diet counts every food of it in your bags, whichever pet is out.",
 	other = "Items you dropped on the list. Drop any item from your bags on this window to add it.",
 	search = "Results for \"%s\" in every kind. Clear the box to go back.",
+	keep = "Discard never throws these away. Right-click the Discard button to keep what it would throw away; "
+		.. "untick to let one go.",
+	kept = "Kept", keepNote = "Also never thrown away: everything on your Restock list.",
 	onList = "On your list", offList = "More for your level", offSearch = "Not on your list",
 	none = "Nothing of this kind for your level yet.",
 	found = "Nothing found.", prompt = "Search every kind",
@@ -1933,6 +2117,18 @@ end
 local SKILL_KIND = { p = true, e = true, o = true }
 local function KindLines(k, out, all)
 	wipe(out)
+	if k.keep then
+		local discard = MelloUI:GetModule("Discard")
+		if discard and discard.isEnabled and discard.KeepList then
+			discard.KeepList(out)
+			for id in pairs(win.keepLeft) do
+				if not discard.Kept(id) then
+					out[#out + 1] = id
+				end
+			end
+		end
+		return out
+	end
 	local F, level = Families(), Level()
 	for _, f in ipairs(k.any or {}) do
 		out[#out + 1] = f
@@ -1998,6 +2194,7 @@ local RANGES = {
 	stack = { min = 0, max = 100, step = 5 },
 	ammo = { min = 0, max = 2000, step = 200 },
 	item = { min = 0, max = 100, step = 1 },
+	keep = { min = 0, max = 100, step = 1 },   -- (2.1.50: Never Discard's rows, their slider hidden)
 }
 
 local function RangeOf(key)
@@ -2046,8 +2243,23 @@ local function NewListRow(range)
 		end,
 		{ min = RANGES[range].min, max = RANGES[range].max, step = RANGES[range].step, width = 150, skin = win.shell,
 		  zebra = true, indent = ROW_INDENT })
-	row.tick = W.Switch(row, function() return row.key ~= nil and Has(row.key) ~= nil end,
-		function(on) RowTicked(row, on) end)
+	row.tick = W.Switch(row, function()
+		if row.keep then
+			local discard = MelloUI:GetModule("Discard")
+			return row.key ~= nil and discard and discard.Kept and discard.Kept(row.key) or false
+		end
+		return row.key ~= nil and Has(row.key) ~= nil
+	end, function(on)
+		if row.keep then
+			local discard = MelloUI:GetModule("Discard")
+			if row.key ~= nil and discard and discard.Keep then
+				win.keepLeft[row.key] = (not on) or nil
+				discard.Keep(row.key, on)
+			end
+			return
+		end
+		RowTicked(row, on)
+	end)
 	row.tick:SetPoint("LEFT", row, "LEFT", 12, 0)
 	row.icon = row:CreateTexture(nil, "ARTWORK")
 	row.icon:SetSize(24, 24)
@@ -2161,7 +2373,7 @@ ListLayout = function()
 		local seen = win.seenKeys
 		wipe(seen)
 		for _, e in ipairs(entries) do
-			for _, key in ipairs(KindLines(KIND_OF[e.key], win.scratch, true)) do
+			for _, key in ipairs(e.key == "keep" and Pick.NONE or KindLines(KIND_OF[e.key], win.scratch, true)) do
 				if not seen[key] and RowName(key):lower():find(query, 1, true) then
 					seen[key] = true
 					lines[#lines + 1] = key
@@ -2175,15 +2387,16 @@ ListLayout = function()
 	local on, off = win.onKeys, win.offKeys
 	wipe(on)
 	wipe(off)
+	local keepPage = not query and k and k.keep and true or false
 	for _, key in ipairs(lines) do
-		if Has(key) then
+		if keepPage or Has(key) then
 			on[#on + 1] = key
 		else
 			off[#off + 1] = key
 		end
 	end
 	table.sort(on, ByName)
-	local used = { stack = 0, ammo = 0, item = 0 }
+	local used = { stack = 0, ammo = 0, item = 0, keep = 0 }
 	for _, row in ipairs(win.rows) do
 		row.key = nil
 		row:Hide()
@@ -2191,12 +2404,13 @@ ListLayout = function()
 	wipe(win.rows)
 	local y = 0
 	local function Lay(key)
-		local range = RangeOf(key)
+		local range = keepPage and "keep" or RangeOf(key)
 		local pool = win.pools[range]
 		used[range] = used[range] + 1
 		local row = pool[used[range]]
 		if not row then
 			row = NewListRow(range)
+			row.keep = range == "keep"
 			pool[used[range]] = row
 		end
 		row.key = key
@@ -2213,10 +2427,14 @@ ListLayout = function()
 			row.band:SetShown(n % 2 == 1)   -- (a neutral stripe under every other row)
 		end
 		local ticked = Has(key) ~= nil
+		if keepPage then
+			local discard = MelloUI:GetModule("Discard")
+			ticked = discard and discard.Kept and discard.Kept(key) or false
+		end
 		row.tick:SetValue(ticked, true)
 		local slider = W.ControlOf(row)
 		if slider then
-			slider:SetShown(ticked)
+			slider:SetShown(ticked and not keepPage)
 			if ticked and slider.Refresh then
 				slider:Refresh()
 			end
@@ -2240,6 +2458,7 @@ ListLayout = function()
 	win.headOn:Hide()
 	win.headOff:Hide()
 	win.rule:Hide()
+	win.headOn:SetText(keepPage and INTRO.kept or INTRO.onList)
 	if #on > 0 then
 		Heading(win.headOn)
 		for _, key in ipairs(on) do
@@ -2269,14 +2488,40 @@ ListLayout = function()
 		intro = (eaten and ("Your pet eats: " .. eaten .. ". ") or "Call your pet to see what it eats. ") .. INTRO.pet
 	elseif k and k.other then
 		intro = INTRO.other
+	elseif keepPage then
+		intro = INTRO.keep
 	end
 	win.intro:SetText(intro)
+	-- (2.1.50) the kept page's last line: the Restock list is kept too; its footer the kept count
+	if keepPage and not win.keepNote then
+		win.keepNote = Style(W.Text(win.page, "GameFontHighlight", INTRO.keepNote, "text"), "fontText", _G.GameFontHighlight)
+	end
+	if win.keepNote then
+		win.keepNote:SetShown(keepPage)
+		if keepPage then
+			win.keepNote:ClearAllPoints()
+			win.keepNote:SetPoint("TOPLEFT", win.page, "TOPLEFT", 12, -(y + 12))
+			y = y + 12 + 20
+		end
+	end
+	win.reset:SetShown(not keepPage)
 	win.empty:SetText(query and INTRO.found or INTRO.none)
 	win.empty:SetShown(#win.rows == 0)
 	win.pager:SetPageHeight(win.page, max(ROW_STEP, y) + 8)
 	SyncBar()
 	local below = floor(Below() * 100 + 0.5)
-	win.foot:SetText(string.format("%d of %d lines on the list. Reminded below %d%%.", list.n, MAX_ENTRIES, below))
+	if keepPage then
+		local n = 0
+		local discard = MelloUI:GetModule("Discard")
+		for _, key in ipairs(on) do
+			if discard and discard.Kept(key) then
+				n = n + 1
+			end
+		end
+		win.foot:SetText(n == 1 and "1 item never thrown away." or string.format("%d items never thrown away.", n))
+	else
+		win.foot:SetText(string.format("%d of %d lines on the list. Reminded below %d%%.", list.n, MAX_ENTRIES, below))
+	end
 end
 
 -- a count while the window is open: the hints
@@ -2360,12 +2605,14 @@ local SearchEnter = Shared("OnEnterPressed on the Restock List's search", functi
 end, "script")
 local ListHidden = Shared("OnHide on the Restock List", function()
 	Listening(false)
+	wipe(win.keepLeft)   -- (2.1.50: the rows let go on Never Discard gone at the next open)
 end, "script")
 
 -- a kind picked in the rail: its page, at its top (a search let go)
 local RailPicked = Shared("onSelect of the Restock List's kinds", function(_, key)
 	local searching = win.query ~= nil
 	if key ~= win.kind or searching then
+		wipe(win.keepLeft)
 		win.kind = key
 		win.pager:ScrollTo(0, true)
 		if searching then
@@ -2532,6 +2779,36 @@ local function BuildList()
 		body = "Right-click: the standard size.",
 		size = { start = Taller.Start, drag = Taller.Drag, stop = Taller.Stop, reset = Taller.Reset } })
 	return f
+end
+
+-- (2.1.50, Discard's Consumables Too: never what the list keeps) whether a line of this character's list keeps the
+-- item: its own line; its family's (drink, food, ammunition, reagents) for the best level of that family in the bags --
+-- what the line tops up; the older ones may go, as the shop never offers them again (no downgrades, N1) -- or its
+-- diet's (a pet's food, any level)
+function M:Counts(id)
+	if type(id) ~= "number" then
+		return false
+	end
+	Counted()
+	EnsureList()
+	if list.items[id] then
+		return true
+	end
+	local F = Families()
+	local letter = F.of[id]
+	if letter and FAMILY[letter] and Has(letter) and F.level[id] <= Level() and ClassOk(F.classes[id], F.classBit)
+		and F.level[id] >= (state.famBest[letter] or 0) then
+		return true
+	end
+	local diet = F.diet[id]
+	return diet ~= nil and Has(DIET_KEY[diet]) ~= nil
+end
+
+-- (2.1.50) Discard's kept items changed (its right-click, a tick here): the window again while it is open
+function M:KeepChanged()
+	if win.frame and win.frame:IsShown() then
+		ListLayout()
+	end
 end
 
 function M:OpenList()

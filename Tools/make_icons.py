@@ -38,7 +38,9 @@ for n in ("pin_collect", "pin_portal", "pin_dungeon", "pin_raid", "pin_boat", "p
 for n in ("track_todo", "track_handin", "svc_repair", "svc_mail", "svc_inn", "svc_flight", "svc_auction", "svc_bank",
           "svc_classtrainer", "svc_proftrainer", "svc_barber", "svc_vendor",
           # (Batch 30, 2026-10-20: Services' Errands and AddOns groups, the user's "needs its own icon to fit the theme")
-          "svc_errands", "svc_addons"):
+          "svc_errands", "svc_addons",
+          # (2.1.50, Batch 33: the hunters' Stable Master, the user's pick S2 of craft_stable_turnin_sketch)
+          "svc_stable"):
     SET.append(("services", n, n, 64))
 for n in ("chat_general", "chat_combat", "chat_loot", "chat_whispers", "chan_say", "chan_party", "chan_raid",
           "chan_instance", "chan_guild", "chan_yell", "chan_whisper", "chan_emote", "chat_channels", "chat_friends",

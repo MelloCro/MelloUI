@@ -90,7 +90,7 @@ Objectives.T = T
 local S = { canvas = nil, pins = nil, shown = false, asked = false, wait = nil, quests = {}, ready = {}, first = {},
 	-- (1.2.0) the areas: their holder and painter, this lay's groups (by shape), the shapes drawn this session, the
 	-- counts, this lay's and the last lay's marks by objective, the ghosts to drive, the edge's zoom, the cull box's
-	holder = nil, painter = nil, groups = {}, seen = {}, counts = {}, now = {}, last = {}, ghosts = {}, nghost = 0,
+	holder = nil, painter = nil, groups = {}, seen = {}, counts = {}, now = {}, last = {}, ghosts = {}, nghost = 0, order = {},
 	live = false, k = nil, cuts = nil, hoverKey = nil, stride = nil }
 Objectives.S = S
 
@@ -324,7 +324,7 @@ function GuideGroups(goals, byShape, n, QA)
 			end
 			local xs, ys, key = QA.Places(entry)
 			local a = #xs > 0 and Carry(goal.cont, xs[1], ys[1])
-			local shape = a and QA.Shape(key, xs, ys)
+			local shape = a and QA.Ask(key, xs, ys)
 			if shape then
 				local g = byShape[shape]
 				if not g then
@@ -399,6 +399,33 @@ local function Width()
 	return false
 end
 
+-- (2.1.50; Nixxen's report: Redridge with many quests -- the map froze as it opened and drew grey at its middle
+-- zooms; 13 quests made 15,324 lines and dabs in the simulator, each area drawn whole however little of it showed)
+-- only what can show: each area's edge clipped to the cull box (the view and CULL_MARGIN round it, cut again before
+-- the view reaches its side: a stretch with both ends off one side of it left out), each glow dab kept to it. Every
+-- piece in it drawn as before: no stretch longer, no glow left out (the user, 2026-11-12: "I dont want any quality
+-- loss or glow loss"). The areas are in world units, y flipped (the groups' project)
+local function ViewClip(ax, ay, bx, by)
+	local b = S.canvas.box
+	if (ax < b[1] and bx < b[1]) or (ax > b[3] and bx > b[3]) or (-ay < b[2] and -by < b[2]) or (-ay > b[4] and -by > b[4]) then
+		return nil
+	end
+	return ax, ay, bx, by
+end
+
+-- (2.1.50) the areas by their distance from the view's middle (g.dist)
+local function NearFirst(a, b)
+	if a.dist ~= b.dist then
+		return a.dist < b.dist
+	end
+	return a.key < b.key
+end
+
+local function ViewFits(x, y, r)
+	local b = S.canvas.box
+	return x + r >= b[1] and x - r <= b[3] and -y + r >= b[2] and -y - r <= b[4]
+end
+
 -- the areas in the view's cull box (and round it) drawn, the rest let go: at each lay and each new cull box; a new
 -- one (never drawn before this session) drawn round from its marks as it first comes in
 local function Areas()
@@ -413,18 +440,27 @@ local function Areas()
 	if box and box[1] then
 		local QA = MelloUI.QuestAreas
 		-- (2.1.43) the groups and the joined outlines: a joined group's own area kept out of sight but while one of its
-		-- marks is hovered (QA.Lit)
+		-- marks is hovered (QA.Lit). (2.1.50) the nearest the view's middle first: past the painter's cap the farthest
+		-- wait for the view to come nearer
+		local order, mx, my = S.order, c.cx or 0, c.cy or 0
+		wipe(order)
 		for _, list in ipairs({ S.groups, S.joins or NONE }) do
 			for _, g in ipairs(list) do
 				if g.x1 >= box[1] and g.x0 <= box[3] and g.y1 >= box[2] and g.y0 <= box[4] then
-					local area = painter:Area(g.key, g.shape, g.project, stride)
-					area.role = g.role
-					QA.Rest(area, S.hoverKey, T.DIM)
-					if g.fresh then
-						g.fresh = false
-						QA.TraceIn(area, QA.T.TRACE, g.delay or 0)
-					end
+					local dx, dy = (g.x0 + g.x1) / 2 - mx, (g.y0 + g.y1) / 2 - my
+					g.dist = dx * dx + dy * dy
+					order[#order + 1] = g
 				end
+			end
+		end
+		table.sort(order, NearFirst)
+		for _, g in ipairs(order) do
+			local area = painter:Area(g.key, g.shape, g.project, stride, ViewClip, nil, ViewFits, g.role)
+			area.role = g.role
+			QA.Rest(area, S.hoverKey, T.DIM)
+			if g.fresh and not area.capped then
+				g.fresh = false
+				QA.TraceIn(area, QA.T.TRACE, g.delay or 0)
 			end
 		end
 	end
@@ -698,7 +734,8 @@ function Objectives.Lay()
 							local mx, my = At(a, Middle(xs), Middle(ys))
 							S.first[questID] = { mx, my, index }
 						end
-						local shape = a and QA.Shape(key, xs, ys)
+						-- (2.1.50) a shape still being built: laid when it is ready ("questareas:ready")
+						local shape = a and QA.Ask(key, xs, ys)
 						if shape then
 							local g = byShape[shape]
 							if not g then
@@ -894,9 +931,7 @@ function Objectives.Hover(pin)
 		for _, area in pairs(S.painter.areas) do
 			if not area.hold then
 				-- (2.1.43) a joined objective's own area shown lit inside its outline, the outline stepped back (QA.Lit)
-				local a, g = QA.Lit(area, key, T.DIM)
-				Anim:To(area.frame, "alpha", a, 0.15)
-				Anim:To(area.glow, "alpha", g, 0.15)
+				QA.Fade(area, key, T.DIM, 0.15)
 			end
 		end
 	end
@@ -932,14 +967,21 @@ function Objectives.Init(canvas, pins)
 	pins:Layer("objectives", T.ORDER.marks, { minZ = T.MARKS_FROM })
 	-- (2.1.0) the followed guide's goals: its own, touching marks merged with their count
 	pins:Layer("objective_guide", T.ORDER.marks, { minZ = T.MARKS_FROM, merge = T.MARK_SIZE })
-	pins:Layer("objective_dots", T.ORDER.dots, { minZ = T.DOTS_FROM })
+	-- (2.1.50) the places' dots the first to wait past the map's icon cap (MapPins: the most of them, the least needed)
+	pins:Layer("objective_dots", T.ORDER.dots, { minZ = T.DOTS_FROM, priority = 1 })
 	pins:Layer("objective_fx", T.ORDER.fx, { minZ = T.MARKS_FROM })
 	-- (2.1.0) one pin a quest zoomed out, touching ones merged, stepping aside from the docks and the doors (MapPins)
 	pins:Layer("objective_quests", T.ORDER.quests, { maxZ = T.QUESTS_TO, merge = T.QUEST_SIZE, nudge = true })
 	DOT = { icon = T.ICONS .. "map_dot", size = T.DOT_SIZE, sub = 0 }
 	TICK = { icon = T.ICONS .. "map_dot", size = T.MARK_SIZE * 0.7, sub = 4, look = TickLook }
-	-- (2.1.0) the followed guide's goals changed (Route's guide bridges): laid again on the beat, as for the log
+	-- (2.1.0) the followed guide's goals changed (Route's guide bridges): laid again on the beat, as for the log;
+	-- (2.1.50) a quest area built across frames is ready (MelloUI.QuestAreas): the same
 	if MelloUI.On then
+		MelloUI:On("questareas:ready", function()
+			if S.shown then
+				Objectives.Soon()
+			end
+		end, "Map: quest areas ready")
 		MelloUI:On("guidegoals", function()
 			if S.shown then
 				Objectives.Soon()

@@ -197,6 +197,10 @@ local KINDS = {
 	{ key = "banker", label = "Bank", data = "banker", event = "BANKFRAME_OPENED", icon = MelloUI.Widgets.IconPath("svc_bank") },
 	{ key = "classtrainer", label = "Class Trainer", data = "trainer", trainer = "class", icon = MelloUI.Widgets.IconPath("svc_classtrainer") },
 	{ key = "proftrainer", label = "Profession Trainer", data = "trainer", trainer = "profession", icon = MelloUI.Widgets.IconPath("svc_proftrainer") },
+	-- (2.1.50; TribalInstincts: "Add Services button for Stable Masters", the user's pick S2 of
+	-- BuildData/output/craft_stable_turnin_sketch) hunters only (`classes`: ForClass, below)
+	{ key = "stable", label = "Stable Master", data = "stable", event = "PET_STABLE_SHOW", classes = { HUNTER = true },
+	  icon = MelloUI.Widgets.IconPath("svc_stable") },
 	{ key = "barber", label = "Barber", event = "BARBER_SHOP_OPEN", icon = MelloUI.Widgets.IconPath("svc_barber") },
 	{ key = "transmog", label = "Transmogrifier", event = "TRANSMOGRIFY_OPEN", icon = "Interface/Minimap/Tracking/Transmogrifier" },
 }
@@ -267,6 +271,7 @@ local GROUPS = {
 	{ key = "trade", label = "Trade", members = { "auction", "banker", "mailbox" } },
 	{ key = "repair", label = "Repair", members = { "repair" } },
 	{ key = "trainers", label = "Trainers", members = { "classtrainer", "proftrainer" } },
+	{ key = "stable", label = "Stable Master", members = { "stable" }, classes = { HUNTER = true } },   -- (2.1.50)
 	{ key = "looks", label = "Looks", members = { "barber", "transmog" } },
 	{ key = "errands", label = "Errands", errands = true, icon = MelloUI.Widgets.IconPath("svc_errands"),
 	  members = { "restock", "mail", "repairgear", "trainer" } },
@@ -279,6 +284,23 @@ local GROUPS = {
 -- slot.groupButton: its group's button, once made. KIND[key]: every kind,
 -- shown or not (the public calls take keys).
 local slots, slotOf, KIND = {}, {}, {}
+-- (2.1.50) A kind or group for some classes only (`classes`, by the class's token: the Stable Master's, hunters') is
+-- left out for every other class, here at load (a character's class never changes): the bar, its menus and counts
+-- never see it
+do
+	local ok, _, token = pcall(UnitClass, "player")
+	token = ok and Plain(token) or nil
+	local function ForClass(list)
+		for i = #list, 1, -1 do
+			local only = list[i].classes
+			if only and not (type(token) == "string" and only[token]) then
+				table.remove(list, i)
+			end
+		end
+	end
+	ForClass(KINDS)
+	ForClass(GROUPS)
+end
 do
 	for i, kind in ipairs(KINDS) do
 		local s = { kind = kind }
@@ -1216,11 +1238,16 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, a1, a2)
 		Remember("barber", NPCName() or "Barber", NPCSubName())
 	elseif event == "TRANSMOGRIFY_OPEN" then
 		Remember("transmog", NPCName() or "Transmogrifier", NPCSubName())
+	elseif event == "PET_STABLE_SHOW" then
+		-- (2.1.50) a stable master the data lacks (hunters only: the kind is theirs)
+		if KIND.stable then
+			Remember("stable", NPCName(), NPCSubName())
+		end
 	end
 end)
 
 local EVENTS = { "MERCHANT_SHOW", "MAIL_SHOW", "GOSSIP_SHOW", "TAXIMAP_OPENED", "AUCTION_HOUSE_SHOW", "BANKFRAME_OPENED",
-	"TRAINER_SHOW", "BARBER_SHOP_OPEN", "TRANSMOGRIFY_OPEN", "ADDON_LOADED", "PLAYER_ENTERING_WORLD" }
+	"TRAINER_SHOW", "BARBER_SHOP_OPEN", "TRANSMOGRIFY_OPEN", "PET_STABLE_SHOW", "ADDON_LOADED", "PLAYER_ENTERING_WORLD" }
 
 --------------------------------------------------------------------------------
 -- AddOns (0.22.0; a player's request, 2026-10-10, "Minimap bar for addon icons": "Would be awesome to have a minimap
@@ -2465,6 +2492,12 @@ end
 local ICON = 26
 local GAP = 5
 local PER_ROW = 5
+
+-- (2.1.50) All Buttons' rows, PER_ROW to a row: two, three with a hunter's Stable Master (LayoutFit's model asks)
+function M.AllRows()
+	return math.ceil(#KINDS / PER_ROW)
+end
+
 -- Groups' row: a group button, its rim included (UI units; smaller where the
 -- map is too narrow for them all), the least gap between two, and the row's
 -- padding above and under them is GAP
@@ -3025,6 +3058,16 @@ end
 -- when roundIcons is on).
 local RIM_RATIO = 31 / 21   -- medallion outer diameter over icon diameter (rim art: 31 px ring, 21 px opening)
 local KIT_RIM_RATIO = 130 / 79   -- the kit's round rim (buttons/roundslot: 130 px, 79 px opening)
+local RINGED_GROW = 31 / 21 * 0.96   -- (0.25.0) a set icon's size against the icon's: the old rim's reach
+
+-- (2.1.50) a cell against its icon: the kit's rim, Round Icons' rim, or none (the icon the cell); and whether the kit
+-- dresses the bar. LayoutBar and GroupRow
+local function RowRing()
+	if KitOn() then
+		return KIT_RIM_RATIO, true
+	end
+	return (M.db and M.db.roundIcons) and RIM_RATIO or 1, false
+end
 
 --------------------------------------------------------------------------------
 -- The kit look (user's picks SV1 SR2, 2026-09-22, kit_raw/services_catalog.png):
@@ -3188,11 +3231,16 @@ local function GroupRow()
 	if not (mapW and mapW > 0) then
 		mapW = n * cell + (n + 1) * MIN_GAP
 	end
-	cell = math.min(cell, (mapW - (n + 1) * MIN_GAP) / n)
+	-- (2.1.50; the user, 2026-11-13: "Keep a gap", BuildData/output/stable_icon_sketch) MIN_GAP between what is DRAWN,
+	-- not only between the buttons: every group's picture is one of the set's, drawn RINGED_GROW times its icon (the
+	-- cell over RowRing; the Default skin's game ring as large), so with no rim of ours (Round Icons off, no kit) it
+	-- reaches past its cell, and eight (a hunter's, with AddOns) touched. Spread evenly, the pictures `reach` times the
+	-- cell stay MIN_GAP apart while cell + gap - reach x cell >= MIN_GAP: the cell at most (w - (n+1) gap) / ((n+1)
+	-- reach - 1) -- reach 1 is the rule before, (w - (n+1) gap) / n
+	local reach = math.max(1, RINGED_GROW / RowRing())
+	cell = math.min(cell, (mapW - (n + 1) * MIN_GAP) / ((n + 1) * reach - 1))
 	return mapW, cell, (mapW - n * cell) / (n + 1)
 end
-
-local RINGED_GROW = 31 / 21 * 0.96   -- (0.25.0) a set icon's size against the icon's: the old rim's reach
 
 -- Round medallion icons: the icon under a circular mask with the classic
 -- minimap tracking rim around it.
@@ -3229,11 +3277,10 @@ local function LayoutBar()
 		return
 	end
 	local rows = math.ceil(#KINDS / PER_ROW)
-	local kit = KitOn()
 	-- a medallion needs room for its rim; on the kit every icon has one
 	-- (round or square), and the BUTTON is the rim: the icon is fitted
 	-- into its opening
-	local ring = kit and KIT_RIM_RATIO or (M.db.roundIcons and RIM_RATIO or 1)
+	local ring, kit = RowRing()
 	local icon, gap = ICON, GAP
 	local cell = icon * ring
 	local inset = kit and 0 or (cell - icon) / 2

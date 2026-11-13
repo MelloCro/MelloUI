@@ -164,6 +164,7 @@ MelloUI.Icons.AddSet("oldschool", {
 		["Icons\\svc_mail"] = 64,
 		["Icons\\svc_proftrainer"] = 64,
 		["Icons\\svc_repair"] = 64,
+		["Icons\\svc_stable"] = 64,
 		["Icons\\svc_vendor"] = 64,
 		["Icons\\track_handin"] = 64,
 		["Icons\\track_todo"] = 64,

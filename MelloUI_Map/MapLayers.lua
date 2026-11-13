@@ -504,6 +504,127 @@ local function Flights()
 	end
 end
 
+-- (2.1.50; the user, 2026-11-13: "do the flight masters too" -- the rule: the minimap wears what the big map wears)
+-- the flight masters on the minimap as this map lays them: MelloUI's flight picture, one not learned yet paler (FLIGHT,
+-- FLIGHT_NEW), named on hover, exactly while this map's Flight masters layer is on (the Map module on) -- on Route's
+-- minimap layer (Route on: M.WantMinimap), from Route's own flight points (Route.Taxis: your side's and the neutral
+-- ones, in its yards; learned as Route keeps them), the ones inside the minimap. Questie's flight masters there are out
+-- of sight meanwhile (Core/QuestieLook.lua: MiniFlights). Nothing at login but the switch; the list a continent, read
+-- again when a flight master's map closes
+local MINI = { OWNER = "Map flight masters", SIZE = 13 }   -- (PIN_SIZE as the quest marks scale: 14 of their 20)
+T.MINI_FLIGHT = MINI
+local mini = { marks = {}, n = 0, cont = nil, list = nil, want = false, closed = nil }
+Layers.mini = mini
+
+local function MiniFlightLeave(f)
+	if GameTooltip:GetOwner() == f then
+		GameTooltip:Hide()
+	end
+end
+
+local function MiniFlightEnter(f)
+	local P = MelloUI.Look and MelloUI.Look.TipPalette and MelloUI.Look.TipPalette() or MelloUI.Palette
+	local t, m = P.text, P.mutedText
+	local tip = GameTooltip
+	tip:SetOwner(f, "ANCHOR_CURSOR")
+	tip:SetText(f.name or "", t[1], t[2], t[3])
+	if f.new then
+		tip:AddLine(TEXT.notLearned, m[1], m[2], m[3])
+	end
+	tip:Show()
+end
+
+-- a mark (made the first time it is needed): the picture, the mouse's motion only (the minimap keeps its clicks)
+local function MiniFlightMark(i, frame)
+	local f = mini.marks[i]
+	if not f then
+		f = CreateFrame("Frame", nil, frame)
+		f:SetFrameLevel(frame:GetFrameLevel() + 1)   -- (under the quest marks)
+		f.icon = f:CreateTexture(nil, "ARTWORK")
+		f.icon:SetAllPoints(f)
+		W.Icon(f.icon, "svc_flight")
+		if f.SetMouseClickEnabled then
+			f:EnableMouse(true)
+			f:SetMouseClickEnabled(false)
+			f:SetScript("OnEnter", MiniFlightEnter)
+			f:SetScript("OnLeave", MiniFlightLeave)
+			f:SetScript("OnHide", MiniFlightLeave)
+		end
+		mini.marks[i] = f
+	end
+	return f
+end
+
+-- the continent's flight points, each learned or not (once a continent; again after a flight master's map)
+local function MiniFlightList(cont)
+	if mini.cont == cont and mini.list then
+		return mini.list
+	end
+	local R = MelloUI.Route
+	local list = {}
+	local ok, taxis = pcall(R.Taxis)
+	for id, t in pairs(ok and type(taxis) == "table" and taxis or EMPTY) do
+		if t.cont == cont then
+			local okU, known = pcall(R.IsTaxiUsable, R, id)
+			list[#list + 1] = { x = t.x, y = t.y, name = t.name, new = not (okU and known == true) }
+		end
+	end
+	mini.cont, mini.list = cont, list
+	return list
+end
+
+-- Route's minimap layer's tick (cont nil: hidden)
+function Layers.MiniFlightsDraw(cont, round, R, RX, RY)
+	local Route = MelloUI.Route
+	local frame = Route.MinimapFrame()
+	local n = 0
+	if cont and frame then
+		local Offset, m = Route.MinimapOffset, MINI.SIZE / 2
+		for _, p in ipairs(MiniFlightList(cont)) do
+			local gx, gy = Offset(p.x, p.y)
+			local on
+			if round then
+				on = gx * gx + gy * gy <= (R - m) * (R - m)
+			else
+				on = math.abs(gx) <= RX - m and math.abs(gy) <= RY - m
+			end
+			if on then
+				n = n + 1
+				local f = MiniFlightMark(n, frame)
+				f.name, f.new = p.name, p.new
+				local a = p.new and T.NEW_ALPHA or 1
+				if f.atAlpha ~= a then
+					f.atAlpha = a
+					f:SetAlpha(a)
+				end
+				Route.MarkPlace(f, MINI.SIZE, frame, "CENTER", gx, gy)
+			end
+		end
+	end
+	for i = n + 1, mini.n do
+		mini.marks[i]:Hide()
+	end
+	mini.n = n
+end
+
+-- (Map.lua: its OnEnable and OnDisable, its Flight masters switch) the minimap's flight masters wanted or not
+function Layers.MiniFlights(on)
+	local R = MelloUI.Route
+	on = on and type(R) == "table" and type(R.WantMinimap) == "function" and true or false
+	mini.want, mini.list = on, nil
+	if on and not mini.closed then
+		-- (a flight master's map closed: what you learned there)
+		mini.closed = CreateFrame("Frame")
+		mini.closed:RegisterEvent("TAXIMAP_CLOSED")
+		Perf.SetScript(mini.closed, "OnEvent", function()
+			mini.list = nil
+		end)
+	end
+	if type(R) == "table" and type(R.WantMinimap) == "function" then
+		R.WantMinimap(MINI.OWNER, on and Layers.MiniFlightsDraw or nil)
+	end
+end
+
 -- transports: one pin a dock, every way from it on hover (2.1.0: docks that touch, every way from each, the harbour
 -- named once)
 local tipLines = {}

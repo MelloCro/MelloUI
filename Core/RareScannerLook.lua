@@ -16,9 +16,12 @@
 --   RL.Seal(POI, size) -> spec  look B: MelloUI's icon on a plate, the plate's rim the state's (gold, red, steel),
 --                              the whole pin faded once done -- a pin spec of MelloUI_Map's Pins (its seals)
 --   the minimap: RareScanner's own icons (HereBeDragons-Pins, its frames) wear the same plate as they are added
+--   RL.MapLook() -> bool       (2.1.50) the big map wears the seals (MelloUI's map on): the minimap follows it --
+--                              its icons dressed exactly then, RareScanner's own pictures while not (RL.Relay())
 --   its alert button: switched off once (the user: "Yes, switch it off once"; a player who switches it on again keeps
 --                              it); each find it reports (its DisplayMessages) a rare's sighting for Rare Alert
--- Nothing at login while RareScanner is not loaded; with it, two hooks and the one switch at PLAYER_LOGIN.
+-- Nothing at login while RareScanner is not loaded; with it, the minimap's hook as it loads, then one hook, the one
+-- switch and a look at the minimap icons laid already at PLAYER_LOGIN.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -44,10 +47,12 @@ local T = {
 	MINI = 17,            -- on the minimap (the sketch's)
 	CACHE = 10,           -- s a map's POIs are kept before RareScanner is asked again
 	TEMPLATES = { RSEntityPinTemplate = true, RSGroupPinTemplate = true },
+	PARTS = { "Texture", "IconTexture" },   -- (2.1.50) its minimap pin's own pictures (RSMinimapPinTemplate)
 }
 RL.T = T
 
-local S = { got = nil, map = nil, provider = nil, cache = {}, dressed = setmetatable({}, { __mode = "k" }) }
+local S = { got = nil, map = nil, provider = nil, cache = {}, dressed = setmetatable({}, { __mode = "k" }),
+	pins = nil, hooked = nil }   -- (2.1.50: the pins library hooked, and the function the hook made)
 
 local function Loaded()
 	local api = rawget(_G, "C_AddOns")
@@ -240,13 +245,38 @@ function RL.Lines(POI)
 end
 
 --------------------------------------------------------------------------------
--- The minimap: RareScanner's icons wear the plate
+-- The minimap: RareScanner's icons wear the plate -- exactly while the big map wears the seals
 --------------------------------------------------------------------------------
+
+-- (2.1.50; the user, 2026-11-13: "the rare mobs are still default Rarescanner icons, make this a rule, if we use
+-- Certain Icons on the Big Map, i want the Minimap to match the same settings") the big map decides: RareScanner's pins
+-- are MelloUI's seals on MelloUI's map (its module on, RareScanner used with MelloUI), and its minimap icons wear the
+-- plate exactly then; with MelloUI's map off the game's map shows RareScanner's own pictures, and so does the minimap
+function RL.MapLook()
+	if not RL.On() then
+		return false
+	end
+	local ok, on = pcall(MelloUI.IsModuleEnabled, MelloUI, "Map")
+	return ok and on and true or false
+end
 
 local function Ours(icon)
 	local POI = type(icon) == "table" and rawget(icon, "POI")
 	local tex = POI and Text(POI.Texture)
 	return tex and tex:find("RareScanner", 1, true) and POI or nil
+end
+
+-- (2.1.50) what the pin shows now: RareScanner gives a laid pin a new picture without a new POI (its
+-- RefreshEntityState: killed, opened, seen again), so the state is read from the picture on the pin, the kind from
+-- its POI
+local function Shown(icon, POI)
+	local tex = rawget(icon, "Texture")
+	local ok, path = pcall(tex and tex.GetTexture, tex)
+	path = ok and Text(path) or nil
+	if not (path and path:find("RareScanner", 1, true)) then
+		return POI
+	end
+	return { Texture = path, isContainer = POI.isContainer, isEvent = POI.isEvent }
 end
 
 local function Dress(icon, POI)
@@ -288,7 +318,7 @@ local function Dress(icon, POI)
 		t:Show()
 	end
 	-- (its own pictures out of sight, its frame -- its tooltip and click -- as it is)
-	for _, part in ipairs({ "Texture", "IconTexture" }) do
+	for _, part in ipairs(T.PARTS) do
 		local p = rawget(icon, part)
 		if p and p.SetAlpha then
 			p:SetAlpha(0)
@@ -296,13 +326,71 @@ local function Dress(icon, POI)
 	end
 end
 
+-- (2.1.50) RareScanner's own pictures back: the big map shows its own (MelloUI's map off)
+local function Undress(icon)
+	local d = S.dressed[icon]
+	if not (d and d.plate:IsShown()) then
+		return
+	end
+	for _, t in ipairs({ d.plate, d.core, d.emblem }) do
+		t:Hide()
+	end
+	for _, part in ipairs(T.PARTS) do
+		local p = rawget(icon, part)
+		if p and p.SetAlpha then
+			p:SetAlpha(1)
+		end
+	end
+end
+
+local function Lay(icon, POI, look)
+	if look then
+		Dress(icon, Shown(icon, POI))
+	else
+		Undress(icon)
+	end
+end
+
 local OnMinimapIcon = Perf.Shared("HereBeDragons-Pins AddMinimapIconMap (RareScanner's icons dressed)",
 	function(_, _, icon)
 		local POI = Ours(icon)
 		if POI then
-			Dress(icon, POI)
+			Lay(icon, POI, RL.MapLook())
 		end
 	end)
+
+-- (2.1.50) every RareScanner icon on the minimap laid again -- the ones it laid before the hook, and on MelloUI's map
+-- switched on or off -- from the pins library's own list of its minimap icons
+function RL.Relay()
+	local list = S.pins and rawget(S.pins, "minimapPins")
+	if type(list) ~= "table" then
+		return
+	end
+	local look = RL.MapLook()
+	for icon in pairs(list) do
+		local POI = Ours(icon)
+		if POI then
+			Lay(icon, POI, look)
+		end
+	end
+end
+
+-- (2.1.50) the pins library hooked as soon as RareScanner has loaded, before its first minimap pins: it lays them from
+-- a ticker begun as it loads and, in the same zone, never again until the zone changes -- a hook at PLAYER_LOGIN came
+-- after them, and they kept RareScanner's own pictures after a /reload (wowsim, 2026-11-13). Hooked again should a
+-- newer copy of the library, loaded later, have replaced the hooked function
+local function Hook()
+	local LibStub = rawget(_G, "LibStub")
+	local okP, pins = pcall(LibStub, "HereBeDragons-Pins-2.0", true)
+	if not (okP and type(pins) == "table" and type(pins.AddMinimapIconMap) == "function") then
+		return
+	end
+	if S.pins == pins and S.hooked == pins.AddMinimapIconMap then
+		return
+	end
+	hooksecurefunc(pins, "AddMinimapIconMap", OnMinimapIcon)
+	S.pins, S.hooked = pins, pins.AddMinimapIconMap
+end
 
 --------------------------------------------------------------------------------
 -- Its alert: switched off once; its finds Rare Alert's too
@@ -357,17 +445,30 @@ RL.Found = Found
 --------------------------------------------------------------------------------
 
 local login = CreateFrame("Frame")
+login:RegisterEvent("ADDON_LOADED")
 login:RegisterEvent("PLAYER_LOGIN")
-Perf.SetScript(login, "OnEvent", function(self)
-	self:UnregisterEvent("PLAYER_LOGIN")
+Perf.SetScript(login, "OnEvent", function(self, event, addon)
+	if event == "ADDON_LOADED" then
+		-- (2.1.50) the minimap's hook as RareScanner loads (Hook)
+		if addon == "RareScanner" then
+			self:UnregisterEvent("ADDON_LOADED")
+			if RL.On() then
+				Hook()
+			end
+		end
+		return
+	end
+	self:UnregisterAllEvents()
 	if not RL.On() then
 		return
 	end
-	local LibStub = rawget(_G, "LibStub")
-	local okP, pins = pcall(LibStub, "HereBeDragons-Pins-2.0", true)
-	if okP and type(pins) == "table" and type(pins.AddMinimapIconMap) == "function" then
-		hooksecurefunc(pins, "AddMinimapIconMap", OnMinimapIcon)
-	end
+	Hook()
+	RL.Relay()
+	MelloUI:On("module", function(module)
+		if module == "Map" then
+			RL.Relay()
+		end
+	end, "RareScannerLook")
 	local button = rawget(_G, "RARESCANNER_BUTTON")
 	if type(button) == "table" and type(button.DisplayMessages) == "function" then
 		hooksecurefunc(button, "DisplayMessages", function(_, entityID, name)

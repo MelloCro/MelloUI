@@ -1654,7 +1654,8 @@ def build_taxi():
 # ---------------------------------------------------------------------------
 
 # Vanilla NpcFlags bits.
-NPC_FLAGS = {"innkeeper": 128, "banker": 256, "auction": 4096, "repair": 16384, "trainer": 16}
+NPC_FLAGS = {"innkeeper": 128, "banker": 256, "auction": 4096, "repair": 16384, "trainer": 16,
+             "stable": 8192}   # (2.1.50, TribalInstincts' request: the stable masters, Services' button for hunters)
 
 
 def build_services(sql, spawns):
@@ -2508,11 +2509,13 @@ def main():
         for nid in sorted(taxi_nodes):
             name, cont, wx, wy, faction = taxi_nodes[nid]
             fh.write(f"\t\t[{nid}] = {{{lua_str(name)},{cont},{wx},{wy},{faction}}},\n")
-        fh.write("\t},\n\t-- services: kind (repair, mailbox, innkeeper, auction, banker, trainer, vendor), name, subname,\n")
+        fh.write("\t},\n\t-- services: kind (repair, mailbox, innkeeper, auction, banker, trainer, vendor, stable), name, subname,\n")
         fh.write("\t-- side (0 both, 1 Alliance, 2 Horde), continent (world map id), world x, world y;\n")
         fh.write("\t-- a vendor row adds the restock families it sells (d drink, f food, a arrows, b bullets, r class reagents)\n")
         fh.write("\tservices = {\n")
-        for row in services:
+        # (2.1.50) the stable masters, the newest kind, after every older row (in their own order), so the rows of the
+        # files before it stay as they were, a new kind added at the end (v140/data A5)
+        for row in [r for r in services if r[0] != "stable"] + [r for r in services if r[0] == "stable"]:
             kind, name, sub, side, cont, wx, wy = row[:7]
             extra = "".join("," + lua_str(v) for v in row[7:])
             fh.write(f"\t\t{{{lua_str(kind)},{lua_str(name)},{lua_str(sub)},{side},{cont},{wx},{wy}{extra}}},\n")

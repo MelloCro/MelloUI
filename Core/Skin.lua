@@ -636,6 +636,7 @@ local ICON = {
 	svc_bank = { atlas = "Banker", disc = true }, svc_inn = { atlas = "Innkeeper", disc = true },
 	svc_mail = { atlas = "Mailbox", disc = true }, svc_proftrainer = { atlas = "Profession", disc = true },
 	svc_vendor = { atlas = "Food", disc = true }, svc_addons = { atlas = "mechagon-projects", disc = true },
+	svc_stable = { atlas = "StableMaster", disc = true },   -- (2.1.50, the pick S2: the game's horseshoe)
 	-- quest marks and the tracker's
 	track_todo = { atlas = "QuestNormal" }, track_handin = { atlas = "QuestTurnin" }, quest_mark = { atlas = "QuestNormal" },
 	turnin_mark = { atlas = "QuestTurnin" }, ql_notyet = { atlas = "TrivialQuests" },

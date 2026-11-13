@@ -177,6 +177,19 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.50", lines = {
+		"Map: the world map stays smooth however many quests you carry: no pause on open and no grey map at the middle zooms. The quest areas look exactly as before.",
+		"Restock: untick a row of the shopping list to skip that item at every shop, and food, drink and ammo below the best you carry are no longer offered.",
+		"Discard: a new Consumables Too switch beside Discard Button lets food, drink, potions and other consumables go too, never what your Restock list keeps.",
+		"Discard: right-click the Discard button to always keep the item it would throw away. The Restock List's new Never Discard page lets one go again.",
+		"Discard: with AHledger, an item is worth its auction price when higher, and at a vendor Sell skips what sells for clearly more at auction. AHledger has its switch on the Addons page.",
+		"Minimap: shows quest marks, RareScanner's rares and flight masters exactly as MelloUI's map does, without Questie's own icons beside them.",
+		"Widgets: Ctrl+Click the item on the Loot Rolls card to try it on in the dressing room, and Shift+Click to link it in chat. Dungeon Info's loot works the same way.",
+		"Widgets: the Crafting card's time now counts down the whole stack you asked for, not only the item being made.",
+		"Quest Tracker: a new Nearest Turn In check mark beside the Nearest Quest First arrow follows the nearest quest ready to hand in, then the next one. Needs Route.",
+		"Services: hunters get a Stable Master button that leads to the nearest stable master. With Round Icons off, the buttons now keep a small gap instead of touching.",
+		"Chat: a new Fake Link Warning catches links dressed up as something else, like a Community invite written as an item: grey words, a red FAKE LINK, and a click opens nothing.",
+	} },
 	{ version = "2.1.49", lines = {
 		"Gamepad: MelloUI works with a controller in the game's Gamepad mode: its windows, the configurator and their lists are walked with the D-pad, with the controller's buttons shown.",
 		"Gamepad: MelloUI's map opens on its quest list; the left stick moves the map's cursor without walking you, and the D-pad switches between the map and the quests.",
@@ -201,9 +214,6 @@ local CHANGELOG = {
 		"Profiles: a profile now carries your Edit Mode layout too, so the action bars, bags and every frame you moved stand in the same place on every character that uses it.",
 		"Chat: with the Minimal Chat View, the Combat Log tab now shows your fights as they happen, and closing the game's combat log filters no longer dumps old fight lines into it.",
 		"Chat: the Combat Log tab has the game's two filters back as tabs over its lines, My actions and What happened to me?",
-	} },
-	{ version = "2.1.45", lines = {
-		"Custom Sounds: a new Your Sounds tab changes any sound, Level Up and Rare Alert included, to another of MelloUI's, the game's own, none, or a SharedMedia sound, your own files too.",
 	} },
 }
 local LINKS = {

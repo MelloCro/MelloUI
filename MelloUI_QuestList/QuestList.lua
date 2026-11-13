@@ -2583,6 +2583,12 @@ function M:OnEnable(db)
 		-- quests' rows are made (above), when the login's QUEST_LOG_UPDATEs have passed (none of them reached us)
 		QL.Objectives.MiniSoon()
 	end
+	-- (2.1.50) Questie's icons laid again now the Quest List is on (those Questie drew during the wait: its objective
+	-- icons out of sight where the minimap's marks are drawn, Core/QuestieLook.lua)
+	local look = MelloUI.QuestieLook
+	if look and look.RestyleIcons then
+		look.RestyleIcons()
+	end
 end
 
 function M:OnDisable()
@@ -2622,6 +2628,14 @@ end
 -- /qlmap: why pins are (not) on the map shown.
 SLASH_MELLOQUESTMAP1 = "/qlmap"
 SlashCmdList.MELLOQUESTMAP = function(msg)
+	-- (2.1.50) /qlmap questie: Questie's map and minimap icons as MelloUI lays them (Core/QuestieLook.lua's dump)
+	if (msg or ""):lower():match("^%s*questie%s*$") then
+		local look = MelloUI.QuestieLook
+		if look and look.Dump then
+			look.Dump()
+		end
+		return
+	end
 	local data = QL.Data()
 	if type(data) ~= "table" then
 		MelloUI:Print("Quest List: its quest data (Media\\QuestListData.lua) is missing. Reinstall MelloUI from its download, copying every folder.")

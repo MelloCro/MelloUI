@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.1.50
+
+- Map: the world map stays smooth however many quests you carry: no pause on open and no grey map at the middle zooms. The quest areas look exactly as before.
+- Restock: every row of the shopping list at a merchant has a tick box. Untick an item to skip it there and at every shop until you tick it again.
+- Restock: drink, food and ammo of a lower level than the best you carry are no longer offered, and the list says what it left out.
+- Discard: a new Consumables Too switch beside Discard Button lets food, drink, potions and other consumables go too, never what your Restock list keeps.
+- Discard: right-click the Discard button to always keep the item it would throw away. The Restock List's new Never Discard page lets one go again.
+- Discard: with AHledger, an item is worth its auction price when higher, and at a vendor Sell skips what sells for clearly more at auction. AHledger has its switch on the Addons page.
+- Minimap: with Questie, its own quest icons no longer show beside MelloUI's quest marks on the minimap.
+- Minimap: RareScanner's rares, treasures and events wear the same look as on MelloUI's map, also right after a reload. With MelloUI's map off, both show RareScanner's own icons.
+- Minimap: while MelloUI's map shows Flight masters, the minimap shows the same flight master icons, the ones you have not learned paler, and hides Questie's.
+- Widgets: Ctrl+Click the item on the Loot Rolls card to try it on in the dressing room, and Shift+Click to link it in chat. Dungeon Info's loot works the same way.
+- Widgets: the Crafting card's time now counts down the whole stack you asked for, not only the item being made.
+- Quest Tracker: a new Nearest Turn In check mark beside the Nearest Quest First arrow follows the nearest quest ready to hand in, then the next one. Needs Route.
+- Services: hunters get a Stable Master button that leads to the nearest stable master. With Round Icons off, the buttons now keep a small gap instead of touching.
+- Chat: a new Fake Link Warning catches links dressed up as something else, like a Community invite written as an item. Its words turn grey with a red FAKE LINK, a click opens nothing, and pointing at it says what it really is.
+- Chat: clicking a Community invite in the Minimal chat or the whisper window no longer gives an Action Blocked error. It says that invites open from Guild & Communities.
+
 ## 2.1.49
 
 - Gamepad: MelloUI works with a controller in the game's Gamepad mode: its windows, the configurator and their lists are walked with the D-pad, with the controller's buttons shown.

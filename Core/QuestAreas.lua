@@ -33,6 +33,10 @@
 --
 --   QA.Places(entry) -> xs, ys, key   an objective's places (the core's
 --       QuestObjectives entry) and its shape's key (reused tables)
+--   QA.Ask(key, xs, ys) -> shape or nil, waiting   (2.1.50) the shape as a map asks for it: kept, or made now
+--       while it fits this frame's time; a big one is built across frames
+--       (waiting true) and the bus's "questareas:ready" says when, for the
+--       map to lay again (see "Shapes across frames" below)
 --   QA.Shape(key, xs, ys) -> shape or nil
 --       the shape of the places (xs, ys: world yards of one continent),
 --       kept by key (a new set of places: a new key). shape = { loops =
@@ -42,7 +46,7 @@
 --   QA.Painter(parent[, drawLayer[, noGlow]]) -> painter (noGlow: the edge
 --       alone; 2.1.49: the minimap draws the glow too, as the maps do)
 --       painter:Begin()                 a new lay
---       painter:Area(key, shape, project, stride, clip, box, fits) -> area
+--       painter:Area(key, shape, project, stride, clip, box, fits, role) -> area
 --           the shape drawn (made or kept): each loop's every `stride`th
 --           point through project(x, y) -> px, py (the parent's units from
 --           its TOPLEFT, y negative downward), each stretch through clip(ax,
@@ -50,9 +54,16 @@
 --           square), each glow dab through fits(x, y, r) (the same: a dab
 --           off the map left out); a loop whose box misses `box` (the
 --           shape's units) skipped. A place or a size written only when it
---           changed
+--           changed. (2.1.50) role "member" (QA.Join's): asleep while not lit
+--           -- no pieces, its frame hidden -- and drawn from this lay as it
+--           wakes (QA.Rest, QA.Fade)
 --   QA.KIND_ICON[kind]      an objective's mark (the icon set's), one table
 --                           for MelloUI's map and the minimap
+--       painter.cap                     (2.1.50) the pieces (lines and dabs) a lay
+--                                       draws at most (default T.PIECES): an
+--                                       area asked for past it waits asleep
+--                                       (area.capped) for the next lay -- a
+--                                       map asks the nearest first
 --       painter:End()                   the areas not drawn since Begin go
 --                                       (one held for its out-motion stays)
 --       painter:Scale(u)                the parent's units a screen pixel:
@@ -94,6 +105,7 @@ local T = {
 	GLOW_A = 0.25,    -- a dab's alpha (a few overlap: the band about a third)
 	GLOW_REST = 0.65, -- the glow frame's alpha at rest; a lit area's (hovered) 1, a swell's top 1
 	MAX_LINES = 1200, -- one area's lines, and its dabs, at most
+	PIECES = 4000,    -- (2.1.50) a lay's pieces at most (painter.cap)
 	JOIN_NEAR = 120,  -- (2.1.43) yards between two areas' nearest places that draws them as one (two lone circles touch)
 }
 QA.T = T
@@ -109,6 +121,21 @@ local REACH = 2.6 * T.SIGMA   -- a place's hill counted to here (past it under a
 -- The shape
 --------------------------------------------------------------------------------
 
+-- (2.1.50; Nixxen's report, the user: "it shouldnt break even with 100 quests") a shape built for QA.Ask runs on a
+-- coroutine; Pause, in the long loops, hands the rest to the next frame once the slice's time is spent. Outside a
+-- job (QA.Shape called straight) it does nothing
+local slice = { on = false, deadline = 0, tokens = 0, at = nil, frame = nil, used = 0, field = {} }
+-- (the clock read when asked: a world without it -- a test's -- never pauses)
+local function Now()
+	local f = rawget(_G, "debugprofilestop")
+	return f and f() or 0
+end
+local function Pause()
+	if slice.on and Now() > slice.deadline then
+		coroutine.yield()
+	end
+end
+
 -- the field of the places at (x, y)
 local function FieldAt(xs, ys, members, x, y)
 	local s, k = 0, 1 / (2 * T.SIGMA * T.SIGMA)
@@ -122,26 +149,51 @@ local function FieldAt(xs, ys, members, x, y)
 	return s
 end
 
--- the places in parts: single linkage within JOIN
+-- the places in parts: single linkage within JOIN. (2.1.50; Nixxen's report: a map with many quests froze as it
+-- opened) the places sorted into cells JOIN wide first, a place's neighbours looked for only in its cell and the eight
+-- round it -- every pair was compared, millions of tests for a joined outline's thousands of places; the same parts
 local function Parts(xs, ys)
 	local n, seen, out = #xs, {}, {}
-	local j2 = T.JOIN * T.JOIN
+	local J = T.JOIN
+	local j2 = J * J
+	local grid, gxs, gys = {}, {}, {}
+	for i = 1, n do
+		local gx, gy = floor(xs[i] / J), floor(ys[i] / J)
+		gxs[i], gys[i] = gx, gy
+		local key = (gx + 2048) * 4096 + gy + 2048
+		local cell = grid[key]
+		if not cell then
+			cell = {}
+			grid[key] = cell
+		end
+		cell[#cell + 1] = i
+	end
 	for i = 1, n do
 		if not seen[i] then
 			seen[i] = true
 			local part, top, stack = {}, 1, { i }
 			while top > 0 do
+				Pause()
 				local a = stack[top]
 				stack[top] = nil
 				top = top - 1
 				part[#part + 1] = a
-				for b = 1, n do
-					if not seen[b] then
-						local dx, dy = xs[a] - xs[b], ys[a] - ys[b]
-						if dx * dx + dy * dy <= j2 then
-							seen[b] = true
-							top = top + 1
-							stack[top] = b
+				local ax, ay, gx, gy = xs[a], ys[a], gxs[a], gys[a]
+				for ox = -1, 1 do
+					for oy = -1, 1 do
+						local cell = grid[(gx + ox + 2048) * 4096 + gy + oy + 2048]
+						if cell then
+							for c = 1, #cell do
+								local b = cell[c]
+								if not seen[b] then
+									local dx, dy = ax - xs[b], ay - ys[b]
+									if dx * dx + dy * dy <= j2 then
+										seen[b] = true
+										top = top + 1
+										stack[top] = b
+									end
+								end
+							end
 						end
 					end
 				end
@@ -194,6 +246,63 @@ local function Inside(x, y, loop)
 end
 QA.Inside = Inside
 
+-- (2.1.50) Inside for many points on one loop (a shape's marks: each of its places, a joined outline's thousands):
+-- the loop's edges filed by the height band they span, so a point tests only the edges of its band -- the same edges
+-- the whole walk would count (an edge counts where its lower end <= y < its upper end), the same answer
+local BANDS = 64
+local function Bands(loop)
+	local n = #loop
+	local y0, y1 = huge, -huge
+	for i = 2, n, 2 do
+		local y = loop[i]
+		if y < y0 then y0 = y end
+		if y > y1 then y1 = y end
+	end
+	local h = (y1 - y0) / BANDS
+	if h <= 0 then
+		h = 1
+	end
+	local bands = {}
+	local jy = loop[n]
+	for i = 1, n - 1, 2 do
+		local iy = loop[i + 1]
+		local lo, hi = iy, jy
+		if hi < lo then
+			lo, hi = hi, lo
+		end
+		for b = floor((lo - y0) / h), floor((hi - y0) / h) do
+			local list = bands[b]
+			if not list then
+				list = {}
+				bands[b] = list
+			end
+			list[#list + 1] = i
+		end
+		jy = iy
+	end
+	return { y0 = y0, h = h, bands = bands }
+end
+
+local function InsideBands(x, y, loop, B)
+	local list = B.bands[floor((y - B.y0) / B.h)]
+	if not list then
+		return false
+	end
+	local c, n = false, #loop
+	for e = 1, #list do
+		local i = list[e]
+		local ix, iy = loop[i], loop[i + 1]
+		local p = i == 1 and n - 1 or i - 2
+		local jx, jy = loop[p], loop[p + 1]
+		if (iy > y) ~= (jy > y) and x < (jx - ix) * (y - iy) / (jy - iy) + ix then
+			c = not c
+		end
+	end
+	return c
+end
+
+local field, kernX, kernD = {}, {}, {}   -- (2.1.50) Trace's grid and a place's row of factors, kept between traces
+
 -- The level line of one part's field: its loops (flat lists, smoothed). Marching squares on the grid's points
 -- (f > LEVEL inside); a crossing is named by its grid edge (a horizontal edge odd, a vertical even), so the
 -- stretches chain exactly
@@ -208,23 +317,37 @@ local function Trace(xs, ys, members, loops)
 	end
 	x0, y0, x1, y1 = x0 - m, y0 - m, x1 + m, y1 + m
 	local nx, ny = floor((x1 - x0) / cell) + 2, floor((y1 - y0) / cell) + 2
-	local f = {}
+	-- (2.1.50; Nixxen's report: a map with many quests froze as it opened) the grid's field in one table kept between
+	-- traces (a zone-wide part's was a new table of tens of thousands each time), and each place's hill as two rows of
+	-- factors: the Gaussian splits, exp(-(dx^2 + dy^2) k) = exp(-dx^2 k) exp(-dy^2 k), so a place takes some 60 exp()
+	-- calls instead of about a thousand -- the same field, the same edge
+	local f = slice.on and slice.field or field   -- (a job's own: a straight call meanwhile takes the other)
 	for k = 1, nx * ny do
 		f[k] = 0
 	end
 	local k2 = 1 / (2 * T.SIGMA * T.SIGMA)
 	local r = ceil(REACH / cell)
+	local R2 = REACH * REACH
+	local gx, dx2 = kernX, kernD
 	for _, p in ipairs(members) do
+		Pause()
 		local px, py = xs[p], ys[p]
 		local ci, cj = floor((px - x0) / cell + 0.5), floor((py - y0) / cell + 0.5)
+		local i0, i1 = math.max(0, ci - r), math.min(nx - 1, ci + r)
+		for i = i0, i1 do
+			local dx = x0 + i * cell - px
+			local d = dx * dx
+			dx2[i], gx[i] = d, exp(-d * k2)
+		end
 		for j = math.max(0, cj - r), math.min(ny - 1, cj + r) do
 			local dy = y0 + j * cell - py
-			for i = math.max(0, ci - r), math.min(nx - 1, ci + r) do
-				local dx = x0 + i * cell - px
-				local d2 = dx * dx + dy * dy
-				if d2 < REACH * REACH then
-					local k = j * nx + i + 1
-					f[k] = f[k] + exp(-d2 * k2)
+			local dy2 = dy * dy
+			local gy = exp(-dy2 * k2)
+			local row = j * nx + 1
+			for i = i0, i1 do
+				if dx2[i] + dy2 < R2 then
+					local k = row + i
+					f[k] = f[k] + gx[i] * gy
 				end
 			end
 		end
@@ -254,6 +377,7 @@ local function Trace(xs, ys, members, loops)
 		if n1[b] then n2[b] = a else n1[b] = a end
 	end
 	for j = 0, ny - 2 do
+		Pause()
 		for i = 0, nx - 2 do
 			local ftl, ftr = f[j * nx + i + 1], f[j * nx + i + 2]
 			local fbl, fbr = f[(j + 1) * nx + i + 1], f[(j + 1) * nx + i + 2]
@@ -288,6 +412,7 @@ local function Trace(xs, ys, members, loops)
 	-- the loops: each crossing walked once
 	local seen = {}
 	for id in pairs(n1) do
+		Pause()
 		if not seen[id] and n2[id] then
 			local lx, ly = {}, {}
 			local prev, cur = nil, id
@@ -308,10 +433,14 @@ local function Trace(xs, ys, members, loops)
 end
 
 local shapes = {}
+local none = {}   -- (2.1.50) the keys whose places make no shape
 
 function QA.Shape(key, xs, ys)
 	if key ~= nil and shapes[key] then
 		return shapes[key]
+	end
+	if key ~= nil and none[key] then
+		return nil
 	end
 	local n = type(xs) == "table" and #xs or 0
 	if n == 0 or type(ys) ~= "table" or #ys ~= n then
@@ -325,6 +454,9 @@ function QA.Shape(key, xs, ys)
 		Trace(xs, ys, part, loops)
 	end
 	if #loops == 0 then
+		if key ~= nil then
+			none[key] = true   -- (2.1.50: asked again, answered at once)
+		end
 		return nil
 	end
 	local shape = { loops = loops, probe = {}, marks = {}, box = {} }
@@ -339,19 +471,24 @@ function QA.Shape(key, xs, ys)
 		end
 		shape.box[li] = { bx0, by0, bx1, by1 }
 		-- the mark: the places inside, their middle (or the place nearest it)
+		Pause()
+		local B = Bands(loop)
 		local cx, cy, k = 0, 0, 0
 		for i = 1, n do
-			if Inside(xs[i], ys[i], loop) then
+			if i % 64 == 0 then
+				Pause()
+			end
+			if InsideBands(xs[i], ys[i], loop, B) then
 				cx, cy, k = cx + xs[i], cy + ys[i], k + 1
 			end
 		end
 		if k > 0 then
 			cx, cy = cx / k, cy / k
-			if not Inside(cx, cy, loop) then
+			if not InsideBands(cx, cy, loop, B) then
 				local best, bx, by = huge, cx, cy
 				for i = 1, n do
 					local d = (xs[i] - cx) ^ 2 + (ys[i] - cy) ^ 2
-					if d < best and Inside(xs[i], ys[i], loop) then
+					if d < best and InsideBands(xs[i], ys[i], loop, B) then
 						best, bx, by = d, xs[i], ys[i]
 					end
 				end
@@ -401,6 +538,114 @@ function QA.Shape(key, xs, ys)
 	return shape
 end
 
+--------------------------------------------------------------------------------
+-- Shapes across frames (2.1.50; Nixxen's report: Redridge with many quests froze the map as it opened; the user: "it
+-- shouldnt break even with 100 quests, thats how secure the system needs to be"). 25 quests' spread areas and their
+-- joined outline take about a second of Lua, over the client's per-addon burst (LimitedLuaResources: a frame past it
+-- breaks the whole UI), and the work grows with the quests. A map asks with QA.Ask: a shape kept comes back; a new one
+-- is built on a coroutine within a time budget -- SLICE_RATE ms of work a ms of time (150 ms a second, under the
+-- client's 500 ms refill), SLICE_FRAME at most a frame, SLICE_BURST saved up -- so a small one is ready at once and
+-- a big one over a few frames. Each one done, the bus's "questareas:ready" (once a frame) for the maps to lay again
+--------------------------------------------------------------------------------
+
+T.SLICE_RATE, T.SLICE_FRAME, T.SLICE_BURST = 0.15, 20, 40
+slice.tokens = T.SLICE_BURST
+local jobs = { list = {}, pending = {}, driver = nil }
+
+-- a job's turn: as long as the budget lets it; true when it is done
+local function Work(job)
+	local now = Now()
+	if slice.at then
+		slice.tokens = math.min(T.SLICE_BURST, slice.tokens + (now - slice.at) * T.SLICE_RATE)
+	end
+	local clock = rawget(_G, "GetTime")
+	local frame = clock and clock() or 0
+	if slice.frame ~= frame then
+		slice.frame, slice.used = frame, 0
+	end
+	local allow = math.min(slice.tokens, T.SLICE_FRAME - slice.used)
+	slice.at = now
+	if allow <= 0 then
+		return false
+	end
+	slice.on, slice.deadline = true, now + allow
+	local ok, err = coroutine.resume(job.co)
+	slice.on = false
+	local after = Now()
+	slice.tokens = slice.tokens - (after - now)
+	slice.used = slice.used + (after - now)
+	slice.at = after
+	if not ok then
+		none[job.key] = true   -- (a fault: never asked again this session)
+		local handler = geterrorhandler and geterrorhandler()
+		if handler then
+			handler(err)
+		end
+	end
+	return coroutine.status(job.co) == "dead"
+end
+
+local function Drive(driver)
+	local done = false
+	while jobs.list[1] do
+		local job = jobs.list[1]
+		if not Work(job) then
+			break
+		end
+		table.remove(jobs.list, 1)
+		jobs.pending[job.key] = nil
+		done = true
+	end
+	if not jobs.list[1] then
+		driver:Hide()
+	end
+	if done then
+		MelloUI:Fire("questareas:ready")
+	end
+end
+
+function QA.Ask(key, xs, ys)
+	if key == nil then
+		return QA.Shape(nil, xs, ys), false
+	end
+	local shape = shapes[key]
+	if shape then
+		return shape, false
+	end
+	if none[key] then
+		return nil, false
+	end
+	if jobs.pending[key] then
+		return nil, true
+	end
+	-- (its places copied: QA.Places hands out the same tables every call)
+	local cx, cy = {}, {}
+	for i = 1, #xs do
+		cx[i], cy[i] = xs[i], ys[i]
+	end
+	local job = { key = key }
+	job.co = coroutine.create(function()
+		QA.Shape(key, cx, cy)
+	end)
+	-- its turn now when none waits before it: a small shape is ready in this frame
+	if not jobs.list[1] and Work(job) then
+		return shapes[key], false
+	end
+	jobs.pending[key] = job
+	jobs.list[#jobs.list + 1] = job
+	if not jobs.driver then
+		jobs.driver = CreateFrame("Frame")
+		jobs.driver:SetScript("OnUpdate", Drive)
+	end
+	jobs.driver:Show()
+	return nil, true
+end
+
+-- (the tests, the dump) the shapes still being built
+function QA.Waiting()
+	return #jobs.list
+end
+
 -- An objective's places (MelloUI.QuestObjectives' entry: kind, name, alt, continent, x1, y1, x2, y2, ...) as world
 -- yards, and the key of their shape: the continent and the places themselves, so objectives with the same places
 -- (Gold Dust and Large Candle: the same kobolds) share one shape, one area; xs, ys reused until the next call
@@ -433,6 +678,11 @@ end
 --   QA.Lit(area, key, dim) -> frame alpha, glow alpha   an area's look, `key` the hovered mark's area (nil: at rest):
 --                              a member out of sight but while it is the hovered one, the outline lit at rest
 --   QA.Rest(area, key, dim)    that look at once (a lay; an area held for its out-motion left alone)
+--   QA.Fade(area, key, dim, time)   that look over `time` (a hover): a member woken before it fades in, asleep once out
+-- (2.1.50; Nixxen's report, 2026-11-12: Redridge with many quests and Questie -- the map froze as it opened and its
+-- ground went grey at the middle zooms) a member out of sight is asleep: no lines, no dabs, its frame hidden. In the
+-- simulator 17 of Redridge's 21 areas were members drawn whole at alpha 0, about 6,800 of the map's 8,600 pieces. Woken
+-- on its hover it is drawn exactly as before (the user, 2026-11-12: "I dont want any quality loss or glow loss")
 --------------------------------------------------------------------------------
 
 function QA.Keep(g, xs, ys, cont)
@@ -524,7 +774,14 @@ function QA.Join(groups)
 			end
 			table.sort(keys)
 			local key = "join|" .. table.concat(keys, "|")
-			local shape = QA.Shape(key, xs, ys)
+			local shape, waiting = QA.Ask(key, xs, ys)
+			if waiting then
+				-- (2.1.50: its outline still being built -- its members' own areas out of sight meanwhile, as they
+				-- will be; "questareas:ready" lays them again)
+				for _, g in ipairs(list) do
+					g.role = "pending"
+				end
+			end
 			if shape then
 				local join = { key = key, shape = shape, cont = list[1].cont, xs = xs, ys = ys, members = list, role = "join" }
 				for _, g in ipairs(list) do
@@ -539,7 +796,9 @@ end
 
 function QA.Lit(area, key, dim)
 	local role = area.role
-	if role == "member" then
+	if role == "pending" then
+		return 0, T.GLOW_REST   -- (2.1.50: its joined outline still being built)
+	elseif role == "member" then
 		local on = key ~= nil and area.key == key
 		return on and 1 or 0, on and 1 or T.GLOW_REST
 	elseif role == "join" then
@@ -553,8 +812,65 @@ function QA.Rest(area, key, dim)
 		return
 	end
 	local a, g = QA.Lit(area, key, dim)
+	if (area.role == "member" or area.role == "pending") and area.painter then
+		local Anim = MelloUI.Anim
+		if a > 0 then
+			area.lit = true
+			if area.asleep then
+				area.painter:Wake(area)
+			end
+		elseif not (Anim and Anim:IsRunning(area.frame, "alpha")) then
+			-- (one fading out sleeps as its fade ends)
+			area.lit = false
+			if not area.asleep then
+				area.painter:Sleep(area)
+			end
+		end
+	end
 	area.frame:SetAlpha(a)
 	area.glow:SetAlpha(g)
+end
+
+-- the area of a frame (weak: the painters' own frames)
+local areaOf = setmetatable({}, { __mode = "k" })
+
+local function FadedOut(frame)
+	local area = areaOf[frame]
+	if area and (area.role == "member" or area.role == "pending") and not area.lit and not area.asleep and area.painter then
+		area.painter:Sleep(area)
+	end
+end
+
+function QA.Fade(area, key, dim, time)
+	local Anim = MelloUI.Anim
+	if not area or area.hold then
+		return
+	end
+	if not Anim then
+		QA.Rest(area, key, dim)
+		return
+	end
+	local a, g = QA.Lit(area, key, dim)
+	if (area.role == "member" or area.role == "pending") and area.painter then
+		if a > 0 then
+			area.lit = true
+			if area.asleep then
+				area.frame:SetAlpha(0)
+				area.painter:Wake(area)
+			end
+			Anim:To(area.frame, "alpha", a, time)
+		else
+			area.lit = false
+			if area.asleep then
+				area.frame:SetAlpha(0)
+			else
+				Anim:To(area.frame, "alpha", 0, time, nil, FadedOut)
+			end
+		end
+	else
+		Anim:To(area.frame, "alpha", a, time)
+	end
+	Anim:To(area.glow, "alpha", g, time)
 end
 
 -- (the tests, /mellomap dump) the shapes kept
@@ -581,11 +897,12 @@ function QA.Painter(parent, drawLayer, noGlow)
 		dark:Area(parent, "map")
 	end
 	return setmetatable({ parent = parent, layer = drawLayer or "ARTWORK", areas = {}, spare = {}, gen = 0,
-		unit = 1, lines = 0, dabs = 0, noGlow = noGlow and true or false }, Painter)
+		unit = 1, lines = 0, dabs = 0, noGlow = noGlow and true or false, cap = T.PIECES, pieces = 0 }, Painter)
 end
 
 function Painter:Begin()
 	self.gen = self.gen + 1
+	self.pieces = 0
 end
 
 -- a piece's colour (the palette's, by key) and its smoothness: never snapped to the pixel grid (the areas lie on
@@ -682,7 +999,7 @@ local qx, qy = {}, {}
 
 -- fits(x, y, r) (optional; 2.1.49, the minimap): whether a glow dab of radius r at x, y (the parent's units) lies on the
 -- map's round or square; one that does not is left out (the lines are cut by clip, a dab is whole or none)
-function Painter:Area(key, shape, project, stride, clip, box, fits)
+function Painter:Area(key, shape, project, stride, clip, box, fits, role)
 	local area = self.areas[key]
 	if not area then
 		area = table.remove(self.spare)
@@ -696,16 +1013,36 @@ function Painter:Area(key, shape, project, stride, clip, box, fits)
 			edge:SetAllPoints(f)
 			edge:SetFrameLevel(glow:GetFrameLevel() + 1)
 			area = { frame = f, glow = glow, edge = edge, lines = {}, dabs = {}, used = 0, ndabs = 0 }
+			areaOf[f] = area
 		end
 		area.frame:SetAlpha(1)
 		area.glow:SetAlpha(T.GLOW_REST)
 		area.frame:Show()
 		area.key, area.new, area.trace, area.hold = key, true, nil, nil
+		area.role, area.lit, area.asleep = nil, nil, nil
 		self.areas[key] = area
 	else
 		area.new = false
 	end
 	area.gen, area.shape, area.painter = self.gen, shape, self
+	-- (2.1.50) the lay kept (a sleeping member drawn from it as it wakes); a member not lit asleep
+	area.lProject, area.lStride, area.lClip, area.lBox, area.lFits = project, stride, clip, box, fits
+	if role ~= nil then
+		area.role = role
+	end
+	if (area.role == "member" or area.role == "pending") and not area.lit then
+		self:Sleep(area)
+		return area
+	end
+	-- (2.1.50; the user: "it shouldnt break even with 100 quests") the lay's pieces at most `cap`: an area past it
+	-- waits out of sight for a lay with room (Redridge's 16 quests drew about 1,700)
+	if self.cap and self.pieces >= self.cap then
+		area.capped = true
+		self:Sleep(area)
+		return area
+	end
+	area.capped = nil
+	area.asleep = false
 	if not area.frame:IsShown() then
 		area.frame:Show()
 	end
@@ -779,6 +1116,7 @@ function Painter:Area(key, shape, project, stride, clip, box, fits)
 		end
 	end
 	area.used, area.ndabs = used, ndabs
+	self.pieces = self.pieces + used + ndabs
 	Showing(area)
 	return area
 end
@@ -789,6 +1127,20 @@ function Painter:End()
 			QA.Release(self, area)
 		end
 	end
+end
+
+-- (2.1.50) a member out of sight: its pieces hidden, its frame too (kept for its wake)
+function Painter:Sleep(area)
+	area.asleep = true
+	area.used, area.ndabs = 0, 0
+	Showing(area)
+	area.frame:Hide()
+end
+
+-- a sleeping member drawn from its last lay (its hover)
+function Painter:Wake(area)
+	area.lit = true
+	self:Area(area.key, area.shape, area.lProject, area.lStride, area.lClip, area.lBox, area.lFits)
 end
 
 -- an area given back (its pieces hidden, its frames kept for the next one)

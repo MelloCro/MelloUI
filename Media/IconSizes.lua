@@ -181,6 +181,7 @@ ns.MelloUI.IconSizes = {
 		["Textures\\Icons\\svc_mail"] = 64,
 		["Textures\\Icons\\svc_proftrainer"] = 64,
 		["Textures\\Icons\\svc_repair"] = 64,
+		["Textures\\Icons\\svc_stable"] = 64,
 		["Textures\\Icons\\svc_vendor"] = 64,
 		["Textures\\Icons\\track_handin"] = 64,
 		["Textures\\Icons\\track_todo"] = 64,

@@ -5,7 +5,7 @@
 ## Version: 2.1.49
 ## SavedVariables: MelloUIDB, MelloUIVoiceLines, MelloUIRoutes, MelloUIRoadRecords, MelloUIQuestPlaces, MelloUIQuestRecord
 ## SavedVariablesPerCharacter: MelloUIFights, MelloUIQuestOffers, MelloUIChatHistory
-## OptionalDeps: LibSharedMedia-3.0
+## OptionalDeps: LibSharedMedia-3.0, AHledger
 ## X-Category: Interface Enhancements
 ## X-Website: https://github.com/MelloCro/MelloUI
 ## X-License: MIT; route data All Rights Reserved (LICENSE-DATA)
