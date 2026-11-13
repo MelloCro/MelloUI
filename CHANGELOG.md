@@ -17,6 +17,7 @@
 - Services: hunters get a Stable Master button that leads to the nearest stable master. With Round Icons off, the buttons now keep a small gap instead of touching.
 - Chat: a new Fake Link Warning catches links dressed up as something else, like a Community invite written as an item. Its words turn grey with a red FAKE LINK, a click opens nothing, and pointing at it says what it really is.
 - Chat: clicking a Community invite in the Minimal chat or the whisper window no longer gives an Action Blocked error. It says that invites open from Guild & Communities.
+- Languages: more of the bag window, the profiles, Restock, Discard, Services and the copy window is translated (French so far), and switching language no longer doubles a page's heading.
 
 ## 2.1.49
 

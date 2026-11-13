@@ -189,6 +189,7 @@ local CHANGELOG = {
 		"Quest Tracker: a new Nearest Turn In check mark beside the Nearest Quest First arrow follows the nearest quest ready to hand in, then the next one. Needs Route.",
 		"Services: hunters get a Stable Master button that leads to the nearest stable master. With Round Icons off, the buttons now keep a small gap instead of touching.",
 		"Chat: a new Fake Link Warning catches links dressed up as something else, like a Community invite written as an item: grey words, a red FAKE LINK, and a click opens nothing.",
+		"Languages: more of the bag window, the profiles, Restock, Discard, Services and the copy window is translated (French so far), and switching language no longer doubles a page's heading.",
 	} },
 	{ version = "2.1.49", lines = {
 		"Gamepad: MelloUI works with a controller in the game's Gamepad mode: its windows, the configurator and their lists are walked with the D-pad, with the controller's buttons shown.",

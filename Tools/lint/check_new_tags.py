@@ -684,9 +684,10 @@ def tag_after(code, text, target):
 
 
 # (the languages, Core.lua's Languages section: a label passed through the language is the same control -- Lang.F(fmt, ...)
-# names it as string.format(fmt, ...) did, Lang.T(x) as x)
+# names it as string.format(fmt, ...) did, Lang.T(x) as x; (2.1.50, woofix's PR #10) W.Tr(x), Widgets' own name for
+# Lang.T, as x too)
 LANG_F = re.compile(r"\bMelloUI\.Lang\.F\(")
-LANG_T = re.compile(r"^MelloUI\.Lang\.T\((.*)\)$")
+LANG_T = re.compile(r"^(?:MelloUI\.Lang\.T|W\.Tr)\((.*)\)$")
 
 
 def label_of(code, expr):
@@ -765,7 +766,9 @@ def own_rows(root):
                 # a hand-made control: named by the text it is given before the next control, else its field
                 label = target or "?"
                 if target:
-                    st = re.search(re.escape(target).replace(r"\.", r"\s*\.\s*") + r'\s*:\s*SetText\s*\(\s*("(?:[^"\\]|\\.)*")',
+                    # (2.1.50, woofix's PR #10) the text through the language, `x:SetText(W.Tr("Load"))`: the same name
+                    st = re.search(re.escape(target).replace(r"\.", r"\s*\.\s*")
+                                   + r'\s*:\s*SetText\s*\(\s*(?:(?:W\.Tr|MelloUI\.Lang\.T)\s*\(\s*)?("(?:[^"\\]|\\.)*")',
                                    code[end:nxt])
                     if st:
                         label = label_of(code, st.group(1))
