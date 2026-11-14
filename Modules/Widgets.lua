@@ -577,7 +577,7 @@ local function CorpseWay()
 		MelloUI:Announce(TEXT.corpseNoWay, "fail")
 		return
 	end
-	local ok, placed = pcall(R.SetDestinationTo, R, c, TEXT.corpse, true)
+	local ok, placed = pcall(R.SetDestinationTo, R, c, MelloUI.Lang.T(TEXT.corpse), true)
 	if not ok then
 		geterrorhandler()(placed)
 	elseif placed == false then

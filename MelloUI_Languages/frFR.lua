@@ -1838,6 +1838,7 @@ Lang:Add("frFR", {
 	["Tracking %s: %s, %s"] = "Suivi de %s : %s, %s",
 	["Tracking %s, %s away"] = "Suivi de %s, à %s",
 	["Tracking %s"] = "Suivi de %s",
+	["Your corpse"] = "Votre cadavre",
 	[", about %s"] = ", environ %s",
 	["map pin"] = "repère sur la carte",
 	["quest"] = "quête",
