@@ -14,6 +14,7 @@
 - Bags: with the Collapse Arrow on, the backpack stays still when the bag bar folds or opens, and the key ring fits a vertical bag bar.
 - Restock: a new Fill All Ammo Bags switch on the Restock List's Ammo page keeps your quivers and ammo pouches full, with no amounts to set. A single arrow or bullet on the list now goes up to 2000, and the Ammo page lists the best ammunition first.
 - Game Menu: with Polestar, its button and the MelloUI button no longer share a row, so both can be clicked.
+- French: the map, Dungeon Info, the quest tooltips, Services, Restock and Discard are translated now, and the Quest Tracker follows a language change at once.
 
 ## 2.1.51
 
