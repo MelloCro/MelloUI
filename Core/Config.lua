@@ -181,7 +181,7 @@ local CHANGELOG = {
 		"Quests: MelloUI's quests now come from Questie: the map, the minimap, the Quest List and Route to a quest use its quest data. MelloUI ships no quest data of its own any more.",
 		"Quests: without Questie, no quests are shown. The map's layers page and the Quest List say so, with a Get Questie button that opens Questie's card on the Addons page.",
 		"Addons page: Questie's switch is now named MelloUI's look. Off, Questie shows its own icons and tracker, on MelloUI's map too; the Quest List and Route to a quest keep working.",
-		"Quest List: quests that Questie does not know are no longer listed, and the Attunements view is gone.",
+		"Quest List: quests Questie does not know are no longer listed. The Attunements view and the options Include Givers You Are Done With and Hide Grey Quests are gone.",
 		"Route: the First: loot line, for an item a quest needs before its objective, is gone. It came from MelloUI's own quest data.",
 		"Map: with Questie, every quest ! and ? is Questie's, in MelloUI's look, so Questie's quest level options decide which quests show. Point at one for its quests, click it for the route there.",
 		"Installer: a brand-new character now gets the installer once its intro cinematic is over. Before, the game closed it as the intro ended and it was never offered again.",

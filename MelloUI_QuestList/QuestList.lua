@@ -51,7 +51,6 @@ local M = MelloUI:RegisterModule("QuestList", {
 		otherClass = false,
 		levelAbove = 0,
 		mapPins = true,
-		pinCompleted = false,
 		zoneBadges = true,
 		zoneProgress = true,
 		entrancePins = true,
@@ -60,7 +59,6 @@ local M = MelloUI:RegisterModule("QuestList", {
 		objectiveTrackedOnly = false,
 		objectiveMinimap = true,
 		hideGameObjectives = true,
-		hideGrey = false,
 		dungeonSummary = true,
 		tipQuestItems = true,
 		tipTurnIn = true,
@@ -101,10 +99,6 @@ local M = MelloUI:RegisterModule("QuestList", {
 		{ type = "header", name = "Map" },
 		{ type = "toggle", key = "mapPins", name = "Quest Givers On Zone Maps",
 		  desc = "Marks quest givers on the zone map with a ! or ?. Point at one for its quests; click to track it." },
-		{ type = "toggle", key = "pinCompleted", parent = "mapPins", name = "Include Givers You Are Done With",
-		  desc = "Also marks givers whose quests you have all done, with a grey tick." },
-		{ type = "toggle", key = "hideGrey", parent = "mapPins", name = "Hide Grey Quests",
-		  desc = "Leaves quests far below your level off the map." },
 		{ type = "toggle", key = "zoneBadges", name = "Zone Progress On Continent Maps",
 		  desc = "A done / total badge on each zone of the continent map." },
 		{ type = "toggle", key = "zoneProgress", name = "Zone Progress On Zone Maps",
@@ -532,11 +526,6 @@ local STARTER_ICON = { drop = "loot", pickup = "ql_chest", dungeon = "pin_dungeo
 function QL.StarterIconMarkup(key, size)
 	local name = key == "giver" and "quest_mark" or key == "unknown" and "ql_notyet" or STARTER_ICON[key]
 	return name and MelloUI.Widgets.IconMarkup(name, size or 14) or ""
-end
-
--- the set's icon a start shows (false for none): its lift on the maps (MelloUI.Shade:Lift)
-function QL.StarterIconName(key)
-	return STARTER_ICON[key] or false
 end
 
 function QL.SetStarterIcon(tex, key)
@@ -1156,120 +1145,13 @@ local function AfterName(choice)
 	return math.abs(choice)
 end
 
--- (0.19.5) a quest's condition: the data's `cond`, the server's own from
--- classic-db's conditions table (build_quest_list.py condition_tree). True,
--- false, or nil when it cannot be told from here (a place, an instance
--- script, the war effort's supplies, an aura that reads secret): nil never
--- holds a quest back. `depth` bounds a condition that asks whether another
--- quest can be picked up (leaf 19), whose own needs may ask again.
--- Leaves: {8, quest, rev} rewarded, {9, quest, rev} taken, {19, quest}
--- available, {23, item, count, rev} items with the bank (rev: fewer than),
--- {1, spell, rev} the player's aura; {0} cannot tell.
-local function ItemCount(itemID)
-	local f = C_Item and C_Item.GetItemCount or GetItemCount
-	if type(f) ~= "function" then
-		return nil
-	end
-	local ok, n = pcall(f, itemID, true)
-	n = ok and QL.Plain(n)
-	return type(n) == "number" and n or nil
-end
-
-function QL.CondMet(t, depth)
-	local kind = t[1]
-	if kind == "and" or kind == "or" then
-		local unknown = false
-		for i = 2, #t do
-			local v = QL.CondMet(t[i], depth)
-			if v == (kind == "or") then
-				return v
-			elseif v == nil then
-				unknown = true
-			end
-		end
-		if unknown then
-			return nil
-		end
-		return kind == "and"
-	elseif kind == "not" then
-		local v = QL.CondMet(t[2], depth)
-		if v == nil then
-			return nil
-		end
-		return not v
-	elseif kind == 8 or kind == 9 then
-		local v = (kind == 8 and QL.IsCompleted or QL.IsOnQuest)(t[2])
-		return (t[3] == 1) ~= v
-	elseif kind == 23 then
-		local n = ItemCount(t[2])
-		if not n then
-			return nil
-		end
-		local have = n >= math.max(t[3] or 1, 1)
-		return (t[4] == 1) ~= have
-	elseif kind == 1 then
-		if not (C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID) then
-			return nil
-		end
-		local ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, t[2])
-		if not ok or IsSecret(aura) then
-			return nil
-		end
-		return (t[3] == 1) ~= (aura ~= nil)
-	elseif kind == 19 then
-		depth = (depth or 0) + 1
-		local row = RowByID()[t[2]]
-		if not row or depth > 3 then
-			return nil
-		end
-		if TakenOrDone(t[2]) then
-			return false
-		end
-		return QL.Eligible(row) and QL.Unmet(row, depth) == nil
-	end
-	return nil
-end
-
--- The words for a condition not met: its first leaf that is false
-local function CondWhy(t, depth)
-	local kind = t[1]
-	if kind == "and" or kind == "or" then
-		for i = 2, #t do
-			if QL.CondMet(t[i], depth) == false then
-				return CondWhy(t[i], depth)
-			end
-		end
-		return nil
-	elseif kind == "not" then
-		return "Not yet offered to you"
-	end
-	local rev = (kind == 23 and t[4] or t[3]) == 1
-	if kind == 8 or kind == 9 or kind == 19 then
-		local other = RowByID()[t[2]]
-		local title = other and other[QL.F_TITLE] or "another quest"
-		if kind == 8 then
-			return (rev and "Only before you hand in %s" or "After %s"):format(title)
-		elseif kind == 9 then
-			return (rev and "Not while you have %s in your log" or "While you have %s in your log"):format(title)
-		end
-		return ("While %s can still be picked up"):format(title)
-	elseif kind == 23 then
-		local ok, name = pcall(C_Item.GetItemNameByID, t[2])
-		name = ok and QL.Plain(name) or "an item"
-		return (rev and "Only without %s in your bags" or "Needs %s"):format(name)
-	elseif kind == 1 then
-		return "Needs a special effect on you"
-	end
-	return nil
-end
-
 -- For a quest neither taken nor done (the callers have asked already): nil
 -- when the game would offer it now (its level aside: the callers compare
 -- that), else why not: "after", questID, inLog (the quest to do first, or to
 -- have in the log) / "skill", skill line, skill / "rep", faction, standing /
--- "crumb", questID (a breadcrumb leading to it is in the log) / "cond", its
--- words (the server's condition) / "refused", npc id, giver's name (not
--- offered the last time it was asked)
+-- "crumb", questID (a breadcrumb leading to it is in the log) / "refused", npc
+-- id, giver's name (not offered the last time it was asked). (2.1.52: the
+-- server's condition trees, "cond", went with MelloUI's own quest data)
 function QL.Unmet(row, depth)
 	local id = row[QL.F_ID]
 	local needs = Needs()
@@ -1321,11 +1203,6 @@ function QL.Unmet(row, depth)
 	if disabledBy and QL.IsOnQuest(disabledBy) then
 		return "notwhile", disabledBy
 	end
-	-- (0.19.5) the server's condition, where the client can tell
-	local cond = needs.cond and needs.cond[id]
-	if cond and QL.CondMet(cond, depth) == false then
-		return "cond", CondWhy(cond, depth) or "Not yet offered to you"
-	end
 	-- (and what the data cannot know: its giver did not offer it, Offers below)
 	local npc = QL.RefusedBy(id)
 	if npc then
@@ -1369,8 +1246,6 @@ function QL.UnmetText(kind, a, b)
 	elseif kind == "crumb" then
 		local crumb = RowByID()[a]
 		return ("Hand in %s first"):format(crumb and crumb[QL.F_TITLE] or "the quest that leads here")
-	elseif kind == "cond" then
-		return a
 	elseif kind == "spell" then
 		local CS = rawget(_G, "C_Spell")
 		local fn = (type(CS) == "table" and CS.GetSpellName) or rawget(_G, "GetSpellInfo")
@@ -1507,22 +1382,6 @@ function QL.ToggleHidden(row)
 	local on = not QL.IsHidden(id)
 	QL.SetHidden(id, on)
 	HiddenChanged((on and "Hidden: " or "Shown again: ") .. row[QL.F_TITLE], on)
-end
-
--- a giver mark's Alt-click: its quests not taken yet hidden (the map's mark
--- groups a giver's quests: { row, state } each)
-function QL.HideGiver(group)
-	local n, first = 0, nil
-	for _, q in ipairs(group.quests or {}) do
-		if q.state == "available" or q.state == "locked" then
-			QL.SetHidden(q.row[QL.F_ID], true)
-			n = n + 1
-			first = first or q.row[QL.F_TITLE]
-		end
-	end
-	if n > 0 then
-		HiddenChanged(n == 1 and ("Hidden: " .. first) or string.format("Hidden: %d quests from %s", n, group.giver or "this giver"), true)
-	end
 end
 
 --------------------------------------------------------------------------------
@@ -1971,43 +1830,6 @@ function QL.ColourLevel(row)
 		end
 	end
 	return level
-end
-
--- A quest grey for you, as the game colours it (DifficultyUtil.
--- GetRelativeDifficultyColor: more than 4 levels under yours and further
--- than your trivial range, UnitQuestTrivialLevelRange); where the client
--- has no range, QL.DifficultyColor's own steps. A quest of no known level
--- is never grey.
-function QL.IsGrey(row)
-	local level = row[QL.F_LEVEL]
-	local mine = type(UnitEffectiveLevel) == "function" and QL.Plain(UnitEffectiveLevel("player")) or nil
-	if type(mine) ~= "number" then
-		mine = QL.Plain(UnitLevel("player"))
-	end
-	if type(level) ~= "number" or level <= 0 or type(mine) ~= "number" then
-		return false
-	end
-	local below = mine - level
-	if below <= 4 then
-		return false
-	end
-	local range
-	if type(UnitQuestTrivialLevelRange) == "function" then
-		local ok, r = pcall(UnitQuestTrivialLevelRange, "player")
-		range = ok and QL.Plain(r) or nil
-	end
-	if type(range) == "number" then
-		return below > range
-	end
-	local trivial = mine >= 40 and 12 or mine >= 30 and 9 or mine >= 20 and 7 or mine >= 10 and 6 or 5
-	return below >= trivial
-end
-
--- (0.19.5, the user's Hide Grey Quests; Questie hides them by default) a
--- quest not taken yet that the map leaves out for being grey -- never one in
--- the log, never the tracked one
-function QL.GreyHidden(row, state)
-	return state == "available" and M.db.hideGrey == true and QL.trackedQuestID ~= row[QL.F_ID] and QL.IsGrey(row)
 end
 
 function QL.DifficultyColor(level)

@@ -1359,8 +1359,6 @@ function L.Define(R, Link)
 	R("QualityOfLife", "Quests", "Behaviour", "QuestAuto.skipKey", { when = { any = { { key = "QuestAuto.accept", value = true },
 		{ key = "QuestAuto.handIn", value = true } }, line = "Only with Auto Accept or Auto Hand In" } })
 	R("QuestList", "Map", "General", "QuestList.mapPins")
-	R("QuestList", "Map", "General", "QuestList.pinCompleted")
-	R("QuestList", "Map", "General", "QuestList.hideGrey")
 	R("QuestList", "Map", "General", "QuestList.zoneBadges")
 	R("QuestList", "Map", "General", "QuestList.zoneProgress")
 	R("QuestList", "Map", "General", "QuestList.entrancePins")

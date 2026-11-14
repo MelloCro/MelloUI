@@ -53,7 +53,6 @@
 --
 --   Layers.Init(canvas, pins)   the layers made (the window's first open)
 --   Layers.Tick(elapsed)        the window's OnUpdate
---   Layers.LogChanged()         the quest log changed: the givers looked at on the next beat (2.1.7)
 --   Layers.GossipChanged()      the game set its directions marker or took it away
 --   Layers.FindMe()             a glide to the player
 --   Layers.Group(pins, map, seen) (2.1.17) the group on another canvas's pins (a battleground's own map)
@@ -65,7 +64,6 @@ local Perf = MelloUI.Perf:Scope("MelloUI_Map (MapLayers)")
 local Finite = MelloUI.Safe.Finite
 local W = MelloUI.Widgets
 local Text = MelloUI.Safe.Text
-local Pins = ns.Pins   -- (Pins.Lift: the icon set's glow under a pin)
 local pairs, ipairs, pcall, type, tostring = pairs, ipairs, pcall, type, tostring
 local wipe = wipe
 
@@ -86,12 +84,10 @@ local T = {
 	GOSSIP_ICON = "chat_general",   -- a guard's directions: the speech bubble (the game's gossip icon in MapAddonPins too)
 	MEMBER_SIZE = 16,        -- a party member's class pin (the user, 2026-10-20: "in the theme", "enough just in the color")
 	PIN_GOAL = "goal_pin",   -- the game's waypoint, while Route is off
-	QUESTS_FROM = 2.5,       -- the quest givers from a zone's zoom on (a continent's: thousands)
 	NAMES_FROM = 1.15,       -- (M2) the zone names from a continent's zoom ...
 	NAMES_TO = 6.5,          -- ... to a zone's (closer, the zone's own art names its places)
 	NAME_SHADE = 0.6,        -- the soft shade under a name
 	NAME_GAP = 6,            -- px kept free round a name
-	GIVER_SIZE = 20,
 	PLACES_FROM = 1.15,      -- the flight masters (2.1.0: and the towns) from a continent's zoom on (the world's: too many)
 	PIN_SIZE = 18,
 	-- (2.1.0, qu-01: the user's pick W1, "every kind at 16 px") the docks and the doors from the world's zoom on; pins of
@@ -125,9 +121,7 @@ local T = {
 }
 Layers.T = T
 
-local S = { canvas = nil, pins = nil, wait = 0, seen = {}, docks = {}, built = false,
-	readySeen = setmetatable({}, { __mode = "k" }),   -- (1.2.0: the givers' ready moments shown, by quest row)
-	logSums = {} }   -- (2.1.7: the quest log's sums the givers were laid from, QL.QuestsMoved)
+local S = { canvas = nil, pins = nil, wait = 0, seen = {}, docks = {}, built = false }
 local EMPTY = {}
 local floor = math.floor
 
@@ -298,125 +292,6 @@ local function Group(mapID, pins, seen)
 			seen[key] = nil
 		end
 	end
-end
-
---------------------------------------------------------------------------------
--- The quest givers: the Quest List's own groups (QL.GiverGroups: its filters,
--- its states, its order), picture (QL.GiverIcon) and tooltip (QL.MarkTip),
--- for every zone and city at once; from a zone's zoom on. Made when the
--- window opens and again when the Quest List lays its own marks again (its
--- RefreshPins: a quest taken, done, its data placed)
--- (2.1.7; Sikotic, 2026-11-05: "after finish a quest the map still show the icon to deliver" -- what asks RefreshPins
--- after a change of the log hangs on the game's own world map being shown, and this map stands in for it) and when the
--- quest log moved: looked at as the window opens and, while it shows, on the beat after a log event (LogMoved)
---------------------------------------------------------------------------------
-
-local function QuestList()
-	local QL = rawget(MelloUI, "QuestList")
-	return (type(QL) == "table" and QL.GiverGroups and QL.GiverIcon and QL.MarkTip) and QL or nil
-end
-
-local function GiverLook(tex, pin)
-	local QL = QuestList()
-	if QL then
-		pcall(QL.GiverIcon, tex, pin.data)
-		-- (a quest begun by an item: the set's starter icon, lifted; the game's quest marks none)
-		local item = type(pin.data) == "table" and pin.data.item
-		local name = item and QL.StarterIconName and select(2, pcall(QL.StarterIconName, item)) or false
-		Pins.Lift(tex, type(name) == "string" and name or false, T.GIVER_SIZE)
-	end
-end
-
-local function GiverTip(tip, pin)
-	local QL = QuestList()
-	if QL then
-		pcall(QL.MarkTip, tip, "giver", pin.data, false)
-	end
-end
-
--- (after M4) a giver's click, as on the game's map (QuestListMap's MarkClick): a waypoint there (Route's), again
--- on a tracked one: cleared; Alt: its quests hidden for this character; the givers laid again after
-local function GiverClick(pin, button)
-	local QL, g = QuestList(), pin.data
-	if button ~= "LeftButton" or not (QL and type(g) == "table" and g.quests and g.quests[1]) then
-		return
-	end
-	if IsAltKeyDown() and QL.HideGiver then
-		QL.HideGiver(g)
-	elseif g.tracked and QL.ClearWaypoint then
-		QL.ClearWaypoint()
-		MelloUI:PlayUISound("waypoint_clear")
-	elseif QL.SetWaypoint then
-		local set, chimed = QL.SetWaypoint(g.quests[1].row, g.quests[1].state == "ready")
-		if set and not chimed then
-			MelloUI:PlayUISound("waypoint_set")
-		end
-	end
-	-- (the givers again at once: the tracked one's look follows the waypoint)
-	Layers.Quests()
-	S.pins:Lay()
-end
-
-local GIVER = { size = T.GIVER_SIZE, look = GiverLook, fillTip = GiverTip, click = GiverClick, sub = 2 }
-
--- what the givers show of the quests moved since they were laid: the Quest List's sums (the log's quests, the ready
--- ones, the ones done, the level, the pinned quest); a log it cannot read whole (nil: a folded header) counts as moved
-local function LogMoved(QL)
-	return type(QL.QuestsMoved) == "function" and QL.QuestsMoved(S.logSums) ~= false
-end
-
-function Layers.Quests()
-	local pins, QL = S.pins, QuestList()
-	if not pins then
-		return
-	end
-	S.questsDirty = false
-	S.questsBuilt = QL ~= nil
-	pins:Clear("quests")
-	if not QL then
-		return
-	end
-	LogMoved(QL)   -- (the sums these are laid from)
-	local t0 = debugprofilestop()
-	for _, p in ipairs(S.canvas.places) do
-		if p.kind == "zone" or p.kind == "city" then
-			local ok, groups = pcall(QL.GiverGroups, p.id, p.name)
-			for i, g in ipairs(ok and type(groups) == "table" and groups or EMPTY) do
-				local pin = pins:SetAt("quests", p.id * 1000 + i, p.id, g.x, g.y, GIVER)
-				if pin then
-					pin.data = g
-					-- (1.2.0) a quest newly ready to hand in: its "?" pops in with a ring of light (MapPins' moment)
-					if QL.ReadyNew and QL.ReadyNew(g, S.readySeen) then
-						pin.moment = { pop = 0, ring = true, at = GetTime() }
-					end
-				end
-			end
-		end
-	end
-	S.questsMs = debugprofilestop() - t0
-	-- (2.1.4) other addons' pins of these quests looked at again (Questie's: nothing twice)
-	local AP = ns.AddonPins
-	if AP and AP.Recheck then
-		AP.Recheck()
-	end
-end
-
--- the Quest List laid its marks again: the givers again now if the window shows, else at its next open
-local function QuestsChanged()
-	S.questsDirty = true
-	if S.shown then
-		Layers.Quests()
-		S.pins:Lay()
-	end
-end
-
-local function WatchQuests()
-	local QL = QuestList()
-	if S.questWatch or not (QL and type(QL.RefreshPins) == "function") then
-		return
-	end
-	S.questWatch = true
-	Perf.hooksecurefunc(QL, "RefreshPins", QuestsChanged)
 end
 
 --------------------------------------------------------------------------------
@@ -998,13 +873,6 @@ function Layers.Open()
 		Entrances()
 		Places()
 	end
-	-- (the givers: made again when the Quest List laid its marks again, when they were last made without it, or when
-	-- the quest log moved while the window was closed)
-	WatchQuests()
-	local QL = QuestList()
-	if S.questsDirty or not S.questsBuilt or (QL and LogMoved(QL)) then
-		Layers.Quests()
-	end
 	Flights()
 	Gossip()
 	S.wait = 0
@@ -1308,14 +1176,6 @@ function Layers.Tick(elapsed)
 		return
 	end
 	S.wait = T.EVERY
-	-- (2.1.7: a log event since the last beat: the givers again if what they show moved -- a kill's progress does not)
-	if S.logDue then
-		S.logDue = false
-		local QL = QuestList()
-		if QL and LogMoved(QL) then
-			Layers.Quests()
-		end
-	end
 	local mapID = PlayerMap()
 	if mapID then
 		Player(mapID)
@@ -1335,17 +1195,9 @@ function Layers.Group(pins, mapID, seen)
 	Group(mapID, pins, seen)
 end
 
--- (2.1.7) the quest log changed while the window shows: looked at on the next beat (one flag, once for a burst)
-function Layers.LogChanged()
-	if S.shown then
-		S.logDue = true
-	end
-end
-
--- the window closed (the givers wait for its next open)
+-- the window closed
 function Layers.Close()
 	S.shown = false
-	S.logDue = false
 end
 
 -- a glide to the player: at least FIND_ZOOM close, the zoom kept when closer
@@ -1371,7 +1223,6 @@ function Layers.Init(canvas, pins)
 	pins:Layer("towns", T.ORDER.towns, { minZ = T.PLACES_FROM, maxZ = T.NAMES_TO, nudge = true })
 	pins:Layer("flights", T.ORDER.flights, { minZ = T.PLACES_FROM })
 	pins:Layer("route", T.ORDER.route)
-	pins:Layer("quests", T.ORDER.quests, { minZ = T.QUESTS_FROM })
 	pins:Layer("gossip", T.ORDER.gossip)
 	pins:Layer("group", T.ORDER.group)
 	pins:Layer("waypoint", T.ORDER.waypoint)

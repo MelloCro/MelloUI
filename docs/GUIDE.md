@@ -1218,10 +1218,10 @@ own: the quest before it in Wowhead's series), so a yellow "!" means the giver h
 **On the map.** The module adds its own pins through the map's data provider system, so they
 zoom and pan with the map:
 
-- *Quest givers* on zone maps: one pin per giver location with the marker of the best thing
-  you can do there (yellow "!" pick up, yellow "?" turn in, grey "?" in progress, grey "!" too
-  low; givers you are done with are hidden unless enabled). Hover for the quests with their
-  state and chain step, click to set the waypoint.
+- *Quest givers* on zone maps are Questie's (2.1.52): its "!" and "?" in MelloUI's marks, shown
+  or hidden by Quest Givers On Zone Maps; which ones show (low-level quests, givers you are done
+  with) is set in Questie's options. The Quest List has no giver pins of its own any more, and
+  its options Include Givers You Are Done With and Hide Grey Quests went with them.
 - *Zone badges* on the continent maps: a "done / total" badge on every zone; hover for the
   level range and how many quests you could pick up now, click to open the zone.
 - *Dungeon and raid entrances* on zone maps, with the game's Dungeon and Raid icons. Positions

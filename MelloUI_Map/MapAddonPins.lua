@@ -65,7 +65,7 @@ ns.AddonPins = AddonPins
 local T = {
 	-- the layers: under the quest givers (20), over the docks and flights (14)
 	ORDER = { zone = 16, continent = 17, world = 18 },
-	ZONE_FROM = 2.5,         -- a zone's pins from a zone's zoom on (the quest givers' zoom: Layers.T.QUESTS_FROM)
+	ZONE_FROM = 2.5,         -- a zone's pins from a zone's zoom on (a zone's zoom)
 	CONTINENT_FROM = 1.15,   -- a continent's from a continent's zoom on (the docks' and flights': PLACES_FROM)
 	NODE = 14,               -- HandyNotes' and GatherMate2's 12 px icon at the game's map's top pin scale (1.2)
 	KEEP = 12,               -- zones' nodes kept built: the ones in view, then the nearest seen last
@@ -141,23 +141,19 @@ local TOWN = MelloUI.QuestieLook.TOWN
 AddonPins.TOWN = TOWN
 local Town = MelloUI.QuestieLook.Town
 
--- what this map shows of the quests already (taken once a pass): MapObjectives' givers shown and objectives laid;
+-- what this map shows of the quests already (taken once a pass): MapObjectives' objectives laid;
 -- (2.1.39; the user, 2026-11-10: "didnt i say that we provide the look? this way we have lost our own function which i
--- like very much") and this map's own layers of them: while the quest givers' layer (quests) or the objectives' layer
--- is on, it draws that kind itself -- MelloUI's filters, areas and motions -- and Questie's of that kind are never
--- borrowed; with the layer switched off, Questie's fill in, in MelloUI's pictures
+-- like very much") and this map's own layer of them: while the objectives' layer is on, it draws them itself --
+-- MelloUI's areas and motions -- and Questie's of that kind are never borrowed; with the layer switched off,
+-- Questie's fill in, in MelloUI's pictures. (2.1.52: the quest givers are Questie's alone, never covered)
 local function Cover()
 	local O = ns.Objectives
-	if not (O and O.GiversShown and O.Laid) then
+	if not (O and O.Laid) then
 		return nil
 	end
-	local ok, givers = pcall(O.GiversShown)
 	local Map = MelloUI.modules and MelloUI.modules.Map
 	local on = type(Map) == "table" and type(Map.LayerOn) == "function"
-	local QLook = MelloUI.QuestieLook
-	return { givers = ok and type(givers) == "table" and givers or {}, laid = O.Laid,
-		questie = QLook.Givers and QLook.Givers() or false,   -- (2.1.51: Questie's givers are the givers, Covered)
-		quests = on and Map:LayerOn("quests") and true or false,
+	return { laid = O.Laid,
 		objectives = on and Map:LayerOn("objectives") and true or false,
 		flights = on and Map:LayerOn("flights") and true or false }
 end
@@ -166,29 +162,15 @@ local function Covered(look, icon, cover)
 	-- (2.1.51; the user: "i dont want melloUI Quests to show if Questie is active") Questie's givers and turn-ins are
 	-- the givers (QuestieLook's Givers): always drawn, in this map's pictures, on their own layer, which the Quest givers
 	-- switch shows or hides (Place)
-	if cover and cover.questie and (look.cover == "giver" or look.cover == "ender") then
+	if look.cover ~= "objective" or not cover then
 		return false
 	end
-	if cover and ((look.cover == "objective" and cover.objectives)
-		or ((look.cover == "giver" or look.cover == "ender") and cover.quests)) then
+	if cover.objectives then
 		return true
 	end
 	local data = rawget(icon, "data")
-	local q = cover and look.cover and type(data) == "table" and Finite(data.Id)
-	if not q then
-		return false
-	end
-	if look.cover == "objective" then
-		return cover.laid(q) and true or false
-	end
-	local g = cover.givers[q]
-	if not g then
-		return false
-	end
-	if look.cover == "giver" then
-		return (g.available or g.locked) and true or false
-	end
-	return (g.ready or g.progress) and true or false
+	local q = type(data) == "table" and Finite(data.Id)
+	return (q and cover.laid(q)) and true or false
 end
 
 -- (2.1.51; the user, 2026-11-13: Questie's givers on this map, "mouseovering the quests does not give me the tooltip")
@@ -474,7 +456,7 @@ local function Place(entry, icon, t, cover)
 	local layer = LAYER[kind]
 	-- (2.1.51) Questie's givers, the givers: on the Quest givers switch's layer, from a zone's zoom on as MelloUI's own
 	-- (Questie lays them with the world's flag, SHOW_WORLD: on every zoom else)
-	if look and cover and cover.questie and (look.cover == "giver" or look.cover == "ender") then
+	if look and (look.cover == "giver" or look.cover == "ender") then
 		layer = LAYER.questGivers
 	elseif look and not dressed and look.cover == "objective" then
 		layer = LAYER.questObjectives   -- (2.1.52: Questie's own look, its objectives under their switch)

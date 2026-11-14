@@ -102,7 +102,7 @@ local SWITCHES = {
 	-- (2.1.51) Questie's givers too while they are the givers (MapAddonPins' LAYER.questGivers)
 	-- (2.1.52, stage 2) `questie`: a row whose marks are Questie's quest data -- without Questie it stands dimmed and
 	-- off on the layers' page, the line saying so under the group (MapQuestLog's LayersPage)
-	{ key = "quests", label = "Quest givers", layers = { "quests", "quests_questie" }, group = 1, icon = "quest_mark",
+	{ key = "quests", label = "Quest givers", layers = { "quests_questie" }, group = 1, icon = "quest_mark",
 	  questie = true },
 	-- (2.1.52) Questie's objective icons too while Questie wears its own look (MapAddonPins' LAYER.questObjectives)
 	{ key = "objectives", label = "Your quests' objectives",
@@ -959,7 +959,6 @@ local function Frame_OnEvent(_, event)
 		Layers.Event()   -- (a flight point learned, or a flight master's map: the flights again)
 	elseif event == "QUEST_LOG_UPDATE" or event == "QUEST_WATCH_LIST_CHANGED" then
 		Objectives.Soon()   -- (the objectives again after the burst)
-		Layers.LogChanged()   -- (2.1.7: the givers' marks, if what they show moved)
 	elseif event == "DYNAMIC_GOSSIP_POI_UPDATED" then
 		Layers.GossipChanged()   -- (a guard's directions: the game's marker)
 	end
@@ -1114,10 +1113,6 @@ end
 function M.MapWidthFor(h)
 	local rest = T.TOP + T.FOOT + T.PAD + 2 * T.IN
 	return floor((h - rest) * 1002 / 668) + 2 * T.IN
-end
-
-function M.StandardWidth()
-	return (Size())
 end
 
 function M.PadPress(x, y)

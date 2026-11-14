@@ -1442,7 +1442,6 @@ local function LayersPage()
 			local b = W.Button(pane, MelloUI.Integrations.GetLabel("Questie"), 60, nil, { onClick = GetQuestieClick, height = T.HINT_BUTTON })
 			b:SetWidth(max(60, floor((b:GetFontString():GetStringWidth() or 40) + 0.5) + 26))
 			b:SetPoint("TOPLEFT", pane, "TOPLEFT", 4, -(y + 4 + T.HINT_LINE))
-			S.layerHint = { line = line, button = b }
 			y = y + 4 + T.HINT_LINE + T.HINT_BUTTON + T.HINT_GAP
 		end
 		y = y + 8

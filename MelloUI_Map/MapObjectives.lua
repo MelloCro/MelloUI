@@ -68,7 +68,7 @@ ns.Objectives = Objectives
 local T = {
 	-- over the quest givers (20), under the quest column's marks (25); (2.1.0) the quests zoomed out over the docks (12)
 	ORDER = { marks = 22, dots = 21, fx = 23, quests = 24 },
-	MARKS_FROM = 2.5,     -- the marks from a zone's zoom on (the givers' zoom: Layers.T.QUESTS_FROM)
+	MARKS_FROM = 2.5,     -- the marks from a zone's zoom on (a zone's zoom)
 	QUESTS_TO = 2.49,     -- (2.1.0) one pin a quest until then (the user's pick W1: 16 px, touching ones merged)
 	QUEST_SIZE = 16,
 	QUEST_ICON = { todo = "track_todo", ready = "track_handin" },
@@ -245,28 +245,9 @@ local function GuideGoals()
 	return type(data) == "table" and type(data.goals) == "table" and #data.goals > 0 and data.goals or nil
 end
 
--- the quests the givers show a pin for: [questID] = { [state] = true } ("available", "locked", "ready", "progress")
-local function GiversShown()
-	local shown, QL = {}, QuestList()
-	local F = QL and QL.F_ID
-	if F and S.pins then
-		S.pins:Each("quests", function(pin)
-			local g = pin.data
-			for _, q in ipairs(type(g) == "table" and type(g.quests) == "table" and g.quests or NONE) do
-				local id = type(q) == "table" and type(q.row) == "table" and q.row[F]
-				if id then
-					shown[id] = shown[id] or {}
-					shown[id][q.state or "?"] = true
-				end
-			end
-		end)
-	end
-	return shown
-end
-
--- (2.1.4) what this map shows of a quest, for other addons' pins of it (MapAddonPins: Questie's, nothing twice): the
--- givers' pins, and whether its objectives are laid here
-Objectives.GiversShown = GiversShown
+-- (2.1.4) what this map shows of a quest, for other addons' pins of it (MapAddonPins: Questie's, nothing twice):
+-- whether its objectives are laid here. (2.1.52: this map has no givers of its own any more -- Questie's are the
+-- givers -- so GiversShown went)
 function Objectives.Laid(q)
 	return S.first[q] ~= nil
 end
@@ -303,13 +284,10 @@ local function At(a, x, y)
 end
 
 function GuideGroups(goals, byShape, n, QA)
-	local givers = GiversShown()
 	for _, goal in ipairs(goals or NONE) do
 		local q, places = goal.quest, goal.places
-		local giver = q and givers[q] or NONE
-		local shown = q and ((goal.verb == "objective" and S.first[q] ~= nil)
-			or (goal.verb == "accept" and (giver.available or giver.locked))
-			or (goal.verb == "turnin" and (giver.ready or giver.progress or S.first[q] ~= nil)))
+		-- (a quest whose objectives this map lays: its objective and turn-in goals not twice)
+		local shown = q and S.first[q] ~= nil and (goal.verb == "objective" or goal.verb == "turnin")
 		if not shown and type(places) == "table" and #places >= 2 and goal.cont then
 			-- (its places as the objective data's entry: kind, name, -, continent, x, y, ...)
 			local entry = { goal.kind, goal.text, false, goal.cont }
