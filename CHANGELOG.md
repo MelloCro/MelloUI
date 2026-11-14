@@ -8,8 +8,12 @@
 - Quest List: quests that Questie does not know are no longer listed, and the Attunements view is gone.
 - Route: the First: loot line, for an item a quest needs before its objective, is gone. It came from MelloUI's own quest data.
 - Map: with Questie, every quest ! and ? on the map is Questie's, in MelloUI's look: its quest givers take the place of MelloUI's own, so Questie's quest level options decide which quests show. The map's Quest givers switch shows or hides them, pointing at one shows its quests, and clicking one sets Route's way there.
+- Map: places you explore while the map is closed now show as explored the next time you open it.
 - Installer: a brand-new character now gets the installer once its intro cinematic is over. Before, the game closed it as the intro ended and it was never offered again.
 - Addons page: on a new install, a Use with MelloUI switch turned off before the first /reload or logout is kept now. It was lost before.
+- Bags: with the Collapse Arrow on, the backpack stays still when the bag bar folds or opens, and the key ring fits a vertical bag bar.
+- Restock: a new Fill All Ammo Bags switch on the Restock List's Ammo page keeps your quivers and ammo pouches full, with no amounts to set. A single arrow or bullet on the list now goes up to 2000, and the Ammo page lists the best ammunition first.
+- Game Menu: with Polestar, its button and the MelloUI button no longer share a row, so both can be clicked.
 
 ## 2.1.51
 
