@@ -10,8 +10,9 @@
 -- a session without routes, or with Route off, never holds them.
 --
 -- The client keeps each addon's locals to itself: the companion's files only
--- set their data globals (MelloUI_RoadData, MelloUI_QuestObjectiveData), and
--- Route reads those once they are there.
+-- set their data globals (MelloUI_RoadData; 2.1.52: the quest objective places
+-- went with MelloUI's own quest data, Core/QuestSource.lua), and Route reads
+-- those once they are there.
 --
 -- ok, why, later = MelloUI:LoadCompanion()
 --   Loads it at once (LoadAddOn is synchronous: when it returns, the data is
@@ -90,7 +91,7 @@ end
 -- Loaded and holding the data: a file of it that failed still lets LoadAddOn
 -- say yes (the client runs the rest), so what it set is what counts
 local function HoldsData()
-	return type(_G.MelloUI_RoadData) == "table" or type(_G.MelloUI_QuestObjectiveData) == "table"
+	return type(_G.MelloUI_RoadData) == "table"
 end
 
 local function IsLoaded()

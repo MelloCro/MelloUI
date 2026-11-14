@@ -2561,6 +2561,12 @@ end)
 -- { name, npcID } per quest held about a megabyte for a lookup made once per
 -- Read. A quest listed twice takes its later row.
 local function GiverRow(questID)
+	-- (2.1.52, stage 2) the rows are Questie's (Core/QuestSource.lua): asked for here too, made a few ms a frame --
+	-- none until they are there (the giver read by the other ways meanwhile), none without Questie
+	local QS = MelloUI.QuestSource
+	if QS and not QS.Ready() and QS.Questie() then
+		QS.WhenReady(function() end)
+	end
 	local data = MelloUI_QuestListData
 	if type(data) ~= "table" or type(data.quests) ~= "table" then
 		return nil

@@ -2312,8 +2312,10 @@ end
 --     UI Modifications' layoutAsked_<character> (the player's own), in
 --     MelloUI's own dialog (MelloUI:Confirm). With the Gamepad UI on: one
 --     chat line instead, and the question waits for the mouse UI.
--- Whatever opens waits for the end of a fight (PLAYER_REGEN_ENABLED) or for
--- Edit Mode to close ('editmode'), each taken only then. Nothing polls.
+-- Whatever opens waits for the end of a fight (PLAYER_REGEN_ENABLED), for
+-- Edit Mode to close ('editmode') or for the game's UI to come back (2.1.52:
+-- hidden by a cinematic, a new character's intro -- WaitForUI), each taken
+-- only then. Nothing polls.
 -- The player's own open (I:Open) comes first: once they opened the
 -- installer, or asked for it in a fight, the window is theirs -- the check
 -- opens nothing of its own, asks no alt question, and no late load closes it.
@@ -2500,6 +2502,30 @@ local function OnLoginEditMode(entering)
 	end
 end
 
+-- (2.1.52; the user, 2026-11-14, a brand-new character in the test VM: "No, it never showed") The game's whole UI
+-- hidden: a new character's intro cinematic starts as it enters the world, so the check's open came under it -- and
+-- as the UI comes back the game closes every window Escape closes (UIParent's OnShow: "UI.TopLevelParentShown",
+-- Blizzard_Game's CloseAllWindows), the installer among them, with the welcome already remembered as asked: it was
+-- never offered again. What is owed waits for the UI instead: one frame of ours on UIParent, made only then, whose
+-- OnShow comes as the UI does; the open a frame later, after the game's own close. Nothing polls.
+local function UIHidden()
+	local ok, shown = pcall(UIParent.IsShown, UIParent)
+	return ok and not Secret(shown) and shown == false
+end
+
+local uiWaiter
+local function WaitForUI()
+	if not uiWaiter then
+		uiWaiter = CreateFrame("Frame", nil, UIParent)
+		uiWaiter:Hide()
+		Perf.SetScript(uiWaiter, "OnShow", function(self)
+			self:Hide()
+			C_Timer.After(0, ShowOwed)
+		end)
+	end
+	uiWaiter:Show()
+end
+
 ShowOwed = function()
 	local what = login.owed
 	if not what then
@@ -2511,6 +2537,10 @@ ShowOwed = function()
 	elseif EditModeOpen() then
 		login.waited = true
 		MelloUI:On("editmode", OnLoginEditMode, LOGIN_OWNER)
+		return
+	elseif UIHidden() then
+		login.waited = true
+		WaitForUI()
 		return
 	end
 	if login.fresh and login.waited then

@@ -81,6 +81,8 @@ local T = {
 	GAP = 6,                    -- the room between the map, the rail and the column
 	RAIL_TOP = 10, RAIL_STEP = 42,   -- the rail's buttons from its top, one under the other
 	LAYER_ROW = 32, LAYER_ICON = 20, -- (2.1.0) the layers' page: a switch's row, its icon
+	LAYER_DIM = 0.42,           -- (2.1.52) a row whose marks need Questie, without it
+	HINT_LINE = 22, HINT_BUTTON = 22, HINT_GAP = 12,   -- the line under those rows, its button, the room after it
 	HEAD = 36,                  -- the column's title row
 	PAD = 10,                   -- room inside the column
 	BAR = 3,                    -- the thin scroll bar, and its gap
@@ -140,6 +142,7 @@ local TEXT = {
 	rowTip = "Click: its page   Shift-click: link it in the chat",
 	trackBox = "Tracked in the Quest Tracker: click to take it off, or to show it there",
 	collapse = "Click: fold or unfold this zone",
+	needsQuestie = "Quests on the map come from Questie.",   -- (2.1.52, stage 2: the layers' page without Questie)
 }
 
 -- the state: one table (the file's locals stay few)
@@ -1360,6 +1363,19 @@ local LayerRowClick = Perf.Shared("OnClick on the map's layers rows", function(s
 	self.switch:Click()
 end, "script")
 
+local function NoQuests()
+	return false
+end
+
+local GetQuestieClick = Perf.Shared("OnClick on the map's Get Questie", function()
+	MelloUI:PlayUISound("click")
+	MelloUI.Integrations.Open("Questie")
+end, "script")
+
+-- (2.1.52, stage 2; the user's pick A of the sketch, 2026-11-14: "The rows stay, dimmed") without Questie there are
+-- no quests on the map (Core/QuestSource.lua): the rows whose marks are Questie's (`questie`) stand dimmed and off,
+-- their group's last row followed by the line that says so and Get Questie (the Addons page, on Questie's card); the
+-- rest of the page moves down. Questie is there or not for the whole session, so the page is laid once
 local function LayersPage()
 	local spec, pane = S.layers, S.paneY
 	if S.layerRows or not spec then
@@ -1368,6 +1384,8 @@ local function LayersPage()
 	S.layerRows = {}
 	local Icons = MelloUI.Icons
 	local width = T.W - 2 * T.PAD
+	local QS = MelloUI.QuestSource
+	local none = QS ~= nil and not QS.Questie()
 	local y = 0
 	for g, name in ipairs(spec.groups) do
 		local h = HeadLook(CreateFrame("Frame", nil, pane))
@@ -1375,9 +1393,12 @@ local function LayersPage()
 		h:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, -y)
 		h:SetWidth(width)
 		y = y + T.ZONE + 2
+		local hint = false
 		for _, s in ipairs(spec.switches) do
 			if s.group == g then
 				local key = s.key
+				local off = none and s.questie and true or false
+				hint = hint or off
 				local r = CreateFrame("Button", nil, pane)
 				r:SetSize(width, T.LAYER_ROW)
 				r:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, -y)
@@ -1388,7 +1409,7 @@ local function LayersPage()
 				Icons.Set(r.icon, s.icon, T.LAYER_ICON)
 				r.label = W.Text(r, "GameFontHighlight", s.label, "text")
 				r.label:SetPoint("LEFT", r, "LEFT", 4 + T.LAYER_ICON + 10, 0)
-				r.switch = W.Switch(r, function()
+				r.switch = W.Switch(r, off and NoQuests or function()
 					return spec.on(key)
 				end, function(on)
 					spec.set(key, on)
@@ -1396,12 +1417,33 @@ local function LayersPage()
 				r.switch:SetPoint("RIGHT", r, "RIGHT", -4, 0)
 				r.label:SetPoint("RIGHT", r.switch, "LEFT", -8, 0)
 				r.label:SetWordWrap(false)
-				Perf.SetScript(r, "OnClick", LayerRowClick)
-				W.RowPlate(r)
-				W.RowPlateChild(r, r.switch)
+				if off then
+					-- (nothing to switch: the row no button, its switch off and out of reach, the whole dimmed)
+					r:EnableMouse(false)
+					r.switch:Disable()
+					r.switch:EnableMouse(false)
+					r:SetAlpha(T.LAYER_DIM)
+					r.needsQuestie = true
+				else
+					Perf.SetScript(r, "OnClick", LayerRowClick)
+					W.RowPlate(r)
+					W.RowPlateChild(r, r.switch)
+				end
 				S.layerRows[#S.layerRows + 1] = r
 				y = y + T.LAYER_ROW
 			end
+		end
+		if hint then
+			local line = W.Text(pane, "GameFontHighlight", TEXT.needsQuestie, "text")
+			line:SetPoint("TOPLEFT", pane, "TOPLEFT", 4, -(y + 4))
+			line:SetWidth(width - 8)
+			line:SetJustifyH("LEFT")
+			line:SetWordWrap(true)
+			local b = W.Button(pane, MelloUI.Integrations.GetLabel("Questie"), 60, nil, { onClick = GetQuestieClick, height = T.HINT_BUTTON })
+			b:SetWidth(max(60, floor((b:GetFontString():GetStringWidth() or 40) + 0.5) + 26))
+			b:SetPoint("TOPLEFT", pane, "TOPLEFT", 4, -(y + 4 + T.HINT_LINE))
+			S.layerHint = { line = line, button = b }
+			y = y + 4 + T.HINT_LINE + T.HINT_BUTTON + T.HINT_GAP
 		end
 		y = y + 8
 	end

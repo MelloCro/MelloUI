@@ -443,8 +443,14 @@ function J.Quests(inst, out)
 	for i = #out, 1, -1 do
 		out[i] = nil
 	end
+	-- (2.1.52, stage 2) the quests are Questie's (Core/QuestSource.lua): their rows asked for here too -- made a few
+	-- ms a frame, none until they are there ('questsource' then: the panel lays its page again); none without Questie
+	local QS = MelloUI.QuestSource
+	if QS and not QS.Ready() and QS.Questie() then
+		QS.WhenReady(function() end)
+	end
 	local data = rawget(_G, "MelloUI_QuestListData")
-	local quests = type(data) == "table" and data.quests
+	local quests = type(data) == "table" and (not QS or QS.Ready()) and data.quests
 	if not (inst and quests) then
 		return out
 	end

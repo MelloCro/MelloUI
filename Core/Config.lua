@@ -178,7 +178,14 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "2.1.52", lines = {
+		"Quests: MelloUI's quests now come from Questie: the map, the minimap, the Quest List and Route to a quest use its quest data. MelloUI ships no quest data of its own any more.",
+		"Quests: without Questie, no quests are shown. The map's layers page and the Quest List say so, with a Get Questie button that opens Questie's card on the Addons page.",
+		"Addons page: Questie's switch is now named MelloUI's look. Off, Questie shows its own icons and tracker, on MelloUI's map too; the Quest List and Route to a quest keep working.",
+		"Quest List: quests that Questie does not know are no longer listed, and the Attunements view is gone.",
+		"Route: the First: loot line, for an item a quest needs before its objective, is gone. It came from MelloUI's own quest data.",
 		"Map: with Questie, every quest ! and ? is Questie's, in MelloUI's look, so Questie's quest level options decide which quests show. Point at one for its quests.",
+		"Installer: a brand-new character now gets the installer once its intro cinematic is over. Before, the game closed it as the intro ended and it was never offered again.",
+		"Addons page: on a new install, a Use with MelloUI switch turned off before the first /reload or logout is kept now. It was lost before.",
 	} },
 	{ version = "2.1.51", lines = {
 		"Dark Mode: the minimap's tracking and calendar icons stay bright instead of turning dark.",
@@ -2186,6 +2193,8 @@ do
 			return "Addons"
 		elseif w == "compatibility" then
 			return "Addons", "Compatibility"
+		elseif w == "installedaddons" then
+			return "Addons", "Installed"   -- (2.1.52: Get Questie's place, MelloUI.Integrations.Open)
 		end
 		local t = all.extra[w] or all.modules[w]
 		if t and t[1] and resolved.pages[t[1]] then

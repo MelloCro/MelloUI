@@ -3,19 +3,31 @@
 -- databse, however i would like to step away from that, to instead push people to download questie for those systems
 -- to work, like a compatibility feature"; docs/plans/questie-data.md)
 --
--- One reader for every quest system (the Quest List, its pins, Route, Voice Over, Dungeon Info): when the player has
--- QuestieDB -- Questie's database, an addon of its own (Questie needs it) -- its quests are the rows those systems read,
--- in MelloUI_QuestListData.quests' own field order (QuestList.lua's QL.F_*), so they read them as before.
+-- One reader for every quest system (the Quest List, Route, Voice Over, Dungeon Info, the objectives' marks): the
+-- quests are Questie's. (2.1.52, stage 2; the user, 2026-11-14: "i want to step away of having to Maintain Quest Data
+-- and leave it to Questie", "Current and Future addons are the Engine, MelloUI Provides the Look") MelloUI ships no
+-- quest data of its own any more. Three states, the user's:
+--   "none"     Questie is not installed: no quests anywhere, and a plain "get Questie" line where they would show
+--   "questie"  Questie with its switch on the Addons page (MelloUI's look) off: Questie's own icons and tracker, on
+--              MelloUI's map too; MelloUI draws no quest marks of its own, and its Quest List and Route to a quest
+--              still read Questie's data
+--   "look"     Questie with the switch on: Questie's data in MelloUI's look
+--   QS.State() -> one of those     QS.Questie() -> not "none"     QS.Look() -> "look"
+-- "Questie" is the addon itself, loaded, with its database readable: QuestieDB alone, without Questie, is "none".
 --
 --   * QuestieDB is a public library (its src/api.lua: "Another addon can read entity fields ... Questie is the first
 --     consumer, but nothing here assumes it"): the global LibQuestieDB, read only through its Quest / Npc / Object
 --     .Get, .GetAllIds and RequireContract. No code of Questie's runs for MelloUI, nothing of it is hooked, and none
 --     of its data ships with MelloUI (it is the player's own copy, read where it is).
---   * Stage 1 (the plan's D): a quest QuestieDB does not know keeps MelloUI's own row, and so does a giver it has no
---     place for (inside an instance, a zone of its own numbering); MelloUI's own fields -- the event, the chain, the
---     dungeon, the attunement -- stay MelloUI's.
+--   * The rows are in the Quest List's own field order (QuestList.lua's QL.F_*), so its systems read them as before:
+--     id, title, level, required level, side, class, quest zone, giver zone, giver, x, y, kind, event, chain, dungeon,
+--     attunement (0: none is known), previous, continent, world x, world y, giver NPC, turn-in, its NPC, its zone, its
+--     continent, its world x, its world y, origin (1). The event is the quest's seasonal sort when the data names it
+--     (MelloUI_QuestListData.events), the dungeon its zone when the data names it (.dungeons), the chain the id of the
+--     chain's first quest (the quests before it: preQuestSingle / preQuestGroup), named by that quest.
+--   * A quest QuestieDB does not know shows nowhere; a giver it has no place for is listed without one.
 --   * The rows are made after the login, a few milliseconds a frame (the 1000 ms budget, rule 7), the first time a
---     system asks (QS.WhenReady); the list replaces MelloUI_QuestListData.quests (MelloUI's own table) and 'questsource'
+--     system asks (QS.WhenReady); they become MelloUI_QuestListData.quests (with .needs and .chains) and 'questsource'
 --     is told on the bus.
 --   * A place in QuestieDB is a zone's percentages; the client turns it into world yards (C_Map.GetWorldPosFromMapPos)
 --     through the zone's map (MelloUI_AreaMaps, Media/PlaceData.lua, from the client's own UiMapAssignment).
@@ -30,47 +42,62 @@ MelloUI.QuestSource = QS
 QS.CONTRACT = 3      -- the QuestieDB contract this reader is written against (1.0.5's; RequireContract takes a range)
 QS.STEP_MS = 2       -- at most this many ms a frame while the rows are made
 QS.STARTERS = 4      -- at most this many rows for one quest (one per giver: MelloUI lists a quest at each giver)
+QS.CHAIN_DEPTH = 60  -- a chain followed back at most this many quests
 
--- the row's fields read from MelloUI's own rows (QuestList.lua's QL.F_*; QuestListData.lua's header lists all 28, in
--- the order Rows' Row() writes them: id, title, level, required level, side, class, quest zone, giver zone, giver,
--- x, y, kind, event, chain, dungeon, attunement, previous, continent, world x, world y, giver NPC, turn-in, its NPC,
--- its zone, its continent, its world x, its world y, origin)
-local F_ID, F_GIVERZONE, F_GIVER, F_X, F_Y, F_KIND = 1, 8, 9, 10, 11, 12
-local F_EVENT, F_CHAIN, F_DUNGEON, F_ATTUNE, F_CONT, F_WX, F_WY, F_NPC = 13, 14, 15, 16, 18, 19, 20, 21
-local F_ENDER, F_ENDERNPC, F_ENDERZONE, F_ENDERCONT, F_ENDERWX, F_ENDERWY, F_ORIGIN = 22, 23, 24, 25, 26, 27, 28
+-- the row's fields the build reads back (QuestList.lua's QL.F_*)
+local F_ID, F_TITLE, F_CHAIN, F_PREV = 1, 2, 14, 17
 
-local lib = nil        -- LibQuestieDB once asked: the library, or false
+local lib = nil        -- LibQuestieDB once asked: the library, or false (none this session)
 local state = "idle"   -- "idle", "building", "ready"
 local waiting = {}     -- functions to run once the rows are ready
-QS.counts = nil        -- after the build: { questie = rows made, own = MelloUI's rows kept, failed = quests that broke }
+QS.counts = nil        -- after the build: { questie = quests made, failed = quests that broke }
 
--- QuestieDB, when it is there and speaks a contract this reader knows; else nil
+-- QuestieDB, while Questie itself is loaded and its database speaks a contract this reader knows; else nil. Whatever
+-- Questie's switch says: the switch is the look (QS.Look). None found is kept as none only once the login is over
+-- (every addon has loaded by then); found is kept
 function QS.Lib()
-	-- (2.1.44: none while Questie's switch on the Addons page, Use with MelloUI, is off -- Core/Integrations.lua)
-	local I = rawget(MelloUI, "Integrations")
-	if I and not I.Use("Questie") then
-		return nil
-	end
 	if lib == nil then
 		local L = rawget(_G, "LibQuestieDB")
-		lib = false
-		if type(L) == "table" and type(L.RequireContract) == "function" and type(L.Quest) == "table" then
+		local found
+		if type(rawget(_G, "Questie")) == "table" and type(L) == "table" and type(L.RequireContract) == "function"
+			and type(L.Quest) == "table" then
 			local ok, fits = pcall(L.RequireContract, QS.CONTRACT)
-			if ok and fits then
-				lib = L
-			end
+			found = ok and fits and L or nil
 		end
+		if found then
+			lib = found
+		elseif MelloUI.initialized then
+			lib = false
+		end
+		return found
 	end
 	return lib or nil
+end
+
+function QS.Questie()
+	return QS.Lib() ~= nil
+end
+
+-- Questie's switch on the Addons page, MelloUI's look (Core/Integrations.lua): on until switched off
+function QS.Look()
+	if not QS.Lib() then
+		return false
+	end
+	local I = rawget(MelloUI, "Integrations")
+	return not (I and not I.Use("Questie"))
+end
+
+function QS.State()
+	return not QS.Lib() and "none" or (QS.Look() and "look" or "questie")
 end
 
 function QS.Ready()
 	return state == "ready"
 end
 
--- "QuestieDB" when the rows are QuestieDB's, else "MelloUI" (none installed, or not ready yet)
+-- "QuestieDB" when the rows are QuestieDB's, else "none" (no Questie, or not ready yet)
 function QS.Name()
-	return (state == "ready" and QS.counts and QS.counts.questie > 0) and "QuestieDB" or "MelloUI"
+	return (state == "ready" and QS.counts and QS.counts.questie > 0) and "QuestieDB" or "none"
 end
 
 --------------------------------------------------------------------------------
@@ -171,19 +198,22 @@ local function Place(L, kind, id, prefer)
 	return type(name) == "string" and name or "", zone, x, y, cont, wx, wy
 end
 
--- the rows of quest `id` into `out` (one per giver, at most QS.STARTERS); `own` MelloUI's rows of it (or nil)
-local function Rows(L, id, own, out)
+-- the rows of quest `id` into `out` (one per giver, at most QS.STARTERS); `names`: the data's events and dungeons by
+-- their sort and zone ({ events = {}, dungeons = {} }). The chain is set by the build, once every quest is in
+local function Rows(L, id, names, out)
 	local q = L.Quest
 	local title = q.Get(id, "name")
 	if type(title) ~= "string" or title == "" then
 		return 0
 	end
-	local mine = own and own[1]
 	local level, req = q.Get(id, "questLevel"), q.Get(id, "requiredLevel")
 	req = type(req) == "number" and req > 0 and req or 1
 	level = type(level) == "number" and level > 0 and level or req
 	local zoneOrSort = q.Get(id, "zoneOrSort")
 	local questZone = type(zoneOrSort) == "number" and zoneOrSort > 0 and zoneOrSort or nil
+	-- (a seasonal quest: its sort is one the data names; a dungeon's: its zone is one the data names)
+	local event = (type(zoneOrSort) == "number" and zoneOrSort < 0 and names.events[zoneOrSort]) and zoneOrSort or 0
+	local dungeon = (questZone and names.dungeons[questZone]) and questZone or 0
 	local side, class = Side(L, q.Get(id, "requiredRaces")), q.Get(id, "requiredClasses")
 	class = type(class) == "number" and class or 0
 	local prev = FirstID(q.Get(id, "preQuestSingle")) or FirstID(q.Get(id, "preQuestGroup")) or 0
@@ -198,11 +228,8 @@ local function Rows(L, id, own, out)
 		if cont then
 			enderCont, enderWX, enderWY = cont, wx, wy
 		end
-	elseif mine then
-		ender, enderNPC, enderZone = mine[F_ENDER], mine[F_ENDERNPC], mine[F_ENDERZONE]
-		enderCont, enderWX, enderWY = mine[F_ENDERCONT], mine[F_ENDERWX], mine[F_ENDERWY]
 	end
-	-- the givers: NPCs, then objects; an item that starts it keeps MelloUI's own place (where it drops)
+	-- the givers: NPCs, then objects (a quest only an item starts has nobody to pick it up from: no row)
 	local started = q.Get(id, "startedBy")
 	local givers = {}
 	if type(started) == "table" then
@@ -215,31 +242,15 @@ local function Rows(L, id, own, out)
 		end
 	end
 	local made = 0
-	local function Row(name, kind, zone, x, y, cont, wx, wy, npc)
-		local r = {
-			id, title, level, req, side, class, questZone or zone or 0, zone or 0, name or "", x or 0, y or 0, kind,
-			mine and mine[F_EVENT] or 0, mine and mine[F_CHAIN] or 0, mine and mine[F_DUNGEON] or 0,
-			mine and mine[F_ATTUNE] or 0, prev, cont or -1, wx or 0, wy or 0, npc or 0,
-			ender, enderNPC, enderZone, enderCont, enderWX, enderWY, mine and mine[F_ORIGIN] or 1,
-		}
-		out[#out + 1] = r
-		made = made + 1
-	end
 	for _, g in ipairs(givers) do
+		-- (a giver QuestieDB has no place for -- inside an instance, a zone of its own numbering -- is listed without one)
 		local name, zone, x, y, cont, wx, wy = Place(L, g[1], g[2], questZone)
-		if not cont and mine and (mine[F_CONT] or -1) >= 0 then
-			-- (a giver QuestieDB has no place for: MelloUI's own, from its row)
-			Row(mine[F_GIVER], mine[F_KIND], mine[F_GIVERZONE], mine[F_X], mine[F_Y], mine[F_CONT], mine[F_WX], mine[F_WY],
-				mine[F_NPC])
-		else
-			Row(name, g[1] == 1 and 1 or 2, zone, x, y, cont, wx, wy, g[1] == 1 and g[2] or 0)
-		end
-	end
-	if made == 0 and mine then
-		-- (started by an item, or no giver known: MelloUI's own place for it; with neither, no row -- nobody to pick it
-		-- up from)
-		Row(mine[F_GIVER], mine[F_KIND], mine[F_GIVERZONE], mine[F_X], mine[F_Y], mine[F_CONT], mine[F_WX], mine[F_WY],
-			mine[F_NPC])
+		out[#out + 1] = {
+			id, title, level, req, side, class, questZone or zone or 0, zone or 0, name or "", x or 0, y or 0,
+			g[1] == 1 and 1 or 2, event, 0, dungeon, 0, prev, cont or -1, wx or 0, wy or 0, g[1] == 1 and g[2] or 0,
+			ender, enderNPC, enderZone, enderCont, enderWX, enderWY, 1,
+		}
+		made = made + 1
 	end
 	return made
 end
@@ -259,8 +270,8 @@ QS.Rows = Rows   -- (the tests)
 --              a negative one only itself), parentQuest (in the log), availableStartingWith (taken or done)
 --   spells     requiredSpell (known; a negative one: not known)
 --   untilDone  availableUntilCompleted (closed once it is done)    disabledBy  disabledByQuest (not while in the log)
--- A quest QuestieDB does not know keeps MelloUI's own needs; MelloUI's `cond` (the server's conditions, from
--- classic-db) stays for every quest, QuestieDB having none.
+-- (2.1.52: MelloUI's own `cond` -- the server's conditions, from classic-db -- and its exclusive groups went with its
+-- quest data; QuestieDB has no conditions.)
 --------------------------------------------------------------------------------
 
 QS.CHOICES = 16   -- at most this many ways to meet a quest's `after`
@@ -392,28 +403,76 @@ local function Done(counts)
 	MelloUI:Fire("questsource", QS.Name(), counts)
 end
 
+-- The chains, once every quest's rows are in: a quest's chain is the first quest of the line it stands in (its
+-- `previous` followed back while that quest is known), the chain's key that quest's id and its name that quest's
+-- title; a line of one quest is no chain. Returns the names, { [first quest's id] = its title }
+local function Chains(out)
+	local first, title = {}, {}   -- [quest id] = its first row; its title
+	for _, row in ipairs(out) do
+		local id = row[F_ID]
+		if not first[id] then
+			first[id], title[id] = row, row[F_TITLE]
+		end
+	end
+	local rootOf, members = {}, {}
+	local function Root(id)
+		local root = rootOf[id]
+		if root then
+			return root
+		end
+		local cur = id
+		for _ = 1, QS.CHAIN_DEPTH do
+			local prev = first[cur] and first[cur][F_PREV] or 0
+			if prev == 0 or prev == cur or not first[prev] then
+				break
+			end
+			cur = prev
+		end
+		rootOf[id] = cur
+		return cur
+	end
+	for id in pairs(first) do
+		local root = Root(id)
+		members[root] = (members[root] or 0) + 1
+	end
+	local names = {}
+	for _, row in ipairs(out) do
+		local root = rootOf[row[F_ID]]
+		if (members[root] or 0) > 1 then
+			row[F_CHAIN] = root
+			names[root] = title[root]
+		end
+	end
+	return names
+end
+
+-- No Questie: no quests at all (the data's quest parts made empty, whatever an older data file still holds)
+local function Empty(data)
+	if type(data) == "table" then
+		data.quests, data.chains = {}, {}
+		data.needs = { exclusive = {}, fromQuestie = {} }
+	end
+	Done({ questie = 0, failed = 0 })
+end
+
 local function Build()
 	local L = QS.Lib()
 	local data = rawget(_G, "MelloUI_QuestListData")
-	if not L or type(data) ~= "table" or type(data.quests) ~= "table" then
-		Done({ questie = 0, own = type(data) == "table" and type(data.quests) == "table" and #data.quests or 0, failed = 0 })
+	if not L or type(data) ~= "table" then
+		Empty(data)
 		return
-	end
-	local ownList = data.quests
-	local own = {}
-	for _, row in ipairs(ownList) do
-		local id = row[F_ID]
-		own[id] = own[id] or {}
-		own[id][#own[id] + 1] = row
 	end
 	local okIds, ids = pcall(L.Quest.GetAllIds)
 	if not okIds or type(ids) ~= "table" then
-		Done({ questie = 0, own = #ownList, failed = 0 })
+		Empty(data)
 		return
 	end
+	local names = { events = type(data.events) == "table" and data.events or {},
+		dungeons = type(data.dungeons) == "table" and data.dungeons or {} }
 	local out, asked, seen = {}, {}, {}
-	local counts = { questie = 0, own = 0, failed = 0 }
-	local needs = { exclusive = {}, cond = {}, fromQuestie = seen }
+	local counts = { questie = 0, failed = 0 }
+	-- (`exclusive`: MelloUI's own groups, none any more -- the Quest List asks it before it reads a quest's exclusiveOf)
+	local needs = { exclusive = {}, fromQuestie = seen }
 	for _, field in ipairs(NEED_FIELDS) do
 		needs[field] = {}
 	end
@@ -426,9 +485,9 @@ local function Build()
 			if type(id) == "number" and not asked[id] then
 				asked[id] = true
 				local before = #out
-				local ok = pcall(Rows, L, id, own[id], out)
+				local ok = pcall(Rows, L, id, names, out)
 				if not ok then
-					-- (a quest that broke: none of its rows, MelloUI's own kept)
+					-- (a quest that broke: none of its rows)
 					for k = #out, before + 1, -1 do
 						out[k] = nil
 					end
@@ -448,30 +507,7 @@ local function Build()
 			C_Timer.After(0, Step)
 			return
 		end
-		-- MelloUI's own rows of the quests QuestieDB does not have (stage 1), and their needs; MelloUI's conditions
-		-- for every quest, and its exclusive groups (read for the quests QuestieDB does not have: QL's ExclusiveOf)
-		for _, row in ipairs(ownList) do
-			if not seen[row[F_ID]] then
-				out[#out + 1] = row
-				counts.own = counts.own + 1
-			end
-		end
-		local ownNeeds = type(data.needs) == "table" and data.needs or {}
-		for field, list in pairs(ownNeeds) do
-			if type(list) == "table" then
-				if field == "cond" or field == "exclusive" then
-					needs[field] = list
-				elseif needs[field] then
-					for id, v in pairs(list) do
-						if not seen[id] then
-							needs[field][id] = v
-						end
-					end
-				end
-			end
-		end
-		QS.own = ownList
-		QS.ownNeeds = ownNeeds
+		data.chains = Chains(out)
 		data.quests = out
 		data.needs = needs
 		Done(counts)
@@ -734,7 +770,12 @@ function QS.WhenReady(fn)
 		return
 	end
 	if state == "idle" and not QS.Lib() then
-		-- (no QuestieDB: MelloUI's own rows, ready at once; `fn` run as the caller's own code, its errors its own)
+		-- (no Questie: no quests, ready at once; `fn` run as the caller's own code, its errors its own. Before the
+		-- login is over this is not kept: Questie may still be loading, and the next ask looks again)
+		if not MelloUI.initialized then
+			fn()
+			return
+		end
 		Build()
 		fn()
 		return

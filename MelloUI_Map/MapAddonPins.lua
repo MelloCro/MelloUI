@@ -86,6 +86,10 @@ local LAYER = { zone = "addons", continent = "addons_continent", world = "addons
 -- (2.1.51) Questie's givers and turn-ins while they are the givers (QuestieLook's Givers): a layer of their own under
 -- the map's Quest givers switch (Map.lua's SWITCHES), never the one of the other addons' pins
 LAYER.questGivers = "quests_questie"
+-- (2.1.52, stage 2) Questie's objective icons while Questie wears its own look (its switch on the Addons page off):
+-- a layer of their own under the map's Your quests' objectives switch. In MelloUI's look this map lays its own marks
+-- there and Questie's of that kind are never borrowed (Covered)
+LAYER.questObjectives = "objectives_questie"
 AddonPins.LAYER = LAYER
 
 local S = {
@@ -377,11 +381,19 @@ local function Place(entry, icon, t, cover)
 	end
 	-- (2.1.4) Questie's: a quest this map shows already is not drawn twice; the rest in MelloUI's own look; (2.1.43) its
 	-- townsfolk of a kind this map draws (its flight masters) not twice either
-	-- (2.1.44: Questie's icons as any addon's while its switch on the Addons page, Use with MelloUI, is off)
-	local questie = entry.questie and MelloUI.QuestieLook.Used()
+	-- (2.1.52, stage 2; the user, 2026-11-14: "with Questie Installed, the Quests are shown on the Map and Minimap from
+	-- the QuestieDB database with its default look") Questie's switch on the Addons page off, its own look: its icons
+	-- are hosted as Questie draws them (never restyled, its townsfolk all its own), and this map's two quest switches
+	-- still decide them -- its givers and turn-ins on the Quest givers' layer, its objectives on Your quests'
+	-- objectives' (each layer shown or hidden by its switch). MelloUI lays no quest marks of its own then (MapObjectives)
+	local questie = entry.questie
+	local dressed = questie and MelloUI.QuestieLook.Used()
 	local look = questie and QuestieLook(icon) or nil
-	local town = questie and not look and Town(icon) or nil
-	local covered = (look and Covered(look, icon, cover)) or (town and cover and cover[town]) or false
+	local town = dressed and not look and Town(icon) or nil
+	local covered = false
+	if dressed then
+		covered = (look and Covered(look, icon, cover)) or (town and cover and cover[town]) or false
+	end
 	if questie then
 		MelloUI.QuestieLook.Unlist(icon, covered)   -- (2.1.39: left out of Questie's tooltip too)
 	end
@@ -414,6 +426,8 @@ local function Place(entry, icon, t, cover)
 	-- (Questie lays them with the world's flag, SHOW_WORLD: on every zoom else)
 	if look and cover and cover.questie and (look.cover == "giver" or look.cover == "ender") then
 		layer = LAYER.questGivers
+	elseif look and not dressed and look.cover == "objective" then
+		layer = LAYER.questObjectives   -- (2.1.52: Questie's own look, its objectives under their switch)
 	end
 	if S.layerOf[icon] and S.layerOf[icon] ~= layer then
 		Drop(icon)
@@ -425,7 +439,7 @@ local function Place(entry, icon, t, cover)
 	end
 	S.pins:Set(layer, icon, wx, wy, spec)
 	S.owner[icon], S.layerOf[icon] = entry, layer
-	if look then
+	if look and dressed then
 		Restyle(icon, look)
 	elseif styled[icon] then
 		Unstyle(icon)   -- (Questie's pooled frame now one of no look of ours)
@@ -960,7 +974,9 @@ function AddonPins.Init(canvas, pins)
 	local cont = pins:Layer(LAYER.continent, T.ORDER.continent, { minZ = T.CONTINENT_FROM })
 	local world = pins:Layer(LAYER.world, T.ORDER.world)
 	local givers = pins:Layer(LAYER.questGivers, T.ORDER.zone, { minZ = T.ZONE_FROM })   -- (2.1.51: as the zone's)
+	local objectives = pins:Layer(LAYER.questObjectives, T.ORDER.zone, { minZ = T.ZONE_FROM })   -- (2.1.52: too)
 	S.ours[zone.frame], S.ours[cont.frame], S.ours[world.frame], S.ours[givers.frame] = true, true, true, true
+	S.ours[objectives.frame] = true
 end
 
 -- (the API's pins added before the map's places were made: laid at its first open, the canvas laid out)
@@ -987,9 +1003,17 @@ function AddonPins.Wanted()
 	if S.pins.layers[LAYER.zone].on then
 		return true
 	end
-	local givers = S.pins.layers[LAYER.questGivers]
 	local QLook = MelloUI.QuestieLook
-	return (givers and givers.on and QLook.Givers and QLook.Givers()) and true or false
+	if not (QLook.Givers and QLook.Givers()) then
+		return false
+	end
+	local givers = S.pins.layers[LAYER.questGivers]
+	if givers and givers.on then
+		return true
+	end
+	-- (2.1.52, stage 2) Questie in its own look: its objectives too, on their own layer, while their switch is on
+	local objectives = S.pins.layers[LAYER.questObjectives]
+	return (objectives and objectives.on and not QLook.Used()) and true or false
 end
 
 function AddonPins.Open()

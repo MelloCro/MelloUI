@@ -48,7 +48,6 @@ Data under the GPL-3.0 (not covered by the MIT License above):
   the GNU General Public License version 3. They are distributed under the
   same licence; its text is in LICENSE-GPL-3.0.txt:
     Media/QuestListData.lua
-    MelloUI_Companion/QuestObjectiveData.lua
     MelloUI_VoiceOver/NPCVoiceData.lua
     MelloUI_DungeonInfo/DungeonInfoData.lua
     MelloUI_Map/MapDungeons.lua (the bosses' places)
@@ -73,9 +72,10 @@ Third-party material:
 
 - Media/Textures/VoiceOver: overlay textures from the VoiceOver addon
   (https://github.com/mrthinger/wow-voiceover), released under the Unlicense.
-- Media/QuestListData.lua and MelloUI_Companion/QuestObjectiveData.lua also
-  draw on wago.tools table exports, the game client's own caches, in-game
-  positions and, for Forever's own quests, Wowhead's Forever pages.
+- Media/QuestListData.lua also draws on wago.tools table exports, the game
+  client's own caches and in-game positions. (Since 2.1.52 MelloUI ships no
+  quest rows or objective places of its own: the quests are read at run time
+  from the player's own Questie, which is not part of MelloUI.)
 - The voice pack (MelloUI_VoiceOverData, distributed separately) merges the
   vanilla lines of the wow-voiceover project (Unlicense) with lines generated
   for World of Warcraft: Forever with ElevenLabs voices.

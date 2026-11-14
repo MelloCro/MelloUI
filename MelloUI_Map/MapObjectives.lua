@@ -100,20 +100,13 @@ local function QuestList()
 	return (type(QL) == "table" and QL.M and QL.M.isEnabled) and QL or nil
 end
 
--- the Companion's data: asked for once a session (a refusal is the Companion's own notice)
+-- (2.1.52, stage 2) the objectives' places are Questie's (Core/QuestSource.lua), and this map lays its own marks and
+-- areas of them only in MelloUI's look: with Questie's switch off Questie's own objective icons show (MapAddonPins),
+-- without Questie there are no quests at all
+-- (a world without the quest source -- a test's: the places are whatever MelloUI.QuestObjectives hands out)
 function Objectives.Data()
-	-- (2.1.39) the player's QuestieDB has places too (Core/QuestSource.lua); the Companion still asked for once, for
-	-- the quests it lacks
-	local questie = MelloUI.QuestSource and MelloUI.QuestSource.Lib() ~= nil
-	if rawget(_G, "MelloUI_QuestObjectiveData") then
-		return true
-	end
-	if S.asked or not MelloUI.LoadCompanion then
-		return questie or false
-	end
-	S.asked = true
-	local ok = pcall(MelloUI.LoadCompanion, MelloUI)
-	return questie or (ok and rawget(_G, "MelloUI_QuestObjectiveData") ~= nil)
+	local QS = MelloUI.QuestSource
+	return QS == nil or QS.Look()
 end
 
 -- the quests in the log to show: not complete, not hidden, (Only The Tracked Quests) watched; (2.1.0) the complete

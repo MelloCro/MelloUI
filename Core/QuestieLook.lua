@@ -86,8 +86,11 @@ QL.Used = Used
 -- Quest List's QL.GiverGroups and its dungeon starters) and Questie's are drawn by its own rules -- its level options
 -- too -- in MelloUI's pictures; a map's Quest givers switch shows or hides them. MelloUI's objective marks and quest
 -- areas stay MelloUI's (the user, 2026-11-10: "our own function which i like very much")
+-- (2.1.52, stage 2: MelloUI has no quest data of its own) so whenever Questie is there -- in MelloUI's look or, its
+-- switch off, in its own (Core/QuestSource.lua's states) -- and never MelloUI's own
 function QL.Givers()
-	return type(rawget(_G, "Questie")) == "table" and Used()
+	local QS = rawget(MelloUI, "QuestSource")
+	return QS ~= nil and QS.Lib() ~= nil
 end
 
 -- dressed: MelloUI's Quest Tracker on, stepped aside for Questie's

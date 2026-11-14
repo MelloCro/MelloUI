@@ -100,9 +100,14 @@ local TEXT = {
 local GROUPS = { "Quests", "Travel", "People and more" }
 local SWITCHES = {
 	-- (2.1.51) Questie's givers too while they are the givers (MapAddonPins' LAYER.questGivers)
-	{ key = "quests", label = "Quest givers", layers = { "quests", "quests_questie" }, group = 1, icon = "quest_mark" },
-	{ key = "objectives", label = "Your quests' objectives", layers = { "objectives", "objective_dots", "objective_quests" },
-	  group = 1, icon = "track_todo" },
+	-- (2.1.52, stage 2) `questie`: a row whose marks are Questie's quest data -- without Questie it stands dimmed and
+	-- off on the layers' page, the line saying so under the group (MapQuestLog's LayersPage)
+	{ key = "quests", label = "Quest givers", layers = { "quests", "quests_questie" }, group = 1, icon = "quest_mark",
+	  questie = true },
+	-- (2.1.52) Questie's objective icons too while Questie wears its own look (MapAddonPins' LAYER.questObjectives)
+	{ key = "objectives", label = "Your quests' objectives",
+	  layers = { "objectives", "objective_dots", "objective_quests", "objectives_questie" }, group = 1, icon = "track_todo",
+	  questie = true },
 	{ key = "flights", label = "Flight masters", layers = { "flights" }, group = 2, icon = "svc_flight" },
 	{ key = "transports", label = "Boats, zeppelins and portals", layers = { "transports" }, trails = true, group = 2,
 	  icon = "pin_boat" },
@@ -491,9 +496,10 @@ local function SetLayer(key, on)
 	local shown = win.frame and win.frame:IsShown()
 	if key == "objectives" and shown then
 		Objectives.Lay()
-	elseif (key == "addons" or key == "quests") and shown then
-		-- (2.1.51) borrowing while either is wanted: other addons' icons, or Questie's givers, the givers then
-		-- (MapAddonPins' Wanted); each on its own layer, which its switch shows or hides
+	end
+	if (key == "addons" or key == "quests" or key == "objectives") and shown then
+		-- (2.1.51) borrowing while any is wanted: other addons' icons, or Questie's givers, the givers then, (2.1.52) or
+		-- its objectives in its own look (MapAddonPins' Wanted); each on its own layer, which its switch shows or hides
 		if AddonPins.Wanted() then
 			AddonPins.Open()
 		else

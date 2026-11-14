@@ -76,7 +76,6 @@ local M = MelloUI:RegisterModule("QuestList", {
 			{ value = "class", label = "Class quests" },
 			{ value = "dungeons", label = "Dungeons" },
 			{ value = "raids", label = "Raids" },
-			{ value = "attunements", label = "Attunements" },
 			{ value = "events", label = "Events" },
 		  },
 		  desc = "Which quests the list shows. The dropdown on the list does the same." },
@@ -201,7 +200,7 @@ function MelloUI:QuestTurnIn(questID)
 		return nil
 	end
 	-- (2.1.39; the user, 2026-11-10: Questie's info in MelloUI's tracker) the rows from the player's QuestieDB made
-	-- when the tracker first asks, the Quest List on or off (Core/QuestSource.lua); MelloUI's own until they are
+	-- when the tracker first asks, the Quest List on or off (Core/QuestSource.lua); none until they are (2.1.52)
 	local QS = MelloUI.QuestSource
 	if QS and not QS.Ready() and QS.Lib() then
 		QS.WhenReady(function() end)
@@ -2497,6 +2496,10 @@ end
 
 function M:OnEnable(db)
 	self.db = db
+	-- (2.1.52, stage 2) Attunements went with MelloUI's own quest data: a list left on it shows the zone again
+	if db.filter == "attunements" then
+		db.filter = "zone"
+	end
 	if type(MelloUI_QuestListData) ~= "table" then
 		MelloUI:Print("Quest List: its quest data (Media\\QuestListData.lua) is missing, so the list stays off. Reinstall MelloUI from its download, copying every folder.")
 		return

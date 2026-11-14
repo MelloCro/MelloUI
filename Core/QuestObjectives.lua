@@ -1,25 +1,27 @@
 --------------------------------------------------------------------------------
 -- MelloUI - Quest objectives: where a quest's objectives are done (0.19.5)
 --
--- One reader of the objective places in MelloUI_Companion (Tools/build_quest_
--- objectives.py, from classic-db and Wowhead's Forever pages) for every user:
--- Route (the route to the nearest open objective) and the Quest List's
--- objective marks on the map and the minimap (Modules/QuestListObjectives.lua;
--- the user, 2026-10-06, of Questie and Carbonite: where each objective of the
+-- One reader of the objective places for every user: Route (the route to the
+-- nearest open objective) and the objective marks on the map and the minimap
+-- (the user, 2026-10-06, of Questie and Carbonite: where each objective of the
 -- quests in the log is done). Lifted out of Route.lua (its ObjectivesOf and
 -- its objective lines): one system per job.
+-- (2.1.52, stage 2 of docs/plans/questie-data.md; the user, 2026-11-14: "i want
+-- to step away of having to Maintain Quest Data and leave it to Questie") The
+-- places are Questie's: Core/QuestSource.lua's QS.Objectives, read from the
+-- player's QuestieDB. MelloUI_Companion's own objective data, its needed items
+-- (an entry's .gates) and made marks went with MelloUI's quest data. Without
+-- Questie there are none: QO.Of answers nil, the learned places too.
 --   QO.Of(questID)       the quest's entries { { kind, name, alt, map, x1, y1,
 --                        x2, y2, ... }, ... } (kind 1 creature, 2 object, 3
---                        item, 4 area; map the world map; places in yards), an
---                        entry's needed items on it (.gates) and .made; nil
---                        when the data has none or is not loaded. A quest is
---                        decoded when first asked for, the last few kept (the
---                        data keeps each as one packed string: memory audit,
---                        2026-09-24)
---   QO.Sources(questID)  per entry (Of's order), its sources: { { from, name,
---                        lowest level, highest level, chance }, ... } (from 1
---                        creature, 2 object, 3 vendor; chance in percent, 0 for
---                        none), or nil
+--                        item, 4 area; map the world map; places in yards), the
+--                        places learned in game (below) after Questie's; nil
+--                        when there are none, or no Questie
+--   QO.Has(questID)      whether it has any, without making the list
+--   QO.Sources(questID)  per entry (Questie's, in Of's order), its sources:
+--                        { { from, name, lowest level, highest level, chance },
+--                        ... } (from 1 creature, 2 object, 3 vendor; chance 0:
+--                        QuestieDB has none), or nil
 --   QO.Lines(questID)    the game's objective lines: a list of { lower text,
 --                        finished, index, left, type, text, have, need } (left:
 --                        what is still lacking when it counts more than one) and
@@ -32,9 +34,6 @@
 --   QO.Match(entry, lines, itemLine)  the game line an entry is: its name (or
 --                        alt) in a line's text, an item never taking a line of
 --                        another type, else the quest's one item line; nil
--- The data is the Companion's global tables: nil until it is loaded
--- (MelloUI:LoadCompanion), and nothing here loads it. The places learned in
--- game (below) come after the data's in QO.Of.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -44,154 +43,10 @@ local Plain = MelloUI.Safe.Value
 local QO = {}
 MelloUI.QuestObjectives = QO
 
-local KEPT = 4                  -- decoded quests kept
-local decoded, order = {}, {}   -- [questID] = its entries; the questIDs, oldest first
--- a coordinate is three characters, base 64 with the digits "0" (48) to
--- "o" (111), holding the value plus 131072 (Tools/build_quest_objectives.py)
-local BIAS = (48 * 64 + 48) * 64 + 48 + 131072
-
--- the coordinates after an entry's fields
-local function Places(entry, coords)
-	local n = #entry
-	for i = 1, #coords - 2, 3 do
-		local a, b, c = coords:byte(i, i + 2)
-		n = n + 1
-		entry[n] = (a * 64 + b) * 64 + c - BIAS
-	end
-	return entry
-end
-
--- A needed item's places, gathered on the objective it is needed for:
--- objective.gates = { { item = id, count = n, name = "Samuel's Remains",
--- [1..] = { from, "Samuel Fipps", "", map, x1, y1, ..., label =
--- "Samuel Fipps (Samuel's Remains)", gate = the gate } } }
-local function Gate(objective, item, count, itemName, place)
-	local gates = objective.gates
-	if not gates then
-		gates = {}
-		objective.gates = gates
-	end
-	local gate
-	for _, g in ipairs(gates) do
-		if g.item == item then
-			gate = g
-			break
-		end
-	end
-	if not gate then
-		gate = { item = item, count = count, name = itemName }
-		gates[#gates + 1] = gate
-	end
-	place.gate = gate
-	place.label = place[2] .. " (" .. itemName .. ")"
-	gate[#gate + 1] = place
-end
-
--- "<kind><map><name>|<alt>|<x1><y1><x2><y2>...~" for each objective. The map
--- is one digit for 0 and 1; a longer one stands between '#' signs
--- ("1#2991#Juvenile Vuldren||...~": 0.14.0, Zephras Isle's quests). Names may
--- hold quote marks (matched plainly). An objective may have no coordinates
--- (0.15.0: one kept for a needed item alone). `needed`, the quest's needed
--- items (0.15.0, MelloUI_QuestNeededItems, a table of their own so no older
--- reader of the objectives meets them): "<obj>|<item>|<count>|<item name>|
--- <from><map><source name>|<x1><y1>...~" per place one comes from, `obj`
--- counting the objective records from 1. `made` (MelloUI_QuestMadeItems,
--- 2026-10-04): "<obj>,<obj>", the objectives whose item is made by using
--- their needed items (entry.made).
-local function Decode(packed, needed, made)
-	local list, at = {}, {}
-	for kind, rest in packed:gmatch("(%d)([^~]*)~") do
-		local wmap, name, alt, coords = rest:match("^#(%d+)#([^|]*)|([^|]*)|(.*)$")
-		if not wmap then
-			wmap, name, alt, coords = rest:match("^(%d)([^|]*)|([^|]*)|(.*)$")
-		end
-		-- (each record counted, decoded or not: a needed item names its
-		-- objective by that count)
-		at[#at + 1] = false
-		if wmap then
-			local entry = Places({ tonumber(kind), name, alt, tonumber(wmap) }, coords)
-			list[#list + 1] = entry
-			at[#at] = entry
-		end
-	end
-	for record in (needed or ""):gmatch("([^~]*)~") do
-		local obj, item, count, itemName, from, rest = record:match("^(%d+)|(%d+)|(%d+)|([^|]*)|(%d)(.*)$")
-		local wmap, name, coords
-		if rest then
-			wmap, name, coords = rest:match("^#(%d+)#([^|]*)|(.*)$")
-			if not wmap then
-				wmap, name, coords = rest:match("^(%d)([^|]*)|(.*)$")
-			end
-		end
-		local objective = wmap and at[tonumber(obj)]
-		if objective then
-			Gate(objective, tonumber(item), tonumber(count), itemName,
-				Places({ tonumber(from), name, "", tonumber(wmap) }, coords))
-		end
-	end
-	for obj in (made or ""):gmatch("%d+") do
-		local objective = at[tonumber(obj)]
-		if objective and objective.gates then
-			objective.made = true
-		end
-	end
-	return list
-end
-
--- (2.1.39) QuestieDB's entries of a quest (Core/QuestSource.lua) with MelloUI's own needed items and made marks
--- carried over by kind and name; an own entry QuestieDB has no match for kept after them (its needed items stay
--- Route's); nil when QuestieDB has none for it
-local function Merged(questID, own)
-	local QS = MelloUI.QuestSource
-	local entries = QS and QS.Objectives(questID)
-	if not entries then
-		return nil
-	end
-	local list = {}
-	for i, e in ipairs(entries) do
-		list[i] = e
-	end
-	for _, o in ipairs(own or {}) do
-		local match
-		for _, e in ipairs(entries) do
-			if e[1] == o[1] and e[2] == o[2] and e[4] == o[4] then
-				match = e
-				break
-			end
-		end
-		if match then
-			if o.gates and not match.gates then
-				match.gates, match.made = o.gates, o.made
-			end
-		elseif o.gates then
-			list[#list + 1] = o
-		end
-	end
-	return list
-end
-
--- the data's own entries of a quest (decoded once, the last few kept); QuestieDB's first when the player has it
+-- Questie's entries of a quest (Core/QuestSource.lua keeps the last few it made); nil without Questie
 local function DataOf(questID)
-	local list = decoded[questID]
-	if list then
-		return list
-	end
-	local packed = MelloUI_QuestObjectiveData and MelloUI_QuestObjectiveData[questID]
-	if type(packed) == "string" then
-		local needed = MelloUI_QuestNeededItems and MelloUI_QuestNeededItems[questID]
-		local made = MelloUI_QuestMadeItems and MelloUI_QuestMadeItems[questID]
-		list = Decode(packed, type(needed) == "string" and needed or nil, type(made) == "string" and made or nil)
-	end
-	list = Merged(questID, list) or list
-	if not list then
-		return nil
-	end
-	decoded[questID] = list
-	order[#order + 1] = questID
-	if #order > KEPT then
-		decoded[table.remove(order, 1)] = nil
-	end
-	return list
+	local QS = MelloUI.QuestSource
+	return QS and QS.Objectives(questID) or nil
 end
 
 -- the learned entries of a quest (MelloUIQuestPlaces, below), in the data's
@@ -205,25 +60,18 @@ local function LearnedOf(questID)
 	return q
 end
 
--- the data's entries, then the learned ones (a list of its own, made again
+-- Questie's entries, then the learned ones (a list of its own, made again
 -- when one is learned: QO.learnedLists)
 QO.learnedLists = {}
--- (2.1.39) whether a quest has places at all, without decoding them (Route asks it for every quest of the log; the
--- decoded keep only the last few): the Companion's data, a decoded one, or QuestieDB's (Core/QuestSource.lua keeps
--- its own)
 function QO.Has(questID)
-	if decoded[questID] then
-		return true
-	end
-	local packed = MelloUI_QuestObjectiveData and MelloUI_QuestObjectiveData[questID]
-	if type(packed) == "string" then
-		return true
-	end
-	local QS = MelloUI.QuestSource
-	return QS and QS.Objectives(questID) and true or false
+	return DataOf(questID) and true or false
 end
 
 function QO.Of(questID)
+	local QS = MelloUI.QuestSource
+	if not (QS and QS.Lib()) then
+		return nil   -- (no Questie: no quests anywhere, the learned places too)
+	end
 	local data, learned = DataOf(questID), LearnedOf(questID)
 	if not learned then
 		return data
@@ -245,28 +93,10 @@ function QO.Of(questID)
 	return #list > 0 and list or data
 end
 
--- "<from><name>^<lo>^<hi>^<chance>;...~" per objective (MelloUI_QuestObjective
--- Sources). Not kept: asked for when a mark's tooltip shows.
+-- Questie's sources, in its entries' order. Not kept: asked for when a mark's tooltip shows.
 function QO.Sources(questID)
-	-- (2.1.39) QuestieDB's, in its entries' order, when it gave the quest's entries (QO.Of)
 	local QS = MelloUI.QuestSource
-	local fromQuestie = QS and QS.Objectives(questID) and QS.Sources(questID)
-	if fromQuestie then
-		return fromQuestie
-	end
-	local packed = MelloUI_QuestObjectiveSources and MelloUI_QuestObjectiveSources[questID]
-	if type(packed) ~= "string" then
-		return nil
-	end
-	local out = {}
-	for objective in packed:gmatch("([^~]*)~") do
-		local list = {}
-		for from, name, lo, hi, chance in objective:gmatch("(%d)([^%^;]*)%^(%d+)%^(%d+)%^(%d+)") do
-			list[#list + 1] = { tonumber(from), name, tonumber(lo), tonumber(hi), tonumber(chance) }
-		end
-		out[#out + 1] = list
-	end
-	return out
+	return QS and QS.Objectives(questID) and QS.Sources(questID) or nil
 end
 
 function QO.Lines(questID)
@@ -338,8 +168,8 @@ end
 -- line's text without the count, so QO.Match finds it; places in the world's
 -- yards, as the data's), one place LEARN.APART yards from the others, at most
 -- LEARN.MAX an objective. The counts are read from the quest log after a
--- QUEST_LOG_UPDATE burst (LEARN.WAIT seconds after its last), only while the
--- data is loaded (so what it places is known); the first read after a login
+-- QUEST_LOG_UPDATE burst (LEARN.WAIT seconds after its last), only with
+-- Questie (so what it places is known); the first read after a login
 -- or a reload only notes the counts. Nothing at login; nothing a frame.
 --------------------------------------------------------------------------------
 local LEARN = { APART = 30, MAX = 24, WAIT = 0.4, KIND = { monster = 1, object = 2, item = 3 } }
@@ -425,7 +255,9 @@ function QO.ReadCounts()
 	if not (C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo) then
 		return
 	end
-	local learnNow = L.seeded and type(rawget(_G, "MelloUI_QuestObjectiveData")) == "table"
+	local QS = MelloUI.QuestSource
+	-- (only with Questie: what it places is known, and without it no quest shows anywhere)
+	local learnNow = L.seeded and QS ~= nil and QS.Lib() ~= nil
 	L.seeded = true
 	local okN, n = pcall(C_QuestLog.GetNumQuestLogEntries)
 	n = okN and Plain(n) or 0

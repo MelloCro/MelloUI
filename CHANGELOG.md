@@ -2,7 +2,14 @@
 
 ## 2.1.52
 
+- Quests: MelloUI's quests now come from Questie. With Questie installed, the map, the minimap, the Quest List and Route to a quest use its quest data. MelloUI no longer ships quest data of its own.
+- Quests: without Questie, no quests are shown. The map's layers page and the Quest List say so, with a Get Questie button that opens Questie's card on the Addons page.
+- Addons page: Questie's switch is now named MelloUI's look. On, Questie's quests wear MelloUI's look. Off, Questie shows its own icons and its own tracker, on MelloUI's map too, and the Quest List and Route to a quest keep working.
+- Quest List: quests that Questie does not know are no longer listed, and the Attunements view is gone.
+- Route: the First: loot line, for an item a quest needs before its objective, is gone. It came from MelloUI's own quest data.
 - Map: with Questie, every quest ! and ? on the map is Questie's, in MelloUI's look: its quest givers take the place of MelloUI's own, so Questie's quest level options decide which quests show. The map's Quest givers switch shows or hides them, and pointing at one shows its quests.
+- Installer: a brand-new character now gets the installer once its intro cinematic is over. Before, the game closed it as the intro ended and it was never offered again.
+- Addons page: on a new install, a Use with MelloUI switch turned off before the first /reload or logout is kept now. It was lost before.
 
 ## 2.1.51
 

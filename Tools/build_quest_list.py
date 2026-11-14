@@ -2233,9 +2233,61 @@ def restock_only(out_path):
     log(f"wrote {path}: restockItems only ({', '.join(f'{k} {len(v)}' for k, v in sorted(restock_items.items()))})")
 
 
+def drop_quest_parts(path):
+    """(2.1.52, docs/plans/questie-data.md stage 2) MelloUI ships no quest rows of its own: the quests are the
+    player's Questie's, made at run time (Core/QuestSource.lua). The file as main() wrote it keeps every other part
+    byte for byte; `chains`, `needs` and `quests` are left empty (the keys stay: every reader finds a table) and the
+    head's quest fields comment moves to `quests`. --with-quests keeps the full file (the tools that read quest rows:
+    write it outside the addon with --out)."""
+    lines = open(path, encoding="utf-8", newline="").read().split("\n")
+
+    def block(key):
+        start = lines.index("\t%s = {" % key)
+        end = start + 1
+        while lines[end] != "\t},":
+            end += 1
+        return start, end
+
+    qs, qe = block("quests")
+    rows = qe - qs - 1
+    lines[qs:qe + 1] = [
+        "\t-- (2.1.52) MelloUI ships no quests of its own: the rows are made from the player's QuestieDB when Questie is",
+        "\t-- installed (Core/QuestSource.lua), in the row form the list reads -- id, title, level, required level, side,",
+        "\t-- class mask, quest zone, pick-up zone, giver, x, y, giver kind, event, chain, dungeon, attunement (0), previous",
+        "\t-- quest, giver continent, world x, world y, giver NPC, turn-in, its NPC, its zone, its continent, world x, world y,",
+        "\t-- origin. Without Questie the list stays empty.",
+        "\tquests = {",
+        "\t},",
+    ]
+    ns, ne = block("needs")
+    cs = ns
+    while lines[cs - 1].startswith("\t-- "):
+        cs -= 1
+    lines[cs:ne + 1] = [
+        "\t-- (2.1.52) what the game asks before it offers a quest: made from QuestieDB with the rows (Core/QuestSource.lua)",
+        "\tneeds = {",
+        "\t},",
+    ]
+    hs, he = block("chains")
+    lines[hs:he + 1] = [
+        "\t-- (2.1.52) the chains' names: made from QuestieDB with the rows (a chain is named by its first quest)",
+        "\tchains = {",
+        "\t},",
+    ]
+    top = lines.index("MelloUI_QuestListData = {")
+    end_c = top + 1
+    while lines[end_c].startswith("\t-- "):
+        end_c += 1
+    del lines[top + 1:end_c]
+    open(path, "w", encoding="utf-8", newline="\n").write("\n".join(lines))
+    log(f"quest parts left empty in {path}: {rows} rows built, none shipped (the quests are Questie's)")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", default=os.path.join(HERE, "..", "Media", "QuestListData.lua"))
+    ap.add_argument("--with-quests", action="store_true",
+                    help="keep the quest rows, chains and needs in --out (not for the shipped file: 2.1.52 ships none)")
     ap.add_argument("--restock-only", action="store_true",
                     help="rewrite only the restockItems part of --out (the rest as the last full build left it)")
     ap.add_argument("--fetch-npcs", action="store_true")
@@ -2607,6 +2659,8 @@ def main():
             qid, title, level, req, side, cls, qz, gz, gname, gx, gy, kind, event, chain, dungeon, attunement, prev, wc, wx, wy, npc, ename, enpc, ezone, ec, ex, ey, origin = r
             fh.write(f"\t\t{{{qid},{lua_str(title)},{level},{req},{side},{cls},{qz},{gz},{lua_str(gname)},{gx},{gy},{kind},{event},{chain},{dungeon},{attunement},{prev},{wc},{wx},{wy},{npc},{lua_str(ename)},{enpc},{ezone},{ec},{ex},{ey},{origin}}},\n")
         fh.write("\t},\n}\n")
+    if not args.with_quests:
+        drop_quest_parts(os.path.abspath(args.out))
     log("client tables: " + ", ".join(f"{name} {build}" for name, build in sorted(db2.used.items())))
     log(f"wrote {args.out}: {len(rows)} quests, {len(used_zones)} zones")
     for k, v in sorted(stats.items()):

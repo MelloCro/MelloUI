@@ -4557,8 +4557,7 @@ end
 local route = nil        -- { points = {...}, cost = seconds, length = yards, dest = { cont, x, y } }
 local destination = nil  -- { cont, x, y, mapID, mx, my, label }
 -- The stand-in (see "Another continent"): the map pin on the dock where the
--- route leaves the player's continent while the destination is on another,
--- or on a needed item's source (Needed).
+-- route leaves the player's continent while the destination is on another.
 -- { cont, x, y, label, pin = { mapID, mx, my } given back, questID given back }
 local standIn = nil
 local crossContinent = false   -- the destination on another continent than the player
@@ -5423,94 +5422,19 @@ end
 -- quest is first tracked, and read from its global when asked for (nil until
 -- then, or when the companion is missing: the game's marker then).
 --
--- Needed items (0.15.0; a player's report, Marla's Last Wish: kill Samuel
--- Fipps, loot Samuel's Remains, then bury them at Marla's Grave -- the route
--- went straight to the grave). The data names, for some objectives, an item
--- the bags must hold before the objective can be done (Tools/build_quest_
--- objectives.py: the quest's ReqSourceId, in MelloUI_QuestNeededItems beside
--- the objectives) and where it comes from. While
--- the bags hold fewer than needed, the item's sources stand in for the
--- objective: the route, the World Marker (Route's own pin on the
--- source, StandIn) and the tracker's "First: ..." line (Route:ItemFirst) all
--- point there; the moment the bags hold them (BAG_UPDATE_DELAYED, heard
--- while such a quest is followed) they all go to the objective at once
--- (user, 2026-09-28). A count the client does not give (a secret, no such
--- call) counts as held: the objective itself, as before.
+-- (2.1.52: the needed items -- an item to loot before an objective, its
+-- sources in the objective's stead, the tracker's "First: ..." line -- went
+-- with MelloUI's own quest data; the user, 2026-11-14: "Remove the First:
+-- loot code". Questie's data names such an item, not the objective it is for.)
 --------------------------------------------------------------------------------
 
 local OBJECTIVE_RECHECK = 8     -- seconds between choosing again
 local OBJECTIVE_PRICED = 3      -- the nearest this many places are priced by route
 local OBJECTIVE_SPOT = 40       -- yards: an objective whose places all lie this close together is one spot
-local objectiveChoice = {}      -- [questID] = { sig, at, cont, x, y, name, source }
-
--- Needed items: their functions (Count, Want, Held, Gates here; Listen,
--- BagsChanged with the events), the words of the tracker's line by how the
--- source gives the item (1 a creature drops it, 2 an object holds it, 3 a
--- vendor sells it), and the items still counted as held after they left the
--- bags (Held): [questID] = { [item] = { lines, at } }
-local Needed = { VERB = { "loot", "get", "buy" }, LATCH = 300, latched = {} }
-
--- How many of a needed item the bags hold, or nil when the client cannot say
-function Needed.Count(gate)
-	local Count = (C_Item and C_Item.GetItemCount) or GetItemCount
-	if type(Count) ~= "function" then
-		return nil
-	end
-	local ok, n = pcall(Count, gate.item)
-	n = ok and Plain(n) or nil
-	return type(n) == "number" and n or nil
-end
-
--- How many the bags must hold. The data's count is the most of the item that
--- drops for the quest (review, 2026-09-28: cmangos' loot cap, not a number to
--- hold): all of it at once where the objective's line wants one thing (1016:
--- five bracers for one scroll), else as many as the line still lacks, at
--- most that (746: a pick for each tool still missing). `left`: what the
--- game's line still lacks when it counts more than one, else nil.
-function Needed.Want(gate, left)
-	return left and math.max(1, math.min(gate.count, left)) or gate.count
-end
-
--- Held, or not known (then the objective itself, as before this existed);
--- second, how many are wanted (Want). An item the objective's own step used
--- up (a carcass that calls the beast whose fang is the objective, remains
--- buried a moment before the log counts them, a key turned in its chest's
--- lock) still counts while the quest's objective lines (`lines`, one string)
--- are as they were when it came into the bags, Needed.LATCH seconds at
--- most: sent back for another the moment the step is taken is wrong
--- (review, 2026-09-28). A step that moves a line (905: a feather used at one
--- nest) lets go at once: the next nest wants a new feather.
-function Needed.Held(gate, left, questID, lines)
-	local want = Needed.Want(gate, left)
-	local n = Needed.Count(gate)
-	if n == nil then
-		return true, want
-	end
-	local latched = questID and lines and Needed.latched[questID]
-	local l = latched and latched[gate.item]
-	if n >= want then
-		if questID and lines then
-			if not l then
-				latched = latched or {}
-				Needed.latched[questID] = latched
-				l = { lines = lines }
-				latched[gate.item] = l
-			end
-			l.at = GetTime()
-		end
-		return true, want
-	end
-	if l and l.lines == lines and GetTime() - l.at < Needed.LATCH then
-		return true, want
-	end
-	if l then
-		latched[gate.item] = nil
-	end
-	return false, want
-end
+local objectiveChoice = {}      -- [questID] = { sig, at, cont, x, y, name }
 
 -- A quest's entries, { { kind, name, alt, map, x1, y1, x2, y2, ... }, ... },
--- an entry's needed items on it (.gates, .made), or nil: the one reader of
+-- or nil: the one reader of
 -- the companion's objective places, shared with the Quest List's objective
 -- marks since 0.19.5 (MelloUI.QuestObjectives, Core/QuestObjectives.lua:
 -- the decoding and its few kept quests moved there unchanged).
@@ -5521,32 +5445,9 @@ local function ObjectivesOf(questID)
 	return QO and QO.Of(questID) or nil
 end
 
--- The needed items of a quest's data, every objective's, in one new list, or
--- nil when it names none (most quests)
-function Needed.Gates(questID)
-	local list, out = ObjectivesOf(questID), nil
-	for i = 1, list and #list or 0 do
-		local gates = list[i].gates
-		for g = 1, gates and #gates or 0 do
-			out = out or {}
-			out[#out + 1] = gates[g]
-		end
-	end
-	return out
-end
-
 -- The data's entries still to do: each { kind, name, alt, map, points }, and
--- a signature of the open objectives (a new choice when it changes). An open
--- objective whose needed item the bags do not hold yet gives the places that
--- item comes from instead (Needed), and `hints`, when given, gets that item
--- by the game's objective line: hints[line] = its gate, wants[line] = how
--- many the bags must hold (Route:ItemFirst). Third and fourth: how many
--- needed items are missing, and whether every open place is one's source
--- (the stand-in pin goes there only then: StandIn). Of several items one
--- line still lacks, the hint names `prefer` when it is one (the item the
--- route goes for), else the first; a made objective (entry.made) whose items
--- the bags all hold gets hints[line] = the objective itself (use them).
-local function OpenObjectives(questID, hints, wants, prefer)
+-- a signature of the open objectives (a new choice when it changes).
+local function OpenObjectives(questID)
 	local data = ObjectivesOf(questID)
 	if not data then
 		return nil
@@ -5557,57 +5458,17 @@ local function OpenObjectives(questID, hints, wants, prefer)
 			return nil   -- the turn-in: the game's marker has it
 		end
 	end
-	-- (each line: its text, finished, its index, and what it still lacks when
-	-- it counts more than one; `lines` all of them as one string, Needed.Held;
-	-- an entry's line found by name, an item by the quest's one item line:
-	-- MelloUI.QuestObjectives' Lines / ItemLine / Match, shared since 0.19.5)
+	-- (each line: its text, finished and its index; an entry's line found by
+	-- name, an item by the quest's one item line: MelloUI.QuestObjectives'
+	-- Lines / ItemLine / Match, shared since 0.19.5)
 	local QO = MelloUI.QuestObjectives
 	local open = {}
-	local texts, lines = QO.Lines(questID)
+	local texts = QO.Lines(questID)
 	local itemLine = QO.ItemLine(data, texts)
-	local anyMatched, sig, missing, sourceOnly = false, {}, 0, true
-	-- (an item needed for several objectives, 905's feather for each of three
-	-- nests: its places once, not once each)
-	local added = {}
-	-- an open objective (`t` its game line, when matched); or, while an item
-	-- it needs is not in the bags, the places that item comes from
-	-- ("<i>s<gate>" in the signature: chosen again the moment the bags hold it)
-	local function Open(i, entry, t)
-		local gates, lacking = entry.gates, false
-		for g = 1, gates and #gates or 0 do
-			local gate = gates[g]
-			local held, want = Needed.Held(gate, t and t[4], questID, lines)
-			if not held then
-				lacking = true
-				missing = missing + 1
-				if not added[gate.item] then
-					added[gate.item] = true
-					for k = 1, #gate do
-						open[#open + 1] = gate[k]
-					end
-				end
-				sig[#sig + 1] = i .. "s" .. g
-				local line = t and t[3]
-				if hints and line and (not hints[line] or (prefer and gate.item == prefer)) then
-					hints[line] = gate
-					if wants then
-						wants[line] = want
-					end
-				end
-			end
-		end
-		if not lacking then
-			open[#open + 1] = entry
-			sig[#sig + 1] = i
-			local line = t and t[3]
-			if entry.made and hints and line and not hints[line] then
-				hints[line] = entry
-			end
-			-- (one kept for a needed item alone has no place to go to)
-			if #entry > 4 then
-				sourceOnly = false
-			end
-		end
+	local anyMatched, sig = false, {}
+	local function Open(i, entry)
+		open[#open + 1] = entry
+		sig[#sig + 1] = i
 	end
 	for i, entry in ipairs(data) do
 		local kind = entry[1]
@@ -5615,7 +5476,7 @@ local function OpenObjectives(questID, hints, wants, prefer)
 		if t then
 			anyMatched = true
 			if not t[2] then
-				Open(i, entry, t)
+				Open(i, entry)
 			end
 		elseif kind == 4 then
 			-- an exploration objective has no line of its own: open until
@@ -5633,50 +5494,46 @@ local function OpenObjectives(questID, hints, wants, prefer)
 	if #open == 0 then
 		return nil
 	end
-	return open, table.concat(sig, ","), missing, sourceOnly and missing > 0
+	return open, table.concat(sig, ",")
 end
 
 -- The place to go for the quest's open objectives: continent yards and the
 -- objective's name, or nil; nil and then true while the places cannot be
--- priced yet (the graph not built). Sixth: the needed item's source when the
--- place is one ({ from, "Samuel Fipps", "", map, ..., gate = its gate });
--- seventh and eighth: OpenObjectives' missing items and "every open place a
--- source"; ninth: the objective is an area, not one spot (0.15.0, the World
--- Marker hides inside a quest's area: Beacon.InArea) -- a place to explore,
--- or places spread wider than OBJECTIVE_SPOT (creatures to kill about a
--- camp); one NPC, one object, one source is a spot.
+-- priced yet (the graph not built). Sixth: the objective is an area, not one
+-- spot (0.15.0, the World Marker hides inside a quest's area: Beacon.InArea)
+-- -- a place to explore, or places spread wider than OBJECTIVE_SPOT (creatures
+-- to kill about a camp); one NPC or one object is a spot.
 local function ObjectiveSpot(questID)
-	local open, sig, missing, sourceOnly = OpenObjectives(questID)
+	local open, sig = OpenObjectives(questID)
 	if not open then
 		objectiveChoice[questID] = nil
 		return nil
 	end
 	local c = objectiveChoice[questID]
 	if c and c.sig == sig and GetTime() - c.at < OBJECTIVE_RECHECK then
-		return c.cont, c.x, c.y, c.name, nil, c.source, missing, sourceOnly, c.area
+		return c.cont, c.x, c.y, c.name, nil, c.area
 	end
 	local pcont, px, py = PlayerYards()
 	if not pcont then
-		return c and c.cont, c and c.x, c and c.y, c and c.name, nil, c and c.source, missing, sourceOnly, c and c.area
+		return c and c.cont, c and c.x, c and c.y, c and c.name, nil, c and c.area
 	end
 	-- (0.17.1) the same objectives, and the player still within REPICK_MOVED
 	-- yards of where they were chosen: kept (a walk chose again, and searched,
 	-- every OBJECTIVE_RECHECK seconds)
 	if c and c.sig == sig and c.pcont == pcont and Dist(px, py, c.px, c.py) < Search.REPICK_MOVED then
-		return c.cont, c.x, c.y, c.name, nil, c.source, missing, sourceOnly, c.area
+		return c.cont, c.x, c.y, c.name, nil, c.area
 	end
 	-- every place on the player's continent, nearest first
 	local near = {}
 	for _, entry in ipairs(open) do
 		local wmap = entry[4]
-		-- (a needed item's source: "Samuel Fipps (Samuel's Remains)")
-		local name = entry.label or (entry[2] ~= "" and entry[2]) or (entry[3] ~= "" and entry[3]) or nil
+		local name = (entry[2] ~= "" and entry[2]) or (entry[3] ~= "" and entry[3]) or nil
 		local first, x0, y0, x1, y1 = #near + 1, nil, nil, nil, nil
 		for i = 5, #entry - 1, 2 do
 			local cont, x, y = YardsOfWorld(wmap, entry[i], entry[i + 1])
 			if cont == pcont then
 				near[#near + 1] = { d = Dist(px, py, x, y), cont = cont, x = x, y = y, wmap = wmap, wx = entry[i], wy = entry[i + 1],
-					name = name, source = entry.gate and entry or nil }
+					name = name }
 				x0, y0 = math.min(x0 or x, x), math.min(y0 or y, y)
 				x1, y1 = math.max(x1 or x, x), math.max(y1 or y, y)
 			end
@@ -5709,8 +5566,8 @@ local function ObjectiveSpot(questID)
 		end
 	end
 	objectiveChoice[questID] = { sig = sig, at = GetTime(), cont = pick.cont, x = pick.x, y = pick.y, name = pick.name,
-		source = pick.source, area = pick.area, pcont = pcont, px = px, py = py }
-	return pick.cont, pick.x, pick.y, pick.name, nil, pick.source, missing, sourceOnly, pick.area
+		area = pick.area, pcont = pcont, px = px, py = py }
+	return pick.cont, pick.x, pick.y, pick.name, nil, pick.area
 end
 
 local function ReadTrackedQuest()
@@ -5743,7 +5600,7 @@ local function ReadTrackedQuest()
 	-- the objective itself, when the data knows where it is done (the
 	-- companion's data, loaded now if it is not yet, the roads with it)
 	Build.Want()
-	local ocont, ox, oy, oname, later, source, missing, sourceOnly, area = ObjectiveSpot(questID)
+	local ocont, ox, oy, oname, later, area = ObjectiveSpot(questID)
 	if later then
 		-- chosen by route once the roads are in (Build.Replan), or once its
 		-- search has ended (0.17.1: one that went on in the next frames);
@@ -5755,17 +5612,7 @@ local function ReadTrackedQuest()
 	end
 	if ocont then
 		local same = destination and destination.fromQuest and destination.questID == questID
-		missing = missing or 0
-		-- a needed item come into the bags while the way led to where it
-		-- comes from: the next step, said as a new quest is. Not the way back
-		-- to a source (an item used at one of several nests, the latch run
-		-- out: Needed.Held), nor the pick moving between a plain objective's
-		-- places and a source's as the player walks (review, 2026-09-28: said
-		-- at every turn, the pin put up and taken down with it)
-		local step = same and destination.source ~= nil and missing < (destination.missing or 0)
-		if same and not step and destination.cont == ocont and Dist(destination.x, destination.y, ox, oy) < 1
-			and (destination.source ~= nil) == (source ~= nil) and destination.sourceOnly == sourceOnly then
-			destination.missing = missing
+		if same and destination.cont == ocont and Dist(destination.x, destination.y, ox, oy) < 1 then
 			return
 		end
 		local title
@@ -5773,16 +5620,12 @@ local function ReadTrackedQuest()
 			local ok, t = pcall(C_QuestLog.GetTitleForQuestID, questID)
 			title = ok and Plain(t) or nil
 		end
-		-- (`source`: a needed item's; `sourceOnly`: every open place is one's,
-		-- so Route's own pin goes on it, StandIn; `missing`: the items not
-		-- held; `gated`: the quest needs an item, so the bags are heard, Needed;
-		-- `area`: an objective area, not one spot: the World Marker hides
+		-- (`area`: an objective area, not one spot: the World Marker hides
 		-- inside it, Beacon.InArea)
 		destination = { cont = ocont, x = ox, y = oy, fromQuest = true, questID = questID, objective = oname,
-			source = source, sourceOnly = sourceOnly, missing = missing, gated = Needed.Gates(questID) ~= nil,
 			area = area and true or false, label = M.IconMark("quest_mark", 16) .. " " .. (oname or title or "quest") }
-		-- announced once per quest (and step), not at every next spawn
-		Plan(true, not same or step, M.IconMark("quest_mark", 22) .. "  Tracking quest " .. (title or "") .. (oname and (": " .. oname) or "") .. ", {dist} away")
+		-- announced once per quest, not at every next spawn
+		Plan(true, not same, M.IconMark("quest_mark", 22) .. "  Tracking quest " .. (title or "") .. (oname and (": " .. oname) or "") .. ", {dist} away")
 		return
 	end
 	local mapID, px, py = QuestObjectivePoint(questID)
@@ -5814,7 +5657,7 @@ local function ReadTrackedQuest()
 	-- where the data says area (ObjectiveSpot), and once a spot is reached:
 	-- M.QuestSpotArrive, the user's word of 2026-10-13)
 	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = px, my = py, fromQuest = true, questID = questID,
-		gated = Needed.Gates(questID) ~= nil, area = false, label = M.IconMark("quest_mark", 16) .. " " .. (title or "quest") }
+		area = false, label = M.IconMark("quest_mark", 16) .. " " .. (title or "quest") }
 	Plan(true, true, M.IconMark("quest_mark", 22) .. "  Tracking quest " .. (title or "") .. ", {dist} away")
 end
 
@@ -5949,11 +5792,9 @@ end
 -- tracked is held and given back: one followed as the first tracked quest
 -- (Fall Back To The First Tracked Quest) was never the game's.
 -- Kept in the saved settings, so a reload on the way still gives it back.
--- The same pin stands on a needed item's source (0.15.0, Needed: the game's
--- own point for the quest is the objective the item is for) while every
--- open place of the quest is one, and is given back the moment the bags hold
--- the item.
--- And on a followed quest's own place once the game's point for quests is
+-- (Until 2.1.52 the same pin stood on a needed item's source too; that went
+-- with MelloUI's own quest data.)
+-- The same pin stands on a followed quest's own place once the game's point for quests is
 -- seen off the ground (2026-10-04, the user's video and /route pin: this
 -- client puts a quest's point at height 0 -- 166 yd under Thunder Bluff's
 -- mesa, 40-60 under Mulgore's plain -- so the marker, hung on the game's
@@ -5968,7 +5809,7 @@ end
 -- track; 2026-10-31, the user's Marla's Last Wish: passing Samuel Fipps'
 -- place read as the player removing Route's pin, so it never came back and
 -- the marker sat on the grave under Samuel's name). A quest's own stand-in
--- -- its needed item's source, its spot (s.step) -- reached so is not
+-- -- its spot (s.step) -- reached so is not
 -- dismissed: held down while the player is near (the marker waits, as on
 -- arriving) and put up again once they are twice that far, or the step moves
 -- on (StandIn.Reached, held).
@@ -6134,7 +5975,7 @@ do
 		return StandIn.offGround == true
 	end
 
-	-- (`whole`: the marker's whole label, a needed item's source's; `spot`:
+	-- (`whole`: the marker's whole label, a quest's own place's; `spot`:
 	-- the quest's own place; `step`: either, the quest's step's own place, not
 	-- a dock; `key`: what it stands for, Update's -- dismissed as that)
 	local function PlaceStandIn(dock, label, whole, spot, step, key)
@@ -6250,19 +6091,12 @@ do
 		end
 		local d = destination
 		crossContinent = d ~= nil and d.cont ~= cont
-		-- a needed item's source on this continent (0.15.0, Needed): the pin
-		-- on the source itself, so the game's frame and the marker show it
-		-- (the game's own point is the objective the item is for); given back
-		-- like the dock's the moment the destination is the objective again.
-		-- Only while every open place is a source: beside a plain objective the
-		-- pick moves between the two as the player walks (review, 2026-09-28)
-		local atSource = not crossContinent and d ~= nil and d.source ~= nil and d.sourceOnly
 		-- (2026-10-04) a followed quest's own place, the game's point for it off the ground
-		local atSpot = not crossContinent and not atSource and d ~= nil and d.fromQuest and M.isEnabled
+		local atSpot = not crossContinent and d ~= nil and d.fromQuest and M.isEnabled
 			and M.db.worldMarker and QuestPointOffGround(d)
-		local want = (crossContinent or atSource or atSpot) and M.isEnabled and M.db.worldMarker
+		local want = (crossContinent or atSpot) and M.isEnabled and M.db.worldMarker
 		-- what a stand-in would stand for, for a quest (`dismissed`)
-		local key = want and d.fromQuest and (d.questID .. ":" .. (atSource and d.source.gate.item or atSpot and "spot" or "dock")) or nil
+		local key = want and d.fromQuest and (d.questID .. ":" .. (atSpot and "spot" or "dock")) or nil
 		-- (2026-10-31) taken down by the game on reaching it: not the player's doing
 		TakenDownByGame(cont, px, py)
 		-- the stand-in pin removed or replaced (by the player): no longer ours;
@@ -6294,13 +6128,12 @@ do
 				return
 			end
 		end
-		if want and (atSource or atSpot) then
-			if standIn and standIn.cont == d.cont and Dist(standIn.x, standIn.y, d.x, d.y) < (atSpot and SPOT_MOVE or STAND_IN_MOVE)
-				and (standIn.spot or false) == (atSpot or false) then
-				standIn.label, standIn.key = d.label, key   -- (another source this near: its name)
+		if want and atSpot then
+			if standIn and standIn.cont == d.cont and Dist(standIn.x, standIn.y, d.x, d.y) < SPOT_MOVE and standIn.spot then
+				standIn.label, standIn.key = d.label, key
 				return
 			end
-			PlaceStandIn({ d.cont, d.x, d.y }, nil, d.label, atSpot or nil, true, key)
+			PlaceStandIn({ d.cont, d.x, d.y }, nil, d.label, true, true, key)
 			return
 		end
 		local dock, label
@@ -8006,9 +7839,7 @@ end
 --   hidden    inside a quest's objective AREA (the game's quest blob, where
 --             the client can say so: Beacon.InArea) -- killing about a camp
 --             needs no mark over one of its spots; back when the player
---             leaves. Never for one spot, nor on Route's own pin. Also
---             while the way goes to a needed item's source and Route's pin
---             is not on it (NavIsOurs, 2026-10-31): never on the objective.
+--             leaves. Never for one spot, nor on Route's own pin.
 -- Its look (0.21.3, the user's pick A of BuildData/output/
 -- world_marker_clean_sketch, "Cleaner and smaller"): the 18-unit flag mark,
 -- a still 20 x 230 beam with a small glow at its foot, one still chevron
@@ -8361,12 +8192,7 @@ end
 -- The navigation frame follows whatever the game super-tracks; the marker
 -- hangs on it only while that is our destination: the map pin for a pin, the
 -- same quest for a quest. With nothing super-tracked the frame is left where
--- it last was (the arrow froze there, user 2026-09-23). A needed item's
--- source is never the game's point for the quest (that is the objective the
--- item is for): only Route's own pin on it shows it, and without one the
--- marker waits rather than stand on the objective under the source's name
--- (2026-10-31, the user's Marla's Last Wish: the marker on the grave, the
--- route to Samuel Fipps).
+-- it last was (the arrow froze there, user 2026-09-23).
 local function NavIsOurs()
 	if not destination then
 		return false
@@ -8386,18 +8212,9 @@ local function NavIsOurs()
 		return pin ~= false
 	end
 	if destination.fromQuest then
-		return destination.source == nil and quest ~= nil and quest == destination.questID
+		return quest ~= nil and quest == destination.questID
 	end
 	return pin ~= false
-end
-
--- Whether the game's own marker would point elsewhere than the destination:
--- it follows the game's tracking of the quest while the way goes to a needed
--- item's source with no pin of Route's on it (NavIsOurs). It stays faded
--- then, as while ours shows (UpdateMarker)
-function Beacon.GameElsewhere()
-	local d = destination
-	return d ~= nil and d.fromQuest and d.source ~= nil and not standIn and M.isEnabled and M.db.worldMarker and true or false
 end
 
 local UpdateMarker   -- below: the tick hides the marker through it
@@ -10176,7 +9993,7 @@ UpdateMarker = function()
 			marker.soundKey = nil
 		end
 		-- (2026-10-31) nor the game's own on the objective while the way goes to its item's source
-		FadeGameMarker(inArea or Beacon.GameElsewhere())
+		FadeGameMarker(inArea)
 		return
 	end
 	-- the tick places it: over the destination or on the ring round the character
@@ -10871,17 +10688,11 @@ end
 --                                    nil, true ("later") when this frame's
 --                                    share of new places is used up (a whole
 --                                    quest log asked at once): asked again in
---                                    a later frame, it is made. A needed item
---                                    not in the bags yet: its sources' places
---                                    in its objective's stead (Needed; made
---                                    again when the bags change that).
---   Route:ItemFirst(questID)         { [objective line] = "First: loot ...
---                                    from ..." } while an open objective's
---                                    needed item is not in the bags, else nil
+--                                    a later frame, it is made.
 --                                    (a reused table: read it at once)
 --   Route:PinnedQuest()              the quest whose game tracking Route's
---                                    own pin holds for now (a needed item's
---                                    source, the dock on the way), else nil
+--                                    own pin holds for now (the dock on the
+--                                    way, a quest's own spot), else nil
 --   Route:FollowedRemaining(questID) the yards left when Route follows that
 --                                    quest (what FollowRoute counted this moment,
 --                                    or worked out as it does: on a flight,
@@ -11027,19 +10838,7 @@ do
 		if not (questID and (e or (QO and QO.Has(questID))) and C_QuestLog and C_QuestLog.IsComplete) then
 			return nil
 		end
-		-- (a quest that needs items: its open places as the route has them,
-		-- each needed item held or not with them, asked each time -- the bags
-		-- are not the quest log, a needed item looted changes no objective)
-		local needed = MelloUI_QuestNeededItems
-		local gated = type(needed) == "table" and type(needed[questID]) == "string"
-		local open, sig
-		if gated then
-			local osig
-			open, osig = OpenObjectives(questID)
-			sig = "g" .. (osig or "")
-		else
-			sig = (not e or e.log ~= M.logGen) and Signature(questID)
-		end
+		local sig = (not e or e.log ~= M.logGen) and Signature(questID)
 		if e and sig and sig == e.sig then
 			e.log = M.logGen   -- the same objectives open: the places as they were
 		elseif sig then
@@ -11063,10 +10862,7 @@ do
 				e[i] = nil
 			end
 			local n = 0
-			if not gated then
-				open = OpenObjectives(questID)
-			end
-			for _, entry in ipairs(open or {}) do
+			for _, entry in ipairs(OpenObjectives(questID) or {}) do
 				local wmap = entry[4]
 				for i = 5, #entry - 1, 2 do
 					spent = spent + 1
@@ -11086,56 +10882,9 @@ do
 	end
 end
 
--- Route:ItemFirst(questID): what to do first for the quest's open objectives
--- whose needed item the bags do not hold yet (Needed): { [line] = "First:
--- loot Samuel's Remains from Samuel Fipps" }, `line` the objective's index in
--- the game's C_QuestLog.GetQuestObjectives; nil for none. Needs the
--- companion's data (nil until it is loaded; never loads it). The table is
--- reused: read it at once. The source named is the one the route goes to
--- while it follows the quest, else the first the data names (a creature that
--- drops the item before an object that holds it).
-do
-	local hints, wants, words = {}, {}, {}
-
-	function M:ItemFirst(questID)
-		questID = MelloUI.Safe.Number(questID)
-		-- (most quests need none)
-		local needed = MelloUI_QuestNeededItems
-		if not (questID and type(needed) == "table" and type(needed[questID]) == "string") then
-			return nil
-		end
-		wipe(hints)
-		wipe(wants)
-		wipe(words)
-		local d = destination
-		local going = d and d.fromQuest and d.questID == questID and d.source
-		OpenObjectives(questID, hints, wants, going and going.gate and going.gate.item)
-		local any = false
-		for line, gate in pairs(hints) do
-			if gate.made then
-				-- (2026-10-04, Traditions of the Bluff: the four bought, the
-				-- incense not made yet) the objective itself: use them
-				words[line] = "Next: use " .. gate.gates[1].name .. " to make " .. gate[2]
-			else
-				local from = going
-				if not (from and from.gate and from.gate.item == gate.item) then
-					from = gate[1]
-				end
-				-- (how many are held of how many wanted, when more than one is)
-				local want = wants[line] or gate.count
-				local held = want > 1 and Needed.Count(gate)
-				words[line] = "First: " .. (Needed.VERB[from[1]] or "get") .. " " .. gate.name
-					.. (held and string.format(" (%d/%d)", held, want) or "") .. " from " .. from[2]
-			end
-			any = true
-		end
-		return any and words or nil
-	end
-end
-
 -- Route:PinnedQuest(): the quest whose game tracking Route's own map pin
--- holds for now (a needed item's source, or the dock on the way to another
--- continent: StandIn), else nil. The game then tracks the pin; the tracker
+-- holds for now (the dock on the way to another continent, or a quest's own
+-- spot: StandIn), else nil. The game then tracks the pin; the tracker
 -- still shows that quest as the one followed.
 function M:PinnedQuest()
 	return standIn and standIn.questID or nil
@@ -12354,37 +12103,6 @@ function M.SideChanged()
 	end
 end
 
--- Needed items: the bags heard only while the destination is a quest that
--- needs one (Tick keeps it so); a change read again in the next frame, once
--- however many came, so the route, the marker and the pin go to the objective
--- together the moment the item is looted, not at the next tick
-function Needed.Listen(on)
-	on = (on and M.isEnabled) and true or false
-	if on == (Needed.listening or false) then
-		return
-	end
-	Needed.listening = on
-	if on then
-		pcall(eventFrame.RegisterEvent, eventFrame, "BAG_UPDATE_DELAYED")
-	else
-		pcall(eventFrame.UnregisterEvent, eventFrame, "BAG_UPDATE_DELAYED")
-	end
-end
-
-function Needed.BagsChanged()
-	if Needed.pending then
-		return
-	end
-	Needed.pending = true
-	C_Timer.After(0, function()
-		Needed.pending = false
-		local d = destination
-		if M.isEnabled and d and d.fromQuest and d.gated then
-			ReadWaypoint()
-		end
-	end)
-end
-
 -- The flight-master help listens for the landing while a flight is under
 -- way (M.flight)
 function M.flight.Listen(on)
@@ -12434,8 +12152,6 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 		C_Timer.After(0.25, M.flight.Opened)
 	elseif event == "PLAYER_CONTROL_GAINED" then
 		M.flight.ControlGained()
-	elseif event == "BAG_UPDATE_DELAYED" then
-		Needed.BagsChanged()
 	elseif event == "UNIT_FACTION" or event == "NEUTRAL_FACTION_SELECT_RESULT" then
 		if event ~= "UNIT_FACTION" or Plain(unit) == "player" then
 			M.SideChanged()
@@ -12475,8 +12191,6 @@ local function Tick()
 		else
 			crossContinent = false
 		end
-		-- the bags heard only while a quest that needs an item is followed
-		Needed.Listen(destination ~= nil and destination.gated)
 	end
 	if route and WorldMapFrame and WorldMapFrame:IsShown() then
 		DrawWorldMap()   -- the line on the open map starts at the player (the route is kept now)
@@ -12627,17 +12341,11 @@ SlashCmdList.MELLOROUTE = function(msg)
 					tostring(Plain(o.text))))
 			end
 			for i, e in ipairs(ObjectivesOf(questID) or {}) do
-				print(string.format("   data %d: kind %d, %s%s%s", i, e[1], e[2] ~= "" and e[2] or e[3],
-					e.gates and string.format(", %d needed item%s", #e.gates, #e.gates == 1 and "" or "s") or "",
-					e.made and ", made of them" or ""))
+				print(string.format("   data %d: kind %d, %s", i, e[1], e[2] ~= "" and e[2] or e[3]))
 			end
 			poiCache[questID] = nil
 			local mapID, x, y = QuestObjectivePoint(questID)
 			print(string.format("   objective marker: %s", mapID and string.format("map %d at %.3f, %.3f", mapID, x, y) or "none found"))
-			-- (an item the bags must hold first: what the route follows meanwhile)
-			for _, text in pairs(M:ItemFirst(questID) or {}) do
-				print("   " .. text)
-			end
 			if destination and destination.fromQuest then
 				print("   following it: " .. tostring(destination.label) .. (route and "" or " (no route drawn: within 60 yards, or no route found)"))
 			else
@@ -12865,7 +12573,6 @@ end
 
 function M:OnDisable()
 	eventFrame:UnregisterAllEvents()
-	Needed.listening = false
 	if ticker then
 		ticker:Cancel()
 		ticker = nil
