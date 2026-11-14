@@ -149,8 +149,9 @@ local IsSecret = MelloUI.Safe.IsSecret
 QL.Plain = MelloUI.Safe.Value
 
 -- Row fields in MelloUI_QuestListData.quests
-QL.F_ID, QL.F_TITLE, QL.F_LEVEL, QL.F_REQ, QL.F_SIDE, QL.F_CLASS, QL.F_ZONE, QL.F_GIVERZONE, QL.F_GIVER, QL.F_X, QL.F_Y, QL.F_KIND, QL.F_EVENT, QL.F_CHAIN, QL.F_DUNGEON, QL.F_ATTUNE, QL.F_PREV, QL.F_CONT, QL.F_WX, QL.F_WY =
-	1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+-- (16, the attunement flag of MelloUI's own rows: 0 in every row since 2.1.52, its name went with the Attunements view)
+QL.F_ID, QL.F_TITLE, QL.F_LEVEL, QL.F_REQ, QL.F_SIDE, QL.F_CLASS, QL.F_ZONE, QL.F_GIVERZONE, QL.F_GIVER, QL.F_X, QL.F_Y, QL.F_KIND, QL.F_EVENT, QL.F_CHAIN, QL.F_DUNGEON, QL.F_PREV, QL.F_CONT, QL.F_WX, QL.F_WY =
+	1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20
 -- giver NPC id; turn-in: name, NPC id, zone (build-time guess), continent, world x, world y
 QL.F_NPC, QL.F_ENDER, QL.F_ENDERNPC, QL.F_ENDERZONE, QL.F_ENDERCONT, QL.F_ENDERWX, QL.F_ENDERWY = 21, 22, 23, 24, 25, 26, 27
 -- origin: 1 Classic (classic-db has the quest), 2 Forever's own (the data's;
@@ -179,7 +180,6 @@ QL.RowByID = RowByID   -- (the quest tooltips read the turn-ins of the log's que
 -- (2.1.39) the rows made from QuestieDB in their place (Core/QuestSource.lua): the lookup made again on next use
 MelloUI:On("questsource", function()
 	rowByID = nil
-	QL.ForgetNeeds()
 end, "Quest List: the quests' rows")
 
 -- Who takes a quest back, and where (0.14.0, the tracker's turn-in line):
@@ -980,28 +980,11 @@ local function TakenOrDone(questID)
 	return QL.IsCompleted(questID) or QL.IsOnQuest(questID)
 end
 
--- [questID] = its group of the data's `exclusive`, made on first use; (2.1.39) a quest of QuestieDB's: its own
--- group (exclusiveOf, Core/QuestSource.lua), or none
-local exclusiveOf = nil
+-- (2.1.39) a quest's group of which only one can be done: QuestieDB's (exclusiveOf, Core/QuestSource.lua), or none.
+-- (2.1.52: MelloUI's own groups -- the data's `exclusive`, a lookup made on first use -- went with its quest data)
 local function ExclusiveOf(questID)
-	local needs = Needs()
-	if needs.fromQuestie and needs.fromQuestie[questID] then
-		return needs.exclusiveOf and needs.exclusiveOf[questID]
-	end
-	if not exclusiveOf then
-		exclusiveOf = {}
-		for _, members in ipairs(Needs().exclusive or NO_NEEDS) do
-			for _, id in ipairs(members) do
-				exclusiveOf[id] = members
-			end
-		end
-	end
-	return exclusiveOf[questID]
-end
-
--- (2.1.39) the needs read again (the rows and needs made from QuestieDB: Core/QuestSource.lua)
-function QL.ForgetNeeds()
-	exclusiveOf = nil
+	local of = Needs().exclusiveOf
+	return of and of[questID]
 end
 
 -- The character's standing with a faction (the reputation bar's value: 0 is
@@ -1071,7 +1054,7 @@ function QL.Closed(row)
 	end
 	local maxLevel = needs.maxLevel and needs.maxLevel[id]
 	local target = needs.breadcrumbs and needs.breadcrumbs[id]
-	local group = needs.exclusive and ExclusiveOf(id)
+	local group = ExclusiveOf(id)
 	local rep = needs.reps and needs.reps[id]
 	local below = rep and rep[3] ~= 0
 	-- (0.19.5; user, 2026-10-06: "only the ones i can pick up") the next

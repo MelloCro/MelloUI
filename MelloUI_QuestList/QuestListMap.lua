@@ -96,14 +96,14 @@ end
 -- A level gained (0.21.3; the user, 2026-10-13: "Yes to all" to BuildData/
 -- output/animation_previews, 5. Level up): the quests it opened -- their
 -- level just reached, for this character, not waiting on another quest, not
--- hidden, not done or in the log -- are fresh: their givers' marks pop in
--- (Anim:Pop) the first time the map shows them, once. How many have their
--- giver on the player's zone map is what the level-up notice says
--- ("Level 6 · 3 new quests nearby": the Unit Frames Kit's Level Up asks
--- M:NewQuestsAt). Worked out once per level (QL.NewAt)
+-- hidden, not done or in the log. How many have their giver on the player's
+-- zone map is what the level-up notice says ("Level 6 · 3 new quests nearby":
+-- the Unit Frames Kit's Level Up asks M:NewQuestsAt). Worked out once per
+-- level (QL.NewAt). (2.1.52: their givers' marks popping in the first time
+-- the map showed them -- QL.fresh, QL.Fresh -- went with MelloUI's own giver
+-- marks: the givers are Questie's)
 --------------------------------------------------------------------------------
 
-QL.fresh = setmetatable({}, { __mode = "k" })   -- [row] = true: opened by the last level gained, not popped yet
 local freshLevel, freshNear = nil, 0
 
 -- the rows whose giver is on the player's zone map (its children too), as the
@@ -148,7 +148,7 @@ local function NearRows()
 	return nearRows
 end
 
--- the level's opened quests marked fresh; how many are near (once per level)
+-- how many of the level's opened quests are near (once per level)
 function QL.NewAt(level)
 	level = QL.Plain(level)
 	if not level then
@@ -157,16 +157,12 @@ function QL.NewAt(level)
 	if freshLevel == level then
 		return freshNear
 	end
-	wipe(QL.fresh)
 	local near = NearRows()
 	local n = 0
 	for _, row in ipairs(QL.allRows or {}) do
-		if row[QL.F_REQ] == level and QL.Eligible(row) and QuestState(row, level) == "available"
+		if near[row] and row[QL.F_REQ] == level and QL.Eligible(row) and QuestState(row, level) == "available"
 			and SeasonWanted(row, "available") and not QL.IsHidden(row[QL.F_ID]) then
-			QL.fresh[row] = true
-			if near[row] then
-				n = n + 1
-			end
+			n = n + 1
 		end
 	end
 	freshLevel, freshNear = level, n

@@ -450,7 +450,7 @@ end
 local function Empty(data)
 	if type(data) == "table" then
 		data.quests, data.chains = {}, {}
-		data.needs = { exclusive = {}, fromQuestie = {} }
+		data.needs = {}
 	end
 	Done({ questie = 0, failed = 0 })
 end
@@ -469,10 +469,9 @@ local function Build()
 	end
 	local names = { events = type(data.events) == "table" and data.events or {},
 		dungeons = type(data.dungeons) == "table" and data.dungeons or {} }
-	local out, asked, seen = {}, {}, {}
+	local out, asked = {}, {}
 	local counts = { questie = 0, failed = 0 }
-	-- (`exclusive`: MelloUI's own groups, none any more -- the Quest List asks it before it reads a quest's exclusiveOf)
-	local needs = { exclusive = {}, fromQuestie = seen }
+	local needs = {}
 	for _, field in ipairs(NEED_FIELDS) do
 		needs[field] = {}
 	end
@@ -493,7 +492,6 @@ local function Build()
 					end
 					counts.failed = counts.failed + 1
 				elseif #out > before then
-					seen[id] = true
 					counts.questie = counts.questie + 1
 					-- (its rules; one that breaks leaves the quest without them, never the build)
 					pcall(Needs, L, id, needs)
