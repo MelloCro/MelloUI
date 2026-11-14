@@ -39,6 +39,8 @@ local function Tr(text)
 end
 
 local function F(text, ...)
+	-- Load the selected catalogue before formatting a translated template.
+	Tr(text)
 	local Lang = MelloUI.Lang
 	return Lang and Lang.F(text, ...) or string.format(text, ...)
 end
@@ -137,9 +139,9 @@ end
 
 local function Yards(d)
 	if d >= 1000 then
-		return string.format("%.1f km", d / 1000)
+		return F("%.1f km", d / 1000)
 	end
-	return string.format("%d yd", d)
+	return F("%d yd", d)
 end
 
 local function PlayerMapPoint()
@@ -2007,7 +2009,7 @@ local function NearestLine(s)
 	if not s.tip or s.tipSub ~= c.sub then
 		local sub = CleanSub(c.sub)
 		s.tipSub = c.sub
-		s.tip = "Nearest: " .. c.name .. (sub ~= "" and (" (" .. sub .. ")") or "") .. ", " .. yards
+		s.tip = F("Nearest: %s%s, %s", c.name, sub ~= "" and (" (" .. sub .. ")") or "", yards)
 	end
 	return s.tip
 end
