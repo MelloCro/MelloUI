@@ -22,7 +22,10 @@
 -- other line handed straight to the frame's own handler, so it shows as always and Core/CentreText.lua shades it.
 -- A line it cannot place in the quest log -- or one whose moment is switched off -- goes to the frame: the game's
 -- text as before. Told apart by the game's own message names (GetGameMessageInfo) and read by its own format
--- strings, so it follows the client's language. A secret line is always handed on.
+-- strings, so it follows the client's language. A secret line is always handed on. The lines it keeps back: a count
+-- ("Mudsnout Blossoms: 3/6", "... slain: 6/6", "Players slain: 3/10"), an objective's "(Complete)" and the quest's
+-- "... completed." (the user, 2026-11-14: "the default text is still showing" -- the last two went through before).
+-- /mello moments why: the last quest lines it handed to the game and why.
 --
 -- Where: the game's line (UIErrorsFrame: TOP -122 units), the quest's crest a little under it. Its frames are made
 -- at the first moment (nothing at login), on UIParent, no mouse, no secure frame: it plays in a fight.
@@ -95,8 +98,9 @@ local Q = {
 	ready = false,              -- the quest log read once (only a change after it plays)
 	took = false,               -- the info event is ours (taken from the game's frame)
 	scanQueued = false,
-	kinds = nil,                -- [the game's message name] = "count" | "done" (filled at the first line)
 	patterns = {},              -- [the game's message name] = its format string as a pattern
+	unnamed = {},               -- [the game's message name] = a format with no name: its words before the count
+	why = {}, whyN = 0,         -- the last quest lines handed to the game: records in a ring, how many so far
 }
 MelloUI.QuestMoments = Q
 local B = {}                    -- the frames, made at the first moment
@@ -913,8 +917,13 @@ local function Enqueue(rec)
 				return
 			end
 		end
-		-- the one playing: still counting (before it leaves), the roll again to the new count
 		local p = Q.playing
+		-- the objective closing already (its count line, then its "(Complete)" line): no second one
+		if p and p.kind == "objective" and p.questID == rec.questID and p.index == rec.index then
+			Q.pool[#Q.pool + 1] = rec
+			return
+		end
+		-- the one playing: still counting (before it leaves), the roll again to the new count
 		if p and p.kind == "progress" and rec.kind == "progress" and p.questID == rec.questID and p.index == rec.index
 			and B.data == p and not MelloUI.Anim.reduceMotion and (B.t or 0) < Q.FLY - 0.3 then
 			p.from, p.to = p.to, rec.to
@@ -923,12 +932,23 @@ local function Enqueue(rec)
 			return
 		end
 	else
+		-- its crest playing or waiting already (the game's line and the quest log's read both tell it): no second one
+		local p = Q.playing
+		local twice = p and p.kind == "quest" and p.questID == rec.questID
 		-- a quest done: its objectives' moments still waiting give way to it
 		for i = #Q.queue, 1, -1 do
 			local q = Q.queue[i]
-			if q.kind ~= "quest" and q.questID == rec.questID then
-				Q.pool[#Q.pool + 1] = table.remove(Q.queue, i)
+			if q.questID == rec.questID then
+				if q.kind == "quest" then
+					twice = true
+				else
+					Q.pool[#Q.pool + 1] = table.remove(Q.queue, i)
+				end
 			end
+		end
+		if twice then
+			Q.pool[#Q.pool + 1] = rec
+			return
 		end
 	end
 	Q.queue[#Q.queue + 1] = rec
@@ -965,9 +985,12 @@ end
 -- the game's message names, as GetGameMessageInfo gives them, and what each says
 local KINDS = {
 	ERR_QUEST_ADD_ITEM_SII = "count", ERR_QUEST_ADD_KILL_SII = "count", ERR_QUEST_ADD_FOUND_SII = "count",
-	ERR_QUEST_ADD_PLAYER_KILL_SII = "count", ERR_QUEST_OBJECTIVE_COMPLETE_S = "done",
+	ERR_QUEST_ADD_PLAYER_KILL_SII = "count", ERR_QUEST_OBJECTIVE_COMPLETE_S = "done", ERR_QUEST_COMPLETE_S = "quest",
 }
 Q.KINDS = KINDS
+-- a "(Complete)" line names the objective by its own line ("Mudsnout Blossoms: 6/6"): read by the count lines' formats
+-- (the kill's first: "%s: %d/%d" would read "... slain" as a name)
+local COUNTS = { "ERR_QUEST_ADD_KILL_SII", "ERR_QUEST_ADD_ITEM_SII", "ERR_QUEST_ADD_PLAYER_KILL_SII" }
 
 -- the game's format string as a pattern: %s a name, %d a number (its magic characters kept as they are)
 local function Pattern(name)
@@ -980,12 +1003,34 @@ local function Pattern(name)
 		Q.patterns[name] = false
 		return false
 	end
+	if not fmt:find("%s", 1, true) then
+		-- ("Players slain: %d/%d") the objective's name is the words before the count
+		Q.unnamed[name] = fmt:match("^(.-)[:%s]*%%d") or fmt
+	end
 	p = fmt:gsub("([%(%)%.%+%-%*%?%[%]%^%$])", "%%%1")
 	p = "^" .. p:gsub("%%s", "(.-)"):gsub("%%d", "(%%d+)") .. "$"
 	Q.patterns[name] = p
 	return p
 end
 Q.Pattern = Pattern
+
+-- a line read by one of the game's formats: its name, the count it has and the count needed (nil where it says none)
+local function Read(name, text)
+	local p = Pattern(name)
+	if not p then
+		return nil
+	end
+	local a, b, c = text:match(p)
+	if not a then
+		return nil
+	end
+	local unnamed = Q.unnamed[name]
+	if unnamed then
+		return unnamed, tonumber(a), tonumber(b)
+	end
+	return a, tonumber(b), tonumber(c)
+end
+Q.Read = Read
 
 -- the quest log's objective a line counts: its name in the objective's text, the same number needed
 local function FindObjective(name, need)
@@ -1023,6 +1068,45 @@ local function IconFor(kind, name)
 	return OBJ_ICON[kind] or "quest_mark"
 end
 
+-- the quest of the log with this title
+local function FindQuest(title)
+	local n = C_QuestLog and C_QuestLog.GetNumQuestLogEntries and Num(select(1, C_QuestLog.GetNumQuestLogEntries())) or 0
+	for i = 1, n do
+		local info = C_QuestLog.GetInfo(i)
+		local id = info and not info.isHeader and Num(info.questID)
+		if id and Text(info.title) == title then
+			return id
+		end
+	end
+	return nil
+end
+
+-- a quest line handed to the game: kept with its reason for /mello moments why (records in a ring: nothing made once
+-- the ring is full); false back, as the line goes to the game
+local WHY_MAX = 8
+local function Why(name, message, reason)
+	local i = Q.whyN % WHY_MAX + 1
+	Q.whyN = Q.whyN + 1
+	local r = Q.why[i] or {}
+	Q.why[i] = r
+	r.name, r.message, r.reason = name, message, reason
+	return false
+end
+
+-- "Humbert's Sword completed.": its crest plays now, and the quest log's read after it plays no second one
+local function QuestLine(title, name, message)
+	if not M.db.quest then
+		return Why(name, message, "Quest Done is off")
+	end
+	local id = FindQuest(title)
+	if not id then
+		return Why(name, message, "no quest of that title in the log")
+	end
+	Q.complete[id] = true
+	Q.Play("quest", { questID = id, title = title })
+	return true
+end
+
 -- one of the game's info lines: true when a moment plays it (the line kept back)
 function Q.Line(messageType, message)
 	if not (M.isEnabled and M.db) or Secret(message) or Secret(messageType) or type(message) ~= "string" then
@@ -1034,24 +1118,31 @@ function Q.Line(messageType, message)
 	if not kind then
 		return false
 	end
-	local p = Pattern(name)
-	if not p then
-		return false
-	end
-	local what, have, need = message:match(p)
-	have, need = tonumber(have), tonumber(need)
+	local what, have, need = Read(name, message)
 	if not what then
-		return false
+		return Why(name, message, "not read by the game's format")
+	end
+	if kind == "quest" then
+		return QuestLine(what, name, message)
+	end
+	if kind == "done" then
+		for _, count in ipairs(COUNTS) do
+			local n, h, w = Read(count, what)
+			if n then
+				what, have, need = n, h, w
+				break
+			end
+		end
 	end
 	local questID, index, objType, req = FindObjective(what, need)
 	if not questID then
-		return false   -- not placed: the game's line as before
+		return Why(name, message, "no objective of that name in the log")
 	end
 	need = need or req or 1
 	have = have or need
 	local moment = have >= need and "objective" or "progress"
 	if not M.db[moment] then
-		return false
+		return Why(name, message, moment == "objective" and "Objective Done is off" or "Item Picked Up is off")
 	end
 	Q.Play(moment, { questID = questID, index = index, name = what, icon = IconFor(objType, what), from = have - 1,
 		to = have, of = need })
@@ -1225,6 +1316,19 @@ M.SlashWords = {
 		M.Plays.progress()
 		M.Plays.objective()
 		M.Plays.quest()
+	end,
+	-- the last quest lines handed to the game, and why (to send with /mellolog)
+	why = function()
+		MelloUI:Print("Quest Moments: the game's info lines %s", Q.took and "come to Quest Moments"
+			or "are NOT taken: the game's frame still has them")
+		local n = min(Q.whyN, WHY_MAX)
+		if n == 0 then
+			MelloUI:Print("Quest Moments: every quest line since the login played as a moment")
+		end
+		for k = Q.whyN - n + 1, Q.whyN do
+			local r = Q.why[(k - 1) % WHY_MAX + 1]
+			MelloUI:Print("  %s | %s | %s", tostring(r.name), tostring(r.message), tostring(r.reason))
+		end
 	end,
 }
 
