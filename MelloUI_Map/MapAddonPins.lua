@@ -370,6 +370,56 @@ local function Drop(icon)
 	S.owner[icon], S.layerOf[icon] = nil, nil
 end
 
+-- (2.1.52; the user, 2026-11-14: "when clicking on a quest on the map to navigate to it, it does not draw a route to
+-- it, nor does it navigate") Questie's givers and turn-ins stand where MelloUI's own did, whose click set Route's way
+-- there, and Questie's own click does nothing off the game's map (QuestieFrame.lua's OnClick: only Shift, Ctrl with
+-- TomTom, or a link into the chat line). A plain left click on one held here: Route's way to it through the Quest
+-- List, as its giver pins did (QL.RouteToPoint, at Questie's own place of it), else the map's own pin there
+-- (Map:PinOn). Questie's click runs first as before; one post-hook per frame, and a frame given back (S.owner) or
+-- pooled into another kind is left to Questie
+local clickHooked = setmetatable({}, { __mode = "k" })   -- [Questie's frame] = true: GiverClick hooked on it
+local GIVER_MARK = { giver = "quest_mark", ender = "turnin_mark" }
+local GIVER_WHAT = { giver = "quest giver", ender = "turn-in" }
+local GiverClick = Perf.Shared("OnClick on Questie's givers on MelloUI's map", function(icon, button)
+	if button ~= "LeftButton" or _G.IsModifierKeyDown() or not S.owner[icon] then
+		return
+	end
+	local okC, chat = pcall(_G.ChatEdit_GetActiveWindow)
+	if okC and chat then
+		return   -- (Questie's own: the quest's link into the chat line)
+	end
+	local look = QuestieLook(icon)
+	local cover = look and look.cover
+	if not GIVER_MARK[cover] then
+		return
+	end
+	local d = rawget(icon, "data")
+	d = type(d) == "table" and d or nil
+	local quest = d and type(d.QuestData) == "table" and d.QuestData or nil
+	local title = quest and Text(quest.name) or ""
+	local who = d and Text(d.Name) or ""
+	local W = MelloUI.Widgets
+	local mark = W.IconMarkup(GIVER_MARK[cover], 16) .. " "
+	local label = mark .. title .. (who ~= "" and (" - " .. who) or "")
+	local QL = rawget(MelloUI, "QuestList")
+	local mapID, x, y = Finite(rawget(icon, "UiMapID")), Finite(rawget(icon, "x")), Finite(rawget(icon, "y"))
+	if type(QL) == "table" and QL.RouteToPoint and mapID and x and y then
+		local notice = mark .. string.format(W.Tr("Tracking %s %s for %s, {dist} away"), W.Tr(GIVER_WHAT[cover]), who,
+			title)
+		local set, chimed = QL.RouteToPoint(mapID, x / 100, y / 100, label, notice)
+		if set and not chimed then
+			MelloUI:PlayUISound("waypoint_set")
+		end
+		return
+	end
+	local Map = MelloUI.modules and MelloUI.modules.Map
+	local layer = S.pins and S.pins.layers[S.layerOf[icon]]
+	local pin = layer and layer.pins[icon]
+	if type(Map) == "table" and Map.PinOn and pin then
+		Map:PinOn(pin, label)
+	end
+end, "script")
+
 -- one icon of the library's registry laid (or let go: no place here); `cover`: Questie's, what this map shows already
 local function Place(entry, icon, t, cover)
 	if type(icon) ~= "table" or type(t) ~= "table" or not icon.SetPoint then
@@ -439,6 +489,10 @@ local function Place(entry, icon, t, cover)
 	end
 	S.pins:Set(layer, icon, wx, wy, spec)
 	S.owner[icon], S.layerOf[icon] = entry, layer
+	if look and GIVER_MARK[look.cover] and not clickHooked[icon] and icon.HookScript then
+		clickHooked[icon] = true
+		Perf.HookScript(icon, "OnClick", GiverClick)   -- (2.1.52: a giver's or turn-in's click, Route's way there)
+	end
 	if look and dressed then
 		Restyle(icon, look)
 	elseif styled[icon] then
