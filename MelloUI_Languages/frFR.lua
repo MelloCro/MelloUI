@@ -900,6 +900,12 @@ Lang:Add("frFR", {
 	["The same button on the loot window. It only throws something away for loot worth more."] = "Le même bouton dans la fenêtre de butin. Il ne jette un objet que si le butin vaut plus que l’objet à jeter.",
 	["Sell Cheapest Junk"] = "Vendre la camelote la moins chère", -- draft
 	["Discard Cheapest Junk"] = "Jeter l’objet indésirable le moins cher",
+	["Trade Goods Too"] = "Jeter aussi les marchandises",
+	["Cheap crafting materials and other trade goods, such as light leather or boar meat, can be thrown away too, the cheapest first. Never anything your Restock list keeps or what you keep with a right-click on the Discard button."] = "Les composants d’artisanat bon marché et autres marchandises, comme le cuir léger ou la viande de sanglier, peuvent aussi être jetés, en commençant par les moins chers. Ne jette jamais les objets conservés dans votre liste de réapprovisionnement ni ceux que vous protégez d’un clic droit sur le bouton Jeter.",
+	["Its auction prices in Discard: an item is worth its auction price when that is more than the vendor's, so the cheapest goes first by that worth."] = "Dans Jeter, un objet est évalué selon son prix à l’hôtel des ventes lorsque celui-ci dépasse son prix chez le marchand ; les objets les moins chers sont alors jetés en premier selon cette valeur.",
+	["At a vendor, Discard's Sell skips what sells for clearly more at the auction house."] = "Chez un marchand, l’action Vendre de Jeter ignore les objets dont le prix à l’hôtel des ventes est nettement supérieur.",
+	["Its auction prices in Discard"] = "Ses prix à l’hôtel des ventes dans Jeter",
+	["its prices"] = "ses prix",
 	["Nothing to throw away."] = "Rien à jeter.", -- draft
 	["Only when the loot is worth more."] = "Ne se déclenche que si le butin vaut plus que l’objet à jeter.",
 	["Never Throw Away Items Worth"] = "Toujours conserver les objets valant au moins",
