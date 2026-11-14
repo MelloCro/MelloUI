@@ -1682,6 +1682,16 @@ function Log.Select(id)
 		return false
 	end
 	MarkSelected()
+	-- (2.1.52; the game, 2026-11-14: a quest clicked in the tracker opened the map on the Quest List, its page out of
+	-- sight behind that tab) the page is the Quests tab's, on the log: both brought forward, whatever the column stood
+	-- on -- the Quest List, the layers, Dungeon Info (the tracker's click, a search result). Off the log the tab's
+	-- panes are both out of sight: the tab set at once, then the mode's one fade
+	if S.tab ~= "quests" then
+		Log.Tab("quests", S.mode ~= "log")
+	end
+	if S.mode ~= "log" then
+		Log.Mode("log")
+	end
 	pager:Show(S.page, 1)
 	SyncBar()
 	return true

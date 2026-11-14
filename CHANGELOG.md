@@ -9,7 +9,9 @@
 - Quest List: quests that Questie does not know are no longer listed, and the Attunements view is gone. So are the map options Include Givers You Are Done With and Hide Grey Quests: with the quest givers being Questie's, its own settings decide both.
 - Route: the First: loot line, for an item a quest needs before its objective, is gone. It came from MelloUI's own quest data.
 - Map: with Questie, every quest ! and ? on the map is Questie's, in MelloUI's look: its quest givers take the place of MelloUI's own, so Questie's quest level options decide which quests show. The map's Quest givers switch shows or hides them, pointing at one shows its quests, and clicking one sets Route's way there. Zoomed out past a zone, the map no longer shows MelloUI's own pin for each quest in your log.
+- Questie's tracker: the gold line under its title no longer runs through the first zone's name, and the panel's gold rim stays on the screen where the tracker touches the screen's edge.
 - Questie 12.9: its quest givers and other icons show on MelloUI's map again. Questie 12.9 shares its map pins in a new way, which MelloUI did not find.
+- Map: a quest opened from the quest tracker or the map's search now shows its page when the map's panel was left on the Quest List, the layers or Dungeon Info. Before, the map opened and the page stayed hidden.
 - Map: places you explore while the map is closed now show as explored the next time you open it.
 - Map: explored areas stay inside their zone's outline, so they no longer cover the neighbouring zone's art, and the art at a zone's border no longer changes as you pan across it.
 - Installer: a brand-new character now gets the installer once its intro cinematic is over. Before, the game closed it as the intro ended and it was never offered again.

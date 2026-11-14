@@ -246,6 +246,41 @@ local function Panel(base)
 	return holder
 end
 
+-- (2.1.52; the test VM, 2026-11-14, the user: "Yes, keep it on") the panel's rim on the screen. Questie's default
+-- place is the game's quest watch frame's (QuestieCompat.GetWatchFramePoint): its frame's right edge the screen's, and
+-- the gold rim stands outward of the panel's edge (MelloUI.Rims.T: its band less its tuck) -- off the screen there.
+-- A side of Questie's frame nearer the screen's edge than the rim's room: the panel's side in by what is missing, never
+-- by more than that room (a tracker dragged past the screen's edge takes its panel with it). Clear of the edges, and
+-- under the Default skin (no rim there: Rims:OwnEdge): the panel on Questie's frame as before. Laid at every dressing
+-- (Questie's Update: its tracker moved or sized, the skin switched); Questie's frame and its place untouched
+local function Inward(room, out, scale)
+	return math.max(0, math.min(out, out - room)) / scale
+end
+
+local function Seat(base, panel)
+	local inL, inB, inR, inT = 0, 0, 0, 0
+	local Rims = rawget(MelloUI, "Rims")
+	local T = type(Rims) == "table" and Rims.T or nil
+	local out = T and (Number(T.band) or 0) - (Number(T.tuck) or 0) or 0
+	if out > 0 and not panel.game then
+		local Rect = MelloUI.Safe.ScreenRect
+		local l, b, r, t = Rect(base)
+		local sl, sb, sr, st = Rect(UIParent)
+		local scale = Number(base:GetEffectiveScale())
+		if l and sl and scale and scale > 0 then
+			local px = out * scale
+			inL, inB = Inward(l - sl, px, scale), Inward(b - sb, px, scale)
+			inR, inT = Inward(sr - r, px, scale), Inward(st - t, px, scale)
+		end
+	end
+	if panel.inL ~= inL or panel.inB ~= inB or panel.inR ~= inR or panel.inT ~= inT then
+		panel.inL, panel.inB, panel.inR, panel.inT = inL, inB, inR, inT
+		panel:ClearAllPoints()
+		panel:SetPoint("TOPLEFT", base, "TOPLEFT", inL, -inT)
+		panel:SetPoint("BOTTOMRIGHT", base, "BOTTOMRIGHT", -inR, inB)
+	end
+end
+
 -- the Quest Tracker's Background Opacity on the panel's fill and its shade (Default: the backing band's strength)
 local function Opacity(panel)
 	local m = Tracker()
@@ -653,7 +688,8 @@ local function DressHeader(base, panel)
 		return
 	end
 	local right, left = Number(base:GetRight()), Number(label:GetLeft())
-	Head(label, panel, right and left and math.max(1, right - QL.EDGE - left) or nil)
+	-- (the panel's right edge: Questie's frame's, less what the panel stands in from the screen's edge -- Seat)
+	Head(label, panel, right and left and math.max(1, right - (panel.inR or 0) - QL.EDGE - left) or nil)
 	local top, bottom = Number(base:GetTop()), Number(base:GetBottom())
 	local hTop, hBottom = Number(header:GetTop()), Number(header:GetBottom())
 	if not (top and bottom and hTop and hBottom) then
@@ -661,7 +697,11 @@ local function DressHeader(base, panel)
 		return
 	end
 	local atFoot = (hTop + hBottom) / 2 < (top + bottom) / 2
-	local y = atFoot and (hTop + 2 - top) or (hBottom - 2 - top)
+	-- (2.1.52; the game, 2026-11-14, the user: "Yes, move it") under the title the hairline stands inside Questie's
+	-- header, in the air under its text (the header is its font's size + 5 high): Questie's first line starts at the
+	-- header's bottom with its text at the line's top, and 2 under the header the hairline ran through the top of the
+	-- first zone's name. At the foot as before, 2 over the header: the line above ends in its own padding
+	local y = (atFoot and (hTop + 2 - top) or (hBottom + 2 - top)) + (panel.inT or 0)   -- (from the panel's top: Seat)
 	hair:ClearAllPoints()
 	hair:SetPoint("TOPLEFT", panel, "TOPLEFT", QL.EDGE, y)
 	hair:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -QL.EDGE, y)
@@ -689,7 +729,8 @@ local function DressLine(line)
 		-- (out to the panel's right edge, as the tracker's headings: Questie's label is as wide as its text)
 		local base = rawget(_G, "Questie_BaseFrame")
 		local right, left = Number(base and base:GetRight()), Number(label:GetLeft())
-		local width = right and left and math.max(1, right - QL.EDGE - left) or (Number(label:GetWidth()) or 100)
+		local inR = S.panel and S.panel.inR or 0   -- (the panel in from the screen's edge: Seat)
+		local width = right and left and math.max(1, right - inR - QL.EDGE - left) or (Number(label:GetWidth()) or 100)
 		-- (its name up to the +/- at the right end)
 		Head(label, layer, math.max(1, width - (Number(select(2, label:GetFont())) or 12) - 4))
 		Rule(line, layer, label, width)
@@ -880,6 +921,7 @@ function QL.Dress()
 		return
 	end
 	panel:Show()
+	Seat(base, panel)
 	Opacity(panel)
 	DressHeader(base, panel)
 	Lines(DressLine)
