@@ -655,11 +655,6 @@ do
 	function W.FontObject(name)
 		return own[name] or name
 	end
-
-	-- (tests, /mello languages) whether the copy of `name` is a family, and its members
-	function W.FontFamilyOf(name)
-		return family[name]
-	end
 end
 
 function W.Text(parent, font, text, key)
@@ -3202,7 +3197,6 @@ do   -- (the IconBox's parts in a block: the main chunk is near Lua's 200 locals
 			end
 			-- (2026-10-21: through MelloUI.Icons, the copy for its size; a game icon cropped of its baked border)
 			local c = (not bare and texture ~= nil and not NO_CROP[texture]) and 0.06 or 0
-			self.cropped = c > 0
 			MelloUI.Icons.Set(self.icon, texture, nil, c, 1 - c, c, 1 - c)
 		end
 	end
@@ -4078,22 +4072,7 @@ do
 		return true
 	end
 
-	-- a glyph as inline text markup (0.17.1: the meter's tooltip lines on a
-	-- raid-style frame), size in the line's units, tinted r, g, b (0..1); ""
-	-- for a name the sheet has not
-	local CELL = 32
-	function W.GlyphMarkup(name, size, r, g, b)
-		local i = W.GLYPHS[name]
-		if not i then
-			return ""
-		end
-		local c, row = i % 8, math.floor(i / 8)
-		local function Byte(v)
-			return math.floor(math.max(0, math.min(1, tonumber(v) or 1)) * 255 + 0.5)
-		end
-		return string.format("|T%s:%d:%d:0:0:%d:%d:%d:%d:%d:%d:%d:%d:%d|t", GLYPH_TEX, size, size, 8 * CELL, ROWS * CELL,
-			c * CELL, (c + 1) * CELL, row * CELL, (row + 1) * CELL, Byte(r), Byte(g), Byte(b))
-	end
+	local CELL = 32   -- (a cell of the sheet, in its pixels)
 
 	-- (0.21.3, the Quest Tracker's rolling count) an empty stretch of a line,
 	-- `width` of its units wide: the blank cell as inline markup, so the
