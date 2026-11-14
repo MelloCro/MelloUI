@@ -1839,6 +1839,8 @@ Lang:Add("frFR", {
 	["Tracking %s, %s away"] = "Suivi de %s, à %s",
 	["Tracking %s"] = "Suivi de %s",
 	["Your corpse"] = "Votre cadavre",
+	["Click: show the way there"] = "Clic : afficher l’itinéraire jusqu’au point",
+	["Right-click: not now"] = "Clic droit : pas maintenant",
 	["your corpse"] = "votre cadavre",
 	["%s, to the %s"] = "%s, %s",
 	["north"] = "au nord",

@@ -620,11 +620,11 @@ local function CorpseRes()
 end
 
 local CORPSE = {
-	key = "corpse", column = true, label = MelloUI.Lang.T(TEXT.corpseLabel),
+	key = "corpse", column = true, label = function() return MelloUI.Lang.T(TEXT.corpseLabel) end,
 	check = function()
 		return corpse.ghost
 	end,
-	title = MelloUI.Lang.T(TEXT.corpse),
+	title = function() return MelloUI.Lang.T(TEXT.corpse) end,
 	text = function()
 		if corpse.near then
 			return MelloUI.Lang.T(TEXT.corpseReady)
@@ -667,11 +667,13 @@ local CORPSE = {
 			CorpseWay()
 		end
 	end,
-	hint = MelloUI.Lang.T(TEXT.way),
+	hint = function() return MelloUI.Lang.T(TEXT.way) end,
 	actions = {
-		{ glyph = "check", tip = MelloUI.Lang.T(TEXT.corpseRes), desc = MelloUI.Lang.T(TEXT.corpseResDesc), fn = function() CorpseRes() end,
+		{ glyph = "check", tip = function() return MelloUI.Lang.T(TEXT.corpseRes) end,
+		  desc = function() return MelloUI.Lang.T(TEXT.corpseResDesc) end, fn = function() CorpseRes() end,
 		  shown = function() return corpse.near end },
-		{ glyph = "way", tip = MelloUI.Lang.T(TEXT.way), desc = MelloUI.Lang.T(TEXT.wayCorpse), fn = function() CorpseWay() end,
+		{ glyph = "way", tip = function() return MelloUI.Lang.T(TEXT.way) end,
+		  desc = function() return MelloUI.Lang.T(TEXT.wayCorpse) end, fn = function() CorpseWay() end,
 		  shown = function() return not corpse.near end },
 	},
 }
