@@ -1057,7 +1057,8 @@ local function GoTo(kind, opts)
 	local name = (opts and type(opts.label) == "string" and opts.label) or (profession and profession.label) or kind.label
 	local label = icon .. name .. ": " .. c.name
 	local big = kind.icon and ("|T" .. kind.icon .. ":22:22|t  ") or ""
-	R:SetDestinationTo(c, label, true, string.format("%sTracking nearest %s, closest one {dist} away", big, what))
+	local notice = F("Tracking nearest %s, closest one {dist} away", what)
+	R:SetDestinationTo(c, label, true, big .. notice)
 	return true
 end
 
