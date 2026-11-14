@@ -2912,7 +2912,6 @@ do   -- (its locals in a block: the file's main chunk is near Lua's 200)
 		end
 		return list, link
 	end
-	M.PadMoreEntries = MoreEntries
 
 	function M.PadMore(c)
 		local list, link = MoreEntries(c)

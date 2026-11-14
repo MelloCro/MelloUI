@@ -686,7 +686,6 @@ local function LayHero()
 	B.sub:ClearAllPoints()
 	B.sub:SetPoint("TOP", B.rule, "BOTTOM", 0, -Card.SUB_GAP)
 	local cx = x0 + ww + gap + nw / 2
-	B.numX = cx
 	for _, t in ipairs({ B.rays, B.glow }) do
 		t:ClearAllPoints()
 		t:SetPoint("CENTER", hero, "TOP", cx, wy)

@@ -1192,7 +1192,7 @@ local plan = {
 	-- (2.1.50) skip[r]: the row's item unticked (shown dimmed, not bought, not in the total); ticked: the rows Buy buys
 	skip = {}, ticked = 0,
 	-- (2.1.50) the lines' items not offered: of a family the bags hold better of (names, the lines' keys)
-	notN = 0, notName = {}, notKey = {}, notText = "",
+	notN = 0, notName = {}, notKey = {},
 	-- Fill All Ammo Bags: fill.a / fill.b the one arrow line and the one bullet line a visit buys for, each with the
 	-- merchant slot it buys (j) and what made it the best (rank, unit)
 	fill = { j = {}, rank = {}, unit = {} },
@@ -1678,9 +1678,7 @@ function Pick.NotOffered()
 			notKeys[n] = key
 		end
 	end
-	local text = "Not offered: " .. (said or "") .. ". You carry better " .. Words(notKeys, n) .. "."
-	plan.notText = text
-	return text
+	return "Not offered: " .. (said or "") .. ". You carry better " .. Words(notKeys, n) .. "."
 end
 
 -- (2.1.51; Nixxen: at a merchant who only had a drink below the one carried, "I did not get the 'Not offered' note" --
