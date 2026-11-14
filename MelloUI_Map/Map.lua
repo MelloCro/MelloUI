@@ -865,6 +865,10 @@ local function Shown()
 	local c = win.canvas
 	local t0 = debugprofilestop()
 	c:Layout()
+	if win.explorationDirty then
+		c:Explored()
+		win.explorationDirty = nil
+	end
 	Refit(true)   -- (on the player)
 	Layers.Open()
 	if Trails then
@@ -875,7 +879,6 @@ local function Shown()
 	Log.Shown()
 	c.stats.openMs = debugprofilestop() - t0
 	local f = win.frame
-	f:RegisterEvent("MAP_EXPLORATION_UPDATED")
 	f:RegisterEvent("TAXIMAP_OPENED")
 	f:RegisterEvent("TAXI_NODE_STATUS_CHANGED")
 	f:RegisterEvent("QUEST_LOG_UPDATE")
@@ -911,7 +914,6 @@ local function Hidden()
 	end
 	SaveView()
 	local f = win.frame
-	f:UnregisterEvent("MAP_EXPLORATION_UPDATED")
 	f:UnregisterEvent("TAXIMAP_OPENED")
 	f:UnregisterEvent("TAXI_NODE_STATUS_CHANGED")
 	f:UnregisterEvent("QUEST_LOG_UPDATE")
@@ -936,7 +938,12 @@ end
 
 local function Frame_OnEvent(_, event)
 	if event == "MAP_EXPLORATION_UPDATED" and win.canvas then
-		win.canvas:Explored()
+		if win.frame:IsShown() then
+			win.canvas:Explored()
+		else
+			-- Keep the cached pieces while closed; any number of discoveries needs just one refresh on opening.
+			win.explorationDirty = true
+		end
 	elseif event == "TAXIMAP_OPENED" or event == "TAXI_NODE_STATUS_CHANGED" then
 		Layers.Event()   -- (a flight point learned, or a flight master's map: the flights again)
 	elseif event == "QUEST_LOG_UPDATE" or event == "QUEST_WATCH_LIST_CHANGED" then
@@ -1065,6 +1072,7 @@ local function Build()
 	Perf.HookScript(f, "OnShow", Shown)
 	Perf.HookScript(f, "OnHide", Hidden)
 	Perf.SetScript(f, "OnEvent", Frame_OnEvent)
+	f:RegisterEvent("MAP_EXPLORATION_UPDATED")   -- (also while closed: invalidate cached exploration)
 	Perf.SetScript(f, "OnUpdate", Frame_OnUpdate)
 	Lay(win.shell)
 	win.shell:OnKit(Lay)
@@ -1550,6 +1558,9 @@ end
 
 function M:OnEnable(db)
 	self.db = db or self.db
+	if win.frame then
+		win.frame:RegisterEvent("MAP_EXPLORATION_UPDATED")
+	end
 	TakeKeys(true)
 	TakeHeader(true)
 	Dungeon.Listen(true)   -- (2.1.0: the bosses down this run, for a dungeon's plan)
@@ -1590,6 +1601,8 @@ function M:OnDisable()
 	Log.Unmount()   -- (the Quest List's page back to the game's column, whose map is the player's again)
 	if win.frame then
 		win.frame:Hide()
+		win.frame:UnregisterEvent("MAP_EXPLORATION_UPDATED")
+		win.explorationDirty = true   -- (discoveries while disabled are not watched)
 	end
 end
 
