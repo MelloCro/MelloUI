@@ -2459,6 +2459,15 @@ Lang:Add("frFR", {
 	["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toute votre configuration sous un nom. Enregistrez-la, chargez-la, ou faites-en la configuration par défaut d'une nouvelle installation.",
 	["Supporters"] = "Soutiens",
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.",
+	["Thank you, all of you"] = "Merci à toutes et à tous",
+	["The hall is ready"] = "La galerie est prête",
+	["MelloUI is free for everyone and always will be. These are the people who help keep it going."] = "MelloUI est gratuit pour tout le monde et le restera toujours. Voici les personnes qui contribuent à le faire vivre.",
+	["MelloUI is free for everyone and always will be. The people who help keep it going will hang their names here."] = "MelloUI est gratuit pour tout le monde et le restera toujours. Les personnes qui contribuent à le faire vivre verront leur nom affiché ici.",
+	["Want your name on a banner? Support MelloUI on Patreon, and come say hello on Discord."] = "Envie de voir votre nom sur une bannière ? Soutenez MelloUI sur Patreon et venez nous dire bonjour sur Discord.",
+	["Waiting for its first name"] = "En attente d’un premier nom",
+	["As of %s"] = "Mis à jour le %s",
+	["Champions"] = "Champions",
+	["Legends"] = "Légendes",
 	["Configurator: a new Addons page lists the addons MelloUI works with: what it does with each, their links, who does which job, and a switch to stop MelloUI using one."] = "Configurateur : une nouvelle page Addons liste les addons avec lesquels MelloUI fonctionne : ce qu'il fait avec chacun, leurs liens, qui fait quelle tâche, et un interrupteur pour que MelloUI cesse d'en utiliser un.", -- draft
 	["Custom Sounds: a new Your Sounds tab changes any sound, Level Up and Rare Alert included, to another of MelloUI's, the game's own, none, or a SharedMedia sound, your own files too."] = "Sons personnalisés : un nouvel onglet Vos sons change n'importe quel son, Niveau supérieur et Alerte rare compris, pour un autre de MelloUI, celui du jeu, aucun, ou un son SharedMedia, vos propres fichiers aussi.", -- draft
 	["Chat: the whisper window now keeps your Battle.net friends' conversations over a logout too, and answering still reaches them after you log in again."] = "Discussion : la fenêtre de chuchotements garde désormais aussi les conversations avec vos amis Battle.net après une déconnexion, et vos réponses leur parviennent encore à la reconnexion.", -- draft
