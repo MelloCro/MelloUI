@@ -760,6 +760,10 @@ Lang:Add("frFR", {
 	["Nearest: %s%s, %s"] = "Le plus proche : %s%s, %s", -- draft
 	["Click to pick a profession and route to its nearest trainer. Right-click stops the route."] = "Clic : choisir un métier et tracer l'itinéraire jusqu'au maître le plus proche. Clic droit : arrêter l'itinéraire.",
 	["Click to route there by road. Right-click stops the route."] = "Clic : tracer l'itinéraire par la route. Clic droit : l'arrêter.",
+	["Click to route there by road."] = "Clic : tracer l’itinéraire par la route.",
+	["Click to route to its nearest trainer by road."] = "Clic : tracer l’itinéraire par la route jusqu’à son maître le plus proche.",
+	["Click to route to the nearest profession trainer by road."] = "Clic : tracer l’itinéraire par la route jusqu’au maître de métier le plus proche.",
+	["Click to pick a profession and route to its nearest trainer."] = "Clic : choisir un métier et tracer l’itinéraire jusqu’au maître le plus proche.",
 	["None known on this continent yet; it is remembered the first time you use one."] = "Aucun lieu connu sur ce continent. Sa position sera mémorisée à votre première visite.",
 	["The Route module is off."] = "Le module Itinéraire est désactivé.",
 	["Click for your addons' minimap buttons. A click on one there is the addon's own."] = "Cliquez pour afficher les boutons de minicarte de vos addons. Cliquer sur l’un d’eux déclenche l’action de l’addon.", -- draft
