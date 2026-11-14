@@ -2018,7 +2018,6 @@ do
 				good = false
 			end
 			if good then
-				lk.isLink = true
 				local list = lk.section.links
 				list[#list + 1] = lk
 			end

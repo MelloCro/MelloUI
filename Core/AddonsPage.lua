@@ -281,7 +281,6 @@ local function Card(parent, e, width, skin, ctx)
 		-- (2.1.52: an entry's own name for its switch -- Questie's is MelloUI's look, the look being all it switches)
 		local label = W.Text(card, "GameFontHighlight", Tr(e.use or TEXT.use), "text")
 		label:SetPoint("RIGHT", sw, "LEFT", -8, 0)
-		card.useLabel = label
 	end
 	Rule(card, y - 2)
 	-- the state's own line (Partly, Off, or nothing to switch)
@@ -483,7 +482,6 @@ function AP.Installed(sec, width, skin, ctx)
 		tail:SetPoint("TOPLEFT", sec, "TOPLEFT", 4, -y)
 		return y + Height(tail) + 4
 	end
-	sec.addonCards = cards
 	local function Relay()
 		sec.y = Lay()
 		sec:Finish()
@@ -562,7 +560,6 @@ function AP.Compatibility(sec, width, skin)
 	end
 	Marks()
 	sec.refreshers[#sec.refreshers + 1] = Marks
-	sec.compatBox = box
 	return y + 8 + T.GAP + ask:GetHeight()
 end
 
