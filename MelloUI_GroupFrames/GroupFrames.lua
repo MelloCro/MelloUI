@@ -538,7 +538,6 @@ end
 -- members, MelloUI-dressed: 120 x 53, the portrait on the left). A kind keeps
 -- its own list per spec (places differ on a portrait frame): a party list's key
 -- is "party@<specKey>".
-RD.KINDS_OF_FRAME = { "group", "party" }
 local PARTY_KEY = "party@"
 -- (one look C9b: our party's own lists, "gparty@<specKey>"; 1.2.4, the user 2026-10-28: "we are modifying the Party
 -- "Group Frames" and Raid Frames separatelly even tho they are the same" -- our party in raid frames shows the raid's

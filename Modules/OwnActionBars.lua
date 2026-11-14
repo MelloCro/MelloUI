@@ -99,7 +99,6 @@ local TEXT = {
 local A = { bars = {}, built = nil, buttons = {}, shows = {}, byAction = {}, gameOf = {}, wantShown = {} }
 OB.Actions = A
 local FLY = { panels = {} }   -- (2.1.19) the flyouts of ours (the section Flyouts)
-A.Flyouts = FLY
 
 --------------------------------------------------------------------------------
 -- The settings (Own Bars' options, one set a bar): Edit Mode's names and ranges; not set = the game's
