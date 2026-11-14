@@ -119,33 +119,14 @@ local List = MelloUI.Kit.Panel.List
 local NameOf = MelloUI.Kit.Panel.NameOf
 
 -- ... and for the dump
-local function Label(obj)
-	if not obj then
-		return "nil"
-	end
-	local n = NameOf(obj)
-	if n then
-		return n
-	end
-	local ok, d = pcall(obj.GetDebugName, obj)
-	return (ok and type(d) == "string" and not Secret(d)) and d or "[unnamed]"
-end
+local Label = MelloUI.Kit.Panel.Label
 
 -- a font string's text when it can be read (nil when empty or secret)
 local TextOf = MelloUI.Kit.Panel.TextOf
 
 -- whether a font string shows anything: a secret text (the vendor's name may
 -- come secret on this client) is shown by the game all the same
-local function HasText(fs)
-	local ok, text = pcall(fs.GetText, fs)
-	if not ok then
-		return false
-	end
-	if Secret(text) then
-		return true
-	end
-	return type(text) == "string" and text ~= ""
-end
+local HasText = MelloUI.Kit.Panel.HasText
 
 -- a frame's level, or nil when it cannot be read
 local function LevelOf(frame)
@@ -156,13 +137,7 @@ local function LevelOf(frame)
 	return nil
 end
 
-local function Width(obj)
-	local ok, w = pcall(obj.GetWidth, obj)
-	if ok and type(w) == "number" and not Secret(w) then
-		return w
-	end
-	return nil
-end
+local Width = MelloUI.Kit.Panel.Width
 
 -- a part of the window: the key the template gives it, else its global name
 -- (the tabard templates name their pieces "$parentLeft", no parentKey)

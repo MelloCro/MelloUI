@@ -157,48 +157,18 @@ end
 local List = MelloUI.Kit.Panel.List
 
 -- a frame's name, secret-safe (nil when it has none or it reads secret)
-local function NameOf(obj)
-	if not (obj and obj.GetName) then
-		return nil
-	end
-	local ok, n = pcall(obj.GetName, obj)
-	if ok and type(n) == "string" and not Secret(n) then
-		return n
-	end
-	return nil
-end
+local NameOf = MelloUI.Kit.Panel.NameOf
 
 -- a part by its key on the frame, else by the global name the XML gives it
 -- ("$parent<suffix>")
-local function Part(frame, key, suffix)
-	if not frame then
-		return nil
-	end
-	if key and frame[key] then
-		return frame[key]
-	end
-	local name = NameOf(frame)
-	return name and suffix and _G[name .. suffix] or nil
-end
+local Part = MelloUI.Kit.Panel.Part
 
 local function IsTexture(obj)
 	return type(obj) == "table" and obj.GetObjectType ~= nil and obj:GetObjectType() == "Texture"
 end
 
 -- A string's text: the text (nil when empty), and whether it read secret
-local function TextOf(fs)
-	local ok, text = pcall(fs.GetText, fs)
-	if not ok then
-		return nil, false
-	end
-	if Secret(text) then
-		return nil, true
-	end
-	if type(text) == "string" and text ~= "" then
-		return text, false
-	end
-	return nil, false
-end
+local TextOf = MelloUI.Kit.Panel.TextRead
 
 -- Art faded while the kit is on with no piece on its own rect
 local function FadeArt(obj)
@@ -247,18 +217,7 @@ local function Inside(fs, f)
 end
 
 -- whether `f` lies under `root` (a few parents up)
-local function IsUnder(f, root)
-	for _ = 1, 10 do
-		if not f then
-			return false
-		end
-		if f == root then
-			return true
-		end
-		f = f.GetParent and f:GetParent()
-	end
-	return false
-end
+local IsUnder = MelloUI.Kit.Panel.IsUnder
 
 local function Windows()
 	return _G.MailFrame, _G.OpenMailFrame
@@ -1268,14 +1227,7 @@ end
 -- The plate follows the button's Enable / Disable (the disabled plate, the
 -- game's grey label: Send while nobody is named).
 --------------------------------------------------------------------------------
-local function PlainLabels(button)
-	local QI = MelloUI.QuestInk
-	for _, region in ipairs({ button:GetRegions() }) do
-		if region:GetObjectType() == "FontString" and QI and QI.inkOn[region] and QI.PlainText then
-			pcall(QI.PlainText, region)
-		end
-	end
-end
+local PlainLabels = MelloUI.Kit.Panel.PlainLabels
 
 local function SkinTextButton(button)
 	if not button then
@@ -2263,25 +2215,11 @@ end
 -- frames / regions are Kit:DumpWindow's (add "open" for the letter window).
 -- Opens the copy window.
 --------------------------------------------------------------------------------
-local function Num(v)
-	if v == nil then
-		return "nil"
-	end
-	if Secret(v) then
-		return "[secret]"
-	end
-	return type(v) == "number" and string.format("%.0f", v) or tostring(v)
-end
+local Num = MelloUI.Kit.Panel.Num
 
 local Label = MelloUI.Kit.Panel.Label
 
-local function Shown(obj)
-	if not obj then
-		return "-"
-	end
-	local ok, s = pcall(obj.IsShown, obj)
-	return (ok and not Secret(s)) and tostring(s) or "?"
-end
+local Shown = MelloUI.Kit.Panel.Shown
 
 local function Found(what, obj, more)
 	MelloUI:Print("  %-24s %s%s", what, obj and Label(obj) or "-- not found", more or "")

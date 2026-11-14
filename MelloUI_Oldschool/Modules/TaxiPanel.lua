@@ -484,20 +484,7 @@ end
 -- window dump. Opens the copy window.
 --------------------------------------------------------------------------------
 
-local function KeyOf(parent, obj)
-	if not (parent and obj) then
-		return nil
-	end
-	local ok, key = pcall(function()
-		for k, v in pairs(parent) do
-			if type(k) == "string" and not Secret(v) and v == obj then
-				return k
-			end
-		end
-		return nil
-	end)
-	return ok and key or nil
-end
+local KeyOf = MelloUI.Kit.Panel.KeyOf
 
 local function Describe(obj)
 	if not obj then

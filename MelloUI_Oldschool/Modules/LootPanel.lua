@@ -141,19 +141,8 @@ end
 -- the non-nil values given, as a list
 local List = MelloUI.Kit.Panel.List
 
-local NameOf = MelloUI.Kit.Panel.NameOf
-
 -- a part by its key on the frame, else by the global name the XML gives it
-local function Part(frame, key, suffix)
-	if not frame then
-		return nil
-	end
-	if key and frame[key] then
-		return frame[key]
-	end
-	local name = NameOf(frame)
-	return name and suffix and _G[name .. suffix] or nil
-end
+local Part = MelloUI.Kit.Panel.Part
 
 local function IsTexture(obj)
 	return obj ~= nil and obj.GetObjectType ~= nil and obj:GetObjectType() == "Texture"
@@ -235,26 +224,7 @@ end
 -- the icon inside the rim's opening; a roll frame's quality ring (a separate
 -- 42 px atlas round its icon) is faded and the rim takes its colour instead.
 --------------------------------------------------------------------------------
-local function FitIconRim(entry)
-	local rim = entry.rep and entry.rep.object
-	local icon = entry.icon
-	if not (rim and rim.base and icon) then
-		return
-	end
-	local name = rim.base .. "_normal"
-	local p = Kit:Piece(name)
-	local l, r, t, b = Kit:Insets(name, 1)
-	local ok, iw, ih = pcall(icon.GetSize, icon)
-	if not ok or Secret(iw) or Secret(ih) or not (iw and ih) or iw <= 0 or ih <= 0 then
-		ok, iw, ih = pcall(entry.button.GetSize, entry.button)
-	end
-	if not (p and l and ok and iw and ih) or Secret(iw) or Secret(ih) or iw <= 0 or ih <= 0 then
-		return
-	end
-	rim:ClearAllPoints()
-	rim:SetPoint("CENTER", icon, "CENTER")
-	rim:SetSize((iw - 4) * p.w / (p.w - l - r), (ih - 4) * p.h / (p.h - t - b))
-end
+local FitIconRim = MelloUI.Kit.Panel.FitEntryRim
 
 Kit:OnBorderChanged("button", function()
 	for _, entry in ipairs(rims) do

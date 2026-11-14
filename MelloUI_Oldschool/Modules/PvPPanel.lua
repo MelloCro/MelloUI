@@ -1114,13 +1114,7 @@ local function Num(v)
 	return (type(v) == "number" and not Secret(v)) and string.format("%.0f", v) or "?"
 end
 
-local function Shown(obj)
-	if not obj then
-		return "-"
-	end
-	local ok, s = pcall(obj.IsShown, obj)
-	return (ok and not Secret(s)) and tostring(s) or "?"
-end
+local Shown = MelloUI.Kit.Panel.Shown
 
 local function RectText(obj)
 	if not obj then

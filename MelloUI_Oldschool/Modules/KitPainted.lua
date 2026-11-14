@@ -6107,6 +6107,147 @@ function Kit.Panel.FitIconRim(holder)
 	rim:SetSize((iw - 4) * p.w / (p.w - l - r), (ih - 4) * p.h / (p.h - t - b))
 end
 
+-- a window's part: the frame's field `key`, else the global its name and `suffix` make (an older XML's name)
+function Kit.Panel.Part(frame, key, suffix)
+	if not frame then
+		return nil
+	end
+	if key and frame[key] then
+		return frame[key]
+	end
+	local name = Kit.Panel.NameOf(frame)
+	return name and suffix and _G[name .. suffix] or nil
+end
+
+-- whether `f` is `root` or stands under it (ten parents up at most)
+function Kit.Panel.IsUnder(f, root)
+	for _ = 1, 10 do
+		if not f then
+			return false
+		end
+		if f == root then
+			return true
+		end
+		f = f.GetParent and f:GetParent()
+	end
+	return false
+end
+
+-- whether a font string shows a text (a secret one counts as one)
+function Kit.Panel.HasText(fs)
+	local ok, text = pcall(fs.GetText, fs)
+	if not ok then
+		return false
+	end
+	if Secret(text) then
+		return true
+	end
+	return type(text) == "string" and text ~= ""
+end
+
+-- a font string's text and whether it is secret: text, false; nil, true (a secret one); nil, false (none)
+function Kit.Panel.TextRead(fs)
+	local ok, text = pcall(fs.GetText, fs)
+	if not ok then
+		return nil, false
+	end
+	if Secret(text) then
+		return nil, true
+	end
+	if type(text) == "string" and text ~= "" then
+		return text, false
+	end
+	return nil, false
+end
+
+-- the key `obj` is kept under in `parent` (its parentKey), or nil
+function Kit.Panel.KeyOf(parent, obj)
+	if not (parent and obj) then
+		return nil
+	end
+	local ok, key = pcall(function()
+		for k, v in pairs(parent) do
+			if type(k) == "string" and not Secret(v) and v == obj then
+				return k
+			end
+		end
+		return nil
+	end)
+	return ok and key or nil
+end
+
+-- a value for a dump's line: a number without decimals, "[secret]", "nil"
+function Kit.Panel.Num(v)
+	if v == nil then
+		return "nil"
+	end
+	if Secret(v) then
+		return "[secret]"
+	end
+	return type(v) == "number" and string.format("%.0f", v) or tostring(v)
+end
+
+-- a region's IsShown for a dump's line: "true" / "false", "?" for a secret one, "-" for no region
+function Kit.Panel.Shown(obj)
+	if not obj then
+		return "-"
+	end
+	local ok, s = pcall(obj.IsShown, obj)
+	return (ok and not Secret(s)) and tostring(s) or "?"
+end
+
+-- a region's width; nil for a secret one
+function Kit.Panel.Width(obj)
+	local ok, w = pcall(obj.GetWidth, obj)
+	if ok and type(w) == "number" and not Secret(w) then
+		return w
+	end
+	return nil
+end
+
+-- a rep for a dump's line: what the kit made of a region
+function Kit.Panel.RepState(rep)
+	if rep == nil then
+		return "not looked at"
+	elseif rep == false then
+		return "not dressed"
+	end
+	local shown = rep.object and rep.object.IsShown and rep.object:IsShown()
+	return tostring(rep.key) .. (shown and " (shown)" or " (hidden)")
+end
+
+-- the texts of a button the quest ink dressed, back to plain
+function Kit.Panel.PlainLabels(button)
+	local QI = MelloUI.QuestInk
+	for _, region in ipairs({ button:GetRegions() }) do
+		if region:GetObjectType() == "FontString" and QI and QI.inkOn[region] and QI.PlainText then
+			pcall(QI.PlainText, region)
+		end
+	end
+end
+
+-- as FitIconRim, for an entry { rep, icon, button }: the button's size where the icon has none yet
+function Kit.Panel.FitEntryRim(entry)
+	local rim = entry.rep and entry.rep.object
+	local icon = entry.icon
+	if not (rim and rim.base and icon) then
+		return
+	end
+	local name = rim.base .. "_normal"
+	local p = Kit:Piece(name)
+	local l, r, t, b = Kit:Insets(name, 1)
+	local ok, iw, ih = pcall(icon.GetSize, icon)
+	if not ok or Secret(iw) or Secret(ih) or not (iw and ih) or iw <= 0 or ih <= 0 then
+		ok, iw, ih = pcall(entry.button.GetSize, entry.button)
+	end
+	if not (p and l and ok and iw and ih) or Secret(iw) or Secret(ih) or iw <= 0 or ih <= 0 then
+		return
+	end
+	rim:ClearAllPoints()
+	rim:SetPoint("CENTER", icon, "CENTER")
+	rim:SetSize((iw - 4) * p.w / (p.w - l - r), (ih - 4) * p.h / (p.h - t - b))
+end
+
 -- The dump every window module offers (/xxdump): the visible game textures
 -- under `root` (art name, rect, layer), "frames" (the tree with strata and
 -- levels), "reps" (ours), or `extra(msg)` for the module's own modes.

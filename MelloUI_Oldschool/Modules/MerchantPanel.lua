@@ -128,16 +128,7 @@ local NameOf = MelloUI.Kit.Panel.NameOf
 
 -- a part by its key on the frame, else by the global name the XML gives it
 -- ("$parent<suffix>"): the templates name some parts only
-local function Part(frame, key, suffix)
-	if not frame then
-		return nil
-	end
-	if key and frame[key] then
-		return frame[key]
-	end
-	local name = NameOf(frame)
-	return name and suffix and _G[name .. suffix] or nil
-end
+local Part = MelloUI.Kit.Panel.Part
 
 -- Art faded while the kit is on with no piece on its own rect (the kit piece
 -- that stands in for it sits elsewhere: the card for the slot's square, the

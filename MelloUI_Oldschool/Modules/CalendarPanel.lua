@@ -1149,13 +1149,7 @@ local function Found(label, obj, more)
 	MelloUI:Print("  %-26s %s%s", label, obj and Label(obj) or "-- not found", more or "")
 end
 
-local function Shown(obj)
-	if not obj then
-		return "-"
-	end
-	local ok, s = pcall(obj.IsShown, obj)
-	return (ok and not Secret(s)) and tostring(s) or "?"
-end
+local Shown = MelloUI.Kit.Panel.Shown
 
 local function Dressed(obj)
 	return tostring(obj ~= nil and repOf[obj] ~= nil and repOf[obj] ~= false)

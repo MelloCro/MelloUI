@@ -827,20 +827,7 @@ end
 
 -- The key a frame keeps a child under (its parentKey), for the dump (in a
 -- pcall: a field of a game frame may hold a secret, which cannot be compared)
-local function KeyOf(parent, obj)
-	if not (parent and obj) then
-		return nil
-	end
-	local ok, key = pcall(function()
-		for k, v in pairs(parent) do
-			if type(k) == "string" and not Secret(v) and v == obj then
-				return k
-			end
-		end
-		return nil
-	end)
-	return ok and key or nil
-end
+local KeyOf = MelloUI.Kit.Panel.KeyOf
 
 local function Describe(obj)
 	local okN, name = pcall(obj.GetName, obj)

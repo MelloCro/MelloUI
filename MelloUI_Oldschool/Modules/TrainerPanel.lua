@@ -116,13 +116,7 @@ end
 
 local TextOf = MelloUI.Kit.Panel.TextOf
 
-local function NameOf(obj)
-	local ok, name = pcall(obj.GetName, obj)
-	if ok and type(name) == "string" and not Secret(name) then
-		return name
-	end
-	return nil
-end
+local NameOf = MelloUI.Kit.Panel.NameOf
 
 -- A script hooked only where the widget has it (a plain Frame row has no
 -- OnClick: HookScript would raise)
@@ -1552,20 +1546,7 @@ MelloUI:Profile("TrainerPanel", "list refresh", RefreshRows)
 
 -- The key a frame keeps a child or region under (its parentKey), in a
 -- pcall: a field of a game frame may hold a secret, which cannot be compared
-local function KeyOf(parent, obj)
-	if not (parent and obj) then
-		return nil
-	end
-	local ok, key = pcall(function()
-		for k, v in pairs(parent) do
-			if type(k) == "string" and not Secret(v) and v == obj then
-				return k
-			end
-		end
-		return nil
-	end)
-	return ok and key or nil
-end
+local KeyOf = MelloUI.Kit.Panel.KeyOf
 
 local function Describe(obj)
 	if type(obj) ~= "table" then

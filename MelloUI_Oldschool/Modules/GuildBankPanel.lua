@@ -173,16 +173,7 @@ local NameOf = MelloUI.Kit.Panel.NameOf
 
 -- a part by its key on the frame, else by the global name the XML gives it
 -- ("$parent<suffix>")
-local function Part(frame, key, suffix)
-	if not frame then
-		return nil
-	end
-	if key and frame[key] then
-		return frame[key]
-	end
-	local name = NameOf(frame)
-	return name and suffix and _G[name .. suffix] or nil
-end
+local Part = MelloUI.Kit.Panel.Part
 
 local function IsType(obj, kind)
 	if type(obj) ~= "table" or not obj.GetObjectType then
@@ -2284,13 +2275,7 @@ local function Found(label, obj, more)
 	MelloUI:Print("  %-28s %s%s", label, obj and Label(obj) or "-- not found", more or "")
 end
 
-local function Shown(obj)
-	if not obj then
-		return "-"
-	end
-	local ok, s = pcall(obj.IsShown, obj)
-	return (ok and not Secret(s)) and tostring(s) or "?"
-end
+local Shown = MelloUI.Kit.Panel.Shown
 
 local function Dressed(obj)
 	return tostring(obj ~= nil and repOf[obj] ~= nil and repOf[obj] ~= false)
