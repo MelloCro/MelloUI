@@ -577,7 +577,7 @@ local function CorpseWay()
 		MelloUI:Announce(TEXT.corpseNoWay, "fail")
 		return
 	end
-	local ok, placed = pcall(R.SetDestinationTo, R, c, MelloUI.Lang.T(TEXT.corpse), true)
+	local ok, placed = pcall(R.SetDestinationTo, R, c, MelloUI.Lang.T("your corpse"), true)
 	if not ok then
 		geterrorhandler()(placed)
 	elseif placed == false then
@@ -620,14 +620,14 @@ local function CorpseRes()
 end
 
 local CORPSE = {
-	key = "corpse", column = true, label = TEXT.corpseLabel,
+	key = "corpse", column = true, label = MelloUI.Lang.T(TEXT.corpseLabel),
 	check = function()
 		return corpse.ghost
 	end,
-	title = TEXT.corpse,
+	title = MelloUI.Lang.T(TEXT.corpse),
 	text = function()
 		if corpse.near then
-			return TEXT.corpseReady
+			return MelloUI.Lang.T(TEXT.corpseReady)
 		end
 		local R, c = Route(), CorpseCandidate()
 		if R and c and type(R.DistanceTo) == "function" then
@@ -635,14 +635,14 @@ local CORPSE = {
 			d = ok and Num(d) or nil
 			if d then
 				if d < 25 then
-					return TEXT.corpseNear
+					return MelloUI.Lang.T(TEXT.corpseNear)
 				end
 				local yards = type(R.YardsText) == "function" and R:YardsText(d) or (floor(d) .. " yd")
 				local dir = Bearing(corpse.mapID, corpse.x, corpse.y)
-				return dir and TEXT.corpseFar:format(yards, dir) or yards
+				return dir and MelloUI.Lang.T(TEXT.corpseFar):format(yards, MelloUI.Lang.T(dir)) or yards
 			end
 		end
-		return TEXT.corpseLine
+		return MelloUI.Lang.T(TEXT.corpseLine)
 	end,
 	icon = "Interface\\Icons\\Ability_Vanish",
 	progress = function()
@@ -667,11 +667,11 @@ local CORPSE = {
 			CorpseWay()
 		end
 	end,
-	hint = TEXT.way,
+	hint = MelloUI.Lang.T(TEXT.way),
 	actions = {
-		{ glyph = "check", tip = TEXT.corpseRes, desc = TEXT.corpseResDesc, fn = function() CorpseRes() end,
+		{ glyph = "check", tip = MelloUI.Lang.T(TEXT.corpseRes), desc = MelloUI.Lang.T(TEXT.corpseResDesc), fn = function() CorpseRes() end,
 		  shown = function() return corpse.near end },
-		{ glyph = "way", tip = TEXT.way, desc = TEXT.wayCorpse, fn = function() CorpseWay() end,
+		{ glyph = "way", tip = MelloUI.Lang.T(TEXT.way), desc = MelloUI.Lang.T(TEXT.wayCorpse), fn = function() CorpseWay() end,
 		  shown = function() return not corpse.near end },
 	},
 }
