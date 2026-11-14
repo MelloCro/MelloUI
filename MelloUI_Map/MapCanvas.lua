@@ -314,11 +314,9 @@ function Canvas:Layout()
 		end
 		return a.id < b.id
 	end)
-	-- (the levels: the maps biggest first; the zone under the view's centre over them all, Focus; the cities over
-	-- that, each over its zone)
+	-- Stable drawing order: the maps biggest first, with cities above the zones. Panning must not swap border art.
 	local base = self.root:GetFrameLevel() + 1
 	local n = #places
-	self.focusLevel = base + n + 2
 	for i, p in ipairs(places) do
 		local f = CreateFrame("Frame", nil, self.root)
 		local under = p.kind == "world" or p.kind == "continent"
@@ -762,9 +760,6 @@ local function MakeTiles(p)
 		end
 	end
 	p.baseCount = #tiles
-	for i = 1, #tiles do
-		tiles[i].base = true
-	end
 	-- (M2) the zone's picture inside its soft outline; a city's, or a zone's the client gives no pieces (Forever's own
 	-- Riverglades), inside a soft-edged rectangle; (B) a continent's inside its land
 	local data = ns.MapData
@@ -890,8 +885,9 @@ local function ShowTile(self, p, t)
 		if p.paint then
 			W.Paint(tex, p.paint, "vertex")   -- (a dungeon's edge: white art in the palette's gold)
 		end
-		if t.base and p.mask then
-			tex:AddMaskTexture(p.mask)   -- (M2: inside the zone's soft outline; B: a continent's inside its land)
+		if p.mask then
+			-- The exploration overlays share the base art's outline; otherwise their rectangular edges cover neighbours.
+			tex:AddMaskTexture(p.mask)
 		end
 		t.tex = tex
 		self.stats.made = self.stats.made + 1
@@ -989,8 +985,8 @@ local function NeedCut(self, x0, y0, x1, y1)
 	return ratio > T.CULL_ZOOM or ratio < 1 / T.CULL_ZOOM
 end
 
--- the zone under the view's centre drawn over its neighbours: every zone's art spills past its borders, and a
--- smaller neighbour (drawn later) covered the zone you look at; until M2's edges, the one in view wins
+-- Track the zone under the view's centre for ViewMap, without changing the artwork's drawing order.
+-- Raising the focused zone used to replace overlapping borders whenever a pan crossed into another zone.
 local function Focus(self)
 	local path = self:Path(self.cw / 2, self.ch / 2, self.focusPath)
 	local f
@@ -1000,16 +996,7 @@ local function Focus(self)
 			break
 		end
 	end
-	if f ~= self.focus then
-		local old = self.focus
-		if old then
-			old.frame:SetFrameLevel(old.level)
-		end
-		if f then
-			f.frame:SetFrameLevel(self.focusLevel)
-		end
-		self.focus = f
-	end
+	self.focus = f
 end
 
 -- 0 below a, 1 past b, a smoothstep between (2026-10-21: each fade eases in and out, no kink at its ends)
@@ -1255,7 +1242,7 @@ local function GlideStep(frame, share)
 	self:SetView(cx, cy, z)
 end
 
--- a move came to rest: the zone in view on top again, the view kept
+-- A move came to rest: update the zone in view, keeping the artwork's drawing order.
 local function Rest(self)
 	self.moving = false
 	self.stats.lastAt = nil
@@ -1308,7 +1295,7 @@ function Canvas:Glide(cx, cy, z, seconds, easing)
 	Anim:Drive(self.frame, GlideStep, seconds or T.GLIDE_SECONDS, easing or "inOutQuad", GlideDone)
 end
 
--- the zone in view drawn on top again (a glide or a drag came to rest)
+-- Update the zone in view after a glide or drag comes to rest.
 function Canvas:Refocus()
 	if self.places and self.cx then
 		Focus(self)
