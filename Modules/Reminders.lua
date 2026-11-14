@@ -86,6 +86,18 @@ local Text = MelloUI.Safe.Text
 
 local floor, select, pcall, type, format = math.floor, select, pcall, type, string.format
 
+local function Tr(text)
+	local W = MelloUI.Widgets
+	return W and W.Tr and W.Tr(text) or text
+end
+
+local function F(fmt, ...)
+	-- W.Tr loads the selected catalogue before Lang.F formats a translated template.
+	Tr(fmt)
+	local Lang = MelloUI.Lang
+	return Lang and Lang.F and Lang.F(fmt, ...) or format(fmt, ...)
+end
+
 local PLACES = {
 	{ value = "left", label = "Left of the portrait" },
 	{ value = "above", label = "Above the portrait" },
@@ -245,11 +257,11 @@ local function MailText()
 	if mail.textFrom ~= from or mail.textKind ~= kind then
 		mail.textFrom, mail.textKind = from, kind
 		if kind == 1 then
-			mail.text = from and ("New mail from " .. from) or "New mail"
+			mail.text = from and F("New mail from %s", from) or Tr("New mail")
 		elseif kind == 2 then
-			mail.text = "Mail waiting at the mailbox"
+			mail.text = Tr("Mail waiting at the mailbox")
 		else
-			mail.text = "No new mail"
+			mail.text = Tr("No new mail")
 		end
 	end
 	return mail.text
@@ -327,7 +339,7 @@ local function GearText()
 	local pct = gear.broken and -2 or floor(gear.lowest * 100 + 0.5)
 	if gear.pct ~= pct then
 		gear.pct = pct
-		gear.text = gear.broken and "Repair Gear: broken gear" or format("Repair Gear: %d%%", pct)
+		gear.text = gear.broken and Tr("Repair Gear: broken gear") or F("Repair Gear: %d%%", pct)
 	end
 	return gear.text
 end
@@ -546,15 +558,15 @@ local function TrainerText()
 	if trainer.textClass ~= class or trainer.textProf ~= prof or trainer.textRank ~= rank or trainer.textFrom ~= from then
 		trainer.textClass, trainer.textProf, trainer.textRank, trainer.textFrom = class, prof, rank, from
 		if class and prof then
-			trainer.text = format("New spells, and %s %s", rank, prof)
+			trainer.text = F("New spells, and %s %s", rank, prof)
 		elseif prof then
-			trainer.text = format("%s %s at a trainer", rank, prof)
+			trainer.text = F("%s %s at a trainer", rank, prof)
 		elseif class then
-			trainer.text = "New spells at your class trainer"
+			trainer.text = Tr("New spells at your class trainer")
 		elseif from > 0 then
-			trainer.text = format("Next new spells at level %d", from)
+			trainer.text = F("Next new spells at level %d", from)
 		else
-			trainer.text = "Nothing new at your trainers"
+			trainer.text = Tr("Nothing new at your trainers")
 		end
 	end
 	return trainer.text
