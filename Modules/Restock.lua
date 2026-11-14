@@ -41,6 +41,12 @@
 --                game refuses one (no gold, bags full). Goods are chosen from
 --                what the merchant lists (C_MerchantFrame.GetItemInfo), the
 --                best the character can use.
+--   Ammo bags    Fill All Ammo Bags (the Ammo page's switch, the setting
+--                fillAmmo): the arrow and bullet lines keep the quivers and
+--                the ammo pouches full in the place of their amounts. Counted
+--                slot by slot with the bags; a shop fills the free slots and
+--                the started stacks with the best ammunition ticked that it
+--                sells, and never spills into the other bags.
 --   Learning     every shop opened is remembered with what it sells of the
 --                families and of the list (Services' learned places, kind
 --                "vendor", written through Services:Learn): a shop seen
@@ -95,6 +101,7 @@ local M = MelloUI:RegisterModule("Restock", {
 	defaults = {
 		below = 0.5,
 		shopPanel = true,
+		fillAmmo = false,   -- the Ammo page's Fill All Ammo Bags
 		listH = false,   -- (2.1.37) the list window's own height (its grip); false: the standard
 	},
 	-- (no header and no switch of its own for the reminder: the Reminders page
@@ -509,6 +516,79 @@ local function EnsureList()
 	end
 end
 
+-- Fill All Ammo Bags (the Ammo page's switch): while it is on, an arrow or bullet line keeps what the quivers or the
+-- ammo pouches carried hold when full, not its own amount: a vendor sells ammunition 200 a purchase, and a quiver
+-- holds more than a slider reaches. (on `list`: the file is near Lua's 200 locals)
+list.cap = { a = 0, b = 0 }   -- the slots of the quivers (a) and of the ammo pouches (b) carried
+list.held = { a = 0, b = 0 }  -- the items in them, whichever ammunition
+list.room = {}                -- [item] = how many more of it its started stacks in them take
+list.STACK = 200              -- an ammunition's stack where the data has none
+
+-- the ammunition a line is of ("a" or "b"), nil for any other line
+function list.Ammo(key)
+	local letter = type(key) == "number" and Families().of[key] or key
+	return (letter == "a" or letter == "b") and letter or nil
+end
+
+-- the same while the switch is on, nil while it is off
+function list.Fill(key)
+	return M.db and M.db.fillAmmo and list.Ammo(key) or nil
+end
+
+-- an ammunition's stack: an item's own, a family's by its first item
+function list.Stack(key)
+	local F = Families()
+	local id = type(key) == "number" and key or (F.rows[key] and F.rows[key][1])
+	return id and F.stack[id] or list.STACK
+end
+
+-- an ammo line's place among the ammo lines, the higher first: Any arrows and Any bullets, then the better ammunition
+-- (the level it is used from). The Ammo page lists them so, and a shop buys for them in that order
+function list.AmmoRank(key)
+	return type(key) == "number" and (Families().level[key] or 0) or math.huge
+end
+
+-- how many a line keeps: its amount, or its ammo bags full (none carried: 0, the line rests)
+function list.Want(i)
+	local key = list.key[i]
+	local letter = list.Fill(key)
+	if not letter then
+		return list.amount[i]
+	end
+	return list.cap[letter] * list.Stack(key)
+end
+
+-- the ammo bags, counted with the bags and only while the switch is on (the bag families as FreeSlots reads them:
+-- 1 quiver, 2 ammo pouch). A filled slot's count is the one read here that makes a table: the ammo bags' only
+function list.Caps()
+	local cap, held, room, C = list.cap, list.held, list.room, C_Container
+	cap.a, cap.b, held.a, held.b = 0, 0, 0, 0
+	wipe(room)
+	if not (M.db and M.db.fillAmmo and C and C.GetContainerNumFreeSlots and C.GetContainerNumSlots
+		and C.GetContainerItemInfo) then
+		return
+	end
+	for bag = 1, LastBag() do
+		local _, family = Ask(C.GetContainerNumFreeSlots, bag)
+		family = Num(family) or 0
+		local letter = bit.band(family, 1) ~= 0 and "a" or bit.band(family, 2) ~= 0 and "b"
+		if letter then
+			local slots = Num((Ask(C.GetContainerNumSlots, bag))) or 0
+			cap[letter] = cap[letter] + slots
+			-- slot by slot: a started stack takes only more of its own item
+			for slot = 1, slots do
+				local info = Ask(C.GetContainerItemInfo, bag, slot)
+				local id = type(info) == "table" and Num(info.itemID)
+				local n = id and Num(info.stackCount) or 0
+				if id and n > 0 then
+					held[letter] = held[letter] + n
+					room[id] = (room[id] or 0) + max(0, list.Stack(id) - n)
+				end
+			end
+		end
+	end
+end
+
 --------------------------------------------------------------------------------
 -- Counting
 --------------------------------------------------------------------------------
@@ -571,12 +651,18 @@ local function Count()
 	EnsureList()
 	local level = Level()
 	CountFamilies(level)
+	list.Caps()
 	local below = Below()
 	local lowCount, lowMask = 0, 0
 	for i = 1, list.n do
-		local key, amount = list.key[i], list.amount[i]
+		local key, amount = list.key[i], list.Want(i)
+		-- (Fill All Ammo Bags: the ammo lines share their bags, so each has what those hold, whichever ammunition it is
+		-- -- a quiver full of one arrow leaves no other arrow line low)
+		local fill = list.Fill(key)
 		local have
-		if type(key) == "number" then
+		if fill then
+			have = list.held[fill]
+		elseif type(key) == "number" then
 			have = ItemCount(key)
 		else
 			have = state.famHave[key] or 0
@@ -757,10 +843,11 @@ local function RemTooltip(_, tip)
 	local P = MelloUI.Look.TipPalette()
 	local text, gold = P.text, P.selectedTrim
 	for i = 1, list.n do
-		if state.active[i] and list.amount[i] > 0 then
+		local want = list.Want(i)
+		if state.active[i] and want > 0 then
 			local have = state.have[i] or 0
 			local c = state.low[i] and gold or text
-			tip:AddDoubleLine(EntryName(list.key[i]), have .. " / " .. list.amount[i], text[1], text[2], text[3], c[1], c[2], c[3])
+			tip:AddDoubleLine(EntryName(list.key[i]), have .. " / " .. want, text[1], text[2], text[3], c[1], c[2], c[3])
 		end
 	end
 end
@@ -972,7 +1059,7 @@ local function Wants()
 		return keys, n
 	end
 	for i = 1, list.n do
-		if state.active[i] ~= false and list.amount[i] > 0 then
+		if state.active[i] ~= false and list.Want(i) > 0 then
 			n = n + 1
 			wantKeys[n] = list.key[i]
 		end
@@ -1106,7 +1193,22 @@ local plan = {
 	skip = {}, ticked = 0,
 	-- (2.1.50) the lines' items not offered: of a family the bags hold better of (names, the lines' keys)
 	notN = 0, notName = {}, notKey = {}, notText = "",
+	-- Fill All Ammo Bags: fill.a / fill.b the one arrow line and the one bullet line a visit buys for, each with the
+	-- merchant slot it buys (j) and what made it the best (rank, unit)
+	fill = { j = {}, rank = {}, unit = {} },
+	-- the list's lines in the order a visit buys for them (order), the ammo lines among them (ammoAt)
+	order = {}, ammoAt = {},
 }
+
+-- two ammo lines (their places on the list): the better first (list.AmmoRank), then as the list has them
+function plan.Better(a, b)
+	local ra, rb = list.AmmoRank(list.key[a]), list.AmmoRank(list.key[b])
+	if ra ~= rb then
+		return ra > rb
+	end
+	return a < b
+end
+
 local shop = { open = false, snoozed = false, done = false, frame = nil, rows = {} }
 -- (lastRow, lastN, lastCost: the purchase sent last, taken off the count
 -- when the game refuses it)
@@ -1257,9 +1359,57 @@ local function Plan()
 	local level = Level()
 	local general, quiver, pouch = FreeSlots()
 	local F, m = Families(), merchant
+	-- Fill All Ammo Bags: of the ticked arrow lines (and of the bullet lines) the one whose item here is the best, the
+	-- highest level and then the dearer, takes the free slots of the quivers (the pouches); the others rest. An item
+	-- unticked in this panel only when no other is sold
+	local best = plan.fill
+	best.a, best.b = nil, nil
 	for e = 1, list.n do
-		local key, amount, have = list.key[e], list.amount[e], state.have[e] or 0
-		local j = state.active[e] and amount > have and plan.n < SHOP_ROWS and BestFor(key, level) or nil
+		local key = list.key[e]
+		local letter = list.Fill(key)
+		local j = letter and state.active[e] and BestFor(key, level) or nil
+		if j and not Pick.Downgrade(key, j) then
+			local rank = (Pick.Skipped(m.id[j]) and 0 or 1000) + (F.level[m.id[j]] or 0)
+			local unit = m.price[j] / m.bundle[j]
+			if not best[letter] or rank > best.rank[letter] or (rank == best.rank[letter] and unit > best.unit[letter]) then
+				best[letter], best.j[letter], best.rank[letter], best.unit[letter] = e, j, rank, unit
+			end
+		end
+	end
+	-- the lines in the list's order, but the ammo lines among themselves the better first: the bags' room and the gold
+	-- go to the better ammunition before a lesser one
+	local order, ammoAt, ammoN = plan.order, plan.ammoAt, 0
+	for e = 1, list.n do
+		order[e] = e
+		if list.Ammo(list.key[e]) then
+			ammoN = ammoN + 1
+			ammoAt[ammoN] = e
+		end
+	end
+	for i = ammoN + 1, #ammoAt do
+		ammoAt[i] = nil
+	end
+	if ammoN > 1 then
+		table.sort(ammoAt, plan.Better)
+		local k = 0
+		for e = 1, list.n do
+			if list.Ammo(list.key[e]) then
+				k = k + 1
+				order[e] = ammoAt[k]
+			end
+		end
+	end
+	for at = 1, list.n do
+		local e = order[at]
+		local key, amount, have = list.key[e], list.Want(e), state.have[e] or 0
+		-- (a Fill All Ammo Bags line: only the best one's, its item found above, by its quiver's or pouch's room below)
+		local fill = list.Fill(key)
+		local j = nil
+		if fill then
+			j = best[fill] == e and plan.n < SHOP_ROWS and best.j[fill] or nil
+		elseif state.active[e] and amount > have and plan.n < SHOP_ROWS then
+			j = BestFor(key, level)
+		end
 		if j and Pick.Downgrade(key, j) then
 			if not Planned(j) and plan.notN < SHOP_ROWS then
 				plan.notN = plan.notN + 1
@@ -1273,7 +1423,7 @@ local function Plan()
 		if j and not Planned(j) then
 			local id, bundle, price = m.id[j], m.bundle[j], m.price[j]
 			local skipped = Pick.Skipped(id)
-			local buys = ceil((amount - have) / bundle)
+			local buys = fill and MAX_AMOUNT or ceil((amount - have) / bundle)
 			local avail = m.avail[j]
 			if avail and avail >= 0 and buys > avail then
 				buys = avail
@@ -1287,7 +1437,13 @@ local function Plan()
 			local letter = F.of[id]
 			local special = letter == "a" and quiver or letter == "b" and pouch or 0
 			local fits = room + (general + special) * stack
-			if not skipped and buys * bundle > fits then
+			if fill then
+				-- whole purchases into the quiver or the pouch only: its free slots and this item's own started stacks
+				-- there (another ammunition's are no room); full is the aim, nothing spills into the other bags
+				room = list.room[id] or 0
+				fits = room + special * stack
+				buys = min(buys, floor(fits / bundle))
+			elseif not skipped and buys * bundle > fits then
 				buys = floor(fits / bundle)
 				plan.short = "bags"
 			end
@@ -1551,6 +1707,10 @@ local function Fill(f)
 				row.name:SetText(merchant.name[j])
 			end
 			local count, have = plan.count[i], state.have[e] or 0
+			-- (Fill All Ammo Bags: the line's count is its ammo bags', of any ammunition; the row says the item's own)
+			if list.Fill(list.key[e]) then
+				have = ItemCount(merchant.id[j])
+			end
 			if row.countWas ~= count or row.haveWas ~= have then
 				row.countWas, row.haveWas = count, have
 				row.amount:SetText(MelloUI.Lang.F("+%d (have %d)", count, have))
@@ -1957,6 +2117,11 @@ local function DefaultAmount(key)
 	if FAMILY[key] then
 		return FAMILY[key].amount
 	end
+	-- (one arrow or bullet: its family's amount, a vendor sells it 200 a purchase)
+	local ammo = list.Ammo(key)
+	if ammo then
+		return FAMILY[ammo].amount
+	end
 	for _, reagents in pairs(REAGENTS) do
 		for _, r in ipairs(reagents) do
 			if r[1] == key then
@@ -2060,7 +2225,34 @@ local function HaveText(i)
 		end
 		return "not at your level"
 	end
+	-- (Fill All Ammo Bags: the line's own count, as with the switch off -- its count for the reminder is what the ammo
+	-- bags hold of any ammunition, which the switch's row says once for them all, win.FillHint)
+	local fill = list.Fill(key)
+	if fill then
+		local own = type(key) == "number" and ItemCount(key) or (state.famHave[key] or 0)
+		if list.cap[fill] == 0 then
+			return "in bags " .. own .. (fill == "a" and ", no quiver" or ", no ammo pouch")
+		end
+		return "in bags " .. own
+	end
 	return "in bags " .. (state.have[i] or 0)
+end
+
+-- the Fill All Ammo Bags row's line: how full the quivers and the ammo pouches carried are ("ammo pouch 354 of 1600")
+function win.FillHint()
+	if not (M.db and M.db.fillAmmo) then
+		return ""
+	end
+	local text = nil
+	for i = 1, 2 do
+		local letter = i == 1 and "a" or "b"
+		local slots = list.cap[letter]
+		if slots > 0 then
+			local part = (i == 1 and "quiver " or "ammo pouch ") .. list.held[letter] .. " of " .. slots * list.Stack(letter)
+			text = text and (text .. ", " .. part) or part
+		end
+	end
+	return text or "no quiver or ammo pouch equipped"
 end
 
 -- the diets the pet out eats (C_PetInfo.CanPetEatItem on the first item of each), into out; true when it eats any
@@ -2225,6 +2417,11 @@ local function RangeOf(key)
 	if FAMILY[key] then
 		return FAMILY[key].range
 	end
+	-- (one arrow or bullet: the ammunition's slider, to 2000 in steps of a purchase -- the items' ends at 100, half a
+	-- purchase of 200)
+	if list.Ammo(key) then
+		return "ammo"
+	end
 	return "item"
 end
 
@@ -2359,6 +2556,15 @@ local function ByName(a, b)
 	return tostring(a) < tostring(b)
 end
 
+-- the Ammo page's ticked ones: the better first, as a shop buys for them (list.AmmoRank), then by name
+function win.ByRank(a, b)
+	local ra, rb = list.AmmoRank(a), list.AmmoRank(b)
+	if ra ~= rb then
+		return ra > rb
+	end
+	return ByName(a, b)
+end
+
 -- the page of the kind on show onto its rows (the counts in their hints), the rail with it; a search's matches
 -- instead while the search box holds a text
 ListLayout = function()
@@ -2419,7 +2625,8 @@ ListLayout = function()
 			off[#off + 1] = key
 		end
 	end
-	table.sort(on, ByName)
+	local ammoPage = not query and k ~= nil and k.key == "ammo"
+	table.sort(on, ammoPage and win.ByRank or ByName)
 	local used = { stack = 0, ammo = 0, item = 0, keep = 0 }
 	for _, row in ipairs(win.rows) do
 		row.key = nil
@@ -2458,7 +2665,7 @@ ListLayout = function()
 		row.tick:SetValue(ticked, true)
 		local slider = W.ControlOf(row)
 		if slider then
-			slider:SetShown(ticked and not keepPage)
+			slider:SetShown(ticked and not keepPage and not list.Fill(key))
 			if ticked and slider.Refresh then
 				slider:Refresh()
 			end
@@ -2478,6 +2685,24 @@ ListLayout = function()
 			rule:Show()
 		end
 		y = y + HEAD_STEP
+	end
+	-- the Ammo page's first row: Fill All Ammo Bags (made at the page's first show; a search's results have none)
+	if ammoPage and not win.fill then
+		win.fill = W.ToggleRow(win.page, 0, "Fill All Ammo Bags", " ",
+			"Buys arrows and bullets until your quivers and ammo pouches are full. This overrides the set amounts of "
+				.. "the ammunition on your list.",
+			function() return M.db ~= nil and M.db.fillAmmo == true end,
+			function(on) MelloUI:NotifySettingChanged("Restock", "fillAmmo", on and true or false) end)
+		Style(win.fill.label, "fontText", _G.GameFontHighlight)
+		Style(win.fill.hint, "fontText", _G.GameFontHighlight)
+	end
+	if win.fill then
+		win.fill:SetShown(ammoPage)
+		if ammoPage then
+			win.fill:Refresh()
+			win.fill.hint:SetText(win.FillHint())
+			y = y + W.ROW_HEIGHT
+		end
 	end
 	win.headOn:Hide()
 	win.headOff:Hide()
@@ -2557,6 +2782,9 @@ ListCounted = function()
 		if row.key ~= nil and row.hint then
 			row.hint:SetText(RowHint(row.key))
 		end
+	end
+	if win.fill and win.fill:IsShown() then
+		win.fill.hint:SetText(win.FillHint())
 	end
 end
 
@@ -3023,7 +3251,7 @@ function M:OnSettingChanged(key, value, db)
 		else
 			ShopRefresh()
 		end
-	elseif key == "below" then
+	elseif key == "below" or key == "fillAmmo" then
 		Dirty()
 		if state.ready then
 			Count()
