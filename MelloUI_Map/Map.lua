@@ -106,7 +106,7 @@ local SWITCHES = {
 	  questie = true },
 	-- (2.1.52) Questie's objective icons too while Questie wears its own look (MapAddonPins' LAYER.questObjectives)
 	{ key = "objectives", label = "Your quests' objectives",
-	  layers = { "objectives", "objective_dots", "objective_quests", "objectives_questie" }, group = 1, icon = "track_todo",
+	  layers = { "objectives", "objective_dots", "objectives_questie" }, group = 1, icon = "track_todo",
 	  questie = true },
 	{ key = "flights", label = "Flight masters", layers = { "flights" }, group = 2, icon = "svc_flight" },
 	{ key = "transports", label = "Boats, zeppelins and portals", layers = { "transports" }, trails = true, group = 2,

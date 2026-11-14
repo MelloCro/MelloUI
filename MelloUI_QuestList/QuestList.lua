@@ -98,7 +98,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 		  desc = "Leaves out quests more than this many levels above you." },
 		{ type = "header", name = "Map" },
 		{ type = "toggle", key = "mapPins", name = "Quest Givers On Zone Maps",
-		  desc = "Marks quest givers on the zone map with a ! or ?. Point at one for its quests; click to track it." },
+		  desc = "Shows Questie's quest givers on the game's zone map as ! and ?. Point at one for its quests. Only with Questie in MelloUI's look." },
 		{ type = "toggle", key = "zoneBadges", name = "Zone Progress On Continent Maps",
 		  desc = "A done / total badge on each zone of the continent map." },
 		{ type = "toggle", key = "zoneProgress", name = "Zone Progress On Zone Maps",

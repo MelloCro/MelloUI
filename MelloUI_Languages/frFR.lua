@@ -1739,7 +1739,7 @@ Lang:Add("frFR", {
 	["Most Levels Above Me"] = "Niveaux au-dessus de moi au plus",
 	["Leaves out quests more than this many levels above you."] = "Omet les quêtes de plus de ce nombre de niveaux au-dessus de vous.",
 	["Quest Givers On Zone Maps"] = "Donneurs de quêtes sur les cartes de zone",
-	["Marks quest givers on the zone map with a ! or ?. Point at one for its quests; click to track it."] = "Marque les donneurs de quêtes sur la carte de zone d'un ! ou ?. Survolez-en un pour ses quêtes ; un clic le suit.",
+	["Shows Questie's quest givers on the game's zone map as ! and ?. Point at one for its quests. Only with Questie in MelloUI's look."] = "Affiche les donneurs de quêtes de Questie sur la carte de zone du jeu sous forme de ! et ?. Survolez-en un pour ses quêtes. Uniquement avec Questie dans le style de MelloUI.", -- draft
 	["Include Givers You Are Done With"] = "Inclure les donneurs terminés",
 	["Also marks givers whose quests you have all done, with a grey tick."] = "Marque aussi les donneurs dont vous avez fait toutes les quêtes, d'une coche grise.",
 	["Hide Grey Quests"] = "Masquer les quêtes grises",
@@ -3165,9 +3165,6 @@ Lang:Add("frFR", {
 	["%d raids"] = "%d raids",
 	["%d dungeons and raids"] = "%d donjons et raids",
 	["Click: zoom in"] = "Clic : zoomer",
-	["%d quests"] = "%d quêtes",
-	["Hand in to %s"] = "À rendre à %s",
-	["Click: show it"] = "Clic : afficher",
 	["Ready to turn in"] = "À rendre",
 	["Turn in: %s"] = "À rendre à %s",
 	["Turn in: %s, %s"] = "À rendre à %s, %s",

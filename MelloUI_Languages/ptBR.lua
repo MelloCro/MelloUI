@@ -1623,7 +1623,7 @@ Lang:Add("ptBR", {
 	["Most Levels Above Me"] = "Máximo de níveis acima do meu", -- draft
 	["Leaves out quests more than this many levels above you."] = "Deixa de fora missões mais de tantos níveis acima de você.", -- draft
 	["Quest Givers On Zone Maps"] = "Quem dá missões nos mapas de zona", -- draft
-	["Marks quest givers on the zone map with a ! or ?. Point at one for its quests; click to track it."] = "Marca doadores de missão no mapa da zona com ! ou ?. Aponte para um para ver suas missões; um clique o rastreia.", -- draft
+	["Shows Questie's quest givers on the game's zone map as ! and ?. Point at one for its quests. Only with Questie in MelloUI's look."] = "Mostra os doadores de missão do Questie no mapa da zona do jogo como ! e ?. Aponte para um para ver suas missões. Somente com o Questie no visual do MelloUI.", -- draft
 	["Include Givers You Are Done With"] = "Incluir quem já foi concluído", -- draft
 	["Also marks givers whose quests you have all done, with a grey tick."] = "Também marca doadores cujas missões você fez todas, com um visto cinza.", -- draft
 	["Hide Grey Quests"] = "Esconder missões cinzas", -- draft

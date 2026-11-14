@@ -1030,11 +1030,10 @@ local function Drawn(look, mini)
 	if look.cover == "objective" then
 		return M.db.objectiveMarks and true or false
 	end
-	-- (2.1.51) Questie's givers are the givers (QL.Givers): the Quest List's Quest Givers On The Map shows or hides them
-	if QL.Givers() then
-		return not M.db.mapPins
-	end
-	return M.db.mapPins and true or false
+	-- (2.1.51) Questie's givers are the givers: the Quest List's Quest Givers On Zone Maps shows or hides them.
+	-- (2.1.52: whatever QL.Givers answers -- MelloUI draws no givers of its own any more, so a Questie whose database
+	-- MelloUI cannot read keeps its givers too; they were hidden here behind marks MelloUI no longer draws)
+	return not M.db.mapPins
 end
 
 local iconPaths = setmetatable({}, { __mode = "k" })   -- [Questie's icon] = the picture Questie gave it
@@ -1173,6 +1172,27 @@ end
 local adopted = setmetatable({}, { __mode = "k" })   -- [Questie's icon] = true: the hooks on its own functions
 local hookedFn, hookedUnload   -- QuestieFrame.private's UpdateTexture and Unload with MelloUI's hooks (a new frame's)
 QL.PINS = "HereBeDragonsQuestie-Pins-2.0"
+QL.HBD = "HereBeDragonsQuestie-2.0"
+-- (2.1.52; the user, 2026-11-14, on Questie 12.9: "now i dont see a single quest giver on the map") Questie's own copy
+-- of HereBeDragons, its pins and its coordinates: a LibStub library under those names until Questie 12.9, a module of
+-- Questie's loader since ("HBDPins", "HBD": "a Questie module instead of a LibStub library"). The one lookup, for this
+-- file and for MelloUI's map (MapAddonPins' FindLibs); nil while Questie has made neither. The loader is asked only
+-- when the library is not there: it makes a module that is asked for
+function QL.PinsLib()
+	local LS = rawget(_G, "LibStub")
+	if type(LS) == "table" or type(LS) == "function" then
+		local okP, pins = pcall(LS, QL.PINS, true)
+		if okP and type(pins) == "table" then
+			local okH, hbd = pcall(LS, QL.HBD, true)
+			return pins, okH and type(hbd) == "table" and hbd or nil
+		end
+	end
+	local pins = Questie("HBDPins")
+	if pins and type(rawget(pins, "worldmapPins")) == "table" then
+		return pins, Questie("HBD")
+	end
+	return nil
+end
 -- (the hooks on an adopted frame's own functions: one handler each for every frame, one row in /melloperf)
 local FrameTexture = Perf.Shared("UpdateTexture on Questie's adopted icons", OnIconTexture)
 local FrameUnload = Perf.Shared("Unload on Questie's adopted icons", OnIconUnload)
@@ -1561,8 +1581,8 @@ local function WrapTooltip()
 		if not (type(held) == "table" and held[self]) then
 			return nil
 		end
-		local okP, lib = pcall(rawget(_G, "LibStub"), QL.PINS, true)
-		if not (okP and type(lib) == "table" and rawget(lib, "worldmapProvider")) then
+		local lib = QL.PinsLib()
+		if not (lib and rawget(lib, "worldmapProvider")) then
 			return nil
 		end
 		for icon in pairs(held) do
@@ -1626,9 +1646,8 @@ Perf.SetScript(login, "OnEvent", function(self)
 		hooksecurefunc(private, "Unload", OnIconUnload)
 		hookedFn, hookedUnload = private.UpdateTexture, private.Unload
 		-- (2.1.50) each icon placed on the minimap by its pins library (Adopt)
-		local LS = rawget(_G, "LibStub")
-		local okP, pins = pcall(LS, QL.PINS, true)
-		if okP and type(pins) == "table" and type(pins.AddMinimapIconMap) == "function" then
+		local pins = QL.PinsLib()
+		if pins and type(pins.AddMinimapIconMap) == "function" then
 			hooksecurefunc(pins, "AddMinimapIconMap", OnMinimapPin)
 			S.pinsHooked = true
 		end

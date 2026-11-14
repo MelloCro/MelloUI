@@ -530,9 +530,18 @@ local function FindLibs()
 		return
 	end
 	for _, names in ipairs(T.HBD) do
-		local okP, lib = pcall(LibStub, names.pins, true)
-		local okH, hbd = pcall(LibStub, names.hbd, true)
-		if okP and okH and type(lib) == "table" and type(hbd) == "table" and not S.byLib[lib]
+		local lib, hbd
+		local QLook = MelloUI.QuestieLook
+		if names.questie and QLook and QLook.PinsLib then
+			-- (2.1.52) Questie's own copy: a LibStub library until Questie 12.9, a module of its loader since
+			lib, hbd = QLook.PinsLib()
+		else
+			local okP, okH
+			okP, lib = pcall(LibStub, names.pins, true)
+			okH, hbd = pcall(LibStub, names.hbd, true)
+			lib, hbd = okP and lib or nil, okH and hbd or nil
+		end
+		if type(lib) == "table" and type(hbd) == "table" and not S.byLib[lib]
 			and type(lib.worldmapPins) == "table" and type(hbd.GetZoneCoordinatesFromWorldInstance) == "function" then
 			local entry = { pins = lib, hbd = hbd, maps = {}, conts = {}, full = true, hooked = {},
 				questie = names.questie == true }

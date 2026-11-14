@@ -78,9 +78,6 @@
 --   spec.emblem = icon               (qu-04) a picture in the pin's seal: over its core 1 px in (MelloUI's look), in
 --                                    a look's own seal picture at T.FRAME_EMBLEM of it (Oldschool's frame); none on
 --                                    a game picture (the Default skin: the game's own look)
---   spec.many = icon                 the picture a pin shows that holds others with another picture than its own
---                                    (the quests': the "!" while one of them is still to do, though the first by
---                                    place is ready to hand in; all ready: the "?")
 --   spec.number = text               (2.1.0, the dungeon map) a number in the pin's middle (a boss's place in its
 --                                    dungeon's order), in the palette's spec.numberKey (default text)
 --   spec.label = true                the pin's name (pin.name) beside it where it covers no pin and no other name,
@@ -364,7 +361,6 @@ local function Dress(pin)
 		end
 	end
 	tex:SetSize(s, s)
-	tex.many = nil   -- (2.1.0: the picture for many set again by the lay's Extras)
 	tex:SetAlpha(spec.alpha or 1)
 	tex:SetRotation(pin.rotation or spec.rotation or 0)
 	tex:SetDrawLayer("ARTWORK", spec.sub or 0)
@@ -596,21 +592,6 @@ local function Extras(self, pin, tex)
 		tex.number:Show()
 	end
 	local n = pin.members and #pin.members or 0
-	-- (a pin that holds others with another picture than its own: spec.many's, where it has one; its own again when
-	-- they are all like it or it stands alone)
-	local many
-	if n > 1 and pin.spec.many and pin.spec.many ~= pin.spec.icon then
-		for _, m in ipairs(pin.members) do
-			if m.spec.icon ~= pin.spec.icon then
-				many = pin.spec.many
-				break
-			end
-		end
-	end
-	if tex.many ~= many then
-		tex.many = many
-		MelloUI.Icons.Set(tex, many or tex.own or pin.spec.icon, PinPx(pin.spec))
-	end
 	if n > 1 then
 		local b = Badge(pin, tex)
 		if b.n ~= n then
