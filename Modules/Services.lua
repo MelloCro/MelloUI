@@ -45,6 +45,12 @@ local function F(text, ...)
 	return Lang and Lang.F(text, ...) or string.format(text, ...)
 end
 
+local function Language()
+	Tr("Services")   -- load the selected catalogue before reading its code
+	local Lang = MelloUI.Lang
+	return Lang and Lang.code or "enUS"
+end
+
 local M = MelloUI:RegisterModule("Services", {
 	title = "Services",
 	keep = { "learned" },   -- services recorded by hand (when Route's store is missing): never in a profile
@@ -1991,8 +1997,9 @@ end
 -- list's), the string made again only when the distance or the name changed
 local function DistanceText(s, named)
 	local c = s.nearest
-	if s.textD ~= c.distance or s.textName ~= c.name then
-		s.textD, s.textName = c.distance, c.name
+	local language = Language()
+	if s.textD ~= c.distance or s.textName ~= c.name or s.textLang ~= language then
+		s.textD, s.textName, s.textLang = c.distance, c.name, language
 		s.yards, s.named, s.tip = Yards(c.distance), nil, nil
 	end
 	if named then
@@ -2006,9 +2013,10 @@ end
 local function NearestLine(s)
 	local c = s.nearest
 	local yards = DistanceText(s)   -- drops s.tip when the nearest changed
-	if not s.tip or s.tipSub ~= c.sub then
+	local language = Language()
+	if not s.tip or s.tipSub ~= c.sub or s.tipLang ~= language then
 		local sub = CleanSub(c.sub)
-		s.tipSub = c.sub
+		s.tipSub, s.tipLang = c.sub, language
 		s.tip = F("Nearest: %s%s, %s", c.name, sub ~= "" and (" (" .. sub .. ")") or "", yards)
 	end
 	return s.tip
@@ -2042,8 +2050,9 @@ function Errand.Status(e)
 	else
 		local d = ScanKind(kind, false, nil, nil, nil, e.opts and e.opts.filter)
 		if d then
-			if e.yardsD ~= d then
-				e.yardsD, e.yards = d, Yards(d)
+			local language = Language()
+			if e.yardsD ~= d or e.yardsLang ~= language then
+				e.yardsD, e.yards, e.yardsLang = d, Yards(d), language
 			end
 			return e.yards, "selectedTrim"
 		end
@@ -3785,6 +3794,20 @@ MelloUI:On("skin", Perf.Shared("'skin' on the bus: the Services buttons", functi
 		ApplyIconShape()
 	end
 end), M)
+
+-- A live language choice invalidates the formatted cache by its language code;
+-- close the old tooltip/tray so it cannot keep showing the previous wording.
+MelloUI:On("language", function()
+	if not M.isEnabled then
+		return
+	end
+	if GameTooltip then
+		GameTooltip:Hide()
+	end
+	if menu then
+		menu:Hide()
+	end
+end, M)
 
 -- MinimapPanel's question about the row under the map (its column, layout
 -- E), asked at call time: `groups`, true while the buttons stand as ONE row
