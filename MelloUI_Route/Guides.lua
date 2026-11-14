@@ -32,6 +32,7 @@
 local _, ns = ...
 local MelloUI = (ns and ns.MelloUI) or _G.MelloUI
 local CreateFrame = MelloUI.Safe.CreateFrame
+local W = MelloUI.Widgets
 local Perf = MelloUI.Perf:Scope("MelloUI_Route (Guides)")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Plain, Text, Finite = MelloUI.Safe.Value, MelloUI.Safe.Text, MelloUI.Safe.Finite
@@ -42,7 +43,7 @@ local M = MelloUI:GetModule("Route")
 local Guide = { readers = {} }
 M.Guide = Guide
 
-local SKIP = "Skip this step"   -- (a guide that skips whole steps: the box under its lines)
+local SKIP = W.Tr("Skip this step")   -- (a guide that skips whole steps: the box under its lines)
 
 local function Following()
 	return M.isEnabled and M.db and M.db.followGuide ~= false or false
@@ -486,7 +487,7 @@ local function Spot(m, x, y)
 	return (m and x and y) and string.format("map %d at %.4f, %.4f", m, x, y) or "none"
 end
 function Guide.Dump(say)
-	say("Following guides: %s", Following() and "on" or "off (/route guide turns it on)")
+	say("Following guides: %s", W.Tr(Following() and "on" or "off (/route guide turns it on)"))
 	local active = Guide.active
 	for _, r in ipairs(Guide.readers) do
 		if r.hooked then
@@ -655,7 +656,7 @@ end
 -- step and re-check the pin"): its spot laid and tracked again; a step with no spot says so
 function Guide.Repin()
 	if not Guide.Step(true) then
-		MelloUI:Announce("This guide step has no place to mark on the map.", "info")
+		MelloUI:Announce(W.Tr("This guide step has no place to mark on the map."), "info")
 	end
 end
 
@@ -668,7 +669,7 @@ function Guide.Unpin()
 		return
 	end
 	if not Ours() then
-		MelloUI:Announce("The map pin is your own, not this step's: it stays.", "info")
+		MelloUI:Announce(W.Tr("The map pin is your own, not this step's: it stays."), "info")
 		return
 	end
 	if C_Map.ClearUserWaypoint then
@@ -811,10 +812,11 @@ do
 		local open = type(R.settings) == "table" and R.settings.OpenSettings
 		local menu = type(rframe.DropDownMenu) == "function" and rframe.DropDownMenu
 		local settings = type(open) == "function" and function() open() end or nil
-		return { title = (type(name) == "string" and name or "RestedXP") .. (n and (" - step " .. n) or ""),
+		local title = type(name) == "string" and name or "RestedXP"
+		return { title = n and W.Tr("%s - step %s"):format(title, n) or title,
 			lines = lines,
 			cog = { Left = menu and function() menu() end or settings, Right = settings, tip = "RestedXP Guides",
-				hint = "Click: its menu (guides, settings)  -  Right-click: its settings" } }
+				hint = W.Tr("Click: its menu (guides, settings)  -  Right-click: its settings") } }
 	end
 
 	-- the items it names that the bags hold (RXP.activeItems), the spells it names (RXP.activeSpells; "p": known)
@@ -954,9 +956,10 @@ do
 				Settings()
 			end
 		end
-		return { title = (name or "Follow The Arrow") .. (n and (" - step " .. n) or ""), lines = lines,
+		local title = name or "Follow The Arrow"
+		return { title = n and W.Tr("%s - step %s"):format(title, n) or title, lines = lines,
 			cog = { Left = Guides, Right = Settings, tip = "Follow The Arrow",
-				hint = "Click: its guides  -  Right-click: its settings" } }
+				hint = W.Tr("Click: its guides  -  Right-click: its settings") } }
 	end
 
 	-- the item its step needs (StepItem: the step's own, or a quest's special item): by id, link or name
@@ -1102,10 +1105,11 @@ do
 				Settings()
 			end
 		end
-		return { title = (route or "Azeroth Pilot") .. (n and (" - step " .. n .. (total and ("/" .. total) or "")) or ""),
+		local title = route or "Azeroth Pilot"
+		return { title = n and W.Tr("%s - step %s%s"):format(title, n, total and ("/" .. total) or "") or title,
 			lines = lines,
 			cog = { Left = Own, Right = Settings, tip = "Azeroth Pilot Reloaded",
-				hint = "Click: its menu  -  Right-click: its settings" } }
+				hint = W.Tr("Click: its menu  -  Right-click: its settings") } }
 	end
 
 	-- the buttons on its step's rows: items (itemID) and spells (attribute "spell", the id once it knew the name)
@@ -1260,9 +1264,9 @@ do
 		local function Settings()
 			pcall(t.Fire, "SHOW_OPTIONS")
 		end
-		return { title = (name or "Polestar") .. " - step " .. i .. (total and ("/" .. total) or ""), lines = lines,
+		return { title = W.Tr("%s - step %s%s"):format(name or "Polestar", i, total and ("/" .. total) or ""), lines = lines,
 			cog = { Left = Picker, Right = Settings, tip = "Polestar",
-				hint = "Click: its guides  -  Right-click: its settings" } }
+				hint = W.Tr("Click: its guides  -  Right-click: its settings") } }
 	end
 
 	-- what its buttons would hold: the step's quest item (QoL.Buttons.ChooseQuestItem), the Hearthstone for a hearth goal
@@ -1351,7 +1355,7 @@ do
 						lines[#lines + 1] = "From " .. who .. ((lo and hi and lo ~= hi) and (" (level " .. lo .. "-" .. hi .. ")")
 							or (lo and (" (level " .. lo .. ")") or ""))
 					end
-					lines[#lines + 1] = "Click: the way there"
+					lines[#lines + 1] = W.Tr("Click: the way there")
 					local si, gi = i, g
 					out[#out + 1] = { key = "polestar:" .. tostring(guide.id) .. ":" .. i .. ":" .. g, kind = KIND[gv.t] or 4,
 						text = n and (text .. " (" .. n .. ")") or text, quest = tonumber(Plain(gv.quest)), verb = VERB[gv.t],
@@ -1553,7 +1557,7 @@ do
 			Guide.Forget()
 			Guide.Refresh()
 		end
-		MelloUI:Print("Following Zygor Guides: %s.", on and "on (a test)" or "off")
+		MelloUI:Print("Following Zygor Guides: %s.", W.Tr(on and "on (a test)" or "off"))
 	end
 
 	-- its step's signature (Read: Steps only when it changed)
@@ -1621,9 +1625,9 @@ do
 		local menu = z.GuideMenu
 		local pick = type(menu) == "table" and type(menu.Show) == "function" and function() pcall(menu.Show, menu) end or nil
 		local settings = type(z.OpenOptions) == "function" and function() pcall(z.OpenOptions, z) end or nil
-		return { title = name .. (n and (" - step " .. n) or ""), lines = lines,
+		return { title = n and W.Tr("%s - step %s"):format(name, n) or name, lines = lines,
 			cog = (pick or settings) and { Left = pick or settings, Right = settings or pick, tip = "Zygor Guides",
-				hint = "Click: its guides  -  Right-click: its settings" } or nil }
+				hint = W.Tr("Click: its guides  -  Right-click: its settings") } or nil }
 	end
 
 	-- only while its lines read (zygor.steps: Read's): no step in the tracker, its own window stays
@@ -1867,7 +1871,7 @@ do
 			end
 		end
 		pcall(CA.SaveAddOns)
-		MelloUI:Announce("The other guides are switched off for this character: type /reload to finish.", "info")
+		MelloUI:Announce(W.Tr("The other guides are switched off for this character: type /reload to finish."), "info")
 	end
 
 	function Guide.Ask()

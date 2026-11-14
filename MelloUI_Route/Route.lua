@@ -362,10 +362,18 @@ local function Dist(ax, ay, bx, by)
 end
 
 local function Yards(d)
+	local yards = MelloUI.Widgets.Tr("%d yd")   -- (loads the chosen catalogue before testing its language)
 	if d >= 1000 then
-		return string.format("%.1f km", d / 1000)
+		if MelloUI.Lang and MelloUI.Lang.code == "frFR" then
+			local km = string.format("%.1f", d * 0.0009144):gsub("%.", ",")
+			return MelloUI.Widgets.Tr("%s km"):format(km)
+		end
+		return MelloUI.Widgets.Tr("%.1f km"):format(d / 1000)
 	end
-	return string.format("%d yd", d)
+	if MelloUI.Lang and MelloUI.Lang.code == "frFR" then
+		return yards:format(math.floor(d * 0.9144 + 0.5))
+	end
+	return yards:format(d)
 end
 
 --------------------------------------------------------------------------------
@@ -4704,15 +4712,15 @@ M.flight = { slots = {}, openGen = 0, readGen = -1,
 
 function Travel.Words(m)
 	if m < 1 then
-		return "under a minute"
+		return MelloUI.Widgets.Tr("under a minute")
 	elseif m < 60 then
-		return string.format("about %d min", m)
+		return MelloUI.Widgets.Tr("about %d min"):format(m)
 	end
 	local h, rest = math.floor(m / 60), m % 60
 	if rest == 0 then
-		return string.format("about %d h", h)
+		return MelloUI.Widgets.Tr("about %d h"):format(h)
 	end
-	return string.format("about %d h %d min", h, rest)
+	return MelloUI.Widgets.Tr("about %d h %d min"):format(h, rest)
 end
 
 function Travel.OnTaxi()
@@ -4899,7 +4907,7 @@ function Travel.Show(secs, now)
 	if guess ~= (Travel.guess or false) then
 		Travel.guess = guess
 		Travel.minutes, Travel.pending = nil, nil
-		Travel.suffix = guess and (" straight" .. Travel.SEP .. "no known way") or ""
+		Travel.suffix = guess and (" " .. MelloUI.Widgets.Tr("straight") .. Travel.SEP .. MelloUI.Widgets.Tr("no known way")) or ""
 	end
 	if guess then
 		return
@@ -4995,6 +5003,8 @@ end
 -- (its edges, where the rounding decides, are written each time d moves).
 function Travel.Line(f, d)
 	local suffix = Travel.suffix
+	local yardsFormat = MelloUI.Widgets.Tr("%d yd%s")   -- (loads the chosen catalogue before testing its language)
+	local french = MelloUI.Lang and MelloUI.Lang.code == "frFR"
 	if suffix == f.lineSuffix then
 		if d == f.lineD then
 			return
@@ -5009,22 +5019,28 @@ function Travel.Line(f, d)
 	f.lineSuffix, f.lineD = suffix, d
 	if d < 1000 then
 		f.lineYards, f.lineLo, f.lineHi = math.floor(d), nil, nil
-		f.distance:SetText(string.format("%d yd%s", d, suffix))
+		local yards = french and math.floor(d * 0.9144 + 0.5) or d
+		f.distance:SetText(yardsFormat:format(yards, suffix))
 	else
-		local t = d / 100 + 0.5
+		local t = (french and d * 0.9144 or d) / 100 + 0.5
 		local tenths = math.floor(t)
-		f.lineYards, f.lineLo, f.lineHi = nil, math.max(tenths * 100 - 50, 1000), tenths * 100 + 50
+		local band = french and 1 / 0.9144 or 1
+		f.lineYards, f.lineLo, f.lineHi = nil, math.max((tenths * 100 - 50) * band, 1000), (tenths * 100 + 50) * band
 		if t - tenths < 1e-6 or t - tenths > 1 - 1e-6 then
 			f.lineLo = nil   -- on an edge: which tenth it shows is the format's
 		end
-		f.distance:SetText(string.format("%.1f km%s", d / 1000, suffix))
+		if french then
+			local km = string.format("%.1f", d * 0.0009144):gsub("%.", ",")
+			f.distance:SetText(MelloUI.Widgets.Tr("%s km%s"):format(km, suffix))
+		else
+			f.distance:SetText(MelloUI.Widgets.Tr("%.1f km%s"):format(d / 1000, suffix))
+		end
 	end
 end
 
--- Say what is tracked now; `text` overrides the standard sentence. With
--- Travel Time, the time the whole way takes follows the distance ("Tracking
--- Stormwind: 1.2 km, about 2 min"; a caller's "{dist} away" is followed by
--- ", about 2 min"); without, the sentences are as they were.
+-- Say what is tracked now; `text` overrides the standard sentence. The
+-- distance and optional Travel Time are added after the caller's translated
+-- format string, or to the translated standard sentence.
 local function Announce(text)
 	if not destination then
 		return
@@ -5032,18 +5048,21 @@ local function Announce(text)
 	local d = DestinationDistance()
 	local time = d and Travel.Planned()
 	if text then
-		if time then
-			text = text:gsub("{dist} away", "{dist} away, " .. time)
-		end
 		text = text:gsub("{dist}", d and Yards(d) or "?")
+		if time then
+			text = text .. MelloUI.Widgets.Tr(", about %s"):format(time)
+		end
 	elseif time then
-		text = "Tracking " .. (destination.label or "map pin") .. ": " .. Yards(d) .. ", " .. time
+		text = MelloUI.Widgets.Tr("Tracking %s: %s, %s"):format(destination.label or MelloUI.Widgets.Tr("map pin"), Yards(d), time)
+	elseif d then
+		text = MelloUI.Widgets.Tr("Tracking %s, %s away"):format(destination.label or MelloUI.Widgets.Tr("map pin"), Yards(d))
+	else
+		text = MelloUI.Widgets.Tr("Tracking %s"):format(destination.label or MelloUI.Widgets.Tr("map pin"))
 	end
 	-- (0.19.4) one sound for a new destination: no chime while the World
 	-- Marker's own sound stands for it (M.TrackMute, by the marker below)
 	local mute = M.TrackMute ~= nil and M.TrackMute(destination) or nil
-	M:Notify(text or ("Tracking " .. (destination.label or "map pin") .. (d and (", " .. Yards(d) .. " away") or "")), "track",
-		mute)
+	M:Notify(text, "track", mute)
 end
 
 local function Plan(force, announce, announceText)
@@ -5782,7 +5801,13 @@ local function ReadTrackedQuest()
 			source = source, sourceOnly = sourceOnly, missing = missing, gated = Needed.Gates(questID) ~= nil,
 			area = area and true or false, label = M.IconMark("quest_mark", 16) .. " " .. (oname or title or "quest") }
 		-- announced once per quest (and step), not at every next spawn
-		Plan(true, not same or step, M.IconMark("quest_mark", 22) .. "  Tracking quest " .. (title or "") .. (oname and (": " .. oname) or "") .. ", {dist} away")
+		local notice
+		if oname then
+			notice = MelloUI.Widgets.Tr("Tracking quest %s: %s, {dist} away"):format(title or "", oname)
+		else
+			notice = MelloUI.Widgets.Tr("Tracking quest %s, {dist} away"):format(title or "")
+		end
+		Plan(true, not same or step, M.IconMark("quest_mark", 22) .. "  " .. notice)
 		return
 	end
 	local mapID, px, py = QuestObjectivePoint(questID)
@@ -5815,7 +5840,8 @@ local function ReadTrackedQuest()
 	-- M.QuestSpotArrive, the user's word of 2026-10-13)
 	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = px, my = py, fromQuest = true, questID = questID,
 		gated = Needed.Gates(questID) ~= nil, area = false, label = M.IconMark("quest_mark", 16) .. " " .. (title or "quest") }
-	Plan(true, true, M.IconMark("quest_mark", 22) .. "  Tracking quest " .. (title or "") .. ", {dist} away")
+	Plan(true, true, M.IconMark("quest_mark", 22) .. "  "
+		.. MelloUI.Widgets.Tr("Tracking quest %s, {dist} away"):format(title or ""))
 end
 
 -- The waypoint the client shows is the destination; Blizzard's own map clicks
@@ -5866,7 +5892,7 @@ local function ReadWaypoint()
 	end
 	M.stopped = nil   -- (a new pin: the player's pick, M.StopRoute)
 	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = px, my = py, fromWaypoint = true,
-		label = M.IconMark("goal_pin", 16) .. " map pin" }
+		label = M.IconMark("goal_pin", 16) .. " " .. MelloUI.Widgets.Tr("map pin") }
 	Plan(true, true)
 end
 
@@ -9614,7 +9640,7 @@ M.SlashWords = {
 		M.DrawIn.forDest = nil
 		M.DrawIn.Start(destination)
 		if not M.DrawIn.on then
-			MelloUI:Print(M.PREVIEW.off, "Route Draws In")
+			MelloUI:Print(M.PREVIEW.off, MelloUI.Widgets.Tr("Route Draws In"))
 		end
 		Redraw()
 	end,
@@ -9625,7 +9651,7 @@ M.SlashWords = {
 		end
 		local anim = MelloUI.Anim
 		if M.db.arriveLight == false or (anim and anim.reduceMotion) then
-			MelloUI:Print(M.PREVIEW.off, "Arrival Light")
+			MelloUI:Print(M.PREVIEW.off, MelloUI.Widgets.Tr("Arrival Light"))
 			return
 		end
 		if marker.off ~= false then
@@ -11580,7 +11606,11 @@ do
 		local secs = F.Estimate(slot)
 		local node = rec.id and taxis and taxis[rec.id]
 		local name = F.Short(rec.name) or F.Short(node and node.name) or "the flight point"
-		cap.text:SetText("Route: fly to " .. name .. (secs and (Travel.SEP .. "about " .. Clock(secs)) or ""))
+		if secs then
+			cap.text:SetText(MelloUI.Widgets.Tr("Route: fly to %s · about %s"):format(name, Clock(secs)))
+		else
+			cap.text:SetText(MelloUI.Widgets.Tr("Route: fly to %s"):format(name))
+		end
 		F.PlaceCaption(tf, cap)
 		cap:Show()
 		F.Gem(slot)
@@ -11657,11 +11687,11 @@ do
 		local P = MelloUI.Look.TipPalette()
 		if secs then
 			local c = P.text
-			tip:AddLine("Flight time: about " .. Clock(secs), c[1], c[2], c[3])
+			tip:AddLine(MelloUI.Widgets.Tr("Flight time: about %s"):format(Clock(secs)), c[1], c[2], c[3])
 		end
 		if slot == F.wanted then
 			local c = P.selectedTrim
-			tip:AddLine("Your route flies here", c[1], c[2], c[3])
+			tip:AddLine(MelloUI.Widgets.Tr("Your route flies here"), c[1], c[2], c[3])
 		end
 		tip:Show()
 	end
@@ -12077,7 +12107,7 @@ do
 	-- opts, the bar moved each frame of the build (AnnounceProgress). The
 	-- build fills it to BUILT; it is full once the route that waited is
 	-- planned (the route's own notice takes its place then, as ever).
-	Build.LOADING = "Loading navigation..."
+	Build.LOADING = MelloUI.Widgets.Tr("Loading navigation...")
 	Build.LOADING_AFTER = 0.3   -- seconds
 	Build.BUILT = 0.95
 	Build.HELD = { icon = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\page_route", share = 0 }
@@ -12554,7 +12584,7 @@ SlashCmdList.MELLOROUTE = function(msg)
 	elseif msg == "guide" or msg == "rxp" then
 		-- (the guide addons, Guides.lua: following their steps on or off; "rxp" its first name, RestedXP's alone)
 		M.db.followGuide = M.db.followGuide == false
-		MelloUI:Print("Following guides: %s.", M.db.followGuide and "on" or "off")
+		MelloUI:Print("Following guides: %s.", MelloUI.Widgets.Tr(M.db.followGuide and "on" or "off"))
 		if M.Guide then
 			M.Guide.Forget()
 			M.Guide.Refresh()   -- (their spot, their steps in the Quest Tracker and their items, or all gone)
@@ -12663,8 +12693,8 @@ SlashCmdList.MELLOROUTE = function(msg)
 		MelloUI:Print("Route: %d learned points, %d traced road points, %d links, %d docks, %d flight points (%d usable)%s.",
 			nodes - tracedNodes, tracedNodes, edges, docks and #docks or 0,
 			taxiCount, usable, mergedSaved and ""
-				or adoptTicker and " (paths learned in earlier sessions: the game has not brought them yet)"
-				or " (none saved from earlier sessions)")
+				or adoptTicker and MelloUI.Widgets.Tr(" (paths learned in earlier sessions: the game has not brought them yet)")
+				or MelloUI.Widgets.Tr(" (none saved from earlier sessions)"))
 		if not Build.ready then
 			-- (user, 2026-09-24) built on the first route, not at login
 			print("   the road graph is built the first time a route is wanted: "

@@ -136,7 +136,7 @@ local function Length(s)
 end
 
 local function YardsText(d)
-	return Route:YardsText(d) or string.format("%d yd", d)
+	return Route:YardsText(d) or W.Tr("%d yd"):format(d)
 end
 
 --------------------------------------------------------------------------------
@@ -273,7 +273,7 @@ local function SetRecording(on)
 	end
 	R.wait = 0
 	Ticker():SetShown(on)
-	MelloUI:Print(on and "Recording roads into %s." or "Road recording paused (%s).", NAME[R.city] or "?")
+	MelloUI:Print(on and "Recording roads into %s." or "Road recording paused (%s).", W.Tr(NAME[R.city] or "?"))
 	Changed(true)
 end
 
@@ -303,7 +303,7 @@ local function Mark(kind)
 		AddMark(kind)
 		return
 	end
-	MelloUI:ShowPaste("road note", function(text)
+	MelloUI:ShowPaste(W.Tr("road note"), function(text)
 		text = tostring(text or ""):gsub("[\r\n|]", " "):gsub("^%s+", ""):gsub("%s+$", "")
 		if text == "" then
 			return false
@@ -327,7 +327,7 @@ local function Undo()
 		MelloUI:Print("Removed the last stretch (%s).", YardsText(Length(s)))
 	elseif m then
 		city.marks[#city.marks] = nil
-		MelloUI:Print("Removed the last mark (%s).", tostring(m.kind))
+		MelloUI:Print("Removed the last mark (%s).", W.Tr(tostring(m.kind)))
 	end
 	Changed(true)
 end
@@ -338,8 +338,8 @@ local function Clear()
 		return
 	end
 	MelloUI:Confirm({
-		text = string.format("Clear every stretch and mark recorded in %s?", NAME[id] or "?"),
-		accept = "Clear",
+		text = W.Tr("Clear every stretch and mark recorded in %s?"):format(W.Tr(NAME[id] or "?")),
+		accept = W.Tr("Clear"),
 		onAccept = function()
 			EndStretch()
 			local city = City(id)
@@ -541,13 +541,13 @@ end
 local function CityText(id)
 	local city = Peek(id)
 	if not city or (#city.stretches == 0 and #city.marks == 0) then
-		return "nothing yet"
+		return W.Tr("nothing yet")
 	end
 	local d = 0
 	for _, s in ipairs(city.stretches) do
 		d = d + Length(s)
 	end
-	return string.format("%s, %d marks", YardsText(d), #city.marks)
+	return W.Tr("%s, %d marks"):format(YardsText(d), #city.marks)
 end
 
 local function Refresh()
@@ -560,16 +560,16 @@ local function Refresh()
 		row.info:SetText(CityText(row.id))
 		row.done:Refresh()
 	end
-	local name = NAME[R.city] or "?"
+	local name = W.Tr(NAME[R.city] or "?")
 	local city = Peek(R.city)
 	local s = R.current
 	if R.recording then
-		f.status:SetText(string.format("Recording %s: this stretch %s.", name, s and YardsText(Length(s)) or "waiting for a place"))
+		f.status:SetText(W.Tr("Recording %s: this stretch %s."):format(name, s and YardsText(Length(s)) or W.Tr("waiting for a place")))
 	else
-		f.status:SetText(string.format("Paused. Start records into %s.", name))
+		f.status:SetText(W.Tr("Paused. Start records into %s."):format(name))
 	end
-	f.status2:SetText(string.format("%d stretches and %d marks in %s.", city and #city.stretches or 0, city and #city.marks or 0, name))
-	f.start:SetText(R.recording and "Pause" or "Start")
+	f.status2:SetText(W.Tr("%d stretches and %d marks in %s."):format(city and #city.stretches or 0, city and #city.marks or 0, name))
+	f.start:SetText(W.Tr(R.recording and "Pause" or "Start"))
 end
 
 Changed = function(redraw)
@@ -599,9 +599,9 @@ local function Window()
 	f:SetScript("OnHide", function()
 		Map.Draw(true)
 	end)
-	local shell = MelloUI.Kit:OwnWindow(f, { area = "copy", ring = { at = "tl" }, plate = "rail", title = "Road recorder",
+	local shell = MelloUI.Kit:OwnWindow(f, { area = "copy", ring = { at = "tl" }, plate = "rail", title = W.Tr("Road recorder"),
 		close = true, escape = true, fit = true, sounds = true, calm = true,
-		mover = { key = "roadRecorder", plainDrag = "always", label = "Road recorder" } })
+		mover = { key = "roadRecorder", plainDrag = "always", label = W.Tr("Road recorder") } })
 	f.shell = shell
 	local body = W.Panel(f)
 	local buttonRows = {}   -- (the button rows: each { top = y, buttons }, laid across the body by Lay)
@@ -624,7 +624,7 @@ local function Window()
 	end
 	Lay(shell)
 	shell:OnKit(Lay)
-	W.Header(body, 4, "Cities  (the switch: done)", { inset = 4 })
+	W.Header(body, 4, W.Tr("Cities  (the switch: done)"), { inset = 4 })
 	f.rows = {}
 	for i, c in ipairs(CITIES) do
 		local id = c[1]
@@ -637,7 +637,7 @@ local function Window()
 		row.sel:SetAllPoints(row)
 		local hover = W.Solid(row, "HIGHLIGHT", "hover", 1)
 		hover:SetAllPoints(row)
-		local name = W.Text(row, "GameFontHighlight", c[2], "text")
+		local name = W.Text(row, "GameFontHighlight", W.Tr(c[2]), "text")
 		name:SetPoint("LEFT", row, "LEFT", 8, 0)
 		row.info = W.Text(row, "GameFontHighlight", "", "text")
 		row.info:SetJustifyH("RIGHT")
@@ -668,7 +668,7 @@ local function Window()
 	local function Row(list, top)
 		local made = { top = top }
 		for i, entry in ipairs(list) do
-			made[i] = W.Button(body, entry[1], nil, shell, { height = BUTTON_H, gold = entry.gold, onClick = entry[2] })
+			made[i] = W.Button(body, W.Tr(entry[1]), nil, shell, { height = BUTTON_H, gold = entry.gold, onClick = entry[2] })
 		end
 		buttonRows[#buttonRows + 1] = made
 		return made
@@ -677,7 +677,7 @@ local function Window()
 		{ "Start", function() SetRecording(not R.recording) end, gold = true },
 		{ "Undo", Undo },
 		{ "Export", function()
-			MelloUI:ShowText("road recording, " .. (NAME[R.city] or "?"), ExportText(R.city))
+			MelloUI:ShowText(W.Tr("road recording, %s"):format(W.Tr(NAME[R.city] or "?")), ExportText(R.city))
 		end },
 	}, y)[1]
 	local marks = {}
