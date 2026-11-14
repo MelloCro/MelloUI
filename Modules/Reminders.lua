@@ -98,6 +98,12 @@ local function F(fmt, ...)
 	return Lang and Lang.F and Lang.F(fmt, ...) or format(fmt, ...)
 end
 
+local function Language()
+	Tr("Reminders")
+	local Lang = MelloUI.Lang
+	return Lang and Lang.code or "enUS"
+end
+
 local PLACES = {
 	{ value = "left", label = "Left of the portrait" },
 	{ value = "above", label = "Above the portrait" },
@@ -254,8 +260,9 @@ end
 local function MailText()
 	local from = mail.sender or false
 	local kind = mail.waiting and (mail.seen and 2 or 1) or 3
-	if mail.textFrom ~= from or mail.textKind ~= kind then
-		mail.textFrom, mail.textKind = from, kind
+	local language = Language()
+	if mail.textFrom ~= from or mail.textKind ~= kind or mail.textLang ~= language then
+		mail.textFrom, mail.textKind, mail.textLang = from, kind, language
 		if kind == 1 then
 			mail.text = from and F("New mail from %s", from) or Tr("New mail")
 		elseif kind == 2 then
@@ -337,8 +344,9 @@ end
 
 local function GearText()
 	local pct = gear.broken and -2 or floor(gear.lowest * 100 + 0.5)
-	if gear.pct ~= pct then
-		gear.pct = pct
+	local language = Language()
+	if gear.pct ~= pct or gear.textLang ~= language then
+		gear.pct, gear.textLang = pct, language
 		gear.text = gear.broken and Tr("Repair Gear: broken gear") or F("Repair Gear: %d%%", pct)
 	end
 	return gear.text
@@ -555,8 +563,10 @@ end
 -- while not (when the next spells come)
 local function TrainerText()
 	local class, prof, rank, from = trainer.class, trainer.prof, trainer.rank, trainer.from
-	if trainer.textClass ~= class or trainer.textProf ~= prof or trainer.textRank ~= rank or trainer.textFrom ~= from then
-		trainer.textClass, trainer.textProf, trainer.textRank, trainer.textFrom = class, prof, rank, from
+	local language = Language()
+	if trainer.textClass ~= class or trainer.textProf ~= prof or trainer.textRank ~= rank or trainer.textFrom ~= from
+		or trainer.textLang ~= language then
+		trainer.textClass, trainer.textProf, trainer.textRank, trainer.textFrom, trainer.textLang = class, prof, rank, from, language
 		if class and prof then
 			trainer.text = F("New spells, and %s %s", rank, prof)
 		elseif prof then
@@ -946,6 +956,14 @@ function M:OnDisable()
 		USERS[key].active, USERS[key].told = false, nil
 	end
 end
+
+MelloUI:On("language", function()
+	if M.isEnabled then
+		for _, key in ipairs(ORDER) do
+			Changed(key)
+		end
+	end
+end, M)
 
 -- (the widget reads remind_<key>, place, detached, glow, hold and stayResting
 -- itself, on 'setting')
