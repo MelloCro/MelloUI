@@ -281,6 +281,68 @@ local function Seat(base, panel)
 	end
 end
 
+-- (2.1.52; the configurator pass in the test VM, 2026-11-14: a taller minimap, or a second row of Services, lay under
+-- Questie's tracker -- the user: "Yes, go ahead") where nobody placed it, Questie's tracker hangs under MelloUI's
+-- minimap column as MelloUI's own tracker does (Modules/QuestTracker.lua's Glue): its top right corner QL.COLUMN_GAP
+-- under the column's bottom, on the frame the column lines up to (MinimapPanel's ColumnAnchor) -- an anchor, so it
+-- moves with the map; laid again at each dressing and at the bus's 'column' (the column's foot moved). "Nobody
+-- placed it": Questie keeps no place of the player's (its TrackerLocation: nil in a profile until the first drag;
+-- Questie's own Reset Tracker writes one too, the screen's middle -- seen in the test VM on 12.9) -- a tracker dragged
+-- or reset is the player's, never moved. No setting of Questie's is written: its frame's one
+-- anchor only, written when it stands elsewhere, never in a fight (the dressing's own rule). Without MelloUI's
+-- minimap, or once the look goes off: back on Questie's own default (QuestieCompat.GetWatchFramePoint, as Questie
+-- lays it at its start)
+QL.COLUMN_GAP = 8   -- (MelloUI's own tracker's: Modules/QuestTracker.lua's COLUMN_GAP)
+
+local function Unplaced()
+	local Q = rawget(_G, "Questie")
+	local profile = type(Q) == "table" and type(Q.db) == "table" and Q.db.profile
+	return type(profile) == "table" and profile.TrackerLocation == nil
+end
+
+local function Unfollow(base)
+	if not S.followed then
+		return
+	end
+	S.followed = nil
+	if not (base and Unplaced()) or InCombatLockdown() then
+		return   -- (a place of the player's since: Questie laid it there itself)
+	end
+	local QC = Questie("QuestieCompat")
+	local own = QC and rawget(QC, "GetWatchFramePoint")
+	if type(own) == "function" then
+		local point = { pcall(own) }
+		if point[1] and type(point[2]) == "string" then
+			base:ClearAllPoints()
+			pcall(base.SetPoint, base, unpack(point, 2))
+		end
+	end
+end
+
+local function HangUnder(base)
+	local mp = Unplaced() and MelloUI:GetModule("MinimapPanel")
+	if not (mp and mp.isEnabled and type(mp.ColumnAnchor) == "function") then
+		Unfollow(base)
+		return
+	end
+	local ok, region, point, dy = pcall(mp.ColumnAnchor, mp)
+	dy = ok and Number(dy) or nil
+	local scale = Number(base:GetEffectiveScale())
+	if not (region and type(point) == "string" and dy and scale and scale > 0) then
+		Unfollow(base)
+		return
+	end
+	-- (a thousandth of a unit: a column that did not move lays the same)
+	local y = math.floor((dy / scale - QL.COLUMN_GAP) * 1000 + 0.5) / 1000
+	local at, rel, relPoint, x0, y0 = base:GetPoint(1)
+	if not (base:GetNumPoints() == 1 and at == "TOPRIGHT" and rel == region and relPoint == point
+		and Number(x0) == 0 and Number(y0) and math.abs(y0 - y) < 0.005) then
+		base:ClearAllPoints()
+		base:SetPoint("TOPRIGHT", region, point, 0, y)
+	end
+	S.followed = true
+end
+
 -- the Quest Tracker's Background Opacity on the panel's fill and its shade (Default: the backing band's strength)
 local function Opacity(panel)
 	local m = Tracker()
@@ -902,6 +964,7 @@ function QL.Dress()
 		if S.on then
 			S.on = false
 			Undress()
+			Unfollow(base)   -- (2.1.52: its own default place again)
 			Inked()
 			-- (its own fonts back: Questie sets them at its next Update)
 			local QT = Questie("QuestieTracker")
@@ -921,6 +984,7 @@ function QL.Dress()
 		return
 	end
 	panel:Show()
+	HangUnder(base)   -- (2.1.52: under MelloUI's minimap column where nobody placed it; then its rim, at that place)
 	Seat(base, panel)
 	Opacity(panel)
 	DressHeader(base, panel)
@@ -1742,6 +1806,13 @@ Perf.SetScript(login, "OnEvent", function(self)
 	hooksecurefunc(QT, "Update", function()
 		QL.Dress()
 	end)
+	-- (2.1.52) the minimap column's foot moved (the map sized, a row of Services more): Questie's tracker under it
+	-- again, where it follows the column (HangUnder)
+	MelloUI:On("column", function()
+		if S.on and S.followed then
+			QL.Dress()
+		end
+	end, QL)
 	-- (its quest lines' marks: the followed quest changed -- the game's event MelloUI's own tracker lays its marks by)
 	local follow = CreateFrame("Frame")
 	follow:RegisterEvent("SUPER_TRACKING_CHANGED")

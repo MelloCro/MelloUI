@@ -33,6 +33,7 @@ end
 local W = MelloUI.Widgets
 local RD = ns.RD
 local Looks = ns.Looks
+local Parts = ns.Parts
 local Label, Box, Choices, Spots = Page.Label, Page.Box, Page.Choices, Page.Spots
 
 local EMPTY = {}
@@ -366,6 +367,16 @@ function Page.BuildGroups(canvas, width)
 		for _, ind in ipairs(List()) do
 			used[ind.point or ""] = true
 		end
+		-- (2.1.52; the configurator pass in the test VM, 2026-11-14: a new spell stood on the role icon and the name,
+		-- a new group over the name -- the top left, the first spot) the spots the frame's own texts stand on -- the
+		-- name, the health text: always there, as wide as their words -- are not free either
+		local layout = inst.kind == "party" and "portrait" or "raid"
+		for _, p in ipairs(Parts:ListOfLayout(layout)) do
+			local shown = p.text and Parts:Shown(p.key, layout)
+			if shown and shown.show ~= false and type(shown.point) == "string" then
+				used[shown.point] = true
+			end
+		end
 		for _, p in ipairs(RD.POINTS) do
 			if not used[p] then
 				return p
@@ -395,13 +406,19 @@ function Page.BuildGroups(canvas, width)
 		end
 	end
 	-- a group put on the frame at a spot (a placed one moved there)
-	local function Place(key, spot)
+	-- (2.1.52) one taken off the frame before comes back as it stood (RD:TakeKept): at its own place by the block's
+	-- button (`back`), at the spot it is dropped on by a drag
+	local function Place(key, spot, back)
 		local ind = PlacedOf(key)
 		if ind then
 			ind.point, ind.x, ind.y = spot, 0, 0
 			Changed(ind)
 		else
-			ind = RD:Add(SG.New(key, spot), Key())
+			local kept = RD:TakeKept(key, Key())
+			if kept and not back then
+				kept.point, kept.x, kept.y = spot, 0, 0
+			end
+			ind = RD:Add(kept or SG.New(key, spot), Key())
 		end
 		MelloUI:PlayUISound("tab")
 		inst.Pick(ind)
@@ -668,6 +685,7 @@ function Page.BuildGroups(canvas, width)
 	blurb:SetJustifyH("LEFT")
 	blurb:SetWordWrap(false)
 	local placeBtn = W.Button(body, TEXT.on, 110, nil, { height = 22 })
+	inst.placeBtn = placeBtn
 	local resetBtn = W.Button(body, TEXT.reset, 100, nil, { height = 22 })
 	if narrow then
 		-- (layout C: the buttons under the blurb, the heading's line left whole)
@@ -801,7 +819,8 @@ function Page.BuildGroups(canvas, width)
 			for _, c in ipairs(cards) do
 				if c:IsShown() and c.group and c.group ~= from.group and SG.DEF[c.group].scope ~= "debuff"
 					and c:IsMouseOver() then
-					local to = PlacedOf(c.group) or RD:Add(SG.New(c.group, FreeSpot()), Key())
+					local to = PlacedOf(c.group)
+						or RD:Add(RD:TakeKept(c.group, Key()) or SG.New(c.group, FreeSpot()), Key())
 					SG.Move(from, e, to)
 					Changed(from)
 					Changed(to)
@@ -1103,7 +1122,7 @@ function Page.BuildGroups(canvas, width)
 			end
 			canvas:Refresh()
 		elseif inst.group then
-			Place(inst.group, FreeSpot())
+			Place(inst.group, FreeSpot(), true)
 		end
 	end)
 	resetBtn:HookScript("OnClick", function()

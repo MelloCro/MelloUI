@@ -4802,6 +4802,18 @@ do
 			if page.dStaging or not el then
 				return
 			end
+			-- (2.1.52; the configurator pass in the test VM, 2026-11-14: a card dropped on the frame, or Remove from the
+			-- preview's list, and the page left Indicators for the frame's own rows -- the preview lets go of what it
+			-- held as its list changes) nothing picked on the tab of a family of parts (the Indicators: "ind:") is
+			-- still that tab: its list is the tab's own, the tray with no block open
+			if key == nil and page.current then
+				local name = rawget(page.current, "name")
+				local own = type(name) == "string" and name:sub(1, #el + 1) == el .. ":" and name:sub(#el + 2) or nil
+				local held = own and page.stageOfPart[el] and page.stageOfPart[el][own]
+				if type(held) == "string" and held:sub(-1) == ":" then
+					return
+				end
+			end
 			local map = page.partOfStage[el]
 			local part = key and map and (map[key] or (key:match("^ind:") and map["ind:"]))
 			local sec = (part and page.secByName[el .. ":" .. part]) or page.secByName[el .. ":element"]

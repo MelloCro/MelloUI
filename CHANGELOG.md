@@ -12,7 +12,10 @@
 - Configurator: Buffs & Debuffs, Chat and Quality of Life line up with the other categories in the side list: evenly spaced, with a small icon and a gold name like theirs.
 - Configurator: a label or its "also ..." tag no longer runs under its slider or dropdown, and rows and lists whose text was cut short show it whole now.
 - Configurator: on Buffs & Debuffs, Icon Size is hidden while your buffs hang under the player frame, where it did nothing. On Nameplates, the combo points' Offset sliders give way to the preview's Place once you drag them there, and the CC icon and Quest icon have one Size slider each.
+- Nameplates: the CC icon, the Quest icon, the Threat line and the Combo points have one switch each. The preview no longer offers a second Show or Hide for them, and one hidden there before stays hidden by its switch.
+- Party and raid frames: an indicator group taken off the frame comes back at its place with its settings, a new indicator no longer lands on the name or the health text, and removing an indicator on the preview keeps the Indicators tab open.
 - Questie's tracker: the gold line under its title no longer runs through the first zone's name, and the panel's gold rim stays on the screen where the tracker touches the screen's edge.
+- Questie's tracker: where you have not moved it, it hangs under MelloUI's minimap, so a taller minimap or a second row of Services buttons no longer lies over it.
 - Questie 12.9: its quest givers and other icons show on MelloUI's map again. Questie 12.9 shares its map pins in a new way, which MelloUI did not find.
 - Map: a quest opened from the quest tracker or the map's search now shows its page when the map's panel was left on the Quest List, the layers or Dungeon Info. Before, the map opened and the page stayed hidden.
 - Map: places you explore while the map is closed now show as explored the next time you open it.
