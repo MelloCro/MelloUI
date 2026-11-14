@@ -837,11 +837,13 @@ function L.Define(R, Link)
 	-- they show, else the game's buff and debuff bars in the Edit Mode
 	-- layout: Tweaks' Buff Layout; the size in pixels on both picks)
 	-- (2.1.30) the buffs' card: their size and rows (on the player frame, its own two)
-	R("Buffs", BUFFS, "Layout", "Tweaks.buffSize", { name = "Icon Size", card = "Buffs" })
-	R("UnitGroupFrames", "target:auras", "Layout", "Auras.targetSize", { name = "Icon Size", when = OWN_TARGET })
 	-- (0.20.1) the rows' own layout sleeps while they hang under the player frame (the target rows' look there)
 	local NOT_FRAMED = { any = { GAME_AURAS.any[1], { key = "Auras.playerAnchor", notValue = "frame" } },
 		line = "Not with Anchor: Unit Frame" }
+	-- (2.1.52; the configurator pass in the test VM, 2026-11-14: with Anchor: Unit Frame, the default, Icon Size stood
+	-- awake and moved nothing -- the icons there are Icon Size On The Frame's) their size too
+	R("Buffs", BUFFS, "Layout", "Tweaks.buffSize", { name = "Icon Size", card = "Buffs", when = NOT_FRAMED })
+	R("UnitGroupFrames", "target:auras", "Layout", "Auras.targetSize", { name = "Icon Size", when = OWN_TARGET })
 	R("Buffs", BUFFS, "Layout", "Tweaks.buffSpacing", { when = NOT_FRAMED, card = "Buffs" })
 	R("Buffs", BUFFS, "Layout", "Tweaks.buffPerRow", { when = NOT_FRAMED, card = "Buffs" })
 	R("Buffs", BUFFS, "Layout", "Tweaks.buffGrow", { when = NOT_FRAMED, card = "Buffs" })
@@ -878,8 +880,13 @@ function L.Define(R, Link)
 	R("Nameplates", "enemies:threat", "General", "Nameplates.threatLine")
 	R("Nameplates", "enemies:combo", "General", "Nameplates.comboPoints")
 	R("Nameplates", "enemies:combo", "Layout", "Nameplates.comboSize")   -- (under its switch: the user, 2026-10-04)
-	R("Nameplates", "enemies:combo", "Layout", "Nameplates.comboX")      -- (2.1.19: the user, "moveable")
-	R("Nameplates", "enemies:combo", "Layout", "Nameplates.comboY")
+	-- (2.1.52: their offsets move them only at the code's own place -- asleep once the preview gave them a place of
+	-- their own, its Place row the one that moves them then; back with its Default place)
+	local COMBO_OWN = { key = "Nameplates.comboAtOffsets", value = true,
+		line = "Moved on the preview: use Place, or its Default place" }
+	L.unplaced["Nameplates.comboAtOffsets"] = "asked by the Offset rows' `when` only: no setting to offer"
+	R("Nameplates", "enemies:combo", "Layout", "Nameplates.comboX", { when = COMBO_OWN })   -- (2.1.19: the user, "moveable")
+	R("Nameplates", "enemies:combo", "Layout", "Nameplates.comboY", { when = COMBO_OWN })
 	R("Nameplates", "enemies:cc", "General", "Nameplates.bigCC", { name = "Above The Name" })
 	R("Nameplates", "enemies:cc", "Layout", "Nameplates.ccSize", { name = "Size" })
 	R("Nameplates", "enemies:cc", "Layout", "Nameplates.ccGap")

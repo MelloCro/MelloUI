@@ -670,6 +670,41 @@ function W.Text(parent, font, text, key)
 	return fs
 end
 
+-- (2.1.52; the configurator pass in the test VM, 2026-11-14: labels, their tags and a list's choices cut or run under
+-- their control) a text's width as it would be written in `font` (W.Text's: "GameFontHighlight" when nil), before
+-- any region holds it: one hidden text a font, made at the first ask -- a page being built, never at load
+do
+	local made, holder = {}, nil
+	-- (what was measured holds until the fonts change: W.MeasureStamp, one number, counted up at each 'fonts')
+	local stamp = 0
+	MelloUI:On("fonts", function()
+		stamp = stamp + 1
+	end, "W.Measure")
+	function W.MeasureStamp()
+		return stamp
+	end
+	function W.Measure(text, font)
+		if type(text) ~= "string" or text == "" then
+			return 0
+		end
+		font = font or "GameFontHighlight"
+		local fs = made[font]
+		if not fs then
+			-- (on a frame of ours that never shows: a text's width is its font's, shown or not)
+			if not holder then
+				holder = CreateFrame("Frame")
+				holder:Hide()
+			end
+			fs = W.Text(holder, font)
+			fs:SetWordWrap(false)
+			made[font] = fs
+		end
+		fs:SetText(text)
+		local get = fs.GetUnboundedStringWidth or fs.GetStringWidth
+		return Num(get(fs)) or 0
+	end
+end
+
 function W.Solid(parent, layer, key, alpha)
 	local tex = parent:CreateTexture(nil, layer or "BACKGROUND")
 	tex:SetTexture(WHITE)
@@ -1076,6 +1111,8 @@ local RowTipEnter = Shared("OnEnter on MelloUI's rows (tooltip)", function(self)
 		if hint and hint:IsShown() and hint.IsTruncated and hint:IsTruncated() then
 			cut = hint:GetText()
 		end
+		-- (2.1.52: a Shared / "also ..." tag cut short or left out for want of room -- FitFull: its whole text here)
+		cut = cut or self.tagCut
 		local label = self.label
 		if not (cut or self.tipBody or (label and label.IsTruncated and label:IsTruncated())) then
 			return
@@ -1705,6 +1742,33 @@ function W.Dropdown(parent, width, get, set, values, opts)
 	end
 	dd:Refresh()
 	return dd
+end
+
+-- (2.1.52; the configurator pass, 2026-11-14: "Class (players) / reaction (NPCs)", "Yours And Your Group's" cut in
+-- their boxes) the width a box needs to show the longest of its choices whole: its text's, the box's own sides (the
+-- text's inset, the arrow's well) and a little more. A list read as it is now (one filled again later -- the voices,
+-- the faces -- is asked again by the next row made on it: kept by its length and the font's size); nil for no list
+local needs = setmetatable({}, weakKeys)   -- [values] = { n, size, w }
+function W.DropdownNeeds(values)
+	if type(values) ~= "table" then
+		return nil
+	end
+	local n = #values
+	local kept = needs[values]
+	local size = W.MeasureStamp()
+	if kept and kept.n == n and kept.size == size then
+		return kept.w
+	end
+	local widest = 0
+	for i = 1, n do
+		local entry = values[i]
+		if type(entry) == "table" and not entry.heading then
+			widest = math.max(widest, W.Measure(EntryText(entry)))
+		end
+	end
+	local w = math.ceil(widest + DD_TEXT_X + DD_PIECE.normal.r * DD_H / DD_PIECE.normal.h + 4 + 2)
+	needs[values] = { n = n, size = size, w = w }
+	return w
 end
 end   -- (the dropdown's do-block, 2026-10-20)
 
@@ -5102,12 +5166,62 @@ local function FitHalf(row, span)
 	if text and tag and text + tag > room then
 		row.label:SetWidth(math.max(20, room - tag))
 	end
+	-- (2.1.52: the Shared / "also ..." mark itself cut where it would reach the control; its whole text in the
+	-- row's tooltip -- RowTipEnter's tagCut)
+	local shared = row.sharedTag
+	if shared then
+		local need = TextWidth(shared)
+		local most = room - 2 * TAG_PAD_X
+		if need and need > most then
+			shared:SetWidth(math.max(20, most))
+			row.tagCut = shared:GetText()
+		end
+	end
 	local hint = row.hint
 	if hint then
-		local used = row.sharedTag and TagSpan(row.sharedTag) or 0
+		local used = shared and math.min(TagSpan(shared) or 0, room) or 0
 		local w = TextWidth(hint)
 		if w and used and w > room - used then
 			hint:SetWidth(math.max(20, room - used))
+		end
+	end
+end
+
+-- (2.1.52; the configurator pass in the test VM, 2026-11-14: in the column beside a designer's preview the "also
+-- Target, Focus" mark lay under the slider or the dropdown, and a long label -- "Frames Per Column / Row" -- ran into
+-- it) a row across its section, its hint the gate's line: the label and its New tag keep their room and end 10 px
+-- left of the control (cut there: the whole text in the row's tooltip); the Shared / "also ..." mark takes what is
+-- left -- cut to it, or left out where less than TAG_LEAST is (its text in the tooltip then: RowTipEnter's tagCut)
+local TAG_LEAST = 60   -- (enough for "also Targ...": less tells nothing)
+local function FitFull(row, span)
+	local parent = row:GetParent()
+	local width = span and parent and Num(parent:GetWidth())
+	if not (width and width > 0) then
+		return
+	end
+	local room = width - 2 * (row.rowInset or 0) - (row.labelX or 14) - span - 10
+	local label = row.label
+	local text = TextWidth(label)
+	local new = row.newTag and TagSpan(row.newTag) or 0
+	if not (text and new) then
+		return
+	end
+	if text + new > room then
+		text = math.max(20, room - new)
+		label:SetWidth(text)
+	end
+	local shared = row.sharedTag
+	local need = shared and TextWidth(shared)
+	if need then
+		local left = room - text - new - (TAG_GAP + 2 * TAG_PAD_X)
+		if need > left then
+			row.tagCut = shared:GetText()
+			if left >= TAG_LEAST then
+				shared:SetWidth(left)
+			else
+				W.TagShown(shared, false)
+				shared:SetWidth(1)   -- (the gate's line starts right after the label)
+			end
 		end
 	end
 end
@@ -5136,6 +5250,8 @@ function W.ClipRow(row, control, span)
 			else
 				row.label:SetPoint("RIGHT", control, "LEFT", -10, 0)
 			end
+		elseif last ~= row.label then
+			FitFull(row, span)   -- (2.1.52: a row across its section the same: its label and its tags)
 		end
 	end
 	clipped[row], clipAt[row] = true, control

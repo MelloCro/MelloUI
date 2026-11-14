@@ -10,6 +10,8 @@
 - Route: the First: loot line, for an item a quest needs before its objective, is gone. It came from MelloUI's own quest data.
 - Map: with Questie, every quest ! and ? on the map is Questie's, in MelloUI's look: its quest givers take the place of MelloUI's own, so Questie's quest level options decide which quests show. The map's Quest givers switch shows or hides them, pointing at one shows its quests, and clicking one sets Route's way there. Zoomed out past a zone, the map no longer shows MelloUI's own pin for each quest in your log.
 - Configurator: Buffs & Debuffs, Chat and Quality of Life line up with the other categories in the side list: evenly spaced, with a small icon and a gold name like theirs.
+- Configurator: a label or its "also ..." tag no longer runs under its slider or dropdown, and rows and lists whose text was cut short show it whole now.
+- Configurator: on Buffs & Debuffs, Icon Size is hidden while your buffs hang under the player frame, where it did nothing. On Nameplates, the combo points' Offset sliders give way to the preview's Place once you drag them there, and the CC icon and Quest icon have one Size slider each.
 - Questie's tracker: the gold line under its title no longer runs through the first zone's name, and the panel's gold rim stays on the screen where the tracker touches the screen's edge.
 - Questie 12.9: its quest givers and other icons show on MelloUI's map again. Questie 12.9 shares its map pins in a new way, which MelloUI did not find.
 - Map: a quest opened from the quest tracker or the map's search now shows its page when the map's panel was left on the Quest List, the layers or Dungeon Info. Before, the map opened and the page stayed hidden.

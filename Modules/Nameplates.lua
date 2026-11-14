@@ -100,6 +100,17 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		  desc = "Moves the combo points left or right on the nameplate." },
 		{ type = "slider", key = "comboY", parent = "comboPoints", name = "Vertical Offset", min = -50, max = 50, step = 1,
 		  desc = "Moves the combo points up or down on the nameplate. The name moves out of their way." },
+		-- (2.1.52; the configurator pass in the test VM, 2026-11-14: once the combo points were dragged on the Nameplate
+		-- Designer's preview its place is theirs, and the two Offset sliders stood awake and moved nothing) what those
+		-- two rows ask (Core/ConfigLayout.lua's `when`): the combo points stand at the code's own place, at your offsets
+		-- -- false while the preview has given them a place. Read only, never a row of its own (L.unplaced), never saved
+		{ type = "toggle", key = "comboAtOffsets", name = "Combo Points At Their Offsets", new = "2.1.52",
+		  get = function(db)
+			local parts = db and db.parts
+			return not (type(parts) == "table" and type(parts.combo) == "table")
+		  end,
+		  set = function() end,
+		  desc = "Whether the combo points stand at their own place (the Offset sliders), not at one given on the preview." },
 		-- (2.1.19; the user, 2026-11-08: "let users scale them from 50% - 200%") the badge Core/SwingBadge.lua lays on
 		-- your target's plate (the Swing Timers' or the Personal Display's)
 		{ type = "header", name = "Swing Badge" },
@@ -3609,6 +3620,10 @@ do
 			end }
 		if Stage.MOVES[key] then
 			part.drag, part.hide, part.size = nil, true, Stage.SIZES[key]
+			-- (2.1.52; the configurator pass, 2026-11-14: two Size sliders on the CC icon and on the Quest icon) a size
+			-- that is an option of the module's (M.PART_SIZE) has that option's own row on the part's tab: the preview
+			-- makes no second one (the wheel on the preview sizes it all the same)
+			part.sizeRow = M.PART_SIZE[key] and true or nil
 			part.box = function(f)
 				return f.bar
 			end
