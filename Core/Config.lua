@@ -9180,18 +9180,32 @@ do
 	-- table, filled again at each open (nothing made per open)
 	local shownButtons = {}
 	local function ShownButtons(menu)
-		local list = menu.buttons
-		if type(list) == "table" then
-			return list
-		end
 		for i = #shownButtons, 1, -1 do
 			shownButtons[i] = nil
 		end
-		local pool = menu.buttonPool
-		if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
-			for b in pool:EnumerateActive() do
+		local list = menu.buttons
+		if type(list) == "table" then
+			for _, b in ipairs(list) do
 				shownButtons[#shownButtons + 1] = b
 			end
+		else
+			local pool = menu.buttonPool
+			if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
+				for b in pool:EnumerateActive() do
+					shownButtons[#shownButtons + 1] = b
+				end
+			end
+		end
+		-- Polestar's own indexed button joins the menu's layout, but is in neither Blizzard's list nor its pool.
+		-- Include it when making room for our entry; never add it to Blizzard's tables or change its layout fields.
+		local polestar = rawget(_G, "PolestarGameMenuButton")
+		if polestar and polestar:GetParent() == menu then
+			for _, b in ipairs(shownButtons) do
+				if b == polestar then
+					return shownButtons
+				end
+			end
+			shownButtons[#shownButtons + 1] = polestar
 		end
 		return shownButtons
 	end
