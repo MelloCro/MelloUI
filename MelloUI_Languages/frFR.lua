@@ -826,6 +826,14 @@ Lang:Add("frFR", {
 	["Reminds you when an item drops below this share of its amount."] = "Vous rappelle quand un objet tombe sous cette part de sa quantité.",
 	["Shopping List At The Shop"] = "Liste de courses chez le marchand",
 	["At a merchant, a shopping list of what you are low on. Nothing is bought until you click Buy."] = "Chez un marchand, une liste de ce qui vous manque. Rien n'est acheté avant un clic sur Acheter.",
+	["Fill All Ammo Bags"] = "Remplir tous les carquois et les gibernes",
+	["Buys arrows and bullets until your quivers and ammo pouches are full. This overrides the set amounts of the ammunition on your list."] = "Achète des flèches et des balles jusqu’à ce que vos carquois et vos gibernes soient pleins. Ce réglage remplace les quantités définies pour les munitions de votre liste.",
+	["in bags %d"] = "Dans les sacs : %d",
+	["in bags %d, no quiver"] = "Dans les sacs : %d, aucun carquois équipé",
+	["in bags %d, no ammo pouch"] = "Dans les sacs : %d, aucune giberne équipée",
+	["quiver: %d of %d"] = "Carquois : %d / %d",
+	["ammo pouch: %d of %d"] = "Giberne : %d / %d",
+	["no quiver or ammo pouch equipped"] = "Aucun sac à munitions équipé",
 	["Restock List"] = "Liste de réapprovisionnement",
 	["What to keep in your bags, and how many. Each character has its own list. /restock opens it too."] = "Ce qu'il faut garder dans vos sacs, et en quelle quantité. Chaque personnage a sa liste. /restock l'ouvre aussi.",
 	["+%d (have %d)"] = "+%d (en stock : %d)", -- draft
@@ -2677,6 +2685,8 @@ Lang:Add("frFR", {
 	["None of the addons MelloUI works with is installed. The Compatibility tab lists them, with their links."] = "Aucun des addons avec lesquels MelloUI fonctionne n'est installé. L'onglet Compatibilité les liste avec leurs liens.", -- draft
 	["More addons MelloUI works with, with their links: the Compatibility tab."] = "D'autres addons avec lesquels MelloUI fonctionne, avec leurs liens : l'onglet Compatibilité.", -- draft
 	["Addons MelloUI works with"] = "Addons avec lesquels MelloUI fonctionne", -- draft
+	["Spell recommendations on MelloUI's action bars"] = "Recommandations de sorts sur les barres d’action de MelloUI",
+	["Its spell recommendations highlight MelloUI's action buttons, including the controller's display buttons."] = "Ses recommandations de sorts mettent en évidence les boutons d’action de MelloUI, y compris les boutons affichés sur la manette.",
 	["Addon"] = "Addon", -- draft
 	["Link (click it, then Ctrl+C)"] = "Lien (cliquez dessus, puis Ctrl+C)", -- draft
 	["Installed"] = "Installé", -- draft
