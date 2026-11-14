@@ -2692,7 +2692,7 @@ ListLayout = function()
 			"Buys arrows and bullets until your quivers and ammo pouches are full. This overrides the set amounts of "
 				.. "the ammunition on your list.",
 			function() return M.db ~= nil and M.db.fillAmmo == true end,
-			function(on) MelloUI:NotifySettingChanged("Restock", "fillAmmo", on and true or false) end)
+			function(value) MelloUI:NotifySettingChanged("Restock", "fillAmmo", value and true or false) end)
 		Style(win.fill.label, "fontText", _G.GameFontHighlight)
 		Style(win.fill.hint, "fontText", _G.GameFontHighlight)
 	end
