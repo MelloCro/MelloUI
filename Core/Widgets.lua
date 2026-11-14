@@ -7391,11 +7391,16 @@ end
 --         taller than its view, following the glide; dragged, the list
 --         follows: rail.bar; Suggestion 1 point 6, the configurator's side
 --         list), tipAnchor (its rows' and results' tooltips; nil:
---         "ANCHOR_RIGHT" -- the configurator's "ANCHOR_LEFT": off its page),
---         groupGap (0: the room between a group without a header -- a page
---         of its own -- and the groups beside it)
+--         "ANCHOR_RIGHT" -- the configurator's "ANCHOR_LEFT": off its page)
 --   rail:SetGroups(groups)   groups = { { key, title (nil: no header),
---                            collapsible, entries = { { key, text, icon,
+--                            collapsible, category (true, without a title: a
+--                            category of one page -- its entries drawn as the
+--                            groups' headers are, Rail.HEAD: the entry's
+--                            picture bare at the emblem's size in the emblem's
+--                            place, its name in gold where their titles
+--                            start, no fold; a row in everything else -- its
+--                            click, the marker, its tooltip, its New tag),
+--                            entries = { { key, text, icon,
 --                            tip, new } } } }; rows and headers come from a pool
 --                            (switching the installer's paths makes no frames).
 --                            `new`: true (the caller asked MelloUI:IsNew of
@@ -7460,6 +7465,9 @@ local PLUS = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\btn_expand"   
 local MINUS = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\btn_collapse"
 local RAIL_TAG_IN = 2    -- a New tag's (snug) plate inside the row's right edge
 local RAIL_TAG_GAP = 3   -- a name to its New tag's plate
+-- a group's header: its emblem's size and place, where its title starts with an emblem and without one (2.1.52: a
+-- category of one page stands in the same places -- the user's pick B of configurator-sidelist-sketch, 2026-11-14)
+Rail.HEAD = { emblem = 18, emblemX = 24, textX = 46, plainX = 26 }
 
 local function IsSelected(row)
 	local rail = railOf[row]
@@ -7599,7 +7607,7 @@ local function NewHeader(rail)
 	h.text = h:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
 	h.text:SetJustifyH("LEFT")
 	h.text:SetWordWrap(false)
-	h.text:SetPoint("LEFT", 26, 0)
+	h.text:SetPoint("LEFT", Rail.HEAD.plainX, 0)
 	h.text:SetPoint("RIGHT", -6, 0)
 	h.glyph = h:CreateTexture(nil, "ARTWORK")
 	h.glyph:SetSize(14, 14)
@@ -7745,20 +7753,21 @@ function Rail:SetGroups(groups)
 			h:EnableMouse(g.collapsible and true or false)
 			h.glyph:SetShown(g.collapsible and true or false)
 			-- (2026-10-20) a group's emblem (its `icon`, MelloUI's icon set, bare) between the fold and the title
+			local HEAD = Rail.HEAD
 			if g.icon then
 				if not h.emblem then
 					h.emblem = h:CreateTexture(nil, "ARTWORK")
-					h.emblem:SetSize(18, 18)
-					h.emblem:SetPoint("LEFT", 24, 0)
+					h.emblem:SetSize(HEAD.emblem, HEAD.emblem)
+					h.emblem:SetPoint("LEFT", HEAD.emblemX, 0)
 				end
-				MelloUI.Icons.Set(h.emblem, g.icon, 18)   -- (2026-10-21: the copy for its size)
+				MelloUI.Icons.Set(h.emblem, g.icon, HEAD.emblem)   -- (2026-10-21: the copy for its size)
 				h.emblem:Show()
-				h.text:SetPoint("LEFT", 46, 0)
+				h.text:SetPoint("LEFT", HEAD.textX, 0)
 			else
 				if h.emblem then
 					h.emblem:Hide()
 				end
-				h.text:SetPoint("LEFT", 26, 0)
+				h.text:SetPoint("LEFT", HEAD.plainX, 0)
 			end
 			self.headers[gkey] = h
 			self.order[#self.order + 1] = h
@@ -7771,7 +7780,30 @@ function Rail:SetGroups(groups)
 			row.text:SetText(spec.numbered and (n .. ". " .. W.Tr(e.text)) or W.Tr(e.text))
 			row.text:ClearAllPoints()
 			local x = 8
-			if spec.iconSize > 0 and e.icon then
+			-- (2.1.52; the user's pick B of configurator-sidelist-sketch, 2026-11-14: "B: as categories") a category of
+			-- one page drawn as the groups' headers: its picture bare at their emblem's size in the emblem's place, its
+			-- name where their titles start (gold: Paint); the row's own icon box, made for the row's size, stays out
+			local category = g.category and not g.title and true or nil
+			row.category = category
+			if row.emblem then
+				row.emblem:Hide()
+			end
+			if category then
+				local HEAD = Rail.HEAD
+				if e.icon then
+					if not row.emblem then
+						row.emblem = row:CreateTexture(nil, "ARTWORK")
+						row.emblem:SetSize(HEAD.emblem, HEAD.emblem)
+						row.emblem:SetPoint("LEFT", HEAD.emblemX, 0)
+					end
+					MelloUI.Icons.Set(row.emblem, e.icon, HEAD.emblem)
+					row.emblem:Show()
+				end
+				if row.icon then
+					row.icon:Hide()
+				end
+				x = e.icon and HEAD.textX or HEAD.plainX
+			elseif spec.iconSize > 0 and e.icon then
 				if not row.icon then
 					-- made once per row: the window's icon maker (the
 					-- configurator's IconBox with the Button Border rim) or a
@@ -7843,19 +7875,14 @@ function Rail:Layout(instant)
 	end
 	local spec = self.spec
 	local content = self.content
-	local y, last = 0, nil
+	local y = 0
 	for _, f in ipairs(self.order) do
 		local isRow = f.entry ~= nil
 		if isRow and self.folded[f.group] then
 			f:Hide()
 		else
-			-- (Suggestion 1 point 6; the in-game test, 2026-11-04: Chat right under Damage Meter read as one of
-			-- "Frames and bars") a group without a header stands spec.groupGap apart from the groups beside it
-			local g = isRow and f.group or f.key
-			if last ~= nil and g ~= last and not (self.headers[g] and self.headers[last]) then
-				y = y + (spec.groupGap or 0)
-			end
-			last = g
+			-- (2.1.52: one pitch for all -- the room a group without a header stood apart by, Suggestion 1 point 6's
+			-- groupGap, went with the user's pick B: a category of one page is told by its look now, SetGroups)
 			f:ClearAllPoints()
 			f:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
 			f:SetWidth(self.width)
@@ -7958,7 +7985,13 @@ function Rail:Paint()
 	for key, row in pairs(self.rows) do
 		local st = self.state[key]
 		local selected = key == self.selected
-		W.Paint(row.text, selected and "selectedTrim" or "text", "text")
+		-- (a category of one page: gold as the groups' titles, the marker alone telling it selected; its emblem dimmed
+		-- while its module is off, as an entry's icon)
+		W.Paint(row.text, (selected or row.category) and "selectedTrim" or "text", "text")
+		if row.category and row.emblem then
+			row.emblem:SetDesaturated(st == "off")
+			row.emblem:SetAlpha(st == "off" and 0.45 or 1)
+		end
 		local icon = row.icon
 		if icon then
 			if icon.SetOn then

@@ -7066,10 +7066,14 @@ local function RailGroups()
 			end
 		end
 		-- (Suggestion 1 point 6, 2026-11-04: a group holding one page -- Chat, Quality of Life -- is that page's plain
-		-- entry, no header named like it over it)
+		-- entry, no header named like it over it) (2.1.52; the user, 2026-11-14, of Buffs & Debuffs and Chat standing
+		-- 10 apart from their neighbours: "not alligned like the rest is", then the pick "B: as categories" of
+		-- configurator-sidelist-sketch) that entry is drawn as the categories are -- W.NavRail's `category`: its
+		-- picture and name where a group's emblem and title stand, in gold -- at the list's one pitch
 		local title = #entries > 1 and g.title or nil
 		if #entries > 0 then
 			groups[#groups + 1] = { key = title or entries[1].key or gi, title = title,
+				category = (g.title ~= nil and title == nil) or nil,
 				collapsible = title ~= nil or nil, entries = entries,
 				icon = title and g.icon and ("Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\" .. g.icon) or nil }
 		end
@@ -8559,7 +8563,7 @@ local function CreateWindow()
 	window.fixed = fixed
 	local rail = W.NavRail(window, { width = width, rowHeight = CONFIG.LIST_ROW, headerHeight = CONFIG.LIST_HEAD,
 		iconSize = 20, iconMaker = NavIcon, box = false, inset = 4, onSelect = NavClick, skin = shell,
-		head = Search.HEAD, onResult = Search.Pick, tipAnchor = "ANCHOR_LEFT", bar = 3, groupGap = 10 })
+		head = Search.HEAD, onResult = Search.Pick, tipAnchor = "ANCHOR_LEFT", bar = 3 })
 	window.rail = rail
 	window.parts.nav = rail.box
 	-- the search box on its strip (nothing else of the search now)
