@@ -3557,6 +3557,15 @@ local function FillBlock(block, questID, width, followedID)
 	else
 		lastComplete[questID] = false
 		local finished = 0
+		-- (2.1.52, Core/QuestMoments.lua's flight to a line) each objective's line by its index, laid again here
+		local lines = M.objLines[questID]
+		if not lines then
+			lines = {}
+			M.objLines[questID] = lines
+		end
+		for k in pairs(lines) do
+			lines[k] = nil
+		end
 		-- (2.1.52: the "First: loot ..." line under an objective whose needed
 		-- item was not in the bags went with MelloUI's own quest data)
 		for i, obj in ipairs(objectives) do
@@ -3567,6 +3576,7 @@ local function FillBlock(block, questID, width, followedID)
 				local fs
 				y, fs = PutLine(block, n, text, y, textWidth, true, shade, shade, shade)
 				Progress(questID, i, Plain(obj.numFulfilled), fs, Plain(obj.finished) and true or false)
+				lines[i] = fs
 			end
 			if Plain(obj.finished) then
 				finished = finished + 1
@@ -4233,6 +4243,17 @@ local function MarkDirty()
 end
 Near.MarkDirty = MarkDirty
 Motion.Dirty = MarkDirty
+-- (2.1.52) an objective's line in this tracker while it shows (Core/QuestMoments.lua flies an item picked up to it)
+M.objLines = M.objLines or {}
+function M:ObjectiveLine(questID, index)
+	local lines = self.objLines[questID]
+	local fs = lines and lines[index]
+	if fs and fs:IsVisible() then
+		return fs
+	end
+	return nil
+end
+
 M.SlashWords = { progress = Motion.Preview }   -- (0.21.3: /mello tracker progress)
 M.Plays = { progress = function() return Motion.Preview(), Motion.PREVIEW.AFTER end }   -- (2.1.20, the Animations page)
 M.Motion = Motion   -- (the tests')

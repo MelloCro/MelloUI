@@ -767,6 +767,28 @@ local function Lines(fn)
 	end
 end
 
+-- (2.1.52, Core/QuestMoments.lua: an item picked up flies to its line) Questie's tracker line of a quest's objective,
+-- shown: its text (or the line), else nil. Read only: the line's own fields as Questie sets them (TrackerLinePool:
+-- mode "objective", Quest.Id, Objective.Index)
+local lineFound, lineQuest, lineIndex
+local function LineOf(line)
+	if lineFound or rawget(line, "mode") ~= "objective" then
+		return
+	end
+	local quest, objective = rawget(line, "Quest"), rawget(line, "Objective")
+	if type(quest) == "table" and type(objective) == "table" and rawget(quest, "Id") == lineQuest
+		and rawget(objective, "Index") == lineIndex and line:IsVisible() then
+		lineFound = rawget(line, "label") or line
+	end
+end
+function QL.ObjectiveLine(questID, index)
+	lineFound, lineQuest, lineIndex = nil, questID, index
+	Lines(LineOf)
+	local found = lineFound
+	lineFound = nil
+	return found
+end
+
 -- (2.1.39; the user, 2026-11-10: "questie quest tracker does not load inside the dungeon" -- Questie folds its tracker
 -- to its heading there, its Minimize In Instances, on by default -- then "Yes, switch it off once") while Questie's
 -- tracker stands in MelloUI's place, its quests show in a dungeon as MelloUI's own tracker's did: that setting of

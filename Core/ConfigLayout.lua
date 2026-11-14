@@ -163,7 +163,7 @@ L.pages = {
 		flavour = "Every animation MelloUI plays, in one place. Press Play beside one to see it before you choose.",
 		tabs = { "General", "Frames", "Nameplates", "Bars & Windows", "Travel" },
 		cards = { Frames = { "Heal Effects", "Cooldown Effects", "Personal Display" },
-			["Bars & Windows"] = { "Action Bars", "XP Bar", "Bag Window", "Quest Tracker", "Services Bar" } } },
+			["Bars & Windows"] = { "Action Bars", "XP Bar", "Bag Window", "Quest Tracker", "Quest Moments", "Services Bar" } } },
 	-- (one look C8, the user 2026-10-15: one designer per family) the player, target, focus, pet, your buffs, the
 	-- party and raid frames (MelloUI's own) and the Personal Display: pick a frame, then a part of it; its own
 	-- options under the part's (docs/plans/onelook-designer/c7-lite.md, ugf-audit.md)
@@ -1489,6 +1489,11 @@ function L.Define(R, Link)
 	R("Animations", "Bars & Windows", "Behaviour", "BagWindow.moneyRoll", { free = true, card = "Bag Window" })
 	R("Animations", "Bars & Windows", "Behaviour", "BagWindow.fullWarning", { free = true, card = "Bag Window" })
 	R("Animations", "Bars & Windows", "Look", "QuestTracker.progressMotion", { card = "Quest Tracker" })
+	-- (2.1.52, the user's picks "C, A, A" to the Quest Moments sketch: the game's yellow quest lines played as moments)
+	R("Animations", "Bars & Windows", "Look", "QuestMoments.!enabled", { name = "Quest Moments", card = "Quest Moments" })
+	R("Animations", "Bars & Windows", "Look", "QuestMoments.progress", { card = "Quest Moments" })
+	R("Animations", "Bars & Windows", "Look", "QuestMoments.objective", { card = "Quest Moments" })
+	R("Animations", "Bars & Windows", "Look", "QuestMoments.quest", { card = "Quest Moments" })
 	R("Animations", "Bars & Windows", "Look", "Services.trayDrawer", { card = "Services Bar" })   -- (0.22.1: the trays slide out)
 	R("Animations", "Travel", "General", "Route.drawIn")
 	R("Animations", "Travel", "General", "Route.markerWisp")

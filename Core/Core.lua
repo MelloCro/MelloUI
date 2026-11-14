@@ -1578,6 +1578,19 @@ do
 			PlaySound(kit)
 		end
 	end
+
+	-- (2.1.52) the game's own sound for one of its messages, played as its error frame would have played it with the
+	-- line -- for a line MelloUI shows another way (Core/QuestMoments.lua). Its voice line first, else its sound kit;
+	-- Custom Sounds' PlaySound hook swaps it as it does any. Plain numbers only (a secret plays nothing)
+	function MelloUI:PlayGameSound(kit, voiceID)
+		local Num = self.Safe.Number
+		local sounds = rawget(_G, "C_Sound")
+		if Num(voiceID) and sounds and sounds.PlayVocalErrorSound then
+			pcall(sounds.PlayVocalErrorSound, voiceID)
+		elseif Num(kit) then
+			pcall(PlaySound, kit)
+		end
+	end
 end
 
 --------------------------------------------------------------------------------

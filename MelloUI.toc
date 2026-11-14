@@ -49,6 +49,7 @@ Core\FrameFXBold.lua
 Core\FrameHalo.lua
 Core\FrameHover.lua
 Core\LevelCard.lua
+Core\QuestMoments.lua
 Core\SwingBadge.lua
 Core\Config.lua
 Core\SupportersHall.lua

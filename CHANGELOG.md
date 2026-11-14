@@ -2,6 +2,7 @@
 
 ## 2.1.52
 
+- Quest Moments: the game's yellow quest lines in the middle of the screen become moments. An item picked up counts up in a gilded ring and flies to its line in your quest tracker, a finished objective closes its ring with a flare of light and a tick, and a finished quest lands a gilded crest with its title. Each can be switched off on the Animations page.
 - Quests: MelloUI's quests now come from Questie. With Questie installed, the map, the minimap, the Quest List and Route to a quest use its quest data. MelloUI no longer ships quest data of its own.
 - Quests: without Questie, no quests are shown. The map's layers page and the Quest List say so, with a Get Questie button that opens Questie's card on the Addons page.
 - Addons page: Questie's switch is now named MelloUI's look. On, Questie's quests wear MelloUI's look. Off, Questie shows its own icons and its own tracker, on MelloUI's map too, and the Quest List and Route to a quest keep working.
