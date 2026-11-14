@@ -643,7 +643,7 @@ local function Chance(pct)
 	if not pct or pct <= 0 or pct >= 95 then
 		return nil
 	end
-	return string.format("about 1 in %d", math.max(2, math.floor(100 / pct + 0.5)))
+	return MelloUI.Widgets.Tr("about 1 in %d"):format(math.max(2, math.floor(100 / pct + 0.5)))
 end
 
 local FROM = { "From", "In", "Sold by" }   -- a creature drops it, an object holds it, a vendor sells it
@@ -668,6 +668,7 @@ end
 -- line (only where the mark takes the click); `after`: (2.1.0) the quest of the lines above (marks stacked on the
 -- minimap, one after another): the same quest's title not again, another's under a gap
 function O.Tip(tip, data, Line, hints, after)
+	local W = MelloUI.Widgets
 	local row = QL.RowByID()[data.questID]
 	local title = row and row[QL.F_TITLE] or data.name
 	if not after then
@@ -681,14 +682,14 @@ function O.Tip(tip, data, Line, hints, after)
 	local sources = MelloUI.QuestObjectives.Sources(data.questID)
 	for _, s in ipairs(sources and sources[data.index] or {}) do
 		-- (2.1.39) the levels in their difficulty colour, as the quests' own
-		local levels = s[3] > 0 and (" " .. QL.TipPaint(s[3] == s[4] and string.format("(level %d)", s[3])
-			or string.format("(level %d-%d)", s[3], s[4]), QL.DifficultyColor(s[4]))) or ""
+		local levels = s[3] > 0 and (" " .. QL.TipPaint(s[3] == s[4] and W.Tr("(level %d)"):format(s[3])
+			or W.Tr("(level %d-%d)"):format(s[3], s[4]), QL.DifficultyColor(s[4]))) or ""
 		local chance = Chance(s[5])
 		local name = FROM_COLOUR[s[1]] and QL.TipPaint(s[2], FROM_COLOUR[s[1]]) or s[2]
-		Line(tip, string.format("%s %s%s%s", FROM[s[1]] or "From", name, levels, chance and (", " .. chance) or ""), "text", true)
+		Line(tip, string.format("%s %s%s%s", W.Tr(FROM[s[1]] or "From"), name, levels, chance and (", " .. chance) or ""), "text", true)
 	end
 	if hints then
-		Line(tip, "Click to set a waypoint here.", "pinHint")
+		Line(tip, W.Tr("Click to set a waypoint here."), "pinHint")
 	end
 end
 

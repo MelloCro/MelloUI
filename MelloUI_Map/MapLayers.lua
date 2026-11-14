@@ -529,7 +529,7 @@ local function MiniFlightEnter(f)
 	tip:SetOwner(f, "ANCHOR_CURSOR")
 	tip:SetText(f.name or "", t[1], t[2], t[3])
 	if f.new then
-		tip:AddLine(TEXT.notLearned, m[1], m[2], m[3])
+		tip:AddLine(W.Tr(TEXT.notLearned), m[1], m[2], m[3])
 	end
 	tip:Show()
 end
@@ -650,7 +650,7 @@ local function DockTip(pin)
 			end
 		end
 	end
-	tipLines[#tipLines + 1] = TEXT.spread   -- (its click glides in until they part, as a door's and a quest's)
+	tipLines[#tipLines + 1] = W.Tr(TEXT.spread)   -- (its click glides in until they part, as a door's and a quest's)
 	return pin.data.title, table.concat(tipLines, "\n")
 end
 local transportSpec = {}
@@ -722,7 +722,7 @@ end
 -- the door's click line: its floor plan with the page when the map has one (2.1.0), the page alone else
 local function ClickLine(inst)
 	local D = ns.Dungeon
-	return D and D.Has(inst.map) and TEXT.dungeonMap or TEXT.dungeonInfo
+	return W.Tr(D and D.Has(inst.map) and TEXT.dungeonMap or TEXT.dungeonInfo)
 end
 
 -- its bosses in a line ("4 bosses: Oggleflint, Taragaman the Hungerer, ..."), nil with none known
@@ -735,7 +735,7 @@ local function BossLine(inst)
 	for i, b in ipairs(inst.bosses) do
 		names[i] = b.name
 	end
-	return string.format(TEXT.bosses, n, table.concat(names, ", "))
+	return W.Tr(TEXT.bosses):format(n, table.concat(names, ", "))
 end
 
 -- (2.1.0) a pin that holds other doors: how many, each one's name and levels, a click zooms in
@@ -753,9 +753,9 @@ local function DoorsTip(pin)
 			tipLines[#tipLines + 1] = d.levels and (d.name .. "  " .. LevelText(d.levels)) or d.name
 		end
 	end
-	local title = raids == 0 and TEXT.dungeons:format(dungeons) or dungeons == 0 and TEXT.raids:format(raids)
-		or TEXT.doors:format(dungeons + raids)
-	tipLines[#tipLines + 1] = TEXT.spread
+	local title = raids == 0 and W.Tr(TEXT.dungeons):format(dungeons) or dungeons == 0 and W.Tr(TEXT.raids):format(raids)
+		or W.Tr(TEXT.doors):format(dungeons + raids)
+	tipLines[#tipLines + 1] = W.Tr(TEXT.spread)
 	return title, table.concat(tipLines, "\n")
 end
 
@@ -766,7 +766,7 @@ local function EntranceFill(tip, pin)
 	end
 	if pin.members then
 		local title, body = DoorsTip(pin)
-		tip:SetText(title)
+		tip:SetText(W.Tr(title))
 		tip:AddLine(body, 1, 1, 1, true)
 		tip:Show()
 		return
@@ -793,7 +793,7 @@ local function EntranceTip(pin)
 	end
 	local d = pin.data
 	local word = d.kind == 2 and TEXT.raid or TEXT.dungeon
-	local line = d.levels and string.format(TEXT.levels, word, LevelText(d.levels)) or word
+	local line = d.levels and W.Tr(TEXT.levels):format(word, LevelText(d.levels)) or W.Tr(word)
 	local _, inst = DungeonInfoOf(pin)
 	if inst then
 		local bosses = BossLine(inst)

@@ -253,9 +253,9 @@ end
 function Dungeon.Hint()
 	local d = Plan(S.shown)
 	if d and type(d.credit) == "string" then
-		return TEXT.hint .. "   " .. TEXT.credit:format(d.credit)   -- (the artist named on his map)
+		return W.Tr(TEXT.hint) .. "   " .. W.Tr(TEXT.credit):format(d.credit)   -- (the artist named on his map)
 	end
-	return TEXT.hint
+	return W.Tr(TEXT.hint)
 end
 
 -- the wing the minimap names you in: its area name now (the game's own for the room you stand in) one of a wing's own;
@@ -273,7 +273,7 @@ end
 
 local function WingName(d, w)
 	local wing = d.wings and d.wings[w]
-	return wing and wing.name or TEXT.wing:format(w)
+	return wing and wing.name or W.Tr(TEXT.wing):format(w)
 end
 
 --------------------------------------------------------------------------------

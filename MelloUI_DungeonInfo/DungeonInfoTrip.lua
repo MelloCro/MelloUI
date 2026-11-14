@@ -16,6 +16,7 @@ local MelloUI = (ns and ns.MelloUI) or _G.MelloUI
 local Safe = MelloUI.Safe
 local Num = Safe.Number
 local J = ns.DungeonInfo
+local W = MelloUI.Widgets
 
 local Trip = {}
 J.Trip = Trip
@@ -105,7 +106,7 @@ local function PickUp()
 end
 
 local DOOR = {
-	key = "dungeonInfoDoor", column = true, label = TEXT.label, priority = "ongoing", hint = TEXT.hint,
+	key = "dungeonInfoDoor", column = true, label = W.Tr(TEXT.label), priority = "ongoing", hint = W.Tr(TEXT.hint),
 	when = { "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA", "PLAYER_ENTERING_WORLD", "where" },
 	check = function()
 		D.inst = Near()
@@ -176,7 +177,6 @@ Trip.D = D
 
 local Perf = MelloUI.Perf:Scope("MelloUI_DungeonInfo (Trip)")
 local CreateFrame = MelloUI.Safe.CreateFrame   -- (a frame inside an open window: the gamepad navigation left out)
-local W = MelloUI.Widgets
 local floor, max = math.floor, math.max
 
 local HK_MAX = 10      -- stops ordered by trying every order (2^n * n^2 steps); the nearest first and 2-opt past it
@@ -216,9 +216,9 @@ local function Took(secs)
 		return ""
 	end
 	if secs < 60 then
-		return TT.seconds:format(max(1, floor(secs + 0.5)))
+		return W.Tr(TT.seconds):format(max(1, floor(secs + 0.5)))
 	end
-	return TT.minutes:format(floor(secs / 60 + 0.5))
+	return W.Tr(TT.minutes):format(floor(secs / 60 + 0.5))
 end
 
 -- every quest of a stop in your log (or done)
@@ -376,7 +376,7 @@ local function Stops(inst)
 			end
 			if not s then
 				s = { wcont = cont, wx = wx, wy = wy, label = giver, hold = true, quests = {}, titles = {},
-					notice = mark .. TT.notice:format(giver) }
+					notice = mark .. W.Tr(TT.notice):format(giver) }
 				stops[#stops + 1] = s
 			end
 			s.quests[#s.quests + 1] = row[F.ID]
@@ -387,7 +387,7 @@ local function Stops(inst)
 	local doorStop
 	if door and #stops > 0 then
 		doorStop = { wcont = door.cont, wx = door.wx, wy = door.wy, label = inst.name, hold = false, door = true,
-			notice = mark .. TT.notice:format(inst.name) }
+			notice = mark .. W.Tr(TT.notice):format(inst.name) }
 	end
 	return stops, doorStop
 end
@@ -443,7 +443,7 @@ local function Price(cur)
 	local pcont, px, py = R:Where()
 	if not pcont then
 		cur.status = "ended"
-		MelloUI:Print(TT.noPlace)
+		MelloUI:Print(W.Tr(TT.noPlace))
 		Refresh()
 		return
 	end
@@ -505,12 +505,12 @@ function Trip.Start(inst)
 		return
 	end
 	if not R then
-		MelloUI:Print(TT.noRoute)
+		MelloUI:Print(W.Tr(TT.noRoute))
 		return
 	end
 	local quests, door = Stops(inst)
 	if #quests == 0 then
-		MelloUI:Print(TT.none)
+		MelloUI:Print(W.Tr(TT.none))
 		return
 	end
 	if cur and cur.status == "on" and R:TripState() == cur.rt then
@@ -720,13 +720,13 @@ function Trip.LayPage()
 	local at = rt and rt.at or (cur.status == "done" and #cur.stops + 1 or 1)
 	local sub
 	if cur.status == "pricing" then
-		sub = TT.pricing
+		sub = W.Tr(TT.pricing)
 	elseif cur.status == "done" then
-		sub = TT.done
+		sub = W.Tr(TT.done)
 	elseif cur.status == "ended" then
-		sub = TT.ended
+		sub = W.Tr(TT.ended)
 	elseif rt and rt.arrived then
-		sub = TT.arrived
+		sub = W.Tr(TT.arrived)
 	else
 		local secs, quests, door = 0, 0, false
 		for i = at, #cur.stops do
@@ -737,7 +737,7 @@ function Trip.LayPage()
 				quests = quests + 1
 			end
 		end
-		sub = (door and TT.stopsDoor or TT.stops):format(quests, Took(secs))
+		sub = W.Tr(door and TT.stopsDoor or TT.stops):format(quests, Took(secs))
 	end
 	G.sub:SetText(sub)
 	y = y + (Num(G.title:GetStringHeight()) or 16) + 4 + (Num(G.sub:GetStringHeight()) or 12) + 12
@@ -759,7 +759,7 @@ function Trip.LayPage()
 	end
 	-- the stops
 	local list = cur.status == "pricing" and cur.quests or cur.stops
-	y = K.PutHeading(page, 1, y, width, TT.stopsHead, #list > 0 and #list or nil)
+	y = K.PutHeading(page, 1, y, width, W.Tr(TT.stopsHead), #list > 0 and #list or nil)
 	for i, s in ipairs(list) do
 		local r = Row(page, i)
 		r.stop = s
@@ -774,9 +774,9 @@ function Trip.LayPage()
 			r.icon:SetTexCoord(0, 1, 0, 1)
 		end
 		r.icon:SetShown(passed or s.door == true)
-		r.title:SetText(s.door and (TT.door .. ": " .. s.label) or s.label)
+		r.title:SetText(s.door and (W.Tr("Door: %s"):format(s.label)) or s.label)
 		W.Paint(r.title, now and "selectedTrim" or "text", "text")
-		r.line:SetText(s.door and TT.doorLine or table.concat(s.titles, ", "))
+		r.line:SetText(s.door and W.Tr(TT.doorLine) or table.concat(s.titles, ", "))
 		r.time:SetText(cur.status ~= "pricing" and not passed and cur.secs[i] and ("+" .. Took(cur.secs[i])) or "")
 		r:SetAlpha(passed and 0.55 or 1)
 		r:ClearAllPoints()

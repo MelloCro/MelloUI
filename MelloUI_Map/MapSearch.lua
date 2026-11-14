@@ -67,7 +67,7 @@ local function Add(index, kind, name, sub, icon, fields)
 		return
 	end
 	local e = fields or {}
-	e.kind, e.name, e.sub, e.icon, e.key = kind, name, sub, icon, name:lower()
+	e.kind, e.name, e.sub, e.icon, e.key = kind, name, sub and W.Tr(sub) or nil, icon, name:lower()
 	index[#index + 1] = e
 end
 
@@ -118,7 +118,7 @@ local function Build()
 				if Safe.Value(info.isHeader) then
 					zone = Text(info.title) or ""
 				elseif Finite(info.questID) then
-					Add(index, "log", info.title, zone ~= "" and (TEXT.log .. ", " .. zone) or TEXT.log, T.ICONS .. "track_todo",
+				Add(index, "log", info.title, zone ~= "" and (W.Tr(TEXT.log) .. ", " .. zone) or W.Tr(TEXT.log), T.ICONS .. "track_todo",
 						{ questID = Finite(info.questID) })
 				end
 			end
@@ -141,7 +141,7 @@ local function Build()
 				local wx, wy = point(row[QL.F_CONT], row[QL.F_WX], row[QL.F_WY])
 				if wx then
 					local giver = Text(row[QL.F_GIVER]) or ""
-					Add(index, "quest", row[QL.F_TITLE], giver ~= "" and (TEXT.quest .. ": " .. giver) or TEXT.quest,
+					Add(index, "quest", row[QL.F_TITLE], giver ~= "" and W.Tr("Quest: %s"):format(giver) or W.Tr(TEXT.quest),
 						T.ICONS .. "quest_mark", { wx = wx, wy = wy })
 					local gkey = giver .. ":" .. math.floor(wx) .. ":" .. math.floor(wy)
 					if giver ~= "" and not givers[gkey] then
@@ -358,7 +358,7 @@ function Search.Init(win)
 	box:SetAutoFocus(false)
 	box:SetFrameLevel(f:GetFrameLevel() + 20)
 	if box.Instructions then
-		box.Instructions:SetText(TEXT.prompt)
+		box.Instructions:SetText(W.Tr(TEXT.prompt))
 	end
 	W.FlatField(box)
 	Perf.HookScript(box, "OnTextChanged", Changed)

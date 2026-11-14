@@ -153,7 +153,7 @@ end
 
 local function PutHeading(page, i, y, width, label, count)
 	local h = Heading(page, i)
-	h.label:SetText(label:upper())
+	h.label:SetText(W.Tr(label):upper())
 	h.count:SetText(count and tostring(count) or "")
 	h:ClearAllPoints()
 	h:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
@@ -278,14 +278,14 @@ local function Where(inst)
 	local zone = J.Zone(inst)
 	local lv
 	if inst.lo > 0 and inst.hi > inst.lo then
-		lv = TEXT.levels:format(inst.lo, inst.hi)
+		lv = W.Tr(TEXT.levels):format(inst.lo, inst.hi)
 	elseif inst.lo > 0 then
-		lv = TEXT.level:format(inst.lo)
+		lv = W.Tr(TEXT.level):format(inst.lo)
 	end
 	if zone and lv then
 		return zone .. ", " .. lv
 	end
-	return zone or lv or (inst.kind == 2 and TEXT.raid or TEXT.dungeon)
+	return zone or lv or W.Tr(inst.kind == 2 and TEXT.raid or TEXT.dungeon)
 end
 P.Where = Where
 
@@ -409,16 +409,16 @@ local ItemEnter = Perf.Shared("OnEnter on Dungeon Info's item rows", function(se
 		-- (1.2.2) who drops it (the trash's), and where it is known from when not the data
 		local d, c = self.d, MelloUI.Look.TipPalette().text
 		if d and d.mobs and d.mobs ~= "" then
-			GameTooltip:AddLine(TEXT.droppedBy:format(d.mobs), c[1], c[2], c[3], true)
+			GameTooltip:AddLine(W.Tr(TEXT.droppedBy):format(d.mobs), c[1], c[2], c[3], true)
 		end
 		if d and d.src == "everloot" then
-			GameTooltip:AddLine(TEXT.everloot, c[1], c[2], c[3], true)
+			GameTooltip:AddLine(W.Tr(TEXT.everloot), c[1], c[2], c[3], true)
 		elseif d and d.src == "curated" then
-			GameTooltip:AddLine(TEXT.curated, c[1], c[2], c[3], true)
+			GameTooltip:AddLine(W.Tr(TEXT.curated), c[1], c[2], c[3], true)
 		elseif d and d.src == "listed" then
-			GameTooltip:AddLine(TEXT.listed, c[1], c[2], c[3], true)
+			GameTooltip:AddLine(W.Tr(TEXT.listed), c[1], c[2], c[3], true)
 		elseif d and d.src == "seen" then
-			GameTooltip:AddLine(TEXT.seenTip, c[1], c[2], c[3], true)
+			GameTooltip:AddLine(W.Tr(TEXT.seenTip), c[1], c[2], c[3], true)
 		end
 		GameTooltip:Show()
 	end
@@ -508,19 +508,19 @@ local function FillItemRow(r, item, d, line)
 	if not kind then
 		kind = J.ItemKind(item)
 		if d and d.starts and d.starts > 0 then
-			kind = TEXT.startsQuest
+			kind = W.Tr(TEXT.startsQuest)
 		elseif d and d.req and d.req > 0 then
-			kind = (kind ~= "" and (kind .. ", ") or "") .. TEXT.level:format(d.req)
+			kind = (kind ~= "" and (kind .. ", ") or "") .. W.Tr(TEXT.level):format(d.req)
 		end
 	end
 	r.kind:SetText(kind)
 	-- its chance: the data's, or the counts' (1.2.2); none known: "Seen drop" when only seen, nothing when listed
 	local ch = d and d.chance
 	if ch then
-		r.chance:SetText(ch >= 1 and TEXT.chance:format(floor(ch + 0.5)) or ch >= 0.1 and TEXT.chanceTenth:format(ch)
-			or TEXT.chanceSmall)
+		r.chance:SetText(ch >= 1 and W.Tr(TEXT.chance):format(floor(ch + 0.5)) or ch >= 0.1 and W.Tr(TEXT.chanceTenth):format(ch)
+			or W.Tr(TEXT.chanceSmall))
 	else
-		r.chance:SetText((not d or d.src == "seen") and TEXT.seen or "")
+		r.chance:SetText((not d or d.src == "seen") and W.Tr(TEXT.seen) or "")
 	end
 	Star(r.starB.tex, J.IsTracked(item))
 end
@@ -622,7 +622,7 @@ local function TrashRow(inst)
 		W.Icon(r.skull, "kill")
 	end
 	FillBossRow(r, inst.trash, 1, 1)   -- (the mark shown, no number)
-	r.name:SetText(TEXT.trashDrops)
+	r.name:SetText(W.Tr(TEXT.trashDrops))
 	return r
 end
 
@@ -679,15 +679,15 @@ end
 local function QuestLine(q)
 	local F, row = J.F, q.row
 	if q.state == "log" then
-		return TEXT.inLog
+		return W.Tr(TEXT.inLog)
 	elseif q.state == "done" then
-		return TEXT.done
+		return W.Tr(TEXT.done)
 	elseif q.state == "later" then
 		local level = Finite(UnitLevel("player")) or 1
 		if (row[F.REQ] or 0) > level then
-			return TEXT.fromLevel:format(row[F.REQ])
+			return W.Tr(TEXT.fromLevel):format(row[F.REQ])
 		end
-		return TEXT.after
+		return W.Tr(TEXT.after)
 	end
 	local data = rawget(_G, "MelloUI_QuestListData")
 	local zone = data and data.zones and data.zones[row[8]]
@@ -716,7 +716,7 @@ local ButtonClick = Perf.Shared("OnClick on Dungeon Info's page buttons", functi
 	end
 	local door = J.Door(inst)
 	if (self == B.show or self == B.route) and not door then
-		MelloUI:Print(TEXT.noDoor)
+		MelloUI:Print(W.Tr(TEXT.noDoor))
 		return
 	end
 	MelloUI:PlayUISound("click")
@@ -779,7 +779,7 @@ function P.LayInst()
 		return
 	end
 	local H = S.head
-	H.back.text:SetText(inst.kind == 2 and TEXT.allRaids or TEXT.allDungeons)
+	H.back.text:SetText(W.Tr(inst.kind == 2 and TEXT.allRaids or TEXT.allDungeons))
 	-- the head: its picture (the client's own, the plain one for the instances it has none of), its emblem, its name
 	local y = T.FOLD + 8
 	local picH = floor(width * 0.42)
@@ -801,7 +801,7 @@ function P.LayInst()
 	H.title:SetText(inst.name)
 	local sub = Where(inst)
 	if inst.kind == 2 and inst.players and inst.players >= 10 then
-		sub = sub .. ", " .. TEXT.raidOf:format(inst.players)
+		sub = sub .. ", " .. W.Tr(TEXT.raidOf):format(inst.players)
 	end
 	H.sub:SetText(sub)
 	y = y + picH + 10
@@ -811,7 +811,7 @@ function P.LayInst()
 	B.row:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
 	B.row:SetSize(width, T.BUTTON_ROW)
 	local take = Takeable(inst)
-	B.quests.label:SetText(take > 0 and TEXT.pickUpN:format(take) or TEXT.pickUp)
+	B.quests.label:SetText(take > 0 and W.Tr(TEXT.pickUpN):format(take) or W.Tr(TEXT.pickUp))
 	B.quests.tip = take > 0 and TEXT.pickUpTip or TEXT.pickUpNone
 	B.quests:SetAlpha(take > 0 and 1 or 0.5)
 	local door = J.Door(inst) ~= nil
@@ -893,9 +893,9 @@ function P.LayBoss()
 	local H = S.bossHead
 	H.back.text:SetText(inst.name)
 	local y = T.FOLD + 10
-	H.title:SetText(boss.trash and TEXT.trashDrops or boss.name)
+	H.title:SetText(boss.trash and W.Tr(TEXT.trashDrops) or boss.name)
 	local n = #inst.bosses
-	H.sub:SetText(boss.trash and TEXT.trashSub or (boss.index == n and TEXT.lastBoss or TEXT.bossOf):format(boss.index, n))
+	H.sub:SetText(boss.trash and W.Tr(TEXT.trashSub) or W.Tr(boss.index == n and TEXT.lastBoss or TEXT.bossOf):format(boss.index, n))
 	-- (1.2.2) his dungeon's picture with his name inside at its top, tall enough for the name and its line; none: the
 	-- name on the column as before
 	H.title:SetWidth(width - 20)
@@ -936,7 +936,7 @@ function P.LayBoss()
 		y = y + 34
 	end
 	HideFrom(S.irows[page] or {}, i)
-	S.noLoot:SetText(boss.trash and TEXT.noTrash or TEXT.noLoot)
+	S.noLoot:SetText(W.Tr(boss.trash and TEXT.noTrash or TEXT.noLoot))
 	S.noLoot:SetShown(i == 0)
 	if i == 0 then
 		S.noLoot:ClearAllPoints()
@@ -1038,7 +1038,7 @@ end
 
 local function TabText()
 	local n = J.TrackedCount()
-	S.tabs.mine:SetText(n > 0 and (TEXT.mine .. "  " .. n) or TEXT.mine)
+	S.tabs.mine:SetText(W.Tr(TEXT.mine) .. (n > 0 and ("  " .. n) or ""))
 	PanelTemplates_TabResize(S.tabs.mine, 8)
 end
 
@@ -1198,7 +1198,7 @@ local function Build(pane)
 	S.pane = pane
 	local function Tab(text, key)
 		local tab = CreateFrame("Button", nil, pane, "PanelTopTabButtonTemplate")
-		tab:SetText(text)
+		tab:SetText(W.Tr(text))
 		PanelTemplates_TabResize(tab, 8)
 		tab.key = key
 		W.FlatTab(tab, nil)

@@ -2056,10 +2056,8 @@ function Errand.Status(e)
 		end
 		if fs.nearest then
 			local yards = DistanceText(fs)
-			if e.fallYards ~= yards then
-				e.fallYards, e.fallText = yards, fb.label .. " " .. yards
-			end
-			return e.fallText, "selectedTrim"
+			e.fallYards = yards
+			return Tr(fb.label) .. " " .. yards, "selectedTrim"
 		end
 	end
 	return "none known here", "mutedText"
@@ -2835,16 +2833,16 @@ local function GroupTooltip(self)
 		if kind.errand then
 			local line, key = Errand.Status(kind)
 			local c = P[key] or muted
-			GameTooltip:AddDoubleLine(kind.label, line, text[1], text[2], text[3], c[1], c[2], c[3])
+			GameTooltip:AddDoubleLine(Tr(kind.label), Tr(line), text[1], text[2], text[3], c[1], c[2], c[3])
 		else
 			if not s.nearestAt or GetTime() - s.nearestAt > NEAREST_KEEP then
 				FindNearest(s)
 			end
 			local c = s.nearest
 			if c then
-				GameTooltip:AddDoubleLine(kind.label, DistanceText(s), text[1], text[2], text[3], gold[1], gold[2], gold[3])
+				GameTooltip:AddDoubleLine(Tr(kind.label), DistanceText(s), text[1], text[2], text[3], gold[1], gold[2], gold[3])
 			else
-				GameTooltip:AddDoubleLine(kind.label, R and "none known here" or "Route module off",
+				GameTooltip:AddDoubleLine(Tr(kind.label), Tr(R and "none known here" or "Route module off"),
 					muted[1], muted[2], muted[3], muted[1], muted[2], muted[3])
 			end
 		end
@@ -2860,7 +2858,7 @@ local function GroupTooltip(self)
 	else
 		hint = "Click for the list with distances. Right-click stops the route."
 	end
-	GameTooltip:AddLine(hint, text[1], text[2], text[3], true)
+	GameTooltip:AddLine(Tr(hint), text[1], text[2], text[3], true)
 	GameTooltip:Show()
 end
 

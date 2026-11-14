@@ -686,6 +686,7 @@ end
 -- where the mark takes those clicks)
 function QL.MarkTip(tip, kind, data, hints)
 	local Line = QL.TipLine
+	local W = MelloUI.Widgets
 	local function Hint(text)
 		if hints then
 			Line(tip, text, "pinHint")
@@ -699,13 +700,13 @@ function QL.MarkTip(tip, kind, data, hints)
 		local first = data.quests[1]
 		local npc = data.giver ~= "" and not data.item and first
 			and (first.state == "ready" or first.row[QL.F_KIND] ~= 2)
-		QL.TipTitle(tip, data.giver ~= "" and data.giver or "Quest giver", npc and "friend" or nil)
+		QL.TipTitle(tip, data.giver ~= "" and data.giver or W.Tr("Quest giver"), npc and "friend" or nil)
 		if data.item == "drop" then
-			Line(tip, "An item that begins a quest drops here", "text", true)
+			Line(tip, W.Tr("An item that begins a quest drops here"), "text", true)
 		elseif data.item == "pickup" then
-			Line(tip, "An item that begins a quest is picked up here", "text", true)
+			Line(tip, W.Tr("An item that begins a quest is picked up here"), "text", true)
 		elseif data.item then
-			Line(tip, string.format("Quests that begin inside this %s", data.item), "text", true)
+			Line(tip, W.Tr("Quests that begin inside this %s"):format(W.Tr(data.item)), "text", true)
 		end
 		local open = 0
 		for _, q in ipairs(data.quests) do
@@ -713,7 +714,7 @@ function QL.MarkTip(tip, kind, data, hints)
 			local r, g, b = QL.DifficultyColor(row[QL.F_LEVEL])
 			local text = STATE_TEXT[q.state]
 			local sr, sg, sb = QL.TipColour(text[2])
-			local right = text[1]
+			local right = MelloUI.Widgets.Tr(text[1])
 			if (row[QL.F_EVENT] or 0) ~= 0 and (q.state == "available" or q.state == "locked") then
 				right = QL.Data().events[row[QL.F_EVENT]] or right
 			end
@@ -722,17 +723,17 @@ function QL.MarkTip(tip, kind, data, hints)
 				open = open + 1
 			end
 		end
-		local click = data.tracked and "Click: remove the waypoint"
-			or ((data.item == "dungeon" or data.item == "raid") and "Click: route to the entrance" or "Click: waypoint")
-		Hint(open > 0 and (click .. "   Alt-click: hide") or click)
+		local click = W.Tr(data.tracked and "Click: remove the waypoint"
+			or ((data.item == "dungeon" or data.item == "raid") and "Click: route to the entrance" or "Click: waypoint"))
+		Hint(open > 0 and (click .. "   " .. W.Tr("Alt-click: hide")) or click)
 	elseif kind == "objective" then
 		QL.Objectives.Tip(tip, data, Line, hints)
 	elseif kind == "entrance" then
 		QL.TipTitle(tip, data.name)
 		local lv = data.dungeonID ~= 0 and QL.Data().dungeonLevel and QL.Data().dungeonLevel[data.dungeonID]
-		local what = data.raid and "Raid" or "Dungeon"
+		local what = W.Tr(data.raid and "Raid" or "Dungeon")
 		if lv and lv[1] > 0 then
-			Line(tip, string.format("%s, level %d to %d", what, lv[1], lv[2] > 0 and lv[2] or lv[1]), "text")
+			Line(tip, W.Tr("%s, level %d to %d"):format(what, lv[1], lv[2] > 0 and lv[2] or lv[1]), "text")
 		else
 			Line(tip, what, "text")
 		end
@@ -740,48 +741,48 @@ function QL.MarkTip(tip, kind, data, hints)
 			local done, total = DungeonProgress(data.dungeonID)
 			if total > 0 then
 				-- (the count in gold, in the body text once all are done: as the zone badge)
-				Line(tip, string.format("%d of %d quests completed", done, total), done >= total and "text" or "selectedTrim")
-				Hint("Click to list its quests. Shift-click to route there.")
+				Line(tip, W.Tr("%d of %d quests completed"):format(done, total), done >= total and "text" or "selectedTrim")
+				Hint(W.Tr("Click to list its quests. Shift-click to route there."))
 			else
-				Line(tip, "No quests known for it yet.", "text")
-				Hint("Shift-click to route there.")
+				Line(tip, W.Tr("No quests known for it yet."), "text")
+				Hint(W.Tr("Shift-click to route there."))
 			end
 		end
 		if data.source == "learned" then
-			Line(tip, "Position learned when you walked in.", "text")
+			Line(tip, W.Tr("Position learned when you walked in."), "text")
 		elseif data.source == "client" then
-			Line(tip, "Position from the client's own entrance list.", "text")
+			Line(tip, W.Tr("Position from the client's own entrance list."), "text")
 		end
 	elseif kind == "transport" then
 		QL.TipTitle(tip, data.label)
-		Line(tip, (TRANSPORT_PLACE[data.kind] or "Dock") .. " at " .. data.dock, "text")
+		Line(tip, W.Tr("%s at %s"):format(W.Tr(TRANSPORT_PLACE[data.kind] or "Dock"), data.dock), "text")
 		if data.faction == 1 then
-			Line(tip, "Alliance", "alliance")
+			Line(tip, W.Tr("Alliance"), "alliance")
 		elseif data.faction == 2 then
-			Line(tip, "Horde", "horde")
+			Line(tip, W.Tr("Horde"), "horde")
 		else
-			Line(tip, "Neutral, both factions", "text")
+			Line(tip, W.Tr("Neutral, both factions"), "text")
 		end
 		if data.destMapID or data.destCont then
-			Hint("Click to route to it. Shift-click to open the destination's map.")
+			Hint(W.Tr("Click to route to it. Shift-click to open the destination's map."))
 		end
 		if data.learned then
-			Line(tip, "Recorded with /qlmap dock. Remove with /qlmap remove.", "text")
+			Line(tip, W.Tr("Recorded with /qlmap dock. Remove with /qlmap remove."), "text")
 		end
 	else
 		QL.TipTitle(tip, data.name)
-		Line(tip, string.format("%d of %d quests completed", data.done, data.total), "text")
+		Line(tip, W.Tr("%d of %d quests completed"):format(data.done, data.total), "text")
 		if data.lo > 0 then
-			Line(tip, string.format("Quest levels %d to %d", data.lo, data.hi), "text")
+			Line(tip, W.Tr("Quest levels %d to %d"):format(data.lo, data.hi), "text")
 		end
 		if data.available > 0 then
-			Line(tip, string.format("%d you could pick up now", data.available), "questGold")
+			Line(tip, W.Tr("%d you could pick up now"):format(data.available), "questGold")
 		end
 		if data.inLog > 0 then
-			Line(tip, string.format("%d in your quest log", data.inLog), "text")
+			Line(tip, W.Tr("%d in your quest log"):format(data.inLog), "text")
 		end
 		if data.opens then
-			Hint("Click to open the zone map.")
+			Hint(W.Tr("Click to open the zone map."))
 		end
 	end
 end
@@ -1159,6 +1160,7 @@ local function ZoneProgress(map, mapID, name)
 	if total == 0 then
 		return
 	end
+	local W = MelloUI.Widgets
 	local f = ZoneRing()
 	local share = done / total
 	local held = share > ZP.FULL and ZP.FULL or share
@@ -1170,8 +1172,8 @@ local function ZoneProgress(map, mapID, name)
 	f.pct:SetText(string.format("%d%%", math.floor(share * 100 + 0.5)))
 	f.name:SetText(name)
 	local left = total - done
-	f.line:SetText(string.format("%d of %d done, %d left", done, total, left)
-		.. (available > 0 and string.format(" (%d you can take now)", available) or ""))
+	f.line:SetText(W.Tr("%d of %d done, %d left"):format(done, total, left)
+		.. (available > 0 and W.Tr(" (%d you can take now)"):format(available) or ""))
 	-- its width from its texts; at the top left of the map's canvas
 	local Num = MelloUI.Safe.Number
 	local w = math.max(Num(f.name:GetStringWidth()) or 0, Num(f.line:GetStringWidth()) or 0)

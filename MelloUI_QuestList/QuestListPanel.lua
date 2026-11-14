@@ -574,7 +574,7 @@ local function InitRow(button, entry)
 	if entry.ready and (row[QL.F_ENDER] or "") ~= "" then
 		-- no coordinates on the row (they ran under the Classic / Forever logo);
 		-- the tooltip has them
-		where = "Turn in: " .. row[QL.F_ENDER]
+		where = W.Tr("Turn in: %s"):format(row[QL.F_ENDER])
 		if entry.showZone then
 			local endZone = QL.EnderZoneName(row) or QL.Data().zones[QL.ZoneOf(row)]
 			if endZone then
@@ -584,7 +584,7 @@ local function InitRow(button, entry)
 	elseif row[QL.F_GIVER] ~= "" then
 		where = QL.GiverLabel(row)
 		if QL.InstanceStart(row) then
-			where = where .. " - found inside"
+			where = where .. " - " .. W.Tr("found inside")
 		end
 		if entry.showZone then
 			local giverZone = QL.Data().zones[QL.ZoneOf(row)]
@@ -593,7 +593,7 @@ local function InitRow(button, entry)
 			end
 		end
 	else
-		where = entry.showZone and (QL.Data().zones[row[QL.F_ZONE]] or "") or "quest giver unknown"
+		where = entry.showZone and (QL.Data().zones[row[QL.F_ZONE]] or "") or W.Tr("quest giver unknown")
 	end
 	-- as a quest log objective line: its small round bullet (QI.RowBullet),
 	-- in the text colour; a step down once done
