@@ -2796,7 +2796,7 @@ Lang:Add("frFR", {
 	["Back to %s"] = "Retour à %s",
 	["Click to open its settings."] = "Cliquez pour ouvrir ses réglages.",
 	["%s tab"] = "Onglet %s",
-	["The %s this page's settings are for. Rows it has no setting for are dimmed."] = "L'élément (%s) auquel s'appliquent les réglages de cette page. Les lignes sans réglage pour lui sont atténuées.",
+	["The %s this page's settings are for. Rows it has no setting for are dimmed."] = "Les réglages de cette page s’appliquent à l’élément sélectionné. Les options qui ne le concernent pas sont grisées.",
 	["Nothing to set here yet."] = "Rien à régler ici pour l'instant.",
 	["Edit Layout is open: size it there."] = "Modifier la disposition est ouvert : dimensionnez-le là.",
 	["Parts:"] = "Parties :",
