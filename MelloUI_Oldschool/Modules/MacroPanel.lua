@@ -122,16 +122,7 @@ local function Follow(rep, region)
 end
 
 -- the non-nil values given, as a list (alsoFade stops at the first nil)
-local function List(...)
-	local list = {}
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if v then
-			list[#list + 1] = v
-		end
-	end
-	return list
-end
+local List = MelloUI.Kit.Panel.List
 
 -- a frame's name for the dump (a pooled frame's can read secret)
 local function NameOf(obj)
@@ -173,23 +164,7 @@ end
 -- same popup and the same recipe). A holder { icon } (its rep, the rim, in MelloUI.Kept.repOf)
 -- stands for the icon in the Kit's Button Border registry.
 --------------------------------------------------------------------------------
-local function FitIconRim(holder)
-	local rim = repOf[holder] and repOf[holder].object
-	local icon = holder.icon
-	if not (rim and rim.base and icon) then
-		return
-	end
-	local name = rim.base .. "_normal"
-	local p = Kit:Piece(name)
-	local l, r, t, b = Kit:Insets(name, 1)
-	local ok, iw, ih = pcall(icon.GetSize, icon)
-	if not (p and l and ok and iw and ih) or Secret(iw) or Secret(ih) or iw <= 0 or ih <= 0 then
-		return
-	end
-	rim:ClearAllPoints()
-	rim:SetPoint("CENTER", icon, "CENTER")
-	rim:SetSize((iw - 4) * p.w / (p.w - l - r), (ih - 4) * p.h / (p.h - t - b))
-end
+local FitIconRim = MelloUI.Kit.Panel.FitIconRim
 
 -- a new Button Border has a new opening: every icon's rim fitted again
 Kit:OnBorderChanged("button", function()
@@ -783,13 +758,7 @@ end
 -- container's own text and the strings put back on disable.
 --------------------------------------------------------------------------------
 
-local function TextOf(fs)
-	local ok, text = pcall(fs.GetText, fs)
-	if ok and type(text) == "string" and not Secret(text) and text ~= "" then
-		return text
-	end
-	return nil
-end
+local TextOf = MelloUI.Kit.Panel.TextOf
 
 local function TitleStrings(f)
 	local tc = f.TitleContainer

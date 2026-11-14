@@ -6030,6 +6030,83 @@ function Kit:HookScrollBoxRows(scrollBox, rowSkin, isActive, initialized)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- The window modules' shared helpers (2.1.52; docs/plans/copied-helpers.md, stage 2). Each stood word for word in
+-- many window files; a window file binds the ones it uses as it loads (local Label = MelloUI.Kit.Panel.Label).
+-- Fields of the kit only: no local of this file is added.
+--------------------------------------------------------------------------------
+
+Kit.Panel = {}
+
+-- a frame's or a region's own name; nil for one without, or with a secret one
+function Kit.Panel.NameOf(obj)
+	if not obj then
+		return nil
+	end
+	local ok, n = pcall(obj.GetName, obj)
+	if ok and type(n) == "string" and not Secret(n) then
+		return n
+	end
+	return nil
+end
+
+-- what a dump calls it: its name, else its debug name
+function Kit.Panel.Label(obj)
+	if not obj then
+		return "nil"
+	end
+	local n = Kit.Panel.NameOf(obj)
+	if n then
+		return n
+	end
+	local ok, d = pcall(obj.GetDebugName, obj)
+	if ok and type(d) == "string" and not Secret(d) then
+		return d
+	end
+	return "[unnamed]"
+end
+
+-- the arguments that are there, as a list (a window's parts: some are missing on one client or another)
+function Kit.Panel.List(...)
+	local list = {}
+	for i = 1, select("#", ...) do
+		local v = select(i, ...)
+		if v then
+			list[#list + 1] = v
+		end
+	end
+	return list
+end
+
+-- a font string's text; nil for none, an empty or a secret one
+function Kit.Panel.TextOf(fs)
+	local ok, text = pcall(fs.GetText, fs)
+	if ok and type(text) == "string" and not Secret(text) and text ~= "" then
+		return text
+	end
+	return nil
+end
+
+-- an icon button's rim (its rep) fitted round the icon it frames: the rim's opening the icon's size less 2 px a side
+function Kit.Panel.FitIconRim(holder)
+	local repOf = Kit.repOf
+	local rim = repOf[holder] and repOf[holder].object
+	local icon = holder.icon
+	if not (rim and rim.base and icon) then
+		return
+	end
+	local name = rim.base .. "_normal"
+	local p = Kit:Piece(name)
+	local l, r, t, b = Kit:Insets(name, 1)
+	local ok, iw, ih = pcall(icon.GetSize, icon)
+	if not (p and l and ok and iw and ih) or Secret(iw) or Secret(ih) or iw <= 0 or ih <= 0 then
+		return
+	end
+	rim:ClearAllPoints()
+	rim:SetPoint("CENTER", icon, "CENTER")
+	rim:SetSize((iw - 4) * p.w / (p.w - l - r), (ih - 4) * p.h / (p.h - t - b))
+end
+
 -- The dump every window module offers (/xxdump): the visible game textures
 -- under `root` (art name, rect, layer), "frames" (the tree with strata and
 -- levels), "reps" (ours), or `extra(msg)` for the module's own modes.

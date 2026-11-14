@@ -81,18 +81,6 @@ local function Replace(region, opts)
 	return rep
 end
 
--- a frame's name, secret-safe
-local function NameOf(obj)
-	if not obj then
-		return nil
-	end
-	local ok, n = pcall(obj.GetName, obj)
-	if ok and type(n) == "string" and not Secret(n) then
-		return n
-	end
-	return nil
-end
-
 local function IsType(obj, kind)
 	if type(obj) ~= "table" or not obj.GetObjectType then
 		return false
@@ -102,16 +90,7 @@ local function IsType(obj, kind)
 end
 
 -- the non-nil values given, as a list
-local function List(...)
-	local list = {}
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if v then
-			list[#list + 1] = v
-		end
-	end
-	return list
-end
+local List = MelloUI.Kit.Panel.List
 
 -- every frame under `root` to `depth` (the root first)
 local function Frames(root, depth, list)
@@ -780,20 +759,7 @@ end
 -- inked strings, the picker's and its content's own regions and children;
 -- the modes are Kit:DumpWindow's. Opens the copy window.
 --------------------------------------------------------------------------------
-local function Label(obj)
-	if not obj then
-		return "nil"
-	end
-	local n = NameOf(obj)
-	if n then
-		return n
-	end
-	local ok, d = pcall(obj.GetDebugName, obj)
-	if ok and type(d) == "string" and not Secret(d) then
-		return d
-	end
-	return "[unnamed]"
-end
+local Label = MelloUI.Kit.Panel.Label
 
 local function Found(label, obj, more)
 	MelloUI:Print("  %-26s %s%s", label, obj and Label(obj) or "-- not found", more or "")

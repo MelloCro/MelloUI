@@ -120,28 +120,10 @@ local function Replace(region, opts)
 end
 
 -- the non-nil values given, as a list (alsoFade stops at the first nil)
-local function List(...)
-	local list = {}
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if v then
-			list[#list + 1] = v
-		end
-	end
-	return list
-end
+local List = MelloUI.Kit.Panel.List
 
 -- a frame's name, secret-safe (nil when it has none or it reads secret)
-local function NameOf(obj)
-	if not obj then
-		return nil
-	end
-	local ok, n = pcall(obj.GetName, obj)
-	if ok and type(n) == "string" and not Secret(n) then
-		return n
-	end
-	return nil
-end
+local NameOf = MelloUI.Kit.Panel.NameOf
 
 local function Label(obj)
 	if not obj then
@@ -156,13 +138,7 @@ local function Label(obj)
 end
 
 -- a font string's text when it can be read (nil when empty or secret)
-local function TextOf(fs)
-	local ok, text = pcall(fs.GetText, fs)
-	if ok and type(text) == "string" and not Secret(text) and text ~= "" then
-		return text
-	end
-	return nil
-end
+local TextOf = MelloUI.Kit.Panel.TextOf
 
 -- whether a font string shows anything (a secret text is shown all the same)
 local function HasText(fs)

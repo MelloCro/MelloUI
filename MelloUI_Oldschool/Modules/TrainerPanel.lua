@@ -114,13 +114,7 @@ local function IsTexture(obj)
 	return type(obj) == "table" and obj.GetObjectType ~= nil and obj:GetObjectType() == "Texture"
 end
 
-local function TextOf(fs)
-	local ok, text = pcall(fs.GetText, fs)
-	if ok and type(text) == "string" and not Secret(text) and text ~= "" then
-		return text
-	end
-	return nil
-end
+local TextOf = MelloUI.Kit.Panel.TextOf
 
 local function NameOf(obj)
 	local ok, name = pcall(obj.GetName, obj)

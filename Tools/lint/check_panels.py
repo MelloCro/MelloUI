@@ -48,7 +48,7 @@ CEILINGS = {
     "later-pending": 0,
     "portrait-759": 5,
     "medallion-to-ring": 6,
-    "fit-icon-rim": 13,
+    "fit-icon-rim": 7,
     "border-listener": 15,
     "secret-helper": 0,
     "plain-helper": 0,

@@ -131,28 +131,10 @@ local titleHome = setmetatable({}, { __mode = "k" })    -- [heading] = the frame
 local Secret = MelloUI.Safe.IsSecret
 
 -- the non-nil values given, as a list
-local function List(...)
-	local list = {}
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if v then
-			list[#list + 1] = v
-		end
-	end
-	return list
-end
+local List = MelloUI.Kit.Panel.List
 
 -- a frame's name, secret-safe (nil when it has none or it reads secret)
-local function NameOf(obj)
-	if not obj then
-		return nil
-	end
-	local ok, n = pcall(obj.GetName, obj)
-	if ok and type(n) == "string" and not Secret(n) then
-		return n
-	end
-	return nil
-end
+local NameOf = MelloUI.Kit.Panel.NameOf
 
 local function Frame(name)
 	local f = _G[name]
@@ -595,23 +577,7 @@ end
 -- conquest rewards (a 30 px icon masked round in a honorsystem ring): the
 -- round rim (O2) whose opening is the icon.
 --------------------------------------------------------------------------------
-local function FitIconRim(holder)
-	local rim = repOf[holder] and repOf[holder].object
-	local icon = holder.icon
-	if not (rim and rim.base and icon) then
-		return
-	end
-	local name = rim.base .. "_normal"
-	local p = Kit:Piece(name)
-	local l, r, t, b = Kit:Insets(name, 1)
-	local ok, iw, ih = pcall(icon.GetSize, icon)
-	if not (p and l and ok and iw and ih) or Secret(iw) or Secret(ih) or iw <= 0 or ih <= 0 then
-		return
-	end
-	rim:ClearAllPoints()
-	rim:SetPoint("CENTER", icon, "CENTER")
-	rim:SetSize((iw - 4) * p.w / (p.w - l - r), (ih - 4) * p.h / (p.h - t - b))
-end
+local FitIconRim = MelloUI.Kit.Panel.FitIconRim
 
 -- a new Button Border has a new opening: every reward rim fitted again
 Kit:OnBorderChanged("button", function()
@@ -1142,20 +1108,7 @@ end
 -- Kit:DumpWindow's, for every window here. Opens the copy window.
 --------------------------------------------------------------------------------
 
-local function Label(obj)
-	if not obj then
-		return "nil"
-	end
-	local n = NameOf(obj)
-	if n then
-		return n
-	end
-	local ok, d = pcall(obj.GetDebugName, obj)
-	if ok and type(d) == "string" and not Secret(d) then
-		return d
-	end
-	return "[unnamed]"
-end
+local Label = MelloUI.Kit.Panel.Label
 
 local function Num(v)
 	return (type(v) == "number" and not Secret(v)) and string.format("%.0f", v) or "?"
