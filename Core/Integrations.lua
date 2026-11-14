@@ -151,6 +151,11 @@ I.LIST = {
 	  url = "https://www.curseforge.com/wow/addons/maxdps-rotation-helper",
 	  does = { "Its spell recommendations highlight MelloUI's action buttons, including the controller's display buttons." },
 	  short = "Spell recommendations on MelloUI's action bars",
+	  -- (2.1.52, PR #18: Modules/MaxDps.lua hooks its AddButton and asks its ButtonFetch -- both there: working)
+	  parts = { { "its spell highlights", function()
+		local m = Global("MaxDps")
+		return type(m) == "table" and type(m.AddButton) == "function" and type(m.ButtonFetch) == "function"
+	  end } },
 	},
 	{ key = "RestedXP", name = "RestedXP Guide", folders = { "RXPGuides" }, group = "quests", arrow = "rxp",
 	  url = "https://www.curseforge.com/wow/addons/restedxp-guide",
