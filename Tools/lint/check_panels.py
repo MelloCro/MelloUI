@@ -267,7 +267,8 @@ CHECKS = {
     # string key (ref). An entry added to the game's own menu (a method call,
     # or the method handed on as a value): AddButton writes the menu's layout
     # and button list, which its gamepad close reads
-    "blizz-menu-button": (MENU_ADD + r"\s*\(|" + handed_on(r"[\w.]+" + MENU_ADD), {"bare": True},
+    "blizz-menu-button": (MENU_ADD + r"\s*\(|" + handed_on(r"[\w.]+" + MENU_ADD),
+                          {"bare": True, "skip": ["Modules/MaxDps.lua"]},  # MaxDPS.AddButton registers spell highlights, not menu buttons.
                           "an entry in the game's own menu: MelloUI's own entry, MelloUIGameMenuButton "
                           "(Core/Config.lua), an own button under UIParent shown from "
                           "HookScript(GameMenuFrame, \"OnShow\") and never in the Gamepad UI"),

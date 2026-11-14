@@ -90,6 +90,11 @@ local BAG_LINKS = { { "MelloUI Bag Window", id = "BagWindow.columns" } }
 -- MelloUI_Route/Guides.lua: its card's switch, its own arrow shown beside the World Marker -- Guide.ArrowShown),
 -- noSwitch (with switch = false: the card's own line in place of "Nothing to switch")
 I.LIST = {
+	{ key = "MaxDps", name = "MaxDPS", folders = { "MaxDps" }, group = "frames",
+	  url = "https://www.curseforge.com/wow/addons/maxdps-rotation-helper",
+	  does = { "Its spell recommendations highlight MelloUI's action buttons, including the controller's display buttons." },
+	  short = "Spell recommendations on MelloUI's action bars",
+	},
 	{ key = "Questie", name = "Questie", folders = { "Questie" }, group = "quests",
 	  url = "https://www.curseforge.com/wow/addons/questie",
 	  does = {

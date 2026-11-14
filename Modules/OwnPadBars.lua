@@ -334,6 +334,7 @@ end
 -- each of our buttons shows the slot the game's button holds where it acts
 local function Mirror()
 	local map = P.map or GAME_INDEX
+	local changed = false
 	for n = 1, 4 do
 		local list = K.Field(GameBar(n), "actionButtons")
 		for i, btn in ipairs(P.shows[n] or {}) do
@@ -346,8 +347,12 @@ local function Mirror()
 				btn.slot = a
 				btn.mirrored = true
 				btn:UpdateAction(true)
+				changed = true
 			end
 		end
+	end
+	if changed then
+		MelloUI:Fire("ownbars:padslots")
 	end
 end
 
