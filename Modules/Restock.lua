@@ -33,8 +33,11 @@
 --                sells what is low (Services:GoTo "vendor": the shipped
 --                vendor rows, the shops seen here, the innkeeper when none is
 --                known for drink or food).
---   The shop     at a merchant who sells something that is low, a list beside
---                the shop window: each item to buy back up to the FULL amount,
+--   The shop     at a merchant who sells something that is low, or below
+--                Shopping List Below of its amount (the setting shopBelow,
+--                a share of its own: the list may open sooner than the
+--                reminder comes up), a list beside the shop window: each
+--                item to buy back up to the FULL amount,
 --                how many and its price, the total, and Buy / Not now.
 --                Nothing is bought until Buy is clicked; then the purchases
 --                go out one every 0.2 s and stop when the shop closes or the
@@ -101,6 +104,7 @@ local M = MelloUI:RegisterModule("Restock", {
 	defaults = {
 		below = 0.5,
 		shopPanel = true,
+		shopBelow = 0.5,   -- Shopping List Below: the share under which a line opens the shop's list
 		fillAmmo = false,   -- the Ammo page's Fill All Ammo Bags
 		listH = false,   -- (2.1.37) the list window's own height (its grip); false: the standard
 	},
@@ -112,6 +116,10 @@ local M = MelloUI:RegisterModule("Restock", {
 		  desc = "Reminds you when an item drops below this share of its amount." },
 		{ type = "toggle", key = "shopPanel", name = "Shopping List At The Shop",
 		  desc = "At a merchant, a shopping list of what you are low on. Nothing is bought until you click Buy." },
+		{ type = "slider", key = "shopBelow", parent = "shopPanel", name = "Shopping List Below", min = 0.25, max = 1,
+		  step = 0.05, percent = true, new = "2.1.52",
+		  desc = "The shopping list opens when an item the merchant sells is below this share of its amount. At 100% it "
+			.. "opens whenever anything is missing. An item you are reminded of always opens it." },
 		{ type = "button", name = "Restock List", text = "Edit",
 		  desc = "What to keep in your bags, and how many. Each character has its own list. /restock opens it too.",
 		  onClick = function(module) module:OpenList() end },
@@ -1359,6 +1367,12 @@ local function Plan()
 	local level = Level()
 	local general, quiver, pouch = FreeSlots()
 	local F, m = Families(), merchant
+	-- Shopping List Below: the share of its amount under which a line opens the list (anyLow, notLow). A share of its
+	-- own, so the list may open sooner than the reminder comes up; a line the reminder is up for opens it always
+	local share = M.db and Num(M.db.shopBelow)
+	if not share or share <= 0 or share > 1 then
+		share = LOW_DEFAULT
+	end
 	-- Fill All Ammo Bags: of the ticked arrow lines (and of the bullet lines) the one whose item here is the best, the
 	-- highest level and then the dearer, takes the free slots of the quivers (the pouches); the others rest. An item
 	-- unticked in this panel only when no other is sold
@@ -1402,6 +1416,7 @@ local function Plan()
 	for at = 1, list.n do
 		local e = order[at]
 		local key, amount, have = list.key[e], list.Want(e), state.have[e] or 0
+		local opens = state.low[e] or (amount > 0 and have < amount * share)
 		-- (a Fill All Ammo Bags line: only the best one's, its item found above, by its quiver's or pouch's room below)
 		local fill = list.Fill(key)
 		local j = nil
@@ -1414,7 +1429,7 @@ local function Plan()
 			if not Planned(j) and plan.notN < SHOP_ROWS then
 				plan.notN = plan.notN + 1
 				plan.notName[plan.notN], plan.notKey[plan.notN] = m.name[j], key
-				if state.low[e] then
+				if opens then
 					plan.notLow = true
 				end
 			end
@@ -1474,7 +1489,7 @@ local function Plan()
 				plan.n = r
 				plan.merch[r], plan.entry[r], plan.count[r], plan.cost[r] = j, e, items, buys * price
 				plan.skip[r] = skipped
-				if state.low[e] then
+				if opens then
 					plan.anyLow = true
 				end
 			end
@@ -3251,6 +3266,8 @@ function M:OnSettingChanged(key, value, db)
 		else
 			ShopRefresh()
 		end
+	elseif key == "shopBelow" then
+		ShopRefresh()
 	elseif key == "below" or key == "fillAmmo" then
 		Dirty()
 		if state.ready then

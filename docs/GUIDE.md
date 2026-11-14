@@ -1738,7 +1738,10 @@ sells it (shops you have opened are remembered; the innkeeper for drink and food
 known). In an inn or a city the reminder stays until you restock or leave (the Reminders page's
 **Stay Up In Rest Areas**, every reminder's). **Shopping List At The Shop** (on): at a merchant who sells what you are low
 on, a small list beside the shop window shows each item, "+20 (have 3)", the price, the total
-and the gold left, with **Buy**, **Not now** and **Edit list**. It picks the best item you can
+and the gold left, with **Buy**, **Not now** and **Edit list**. **Shopping List Below** (50 %) is the list's own
+share: it opens when an item the merchant sells is below that share of its amount, so it can open
+sooner than the reminder comes up (at 100 %, whenever anything is missing). An item you are
+reminded of always opens it. It picks the best item you can
 use from the merchant's own list, in whole purchases, limited by the stock, your bag space
 (quiver and ammo pouch first) and your gold. Nothing is bought without the Buy click; the
 purchases go one at a time and stop when the shop closes or the game refuses one, and Vendor's
