@@ -1495,7 +1495,7 @@ Tip = function(self)
 			GameTooltip:AddLine(W.Tr(TEXT.interact):format(bind), text[1], text[2], text[3], true)
 		end
 	else
-		local hint = spec.hint
+		local hint = Value(spec.hint, key)
 		GameTooltip:AddLine(W.Tr(type(hint) == "string" and hint or TEXT.go), text[1], text[2], text[3], true)
 	end
 	GameTooltip:AddLine(W.Tr(TEXT.notNow), text[1], text[2], text[3], true)
@@ -4285,8 +4285,9 @@ local function Column()
 				Report(err)
 			end
 		end
-		if type(spec.hint) == "string" then
-			GameTooltip:AddLine(W.Tr(spec.hint), text[1], text[2], text[3], true)
+		local hint = Value(spec.hint, key)
+		if type(hint) == "string" then
+			GameTooltip:AddLine(W.Tr(hint), text[1], text[2], text[3], true)
 		end
 		if spec.secure ~= nil and InCombatLockdown() then
 			GameTooltip:AddLine(W.Tr(TEXT.outOfCombat), text[1], text[2], text[3], true)

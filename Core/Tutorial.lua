@@ -195,7 +195,7 @@ local function TipInfo(index)
 	end
 	local step = STEPS[index]
 	info = {
-		text = step.text,
+		text = MelloUI.Widgets.Tr(step.text),
 		buttonStyle = step.last and HelpTip.ButtonStyle.Okay or HelpTip.ButtonStyle.Next,
 		targetPoint = HelpTip.Point[step.point] or HelpTip.Point.BottomEdgeCenter,
 		alignment = HelpTip.Alignment.Center,
@@ -213,6 +213,9 @@ local function TipInfo(index)
 			end
 		end,
 		onHideCallback = function(acknowledged)
+			if T.refreshing then
+				return
+			end
 			if acknowledged or not (T.active and T.step == index) then
 				return
 			end
@@ -245,7 +248,7 @@ local function ShowTip()
 	local shown = HelpTip:Show(c.window, TipInfo(index), target)
 	if not shown then
 		T:Stop()
-		MelloUI:Print("The game's help tips are turned off (Options, Gameplay, Help), and the tour is made of them.")
+		MelloUI:Print(MelloUI.Widgets.Tr("The game's help tips are turned off (Options, Gameplay, Help), and the tour is made of them."))
 	end
 end
 
@@ -260,6 +263,19 @@ ShowStep = function(index)
 	T.pending = index
 	C_Timer.After(0, ShowTip)
 end
+
+MelloUI:On("language", function()
+	for index, info in pairs(infos) do
+		info.text = MelloUI.Widgets.Tr(STEPS[index].text)
+	end
+	if T.active and HelpTipsAvailable() then
+		local index = T.step
+		T.refreshing = true
+		pcall(HelpTip.HideAllSystem, HelpTip, SYSTEM)
+		T.refreshing = false
+		ShowStep(index)
+	end
+end, T)
 
 -- the window closed: the tour ends; hidden with the interface (Alt+Z) it
 -- waits, and a step whose tip went with it shows again when it comes back

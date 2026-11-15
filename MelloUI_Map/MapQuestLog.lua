@@ -156,7 +156,7 @@ local S = {
 	e = 0,            -- (2.1.0) the column's share out now (0 folded, 1 out)
 	fold = {},        -- its move (Anim:Drive's job: from, to, moving)
 	entries = {}, n = 0, quests = 0,
-	heads = {}, rows = {}, objs = {}, rewards = {},
+	heads = {}, rows = {}, objs = {}, rewards = {}, layerHeads = {},
 	collapsed = {},   -- [zone name] = true while folded (this session)
 	selected = nil,   -- the quest whose page shows (or showed last: its row marked)
 	listOffset = 0,   -- the list's scroll while a page shows (back to it)
@@ -1443,7 +1443,9 @@ local function LayersPage()
 	local y = 0
 	for g, name in ipairs(spec.groups) do
 		local h = HeadLook(CreateFrame("Frame", nil, pane))
-		h.label:SetText(name:upper())
+		h.mapLabelKey = name
+		h.label:SetText(W.Tr(name))
+		S.layerHeads[#S.layerHeads + 1] = h
 		h:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, -y)
 		h:SetWidth(width)
 		y = y + T.ZONE + 2
@@ -1465,7 +1467,8 @@ local function LayersPage()
 				r.icon:SetPoint("LEFT", r, "LEFT", 4, 0)
 				-- (2.1.53: a town kind's picture as its marks wear it, MapTownMarks' Icon)
 				Icons.Set(r.icon, s.town and ns.TownMarks.Icon(s.town) or s.icon, T.LAYER_ICON)
-				r.label = W.Text(r, "GameFontHighlight", s.label, "text")
+				r.mapLabelKey = s.label
+				r.label = W.Text(r, "GameFontHighlight", W.Tr(s.label), "text")
 				r.label:SetPoint("LEFT", r, "LEFT", 4 + T.LAYER_ICON + 10, 0)
 				r.switch = W.Switch(r, off and NoQuests or function()
 					return spec.on(key)
@@ -1526,6 +1529,23 @@ function Log.LayersChanged()
 		r.switch:Refresh()
 	end
 end
+
+local function RefreshLayerLabels()
+	for _, h in ipairs(S.layerHeads) do
+		h.label:SetText(W.Tr(h.mapLabelKey))
+	end
+	for _, r in ipairs(S.layerRows or {}) do
+		if r.mapLabelKey then
+			r.label:SetText(W.Tr(r.mapLabelKey))
+		end
+	end
+end
+
+MelloUI:On("language", function()
+	if S.layerRows then
+		RefreshLayerLabels()
+	end
+end, Log)
 
 -- the panes by mode, in the rail's order (a page further down the rail slides in from the right)
 local ORDER = { log = 1, layers = 2, dungeonInfo = 3 }

@@ -96,6 +96,7 @@ local Num = MelloUI.Safe.Number
 local Call = MelloUI.Safe.Call
 local Anim = MelloUI.Anim
 local GameLook = MelloUI.Look   -- (the palette's colours, outline and shadow)
+local Tr = MelloUI.Widgets.Tr
 
 local OWNER = "Notice"
 local KEY = "notice"            -- its place in the store
@@ -111,7 +112,27 @@ local SHADOW_ALPHA = TEXT.shadow            -- innerPanel at 0.85
 local MAX_TEXT = 1100           -- a longer line is cut ("...")
 local MIN_WIDTH = 120
 local GUESS_WIDTH = 400         -- a width that cannot be read (a secret text)
-local PREVIEW = "Notices show here. Drag to move."
+local function PreviewText()
+	return Tr("Notices show here. Drag to move.")
+end
+
+local function MomentSub(sub)
+	if type(sub) == "table" and type(sub.key) == "string" then
+		return Tr(sub.key):format(unpack(sub.args or {}))
+	end
+	return type(sub) == "string" and Tr(sub) or nil
+end
+
+local function MomentText(source, args)
+	local translated = Tr(source)
+	if args and #args > 0 then
+		local ok, formatted = pcall(string.format, translated, unpack(args))
+		if ok then
+			return formatted
+		end
+	end
+	return translated
+end
 
 -- (1.2.0) a held line's badge and loading bar (AnnounceWait's opts; the user
 -- picked look B, 2026-10-21): the caller's picture in the gold ring
@@ -174,7 +195,8 @@ end
 local frame, text, font   -- made with the first notice (frame.shade: its band)
 -- (wait: the text of a line held by AnnounceWait while it is shown, else nil;
 -- bar: true while that line shows its loading bar)
-local state = { holds = 0, kind = "info", preview = false, entry = nil, wait = nil, bar = false }
+local state = { holds = 0, kind = "info", preview = false, entry = nil, wait = nil, bar = false,
+	message = nil, moment = false, waitSource = nil, waitOpts = nil }
 
 -- where it stands with no place saved: top centre, under the Route arrow -- of the game's screen (2.1.53, the rule
 -- of MelloUI:PlayPoint: Offhand's main screen, never the gap between two screens)
@@ -474,6 +496,8 @@ local function Put(msg, kind, held, moment)
 	Build()
 	text:SetText(msg)
 	state.kind, state.wait = kind, nil
+	state.message, state.moment, state.momentSub, state.messageArgs = nil, false, nil, nil
+	state.waitSource, state.waitOpts = nil, nil
 	Loader.Lay(held)
 	Moment.Lay(moment)
 	Paint()
@@ -498,14 +522,17 @@ local function Fade()
 	-- asked again here: Edit Layout may have come or gone during the hold
 	state.preview = WantPreview()
 	if state.preview then
-		Put(PREVIEW, "info")
+		Put(PreviewText(), "info")
 		return
 	end
+	state.message, state.moment, state.momentSub, state.messageArgs = nil, false, nil, nil
 	Anim:FadeOut(frame, FADE, "linear")
 end
 
 local function HideNow()
 	state.wait = nil
+	state.message, state.moment, state.momentSub, state.messageArgs = nil, false, nil, nil
+	state.waitSource, state.waitOpts = nil, nil
 	if frame then
 		Anim:Stop(frame, "alpha")
 		frame:Hide()
@@ -521,7 +548,7 @@ local function Preview()
 	end
 	state.preview = on
 	if on then
-		Put(PREVIEW, "info")
+		Put(PreviewText(), "info")
 	elseif frame and frame:IsShown() and state.holds <= 0 and not state.wait then
 		Anim:FadeOut(frame, FADE, "linear")
 	end
@@ -531,16 +558,41 @@ local function Preview()
 		frame:SetFrameStrata(on and "FULLSCREEN" or "TOOLTIP")
 	end
 end
+MelloUI:On("language", function()
+	if state.waitSource and frame and frame:IsShown() then
+		local source, opts, kind = state.waitSource, state.waitOpts, state.kind
+		local translated = Tr(source)
+		Put(translated, kind, opts or HELD)
+		state.wait = translated
+		state.waitSource, state.waitOpts = source, opts
+	elseif state.message and frame and frame:IsShown() then
+		local source, moment, sub, kind, args = state.message, state.moment, state.momentSub, state.kind, state.messageArgs
+		local translated = moment and MomentText(source, args) or Tr(source)
+		if moment then
+			Moment.line.sub = MomentSub(sub)
+			Put(translated, "moment", nil, Moment.line)
+			state.message, state.moment, state.momentSub, state.messageArgs = source, true, sub, args
+		else
+			Put(translated, kind)
+			state.message = source
+		end
+	elseif state.preview and frame and frame:IsShown() then
+		Put(PreviewText(), "info")
+	end
+end, OWNER)
 
 function MelloUI:Announce(msg, kind, mute)
 	-- a secret text (a name the game protects) is asked about first: even
 	-- comparing it with nil is refused; SetText and the chat take it as it is
 	local secret = Secret(msg)
+	local source = msg
 	if (not secret and msg == nil) or not Setting("noticeOnScreen") then
 		return
 	end
 	if not secret and type(msg) ~= "string" then
 		msg = tostring(msg)
+	elseif not secret then
+		msg = Tr(msg)
 	end
 	if not COLOUR[kind] then
 		kind = "info"
@@ -549,6 +601,7 @@ function MelloUI:Announce(msg, kind, mute)
 		self:Print(msg)   -- (not Notice: Chat Notices never mutes a line sent here)
 	else
 		Put(msg, kind)
+		state.message, state.moment, state.momentSub, state.messageArgs = type(source) == "string" and source or nil, false, nil, nil
 		state.holds = state.holds + 1
 		C_Timer.After(HOLD, Fade)
 	end
@@ -567,23 +620,28 @@ function MelloUI:AskReload(msg)
 	reloadAsked[msg] = true
 	self:Announce(msg, "info")
 	if not Setting("noticeToChat") then
-		self:Print(msg)
+		self:Print(Tr(msg))
 	end
 end
 
 -- A moment's line (see the top): held and faded as Announce's, info's sound
-function MelloUI:AnnounceMoment(msg, sub)
+function MelloUI:AnnounceMoment(msg, sub, ...)
 	if type(msg) ~= "string" or Secret(msg) or msg == "" or not Setting("noticeOnScreen") then
 		return
 	end
-	if Secret(sub) or type(sub) ~= "string" or sub == "" then
+	local source = msg
+	local args = { ... }
+	msg = MomentText(msg, args)
+	if type(sub) == "string" and (Secret(sub) or sub == "") then
 		sub = nil
 	end
+	local translatedSub = MomentSub(sub)
 	if Setting("noticeToChat") then
-		self:Print(sub and (msg .. " \194\183 " .. sub) or msg)
+		self:Print(translatedSub and (msg .. " \194\183 " .. translatedSub) or msg)
 	else
-		Moment.line.sub = sub
+	Moment.line.sub = translatedSub
 		Put(msg, "moment", nil, Moment.line)
+		state.message, state.moment, state.momentSub, state.messageArgs = source, true, sub, args
 		state.holds = state.holds + 1
 		C_Timer.After(HOLD, Fade)
 	end
@@ -598,18 +656,22 @@ function MelloUI:AnnounceWait(msg, kind, opts)
 	if type(msg) ~= "string" or Secret(msg) or msg == "" or not Setting("noticeOnScreen") then
 		return
 	end
+	local source = msg
+	msg = Tr(msg)
 	if Setting("noticeToChat") then
 		self:Print(msg)
 		return
 	end
 	Put(msg, COLOUR[kind] and kind or "info", type(opts) == "table" and opts or HELD)
 	state.wait = msg
+	state.message, state.moment, state.momentSub, state.messageArgs = nil, false, nil, nil
+	state.waitSource, state.waitOpts = source, type(opts) == "table" and opts or HELD
 end
 
 -- The held line's bar, while that line is the one shown with its bar
 function MelloUI:AnnounceProgress(msg, share)
 	local wait = state.wait
-	if wait == nil or not state.bar or type(msg) ~= "string" or Secret(msg) or wait ~= msg then
+	if wait == nil or not state.bar or type(msg) ~= "string" or Secret(msg) or wait ~= Tr(msg) then
 		return
 	end
 	Loader.Set(share)
@@ -619,16 +681,17 @@ end
 -- the one shown (another line or the sample in its place: left alone)
 function MelloUI:AnnounceDone(msg)
 	local wait = state.wait
-	if wait == nil or type(msg) ~= "string" or Secret(msg) or wait ~= msg then
+	if wait == nil or type(msg) ~= "string" or Secret(msg) or wait ~= Tr(msg) then
 		return
 	end
 	state.wait = nil
+	state.waitSource, state.waitOpts = nil, nil
 	if state.holds > 0 or not (frame and frame:IsShown()) then
 		return
 	end
 	state.preview = WantPreview()
 	if state.preview then
-		Put(PREVIEW, "info")
+		Put(PreviewText(), "info")
 		return
 	end
 	Anim:FadeOut(frame, FADE, "linear")

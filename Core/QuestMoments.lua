@@ -1322,8 +1322,8 @@ M.SlashWords = {
 	end,
 	-- the last quest lines handed to the game, and why (to send with /mellolog)
 	why = function()
-		MelloUI:Print("Quest Moments: the game's info lines %s", Q.took and "come to Quest Moments"
-			or "are NOT taken: the game's frame still has them")
+		MelloUI:Print("Quest Moments: the game's info lines %s", MelloUI.Lang.T(Q.took and "come to Quest Moments"
+			or "are NOT taken: the game's frame still has them"))
 		local n = min(Q.whyN, WHY_MAX)
 		if n == 0 then
 			MelloUI:Print("Quest Moments: every quest line since the login played as a moment")

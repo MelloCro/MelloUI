@@ -2060,13 +2060,14 @@ function QL.SetWaypoint(row, atEnder)
 		local icon = W.IconMarkup(atEnder and "turnin_mark" or "quest_mark", 16) .. " "
 		local label = icon .. row[QL.F_TITLE] .. (who ~= "" and (" - " .. who) or "")
 		local what = atEnder and "turn-in" or QL.IsItemStart(row) and "item" or "quest giver"
-		local text = string.format("%sTracking %s %s for %s, {dist} away", icon, what, who ~= "" and who or "", row[QL.F_TITLE])
+		local text = icon .. string.format(MelloUI.Widgets.Tr("Tracking %s %s for %s, {dist} away"),
+			MelloUI.Widgets.Tr(what), who ~= "" and who or "", row[QL.F_TITLE])
 		if instance then
 			local kind = QL.IsRaid(instance) and "raid" or "dungeon"
 			icon = W.IconMarkup(QL.IsRaid(instance) and "pin_raid" or "pin_dungeon", 16) .. " "
 			label = icon .. row[QL.F_TITLE] .. " - " .. QL.Data().dungeons[instance]
-			text = string.format("%sTracking the %s entrance of %s for %s (%s is found inside), {dist} away", icon, kind,
-				QL.Data().dungeons[instance], row[QL.F_TITLE], who)
+			text = icon .. string.format(MelloUI.Widgets.Tr("Tracking the %s entrance of %s for %s (%s is found inside), {dist} away"),
+				MelloUI.Widgets.Tr(kind == "dungeon" and "Dungeon" or "Raid"), QL.Data().dungeons[instance], row[QL.F_TITLE], who)
 		end
 		if R:SetDestinationTo({ mapID = mapID, x = x, y = y }, label, true, text) then
 			QL.trackedQuestID = row[QL.F_ID]

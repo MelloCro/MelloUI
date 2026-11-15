@@ -125,7 +125,8 @@ local function ShowNext()
 		return
 	end
 	local kind, class, name, spell = e[1], e[2], e[3], e[4]
-	MelloUI:Announce(TEXT.example:format(TEXT.kinds[kind] or kind, class, name), "info")
+	MelloUI:Announce(MelloUI.Widgets.Tr(TEXT.example):format(MelloUI.Widgets.Tr(TEXT.kinds[kind] or kind),
+		class, name), "info")
 	FX.Show(FX.Canon("player"), kind, nil, false, math.min(LASTS[spell] or SHOW_LAST, SHOW_LAST))
 	P.due = GetTime() + SHOW_GAP
 	C_Timer.After(SHOW_GAP, ShowNext)

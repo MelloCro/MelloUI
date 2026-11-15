@@ -3334,7 +3334,7 @@ end
 
 local function ActionTip(b, owner)
 	local t = ACTION_TEXT[b.id]
-	W.ShowTooltip(owner or b, t.title, b.note, t.desc:format(PopupWho(b.popup)), "ANCHOR_BOTTOMRIGHT")
+	W.ShowTooltip(owner or b, t.title, b.note, W.Tr(t.desc):format(PopupWho(b.popup)), "ANCHOR_BOTTOMRIGHT")
 end
 
 local function ActionEnter(self)
@@ -3382,7 +3382,7 @@ local function ActionClick(self)
 		end
 	elseif id == "ignore" then
 		MelloUI:Confirm({
-			text = IGNORE_ASK:format(PopupWho(f)),
+			text = W.Tr(IGNORE_ASK):format(PopupWho(f)),
 			accept = ACTION_TEXT.ignore.title,
 			onAccept = function()
 				pcall(C_FriendList.AddIgnore, target)

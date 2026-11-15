@@ -85,14 +85,24 @@ local Num = MelloUI.Safe.Number
 local Text = MelloUI.Safe.Text
 
 local floor, select, pcall, type, format = math.floor, select, pcall, type, string.format
--- a line in the language in use (MelloUI.Widgets.Tr: the language's table loaded first); Tf: string.format of a
--- translated template, its string arguments looked up too (Lang.F)
-local function Tr(s)
-	return MelloUI.Widgets.Tr(s)
+-- a line in the language in use (MelloUI.Widgets.Tr: the language's table loaded first); F: string.format of a
+-- translated template, its string arguments looked up too (Lang.F); Language: the code of the one in use
+local function Tr(text)
+	local W = MelloUI.Widgets
+	return W and W.Tr and W.Tr(text) or text
 end
-local function Tf(fmt, ...)
-	MelloUI.Widgets.Tr(fmt)
-	return MelloUI.Lang.F(fmt, ...)
+
+local function F(fmt, ...)
+	-- W.Tr loads the selected catalogue before Lang.F formats a translated template.
+	Tr(fmt)
+	local Lang = MelloUI.Lang
+	return Lang and Lang.F and Lang.F(fmt, ...) or format(fmt, ...)
+end
+
+local function Language()
+	Tr("Reminders")
+	local Lang = MelloUI.Lang
+	return Lang and Lang.code or "enUS"
 end
 
 local PLACES = {
@@ -251,16 +261,16 @@ end
 local function MailText()
 	local from = mail.sender or false
 	local kind = mail.waiting and (mail.seen and 2 or 1) or 3
-	if mail.textFrom ~= from or mail.textKind ~= kind or mail.textLang ~= MelloUI.Lang.code then
-		mail.textFrom, mail.textKind = from, kind
+	local language = Language()
+	if mail.textFrom ~= from or mail.textKind ~= kind or mail.textLang ~= language then
+		mail.textFrom, mail.textKind, mail.textLang = from, kind, language
 		if kind == 1 then
-			mail.text = from and Tf("New mail from %s", from) or Tr("New mail")
+			mail.text = from and F("New mail from %s", from) or Tr("New mail")
 		elseif kind == 2 then
 			mail.text = Tr("Mail waiting at the mailbox")
 		else
 			mail.text = Tr("No new mail")
 		end
-		mail.textLang = MelloUI.Lang.code   -- (after Tr: the language's table in by now)
 	end
 	return mail.text
 end
@@ -335,10 +345,10 @@ end
 
 local function GearText()
 	local pct = gear.broken and -2 or floor(gear.lowest * 100 + 0.5)
-	if gear.pct ~= pct or gear.textLang ~= MelloUI.Lang.code then
-		gear.pct = pct
-		gear.text = gear.broken and Tr("Repair Gear: broken gear") or Tf("Repair Gear: %d%%", pct)
-		gear.textLang = MelloUI.Lang.code
+	local language = Language()
+	if gear.pct ~= pct or gear.textLang ~= language then
+		gear.pct, gear.textLang = pct, language
+		gear.text = gear.broken and Tr("Repair Gear: broken gear") or F("Repair Gear: %d%%", pct)
 	end
 	return gear.text
 end
@@ -554,21 +564,21 @@ end
 -- while not (when the next spells come)
 local function TrainerText()
 	local class, prof, rank, from = trainer.class, trainer.prof, trainer.rank, trainer.from
+	local language = Language()
 	if trainer.textClass ~= class or trainer.textProf ~= prof or trainer.textRank ~= rank or trainer.textFrom ~= from
-		or trainer.textLang ~= MelloUI.Lang.code then
-		trainer.textClass, trainer.textProf, trainer.textRank, trainer.textFrom = class, prof, rank, from
+		or trainer.textLang ~= language then
+		trainer.textClass, trainer.textProf, trainer.textRank, trainer.textFrom, trainer.textLang = class, prof, rank, from, language
 		if class and prof then
-			trainer.text = Tf("New spells, and %s %s", rank, prof)
+			trainer.text = F("New spells, and %s %s", rank, prof)
 		elseif prof then
-			trainer.text = Tf("%s %s at a trainer", rank, prof)
+			trainer.text = F("%s %s at a trainer", rank, prof)
 		elseif class then
 			trainer.text = Tr("New spells at your class trainer")
 		elseif from > 0 then
-			trainer.text = Tf("Next new spells at level %d", from)
+			trainer.text = F("Next new spells at level %d", from)
 		else
 			trainer.text = Tr("Nothing new at your trainers")
 		end
-		trainer.textLang = MelloUI.Lang.code
 	end
 	return trainer.text
 end
@@ -947,6 +957,14 @@ function M:OnDisable()
 		USERS[key].active, USERS[key].told = false, nil
 	end
 end
+
+MelloUI:On("language", function()
+	if M.isEnabled then
+		for _, key in ipairs(ORDER) do
+			Changed(key)
+		end
+	end
+end, M)
 
 -- (the widget reads remind_<key>, place, detached, glow, hold and stayResting
 -- itself, on 'setting')

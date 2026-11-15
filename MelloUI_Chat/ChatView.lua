@@ -1038,7 +1038,7 @@ do
 		if Fake.Honest(kind, Fake.Words(shown)) then
 			return nil
 		end
-		return "|H" .. Fake.PREFIX .. kind .. "|h" .. Fake.grey .. Fake.Plain(shown) .. "|r " .. Fake.red .. Fake.TAG
+		return "|H" .. Fake.PREFIX .. kind .. "|h" .. Fake.grey .. Fake.Plain(shown) .. "|r " .. Fake.red .. W.Tr(Fake.TAG)
 			.. "|r|h"
 	end
 
@@ -1064,17 +1064,17 @@ do
 		if Secret(link) or type(link) ~= "string" or link:sub(1, #Fake.PREFIX) ~= Fake.PREFIX then
 			return false
 		end
-		local what = Fake.WHAT[link:sub(#Fake.PREFIX + 1)] or "A link"
+		local what = W.Tr(Fake.WHAT[link:sub(#Fake.PREFIX + 1)] or "A link")
 		local name = not Secret(text) and type(text) == "string" and text:match("^|c%x%x%x%x%x%x%x%x(.-)|r")
 		name = name and Fake.Words(name) or ""
 		local P, red = MelloUI.Palette, MelloUI.Meaning.fakeLink
 		local whispers = M.Whispers
 		GameTooltip:SetOwner(owner, "ANCHOR_CURSOR")
-		GameTooltip:SetText(Fake.TEXT.title, red[1], red[2], red[3])
-		GameTooltip:AddLine(name ~= "" and Fake.TEXT.dressed:format(what, name) or Fake.TEXT.hidden:format(what),
+		GameTooltip:SetText(W.Tr(Fake.TEXT.title), red[1], red[2], red[3])
+		GameTooltip:AddLine(name ~= "" and W.Tr(Fake.TEXT.dressed):format(what, name) or W.Tr(Fake.TEXT.hidden):format(what),
 			P.text[1], P.text[2], P.text[3], true)
-		GameTooltip:AddLine(Fake.TEXT.why, P.text[1], P.text[2], P.text[3], true)
-		GameTooltip:AddLine((whispers and owner == whispers.talk) and Fake.TEXT.reportHere or Fake.TEXT.report,
+		GameTooltip:AddLine(W.Tr(Fake.TEXT.why), P.text[1], P.text[2], P.text[3], true)
+		GameTooltip:AddLine(W.Tr((whispers and owner == whispers.talk) and Fake.TEXT.reportHere or Fake.TEXT.report),
 			P.text[1], P.text[2], P.text[3], true)
 		GameTooltip:Show()
 		Fake.owner = owner

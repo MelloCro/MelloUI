@@ -711,7 +711,8 @@ MarkClick = function(self, button)
 			MelloUI:PlayUISound("page")
 			local done, total = DungeonProgress(data.dungeonID)
 			local icon = MelloUI.Widgets.IconMarkup(data.raid and "pin_raid" or "pin_dungeon", 18) .. " "
-			local text = string.format("%s%s: %d quests listed, %d done", icon, data.name, total or 0, done or 0)
+			local text = MelloUI.Widgets.Tr("%s%s: %d quests listed, %d done"):format(icon, data.name,
+				total or 0, done or 0)
 			-- MelloUI's one on-screen notice (Core/Notice.lua), Route on or off
 			MelloUI:Announce(text, "silent")
 		end

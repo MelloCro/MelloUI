@@ -550,7 +550,7 @@ local function Tip(self)
 		local g = rawget(_G, "GREEN_FONT_COLOR")
 		local gr, gg, gb = g and g.r or 0, g and g.g or 1, g and g.b or 0
 		GameTooltip:AddLine(Tr(selling and "Left-click: sell it" or "Left-click: throw it away"), gr, gg, gb)
-		GameTooltip:AddLine("Right-click: always keep " .. NameOf(c), gr, gg, gb)
+		GameTooltip:AddLine(Tr("Right-click: always keep %s"):format(NameOf(c)), gr, gg, gb)
 	end
 	if credit then
 		GameTooltip:AddLine(Credit(credit.itemID), tr, tg, tb)

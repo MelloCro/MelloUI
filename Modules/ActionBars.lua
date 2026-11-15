@@ -1098,7 +1098,7 @@ do
 		end
 		if preset then
 			if say then
-				MelloUI:Announce(TEXT.preset:format(name), "info")
+			MelloUI:Announce(MelloUI.Widgets.Tr(TEXT.preset):format(name), "info")
 			end
 			return
 		end
