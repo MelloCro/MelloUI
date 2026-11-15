@@ -81,6 +81,7 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		showDistance = true,
 		showXP = true,   -- (2.1.39: the user asked for it)
 		turnInLine = true,
+		guideNext = 0,   -- (Guide: Next Steps: off, as before)
 		progressMotion = true,
 	},
 	options = {
@@ -123,6 +124,10 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		  desc = "The XP each quest gives at your level, beside its name (the game's own figure; none at the top level)." },
 		{ type = "toggle", key = "turnInLine", name = "Turn-in Line",
 		  desc = "A finished quest says who takes it and where." },
+		-- (a player's wish: with RestedXP's own window veiled only the current step showed)
+		{ type = "slider", key = "guideNext", name = "Guide: Next Steps", min = 0, max = 5, step = 1,
+		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Off" or tostring(v) end,
+		  desc = "How many of a leveling guide's next steps show under its current one, dimmed (RestedXP Guides). Off: only the current step." },
 		{ type = "button", name = "Reset Position", text = "Reset",
 		  hint = "back under the minimap (or on the game's tracker's place)",
 		  desc = "Puts the tracker back in its starting place.",
@@ -3938,6 +3943,20 @@ local function FillGuideBlock(block, data, width)
 			b:ClearAllPoints()
 			b:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X + COLUMNS.bullet, -top - 1)
 			b:Show()
+		end
+	end
+	-- (Guide: Next Steps) the guide's next steps under the current one, dimmed, each led by its number; no box: they
+	-- are not the step yet
+	local want = math.floor(tonumber(M.db and M.db.guideNext) or 0)
+	for s, step in ipairs(want > 0 and data.upcoming or {}) do
+		if s > want then
+			break
+		end
+		y = y + (s == 1 and TITLE_GAP or 0)
+		for j, text in ipairs(step.lines or {}) do
+			n = n + 1
+			local shown = j == 1 and (tostring(step.n) .. "  " .. text) or text
+			y = PutLine(block, n, shown, y, width, false, 0.55, 0.55, 0.55, true)
 		end
 	end
 	HideBoxes(block, boxes + 1)

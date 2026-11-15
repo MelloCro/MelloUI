@@ -1343,6 +1343,7 @@ function L.Define(R, Link)
 	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.showDistance")
 	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.showXP")   -- (2.1.39: the user)
 	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.turnInLine")
+	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.guideNext")
 	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.scrollStep")
 	R("QuestTracker", "Objective Tracker", "Look", "UIModifications.TrackerPanel", { name = "Painted Skin", when = GAME_TRACKER })
 

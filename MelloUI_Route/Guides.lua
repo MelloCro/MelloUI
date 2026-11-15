@@ -41,6 +41,8 @@ local M = MelloUI:GetModule("Route")
 -- a step whose map takes no pin is laid on a map above it); active: the reader followed
 local Guide = { readers = {} }
 M.Guide = Guide
+-- (a reader's steps.upcoming: its next steps for the Quest Tracker's Guide: Next Steps, which shows up to this many)
+Guide.NEXT_MAX = 5
 
 local SKIP = "Skip this step"   -- (a guide that skips whole steps: the box under its lines)
 
@@ -557,6 +559,9 @@ function Guide.Publish()
 	for _, line in ipairs(steps and steps.lines or {}) do
 		parts[#parts + 1] = tostring(line.text) .. (line.done and "+" or "-") .. (line.box and "b" or "")
 	end
+	for _, s in ipairs(steps and steps.upcoming or {}) do
+		parts[#parts + 1] = "#" .. tostring(s.n) .. ":" .. table.concat(s.lines, "|")
+	end
 	local sig = steps and table.concat(parts, "\n") or ""
 	if sig == Guide.sig then
 		return
@@ -576,7 +581,7 @@ function Guide.Publish()
 		end
 	end
 	MelloUI:Fire("guide", { section = reader.section or reader.name, lines = steps.lines, Repin = Guide.Repin,
-		Unpin = Guide.Unpin, title = Guide.title, cog = steps.cog })
+		Unpin = Guide.Unpin, title = Guide.title, cog = steps.cog, upcoming = steps.upcoming })
 end
 
 -- the followed guide's items for its step on the bus's "guideitem" (the user, 2026-10-18: "when you need to use an
@@ -768,9 +773,60 @@ do
 		return zone, x / 100, y / 100
 	end
 
+	-- an element's text as RestedXP shows it (ReplaceNpcIds: an NPC's id as its name)
+	local function Shown(R, text)
+		if type(R.ReplaceNpcIds) == "function" then
+			local ok, s = pcall(R.ReplaceNpcIds, text)
+			return ok and type(s) == "string" and s or text
+		end
+		return text
+	end
+
+	-- the guide's next steps after its active ones, as its own window lists them (the Quest Tracker's Guide: Next
+	-- Steps; a player's wish: with RestedXP's window veiled only the current step showed): at most Guide.NEXT_MAX,
+	-- each { n = its number, lines = its elements' texts }; a step the player skipped or that is done passed by, and
+	-- no more than NEXT_LOOK steps looked at. nil: none
+	local NEXT_LOOK = 40
+	function rxp.Upcoming(R, guide, active, cdata)
+		local all = type(guide) == "table" and type(guide.steps) == "table" and guide.steps
+		if not all then
+			return nil
+		end
+		local last = 0
+		for _, step in ipairs(active) do
+			local i = type(step) == "table" and tonumber(step.index)
+			if i and i > last then
+				last = i
+			end
+		end
+		if last == 0 then
+			last = type(cdata) == "table" and tonumber(cdata.currentStep) or 0
+		end
+		local skip = type(cdata) == "table" and type(cdata.stepSkip) == "table" and cdata.stepSkip or {}
+		local list = {}
+		for i = last + 1, last + NEXT_LOOK do
+			local step = all[i]
+			if step == nil or #list >= Guide.NEXT_MAX then
+				break
+			end
+			if type(step) == "table" and not skip[i] and not step.completed then
+				local lines = {}
+				for _, el in ipairs(type(step.elements) == "table" and step.elements or {}) do
+					if Usable(el) then
+						lines[#lines + 1] = Shown(R, el.text)
+					end
+				end
+				if #lines > 0 then
+					list[#list + 1] = { n = tonumber(step.index) or i, lines = lines }
+				end
+			end
+		end
+		return #list > 0 and list or nil
+	end
+
 	-- its active steps: a line per element, its text as RestedXP shows it (ReplaceNpcIds), done when completed or
 	-- skipped, a box unless text-only or optional; ticking one runs RestedXP's own checkbox
-	-- (ActiveStepElementPostClick, the guide's skip)
+	-- (ActiveStepElementPostClick, the guide's skip); its next steps after them (rxp.Upcoming)
 	function rxp.Steps()
 		local R, rframe = rawget(_G, "RXP"), rawget(_G, "RXPFrame")
 		local steps = type(R) == "table" and type(rframe) == "table" and rawget(rframe, "activeSteps")
@@ -781,11 +837,7 @@ do
 		for _, step in ipairs(steps) do
 			for _, el in ipairs(type(step) == "table" and type(step.elements) == "table" and step.elements or {}) do
 				if Usable(el) then
-					local text = el.text
-					if type(R.ReplaceNpcIds) == "function" then
-						local ok, s = pcall(R.ReplaceNpcIds, text)
-						text = ok and type(s) == "string" and s or text
-					end
+					local text = Shown(R, el.text)
 					local line = { text = text, done = (el.completed or el.skip) and true or false,
 						box = not (el.textOnly or el.optional) }
 					line.Toggle = function(skip)
@@ -812,7 +864,7 @@ do
 		local menu = type(rframe.DropDownMenu) == "function" and rframe.DropDownMenu
 		local settings = type(open) == "function" and function() open() end or nil
 		return { title = (type(name) == "string" and name or "RestedXP") .. (n and (" - step " .. n) or ""),
-			lines = lines,
+			lines = lines, upcoming = rxp.Upcoming(R, guide, steps, cdata),
 			cog = { Left = menu and function() menu() end or settings, Right = settings, tip = "RestedXP Guides",
 				hint = "Click: its menu (guides, settings)  -  Right-click: its settings" } }
 	end

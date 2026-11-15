@@ -1345,6 +1345,8 @@ Lang:Add("deDE", {
 	["The XP each quest gives at your level, beside its name (the game's own figure; none at the top level)."] = "Die EP, die jede Quest auf deiner Stufe gibt, neben ihrem Namen (der Wert des Spiels; auf der Höchststufe keiner).", -- draft
 	["Turn-in Line"] = "Abgabezeile", -- draft
 	["A finished quest says who takes it and where."] = "Eine fertige Quest sagt, wer sie annimmt und wo.", -- draft
+	["Guide: Next Steps"] = "Guide: Nächste Schritte", -- draft
+	["How many of a leveling guide's next steps show under its current one, dimmed (RestedXP Guides). Off: only the current step."] = "Wie viele der nächsten Schritte eines Leveling-Guides unter dem aktuellen erscheinen, gedimmt (RestedXP Guides). Aus: nur der aktuelle Schritt.", -- draft
 	["Reset Position"] = "Position zurücksetzen", -- draft
 	["Puts the tracker back in its starting place."] = "Setzt die Verfolgung an ihren Startplatz zurück.", -- draft
 	["back under the minimap (or on the game's tracker's place)"] = "zurück unter die Minikarte (oder an den Platz der Verfolgung des Spiels)", -- draft
