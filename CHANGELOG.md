@@ -2,6 +2,8 @@
 
 ## 2.1.53
 
+- Widgets: up to four loot rolls show at once, each its own row with its own ring and Need, Greed and Pass. Rolling on one takes only its row away; a fifth waits, counted on the last row.
+- Widgets: hovering a loot roll now lists who has rolled on it so far, under the item's tooltip: each player in their class colour with Need, Greed or Pass, and who is still deciding.
 - Party and raid frames: the indicators a frame starts with no longer lie on its name, its health text or its raid mark. On raid frames your heals over time stand bottom right above the bars, shields on the right edge, other players' defensives beside the raid mark and the boss debuff on the left edge. On party frames with portraits they stand in two short rows beside the frame, past the Damage Meter's values where those show. Indicators you placed yourself stay where you put them.
 - Party and raid frames: a new indicator's time left and stack count no longer lie on each other. Both are smaller, and the count hangs on the icon's corner. Indicators you already have keep their own sizes.
 

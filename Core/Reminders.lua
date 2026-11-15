@@ -2128,6 +2128,7 @@ end
 -- checked on its events (in combat too) and at the login moment, on the
 -- next frame; it shows while check() says so and no Not now holds.
 --   Rem:Tray(key[, open])   its tray opened, closed (false) or toggled
+--   Rem:Retip(key)          (2.1.53) its tooltip drawn again while it shows
 -- The column: one holder on MelloUI's one mover (key "widgets", "Widgets":
 -- its plate even while no row shows; the wheel sizes it; locked while the
 -- Reminders setting widgetLock is on, Voice Over's Lock button), growing up
@@ -4756,6 +4757,20 @@ local function Column()
 				SetTray(row, open)
 				return
 			end
+		end
+	end
+
+	-- (2.1.53) a row's tooltip drawn again while the pointer is on it (a loot roll's list of who rolled, as the rolls
+	-- come in); nothing when its tooltip is not showing
+	function Rem:Retip(key)
+		local row = CS.hovered
+		if not (col and key and row and row.key == key) then
+			return
+		end
+		if GameTooltip:IsOwned(row) then
+			RowTip(row, row)
+		elseif GameTooltip:IsOwned(row.face) then
+			RowTip(row.face, row)
 		end
 	end
 
