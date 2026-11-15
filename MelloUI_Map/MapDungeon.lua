@@ -690,6 +690,7 @@ function Dungeon.Show(mapID)
 		S.world, S.worldPins = win.canvas, win.pins
 	end
 	local c = Make(mapID)
+	c.startView = Whole   -- (2.1.54: its first size may come after this show: the map's Refit lays its whole wing)
 	S.shown, S.pins = mapID, c.pins
 	win.canvas, win.pins = c, c.pins
 	S.world.frame:Hide()

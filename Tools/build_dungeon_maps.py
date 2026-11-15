@@ -106,11 +106,37 @@ DRAWN_FIT = 0.8              # this share of a dungeon's placed bosses on its dr
 DRAWN_TYPES = ("4", "6")     # UiMap types drawn for an instance: a dungeon's floor, an orphan (Zul'Farrak's one sheet)
 SHEETS_DIR = os.path.join(paths.WORKSPACE, "ArtSources", "SantiagoMaps")
 SHEETS = {   # map -> its sheets: (file, wing name -- None: the dungeon's --, the wings of our plan it stands for)
-    2959: [("dalaran.webp", "City of Dalaran", [1]), ("dalaran_sewers.webp", "Dalaran Sewers", [2])],
-    2998: [("excavation_site_wetlands_v2.webp", None, [1])],
-    2999: [("ruins_of_lordaeron.webp", None, [1])],
-    3065: [("hall_of_thanes.webp", None, [1, 2])],
+    # (2.1.54; the user, 2026-11-15: "Santiago Reyes has updated some of the Missing DUngeon Maps on his page", then
+    # "Yes, all of them") his sheets from his own site, sreyesmaps.com, at 3000 x 2000 (the ArtStation copies of
+    # 2026-11-03 were 1276 x 953), each in its current version: City of Dalaran and its sewers "Version Actual (11/26)",
+    # Excavation Site "Version 2.0 (Octubre 2026)"; the downloads (older versions too) in SantiagoMaps/site_2026-11-15
+    2959: [("dalaran_2611.jpg", "City of Dalaran", [1]), ("dalaran_sewers_2611.jpg", "Dalaran Sewers", [2])],
+    2998: [("excavation_site_wetlands_v2_3000.jpg", None, [1])],
+    2999: [("ruins_of_lordaeron_3000.jpg", None, [1])],
+    3065: [("hall_of_thanes_3000.jpg", None, [1, 2])],
+    # (2.1.54) Forever's five newer dungeons: newer than this tool's build (no WDT, no rooms of ours), so a plan of his
+    # sheets alone (sheet_only), the area names each stands for given by name (the client's AreaTable of the
+    # instance map, build 70938: the wing you are in by GetMinimapZoneText); his own part names where the client has
+    # none (Blackmaw Hold's four depths, Alcaz Prison's two units: the first opens)
+    2970: [("drowned_city_2611.jpg", None, ["Sunken Hollow", "Flooded Shrine", "Deep Archives", "Altar of the Serpent",
+                                           "Eternal Amphitheater", "Abyssal Dais", "The Unsinkable"]),
+           ("drowned_city_atalbyzal.jpg", "Atal'Byzal", ["Ataal'Byzal"])],
+    2974: [("blackmaw_grove.jpg", "Blackmaw Grove", ["Blackmaw Grove", "Blackmaw Stillwater", "Bonesnout's Thicket",
+                                                     "Defiled Peak"]),
+           ("blackmaw_festering_grotto.jpg", "Festering Grotto", ["Festering Grotto"]),
+           ("blackmaw_depths_fallen_grove.jpg", "Depths of the Fallen Grove", []),
+           ("blackmaw_depths_elders.jpg", "Depths of the Elders", []),
+           ("blackmaw_depths_burrow.jpg", "Depths of the Burrow", []),
+           ("blackmaw_depths_forbidden_magic.jpg", "Depths of Forbidden Magic", [])],
+    2994: [("alcaz_prison_main_unit.jpg", "Main Unit", []),
+           ("alcaz_prison_maximum_security_2611.jpg", "Maximum Security Unit", [])],
+    3001: [("shapers_terrace_2611.jpg", None, ["Shaper's Plateau", "Pillar of Assimilation", "The Verdant Plains",
+                                              "Lost Tar Pits", "Ruby Spring", "Walk of Communion",
+                                              "The Highlands Causeway", "Watcher's Overlook", "Botanical Grounds"]),
+           ("shapers_terrace_prismatic_talus.jpg", "Prismatic Talus", ["Crystalline Highlands"])],
+    3039: [("kroldok_stronghold.jpg", None, [])],
 }
+SHEET_FMT = "dxt1"   # (2.1.54: a sheet is opaque but for its tiles' padding: 1-bit alpha, half the bytes of DXT5)
 SHEET_CREDIT = "Santiago Reyes"
 SHEET_TILE = 512
 SHEET_PX = 2.0               # a sheet's px a yard in its plan (the floor pictures' own density)
@@ -471,9 +497,9 @@ def grow(img, px, blur):
     return np.asarray(m).astype(np.float32) / 255
 
 
-def write_art(name, rgba):
+def write_art(name, rgba, fmt="dxt5"):
     os.makedirs(ART, exist_ok=True)
-    data = blp_dxt.encode_blp(np.ascontiguousarray(rgba), "dxt5", mips=True)
+    data = blp_dxt.encode_blp(np.ascontiguousarray(rgba), fmt, mips=True)
     with open(os.path.join(ART, name + ".blp"), "wb") as f:
         f.write(data)
 
@@ -676,10 +702,12 @@ def sheet_plan(mapID, name, sheets, areas):
         for r in range(rows_):
             for c in range(cols):
                 n = "%d_%ds%d_%d" % (mapID, w, c, r)
-                write_art(n, arr[r * SHEET_TILE:(r + 1) * SHEET_TILE, c * SHEET_TILE:(c + 1) * SHEET_TILE])
+                write_art(n, arr[r * SHEET_TILE:(r + 1) * SHEET_TILE, c * SHEET_TILE:(c + 1) * SHEET_TILE], SHEET_FMT)
                 files.append(n)
         rect = [0, 0, round(lw / SHEET_PX, 2), round(lh / SHEET_PX, 2)]
-        mine = sorted({a for i in of if i - 1 < len(areas) for a in areas[i - 1]})
+        # (the wings of our plan it stands for, by number; 2.1.54: a sheet-only plan's area names, given)
+        mine = sorted({a for i in of if not isinstance(i, str) and i - 1 < len(areas) for a in areas[i - 1]}
+                      | {i for i in of if isinstance(i, str)})
         wings.append(dict(name=title or name, box=list(rect), areas=mine, rooms=[], edge=[], cove=[], drawn=files,
                           rect=rect, art=[lw, lh, SHEET_TILE, SHEET_TILE]))
     cw, ch = max(w["rect"][2] for w in wings), max(w["rect"][3] for w in wings)
@@ -1343,19 +1371,27 @@ def main(argv):
     wdts = {int(r["ID"]): int(r["WdtFileDataID"] or 0) for r in rows("Map")}
     doors = door_keys()
     every = instances()
-    todo = [i for i in every if i[0] in doors and (not want or i[1] in want)]
+    # (2.1.54) an artist's dungeon gets its plan with no door on the world map too: it opens inside the dungeon and
+    # from Dungeon Info (Alcaz Prison's and Blackmaw Hold's doors are in no data yet)
+    todo = [i for i in every if (i[0] in doors or i[1] in SHEETS) and (not want or i[1] in want)]
     log("%d instances" % len(todo))
     spawns = boss_spawns({i[1] for i in todo}) if todo else {}
     DRAWN.update(drawn_floors() if todo else {})
     ways = teleports({i[1] for i in todo}) if todo else {}
     lines = read_existing()
     for key, mapID, name, bosses in every:
-        if key not in doors and (mapID in lines or any(n.startswith("%d_" % mapID) for n in art_names())):
+        if key not in doors and mapID not in SHEETS and (mapID in lines
+                                                         or any(n.startswith("%d_" % mapID) for n in art_names())):
             log("%s (map %d): no door on the world map: no plan" % (name, mapID))
             drop(mapID, lines)
     for key, mapID, name, bosses in todo:
         drop(mapID, lines)   # (a map's old art goes first: its tiles may be fewer now)
         if not wdts.get(mapID):
+            if SHEETS.get(mapID):
+                # (2.1.54) newer than this tool's build: his sheets alone, their area names given (sheet_plan)
+                log("%s (map %d): newer than this build, a plan of its sheets alone" % (name, mapID))
+                lines[mapID] = entry(sheet_plan(mapID, name, SHEETS[mapID], []))
+                continue
             log("%s (map %d): no WDT in the client" % (name, mapID))
             continue
         d = build_map(key, mapID, name, bosses, spawns.get(mapID, {}), wdts[mapID], ways.get(mapID, []))

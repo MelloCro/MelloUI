@@ -77,8 +77,24 @@ def log(msg):
     print(msg, file=sys.stderr)
 
 
+# (2.1.54; the user, 2026-11-15: "Make sure when creating the maps for missing dungeons, to enable the feature when
+# clicking on the dungeon entrance on the map, that it opens the dungeon map and dungeon info accordingly") the newest
+# Forever client's tables where they are fetched (wago.tools/db2/<table>/csv?build=<build>, into WoWExport/forever_<build>
+# /db2): Forever's new instances (The Drowned City, Blackmaw Hold, Alcaz Prison, The Shaper's Terrace, Krol'dok
+# Stronghold) and their bosses are only there; any other table from the older export
+def newest_forever_db2():
+    root = os.path.dirname(DB2)
+    found = sorted((int(m.group(1)), os.path.join(root, d, "db2")) for d in os.listdir(root)
+                   for m in [re.match(r"forever_(\d+)$", d)] if m and os.path.isdir(os.path.join(root, d, "db2")))
+    return [p for _, p in reversed(found)]
+
+
+NEWER = newest_forever_db2()
+
+
 def read_csv(name):
-    with open(os.path.join(DB2, name), encoding="utf-8") as fh:
+    path = next((os.path.join(d, name) for d in NEWER if os.path.exists(os.path.join(d, name))), os.path.join(DB2, name))
+    with open(path, encoding="utf-8") as fh:
         return list(csv.DictReader(fh))
 
 
@@ -109,7 +125,25 @@ def quest_data():
     dungeons = {int(k): v for k, v in re.findall(r'\[(\d+)\] = "((?:[^"\\]|\\.)*)"', block("dungeons"))}
     raids = {int(k) for k in re.findall(r"\[(\d+)\] = true", block("raids"))}
     levels = {int(k): (int(a), int(b)) for k, a, b in re.findall(r"\[(\d+)\] = \{ (\d+), (\d+) \}", block("dungeonLevel"))}
+    # (2.1.54) Forever's dungeons the quest data (no longer built since MelloUI's quests became Questie's) lacks, by
+    # their client area (AreaTable: the instance map's own top area), with Blizzard's level ranges
+    for key, (name, lo, hi) in FOREVER_DUNGEONS.items():
+        dungeons.setdefault(key, name)
+        if not levels.get(key, (0, 0))[0]:
+            levels[key] = (lo, hi)
     return dungeons, raids, levels
+
+
+# (2.1.54) key (the instance map's top area in the client's AreaTable) -> name, levels (Blizzard's ranges, as
+# foreverchanges.pro quotes its forum post and BlizzCon recap; the client's ContentTuning rows for them are not in
+# its table yet)
+FOREVER_DUNGEONS = {
+    16550: ("The Drowned City", 35, 40),         # map 2970
+    16842: ("Krol'dok Stronghold", 40, 45),      # map 3039
+    16620: ("Alcaz Prison", 48, 53),             # map 2994
+    16554: ("Blackmaw Hold", 55, 60),            # map 2974
+    16667: ("The Shaper's Terrace", 58, 60),     # map 3001
+}
 
 
 def door_keys():

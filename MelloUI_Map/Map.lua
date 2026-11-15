@@ -183,6 +183,12 @@ end
 -- floor) its nearest parent it has; else the view kept, else the world. Every open then centres on the player at the
 -- zoom it has (Refit)
 local function StartView(c)
+	-- (2.1.54; the test VM, Santiago Reyes' new sheets: a plan's first open showed a corner of its sheet, deep in) a
+	-- dungeon's plan (MapDungeon's canvas) sized only after its show: its own whole wing, never the world's saved
+	-- view laid on it (a plan has none of the world's zones, so it fell through to M.db.view, your last zoom)
+	if type(c.startView) == "function" then
+		return c.startView(c)
+	end
 	local ok, id = pcall(C_Map.GetBestMapForUnit, "player")
 	id = ok and Finite(id) or nil
 	for _ = 1, 4 do

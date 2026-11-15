@@ -177,6 +177,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.54", lines = {
+		"Dungeon maps: Santiago Reyes' maps of The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and The Shaper's Terrace, and his newest, sharper ones of the other four.",
+		"Dungeon Info: the five new dungeons have pages with their bosses. Clicking a dungeon's entrance on the map opens its page with its map, for these too.",
+	} },
 	{ version = "2.1.53", lines = {
 		"Map: with the addon HandyNotes: NPCs (Forever), the auction house, bank, trainers, mount sellers, inns and mailboxes show on the map and minimap in MelloUI's icons.",
 		"Map layers: a new HandyNotes group, a switch for each kind of place. Only your side's show; repair and vendors start off. Questie's inns and mailboxes are not shown a second time.",
@@ -229,18 +233,6 @@ local CHANGELOG = {
 		"Services: hunters get a Stable Master button that leads to the nearest stable master. With Round Icons off, the buttons now keep a small gap instead of touching.",
 		"Chat: a new Fake Link Warning catches links dressed up as something else, like a Community invite written as an item: grey words, a red FAKE LINK, and a click opens nothing.",
 		"Languages: more of the bag window, the profiles, Restock, Discard, Services and the copy window is translated (French so far), and switching language no longer doubles a page's heading.",
-	} },
-	{ version = "2.1.49", lines = {
-		"Gamepad: MelloUI works with a controller in the game's Gamepad mode: its windows, the configurator and their lists are walked with the D-pad, with the controller's buttons shown.",
-		"Gamepad: MelloUI's map opens on its quest list; the left stick moves the map's cursor without walking you, and the D-pad switches between the map and the quests.",
-		"Gamepad: the action bars show the game's controller bars in MelloUI's look; hold one trigger or both and that bar grows. Bind and Edit Action Bars work as in the game.",
-		"Gamepad: each part of the controller bars moves on its own in Edit Layout, and your Action Bars 1-4 are copied to the controller's bars once, into empty slots only.",
-		"Gamepad: in MelloUI's bag window A picks up, X uses or sells and Y opens More: Bind to Action Bar, Split Stack, Destroy Item and Feed to Pet.",
-		"Gamepad: the controller's Game Menu opens MelloUI with Triangle.",
-		"Bags: the Bags by Kind switch is now called MelloUI Bag Window, which is what it turns on and off.",
-		"Bags: with Baganator, Bagnon, ArkInventory or BetterBags installed, MelloUI's bag window steps aside, so B opens one bag window. The Addons page lists them, each with its switch.",
-		"Chat: the whisper window now keeps your Battle.net friends' conversations over a logout too, and answering still reaches them after you log in again.",
-		"Minimap: quest objectives look the same as on MelloUI's map, with the glowing quest areas, the same icons and a dot for each spot, and they show right after you log in.",
 	} },
 }
 local LINKS = {

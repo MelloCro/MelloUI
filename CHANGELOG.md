@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.54
+
+- Dungeon maps: Santiago Reyes' maps of The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and The Shaper's Terrace, a map for each part of a dungeon (Blackmaw Hold has six). City of Dalaran, Ruins of Lordaeron, The Hall of Thanes and Excavation Site: Wetlands show his newest versions, all of them sharper than before.
+- Dungeon Info: The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and The Shaper's Terrace have pages of their own, with their bosses and level ranges. No drops are known for them yet.
+- Map: clicking a dungeon's entrance opens its page in Dungeon Info with its map, for the new dungeons too. An entrance you found by walking in now shows on MelloUI's map as well.
+
 ## 2.1.53
 
 - Offhand: Quest Moments now play in the middle of your main game screen. With Offhand's two screens they played in the gap between the screens.

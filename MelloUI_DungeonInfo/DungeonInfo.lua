@@ -188,6 +188,28 @@ function J.Find(text)
 	return nil
 end
 
+-- (2.1.54; the user, 2026-11-15: "clicking on the dungeon entrance on the map, that it opens the dungeon map and
+-- dungeon info accordingly") the instance of exactly this name ("The" ignored on either side), for a door whose data
+-- has no key (one learned by walking in, the client's own, a Forever door the quest data named before the instance
+-- was known); never a part of a name (J.Find's "Blackrock" would take a door to the wrong place)
+local function NameKey(name)
+	return name:lower():gsub("^the ", "")
+end
+
+function J.Named(name)
+	Build()
+	if type(name) ~= "string" or name == "" then
+		return nil
+	end
+	local want = NameKey(name)
+	for _, inst in ipairs(S.list) do
+		if NameKey(inst.name) == want then
+			return inst
+		end
+	end
+	return nil
+end
+
 --------------------------------------------------------------------------------
 -- Your list of items (per character) and the drops learned (for the account)
 --------------------------------------------------------------------------------

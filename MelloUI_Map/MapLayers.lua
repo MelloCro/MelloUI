@@ -588,10 +588,17 @@ end
 local function DungeonInfoOf(pin)
 	local J = rawget(MelloUI, "DungeonInfo")
 	local d = pin.data
-	if not (type(J) == "table" and J.Get and J.M and J.M.isEnabled and type(d) == "table" and d.dungeonID) then
+	if not (type(J) == "table" and J.Get and J.M and J.M.isEnabled and type(d) == "table") then
 		return nil
 	end
-	return J, J.Get(d.dungeonID)
+	-- (2.1.54; the user: "clicking on the dungeon entrance on the map, that it opens the dungeon map and dungeon info
+	-- accordingly") a door with no key of its own -- the client's, one learned by walking in, a Forever door named in
+	-- the data before its instance was known (The Drowned City, The Shaper's Terrace) -- by its exact name
+	local inst = d.dungeonID and d.dungeonID ~= 0 and J.Get(d.dungeonID) or nil
+	if not inst and J.Named and d.name then
+		inst = J.Named(d.name)
+	end
+	return J, inst
 end
 
 -- the door's click line: its floor plan with the page when the map has one (2.1.0), the page alone else
@@ -717,6 +724,20 @@ local function Entrances()
 					pin.data = { name = name, kind = kind, levels = lv and (lv[1] or 0) > 0 and lv or nil, dungeonID = id,
 						source = "data" }
 				end
+			end
+		end
+	end
+	-- (2.1.54) the doors learned by walking in (the Quest List's, as the game's map shows them: Forever's newer
+	-- dungeons, Alcaz Prison's and Blackmaw Hold's doors in no data yet); a click opens its page by its name
+	local QL = rawget(MelloUI, "QuestList")
+	local learned = type(QL) == "table" and type(QL.LearnedStore) == "function" and QL.LearnedStore("entrances") or nil
+	for name, l in pairs(type(learned) == "table" and learned or EMPTY) do
+		if type(name) == "string" and not seen[name] and type(l) == "table" and l.mapID and l.x and l.y then
+			seen[name] = true
+			local kind = l.raid == true and 2 or 1
+			local pin = pins:SetAt("entrances", name, l.mapID, l.x, l.y, EntranceSpec(kind))
+			if pin then
+				pin.data = { name = name, kind = kind, source = "learned" }
 			end
 		end
 	end
