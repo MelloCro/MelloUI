@@ -1199,6 +1199,8 @@ Lang:Add("frFR", {
 	["The size of your swing timer's weapon badge on your target's nameplate, or over the Personal Display."] = "La taille de l'insigne d'arme de votre minuteur de frappe sur la barre d'info de votre cible ou au-dessus de l'affichage personnel.",
 	-- PlateImpact
 	["Impact Effects"] = "Effets d'impact",
+	["Impact Effects: target an enemy whose nameplate shows, then press Play."] = "Effets d’impact : ciblez un ennemi dont la barre d’info est visible, puis cliquez sur Jouer.",
+	["Impact Effects: target something first; it plays on your target frame's health bar."] = "Effets d’impact : sélectionnez d’abord une cible ; l’effet s’affichera sur la barre de vie de son cadre.",
 	["Your target's nameplate reacts to the fight: hits flash, crits glow, interrupted casts shatter."] = "La barre d'info de votre cible réagit au combat : les coups clignotent, les critiques brillent et les incantations interrompues volent en éclats.",
 	["Every hit lands on the plate, not only in a number."] = "Chaque coup frappe la barre, pas seulement un chiffre.",
 	["Hit Flash"] = "Flash de coup",
