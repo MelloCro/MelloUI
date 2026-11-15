@@ -51,6 +51,16 @@ Your other addons do the work, MelloUI gives them its look and ties them into it
 *   **Minimap** with a Services row (the nearest repair, inn, flight master and more) and one tidy group for other addons' buttons.
 *   **Damage meter:** a race bar in fights, numbers on your frames and a fight history.
 
+_Healer animations: a heal gathers on your cast bar and flies to the frame it heals, and a group heal fans out to everyone it reaches._
+
+![A heal flies from the cast bar to a party frame](https://media.forgecdn.net/attachments/2214/473/16-healer-heal-flies-gif.gif)
+
+![A group heal fans out to the whole party](https://media.forgecdn.net/attachments/2214/476/18-healer-group-heal-gif.gif)
+
+_The Level Up Card:_
+
+![The Level Up Card stamps your new level](https://media.forgecdn.net/attachments/2214/488/23-level-up-card-gif.gif)
+
 ## Chat
 
 *   A cleaner chat with channel tabs, chat buttons and a whisper window.
@@ -64,6 +74,10 @@ Your other addons do the work, MelloUI gives them its look and ties them into it
 *   **Quest Tracker** and a **Quest List** of every quest near you (the Quest List needs Questie).
 *   **Dungeon Info:** every dungeon's bosses, loot and drop rates, with maps of Forever's own dungeons. Click a dungeon's entrance on the map to open its page.
 *   **Guide addons:** RestedXP, Zygor, Follow The Arrow, APR and TomTom steps show on the map, the marker and the tracker, with one arrow at a time.
+
+_Quest Moments:_
+
+![Quest Moments fly to your quest in the tracker](https://media.forgecdn.net/attachments/2214/487/24-quest-moments-gif.gif)
 
 ## Quality of life
 
