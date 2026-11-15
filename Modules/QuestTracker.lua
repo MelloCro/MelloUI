@@ -3545,7 +3545,7 @@ local function FillBlock(block, questID, width, followedID)
 		local text = Near.TurnInLine(questID)
 		if not text then
 			text = logIndex and GetQuestLogCompletionText and GetQuestLogCompletionText(logIndex)
-			text = Plain(text) or "Ready for turn-in"
+			text = MelloUI.Lang.T(Plain(text) or "Ready for turn-in")
 		end
 		local fs
 		y, fs = PutLine(block, n, text, y, textWidth, false, 0.95, 0.95, 0.95)
