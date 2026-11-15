@@ -6242,6 +6242,7 @@ end
 -- written next carries it (Core/EditModeLayout.lua's EditModeForProfile): its kind and name, and its share string when
 -- the game gives it. (2.1.47) Unreadable: none recorded -- never an older one kept (a stale "Modern" was put back over
 -- the player's own layout). And putting a profile's back (EditModeToProfile): a load, a new character's first login
+local EM_REV = 2   -- (the record's revision, UI Modifications' emRev: 2 = read by 2.1.54's reader)
 function MelloUI:RecordEditMode()
 	if not self.EditModeForProfile then
 		return
@@ -6250,21 +6251,107 @@ function MelloUI:RecordEditMode()
 	if type(um) ~= "table" then
 		return
 	end
+	-- (2.1.54) the settings' layout still owed to this character (a new character's login, a profile loaded in a
+	-- fight: ApplyProfileEditMode): the layout in use is not yet the profile's, so what the settings name stays --
+	-- a logout before it was in place would else write the game's preset over it
+	local key = self.CharacterKey and self.CharacterKey()
+	if key and um["emDue_" .. key] then
+		return
+	end
 	local ok, kind, name, text = pcall(self.EditModeForProfile, self)
 	if ok and type(kind) == "string" and type(name) == "string" then
 		um.emKind, um.emName, um.emText = kind, name, text
+		um.emRev = EM_REV
+		-- (2.1.54) an account layout is every character's: who was on it last, and how it read then (a character
+		-- that finds it changed by another gets its own, ProfileEditModeAtLogin)
+		if kind == "account" and key and type(text) == "string" then
+			if type(self.db.emWriter) ~= "table" then
+				self.db.emWriter = {}
+			end
+			self.db.emWriter[name] = { char = key, text = text }
+		end
 	else
-		um.emKind, um.emName, um.emText = nil, nil, nil
+		um.emKind, um.emName, um.emText, um.emRev = nil, nil, nil, nil
 	end
 end
 
-function MelloUI:ApplyProfileEditMode()
+-- (2.1.54) whether the settings' layout record can be put on: a record naming a PRESET made before 2.1.54 is what
+-- every logout wrote then, whatever layout was in use (the game answers its first preset while a session ends:
+-- Core/EditModeLayout.lua) -- put on, it would throw the player's layout back to the preset. One with a share
+-- string was read in a running session (a save by the player): right then as now.
+function MelloUI:ProfileEditModeTrusted(um)
+	um = um or self:GetModuleDB("UIModifications")
+	if type(um) ~= "table" or type(um.emKind) ~= "string" then
+		return false
+	end
+	return um.emKind ~= "preset" or um.emRev == EM_REV
+end
+
+-- (2.1.54) The settings' Edit Mode layout on this character (Core/EditModeLayout.lua: by its content, into the
+-- character's own layout), asked until the active layout reads as it, never before the game's Edit Mode has the
+-- saved layouts. Owed over a logout (UI Modifications' emDue_<character>, a personal key: the sessions it was asked
+-- in): the next login asks again (`again`), EM_DUE_SESSIONS sessions at most -- a layout the game never takes (no
+-- room for one more, a string it cannot read) is given up, and the layout in use is the character's again.
+-- done(ok, how) once; how "reload": its content shows after a /reload
+local EM_DUE_SESSIONS = 3
+function MelloUI:ApplyProfileEditMode(done, again)
 	local um = self:GetModuleDB("UIModifications")
-	if self.EditModeToProfile and type(um) == "table" and type(um.emKind) == "string" then
-		local ok, err = pcall(self.EditModeToProfile, self, um.emKind, um.emName, um.emText)
-		if not ok then
-			geterrorhandler()(err)
+	local key = self.CharacterKey and self.CharacterKey()
+	local mark = key and ("emDue_" .. key)
+	if not (self.EditModeProfileSoon and type(um) == "table" and self:ProfileEditModeTrusted(um)) then
+		-- (none recorded, or a preset recorded by an older logout: the layout in use stays, nothing owed)
+		if mark and type(um) == "table" then
+			um[mark] = nil
 		end
+		if done then
+			done(false)
+		end
+		return
+	end
+	if mark then
+		um[mark] = (again and tonumber(um[mark]) or 0) + 1
+	end
+	local ok, err = pcall(self.EditModeProfileSoon, self, um.emKind, um.emName, um.emText, function(placed, how)
+		local now = self:GetModuleDB("UIModifications")
+		if mark and type(now) == "table" and (placed or (tonumber(now[mark]) or 0) >= EM_DUE_SESSIONS) then
+			now[mark] = nil
+		end
+		if done then
+			done(placed, how)
+		end
+	end)
+	if not ok then
+		geterrorhandler()(err)
+	end
+end
+
+-- (2.1.54) Once the login is over. A new character's copied profile, or a layout still owed from an earlier session:
+-- put on. A returning character is left alone (2.1.47), with one exception, measured in the real client: its
+-- profile's layout is an ACCOUNT layout -- every character's -- and another character was the last on it and left it
+-- reading otherwise than this character's profile recorded. That character changed it (an alt's save in Edit
+-- Layout): this one gets its own layout with what its profile holds, once -- from then on nobody else writes it.
+-- Never when the layout reads otherwise than the last character left it (this character's own change in a session
+-- that ended without a logout): nothing of the player's is put back over.
+function MelloUI:ProfileEditModeAtLogin()
+	local um = self:GetModuleDB("UIModifications")
+	local key = self.CharacterKey and self.CharacterKey()
+	if type(um) ~= "table" or not key or type(um.emKind) ~= "string" then
+		return
+	end
+	if self.newCharacterProfile or um["emDue_" .. key] then
+		self.newCharacterProfile = nil
+		self:ApplyProfileEditMode(nil, true)
+		return
+	end
+	local writer = type(self.db.emWriter) == "table" and self.db.emWriter[um.emName]
+	if um.emKind ~= "account" or type(um.emText) ~= "string" or type(writer) ~= "table" or writer.char == key
+		or not self.EditModeForProfile then
+		return
+	end
+	local ok, kind, name, text = pcall(self.EditModeForProfile, self)
+	if ok and kind == "account" and name == um.emName and type(text) == "string" and text ~= um.emText
+		and text == writer.text then
+		self:ApplyProfileEditMode()
 	end
 end
 
@@ -6569,7 +6656,7 @@ do
 		end
 		return (guid:gsub("[^%w]", ""))
 	end
-	MelloUI.CharacterKey = Key   -- (read only: the tests)
+	MelloUI.CharacterKey = Key   -- (read only: the profile's Edit Mode layout's bookkeeping above, the tests)
 
 	local function Owners(self)
 		if type(self.db.charProfiles) ~= "table" then
@@ -6759,6 +6846,11 @@ do
 			self:ApplySettingsText(text)
 			self.profileAppliedAtLogin = name
 			self.newCharacterProfile = true   -- (its Edit Mode layout put in once the login is over: the copy's)
+			-- (2.1.54: owed from here on, so a /reload in the login's first seconds does not record the game's preset)
+			local um = self:GetModuleDB("UIModifications")
+			if type(um) == "table" and self:ProfileEditModeTrusted(um) then
+				um["emDue_" .. key] = 0
+			end
 			return true
 		end
 		return false
@@ -6786,9 +6878,14 @@ function MelloUI:LoadProfile(name)
 	end
 	self.db.activeProfile = use
 	self:SetCharacterProfile(use)
-	-- (the game's frames where the profile's Edit Mode layout puts them)
+	-- (the game's frames where the profile's Edit Mode layout puts them; this character's own layout taking other
+	-- content while it is the active one is read by the game at the next reload: said)
 	if self.initialized then
-		self:ApplyProfileEditMode()
+		self:ApplyProfileEditMode(function(_, how)
+			if how == "reload" and self.AskReload then
+				self:AskReload("Profile loaded. Type /reload to lay the game's frames out as the profile has them.")
+			end
+		end)
 	end
 	return true   -- (the copy's name: MelloUI:CharacterProfile())
 end
@@ -6885,12 +6982,12 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 		-- then everything is moved and my edit mode profile is back to Modern(preset)") Edit Mode is never touched at a
 		-- returning character's login or /reload: the game keeps each character's own active layout already. Only a new
 		-- character's first login puts its copied profile's layout in (and a profile the player loads: LoadProfile)
+		-- (2.1.54: and a layout still owed, and a shared account layout another character changed --
+		-- ProfileEditModeAtLogin, once the login is over)
 		self:CharacterProfileAtLogin()
-		if self.newCharacterProfile then
-			self:AfterLogin(function()
-				self:ApplyProfileEditMode()
-			end)
-		end
+		self:AfterLogin(function()
+			self:ProfileEditModeAtLogin()
+		end)
 		-- the palette the settings name, before any module draws (only the
 		-- table: nothing is on the screen to repaint yet)
 		ApplyStoredPalette(self, false)
@@ -6919,7 +7016,9 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 		local began = debugprofilestop()
 		-- Whatever table we have been editing is the one that must be saved.
 		self:AdoptSavedVariables("PLAYER_LOGOUT")
-		-- (2.1.46) the session's changes into this character's profile (logout and /reload alike)
+		-- (2.1.46) the session's changes into this character's profile (logout and /reload alike; 2.1.54: the game
+		-- answers its first preset for the layout in use from here on -- sessionEnding, Core/EditModeLayout.lua)
+		self.sessionEnding = true
 		local okSave, err = pcall(self.SaveCharacterProfile, self, true)
 		if not okSave then
 			geterrorhandler()(err)

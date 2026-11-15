@@ -606,7 +606,9 @@ end
 if MelloUI.AddMoverSource then
 	MelloUI:AddMoverSource(function()
 		if MomentsOn() then
-			PlaceFrame()
+			-- (2.1.54, the real client: a profile loaded that holds no place for it left the plate where the last
+			-- profile had it) the plate where the moments play now: its saved place, else their own at 100 %
+			Middle()
 		end
 	end)
 end

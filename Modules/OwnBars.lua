@@ -2517,9 +2517,32 @@ function M:OnLoginFrame(db)
 	OB.Sync(true)
 end
 
+-- (2.1.54; the real client, 2026-11-15: a profile loaded left the bag bar lying the way the last profile had it until
+-- a /reload) the bag bar already standing laid the way these settings say; in a fight, once it is over (the kit's
+-- one wait)
+local function BagsLay()
+	local db = M.db
+	if not (OB.standing.bags and B.bar and db) then
+		return
+	end
+	local was, dir = B.bar.isHorizontal, B.bar.direction
+	BagOrientation(db)
+	if B.bar.isHorizontal ~= was or B.bar.direction ~= dir then
+		B.bar:Layout()
+		MelloUI:Fire("bagbar")
+	end
+end
+
+local function BagsAgain()
+	MelloUI.Kit:WhenOutOfCombat(BagsLay, "OwnBars: the bag bar after a profile")
+end
+
 function M:OnEnable(db)
 	self.db = db
 	ListenOnce()
+	if OB.standing.bags then
+		BagsAgain()   -- (the modules started again: a profile loaded)
+	end
 	OB.Sync(MelloUI.ModulesStarting ~= nil and MelloUI:ModulesStarting())
 	-- (fr-18c: the modules started again -- a profile loaded -- bring its places and widths, or none: ours where the
 	-- store says at once, else following the game's frames; the installer's layout goes in first, its own event follows)

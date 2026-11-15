@@ -178,9 +178,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "2.1.54", lines = {
-		"Custom Sounds: the Spellbook and Talents window, the profession windows and other newer windows play MelloUI's sounds now. With Custom Sounds on they were silent.",
+		"Profiles: a profile carries your real Edit Mode layout now, and each character keeps it in a layout of its own. Alts and a loaded profile no longer end up on the preset Modern.",
+		"Custom Sounds: the Spellbook and Talents window, the profession windows and other newer windows are no longer silent, and a window opens with one sound, not a click on top of it.",
 		"Custom Sounds: Your Sounds has five new rows: Window Opened, Window Closed, Window Tab, Bags Opened and Bags Closed. Each starts on the sound it had.",
-		"Custom Sounds: the character sheet no longer opens with a click on top of its own sound, and one window taking another's place plays only the opening.",
 		"RestedXP Guides: a new Guide: Next Steps slider shows up to five next steps on the Quest Tracker, a step's items are the game's item links, and Active Targets wears MelloUI's look.",
 		"Quest List and map: in a group, a mark after a quest shows how many others have it, and its tooltip lists them and how far they are.",
 		"Bags: a stack dropped on a + slot now goes into a free slot, split or whole, and Discard counts the Reagent Bag's items too.",

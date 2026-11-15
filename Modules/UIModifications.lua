@@ -465,7 +465,8 @@ local M = MelloUI:RegisterModule("UIModifications", {
 	-- the removed Painted Skin's one-time flag, one look stage E 2026-10-15 --
 	-- old saves, snapshots and share strings carry it: it must never travel)
 	keep = { "savedSurnameOwn", "layoutApplied", "welcomeAsked", "bordersMigrated", "featuresFolded", "questTrackerKitMigrated",
-		"seenVersion", "^layoutAsked_", "layoutFitFor", "layoutFitRev", "qol_DarkMode" },
+		"seenVersion", "^layoutAsked_", "layoutFitFor", "layoutFitRev", "qol_DarkMode",
+		"^emDue_" },   -- (2.1.54: this character's profile's Edit Mode layout still owed, Core's ApplyProfileEditMode)
 	defaults = defaults,
 	options = options,
 	icon = "Interface\\Icons\\INV_Misc_Gem_Ruby_02",

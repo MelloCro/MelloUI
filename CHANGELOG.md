@@ -2,6 +2,11 @@
 
 ## 2.1.54
 
+- Profiles: a profile now carries the Edit Mode layout you really use. Since 2.1.46 a logout or /reload wrote the game's preset Modern into it instead, so a new character got the preset, and loading a profile could put the preset over your own layout.
+- Profiles: each character now keeps the game's frames in an Edit Mode layout of its own, named "MelloUI" and the character's name, filled from its profile. Moving or sizing the game's frames on one character no longer changes them on another.
+- Profiles: a new character's first login gets the layout its copied profile holds, and loading a profile puts that profile's layout on the character you are on. When the layout in use had to be rewritten, one line asks for a /reload.
+- Profiles: a character whose shared layout another character changed gets its own layout back as its profile had it, once, at its next login.
+- Profiles: loading a profile lays the bag bar the way that profile has it at once, vertical or not. Before, it changed only after a /reload.
 - Custom Sounds: the Spellbook and Talents window, the profession windows, the toy box's tabs and other newer windows play MelloUI's sounds now. With Custom Sounds on they were silent.
 - Custom Sounds: Your Sounds has a new Windows and bags group with five rows: Window Opened, Window Closed, Window Tab, Bags Opened and Bags Closed. A window or the bags can now have a sound apart from Page Turn and the item sounds. Each starts on the sound it had.
 - Custom Sounds: one sound a moment. The character sheet no longer opens with a click on top of its own sound, and one window taking another's place plays only the opening.
